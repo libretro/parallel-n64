@@ -1,0 +1,2 @@
+DebugMessage renamed to rspDebugMessage
+RSP_INFO rsp renamed to rspInfo (fixes nasty bug where the rsp plugin structure of the same name would be overwritten)
