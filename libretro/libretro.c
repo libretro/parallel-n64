@@ -2,7 +2,7 @@
 #include "libretro.h"
 #include "libco.h"
 
-#include <OpenGL/gl.h>
+#include <SDL_opengl.h>
 static struct retro_hw_render_callback render_iface;
 
 
@@ -17,7 +17,18 @@ cothread_t n64EmuThread;
 
 static void EmuThreadFunction()
 {
+    CoreAttachPlugin(M64PLUGIN_GFX, 0);
+    CoreAttachPlugin(M64PLUGIN_AUDIO, 0);
+    CoreAttachPlugin(M64PLUGIN_INPUT, 0);
+    CoreAttachPlugin(M64PLUGIN_RSP, 0);
+
     CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
+
+    CoreDetachPlugin(M64PLUGIN_GFX);
+    CoreDetachPlugin(M64PLUGIN_AUDIO);
+    CoreDetachPlugin(M64PLUGIN_INPUT);
+    CoreDetachPlugin(M64PLUGIN_RSP);
+
     co_switch(n64MainThread);
 
     //NEVER RETURN! That's how libco rolls
@@ -113,11 +124,6 @@ bool retro_load_game(const struct retro_game_info *game)
         return false;
     }
 
-    CoreAttachPlugin(M64PLUGIN_GFX, 0);
-    CoreAttachPlugin(M64PLUGIN_AUDIO, 0);
-    CoreAttachPlugin(M64PLUGIN_INPUT, 0);
-    CoreAttachPlugin(M64PLUGIN_RSP, 0);
-
     n64MainThread = co_active();
     n64EmuThread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
 
@@ -129,19 +135,14 @@ void retro_unload_game(void)
     stop = 1;
     co_switch(n64EmuThread);
 
-    CoreDetachPlugin(M64PLUGIN_GFX);
-    CoreDetachPlugin(M64PLUGIN_AUDIO);
-    CoreDetachPlugin(M64PLUGIN_INPUT);
-    CoreDetachPlugin(M64PLUGIN_RSP);
-
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
 }
 
 void retro_run (void)
 {
     glBindFramebuffer(GL_FRAMEBUFFER, render_iface.get_current_framebuffer());
-    glViewport(0, 0, 800, 480);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glViewport(0, 0, 640, 480);
 
     poll_cb();
     co_switch(n64EmuThread);

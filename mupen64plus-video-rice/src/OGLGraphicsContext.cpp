@@ -22,9 +22,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "m64p_plugin.h"
 #include "Config.h"
 #include "Debugger.h"
-#if SDL_VIDEO_OPENGL
-#include "OGLExtensions.h"
-#endif
 #include "OGLDebug.h"
 #include "OGLGraphicsContext.h"
 #include "TextureManager.h"
@@ -135,11 +132,6 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWind
         if (iActual != depthBufferDepth)
             DebugMessage(M64MSG_WARNING, "Failed to set GL_DEPTH_SIZE to %i. (it's %i)", depthBufferDepth, iActual);
 
-#if SDL_VIDEO_OPENGL
-    /* Get function pointers to OpenGL extensions (blame Microsoft Windows for this) */
-    OGLExtensions_Init();
-#endif
-
     char caption[500];
     sprintf(caption, "%s v%i.%i.%i", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION));
     CoreVideo_SetCaption(caption);
@@ -233,18 +225,6 @@ void COGLGraphicsContext::InitState(void)
     glClearDepth(1.0f);
     OPENGL_CHECK_ERRORS;
 
-#if SDL_VIDEO_OPENGL
-    glShadeModel(GL_SMOOTH);
-    OPENGL_CHECK_ERRORS;
-
-    //position viewer 
-    //glMatrixMode(GL_MODELVIEW);
-    //glLoadIdentity();
-
-    glDisable(GL_ALPHA_TEST);
-    OPENGL_CHECK_ERRORS;
-#endif
-
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     OPENGL_CHECK_ERRORS;
     glDisable(GL_BLEND);
@@ -254,37 +234,17 @@ void COGLGraphicsContext::InitState(void)
     OPENGL_CHECK_ERRORS;
     glDisable(GL_CULL_FACE);
     OPENGL_CHECK_ERRORS;
-#if SDL_VIDEO_OPENGL
-    glDisable(GL_NORMALIZE);
-    OPENGL_CHECK_ERRORS;
-#endif
 
     glDepthFunc(GL_LEQUAL);
     OPENGL_CHECK_ERRORS;
     glEnable(GL_DEPTH_TEST);
     OPENGL_CHECK_ERRORS;
 
-#if SDL_VIDEO_OPENGL
-    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
-    OPENGL_CHECK_ERRORS;
-#endif
-
     glEnable(GL_BLEND);
     OPENGL_CHECK_ERRORS;
-#if SDL_VIDEO_OPENGL
-    glEnable(GL_ALPHA_TEST);
-    OPENGL_CHECK_ERRORS;
 
-    glMatrixMode(GL_PROJECTION);
-    OPENGL_CHECK_ERRORS;
-    glLoadIdentity();
-    OPENGL_CHECK_ERRORS;
-    
-    glDepthRange(-1, 1);
-
-#elif SDL_VIDEO_OPENGL_ES2
     glDepthRangef(0.0f, 1.0f);
-#endif
+
     OPENGL_CHECK_ERRORS;
 }
 

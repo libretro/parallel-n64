@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <vector>
 
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "osal_opengl.h"
 
@@ -981,18 +982,6 @@ EXPORT void CALL videoReadScreen2(void *dest, int *width, int *height, int bFron
 
     if (dest == NULL)
         return;
-
-#if SDL_VIDEO_OPENGL
-    GLint oldMode;
-    glGetIntegerv( GL_READ_BUFFER, &oldMode );
-    if (bFront)
-        glReadBuffer( GL_FRONT );
-    else
-        glReadBuffer( GL_BACK );
-    glReadPixels( 0, 0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight,
-                 GL_RGB, GL_UNSIGNED_BYTE, dest );
-    glReadBuffer( oldMode );
-#endif
 }
     
 

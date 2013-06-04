@@ -1666,12 +1666,14 @@ void FrameBufferManager::ActiveTextureBuffer(void)
         }
         else
         {
+#ifndef __LIBRETRO__
             if( CDeviceBuilder::m_deviceGeneralType == DIRECTX_DEVICE )
             {
                 TRACE1("Error to set Render Target: %d", idxToUse);
                 TRACE1("Addr = %08X", gRenderTextureInfos[idxToUse].CI_Info.dwAddr);
                 TRACE2("Width = %d, Height=%d", gRenderTextureInfos[idxToUse].N64Width, gRenderTextureInfos[idxToUse].N64Height);
             }
+#endif
         }   
 
 

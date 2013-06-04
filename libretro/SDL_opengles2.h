@@ -26,3 +26,5 @@
 
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
+#define glClearDepthf glClearDepth
+#define glDepthRangef glDepthRange

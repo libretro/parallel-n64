@@ -39,12 +39,13 @@ else ifeq ($(platform), osx)
    CPPFLAGS += -D__MACOSX__
 else ifeq ($(platform), ios)
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
-   CPPFLAGS += -DCOTHREAD_PTHREAD
    LDFLAGS += -dynamiclib
    fpic = -fPIC
 
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
+   CPPFLAGS += -DNO_ASM
+
 else ifeq ($(platform), android)
    TARGET := $(TARGET_NAME)_libretro.so
    CXXFLAGS += -fpermissive 
@@ -52,6 +53,7 @@ else ifeq ($(platform), android)
 
    CC = arm-linux-androideabi-gcc
    CXX = arm-linux-androideabi-g++
+   CPPFLAGS += -DNO_ASM
    
    fpic = -fPIC
 else ifeq ($(platform), psp1)
@@ -103,7 +105,6 @@ CPPFLAGS += -DSDL_VIDEO_OPENGL=1
 CFILES += \
 	$(VIDEODIR)/liblinux/BMGImage.c \
 	$(VIDEODIR)/liblinux/bmp.c \
-	$(VIDEODIR)/liblinux/pngrw.c \
     \
 	$(VIDEODIR)/osal_dynamiclib_unix.c \
 	$(VIDEODIR)/osal_files_unix.c
@@ -125,9 +126,8 @@ CXXFILES += \
 	$(VIDEODIR)/OGLCombiner.cpp \
 	$(VIDEODIR)/OGLDecodedMux.cpp \
 	$(VIDEODIR)/OGLExtCombiner.cpp \
-    $(VIDEODIR)/OGLExtensions.cpp \
 	$(VIDEODIR)/OGLExtRender.cpp \
-	$(VIDEODIR)/OGLFragmentShaders.cpp \
+	$(VIDEODIR)/OGLES2FragmentShaders.cpp \
 	$(VIDEODIR)/GeneralCombiner.cpp \
 	$(VIDEODIR)/OGLGraphicsContext.cpp \
 	$(VIDEODIR)/OGLRender.cpp \
@@ -152,6 +152,8 @@ CXXFILES += \
 #	$(VIDEODIR)/CNvTNTCombiner.cpp \
 	$(VIDEODIR)/OGLCombinerNV.cpp \
 	$(VIDEODIR)/OGLCombinerTNT2.cpp \
+    $(VIDEODIR)/OGLExtensions.cpp \
+
 
 
 # Audio Plugin
@@ -165,9 +167,6 @@ CFILES += $(INPUTDIR)/plugin.c
 # Core
 COREDIR = mupen64plus-core
 CFILES += \
-    $(COREDIR)/src/main/zip/unzip.c \
-    $(COREDIR)/src/main/zip/zip.c \
-    $(COREDIR)/src/main/zip/ioapi.c \
     $(COREDIR)/src/api/callbacks.c \
     $(COREDIR)/src/api/common.c \
     $(COREDIR)/src/api/config.c \
@@ -214,7 +213,7 @@ CFILES += \
 OBJECTS    = $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
 CPPFLAGS   += -D__LIBRETRO__ $(fpic) -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
 CPPFLAGS   += -DM64P_CORE_PROTOTYPES
-LDFLAGS    += -lm $(fpic) -lz -lpng
+LDFLAGS    += -lm $(fpic) -lz
 
 all: $(TARGET)
 

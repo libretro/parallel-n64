@@ -24,17 +24,6 @@
 
 #include <SDL_config.h>
 
-#if SDL_VIDEO_OPENGL
-#include <SDL_opengl.h>
-#define GLSL_VERSION "120"
-
-// Extension names
-#define OSAL_GL_ARB_MULTITEXTURE            "GL_ARB_multitexture"
-#define OSAL_GL_ARB_TEXTURE_ENV_ADD         "GL_ARB_texture_env_add"
-
-
-
-#elif SDL_VIDEO_OPENGL_ES2
 #include <SDL_opengles2.h>
 #define GLSL_VERSION "100"
 
@@ -80,7 +69,5 @@
 #define glTexEnvi(x,y,z)
 #define glTexEnvfv(x,y,z)
 #define glTexCoord2f(u,v)
-
-#endif // SDL_VIDEO_OPENGL*
 
 #endif // OSAL_OPENGL_H

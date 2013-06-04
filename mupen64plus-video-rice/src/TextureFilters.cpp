@@ -933,6 +933,7 @@ extern char * right(const char * src, int nchars);
 
 int GetImageInfoFromFile(char* pSrcFile, IMAGE_INFO *pSrcInfo)
 {
+#ifndef __LIBRETRO__
     unsigned char sig[8];
     FILE *f;
 
@@ -997,6 +998,8 @@ int GetImageInfoFromFile(char* pSrcFile, IMAGE_INFO *pSrcInfo)
     }
 
     DebugMessage(M64MSG_ERROR, "GetImageInfoFromFile : unknown file format (%s)", pSrcFile);
+#endif
+
     return 1;
 }
 
@@ -1737,6 +1740,7 @@ void DumpCachedTexture( TxtrCacheEntry &entry )
 
 bool LoadRGBBufferFromPNGFile(char *filename, unsigned char **pbuf, int &width, int &height, int bits_per_pixel = 24 )
 {
+#ifndef __LIBRETRO__
     struct BMGImageStruct img;
     memset(&img, 0, sizeof(BMGImageStruct));
     if (!PathFileExists(filename))
@@ -1830,6 +1834,9 @@ bool LoadRGBBufferFromPNGFile(char *filename, unsigned char **pbuf, int &width, 
         *pbuf = NULL;
         return false;
     }
+#else
+    return false;
+#endif
 }
 
 bool LoadRGBABufferFromColorIndexedFile(char *filename, TxtrCacheEntry &entry, unsigned char **pbuf, int &width, int &height)

@@ -184,12 +184,14 @@ SettingInfo openGLDepthBufferSettings[] =
 RenderEngineSetting OpenGLRenderSettings[] =
 {
 {"To Fit Your Video Card", OGL_DEVICE},
+#ifndef __LIBRETRO__
 {"OpenGL 1.1 (Lowest)",  OGL_1_1_DEVICE},
 {"OpenGL 1.2/1.3", OGL_1_2_DEVICE},
 {"OpenGL 1.4", OGL_1_4_DEVICE},
 //{"OpenGL 1.4, the 2nd combiner",  OGL_1_4_V2_DEVICE},
 {"OpenGL for Nvidia TNT or better", OGL_TNT2_DEVICE},
 {"OpenGL for Nvidia GeForce or better ", NVIDIA_OGL_DEVICE},
+#endif
 {"OpenGL Fragment Program Extension", OGL_FRAGMENT_PROGRAM},
 };
 

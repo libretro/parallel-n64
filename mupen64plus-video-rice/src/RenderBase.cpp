@@ -2341,6 +2341,7 @@ void HackZ(std::vector<XVECTOR3>& points)
 
 void HackZAll()
 {
+#ifndef __LIBRETRO__
     if( CDeviceBuilder::m_deviceGeneralType == DIRECTX_DEVICE )
     {
         for( uint32 i=0; i<gRSP.numVertices; i++)
@@ -2349,6 +2350,7 @@ void HackZAll()
         }
     }
     else
+#endif
     {
         for( uint32 i=0; i<gRSP.numVertices; i++)
         {

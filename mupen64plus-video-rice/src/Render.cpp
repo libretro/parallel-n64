@@ -1995,6 +1995,7 @@ void CRender::SetTextureFilter(uint32 dwFilter)
 
 bool SaveRGBBufferToFile(char *filename, unsigned char *buf, int width, int height, int pitch)
 {
+#ifndef __LIBRETRO__
     if( pitch == -1 )
         pitch = width*3;
 
@@ -2059,10 +2060,14 @@ bool SaveRGBBufferToFile(char *filename, unsigned char *buf, int width, int heig
         else
             return false;
     }
+#else
+    return false;
+#endif
 }
 
 bool SaveRGBABufferToPNGFile(char *filename, unsigned char *buf, int width, int height, int pitch)
 {
+#ifndef __LIBRETRO__
     if( pitch == -1 )
         pitch = width*4;
 
@@ -2082,5 +2087,8 @@ bool SaveRGBABufferToPNGFile(char *filename, unsigned char *buf, int width, int 
         return true;
     else
         return false;
+#else
+    return false;
+#endif
 }
 

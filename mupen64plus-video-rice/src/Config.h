@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 typedef enum
 {
     OGL_DEVICE,
+#ifndef __LIBRETRO__
     OGL_1_1_DEVICE,
     OGL_1_2_DEVICE,
     OGL_1_3_DEVICE,
@@ -37,6 +38,9 @@ typedef enum
     OGL_FRAGMENT_PROGRAM,
 
     DIRECTX_DEVICE,
+#else
+    OGL_FRAGMENT_PROGRAM,
+#endif
 } SupportedDeviceType;
 
 enum DirectXCombinerType
