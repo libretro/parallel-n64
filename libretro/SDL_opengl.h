@@ -24,5 +24,10 @@
  *  This is a simple file to encapsulate the OpenGL API headers
  */
 
+#if defined(__APPLE__)
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
+#else
+#include <GL/gl.h>
+#include <GL/glext.h>
+#endif
