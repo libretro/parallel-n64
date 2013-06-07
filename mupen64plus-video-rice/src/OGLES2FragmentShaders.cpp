@@ -50,6 +50,7 @@ const char *vertexShader =
 "void main()                                                \n"
 "{                                                          \n"
 "gl_Position = aPosition; //gl_Position.z = max(0.0,gl_Position.z);                                  \n"
+"gl_Position.y = 0.0 - gl_Position.y;                       \n"
 "vShadeColor = aColor;                                      \n"
 "vTexCoord0 = aTexCoord0;                                   \n"
 "vTexCoord1 = aTexCoord1;                                   \n"

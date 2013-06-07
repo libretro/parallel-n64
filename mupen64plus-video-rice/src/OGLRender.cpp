@@ -284,14 +284,22 @@ void OGLRender::SetCullMode(bool bCullFront, bool bCullBack)
     }
     else if( bCullFront )
     {
+#ifndef __LIBRETRO__ // Every things gotta be upside down
         glCullFace(GL_FRONT);
+#else
+        glCullFace(GL_BACK);
+#endif
         OPENGL_CHECK_ERRORS;
         glEnable(GL_CULL_FACE);
         OPENGL_CHECK_ERRORS;
     }
     else if( bCullBack )
     {
+#ifndef __LIBRETRO__ // Every things gotta be upside down
         glCullFace(GL_BACK);
+#else
+        glCullFace(GL_FRONT);
+#endif
         OPENGL_CHECK_ERRORS;
         glEnable(GL_CULL_FACE);
         OPENGL_CHECK_ERRORS;
