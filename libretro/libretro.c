@@ -138,15 +138,36 @@ void retro_unload_game(void)
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
 }
 
+
+#include <OpenGL/CGLCurrent.h>
+#include <OpenGL/CGLTypes.h>
+#include <OpenGL/OpenGL.h>
+bool n64video_flipped;
+static CGLContextObj core_context;
+
 void retro_run (void)
 {
-    glBindFramebuffer(GL_FRAMEBUFFER, render_iface.get_current_framebuffer());
+    CGLContextObj frontend_context = CGLGetCurrentContext();
 
-    glViewport(0, 0, 640, 480);
+    static bool init_own_gl;
+    if (!init_own_gl)
+    {
+        init_own_gl = true;
+
+        CGLPixelFormatObj pfmt = CGLGetPixelFormat(frontend_context);
+        CGLCreateContext(pfmt, frontend_context, &core_context);   
+    }
+
+    CGLSetCurrentContext(core_context);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, render_iface.get_current_framebuffer());
 
     poll_cb();
     co_switch(n64EmuThread);
-    video_cb(RETRO_HW_FRAME_BUFFER_VALID, 320, 240, 0);
+
+    CGLSetCurrentContext(frontend_context);
+
+    video_cb(RETRO_HW_FRAME_BUFFER_VALID, 640, 480, 0);
 }
 
 void retro_reset (void)
