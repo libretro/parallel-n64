@@ -54,15 +54,12 @@ class CGraphicsContext : public CCritSect
     
 public:
     bool Ready() { return m_bReady; }
-    bool IsWindowed() {return m_bWindowed;}
 
-    virtual bool Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed );
-    virtual bool ResizeInitialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed );
+    virtual bool Initialize(uint32 dwWidth, uint32 dwHeight);
     virtual void CleanUp();
 
     virtual void Clear(ClearFlag flags, uint32 color=0xFF000000, float depth=1.0f) = 0;
     virtual void UpdateFrame(bool swaponly=false) = 0;
-    virtual int ToggleFullscreen()=0;       // return 0 as the result is windowed
 
     static void InitWindowInfo();
     static void InitDeviceParameters();
@@ -83,7 +80,6 @@ protected:
     bool                m_bReady;
     bool                m_bActive;
     
-    bool                m_bWindowed;
     RECT                m_rcWindowBounds;
 
     char                m_strDeviceStats[256];

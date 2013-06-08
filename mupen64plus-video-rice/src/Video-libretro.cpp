@@ -30,10 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "m64p_common.h"
 #include "m64p_plugin.h"
 #include "osal_dynamiclib.h"
-
-#ifdef __LIBRETRO
 #include "m64p_vidext.h"
-#endif
 
 #include "Config.h"
 #include "Debugger.h"
@@ -74,231 +71,12 @@ std::vector<uint32> frameWriteRecord;
 
 void (*renderCallback)(int) = NULL;
 
-#ifndef __LIBRETRO__
-/* definitions of pointers to Core config functions */
-ptr_ConfigOpenSection      ConfigOpenSection = NULL;
-ptr_ConfigSetParameter     ConfigSetParameter = NULL;
-ptr_ConfigGetParameter     ConfigGetParameter = NULL;
-ptr_ConfigGetParameterHelp ConfigGetParameterHelp = NULL;
-ptr_ConfigSetDefaultInt    ConfigSetDefaultInt = NULL;
-ptr_ConfigSetDefaultFloat  ConfigSetDefaultFloat = NULL;
-ptr_ConfigSetDefaultBool   ConfigSetDefaultBool = NULL;
-ptr_ConfigSetDefaultString ConfigSetDefaultString = NULL;
-ptr_ConfigGetParamInt      ConfigGetParamInt = NULL;
-ptr_ConfigGetParamFloat    ConfigGetParamFloat = NULL;
-ptr_ConfigGetParamBool     ConfigGetParamBool = NULL;
-ptr_ConfigGetParamString   ConfigGetParamString = NULL;
-
-ptr_ConfigGetSharedDataFilepath ConfigGetSharedDataFilepath = NULL;
-ptr_ConfigGetUserConfigPath     ConfigGetUserConfigPath = NULL;
-ptr_ConfigGetUserDataPath       ConfigGetUserDataPath = NULL;
-ptr_ConfigGetUserCachePath      ConfigGetUserCachePath = NULL;
-
-/* definitions of pointers to Core video extension functions */
-ptr_VidExt_Init                  CoreVideo_Init = NULL;
-ptr_VidExt_Quit                  CoreVideo_Quit = NULL;
-ptr_VidExt_ListFullscreenModes   CoreVideo_ListFullscreenModes = NULL;
-ptr_VidExt_SetVideoMode          CoreVideo_SetVideoMode = NULL;
-ptr_VidExt_SetCaption            CoreVideo_SetCaption = NULL;
-ptr_VidExt_ToggleFullScreen      CoreVideo_ToggleFullScreen = NULL;
-ptr_VidExt_ResizeWindow          CoreVideo_ResizeWindow = NULL;
-ptr_VidExt_GL_GetProcAddress     CoreVideo_GL_GetProcAddress = NULL;
-ptr_VidExt_GL_SetAttribute       CoreVideo_GL_SetAttribute = NULL;
-ptr_VidExt_GL_GetAttribute       CoreVideo_GL_GetAttribute = NULL;
-ptr_VidExt_GL_SwapBuffers        CoreVideo_GL_SwapBuffers = NULL;
-#endif
-
 //---------------------------------------------------------------------------------------
 // Forward function declarations
 
 extern "C" EXPORT void CALL videoRomClosed(void);
 
 //---------------------------------------------------------------------------------------
-// Static (local) functions
-static void ChangeWindowStep2()
-{
-    status.bDisableFPS = true;
-    windowSetting.bDisplayFullscreen = !windowSetting.bDisplayFullscreen;
-    g_CritialSection.Lock();
-    windowSetting.bDisplayFullscreen = CGraphicsContext::Get()->ToggleFullscreen();
-
-    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
-    CGraphicsContext::Get()->UpdateFrame();
-    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
-    CGraphicsContext::Get()->UpdateFrame();
-    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
-    CGraphicsContext::Get()->UpdateFrame();
-    g_CritialSection.Unlock();
-    status.bDisableFPS = false;
-    status.ToToggleFullScreen = FALSE;
-}
-
-static void ResizeStep2(void)
-{
-    g_CritialSection.Lock();
-
-    // Delete all OpenGL textures
-    gTextureManager.CleanUp();
-    RDP_Cleanup();
-    // delete our opengl renderer
-    CDeviceBuilder::GetBuilder()->DeleteRender();
-
-    // call video extension function with updated width, height (this creates a new OpenGL context)
-    windowSetting.uDisplayWidth = status.gNewResizeWidth;
-    windowSetting.uDisplayHeight = status.gNewResizeHeight;
-    CoreVideo_ResizeWindow(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
-
-    // re-initialize our OpenGL graphics context state
-    bool res = CGraphicsContext::Get()->ResizeInitialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, !windowSetting.bDisplayFullscreen);
-    if (res)
-    {
-        // re-create the OpenGL renderer
-        CDeviceBuilder::GetBuilder()->CreateRender();
-        CRender::GetRender()->Initialize();
-        DLParser_Init();
-    }
-
-    g_CritialSection.Unlock();
-    status.ToResize = false;
-}
-
-static void UpdateScreenStep2 (void)
-{
-    status.bVIOriginIsUpdated = false;
-
-    if( status.ToToggleFullScreen && status.gDlistCount > 0 )
-    {
-        ChangeWindowStep2();
-        return;
-    }
-    if (status.ToResize && status.gDlistCount > 0)
-    {
-        ResizeStep2();
-        return;
-    }
-
-    g_CritialSection.Lock();
-    if( status.bHandleN64RenderTexture )
-        g_pFrameBufferManager->CloseRenderTexture(true);
-    
-    g_pFrameBufferManager->SetAddrBeDisplayed(*g_GraphicsInfo.VI_ORIGIN_REG);
-
-    if( status.gDlistCount == 0 )
-    {
-        // CPU frame buffer update
-        uint32 width = *g_GraphicsInfo.VI_WIDTH_REG;
-        if( (*g_GraphicsInfo.VI_ORIGIN_REG & (g_dwRamSize-1) ) > width*2 && *g_GraphicsInfo.VI_H_START_REG != 0 && width != 0 )
-        {
-            SetVIScales();
-            CRender::GetRender()->DrawFrameBuffer(true);
-            CGraphicsContext::Get()->UpdateFrame();
-        }
-        g_CritialSection.Unlock();
-        return;
-    }
-
-    TXTRBUF_DETAIL_DUMP(TRACE1("VI ORIG is updated to %08X", *g_GraphicsInfo.VI_ORIGIN_REG));
-
-    if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE )
-    {
-        CGraphicsContext::Get()->UpdateFrame();
-
-        DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
-        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
-        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
-        g_CritialSection.Unlock();
-        return;
-    }
-
-    TXTRBUF_DETAIL_DUMP(TRACE1("VI ORIG is updated to %08X", *g_GraphicsInfo.VI_ORIGIN_REG));
-
-    if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE_AND_DRAWN )
-    {
-        if( status.bScreenIsDrawn )
-        {
-            CGraphicsContext::Get()->UpdateFrame();
-            DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
-        }
-        else
-        {
-            DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Skip Screen Update: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
-        }
-
-        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
-        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
-        g_CritialSection.Unlock();
-        return;
-    }
-
-    if( currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_VI_CHANGE )
-    {
-
-        if( *g_GraphicsInfo.VI_ORIGIN_REG != status.curVIOriginReg )
-        {
-            if( *g_GraphicsInfo.VI_ORIGIN_REG < status.curDisplayBuffer || *g_GraphicsInfo.VI_ORIGIN_REG > status.curDisplayBuffer+0x2000  )
-            {
-                status.curDisplayBuffer = *g_GraphicsInfo.VI_ORIGIN_REG;
-                status.curVIOriginReg = status.curDisplayBuffer;
-                //status.curRenderBuffer = NULL;
-
-                CGraphicsContext::Get()->UpdateFrame();
-                DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
-                DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
-                DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
-            }
-            else
-            {
-                status.curDisplayBuffer = *g_GraphicsInfo.VI_ORIGIN_REG;
-                status.curVIOriginReg = status.curDisplayBuffer;
-                DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("Skip Screen Update, closed to the display buffer, VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG);});
-            }
-        }
-        else
-        {
-            DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("Skip Screen Update, the same VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG);});
-        }
-
-        g_CritialSection.Unlock();
-        return;
-    }
-
-    if( currentRomOptions.screenUpdateSetting >= SCREEN_UPDATE_AT_1ST_CI_CHANGE )
-    {
-        status.bVIOriginIsUpdated=true;
-        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("VI ORIG is updated to %08X", *g_GraphicsInfo.VI_ORIGIN_REG);});
-        g_CritialSection.Unlock();
-        return;
-    }
-
-    DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("VI is updated, No screen update: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
-    DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
-    DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
-
-    g_CritialSection.Unlock();
-}
-
-static void ProcessDListStep2(void)
-{
-    g_CritialSection.Lock();
-    if( status.toShowCFB )
-    {
-        CRender::GetRender()->DrawFrameBuffer(true);
-        status.toShowCFB = false;
-    }
-
-    try
-    {
-        DLParser_Process((OSTask *)(g_GraphicsInfo.DMEM + 0x0FC0));
-    }
-    catch (...)
-    {
-        TRACE0("Unknown Error in ProcessDList");
-        TriggerDPInterrupt();
-        TriggerSPInterrupt();
-    }
-
-    g_CritialSection.Unlock();
-}   
 
 static bool StartVideo(void)
 {
@@ -344,7 +122,7 @@ static bool StartVideo(void)
         CDeviceBuilder::GetBuilder()->CreateGraphicsContext();
         CGraphicsContext::InitWindowInfo();
 
-        bool res = CGraphicsContext::Get()->Initialize(640, 480, !windowSetting.bDisplayFullscreen);
+        bool res = CGraphicsContext::Get()->Initialize(640, 480);
         if (!res)
         {
             g_CritialSection.Unlock();
@@ -605,57 +383,6 @@ EXPORT m64p_error CALL videoPluginStartup(m64p_dynlib_handle CoreLibHandle, void
         return M64ERR_INCOMPATIBLE;
     }
 
-    /* Get the core config function pointers from the library handle */
-#ifndef __LIBRETRO__
-    ConfigOpenSection = (ptr_ConfigOpenSection) osal_dynlib_getproc(CoreLibHandle, "ConfigOpenSection");
-    ConfigSetParameter = (ptr_ConfigSetParameter) osal_dynlib_getproc(CoreLibHandle, "ConfigSetParameter");
-    ConfigGetParameter = (ptr_ConfigGetParameter) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParameter");
-    ConfigSetDefaultInt = (ptr_ConfigSetDefaultInt) osal_dynlib_getproc(CoreLibHandle, "ConfigSetDefaultInt");
-    ConfigSetDefaultFloat = (ptr_ConfigSetDefaultFloat) osal_dynlib_getproc(CoreLibHandle, "ConfigSetDefaultFloat");
-    ConfigSetDefaultBool = (ptr_ConfigSetDefaultBool) osal_dynlib_getproc(CoreLibHandle, "ConfigSetDefaultBool");
-    ConfigSetDefaultString = (ptr_ConfigSetDefaultString) osal_dynlib_getproc(CoreLibHandle, "ConfigSetDefaultString");
-    ConfigGetParamInt = (ptr_ConfigGetParamInt) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParamInt");
-    ConfigGetParamFloat = (ptr_ConfigGetParamFloat) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParamFloat");
-    ConfigGetParamBool = (ptr_ConfigGetParamBool) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParamBool");
-    ConfigGetParamString = (ptr_ConfigGetParamString) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParamString");
-
-    ConfigGetSharedDataFilepath = (ptr_ConfigGetSharedDataFilepath) osal_dynlib_getproc(CoreLibHandle, "ConfigGetSharedDataFilepath");
-    ConfigGetUserConfigPath = (ptr_ConfigGetUserConfigPath) osal_dynlib_getproc(CoreLibHandle, "ConfigGetUserConfigPath");
-    ConfigGetUserDataPath = (ptr_ConfigGetUserDataPath) osal_dynlib_getproc(CoreLibHandle, "ConfigGetUserDataPath");
-    ConfigGetUserCachePath = (ptr_ConfigGetUserCachePath) osal_dynlib_getproc(CoreLibHandle, "ConfigGetUserCachePath");
-
-    if (!ConfigOpenSection || !ConfigSetParameter || !ConfigGetParameter ||
-        !ConfigSetDefaultInt || !ConfigSetDefaultFloat || !ConfigSetDefaultBool || !ConfigSetDefaultString ||
-        !ConfigGetParamInt   || !ConfigGetParamFloat   || !ConfigGetParamBool   || !ConfigGetParamString ||
-        !ConfigGetSharedDataFilepath || !ConfigGetUserConfigPath || !ConfigGetUserDataPath || !ConfigGetUserCachePath)
-    {
-        DebugMessage(M64MSG_ERROR, "Couldn't connect to Core configuration functions");
-        return M64ERR_INCOMPATIBLE;
-    }
-#endif
-
-    /* Get the core Video Extension function pointers from the library handle */
-#ifndef __LIBRETRO__
-    CoreVideo_Init = (ptr_VidExt_Init) osal_dynlib_getproc(CoreLibHandle, "VidExt_Init");
-    CoreVideo_Quit = (ptr_VidExt_Quit) osal_dynlib_getproc(CoreLibHandle, "VidExt_Quit");
-    CoreVideo_ListFullscreenModes = (ptr_VidExt_ListFullscreenModes) osal_dynlib_getproc(CoreLibHandle, "VidExt_ListFullscreenModes");
-    CoreVideo_SetVideoMode = (ptr_VidExt_SetVideoMode) osal_dynlib_getproc(CoreLibHandle, "VidExt_SetVideoMode");
-    CoreVideo_SetCaption = (ptr_VidExt_SetCaption) osal_dynlib_getproc(CoreLibHandle, "VidExt_SetCaption");
-    CoreVideo_ToggleFullScreen = (ptr_VidExt_ToggleFullScreen) osal_dynlib_getproc(CoreLibHandle, "VidExt_ToggleFullScreen");
-    CoreVideo_ResizeWindow = (ptr_VidExt_ResizeWindow) osal_dynlib_getproc(CoreLibHandle, "VidExt_ResizeWindow");
-    CoreVideo_GL_GetProcAddress = (ptr_VidExt_GL_GetProcAddress) osal_dynlib_getproc(CoreLibHandle, "VidExt_GL_GetProcAddress");
-    CoreVideo_GL_SetAttribute = (ptr_VidExt_GL_SetAttribute) osal_dynlib_getproc(CoreLibHandle, "VidExt_GL_SetAttribute");
-    CoreVideo_GL_GetAttribute = (ptr_VidExt_GL_GetAttribute) osal_dynlib_getproc(CoreLibHandle, "VidExt_GL_GetAttribute");
-    CoreVideo_GL_SwapBuffers = (ptr_VidExt_GL_SwapBuffers) osal_dynlib_getproc(CoreLibHandle, "VidExt_GL_SwapBuffers");
-
-    if (!CoreVideo_Init || !CoreVideo_Quit || !CoreVideo_ListFullscreenModes || !CoreVideo_SetVideoMode ||
-        !CoreVideo_ResizeWindow || !CoreVideo_SetCaption || !CoreVideo_ToggleFullScreen || !CoreVideo_GL_GetProcAddress ||
-        !CoreVideo_GL_SetAttribute || !CoreVideo_GL_GetAttribute || !CoreVideo_GL_SwapBuffers)
-    {
-        DebugMessage(M64MSG_ERROR, "Couldn't connect to Core video extension functions");
-        return M64ERR_INCOMPATIBLE;
-    }
-#endif
     /* open config section handles and set parameter default values */
     if (!InitConfiguration())
         return M64ERR_INTERNAL;
@@ -715,10 +442,6 @@ EXPORT m64p_error CALL videoPluginGetVersion(m64p_plugin_type *PluginType, int *
 
 EXPORT void CALL videoChangeWindow (void)
 {
-    if( status.ToToggleFullScreen )
-        status.ToToggleFullScreen = FALSE;
-    else
-        status.ToToggleFullScreen = TRUE;
 }
 
 //---------------------------------------------------------------------------------------
@@ -768,22 +491,106 @@ EXPORT int CALL videoRomOpen(void)
 //---------------------------------------------------------------------------------------
 EXPORT void CALL videoUpdateScreen(void)
 {
-    if(options.bShowFPS)
+    status.bVIOriginIsUpdated = false;
+
+    g_CritialSection.Lock();
+    if( status.bHandleN64RenderTexture )
+        g_pFrameBufferManager->CloseRenderTexture(true);
+    
+    g_pFrameBufferManager->SetAddrBeDisplayed(*g_GraphicsInfo.VI_ORIGIN_REG);
+
+    if( status.gDlistCount == 0 )
     {
-        static unsigned int lastTick=0;
-        static int frames=0;
-        unsigned int nowTick = SDL_GetTicks();
-        frames++;
-        if(lastTick + 5000 <= nowTick)
+        // CPU frame buffer update
+        uint32 width = *g_GraphicsInfo.VI_WIDTH_REG;
+        if( (*g_GraphicsInfo.VI_ORIGIN_REG & (g_dwRamSize-1) ) > width*2 && *g_GraphicsInfo.VI_H_START_REG != 0 && width != 0 )
         {
-            char caption[200];
-            sprintf(caption, "%s v%i.%i.%i - %.3f VI/S", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION), frames/5.0);
-            CoreVideo_SetCaption(caption);
-            frames = 0;
-            lastTick = nowTick;
+            SetVIScales();
+            CRender::GetRender()->DrawFrameBuffer(true);
+            CGraphicsContext::Get()->UpdateFrame();
         }
+        g_CritialSection.Unlock();
+        return;
     }
-    UpdateScreenStep2();
+
+    TXTRBUF_DETAIL_DUMP(TRACE1("VI ORIG is updated to %08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+
+    if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE )
+    {
+        CGraphicsContext::Get()->UpdateFrame();
+
+        DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
+        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
+        g_CritialSection.Unlock();
+        return;
+    }
+
+    TXTRBUF_DETAIL_DUMP(TRACE1("VI ORIG is updated to %08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+
+    if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE_AND_DRAWN )
+    {
+        if( status.bScreenIsDrawn )
+        {
+            CGraphicsContext::Get()->UpdateFrame();
+            DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+        }
+        else
+        {
+            DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Skip Screen Update: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+        }
+
+        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
+        DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
+        g_CritialSection.Unlock();
+        return;
+    }
+
+    if( currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_VI_CHANGE )
+    {
+
+        if( *g_GraphicsInfo.VI_ORIGIN_REG != status.curVIOriginReg )
+        {
+            if( *g_GraphicsInfo.VI_ORIGIN_REG < status.curDisplayBuffer || *g_GraphicsInfo.VI_ORIGIN_REG > status.curDisplayBuffer+0x2000  )
+            {
+                status.curDisplayBuffer = *g_GraphicsInfo.VI_ORIGIN_REG;
+                status.curVIOriginReg = status.curDisplayBuffer;
+                //status.curRenderBuffer = NULL;
+
+                CGraphicsContext::Get()->UpdateFrame();
+                DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+                DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
+                DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
+            }
+            else
+            {
+                status.curDisplayBuffer = *g_GraphicsInfo.VI_ORIGIN_REG;
+                status.curVIOriginReg = status.curDisplayBuffer;
+                DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("Skip Screen Update, closed to the display buffer, VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG);});
+            }
+        }
+        else
+        {
+            DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("Skip Screen Update, the same VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG);});
+        }
+
+        g_CritialSection.Unlock();
+        return;
+    }
+
+    if( currentRomOptions.screenUpdateSetting >= SCREEN_UPDATE_AT_1ST_CI_CHANGE )
+    {
+        status.bVIOriginIsUpdated=true;
+        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("VI ORIG is updated to %08X", *g_GraphicsInfo.VI_ORIGIN_REG);});
+        g_CritialSection.Unlock();
+        return;
+    }
+
+    DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("VI is updated, No screen update: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+    DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
+    DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
+
+    g_CritialSection.Unlock();
 }
 
 //---------------------------------------------------------------------------------------
@@ -816,8 +623,6 @@ EXPORT int CALL videoInitiateGFX(GFX_INFO Gfx_Info)
 
     windowSetting.fViWidth = 320;
     windowSetting.fViHeight = 240;
-    status.ToToggleFullScreen = FALSE;
-    status.ToResize = false;
     status.bDisableFPS=false;
 
     if (!InitConfiguration())
@@ -834,10 +639,6 @@ EXPORT int CALL videoInitiateGFX(GFX_INFO Gfx_Info)
 
 EXPORT void CALL videoResizeVideoOutput(int width, int height)
 {
-    // save the new window resolution.  actual resizing operation is asynchronous (it happens later)
-    status.gNewResizeWidth = width;
-    status.gNewResizeHeight = height;
-    status.ToResize = true;
 }
 
 //---------------------------------------------------------------------------------------
@@ -858,7 +659,25 @@ EXPORT void CALL videoProcessRDPList(void)
 
 EXPORT void CALL videoProcessDList(void)
 {
-    ProcessDListStep2();
+    g_CritialSection.Lock();
+    if( status.toShowCFB )
+    {
+        CRender::GetRender()->DrawFrameBuffer(true);
+        status.toShowCFB = false;
+    }
+
+    try
+    {
+        DLParser_Process((OSTask *)(g_GraphicsInfo.DMEM + 0x0FC0));
+    }
+    catch (...)
+    {
+        TRACE0("Unknown Error in ProcessDList");
+        TriggerDPInterrupt();
+        TriggerSPInterrupt();
+    }
+
+    g_CritialSection.Unlock();
 }   
 
 //---------------------------------------------------------------------------------------

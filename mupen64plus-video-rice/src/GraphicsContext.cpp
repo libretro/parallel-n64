@@ -40,10 +40,10 @@ CGraphicsContext * CGraphicsContext::Get(void)
 CGraphicsContext::CGraphicsContext() :
     m_supportTextureMirror(false),
     m_bReady(false), 
-        m_bActive(false),
-        m_bWindowed(true)
+        m_bActive(false)
 {
 }
+
 CGraphicsContext::~CGraphicsContext()
 {
     g_pFrameBufferManager->CloseUp();
@@ -57,16 +57,9 @@ void CGraphicsContext::InitWindowInfo()
 {
 }
 
-bool CGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed)
+bool CGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight)
 {
-    m_bWindowed = (bWindowed != 0);
-
     g_pFrameBufferManager->Initialize();
-    return true;
-}
-
-bool CGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed )
-{
     return true;
 }
 

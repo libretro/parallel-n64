@@ -55,24 +55,13 @@ COGLGraphicsContext::~COGLGraphicsContext()
 {
 }
 
-bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed )
+bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight)
 {
     DebugMessage(M64MSG_INFO, "Initializing OpenGL Device Context.");
     Lock();
 
     CGraphicsContext::Get()->m_supportTextureMirror = false;
-    CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed );
-
-    if( bWindowed )
-    {
-        windowSetting.statusBarHeightToUse = windowSetting.statusBarHeight;
-        windowSetting.toolbarHeightToUse = windowSetting.toolbarHeight;
-    }
-    else
-    {
-        windowSetting.statusBarHeightToUse = 0;
-        windowSetting.toolbarHeightToUse = 0;
-    }
+    CGraphicsContext::Initialize(dwWidth, dwHeight);
 
     int  depthBufferDepth = options.OpenglDepthBufferSetting;
     int  colorBufferDepth = 32;
@@ -108,7 +97,7 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWind
     }
 
     /* Set the video mode */
-    m64p_video_mode ScreenMode = bWindowed ? M64VIDEO_WINDOWED : M64VIDEO_FULLSCREEN;
+    m64p_video_mode ScreenMode = M64VIDEO_FULLSCREEN;
     m64p_video_flags flags = M64VIDEOFLAG_SUPPORT_RESIZING;
     if (CoreVideo_SetVideoMode(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, colorBufferDepth, ScreenMode, flags) != M64ERR_SUCCESS)
     {
@@ -135,7 +124,6 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWind
     char caption[500];
     sprintf(caption, "%s v%i.%i.%i", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION));
     CoreVideo_SetCaption(caption);
-    SetWindowMode();
 
     InitState();
     InitOGLExtension();
@@ -153,59 +141,6 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWind
     m_bReady = true;
     status.isVertexShaderEnabled = false;
 
-    return true;
-}
-
-bool COGLGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed )
-{
-    Lock();
-
-    CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed );
-
-    int  depthBufferDepth = options.OpenglDepthBufferSetting;
-    int  colorBufferDepth = 32;
-    int bVerticalSync = windowSetting.bVerticalSync;
-    if( options.colorQuality == TEXTURE_FMT_A4R4G4B4 ) colorBufferDepth = 16;
-
-    /* hard-coded attribute values */
-    const int iDOUBLEBUFFER = 1;
-
-    /* set opengl attributes */
-    CoreVideo_GL_SetAttribute(M64P_GL_DOUBLEBUFFER, iDOUBLEBUFFER);
-    CoreVideo_GL_SetAttribute(M64P_GL_SWAP_CONTROL, bVerticalSync);
-    CoreVideo_GL_SetAttribute(M64P_GL_BUFFER_SIZE, colorBufferDepth);
-    CoreVideo_GL_SetAttribute(M64P_GL_DEPTH_SIZE, depthBufferDepth);
-
-    /* set multisampling */
-    if (options.multiSampling > 0)
-    {
-        CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLEBUFFERS, 1);
-        if (options.multiSampling <= 2)
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 2);
-        else if (options.multiSampling <= 4)
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 4);
-        else if (options.multiSampling <= 8)
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 8);
-        else
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 16);
-    }
-
-    /* Call Mupen64plus core Video Extension to resize the window, which will create a new OpenGL Context under SDL */
-    if (CoreVideo_ResizeWindow(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight) != M64ERR_SUCCESS)
-    {
-        DebugMessage(M64MSG_ERROR, "Failed to set %i-bit video mode: %ix%i", colorBufferDepth, (int)windowSetting.uDisplayWidth, (int)windowSetting.uDisplayHeight);
-        CoreVideo_Quit();
-        return false;
-    }
-
-    InitState();
-    Unlock();
-
-    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);    // Clear buffers
-    UpdateFrame();
-    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
-    UpdateFrame();
-    
     return true;
 }
 
@@ -439,33 +374,6 @@ void COGLGraphicsContext::UpdateFrame(bool swaponly)
         needCleanScene = true;
 
     status.bScreenIsDrawn = false;
-}
-
-bool COGLGraphicsContext::SetFullscreenMode()
-{
-    windowSetting.statusBarHeightToUse = 0;
-    windowSetting.toolbarHeightToUse = 0;
-    return true;
-}
-
-bool COGLGraphicsContext::SetWindowMode()
-{
-    windowSetting.statusBarHeightToUse = windowSetting.statusBarHeight;
-    windowSetting.toolbarHeightToUse = windowSetting.toolbarHeight;
-    return true;
-}
-int COGLGraphicsContext::ToggleFullscreen()
-{
-    if (CoreVideo_ToggleFullScreen() == M64ERR_SUCCESS)
-    {
-        m_bWindowed = !m_bWindowed;
-        if(m_bWindowed)
-            SetWindowMode();
-        else
-            SetFullscreenMode();
-    }
-
-    return m_bWindowed?0:1;
 }
 
 // This is a static function, will be called when the plugin DLL is initialized
