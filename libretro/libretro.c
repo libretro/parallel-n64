@@ -182,7 +182,7 @@ void retro_run (void)
 
 void retro_reset (void)
 {
-    // TODO
+    CoreDoCommand(M64CMD_RESET, 1, (void*)0);
 }
 
 unsigned retro_get_region (void)
