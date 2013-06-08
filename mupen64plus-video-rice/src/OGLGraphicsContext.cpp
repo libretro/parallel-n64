@@ -73,29 +73,6 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight)
     if (CoreVideo_Init() != M64ERR_SUCCESS)   
         return false;
 
-    /* hard-coded attribute values */
-    const int iDOUBLEBUFFER = 1;
-
-    /* set opengl attributes */
-    CoreVideo_GL_SetAttribute(M64P_GL_DOUBLEBUFFER, iDOUBLEBUFFER);
-    CoreVideo_GL_SetAttribute(M64P_GL_SWAP_CONTROL, bVerticalSync);
-    CoreVideo_GL_SetAttribute(M64P_GL_BUFFER_SIZE, colorBufferDepth);
-    CoreVideo_GL_SetAttribute(M64P_GL_DEPTH_SIZE, depthBufferDepth);
-
-    /* set multisampling */
-    if (options.multiSampling > 0)
-    {
-        CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLEBUFFERS, 1);
-        if (options.multiSampling <= 2)
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 2);
-        else if (options.multiSampling <= 4)
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 4);
-        else if (options.multiSampling <= 8)
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 8);
-        else
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 16);
-    }
-
     /* Set the video mode */
     m64p_video_mode ScreenMode = M64VIDEO_FULLSCREEN;
     m64p_video_flags flags = M64VIDEOFLAG_SUPPORT_RESIZING;
@@ -105,25 +82,6 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight)
         CoreVideo_Quit();
         return false;
     }
-
-    /* check that our opengl attributes were properly set */
-    int iActual;
-    if (CoreVideo_GL_GetAttribute(M64P_GL_DOUBLEBUFFER, &iActual) == M64ERR_SUCCESS)
-        if (iActual != iDOUBLEBUFFER)
-            DebugMessage(M64MSG_WARNING, "Failed to set GL_DOUBLEBUFFER to %i. (it's %i)", iDOUBLEBUFFER, iActual);
-    if (CoreVideo_GL_GetAttribute(M64P_GL_SWAP_CONTROL, &iActual) == M64ERR_SUCCESS)
-        if (iActual != bVerticalSync)
-            DebugMessage(M64MSG_WARNING, "Failed to set GL_SWAP_CONTROL to %i. (it's %i)", bVerticalSync, iActual);
-    if (CoreVideo_GL_GetAttribute(M64P_GL_BUFFER_SIZE, &iActual) == M64ERR_SUCCESS)
-        if (iActual != colorBufferDepth)
-            DebugMessage(M64MSG_WARNING, "Failed to set GL_BUFFER_SIZE to %i. (it's %i)", colorBufferDepth, iActual);
-    if (CoreVideo_GL_GetAttribute(M64P_GL_DEPTH_SIZE, &iActual) == M64ERR_SUCCESS)
-        if (iActual != depthBufferDepth)
-            DebugMessage(M64MSG_WARNING, "Failed to set GL_DEPTH_SIZE to %i. (it's %i)", depthBufferDepth, iActual);
-
-    char caption[500];
-    sprintf(caption, "%s v%i.%i.%i", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION));
-    CoreVideo_SetCaption(caption);
 
     InitState();
     InitOGLExtension();

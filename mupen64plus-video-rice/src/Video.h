@@ -162,9 +162,6 @@ extern unsigned char *g_pRDRAMu8;
 #define CoreVideo_Quit VidExt_Quit
 #define CoreVideo_SetVideoMode VidExt_SetVideoMode
 #define CoreVideo_SetCaption VidExt_SetCaption
-#define CoreVideo_GL_GetProcAddress VidExt_GL_GetProcAddress
-#define CoreVideo_GL_SetAttribute VidExt_GL_SetAttribute
-#define CoreVideo_GL_GetAttribute VidExt_GL_GetAttribute
 #define CoreVideo_GL_SwapBuffers VidExt_GL_SwapBuffers
 
 /* global functions provided by Video.cpp */
