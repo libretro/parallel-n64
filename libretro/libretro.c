@@ -2,7 +2,7 @@
 #include "libretro.h"
 #include "libco.h"
 
-#include <SDL_opengl.h>
+#include <SDL_opengles2.h>
 static struct retro_hw_render_callback render_iface;
 
 
@@ -103,6 +103,7 @@ void retro_deinit(void)
 
 static void core_gl_context_reset()
 {
+   glsym_init_procs(render_iface.get_proc_address);
 }
 
 bool retro_load_game(const struct retro_game_info *game)
@@ -139,14 +140,19 @@ void retro_unload_game(void)
 }
 
 
+// FIXME: Why is a linked context needed?
+#ifdef __APPLE__
 #include <OpenGL/CGLCurrent.h>
 #include <OpenGL/CGLTypes.h>
 #include <OpenGL/OpenGL.h>
-bool n64video_flipped;
 static CGLContextObj core_context;
+#endif
+
+bool n64video_flipped;
 
 void retro_run (void)
 {
+#ifdef __APPLE__
     CGLContextObj frontend_context = CGLGetCurrentContext();
 
     static bool init_own_gl;
@@ -159,13 +165,16 @@ void retro_run (void)
     }
 
     CGLSetCurrentContext(core_context);
+#endif
 
     glBindFramebuffer(GL_FRAMEBUFFER, render_iface.get_current_framebuffer());
 
     poll_cb();
     co_switch(n64EmuThread);
 
+#ifdef __APPLE__
     CGLSetCurrentContext(frontend_context);
+#endif
 
     video_cb(n64video_flipped ? RETRO_HW_FRAME_BUFFER_VALID : 0, 640, 480, 0);
     n64video_flipped = false;
