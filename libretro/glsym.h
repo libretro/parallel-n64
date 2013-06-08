@@ -38,6 +38,7 @@
 #define glGenBuffers pglGenBuffers
 #define glBufferData pglBufferData
 #define glBindBuffer pglBindBuffer
+#define glActiveTexture pglActiveTexture
 
 #define glGetShaderiv pglGetShaderiv
 #define glGetShaderInfoLog pglGetShaderInfoLog
@@ -72,6 +73,7 @@ extern PFNGLGENBUFFERSPROC pglGenBuffers;
 extern PFNGLBUFFERDATAPROC pglBufferData;
 extern PFNGLBINDBUFFERPROC pglBindBuffer;
 extern PFNGLMAPBUFFERRANGEPROC pglMapBufferRange;
+extern PFNGLACTIVETEXTUREPROC pglActiveTexture;
 
 extern PFNGLGETSHADERIVPROC pglGetShaderiv;
 extern PFNGLGETSHADERINFOLOGPROC pglGetShaderInfoLog;

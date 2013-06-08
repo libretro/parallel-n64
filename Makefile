@@ -32,6 +32,7 @@ ifeq ($(platform), unix)
    
    fpic = -fPIC
    GL_LIB := -lGL
+   PLATFORM_EXT := unix
 else ifeq ($(platform), osx)
    TARGET := $(TARGET_NAME)_libretro.dylib
    LDFLAGS += -dynamiclib
@@ -39,6 +40,7 @@ else ifeq ($(platform), osx)
 
    CXXFLAGS += -D__MACOSX__
    GL_LIB := -framework OpenGL
+   PLATFORM_EXT := unix
 else ifeq ($(platform), ios)
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    LDFLAGS += -dynamiclib
@@ -47,6 +49,7 @@ else ifeq ($(platform), ios)
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
    CXXFLAGS += -DNO_ASM
+   PLATFORM_EXT := unix
 
 else ifeq ($(platform), android)
    TARGET := $(TARGET_NAME)_libretro.so
@@ -58,6 +61,7 @@ else ifeq ($(platform), android)
    CXXFLAGS += -DNO_ASM
    
    fpic = -fPIC
+   PLATFORM_EXT := unix
 else ifeq ($(platform), psp1)
    TARGET := $(TARGET_NAME)_libretro_psp1.a
    CC = psp-gcc$(EXE_EXT)
@@ -74,8 +78,11 @@ else ifeq ($(platform), wii)
 	STATIC_LINKING = 1
 else
    TARGET := $(TARGET_NAME)_libretro.dll
-   LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=libretro/link.T -lwinmm
+   LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=libretro/link.T -lwinmm -lgdi32
    GL_LIB := -lopengl32
+   CFLAGS += -msse -msse2
+   CXXFLAGS += -msse -msse2
+   PLATFORM_EXT := win32
 endif
 
 ifeq ($(DEBUG), 1)
@@ -113,8 +120,8 @@ CFILES += \
 	$(VIDEODIR)/liblinux/BMGImage.c \
 	$(VIDEODIR)/liblinux/bmp.c \
     \
-	$(VIDEODIR)/osal_dynamiclib_unix.c \
-	$(VIDEODIR)/osal_files_unix.c
+	$(VIDEODIR)/osal_dynamiclib_$(PLATFORM_EXT).c \
+	$(VIDEODIR)/osal_files_$(PLATFORM_EXT).c
 
 CXXFILES += \
 	$(VIDEODIR)/liblinux/BMGUtils.cpp \
@@ -181,8 +188,8 @@ CFILES += \
     $(COREDIR)/src/memory/n64_cic_nus_6105.c \
     $(COREDIR)/src/memory/pif.c \
     $(COREDIR)/src/memory/tlb.c \
-    $(COREDIR)/src/osal/dynamiclib_unix.c \
-    $(COREDIR)/src/osal/files_unix.c \
+	 $(COREDIR)/src/osal/dynamiclib_$(PLATFORM_EXT).c \
+	 $(COREDIR)/src/osal/files_$(PLATFORM_EXT).c \
     $(COREDIR)/src/plugin/plugin.c \
     $(COREDIR)/src/r4300/empty_dynarec.c \
     $(COREDIR)/src/r4300/profile.c \

@@ -23,6 +23,7 @@ PFNGLGENBUFFERSPROC pglGenBuffers;
 PFNGLBUFFERDATAPROC pglBufferData;
 PFNGLBINDBUFFERPROC pglBindBuffer;
 PFNGLMAPBUFFERRANGEPROC pglMapBufferRange;
+PFNGLACTIVETEXTUREPROC pglActiveTexture;
 
 PFNGLGETSHADERIVPROC pglGetShaderiv;
 PFNGLGETSHADERINFOLOGPROC pglGetShaderInfoLog;
@@ -67,6 +68,7 @@ static const struct gl_proc_map proc_map[] = {
    PROC_BIND(BufferData),
    PROC_BIND(BindBuffer),
    PROC_BIND(MapBufferRange),
+   PROC_BIND(ActiveTexture),
 
    PROC_BIND(GetShaderiv),
    PROC_BIND(GetShaderInfoLog),
