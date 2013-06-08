@@ -33,7 +33,9 @@ extern "C" {
 #include "m64p_types.h"
 
 #if defined(WIN32)
+#ifndef PATH_MAX
   #define PATH_MAX _MAX_PATH
+#endif
   #define OSAL_DIR_SEPARATOR_STR       "\\"
   #define OSAL_DIR_SEPARATOR_CHAR      '\\'
   #define strdup _strdup

@@ -47,6 +47,7 @@ m64p_error osal_dynlib_open(m64p_dynlib_handle *pLibHandle, const char *pccLibra
     return M64ERR_SUCCESS;
 }
 
+#ifndef __LIBRETRO__
 void * osal_dynlib_getproc(m64p_dynlib_handle LibHandle, const char *pccProcedureName)
 {
     if (pccProcedureName == NULL)
@@ -54,6 +55,7 @@ void * osal_dynlib_getproc(m64p_dynlib_handle LibHandle, const char *pccProcedur
 
     return GetProcAddress(LibHandle, pccProcedureName);
 }
+#endif
 
 m64p_error osal_dynlib_close(m64p_dynlib_handle LibHandle)
 {

@@ -24,7 +24,28 @@
  *  This is a simple file to encapsulate the OpenGL API headers
  */
 
+#ifdef GLES
+
+#ifdef IOS
+#include <OpenGLES/ES2/gl.h>
+#else
+#include <GLES2/gl2.h>
+#endif
+
+#else
+
+#ifdef __APPLE__
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
+#else
+#include <GL/gl.h>
+#include <GL/glext.h>
+#endif
+
+#endif
+
 #define glClearDepthf glClearDepth
 #define glDepthRangef glDepthRange
+
+#include "glsym.h"
+

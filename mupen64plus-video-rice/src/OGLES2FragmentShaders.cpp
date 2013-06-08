@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLRender.h"
 #include "OGLGraphicsContext.h"
 #include "OGLTexture.h"
+#include <stdlib.h>
 
 #define ALPHA_TEST "    if(gl_FragColor.a < AlphaRef) discard;                        \n"
 //#define ALPHA_TEST

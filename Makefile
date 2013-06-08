@@ -31,12 +31,16 @@ ifeq ($(platform), unix)
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T
    
    fpic = -fPIC
+   GL_LIB := -lGL
+   PLATFORM_EXT := unix
 else ifeq ($(platform), osx)
    TARGET := $(TARGET_NAME)_libretro.dylib
    LDFLAGS += -dynamiclib
    fpic = -fPIC
 
-   CPPFLAGS += -D__MACOSX__
+   CXXFLAGS += -D__MACOSX__
+   GL_LIB := -framework OpenGL
+   PLATFORM_EXT := unix
 else ifeq ($(platform), ios)
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    LDFLAGS += -dynamiclib
@@ -44,7 +48,8 @@ else ifeq ($(platform), ios)
 
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
-   CPPFLAGS += -DNO_ASM
+   CXXFLAGS += -DNO_ASM
+   PLATFORM_EXT := unix
 
 else ifeq ($(platform), android)
    TARGET := $(TARGET_NAME)_libretro.so
@@ -53,36 +58,45 @@ else ifeq ($(platform), android)
 
    CC = arm-linux-androideabi-gcc
    CXX = arm-linux-androideabi-g++
-   CPPFLAGS += -DNO_ASM
+   CXXFLAGS += -DNO_ASM
    
    fpic = -fPIC
+   PLATFORM_EXT := unix
 else ifeq ($(platform), psp1)
    TARGET := $(TARGET_NAME)_libretro_psp1.a
    CC = psp-gcc$(EXE_EXT)
    CXX = psp-g++$(EXE_EXT)
    AR = psp-ar$(EXE_EXT)
-   CPPFLAGS += -DPSP -G0
+   CXXFLAGS += -DPSP -G0
 	STATIC_LINKING = 1
 else ifeq ($(platform), wii)
    TARGET := $(TARGET_NAME)_libretro_wii.a
    CC = $(DEVKITPPC)/bin/powerpc-eabi-gcc$(EXE_EXT)
    CXX = $(DEVKITPPC)/bin/powerpc-eabi-g++$(EXE_EXT)
    AR = $(DEVKITPPC)/bin/powerpc-eabi-ar$(EXE_EXT)
-   CPPFLAGS += -DGEKKO -mrvl -mcpu=750 -meabi -mhard-float -D__POWERPC__ -D__ppc__ -DWORDS_BIGENDIAN=1
+   CXXFLAGS += -DGEKKO -mrvl -mcpu=750 -meabi -mhard-float -D__POWERPC__ -D__ppc__ -DWORDS_BIGENDIAN=1
 	STATIC_LINKING = 1
 else
    TARGET := $(TARGET_NAME)_libretro.dll
-   LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=libretro/link.T -lwinmm
+   LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=libretro/link.T -lwinmm -lgdi32
+   GL_LIB := -lopengl32
+   CFLAGS += -msse -msse2
+   CXXFLAGS += -msse -msse2
+   PLATFORM_EXT := win32
 endif
 
 ifeq ($(DEBUG), 1)
-CPPFLAGS += -O0 -g
+   CXXFLAGS += -O0 -g
+   CXXFLAGS += -DOPENGL_DEBUG
+   CFLAGS += -O0 -g
+   CFLAGS += -DOPENGL_DEBUG
 else
-CPPFLAGS += -O3
+   CXXFLAGS += -O3
+   CFLAGS += -O3
 endif
 
 # libretro
-CFILES += libretro/libretro.c libretro/libco/libco.c
+CFILES += libretro/libretro.c libretro/glsym.c libretro/libco/libco.c
 
 # RSP Plugin
 RSPDIR = mupen64plus-rsp-hle
@@ -101,13 +115,13 @@ CXXFILES += \
 # Video Plugin
 VIDEODIR = mupen64plus-video-rice/src
 
-CPPFLAGS += -DSDL_VIDEO_OPENGL=1
+CXXFLAGS += -DSDL_VIDEO_OPENGL=1
 CFILES += \
 	$(VIDEODIR)/liblinux/BMGImage.c \
 	$(VIDEODIR)/liblinux/bmp.c \
     \
-	$(VIDEODIR)/osal_dynamiclib_unix.c \
-	$(VIDEODIR)/osal_files_unix.c
+	$(VIDEODIR)/osal_dynamiclib_$(PLATFORM_EXT).c \
+	$(VIDEODIR)/osal_files_$(PLATFORM_EXT).c
 
 CXXFILES += \
 	$(VIDEODIR)/liblinux/BMGUtils.cpp \
@@ -174,8 +188,8 @@ CFILES += \
     $(COREDIR)/src/memory/n64_cic_nus_6105.c \
     $(COREDIR)/src/memory/pif.c \
     $(COREDIR)/src/memory/tlb.c \
-    $(COREDIR)/src/osal/dynamiclib_unix.c \
-    $(COREDIR)/src/osal/files_unix.c \
+	 $(COREDIR)/src/osal/dynamiclib_$(PLATFORM_EXT).c \
+	 $(COREDIR)/src/osal/files_$(PLATFORM_EXT).c \
     $(COREDIR)/src/plugin/plugin.c \
     $(COREDIR)/src/r4300/empty_dynarec.c \
     $(COREDIR)/src/r4300/profile.c \
@@ -203,7 +217,8 @@ CFILES += \
 
 OBJECTS    = $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
 CPPFLAGS   += -D__LIBRETRO__ $(fpic) -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
-CPPFLAGS   += -DM64P_CORE_PROTOTYPES
+CXXFLAGS   += -DM64P_CORE_PROTOTYPES $(fpic)
+CFLAGS     += -std=gnu99 $(fpic)
 LDFLAGS    += -lm $(fpic) -lz
 
 all: $(TARGET)
@@ -212,7 +227,7 @@ $(TARGET): $(OBJECTS)
 ifeq ($(STATIC_LINKING), 1)
 	$(AR) rcs $@ $(OBJECTS)
 else
-	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) -framework OpenGL
+	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)
 endif
 
 clean:
