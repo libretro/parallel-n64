@@ -31,13 +31,11 @@ typedef struct {
     unsigned short        uViWidth, uViHeight;
     unsigned short        uDisplayWidth, uDisplayHeight;
     
-    BOOL    bDisplayFullscreen;
     BOOL    bVerticalSync;
 
     float   fMultX, fMultY;
     int     vpLeftW, vpTopW, vpRightW, vpBottomW, vpWidthW, vpHeightW;
 
-    int     statusBarHeight, statusBarHeightToUse, toolbarHeight, toolbarHeightToUse;
     BOOL    screenSaverStatus;
 
     struct {
@@ -97,9 +95,6 @@ typedef struct {
     uint32  gFrameCount;
     uint32  gUcodeCount;
     uint32  gRDPTime;
-    BOOL    ToToggleFullScreen;
-    bool    ToResize;
-    uint32  gNewResizeWidth, gNewResizeHeight;
     bool    bDisableFPS;
 
     bool    bUseModifiedUcodeMap;
@@ -163,54 +158,14 @@ extern signed char   *g_pRDRAMs8;
 extern unsigned char *g_pRDRAMu8;
 
 /* declarations of pointers to Core config functions */
-#ifndef __LIBRETRO__
-extern ptr_ConfigListSections     ConfigListSections;
-extern ptr_ConfigOpenSection      ConfigOpenSection;
-extern ptr_ConfigListParameters   ConfigListParameters;
-extern ptr_ConfigSaveFile         ConfigSaveFile;
-extern ptr_ConfigSetParameter     ConfigSetParameter;
-extern ptr_ConfigGetParameter     ConfigGetParameter;
-extern ptr_ConfigGetParameterHelp ConfigGetParameterHelp;
-extern ptr_ConfigSetDefaultInt    ConfigSetDefaultInt;
-extern ptr_ConfigSetDefaultFloat  ConfigSetDefaultFloat;
-extern ptr_ConfigSetDefaultBool   ConfigSetDefaultBool;
-extern ptr_ConfigSetDefaultString ConfigSetDefaultString;
-extern ptr_ConfigGetParamInt      ConfigGetParamInt;
-extern ptr_ConfigGetParamFloat    ConfigGetParamFloat;
-extern ptr_ConfigGetParamBool     ConfigGetParamBool;
-extern ptr_ConfigGetParamString   ConfigGetParamString;
-
-extern ptr_ConfigGetSharedDataFilepath ConfigGetSharedDataFilepath;
-extern ptr_ConfigGetUserConfigPath     ConfigGetUserConfigPath;
-extern ptr_ConfigGetUserDataPath       ConfigGetUserDataPath;
-extern ptr_ConfigGetUserCachePath      ConfigGetUserCachePath;
-
-/* declarations of pointers to Core video extension functions */
-extern ptr_VidExt_Init                  CoreVideo_Init;
-extern ptr_VidExt_Quit                  CoreVideo_Quit;
-extern ptr_VidExt_ListFullscreenModes   CoreVideo_ListFullscreenModes;
-extern ptr_VidExt_SetVideoMode          CoreVideo_SetVideoMode;
-extern ptr_VidExt_SetCaption            CoreVideo_SetCaption;
-extern ptr_VidExt_ToggleFullScreen      CoreVideo_ToggleFullScreen;
-extern ptr_VidExt_ResizeWindow          CoreVideo_ResizeWindow;
-extern ptr_VidExt_GL_GetProcAddress     CoreVideo_GL_GetProcAddress;
-extern ptr_VidExt_GL_SetAttribute       CoreVideo_GL_SetAttribute;
-extern ptr_VidExt_GL_GetAttribute       CoreVideo_GL_GetAttribute;
-extern ptr_VidExt_GL_SwapBuffers        CoreVideo_GL_SwapBuffers;
-#else
 #define CoreVideo_Init VidExt_Init
 #define CoreVideo_Quit VidExt_Quit
-#define CoreVideo_ListFullscreenModes VidExt_ListFullscreenModes
 #define CoreVideo_SetVideoMode VidExt_SetVideoMode
 #define CoreVideo_SetCaption VidExt_SetCaption
-#define CoreVideo_ToggleFullScreen VidExt_ToggleFullScreen
-#define CoreVideo_ResizeWindow VidExt_ResizeWindow
 #define CoreVideo_GL_GetProcAddress VidExt_GL_GetProcAddress
 #define CoreVideo_GL_SetAttribute VidExt_GL_SetAttribute
 #define CoreVideo_GL_GetAttribute VidExt_GL_GetAttribute
 #define CoreVideo_GL_SwapBuffers VidExt_GL_SwapBuffers
-#endif
-
 
 /* global functions provided by Video.cpp */
 extern char generalText[];

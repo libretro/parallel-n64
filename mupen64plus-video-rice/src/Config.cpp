@@ -312,7 +312,6 @@ BOOL InitConfiguration(void)
         return FALSE;
     }
 
-    ConfigSetDefaultBool(l_ConfigVideoGeneral, "Fullscreen", 0, "Use fullscreen mode if True, or windowed mode if False ");
     ConfigSetDefaultInt(l_ConfigVideoGeneral, "ScreenWidth", 640, "Width of output window or fullscreen width");
     ConfigSetDefaultInt(l_ConfigVideoGeneral, "ScreenHeight", 480, "Height of output window or fullscreen height");
     ConfigSetDefaultBool(l_ConfigVideoGeneral, "VerticalSync", 0, "If true, activate the SDL_GL_SWAP_CONTROL attribute");
@@ -429,7 +428,6 @@ bool isSSESupported()
 
 static void ReadConfiguration(void)
 {
-    windowSetting.bDisplayFullscreen = ConfigGetParamBool(l_ConfigVideoGeneral, "Fullscreen");
     windowSetting.uDisplayWidth = ConfigGetParamInt(l_ConfigVideoGeneral, "ScreenWidth");
     windowSetting.uDisplayHeight = ConfigGetParamInt(l_ConfigVideoGeneral, "ScreenHeight");
     windowSetting.bVerticalSync = ConfigGetParamBool(l_ConfigVideoGeneral, "VerticalSync");
