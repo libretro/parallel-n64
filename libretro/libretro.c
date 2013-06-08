@@ -68,7 +68,7 @@ void retro_get_system_info(struct retro_system_info *info)
 {
    info->library_name = "Mupen64plus";
    info->library_version = "2.0-rc2";
-   info->valid_extensions = "n64"; // TODO: There are a couple more
+   info->valid_extensions = "n64|v64|z64";
    info->need_fullpath = false;
    info->block_extract = false;
 }
