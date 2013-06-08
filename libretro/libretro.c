@@ -167,7 +167,8 @@ void retro_run (void)
 
     CGLSetCurrentContext(frontend_context);
 
-    video_cb(RETRO_HW_FRAME_BUFFER_VALID, 640, 480, 0);
+    video_cb(n64video_flipped ? RETRO_HW_FRAME_BUFFER_VALID : 0, 640, 480, 0);
+    n64video_flipped = false;
 }
 
 void retro_reset (void)

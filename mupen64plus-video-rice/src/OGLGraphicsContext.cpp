@@ -302,6 +302,10 @@ void COGLGraphicsContext::UpdateFrame(bool swaponly)
    if(renderCallback)
        (*renderCallback)(status.bScreenIsDrawn);
 
+// __LIBRETRO__: TODO: This isn't the right way to do it, but the flashing has made me crazy enough to not care
+    extern bool n64video_flipped;
+    n64video_flipped = status.bScreenIsDrawn;
+
    CoreVideo_GL_SwapBuffers();
    
    /*if(options.bShowFPS)
