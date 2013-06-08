@@ -18,7 +18,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <algorithm>
 
-#include "GeneralCombiner.h"
+#define CM_IGNORE 0
+#define CM_IGNORE_BYTE 0xFF
+
 #include "Combiner.h"
 #include "Config.h"
 #include "RenderBase.h"

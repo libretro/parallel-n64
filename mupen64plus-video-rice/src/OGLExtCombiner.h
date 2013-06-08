@@ -24,7 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "osal_opengl.h"
 
 #include "OGLCombiner.h"
-#include "GeneralCombiner.h"
+#define CM_IGNORE 0
+#define CM_IGNORE_BYTE 0xFF
 
 typedef union 
 {

@@ -113,7 +113,6 @@ CXXFILES += \
 	$(VIDEODIR)/liblinux/BMGUtils.cpp \
 	$(VIDEODIR)/Blender.cpp \
     $(VIDEODIR)/Combiner.cpp \
-    $(VIDEODIR)/CombinerTable.cpp \
 	$(VIDEODIR)/Config.cpp \
 	$(VIDEODIR)/ConvertImage.cpp \
 	$(VIDEODIR)/ConvertImage16.cpp \
@@ -127,7 +126,6 @@ CXXFILES += \
 	$(VIDEODIR)/OGLExtCombiner.cpp \
 	$(VIDEODIR)/OGLExtRender.cpp \
 	$(VIDEODIR)/OGLES2FragmentShaders.cpp \
-	$(VIDEODIR)/GeneralCombiner.cpp \
 	$(VIDEODIR)/OGLGraphicsContext.cpp \
 	$(VIDEODIR)/OGLRender.cpp \
 	$(VIDEODIR)/OGLRenderExt.cpp \
