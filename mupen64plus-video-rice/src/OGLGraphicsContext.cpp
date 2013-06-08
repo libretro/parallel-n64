@@ -123,7 +123,8 @@ void COGLGraphicsContext::InitState(void)
     glDisable(GL_BLEND);
     OPENGL_CHECK_ERRORS;
 
-    glFrontFace(GL_CCW);
+    // __LIBRETRO__: Change front face winding as everything is draw upside-down
+    glFrontFace(GL_CW);
     OPENGL_CHECK_ERRORS;
     glDisable(GL_CULL_FACE);
     OPENGL_CHECK_ERRORS;
