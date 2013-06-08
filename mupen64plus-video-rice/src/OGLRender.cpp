@@ -851,6 +851,13 @@ void OGLRender::TexCoord(TLITVERTEX &vtxInfo)
     glTexCoord2f(vtxInfo.tcord[0].u, vtxInfo.tcord[0].v);
 }
 
+// __LIBRETRO__: Flip the scissor rect
+void glScissorWrap(GLint x, GLint y, GLsizei width, GLsizei height)
+{
+    glScissor(x, 480 - y - height, width, height);
+}
+#define glScissor glScissorWrap
+
 void OGLRender::UpdateScissor()
 {
     if( options.bEnableHacks && g_CI.dwWidth == 0x200 && gRDP.scissor.right == 0x200 && g_CI.dwWidth>(*g_GraphicsInfo.VI_WIDTH_REG & 0xFFF) )
