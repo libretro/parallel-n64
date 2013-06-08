@@ -119,7 +119,6 @@ CXXFILES += \
 	$(VIDEODIR)/ConvertImage16.cpp \
 	$(VIDEODIR)/Debugger.cpp \
 	$(VIDEODIR)/DecodedMux.cpp \
-	$(VIDEODIR)/DirectXDecodedMux.cpp \
 	$(VIDEODIR)/DeviceBuilder.cpp \
 	$(VIDEODIR)/FrameBuffer.cpp \
 	$(VIDEODIR)/GraphicsContext.cpp \
@@ -147,12 +146,6 @@ CXXFILES += \
 	$(VIDEODIR)/TextureManager.cpp \
 	$(VIDEODIR)/VectorMath.cpp \
 	$(VIDEODIR)/Video-libretro.cpp
-
-
-#	$(VIDEODIR)/CNvTNTCombiner.cpp \
-	$(VIDEODIR)/OGLCombinerNV.cpp \
-	$(VIDEODIR)/OGLCombinerTNT2.cpp \
-    $(VIDEODIR)/OGLExtensions.cpp \
 
 
 
