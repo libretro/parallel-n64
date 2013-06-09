@@ -14,6 +14,7 @@ static struct retro_hw_render_callback render_iface;
 
 cothread_t n64MainThread;
 cothread_t n64EmuThread;
+bool n64video_flipped;
 
 static void EmuThreadFunction()
 {
@@ -106,6 +107,12 @@ static void core_gl_context_reset()
    glsym_init_procs(render_iface.get_proc_address);
 }
 
+static void n64_frame_callback(int drawn)
+{
+    if (drawn)
+    co_switch(n64MainThread);
+}
+
 bool retro_load_game(const struct retro_game_info *game)
 {
     render_iface.context_type = RETRO_HW_CONTEXT_OPENGL;
@@ -125,6 +132,8 @@ bool retro_load_game(const struct retro_game_info *game)
         return false;
     }
 
+    CoreDoCommand(M64CMD_SET_FRAME_CALLBACK, 0, n64_frame_callback);
+
     n64MainThread = co_active();
     n64EmuThread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
 
@@ -139,9 +148,6 @@ void retro_unload_game(void)
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
 }
 
-
-bool n64video_flipped;
-
 void retro_run (void)
 {
     glBindFramebuffer(GL_FRAMEBUFFER, render_iface.get_current_framebuffer());
@@ -155,7 +161,7 @@ void retro_run (void)
     sglExit();
 
 
-    video_cb(n64video_flipped ? RETRO_HW_FRAME_BUFFER_VALID : 0, 640, 480, 0);
+    video_cb(RETRO_HW_FRAME_BUFFER_VALID, 640, 480, 0);
     n64video_flipped = false;
 }
 

@@ -21,16 +21,7 @@
 
 #include <stdlib.h>
 
-#ifndef __LIBRETRO__ //No SDL
 #include <SDL.h>
-#else
-#include <stdio.h>
-#include <string.h>
-#include "libco.h"
-extern cothread_t n64MainThread;
-#define SDL_Delay(x)
-#define SDL_PumpEvents()
-#endif
 
 #define M64P_CORE_PROTOTYPES 1
 #include "api/m64p_types.h"
@@ -389,10 +380,6 @@ void gen_interupt(void)
                 cheat_apply_cheats(ENTRY_VI);
             }
             gfx.updateScreen();
-#ifdef __LIBRETRO__ //Return to libretro :)
-            co_switch(n64MainThread);
-#endif
-
 #ifdef WITH_LIRC
             lircCheckInput();
 #endif

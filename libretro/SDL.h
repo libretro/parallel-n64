@@ -1,7 +1,12 @@
 #ifndef _FAKE_SDL_H_
-#define _FAKE_SDL_H
+#define _FAKE_SDL_H_
+
+#include <stdio.h>
+#include <string.h>
 
 #define SDL_GetTicks() 100
+#define SDL_PumpEvents()
+#define SDL_Delay(x)
 
 #define SDL_CreateMutex() 0
 #define SDL_DestroyMutex(x)
