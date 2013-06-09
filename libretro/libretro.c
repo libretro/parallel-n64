@@ -87,7 +87,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
 void retro_init(void)
 {
-    unsigned colorMode = RETRO_PIXEL_FORMAT_RGB565;
+    unsigned colorMode = RETRO_PIXEL_FORMAT_XRGB8888;
     environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
 
     if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0))
@@ -152,11 +152,11 @@ void retro_run (void)
     poll_cb();
     co_switch(n64EmuThread);
 
-
-    video_cb(RETRO_HW_FRAME_BUFFER_VALID, 640, 480, 0);
-    n64video_flipped = false;
-
     sglExit();
+
+
+    video_cb(n64video_flipped ? RETRO_HW_FRAME_BUFFER_VALID : 0, 640, 480, 0);
+    n64video_flipped = false;
 }
 
 void retro_reset (void)
