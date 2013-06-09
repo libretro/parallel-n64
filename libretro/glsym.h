@@ -19,10 +19,27 @@
 #endif
 
 #if !defined(GLES) && !defined(__APPLE__)
+
+// Overridden by SGL.
+#ifndef glVertexAttribPointer
+#define glVertexAttribPointer pglVertexAttribPointer
+#endif
+#ifndef glEnableVertexAttribArray
+#define glEnableVertexAttribArray pglEnableVertexAttribArray
+#endif
+#ifndef glDisableVertexAttribArray
+#define glDisableVertexAttribArray pglDisableVertexAttribArray
+#endif
+#ifndef glUseProgram
+#define glUseProgram pglUseProgram
+#endif
+#ifndef glActiveTexture
+#define glActiveTexture pglActiveTexture
+#endif
+
 #define glCreateProgram pglCreateProgram
 #define glCreateShader pglCreateShader
 #define glCompileShader pglCompileShader
-#define glUseProgram pglUseProgram
 #define glShaderSource pglShaderSource
 #define glAttachShader pglAttachShader
 #define glLinkProgram pglLinkProgram
@@ -32,14 +49,9 @@
 #define glUniform1i pglUniform1i
 #define glUniform1f pglUniform1f
 #define glGetAttribLocation pglGetAttribLocation
-#define glVertexAttribPointer pglVertexAttribPointer
-#define glEnableVertexAttribArray pglEnableVertexAttribArray
-#define glDisableVertexAttribArray pglDisableVertexAttribArray
 #define glGenBuffers pglGenBuffers
 #define glBufferData pglBufferData
 #define glBindBuffer pglBindBuffer
-#define glActiveTexture pglActiveTexture
-
 #define glGetShaderiv pglGetShaderiv
 #define glGetShaderInfoLog pglGetShaderInfoLog
 #define glBindAttribLocation pglBindAttribLocation
@@ -74,7 +86,6 @@ extern PFNGLBUFFERDATAPROC pglBufferData;
 extern PFNGLBINDBUFFERPROC pglBindBuffer;
 extern PFNGLMAPBUFFERRANGEPROC pglMapBufferRange;
 extern PFNGLACTIVETEXTUREPROC pglActiveTexture;
-
 extern PFNGLGETSHADERIVPROC pglGetShaderiv;
 extern PFNGLGETSHADERINFOLOGPROC pglGetShaderInfoLog;
 extern PFNGLBINDATTRIBLOCATIONPROC pglBindAttribLocation;

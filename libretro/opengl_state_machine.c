@@ -39,7 +39,7 @@ GLboolean sglIsEnabled(GLenum cap)
 }
 
 //VERTEX ATTRIB ARRAY
-static const uint32_t MAX_ATTRIB = 4;
+#define MAX_ATTRIB 4
 static GLint VertexAttribPointer_enabled[MAX_ATTRIB];
 static GLint VertexAttribPointer_size[MAX_ATTRIB];
 static GLenum VertexAttribPointer_type[MAX_ATTRIB];
@@ -180,7 +180,7 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
     glViewport(x, y, width, height);
 }
 
-static const uint32_t TEXTURE_MAX = 4;
+#define TEXTURE_MAX 4
 
 //ACTIVE TEXTURE
 static GLenum ActiveTexture_texture;
