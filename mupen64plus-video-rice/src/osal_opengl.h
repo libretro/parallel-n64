@@ -63,9 +63,9 @@
 
 
 // Function substitutions
-#define glClearDepth                        glClearDepthf
-#define pglActiveTexture                    glActiveTexture
-#define pglActiveTextureARB                 glActiveTexture
+//#define glClearDepth                        glClearDepthf
+//#define pglActiveTexture                    glActiveTexture
+//#define pglActiveTextureARB                 glActiveTexture
 
 // No-op substitutions (unavailable in GLES2)
 #define glLoadIdentity()

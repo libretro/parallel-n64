@@ -140,44 +140,23 @@ void retro_unload_game(void)
 }
 
 
-// FIXME: Why is a linked context needed?
-#ifdef __APPLE__
-#include <OpenGL/CGLCurrent.h>
-#include <OpenGL/CGLTypes.h>
-#include <OpenGL/OpenGL.h>
-static CGLContextObj core_context;
-#endif
-
 bool n64video_flipped;
 
 void retro_run (void)
 {
-#ifdef __APPLE__
-    CGLContextObj frontend_context = CGLGetCurrentContext();
-
-    static bool init_own_gl;
-    if (!init_own_gl)
-    {
-        init_own_gl = true;
-
-        CGLPixelFormatObj pfmt = CGLGetPixelFormat(frontend_context);
-        CGLCreateContext(pfmt, frontend_context, &core_context);   
-    }
-
-    CGLSetCurrentContext(core_context);
-#endif
-
     glBindFramebuffer(GL_FRAMEBUFFER, render_iface.get_current_framebuffer());
+
+    sglEnter();
+
 
     poll_cb();
     co_switch(n64EmuThread);
 
-#ifdef __APPLE__
-    CGLSetCurrentContext(frontend_context);
-#endif
 
-    video_cb(n64video_flipped ? RETRO_HW_FRAME_BUFFER_VALID : 0, 640, 480, 0);
+    video_cb(RETRO_HW_FRAME_BUFFER_VALID, 640, 480, 0);
     n64video_flipped = false;
+
+    sglExit();
 }
 
 void retro_reset (void)
