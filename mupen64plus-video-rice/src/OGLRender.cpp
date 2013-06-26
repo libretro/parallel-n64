@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLDebug.h"
 #include "OGLRender.h"
 #include "OGLGraphicsContext.h"
-#include "OGLTexture.h"
+#include "Texture.h"
 #include "TextureManager.h"
 
 // FIXME: Use OGL internal L/T and matrix stack
@@ -312,16 +312,8 @@ bool OGLRender::SetCurrentTexture(int tile, CTexture *handler,uint32 dwTileWidth
         texture.m_dwTileWidth = dwTileWidth;
         texture.m_dwTileHeight = dwTileHeight;
 
-        if( handler->m_bIsEnhancedTexture )
-        {
-            texture.m_fTexWidth = (float)pTextureEntry->pTexture->m_dwCreatedTextureWidth;
-            texture.m_fTexHeight = (float)pTextureEntry->pTexture->m_dwCreatedTextureHeight;
-        }
-        else
-        {
-            texture.m_fTexWidth = (float)handler->m_dwCreatedTextureWidth;
-            texture.m_fTexHeight = (float)handler->m_dwCreatedTextureHeight;
-        }
+        texture.m_fTexWidth = (float)handler->m_dwCreatedTextureWidth;
+        texture.m_fTexHeight = (float)handler->m_dwCreatedTextureHeight;
     }
     
     return true;
@@ -388,7 +380,7 @@ void OGLRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32 dwTile)
     TileUFlags[dwTile] = dwFlag;
     if( dwTile == gRSP.curTile )    // For basic OGL, only support the 1st texel
     {
-        COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
+        CTexture* pTexture = g_textures[gRSP.curTile].m_pCTexture;
         if( pTexture )
         {
             EnableTexUnit(0,TRUE);
@@ -402,7 +394,7 @@ void OGLRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32 dwTile)
     TileVFlags[dwTile] = dwFlag;
     if( dwTile == gRSP.curTile )    // For basic OGL, only support the 1st texel
     {
-        COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
+        CTexture* pTexture = g_textures[gRSP.curTile].m_pCTexture;
         if( pTexture ) 
         {
             EnableTexUnit(0,TRUE);

@@ -26,7 +26,7 @@
 #include "OGLRender.h"
 #include "OGLGraphicsContext.h"
 #include "OGLDecodedMux.h"
-#include "OGLTexture.h"
+#include "Texture.h"
 
 //========================================================================
 uint32 DirectX_OGL_BlendFuncMaps [] =
@@ -95,7 +95,7 @@ void COGLColorCombiner::DisableCombiner(void)
     
     if( m_bTexelsEnable )
     {
-        COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
+        CTexture* pTexture = g_textures[gRSP.curTile].m_pCTexture;
         if( pTexture ) 
         {
             m_pOGLRender->EnableTexUnit(0,TRUE);
@@ -123,7 +123,7 @@ void COGLColorCombiner::InitCombinerCycleCopy(void)
 {
     m_pOGLRender->DisableMultiTexture();
     m_pOGLRender->EnableTexUnit(0,TRUE);
-    COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
+    CTexture* pTexture = g_textures[gRSP.curTile].m_pCTexture;
     if( pTexture )
     {
         m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
@@ -200,7 +200,7 @@ void COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32 tile)
     if( g_textures[tile].m_pCTexture )
     {
         m_pOGLRender->EnableTexUnit(0,TRUE);
-        glBindTexture(GL_TEXTURE_2D, ((COGLTexture*)(g_textures[tile].m_pCTexture))->m_dwTextureName);
+        glBindTexture(GL_TEXTURE_2D, ((CTexture*)(g_textures[tile].m_pCTexture))->m_dwTextureName);
         OPENGL_CHECK_ERRORS;
     }
     m_pOGLRender->SetAllTexelRepeatFlag();

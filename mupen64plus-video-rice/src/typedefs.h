@@ -337,17 +337,11 @@ typedef struct
 } N64VtxPD;
 
 class CTexture;
-class COGLTexture;
-class CDirectXTexture;
 struct TxtrCacheEntry;
 
 typedef struct {
     LPRICETEXTURE m_lpsTexturePtr;
-    union {
-        CTexture *          m_pCTexture;
-        CDirectXTexture *   m_pCDirectXTexture;
-        COGLTexture *       m_pCOGLTexture;
-    };
+    CTexture *          m_pCTexture;
     
     uint32 m_dwTileWidth;
     uint32 m_dwTileHeight;

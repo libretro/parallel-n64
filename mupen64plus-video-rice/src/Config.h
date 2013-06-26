@@ -189,7 +189,6 @@ typedef struct {
     uint32  mipmapping;
     uint32  fogMethod;
     uint32  forceTextureFilter;
-    uint32  textureQuality;
     uint32  anisotropicFiltering;
     uint32  multiSampling;
 

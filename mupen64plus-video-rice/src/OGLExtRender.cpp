@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "OGLDebug.h"
 #include "OGLExtRender.h"
-#include "OGLTexture.h"
+#include "Texture.h"
 
 void COGLExtRender::Initialize(void)
 {
@@ -140,7 +140,7 @@ void COGLExtRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32 dwTile)
         {
             pglActiveTexture(GL_TEXTURE0_ARB+textureNo);
             OPENGL_CHECK_ERRORS;
-            COGLTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCOGLTexture;
+            CTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCTexture;
             if( pTexture ) 
             {
                 EnableTexUnit(textureNo,TRUE);
@@ -181,7 +181,7 @@ void COGLExtRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32 dwTile)
     {
         if( m_textureUnitMap[textureNo] == tex )
         {
-            COGLTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCOGLTexture;
+            CTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCTexture;
             if( pTexture )
             {
                 EnableTexUnit(textureNo,TRUE);

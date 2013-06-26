@@ -25,7 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLDebug.h"
 #include "OGLExtRender.h"
 #include "OGLGraphicsContext.h"
-#include "OGLTexture.h"
+#include "Texture.h"
 #include "OGLES2FragmentShaders.h"
 
 //========================================================================
@@ -171,7 +171,7 @@ void CDeviceBuilder::DeleteAlphaBlender(void)
 
 CTexture * CDeviceBuilder::CreateTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage)
 {
-    COGLTexture *txtr = new COGLTexture(dwWidth, dwHeight, usage);
+    CTexture *txtr = new CTexture(dwWidth, dwHeight, usage);
     if( txtr->m_pTexture == NULL )
     {
         delete txtr;

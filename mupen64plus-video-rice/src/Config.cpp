@@ -132,13 +132,6 @@ std::vector<IniSection> IniSections;
 bool    bIniIsChanged = false;
 char    szIniFileName[300];
 
-SettingInfo TextureQualitySettings[] =
-{
-{"Default", FORCE_DEFAULT_FILTER},
-{"32-bit Texture", FORCE_POINT_FILTER},
-{"16-bit Texture", FORCE_LINEAR_FILTER},
-};
-
 SettingInfo ForceTextureFilterSettings[] =
 {
 {"N64 Default Texture Filter",  FORCE_DEFAULT_FILTER},
@@ -304,7 +297,6 @@ BOOL InitConfiguration(void)
     ConfigSetDefaultInt(l_ConfigVideoRice, "Mipmapping", 2, "Use Mipmapping? 0=no, 1=nearest, 2=bilinear, 3=trilinear");
     ConfigSetDefaultInt(l_ConfigVideoRice, "FogMethod", 0, "Enable, Disable or Force fog generation (0=Disable, 1=Enable n64 choose, 2=Force Fog)");
     ConfigSetDefaultInt(l_ConfigVideoRice, "ForceTextureFilter", 0, "Force to use texture filtering or not (0=auto: n64 choose, 1=force no filtering, 2=force filtering)");
-    ConfigSetDefaultInt(l_ConfigVideoRice, "TextureQuality", TXT_QUALITY_DEFAULT, "Color bit depth to use for textures (0=default, 1=32 bits, 2=16 bits)");
     ConfigSetDefaultInt(l_ConfigVideoRice, "OpenGLDepthBufferSetting", 16, "Z-buffer depth (only 16 or 32)");
     ConfigSetDefaultInt(l_ConfigVideoRice, "MultiSampling", 0, "Enable/Disable MultiSampling (0=off, 2,4,8,16=quality)");
     ConfigSetDefaultInt(l_ConfigVideoRice, "ColorQuality", TEXTURE_FMT_A8R8G8B8, "Color bit depth for rendering window (0=32 bits, 1=16 bits)");
@@ -405,7 +397,6 @@ static void ReadConfiguration(void)
     options.mipmapping = ConfigGetParamInt(l_ConfigVideoRice, "Mipmapping");
     options.fogMethod = ConfigGetParamInt(l_ConfigVideoRice, "FogMethod");
     options.forceTextureFilter = ConfigGetParamInt(l_ConfigVideoRice, "ForceTextureFilter");
-    options.textureQuality = ConfigGetParamInt(l_ConfigVideoRice, "TextureQuality");
     options.OpenglDepthBufferSetting = ConfigGetParamInt(l_ConfigVideoRice, "OpenGLDepthBufferSetting");
     options.multiSampling = ConfigGetParamInt(l_ConfigVideoRice, "MultiSampling");
     options.colorQuality = ConfigGetParamInt(l_ConfigVideoRice, "ColorQuality");

@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLExtRender.h"
 #include "OGLDecodedMux.h"
 #include "OGLGraphicsContext.h"
-#include "OGLTexture.h"
+#include "Texture.h"
 
 #define GL_MODULATE_ADD_ATI        0x8744
 #define GL_MODULATE_SUBTRACT_ATI   0x8746
@@ -350,19 +350,19 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
     OGLExtCombinerSaveType &res = m_vCompiledSettings[index];
 
     // Texture unit 0
-    COGLTexture* pTexture = NULL;
-    COGLTexture* pTexture1 = NULL;
+    CTexture* pTexture = NULL;
+    CTexture* pTexture1 = NULL;
 
     if( m_bTex0Enabled || m_bTex1Enabled || gRDP.otherMode.cycle_type  == CYCLE_TYPE_COPY )
     {
         if( m_bTex0Enabled || gRDP.otherMode.cycle_type  == CYCLE_TYPE_COPY )
         {
-            pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
+            pTexture = g_textures[gRSP.curTile].m_pCTexture;
             if( pTexture )  m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
         }
         if( m_bTex1Enabled )
         {
-            pTexture1 = g_textures[(gRSP.curTile+1)&7].m_pCOGLTexture;
+            pTexture1 = g_textures[(gRSP.curTile+1)&7].m_pCTexture;
             if( pTexture1 ) m_pOGLRender->BindTexture(pTexture1->m_dwTextureName, 1);
         }
     }

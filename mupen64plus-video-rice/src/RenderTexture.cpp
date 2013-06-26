@@ -20,16 +20,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "Debugger.h"
 #include "FrameBuffer.h"
-#include "OGLTexture.h"
+#include "Texture.h"
 
 // ===========================================================================
 COGLRenderTexture::COGLRenderTexture(int width, int height, RenderTextureInfo* pInfo, TextureUsage usage)
-    :   CRenderTexture(width, height, pInfo, usage),
-        m_pOGLTexture(NULL)
+    :   CRenderTexture(width, height, pInfo, usage)
 {
     if( usage == AS_BACK_BUFFER_SAVE )
     {
-        m_pTexture = m_pOGLTexture = new COGLTexture(width, height, usage);
+        m_pTexture = m_pTexture = new CTexture(width, height, usage);
         if( !m_pTexture )
         {
             TRACE0("Error to create OGL render_texture");
@@ -52,7 +51,7 @@ COGLRenderTexture::~COGLRenderTexture()
 
     ShutdownPBuffer();
     SAFE_DELETE(m_pTexture);
-    m_pOGLTexture = NULL;
+    m_pTexture = NULL;
     m_beingRendered = false;
 }
 

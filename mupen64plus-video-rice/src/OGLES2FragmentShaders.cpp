@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLES2FragmentShaders.h"
 #include "OGLRender.h"
 #include "OGLGraphicsContext.h"
-#include "OGLTexture.h"
+#include "Texture.h"
 #include <stdlib.h>
 
 #define ALPHA_TEST "    if(gl_FragColor.a < AlphaRef) discard;                        \n"
@@ -347,7 +347,7 @@ void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
     OPENGL_CHECK_ERRORS;
     glDisableVertexAttribArray(VS_TEXCOORD1);
     OPENGL_CHECK_ERRORS;
-    COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
+    CTexture* pTexture = g_textures[gRSP.curTile].m_pCTexture;
     if( pTexture )
     {
         m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);

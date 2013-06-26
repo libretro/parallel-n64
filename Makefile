@@ -138,7 +138,6 @@ CXXFILES += \
 	$(VIDEODIR)/OGLGraphicsContext.cpp \
 	$(VIDEODIR)/OGLRender.cpp \
 	$(VIDEODIR)/OGLRenderExt.cpp \
-	$(VIDEODIR)/OGLTexture.cpp \
 	$(VIDEODIR)/Render.cpp \
 	$(VIDEODIR)/RenderBase.cpp \
 	$(VIDEODIR)/RenderExt.cpp \

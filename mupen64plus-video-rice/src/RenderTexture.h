@@ -114,9 +114,6 @@ protected:
 
     int     m_widthCreated;
     int     m_heightCreated;
-
-
-    COGLTexture *m_pOGLTexture;
 };
 
 #endif
