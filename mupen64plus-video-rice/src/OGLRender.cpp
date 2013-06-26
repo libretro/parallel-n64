@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLES2FragmentShaders.h"
 #include "OGLDebug.h"
 #include "OGLRender.h"
-#include "OGLGraphicsContext.h"
+#include "GraphicsContext.h"
 #include "Texture.h"
 #include "TextureManager.h"
 
@@ -41,8 +41,7 @@ static GLuint disabledTextureID;
 //===================================================================
 OGLRender::OGLRender()
 {
-    COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext);
-    m_bSupportFogCoordExt = pcontext->m_bSupportFogCoord;
+    m_bSupportFogCoordExt = CGraphicsContext::g_pGraphicsContext->m_bSupportFogCoord;
     m_bSupportClampToEdge = false;
     for( int i=0; i<8; i++ )
     {

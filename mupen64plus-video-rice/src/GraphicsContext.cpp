@@ -22,8 +22,9 @@
 #include "m64p_plugin.h"
 #include "m64p_vidext.h"
 
+#include "Config.h"
 #include "FrameBuffer.h"
-#include "OGLGraphicsContext.h"
+#include "GraphicsContext.h"
 #include "Video.h"
 
 CGraphicsContext* CGraphicsContext::g_pGraphicsContext = NULL;
@@ -35,8 +36,9 @@ CGraphicsContext * CGraphicsContext::Get(void)
 }
     
 CGraphicsContext::CGraphicsContext() :
-    m_bReady(false), 
-        m_bActive(false)
+    m_bReady(false),
+    m_bSupportMultiTexture(true),
+    m_bSupportFogCoord(false)
 {
 }
 
@@ -45,26 +47,87 @@ CGraphicsContext::~CGraphicsContext()
     g_pFrameBufferManager->CloseUp();
 }
 
-void CGraphicsContext::InitWindowInfo()
-{
-}
-
 bool CGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight)
 {
+    DebugMessage(M64MSG_INFO, "Initializing OpenGL Device Context.");
+    Lock();
+
     g_pFrameBufferManager->Initialize();
+
+    ResetOpenGL();
+
+    Unlock();
+
+    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);    // Clear buffers
+    UpdateFrame();
+    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
+    UpdateFrame();
+    
+    m_bReady = true;
+    status.isVertexShaderEnabled = false;
+
     return true;
 }
 
 void CGraphicsContext::CleanUp()
 {
-    m_bActive = false;
-    m_bReady  = false;
+    m_bReady = false;
 }
 
-// This is a static function, will be called when the plugin DLL is initialized
+void CGraphicsContext::ResetOpenGL(void)
+{
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClearDepth(1.0f);
+    glDepthRange(0.0f, 1.0f);
+    glDepthFunc(GL_LEQUAL);
+    glEnable(GL_DEPTH_TEST);
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+
+    glFrontFace(GL_CW); // __LIBRETRO__: Change front face winding as everything is draw upside-down
+    glDisable(GL_CULL_FACE);
+}
+
+
+void CGraphicsContext::Clear(ClearFlag dwFlags, uint32 color, float depth)
+{
+    uint32 flag=0;
+    if( dwFlags&CLEAR_COLOR_BUFFER )    flag |= GL_COLOR_BUFFER_BIT;
+    if( dwFlags&CLEAR_DEPTH_BUFFER )    flag |= GL_DEPTH_BUFFER_BIT;
+
+    float r = ((color>>16)&0xFF)/255.0f;
+    float g = ((color>> 8)&0xFF)/255.0f;
+    float b = ((color    )&0xFF)/255.0f;
+    float a = ((color>>24)&0xFF)/255.0f;
+    glClearColor(r, g, b, a);
+    glClearDepth(depth);
+    glClear(flag);  //Clear color buffer and depth buffer
+}
+
+void CGraphicsContext::UpdateFrame(bool swaponly)
+{
+    status.gFrameCount++;
+
+    glFlush();
+   
+   // if emulator defined a render callback function, call it before buffer swap
+   if(renderCallback)
+       (*renderCallback)(status.bScreenIsDrawn);
+   
+    glDepthMask(GL_TRUE);
+    glClearDepth(1.0f);
+
+    if( !g_curRomInfo.bForceScreenClear )
+        glClear(GL_DEPTH_BUFFER_BIT);
+    else
+        needCleanScene = true;
+
+    status.bScreenIsDrawn = false;
+}
+
 void CGraphicsContext::InitDeviceParameters(void)
 {
-    // To initialze device parameters for OpenGL
-    COGLGraphicsContext::InitDeviceParameters();
+    status.isVertexShaderEnabled = false;
 }
 

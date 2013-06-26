@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "FrameBuffer.h"
 #include "OGLDebug.h"
 #include "OGLExtRender.h"
-#include "OGLGraphicsContext.h"
+#include "GraphicsContext.h"
 #include "Texture.h"
 #include "OGLES2FragmentShaders.h"
 
@@ -64,7 +64,7 @@ CGraphicsContext * CDeviceBuilder::CreateGraphicsContext(void)
 {
     if( m_pGraphicsContext == NULL )
     {
-        m_pGraphicsContext = new COGLGraphicsContext();
+        m_pGraphicsContext = new CGraphicsContext();
         SAFE_CHECK(m_pGraphicsContext);
         CGraphicsContext::g_pGraphicsContext = m_pGraphicsContext;
     }
@@ -95,18 +95,7 @@ CRender * CDeviceBuilder::CreateRender(void)
             SAFE_CHECK(m_pRender);
         }
 
-        COGLGraphicsContext &context = *((COGLGraphicsContext*)CGraphicsContext::g_pGraphicsContext);
-
-        if( context.m_bSupportMultiTexture )
-        {
-            // OGL extension render
-            m_pRender = new COGLExtRender();
-        }
-        else
-        {
-            // Basic OGL Render
-            m_pRender = new OGLRender();
-        }
+        m_pRender = new OGLRender();
         SAFE_CHECK(m_pRender);
         CRender::g_pRender = m_pRender;
     }

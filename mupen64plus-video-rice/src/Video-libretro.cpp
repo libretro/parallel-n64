@@ -116,7 +116,6 @@ static bool StartVideo(void)
 
     try {
         CDeviceBuilder::GetBuilder()->CreateGraphicsContext();
-        CGraphicsContext::InitWindowInfo();
 
         bool res = CGraphicsContext::Get()->Initialize(640, 480);
         if (!res)
@@ -602,7 +601,6 @@ EXPORT int CALL videoInitiateGFX(GFX_INFO Gfx_Info)
         return FALSE;
     }
 
-    CGraphicsContext::InitWindowInfo();
     CGraphicsContext::InitDeviceParameters();
 
     return(TRUE);

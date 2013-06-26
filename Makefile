@@ -129,7 +129,6 @@ CXXFILES += \
 	$(VIDEODIR)/GraphicsContext.cpp \
 	$(VIDEODIR)/OGLExtRender.cpp \
 	$(VIDEODIR)/OGLES2FragmentShaders.cpp \
-	$(VIDEODIR)/OGLGraphicsContext.cpp \
 	$(VIDEODIR)/OGLRender.cpp \
 	$(VIDEODIR)/OGLRenderExt.cpp \
 	$(VIDEODIR)/Render.cpp \

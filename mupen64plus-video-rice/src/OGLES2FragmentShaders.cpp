@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLDebug.h"
 #include "OGLES2FragmentShaders.h"
 #include "OGLRender.h"
-#include "OGLGraphicsContext.h"
+#include "GraphicsContext.h"
 #include "Texture.h"
 #include <stdlib.h>
 

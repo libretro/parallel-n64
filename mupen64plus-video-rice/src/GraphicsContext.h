@@ -38,34 +38,32 @@ enum ClearFlag
 // It is based on CCritSect for Lock() and Unlock()
 
 class CGraphicsContext : public CCritSect
-{
-    friend class CDeviceBuilder;
-    
+{    
 public:
+    CGraphicsContext();
+    ~CGraphicsContext();
+
+
     bool Ready() { return m_bReady; }
 
-    virtual bool Initialize(uint32 dwWidth, uint32 dwHeight);
-    virtual void CleanUp();
+    bool Initialize(uint32 dwWidth, uint32 dwHeight);
+    void CleanUp();
 
-    virtual void Clear(ClearFlag flags, uint32 color=0xFF000000, float depth=1.0f) = 0;
-    virtual void UpdateFrame(bool swaponly=false) = 0;
+    void ResetOpenGL();
 
-    static void InitWindowInfo();
+    void Clear(ClearFlag flags, uint32 color=0xFF000000, float depth=1.0f);
+    void UpdateFrame(bool swaponly=false);
+
     static void InitDeviceParameters();
 
-protected:
-    bool                m_bReady;
-    bool                m_bActive;
-    
-    char                m_strDeviceStats[256];
+public:
+    bool m_bReady;
+    bool m_bSupportMultiTexture;
+    bool m_bSupportFogCoord;
 
-    virtual ~CGraphicsContext();
-    CGraphicsContext();
-    
 public:
     static CGraphicsContext *g_pGraphicsContext;
     static CGraphicsContext * Get(void);
-    inline const char* GetDeviceStr() {return m_strDeviceStats;}
     static bool needCleanScene;
 };
 
