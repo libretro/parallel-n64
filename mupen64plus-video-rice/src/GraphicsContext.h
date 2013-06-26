@@ -53,9 +53,6 @@ public:
     static void InitWindowInfo();
     static void InitDeviceParameters();
 
-public:
-    static  int          m_maxAnisotropy;
-
 protected:
     bool                m_bReady;
     bool                m_bActive;

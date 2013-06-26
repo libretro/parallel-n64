@@ -38,9 +38,6 @@ public:
     bool IsExtensionSupported(const char* pExtName);
     static void InitDeviceParameters();
 
-    //Get methods (TODO, remove all friend class and use get methods instead)
-    int  getMaxAnisotropicFiltering();
-
 protected:
     friend class CDeviceBuilder;
     COGLGraphicsContext();
@@ -50,9 +47,6 @@ protected:
     // Important OGL extension features
     bool    m_bSupportMultiTexture;
     bool    m_bSupportFogCoord;
-
-    // Optional OGL extension features;
-    int     m_maxAnisotropicFiltering;
 
     const unsigned char*    m_pVendorStr;
     const unsigned char*    m_pRenderStr;

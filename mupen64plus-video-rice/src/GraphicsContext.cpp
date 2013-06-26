@@ -28,7 +28,6 @@
 
 CGraphicsContext* CGraphicsContext::g_pGraphicsContext = NULL;
 bool CGraphicsContext::needCleanScene = false;
-int CGraphicsContext::m_maxAnisotropy = 16;
 
 CGraphicsContext * CGraphicsContext::Get(void)
 {   

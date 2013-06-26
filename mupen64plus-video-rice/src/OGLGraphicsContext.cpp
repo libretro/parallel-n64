@@ -112,30 +112,6 @@ void COGLGraphicsContext::InitOGLExtension(void)
 {
     // important extension features, it is very bad not to have these feature
     m_bSupportFogCoord = IsExtensionSupported("GL_EXT_fog_coord");
-
-    // Compute maxAnisotropicFiltering
-    m_maxAnisotropicFiltering = 0;
-
-    if( IsExtensionSupported("GL_EXT_texture_filter_anisotropic")
-    && (options.anisotropicFiltering == 2
-        || options.anisotropicFiltering == 4
-        || options.anisotropicFiltering == 8
-        || options.anisotropicFiltering == 16))
-    {
-        //Get the max value of aniso that the graphic card support
-        glGetIntegerv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &m_maxAnisotropicFiltering);
-        OPENGL_CHECK_ERRORS;
-
-        // If user want more aniso than hardware can do
-        if(options.anisotropicFiltering > (uint32) m_maxAnisotropicFiltering)
-        {
-            DebugMessage(M64MSG_INFO, "A value of '%i' is set for AnisotropicFiltering option but the hardware has a maximum value of '%i' so this will be used", options.anisotropicFiltering, m_maxAnisotropicFiltering);
-        }
-
-        //check if user want less anisotropy than hardware can do
-        if((uint32) m_maxAnisotropicFiltering > options.anisotropicFiltering)
-        m_maxAnisotropicFiltering = options.anisotropicFiltering;
-    }
 }
 
 bool COGLGraphicsContext::IsExtensionSupported(const char* pExtName)
@@ -206,10 +182,4 @@ void COGLGraphicsContext::UpdateFrame(bool swaponly)
 void COGLGraphicsContext::InitDeviceParameters()
 {
     status.isVertexShaderEnabled = false;   // Disable it for now
-}
-
-// Get methods
-int COGLGraphicsContext::getMaxAnisotropicFiltering()
-{
-    return m_maxAnisotropicFiltering;
 }
