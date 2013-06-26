@@ -129,7 +129,6 @@ CXXFILES += \
 	$(VIDEODIR)/DeviceBuilder.cpp \
 	$(VIDEODIR)/FrameBuffer.cpp \
 	$(VIDEODIR)/GraphicsContext.cpp \
-	$(VIDEODIR)/OGLDecodedMux.cpp \
 	$(VIDEODIR)/OGLExtRender.cpp \
 	$(VIDEODIR)/OGLES2FragmentShaders.cpp \
 	$(VIDEODIR)/OGLGraphicsContext.cpp \

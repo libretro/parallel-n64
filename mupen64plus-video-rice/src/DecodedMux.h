@@ -129,7 +129,6 @@ public:
     int HowManyConstFactors();
     int HowManyTextures();
     void MergeConstFactors();
-    virtual void SplitComplexStages();  // Only used if the combiner supports more than 1 stages
     void ConvertLODFracTo0();
     void ReplaceVal(uint8 val1, uint8 val2, int cycle= -1, uint8 mask = MUX_MASK);
     void Replace1Val(uint8 &val1, const uint8 val2, uint8 mask = MUX_MASK)
@@ -202,42 +201,6 @@ public:
     
     virtual ~DecodedMux() {}
 };
-
-class DecodedMuxForPixelShader : public DecodedMux
-{
-public:
-    virtual void Simplify(void);
-    void SplitComplexStages() {};
-};
-
-class DecodedMuxForSemiPixelShader : public DecodedMux
-{
-public:
-    void Reset(void);
-};
-
-class DecodedMuxForOGL14V2 : public DecodedMuxForPixelShader
-{
-public:
-    virtual void Simplify(void);
-    void UseTextureForConstant(void);
-};
-
-typedef struct 
-{
-    bool bFurtherFormatForOGL2;
-    bool bUseShadeForConstants;
-    bool bUseTextureForConstants;
-    bool bUseMoreThan2TextureForConstants;
-    bool bReformatToAB_CD;
-    bool bAllowHack;
-    bool bAllowComplimentary;
-    bool bCheckCombineInCycle1;
-    bool bSetLODFracTo0;
-    bool bMergeShadeWithConstants;
-    bool bSplitComplexStage;
-    bool bReformatAgainWithTwoTexels;
-} MuxConverterOptions;
 
 #endif
 

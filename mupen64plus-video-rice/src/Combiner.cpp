@@ -306,16 +306,15 @@ void CColorCombiner::InitCombinerMode(void)
 bool bConkerHideShadow=false;
 void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
 {
-    DecodedMux &m_decodedMux = *m_pDecodedMux;
-    if( m_decodedMux.m_dwMux0 != dwMux0 || m_decodedMux.m_dwMux1 != dwMux1 )
+    if( m_DecodedMux.m_dwMux0 != dwMux0 || m_DecodedMux.m_dwMux1 != dwMux1 )
     {
         if( options.enableHackForGames == HACK_FOR_DR_MARIO )
         {
             // Hack for Dr. Mario
             if( dwMux1 == 0xfffcf239 && 
-                ((m_decodedMux.m_dwMux0 == dwMux0 && dwMux0 == 0x00ffffff && 
-                m_decodedMux.m_dwMux1 != dwMux1 && m_decodedMux.m_dwMux1 == 0xfffcf279 ) || 
-                (m_decodedMux.m_dwMux0 == 0x00ffb3ff && m_decodedMux.m_dwMux1 == 0xff64fe7f && dwMux0 == 0x00ffffff ) ))
+                ((m_DecodedMux.m_dwMux0 == dwMux0 && dwMux0 == 0x00ffffff && 
+                m_DecodedMux.m_dwMux1 != dwMux1 && m_DecodedMux.m_dwMux1 == 0xfffcf279 ) || 
+                (m_DecodedMux.m_dwMux0 == 0x00ffb3ff && m_DecodedMux.m_dwMux1 == 0xff64fe7f && dwMux0 == 0x00ffffff ) ))
             {
                 //dwMux1 = 0xffcf23A;
                 dwMux1 = 0xfffcf438;
@@ -336,37 +335,27 @@ void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
 
         if( index >= 0 )
         {
-            m_decodedMux = m_DecodedMuxList[index];
+            m_DecodedMux = m_DecodedMuxList[index];
         }
         else
         {
-            m_decodedMux.Decode(dwMux0, dwMux1);
-            m_decodedMux.splitType[0] = CM_FMT_TYPE_NOT_CHECKED;
-            m_decodedMux.splitType[1] = CM_FMT_TYPE_NOT_CHECKED;
-            m_decodedMux.splitType[2] = CM_FMT_TYPE_NOT_CHECKED;
-            m_decodedMux.splitType[3] = CM_FMT_TYPE_NOT_CHECKED;
+            m_DecodedMux.Decode(dwMux0, dwMux1);
+            m_DecodedMux.splitType[0] = CM_FMT_TYPE_NOT_CHECKED;
+            m_DecodedMux.splitType[1] = CM_FMT_TYPE_NOT_CHECKED;
+            m_DecodedMux.splitType[2] = CM_FMT_TYPE_NOT_CHECKED;
+            m_DecodedMux.splitType[3] = CM_FMT_TYPE_NOT_CHECKED;
 
-            m_decodedMux.Hack();
-
-            if( !m_bSupportMultiTexture )
-            {
-                m_decodedMux.ReplaceVal(MUX_TEXEL1, MUX_TEXEL0);
-                m_decodedMux.ReplaceVal(MUX_LODFRAC,1);
-                m_decodedMux.ReplaceVal(MUX_PRIMLODFRAC,1);
-            }
-
-            m_decodedMux.Simplify();
-            if( m_supportedStages>1)    
-                m_decodedMux.SplitComplexStages();
+            m_DecodedMux.Hack();
+            m_DecodedMux.Simplify();
             
-            m_DecodedMuxList.add(m_decodedMux.m_u64Mux, *m_pDecodedMux);
+            m_DecodedMuxList.add(m_DecodedMux.m_u64Mux, m_DecodedMux);
         }
 
-        m_bTex0Enabled = m_decodedMux.m_bTexel0IsUsed;
-        m_bTex1Enabled = m_decodedMux.m_bTexel1IsUsed;
+        m_bTex0Enabled = m_DecodedMux.m_bTexel0IsUsed;
+        m_bTex1Enabled = m_DecodedMux.m_bTexel1IsUsed;
         m_bTexelsEnable = m_bTex0Enabled||m_bTex1Enabled;
 
-        gRSP.bProcessDiffuseColor = (m_decodedMux.m_dwShadeColorChannelFlag != MUX_0 || m_decodedMux.m_dwShadeAlphaChannelFlag != MUX_0);
+        gRSP.bProcessDiffuseColor = (m_DecodedMux.m_dwShadeColorChannelFlag != MUX_0 || m_DecodedMux.m_dwShadeAlphaChannelFlag != MUX_0);
         gRSP.bProcessSpecularColor = false;
     }
 }

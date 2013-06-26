@@ -1116,8 +1116,8 @@ TxtrCacheEntry* LoadTexture(uint32 tileno)
 void PrepareTextures()
 {
     if( gRDP.textureIsChanged || !currentRomOptions.bFastTexCRC ||
-        CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->m_ColorTextureFlag[0] ||
-        CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->m_ColorTextureFlag[1] )
+        CRender::g_pRender->m_pColorCombiner->m_DecodedMux.m_ColorTextureFlag[0] ||
+        CRender::g_pRender->m_pColorCombiner->m_DecodedMux.m_ColorTextureFlag[1] )
     {
         status.UseLargerTile[0]=false;
         status.UseLargerTile[1]=false;
@@ -1138,9 +1138,9 @@ void PrepareTextures()
         {
             if( tilenos[i] < 0 )    continue;
 
-            if( CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->m_ColorTextureFlag[i] )
+            if( CRender::g_pRender->m_pColorCombiner->m_DecodedMux.m_ColorTextureFlag[i] )
             {
-                TxtrCacheEntry *pEntry = gTextureManager.GetConstantColorTexture(CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->m_ColorTextureFlag[i]);
+                TxtrCacheEntry *pEntry = gTextureManager.GetConstantColorTexture(CRender::g_pRender->m_pColorCombiner->m_DecodedMux.m_ColorTextureFlag[i]);
                 CRender::g_pRender->SetCurrentTexture( tilenos[i], pEntry->pTexture, 4, 4, pEntry);
             }
             else

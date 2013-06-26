@@ -43,7 +43,6 @@ OGLRender::OGLRender()
 {
     COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext);
     m_bSupportFogCoordExt = pcontext->m_bSupportFogCoord;
-    m_bMultiTexture = pcontext->m_bSupportMultiTexture;
     m_bSupportClampToEdge = false;
     for( int i=0; i<8; i++ )
     {
@@ -707,8 +706,8 @@ void OGLRender::InitCombinerBlenderForSimpleRectDraw(uint32 tile)
 COLOR OGLRender::PostProcessDiffuseColor(COLOR curDiffuseColor)
 {
     uint32 color = curDiffuseColor;
-    uint32 colorflag = m_pColorCombiner->m_pDecodedMux->m_dwShadeColorChannelFlag;
-    uint32 alphaflag = m_pColorCombiner->m_pDecodedMux->m_dwShadeAlphaChannelFlag;
+    uint32 colorflag = m_pColorCombiner->m_DecodedMux.m_dwShadeColorChannelFlag;
+    uint32 alphaflag = m_pColorCombiner->m_DecodedMux.m_dwShadeAlphaChannelFlag;
     if( colorflag+alphaflag != MUX_0 )
     {
         if( (colorflag & 0xFFFFFF00) == 0 && (alphaflag & 0xFFFFFF00) == 0 )

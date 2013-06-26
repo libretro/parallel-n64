@@ -43,16 +43,10 @@ public:
     virtual void InitCombinerBlenderForSimpleTextureDraw(uint32 tile=0)=0;
     virtual void DisableCombiner(void)=0;
 
-#ifdef DEBUGGER
-    virtual void DisplaySimpleMuxString(void);
-    virtual void DisplayMuxString(void);
-#endif
-
-    DecodedMux *m_pDecodedMux;
 protected:
     CColorCombiner(CRender *pRender) : 
-        m_pDecodedMux(NULL), m_bTex0Enabled(false),m_bTex1Enabled(false),m_bTexelsEnable(false),
-        m_bCycleChanged(false), m_supportedStages(1),m_bSupportMultiTexture(true),m_pRender(pRender)
+        m_bTex0Enabled(false),m_bTex1Enabled(false),m_bTexelsEnable(false),
+        m_bCycleChanged(false), m_pRender(pRender)
     {
     }
 
@@ -63,15 +57,14 @@ protected:
     bool    m_bTex0Enabled;
     bool    m_bTex1Enabled;
     bool    m_bTexelsEnable;
-
     bool    m_bCycleChanged;    // A flag will be set if cycle is changed to FILL or COPY
-
-    int     m_supportedStages;
-    bool    m_bSupportMultiTexture;
 
     CRender *m_pRender;
 
     CSortedList<uint64, DecodedMux> m_DecodedMuxList;
+
+public:
+    DecodedMux m_DecodedMux;
 };
 
 uint32 GetTexelNumber(N64CombinerType &m);

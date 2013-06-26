@@ -111,7 +111,6 @@ void COGLGraphicsContext::InitState(void)
 void COGLGraphicsContext::InitOGLExtension(void)
 {
     // important extension features, it is very bad not to have these feature
-    m_bSupportMultiTexture = IsExtensionSupported(OSAL_GL_ARB_MULTITEXTURE);
     m_bSupportFogCoord = IsExtensionSupported("GL_EXT_fog_coord");
 
     // Compute maxAnisotropicFiltering

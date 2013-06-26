@@ -160,8 +160,6 @@ GLuint fillProgram,fillColorLocation;
 COGL_FragmentProgramCombiner::COGL_FragmentProgramCombiner(CRender *pRender)
 : CColorCombiner(pRender), m_pOGLRender((OGLRender*)pRender), m_lastIndex(-1), m_dwLastMux0(0), m_dwLastMux1(0)
 {
-    delete m_pDecodedMux;
-    m_pDecodedMux = new DecodedMuxForPixelShader;
     m_bFragmentProgramIsSupported = true;
     m_AlphaRef = 0.0f;
 
@@ -371,10 +369,8 @@ static void CheckFpVars(uint8 MuxVar, bool &bNeedT0, bool &bNeedT1)
 
 void COGL_FragmentProgramCombiner::GenerateProgramStr()
 {
-    DecodedMuxForPixelShader &mux = *(DecodedMuxForPixelShader*)m_pDecodedMux;
-
-    mux.splitType[0] = mux.splitType[1] = mux.splitType[2] = mux.splitType[3] = CM_FMT_TYPE_NOT_CHECKED;
-    m_pDecodedMux->Reformat(false);
+    m_DecodedMux.splitType[0] = m_DecodedMux.splitType[1] = m_DecodedMux.splitType[2] = m_DecodedMux.splitType[3] = CM_FMT_TYPE_NOT_CHECKED;
+    m_DecodedMux.Reformat(false);
 
     char tempstr[500], newFPBody[4092];
     bool bNeedT0 = false, bNeedT1 = false, bNeedComb2 = false;
@@ -386,8 +382,8 @@ void COGL_FragmentProgramCombiner::GenerateProgramStr()
         {
             char* (*func)(uint8) = channel==0?MuxToOC:MuxToOA;
             char *dst = channel==0?(char*)"rgb":(char*)"a";
-            N64CombinerType &m = mux.m_n64Combiners[cycle*2+channel];
-            switch( mux.splitType[cycle*2+channel] )
+            N64CombinerType &m = m_DecodedMux.m_n64Combiners[cycle*2+channel];
+            switch( m_DecodedMux.splitType[cycle*2+channel] )
             {
             case CM_FMT_TYPE_NOT_USED:
                 tempstr[0] = 0;
@@ -561,8 +557,8 @@ int COGL_FragmentProgramCombiner::ParseDecodedMux()
         res.FogMinMaxLocation = glGetUniformLocation(res.programID,"FogMinMax");
         OPENGL_CHECK_ERRORS;
 
-        res.dwMux0 = m_pDecodedMux->m_dwMux0;
-        res.dwMux1 = m_pDecodedMux->m_dwMux1;
+        res.dwMux0 = m_DecodedMux.m_dwMux0;
+        res.dwMux1 = m_DecodedMux.m_dwMux1;
         res.fogIsUsed = gRDP.bFogEnableInBlender && gRSP.bFogEnabled;
 
         m_vCompiledShaders.push_back(res);
@@ -672,8 +668,8 @@ int COGL_FragmentProgramCombiner::FindCompiledMux()
 {
     for( uint32 i=0; i<m_vCompiledShaders.size(); i++ )
     {
-        if( m_vCompiledShaders[i].dwMux0 == m_pDecodedMux->m_dwMux0 
-            && m_vCompiledShaders[i].dwMux1 == m_pDecodedMux->m_dwMux1 
+        if( m_vCompiledShaders[i].dwMux0 == m_DecodedMux.m_dwMux0 
+            && m_vCompiledShaders[i].dwMux1 == m_DecodedMux.m_dwMux1 
             && m_vCompiledShaders[i].fogIsUsed == (gRDP.bFogEnableInBlender && gRSP.bFogEnabled)
             && m_vCompiledShaders[i].alphaTest == m_AlphaRef > 0.0f)
         {
@@ -691,7 +687,7 @@ void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
 
     bool combinerIsChanged = false;
 
-    if( m_pDecodedMux->m_dwMux0 != m_dwLastMux0 || m_pDecodedMux->m_dwMux1 != m_dwLastMux1 || m_lastIndex < 0 )
+    if( m_DecodedMux.m_dwMux0 != m_dwLastMux0 || m_DecodedMux.m_dwMux1 != m_dwLastMux1 || m_lastIndex < 0 )
     {
         combinerIsChanged = true;
         m_lastIndex = FindCompiledMux();
@@ -700,8 +696,8 @@ void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
             m_lastIndex = ParseDecodedMux();
         }
 
-        m_dwLastMux0 = m_pDecodedMux->m_dwMux0;
-        m_dwLastMux1 = m_pDecodedMux->m_dwMux1;
+        m_dwLastMux0 = m_DecodedMux.m_dwMux0;
+        m_dwLastMux1 = m_DecodedMux.m_dwMux1;
     }
 
 
