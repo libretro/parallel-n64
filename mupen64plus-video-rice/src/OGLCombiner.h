@@ -53,24 +53,6 @@ protected:
 
 };
 
-class COGLBlender : public CBlender
-{
-public:
-    void NormalAlphaBlender(void);
-    void DisableAlphaBlender(void);
-    void BlendFunc(uint32 srcFunc, uint32 desFunc);
-    void Enable();
-    void Disable();
-
-protected:
-    friend class CDeviceBuilder;
-    COGLBlender(CRender *pRender) : CBlender(pRender), m_pOGLRender((OGLRender*)pRender) {};
-    ~COGLBlender() {};
-
-    OGLRender *m_pOGLRender;
-};
-
-
 #endif
 
 

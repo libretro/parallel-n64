@@ -34,8 +34,7 @@ CDeviceBuilder* CDeviceBuilder::m_pInstance=NULL;
 CDeviceBuilder::CDeviceBuilder() :
     m_pRender(NULL),
     m_pGraphicsContext(NULL),
-    m_pColorCombiner(NULL),
-    m_pAlphaBlender(NULL)
+    m_pColorCombiner(NULL)
 {
 }
 
@@ -44,7 +43,6 @@ CDeviceBuilder::~CDeviceBuilder()
     DeleteGraphicsContext();
     DeleteRender();
     DeleteColorCombiner();
-    DeleteAlphaBlender();
 }
 
 CDeviceBuilder* CDeviceBuilder::GetBuilder(void)
@@ -151,23 +149,6 @@ void CDeviceBuilder::DeleteColorCombiner(void)
 {
     SAFE_DELETE(m_pColorCombiner);
 }
-
-CBlender * CDeviceBuilder::CreateAlphaBlender(CRender *pRender)
-{
-    if( m_pAlphaBlender == NULL )
-    {
-        m_pAlphaBlender = new COGLBlender(pRender);
-        SAFE_CHECK(m_pAlphaBlender);
-    }
-
-    return m_pAlphaBlender;
-}
-
-void CDeviceBuilder::DeleteAlphaBlender(void)
-{
-    SAFE_DELETE(m_pAlphaBlender);
-}
-
 
 CTexture * CDeviceBuilder::CreateTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage)
 {

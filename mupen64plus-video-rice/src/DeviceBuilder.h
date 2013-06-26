@@ -43,9 +43,6 @@ public:
     CColorCombiner * CreateColorCombiner(CRender *pRender);
     void DeleteColorCombiner(void);
 
-    CBlender * CreateAlphaBlender(CRender *pRender);
-    void DeleteAlphaBlender(void);
-
     CTexture * CreateTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage = AS_NORMAL);
 
 protected:
@@ -57,7 +54,6 @@ protected:
     CRender* m_pRender;
     CGraphicsContext* m_pGraphicsContext;
     CColorCombiner* m_pColorCombiner;
-    CBlender* m_pAlphaBlender;
 };
 
 #endif

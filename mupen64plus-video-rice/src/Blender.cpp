@@ -17,13 +17,54 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "Render.h"
+#include "osal_opengl.h"
 
-const char * sc_szBlClr[4]      = { "In", "Mem", "Bl", "Fog" };
-const char * sc_szBlA1[4]       = { "AIn", "AFog", "AShade", "0" };
-const char * sc_szBlA2[4]       = { "1-A", "AMem", "1", "0" };
+void Blender::Enable()
+{
+    glEnable(GL_BLEND);
+}
 
-//========================================================================
-void CBlender::InitBlenderMode(void)                    // Set Alpha Blender mode
+void Blender::Disable()
+{
+    glDisable(GL_BLEND);
+}
+
+void Blender::Func(uint32 srcFunc, uint32 desFunc)
+{
+    static const uint32 DirectX_OGL_BlendFuncMaps [] =
+    {
+        GL_SRC_ALPHA,               //Nothing
+        GL_ZERO,                    //BLEND_ZERO               = 1,
+        GL_ONE,                     //BLEND_ONE                = 2,
+        GL_SRC_COLOR,               //BLEND_SRCCOLOR           = 3,
+        GL_ONE_MINUS_SRC_COLOR,     //BLEND_INVSRCCOLOR        = 4,
+        GL_SRC_ALPHA,               //BLEND_SRCALPHA           = 5,
+        GL_ONE_MINUS_SRC_ALPHA,     //BLEND_INVSRCALPHA        = 6,
+        GL_DST_ALPHA,               //BLEND_DESTALPHA          = 7,
+        GL_ONE_MINUS_DST_ALPHA,     //BLEND_INVDESTALPHA       = 8,
+        GL_DST_COLOR,               //BLEND_DESTCOLOR          = 9,
+        GL_ONE_MINUS_DST_COLOR,     //BLEND_INVDESTCOLOR       = 10,
+        GL_SRC_ALPHA_SATURATE,      //BLEND_SRCALPHASAT        = 11,
+        GL_SRC_ALPHA_SATURATE,      //BLEND_BOTHSRCALPHA       = 12,    
+        GL_SRC_ALPHA_SATURATE,      //BLEND_BOTHINVSRCALPHA    = 13,
+    };
+
+    glBlendFunc(DirectX_OGL_BlendFuncMaps[srcFunc], DirectX_OGL_BlendFuncMaps[desFunc]);
+}
+
+void Blender::NormalAlphaBlender(void)
+{
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+void Blender::DisableAlphaBlender(void)
+{
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ZERO);
+}
+
+void Blender::InitMode(void)                    // Set Alpha Blender mode
 {
     //1. Z_COMPARE        -- Enable / Disable Zbuffer compare
     //  1   -   Enable ZBuffer
@@ -52,8 +93,6 @@ void CBlender::InitBlenderMode(void)                    // Set Alpha Blender mod
     //                                             Do only compare, no update, but because this is
     //                                             decal mode, so image should be updated even
     //                                             the z value is the same as compared.
-
-    CRender *render = CRender::g_pRender;
 
     //  Alpha Blender Modes 
 
@@ -97,6 +136,26 @@ Possible Blending Factors:
     1   -   1
     0   -   0
 */
+
+enum
+{
+    BLEND_ZERO = 1,
+    BLEND_ONE = 2,
+    BLEND_SRCCOLOR = 3,
+    BLEND_INVSRCCOLOR = 4,
+    BLEND_SRCALPHA = 5,
+    BLEND_INVSRCALPHA = 6,
+    BLEND_DESTALPHA = 7,
+    BLEND_INVDESTALPHA = 8,
+    BLEND_DESTCOLOR = 9,
+    BLEND_INVDESTCOLOR = 10,
+    BLEND_SRCALPHASAT = 11,
+    BLEND_BOTHSRCALPHA = 12,
+    BLEND_BOTHINVSRCALPHA = 13,
+    BLEND_BLENDFACTOR = 14,
+    BLEND_INVBLENDFACTOR = 15,
+    BLEND_FORCE_DWORD = 0x7fffffff
+};
 #define BLEND_NOOP              0x0000
 
 #define BLEND_NOOP5             0xcc48  // Fog * 0 + Mem * 1
@@ -121,6 +180,7 @@ Possible Blending Factors:
 #define BLEND_XLU               0x0040
 #define BLEND_MEM_ALPHA_IN      0x4044  //  Mem * AIn + Mem * AMem
 
+    CRender *render = CRender::g_pRender;
 
     uint32 blendmode_1 = (uint32)( gRDP.otherMode.blender & 0xcccc );
     uint32 blendmode_2 = (uint32)( gRDP.otherMode.blender & 0x3333 );
@@ -129,19 +189,19 @@ Possible Blending Factors:
     switch( cycletype )
     {
     case CYCLE_TYPE_FILL:
-        //BlendFunc(BLEND_ONE, BLEND_ZERO);
+        //Func(BLEND_ONE, BLEND_ZERO);
         //Enable();
         Disable();
         break;
     case CYCLE_TYPE_COPY:
         //Disable();
-        BlendFunc(BLEND_ONE, BLEND_ZERO);
+        Func(BLEND_ONE, BLEND_ZERO);
         Enable();
         break;
     case CYCLE_TYPE_2:
         if( gRDP.otherMode.force_bl && gRDP.otherMode.z_cmp )
         {
-            BlendFunc(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
+            Func(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
             Enable();
             break;
         }
@@ -149,7 +209,7 @@ Possible Blending Factors:
         /*
         if( gRDP.otherMode.alpha_cvg_sel && gRDP.otherMode.cvg_x_alpha==0 )
         {
-            BlendFunc(BLEND_ONE, BLEND_ZERO);
+            Func(BLEND_ONE, BLEND_ZERO);
             Enable();
             break;
         }
@@ -159,7 +219,7 @@ Possible Blending Factors:
         {
         case BLEND_PASS+(BLEND_PASS>>2):    // In * 0 + In * 1
         case BLEND_FOG_APRIM+(BLEND_PASS>>2):
-            BlendFunc(BLEND_ONE, BLEND_ZERO);
+            Func(BLEND_ONE, BLEND_ZERO);
             if( gRDP.otherMode.alpha_cvg_sel )
             {
                 Enable();
@@ -177,12 +237,12 @@ Possible Blending Factors:
             // Cycle2:  In * AIn + Mem * AMem
             if( gRDP.otherMode.cvg_x_alpha && gRDP.otherMode.alpha_cvg_sel )
             {
-                BlendFunc(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
+                Func(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
                 Enable();
             }
             else
             {
-                BlendFunc(BLEND_ONE, BLEND_ZERO);
+                Func(BLEND_ONE, BLEND_ZERO);
                 Enable();
             }
             break;
@@ -214,13 +274,13 @@ Possible Blending Factors:
         case BLEND_PASS + (BLEND_FOG_MEM_IN_MEM>>2):
             //Cycle1:   In * 0 + In * 1
             //Cycle2:   In * AFog + Mem * 1-A   
-            BlendFunc(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
+            Func(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
             Enable();
             break;
         case BLEND_FOG_MEM_FOG_MEM + (BLEND_OPA>>2):
             //Cycle1:   In * AFog + Fog * 1-A
             //Cycle2:   In * AIn + Mem * AMem   
-            BlendFunc(BLEND_ONE, BLEND_ZERO);
+            Func(BLEND_ONE, BLEND_ZERO);
             Enable();
             break;
 
@@ -247,49 +307,29 @@ Possible Blending Factors:
             //Cycle1:   Fog * AShade + In * 1-A
             //Cycle2:   In * 0 + In * 1
         case BLEND_FOG_3+(BLEND_PASS>>2):
-            BlendFunc(BLEND_ONE, BLEND_ZERO);
+            Func(BLEND_ONE, BLEND_ZERO);
             Enable();
             break;
         case BLEND_FOG_ASHADE+0x0301:
             // c800 - Cycle1:   Fog * AShade + In * 1-A
             // 0301 - Cycle2:   In * 0 + In * AMem
-            BlendFunc(BLEND_SRCALPHA, BLEND_ZERO);
+            Func(BLEND_SRCALPHA, BLEND_ZERO);
             Enable();
             break;
         case 0x0c08+0x1111:
             // 0c08 - Cycle1:   In * 0 + In * 1
             // 1111 - Cycle2:   Mem * AFog + Mem * AMem
-            BlendFunc(BLEND_ZERO, BLEND_DESTALPHA);
+            Func(BLEND_ZERO, BLEND_DESTALPHA);
             Enable();
             break;
         default:
-#ifdef DEBUGGER
-            if( pauseAtNext )
-            {
-                uint32 dwM1A_1 = (gRDP.otherMode.blender>>14) & 0x3;
-                uint32 dwM1B_1 = (gRDP.otherMode.blender>>10) & 0x3;
-                uint32 dwM2A_1 = (gRDP.otherMode.blender>>6) & 0x3;
-                uint32 dwM2B_1 = (gRDP.otherMode.blender>>2) & 0x3;
-
-                uint32 dwM1A_2 = (gRDP.otherMode.blender>>12) & 0x3;
-                uint32 dwM1B_2 = (gRDP.otherMode.blender>>8) & 0x3;
-                uint32 dwM2A_2 = (gRDP.otherMode.blender>>4) & 0x3;
-                uint32 dwM2B_2 = (gRDP.otherMode.blender   ) & 0x3;
-
-                TRACE0("Unknown Blender Mode: 2 cycle");
-                DebuggerAppendMsg( "\tblender:\t\t%04x - Cycle1:\t%s * %s + %s * %s\n\t\t%04x - Cycle2:\t%s * %s + %s * %s", blendmode_1,
-                    sc_szBlClr[dwM1A_1], sc_szBlA1[dwM1B_1], sc_szBlClr[dwM2A_1], sc_szBlA2[dwM2B_1], blendmode_2,
-                    sc_szBlClr[dwM1A_2], sc_szBlA1[dwM1B_2], sc_szBlClr[dwM2A_2], sc_szBlA2[dwM2B_2]);
-
-            }
-#endif
             if( blendmode_2 == (BLEND_PASS>>2) )
             {
-                BlendFunc(BLEND_ONE, BLEND_ZERO);
+                Func(BLEND_ONE, BLEND_ZERO);
             }
             else
             {
-                BlendFunc(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
+                Func(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
             }
             Enable();
             break;
@@ -298,23 +338,16 @@ Possible Blending Factors:
     default:    // 1/2 Cycle or Copy
         if( gRDP.otherMode.force_bl && gRDP.otherMode.z_cmp && blendmode_1 != BLEND_FOG_ASHADE )
         {
-            BlendFunc(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
+            Func(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
             Enable();
             break;
         }
         if( gRDP.otherMode.force_bl && options.enableHackForGames == HACK_FOR_COMMANDCONQUER )
         {
-            BlendFunc(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
+            Func(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
             Enable();
             break;
         }
-
-#ifdef DEBUGGER
-        //if( (blendmode_1>>2) != blendmode_2 )
-        //{
-        //  DebuggerAppendMsg("Warning: in 1 cycle mode, blend1!=blend2");
-        //}
-#endif
 
         switch ( blendmode_1 )
         //switch ( blendmode_2<<2 )
@@ -325,15 +358,15 @@ Possible Blending Factors:
         case BLEND_FOG_MEM_IN_MEM:  // c440 - Cycle1:   In * AFog + Mem * 1-A
         case BLEND_BLENDCOLOR:  //Bl * 0 + Bl * 1
         case 0x00c0:    //In * AIn + Fog * 1-A
-            BlendFunc(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
+            Func(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
             Enable();
             break;
         case BLEND_MEM_ALPHA_IN:    //  Mem * AIn + Mem * AMem
-            BlendFunc(BLEND_ZERO, BLEND_DESTALPHA);
+            Func(BLEND_ZERO, BLEND_DESTALPHA);
             Enable();
             break;
         case BLEND_PASS:    // IN * 0 + IN * 1
-            BlendFunc(BLEND_ONE, BLEND_ZERO);
+            Func(BLEND_ONE, BLEND_ZERO);
             if( gRDP.otherMode.alpha_cvg_sel )
             {
                 Enable();
@@ -346,11 +379,11 @@ Possible Blending Factors:
         case BLEND_OPA:     // IN * A_IN + MEM * A_MEM
             if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS )
             {
-                BlendFunc(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
+                Func(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
             }
             else
             {
-                BlendFunc(BLEND_ONE, BLEND_ZERO);
+                Func(BLEND_ONE, BLEND_ZERO);
             }
             Enable();
             break;
@@ -358,48 +391,28 @@ Possible Blending Factors:
         case BLEND_FOG_ASHADE:  // Fog * AShade + In * 1-A
         case BLEND_FOG_MEM_3:   // Mem * AFog + Fog * 1-A
         case BLEND_BI_AFOG:     // Bl * AFog + In * 1-A
-            BlendFunc(BLEND_ONE, BLEND_ZERO);
+            Func(BLEND_ONE, BLEND_ZERO);
             Enable();
             break;
         case BLEND_FOG_APRIM:   // Fog * AFog + In * 1-A
-            BlendFunc(BLEND_INVSRCALPHA, BLEND_ZERO);
+            Func(BLEND_INVSRCALPHA, BLEND_ZERO);
             Enable();
             break;
         case BLEND_NOOP3:       // In * 0 + Mem * 1
         case BLEND_NOOP5:       // Fog * 0 + Mem * 1
-            BlendFunc(BLEND_ZERO, BLEND_ONE);
+            Func(BLEND_ZERO, BLEND_ONE);
             Enable();
             break;
         case BLEND_MEM:     // Mem * 0 + Mem * 1-A
             // WaveRace
-            BlendFunc(BLEND_ZERO, BLEND_ONE);
+            Func(BLEND_ZERO, BLEND_ONE);
             Enable();
             break;
         default:
-#ifdef DEBUGGER
-            if( pauseAtNext )
-            {
-                uint32 dwM1A_1 = (gRDP.otherMode.blender>>14) & 0x3;
-                uint32 dwM1B_1 = (gRDP.otherMode.blender>>10) & 0x3;
-                uint32 dwM2A_1 = (gRDP.otherMode.blender>>6) & 0x3;
-                uint32 dwM2B_1 = (gRDP.otherMode.blender>>2) & 0x3;
-
-                uint32 dwM1A_2 = (gRDP.otherMode.blender>>12) & 0x3;
-                uint32 dwM1B_2 = (gRDP.otherMode.blender>>8) & 0x3;
-                uint32 dwM2A_2 = (gRDP.otherMode.blender>>4) & 0x3;
-                uint32 dwM2B_2 = (gRDP.otherMode.blender   ) & 0x3;
-
-                TRACE0("Unknown Blender Mode: 1 cycle");
-                DebuggerAppendMsg( "\tblender:\t\t%04x - Cycle1:\t%s * %s + %s * %s\n\t\t\tCycle2:\t%s * %s + %s * %s", blendmode_1,
-                    sc_szBlClr[dwM1A_1], sc_szBlA1[dwM1B_1], sc_szBlClr[dwM2A_1], sc_szBlA2[dwM2B_1],
-                    sc_szBlClr[dwM1A_2], sc_szBlA1[dwM1B_2], sc_szBlClr[dwM2A_2], sc_szBlA2[dwM2B_2]);
-            }
-#endif
-            BlendFunc(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
+            Func(BLEND_SRCALPHA, BLEND_INVSRCALPHA);
             Enable();
             render->SetAlphaTestEnable(TRUE);
             break;
         }
     }
 }
-

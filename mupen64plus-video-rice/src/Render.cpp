@@ -104,9 +104,6 @@ CRender::CRender() :
     
     m_pColorCombiner = CDeviceBuilder::GetBuilder()->CreateColorCombiner(this);
     m_pColorCombiner->Initialize();
-
-    m_pAlphaBlender = CDeviceBuilder::GetBuilder()->CreateAlphaBlender(this);
-
 }
 
 CRender::~CRender()
@@ -115,12 +112,6 @@ CRender::~CRender()
     {
         CDeviceBuilder::GetBuilder()->DeleteColorCombiner();
         m_pColorCombiner = NULL;
-    }
-    
-    if( m_pAlphaBlender != NULL )
-    {
-        CDeviceBuilder::GetBuilder()->DeleteAlphaBlender();
-        m_pAlphaBlender = NULL;
     }
 }
 
@@ -304,12 +295,9 @@ void CRender::SetCombinerAndBlender()
 {
     InitOtherModes();
 
-    if( g_curRomInfo.bDisableBlender )
-        m_pAlphaBlender->DisableAlphaBlender();
-    else if( currentRomOptions.bNormalBlender )
-        m_pAlphaBlender->NormalAlphaBlender();
-    else
-        m_pAlphaBlender->InitBlenderMode();
+    if( g_curRomInfo.bDisableBlender )          Blender::DisableAlphaBlender();
+    else if( currentRomOptions.bNormalBlender ) Blender::NormalAlphaBlender();
+    else                                        Blender::InitMode();
 
     m_pColorCombiner->InitCombinerMode();
 }

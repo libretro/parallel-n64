@@ -25,7 +25,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 class OGLRender : public CRender
 {
     friend class COGLColorCombiner;
-    friend class COGLBlender;
     friend class CDeviceBuilder;
     
 protected:

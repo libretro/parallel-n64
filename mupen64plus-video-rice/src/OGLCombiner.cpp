@@ -29,25 +29,6 @@
 #include "Texture.h"
 
 //========================================================================
-uint32 DirectX_OGL_BlendFuncMaps [] =
-{
-    GL_SRC_ALPHA,               //Nothing
-    GL_ZERO,                    //BLEND_ZERO               = 1,
-    GL_ONE,                     //BLEND_ONE                = 2,
-    GL_SRC_COLOR,               //BLEND_SRCCOLOR           = 3,
-    GL_ONE_MINUS_SRC_COLOR,     //BLEND_INVSRCCOLOR        = 4,
-    GL_SRC_ALPHA,               //BLEND_SRCALPHA           = 5,
-    GL_ONE_MINUS_SRC_ALPHA,     //BLEND_INVSRCALPHA        = 6,
-    GL_DST_ALPHA,               //BLEND_DESTALPHA          = 7,
-    GL_ONE_MINUS_DST_ALPHA,     //BLEND_INVDESTALPHA       = 8,
-    GL_DST_COLOR,               //BLEND_DESTCOLOR          = 9,
-    GL_ONE_MINUS_DST_COLOR,     //BLEND_INVDESTCOLOR       = 10,
-    GL_SRC_ALPHA_SATURATE,      //BLEND_SRCALPHASAT        = 11,
-    GL_SRC_ALPHA_SATURATE,      //BLEND_BOTHSRCALPHA       = 12,    
-    GL_SRC_ALPHA_SATURATE,      //BLEND_BOTHINVSRCALPHA    = 13,
-};
-
-//========================================================================
 COGLColorCombiner::COGLColorCombiner(CRender *pRender) :
     CColorCombiner(pRender),
     m_pOGLRender((OGLRender*)pRender),
@@ -157,41 +138,6 @@ void COGLColorCombiner::InitCombinerCycle12(void)
         m_pOGLRender->EnableTexUnit(0,FALSE);
         return;
     }
-}
-
-void COGLBlender::NormalAlphaBlender(void)
-{
-    glEnable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    OPENGL_CHECK_ERRORS;
-}
-
-void COGLBlender::DisableAlphaBlender(void)
-{
-    glEnable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
-    glBlendFunc(GL_ONE, GL_ZERO);
-    OPENGL_CHECK_ERRORS;
-}
-
-
-void COGLBlender::BlendFunc(uint32 srcFunc, uint32 desFunc)
-{
-    glBlendFunc(DirectX_OGL_BlendFuncMaps[srcFunc], DirectX_OGL_BlendFuncMaps[desFunc]);
-    OPENGL_CHECK_ERRORS;
-}
-
-void COGLBlender::Enable()
-{
-    glEnable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
-}
-
-void COGLBlender::Disable()
-{
-    glDisable(GL_BLEND);
-    OPENGL_CHECK_ERRORS;
 }
 
 void COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32 tile)
