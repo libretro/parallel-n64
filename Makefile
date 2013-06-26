@@ -116,12 +116,10 @@ CXXFILES += \
 VIDEODIR = mupen64plus-video-rice/src
 
 CXXFLAGS += -DSDL_VIDEO_OPENGL=1
-CFILES += \
-	$(VIDEODIR)/osal_files_$(PLATFORM_EXT).c
 
 CXXFILES += \
 	$(VIDEODIR)/Blender.cpp \
-   $(VIDEODIR)/Combiner.cpp \
+    $(VIDEODIR)/Combiner.cpp \
 	$(VIDEODIR)/Config.cpp \
 	$(VIDEODIR)/ConvertImage.cpp \
 	$(VIDEODIR)/Debugger.cpp \
