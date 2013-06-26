@@ -392,25 +392,6 @@ void DumpOtherMode()
     DebuggerAppendMsg("\tTexture Gen Linear: %s", (gRDP.geometryMode & G_TEXTURE_GEN_LINEAR)?"enabled":"disabled");
 }
 
-void DumpCachedTexture(uint32 index)
-{
-    TxtrCacheEntry *p = gTextureManager.GetCachedTexture(index);
-    if( p != NULL )
-    {
-        char filename[80];
-        sprintf(filename,"\\Texture%d_rgb", index);
-        CRender::GetRender()->SaveTextureToFile(*(p->pTexture), filename, TXT_RGB);
-        DebuggerAppendMsg("Display cached texture #%d of %d\n", index, gTextureManager.GetNumOfCachedTexture());
-        DebuggerAppendMsg("W:%d, H:%d, RealW:%d, RealH:%d, D3DW:%d, D3DH: %d", p->ti.WidthToCreate, p->ti.HeightToCreate,
-            p->ti.WidthToLoad, p->ti.HeightToLoad, p->pTexture->m_dwCreatedTextureWidth, p->pTexture->m_dwCreatedTextureHeight);
-        DebuggerAppendMsg("ScaledS:%s, ScaledT:%s", p->pTexture->m_bScaledS?"T":"F", p->pTexture->m_bScaledT?"T":"F");
-    }
-    else
-    {
-        DebuggerAppendMsg("No cached texture at index = %d\n", index);
-    }
-}
-
 extern uint32 gObjTlutAddr;
 void DumpInfo(int thingToDump)
 {
@@ -508,16 +489,13 @@ void DumpInfo(int thingToDump)
         {
             CachedTexIndex = 0;
         }
-        DumpCachedTexture(CachedTexIndex);
         break;
     case DUMP_PREV_TEX:     
         CachedTexIndex--;
         if( CachedTexIndex < 0 || CachedTexIndex >= gTextureManager.GetNumOfCachedTexture() )
             CachedTexIndex = 0;
-        DumpCachedTexture(CachedTexIndex);
         break;
     case DUMP_CACHED_TEX:
-        DumpCachedTexture(CachedTexIndex);
         break;
     case DUMP_TEXBUFFER_AT:
         {

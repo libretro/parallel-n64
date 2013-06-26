@@ -124,7 +124,6 @@ CXXFILES += \
    $(VIDEODIR)/Combiner.cpp \
 	$(VIDEODIR)/Config.cpp \
 	$(VIDEODIR)/ConvertImage.cpp \
-	$(VIDEODIR)/ConvertImage16.cpp \
 	$(VIDEODIR)/Debugger.cpp \
 	$(VIDEODIR)/DecodedMux.cpp \
 	$(VIDEODIR)/DeviceBuilder.cpp \
