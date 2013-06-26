@@ -26,7 +26,7 @@ class OGLRender : public CRender
 {
     friend class COGLColorCombiner;
     friend class COGLBlender;
-    friend class OGLDeviceBuilder;
+    friend class CDeviceBuilder;
     
 protected:
     OGLRender();

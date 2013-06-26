@@ -267,7 +267,8 @@ void CTextureManager::RecycleTexture(TxtrCacheEntry *pEntry)
     if (g_bUseSetTextureMem)
         return;
 
-    if( CDeviceBuilder::GetGeneralDeviceType() == OGL_DEVICE )
+//    if( CDeviceBuilder::GetGeneralDeviceType() == OGL_DEVICE )
+   if (1)
     {
         // Fix me, why I can not reuse the texture in OpenGL,
         // how can I unload texture from video card memory for OpenGL

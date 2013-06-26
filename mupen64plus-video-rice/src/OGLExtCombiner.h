@@ -124,7 +124,7 @@ class COGLColorCombiner4 : public COGLColorCombiner
 public:
     bool Initialize(void);
 protected:
-    friend class OGLDeviceBuilder;
+    friend class CDeviceBuilder;
     void InitCombinerCycle12(void);
     void InitCombinerCycleFill(void);
     virtual void GenerateCombinerSetting(int index);

@@ -33,7 +33,7 @@ public:
     bool Initialize(void);
     void InitCombinerBlenderForSimpleTextureDraw(uint32 tile=0);
 protected:
-    friend class OGLDeviceBuilder;
+    friend class CDeviceBuilder;
 
     void DisableCombiner(void);
     void InitCombinerCycleCopy(void);
@@ -63,7 +63,7 @@ public:
     void Disable();
 
 protected:
-    friend class OGLDeviceBuilder;
+    friend class CDeviceBuilder;
     COGLBlender(CRender *pRender) : CBlender(pRender), m_pOGLRender((OGLRender*)pRender) {};
     ~COGLBlender() {};
 

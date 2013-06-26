@@ -39,7 +39,7 @@ public:
     void SetTextureToTextureUnitMap(int tex, int unit);
 
 protected:
-    friend class OGLDeviceBuilder;
+    friend class CDeviceBuilder;
     COGLExtRender() {};
     ~COGLExtRender() {};
     GLint m_maxTexUnits;

@@ -42,7 +42,7 @@ public:
     int  getMaxAnisotropicFiltering();
 
 protected:
-    friend class OGLDeviceBuilder;
+    friend class CDeviceBuilder;
     COGLGraphicsContext();
     void InitState(void);
     void InitOGLExtension(void);

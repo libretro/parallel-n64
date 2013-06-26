@@ -30,100 +30,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 //========================================================================
 CDeviceBuilder* CDeviceBuilder::m_pInstance=NULL;
-#ifndef __LIBRETRO__
-SupportedDeviceType CDeviceBuilder::m_deviceType = DIRECTX_DEVICE;
-SupportedDeviceType CDeviceBuilder::m_deviceGeneralType = DIRECTX_DEVICE;
-#else
-SupportedDeviceType CDeviceBuilder::m_deviceType = OGL_FRAGMENT_PROGRAM;
-SupportedDeviceType CDeviceBuilder::m_deviceGeneralType = OGL_FRAGMENT_PROGRAM;
-#endif
-
-CDeviceBuilder* CDeviceBuilder::GetBuilder(void)
-{
-    if( m_pInstance == NULL )
-        CreateBuilder(m_deviceType);
-    
-    return m_pInstance;
-}
-
-void CDeviceBuilder::SelectDeviceType(SupportedDeviceType type)
-{
-    if( type != m_deviceType && m_pInstance != NULL )
-    {
-        DeleteBuilder();
-    }
-
-    CDeviceBuilder::m_deviceType = type;
-
-#ifndef __LIBRETRO__
-    switch(type)
-    {
-    case OGL_DEVICE:
-    case OGL_1_1_DEVICE:
-    case OGL_1_2_DEVICE:
-    case OGL_1_3_DEVICE:
-    case OGL_1_4_DEVICE:
-    case OGL_1_4_V2_DEVICE:
-    case OGL_TNT2_DEVICE:
-    case NVIDIA_OGL_DEVICE:
-    case OGL_FRAGMENT_PROGRAM:
-        CDeviceBuilder::m_deviceGeneralType = OGL_DEVICE;
-        break;
-     default:
-       break;
-    }
-#else
-    CDeviceBuilder::m_deviceGeneralType = OGL_DEVICE;
-#endif
-}
-
-SupportedDeviceType CDeviceBuilder::GetDeviceType(void)
-{
-    return CDeviceBuilder::m_deviceType;
-}
-
-SupportedDeviceType CDeviceBuilder::GetGeneralDeviceType(void)
-{
-    return CDeviceBuilder::m_deviceGeneralType;
-}
-
-CDeviceBuilder* CDeviceBuilder::CreateBuilder(SupportedDeviceType type)
-{
-    if( m_pInstance == NULL )
-    {
-#ifndef __LIBRETRO__
-        switch( type )
-        {
-        case    OGL_DEVICE:
-        case    OGL_1_1_DEVICE:
-        case    OGL_1_2_DEVICE:
-        case    OGL_1_3_DEVICE:
-        case    OGL_1_4_DEVICE:
-        case    OGL_1_4_V2_DEVICE:
-        case    OGL_TNT2_DEVICE:
-        case    NVIDIA_OGL_DEVICE:
-        case OGL_FRAGMENT_PROGRAM:
-            m_pInstance = new OGLDeviceBuilder();
-            break;
-        default:
-            DebugMessage(M64MSG_ERROR, "CreateBuilder: unknown OGL device type");
-            exit(1);
-        }
-#else
-        m_pInstance = new OGLDeviceBuilder();
-#endif
-
-        SAFE_CHECK(m_pInstance);
-    }
-
-    return m_pInstance;
-}
-
-void CDeviceBuilder::DeleteBuilder(void)
-{
-    delete m_pInstance;
-    m_pInstance = NULL;
-}
 
 CDeviceBuilder::CDeviceBuilder() :
     m_pRender(NULL),
@@ -141,49 +47,23 @@ CDeviceBuilder::~CDeviceBuilder()
     DeleteAlphaBlender();
 }
 
-void CDeviceBuilder::DeleteGraphicsContext(void)
+CDeviceBuilder* CDeviceBuilder::GetBuilder(void)
 {
-    if( m_pGraphicsContext != NULL )
+    if( m_pInstance == NULL )
     {
-        delete m_pGraphicsContext;
-        CGraphicsContext::g_pGraphicsContext = m_pGraphicsContext = NULL;
+        m_pInstance = new CDeviceBuilder();
+        SAFE_CHECK(m_pInstance);
     }
 
-    SAFE_DELETE(g_pFrameBufferManager);
+    return m_pInstance;
 }
 
-void CDeviceBuilder::DeleteRender(void)
+void CDeviceBuilder::DeleteBuilder(void)
 {
-    if( m_pRender != NULL )
-    {
-        delete m_pRender;
-        CRender::g_pRender = m_pRender = NULL;
-        CRender::gRenderReferenceCount = 0;
-    }
+    SAFE_DELETE(m_pInstance);
 }
 
-void CDeviceBuilder::DeleteColorCombiner(void)
-{
-    if( m_pColorCombiner != NULL )
-    {
-        delete m_pColorCombiner;
-        m_pColorCombiner = NULL;
-    }
-}
-
-void CDeviceBuilder::DeleteAlphaBlender(void)
-{
-    if( m_pAlphaBlender != NULL )
-    {
-        delete m_pAlphaBlender;
-        m_pAlphaBlender = NULL;
-    }
-}
-
-
-//========================================================================
-
-CGraphicsContext * OGLDeviceBuilder::CreateGraphicsContext(void)
+CGraphicsContext * CDeviceBuilder::CreateGraphicsContext(void)
 {
     if( m_pGraphicsContext == NULL )
     {
@@ -196,7 +76,18 @@ CGraphicsContext * OGLDeviceBuilder::CreateGraphicsContext(void)
     return m_pGraphicsContext;
 }
 
-CRender * OGLDeviceBuilder::CreateRender(void)
+void CDeviceBuilder::DeleteGraphicsContext(void)
+{
+    if( m_pGraphicsContext != NULL )
+    {
+        delete m_pGraphicsContext;
+        CGraphicsContext::g_pGraphicsContext = m_pGraphicsContext = NULL;
+    }
+
+    SAFE_DELETE(g_pFrameBufferManager);
+}
+
+CRender * CDeviceBuilder::CreateRender(void)
 {
     if( m_pRender == NULL )
     {
@@ -226,7 +117,59 @@ CRender * OGLDeviceBuilder::CreateRender(void)
     return m_pRender;
 }
 
-CTexture * OGLDeviceBuilder::CreateTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage)
+void CDeviceBuilder::DeleteRender(void)
+{
+    if( m_pRender != NULL )
+    {
+        delete m_pRender;
+        CRender::g_pRender = m_pRender = NULL;
+        CRender::gRenderReferenceCount = 0;
+    }
+}
+
+CColorCombiner * CDeviceBuilder::CreateColorCombiner(CRender *pRender)
+{
+    if( m_pColorCombiner == NULL )
+    {
+        if( CGraphicsContext::g_pGraphicsContext == NULL && CGraphicsContext::g_pGraphicsContext->Ready() )
+        {
+            DebugMessage(M64MSG_ERROR, "Can not create ColorCombiner before creating and initializing GraphicsContext");
+        }
+        else
+        {
+            m_pColorCombiner = new COGL_FragmentProgramCombiner(pRender);
+            DebugMessage(M64MSG_VERBOSE, "OpenGL Combiner: Fragment Program");
+        }
+
+        SAFE_CHECK(m_pColorCombiner);
+    }
+
+    return m_pColorCombiner;
+}
+
+void CDeviceBuilder::DeleteColorCombiner(void)
+{
+    SAFE_DELETE(m_pColorCombiner);
+}
+
+CBlender * CDeviceBuilder::CreateAlphaBlender(CRender *pRender)
+{
+    if( m_pAlphaBlender == NULL )
+    {
+        m_pAlphaBlender = new COGLBlender(pRender);
+        SAFE_CHECK(m_pAlphaBlender);
+    }
+
+    return m_pAlphaBlender;
+}
+
+void CDeviceBuilder::DeleteAlphaBlender(void)
+{
+    SAFE_DELETE(m_pAlphaBlender);
+}
+
+
+CTexture * CDeviceBuilder::CreateTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage)
 {
     COGLTexture *txtr = new COGLTexture(dwWidth, dwHeight, usage);
     if( txtr->m_pTexture == NULL )
@@ -238,36 +181,3 @@ CTexture * OGLDeviceBuilder::CreateTexture(uint32 dwWidth, uint32 dwHeight, Text
     else
         return txtr;
 }
-
-CColorCombiner * OGLDeviceBuilder::CreateColorCombiner(CRender *pRender)
-{
-    if( m_pColorCombiner == NULL )
-    {
-        if( CGraphicsContext::g_pGraphicsContext == NULL && CGraphicsContext::g_pGraphicsContext->Ready() )
-        {
-            DebugMessage(M64MSG_ERROR, "Can not create ColorCombiner before creating and initializing GraphicsContext");
-        }
-        else
-        {
-            m_deviceType = (SupportedDeviceType)options.OpenglRenderSetting;
-            m_pColorCombiner = new COGL_FragmentProgramCombiner(pRender);
-            DebugMessage(M64MSG_VERBOSE, "OpenGL Combiner: Fragment Program");
-        }
-
-        SAFE_CHECK(m_pColorCombiner);
-    }
-
-    return m_pColorCombiner;
-}
-
-CBlender * OGLDeviceBuilder::CreateAlphaBlender(CRender *pRender)
-{
-    if( m_pAlphaBlender == NULL )
-    {
-        m_pAlphaBlender = new COGLBlender(pRender);
-        SAFE_CHECK(m_pAlphaBlender);
-    }
-
-    return m_pAlphaBlender;
-}
-

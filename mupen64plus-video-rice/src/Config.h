@@ -24,25 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "typedefs.h"
 
-typedef enum
-{
-    OGL_DEVICE,
-#ifndef __LIBRETRO__
-    OGL_1_1_DEVICE,
-    OGL_1_2_DEVICE,
-    OGL_1_3_DEVICE,
-    OGL_1_4_DEVICE,
-    OGL_1_4_V2_DEVICE,
-    OGL_TNT2_DEVICE,
-    NVIDIA_OGL_DEVICE,
-    OGL_FRAGMENT_PROGRAM,
-
-    DIRECTX_DEVICE,
-#else
-    OGL_FRAGMENT_PROGRAM,
-#endif
-} SupportedDeviceType;
-
 enum DirectXCombinerType
 {
     DX_DISABLE_COMBINER,
@@ -56,13 +37,6 @@ enum DirectXCombinerType
     DX_PIXEL_SHADER,
     DX_SEMI_PIXEL_SHADER,
 };
-
-
-typedef struct
-{
-    const char* name;
-    SupportedDeviceType type;
-} RenderEngineSetting;
 
 enum {
     FRM_BUF_NONE,
