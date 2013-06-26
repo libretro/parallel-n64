@@ -24,44 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //static BOOL g_bHiliteRGBAHack = FALSE;
 
 
-#ifdef DEBUGGER
-const char *constStrs[] = {
-    "MUX_0",
-    "MUX_1",
-    "MUX_COMBINED",
-    "MUX_TEXEL0",
-    "MUX_TEXEL1",
-    "MUX_PRIM",
-    "MUX_SHADE",
-    "MUX_ENV",
-    "MUX_COMBALPHA",
-    "MUX_T0_ALPHA",
-    "MUX_T1_ALPHA",
-    "MUX_PRIM_ALPHA",
-    "MUX_SHADE_ALPHA",
-    "MUX_ENV_ALPHA",
-    "MUX_LODFRAC",
-    "MUX_PRIMLODFRAC",
-    "MUX_K5",
-    "MUX_UNK",
-};
-
-const char *cycleTypeStrs[] = {
-    "1 Cycle",
-    "2 Cycle",
-    "Copy Mode",
-    "Fill Mode"
-};
-
-const char* constStr(uint32 op)
-{
-if(op<=MUX_UNK)
-    return constStrs[op];
-else
-   return "Invalid-Const";
-}
-#endif
-
 void swap(uint8 &a, uint8 &b)
 {
     uint8 c=a;
@@ -318,14 +280,6 @@ bool IsTxtrUsed(N64CombinerType &m)
 
 void CColorCombiner::InitCombinerMode(void)
 {
-#ifdef DEBUGGER
-    LOG_UCODE(cycleTypeStrs[gRDP.otherMode.cycle_type]);
-    if( debuggerDropDecodedMux )
-    {
-        UpdateCombiner(m_pDecodedMux->m_dwMux0, m_pDecodedMux->m_dwMux1);
-    }
-#endif
-
     if( currentRomOptions.bNormalCombiner )
     {
         DisableCombiner();
@@ -352,15 +306,6 @@ void CColorCombiner::InitCombinerMode(void)
 bool bConkerHideShadow=false;
 void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
 {
-#ifdef DEBUGGER
-    if( debuggerDropDecodedMux )
-    {
-        debuggerDropDecodedMux = false;
-        m_pDecodedMux->m_dwMux0 = m_pDecodedMux->m_dwMux1 = 0;
-        m_DecodedMuxList.clear();
-    }
-#endif
-
     DecodedMux &m_decodedMux = *m_pDecodedMux;
     if( m_decodedMux.m_dwMux0 != dwMux0 || m_decodedMux.m_dwMux1 != dwMux1 )
     {
@@ -376,26 +321,18 @@ void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
                 dwMux1 = 0xfffcf438;
             }
         }
-        uint64 mux64 = (((uint64)dwMux1)<<32)+dwMux0;
-        int index=m_DecodedMuxList.find(mux64);
 
+        // Conker's shadow, to disable the shadow
+        //Mux=0x00ffe9ff    Used in CONKER BFD
+        //Color0: (0 - 0) * 0 + SHADE
+        //Color1: (0 - 0) * 0 + SHADE
+        //Alpha0: (1 - TEXEL0) * SHADE + 0
+        //Alpha1: (1 - TEXEL0) * SHADE + 0
         if( options.enableHackForGames == HACK_FOR_CONKER )
-        {
-            // Conker's shadow, to disable the shadow
-            //Mux=0x00ffe9ff    Used in CONKER BFD
-            //Color0: (0 - 0) * 0 + SHADE
-            //Color1: (0 - 0) * 0 + SHADE
-            //Alpha0: (1 - TEXEL0) * SHADE + 0
-            //Alpha1: (1 - TEXEL0) * SHADE + 0              
-            if( dwMux1 == 0xffd21f0f && dwMux0 == 0x00ffe9ff )
-            {
-                bConkerHideShadow = true;
-            }
-            else
-            {
-                bConkerHideShadow = false;
-            }
-        }
+            bConkerHideShadow = (dwMux1 == 0xffd21f0f && dwMux0 == 0x00ffe9ff);
+
+        uint64 mux64 = (((uint64)dwMux1)<<32)+dwMux0;
+        int index = m_DecodedMuxList.find(mux64);
 
         if( index >= 0 )
         {
@@ -423,13 +360,6 @@ void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
                 m_decodedMux.SplitComplexStages();
             
             m_DecodedMuxList.add(m_decodedMux.m_u64Mux, *m_pDecodedMux);
-#ifdef DEBUGGER
-            if( logCombiners ) 
-            {
-                TRACE0("Add a new mux");
-                DisplayMuxString();
-            }
-#endif
         }
 
         m_bTex0Enabled = m_decodedMux.m_bTexel0IsUsed;
@@ -440,26 +370,3 @@ void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
         gRSP.bProcessSpecularColor = false;
     }
 }
-
-
-#ifdef DEBUGGER
-void CColorCombiner::DisplayMuxString(void)
-{
-    if( gRDP.otherMode.cycle_type == CYCLE_TYPE_COPY)
-    {
-        TRACE0("COPY Mode\n");
-    }   
-    else if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL)
-    {
-        TRACE0("FILL Mode\n");
-    }
-
-    m_pDecodedMux->DisplayMuxString("Used");
-}
-
-void CColorCombiner::DisplaySimpleMuxString(void)
-{
-    m_pDecodedMux->DisplaySimpliedMuxString("Used");
-}
-#endif
-

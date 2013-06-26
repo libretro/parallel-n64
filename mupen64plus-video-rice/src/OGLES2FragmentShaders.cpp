@@ -156,62 +156,9 @@ const char *fragmentFill =
 
 GLuint fillProgram,fillColorLocation;
 
-COGLFragmentShaderCombiner::COGLFragmentShaderCombiner(CRender *pRender)
-: COGLColorCombiner(pRender)
-{
-    m_bShaderIsSupported = true;
-}
-COGLFragmentShaderCombiner::~COGLFragmentShaderCombiner()
-{
-}
-
-bool COGLFragmentShaderCombiner::Initialize(void)
-{
-    if( !COGLColorCombiner::Initialize() )
-        return false;
-
-    COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext);
-//    if( pcontext->IsExtensionSupported("GL_fragment_shader") )
-//    {
-        m_bShaderIsSupported = true;
-//    }
-
-    return true;
-}
-
-void COGLFragmentShaderCombiner::InitCombinerCycle12(void)
-{
-}
-void COGLFragmentShaderCombiner::DisableCombiner(void)
-{
-    COGLColorCombiner::DisableCombiner();
-}
-
-void COGLFragmentShaderCombiner::InitCombinerCycleCopy(void)
-{
-    COGLColorCombiner::InitCombinerCycleCopy();
-}
-
-void COGLFragmentShaderCombiner::InitCombinerCycleFill(void)
-{
-    COGLColorCombiner::InitCombinerCycleFill();
-}
-void COGLFragmentShaderCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32 tile)
-{
-    COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(tile);
-}
-
-#ifdef DEBUGGER
-void COGLFragmentShaderCombiner::DisplaySimpleMuxString(void)
-{
-    COGLColorCombiner::DisplaySimpleMuxString();
-}
-#endif
-
-
 
 COGL_FragmentProgramCombiner::COGL_FragmentProgramCombiner(CRender *pRender)
-: COGLColorCombiner4(pRender)
+: CColorCombiner(pRender), m_pOGLRender((OGLRender*)pRender), m_lastIndex(-1), m_dwLastMux0(0), m_dwLastMux1(0)
 {
     delete m_pDecodedMux;
     m_pDecodedMux = new DecodedMuxForPixelShader;
@@ -311,25 +258,36 @@ COGL_FragmentProgramCombiner::~COGL_FragmentProgramCombiner()
 
 bool COGL_FragmentProgramCombiner::Initialize(void)
 {
-    if( !COGLColorCombiner4::Initialize() )
-        return false;
-
-    COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext);
-//    if( pcontext->IsExtensionSupported("GL_fragment_program") )
-//    {
-        m_bFragmentProgramIsSupported = true;
-//    }
-
+    m_bFragmentProgramIsSupported = true;
     return true;
 }
 
-
-
 void COGL_FragmentProgramCombiner::DisableCombiner(void)
 {
-    //glDisable(GL_FRAGMENT_PROGRAM);
-    //OPENGL_CHECK_ERRORS;
-    COGLColorCombiner4::DisableCombiner();
+    m_pOGLRender->DisableMultiTexture();
+    glEnable(GL_BLEND);
+    OPENGL_CHECK_ERRORS;
+    glBlendFunc(GL_ONE, GL_ZERO);
+    OPENGL_CHECK_ERRORS;
+    
+    if( m_bTexelsEnable )
+    {
+        CTexture* pTexture = g_textures[gRSP.curTile].m_pCTexture;
+        if( pTexture ) 
+        {
+            m_pOGLRender->EnableTexUnit(0,TRUE);
+            m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
+            glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+            OPENGL_CHECK_ERRORS;
+            m_pOGLRender->SetAllTexelRepeatFlag();
+        }
+    }
+    else
+    {
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+        OPENGL_CHECK_ERRORS;
+        m_pOGLRender->EnableTexUnit(0,FALSE);
+    }
 }
 
 void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
@@ -362,29 +320,6 @@ void COGL_FragmentProgramCombiner::InitCombinerCycleFill(void)
     OPENGL_CHECK_ERRORS;
 }
 
-#ifdef BGR_SHADER
-const char *muxToFP_Maps[][2] = {
-//color -- alpha
-{"vec3(0.0)", "0.0"},                      //MUX_0 = 0,
-{"vec3(1.0)", "1.0"},                      //MUX_1,
-{"comb.rgb", "comb.a"},                    //MUX_COMBINED,
-{"t0.rgb", "t0.a"},                        //MUX_TEXEL0,
-{"t1.rgb", "t1.a"},                        //MUX_TEXEL1,
-{"PrimColor.rgb", "PrimColor.a"},          //MUX_PRIM,
-{"vShadeColor.rgb", "vShadeColor.a"},      //MUX_SHADE,
-{"EnvColor.rgb", "EnvColor.a"},            //MUX_ENV,
-{"comb.rgb", "comb.a"},                    //MUX_COMBALPHA,
-{"t0.rgb", "t0.a"},                        //MUX_T0_ALPHA,
-{"t1.rgb", "t1.a"},                        //MUX_T1_ALPHA,
-{"PrimColor.rgb", "PrimColor.a"},          //MUX_PRIM_ALPHA,
-{"vShadeColor.rgb", "vShadeColor.a"},      //MUX_SHADE_ALPHA,
-{"EnvColor.rgb", "EnvColor.a"},            //MUX_ENV_ALPHA,
-{"EnvFrac.a", "EnvFrac.a"},                //MUX_LODFRAC,
-{"PrimFrac.a", "PrimFrac.a"},              //MUX_PRIMLODFRAC,
-{"vec3(1.0)", "1.0"},                      //MUX_K5,
-{"vec3(1.0)", "1.0"},                      //MUX_UNK,  // Should not be used
-};
-#else
 const char *muxToFP_Maps[][2] = {
 //color -- alpha
 {"vec3(0.0)", "0.0"}, //MUX_0 = 0,
@@ -406,7 +341,6 @@ const char *muxToFP_Maps[][2] = {
 {"vec3(1.0)", "1.0"}, //MUX_K5,
 {"vec3(1.0)", "1.0"}, //MUX_UNK,  // Should not be used
 };
-#endif
 
 
 char oglNewFP[4092];
@@ -520,9 +454,6 @@ void COGL_FragmentProgramCombiner::GenerateProgramStr()
 
 int COGL_FragmentProgramCombiner::ParseDecodedMux()
 {
-    if( !m_bFragmentProgramIsSupported )
-        return COGLColorCombiner4::ParseDecodedMux();
-
     OGLShaderCombinerSaveType res;
     GLint success;
 
@@ -739,14 +670,6 @@ void COGL_FragmentProgramCombiner::UpdateFog(bool bEnable)
 
 int COGL_FragmentProgramCombiner::FindCompiledMux()
 {
-#ifdef DEBUGGER
-    if( debuggerDropCombiners )
-    {
-        m_vCompiledShaders.clear();
-        //m_dwLastMux0 = m_dwLastMux1 = 0;
-        debuggerDropCombiners = false;
-    }
-#endif
     for( uint32 i=0; i<m_vCompiledShaders.size(); i++ )
     {
         if( m_vCompiledShaders[i].dwMux0 == m_pDecodedMux->m_dwMux0 
@@ -764,22 +687,6 @@ int COGL_FragmentProgramCombiner::FindCompiledMux()
 //////////////////////////////////////////////////////////////////////////
 void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
 {
-    if( !m_bFragmentProgramIsSupported )    
-    {
-        COGLColorCombiner4::InitCombinerCycle12();
-        return;
-    }
-
-#ifdef DEBUGGER
-    if( debuggerDropCombiners )
-    {
-        UpdateCombiner(m_pDecodedMux->m_dwMux0,m_pDecodedMux->m_dwMux1);
-        m_vCompiledShaders.clear();
-        m_dwLastMux0 = m_dwLastMux1 = 0;
-        debuggerDropCombiners = false;
-    }
-#endif
-
     m_pOGLRender->EnableMultiTexture();
 
     bool combinerIsChanged = false;
@@ -822,22 +729,27 @@ void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
     }
 }
 
-#ifdef DEBUGGER
-void COGL_FragmentProgramCombiner::DisplaySimpleMuxString(void)
+void COGL_FragmentProgramCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32 tile)
 {
-    COGLColorCombiner::DisplaySimpleMuxString();
-    DecodedMuxForPixelShader &mux = *(DecodedMuxForPixelShader*)m_pDecodedMux;
-    mux.Reformat(false);
-    GenerateProgramStr();
-    //sprintf(oglNewFP, oglFP, 
-    //  MuxToOC(mux.aRGB0), MuxToOC(mux.bRGB0), MuxToOC(mux.cRGB0), MuxToOC(mux.dRGB0),
-    //  MuxToOA(mux.aA0), MuxToOA(mux.bA0), MuxToOA(mux.cA0), MuxToOA(mux.dA0),
-    //  MuxToOC(mux.aRGB1), MuxToOC(mux.bRGB1), MuxToOC(mux.cRGB1), MuxToOC(mux.dRGB1),
-    //  MuxToOA(mux.aA1), MuxToOA(mux.bA1), MuxToOA(mux.cA1), MuxToOA(mux.dA1)
-    //  );
+    m_pOGLRender->DisableMultiTexture();
+    if( g_textures[tile].m_pCTexture )
+    {
+        m_pOGLRender->EnableTexUnit(0,TRUE);
+        glBindTexture(GL_TEXTURE_2D, ((CTexture*)(g_textures[tile].m_pCTexture))->m_dwTextureName);
+        OPENGL_CHECK_ERRORS;
+    }
+    m_pOGLRender->SetAllTexelRepeatFlag();
 
-    TRACE0("OGL Fragment Program:");
-    TRACE0(oglNewFP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    OPENGL_CHECK_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    OPENGL_CHECK_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR); // Linear Filtering
+    OPENGL_CHECK_ERRORS;
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR); // Linear Filtering
+    OPENGL_CHECK_ERRORS;
+
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    OPENGL_CHECK_ERRORS;
+    m_pOGLRender->SetAlphaTestEnable(FALSE);
 }
-#endif
-

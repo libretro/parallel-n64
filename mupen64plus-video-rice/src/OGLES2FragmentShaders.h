@@ -23,8 +23,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "osal_opengl.h"
 
-#include "OGLCombiner.h"
-#include "OGLExtCombiner.h"
+#include "Blender.h"
+#include "Combiner.h"
+#include "OGLRender.h"
 
 typedef struct {
     uint32  dwMux0;
@@ -47,7 +48,7 @@ typedef struct {
 } OGLShaderCombinerSaveType;
 
 
-class COGL_FragmentProgramCombiner : public COGLColorCombiner4
+class COGL_FragmentProgramCombiner : public CColorCombiner
 {
 public:
     bool Initialize(void);
@@ -61,6 +62,7 @@ protected:
     void InitCombinerCycleCopy(void);
     void InitCombinerCycleFill(void);
     void InitCombinerCycle12(void);
+    void InitCombinerBlenderForSimpleTextureDraw(uint32 tile);
 
     COGL_FragmentProgramCombiner(CRender *pRender);
     ~COGL_FragmentProgramCombiner();
@@ -75,38 +77,12 @@ private:
     virtual void GenerateCombinerSetting(int index);
     virtual void GenerateCombinerSettingConstants(int index);
 
-#ifdef DEBUGGER
-    void DisplaySimpleMuxString(void);
-#endif
-
+private:
+    OGLRender* m_pOGLRender;
+    int m_lastIndex;
+    uint32 m_dwLastMux0;
+    uint32 m_dwLastMux1;
 };
-
-
-
-class COGLFragmentShaderCombiner : public COGLColorCombiner
-{
-public:
-    bool Initialize(void);
-    void InitCombinerBlenderForSimpleTextureDraw(uint32 tile=0);
-protected:
-    friend class CDeviceBuilder;
-
-    void DisableCombiner(void);
-    void InitCombinerCycleCopy(void);
-    void InitCombinerCycleFill(void);
-    void InitCombinerCycle12(void);
-
-    COGLFragmentShaderCombiner(CRender *pRender);
-    ~COGLFragmentShaderCombiner();
-
-    bool m_bShaderIsSupported;
-
-#ifdef DEBUGGER
-    void DisplaySimpleMuxString(void);
-#endif
-
-};
-
 
 #endif
 
