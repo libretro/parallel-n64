@@ -85,11 +85,6 @@ bool OGLRender::ClearDeviceObjects()
 
 void OGLRender::Initialize(void)
 {
-    glMatrixMode(GL_MODELVIEW);
-    OPENGL_CHECK_ERRORS;
-    glLoadIdentity();
-    OPENGL_CHECK_ERRORS;
-
     glViewportWrapper(0, 0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
     OPENGL_CHECK_ERRORS;
 
@@ -736,19 +731,6 @@ void OGLRender::SetViewportRender()
 void OGLRender::RenderReset()
 {
     CRender::RenderReset();
-
-    glMatrixMode(GL_PROJECTION);
-    OPENGL_CHECK_ERRORS;
-    glLoadIdentity();
-    OPENGL_CHECK_ERRORS;
-    glOrtho(0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, 0, -1, 1);
-    OPENGL_CHECK_ERRORS;
-
-    // position viewer 
-    glMatrixMode(GL_MODELVIEW);
-    OPENGL_CHECK_ERRORS;
-    glLoadIdentity();
-    OPENGL_CHECK_ERRORS;
 }
 
 void OGLRender::SetAlphaTestEnable(BOOL bAlphaTestEnable)
@@ -818,16 +800,6 @@ void OGLRender::EnableTexUnit(int unitno, BOOL flag)
         }
         OPENGL_CHECK_ERRORS;
     }
-}
-
-void OGLRender::TexCoord2f(float u, float v)
-{
-    glTexCoord2f(u, v);
-}
-
-void OGLRender::TexCoord(TLITVERTEX &vtxInfo)
-{
-    glTexCoord2f(vtxInfo.tcord[0].u, vtxInfo.tcord[0].v);
 }
 
 // __LIBRETRO__: Flip the scissor rect
@@ -963,12 +935,6 @@ void OGLRender::glViewportWrapper(GLint x, GLint y, GLsizei width, GLsizei heigh
         m_width=width;
         m_height=height;
         mflag=flag;
-        glMatrixMode(GL_PROJECTION);
-        OPENGL_CHECK_ERRORS;
-        glLoadIdentity();
-        OPENGL_CHECK_ERRORS;
-        if( flag )  glOrtho(0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, 0, -1, 1);
-        OPENGL_CHECK_ERRORS;
         glViewport(x,y,width,height);
         OPENGL_CHECK_ERRORS;
     }

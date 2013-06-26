@@ -74,10 +74,6 @@ void COGLGraphicsContext::InitState(void)
     m_pExtensionStr = glGetString(GL_EXTENSIONS);
     m_pVersionStr = glGetString(GL_VERSION);
     m_pVendorStr = glGetString(GL_VENDOR);
-    glMatrixMode(GL_PROJECTION);
-    OPENGL_CHECK_ERRORS;
-    glLoadIdentity();
-    OPENGL_CHECK_ERRORS;
 
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     OPENGL_CHECK_ERRORS;

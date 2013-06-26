@@ -192,13 +192,6 @@ public:
     virtual void Initialize(void);
     virtual void CleanUp(void);
 
-#ifdef DEBUGGER
-    virtual bool DrawTexture(int tex, TextureChannel channel = TXT_RGB );
-    virtual void SaveTextureToFile(int tex, TextureChannel channel = TXT_RGB,  bool bShow = false);
-#endif
-
-    virtual void SaveTextureToFile(CTexture &texture, char *filename, TextureChannel channel = TXT_RGB,  bool bShow = false, bool bWholeTexture = true, int width = -1, int height = -1);
-
     void LoadSprite2D(Sprite2DInfo &info, uint32 ucode);
     void LoadObjBGCopy(uObjBg &info);
     void LoadObjBG1CYC(uObjScaleBg &info);
@@ -256,9 +249,6 @@ protected:
 };
 
 #define ffloor(a) (((int(a))<=(a))?(float)(int(a)):((float)(int(a))-1))
-
-bool SaveRGBBufferToFile(char *filename, unsigned char *buf, int width, int height, int pitch = -1);
-bool SaveRGBABufferToPNGFile(char *filename, unsigned char *buf, int width, int height, int pitch = -1);
 
 #endif  //_RICE_RENDER_H
 

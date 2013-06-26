@@ -275,15 +275,11 @@ void COGL_FragmentProgramCombiner::DisableCombiner(void)
         {
             m_pOGLRender->EnableTexUnit(0,TRUE);
             m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
-            glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-            OPENGL_CHECK_ERRORS;
             m_pOGLRender->SetAllTexelRepeatFlag();
         }
     }
     else
     {
-        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-        OPENGL_CHECK_ERRORS;
         m_pOGLRender->EnableTexUnit(0,FALSE);
     }
 }
@@ -745,7 +741,5 @@ void COGL_FragmentProgramCombiner::InitCombinerBlenderForSimpleTextureDraw(uint3
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR); // Linear Filtering
     OPENGL_CHECK_ERRORS;
 
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-    OPENGL_CHECK_ERRORS;
     m_pOGLRender->SetAlphaTestEnable(FALSE);
 }

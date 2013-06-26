@@ -61,19 +61,9 @@
 #define VS_TEXCOORD0                        2
 #define VS_TEXCOORD1                        3
 
-
 // Function substitutions
 //#define glClearDepth                        glClearDepthf
 //#define pglActiveTexture                    glActiveTexture
 //#define pglActiveTextureARB                 glActiveTexture
-
-// No-op substitutions (unavailable in GLES2)
-#define glLoadIdentity()
-#define glMatrixMode(x)
-#define glOrtho(a,b,c,d,e,f)
-#define glReadBuffer(x)
-#define glTexEnvi(x,y,z)
-#define glTexEnvfv(x,y,z)
-#define glTexCoord2f(u,v)
 
 #endif // OSAL_OPENGL_H
