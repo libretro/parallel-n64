@@ -29,7 +29,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "m64p_types.h"
 #include "m64p_common.h"
 #include "m64p_plugin.h"
-#include "osal_dynamiclib.h"
 #include "m64p_vidext.h"
 
 #include "Config.h"
@@ -39,7 +38,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "GraphicsContext.h"
 #include "Render.h"
 #include "RSP_Parser.h"
-#include "TextureFilters.h"
 #include "TextureManager.h"
 #include "Video.h"
 #include "version.h"
@@ -114,9 +112,7 @@ static bool StartVideo(void)
     if( status.dwTvSystem == TV_SYSTEM_NTSC )
         status.fRatio = 0.75f;
     else
-        status.fRatio = 9/11.0f;;
-    
-    InitExternalTextures();
+        status.fRatio = 9/11.0f;
 
     try {
         CDeviceBuilder::GetBuilder()->CreateGraphicsContext();
@@ -149,8 +145,6 @@ static void StopVideo()
     status.bGameIsRunning = false;
 
     try {
-        CloseExternalTextures();
-
         // Kill all textures?
         gTextureManager.RecycleAllTextures();
         gTextureManager.CleanUp();
@@ -359,29 +353,6 @@ EXPORT m64p_error CALL videoPluginStartup(m64p_dynlib_handle CoreLibHandle, void
     /* first thing is to set the callback function for debug info */
     l_DebugCallback = DebugCallback;
     l_DebugCallContext = Context;
-
-    /* attach and call the CoreGetAPIVersions function, check Config and Video Extension API versions for compatibility */
-    ptr_CoreGetAPIVersions CoreAPIVersionFunc;
-    CoreAPIVersionFunc = (ptr_CoreGetAPIVersions) osal_dynlib_getproc(CoreLibHandle, "CoreGetAPIVersions");
-    if (CoreAPIVersionFunc == NULL)
-    {
-        DebugMessage(M64MSG_ERROR, "Core emulator broken; no CoreAPIVersionFunc() function found.");
-        return M64ERR_INCOMPATIBLE;
-    }
-    int ConfigAPIVersion, DebugAPIVersion, VidextAPIVersion;
-    (*CoreAPIVersionFunc)(&ConfigAPIVersion, &DebugAPIVersion, &VidextAPIVersion, NULL);
-    if ((ConfigAPIVersion & 0xffff0000) != (CONFIG_API_VERSION & 0xffff0000))
-    {
-        DebugMessage(M64MSG_ERROR, "Emulator core Config API (v%i.%i.%i) incompatible with plugin (v%i.%i.%i)",
-                VERSION_PRINTF_SPLIT(ConfigAPIVersion), VERSION_PRINTF_SPLIT(CONFIG_API_VERSION));
-        return M64ERR_INCOMPATIBLE;
-    }
-    if ((VidextAPIVersion & 0xffff0000) != (VIDEXT_API_VERSION & 0xffff0000))
-    {
-        DebugMessage(M64MSG_ERROR, "Emulator core Video Extension API (v%i.%i.%i) incompatible with plugin (v%i.%i.%i)",
-                VERSION_PRINTF_SPLIT(VidextAPIVersion), VERSION_PRINTF_SPLIT(VIDEXT_API_VERSION));
-        return M64ERR_INCOMPATIBLE;
-    }
 
     /* open config section handles and set parameter default values */
     if (!InitConfiguration())

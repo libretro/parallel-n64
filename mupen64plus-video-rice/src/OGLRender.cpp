@@ -268,10 +268,6 @@ void OGLRender::ForceAlphaRef(uint32 dwAlpha)
     m_dwAlpha = dwAlpha;
 }
 
-void OGLRender::SetFillMode(FillMode mode)
-{
-}
-
 void OGLRender::SetCullMode(bool bCullFront, bool bCullBack)
 {
     CRender::SetCullMode(bCullFront, bCullBack);

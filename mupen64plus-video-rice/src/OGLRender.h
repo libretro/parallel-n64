@@ -50,7 +50,6 @@ public:
     void ApplyZBias(int bias);
     void SetAlphaRef(uint32 dwAlpha);
     void ForceAlphaRef(uint32 dwAlpha);
-    void SetFillMode(FillMode mode);
     void SetViewportRender();
     void RenderReset();
     void SetCullMode(bool bCullFront, bool bCullBack);

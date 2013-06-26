@@ -193,8 +193,6 @@ public:
     virtual bool ClearDeviceObjects()=0;
     virtual void Initialize(void);
     virtual void CleanUp(void);
-    
-    virtual void SetFillMode(FillMode mode)=0;
 
 #ifdef DEBUGGER
     virtual bool DrawTexture(int tex, TextureChannel channel = TXT_RGB );

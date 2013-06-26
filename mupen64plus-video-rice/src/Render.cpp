@@ -26,8 +26,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "FrameBuffer.h"
 #include "Render.h"
 
-#include "liblinux/BMGLibPNG.h"
-
 #include <algorithm>
 
 extern FiddledVtx * g_pVtxBase;
@@ -358,8 +356,6 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
   }
 
 
-    SetFillMode(RICE_FILLMODE_SOLID);
-
     bool res=true;
 
     /*
@@ -403,8 +399,6 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
             ZBufferEnable(gRSP.bZBufferEnabled);
         }
     }
-
-    if( options.bWinFrameMode ) SetFillMode(RICE_FILLMODE_WINFRAME );
 
     DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", nX0, nY0, nX1, nY1, dwColor);
             DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", dwColor);if( logCombiners ) m_pColorCombiner->DisplayMuxString();});
@@ -1606,11 +1600,10 @@ void CRender::SaveTextureToFile(int tex, TextureChannel channel, bool bShow)
         TRACE0("Can't dump null texture");
         return;
     }
-    CTexture *pEnhancedTexture = entry.pEnhancedTexture ? entry.pEnhancedTexture : entry.pTexture;
 
     bool bInWhole = false;
     if( entry.ti.HeightToCreate == entry.ti.HeightToLoad && entry.ti.WidthToCreate == entry.ti.WidthToLoad 
-        && pEnhancedTexture == pBaseTexture )
+        && entry.pTexture == pBaseTexture )
         bInWhole = true;
 
     char filename[256];
@@ -1638,7 +1631,7 @@ void CRender::SaveTextureToFile(int tex, TextureChannel channel, bool bShow)
             sprintf(filename, "\\%s#%08X#%d#%d_ci_%s_debugger", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
                 g_textures[tex].pTextureEntry->ti.Format, 
                 g_textures[tex].pTextureEntry->ti.Size, channel == TXT_ALPHA ? "a" : channel == TXT_RGBA ? "all" : "rgb");
-            SaveTextureToFile(*pEnhancedTexture, filename, channel, true, true);
+            SaveTextureToFile(*entry.pTexture, filename, channel, true, true);
             DebuggerAppendMsg("Whole texture is stored at: %s", filename);
         }
     }
@@ -1655,7 +1648,7 @@ void CRender::SaveTextureToFile(int tex, TextureChannel channel, bool bShow)
             sprintf(filename, "\\%s#%08X#%d#%d_%s_debugger", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
                 g_textures[tex].pTextureEntry->ti.Format, 
                 g_textures[tex].pTextureEntry->ti.Size, channel == TXT_ALPHA ? "a" : channel == TXT_RGBA ? "all" : "rgb");
-            SaveTextureToFile(*pEnhancedTexture, filename, channel, true, true);
+            SaveTextureToFile(*entry.pTexture, filename, channel, true, true);
             DebuggerAppendMsg("Whole texture is stored at: %s", filename);
         }
     }

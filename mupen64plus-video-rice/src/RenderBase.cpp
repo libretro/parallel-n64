@@ -910,10 +910,6 @@ void InitVertex(uint32 dwV, uint32 vtxIndex, bool bTexture, bool openGL)
     {
         v.dcDiffuse = CRender::g_pRender->PostProcessDiffuseColor(v.dcDiffuse);
     }
-    if( options.bWinFrameMode )
-    {
-        v.dcDiffuse = g_dwVtxDifColor[dwV];
-    }
 
     if( openGL )
     {
@@ -1380,11 +1376,6 @@ void ProcessVertexDataSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
             }
         }
 
-        if( options.bWinFrameMode )
-        {
-            g_dwVtxDifColor[i] = COLOR_RGBA(vert.rgba.r, vert.rgba.g, vert.rgba.b, vert.rgba.a);
-        }
-
         // Update texture coords n.b. need to divide tu/tv by bogus scale on addition to buffer
 
         // If the vert is already lit, then there is no normal (and hence we
@@ -1494,11 +1485,6 @@ void ProcessVertexDataNoSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
                 color.r = vert.rgba.b;
                 color.a = vert.rgba.a;
             }
-        }
-
-        if( options.bWinFrameMode )
-        {
-            g_dwVtxDifColor[i] = COLOR_RGBA(vert.rgba.r, vert.rgba.g, vert.rgba.b, vert.rgba.a);
         }
 
         ReplaceAlphaWithFogFactor(i);
@@ -1929,11 +1915,6 @@ void ProcessVertexDataPD(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
             }
         }
 
-        if( options.bWinFrameMode )
-        {
-            g_dwVtxDifColor[i] = COLOR_RGBA(r, g, b, a);
-        }
-
         ReplaceAlphaWithFogFactor(i);
 
         VECTOR2 & t = g_fVtxTxtCoords[i];
@@ -2053,12 +2034,6 @@ void ProcessVertexDataConker(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
             {
                 g_dwVtxDifColor[i] = COLOR_RGBA(vert.rgba.r, vert.rgba.g, vert.rgba.b, vert.rgba.a);
             }
-        }
-
-        if( options.bWinFrameMode )
-        {
-            //g_vecProjected[i].z = 0;
-            g_dwVtxDifColor[i] = COLOR_RGBA(vert.rgba.r, vert.rgba.g, vert.rgba.b, vert.rgba.a);
         }
 
         ReplaceAlphaWithFogFactor(i);
@@ -2188,11 +2163,6 @@ void ProcessVertexData_Rogue_Squadron(uint32 dwXYZAddr, uint32 dwColorAddr, uint
             {
                 g_dwVtxDifColor[i] = COLOR_RGBA(vertcolors.r, vertcolors.g, vertcolors.b, vertcolors.a);
             }
-        }
-
-        if( options.bWinFrameMode )
-        {
-            g_dwVtxDifColor[i] = COLOR_RGBA(vertcolors.r, vertcolors.g, vertcolors.b, vertcolors.a);
         }
 
         ReplaceAlphaWithFogFactor(i);

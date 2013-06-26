@@ -782,7 +782,6 @@ extern bool bHalfTxtScale;
 
 void DLParser_Process(OSTask * pTask)
 {
-    static int skipframe=0;
     //BOOL menuWaiting = FALSE;
 
     dlistMtxCount = 0;
@@ -796,16 +795,6 @@ void DLParser_Process(OSTask * pTask)
     }
 
     status.bScreenIsDrawn = true;
-    if( options.bSkipFrame )
-    {
-        skipframe++;
-        if(skipframe%2)
-        {
-            TriggerDPInterrupt();
-            TriggerSPInterrupt();
-            return;
-        }
-    }
 
     if( currentRomOptions.N64RenderToTextureEmuType != TXT_BUF_NONE && defaultRomOptions.bSaveVRAM )
     {
@@ -858,7 +847,6 @@ void DLParser_Process(OSTask * pTask)
     CRender::g_pRender->RenderReset();
     CRender::g_pRender->BeginRendering();
     CRender::g_pRender->SetViewport(0, 0, windowSetting.uViWidth, windowSetting.uViHeight, 0x3FF);
-    CRender::g_pRender->SetFillMode(options.bWinFrameMode? RICE_FILLMODE_WINFRAME : RICE_FILLMODE_SOLID);
 
     try
     {
@@ -870,7 +858,6 @@ void DLParser_Process(OSTask * pTask)
             if( debuggerPause )
             {
                 DebuggerPause();
-                CRender::g_pRender->SetFillMode(options.bWinFrameMode? RICE_FILLMODE_WINFRAME : RICE_FILLMODE_SOLID);
             }
 
             if (gDlistStack[gDlistStackPointer].pc > g_dwRamSize)
@@ -1647,7 +1634,6 @@ void RDP_DLParser_Process(void)
     }
     
     // Lock the graphics context here.
-    CRender::g_pRender->SetFillMode(RICE_FILLMODE_SOLID);
 
     SetVIScales();
 

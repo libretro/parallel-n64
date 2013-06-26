@@ -206,29 +206,18 @@ enum {
 
 typedef struct {
     BOOL    bEnableHacks;
-    BOOL    bWinFrameMode;
     BOOL    bOGLVertexClipper;
     BOOL    bEnableSSE;
     BOOL    bEnableVertexShader;
-    BOOL    bSkipFrame;
     BOOL    bFullTMEM;
     BOOL    bUseFullTMEM;
-
-    BOOL    bShowFPS;
 
     uint32  mipmapping;
     uint32  fogMethod;
     uint32  forceTextureFilter;
-    uint32  textureEnhancement;
-    uint32  textureEnhancementControl;
     uint32  textureQuality;
     uint32  anisotropicFiltering;
     uint32  multiSampling;
-    BOOL    bTexRectOnly;
-    BOOL    bSmallTextureOnly;
-    BOOL    bDumpTexturesToFiles;
-    BOOL    bLoadHiResTextures;
-    BOOL    bLoadHiResCRCOnly;
 
     int     OpenglDepthBufferSetting;
     int     OpenglRenderSetting;

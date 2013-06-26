@@ -33,12 +33,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define RICE_MATRIX_STACK   60
 #define MAX_TEXTURES         8
 
-enum FillMode
-{
-    RICE_FILLMODE_WINFRAME,
-    RICE_FILLMODE_SOLID,
-};
-
 enum { MAX_VERTS = 80 };        // F3DLP.Rej supports up to 80 verts!
 
 void myVec3Transform(float *vecout, float *vecin, float* m);

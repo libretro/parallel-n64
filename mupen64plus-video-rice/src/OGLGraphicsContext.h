@@ -36,11 +36,9 @@ public:
     void UpdateFrame(bool swaponly=false);
 
     bool IsExtensionSupported(const char* pExtName);
-    bool IsWglExtensionSupported(const char* pExtName);
     static void InitDeviceParameters();
 
     //Get methods (TODO, remove all friend class and use get methods instead)
-    bool IsSupportAnisotropicFiltering();
     int  getMaxAnisotropicFiltering();
 
 protected:
@@ -51,29 +49,10 @@ protected:
 
     // Important OGL extension features
     bool    m_bSupportMultiTexture;
-    bool    m_bSupportTextureEnvCombine;
-    bool    m_bSupportSeparateSpecularColor;
-    bool    m_bSupportSecondColor;
     bool    m_bSupportFogCoord;
-    bool    m_bSupportTextureObject;
 
     // Optional OGL extension features;
-    bool    m_bSupportRescaleNormal;
-    bool    m_bSupportLODBias;
-    bool    m_bSupportAnisotropicFiltering;
     int     m_maxAnisotropicFiltering;
-
-    // Nvidia OGL only features
-    bool    m_bSupportTextureMirrorRepeat;
-    bool    m_bSupportTextureLOD;
-    bool    m_bSupportNVRegisterCombiner;
-    bool    m_bSupportBlendColor;
-    bool    m_bSupportBlendSubtract;
-    bool    m_bSupportNVTextureEnvCombine4;
-    
-    // Minimal requirements, I will even not check them at runtime
-    //bool  m_bSupportTextureEnvAdd;
-    //bool  m_bSupportVertexArray;
 
     const unsigned char*    m_pVendorStr;
     const unsigned char*    m_pRenderStr;

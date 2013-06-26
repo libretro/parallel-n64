@@ -130,12 +130,11 @@ public:
 typedef struct TxtrCacheEntry
 {
     TxtrCacheEntry():
-        pTexture(NULL),pEnhancedTexture(NULL),txtrBufIdx(0) {}
+        pTexture(NULL),txtrBufIdx(0) {}
 
     ~TxtrCacheEntry()
     {
         SAFE_DELETE(pTexture);
-        SAFE_DELETE(pEnhancedTexture);
     }
     
     struct TxtrCacheEntry *pNext;       // Must be first element!
@@ -154,7 +153,6 @@ typedef struct TxtrCacheEntry
     uint32  FrameLastUpdated;
 
     CTexture    *pTexture;
-    CTexture    *pEnhancedTexture;
 
     uint32      dwEnhancementFlag;
     int         txtrBufIdx;

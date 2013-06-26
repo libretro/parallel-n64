@@ -284,7 +284,6 @@ void CTextureManager::RecycleTexture(TxtrCacheEntry *pEntry)
     {
         // Add to the list
         pEntry->pNext = m_pHead;
-        SAFE_DELETE(pEntry->pEnhancedTexture);
         m_pHead = pEntry;
     }
 }
@@ -734,7 +733,6 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
             }
             
             TextureFmt dwType = pEntry->pTexture->GetSurfaceFormat();
-            SAFE_DELETE(pEntry->pEnhancedTexture);
             pEntry->dwEnhancementFlag = TEXTURE_NO_ENHANCEMENT;
 
             if (dwType != TEXTURE_FMT_UNKNOWN)
@@ -768,7 +766,6 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
                     else
                         ConvertTexture_16(pEntry, fromTMEM);
                     pEntry->FrameLastUpdated = status.gDlistCount;
-                    SAFE_DELETE(pEntry->pEnhancedTexture);
                     pEntry->dwEnhancementFlag = TEXTURE_NO_ENHANCEMENT;
                 }
             }
@@ -780,11 +777,6 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
             {
                 ExpandTextureS(pEntry);
                 ExpandTextureT(pEntry);
-            }
-
-            if( options.bDumpTexturesToFiles && !loadFromTextureBuffer )
-            {
-                DumpCachedTexture(*pEntry);
             }
 
 #ifdef DEBUGGER

@@ -117,16 +117,11 @@ VIDEODIR = mupen64plus-video-rice/src
 
 CXXFLAGS += -DSDL_VIDEO_OPENGL=1
 CFILES += \
-	$(VIDEODIR)/liblinux/BMGImage.c \
-	$(VIDEODIR)/liblinux/bmp.c \
-    \
-	$(VIDEODIR)/osal_dynamiclib_$(PLATFORM_EXT).c \
 	$(VIDEODIR)/osal_files_$(PLATFORM_EXT).c
 
 CXXFILES += \
-	$(VIDEODIR)/liblinux/BMGUtils.cpp \
 	$(VIDEODIR)/Blender.cpp \
-    $(VIDEODIR)/Combiner.cpp \
+   $(VIDEODIR)/Combiner.cpp \
 	$(VIDEODIR)/Config.cpp \
 	$(VIDEODIR)/ConvertImage.cpp \
 	$(VIDEODIR)/ConvertImage16.cpp \
@@ -151,10 +146,6 @@ CXXFILES += \
 	$(VIDEODIR)/RSP_Parser.cpp \
 	$(VIDEODIR)/RSP_S2DEX.cpp \
 	$(VIDEODIR)/Texture.cpp \
-	$(VIDEODIR)/TextureFilters.cpp \
-	$(VIDEODIR)/TextureFilters_2xsai.cpp \
-	$(VIDEODIR)/TextureFilters_hq2x.cpp \
-	$(VIDEODIR)/TextureFilters_hq4x.cpp \
 	$(VIDEODIR)/TextureManager.cpp \
 	$(VIDEODIR)/VectorMath.cpp \
 	$(VIDEODIR)/Video-libretro.cpp

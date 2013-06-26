@@ -31,8 +31,6 @@ typedef struct {
     unsigned short        uViWidth, uViHeight;
     unsigned short        uDisplayWidth, uDisplayHeight;
     
-    BOOL    bVerticalSync;
-
     float   fMultX, fMultY;
     int     vpLeftW, vpTopW, vpRightW, vpBottomW, vpWidthW, vpHeightW;
 
@@ -156,13 +154,6 @@ extern unsigned int   g_dwRamSize;
 extern unsigned int  *g_pRDRAMu32;
 extern signed char   *g_pRDRAMs8;
 extern unsigned char *g_pRDRAMu8;
-
-/* declarations of pointers to Core config functions */
-#define CoreVideo_Init VidExt_Init
-#define CoreVideo_Quit VidExt_Quit
-#define CoreVideo_SetVideoMode VidExt_SetVideoMode
-#define CoreVideo_SetCaption VidExt_SetCaption
-#define CoreVideo_GL_SwapBuffers VidExt_GL_SwapBuffers
 
 /* global functions provided by Video.cpp */
 extern char generalText[];

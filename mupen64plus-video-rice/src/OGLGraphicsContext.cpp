@@ -29,20 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "version.h"
 
 COGLGraphicsContext::COGLGraphicsContext() :
-    m_bSupportMultiTexture(false),
-    m_bSupportTextureEnvCombine(false),
-    m_bSupportSeparateSpecularColor(false),
-    m_bSupportSecondColor(false),
     m_bSupportFogCoord(false),
-    m_bSupportTextureObject(false),
-    m_bSupportRescaleNormal(false),
-    m_bSupportLODBias(false),
-    m_bSupportTextureMirrorRepeat(false),
-    m_bSupportTextureLOD(false),
-    m_bSupportNVRegisterCombiner(false),
-    m_bSupportBlendColor(false),
-    m_bSupportBlendSubtract(false),
-    m_bSupportNVTextureEnvCombine4(false),
     m_pVendorStr(NULL),
     m_pRenderStr(NULL),
     m_pExtensionStr(NULL),
@@ -60,28 +47,7 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight)
     DebugMessage(M64MSG_INFO, "Initializing OpenGL Device Context.");
     Lock();
 
-    CGraphicsContext::Get()->m_supportTextureMirror = false;
     CGraphicsContext::Initialize(dwWidth, dwHeight);
-
-    int  depthBufferDepth = options.OpenglDepthBufferSetting;
-    int  colorBufferDepth = 32;
-    int bVerticalSync = windowSetting.bVerticalSync;
-    if( options.colorQuality == TEXTURE_FMT_A4R4G4B4 ) colorBufferDepth = 16;
-
-    // init sdl & gl
-    DebugMessage(M64MSG_VERBOSE, "Initializing video subsystem...");
-    if (CoreVideo_Init() != M64ERR_SUCCESS)   
-        return false;
-
-    /* Set the video mode */
-    m64p_video_mode ScreenMode = M64VIDEO_FULLSCREEN;
-    m64p_video_flags flags = M64VIDEOFLAG_SUPPORT_RESIZING;
-    if (CoreVideo_SetVideoMode(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, colorBufferDepth, ScreenMode, flags) != M64ERR_SUCCESS)
-    {
-        DebugMessage(M64MSG_ERROR, "Failed to set %i-bit video mode: %ix%i", colorBufferDepth, (int)windowSetting.uDisplayWidth, (int)windowSetting.uDisplayHeight);
-        CoreVideo_Quit();
-        return false;
-    }
 
     InitState();
     InitOGLExtension();
@@ -146,22 +112,12 @@ void COGLGraphicsContext::InitOGLExtension(void)
 {
     // important extension features, it is very bad not to have these feature
     m_bSupportMultiTexture = IsExtensionSupported(OSAL_GL_ARB_MULTITEXTURE);
-    m_bSupportTextureEnvCombine = IsExtensionSupported("GL_EXT_texture_env_combine");
-    
-    m_bSupportSeparateSpecularColor = IsExtensionSupported("GL_EXT_separate_specular_color");
-    m_bSupportSecondColor = IsExtensionSupported("GL_EXT_secondary_color");
     m_bSupportFogCoord = IsExtensionSupported("GL_EXT_fog_coord");
-    m_bSupportTextureObject = IsExtensionSupported("GL_EXT_texture_object");
-
-    // Optional extension features
-    m_bSupportRescaleNormal = IsExtensionSupported("GL_EXT_rescale_normal");
-    m_bSupportLODBias = IsExtensionSupported("GL_EXT_texture_lod_bias");
-    m_bSupportAnisotropicFiltering = IsExtensionSupported("GL_EXT_texture_filter_anisotropic");
 
     // Compute maxAnisotropicFiltering
     m_maxAnisotropicFiltering = 0;
 
-    if( m_bSupportAnisotropicFiltering
+    if( IsExtensionSupported("GL_EXT_texture_filter_anisotropic")
     && (options.anisotropicFiltering == 2
         || options.anisotropicFiltering == 4
         || options.anisotropicFiltering == 8
@@ -181,16 +137,6 @@ void COGLGraphicsContext::InitOGLExtension(void)
         if((uint32) m_maxAnisotropicFiltering > options.anisotropicFiltering)
         m_maxAnisotropicFiltering = options.anisotropicFiltering;
     }
-
-    // Nvidia only extension features (optional)
-    m_bSupportNVRegisterCombiner = IsExtensionSupported("GL_NV_register_combiners");
-    m_bSupportTextureMirrorRepeat = IsExtensionSupported("GL_IBM_texture_mirrored_repeat") || IsExtensionSupported("ARB_texture_mirrored_repeat");
-    m_supportTextureMirror = m_bSupportTextureMirrorRepeat;
-    m_bSupportTextureLOD = IsExtensionSupported("GL_EXT_texture_lod");
-    m_bSupportBlendColor = IsExtensionSupported("GL_EXT_blend_color");
-    m_bSupportBlendSubtract = IsExtensionSupported("GL_EXT_blend_subtract");
-    m_bSupportNVTextureEnvCombine4 = IsExtensionSupported("GL_NV_texture_env_combine4");
-
 }
 
 bool COGLGraphicsContext::IsExtensionSupported(const char* pExtName)
@@ -207,21 +153,8 @@ bool COGLGraphicsContext::IsExtensionSupported(const char* pExtName)
     }
 }
 
-bool COGLGraphicsContext::IsWglExtensionSupported(const char* pExtName)
-{
-    if( m_pWglExtensionStr == NULL )
-        return false;
-
-    if( strstr((const char*)m_pWglExtensionStr, pExtName) != NULL )
-        return true;
-    else
-        return false;
-}
-
-
 void COGLGraphicsContext::CleanUp()
 {
-    CoreVideo_Quit();
     m_bReady = false;
 }
 
@@ -250,76 +183,11 @@ void COGLGraphicsContext::UpdateFrame(bool swaponly)
 
     glFlush();
     OPENGL_CHECK_ERRORS;
-    //glFinish();
-    //wglSwapIntervalEXT(0);
-
-    /*
-    if (debuggerPauseCount == countToPause)
-    {
-        static int iShotNum = 0;
-        // get width, height, allocate buffer to store image
-        int width = windowSetting.uDisplayWidth;
-        int height = windowSetting.uDisplayHeight;
-        printf("Saving debug images: width=%i  height=%i\n", width, height);
-        short *buffer = (short *) malloc(((width+3)&~3)*(height+1)*4);
-        glReadBuffer( GL_FRONT );
-        // set up a BMGImage struct
-        struct BMGImageStruct img;
-        memset(&img, 0, sizeof(BMGImageStruct));
-        InitBMGImage(&img);
-        img.bits = (unsigned char *) buffer;
-        img.bits_per_pixel = 32;
-        img.height = height;
-        img.width = width;
-        img.scan_width = width * 4;
-        // store the RGB color image
-        char chFilename[64];
-        sprintf(chFilename, "dbg_rgb_%03i.png", iShotNum);
-        glReadPixels(0,0,width,height, GL_BGRA, GL_UNSIGNED_BYTE, buffer);
-        WritePNG(chFilename, img);
-        // store the Z buffer
-        sprintf(chFilename, "dbg_Z_%03i.png", iShotNum);
-        glReadPixels(0,0,width,height, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, buffer);
-        //img.bits_per_pixel = 16;
-        //img.scan_width = width * 2;
-        WritePNG(chFilename, img);
-        // dump a subset of the Z data
-        for (int y = 0; y < 480; y += 16)
-        {
-            for (int x = 0; x < 640; x+= 16)
-                printf("%4hx ", buffer[y*640 + x]);
-            printf("\n");
-        }
-        printf("\n");
-        // free memory and get out of here
-        free(buffer);
-        iShotNum++;
-        }
-    */
-
    
    // if emulator defined a render callback function, call it before buffer swap
    if(renderCallback)
        (*renderCallback)(status.bScreenIsDrawn);
-
-   CoreVideo_GL_SwapBuffers();
    
-   /*if(options.bShowFPS)
-     {
-    static unsigned int lastTick=0;
-    static int frames=0;
-    unsigned int nowTick = SDL_GetTicks();
-    frames++;
-    if(lastTick + 5000 <= nowTick)
-      {
-         char caption[200];
-         sprintf(caption, "%s v%i.%i.%i - %.3f VI/S", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION), frames/5.0);
-         CoreVideo_SetCaption(caption);
-         frames = 0;
-         lastTick = nowTick;
-      }
-     }*/
-
     glDepthMask(GL_TRUE);
     OPENGL_CHECK_ERRORS;
     glClearDepth(1.0f);
@@ -342,11 +210,6 @@ void COGLGraphicsContext::InitDeviceParameters()
 }
 
 // Get methods
-bool COGLGraphicsContext::IsSupportAnisotropicFiltering()
-{
-    return m_bSupportAnisotropicFiltering;
-}
-
 int COGLGraphicsContext::getMaxAnisotropicFiltering()
 {
     return m_maxAnisotropicFiltering;
