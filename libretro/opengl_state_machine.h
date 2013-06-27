@@ -1,4 +1,5 @@
-#pragma once
+#ifndef OPENGL_STATE_MACHINE_H__
+#define OPENGL_STATE_MACHINE_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,6 +45,7 @@ void sglBindTexture(GLenum target, GLuint texture);
 #define glEnableVertexAttribArray sglEnableVertexAttribArray
 #define glDisableVertexAttribArray sglDisableVertexAttribArray
 #define glVertexAttribPointer sglVertexAttribPointer
+#define glUseProgram sglUseProgram
 
 #define glBlendFunc sglBlendFunc
 #define glClearColor sglClearColor
@@ -55,15 +57,16 @@ void sglBindTexture(GLenum target, GLuint texture);
 #define glFrontFace sglFrontFace
 #define glPolygonOffset sglPolygonOffset
 #define glScissor sglScissor
-#define glUseProgram sglUseProgram
 #define glViewport sglViewport
 
-#define pglActiveTexture sglActiveTexture
+#define glActiveTexture sglActiveTexture
 #define glBindTexture sglBindTexture
 
 #endif
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 

@@ -47,5 +47,5 @@
 #define glClearDepthf glClearDepth
 #define glDepthRangef glDepthRange
 
-#include "glsym.h"
 #include "opengl_state_machine.h"
+#include "glsym.h"

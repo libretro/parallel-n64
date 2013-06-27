@@ -169,22 +169,31 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
 EXPORT void CALL inputGetKeys( int Control, BUTTONS *Keys )
 {
     Keys->Value = 0;
-    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT) ? 0x0001 : 0;
-    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT)  ? 0x0002 : 0;
-    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN)  ? 0x0004 : 0;
-    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP)    ? 0x0008 : 0;
-    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START) ? 0x0010 : 0;
-    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2)    ? 0x0020 : 0;
-    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B)     ? 0x0040 : 0;
-    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A)     ? 0x0080 : 0;
-//  Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x0100 : 0; // C buttons
-//  Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x0200 : 0;
-//  Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x0400 : 0;
-//  Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x0800 : 0;
-    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R)     ? 0x1000 : 0;
-    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L)     ? 0x2000 : 0;
-//  Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
-//  Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
+    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_RIGHT) ? 0x0001 : 0;
+    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_LEFT)  ? 0x0002 : 0;
+    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_DOWN)  ? 0x0004 : 0;
+    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_UP)    ? 0x0008 : 0;
+    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_START) ? 0x0010 : 0;
+    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_L2)    ? 0x0020 : 0;
+
+    bool hold_cstick = input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_R2);
+
+    if (hold_cstick)
+    {
+       Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_A)    ? 0x0100 : 0; // C buttons
+       Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_Y)    ? 0x0200 : 0;
+       Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_B)    ? 0x0400 : 0;
+       Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_X)    ? 0x0800 : 0;
+    }
+    else
+    {
+       Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_B)     ? 0x0040 : 0;
+       Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_A)     ? 0x0080 : 0;
+    }
+    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_R)     ? 0x1000 : 0;
+    Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_L)     ? 0x2000 : 0;
+//  Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
+//  Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
 
     const int16_t analogX = input_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X) / 2048;
     const int16_t analogY = input_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y) / 2048;
