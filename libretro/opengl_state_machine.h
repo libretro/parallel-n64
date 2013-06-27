@@ -1,4 +1,5 @@
-#pragma once
+#ifndef OPENGL_STATE_MACHINE_H__
+#define OPENGL_STATE_MACHINE_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,7 +59,7 @@ void sglBindTexture(GLenum target, GLuint texture);
 #define glUseProgram sglUseProgram
 #define glViewport sglViewport
 
-#define pglActiveTexture sglActiveTexture
+#define glActiveTexture sglActiveTexture
 #define glBindTexture sglBindTexture
 
 #endif
@@ -67,3 +68,4 @@ void sglBindTexture(GLenum target, GLuint texture);
 }
 #endif
 
+#endif

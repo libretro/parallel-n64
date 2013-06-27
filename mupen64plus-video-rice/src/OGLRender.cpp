@@ -786,13 +786,13 @@ void OGLRender::EnableTexUnit(int unitno, BOOL flag)
         m_texUnitEnabled[0] = flag;
         if(flag)
         {
-            pglActiveTexture(GL_TEXTURE0_ARB + unitno);
+            glActiveTexture(GL_TEXTURE0_ARB + unitno);
             OPENGL_CHECK_ERRORS;
             glBindTexture(GL_TEXTURE_2D,m_curBoundTex[unitno]);
         }
         else
         {
-            pglActiveTexture(GL_TEXTURE0_ARB + unitno);
+            glActiveTexture(GL_TEXTURE0_ARB + unitno);
             OPENGL_CHECK_ERRORS;
             glEnable(GL_BLEND); //Need blend for transparent disabled texture
             glBindTexture(GL_TEXTURE_2D,disabledTextureID);
@@ -904,13 +904,13 @@ void OGLRender::SetFogColor(uint32 r, uint32 g, uint32 b, uint32 a)
 
 void OGLRender::DisableMultiTexture()
 {
-    pglActiveTexture(GL_TEXTURE1_ARB);
+    glActiveTexture(GL_TEXTURE1_ARB);
     OPENGL_CHECK_ERRORS;
     EnableTexUnit(1,FALSE);
-    pglActiveTexture(GL_TEXTURE0_ARB);
+    glActiveTexture(GL_TEXTURE0_ARB);
     OPENGL_CHECK_ERRORS;
     EnableTexUnit(0,FALSE);
-    pglActiveTexture(GL_TEXTURE0_ARB);
+    glActiveTexture(GL_TEXTURE0_ARB);
     OPENGL_CHECK_ERRORS;
     EnableTexUnit(0,TRUE);
 }

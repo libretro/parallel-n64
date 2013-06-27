@@ -115,7 +115,11 @@ static void n64_frame_callback(int drawn)
 
 bool retro_load_game(const struct retro_game_info *game)
 {
+#ifndef GLES
     render_iface.context_type = RETRO_HW_CONTEXT_OPENGL;
+#else
+    render_iface.context_type = RETRO_HW_CONTEXT_OPENGLES2;
+#endif
     render_iface.context_reset = core_gl_context_reset;
     render_iface.depth = true;
     
