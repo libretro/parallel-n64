@@ -32,6 +32,9 @@
 #include <GLES2/gl2.h>
 #endif
 
+typedef GLfloat GLdouble;
+typedef GLclampf GLclampd;
+
 #else
 
 #ifdef __APPLE__
@@ -43,9 +46,6 @@
 #endif
 
 #endif
-
-#define glClearDepthf glClearDepth
-#define glDepthRangef glDepthRange
 
 #include "glsym.h"
 #include "opengl_state_machine.h"

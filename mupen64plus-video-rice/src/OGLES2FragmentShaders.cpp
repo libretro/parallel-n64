@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 GLuint vertexProgram = 9999;
 const char *vertexShader =
 "#version " GLSL_VERSION "\n"
-#if defined(__LIBRETRO__) && !defined(RETRO_GLES)
+#if defined(__LIBRETRO__) && !defined(GLES)
 "#define lowp                                               \n"
 "#define mediump                                            \n"
 #endif
@@ -62,7 +62,7 @@ const char *vertexShader =
 
 const char *fragmentHeader =
 "#define saturate(x) clamp( x, 0.0, 1.0 )                   \n"
-#if defined(__LIBRETRO__) && !defined(RETRO_GLES)
+#if defined(__LIBRETRO__) && !defined(GLES)
 "#define lowp                                               \n"
 "#define mediump                                            \n"
 #else
@@ -122,7 +122,7 @@ ALPHA_TEST
 //Fragment shader for InitCycleCopy
 const char *fragmentCopy =
 "#version " GLSL_VERSION "\n"
-#if defined(__LIBRETRO__) && !defined(RETRO_GLES)
+#if defined(__LIBRETRO__) && !defined(GLES)
 "#define lowp                                               \n"
 "#define mediump                                            \n"
 #else
@@ -142,7 +142,7 @@ GLuint copyProgram,copyAlphaLocation;
 //Fragment shader for InitCycleFill
 const char *fragmentFill =
 "#version " GLSL_VERSION "\n"
-#if defined(__LIBRETRO__) && !defined(RETRO_GLES)
+#if defined(__LIBRETRO__) && !defined(GLES)
 "#define lowp                                               \n"
 "#define mediump                                            \n"
 #else

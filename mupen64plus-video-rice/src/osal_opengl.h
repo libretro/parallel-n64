@@ -25,7 +25,7 @@
 #include <SDL_config.h>
 #include <SDL_opengles2.h>
 
-#ifdef RETRO_GLES
+#ifdef GLES
 
 #define GLSL_VERSION "100"
 // Constant substitutions
@@ -51,19 +51,10 @@
 #define GLSL_VERSION "120"
 #endif
 
-// Extension names
-#define OSAL_GL_ARB_MULTITEXTURE            "GL_multitexture"
-#define OSAL_GL_ARB_TEXTURE_ENV_ADD         "GL_texture_env_add"
-
 // Vertex shader params
 #define VS_POSITION                         0
 #define VS_COLOR                            1
 #define VS_TEXCOORD0                        2
 #define VS_TEXCOORD1                        3
-
-// Function substitutions
-//#define glClearDepth                        glClearDepthf
-//#define pglActiveTexture                    glActiveTexture
-//#define pglActiveTextureARB                 glActiveTexture
 
 #endif // OSAL_OPENGL_H

@@ -3,6 +3,11 @@
 #define NO_TRANSLATE
 #include "SDL_opengles2.h"
 
+#ifdef GLES
+#define glClearDepth glClearDepthf
+#define glDepthRange glDepthRangef
+#endif
+
 //glEnable, glDisable
 static int CapState[SGL_CAP_MAX];
 static const int CapTranslate[SGL_CAP_MAX] = 
@@ -39,28 +44,36 @@ GLboolean sglIsEnabled(GLenum cap)
 }
 
 //VERTEX ATTRIB ARRAY
-static const uint32_t MAX_ATTRIB = 4;
-static GLint VertexAttribPointer_enabled[MAX_ATTRIB];
-static GLint VertexAttribPointer_size[MAX_ATTRIB];
-static GLenum VertexAttribPointer_type[MAX_ATTRIB];
-static GLboolean VertexAttribPointer_normalized[MAX_ATTRIB];
-static GLsizei VertexAttribPointer_stride[MAX_ATTRIB];
-static const GLvoid* VertexAttribPointer_pointer[MAX_ATTRIB];
+#define MAX_ATTRIB 4
+#define ATTRIB_INITER(X) { X, X, X, X }
+
+static GLint VertexAttribPointer_enabled[MAX_ATTRIB] = ATTRIB_INITER(0);
+static GLint VertexAttribPointer_size[MAX_ATTRIB] = ATTRIB_INITER(4);
+static GLenum VertexAttribPointer_type[MAX_ATTRIB] = ATTRIB_INITER(GL_FLOAT);
+static GLboolean VertexAttribPointer_normalized[MAX_ATTRIB] = ATTRIB_INITER(GL_TRUE);
+static GLsizei VertexAttribPointer_stride[MAX_ATTRIB] = ATTRIB_INITER(0);
+static const GLvoid* VertexAttribPointer_pointer[MAX_ATTRIB] = ATTRIB_INITER(0);
 
 void sglEnableVertexAttribArray(GLuint index)
 {
+    assert(index < MAX_ATTRIB);
+
     VertexAttribPointer_enabled[index] = 1;
     glEnableVertexAttribArray(index);
 }
 
 void sglDisableVertexAttribArray(GLuint index)
 {
+    assert(index < MAX_ATTRIB);
+
     VertexAttribPointer_enabled[index] = 0;
     glEnableVertexAttribArray(index);
 }
 
 void sglVertexAttribPointer(GLuint name, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* pointer)
 {
+    assert(name < MAX_ATTRIB);
+
     VertexAttribPointer_size[name] = size;
     VertexAttribPointer_type[name] = type;
     VertexAttribPointer_normalized[name] = normalized;
@@ -70,7 +83,7 @@ void sglVertexAttribPointer(GLuint name, GLint size, GLenum type, GLboolean norm
 }
 
 //BLEND FUNC
-static GLenum BlendFunc_sfactor, BlendFunc_dfactor;
+static GLenum BlendFunc_sfactor = GL_ONE, BlendFunc_dfactor = GL_ZERO;
 void sglBlendFunc(GLenum sfactor, GLenum dfactor)
 {
     BlendFunc_sfactor = sfactor;
@@ -79,7 +92,7 @@ void sglBlendFunc(GLenum sfactor, GLenum dfactor)
 }
 
 //CLEAR COLOR
-static GLclampf ClearColor_red, ClearColor_green, ClearColor_blue, ClearColor_alpha;
+static GLclampf ClearColor_red = 0.0f, ClearColor_green = 0.0f, ClearColor_blue = 0.0f, ClearColor_alpha = 0.0f;
 void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
     ClearColor_red = red;
@@ -91,7 +104,7 @@ void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 }
 
 //CLEAR DEPTH
-static GLdouble ClearDepth_value;
+static GLdouble ClearDepth_value = 1.0;
 void sglClearDepth(GLdouble value)
 {
     ClearDepth_value = value;
@@ -99,7 +112,7 @@ void sglClearDepth(GLdouble value)
 }
 
 //CULL FACE
-static GLenum CullFace_mode;
+static GLenum CullFace_mode = GL_BACK;
 void sglCullFace(GLenum mode)
 {
     CullFace_mode = mode;
@@ -107,7 +120,7 @@ void sglCullFace(GLenum mode)
 }
 
 //DEPTH FUNC
-static GLenum DepthFunc_func;
+static GLenum DepthFunc_func = GL_LESS;
 void sglDepthFunc(GLenum func)
 {
     DepthFunc_func = func;
@@ -115,7 +128,7 @@ void sglDepthFunc(GLenum func)
 }
 
 //DEPTH MASK
-static GLboolean DepthMask_flag;
+static GLboolean DepthMask_flag = GL_TRUE;
 void sglDepthMask(GLboolean flag)
 {
     DepthMask_flag = flag;
@@ -123,7 +136,7 @@ void sglDepthMask(GLboolean flag)
 }
 
 //DEPTH RANGE
-static GLclampd DepthRange_nearVal, DepthRange_farVal;
+static GLclampd DepthRange_nearVal = 0.0, DepthRange_farVal = 1.0;
 void sglDepthRange(GLclampd nearVal, GLclampd farVal)
 {
     DepthRange_nearVal = nearVal;
@@ -140,7 +153,7 @@ void sglFrontFace(GLenum mode)
 }
 
 //POLYGON OFFSET
-static GLfloat PolygonOffset_factor, PolygonOffset_units;
+static GLfloat PolygonOffset_factor = 0.0f, PolygonOffset_units = 0.0f;
 void sglPolygonOffset(GLfloat factor, GLfloat units)
 {
     PolygonOffset_factor = factor;
@@ -149,8 +162,8 @@ void sglPolygonOffset(GLfloat factor, GLfloat units)
 }
 
 //SCISSOR
-static GLint Scissor_x, Scissor_y;
-static GLsizei Scissor_width, Scissor_height;
+static GLint Scissor_x = 0, Scissor_y = 0;
+static GLsizei Scissor_width = 640, Scissor_height = 480;
 void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 {
     Scissor_x = x;
@@ -161,7 +174,7 @@ void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 }
 
 //USE PROGRAM
-static GLuint UseProgram_program;
+static GLuint UseProgram_program = 0;
 void sglUseProgram(GLuint program)
 {
     UseProgram_program = program;
@@ -169,8 +182,8 @@ void sglUseProgram(GLuint program)
 }
 
 //VIEWPORT
-static GLint Viewport_x, Viewport_y;
-static GLsizei Viewport_width, Viewport_height;
+static GLint Viewport_x = 0, Viewport_y = 0;
+static GLsizei Viewport_width = 640, Viewport_height = 480;
 void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
     Viewport_x = x;
@@ -180,20 +193,19 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
     glViewport(x, y, width, height);
 }
 
-static const uint32_t TEXTURE_MAX = 4;
-
 //ACTIVE TEXTURE
-static GLenum ActiveTexture_texture;
+#define MAX_TEXTURE 4
+static GLenum ActiveTexture_texture = 0;
 void sglActiveTexture(GLenum texture)
 {
-    assert((texture - GL_TEXTURE0) < TEXTURE_MAX);
+    assert((texture - GL_TEXTURE0) < MAX_TEXTURE);
 
     ActiveTexture_texture = texture - GL_TEXTURE0;
     glActiveTexture(texture);
 }
 
 //BIND TEXTURE
-static GLuint BindTexture_ids[TEXTURE_MAX];
+static GLuint BindTexture_ids[MAX_TEXTURE];
 void sglBindTexture(GLenum target, GLuint texture)
 {
     assert(target == GL_TEXTURE_2D);
@@ -208,10 +220,8 @@ void sglEnter()
 {
     for (int i = 0; i < MAX_ATTRIB; i ++)
     {
-        if (VertexAttribPointer_enabled[i])
-            glEnableVertexAttribArray(i);
-        else
-            glDisableVertexAttribArray(i);
+        if (VertexAttribPointer_enabled[i]) glEnableVertexAttribArray(i);
+        else                                glDisableVertexAttribArray(i);
 
         glVertexAttribPointer(i, VertexAttribPointer_size[i], VertexAttribPointer_type[i], VertexAttribPointer_normalized[i],
                                  VertexAttribPointer_stride[i], VertexAttribPointer_pointer[i]);        
@@ -226,19 +236,17 @@ void sglEnter()
     glDepthRange(DepthRange_nearVal, DepthRange_farVal);
     glFrontFace(FrontFace_mode);
     glPolygonOffset(PolygonOffset_factor, PolygonOffset_units);
-    glViewport(Viewport_x, Viewport_y, Viewport_width, Viewport_height);
     glScissor(Scissor_x, Scissor_y, Scissor_width, Scissor_height);
     glUseProgram(UseProgram_program);
+    glViewport(Viewport_x, Viewport_y, Viewport_width, Viewport_height);
 
     for(int i = 0; i != SGL_CAP_MAX; i ++)
     {
-        if(CapState[i])
-            glEnable(CapTranslate[i]);
-        else
-            glDisable(CapTranslate[i]);
+        if(CapState[i]) glEnable(CapTranslate[i]);
+        else            glDisable(CapTranslate[i]);
     }
 
-    for (int i = 0; i < TEXTURE_MAX; i ++)
+    for (int i = 0; i < MAX_TEXTURE; i ++)
     {
         glActiveTexture(GL_TEXTURE0 + i);
         glBindTexture(GL_TEXTURE_2D, BindTexture_ids[i]);
@@ -264,7 +272,7 @@ void sglExit()
     glUseProgram(0);
 
     // Clear textures
-    for (int i = 0; i < TEXTURE_MAX; i ++)
+    for (int i = 0; i < MAX_TEXTURE; i ++)
     {
         glActiveTexture(GL_TEXTURE0 + i);
         glBindTexture(GL_TEXTURE_2D, 0);

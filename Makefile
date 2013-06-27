@@ -45,20 +45,23 @@ else ifeq ($(platform), ios)
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    LDFLAGS += -dynamiclib
    fpic = -fPIC
+   GL_LIB := -framework OpenGLES
 
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
-   CXXFLAGS += -DNO_ASM
+   CPPFLAGS += -DNO_ASM -DIOS -DGLES
    PLATFORM_EXT := unix
+
 
 else ifeq ($(platform), android)
    TARGET := $(TARGET_NAME)_libretro.so
    CXXFLAGS += -fpermissive 
-   LDFLAGS += -shared -Wl,--version-script=libretro/link.T
+   LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined -Wl,--warn-common
+   GL_LIB := -lGLESv2
 
    CC = arm-linux-androideabi-gcc
    CXX = arm-linux-androideabi-g++
-   CXXFLAGS += -DNO_ASM
+   CPPFLAGS += -DNO_ASM -DGLES
    
    fpic = -fPIC
    PLATFORM_EXT := unix
