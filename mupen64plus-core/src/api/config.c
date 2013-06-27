@@ -1401,6 +1401,13 @@ EXPORT const char * CALL ConfigGetSharedDataFilepath(const char *filename)
     /* check input parameter */
     if (filename == NULL) return NULL;
 
+#ifdef __LIBRETRO__ // Shared path is the system dir
+    extern const char* retro_get_system_directory();
+
+    static char configpath[PATH_MAX];
+    snprintf(configpath, PATH_MAX, "%s/%s", retro_get_system_directory(), filename);
+    return configpath;
+#else
     /* try to get the SharedDataPath string variable in the Core configuration section */
     if (ConfigOpenSection("Core", &CoreHandle) == M64ERR_SUCCESS)
     {
@@ -1408,6 +1415,7 @@ EXPORT const char * CALL ConfigGetSharedDataFilepath(const char *filename)
     }
 
     return osal_get_shared_filepath(filename, l_DataDirOverride, configsharepath);
+#endif
 }
 
 EXPORT const char * CALL ConfigGetUserConfigPath(void)

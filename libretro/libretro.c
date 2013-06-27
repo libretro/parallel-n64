@@ -65,6 +65,16 @@ void retro_set_environment(retro_environment_t cb) { environ_cb = cb; }
 
 //
 
+const char* retro_get_system_directory()
+{
+    const char* dir;
+    environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir);
+
+    return dir ? dir : ".";
+}
+
+//
+
 void retro_get_system_info(struct retro_system_info *info)
 {
    info->library_name = "Mupen64plus";
