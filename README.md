@@ -11,6 +11,4 @@ In order to not get a black screen 'VideoRiceLinux.ini' must be placed in RetroA
 
 TODO:
 * Audio sample rate is not set properly, a fixed value is used but in reality each game can set it to a different value. 
-* The C buttons are not mapped, and the analog stick's logic is incorrect.
 * There are many visual errors.
-* The libco thread break needs to be moved. It must be placed where the original call to SDL_GL_SwapBuffers was. (Ideally libco would be removed completely).
