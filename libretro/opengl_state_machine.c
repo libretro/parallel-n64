@@ -19,22 +19,16 @@ void sglEnable(GLenum cap)
 {
     assert(cap < SGL_CAP_MAX);
 
-    if(!CapState[cap])
-    {
-        glEnable(CapTranslate[cap]);
-        CapState[cap] = 1;
-    }
+    glEnable(CapTranslate[cap]);
+    CapState[cap] = 1;
 }
 
 void sglDisable(GLenum cap)
 {
     assert(cap < SGL_CAP_MAX);
 
-    if(CapState[cap])
-    {
-        glDisable(CapTranslate[cap]);
-        CapState[cap] = 0;
-    }
+    glDisable(CapTranslate[cap]);
+    CapState[cap] = 0;
 }
 
 GLboolean sglIsEnabled(GLenum cap)
@@ -88,7 +82,7 @@ void sglBlendFunc(GLenum sfactor, GLenum dfactor)
 {
     BlendFunc_sfactor = sfactor;
     BlendFunc_dfactor = dfactor;
-    glBlendFunc(sfactor, dfactor);
+    glBlendFunc(BlendFunc_sfactor, BlendFunc_dfactor);
 }
 
 //CLEAR COLOR
@@ -100,7 +94,7 @@ void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
     ClearColor_blue = blue;
     ClearColor_alpha = alpha;
 
-    glClearColor(red, green, blue, alpha);
+    glClearColor(ClearColor_red, ClearColor_green, ClearColor_blue, ClearColor_alpha);
 }
 
 //CLEAR DEPTH
@@ -108,7 +102,7 @@ static GLdouble ClearDepth_value = 1.0;
 void sglClearDepth(GLdouble value)
 {
     ClearDepth_value = value;
-    glClearDepth(value);
+    glClearDepth(ClearDepth_value);
 }
 
 //CULL FACE
@@ -116,7 +110,7 @@ static GLenum CullFace_mode = GL_BACK;
 void sglCullFace(GLenum mode)
 {
     CullFace_mode = mode;
-    glCullFace(mode);
+    glCullFace(CullFace_mode);
 }
 
 //DEPTH FUNC
@@ -124,7 +118,7 @@ static GLenum DepthFunc_func = GL_LESS;
 void sglDepthFunc(GLenum func)
 {
     DepthFunc_func = func;
-    glDepthFunc(func);
+    glDepthFunc(DepthFunc_func);
 }
 
 //DEPTH MASK
@@ -132,7 +126,7 @@ static GLboolean DepthMask_flag = GL_TRUE;
 void sglDepthMask(GLboolean flag)
 {
     DepthMask_flag = flag;
-    glDepthMask(flag);
+    glDepthMask(DepthMask_flag);
 }
 
 //DEPTH RANGE
@@ -141,7 +135,7 @@ void sglDepthRange(GLclampd nearVal, GLclampd farVal)
 {
     DepthRange_nearVal = nearVal;
     DepthRange_farVal = farVal;
-    glDepthRange(nearVal, farVal);
+    glDepthRange(DepthRange_nearVal, DepthRange_farVal);
 }
 
 //FRONTFACE
@@ -149,7 +143,7 @@ static GLenum FrontFace_mode = GL_CCW;
 void sglFrontFace(GLenum mode)
 {
     FrontFace_mode = mode;
-    glFrontFace(mode);
+    glFrontFace(FrontFace_mode);
 }
 
 //POLYGON OFFSET
@@ -158,7 +152,7 @@ void sglPolygonOffset(GLfloat factor, GLfloat units)
 {
     PolygonOffset_factor = factor;
     PolygonOffset_units = units;
-    glPolygonOffset(factor, units);
+    glPolygonOffset(PolygonOffset_factor, PolygonOffset_units);
 }
 
 //SCISSOR
@@ -170,7 +164,7 @@ void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
     Scissor_y = y;
     Scissor_width = width;
     Scissor_height = height;
-    glScissor(x, y, width, height);
+    glScissor(Scissor_x, Scissor_y, Scissor_width, Scissor_height);
 }
 
 //USE PROGRAM
@@ -190,7 +184,7 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
     Viewport_y = y;
     Viewport_width = width;
     Viewport_height = height;
-    glViewport(x, y, width, height);
+    glViewport(Viewport_x, Viewport_y, Viewport_width, Viewport_height);
 }
 
 //ACTIVE TEXTURE
