@@ -142,10 +142,12 @@ ptr_VidExt_GL_SwapBuffers        CoreVideo_GL_SwapBuffers = NULL;
 #define ViWidthChanged videoViWidthChanged
 #define ReadScreen videoReadScreen
 
-EXPORT extern "C" void CALL videoResizeVideoOutput(int width, int height)
+extern "C"
 {
+    EXPORT void CALL videoResizeVideoOutput(int width, int height)
+    {
+    }
 }
-
 #endif
 
 GFX_INFO gfx;

@@ -38,7 +38,7 @@ else ifeq ($(platform), osx)
    LDFLAGS += -dynamiclib
    fpic = -fPIC
 
-   CXXFLAGS += -D__MACOSX__
+   CPPFLAGS += -D__MACOSX__
    GL_LIB := -framework OpenGL
    PLATFORM_EXT := unix
 else ifeq ($(platform), ios)
@@ -55,13 +55,12 @@ else ifeq ($(platform), ios)
 
 else ifeq ($(platform), android)
    TARGET := $(TARGET_NAME)_libretro.so
-   CXXFLAGS += -fpermissive 
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined -Wl,--warn-common
    GL_LIB := -lGLESv2
 
    CC = arm-linux-androideabi-gcc
    CXX = arm-linux-androideabi-g++
-   CPPFLAGS += -DNO_ASM -DGLES -DNOSSE
+   CPPFLAGS += -DNO_ASM -DGLES -DNOSSE -fpermissive
    
    fpic = -fPIC
    PLATFORM_EXT := unix
@@ -70,32 +69,28 @@ else ifeq ($(platform), psp1)
    CC = psp-gcc$(EXE_EXT)
    CXX = psp-g++$(EXE_EXT)
    AR = psp-ar$(EXE_EXT)
-   CXXFLAGS += -DPSP -G0
+   CPPFLAGS += -DPSP -G0
 	STATIC_LINKING = 1
 else ifeq ($(platform), wii)
    TARGET := $(TARGET_NAME)_libretro_wii.a
    CC = $(DEVKITPPC)/bin/powerpc-eabi-gcc$(EXE_EXT)
    CXX = $(DEVKITPPC)/bin/powerpc-eabi-g++$(EXE_EXT)
    AR = $(DEVKITPPC)/bin/powerpc-eabi-ar$(EXE_EXT)
-   CXXFLAGS += -DGEKKO -mrvl -mcpu=750 -meabi -mhard-float -D__POWERPC__ -D__ppc__ -DWORDS_BIGENDIAN=1
+   CPPFLAGS += -DGEKKO -mrvl -mcpu=750 -meabi -mhard-float -D__POWERPC__ -D__ppc__ -DWORDS_BIGENDIAN=1
 	STATIC_LINKING = 1
 else
    TARGET := $(TARGET_NAME)_libretro.dll
    LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=libretro/link.T -lwinmm -lgdi32
    GL_LIB := -lopengl32
-   CFLAGS += -msse -msse2
-   CXXFLAGS += -msse -msse2
+   CPPFLAGS += -msse -msse2
    PLATFORM_EXT := win32
 endif
 
 ifeq ($(DEBUG), 1)
-   CXXFLAGS += -O0 -g
-   CXXFLAGS += -DOPENGL_DEBUG
-   CFLAGS += -O0 -g
-   CFLAGS += -DOPENGL_DEBUG
+   CPPFLAGS += -O0 -g
+   CPPFLAGS += -DOPENGL_DEBUG
 else
-   CXXFLAGS += -O3
-   CFLAGS += -O3
+   CPPFLAGS += -O3
 endif
 
 # libretro
@@ -227,7 +222,7 @@ CFILES += \
 
 OBJECTS    = $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
 CPPFLAGS   += -D__LIBRETRO__ $(fpic) -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
-CXXFLAGS   += -DM64P_CORE_PROTOTYPES $(fpic)
+CPPFLAGS   += -DM64P_CORE_PROTOTYPES $(fpic)
 CFLAGS     += -std=gnu99 $(fpic)
 LDFLAGS    += -lm $(fpic) -lz
 
