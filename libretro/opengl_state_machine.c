@@ -38,8 +38,8 @@ GLboolean sglIsEnabled(GLenum cap)
 }
 
 //VERTEX ATTRIB ARRAY
-#define MAX_ATTRIB 4
-#define ATTRIB_INITER(X) { X, X, X, X }
+#define MAX_ATTRIB 8
+#define ATTRIB_INITER(X) { X, X, X, X, X, X, X, X }
 
 static GLint VertexAttribPointer_enabled[MAX_ATTRIB] = ATTRIB_INITER(0);
 static GLint VertexAttribPointer_size[MAX_ATTRIB] = ATTRIB_INITER(4);

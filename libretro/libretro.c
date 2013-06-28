@@ -119,7 +119,6 @@ static void core_gl_context_reset()
 
 static void n64_frame_callback(int drawn)
 {
-    if (drawn)
     co_switch(n64MainThread);
 }
 
@@ -175,7 +174,7 @@ void retro_run (void)
     sglExit();
 
 
-    video_cb(RETRO_HW_FRAME_BUFFER_VALID, 640, 480, 0);
+    video_cb(n64video_flipped ? RETRO_HW_FRAME_BUFFER_VALID : 0, 640, 480, 0);
     n64video_flipped = false;
 }
 

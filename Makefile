@@ -49,7 +49,7 @@ else ifeq ($(platform), ios)
 
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
-   CPPFLAGS += -DNO_ASM -DIOS -DGLES
+   CPPFLAGS += -DNO_ASM -DIOS -DGLES -DNOSSE
    PLATFORM_EXT := unix
 
 
@@ -61,7 +61,7 @@ else ifeq ($(platform), android)
 
    CC = arm-linux-androideabi-gcc
    CXX = arm-linux-androideabi-g++
-   CPPFLAGS += -DNO_ASM -DGLES
+   CPPFLAGS += -DNO_ASM -DGLES -DNOSSE
    
    fpic = -fPIC
    PLATFORM_EXT := unix
@@ -116,10 +116,34 @@ CXXFILES += \
     $(RSPDIR)/src/ucode3mp3.cpp
 
 # Video Plugin
+WITH_RICE = 0
+
+ifeq ($(WITH_RICE), 0)
+VIDEODIR = gles2glide64/src
+CPPFLAGS += -I$(VIDEODIR)/Glitch64/inc/
+CXXFILES += $(VIDEODIR)/Glide64/3dmath.cpp \
+    		$(VIDEODIR)/Glide64/Config.cpp \
+    		$(VIDEODIR)/Glide64/FBtoScreen.cpp \
+    		$(VIDEODIR)/Glide64/Main.cpp \
+    		$(VIDEODIR)/Glide64/Util.cpp \
+            $(VIDEODIR)/Glide64/CRC.cpp \
+    		$(VIDEODIR)/Glide64/Debugger.cpp \
+    		$(VIDEODIR)/Glide64/Ini.cpp \
+    		$(VIDEODIR)/Glide64/TexBuffer.cpp \
+    		$(VIDEODIR)/Glide64/rdp.cpp \
+            $(VIDEODIR)/Glide64/Combine.cpp \
+    		$(VIDEODIR)/Glide64/DepthBufferRender.cpp \
+        	$(VIDEODIR)/Glide64/Keys.cpp \
+    		$(VIDEODIR)/Glide64/TexCache.cpp \
+            $(VIDEODIR)/Glitch64/combiner.cpp \
+        	$(VIDEODIR)/Glitch64/geometry.cpp \
+        	$(VIDEODIR)/Glitch64/glState.cpp \
+        	$(VIDEODIR)/Glitch64/main.cpp \
+        	$(VIDEODIR)/Glitch64/textures.cpp
+else
 VIDEODIR = mupen64plus-video-rice/src
 
-CXXFLAGS += -DSDL_VIDEO_OPENGL=1
-
+CPPFLAGS += -DSDL_VIDEO_OPENGL=1
 CXXFILES += \
 	$(VIDEODIR)/Blender.cpp \
     $(VIDEODIR)/Combiner.cpp \
@@ -144,7 +168,7 @@ CXXFILES += \
 	$(VIDEODIR)/TextureManager.cpp \
 	$(VIDEODIR)/VectorMath.cpp \
 	$(VIDEODIR)/Video-libretro.cpp
-
+endif
 
 
 # Audio Plugin
