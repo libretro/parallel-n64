@@ -5,8 +5,6 @@
 #include <SDL_opengles2.h>
 static struct retro_hw_render_callback render_iface;
 
-
-#define M64P_CORE_PROTOTYPES
 #include "api/m64p_frontend.h"
 #include "api/m64p_types.h"
 #include "r4300/r4300.h"
@@ -73,6 +71,21 @@ const char* retro_get_system_directory()
     return dir ? dir : ".";
 }
 
+static void core_gl_context_reset()
+{
+   glsym_init_procs(render_iface.get_proc_address);
+}
+
+GLuint retro_get_fbo_id()
+{
+    return render_iface.get_current_framebuffer();
+}
+
+static void n64_frame_callback(int drawn)
+{
+    co_switch(n64MainThread);
+}
+
 //
 
 void retro_get_system_info(struct retro_system_info *info)
@@ -110,16 +123,6 @@ void retro_init(void)
 void retro_deinit(void)
 {
     CoreShutdown();
-}
-
-static void core_gl_context_reset()
-{
-   glsym_init_procs(render_iface.get_proc_address);
-}
-
-static void n64_frame_callback(int drawn)
-{
-    co_switch(n64MainThread);
 }
 
 bool retro_load_game(const struct retro_game_info *game)
@@ -163,14 +166,10 @@ void retro_unload_game(void)
 
 void retro_run (void)
 {
-    glBindFramebuffer(GL_FRAMEBUFFER, render_iface.get_current_framebuffer());
+    poll_cb();
 
     sglEnter();
-
-
-    poll_cb();
     co_switch(n64EmuThread);
-
     sglExit();
 
 

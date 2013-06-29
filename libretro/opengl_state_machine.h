@@ -39,6 +39,10 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 void sglActiveTexture(GLenum texture);
 void sglBindTexture(GLenum target, GLuint texture);
 
+#ifdef __LIBRETRO__ // Handle framebuffer 0
+void sglBindFramebuffer(GLenum target, GLuint framebuffer);
+#endif
+
 #ifdef GLIDE64 // HACK: Avoid texture id conflicts
 void sglDeleteTextures(GLuint n, const GLuint* ids);
 #endif
@@ -69,6 +73,10 @@ void sglDeleteTextures(GLuint n, const GLuint* ids);
 
 #define glActiveTexture sglActiveTexture
 #define glBindTexture sglBindTexture
+
+#ifdef __LIBRETRO__ // Handle framebuffer 0
+void glBindFramebuffer(GLenum target, GLuint framebuffer);
+#endif
 
 #ifdef GLIDE64 // HACK: Avoid texture id conflicts
 #define glDeleteTextures sglDeleteTextures

@@ -238,6 +238,18 @@ void sglBindTexture(GLenum target, GLuint texture)
     glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
 }
 
+#ifdef __LIBRETRO__ // Handle framebuffer 0
+extern GLuint retro_get_fbo_id();
+static GLuint Framebuffer_framebuffer = 0;
+void sglBindFramebuffer(GLenum target, GLuint framebuffer)
+{
+    assert(target == GL_FRAMEBUFFER);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
+}
+#endif
+
+
 #ifdef GLIDE64 // Avoid texture id conflicts
 void sglDeleteTextures(GLuint n, const GLuint* ids)
 {
@@ -262,6 +274,10 @@ void sglEnter()
         glVertexAttribPointer(i, VertexAttribPointer_size[i], VertexAttribPointer_type[i], VertexAttribPointer_normalized[i],
                                  VertexAttribPointer_stride[i], VertexAttribPointer_pointer[i]);        
     }
+
+#ifdef __LIBRETRO__
+    sglBindFramebuffer(GL_FRAMEBUFFER, Framebuffer_framebuffer); // < sgl is intentional
+#endif
 
     glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
     glClearColor(ClearColor_red, ClearColor_green, ClearColor_blue, ClearColor_alpha);
@@ -323,5 +339,9 @@ void sglExit()
     {
         glDisableVertexAttribArray(i);
     }
+
+#ifdef __LIBRETRO__
+    glBindFramebuffer(GL_FRAMEBUFFER, retro_get_fbo_id());
+#endif
 }
 
