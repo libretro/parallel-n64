@@ -115,7 +115,7 @@ WITH_RICE = 0
 
 ifeq ($(WITH_RICE), 0)
 VIDEODIR = gles2glide64/src
-CPPFLAGS += -I$(VIDEODIR)/Glitch64/inc/
+CPPFLAGS += -I$(VIDEODIR)/Glitch64/inc -DGLIDE64
 CXXFILES += $(VIDEODIR)/Glide64/3dmath.cpp \
     		$(VIDEODIR)/Glide64/Config.cpp \
     		$(VIDEODIR)/Glide64/FBtoScreen.cpp \

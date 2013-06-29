@@ -205,7 +205,12 @@ void sglBindTexture(GLenum target, GLuint texture)
     assert(target == GL_TEXTURE_2D);
 
     BindTexture_ids[ActiveTexture_texture] = texture;
-    glBindTexture(target, texture);
+
+#ifdef GLIDE64  // Avoid conflicts
+    BindTexture_ids[ActiveTexture_texture] += 1024 * 1024;
+#endif
+
+    glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
 }
 
 //ENTER/EXIT
