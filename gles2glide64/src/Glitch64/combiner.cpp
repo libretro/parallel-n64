@@ -98,7 +98,7 @@ static int a_combiner_ext = 0;
 
 static const char* fragment_shader_header =
 SHADER_HEADER
-#if !defined(__LIBRETRO__) && !defined(GLES) // Desktop GL fix
+#if !defined(__LIBRETRO__) || defined(GLES) // Desktop GL fix
 "precision lowp float;             \n"
 #else
 "#define highp                     \n"
@@ -175,7 +175,7 @@ static const char* fragment_shader_end =
 
 static const char* vertex_shader =
 SHADER_HEADER
-#if !defined(__LIBRETRO__) || !defined(GLES) // Desktop GL fix
+#if defined(__LIBRETRO__) && !defined(GLES) // Desktop GL fix
 "#define highp                                                  \n"
 #endif
 "#define Z_MAX 65536.0                                          \n"
