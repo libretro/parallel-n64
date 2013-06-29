@@ -94,7 +94,8 @@ else
 endif
 
 # libretro
-CFILES += libretro/libretro.c libretro/glsym.c libretro/libco/libco.c libretro/opengl_state_machine.c
+CFILES += libretro/libretro.c libretro/glsym.c libretro/libco/libco.c libretro/opengl_state_machine.c \
+          libretro/audio_plugin.c libretro/input_plugin.c
 
 # RSP Plugin
 RSPDIR = mupen64plus-rsp-hle
@@ -164,15 +165,6 @@ CXXFILES += \
 	$(VIDEODIR)/VectorMath.cpp \
 	$(VIDEODIR)/Video-libretro.cpp
 endif
-
-
-# Audio Plugin
-AUDIODIR = mupen64plus-audio-libretro
-CFILES += $(AUDIODIR)/plugin.c
-
-# Input Plugin
-INPUTDIR = mupen64plus-input-libretro
-CFILES += $(INPUTDIR)/plugin.c 
 
 # Core
 COREDIR = mupen64plus-core

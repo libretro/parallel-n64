@@ -36,14 +36,6 @@ extern retro_audio_sample_batch_t audio_batch_cb;
 #include "api/m64p_common.h"
 #include "api/m64p_config.h"
 
-/* version info */
-#define AUDIO_PLUGIN_VERSION 0x016305
-#define AUDIO_PLUGIN_API_VERSION 0x020000
-#define CONFIG_API_VERSION       0x020100
-#define CONFIG_PARAM_VERSION     1.00
-
-#define VERSION_PRINTF_SPLIT(x) (((x) >> 16) & 0xffff), (((x) >> 8) & 0xff), ((x) & 0xff)
-
 /* Read header for type definition */
 static AUDIO_INFO AudioInfo;
 static int GameFreq = 33600;
@@ -51,11 +43,7 @@ static int GameFreq = 33600;
 /* Mupen64Plus plugin functions */
 EXPORT m64p_error CALL audioPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
-    if (PluginType != NULL)		*PluginType = M64PLUGIN_AUDIO;
-    if (PluginVersion != NULL)	*PluginVersion = AUDIO_PLUGIN_VERSION;
-	if (APIVersion != NULL)		*APIVersion = AUDIO_PLUGIN_API_VERSION;
-    if (PluginNamePtr != NULL)	*PluginNamePtr = "Mupen64Plus libretro Audio Plugin";
-    if (Capabilities != NULL)	*Capabilities = 0;                    
+    // This function should never be called in libretro version                    
     return M64ERR_SUCCESS;
 }
 
