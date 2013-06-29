@@ -77,13 +77,24 @@ void sglVertexAttribPointer(GLuint name, GLint size, GLenum type, GLboolean norm
 }
 
 //BLEND FUNC
-static GLenum BlendFunc_sfactor = GL_ONE, BlendFunc_dfactor = GL_ZERO;
+static GLenum BlendFunc_srcRGB = GL_ONE,  BlendFunc_srcAlpha = GL_ONE;
+static GLenum BlendFunc_dstRGB = GL_ZERO, BlendFunc_dstAlpha = GL_ZERO;
 void sglBlendFunc(GLenum sfactor, GLenum dfactor)
 {
-    BlendFunc_sfactor = sfactor;
-    BlendFunc_dfactor = dfactor;
-    glBlendFunc(BlendFunc_sfactor, BlendFunc_dfactor);
+    BlendFunc_srcRGB = BlendFunc_srcAlpha = sfactor;
+    BlendFunc_dstRGB = BlendFunc_dstAlpha = dfactor;
+    glBlendFunc(BlendFunc_srcRGB, BlendFunc_dstRGB);
 }
+
+void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha)
+{
+    BlendFunc_srcRGB = srcRGB;
+    BlendFunc_dstRGB = dstRGB;
+    BlendFunc_srcAlpha = srcAlpha;
+    BlendFunc_dstAlpha = dstAlpha;
+    glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
+}
+
 
 //CLEAR COLOR
 static GLclampf ClearColor_red = 0.0f, ClearColor_green = 0.0f, ClearColor_blue = 0.0f, ClearColor_alpha = 0.0f;
@@ -103,6 +114,20 @@ void sglClearDepth(GLdouble value)
 {
     ClearDepth_value = value;
     glClearDepth(ClearDepth_value);
+}
+
+//COLOR MASK
+static GLboolean ColorMask_red = GL_TRUE;
+static GLboolean ColorMask_green = GL_TRUE;
+static GLboolean ColorMask_blue = GL_TRUE;
+static GLboolean ColorMask_alpha = GL_TRUE;
+void sglColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha)
+{
+    ColorMask_red = red;
+    ColorMask_green = green;
+    ColorMask_blue = blue;
+    ColorMask_alpha = alpha;
+    glColorMask(ColorMask_red, ColorMask_green, ColorMask_blue, ColorMask_alpha);
 }
 
 //CULL FACE
@@ -226,9 +251,10 @@ void sglEnter()
                                  VertexAttribPointer_stride[i], VertexAttribPointer_pointer[i]);        
     }
 
-    glBlendFunc(BlendFunc_sfactor, BlendFunc_dfactor);
+    glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
     glClearColor(ClearColor_red, ClearColor_green, ClearColor_blue, ClearColor_alpha);
     glClearDepth(ClearDepth_value);
+    glColorMask(ColorMask_red, ColorMask_green, ColorMask_blue, ColorMask_alpha);
     glCullFace(CullFace_mode);
     glDepthFunc(DepthFunc_func);
     glDepthMask(DepthMask_flag);
@@ -264,7 +290,9 @@ void sglExit()
         glDisable(CapTranslate[i]);
 
     glBlendFunc(GL_ONE, GL_ZERO);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glCullFace(GL_BACK);
+    glDepthMask(GL_TRUE);
     glDepthRange(0, 1);
     glFrontFace(GL_CCW);
     glPolygonOffset(0, 0);

@@ -22,8 +22,10 @@ void sglDisableVertexAttribArray(GLuint index);
 void sglVertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean normalize, GLsizei stride, const GLvoid* pointer);
 
 void sglBlendFunc(GLenum sfactor, GLenum dfactor);
+void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha);
 void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
 void sglClearDepth(GLdouble value);
+void sglColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha);
 void sglCullFace(GLenum mode);
 void sglDepthFunc(GLenum func);
 void sglDepthMask(GLboolean flag);
@@ -47,8 +49,10 @@ void sglBindTexture(GLenum target, GLuint texture);
 #define glVertexAttribPointer sglVertexAttribPointer
 
 #define glBlendFunc sglBlendFunc
+#define glBlendFuncSeparate sglBlendFuncSeparate
 #define glClearColor sglClearColor
 #define glClearDepth sglClearDepth
+#define glColorMask sglColorMask
 #define glCullFace sglCullFace
 #define glDepthFunc sglDepthFunc
 #define glDepthMask sglDepthMask
