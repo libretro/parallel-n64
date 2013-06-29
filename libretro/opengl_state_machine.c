@@ -231,12 +231,24 @@ void sglBindTexture(GLenum target, GLuint texture)
 
     BindTexture_ids[ActiveTexture_texture] = texture;
 
-#ifdef GLIDE64  // Avoid conflicts
+#ifdef GLIDE64  // HACK: Avoid texture id conflicts
     BindTexture_ids[ActiveTexture_texture] += 1024 * 1024;
 #endif
 
     glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
 }
+
+#ifdef GLIDE64 // Avoid texture id conflicts
+void sglDeleteTextures(GLuint n, const GLuint* ids)
+{
+    for (int i = 0; i < n; i ++)
+    {
+        GLuint name = ids[i] + 1024 * 1024;
+        glDeleteTextures(1, &name);
+    }
+}
+#endif
+
 
 //ENTER/EXIT
 

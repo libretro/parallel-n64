@@ -39,6 +39,10 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 void sglActiveTexture(GLenum texture);
 void sglBindTexture(GLenum target, GLuint texture);
 
+#ifdef GLIDE64 // HACK: Avoid texture id conflicts
+void sglDeleteTextures(GLuint n, const GLuint* ids);
+#endif
+
 #ifndef NO_TRANSLATE
 #define glEnable(T) sglEnable(S##T)
 #define glDisable(T) sglDisable(S##T)
@@ -65,6 +69,10 @@ void sglBindTexture(GLenum target, GLuint texture);
 
 #define glActiveTexture sglActiveTexture
 #define glBindTexture sglBindTexture
+
+#ifdef GLIDE64 // HACK: Avoid texture id conflicts
+#define glDeleteTextures sglDeleteTextures
+#endif
 
 #endif
 
