@@ -28,8 +28,14 @@ static void crash(void) {
 cothread_t co_create(unsigned int size, void (*entrypoint)(void)) {
    size = (size + 1023) & ~1023;
    cothread_t handle;
+#if _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600
    if (posix_memalign((void**)&handle, 1024, size + 256) < 0)
       return 0;
+#else
+   handle = memalign(1024, size + 256);
+   if (!handle)
+      return 0;
+#endif
 
    uint32_t *ptr = (uint32_t*)handle;
    // Non-volatiles
@@ -41,8 +47,9 @@ cothread_t co_create(unsigned int size, void (*entrypoint)(void)) {
    ptr[5] = 0; // r9
    ptr[6] = 0; // r10
    ptr[7] = 0; // r11
-   ptr[8] = (uintptr_t)ptr + size + 256 - 4; // r13, stack pointer
-   ptr[9] = (uintptr_t)entrypoint; // r15, PC (link register r14 gets saved here).
+   ptr[8] = 0; // r12
+   ptr[9] = (uintptr_t)ptr + size + 256 - 4; // r13, stack pointer
+   ptr[10] = (uintptr_t)entrypoint; // r15, PC (link register r14 gets saved here).
    memcpy(handle, &ptr, sizeof(ptr));
    return handle;
 }

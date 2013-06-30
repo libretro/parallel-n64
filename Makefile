@@ -60,9 +60,11 @@ else ifeq ($(platform), android)
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined -Wl,--warn-common
    GL_LIB := -lGLESv2
 
+   OBJECTS += libretro/libco/armeabi_asm.o
+
    CC = arm-linux-androideabi-gcc
    CXX = arm-linux-androideabi-g++
-   CPPFLAGS += -DNO_ASM -DGLES -DNOSSE -fpermissive
+   CPPFLAGS += -DNO_ASM -DGLES -DNOSSE
    
    fpic = -fPIC
    PLATFORM_EXT := unix
