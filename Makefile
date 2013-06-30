@@ -51,7 +51,7 @@ else ifeq ($(platform), ios)
 
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
-   CPPFLAGS += -DNO_ASM -DIOS -DGLES -DNOSSE
+   CPPFLAGS += -DNO_ASM -DIOS -DGLES -DNOSSE -DHAVE_POSIX_MEMALIGN
    PLATFORM_EXT := unix
 
 

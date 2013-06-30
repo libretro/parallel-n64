@@ -28,7 +28,7 @@ static void crash(void) {
 cothread_t co_create(unsigned int size, void (*entrypoint)(void)) {
    size = (size + 1023) & ~1023;
    cothread_t handle;
-#if _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600
+#if HAVE_POSIX_MEMALIGN
    if (posix_memalign((void**)&handle, 1024, size + 256) < 0)
       return 0;
 #else
