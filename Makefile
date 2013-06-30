@@ -47,6 +47,8 @@ else ifeq ($(platform), ios)
    fpic = -fPIC
    GL_LIB := -framework OpenGLES
 
+   OBJECTS += libretro/libco/armeabi_asm.o
+
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
    CPPFLAGS += -DNO_ASM -DIOS -DGLES -DNOSSE
@@ -212,7 +214,7 @@ CFILES += \
 #   $(COREDIR)/src/plugin/dummy_input.c \
 
 
-OBJECTS    = $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
+OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
 CPPFLAGS   += -D__LIBRETRO__ $(fpic) -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
 CPPFLAGS   += -DM64P_CORE_PROTOTYPES $(fpic)
 CFLAGS     += -std=gnu99 $(fpic)
