@@ -173,7 +173,7 @@ CFILES += \
     $(COREDIR)/src/api/common.c \
     $(COREDIR)/src/api/config.c \
     $(COREDIR)/src/api/frontend.c \
-    $(COREDIR)/src/api/vidext-retro.c \
+    $(COREDIR)/src/api/vidext.c \
     $(COREDIR)/src/main/lirc.c \
     $(COREDIR)/src/main/main.c \
     $(COREDIR)/src/main/md5.c \

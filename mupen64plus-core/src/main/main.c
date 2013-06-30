@@ -215,11 +215,7 @@ int main_set_core_defaults(void)
         ConfigSaveSection("Core");
 
     /* set config parameters for keyboard and joystick commands */
-#ifndef __LIBRETRO__ //No default controls
     return event_set_core_defaults();
-#endif
-
-    return 1;
 }
 
 void main_speeddown(int percent)
@@ -682,6 +678,7 @@ void new_frame(void)
 
 void new_vi(void)
 {
+#ifndef __LIBRETRO__ // Remove interframe delay
     int Dif;
     unsigned int CurrentFPSTime;
     static unsigned int LastFPSTime = 0;
@@ -693,7 +690,6 @@ void new_vi(void)
     double AdjustedLimit = VILimitMilliseconds * 100.0 / l_SpeedFactor;  // adjust for selected emulator speed
     int time;
 
-#ifndef __LIBRETRO__ //TODO: Strip timing?
     start_section(IDLE_SECTION);
     VI_Counter++;
 
@@ -771,10 +767,8 @@ m64p_error main_run(void)
         audio.romClosed(); gfx.romClosed(); free_memory(); return M64ERR_PLUGIN_FAIL;
     }
 
-#ifndef __LIBRETRO__ //No event_
     /* set up the SDL key repeat and event filter to catch keyboard/joystick commands for the core */
     event_initialize();
-#endif
 
     /* initialize the on-screen display */
     if (ConfigGetParamBool(g_CoreConfig, "OnScreenDisplay"))

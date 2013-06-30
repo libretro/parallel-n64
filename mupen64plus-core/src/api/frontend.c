@@ -27,9 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#ifndef __LIBRETRO__ //No SDL
 #include <SDL.h>
-#endif
 
 #define M64P_CORE_PROTOTYPES 1
 #include "m64p_types.h"
@@ -113,10 +111,8 @@ EXPORT m64p_error CALL CoreShutdown(void)
     workqueue_shutdown();
     savestates_deinit();
 
-#ifndef __LIBRETRO__ //No SDL
     /* tell SDL to shut down */
     SDL_Quit();
-#endif
 
     l_CoreInit = 0;
     return M64ERR_SUCCESS;
@@ -259,18 +255,14 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
                 return M64ERR_INVALID_STATE;
             keysym = ParamInt & 0xffff;
             keymod = (ParamInt >> 16) & 0xffff;
-#ifndef __LIBRETRO__ //TODO: No?
             event_sdl_keydown(keysym, keymod);
-#endif
             return M64ERR_SUCCESS;
         case M64CMD_SEND_SDL_KEYUP:
             if (!g_EmulatorRunning)
                 return M64ERR_INVALID_STATE;
             keysym = ParamInt & 0xffff;
             keymod = (ParamInt >> 16) & 0xffff;
-#ifndef __LIBRETRO__ //TODO: No?
             event_sdl_keyup(keysym, keymod);
-#endif
             return M64ERR_SUCCESS;
         case M64CMD_SET_FRAME_CALLBACK:
             g_FrameCallback = (m64p_frame_callback) ParamPtr;

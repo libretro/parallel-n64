@@ -22,17 +22,25 @@
 #if !defined(EVENTLOOP_H)
 #define EVENTLOOP_H
 
+#ifndef __LIBRETRO__ // No eventloop
 extern int event_set_core_defaults(void);
 extern void event_initialize(void);
 extern void event_sdl_keydown(int keysym, int keymod);
 extern void event_sdl_keyup(int keysym, int keymod);
 
-#ifndef __LIBRETRO__ // No Gameshark
 extern int event_gameshark_active(void);
 extern void event_set_gameshark(int active);
+
 #else
-#define event_gameshark_active() 0
-#define event_set_gameshark(x)
+
+#define event_set_core_defaults(...) 1
+#define event_initialize(...)
+#define event_sdl_keydown(...)
+#define event_sdl_keyup(...)
+
+#define event_gameshark_active(...) 0
+#define event_set_gameshark(...)
+
 #endif
 
 #endif /* define(EVENTLOOP_H) */

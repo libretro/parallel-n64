@@ -89,6 +89,8 @@ int VidExt_VideoRunning(void)
     return l_VideoOutputActive;
 }
 
+#ifndef __LIBRETRO__ // No VidExt needed
+
 /* video extension functions to be called by the video plugin */
 EXPORT m64p_error CALL VidExt_Init(void)
 {
@@ -457,4 +459,4 @@ EXPORT m64p_error CALL VidExt_GL_SwapBuffers(void)
     return M64ERR_SUCCESS;
 }
 
-
+#endif // __LIBRETRO__

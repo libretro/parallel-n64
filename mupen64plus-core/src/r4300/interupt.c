@@ -387,6 +387,7 @@ void gen_interupt(void)
 
             refresh_stat();
 
+#ifndef __LIBRETRO__ // No rompause support
             // if paused, poll for input events
             if(rompause)
             {
@@ -401,6 +402,7 @@ void gen_interupt(void)
 #endif //WITH_LIRC
                 }
             }
+#endif // __LIBRETRO__
 
             new_vi();
             if (vi_register.vi_v_sync == 0) vi_register.vi_delay = 500000;
