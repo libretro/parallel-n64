@@ -74,14 +74,14 @@ else ifeq ($(platform), psp1)
    CXX = psp-g++$(EXE_EXT)
    AR = psp-ar$(EXE_EXT)
    CPPFLAGS += -DPSP -G0
-	STATIC_LINKING = 1
+   STATIC_LINKING = 1
 else ifeq ($(platform), wii)
    TARGET := $(TARGET_NAME)_libretro_wii.a
    CC = $(DEVKITPPC)/bin/powerpc-eabi-gcc$(EXE_EXT)
    CXX = $(DEVKITPPC)/bin/powerpc-eabi-g++$(EXE_EXT)
    AR = $(DEVKITPPC)/bin/powerpc-eabi-ar$(EXE_EXT)
    CPPFLAGS += -DGEKKO -mrvl -mcpu=750 -meabi -mhard-float -D__POWERPC__ -D__ppc__ -DWORDS_BIGENDIAN=1
-	STATIC_LINKING = 1
+   STATIC_LINKING = 1
 else
    TARGET := $(TARGET_NAME)_libretro.dll
    LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=libretro/link.T -lwinmm -lgdi32
@@ -122,52 +122,52 @@ ifeq ($(WITH_RICE), 0)
 VIDEODIR = gles2glide64/src
 CPPFLAGS += -I$(VIDEODIR)/Glitch64/inc -DGLIDE64
 CXXFILES += $(VIDEODIR)/Glide64/3dmath.cpp \
-    		$(VIDEODIR)/Glide64/Config.cpp \
-    		$(VIDEODIR)/Glide64/FBtoScreen.cpp \
-    		$(VIDEODIR)/Glide64/Main.cpp \
-    		$(VIDEODIR)/Glide64/Util.cpp \
+            $(VIDEODIR)/Glide64/Config.cpp \
+            $(VIDEODIR)/Glide64/FBtoScreen.cpp \
+            $(VIDEODIR)/Glide64/Main.cpp \
+            $(VIDEODIR)/Glide64/Util.cpp \
             $(VIDEODIR)/Glide64/CRC.cpp \
-    		$(VIDEODIR)/Glide64/Debugger.cpp \
-    		$(VIDEODIR)/Glide64/Ini.cpp \
-    		$(VIDEODIR)/Glide64/TexBuffer.cpp \
-    		$(VIDEODIR)/Glide64/rdp.cpp \
+            $(VIDEODIR)/Glide64/Debugger.cpp \
+            $(VIDEODIR)/Glide64/Ini.cpp \
+            $(VIDEODIR)/Glide64/TexBuffer.cpp \
+            $(VIDEODIR)/Glide64/rdp.cpp \
             $(VIDEODIR)/Glide64/Combine.cpp \
-    		$(VIDEODIR)/Glide64/DepthBufferRender.cpp \
-        	$(VIDEODIR)/Glide64/Keys.cpp \
-    		$(VIDEODIR)/Glide64/TexCache.cpp \
+            $(VIDEODIR)/Glide64/DepthBufferRender.cpp \
+            $(VIDEODIR)/Glide64/Keys.cpp \
+            $(VIDEODIR)/Glide64/TexCache.cpp \
             $(VIDEODIR)/Glitch64/combiner.cpp \
-        	$(VIDEODIR)/Glitch64/geometry.cpp \
-        	$(VIDEODIR)/Glitch64/glState.cpp \
-        	$(VIDEODIR)/Glitch64/main.cpp \
-        	$(VIDEODIR)/Glitch64/textures.cpp
+            $(VIDEODIR)/Glitch64/geometry.cpp \
+            $(VIDEODIR)/Glitch64/glState.cpp \
+            $(VIDEODIR)/Glitch64/main.cpp \
+            $(VIDEODIR)/Glitch64/textures.cpp
 else
 VIDEODIR = mupen64plus-video-rice/src
 
 CPPFLAGS += -DSDL_VIDEO_OPENGL=1
 CXXFILES += \
-	$(VIDEODIR)/Blender.cpp \
-    $(VIDEODIR)/Combiner.cpp \
-	$(VIDEODIR)/Config.cpp \
-	$(VIDEODIR)/ConvertImage.cpp \
-	$(VIDEODIR)/Debugger.cpp \
-	$(VIDEODIR)/DecodedMux.cpp \
-	$(VIDEODIR)/DeviceBuilder.cpp \
-	$(VIDEODIR)/FrameBuffer.cpp \
-	$(VIDEODIR)/GraphicsContext.cpp \
-	$(VIDEODIR)/OGLExtRender.cpp \
-	$(VIDEODIR)/OGLES2FragmentShaders.cpp \
-	$(VIDEODIR)/OGLRender.cpp \
-	$(VIDEODIR)/OGLRenderExt.cpp \
-	$(VIDEODIR)/Render.cpp \
-	$(VIDEODIR)/RenderBase.cpp \
-	$(VIDEODIR)/RenderExt.cpp \
-	$(VIDEODIR)/RenderTexture.cpp \
-	$(VIDEODIR)/RSP_Parser.cpp \
-	$(VIDEODIR)/RSP_S2DEX.cpp \
-	$(VIDEODIR)/Texture.cpp \
-	$(VIDEODIR)/TextureManager.cpp \
-	$(VIDEODIR)/VectorMath.cpp \
-	$(VIDEODIR)/Video-libretro.cpp
+   $(VIDEODIR)/Blender.cpp \
+   $(VIDEODIR)/Combiner.cpp \
+   $(VIDEODIR)/Config.cpp \
+   $(VIDEODIR)/ConvertImage.cpp \
+   $(VIDEODIR)/Debugger.cpp \
+   $(VIDEODIR)/DecodedMux.cpp \
+   $(VIDEODIR)/DeviceBuilder.cpp \
+   $(VIDEODIR)/FrameBuffer.cpp \
+   $(VIDEODIR)/GraphicsContext.cpp \
+   $(VIDEODIR)/OGLExtRender.cpp \
+   $(VIDEODIR)/OGLES2FragmentShaders.cpp \
+   $(VIDEODIR)/OGLRender.cpp \
+   $(VIDEODIR)/OGLRenderExt.cpp \
+   $(VIDEODIR)/Render.cpp \
+   $(VIDEODIR)/RenderBase.cpp \
+   $(VIDEODIR)/RenderExt.cpp \
+   $(VIDEODIR)/RenderTexture.cpp \
+   $(VIDEODIR)/RSP_Parser.cpp \
+   $(VIDEODIR)/RSP_S2DEX.cpp \
+   $(VIDEODIR)/Texture.cpp \
+   $(VIDEODIR)/TextureManager.cpp \
+   $(VIDEODIR)/VectorMath.cpp \
+   $(VIDEODIR)/Video-libretro.cpp
 endif
 
 # Core
