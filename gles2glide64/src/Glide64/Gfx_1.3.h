@@ -295,7 +295,11 @@ extern int exception;
 
 // extern wxMutex *mutexProcessDList;
 
+#ifdef __LIBRETRO__ // Export InitGfx for C
+extern "C" { int InitGfx(); }
+#else
 int InitGfx (int);
+#endif
 void ReleaseGfx ();
 
 // The highest 8 bits are the segment # (1-16), and the lower 24 bits are the offset to

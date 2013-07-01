@@ -1,20 +1,24 @@
 #include <stdio.h>
+#include <SDL_opengles2.h>
+
 #include "libretro.h"
 #include "libco.h"
-
-#include <SDL_opengles2.h>
-static struct retro_hw_render_callback render_iface;
 
 #include "api/m64p_frontend.h"
 #include "api/m64p_types.h"
 #include "r4300/r4300.h"
 #include "main/version.h"
 
-cothread_t n64MainThread;
-cothread_t n64EmuThread;
+static struct retro_hw_render_callback render_iface;
+static cothread_t main_thread;
+static cothread_t emulator_thread;
+static bool emu_thread_has_run = false; // < This is used to ensure the core_gl_context_reset
+                                        //   function doesn't try to reinit graphics before needed
 
 static void EmuThreadFunction()
 {
+    emu_thread_has_run = true;
+
     CoreAttachPlugin(M64PLUGIN_GFX, 0);
     CoreAttachPlugin(M64PLUGIN_AUDIO, 0);
     CoreAttachPlugin(M64PLUGIN_INPUT, 0);
@@ -27,13 +31,13 @@ static void EmuThreadFunction()
     CoreDetachPlugin(M64PLUGIN_INPUT);
     CoreDetachPlugin(M64PLUGIN_RSP);
 
-    co_switch(n64MainThread);
+    co_switch(main_thread);
 
     //NEVER RETURN! That's how libco rolls
     while(1)
     {
         printf("Running Dead N64 Emulator");
-        co_switch(n64MainThread);
+        co_switch(main_thread);
     }
 }
 
@@ -73,6 +77,13 @@ const char* retro_get_system_directory()
 static void core_gl_context_reset()
 {
    glsym_init_procs(render_iface.get_proc_address);
+
+#ifdef GLIDE64
+    extern int InitGfx ();
+
+    if (emu_thread_has_run)
+        InitGfx();
+#endif
 }
 
 GLuint retro_get_fbo_id()
@@ -82,7 +93,7 @@ GLuint retro_get_fbo_id()
 
 void retro_n64_video_flipped()
 {
-    co_switch(n64MainThread);
+    co_switch(main_thread);
 }
 
 //
@@ -140,15 +151,14 @@ bool retro_load_game(const struct retro_game_info *game)
         return false;
     }
 
-
     if(CoreDoCommand(M64CMD_ROM_OPEN, game->size, (void*)game->data))
     {
         printf("mupen64plus: Failed to load ROM\n");
         return false;
     }
 
-    n64MainThread = co_active();
-    n64EmuThread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
+    main_thread = co_active();
+    emulator_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
 
     return true;
 }
@@ -156,7 +166,7 @@ bool retro_load_game(const struct retro_game_info *game)
 void retro_unload_game(void)
 {
     stop = 1;
-    co_switch(n64EmuThread);
+    co_switch(emulator_thread);
 
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
 }
@@ -166,7 +176,7 @@ void retro_run (void)
     poll_cb();
 
     sglEnter();
-    co_switch(n64EmuThread);
+    co_switch(emulator_thread);
     sglExit();
 
 
