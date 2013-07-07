@@ -355,7 +355,7 @@ void dma_si_write(void)
     update_pif_write();
 
     // TODO: under what circumstances should bits 1 or 3 be set?
-    si_register.si_stat |= 1;
+    //si_register.si_stat |= 1;
 
     update_count();
     add_interupt_event(SI_INT, /*0x100*/0x900);
@@ -379,7 +379,7 @@ void dma_si_read(void)
     }
 
     // TODO: under what circumstances should bits 1 or 3 be set?
-    si_register.si_stat |= 1;
+    //si_register.si_stat |= 1;
 
     update_count();
     add_interupt_event(SI_INT, /*0x100*/0x900);
