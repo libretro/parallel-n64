@@ -498,6 +498,8 @@ void ReadSettings ()
   ConfigWrapper();
 }
 
+unsigned disable_motionblur = 0;
+
 void ReadSpecialSettings (const char * name)
 {
   //  char buf [256];
@@ -566,6 +568,12 @@ void ReadSpecialSettings (const char * name)
     settings.hacks |= hack_GoldenEye;
   else if (strstr(name, (const char *)"PUZZLE LEAGUE"))
     settings.hacks |= hack_PPL;
+  /* Libretro-specific hacks */
+  else if (strstr(name, (const char *)"Blast Corps"))
+     disable_motionblur = 1;
+
+  if (strstr(name, (const char *)"ZELDA MAJORA'S MASK"))
+     disable_motionblur = 1;
 
   Ini * ini = Ini::OpenIni();
   if (!ini)
@@ -2163,6 +2171,9 @@ void newSwapBuffers()
       char * message = 0;
       if (hotkey_info.hk_ref)
       {
+         if (disable_motionblur)
+            settings.frame_buffer = 1;
+
         if (settings.frame_buffer & fb_ref)
           message = strcat(buf, "FB READ ALWAYS: ON");
         else
