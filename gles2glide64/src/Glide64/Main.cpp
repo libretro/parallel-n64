@@ -2059,10 +2059,25 @@ static void GetGammaTable()
   }
 }
 
+#ifdef __LIBRETRO__
+#include "../../../libretro/libretro.h"
+extern retro_environment_t environ_cb;
+extern void update_variables(void);
+#endif
 }
+
+extern unsigned retro_filtering;
+
 wxUint32 curframe = 0;
 void newSwapBuffers()
 {
+#ifdef __LIBRETRO__
+   bool updated = false;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+      update_variables();
+
+   settings.filtering = retro_filtering;
+#endif
   if (!rdp.updatescreen)
     return;
 

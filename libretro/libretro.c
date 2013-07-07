@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <SDL_opengles2.h>
+#include <string.h>
 
 #include "libretro.h"
 #include "libco.h"
@@ -62,7 +63,19 @@ void retro_set_audio_sample(retro_audio_sample_t cb)   { }
 void retro_set_audio_sample_batch(retro_audio_sample_batch_t cb) { audio_batch_cb = cb; }
 void retro_set_input_poll(retro_input_poll_t cb) { poll_cb = cb; }
 void retro_set_input_state(retro_input_state_t cb) { input_cb = cb; }
-void retro_set_environment(retro_environment_t cb) { environ_cb = cb; }
+
+void retro_set_environment(retro_environment_t cb)
+{
+   environ_cb = cb;
+
+   struct retro_variable variables[] = {
+      { "mupen64-filtering",
+         "Texture filtering; automatic|bilinear|nearest" },
+      { NULL, NULL },
+   };
+
+   cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
+}
 
 //
 
@@ -135,8 +148,33 @@ void retro_deinit(void)
     CoreShutdown();
 }
 
+unsigned retro_filtering = 0;
+
+void update_variables(void)
+{
+#ifdef GLIDE64
+   struct retro_variable var;
+   
+   var.key = "mupen64-filtering";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var))
+   {
+
+      if (strcmp(var.value, "automatic") == 0)
+         retro_filtering = 0;
+      else if (strcmp(var.value, "bilinear") == 0)
+         retro_filtering = 1;
+      else if (strcmp(var.value, "nearest") == 0)
+         retro_filtering = 2;
+   }
+#endif
+}
+
 bool retro_load_game(const struct retro_game_info *game)
 {
+   update_variables();
+
 #ifndef GLES
     render_iface.context_type = RETRO_HW_CONTEXT_OPENGL;
 #else
