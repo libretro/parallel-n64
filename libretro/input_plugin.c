@@ -232,7 +232,7 @@ EXPORT void CALL inputInitiateControllers(CONTROL_INFO ControlInfo)
     for( i = 0; i < 4; i++ )
     {
         controller[i].control = ControlInfo.Controls + i;
-		controller[i].control->Present = 1;
+		controller[i].control->Present = (i == 0) ? 1 : 0; /* TODO - fix this */
 		controller[i].control->RawData = 0;
 		controller[i].control->Plugin = PLUGIN_MEMPAK;
     }
