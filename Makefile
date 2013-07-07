@@ -99,7 +99,7 @@ endif
 
 # libretro
 CFILES += libretro/libretro.c libretro/glsym.c libretro/libco/libco.c libretro/opengl_state_machine.c \
-          libretro/audio_plugin.c libretro/input_plugin.c
+          libretro/audio_plugin.c libretro/input_plugin.c libretro/resampler.c libretro/sinc.c
 
 # RSP Plugin
 RSPDIR = mupen64plus-rsp-hle
