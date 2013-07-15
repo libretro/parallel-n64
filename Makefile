@@ -26,12 +26,17 @@ else ifneq ($(findstring MINGW,$(shell uname -a)),)
    system_platform = win
 endif
 
-ifeq ($(platform), unix)
+ifneq (,$(findstring unix,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T
    
    fpic = -fPIC
+ifneq (,$(findstring gles,$(platform)))
+   GLES = 1
+   GL_LIB := -lGLESv2
+else
    GL_LIB := -lGL
+endif
    PLATFORM_EXT := unix
 else ifeq ($(platform), osx)
    TARGET := $(TARGET_NAME)_libretro.dylib
@@ -45,13 +50,14 @@ else ifeq ($(platform), ios)
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    LDFLAGS += -dynamiclib
    fpic = -fPIC
+   GLES = 1
    GL_LIB := -framework OpenGLES
 
    OBJECTS += libretro/libco/armeabi_asm.o
 
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
-   CPPFLAGS += -DNO_ASM -DIOS -DGLES -DNOSSE -DHAVE_POSIX_MEMALIGN
+   CPPFLAGS += -DNO_ASM -DIOS -DNOSSE -DHAVE_POSIX_MEMALIGN
    PLATFORM_EXT := unix
 
 
@@ -64,7 +70,8 @@ else ifeq ($(platform), android)
 
    CC = arm-linux-androideabi-gcc
    CXX = arm-linux-androideabi-g++
-   CPPFLAGS += -DNO_ASM -DGLES -DNOSSE
+   GLES = 1
+   CPPFLAGS += -DNO_ASM -DNOSSE
    
    fpic = -fPIC
    PLATFORM_EXT := unix
@@ -82,7 +89,36 @@ else ifeq ($(platform), wii)
    AR = $(DEVKITPPC)/bin/powerpc-eabi-ar$(EXE_EXT)
    CPPFLAGS += -DGEKKO -mrvl -mcpu=750 -meabi -mhard-float -D__POWERPC__ -D__ppc__ -DWORDS_BIGENDIAN=1
    STATIC_LINKING = 1
+else ifneq (,$(findstring armv,$(platform)))
+   CC = gcc
+   CXX = g++
+   TARGET := $(TARGET_NAME)_libretro.so
+   fpic := -fPIC
+   SHARED := -shared -Wl,--version-script=link.T -Wl,--no-undefined
+   CPPFLAGS += -I.
+   LIBS := -lz
+ifneq (,$(findstring gles,$(platform)))
+   GLES := 1
 else
+   GL_LIB := -lGL
+endif
+ifneq (,$(findstring cortexa8,$(platform)))
+   CPPFLAGS += -marm -mcpu=cortex-a8
+else ifneq (,$(findstring cortexa9,$(platform)))
+   CPPFLAGS += -marm -mcpu=cortex-a9
+endif
+   CPPFLAGS += -marm
+ifneq (,$(findstring neon,$(platform)))
+   CPPFLAGS += -mfpu=neon
+   HAVE_NEON = 1
+endif
+ifneq (,$(findstring softfloat,$(platform)))
+   CPPFLAGS += -mfloat-abi=softfp
+else ifneq (,$(findstring hardfloat,$(platform)))
+   CPPFLAGS += -mfloat-abi=hard
+endif
+   CPPFLAGS += -DARM
+else ifneq (,$(findstring win,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dll
    LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=libretro/link.T -lwinmm -lgdi32
    GL_LIB := -lopengl32
@@ -117,6 +153,10 @@ CXXFILES += \
 
 # Video Plugin
 WITH_RICE = 0
+
+ifeq ($(GLES), 1)
+CPPFLAGS += -DGLES
+endif
 
 ifeq ($(WITH_RICE), 0)
 VIDEODIR = gles2glide64/src
