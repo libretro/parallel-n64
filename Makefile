@@ -38,7 +38,7 @@ else
    GL_LIB := -lGL
 endif
    PLATFORM_EXT := unix
-else ifeq ($(platform), osx)
+else ifneq (,$(findstring osx,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dylib
    LDFLAGS += -dynamiclib
    fpic = -fPIC
