@@ -197,11 +197,10 @@ EXPORT void CALL inputGetKeys( int Control, BUTTONS *Keys )
 //  Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
 //  Keys->Value |= input_cb(0, RETRO_DEVICE_JOYPAD, Control, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
 
-    // Analog stick: TODO: Should this divide by 256 or 512? What is the expected range?
     int16_t analogX = input_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
     int16_t analogY = input_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
-	Keys->X_AXIS =      (abs(analogX) > ASTICK_DEADZONE) ? analogX >> 9 : 0;
-	Keys->Y_AXIS = 0 - ((abs(analogY) > ASTICK_DEADZONE) ? analogY >> 9 : 0);
+    Keys->X_AXIS =     (abs(analogX) > ASTICK_DEADZONE) ? analogX >> 8 : 0;
+    Keys->Y_AXIS =     (abs(analogY) > ASTICK_DEADZONE) ? (0 - analogY) >> 8 : 0;
 
     // C buttons
     analogX = input_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
