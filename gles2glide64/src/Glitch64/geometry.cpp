@@ -158,11 +158,7 @@ void init_geometry()
 {
   xy_en = q_en = pargb_en = st0_en = st1_en = z_en = 0;
   w_buffer_mode = 0;
-#ifndef __LIBRETRO__ // Inverted inverted_culling
   inverted_culling = 0;
-#else
-  inverted_culling = 1;
-#endif
 
   glDisable(GL_CULL_FACE);
   glDisable(GL_DEPTH_TEST);

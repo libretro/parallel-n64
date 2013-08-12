@@ -133,15 +133,6 @@ PFNGLSECONDARYCOLOR3FPROC glSecondaryColor3f;
 PFNGLCOMPRESSEDTEXIMAGE2DPROC glCompressedTexImage2DARB;
 #endif // _WIN32
 
-#ifdef __LIBRETRO__ // Flip glScissor
-void glScissorWrap(GLint x, GLint y, GLsizei width, GLsizei height)
-{
-    glScissor(x, 480 - y - height, width, height);
-}
-#undef glScissor
-#define glScissor glScissorWrap
-#endif
-
 typedef struct
 {
   unsigned int address;
@@ -1567,11 +1558,7 @@ grRenderBuffer( GrBuffer_t buffer )
       //glLoadIdentity();
       //glTranslatef(0, 0, 1-zscale);
       //glScalef(1, 1, zscale);
-#ifndef __LIBRETRO__ // Inverted inverted_culling
       inverted_culling = 0;
-#else
-      inverted_culling = 1;
-#endif
       grCullMode(culling_mode);
 
       width = savedWidth;
@@ -1643,11 +1630,7 @@ grRenderBuffer( GrBuffer_t buffer )
         //glLoadIdentity();
         //glTranslatef(0, 0, 1-zscale);
         //glScalef(1, 1, zscale);
-#ifndef __LIBRETRO__ // Inverted inverted_culling
         inverted_culling = 0;
-#else
-        inverted_culling = 0;
-#endif
       } else {
 /*
         float m[4*4] = {1.0f, 0.0f, 0.0f, 0.0f,
@@ -1660,11 +1643,7 @@ grRenderBuffer( GrBuffer_t buffer )
         glTranslatef(0, 0, 1-zscale);
         glScalef(1, 1*1, zscale);
 */
-#ifndef __LIBRETRO__ // Inverted inverted_culling
         inverted_culling = 1;
-#else
-        inverted_culling = 0;
-#endif
         grCullMode(culling_mode);
       }
     }

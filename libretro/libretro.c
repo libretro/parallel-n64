@@ -175,6 +175,7 @@ bool retro_load_game(const struct retro_game_info *game)
 {
    update_variables();
 
+   memset(&render_iface, 0, sizeof(render_iface));
 #ifndef GLES
     render_iface.context_type = RETRO_HW_CONTEXT_OPENGL;
 #else
@@ -182,6 +183,8 @@ bool retro_load_game(const struct retro_game_info *game)
 #endif
     render_iface.context_reset = core_gl_context_reset;
     render_iface.depth = true;
+    render_iface.bottom_left_origin = true;
+    render_iface.cache_context = true;
     
     if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &render_iface))
     {
