@@ -298,6 +298,7 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
     return M64ERR_INTERNAL;
 }
 
+#ifndef __LIBRETRO__ // Don't have VidExt functions
 EXPORT m64p_error CALL CoreOverrideVidExt(m64p_video_extension_functions *VideoFunctionStruct)
 {
     if (!l_CoreInit)
@@ -305,6 +306,7 @@ EXPORT m64p_error CALL CoreOverrideVidExt(m64p_video_extension_functions *VideoF
 
     return OverrideVideoFunctions(VideoFunctionStruct); /* in vidext.c */
 }
+#endif
 
 EXPORT m64p_error CALL CoreAddCheat(const char *CheatName, m64p_cheat_code *CodeList, int NumCodes)
 {

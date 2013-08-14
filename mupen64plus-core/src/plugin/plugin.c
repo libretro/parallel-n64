@@ -123,9 +123,13 @@ static void EmptyFunc(void)
 {
 }
 
+#ifndef __LIBRETRO__
 // Handy macro to avoid code bloat when loading symbols
 #define GET_FUNC(type, field, name) \
     ((field = (type)osal_dynlib_getproc(plugin_handle, name)) != NULL)
+#else
+#define GET_FUNC(type, field, name) 0
+#endif
 
 // code to handle backwards-compatibility to video plugins with API_VERSION < 02.1.0.  This API version introduced a boolean
 // flag in the rendering callback, which told the core whether or not the current screen has been freshly redrawn since the

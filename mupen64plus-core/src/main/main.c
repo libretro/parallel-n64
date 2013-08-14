@@ -422,6 +422,7 @@ m64p_error main_core_state_query(m64p_core_param param, int *rval)
             else
                 *rval = M64EMU_RUNNING;
             break;
+#ifndef __LIBRETRO__ // No VidExt
         case M64CORE_VIDEO_MODE:
             if (!VidExt_VideoRunning())
                 *rval = M64VIDEO_NONE;
@@ -430,6 +431,7 @@ m64p_error main_core_state_query(m64p_core_param param, int *rval)
             else
                 *rval = M64VIDEO_WINDOWED;
             break;
+#endif
         case M64CORE_SAVESTATE_SLOT:
             *rval = savestates_get_slot();
             break;
@@ -497,6 +499,7 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
                 return M64ERR_SUCCESS;
             }
             return M64ERR_INPUT_INVALID;
+#ifndef __LIBRETRO__ // No VidExt
         case M64CORE_VIDEO_MODE:
             if (!g_EmulatorRunning)
                 return M64ERR_INVALID_STATE;
@@ -513,6 +516,7 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
                 return M64ERR_SUCCESS;
             }
             return M64ERR_INPUT_INVALID;
+#endif
         case M64CORE_SAVESTATE_SLOT:
             if (val < 0 || val > 9)
                 return M64ERR_INPUT_INVALID;
