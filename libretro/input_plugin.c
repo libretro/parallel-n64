@@ -197,10 +197,25 @@ EXPORT void CALL inputGetKeys( int Control, BUTTONS *Keys )
 //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
 //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
 
+    // Analog stick range is from -80 to 80
     int16_t analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
     int16_t analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
-    Keys->X_AXIS =     (abs(analogX) > ASTICK_DEADZONE) ? analogX >> 8 : 0;
-    Keys->Y_AXIS =     (abs(analogY) > ASTICK_DEADZONE) ? (0 - analogY) >> 8 : 0;
+
+    if (abs(analogX) > ASTICK_DEADZONE)
+    {
+         float val = 161.0f * ((analogX + 32768) / 65536.0f);
+         Keys->X_AXIS = ((int32_t)val) - 80;
+    }
+    else
+        Keys->X_AXIS = 0;
+
+    if (abs(analogY) > ASTICK_DEADZONE)
+    {
+         float val = 161.0f * ((analogY + 32768) / 65536.0f);
+         Keys->Y_AXIS = 0 - (((int32_t)val) - 80);
+    }
+    else
+        Keys->Y_AXIS = 0;
 
     // C buttons
     analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
