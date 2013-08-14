@@ -217,8 +217,6 @@ CFILES += \
     $(COREDIR)/src/api/common.c \
     $(COREDIR)/src/api/config.c \
     $(COREDIR)/src/api/frontend.c \
-    $(COREDIR)/src/api/vidext.c \
-    $(COREDIR)/src/main/lirc.c \
     $(COREDIR)/src/main/main.c \
     $(COREDIR)/src/main/md5.c \
     $(COREDIR)/src/main/rom.c \
@@ -229,7 +227,6 @@ CFILES += \
     $(COREDIR)/src/memory/n64_cic_nus_6105.c \
     $(COREDIR)/src/memory/pif.c \
     $(COREDIR)/src/memory/tlb.c \
-    $(COREDIR)/src/osal/dynamiclib_$(PLATFORM_EXT).c \
     $(COREDIR)/src/osal/files_$(PLATFORM_EXT).c \
     $(COREDIR)/src/plugin/plugin.c \
     $(COREDIR)/src/r4300/empty_dynarec.c \
