@@ -28,7 +28,7 @@
 #include <stdarg.h>
 
 #include "libretro.h"
-extern retro_audio_sample_batch_t audio_batch_cb;
+void retro_audio_batch_cb(const int16_t *data, size_t frames, unsigned freq);
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "api/m64p_types.h"
@@ -63,7 +63,7 @@ EXPORT void CALL audioAiLenChanged(void)
 {
 	uint32_t len = *AudioInfo.AI_LEN_REG;
 	uint8_t* p = (uint8_t*)(AudioInfo.RDRAM + (*AudioInfo.AI_DRAM_ADDR_REG & 0xFFFFFF));
-    audio_batch_cb((const int16_t*)p, len / 4);
+   retro_audio_batch_cb((const int16_t*)p, len / 4, GameFreq);
 }
 
 EXPORT m64p_error CALL audioPluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context, void (*DebugCallback)(void *, int, const char *)){return M64ERR_SUCCESS;}

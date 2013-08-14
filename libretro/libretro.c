@@ -3,6 +3,8 @@
 #include <string.h>
 
 #include "libretro.h"
+#include "resampler.h"
+#include "utils.h"
 #include "libco.h"
 
 #include "api/m64p_frontend.h"
@@ -15,6 +17,12 @@ static cothread_t main_thread;
 static cothread_t emulator_thread;
 static bool emu_thread_has_run = false; // < This is used to ensure the core_gl_context_reset
                                         //   function doesn't try to reinit graphics before needed
+
+static const rarch_resampler_t *resampler;
+static void *resampler_data;
+static float *audio_in_buffer_float;
+static float *audio_out_buffer_float;
+static int16_t *audio_out_buffer_s16;
 
 static void EmuThreadFunction()
 {
@@ -129,7 +137,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
     info->geometry.max_height = 480;
     info->geometry.aspect_ratio = 0.0;
     info->timing.fps = 60.0;                // TODO: NTSC/PAL + Actual timing 
-    info->timing.sample_rate = 32000.0;     // TODO: NTSC/PAL + Actual timing
+    info->timing.sample_rate = 44100.0;
 }
 
 void retro_init(void)
@@ -141,11 +149,27 @@ void retro_init(void)
     {
         printf("mupen64plus: Failed to initialize core\n");
     }
+
+    rarch_resampler_realloc(&resampler_data, &resampler, NULL, 1.0);
+    audio_in_buffer_float = malloc(4096 * sizeof(float));
+    audio_out_buffer_float = malloc(4096 * sizeof(float));
+    audio_out_buffer_s16 = malloc(4096 * sizeof(int16_t));
+    audio_convert_init_simd();
 }
 
 void retro_deinit(void)
 {
     CoreShutdown();
+
+    if (resampler && resampler_data)
+    {
+       resampler->free(resampler_data);
+       resampler = NULL;
+       resampler_data = NULL;
+       free(audio_in_buffer_float);
+       free(audio_out_buffer_float);
+       free(audio_out_buffer_s16);
+    }
 }
 
 unsigned retro_filtering = 0;
@@ -212,6 +236,30 @@ void retro_unload_game(void)
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
 }
 
+void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
+{
+   audio_convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
+
+   double ratio = 44100.0 / freq;
+   struct resampler_data data = {0};
+   data.data_in = audio_in_buffer_float;
+   data.data_out = audio_out_buffer_float;
+   data.input_frames = frames;
+   data.ratio = ratio;
+
+   resampler->process(resampler_data, &data);
+
+   audio_convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
+
+   const int16_t *out = audio_out_buffer_s16;
+   while (data.output_frames)
+   {
+      size_t ret = audio_batch_cb(out, data.output_frames);
+      data.output_frames -= ret;
+      out += ret * 2;
+   }
+}
+
 void retro_run (void)
 {
     poll_cb();
@@ -219,7 +267,6 @@ void retro_run (void)
     sglEnter();
     co_switch(emulator_thread);
     sglExit();
-
 
     video_cb(RETRO_HW_FRAME_BUFFER_VALID, 640, 480, 0);
 }
