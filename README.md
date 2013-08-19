@@ -1,15 +1,19 @@
 mupen64plus-libretro
 ====================
 
-Based on latest version of mupen64plus hg (~2.0 rc2) and patches I originally made for mednafen-ps3.
+Based on recent version of mupen64plus hg (~2.0 rc2) and patches I originally made for mednafen-ps3.
+Uses video plugins pulled from https://github.com/paulscode/mupen64plus-ae
 
-By default it will build with a copy of gles2glide64 as the video plugin. By passing WITH_RICE=1 to make the rice video plugin will be built instead (this is not recommended).
+The video plugin must be selected at compile time:
+* make WITH_RICE=1 for gles2rice
+* make WITH_GLIDE=1 for gles2glide64
+* make WITH_GLN64=1 for gles2n64 ( gles2n64 does not produce video output at this time )
 
 In order to run the video plugins ini file must be copied into RetroArch's system directory:
+* For gles2rice video: gles2rice/data/VideoRiceLinux.ini
 * For gles2glide64: gles2glide64/data/Glide64mk2.ini
-* For rice video: mupen64plus-video-rice/data/VideoRiceLinux.ini
 
 TODO:
 * There are many visual errors
-* Add alternate video plugins for better overall compatibility
+* Allow video plugin to be selected at runtime
 * Enable JIT CPU cores for appropriate platforms

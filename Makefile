@@ -158,7 +158,7 @@ ifeq ($(GLES), 1)
 CPPFLAGS += -DGLES
 endif
 
-ifeq ($(WITH_RICE), 0)
+ifeq ($(WITH_GLIDE), 1)
 VIDEODIR = gles2glide64/src
 CPPFLAGS += -I$(VIDEODIR)/Glitch64/inc -DGLIDE64
 CXXFILES += $(VIDEODIR)/Glide64/3dmath.cpp \
@@ -180,34 +180,97 @@ CXXFILES += $(VIDEODIR)/Glide64/3dmath.cpp \
             $(VIDEODIR)/Glitch64/glState.cpp \
             $(VIDEODIR)/Glitch64/main.cpp \
             $(VIDEODIR)/Glitch64/textures.cpp
-else
-VIDEODIR = mupen64plus-video-rice/src
+else ifeq ($(WITH_RICE), 1)
+VIDEODIR = gles2rice/src
 
-CPPFLAGS += -DSDL_VIDEO_OPENGL=1
+CPPFLAGS += -DSDL_VIDEO_OPENGL_ES2=1
+LDFLAGS += -lpng
+
 CXXFILES += \
    $(VIDEODIR)/Blender.cpp \
    $(VIDEODIR)/Combiner.cpp \
+   $(VIDEODIR)/CombinerTable.cpp \
    $(VIDEODIR)/Config.cpp \
    $(VIDEODIR)/ConvertImage.cpp \
+   $(VIDEODIR)/ConvertImage16.cpp \
    $(VIDEODIR)/Debugger.cpp \
    $(VIDEODIR)/DecodedMux.cpp \
    $(VIDEODIR)/DeviceBuilder.cpp \
+   $(VIDEODIR)/DirectXDecodedMux.cpp \
    $(VIDEODIR)/FrameBuffer.cpp \
+   $(VIDEODIR)/GeneralCombiner.cpp \
    $(VIDEODIR)/GraphicsContext.cpp \
-   $(VIDEODIR)/OGLExtRender.cpp \
+   $(VIDEODIR)/OGLCombiner.cpp \
+   $(VIDEODIR)/OGLDecodedMux.cpp \
    $(VIDEODIR)/OGLES2FragmentShaders.cpp \
+   $(VIDEODIR)/OGLExtCombiner.cpp \
+   $(VIDEODIR)/OGLExtRender.cpp \
+   $(VIDEODIR)/OGLGraphicsContext.cpp \
    $(VIDEODIR)/OGLRender.cpp \
    $(VIDEODIR)/OGLRenderExt.cpp \
+   $(VIDEODIR)/OGLTexture.cpp \
+   $(VIDEODIR)/RSP_Parser.cpp \
+   $(VIDEODIR)/RSP_S2DEX.cpp \
    $(VIDEODIR)/Render.cpp \
    $(VIDEODIR)/RenderBase.cpp \
    $(VIDEODIR)/RenderExt.cpp \
    $(VIDEODIR)/RenderTexture.cpp \
-   $(VIDEODIR)/RSP_Parser.cpp \
-   $(VIDEODIR)/RSP_S2DEX.cpp \
    $(VIDEODIR)/Texture.cpp \
+   $(VIDEODIR)/TextureFilters.cpp \
+   $(VIDEODIR)/TextureFilters_2xsai.cpp \
+   $(VIDEODIR)/TextureFilters_hq2x.cpp \
+   $(VIDEODIR)/TextureFilters_hq4x.cpp \
    $(VIDEODIR)/TextureManager.cpp \
    $(VIDEODIR)/VectorMath.cpp \
-   $(VIDEODIR)/Video-libretro.cpp
+   $(VIDEODIR)/Video.cpp
+
+CFILES += \
+   $(VIDEODIR)/osal_files_$(PLATFORM_EXT).c \
+   $(VIDEODIR)/liblinux/BMGImage.c \
+   $(VIDEODIR)/liblinux/BMGUtils.c \
+   $(VIDEODIR)/liblinux/bmp.c \
+   $(VIDEODIR)/liblinux/pngrw.c
+else ifeq ($(WITH_GLN64), 1)
+VIDEODIR = gles2n64/src
+
+CXXFILES += \
+   $(VIDEODIR)/2xSAI.cpp \
+   $(VIDEODIR)/3DMath.cpp \
+   $(VIDEODIR)/CRC.cpp \
+   $(VIDEODIR)/Config.cpp \
+   $(VIDEODIR)/DepthBuffer.cpp \
+   $(VIDEODIR)/F3D.cpp \
+   $(VIDEODIR)/F3DCBFD.cpp \
+   $(VIDEODIR)/F3DDKR.cpp \
+   $(VIDEODIR)/F3DEX.cpp \
+   $(VIDEODIR)/F3DEX2.cpp \
+   $(VIDEODIR)/F3DPD.cpp \
+   $(VIDEODIR)/F3DWRUS.cpp \
+   $(VIDEODIR)/FrameSkipper.cpp \
+   $(VIDEODIR)/GBI.cpp \
+   $(VIDEODIR)/L3D.cpp \
+   $(VIDEODIR)/L3DEX.cpp \
+   $(VIDEODIR)/L3DEX2.cpp \
+   $(VIDEODIR)/N64.cpp \
+   $(VIDEODIR)/OpenGL.cpp \
+   $(VIDEODIR)/RDP.cpp \
+   $(VIDEODIR)/RSP.cpp \
+   $(VIDEODIR)/S2DEX.cpp \
+   $(VIDEODIR)/S2DEX2.cpp \
+   $(VIDEODIR)/ShaderCombiner.cpp \
+   $(VIDEODIR)/Textures.cpp \
+   $(VIDEODIR)/VI.cpp \
+   $(VIDEODIR)/gDP.cpp \
+   $(VIDEODIR)/gSP.cpp \
+   $(VIDEODIR)/gles2N64.cpp
+
+CFILES += \
+   $(VIDEODIR)/ticks.c
+
+#NEON
+#  $(VIDEODIR)/3DMathNeon.cpp
+#  $(VIDEODIR)/gSPNeon.cpp
+
 endif
 
 # Core

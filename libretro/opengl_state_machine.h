@@ -20,7 +20,11 @@ GLboolean sglIsEnabled(GLenum cap);
 void sglEnableVertexAttribArray(GLuint index);
 void sglDisableVertexAttribArray(GLuint index);
 void sglVertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean normalize, GLsizei stride, const GLvoid* pointer);
+void sglVertexAttrib4f(GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
+void sglVertexAttrib4fv(GLuint index, GLfloat* v);
 
+void sglBindFramebuffer(GLenum target, GLuint framebuffer);
+void sglBindRenderbuffer(GLenum target, GLuint index);
 void sglBlendFunc(GLenum sfactor, GLenum dfactor);
 void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha);
 void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
@@ -39,9 +43,6 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 void sglActiveTexture(GLenum texture);
 void sglBindTexture(GLenum target, GLuint texture);
 
-#ifdef __LIBRETRO__ // Handle framebuffer 0
-void sglBindFramebuffer(GLenum target, GLuint framebuffer);
-#endif
 
 #ifdef GLIDE64 // HACK: Avoid texture id conflicts
 void sglDeleteTextures(GLuint n, const GLuint* ids);
@@ -55,7 +56,10 @@ void sglDeleteTextures(GLuint n, const GLuint* ids);
 #define glEnableVertexAttribArray sglEnableVertexAttribArray
 #define glDisableVertexAttribArray sglDisableVertexAttribArray
 #define glVertexAttribPointer sglVertexAttribPointer
+#define glVertexAttrib4f sglVertexAttrib4f
+#define glVertexAttrib4fv sglVertexAttrib4fv
 
+#define glBindRenderbuffer sglBindRenderbuffer
 #define glBlendFunc sglBlendFunc
 #define glBlendFuncSeparate sglBlendFuncSeparate
 #define glClearColor sglClearColor
@@ -74,8 +78,9 @@ void sglDeleteTextures(GLuint n, const GLuint* ids);
 #define glActiveTexture sglActiveTexture
 #define glBindTexture sglBindTexture
 
+
 #ifdef __LIBRETRO__ // Handle framebuffer 0
-void glBindFramebuffer(GLenum target, GLuint framebuffer);
+#define glBindFramebuffer sglBindFramebuffer
 #endif
 
 #ifdef GLIDE64 // HACK: Avoid texture id conflicts

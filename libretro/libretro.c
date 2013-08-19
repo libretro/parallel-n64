@@ -24,9 +24,21 @@ static float *audio_in_buffer_float;
 static float *audio_out_buffer_float;
 static int16_t *audio_out_buffer_s16;
 
+static uint8_t* game_data;
+static uint32_t game_size;
+
 static void EmuThreadFunction()
 {
     emu_thread_has_run = true;
+
+    if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
+    {
+        printf("mupen64plus: Failed to load ROM\n");
+        goto load_fail;
+    }
+
+    free(game_data);
+    game_data = 0;
 
     CoreAttachPlugin(M64PLUGIN_GFX, 0);
     CoreAttachPlugin(M64PLUGIN_AUDIO, 0);
@@ -41,6 +53,10 @@ static void EmuThreadFunction()
     CoreDetachPlugin(M64PLUGIN_RSP);
 
     co_switch(main_thread);
+
+load_fail:
+    free(game_data);
+    game_data = 0;
 
     //NEVER RETURN! That's how libco rolls
     while(1)
@@ -216,11 +232,9 @@ bool retro_load_game(const struct retro_game_info *game)
         return false;
     }
 
-    if(CoreDoCommand(M64CMD_ROM_OPEN, game->size, (void*)game->data))
-    {
-        printf("mupen64plus: Failed to load ROM\n");
-        return false;
-    }
+    game_data = malloc(game->size);
+    memcpy(game_data, game->data, game->size);
+    game_size = game->size;
 
     main_thread = co_active();
     emulator_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);

@@ -42,11 +42,13 @@ GLboolean sglIsEnabled(GLenum cap)
 #define ATTRIB_INITER(X) { X, X, X, X, X, X, X, X }
 
 static GLint VertexAttribPointer_enabled[MAX_ATTRIB] = ATTRIB_INITER(0);
+static GLint VertexAttribPointer_is4f[MAX_ATTRIB] = ATTRIB_INITER(0);
 static GLint VertexAttribPointer_size[MAX_ATTRIB] = ATTRIB_INITER(4);
 static GLenum VertexAttribPointer_type[MAX_ATTRIB] = ATTRIB_INITER(GL_FLOAT);
 static GLboolean VertexAttribPointer_normalized[MAX_ATTRIB] = ATTRIB_INITER(GL_TRUE);
 static GLsizei VertexAttribPointer_stride[MAX_ATTRIB] = ATTRIB_INITER(0);
 static const GLvoid* VertexAttribPointer_pointer[MAX_ATTRIB] = ATTRIB_INITER(0);
+static GLfloat VertexAttribPointer_4f[MAX_ATTRIB][4];
 
 void sglEnableVertexAttribArray(GLuint index)
 {
@@ -61,19 +63,61 @@ void sglDisableVertexAttribArray(GLuint index)
     assert(index < MAX_ATTRIB);
 
     VertexAttribPointer_enabled[index] = 0;
-    glEnableVertexAttribArray(index);
+    glDisableVertexAttribArray(index);
 }
 
 void sglVertexAttribPointer(GLuint name, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* pointer)
 {
     assert(name < MAX_ATTRIB);
 
+    VertexAttribPointer_is4f[name] = 0;
     VertexAttribPointer_size[name] = size;
     VertexAttribPointer_type[name] = type;
     VertexAttribPointer_normalized[name] = normalized;
     VertexAttribPointer_stride[name] = stride;
     VertexAttribPointer_pointer[name] = pointer;
     glVertexAttribPointer(name, size, type, normalized, stride, pointer);
+}
+
+void sglVertexAttrib4f(GLuint name, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
+{
+    assert(name < MAX_ATTRIB);
+
+    VertexAttribPointer_is4f[name] = 1;
+    VertexAttribPointer_4f[name][0] = x;
+    VertexAttribPointer_4f[name][1] = y;
+    VertexAttribPointer_4f[name][2] = z;
+    VertexAttribPointer_4f[name][3] = w;
+    glVertexAttrib4f(name, x, y, z, w);
+}
+
+void sglVertexAttrib4fv(GLuint name, GLfloat* v)
+{
+    assert(name < MAX_ATTRIB);
+
+    VertexAttribPointer_is4f[name] = 1;
+    memcpy(VertexAttribPointer_4f[name], v, sizeof(GLfloat) * 4);
+    glVertexAttrib4fv(name, v);
+}
+
+
+// BIND FRAME BUFFER
+extern GLuint retro_get_fbo_id();
+static GLuint Framebuffer_framebuffer = 0;
+void sglBindFramebuffer(GLenum target, GLuint framebuffer)
+{
+    assert(target == GL_FRAMEBUFFER);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
+}
+
+// BIND RENDER BUFFER
+static GLuint RenderBuffer_index;
+void sglBindRenderbuffer(GLenum target, GLuint index)
+{
+   assert(target == GL_RENDERBUFFER);
+   RenderBuffer_index = index;
+   glBindRenderbuffer(GL_RENDERBUFFER, index);
 }
 
 //BLEND FUNC
@@ -238,17 +282,6 @@ void sglBindTexture(GLenum target, GLuint texture)
     glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
 }
 
-#ifdef __LIBRETRO__ // Handle framebuffer 0
-extern GLuint retro_get_fbo_id();
-static GLuint Framebuffer_framebuffer = 0;
-void sglBindFramebuffer(GLenum target, GLuint framebuffer)
-{
-    assert(target == GL_FRAMEBUFFER);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
-}
-#endif
-
 
 #ifdef GLIDE64 // Avoid texture id conflicts
 void sglDeleteTextures(GLuint n, const GLuint* ids)
@@ -271,13 +304,15 @@ void sglEnter()
         if (VertexAttribPointer_enabled[i]) glEnableVertexAttribArray(i);
         else                                glDisableVertexAttribArray(i);
 
-        glVertexAttribPointer(i, VertexAttribPointer_size[i], VertexAttribPointer_type[i], VertexAttribPointer_normalized[i],
-                                 VertexAttribPointer_stride[i], VertexAttribPointer_pointer[i]);        
+        if (!VertexAttribPointer_is4f[i])
+            glVertexAttribPointer(i, VertexAttribPointer_size[i], VertexAttribPointer_type[i], VertexAttribPointer_normalized[i],
+                                 VertexAttribPointer_stride[i], VertexAttribPointer_pointer[i]);
+        else
+            glVertexAttrib4f(i, VertexAttribPointer_4f[i][0], VertexAttribPointer_4f[i][1], VertexAttribPointer_4f[i][2], VertexAttribPointer_4f[i][3]);
     }
 
-#ifdef __LIBRETRO__
+    glBindRenderbuffer(GL_RENDERBUFFER, RenderBuffer_index);
     sglBindFramebuffer(GL_FRAMEBUFFER, Framebuffer_framebuffer); // < sgl is intentional
-#endif
 
     glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
     glClearColor(ClearColor_red, ClearColor_green, ClearColor_blue, ClearColor_alpha);
@@ -340,8 +375,7 @@ void sglExit()
         glDisableVertexAttribArray(i);
     }
 
-#ifdef __LIBRETRO__
     glBindFramebuffer(GL_FRAMEBUFFER, retro_get_fbo_id());
-#endif
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
