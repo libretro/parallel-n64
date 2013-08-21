@@ -35,7 +35,7 @@ else ifneq (,$(findstring osx,$(platform)))
    CPPFLAGS += -D__MACOSX__
    GL_LIB := -framework OpenGL
    PLATFORM_EXT := unix
-else ifeq ($(platform), ios)
+else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    LDFLAGS += -dynamiclib
    fpic = -fPIC
@@ -48,9 +48,7 @@ else ifeq ($(platform), ios)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
    CPPFLAGS += -DNO_ASM -DIOS -DNOSSE -DHAVE_POSIX_MEMALIGN
    PLATFORM_EXT := unix
-
-
-else ifeq ($(platform), android)
+else ifneq (,$(findstring android,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined -Wl,--warn-common
    GL_LIB := -lGLESv2
@@ -101,184 +99,13 @@ else ifneq (,$(findstring win,$(platform)))
    PLATFORM_EXT := win32
 endif
 
-ifdef WITH_DYNAREC
-   CPPFLAGS += -DDYNAREC
-   ifeq ($(WITH_DYNAREC), arm)
-      CPPFLAGS += -DNEW_DYNAREC=3      
-
-      CFILES += \
-         $(COREDIR)/src/r4300/empty_dynarec.c \
-         $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c
-
-      OBJECTS += \
-         $(COREDIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).o
-   else
-      CFILES += \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/assemble.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gbc.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gcop0.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gcop1.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gcop1_d.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gcop1_l.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gcop1_s.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gcop1_w.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gr4300.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gregimm.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gspecial.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gtlb.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/regcache.c \
-         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/rjump.c      
-   endif
-else
-   CFILES += $(COREDIR)/src/r4300/empty_dynarec.c
-endif
-
-ifeq ($(DEBUG), 1)
-   CPPFLAGS += -O0 -g
-   CPPFLAGS += -DOPENGL_DEBUG
-else
-   CPPFLAGS += -O3
-endif
-
 # libretro
-CFILES += libretro/libretro.c libretro/glsym.c libretro/libco/libco.c libretro/opengl_state_machine.c \
-          libretro/audio_plugin.c libretro/input_plugin.c libretro/resampler.c libretro/sinc.c libretro/utils.c
+CFILES += $(wildcard libretro/*.c) libretro/libco/libco.c
 
 # RSP Plugin
 RSPDIR = mupen64plus-rsp-hle
-CFILES += \
-    $(RSPDIR)/src/alist.c \
-    $(RSPDIR)/src/cicx105.c \
-    $(RSPDIR)/src/jpeg.c \
-    $(RSPDIR)/src/main.c
-
-CXXFILES += \
-    $(RSPDIR)/src/ucode1.cpp \
-    $(RSPDIR)/src/ucode2.cpp \
-    $(RSPDIR)/src/ucode3.cpp \
-    $(RSPDIR)/src/ucode3mp3.cpp
-
-# Video Plugin
-WITH_RICE = 0
-
-ifeq ($(GLES), 1)
-CPPFLAGS += -DGLES
-endif
-
-ifeq ($(WITH_GLIDE), 1)
-VIDEODIR = gles2glide64/src
-CPPFLAGS += -I$(VIDEODIR)/Glitch64/inc -DGLIDE64
-CXXFILES += $(VIDEODIR)/Glide64/3dmath.cpp \
-            $(VIDEODIR)/Glide64/Config.cpp \
-            $(VIDEODIR)/Glide64/FBtoScreen.cpp \
-            $(VIDEODIR)/Glide64/Main.cpp \
-            $(VIDEODIR)/Glide64/Util.cpp \
-            $(VIDEODIR)/Glide64/CRC.cpp \
-            $(VIDEODIR)/Glide64/Debugger.cpp \
-            $(VIDEODIR)/Glide64/Ini.cpp \
-            $(VIDEODIR)/Glide64/TexBuffer.cpp \
-            $(VIDEODIR)/Glide64/rdp.cpp \
-            $(VIDEODIR)/Glide64/Combine.cpp \
-            $(VIDEODIR)/Glide64/DepthBufferRender.cpp \
-            $(VIDEODIR)/Glide64/Keys.cpp \
-            $(VIDEODIR)/Glide64/TexCache.cpp \
-            $(VIDEODIR)/Glitch64/combiner.cpp \
-            $(VIDEODIR)/Glitch64/geometry.cpp \
-            $(VIDEODIR)/Glitch64/glState.cpp \
-            $(VIDEODIR)/Glitch64/main.cpp \
-            $(VIDEODIR)/Glitch64/textures.cpp
-else ifeq ($(WITH_RICE), 1)
-VIDEODIR = gles2rice/src
-
-CPPFLAGS += -DSDL_VIDEO_OPENGL_ES2=1
-#LDFLAGS += -lpng
-
-CXXFILES += \
-   $(VIDEODIR)/Blender.cpp \
-   $(VIDEODIR)/Combiner.cpp \
-   $(VIDEODIR)/CombinerTable.cpp \
-   $(VIDEODIR)/Config.cpp \
-   $(VIDEODIR)/ConvertImage.cpp \
-   $(VIDEODIR)/ConvertImage16.cpp \
-   $(VIDEODIR)/Debugger.cpp \
-   $(VIDEODIR)/DecodedMux.cpp \
-   $(VIDEODIR)/DeviceBuilder.cpp \
-   $(VIDEODIR)/DirectXDecodedMux.cpp \
-   $(VIDEODIR)/FrameBuffer.cpp \
-   $(VIDEODIR)/GeneralCombiner.cpp \
-   $(VIDEODIR)/GraphicsContext.cpp \
-   $(VIDEODIR)/OGLCombiner.cpp \
-   $(VIDEODIR)/OGLDecodedMux.cpp \
-   $(VIDEODIR)/OGLES2FragmentShaders.cpp \
-   $(VIDEODIR)/OGLExtCombiner.cpp \
-   $(VIDEODIR)/OGLExtRender.cpp \
-   $(VIDEODIR)/OGLGraphicsContext.cpp \
-   $(VIDEODIR)/OGLRender.cpp \
-   $(VIDEODIR)/OGLRenderExt.cpp \
-   $(VIDEODIR)/OGLTexture.cpp \
-   $(VIDEODIR)/RSP_Parser.cpp \
-   $(VIDEODIR)/RSP_S2DEX.cpp \
-   $(VIDEODIR)/Render.cpp \
-   $(VIDEODIR)/RenderBase.cpp \
-   $(VIDEODIR)/RenderExt.cpp \
-   $(VIDEODIR)/RenderTexture.cpp \
-   $(VIDEODIR)/Texture.cpp \
-   $(VIDEODIR)/TextureFilters.cpp \
-   $(VIDEODIR)/TextureFilters_2xsai.cpp \
-   $(VIDEODIR)/TextureFilters_hq2x.cpp \
-   $(VIDEODIR)/TextureFilters_hq4x.cpp \
-   $(VIDEODIR)/TextureManager.cpp \
-   $(VIDEODIR)/VectorMath.cpp \
-   $(VIDEODIR)/Video.cpp
-
-CFILES += \
-   $(VIDEODIR)/osal_files_$(PLATFORM_EXT).c \
-   $(VIDEODIR)/liblinux/BMGImage.c \
-   $(VIDEODIR)/liblinux/BMGUtils.c \
-   $(VIDEODIR)/liblinux/bmp.c 
-#   $(VIDEODIR)/liblinux/pngrw.c
-else ifeq ($(WITH_GLN64), 1)
-VIDEODIR = gles2n64/src
-
-CXXFILES += \
-   $(VIDEODIR)/2xSAI.cpp \
-   $(VIDEODIR)/3DMath.cpp \
-   $(VIDEODIR)/CRC.cpp \
-   $(VIDEODIR)/Config.cpp \
-   $(VIDEODIR)/DepthBuffer.cpp \
-   $(VIDEODIR)/F3D.cpp \
-   $(VIDEODIR)/F3DCBFD.cpp \
-   $(VIDEODIR)/F3DDKR.cpp \
-   $(VIDEODIR)/F3DEX.cpp \
-   $(VIDEODIR)/F3DEX2.cpp \
-   $(VIDEODIR)/F3DPD.cpp \
-   $(VIDEODIR)/F3DWRUS.cpp \
-   $(VIDEODIR)/FrameSkipper.cpp \
-   $(VIDEODIR)/GBI.cpp \
-   $(VIDEODIR)/L3D.cpp \
-   $(VIDEODIR)/L3DEX.cpp \
-   $(VIDEODIR)/L3DEX2.cpp \
-   $(VIDEODIR)/N64.cpp \
-   $(VIDEODIR)/OpenGL.cpp \
-   $(VIDEODIR)/RDP.cpp \
-   $(VIDEODIR)/RSP.cpp \
-   $(VIDEODIR)/S2DEX.cpp \
-   $(VIDEODIR)/S2DEX2.cpp \
-   $(VIDEODIR)/ShaderCombiner.cpp \
-   $(VIDEODIR)/Textures.cpp \
-   $(VIDEODIR)/VI.cpp \
-   $(VIDEODIR)/gDP.cpp \
-   $(VIDEODIR)/gSP.cpp \
-   $(VIDEODIR)/gles2N64.cpp
-
-CFILES += \
-   $(VIDEODIR)/ticks.c
-
-#NEON
-#  $(VIDEODIR)/3DMathNeon.cpp
-#  $(VIDEODIR)/gSPNeon.cpp
-
-endif
+CFILES += $(wildcard $(RSPDIR)/src/*.c)
+CXXFILES += $(wildcard $(RSPDIR)/src/*.cpp)
 
 # Core
 COREDIR = mupen64plus-core
@@ -321,12 +148,75 @@ CFILES += \
 #   $(COREDIR)/src/plugin/dummy_rsp.c \
 #   $(COREDIR)/src/plugin/dummy_input.c \
 
+### DYNAREC ###
+ifdef WITH_DYNAREC
+   CPPFLAGS += -DDYNAREC
+   ifeq ($(WITH_DYNAREC), arm)
+      CPPFLAGS += -DNEW_DYNAREC=3      
 
+      CFILES += \
+         $(COREDIR)/src/r4300/empty_dynarec.c \
+         $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c
+
+      OBJECTS += \
+         $(COREDIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).o
+   else
+      CFILES += $(wildcard $(COREDIR)/src/r4300/$(WITH_DYNAREC)/*.c)
+   endif
+else
+   CFILES += $(COREDIR)/src/r4300/empty_dynarec.c
+endif
+
+### VIDEO PLUGIN ###
+ifeq ($(WITH_VIDEO), rice)
+   VIDEODIR = gles2rice/src
+
+   CPPFLAGS += -DSDL_VIDEO_OPENGL_ES2=1
+   #LDFLAGS += -lpng
+
+   videosrc = $(wildcard $(VIDEODIR)/*.cpp)
+   videoblack = $(VIDEODIR)/CNvTNTCombiner.cpp $(VIDEODIR)/OGLCombinerNV.cpp $(VIDEODIR)/OGLCombinerTNT2.cpp \
+                $(VIDEODIR)/OGLExtensions.cpp $(VIDEODIR)/OGLFragmentShaders.cpp 
+   CXXFILES += $(filter-out $(videoblack), $(videosrc))
+
+   CFILES += \
+      $(VIDEODIR)/osal_files_$(PLATFORM_EXT).c \
+      $(VIDEODIR)/liblinux/BMGImage.c \
+      $(VIDEODIR)/liblinux/BMGUtils.c \
+      $(VIDEODIR)/liblinux/bmp.c 
+      #$(VIDEODIR)/liblinux/pngrw.c
+else ifeq ($(WITH_VIDEO), gln64)
+   VIDEODIR = gles2n64/src
+
+   # TODO: Use neon versions when possible
+   videosrc = $(wildcard $(VIDEODIR)/*.cpp)
+   videoblack = $(VIDEODIR)/3DMathNeon.cpp $(VIDEODIR)/gSPNeon.cpp
+   CXXFILES += $(filter-out $(videoblack), $(videosrc))
+   CFILES += $(VIDEODIR)/ticks.c
+else
+   VIDEODIR = gles2glide64/src
+   CPPFLAGS += -I$(VIDEODIR)/Glitch64/inc -DGLIDE64
+   CXXFILES += $(wildcard $(VIDEODIR)/Glide64/*.cpp)
+   CXXFILES += $(wildcard $(VIDEODIR)/Glitch64/*.cpp)
+endif
+
+### Finalize ###
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
 CPPFLAGS   += -D__LIBRETRO__ -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
 CPPFLAGS   += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE $(fpic)
 CFLAGS     += -std=gnu99
 LDFLAGS    += -lm $(fpic) -lz
+
+ifeq ($(GLES), 1)
+CPPFLAGS += -DGLES
+endif
+
+ifeq ($(DEBUG), 1)
+   CPPFLAGS += -O0 -g
+   CPPFLAGS += -DOPENGL_DEBUG
+else
+   CPPFLAGS += -O3
+endif
 
 all: $(TARGET)
 
