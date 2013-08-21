@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdlib.h>
 
 #define NO_TRANSLATE
 #include "SDL_opengles2.h"

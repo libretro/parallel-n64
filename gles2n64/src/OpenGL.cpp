@@ -398,7 +398,6 @@ bool OGL_Start()
     }
 #endif
 
-#ifndef __LIBRETRO__ // No ANISO
     //check extensions
     if ((config.texture.maxAnisotropy>0) && !OGL_IsExtSupported("GL_EXT_texture_filter_anistropic"))
     {
@@ -413,7 +412,6 @@ bool OGL_Start()
         LOG(LOG_WARNING, "Clamping max anistropy to %ix.\n", (int)f);
         config.texture.maxAnisotropy = (int)f;
     }
-#endif
 
     //Print some info
     LOG(LOG_VERBOSE, "Width: %i Height:%i \n", config.framebuffer.width, config.framebuffer.height);

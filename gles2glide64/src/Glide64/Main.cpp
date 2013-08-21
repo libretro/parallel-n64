@@ -2059,7 +2059,7 @@ static void GetGammaTable()
   }
 }
 
-#ifdef __LIBRETRO__
+#ifdef __LIBRETRO__ // Core options
 #include "../../../libretro/libretro.h"
 extern retro_environment_t environ_cb;
 extern void update_variables(void);
@@ -2071,7 +2071,7 @@ extern unsigned retro_filtering;
 wxUint32 curframe = 0;
 void newSwapBuffers()
 {
-#ifdef __LIBRETRO__
+#ifdef __LIBRETRO__ // Core options
    bool updated = false;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       update_variables();

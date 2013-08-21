@@ -1,6 +1,6 @@
 void vbo_draw();
 
-#ifndef __LIBRETRO__
+#ifndef __LIBRETRO__ // Dummy entire file
 
 static GLenum cached_ActiveTexture_texture;
 void inline cache_glActiveTexture (GLenum texture)
