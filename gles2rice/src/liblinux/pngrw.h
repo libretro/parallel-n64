@@ -38,6 +38,7 @@
 extern "C" {
 #endif
 
+#ifndef __LIBRETRO__ // Disable PNG for now
 extern
 BMGError  ReadPNG( const char *filename, struct BMGImageStruct * volatile img );
 extern
@@ -46,6 +47,11 @@ BMGError  ReadPNGInfo( const char *filename, struct BMGImageStruct * volatile im
 extern
 BMGError  WritePNG( const char *filename,
                          struct BMGImageStruct img );
+#else
+#define ReadPNG(...) errLib
+#define ReadPNGInfo(...) errLib
+#define WritePNG(...) errLib
+#endif
 
 #if defined(__cplusplus)
  }

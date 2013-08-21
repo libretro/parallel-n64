@@ -184,7 +184,7 @@ else ifeq ($(WITH_RICE), 1)
 VIDEODIR = gles2rice/src
 
 CPPFLAGS += -DSDL_VIDEO_OPENGL_ES2=1
-LDFLAGS += -lpng
+#LDFLAGS += -lpng
 
 CXXFILES += \
    $(VIDEODIR)/Blender.cpp \
@@ -228,8 +228,8 @@ CFILES += \
    $(VIDEODIR)/osal_files_$(PLATFORM_EXT).c \
    $(VIDEODIR)/liblinux/BMGImage.c \
    $(VIDEODIR)/liblinux/BMGUtils.c \
-   $(VIDEODIR)/liblinux/bmp.c \
-   $(VIDEODIR)/liblinux/pngrw.c
+   $(VIDEODIR)/liblinux/bmp.c 
+#   $(VIDEODIR)/liblinux/pngrw.c
 else ifeq ($(WITH_GLN64), 1)
 VIDEODIR = gles2n64/src
 
