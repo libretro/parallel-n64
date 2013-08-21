@@ -36,11 +36,9 @@
 #include "ae_bridge.h"
 #endif
 
-#if defined(__LIBRETRO__) && !defined(GLES)
+#if defined(__LIBRETRO__) && !defined(GLES) // Desktop GL fix
 #define glDepthRangef glDepthRange
 #define glClearDepthf glClearDepth
-#define GL_DEPTH_COMPONENT24_OES GL_DEPTH_COMPONENT24
-#define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS 0
 #endif
 
 //// paulscode, function prototype missing from Yongzh's code
@@ -228,8 +226,8 @@ void OGL_InitStates()
         LOG( LOG_ERROR, "Failed to link default program.\n" );
         _glcompiler_error( OGL.defaultFragShader );
     }
-    glUniform1i( glGetUniformLocation( OGL.defaultProgram, "uTex" ), 0 );
     glUseProgram( OGL.defaultProgram );
+    glUniform1i( glGetUniformLocation( OGL.defaultProgram, "uTex" ), 0 );
 
 }
 
@@ -350,11 +348,7 @@ bool OGL_Start()
     glClearColor( 0, 0, 0, 1 );
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glFinish();
-#ifndef __LIBRETRO__ // Not m64p-ae
     Android_JNI_SwapWindow();  // paulscode, fix for black-screen bug
-#else
-    retro_n64_video_flipped();
-#endif
 
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glFinish();
@@ -363,6 +357,7 @@ bool OGL_Start()
 ////////
 #endif
 
+#ifndef __LIBRETRO__ // No offscreen rendering
     //create framebuffer
     if (config.framebuffer.enable)
     {
@@ -401,7 +396,9 @@ bool OGL_Start()
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
     }
+#endif
 
+#ifndef __LIBRETRO__ // No ANISO
     //check extensions
     if ((config.texture.maxAnisotropy>0) && !OGL_IsExtSupported("GL_EXT_texture_filter_anistropic"))
     {
@@ -416,6 +413,7 @@ bool OGL_Start()
         LOG(LOG_WARNING, "Clamping max anistropy to %ix.\n", (int)f);
         config.texture.maxAnisotropy = (int)f;
     }
+#endif
 
     //Print some info
     LOG(LOG_VERBOSE, "Width: %i Height:%i \n", config.framebuffer.width, config.framebuffer.height);

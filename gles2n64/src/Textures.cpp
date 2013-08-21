@@ -953,10 +953,12 @@ void TextureCache_ActivateTexture( u32 t, CachedTexture *texture )
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (texture->clampS) ? GL_CLAMP_TO_EDGE : GL_REPEAT );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (texture->clampT) ? GL_CLAMP_TO_EDGE : GL_REPEAT );
 
+#ifndef __LIBRETRO__ // No ANISO for now
     if (config.texture.maxAnisotropy > 0)
     {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, config.texture.maxAnisotropy);
     }
+#endif
 
     texture->lastDList = RSP.DList;
     TextureCache_MoveToTop( texture );

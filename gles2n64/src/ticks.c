@@ -17,25 +17,33 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef __LIBRETRO__ // Use fake SDL ticks
 #include <time.h>
 
 static struct timespec startTicks;
 
 void ticksInitialize()
 {
-#ifndef __LIBRETRO__
 	clock_gettime(CLOCK_MONOTONIC, &startTicks);
-#endif
 }
 
 unsigned int ticksGetTicks()
 {
-#ifndef __LIBRETRO__
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
 	return (now.tv_sec - startTicks.tv_sec) * 1000 +
 			(now.tv_nsec - startTicks.tv_nsec) / 1000000;
-#else
-	return 0;
-#endif
 }
+#else
+#include <SDL.h>
+
+void ticksInitialize()
+{
+
+}
+
+unsigned int ticksGetTicks()
+{
+   return SDL_GetTicks();
+}
+#endif

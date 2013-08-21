@@ -58,13 +58,7 @@ ptr_ConfigGetSharedDataFilepath ConfigGetSharedDataFilepath = NULL;
 #define FBRead videoFBRead
 #define FBGetFrameBufferInfo videoFBGetFrameBufferInfo
 #define ProcessRDPList videoProcessRDPList
-
-extern "C"
-{
-    EXPORT void CALL videoResizeVideoOutput(int width, int height)
-    {
-    }
-}
+#define ResizeVideoOutput videoResizeVideoOutput
 #endif
 
 static FrameSkipper frameSkipper;
@@ -97,6 +91,7 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
 EXPORT m64p_error CALL PluginShutdown(void)
 {
     OGL_Stop();  // paulscode, OGL_Stop missing from Yongzh's code
+    return M64ERR_SUCCESS; // __LIBRETRO__: Fix warning
 }
 
 EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType,

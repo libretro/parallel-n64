@@ -4,8 +4,8 @@
 
 #ifndef __LIBRETRO__ // No PRINT_SHADER
 #define PRINT_SHADER
-#endif
 #define UNIFORM_CHECK
+#endif
 
 #define SC_FOGENABLED           0x1
 #define SC_ALPHAENABLED         0x2
