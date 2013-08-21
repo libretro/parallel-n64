@@ -25,6 +25,12 @@
 #include <stdint.h> //include for uint64_t
 #include <assert.h>
 
+#if defined(__LIBRETRO__) && defined(IOS)
+typedef unsigned char u_char;
+typedef unsigned int u_int;
+#define MAP_ANONYMOUS MAP_ANON
+#endif
+
 #include "../recomp.h"
 #include "../recomph.h" //include for function prototypes
 #include "../macros.h"
@@ -280,7 +286,12 @@ static int verify_dirty(void *addr);
 #if defined (COUNT_NOTCOMPILEDS )
 	int notcompiledCount = 0;
 #endif
+
+#ifndef __LIBRETRO__ // Quiet the warnings on nullf
 static void nullf() {}
+#else
+#define nullf(...)
+#endif
 
 #if defined( ASSEM_DEBUG )
     #define assem_debug(...) DebugMessage(M64MSG_VERBOSE, __VA_ARGS__)

@@ -14,6 +14,7 @@ endif
 endif
 
 TARGET_NAME := mupen64plus
+CC_AS ?= $(CC)
 
 ifneq (,$(findstring unix,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
@@ -37,6 +38,7 @@ else ifneq (,$(findstring osx,$(platform)))
    PLATFORM_EXT := unix
 else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
+   CPPFLAGS += -DIOS
    LDFLAGS += -dynamiclib
    fpic = -fPIC
    GLES = 1
@@ -45,6 +47,7 @@ else ifneq (,$(findstring ios,$(platform)))
    OBJECTS += libretro/libco/armeabi_asm.o
 
    CC = clang -arch armv7 -isysroot $(IOSSDK)
+   CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
    CPPFLAGS += -DNO_ASM -DIOS -DNOSSE -DHAVE_POSIX_MEMALIGN
    PLATFORM_EXT := unix
@@ -160,6 +163,7 @@ ifdef WITH_DYNAREC
 
       OBJECTS += \
          $(COREDIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).o
+
    else
       CFILES += $(wildcard $(COREDIR)/src/r4300/$(WITH_DYNAREC)/*.c)
    endif
@@ -219,6 +223,12 @@ else
 endif
 
 all: $(TARGET)
+
+%.o: %.S
+	$(CC_AS) $(CFLAGS) -c $^ -o $@
+
+$(COREDIR)/src/r4300/new_dynarec/new_dynarec.o: $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c
+	$(CC) -c -o $@ $< $(CPPFLAGS) $(CFLAGS) -O0
 
 $(TARGET): $(OBJECTS)
 	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)
