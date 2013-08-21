@@ -4,13 +4,15 @@
 #include <stdio.h>
 #include <string.h>
 
+extern unsigned int FAKE_SDL_TICKS;
+
 #define SDL_VERSION_ATLEAST(...) 0
 
 typedef int SDL_Surface;
 
 #define SDL_Quit()
 
-#define SDL_GetTicks() 100
+#define SDL_GetTicks() FAKE_SDL_TICKS
 #define SDL_PumpEvents()
 #define SDL_Delay(x)
 

@@ -274,8 +274,11 @@ void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
    }
 }
 
+unsigned int FAKE_SDL_TICKS;
 void retro_run (void)
 {
+    FAKE_SDL_TICKS += 16;
+
     poll_cb();
 
     sglEnter();
