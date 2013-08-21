@@ -31,8 +31,8 @@
 #endif // _WIN32
 #include <stdlib.h>
 #include <stdio.h>
-#include <iostream>
-#include <fstream>
+//#include <iostream>
+//#include <fstream>
 #include <math.h>
 #include "glide.h"
 #include "g3ext.h"

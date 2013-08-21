@@ -67,7 +67,7 @@ the plugin
 
 #include <stdio.h>
 #include <SDL_mutex.h>
-#include <fstream>
+//#include <fstream>
 #include <stdlib.h>
 #include <stddef.h>		// offsetof
 #include <string.h>
@@ -77,8 +77,8 @@ the plugin
 #include "rdp.h"
 #include "Keys.h"
 
-#include <iostream>
-#include <fstream>
+//#include <iostream>
+//#include <fstream>
 
 #if defined __VISUALC__
 #define GLIDE64_TRY __try

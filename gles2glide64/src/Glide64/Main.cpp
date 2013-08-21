@@ -2118,6 +2118,7 @@ void newSwapBuffers()
     }
 #endif
 
+#if 0
     if (settings.clock)
     {
       if (settings.clock_24_hr)
@@ -2152,6 +2153,7 @@ void newSwapBuffers()
         }
         output ((float)(settings.res_x - 68), y, 0, out_buf, 0);
       }
+#endif
     //hotkeys
     if (CheckKeyPressed(G64_VK_BACK, 0x0001))
     {
