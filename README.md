@@ -13,7 +13,12 @@ In order to run the video plugins ini file must be copied into RetroArch's syste
 * For gles2rice video: gles2rice/data/VideoRiceLinux.ini
 * For gles2glide64: gles2glide64/data/Glide64mk2.ini
 
+To enable a dynarec CPU core you must pass the WITH_DYNAREC value to make:
+* make WITH_DYNAREC=x86 (untested)
+* make WITH_DYNAREC=x86_64
+* make WITH_DYNAREC=arm (untested, will compile on android but not iOS)
+
 TODO:
-* There are many visual errors
 * Allow video plugin to be selected at runtime
-* Enable JIT CPU cores for appropriate platforms
+* Fixup arm dynarec for iOS
+

@@ -15,17 +15,6 @@ endif
 
 TARGET_NAME := mupen64plus
 
-# system platform
-system_platform = unix
-ifeq ($(shell uname -a),)
-EXE_EXT = .exe
-   system_platform = win
-else ifneq ($(findstring Darwin,$(shell uname -a)),)
-   system_platform = osx
-else ifneq ($(findstring MINGW,$(shell uname -a)),)
-   system_platform = win
-endif
-
 ifneq (,$(findstring unix,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T
@@ -75,20 +64,6 @@ else ifeq ($(platform), android)
    
    fpic = -fPIC
    PLATFORM_EXT := unix
-else ifeq ($(platform), psp1)
-   TARGET := $(TARGET_NAME)_libretro_psp1.a
-   CC = psp-gcc$(EXE_EXT)
-   CXX = psp-g++$(EXE_EXT)
-   AR = psp-ar$(EXE_EXT)
-   CPPFLAGS += -DPSP -G0
-   STATIC_LINKING = 1
-else ifeq ($(platform), wii)
-   TARGET := $(TARGET_NAME)_libretro_wii.a
-   CC = $(DEVKITPPC)/bin/powerpc-eabi-gcc$(EXE_EXT)
-   CXX = $(DEVKITPPC)/bin/powerpc-eabi-g++$(EXE_EXT)
-   AR = $(DEVKITPPC)/bin/powerpc-eabi-ar$(EXE_EXT)
-   CPPFLAGS += -DGEKKO -mrvl -mcpu=750 -meabi -mhard-float -D__POWERPC__ -D__ppc__ -DWORDS_BIGENDIAN=1
-   STATIC_LINKING = 1
 else ifneq (,$(findstring armv,$(platform)))
    CC = gcc
    CXX = g++
@@ -124,6 +99,38 @@ else ifneq (,$(findstring win,$(platform)))
    GL_LIB := -lopengl32
    CPPFLAGS += -msse -msse2
    PLATFORM_EXT := win32
+endif
+
+ifdef WITH_DYNAREC
+   CPPFLAGS += -DDYNAREC
+   ifeq ($(WITH_DYNAREC), arm)
+      CPPFLAGS += -DNEW_DYNAREC=3      
+
+      CFILES += \
+         $(COREDIR)/src/r4300/empty_dynarec.c \
+         $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c
+
+      OBJECTS += \
+         $(COREDIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).o
+   else
+      CFILES += \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/assemble.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gbc.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gcop0.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gcop1.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gcop1_d.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gcop1_l.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gcop1_s.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gcop1_w.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gr4300.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gregimm.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gspecial.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/gtlb.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/regcache.c \
+         $(COREDIR)/src/r4300/$(WITH_DYNAREC)/rjump.c      
+   endif
+else
+   CFILES += $(COREDIR)/src/r4300/empty_dynarec.c
 endif
 
 ifeq ($(DEBUG), 1)
@@ -292,7 +299,6 @@ CFILES += \
     $(COREDIR)/src/memory/tlb.c \
     $(COREDIR)/src/osal/files_$(PLATFORM_EXT).c \
     $(COREDIR)/src/plugin/plugin.c \
-    $(COREDIR)/src/r4300/empty_dynarec.c \
     $(COREDIR)/src/r4300/profile.c \
     $(COREDIR)/src/r4300/recomp.c \
     $(COREDIR)/src/r4300/exception.c \
@@ -317,19 +323,15 @@ CFILES += \
 
 
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
-CPPFLAGS   += -D__LIBRETRO__ $(fpic) -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
+CPPFLAGS   += -D__LIBRETRO__ -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
 CPPFLAGS   += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE $(fpic)
-CFLAGS     += -std=gnu99 $(fpic)
+CFLAGS     += -std=gnu99
 LDFLAGS    += -lm $(fpic) -lz
 
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-ifeq ($(STATIC_LINKING), 1)
-	$(AR) rcs $@ $(OBJECTS)
-else
 	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)
-endif
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)
