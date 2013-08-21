@@ -130,7 +130,8 @@ GLuint retro_get_fbo_id()
 
 void retro_n64_video_flipped()
 {
-    co_switch(main_thread);
+   if (!stop)
+      co_switch(main_thread);
 }
 
 //

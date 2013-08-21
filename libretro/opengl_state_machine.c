@@ -9,6 +9,9 @@
 #define glDepthRange glDepthRangef
 #endif
 
+// mupen64plus HACK: Fix potential crash at shutdown for
+extern int stop;
+
 //glEnable, glDisable
 static int CapState[SGL_CAP_MAX];
 static const int CapTranslate[SGL_CAP_MAX] = 
@@ -109,7 +112,8 @@ void sglBindFramebuffer(GLenum target, GLuint framebuffer)
 {
     assert(target == GL_FRAMEBUFFER);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
+   if (!stop)
+      glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
 }
 
 // BIND RENDER BUFFER
@@ -300,6 +304,9 @@ void sglDeleteTextures(GLuint n, const GLuint* ids)
 
 void sglEnter()
 {
+   if (stop)
+      return;
+
     for (int i = 0; i < MAX_ATTRIB; i ++)
     {
         if (VertexAttribPointer_enabled[i]) glEnableVertexAttribArray(i);
@@ -350,6 +357,9 @@ void sglEnter()
 
 void sglExit()
 {
+   if (stop)
+      return;
+
     for (int i = 0; i < SGL_CAP_MAX; i ++)
         glDisable(CapTranslate[i]);
 
