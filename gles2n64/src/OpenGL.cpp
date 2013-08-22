@@ -455,12 +455,14 @@ void OGL_Stop()
     SDL_QuitSubSystem( SDL_INIT_VIDEO );
 #endif
 
+#ifndef __LIBRETRO__ // No offscreen rendering
     if (config.framebuffer.enable)
     {
         glDeleteFramebuffers(1, &OGL.framebuffer.fb);
         glDeleteTextures(1, &OGL.framebuffer.color_buffer);
         glDeleteRenderbuffers(1, &OGL.framebuffer.depth_buffer);
     }
+#endif
 
     glDeleteShader(OGL.defaultFragShader);
     glDeleteShader(OGL.defaultVertShader);
@@ -1271,6 +1273,7 @@ void OGL_SwapBuffers()
     }
 #endif
 
+#ifndef __LIBRETRO__  // No offscreen rendering
     if (config.framebuffer.enable)
     {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1309,12 +1312,7 @@ void OGL_SwapBuffers()
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (float*)vert + 2);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-#ifndef __LIBRETRO__ // Not m64p-ae
         Android_JNI_SwapWindow();  // paulscode, fix for black-screen bug
-#else
-        retro_n64_video_flipped();
-#endif
-
 
         glBindFramebuffer(GL_FRAMEBUFFER, OGL.framebuffer.fb);
         OGL_UpdateViewport();
@@ -1322,6 +1320,7 @@ void OGL_SwapBuffers()
         OGL.renderState = RS_NONE;
     }
     else
+#endif
     {
 #ifndef __LIBRETRO__ // Not m64p-ae
     Android_JNI_SwapWindow();  // paulscode, fix for black-screen bug

@@ -116,15 +116,6 @@ void sglBindFramebuffer(GLenum target, GLuint framebuffer)
       glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
 }
 
-// BIND RENDER BUFFER
-static GLuint RenderBuffer_index;
-void sglBindRenderbuffer(GLenum target, GLuint index)
-{
-   assert(target == GL_RENDERBUFFER);
-   RenderBuffer_index = index;
-   glBindRenderbuffer(GL_RENDERBUFFER, index);
-}
-
 //BLEND FUNC
 static GLenum BlendFunc_srcRGB = GL_ONE,  BlendFunc_srcAlpha = GL_ONE;
 static GLenum BlendFunc_dstRGB = GL_ZERO, BlendFunc_dstAlpha = GL_ZERO;
@@ -319,7 +310,6 @@ void sglEnter()
             glVertexAttrib4f(i, VertexAttribPointer_4f[i][0], VertexAttribPointer_4f[i][1], VertexAttribPointer_4f[i][2], VertexAttribPointer_4f[i][3]);
     }
 
-    glBindRenderbuffer(GL_RENDERBUFFER, RenderBuffer_index);
     sglBindFramebuffer(GL_FRAMEBUFFER, Framebuffer_framebuffer); // < sgl is intentional
 
     glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
@@ -387,6 +377,5 @@ void sglExit()
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, retro_get_fbo_id());
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 

@@ -35,6 +35,9 @@
 #ifndef glActiveTexture
 #define glActiveTexture pglActiveTexture
 #endif
+#ifndef glBindFramebuffer
+#define glBindFramebuffer pglBindFramebuffer
+#endif
 
 #define glCreateProgram pglCreateProgram
 #define glCreateShader pglCreateShader

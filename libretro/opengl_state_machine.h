@@ -24,7 +24,6 @@ void sglVertexAttrib4f(GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 void sglVertexAttrib4fv(GLuint index, GLfloat* v);
 
 void sglBindFramebuffer(GLenum target, GLuint framebuffer);
-void sglBindRenderbuffer(GLenum target, GLuint index);
 void sglBlendFunc(GLenum sfactor, GLenum dfactor);
 void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha);
 void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
@@ -59,7 +58,6 @@ void sglDeleteTextures(GLuint n, const GLuint* ids);
 #define glVertexAttrib4f sglVertexAttrib4f
 #define glVertexAttrib4fv sglVertexAttrib4fv
 
-#define glBindRenderbuffer sglBindRenderbuffer
 #define glBlendFunc sglBlendFunc
 #define glBlendFuncSeparate sglBlendFuncSeparate
 #define glClearColor sglClearColor
