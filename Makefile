@@ -135,7 +135,9 @@ CFILES += \
     $(COREDIR)/src/r4300/pure_interp.c \
     $(COREDIR)/src/r4300/reset.c \
     $(COREDIR)/src/r4300/interupt.c \
-    $(COREDIR)/src/r4300/r4300.c
+    $(COREDIR)/src/r4300/r4300.c \
+    $(COREDIR)/src/plugin/dummy_video.c
+
 
 #   $(COREDIR)/src/api/debugger.c \
 #   $(COREDIR)/src/main/eventloop.c \
@@ -146,7 +148,6 @@ CFILES += \
 #   $(COREDIR)/src/osal/files_win32.c \
 #   $(COREDIR)/src/osd/osd.cpp \
 #   $(COREDIR)/src/osd/screenshot.cpp \
-#   $(COREDIR)/src/plugin/dummy_video.c \
 #   $(COREDIR)/src/plugin/dummy_audio.c \
 #   $(COREDIR)/src/plugin/dummy_rsp.c \
 #   $(COREDIR)/src/plugin/dummy_input.c \
@@ -155,7 +156,7 @@ CFILES += \
 ifdef WITH_DYNAREC
    CPPFLAGS += -DDYNAREC
    ifeq ($(WITH_DYNAREC), arm)
-      CPPFLAGS += -DNEW_DYNAREC=3      
+      CPPFLAGS += -DNEW_DYNAREC=3
 
       CFILES += \
          $(COREDIR)/src/r4300/empty_dynarec.c \
@@ -171,38 +172,39 @@ else
    CFILES += $(COREDIR)/src/r4300/empty_dynarec.c
 endif
 
-### VIDEO PLUGIN ###
-ifeq ($(WITH_VIDEO), rice)
-   VIDEODIR = gles2rice/src
+### VIDEO PLUGINS ###
 
-   CPPFLAGS += -DSDL_VIDEO_OPENGL_ES2=1
-   #LDFLAGS += -lpng
+# Rice
+VIDEODIR_RICE=gles2rice/src
+CPPFLAGS += -DSDL_VIDEO_OPENGL_ES2=1
+#LDFLAGS += -lpng
 
-   videosrc = $(wildcard $(VIDEODIR)/*.cpp)
-   videoblack = $(VIDEODIR)/CNvTNTCombiner.cpp $(VIDEODIR)/OGLCombinerNV.cpp $(VIDEODIR)/OGLCombinerTNT2.cpp \
-                $(VIDEODIR)/OGLExtensions.cpp $(VIDEODIR)/OGLFragmentShaders.cpp 
-   CXXFILES += $(filter-out $(videoblack), $(videosrc))
+ricevideosrc = $(wildcard $(VIDEODIR_RICE)/*.cpp)
+ricevideoblack = $(VIDEODIR_RICE)/CNvTNTCombiner.cpp $(VIDEODIR_RICE)/OGLCombinerNV.cpp $(VIDEODIR_RICE)/OGLCombinerTNT2.cpp \
+             $(VIDEODIR_RICE)/OGLExtensions.cpp $(VIDEODIR_RICE)/OGLFragmentShaders.cpp 
+CXXFILES += $(filter-out $(ricevideoblack), $(ricevideosrc))
 
-   CFILES += \
-      $(VIDEODIR)/osal_files_$(PLATFORM_EXT).c \
-      $(VIDEODIR)/liblinux/BMGImage.c \
-      $(VIDEODIR)/liblinux/BMGUtils.c \
-      $(VIDEODIR)/liblinux/bmp.c 
-      #$(VIDEODIR)/liblinux/pngrw.c
-else ifeq ($(WITH_VIDEO), gln64)
-   VIDEODIR = gles2n64/src
+CFILES += \
+   $(VIDEODIR_RICE)/osal_files_$(PLATFORM_EXT).c \
+   $(VIDEODIR_RICE)/liblinux/BMGImage.c \
+   $(VIDEODIR_RICE)/liblinux/BMGUtils.c \
+   $(VIDEODIR_RICE)/liblinux/bmp.c 
+   #$(VIDEODIR_RICE)/liblinux/pngrw.c
 
-   # TODO: Use neon versions when possible
-   videosrc = $(wildcard $(VIDEODIR)/*.cpp)
-   videoblack = $(VIDEODIR)/3DMathNeon.cpp $(VIDEODIR)/gSPNeon.cpp
-   CXXFILES += $(filter-out $(videoblack), $(videosrc))
-   CFILES += $(VIDEODIR)/ticks.c
-else
-   VIDEODIR = gles2glide64/src
-   CPPFLAGS += -I$(VIDEODIR)/Glitch64/inc -DGLIDE64
-   CXXFILES += $(wildcard $(VIDEODIR)/Glide64/*.cpp)
-   CXXFILES += $(wildcard $(VIDEODIR)/Glitch64/*.cpp)
-endif
+# gln64
+VIDEODIR_GLN64 = gles2n64/src
+
+# TODO: Use neon versions when possible
+gln64videosrc = $(wildcard $(VIDEODIR_GLN64)/*.cpp)
+gln64videoblack = $(VIDEODIR_GLN64)/3DMathNeon.cpp $(VIDEODIR_GLN64)/gSPNeon.cpp
+CXXFILES += $(filter-out $(gln64videoblack), $(gln64videosrc))
+CFILES += $(VIDEODIR_GLN64)/ticks.c
+
+# Glide64
+VIDEODIR_GLIDE = gles2glide64/src
+CPPFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc -DGLIDE64
+CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp)
+CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
 
 ### Finalize ###
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
@@ -226,9 +228,6 @@ all: $(TARGET)
 
 %.o: %.S
 	$(CC_AS) $(CFLAGS) -c $^ -o $@
-
-$(COREDIR)/src/r4300/new_dynarec/new_dynarec.o: $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c
-	$(CC) -c -o $@ $< $(CPPFLAGS) $(CFLAGS) -O0
 
 $(TARGET): $(OBJECTS)
 	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)

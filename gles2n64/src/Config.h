@@ -1,6 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#ifdef __LIBRETRO__ // Prefix symbol
+#define config gln64config
+#endif
+
 struct Config
 {
     int     version;

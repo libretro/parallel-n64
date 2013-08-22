@@ -28,6 +28,10 @@
 #include "CRC.h"
 #include "Debug.h"
 
+#ifdef __LIBRETRO__ // Prefix symbol
+#define uc_crc gln64uc_crc
+#endif
+
 u32 uc_crc, uc_dcrc;
 char uc_str[256];
 

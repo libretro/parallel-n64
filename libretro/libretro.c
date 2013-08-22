@@ -12,6 +12,12 @@
 #include "r4300/r4300.h"
 #include "main/version.h"
 
+static retro_video_refresh_t video_cb = NULL;
+static retro_input_poll_t poll_cb = NULL;
+retro_input_state_t input_cb = NULL;
+retro_audio_sample_batch_t audio_batch_cb = NULL;
+retro_environment_t environ_cb = NULL;
+
 static struct retro_hw_render_callback render_iface;
 static cothread_t main_thread;
 static cothread_t emulator_thread;
@@ -40,7 +46,18 @@ static void EmuThreadFunction()
     free(game_data);
     game_data = 0;
 
-    CoreAttachPlugin(M64PLUGIN_GFX, 0);
+    struct retro_variable var = { "mupen64-gfxplugin", 0 };
+    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
+    printf(var.value);
+
+    if (var.value && strcmp(var.value, "rice") == 0)
+       CoreAttachPlugin(M64PLUGIN_GFX, 1);
+    else if(var.value && strcmp(var.value, "gln64") == 0)
+       CoreAttachPlugin(M64PLUGIN_GFX, 2);
+    else
+       CoreAttachPlugin(M64PLUGIN_GFX, 0);
+
     CoreAttachPlugin(M64PLUGIN_AUDIO, 0);
     CoreAttachPlugin(M64PLUGIN_INPUT, 0);
     CoreAttachPlugin(M64PLUGIN_RSP, 0);
@@ -76,12 +93,6 @@ static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
 
 //
 
-static retro_video_refresh_t video_cb = NULL;
-static retro_input_poll_t poll_cb = NULL;
-retro_input_state_t input_cb = NULL;
-retro_audio_sample_batch_t audio_batch_cb = NULL;
-retro_environment_t environ_cb = NULL;
-
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
 void retro_set_audio_sample(retro_audio_sample_t cb)   { }
 void retro_set_audio_sample_batch(retro_audio_sample_batch_t cb) { audio_batch_cb = cb; }
@@ -95,6 +106,8 @@ void retro_set_environment(retro_environment_t cb)
    struct retro_variable variables[] = {
       { "mupen64-filtering",
          "Texture filtering; automatic|bilinear|nearest" },
+      { "mupen64-gfxplugin",
+         "Graphics Plugin; glide64|rice|gln64" },
       { NULL, NULL },
    };
 

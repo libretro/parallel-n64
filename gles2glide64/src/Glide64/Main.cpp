@@ -121,33 +121,34 @@ ptr_VidExt_GL_SwapBuffers        CoreVideo_GL_SwapBuffers = NULL;
 #endif
 
 #ifdef __LIBRETRO__ // Prefix API
-#define ReadScreen2 videoReadScreen2
-#define PluginStartup videoPluginStartup
-#define PluginShutdown videoPluginShutdown
-#define PluginGetVersion videoPluginGetVersion
-#define CaptureScreen videoCaptureScreen
-#define ChangeWindow videoChangeWindow
-#define CloseDLL videoCloseDLL
-#define DllTest videoDllTest
-#define DrawScreen videoDrawScreen
-#define GetDllInfo videoGetDllInfo
-#define InitiateGFX videoInitiateGFX
-#define MoveScreen videoMoveScreen
-#define RomClosed videoRomClosed
-#define RomOpen videoRomOpen
-#define ShowCFB videoShowCFB
-#define SetRenderingCallback videoSetRenderingCallback
-#define UpdateScreen videoUpdateScreen
-#define ViStatusChanged videoViStatusChanged
-#define ViWidthChanged videoViWidthChanged
-#define ReadScreen videoReadScreen
+#define VIDEO_TAG(X) glide64##X
 
-extern "C"
-{
-    EXPORT void CALL videoResizeVideoOutput(int width, int height)
-    {
-    }
-}
+#define ReadScreen2 VIDEO_TAG(ReadScreen2)
+#define PluginStartup VIDEO_TAG(PluginStartup)
+#define PluginShutdown VIDEO_TAG(PluginShutdown)
+#define PluginGetVersion VIDEO_TAG(PluginGetVersion)
+#define CaptureScreen VIDEO_TAG(CaptureScreen)
+#define ChangeWindow VIDEO_TAG(ChangeWindow)
+#define CloseDLL VIDEO_TAG(CloseDLL)
+#define DllTest VIDEO_TAG(DllTest)
+#define DrawScreen VIDEO_TAG(DrawScreen)
+#define GetDllInfo VIDEO_TAG(GetDllInfo)
+#define InitiateGFX VIDEO_TAG(InitiateGFX)
+#define MoveScreen VIDEO_TAG(MoveScreen)
+#define RomClosed VIDEO_TAG(RomClosed)
+#define RomOpen VIDEO_TAG(RomOpen)
+#define ShowCFB VIDEO_TAG(ShowCFB)
+#define SetRenderingCallback VIDEO_TAG(SetRenderingCallback)
+#define UpdateScreen VIDEO_TAG(UpdateScreen)
+#define ViStatusChanged VIDEO_TAG(ViStatusChanged)
+#define ViWidthChanged VIDEO_TAG(ViWidthChanged)
+#define ReadScreen VIDEO_TAG(ReadScreen)
+#define FBGetFrameBufferInfo VIDEO_TAG(FBGetFrameBufferInfo)
+#define FBRead VIDEO_TAG(FBRead)
+#define FBWrite VIDEO_TAG(FBWrite)
+#define ProcessDList VIDEO_TAG(ProcessDList)
+#define ProcessRDPList VIDEO_TAG(ProcessRDPList)
+#define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
 #endif
 
 GFX_INFO gfx;

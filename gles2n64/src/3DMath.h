@@ -3,6 +3,10 @@
 
 #include <string.h>
 
+#ifdef __LIBRETRO__ // Prefix symbol
+#define DotProduct gln64DotProduct
+#endif
+
 extern void (*MultMatrix)(float m0[4][4], float m1[4][4], float dest[4][4]);
 extern void (*TransformVectorNormalize)(float vec[3], float mtx[4][4]);
 extern void (*Normalize)(float v[3]);

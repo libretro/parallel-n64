@@ -3,6 +3,11 @@
 
 #include "Types.h"
 
+#ifdef __LIBRETRO__ // Prefix symbol
+#define depthBuffer gln64depthBuffer
+#endif
+
+
 struct DepthBuffer
 {
     DepthBuffer *higher, *lower;

@@ -199,6 +199,10 @@ extern ptr_VidExt_GL_GetAttribute       CoreVideo_GL_GetAttribute;
 extern ptr_VidExt_GL_SwapBuffers        CoreVideo_GL_SwapBuffers;
 #endif
 
+#ifdef __LIBRETRO__ // Prefix symbol
+#define renderCallback ricerenderCallback
+#endif
+
 /* global functions provided by Video.cpp */
 extern char generalText[];
 extern void (*renderCallback)(int);

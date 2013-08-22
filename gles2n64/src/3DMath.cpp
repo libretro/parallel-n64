@@ -1,5 +1,9 @@
 #include <math.h>
 
+#ifdef __LIBRETRO__ // Prefix symbol
+#define DotProduct gln64DotProduct
+#endif
+
 static void MultMatrix_default( float m0[4][4], float m1[4][4],
         float dest[4][4])
 {

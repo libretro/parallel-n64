@@ -19,6 +19,10 @@
 extern ptr_ConfigGetSharedDataFilepath ConfigGetSharedDataFilepath;
 #endif
 
+#ifdef __LIBRETRO__ // Avoid symbol clash
+#define renderCallback gln64RenderCallback
+#endif
+
 extern void (*CheckInterrupts)( void );
 extern void (*renderCallback)();
 

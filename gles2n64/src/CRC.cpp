@@ -1,5 +1,7 @@
 #include "Types.h"
 
+#include "CRC.h" // __LIBRETRO__: Allow it to rename symbols
+
 #define CRC32_POLYNOMIAL     0x04C11DB7
 
 #ifdef __CRC_OPT

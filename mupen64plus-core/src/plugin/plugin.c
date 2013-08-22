@@ -155,8 +155,54 @@ static void plugin_disconnect_gfx(void)
     l_mainRenderCallback = NULL;
 }
 
+#ifdef __LIBRETRO__ // Gfx plugin definitions
+#define LOAD_GFX(X) \
+   gfx.getVersion = X##PluginGetVersion; \
+   gfx.changeWindow = X##ChangeWindow; \
+   gfx.initiateGFX = X##InitiateGFX; \
+   gfx.moveScreen = X##MoveScreen; \
+   gfx.processDList = X##ProcessDList; \
+   gfx.processRDPList = X##ProcessRDPList; \
+   gfx.romClosed = X##RomClosed; \
+   gfx.romOpen = X##RomOpen; \
+   gfx.showCFB = X##ShowCFB; \
+   gfx.updateScreen = X##UpdateScreen; \
+   gfx.viStatusChanged = X##ViStatusChanged; \
+   gfx.viWidthChanged = X##ViWidthChanged; \
+   gfx.readScreen = X##ReadScreen2; \
+   gfx.setRenderingCallback = X##SetRenderingCallback; \
+   gfx.fBRead = X##FBRead; \
+   gfx.fBWrite = X##FBWrite; \
+   gfx.fBGetFrameBufferInfo = X##FBGetFrameBufferInfo;
+
+#define DEFINE_GFX(X) \
+   EXPORT m64p_error CALL X##PluginGetVersion(m64p_plugin_type *, int *, int *, const char **, int *); \
+   EXPORT void CALL X##ChangeWindow(void); \
+   EXPORT int  CALL X##InitiateGFX(GFX_INFO Gfx_Info); \
+   EXPORT void CALL X##MoveScreen(int x, int y); \
+   EXPORT void CALL X##ProcessDList(void); \
+   EXPORT void CALL X##ProcessRDPList(void); \
+   EXPORT void CALL X##RomClosed(void); \
+   EXPORT int  CALL X##RomOpen(void); \
+   EXPORT void CALL X##ShowCFB(void); \
+   EXPORT void CALL X##UpdateScreen(void); \
+   EXPORT void CALL X##ViStatusChanged(void); \
+   EXPORT void CALL X##ViWidthChanged(void); \
+   EXPORT void CALL X##ReadScreen2(void *dest, int *width, int *height, int front); \
+   EXPORT void CALL X##SetRenderingCallback(void (*callback)(int)); \
+   EXPORT void CALL X##ResizeVideoOutput(int width, int height); \
+   EXPORT void CALL X##FBRead(unsigned int addr); \
+   EXPORT void CALL X##FBWrite(unsigned int addr, unsigned int size); \
+   EXPORT void CALL X##FBGetFrameBufferInfo(void *p);
+
+DEFINE_GFX(rice)
+DEFINE_GFX(gln64)
+DEFINE_GFX(glide64)
+#endif
+
 static m64p_error plugin_connect_gfx(m64p_dynlib_handle plugin_handle)
 {
+#ifndef __LIBRETRO__ // Custom gfx plugin loading
     /* attach the Video plugin function pointers */
     if (plugin_handle != NULL)
     {
@@ -216,11 +262,18 @@ static m64p_error plugin_connect_gfx(m64p_dynlib_handle plugin_handle)
             DebugMessage(M64MSG_WARNING, "Fallback for Video plugin API (%02i.%02i.%02i) < 2.2.0. Resizable video will not work", VERSION_PRINTF_SPLIT(APIVersion));
             gfx.resizeVideoOutput = dummyvideo_ResizeVideoOutput;
         }
-
         l_GfxAttached = 1;
     }
     else
         plugin_disconnect_gfx();
+#else
+    switch ((int)plugin_handle)
+    {
+        case 1: LOAD_GFX(rice); break;
+        case 2: LOAD_GFX(gln64); break;
+        default: LOAD_GFX(glide64); break;
+    }
+#endif
 
     return M64ERR_SUCCESS;
 }
