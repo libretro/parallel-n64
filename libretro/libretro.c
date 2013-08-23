@@ -33,9 +33,24 @@ static int16_t *audio_out_buffer_s16;
 static uint8_t* game_data;
 static uint32_t game_size;
 
+static uint32_t screen_width;
+static uint32_t screen_height;
+
+static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
+{
+    char buffer[1024];
+    snprintf(buffer, 1024, "mupen64plus: %s\n", aMessage);
+    printf("%s", buffer);
+}
+
 static void EmuThreadFunction()
 {
     emu_thread_has_run = true;
+
+    if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0))
+    {
+        printf("mupen64plus: Failed to initialize core\n");
+    }
 
     if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
     {
@@ -46,10 +61,9 @@ static void EmuThreadFunction()
     free(game_data);
     game_data = 0;
 
+    /* Load GFX plugin core option */
     struct retro_variable var = { "mupen64-gfxplugin", 0 };
     environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
-
-    printf(var.value);
 
     if (var.value && strcmp(var.value, "rice") == 0)
        CoreAttachPlugin(M64PLUGIN_GFX, 1);
@@ -83,14 +97,6 @@ load_fail:
     }
 }
 
-static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
-{
-    char buffer[1024];
-    snprintf(buffer, 1024, "mupen64plus: %s\n", aMessage);
-    printf("%s", buffer);
-}
-
-
 //
 
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
@@ -104,10 +110,20 @@ void retro_set_environment(retro_environment_t cb)
    environ_cb = cb;
 
    struct retro_variable variables[] = {
-      { "mupen64-filtering",
-         "Texture filtering; automatic|bilinear|nearest" },
+      { "mupen64-cpucore",
+#ifdef DYNAREC
+         "CPU Core; dynamic_recompiler|cached_interpreter|pure_interpreter" },
+#else
+         "CPU Core; cached_interpreter|pure_interpreter" },
+#endif
+      { "mupen64-disableexpmem",
+         "Disable Expansion RAM; no|yes" },
       { "mupen64-gfxplugin",
          "Graphics Plugin; glide64|rice|gln64" },
+      { "mupen64-screensize",
+         "Graphics Resolution; 640x480|1280x960|320x240" },
+      { "mupen64-filtering",
+         "Texture filtering; automatic|bilinear|nearest" },
       { NULL, NULL },
    };
 
@@ -160,25 +176,29 @@ void retro_get_system_info(struct retro_system_info *info)
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
-    // TODO
-    info->geometry.base_width = 640;        // TODO: Real sizes
-    info->geometry.base_height = 480;
-    info->geometry.max_width = 640;
-    info->geometry.max_height = 480;
-    info->geometry.aspect_ratio = 0.0;
-    info->timing.fps = 60.0;                // TODO: NTSC/PAL + Actual timing 
-    info->timing.sample_rate = 44100.0;
+   // TODO
+   struct retro_variable var = { "mupen64-screensize", 0 };
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
+   if (sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
+   {
+      screen_width = 640;
+      screen_height = 480;
+   }
+
+   info->geometry.base_width = screen_width;
+   info->geometry.base_height = screen_height;
+   info->geometry.max_width = screen_width;
+   info->geometry.max_height = screen_height;
+   info->geometry.aspect_ratio = 0.0;
+   info->timing.fps = 60.0;                // TODO: NTSC/PAL + Actual timing 
+   info->timing.sample_rate = 44100.0;
 }
 
 void retro_init(void)
 {
     unsigned colorMode = RETRO_PIXEL_FORMAT_XRGB8888;
     environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
-
-    if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0))
-    {
-        printf("mupen64plus: Failed to initialize core\n");
-    }
 
     rarch_resampler_realloc(&resampler_data, &resampler, NULL, 1.0);
     audio_in_buffer_float = malloc(4096 * sizeof(float));
@@ -299,7 +319,7 @@ void retro_run (void)
     co_switch(emulator_thread);
     sglExit();
 
-    video_cb(RETRO_HW_FRAME_BUFFER_VALID, 640, 480, 0);
+    video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
 }
 
 void retro_reset (void)

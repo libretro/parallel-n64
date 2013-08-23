@@ -1200,6 +1200,30 @@ EXPORT m64p_error CALL ConfigSetDefaultString(m64p_handle ConfigSectionHandle, c
     return M64ERR_SUCCESS;
 }
 
+#ifdef __LIBRETRO__  // Conifg overrides
+#include "libretro.h"
+extern retro_environment_t environ_cb;
+
+typedef struct { int value; const char* name; } value_pair;
+
+static int choose_value(const char* value_name, const value_pair* values)
+{
+   if (value_name)
+   {
+      struct retro_variable var = { value_name, 0 };
+      environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
+      for (int i = 0; var.value && values && values[i].name; i ++)
+      {
+         if (strcmp(values[i].name, var.value) == 0)
+            return values[i].value;
+      }
+   }
+
+   return -1;
+}
+#endif
+
 EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *ParamName)
 {
     config_section *section;
@@ -1211,6 +1235,34 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
         DebugMessage(M64MSG_ERROR, "ConfigGetParamInt(): Input assertion!");
         return 0;
     }
+
+#ifdef __LIBRETRO__ // Conifg overrides
+    static const struct
+    {
+        const char* ParamName;
+        const char* RetroName;
+        const value_pair Values[4];
+    }   libretro_translate[] =
+    {
+        { "R4300Emulator", "mupen64-cpucore", { { 0, "pure_interpreter" }, { 1, "cached_interpreter" }, { 2, "dynamic_recompiler" }, { 0, 0 } } },
+        { "DisableExtraMem", "mupen64-disableexpmem", { { 0, "no" }, { 1, "yes" }, { 0, 0 } } },
+        { "ScreenWidth", "mupen64-screensize", { { 320, "320x240" }, { 640, "640x480" }, { 1280, "1280x960" }, { 0, 0 } } },
+        { "ScreenHeight", "mupen64-screensize", { { 240, "320x240" }, { 480, "640x480" }, { 960, "1280x960" }, { 0, 0 } } },
+        0
+    };
+
+    for (int i = 0; libretro_translate[i].ParamName; i ++)
+    {
+        if (strcmp(ParamName, libretro_translate[i].ParamName) == 0)
+        {
+            int result = choose_value(libretro_translate[i].RetroName, libretro_translate[i].Values);
+            if (result >= 0)
+                return result;
+            break;
+       }
+    }
+
+#endif
 
     section = (config_section *) ConfigSectionHandle;
     if (section->magic != SECTION_MAGIC)
