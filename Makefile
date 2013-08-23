@@ -38,8 +38,8 @@ else ifneq (,$(findstring osx,$(platform)))
    PLATFORM_EXT := unix
 else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
-   CPPFLAGS += -DIOS
-   LDFLAGS += -dynamiclib
+   CPPFLAGS += -DIOS -marm
+   LDFLAGS += -dynamiclib -marm
    fpic = -fPIC
    GLES = 1
    GL_LIB := -framework OpenGLES
@@ -226,8 +226,11 @@ endif
 
 all: $(TARGET)
 
-%.o: %.S
+$(COREDIR)/src/r4300/new_dynarec/linkage_arm.o: $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
 	$(CC_AS) $(CFLAGS) -c $^ -o $@
+
+$(COREDIR)/src/r4300/new_dynarec/new_dynarec.o: $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c
+	$(CC) -c -o $@ $< $(CPPFLAGS) $(CFLAGS) -O0
 
 $(TARGET): $(OBJECTS)
 	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)
