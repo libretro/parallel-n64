@@ -52,7 +52,7 @@ else ifneq (,$(findstring ios,$(platform)))
    CPPFLAGS += -DNO_ASM -DIOS -DNOSSE -DHAVE_POSIX_MEMALIGN
    PLATFORM_EXT := unix
 else ifneq (,$(findstring android,$(platform)))
-   TARGET := $(TARGET_NAME)_libretro.so
+   TARGET := libretro_$(TARGET_NAME).so
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined -Wl,--warn-common
    GL_LIB := -lGLESv2
 
