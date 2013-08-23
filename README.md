@@ -11,11 +11,9 @@ In order to run the video plugin's ini file must be copied into RetroArch's syst
 To enable a dynarec CPU core you must pass the WITH_DYNAREC value to make:
 * make WITH_DYNAREC=x86 (untested)
 * make WITH_DYNAREC=x86_64
-* make WITH_DYNAREC=arm (untested, will compile on android but not iOS)
+* make WITH_DYNAREC=arm
 
 TODO:
-* Allow video plugin to be selected at runtime
-* Fixup arm dynarec for iOS
 * Enable save states
 * Make sure all filesystem access targets directories a libretro core would be expected to access
 * Make core options for important settings
