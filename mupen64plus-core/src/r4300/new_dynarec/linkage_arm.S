@@ -39,6 +39,8 @@
   .type name, %function; \
   name
 
+#define EXTRA_UNSAVED_REGS
+
 #else
 #define ESYM(name) _##name
 
@@ -47,6 +49,9 @@
   .globl ESYM(name); \
   name: \
   ESYM(name)
+
+// r7 is preserved, but add it for EABI alignment..
+#define EXTRA_UNSAVED_REGS r7, r9,
 
 #endif
 
@@ -696,79 +701,79 @@ FUNCTION(new_dyna_start):
 	.size	new_dyna_start, .-new_dyna_start
 
 FUNCTION(invalidate_addr_r0):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, lr}
 	lsr	r0, r0, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r0, .-invalidate_addr_r0
 
 FUNCTION(invalidate_addr_r1):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, lr}
 	lsr	r0, r1, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r1, .-invalidate_addr_r1
 
 FUNCTION(invalidate_addr_r2):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, lr}
 	lsr	r0, r2, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r2, .-invalidate_addr_r2
 
 FUNCTION(invalidate_addr_r3):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, lr}
 	lsr	r0, r3, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r3, .-invalidate_addr_r3
 
 FUNCTION(invalidate_addr_r4):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, lr}
 	lsr	r0, r4, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r4, .-invalidate_addr_r4
 
 FUNCTION(invalidate_addr_r5):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, lr}
 	lsr	r0, r5, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r5, .-invalidate_addr_r5
 
 FUNCTION(invalidate_addr_r6):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, lr}
 	lsr	r0, r6, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r6, .-invalidate_addr_r6
 
 FUNCTION(invalidate_addr_r7):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, lr}
 	lsr	r0, r7, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r7, .-invalidate_addr_r7
 
 FUNCTION(invalidate_addr_r8):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, lr}
 	lsr	r0, r8, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r8, .-invalidate_addr_r8
 
 FUNCTION(invalidate_addr_r9):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, lr}
 	lsr	r0, r9, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r9, .-invalidate_addr_r9
 
 FUNCTION(invalidate_addr_r10):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, lr}
 	lsr	r0, r10, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r10, .-invalidate_addr_r10
 
 FUNCTION(invalidate_addr_r12):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, lr}
 	lsr	r0, r12, #12	
 	.size	invalidate_addr_r12, .-invalidate_addr_r12
 
 FUNCTION(invalidate_addr_call): // Not global?
 	bl	invalidate_block
-	ldmia	fp, {r0, r1, r2, r3, r12, pc}
+	ldmia	fp, {r0, r1, r2, r3, EXTRA_UNSAVED_REGS r12, pc}
 	.size	invalidate_addr_call, .-invalidate_addr_call
 
 FUNCTION(write_rdram_new):
