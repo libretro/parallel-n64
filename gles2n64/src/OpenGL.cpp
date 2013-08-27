@@ -35,34 +35,6 @@ void OGL_UpdateDepthUpdate();
 
 GLInfo OGL;
 
-const char _default_vsh[] = "                           \n\t" 
-#if defined(__LIBRETRO__) && !defined(GLES) // Desktop GL fix
-"#version 120                                           \n\t"
-"#define highp                                          \n\t"
-"#define mediump                                        \n\t"
-"#define lowp                                           \n\t"
-#endif
-"attribute highp vec2 aPosition;                        \n\t" \
-"attribute highp vec2 aTexCoord;                        \n\t" \
-"varying mediump vec2 vTexCoord;                        \n\t" \
-"void main(){                                           \n\t" \
-"gl_Position = vec4(aPosition.x, aPosition.y, 0.0, 1.0);\n\t" \
-"vTexCoord = aTexCoord;                                 \n\t" \
-"}                                                      \n\t";
-
-const char _default_fsh[] = "                           \n\t"
-#if defined(__LIBRETRO__) && !defined(GLES) // Desktop GL fix
-"#version 120                                           \n\t"
-"#define highp                                          \n\t"
-"#define mediump                                        \n\t"
-"#define lowp                                           \n\t"
-#endif
-"uniform sampler2D uTex;                                \n\t" \
-"varying mediump vec2 vTexCoord;                        \n\t" \
-"void main(){                                           \n\t" \
-"gl_FragColor = texture2D(uTex, vTexCoord);             \n\t" \
-"}                                                      \n\t";
-
 void OGL_EnableRunfast()
 {
 #ifdef ARM_ASM
@@ -152,47 +124,6 @@ void OGL_InitStates()
     
 
     glViewport(0, 0, config.screen.width, config.screen.height);
-
-    //create default shader program
-    LOG( LOG_VERBOSE, "Generate Default Shader Program.\n" );
-
-    const char *src[1];
-    src[0] = _default_fsh;
-    OGL.defaultFragShader = glCreateShader( GL_FRAGMENT_SHADER );
-    glShaderSource( OGL.defaultFragShader, 1, (const char**) src, NULL );
-    glCompileShader( OGL.defaultFragShader );
-    glGetShaderiv( OGL.defaultFragShader, GL_COMPILE_STATUS, &success );
-    if (!success)
-    {
-        LOG(LOG_ERROR, "Failed to produce default fragment shader.\n");
-    }
-
-    src[0] = _default_vsh;
-    OGL.defaultVertShader = glCreateShader( GL_VERTEX_SHADER );
-    glShaderSource( OGL.defaultVertShader, 1, (const char**) src, NULL );
-    glCompileShader( OGL.defaultVertShader );
-    glGetShaderiv( OGL.defaultVertShader, GL_COMPILE_STATUS, &success );
-    if( !success )
-    {
-        LOG( LOG_ERROR, "Failed to produce default vertex shader.\n" );
-        _glcompiler_error( OGL.defaultVertShader );
-    }
-
-    OGL.defaultProgram = glCreateProgram();
-    glBindAttribLocation( OGL.defaultProgram, 0, "aPosition" );
-    glBindAttribLocation( OGL.defaultProgram, 1, "aTexCoord" );
-    glAttachShader( OGL.defaultProgram, OGL.defaultFragShader );
-    glAttachShader( OGL.defaultProgram, OGL.defaultVertShader );
-    glLinkProgram( OGL.defaultProgram );
-    glGetProgramiv( OGL.defaultProgram, GL_LINK_STATUS, &success );
-    if( !success )
-    {
-        LOG( LOG_ERROR, "Failed to link default program.\n" );
-        _glcompiler_error( OGL.defaultFragShader );
-    }
-    glUseProgram( OGL.defaultProgram );
-    glUniform1i( glGetUniformLocation( OGL.defaultProgram, "uTex" ), 0 );
-
 }
 
 void OGL_UpdateScale()
@@ -275,10 +206,6 @@ bool OGL_Start()
 void OGL_Stop()
 {
     LOG(LOG_MINIMAL, "Stopping OpenGL\n");
-
-    glDeleteShader(OGL.defaultFragShader);
-    glDeleteShader(OGL.defaultVertShader);
-    glDeleteProgram(OGL.defaultProgram);
 
     ShaderCombiner_Destroy();
     TextureCache_Destroy();
@@ -471,10 +398,6 @@ void OGL_UpdateStates()
         ShaderCombiner_Set(EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, 1, 0, 0, 0, SHADE, 0, 0, 0, 1));
     else
         ShaderCombiner_Set(gDP.combine.mux);
-
-#ifdef SHADER_TEST
-    ProgramSwaps += scProgramChanged;
-#endif
 
     if (gSP.changed & CHANGED_GEOMETRYMODE)
     {
@@ -695,12 +618,12 @@ void OGL_DrawTriangles()
 
     if (OGL.renderState != RS_TRIANGLE)
     {
-#ifdef RENDERSTATE_TEST
-        StateChanges++;
-#endif
         glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].x);
+        glEnableVertexAttribArray(SC_POSITION);
         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].r);
+        glEnableVertexAttribArray(SC_COLOR);
         glVertexAttribPointer(SC_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].s);
+        glEnableVertexAttribArray(SC_TEXCOORD0);
 
         OGL_UpdateCullFace();
         OGL_UpdateViewport();
@@ -728,9 +651,6 @@ void OGL_DrawLine(int v0, int v1, float width )
 
     if (OGL.renderState != RS_LINE || scProgramChanged)
     {
-#ifdef RENDERSTATE_TEST
-        StateChanges++;
-#endif
         OGL_SetColorArray();
         glDisableVertexAttribArray(SC_TEXCOORD0);
         glDisableVertexAttribArray(SC_TEXCOORD1);
@@ -770,9 +690,6 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
 
     if (OGL.renderState != RS_RECT)
     {
-#ifdef RENDERSTATE_TEST
-        StateChanges++;
-#endif
         glVertexAttrib4f(SC_POSITION, 0, 0, gSP.viewport.nearz, 1.0);
         glVertexAttribPointer(SC_POSITION, 2, GL_FLOAT, GL_FALSE, sizeof(GLVertex), &OGL.rect[0].x);
         OGL.renderState = RS_RECT;
@@ -827,9 +744,6 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
 
     if (OGL.renderState != RS_TEXTUREDRECT)
     {
-#ifdef RENDERSTATE_TEST
-        StateChanges++;
-#endif
         glVertexAttrib4f(SC_COLOR, 0, 0, 0, 0);
         glVertexAttrib4f(SC_POSITION, 0, 0, (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz, 1.0);
         glVertexAttribPointer(SC_POSITION, 2, GL_FLOAT, GL_FALSE, sizeof(GLVertex), &OGL.rect[0].x);

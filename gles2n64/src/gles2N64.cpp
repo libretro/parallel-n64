@@ -188,7 +188,6 @@ EXPORT void CALL RomClosed (void)
 EXPORT int CALL RomOpen (void)
 {
     RSP_Init();
-    OGL.frame_vsync = 0;
     OGL.frame_dl = 0;
     OGL.frame_prevdl = -1;
     OGL.mustRenderDlist = false;
@@ -210,8 +209,6 @@ EXPORT void CALL UpdateScreen (void)
     if (OGL.frame_prevdl == OGL.frame_dl) return;
 
     OGL.frame_prevdl = OGL.frame_dl;
-
-    if (OGL.frame_dl > 0) OGL.frame_vsync++;
 
     if (OGL.mustRenderDlist)
     {

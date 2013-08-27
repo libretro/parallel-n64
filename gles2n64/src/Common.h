@@ -1,8 +1,6 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
-//#define PROFILE_GBI
-
 #define LOG_NONE	0
 #define LOG_ERROR   1
 #define LOG_MINIMAL	2
@@ -18,27 +16,6 @@
 #  define max(a,b) ((a) > (b) ? (a) : (b))
 # endif
 
-
-#if LOG_LEVEL>0
-
-#ifndef __LIBRETRO__
-#include <android/log.h>
-
-#define LOG(A, ...) \
-    if (A <= LOG_LEVEL) \
-    { \
-        __android_log_print(ANDROID_LOG_DEBUG, "gles2n64", __VA_ARGS__); \
-    }
-
-#else
-
-#define LOG(A, ...) printf(__VA_ARGS__)
-
-#endif
-#else
-
 #define LOG(A, ...)
-
-#endif
 
 #endif

@@ -600,14 +600,6 @@ void ShaderCombiner_Init()
 
     str += sprintf(str, "}\n\n");
 
-#ifdef PRINT_SHADER
-    LOG(LOG_VERBOSE, "=============================================================\n");
-    LOG(LOG_VERBOSE, "Vertex Shader:\n");
-    LOG(LOG_VERBOSE, "=============================================================\n");
-    LOG(LOG_VERBOSE, "%s", buff);
-    LOG(LOG_VERBOSE, "=============================================================\n");
-#endif
-
     src[0] = buff;
     _vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(_vertex_shader, 1, (const char**) src, NULL);
@@ -794,15 +786,6 @@ ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
     }
     buffer += sprintf(buffer, "} \n\n");
     *buffer = 0;
-
-#ifdef PRINT_SHADER
-    LOG(LOG_VERBOSE, "=============================================================\n");
-    LOG(LOG_VERBOSE, "Combine=0x%llx flags=0x%x dmux flags=0x%x\n", prog->combine.mux, flags, dmux->flags);
-    LOG(LOG_VERBOSE, "Num=%i \t usesT0=%i usesT1=%i usesCol=%i usesNoise=%i\n", scProgramCount, prog->usesT0, prog->usesT1, prog->usesCol, prog->usesNoise);
-    LOG(LOG_VERBOSE, "=============================================================\n");
-    LOG(LOG_VERBOSE, "%s", frag);
-    LOG(LOG_VERBOSE, "=============================================================\n");
-#endif
 
     prog->program = glCreateProgram();
 

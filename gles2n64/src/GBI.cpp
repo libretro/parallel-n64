@@ -310,10 +310,6 @@ void GBI_Init()
 
     for (u32 i = 0; i <= 0xFF; i++)
         GBI.cmd[i] = GBI_Unknown;
-
-#ifdef PROFILE_GBI
-    GBI_ProfileInit();
-#endif
 }
 
 void GBI_Destroy()

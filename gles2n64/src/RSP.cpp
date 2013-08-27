@@ -15,9 +15,6 @@
 #include "gSP.h"
 #include "Textures.h"
 
-//#define PRINT_DISPLAYLIST
-//#define PRINT_DISPLAYLIST_NUM 1
-
 RSPInfo     RSP;
 
 void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
@@ -88,10 +85,6 @@ void RSP_ProcessDList()
     gDPSetCycleType(G_CYC_1CYCLE);
     gDPPipelineMode(G_PM_NPRIMITIVE);
 
-#ifdef PRINT_DISPLAYLIST
-    if ((RSP.DList%PRINT_DISPLAYLIST_NUM) == 0) LOG(LOG_VERBOSE, "BEGIN DISPLAY LIST %i \n", RSP.DList);
-#endif
-
     while (!RSP.halt)
     {
         u32 pc = RSP.PC[RSP.PCi];
@@ -111,24 +104,9 @@ void RSP_ProcessDList()
         RSP.cmd = _SHIFTR( w0, 24, 8 );
         RSP.PC[RSP.PCi] += 8;
 
-#ifdef PROFILE_GBI
-        GBI_ProfileBegin(RSP.cmd);
-#endif
-
-#ifdef PRINT_DISPLAYLIST
-        if ((RSP.DList%PRINT_DISPLAYLIST_NUM) == 0) LOG(LOG_VERBOSE, "%s: w0=0x%x w1=0x%x\n", GBI_GetFuncName(GBI.current->type, RSP.cmd), w0, w1);
-#endif
-
         GBI.cmd[RSP.cmd]( w0, w1 );
 
-#ifdef PROFILE_GBI
-        GBI_ProfileEnd(RSP.cmd);
-#endif
     }
-
-#ifdef PRINT_DISPLAYLIST
-        if ((RSP.DList%PRINT_DISPLAYLIST_NUM) == 0) LOG(LOG_VERBOSE, "END DISPLAY LIST %i \n", RSP.DList);
-#endif
 
     RSP.busy = FALSE;
     RSP.DList++;

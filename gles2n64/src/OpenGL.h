@@ -1,20 +1,8 @@
 #ifndef OPENGL_H
 #define OPENGL_H
 
-#ifdef __LIBRETRO__ // Use SDL_opengles2.h instead of GLES2/gl2.h
 #include <SDL_opengles2.h>
-#else
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-#endif
-
 #include "gSP.h"
-
-#ifdef USE_SDL
-//    #include <EGL/egl.h>  // Android 2.3 only
-//    #include <GLES2/gl2extimg.h>
-    #include <SDL.h>
-#endif
 
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
@@ -70,47 +58,14 @@ struct GLVertex
     float s0, t0, s1, t1;
 };
 
-struct GLcolor
-{
-    float r, g, b, a;
-};
-
 struct GLInfo
 {
-#ifdef USE_SDL
-// TODO: More EGL stuff, need to do this in Java
-    SDL_Surface *hScreen;  // TODO: Do we really need this?  Only using it in one place AFAICT..
-/*
-    struct
-    {
-        EGLint		            version_major, version_minor;
-        EGLDisplay              display;
-        EGLContext              context;
-        EGLConfig               config;
-        EGLSurface              surface;
-        EGLNativeDisplayType    device;
-        EGLNativeWindowType     handle;
-    } EGL;
-*/
-#endif
-
     bool    screenUpdate;
 
-    struct
-    {
-        GLuint fb,depth_buffer, color_buffer;
-    } framebuffer;
-
-
-    int     frame_vsync, frame_actual, frame_dl;
+    int     frame_dl;
     int     frame_prevdl;
     int     mustRenderDlist;
     int     renderingToTexture;
-
-
-    GLint   defaultProgram;
-    GLint   defaultVertShader;
-    GLint   defaultFragShader;
 
     float   scaleX, scaleY;
 
@@ -132,7 +87,6 @@ struct GLInfo
 //#endif
 
     } triangles;
-
 
     unsigned int    renderState;
 

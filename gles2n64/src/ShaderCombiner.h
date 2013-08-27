@@ -2,11 +2,6 @@
 #ifndef SHADERCOMBINER_H
 #define SHADERCOMBINER_H
 
-#ifndef __LIBRETRO__ // No PRINT_SHADER
-#define PRINT_SHADER
-#define UNIFORM_CHECK
-#endif
-
 #define SC_FOGENABLED           0x1
 #define SC_ALPHAENABLED         0x2
 #define SC_ALPHAGREATER         0x4
@@ -17,37 +12,6 @@
 #define SC_TEXCOORD0            3
 #define SC_TEXCOORD1            4
 
-#ifdef UNIFORM_CHECK
-#define SC_SetUniform1i(A, B) \
-    if (scProgramCurrent->uniforms.A.val != B) \
-        {scProgramCurrent->uniforms.A.val = B; glUniform1i(scProgramCurrent->uniforms.A.loc, B);}
-
-#define SC_SetUniform1f(A, B) \
-    if (scProgramCurrent->uniforms.A.val != B) \
-    {scProgramCurrent->uniforms.A.val = B; glUniform1f(scProgramCurrent->uniforms.A.loc, B);}
-
-#define SC_SetUniform4fv(A, B) \
-    if ((scProgramCurrent->uniforms.A.val[0] != (B)[0]) || (scProgramCurrent->uniforms.A.val[1] != (B)[1]) || \
-        (scProgramCurrent->uniforms.A.val[2] != (B)[2]) || (scProgramCurrent->uniforms.A.val[3] != (B)[3]))   \
-        {memcpy(scProgramCurrent->uniforms.A.val, B, 16); glUniform4fv(scProgramCurrent->uniforms.A.loc, 1, B);}
-
-#define SC_SetUniform2f(A, B, C) \
-    if ((scProgramCurrent->uniforms.A.val[0] != B) || (scProgramCurrent->uniforms.A.val[1] != C)) \
-        {scProgramCurrent->uniforms.A.val[0] = B; scProgramCurrent->uniforms.A.val[1] = C; glUniform2f(scProgramCurrent->uniforms.A.loc, B, C);}
-
-#define SC_ForceUniform1i(A, B) \
-        {scProgramCurrent->uniforms.A.val = B; glUniform1i(scProgramCurrent->uniforms.A.loc, B);}
-
-#define SC_ForceUniform1f(A, B) \
-        {scProgramCurrent->uniforms.A.val = B; glUniform1f(scProgramCurrent->uniforms.A.loc, B);}
-
-#define SC_ForceUniform4fv(A, B) \
-        {memcpy(scProgramCurrent->uniforms.A.val, B, 16); glUniform4fv(scProgramCurrent->uniforms.A.loc, 1, B);}
-
-#define SC_ForceUniform2f(A, B, C) \
-        {scProgramCurrent->uniforms.A.val[0] = B; scProgramCurrent->uniforms.A.val[1] = C; glUniform2f(scProgramCurrent->uniforms.A.loc, B, C);}
-
-#else
 #define SC_SetUniform1i(A, B)       glUniform1i(scProgramCurrent->uniforms.A.loc, B)
 #define SC_SetUniform1f(A, B)       glUniform1f(scProgramCurrent->uniforms.A.loc, B)
 #define SC_SetUniform4fv(A, B)      glUniform4fv(scProgramCurrent->uniforms.A.loc, 1, B)
@@ -56,7 +20,6 @@
 #define SC_ForceUniform1f(A, B)     glUniform1f(scProgramCurrent->uniforms.A.loc, B)
 #define SC_ForceUniform4fv(A, B)    glUniform4fv(scProgramCurrent->uniforms.A.loc, 1, B)
 #define SC_ForceUniform2f(A, B, C)  glUniform2f(scProgramCurrent->uniforms.A.loc, B, C)
-#endif
 
 /* Color combiner constants: */
 #define G_CCMUX_COMBINED        0
