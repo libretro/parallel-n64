@@ -6,16 +6,6 @@
 #include <time.h>
 #include <unistd.h>
 
-//// paulscode, added for SDL linkage:
-#ifdef USE_SDL
-    #include <SDL.h>
-     // TODO: Remove this bandaid for SDL 2.0 compatibility (needed for SDL_SetVideoMode)
-    #if SDL_VERSION_ATLEAST(2,0,0)
-    #include "sdl2_compat.h" // Slightly hacked version of core/vidext_sdl2_compat.h
-    #endif
-#endif
-////
-
 #include "Common.h"
 #include "gles2N64.h"
 #include "OpenGL.h"
@@ -28,9 +18,6 @@
 #include "VI.h"
 #include "RSP.h"
 #include "Config.h"
-#include "ticks.h"
-
-#include "FrameSkipper.h"
 
 #ifndef __LIBRETRO__ // Not m64p-ae
 #include "ae_bridge.h"
@@ -45,29 +32,6 @@
 void OGL_UpdateDepthUpdate();
 ////
 
-#ifdef TEXTURECACHE_TEST
-int     TextureCacheTime = 0;
-#endif
-
-
-#ifdef RENDERSTATE_TEST
-int     StateChanges = 0;
-#endif
-
-#ifdef SHADER_TEST
-int     ProgramSwaps = 0;
-#endif
-
-#ifdef BATCH_TEST
-int     TotalDrawTime = 0;
-int     TotalTriangles = 0;
-int     TotalDrawCalls = 0;
-#define glDrawElements(A,B,C,D) \
-    TotalTriangles += B; TotalDrawCalls++; int t = ticksGetTicks(); glDrawElements(A,B,C,D); TotalDrawTime += (ticksGetTicks() - t);
-#define glDrawArrays(A,B,C) \
-    TotalTriangles += C; TotalDrawCalls++; int t = ticksGetTicks(); glDrawArrays(A,B,C); TotalDrawTime += (ticksGetTicks() - t);
-
-#endif
 
 GLInfo OGL;
 
@@ -187,7 +151,7 @@ void OGL_InitStates()
 /////
     
 
-    glViewport(config.framebuffer.xpos, config.framebuffer.ypos, config.framebuffer.width, config.framebuffer.height);
+    glViewport(0, 0, config.screen.width, config.screen.height);
 
     //create default shader program
     LOG( LOG_VERBOSE, "Generate Default Shader Program.\n" );
@@ -233,95 +197,9 @@ void OGL_InitStates()
 
 void OGL_UpdateScale()
 {
-    OGL.scaleX = (float)config.framebuffer.width / (float)VI.width;
-    OGL.scaleY = (float)config.framebuffer.height / (float)VI.height;
+    OGL.scaleX = (float)config.screen.width / (float)VI.width;
+    OGL.scaleY = (float)config.screen.height / (float)VI.height;
 }
-
-void OGL_ResizeWindow(int x, int y, int width, int height)
-{
-    config.window.xpos = x;
-    config.window.ypos = y;
-    config.window.width = width;
-    config.window.height = height;
-
-    config.framebuffer.xpos = x;
-    config.framebuffer.ypos = y;
-    config.framebuffer.width = width;
-    config.framebuffer.height = height;
-    OGL_UpdateScale();
-
-    glViewport(config.framebuffer.xpos, config.framebuffer.ypos,
-            config.framebuffer.width, config.framebuffer.height);
-}
-
-////// paulscode, added for SDL linkage
-#ifdef USE_SDL
-bool OGL_SDL_Start()
-{
-    /* Initialize SDL */
-    LOG(LOG_MINIMAL, "Initializing SDL video subsystem...\n" );
-    if (SDL_InitSubSystem( SDL_INIT_VIDEO ) == -1)
-    {
-         LOG(LOG_ERROR, "Error initializing SDL video subsystem: %s\n", SDL_GetError() );
-        return FALSE;
-    }
-
-    int current_w = config.window.width;
-    int current_h = config.window.height;
-
-    /* Set the video mode */
-    LOG(LOG_MINIMAL, "Setting video mode %dx%d...\n", current_w, current_h );
-
-// TODO: I should actually check what the pixelformat is, rather than assuming 16 bpp (RGB_565) or 32 bpp (RGBA_8888):
-//// paulscode, added for switching between modes RGBA8888 and RGB565
-// (part of the color banding fix)
-int bitsPP;
-if( Android_JNI_UseRGBA8888() )
-    bitsPP = 32;
-else
-    bitsPP = 16;
-////
-
-    // TODO: Replace SDL_SetVideoMode with something that is SDL 2.0 compatible
-    //       Better yet, eliminate all SDL calls by using the Mupen64Plus core api
-    if (!(OGL.hScreen = SDL_SetVideoMode( current_w, current_h, bitsPP, SDL_HWSURFACE )))
-    {
-        LOG(LOG_ERROR, "Problem setting videomode %dx%d: %s\n", current_w, current_h, SDL_GetError() );
-        SDL_QuitSubSystem( SDL_INIT_VIDEO );
-        return FALSE;
-    }
-
-//// paulscode, fixes the screen-size problem
-    const float ratio = ( config.romPAL ? 9.0f/11.0f : 0.75f );
-    int videoWidth = current_w;
-    int videoHeight = current_h;
-    int x = 0;
-    int y = 0;
-    
-    //re-scale width and height on per-rom basis
-    float width = (float)videoWidth * (float)config.window.refwidth / 800.f;
-    float height = (float)videoHeight * (float)config.window.refheight / 480.f;
-    
-    //re-center video if it was re-scaled per-rom
-    x -= (width - (float)videoWidth) / 2.f;
-    y -= (height - (float)videoHeight) / 2.f;
-    
-    //set xpos and ypos
-    config.window.xpos = x;
-    config.window.ypos = y;
-    config.framebuffer.xpos = x;
-    config.framebuffer.ypos = y;
-    
-    //set width and height
-    config.window.width = (int)width;
-    config.window.height = (int)height;
-    config.framebuffer.width = (int)width;
-    config.framebuffer.height = (int)height;
-////
-    return true;
-}
-#endif
-//////
 
 #ifdef __LIBRETRO__ // void retro_n64_video_flipped()
 extern "C" void retro_n64_video_flipped();
@@ -329,13 +207,6 @@ extern "C" void retro_n64_video_flipped();
 
 bool OGL_Start()
 {
-// paulscode, initialize SDL
-#ifdef USE_SDL
-    if (!OGL_SDL_Start())
-        return false;
-#endif
-//
-
     OGL_InitStates();
 
 #ifdef USE_SDL
@@ -357,47 +228,6 @@ bool OGL_Start()
 ////////
 #endif
 
-#ifndef __LIBRETRO__ // No offscreen rendering
-    //create framebuffer
-    if (config.framebuffer.enable)
-    {
-        LOG(LOG_VERBOSE, "Create offscreen framebuffer. \n");
-        if (config.framebuffer.width == config.window.width && config.framebuffer.height == config.window.height)
-        {
-            LOG(LOG_WARNING, "There's no point in using a offscreen framebuffer when the window and screen dimensions are the same\n");
-        }
-
-        glGenFramebuffers(1, &OGL.framebuffer.fb);
-        glGenRenderbuffers(1, &OGL.framebuffer.depth_buffer);
-        glGenTextures(1, &OGL.framebuffer.color_buffer);
-        glBindRenderbuffer(GL_RENDERBUFFER, OGL.framebuffer.depth_buffer);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24_OES, config.framebuffer.width, config.framebuffer.height);
-        glBindTexture(GL_TEXTURE_2D, OGL.framebuffer.color_buffer);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, config.framebuffer.width, config.framebuffer.height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL);
-        glBindFramebuffer(GL_FRAMEBUFFER, OGL.framebuffer.fb);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, OGL.framebuffer.color_buffer, 0);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, OGL.framebuffer.depth_buffer);
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        {
-            LOG(LOG_ERROR, "Incomplete Framebuffer Object: ");
-            switch(glCheckFramebufferStatus(GL_FRAMEBUFFER))
-            {
-                case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-                    printf("Incomplete Attachment. \n"); break;
-                case GL_FRAMEBUFFER_UNSUPPORTED:
-                    printf("Framebuffer Unsupported. \n"); break;
-                case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
-                    printf("Incomplete Dimensions. \n"); break;
-            }
-            config.framebuffer.enable = 0;
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        }
-    }
-#endif
-
     //check extensions
     if ((config.texture.maxAnisotropy>0) && !OGL_IsExtSupported("GL_EXT_texture_filter_anistropic"))
     {
@@ -414,11 +244,9 @@ bool OGL_Start()
     }
 
     //Print some info
-    LOG(LOG_VERBOSE, "Width: %i Height:%i \n", config.framebuffer.width, config.framebuffer.height);
     LOG(LOG_VERBOSE, "[gles2n64]: Enable Runfast... \n");
 
     OGL_EnableRunfast();
-    OGL_UpdateScale();
 
     //We must have a shader bound before binding any textures:
     ShaderCombiner_Init();
@@ -435,9 +263,6 @@ bool OGL_Start()
     __indexmap_init();
 #endif
 
-    OGL.frameSkipped = 0;
-    for(int i = 0; i < OGL_FRAMETIME_NUM; i++) OGL.frameTime[i] = 0;
-
     OGL.renderingToTexture = false;
     OGL.renderState = RS_NONE;
     gSP.changed = gDP.changed = 0xFFFFFFFF;
@@ -450,19 +275,6 @@ bool OGL_Start()
 void OGL_Stop()
 {
     LOG(LOG_MINIMAL, "Stopping OpenGL\n");
-
-#ifdef USE_SDL
-    SDL_QuitSubSystem( SDL_INIT_VIDEO );
-#endif
-
-#ifndef __LIBRETRO__ // No offscreen rendering
-    if (config.framebuffer.enable)
-    {
-        glDeleteFramebuffers(1, &OGL.framebuffer.fb);
-        glDeleteTextures(1, &OGL.framebuffer.color_buffer);
-        glDeleteRenderbuffers(1, &OGL.framebuffer.depth_buffer);
-    }
-#endif
 
     glDeleteShader(OGL.defaultFragShader);
     glDeleteShader(OGL.defaultVertShader);
@@ -491,11 +303,10 @@ void OGL_UpdateCullFace()
 void OGL_UpdateViewport()
 {
     int x, y, w, h;
-    x = config.framebuffer.xpos + (int)(gSP.viewport.x * OGL.scaleX);
-    y = config.framebuffer.ypos + (int)((VI.height - (gSP.viewport.y + gSP.viewport.height)) * OGL.scaleY);
+    x = (int)(gSP.viewport.x * OGL.scaleX);
+    y = (int)((VI.height - (gSP.viewport.y + gSP.viewport.height)) * OGL.scaleY);
     w = (int)(gSP.viewport.width * OGL.scaleX);
     h = (int)(gSP.viewport.height * OGL.scaleY);
-
     glViewport(x, y, w, h);
 }
 
@@ -510,10 +321,11 @@ void OGL_UpdateDepthUpdate()
 void OGL_UpdateScissor()
 {
     int x, y, w, h;
-    x = config.framebuffer.xpos + (int)(gDP.scissor.ulx * OGL.scaleX);
-    y = config.framebuffer.ypos + (int)((VI.height - gDP.scissor.lry) * OGL.scaleY);
+    x = (int)(gDP.scissor.ulx * OGL.scaleX);
+    y = (int)((VI.height - gDP.scissor.lry) * OGL.scaleY);
     w = (int)((gDP.scissor.lrx - gDP.scissor.ulx) * OGL.scaleX);
     h = (int)((gDP.scissor.lry - gDP.scissor.uly) * OGL.scaleY);
+
     glScissor(x, y, w, h);
 }
 
@@ -729,13 +541,7 @@ void OGL_UpdateStates()
         {
             if (scProgramCurrent->usesT0)
             {
-#ifdef TEXTURECACHE_TEST
-                unsigned t = ticksGetTicks();
                 TextureCache_Update(0);
-                TextureCacheTime += (ticksGetTicks() - t);
-#else
-                TextureCache_Update(0);
-#endif
                 SC_ForceUniform2f(uTexOffset[0], gSP.textureTile[0]->fuls, gSP.textureTile[0]->fult);
                 SC_ForceUniform2f(uCacheShiftScale[0], cache.current[0]->shiftScaleS, cache.current[0]->shiftScaleT);
                 SC_ForceUniform2f(uCacheScale[0], cache.current[0]->scaleS, cache.current[0]->scaleT);
@@ -747,13 +553,7 @@ void OGL_UpdateStates()
 
             if (scProgramCurrent->usesT1)
             {
-#ifdef TEXTURECACHE_TEST
-                unsigned t = ticksGetTicks();
                 TextureCache_Update(1);
-                TextureCacheTime += (ticksGetTicks() - t);
-#else
-                TextureCache_Update(1);
-#endif
                 SC_ForceUniform2f(uTexOffset[1], gSP.textureTile[1]->fuls, gSP.textureTile[1]->fult);
                 SC_ForceUniform2f(uCacheShiftScale[1], cache.current[1]->shiftScaleS, cache.current[1]->shiftScaleT);
                 SC_ForceUniform2f(uCacheScale[1], cache.current[1]->scaleS, cache.current[1]->scaleT);
@@ -978,7 +778,7 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
         OGL.renderState = RS_RECT;
     }
 
-    glViewport(config.framebuffer.xpos, config.framebuffer.ypos, config.framebuffer.width, config.framebuffer.height );
+    glViewport(0, 0, config.screen.width, config.screen.height);
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_CULL_FACE);
 
@@ -1038,7 +838,7 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
         OGL.renderState = RS_TEXTUREDRECT;
     }
 
-    glViewport(config.framebuffer.xpos, config.framebuffer.ypos, config.framebuffer.width, config.framebuffer.height);
+    glViewport(0, 0, config.screen.width, config.screen.height);
     glDisable(GL_CULL_FACE);
 
     OGL.rect[0].x = (float) ulx * (2.0f * VI.rwidth) - 1.0f;
@@ -1177,7 +977,7 @@ void OGL_ClearColorBuffer( float *color )
     if ((config.updateMode == SCREEN_UPDATE_AT_1ST_PRIMITIVE) && OGL.screenUpdate)
         OGL_SwapBuffers();
 
-    glScissor(config.framebuffer.xpos, config.framebuffer.ypos, config.framebuffer.width, config.framebuffer.height);
+    glScissor(0, 0, config.screen.width, config.screen.height);
     glClearColor( color[0], color[1], color[2], color[3] );
     glClear( GL_COLOR_BUFFER_BIT );
     OGL_UpdateScissor();
@@ -1203,136 +1003,16 @@ int OGL_CheckError()
     return 0;
 }
 
-void OGL_UpdateFrameTime()
-{
-    unsigned ticks = ticksGetTicks();
-    static unsigned lastFrameTicks = 0;
-    for(int i = OGL_FRAMETIME_NUM-1; i > 0; i--) OGL.frameTime[i] = OGL.frameTime[i-1];
-    OGL.frameTime[0] = ticks - lastFrameTicks;
-    lastFrameTicks = ticks;
-}
-
 void OGL_SwapBuffers()
 {
+    // if emulator defined a render callback function, call it before
+ 	 // buffer swap
+    if (renderCallback) (*renderCallback)();
+
     //OGL_DrawTriangles();
     scProgramChanged = 0;
-#if 0
-    static int frames = 0;
-    static unsigned lastTicks = 0;
-    unsigned ticks = ticksGetTicks();
 
-    frames++;
-    if (ticks >= (lastTicks + 1000))
-    {
-
-        float fps = 1000.0f * (float) frames / (ticks - lastTicks);
-        LOG(LOG_MINIMAL, "fps = %.2f \n", fps);
-        LOG(LOG_MINIMAL, "skipped frame = %i of %i \n", OGL.frameSkipped, frames + OGL.frameSkipped);
-
-        OGL.frameSkipped = 0;
-
-#ifdef BATCH_TEST
-        LOG(LOG_MINIMAL, "time spent in draw calls per frame = %.2f ms\n", (float)TotalDrawTime / frames);
-        LOG(LOG_MINIMAL, "average draw calls per frame = %.0f\n", (float)TotalDrawCalls / frames);
-        LOG(LOG_MINIMAL, "average vertices per draw call = %.2f\n", (float)TotalTriangles / TotalDrawCalls);
-        TotalDrawCalls = 0;
-        TotalTriangles = 0;
-        TotalDrawTime = 0;
-#endif
-
-#ifdef SHADER_TEST
-        LOG(LOG_MINIMAL, "average shader changes per frame = %f\n", (float)ProgramSwaps / frames);
-        ProgramSwaps = 0;
-#endif
-
-#ifdef TEXTURECACHE_TEST
-        LOG(LOG_MINIMAL, "texture cache time per frame: %.2f ms\n", (float)TextureCacheTime/ frames);
-        LOG(LOG_MINIMAL, "texture cache per frame: hits=%.2f misses=%.2f\n", (float)cache.hits / frames,
-                (float)cache.misses / frames);
-        cache.hits = cache.misses = 0;
-        TextureCacheTime = 0;
-
-#endif
-        frames = 0;
-        lastTicks = ticks;
-    }
-#endif
-
-
-#ifdef PROFILE_GBI
-    u32 profileTicks = ticksGetTicks();
-    static u32 profileLastTicks = 0;
-    if (profileTicks >= (profileLastTicks + 5000))
-    {
-        LOG(LOG_MINIMAL, "GBI PROFILE DATA: %i ms \n", profileTicks - profileLastTicks);
-        LOG(LOG_MINIMAL, "=========================================================\n");
-        GBI_ProfilePrint(stdout);
-        LOG(LOG_MINIMAL, "=========================================================\n");
-        GBI_ProfileReset();
-        profileLastTicks = profileTicks;
-    }
-#endif
-
-#ifndef __LIBRETRO__  // No offscreen rendering
-    if (config.framebuffer.enable)
-    {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glClearColor( 0, 0, 0, 1 );
-        glClear( GL_COLOR_BUFFER_BIT );
-
-        glUseProgram(OGL.defaultProgram);
-        glDisable(GL_SCISSOR_TEST);
-        glDisable(GL_DEPTH_TEST);
-        glViewport(config.window.xpos, config.window.ypos, config.window.width, config.window.height);
-
-        static const float vert[] =
-        {
-            -1.0, -1.0, +0.0, +0.0,
-            +1.0, -1.0, +1.0, +0.0,
-            -1.0, +1.0, +0.0, +1.0,
-            +1.0, +1.0, +1.0, +1.0
-        };
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, OGL.framebuffer.color_buffer);
-        if (config.framebuffer.bilinear)
-        {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        }
-        else
-        {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        }
-
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (float*)vert);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (float*)vert + 2);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-        Android_JNI_SwapWindow();  // paulscode, fix for black-screen bug
-
-        glBindFramebuffer(GL_FRAMEBUFFER, OGL.framebuffer.fb);
-        OGL_UpdateViewport();
-        if (scProgramCurrent) glUseProgram(scProgramCurrent->program);
-        OGL.renderState = RS_NONE;
-    }
-    else
-#endif
-    {
-#ifndef __LIBRETRO__ // Not m64p-ae
-    Android_JNI_SwapWindow();  // paulscode, fix for black-screen bug
-#else
     retro_n64_video_flipped();
-#endif
-
-    }
-
-    // if emulator defined a render callback function, call it before
-	// buffer swap
-    if (renderCallback) (*renderCallback)();
 
     OGL.screenUpdate = false;
 
@@ -1356,15 +1036,15 @@ void OGL_SwapBuffers()
 void OGL_ReadScreen( void *dest, int *width, int *height )
 {
     if (width)
-        *width = config.framebuffer.width;
+        *width = config.screen.width;
     if (height)
-        *height = config.framebuffer.height;
+        *height = config.screen.height;
 
     if (dest == NULL)
         return;
 
-    glReadPixels( config.framebuffer.xpos, config.framebuffer.ypos,
-            config.framebuffer.width, config.framebuffer.height,
+    glReadPixels(0, 0,
+            config.screen.width, config.screen.height,
             GL_RGBA, GL_UNSIGNED_BYTE, dest );
 }
 

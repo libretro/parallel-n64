@@ -1229,13 +1229,6 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
     config_section *section;
     config_var *var;
 
-    /* check input conditions */
-    if (!l_ConfigInit || ConfigSectionHandle == NULL || ParamName == NULL)
-    {
-        DebugMessage(M64MSG_ERROR, "ConfigGetParamInt(): Input assertion!");
-        return 0;
-    }
-
 #ifdef __LIBRETRO__ // Conifg overrides
     static const struct
     {
@@ -1263,6 +1256,13 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
     }
 
 #endif
+
+    /* check input conditions */
+    if (!l_ConfigInit || ConfigSectionHandle == NULL || ParamName == NULL)
+    {
+        DebugMessage(M64MSG_ERROR, "ConfigGetParamInt(): Input assertion!");
+        return 0;
+    }
 
     section = (config_section *) ConfigSectionHandle;
     if (section->magic != SECTION_MAGIC)

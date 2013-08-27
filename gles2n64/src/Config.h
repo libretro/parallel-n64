@@ -11,19 +11,8 @@ struct Config
 
     struct
     {
-        int flipVertical;
+        int flipVertical, width, height;
     } screen;
-
-    struct
-    {
-        int xpos, ypos, width, height, refwidth, refheight;
-    } window;
-
-    struct
-    {
-        int enable, bilinear;
-        int xpos, ypos, width, height;
-    } framebuffer;
 
     struct
     {
@@ -41,17 +30,10 @@ struct Config
         int pow2;
     } texture;
 
-    int     logFrameRate;
     int     updateMode;
     int     forceBufferClear;
     int     ignoreOffscreenRendering;
     int     zHack;
-
-    int     autoFrameSkip;
-    int     maxFrameSkip;
-    int     targetFPS;
-    int     frameRenderRate;
-    int     verticalSync;
 
     int     enableFog;
     int     enablePrimZ;

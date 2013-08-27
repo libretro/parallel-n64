@@ -54,24 +54,6 @@ Option configOptions[] =
     {"config version", &config.version, 0},
     {"", NULL, 0},
 
-    {"#Window Settings:", NULL, 0},
-    {"window xpos", &config.window.xpos, 0},
-    {"window ypos", &config.window.ypos, 0},
-    {"window width", &config.window.width, 800},
-    {"window height", &config.window.height, 480},
-    {"window refwidth", &config.window.refwidth, 800},
-    {"window refheight", &config.window.refheight, 480},
-    {"", NULL, 0},
-
-    {"#Framebuffer Settings:",NULL,0},
-//    {"framebuffer enable", &config.framebuffer.enable, 0},
-    {"framebuffer bilinear", &config.framebuffer.bilinear, 0},
-    {"framebuffer width", &config.framebuffer.width, 400},
-    {"framebuffer height", &config.framebuffer.height, 240},
-//    {"framebuffer width", &config.framebuffer.width, 800},
-//    {"framebuffer height", &config.framebuffer.height, 480},
-    {"", NULL, 0},
-
     {"#VI Settings:", NULL, 0},
     {"video force", &config.video.force, 0},
     {"video width", &config.video.width, 320},
@@ -95,14 +77,6 @@ Option configOptions[] =
     {"texture use IA", &config.texture.useIA, 0},
     {"texture fast CRC", &config.texture.fastCRC, 1},
     {"texture pow2", &config.texture.pow2, 1},
-    {"", NULL, 0},
-
-    {"#Frame skip:", NULL, 0},
-    {"auto frameskip", &config.autoFrameSkip, 0},
-    {"max frameskip", &config.maxFrameSkip, 0},
-    {"target FPS", &config.targetFPS, 20},
-    {"frame render rate", &config.frameRenderRate, 1},
-    {"vertical sync", &config.verticalSync, 0},
     {"", NULL, 0},
 
     {"#Other Settings:", NULL, 0},
@@ -264,6 +238,11 @@ void Config_LoadConfig()
 
     // default configuration
     Config_SetDefault();
+
+    // __LIBRETRO__: Get screen size
+    config.screen.width = ConfigGetParamInt(0, "ScreenWidth");
+    config.screen.height = ConfigGetParamInt(0, "ScreenHeight");
+
 
     // read configuration
     const char *filename = ConfigGetSharedDataFilepath("gles2n64.conf");

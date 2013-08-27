@@ -198,7 +198,6 @@ VIDEODIR_GLN64 = gles2n64/src
 gln64videosrc = $(wildcard $(VIDEODIR_GLN64)/*.cpp)
 gln64videoblack = $(VIDEODIR_GLN64)/3DMathNeon.cpp $(VIDEODIR_GLN64)/gSPNeon.cpp
 CXXFILES += $(filter-out $(gln64videoblack), $(gln64videosrc))
-CFILES += $(VIDEODIR_GLN64)/ticks.c
 
 # Glide64
 VIDEODIR_GLIDE = gles2glide64/src

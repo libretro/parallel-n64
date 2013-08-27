@@ -20,8 +20,6 @@
 #include "Textures.h"
 #include "ShaderCombiner.h"
 #include "3DMath.h"
-#include "FrameSkipper.h"
-#include "ticks.h"
 
 #ifndef __LIBRETRO__ // Not m64p-ae
 #include "ae_bridge.h"
@@ -61,8 +59,6 @@ ptr_ConfigGetSharedDataFilepath ConfigGetSharedDataFilepath = NULL;
 #define ProcessRDPList VIDEO_TAG(ProcessRDPList)
 #define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
 #endif
-
-static FrameSkipper frameSkipper;
 
 u32         last_good_ucode = (u32) -1;
 void        (*CheckInterrupts)( void );
@@ -164,12 +160,6 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
     Config_LoadConfig();
     Config_LoadRomConfig(Gfx_Info.HEADER);
 
-    ticksInitialize();
-    if( config.autoFrameSkip )
-        frameSkipper.setSkips( FrameSkipper::AUTO, config.maxFrameSkip );
-    else
-        frameSkipper.setSkips( FrameSkipper::MANUAL, config.maxFrameSkip );
-
     OGL_Start();
 
     return 1;
@@ -179,47 +169,6 @@ EXPORT void CALL ProcessDList(void)
 {
     OGL.frame_dl++;
 
-    if (config.autoFrameSkip)
-    {
-        OGL_UpdateFrameTime();
-
-        if (OGL.consecutiveSkips < 1)
-        {
-            unsigned t = 0;
-            for(int i = 0; i < OGL_FRAMETIME_NUM; i++) t += OGL.frameTime[i];
-            t *= config.targetFPS;
-            if (config.romPAL) t = (t * 5) / 6;
-            if (t > (OGL_FRAMETIME_NUM * 1000))
-            {
-                OGL.consecutiveSkips++;
-                OGL.frameSkipped++;
-                RSP.busy = FALSE;
-                RSP.DList++;
-
-                /* avoid hang on frameskip */
-                *REG.MI_INTR |= MI_INTR_DP;
-                CheckInterrupts();
-                *REG.MI_INTR |= MI_INTR_SP;
-                CheckInterrupts();
-                return;
-            }
-        }
-    }
-    else if (frameSkipper.willSkipNext())
-    {
-        OGL.frameSkipped++;
-        RSP.busy = FALSE;
-        RSP.DList++;
-
-        /* avoid hang on frameskip */
-        *REG.MI_INTR |= MI_INTR_DP;
-        CheckInterrupts();
-        *REG.MI_INTR |= MI_INTR_SP;
-        CheckInterrupts();
-        return;
-    }
-
-    OGL.consecutiveSkips = 0;
     RSP_ProcessDList();
     OGL.mustRenderDlist = true;
 }
@@ -244,13 +193,11 @@ EXPORT int CALL RomOpen (void)
     OGL.frame_prevdl = -1;
     OGL.mustRenderDlist = false;
 
-    frameSkipper.setTargetFPS(config.romPAL ? 50 : 60);
     return 1;
 }
 
 EXPORT void CALL RomResumed(void)
 {
-    frameSkipper.start();
 }
 
 EXPORT void CALL ShowCFB (void)
@@ -259,8 +206,6 @@ EXPORT void CALL ShowCFB (void)
 
 EXPORT void CALL UpdateScreen (void)
 {
-    frameSkipper.update();
-
     //has there been any display lists since last update
     if (OGL.frame_prevdl == OGL.frame_dl) return;
 
@@ -363,18 +308,6 @@ EXPORT void CALL SetRenderingCallback(void (*callback)())
     renderCallback = callback;
 }
 
-EXPORT void CALL SetFrameSkipping(bool autoSkip, int maxSkips)
-{
-    frameSkipper.setSkips(
-            autoSkip ? FrameSkipper::AUTO : FrameSkipper::MANUAL,
-            maxSkips);
-}
-
-EXPORT void CALL SetStretchVideo(bool stretch)
-{
-    config.stretchVideo = stretch;
-}
-
 EXPORT void CALL StartGL()
 {
     OGL_Start();
@@ -383,25 +316,6 @@ EXPORT void CALL StartGL()
 EXPORT void CALL StopGL()
 {
     OGL_Stop();
-}
-
-EXPORT void CALL ResizeGL(int width, int height)
-{
-    const float ratio = (config.romPAL ? 9.0f/11.0f : 0.75f);
-    int videoWidth = width;
-    int videoHeight = height;
-
-    if (!config.stretchVideo) {
-        videoWidth = (int) (height / ratio);
-        if (videoWidth > width) {
-            videoWidth = width;
-            videoHeight = (int) (width * ratio);
-        }
-    }
-    int x = (width - videoWidth) / 2;
-    int y = (height - videoHeight) / 2;
-
-    OGL_ResizeWindow(x, y, videoWidth, videoHeight);
 }
 
 } // extern "C"

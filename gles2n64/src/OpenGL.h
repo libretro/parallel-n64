@@ -60,8 +60,6 @@
 #define BLEND_MEM_ALPHA_IN      0x4044  //  Mem * AIn + Mem * AMem
 
 
-#define OGL_FRAMETIME_NUM       8
-
 struct GLVertex
 {
     float x, y, z, w;
@@ -103,10 +101,6 @@ struct GLInfo
         GLuint fb,depth_buffer, color_buffer;
     } framebuffer;
 
-
-    int     frameSkipped;
-    unsigned consecutiveSkips;
-    unsigned frameTime[OGL_FRAMETIME_NUM];
 
     int     frame_vsync, frame_actual, frame_dl;
     int     frame_prevdl;
