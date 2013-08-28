@@ -7,10 +7,10 @@
 #define SC_ALPHAGREATER         0x4
 #define SC_2CYCLE               0x8
 
-#define SC_POSITION             1
-#define SC_COLOR                2
-#define SC_TEXCOORD0            3
-#define SC_TEXCOORD1            4
+#define SC_POSITION             0
+#define SC_COLOR                1
+#define SC_TEXCOORD0            2
+#define SC_TEXCOORD1            3
 
 #define SC_SetUniform1i(A, B)       glUniform1i(scProgramCurrent->uniforms.A.loc, B)
 #define SC_SetUniform1f(A, B)       glUniform1f(scProgramCurrent->uniforms.A.loc, B)
