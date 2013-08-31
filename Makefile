@@ -100,6 +100,8 @@ else ifneq (,$(findstring win,$(platform)))
    GL_LIB := -lopengl32
    CPPFLAGS += -msse -msse2
    PLATFORM_EXT := win32
+   CC = gcc
+   CXX = g++
 endif
 
 # libretro
