@@ -1,5 +1,8 @@
 
+#ifndef _WIN32
 #include <dlfcn.h>
+#endif
+
 #include <string.h>
 
 #ifndef __LIBRETRO__

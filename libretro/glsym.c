@@ -33,11 +33,25 @@ PFNGLGETPROGRAMINFOLOGPROC pglGetProgramInfoLog;
 PFNGLDELETESHADERPROC pglDeleteShader;
 PFNGLGETSHADERINFOLOGPROC pglGetShaderInfoLog;
 PFNGLDELETEPROGRAMPROC pglDeleteProgram;
+PFNGLUNIFORM3FPROC pglUniform3f;
 PFNGLUNIFORM4FPROC pglUniform4f;
 PFNGLUNIFORM4FVPROC pglUniform4fv;
 PFNGLUNIFORM2FPROC pglUniform2f;
 PFNGLGENERATEMIPMAPPROC pglGenerateMipmap;
 
+PFNGLGENFRAMEBUFFERSPROC pglGenFramebuffers;
+PFNGLGENRENDERBUFFERSPROC pglGenRenderbuffers;
+PFNGLBINDRENDERBUFFERPROC pglBindRenderbuffer;
+PFNGLRENDERBUFFERSTORAGEPROC pglRenderbufferStorage;
+PFNGLFRAMEBUFFERTEXTURE2DPROC pglFramebufferTexture2D;
+PFNGLFRAMEBUFFERRENDERBUFFERPROC pglFramebufferRenderbuffer;
+PFNGLCHECKFRAMEBUFFERSTATUSPROC pglCheckFramebufferStatus;
+PFNGLDELETEFRAMEBUFFERSPROC pglDeleteFramebuffers;
+PFNGLDELETERENDERBUFFERSPROC pglDeleteRenderbuffers;
+PFNGLFRAMEBUFFERRENDERBUFFERPROC pglFramebufferRenderbuffer;
+PFNGLVERTEXATTRIB4FPROC pglVertexAttrib4f;
+PFNGLBLENDFUNCSEPARATEPROC pglBlendFuncSeparate;
+PFNGLVERTEXATTRIB4FVPROC pglVertexAttrib4fv;
 
 struct gl_proc_map
 {
@@ -78,10 +92,25 @@ static const struct gl_proc_map proc_map[] = {
    PROC_BIND(DeleteShader),
    PROC_BIND(GetShaderInfoLog),
    PROC_BIND(DeleteProgram),
+   PROC_BIND(Uniform3f),
    PROC_BIND(Uniform4f),
    PROC_BIND(Uniform4fv),
    PROC_BIND(Uniform2f),
    PROC_BIND(GenerateMipmap),
+
+   PROC_BIND(GenFramebuffers),
+   PROC_BIND(GenRenderbuffers),
+   PROC_BIND(BindRenderbuffer),
+   PROC_BIND(RenderbufferStorage),
+   PROC_BIND(FramebufferTexture2D),
+   PROC_BIND(FramebufferRenderbuffer),
+   PROC_BIND(CheckFramebufferStatus),
+   PROC_BIND(DeleteFramebuffers),
+   PROC_BIND(DeleteRenderbuffers),
+   PROC_BIND(FramebufferRenderbuffer),
+   PROC_BIND(VertexAttrib4f),
+   PROC_BIND(BlendFuncSeparate),
+   PROC_BIND(VertexAttrib4fv),
 };
 
 void glsym_init_procs(retro_hw_get_proc_address_t cb)

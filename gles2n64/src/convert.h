@@ -105,7 +105,7 @@ const volatile unsigned char One2Eight[2] =
 static inline void UnswapCopy( void *src, void *dest, u32 numBytes )
 {
     // copy leading bytes
-    int leadingBytes = ((long)src) & 3;
+    int leadingBytes = ((intptr_t)src) & 3;
     if (leadingBytes != 0)
     {
         leadingBytes = 4-leadingBytes;
@@ -113,14 +113,14 @@ static inline void UnswapCopy( void *src, void *dest, u32 numBytes )
             leadingBytes = numBytes;
         numBytes -= leadingBytes;
 
-        src = (void *)((long)src ^ 3);
+        src = (void *)((intptr_t)src ^ 3);
         for (int i = 0; i < leadingBytes; i++)
         {
             *(u8 *)(dest) = *(u8 *)(src);
-            dest = (void *)((long)dest+1);
-            src  = (void *)((long)src -1);
+            dest = (void *)((intptr_t)dest+1);
+            src  = (void *)((intptr_t)src -1);
         }
-        src = (void *)((long)src+5);
+        src = (void *)((intptr_t)src+5);
     }
 
     // copy dwords
@@ -134,20 +134,20 @@ static inline void UnswapCopy( void *src, void *dest, u32 numBytes )
         dword = ((dword<<24)|((dword<<8)&0x00FF0000)|((dword>>8)&0x0000FF00)|(dword>>24));
 #endif
         *(u32 *)dest = dword;
-        dest = (void *)((long)dest+4);
-        src  = (void *)((long)src +4);
+        dest = (void *)((intptr_t)dest+4);
+        src  = (void *)((intptr_t)src +4);
     }
 
     // copy trailing bytes
     int trailingBytes = numBytes & 3;
     if (trailingBytes)
     {
-        src = (void *)((long)src ^ 3);
+        src = (void *)((intptr_t)src ^ 3);
         for (int i = 0; i < trailingBytes; i++)
         {
             *(u8 *)(dest) = *(u8 *)(src);
-            dest = (void *)((long)dest+1);
-            src  = (void *)((long)src -1);
+            dest = (void *)((intptr_t)dest+1);
+            src  = (void *)((intptr_t)src -1);
         }
     }
 }
@@ -157,10 +157,10 @@ static inline void DWordInterleave( void *mem, u32 numDWords )
     int tmp;
     while( numDWords-- )
     {
-        tmp = *(int *)((long)mem + 0);
-        *(int *)((long)mem + 0) = *(int *)((long)mem + 4);
-        *(int *)((long)mem + 4) = tmp;
-        mem = (void *)((long)mem + 8);
+        tmp = *(int *)((intptr_t)mem + 0);
+        *(int *)((intptr_t)mem + 0) = *(int *)((intptr_t)mem + 4);
+        *(int *)((intptr_t)mem + 4) = tmp;
+        mem = (void *)((intptr_t)mem + 8);
     }
 }
 
@@ -170,13 +170,13 @@ inline void QWordInterleave( void *mem, u32 numDWords )
     while( numDWords-- )
     {
         int tmp0, tmp1;
-        tmp0 = *(int *)((long)mem + 0);
-        tmp1 = *(int *)((long)mem + 4);
-        *(int *)((long)mem + 0) = *(int *)((long)mem + 8);
-        *(int *)((long)mem + 8) = tmp0;
-        *(int *)((long)mem + 4) = *(int *)((long)mem + 12);
-        *(int *)((long)mem + 12) = tmp1;
-        mem = (void *)((long)mem + 16);
+        tmp0 = *(int *)((intptr_t)mem + 0);
+        tmp1 = *(int *)((intptr_t)mem + 4);
+        *(int *)((intptr_t)mem + 0) = *(int *)((intptr_t)mem + 8);
+        *(int *)((intptr_t)mem + 8) = tmp0;
+        *(int *)((intptr_t)mem + 4) = *(int *)((intptr_t)mem + 12);
+        *(int *)((intptr_t)mem + 12) = tmp1;
+        mem = (void *)((intptr_t)mem + 16);
     }
 }
 

@@ -62,10 +62,25 @@
 #define glDeleteShader pglDeleteShader
 #define glGetShaderInfoLog pglGetShaderInfoLog
 #define glDeleteProgram pglDeleteProgram
+#define glUniform3f pglUniform3f
 #define glUniform4f pglUniform4f
 #define glUniform4fv pglUniform4fv
 #define glUniform2f pglUniform2f
 #define glGenerateMipmap pglGenerateMipmap
+
+#define glGenFramebuffers pglGenFramebuffers
+#define glGenRenderbuffers pglGenRenderbuffers
+#define glBindRenderbuffer pglBindRenderbuffer
+#define glRenderbufferStorage pglRenderbufferStorage
+#define glFramebufferTexture2D pglFramebufferTexture2D
+#define glFramebufferRenderbuffer pglFramebufferRenderbuffer
+#define glCheckFramebufferStatus pglCheckFramebufferStatus
+#define glDeleteFramebuffers pglDeleteFramebuffers
+#define glDeleteRenderbuffers pglDeleteRenderbuffers
+#define glFramebufferRenderbuffer pglFramebufferRenderbuffer
+#define glVertexAttrib4f pglVertexAttrib4f
+#define glBlendFuncSeparate pglBlendFuncSeparate
+#define glVertexAttrib4fv pglVertexAttrib4fv
 
 extern PFNGLCREATEPROGRAMPROC pglCreateProgram;
 extern PFNGLCREATESHADERPROC pglCreateShader;
@@ -97,11 +112,25 @@ extern PFNGLGETPROGRAMINFOLOGPROC pglGetProgramInfoLog;
 extern PFNGLDELETESHADERPROC pglDeleteShader;
 extern PFNGLGETSHADERINFOLOGPROC pglGetShaderInfoLog;
 extern PFNGLDELETEPROGRAMPROC pglDeleteProgram;
+extern PFNGLUNIFORM3FPROC pglUniform3f;
 extern PFNGLUNIFORM4FPROC pglUniform4f;
 extern PFNGLUNIFORM4FVPROC pglUniform4fv;
 extern PFNGLUNIFORM2FPROC pglUniform2f;
 extern PFNGLGENERATEMIPMAPPROC pglGenerateMipmap;
 
+extern PFNGLGENFRAMEBUFFERSPROC pglGenFramebuffers;
+extern PFNGLGENRENDERBUFFERSPROC pglGenRenderbuffers;
+extern PFNGLBINDRENDERBUFFERPROC pglBindRenderbuffer;
+extern PFNGLRENDERBUFFERSTORAGEPROC pglRenderbufferStorage;
+extern PFNGLFRAMEBUFFERTEXTURE2DPROC pglFramebufferTexture2D;
+extern PFNGLFRAMEBUFFERRENDERBUFFERPROC pglFramebufferRenderbuffer;
+extern PFNGLCHECKFRAMEBUFFERSTATUSPROC pglCheckFramebufferStatus;
+extern PFNGLDELETEFRAMEBUFFERSPROC pglDeleteFramebuffers;
+extern PFNGLDELETERENDERBUFFERSPROC pglDeleteRenderbuffers;
+extern PFNGLFRAMEBUFFERRENDERBUFFERPROC pglFramebufferRenderbuffer;
+extern PFNGLVERTEXATTRIB4FPROC pglVertexAttrib4f;
+extern PFNGLBLENDFUNCSEPARATEPROC pglBlendFuncSeparate;
+extern PFNGLVERTEXATTRIB4FVPROC pglVertexAttrib4fv;
 
 #endif
 

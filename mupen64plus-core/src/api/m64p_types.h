@@ -33,7 +33,12 @@
 #endif
 
 /* DLL handles and function declaration specifiers */
-#if defined(WIN32)
+#if defined(__LIBRETRO__)
+  #define IMPORT
+  #define EXPORT
+  #define CALL
+  typedef void * m64p_dynlib_handle;
+#elif defined(WIN32)
   #define IMPORT extern "C" __declspec(dllimport)
   #define EXPORT __declspec(dllexport)
   #define CALL   __cdecl

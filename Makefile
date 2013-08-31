@@ -70,7 +70,7 @@ else ifneq (,$(findstring armv,$(platform)))
    CXX = g++
    TARGET := $(TARGET_NAME)_libretro.so
    fpic := -fPIC
-   SHARED := -shared -Wl,--version-script=link.T -Wl,--no-undefined
+   SHARED := -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined
    CPPFLAGS += -I.
    LIBS := -lz
 ifneq (,$(findstring gles,$(platform)))

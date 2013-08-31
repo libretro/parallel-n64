@@ -341,7 +341,7 @@ void FindBestDepthBias()
   int hardwareType = Android_JNI_GetHardwareType();
   Android_JNI_GetPolygonOffset(hardwareType, 1, &polygonOffsetFactor, &polygonOffsetUnits);
 #elif defined(__LIBRETRO__) // TODO: How to calculate this?
-  biasFactor = 0.25f;
+  biasFactor = 1.0f;
 #else
   float f, bestz = 0.25f;
   int x;
