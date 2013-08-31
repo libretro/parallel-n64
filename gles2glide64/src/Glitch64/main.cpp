@@ -520,7 +520,8 @@ grSstWinOpen(
   else
     fog_coord_support = 1;
 
-  use_fbo = config.fbo;
+  //use_fbo = config.fbo;
+  use_fbo = 1;
 
   LOGINFO("use_fbo %d\n", use_fbo);
 
@@ -854,9 +855,8 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
       {
         if (fbs[i].width == width && fbs[i].height == height) //select already allocated FBO
         {
-          glBindFramebuffer( GL_FRAMEBUFFER, 0 );
           glBindFramebuffer( GL_FRAMEBUFFER, fbs[i].fbid );
-          glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbs[i].texid, 0 );
+          glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sglAddressToTex(fbs[i].texid), 0 );
           glBindRenderbuffer( GL_RENDERBUFFER, fbs[i].zbid );
           glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbs[i].zbid );
           glViewport( 0, 0, width, height);
@@ -875,6 +875,7 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
         {
           glDeleteFramebuffers( 1, &(fbs[i].fbid) );
           glDeleteRenderbuffers( 1, &(fbs[i].zbid) );
+          glDeleteTextures(1, &(fbs[i].texid));
           if (nb_fb > 1)
             memmove(&(fbs[i]), &(fbs[i+1]), sizeof(fb)*(nb_fb-i));
           nb_fb--;
@@ -887,23 +888,25 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
     //create new FBO
     glGenFramebuffers( 1, &(fbs[nb_fb].fbid) );
     glGenRenderbuffers( 1, &(fbs[nb_fb].zbid) );
+    glGenTextures( 1, &(fbs[nb_fb].texid) );
     glBindRenderbuffer( GL_RENDERBUFFER, fbs[nb_fb].zbid );
     glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
     fbs[nb_fb].address = pBufferAddress;
+    fbs[nb_fb].texid = pBufferAddress;
     fbs[nb_fb].width = width;
     fbs[nb_fb].height = height;
-    fbs[nb_fb].texid = pBufferAddress;
     fbs[nb_fb].buff_clear = 0;
-    add_tex(fbs[nb_fb].texid);
+    add_tex(fbs[nb_fb].address);
     glBindTexture(GL_TEXTURE_2D, fbs[nb_fb].texid);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0,
-      GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
+      GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     glBindFramebuffer( GL_FRAMEBUFFER, fbs[nb_fb].fbid);
     glFramebufferTexture2D(GL_FRAMEBUFFER,
-      GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbs[nb_fb].texid, 0);
+      GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sglAddressToTex(fbs[nb_fb].texid), 0);
     glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbs[nb_fb].zbid );
     glViewport(0,0,width,height);
     glScissor(0,0,width,height);
@@ -1259,8 +1262,8 @@ static void render_rectangle(int texture_number,
   glDisableVertexAttribArray(TEXCOORD_1_ATTR);
   glDisableVertexAttribArray(FOG_ATTR);
 
-  glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,2,data); //Position
-  glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,2,&data[2]); //Tex
+  glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,4 * sizeof(float),data); //Position
+  glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float),&data[2]); //Tex
 
   glEnableVertexAttribArray(COLOUR_ATTR);
   glEnableVertexAttribArray(TEXCOORD_1_ATTR);

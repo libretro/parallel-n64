@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define NO_TRANSLATE
 #include "SDL_opengles2.h"
@@ -263,30 +264,87 @@ void sglActiveTexture(GLenum texture)
     glActiveTexture(texture);
 }
 
+struct tex_map
+{
+   unsigned address;
+   GLuint tex;
+};
+static struct tex_map *texture_map;
+static size_t texture_map_size;
+static size_t texture_map_cap;
+
+static GLuint find_tex_from_address(unsigned address)
+{
+   for (size_t i = 0; i < texture_map_size; i++)
+   {
+      if (texture_map[i].address == address)
+         return texture_map[i].tex;
+   }
+   return 0;
+}
+
+static void delete_tex_from_address(unsigned address)
+{
+   for (size_t i = 0; i < texture_map_size; i++)
+   {
+      if (texture_map[i].address == address)
+      {
+         glDeleteTextures(1, &texture_map[i].tex);
+         memmove(texture_map + i, texture_map + i + 1, (texture_map_size - (i + 1)) * sizeof(*texture_map));
+         texture_map_size--;
+         return;
+      }
+   }
+}
+
+GLuint sglAddressToTex(unsigned address)
+{
+   return find_tex_from_address(address);
+}
+
 //BIND TEXTURE
 static GLuint BindTexture_ids[MAX_TEXTURE];
-void sglBindTexture(GLenum target, GLuint texture)
+void sglBindTextureGlide(GLenum target, GLuint texture)
 {
     assert(target == GL_TEXTURE_2D);
 
-    BindTexture_ids[ActiveTexture_texture] = texture;
+    if (texture)
+    {
+       // Glitch64 is broken. It never calls glGenTextures, and simply assumes that you can bind to whatever ...
+       // This makes no sense, so we'll fix it for them! <_<
+       GLuint tex = find_tex_from_address(texture);
 
-#ifdef GLIDE64  // HACK: Avoid texture id conflicts
-    BindTexture_ids[ActiveTexture_texture] += 1024 * 1024;
-#endif
+       if (!tex)
+       {
+          if (texture_map_size >= texture_map_cap)
+          {
+             texture_map_cap = 2 * (texture_map_cap + 1);
+             texture_map = realloc(texture_map, sizeof(*texture_map) * texture_map_cap);
+          }
+          texture_map[texture_map_size].address = texture;
+          glGenTextures(1, &tex);
+          texture_map[texture_map_size++].tex = tex;
+       }
+       BindTexture_ids[ActiveTexture_texture] = tex;
+    }
+    else
+       BindTexture_ids[ActiveTexture_texture] = texture;
 
     glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
 }
 
+void sglBindTexture(GLenum target, GLuint texture)
+{
+    assert(target == GL_TEXTURE_2D);
+    BindTexture_ids[ActiveTexture_texture] = texture;
+    glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
+}
 
 #ifdef GLIDE64 // Avoid texture id conflicts
 void sglDeleteTextures(GLuint n, const GLuint* ids)
 {
-    for (int i = 0; i < n; i ++)
-    {
-        GLuint name = ids[i] + 1024 * 1024;
-        glDeleteTextures(1, &name);
-    }
+    for (int i = 0; i < n; i++)
+       delete_tex_from_address(ids[i]);
 }
 #endif
 

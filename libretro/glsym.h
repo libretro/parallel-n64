@@ -38,6 +38,15 @@
 #ifndef glBindFramebuffer
 #define glBindFramebuffer pglBindFramebuffer
 #endif
+#ifndef glVertexAttrib4f
+#define glVertexAttrib4f pglVertexAttrib4f
+#endif
+#ifndef glBlendFuncSeparate
+#define glBlendFuncSeparate pglBlendFuncSeparate
+#endif
+#ifndef glVertexAttrib4fv
+#define glVertexAttrib4fv pglVertexAttrib4fv
+#endif
 
 #define glCreateProgram pglCreateProgram
 #define glCreateShader pglCreateShader
@@ -45,7 +54,6 @@
 #define glShaderSource pglShaderSource
 #define glAttachShader pglAttachShader
 #define glLinkProgram pglLinkProgram
-#define glBindFramebuffer pglBindFramebuffer
 #define glGetUniformLocation pglGetUniformLocation
 #define glUniformMatrix4fv pglUniformMatrix4fv
 #define glUniform1i pglUniform1i
@@ -78,9 +86,6 @@
 #define glDeleteFramebuffers pglDeleteFramebuffers
 #define glDeleteRenderbuffers pglDeleteRenderbuffers
 #define glFramebufferRenderbuffer pglFramebufferRenderbuffer
-#define glVertexAttrib4f pglVertexAttrib4f
-#define glBlendFuncSeparate pglBlendFuncSeparate
-#define glVertexAttrib4fv pglVertexAttrib4fv
 
 extern PFNGLCREATEPROGRAMPROC pglCreateProgram;
 extern PFNGLCREATESHADERPROC pglCreateShader;
