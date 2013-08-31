@@ -888,7 +888,6 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
     //create new FBO
     glGenFramebuffers( 1, &(fbs[nb_fb].fbid) );
     glGenRenderbuffers( 1, &(fbs[nb_fb].zbid) );
-    glGenTextures( 1, &(fbs[nb_fb].texid) );
     glBindRenderbuffer( GL_RENDERBUFFER, fbs[nb_fb].zbid );
     glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
     fbs[nb_fb].address = pBufferAddress;
