@@ -13,6 +13,9 @@
 // mupen64plus HACK: Fix potential crash at shutdown for
 extern int stop;
 
+// Glitch64 hacks ... :D
+void vbo_draw();
+
 //glEnable, glDisable
 static int CapState[SGL_CAP_MAX];
 static const int CapTranslate[SGL_CAP_MAX] = 
@@ -22,6 +25,7 @@ static const int CapTranslate[SGL_CAP_MAX] =
 
 void sglEnable(GLenum cap)
 {
+    vbo_draw();
     assert(cap < SGL_CAP_MAX);
 
     glEnable(CapTranslate[cap]);
@@ -30,6 +34,7 @@ void sglEnable(GLenum cap)
 
 void sglDisable(GLenum cap)
 {
+    vbo_draw();
     assert(cap < SGL_CAP_MAX);
 
     glDisable(CapTranslate[cap]);
@@ -57,6 +62,7 @@ static GLfloat VertexAttribPointer_4f[MAX_ATTRIB][4];
 
 void sglEnableVertexAttribArray(GLuint index)
 {
+    vbo_draw();
     assert(index < MAX_ATTRIB);
 
     VertexAttribPointer_enabled[index] = 1;
@@ -65,6 +71,7 @@ void sglEnableVertexAttribArray(GLuint index)
 
 void sglDisableVertexAttribArray(GLuint index)
 {
+    vbo_draw();
     assert(index < MAX_ATTRIB);
 
     VertexAttribPointer_enabled[index] = 0;
@@ -111,6 +118,7 @@ extern GLuint retro_get_fbo_id();
 static GLuint Framebuffer_framebuffer = 0;
 void sglBindFramebuffer(GLenum target, GLuint framebuffer)
 {
+    vbo_draw();
     assert(target == GL_FRAMEBUFFER);
 
    if (!stop)
@@ -122,6 +130,7 @@ static GLenum BlendFunc_srcRGB = GL_ONE,  BlendFunc_srcAlpha = GL_ONE;
 static GLenum BlendFunc_dstRGB = GL_ZERO, BlendFunc_dstAlpha = GL_ZERO;
 void sglBlendFunc(GLenum sfactor, GLenum dfactor)
 {
+    vbo_draw();
     BlendFunc_srcRGB = BlendFunc_srcAlpha = sfactor;
     BlendFunc_dstRGB = BlendFunc_dstAlpha = dfactor;
     glBlendFunc(BlendFunc_srcRGB, BlendFunc_dstRGB);
@@ -129,6 +138,7 @@ void sglBlendFunc(GLenum sfactor, GLenum dfactor)
 
 void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha)
 {
+    vbo_draw();
     BlendFunc_srcRGB = srcRGB;
     BlendFunc_dstRGB = dstRGB;
     BlendFunc_srcAlpha = srcAlpha;
@@ -141,6 +151,7 @@ void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum 
 static GLclampf ClearColor_red = 0.0f, ClearColor_green = 0.0f, ClearColor_blue = 0.0f, ClearColor_alpha = 0.0f;
 void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
+    vbo_draw();
     ClearColor_red = red;
     ClearColor_green = green;
     ClearColor_blue = blue;
@@ -153,6 +164,7 @@ void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 static GLdouble ClearDepth_value = 1.0;
 void sglClearDepth(GLdouble value)
 {
+    vbo_draw();
     ClearDepth_value = value;
     glClearDepth(ClearDepth_value);
 }
@@ -164,6 +176,7 @@ static GLboolean ColorMask_blue = GL_TRUE;
 static GLboolean ColorMask_alpha = GL_TRUE;
 void sglColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha)
 {
+    vbo_draw();
     ColorMask_red = red;
     ColorMask_green = green;
     ColorMask_blue = blue;
@@ -175,6 +188,7 @@ void sglColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alph
 static GLenum CullFace_mode = GL_BACK;
 void sglCullFace(GLenum mode)
 {
+    vbo_draw();
     CullFace_mode = mode;
     glCullFace(CullFace_mode);
 }
@@ -183,6 +197,7 @@ void sglCullFace(GLenum mode)
 static GLenum DepthFunc_func = GL_LESS;
 void sglDepthFunc(GLenum func)
 {
+    vbo_draw();
     DepthFunc_func = func;
     glDepthFunc(DepthFunc_func);
 }
@@ -191,6 +206,7 @@ void sglDepthFunc(GLenum func)
 static GLboolean DepthMask_flag = GL_TRUE;
 void sglDepthMask(GLboolean flag)
 {
+    vbo_draw();
     DepthMask_flag = flag;
     glDepthMask(DepthMask_flag);
 }
@@ -199,6 +215,7 @@ void sglDepthMask(GLboolean flag)
 static GLclampd DepthRange_nearVal = 0.0, DepthRange_farVal = 1.0;
 void sglDepthRange(GLclampd nearVal, GLclampd farVal)
 {
+    vbo_draw();
     DepthRange_nearVal = nearVal;
     DepthRange_farVal = farVal;
     glDepthRange(DepthRange_nearVal, DepthRange_farVal);
@@ -208,6 +225,7 @@ void sglDepthRange(GLclampd nearVal, GLclampd farVal)
 static GLenum FrontFace_mode = GL_CCW;
 void sglFrontFace(GLenum mode)
 {
+    vbo_draw();
     FrontFace_mode = mode;
     glFrontFace(FrontFace_mode);
 }
@@ -216,6 +234,7 @@ void sglFrontFace(GLenum mode)
 static GLfloat PolygonOffset_factor = 0.0f, PolygonOffset_units = 0.0f;
 void sglPolygonOffset(GLfloat factor, GLfloat units)
 {
+    vbo_draw();
     PolygonOffset_factor = factor;
     PolygonOffset_units = units;
     glPolygonOffset(PolygonOffset_factor, PolygonOffset_units);
@@ -226,6 +245,7 @@ static GLint Scissor_x = 0, Scissor_y = 0;
 static GLsizei Scissor_width = 640, Scissor_height = 480;
 void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 {
+    vbo_draw();
     Scissor_x = x;
     Scissor_y = y;
     Scissor_width = width;
@@ -237,6 +257,7 @@ void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 static GLuint UseProgram_program = 0;
 void sglUseProgram(GLuint program)
 {
+    vbo_draw();
     UseProgram_program = program;
     glUseProgram(program);
 }
@@ -246,6 +267,7 @@ static GLint Viewport_x = 0, Viewport_y = 0;
 static GLsizei Viewport_width = 640, Viewport_height = 480;
 void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
+    vbo_draw();
     Viewport_x = x;
     Viewport_y = y;
     Viewport_width = width;
@@ -258,6 +280,7 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 static GLenum ActiveTexture_texture = 0;
 void sglActiveTexture(GLenum texture)
 {
+    vbo_draw();
     assert((texture - GL_TEXTURE0) < MAX_TEXTURE);
 
     ActiveTexture_texture = texture - GL_TEXTURE0;
@@ -306,6 +329,7 @@ GLuint sglAddressToTex(unsigned address)
 static GLuint BindTexture_ids[MAX_TEXTURE];
 void sglBindTextureGlide(GLenum target, GLuint texture)
 {
+    vbo_draw();
     assert(target == GL_TEXTURE_2D);
 
     if (texture)
@@ -335,6 +359,7 @@ void sglBindTextureGlide(GLenum target, GLuint texture)
 
 void sglBindTexture(GLenum target, GLuint texture)
 {
+    vbo_draw();
     assert(target == GL_TEXTURE_2D);
     BindTexture_ids[ActiveTexture_texture] = texture;
     glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);

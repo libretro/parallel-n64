@@ -1,4 +1,6 @@
-void vbo_draw();
+extern "C" {
+   void vbo_draw();
+}
 
 #ifndef __LIBRETRO__ // Dummy entire file
 

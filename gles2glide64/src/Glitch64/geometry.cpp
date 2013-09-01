@@ -69,13 +69,15 @@ void vbo_init()
   
 }
 
-void vbo_draw()
-{
-  if(vertex_buffer_count)
-  {
-    glDrawArrays(vertex_draw_mode,0,vertex_buffer_count);
-    vertex_buffer_count = 0;
-  }
+extern "C" {
+   void vbo_draw()
+   {
+      if(vertex_buffer_count)
+      {
+         glDrawArrays(vertex_draw_mode,0,vertex_buffer_count);
+         vertex_buffer_count = 0;
+      }
+   }
 }
 
 //Buffer vertices instead of glDrawArrays(...)
