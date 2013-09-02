@@ -33,6 +33,8 @@ static int16_t *audio_out_buffer_s16;
 static uint8_t* game_data;
 static uint32_t game_size;
 
+enum gfx_plugin_type { GFX_GLIDE64, GFX_RICE, GFX_GLN64 };
+static enum gfx_plugin_type gfx_plugin;
 static uint32_t screen_width;
 static uint32_t screen_height;
 
@@ -65,13 +67,13 @@ static void EmuThreadFunction()
     struct retro_variable var = { "mupen64-gfxplugin", 0 };
     environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
+    gfx_plugin = GFX_GLIDE64;
     if (var.value && strcmp(var.value, "rice") == 0)
-       CoreAttachPlugin(M64PLUGIN_GFX, 1);
+        gfx_plugin = GFX_RICE;
     else if(var.value && strcmp(var.value, "gln64") == 0)
-       CoreAttachPlugin(M64PLUGIN_GFX, 2);
-    else
-       CoreAttachPlugin(M64PLUGIN_GFX, 0);
+        gfx_plugin = GFX_GLN64;
 
+    CoreAttachPlugin(M64PLUGIN_GFX, (m64p_dynlib_handle)gfx_plugin);
     CoreAttachPlugin(M64PLUGIN_AUDIO, 0);
     CoreAttachPlugin(M64PLUGIN_INPUT, 0);
     CoreAttachPlugin(M64PLUGIN_RSP, 0);
@@ -144,12 +146,9 @@ static void core_gl_context_reset()
 {
    glsym_init_procs(render_iface.get_proc_address);
 
-#ifdef GLIDE64
-    extern int InitGfx ();
-
-    if (emu_thread_has_run)
-        InitGfx();
-#endif
+   extern int InitGfx ();
+   if (gfx_plugin == GFX_RICE && emu_thread_has_run)
+      InitGfx();
 }
 
 GLuint retro_get_fbo_id()
@@ -226,23 +225,24 @@ unsigned retro_filtering = 0;
 
 void update_variables(void)
 {
-#ifdef GLIDE64
-   struct retro_variable var;
-   
-   var.key = "mupen64-filtering";
-   var.value = NULL;
-
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var))
+   if (gfx_plugin == GFX_GLIDE64)
    {
+      struct retro_variable var;
+   
+      var.key = "mupen64-filtering";
+      var.value = NULL;
 
-      if (strcmp(var.value, "automatic") == 0)
-         retro_filtering = 0;
-      else if (strcmp(var.value, "bilinear") == 0)
-         retro_filtering = 1;
-      else if (strcmp(var.value, "nearest") == 0)
-         retro_filtering = 2;
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var))
+      {
+
+         if (strcmp(var.value, "automatic") == 0)
+            retro_filtering = 0;
+         else if (strcmp(var.value, "bilinear") == 0)
+            retro_filtering = 1;
+         else if (strcmp(var.value, "nearest") == 0)
+            retro_filtering = 2;
+      }
    }
-#endif
 }
 
 bool retro_load_game(const struct retro_game_info *game)

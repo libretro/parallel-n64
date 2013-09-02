@@ -203,7 +203,7 @@ CXXFILES += $(filter-out $(gln64videoblack), $(gln64videosrc))
 
 # Glide64
 VIDEODIR_GLIDE = gles2glide64/src
-CPPFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc -DGLIDE64
+CPPFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
 CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp)
 CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
 

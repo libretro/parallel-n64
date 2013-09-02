@@ -41,14 +41,11 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 
 void sglActiveTexture(GLenum texture);
 void sglBindTexture(GLenum target, GLuint texture);
+
+// For gles2glide64
 void sglBindTextureGlide(GLenum target, GLuint texture);
-
+void sglDeleteTexturesGlide(GLuint n, const GLuint* ids);
 GLuint sglAddressToTex(unsigned address);
-
-
-#ifdef GLIDE64 // HACK: Avoid texture id conflicts
-void sglDeleteTextures(GLuint n, const GLuint* ids);
-#endif
 
 #ifndef NO_TRANSLATE
 #define glEnable(T) sglEnable(S##T)
@@ -61,6 +58,7 @@ void sglDeleteTextures(GLuint n, const GLuint* ids);
 #define glVertexAttrib4f sglVertexAttrib4f
 #define glVertexAttrib4fv sglVertexAttrib4fv
 
+#define glBindFramebuffer sglBindFramebuffer
 #define glBlendFunc sglBlendFunc
 #define glBlendFuncSeparate sglBlendFuncSeparate
 #define glClearColor sglClearColor
@@ -80,17 +78,9 @@ void sglDeleteTextures(GLuint n, const GLuint* ids);
 
 #ifdef GLIDE64
 #define glBindTexture sglBindTextureGlide
+#define glDeleteTextures sglDeleteTexturesGlide
 #else
 #define glBindTexture sglBindTexture
-#endif
-
-
-#ifdef __LIBRETRO__ // Handle framebuffer 0
-#define glBindFramebuffer sglBindFramebuffer
-#endif
-
-#ifdef GLIDE64 // HACK: Avoid texture id conflicts
-#define glDeleteTextures sglDeleteTextures
 #endif
 
 #endif

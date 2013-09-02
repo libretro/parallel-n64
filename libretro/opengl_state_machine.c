@@ -10,7 +10,7 @@
 #define glDepthRange glDepthRangef
 #endif
 
-// mupen64plus HACK: Fix potential crash at shutdown for
+// mupen64plus HACK: Fix potential crash at shutdown
 extern int stop;
 
 // Glitch64 hacks ... :D
@@ -327,6 +327,15 @@ GLuint sglAddressToTex(unsigned address)
 
 //BIND TEXTURE
 static GLuint BindTexture_ids[MAX_TEXTURE];
+void sglBindTexture(GLenum target, GLuint texture)
+{
+    vbo_draw();
+    assert(target == GL_TEXTURE_2D);
+    BindTexture_ids[ActiveTexture_texture] = texture;
+    glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
+}
+
+// HACK: Texture fixes for gles2glide64 only
 void sglBindTextureGlide(GLenum target, GLuint texture)
 {
     vbo_draw();
@@ -357,21 +366,11 @@ void sglBindTextureGlide(GLenum target, GLuint texture)
     glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
 }
 
-void sglBindTexture(GLenum target, GLuint texture)
-{
-    vbo_draw();
-    assert(target == GL_TEXTURE_2D);
-    BindTexture_ids[ActiveTexture_texture] = texture;
-    glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
-}
-
-#ifdef GLIDE64 // Avoid texture id conflicts
-void sglDeleteTextures(GLuint n, const GLuint* ids)
+void sglDeleteTexturesGlide(GLuint n, const GLuint* ids)
 {
     for (int i = 0; i < n; i++)
        delete_tex_from_address(ids[i]);
 }
-#endif
 
 
 //ENTER/EXIT
