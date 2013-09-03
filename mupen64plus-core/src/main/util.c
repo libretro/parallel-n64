@@ -40,46 +40,6 @@
 #include "osal/preproc.h"
 
 /**********************
-     File utilities
- **********************/
-
-file_status_t read_from_file(const char *filename, void *data, size_t size)
-{
-    FILE *f = fopen(filename, "rb");
-    if (f == NULL)
-    {
-        return file_open_error;
-    }
-
-    if (fread(data, 1, size, f) != size)
-    {
-        fclose(f);
-        return file_read_error;
-    }
-
-    fclose(f);
-    return file_ok;
-}
-
-file_status_t write_to_file(const char *filename, const void *data, size_t size)
-{
-    FILE *f = fopen(filename, "wb");
-    if (f == NULL)
-    {
-        return file_open_error;
-    }
-
-    if (fwrite(data, 1, size, f) != size)
-    {
-        fclose(f);
-        return file_read_error;
-    }
-
-    fclose(f);
-    return file_ok;
-}
-
-/**********************
    Byte swap utilities
  **********************/
 void swap_buffer(void *buffer, size_t length, size_t count)

@@ -11,6 +11,7 @@
 #include "plugin/plugin.h"
 #include "api/m64p_types.h"
 #include "r4300/r4300.h"
+#include "memory/memory.h"
 #include "main/version.h"
 
 static retro_video_refresh_t video_cb = NULL;
@@ -239,6 +240,8 @@ void update_variables(void)
 
 bool retro_load_game(const struct retro_game_info *game)
 {
+   format_saved_memory(); // < defined in mupen64plus-core/src/memory/memory.c
+
    update_variables();
 
    memset(&render_iface, 0, sizeof(render_iface));
@@ -319,6 +322,17 @@ void retro_reset (void)
     CoreDoCommand(M64CMD_RESET, 1, (void*)0);
 }
 
+void *retro_get_memory_data(unsigned type)
+{
+   return (type == RETRO_MEMORY_SAVE_RAM) ? &saved_memory : 0;
+}
+
+size_t retro_get_memory_size(unsigned type)
+{
+   return (type == RETRO_MEMORY_SAVE_RAM) ? sizeof(saved_memory) : 0;
+}
+
+
 unsigned retro_get_region (void)
 {
     // TODO
@@ -336,8 +350,6 @@ size_t retro_serialize_size (void) { return 0; }
 bool retro_serialize(void *data, size_t size) { return false; }
 bool retro_unserialize(const void * data, size_t size) { return false; }
 
-void *retro_get_memory_data(unsigned type) { return 0; }
-size_t retro_get_memory_size(unsigned type) { return 0; }
 
 
 void retro_set_controller_port_device(unsigned in_port, unsigned device) { }

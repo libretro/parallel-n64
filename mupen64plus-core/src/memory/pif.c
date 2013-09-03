@@ -39,62 +39,7 @@
 #include "main/util.h"
 #include "plugin/plugin.h"
 
-static unsigned char eeprom[0x800];
-static unsigned char mempack[4][0x8000];
-
-static char *get_eeprom_path(void)
-{
-    return formatstr("%s%s.eep", get_savesrampath(), ROM_SETTINGS.goodname);
-}
-
-static void eeprom_format(void)
-{
-    memset(eeprom, 0, sizeof(eeprom));
-}
-
-static void eeprom_read_file(void)
-{
-    char *filename = get_eeprom_path();
-
-    switch (read_from_file(filename, eeprom, sizeof(eeprom)))
-    {
-        case file_open_error:
-            DebugMessage(M64MSG_VERBOSE, "couldn't open eeprom file '%s' for reading", filename);
-            eeprom_format();
-            break;
-        case file_read_error:
-            DebugMessage(M64MSG_WARNING, "fread() failed for 2kb eeprom file '%s'", filename);
-            break;
-        default: break;
-    }
-
-    free(filename);
-}
-
-static void eeprom_write_file(void)
-{
-    char *filename = get_eeprom_path();
-
-    switch (write_to_file(filename, eeprom, sizeof(eeprom)))
-    {
-        case file_open_error:
-            DebugMessage(M64MSG_WARNING, "couldn't open eeprom file '%s' for writing", filename);
-            break;
-        case file_write_error:
-            DebugMessage(M64MSG_WARNING, "fwrite() failed for 2kb eeprom file '%s'", filename);
-            break;
-        default: break;
-    }
-
-    free(filename);
-}
-
-static char *get_mempack_path(void)
-{
-    return formatstr("%s%s.mpk", get_savesrampath(), ROM_SETTINGS.goodname);
-}
-
-static void mempack_format(void)
+/*static void mempack_format(void)
 {
     unsigned char init[] =
     {
@@ -126,44 +71,7 @@ static void mempack_format(void)
         }
         memcpy(mempack[i], init, 272);
     }
-}
-
-static void mempack_read_file(void)
-{
-    char *filename = get_mempack_path();
-
-    switch (read_from_file(filename, mempack, sizeof(mempack)))
-    {
-        case file_open_error:
-            DebugMessage(M64MSG_VERBOSE, "couldn't open memory pack file '%s' for reading", filename);
-            mempack_format();
-            break;
-        case file_read_error:
-            DebugMessage(M64MSG_WARNING, "fread() failed for 128kb mempack file '%s'", filename);
-            break;
-        default: break;
-    }
-
-    free(filename);
-}
-
-static void mempack_write_file(void)
-{
-    char *filename = get_mempack_path();
-
-    switch (write_to_file(filename, mempack, sizeof(mempack)))
-    {
-        case file_open_error:
-            DebugMessage(M64MSG_WARNING, "couldn't open memory pack file '%s' for writing", filename);
-            break;
-        case file_write_error:
-            DebugMessage(M64MSG_WARNING, "fwrite() failed for 128kb mempack file '%s'", filename);
-            break;
-        default: break;
-    }
-
-    free(filename);
-}
+}*/
 
 //#define DEBUG_PIF
 #ifdef DEBUG_PIF
@@ -216,8 +124,7 @@ static void EepromCommand(unsigned char *Command)
 #ifdef DEBUG_PIF
         DebugMessage(M64MSG_INFO, "EepromCommand() read 8-byte block %i", Command[3]);
 #endif
-        eeprom_read_file();
-        memcpy(&Command[4], eeprom + Command[3]*8, 8);
+        memcpy(&Command[4], saved_memory.eeprom + Command[3]*8, 8);
     }
     break;
     case 5: // write
@@ -225,9 +132,7 @@ static void EepromCommand(unsigned char *Command)
 #ifdef DEBUG_PIF
         DebugMessage(M64MSG_INFO, "EepromCommand() write 8-byte block %i", Command[3]);
 #endif
-        eeprom_read_file();
-        memcpy(eeprom + Command[3]*8, &Command[4], 8);
-        eeprom_write_file();
+        memcpy(saved_memory.eeprom + Command[3]*8, &Command[4], 8);
     }
     break;
     case 6:
@@ -397,8 +302,7 @@ static void internal_ControllerCommand(int Control, unsigned char *Command)
                     address &= 0xFFE0;
                     if (address <= 0x7FE0)
                     {
-                        mempack_read_file();
-                        memcpy(&Command[5], &mempack[Control][address], 0x20);
+                        memcpy(&Command[5], &saved_memory.mempack[Control][address], 0x20);
                     }
                     else
                     {
@@ -444,9 +348,7 @@ static void internal_ControllerCommand(int Control, unsigned char *Command)
                     address &= 0xFFE0;
                     if (address <= 0x7FE0)
                     {
-                        mempack_read_file();
-                        memcpy(&mempack[Control][address], &Command[5], 0x20);
-                        mempack_write_file();
+                        memcpy(&saved_memory.mempack[Control][address], &Command[5], 0x20);
                     }
                     Command[0x25] = mempack_crc(&Command[5]);
                 }

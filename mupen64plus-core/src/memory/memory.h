@@ -41,6 +41,16 @@ extern unsigned char *SP_IMEMb;
 extern unsigned int PIF_RAM[0x40/4];
 extern unsigned char *PIF_RAMb;
 
+typedef struct _save_memory_data
+{
+    unsigned char eeprom[0x200];
+    unsigned char mempack[4][0x8000];
+    unsigned char sram[0x8000];
+    unsigned char flashram[0x20000];
+} save_memory_data;
+extern save_memory_data saved_memory;
+void format_saved_memory(void);
+
 extern ALIGN(16, unsigned int rdram[0x800000/4]);
 
 extern unsigned int address, word;

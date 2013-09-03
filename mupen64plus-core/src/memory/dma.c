@@ -44,57 +44,6 @@
 #include "main/rom.h"
 #include "main/util.h"
 
-static unsigned char sram[0x8000];
-
-static char *get_sram_path(void)
-{
-    return formatstr("%s%s.sra", get_savesrampath(), ROM_SETTINGS.goodname);
-}
-
-static void sram_format(void)
-{
-    memset(sram, 0, sizeof(sram));
-}
-
-static void sram_read_file(void)
-{
-    char *filename = get_sram_path();
-
-    sram_format();
-    switch (read_from_file(filename, sram, sizeof(sram)))
-    {
-        case file_open_error:
-            DebugMessage(M64MSG_VERBOSE, "couldn't open sram file '%s' for reading", filename);
-            sram_format();
-            break;
-        case file_read_error:
-            DebugMessage(M64MSG_WARNING, "fread() failed on 32kb read from sram file '%s'", filename);
-            sram_format();
-            break;
-        default: break;
-    }
-
-    free(filename);
-}
-
-static void sram_write_file(void)
-{
-    char *filename = get_sram_path();
-
-    switch (write_to_file(filename, sram, sizeof(sram)))
-    {
-        case file_open_error:
-            DebugMessage(M64MSG_WARNING, "couldn't open sram file '%s' for writing.", filename);
-            break;
-        case file_write_error:
-            DebugMessage(M64MSG_WARNING, "fwrite() failed on 32kb write to sram file '%s'", filename);
-            break;
-        default: break;
-    }
-
-    free(filename);
-}
-
 void dma_pi_read(void)
 {
     unsigned int i;
@@ -104,15 +53,11 @@ void dma_pi_read(void)
     {
         if (flashram_info.use_flashram != 1)
         {
-            sram_read_file();
-
             for (i=0; i < (pi_register.pi_rd_len_reg & 0xFFFFFF)+1; i++)
             {
-                sram[((pi_register.pi_cart_addr_reg-0x08000000)+i)^S8] =
+                saved_memory.sram[((pi_register.pi_cart_addr_reg-0x08000000)+i)^S8] =
                     ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8];
             }
-
-            sram_write_file();
 
             flashram_info.use_flashram = -1;
         }
@@ -145,12 +90,10 @@ void dma_pi_write(void)
             {
                 int i;
 
-                sram_read_file();
-
                 for (i=0; i<(int)(pi_register.pi_wr_len_reg & 0xFFFFFF)+1; i++)
                 {
                     ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
-                        sram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFF)+i)^S8];
+                        saved_memory.sram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFF)+i)^S8];
                 }
 
                 flashram_info.use_flashram = -1;

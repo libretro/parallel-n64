@@ -35,6 +35,7 @@
 #include "main/util.h"
 
 Flashram_info flashram_info;
+save_memory_data saved_memory;
 
 typedef enum flashram_mode
 {
@@ -44,56 +45,6 @@ typedef enum flashram_mode
     READ_MODE,
     STATUS_MODE
 } Flashram_mode;
-
-static unsigned char flashram[0x20000];
-
-static char *get_flashram_path(void)
-{
-    return formatstr("%s%s.fla", get_savesrampath(), ROM_SETTINGS.goodname);
-}
-
-static void flashram_format(void)
-{
-    memset(flashram, 0xff, sizeof(flashram));
-}
-
-static void flashram_read_file(void)
-{
-    char *filename = get_flashram_path();
-
-    flashram_format();
-    switch (read_from_file(filename, flashram, sizeof(flashram)))
-    {
-        case file_open_error:
-            DebugMessage(M64MSG_WARNING, "couldn't open flash ram file '%s' for reading", filename);
-            flashram_format();
-            break;
-        case file_read_error:
-            DebugMessage(M64MSG_WARNING, "couldn't read 128kb flash ram file '%s'", filename);
-            break;
-        default: break;
-    }
-
-    free(filename);
-}
-
-static void flashram_write_file(void)
-{
-    char *filename = get_flashram_path();
-
-    switch (write_to_file(filename, flashram, sizeof(flashram)))
-    {
-        case file_open_error:
-            DebugMessage(M64MSG_WARNING, "couldn't open flash ram file '%s' for writing", filename);
-            break;
-        case file_write_error:
-            DebugMessage(M64MSG_WARNING, "couldn't write 128kb flash ram file '%s'", filename);
-            break;
-        default: break;
-    }
-
-    free(filename);
-}
 
 void init_flashram(void)
 {
@@ -132,24 +83,20 @@ void flashram_command(unsigned int command)
         case ERASE_MODE:
         {
             unsigned int i;
-            flashram_read_file();
             for (i=flashram_info.erase_offset; i<(flashram_info.erase_offset+128); i++)
             {
-                flashram[i^S8] = 0xff;
+                saved_memory.flashram[i^S8] = 0xff;
             }
-            flashram_write_file();
         }
         break;
         case WRITE_MODE:
         {
             int i;
-            flashram_read_file();
             for (i=0; i<128; i++)
             {
-                flashram[(flashram_info.erase_offset+i)^S8]=
+                saved_memory.flashram[(flashram_info.erase_offset+i)^S8]=
                     ((unsigned char*)rdram)[(flashram_info.write_pointer+i)^S8];
             }
-            flashram_write_file();
         }
         break;
         case STATUS_MODE:
@@ -186,11 +133,10 @@ void dma_read_flashram(void)
         rdram[pi_register.pi_dram_addr_reg/4+1] = (unsigned int)(flashram_info.status);
         break;
     case READ_MODE:
-        flashram_read_file();
         for (i=0; i<(pi_register.pi_wr_len_reg & 0x0FFFFFF)+1; i++)
         {
             ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
-                flashram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFF)*2+i)^S8];
+                saved_memory.flashram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFF)*2+i)^S8];
         }
         break;
     default:

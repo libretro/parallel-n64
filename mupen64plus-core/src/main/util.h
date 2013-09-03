@@ -31,30 +31,6 @@ extern "C" {
 #include "osal/preproc.h"
 
 /**********************
-     File utilities
- **********************/
-
-typedef enum _file_status
-{
-    file_ok,
-    file_open_error,
-    file_read_error,
-    file_write_error
-} file_status_t;
-
-/** read_from_file
- *    opens a file and reads the specified number of bytes.
- *    returns zero on success, nonzero on failure
- */
-file_status_t read_from_file(const char *filename, void *data, size_t size);
-
-/** write_to_file
- *    opens a file and writes the specified number of bytes.
- *    returns zero on sucess, nonzero on failure
- */ 
-file_status_t write_to_file(const char *filename, const void *data, size_t size);
-
-/**********************
    Byte swap utilities
  **********************/
 #ifdef _MSC_VER
