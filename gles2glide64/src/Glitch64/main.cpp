@@ -856,7 +856,7 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
         if (fbs[i].width == width && fbs[i].height == height) //select already allocated FBO
         {
           glBindFramebuffer( GL_FRAMEBUFFER, fbs[i].fbid );
-          glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sglAddressToTex(fbs[i].texid), 0 );
+          glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbs[i].texid, 0 );
           glBindRenderbuffer( GL_RENDERBUFFER, fbs[i].zbid );
           glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbs[i].zbid );
           glViewport( 0, 0, width, height);
@@ -890,8 +890,8 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
     glGenRenderbuffers( 1, &(fbs[nb_fb].zbid) );
     glBindRenderbuffer( GL_RENDERBUFFER, fbs[nb_fb].zbid );
     glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
+    fbs[nb_fb].texid = sglAddTextureMap(pBufferAddress);
     fbs[nb_fb].address = pBufferAddress;
-    fbs[nb_fb].texid = pBufferAddress;
     fbs[nb_fb].width = width;
     fbs[nb_fb].height = height;
     fbs[nb_fb].buff_clear = 0;
@@ -905,7 +905,7 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
 
     glBindFramebuffer( GL_FRAMEBUFFER, fbs[nb_fb].fbid);
     glFramebufferTexture2D(GL_FRAMEBUFFER,
-      GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sglAddressToTex(fbs[nb_fb].texid), 0);
+      GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbs[nb_fb].texid, 0);
     glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbs[nb_fb].zbid );
     glViewport(0,0,width,height);
     glScissor(0,0,width,height);

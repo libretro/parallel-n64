@@ -318,12 +318,27 @@ static void delete_tex_from_address(unsigned address)
          return;
       }
    }
+
+   glDeleteTextures(1, &address);
 }
 
-GLuint sglAddressToTex(unsigned address)
+extern unsigned glide_texture_offset;
+
+GLuint sglAddTextureMap(unsigned address)
 {
-   return find_tex_from_address(address);
+   address += glide_texture_offset;
+   if (texture_map_size >= texture_map_cap)
+   {
+      texture_map_cap = 2 * (texture_map_cap + 1);
+      texture_map = realloc(texture_map, sizeof(*texture_map) * texture_map_cap);
+   }
+   texture_map[texture_map_size].address = address;
+   GLuint tex = 0;
+   glGenTextures(1, &tex);
+   texture_map[texture_map_size++].tex = tex;
+   return tex;
 }
+
 
 //BIND TEXTURE
 static GLuint BindTexture_ids[MAX_TEXTURE];
@@ -341,23 +356,13 @@ void sglBindTextureGlide(GLenum target, GLuint texture)
     vbo_draw();
     assert(target == GL_TEXTURE_2D);
 
+    texture += glide_texture_offset;
+
     if (texture)
     {
-       // Glitch64 is broken. It never calls glGenTextures, and simply assumes that you can bind to whatever ...
-       // This makes no sense, so we'll fix it for them! <_<
        GLuint tex = find_tex_from_address(texture);
-
        if (!tex)
-       {
-          if (texture_map_size >= texture_map_cap)
-          {
-             texture_map_cap = 2 * (texture_map_cap + 1);
-             texture_map = realloc(texture_map, sizeof(*texture_map) * texture_map_cap);
-          }
-          texture_map[texture_map_size].address = texture;
-          glGenTextures(1, &tex);
-          texture_map[texture_map_size++].tex = tex;
-       }
+          tex = texture;
        BindTexture_ids[ActiveTexture_texture] = tex;
     }
     else
@@ -369,7 +374,7 @@ void sglBindTextureGlide(GLenum target, GLuint texture)
 void sglDeleteTexturesGlide(GLuint n, const GLuint* ids)
 {
     for (int i = 0; i < n; i++)
-       delete_tex_from_address(ids[i]);
+       delete_tex_from_address(ids[i] + glide_texture_offset);
 }
 
 

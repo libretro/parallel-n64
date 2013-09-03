@@ -45,7 +45,7 @@ void sglBindTexture(GLenum target, GLuint texture);
 // For gles2glide64
 void sglBindTextureGlide(GLenum target, GLuint texture);
 void sglDeleteTexturesGlide(GLuint n, const GLuint* ids);
-GLuint sglAddressToTex(unsigned address);
+GLuint sglAddTextureMap(unsigned address);
 
 #ifndef NO_TRANSLATE
 #define glEnable(T) sglEnable(S##T)
