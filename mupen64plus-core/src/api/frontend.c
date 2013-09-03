@@ -72,12 +72,6 @@ EXPORT m64p_error CALL CoreStartup(int APIVersion, const char *ConfigPath, const
         return M64ERR_INCOMPATIBLE;
     }
 
-    /* set up the default (dummy) plugins */
-    plugin_connect(M64PLUGIN_GFX, NULL);
-    plugin_connect(M64PLUGIN_AUDIO, NULL);
-    plugin_connect(M64PLUGIN_INPUT, NULL);
-    plugin_connect(M64PLUGIN_CORE, NULL);
-
     savestates_init();
 
     /* next, start up the configuration handling code by loading and parsing the config file */
@@ -116,36 +110,6 @@ EXPORT m64p_error CALL CoreShutdown(void)
 
     l_CoreInit = 0;
     return M64ERR_SUCCESS;
-}
-
-EXPORT m64p_error CALL CoreAttachPlugin(m64p_plugin_type PluginType, m64p_dynlib_handle PluginLibHandle)
-{
-    m64p_error rval;
-
-    if (!l_CoreInit)
-        return M64ERR_NOT_INIT;
-    if (g_EmulatorRunning || !l_ROMOpen)
-        return M64ERR_INVALID_STATE;
-
-    rval = plugin_connect(PluginType, PluginLibHandle);
-    if (rval != M64ERR_SUCCESS)
-        return rval;
-
-    rval = plugin_start(PluginType);
-    if (rval != M64ERR_SUCCESS)
-        return rval;
-
-    return M64ERR_SUCCESS;
-}
-
-EXPORT m64p_error CALL CoreDetachPlugin(m64p_plugin_type PluginType)
-{
-    if (!l_CoreInit)
-        return M64ERR_NOT_INIT;
-    if (g_EmulatorRunning)
-        return M64ERR_INVALID_STATE;
-
-    return plugin_connect(PluginType, NULL);
 }
 
 EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *ParamPtr)
@@ -208,8 +172,6 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
         case M64CMD_EXECUTE:
             if (g_EmulatorRunning || !l_ROMOpen)
                 return M64ERR_INVALID_STATE;
-            /* print out plugin-related warning messages */
-            plugin_check();
             /* the main_run() function will not return until the player has quit the game */
             rval = main_run();
             return rval;

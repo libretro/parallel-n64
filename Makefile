@@ -137,8 +137,7 @@ CFILES += \
     $(COREDIR)/src/r4300/pure_interp.c \
     $(COREDIR)/src/r4300/reset.c \
     $(COREDIR)/src/r4300/interupt.c \
-    $(COREDIR)/src/r4300/r4300.c \
-    $(COREDIR)/src/plugin/dummy_video.c
+    $(COREDIR)/src/r4300/r4300.c
 
 
 #   $(COREDIR)/src/api/debugger.c \

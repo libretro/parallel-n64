@@ -8,6 +8,7 @@
 #include "libco.h"
 
 #include "api/m64p_frontend.h"
+#include "plugin/plugin.h"
 #include "api/m64p_types.h"
 #include "r4300/r4300.h"
 #include "main/version.h"
@@ -33,7 +34,6 @@ static int16_t *audio_out_buffer_s16;
 static uint8_t* game_data;
 static uint32_t game_size;
 
-enum gfx_plugin_type { GFX_GLIDE64, GFX_RICE, GFX_GLN64 };
 static enum gfx_plugin_type gfx_plugin;
 static uint32_t screen_width;
 static uint32_t screen_height;
@@ -73,17 +73,9 @@ static void EmuThreadFunction()
     else if(var.value && strcmp(var.value, "gln64") == 0)
         gfx_plugin = GFX_GLN64;
 
-    CoreAttachPlugin(M64PLUGIN_GFX, (m64p_dynlib_handle)gfx_plugin);
-    CoreAttachPlugin(M64PLUGIN_AUDIO, 0);
-    CoreAttachPlugin(M64PLUGIN_INPUT, 0);
-    CoreAttachPlugin(M64PLUGIN_RSP, 0);
+    plugin_connect_all(gfx_plugin);
 
     CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
-
-    CoreDetachPlugin(M64PLUGIN_GFX);
-    CoreDetachPlugin(M64PLUGIN_AUDIO);
-    CoreDetachPlugin(M64PLUGIN_INPUT);
-    CoreDetachPlugin(M64PLUGIN_RSP);
 
     co_switch(main_thread);
 
