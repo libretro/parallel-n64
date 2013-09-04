@@ -140,15 +140,8 @@ CFILES += \
 
 
 #   $(COREDIR)/src/api/debugger.c \
-#   $(COREDIR)/src/main/eventloop.c \
 #   $(COREDIR)/src/main/ini_reader.c \
-#   $(COREDIR)/src/main/cheat.c \
 #   $(COREDIR)/src/main/savestates.c \
-#   $(COREDIR)/src/osal/dynamiclib_win32.c \
-#   $(COREDIR)/src/osal/files_win32.c \
-#   $(COREDIR)/src/plugin/dummy_audio.c \
-#   $(COREDIR)/src/plugin/dummy_rsp.c \
-#   $(COREDIR)/src/plugin/dummy_input.c \
 
 ### DYNAREC ###
 ifdef WITH_DYNAREC

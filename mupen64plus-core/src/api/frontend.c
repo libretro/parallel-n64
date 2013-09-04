@@ -37,8 +37,6 @@
 #include "config.h"
 #include "vidext.h"
 
-#include "main/cheat.h"
-#include "main/eventloop.h"
 #include "main/main.h"
 #include "main/rom.h"
 #include "main/savestates.h"
@@ -132,15 +130,12 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             if (rval == M64ERR_SUCCESS)
             {
                 l_ROMOpen = 1;
-                cheat_init();
             }
             return rval;
         case M64CMD_ROM_CLOSE:
             if (g_EmulatorRunning || !l_ROMOpen)
                 return M64ERR_INVALID_STATE;
             l_ROMOpen = 0;
-            cheat_delete_all();
-            cheat_uninit();
             return close_rom();
         case M64CMD_ROM_GET_HEADER:
             if (!l_ROMOpen)
@@ -210,20 +205,6 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             if (ParamInt < 0 || ParamInt > 9)
                 return M64ERR_INPUT_INVALID;
             return main_core_state_set(M64CORE_SAVESTATE_SLOT, ParamInt);
-        case M64CMD_SEND_SDL_KEYDOWN:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            keysym = ParamInt & 0xffff;
-            keymod = (ParamInt >> 16) & 0xffff;
-            event_sdl_keydown(keysym, keymod);
-            return M64ERR_SUCCESS;
-        case M64CMD_SEND_SDL_KEYUP:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            keysym = ParamInt & 0xffff;
-            keymod = (ParamInt >> 16) & 0xffff;
-            event_sdl_keyup(keysym, keymod);
-            return M64ERR_SUCCESS;
         case M64CMD_SET_FRAME_CALLBACK:
             g_FrameCallback = (m64p_frame_callback) ParamPtr;
             return M64ERR_SUCCESS;
@@ -256,44 +237,6 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
     }
 
     return M64ERR_INTERNAL;
-}
-
-#ifndef __LIBRETRO__ // Don't have VidExt functions
-EXPORT m64p_error CALL CoreOverrideVidExt(m64p_video_extension_functions *VideoFunctionStruct)
-{
-    if (!l_CoreInit)
-        return M64ERR_NOT_INIT;
-
-    return OverrideVideoFunctions(VideoFunctionStruct); /* in vidext.c */
-}
-#endif
-
-EXPORT m64p_error CALL CoreAddCheat(const char *CheatName, m64p_cheat_code *CodeList, int NumCodes)
-{
-    if (!l_CoreInit)
-        return M64ERR_NOT_INIT;
-    if (CheatName == NULL || CodeList == NULL)
-        return M64ERR_INPUT_ASSERT;
-    if (strlen(CheatName) < 1 || NumCodes < 1)
-        return M64ERR_INPUT_INVALID;
-
-    if (cheat_add_new(CheatName, CodeList, NumCodes))
-        return M64ERR_SUCCESS;
-
-    return M64ERR_INPUT_INVALID;
-}
-
-EXPORT m64p_error CALL CoreCheatEnabled(const char *CheatName, int Enabled)
-{
-    if (!l_CoreInit)
-        return M64ERR_NOT_INIT;
-    if (CheatName == NULL)
-        return M64ERR_INPUT_ASSERT;
-
-    if (cheat_set_enabled(CheatName, Enabled))
-        return M64ERR_SUCCESS;
-
-    return M64ERR_INPUT_INVALID;
 }
 
 EXPORT m64p_error CALL CoreGetRomSettings(m64p_rom_settings *RomSettings, int RomSettingsLength, int Crc1, int Crc2)

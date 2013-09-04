@@ -43,7 +43,6 @@
 #include "api/vidext.h"
 
 #include "main.h"
-#include "eventloop.h"
 #include "rom.h"
 #include "savestates.h"
 #include "util.h"
@@ -142,8 +141,7 @@ int main_set_core_defaults(void)
     if (bSaveConfig)
         ConfigSaveSection("Core");
 
-    /* set config parameters for keyboard and joystick commands */
-    return event_set_core_defaults();
+    return 1;
 }
 
 void main_speeddown(int percent)
@@ -358,9 +356,6 @@ m64p_error main_core_state_query(m64p_core_param param, int *rval)
         case M64CORE_AUDIO_MUTE:
             *rval = main_volume_get_muted();
             break;
-        case M64CORE_INPUT_GAMESHARK:
-            *rval = event_gameshark_active();
-            break;
         // these are only used for callbacks; they cannot be queried or set
         case M64CORE_STATE_LOADCOMPLETE:
         case M64CORE_STATE_SAVECOMPLETE:
@@ -452,11 +447,6 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
         case M64CORE_AUDIO_MUTE:
             if ((main_volume_get_muted() && !val) || (!main_volume_get_muted() && val))
                 return main_volume_mute();
-            return M64ERR_SUCCESS;
-        case M64CORE_INPUT_GAMESHARK:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            event_set_gameshark(val);
             return M64ERR_SUCCESS;
         // these are only used for callbacks; they cannot be queried or set
         case M64CORE_STATE_LOADCOMPLETE:
@@ -648,9 +638,6 @@ m64p_error main_run(void)
     {
         audio.romClosed(); gfx.romClosed(); free_memory(); return M64ERR_PLUGIN_FAIL;
     }
-
-    /* set up the SDL key repeat and event filter to catch keyboard/joystick commands for the core */
-    event_initialize();
 
     // setup rendering callback from video plugin to the core, for screenshots and On-Screen-Display
     gfx.setRenderingCallback(video_plugin_render_callback);

@@ -70,39 +70,6 @@ typedef m64p_error (*ptr_CoreDoCommand)(m64p_command, int, void *);
 EXPORT m64p_error CALL CoreDoCommand(m64p_command, int, void *);
 #endif
 
-/* CoreOverrideVidExt()
- *
- * This function overrides the core's internal SDL-based OpenGL functions. This
- * override functionality allows a front-end to define its own video extension
- * functions to be used instead of the SDL functions. If any of the function
- * pointers in the structure are NULL, the override function will be disabled
- * and the core's internal SDL functions will be used.
- */
-typedef m64p_error (*ptr_CoreOverrideVidExt)(m64p_video_extension_functions *);
-#if defined(M64P_CORE_PROTOTYPES)
-EXPORT m64p_error CALL CoreOverrideVidExt(m64p_video_extension_functions *);
-#endif
-
-/* CoreAddCheat()
- *
- * This function will add a Cheat Function to a list of currently active cheats
- * which are applied to the open ROM.
- */
-typedef m64p_error (*ptr_CoreAddCheat)(const char *, m64p_cheat_code *, int);
-#if defined(M64P_CORE_PROTOTYPES)
-EXPORT m64p_error CALL CoreAddCheat(const char *, m64p_cheat_code *, int);
-#endif
-
-/* CoreCheatEnabled()
- *
- * This function will enable or disable a Cheat Function which is in the list of
- * currently active cheats.
- */
-typedef m64p_error (*ptr_CoreCheatEnabled)(const char *, int);
-#if defined(M64P_CORE_PROTOTYPES)
-EXPORT m64p_error CALL CoreCheatEnabled(const char *, int);
-#endif
-
 /* CoreGetRomSettings()
  *
  * This function will retrieve the ROM settings from the mupen64plus INI file for

@@ -32,7 +32,6 @@
 #include "main/rom.h"
 #include "main/main.h"
 #include "main/savestates.h"
-#include "main/cheat.h"
 #include "plugin/plugin.h"
 
 #include "interupt.h"
@@ -364,16 +363,6 @@ void gen_interupt(void)
             return;
             break;
         case VI_INT:
-            if(vi_counter < 60)
-            {
-                if (vi_counter == 0)
-                    cheat_apply_cheats(ENTRY_BOOT);
-                vi_counter++;
-            }
-            else
-            {
-                cheat_apply_cheats(ENTRY_VI);
-            }
             gfx.updateScreen();
             SDL_PumpEvents();
 
