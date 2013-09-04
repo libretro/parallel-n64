@@ -21,8 +21,6 @@
 
 #include <stdlib.h>
 
-#include <SDL.h>
-
 #define M64P_CORE_PROTOTYPES 1
 #include "api/m64p_types.h"
 #include "api/callbacks.h"
@@ -364,7 +362,6 @@ void gen_interupt(void)
             break;
         case VI_INT:
             gfx.updateScreen();
-            SDL_PumpEvents();
 
             refresh_stat();
 
@@ -403,7 +400,6 @@ void gen_interupt(void)
             break;
     
         case SI_INT:
-            SDL_PumpEvents();
             PIF_RAMb[0x3F] = 0x0;
             remove_interupt_event();
             MI_register.mi_intr_reg |= 0x02;

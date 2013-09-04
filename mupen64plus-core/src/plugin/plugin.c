@@ -195,8 +195,6 @@ extern void inputInitiateControllers(CONTROL_INFO ControlInfo);
 extern void inputReadController(int Control, unsigned char *Command);
 extern int  inputRomOpen(void);
 extern void inputRomClosed(void);
-extern void inputSDL_KeyDown(int keymod, int keysym);
-extern void inputSDL_KeyUp(int keymod, int keysym);
 
 input_plugin_functions input = {
     inputPluginGetVersion,
@@ -206,8 +204,6 @@ input_plugin_functions input = {
     inputReadController,
     inputRomClosed,
     inputRomOpen,
-    inputSDL_KeyDown,
-    inputSDL_KeyUp
 };
 
 static CONTROL_INFO control_info;

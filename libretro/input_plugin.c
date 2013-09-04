@@ -282,21 +282,3 @@ EXPORT void CALL inputRomClosed(void) { }
 *******************************************************************/
 EXPORT int CALL inputRomOpen(void) { return 1; }
 
-/******************************************************************
-  Function: SDL_KeyDown
-  Purpose:  To pass the SDL_KeyDown message from the emulator to the
-            plugin.
-  input:    keymod and keysym of the SDL_KEYDOWN message.
-  output:   none
-*******************************************************************/
-EXPORT void CALL inputSDL_KeyDown(int keymod, int keysym) { }
-
-/******************************************************************
-  Function: SDL_KeyUp
-  Purpose:  To pass the SDL_KeyUp message from the emulator to the
-            plugin.
-  input:    keymod and keysym of the SDL_KEYUP message.
-  output:   none
-*******************************************************************/
-EXPORT void CALL inputSDL_KeyUp(int keymod, int keysym) { }
-

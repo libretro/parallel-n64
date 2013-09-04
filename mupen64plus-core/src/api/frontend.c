@@ -27,7 +27,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <SDL.h>
 
 #define M64P_CORE_PROTOTYPES 1
 #include "m64p_types.h"
@@ -42,7 +41,6 @@
 #include "main/savestates.h"
 #include "main/version.h"
 #include "main/util.h"
-#include "main/workqueue.h"
 #include "plugin/plugin.h"
 
 /* some local state variables */
@@ -85,8 +83,6 @@ EXPORT m64p_error CALL CoreStartup(int APIVersion, const char *ConfigPath, const
     /* The ROM database contains MD5 hashes, goodnames, and some game-specific parameters */
     romdatabase_open();
 
-    workqueue_init();
-
     l_CoreInit = 1;
     return M64ERR_SUCCESS;
 }
@@ -99,11 +95,7 @@ EXPORT m64p_error CALL CoreShutdown(void)
     /* close down some core sub-systems */
     romdatabase_close();
     ConfigShutdown();
-    workqueue_shutdown();
     savestates_deinit();
-
-    /* tell SDL to shut down */
-    SDL_Quit();
 
     l_CoreInit = 0;
     return M64ERR_SUCCESS;

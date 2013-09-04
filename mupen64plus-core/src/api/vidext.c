@@ -25,7 +25,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <SDL.h>
 
 #define M64P_CORE_PROTOTYPES 1
 #include "m64p_types.h"
@@ -34,16 +33,11 @@
 #include "callbacks.h"
 #include "../osd/osd.h"
 
-#if SDL_VERSION_ATLEAST(2,0,0)
-#include "vidext_sdl2_compat.h"
-#endif
-
 /* local variables */
 static m64p_video_extension_functions l_ExternalVideoFuncTable = {10, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 static int l_VideoExtensionActive = 0;
 static int l_VideoOutputActive = 0;
 static int l_Fullscreen = 0;
-static SDL_Surface *l_pScreen = NULL;
 
 /* global function for use by frontend.c */
 m64p_error OverrideVideoFunctions(m64p_video_extension_functions *VideoFunctionStruct)

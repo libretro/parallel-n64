@@ -243,15 +243,11 @@ typedef void (*ptr_ControllerCommand)(int Control, unsigned char *Command);
 typedef void (*ptr_GetKeys)(int Control, BUTTONS *Keys);
 typedef void (*ptr_InitiateControllers)(CONTROL_INFO ControlInfo);
 typedef void (*ptr_ReadController)(int Control, unsigned char *Command);
-typedef void (*ptr_SDL_KeyDown)(int keymod, int keysym);
-typedef void (*ptr_SDL_KeyUp)(int keymod, int keysym);
 #if defined(M64P_PLUGIN_PROTOTYPES)
 EXPORT void CALL ControllerCommand(int Control, unsigned char *Command);
 EXPORT void CALL GetKeys(int Control, BUTTONS *Keys);
 EXPORT void CALL InitiateControllers(CONTROL_INFO ControlInfo);
 EXPORT void CALL ReadController(int Control, unsigned char *Command);
-EXPORT void CALL SDL_KeyDown(int keymod, int keysym);
-EXPORT void CALL SDL_KeyUp(int keymod, int keysym);
 #endif
 
 /* RSP plugin function pointers */
