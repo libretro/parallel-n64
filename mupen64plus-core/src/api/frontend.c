@@ -208,11 +208,6 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
         case M64CMD_SET_FRAME_CALLBACK:
             g_FrameCallback = (m64p_frame_callback) ParamPtr;
             return M64ERR_SUCCESS;
-        case M64CMD_TAKE_NEXT_SCREENSHOT:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            main_take_next_screenshot();
-            return M64ERR_SUCCESS;
         case M64CMD_READ_SCREEN:
             if (!g_EmulatorRunning)
                 return M64ERR_INVALID_STATE;

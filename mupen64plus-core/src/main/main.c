@@ -72,9 +72,7 @@ int         g_EmulatorRunning = 0;      // need separate boolean to tell if emul
 
 /** static (local) variables **/
 static int   l_CurrentFrame = 0;         // frame counter
-static int   l_SpeedFactor = 100;        // percentage of nominal game speed at which emulator is running
 static int   l_FrameAdvance = 0;         // variable to check if we pause on next frame
-static int   l_MainSpeedLimit = 1;       // insert delay during vi_interrupt to keep speed at real-time
 
 /*********************************************************************************************************
 * helper functions
@@ -144,70 +142,6 @@ int main_set_core_defaults(void)
     return 1;
 }
 
-void main_speeddown(int percent)
-{
-    if (l_SpeedFactor - percent > 10)  /* 10% minimum speed */
-    {
-        l_SpeedFactor -= percent;
-        audio.setSpeedFactor(l_SpeedFactor);
-        StateChanged(M64CORE_SPEED_FACTOR, l_SpeedFactor);
-    }
-}
-
-void main_speedup(int percent)
-{
-    if (l_SpeedFactor + percent < 300) /* 300% maximum speed */
-    {
-        l_SpeedFactor += percent;
-        audio.setSpeedFactor(l_SpeedFactor);
-        StateChanged(M64CORE_SPEED_FACTOR, l_SpeedFactor);
-    }
-}
-
-static void main_speedset(int percent)
-{
-    if (percent < 1 || percent > 1000)
-    {
-        DebugMessage(M64MSG_WARNING, "Invalid speed setting %i percent", percent);
-        return;
-    }
-    // disable fast-forward if it's enabled
-    main_set_fastforward(0);
-    // set speed
-    l_SpeedFactor = percent;
-    audio.setSpeedFactor(l_SpeedFactor);
-    StateChanged(M64CORE_SPEED_FACTOR, l_SpeedFactor);
-}
-
-void main_set_fastforward(int enable)
-{
-    static int ff_state = 0;
-    static int SavedSpeedFactor = 100;
-
-    if (enable && !ff_state)
-    {
-        ff_state = 1; /* activate fast-forward */
-        SavedSpeedFactor = l_SpeedFactor;
-        l_SpeedFactor = 250;
-        audio.setSpeedFactor(l_SpeedFactor);
-        StateChanged(M64CORE_SPEED_FACTOR, l_SpeedFactor);
-        // set fast-forward indicator
-    }
-    else if (!enable && ff_state)
-    {
-        ff_state = 0; /* de-activate fast-forward */
-        l_SpeedFactor = SavedSpeedFactor;
-        audio.setSpeedFactor(l_SpeedFactor);
-        StateChanged(M64CORE_SPEED_FACTOR, l_SpeedFactor);
-    }
-
-}
-
-static void main_set_speedlimiter(int enable)
-{
-    l_MainSpeedLimit = enable ? 1 : 0;
-}
-
 static int main_is_paused(void)
 {
     return (g_EmulatorRunning && rompause);
@@ -238,29 +172,6 @@ void main_advance_one(void)
     l_FrameAdvance = 1;
     rompause = 0;
     StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
-}
-
-static void main_draw_volume_osd(void)
-{
-    char msgString[64];
-    const char *volString;
-
-    // this calls into the audio plugin
-    volString = audio.volumeGetString();
-    if (volString == NULL)
-    {
-        strcpy(msgString, "Volume Not Supported.");
-    }
-    else
-    {
-        sprintf(msgString, "%s: %s", "Volume", volString);
-    }
-}
-
-/* this function could be called as a result of a keypress, joystick/button movement,
-   LIRC command, or 'testshots' command-line option timer */
-void main_take_next_screenshot(void)
-{
 }
 
 void main_state_set_slot(int slot)
@@ -322,12 +233,6 @@ m64p_error main_core_state_query(m64p_core_param param, int *rval)
         case M64CORE_SAVESTATE_SLOT:
             *rval = savestates_get_slot();
             break;
-        case M64CORE_SPEED_FACTOR:
-            *rval = l_SpeedFactor;
-            break;
-        case M64CORE_SPEED_LIMITER:
-            *rval = l_MainSpeedLimit;
-            break;
         case M64CORE_VIDEO_SIZE:
         {
             int width, height;
@@ -337,15 +242,6 @@ m64p_error main_core_state_query(m64p_core_param param, int *rval)
             *rval = (width << 16) + height;
             break;
         }
-        case M64CORE_AUDIO_VOLUME:
-        {
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;    
-            return main_volume_get_level(rval);
-        }
-        case M64CORE_AUDIO_MUTE:
-            *rval = main_volume_get_muted();
-            break;
         // these are only used for callbacks; they cannot be queried or set
         case M64CORE_STATE_LOADCOMPLETE:
         case M64CORE_STATE_SAVECOMPLETE:
@@ -388,14 +284,6 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
                 return M64ERR_INPUT_INVALID;
             savestates_select_slot(val);
             return M64ERR_SUCCESS;
-        case M64CORE_SPEED_FACTOR:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            main_speedset(val);
-            return M64ERR_SUCCESS;
-        case M64CORE_SPEED_LIMITER:
-            main_set_speedlimiter(val);
-            return M64ERR_SUCCESS;
         case M64CORE_VIDEO_SIZE:
         {
             // the front-end app is telling us that the user has resized the video output frame, and so
@@ -410,16 +298,6 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
             gfx.resizeVideoOutput(width, height);
             return M64ERR_SUCCESS;
         }
-        case M64CORE_AUDIO_VOLUME:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            if (val < 0 || val > 100)
-                return M64ERR_INPUT_INVALID;
-            return main_volume_set_level(val);
-        case M64CORE_AUDIO_MUTE:
-            if ((main_volume_get_muted() && !val) || (!main_volume_get_muted() && val))
-                return main_volume_mute();
-            return M64ERR_SUCCESS;
         // these are only used for callbacks; they cannot be queried or set
         case M64CORE_STATE_LOADCOMPLETE:
         case M64CORE_STATE_SAVECOMPLETE:
@@ -440,54 +318,6 @@ m64p_error main_read_screen(void *pixels, int bFront)
     int width_trash, height_trash;
     gfx.readScreen(pixels, &width_trash, &height_trash, bFront);
     return M64ERR_SUCCESS;
-}
-
-m64p_error main_volume_up(void)
-{
-    int level = 0;
-    audio.volumeUp();
-    main_draw_volume_osd();
-    main_volume_get_level(&level);
-    StateChanged(M64CORE_AUDIO_VOLUME, level);
-    return M64ERR_SUCCESS;
-}
-
-m64p_error main_volume_down(void)
-{
-    int level = 0;
-    audio.volumeDown();
-    main_draw_volume_osd();
-    main_volume_get_level(&level);
-    StateChanged(M64CORE_AUDIO_VOLUME, level);
-    return M64ERR_SUCCESS;
-}
-
-m64p_error main_volume_get_level(int *level)
-{
-    *level = audio.volumeGetLevel();
-    return M64ERR_SUCCESS;
-}
-
-m64p_error main_volume_set_level(int level)
-{
-    audio.volumeSetLevel(level);
-    main_draw_volume_osd();
-    level = audio.volumeGetLevel();
-    StateChanged(M64CORE_AUDIO_VOLUME, level);
-    return M64ERR_SUCCESS;
-}
-
-m64p_error main_volume_mute(void)
-{
-    audio.volumeMute();
-    main_draw_volume_osd();
-    StateChanged(M64CORE_AUDIO_MUTE, main_volume_get_muted());
-    return M64ERR_SUCCESS;
-}
-
-int main_volume_get_muted(void)
-{
-    return (audio.volumeGetLevel() == 0);
 }
 
 m64p_error main_reset(int do_hard_reset)
