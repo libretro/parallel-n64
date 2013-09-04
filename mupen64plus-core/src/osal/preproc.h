@@ -40,6 +40,9 @@
   #include <float.h>
   #define isnan _isnan
 
+  #define OSAL_DIR_SEPARATORS           "\\/"
+  #define PATH_MAX _MAX_PATH
+
 #else  /* Not WIN32 */
 
   // macros
@@ -50,8 +53,16 @@
   // string functions
   #define osal_insensitive_strcmp(x, y) strcasecmp(x, y)
 
-#endif
+  #include <limits.h>  // for PATH_MAX
 
+  #define OSAL_DIR_SEPARATORS           "/"
+
+  /* PATH_MAX only may be defined by limits.h */
+  #ifndef PATH_MAX
+    #define PATH_MAX 4096
+  #endif
+
+#endif
 
 #endif /* OSAL_PREPROC_H */
 

@@ -31,12 +31,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#ifndef __LIBRETRO__ //No SDL
-#include <SDL.h>
-#else
 #include <stdio.h>
 #include <stdarg.h>
-#endif
 
 #define M64P_CORE_PROTOTYPES 1
 #include "api/m64p_types.h"
@@ -53,7 +49,6 @@
 #include "util.h"
 
 #include "memory/memory.h"
-#include "osal/files.h"
 #include "osal/preproc.h"
 #include "osd/osd.h"
 #include "osd/screenshot.h"
@@ -93,45 +88,10 @@ static osd_message_t *l_msgVol = NULL;
 static osd_message_t *l_msgFF = NULL;
 static osd_message_t *l_msgPause = NULL;
 
-/*********************************************************************************************************
-* static functions
-*/
-
-static const char *get_savepathdefault(const char *configpath)
-{
-    static char path[1024];
-
-    if (!configpath || (strlen(configpath) == 0)) {
-        snprintf(path, 1024, "%ssave%c", ConfigGetUserDataPath(), OSAL_DIR_SEPARATORS[0]);
-        path[1023] = 0;
-    } else {
-        snprintf(path, 1024, "%s%c", configpath, OSAL_DIR_SEPARATORS[0]);
-        path[1023] = 0;
-    }
-
-    /* create directory if it doesn't exist */
-    osal_mkdirp(path, 0700);
-
-    return path;
-}
-
 
 /*********************************************************************************************************
 * helper functions
 */
-
-
-const char *get_savestatepath(void)
-{
-    /* try to get the SaveStatePath string variable in the Core configuration section */
-    return get_savepathdefault(ConfigGetParamString(g_CoreConfig, "SaveStatePath"));
-}
-
-const char *get_savesrampath(void)
-{
-    /* try to get the SaveSRAMPath string variable in the Core configuration section */
-    return get_savepathdefault(ConfigGetParamString(g_CoreConfig, "SaveSRAMPath"));
-}
 
 void main_message(m64p_msg_level level, unsigned int corner, const char *format, ...)
 {
@@ -192,24 +152,7 @@ int main_set_core_defaults(void)
 #endif
     ConfigSetDefaultBool(g_CoreConfig, "NoCompiledJump", 0, "Disable compiled jump commands in dynamic recompiler (should be set to False) ");
     ConfigSetDefaultBool(g_CoreConfig, "DisableExtraMem", 0, "Disable 4MB expansion RAM pack. May be necessary for some games");
-    ConfigSetDefaultBool(g_CoreConfig, "AutoStateSlotIncrement", 0, "Increment the save state slot after each save operation");
     ConfigSetDefaultBool(g_CoreConfig, "EnableDebugger", 0, "Activate the R4300 debugger when ROM execution begins, if core was built with Debugger support");
-    ConfigSetDefaultInt(g_CoreConfig, "CurrentStateSlot", 0, "Save state slot (0-9) to use when saving/loading the emulator state");
-    ConfigSetDefaultString(g_CoreConfig, "ScreenshotPath", "", "Path to directory where screenshots are saved. If this is blank, the default value of ${UserConfigPath}/screenshot will be used");
-    ConfigSetDefaultString(g_CoreConfig, "SaveStatePath", "", "Path to directory where emulator save states (snapshots) are saved. If this is blank, the default value of ${UserConfigPath}/save will be used");
-    ConfigSetDefaultString(g_CoreConfig, "SaveSRAMPath", "", "Path to directory where SRAM/EEPROM data (in-game saves) are stored. If this is blank, the default value of ${UserConfigPath}/save will be used");
-    ConfigSetDefaultString(g_CoreConfig, "SharedDataPath", "", "Path to a directory to search when looking for shared data files");
-
-    /* handle upgrades */
-    if (bUpgrade)
-    {
-        if (fConfigParamsVersion < 1.01f)
-        {  // added separate SaveSRAMPath parameter in v1.01
-            const char *pccSaveStatePath = ConfigGetParamString(g_CoreConfig, "SaveStatePath");
-            if (pccSaveStatePath != NULL)
-                ConfigSetParameter(g_CoreConfig, "SaveSRAMPath", M64TYPE_STRING, pccSaveStatePath);
-        }
-    }
 
     if (bSaveConfig)
         ConfigSaveSection("Core");
@@ -742,8 +685,6 @@ m64p_error main_run(void)
     r4300emu = ConfigGetParamInt(g_CoreConfig, "R4300Emulator");
 
     /* set some other core parameters based on the config file values */
-    savestates_set_autoinc_slot(ConfigGetParamBool(g_CoreConfig, "AutoStateSlotIncrement"));
-    savestates_select_slot(ConfigGetParamInt(g_CoreConfig, "CurrentStateSlot"));
     no_compiled_jump = ConfigGetParamBool(g_CoreConfig, "NoCompiledJump");
 
     // initialize memory, and do byte-swapping if it's not been done yet

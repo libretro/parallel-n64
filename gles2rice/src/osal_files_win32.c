@@ -49,7 +49,6 @@ int osal_is_directory(const char* name)
     return (GetFileAttributes(DirName) & FILE_ATTRIBUTE_DIRECTORY);
 }
 
-#ifndef __LIBRETRO__ // Already in core.
 int osal_mkdirp(const char *dirpath, int mode)
 {
     struct _stat fileinfo;
@@ -88,7 +87,6 @@ int osal_mkdirp(const char *dirpath, int mode)
     free(currpath);        
     return 0;
 }
-#endif
 
 typedef struct {
     HANDLE hFind;

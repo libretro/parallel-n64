@@ -35,7 +35,6 @@
 
 #include "main/util.h"
 
-#include "osal/files.h"
 #include "osal/preproc.h"
 
 /* local types */
@@ -1444,47 +1443,32 @@ EXPORT const char * CALL ConfigGetParamString(m64p_handle ConfigSectionHandle, c
 /* ------------------------------------------------------ */
 /* OS Abstraction functions, exported outside of the Core */
 /* ------------------------------------------------------ */
+extern const char* retro_get_system_directory();
 
 EXPORT const char * CALL ConfigGetSharedDataFilepath(const char *filename)
 {
-    const char *configsharepath = NULL;
-    m64p_handle CoreHandle = NULL;
+  if (filename == NULL) return NULL;
 
-    /* check input parameter */
-    if (filename == NULL) return NULL;
+  static char configpath[PATH_MAX];
+  snprintf(configpath, PATH_MAX, "%s/%s", retro_get_system_directory(), filename);
 
-#ifdef __LIBRETRO__ // Shared path is the system dir
-    extern const char* retro_get_system_directory();
+  /* TODO: Return NULL if file does not exist */
 
-    static char configpath[PATH_MAX];
-    snprintf(configpath, PATH_MAX, "%s/%s", retro_get_system_directory(), filename);
-    return configpath;
-#else
-    /* try to get the SharedDataPath string variable in the Core configuration section */
-    if (ConfigOpenSection("Core", &CoreHandle) == M64ERR_SUCCESS)
-    {
-        configsharepath = ConfigGetParamString(CoreHandle, "SharedDataPath");
-    }
-
-    return osal_get_shared_filepath(filename, l_DataDirOverride, configsharepath);
-#endif
+  return configpath;
 }
 
 EXPORT const char * CALL ConfigGetUserConfigPath(void)
 {
-    if (l_ConfigDirOverride != NULL)
-        return l_ConfigDirOverride;
-    else
-        return osal_get_user_configpath();
+  return retro_get_system_directory();
 }
 
 EXPORT const char * CALL ConfigGetUserDataPath(void)
 {
-  return osal_get_user_datapath();
+  return retro_get_system_directory();
 }
 
 EXPORT const char * CALL ConfigGetUserCachePath(void)
 {
-  return osal_get_user_cachepath();
+  return retro_get_system_directory();
 }
 

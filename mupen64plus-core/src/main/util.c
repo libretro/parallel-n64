@@ -36,7 +36,6 @@
 
 #include "rom.h"
 #include "util.h"
-#include "osal/files.h"
 #include "osal/preproc.h"
 
 /**********************
