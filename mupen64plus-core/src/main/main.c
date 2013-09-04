@@ -319,16 +319,6 @@ m64p_error main_core_state_query(m64p_core_param param, int *rval)
             else
                 *rval = M64EMU_RUNNING;
             break;
-#ifndef __LIBRETRO__ // No VidExt
-        case M64CORE_VIDEO_MODE:
-            if (!VidExt_VideoRunning())
-                *rval = M64VIDEO_NONE;
-            else if (VidExt_InFullscreenMode())
-                *rval = M64VIDEO_FULLSCREEN;
-            else
-                *rval = M64VIDEO_WINDOWED;
-            break;
-#endif
         case M64CORE_SAVESTATE_SLOT:
             *rval = savestates_get_slot();
             break;
@@ -393,24 +383,6 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
                 return M64ERR_SUCCESS;
             }
             return M64ERR_INPUT_INVALID;
-#ifndef __LIBRETRO__ // No VidExt
-        case M64CORE_VIDEO_MODE:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            if (val == M64VIDEO_WINDOWED)
-            {
-                if (VidExt_InFullscreenMode())
-                    gfx.changeWindow();
-                return M64ERR_SUCCESS;
-            }
-            else if (val == M64VIDEO_FULLSCREEN)
-            {
-                if (!VidExt_InFullscreenMode())
-                    gfx.changeWindow();
-                return M64ERR_SUCCESS;
-            }
-            return M64ERR_INPUT_INVALID;
-#endif
         case M64CORE_SAVESTATE_SLOT:
             if (val < 0 || val > 9)
                 return M64ERR_INPUT_INVALID;
@@ -552,55 +524,7 @@ void new_frame(void)
 
 void new_vi(void)
 {
-#ifndef __LIBRETRO__ // Remove interframe delay
-    int Dif;
-    unsigned int CurrentFPSTime;
-    static unsigned int LastFPSTime = 0;
-    static unsigned int CounterTime = 0;
-    static unsigned int CalculatedTime ;
-    static int VI_Counter = 0;
 
-    double VILimitMilliseconds = 1000.0 / ROM_PARAMS.vilimit;
-    double AdjustedLimit = VILimitMilliseconds * 100.0 / l_SpeedFactor;  // adjust for selected emulator speed
-    int time;
-
-    start_section(IDLE_SECTION);
-    VI_Counter++;
-
-#ifdef DBG
-    if(g_DebuggerActive) DebuggerCallback(DEBUG_UI_VI, 0);
-#endif
-
-    if(LastFPSTime == 0)
-    {
-        LastFPSTime = CounterTime = SDL_GetTicks();
-        return;
-    }
-    CurrentFPSTime = SDL_GetTicks();
-    
-    Dif = CurrentFPSTime - LastFPSTime;
-    
-    if (Dif < AdjustedLimit) 
-    {
-        CalculatedTime = (unsigned int) (CounterTime + AdjustedLimit * VI_Counter);
-        time = (int)(CalculatedTime - CurrentFPSTime);
-        if (time > 0 && l_MainSpeedLimit)
-        {
-            DebugMessage(M64MSG_VERBOSE, "    new_vi(): Waiting %ims", time);
-            SDL_Delay(time);
-        }
-        CurrentFPSTime = CurrentFPSTime + time;
-    }
-
-    if (CurrentFPSTime - CounterTime >= 1000.0 ) 
-    {
-        CounterTime = SDL_GetTicks();
-        VI_Counter = 0 ;
-    }
-    
-    LastFPSTime = CurrentFPSTime ;
-    end_section(IDLE_SECTION);
-#endif
 }
 
 /*********************************************************************************************************

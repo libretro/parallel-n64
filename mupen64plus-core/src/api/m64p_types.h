@@ -33,22 +33,10 @@
 #endif
 
 /* DLL handles and function declaration specifiers */
-#if defined(__LIBRETRO__)
-  #define IMPORT
-  #define EXPORT
-  #define CALL
-  typedef void * m64p_dynlib_handle;
-#elif defined(WIN32)
-  #define IMPORT extern "C" __declspec(dllimport)
-  #define EXPORT __declspec(dllexport)
-  #define CALL   __cdecl
-  typedef HMODULE m64p_dynlib_handle;
-#else
-  #define IMPORT extern "C"
-  #define EXPORT __attribute__((visibility("default")))
-  #define CALL
-  typedef void * m64p_dynlib_handle;
-#endif
+#define IMPORT
+#define EXPORT
+#define CALL
+typedef void * m64p_dynlib_handle;
 
 /* ----------------------------------------- */
 /* Structures and Types for Core library API */
@@ -127,7 +115,6 @@ typedef enum {
 
 typedef enum {
   M64CORE_EMU_STATE = 1,
-  M64CORE_VIDEO_MODE,
   M64CORE_SAVESTATE_SLOT,
   M64CORE_SPEED_FACTOR,
   M64CORE_SPEED_LIMITER,
