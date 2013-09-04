@@ -181,22 +181,6 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             if (ParamPtr == NULL)
                 return M64ERR_INPUT_ASSERT;
             return main_core_state_set((m64p_core_param) ParamInt, *((int *)ParamPtr));
-        case M64CMD_STATE_LOAD:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            main_state_load((char *) ParamPtr);
-            return M64ERR_SUCCESS;
-        case M64CMD_STATE_SAVE:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            if (ParamPtr != NULL && (ParamInt < 1 || ParamInt > 3))
-                return M64ERR_INPUT_INVALID;
-            main_state_save(ParamInt, (char *) ParamPtr);
-            return M64ERR_SUCCESS;
-        case M64CMD_STATE_SET_SLOT:
-            if (ParamInt < 0 || ParamInt > 9)
-                return M64ERR_INPUT_INVALID;
-            return main_core_state_set(M64CORE_SAVESTATE_SLOT, ParamInt);
         case M64CMD_SET_FRAME_CALLBACK:
             g_FrameCallback = (m64p_frame_callback) ParamPtr;
             return M64ERR_SUCCESS;

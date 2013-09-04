@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <string.h>
 
 #if !defined(WIN32)
 #include <sys/mman.h>

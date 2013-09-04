@@ -44,15 +44,9 @@ void main_stop(void);
 void main_toggle_pause(void);
 void main_advance_one(void);
 
-void main_state_set_slot(int slot);
-void main_state_inc_slot(void);
-void main_state_load(const char *filename);
-void main_state_save(int format, const char *filename);
-
 m64p_error main_core_state_query(m64p_core_param param, int *rval);
 m64p_error main_core_state_set(m64p_core_param param, int val);
 
-m64p_error main_get_screen_size(int *width, int *height);
 m64p_error main_read_screen(void *pixels, int bFront);
 
 m64p_error main_reset(int do_hard_reset);

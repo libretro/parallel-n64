@@ -101,7 +101,7 @@ static void prefetch(void);
 
 // two functions are defined from the macros above but never used
 // these prototype declarations will prevent a warning
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__clang__)
   void JR_IDLE(void) __attribute__((used));
   void JALR_IDLE(void) __attribute__((used));
 #endif

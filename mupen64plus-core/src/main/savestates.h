@@ -58,8 +58,8 @@ void savestates_inc_slot(void);
 #define savestates_set_job(x, y, z)
 #define savestates_init()
 #define savestates_deinit()
-#define savestates_load() 0
-#define savestates_save() 0
+#define savestates_load()
+#define savestates_save()
 #define savestates_select_slot(x)
 #define savestates_get_slot() 0
 #define savestates_set_autoinc_slot(x)

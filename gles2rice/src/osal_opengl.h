@@ -60,6 +60,7 @@
 #define VS_TEXCOORD1                        3
 
 // Constant substitutions
+#ifdef GLES
 #define GL_CLAMP                            GL_CLAMP_TO_EDGE
 #define GL_MAX_TEXTURE_UNITS_ARB            GL_MAX_TEXTURE_IMAGE_UNITS
 #define GL_MIRRORED_REPEAT_ARB              GL_MIRRORED_REPEAT
@@ -77,6 +78,7 @@
 #define GL_INTERPOLATE_ARB                  0x8575
 #define GL_CONSTANT_ARB                     0x8576
 #define GL_PREVIOUS_ARB                     0x8578
+#endif
 
 // Function substitutions
 #ifndef __LIBRETRO__

@@ -174,50 +174,6 @@ void main_advance_one(void)
     StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
 }
 
-void main_state_set_slot(int slot)
-{
-    if (slot < 0 || slot > 9)
-    {
-        DebugMessage(M64MSG_WARNING, "Invalid savestate slot '%i' in main_state_set_slot().  Using 0", slot);
-        slot = 0;
-    }
-
-    savestates_select_slot(slot);
-    StateChanged(M64CORE_SAVESTATE_SLOT, slot);
-}
-
-void main_state_inc_slot(void)
-{
-    savestates_inc_slot();
-}
-
-static unsigned char StopRumble[64] = {0x23, 0x01, 0x03, 0xc0, 0x1b, 0x00, 0x00, 0x00,
-                                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                       0, 0, 0, 0, 0, 0, 0, 0};
-
-void main_state_load(const char *filename)
-{
-    input.controllerCommand(0, StopRumble);
-    input.controllerCommand(1, StopRumble);
-    input.controllerCommand(2, StopRumble);
-    input.controllerCommand(3, StopRumble);
-
-    if (filename == NULL) // Save to slot
-        savestates_set_job(savestates_job_load, savestates_type_m64p, NULL);
-    else
-        savestates_set_job(savestates_job_load, savestates_type_unknown, filename);
-}
-
-void main_state_save(int format, const char *filename)
-{
-    if (filename == NULL) // Save to slot
-        savestates_set_job(savestates_job_save, savestates_type_m64p, NULL);
-    else // Save to file
-        savestates_set_job(savestates_job_save, (savestates_type)format, filename);
-}
-
 m64p_error main_core_state_query(m64p_core_param param, int *rval)
 {
     switch (param)
@@ -230,22 +186,6 @@ m64p_error main_core_state_query(m64p_core_param param, int *rval)
             else
                 *rval = M64EMU_RUNNING;
             break;
-        case M64CORE_SAVESTATE_SLOT:
-            *rval = savestates_get_slot();
-            break;
-        case M64CORE_VIDEO_SIZE:
-        {
-            int width, height;
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            main_get_screen_size(&width, &height);
-            *rval = (width << 16) + height;
-            break;
-        }
-        // these are only used for callbacks; they cannot be queried or set
-        case M64CORE_STATE_LOADCOMPLETE:
-        case M64CORE_STATE_SAVECOMPLETE:
-            return M64ERR_INPUT_INVALID;
         default:
             return M64ERR_INPUT_INVALID;
     }
@@ -279,38 +219,9 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
                 return M64ERR_SUCCESS;
             }
             return M64ERR_INPUT_INVALID;
-        case M64CORE_SAVESTATE_SLOT:
-            if (val < 0 || val > 9)
-                return M64ERR_INPUT_INVALID;
-            savestates_select_slot(val);
-            return M64ERR_SUCCESS;
-        case M64CORE_VIDEO_SIZE:
-        {
-            // the front-end app is telling us that the user has resized the video output frame, and so
-            // we should try to update the video plugin accordingly.  First, check state
-            int width, height;
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            width = (val >> 16) & 0xffff;
-            height = val & 0xffff;
-            // then call the video plugin.  if the video plugin supports resizing, it will resize its viewport and call
-            // VidExt_ResizeWindow to update the window manager handling our opengl output window
-            gfx.resizeVideoOutput(width, height);
-            return M64ERR_SUCCESS;
-        }
-        // these are only used for callbacks; they cannot be queried or set
-        case M64CORE_STATE_LOADCOMPLETE:
-        case M64CORE_STATE_SAVECOMPLETE:
-            return M64ERR_INPUT_INVALID;
         default:
             return M64ERR_INPUT_INVALID;
     }
-}
-
-m64p_error main_get_screen_size(int *width, int *height)
-{
-    gfx.readScreen(NULL, width, height, 0);
-    return M64ERR_SUCCESS;
 }
 
 m64p_error main_read_screen(void *pixels, int bFront)

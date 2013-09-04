@@ -76,7 +76,6 @@ static void EmptyFunc(void)
         X##ViWidthChanged, \
         X##ReadScreen2, \
         X##SetRenderingCallback, \
-        EmptyFunc, \
         X##FBRead, \
         X##FBWrite, \
         X##FBGetFrameBufferInfo \
