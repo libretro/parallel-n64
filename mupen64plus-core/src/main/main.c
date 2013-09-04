@@ -60,10 +60,6 @@
 #include "debugger/debugger.h"
 #endif
 
-#ifdef WITH_LIRC
-#include "lirc.h"
-#endif //WITH_LIRC
-
 /* version number for Core config section */
 #define CONFIG_PARAM_VERSION 1.01
 
@@ -659,10 +655,6 @@ m64p_error main_run(void)
     // setup rendering callback from video plugin to the core, for screenshots and On-Screen-Display
     gfx.setRenderingCallback(video_plugin_render_callback);
 
-#ifdef WITH_LIRC
-    lircStart();
-#endif // WITH_LIRC
-
 #ifdef DBG
     if (ConfigGetParamBool(g_CoreConfig, "EnableDebugger"))
         init_debugger();
@@ -677,10 +669,6 @@ m64p_error main_run(void)
     r4300_execute();
 
     /* now begin to shut down */
-#ifdef WITH_LIRC
-    lircStop();
-#endif // WITH_LIRC
-
 #ifdef DBG
     if (g_DebuggerActive)
         destroy_debugger();

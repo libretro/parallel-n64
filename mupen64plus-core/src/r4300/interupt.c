@@ -42,10 +42,6 @@
 #include "reset.h"
 #include "new_dynarec/new_dynarec.h"
 
-#ifdef WITH_LIRC
-#include "main/lirc.h"
-#endif
-
 unsigned int next_vi;
 int vi_field=0;
 static int vi_counter=0;
@@ -379,29 +375,9 @@ void gen_interupt(void)
                 cheat_apply_cheats(ENTRY_VI);
             }
             gfx.updateScreen();
-#ifdef WITH_LIRC
-            lircCheckInput();
-#endif
             SDL_PumpEvents();
 
             refresh_stat();
-
-#ifndef __LIBRETRO__ // No rompause support
-            // if paused, poll for input events
-            if(rompause)
-            {
-                osd_render();  // draw Paused message in case gfx.updateScreen didn't do it
-                VidExt_GL_SwapBuffers();
-                while(rompause)
-                {
-                    SDL_Delay(10);
-                    SDL_PumpEvents();
-#ifdef WITH_LIRC
-                    lircCheckInput();
-#endif //WITH_LIRC
-                }
-            }
-#endif // __LIBRETRO__
 
             new_vi();
             if (vi_register.vi_v_sync == 0) vi_register.vi_delay = 500000;
@@ -438,9 +414,6 @@ void gen_interupt(void)
             break;
     
         case SI_INT:
-#ifdef WITH_LIRC
-            lircCheckInput();
-#endif //WITH_LIRC
             SDL_PumpEvents();
             PIF_RAMb[0x3F] = 0x0;
             remove_interupt_event();
