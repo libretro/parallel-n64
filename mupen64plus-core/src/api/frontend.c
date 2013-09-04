@@ -38,7 +38,6 @@
 
 #include "main/main.h"
 #include "main/rom.h"
-#include "main/savestates.h"
 #include "main/version.h"
 #include "main/util.h"
 #include "plugin/plugin.h"
@@ -67,8 +66,6 @@ EXPORT m64p_error CALL CoreStartup(int APIVersion, const char *ConfigPath, const
         return M64ERR_INCOMPATIBLE;
     }
 
-    savestates_init();
-
     /* next, start up the configuration handling code by loading and parsing the config file */
     if (ConfigInit(ConfigPath, DataPath) != M64ERR_SUCCESS)
         return M64ERR_INTERNAL;
@@ -95,7 +92,6 @@ EXPORT m64p_error CALL CoreShutdown(void)
     /* close down some core sub-systems */
     romdatabase_close();
     ConfigShutdown();
-    savestates_deinit();
 
     l_CoreInit = 0;
     return M64ERR_SUCCESS;

@@ -25,46 +25,9 @@
 #ifndef __SAVESTAVES_H__
 #define __SAVESTAVES_H__
 
-typedef enum _savestates_job
-{
-    savestates_job_nothing,
-    savestates_job_load,
-    savestates_job_save
-} savestates_job;
+int savestates_load_m64p(const unsigned char *data, size_t size);
+int savestates_save_m64p(unsigned char *data, size_t size);
 
-typedef enum _savestates_type
-{
-    savestates_type_unknown,
-    savestates_type_m64p,
-    savestates_type_pj64_zip,
-    savestates_type_pj64_unc
-} savestates_type;
-
-#ifndef __LIBRETRO__ // No Savestates
-savestates_job savestates_get_job(void);
-void savestates_set_job(savestates_job j, savestates_type t, const char *fn);
-void savestates_init(void);
-void savestates_deinit(void);
-
-int savestates_load(void);
-int savestates_save(void);
-
-void savestates_select_slot(unsigned int s);
-unsigned int savestates_get_slot(void);
-void savestates_set_autoinc_slot(int b);
-void savestates_inc_slot(void);
-#else
-#define savestates_get_job() savestates_job_nothing
-#define savestates_set_job(x, y, z)
-#define savestates_init()
-#define savestates_deinit()
-#define savestates_load()
-#define savestates_save()
-#define savestates_select_slot(x)
-#define savestates_get_slot() 0
-#define savestates_set_autoinc_slot(x)
-#define savestates_inc_slot()
-#endif
 
 #endif /* __SAVESTAVES_H__ */
 

@@ -13,6 +13,7 @@
 #include "r4300/r4300.h"
 #include "memory/memory.h"
 #include "main/version.h"
+#include "main/savestates.h"
 
 static retro_video_refresh_t video_cb = NULL;
 static retro_input_poll_t poll_cb = NULL;
@@ -339,17 +340,29 @@ unsigned retro_get_region (void)
     return RETRO_REGION_NTSC;
 }
 
+size_t retro_serialize_size (void)
+{
+    return 16788288 + 1024; // < 16MB and some change... ouch
+}
+
+bool retro_serialize(void *data, size_t size)
+{
+//    return savestates_save_m64p(data, size);
+    return false;
+}
+
+bool retro_unserialize(const void * data, size_t size)
+{
+//    return savestates_set_job(savestates_job_load);
+    return false;
+}
+
 
 
 // Stubs
 unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info) { return false; }
-
-size_t retro_serialize_size (void) { return 0; }
-bool retro_serialize(void *data, size_t size) { return false; }
-bool retro_unserialize(const void * data, size_t size) { return false; }
-
 
 
 void retro_set_controller_port_device(unsigned in_port, unsigned device) { }

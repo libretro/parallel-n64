@@ -122,6 +122,7 @@ CFILES += \
     $(COREDIR)/src/main/main.c \
     $(COREDIR)/src/main/md5.c \
     $(COREDIR)/src/main/rom.c \
+    $(COREDIR)/src/main/savestates.c \
     $(COREDIR)/src/main/util.c \
     $(COREDIR)/src/memory/dma.c \
     $(COREDIR)/src/memory/flashram.c \
@@ -141,7 +142,7 @@ CFILES += \
 
 #   $(COREDIR)/src/api/debugger.c \
 #   $(COREDIR)/src/main/ini_reader.c \
-#   $(COREDIR)/src/main/savestates.c \
+#   
 
 ### DYNAREC ###
 ifdef WITH_DYNAREC

@@ -324,11 +324,11 @@ void gen_interupt(void)
 
     if (!interupt_unsafe_state)
     {
-        if (savestates_get_job() == savestates_job_load)
+/*        if (savestates_get_job() == savestates_job_load)
         {
-            savestates_load();
+            savestates_load_m64p(testate, sizeof(testate));
             return;
-        }
+        }*/
 
         if (reset_hard_job)
         {
@@ -556,11 +556,12 @@ void gen_interupt(void)
 
     if (!interupt_unsafe_state)
     {
-        if (savestates_get_job() == savestates_job_save)
+/*        if (savestates_get_job() == savestates_job_save)
         {
-            savestates_save();
+            savestates_save_m64p(testate, sizeof(testate));
             return;
         }
+*/
     }
 }
 
