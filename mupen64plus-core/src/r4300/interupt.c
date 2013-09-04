@@ -33,7 +33,6 @@
 #include "main/main.h"
 #include "main/savestates.h"
 #include "main/cheat.h"
-#include "osd/osd.h"
 #include "plugin/plugin.h"
 
 #include "interupt.h"

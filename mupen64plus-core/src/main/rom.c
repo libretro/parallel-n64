@@ -38,7 +38,6 @@
 
 #include "memory/memory.h"
 #include "osal/preproc.h"
-#include "osd/osd.h"
 
 #define DEFAULT 16
 

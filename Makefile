@@ -146,8 +146,6 @@ CFILES += \
 #   $(COREDIR)/src/main/savestates.c \
 #   $(COREDIR)/src/osal/dynamiclib_win32.c \
 #   $(COREDIR)/src/osal/files_win32.c \
-#   $(COREDIR)/src/osd/osd.cpp \
-#   $(COREDIR)/src/osd/screenshot.cpp \
 #   $(COREDIR)/src/plugin/dummy_audio.c \
 #   $(COREDIR)/src/plugin/dummy_rsp.c \
 #   $(COREDIR)/src/plugin/dummy_input.c \

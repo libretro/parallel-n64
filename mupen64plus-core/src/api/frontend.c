@@ -45,7 +45,6 @@
 #include "main/version.h"
 #include "main/util.h"
 #include "main/workqueue.h"
-#include "osd/screenshot.h"
 #include "plugin/plugin.h"
 
 /* some local state variables */
@@ -133,7 +132,6 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             if (rval == M64ERR_SUCCESS)
             {
                 l_ROMOpen = 1;
-                ScreenshotRomOpen();
                 cheat_init();
             }
             return rval;
