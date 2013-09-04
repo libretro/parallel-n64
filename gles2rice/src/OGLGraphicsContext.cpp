@@ -397,10 +397,7 @@ void COGLGraphicsContext::Clear(ClearFlag dwFlags, uint32 color, float depth)
 }
 
 #ifdef __LIBRETRO__
-extern "C"
-{
-    void retro_n64_video_flipped();
-}
+extern "C" int retro_return(bool just_flipping);
 #endif
 
 void COGLGraphicsContext::UpdateFrame(bool swaponly)
@@ -461,11 +458,7 @@ void COGLGraphicsContext::UpdateFrame(bool swaponly)
    if(renderCallback)
        (*renderCallback)(status.bScreenIsDrawn);
 
-#ifndef __LIBRETRO__
-   CoreVideo_GL_SwapBuffers();
-#else
-   retro_n64_video_flipped();
-#endif
+   retro_return(true);
    
    /*if(options.bShowFPS)
      {

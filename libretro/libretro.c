@@ -26,6 +26,8 @@ static cothread_t main_thread;
 static cothread_t emulator_thread;
 static bool emu_thread_has_run = false; // < This is used to ensure the core_gl_context_reset
                                         //   function doesn't try to reinit graphics before needed
+static bool flip_only;
+static savestates_job state_job_done;
 
 static const rarch_resampler_t *resampler;
 static void *resampler_data;
@@ -95,6 +97,45 @@ load_fail:
 
 //
 
+const char* retro_get_system_directory()
+{
+    const char* dir;
+    environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir);
+
+    return dir ? dir : ".";
+}
+
+static void core_gl_context_reset()
+{
+   glsym_init_procs(render_iface.get_proc_address);
+
+   extern int InitGfx ();
+   if (gfx_plugin == GFX_RICE && emu_thread_has_run)
+      InitGfx();
+}
+
+GLuint retro_get_fbo_id()
+{
+    return render_iface.get_current_framebuffer();
+}
+
+int retro_return(bool just_flipping)
+{
+   if (!stop)
+   {
+      state_job_done = savestates_job_nothing;
+      flip_only = just_flipping;
+
+      co_switch(main_thread);
+
+      return state_job_done;
+   }
+
+   return 0;
+}
+
+//
+
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
 void retro_set_audio_sample(retro_audio_sample_t cb)   { }
 void retro_set_audio_sample_batch(retro_audio_sample_batch_t cb) { audio_batch_cb = cb; }
@@ -126,38 +167,6 @@ void retro_set_environment(retro_environment_t cb)
    cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
 }
 
-//
-
-const char* retro_get_system_directory()
-{
-    const char* dir;
-    environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir);
-
-    return dir ? dir : ".";
-}
-
-static void core_gl_context_reset()
-{
-   glsym_init_procs(render_iface.get_proc_address);
-
-   extern int InitGfx ();
-   if (gfx_plugin == GFX_RICE && emu_thread_has_run)
-      InitGfx();
-}
-
-GLuint retro_get_fbo_id()
-{
-    return render_iface.get_current_framebuffer();
-}
-
-void retro_n64_video_flipped()
-{
-   if (!stop)
-      co_switch(main_thread);
-}
-
-//
-
 void retro_get_system_info(struct retro_system_info *info)
 {
    info->library_name = "Mupen64plus";
@@ -186,6 +195,12 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    info->geometry.aspect_ratio = 0.0;
    info->timing.fps = 60.0;                // TODO: NTSC/PAL + Actual timing 
    info->timing.sample_rate = 44100.0;
+}
+
+unsigned retro_get_region (void)
+{
+    // TODO
+    return RETRO_REGION_NTSC;
 }
 
 void retro_init(void)
@@ -311,11 +326,16 @@ void retro_run (void)
 
     poll_cb();
 
+run_again:
     sglEnter();
     co_switch(emulator_thread);
     sglExit();
 
-    video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+    if (flip_only)
+    {
+        video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+        goto run_again;
+    }
 }
 
 void retro_reset (void)
@@ -334,11 +354,6 @@ size_t retro_get_memory_size(unsigned type)
 }
 
 
-unsigned retro_get_region (void)
-{
-    // TODO
-    return RETRO_REGION_NTSC;
-}
 
 size_t retro_serialize_size (void)
 {
@@ -347,13 +362,23 @@ size_t retro_serialize_size (void)
 
 bool retro_serialize(void *data, size_t size)
 {
-//    return savestates_save_m64p(data, size);
+    if (savestates_save_m64p(data, size))
+    {
+        state_job_done = savestates_job_save;
+        return true;
+    }
+
     return false;
 }
 
 bool retro_unserialize(const void * data, size_t size)
 {
-//    return savestates_set_job(savestates_job_load);
+    if (savestates_load_m64p(data, size))
+    {
+        state_job_done = savestates_job_load;
+        return true;
+    }
+
     return false;
 }
 
@@ -363,7 +388,6 @@ bool retro_unserialize(const void * data, size_t size)
 unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info) { return false; }
-
 
 void retro_set_controller_port_device(unsigned in_port, unsigned device) { }
 

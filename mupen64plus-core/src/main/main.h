@@ -34,7 +34,6 @@ extern int g_EmulatorRunning;
 extern m64p_frame_callback g_FrameCallback;
 
 void new_frame(void);
-void new_vi(void);
 
 int  main_set_core_defaults(void);
 void main_message(m64p_msg_level level, unsigned int osd_corner, const char *format, ...);

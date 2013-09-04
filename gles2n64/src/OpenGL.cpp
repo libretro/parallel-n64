@@ -132,8 +132,8 @@ void OGL_UpdateScale()
     OGL.scaleY = (float)config.screen.height / (float)VI.height;
 }
 
-#ifdef __LIBRETRO__ // void retro_n64_video_flipped()
-extern "C" void retro_n64_video_flipped();
+#ifdef __LIBRETRO__ // retro_return
+extern "C" int retro_return(bool just_flipping);
 #endif
 
 bool OGL_Start()
@@ -926,7 +926,7 @@ void OGL_SwapBuffers()
     //OGL_DrawTriangles();
     scProgramChanged = 0;
 
-    retro_n64_video_flipped();
+    retro_return(true);
 
     OGL.screenUpdate = false;
 

@@ -43,7 +43,7 @@ extern ptr_VidExt_GL_SwapBuffers        CoreVideo_GL_SwapBuffers;
 
 #else
 
-extern "C" void retro_n64_video_flipped();
+extern "C" int retro_return(bool just_flipping);
 
 #define CoreVideo_Init(...)
 #define CoreVideo_Quit(...)
@@ -53,7 +53,7 @@ extern "C" void retro_n64_video_flipped();
 #define CoreVideo_ToggleFullScreen(...)
 #define CoreVideo_GL_GetProcAddress(...)
 #define CoreVideo_GL_SetAttribute(...)
-#define CoreVideo_GL_SwapBuffers(...) retro_n64_video_flipped()
+#define CoreVideo_GL_SwapBuffers(...) retro_return(true)
 
 #endif
 

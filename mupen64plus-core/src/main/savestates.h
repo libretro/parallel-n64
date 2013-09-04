@@ -25,6 +25,13 @@
 #ifndef __SAVESTAVES_H__
 #define __SAVESTAVES_H__
 
+typedef enum _savestates_job
+{
+    savestates_job_nothing,
+    savestates_job_load,
+    savestates_job_save
+} savestates_job;
+
 int savestates_load_m64p(const unsigned char *data, size_t size);
 int savestates_save_m64p(unsigned char *data, size_t size);
 

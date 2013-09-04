@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define M64P_CORE_PROTOTYPES 1
 #include "api/m64p_types.h"
@@ -39,6 +40,8 @@
 #include "exception.h"
 #include "reset.h"
 #include "new_dynarec/new_dynarec.h"
+
+extern int retro_return(bool just_flipping);
 
 unsigned int next_vi;
 int vi_field=0;
@@ -324,12 +327,6 @@ void gen_interupt(void)
 
     if (!interupt_unsafe_state)
     {
-/*        if (savestates_get_job() == savestates_job_load)
-        {
-            savestates_load_m64p(testate, sizeof(testate));
-            return;
-        }*/
-
         if (reset_hard_job)
         {
             reset_hard();
@@ -362,11 +359,15 @@ void gen_interupt(void)
             return;
             break;
         case VI_INT:
+            if (retro_return(false) != savestates_job_nothing)
+            {
+                gen_interupt();
+                return;
+            }
+
             gfx.updateScreen();
 
             refresh_stat();
-
-            new_vi();
             if (vi_register.vi_v_sync == 0) vi_register.vi_delay = 500000;
             else vi_register.vi_delay = ((vi_register.vi_v_sync + 1)*1500);
             next_vi += vi_register.vi_delay;
@@ -553,15 +554,5 @@ void gen_interupt(void)
 #else
     exception_general();
 #endif
-
-    if (!interupt_unsafe_state)
-    {
-/*        if (savestates_get_job() == savestates_job_save)
-        {
-            savestates_save_m64p(testate, sizeof(testate));
-            return;
-        }
-*/
-    }
 }
 
