@@ -21,6 +21,7 @@ LIBRETRODIR = ../
 # libretro
 CFILES += $(LIBRETRODIR)/libretro.c $(LIBRETRODIR)/glsym.c $(LIBRETRODIR)/libco/libco.c $(LIBRETRODIR)/opengl_state_machine.c \
           $(LIBRETRODIR)/audio_plugin.c $(LIBRETRODIR)/input_plugin.c $(LIBRETRODIR)/resampler.c $(LIBRETRODIR)/sinc.c $(LIBRETRODIR)/utils.c
+ASMFILES += $(LIBRETRODIR)/libco/armeabi_asm.S
 
 # RSP Plugin
 RSPDIR = ../../mupen64plus-rsp-hle
@@ -68,6 +69,7 @@ CFILES += \
     $(COREDIR)/src/main/main.c \
     $(COREDIR)/src/main/md5.c \
     $(COREDIR)/src/main/rom.c \
+    $(COREDIR)/src/main/savestates.c \
     $(COREDIR)/src/main/util.c \
     $(COREDIR)/src/memory/dma.c \
     $(COREDIR)/src/memory/flashram.c \
@@ -75,7 +77,6 @@ CFILES += \
     $(COREDIR)/src/memory/n64_cic_nus_6105.c \
     $(COREDIR)/src/memory/pif.c \
     $(COREDIR)/src/memory/tlb.c \
-    $(COREDIR)/src/osal/files_$(PLATFORM_EXT).c \
     $(COREDIR)/src/plugin/plugin.c \
     $(COREDIR)/src/r4300/empty_dynarec.c \
     $(COREDIR)/src/r4300/profile.c \
@@ -86,7 +87,7 @@ CFILES += \
     $(COREDIR)/src/r4300/interupt.c \
     $(COREDIR)/src/r4300/r4300.c
 
-LOCAL_SRC_FILES += $(CXXFILES) $(CFILES)
+LOCAL_SRC_FILES += $(CXXFILES) $(CFILES) $(ASMFILES)
 
 LOCAL_CFLAGS += -O2 -Wall -ffast-math -fexceptions -DGLES -DANDROID -DNOSSE -DNO_ASM -D__LIBRETRO__ -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -std=gnu99
 LOCAL_CXXFLAGS += -O2 -Wall -ffast-math -fexceptions -DGLES -DANDROID -DNOSSE -DNO_ASM -D__LIBRETRO__ -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE

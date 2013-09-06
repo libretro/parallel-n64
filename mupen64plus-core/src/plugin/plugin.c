@@ -80,9 +80,11 @@ static void EmptyFunc(void)
         X##FBWrite, \
         X##FBGetFrameBufferInfo \
     }
-
+// Hack to get Android compiling, will add in Rice and gln64 in future commits
+#ifndef __ANDROID__
 DEFINE_GFX(rice);
 DEFINE_GFX(gln64);
+#endif // __ANDROID__
 DEFINE_GFX(glide64);
 
 gfx_plugin_functions gfx;
@@ -282,12 +284,17 @@ static m64p_error plugin_start_rsp(void)
 /* global functions */
 void plugin_connect_all(enum gfx_plugin_type gfx_plugin)
 {
+    // Part 2 of hack to get Android compiling
+    #ifndef __ANDROID__
     switch (gfx_plugin)
     {
         case GFX_RICE:  gfx = gfx_rice; break;
         case GFX_GLN64: gfx = gfx_gln64; break;
         default:        gfx = gfx_glide64; break;
     }
+    #else
+        gfx = gfx_glide64;
+    #endif // __ANDROID__
 
     plugin_start_gfx();
     plugin_start_audio();
