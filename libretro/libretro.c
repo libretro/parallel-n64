@@ -168,7 +168,7 @@ void retro_set_environment(retro_environment_t cb)
       { "mupen64-filtering",
          "Texture filtering; automatic|bilinear|nearest" },
       { "mupen64-dupe",
-         "Frame duping; yes|no" },
+         "Frame duping; no|yes" },
       { NULL, NULL },
    };
 
