@@ -72,10 +72,13 @@ static void EmuThreadFunction()
     environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
     gfx_plugin = GFX_GLIDE64;
-    if (var.value && strcmp(var.value, "rice") == 0)
-        gfx_plugin = GFX_RICE;
-    else if(var.value && strcmp(var.value, "gln64") == 0)
-        gfx_plugin = GFX_GLN64;
+    if (var.value)
+    {
+       if (var.value && strcmp(var.value, "rice") == 0)
+          gfx_plugin = GFX_RICE;
+       else if(var.value && strcmp(var.value, "gln64") == 0)
+          gfx_plugin = GFX_GLN64;
+    }
 
     plugin_connect_all(gfx_plugin);
 
@@ -164,6 +167,8 @@ void retro_set_environment(retro_environment_t cb)
          "Graphics Resolution; 640x480|1280x960|320x240" },
       { "mupen64-filtering",
          "Texture filtering; automatic|bilinear|nearest" },
+      { "mupen64-dupe",
+         "Frame duping; yes|no" },
       { NULL, NULL },
    };
 
@@ -183,12 +188,15 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 {
    // TODO
    struct retro_variable var = { "mupen64-screensize", 0 };
-   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
-
-   if (sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
+   screen_width = 640;
+   screen_height = 480;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-      screen_width = 640;
-      screen_height = 480;
+      if (sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
+      {
+         screen_width = 640;
+         screen_height = 480;
+      }
    }
 
    info->geometry.base_width = screen_width;
@@ -234,6 +242,7 @@ void retro_deinit(void)
 }
 
 unsigned retro_filtering = 0;
+static bool frame_dupe = true;
 
 void update_variables(void)
 {
@@ -244,9 +253,8 @@ void update_variables(void)
       var.key = "mupen64-filtering";
       var.value = NULL;
 
-      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var))
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
       {
-
          if (strcmp(var.value, "automatic") == 0)
             retro_filtering = 0;
          else if (strcmp(var.value, "bilinear") == 0)
@@ -254,6 +262,15 @@ void update_variables(void)
          else if (strcmp(var.value, "nearest") == 0)
             retro_filtering = 2;
       }
+   }
+
+   struct retro_variable var = { "mupen64-dupe" };
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "yes"))
+         frame_dupe = true;
+      else if (!strcmp(var.value, "no"))
+         frame_dupe = false;
    }
 }
 
@@ -343,7 +360,7 @@ run_again:
         goto run_again;
     }
 
-    if (!pushed_frame) // Dupe.
+    if (!pushed_frame && frame_dupe) // Dupe. Not duping violates libretro API, consider it a speedhack.
         video_cb(NULL, screen_width, screen_height, 0);
 }
 
