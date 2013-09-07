@@ -5,12 +5,28 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := retro
 
 ifeq ($(TARGET_ARCH),arm)
-LOCAL_CFLAGS += -DANDROID_ARM
+LOCAL_CFLAGS += -DANDROID_ARM -DDYNAREC -DNEW_DYNAREC=3
 LOCAL_ARM_MODE := arm
+CFILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c
+ASMFILES += $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
 endif
 
 ifeq ($(TARGET_ARCH),x86)
-LOCAL_CFLAGS += -DANDROID_X86
+LOCAL_CFLAGS += -DANDROID_X86 -DDYNAREC
+CFILES += $(COREDIR)/src/r4300/x86/assemble.c \
+          $(COREDIR)/src/r4300/x86/gbc.c \
+          $(COREDIR)/src/r4300/x86/gcop0.c \
+          $(COREDIR)/src/r4300/x86/gcop1.c \
+          $(COREDIR)/src/r4300/x86/gcop1_d.c \
+          $(COREDIR)/src/r4300/x86/gcop1_l.c \
+          $(COREDIR)/src/r4300/x86/gcop1_s.c \
+          $(COREDIR)/src/r4300/x86/gcop1_w.c \
+          $(COREDIR)/src/r4300/x86/gr4300.c \
+          $(COREDIR)/src/r4300/x86/gregimm.c \
+          $(COREDIR)/src/r4300/x86/gspecial.c \
+          $(COREDIR)/src/r4300/x86/gtlb.c \
+          $(COREDIR)/src/r4300/x86/regcache.c \
+          $(COREDIR)/src/r4300/x86/rjump.c
 endif
 
 ifeq ($(TARGET_ARCH),mips)
