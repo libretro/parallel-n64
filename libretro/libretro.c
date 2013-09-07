@@ -119,6 +119,8 @@ GLuint retro_get_fbo_id()
     return render_iface.get_current_framebuffer();
 }
 
+void vbo_draw();
+
 int retro_return(bool just_flipping)
 {
    if (!stop)
@@ -126,6 +128,7 @@ int retro_return(bool just_flipping)
       state_job_done = savestates_job_nothing;
       flip_only = just_flipping;
 
+      vbo_draw();
       co_switch(main_thread);
 
       return state_job_done;
