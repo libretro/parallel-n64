@@ -320,9 +320,11 @@ void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
 }
 
 unsigned int FAKE_SDL_TICKS;
+static bool pushed_frame;
 void retro_run (void)
 {
     FAKE_SDL_TICKS += 16;
+    pushed_frame = false;
 
     poll_cb();
 
@@ -334,8 +336,12 @@ run_again:
     if (flip_only)
     {
         video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+        pushed_frame = true;
         goto run_again;
     }
+
+    if (!pushed_frame) // Dupe.
+        video_cb(NULL, screen_width, screen_height, 0);
 }
 
 void retro_reset (void)
