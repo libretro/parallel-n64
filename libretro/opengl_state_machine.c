@@ -356,10 +356,9 @@ void sglBindTextureGlide(GLenum target, GLuint texture)
     vbo_draw();
     assert(target == GL_TEXTURE_2D);
 
-    texture += glide_texture_offset;
-
     if (texture)
     {
+       texture += glide_texture_offset;
        GLuint tex = find_tex_from_address(texture);
        if (!tex)
           tex = texture;
