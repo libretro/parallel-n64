@@ -71,13 +71,13 @@ static void EmuThreadFunction()
     struct retro_variable var = { "mupen64-gfxplugin", 0 };
     environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
-    gfx_plugin = GFX_GLIDE64;
+    gfx_plugin = GFX_GLN64;
     if (var.value)
     {
        if (var.value && strcmp(var.value, "rice") == 0)
           gfx_plugin = GFX_RICE;
-       else if(var.value && strcmp(var.value, "gln64") == 0)
-          gfx_plugin = GFX_GLN64;
+       else if(var.value && strcmp(var.value, "glide64") == 0)
+          gfx_plugin = GFX_GLIDE64;
     }
 
     plugin_connect_all(gfx_plugin);
@@ -162,7 +162,7 @@ void retro_set_environment(retro_environment_t cb)
       { "mupen64-disableexpmem",
          "Disable Expansion RAM; no|yes" },
       { "mupen64-gfxplugin",
-         "Graphics Plugin; glide64|rice|gln64" },
+         "Graphics Plugin; gln64|glide64|rice" },
       { "mupen64-screensize",
          "Graphics Resolution; 640x480|1280x960|320x240" },
       { "mupen64-filtering",
