@@ -53,27 +53,72 @@ CXXFILES += \
     $(RSPDIR)/src/ucode3.cpp \
     $(RSPDIR)/src/ucode3mp3.cpp
 
-VIDEODIR = ../../gles2glide64/src
-INCFLAGS += $(VIDEODIR)/Glitch64/inc
-CXXFILES += $(VIDEODIR)/Glide64/3dmath.cpp \
-            $(VIDEODIR)/Glide64/Config.cpp \
-            $(VIDEODIR)/Glide64/FBtoScreen.cpp \
-            $(VIDEODIR)/Glide64/Main.cpp \
-            $(VIDEODIR)/Glide64/Util.cpp \
-            $(VIDEODIR)/Glide64/CRC.cpp \
-            $(VIDEODIR)/Glide64/Debugger.cpp \
-            $(VIDEODIR)/Glide64/Ini.cpp \
-            $(VIDEODIR)/Glide64/TexBuffer.cpp \
-            $(VIDEODIR)/Glide64/rdp.cpp \
-            $(VIDEODIR)/Glide64/Combine.cpp \
-            $(VIDEODIR)/Glide64/DepthBufferRender.cpp \
-            $(VIDEODIR)/Glide64/Keys.cpp \
-            $(VIDEODIR)/Glide64/TexCache.cpp \
-            $(VIDEODIR)/Glitch64/combiner.cpp \
-            $(VIDEODIR)/Glitch64/geometry.cpp \
-            $(VIDEODIR)/Glitch64/glState.cpp \
-            $(VIDEODIR)/Glitch64/main.cpp \
-            $(VIDEODIR)/Glitch64/textures.cpp
+# Video Plugins
+
+VIDEODIR_RICE = ../../gles2rice/src
+CXXFILES += $(VIDEODIR_RICE)/Blender.cpp \
+            $(VIDEODIR_RICE)/Combiner.cpp \
+            $(VIDEODIR_RICE)/CombinerTable.cpp \
+            $(VIDEODIR_RICE)/Config.cpp \
+            $(VIDEODIR_RICE)/ConvertImage16.cpp \
+            $(VIDEODIR_RICE)/ConvertImage.cpp \
+            $(VIDEODIR_RICE)/Debugger.cpp \
+            $(VIDEODIR_RICE)/DecodedMux.cpp \
+            $(VIDEODIR_RICE)/DeviceBuilder.cpp \
+            $(VIDEODIR_RICE)/DirectXDecodedMux.cpp \
+            $(VIDEODIR_RICE)/FrameBuffer.cpp \
+            $(VIDEODIR_RICE)/GeneralCombiner.cpp \
+            $(VIDEODIR_RICE)/GraphicsContext.cpp \
+            $(VIDEODIR_RICE)/OGLCombiner.cpp \
+            $(VIDEODIR_RICE)/OGLDecodedMux.cpp \
+            $(VIDEODIR_RICE)/OGLES2FragmentShaders.cpp \
+            $(VIDEODIR_RICE)/OGLExtCombiner.cpp \
+            $(VIDEODIR_RICE)/OGLExtRender.cpp \
+            $(VIDEODIR_RICE)/OGLGraphicsContext.cpp \
+            $(VIDEODIR_RICE)/OGLRender.cpp \
+            $(VIDEODIR_RICE)/OGLRenderExt.cpp \
+            $(VIDEODIR_RICE)/OGLTexture.cpp \
+            $(VIDEODIR_RICE)/osal_dynamiclib_unix.c \
+            $(VIDEODIR_RICE)/osal_files_unix.c \
+            $(VIDEODIR_RICE)/RenderBase.cpp \
+            $(VIDEODIR_RICE)/Render.cpp \
+            $(VIDEODIR_RICE)/RenderExt.cpp \
+            $(VIDEODIR_RICE)/RenderTexture.cpp \
+            $(VIDEODIR_RICE)/RSP_Parser.cpp \
+            $(VIDEODIR_RICE)/RSP_S2DEX.cpp \
+            $(VIDEODIR_RICE)/Texture.cpp \
+            $(VIDEODIR_RICE)/TextureFilters_2xsai.cpp \
+            $(VIDEODIR_RICE)/TextureFilters.cpp \
+            $(VIDEODIR_RICE)/TextureFilters_hq2x.cpp \
+            $(VIDEODIR_RICE)/TextureFilters_hq4x.cpp \
+            $(VIDEODIR_RICE)/TextureManager.cpp \
+            $(VIDEODIR_RICE)/VectorMath.cpp \
+            $(VIDEODIR_RICE)/Video.cpp
+CFILES +=   $(VIDEODIR_RICE)/liblinux/BMGImage.c \
+            $(VIDEODIR_RICE)/liblinux/BMGUtils.c \
+            $(VIDEODIR_RICE)/liblinux/bmp.c
+
+VIDEODIR_GLIDE = ../../gles2glide64/src
+INCFLAGS += $(VIDEODIR_GLIDE)/Glitch64/inc
+CXXFILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Config.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Main.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Util.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/CRC.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Debugger.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Ini.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/TexBuffer.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/rdp.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Combine.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Keys.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/TexCache.cpp \
+            $(VIDEODIR_GLIDE)/Glitch64/combiner.cpp \
+            $(VIDEODIR_GLIDE)/Glitch64/geometry.cpp \
+            $(VIDEODIR_GLIDE)/Glitch64/glState.cpp \
+            $(VIDEODIR_GLIDE)/Glitch64/main.cpp \
+            $(VIDEODIR_GLIDE)/Glitch64/textures.cpp
 
 COREDIR = ../../mupen64plus-core
 PLATFORM_EXT := unix
@@ -105,10 +150,11 @@ CFILES += \
 
 LOCAL_SRC_FILES += $(CXXFILES) $(CFILES) $(ASMFILES)
 
-LOCAL_CFLAGS += -O2 -Wall -ffast-math -fexceptions -DGLES -DANDROID -DNOSSE -DNO_ASM -D__LIBRETRO__ -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -std=gnu99
-LOCAL_CXXFLAGS += -O2 -Wall -ffast-math -fexceptions -DGLES -DANDROID -DNOSSE -DNO_ASM -D__LIBRETRO__ -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE
+LOCAL_CFLAGS += -O2 -Wall -ffast-math -fexceptions -DGLES -DANDROID -DNOSSE -DNO_ASM -D__LIBRETRO__ -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -std=gnu99 -DSDL_VIDEO_OPENGL_ES2=1
+LOCAL_CXXFLAGS += -O2 -Wall -ffast-math -fexceptions -DGLES -DANDROID -DNOSSE -DNO_ASM -D__LIBRETRO__ -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DSDL_VIDEO_OPENGL_ES2=1
 LOCAL_LDLIBS += -lz -llog -lGLESv2
 LOCAL_C_INCLUDES = $(INCFLAGS) $(COREDIR)/src $(COREDIR)/src/api ../libco ../
+LOCAL_CXX_INCLUDES = $(INCFLAGS) $(COREDIR)/src $(COREDIR)/src/api ../libco ../
 
 include $(BUILD_SHARED_LIBRARY)
 
