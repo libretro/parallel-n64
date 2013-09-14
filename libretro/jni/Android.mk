@@ -5,12 +5,28 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := retro
 
 ifeq ($(TARGET_ARCH),arm)
-LOCAL_CFLAGS += -DANDROID_ARM
+LOCAL_CFLAGS += -DANDROID_ARM -DDYNAREC -DNEW_DYNAREC=3
 LOCAL_ARM_MODE := arm
+CFILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c
+ASMFILES += $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
 endif
 
 ifeq ($(TARGET_ARCH),x86)
-LOCAL_CFLAGS += -DANDROID_X86
+LOCAL_CFLAGS += -DANDROID_X86 -DDYNAREC
+CFILES += $(COREDIR)/src/r4300/x86/assemble.c \
+          $(COREDIR)/src/r4300/x86/gbc.c \
+          $(COREDIR)/src/r4300/x86/gcop0.c \
+          $(COREDIR)/src/r4300/x86/gcop1.c \
+          $(COREDIR)/src/r4300/x86/gcop1_d.c \
+          $(COREDIR)/src/r4300/x86/gcop1_l.c \
+          $(COREDIR)/src/r4300/x86/gcop1_s.c \
+          $(COREDIR)/src/r4300/x86/gcop1_w.c \
+          $(COREDIR)/src/r4300/x86/gr4300.c \
+          $(COREDIR)/src/r4300/x86/gregimm.c \
+          $(COREDIR)/src/r4300/x86/gspecial.c \
+          $(COREDIR)/src/r4300/x86/gtlb.c \
+          $(COREDIR)/src/r4300/x86/regcache.c \
+          $(COREDIR)/src/r4300/x86/rjump.c
 endif
 
 ifeq ($(TARGET_ARCH),mips)
@@ -21,6 +37,7 @@ LIBRETRODIR = ../
 # libretro
 CFILES += $(LIBRETRODIR)/libretro.c $(LIBRETRODIR)/glsym.c $(LIBRETRODIR)/libco/libco.c $(LIBRETRODIR)/opengl_state_machine.c \
           $(LIBRETRODIR)/audio_plugin.c $(LIBRETRODIR)/input_plugin.c $(LIBRETRODIR)/resampler.c $(LIBRETRODIR)/sinc.c $(LIBRETRODIR)/utils.c
+ASMFILES += $(LIBRETRODIR)/libco/armeabi_asm.S
 
 # RSP Plugin
 RSPDIR = ../../mupen64plus-rsp-hle
@@ -36,27 +53,102 @@ CXXFILES += \
     $(RSPDIR)/src/ucode3.cpp \
     $(RSPDIR)/src/ucode3mp3.cpp
 
-VIDEODIR = ../../gles2glide64/src
-INCFLAGS += $(VIDEODIR)/Glitch64/inc
-CXXFILES += $(VIDEODIR)/Glide64/3dmath.cpp \
-            $(VIDEODIR)/Glide64/Config.cpp \
-            $(VIDEODIR)/Glide64/FBtoScreen.cpp \
-            $(VIDEODIR)/Glide64/Main.cpp \
-            $(VIDEODIR)/Glide64/Util.cpp \
-            $(VIDEODIR)/Glide64/CRC.cpp \
-            $(VIDEODIR)/Glide64/Debugger.cpp \
-            $(VIDEODIR)/Glide64/Ini.cpp \
-            $(VIDEODIR)/Glide64/TexBuffer.cpp \
-            $(VIDEODIR)/Glide64/rdp.cpp \
-            $(VIDEODIR)/Glide64/Combine.cpp \
-            $(VIDEODIR)/Glide64/DepthBufferRender.cpp \
-            $(VIDEODIR)/Glide64/Keys.cpp \
-            $(VIDEODIR)/Glide64/TexCache.cpp \
-            $(VIDEODIR)/Glitch64/combiner.cpp \
-            $(VIDEODIR)/Glitch64/geometry.cpp \
-            $(VIDEODIR)/Glitch64/glState.cpp \
-            $(VIDEODIR)/Glitch64/main.cpp \
-            $(VIDEODIR)/Glitch64/textures.cpp
+# Video Plugins
+
+VIDEODIR_RICE = ../../gles2rice/src
+CXXFILES += $(VIDEODIR_RICE)/Blender.cpp \
+            $(VIDEODIR_RICE)/Combiner.cpp \
+            $(VIDEODIR_RICE)/CombinerTable.cpp \
+            $(VIDEODIR_RICE)/Config.cpp \
+            $(VIDEODIR_RICE)/ConvertImage16.cpp \
+            $(VIDEODIR_RICE)/ConvertImage.cpp \
+            $(VIDEODIR_RICE)/Debugger.cpp \
+            $(VIDEODIR_RICE)/DecodedMux.cpp \
+            $(VIDEODIR_RICE)/DeviceBuilder.cpp \
+            $(VIDEODIR_RICE)/DirectXDecodedMux.cpp \
+            $(VIDEODIR_RICE)/FrameBuffer.cpp \
+            $(VIDEODIR_RICE)/GeneralCombiner.cpp \
+            $(VIDEODIR_RICE)/GraphicsContext.cpp \
+            $(VIDEODIR_RICE)/OGLCombiner.cpp \
+            $(VIDEODIR_RICE)/OGLDecodedMux.cpp \
+            $(VIDEODIR_RICE)/OGLES2FragmentShaders.cpp \
+            $(VIDEODIR_RICE)/OGLExtCombiner.cpp \
+            $(VIDEODIR_RICE)/OGLExtRender.cpp \
+            $(VIDEODIR_RICE)/OGLGraphicsContext.cpp \
+            $(VIDEODIR_RICE)/OGLRender.cpp \
+            $(VIDEODIR_RICE)/OGLRenderExt.cpp \
+            $(VIDEODIR_RICE)/OGLTexture.cpp \
+            $(VIDEODIR_RICE)/osal_dynamiclib_unix.c \
+            $(VIDEODIR_RICE)/osal_files_unix.c \
+            $(VIDEODIR_RICE)/RenderBase.cpp \
+            $(VIDEODIR_RICE)/Render.cpp \
+            $(VIDEODIR_RICE)/RenderExt.cpp \
+            $(VIDEODIR_RICE)/RenderTexture.cpp \
+            $(VIDEODIR_RICE)/RSP_Parser.cpp \
+            $(VIDEODIR_RICE)/RSP_S2DEX.cpp \
+            $(VIDEODIR_RICE)/Texture.cpp \
+            $(VIDEODIR_RICE)/TextureFilters_2xsai.cpp \
+            $(VIDEODIR_RICE)/TextureFilters.cpp \
+            $(VIDEODIR_RICE)/TextureFilters_hq2x.cpp \
+            $(VIDEODIR_RICE)/TextureFilters_hq4x.cpp \
+            $(VIDEODIR_RICE)/TextureManager.cpp \
+            $(VIDEODIR_RICE)/VectorMath.cpp \
+            $(VIDEODIR_RICE)/Video.cpp
+CFILES +=   $(VIDEODIR_RICE)/liblinux/BMGImage.c \
+            $(VIDEODIR_RICE)/liblinux/BMGUtils.c \
+            $(VIDEODIR_RICE)/liblinux/bmp.c
+
+VIDEODIR_GLN64 = ../../gles2n64/src
+CXXFILES += $(VIDEODIR_GLN64)/2xSAI.cpp \
+            $(VIDEODIR_GLN64)/3DMath.cpp \
+            $(VIDEODIR_GLN64)/Config.cpp \
+            $(VIDEODIR_GLN64)/CRC.cpp \
+            $(VIDEODIR_GLN64)/DepthBuffer.cpp \
+            $(VIDEODIR_GLN64)/F3DCBFD.cpp \
+            $(VIDEODIR_GLN64)/F3D.cpp \
+            $(VIDEODIR_GLN64)/F3DDKR.cpp \
+            $(VIDEODIR_GLN64)/F3DEX2.cpp \
+            $(VIDEODIR_GLN64)/F3DEX.cpp \
+            $(VIDEODIR_GLN64)/F3DPD.cpp \
+            $(VIDEODIR_GLN64)/F3DWRUS.cpp \
+            $(VIDEODIR_GLN64)/GBI.cpp \
+            $(VIDEODIR_GLN64)/gDP.cpp \
+            $(VIDEODIR_GLN64)/gles2N64.cpp \
+            $(VIDEODIR_GLN64)/gSP.cpp \
+            $(VIDEODIR_GLN64)/L3D.cpp \
+            $(VIDEODIR_GLN64)/L3DEX2.cpp \
+            $(VIDEODIR_GLN64)/L3DEX.cpp \
+            $(VIDEODIR_GLN64)/N64.cpp \
+            $(VIDEODIR_GLN64)/OpenGL.cpp \
+            $(VIDEODIR_GLN64)/RDP.cpp \
+            $(VIDEODIR_GLN64)/RSP.cpp \
+            $(VIDEODIR_GLN64)/S2DEX2.cpp \
+            $(VIDEODIR_GLN64)/S2DEX.cpp \
+            $(VIDEODIR_GLN64)/ShaderCombiner.cpp \
+            $(VIDEODIR_GLN64)/Textures.cpp \
+            $(VIDEODIR_GLN64)/VI.cpp
+
+VIDEODIR_GLIDE = ../../gles2glide64/src
+INCFLAGS += $(VIDEODIR_GLIDE)/Glitch64/inc
+CXXFILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Config.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Main.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Util.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/CRC.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Debugger.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Ini.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/TexBuffer.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/rdp.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Combine.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/Keys.cpp \
+            $(VIDEODIR_GLIDE)/Glide64/TexCache.cpp \
+            $(VIDEODIR_GLIDE)/Glitch64/combiner.cpp \
+            $(VIDEODIR_GLIDE)/Glitch64/geometry.cpp \
+            $(VIDEODIR_GLIDE)/Glitch64/glState.cpp \
+            $(VIDEODIR_GLIDE)/Glitch64/main.cpp \
+            $(VIDEODIR_GLIDE)/Glitch64/textures.cpp
 
 COREDIR = ../../mupen64plus-core
 PLATFORM_EXT := unix
@@ -68,6 +160,7 @@ CFILES += \
     $(COREDIR)/src/main/main.c \
     $(COREDIR)/src/main/md5.c \
     $(COREDIR)/src/main/rom.c \
+    $(COREDIR)/src/main/savestates.c \
     $(COREDIR)/src/main/util.c \
     $(COREDIR)/src/memory/dma.c \
     $(COREDIR)/src/memory/flashram.c \
@@ -75,7 +168,6 @@ CFILES += \
     $(COREDIR)/src/memory/n64_cic_nus_6105.c \
     $(COREDIR)/src/memory/pif.c \
     $(COREDIR)/src/memory/tlb.c \
-    $(COREDIR)/src/osal/files_$(PLATFORM_EXT).c \
     $(COREDIR)/src/plugin/plugin.c \
     $(COREDIR)/src/r4300/empty_dynarec.c \
     $(COREDIR)/src/r4300/profile.c \
@@ -86,10 +178,10 @@ CFILES += \
     $(COREDIR)/src/r4300/interupt.c \
     $(COREDIR)/src/r4300/r4300.c
 
-LOCAL_SRC_FILES += $(CXXFILES) $(CFILES)
+LOCAL_SRC_FILES += $(CXXFILES) $(CFILES) $(ASMFILES)
 
-LOCAL_CFLAGS += -O2 -Wall -ffast-math -fexceptions -DGLES -DANDROID -DNOSSE -DNO_ASM -D__LIBRETRO__ -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -std=gnu99
-LOCAL_CXXFLAGS += -O2 -Wall -ffast-math -fexceptions -DGLES -DANDROID -DNOSSE -DNO_ASM -D__LIBRETRO__ -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE
+LOCAL_CFLAGS += -O2 -Wall -ffast-math -fexceptions -DGLES -DANDROID -DNOSSE -DNO_ASM -D__LIBRETRO__ -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -std=gnu99 -DSDL_VIDEO_OPENGL_ES2=1
+LOCAL_CXXFLAGS += -O2 -Wall -ffast-math -fexceptions -DGLES -DANDROID -DNOSSE -DNO_ASM -D__LIBRETRO__ -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DSDL_VIDEO_OPENGL_ES2=1
 LOCAL_LDLIBS += -lz -llog -lGLESv2
 LOCAL_C_INCLUDES = $(INCFLAGS) $(COREDIR)/src $(COREDIR)/src/api ../libco ../
 

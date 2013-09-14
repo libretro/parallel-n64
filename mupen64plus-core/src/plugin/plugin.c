@@ -80,7 +80,6 @@ static void EmptyFunc(void)
         X##FBWrite, \
         X##FBGetFrameBufferInfo \
     }
-
 DEFINE_GFX(rice);
 DEFINE_GFX(gln64);
 DEFINE_GFX(glide64);
