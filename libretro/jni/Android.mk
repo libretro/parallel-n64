@@ -98,6 +98,36 @@ CFILES +=   $(VIDEODIR_RICE)/liblinux/BMGImage.c \
             $(VIDEODIR_RICE)/liblinux/BMGUtils.c \
             $(VIDEODIR_RICE)/liblinux/bmp.c
 
+VIDEODIR_GLN64 = ../../gles2n64/src
+CXXFILES += $(VIDEODIR_GLN64)/2xSAI.cpp \
+            $(VIDEODIR_GLN64)/3DMath.cpp \
+            $(VIDEODIR_GLN64)/Config.cpp \
+            $(VIDEODIR_GLN64)/CRC.cpp \
+            $(VIDEODIR_GLN64)/DepthBuffer.cpp \
+            $(VIDEODIR_GLN64)/F3DCBFD.cpp \
+            $(VIDEODIR_GLN64)/F3D.cpp \
+            $(VIDEODIR_GLN64)/F3DDKR.cpp \
+            $(VIDEODIR_GLN64)/F3DEX2.cpp \
+            $(VIDEODIR_GLN64)/F3DEX.cpp \
+            $(VIDEODIR_GLN64)/F3DPD.cpp \
+            $(VIDEODIR_GLN64)/F3DWRUS.cpp \
+            $(VIDEODIR_GLN64)/GBI.cpp \
+            $(VIDEODIR_GLN64)/gDP.cpp \
+            $(VIDEODIR_GLN64)/gles2N64.cpp \
+            $(VIDEODIR_GLN64)/gSP.cpp \
+            $(VIDEODIR_GLN64)/L3D.cpp \
+            $(VIDEODIR_GLN64)/L3DEX2.cpp \
+            $(VIDEODIR_GLN64)/L3DEX.cpp \
+            $(VIDEODIR_GLN64)/N64.cpp \
+            $(VIDEODIR_GLN64)/OpenGL.cpp \
+            $(VIDEODIR_GLN64)/RDP.cpp \
+            $(VIDEODIR_GLN64)/RSP.cpp \
+            $(VIDEODIR_GLN64)/S2DEX2.cpp \
+            $(VIDEODIR_GLN64)/S2DEX.cpp \
+            $(VIDEODIR_GLN64)/ShaderCombiner.cpp \
+            $(VIDEODIR_GLN64)/Textures.cpp \
+            $(VIDEODIR_GLN64)/VI.cpp
+
 VIDEODIR_GLIDE = ../../gles2glide64/src
 INCFLAGS += $(VIDEODIR_GLIDE)/Glitch64/inc
 CXXFILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
