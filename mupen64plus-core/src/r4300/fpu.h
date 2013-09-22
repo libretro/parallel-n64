@@ -55,6 +55,7 @@ typedef __uint32_t fexcept_t;
 #define FE_DOWNWARD 0x3
 #define _FPSCR_RMODE_SHIFT 22
 
+#ifndef __ANDROID__
 static __inline int fegetenv(fenv_t* __envp) {
   fenv_t _fpscr;
 #if !defined(__SOFTFP__)
@@ -112,6 +113,7 @@ static __inline int fesetround(int __round) {
   fesetenv(&_fpscr);
   return 0;
 }
+#endif // __ANDROID__
 
 #else
   #define M64P_FPU_INLINE static inline
