@@ -318,5 +318,15 @@ EXPORT void CALL StopGL()
     OGL_Stop();
 }
 
+#ifdef __LIBRETRO__
+void gles2n64_reset()
+{
+   // HACK: Check for leaks!
+   OGL_Stop();
+   OGL_Start();
+   RSP_Init();
+}
+#endif
+
 } // extern "C"
 

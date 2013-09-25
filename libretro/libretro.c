@@ -113,8 +113,12 @@ static void core_gl_context_reset()
    glsym_init_procs(render_iface.get_proc_address);
 
    extern int InitGfx ();
-   if (gfx_plugin == GFX_RICE && emu_thread_has_run)
+   extern void gles2n64_reset();
+
+   if (gfx_plugin == GFX_GLIDE64 && emu_thread_has_run)
       InitGfx();
+   else if (gfx_plugin == GFX_GLN64 && emu_thread_has_run)
+      gles2n64_reset();
 }
 
 GLuint retro_get_fbo_id()
