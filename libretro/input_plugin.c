@@ -268,8 +268,10 @@ EXPORT void CALL inputInitiateControllers(CONTROL_INFO ControlInfo)
       controller[i].control->RawData = 0;
       if (pad_pak_types[i] == PLUGIN_MEMPAK)
          controller[i].control->Plugin = PLUGIN_MEMPAK;
-      else
+      else if (pad_pak_types[i] == PLUGIN_RAW)
          controller[i].control->Plugin = PLUGIN_RAW;
+      else
+         controller[i].control->Plugin = PLUGIN_NONE;
     }
 }
 

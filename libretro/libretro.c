@@ -175,13 +175,13 @@ void retro_set_environment(retro_environment_t cb)
          "CPU Core; cached_interpreter|pure_interpreter" },
 #endif
       {"mupen64-pak1",
-        "Player 1 Pak; none|rumble|memory"},
+        "Player 1 Pak; none|memory|rumble"},
       {"mupen64-pak2",
-        "Player 2 Pak; none|rumble|memory"},
+        "Player 2 Pak; none|memory|rumble"},
       {"mupen64-pak3",
-        "Player 3 Pak; none|rumble|memory"},
+        "Player 3 Pak; none|memory|rumble"},
       {"mupen64-pak4",
-        "Player 4 Pak; none|rumble|memory"},
+        "Player 4 Pak; none|memory|rumble"},
       { "mupen64-disableexpmem",
          "Disable Expansion RAM; no|yes" },
       { "mupen64-gfxplugin",
@@ -308,6 +308,8 @@ void update_variables(void)
             p1_pak = PLUGIN_RAW;
          else if (!strcmp(pk1var.value, "memory"))
             p1_pak = PLUGIN_MEMPAK;
+         else
+            p1_pak = PLUGIN_NONE;
          
          // If controller struct is not initialised yet, set pad_pak_types instead
          // which will be looked at when initialising the controllers.
@@ -328,6 +330,8 @@ void update_variables(void)
             p2_pak = PLUGIN_RAW;
          else if (!strcmp(pk2var.value, "memory"))
             p2_pak = PLUGIN_MEMPAK;
+         else
+            p2_pak = PLUGIN_NONE;
             
          if (controller[1].control)
             controller[1].control->Plugin = p2_pak;
@@ -346,6 +350,8 @@ void update_variables(void)
             p3_pak = PLUGIN_RAW;
          else if (!strcmp(pk3var.value, "memory"))
             p3_pak = PLUGIN_MEMPAK;
+         else
+            p3_pak = PLUGIN_NONE;
             
          if (controller[2].control)
             controller[2].control->Plugin = p3_pak;
@@ -364,17 +370,15 @@ void update_variables(void)
             p4_pak = PLUGIN_RAW;
          else if (!strcmp(pk4var.value, "memory"))
             p4_pak = PLUGIN_MEMPAK;
+         else
+            p4_pak = PLUGIN_NONE;
             
          if (controller[3].control)
             controller[3].control->Plugin = p4_pak;
          else
             pad_pak_types[3] = p4_pak;
-         
       }
    }
-   
-   
-   
 }
 
 bool retro_load_game(const struct retro_game_info *game)
