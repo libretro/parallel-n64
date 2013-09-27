@@ -26,7 +26,8 @@
 #include <string.h>
 
 #include "libretro.h"
-extern retro_input_state_t input_cb;
+extern retro_input_state_t    input_cb;
+extern struct retro_rumble_interface rumble;
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_types.h"
@@ -45,6 +46,7 @@ extern retro_input_state_t input_cb;
 
 #define PAK_IO_RUMBLE       0xC000      // the address where rumble-commands are sent to
 
+extern int pad_pak_types[4];
 
 /* global data definitions */
 struct
@@ -143,7 +145,23 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
             {
                 unsigned int dwAddress = (Command[3] << 8) + (Command[4] & 0xE0);
                 Data[32] = DataCRC( Data, 32 );
+                
+                if ((dwAddress == PAK_IO_RUMBLE) && (rumble.set_rumble_state))
+                {
+                    if (*Data)
+                    {
+                        rumble.set_rumble_state(Control, RETRO_RUMBLE_WEAK, 0xFFFF);
+                        rumble.set_rumble_state(Control, RETRO_RUMBLE_STRONG, 0xFFFF);
+                    }
+                    else
+                    {
+                        rumble.set_rumble_state(Control, RETRO_RUMBLE_WEAK, 0);
+                        rumble.set_rumble_state(Control, RETRO_RUMBLE_STRONG, 0);
+                    }
+                }
+                
             }
+            
             break;
         case RD_RESETCONTROLLER:
             break;
@@ -245,10 +263,13 @@ EXPORT void CALL inputInitiateControllers(CONTROL_INFO ControlInfo)
 
     for( i = 0; i < 4; i++ )
     {
-        controller[i].control = ControlInfo.Controls + i;
-		controller[i].control->Present = 1;
-		controller[i].control->RawData = 0;
-		controller[i].control->Plugin = PLUGIN_MEMPAK;
+      controller[i].control = ControlInfo.Controls + i;
+      controller[i].control->Present = 1;
+      controller[i].control->RawData = 0;
+      if (pad_pak_types[i] == PLUGIN_MEMPAK)
+         controller[i].control->Plugin = PLUGIN_MEMPAK;
+      else
+         controller[i].control->Plugin = PLUGIN_RAW;
     }
 }
 
