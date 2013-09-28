@@ -26,8 +26,10 @@
 #include <string.h>
 
 #include "libretro.h"
-extern retro_input_state_t    input_cb;
+
+extern retro_input_state_t input_cb;
 extern struct retro_rumble_interface rumble;
+extern int pad_pak_types[4];
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_types.h"
@@ -45,8 +47,6 @@ extern struct retro_rumble_interface rumble;
 #define RD_WRITEEPROM       0x05        // write eeprom
 
 #define PAK_IO_RUMBLE       0xC000      // the address where rumble-commands are sent to
-
-extern int pad_pak_types[4];
 
 /* global data definitions */
 struct
@@ -159,7 +159,6 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
                         rumble.set_rumble_state(Control, RETRO_RUMBLE_STRONG, 0);
                     }
                 }
-                
             }
             
             break;
@@ -263,15 +262,16 @@ EXPORT void CALL inputInitiateControllers(CONTROL_INFO ControlInfo)
 
     for( i = 0; i < 4; i++ )
     {
-      controller[i].control = ControlInfo.Controls + i;
-      controller[i].control->Present = 1;
-      controller[i].control->RawData = 0;
-      if (pad_pak_types[i] == PLUGIN_MEMPAK)
-         controller[i].control->Plugin = PLUGIN_MEMPAK;
-      else if (pad_pak_types[i] == PLUGIN_RAW)
-         controller[i].control->Plugin = PLUGIN_RAW;
-      else
-         controller[i].control->Plugin = PLUGIN_NONE;
+       controller[i].control = ControlInfo.Controls + i;
+       controller[i].control->Present = 1;
+       controller[i].control->RawData = 0;
+       
+       if (pad_pak_types[i] == PLUGIN_MEMPAK)
+          controller[i].control->Plugin = PLUGIN_MEMPAK;
+       else if (pad_pak_types[i] == PLUGIN_RAW)
+          controller[i].control->Plugin = PLUGIN_RAW;
+       else
+          controller[i].control->Plugin = PLUGIN_NONE;
     }
 }
 

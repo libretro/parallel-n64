@@ -44,13 +44,16 @@ static enum gfx_plugin_type gfx_plugin;
 static uint32_t screen_width;
 static uint32_t screen_height;
 
-// argh ugly horrible hacks kill them with fire
+// after the controller's CONTROL* member has been assigned we can update
+// them straight from here...
 extern struct
 {
     CONTROL *control;
     BUTTONS buttons;
 } controller[4];
 
+// ...but it won't be at least the first time we're called, in that case set
+// these instead for input_plugin to read.
 int pad_pak_types[4];
 
 static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
@@ -303,13 +306,11 @@ void update_variables(void)
       struct retro_variable pk1var = { "mupen64-pak1" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk1var) && pk1var.value)
       {
-         int p1_pak = 0;
+         int p1_pak = PLUGIN_NONE;
          if (!strcmp(pk1var.value, "rumble"))
             p1_pak = PLUGIN_RAW;
          else if (!strcmp(pk1var.value, "memory"))
             p1_pak = PLUGIN_MEMPAK;
-         else
-            p1_pak = PLUGIN_NONE;
          
          // If controller struct is not initialised yet, set pad_pak_types instead
          // which will be looked at when initialising the controllers.
@@ -325,13 +326,11 @@ void update_variables(void)
       struct retro_variable pk2var = { "mupen64-pak2" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk2var) && pk2var.value)
       {
-         int p2_pak = 0;
+         int p2_pak = PLUGIN_NONE;
          if (!strcmp(pk2var.value, "rumble"))
             p2_pak = PLUGIN_RAW;
          else if (!strcmp(pk2var.value, "memory"))
             p2_pak = PLUGIN_MEMPAK;
-         else
-            p2_pak = PLUGIN_NONE;
             
          if (controller[1].control)
             controller[1].control->Plugin = p2_pak;
@@ -345,13 +344,11 @@ void update_variables(void)
       struct retro_variable pk3var = { "mupen64-pak3" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk3var) && pk3var.value)
       {
-         int p3_pak = 0;
+         int p3_pak = PLUGIN_NONE;
          if (!strcmp(pk3var.value, "rumble"))
             p3_pak = PLUGIN_RAW;
          else if (!strcmp(pk3var.value, "memory"))
             p3_pak = PLUGIN_MEMPAK;
-         else
-            p3_pak = PLUGIN_NONE;
             
          if (controller[2].control)
             controller[2].control->Plugin = p3_pak;
@@ -365,13 +362,11 @@ void update_variables(void)
       struct retro_variable pk4var = { "mupen64-pak4" };
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk4var) && pk4var.value)
       {
-         int p4_pak = 0;
+         int p4_pak = PLUGIN_NONE;
          if (!strcmp(pk4var.value, "rumble"))
             p4_pak = PLUGIN_RAW;
          else if (!strcmp(pk4var.value, "memory"))
             p4_pak = PLUGIN_MEMPAK;
-         else
-            p4_pak = PLUGIN_NONE;
             
          if (controller[3].control)
             controller[3].control->Plugin = p4_pak;
