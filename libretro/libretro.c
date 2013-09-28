@@ -21,6 +21,8 @@ retro_input_state_t input_cb = NULL;
 retro_audio_sample_batch_t audio_batch_cb = NULL;
 retro_environment_t environ_cb = NULL;
 
+struct retro_rumble_interface rumble;
+
 static struct retro_hw_render_callback render_iface;
 static cothread_t main_thread;
 static cothread_t emulator_thread;
@@ -41,6 +43,18 @@ static uint32_t game_size;
 static enum gfx_plugin_type gfx_plugin;
 static uint32_t screen_width;
 static uint32_t screen_height;
+
+// after the controller's CONTROL* member has been assigned we can update
+// them straight from here...
+extern struct
+{
+    CONTROL *control;
+    BUTTONS buttons;
+} controller[4];
+
+// ...but it won't be at least the first time we're called, in that case set
+// these instead for input_plugin to read.
+int pad_pak_types[4];
 
 static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
 {
@@ -163,6 +177,14 @@ void retro_set_environment(retro_environment_t cb)
 #else
          "CPU Core; cached_interpreter|pure_interpreter" },
 #endif
+      {"mupen64-pak1",
+        "Player 1 Pak; none|memory|rumble"},
+      {"mupen64-pak2",
+        "Player 2 Pak; none|memory|rumble"},
+      {"mupen64-pak3",
+        "Player 3 Pak; none|memory|rumble"},
+      {"mupen64-pak4",
+        "Player 4 Pak; none|memory|rumble"},
       { "mupen64-disableexpmem",
          "Disable Expansion RAM; no|yes" },
       { "mupen64-gfxplugin",
@@ -228,6 +250,8 @@ void retro_init(void)
     audio_out_buffer_float = malloc(4096 * sizeof(float));
     audio_out_buffer_s16 = malloc(4096 * sizeof(int16_t));
     audio_convert_init_simd();
+    
+    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
 }
 
 void retro_deinit(void)
@@ -275,6 +299,80 @@ void update_variables(void)
          frame_dupe = true;
       else if (!strcmp(var.value, "no"))
          frame_dupe = false;
+   }
+   
+   
+   {
+      struct retro_variable pk1var = { "mupen64-pak1" };
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk1var) && pk1var.value)
+      {
+         int p1_pak = PLUGIN_NONE;
+         if (!strcmp(pk1var.value, "rumble"))
+            p1_pak = PLUGIN_RAW;
+         else if (!strcmp(pk1var.value, "memory"))
+            p1_pak = PLUGIN_MEMPAK;
+         
+         // If controller struct is not initialised yet, set pad_pak_types instead
+         // which will be looked at when initialising the controllers.
+         if (controller[0].control)
+            controller[0].control->Plugin = p1_pak;
+         else
+            pad_pak_types[0] = p1_pak;
+         
+      }
+   }
+
+   {
+      struct retro_variable pk2var = { "mupen64-pak2" };
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk2var) && pk2var.value)
+      {
+         int p2_pak = PLUGIN_NONE;
+         if (!strcmp(pk2var.value, "rumble"))
+            p2_pak = PLUGIN_RAW;
+         else if (!strcmp(pk2var.value, "memory"))
+            p2_pak = PLUGIN_MEMPAK;
+            
+         if (controller[1].control)
+            controller[1].control->Plugin = p2_pak;
+         else
+            pad_pak_types[1] = p2_pak;
+         
+      }
+   }
+   
+   {
+      struct retro_variable pk3var = { "mupen64-pak3" };
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk3var) && pk3var.value)
+      {
+         int p3_pak = PLUGIN_NONE;
+         if (!strcmp(pk3var.value, "rumble"))
+            p3_pak = PLUGIN_RAW;
+         else if (!strcmp(pk3var.value, "memory"))
+            p3_pak = PLUGIN_MEMPAK;
+            
+         if (controller[2].control)
+            controller[2].control->Plugin = p3_pak;
+         else
+            pad_pak_types[2] = p3_pak;
+         
+      }
+   }
+  
+   {
+      struct retro_variable pk4var = { "mupen64-pak4" };
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &pk4var) && pk4var.value)
+      {
+         int p4_pak = PLUGIN_NONE;
+         if (!strcmp(pk4var.value, "rumble"))
+            p4_pak = PLUGIN_RAW;
+         else if (!strcmp(pk4var.value, "memory"))
+            p4_pak = PLUGIN_MEMPAK;
+            
+         if (controller[3].control)
+            controller[3].control->Plugin = p4_pak;
+         else
+            pad_pak_types[3] = p4_pak;
+      }
    }
 }
 
