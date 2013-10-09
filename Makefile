@@ -60,6 +60,7 @@ else ifneq (,$(findstring android,$(platform)))
 
    CC = arm-linux-androideabi-gcc
    CXX = arm-linux-androideabi-g++
+	WITH_DYNAREC=arm
    GLES = 1
    CPPFLAGS += -DNO_ASM -DNOSSE
    
