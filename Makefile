@@ -111,8 +111,8 @@ else ifneq (,$(findstring win,$(platform)))
    CXX = g++
 endif
 
-# libretro
-CFILES += $(wildcard libretro/*.c) libretro/libco/libco.c
+# libco
+CFILES += libretro/libco/libco.c
 
 # RSP Plugin
 RSPDIR = mupen64plus-rsp-hle
@@ -196,11 +196,19 @@ VIDEODIR_GLN64 = gles2n64/src
 # TODO: Use neon versions when possible
 gln64videosrc = $(wildcard $(VIDEODIR_GLN64)/*.cpp)
 gln64videoblack = $(VIDEODIR_GLN64)/3DMathNeon.cpp $(VIDEODIR_GLN64)/gSPNeon.cpp
+
+libretrosrc += $(wildcard libretro/*.c)
+
 ifeq ($(HAVE_NEON), 1)
 CXXFILES += $(gln64videosrc)
+CFLAGS += -DHAVE_NEON -DSINC_LOWER_QUALITY
+CPPFLAGS += -DHAVE_NEON -DSINC_LOWER_QUALITY
+OBJECTS += libretro/utils_neon.o libretro/sinc_neon.o
 else
 CXXFILES += $(filter-out $(gln64videoblack), $(gln64videosrc))
 endif
+
+CFILES += $(libretrosrc)
 
 # Glide64
 VIDEODIR_GLIDE = gles2glide64/src
@@ -233,6 +241,9 @@ $(COREDIR)/src/r4300/new_dynarec/linkage_arm.o: $(COREDIR)/src/r4300/new_dynarec
 
 $(COREDIR)/src/r4300/new_dynarec/new_dynarec.o: $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c
 	$(CC) -c -o $@ $< $(CPPFLAGS) $(CFLAGS) -O0
+
+%.o: %.S
+	$(CC_AS) $(CFLAGS) -c $^ -o $@
 
 $(TARGET): $(OBJECTS)
 	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)

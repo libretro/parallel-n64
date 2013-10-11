@@ -486,10 +486,8 @@ static void *resampler_sinc_new(double bandwidth_mod)
 #elif defined(__SSE__)
    RARCH_LOG("Sinc resampler [SSE]\n");
 #elif defined(HAVE_NEON)
-   struct rarch_cpu_features cpu;
-   rarch_get_cpu_features(&cpu);
-   process_sinc_func = cpu.simd & RARCH_SIMD_NEON ? process_sinc_neon : process_sinc_C;
-   RARCH_LOG("Sinc resampler [%s]\n", cpu.simd & RARCH_SIMD_NEON ? "NEON" : "C");
+   process_sinc_func = process_sinc_neon;
+   RARCH_LOG("Sinc resampler [%s]\n", "NEON");
 #else
    RARCH_LOG("Sinc resampler [C]\n");
 #endif
