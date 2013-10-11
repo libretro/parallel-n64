@@ -62,7 +62,13 @@ else ifneq (,$(findstring android,$(platform)))
    CXX = arm-linux-androideabi-g++
 	WITH_DYNAREC=arm
    GLES = 1
-   CPPFLAGS += -DNO_ASM -DNOSSE
+   CPPFLAGS += -DNO_ASM -DNOSSE -DANDROID
+   HAVE_NEON = 1
+	CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -D__arm__
+   CPPFLAGS += $(CPUFLAGS)
+	CFLAGS += $(CPUFLAGS) -DANDROID
+	CPPFLAGS += -DARM_ASM -D__NEON_OPT
+	CFILES += gles2n64/cpufeatures.c
    
    fpic = -fPIC
    PLATFORM_EXT := unix
@@ -190,7 +196,11 @@ VIDEODIR_GLN64 = gles2n64/src
 # TODO: Use neon versions when possible
 gln64videosrc = $(wildcard $(VIDEODIR_GLN64)/*.cpp)
 gln64videoblack = $(VIDEODIR_GLN64)/3DMathNeon.cpp $(VIDEODIR_GLN64)/gSPNeon.cpp
+ifeq ($(HAVE_NEON), 1)
+CXXFILES += $(gln64videosrc)
+else
 CXXFILES += $(filter-out $(gln64videoblack), $(gln64videosrc))
+endif
 
 # Glide64
 VIDEODIR_GLIDE = gles2glide64/src

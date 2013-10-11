@@ -28,6 +28,10 @@
 #include "ae_bridge.h"
 #endif
 
+#ifdef ANDROID
+#include "../cpufeatures.h"
+#endif
+
 #ifndef __LIBRETRO__ // Built in with core
 ptr_ConfigGetSharedDataFilepath ConfigGetSharedDataFilepath = NULL;
 #endif
@@ -78,12 +82,16 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
 #endif
 
 #ifdef __NEON_OPT
+#ifdef ANDROID
     if (android_getCpuFamily() == ANDROID_CPU_FAMILY_ARM &&
             (android_getCpuFeatures() & ANDROID_CPU_ARM_FEATURE_NEON) != 0)
     {
+#endif
         MathInitNeon();
         gSPInitNeon();
+#ifdef ANDROID
     }
+#endif
 #endif
     return M64ERR_SUCCESS;
 }
