@@ -47,9 +47,9 @@ extern void audio_convert_float_to_s16_altivec(int16_t *out,
 #define audio_convert_s16_to_float audio_convert_s16_to_float_arm
 #define audio_convert_float_to_s16 audio_convert_float_to_s16_arm
 
-void (*audio_convert_s16_to_float_arm)(float *out,
+extern void (*audio_convert_s16_to_float_arm)(float *out,
       const int16_t *in, size_t samples, float gain);
-void (*audio_convert_float_to_s16_arm)(int16_t *out,
+extern void (*audio_convert_float_to_s16_arm)(int16_t *out,
       const float *in, size_t samples);
 
 #else

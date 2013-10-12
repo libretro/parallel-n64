@@ -37,6 +37,11 @@ static float *audio_in_buffer_float;
 static float *audio_out_buffer_float;
 static int16_t *audio_out_buffer_s16;
 
+void (*audio_convert_s16_to_float_arm)(float *out,
+      const int16_t *in, size_t samples, float gain);
+void (*audio_convert_float_to_s16_arm)(int16_t *out,
+      const float *in, size_t samples);
+
 static uint8_t* game_data;
 static uint32_t game_size;
 
