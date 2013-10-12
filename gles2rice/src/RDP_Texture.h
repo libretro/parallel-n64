@@ -1310,7 +1310,7 @@ void DLParser_LoadBlock(Gfx *gfx)
 
     for( int i=0; i<8; i++ )
     {
-        if( tile.dwTMem == tile.dwTMem )
+        if( gRDP.tiles[i].dwTMem == tile.dwTMem )
             tile.lastTileCmd = CMD_LOADBLOCK;
     }
 
@@ -2039,7 +2039,7 @@ void TMEM_Init()
     g_pTMEMInfo=NULL;
     g_pTMEMFreeList=tmenEntryBuffer;
         int i;
-    for( i=0; i<tmenMaxEntry; i++ )
+    for( i=0; (i < (tmenMaxEntry-1)); i++ )
     {
         tmenEntryBuffer[i].start=0;
         tmenEntryBuffer[i].length=0;
@@ -2149,7 +2149,6 @@ bool IsTmemFlagValid(uint32 tmemAddr)
 
 uint32 GetValidTmemInfoIndex(uint32 tmemAddr)
 {
-    return 0;
     uint32 index = tmemAddr>>5;
     uint32 bitIndex = (tmemAddr&0x1F);
 
