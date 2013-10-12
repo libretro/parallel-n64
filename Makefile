@@ -79,6 +79,7 @@ else ifneq (,$(findstring armv,$(platform)))
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined
    CPPFLAGS += -I.
+	WITH_DYNAREC=arm
    LIBS := -lz
 ifneq (,$(findstring gles,$(platform)))
    GLES := 1
