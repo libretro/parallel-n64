@@ -2319,6 +2319,10 @@ float HackZ2(float z)
 
 float HackZ(float z)
 {
+   /* TODO - investigate
+    * should we just do this instead?
+    * z = HackZ2(z); 
+    */
     return HackZ2(z);
 
     if( z < 0.1 && z >= 0 )
