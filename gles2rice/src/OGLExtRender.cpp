@@ -327,7 +327,7 @@ void COGLExtRender::ApplyTextureFilter()
 
 void COGLExtRender::SetTextureToTextureUnitMap(int tex, int unit)
 {
-    if( unit < 8 && (tex >= -1 || tex <= 1))
+    if( unit < 8)
         m_textureUnitMap[unit] = tex;
 }
 
