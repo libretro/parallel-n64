@@ -833,9 +833,6 @@ EXPORT void CALL ProcessDList(void)
         // Go to the next instruction
         rdp.pc[rdp.pc_i] = (a+8) & BMASK;
 
-#ifdef PERFORMANCE
-        perf_cur = wxDateTime::UNow();
-#endif
         // Process this instruction
         gfx_instruction[settings.ucode][rdp.cmd0>>24] ();
 
@@ -851,13 +848,6 @@ EXPORT void CALL ProcessDList(void)
             rdp.pc_i --;
           }
         }
-
-#ifdef PERFORMANCE
-        perf_next = wxDateTime::UNow();
-        sprintf (out_buf, "perf %08lx: %016I64d\n", a-8, (perf_next-perf_cur).Format("%l").mb_str());
-        rdp_log << out_buf;
-#endif
-
       } while (!rdp.halt);
     }
 #ifdef CATCH_EXCEPTIONS

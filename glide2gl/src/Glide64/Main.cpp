@@ -163,27 +163,7 @@ int exception = FALSE;
 int evoodoo = 0;
 int ev_fullscreen = 0;
 
-#ifdef PERFORMANCE
-int64 perf_cur;
-int64 perf_next;
-#endif
-
-#ifdef FPS
-LARGE_INTEGER perf_freq;
-LARGE_INTEGER fps_last;
-LARGE_INTEGER fps_next;
-float      fps = 0.0f;
-uint32_t   fps_count = 0;
-
-uint32_t   vi_count = 0;
-float      vi = 0.0f;
-
-uint32_t   region = 0;
-
-float      ntsc_percent = 0.0f;
-float      pal_percent = 0.0f;
-
-#endif
+uint32_t region = 0;
 
 // ref rate
 // 60=0x0, 70=0x1, 72=0x2, 75=0x3, 80=0x4, 90=0x5, 100=0x6, 85=0x7, 120=0x8, none=0xff
@@ -1614,25 +1594,6 @@ void CALL GetDllInfo ( PLUGIN_INFO * PluginInfo )
   // bswap on a dword (32 bits) boundry
 }
 
-#ifndef WIN32
-int WINAPI QueryPerformanceCounter(PLARGE_INTEGER counter)
-{
-   struct timeval tv;
-
-   /* generic routine */
-   gettimeofday( &tv, NULL );
-   counter->QuadPart = (long long)tv.tv_usec + (long long)tv.tv_sec * 1000000;
-   return TRUE;
-}
-
-int WINAPI QueryPerformanceFrequency(PLARGE_INTEGER frequency)
-{
-   frequency->s.LowPart= 1000000;
-   frequency->s.HighPart= 0;
-   return TRUE;
-}
-#endif
-
 /******************************************************************
 Function: InitiateGFX
 Purpose:  This function is called when the DLL is started to give
@@ -1663,10 +1624,6 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
   char name[21] = "DEFAULT";
   ReadSpecialSettings (name);
   settings.res_data_org = settings.res_data;
-#ifdef FPS
-  QueryPerformanceFrequency (&perf_freq);
-  QueryPerformanceCounter (&fps_last);
-#endif
 
   debug_init ();    // Initialize debugger
 
@@ -1937,28 +1894,6 @@ EXPORT void CALL UpdateScreen (void)
   uint32_t width = (*gfx.VI_WIDTH_REG) << 1;
   if (fullscreen && (*gfx.VI_ORIGIN_REG  > width))
     update_screen_count++;
-//TODO-PORT: wx times
-#ifdef FPS
-  // vertical interrupt has occurred, increment counter
-  vi_count ++;
-
-  // Check frames per second
-  LARGE_INTEGER difference;
-  QueryPerformanceCounter (&fps_next);
-  difference.QuadPart = fps_next.QuadPart - fps_last.QuadPart;
-  float diff_secs = (float)((double)difference.QuadPart / (double)perf_freq.QuadPart);
-  if (diff_secs > 0.5f)
-  {
-    fps = (float)(fps_count / diff_secs);
-    vi = (float)(vi_count / diff_secs);
-    ntsc_percent = vi / 0.6f;
-    pal_percent = vi / 0.5f;
-    fps_last = fps_next;
-    fps_count = 0;
-    vi_count = 0;
-  }
-#endif
-  //*
   uint32_t limit = (settings.hacks&hack_Lego) ? 15 : 30;
   if ((settings.frame_buffer&fb_cpu_write_hack) && (update_screen_count > limit) && (rdp.last_bg == 0))
   {
@@ -2063,66 +1998,6 @@ void newSwapBuffers()
     grDepthMask (FXFALSE);
     grCullMode (GR_CULL_DISABLE);
 
-    if ((settings.show_fps & 0xF) || settings.clock)
-      set_message_combiner ();
-#ifdef FPS
-    float y = (float)settings.res_y;
-    if (settings.show_fps & 0x0F)
-    {
-      if (settings.show_fps & 4)
-      {
-        if (region)   // PAL
-          output (0, y, 0, "%d%% ", (int)pal_percent);
-        else
-          output (0, y, 0, "%d%% ", (int)ntsc_percent);
-        y -= 16;
-      }
-      if (settings.show_fps & 2)
-      {
-        output (0, y, 0, "VI/s: %.02f ", vi);
-        y -= 16;
-      }
-      if (settings.show_fps & 1)
-        output (0, y, 0, "FPS: %.02f ", fps);
-    }
-#endif
-
-#if 0
-    if (settings.clock)
-    {
-      if (settings.clock_24_hr)
-      {
-          time_t ltime;
-          time (&ltime);
-          tm *cur_time = localtime (&ltime);
-
-          sprintf (out_buf, "%.2d:%.2d:%.2d", cur_time->tm_hour, cur_time->tm_min, cur_time->tm_sec);
-      }
-      else
-      {
-          char ampm[] = "AM";
-          time_t ltime;
-
-          time (&ltime);
-          tm *cur_time = localtime (&ltime);
-
-          if (cur_time->tm_hour >= 12)
-          {
-            strcpy (ampm, "PM");
-            if (cur_time->tm_hour != 12)
-              cur_time->tm_hour -= 12;
-          }
-          if (cur_time->tm_hour == 0)
-            cur_time->tm_hour = 12;
-
-          if (cur_time->tm_hour >= 10)
-            sprintf (out_buf, "%.5s %s", asctime(cur_time) + 11, ampm);
-          else
-            sprintf (out_buf, " %.4s %s", asctime(cur_time) + 12, ampm);
-        }
-        output ((float)(settings.res_x - 68), y, 0, out_buf, 0);
-      }
-#endif
     //hotkeys
     if (CheckKeyPressed(G64_VK_BACK, 0x0001))
     {
@@ -2343,7 +2218,6 @@ void newSwapBuffers()
     if (fb_hwfbe_enabled && !(settings.hacks&hack_RE2) && !evoodoo)
       grAuxBufferExt( GR_BUFFER_AUXBUFFER );
     grBufferSwap (settings.vsync);
-    fps_count ++;
     if (*gfx.VI_STATUS_REG&0x08) //gamma correction is used
     {
       if (!voodoo.gamma_correction)

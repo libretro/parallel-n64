@@ -117,8 +117,6 @@ extern "C" {
 //#define TLUT_LOGGING		// log every entry of the TLUT?
 // ********************************
 
-#define FPS					// fps counter able? (not enabled necessarily)
-
 #define LOGNOTKEY			 // Log if not pressing:
 #define LOGKEY		0x11 // this key (CONTROL)
 
@@ -164,13 +162,6 @@ extern std::ofstream extlog;
 
 #define COLORED_DEBUGGER	// ;) pretty colors
 
-#ifdef FPS
-extern LARGE_INTEGER fps_last;
-extern LARGE_INTEGER fps_next;
-extern float		  fps;
-extern uint32_t	  fps_count;
-#endif
-
 // rdram mask at 0x400000 bytes (bah, not right for majora's mask)
 //#define BMASK	0x7FFFFF
 extern unsigned long BMASK;
@@ -181,12 +172,6 @@ extern uint32_t update_screen_count;
 extern uint32_t resolutions[0x18][2];
 
 int CheckKeyPressed(int key, int mask);
-
-//#define PERFORMANCE
-#ifdef PERFORMANCE
-extern int64 perf_cur;
-extern int64 perf_next;
-#endif
 
 //#ifdef LOGGING
 //extern std::ofstream loga;

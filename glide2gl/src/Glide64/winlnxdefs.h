@@ -26,24 +26,7 @@
 #include <stdint.h>
 
 #ifndef WIN32
-
-typedef union _LARGE_INTEGER
-{
-   struct
-     {
-    uint32_t LowPart;
-    uint32_t HighPart;
-     } s;
-   struct
-     {
-    uint32_t LowPart;
-    uint32_t HighPart;
-     } u;
-   long long QuadPart;
-} LARGE_INTEGER, *PLARGE_INTEGER;
-
 #define WINAPI
-
 #endif
 
 #endif
