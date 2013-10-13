@@ -1056,8 +1056,6 @@ grGetProcAddress( char *procName )
     return (GrProc)grWrapperFullScreenResolutionExt;
   if(!strcmp(procName, "grConfigWrapperExt"))
     return (GrProc)grConfigWrapperExt;
-  if(!strcmp(procName, "grKeyPressedExt"))
-    return (GrProc)grKeyPressedExt;
   if(!strcmp(procName, "grQueryResolutionsExt"))
     return (GrProc)grQueryResolutionsExt;
   if(!strcmp(procName, "grGetGammaTableExt"))
@@ -1962,34 +1960,6 @@ FX_ENTRY GrScreenResolution_t FX_CALL grWrapperFullScreenResolutionExt(FxU32* wi
   LOG("grWrapperFullScreenResolutionExt\r\n");
   g_FullScreenResolutions.getResolution(config.res, width, height);
   return config.res;
-*/
-}
-
-FX_ENTRY FxBool FX_CALL grKeyPressedExt(FxU32 key)
-{
-  return 0;
-/*
-#ifdef _WIN32
-  return (GetAsyncKeyState(key) & 0x8000);
-#else
-  if (key == 1) //LBUTTON
-  {
-    Uint8 mstate = SDL_GetMouseState(NULL, NULL);
-    return (mstate & SDL_BUTTON_LMASK);
-  }
-  else
-  {
-    Uint8 *keystates = SDL_GetKeyState( NULL );
-    if( keystates[ key ] )
-    {
-      return 1;
-    }
-    else
-    {
-      return 0;
-    }
-  }
-#endif
 */
 }
 

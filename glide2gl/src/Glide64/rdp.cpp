@@ -275,10 +275,6 @@ void RDP::Reset()
   rdp.update = UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
   fog_mode = RDP::fog_enabled;
   maincimg[0].addr = maincimg[1].addr = last_drawn_ci_addr = 0x7FFFFFFF;
-
-  CheckKeyPressed(G64_VK_BACK, 1); //BACK
-  CheckKeyPressed(G64_VK_B, 1);
-  CheckKeyPressed(G64_VK_V, 1);
 }
 
 RDP::RDP()

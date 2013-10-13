@@ -744,7 +744,6 @@ GRTEXBUFFEREXT   grTextureAuxBufferExt = NULL;
 GRAUXBUFFEREXT   grAuxBufferExt = NULL;
 GRSTIPPLE grStippleModeExt = NULL;
 GRSTIPPLE grStipplePatternExt = NULL;
-FxBool (FX_CALL *grKeyPressed)(FxU32) = NULL;
 
 int GetTexAddrUMA(int tmu, int texsize)
 {
@@ -1101,9 +1100,6 @@ int InitGfx ()
 
   if (grStipplePatternExt)
     grStipplePatternExt(settings.stipple_pattern);
-
-//  char strKeyPressedExt[] = "grKeyPressedExt";
-//  grKeyPressed = (FxBool (FX_CALL *)(FxU32))grGetProcAddress (strKeyPressedExt);
 
   InitCombine();
 
@@ -2038,39 +2034,6 @@ void newSwapBuffers()
     DrawWholeFrameBufferToScreen();
 
   frame_count ++;
-
-  // Open/close debugger?
-  if (CheckKeyPressed(G64_VK_SCROLL, 0x0001))
-  {
-    if (!debugging)
-    {
-      //if (settings.scr_res_x == 1024 && settings.scr_res_y == 768)
-      {
-        debugging = 1;
-
-        // Recalculate screen size, don't resize screen
-        settings.res_x = (uint32_t)(settings.scr_res_x * 0.625f);
-        settings.res_y = (uint32_t)(settings.scr_res_y * 0.625f);
-
-        ChangeSize ();
-      }
-    } 
-    else
-    {
-      debugging = 0;
-
-      settings.res_x = settings.scr_res_x;
-      settings.res_y = settings.scr_res_y;
-
-      ChangeSize ();
-    }
-  }
-
-  // Debug capture?
-  if (/*fullscreen && */debugging && CheckKeyPressed(G64_VK_INSERT, 0x0001))
-  {
-    _debugger.capture = 1;
-  }
 }
 
 extern "C"
@@ -2098,18 +2061,4 @@ EXPORT void CALL ViWidthChanged (void)
 {
 }
 
-}
-
-int CheckKeyPressed(int key, int mask)
-{
-static Glide64Keys g64Keys;
-  if (settings.use_hotkeys == 0)
-    return 0;
-#ifdef __WINDOWS__
-  return (GetAsyncKeyState(g64Keys[key]) & mask);
-#else
-  if (grKeyPressed)
-    return grKeyPressed(g64Keys[key]);
-#endif
-  return 0;
 }

@@ -116,7 +116,6 @@ extern "C" {
 //#define TLUT_LOGGING		// log every entry of the TLUT?
 // ********************************
 
-#define LOGNOTKEY			 // Log if not pressing:
 #define LOGKEY		0x11 // this key (CONTROL)
 
 //#define LOG_COMMANDS		// log the whole 64-bit command as (0x........, 0x........)
@@ -170,8 +169,6 @@ extern unsigned long BMASK;
 extern uint32_t update_screen_count;
 extern uint32_t resolutions[0x18][2];
 
-int CheckKeyPressed(int key, int mask);
-
 //#ifdef LOGGING
 //extern std::ofstream loga;
 //#define LOG(X) loga.open("log.txt",std::ios::app); loga << (...); loga.flush(); loga.close();
@@ -196,12 +193,7 @@ extern int log_open;
 extern std::ofstream rdp_log;
 #define OPEN_RDP_LOG() EXT("OPEN_RDP_LOG ()\n"); if (settings.logging && !log_open) { rdp_log.open ("rdp.txt"); log_open=TRUE; }
 #define CLOSE_RDP_LOG() EXT("CLOSE_RDP_LOG ()\n"); if (settings.logging && log_open) { rdp_log.close (); log_open=FALSE; }
-
-#ifdef LOGNOTKEY
-#define LRDP(x) EXT("RDP (...)\n"); if (settings.logging && log_open) { if (!CheckKeyPressed(LOGKEY,0x8000)) { rdp_log << x; rdp_log.flush(); } }
-#else
 #define LRDP(x) EXT("RDP (...)\n"); if (settings.logging && log_open) { rdp_log << x; rdp_log.flush(); }
-#endif
 
 #else
 #define OPEN_RDP_LOG()
@@ -227,10 +219,6 @@ __inline void FRDP (const char *fmt, ...)
 #ifdef RDP_LOGGING
 	if (!settings.logging || !log_open) return;
 
-#ifdef LOGNOTKEY
-	if (CheckKeyPressed(LOGKEY,0x8000)) return;
-#endif
-
 	va_list ap;
 	va_start(ap, fmt);
 	vsprintf(out_buf, fmt, ap);
@@ -242,10 +230,6 @@ __inline void FRDP_E (const char *fmt, ...)
 {
 #ifdef RDP_ERROR_LOG
 	if (!settings.elogging || !elog_open) return;
-
-#ifdef LOGNOTKEY
-	if (CheckKeyPressed(LOGKEY,0x8000)) return;
-#endif
 
 	sprintf (out_buf, "%08lx: (%08lx, %08lx) ", rdp.pc[rdp.pc_i]-8, rdp.cmd0, rdp.cmd1);
 	rdp_err << out_buf;
