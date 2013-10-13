@@ -1035,7 +1035,7 @@ void r4300_execute(void)
         fclose(pfProfile);
         pfProfile = NULL;
 #endif
-#ifdef defined(__LIBRETRO__) && defined(NEW_DYNAREC) // Hack to prevent crashes on exit
+#if defined(__LIBRETRO__) && defined(NEW_DYNAREC) // Hack to prevent crashes on exit
         free_blocks();
 #endif
     }
