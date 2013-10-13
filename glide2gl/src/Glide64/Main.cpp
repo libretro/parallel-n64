@@ -42,7 +42,6 @@
 #include "Config.h"
 #include "Util.h"
 #include "3dmath.h"
-#include "Debugger.h"
 #include "Combine.h"
 #include "TexCache.h"
 #include "CRC.h"
@@ -157,7 +156,6 @@ int to_fullscreen = FALSE;
 int fullscreen = FALSE;
 int romopen = FALSE;
 GrContext_t gfx_context = 0;
-int debugging = FALSE;
 int exception = FALSE;
 
 int evoodoo = 0;
@@ -267,34 +265,29 @@ void _ChangeSize ()
 
 void ChangeSize ()
 {
-  if (debugging)
-  {
-    _ChangeSize ();
-    return;
-  }
   switch (settings.aspectmode)
   {
-  case 0: //4:3
-    if (settings.scr_res_x >= settings.scr_res_y * 4.0f / 3.0f) {
-      settings.res_y = settings.scr_res_y;
-      settings.res_x = (uint32_t)(settings.res_y * 4.0f / 3.0f);
-    } else {
-      settings.res_x = settings.scr_res_x;
-      settings.res_y = (uint32_t)(settings.res_x / 4.0f * 3.0f);
-    }
-    break;
-  case 1: //16:9
-    if (settings.scr_res_x >= settings.scr_res_y * 16.0f / 9.0f) {
-      settings.res_y = settings.scr_res_y;
-      settings.res_x = (uint32_t)(settings.res_y * 16.0f / 9.0f);
-    } else {
-      settings.res_x = settings.scr_res_x;
-      settings.res_y = (uint32_t)(settings.res_x / 16.0f * 9.0f);
-    }
-    break;
-  default: //stretch or original
-    settings.res_x = settings.scr_res_x;
-    settings.res_y = settings.scr_res_y;
+     case 0: //4:3
+        if (settings.scr_res_x >= settings.scr_res_y * 4.0f / 3.0f) {
+           settings.res_y = settings.scr_res_y;
+           settings.res_x = (uint32_t)(settings.res_y * 4.0f / 3.0f);
+        } else {
+           settings.res_x = settings.scr_res_x;
+           settings.res_y = (uint32_t)(settings.res_x / 4.0f * 3.0f);
+        }
+        break;
+     case 1: //16:9
+        if (settings.scr_res_x >= settings.scr_res_y * 16.0f / 9.0f) {
+           settings.res_y = settings.scr_res_y;
+           settings.res_x = (uint32_t)(settings.res_y * 16.0f / 9.0f);
+        } else {
+           settings.res_x = settings.scr_res_x;
+           settings.res_y = (uint32_t)(settings.res_x / 16.0f * 9.0f);
+        }
+        break;
+     default: //stretch or original
+        settings.res_x = settings.scr_res_x;
+        settings.res_y = settings.scr_res_y;
   }
   _ChangeSize ();
   rdp.offset_x = (settings.scr_res_x - settings.res_x) / 2.0f;
@@ -918,7 +911,6 @@ int InitGfx ()
   OPEN_RDP_E_LOG ();
   VLOG ("InitGfx ()\n");
 
-  debugging = FALSE;
   rdp_reset ();
 
   // Initialize Glide
@@ -1552,8 +1544,6 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
   ReadSpecialSettings (name);
   settings.res_data_org = settings.res_data;
 
-  debug_init ();    // Initialize debugger
-
   gfx = Gfx_Info;
 
   util_init ();
@@ -1920,61 +1910,6 @@ void newSwapBuffers()
     grCullMode (GR_CULL_DISABLE);
   }
 
-  // Capture the screen if debug capture is set
-  if (_debugger.capture)
-  {
-    // Allocate the screen
-    _debugger.screen = new uint8_t [(settings.res_x*settings.res_y) << 1];
-
-    // Lock the backbuffer (already rendered)
-    GrLfbInfo_t info;
-    info.size = sizeof(GrLfbInfo_t);
-    while (!grLfbLock (GR_LFB_READ_ONLY,
-      GR_BUFFER_BACKBUFFER,
-      GR_LFBWRITEMODE_565,
-      GR_ORIGIN_UPPER_LEFT,
-      FXFALSE,
-      &info));
-
-    uint32_t offset_src=0, offset_dst=0;
-
-    // Copy the screen
-    for (uint32_t y=0; y<settings.res_y; y++)
-    {
-      if (info.writeMode == GR_LFBWRITEMODE_8888)
-      {
-        uint32_t *src = (uint32_t*)((uint8_t*)info.lfbPtr + offset_src);
-        uint16_t *dst = (uint16_t*)(_debugger.screen + offset_dst);
-        uint8_t r, g, b;
-        uint32_t col;
-        for (unsigned int x = 0; x < settings.res_x; x++)
-        {
-          col = src[x];
-          r = (uint8_t)((col >> 19) & 0x1F);
-          g = (uint8_t)((col >> 10) & 0x3F);
-          b = (uint8_t)((col >> 3)  & 0x1F);
-          dst[x] = (r<<11)|(g<<5)|b;
-        }
-      }
-      else
-      {
-        memcpy (_debugger.screen + offset_dst, (uint8_t*)info.lfbPtr + offset_src, settings.res_x << 1);
-      }
-      offset_dst += settings.res_x << 1;
-      offset_src += info.strideInBytes;
-    }
-
-    // Unlock the backbuffer
-    grLfbUnlock (GR_LFB_READ_ONLY, GR_BUFFER_BACKBUFFER);
-  }
-
-  if (fullscreen && debugging)
-  {
-    debug_keys ();
-    debug_cacheviewer ();
-    debug_mouse ();
-  }
-
   if (settings.frame_buffer & fb_read_back_to_screen)
     DrawWholeFrameBufferToScreen();
 
@@ -2006,12 +1941,9 @@ void newSwapBuffers()
     }
   }
 
-  if (_debugger.capture)
-    debug_capture ();
-
   if (fullscreen)
   {
-    if  (debugging || settings.wireframe || settings.buff_clear || (settings.hacks&hack_PPL && settings.ucode == 6))
+    if  (settings.wireframe || settings.buff_clear || (settings.hacks&hack_PPL && settings.ucode == 6))
     {
       if (settings.hacks&hack_RE2 && fb_depth_render_enabled)
         grDepthMask (FXFALSE);

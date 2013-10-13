@@ -44,7 +44,6 @@
 #include "Config.h"
 #include "3dmath.h"
 #include "Util.h"
-#include "Debugger.h"
 #include "Combine.h"
 #include "TexCache.h"
 #include "TexBuffer.h"
@@ -1524,22 +1523,7 @@ static void rdp_texrect()
         grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, n_vertices, vptr, sizeof(VERTEX));
       }
 
-      if (_debugger.capture)
-      {
-        VERTEX vl[3];
-        vl[0] = vstd[0];
-        vl[1] = vstd[2];
-        vl[2] = vstd[1];
-        add_tri (vl, 3, TRI_TEXRECT);
-        rdp.tri_n ++;
-        vl[0] = vstd[2];
-        vl[1] = vstd[3];
-        vl[2] = vstd[1];
-        add_tri (vl, 3, TRI_TEXRECT);
-        rdp.tri_n ++;
-      }
-      else
-        rdp.tri_n += 2;
+      rdp.tri_n += 2;
     }
     else
     {
@@ -2535,21 +2519,7 @@ static void rdp_fillrect()
         grDrawTriangle (&v[2], &v[3], &v[1]);
       }
 
-      if (_debugger.capture)
-      {
-        VERTEX v1[3];
-        v1[0] = v[0];
-        v1[1] = v[2];
-        v1[2] = v[1];
-        add_tri (v1, 3, TRI_FILLRECT);
-        rdp.tri_n ++;
-        v1[0] = v[2];
-        v1[1] = v[3];
-        add_tri (v1, 3, TRI_FILLRECT);
-        rdp.tri_n ++;
-      }
-      else
-        rdp.tri_n += 2;
+      rdp.tri_n += 2;
   }
   else
   {
@@ -3970,23 +3940,6 @@ void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer,
     ConvertCoordsConvert (vtxbuf, nbVtxs);
     grCullMode (GR_CULL_DISABLE);
     grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, nbVtxs-1, vtxbuf, sizeof(VERTEX));
-    if (_debugger.capture)
-    {
-      VERTEX vl[3];
-      vl[0] = vtxbuf[0];
-      vl[1] = vtxbuf[2];
-      vl[2] = vtxbuf[1];
-      add_tri (vl, 3, TRI_TRIANGLE);
-      rdp.tri_n++;
-      if (nbVtxs > 4)
-      {
-        vl[0] = vtxbuf[2];
-        vl[1] = vtxbuf[3];
-        vl[2] = vtxbuf[1];
-        add_tri (vl, 3, TRI_TRIANGLE);
-        rdp.tri_n++;
-      }
-    }
   }
 }
 
