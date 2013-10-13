@@ -57,8 +57,6 @@ void apply_shade_mods (VERTEX *v);
 void update ();
 void update_scissor ();
 
-void set_message_combiner ();
-
 float ScaleZ(float z);
 
 // positional and texel coordinate clipping

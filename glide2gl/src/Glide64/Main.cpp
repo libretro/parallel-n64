@@ -905,18 +905,7 @@ void DisplayLoadProgress(const wchar_t *format, ...)
   // XXX: convert to multibyte
   wcstombs(buf, wbuf, INFO_BUF);
 
-  if (fullscreen)
-  {
-    float x;
-    set_message_combiner ();
-    output (382, 380, 1, "LOADING TEXTURES. PLEASE WAIT...");
-    int len = min (strlen(buf)*8, 1024);
-    x = (1024-len)/2.0f;
-    output (x, 360, 1, buf);
-    grBufferSwap (0);
-    grColorMask (FXTRUE, FXTRUE);
-    grBufferClear (0, 0, 0xFFFF);
-  }
+  //LOADING TEXTURES. PLEASE WAIT...
 }
 #endif
 
@@ -1970,46 +1959,23 @@ void newSwapBuffers()
     }
     if (settings.buff_clear && (hotkey_info.hk_ref || hotkey_info.hk_motionblur || hotkey_info.hk_filtering))
     {
-      set_message_combiner ();
       char buf[256];
       buf[0] = 0;
-      char * message = 0;
       if (hotkey_info.hk_ref)
       {
          if (disable_motionblur)
             settings.frame_buffer = 1;
 
-        if (settings.frame_buffer & fb_ref)
-          message = strcat(buf, "FB READ ALWAYS: ON");
-        else
-          message = strcat(buf, "FB READ ALWAYS: OFF");
         hotkey_info.hk_ref--;
       }
       if (hotkey_info.hk_motionblur)
       {
-        if (settings.frame_buffer & fb_motionblur)
-          message = strcat(buf, "  MOTION BLUR: ON");
-        else
-          message = strcat(buf, "  MOTION BLUR: OFF");
         hotkey_info.hk_motionblur--;
       }
       if (hotkey_info.hk_filtering)
       {
-        switch (settings.filtering)
-        {
-        case 0:
-          message = strcat(buf, "  FILTERING MODE: AUTOMATIC");
-          break;
-        case 1:
-          message = strcat(buf, "  FILTERING MODE: FORCE BILINEAR");
-          break;
-        case 2:
-          message = strcat(buf, "  FILTERING MODE: FORCE POINT-SAMPLED");
-          break;
-        }
         hotkey_info.hk_filtering--;
       }
-      output (120.0f, (float)settings.res_y, 0, message, 0);
     }
   }
 
