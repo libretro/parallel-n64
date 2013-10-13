@@ -779,7 +779,6 @@ void GoToFullScreen();
 
 extern RDP rdp;
 extern SETTINGS settings;
-extern HOTKEY_INFO hotkey_info;
 extern VOODOO voodoo;
 
 extern GrTexInfo  fontTex;

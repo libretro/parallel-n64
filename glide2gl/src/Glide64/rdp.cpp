@@ -276,10 +276,6 @@ void RDP::Reset()
   fog_mode = RDP::fog_enabled;
   maincimg[0].addr = maincimg[1].addr = last_drawn_ci_addr = 0x7FFFFFFF;
 
-  hotkey_info.hk_ref = 90;
-  hotkey_info.hk_motionblur = (settings.buff_clear == 0)?0:90;
-  hotkey_info.hk_filtering = hotkey_info.hk_motionblur;
-
   CheckKeyPressed(G64_VK_BACK, 1); //BACK
   CheckKeyPressed(G64_VK_B, 1);
   CheckKeyPressed(G64_VK_V, 1);

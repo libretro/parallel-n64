@@ -174,8 +174,6 @@ RDP rdp;
 
 SETTINGS settings = { FALSE, 640, 480, GR_RESOLUTION_640x480, 0 };
 
-HOTKEY_INFO hotkey_info;
-
 VOODOO voodoo = {0, 0, 0, 0,
                  0, 0, 0, 0,
                  0, 0, 0, 0
@@ -1924,53 +1922,6 @@ void newSwapBuffers()
     grDepthBufferFunction (GR_CMP_ALWAYS);
     grDepthMask (FXFALSE);
     grCullMode (GR_CULL_DISABLE);
-
-    //hotkeys
-    if (CheckKeyPressed(G64_VK_BACK, 0x0001))
-    {
-      hotkey_info.hk_filtering = 100;
-      if (settings.filtering < 2)
-        settings.filtering++;
-      else
-        settings.filtering = 0;
-    }
-    if ((abs((int)(frame_count - curframe)) > 3 ) && CheckKeyPressed(G64_VK_ALT, 0x8000))  //alt +
-    {
-      if (CheckKeyPressed(G64_VK_B, 0x8000))  //b
-      {
-        hotkey_info.hk_motionblur = 100;
-        hotkey_info.hk_ref = 0;
-        curframe = frame_count;
-        settings.frame_buffer ^= fb_motionblur;
-      }
-      else if (CheckKeyPressed(G64_VK_V, 0x8000))  //v
-      {
-        hotkey_info.hk_ref = 100;
-        hotkey_info.hk_motionblur = 0;
-        curframe = frame_count;
-        settings.frame_buffer ^= fb_ref;
-      }
-    }
-    if (settings.buff_clear && (hotkey_info.hk_ref || hotkey_info.hk_motionblur || hotkey_info.hk_filtering))
-    {
-      char buf[256];
-      buf[0] = 0;
-      if (hotkey_info.hk_ref)
-      {
-         if (disable_motionblur)
-            settings.frame_buffer = 1;
-
-        hotkey_info.hk_ref--;
-      }
-      if (hotkey_info.hk_motionblur)
-      {
-        hotkey_info.hk_motionblur--;
-      }
-      if (hotkey_info.hk_filtering)
-      {
-        hotkey_info.hk_filtering--;
-      }
-    }
   }
 
   // Capture the screen if debug capture is set
