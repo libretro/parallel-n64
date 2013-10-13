@@ -192,7 +192,7 @@ int INI_Open ()
 #endif // _WIN32
             break;
     }
-    if (path == 0) return FALSE;
+    if (path == 0) return false;
     path[i+1] = 0;
 
 #ifndef _WIN32
@@ -208,12 +208,12 @@ int INI_Open ()
     if (ini == NULL)
     {
         ERRLOG("Could not find Glide64mk2.ini!");
-        return FALSE;
+        return false;
         /*
         ini = fopen (path, "w+b");
         if (ini == NULL)
         {
-            return FALSE;
+            return false;
         }
         */
     }
@@ -296,7 +296,7 @@ void INI_InsertSpace(int space)
 int INI_FindSection (const char *sectionname, int create)
 {
     if (ini == NULL)
-        return FALSE;
+        return false;
     printf("INI_FindSection trying to find name for %s\n", sectionname);
 
     char line[256], section[64];
@@ -383,7 +383,7 @@ int INI_FindSection (const char *sectionname, int create)
         return TRUE;
     }
 
-    return FALSE;
+    return false;
 }
 
 // Reads the value of item 'itemname' as a string.

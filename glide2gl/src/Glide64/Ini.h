@@ -42,10 +42,10 @@
 int INI_Open ();
 void INI_Close ();
 void INI_InsertSpace(int space);
-int INI_FindSection (const char *sectionname, int create=TRUE);
-const char *INI_ReadString (const char *itemname, const char *value, const char *def_value, int create=TRUE);
+int INI_FindSection (const char *sectionname, int create = true);
+const char *INI_ReadString (const char *itemname, const char *value, const char *def_value, int create = true);
 void INI_WriteString (const char *itemname, const char *value);
-int INI_ReadInt (const char *itemname, int def_value, int create=TRUE);
+int INI_ReadInt (const char *itemname, int def_value, int create = true);
 void INI_WriteInt (const char *itemname, int value);
 void SetConfigDir( const char *configDir );
 
