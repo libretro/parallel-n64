@@ -81,12 +81,11 @@ extern int buffer_cleared; // mark that the buffer has been cleared, used to che
 #define GL_GLEXT_PROTOTYPES
 #include <SDL_opengles2.h>
 #include "glide.h"
+
 #ifdef __LIBRETRO__
 extern "C" {
    void vbo_draw();
 }
-#else
-#include "glState.cpp"
 #endif
 
 void display_warning(const unsigned char *text, ...);
