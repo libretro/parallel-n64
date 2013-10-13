@@ -105,7 +105,6 @@ extern "C" {
 // ********************************
 // ** TAKE OUT BEFORE RELEASE!!! **
 //#define LOGGING			// log of spec functions called
-//#define LOG_KEY			// says "Key!!!" in the log when space bar is pressed
 
 //#define LOG_UCODE
 

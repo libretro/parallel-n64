@@ -1811,12 +1811,6 @@ output:   none
 uint32_t update_screen_count = 0;
 EXPORT void CALL UpdateScreen (void)
 {
-#ifdef LOG_KEY
-  if (CheckKeyPressed(G64_VK_SPACE, 0x0001))
-  {
-    LOG ("KEY!!!\n");
-  }
-#endif
 #ifdef VISUAL_LOGGING
   char out_buf[128];
   sprintf (out_buf, "UpdateScreen (). Origin: %08x, Old origin: %08x, width: %d\n", *gfx.VI_ORIGIN_REG, rdp.vi_org_reg, *gfx.VI_WIDTH_REG);
