@@ -1,4 +1,5 @@
 DEBUG=0
+GLIDE2GL=0
 
 ifeq ($(platform),)
 platform = unix
@@ -212,7 +213,11 @@ endif
 CFILES += $(libretrosrc)
 
 # Glide64
+ifeq ($(GLIDE2GL), 1)
+VIDEODIR_GLIDE = glide2gl/src
+else
 VIDEODIR_GLIDE = gles2glide64/src
+endif
 CPPFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
 CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp)
 CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
