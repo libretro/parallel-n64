@@ -16,6 +16,12 @@
 #  define max(a,b) ((a) > (b) ? (a) : (b))
 # endif
 
+//#define DBG_LOGS
+
+#ifdef DBG_LOGS
+#define LOG(A, ...) fprintf(stdout, __VA_ARGS__)
+#else
 #define LOG(A, ...)
+#endif
 
 #endif
