@@ -63,7 +63,7 @@ FILE *ini;
 int sectionstart;
 int last_line;      // last good line
 int last_line_ret;  // last line ended in return?
-wxUint16 cr = 0x0A0D;
+uint16_t cr = 0x0A0D;
 static char configdir[PATH_MAX] = {0};
 
 
@@ -122,7 +122,7 @@ int Ini::Read(const char *key, int defaultVal)
 }
 
 
-BOOL INI_Open ()
+int INI_Open ()
 {
 #ifdef __LIBRETRO__ //use ConfigGetSharedDataFilepath
     const char *path = ConfigGetSharedDataFilepath("Glide64mk2.ini");
@@ -293,7 +293,7 @@ void INI_InsertSpace(int space)
 #endif // _WIN32
 }
 
-BOOL INI_FindSection (const char *sectionname, BOOL create)
+int INI_FindSection (const char *sectionname, int create)
 {
     if (ini == NULL)
         return FALSE;
@@ -387,7 +387,7 @@ BOOL INI_FindSection (const char *sectionname, BOOL create)
 }
 
 // Reads the value of item 'itemname' as a string.
-const char *INI_ReadString (const char *itemname, char *value, const char *def_value, BOOL create)
+const char *INI_ReadString (const char *itemname, char *value, const char *def_value, int create)
 {
     char line[256], name[64];
     char *p, *n;
@@ -565,7 +565,7 @@ void INI_WriteString (const char *itemname, const char *value)
     return;
 }
 
-int INI_ReadInt (const char *itemname, int def_value, BOOL create)
+int INI_ReadInt (const char *itemname, int def_value, int create)
 {
     if (ini == NULL)
         return def_value;

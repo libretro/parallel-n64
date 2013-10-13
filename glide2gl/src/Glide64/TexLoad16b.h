@@ -166,7 +166,7 @@ static inline void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height,
 // Size: 2, Format: 0
 //
 
-wxUint32 Load16bRGBA (wxUIntPtr dst, wxUIntPtr src, int wid_64, int height, int line, int real_width, int tile)
+uint32_t Load16bRGBA (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
   if (wid_64 < 1) wid_64 = 1;
   if (height < 1) height = 1;
@@ -182,7 +182,7 @@ wxUint32 Load16bRGBA (wxUIntPtr dst, wxUIntPtr src, int wid_64, int height, int 
 //
 // ** by Gugaman/Dave2001 **
 
-wxUint32 Load16bIA (wxUIntPtr dst, wxUIntPtr src, int wid_64, int height, int line, int real_width, int tile)
+uint32_t Load16bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
   if (wid_64 < 1) wid_64 = 1;
   if (height < 1) height = 1;
@@ -197,7 +197,7 @@ wxUint32 Load16bIA (wxUIntPtr dst, wxUIntPtr src, int wid_64, int height, int li
 // Size: 2, Format: 1
 //
 
-wxUint16 yuv_to_rgb565(wxUint8 y, wxUint8 u, wxUint8 v)
+uint16_t yuv_to_rgb565(uint8_t y, uint8_t u, uint8_t v)
 {
   //*
   float r = y + (1.370705f * (v-128));
@@ -213,19 +213,19 @@ wxUint16 yuv_to_rgb565(wxUint8 y, wxUint8 u, wxUint8 v)
   if (r < 0) r = 0;
   if (g < 0) g = 0;
   if (b < 0) b = 0;
-  wxUint16 c = (wxUint16)(((wxUint16)(r) << 11) |
-    ((wxUint16)(g) << 5) |
-    (wxUint16)(b) );
+  uint16_t c = (uint16_t)(((uint16_t)(r) << 11) |
+    ((uint16_t)(g) << 5) |
+    (uint16_t)(b) );
   return c;
   //*/
   /*
-  const wxUint32 c = y - 16;
-  const wxUint32 d = u - 128;
-  const wxUint32 e = v - 128;
+  const uint32_t c = y - 16;
+  const uint32_t d = u - 128;
+  const uint32_t e = v - 128;
 
-  wxUint32 r =  (298 * c           + 409 * e + 128) & 0xf800;
-  wxUint32 g = ((298 * c - 100 * d - 208 * e + 128) >> 5) & 0x7e0;
-  wxUint32 b = ((298 * c + 516 * d           + 128) >> 11) & 0x1f;
+  uint32_t r =  (298 * c           + 409 * e + 128) & 0xf800;
+  uint32_t g = ((298 * c - 100 * d - 208 * e + 128) >> 5) & 0x7e0;
+  uint32_t b = ((298 * c + 516 * d           + 128) >> 11) & 0x1f;
 
   WORD texel = (WORD)(r | g | b);
 
@@ -237,19 +237,19 @@ wxUint16 yuv_to_rgb565(wxUint8 y, wxUint8 u, wxUint8 v)
 // Size: 2, Format: 1
 //
 
-wxUint32 Load16bYUV (wxUIntPtr dst, wxUIntPtr src, int wid_64, int height, int line, int real_width, int tile)
+uint32_t Load16bYUV (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
-  wxUint32 * mb = (wxUint32*)(gfx.RDRAM+rdp.addr[rdp.tiles[tile].t_mem]); //pointer to the macro block
-  wxUint16 * tex = (wxUint16*)dst;
-  wxUint16 i;
+  uint32_t * mb = (uint32_t*)(gfx.RDRAM+rdp.addr[rdp.tiles[tile].t_mem]); //pointer to the macro block
+  uint16_t * tex = (uint16_t*)dst;
+  uint16_t i;
   for (i = 0; i < 128; i++)
   {
-    wxUint32 t = mb[i]; //each wxUint32 contains 2 pixels
-    wxUint8 y1 = (wxUint8)t&0xFF;
-    wxUint8 v  = (wxUint8)(t>>8)&0xFF;
-    wxUint8 y0 = (wxUint8)(t>>16)&0xFF;
-    wxUint8 u  = (wxUint8)(t>>24)&0xFF;
-    wxUint16 c = yuv_to_rgb565(y0, u, v);
+    uint32_t t = mb[i]; //each uint32_t contains 2 pixels
+    uint8_t y1 = (uint8_t)t&0xFF;
+    uint8_t v  = (uint8_t)(t>>8)&0xFF;
+    uint8_t y0 = (uint8_t)(t>>16)&0xFF;
+    uint8_t u  = (uint8_t)(t>>24)&0xFF;
+    uint16_t c = yuv_to_rgb565(y0, u, v);
     *(tex++) = c;
     c = yuv_to_rgb565(y1, u, v);
     *(tex++) = c;

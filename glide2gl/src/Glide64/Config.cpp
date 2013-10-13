@@ -29,7 +29,7 @@ static m64p_handle video_general_section;
 static m64p_handle video_glide64_section;
 
 
-BOOL Config_Open()
+int Config_Open()
 {
     if (ConfigOpenSection("Video-General", &video_general_section) != M64ERR_SUCCESS ||
         ConfigOpenSection("Video-Glide64mk2", &video_glide64_section) != M64ERR_SUCCESS)
@@ -60,7 +60,7 @@ PackedScreenResolution Config_ReadScreenSettings()
     return packedResolution;
 }
 
-BOOL Config_ReadInt(const char *itemname, const char *desc, int def_value, int create, int isBoolean)
+int Config_ReadInt(const char *itemname, const char *desc, int def_value, int create, int isBoolean)
 {
     VLOG("Getting value %s", itemname);
     if (isBoolean)
@@ -108,7 +108,7 @@ wxUint32 resolutions[0x18][2] = {
 };
 
 
-BOOL Config_Open()
+int Config_Open()
 {
   INI_Open();
   if(INI_FindSection("SETTINGS",FALSE) == FALSE) {
@@ -128,7 +128,7 @@ int Config_ReadScreenInt(const char *itemname) {
   else return FALSE;
 }
 
-BOOL Config_ReadInt(const char *itemname, const char *desc, int def_value, int create, int isBoolean) {
+int Config_ReadInt(const char *itemname, const char *desc, int def_value, int create, int isBoolean) {
     VLOG("Getting value %s", itemname);
     int z = INI_ReadInt(itemname, def_value, FALSE);
     if(isBoolean) z=(z && 1);

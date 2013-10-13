@@ -175,7 +175,7 @@ extern std::ofstream extlog;
 extern LARGE_INTEGER fps_last;
 extern LARGE_INTEGER fps_next;
 extern float		  fps;
-extern wxUint32	  fps_count;
+extern uint32_t	  fps_count;
 #endif
 
 // rdram mask at 0x400000 bytes (bah, not right for majora's mask)
@@ -184,8 +184,8 @@ extern unsigned long BMASK;
 #define WMASK	0x3FFFFF
 #define DMASK	0x1FFFFF
 
-extern wxUint32 update_screen_count;
-extern wxUint32 resolutions[0x18][2];
+extern uint32_t update_screen_count;
+extern uint32_t resolutions[0x18][2];
 
 int CheckKeyPressed(int key, int mask);
 
@@ -304,7 +304,7 @@ void ReleaseGfx ();
 
 // The highest 8 bits are the segment # (1-16), and the lower 24 bits are the offset to
 // add to it.
-__inline wxUint32 segoffset (wxUint32 so)
+__inline uint32_t segoffset (uint32_t so)
 {
 	return (rdp.segment[(so>>24)&0x0f] + (so&BMASK))&BMASK;
 }
@@ -324,14 +324,14 @@ __inline wxUint32 segoffset (wxUint32 so)
 */
 /***** Structures *****/
 typedef struct {
-	wxUint16 Version;        /* Set to 0x0103 */
-	wxUint16 Type;           /* Set to PLUGIN_TYPE_GFX */
+	uint16_t Version;        /* Set to 0x0103 */
+	uint16_t Type;           /* Set to PLUGIN_TYPE_GFX */
 	char Name[100];      /* Name of the DLL */
 
 	/* If DLL supports memory these memory options then set them to TRUE or FALSE
 	   if it does not support it */
-	int NormalMemory;    /* a normal wxUint8 array */
-	int MemoryBswaped;  /* a normal wxUint8 array where the memory has been pre
+	int NormalMemory;    /* a normal uint8_t array */
+	int MemoryBswaped;  /* a normal uint8_t array where the memory has been pre
 	                          bswap on a dword (32 bits) boundry */
 } PLUGIN_INFO;
 
@@ -399,7 +399,7 @@ typedef void (FX_CALL *GRSTIPPLE)( FxI32 mode) ;
 
 typedef void (FX_CALL *GRCONFIGWRAPPEREXT)(FxI32, FxI32, FxBool, FxBool);
 
-typedef GrScreenResolution_t (FX_CALL *GRWRAPPERFULLSCREENRESOLUTIONEXT)(wxUint32*, wxUint32*);
+typedef GrScreenResolution_t (FX_CALL *GRWRAPPERFULLSCREENRESOLUTIONEXT)(uint32_t*, uint32_t*);
 
 typedef char ** (FX_CALL *GRQUERYRESOLUTIONSEXT)(FxI32*);
 
@@ -611,16 +611,16 @@ EXPORT void CALL ViWidthChanged (void);
             frame buffer has been modified by CPU at the given address.
   input:    addr		rdram address
 			val			val
-			size		1 = wxUint8, 2 = wxUint16, 4 = wxUint32
+			size		1 = uint8_t, 2 = uint16_t, 4 = uint32_t
   output:   none
 *******************************************************************/
-EXPORT void CALL FBWrite(wxUint32, wxUint32);
+EXPORT void CALL FBWrite(uint32_t, uint32_t);
 
 typedef struct
 {
-	wxUint32 addr;
-	wxUint32 val;
-	wxUint32 size;				// 1 = wxUint8, 2 = wxUint16, 4=wxUint32
+	uint32_t addr;
+	uint32_t val;
+	uint32_t size;				// 1 = uint8_t, 2 = uint16_t, 4=uint32_t
 } FrameBufferModifyEntry;
 
 /******************************************************************
@@ -631,7 +631,7 @@ typedef struct
 			size = size of the plist, max = 1024
   output:   none
 *******************************************************************/
-EXPORT void CALL FBWList(FrameBufferModifyEntry *plist, wxUint32 size);
+EXPORT void CALL FBWList(FrameBufferModifyEntry *plist, uint32_t size);
 
 /******************************************************************
   Function: FrameBufferRead
@@ -645,10 +645,10 @@ EXPORT void CALL FBWList(FrameBufferModifyEntry *plist, wxUint32 size);
 			is read within the same 4KB range
   input:    addr		rdram address
 			val			val
-			size		1 = wxUint8, 2 = wxUint16, 4 = wxUint32
+			size		1 = uint8_t, 2 = uint16_t, 4 = uint32_t
   output:   none
 *******************************************************************/
-EXPORT void CALL FBRead(wxUint32 addr);
+EXPORT void CALL FBRead(uint32_t addr);
 
 /************************************************************************
 Function: FBGetFrameBufferInfo

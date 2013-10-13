@@ -39,13 +39,13 @@
 #include <stdio.h>
 #include "winlnxdefs.h"
 
-BOOL INI_Open ();
+int INI_Open ();
 void INI_Close ();
 void INI_InsertSpace(int space);
-BOOL INI_FindSection (const char *sectionname, BOOL create=TRUE);
-const char *INI_ReadString (const char *itemname, const char *value, const char *def_value, BOOL create=TRUE);
+int INI_FindSection (const char *sectionname, int create=TRUE);
+const char *INI_ReadString (const char *itemname, const char *value, const char *def_value, int create=TRUE);
 void INI_WriteString (const char *itemname, const char *value);
-int INI_ReadInt (const char *itemname, int def_value, BOOL create=TRUE);
+int INI_ReadInt (const char *itemname, int def_value, int create=TRUE);
 void INI_WriteInt (const char *itemname, int value);
 void SetConfigDir( const char *configDir );
 

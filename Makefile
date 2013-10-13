@@ -1,5 +1,5 @@
 DEBUG=0
-GLIDE2GL=0
+GLIDE2GL=1
 
 ifeq ($(platform),)
 platform = unix
