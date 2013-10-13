@@ -22,8 +22,6 @@
 #ifndef M64P_H
 #define M64P_H
 
-#ifndef OLDAPI
-
 #include "m64p_types.h"
 #include "m64p_plugin.h"
 #include "m64p_config.h"
@@ -80,15 +78,6 @@ extern ptr_VidExt_ToggleFullScreen      CoreVideo_ToggleFullScreen;
 extern ptr_VidExt_GL_GetProcAddress     CoreVideo_GL_GetProcAddress;
 extern ptr_VidExt_GL_SetAttribute       CoreVideo_GL_SetAttribute;
 extern ptr_VidExt_GL_SwapBuffers        CoreVideo_GL_SwapBuffers;
-#endif
-
-#else
-
-#include <wx/wx.h>
-#include <wx/fileconf.h>
-#include <wx/wfstream.h>
-
-
 #endif
 
 #endif
