@@ -674,7 +674,9 @@ EXPORT void CALL ProcessDList(void)
   update_screen_count = 0;
   ChangeSize ();
 
+#ifdef VISUAL_LOGGING
   VLOG ("ProcessDList ()\n");
+#endif
 
   if (!fullscreen)
   {
@@ -3361,7 +3363,9 @@ typedef struct
 #endif
 EXPORT void CALL FBGetFrameBufferInfo(void *p)
 {
+#ifdef VISUAL_LOGGING
   VLOG ("FBGetFrameBufferInfo ()\n");
+#endif
   FrameBufferInfo * pinfo = (FrameBufferInfo *)p;
   memset(pinfo,0,sizeof(FrameBufferInfo)*6);
   if (!(settings.frame_buffer&fb_get_info))
@@ -4246,8 +4250,10 @@ extern "C" {
 #endif
 EXPORT void CALL ProcessRDPList(void)
 {
-  LOG ("ProcessRDPList ()\n");
+#ifdef VISUAL_LOGGING
+  VLOG ("ProcessRDPList ()\n");
   LRDP("ProcessRDPList ()\n");
+#endif
 
   SoftLocker lock(mutexProcessDList);
   if (!lock.IsOk()) //mutex is busy
@@ -4272,10 +4278,12 @@ EXPORT void CALL ProcessRDPList(void)
   for (i=0; i < length; i += 4)
   {
     rdp_cmd_data[rdp_cmd_ptr++] = READ_RDP_DATA(dp_current + i);
+#ifdef VISUAL_LOGGING
     if (rdp_cmd_ptr >= 0x1000)
     {
       FRDP("rdp_process_list: rdp_cmd_ptr overflow %x %x --> %x\n", length, dp_current, dp_end);
     }
+#endif
   }
 
   dp_current = dp_end;

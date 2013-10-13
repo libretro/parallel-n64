@@ -1963,10 +1963,12 @@ EXPORT void CALL UpdateScreen (void)
     LOG ("KEY!!!\n");
   }
 #endif
+#ifdef VISUAL_LOGGING
   char out_buf[128];
   sprintf (out_buf, "UpdateScreen (). Origin: %08x, Old origin: %08x, width: %d\n", *gfx.VI_ORIGIN_REG, rdp.vi_org_reg, *gfx.VI_WIDTH_REG);
   VLOG (out_buf);
   LRDP(out_buf);
+#endif
 
   wxUint32 width = (*gfx.VI_WIDTH_REG) << 1;
   if (fullscreen && (*gfx.VI_ORIGIN_REG  > width))
@@ -2086,7 +2088,9 @@ void newSwapBuffers()
 
   rdp.updatescreen = 0;
 
+#ifdef VISUAL_LOGGING
   LRDP("swapped\n");
+#endif
 
   // Allow access to the whole screen
   if (fullscreen)

@@ -1303,7 +1303,9 @@ extern "C" {
 
 EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
 {
+#ifdef VISUAL_LOGGING
   VLOG("CALL ReadScreen2 ()\n");
+#endif
   *width = settings.res_x;
   *height = settings.res_y;
   if (dest)
@@ -1352,7 +1354,9 @@ EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
       // Unlock the frontbuffer
       grLfbUnlock (GR_LFB_READ_ONLY, GR_BUFFER_FRONTBUFFER);
     }
+#ifdef VISUAL_LOGGING
     VLOG ("ReadScreen. Success.\n");
+#endif
   }
 }
 
@@ -1923,10 +1927,12 @@ EXPORT void CALL UpdateScreen (void)
     LOG ("KEY!!!\n");
   }
 #endif
+#ifdef VISUAL_LOGGING
   char out_buf[128];
   sprintf (out_buf, "UpdateScreen (). Origin: %08x, Old origin: %08x, width: %d\n", *gfx.VI_ORIGIN_REG, rdp.vi_org_reg, *gfx.VI_WIDTH_REG);
   VLOG (out_buf);
   LRDP(out_buf);
+#endif
 
   uint32_t width = (*gfx.VI_WIDTH_REG) << 1;
   if (fullscreen && (*gfx.VI_ORIGIN_REG  > width))

@@ -682,7 +682,9 @@ EXPORT void CALL ProcessDList(void)
   }
 #endif
 
+#ifdef VISUAL_LOGGING
   VLOG ("ProcessDList ()\n");
+#endif
 
   if (!fullscreen)
   {
@@ -902,7 +904,9 @@ EXPORT void CALL ProcessDList(void)
     newSwapBuffers ();
     CI_SET = FALSE;
   }
+#ifdef VISUAL_LOGGING
   LRDP("ProcessDList end\n");
+#endif
 }
 
 #ifdef __cplusplus
@@ -4254,8 +4258,10 @@ extern "C" {
 #endif
 EXPORT void CALL ProcessRDPList(void)
 {
+#ifdef VISUAL_LOGGING
   LOG ("ProcessRDPList ()\n");
   LRDP("ProcessRDPList ()\n");
+#endif
 
   SoftLocker lock(mutexProcessDList);
   if (!lock.IsOk()) //mutex is busy
@@ -4280,10 +4286,12 @@ EXPORT void CALL ProcessRDPList(void)
   for (i=0; i < length; i += 4)
   {
     rdp_cmd_data[rdp_cmd_ptr++] = READ_RDP_DATA(dp_current + i);
+#ifdef VISUAL_LOGGING
     if (rdp_cmd_ptr >= 0x1000)
     {
       FRDP("rdp_process_list: rdp_cmd_ptr overflow %x %x --> %x\n", length, dp_current, dp_end);
     }
+#endif
   }
 
   dp_current = dp_end;

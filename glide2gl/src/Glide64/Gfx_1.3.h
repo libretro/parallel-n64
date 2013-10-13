@@ -113,6 +113,7 @@ extern "C" {
 							//  note that some of these things are inserted/removed
 							//  from within the code & may not be changed by this define.
 
+//#define VISUAL_LOGGING
 //#define TLUT_LOGGING		// log every entry of the TLUT?
 // ********************************
 
