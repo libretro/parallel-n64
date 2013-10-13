@@ -109,8 +109,6 @@ extern "C" {
 
 //#define LOG_UCODE
 
-//#define ALTTAB_FIX
-
 //#define EXTREME_LOGGING		// lots of logging
 							//  note that some of these things are inserted/removed
 							//  from within the code & may not be changed by this define.
@@ -145,12 +143,6 @@ extern "C" {
 
 // Usually enabled
 #define LARGE_TEXTURE_HANDLING	// allow large-textured objects to be split?
-
-#ifdef ALTTAB_FIX
-extern HHOOK hhkLowLevelKybd;
-extern LRESULT CALLBACK LowLevelKeyboardProc(int nCode,
-   WPARAM wParam, LPARAM lParam);
-#endif
 
 // Simulations
 //#define SIMULATE_VOODOO1

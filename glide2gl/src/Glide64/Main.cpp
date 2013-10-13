@@ -163,22 +163,6 @@ int exception = FALSE;
 int evoodoo = 0;
 int ev_fullscreen = 0;
 
-#ifdef __WINDOWS__
-#define WINPROC_OVERRIDE
-#endif
-
-#ifdef WINPROC_OVERRIDE
-LRESULT CALLBACK WndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-WNDPROC oldWndProc = NULL;
-WNDPROC myWndProc = NULL;
-#endif
-
-#ifdef ALTTAB_FIX
-HHOOK hhkLowLevelKybd = NULL;
-LRESULT CALLBACK LowLevelKeyboardProc(int nCode,
-                                      WPARAM wParam, LPARAM lParam);
-#endif
-
 #ifdef PERFORMANCE
 int64 perf_cur;
 int64 perf_next;
@@ -1561,21 +1545,6 @@ void CALL CloseDLL (void)
 {
   VLOG ("CloseDLL ()\n");
 
-  // re-set the old window proc
-#ifdef WINPROC_OVERRIDE
-  SetWindowLong (gfx.hWnd, GWL_WNDPROC, (long)oldWndProc);
-#endif
-
-#ifdef ALTTAB_FIX
-  if (hhkLowLevelKybd)
-  {
-    UnhookWindowsHookEx(hhkLowLevelKybd);
-    hhkLowLevelKybd = 0;
-  }
-#endif
-
-  //CLOSELOG ();
-
 #ifdef TEXTURE_FILTER // Hiroshi Morii <koolsmoky@users.sourceforge.net>
   if (settings.ghq_use)
   {
@@ -1698,15 +1667,6 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
   debug_init ();    // Initialize debugger
 
   gfx = Gfx_Info;
-
-#ifdef WINPROC_OVERRIDE
-  // [H.Morii] inject our own winproc so that "alt-enter to fullscreen"
-  // message is shown when the emulator window is activated.
-  WNDPROC curWndProc = (WNDPROC)GetWindowLong(gfx.hWnd, GWL_WNDPROC);
-  if (curWndProc && curWndProc != (WNDPROC)WndProc) {
-    oldWndProc = (WNDPROC)SetWindowLong (gfx.hWnd, GWL_WNDPROC, (long)WndProc);
-  }
-#endif
 
   util_init ();
   math_init ();
@@ -2489,27 +2449,6 @@ EXPORT void CALL ViWidthChanged (void)
 {
 }
 
-#ifdef WINPROC_OVERRIDE
-LRESULT CALLBACK WndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-  switch (msg)
-  {
-  case WM_ACTIVATEAPP:
-    if (wParam == TRUE && !fullscreen) rdp.window_changed = TRUE;
-    break;
-  case WM_PAINT:
-    if (!fullscreen) rdp.window_changed = TRUE;
-    break;
-
-    /*    case WM_DESTROY:
-    SetWindowLong (gfx.hWnd, GWL_WNDPROC, (long)oldWndProc);
-    break;*/
-  }
-
-  return CallWindowProc(oldWndProc, hwnd, msg, wParam, lParam);
-}
-#endif
-
 }
 
 int CheckKeyPressed(int key, int mask)
@@ -2525,59 +2464,6 @@ static Glide64Keys g64Keys;
 #endif
   return 0;
 }
-
-
-#ifdef ALTTAB_FIX
-int k_ctl=0, k_alt=0, k_del=0;
-
-LRESULT CALLBACK LowLevelKeyboardProc(int nCode,
-                                      WPARAM wParam, LPARAM lParam)
-{
-  if (!fullscreen) return CallNextHookEx(NULL, nCode, wParam, lParam);
-
-  int TabKey = FALSE;
-
-  PKBDLLHOOKSTRUCT p;
-
-  if (nCode == HC_ACTION)
-  {
-    switch (wParam) {
-case WM_KEYUP:    case WM_SYSKEYUP:
-  p = (PKBDLLHOOKSTRUCT) lParam;
-  if (p->vkCode == 162) k_ctl = 0;
-  if (p->vkCode == 164) k_alt = 0;
-  if (p->vkCode == 46) k_del = 0;
-  goto do_it;
-
-case WM_KEYDOWN:  case WM_SYSKEYDOWN:
-  p = (PKBDLLHOOKSTRUCT) lParam;
-  if (p->vkCode == 162) k_ctl = 1;
-  if (p->vkCode == 164) k_alt = 1;
-  if (p->vkCode == 46) k_del = 1;
-  goto do_it;
-
-do_it:
-  TabKey =
-    ((p->vkCode == VK_TAB) && ((p->flags & LLKHF_ALTDOWN) != 0)) ||
-    ((p->vkCode == VK_ESCAPE) && ((p->flags & LLKHF_ALTDOWN) != 0)) ||
-    ((p->vkCode == VK_ESCAPE) && ((GetKeyState(VK_CONTROL) & 0x8000) != 0)) ||
-    (k_ctl && k_alt && k_del);
-
-  break;
-    }
-  }
-
-  if (TabKey)
-  {
-    k_ctl = 0;
-    k_alt = 0;
-    k_del = 0;
-    ReleaseGfx ();
-  }
-
-  return CallNextHookEx(NULL, nCode, wParam, lParam);
-}
-#endif
 
 //
 // DllMain - called when the DLL is loaded, use this to get the DLL's instance

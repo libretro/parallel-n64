@@ -674,14 +674,6 @@ EXPORT void CALL ProcessDList(void)
   update_screen_count = 0;
   ChangeSize ();
 
-#ifdef ALTTAB_FIX
-  if (!hhkLowLevelKybd)
-  {
-    hhkLowLevelKybd = SetWindowsHookEx(WH_KEYBOARD_LL,
-      LowLevelKeyboardProc, NULL, 0);
-  }
-#endif
-
   VLOG ("ProcessDList ()\n");
 
   if (!fullscreen)
