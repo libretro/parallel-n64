@@ -3176,21 +3176,6 @@ EXPORT void CALL FBRead(uint32_t addr)
   }
 }
 
-#if 0
-/******************************************************************
-Function: FrameBufferWriteList
-Purpose:  This function is called to notify the dll that the
-frame buffer has been modified by CPU at the given address.
-input:    FrameBufferModifyEntry *plist
-size = size of the plist, max = 1024
-output:   none
-*******************************************************************/
-EXPORT void CALL FBWList(FrameBufferModifyEntry *plist, uint32_t size)
-{
-  LOG ("FBWList ()\n");
-  FRDP("FBWList. size: %d\n", size);
-}
-#endif
 
 /******************************************************************
 Function: FrameBufferWrite
@@ -3250,15 +3235,6 @@ output:   Values are return in the FrameBufferInfo structure
 Plugin can return up to 6 frame buffer info
 ************************************************************************/
 ///*
-#if 0
-typedef struct
-{
-  uint32_t addr;
-  uint32_t size;
-  uint32_t width;
-  uint32_t height;
-} FrameBufferInfo;
-#endif
 EXPORT void CALL FBGetFrameBufferInfo(void *p)
 {
 #ifdef VISUAL_LOGGING

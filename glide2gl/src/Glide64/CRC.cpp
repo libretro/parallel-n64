@@ -75,8 +75,7 @@ void CRC_BuildTable()
         CRCTable[i] = Reflect( crc, 32 );
     }
 }
-//*/
-//*
+
 unsigned int CRC32( unsigned int crc, void *buffer, unsigned int count )
 {
   unsigned int orig = crc;
@@ -85,58 +84,3 @@ unsigned int CRC32( unsigned int crc, void *buffer, unsigned int count )
     crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
   return crc ^ orig;
 }
-//*/
-
-/*
-wxUint32 CRC_Calculate( wxUint32 crc, void *buffer, wxUint32 count )
-{
-  wxUint32 Crc32=crc;
-  __asm {
-			mov	esi, buffer
-			mov	ecx, count
-			mov	edx, crc
-			xor eax, eax
-
-loop1:
-			inc	esi
-			mov	al, dl
-			xor	al, byte ptr [esi]
-			shr	edx, 8
-			mov	ebx, [CRCTable+eax*4]
-			xor	edx, ebx
-
-			loop loop1
-
-			xor	Crc32, edx
-   }
-   return Crc32;
-}
-*/
-
-/*
-unsigned int CRC_Calculate( unsigned int crc, void *buffer, unsigned int count )
-{
-  unsigned int Crc32=crc;
-  __asm {
-			mov	esi, buffer
-			mov	edx, count
-			add	edx, esi
-			mov	ecx, crc
-
-loop1:
-			mov	bl, byte ptr [esi]
-			movzx	eax, cl
-			inc	esi
-			xor	al, bl
-			shr	ecx, 8
-			mov	ebx, [CRCTable+eax*4]
-			xor	ecx, ebx
-
-			cmp	edx, esi
-			jne	loop1
-
-			xor	Crc32, ecx
-   }
-   return Crc32;
-}
-//*/
