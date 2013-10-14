@@ -159,7 +159,6 @@ SDL_sem *mutexProcessDList = SDL_CreateSemaphore(1);
 static void DrawFrameBuffer ();
 
 
-void (*renderCallback)(int) = NULL;
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
 
@@ -1538,8 +1537,6 @@ EXPORT void CALL ShowCFB (void)
 
 EXPORT void CALL SetRenderingCallback(void (*callback)(int))
 {
-  VLOG("CALL SetRenderingCallback (*)\n");
-    renderCallback = callback;
 }
 
 void drawViRegBG()

@@ -35,10 +35,6 @@
 #include "g3ext.h"
 #include "main.h"
 
-#define OPENGL_CHECK_ERRORS { const GLenum errcode = glGetError(); if (errcode != GL_NO_ERROR) LOG("OpenGL Error code %i in '%s' line %i\n", errcode, __FILE__, __LINE__-1); }
-
-extern void (*renderCallback)(int);
-
 wrapper_config config = {0, 0, 0, 0};
 int screen_width, screen_height;
 
@@ -1404,20 +1400,19 @@ grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth )
 FX_ENTRY void FX_CALL
 grBufferSwap( FxU32 swap_interval )
 {
+  LOG("grBufferSwap(%d)\r\n", swap_interval);
+
   vbo_draw();
 //	glFinish();
-//  printf("rendercallback is %p\n", renderCallback);
-  if(renderCallback)
-      (*renderCallback)(1);
-  int i;
-  LOG("grBufferSwap(%d)\r\n", swap_interval);
-  //printf("swap\n");
+
   if (render_to_texture) {
     display_warning("swap while render_to_texture\n");
     return;
   }
 
   retro_return(true);
+
+  int i;
 
   for (i = 0; i < nb_fb; i++)
     fbs[i].buff_clear = 1;
