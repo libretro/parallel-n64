@@ -368,7 +368,7 @@ void FindBestDepthBias()
     glVertex3f(float(x+4 - widtho)/(width/2), float(4 - heighto)/(height/2), 0.5);
     glVertex3f(float(x - widtho)/(width/2), float(4 - heighto)/(height/2), 0.5);
     glEnd();
-    glReadPixels(x+2, 2+viewport_offset, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &z);
+    glReadPixels(x+2, 2, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &z);
     z -= 0.75f + 8e-6f;
     if (z<0.0f) z = -z;
     if (z > 0.01f) continue;

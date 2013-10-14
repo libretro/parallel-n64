@@ -134,7 +134,7 @@ extern int fog_coord_support;
 //extern int pbuffer_support;
 extern int glsl_support;
 extern unsigned int pBufferAddress;
-extern int viewport_width, viewport_height, viewport_offset;
+extern int viewport_width, viewport_height;
 extern int UMAmode;
 
 void grChromaRangeExt(GrColor_t color0, GrColor_t color1, FxU32 mode);
