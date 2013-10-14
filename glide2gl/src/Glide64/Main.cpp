@@ -454,8 +454,6 @@ void ReadSettings ()
   ConfigWrapper();
 }
 
-unsigned disable_motionblur = 0;
-
 void ReadSpecialSettings (const char * name)
 {
   //  char buf [256];
@@ -524,12 +522,6 @@ void ReadSpecialSettings (const char * name)
     settings.hacks |= hack_GoldenEye;
   else if (strstr(name, (const char *)"PUZZLE LEAGUE"))
     settings.hacks |= hack_PPL;
-  /* Libretro-specific hacks */
-  else if (strstr(name, (const char *)"Blast Corps"))
-     disable_motionblur = 1;
-
-  if (strstr(name, (const char *)"ZELDA MAJORA'S MASK"))
-     disable_motionblur = 1;
 
   Ini * ini = Ini::OpenIni();
   if (!ini)
@@ -631,7 +623,17 @@ void ReadSpecialSettings (const char * name)
     if (depth_render > 0) settings.frame_buffer |= fb_depth_render;
     else if (depth_render == 0) settings.frame_buffer &= ~fb_depth_render;
     settings.frame_buffer |= fb_motionblur;
+
   }
+
+  if (
+        strstr(name, (const char *)"Blast Corps") ||
+        strstr(name, (const char *)"ZELDA MAJORA'S MASK") ||
+        strstr(name, (const char *)"ZELDA") ||
+        strstr(name, (const char *)"MASK")
+     )
+     settings.frame_buffer = 1;
+
   settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
 }
 
