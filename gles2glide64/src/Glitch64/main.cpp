@@ -634,7 +634,7 @@ grSstWinClose( GrContext_t context )
     // ZIGGY : I found the problem : it is a function pointer, when the extension isn't supported , it is then zero, so just need to check the pointer prior to do the call.
   {
     if (use_fbo)
-      glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+      sglBindFramebuffer( GL_FRAMEBUFFER, 0 );
   }
   catch (...)
   {
@@ -855,7 +855,7 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
       {
         if (fbs[i].width == width && fbs[i].height == height) //select already allocated FBO
         {
-          glBindFramebuffer( GL_FRAMEBUFFER, fbs[i].fbid );
+          sglBindFramebuffer( GL_FRAMEBUFFER, fbs[i].fbid );
           glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbs[i].texid, 0 );
           glBindRenderbuffer( GL_RENDERBUFFER, fbs[i].zbid );
           glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbs[i].zbid );
@@ -903,7 +903,7 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    glBindFramebuffer( GL_FRAMEBUFFER, fbs[nb_fb].fbid);
+    sglBindFramebuffer( GL_FRAMEBUFFER, fbs[nb_fb].fbid);
     glFramebufferTexture2D(GL_FRAMEBUFFER,
       GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbs[nb_fb].texid, 0);
     glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbs[nb_fb].zbid );
@@ -1443,7 +1443,7 @@ grRenderBuffer( GrBuffer_t buffer )
       widtho = savedWidtho;
       heighto = savedHeighto;
       if (use_fbo) {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        sglBindFramebuffer(GL_FRAMEBUFFER, 0);
         glBindRenderbuffer( GL_RENDERBUFFER, 0 );
       }
       curBufferAddr = 0;

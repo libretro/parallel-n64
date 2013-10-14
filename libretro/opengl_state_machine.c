@@ -119,7 +119,9 @@ static GLuint Framebuffer_framebuffer = 0;
 void sglBindFramebuffer(GLenum target, GLuint framebuffer)
 {
     vbo_draw();
+#ifndef NDEBUG
     assert(target == GL_FRAMEBUFFER);
+#endif
 
    if (!stop)
       glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
@@ -345,7 +347,9 @@ static GLuint BindTexture_ids[MAX_TEXTURE];
 void sglBindTexture(GLenum target, GLuint texture)
 {
     vbo_draw();
+#ifndef NDEBUG
     assert(target == GL_TEXTURE_2D);
+#endif
     BindTexture_ids[ActiveTexture_texture] = texture;
     glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
 }
@@ -354,7 +358,9 @@ void sglBindTexture(GLenum target, GLuint texture)
 void sglBindTextureGlide(GLenum target, GLuint texture)
 {
     vbo_draw();
+#ifndef NDEBUG
     assert(target == GL_TEXTURE_2D);
+#endif
 
     if (texture)
     {
