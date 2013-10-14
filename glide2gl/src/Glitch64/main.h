@@ -29,15 +29,11 @@
 #define LOG(...) WriteLog(M64MSG_VERBOSE, __VA_ARGS__)
 #define LOGINFO(...) WriteLog(M64MSG_INFO, __VA_ARGS__)
 #else
-#define LOG(...) // WriteLog(M64MSG_VERBOSE, __VA_ARGS__)
-#define LOGINFO(...) //WriteLog(M64MSG_INFO, __VA_ARGS__)
+#define LOG(...)
+#define LOGINFO(...)
 #endif
 void WriteLog(m64p_msg_level level, const char *msg, ...);
 
-
-#ifndef _WIN32
-//#define VPDEBUG
-#endif
 #ifdef VPDEBUG
 void dump_tex(int id);
 void dump_start();
