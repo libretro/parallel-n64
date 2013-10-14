@@ -74,7 +74,6 @@ extern int buffer_cleared; // mark that the buffer has been cleared, used to che
 #endif
 
 #include <stdio.h>
-//#define printf(...)
 #define GL_GLEXT_PROTOTYPES
 #include <SDL_opengles2.h>
 #include "glide.h"
