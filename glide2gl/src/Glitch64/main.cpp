@@ -369,33 +369,6 @@ grSstWinOpen(
   width = ConfigGetParamInt(video_general_section, "ScreenWidth");
   height = ConfigGetParamInt(video_general_section, "ScreenHeight");
   fullscreen = ConfigGetParamBool(video_general_section, "Fullscreen");
-  int vsync = ConfigGetParamBool(video_general_section, "VerticalSync");
-
-  // ZIGGY not sure, but it might be better to let the system choose
-  CoreVideo_GL_SetAttribute(M64P_GL_DOUBLEBUFFER, 1);
-  CoreVideo_GL_SetAttribute(M64P_GL_SWAP_CONTROL, vsync);
-  CoreVideo_GL_SetAttribute(M64P_GL_BUFFER_SIZE, 16);
-  //   SDL_GL_SetAttribute(SDL_GL_BUFFER_SIZE, 32);
-  //   SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-  //   SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-  //   SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-  //   SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
-  CoreVideo_GL_SetAttribute(M64P_GL_DEPTH_SIZE, 16);
-
-  printf("(II) Setting video mode %dx%d...\n", width, height);
-  if(CoreVideo_SetVideoMode(width, height, 0, fullscreen ? M64VIDEO_FULLSCREEN : M64VIDEO_WINDOWED) != M64ERR_SUCCESS)
-  {
-    printf("(EE) Error setting videomode %dx%d\n", width, height);
-    return false;
-  }
-
-  char caption[500];
-# ifdef _DEBUG
-  sprintf(caption, "Glide64mk2 debug");
-# else // _DEBUG
-  sprintf(caption, "Glide64mk2");
-# endif // _DEBUG
-  CoreVideo_SetCaption(caption);
 
   glViewport(0, 0, width, height);
   lfb_color_fmt = color_format;
@@ -1501,7 +1474,8 @@ grBufferSwap( FxU32 swap_interval )
     return;
   }
 
-  CoreVideo_GL_SwapBuffers();
+  retro_return(true);
+
   for (i = 0; i < nb_fb; i++)
     fbs[i].buff_clear = 1;
 }
