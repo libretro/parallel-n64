@@ -124,98 +124,15 @@ int Ini::Read(const char *key, int defaultVal)
 
 int INI_Open ()
 {
-#ifdef __LIBRETRO__ //use ConfigGetSharedDataFilepath
     const char *path = ConfigGetSharedDataFilepath("Glide64mk2.ini");
-#else
-	//TODO: use ConfigGetSharedDataFilepath
-	
-    // Get the path of the dll, ex: C:\Games\Project64\Plugin\Glide64.dll
-    char path[PATH_MAX];
-    if(strlen(configdir) > 0)
-    {
-        strncpy(path, configdir, PATH_MAX);
-        // make sure there's a trailing '/'
-        //if(path[strlen(path)-1] != '/')
-        //    strncat(path, "/", PATH_MAX - strlen(path));
-    }
-    else
-    {
-#ifdef _WIN32
-    GetModuleFileName (NULL, path, PATH_MAX);
-#else // _WIN32
-# ifdef __FreeBSD__
-   int n = readlink("/proc/curproc/files", path, PATH_MAX);
-#else
-   int n = readlink("/proc/self/exe", path, PATH_MAX);
-#endif
-   if (n == -1) strcpy(path, "./");
-   else
-     {
-    char path2[PATH_MAX];
-    int i;
-    
-    path[n] = '\0';
-    strcpy(path2, path);
-    for (i=strlen(path2)-1; i>0; i--)
-      {
-         if(path2[i] == '/') break;
-      }
-    if(i == 0) strcpy(path, "./");
-    else
-      {
-         DIR *dir;
-         struct dirent *entry;
-         int gooddir = 0;
-         
-         path2[i+1] = '\0';
-         dir = opendir(path2);
-         while((entry = readdir(dir)) != NULL)
-           {
-          if(!strcmp(entry->d_name, "plugins"))
-            gooddir = 1;
-           }
-         closedir(dir);
-         if(!gooddir) strcpy(path, "./");
-      }
-     }
 
-#endif // _WIN32
-
-    // Find the previous backslash
-    int i;
-    for (i=strlen(path)-1; i>0; i--)
-    {
-#ifdef _WIN32
-        if (path[i] == '\\')
-#else // _WIN32
-            if (path[i] == '/')
-#endif // _WIN32
-            break;
-    }
-    if (path == 0) return false;
-    path[i+1] = 0;
-
-#ifndef _WIN32
-   strcat(path, "plugins/");
-#endif // _WIN32
-    }
-#endif   
-
-    //strncat (path, "Glide64mk2.ini", PATH_MAX - strlen(path));
     LOG("opening %s\n", path);
-    // Open the file
     ini = fopen (path, "rb");
+
     if (ini == NULL)
     {
         ERRLOG("Could not find Glide64mk2.ini!");
         return false;
-        /*
-        ini = fopen (path, "w+b");
-        if (ini == NULL)
-        {
-            return false;
-        }
-        */
     }
 
     sectionstart = 0;
@@ -227,8 +144,8 @@ int INI_Open ()
 
 void INI_Close ()
 {
-    //if (ini)
-      //  fclose(ini);
+    if (ini)
+       fclose(ini);
 }
 
 void INI_InsertSpace(int space)
@@ -593,6 +510,5 @@ void INI_WriteInt (const char *itemname, int value)
 
 void SetConfigDir( const char *configDir )
 {
-    strncpy(configdir, configDir, PATH_MAX);
+   strncpy(configdir, configDir, PATH_MAX);
 }
-
