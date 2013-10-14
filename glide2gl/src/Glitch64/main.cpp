@@ -1400,10 +1400,9 @@ grBufferSwap( FxU32 swap_interval )
 {
   LOG("grBufferSwap(%d)\r\n", swap_interval);
 
-  if (render_to_texture) {
-    display_warning("swap while render_to_texture\n");
+  // don't swap while rendering to texture
+  if (render_to_texture)
     return;
-  }
 
   retro_return(true);
 
@@ -1420,80 +1419,83 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
           GrOriginLocation_t origin, FxBool pixelPipeline,
           GrLfbInfo_t *info )
 {
-  LOG("grLfbLock(%d,%d,%d,%d,%d)\r\n", type, buffer, writeMode, origin, pixelPipeline);
-  if (type == GR_LFB_WRITE_ONLY)
-  {
-    display_warning("grLfbLock : write only");
-  }
-  else
-  {
-    unsigned char *buf;
-    int i,j;
+   LOG("grLfbLock(%d,%d,%d,%d,%d)\r\n", type, buffer, writeMode, origin, pixelPipeline);
 
-    switch(buffer)
-    {
-    case GR_BUFFER_FRONTBUFFER:
-      //glReadBuffer(GL_FRONT);
-      break;
-    case GR_BUFFER_BACKBUFFER:
-      //glReadBuffer(GL_BACK);
-      break;
-    default:
-      display_warning("grLfbLock : unknown buffer : %x", buffer);
-    }
+#ifndef NDEBUG
+   // grLfblock is nop for GR_LBFB_WRITE_ONLY
+   if (type == GR_LFB_WRITE_ONLY)
+      return FXTRUE;
+#endif
 
-    if(buffer != GR_BUFFER_AUXBUFFER)
-    {
+   unsigned char *buf;
+   int i,j;
+
+   switch(buffer)
+   {
+      case GR_BUFFER_FRONTBUFFER:
+         //glReadBuffer(GL_FRONT);
+         break;
+      case GR_BUFFER_BACKBUFFER:
+         //glReadBuffer(GL_BACK);
+         break;
+      default:
+         display_warning("grLfbLock : unknown buffer : %x", buffer);
+   }
+
+   if(buffer != GR_BUFFER_AUXBUFFER)
+   {
       if (writeMode == GR_LFBWRITEMODE_888) {
-        //printf("LfbLock GR_LFBWRITEMODE_888\n");
-        info->lfbPtr = frameBuffer;
-        info->strideInBytes = width*4;
-        info->writeMode = GR_LFBWRITEMODE_888;
-        info->origin = origin;
-        //glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, frameBuffer);
+         //printf("LfbLock GR_LFBWRITEMODE_888\n");
+         info->lfbPtr = frameBuffer;
+         info->strideInBytes = width*4;
+         info->writeMode = GR_LFBWRITEMODE_888;
+         info->origin = origin;
+         //glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, frameBuffer);
       } else {
-        buf = (unsigned char*)malloc(width*height*4);
+         buf = (unsigned char*)malloc(width*height*4);
 
-        info->lfbPtr = frameBuffer;
-        info->strideInBytes = width*2;
-        info->writeMode = GR_LFBWRITEMODE_565;
-        info->origin = origin;
-        glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+         info->lfbPtr = frameBuffer;
+         info->strideInBytes = width*2;
+         info->writeMode = GR_LFBWRITEMODE_565;
+         info->origin = origin;
+         glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 
-        for (j=0; j<height; j++)
-        {
-          for (i=0; i<width; i++)
-          {
-            frameBuffer[(height-j-1)*width+i] =
-              ((buf[j*width*4+i*4+0] >> 3) << 11) |
-              ((buf[j*width*4+i*4+1] >> 2) <<  5) |
-              (buf[j*width*4+i*4+2] >> 3);
-          }
-        }
-        free(buf);
+         for (j=0; j<height; j++)
+         {
+            for (i=0; i<width; i++)
+            {
+               frameBuffer[(height-j-1)*width+i] =
+                  ((buf[j*width*4+i*4+0] >> 3) << 11) |
+                  ((buf[j*width*4+i*4+1] >> 2) <<  5) |
+                  (buf[j*width*4+i*4+2] >> 3);
+            }
+         }
+         free(buf);
       }
-    }
-    else
-    {
+   }
+   else
+   {
       info->lfbPtr = depthBuffer;
       info->strideInBytes = width*2;
       info->writeMode = GR_LFBWRITEMODE_ZA16;
       info->origin = origin;
       glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, depthBuffer);
-    }
-  }
+   }
 
-  return FXTRUE;
+   return FXTRUE;
 }
 
 FX_ENTRY FxBool FX_CALL
 grLfbUnlock( GrLock_t type, GrBuffer_t buffer )
 {
   LOG("grLfbUnlock(%d,%d)\r\n", type, buffer);
+
+#ifndef NDEBUG
+  // grLbfUnlock - type not for GR_LFB_WRITE_ONLY
   if (type == GR_LFB_WRITE_ONLY)
-  {
     display_warning("grLfbUnlock : write only");
-  }
+#endif
+
   return FXTRUE;
 }
 
@@ -1511,17 +1513,17 @@ grLfbReadRegion( GrBuffer_t src_buffer,
 
   switch(src_buffer)
   {
-  case GR_BUFFER_FRONTBUFFER:
-    //glReadBuffer(GL_FRONT);
-    break;
-  case GR_BUFFER_BACKBUFFER:
-    //glReadBuffer(GL_BACK);
-    break;
-    /*case GR_BUFFER_AUXBUFFER:
-    glReadBuffer(current_buffer);
-    break;*/
-  default:
-    display_warning("grReadRegion : unknown buffer : %x", src_buffer);
+     case GR_BUFFER_FRONTBUFFER:
+        //glReadBuffer(GL_FRONT);
+        break;
+     case GR_BUFFER_BACKBUFFER:
+        //glReadBuffer(GL_BACK);
+        break;
+        /*case GR_BUFFER_AUXBUFFER:
+          glReadBuffer(current_buffer);
+          break;*/
+     default:
+        display_warning("grReadRegion : unknown buffer : %x", src_buffer);
   }
 
   if(src_buffer != GR_BUFFER_AUXBUFFER)
@@ -1584,14 +1586,14 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
 
   switch(dst_buffer)
   {
-  case GR_BUFFER_BACKBUFFER:
-    //glDrawBuffer(GL_BACK);
-    break;
-  case GR_BUFFER_AUXBUFFER:
-    //glDrawBuffer(current_buffer);
-    break;
-  default:
-    display_warning("grLfbWriteRegion : unknown buffer : %x", dst_buffer);
+     case GR_BUFFER_BACKBUFFER:
+        //glDrawBuffer(GL_BACK);
+        break;
+     case GR_BUFFER_AUXBUFFER:
+        //glDrawBuffer(current_buffer);
+        break;
+     default:
+        display_warning("grLfbWriteRegion : unknown buffer : %x", dst_buffer);
   }
 
   if(dst_buffer != GR_BUFFER_AUXBUFFER)
@@ -1701,20 +1703,11 @@ FX_ENTRY char ** FX_CALL
 grQueryResolutionsExt(FxI32 * Size)
 {
   return 0;
-/*
-  LOG("grQueryResolutionsExt\r\n");
-  return g_FullScreenResolutions.getResolutionsList(Size);
-*/
 }
 
 FX_ENTRY GrScreenResolution_t FX_CALL grWrapperFullScreenResolutionExt(FxU32* width, FxU32* height)
 {
   return 0;
-/*
-  LOG("grWrapperFullScreenResolutionExt\r\n");
-  g_FullScreenResolutions.getResolution(config.res, width, height);
-  return config.res;
-*/
 }
 
 FX_ENTRY void FX_CALL grConfigWrapperExt(FxI32 resolution, FxI32 vram, FxBool fbo, FxBool aniso)
