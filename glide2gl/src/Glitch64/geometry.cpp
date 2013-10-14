@@ -413,12 +413,6 @@ grDrawTriangle( const void *a, const void *b, const void *c )
 {
   LOG("grDrawTriangle()\r\n\t");
   
-  if(nvidia_viewport_hack && !render_to_texture)
-  {
-    glViewport(0, viewport_offset, viewport_width, viewport_height);
-    nvidia_viewport_hack = 0;
-  }
-
   reloadTexture();
 
   if(need_to_compile) compile_shader();
@@ -449,12 +443,6 @@ grDrawPoint( const void *pt )
   float *t1 = (float*)pt + st1_off/sizeof(float) + 1;
   float *fog = (float*)pt + fog_ext_off/sizeof(float);
   LOG("grDrawPoint()\r\n");
-
-  if(nvidia_viewport_hack && !render_to_texture)
-  {
-    glViewport(0, viewport_offset, viewport_width, viewport_height);
-    nvidia_viewport_hack = 0;
-  }
 
   reloadTexture();
 
@@ -519,12 +507,6 @@ grDrawLine( const void *a, const void *b )
   float *b_t1 = (float*)b + st1_off/sizeof(float) + 1;
   float *b_fog = (float*)b + fog_ext_off/sizeof(float);
   LOG("grDrawLine()\r\n");
-
-  if(nvidia_viewport_hack && !render_to_texture)
-  {
-    glViewport(0, viewport_offset, viewport_width, viewport_height);
-    nvidia_viewport_hack = 0;
-  }
 
   reloadTexture();
 
@@ -593,12 +575,6 @@ grDrawVertexArray(FxU32 mode, FxU32 Count, void *pointers2)
   void **pointers = (void**)pointers2;
   LOG("grDrawVertexArray(%d,%d)\r\n", mode, Count);
 
-  if(nvidia_viewport_hack && !render_to_texture)
-  {
-    glViewport(0, viewport_offset, viewport_width, viewport_height);
-    nvidia_viewport_hack = 0;
-  }
-
   reloadTexture();
 
   if(need_to_compile) compile_shader();
@@ -617,16 +593,8 @@ grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers, FxU32 strid
 {
   LOG("grDrawVertexArrayContiguous(%d,%d,%d)\r\n", mode, Count, stride);
 
-  if(nvidia_viewport_hack && !render_to_texture)
-  {
-    glViewport(0, viewport_offset, viewport_width, viewport_height);
-    nvidia_viewport_hack = 0;
-  }
-
   if(stride != 156)
-  {
 	  LOGINFO("Incompatible stride\n");
-  }
 
   reloadTexture();
 
