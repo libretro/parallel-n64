@@ -277,27 +277,7 @@ void ConfigWrapper()
   if (grConfigWrapperExt)
     grConfigWrapperExt(settings.wrpResolution, settings.wrpVRAM * 1024 * 1024, settings.wrpFBO, settings.wrpAnisotropic);
 }
-/*
-static wxConfigBase * OpenIni()
-{
-  wxConfigBase * ini = wxConfigBase::Get(false);
-  if (!ini)
-  {
-    if (iniName.IsEmpty())
-      iniName = pluginPath + wxT("/Glide64mk2.ini");
-    if (wxFileExists(iniName))
-    {
-      wxFileInputStream is(iniName);
-      wxFileConfig * fcfg = new wxFileConfig(is, wxConvISO8859_1);
-      wxConfigBase::Set(fcfg);
-      ini = fcfg;
-    }
-  }
-  if (!ini)
-    wxMessageBox("Can not find ini file! Plugin will not run properly.", "File not found", wxOK|wxICON_EXCLAMATION);
-  return ini;
-}
-*/
+
 void WriteLog(m64p_msg_level level, const char *msg, ...)
 {
   char buf[1024];
@@ -610,101 +590,8 @@ void ReadSpecialSettings (const char * name)
   settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
 }
 
-//TODO-PORT: more ini stuff
 void WriteSettings (bool saveEmulationSettings)
 {
-/*
-  wxConfigBase * ini = OpenIni();
-  if (!ini || !ini->HasGroup("/SETTINGS"))
-    return;
-  ini->SetPath("/SETTINGS");
-
-  ini->Write("card_id", settings.card_id);
-  ini->Write("lang_id", settings.lang_id);
-  ini->Write("resolution", (int)settings.res_data);
-  ini->Write("ssformat", settings.ssformat);
-  ini->Write("vsync", settings.vsync);
-  ini->Write("show_fps", settings.show_fps);
-  ini->Write("clock", settings.clock);
-  ini->Write("clock_24_hr", settings.clock_24_hr);
-  ini->Write("advanced_options", settings.advanced_options);
-  ini->Write("texenh_options", settings.texenh_options);
-
-  ini->Write("wrpResolution", settings.wrpResolution);
-  ini->Write("wrpVRAM", settings.wrpVRAM);
-  ini->Write("wrpFBO", settings.wrpFBO);
-  ini->Write("wrpAnisotropic", settings.wrpAnisotropic);
-
-#ifndef _ENDUSER_RELEASE_
-  ini->Write("autodetect_ucode", settings.autodetect_ucode);
-  ini->Write("ucode", (int)settings.ucode);
-  ini->Write("wireframe", settings.wireframe);
-  ini->Write("wfmode", settings.wfmode);
-  ini->Write("logging", settings.logging);
-  ini->Write("log_clear", settings.log_clear);
-  ini->Write("run_in_window", settings.run_in_window);
-  ini->Write("elogging", settings.elogging);
-  ini->Write("filter_cache", settings.filter_cache);
-  ini->Write("unk_as_red", settings.unk_as_red);
-  ini->Write("log_unk", settings.log_unk);
-  ini->Write("unk_clear", settings.unk_clear);
-#endif //_ENDUSER_RELEASE_
-
-#ifdef TEXTURE_FILTER
-  ini->Write("ghq_fltr", settings.ghq_fltr);
-  ini->Write("ghq_cmpr", settings.ghq_cmpr);
-  ini->Write("ghq_enht", settings.ghq_enht);
-  ini->Write("ghq_hirs", settings.ghq_hirs);
-  ini->Write("ghq_enht_cmpr", settings.ghq_enht_cmpr);
-  ini->Write("ghq_enht_tile", settings.ghq_enht_tile);
-  ini->Write("ghq_enht_f16bpp", settings.ghq_enht_f16bpp);
-  ini->Write("ghq_enht_gz", settings.ghq_enht_gz);
-  ini->Write("ghq_enht_nobg", settings.ghq_enht_nobg);
-  ini->Write("ghq_hirs_cmpr", settings.ghq_hirs_cmpr);
-  ini->Write("ghq_hirs_tile", settings.ghq_hirs_tile);
-  ini->Write("ghq_hirs_f16bpp", settings.ghq_hirs_f16bpp);
-  ini->Write("ghq_hirs_gz", settings.ghq_hirs_gz);
-  ini->Write("ghq_hirs_altcrc", settings.ghq_hirs_altcrc);
-  ini->Write("ghq_cache_save", settings.ghq_cache_save);
-  ini->Write("ghq_cache_size", settings.ghq_cache_size);
-  ini->Write("ghq_hirs_let_texartists_fly", settings.ghq_hirs_let_texartists_fly);
-  ini->Write("ghq_hirs_dump", settings.ghq_hirs_dump);
-#endif
-
-  if (saveEmulationSettings)
-  {
-    if (romopen)
-    {
-      wxString S = "/";
-      ini->SetPath(S+rdp.RomName);
-    }
-    else
-      ini->SetPath("/DEFAULT");
-    ini->Write("filtering", settings.filtering);
-    ini->Write("fog", settings.fog);
-    ini->Write("buff_clear", settings.buff_clear);
-    ini->Write("swapmode", settings.swapmode);
-    ini->Write("lodmode", settings.lodmode);
-    ini->Write("aspect", settings.aspectmode);
-
-    ini->Write("fb_read_always", settings.frame_buffer&fb_ref ? 1 : 0l);
-    ini->Write("fb_smart", settings.frame_buffer & fb_emulation ? 1 : 0l);
-    //    ini->Write("motionblur", settings.frame_buffer & fb_motionblur ? 1 : 0);
-    ini->Write("fb_hires", settings.frame_buffer & fb_hwfbe ? 1 : 0l);
-    ini->Write("fb_get_info", settings.frame_buffer & fb_get_info ? 1 : 0l);
-    ini->Write("fb_render", settings.frame_buffer & fb_depth_render ? 1 : 0l);
-    ini->Write("detect_cpu_write", settings.frame_buffer & fb_cpu_write_hack ? 1 : 0l);
-    if (settings.frame_buffer & fb_read_back_to_screen)
-      ini->Write("read_back_to_screen", 1);
-    else if (settings.frame_buffer & fb_read_back_to_screen2)
-      ini->Write("read_back_to_screen", 2);
-    else
-      ini->Write("read_back_to_screen", 0l);
-  }
-
-  wxFileOutputStream os(iniName);
-  ((wxFileConfig*)ini)->Save(os);
-*/
 }
 
 GRTEXBUFFEREXT   grTextureBufferExt = NULL;
@@ -928,14 +815,12 @@ int InitGfx ()
   voodoo.has_2mb_tex_boundary = (SST_type < GR_SSTTYPE_Banshee) && !evoodoo;
   // use UMA if available
   voodoo.tex_UMA = FALSE;
-  //*
   if (strstr(extensions, " TEXUMA ")) {
     // we get better texture cache hits with UMA on
     grEnable(GR_TEXTURE_UMA_EXT);
     voodoo.tex_UMA = TRUE;
     LOG ("Using TEXUMA extension.\n");
   }
-  //*/
 //TODO-PORT: fullscreen stuff
   uint32_t res_data = settings.res_data;
   char strWrapperFullScreenResolutionExt[] = "grWrapperFullScreenResolutionExt";
