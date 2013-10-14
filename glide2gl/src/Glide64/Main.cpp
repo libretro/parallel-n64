@@ -627,12 +627,20 @@ void ReadSpecialSettings (const char * name)
   }
 
   if (
-        strstr(name, (const char *)"Blast Corps") ||
-        strstr(name, (const char *)"ZELDA MAJORA'S MASK") ||
-        strstr(name, (const char *)"ZELDA") ||
-        strstr(name, (const char *)"MASK")
+           strstr(name, (const char *)"Blast Corps")
+        || strstr(name, (const char *)"ZELDA MAJORA'S MASK")
+        || strstr(name, (const char *)"ZELDA")
+        || strstr(name, (const char *)"MASK")
+        || strstr(name, (const char *)"Banjo-Kazooie")
+        || strstr(name, (const char *)"MARIOKART64")
      )
      settings.frame_buffer = 1;
+
+  if (
+        strstr(name, (const char *)"Banjo-Kazooie")
+        || strstr(name, (const char *)"MARIOKART64")
+           )
+     settings.frame_buffer |= fb_ref;
 
   settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
 }
