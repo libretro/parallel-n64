@@ -1365,6 +1365,7 @@ grAuxBufferExt( GrBuffer_t buffer )
 FX_ENTRY void FX_CALL
 grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth )
 {
+  vbo_draw();
   LOG("grBufferClear(%d,%d,%d)\r\n", color, alpha, depth);
   switch(lfb_color_fmt)
   {
