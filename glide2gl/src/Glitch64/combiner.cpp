@@ -51,11 +51,6 @@ int blackandwhite1;
 float fogStart,fogEnd;
 float fogColor[4];
 
-#ifdef _WIN32
-static float farF;
-static float nearF;
-#endif // _WIN32
-
 int need_lambda[2];
 float lambda_color[2][4];
 

@@ -127,18 +127,7 @@ float invtex[2];
 //Gonetz
 int UMAmode = 0; //support for VSA-100 UMA mode;
 
-#ifdef _WIN32
-static HDC hDC = NULL;
-static HGLRC hGLRC = NULL;
-static HWND hToolBar = NULL;
-static HWND hwnd_win = NULL;
-static unsigned long windowedExStyle, windowedStyle;
-#endif // _WIN32
 static unsigned long fullscreen;
-#ifdef _WIN32
-static RECT windowedRect;
-static HMENU windowedMenu;
-#endif // _WIN32
 
 static int savedWidtho, savedHeighto;
 static int savedWidth, savedHeight;
@@ -180,34 +169,6 @@ void display_warning(const char *text, ...)
     LOGINFO(buf);
   }
 }
-
-#ifdef _WIN32
-void display_error()
-{
-  LPVOID lpMsgBuf;
-  if (!FormatMessage(
-    FORMAT_MESSAGE_ALLOCATE_BUFFER |
-    FORMAT_MESSAGE_FROM_SYSTEM |
-    FORMAT_MESSAGE_IGNORE_INSERTS,
-    NULL,
-    GetLastError(),
-    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-    (LPTSTR) &lpMsgBuf,
-    0,
-    NULL ))
-  {
-    // Handle the error.
-    return;
-  }
-  // Process any inserts in lpMsgBuf.
-  // ...
-  // Display the string.
-  MessageBox( NULL, (LPCTSTR)lpMsgBuf, "Error", MB_OK | MB_ICONINFORMATION );
-
-  // Free the buffer.
-  LocalFree( lpMsgBuf );
-}
-#endif // _WIN32
 
 #ifdef LOGGING
 char out_buf[256];
@@ -356,13 +317,6 @@ int isExtensionSupported(const char *extension)
   return 0;
 }
 
-#ifdef _WIN32
-int isWglExtensionSupported(const char *extension)
-{
-   return 1;
-}
-#endif // _WIN32
-
 #define GrPixelFormat_t int
 
 FX_ENTRY GrContext_t FX_CALL
@@ -380,13 +334,6 @@ grSstWinOpenExt(
   return grSstWinOpen(hWnd, screen_resolution, refresh_rate, color_format,
     origin_location, nColBuffers, nAuxBuffers);
 }
-
-#ifdef WIN32
-# include <fcntl.h>
-# ifndef ATTACH_PARENT_PROCESS
-#  define ATTACH_PARENT_PROCESS ((FxU32)-1)
-# endif
-#endif
 
 FX_ENTRY GrContext_t FX_CALL
 grSstWinOpen(
@@ -410,10 +357,6 @@ grSstWinOpen(
 
   LOG("grSstWinOpen(%08lx, %d, %d, %d, %d, %d %d)\r\n", hWnd, screen_resolution&~0x80000000, refresh_rate, color_format, origin_location, nColBuffers, nAuxBuffers);
 
-#ifdef _WIN32
-  if ((HWND)hWnd == NULL) hWnd = GetActiveWindow();
-  hwnd_win = (HWND)hWnd;
-#endif // _WIN32
   width = height = 0;
 
   m64p_handle video_general_section;
@@ -529,9 +472,6 @@ grSstWinOpen(
   if (isExtensionSupported("GL_3DFX_texture_compression_FXT1") == 0  && show_warning)
     display_warning("Your video card doesn't support GL_3DFX_texture_compression_FXT1 extension");
 
-#ifdef _WIN32
-  nvidia_viewport_hack = 1;
-#endif // _WIN32
   glViewport(0, viewport_offset, width, height);
   viewport_width = width;
   viewport_height = height;
@@ -622,7 +562,7 @@ grSstWinClose( GrContext_t context )
   }
 
   free_combiners();
-#ifndef WIN32
+
   try // I don't know why, but opengl can be killed before this function call when emulator is closed (Gonetz).
     // ZIGGY : I found the problem : it is a function pointer, when the extension isn't supported , it is then zero, so just need to check the pointer prior to do the call.
   {
@@ -643,39 +583,11 @@ grSstWinClose( GrContext_t context )
       glDeleteRenderbuffers( 1, &(fbs[i].zbid) );
     }
   }
-#endif
   nb_fb = 0;
 
   free_textures();
-#ifndef WIN32
-  // ZIGGY for some reasons, Pj64 doesn't like remove_tex on exit
   remove_tex(0, 0xfffffff);
-#endif
 
-  //*/
-#ifdef _WIN32
-  if (hGLRC)
-  {
-    wglMakeCurrent(hDC,NULL);
-    wglDeleteContext(hGLRC);
-    hGLRC = NULL;
-  }
-  if (fullscreen)
-  {
-    ChangeDisplaySettings(NULL, 0);
-    SetWindowPos(hwnd_win, NULL,
-      windowedRect.left, windowedRect.top,
-      0, 0,
-      SWP_NOZORDER | SWP_NOSIZE);
-    SetWindowLong(hwnd_win, GWL_STYLE, windowedStyle);
-    SetWindowLong(hwnd_win, GWL_EXSTYLE, windowedExStyle);
-    if (windowedMenu) SetMenu(hwnd_win, windowedMenu);
-    fullscreen = 0;
-  }
-#else
-  //SDL_QuitSubSystem(SDL_INIT_VIDEO);
-  //sleep(2);
-#endif
   return FXTRUE;
 }
 
@@ -1407,12 +1319,7 @@ FX_ENTRY void FX_CALL grFramebufferCopyExt(int x, int y, int w, int h,
 FX_ENTRY void FX_CALL
 grRenderBuffer( GrBuffer_t buffer )
 {
-#ifdef _WIN32
-  static HANDLE region = NULL;
-  int realWidth = pBufferWidth, realHeight = pBufferHeight;
-#endif // _WIN32
   LOG("grRenderBuffer(%d)\r\n", buffer);
-  //printf("grRenderBuffer(%d)\n", buffer);
 
   switch(buffer)
   {
@@ -2157,35 +2064,12 @@ grTexMultibaseAddress( GrChipID_t       tmu,
   display_warning("grTexMultibaseAddress");
 }
 
-/*
-inline void MySleep(FxU32 ms)
-{
-#ifdef _WIN32
-  Sleep(ms);
-#else
-  SDL_Delay(ms);
-#endif
-}
-*/
-
-#ifdef _WIN32
-static void CorrectGamma(LPVOID apGammaRamp)
-{
-  HDC hdc = GetDC(NULL);
-  if (hdc != NULL)
-  {
-    SetDeviceGammaRamp(hdc, apGammaRamp);
-    ReleaseDC(NULL, hdc);
-  }
-}
-#else
 static void CorrectGamma(const FxU16 aGammaRamp[3][256])
 {
   //TODO?
   //int res = SDL_SetGammaRamp(aGammaRamp[0], aGammaRamp[1], aGammaRamp[2]);
   //LOG("SDL_SetGammaRamp returned %d\r\n", res);
 }
-#endif
 
 FX_ENTRY void FX_CALL
 grLoadGammaTable( FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue)
@@ -2201,7 +2085,6 @@ grLoadGammaTable( FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue)
     aGammaRamp[2][i] = (FxU16)((blue[i] << 8) & 0xFFFF);
   }
   CorrectGamma(aGammaRamp);
-  //MySleep(1000); //workaround for Mupen64
 }
 
 FX_ENTRY void FX_CALL
@@ -2212,17 +2095,8 @@ grGetGammaTableExt(FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue)
   /*
   LOG("grGetGammaTableExt()\r\n");
   FxU16 aGammaRamp[3][256];
-#ifdef _WIN32
-  HDC hdc = GetDC(NULL);
-  if (hdc == NULL)
-    return;
-  if (GetDeviceGammaRamp(hdc, aGammaRamp) == TRUE)
-  {
-    ReleaseDC(NULL, hdc);
-#else
   if (SDL_GetGammaRamp(aGammaRamp[0], aGammaRamp[1], aGammaRamp[2]) != -1)
   {
-#endif
     for (int i = 0; i < 256; i++)
     {
       red[i] = aGammaRamp[0][i] >> 8;
