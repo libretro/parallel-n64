@@ -235,11 +235,11 @@ FX_ENTRY void FX_CALL
 grConstantColorValueExt(GrChipID_t    tmu,
                         GrColor_t     value);
 
-#if defined(__LIBRETRO__) && !defined(GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS) // TODO: Not present
+#if !defined(GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS) // TODO: Not present
 #define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS 18283
 #endif
 
-#if defined(__LIBRETRO__) && !defined(GLES)
+#if !defined(GLES)
 #define glClearDepthf glClearDepth
 #endif
 

@@ -167,59 +167,6 @@ void display_warning(const char *text, ...)
   }
 }
 
-#ifdef LOGGING
-char out_buf[256];
-bool log_open = false;
-std::ofstream log_file;
-
-void OPEN_LOG()
-{
-  if (!log_open)
-  {
-    log_file.open ("wrapper_log.txt", std::ios_base::out|std::ios_base::app);
-    log_open = true;
-  }
-}
-
-void CLOSE_LOG()
-{
-  if (log_open)
-  {
-    log_file.close();
-    log_open = false;
-  }
-}
-
-void LOG(const char *text, ...)
-{
-	if (!log_open)
-    return;
-	va_list ap;
-	va_start(ap, text);
-	vsprintf(out_buf, text, ap);
-  log_file << out_buf;
-  log_file.flush();
-	va_end(ap);
-}
-
-class LogManager {
-public:
-	LogManager() {
-		OPEN_LOG();
-	}
-	~LogManager() {
-		CLOSE_LOG();
-	}
-};
-
-LogManager logManager;
-
-#else // LOGGING
-#define OPEN_LOG()
-#define CLOSE_LOG()
-//#define LOG
-#endif // LOGGING
-
 FX_ENTRY void FX_CALL
 grSstOrigin(GrOriginLocation_t  origin)
 {
