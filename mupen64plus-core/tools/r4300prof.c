@@ -304,6 +304,8 @@ int main(int argc, void *argv[])
     if (lOpx86addr < lOpStart || lOpx86addr > lOpEnd)
     {
       printf("Error: lOpx86addr = %lx but lOpStart, lOpEnd = %lx, %lx\n", lOpx86addr, lOpStart, lOpEnd);
+      free(pOpAddrTable);
+      free(pProfTable);
       return 7;
     }
     /* we have found the correct r4300 instruction corresponding to this profile point */
