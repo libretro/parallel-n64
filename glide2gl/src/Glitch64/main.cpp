@@ -1396,14 +1396,10 @@ grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth )
 
 }
 
-// #include <unistd.h>
 FX_ENTRY void FX_CALL
 grBufferSwap( FxU32 swap_interval )
 {
   LOG("grBufferSwap(%d)\r\n", swap_interval);
-
-  vbo_draw();
-//	glFinish();
 
   if (render_to_texture) {
     display_warning("swap while render_to_texture\n");
