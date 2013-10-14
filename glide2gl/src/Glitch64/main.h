@@ -22,6 +22,7 @@
 #define MAIN_H
 
 #include <m64p_types.h>
+#include <m64p_config.h>
 
 //#define DEBUGLOG
 
@@ -286,5 +287,15 @@ void CLOSE_LOG();
 #define CLOSE_LOG()
 //#define LOG
 #endif // LOGGING
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+   
+int retro_return(bool just_flipping);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
