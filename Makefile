@@ -129,6 +129,7 @@ CFILES += \
     $(COREDIR)/src/api/config.c \
     $(COREDIR)/src/api/frontend.c \
     $(COREDIR)/src/main/cheat.c \
+    $(COREDIR)/src/main/eventloop.c \
     $(COREDIR)/src/main/main.c \
     $(COREDIR)/src/main/md5.c \
     $(COREDIR)/src/main/rom.c \

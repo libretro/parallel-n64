@@ -43,6 +43,7 @@
 #include "api/vidext.h"
 
 #include "main.h"
+#include "eventloop.h"
 #include "rom.h"
 #include "savestates.h"
 #include "util.h"
@@ -186,6 +187,9 @@ m64p_error main_core_state_query(m64p_core_param param, int *rval)
             else
                 *rval = M64EMU_RUNNING;
             break;
+	case M64CORE_INPUT_GAMESHARK:
+	    *rval = event_gameshark_active();
+	    break;
         default:
             return M64ERR_INPUT_INVALID;
     }
@@ -219,6 +223,11 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
                 return M64ERR_SUCCESS;
             }
             return M64ERR_INPUT_INVALID;
+	case M64CORE_INPUT_GAMESHARK:
+            if (!g_EmulatorRunning)
+                return M64ERR_INVALID_STATE;
+	    event_set_gameshark(val);
+	    return M64ERR_SUCCESS;
         default:
             return M64ERR_INPUT_INVALID;
     }
