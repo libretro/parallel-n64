@@ -59,7 +59,6 @@ extern wrapper_config config;
 int grTexFormatSize(int fmt);
 
 extern int packed_pixels_support;
-extern int ati_sucks;
 extern float largest_supported_anisotropy;
 
 extern int default_texture; // the infamous "32*1024*1024" is now configurable

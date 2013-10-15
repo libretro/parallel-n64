@@ -353,25 +353,6 @@ grSstWinOpen(
   init_textures();
   init_combiner();
 
-/*
-  // Aniso filter check
-  if (config.anisofilter > 0 )
-    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &largest_supported_anisotropy);
-
-  // ATI hack - certain texture formats are slow on ATI?
-  // Hmm, perhaps the internal format need to be specified explicitly...
-  {
-    GLint ifmt;
-    glTexImage2D(GL_PROXY_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV, NULL);
-    glGetTexLevelParameteriv(GL_PROXY_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &ifmt);
-    if (ifmt != GL_RGB5_A1) {
-      display_warning("ATI SUCKS %x\n", ifmt);
-      ati_sucks = 1;
-    } else
-      ati_sucks = 0;
-  }
-*/
-
   return 1;
 }
 
