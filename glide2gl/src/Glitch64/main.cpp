@@ -66,13 +66,10 @@ int current_texture;
 int depth_texture, color_texture;
 int glsl_support = 1;
 int viewport_width, viewport_height;
-int save_w, save_h;
 int lfb_color_fmt;
 float invtex[2];
 //Gonetz
 int UMAmode = 0; //support for VSA-100 UMA mode;
-
-static unsigned long fullscreen;
 
 static int savedWidtho, savedHeighto;
 static int savedWidth, savedHeight;
@@ -242,9 +239,6 @@ grSstWinOpen(
   }
   width = ConfigGetParamInt(video_general_section, "ScreenWidth");
   height = ConfigGetParamInt(video_general_section, "ScreenHeight");
-  fullscreen = ConfigGetParamBool(video_general_section, "Fullscreen");
-
-  fprintf(stderr, "fullscreen: %d\n", fullscreen);
 
   glViewport(0, 0, width, height);
   lfb_color_fmt = color_format;
@@ -1575,29 +1569,9 @@ grTexMultibaseAddress( GrChipID_t       tmu,
   display_warning("grTexMultibaseAddress");
 }
 
-static void CorrectGamma(const FxU16 aGammaRamp[3][256])
-{
-  //TODO?
-  //int res = SDL_SetGammaRamp(aGammaRamp[0], aGammaRamp[1], aGammaRamp[2]);
-  //LOG("SDL_SetGammaRamp returned %d\r\n", res);
-}
-
 FX_ENTRY void FX_CALL
 grLoadGammaTable( FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue)
 {
-#if 0
-  LOG("grLoadGammaTable\r\n");
-  if (!fullscreen)
-    return;
-  FxU16 aGammaRamp[3][256];
-  for (int i = 0; i < 256; i++)
-  {
-    aGammaRamp[0][i] = (FxU16)((red[i] << 8) & 0xFFFF);
-    aGammaRamp[1][i] = (FxU16)((green[i] << 8) & 0xFFFF);
-    aGammaRamp[2][i] = (FxU16)((blue[i] << 8) & 0xFFFF);
-  }
-  CorrectGamma(aGammaRamp);
-#endif
 }
 
 FX_ENTRY void FX_CALL
@@ -1622,17 +1596,6 @@ grGetGammaTableExt(FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue)
 FX_ENTRY void FX_CALL
 guGammaCorrectionRGB( FxFloat gammaR, FxFloat gammaG, FxFloat gammaB )
 {
-  LOG("guGammaCorrectionRGB()\r\n");
-  if (!fullscreen)
-    return;
-  FxU16 aGammaRamp[3][256];
-  for (int i = 0; i < 256; i++)
-  {
-    aGammaRamp[0][i] = (((FxU16)((pow(i/255.0F, 1.0F/gammaR)) * 255.0F + 0.5F)) << 8) & 0xFFFF;
-    aGammaRamp[1][i] = (((FxU16)((pow(i/255.0F, 1.0F/gammaG)) * 255.0F + 0.5F)) << 8) & 0xFFFF;
-    aGammaRamp[2][i] = (((FxU16)((pow(i/255.0F, 1.0F/gammaB)) * 255.0F + 0.5F)) << 8) & 0xFFFF;
-  }
-  CorrectGamma(aGammaRamp);
 }
 
 FX_ENTRY void FX_CALL
