@@ -35,13 +35,6 @@
 #endif
 void WriteLog(m64p_msg_level level, const char *msg, ...);
 
-#ifdef VPDEBUG
-void dump_tex(int id);
-void dump_start();
-void dump_stop();
-extern int dumping;
-#endif
-
 #define zscale 1.0f
 
 // VP added this utility function
@@ -259,10 +252,6 @@ grConstantColorValueExt(GrChipID_t    tmu,
    /*assert(0);*/ \
  }\
 }
-
-#ifdef VPDEBUG
-#define LOGGING
-#endif
 
 #ifdef LOGGING
 void OPEN_LOG();

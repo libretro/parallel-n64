@@ -28,8 +28,6 @@
 #include "g3ext.h"
 #include "main.h"
 
-int screen_width, screen_height;
-
 // FXT1,DXT1,DXT5 support - Hiroshi Morii <koolsmoky(at)users.sourceforge.net>
 // NOTE: Glide64 + GlideHQ use the following formats
 // GL_COMPRESSED_RGB_S3TC_DXT1_EXT
