@@ -65,7 +65,6 @@ int npot_support;
 int fog_coord_support;
 int render_to_texture = 0;
 int texture_unit;
-int use_fbo;
 int buffer_cleared;
 // ZIGGY
 // to allocate a new static texture name, take the value (free_texture++)
@@ -137,34 +136,18 @@ grClipWindow( FxU32 minx, FxU32 miny, FxU32 maxx, FxU32 maxy )
 {
   LOG("grClipWindow(%d,%d,%d,%d)\r\n", minx, miny, maxx, maxy);
 
-  if (use_fbo && render_to_texture) {
+  GLint y =  height - maxy;
+
+  if (render_to_texture)
+  {
     if (int(minx) < 0) minx = 0;
     if (int(miny) < 0) miny = 0;
     if (maxx < minx) maxx = minx;
     if (maxy < miny) maxy = miny;
-    glScissor(minx, miny, maxx - minx, maxy - miny);
-    glEnable(GL_SCISSOR_TEST);
-    return;
+    y = miny;
   }
 
-  if (!use_fbo) {
-    int th = height;
-    if (th > screen_height)
-      th = screen_height;
-    maxy = th - maxy;
-    miny = th - miny;
-    FxU32 tmp = maxy; maxy = miny; miny = tmp;
-    if (maxx > (FxU32) width) maxx = width;
-    if (maxy > (FxU32) height) maxy = height;
-    if (int(minx) < 0) minx = 0;
-    if (int(miny) < 0) miny = 0;
-    if (maxx < minx) maxx = minx;
-    if (maxy < miny) maxy = miny;
-    glScissor(minx, miny, maxx - minx, maxy - miny);
-    //printf("gl scissor %d %d %d %d\n", minx, miny, maxx, maxy);
-  } else {
-    glScissor(minx, height-maxy, maxx - minx, maxy - miny);
-  }
+  glScissor(minx, y, maxx - minx, maxy - miny);
   glEnable(GL_SCISSOR_TEST);
 }
 
@@ -327,11 +310,6 @@ grSstWinOpen(
   else
     fog_coord_support = 1;
 
-  //use_fbo = config.fbo;
-  use_fbo = 1;
-
-  LOGINFO("use_fbo %d\n", use_fbo);
-
   if (isExtensionSupported("GL_ARB_shading_language_100") &&
     isExtensionSupported("GL_ARB_shader_objects") &&
     isExtensionSupported("GL_ARB_fragment_shader") &&
@@ -346,9 +324,6 @@ grSstWinOpen(
   glViewport(0, 0, width, height);
   viewport_width = width;
   viewport_height = height;
-
-  //   void do_benchmarks();
-  //   do_benchmarks();
 
   // VP try to resolve z precision issues
 //  glMatrixMode(GL_MODELVIEW);
@@ -369,20 +344,6 @@ grSstWinOpen(
     int i;
     for (i=0; i<NB_TEXBUFS; i++)
       texbufs[i].start = texbufs[i].end = 0xffffffff;
-  }
-
-  if (!use_fbo && nbAuxBuffers == 0) {
-    // create the framebuffer saving texture
-    int w = width, h = height;
-    glBindTexture(GL_TEXTURE_2D, color_texture);
-    if (!npot_support) {
-      w = h = 1;
-      while (w<width) w*=2;
-      while (h<height) h*=2;
-    }
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    save_w = save_h = 0;
   }
 
   void FindBestDepthBias();
@@ -423,7 +384,7 @@ grGlideShutdown( void )
 FX_ENTRY FxBool FX_CALL
 grSstWinClose( GrContext_t context )
 {
-  int i, clear_texbuff = use_fbo;
+  int i;
   LOG("grSstWinClose(%d)\r\n", context);
 
   for (i=0; i<2; i++) {
@@ -433,19 +394,8 @@ grSstWinClose( GrContext_t context )
   }
 
   free_combiners();
+  sglBindFramebuffer( GL_FRAMEBUFFER, 0 );
 
-  try // I don't know why, but opengl can be killed before this function call when emulator is closed (Gonetz).
-    // ZIGGY : I found the problem : it is a function pointer, when the extension isn't supported , it is then zero, so just need to check the pointer prior to do the call.
-  {
-    if (use_fbo)
-      sglBindFramebuffer( GL_FRAMEBUFFER, 0 );
-  }
-  catch (...)
-  {
-    clear_texbuff = 0;
-  }
-
-  if (clear_texbuff)
   {
     for (i=0; i<nb_fb; i++)
     {
@@ -476,124 +426,7 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
   //printf("grTextureBufferExt(%d, %d, %d, %d, %d, %d, %d)\r\n", tmu, startAddress, lodmin, lodmax, aspect, fmt, evenOdd);
   LOG("grTextureBufferExt(%d, %d, %d, %d %d, %d, %d)\r\n", tmu, startAddress, lodmin, lodmax, aspect, fmt, evenOdd);
   if (lodmin != lodmax) display_warning("grTextureBufferExt : loading more than one LOD");
-  if (!use_fbo) {
-
-    if (!render_to_texture) { //initialization
-      return;
-    }
-
-    render_to_texture = 2;
-
-    if (aspect < 0)
-    {
-      pBufferHeight = 1 << lodmin;
-      pBufferWidth = pBufferHeight >> -aspect;
-    }
-    else
-    {
-      pBufferWidth = 1 << lodmin;
-      pBufferHeight = pBufferWidth >> aspect;
-    }
-
-    if (curBufferAddr && startAddress+1 != curBufferAddr)
-      updateTexture();
-#ifdef SAVE_CBUFFER
-    //printf("saving %dx%d\n", pBufferWidth, pBufferHeight);
-    // save color buffer
-    if (nbAuxBuffers > 0) {
-      //glDrawBuffer(GL_AUX0);
-      //current_buffer = GL_AUX0;
-    } else {
-      int tw, th;
-      if (pBufferWidth < screen_width)
-        tw = pBufferWidth;
-      else
-        tw = screen_width;
-      if (pBufferHeight < screen_height)
-        th = pBufferHeight;
-      else
-        th = screen_height;
-      //glReadBuffer(GL_BACK);
-      glActiveTexture(texture_unit);
-      glBindTexture(GL_TEXTURE_2D, color_texture);
-      // save incrementally the framebuffer
-      if (save_w) {
-        if (tw > save_w && th > save_h) {
-          glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, save_h,
-            0, save_h, tw, th-save_h);
-          glCopyTexSubImage2D(GL_TEXTURE_2D, 0, save_w, 0,
-            save_w, 0, tw-save_w, save_h);
-          save_w = tw;
-          save_h = th;
-        } else if (tw > save_w) {
-          glCopyTexSubImage2D(GL_TEXTURE_2D, 0, save_w, 0,
-            save_w, 0, tw-save_w, save_h);
-          save_w = tw;
-        } else if (th > save_h) {
-          glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, save_h,
-            0, save_h, save_w, th-save_h);
-          save_h = th;
-        }
-      } else {
-        glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
-          0, 0, tw, th);
-        save_w = tw;
-        save_h = th;
-      }
-      glBindTexture(GL_TEXTURE_2D, default_texture);
-    }
-#endif
-
-    if (startAddress+1 != curBufferAddr ||
-      (curBufferAddr == 0L && nbAuxBuffers == 0))
-      buffer_cleared = 0;
-
-    curBufferAddr = pBufferAddress = startAddress+1;
-    pBufferFmt = fmt;
-
-    int rtmu = startAddress < grTexMinAddress(GR_TMU1)? 0 : 1;
-    int size = pBufferWidth*pBufferHeight*2; //grTexFormatSize(fmt);
-    if ((unsigned int) tmu_usage[rtmu].min > pBufferAddress)
-      tmu_usage[rtmu].min = pBufferAddress;
-    if ((unsigned int) tmu_usage[rtmu].max < pBufferAddress+size)
-      tmu_usage[rtmu].max = pBufferAddress+size;
-    //   printf("tmu %d usage now %gMb - %gMb\n",
-    //          rtmu, tmu_usage[rtmu].min/1024.0f, tmu_usage[rtmu].max/1024.0f);
-
-
-    width = pBufferWidth;
-    height = pBufferHeight;
-
-    widtho = width/2;
-    heighto = height/2;
-
-    // this could be improved, but might be enough as long as the set of
-    // texture buffer addresses stay small
-    for (i=(texbuf_i-1)&(NB_TEXBUFS-1) ; i!=texbuf_i; i=(i-1)&(NB_TEXBUFS-1))
-      if (texbufs[i].start == pBufferAddress)
-        break;
-    texbufs[i].start = pBufferAddress;
-    texbufs[i].end = pBufferAddress + size;
-    texbufs[i].fmt = fmt;
-    if (i == texbuf_i)
-      texbuf_i = (texbuf_i+1)&(NB_TEXBUFS-1);
-    //printf("texbuf %x fmt %x\n", pBufferAddress, fmt);
-
-    // ZIGGY it speeds things up to not delete the buffers
-    // a better thing would be to delete them *sometimes*
-    //   remove_tex(pBufferAddress+1, pBufferAddress + size);
-    add_tex(pBufferAddress);
-
-    //printf("viewport %dx%d\n", width, height);
-    if (height > screen_height) {
-      glViewport( 0, screen_height - height, width, height);
-    } else
-      glViewport( 0, 0, width, height);
-
-    glScissor(0, 0, width, height);
-
-
-  } else {
+  {
     if (!render_to_texture) //initialization
     {
       if(!fbs_init)
@@ -697,14 +530,7 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
 int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info )
 {
   int found, i;
-  if (!use_fbo) {
-    for (found=i=0; i<2; i++)
-      if ((FxU32) tmu_usage[i].min <= startAddress && (FxU32) tmu_usage[i].max > startAddress) {
-        //printf("tmu %d == framebuffer %x\n", tmu, startAddress);
-        found = 1;
-        break;
-      }
-  } else {
+  {
     found = i = 0;
     while (i < nb_fb)
     {
@@ -718,40 +544,7 @@ int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info
     }
   }
 
-  if (!use_fbo && found) {
-    int tw, th, rh, cw, ch;
-    if (info->aspectRatioLog2 < 0)
-    {
-      th = 1 << info->largeLodLog2;
-      tw = th >> -info->aspectRatioLog2;
-    }
-    else
-    {
-      tw = 1 << info->largeLodLog2;
-      th = tw >> info->aspectRatioLog2;
-    }
-
-    if (info->aspectRatioLog2 < 0)
-    {
-      ch = 256;
-      cw = ch >> -info->aspectRatioLog2;
-    }
-    else
-    {
-      cw = 256;
-      ch = cw >> info->aspectRatioLog2;
-    }
-
-    if (use_fbo || th < screen_height)
-      rh = th;
-    else
-      rh = screen_height;
-
-    //printf("th %d rh %d ch %d\n", th, rh, ch);
-
-    invtex[tmu] = 1.0f - (th - rh) / (float)th;
-  } else
-    invtex[tmu] = 0;
+  invtex[tmu] = 0;
 
   if (info->format == GR_TEXFMT_ALPHA_INTENSITY_88 ) {
     if (!found) {
@@ -1081,62 +874,10 @@ static void render_rectangle(int texture_number,
 
 void reloadTexture()
 {
-  if (use_fbo || !render_to_texture || buffer_cleared)
-    return;
-
-  LOG("reload texture %dx%d\n", width, height);
-  //printf("reload texture %dx%d\n", width, height);
-
-  buffer_cleared = 1;
-
-  //glPushAttrib(GL_ALL_ATTRIB_BITS);
-  glActiveTexture(texture_unit);
-  glBindTexture(GL_TEXTURE_2D, pBufferAddress);
-  //glDisable(GL_ALPHA_TEST);
-  //glDrawBuffer(current_buffer);
-  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-  set_copy_shader();
-  glDisable(GL_DEPTH_TEST);
-  glDisable(GL_CULL_FACE);
-  int w = 0, h = 0;
-  if (height > screen_height) h = screen_height - height;
-  render_rectangle(texture_unit,
-    -w, -h,
-    width,  height,
-    width, height, -1);
-  glBindTexture(GL_TEXTURE_2D, default_texture);
-  //glPopAttrib();
 }
 
 void updateTexture()
 {
-  if (!use_fbo && render_to_texture == 2) {
-    LOG("update texture %x\n", pBufferAddress);
-    //printf("update texture %x\n", pBufferAddress);
-
-    // nothing changed, don't update the texture
-    if (!buffer_cleared) {
-      LOG("update cancelled\n", pBufferAddress);
-      return;
-    }
-
-    //glPushAttrib(GL_ALL_ATTRIB_BITS);
-
-    // save result of render to texture into actual texture
-    //glReadBuffer(current_buffer);
-    glActiveTexture(texture_unit);
-    // ZIGGY
-    // deleting the texture before resampling it increases speed on certain old
-    // nvidia cards (geforce 2 for example), unfortunatly it slows down a lot
-    // on newer cards.
-    //glDeleteTextures( 1, &pBufferAddress );
-    glBindTexture(GL_TEXTURE_2D, pBufferAddress);
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
-      0, 0, width, height, 0);
-
-    glBindTexture(GL_TEXTURE_2D, default_texture);
-    //glPopAttrib();
-  }
 }
 
 FX_ENTRY void FX_CALL grFramebufferCopyExt(int x, int y, int w, int h,
@@ -1211,52 +952,13 @@ grRenderBuffer( GrBuffer_t buffer )
       height = savedHeight;
       widtho = savedWidtho;
       heighto = savedHeighto;
-      if (use_fbo) {
-        sglBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glBindRenderbuffer( GL_RENDERBUFFER, 0 );
-      }
+      sglBindFramebuffer(GL_FRAMEBUFFER, 0);
+      glBindRenderbuffer( GL_RENDERBUFFER, 0 );
       curBufferAddr = 0;
 
       glViewport(0, 0, width, viewport_height);
       glScissor(0, 0, width, height);
 
-#ifdef SAVE_CBUFFER
-      if (!use_fbo && render_to_texture == 2) {
-        // restore color buffer
-        if (nbAuxBuffers > 0) {
-          //glDrawBuffer(GL_BACK);
-          current_buffer = GL_BACK;
-        } else if (save_w) {
-          int tw = 1, th = 1;
-          //printf("restore %dx%d\n", save_w, save_h);
-          if (npot_support) {
-            tw = screen_width;
-            th = screen_height;
-          } else {
-            while (tw < screen_width) tw <<= 1;
-            while (th < screen_height) th <<= 1;
-          }
-
-          //glPushAttrib(GL_ALL_ATTRIB_BITS);
-          //glDisable(GL_ALPHA_TEST);
-          //glDrawBuffer(GL_BACK);
-          glActiveTexture(texture_unit);
-          glBindTexture(GL_TEXTURE_2D, color_texture);
-          glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-          set_copy_shader();
-          glDisable(GL_DEPTH_TEST);
-          glDisable(GL_CULL_FACE);
-          render_rectangle(texture_unit,
-            0, 0,
-            save_w,  save_h,
-            tw, th, -1);
-          glBindTexture(GL_TEXTURE_2D, default_texture);
-          //glPopAttrib();
-
-          save_w = save_h = 0;
-        }
-      }
-#endif
       render_to_texture = 0;
     }
     //glDrawBuffer(GL_BACK);
@@ -1271,13 +973,6 @@ grRenderBuffer( GrBuffer_t buffer )
     }
 
     {
-      if (!use_fbo) {
-        //glMatrixMode(GL_MODELVIEW);
-        //glLoadIdentity();
-        //glTranslatef(0, 0, 1-zscale);
-        //glScalef(1, 1, zscale);
-        inverted_culling = 0;
-      } else {
 /*
         float m[4*4] = {1.0f, 0.0f, 0.0f, 0.0f,
           0.0f,-1.0f, 0.0f, 0.0f,
@@ -1291,7 +986,6 @@ grRenderBuffer( GrBuffer_t buffer )
 */
         inverted_culling = 1;
         grCullMode(culling_mode);
-      }
     }
     render_to_texture = 1;
     break;
