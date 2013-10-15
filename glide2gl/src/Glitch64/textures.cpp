@@ -136,10 +136,6 @@ void add_tex(unsigned int id)
 void init_textures()
 {
   tex0_width = tex0_height = tex1_width = tex1_height = 2;
-  // ZIGGY because remove_tex isn't called (Pj64 doesn't like it), it's better
-  // to leave these so that they'll be reused (otherwise we have a memory leak)
-  // 	list = NULL;
-  // 	nbTex = 0;
 
   glide_texture_offset = 1024 * 1024;
   if (!texture)	texture = (unsigned char*)malloc(2048*2048*4);
@@ -472,7 +468,6 @@ grTexDownloadMipMap( GrChipID_t tmu,
       glformat = GL_ALPHA;
       break;
     case GR_TEXFMT_ALPHA_INTENSITY_44:
-#if 1
       for (i=0; i<height; i++)
       {
         for (j=0; j<width; j++)
@@ -496,7 +491,6 @@ grTexDownloadMipMap( GrChipID_t tmu,
       }
       factor = 1;
       glformat = GL_LUMINANCE_ALPHA;
-#endif
       break;
     case GR_TEXFMT_RGB_565:
       for (i=0; i<height; i++)

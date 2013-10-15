@@ -221,8 +221,6 @@ grSstWinOpen(
              int                  nColBuffers,
              int                  nAuxBuffers)
 {
-  static int show_warning = 1;
-
   // ZIGGY
   // allocate static texture names
   // the initial value should be big enough to support the maximal resolution
@@ -246,6 +244,8 @@ grSstWinOpen(
   height = ConfigGetParamInt(video_general_section, "ScreenHeight");
   fullscreen = ConfigGetParamBool(video_general_section, "Fullscreen");
 
+  fprintf(stderr, "fullscreen: %d\n", fullscreen);
+
   glViewport(0, 0, width, height);
   lfb_color_fmt = color_format;
   if (origin_location != GR_ORIGIN_UPPER_LEFT) display_warning("origin must be in upper left corner");
@@ -253,14 +253,12 @@ grSstWinOpen(
   if (nAuxBuffers != 1) display_warning("number of auxiliary buffer is not 1");
 
   if (isExtensionSupported("GL_ARB_texture_env_combine") == 0 &&
-    isExtensionSupported("GL_EXT_texture_env_combine") == 0 &&
-    show_warning)
+    isExtensionSupported("GL_EXT_texture_env_combine") == 0)
     display_warning("Your video card doesn't support GL_ARB_texture_env_combine extension");
-  if (isExtensionSupported("GL_ARB_multitexture") == 0 && show_warning)
+  if (isExtensionSupported("GL_ARB_multitexture") == 0)
     display_warning("Your video card doesn't support GL_ARB_multitexture extension");
-  if (isExtensionSupported("GL_ARB_texture_mirrored_repeat") == 0 && show_warning)
+  if (isExtensionSupported("GL_ARB_texture_mirrored_repeat") == 0)
     display_warning("Your video card doesn't support GL_ARB_texture_mirrored_repeat extension");
-  show_warning = 0;
 
   nbTextureUnits = 4;
   //glGetIntegerv(GL_MAX_TEXTURE_UNITS_ARB, &nbTextureUnits);
@@ -308,9 +306,9 @@ grSstWinOpen(
     isExtensionSupported("GL_ARB_vertex_shader"))
   {}
 
-  if (isExtensionSupported("GL_EXT_texture_compression_s3tc") == 0  && show_warning)
+  if (isExtensionSupported("GL_EXT_texture_compression_s3tc") == 0 )
     display_warning("Your video card doesn't support GL_EXT_texture_compression_s3tc extension");
-  if (isExtensionSupported("GL_3DFX_texture_compression_FXT1") == 0  && show_warning)
+  if (isExtensionSupported("GL_3DFX_texture_compression_FXT1") == 0)
     display_warning("Your video card doesn't support GL_3DFX_texture_compression_FXT1 extension");
 
   glViewport(0, 0, width, height);
@@ -398,7 +396,7 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
 
   //printf("grTextureBufferExt(%d, %d, %d, %d, %d, %d, %d)\r\n", tmu, startAddress, lodmin, lodmax, aspect, fmt, evenOdd);
   LOG("grTextureBufferExt(%d, %d, %d, %d %d, %d, %d)\r\n", tmu, startAddress, lodmin, lodmax, aspect, fmt, evenOdd);
-  if (lodmin != lodmax) display_warning("grTextureBufferExt : loading more than one LOD");
+  if (lodmin != lodmax)display_warning("grTextureBufferExt : loading more than one LOD");
   {
     if (!render_to_texture) //initialization
     {
@@ -1587,6 +1585,7 @@ static void CorrectGamma(const FxU16 aGammaRamp[3][256])
 FX_ENTRY void FX_CALL
 grLoadGammaTable( FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue)
 {
+#if 0
   LOG("grLoadGammaTable\r\n");
   if (!fullscreen)
     return;
@@ -1598,12 +1597,12 @@ grLoadGammaTable( FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue)
     aGammaRamp[2][i] = (FxU16)((blue[i] << 8) & 0xFFFF);
   }
   CorrectGamma(aGammaRamp);
+#endif
 }
 
 FX_ENTRY void FX_CALL
 grGetGammaTableExt(FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue)
 {
-  return;
   //TODO?
   /*
   LOG("grGetGammaTableExt()\r\n");
