@@ -44,16 +44,6 @@ extern int dumping;
 
 #define zscale 1.0f
 
-typedef struct _wrapper_config
-{
-  int res;
-  int fbo;
-  int anisofilter;
-  int vram_size;
-} wrapper_config;
-extern wrapper_config config;
-
-
 // VP added this utility function
 // returns the bytes per pixel of a given GR texture format
 int grTexFormatSize(int fmt);
@@ -136,8 +126,6 @@ void grChromaRangeExt(GrColor_t color0, GrColor_t color1, FxU32 mode);
 void grChromaRangeModeExt(GrChromakeyMode_t mode);
 void grTexChromaRangeExt(GrChipID_t tmu, GrColor_t color0, GrColor_t color1, GrTexChromakeyMode_t mode);
 void grTexChromaModeExt(GrChipID_t tmu, GrChromakeyMode_t mode);
-void updateTexture();
-void reloadTexture();
 void free_combiners();
 void compile_shader();
 void set_lambda();

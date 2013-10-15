@@ -18,16 +18,9 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#define SAVE_CBUFFER
-
-#ifdef _WIN32
-#include <windows.h>
-#include <commctrl.h>
-#else
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
-#endif // _WIN32
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -35,7 +28,6 @@
 #include "g3ext.h"
 #include "main.h"
 
-wrapper_config config = {0, 0, 0, 0};
 int screen_width, screen_height;
 
 // FXT1,DXT1,DXT5 support - Hiroshi Morii <koolsmoky(at)users.sourceforge.net>
@@ -853,14 +845,6 @@ static void render_rectangle(int texture_number,
   glEnable(GL_BLEND);
 }
 
-void reloadTexture()
-{
-}
-
-void updateTexture()
-{
-}
-
 FX_ENTRY void FX_CALL grFramebufferCopyExt(int x, int y, int w, int h,
                                            int from, int to, int mode)
 {
@@ -919,8 +903,6 @@ grRenderBuffer( GrBuffer_t buffer )
   case GR_BUFFER_BACKBUFFER:
     if(render_to_texture)
     {
-      updateTexture();
-
       // VP z fix
       //glMatrixMode(GL_MODELVIEW);
       //glLoadIdentity();
@@ -1351,10 +1333,6 @@ FX_ENTRY GrScreenResolution_t FX_CALL grWrapperFullScreenResolutionExt(FxU32* wi
 FX_ENTRY void FX_CALL grConfigWrapperExt(FxI32 resolution, FxI32 vram, FxBool fbo, FxBool aniso)
 {
   LOG("grConfigWrapperExt\r\n");
-  config.res = resolution;
-  config.vram_size = vram;
-  config.fbo = fbo;
-  config.anisofilter = aniso;
 }
 
 // unused by glide64

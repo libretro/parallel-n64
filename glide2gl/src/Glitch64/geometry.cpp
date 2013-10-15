@@ -413,8 +413,6 @@ grDrawTriangle( const void *a, const void *b, const void *c )
 {
   LOG("grDrawTriangle()\r\n\t");
   
-  reloadTexture();
-
   if(need_to_compile) compile_shader();
 
   if(vertex_buffer_count + 3 > VERTEX_BUFFER_SIZE)
@@ -443,8 +441,6 @@ grDrawPoint( const void *pt )
   float *t1 = (float*)pt + st1_off/sizeof(float) + 1;
   float *fog = (float*)pt + fog_ext_off/sizeof(float);
   LOG("grDrawPoint()\r\n");
-
-  reloadTexture();
 
   if(need_to_compile) compile_shader();
 
@@ -507,8 +503,6 @@ grDrawLine( const void *a, const void *b )
   float *b_t1 = (float*)b + st1_off/sizeof(float) + 1;
   float *b_fog = (float*)b + fog_ext_off/sizeof(float);
   LOG("grDrawLine()\r\n");
-
-  reloadTexture();
 
   if(need_to_compile) compile_shader();
 
@@ -575,8 +569,6 @@ grDrawVertexArray(FxU32 mode, FxU32 Count, void *pointers2)
   void **pointers = (void**)pointers2;
   LOG("grDrawVertexArray(%d,%d)\r\n", mode, Count);
 
-  reloadTexture();
-
   if(need_to_compile) compile_shader();
 
   if(mode != GR_TRIANGLE_FAN)
@@ -595,8 +587,6 @@ grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers, FxU32 strid
 
   if(stride != 156)
 	  LOGINFO("Incompatible stride\n");
-
-  reloadTexture();
 
   if(need_to_compile) compile_shader();
 
