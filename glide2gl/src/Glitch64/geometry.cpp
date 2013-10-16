@@ -81,7 +81,7 @@ extern "C" {
 }
 
 //Buffer vertices instead of glDrawArrays(...)
-void vbo_buffer(GLenum mode,GLint first,GLsizei count,void* pointers)
+static void vbo_buffer(GLenum mode,GLint first,GLsizei count,void* pointers)
 {
   if((count != 3 && mode != GL_TRIANGLES) || vertex_buffer_count + count > VERTEX_BUFFER_SIZE)
   {
@@ -413,12 +413,12 @@ grDrawTriangle( const void *a, const void *b, const void *c )
 {
   LOG("grDrawTriangle()\r\n\t");
   
-  if(need_to_compile) compile_shader();
+  if(need_to_compile)
+     compile_shader();
 
   if(vertex_buffer_count + 3 > VERTEX_BUFFER_SIZE)
-  {
     vbo_draw();
-  }
+
   vertex_draw_mode = GL_TRIANGLES;
   memcpy(&vertex_buffer[vertex_buffer_count],a,VERTEX_SIZE);
   memcpy(&vertex_buffer[vertex_buffer_count+1],b,VERTEX_SIZE);
@@ -432,12 +432,12 @@ grDrawTriangle2( const void *a, const void *b, const void *c,
 {
   LOG("grDrawTriangle()\r\n\t");
   
-  if(need_to_compile) compile_shader();
+  if(need_to_compile)
+     compile_shader();
 
   if(vertex_buffer_count + 6 > VERTEX_BUFFER_SIZE)
-  {
     vbo_draw();
-  }
+
   vertex_draw_mode = GL_TRIANGLES;
   memcpy(&vertex_buffer[vertex_buffer_count],a,VERTEX_SIZE);
   memcpy(&vertex_buffer[vertex_buffer_count+1],b,VERTEX_SIZE);
@@ -593,10 +593,10 @@ grDrawVertexArray(FxU32 mode, FxU32 Count, void *pointers2)
 
   if(need_to_compile) compile_shader();
 
+#ifndef DEBUG
   if(mode != GR_TRIANGLE_FAN)
-  {
     display_warning("grDrawVertexArray : unknown mode : %x", mode);
-  }
+#endif
 
   vbo_enable();
   vbo_buffer(GL_TRIANGLE_FAN,0,Count,pointers[0]);
@@ -610,7 +610,8 @@ grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers, FxU32 strid
   if(stride != 156)
 	  LOGINFO("Incompatible stride\n");
 
-  if(need_to_compile) compile_shader();
+  if(need_to_compile)
+     compile_shader();
 
   vbo_enable();
 
