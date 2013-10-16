@@ -2,6 +2,7 @@
 //                      and 3DNOW! 4x4 4x4 matrix multiplication
 
 #include <xmmintrin.h>
+#include "3dmathsse.h"
 
 void MulMatricesSSE(float m1[4][4],float m2[4][4],float r[4][4])
 {
