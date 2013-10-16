@@ -909,11 +909,6 @@ int InitGfx ()
     voodoo.tex_max_addr[1] = grTexMaxAddress(GR_TMU1);
   }
 
-  if (strstr (extensions, "TEXMIRROR") && !(settings.hacks&hack_Zelda)) //zelda's trees suffer from hardware mirroring
-    voodoo.sup_mirroring = 1;
-  else
-    voodoo.sup_mirroring = 0;
-
   if (strstr (extensions, "TEXFMT"))  //VSA100 texture format extension
     voodoo.sup_32bit_tex = TRUE;
   else
@@ -1059,8 +1054,6 @@ int InitGfx ()
         DisplayLoadProgress);
     }
   }
-  if (settings.ghq_use && strstr (extensions, "TEXMIRROR"))
-    voodoo.sup_mirroring = 1;
 #endif
 
   return TRUE;

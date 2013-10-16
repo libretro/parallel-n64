@@ -884,7 +884,7 @@ void TexCache ()
           mode_s = GR_TEXTURECLAMP_CLAMP;
         else
         {
-          if (rdp.tiles[tile].mirror_s && voodoo.sup_mirroring)
+          if (rdp.tiles[tile].mirror_s)
             mode_s = GR_TEXTURECLAMP_MIRROR_EXT;
           else
             mode_s = GR_TEXTURECLAMP_WRAP;
@@ -898,7 +898,7 @@ void TexCache ()
           mode_t = GR_TEXTURECLAMP_CLAMP;
         else
         {
-          if (rdp.tiles[tile].mirror_t && voodoo.sup_mirroring)
+          if (rdp.tiles[tile].mirror_t)
             mode_t = GR_TEXTURECLAMP_MIRROR_EXT;
           else
             mode_t = GR_TEXTURECLAMP_WRAP;
@@ -1038,15 +1038,6 @@ void LoadTex (int id, int tmu)
   size_x = 1 << shift;
   for (shift=0; (1<<shift) < (int)size_y; shift++);
   size_y = 1 << shift;
-
-  // Voodoo 1 support is all here, it will automatically mirror to the full extent.
-  if (!voodoo.sup_mirroring)
-  {
-    if (rdp.tiles[td].mirror_s && !rdp.tiles[td].clamp_s && (voodoo.sup_large_tex || size_x <= 128))
-      size_x <<= 1;
-    if (rdp.tiles[td].mirror_t && !rdp.tiles[td].clamp_t && (voodoo.sup_large_tex || size_y <= 128))
-      size_y <<= 1;
-  }
 
   // Calculate the maximum size
   int size_max = max (size_x, size_y);
@@ -1675,9 +1666,9 @@ void LoadTex (int id, int tmu)
                   /*
                   else
                   {
-                  if (rdp.tiles[td].mirror_s && sup_mirroring)
+                  if (rdp.tiles[td].mirror_s)
                   cache->f_mirror_s = TRUE;
-                  if (rdp.tiles[td].mirror_t && sup_mirroring)
+                  if (rdp.tiles[td].mirror_t)
                   cache->f_mirror_t = TRUE;
                   //cache->c_scl_y /= mscale;
                   //cache->c_scl_x /= mscale;
@@ -1700,7 +1691,6 @@ void LoadTex (int id, int tmu)
                   cache->c_scl_y /= splits;
                 }
               }
-              if (voodoo.sup_mirroring)
               {
                 if (rdp.tiles[td].mirror_s && texinfo[id].tile_width == 2*texinfo[id].width)
                   cache->f_mirror_s = TRUE;
