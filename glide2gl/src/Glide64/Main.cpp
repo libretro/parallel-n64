@@ -117,7 +117,6 @@ std::ofstream rdp_err;
 
 GFX_INFO gfx;
 
-int to_fullscreen = FALSE;
 int fullscreen = FALSE;
 int romopen = FALSE;
 GrContext_t gfx_context = 0;
@@ -837,8 +836,6 @@ int InitGfx ()
   }
 
   fullscreen = TRUE;
-  to_fullscreen = FALSE;
-
 
   // get the # of TMUs available
   grGet (GR_NUM_TMU, 4, (FxI32*)&voodoo.num_tmu);
@@ -1458,9 +1455,6 @@ void drawViRegBG()
 
 void DrawFrameBuffer ()
 {
-  if (to_fullscreen)
-    GoToFullScreen();
-
   if (fullscreen)
   {
     grDepthMask (FXTRUE);

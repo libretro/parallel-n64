@@ -762,10 +762,7 @@ struct RDP : public RDP_Base
   void Reset();
 };
 
-
-void SetWireframeCol ();
 void ChangeSize ();
-void GoToFullScreen();
 
 extern RDP rdp;
 extern SETTINGS settings;

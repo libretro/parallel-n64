@@ -536,15 +536,6 @@ static void CopyFrameBuffer (GrBuffer_t buffer = GR_BUFFER_BACKBUFFER)
   }
 }
 
-void GoToFullScreen()
-{
-    //if (!InitGfx ())
-    {
-      LOG ("FAILED!!!\n");
-      return;
-    }
-}
-
 class SoftLocker
 {
 public:
@@ -640,10 +631,6 @@ EXPORT void CALL ProcessDList(void)
 
   if (exception)
     return;
-
-  // Switch to fullscreen?
-  if (to_fullscreen)
-    GoToFullScreen();
 
   if (!fullscreen && !settings.run_in_window)
     return;
@@ -2972,78 +2959,6 @@ static void rsp_reserved2()
 static void rsp_reserved3()
 {
   LRDP("reserved3 - ignored\n");
-}
-
-void SetWireframeCol ()
-{
-  if (!fullscreen) return;
-
-  switch (settings.wfmode)
-  {
-    //case 0: // normal colors, don't do anything
-  case 1: // vertex colors
-    grColorCombine (GR_COMBINE_FUNCTION_LOCAL,
-      GR_COMBINE_FACTOR_NONE,
-      GR_COMBINE_LOCAL_ITERATED,
-      GR_COMBINE_OTHER_NONE,
-      FXFALSE);
-    grAlphaCombine (GR_COMBINE_FUNCTION_LOCAL,
-      GR_COMBINE_FACTOR_NONE,
-      GR_COMBINE_LOCAL_ITERATED,
-      GR_COMBINE_OTHER_NONE,
-      FXFALSE);
-    grAlphaBlendFunction (GR_BLEND_ONE,
-      GR_BLEND_ZERO,
-      GR_BLEND_ZERO,
-      GR_BLEND_ZERO);
-    grTexCombine (GR_TMU0,
-      GR_COMBINE_FUNCTION_ZERO,
-      GR_COMBINE_FACTOR_NONE,
-      GR_COMBINE_FUNCTION_ZERO,
-      GR_COMBINE_FACTOR_NONE,
-      FXFALSE, FXFALSE);
-    grTexCombine (GR_TMU1,
-      GR_COMBINE_FUNCTION_ZERO,
-      GR_COMBINE_FACTOR_NONE,
-      GR_COMBINE_FUNCTION_ZERO,
-      GR_COMBINE_FACTOR_NONE,
-      FXFALSE, FXFALSE);
-    break;
-  case 2: // red only
-    grColorCombine (GR_COMBINE_FUNCTION_LOCAL,
-      GR_COMBINE_FACTOR_NONE,
-      GR_COMBINE_LOCAL_CONSTANT,
-      GR_COMBINE_OTHER_NONE,
-      FXFALSE);
-    grAlphaCombine (GR_COMBINE_FUNCTION_LOCAL,
-      GR_COMBINE_FACTOR_NONE,
-      GR_COMBINE_LOCAL_CONSTANT,
-      GR_COMBINE_OTHER_NONE,
-      FXFALSE);
-    grConstantColorValue (0xFF0000FF);
-    grAlphaBlendFunction (GR_BLEND_ONE,
-      GR_BLEND_ZERO,
-      GR_BLEND_ZERO,
-      GR_BLEND_ZERO);
-    grTexCombine (GR_TMU0,
-      GR_COMBINE_FUNCTION_ZERO,
-      GR_COMBINE_FACTOR_NONE,
-      GR_COMBINE_FUNCTION_ZERO,
-      GR_COMBINE_FACTOR_NONE,
-      FXFALSE, FXFALSE);
-    grTexCombine (GR_TMU1,
-      GR_COMBINE_FUNCTION_ZERO,
-      GR_COMBINE_FACTOR_NONE,
-      GR_COMBINE_FUNCTION_ZERO,
-      GR_COMBINE_FACTOR_NONE,
-      FXFALSE, FXFALSE);
-    break;
-  }
-
-  grAlphaTestFunction (GR_CMP_ALWAYS);
-  grCullMode (GR_CULL_DISABLE);
-
-  rdp.update |= UPDATE_COMBINE | UPDATE_ALPHA_COMPARE;
 }
 
 /******************************************************************

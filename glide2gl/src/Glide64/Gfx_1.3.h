@@ -191,7 +191,6 @@ __inline void FRDP_E (const char *fmt, ...)
 
 extern int fullscreen;
 extern int romopen;
-extern int to_fullscreen;
 extern int debugging;
 
 extern int evoodoo;
