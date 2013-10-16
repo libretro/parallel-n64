@@ -241,7 +241,7 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
         rdp.tri_n ++;
       else
       {
-        draw_tri (v);
+        draw_tri(v, 0);
         rdp.tri_n ++;
       }
     }

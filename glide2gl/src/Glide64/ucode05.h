@@ -256,7 +256,7 @@ static void uc5_tridma ()
     {
       update ();
 
-      draw_tri (v);
+      draw_tri (v, 0);
       rdp.tri_n ++;
     }
   }

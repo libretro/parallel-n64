@@ -498,7 +498,7 @@ static void uc8_tri4() //by Gugaman Apr 19 2002
 		updated = 1;
 		update ();
 
-		draw_tri (v);
+		draw_tri (v, 0);
 		rdp.tri_n ++;
 	}
 
@@ -512,7 +512,7 @@ static void uc8_tri4() //by Gugaman Apr 19 2002
 			update ();
 		}
 
-		draw_tri (v+3);
+		draw_tri (v+3, 0);
 		rdp.tri_n ++;
 	}
 
@@ -526,7 +526,7 @@ static void uc8_tri4() //by Gugaman Apr 19 2002
 			update ();
 		}
 
-		draw_tri (v+6);
+		draw_tri (v+6, 0);
 		rdp.tri_n ++;
 	}
 
@@ -540,7 +540,7 @@ static void uc8_tri4() //by Gugaman Apr 19 2002
 			update ();
 		}
 
-		draw_tri (v+9);
+		draw_tri (v+9, 0);
 		rdp.tri_n ++;
 	}
 }

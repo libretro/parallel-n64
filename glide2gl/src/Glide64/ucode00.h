@@ -171,7 +171,7 @@ static void rsp_tri2 (VERTEX **v)
     updated = 1;
     update ();
 
-    draw_tri (v);
+    draw_tri (v, 0);
     rdp.tri_n ++;
   }
 
@@ -182,7 +182,7 @@ static void rsp_tri2 (VERTEX **v)
     if (!updated)
       update ();
 
-    draw_tri (v+3);
+    draw_tri (v+3, 0);
     rdp.tri_n ++;
   }
 }
@@ -1108,7 +1108,7 @@ static void uc0_tri4 ()
     updated = 1;
     update ();
 
-    draw_tri (v);
+    draw_tri (v, 0);
     rdp.tri_n ++;
   }
 
@@ -1122,7 +1122,7 @@ static void uc0_tri4 ()
       update ();
     }
 
-    draw_tri (v+3);
+    draw_tri (v+3, 0);
     rdp.tri_n ++;
   }
 
@@ -1136,7 +1136,7 @@ static void uc0_tri4 ()
       update ();
     }
 
-    draw_tri (v+6);
+    draw_tri (v+6, 0);
     rdp.tri_n ++;
   }
 
@@ -1150,7 +1150,7 @@ static void uc0_tri4 ()
       update ();
     }
 
-    draw_tri (v+9);
+    draw_tri (v+9, 0);
     rdp.tri_n ++;
   }
 }
