@@ -734,19 +734,12 @@ EXPORT void CALL ProcessDList(void)
   rdp.halt = 0;
   uint32_t a;
 
-  // catches exceptions so that it doesn't freeze
-#ifdef CATCH_EXCEPTIONS
-  try {
-#endif
-    if (settings.ucode == ucode_Turbo3d)
-    {
-      Turbo3D();
-    }
-    else
-    {
-      // MAIN PROCESSING LOOP
-      do {
-
+  if (settings.ucode == ucode_Turbo3d)
+     Turbo3D();
+  else
+  {
+     // MAIN PROCESSING LOOP
+     do {
         // Get the address of the next command
         a = rdp.pc[rdp.pc_i] & BMASK;
 
@@ -755,11 +748,9 @@ EXPORT void CALL ProcessDList(void)
         rdp.cmd1 = ((uint32_t*)gfx.RDRAM)[(a>>2)+1]; // /
         // cmd2 and cmd3 are filled only when needed, by the function that needs them
 
-        // Output the address before the command
 #ifdef LOG_COMMANDS
+        // Output the address before the command
         FRDP ("%08lx (c0:%08lx, c1:%08lx): ", a, rdp.cmd0, rdp.cmd1);
-#else
-        FRDP ("%08lx: ", a);
 #endif
 
         // Go to the next instruction
@@ -771,37 +762,17 @@ EXPORT void CALL ProcessDList(void)
         // check DL counter
         if (rdp.dl_count != -1)
         {
-          rdp.dl_count --;
-          if (rdp.dl_count == 0)
-          {
-            rdp.dl_count = -1;
+           rdp.dl_count --;
+           if (rdp.dl_count == 0)
+           {
+              rdp.dl_count = -1;
 
-            LRDP("End of DL\n");
-            rdp.pc_i --;
-          }
+              LRDP("End of DL\n");
+              rdp.pc_i --;
+           }
         }
-      } while (!rdp.halt);
-    }
-#ifdef CATCH_EXCEPTIONS
-  } catch (...) {
-
-    if (fullscreen)
-    {
-      ReleaseGfx ();
-      rdp_reset ();
-#ifdef TEXTURE_FILTER
-      if (settings.ghq_use)
-      {
-        ext_ghq_shutdown();
-        settings.ghq_use = 0;
-      }
-#endif
-    }
-    ERRLOG("The GFX plugin caused an exception and has been disabled.");
-      exception = TRUE;
-    return;
+     } while (!rdp.halt);
   }
-#endif
 
   if (fb_emulation_enabled)
   {

@@ -1403,15 +1403,7 @@ EXPORT void CALL RomClosed (void)
 
 static void CheckDRAMSize()
 {
-  uint32_t test;
-  GLIDE64_TRY
-  {
-    test = gfx.RDRAM[0x007FFFFF] + 1;
-  }
-  GLIDE64_CATCH
-  {
-    test = 0;
-  }
+  uint32_t test = gfx.RDRAM[0x007FFFFF] + 1;
   if (test)
     BMASK = 0x7FFFFF;
   else
