@@ -221,7 +221,9 @@ else
 VIDEODIR_GLIDE = gles2glide64/src
 endif
 CPPFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
+CFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.c)
 CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp)
+CFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.c)
 CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
 
 ### Finalize ###
