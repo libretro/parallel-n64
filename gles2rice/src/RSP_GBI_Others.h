@@ -237,13 +237,10 @@ void RSP_Vtx_Gemini(Gfx *gfx)
 void RDP_GFX_DumpVtxInfoDKR(uint32 dwAddr, uint32 dwV0, uint32 dwN)
 {
 #ifdef DEBUGGER
-        uint32 dwV;
-        int i;
-
         short * psSrc = (short *)(g_pRDRAMu8 + dwAddr);
 
-        i = 0;
-        for (dwV = dwV0; dwV < dwV0 + dwN; dwV++)
+        int i = 0;
+        for (uint32 dwV = dwV0; dwV < dwV0 + dwN; dwV++)
         {
             float x = (float)psSrc[(i + 0) ^ 1];
             float y = (float)psSrc[(i + 1) ^ 1];
@@ -271,7 +268,7 @@ void RDP_GFX_DumpVtxInfoDKR(uint32 dwAddr, uint32 dwV0, uint32 dwN)
 
         uint16 * pwSrc = (uint16 *)(g_pRDRAMu8 + dwAddr);
         i = 0;
-        for (dwV = dwV0; dwV < dwV0 + dwN; dwV++)
+        for (uint32 dwV = dwV0; dwV < dwV0 + dwN; dwV++)
         {
             LOG_UCODE(" #%02d %04x %04x %04x %04x %04x",
                 dwV, pwSrc[(i + 0) ^ 1],
@@ -501,7 +498,7 @@ void RSP_MoveWord_DKR(Gfx *gfx)
 
 void RSP_DMA_Tri_DKR(Gfx *gfx)
 {
-    BOOL bTrisAdded = FALSE;
+    bool bTrisAdded = false;
     uint32 dwAddr = RSPSegmentAddr((gfx->words.w1));
     uint32 flag = ((gfx->words.w0) & 0xFF0000) >> 16;
     if (flag&1) 
@@ -615,7 +612,7 @@ void RSP_Tri4_PD(Gfx *gfx)
     // While the next command pair is Tri2, add vertices
     uint32 dwPC = gDlistStack[gDlistStackPointer].pc;
 
-    BOOL bTrisAdded = FALSE;
+    bool bTrisAdded = false;
 
     do {
         uint32 dwFlag = (w0>>16)&0xFF;
@@ -679,7 +676,7 @@ void DLParser_Tri4_Conker(Gfx *gfx)
     // While the next command pair is Tri2, add vertices
     uint32 dwPC = gDlistStack[gDlistStackPointer].pc;
 
-    BOOL bTrisAdded = FALSE;
+    bool bTrisAdded = false;
 
     do {
         LOG_UCODE("    Conker Tri4: 0x%08x 0x%08x", w0, w1);
@@ -699,13 +696,12 @@ void DLParser_Tri4_Conker(Gfx *gfx)
         idx[10] = (w0>>18)&0x1F;
         idx[11] = (w0>>23)&0x1F;
 
-        BOOL bVisible;
         for( uint32 i=0; i<4; i++)
         {
             uint32 v0=idx[i*3  ];
             uint32 v1=idx[i*3+1];
             uint32 v2=idx[i*3+2];
-            bVisible = IsTriangleVisible(v0, v1, v2);
+            bool bVisible = IsTriangleVisible(v0, v1, v2);
             LOG_UCODE("       (%d, %d, %d) %s", v0, v1, v2, bVisible ? "": "(clipped)");
             if (bVisible)
             {
@@ -770,6 +766,7 @@ void DLParser_MoveMem_Conker(Gfx *gfx)
 {
     uint32 dwType    = ((gfx->words.w0)     ) & 0xFE;
     uint32 dwAddr = RSPSegmentAddr((gfx->words.w1));
+
     if( dwType == RSP_GBI2_MV_MEM__MATRIX )
     {
         LOG_UCODE("    DLParser_MoveMem_Conker");
@@ -822,6 +819,7 @@ void RSP_Vtx_Conker(Gfx *gfx)
 void DLParser_MoveWord_Conker(Gfx *gfx)
 {
     uint32 dwType   = ((gfx->words.w0) >> 16) & 0xFF;
+
     if( dwType != RSP_MOVE_WORD_NUMLIGHT )
     {
         RSP_GBI2_MoveWord(gfx);
@@ -1500,7 +1498,7 @@ void DLParser_RDPHalf_1_0xb4_GoldenEye(Gfx *gfx)
         gDlistStack[gDlistStackPointer].pc += 312;
 
 #ifdef DEBUGGER
-        if( logUcodes)
+        if (logUcodes)
         {
             dwPC -= 8;
             LOG_UCODE("GoldenEye Sky at PC=%08X: 0x%08x 0x%08x", dwPC, (gfx->words.w0), (gfx->words.w1));

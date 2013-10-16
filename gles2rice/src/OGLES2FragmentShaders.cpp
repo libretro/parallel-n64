@@ -50,12 +50,11 @@ const char *vertexShader =
 "                                                           \n"\
 "void main()                                                \n"\
 "{                                                          \n"\
-"gl_Position = aPosition; //gl_Position.z = max(0.0,gl_Position.z);                                  \n"\
-"vShadeColor = aColor;                                      \n"\
-"vTexCoord0 = aTexCoord0;                                   \n"\
-"vTexCoord1 = aTexCoord1;                                   \n"\
-"vFog = clamp((FogMinMax[1] - (gl_Position.z/aPosition.w))/(FogMinMax[1]-FogMinMax[0]),0.0,1.0);                                   \n"\
-"                                                           \n"\
+"    gl_Position = aPosition; //gl_Position.z = max(0.0,gl_Position.z);   \n"\
+"    vShadeColor = aColor;                                  \n"\
+"    vTexCoord0 = aTexCoord0;                               \n"\
+"    vTexCoord1 = aTexCoord1;                               \n"\
+"    vFog = clamp((FogMinMax[1] - (gl_Position.z/aPosition.w))/(FogMinMax[1]-FogMinMax[0]),0.0,1.0);  \n"\
 "}                                                          \n"\
 "                                                           \n";
 
@@ -90,14 +89,14 @@ const char *fragmentHeader =
 "                                                           \n"\
 "void main()                                                \n"\
 "{                                                          \n"\
-"vec4 comb,comb2;                                           \n"\
+"    vec4 comb,comb2;                                       \n"\
 "                                                           \n"\
-"#ifdef NEED_TEX0                                              \n"\
-"vec4 t0 = texture2D(uTex0,vTexCoord0);                     \n"\
+"#ifdef NEED_TEX0                                           \n"\
+"    vec4 t0 = texture2D(uTex0,vTexCoord0);                 \n"\
 "#endif                                                     \n"\
 "                                                           \n"\
 "#ifdef NEED_TEX1                                           \n"\
-"vec4 t1 = texture2D(uTex1,vTexCoord1);                     \n"\
+"    vec4 t1 = texture2D(uTex1,vTexCoord1);                 \n"\
 "#endif                                                     \n";
 
 const char *fragmentFooter =
@@ -112,9 +111,6 @@ const char *fragmentFooter =
 "#ifdef ALPHA_TEST                                          \n"\
 ALPHA_TEST
 "#endif                                                     \n"\
-"                                                           \n"\
-"                                                           \n"\
-"                                                           \n"\
 "                                                           \n"\
 "}                                                          \n";
 
@@ -386,24 +382,24 @@ const char *muxToFP_Maps[][2] = {
 #else
 const char *muxToFP_Maps[][2] = {
 //color -- alpha
-{"vec3(0.0)", "0.0"}, //MUX_0 = 0,
-{"vec3(1.0)", "1.0"}, //MUX_1,
-{"comb.rgb", "comb.a"}, //MUX_COMBINED,
-{"t0.bgr", "t0.a"}, //MUX_TEXEL0,
-{"t1.bgr", "t1.a"}, //MUX_TEXEL1,
-{"PrimColor.rgb", "PrimColor.a"}, //MUX_PRIM,
-{"vShadeColor.rgb", "vShadeColor.a"}, //MUX_SHADE,
-{"EnvColor.rgb", "EnvColor.a"}, //MUX_ENV,
-{"comb.rgb", "comb.a"}, //MUX_COMBALPHA,
-{"t0.bgr", "t0.a"}, //MUX_T0_ALPHA,
-{"t1.bgr", "t1.a"}, //MUX_T1_ALPHA,
-{"PrimColor.rgb", "PrimColor.a"}, //MUX_PRIM_ALPHA,
-{"vShadeColor.rgb", "vShadeColor.a"}, //MUX_SHADE_ALPHA,
-{"EnvColor.rgb", "EnvColor.a"}, //MUX_ENV_ALPHA,
-{"EnvFrac.a", "EnvFrac.a"}, //MUX_LODFRAC,
-{"PrimFrac.a", "PrimFrac.a"}, //MUX_PRIMLODFRAC,
-{"vec3(1.0)", "1.0"}, //MUX_K5,
-{"vec3(1.0)", "1.0"}, //MUX_UNK,  // Should not be used
+{"vec3(0.0)", "0.0"},                      //MUX_0 = 0,
+{"vec3(1.0)", "1.0"},                      //MUX_1,
+{"comb.rgb", "comb.a"},                    //MUX_COMBINED,
+{"t0.bgr", "t0.a"},                        //MUX_TEXEL0,
+{"t1.bgr", "t1.a"},                        //MUX_TEXEL1,
+{"PrimColor.rgb", "PrimColor.a"},          //MUX_PRIM,
+{"vShadeColor.rgb", "vShadeColor.a"},      //MUX_SHADE,
+{"EnvColor.rgb", "EnvColor.a"},            //MUX_ENV,
+{"comb.rgb", "comb.a"},                    //MUX_COMBALPHA,
+{"t0.bgr", "t0.a"},                        //MUX_T0_ALPHA,
+{"t1.bgr", "t1.a"},                        //MUX_T1_ALPHA,
+{"PrimColor.rgb", "PrimColor.a"},          //MUX_PRIM_ALPHA,
+{"vShadeColor.rgb", "vShadeColor.a"},      //MUX_SHADE_ALPHA,
+{"EnvColor.rgb", "EnvColor.a"},            //MUX_ENV_ALPHA,
+{"EnvFrac.a", "EnvFrac.a"},                //MUX_LODFRAC,
+{"PrimFrac.a", "PrimFrac.a"},              //MUX_PRIMLODFRAC,
+{"vec3(1.0)", "1.0"},                      //MUX_K5,
+{"vec3(1.0)", "1.0"},                      //MUX_UNK,  // Should not be used
 };
 #endif
 
@@ -412,17 +408,17 @@ char oglNewFP[4092];
 
 char* MuxToOC(uint8 val)
 {
-// For color channel
-if( val&MUX_ALPHAREPLICATE )
-    return (char*)muxToFP_Maps[val&0x1F][1];
-else
-    return (char*)muxToFP_Maps[val&0x1F][0];
+    // For color channel
+    if( val&MUX_ALPHAREPLICATE )
+        return (char*)muxToFP_Maps[val&0x1F][1];
+    else
+        return (char*)muxToFP_Maps[val&0x1F][0];
 }
 
 char* MuxToOA(uint8 val)
 {
-// For alpha channel
-return (char*)muxToFP_Maps[val&0x1F][1];
+    // For alpha channel
+    return (char*)muxToFP_Maps[val&0x1F][1];
 }
 
 static void CheckFpVars(uint8 MuxVar, bool &bNeedT0, bool &bNeedT1)

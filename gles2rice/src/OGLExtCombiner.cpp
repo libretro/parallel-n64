@@ -81,7 +81,7 @@ bool COGLColorCombiner4::Initialize(void)
             OPENGL_CHECK_ERRORS;
             if( m_maxTexUnits > 8 ) m_maxTexUnits = 8;
 
-            TRACE0("Starting Ogl 1.4 multitexture combiner" );
+            TRACE0("Starting OpenGL 1.4 multitexture combiner" );
             TRACE1("m_maxTexUnits = %d", m_maxTexUnits);
             if( pcontext->IsExtensionSupported("ATI_texture_env_combine3") )
             {
@@ -105,7 +105,7 @@ bool COGLColorCombiner4::Initialize(void)
 
 bool COGLColorCombiner2::Initialize(void)
 {
-    TRACE0("Starting Ogl 1.2/1.3 multitexture combiner" );
+    TRACE0("Starting OpenGL 1.2/1.3 multitexture combiner" );
     if( COGLColorCombiner4::Initialize() )
     {
         // For general combiner flags
@@ -428,7 +428,7 @@ int COGLColorCombiner4::ParseDecodedMux2Units()
     for( int i=0; i<res.numOfUnits*2; i++ ) // Set combiner for each texture unit
     {
         // For each texture unit, set both RGB and Alpha channel
-        // Keep in mind that the m_pDecodeMux has been reformated and simplified very well
+        // Keep in mind that the m_pDecodeMux has been reformatted and simplified very well
 
         OGLExtCombinerType &unit = res.units[i/2];
         OGLExt1CombType &comb = unit.Combs[i%2];
@@ -588,9 +588,7 @@ int COGLColorCombiner4v2::SaveParsedResult(OGLExtCombinerSaveType &result)
     result.dwMux0 = m_pDecodedMux->m_dwMux0;
     result.dwMux1 = m_pDecodedMux->m_dwMux1;
 
-    int n;
-
-    for( n=0; n<result.numOfUnits; n++ )
+    for( int n=0; n<result.numOfUnits; n++ )
     {
         for( int i=0; i<3; i++ )
         {
@@ -629,7 +627,7 @@ int COGLColorCombiner4v2::SaveParsedResult(OGLExtCombinerSaveType &result)
     int extraUnit = 0;
     if( result.envIsUsed )  extraUnit++;
     if( result.lodFracIsUsed ) extraUnit++;
-    for( n=result.numOfUnits; n<result.numOfUnits+extraUnit; n++ )
+    for( int n=result.numOfUnits; n<result.numOfUnits+extraUnit; n++ )
     {
         for( int i=0; i<3; i++ )
         {
@@ -787,7 +785,7 @@ GLint COGLColorCombiner4v2::RGBArgsMap4v2[] =
     //{GL_TEXTURE3_ARB,         },  //MUX_LODFRAC,
     //{GL_TEXTURE3_ARB,         },  //MUX_PRIMLODFRAC,
     GL_TEXTURE1_ARB,                //MUX_LODFRAC,
-        GL_TEXTURE1_ARB,                //MUX_PRIMLODFRAC,
+        GL_TEXTURE1_ARB,            //MUX_PRIMLODFRAC,
     GL_PRIMARY_COLOR_ARB,           //MUX_K5
     GL_PRIMARY_COLOR_ARB            //MUX_UNK
 #endif
@@ -997,7 +995,7 @@ void COGLColorCombiner4::GenerateCombinerSettingConstants(int index)
     float *fv;
     float tempf[4];
 
-    bool isused = true;
+    bool isUsed = true;
 
     if( res.primIsUsed )
     {
@@ -1015,10 +1013,10 @@ void COGLColorCombiner4::GenerateCombinerSettingConstants(int index)
     }
     else
     {
-        isused = false;
+        isUsed = false;
     }
 
-    if( isused )
+    if( isUsed )
     {
         for( int i=0; i<res.numOfUnits; i++ )
         {
@@ -1115,7 +1113,7 @@ int COGLColorCombiner2::ParseDecodedMux()
     //return COGLColorCombiner4::ParseDecodedMux();
 
     int generalCombinerIndex = CGeneralCombiner::FindCompiledMux();
-    if( generalCombinerIndex < 0 )      // Can not found
+    if( generalCombinerIndex < 0 )  // Can not found
     {
         generalCombinerIndex = CGeneralCombiner::ParseDecodedMux();
     }
@@ -1178,7 +1176,7 @@ void COGLColorCombiner2::GenerateCombinerSettingConstants(int index)
 {
     OGLExtCombinerSaveType &res = m_vCompiledSettings[index];
 
-    bool isused = true;
+    bool isUsed = true;
 
     float *fv;
     float tempf[4];
@@ -1199,10 +1197,10 @@ void COGLColorCombiner2::GenerateCombinerSettingConstants(int index)
     }
     else
     {
-        isused = false;
+        isUsed = false;
     }
 
-    if( isused )
+    if( isUsed )
     {
         for( int i=0; i<res.numOfUnits; i++ )
         {

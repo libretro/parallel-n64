@@ -55,10 +55,10 @@ const char *cycleTypeStrs[] = {
 
 const char* constStr(uint32 op)
 {
-if(op<=MUX_UNK)
-    return constStrs[op];
-else
-   return "Invalid-Const";
+    if(op<=MUX_UNK)
+        return constStrs[op];
+    else
+       return "Invalid-Const";
 }
 #endif
 

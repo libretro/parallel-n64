@@ -118,7 +118,9 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 wid
     gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
-    if( pEntry ) SetCurrentTexture( 0, pEntry->pTexture, pEntry->ti.WidthToCreate, pEntry->ti.HeightToCreate, pEntry);
+
+    if( pEntry )
+        SetCurrentTexture( 0, pEntry->pTexture, pEntry->ti.WidthToCreate, pEntry->ti.HeightToCreate, pEntry);
 }
 
 void CRender::LoadTextureFromMemory(void *buf, uint32 left, uint32 top, uint32 width, uint32 height, uint32 pitch, uint32 format)
@@ -308,7 +310,8 @@ void CRender::LoadSprite2D(Sprite2DInfo &info, uint32 ucode)
 
 void CRender::DrawSprite2D(Sprite2DInfo &info, uint32 ucode)
 {
-    if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
+    if( !status.bCIBufferIsRendered )
+        g_pFrameBufferManager->ActiveTextureBuffer();
 
     if( status.bHandleN64RenderTexture )
     {
@@ -384,7 +387,8 @@ void CRender::DrawSprite2D(Sprite2DInfo &info, uint32 ucode)
 
 void CRender::DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32 tile, uint32 left, uint32 top, uint32 width, uint32 height)   // With Rotation
 {
-    if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
+    if( !status.bCIBufferIsRendered )
+        g_pFrameBufferManager->ActiveTextureBuffer();
 
     if( status.bHandleN64RenderTexture )
     {
@@ -416,7 +420,7 @@ void CRender::DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32 tile, 
     float x1 = sprite.sprite.imageW / 32.0f / scaleX + x0;
     float y1 = sprite.sprite.imageH / 32.0f / scaleY + y0;
 
-    if( sprite.sprite.imageFlags&1 ) { float temp = x0; x0 = x1; x1 = temp; } // flip X 
+    if( sprite.sprite.imageFlags&1    ) { float temp = x0; x0 = x1; x1 = temp; } // flip X 
     if( sprite.sprite.imageFlags&0x10 ) { float temp = y0; y0 = y1; y1 = temp; } // flip Y
 
     g_texRectTVtx[0].x = (gObjMtxReal.A*x0 + gObjMtxReal.B*y0 + gObjMtxReal.X)*windowSetting.fMultX;
@@ -505,7 +509,8 @@ void CRender::DrawFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 wid
 
 void CRender::DrawObjBGCopy(uObjBg &info)
 {
-    if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
+    if( !status.bCIBufferIsRendered )
+        g_pFrameBufferManager->ActiveTextureBuffer();
 
     if( status.bHandleN64RenderTexture )
     {
@@ -612,9 +617,10 @@ void CRender::DrawObjBGCopy(uObjBg &info)
     );
 }
 
-void CRender::DrawObjBG1CYC(uObjScaleBg &bg, bool scaled)   //Without Ratation
+void CRender::DrawObjBG1CYC(uObjScaleBg &bg, bool scaled)   // Without Rotation
 {
-    if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
+    if( !status.bCIBufferIsRendered )
+        g_pFrameBufferManager->ActiveTextureBuffer();
 
     if( g_curRomInfo.bDisableObjBG )
         return;
@@ -714,9 +720,10 @@ void CRender::DrawObjBG1CYC(uObjScaleBg &bg, bool scaled)   //Without Ratation
 }
 
 
-void CRender::DrawSprite(uObjTxSprite &sprite, bool rectR)  //Without Ratation
+void CRender::DrawSprite(uObjTxSprite &sprite, bool rectR)  // Without Rotation
 {
-    if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
+    if( !status.bCIBufferIsRendered )
+        g_pFrameBufferManager->ActiveTextureBuffer();
 
     if( status.bHandleN64RenderTexture )
     {
@@ -811,19 +818,19 @@ void CRender::LoadObjBG1CYC(uObjScaleBg &bg)
     uint32 imageHeight = bg.imageH/4;
 
     TxtrInfo gti;
-    gti.Format  = bg.imageFmt;
-    gti.Size        = bg.imageSiz;
+    gti.Format = bg.imageFmt;
+    gti.Size   = bg.imageSiz;
 
     //uint8* img = (uint8*)(g_pRDRAMu8+RSPSegmentAddr(bg.imagePtr));
     
     uchar *palAddr = (uchar *) &g_wRDPTlut[0];
     gti.Address = RSPSegmentAddr(bg.imagePtr);
 
-    gti.LeftToLoad      = 0;
-    gti.TopToLoad       = 0;
+    gti.LeftToLoad     = 0;
+    gti.TopToLoad      = 0;
 
-    gti.WidthToCreate       = imageWidth;
-    gti.HeightToCreate      = imageHeight;
+    gti.WidthToCreate  = imageWidth;
+    gti.HeightToCreate = imageHeight;
 
     gti.clampS = gti.clampT = 1;
     gti.maskS = gti.maskT = 0;
@@ -841,7 +848,7 @@ void CRender::LoadObjBG1CYC(uObjScaleBg &bg)
     }
 
     gti.TLutFmt = TLUT_FMT_RGBA16;  //RGBA16
-    gti.bSwapped    = FALSE;
+    gti.bSwapped = FALSE;
 
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;
@@ -904,8 +911,10 @@ void CRender::LoadObjSprite(uObjTxSprite &sprite, bool useTIAddr)
             gti.Pitch = gti.WidthToCreate >> 1;
         }
         else
+        {
             //gti.Pitch     = (sprite.txtr.tile.twidth+1) << 3;
             gti.Pitch       = gti.WidthToCreate << (gti.Size-1);
+        }
     }
 
     if( gti.Address + gti.Pitch*gti.HeightToCreate > g_dwRamSize )

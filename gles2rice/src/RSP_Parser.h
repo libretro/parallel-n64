@@ -190,9 +190,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //
 #define G_ZBUFFER               0x00000001
 #define G_TEXTURE_ENABLE        0x00000002  // Microcode use only 
-#define G_SHADE                 0x00000004  // enable Gouraud interp 
+#define G_SHADE                 0x00000004  // Enable Gouraud interp 
 //
-#define G_SHADING_SMOOTH        0x00000200  // flat or smooth shaded 
+#define G_SHADING_SMOOTH        0x00000200  // Flat or smooth shaded 
 #define G_CULL_FRONT            0x00001000
 #define G_CULL_BACK             0x00002000
 #define G_CULL_BOTH             0x00003000  // To make code cleaner 
@@ -263,7 +263,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 # define RSP_GBI2_MV_MEM__VIEWPORT  8
 # define RSP_GBI2_MV_MEM__LIGHT     10
 # define RSP_GBI2_MV_MEM__POINT     12
-# define RSP_GBI2_MV_MEM__MATRIX    14      /* NOTE: this is in moveword table */
+# define RSP_GBI2_MV_MEM__MATRIX    14      // NOTE: this is in moveword table
 # define RSP_GBI2_MV_MEM_O_LOOKATX  (0*24)
 # define RSP_GBI2_MV_MEM_O_LOOKATY  (1*24)
 # define RSP_GBI2_MV_MEM_O_L0       (2*24)
@@ -284,13 +284,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // an immediate word will be stored.
 //
 //
-#define RSP_MOVE_WORD_MATRIX        0x00    // NOTE: also used by movemem 
+#define RSP_MOVE_WORD_MATRIX    0x00    // NOTE: also used by movemem 
 #define RSP_MOVE_WORD_NUMLIGHT  0x02
 #define RSP_MOVE_WORD_CLIP      0x04
 #define RSP_MOVE_WORD_SEGMENT   0x06
 #define RSP_MOVE_WORD_FOG       0x08
 #define RSP_MOVE_WORD_LIGHTCOL  0x0a
-#define RSP_MOVE_WORD_POINTS        0x0c
+#define RSP_MOVE_WORD_POINTS    0x0c
 #define RSP_MOVE_WORD_PERSPNORM 0x0e
 
 //
@@ -305,19 +305,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define RSP_MV_WORD_OFFSET_POINT_RGBA       0x10
 #define RSP_MV_WORD_OFFSET_POINT_ST         0x14
 #define RSP_MV_WORD_OFFSET_POINT_XYSCREEN   0x18
-#define RSP_MV_WORD_OFFSET_POINT_ZSCREEN        0x1c
+#define RSP_MV_WORD_OFFSET_POINT_ZSCREEN    0x1c
 
 
 
-// flags to inhibit pushing of the display list (on branch)
+// Flags to inhibit pushing of the display list (on branch)
 #define RSP_DLIST_PUSH      0x00
-#define RSP_DLIST_NOPUSH        0x01
+#define RSP_DLIST_NOPUSH    0x01
 
 
 //
 // RSP_MTX: parameter flags
 //
-#define RSP_MATRIX_MODELVIEW        0x00
+#define RSP_MATRIX_MODELVIEW    0x00
 #define RSP_MATRIX_PROJECTION   0x01
 
 #define RSP_MATRIX_MUL          0x00
@@ -371,7 +371,7 @@ typedef struct {
     uint32  minor_ver;
     uint32  variant;
     char    rspstr[200];
-    
+
     uint32  ucStart;
     uint32  ucSize;
     uint32  ucDStart;
@@ -439,20 +439,20 @@ struct LoadCmdInfo
 };
 
 typedef struct {    // This is in Intel format
-  uint32 SourceImagePointer;
-  uint32 TlutPointer;
+    uint32 SourceImagePointer;
+    uint32 TlutPointer;
 
-  short SubImageWidth;
-  short Stride;
+    short SubImageWidth;
+    short Stride;
 
-  char  SourceImageBitSize;
-  char  SourceImageType;
-  short SubImageHeight;
+    char  SourceImageBitSize;
+    char  SourceImageType;
+    short SubImageHeight;
 
-  short SourceImageOffsetT;
-  short SourceImageOffsetS;
+    short SourceImageOffsetT;
+    short SourceImageOffsetS;
 
-  char  dummy[4]; 
+    char  dummy[4]; 
 } SpriteStruct;         //Converted Sprint struct in Intel format
 
 typedef struct{
@@ -510,7 +510,7 @@ typedef struct
             unsigned int        alpha_dither : 2;           // 4..5
             unsigned int        rgb_dither : 2;             // 6..7
             
-            unsigned int        key_en : 1;             // 8..8
+            unsigned int        key_en : 1;                 // 8..8
             unsigned int        text_conv : 3;              // 9..11
             unsigned int        text_filt : 2;              // 12..13
             unsigned int        text_tlut : 2;              // 14..15
@@ -521,7 +521,7 @@ typedef struct
             unsigned int        text_persp : 1;             // 19..19
             unsigned int        cycle_type : 2;             // 20..21
             unsigned int        reserved : 1;               // 22..22 - not supported
-            unsigned int        atomic_prim : 1;                // 23..23
+            unsigned int        atomic_prim : 1;            // 23..23
 
             unsigned int        pad : 8;                    // 24..31 - padding
 

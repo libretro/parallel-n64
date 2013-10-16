@@ -126,7 +126,7 @@ void CGeneralCombiner::GenCI_Init(GeneralCombinerInfo &gci)
     gci.blendingFunc = ENABLE_BOTH;
     resultIsGood = true;
 
-    //After the mux is reformated and simplified, we can use it to generate combine stages
+    //After the mux is reformatted and simplified, we can use it to generate combine stages
     //return false if we can not generate it
 
     for( int i=0; i<8; i++)
@@ -813,7 +813,7 @@ int CGeneralCombiner::ParseDecodedMux()
             case CM_FMT_TYPE_D:     // = D
                 // Alpha channel is using different texture from color channel
                 // and the color channel has already used texture, so alpha
-                // channel can not use different texture for this stage anymore,
+                // channel can not use different texture for this stage any more,
                 // alpha channel need to skip a stage
                 n = GenCI_Type_D(j*2+i, n, gci);
                 if( j==0 && mux.splitType[i+2] != CM_FMT_TYPE_NOT_USED ) NextStage(n);  else n++;

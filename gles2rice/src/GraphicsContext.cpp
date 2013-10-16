@@ -40,8 +40,8 @@ CGraphicsContext * CGraphicsContext::Get(void)
 CGraphicsContext::CGraphicsContext() :
     m_supportTextureMirror(false),
     m_bReady(false), 
-        m_bActive(false),
-        m_bWindowed(true)
+    m_bActive(false),
+    m_bWindowed(true)
 {
 }
 CGraphicsContext::~CGraphicsContext()
@@ -112,7 +112,7 @@ int __cdecl SortResolutionsCallback( const void* arg1, const void* arg2 )
 // This is a static function, will be called when the plugin DLL is initialized
 void CGraphicsContext::InitDeviceParameters(void)
 {
-    // To initialze device parameters for OpenGL
+    // To initialize device parameters for OpenGL
     COGLGraphicsContext::InitDeviceParameters();
 }
 
