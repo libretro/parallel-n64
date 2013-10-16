@@ -619,14 +619,7 @@ void guLoadTextures ()
   if (grTextureBufferExt)
   {
     int tbuf_size = 0;
-    if (voodoo.max_tex_size <= 256)
-    {
-      grTextureBufferExt(  GR_TMU1, voodoo.tex_min_addr[GR_TMU1], GR_LOD_LOG2_256, GR_LOD_LOG2_256,
-        GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
-      tbuf_size = 8 * grTexCalcMemRequired(GR_LOD_LOG2_256, GR_LOD_LOG2_256,
-        GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
-    }
-    else if (settings.scr_res_x <= 1024)
+    if (settings.scr_res_x <= 1024)
     {
       grTextureBufferExt(  GR_TMU0, voodoo.tex_min_addr[GR_TMU0], GR_LOD_LOG2_1024, GR_LOD_LOG2_1024,
         GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
@@ -892,7 +885,7 @@ int InitGfx ()
   grGet (GR_NUM_TMU, 4, (FxI32*)&voodoo.num_tmu);
   // get maximal texture size
   grGet (GR_MAX_TEXTURE_SIZE, 4, (FxI32*)&voodoo.max_tex_size);
-  voodoo.sup_large_tex = (voodoo.max_tex_size > 256 && !(settings.hacks & hack_PPL));
+  voodoo.sup_large_tex = !(settings.hacks & hack_PPL);
 
   if (voodoo.tex_UMA)
   {
