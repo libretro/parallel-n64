@@ -770,33 +770,6 @@ int InitGfx ()
   // Is mirroring allowed?
   const char *extensions = grGetString (GR_EXTENSION);
 
-  // Check which SST we are using and initialize stuff
-  // Hiroshi Morii <koolsmoky@users.sourceforge.net>
-  enum {
-    GR_SSTTYPE_VOODOO  = 0,
-    GR_SSTTYPE_SST96   = 1,
-    GR_SSTTYPE_AT3D    = 2,
-    GR_SSTTYPE_Voodoo2 = 3,
-    GR_SSTTYPE_Banshee = 4,
-    GR_SSTTYPE_Voodoo3 = 5,
-    GR_SSTTYPE_Voodoo4 = 6,
-    GR_SSTTYPE_Voodoo5 = 7
-  };
-  const char *hardware = grGetString(GR_HARDWARE);
-  unsigned int SST_type = GR_SSTTYPE_VOODOO;
-  if (strstr(hardware, "Rush")) {
-    SST_type = GR_SSTTYPE_SST96;
-  } else if (strstr(hardware, "Voodoo2")) {
-    SST_type = GR_SSTTYPE_Voodoo2;
-  } else if (strstr(hardware, "Voodoo Banshee")) {
-    SST_type = GR_SSTTYPE_Banshee;
-  } else if (strstr(hardware, "Voodoo3")) {
-    SST_type = GR_SSTTYPE_Voodoo3;
-  } else if (strstr(hardware, "Voodoo4")) {
-    SST_type = GR_SSTTYPE_Voodoo4;
-  } else if (strstr(hardware, "Voodoo5")) {
-    SST_type = GR_SSTTYPE_Voodoo5;
-  }
 //TODO-PORT: fullscreen stuff
   uint32_t res_data = settings.res_data;
   char strWrapperFullScreenResolutionExt[] = "grWrapperFullScreenResolutionExt";
