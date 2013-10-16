@@ -382,8 +382,6 @@ void microcheck ()
   }
 }
 
-void drawNoFullscreenMessage() { }
-
 static uint32_t d_ul_x, d_ul_y, d_lr_x, d_lr_y;
 
 static void DrawPartFrameBufferToScreen()
@@ -599,8 +597,6 @@ EXPORT void CALL ProcessDList(void)
   SoftLocker lock(mutexProcessDList);
   if (!lock.IsOk()) //mutex is busy
   {
-    if (!fullscreen)
-      drawNoFullscreenMessage();
     // Set an interrupt to allow the game to continue
     *gfx.MI_INTR_REG |= 0x20;
     gfx.CheckInterrupts();
@@ -617,7 +613,6 @@ EXPORT void CALL ProcessDList(void)
 
   if (!fullscreen)
   {
-    drawNoFullscreenMessage();
     // Set an interrupt to allow the game to continue
     *gfx.MI_INTR_REG |= 0x20;
     gfx.CheckInterrupts();
@@ -4089,8 +4084,6 @@ EXPORT void CALL ProcessRDPList(void)
   SoftLocker lock(mutexProcessDList);
   if (!lock.IsOk()) //mutex is busy
   {
-    if (!fullscreen)
-      drawNoFullscreenMessage();
     // Set an interrupt to allow the game to continue
     *gfx.MI_INTR_REG |= 0x20;
     gfx.CheckInterrupts();
