@@ -1575,20 +1575,6 @@ grLoadGammaTable( FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue)
 FX_ENTRY void FX_CALL
 grGetGammaTableExt(FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue)
 {
-  //TODO?
-  /*
-  LOG("grGetGammaTableExt()\r\n");
-  FxU16 aGammaRamp[3][256];
-  if (SDL_GetGammaRamp(aGammaRamp[0], aGammaRamp[1], aGammaRamp[2]) != -1)
-  {
-    for (int i = 0; i < 256; i++)
-    {
-      red[i] = aGammaRamp[0][i] >> 8;
-      green[i] = aGammaRamp[1][i] >> 8;
-      blue[i] = aGammaRamp[2][i] >> 8;
-    }
-  }
-  */
 }
 
 FX_ENTRY void FX_CALL
