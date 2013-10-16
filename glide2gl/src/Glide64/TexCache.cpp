@@ -679,27 +679,6 @@ void TexCache ()
     }
   }
 
-  // little change to make single-tmu cards look better, use first texture no matter what
-
-  if (voodoo.num_tmu == 1)
-  {
-    if (rdp.best_tex == 0)
-    {
-      cmb.tmu0_func = cmb.tmu0_a_func = GR_COMBINE_FUNCTION_LOCAL;
-      cmb.tmu0_fac = cmb.tmu0_a_fac = GR_COMBINE_FACTOR_NONE;
-      tmu_0 = 0;
-      tmu_1 = 1;
-    }
-    else
-    {
-      cmb.tmu1_func = cmb.tmu1_a_func = GR_COMBINE_FUNCTION_LOCAL;
-      cmb.tmu1_fac = cmb.tmu1_a_fac = GR_COMBINE_FACTOR_NONE;
-      tmu_1 = 0;
-      tmu_0 = 1;
-    }
-  }
-
-
   rdp.t0 = tmu_0;
   rdp.t1 = tmu_1;
 

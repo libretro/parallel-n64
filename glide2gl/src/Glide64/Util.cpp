@@ -1026,8 +1026,7 @@ static void CalculateLOD(VERTEX *v, int n)
   else
     detailmax = 1.0f - lod_fraction;
   grTexDetailControl (GR_TMU0, cmb.dc0_lodbias, cmb.dc0_detailscale, detailmax);
-  if (voodoo.num_tmu == 2)
-    grTexDetailControl (GR_TMU1, cmb.dc1_lodbias, cmb.dc1_detailscale, detailmax);
+  grTexDetailControl (GR_TMU1, cmb.dc1_lodbias, cmb.dc1_detailscale, detailmax);
   FRDP("CalculateLOD factor: %f, tile: %d, lod_fraction: %f\n", (float)lodFactor, lod_tile, lod_fraction);
 }
 
