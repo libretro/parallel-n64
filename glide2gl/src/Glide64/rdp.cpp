@@ -3812,49 +3812,49 @@ static void rdp_triangle(int shade, int texture, int zbuffer)
 
 static void rdp_trifill()
 {
-  rdp_triangle(0, 0, 0);
+  lle_triangle(rdp.cmd0, rdp.cmd1, 0, 0, 0, rdp_cmd_data + rdp_cmd_cur);
   LRDP("trifill\n");
 }
 
 static void rdp_trishade()
 {
-  rdp_triangle(1, 0, 0);
+  lle_triangle(rdp.cmd0, rdp.cmd1, 1, 0, 0, rdp_cmd_data + rdp_cmd_cur);
   LRDP("trishade\n");
 }
 
 static void rdp_tritxtr()
 {
-  rdp_triangle(0, 1, 0);
+  lle_triangle(rdp.cmd0, rdp.cmd1, 0, 1, 0, rdp_cmd_data + rdp_cmd_cur);
   LRDP("tritxtr\n");
 }
 
 static void rdp_trishadetxtr()
 {
-  rdp_triangle(1, 1, 0);
+  lle_triangle(rdp.cmd0, rdp.cmd1, 1, 1, 0, rdp_cmd_data + rdp_cmd_cur);
   LRDP("trishadetxtr\n");
 }
 
 static void rdp_trifillz()
 {
-  rdp_triangle(0, 0, 1);
+  lle_triangle(rdp.cmd0, rdp.cmd1, 0, 0, 1, rdp_cmd_data + rdp_cmd_cur);
   LRDP("trifillz\n");
 }
 
 static void rdp_trishadez()
 {
-  rdp_triangle(1, 0, 1);
+  lle_triangle(rdp.cmd0, rdp.cmd1, 1, 0, 1, rdp_cmd_data + rdp_cmd_cur);
   LRDP("trishadez\n");
 }
 
 static void rdp_tritxtrz()
 {
-  rdp_triangle(0, 1, 1);
+  lle_triangle(rdp.cmd0, rdp.cmd1, 0, 1, 1, rdp_cmd_data + rdp_cmd_cur);
   LRDP("tritxtrz\n");
 }
 
 static void rdp_trishadetxtrz()
 {
-  rdp_triangle(1, 1, 1);
+  lle_triangle(rdp.cmd0, rdp.cmd1, 1, 1, 1, rdp_cmd_data + rdp_cmd_cur);
   LRDP("trishadetxtrz\n");
 }
 
@@ -4045,6 +4045,7 @@ output:   none
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 EXPORT void CALL ProcessRDPList(void)
 {
 #ifdef VISUAL_LOGGING
