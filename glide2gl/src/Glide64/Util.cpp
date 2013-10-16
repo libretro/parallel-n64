@@ -1075,22 +1075,6 @@ static void DepthBuffer(VERTEX * vtx, int n)
     vtx[i].z = ScaleZ(vtx[i].z);
 }
 
-/*
-std::ofstream loga;
-#define LOGG(x) loga.open("glide_log.txt",std::ios::app); loga << x; loga.flush(); loga.close();
-__inline void FRDP2(char *fmt, ...)
-{
-va_list ap;
-va_start(ap, fmt);
-vsprintf(out_buf, fmt, ap);
-LOGG(out_buf);
-va_end(ap);
-}
-//*/
-//#define LOGG(x)
-//#define FRDP2(x)
-
-
 void clip_tri(int interpolate_colors)
 {
   int i,j,index,n=rdp.n_global;
@@ -1161,6 +1145,7 @@ void clip_tri(int interpolate_colors)
     }
     n = index;
   }
+
   if (rdp.clip & CLIP_XMIN) // left of the screen
   {
     // Swap vertex buffers
@@ -1225,6 +1210,7 @@ void clip_tri(int interpolate_colors)
     }
     n = index;
   }
+
   if (rdp.clip & CLIP_YMAX) // top of the screen
   {
     // Swap vertex buffers
@@ -1289,6 +1275,7 @@ void clip_tri(int interpolate_colors)
     }
     n = index;
   }
+
   if (rdp.clip & CLIP_YMIN) // bottom of the screen
   {
     // Swap vertex buffers
@@ -1353,6 +1340,7 @@ void clip_tri(int interpolate_colors)
     }
     n = index;
   }
+
   if (rdp.clip & CLIP_ZMAX) // far plane
   {
     // Swap vertex buffers
@@ -1418,6 +1406,7 @@ void clip_tri(int interpolate_colors)
     }
     n = index;
   }
+
 /*
   if (rdp.clip & CLIP_ZMIN) // near Z
   {
@@ -1568,22 +1557,6 @@ static void render_tri (uint16_t linew, int old_interpolate)
       InterpolateColors2(*v1, *v2, rdp.vtxbuf[i], percent);
     }
   }
-  /*
-  if (rdp.clip)
-  {
-  LOGG("Colors before clipping:\n");
-  unsigned int k;
-		for(k=0; k<3; k++)
-    {
-		  FRDP2("V%d: r=%d, g=%d, b=%d, a=%d, f=%d\n", k, org_vtx[k]->r, org_vtx[k]->g, org_vtx[k]->b, org_vtx[k]->a, (short)org_vtx[k]->f);
-      }
-      FRDP("Got %d vertex after clipping\n", n);
-      for(k=0; k<n; k++)
-      {
-      FRDP("V%d: r=%d, g=%d, b=%d, a=%d, f=%d\n", k, rdp.vtxbuf[k].r, rdp.vtxbuf[k].g, rdp.vtxbuf[k].b, rdp.vtxbuf[k].a, (short)rdp.vtxbuf[k].f);
-      }
-      }
-  */
 
   ConvertCoordsConvert (rdp.vtxbuf, n);
   if (rdp.fog_mode == RDP::fog_enabled)
