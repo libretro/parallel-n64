@@ -138,8 +138,7 @@ RDP rdp;
 SETTINGS settings = { FALSE, 640, 480, GR_RESOLUTION_640x480, 0 };
 
 VOODOO voodoo = {0, 0, 0, 0,
-                 0, 0, 0, 0,
-                 0, 0, 0, 0
+                 0, 0
                 };
 
 GrTexInfo fontTex;
@@ -648,14 +647,11 @@ void guLoadTextures ()
     offset_font = tbuf_size;
     {
       rdp.texbufs[1].tmu = GR_TMU1;
-      rdp.texbufs[1].begin = voodoo.tex_UMA ? rdp.texbufs[0].end : voodoo.tex_min_addr[GR_TMU1];
+      rdp.texbufs[1].begin = rdp.texbufs[0].end;
       rdp.texbufs[1].end = rdp.texbufs[1].begin+tbuf_size;
       rdp.texbufs[1].count = 0;
       rdp.texbufs[1].clear_allowed = TRUE;
-      if (voodoo.tex_UMA)
-        offset_font += tbuf_size;
-      else
-        offset_texbuf1 = tbuf_size;
+      offset_font += tbuf_size;
     }
   }
   else
@@ -801,14 +797,6 @@ int InitGfx ()
   } else if (strstr(hardware, "Voodoo5")) {
     SST_type = GR_SSTTYPE_Voodoo5;
   }
-  // use UMA if available
-  voodoo.tex_UMA = FALSE;
-  if (strstr(extensions, " TEXUMA ")) {
-    // we get better texture cache hits with UMA on
-    grEnable(GR_TEXTURE_UMA_EXT);
-    voodoo.tex_UMA = TRUE;
-    LOG ("Using TEXUMA extension.\n");
-  }
 //TODO-PORT: fullscreen stuff
   uint32_t res_data = settings.res_data;
   char strWrapperFullScreenResolutionExt[] = "grWrapperFullScreenResolutionExt";
@@ -885,20 +873,9 @@ int InitGfx ()
   grGet (GR_MAX_TEXTURE_SIZE, 4, (FxI32*)&voodoo.max_tex_size);
   voodoo.sup_large_tex = !(settings.hacks & hack_PPL);
 
-  if (voodoo.tex_UMA)
-  {
-    GetTexAddr = GetTexAddrUMA;
-    voodoo.tex_min_addr[0] = voodoo.tex_min_addr[1] = grTexMinAddress(GR_TMU0);
-    voodoo.tex_max_addr[0] = voodoo.tex_max_addr[1] = grTexMaxAddress(GR_TMU0);
-  }
-  else
-  {
-    GetTexAddr = GetTexAddrNonUMA;
-    voodoo.tex_min_addr[0] = grTexMinAddress(GR_TMU0);
-    voodoo.tex_min_addr[1] = grTexMinAddress(GR_TMU1);
-    voodoo.tex_max_addr[0] = grTexMaxAddress(GR_TMU0);
-    voodoo.tex_max_addr[1] = grTexMaxAddress(GR_TMU1);
-  }
+  GetTexAddr = GetTexAddrUMA;
+  voodoo.tex_min_addr[0] = voodoo.tex_min_addr[1] = grTexMinAddress(GR_TMU0);
+  voodoo.tex_max_addr[0] = voodoo.tex_max_addr[1] = grTexMaxAddress(GR_TMU0);
 
   if (fb_hwfbe_enabled)
   {

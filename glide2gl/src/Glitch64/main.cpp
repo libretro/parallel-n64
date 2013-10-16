@@ -67,7 +67,6 @@ int viewport_width, viewport_height;
 int lfb_color_fmt;
 float invtex[2];
 //Gonetz
-int UMAmode = 0; //support for VSA-100 UMA mode;
 
 static int savedWidtho, savedHeighto;
 static int savedWidth, savedHeight;
@@ -1330,16 +1329,12 @@ FX_ENTRY void FX_CALL
 grEnable( GrEnableMode_t mode )
 {
   LOG("grEnable(%d)\r\n", mode);
-  if (mode == GR_TEXTURE_UMA_EXT)
-    UMAmode = 1;
 }
 
 FX_ENTRY void FX_CALL
 grDisable( GrEnableMode_t mode )
 {
   LOG("grDisable(%d)\r\n", mode);
-  if (mode == GR_TEXTURE_UMA_EXT)
-    UMAmode = 0;
 }
 
 FX_ENTRY void FX_CALL
