@@ -154,20 +154,14 @@ FX_ENTRY FxU32 FX_CALL
 grTexMinAddress( GrChipID_t tmu )
 {
   LOG("grTexMinAddress(%d)\r\n", tmu);
-  if (UMAmode)
-    return 0;
-  else
-    return tmu*TMU_SIZE;
+  return 0;
 }
 
 FX_ENTRY FxU32 FX_CALL
 grTexMaxAddress( GrChipID_t tmu )
 {
   LOG("grTexMaxAddress(%d)\r\n", tmu);
-  if (UMAmode)
-    return TMU_SIZE*2 - 1;
-  else
-    return tmu*TMU_SIZE + TMU_SIZE - 1;
+  return TMU_SIZE*2 - 1;
 }
 
 FX_ENTRY FxU32 FX_CALL
