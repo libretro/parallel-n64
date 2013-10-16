@@ -923,10 +923,6 @@ int InitGfx ()
   else
     voodoo.sup_32bit_tex = FALSE;
 
-  voodoo.gamma_correction = 0;
-  if (strstr(extensions, "GETGAMMA"))
-    grGet(GR_GAMMA_TABLE_ENTRIES, sizeof(voodoo.gamma_table_size), &voodoo.gamma_table_size);
-
   if (fb_hwfbe_enabled)
   {
     if (char * extstr = (char*)strstr(extensions, "TEXTUREBUFFER"))
@@ -1087,16 +1083,6 @@ int InitGfx ()
 void ReleaseGfx ()
 {
   VLOG("ReleaseGfx ()\n");
-
-  // Restore gamma settings
-  if (voodoo.gamma_correction)
-  {
-    if (voodoo.gamma_table_r)
-      grLoadGammaTable(voodoo.gamma_table_size, voodoo.gamma_table_r, voodoo.gamma_table_g, voodoo.gamma_table_b);
-    else
-      guGammaCorrectionRGB(1.3f, 1.3f, 1.3f); //1.3f is default 3dfx gamma for everything but desktop
-    voodoo.gamma_correction = 0;
-  }
 
   // Release graphics
   grSstWinClose (gfx_context);
@@ -1272,12 +1258,6 @@ void CALL CloseDLL (void)
     ReleaseGfx ();
   ZLUT_release();
   ClearCache ();
-  delete[] voodoo.gamma_table_r;
-  voodoo.gamma_table_r = 0;
-  delete[] voodoo.gamma_table_g;
-  voodoo.gamma_table_g = 0;
-  delete[] voodoo.gamma_table_b;
-  voodoo.gamma_table_b = 0;
 }
 
 /******************************************************************
@@ -1671,20 +1651,6 @@ static void DrawWholeFrameBufferToScreen()
     memset(gfx.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
 }
 
-static void GetGammaTable()
-{
-  char strGetGammaTableExt[] = "grGetGammaTableExt";
-  void (FX_CALL *grGetGammaTableExt)(FxU32, FxU32*, FxU32*, FxU32*) =
-    (void (FX_CALL *)(FxU32, FxU32*, FxU32*, FxU32*))grGetProcAddress(strGetGammaTableExt);
-  if (grGetGammaTableExt)
-  {
-    voodoo.gamma_table_r = new FxU32[voodoo.gamma_table_size];
-    voodoo.gamma_table_g = new FxU32[voodoo.gamma_table_size];
-    voodoo.gamma_table_b = new FxU32[voodoo.gamma_table_size];
-    grGetGammaTableExt(voodoo.gamma_table_size, voodoo.gamma_table_r, voodoo.gamma_table_g, voodoo.gamma_table_b);
-  }
-}
-
 #ifdef __LIBRETRO__ // Core options
 #include "../../../libretro/libretro.h"
 extern retro_environment_t environ_cb;
@@ -1711,15 +1677,11 @@ void newSwapBuffers()
 
   LRDP("swapped\n");
 
-  // Allow access to the whole screen
-  if (fullscreen)
-  {
-    rdp.update |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
-    grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
-    grDepthBufferFunction (GR_CMP_ALWAYS);
-    grDepthMask (FXFALSE);
-    grCullMode (GR_CULL_DISABLE);
-  }
+  rdp.update |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
+  grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
+  grDepthBufferFunction (GR_CMP_ALWAYS);
+  grDepthMask (FXFALSE);
+  grCullMode (GR_CULL_DISABLE);
 
   if (settings.frame_buffer & fb_read_back_to_screen)
     DrawWholeFrameBufferToScreen();
@@ -1729,31 +1691,7 @@ void newSwapBuffers()
     if (fb_hwfbe_enabled && !(settings.hacks&hack_RE2) && !evoodoo)
       grAuxBufferExt( GR_BUFFER_AUXBUFFER );
     grBufferSwap (settings.vsync);
-    if (*gfx.VI_STATUS_REG&0x08) //gamma correction is used
-    {
-      if (!voodoo.gamma_correction)
-      {
-        if (voodoo.gamma_table_size && !voodoo.gamma_table_r)
-          GetGammaTable(); //save initial gamma tables
-        guGammaCorrectionRGB(2.0f, 2.0f, 2.0f); //with gamma=2.0 gamma table is the same, as in N64
-        voodoo.gamma_correction = 1;
-      }
-    }
-    else
-    {
-      if (voodoo.gamma_correction)
-      {
-        if (voodoo.gamma_table_r)
-          grLoadGammaTable(voodoo.gamma_table_size, voodoo.gamma_table_r, voodoo.gamma_table_g, voodoo.gamma_table_b);
-        else
-          guGammaCorrectionRGB(1.3f, 1.3f, 1.3f); //1.3f is default 3dfx gamma for everything but desktop
-        voodoo.gamma_correction = 0;
-      }
-    }
-  }
 
-  if (fullscreen)
-  {
     if  (settings.wireframe || settings.buff_clear || (settings.hacks&hack_PPL && settings.ucode == 6))
     {
       if (settings.hacks&hack_RE2 && fb_depth_render_enabled)
