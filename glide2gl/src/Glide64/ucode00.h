@@ -858,11 +858,13 @@ static void uc0_setothermode_h()
     FRDP ("alpha dither mode: %s\n", str_dither[rdp.alpha_dither_mode]);
   }
 
+#ifndef NDEBUG
   if (mask & 0x000000C0)  // rgb dither mode
   {
     uint32_t dither_mode = (rdp.othermode_h >> 6) & 0x3;
     FRDP ("rgb dither mode: %s\n", str_dither[dither_mode]);
   }
+#endif
 
   if (mask & 0x00003000)  // filter mode
   {
@@ -897,11 +899,13 @@ static void uc0_setothermode_h()
     FRDP ("Persp_en: %d\n", rdp.Persp_en);
   }
 
+#ifndef NDEBUG
   uint32_t unk = mask & 0x0FFC60F0F;
   if (unk)  // unknown portions, LARGE
   {
     FRDP ("UNKNOWN PORTIONS: shift: %d, len: %d, unknowns: %08lx\n", shift, len, unk);
   }
+#endif
 }
 
 static void uc0_setothermode_l()

@@ -821,12 +821,14 @@ static void ys_memrect ()
   uint32_t off_x = ((rdp.cmd2 & 0xFFFF0000) >> 16) >> 5;
   uint32_t off_y = (rdp.cmd2 & 0x0000FFFF) >> 5;
 
+#ifndef NDEBUG
   FRDP ("memrect (%d, %d, %d, %d), ci_width: %d", ul_x, ul_y, lr_x, lr_y, rdp.ci_width);
   if (off_x > 0)
     FRDP ("  off_x: %d", off_x);
   if (off_y > 0)
     FRDP ("  off_y: %d", off_y);
   LRDP("\n");
+#endif
 
   uint32_t y, width = lr_x - ul_x;
   uint32_t tex_width = rdp.tiles[tile].line << 3;
@@ -3258,11 +3260,13 @@ void DetectFrameBufferUsage ()
       rdp.frame_buffers[i].status = ci_main;
   }
 
+#ifndef NDEBUG
   LRDP("detect fb final results: \n");
   for (i = 0; i < rdp.ci_count; i++)
   {
     FRDP("rdp.frame_buffers[%d].status = %s, addr: %08lx, height: %d\n", i, CIStatus[rdp.frame_buffers[i].status], rdp.frame_buffers[i].addr, rdp.frame_buffers[i].height);
   }
+#endif
 
   rdp.cimg = ci;
   rdp.zimg = zi;
