@@ -588,8 +588,6 @@ grGetProcAddress( char *procName )
     return (GrProc)grWrapperFullScreenResolutionExt;
   if(!strcmp(procName, "grConfigWrapperExt"))
     return (GrProc)grConfigWrapperExt;
-  if(!strcmp(procName, "grQueryResolutionsExt"))
-    return (GrProc)grQueryResolutionsExt;
   if(!strcmp(procName, "grGetGammaTableExt"))
     return (GrProc)grGetGammaTableExt;
   display_warning("grGetProcAddress : %s", procName);
@@ -1309,12 +1307,6 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
 
 /* wrapper-specific glide extensions */
 
-FX_ENTRY char ** FX_CALL
-grQueryResolutionsExt(FxI32 * Size)
-{
-  return 0;
-}
-
 FX_ENTRY GrScreenResolution_t FX_CALL grWrapperFullScreenResolutionExt(FxU32* width, FxU32* height)
 {
   return 0;
@@ -1326,35 +1318,6 @@ FX_ENTRY void FX_CALL grConfigWrapperExt(FxI32 resolution, FxI32 vram, FxBool fb
 }
 
 // unused by glide64
-
-FX_ENTRY FxI32 FX_CALL
-grQueryResolutions( const GrResolution *resTemplate, GrResolution *output )
-{
-  int res_inf = 0;
-  int res_sup = 0xf;
-  int i;
-  int n=0;
-  LOG("grQueryResolutions\r\n");
-  display_warning("grQueryResolutions");
-  if ((unsigned int)resTemplate->resolution != GR_QUERY_ANY)
-  {
-    res_inf = res_sup = resTemplate->resolution;
-  }
-  if ((unsigned int)resTemplate->refresh == GR_QUERY_ANY) display_warning("querying any refresh rate");
-  if ((unsigned int)resTemplate->numAuxBuffers == GR_QUERY_ANY) display_warning("querying any numAuxBuffers");
-  if ((unsigned int)resTemplate->numColorBuffers == GR_QUERY_ANY) display_warning("querying any numColorBuffers");
-
-  if (output == NULL) return res_sup - res_inf + 1;
-  for (i=res_inf; i<=res_sup; i++)
-  {
-    output[n].resolution = i;
-    output[n].refresh = resTemplate->refresh;
-    output[n].numAuxBuffers = resTemplate->numAuxBuffers;
-    output[n].numColorBuffers = resTemplate->numColorBuffers;
-    n++;
-  }
-  return res_sup - res_inf + 1;
-}
 
 FX_ENTRY FxBool FX_CALL
 grReset( FxU32 what )

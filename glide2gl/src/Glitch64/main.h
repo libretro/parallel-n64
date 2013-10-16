@@ -61,9 +61,7 @@ extern int buffer_cleared; // mark that the buffer has been cleared, used to che
 #include "glide.h"
 
 #ifdef __LIBRETRO__
-extern "C" {
-   void vbo_draw();
-}
+extern "C" void vbo_draw();
 #endif
 
 void display_warning(const unsigned char *text, ...);
@@ -130,7 +128,6 @@ void disable_textureSizes();
 //FX_ENTRY void FX_CALL grConfigWrapperExt(HINSTANCE instance, HWND hwnd);
 FX_ENTRY void FX_CALL grConfigWrapperExt(FxI32, FxI32, FxBool, FxBool);
 FX_ENTRY GrScreenResolution_t FX_CALL grWrapperFullScreenResolutionExt(FxU32*, FxU32*);
-FX_ENTRY char ** FX_CALL grQueryResolutionsExt(FxI32*);
 FX_ENTRY void FX_CALL grGetGammaTableExt(FxU32, FxU32*, FxU32*, FxU32*);
 
 int getFullScreenWidth();
@@ -214,11 +211,11 @@ FX_ENTRY void FX_CALL
 grConstantColorValueExt(GrChipID_t    tmu,
                         GrColor_t     value);
 
-#if !defined(GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS) // TODO: Not present
+#ifndef GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS // TODO: Not present
 #define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS 18283
 #endif
 
-#if !defined(GLES)
+#ifndef GLES
 #define glClearDepthf glClearDepth
 #endif
 

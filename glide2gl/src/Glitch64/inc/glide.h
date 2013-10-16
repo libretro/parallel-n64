@@ -736,9 +736,6 @@ grGet( FxU32 pname, FxU32 plength, FxI32 *params );
 FX_ENTRY const char * FX_CALL 
 grGetString( FxU32 pname );
 
-FX_ENTRY FxI32 FX_CALL 
-grQueryResolutions( const GrResolution *resTemplate, GrResolution *output );
-
 FX_ENTRY FxBool FX_CALL 
 grReset( FxU32 what );
 
