@@ -79,7 +79,7 @@ void CRC_BuildTable()
 unsigned int CRC32( unsigned int crc, void *buffer, unsigned int count )
 {
   unsigned int orig = crc;
-  unsigned char * p = reinterpret_cast<unsigned char*>(buffer);
+  unsigned char * p = (unsigned char*)(buffer);
   while (count--)
     crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
   return crc ^ orig;

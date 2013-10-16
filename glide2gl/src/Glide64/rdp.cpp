@@ -3302,7 +3302,7 @@ void DetectFrameBufferUsage ()
     // Go to the next instruction
     rdp.pc[rdp.pc_i] = (a+8) & BMASK;
 
-    if ((uintptr_t)(reinterpret_cast<void*>(gfx_instruction_lite[settings.ucode][rdp.cmd0>>24])))
+    if ((uintptr_t)((void*)(gfx_instruction_lite[settings.ucode][rdp.cmd0>>24])))
       gfx_instruction_lite[settings.ucode][rdp.cmd0>>24] ();
 
     // check DL counter

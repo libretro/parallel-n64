@@ -382,7 +382,7 @@ void GetTexInfo (int id, int tile)
       line2 <<= 3;
       for (int y = 0; y < crc_height; y++)
       {
-        crc = CRC32( crc, reinterpret_cast<void*>(addr), bpl );
+        crc = CRC32( crc, (void*)(addr), bpl );
         addr += line2;
       }
     }
@@ -394,8 +394,8 @@ void GetTexInfo (int id, int tile)
       bpl = max(bpl >> 1, 4);
       for (int y = 0; y < crc_height; y++)
       {
-        crc = CRC32( crc, reinterpret_cast<void*>(addr), bpl);
-        crc = CRC32( crc, reinterpret_cast<void*>(addr + 0x800), bpl);
+        crc = CRC32( crc, (void*)(addr), bpl);
+        crc = CRC32( crc, (void*)(addr + 0x800), bpl);
         addr += line2;
       }
     }
