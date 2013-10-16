@@ -71,7 +71,7 @@ uint32_t Load32bRGBA (uintptr_t dst, uintptr_t src, int wid_64, int height, int 
   }
   int id = tile - rdp.cur_tile;
   uint32_t mod = (id == 0) ? cmb.mod_0 : cmb.mod_1;
-  if (mod || !voodoo.sup_32bit_tex)
+  if (mod)
   {
     //convert to ARGB_4444
     const uint32_t tex_size = real_width * height;

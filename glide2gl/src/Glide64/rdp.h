@@ -352,7 +352,6 @@ typedef struct
   int num_tmu;
   int max_tex_size;
   int sup_large_tex;
-  int sup_32bit_tex;
   int has_2mb_tex_boundary;
   int tex_UMA;
   uint32_t tmem_ptr[MAX_TMU];
