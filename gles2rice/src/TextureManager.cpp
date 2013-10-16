@@ -35,9 +35,7 @@ bool g_bUseSetTextureMem = false;
 // Returns the first prime greater than or equal to nFirst
 inline int GetNextPrime(int nFirst)
 {
-    int nCurrent;
-
-    nCurrent = nFirst;
+    int nCurrent = nFirst;
 
     // Just make sure it's odd
     if ((nCurrent % 2) == 0)
@@ -45,20 +43,16 @@ inline int GetNextPrime(int nFirst)
 
     for (;;)
     {
-        int nSqrtCurrent;
-        BOOL bIsComposite;
-
         // nSqrtCurrent = nCurrent^0.5 + 1 (round up)
-        nSqrtCurrent = (int)sqrt((double)nCurrent) + 1;
-
-        bIsComposite = FALSE;
+        int nSqrtCurrent = (int)sqrt((double)nCurrent) + 1;
+        bool bIsComposite = false;
         
         // Test all odd numbers from 3..nSqrtCurrent
         for (int i = 3; i <= nSqrtCurrent; i+=2)
         {
             if ((nCurrent % i) == 0)
             {
-                bIsComposite = TRUE;
+                bIsComposite = true;
                 break;
             }
         }
@@ -187,14 +181,10 @@ void CTextureManager::PurgeOldTextures()
     
     // Remove any old textures that haven't been recycled in 1 minute or so
     // Normally these would be reused
-    TxtrCacheEntry * pPrev;
-    TxtrCacheEntry * pCurr;
+    TxtrCacheEntry* pPrev = NULL;
+    TxtrCacheEntry* pCurr = m_pHead;
     TxtrCacheEntry * pNext;
-    
-    
-    pPrev = NULL;
-    pCurr = m_pHead;
-    
+
     while (pCurr)
     {
         pNext = pCurr->pNext;
@@ -295,12 +285,9 @@ TxtrCacheEntry * CTextureManager::ReviveTexture( uint32 width, uint32 height )
     if (g_bUseSetTextureMem)
         return NULL;
 
-    TxtrCacheEntry * pPrev;
-    TxtrCacheEntry * pCurr;
-    
-    pPrev = NULL;
-    pCurr = m_pHead;
-    
+    TxtrCacheEntry* pPrev = NULL;
+    TxtrCacheEntry* pCurr = m_pHead;
+
     while (pCurr)
     {
         if (pCurr->ti.WidthToCreate == width &&
@@ -418,18 +405,15 @@ TxtrCacheEntry * CTextureManager::GetTxtrCacheEntry(TxtrInfo * pti)
 
 void CTextureManager::RemoveTexture(TxtrCacheEntry * pEntry)
 {
-    TxtrCacheEntry * pPrev;
-    TxtrCacheEntry * pCurr;
-    
     if (m_pCacheTxtrList == NULL)
         return;
-    
+
     // See if it is already in the hash table
     uint32 dwKey = Hash(pEntry->ti.Address);
-    
-    pPrev = NULL;
-    pCurr = m_pCacheTxtrList[dwKey];
-    
+
+    TxtrCacheEntry* pPrev = NULL;
+    TxtrCacheEntry* pCurr = m_pCacheTxtrList[dwKey];
+
     while (pCurr)
     {
         // Check that the attributes match
@@ -468,7 +452,6 @@ void CTextureManager::RemoveTexture(TxtrCacheEntry * pEntry)
         pPrev = pCurr;
         pCurr = pCurr->pNext;
     }
-    
 }
     
 TxtrCacheEntry * CTextureManager::CreateNewCacheEntry(uint32 dwAddr, uint32 dwWidth, uint32 dwHeight)
@@ -916,7 +899,8 @@ void CTextureManager::ConvertTexture_16(TxtrCacheEntry * pEntry, bool fromTMEM)
 void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32 sizeToLoad, uint32 sizeToCreate, uint32 sizeCreated,
     int arrayWidth, int flag, int mask, int mirror, int clamp, uint32 otherSize)
 {
-    if( sizeToLoad >= sizeCreated ) return;
+    if( sizeToLoad >= sizeCreated )
+        return;
 
     uint32 maskWidth = (1<<mask);
     int size = pEntry->pTexture->GetPixelSize();
@@ -934,7 +918,7 @@ void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32 sizeToLoad, 
     DrawInfo di;
     if( !(pEntry->pTexture->StartUpdate(&di)) )
     {
-        TRACE0("Cann't update the texture");
+        TRACE0("Can't update the texture");
         return;
     }
 

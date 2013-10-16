@@ -95,7 +95,7 @@ bool COGLTexture::StartUpdate(DrawInfo *di)
 
 void COGLTexture::EndUpdate(DrawInfo *di)
 {
-    COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext); // we need this to check if the GL extension is avaible
+    COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext); // we need this to check if the GL extension is available
 
     glBindTexture(GL_TEXTURE_2D, m_dwTextureName);
     OPENGL_CHECK_ERRORS;
@@ -103,12 +103,13 @@ void COGLTexture::EndUpdate(DrawInfo *di)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     OPENGL_CHECK_ERRORS;
 
-    // mipmap support
+    // Mipmap support
     if(options.mipmapping)
     {
-        int m_maximumAnistropy = pcontext->getMaxAnisotropicFiltering(); //if getMaxAnisotropicFiltering() return more than 0, so aniso is supported and maxAnisotropicFiltering is set
+        //if getMaxAnisotropicFiltering() returns more than 0, anisotropic filtering is supported and maxAnisotropicFiltering is set
+        int m_maximumAnistropy = pcontext->getMaxAnisotropicFiltering();
 
-        // Set Anisotropic filtering (mipmapping have to be activated, aniso filtering is not effective without)
+        // Set Anisotropic filtering (mipmapping have to be activated, anisotropic filtering is not effective without it)
         if( m_maximumAnistropy )
         {
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, m_maximumAnistropy);
@@ -120,7 +121,7 @@ void COGLTexture::EndUpdate(DrawInfo *di)
         OPENGL_CHECK_ERRORS;
 
 #if SDL_VIDEO_OPENGL
-        // Tell to hardware to generate mipmap (himself) when glTexImage2D is called
+        // Tell the hardware to generate a mipmap (itself) when glTexImage2D is called
         glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
 #elif SDL_VIDEO_OPENGL_ES2
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -137,14 +138,14 @@ void COGLTexture::EndUpdate(DrawInfo *di)
 #if SDL_VIDEO_OPENGL
     glTexImage2D(GL_TEXTURE_2D, 0, m_glFmt, m_dwCreatedTextureWidth, m_dwCreatedTextureHeight, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, m_pTexture);
 #elif SDL_VIDEO_OPENGL_ES2
-    //GL_BGRA_IMG works on adreno but not inside profiler.
+    //GL_BGRA_IMG works on Adreno but not inside profiler.
     glTexImage2D(GL_TEXTURE_2D, 0, m_glFmt, m_dwCreatedTextureWidth, m_dwCreatedTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_pTexture);
 #endif
     OPENGL_CHECK_ERRORS;
 }
 
 
-// Keep in mind that the real texture is not scaled to fix the created opengl texture yet.
+// Keep in mind that the real texture is not scaled to fix the created OpenGL texture yet.
 // when the image is need to be scaled, ScaleImageToSurface in CTexure will be called to 
 // scale the image automatically
 

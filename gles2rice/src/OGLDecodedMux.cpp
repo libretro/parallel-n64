@@ -46,7 +46,7 @@ void COGLExtDecodedMux::FurtherFormatForOGL2(void)
     // And OGL 1.2 extension only supports 1 constant color, we can not use both PRIM and ENV
     // constant color, and we can not use SPECULAR color as the 2nd color.
 
-    // To futher format the mux.
+    // To further format the mux.
     // - For each stage, allow only 1 texel, change the 2nd texel in the same stage to MUX_SHADE
     // - Only allow 1 constant color. Count PRIM and ENV, left the most used one, and change
     //   the 2nd one to MUX_SHADE

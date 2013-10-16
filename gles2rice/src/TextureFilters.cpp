@@ -934,19 +934,19 @@ extern char * right(const char * src, int nchars);
 int GetImageInfoFromFile(char* pSrcFile, IMAGE_INFO *pSrcInfo)
 {
     unsigned char sig[8];
-    FILE *f;
 
-    f = fopen(pSrcFile, "rb");
+    FILE *f = fopen(pSrcFile, "rb");
     if (f == NULL)
     {
-      DebugMessage(M64MSG_ERROR, "GetImageInfoFromFile() error: couldn't open file '%s'", pSrcFile);
-      return 1;
+        DebugMessage(M64MSG_ERROR, "GetImageInfoFromFile() error: couldn't open file '%s'", pSrcFile);
+        return 1;
     }
+
     if (fread(sig, 1, 8, f) != 8)
     {
-      DebugMessage(M64MSG_ERROR, "GetImageInfoFromFile() error: couldn't read first 8 bytes of file '%s'", pSrcFile);
-      fclose(f);
-      return 1;
+        DebugMessage(M64MSG_ERROR, "GetImageInfoFromFile() error: couldn't read first 8 bytes of file '%s'", pSrcFile);
+        fclose(f);
+        return 1;
     }
     fclose(f);
 
@@ -1002,8 +1002,7 @@ int GetImageInfoFromFile(char* pSrcFile, IMAGE_INFO *pSrcInfo)
 
 BOOL PathFileExists(char* pszPath)
 {
-    FILE *f;
-    f = fopen(pszPath, "rb");
+    FILE *f = fopen(pszPath, "rb");
     if(f != NULL)
     {
         fclose(f);
@@ -1016,7 +1015,7 @@ BOOL PathFileExists(char* pszPath)
  * Truncates the current list with information about hires textures and scans the hires folder for hires textures and
  * creates a list with records of properties of the hires textures.
  * parameter:
- * foldername: the folder that should be scaned for valid hires textures.
+ * foldername: the folder that should be scanned for valid hires textures.
  * infos: a pointer that will point to the list containing the records with the infos about the found hires textures.
  *        In case of enabled caching, these records will also contain the actual textures.
  * extraCheck: ?
@@ -1042,8 +1041,7 @@ void FindAllTexturesFromFolder(char *foldername, CSortedList<uint64,ExtTxtrInfo>
     //
     IMAGE_INFO  imgInfo2;
 
-    void *dir;
-    dir = osal_search_dir_open(foldername);
+    void *dir = osal_search_dir_open(foldername);
     const char *foundfilename;
 
     int crc, palcrc32;
@@ -1304,11 +1302,11 @@ void FindAllTexturesFromFolder(char *foldername, CSortedList<uint64,ExtTxtrInfo>
     osal_search_dir_close(dir);
 }
 /********************************************************************************************************************
- * Checks if a folder is actually existant. If not, it tries to create this folder
+ * Checks if a folder is actually existent. If not, it tries to create this folder
  * parameter:
- * pathname: the name of the folder that should be checked or created if not existant
+ * pathname: the name of the folder that should be checked or created if not existent
  * return:
- * return value: flag that indicates true if the folder is existant or could be created. If none was the case,
+ * return value: flag that indicates true if the folder is existent or could be created. If none was the case,
  *               false will be returned
  ********************************************************************************************************************/
 
@@ -1839,8 +1837,7 @@ bool LoadRGBABufferFromColorIndexedFile(char *filename, TxtrCacheEntry &entry, u
     BITMAPFILEHEADER fileHeader;
     BITMAPINFOHEADER infoHeader;
 
-    FILE *f;
-    f = fopen(filename, "rb");
+    FILE *f = fopen(filename, "rb");
     if(f != NULL)
     {
         if (fread(&fileHeader, sizeof(BITMAPFILEHEADER), 1, f) != 1 ||
@@ -1969,8 +1966,7 @@ bool LoadRGBBufferFromBMPFile(char *filename, unsigned char **pbuf, int &width, 
     BITMAPFILEHEADER fileHeader;
     BITMAPINFOHEADER infoHeader;
 
-    FILE *f;
-    f = fopen(filename, "rb");
+    FILE *f = fopen(filename, "rb");
     if(f != NULL)
     {
         if (fread(&fileHeader, sizeof(BITMAPFILEHEADER), 1, f) != 1 ||

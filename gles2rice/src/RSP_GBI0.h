@@ -243,7 +243,7 @@ void RSP_GBI1_Line3D(Gfx *gfx)
 
     uint32 dwPC = gDlistStack[gDlistStackPointer].pc;
 
-    BOOL bTrisAdded = FALSE;
+    bool bTrisAdded = false;
 
     if( gfx->ln3dtri2.v3 == 0 )
     {
@@ -759,19 +759,18 @@ void RSP_GBI0_Tri4(Gfx *gfx)
     // While the next command pair is Tri2, add vertices
     uint32 dwPC = gDlistStack[gDlistStackPointer].pc;
 
-    BOOL bTrisAdded = FALSE;
+    bool bTrisAdded = false;
 
     do {
         uint32 dwFlag = (w0>>16)&0xFF;
         LOG_UCODE("    PD Tri4: 0x%08x 0x%08x Flag: 0x%02x", gfx->words.w0, gfx->words.w1, dwFlag);
 
-        BOOL bVisible;
         for( int i=0; i<4; i++)
         {
             uint32 v0 = (w1>>(4+(i<<3))) & 0xF;
             uint32 v1 = (w1>>(  (i<<3))) & 0xF;
             uint32 v2 = (w0>>(  (i<<2))) & 0xF;
-            bVisible = IsTriangleVisible(v0, v2, v1);
+            bool bVisible = IsTriangleVisible(v0, v2, v1);
             LOG_UCODE("       (%d, %d, %d) %s", v0, v1, v2, bVisible ? "": "(clipped)");
             if (bVisible)
             {

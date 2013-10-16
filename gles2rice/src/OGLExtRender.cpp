@@ -251,12 +251,12 @@ void COGLExtRender::ApplyTextureFilter()
 
     for( int i=0; i<m_maxTexUnits; i++ )
     {
-        //Compute iMinFilter and iMagFilter
-        if(m_dwMinFilter == FILTER_LINEAR) //Texture will use filtering
+        // Compute iMinFilter and iMagFilter
+        if(m_dwMinFilter == FILTER_LINEAR) // Texture will use filtering
         {
             iMagFilter = GL_LINEAR;
 
-            //Texture filtering method user want
+            // Texture filtering method user want
             switch(options.mipmapping)
             {
             case TEXTURE_BILINEAR_FILTER:
@@ -270,11 +270,11 @@ void COGLExtRender::ApplyTextureFilter()
                 break;
             case TEXTURE_NO_MIPMAP:
             default:
-                //Bilinear without mipmap
+                // Bilinear without mipmap
                 iMinFilter = GL_LINEAR;
             }
         }
-        else    //dont use filtering, all is nearest
+        else    // don't use filtering, all is nearest
         {
             iMagFilter = GL_NEAREST;
 

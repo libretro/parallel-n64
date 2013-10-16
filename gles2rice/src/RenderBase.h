@@ -148,7 +148,7 @@ typedef struct
     bool    bCombinedMatrixIsUpdated;
     bool    bLightIsUpdated;
 
-    uint32      segments[16];
+    uint32  segments[16];
 
     int     DKRCMatrixIndex;
     int     DKRVtxCount;
@@ -156,7 +156,7 @@ typedef struct
     uint32  dwDKRVtxAddr;
     uint32  dwDKRMatrixAddr;
     Matrix  DKRMatrixes[4];
-    XVECTOR4        DKRBaseVec;
+    XVECTOR4  DKRBaseVec;
 
     int     ucode;
     int     vertexMult; 
@@ -277,10 +277,10 @@ inline void SetEnvColor(uint32 dwCol)
 { 
     gRDP.colorsAreReloaded = true;
     gRDP.envColor = dwCol; 
-    gRDP.fvEnvColor[0] = ((dwCol>>16)&0xFF)/255.0f;     //r
-    gRDP.fvEnvColor[1] = ((dwCol>>8)&0xFF)/255.0f;      //g
-    gRDP.fvEnvColor[2] = ((dwCol)&0xFF)/255.0f;         //b
-    gRDP.fvEnvColor[3] = ((dwCol>>24)&0xFF)/255.0f;     //a
+    gRDP.fvEnvColor[0] = ((dwCol>>16)&0xFF)/255.0f;     // R 
+    gRDP.fvEnvColor[1] = ((dwCol>>8)&0xFF)/255.0f;      // G
+    gRDP.fvEnvColor[2] = ((dwCol)&0xFF)/255.0f;         // B
+    gRDP.fvEnvColor[3] = ((dwCol>>24)&0xFF)/255.0f;     // A
 }
 inline uint32 GetEnvColor() { return gRDP.envColor; }
 inline float* GetEnvColorfv() { return gRDP.fvEnvColor; }
