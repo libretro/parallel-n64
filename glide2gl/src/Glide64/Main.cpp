@@ -801,8 +801,6 @@ int InitGfx ()
   } else if (strstr(hardware, "Voodoo5")) {
     SST_type = GR_SSTTYPE_Voodoo5;
   }
-  // 2Mb Texture boundary
-  voodoo.has_2mb_tex_boundary = (SST_type < GR_SSTTYPE_Banshee) && !evoodoo;
   // use UMA if available
   voodoo.tex_UMA = FALSE;
   if (strstr(extensions, " TEXUMA ")) {
@@ -1324,14 +1322,9 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
   const char *extensions = grGetString (GR_EXTENSION);
   grGlideShutdown ();
   if (strstr (extensions, "EVOODOO"))
-  {
     evoodoo = 1;
-    voodoo.has_2mb_tex_boundary = 0;
-  }
-  else {
+  else
     evoodoo = 0;
-    voodoo.has_2mb_tex_boundary = 1;
-  }
 
   return TRUE;
 }
