@@ -1455,19 +1455,7 @@ static void rdp_texrect()
 
       ConvertCoordsConvert (vptr, n_vertices);
 
-      if (settings.wireframe)
-      {
-        SetWireframeCol ();
-        grDrawLine (&vstd[0], &vstd[2]);
-        grDrawLine (&vstd[2], &vstd[1]);
-        grDrawLine (&vstd[1], &vstd[0]);
-        grDrawLine (&vstd[2], &vstd[3]);
-        grDrawLine (&vstd[3], &vstd[1]);
-      }
-      else
-      {
-        grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, n_vertices, vptr, sizeof(VERTEX));
-      }
+      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, n_vertices, vptr, sizeof(VERTEX));
 
       rdp.tri_n += 2;
     }
@@ -2449,21 +2437,8 @@ static void rdp_fillrect()
         }
       }
 
-      if (settings.wireframe)
-      {
-        SetWireframeCol ();
-        grDrawLine (&v[0], &v[2]);
-        grDrawLine (&v[2], &v[1]);
-        grDrawLine (&v[1], &v[0]);
-        grDrawLine (&v[2], &v[3]);
-        grDrawLine (&v[3], &v[1]);
-        //grDrawLine (&v[1], &v[2]);
-      }
-      else
-      {
-        grDrawTriangle (&v[0], &v[2], &v[1]);
-        grDrawTriangle (&v[2], &v[3], &v[1]);
-      }
+      grDrawTriangle (&v[0], &v[2], &v[1]);
+      grDrawTriangle (&v[2], &v[3], &v[1]);
 
       rdp.tri_n += 2;
   }

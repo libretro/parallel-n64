@@ -274,7 +274,6 @@ typedef struct {
   int unk_as_red;
   int log_unk;
   int unk_clear;
-  int wireframe;
   int wfmode;
 
   // Special fixes

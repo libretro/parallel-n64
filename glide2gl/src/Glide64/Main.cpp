@@ -328,7 +328,6 @@ void ReadSettings ()
 #ifndef _ENDUSER_RELEASE_
   settings.autodetect_ucode = (int)Config_ReadInt ("autodetect_ucode", "Auto-detect microcode", 1);
   settings.ucode = (uint32_t)Config_ReadInt ("ucode", "Force microcode", 2, TRUE, FALSE);
-  settings.wireframe = (int)Config_ReadInt ("wireframe", "Wireframe display", 0);
   settings.wfmode = (int)Config_ReadInt ("wfmode", "Wireframe mode: 0=Normal colors, 1=Vertex colors, 2=Red only", 1, TRUE, FALSE);
 
   settings.logging = (int)Config_ReadInt ("logging", "Logging", 0);
@@ -344,7 +343,6 @@ void ReadSettings ()
 #else
   settings.autodetect_ucode = TRUE;
   settings.ucode = 2;
-  settings.wireframe = FALSE;
   settings.wfmode = 0;
   settings.logging = FALSE;
   settings.log_clear = FALSE;
@@ -1692,7 +1690,7 @@ void newSwapBuffers()
       grAuxBufferExt( GR_BUFFER_AUXBUFFER );
     grBufferSwap (settings.vsync);
 
-    if  (settings.wireframe || settings.buff_clear || (settings.hacks&hack_PPL && settings.ucode == 6))
+    if  (settings.buff_clear || (settings.hacks&hack_PPL && settings.ucode == 6))
     {
       if (settings.hacks&hack_RE2 && fb_depth_render_enabled)
         grDepthMask (FXFALSE);

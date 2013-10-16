@@ -1626,18 +1626,6 @@ static void render_tri (uint16_t linew, int old_interpolate)
   */
   if (fullscreen)
   {
-    if (settings.wireframe)
-    {
-      SetWireframeCol ();
-      for (i=0; i<n; i++)
-      {
-        j = i+1;
-        if (j == n) j = 0;
-        grDrawLine (&rdp.vtxbuf[i], &rdp.vtxbuf[j]);
-      }
-    }
-    else
-    {
 
       //      VERTEX ** pv = rdp.vtx_buffer?(vtx_list2):(vtx_list1);
       //      for (int k = 0; k < n; k ++)
@@ -1702,7 +1690,6 @@ static void render_tri (uint16_t linew, int old_interpolate)
           grDepthBiasLevel (-deltaZ);
         grDrawVertexArray (GR_TRIANGLE_FAN, n, rdp.vtx_buffer?(&vtx_list2):(&vtx_list1));
       }
-    }
   }
 }
 
