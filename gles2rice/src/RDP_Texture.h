@@ -2043,7 +2043,8 @@ void TMEM_Init()
     g_pTMEMInfo=NULL;
     g_pTMEMFreeList=tmenEntryBuffer;
 
-    for( int i=0; (i < (tmenMaxEntry-1)); i++ )
+    int i;
+    for( i=0; (i < (tmenMaxEntry-1)); i++ )
     {
         tmenEntryBuffer[i].start=0;
         tmenEntryBuffer[i].length=0;
