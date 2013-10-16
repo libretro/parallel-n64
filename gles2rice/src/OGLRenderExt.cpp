@@ -84,7 +84,7 @@ void OGLRender::DrawSpriteR_Render()    // With Rotation
             g_texRectTVtx[3].tcord[0].u,g_texRectTVtx[3].tcord[0].v,
     };
 
-     float w = windowSetting.uDisplayWidth / 2.0f, h = windowSetting.uDisplayHeight / 2.0f, inv = 1.0f;
+    float w = windowSetting.uDisplayWidth / 2.0f, h = windowSetting.uDisplayHeight / 2.0f, inv = 1.0f;
 
     GLfloat vertices[] = {
             -inv + g_texRectTVtx[0].x/ w, inv - g_texRectTVtx[0].y/ h, -g_texRectTVtx[0].z,1,

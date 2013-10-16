@@ -24,8 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Config.h"
 #include "TextureManager.h"
 
-#define DWORD_MAKE(r, g, b, a)   ((uint32) (((a) << 24) | ((r) << 16) | ((g) << 8) | (b)))
-#define WORD_MAKE(r, g, b, a)   ((uint16) (((a) << 12) | ((r) << 8) | ((g) << 4) | (b)))
+#define DWORD_MAKE(r, g, b, a)  ((uint32) (((a) << 24) | ((r) << 16) | ((g) << 8) | (b)))
+#define WORD_MAKE(r, g, b, a)   ((uint16) (((a) << 12) | ((r) <<  8) | ((g) << 4) | (b)))
 
 extern void InitExternalTextures(void);
 extern void CloseExternalTextures(void);
@@ -58,16 +58,16 @@ void lq2x_32(uint8 *srcPtr, uint32 srcPitch, uint8 *dstPtr, uint32 dstPitch, int
 
 typedef enum _IMAGE_FILEFORMAT 
 {
-   XIFF_BMP = 0,
-     XIFF_JPG = 1,
-     XIFF_TGA = 2,
-     XIFF_PNG = 3,
-     XIFF_DDS = 4,
-     XIFF_PPM = 5,
-     XIFF_DIB = 6,
-     XIFF_HDR = 7,
-     XIFF_PFM = 8,
-     XIFF_FORCE_DWORD = 0x7fffffff
+    XIFF_BMP = 0,
+    XIFF_JPG = 1,
+    XIFF_TGA = 2,
+    XIFF_PNG = 3,
+    XIFF_DDS = 4,
+    XIFF_PPM = 5,
+    XIFF_DIB = 6,
+    XIFF_HDR = 7,
+    XIFF_PFM = 8,
+    XIFF_FORCE_DWORD = 0x7fffffff
 } IMAGE_FILEFORMAT;
 
 typedef struct _IMAGE_INFO

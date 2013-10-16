@@ -80,24 +80,26 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWind
     int  depthBufferDepth = options.OpenglDepthBufferSetting;
     int  colorBufferDepth = 32;
     int bVerticalSync = windowSetting.bVerticalSync;
-    if( options.colorQuality == TEXTURE_FMT_A4R4G4B4 ) colorBufferDepth = 16;
 
-#ifndef __LIBRETRO__ // GL context provided by frontend
-    // init sdl & gl
+    if( options.colorQuality == TEXTURE_FMT_A4R4G4B4 )
+        colorBufferDepth = 16;
+
+#ifndef __LIBRETRO__ // GL context provided by front-end
+    // Initialize SDL & OpenGL
     DebugMessage(M64MSG_VERBOSE, "Initializing video subsystem...");
     if (CoreVideo_Init() != M64ERR_SUCCESS)   
         return false;
 
-    /* hard-coded attribute values */
+    /* Hard-coded attribute values */
     const int iDOUBLEBUFFER = 1;
 
-    /* set opengl attributes */
+    /* Set OpenGL attributes */
     CoreVideo_GL_SetAttribute(M64P_GL_DOUBLEBUFFER, iDOUBLEBUFFER);
     CoreVideo_GL_SetAttribute(M64P_GL_SWAP_CONTROL, bVerticalSync);
     CoreVideo_GL_SetAttribute(M64P_GL_BUFFER_SIZE, colorBufferDepth);
     CoreVideo_GL_SetAttribute(M64P_GL_DEPTH_SIZE, depthBufferDepth);
 
-    /* set multisampling */
+    /* Set multisampling */
     if (options.multiSampling > 0)
     {
         CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLEBUFFERS, 1);
@@ -121,7 +123,7 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWind
         return false;
     }
 
-    /* check that our opengl attributes were properly set */
+    /* Check that our OpenGL attributes were properly set */
     int iActual;
     if (CoreVideo_GL_GetAttribute(M64P_GL_DOUBLEBUFFER, &iActual) == M64ERR_SUCCESS)
         if (iActual != iDOUBLEBUFFER)
@@ -175,19 +177,21 @@ bool COGLGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, BOOL
     int  depthBufferDepth = options.OpenglDepthBufferSetting;
     int  colorBufferDepth = 32;
     int bVerticalSync = windowSetting.bVerticalSync;
-    if( options.colorQuality == TEXTURE_FMT_A4R4G4B4 ) colorBufferDepth = 16;
 
-    /* hard-coded attribute values */
+    if( options.colorQuality == TEXTURE_FMT_A4R4G4B4 )
+        colorBufferDepth = 16;
+
+    /* Hard-coded attribute values */
     const int iDOUBLEBUFFER = 1;
 
-#ifndef __LIBRETRO__ // GL context provided by frontend
-    /* set opengl attributes */
+#ifndef __LIBRETRO__ // GL context provided by front-end
+    /* Set OpenGL attributes */
     CoreVideo_GL_SetAttribute(M64P_GL_DOUBLEBUFFER, iDOUBLEBUFFER);
     CoreVideo_GL_SetAttribute(M64P_GL_SWAP_CONTROL, bVerticalSync);
     CoreVideo_GL_SetAttribute(M64P_GL_BUFFER_SIZE, colorBufferDepth);
     CoreVideo_GL_SetAttribute(M64P_GL_DEPTH_SIZE, depthBufferDepth);
 
-    /* set multisampling */
+    /* Set multisampling */
     if (options.multiSampling > 0)
     {
         CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLEBUFFERS, 1);
@@ -317,19 +321,19 @@ void COGLGraphicsContext::InitOGLExtension(void)
         || options.anisotropicFiltering == 8
         || options.anisotropicFiltering == 16))
     {
-        //Get the max value of aniso that the graphic card support
+        //Get the max value of anisotropy that the graphic card support
         glGetIntegerv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &m_maxAnisotropicFiltering);
         OPENGL_CHECK_ERRORS;
 
-        // If user want more aniso than hardware can do
+        // If the user wants more anisotropy than the hardware is capable of
         if(options.anisotropicFiltering > (uint32) m_maxAnisotropicFiltering)
         {
             DebugMessage(M64MSG_INFO, "A value of '%i' is set for AnisotropicFiltering option but the hardware has a maximum value of '%i' so this will be used", options.anisotropicFiltering, m_maxAnisotropicFiltering);
         }
 
-        //check if user want less anisotropy than hardware can do
+        // Check if the user wants less anisotropy than the hardware is capable of
         if((uint32) m_maxAnisotropicFiltering > options.anisotropicFiltering)
-        m_maxAnisotropicFiltering = options.anisotropicFiltering;
+            m_maxAnisotropicFiltering = options.anisotropicFiltering;
     }
 
     // Nvidia only extension features (optional)
@@ -486,7 +490,9 @@ void COGLGraphicsContext::UpdateFrame(bool swaponly)
         OPENGL_CHECK_ERRORS;
     }
     else
+    {
         needCleanScene = true;
+    }
 
     status.bScreenIsDrawn = false;
 }

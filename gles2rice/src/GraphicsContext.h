@@ -42,7 +42,7 @@ typedef struct
 
 
 // This class basically provides an extra level of security for our
-// multithreaded code. Threads can Grab the CGraphicsContext to prevent
+// multi-threaded code. Threads can Grab the CGraphicsContext to prevent
 // other threads from changing/releasing any of the pointers while it is
 // running.
 

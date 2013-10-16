@@ -167,9 +167,8 @@ void FrameBufferManager::SetAddrBeDisplayed(uint32 addr)
 {
     uint32 viwidth = *g_GraphicsInfo.VI_WIDTH_REG;
     addr &= (g_dwRamSize-1);
-    
-    int i;
-    for( i=0; i<numOfRecentCIInfos; i++ )
+
+    for( int i=0; i<numOfRecentCIInfos; i++ )
     {
         if( g_uRecentCIInfoPtrs[i]->dwAddr+2*viwidth == addr )
         {
@@ -181,7 +180,7 @@ void FrameBufferManager::SetAddrBeDisplayed(uint32 addr)
         }
     }
 
-    for( i=0; i<numOfRecentCIInfos; i++ )
+    for( int i=0; i<numOfRecentCIInfos; i++ )
     {
         if( g_RecentVIOriginInfo[i].addr == addr )
         {
@@ -190,7 +189,7 @@ void FrameBufferManager::SetAddrBeDisplayed(uint32 addr)
         }
     }
 
-    for( i=0; i<numOfRecentCIInfos; i++ )
+    for( int i=0; i<numOfRecentCIInfos; i++ )
     {
         if( g_RecentVIOriginInfo[i].addr == 0 )
         {
@@ -204,7 +203,7 @@ void FrameBufferManager::SetAddrBeDisplayed(uint32 addr)
     int index=0;
     uint32 minFrameCount = 0xffffffff;
 
-    for( i=0; i<numOfRecentCIInfos; i++ )
+    for( int i=0; i<numOfRecentCIInfos; i++ )
     {
         if( g_RecentVIOriginInfo[i].FrameCount < minFrameCount )
         {
@@ -220,9 +219,8 @@ void FrameBufferManager::SetAddrBeDisplayed(uint32 addr)
 bool FrameBufferManager::HasAddrBeenDisplayed(uint32 addr, uint32 width)
 {
     addr &= (g_dwRamSize-1);
-    
-    int i;
-    for( i=0; i<numOfRecentCIInfos; i++ )
+
+    for( int i=0; i<numOfRecentCIInfos; i++ )
     {
         if( g_uRecentCIInfoPtrs[i]->dwAddr == 0 )
             continue;
@@ -242,7 +240,7 @@ bool FrameBufferManager::HasAddrBeenDisplayed(uint32 addr, uint32 width)
         }
     }
 
-    for( i=0; i<numOfRecentCIInfos; i++ )
+    for( int i=0; i<numOfRecentCIInfos; i++ )
     {
         if( g_RecentVIOriginInfo[i].addr != 0 )
         {
@@ -779,16 +777,15 @@ l1:             mov esi, [ecx+ebx]
 }
 unsigned char CalculateMaxCI(void *pPhysicalAddress, uint32 left, uint32 top, uint32 width, uint32 height, uint32 size, uint32 pitchInBytes )
 {
-    uint32 x, y;
     unsigned char *buf;
     unsigned char val = 0;
 
     if( TXT_SIZE_8b == size )
     {
-        for( y = 0; y<height; y++ )
+        for( uint32 y = 0; y<height; y++ )
         {
             buf = (unsigned char*)pPhysicalAddress + left + pitchInBytes * (y+top);
-            for( x=0; x<width; x++ )
+            for( uint32 x=0; x<width; x++ )
             {
                 if( buf[x] > val )  val = buf[x];
                 if( val == 0xFF )
@@ -801,10 +798,10 @@ unsigned char CalculateMaxCI(void *pPhysicalAddress, uint32 left, uint32 top, ui
         unsigned char val1,val2;
         left >>= 1;
         width >>= 1;
-        for( y = 0; y<height; y++ )
+        for( uint32 y = 0; y<height; y++ )
         {
             buf = (unsigned char*)pPhysicalAddress + left + pitchInBytes * (y+top);
-            for( x=0; x<width; x++ )
+            for( uint32 x=0; x<width; x++ )
             {
                 val1 = buf[x]>>4;
                 val2 = buf[x]&0xF;
@@ -828,7 +825,7 @@ bool FrameBufferManager::FrameBufferInRDRAMCheckCRC()
     if( crc != p.dwCRC )
     {
         p.dwCRC = crc;
-        TRACE0("Frame Buffer CRC mismitch, it is modified by CPU");
+        TRACE0("Frame Buffer CRC mismatch, it was modified by the CPU");
         return false;
     }
     else
@@ -840,7 +837,9 @@ bool FrameBufferManager::FrameBufferInRDRAMCheckCRC()
 extern std::vector<uint32> frameWriteRecord;
 void FrameBufferManager::FrameBufferWriteByCPU(uint32 addr, uint32 size)
 {
-    if( !frameBufferOptions.bProcessCPUWrite )  return;
+    if( !frameBufferOptions.bProcessCPUWrite )
+        return;
+
     //WARNING(TRACE2("Frame Buffer Write, addr=%08X, CI Addr=%08X", addr, g_CI.dwAddr));
     status.frameWriteByCPU = TRUE;
     frameWriteRecord.push_back(addr&(g_dwRamSize-1));
@@ -870,21 +869,19 @@ bool FrameBufferManager::ProcessFrameWriteRecord()
         uint32 uheight = g_uRecentCIInfoPtrs[index]->dwHeight;
         uint32 upitch = uwidth<<1;
 
-        frameWriteByCPURect.left=uwidth-1;
-        frameWriteByCPURect.top = uheight-1;
+        frameWriteByCPURect.left = uwidth-1;
+        frameWriteByCPURect.top  = uheight-1;
 
-        frameWriteByCPURect.right=0;
+        frameWriteByCPURect.right  = 0;
         frameWriteByCPURect.bottom = 0;
-
-        int x, y, off;
 
         for( int i=0; i<size; i++ )
         {
-            off = frameWriteRecord[i]-base;
+            int off = frameWriteRecord[i]-base;
             if( off < (int)g_uRecentCIInfoPtrs[index]->dwMemSize )
             {
-                y = off/upitch;
-                x = (off - y*upitch)>>1;
+                int y = off/upitch;
+                int x = (off - y*upitch)>>1;
 
 #ifdef FRAMEBUFFER_IN_BLOCK
                 int xidx=x/32;
@@ -926,7 +923,8 @@ void FrameBufferManager::FrameBufferReadByCPU( uint32 addr )
     ///return;  // it does not work very well anyway
 
 
-    if( !frameBufferOptions.bProcessCPURead )   return;
+    if( !frameBufferOptions.bProcessCPURead )
+        return;
 
     addr &= (g_dwRamSize-1);
     int index = FindRecentCIInfoIndex(addr);
@@ -986,10 +984,9 @@ void FrameBufferManager::UpdateFrameBufferBeforeUpdateFrame()
             if( ProcessFrameWriteRecord() )
             {
 #ifdef FRAMEBUFFER_IN_BLOCK
-                int i,j;
-                for( i=0; i<20; i++)
+                for( int i=0; i<20; i++)
                 {
-                    for( j=0; j<20; j++ )
+                    for( int j=0; j<20; j++ )
                     {
                         if( frameWriteByCPURectFlag[i][j] )
                         {
@@ -998,9 +995,9 @@ void FrameBufferManager::UpdateFrameBufferBeforeUpdateFrame()
                         }
                     }
                 }
-                for( i=0; i<20; i++)
+                for( int i=0; i<20; i++)
                 {
-                    for( j=0; j<20; j++ )
+                    for( int j=0; j<20; j++ )
                     {
                         if( frameWriteByCPURectFlag[i][j] )
                         {
@@ -1022,10 +1019,10 @@ void FrameBufferManager::UpdateFrameBufferBeforeUpdateFrame()
                 int size = frameWriteByCPURects.size();
                 for( int i=0; i<size; i++)
                 {
-                CRender::GetRender()->DrawFrameBuffer(false, frameWriteByCPURects[i].left, frameWriteByCPURects[i].top,
-                frameWriteByCPURects[i].right-frameWriteByCPURects[i].left, frameWriteByCPURects[i].bottom-frameWriteByCPURects[i].top);
-                ClearN64FrameBufferToBlack(frameWriteByCPURects[i].left, frameWriteByCPURects[i].top,
-                frameWriteByCPURects[i].right-frameWriteByCPURects[i].left+1, frameWriteByCPURects[i].bottom-frameWriteByCPURects[i].top+1);
+                    CRender::GetRender()->DrawFrameBuffer(false, frameWriteByCPURects[i].left, frameWriteByCPURects[i].top,
+                    frameWriteByCPURects[i].right-frameWriteByCPURects[i].left, frameWriteByCPURects[i].bottom-frameWriteByCPURects[i].top);
+                    ClearN64FrameBufferToBlack(frameWriteByCPURects[i].left, frameWriteByCPURects[i].top,
+                    frameWriteByCPURects[i].right-frameWriteByCPURects[i].left+1, frameWriteByCPURects[i].bottom-frameWriteByCPURects[i].top+1);
                 }
                 frameWriteByCPURects.clear();
                 */
@@ -1194,11 +1191,11 @@ int FrameBufferManager::CheckRenderTexturesWithNewCI(SetImgInfo &CIinfo, uint32 
             if( info.pRenderTexture->IsBeingRendered() )
             {
                 TRACE0("Error, covering a render_texture which is being rendered");
-                TRACE3("New addrr=%08X, width=%d, height=%d", CIinfo.dwAddr, CIinfo.dwWidth, height );
-                TRACE3("Old addrr=%08X, width=%d, height=%d", info.CI_Info.dwAddr, info.N64Width, info.N64Height );
+                TRACE3("New addr=%08X, width=%d, height=%d", CIinfo.dwAddr, CIinfo.dwWidth, height );
+                TRACE3("Old addr=%08X, width=%d, height=%d", info.CI_Info.dwAddr, info.N64Width, info.N64Height );
             }
             info.isUsed = false;
-            TXTRBUF_DUMP(TRACE5("Delete txtr buf %d at %08X, covered by new CI at %08X, Width=%d, Height=%d", 
+            TXTRBUF_DUMP(TRACE5("Delete texture buf %d at %08X, covered by new CI at %08X, Width=%d, Height=%d", 
                 i, info.CI_Info.dwAddr, CIinfo.dwAddr, CIinfo.dwWidth, height ));
             SAFE_DELETE(info.pRenderTexture);
             info.txtEntry.pTexture = NULL;
@@ -1298,12 +1295,12 @@ void FrameBufferManager::SetRenderTexture(void)
 int FrameBufferManager::SetBackBufferAsRenderTexture(SetImgInfo &CIinfo, int ciInfoIdx)
 {
     // MUDLORD:
-    // OK, heres the drill!
+    // OK, here's the drill!
     //
     // We  set the graphics card's back buffer's contents as a render_texure
     // This is done due to how the current framebuffer implementation detects
     // changes to the backbuffer memory pointer and then we do a texture
-    // copy. This might be slow since it doesnt use hardware auxillary buffers
+    // copy. This might be slow since it doesn't use hardware auxiliary buffers
 
     RenderTextureInfo tempRenderTextureInfo;
 
@@ -1345,7 +1342,7 @@ int FrameBufferManager::SetBackBufferAsRenderTexture(SetImgInfo &CIinfo, int ciI
     gRenderTextureInfos[idxToUse].txtEntry.pTexture = pRenderTexture->m_pTexture;
     gRenderTextureInfos[idxToUse].txtEntry.txtrBufIdx = idxToUse+1;
 
-    TXTRBUF_DUMP(TRACE2("Set back buf as render_texture %d, addr=%08X", idxToUse, CIinfo.dwAddr));
+    TXTRBUF_DUMP(TRACE2("Set back buffer as render_texture %d, addr=%08X", idxToUse, CIinfo.dwAddr));
     DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_RENDER_TEXTURE, 
     {DebuggerAppendMsg("Paused after setting render_texture:\nAddr: 0x%08x, Fmt: %s Size: %s Width: %d, Height:%d",
     CIinfo.dwAddr, pszImgFormat[CIinfo.dwFormat], pszImgSize[CIinfo.dwSize], CIinfo.dwWidth, g_pRenderTextureInfo->N64Height);});
@@ -1476,7 +1473,7 @@ void FrameBufferManager::CheckRenderTextureCRCInRDRAM(void)
             if( gRenderTextureInfos[i].crcInRDRAM != crc )
             {
                 // RDRAM has been modified by CPU core
-                TXTRBUF_DUMP(TRACE2("Delete txtr buf %d at %08X, CRC in RDRAM changed", i, gRenderTextureInfos[i].CI_Info.dwAddr ));
+                TXTRBUF_DUMP(TRACE2("Delete texture buf %d at %08X, CRC in RDRAM changed", i, gRenderTextureInfos[i].CI_Info.dwAddr ));
                 SAFE_DELETE(gRenderTextureInfos[i].pRenderTexture);
                 gRenderTextureInfos[i].isUsed = false;
                 continue;
@@ -1514,7 +1511,7 @@ int FrameBufferManager::CheckAddrInRenderTextures(uint32 addr, bool checkcrc)
                     {
                         // RDRAM has been modified by CPU core
                         TRACE3("Buf %d CRC in RDRAM changed from %08X to %08X", i, gRenderTextureInfos[i].crcInRDRAM, crc );
-                        TXTRBUF_DUMP(TRACE2("Delete txtr buf %d at %08X, crcInRDRAM failed.", i, gRenderTextureInfos[i].CI_Info.dwAddr ));
+                        TXTRBUF_DUMP(TRACE2("Delete texture buf %d at %08X, crcInRDRAM failed.", i, gRenderTextureInfos[i].CI_Info.dwAddr ));
                         SAFE_DELETE(gRenderTextureInfos[i].pRenderTexture);
                         gRenderTextureInfos[i].isUsed = false;
                         continue;
@@ -1526,7 +1523,7 @@ int FrameBufferManager::CheckAddrInRenderTextures(uint32 addr, bool checkcrc)
                 }
             }
 
-            TXTRBUF_DUMP(TRACE2("Loading texture addr = %08X from txtr buf %d", addr, i));
+            TXTRBUF_DUMP(TRACE2("Loading texture addr = %08X from texture buf %d", addr, i));
             return i;
         }
     }
@@ -1562,7 +1559,7 @@ void FrameBufferManager::RestoreNormalBackBuffer()
     if( !status.bFrameBufferIsDrawn || !status.bFrameBufferDrawnByTriangles )
     {
         gRenderTextureInfos[m_curRenderTextureIndex].isUsed = false;
-        TXTRBUF_DUMP(TRACE2("Delete txtr buf %d at %08X, it is never rendered", m_curRenderTextureIndex, gRenderTextureInfos[m_curRenderTextureIndex].CI_Info.dwAddr ));
+        TXTRBUF_DUMP(TRACE2("Delete texture buf %d at %08X, it is never rendered", m_curRenderTextureIndex, gRenderTextureInfos[m_curRenderTextureIndex].CI_Info.dwAddr ));
         SAFE_DELETE(gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture);
     }
 }
@@ -1592,7 +1589,7 @@ void FrameBufferManager::ActiveTextureBuffer(void)
 
         //uint32 memsize = ((newRenderTextureInfo.N64Height*newRenderTextureInfo.N64Width)>>1)<<newRenderTextureInfo.CI_Info.dwSize;
 
-        matchidx = CheckRenderTexturesWithNewCI(g_CI,newRenderTextureInfo.N64Height,true);
+        matchidx = CheckRenderTexturesWithNewCI(g_CI, newRenderTextureInfo.N64Height, true);
 
         int idxToUse=-1;
         if( matchidx >= 0 )
@@ -1643,11 +1640,11 @@ void FrameBufferManager::ActiveTextureBuffer(void)
                 CGraphicsContext::g_pGraphicsContext->Clear(CLEAR_COLOR_BUFFER,gRDP.fillColor,1.0f);
             else if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS && g_pRenderTextureInfo->N64Width > 64 && g_pRenderTextureInfo->N64Width < 300 )
             {
-                CGraphicsContext::g_pGraphicsContext->Clear(CLEAR_COLOR_BUFFER,0,1.0f);
+                CGraphicsContext::g_pGraphicsContext->Clear(CLEAR_COLOR_BUFFER, 0, 1.0f);
             }
             else if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS && g_pRenderTextureInfo->N64Width < 64 && g_pRenderTextureInfo->N64Width > 32 )
             {
-                CGraphicsContext::g_pGraphicsContext->Clear(CLEAR_COLOR_BUFFER,0,1.0f);
+                CGraphicsContext::g_pGraphicsContext->Clear(CLEAR_COLOR_BUFFER, 0, 1.0f);
             }
 
             m_curRenderTextureIndex = idxToUse;
@@ -1661,7 +1658,7 @@ void FrameBufferManager::ActiveTextureBuffer(void)
             // If needed, draw RDRAM into the render_texture
             //if( frameBufferOptions.bLoadRDRAMIntoRenderTexture )
             //{
-            //  CRender::GetRender()->LoadTxtrBufFromRDRAM();
+            //    CRender::GetRender()->LoadTxtrBufFromRDRAM();
             //}
         }
         else
@@ -1669,7 +1666,7 @@ void FrameBufferManager::ActiveTextureBuffer(void)
             if( CDeviceBuilder::m_deviceGeneralType == DIRECTX_DEVICE )
             {
                 TRACE1("Error to set Render Target: %d", idxToUse);
-                TRACE1("Addr = %08X", gRenderTextureInfos[idxToUse].CI_Info.dwAddr);
+                TRACE1("Address = %08X", gRenderTextureInfos[idxToUse].CI_Info.dwAddr);
                 TRACE2("Width = %d, Height=%d", gRenderTextureInfos[idxToUse].N64Width, gRenderTextureInfos[idxToUse].N64Height);
             }
         }   
@@ -1901,12 +1898,11 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32 addr, uint32 fmt, uint32 siz, 
 
         if( bufFmt==TEXTURE_FMT_A8R8G8B8 )
         {
-            int  sy0;
             float ratio = bufHeight/(float)height;
 
             for( uint32 i=startline; i<endline; i++ )
             {
-                sy0 = int(i*ratio+0.5);
+                int sy0 = int(i*ratio+0.5);
 
                 uint16 *pD = frameBufferBase + i * pitch;
                 uint8 *pS0 = (uint8 *)buffer + sy0 * bufPitch;
@@ -1926,7 +1922,7 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32 addr, uint32 fmt, uint32 siz, 
         }
         else
         {
-            TRACE1("Copy %sb FrameBuffer to Rdram, not implemented", pszImgSize[siz]);
+            TRACE1("Copy %sb FrameBuffer to RDRAM, not implemented", pszImgSize[siz]);
         }
     }
     else if( siz == TXT_SIZE_8b && fmt == TXT_FMT_CI )
@@ -1945,11 +1941,11 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32 addr, uint32 fmt, uint32 siz, 
                 for( uint32 j=0; j<width; j++ )
                 {
                     int pos = 4*(j*bufWidth/width);
-                    tempword = ConvertRGBATo555((pS[pos+2]),        // Red
-                                                (pS[pos+1]),        // Green
-                                                (pS[pos+0]),        // Blue
-                                                (pS[pos+3]));       // Alpha
-                    
+                    uint16 tempword = ConvertRGBATo555((pS[pos+2]),   // Red
+                                                       (pS[pos+1]),   // Green
+                                                       (pS[pos+0]),   // Blue
+                                                       (pS[pos+3]));  // Alpha
+
                     //*pD = CIFindIndex(tempword);
                     *(pD+(j^3)) = RevTlutTable[tempword];
                 }
@@ -1957,9 +1953,9 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32 addr, uint32 fmt, uint32 siz, 
         }
         else
         {
-            TRACE1("Copy %sb FrameBuffer to Rdram, not implemented", pszImgSize[siz]);
+            TRACE1("Copy %sb FrameBuffer to RDRAM, not implemented", pszImgSize[siz]);
         }
-        DEBUGGER_IF_DUMP(pauseAtNext,{DebuggerAppendMsg("Copy %sb FrameBuffer to Rdram", pszImgSize[siz]);});
+        DEBUGGER_IF_DUMP(pauseAtNext,{DebuggerAppendMsg("Copy %sb FrameBuffer to RDRAM", pszImgSize[siz]);});
     }
     else if( siz == TXT_SIZE_8b && fmt == TXT_FMT_I )
     {
@@ -1967,12 +1963,11 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32 addr, uint32 fmt, uint32 siz, 
 
         if( bufFmt==TEXTURE_FMT_A8R8G8B8 )
         {
-            int sy0;
             float ratio = bufHeight/(float)height;
 
             for( uint32 i=startline; i<endline; i++ )
             {
-                sy0 = int(i*ratio+0.5);
+                int sy0 = int(i*ratio+0.5);
 
                 uint8 *pD = frameBufferBase + i * width;
                 uint8 *pS0 = (uint8 *)buffer + sy0 * bufPitch;

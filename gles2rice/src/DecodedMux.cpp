@@ -127,7 +127,7 @@ void DecodedMux::Decode(uint32 dwMux0, uint32 dwMux1)
     cA1    = uint8((dwMux1>>18)&0x07);  // c2 a3        // Ac1
     dA1    = uint8((dwMux1    )&0x07);  // c2 a4        // Ad1
 
-    //This fuction will translate the decode mux info further, so we can use
+    //This function will translate the decode mux info further, so we can use
     //the decode data better.
     //Will translate A,B,C,D to unified presentation
     aRGB0  = sc_Mux16[aRGB0];
@@ -242,7 +242,8 @@ bool DecodedMux::isUsedInColorChannel(uint8 val, uint8 mask)
 bool DecodedMux::isUsedInCycle(uint8 val, int cycle, CombineChannel channel, uint8 mask)
 {
     cycle *=2;
-    if( channel == ALPHA_CHANNEL ) cycle++;
+    if( channel == ALPHA_CHANNEL )
+        cycle++;
 
     uint8* pmux = m_bytes;
     for( int i=0; i<4; i++ )
@@ -846,8 +847,8 @@ enum ShadeConstMergeType
     SHADE_DO_NOTHING,
     SHADE_ADD_PRIM,             // Shade+PRIM
     SHADE_ADD_ENV,              // Shade+ENV
-    SHADE_ADD_PRIM_ALPHA,           // Shade+PRIM_ALPHA
-    SHADE_ADD_ENV_ALPHA,            // Shade+ENV_ALPHA
+    SHADE_ADD_PRIM_ALPHA,       // Shade+PRIM_ALPHA
+    SHADE_ADD_ENV_ALPHA,        // Shade+ENV_ALPHA
     SHADE_MINUS_PRIM_PLUS_ENV,  
     SHADE_MINUS_ENV_PLUS_PRIM,
     SHADE_MOD_ENV,
@@ -870,11 +871,11 @@ ShadeConstMergeMapType MergeShadeWithConstantsMaps[] =
 
 void DecodedMux::MergeShadeWithConstants(void)
 {
-    // This function should be called afte the mux has been simplified
+    // This function should be called after the mux has been simplified
     // The goal of this function is to merge as many as possible constants with shade
     // so to reduce the totally number of constants to 0 or 1
     // And at the same time, to reduce the complexity of the whole mux
-    // so we can implement the mux easiler when lower end video cards
+    // so we can implement the mux easier when lower end video cards
 
     // We can only try to merge shade with constants for:
     // 1 cycle mode or 2 cycle mode and shade is not used in the 2nd cycle
@@ -898,8 +899,16 @@ void DecodedMux::MergeShadeWithConstantsInChannel(CombineChannel channel)
         return; 
     }
 
-    if( usedIn[0] ) { cycleVal = GetCycle(channel);cycleNum=0;}
-    else            {cycleVal = GetCycle(channel+2);cycleNum=1;}
+    if( usedIn[0] )
+    {
+        cycleVal = GetCycle(channel);
+        cycleNum = 0;
+    }
+    else
+    { 
+        cycleVal = GetCycle(channel+2);
+        cycleNum = 1;
+    }
 
 
     //Update to here, Shade is either used only in 1 cycle, or the way it is used are totally

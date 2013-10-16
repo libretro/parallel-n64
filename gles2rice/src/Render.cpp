@@ -71,20 +71,20 @@ CRender::CRender() :
 
     m_dwTexturePerspective(FALSE),
     m_bAlphaTestEnable(FALSE),
-        m_bZUpdate(FALSE),
-        m_bZCompare(FALSE),
-        m_dwZBias(0),
+
+    m_bZUpdate(FALSE),
+    m_bZCompare(FALSE),
+    m_dwZBias(0),
     
     m_dwMinFilter(FILTER_POINT),
     m_dwMagFilter(FILTER_POINT),
-        m_dwAlpha(0xFF),
-        m_Mux(0),
-        m_bBlendModeValid(FALSE)
+    m_dwAlpha(0xFF),
+    m_Mux(0),
+    m_bBlendModeValid(FALSE)
 {
-    int i;
     InitRenderBase();
 
-    for( i=0; i<MAX_TEXTURES; i++ )
+    for( int i=0; i<MAX_TEXTURES; i++ )
     {
         g_textures[i].m_lpsTexturePtr = NULL;
         g_textures[i].m_pCTexture = NULL;
@@ -99,7 +99,7 @@ CRender::CRender() :
     }
 
 
-    //for( i=0; i<MAX_VERTS; i++)
+    //for( int i=0; i<MAX_VERTS; i++)
     //{
     //  g_dwVtxFlags[i] = 0;
     //}
@@ -404,7 +404,8 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
         }
     }
 
-    if( options.bWinFrameMode ) SetFillMode(RICE_FILLMODE_WINFRAME );
+    if( options.bWinFrameMode )
+        SetFillMode(RICE_FILLMODE_WINFRAME);
 
     DEBUGGER_PAUSE_AND_DUMP_COUNT_N( NEXT_FILLRECT, {DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", nX0, nY0, nX1, nY1, dwColor);
             DebuggerAppendMsg("Pause after FillRect: Color=%08X\n", dwColor);if( logCombiners ) m_pColorCombiner->DisplayMuxString();});
@@ -418,7 +419,8 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
 bool CRender::Line3D(uint32 dwV0, uint32 dwV1, uint32 dwWidth)
 {
     LOG_UCODE("Line3D: Vtx0=%d, Vtx1=%d, Width=%d", dwV0, dwV1, dwWidth);
-    if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
+    if( !status.bCIBufferIsRendered )
+        g_pFrameBufferManager->ActiveTextureBuffer();
 
     m_line3DVtx[0].z = (g_vecProjected[dwV0].z + 1.0f) * 0.5f;
     m_line3DVtx[1].z = (g_vecProjected[dwV1].z + 1.0f) * 0.5f;
@@ -426,7 +428,9 @@ bool CRender::Line3D(uint32 dwV0, uint32 dwV1, uint32 dwWidth)
     if( m_line3DVtx[0].z != m_line3DVtx[1].z )  
         return false;
 
-    if( status.bHandleN64RenderTexture && !status.bDirectWriteIntoRDRAM )   status.bFrameBufferIsDrawn = true;
+    if( status.bHandleN64RenderTexture && !status.bDirectWriteIntoRDRAM )
+        status.bFrameBufferIsDrawn = true;
+
     if( status.bHandleN64RenderTexture ) 
     {
         g_pRenderTextureInfo->maxUsedHeight = g_pRenderTextureInfo->N64Height;
@@ -855,7 +859,8 @@ bool CRender::TexRectFlip(int nX0, int nY0, int nX1, int nY1, float fS0, float f
 
     // Save ZBuffer state
     m_savedZBufferFlag = gRSP.bZBufferEnabled;
-    if( gRDP.otherMode.depth_source == 0 )  ZBufferEnable( FALSE );
+    if( gRDP.otherMode.depth_source == 0 ) 
+        ZBufferEnable( FALSE );
 
     float widthDiv = g_textures[gRSP.curTile].m_fTexWidth;
     float heightDiv = g_textures[gRSP.curTile].m_fTexHeight;
@@ -1087,7 +1092,8 @@ void CRender::SetTextureEnableAndScale(int dwTile, bool bEnable, float fScaleX, 
 
 void CRender::SetFogFlagForNegativeW()
 {
-    if( !gRSP.bFogEnabled ) return;
+    if( !gRSP.bFogEnabled )
+        return;
 
     m_bFogStateSave = gRSP.bFogEnabled;
 
@@ -1096,7 +1102,7 @@ void CRender::SetFogFlagForNegativeW()
     for (uint32 i = 0; i < gRSP.numVertices; i++) 
     {
         if( g_vtxBuffer[i].rhw < 0 )
-            flag = FALSE;
+            flag = false;
     }
 
     TurnFogOnOff(flag);
@@ -1104,7 +1110,9 @@ void CRender::SetFogFlagForNegativeW()
 
 void CRender::RestoreFogFlag()
 {
-    if( !gRSP.bFogEnabled ) return;
+    if( !gRSP.bFogEnabled )
+        return;
+
     TurnFogOnOff(m_bFogStateSave);
 }
 
@@ -1144,7 +1152,8 @@ extern bool bHalfTxtScale;
 
 bool CRender::DrawTriangles()
 {
-    if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
+    if( !status.bCIBufferIsRendered )
+        g_pFrameBufferManager->ActiveTextureBuffer();
 
     DEBUGGER_ONLY_IF( (!debuggerEnableZBuffer), {ZBufferEnable( FALSE );} );
 
@@ -1205,7 +1214,9 @@ bool CRender::DrawTriangles()
     }
     */
 
-    if (gRSP.numVertices == 0)  return true;
+    if (gRSP.numVertices == 0) 
+        return true;
+
     if( status.bHandleN64RenderTexture )
     {
         g_pRenderTextureInfo->maxUsedHeight = g_pRenderTextureInfo->N64Height;
@@ -1226,8 +1237,10 @@ bool CRender::DrawTriangles()
         float halfscaleS = 1;
 
         // This will get rid of the thin black lines
-        if( t==0 && !(m_pColorCombiner->m_bTex0Enabled) ) 
+        if( t==0 && !(m_pColorCombiner->m_bTex0Enabled) )
+        {
             continue;
+        }
         else
         {
             if( ( gRDP.tiles[gRSP.curTile].dwSize == TXT_SIZE_32b && options.enableHackForGames == HACK_FOR_RUMBLE ) ||
@@ -1443,11 +1456,13 @@ bool SaveCITextureToFile(TxtrCacheEntry &entry, char *filename, bool bShow, bool
             }
             if( entry.ti.Size == TXT_SIZE_4b )
             {
-                if( idx%8 ) idx = (idx/8+1)*8;
+                if (idx % 8)
+                    idx = (idx/8+1)*8;
             }
             else
             {
-                if( idx%4 ) idx = (idx/4+1)*4;
+                if (idx % 4)
+                    idx = (idx/4+1)*4;
             }
         }
 
@@ -1480,8 +1495,7 @@ bool SaveCITextureToFile(TxtrCacheEntry &entry, char *filename, bool bShow, bool
     fileHeader.bfOffBits = sizeof( BITMAPFILEHEADER ) + sizeof( BITMAPINFOHEADER ) + tableSize*4;
 
 
-    FILE *f;
-    f = fopen(filename, "wb");
+    FILE *f = fopen(filename, "wb");
     if(f != NULL)
     {
         if (fwrite(&fileHeader, sizeof(BITMAPFILEHEADER), 1, f) != 1 ||
@@ -2021,8 +2035,7 @@ bool SaveRGBBufferToFile(char *filename, unsigned char *buf, int width, int heig
         fileHeader.bfOffBits = sizeof( BITMAPFILEHEADER ) + sizeof( BITMAPINFOHEADER );
 
 
-        FILE *f;
-        f = fopen(filename, "wb");
+        FILE *f = fopen(filename, "wb");
         if(f != NULL)
         {
             if (fwrite(&fileHeader, sizeof(BITMAPFILEHEADER), 1, f) != 1 ||
@@ -2042,10 +2055,11 @@ bool SaveRGBBufferToFile(char *filename, unsigned char *buf, int width, int heig
     }
     else
     {
-        if( strcasecmp(right(filename,4),".png") != 0 ) strcat(filename,".png");
+        if( strcasecmp(right(filename,4),".png") != 0 )
+            strcat(filename,".png");
 
         struct BMGImageStruct img;
-            memset(&img, 0, sizeof(BMGImageStruct));
+        memset(&img, 0, sizeof(BMGImageStruct));
         InitBMGImage(&img);
         img.bits = buf;
         img.bits_per_pixel = 24;
@@ -2066,10 +2080,11 @@ bool SaveRGBABufferToPNGFile(char *filename, unsigned char *buf, int width, int 
     if( pitch == -1 )
         pitch = width*4;
 
-    if( strcasecmp(right(filename,4),".png") != 0 ) strcat(filename,".png");
+    if( strcasecmp(right(filename,4),".png") != 0 )
+        strcat(filename,".png");
 
     struct BMGImageStruct img;
-        memset(&img, 0, sizeof(BMGImageStruct));
+    memset(&img, 0, sizeof(BMGImageStruct));
     InitBMGImage(&img);
     img.bits = buf;
     img.bits_per_pixel = 32;

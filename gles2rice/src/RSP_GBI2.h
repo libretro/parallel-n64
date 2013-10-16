@@ -298,7 +298,7 @@ void RSP_GBI2_Tri2(Gfx *gfx)
     else
     {
         status.primitiveType = PRIM_TRI2;
-        BOOL bTrisAdded = FALSE;
+        bool bTrisAdded = false;
 
         // While the next command pair is Tri2, add vertices
         uint32 dwPC = gDlistStack[gDlistStackPointer].pc;
@@ -389,7 +389,7 @@ void RSP_GBI2_Line3D(Gfx *gfx)
 
         uint32 dwPC = gDlistStack[gDlistStackPointer].pc;
 
-        BOOL bTrisAdded = FALSE;
+        bool bTrisAdded = false;
 
         do {
             uint32 dwV0 = gfx->gbi2line3d.v0/gRSP.vertexMult;
@@ -630,7 +630,7 @@ void RSP_GBI2_GeometryMode(Gfx *gfx)
     bool bTextureGen    = (gRDP.geometryMode & RSP_ZELDA_TEXTURE_GEN) ? true : false;
 
     bool bLighting      = (gRDP.geometryMode & RSP_ZELDA_LIGHTING) ? true : false;
-    BOOL bZBuffer       = (gRDP.geometryMode & RSP_ZELDA_ZBUFFER)   ? TRUE : FALSE; 
+    BOOL bZBuffer       = (gRDP.geometryMode & RSP_ZELDA_ZBUFFER)  ? TRUE : FALSE; 
 
     CRender::g_pRender->SetCullMode(bCullFront, bCullBack);
     

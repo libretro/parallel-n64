@@ -70,14 +70,12 @@ public:
     BOOL operator!=(const GeneralCombinerInfo & sci) const { return !(operator==(sci)); }
     BOOL operator==(const GeneralCombinerInfo & sci) const 
     {
-        int i;
-        
         if (sci.nStages != nStages)
             return FALSE;
         if (sci.blendingFunc != blendingFunc)
             return FALSE;
         
-        for (i = 0; i < nStages; i++)
+        for (int i = 0; i < nStages; i++)
         {
             if (sci.stages[i] != stages[i])
                 return FALSE;

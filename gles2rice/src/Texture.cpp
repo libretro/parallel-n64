@@ -151,9 +151,8 @@ void CTexture::ScaleImageToSurface(bool scaleS, bool scaleT)
             }
         }
         break;
-            
     }
-            
+ 
     EndUpdate(&di);
 
     if( scaleS ) m_bScaledS = true;

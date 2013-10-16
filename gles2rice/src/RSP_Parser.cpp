@@ -274,8 +274,6 @@ uint32  g_dwRDPPalCrc[16];
 
 void DLParser_Init()
 {
-    int i;
-
     status.gRDPTime = 0;
     status.gDlistCount = 0;
     status.gUcodeCount = 0;
@@ -302,13 +300,13 @@ void DLParser_Init()
     status.LargerTileRealLeft[0] = status.LargerTileRealLeft[1] = 0;
     memset(&g_ZI_saves, 0, sizeof(RenderTextureInfo)*2);
 
-    for( i=0; i<8; i++ )
+    for( int i=0; i<8; i++ )
     {
         memset(&gRDP.tiles[i], 0, sizeof(Tile));
     }
     memset(g_tmemLoadAddrMap, 0, sizeof(g_tmemLoadAddrMap));
 
-    for( i=0; i<MAX_UCODE_INFO; i++ )
+    for( int i=0; i<MAX_UCODE_INFO; i++ )
     {
         memset(&ucodeInfo[i], 0, sizeof(UcodeInfo));
     }
@@ -1089,8 +1087,8 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
 
         gRDP.otherModeL = (gfx->words.w1);
 
-        BOOL bZCompare      = (gRDP.otherModeL & Z_COMPARE)         ? TRUE : FALSE;
-        BOOL bZUpdate       = (gRDP.otherModeL & Z_UPDATE)          ? TRUE : FALSE;
+        BOOL bZCompare      = (gRDP.otherModeL & Z_COMPARE) ? TRUE : FALSE;
+        BOOL bZUpdate       = (gRDP.otherModeL & Z_UPDATE)  ? TRUE : FALSE;
 
         CRender::g_pRender->SetZCompare( bZCompare );
         CRender::g_pRender->SetZUpdate( bZUpdate );
@@ -1314,7 +1312,8 @@ void DLParser_FillRect(Gfx *gfx)
     }
     else if( status.bHandleN64RenderTexture )
     {
-        if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
+        if( !status.bCIBufferIsRendered )
+            g_pFrameBufferManager->ActiveTextureBuffer();
 
         status.leftRendered = status.leftRendered<0 ? x0 : min((int)x0,status.leftRendered);
         status.topRendered = status.topRendered<0 ? y0 : min((int)y0,status.topRendered);
@@ -1703,25 +1702,25 @@ static void make_crc_table(void);
 
 static void make_crc_table()
 {
-  unsigned int c;
-  int n, k;
-  unsigned int poly;            /* polynomial exclusive-or pattern */
-  /* terms of polynomial defining this crc (except x^32): */
-  static const uint8 p[] = {0,1,2,4,5,7,8,10,11,12,16,22,23,26};
+    /* terms of polynomial defining this crc (except x^32): */
+    static const uint8 p[] = {0,1,2,4,5,7,8,10,11,12,16,22,23,26};
 
-  /* make exclusive-or pattern from polynomial (0xedb88320L) */
-  poly = 0L;
-  for (n = 0; (unsigned int)n < sizeof(p)/sizeof(uint8); n++)
-    poly |= 1L << (31 - p[n]);
- 
-  for (n = 0; n < 256; n++)
-  {
-    c = (unsigned int)n;
-    for (k = 0; k < 8; k++)
-      c = (c & 1) ? (poly ^ (c >> 1)) : c >> 1;
-    crc_table[n] = c;
-  }
-  crc_table_empty = 0;
+    /* make exclusive-or pattern from polynomial (0xedb88320L) */
+    unsigned int poly = 0L;
+    for (unsigned int n = 0; n < sizeof(p)/sizeof(uint8); n++)
+        poly |= 1L << (31 - p[n]);
+
+    for (unsigned int n = 0; n < 256; n++)
+    {
+        unsigned int c = n;
+        for (int k = 0; k < 8; k++)
+        {
+            c = (c & 1) ? (poly ^ (c >> 1)) : c >> 1;
+        }
+
+        crc_table[n] = c;
+    }
+    crc_table_empty = 0;
 }
 
 /* ========================================================================= */
@@ -1737,17 +1736,23 @@ unsigned int ComputeCRC32(unsigned int crc, const uint8 *buf, unsigned int len)
         return 0L;
 
     if (crc_table_empty)
-      make_crc_table();
+        make_crc_table();
 
     crc = crc ^ 0xffffffffL;
     while (len >= 8)
     {
-      DO8(buf);
-      len -= 8;
+        DO8(buf);
+        len -= 8;
     }
-    if (len) do {
-      DO1(buf);
-    } while (--len);
+
+    if (len)
+    {
+        do
+        {
+            DO1(buf);
+        } while (--len);
+    }
+
     return crc ^ 0xffffffffL;
 }
 

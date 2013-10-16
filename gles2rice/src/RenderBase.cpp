@@ -758,15 +758,12 @@ void InitVertexColors()
 
 void InitVertexTextureConstants()
 {
-    float scaleX;
-    float scaleY;
-
     RenderTexture &tex0 = g_textures[gRSP.curTile];
     //CTexture *surf = tex0.m_pCTexture;
     Tile &tile0 = gRDP.tiles[gRSP.curTile];
 
-    scaleX = gRSP.fTexScaleX;
-    scaleY = gRSP.fTexScaleY;
+    float scaleX = gRSP.fTexScaleX;
+    float scaleY = gRSP.fTexScaleY;
 
     gRSP.tex0scaleX = scaleX * tile0.fShiftScaleS/tex0.m_fTexWidth;
     gRSP.tex0scaleY = scaleY * tile0.fShiftScaleT/tex0.m_fTexHeight;
@@ -1084,8 +1081,6 @@ uint32 LightVert(XVECTOR4 & norm, int vidx)
 
 uint32 LightVertNew(XVECTOR4 & norm)
 {
-    float fCosT;
-
     // Do ambient
     register float r = gRSP.fAmbientLightR;
     register float g = gRSP.fAmbientLightG;
@@ -1094,7 +1089,7 @@ uint32 LightVertNew(XVECTOR4 & norm)
 
     for (register unsigned int l=0; l < gRSPnumLights; l++)
     {
-        fCosT = norm.x*gRSPlights[l].tx + norm.y*gRSPlights[l].ty + norm.z*gRSPlights[l].tz; 
+        float fCosT = norm.x*gRSPlights[l].tx + norm.y*gRSPlights[l].ty + norm.z*gRSPlights[l].tz; 
 
         if (fCosT > 0 )
         {
@@ -1304,14 +1299,14 @@ void ProcessVertexDataSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     // This function is called upon SPvertex
     // - do vertex matrix transform
     // - do vertex lighting
-    // - do texture cooridinate transform if needed
+    // - do texture coordinate transform if needed
     // - calculate normal vector
 
     // Output:  - g_vecProjected[i]             -> transformed vertex x,y,z
-    //          - g_vecProjected[i].w                       -> saved vertex 1/w
+    //          - g_vecProjected[i].w           -> saved vertex 1/w
     //          - g_dwVtxFlags[i]               -> flags
     //          - g_dwVtxDifColor[i]            -> vertex color
-    //          - g_fVtxTxtCoords[i]                -> vertex texture cooridinates
+    //          - g_fVtxTxtCoords[i]            -> vertex texture coordinates
 
     FiddledVtx * pVtxBase = (FiddledVtx*)(g_pRDRAMu8 + dwAddr);
     g_pVtxBase = pVtxBase;
@@ -1413,14 +1408,14 @@ void ProcessVertexDataNoSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     // This function is called upon SPvertex
     // - do vertex matrix transform
     // - do vertex lighting
-    // - do texture cooridinate transform if needed
+    // - do texture coordinate transform if needed
     // - calculate normal vector
 
     // Output:  - g_vecProjected[i]             -> transformed vertex x,y,z
-    //          - g_vecProjected[i].w                       -> saved vertex 1/w
+    //          - g_vecProjected[i].w           -> saved vertex 1/w
     //          - g_dwVtxFlags[i]               -> flags
     //          - g_dwVtxDifColor[i]            -> vertex color
-    //          - g_fVtxTxtCoords[i]                -> vertex texture cooridinates
+    //          - g_fVtxTxtCoords[i]            -> vertex texture coordinates
 
     FiddledVtx * pVtxBase = (FiddledVtx*)(g_pRDRAMu8 + dwAddr);
     g_pVtxBase = pVtxBase;
@@ -1558,7 +1553,8 @@ bool IsTriangleVisible(uint32 dwV0, uint32 dwV1, uint32 dwV2)
 {
     //return true;  //fix me
 
-    if( status.isVertexShaderEnabled || status.bUseHW_T_L ) return true;    // We won't have access to transformed vertex data
+    if( status.isVertexShaderEnabled || status.bUseHW_T_L ) // We won't have access to transformed vertex data
+        return true;
 
     DEBUGGER_ONLY_IF( (!debuggerEnableTestTris || !debuggerEnableCullFace), {return TRUE;});
     
@@ -1579,7 +1575,7 @@ bool IsTriangleVisible(uint32 dwV0, uint32 dwV1, uint32 dwV2)
         XVECTOR4 & v2 = g_vecProjected[dwV2];
 
         // Only try to clip if the tri is onscreen. For some reason, this
-        // method doesnt' work well when the z value is outside of screenspace
+        // method doesn't work well when the z value is outside of screenspace
         //if (v0.z < 1 && v1.z < 1 && v2.z < 1)
         {
             float V1 = v2.x - v0.x;
@@ -1630,10 +1626,10 @@ void SetPrimitiveColor(uint32 dwCol, uint32 LODMin, uint32 LODFrac)
         gRDP.primLODFrac = gRDP.primLODMin;
     }
 
-    gRDP.fvPrimitiveColor[0] = ((dwCol>>16)&0xFF)/255.0f;  //r
-    gRDP.fvPrimitiveColor[1] = ((dwCol>>8)&0xFF)/255.0f;   //g
-    gRDP.fvPrimitiveColor[2] = ((dwCol)&0xFF)/255.0f;      //b
-    gRDP.fvPrimitiveColor[3] = ((dwCol>>24)&0xFF)/255.0f;  //a
+    gRDP.fvPrimitiveColor[0] = ((dwCol>>16)&0xFF)/255.0f;  // R
+    gRDP.fvPrimitiveColor[1] = ((dwCol>>8)&0xFF)/255.0f;   // G
+    gRDP.fvPrimitiveColor[2] = ((dwCol)&0xFF)/255.0f;      // B
+    gRDP.fvPrimitiveColor[3] = ((dwCol>>24)&0xFF)/255.0f;  // A
 }
 
 void SetPrimitiveDepth(uint32 z, uint32 dwDZ)
@@ -1643,11 +1639,11 @@ void SetPrimitiveDepth(uint32 z, uint32 dwDZ)
 
     //gRDP.fPrimitiveDepth = gRDP.fPrimitiveDepth*2-1;  
     /*
-    z=0xFFFF    ->  1   the farest
+    z=0xFFFF    ->   1  the farthest
     z=0         ->  -1  the nearest
     */
 
-    //how to use dwDZ?
+    // TODO: How to use dwDZ?
 
 #ifdef DEBUGGER
     if( (pauseAtNext && (eventToPause == NEXT_VERTEX_CMD || eventToPause == NEXT_FLUSH_TRI )) )//&& logTriangles ) 
@@ -1746,8 +1742,6 @@ void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 
     Matrix &matWorldProject = gRSP.DKRMatrixes[gRSP.DKRCMatrixIndex];
 
-    int nOff;
-
     bool addbase=false;
     if ((!gRSP.DKRBillBoard) || (gRSP.DKRCMatrixIndex != 2) )
         addbase = false;
@@ -1762,7 +1756,7 @@ void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     LOG_UCODE("    ProcessVertexDataDKR, CMatrix = %d, Add base=%s", gRSP.DKRCMatrixIndex, gRSP.DKRBillBoard?"true":"false");
     VTX_DUMP(TRACE2("DKR Setting Vertexes\nCMatrix = %d, Add base=%s", gRSP.DKRCMatrixIndex, gRSP.DKRBillBoard?"true":"false"));
 
-    nOff = 0;
+    int nOff = 0;
     uint32 end = dwV0 + dwNum;
     for (uint32 i = dwV0; i < end; i++)
     {
@@ -2103,10 +2097,10 @@ typedef union {
         uint8 r;
     };
     struct {
-        char na;    //a
-        char nz;    //b
-        char ny;    //g
-        char nx;    //r
+        char na;    // A
+        char nz;    // B
+        char ny;    // G
+        char nx;    // R
     };
 } RS_Vtx_Color;
 
@@ -2121,8 +2115,7 @@ void ProcessVertexData_Rogue_Squadron(uint32 dwXYZAddr, uint32 dwColorAddr, uint
     RS_Vtx_XYZ * pVtxXYZBase = (RS_Vtx_XYZ*)(g_pRDRAMu8 + dwXYZAddr);
     RS_Vtx_Color * pVtxColorBase = (RS_Vtx_Color*)(g_pRDRAMu8 + dwColorAddr);
 
-    uint32 i;
-    for (i = dwV0; i < dwV0 + dwNum; i++)
+    for (uint32 i = dwV0; i < dwV0 + dwNum; i++)
     {
         RS_Vtx_XYZ & vertxyz = pVtxXYZBase[i - dwV0];
         RS_Vtx_Color & vertcolors = pVtxColorBase[i - dwV0];

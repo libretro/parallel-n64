@@ -64,20 +64,26 @@ inline uint32 CalculateImgSize(uint32 width, uint32 height, uint32 size)
 inline uint32 CalculateDXT(uint32 txl2words)
 {
     //#define CALC_DXT(width, b_txl)    ((2048 + TXL2WORDS(width, b_txl) - 1) / TXL2WORDS(width, b_txl))
-    if( txl2words == 0 ) return 1;
-    else return (2048+txl2words-1)/txl2words;
+    if( txl2words == 0 )
+        return 1;
+    else
+        return (2048+txl2words-1)/txl2words;
 }
 
 inline uint32 ReverseDXT(uint32 val, uint32 lrs, uint32 width, uint32 size)
 {
     //#define TXL2WORDS(txls, b_txl)    MAX(1, ((txls)*(b_txl)/8))
-    if( val == 0x800 ) return 1;
-    
+    if( val == 0x800 )
+        return 1;
+
     unsigned int low = 2047/val;
-    if( CalculateDXT(low) > val )   low++;
     unsigned int high = 2047/(val-1);
 
-    if( low == high )   return low;
+    if( CalculateDXT(low) > val )
+        low++;
+
+    if( low == high )
+        return low;
 
     for( unsigned int i=low; i<=high; i++ )
     {
@@ -219,61 +225,61 @@ Done:
          "mov       %1, %%edi         \n"
          
          "mov       %%esi, %%ebx      \n"
-         "and       $3, %%ebx         \n"           // ebx = number of leading bytes
+         "and       $3, %%ebx         \n" // ebx = number of leading bytes
          
          "cmp       $0, %%ebx         \n"
-         "jz            2f                \n" //jz      StartDWordLoop
+         "jz            2f            \n" //jz      StartDWordLoop
          "neg       %%ebx             \n"
          "add       $4, %%ebx         \n"
          
          "cmp       %3, %%ebx         \n"
-         "jle           0f                \n" //jle     NotGreater
+         "jle           0f            \n" //jle     NotGreater
          "mov       %3, %%ebx         \n"
-         "0:                              \n" //NotGreater:
+         "0:                          \n" //NotGreater:
          "mov       %%ebx, %%ecx      \n"
          "xor       $3, %%esi         \n"
-         "1:                              \n" //LeadingLoop:                // Copies leading bytes, in reverse order (un-swaps)
+         "1:                          \n" //LeadingLoop:                // Copies leading bytes, in reverse order (un-swaps)
          "mov       (%%esi), %%al     \n"
          "mov       %%al, (%%edi)     \n"
          "sub       $1, %%esi         \n"
          "add       $1, %%edi         \n"
-         "loop          1b                \n" //loop     LeadingLoop
+         "loop          1b            \n" //loop     LeadingLoop
          "add       $5, %%esi         \n"
          
-         "2:                              \n" //StartDWordLoop:
+         "2:                          \n" //StartDWordLoop:
          "mov       %3, %%ecx         \n"
-         "sub       %%ebx, %%ecx      \n"       // Don't copy what's already been copied
+         "sub       %%ebx, %%ecx      \n" // Don't copy what's already been copied
          
          "mov       %%ecx, %%ebx      \n"
          "and       $3, %%ebx         \n"
          //     add     ecx, 3          // Round up to nearest dword
          "shr       $2, %%ecx         \n"
          
-         "cmp       $0, %%ecx         \n"           // If there's nothing to do, don't do it
-         "jle           4f                \n" //jle     StartTrailingLoop
+         "cmp       $0, %%ecx         \n" // If there's nothing to do, don't do it
+         "jle           4f            \n" //jle     StartTrailingLoop
          
          // Copies from source to destination, bswap-ing first
-         "3:                              \n" //DWordLoop:
+         "3:                          \n" //DWordLoop:
          "mov       (%%esi), %%eax    \n"
-         "bswap %%eax                     \n"
+         "bswap %%eax                 \n"
          "mov       %%eax, (%%edi)    \n"
          "add       $4, %%esi         \n"
          "add       $4, %%edi         \n"
-         "loop          3b                \n" //loop    DWordLoop
-         "4:                              \n" //StartTrailingLoop:
+         "loop          3b            \n" //loop    DWordLoop
+         "4:                          \n" //StartTrailingLoop:
          "cmp       $0, %%ebx         \n"
-         "jz            6f                \n" //jz      Done
+         "jz            6f            \n" //jz      Done
          "mov       %%ebx, %%ecx      \n"
          "xor       $3, %%esi         \n"
          
-         "5:                              \n" //TrailingLoop:
+         "5:                          \n" //TrailingLoop:
          "mov       (%%esi), %%al     \n"
          "mov       %%al, (%%edi)     \n"
          "sub       $1, %%esi         \n"
          "add       $1, %%edi         \n"
-         "loop          5b                \n" //loop    TrailingLoop
-         "6:                              \n" //Done:
-         "mov           %2, %%ebx         \n"
+         "loop          5b            \n" //loop    TrailingLoop
+         "6:                          \n" //Done:
+         "mov           %2, %%ebx     \n"
          :
          : "m"(src), "m"(dest), "m"(saveEBX), "m"(numBytes)
          : "memory", "cc", "%ecx", "%esi", "%edi", "%eax"
@@ -318,15 +324,15 @@ DWordInterleaveLoop:
          "mov       %0, %%edi          \n"
          "add       $4, %%edi          \n"
          "mov       %1, %%ecx          \n"
-         "0:                               \n" //DWordInterleaveLoop:
+         "0:                           \n" //DWordInterleaveLoop:
          "mov       (%%esi), %%eax     \n"
          "mov       (%%edi), %%ebx     \n"
          "mov       %%ebx, (%%esi)     \n"
          "mov       %%eax, (%%edi)     \n"
          "add       $8, %%esi          \n"
          "add       $8, %%edi          \n"
-         "loop          0b                 \n" //loop   DWordInterleaveLoop
-         "mov           %2, %%ebx          \n"
+         "loop          0b             \n" //loop   DWordInterleaveLoop
+         "mov           %2, %%ebx      \n"
          :
          : "m"(mem), "m"(numDWords), "m"(saveEBX)
          : "memory", "cc", "%esi", "%edi", "%ecx", "%eax"
@@ -384,7 +390,7 @@ QWordInterleaveLoop:
         "add        $8, %%edi          \n"
         "mov        %1, %%ecx          \n"
         "shr        $1, %%ecx          \n"
-        "0:                                \n" //QWordInterleaveLoop:
+        "0:                            \n" //QWordInterleaveLoop:
         "mov        (%%esi), %%eax     \n"
         "mov        (%%edi), %%ebx     \n"
         "mov        %%ebx, (%%esi)     \n"
@@ -397,8 +403,8 @@ QWordInterleaveLoop:
         "mov        %%eax, (%%edi)     \n"
         "add        $12, %%esi         \n"
         "add        $12, %%edi         \n"
-        "loop           0b                 \n" //loop   QWordInterleaveLoop
-        "mov            %2, %%ebx          \n"
+        "loop           0b              \n" //loop   QWordInterleaveLoop
+        "mov            %2, %%ebx       \n"
         :
         : "m"(mem), "m"(numDWords), "m"(saveEBX)
         : "memory", "cc", "%esi", "%edi", "%ecx", "%eax"
@@ -728,8 +734,8 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
             gti.HeightToLoad = pitchHeight;
         }
     }
-    if( gti.WidthToCreate < gti.WidthToLoad )   gti.WidthToCreate = gti.WidthToLoad;
-    if( gti.HeightToCreate < gti.HeightToLoad )     gti.HeightToCreate = gti.HeightToLoad;
+    if( gti.WidthToCreate < gti.WidthToLoad   ) gti.WidthToCreate = gti.WidthToLoad;
+    if( gti.HeightToCreate < gti.HeightToLoad ) gti.HeightToCreate = gti.HeightToLoad;
 
     if( info->bSetBy == CMD_LOADTILE )
     {
@@ -745,7 +751,7 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     uint32 total64BitWordsToLoad = (gti.HeightToLoad*gti.WidthToLoad)>>(4-tile.dwSize);
     if( total64BitWordsToLoad + tile.dwTMem > 0x200 )
     {
-        //TRACE0("Warning: texture loading tmem is over range");
+        //TRACE0("Warning: texture loading TMEM is over range");
         if( gti.WidthToLoad > gti.HeightToLoad )
         {
             uint32 newheight = (dwPitch << 1 )>> tile.dwSize;
@@ -769,7 +775,7 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
 
         if( total64BitWordsToLoad+tile.dwTMem-info->dwTmem <= 0x200 )
         {
-            LOG_TEXTURE(TRACE4("Fix me, info is not covering this Tmem address,Info start: 0x%x, total=0x%x, Tmem start: 0x%x, total=0x%x", 
+            LOG_TEXTURE(TRACE4("Fix me, info is not covering this TMEM address,Info start: 0x%x, total=0x%x, TMEM start: 0x%x, total=0x%x", 
                 info->dwTmem,info->dwTotalWords>>2, tile.dwTMem, total64BitWordsToLoad));
         }
     }
@@ -777,7 +783,7 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     //Check memory boundary
     if( gti.Address + gti.HeightToLoad*gti.Pitch >= g_dwRamSize )
     {
-        WARNING(TRACE0("Warning: texture loading tmem is over range 3"));
+        WARNING(TRACE0("Warning: texture loading TMEM is over range 3"));
         gti.HeightToCreate = gti.HeightToLoad = tile.dwHeight = (g_dwRamSize-gti.Address)/gti.Pitch;
     }
 
@@ -1197,86 +1203,85 @@ extern uint32 g_TxtLoadBy;;
 
 void DLParser_LoadTLut(Gfx *gfx)
 {
-gRDP.textureIsChanged = true;
+    gRDP.textureIsChanged = true;
 
-uint32 tileno = gfx->loadtile.tile;
-uint32 uls = gfx->loadtile.sl/4;
-uint32 ult = gfx->loadtile.tl/4;
-uint32 lrs = gfx->loadtile.sh/4;
-uint32 lrt = gfx->loadtile.th/4;
+    uint32 tileno = gfx->loadtile.tile;
+    uint32 uls = gfx->loadtile.sl/4;
+    uint32 ult = gfx->loadtile.tl/4;
+    uint32 lrs = gfx->loadtile.sh/4;
+    uint32 lrt = gfx->loadtile.th/4;
 
 #ifdef DEBUGGER
-uint32 dwTLutFmt = (gRDP.otherModeH >> RSP_SETOTHERMODE_SHIFT_TEXTLUT)&0x3;
+    uint32 dwTLutFmt = (gRDP.otherModeH >> RSP_SETOTHERMODE_SHIFT_TEXTLUT)&0x3;
 #endif
+    // Starting location in the palettes
+    uint32 dwTMEMOffset = gRDP.tiles[tileno].dwTMem - 256;  
 
-uint32 dwCount;
-// starting location in the palettes
-uint32 dwTMEMOffset = gRDP.tiles[tileno].dwTMem - 256;  
-// number to copy
-dwCount = ((uint16)((gfx->words.w1) >> 14) & 0x03FF) + 1;
-uint32 dwRDRAMOffset = 0;
+    // Number to copy
+    uint32 dwCount = ((uint16)((gfx->words.w1) >> 14) & 0x03FF) + 1;
+    uint32 dwRDRAMOffset = 0;
 
-Tile &tile = gRDP.tiles[tileno];
-tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
+    Tile &tile = gRDP.tiles[tileno];
+    tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
 
-tile.hilite_sl = tile.sl = uls;
-tile.hilite_tl = tile.tl = ult;
-tile.sh = lrs;
-tile.th = lrt;
-tile.bSizeIsValid = true;
+    tile.hilite_sl = tile.sl = uls;
+    tile.hilite_tl = tile.tl = ult;
+    tile.sh = lrs;
+    tile.th = lrt;
+    tile.bSizeIsValid = true;
 
-tile.lastTileCmd = CMD_LOADTLUT;
+    tile.lastTileCmd = CMD_LOADTLUT;
 
 #ifdef DEBUGGER
-/*
-if((((gfx->words.w0)>>12)&0x3) != 0 || (((gfx->words.w0))&0x3) != 0 || (((gfx->words.w1)>>12)&0x3) != 0 || (((gfx->words.w1))&0x3) != 0)
+    /*
+    if((((gfx->words.w0)>>12)&0x3) != 0 || (((gfx->words.w0))&0x3) != 0 || (((gfx->words.w1)>>12)&0x3) != 0 || (((gfx->words.w1))&0x3) != 0)
     TRACE0("Load tlut, sl,tl,sh,th are not integers");
-*/
+    */
 #endif
 
-dwCount = (lrs - uls)+1;
-dwRDRAMOffset = (uls + ult*g_TI.dwWidth )*2;
-uint32 dwPalAddress = g_TI.dwAddr + dwRDRAMOffset;
+    dwCount = (lrs - uls)+1;
+    dwRDRAMOffset = (uls + ult*g_TI.dwWidth )*2;
+    uint32 dwPalAddress = g_TI.dwAddr + dwRDRAMOffset;
 
-//Copy PAL to the PAL memory
-uint16 *srcPal = (uint16*)(g_pRDRAMu8 + (dwPalAddress& (g_dwRamSize-1)) );
-for (uint32 i=0; i<dwCount && i<0x100; i++)
-    g_wRDPTlut[(i+dwTMEMOffset)^1] = srcPal[i^1];
+    //Copy PAL to the PAL memory
+    uint16 *srcPal = (uint16*)(g_pRDRAMu8 + (dwPalAddress& (g_dwRamSize-1)) );
+    for (uint32 i=0; i<dwCount && i<0x100; i++)
+        g_wRDPTlut[(i+dwTMEMOffset)^1] = srcPal[i^1];
 
-if( options.bUseFullTMEM )
+    if( options.bUseFullTMEM )
     {
-    for (uint32 i=0; i<dwCount && i+tile.dwTMem<0x200; i++)
-        *(uint16*)(&g_Tmem.g_Tmem64bit[tile.dwTMem+i]) = srcPal[i^1];
+        for (uint32 i=0; i<dwCount && i+tile.dwTMem<0x200; i++)
+            *(uint16*)(&g_Tmem.g_Tmem64bit[tile.dwTMem+i]) = srcPal[i^1];
     }
 
-LOG_TEXTURE(
-{
-DebuggerAppendMsg("LoadTLut Tile: %d Start: 0x%X+0x%X, Count: 0x%X\nFmt is %s, TMEM=0x%X\n", 
-                 tileno, g_TI.dwAddr, dwRDRAMOffset, dwCount,textluttype[dwTLutFmt],
-                 dwTMEMOffset);
-
-DebuggerAppendMsg("    :ULS: 0x%X, ULT:0x%X, LRS: 0x%X, LRT:0x%X\n", uls, ult, lrs,lrt);
-
-if( pauseAtNext && eventToPause == NEXT_LOADTLUT && dwCount == 16 ) 
+    LOG_TEXTURE(
     {
-    char buf[2000];
-    strcpy(buf, "Data:\n");
-    for(uint32 i=0; i<16; i++ )
+        DebuggerAppendMsg("LoadTLut Tile: %d Start: 0x%X+0x%X, Count: 0x%X\nFmt is %s, TMEM=0x%X\n", 
+            tileno, g_TI.dwAddr, dwRDRAMOffset, dwCount,textluttype[dwTLutFmt],
+            dwTMEMOffset);
+
+        DebuggerAppendMsg("    :ULS: 0x%X, ULT:0x%X, LRS: 0x%X, LRT:0x%X\n", uls, ult, lrs,lrt);
+
+        if( pauseAtNext && eventToPause == NEXT_LOADTLUT && dwCount == 16 ) 
         {
-        sprintf(buf+strlen(buf), "%04X ", g_wRDPTlut[dwTMEMOffset+i]);
-        if(i%4 == 3)
+            char buf[2000];
+            strcpy(buf, "Data:\n");
+            for(uint32 i=0; i<16; i++ )
+            {
+                sprintf(buf+strlen(buf), "%04X ", g_wRDPTlut[dwTMEMOffset+i]);
+                if(i%4 == 3)
+                    sprintf(buf+strlen(buf), "\n");
+            }
             sprintf(buf+strlen(buf), "\n");
+            TRACE0(buf);
         }
-    sprintf(buf+strlen(buf), "\n");
-    TRACE0(buf);
-    }
-});
+    });
 
-DEBUGGER_PAUSE_COUNT_N(NEXT_LOADTLUT);
+    DEBUGGER_PAUSE_COUNT_N(NEXT_LOADTLUT);
 
-extern bool RevTlutTableNeedUpdate;
-RevTlutTableNeedUpdate = true;
-g_TxtLoadBy = CMD_LOADTLUT;
+    extern bool RevTlutTableNeedUpdate;
+    RevTlutTableNeedUpdate = true;
+    g_TxtLoadBy = CMD_LOADTLUT;
 }
 
 
@@ -1385,7 +1390,9 @@ void DLParser_LoadBlock(Gfx *gfx)
             }
         }
         else
+        {
             UnswapCopy( src, dest, bytes );
+        }
     }
 
 
@@ -1440,9 +1447,6 @@ void DLParser_LoadTile(Gfx *gfx)
     if( options.bUseFullTMEM )
     {
         void (*Interleave)( void *mem, uint32 numDWords );
-        uint32 address, y;
-        uint64 *dest;
-        uint8 *src;
 
         if( g_TI.bpl == 0 )
         {
@@ -1456,9 +1460,9 @@ void DLParser_LoadTile(Gfx *gfx)
             }
         }
 
-        address = g_TI.dwAddr + tile.tl * g_TI.bpl + (tile.sl << g_TI.dwSize >> 1);
-        src = &g_pRDRAMu8[address];
-        dest = &g_Tmem.g_Tmem64bit[tile.dwTMem];
+        uint32 address = g_TI.dwAddr + tile.tl * g_TI.bpl + (tile.sl << g_TI.dwSize >> 1);
+        uint64* src = &g_pRDRAMu8[address];
+        uint8* dest = &g_Tmem.g_Tmem64bit[tile.dwTMem];
 
         if ((address + height * bpl) > g_dwRamSize) // check source ending point
         {
@@ -1482,7 +1486,7 @@ void DLParser_LoadTile(Gfx *gfx)
             return;
         }
 
-        for (y = 0; y < height; y++)
+        for (uint32 y = 0; y < height; y++)
         {
             UnswapCopy( src, dest, bpl );
             if (y & 1) Interleave( dest, line );
@@ -2038,8 +2042,8 @@ void TMEM_Init()
 {
     g_pTMEMInfo=NULL;
     g_pTMEMFreeList=tmenEntryBuffer;
-        int i;
-    for( i=0; (i < (tmenMaxEntry-1)); i++ )
+
+    for( int i=0; (i < (tmenMaxEntry-1)); i++ )
     {
         tmenEntryBuffer[i].start=0;
         tmenEntryBuffer[i].length=0;
@@ -2121,11 +2125,12 @@ void TMEM_SetBlock(uint32 tmemstart, uint32 length, uint32 rdramaddr)
             }
             else if( length+tmemstart == p->start+p->length )
             {
-
+                // TODO: Implement
             }
         }
         else
         {
+            // TODO: Implement
         }
     }
 }
@@ -2153,7 +2158,9 @@ uint32 GetValidTmemInfoIndex(uint32 tmemAddr)
     uint32 bitIndex = (tmemAddr&0x1F);
 
     if ((g_TmemFlag[index] & (1<<bitIndex))!=0 )    //This address is valid
+    {
         return tmemAddr;
+    }
     else
     {
         for( uint32 x=index+1; x != 0; x-- )
