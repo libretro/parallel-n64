@@ -1461,8 +1461,8 @@ void DLParser_LoadTile(Gfx *gfx)
         }
 
         uint32 address = g_TI.dwAddr + tile.tl * g_TI.bpl + (tile.sl << g_TI.dwSize >> 1);
-        uint64* src = &g_pRDRAMu8[address];
-        uint8* dest = &g_Tmem.g_Tmem64bit[tile.dwTMem];
+        uint64* src = (uint64*)&g_pRDRAMu8[address];
+        uint8* dest = (uint8*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
 
         if ((address + height * bpl) > g_dwRamSize) // check source ending point
         {
