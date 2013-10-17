@@ -69,6 +69,7 @@ the plugin
 #include <string.h>
 #include <stdarg.h>
 #include <glide.h>
+#include "../glide_funcs.h"
 #include "GlideExtensions.h"
 #include "rdp.h"
 
@@ -240,45 +241,6 @@ typedef GrContext_t (FX_CALL *GRWINOPENEXT)( FxU32                   hWnd,
                                              int                     nColBuffers,
                                              int                     nAuxBuffers) ;
 
-typedef void (FX_CALL *GRTEXBUFFEREXT)( GrChipID_t  		tmu,
-										FxU32 				startAddress,
-										GrLOD_t 			lodmin,
-										GrLOD_t 			lodmax,
-										GrAspectRatio_t 	aspect,
-										GrTextureFormat_t 	fmt,
-										FxU32 				evenOdd) ;
-
-typedef void (FX_CALL *GRAUXBUFFEREXT)( GrBuffer_t buffer ) ;
-
-typedef void (FX_CALL *GRCOLORCOMBINEEXT) (GrCCUColor_t     a,
-                                        GrCombineMode_t  a_mode,
-                                        GrCCUColor_t     b,
-                                        GrCombineMode_t  b_mode,
-                                        GrCCUColor_t     c,
-                                        FxBool           c_invert,
-                                        GrCCUColor_t     d,
-                                        FxBool           d_invert,
-                                        FxU32            shift,
-                                        FxBool           invert) ;
-
-typedef void (FX_CALL *GRTEXCOLORCOMBINEEXT) (GrChipID_t       tmu,
-                                           GrTCCUColor_t    a,
-                                           GrCombineMode_t  a_mode,
-                                           GrTCCUColor_t    b,
-                                           GrCombineMode_t  b_mode,
-                                           GrTCCUColor_t    c,
-                                           FxBool           c_invert,
-                                           GrTCCUColor_t    d,
-                                           FxBool           d_invert,
-                                           FxU32            shift,
-                                           FxBool           invert);
-
-typedef void (FX_CALL *GRCONSTANTCOLORVALUEEXT)
-          (GrChipID_t       tmu,
-           GrColor_t        value);
-
-typedef void (FX_CALL *GRSTIPPLE)( FxI32 mode) ;
-
 typedef void (FX_CALL *GRCONFIGWRAPPEREXT)(FxI32, FxI32, FxBool, FxBool);
 
 typedef GrScreenResolution_t (FX_CALL *GRWRAPPERFULLSCREENRESOLUTIONEXT)(uint32_t*, uint32_t*);
@@ -287,11 +249,6 @@ typedef char ** (FX_CALL *GRQUERYRESOLUTIONSEXT)(FxI32*);
 
 typedef int (*GETTEXADDR)(int tmu, int texsize);
 
-extern GRTEXBUFFEREXT       grTextureBufferExt;
-extern GRTEXBUFFEREXT       grTextureAuxBufferExt;
-extern GRAUXBUFFEREXT       grAuxBufferExt;
-extern GRSTIPPLE            grStippleModeExt;
-extern GRSTIPPLE            grStipplePatternExt;
 extern GETTEXADDR           GetTexAddr;
 
 #ifndef GR_STIPPLE_DISABLE

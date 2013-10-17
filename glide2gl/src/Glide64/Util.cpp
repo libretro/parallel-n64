@@ -1897,23 +1897,17 @@ void update ()
       }
       if (rdp.acmp == 3 && rdp.cycle_mode < 2)
       {
-        if (grStippleModeExt != 0)
-        {
-          if (settings.old_style_adither || rdp.alpha_dither_mode != 3) {
+         if (settings.old_style_adither || rdp.alpha_dither_mode != 3) {
             LRDP (" |- alpha compare: dither\n");
-            grStippleModeExt(settings.stipple_mode);
-          }
-          else
-            grStippleModeExt(GR_STIPPLE_DISABLE);
-        }
+            grStippleMode(settings.stipple_mode);
+         }
+         else
+            grStippleMode(GR_STIPPLE_DISABLE);
       }
       else
       {
-        if (grStippleModeExt)
-        {
-          //LRDP (" |- alpha compare: dither disabled\n");
-          grStippleModeExt(GR_STIPPLE_DISABLE);
-        }
+         //LRDP (" |- alpha compare: dither disabled\n");
+         grStippleMode(GR_STIPPLE_DISABLE);
       }
     }
     // Cull mode (leave this in for z-clipped triangles)

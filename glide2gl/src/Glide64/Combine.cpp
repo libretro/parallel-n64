@@ -15963,32 +15963,8 @@ void InitCombine ()
 {
   LOG ("InitCombine() ");
   memset(&cmb, 0, sizeof(cmb));
-  const char *extensions = grGetString (GR_EXTENSION);
-  if (const char * extstr = strstr(extensions, "COMBINE")) {
-    if (!strncmp(extstr, "COMBINE", 7)) {
-      LOG ("extensions ");
-      char strColorCombineExt[] = "grColorCombineExt";
-      cmb.grColorCombineExt = (GRCOLORCOMBINEEXT) grGetProcAddress(strColorCombineExt);
-      char strAlphaCombineExt[] = "grAlphaCombineExt";
-      cmb.grAlphaCombineExt = (GRCOLORCOMBINEEXT) grGetProcAddress(strAlphaCombineExt);
-      char strTexColorCombineExt[] = "grTexColorCombineExt";
-      cmb.grTexColorCombineExt = (GRTEXCOLORCOMBINEEXT) grGetProcAddress(strTexColorCombineExt);
-      char strTexAlphaCombineExt[] = "grTexAlphaCombineExt";
-      cmb.grTexAlphaCombineExt = (GRTEXCOLORCOMBINEEXT) grGetProcAddress(strTexAlphaCombineExt);
-      char strConstantColorValueExt[] = "grConstantColorValueExt";
-      cmb.grConstantColorValueExt = (GRCONSTANTCOLORVALUEEXT) grGetProcAddress(strConstantColorValueExt);
-      if (cmb.grColorCombineExt && cmb.grAlphaCombineExt &&
-        cmb.grTexColorCombineExt && cmb.grTexAlphaCombineExt)
-      {
-        cmb.combine_ext = TRUE;
-        LOG ("initialized.");
-      }
-      else
-      {
-        cmb.combine_ext = FALSE;
-      }
-    }
-  }
+  cmb.combine_ext = TRUE;
+  LOG ("initialized.");
   cmb.dc0_lodbias = cmb.dc1_lodbias = 31;
   cmb.dc0_detailscale = cmb.dc1_detailscale = 7;
   cmb.lodbias0 = cmb.lodbias1 = 1.0f;

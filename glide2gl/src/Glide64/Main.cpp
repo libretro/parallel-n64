@@ -593,12 +593,6 @@ void WriteSettings (bool saveEmulationSettings)
 {
 }
 
-GRTEXBUFFEREXT   grTextureBufferExt = NULL;
-GRTEXBUFFEREXT   grTextureAuxBufferExt = NULL;
-GRAUXBUFFEREXT   grAuxBufferExt = NULL;
-GRSTIPPLE grStippleModeExt = NULL;
-GRSTIPPLE grStipplePatternExt = NULL;
-
 int GetTexAddrUMA(int tmu, int texsize)
 {
   int addr = voodoo.tex_min_addr[0] + voodoo.tmem_ptr[0];
@@ -617,8 +611,6 @@ GETTEXADDR GetTexAddr = GetTexAddrNonUMA;
 // guLoadTextures
 void guLoadTextures ()
 {
-  if (grTextureBufferExt)
-  {
     int tbuf_size = 0;
     if (settings.scr_res_x <= 1024)
     {
@@ -654,8 +646,6 @@ void guLoadTextures ()
       rdp.texbufs[1].clear_allowed = TRUE;
     }
     offset_textures = tbuf_size + 16;
-  }
-
 }
 
 #ifdef TEXTURE_FILTER
@@ -778,31 +768,7 @@ int InitGfx ()
   voodoo.tex_min_addr[0] = voodoo.tex_min_addr[1] = grTexMinAddress(GR_TMU0);
   voodoo.tex_max_addr[0] = voodoo.tex_max_addr[1] = grTexMaxAddress(GR_TMU0);
 
-  if (fb_hwfbe_enabled)
-  {
-    if (char * extstr = (char*)strstr(extensions, "TEXTUREBUFFER"))
-    {
-      if (!strncmp(extstr, "TEXTUREBUFFER", 13))
-      {
-        char strTextureBufferExt[] = "grTextureBufferExt";
-        grTextureBufferExt = (GRTEXBUFFEREXT) grGetProcAddress(strTextureBufferExt);
-        char strTextureAuxBufferExt[] = "grTextureAuxBufferExt";
-        grTextureAuxBufferExt = (GRTEXBUFFEREXT) grGetProcAddress(strTextureAuxBufferExt);
-        char strAuxBufferExt[] = "grAuxBufferExt";
-        grAuxBufferExt = (GRAUXBUFFEREXT) grGetProcAddress(strAuxBufferExt);
-      }
-    }
-    else
-      settings.frame_buffer &= ~fb_hwfbe;
-  }
-  else
-    grTextureBufferExt = 0;
-
-  grStippleModeExt = (GRSTIPPLE)grStippleMode;
-  grStipplePatternExt = (GRSTIPPLE)grStipplePattern;
-
-  if (grStipplePatternExt)
-    grStipplePatternExt(settings.stipple_pattern);
+  grStipplePattern(settings.stipple_pattern);
 
   InitCombine();
 
