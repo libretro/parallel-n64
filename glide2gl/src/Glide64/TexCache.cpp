@@ -286,22 +286,7 @@ void GetTexInfo (int id, int tile)
 
   bpl = width << rdp.tiles[tile].size >> 1;
 
-  // ** COMMENT THIS TO DISABLE LARGE TEXTURES
-#ifdef LARGE_TEXTURE_HANDLING
-  if (!voodoo.sup_large_tex && width > 256)
-  {
-    info->splits = ((width-1)>>8)+1;
-    info->splitheight = rdp.tiles[tile].height;
-    rdp.tiles[tile].height *= info->splits;
-    rdp.tiles[tile].width = 256;
-    width = 256;
-  }
-  else
-#endif
-    // **
-  {
-    info->splits = 1;
-  }
+  info->splits = 1;
 
   LRDP(" | | |-+ Texture approved:\n");
   FRDP (" | | | |- tmem: %08lx\n", rdp.tiles[tile].t_mem);
@@ -1135,12 +1120,6 @@ void LoadTex (int id, int tmu)
   int wid = cache->width;
   int hei = cache->height;
 
-  if (splits > 1)
-  {
-    wid = texinfo[id].real_image_width;
-    hei = texinfo[id].real_image_height;
-  }
-
   cache->c_off = cache->scale * 0.5f;
   if (wid != 1) cache->c_scl_x = cache->scale;
   else cache->c_scl_x = 0.0f;
@@ -1281,37 +1260,6 @@ void LoadTex (int id, int tmu)
     ;//do nothing
   else
 #endif
-    if (splits > 1)
-    {
-      cache->scale_y = 0.125f;
-
-      int i;
-      for (i=0; i<splits; i++)
-      {
-        int start_dst = i * cache->splitheight * 256;	// start lower
-        start_dst <<= HIWORD(result);	// 1st time, result is set to 0, but start_dst is 0 anyway so it doesn't matter
-
-        int start_src = i * 256;	// start 256 more to the right
-        start_src = start_src << (rdp.tiles[td].size) >> 1;
-        if (rdp.tiles[td].size == 3)
-          start_src >>= 1;
-
-        result = load_table[rdp.tiles[td].size][rdp.tiles[td].format]
-        ((uintptr_t)(texture)+start_dst, (uintptr_t)(rdp.tmem)+(rdp.tiles[td].t_mem<<3)+start_src,
-          texinfo[id].wid_64, texinfo[id].height, texinfo[id].line, real_x, td);
-
-        uint32_t size = HIWORD(result);
-        // clamp so that it looks somewhat ok when wrapping
-        if (size == 1)
-          Clamp16bT ((texture)+start_dst, texinfo[id].height, real_x, cache->splitheight);
-        else if (size != 2)
-          Clamp8bT ((texture)+start_dst, texinfo[id].height, real_x, cache->splitheight);
-        else
-          Clamp32bT ((texture)+start_dst, texinfo[id].height, real_x, cache->splitheight);
-      }
-    }
-    // ** end texture splitting **
-    else
     {
       result = load_table[rdp.tiles[td].size][rdp.tiles[td].format]
       ((uintptr_t)(texture), (uintptr_t)(rdp.tmem)+(rdp.tiles[td].t_mem<<3),
@@ -1543,32 +1491,6 @@ void LoadTex (int id, int tmu)
         if (!ghqTexInfo.data && ghq_dmptex_toggle_key) {
           unsigned char *tmpbuf = (unsigned char*)texture;
           int tmpwidth = real_x;
-          if (texinfo[id].splits > 1) {
-            int dstpixoffset, srcpixoffset;
-            int shift;
-            switch (LOWORD(result) & 0x7fff) { // XXX is there a better way of determining the pixel color depth?
-             case GR_TEXFMT_ARGB_8888:
-               shift = 3;
-               break;
-             case GR_TEXFMT_ALPHA_INTENSITY_44:
-             case GR_TEXFMT_ALPHA_8:
-               shift = 0;
-               break;
-             default:
-               shift = 1;
-            }
-            tmpwidth = texinfo[id].real_image_width;
-            tmpbuf = (unsigned char*)malloc((256*256)<<3); // XXX performance overhead
-            for (int i = 0; i < cache->splitheight; i++) {
-              dstpixoffset = texinfo[id].real_image_width * i;
-              srcpixoffset = 256 * i;
-              for (int k = 0; k < texinfo[id].splits; k++) {
-                memcpy(tmpbuf + (dstpixoffset << shift), texture + (srcpixoffset << shift), (256 << shift));
-                dstpixoffset += 256;
-                srcpixoffset += (256 * cache->splitheight);
-              }
-            }
-          }
           ext_ghq_dmptx(tmpbuf, (int)texinfo[id].real_image_width, (int)texinfo[id].real_image_height, (int)tmpwidth, (unsigned short)LOWORD(result), (unsigned short)((cache->format << 8) | (cache->size)), cache->ricecrc);
           if (tmpbuf != texture && tmpbuf) {
             free(tmpbuf);
@@ -1576,7 +1498,7 @@ void LoadTex (int id, int tmu)
         }
 
         if (!ghqTexInfo.data)
-          if (!settings.ghq_enht_nobg || !rdp.texrecting || (texinfo[id].splits == 1 && texinfo[id].width <= 256))
+          if (!settings.ghq_enht_nobg || !rdp.texrecting || (texinfo[id].width <= 256))
             ext_ghq_txfilter((unsigned char*)texture, (int)real_x, (int)real_y, LOWORD(result), (uint64)g64_crc, &ghqTexInfo);
 
         if (ghqTexInfo.data)
@@ -1603,20 +1525,10 @@ void LoadTex (int id, int tmu)
                 cache->splitheight = ghqTexInfo.untiled_height;
                 cache->scale_x = 1.0f;
                 cache->scale_y = float(ghqTexInfo.untiled_height*ghqTexInfo.tiles)/float(ghqTexInfo.width);//*sy;
-                if (splits == 1)
                 {
                   int shift;
                   for (shift=9; (1<<shift) < ghqTexInfo.untiled_width; shift++);
                   float mult = float(1 << shift >> 8);
-                  cache->c_scl_x *= mult;
-                  cache->c_scl_y *= mult;
-                }
-                else
-                {
-                  int tile_width = rdp.tiles[td].width;
-                  if (rdp.timg.set_by == 1)
-                    tile_width = rdp.load_info[rdp.tiles[td].t_mem].tex_width;
-                  float mult = float(ghqTexInfo.untiled_width/tile_width);
                   cache->c_scl_x *= mult;
                   cache->c_scl_y *= mult;
                 }
@@ -1655,11 +1567,6 @@ void LoadTex (int id, int tmu)
                     cache->scale_y = 1.0f;
                     cache->scale_x = 1.0f/float(1<<(-ghqTexInfo.aspectRatioLog2));
                   }
-                }
-                else if (splits > 1)
-                {
-                  cache->c_scl_x /= splits;
-                  cache->c_scl_y /= splits;
                 }
               }
               {
