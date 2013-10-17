@@ -42,11 +42,7 @@
 
 int TMU_SIZE = 8*2048*2048;
 static unsigned char* texture = NULL;
-
-extern "C" {
-   unsigned glide_texture_offset = 0;
-}
-
+unsigned glide_texture_offset = 0;
 int packed_pixels_support = -1;
 int ati_sucks = -1;
 float largest_supported_anisotropy = 1.0f;
@@ -652,8 +648,6 @@ grTexDownloadMipMap( GrChipID_t tmu,
 
   glBindTexture(GL_TEXTURE_2D, default_texture);
 }
-
-int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info );
 
 FX_ENTRY void FX_CALL
 grTexSource( GrChipID_t tmu,

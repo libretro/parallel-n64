@@ -483,6 +483,10 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
   }
 }
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info )
 {
   int found, i;
@@ -527,6 +531,10 @@ int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info
   return 0;
 
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 
 FX_ENTRY void FX_CALL

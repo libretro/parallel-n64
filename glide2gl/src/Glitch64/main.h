@@ -60,20 +60,32 @@ extern int buffer_cleared; // mark that the buffer has been cleared, used to che
 #include <SDL_opengles2.h>
 #include "glide.h"
 
-#ifdef __LIBRETRO__
-extern "C" void vbo_draw();
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-void display_warning(const unsigned char *text, ...);
+#ifdef __LIBRETRO__
+void vbo_draw();
+#endif
+
+void add_tex(unsigned int id);
+void init_textures(void);
+void free_textures(void);
+void remove_tex(unsigned int idmin, unsigned int idmax);
+
+void set_lambda(void);
+
+int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info );
+
+#ifdef __cplusplus
+}
+#endif
+
 void display_warning(const char *text, ...);
 void init_geometry();
-void init_textures();
 void init_combiner();
-void free_textures();
 void updateCombiner(int i);
 void updateCombinera(int i);
-void remove_tex(unsigned int idmin, unsigned int idmax);
-void add_tex(unsigned int id);
 
 void check_compile(GLuint shader);
 void check_link(GLuint program);
@@ -117,7 +129,6 @@ void grTexChromaRangeExt(GrChipID_t tmu, GrColor_t color0, GrColor_t color1, GrT
 void grTexChromaModeExt(GrChipID_t tmu, GrChromakeyMode_t mode);
 void free_combiners();
 void compile_shader();
-void set_lambda();
 void set_copy_shader();
 void disable_textureSizes();
 
