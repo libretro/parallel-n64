@@ -570,6 +570,7 @@ void ReadSpecialSettings (const char * name)
         || strstr(name, (const char *)"Banjo-Kazooie")
         || strstr(name, (const char *)"MARIOKART64")
         || strstr(name, (const char *)"Quake")
+        || strstr(name, (const char *)"Perfect Dark")
      )
      settings.frame_buffer = 1;
 
