@@ -574,6 +574,12 @@ void ReadSpecialSettings (const char * name)
      settings.frame_buffer = 1;
 
   if (
+        strstr(name, (const char *)"Resident Evil II")
+        || strstr(name, (const char *)"BioHazard II")
+     )
+     settings.frame_buffer = fb_cpu_write_hack;
+
+  if (
         strstr(name, (const char *)"Banjo-Kazooie")
         || strstr(name, (const char *)"MARIOKART64")
            )
