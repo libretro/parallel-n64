@@ -232,34 +232,15 @@ typedef struct {
 extern GFX_INFO gfx;
 extern bool no_dlist;
 
-typedef GrContext_t (FX_CALL *GRWINOPENEXT)( FxU32                   hWnd,
-                                             GrScreenResolution_t    resolution,
-                                             GrScreenRefresh_t       refresh,
-                                             GrColorFormat_t         format,
-                                             GrOriginLocation_t      origin,
-                                             GrPixelFormat_t         pixelformat,
-                                             int                     nColBuffers,
-                                             int                     nAuxBuffers) ;
-
-typedef void (FX_CALL *GRCONFIGWRAPPEREXT)(FxI32, FxI32, FxBool, FxBool);
-
-typedef GrScreenResolution_t (FX_CALL *GRWRAPPERFULLSCREENRESOLUTIONEXT)(uint32_t*, uint32_t*);
-
-typedef char ** (FX_CALL *GRQUERYRESOLUTIONSEXT)(FxI32*);
-
-typedef int (*GETTEXADDR)(int tmu, int texsize);
-
-extern GETTEXADDR           GetTexAddr;
-
 #ifndef GR_STIPPLE_DISABLE
 #define GR_STIPPLE_DISABLE	0x0
 #define GR_STIPPLE_PATTERN	0x1
 #define GR_STIPPLE_ROTATE	0x2
 #endif
 
+int GetTexAddrUMA(int tmu, int texsize);
 void ReadSettings ();
 void ReadSpecialSettings (const char * name);
-void WriteSettings (bool saveEmulationSettings = false);
 
 #if defined(__cplusplus)
 }

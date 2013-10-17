@@ -567,10 +567,6 @@ void ReadSpecialSettings (const char * name)
   settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
 }
 
-void WriteSettings (bool saveEmulationSettings)
-{
-}
-
 int GetTexAddrUMA(int tmu, int texsize)
 {
   int addr = voodoo.tex_min_addr[0] + voodoo.tmem_ptr[0];
@@ -578,13 +574,6 @@ int GetTexAddrUMA(int tmu, int texsize)
   voodoo.tmem_ptr[1] = voodoo.tmem_ptr[0];
   return addr;
 }
-int GetTexAddrNonUMA(int tmu, int texsize)
-{
-  int addr = voodoo.tex_min_addr[tmu] + voodoo.tmem_ptr[tmu];
-  voodoo.tmem_ptr[tmu] += texsize;
-  return addr;
-}
-GETTEXADDR GetTexAddr = GetTexAddrNonUMA;
 
 // guLoadTextures
 void guLoadTextures ()
@@ -689,7 +678,6 @@ int InitGfx ()
   grGet (GR_MAX_TEXTURE_SIZE, 4, (FxI32*)&voodoo.max_tex_size);
   voodoo.sup_large_tex = !(settings.hacks & hack_PPL);
 
-  GetTexAddr = GetTexAddrUMA;
   voodoo.tex_min_addr[0] = voodoo.tex_min_addr[1] = grTexMinAddress(GR_TMU0);
   voodoo.tex_max_addr[0] = voodoo.tex_max_addr[1] = grTexMaxAddress(GR_TMU0);
 

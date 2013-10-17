@@ -1627,7 +1627,7 @@ void LoadTex (int id, int tmu)
         // DON'T CONTINUE (already done)
       }
 
-      uint32_t tex_addr = GetTexAddr(tmu, texture_size);
+      uint32_t tex_addr = GetTexAddrUMA(tmu, texture_size);
       grTexDownloadMipMap (tmu,
         tex_addr,
         GR_MIPMAPLEVELMASK_BOTH,
