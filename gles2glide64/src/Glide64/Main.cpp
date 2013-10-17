@@ -55,7 +55,6 @@
 #include <time.h>
 #define PATH_MAX MAX_PATH
 #endif
-#include "osal_dynamiclib.h"
 #ifdef TEXTURE_FILTER // Hiroshi Morii <koolsmoky@users.sourceforge.net>
 #include <stdarg.h>
 int  ghq_dmptex_toggle_key = 0;
