@@ -140,10 +140,6 @@ VOODOO voodoo = {0, 0, 0, 0,
                  0, 0
                 };
 
-GrTexInfo fontTex;
-GrTexInfo cursorTex;
-uint32_t   offset_font = 0;
-uint32_t   offset_cursor = 0;
 uint32_t   offset_textures = 0;
 uint32_t   offset_texbuf1 = 0;
 
@@ -611,7 +607,7 @@ int GetTexAddrNonUMA(int tmu, int texsize)
 }
 GETTEXADDR GetTexAddr = GetTexAddrNonUMA;
 
-// guLoadTextures - used to load the cursor and font textures
+// guLoadTextures
 void guLoadTextures ()
 {
   if (grTextureBufferExt)
@@ -643,88 +639,16 @@ void guLoadTextures ()
     rdp.texbufs[0].end = rdp.texbufs[0].begin+tbuf_size;
     rdp.texbufs[0].count = 0;
     rdp.texbufs[0].clear_allowed = TRUE;
-    offset_font = tbuf_size;
     {
       rdp.texbufs[1].tmu = GR_TMU1;
       rdp.texbufs[1].begin = rdp.texbufs[0].end;
       rdp.texbufs[1].end = rdp.texbufs[1].begin+tbuf_size;
       rdp.texbufs[1].count = 0;
       rdp.texbufs[1].clear_allowed = TRUE;
-      offset_font += tbuf_size;
     }
-  }
-  else
-    offset_font = 0;
-
-#include "font.h"
-  uint32_t *data = (uint32_t*)font;
-  uint32_t cur;
-
-  // ** Font texture **
-  uint8_t *tex8 = (uint8_t*)malloc(256*64);
-
-  fontTex.smallLodLog2 = fontTex.largeLodLog2 = GR_LOD_LOG2_256;
-  fontTex.aspectRatioLog2 = GR_ASPECT_LOG2_4x1;
-  fontTex.format = GR_TEXFMT_ALPHA_8;
-  fontTex.data = tex8;
-
-  // Decompression: [1-bit inverse alpha --> 8-bit alpha]
-  uint32_t i,b;
-  for (i=0; i<0x200; i++)
-  {
-    // cur = ~*(data++), byteswapped
-#ifdef __VISUALC__
-    cur = _byteswap_ulong(~*(data++));
-#else
-    cur = ~*(data++);
-    cur = ((cur&0xFF)<<24)|(((cur>>8)&0xFF)<<16)|(((cur>>16)&0xFF)<<8)|((cur>>24)&0xFF);
-#endif
-
-    for (b=0x80000000; b!=0; b>>=1)
-    {
-      if (cur&b) *tex8 = 0xFF;
-      else *tex8 = 0x00;
-      tex8 ++;
-    }
+    offset_textures = tbuf_size + 16;
   }
 
-  grTexDownloadMipMap (GR_TMU0,
-    voodoo.tex_min_addr[GR_TMU0] + offset_font,
-    GR_MIPMAPLEVELMASK_BOTH,
-    &fontTex);
-
-  offset_cursor = offset_font + grTexTextureMemRequired (GR_MIPMAPLEVELMASK_BOTH, &fontTex);
-
-  free (fontTex.data);
-
-  // ** Cursor texture **
-#include "cursor.h"
-  data = (uint32_t*)cursor;
-
-  uint16_t *tex16 = (uint16_t*)malloc(32*32*2);
-
-  cursorTex.smallLodLog2 = cursorTex.largeLodLog2 = GR_LOD_LOG2_32;
-  cursorTex.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
-  cursorTex.format = GR_TEXFMT_ARGB_1555;
-  cursorTex.data = tex16;
-
-  // Conversion: [16-bit 1555 (swapped) --> 16-bit 1555]
-  for (i=0; i<0x200; i++)
-  {
-    cur = *(data++);
-    *(tex16++) = (uint16_t)(((cur&0x000000FF)<<8)|((cur&0x0000FF00)>>8));
-    *(tex16++) = (uint16_t)(((cur&0x00FF0000)>>8)|((cur&0xFF000000)>>24));
-  }
-
-  grTexDownloadMipMap (GR_TMU0,
-    voodoo.tex_min_addr[GR_TMU0] + offset_cursor,
-    GR_MIPMAPLEVELMASK_BOTH,
-    &cursorTex);
-
-  // Round to higher 16
-  offset_textures = ((offset_cursor + grTexTextureMemRequired (GR_MIPMAPLEVELMASK_BOTH, &cursorTex))
-    & 0xFFFFFFF0) + 16;
-  free (cursorTex.data);
 }
 
 #ifdef TEXTURE_FILTER

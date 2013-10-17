@@ -768,10 +768,6 @@ extern RDP rdp;
 extern SETTINGS settings;
 extern VOODOO voodoo;
 
-extern GrTexInfo  fontTex;
-extern GrTexInfo  cursorTex;
-extern uint32_t   offset_font;
-extern uint32_t   offset_cursor;
 extern uint32_t   offset_textures;
 extern uint32_t   offset_texbuf1;
 
