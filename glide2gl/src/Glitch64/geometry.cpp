@@ -448,7 +448,6 @@ grDrawPoint( const void *pt )
 
   glBegin(GL_POINTS);
 
-  if (nbTextureUnits > 2)
   {
     if (st0_en)
       glMultiTexCoord2fARB(GL_TEXTURE1_ARB, *s0 / *q / (float)tex1_width,
@@ -456,12 +455,6 @@ grDrawPoint( const void *pt )
     if (st1_en)
       glMultiTexCoord2fARB(GL_TEXTURE0_ARB, *s1 / *q / (float)tex0_width,
       ytex(1, *t1 / *q / (float)tex0_height));
-  }
-  else
-  {
-    if (st0_en)
-      glTexCoord2f(*s0 / *q / (float)tex0_width,
-      ytex(0, *t0 / *q / (float)tex0_height));
   }
   if (pargb_en)
     glColor4f(pargb[2]/255.0f, pargb[1]/255.0f, pargb[0]/255.0f, pargb[3]/255.0f);
@@ -510,17 +503,11 @@ grDrawLine( const void *a, const void *b )
 
   glBegin(GL_LINES);
 
-  if (nbTextureUnits > 2)
   {
     if (st0_en)
       glMultiTexCoord2fARB(GL_TEXTURE1_ARB, *a_s0 / *a_q / (float)tex1_width, ytex(0, *a_t0 / *a_q / (float)tex1_height));
     if (st1_en)
       glMultiTexCoord2fARB(GL_TEXTURE0_ARB, *a_s1 / *a_q / (float)tex0_width, ytex(1, *a_t1 / *a_q / (float)tex0_height));
-  }
-  else
-  {
-    if (st0_en)
-      glTexCoord2f(*a_s0 / *a_q / (float)tex0_width, ytex(0, *a_t0 / *a_q / (float)tex0_height));
   }
   if (pargb_en)
     glColor4f(a_pargb[2]/255.0f, a_pargb[1]/255.0f, a_pargb[0]/255.0f, a_pargb[3]/255.0f);
@@ -534,7 +521,6 @@ grDrawLine( const void *a, const void *b )
   glVertex4f((*a_x - (float)widtho) / (float)(width/2) / *a_q,
     -(*a_y - (float)heighto) / (float)(height/2) / *a_q, ZCALC(*a_z, *a_q), 1.0f / *a_q);
 
-  if (nbTextureUnits > 2)
   {
     if (st0_en)
       glMultiTexCoord2fARB(GL_TEXTURE1_ARB, *b_s0 / *b_q / (float)tex1_width,
@@ -542,12 +528,6 @@ grDrawLine( const void *a, const void *b )
     if (st1_en)
       glMultiTexCoord2fARB(GL_TEXTURE0_ARB, *b_s1 / *b_q / (float)tex0_width,
       ytex(1, *b_t1 / *b_q / (float)tex0_height));
-  }
-  else
-  {
-    if (st0_en)
-      glTexCoord2f(*b_s0 / *b_q / (float)tex0_width,
-      ytex(0, *b_t0 / *b_q / (float)tex0_height));
   }
   if (pargb_en)
     glColor4f(b_pargb[2]/255.0f, b_pargb[1]/255.0f, b_pargb[0]/255.0f, b_pargb[3]/255.0f);

@@ -1221,7 +1221,7 @@ that there is a waiting interrupt.
 EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 {
   VLOG ("InitiateGFX (*)\n");
-  voodoo.num_tmu = 2;
+  voodoo.num_tmu = 4;
 
   // Assume scale of 1 for debug purposes
   rdp.scale_x = 1.0f;

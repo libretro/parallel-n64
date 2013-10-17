@@ -88,7 +88,6 @@ void vbo_disable();
 #define FOG_ATTR 4
 
 extern int w_buffer_mode;
-extern int nbTextureUnits;
 extern int width, height, widtho, heighto;
 extern int tex0_width, tex0_height, tex1_width, tex1_height;
 extern float texture_env_color[4];

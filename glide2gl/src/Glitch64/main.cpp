@@ -35,6 +35,8 @@
 // GL_COMPRESSED_RGB_FXT1_3DFX
 // GL_COMPRESSED_RGBA_FXT1_3DFX
 
+#define TEXTURE_UNITS 4
+
 typedef struct
 {
   unsigned int address;
@@ -46,7 +48,6 @@ typedef struct
   int buff_clear;
 } fb;
 
-int nbTextureUnits;
 int nbAuxBuffers, current_buffer;
 int width, widtho, heighto, height;
 int saved_width, saved_height;
@@ -251,17 +252,10 @@ grSstWinOpen(
   if (isExtensionSupported("GL_ARB_texture_mirrored_repeat") == 0)
     display_warning("Your video card doesn't support GL_ARB_texture_mirrored_repeat extension");
 
-  nbTextureUnits = 4;
-  //glGetIntegerv(GL_MAX_TEXTURE_UNITS_ARB, &nbTextureUnits);
-  if (nbTextureUnits == 1) display_warning("You need a video card that has at least 2 texture units");
-
   nbAuxBuffers = 4;
   //glGetIntegerv(GL_AUX_BUFFERS, &nbAuxBuffers);
   if (nbAuxBuffers > 0)
     printf("Congratulations, you have %d auxilliary buffers, we'll use them wisely !\n", nbAuxBuffers);
-#ifdef VOODOO1
-  nbTextureUnits = 2;
-#endif
 
   blend_func_separate_support = 1;
   packed_pixels_support = 0;
@@ -606,20 +600,7 @@ grGet( FxU32 pname, FxU32 plength, FxI32 *params )
     break;
   case GR_NUM_TMU:
     if (plength < 4 || params == NULL) return 0;
-    if (!nbTextureUnits)
-    {
-      grSstWinOpen((unsigned long)NULL, GR_RESOLUTION_640x480 | 0x80000000, 0, GR_COLORFORMAT_ARGB,
-        GR_ORIGIN_UPPER_LEFT, 2, 1);
-      grSstWinClose(0);
-    }
-#ifdef VOODOO1
-    params[0] = 1;
-#else
-    if (nbTextureUnits > 2)
-      params[0] = 2;
-    else
-      params[0] = 1;
-#endif
+    params[0] = 2;
     return 4;
     break;
   case GR_NUM_BOARDS:
@@ -642,7 +623,7 @@ grGet( FxU32 pname, FxU32 plength, FxI32 *params )
     break;
   case GR_MEMORY_UMA:
     if (plength < 4 || params == NULL) return 0;
-    params[0] = 16*1024*1024*nbTextureUnits;
+    params[0] = 16*1024*1024 * TEXTURE_UNITS;
     return 4;
     break;
   case GR_BITS_RGBA:
