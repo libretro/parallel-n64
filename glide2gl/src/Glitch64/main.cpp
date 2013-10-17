@@ -973,23 +973,7 @@ grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth )
 {
   vbo_draw();
   LOG("grBufferClear(%d,%d,%d)\r\n", color, alpha, depth);
-  switch(lfb_color_fmt)
-  {
-  case GR_COLORFORMAT_ARGB:
-    glClearColor(((color >> 16) & 0xFF) / 255.0f,
-      ((color >>  8) & 0xFF) / 255.0f,
-      ( color        & 0xFF) / 255.0f,
-      alpha / 255.0f);
-    break;
-  case GR_COLORFORMAT_RGBA:
-    glClearColor(((color >> 24) & 0xFF) / 255.0f,
-      ((color >> 16) & 0xFF) / 255.0f,
-      (color         & 0xFF) / 255.0f,
-      alpha / 255.0f);
-    break;
-  default:
-    display_warning("grBufferClear: unknown color format : %x", lfb_color_fmt);
-  }
+  glClearColor(0, 0, 0, 0);
 
   if (w_buffer_mode)
     glClearDepthf(1.0f - ((1.0f + (depth >> 4) / 4096.0f) * (1 << (depth & 0xF))) / 65528.0);
@@ -999,7 +983,6 @@ grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth )
 
   // ZIGGY TODO check that color mask is on
   buffer_cleared = 1;
-
 }
 
 FX_ENTRY void FX_CALL
