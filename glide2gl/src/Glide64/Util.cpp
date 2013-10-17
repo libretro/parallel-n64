@@ -1596,7 +1596,6 @@ static void render_tri (uint16_t linew, int old_interpolate)
   }
   }
   */
-  if (fullscreen)
   {
 
       //      VERTEX ** pv = rdp.vtx_buffer?(vtx_list2):(vtx_list1);
@@ -1683,9 +1682,7 @@ void update_scissor ()
     rdp.scissor.lr_y = (uint32_t)max(min((rdp.scissor_o.lr_y * rdp.scale_y + rdp.offset_y + 0.01f),settings.res_y),0);
     //grClipWindow specifies the hardware clipping window. Any pixels outside the clipping window are rejected.
     //Values are inclusive for minimum x and y values and exclusive for maximum x and y values.
-//    grClipWindow (rdp.scissor.ul_x?rdp.scissor.ul_x+1:0, rdp.scissor.ul_y?rdp.scissor.ul_y+1:0, rdp.scissor.lr_x, rdp.scissor.lr_y);
-    if (fullscreen)
-      grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
+    grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
     FRDP (" |- scissor - (%d, %d) -> (%d, %d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y,
       rdp.scissor.lr_x, rdp.scissor.lr_y);
   }
@@ -1802,7 +1799,6 @@ void update ()
       rdp.update ^= UPDATE_TEXTURE;
   }
 
-  if (fullscreen)
   {
     // Z buffer
     if (rdp.update & UPDATE_ZBUF_ENABLED)
@@ -1992,7 +1988,6 @@ void update ()
   if (rdp.update & UPDATE_VIEWPORT)
   {
     rdp.update ^= UPDATE_VIEWPORT;
-    if (fullscreen)
     {
       float scale_x = (float)fabs(rdp.view_scale[0]);
       float scale_y = (float)fabs(rdp.view_scale[1]);

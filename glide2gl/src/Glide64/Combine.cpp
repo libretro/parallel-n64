@@ -15567,12 +15567,9 @@ void Combine ()
   if (cmb.cmb_ext_use || cmb.tex_cmb_ext_use)
   {
     //have to draw something to allow use of standard combine functions
-    if (fullscreen)
-    {
-      VERTEX v;
-      memset(&v,0,sizeof(v));
-      grDrawPoint(&v);
-    }
+     VERTEX v;
+     memset(&v,0,sizeof(v));
+     grDrawPoint(&v);
     cmb.cmb_ext_use = 0;
     cmb.tex_cmb_ext_use = 0;
   }
@@ -15728,7 +15725,6 @@ void Combine ()
   //*/
   rdp.tex = cmb.tex;
 
-  if (fullscreen)
   {
     TBUFF_COLOR_IMAGE * aTBuff[2] = {0, 0};
     if (rdp.aTBuffTex[0])

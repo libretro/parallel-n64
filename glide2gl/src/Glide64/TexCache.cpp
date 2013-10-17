@@ -493,7 +493,6 @@ void GetTexInfo (int id, int tile)
 
 int ChooseBestTmu (int tmu1, int tmu2)
 {
-  if (!fullscreen) return tmu1;
   return 0;
 }
 
@@ -670,7 +669,6 @@ void TexCache ()
   rdp.t1 = tmu_1;
 
   // SET the combiner
-  if (fullscreen)
   {
     if (rdp.allow_combine)
     {
@@ -765,28 +763,22 @@ void TexCache ()
     if (aTBuff[0] && aTBuff[0]->cache)
     {
       LRDP(" | |- Hires tex T0 found in cache.\n");
-      if (fullscreen)
-      {
-        rdp.cur_cache[0] = aTBuff[0]->cache;
-        rdp.cur_cache[0]->last_used = frame_count;
-        rdp.cur_cache[0]->uses = rdp.debug_n;
-      }
+      rdp.cur_cache[0] = aTBuff[0]->cache;
+      rdp.cur_cache[0]->last_used = frame_count;
+      rdp.cur_cache[0]->uses = rdp.debug_n;
     }
     else if (tex_found[0][tmu_0] != -1)
     {
-      LRDP(" | |- T0 found in cache.\n");
-      if (fullscreen)
-      {
-        CACHE_LUT *cache = &rdp.cache[0][tex_found[0][0]];
-        rdp.cur_cache_n[0] = tex_found[0][tmu_0];
-        rdp.cur_cache[0] = cache;
-        rdp.cur_cache[0]->last_used = frame_count;
-        rdp.cur_cache[0]->uses = rdp.debug_n;
-        grTexSource (tmu_0,
-          (voodoo.tex_min_addr[tmu_0] + cache->tmem_addr),
-          GR_MIPMAPLEVELMASK_BOTH,
-          &cache->t_info);
-      }
+       LRDP(" | |- T0 found in cache.\n");
+       CACHE_LUT *cache = &rdp.cache[0][tex_found[0][0]];
+       rdp.cur_cache_n[0] = tex_found[0][tmu_0];
+       rdp.cur_cache[0] = cache;
+       rdp.cur_cache[0]->last_used = frame_count;
+       rdp.cur_cache[0]->uses = rdp.debug_n;
+       grTexSource (tmu_0,
+             (voodoo.tex_min_addr[tmu_0] + cache->tmem_addr),
+             GR_MIPMAPLEVELMASK_BOTH,
+             &cache->t_info);
     }
     else
       LoadTex (0, tmu_0);
@@ -795,35 +787,28 @@ void TexCache ()
   {
     if (aTBuff[1] && aTBuff[1]->cache)
     {
-      LRDP(" | |- Hires tex T1 found in cache.\n");
-      if (fullscreen)
-      {
-        rdp.cur_cache[1] = aTBuff[1]->cache;
-        rdp.cur_cache[1]->last_used = frame_count;
-        rdp.cur_cache[1]->uses = rdp.debug_n;
-      }
+       LRDP(" | |- Hires tex T1 found in cache.\n");
+       rdp.cur_cache[1] = aTBuff[1]->cache;
+       rdp.cur_cache[1]->last_used = frame_count;
+       rdp.cur_cache[1]->uses = rdp.debug_n;
     }
     else if (tex_found[1][tmu_1] != -1)
     {
-      LRDP(" | |- T1 found in cache.\n");
-      if (fullscreen)
-      {
-        CACHE_LUT *cache = &rdp.cache[0][tex_found[1][0]];
-        rdp.cur_cache_n[1] = tex_found[1][tmu_1];
-        rdp.cur_cache[1] = cache;
-        rdp.cur_cache[1]->last_used = frame_count;
-        rdp.cur_cache[1]->uses = rdp.debug_n;
-        grTexSource (tmu_1,
-          (voodoo.tex_min_addr[tmu_1] + cache->tmem_addr),
-          GR_MIPMAPLEVELMASK_BOTH,
-          &cache->t_info);
-      }
+       LRDP(" | |- T1 found in cache.\n");
+       CACHE_LUT *cache = &rdp.cache[0][tex_found[1][0]];
+       rdp.cur_cache_n[1] = tex_found[1][tmu_1];
+       rdp.cur_cache[1] = cache;
+       rdp.cur_cache[1]->last_used = frame_count;
+       rdp.cur_cache[1]->uses = rdp.debug_n;
+       grTexSource (tmu_1,
+             (voodoo.tex_min_addr[tmu_1] + cache->tmem_addr),
+             GR_MIPMAPLEVELMASK_BOTH,
+             &cache->t_info);
     }
     else
       LoadTex (1, tmu_1);
   }
 
-  if (fullscreen)
   {
     for (int i=0; i<2; i++)
     {
@@ -1551,7 +1536,6 @@ void LoadTex (int id, int tmu)
     cache->lod = lod;
     cache->aspect = aspect;
 
-    if (fullscreen)
     {
 #ifdef TEXTURE_FILTER // Hiroshi Morii <koolsmoky@users.sourceforge.net>
       if (settings.ghq_use)

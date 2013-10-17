@@ -1022,22 +1022,6 @@ EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
   if (dest)
   {
     uint8_t * line = (uint8_t*)dest;
-    if (!fullscreen)
-    {
-      for (uint32_t y=0; y<settings.res_y; y++)
-      {
-        for (uint32_t x=0; x<settings.res_x; x++)
-        {
-          line[x*3] = 0x20;
-          line[x*3+1] = 0x7f;
-          line[x*3+2] = 0x40;
-        }
-      }
-      // LOG ("ReadScreen. not in the fullscreen!\n");
-      WARNLOG("[Glide64] Cannot save screenshot in windowed mode?\n");
-
-      return;
-    }
 
   GrLfbInfo_t info;
   info.size = sizeof(GrLfbInfo_t);
@@ -1455,13 +1439,10 @@ void drawViRegBG()
 
 void DrawFrameBuffer ()
 {
-  if (fullscreen)
-  {
-    grDepthMask (FXTRUE);
-    grColorMask (FXTRUE, FXTRUE);
-    grBufferClear (0, 0, 0xFFFF);
-    drawViRegBG();
-  }
+   grDepthMask (FXTRUE);
+   grColorMask (FXTRUE, FXTRUE);
+   grBufferClear (0, 0, 0xFFFF);
+   drawViRegBG();
 }
 
 extern "C" {
@@ -1484,7 +1465,7 @@ EXPORT void CALL UpdateScreen (void)
 #endif
 
   uint32_t width = (*gfx.VI_WIDTH_REG) << 1;
-  if (fullscreen && (*gfx.VI_ORIGIN_REG  > width))
+  if (*gfx.VI_ORIGIN_REG  > width)
     update_screen_count++;
   uint32_t limit = (settings.hacks&hack_Lego) ? 15 : 30;
   if ((settings.frame_buffer&fb_cpu_write_hack) && (update_screen_count > limit) && (rdp.last_bg == 0))
@@ -1576,7 +1557,6 @@ void newSwapBuffers()
   if (settings.frame_buffer & fb_read_back_to_screen)
     DrawWholeFrameBufferToScreen();
 
-  if (fullscreen)
   {
     if (fb_hwfbe_enabled && !(settings.hacks&hack_RE2) && !evoodoo)
       grAuxBufferExt( GR_BUFFER_AUXBUFFER );
@@ -1590,15 +1570,6 @@ void newSwapBuffers()
         grDepthMask (FXTRUE);
       grBufferClear (0, 0, 0xFFFF);
     }
-    /* //let the game to clear the buffers
-    else
-    {
-    grDepthMask (FXTRUE);
-    grColorMask (FXFALSE, FXFALSE);
-    grBufferClear (0, 0, 0xFFFF);
-    grColorMask (FXTRUE, FXTRUE);
-    }
-    */
   }
 
   if (settings.frame_buffer & fb_read_back_to_screen2)

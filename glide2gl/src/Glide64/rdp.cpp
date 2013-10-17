@@ -408,8 +408,6 @@ static void DrawPartFrameBufferToScreen()
 
 static void CopyFrameBuffer (GrBuffer_t buffer = GR_BUFFER_BACKBUFFER)
 {
-  if (!fullscreen)
-    return;
   FRDP ("CopyFrameBuffer: %08lx... ", rdp.cimg);
 
   // don't bother to write the stuff in asm... the slow part is the read from video card,
@@ -602,7 +600,6 @@ EXPORT void CALL ProcessDList(void)
   VLOG ("ProcessDList ()\n");
 #endif
 
-  if (!fullscreen)
   {
     // Set an interrupt to allow the game to continue
     *gfx.MI_INTR_REG |= 0x20;
@@ -630,9 +627,6 @@ EXPORT void CALL ProcessDList(void)
   }
 
   if (exception)
-    return;
-
-  if (!fullscreen && !settings.run_in_window)
     return;
 
   // Clear out the RDP log
@@ -1392,7 +1386,6 @@ static void rdp_texrect()
       apply_shade_mods (&vptr[i]);
     }
 
-    if (fullscreen)
     {
       if (rdp.fog_mode >= RDP::fog_blend)
       {
@@ -1412,10 +1405,6 @@ static void rdp_texrect()
 
       grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, n_vertices, vptr, sizeof(VERTEX));
 
-      rdp.tri_n += 2;
-    }
-    else
-    {
       rdp.tri_n += 2;
     }
 
@@ -2226,7 +2215,6 @@ static void rdp_fillrect()
   if ((rdp.cimg == rdp.zimg) || (fb_emulation_enabled && rdp.frame_buffers[rdp.ci_count-1].status == ci_zimg) || pd_multiplayer)
   {
     LRDP("Fillrect - cleared the depth buffer\n");
-    if (fullscreen)
     {
       if (!(settings.hacks&hack_Hyperbike) || rdp.ci_width > 64) //do not clear main depth buffer for aux depth buffers
       {
@@ -2286,8 +2274,7 @@ static void rdp_fillrect()
   }
 
   // Update scissor
-  if (fullscreen)
-    update_scissor ();
+  update_scissor ();
 
   if (settings.decrease_fillrect_edge && rdp.cycle_mode == 0)
   {
@@ -2312,7 +2299,6 @@ static void rdp_fillrect()
 
   FRDP (" - %d, %d, %d, %d\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 
-  if (fullscreen)
   {
     grFogMode (GR_FOG_DISABLE);
 
@@ -2395,10 +2381,6 @@ static void rdp_fillrect()
       grDrawTriangle2(&v[0], &v[2], &v[1], &v[2], &v[3], &v[1]);
 
       rdp.tri_n += 2;
-  }
-  else
-  {
-    rdp.tri_n += 2;
   }
 }
 
@@ -2554,7 +2536,6 @@ static void RestoreScale()
   rdp.view_trans[1] *= rdp.scale_y;
   rdp.update |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
   //*
-  if (fullscreen)
   {
     grDepthMask (FXFALSE);
     grBufferClear (0, 0, 0xFFFF);
@@ -3655,7 +3636,6 @@ void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer,
     }
   }
 
-  if (fullscreen)
   {
     update ();
     for (int k = 0; k < nbVtxs-1; k++)

@@ -246,7 +246,7 @@ void DrawHiresDepthImage (const DRAWIMAGE & d)
 
 void DrawDepthImage (const DRAWIMAGE & d)
 {
-  if (!fullscreen || !fb_depth_render_enabled)
+  if (!fb_depth_render_enabled)
     return;
   if (d.imageH > d.imageW)
     return;
@@ -443,7 +443,6 @@ void DrawImage (DRAWIMAGE & d)
   if (rdp.cycle_mode == 2)
     rdp.allow_combine = 0;
 
-  if (fullscreen)
   {
     if (rdp.ci_width == 512 && !no_dlist)
       grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
@@ -549,8 +548,7 @@ void DrawImage (DRAWIMAGE & d)
             apply_shade_mods (&(v[s]));
           ConvertCoordsConvert (v, 4);
 
-          if (fullscreen)
-            grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v, sizeof(VERTEX));
+          grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v, sizeof(VERTEX));
 
           rdp.tri_n += 2;
       }
@@ -591,8 +589,6 @@ void DrawImage (DRAWIMAGE & d)
 
 void DrawHiresImage(DRAWIMAGE & d, int screensize = FALSE)
 {
-  if (!fullscreen)
-    return;
   TBUFF_COLOR_IMAGE *tbuff_tex = rdp.tbuff_tex;
   if (rdp.motionblur)
     rdp.tbuff_tex = &(rdp.texbufs[rdp.cur_tex_buf^1].images[0]);
@@ -957,7 +953,7 @@ static void uc6_draw_polygons (VERTEX v[4])
   }
   rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
-  if (fullscreen && settings.fog && (rdp.flags & FOG_ENABLED))
+  if (settings.fog && (rdp.flags & FOG_ENABLED))
   {
     grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
   }
@@ -1670,7 +1666,7 @@ void uc6_sprite2d ()
         }
         rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
-        if (fullscreen && settings.fog && (rdp.flags & FOG_ENABLED))
+        if (settings.fog && (rdp.flags & FOG_ENABLED))
         {
           grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
         }
