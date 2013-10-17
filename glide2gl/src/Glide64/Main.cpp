@@ -263,14 +263,6 @@ void ChangeSize ()
   //	settings.res_y = settings.scr_res_y;
 }
 
-void ConfigWrapper()
-{
-  char strConfigWrapperExt[] = "grConfigWrapperExt";
-  GRCONFIGWRAPPEREXT grConfigWrapperExt = (GRCONFIGWRAPPEREXT)grGetProcAddress(strConfigWrapperExt);
-  if (grConfigWrapperExt)
-    grConfigWrapperExt(settings.wrpResolution, settings.wrpVRAM * 1024 * 1024, settings.wrpFBO, settings.wrpAnisotropic);
-}
-
 void WriteLog(m64p_msg_level level, const char *msg, ...)
 {
   char buf[1024];
@@ -299,7 +291,6 @@ void ReadSettings ()
   settings.card_id = (uint8_t)Config_ReadInt ("card_id", "Card ID", 0, TRUE, FALSE);
   //settings.lang_id not needed
   // depth_bias = -Config_ReadInt ("depth_bias", "Depth bias level", 0, TRUE, FALSE);
-  settings.res_data = 0;
   settings.scr_res_x = settings.res_x = Config_ReadScreenInt("ScreenWidth");
   settings.scr_res_y = settings.res_y = Config_ReadScreenInt("ScreenHeight");
 
@@ -386,8 +377,6 @@ void ReadSettings ()
   settings.ghq_hirs_let_texartists_fly = Config_ReadInt ("ghq_hirs_let_texartists_fly", "Use full alpha channel -- could cause issues for some tex packs", 0, TRUE, TRUE);
   settings.ghq_hirs_dump = Config_ReadInt ("ghq_hirs_dump", "Dump textures", 0, FALSE, TRUE);
 #endif
-  //TODO-PORT: remove?
-  ConfigWrapper();
 }
 
 void ReadSpecialSettings (const char * name)
@@ -517,17 +506,6 @@ void ReadSpecialSettings (const char * name)
     ini->Read("swapmode", &(settings.swapmode));
     ini->Read("aspect", &(settings.aspectmode));
     ini->Read("lodmode", &(settings.lodmode));
-    /*
-    TODO-port: fix resolutions
-    int resolution;
-    if (ini->Read("resolution", &resolution))
-    {
-      settings.res_data = (uint32_t)resolution;
-      if (settings.res_data >= 0x18) settings.res_data = 12;
-      settings.scr_res_x = settings.res_x = resolutions[settings.res_data][0];
-      settings.scr_res_y = settings.res_y = resolutions[settings.res_data][1];
-    }
-    */
 	
 	PackedScreenResolution tmpRes = Config_ReadScreenSettings();
 	settings.res_data = tmpRes.resolution;
@@ -687,66 +665,13 @@ int InitGfx ()
   // Select the Glide device
   grSstSelect (settings.card_id);
 
-  // Is mirroring allowed?
-  const char *extensions = grGetString (GR_EXTENSION);
-
-//TODO-PORT: fullscreen stuff
-  uint32_t res_data = settings.res_data;
-  char strWrapperFullScreenResolutionExt[] = "grWrapperFullScreenResolutionExt";
-  if (ev_fullscreen)
-  {
-      GRWRAPPERFULLSCREENRESOLUTIONEXT grWrapperFullScreenResolutionExt =
-        (GRWRAPPERFULLSCREENRESOLUTIONEXT)grGetProcAddress(strWrapperFullScreenResolutionExt);
-      if (grWrapperFullScreenResolutionExt) {
-        uint32_t _width, _height = 0;
-        settings.res_data = grWrapperFullScreenResolutionExt(&_width, &_height);
-        settings.scr_res_x = settings.res_x = _width;
-        settings.scr_res_y = settings.res_y = _height;
-      }
-      res_data = settings.res_data;
-  }
-  else if (evoodoo)
-  {
-      GRWRAPPERFULLSCREENRESOLUTIONEXT grWrapperFullScreenResolutionExt =
-        (GRWRAPPERFULLSCREENRESOLUTIONEXT)grGetProcAddress(strWrapperFullScreenResolutionExt);
-      if (grWrapperFullScreenResolutionExt != NULL)
-      {
-/*
-        TODO-port: fix resolutions
-        settings.res_data = settings.res_data_org;
-        settings.scr_res_x = settings.res_x = resolutions[settings.res_data][0];
-        settings.scr_res_y = settings.res_y = resolutions[settings.res_data][1];
-*/
-      }
-      res_data = settings.res_data | 0x80000000;
-  }
-
-  gfx_context = 0;
-
-  // Select the window
-
-  if (fb_hwfbe_enabled)
-  {
-    char strSstWinOpenExt[] ="grSstWinOpenExt";
-    GRWINOPENEXT grSstWinOpenExt = (GRWINOPENEXT)grGetProcAddress(strSstWinOpenExt);
-    if (grSstWinOpenExt)
-      gfx_context = grSstWinOpenExt ((FxU32)NULL,
-      res_data,
-      GR_REFRESH_60Hz,
-      GR_COLORFORMAT_RGBA,
-      GR_ORIGIN_UPPER_LEFT,
-      fb_emulation_enabled?GR_PIXFMT_RGB_565:GR_PIXFMT_ARGB_8888, //32b color is not compatible with fb emulation
-      2,    // Double-buffering
-      1);   // 1 auxillary buffer
-  }
-  if (!gfx_context)
-    gfx_context = grSstWinOpen ((FxU32)NULL,
-    res_data,
-    GR_REFRESH_60Hz,
-    GR_COLORFORMAT_RGBA,
-    GR_ORIGIN_UPPER_LEFT,
-    2,    // Double-buffering
-    1);   // 1 auxillary buffer
+  gfx_context = grSstWinOpen ((FxU32)NULL,
+        0,
+        GR_REFRESH_60Hz,
+        GR_COLORFORMAT_RGBA,
+        GR_ORIGIN_UPPER_LEFT,
+        2,    // Double-buffering
+        1);   // 1 auxillary buffer
 
   if (!gfx_context)
   {
@@ -784,29 +709,22 @@ int InitGfx ()
 
   if (settings.fog) //"FOGCOORD" extension
   {
-    if (strstr (extensions, "FOGCOORD"))
-    {
-      GrFog_t fog_t[64];
-      guFogGenerateLinear (fog_t, 0.0f, 255.0f);//(float)rdp.fog_multiplier + (float)rdp.fog_offset);//256.0f);
+     GrFog_t fog_t[64];
+     guFogGenerateLinear (fog_t, 0.0f, 255.0f);//(float)rdp.fog_multiplier + (float)rdp.fog_offset);//256.0f);
 
-      for (int i = 63; i > 0; i--)
-      {
+     for (int i = 63; i > 0; i--)
+     {
         if (fog_t[i] - fog_t[i-1] > 63)
         {
-          fog_t[i-1] = fog_t[i] - 63;
+           fog_t[i-1] = fog_t[i] - 63;
         }
-      }
-      fog_t[0] = 0;
-      //      for (int f = 0; f < 64; f++)
-      //      {
-      //        FRDP("fog[%d]=%d->%f\n", f, fog_t[f], guFogTableIndexToW(f));
-      //      }
-      grFogTable (fog_t);
-      grVertexLayout (GR_PARAM_FOG_EXT, offsetof(VERTEX,f), GR_PARAM_ENABLE);
-    }
-    else //not supported
-      settings.fog = FALSE;
+     }
+     fog_t[0] = 0;
+     grFogTable (fog_t);
+     grVertexLayout (GR_PARAM_FOG_EXT, offsetof(VERTEX,f), GR_PARAM_ENABLE);
   }
+  else //not supported
+     settings.fog = FALSE;
 
   grDepthBufferMode (GR_DEPTHBUFFER_ZBUFFER);
   grDepthBufferFunction(GR_CMP_LESS);
@@ -1139,11 +1057,6 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
   CountCombine();
   if (fb_depth_render_enabled)
     ZLUT_init();
-
-  char strConfigWrapperExt[] = "grConfigWrapperExt";
-  GRCONFIGWRAPPEREXT grConfigWrapperExt = (GRCONFIGWRAPPEREXT)grGetProcAddress(strConfigWrapperExt);
-  if (grConfigWrapperExt)
-    grConfigWrapperExt(settings.wrpResolution, settings.wrpVRAM * 1024 * 1024, settings.wrpFBO, settings.wrpAnisotropic);
 
   grGlideInit ();
   grSstSelect (0);
