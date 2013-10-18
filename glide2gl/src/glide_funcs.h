@@ -3,6 +3,43 @@
 
 #include "glide.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Vertex structure
+typedef struct
+{
+  float x, y, z, q;
+  float u0, v0, u1, v1;
+  float coord[4];
+  float w;
+  uint16_t  flags;
+
+  uint8_t  b;  // These values are arranged like this so that *(uint32_t*)(VERTEX+?) is
+  uint8_t  g;  // ARGB format that glide can use.
+  uint8_t  r;
+  uint8_t  a;
+
+  float f; //fog
+
+  float vec[3]; // normal vector
+
+  float sx, sy, sz;
+  float x_w, y_w, z_w, u0_w, v0_w, u1_w, v1_w, oow;
+  uint8_t  not_zclipped;
+  uint8_t  screen_translated;
+  uint8_t  uv_scaled;
+  uint32_t uv_calculated;  // like crc
+  uint32_t shade_mod;
+  uint32_t color_backup;
+
+  float ou, ov;
+
+  int   number;   // way to identify it
+  int   scr_off, z_off; // off the screen?
+} VERTEX;
+
 typedef FxU32 GrCCUColor_t;
 typedef FxU32 GrACUColor_t;
 typedef FxU32 GrTCCUColor_t;
@@ -129,6 +166,10 @@ FX_ENTRY void FX_CALL grAuxBufferExt( GrBuffer_t buffer );
 #define DISPLAY_WARNING(format, ...) fprintf(stderr, format, __VA_ARGS__)
 #else
 #define DISPLAY_WARNING(format, ...) ((void)0)
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

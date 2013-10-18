@@ -85,7 +85,7 @@ struct texbuf_t {
   int fmt;
 };
 #define NB_TEXBUFS 128 // MUST be a power of two
-static texbuf_t texbufs[NB_TEXBUFS];
+static struct texbuf_t texbufs[NB_TEXBUFS];
 static int texbuf_i;
 
 unsigned short frameBuffer[2048*2048];
@@ -108,8 +108,8 @@ grClipWindow( FxU32 minx, FxU32 miny, FxU32 maxx, FxU32 maxy )
 
   if (render_to_texture)
   {
-    if (int(minx) < 0) minx = 0;
-    if (int(miny) < 0) miny = 0;
+    if ((int)(minx) < 0) minx = 0;
+    if ((int)(miny) < 0) miny = 0;
     if (maxx < minx) maxx = minx;
     if (maxy < miny) maxy = miny;
     y = miny;
@@ -185,6 +185,8 @@ grSstWinOpenExt(
   return grSstWinOpen(screen_resolution, refresh_rate, color_format,
     origin_location, nColBuffers, nAuxBuffers);
 }
+
+void FindBestDepthBias();
 
 FX_ENTRY GrContext_t FX_CALL
 grSstWinOpen(
@@ -300,7 +302,6 @@ grSstWinOpen(
       texbufs[i].start = texbufs[i].end = 0xffffffff;
   }
 
-  void FindBestDepthBias();
   FindBestDepthBias();
 
   init_geometry();
@@ -461,10 +462,6 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
     nb_fb++;
   }
 }
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info )
 {
@@ -729,27 +726,23 @@ static void render_rectangle(int texture_number,
   LOGINFO("render_rectangle(%d,%d,%d,%d,%d,%d,%d,%d)",texture_number,dst_x,dst_y,src_width,src_height,tex_width,tex_height,invert);
   int vertexOffset_location;
   int textureSizes_location;
-  static float data[] = {
-    ((int)dst_x),                             //X 0
-    invert*-((int)dst_y),                     //Y 0 
-    0.0f,                                     //U 0 
-    0.0f,                                     //V 0
-
-    ((int)dst_x),                             //X 1
-    invert*-((int)dst_y + (int)src_height),   //Y 1
-    0.0f,                                     //U 1
-    (float)src_height / (float)tex_height,    //V 1
-
-    ((int)dst_x + (int)src_width), 
-    invert*-((int)dst_y + (int)src_height),
-    (float)src_width / (float)tex_width,
-    (float)src_height / (float)tex_height,
-
-    ((int)dst_x),
-    invert*-((int)dst_y),
-    0.0f,
-    0.0f
-  };
+  static float data[16];
+  data[0]   =     ((int)dst_x);                             //X 0
+  data[1]   =     invert*-((int)dst_y);                     //Y 0 
+  data[2]   =     0.0f;                                     //U 0 
+  data[3]   =     0.0f;                                     //V 0
+  data[4]   =     ((int)dst_x);                             //X 1
+  data[5]   =     invert*-((int)dst_y + (int)src_height);   //Y 1
+  data[6]   =     0.0f;                                     //U 1
+  data[7]   =     (float)src_height / (float)tex_height;    //V 1
+  data[8]   =     ((int)dst_x + (int)src_width);
+  data[9]  =     invert*-((int)dst_y + (int)src_height);
+  data[10]  =     (float)src_width / (float)tex_width;
+  data[11]  =     (float)src_height / (float)tex_height;
+  data[12]  =     ((int)dst_x);
+  data[13]  =     invert*-((int)dst_y);
+  data[14]  =     0.0f;
+  data[15]  =     0.0f;
 
   vbo_disable();
   glDisableVertexAttribArray(COLOUR_ATTR);
@@ -767,8 +760,6 @@ static void render_rectangle(int texture_number,
   disable_textureSizes();
 
   glDrawArrays(GL_TRIANGLE_STRIP,0,4);
-  vbo_enable();
-
 
 /*
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

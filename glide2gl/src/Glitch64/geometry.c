@@ -26,9 +26,6 @@
 #include "glide.h"
 #include "main.h"
 #include "../Glide64/winlnxdefs.h"
-#include "../Glide64/rdp.h"
-
-
 
 #define Z_MAX (65536.0f)
 #define VERTEX_SIZE sizeof(VERTEX) //Size of vertex struct
@@ -63,14 +60,12 @@ void vbo_init()
   
 }
 
-extern "C" {
-   void vbo_draw()
+void vbo_draw()
+{
+   if(vertex_buffer_count)
    {
-      if(vertex_buffer_count)
-      {
-         glDrawArrays(vertex_draw_mode,0,vertex_buffer_count);
-         vertex_buffer_count = 0;
-      }
+      glDrawArrays(vertex_draw_mode,0,vertex_buffer_count);
+      vertex_buffer_count = 0;
    }
 }
 
@@ -120,23 +115,10 @@ void vbo_disable()
 }
 
 
-inline float ZCALC(const float & z, const float & q) {
-  float res = z_en ? ((z) / Z_MAX) / (q) : 1.0f;
-  return res;
-}
+#define ZCALC(z, q) ((z_en) ? ((z) / Z_MAX) / (q) : 1.0f)
 
-/*
-#define zclamp (1.0f-1.0f/zscale)
-static inline void zclamp_glVertex4f(float a, float b, float c, float d)
+static inline float ytex(int tmu, float y)
 {
-  if (c<zclamp) c = zclamp;
-  glVertex4f(a,b,c,d);
-}
-#define glVertex4f(a,b,c,d) zclamp_glVertex4f(a,b,c,d)
-*/
-
-
-static inline float ytex(int tmu, float y) {
   if (invtex[tmu])
     return invtex[tmu] - y;
   else

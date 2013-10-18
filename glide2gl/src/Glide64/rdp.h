@@ -40,6 +40,8 @@
 #ifndef RDP_H
 #define RDP_H
 
+#include "Gfx_1.3.h"
+
 extern char out_buf[2048];
 
 extern uint32_t frame_count; // frame counter
@@ -119,39 +121,6 @@ extern uint32_t frame_count; // frame counter
 #elif defined __GNUG__
 #define DECLAREALIGN16VAR(var) float (var) __attribute__ ((aligned(16)))
 #endif
-
-// Vertex structure
-typedef struct
-{
-  float x, y, z, q;
-  float u0, v0, u1, v1;
-  float coord[4];
-  float w;
-  uint16_t  flags;
-
-  uint8_t  b;  // These values are arranged like this so that *(uint32_t*)(VERTEX+?) is
-  uint8_t  g;  // ARGB format that glide can use.
-  uint8_t  r;
-  uint8_t  a;
-
-  float f; //fog
-
-  float vec[3]; // normal vector
-
-  float sx, sy, sz;
-  float x_w, y_w, z_w, u0_w, v0_w, u1_w, v1_w, oow;
-  uint8_t  not_zclipped;
-  uint8_t  screen_translated;
-  uint8_t  uv_scaled;
-  uint32_t uv_calculated;  // like crc
-  uint32_t shade_mod;
-  uint32_t color_backup;
-
-  float ou, ov;
-
-  int   number;   // way to identify it
-  int   scr_off, z_off; // off the screen?
-} VERTEX;
 
 // Clipping (scissors)
 typedef struct {
