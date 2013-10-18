@@ -561,17 +561,6 @@ extern "C" {
 
 EXPORT void CALL ProcessDList(void)
 {
-  bool lock = SDL_SemTryWait(mutexProcessDList) == 0;
-  if (!lock) //mutex is busy
-  {
-    // Set an interrupt to allow the game to continue
-    *gfx.MI_INTR_REG |= 0x20;
-    gfx.CheckInterrupts();
-    return;
-  }
-
-  SDL_SemPost(mutexProcessDList);
-
   no_dlist = false;
   update_screen_count = 0;
   ChangeSize ();
@@ -3924,17 +3913,6 @@ EXPORT void CALL ProcessRDPList(void)
   VLOG ("ProcessRDPList ()\n");
   LRDP("ProcessRDPList ()\n");
 #endif
-
-  bool lock = SDL_SemTryWait(mutexProcessDList) == 0;
-  if (!lock) //mutex is busy
-  {
-    // Set an interrupt to allow the game to continue
-    *gfx.MI_INTR_REG |= 0x20;
-    gfx.CheckInterrupts();
-    return;
-  }
-
-  SDL_SemPost(mutexProcessDList);
 
   uint32_t i;
   uint32_t cmd, length, cmd_length;

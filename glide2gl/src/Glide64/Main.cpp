@@ -146,8 +146,6 @@ uint32_t   offset_texbuf1 = 0;
 int    capture_screen = 0;
 char    capture_path[256];
 
-SDL_sem *mutexProcessDList = SDL_CreateSemaphore(1);
-
 // SOME FUNCTION DEFINITIONS 
 
 static void DrawFrameBuffer ();

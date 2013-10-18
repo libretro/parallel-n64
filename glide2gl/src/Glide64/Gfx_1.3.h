@@ -63,7 +63,6 @@ the plugin
 #include "m64p.h"
 
 #include <stdio.h>
-#include <SDL_mutex.h>
 #include <stdlib.h>
 #include <stddef.h>		// offsetof
 #include <string.h>
@@ -193,7 +192,6 @@ extern int debugging;
 extern int evoodoo;
 extern int ev_fullscreen;
 
-extern SDL_sem *mutexProcessDList;
 extern int exception;
 
 #ifdef __LIBRETRO__ // Export InitGfx for C
