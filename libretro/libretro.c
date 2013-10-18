@@ -98,7 +98,7 @@ static void core_settings_set_defaults()
     }
 }
 
-static void core_settings_set_preferred(void)
+static void core_settings_set_balanced(void)
 {
    struct retro_variable gfx_var = { "mupen64-gfxplugin", 0 };
    struct retro_variable rsp_var = { "mupen64-rspplugin", 0 };
