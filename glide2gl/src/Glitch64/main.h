@@ -64,11 +64,6 @@ extern int buffer_cleared; // mark that the buffer has been cleared, used to che
 #include <SDL_opengles2.h>
 #include "../glide_funcs.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
 void add_tex(unsigned int id);
 void init_textures(void);
 void free_textures(void);
@@ -90,11 +85,6 @@ void check_link(GLuint program);
 void free_combiners();
 void compile_shader();
 void set_copy_shader();
-
-#ifdef __cplusplus
-}
-#endif
-
 
 //Vertex Attribute Locations
 #define POSITION_ATTR 0
