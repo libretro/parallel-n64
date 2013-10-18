@@ -73,10 +73,6 @@ the plugin
 #include "GlideExtensions.h"
 #include "rdp.h"
 
-#ifndef WIN32
-typedef int HWND;
-#endif
-
 #if defined(__cplusplus)
 extern "C" {
 #endif

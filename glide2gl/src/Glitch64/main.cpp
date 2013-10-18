@@ -192,7 +192,6 @@ int isExtensionSupported(const char *extension)
 
 FX_ENTRY GrContext_t FX_CALL
 grSstWinOpenExt(
-                HWND                 hWnd,
                 GrScreenResolution_t screen_resolution,
                 GrScreenRefresh_t    refresh_rate,
                 GrColorFormat_t      color_format,
@@ -201,14 +200,13 @@ grSstWinOpenExt(
                 int                  nColBuffers,
                 int                  nAuxBuffers)
 {
-  LOG("grSstWinOpenExt(%d, %d, %d, %d, %d, %d %d)\r\n", hWnd, screen_resolution, refresh_rate, color_format, origin_location, nColBuffers, nAuxBuffers);
-  return grSstWinOpen(hWnd, screen_resolution, refresh_rate, color_format,
+  LOG("grSstWinOpenExt(%d, %d, %d, %d, %d %d)\r\n", screen_resolution, refresh_rate, color_format, origin_location, nColBuffers, nAuxBuffers);
+  return grSstWinOpen(screen_resolution, refresh_rate, color_format,
     origin_location, nColBuffers, nAuxBuffers);
 }
 
 FX_ENTRY GrContext_t FX_CALL
 grSstWinOpen(
-             HWND                 hWnd,
              GrScreenResolution_t screen_resolution,
              GrScreenRefresh_t    refresh_rate,
              GrColorFormat_t      color_format,
@@ -224,7 +222,7 @@ grSstWinOpen(
   color_texture = free_texture++;
   depth_texture = free_texture++;
 
-  LOG("grSstWinOpen(%08lx, %d, %d, %d, %d, %d %d)\r\n", hWnd, screen_resolution&~0x80000000, refresh_rate, color_format, origin_location, nColBuffers, nAuxBuffers);
+  LOG("grSstWinOpen(%d, %d, %d, %d, %d %d)\r\n", screen_resolution&~0x80000000, refresh_rate, color_format, origin_location, nColBuffers, nAuxBuffers);
 
   width = height = 0;
 

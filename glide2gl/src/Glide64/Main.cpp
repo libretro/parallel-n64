@@ -654,7 +654,7 @@ int InitGfx ()
   // Select the Glide device
   grSstSelect (settings.card_id);
 
-  gfx_context = grSstWinOpen ((FxU32)NULL,
+  gfx_context = grSstWinOpen (
         0,
         GR_REFRESH_60Hz,
         GR_COLORFORMAT_RGBA,
@@ -957,17 +957,6 @@ void CALL CloseDLL (void)
     ReleaseGfx ();
   ZLUT_release();
   ClearCache ();
-}
-
-/******************************************************************
-Function: DllTest
-Purpose:  This function is optional function that is provided
-to allow the user to test the dll
-input:    a handle to the window that calls this function
-output:   none
-*******************************************************************/
-void CALL DllTest ( HWND hParent )
-{
 }
 
 /******************************************************************

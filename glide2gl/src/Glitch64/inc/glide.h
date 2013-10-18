@@ -59,7 +59,6 @@ typedef FxU32 GrStipplePattern_t;
 typedef FxU8  GrFog_t;
 typedef FxU32 GrContext_t;
 typedef int (FX_CALL *GrProc)();
-typedef int HWND;
 
 /*
 ** -----------------------------------------------------------------------
@@ -622,7 +621,6 @@ grFlush(void);
 
 FX_ENTRY GrContext_t FX_CALL 
 grSstWinOpen(
-          HWND                 hWnd,
           GrScreenResolution_t screen_resolution,
           GrScreenRefresh_t    refresh_rate,
           GrColorFormat_t      color_format,
