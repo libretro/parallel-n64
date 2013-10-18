@@ -273,8 +273,7 @@ static void ADPCM2 (u32 inst1, u32 inst2) { // Verified to be 100% Accurate...
         for(j=0;j<8;j++)
         {
             a[j^S]>>=11;
-            if(a[j^S]>32767) a[j^S]=32767;
-            else if(a[j^S]<-32768) a[j^S]=-32768;
+            BLARGG_CLAMP16(a[j^S]);
             *(out++)=a[j^S];
         }
         l1=a[6];
@@ -343,8 +342,7 @@ static void ADPCM2 (u32 inst1, u32 inst2) { // Verified to be 100% Accurate...
         for(j=0;j<8;j++)
         {
             a[j^S]>>=11;
-            if(a[j^S]>32767) a[j^S]=32767;
-            else if(a[j^S]<-32768) a[j^S]=-32768;
+            BLARGG_CLAMP16(a[j^S]);
             *(out++)=a[j^S];
         }
         l1=a[6];
@@ -390,10 +388,7 @@ static void MIXER2 (u32 inst1, u32 inst2) { // Needs accuracy verification...
         temp = (*(s16 *)(BufferSpace+dmemin+x) * gain) >> 15;
         temp += *(s16 *)(BufferSpace+dmemout+x);
             
-        if ((s32)temp > 32767) 
-            temp = 32767;
-        if ((s32)temp < -32768) 
-            temp = -32768;
+        BLARGG_CLAMP16(temp);
 
         *(u16 *)(BufferSpace+dmemout+x) = (u16)(temp & 0xFFFF);
     }
@@ -447,8 +442,7 @@ static void RESAMPLE2 (u32 inst1, u32 inst2) {
         temp = ((s32)*(s16*)(src+((srcPtr+3)^S))*((s32)((s16)lut[3])));
         accum += (s32)(temp >> 15);
 
-        if (accum > 32767) accum = 32767;
-        if (accum < -32768) accum = -32768;
+        BLARGG_CLAMP16(accum);
 
         dst[dstPtr^S] = (s16)(accum);
         dstPtr++;
@@ -555,26 +549,26 @@ static void ENVMIXER2 (u32 inst1, u32 inst2) {
             vec9  = (s16)(((s32)buffs3[x^S] * (u32)env[0]) >> 0x10) ^ v2[0];
             vec10 = (s16)(((s32)buffs3[x^S] * (u32)env[2]) >> 0x10) ^ v2[1];
             temp = bufft6[x^S] + vec9;
-            if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+            BLARGG_CLAMP16(temp);
             bufft6[x^S] = temp;
             temp = bufft7[x^S] + vec10;
-            if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+            BLARGG_CLAMP16(temp);
             bufft7[x^S] = temp;
             vec9  = (s16)(((s32)vec9  * (u32)env[4]) >> 0x10) ^ v2[2];
             vec10 = (s16)(((s32)vec10 * (u32)env[4]) >> 0x10) ^ v2[3];
             if (inst1 & 0x10) {
                 temp = buffs0[x^S] + vec10;
-                if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+                BLARGG_CLAMP16(temp);
                 buffs0[x^S] = temp;
                 temp = buffs1[x^S] + vec9;
-                if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+                BLARGG_CLAMP16(temp);
                 buffs1[x^S] = temp;
             } else {
                 temp = buffs0[x^S] + vec9;
-                if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+                BLARGG_CLAMP16(temp);
                 buffs0[x^S] = temp;
                 temp = buffs1[x^S] + vec10;
-                if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+                BLARGG_CLAMP16(temp);
                 buffs1[x^S] = temp;
             }
         }
@@ -584,26 +578,26 @@ static void ENVMIXER2 (u32 inst1, u32 inst2) {
             vec9  = (s16)(((s32)buffs3[x^S] * (u32)env[1]) >> 0x10) ^ v2[0];
             vec10 = (s16)(((s32)buffs3[x^S] * (u32)env[3]) >> 0x10) ^ v2[1];
             temp = bufft6[x^S] + vec9;
-            if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+            BLARGG_CLAMP16(temp);
             bufft6[x^S] = temp;
            temp = bufft7[x^S] + vec10;
-            if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+            BLARGG_CLAMP16(temp);
             bufft7[x^S] = temp;
             vec9  = (s16)(((s32)vec9  * (u32)env[5]) >> 0x10) ^ v2[2];
             vec10 = (s16)(((s32)vec10 * (u32)env[5]) >> 0x10) ^ v2[3];
             if (inst1 & 0x10) {
                 temp = buffs0[x^S] + vec10;
-                if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+                BLARGG_CLAMP16(temp);
                 buffs0[x^S] = temp;
                 temp = buffs1[x^S] + vec9;
-                if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+                BLARGG_CLAMP16(temp);
                 buffs1[x^S] = temp;
             } else {
                 temp = buffs0[x^S] + vec9;
-                if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+                BLARGG_CLAMP16(temp);
                 buffs0[x^S] = temp;
                 temp = buffs1[x^S] + vec10;
-                if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+                BLARGG_CLAMP16(temp);
                 buffs1[x^S] = temp;
             }
         }
@@ -731,7 +725,7 @@ static void ADDMIXER (u32 inst1, u32 inst2) {
     outp = (s16 *)(BufferSpace + OutBuffer);
     for (int cntr = 0; cntr < Count; cntr+=2) {
         temp = *outp + *inp;
-        if (temp > 32767)  temp = 32767; if (temp < -32768) temp = -32768;
+        BLARGG_CLAMP16(temp);
         *(outp++) = temp;
         inp++;
     }
@@ -751,8 +745,7 @@ static void HILOGAIN (u32 inst1, u32 inst2) {
         val = (s32)*src;
         //tmp = ((val * (s32)hi) + ((u64)(val * lo) << 16) >> 16);
         tmp = ((val * (s32)hi) >> 16) + (u32)(val * lo);
-        if ((s32)tmp > 32767) tmp = 32767;
-        else if ((s32)tmp < -32768) tmp = -32768;
+        BLARGG_CLAMP16(tmp);
         *src = tmp;
         src++;
         cnt -= 2;

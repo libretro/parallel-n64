@@ -85,5 +85,9 @@ static inline const OSTask_t * const get_task()
 
 void rspDebugMessage(int level, const char *message, ...);
 
+#define BLARGG_CLAMP16(io) \
+   if ((s16)io != io) \
+      io = (io >> 31) ^ 0x7FFF
+
 #endif
 

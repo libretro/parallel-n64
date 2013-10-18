@@ -348,11 +348,9 @@ static void ENVMIXER (u32 inst1, u32 inst2) {
 
         a1=((s64)(((s64)a1*0xfffe)+((s64)i1*MainL*2)+0x8000)>>16);*/
 
-        if(o1>32767) o1=32767;
-        else if(o1<-32768) o1=-32768;
+        BLARGG_CLAMP16(o1);
 
-        if(a1>32767) a1=32767;
-        else if(a1<-32768) a1=-32768;
+        BLARGG_CLAMP16(a1);
 
         out[ptr^S]=o1;
         aux1[ptr^S]=a1;
@@ -363,11 +361,8 @@ static void ENVMIXER (u32 inst1, u32 inst2) {
             a2+=(/*(a2*0x7fff)+*/(i1*AuxR)+0x4000)>>15;
             a3+=(/*(a3*0x7fff)+*/(i1*AuxL)+0x4000)>>15;
 
-            if(a2>32767) a2=32767;
-            else if(a2<-32768) a2=-32768;
-
-            if(a3>32767) a3=32767;
-            else if(a3<-32768) a3=-32768;
+            BLARGG_CLAMP16(a2);
+            BLARGG_CLAMP16(a3);
 
             aux2[ptr^S]=a2;
             aux3[ptr^S]=a3;
@@ -453,8 +448,7 @@ static void RESAMPLE (u32 inst1, u32 inst2) {
         temp = ((s32)*(s16*)(src+((srcPtr+3)^S))*((s32)((s16)lut[3])));
         accum += (s32)(temp >> 15);
 
-        if (accum > 32767) accum = 32767;
-        if (accum < -32768) accum = -32768;
+        BLARGG_CLAMP16(accum);
 
         dst[dstPtr^S] = (accum);
         dstPtr++;
@@ -683,8 +677,7 @@ static void ADPCM (u32 inst1, u32 inst2) { // Work in progress! :)
         for(j=0;j<8;j++)
         {
             a[j^S]>>=11;
-            if(a[j^S]>32767) a[j^S]=32767;
-            else if(a[j^S]<-32768) a[j^S]=-32768;
+            BLARGG_CLAMP16(a[j^S]);
             *(out++)=a[j^S];
         }
         l1=a[6];
@@ -753,8 +746,7 @@ static void ADPCM (u32 inst1, u32 inst2) { // Work in progress! :)
         for(j=0;j<8;j++)
         {
             a[j^S]>>=11;
-            if(a[j^S]>32767) a[j^S]=32767;
-            else if(a[j^S]<-32768) a[j^S]=-32768;
+            BLARGG_CLAMP16(a[j^S]);
             *(out++)=a[j^S];
         }
         l1=a[6];
@@ -888,10 +880,7 @@ static void MIXER (u32 inst1, u32 inst2) { // Fixed a sign issue... 03-14-01
         temp = (*(s16 *)(BufferSpace+dmemin+x) * gain) >> 15;
         temp += *(s16 *)(BufferSpace+dmemout+x);
 
-        if ((s32)temp > 32767)
-            temp = 32767;
-        if ((s32)temp < -32768)
-            temp = -32768;
+        BLARGG_CLAMP16(temp);
 
         *(u16 *)(BufferSpace+dmemout+x) = (u16)(temp & 0xFFFF);
     }
