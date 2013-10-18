@@ -43,6 +43,8 @@
 //
 //****************************************************************
 //*
+#include <stdint.h>
+
 #define CRC32_POLYNOMIAL     0x04C11DB7
 
 unsigned int CRCTable[ 256 ];
