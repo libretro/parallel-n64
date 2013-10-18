@@ -28,31 +28,31 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MUX_MASK_WITH_COMP  0x9F
 enum
 {
-    MUX_0 = 0,
-    MUX_1,
-    MUX_COMBINED,
-    MUX_TEXEL0,
-    MUX_TEXEL1,
-    MUX_PRIM,
-    MUX_SHADE,
-    MUX_ENV,
-    MUX_COMBALPHA,
-    MUX_T0_ALPHA,
-    MUX_T1_ALPHA,
-    MUX_PRIM_ALPHA,
-    MUX_SHADE_ALPHA,
-    MUX_ENV_ALPHA,
-    MUX_LODFRAC,
-    MUX_PRIMLODFRAC,
-    MUX_K5,
+    MUX_0              = 0,
+    MUX_1              = 1,
+    MUX_COMBINED       = 2,
+    MUX_TEXEL0         = 3,
+    MUX_TEXEL1         = 4,
+    MUX_PRIM           = 5,
+    MUX_SHADE          = 6,
+    MUX_ENV            = 7,
+    MUX_COMBALPHA      = 8,
+    MUX_T0_ALPHA       = 9,
+    MUX_T1_ALPHA       = 10,
+    MUX_PRIM_ALPHA     = 11,
+    MUX_SHADE_ALPHA    = 12,
+    MUX_ENV_ALPHA      = 13,
+    MUX_LODFRAC        = 14,
+    MUX_PRIMLODFRAC    = 15,
+    MUX_K5             = 16,
     MUX_UNK,            //Use this if you want to factor to be set to 0
 
     // Don't change value of these three flags, then need to be within 1 uint8
-    MUX_NEG             = 0x20, //Support by NVidia register combiner
+    MUX_NEG            = 0x20, //Support by NVidia register combiner
     MUX_ALPHAREPLICATE = 0x40,
-    MUX_COMPLEMENT = 0x80,
-    MUX_FORCE_0 = 0xFE,
-    MUX_ERR = 0xFF,
+    MUX_COMPLEMENT     = 0x80,
+    MUX_FORCE_0        = 0xFE,
+    MUX_ERR            = 0xFF,
 };
 
 
