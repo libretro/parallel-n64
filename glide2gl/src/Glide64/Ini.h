@@ -34,10 +34,8 @@
 //
 //****************************************************************
 
-//nmn: Fix for MAX_PATH
 #include <limits.h>
 #include <stdio.h>
-#include "winlnxdefs.h"
 
 int INI_Open ();
 void INI_Close ();

@@ -59,7 +59,7 @@ the plugin
 #ifndef _GFX_H_INCLUDED__
 #define _GFX_H_INCLUDED__
 
-#include "winlnxdefs.h"
+#include <stdint.h>
 #include "m64p.h"
 
 #include <stdio.h>

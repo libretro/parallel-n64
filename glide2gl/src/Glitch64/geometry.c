@@ -25,7 +25,6 @@
 #endif // _WIN32
 #include "glide.h"
 #include "main.h"
-#include "../Glide64/winlnxdefs.h"
 
 #define Z_MAX (65536.0f)
 #define VERTEX_SIZE sizeof(VERTEX) //Size of vertex struct

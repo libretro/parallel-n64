@@ -26,7 +26,6 @@
 #include "m64p_plugin.h"
 #include "m64p_config.h"
 #include "m64p_vidext.h"
-#include "winlnxdefs.h"
 #include <stdio.h>
 
 #define VIDEO_PLUGIN_API_VERSION	0x020100

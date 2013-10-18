@@ -22,14 +22,12 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "winlnxdefs.h"
 #include "m64p.h"
 
 int Config_Open();
 int Config_ReadScreenInt(const char *itemname);
 PackedScreenResolution Config_ReadScreenSettings();
 int Config_ReadInt(const char *itemname, const char *desc, int def_value, int create=TRUE, int isBoolean=TRUE);
-
 
 #endif /* CONFIG_H */
 
