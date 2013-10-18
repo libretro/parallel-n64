@@ -1,15 +1,17 @@
 DEBUG=0
 GLIDE2GL=1
 
+UNAME=$(shell uname -a)
+
 ifeq ($(platform),)
 platform = unix
-ifeq ($(shell uname -a),)
+ifeq ($(UNAME),)
    platform = win
-else ifneq ($(findstring MINGW,$(shell uname -a)),)
+else ifneq ($(findstring MINGW,$(UNAME)),)
    platform = win
-else ifneq ($(findstring Darwin,$(shell uname -a)),)
+else ifneq ($(findstring Darwin,$(UNAME)),)
    platform = osx
-else ifneq ($(findstring win,$(shell uname -a)),)
+else ifneq ($(findstring win,$(UNAME)),)
    platform = win
 endif
 endif
@@ -37,6 +39,12 @@ else ifneq (,$(findstring osx,$(platform)))
    CPPFLAGS += -D__MACOSX__
    GL_LIB := -framework OpenGL
    PLATFORM_EXT := unix
+ifeq ($(firstword $(filter x86_64,$(UNAME))),x86_64)
+	WITH_DYNAREC=x86
+endif
+ifeq ($(firstword $(filter amd64,$(UNAME))),amd64)
+	WITH_DYNAREC=x86_64
+endif
 else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    CPPFLAGS += -DIOS -marm
