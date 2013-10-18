@@ -21,7 +21,7 @@
 #define _RSP_H_
 
 #include "Rsp_#1.1.h"
-RSP_INFO RSP;
+static RSP_INFO RSP;
 #ifdef _MSC_VER
 inline int MessageBoxA(
     HWND hWnd, const char *lpText, const char *lpCaption, unsigned int uType)
