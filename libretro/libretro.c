@@ -158,7 +158,7 @@ static void setup_variables(void)
 {
    struct retro_variable variables[] = {
       { "mupen64-balanced-profile",
-         "Accuracy profile; no|yes" },
+         "Balanced profile; no|yes" },
       { "mupen64-cpucore",
 #ifdef DYNAREC
          "CPU Core; dynamic_recompiler|cached_interpreter|pure_interpreter" },
@@ -222,7 +222,7 @@ static void EmuThreadFunction()
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value
           && (strcmp(var.value, "yes") == 0))
     {
-       core_settings_set_preferred();
+       core_settings_set_balanced();
        setup_variables_balanced();
     }
 
@@ -363,7 +363,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    info->geometry.max_width = screen_width;
    info->geometry.max_height = screen_height;
    info->geometry.aspect_ratio = 0.0;
-   info->timing.fps = (region == SYSTEM_NTSC) ? 60.0 : 50;                // TODO: Actual timing 
+   info->timing.fps = (region == SYSTEM_PAL) ? 50.0 : 60;                // TODO: Actual timing 
    info->timing.sample_rate = 44100.0;
 }
 
