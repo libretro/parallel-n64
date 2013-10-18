@@ -69,24 +69,10 @@ static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
     printf("%s", buffer);
 }
 
-static void EmuThreadFunction()
+static m64p_rom_header romgame;
+
+static void core_settings_set_defaults()
 {
-    emu_thread_has_run = true;
-
-    if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0))
-    {
-        printf("mupen64plus: Failed to initialize core\n");
-    }
-
-    if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
-    {
-        printf("mupen64plus: Failed to load ROM\n");
-        goto load_fail;
-    }
-
-    free(game_data);
-    game_data = 0;
-
     /* Load GFX plugin core option */
     struct retro_variable gfx_var = { "mupen64-gfxplugin", 0 };
     environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
@@ -109,6 +95,135 @@ static void EmuThreadFunction()
     {
        if (rsp_var.value && strcmp(rsp_var.value, "cxd4") == 0)
           rsp_plugin = RSP_CXD4;
+    }
+}
+
+static void core_settings_set_preferred(void)
+{
+   struct retro_variable gfx_var = { "mupen64-gfxplugin", 0 };
+   struct retro_variable rsp_var = { "mupen64-rspplugin", 0 };
+
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
+
+   gfx_plugin = GFX_GLIDE64;
+   rsp_plugin = RSP_CXD4;
+
+   if (
+         (strcmp(romgame.Name, "Perfect Dark") == 0)
+      )
+   {
+      rsp_plugin = RSP_HLE;
+   }
+}
+
+static void setup_variables_balanced(void)
+{
+   struct retro_variable variables[] = {
+      { "mupen64-balanced-profile",
+         "Balanced profile; no|yes" },
+      { "mupen64-cpucore",
+#ifdef DYNAREC
+         "CPU Core; dynamic_recompiler|cached_interpreter|pure_interpreter" },
+#else
+         "CPU Core; cached_interpreter|pure_interpreter" },
+#endif
+      {"mupen64-pak1",
+        "Player 1 Pak; none|memory|rumble"},
+      {"mupen64-pak2",
+        "Player 2 Pak; none|memory|rumble"},
+      {"mupen64-pak3",
+        "Player 3 Pak; none|memory|rumble"},
+      {"mupen64-pak4",
+        "Player 4 Pak; none|memory|rumble"},
+      { "mupen64-disableexpmem",
+         "Disable Expansion RAM; no|yes" },
+      { "mupen64-gfxplugin",
+         "Graphics Plugin; auto (balanced)" },
+      { "mupen64-rspplugin",
+         "RSP Plugin; auto (balanced)" },
+      { "mupen64-screensize",
+         "Graphics Resolution; 640x480|1280x960|320x240" },
+      { "mupen64-filtering",
+         "Texture filtering; automatic|bilinear|nearest" },
+      { "mupen64-dupe",
+         "Frame duping; no|yes" },
+      { NULL, NULL },
+   };
+
+   environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
+}
+
+static void setup_variables(void)
+{
+   struct retro_variable variables[] = {
+      { "mupen64-balanced-profile",
+         "Accuracy profile; no|yes" },
+      { "mupen64-cpucore",
+#ifdef DYNAREC
+         "CPU Core; dynamic_recompiler|cached_interpreter|pure_interpreter" },
+#else
+         "CPU Core; cached_interpreter|pure_interpreter" },
+#endif
+      {"mupen64-pak1",
+        "Player 1 Pak; none|memory|rumble"},
+      {"mupen64-pak2",
+        "Player 2 Pak; none|memory|rumble"},
+      {"mupen64-pak3",
+        "Player 3 Pak; none|memory|rumble"},
+      {"mupen64-pak4",
+        "Player 4 Pak; none|memory|rumble"},
+      { "mupen64-disableexpmem",
+         "Disable Expansion RAM; no|yes" },
+      { "mupen64-gfxplugin",
+         "Graphics Plugin; gln64|glide64|rice" },
+      { "mupen64-rspplugin",
+         "RSP Plugin; hle|cxd4" },
+      { "mupen64-screensize",
+         "Graphics Resolution; 640x480|1280x960|320x240" },
+      { "mupen64-filtering",
+         "Texture filtering; automatic|bilinear|nearest" },
+      { "mupen64-dupe",
+         "Frame duping; no|yes" },
+      { NULL, NULL },
+   };
+
+   environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
+}
+
+static void EmuThreadFunction()
+{
+    emu_thread_has_run = true;
+
+    if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0))
+    {
+        printf("mupen64plus: Failed to initialize core\n");
+    }
+
+    if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
+    {
+        printf("mupen64plus: Failed to load ROM\n");
+        goto load_fail;
+    }
+
+    free(game_data);
+    game_data = 0;
+
+    if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(romgame), &romgame))
+    {
+       printf("mupen64plus; Failed to query ROM header information\n");
+       goto load_fail;
+    }
+
+    core_settings_set_defaults();
+
+    struct retro_variable var = { "mupen64-balanced-profile", 0 };
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value
+          && (strcmp(var.value, "yes") == 0))
+    {
+       core_settings_set_preferred();
+       setup_variables_balanced();
     }
 
     plugin_connect_all(gfx_plugin, rsp_plugin);
@@ -183,41 +298,12 @@ void retro_set_audio_sample_batch(retro_audio_sample_batch_t cb) { audio_batch_c
 void retro_set_input_poll(retro_input_poll_t cb) { poll_cb = cb; }
 void retro_set_input_state(retro_input_state_t cb) { input_cb = cb; }
 
+
 void retro_set_environment(retro_environment_t cb)
 {
    environ_cb = cb;
 
-   struct retro_variable variables[] = {
-      { "mupen64-cpucore",
-#ifdef DYNAREC
-         "CPU Core; dynamic_recompiler|cached_interpreter|pure_interpreter" },
-#else
-         "CPU Core; cached_interpreter|pure_interpreter" },
-#endif
-      {"mupen64-pak1",
-        "Player 1 Pak; none|memory|rumble"},
-      {"mupen64-pak2",
-        "Player 2 Pak; none|memory|rumble"},
-      {"mupen64-pak3",
-        "Player 3 Pak; none|memory|rumble"},
-      {"mupen64-pak4",
-        "Player 4 Pak; none|memory|rumble"},
-      { "mupen64-disableexpmem",
-         "Disable Expansion RAM; no|yes" },
-      { "mupen64-gfxplugin",
-         "Graphics Plugin; gln64|glide64|rice" },
-      { "mupen64-rspplugin",
-         "RSP Plugin; hle|cxd4" },
-      { "mupen64-screensize",
-         "Graphics Resolution; 640x480|1280x960|320x240" },
-      { "mupen64-filtering",
-         "Texture filtering; automatic|bilinear|nearest" },
-      { "mupen64-dupe",
-         "Frame duping; no|yes" },
-      { NULL, NULL },
-   };
-
-   cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
+   setup_variables();
 }
 
 void retro_get_system_info(struct retro_system_info *info)
@@ -229,12 +315,40 @@ void retro_get_system_info(struct retro_system_info *info)
    info->block_extract = false;
 }
 
+// Get the system type associated to a ROM country code.
+static m64p_system_type rom_country_code_to_system_type(unsigned short country_code)
+{
+    switch (country_code)
+    {
+        // PAL codes
+        case 0x44:
+        case 0x46:
+        case 0x49:
+        case 0x50:
+        case 0x53:
+        case 0x55:
+        case 0x58:
+        case 0x59:
+            return SYSTEM_PAL;
+
+        // NTSC codes
+        case 0x37:
+        case 0x41:
+        case 0x45:
+        case 0x4a:
+        default: // Fallback for unknown codes
+            return SYSTEM_NTSC;
+    }
+}
+
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
    // TODO
    struct retro_variable var = { "mupen64-screensize", 0 };
    screen_width = 640;
    screen_height = 480;
+   m64p_system_type region = rom_country_code_to_system_type(romgame.Country_code);
+
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       if (sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
@@ -249,7 +363,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    info->geometry.max_width = screen_width;
    info->geometry.max_height = screen_height;
    info->geometry.aspect_ratio = 0.0;
-   info->timing.fps = 60.0;                // TODO: NTSC/PAL + Actual timing 
+   info->timing.fps = (region == SYSTEM_NTSC) ? 60.0 : 50;                // TODO: Actual timing 
    info->timing.sample_rate = 44100.0;
 }
 
