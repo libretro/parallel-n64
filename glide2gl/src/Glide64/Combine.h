@@ -95,7 +95,6 @@ typedef struct
   uint32_t t1a_ext_a, t1a_ext_a_mode, t1a_ext_b, t1a_ext_b_mode, t1a_ext_c, t1a_ext_d;
   int  t1a_ext_c_invert, t1a_ext_d_invert;
   uint32_t tex_ccolor;  
-  int combine_ext;
   uint8_t cmb_ext_use;
   uint8_t tex_cmb_ext_use;
   uint32_t shade_mod_hash;  
