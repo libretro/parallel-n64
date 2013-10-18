@@ -26,6 +26,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MUX_MASK_WITH_ALPHA 0x5F
 #define MUX_MASK_WITH_NEG   0x3F
 #define MUX_MASK_WITH_COMP  0x9F
+
+// Combiner constants
 enum
 {
     MUX_0              = 0,
