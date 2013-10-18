@@ -56,10 +56,12 @@ static void alist_process(const acmd_callback_t abi[], unsigned int abi_size)
         {
             (*abi[acmd])(inst1, inst2);
         }
+#ifndef NDEBUG
         else
         {
-            rspDebugMessage(M64MSG_WARNING, "Invalid ABI command %u", acmd);
+            RSP_DEBUG_MESSAGE(M64MSG_WARNING, "Invalid ABI command %u", acmd);
         }
+#endif
     }
 }
 

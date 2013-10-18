@@ -175,7 +175,7 @@ void jpeg_decode_OB()
     const unsigned int macroblock_count = task->data_size;
     const int          qscale           = task->yield_data_size;
 
-    rspDebugMessage(M64MSG_VERBOSE, "jpeg_decode_OB: *buffer=%x, #MB=%d, qscale=%d",
+    RSP_DEBUG_MESSAGE(M64MSG_VERBOSE, "jpeg_decode_OB: *buffer=%x, #MB=%d, qscale=%d",
             address,
             macroblock_count,
             qscale);
@@ -223,7 +223,7 @@ static void jpeg_decode_std(const char * const version, const std_macroblock_dec
 
     if (task->flags & 0x1)
     {
-        rspDebugMessage(M64MSG_WARNING, "jpeg_decode_%s: task yielding not implemented", version);
+        RSP_DEBUG_MESSAGE(M64MSG_WARNING, "jpeg_decode_%s: task yielding not implemented", version);
         return;
     }
 
@@ -234,7 +234,7 @@ static void jpeg_decode_std(const char * const version, const std_macroblock_dec
     qtableU_ptr      = rdram_read_u32(task->data_ptr + 16);
     qtableV_ptr      = rdram_read_u32(task->data_ptr + 20);
 
-    rspDebugMessage(M64MSG_VERBOSE, "jpeg_decode_%s: *buffer=%x, #MB=%d, mode=%d, *Qy=%x, *Qu=%x, *Qv=%x",
+    RSP_DEBUG_MESSAGE(M64MSG_VERBOSE, "jpeg_decode_%s: *buffer=%x, #MB=%d, mode=%d, *Qy=%x, *Qu=%x, *Qv=%x",
             version,
             address,
             macroblock_count,
@@ -245,7 +245,7 @@ static void jpeg_decode_std(const char * const version, const std_macroblock_dec
 
     if (mode != 0 && mode != 2)
     {
-        rspDebugMessage(M64MSG_WARNING, "jpeg_decode_%s: invalid mode %d", version, mode);
+        RSP_DEBUG_MESSAGE(M64MSG_WARNING, "jpeg_decode_%s: invalid mode %d", version, mode);
         return;
     }
     
@@ -259,7 +259,7 @@ static void jpeg_decode_std(const char * const version, const std_macroblock_dec
     macroblock = malloc(sizeof(*macroblock) * macroblock_size);
     if (!macroblock)
     {
-        rspDebugMessage(M64MSG_WARNING, "jpeg_decode_%s: could not allocate macroblock", version);
+        RSP_DEBUG_MESSAGE(M64MSG_WARNING, "jpeg_decode_%s: could not allocate macroblock", version);
         return;
     }
 

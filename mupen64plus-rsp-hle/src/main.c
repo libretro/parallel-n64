@@ -169,7 +169,7 @@ static int try_fast_audio_dispatching()
              * GauntletLegend, Rush2049, IndianaJones, BattleForNaboo
              * TODO: implement ucode
              **/
-            rspDebugMessage(M64MSG_WARNING, "MusyX ucode not implemented.");
+            RSP_DEBUG_MESSAGE(M64MSG_WARNING, "MusyX ucode not implemented.");
             /* return 1; */
         }
         else
@@ -255,7 +255,7 @@ static void handle_unknown_task(unsigned int sum)
     char filename[256];
     const OSTask_t * const task = get_task();
 
-    rspDebugMessage(M64MSG_WARNING, "unknown OSTask: sum %x PC:%x", sum, *rspInfo.SP_PC_REG);
+    RSP_DEBUG_MESSAGE(M64MSG_WARNING, "unknown OSTask: sum %x PC:%x", sum, *rspInfo.SP_PC_REG);
 
     sprintf(&filename[0], "task_%x.log", sum);
     dump_task(filename, task);
@@ -290,7 +290,7 @@ static void handle_unknown_non_task(unsigned int sum)
 {
     char filename[256];
 
-    rspDebugMessage(M64MSG_WARNING, "unknown RSP code: sum: %x PC:%x", sum, *rspInfo.SP_PC_REG);
+    RSP_DEBUG_MESSAGE(M64MSG_WARNING, "unknown RSP code: sum: %x PC:%x", sum, *rspInfo.SP_PC_REG);
 
     // dump IMEM & DMEM for further analysis
     sprintf(&filename[0], "imem_%x.bin", sum);
@@ -300,23 +300,6 @@ static void handle_unknown_non_task(unsigned int sum)
     dump_binary(filename, rspInfo.DMEM, 0x1000);
 }
 
-
-/* Global functions */
-void rspDebugMessage(int level, const char *message, ...)
-{
-    char msgbuf[1024];
-    va_list args;
-
-    if (l_DebugCallback == NULL)
-        return;
-
-    va_start(args, message);
-    vsprintf(msgbuf, message, args);
-
-    (*l_DebugCallback)(l_DebugCallContext, level, msgbuf);
-
-    va_end(args);
-}
 
 /* DLL-exported functions */
 EXPORT m64p_error CALL rspPluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
@@ -428,14 +411,16 @@ static void dump_binary(const char * const filename, const unsigned char * const
         if (f != NULL) {
             if (fwrite(bytes, 1, size, f) != size)
             {
-                rspDebugMessage(M64MSG_ERROR, "Writing error on %s", filename);
+                RSP_DEBUG_MESSAGE(M64MSG_ERROR, "Writing error on %s", filename);
             }
             fclose(f);
         }
+#ifndef DEBUG
         else
         {
-            rspDebugMessage(M64MSG_ERROR, "Couldn't open %s for writing !", filename);
+            RSP_DEBUG_MESSAGE(M64MSG_ERROR, "Couldn't open %s for writing !", filename);
         }
+#endif
     }
     else
     {

@@ -83,7 +83,11 @@ static inline const OSTask_t * const get_task()
     return (OSTask_t*)(rspInfo.DMEM + 0xfc0);
 }
 
-void rspDebugMessage(int level, const char *message, ...);
+#ifdef LOG_RSP_DEBUG_MESSAGE
+#define RSP_DEBUG_MESSAGE(level, format, ...) fprintf(stderr, format, __VA_ARGS__)
+#else
+#define RSP_DEBUG_MESSAGE(level, format, ...) (void)0
+#endif
 
 #define BLARGG_CLAMP16(io) \
    if ((s16)io != io) \

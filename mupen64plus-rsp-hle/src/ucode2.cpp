@@ -32,7 +32,7 @@ extern "C" {
 extern u8 BufferSpace[0x10000];
 
 static void SPNOOP (u32 inst1, u32 inst2) {
-    rspDebugMessage(M64MSG_ERROR, "Unknown/Unimplemented Audio Command %i in ABI 2", (int)(inst1 >> 24));
+    RSP_DEBUG_MESSAGE(M64MSG_ERROR, "Unknown/Unimplemented Audio Command %i in ABI 2", (int)(inst1 >> 24));
 }
 extern u16 AudioInBuffer;       // 0x0000(T8)
 extern u16 AudioOutBuffer;      // 0x0002(T8)

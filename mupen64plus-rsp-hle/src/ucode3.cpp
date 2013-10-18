@@ -31,7 +31,7 @@ extern "C" {
 
 /*
 static void SPNOOP (u32 inst1, u32 inst2) {
-    rspDebugMessage(M64MSG_ERROR, "Unknown/Unimplemented Audio Command %i in ABI 3", (int)(inst1 >> 24));
+    RSP_DEBUG_MESSAGE(M64MSG_ERROR, "Unknown/Unimplemented Audio Command %i in ABI 3", (int)(inst1 >> 24));
 }
 */
 
