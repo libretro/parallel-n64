@@ -330,7 +330,7 @@ void COGL_FragmentProgramCombiner::DisableCombiner(void)
 void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
 {
     m_pOGLRender->DisableMultiTexture();
-    m_pOGLRender->EnableTexUnit(0,TRUE);
+    m_pOGLRender->EnableTexUnit(0, true);
     glUseProgram(copyProgram);
     glUniform1f(copyAlphaLocation,m_AlphaRef);
     OPENGL_CHECK_ERRORS;

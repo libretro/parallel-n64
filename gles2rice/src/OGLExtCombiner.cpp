@@ -136,13 +136,13 @@ void COGLColorCombiner4::InitCombinerCycleFill(void)
     {
         pglActiveTexture(GL_TEXTURE0_ARB+i);
         OPENGL_CHECK_ERRORS;
-        m_pOGLRender->EnableTexUnit(i,FALSE);
+        m_pOGLRender->EnableTexUnit(i, false);
     }
 
     //pglActiveTexture(GL_TEXTURE0_ARB);
-    //m_pOGLRender->EnableTexUnit(0,FALSE);
+    //m_pOGLRender->EnableTexUnit(0, false);
     //pglActiveTexture(GL_TEXTURE1_ARB);
-    //m_pOGLRender->EnableTexUnit(1,FALSE);
+    //m_pOGLRender->EnableTexUnit(1, false);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -969,7 +969,7 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
     {
         pglActiveTexture(GL_TEXTURE0_ARB+i);
         OPENGL_CHECK_ERRORS;
-        m_pOGLRender->EnableTexUnit(i,TRUE);
+        m_pOGLRender->EnableTexUnit(i, true);
         glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE_ARB);
         OPENGL_CHECK_ERRORS;
         ApplyFor1Unit(res.units[i]);
@@ -982,7 +982,7 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
             pglActiveTexture(GL_TEXTURE0_ARB+i);
             OPENGL_CHECK_ERRORS;
             m_pOGLRender->DisBindTexture(0, i);
-            m_pOGLRender->EnableTexUnit(i,FALSE);
+            m_pOGLRender->EnableTexUnit(i, false);
         }
     }
 }
@@ -1054,7 +1054,7 @@ void COGLColorCombiner4v2::GenerateCombinerSettingConstants(int index)
         // Set Texture unit 2 to ENV
         pglActiveTexture(GL_TEXTURE2_ARB);
         OPENGL_CHECK_ERRORS;
-        prender->EnableTexUnit(2,TRUE);
+        prender->EnableTexUnit(2, true);
         TxtrCacheEntry *pEntry = gTextureManager.GetConstantColorTexture(MUX_ENV);
         prender->SetCurrentTexture( (gRSP.curTile+2)%7, pEntry->pTexture, 4, 4, pEntry);
         prender->SetTexelRepeatFlags((gRSP.curTile+2)%7);
@@ -1069,7 +1069,7 @@ void COGLColorCombiner4v2::GenerateCombinerSettingConstants(int index)
         // Set Texture unit 3 to LODFRAC
         pglActiveTexture(GL_TEXTURE0_ARB+unit);
         OPENGL_CHECK_ERRORS;
-        prender->EnableTexUnit(unit,TRUE);
+        prender->EnableTexUnit(unit, true);
         TxtrCacheEntry *pEntry = gTextureManager.GetConstantColorTexture(MUX_LODFRAC);
         prender->SetCurrentTexture( (gRSP.curTile+unit)%7, pEntry->pTexture, 4, 4, pEntry);
         prender->SetTexelRepeatFlags((gRSP.curTile+unit)%7);
@@ -1083,7 +1083,7 @@ void COGLColorCombiner4v2::GenerateCombinerSettingConstants(int index)
         // Disable texture unit 3
         pglActiveTexture(GL_TEXTURE0_ARB+unit);
         OPENGL_CHECK_ERRORS;
-        prender->EnableTexUnit(unit,FALSE);
+        prender->EnableTexUnit(unit, false);
         prender->SetTextureToTextureUnitMap(-1,unit);
     }
 }
@@ -1223,16 +1223,16 @@ void COGLColorCombiner2::GenerateCombinerSetting(int index)
         //if(res.units[i].textureIsUsed)
         {
             prender->SetTextureToTextureUnitMap(res.units[i].tex,i);
-            m_pOGLRender->EnableTexUnit(i,TRUE);
+            m_pOGLRender->EnableTexUnit(i, true);
             COGLTexture* pTexture = g_textures[(gRSP.curTile+res.units[i].tex)&7].m_pCOGLTexture;
             if( pTexture )  m_pOGLRender->BindTexture(pTexture->m_dwTextureName, i);
         }
         /*
         else
         {
-            m_pOGLRender->EnableTexUnit(i,TRUE);
+            m_pOGLRender->EnableTexUnit(i, true);
             prender->SetTextureToTextureUnitMap(-1,i);
-            //m_pOGLRender->EnableTexUnit(i,FALSE);
+            //m_pOGLRender->EnableTexUnit(i, false);
             //m_pOGLRender->DisBindTexture(0, i);
         }
         */
@@ -1248,7 +1248,7 @@ void COGLColorCombiner2::GenerateCombinerSetting(int index)
         {
             pglActiveTextureARB(GL_TEXTURE0_ARB+i);
             OPENGL_CHECK_ERRORS;
-            m_pOGLRender->EnableTexUnit(i,FALSE);
+            m_pOGLRender->EnableTexUnit(i, false);
             prender->SetTextureToTextureUnitMap(-1,i);
         }
     }

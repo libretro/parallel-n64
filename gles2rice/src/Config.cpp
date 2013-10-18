@@ -1159,7 +1159,7 @@ void WriteIniFile()
             nextline++;
         if (thisline[0] == '{')
         {
-            BOOL bFound = FALSE;
+            bool bFound = false;
             // Start of section
             tidy((char*) thisline);
             thisline[strlen(thisline) - 1] = '\0';
@@ -1172,7 +1172,7 @@ void WriteIniFile()
                     // Output this CRC
                     OutputSectionDetails(i, fhOut);
                     IniSections[i].bOutput = true;
-                    bFound = TRUE;
+                    bFound = true;
                     break;
                 }
             }

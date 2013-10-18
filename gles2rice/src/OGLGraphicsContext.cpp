@@ -58,7 +58,7 @@ COGLGraphicsContext::~COGLGraphicsContext()
 {
 }
 
-bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed )
+bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed )
 {
     DebugMessage(M64MSG_INFO, "Initializing OpenGL Device Context.");
     Lock();
@@ -168,7 +168,7 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWind
     return true;
 }
 
-bool COGLGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed )
+bool COGLGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed )
 {
     Lock();
 

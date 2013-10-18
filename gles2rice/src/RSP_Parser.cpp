@@ -781,7 +781,6 @@ extern bool bHalfTxtScale;
 void DLParser_Process(OSTask * pTask)
 {
     static int skipframe=0;
-    //BOOL menuWaiting = FALSE;
 
     dlistMtxCount = 0;
     bHalfTxtScale = false;
@@ -946,6 +945,7 @@ void RDP_NOIMPL_WARN(const char* op)
 
 void RSP_GBI1_Noop(Gfx *gfx)
 {
+    // Do nothing. (It is a no-op after all).
 }
 
 
@@ -980,8 +980,8 @@ void RSP_GFX_InitGeometryMode()
     }
     CRender::g_pRender->SetCullMode(bCullFront, bCullBack);
     
-    BOOL bShade         = (gRDP.geometryMode & G_SHADE) ? TRUE : FALSE;
-    BOOL bShadeSmooth   = (gRDP.geometryMode & G_SHADING_SMOOTH) ? TRUE : FALSE;
+    bool bShade         = (gRDP.geometryMode & G_SHADE) ? true : false;
+    bool bShadeSmooth   = (gRDP.geometryMode & G_SHADING_SMOOTH) ? true : false;
     if (bShade && bShadeSmooth)     CRender::g_pRender->SetShadeMode( SHADE_SMOOTH );
     else                            CRender::g_pRender->SetShadeMode( SHADE_FLAT );
     

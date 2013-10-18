@@ -98,7 +98,7 @@ void COGLColorCombiner::DisableCombiner(void)
         COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
         if( pTexture ) 
         {
-            m_pOGLRender->EnableTexUnit(0,TRUE);
+            m_pOGLRender->EnableTexUnit(0, true);
             m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
             glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
             OPENGL_CHECK_ERRORS;
@@ -115,14 +115,14 @@ void COGLColorCombiner::DisableCombiner(void)
     {
         glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
         OPENGL_CHECK_ERRORS;
-        m_pOGLRender->EnableTexUnit(0,FALSE);
+        m_pOGLRender->EnableTexUnit(0, false);
     }
 }
 
 void COGLColorCombiner::InitCombinerCycleCopy(void)
 {
     m_pOGLRender->DisableMultiTexture();
-    m_pOGLRender->EnableTexUnit(0,TRUE);
+    m_pOGLRender->EnableTexUnit(0, true);
     COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
     if( pTexture )
     {
@@ -143,7 +143,7 @@ void COGLColorCombiner::InitCombinerCycleCopy(void)
 void COGLColorCombiner::InitCombinerCycleFill(void)
 {
     m_pOGLRender->DisableMultiTexture();
-    m_pOGLRender->EnableTexUnit(0,FALSE);
+    m_pOGLRender->EnableTexUnit(0, false);
 }
 
 
@@ -154,7 +154,7 @@ void COGLColorCombiner::InitCombinerCycle12(void)
     {
         glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
         OPENGL_CHECK_ERRORS;
-        m_pOGLRender->EnableTexUnit(0,FALSE);
+        m_pOGLRender->EnableTexUnit(0, false);
         return;
     }
 
@@ -163,7 +163,7 @@ void COGLColorCombiner::InitCombinerCycle12(void)
     COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
     if( pTexture )
     {
-        m_pOGLRender->EnableTexUnit(0,TRUE);
+        m_pOGLRender->EnableTexUnit(0, true);
         m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
         m_pOGLRender->SetAllTexelRepeatFlag();
     }
@@ -325,7 +325,7 @@ void COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32 tile)
     m_pOGLRender->DisableMultiTexture();
     if( g_textures[tile].m_pCTexture )
     {
-        m_pOGLRender->EnableTexUnit(0,TRUE);
+        m_pOGLRender->EnableTexUnit(0, true);
         glBindTexture(GL_TEXTURE_2D, ((COGLTexture*)(g_textures[tile].m_pCTexture))->m_dwTextureName);
         OPENGL_CHECK_ERRORS;
     }

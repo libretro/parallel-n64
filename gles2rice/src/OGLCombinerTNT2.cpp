@@ -210,7 +210,7 @@ void COGLColorCombinerTNT2::GenerateCombinerSetting(int index)
     // Texture unit 0
     pglActiveTexture(GL_TEXTURE0_ARB);
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE4_NV);
-    m_pOGLRender->EnableTexUnit(0,TRUE);
+    m_pOGLRender->EnableTexUnit(0, true);
     glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB_ARB, res.unit1.rgbOp);
     glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA_ARB, res.unit1.alphaOp);
 
@@ -286,11 +286,11 @@ void COGLColorCombinerTNT2::GenerateCombinerSetting(int index)
         glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE3_ALPHA_EXT, MapRGBArgs(res.unit2.alphaArg3));
         glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND3_ALPHA_EXT, MapAlphaArgFlags(res.unit2.alphaArg3));
 
-        m_pOGLRender->EnableTexUnit(1,TRUE);
+        m_pOGLRender->EnableTexUnit(1, true);
     }
     else
     {
-        //m_pOGLRender->EnableTexUnit(1,FALSE);
+        //m_pOGLRender->EnableTexUnit(1, false);
     }
 }
 
