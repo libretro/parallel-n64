@@ -618,13 +618,12 @@ void RSP_Tri4_PD(Gfx *gfx)
         uint32 dwFlag = (w0>>16)&0xFF;
         LOG_UCODE("    PD Tri4: 0x%08x 0x%08x Flag: 0x%02x", w0, w1, dwFlag);
 
-        BOOL bVisible;
         for( uint32 i=0; i<4; i++)
         {
             uint32 v0 = (w1>>(4+(i<<3))) & 0xF;
             uint32 v1 = (w1>>(  (i<<3))) & 0xF;
             uint32 v2 = (w0>>(  (i<<2))) & 0xF;
-            bVisible = IsTriangleVisible(v0, v2, v1);
+            bool bVisible = IsTriangleVisible(v0, v2, v1);
             LOG_UCODE("       (%d, %d, %d) %s", v0, v1, v2, bVisible ? "": "(clipped)");
             if (bVisible)
             {

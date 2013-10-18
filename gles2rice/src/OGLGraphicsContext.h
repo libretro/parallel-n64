@@ -29,8 +29,8 @@ class COGLGraphicsContext : public CGraphicsContext
 public:
     virtual ~COGLGraphicsContext();
 
-    bool Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed );
-    bool ResizeInitialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed );
+    bool Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed );
+    bool ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed );
     void CleanUp();
     void Clear(ClearFlag dwFlags, uint32 color=0xFF000000, float depth=1.0f);
 

@@ -57,15 +57,15 @@ void CGraphicsContext::InitWindowInfo()
 {
 }
 
-bool CGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed)
+bool CGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed)
 {
-    m_bWindowed = (bWindowed != 0);
+    m_bWindowed = bWindowed;
 
     g_pFrameBufferManager->Initialize();
     return true;
 }
 
-bool CGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, BOOL bWindowed )
+bool CGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed )
 {
     return true;
 }

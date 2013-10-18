@@ -793,7 +793,7 @@ void EnhanceTexture(TxtrCacheEntry *pEntry)
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
-void MirrorEmulator_DrawLine(DrawInfo& destInfo, DrawInfo& srcInfo, uint32 *pSource, uint32 *pDest, uint32 nWidth, BOOL bFlipLeftRight)
+void MirrorEmulator_DrawLine(DrawInfo& destInfo, DrawInfo& srcInfo, uint32 *pSource, uint32 *pDest, uint32 nWidth, bool bFlipLeftRight)
 {
     if(!bFlipLeftRight)
     {
@@ -811,7 +811,7 @@ void MirrorEmulator_DrawLine(DrawInfo& destInfo, DrawInfo& srcInfo, uint32 *pSou
 }
 
 
-void MirrorEmulator_Draw(DrawInfo& destInfo, DrawInfo& srcInfo, uint32 nDestX, uint32 nDestY, BOOL bFlipLeftRight, BOOL bFlipUpDown)
+void MirrorEmulator_Draw(DrawInfo& destInfo, DrawInfo& srcInfo, uint32 nDestX, uint32 nDestY, bool bFlipLeftRight, bool bFlipUpDown)
 {
     uint8 *pDest = (uint8 *) destInfo.lpSurface + (destInfo.lPitch * nDestY) + (4 * nDestX);
     uint8 *pMaxDest = pDest + (destInfo.lPitch * srcInfo.dwHeight);
@@ -1000,15 +1000,15 @@ int GetImageInfoFromFile(char* pSrcFile, IMAGE_INFO *pSrcInfo)
     return 1;
 }
 
-BOOL PathFileExists(char* pszPath)
+bool PathFileExists(char* pszPath)
 {
     FILE *f = fopen(pszPath, "rb");
     if(f != NULL)
     {
         fclose(f);
-        return TRUE;
+        return true;
     }
-    return FALSE;
+    return false;
 }
 
 /********************************************************************************************************************
