@@ -534,28 +534,6 @@ static void CopyFrameBuffer (GrBuffer_t buffer = GR_BUFFER_BACKBUFFER)
   }
 }
 
-class SoftLocker
-{
-public:
-  // lock the mutex in the ctor
-  SoftLocker(SDL_sem *mutex)
-    : _isOk(false), _mutex(mutex)
-  { _isOk = ( SDL_SemTryWait(_mutex) == 0 ); }
-
-  // returns true if mutex was successfully locked in ctor
-  bool IsOk() const
-  { return _isOk; }
-
-  // unlock the mutex in dtor
-  ~SoftLocker()
-  { if ( IsOk() ) SDL_SemPost(_mutex); }
-
-private:
-  bool     _isOk;
-  SDL_sem *_mutex;
-};
-
-
 /******************************************************************
 Function: ProcessDList
 Purpose:  This function is called when there is a Dlist to be
@@ -583,14 +561,16 @@ extern "C" {
 
 EXPORT void CALL ProcessDList(void)
 {
-  SoftLocker lock(mutexProcessDList);
-  if (!lock.IsOk()) //mutex is busy
+  bool lock = SDL_SemTryWait(mutexProcessDList) == 0;
+  if (!lock) //mutex is busy
   {
     // Set an interrupt to allow the game to continue
     *gfx.MI_INTR_REG |= 0x20;
     gfx.CheckInterrupts();
     return;
   }
+
+  SDL_SemPost(mutexProcessDList);
 
   no_dlist = false;
   update_screen_count = 0;
@@ -3945,14 +3925,16 @@ EXPORT void CALL ProcessRDPList(void)
   LRDP("ProcessRDPList ()\n");
 #endif
 
-  SoftLocker lock(mutexProcessDList);
-  if (!lock.IsOk()) //mutex is busy
+  bool lock = SDL_SemTryWait(mutexProcessDList) == 0;
+  if (!lock) //mutex is busy
   {
     // Set an interrupt to allow the game to continue
     *gfx.MI_INTR_REG |= 0x20;
     gfx.CheckInterrupts();
     return;
   }
+
+  SDL_SemPost(mutexProcessDList);
 
   uint32_t i;
   uint32_t cmd, length, cmd_length;
