@@ -178,7 +178,7 @@ void COGLExtRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32 dwTile)
             COGLTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCOGLTexture;
             if( pTexture ) 
             {
-                EnableTexUnit(textureNo,TRUE);
+                EnableTexUnit(textureNo, true);
                 BindTexture(pTexture->m_dwTextureName, textureNo);
             }
             SetTexWrapS(textureNo, OGLXUVFlagMaps[dwFlag].realFlag);
@@ -219,7 +219,7 @@ void COGLExtRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32 dwTile)
             COGLTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCOGLTexture;
             if( pTexture )
             {
-                EnableTexUnit(textureNo,TRUE);
+                EnableTexUnit(textureNo, true);
                 BindTexture(pTexture->m_dwTextureName, textureNo);
             }
             SetTexWrapT(textureNo, OGLXUVFlagMaps[dwFlag].realFlag);
@@ -227,14 +227,14 @@ void COGLExtRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32 dwTile)
     }
 }
 
-void COGLExtRender::EnableTexUnit(int unitno, BOOL flag)
+void COGLExtRender::EnableTexUnit(int unitno, bool flag)
 {
     if( m_texUnitEnabled[unitno] != flag )
     {
         m_texUnitEnabled[unitno] = flag;
         pglActiveTexture(GL_TEXTURE0_ARB+unitno);
         OPENGL_CHECK_ERRORS;
-        if( flag == TRUE )
+        if( flag )
             glEnable(GL_TEXTURE_2D);
         else
             glDisable(GL_TEXTURE_2D);

@@ -540,7 +540,7 @@ void OGLRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32 dwTile)
         COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
         if( pTexture )
         {
-            EnableTexUnit(0,TRUE);
+            EnableTexUnit(0, true);
             BindTexture(pTexture->m_dwTextureName, 0);
         }
         SetTexWrapS(0, OGLXUVFlagMaps[dwFlag].realFlag);
@@ -554,7 +554,7 @@ void OGLRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32 dwTile)
         COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
         if( pTexture ) 
         {
-            EnableTexUnit(0,TRUE);
+            EnableTexUnit(0, true);
             BindTexture(pTexture->m_dwTextureName, 0);
         }
         SetTexWrapT(0, OGLXUVFlagMaps[dwFlag].realFlag);
@@ -961,7 +961,7 @@ void OGLRender::DrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColo
 void OGLRender::InitCombinerBlenderForSimpleRectDraw(uint32 tile)
 {
     //glEnable(GL_CULL_FACE);
-    EnableTexUnit(0,FALSE);
+    EnableTexUnit(0, false);
     OPENGL_CHECK_ERRORS;
     glEnable(GL_BLEND);
     OPENGL_CHECK_ERRORS;
@@ -1061,23 +1061,23 @@ void OGLRender::BindTexture(GLuint texture, int unitno)
 
 void OGLRender::DisBindTexture(GLuint texture, int unitno)
 {
-    //EnableTexUnit(0,FALSE);
+    //EnableTexUnit(0, false);
     //glBindTexture(GL_TEXTURE_2D, 0);  //Not to bind any texture
 }
 
-void OGLRender::EnableTexUnit(int unitno, BOOL flag)
+void OGLRender::EnableTexUnit(int unitno, bool flag)
 {
 #ifdef DEBUGGER
     if( unitno != 0 )
     {
-        DebuggerAppendMsg("Check me, in the base ogl render, unitno!=0");
+        DebuggerAppendMsg("Check me, in the base OpenGL render, unitno!=0");
     }
 #endif
     if( m_texUnitEnabled[0] != flag )
     {
         m_texUnitEnabled[0] = flag;
 #if SDL_VIDEO_OPENGL
-        if( flag == TRUE )
+        if( flag )
             glEnable(GL_TEXTURE_2D);
         else
             glDisable(GL_TEXTURE_2D);
@@ -1131,7 +1131,8 @@ void OGLRender::UpdateScissor()
 
 void OGLRender::ApplyRDPScissor(bool force)
 {
-    if( !force && status.curScissor == RDP_SCISSOR )    return;
+    if( !force && status.curScissor == RDP_SCISSOR )
+        return;
 
     if( options.bEnableHacks && g_CI.dwWidth == 0x200 && gRDP.scissor.right == 0x200 && g_CI.dwWidth>(*g_GraphicsInfo.VI_WIDTH_REG & 0xFFF) )
     {
@@ -1156,7 +1157,8 @@ void OGLRender::ApplyRDPScissor(bool force)
 
 void OGLRender::ApplyScissorWithClipRatio(bool force)
 {
-    if( !force && status.curScissor == RSP_SCISSOR )    return;
+    if( !force && status.curScissor == RSP_SCISSOR )
+        return;
 
     glEnable(GL_SCISSOR_TEST);
     OPENGL_CHECK_ERRORS;
@@ -1247,13 +1249,13 @@ void OGLRender::DisableMultiTexture()
 {
     pglActiveTexture(GL_TEXTURE1_ARB);
     OPENGL_CHECK_ERRORS;
-    EnableTexUnit(1,FALSE);
+    EnableTexUnit(1, false);
     pglActiveTexture(GL_TEXTURE0_ARB);
     OPENGL_CHECK_ERRORS;
-    EnableTexUnit(0,FALSE);
+    EnableTexUnit(0, false);
     pglActiveTexture(GL_TEXTURE0_ARB);
     OPENGL_CHECK_ERRORS;
-    EnableTexUnit(0,TRUE);
+    EnableTexUnit(0, true);
 }
 
 void OGLRender::EndRendering(void)
