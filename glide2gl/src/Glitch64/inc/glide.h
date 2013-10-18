@@ -59,10 +59,7 @@ typedef FxU32 GrStipplePattern_t;
 typedef FxU8  GrFog_t;
 typedef FxU32 GrContext_t;
 typedef int (FX_CALL *GrProc)();
-
-#ifndef WIN32
 typedef int HWND;
-#endif
 
 /*
 ** -----------------------------------------------------------------------
