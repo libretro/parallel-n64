@@ -331,7 +331,7 @@ EXPORT m64p_error CALL rspPluginShutdown(void)
     return M64ERR_SUCCESS;
 }
 
-EXPORT m64p_error CALL rspPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+EXPORT m64p_error CALL hlePluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
     /* set version info */
     if (PluginType != NULL)
@@ -354,7 +354,7 @@ EXPORT m64p_error CALL rspPluginGetVersion(m64p_plugin_type *PluginType, int *Pl
     return M64ERR_SUCCESS;
 }
 
-EXPORT unsigned int CALL rspDoRspCycles(unsigned int Cycles)
+EXPORT unsigned int CALL hleDoRspCycles(unsigned int Cycles)
 {
     if (is_task())
     {
@@ -370,12 +370,12 @@ EXPORT unsigned int CALL rspDoRspCycles(unsigned int Cycles)
     return Cycles;
 }
 
-EXPORT void CALL rspInitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
+EXPORT void CALL hleInitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
 {
     rspInfo = Rsp_Info;
 }
 
-EXPORT void CALL rspRomClosed(void)
+EXPORT void CALL hleRomClosed(void)
 {
     memset(rspInfo.DMEM, 0, 0x1000);
     memset(rspInfo.IMEM, 0, 0x1000);

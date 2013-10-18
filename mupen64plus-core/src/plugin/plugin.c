@@ -228,19 +228,23 @@ static m64p_error plugin_start_input(void)
 }
 
 /* RSP */
-extern m64p_error rspPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion,
-                                            int *APIVersion, const char **PluginNamePtr, int *Capabilities);
-extern unsigned int rspDoRspCycles(unsigned int Cycles);
-extern void rspInitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount);
-extern void rspRomClosed(void);
+#define DEFINE_RSP(X) \
+    EXPORT m64p_error CALL X##PluginGetVersion(m64p_plugin_type *, int *, int *, const char **, int *); \
+    EXPORT unsigned int CALL X##DoRspCycles(unsigned int Cycles); \
+    EXPORT void CALL X##InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount); \
+    EXPORT void CALL X##RomClosed(void); \
+    \
+    static const rsp_plugin_functions rsp_##X = { \
+        X##PluginGetVersion, \
+        X##DoRspCycles, \
+        X##InitiateRSP, \
+        X##RomClosed \
+    }
 
-rsp_plugin_functions rsp = {
-    rspPluginGetVersion,
-    rspDoRspCycles,
-    rspInitiateRSP,
-    rspRomClosed
-};
+DEFINE_RSP(hle);
+DEFINE_RSP(cxd4);
 
+rsp_plugin_functions rsp;
 static RSP_INFO rsp_info;
 
 static m64p_error plugin_start_rsp(void)
@@ -280,13 +284,19 @@ static m64p_error plugin_start_rsp(void)
 }
 
 /* global functions */
-void plugin_connect_all(enum gfx_plugin_type gfx_plugin)
+void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rsp_plugin)
 {
     switch (gfx_plugin)
     {
         case GFX_RICE:  gfx = gfx_rice; break;
         case GFX_GLN64: gfx = gfx_gln64; break;
         default:        gfx = gfx_glide64; break;
+    }
+
+    switch (rsp_plugin)
+    {
+        case RSP_CXD4: rsp = rsp_cxd4; break;
+        default:       rsp = rsp_hle; break;
     }
 
     plugin_start_gfx();

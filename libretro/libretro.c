@@ -46,6 +46,7 @@ static uint8_t* game_data;
 static uint32_t game_size;
 
 static enum gfx_plugin_type gfx_plugin;
+static enum rsp_plugin_type rsp_plugin;
 static uint32_t screen_width;
 static uint32_t screen_height;
 
@@ -87,19 +88,30 @@ static void EmuThreadFunction()
     game_data = 0;
 
     /* Load GFX plugin core option */
-    struct retro_variable var = { "mupen64-gfxplugin", 0 };
-    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+    struct retro_variable gfx_var = { "mupen64-gfxplugin", 0 };
+    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
 
     gfx_plugin = GFX_GLN64;
-    if (var.value)
+    if (gfx_var.value)
     {
-       if (var.value && strcmp(var.value, "rice") == 0)
+       if (gfx_var.value && strcmp(gfx_var.value, "rice") == 0)
           gfx_plugin = GFX_RICE;
-       else if(var.value && strcmp(var.value, "glide64") == 0)
+       else if(gfx_var.value && strcmp(gfx_var.value, "glide64") == 0)
           gfx_plugin = GFX_GLIDE64;
     }
 
-    plugin_connect_all(gfx_plugin);
+    /* Load RSP plugin core option */
+    struct retro_variable rsp_var = { "mupen64-rspplugin", 0 };
+    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
+
+    rsp_plugin = RSP_HLE;
+    if (rsp_var.value)
+    {
+       if (rsp_var.value && strcmp(rsp_var.value, "cxd4") == 0)
+          rsp_plugin = RSP_CXD4;
+    }
+
+    plugin_connect_all(gfx_plugin, rsp_plugin);
 
     CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
 
@@ -194,6 +206,8 @@ void retro_set_environment(retro_environment_t cb)
          "Disable Expansion RAM; no|yes" },
       { "mupen64-gfxplugin",
          "Graphics Plugin; gln64|glide64|rice" },
+      { "mupen64-rspplugin",
+         "RSP Plugin; hle|cxd4" },
       { "mupen64-screensize",
          "Graphics Resolution; 640x480|1280x960|320x240" },
       { "mupen64-filtering",

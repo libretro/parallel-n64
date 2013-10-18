@@ -124,10 +124,14 @@ endif
 # libco
 CFILES += libretro/libco/libco.c
 
-# RSP Plugin
+# RSP Plugins
 RSPDIR = mupen64plus-rsp-hle
 CFILES += $(wildcard $(RSPDIR)/src/*.c)
 CXXFILES += $(wildcard $(RSPDIR)/src/*.cpp)
+
+CXB4DIR = mupen64plus-rsp-cxd4
+CFILES += $(wildcard $(CXB4DIR)/*.c)
+CXXFILES += $(wildcard $(CXB4DIR)/*.cpp)
 
 # Core
 COREDIR = mupen64plus-core
@@ -236,7 +240,7 @@ CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
 
 ### Finalize ###
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
-CPPFLAGS   += -D__LIBRETRO__ -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
+CPPFLAGS   += -D__LIBRETRO__ -DM64P_PLUGIN_API -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
 CPPFLAGS   += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE $(fpic)
 CFLAGS     += -std=gnu99
 LDFLAGS    += -lm $(fpic) -lz
