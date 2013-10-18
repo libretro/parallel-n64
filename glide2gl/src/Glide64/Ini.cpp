@@ -56,7 +56,9 @@
 #endif
 
 #ifdef _WIN32
+#ifndef PATH_MAX
 #define PATH_MAX _MAX_PATH
+#endif
 #endif
 
 FILE *ini;
@@ -66,6 +68,40 @@ int last_line_ret;  // last line ended in return?
 uint16_t cr = 0x0A0D;
 static char configdir[PATH_MAX] = {0};
 
+#ifdef _WIN32
+#include <windows.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <errno.h>
+
+static int ftruncate (int fd, off_t size)
+{
+   HANDLE hfile;
+   unsigned int curpos;
+   if (fd < 0)
+      return -1;
+   hfile = (HANDLE) _get_osfhandle (fd);
+   curpos = SetFilePointer (hfile, 0, NULL, FILE_CURRENT);
+   if (curpos == 0xFFFFFFFF
+         || SetFilePointer (hfile, size, NULL, FILE_BEGIN) == 0xFFFFFFFF
+         || !SetEndOfFile (hfile))
+   {
+      int error = GetLastError ();
+      switch (error)
+      {
+         case ERROR_INVALID_HANDLE:
+            errno = EBADF;
+            break;
+         default:
+            errno = EIO;
+            break;
+      }
+      return -1;
+   }
+   return 0;
+}
+#endif
 
 //TODO: move INI_xxxx() function code into class and clean up
 Ini *Ini::singleton = 0;
