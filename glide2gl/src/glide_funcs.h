@@ -123,4 +123,12 @@ grTextureAuxBufferExt( GrChipID_t tmu,
 
 FX_ENTRY void FX_CALL grAuxBufferExt( GrBuffer_t buffer );
 
+//#define DISPLAY_WARNING_DEBUG
+
+#ifdef DISPLAY_WARNING_DEBUG
+#define DISPLAY_WARNING(format, ...) fprintf(stderr, format, __VA_ARGS__)
+#else
+#define DISPLAY_WARNING(format, ...) ((void)0)
+#endif
+
 #endif

@@ -377,7 +377,7 @@ void compile_chroma_shader()
     strcat(fragment_shader_chroma, "float alpha = constant_color.a; \n");
     break;
   default:
-    display_warning("unknown compile_choma_shader_alpha : %x", chroma_other_alpha);
+    DISPLAY_WARNING("unknown compile_choma_shader_alpha : %x", chroma_other_alpha);
   }
 
   switch(chroma_other_color)
@@ -392,7 +392,7 @@ void compile_chroma_shader()
     strcat(fragment_shader_chroma, "vec4 color = vec4(vec3(constant_color),alpha); \n");
     break;
   default:
-    display_warning("unknown compile_choma_shader_alpha : %x", chroma_other_color);
+    DISPLAY_WARNING("unknown compile_choma_shader_alpha : %x", chroma_other_color);
   }
 
   strcat(fragment_shader_chroma, "if (color.rgb == chroma_color.rgb) discard; \n");
@@ -670,7 +670,7 @@ grConstantColorValue( GrColor_t value )
     texture_env_color[3] = (value & 0xFF) / 255.0f;
     break;
   default:
-    display_warning("grConstantColorValue: unknown color format : %x", lfb_color_fmt);
+    DISPLAY_WARNING("grConstantColorValue: unknown color format : %x", lfb_color_fmt);
   }
 
   vbo_draw();
@@ -694,7 +694,7 @@ void writeGLSLColorOther(int other)
     strcat(fragment_shader_color_combiner, "vec4 color_other = constant_color; \n");
     break;
   default:
-    display_warning("unknown writeGLSLColorOther : %x", other);
+    DISPLAY_WARNING("unknown writeGLSLColorOther : %x", other);
   }
 }
 
@@ -709,7 +709,7 @@ void writeGLSLColorLocal(int local)
     strcat(fragment_shader_color_combiner, "vec4 color_local = constant_color; \n");
     break;
   default:
-    display_warning("unknown writeGLSLColorLocal : %x", local);
+    DISPLAY_WARNING("unknown writeGLSLColorLocal : %x", local);
   }
 }
 
@@ -757,7 +757,7 @@ void writeGLSLColorFactor(int factor, int local, int need_local, int other, int 
     strcat(fragment_shader_color_combiner, "vec4 color_factor = vec4(1.0) - vec4(ctexture1.a); \n");
     break;
   default:
-    display_warning("unknown writeGLSLColorFactor : %x", factor);
+    DISPLAY_WARNING("unknown writeGLSLColorFactor : %x", factor);
   }
 }
 
@@ -783,7 +783,7 @@ grColorCombine(
   last_local = local;
   last_other = other;
 
-  if (invert) display_warning("grColorCombine : inverted result");
+  if (invert) DISPLAY_WARNING("grColorCombine : inverted result");
 
   color_combiner_key = function | (factor << 4) | (local << 8) | (other << 10);
   chroma_other_color = other;
@@ -849,7 +849,7 @@ grColorCombine(
     break;
   default:
     strcpy(fragment_shader_color_combiner, fragment_shader_default);
-    display_warning("grColorCombine : unknown function : %x", function);
+    DISPLAY_WARNING("grColorCombine : unknown function : %x", function);
   }
   //compile_shader();
   need_to_compile = 1;
@@ -870,7 +870,7 @@ int setOtherAlphaSource(int other)
     return GL_CONSTANT_ARB;
     break;
   default:
-    display_warning("unknwown other alpha source : %x", other);
+    DISPLAY_WARNING("unknwown other alpha source : %x", other);
   }
   return 0;
 }
@@ -886,7 +886,7 @@ int setLocalAlphaSource(int local)
     return GL_CONSTANT_ARB;
     break;
   default:
-    display_warning("unknwown local alpha source : %x", local);
+    DISPLAY_WARNING("unknwown local alpha source : %x", local);
   }
   return 0;
 }
@@ -906,7 +906,7 @@ void writeGLSLAlphaOther(int other)
     strcat(fragment_shader_alpha_combiner, "float alpha_other = constant_color.a; \n");
     break;
   default:
-    display_warning("unknown writeGLSLAlphaOther : %x", other);
+    DISPLAY_WARNING("unknown writeGLSLAlphaOther : %x", other);
   }
 }
 
@@ -921,7 +921,7 @@ void writeGLSLAlphaLocal(int local)
     strcat(fragment_shader_alpha_combiner, "float alpha_local = constant_color.a; \n");
     break;
   default:
-    display_warning("unknown writeGLSLAlphaLocal : %x", local);
+    DISPLAY_WARNING("unknown writeGLSLAlphaLocal : %x", local);
   }
 }
 
@@ -966,7 +966,7 @@ void writeGLSLAlphaFactor(int factor, int local, int need_local, int other, int 
     strcat(fragment_shader_alpha_combiner, "float alpha_factor = 1.0 - ctexture1.a; \n");
     break;
   default:
-    display_warning("unknown writeGLSLAlphaFactor : %x", factor);
+    DISPLAY_WARNING("unknown writeGLSLAlphaFactor : %x", factor);
   }
 }
 
@@ -993,7 +993,7 @@ grAlphaCombine(
   last_local = local;
   last_other = other;
 
-  if (invert) display_warning("grAlphaCombine : inverted result");
+  if (invert) DISPLAY_WARNING("grAlphaCombine : inverted result");
 
   alpha_combiner_key = function | (factor << 4) | (local << 8) | (other << 10);
   chroma_other_alpha = other;
@@ -1059,7 +1059,7 @@ grAlphaCombine(
     strcat(fragment_shader_alpha_combiner, "gl_FragColor.a = alpha_factor * (-alpha_local) + alpha_local; \n");
     break;
   default:
-    display_warning("grAlphaCombine : unknown function : %x", function);
+    DISPLAY_WARNING("grAlphaCombine : unknown function : %x", function);
   }
 
   //compile_shader();
@@ -1131,7 +1131,7 @@ void writeGLSLTextureColorFactor(int num_tex, int factor)
       strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(1.0) - vec4(lambda); \n");
     break;
   default:
-    display_warning("unknown writeGLSLTextureColorFactor : %x", factor);
+    DISPLAY_WARNING("unknown writeGLSLTextureColorFactor : %x", factor);
   }
 }
 
@@ -1200,7 +1200,7 @@ void writeGLSLTextureAlphaFactor(int num_tex, int factor)
       strcat(fragment_shader_texture1, "float texture1_alpha_factor = 1.0 - lambda; \n");
     break;
   default:
-    display_warning("unknown writeGLSLTextureAlphaFactor : %x", factor);
+    DISPLAY_WARNING("unknown writeGLSLTextureAlphaFactor : %x", factor);
   }
 }
 
@@ -1354,7 +1354,7 @@ grTexCombine(
       strcat(fragment_shader_texture0, "vec4 ctexture0 = readtex0; \n");
     else
       strcat(fragment_shader_texture1, "vec4 ctexture1 = readtex1; \n");
-    display_warning("grTextCombine : unknown rgb function : %x", rgb_function);
+    DISPLAY_WARNING("grTextCombine : unknown rgb function : %x", rgb_function);
   }
 
   if (rgb_invert)
@@ -1446,7 +1446,7 @@ grTexCombine(
       strcat(fragment_shader_texture0, "ctexture0.a = readtex0.a; \n");
     else
       strcat(fragment_shader_texture1, "ctexture1.a = ctexture0.a; \n");
-    display_warning("grTextCombine : unknown alpha function : %x", alpha_function);
+    DISPLAY_WARNING("grTextCombine : unknown alpha function : %x", alpha_function);
   }
 
   if (alpha_invert)
@@ -1483,7 +1483,7 @@ grAlphaBlendFunction(
     sfactorRGB = GL_ONE_MINUS_SRC_ALPHA;
     break;
   default:
-    display_warning("grAlphaBlendFunction : rgb_sf = %x", rgb_sf);
+    DISPLAY_WARNING("grAlphaBlendFunction : rgb_sf = %x", rgb_sf);
   }
 
   switch(rgb_df)
@@ -1501,7 +1501,7 @@ grAlphaBlendFunction(
     dfactorRGB = GL_ONE_MINUS_SRC_ALPHA;
     break;
   default:
-    display_warning("grAlphaBlendFunction : rgb_df = %x", rgb_df);
+    DISPLAY_WARNING("grAlphaBlendFunction : rgb_df = %x", rgb_df);
   }
 
   switch(alpha_sf)
@@ -1513,7 +1513,7 @@ grAlphaBlendFunction(
     sfactorAlpha = GL_ONE;
     break;
   default:
-    display_warning("grAlphaBlendFunction : alpha_sf = %x", alpha_sf);
+    DISPLAY_WARNING("grAlphaBlendFunction : alpha_sf = %x", alpha_sf);
   }
 
   switch(alpha_df)
@@ -1525,7 +1525,7 @@ grAlphaBlendFunction(
     dfactorAlpha = GL_ONE;
     break;
   default:
-    display_warning("grAlphaBlendFunction : alpha_df = %x", alpha_df);
+    DISPLAY_WARNING("grAlphaBlendFunction : alpha_df = %x", alpha_df);
   }
   glEnable(GL_BLEND);
   glBlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
@@ -1565,7 +1565,7 @@ grAlphaTestFunction( GrCmpFnc_t function )
     return;
     break;
   default:
-    display_warning("grAlphaTestFunction : unknown function : %x", function);
+    DISPLAY_WARNING("grAlphaTestFunction : unknown function : %x", function);
   }
   //glEnable(GL_ALPHA_TEST);
   alpha_test = true;
@@ -1594,7 +1594,7 @@ grFogMode( GrFogMode_t mode )
     fog_enabled = 2;
     break;
   default:
-    display_warning("grFogMode : unknown mode : %x", mode);
+    DISPLAY_WARNING("grFogMode : unknown mode : %x", mode);
   }
   need_to_compile = 1;
 }
@@ -1647,7 +1647,7 @@ grFogColorValue( GrColor_t fogcolor )
     fogColor[3] = (fogcolor & 0xFF) / 255.0f;
     break;
   default:
-    display_warning("grFogColorValue: unknown color format : %x", lfb_color_fmt);
+    DISPLAY_WARNING("grFogColorValue: unknown color format : %x", lfb_color_fmt);
   }
 
   //glFogfv(GL_FOG_COLOR, color); 
@@ -1668,7 +1668,7 @@ grChromakeyMode( GrChromakeyMode_t mode )
     chroma_enabled = 1;
     break;
   default:
-    display_warning("grChromakeyMode : unknown mode : %x", mode);
+    DISPLAY_WARNING("grChromakeyMode : unknown mode : %x", mode);
   }
   need_to_compile = 1;
 }
@@ -1694,7 +1694,7 @@ grChromakeyValue( GrColor_t value )
     chroma_color[3] = 1.0;//(value & 0xFF) / 255.0f;
     break;
   default:
-    display_warning("grChromakeyValue: unknown color format : %x", lfb_color_fmt);
+    DISPLAY_WARNING("grChromakeyValue: unknown color format : %x", lfb_color_fmt);
   }
   vbo_draw();
   chroma_color_location = glGetUniformLocation(program_object, "chroma_color");
@@ -1772,7 +1772,7 @@ grStippleMode( GrStippleMode_t mode )
     glEnable(GL_TEXTURE_2D);
     break;
   default:
-    display_warning("grStippleMode:%x", mode);
+    DISPLAY_WARNING("grStippleMode:%x", mode);
   }
   need_to_compile = 1;
 }
@@ -1785,8 +1785,8 @@ grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
                   FxU32 shift, FxBool invert)
 {
   LOG("grColorCombineExt(%d, %d, %d, %d, %d, %d, %d, %d, %d, %d)\r\n", a, a_mode, b, b_mode, c, c_invert, d, d_invert, shift, invert);
-  if (invert) display_warning("grColorCombineExt : inverted result");
-  if (shift) display_warning("grColorCombineExt : shift = %d", shift);
+  if (invert) DISPLAY_WARNING("grColorCombineExt : inverted result");
+  if (shift) DISPLAY_WARNING("grColorCombineExt : shift = %d", shift);
 
   color_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
     ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
@@ -1819,7 +1819,7 @@ grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
     strcat(fragment_shader_color_combiner, "vec4 cs_a = ctexture1; \n");
     break;
   default:
-    display_warning("grColorCombineExt : a = %x", a);
+    DISPLAY_WARNING("grColorCombineExt : a = %x", a);
     strcat(fragment_shader_color_combiner, "vec4 cs_a = vec4(0.0); \n");
   }
 
@@ -1838,7 +1838,7 @@ grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
     strcat(fragment_shader_color_combiner, "vec4 c_a = -cs_a; \n");
     break;
   default:
-    display_warning("grColorCombineExt : a_mode = %x", a_mode);
+    DISPLAY_WARNING("grColorCombineExt : a_mode = %x", a_mode);
     strcat(fragment_shader_color_combiner, "vec4 c_a = vec4(0.0); \n");
   }
 
@@ -1866,7 +1866,7 @@ grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
     strcat(fragment_shader_color_combiner, "vec4 cs_b = ctexture1; \n");
     break;
   default:
-    display_warning("grColorCombineExt : b = %x", b);
+    DISPLAY_WARNING("grColorCombineExt : b = %x", b);
     strcat(fragment_shader_color_combiner, "vec4 cs_b = vec4(0.0); \n");
   }
 
@@ -1885,7 +1885,7 @@ grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
     strcat(fragment_shader_color_combiner, "vec4 c_b = -cs_b; \n");
     break;
   default:
-    display_warning("grColorCombineExt : b_mode = %x", b_mode);
+    DISPLAY_WARNING("grColorCombineExt : b_mode = %x", b_mode);
     strcat(fragment_shader_color_combiner, "vec4 c_b = vec4(0.0); \n");
   }
 
@@ -1922,7 +1922,7 @@ grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
     strcat(fragment_shader_color_combiner, "vec4 c_c = ctexture1; \n");
     break;
   default:
-    display_warning("grColorCombineExt : c = %x", c);
+    DISPLAY_WARNING("grColorCombineExt : c = %x", c);
     strcat(fragment_shader_color_combiner, "vec4 c_c = vec4(0.0); \n");
   }
 
@@ -1947,7 +1947,7 @@ grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
     strcat(fragment_shader_color_combiner, "vec4 c_d = gl_Color; \n");
     break;
   default:
-    display_warning("grColorCombineExt : d = %x", d);
+    DISPLAY_WARNING("grColorCombineExt : d = %x", d);
     strcat(fragment_shader_color_combiner, "vec4 c_d = vec4(0.0); \n");
   }
 
@@ -1967,8 +1967,8 @@ grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
                   FxU32 shift, FxBool invert)
 {
   LOG("grAlphaCombineExt(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)\r\n", a, a_mode, b, b_mode, c, c_invert, d, d_invert, shift, invert);
-  if (invert) display_warning("grAlphaCombineExt : inverted result");
-  if (shift) display_warning("grAlphaCombineExt : shift = %d", shift);
+  if (invert) DISPLAY_WARNING("grAlphaCombineExt : inverted result");
+  if (shift) DISPLAY_WARNING("grAlphaCombineExt : shift = %d", shift);
 
   alpha_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
     ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
@@ -1992,7 +1992,7 @@ grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
     strcat(fragment_shader_alpha_combiner, "float as_a = gl_Color.a; \n");
     break;
   default:
-    display_warning("grAlphaCombineExt : a = %x", a);
+    DISPLAY_WARNING("grAlphaCombineExt : a = %x", a);
     strcat(fragment_shader_alpha_combiner, "float as_a = 0.0; \n");
   }
 
@@ -2011,7 +2011,7 @@ grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
     strcat(fragment_shader_alpha_combiner, "float a_a = -as_a; \n");
     break;
   default:
-    display_warning("grAlphaCombineExt : a_mode = %x", a_mode);
+    DISPLAY_WARNING("grAlphaCombineExt : a_mode = %x", a_mode);
     strcat(fragment_shader_alpha_combiner, "float a_a = 0.0; \n");
   }
 
@@ -2030,7 +2030,7 @@ grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
     strcat(fragment_shader_alpha_combiner, "float as_b = gl_Color.a; \n");
     break;
   default:
-    display_warning("grAlphaCombineExt : b = %x", b);
+    DISPLAY_WARNING("grAlphaCombineExt : b = %x", b);
     strcat(fragment_shader_alpha_combiner, "float as_b = 0.0; \n");
   }
 
@@ -2049,7 +2049,7 @@ grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
     strcat(fragment_shader_alpha_combiner, "float a_b = -as_b; \n");
     break;
   default:
-    display_warning("grAlphaCombineExt : b_mode = %x", b_mode);
+    DISPLAY_WARNING("grAlphaCombineExt : b_mode = %x", b_mode);
     strcat(fragment_shader_alpha_combiner, "float a_b = 0.0; \n");
   }
 
@@ -2077,7 +2077,7 @@ grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
     strcat(fragment_shader_alpha_combiner, "float a_c = gl_Color.a; \n");
     break;
   default:
-    display_warning("grAlphaCombineExt : c = %x", c);
+    DISPLAY_WARNING("grAlphaCombineExt : c = %x", c);
     strcat(fragment_shader_alpha_combiner, "float a_c = 0.0; \n");
   }
 
@@ -2099,7 +2099,7 @@ grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
     strcat(fragment_shader_alpha_combiner, "float a_d = as_b; \n");
     break;
   default:
-    display_warning("grAlphaCombineExt : d = %x", d);
+    DISPLAY_WARNING("grAlphaCombineExt : d = %x", d);
     strcat(fragment_shader_alpha_combiner, "float a_d = 0.0; \n");
   }
 
@@ -2122,8 +2122,8 @@ grTexColorCombineExt(GrChipID_t       tmu,
   int num_tex;
   LOG("grTexColorCombineExt(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)\r\n", tmu, a, a_mode, b, b_mode, c, c_invert, d, d_invert, shift, invert);
 
-  if (invert) display_warning("grTexColorCombineExt : inverted result");
-  if (shift) display_warning("grTexColorCombineExt : shift = %d", shift);
+  if (invert) DISPLAY_WARNING("grTexColorCombineExt : inverted result");
+  if (shift) DISPLAY_WARNING("grTexColorCombineExt : shift = %d", shift);
 
   if (tmu == GR_TMU0) num_tex = 1;
   else num_tex = 0;
@@ -2204,7 +2204,7 @@ grTexColorCombineExt(GrChipID_t       tmu,
       strcat(fragment_shader_texture1, "vec4 ctex1s_a = vec4(ccolor1.a); \n");
     break;
   default:
-    display_warning("grTexColorCombineExt : a = %x", a);
+    DISPLAY_WARNING("grTexColorCombineExt : a = %x", a);
     if(num_tex == 0)
       strcat(fragment_shader_texture0, "vec4 ctex0s_a = vec4(0.0); \n");
     else
@@ -2238,7 +2238,7 @@ grTexColorCombineExt(GrChipID_t       tmu,
       strcat(fragment_shader_texture1, "vec4 ctex1_a = -ctex1s_a; \n");
     break;
   default:
-    display_warning("grTexColorCombineExt : a_mode = %x", a_mode);
+    DISPLAY_WARNING("grTexColorCombineExt : a_mode = %x", a_mode);
     if(num_tex == 0)
       strcat(fragment_shader_texture0, "vec4 ctex0_a = vec4(0.0); \n");
     else
@@ -2302,7 +2302,7 @@ grTexColorCombineExt(GrChipID_t       tmu,
       strcat(fragment_shader_texture1, "vec4 ctex1s_b = ccolor1; \n");
     break;
   default:
-    display_warning("grTexColorCombineExt : b = %x", b);
+    DISPLAY_WARNING("grTexColorCombineExt : b = %x", b);
     if(num_tex == 0)
       strcat(fragment_shader_texture0, "vec4 ctex0s_b = vec4(0.0); \n");
     else
@@ -2336,7 +2336,7 @@ grTexColorCombineExt(GrChipID_t       tmu,
       strcat(fragment_shader_texture1, "vec4 ctex1_b = -ctex1s_b; \n");
     break;
   default:
-    display_warning("grTexColorCombineExt : b_mode = %x", b_mode);
+    DISPLAY_WARNING("grTexColorCombineExt : b_mode = %x", b_mode);
     if(num_tex == 0)
       strcat(fragment_shader_texture0, "vec4 ctex0_b = vec4(0.0); \n");
     else
@@ -2412,7 +2412,7 @@ grTexColorCombineExt(GrChipID_t       tmu,
       strcat(fragment_shader_texture1, "vec4 ctex1_c = ccolor1; \n");
     break;
   default:
-    display_warning("grTexColorCombineExt : c = %x", c);
+    DISPLAY_WARNING("grTexColorCombineExt : c = %x", c);
     if(num_tex == 0)
       strcat(fragment_shader_texture0, "vec4 ctex0_c = vec4(0.0); \n");
     else
@@ -2454,7 +2454,7 @@ grTexColorCombineExt(GrChipID_t       tmu,
       strcat(fragment_shader_texture1, "vec4 ctex1_d = vec4(readtex1.a); \n");
     break;
   default:
-    display_warning("grTexColorCombineExt : d = %x", d);
+    DISPLAY_WARNING("grTexColorCombineExt : d = %x", d);
     if(num_tex == 0)
       strcat(fragment_shader_texture0, "vec4 ctex0_d = vec4(0.0); \n");
     else
@@ -2487,8 +2487,8 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
   int num_tex;
   LOG("grTexAlphaCombineExt(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)\r\n", tmu, a, a_mode, b, b_mode, c, c_invert, d, d_invert, shift, invert);
 
-  if (invert) display_warning("grTexAlphaCombineExt : inverted result");
-  if (shift) display_warning("grTexAlphaCombineExt : shift = %d", shift);
+  if (invert) DISPLAY_WARNING("grTexAlphaCombineExt : inverted result");
+  if (shift) DISPLAY_WARNING("grTexAlphaCombineExt : shift = %d", shift);
 
   if (tmu == GR_TMU0) num_tex = 1;
   else num_tex = 0;
@@ -2535,7 +2535,7 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
       strcat(fragment_shader_texture1, "ctex1s_a.a = ccolor1.a; \n");
     break;
   default:
-    display_warning("grTexAlphaCombineExt : a = %x", a);
+    DISPLAY_WARNING("grTexAlphaCombineExt : a = %x", a);
     if(num_tex == 0)
       strcat(fragment_shader_texture0, "ctex0s_a.a = 0.0; \n");
     else
@@ -2569,7 +2569,7 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
       strcat(fragment_shader_texture1, "ctex1_a.a = -ctex1s_a.a; \n");
     break;
   default:
-    display_warning("grTexAlphaCombineExt : a_mode = %x", a_mode);
+    DISPLAY_WARNING("grTexAlphaCombineExt : a_mode = %x", a_mode);
     if(num_tex == 0)
       strcat(fragment_shader_texture0, "ctex0_a.a = 0.0; \n");
     else
@@ -2603,7 +2603,7 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
       strcat(fragment_shader_texture1, "ctex1s_b.a = ccolor1.a; \n");
     break;
   default:
-    display_warning("grTexAlphaCombineExt : b = %x", b);
+    DISPLAY_WARNING("grTexAlphaCombineExt : b = %x", b);
     if(num_tex == 0)
       strcat(fragment_shader_texture0, "ctex0s_b.a = 0.0; \n");
     else
@@ -2637,7 +2637,7 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
       strcat(fragment_shader_texture1, "ctex1_b.a = -ctex1s_b.a; \n");
     break;
   default:
-    display_warning("grTexAlphaCombineExt : b_mode = %x", b_mode);
+    DISPLAY_WARNING("grTexAlphaCombineExt : b_mode = %x", b_mode);
     if(num_tex == 0)
       strcat(fragment_shader_texture0, "ctex0_b.a = 0.0; \n");
     else
@@ -2689,7 +2689,7 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
       strcat(fragment_shader_texture1, "ctex1_c.a = ccolor1.a; \n");
     break;
   default:
-    display_warning("grTexAlphaCombineExt : c = %x", c);
+    DISPLAY_WARNING("grTexAlphaCombineExt : c = %x", c);
     if(num_tex == 0)
       strcat(fragment_shader_texture0, "ctex0_c.a = 0.0; \n");
     else
@@ -2737,7 +2737,7 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
       strcat(fragment_shader_texture1, "ctex1_d.a = readtex1.a; \n");
     break;
   default:
-    display_warning("grTexAlphaCombineExt : d = %x", d);
+    DISPLAY_WARNING("grTexAlphaCombineExt : d = %x", d);
     if(num_tex == 0)
       strcat(fragment_shader_texture0, "ctex0_d.a = 0.0; \n");
     else
@@ -2805,7 +2805,7 @@ grConstantColorValueExt(GrChipID_t    tmu,
     }
     break;
   default:
-    display_warning("grConstantColorValue: unknown color format : %x", lfb_color_fmt);
+    DISPLAY_WARNING("grConstantColorValue: unknown color format : %x", lfb_color_fmt);
   }
 
   vbo_draw();

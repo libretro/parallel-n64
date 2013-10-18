@@ -81,7 +81,6 @@ int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info
 }
 #endif
 
-void display_warning(const char *text, ...);
 void init_geometry();
 void init_combiner();
 void updateCombiner(int i);
@@ -144,24 +143,24 @@ int getFullScreenHeight();
 {\
  GLenum status; \
  status = glCheckFramebufferStatus(GL_FRAMEBUFFER); \
- /*display_warning("%x\n", status);*/\
+ /*DISPLAY_WARNING("%x\n", status);*/\
  switch(status) { \
  case GL_FRAMEBUFFER_COMPLETE: \
-   /*display_warning("framebuffer complete!\n");*/\
+   /*DISPLAY_WARNING("framebuffer complete!\n");*/\
    break; \
  case GL_FRAMEBUFFER_UNSUPPORTED: \
-   display_warning("framebuffer GL_FRAMEBUFFER_UNSUPPORTED_EXT\n");\
+   DISPLAY_WARNING("framebuffer GL_FRAMEBUFFER_UNSUPPORTED_EXT\n");\
     /* you gotta choose different formats */ \
    /*assert(0);*/ \
    break; \
  case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: \
-   display_warning("framebuffer INCOMPLETE_ATTACHMENT\n");\
+   DISPLAY_WARNING("framebuffer INCOMPLETE_ATTACHMENT\n");\
    break; \
  case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: \
-   display_warning("framebuffer FRAMEBUFFER_MISSING_ATTACHMENT\n");\
+   DISPLAY_WARNING("framebuffer FRAMEBUFFER_MISSING_ATTACHMENT\n");\
    break; \
  case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS: \
-   display_warning("framebuffer FRAMEBUFFER_DIMENSIONS\n");\
+   DISPLAY_WARNING("framebuffer FRAMEBUFFER_DIMENSIONS\n");\
    break; \
  default: \
    break; \

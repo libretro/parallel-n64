@@ -91,31 +91,12 @@ static int texbuf_i;
 unsigned short frameBuffer[2048*2048];
 unsigned short depthBuffer[2048*2048];
 
-//#define VOODOO1
-
-void display_warning(const char *text, ...)
-{
-  static int first_message = 100;
-  if (first_message)
-  {
-    char buf[4096];
-
-    va_list ap;
-
-    va_start(ap, text);
-    vsprintf(buf, text, ap);
-    va_end(ap);
-    first_message--;
-    LOGINFO(buf);
-  }
-}
-
 FX_ENTRY void FX_CALL
 grSstOrigin(GrOriginLocation_t  origin)
 {
   LOG("grSstOrigin(%d)\r\n", origin);
   if (origin != GR_ORIGIN_UPPER_LEFT)
-    display_warning("grSstOrigin : %x", origin);
+    DISPLAY_WARNING("grSstOrigin : %x", origin);
 }
 
 FX_ENTRY void FX_CALL
@@ -238,17 +219,17 @@ grSstWinOpen(
 
   glViewport(0, 0, width, height);
   lfb_color_fmt = color_format;
-  if (origin_location != GR_ORIGIN_UPPER_LEFT) display_warning("origin must be in upper left corner");
-  if (nColBuffers != 2) display_warning("number of color buffer is not 2");
-  if (nAuxBuffers != 1) display_warning("number of auxiliary buffer is not 1");
+  if (origin_location != GR_ORIGIN_UPPER_LEFT) DISPLAY_WARNING("origin must be in upper left corner");
+  if (nColBuffers != 2) DISPLAY_WARNING("number of color buffer is not 2");
+  if (nAuxBuffers != 1) DISPLAY_WARNING("number of auxiliary buffer is not 1");
 
   if (isExtensionSupported("GL_ARB_texture_env_combine") == 0 &&
     isExtensionSupported("GL_EXT_texture_env_combine") == 0)
-    display_warning("Your video card doesn't support GL_ARB_texture_env_combine extension");
+    DISPLAY_WARNING("Your video card doesn't support GL_ARB_texture_env_combine extension");
   if (isExtensionSupported("GL_ARB_multitexture") == 0)
-    display_warning("Your video card doesn't support GL_ARB_multitexture extension");
+    DISPLAY_WARNING("Your video card doesn't support GL_ARB_multitexture extension");
   if (isExtensionSupported("GL_ARB_texture_mirrored_repeat") == 0)
-    display_warning("Your video card doesn't support GL_ARB_texture_mirrored_repeat extension");
+    DISPLAY_WARNING("Your video card doesn't support GL_ARB_texture_mirrored_repeat extension");
 
   nbAuxBuffers = 4;
   //glGetIntegerv(GL_AUX_BUFFERS, &nbAuxBuffers);
@@ -290,9 +271,9 @@ grSstWinOpen(
   {}
 
   if (isExtensionSupported("GL_EXT_texture_compression_s3tc") == 0 )
-    display_warning("Your video card doesn't support GL_EXT_texture_compression_s3tc extension");
+    DISPLAY_WARNING("Your video card doesn't support GL_EXT_texture_compression_s3tc extension");
   if (isExtensionSupported("GL_3DFX_texture_compression_FXT1") == 0)
-    display_warning("Your video card doesn't support GL_3DFX_texture_compression_FXT1 extension");
+    DISPLAY_WARNING("Your video card doesn't support GL_3DFX_texture_compression_FXT1 extension");
 
   glViewport(0, 0, width, height);
   viewport_width = width;
@@ -379,7 +360,7 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
 
   //printf("grTextureBufferExt(%d, %d, %d, %d, %d, %d, %d)\r\n", tmu, startAddress, lodmin, lodmax, aspect, fmt, evenOdd);
   LOG("grTextureBufferExt(%d, %d, %d, %d %d, %d, %d)\r\n", tmu, startAddress, lodmin, lodmax, aspect, fmt, evenOdd);
-  if (lodmin != lodmax)display_warning("grTextureBufferExt : loading more than one LOD");
+  if (lodmin != lodmax)DISPLAY_WARNING("grTextureBufferExt : loading more than one LOD");
   {
     if (!render_to_texture) //initialization
     {
@@ -545,7 +526,7 @@ grTextureAuxBufferExt( GrChipID_t tmu,
                       FxU32      odd_even_mask )
 {
   LOG("grTextureAuxBufferExt(%d, %d, %d, %d %d, %d, %d)\r\n", tmu, startAddress, thisLOD, largeLOD, aspectRatio, format, odd_even_mask);
-  //display_warning("grTextureAuxBufferExt");
+  //DISPLAY_WARNING("grTextureAuxBufferExt");
 }
 
 FX_ENTRY void FX_CALL grAuxBufferExt( GrBuffer_t buffer );
@@ -589,7 +570,7 @@ grGetProcAddress( char *procName )
     return (GrProc)grConfigWrapperExt;
   if(!strcmp(procName, "grGetGammaTableExt"))
     return (GrProc)grGetGammaTableExt;
-  display_warning("grGetProcAddress : %s", procName);
+  DISPLAY_WARNING("grGetProcAddress : %s", procName);
   return 0;
 }
 
@@ -693,7 +674,7 @@ grGet( FxU32 pname, FxU32 plength, FxI32 *params )
     return 4;
     break;
   default:
-    display_warning("unknown pname in grGet : %x", pname);
+    DISPLAY_WARNING("unknown pname in grGet : %x", pname);
   }
   return 0;
 }
@@ -735,7 +716,7 @@ grGetString( FxU32 pname )
     }
     break;
   default:
-    display_warning("unknown grGetString selector : %x", pname);
+    DISPLAY_WARNING("unknown grGetString selector : %x", pname);
   }
   return NULL;
 }
@@ -927,7 +908,7 @@ grRenderBuffer( GrBuffer_t buffer )
     render_to_texture = 1;
     break;
   default:
-    display_warning("grRenderBuffer : unknown buffer : %x", buffer);
+    DISPLAY_WARNING("grRenderBuffer : unknown buffer : %x", buffer);
   }
 }
 
@@ -935,7 +916,7 @@ FX_ENTRY void FX_CALL
 grAuxBufferExt( GrBuffer_t buffer )
 {
   LOG("grAuxBufferExt(%d)\r\n", buffer);
-  //display_warning("grAuxBufferExt");
+  //DISPLAY_WARNING("grAuxBufferExt");
 
   if (buffer == GR_BUFFER_AUXBUFFER) {
     invtex[0] = 0;
@@ -1016,7 +997,7 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
          //glReadBuffer(GL_BACK);
          break;
       default:
-         display_warning("grLfbLock : unknown buffer : %x", buffer);
+         DISPLAY_WARNING("grLfbLock : unknown buffer : %x", buffer);
    }
 
    if(buffer != GR_BUFFER_AUXBUFFER)
@@ -1070,7 +1051,7 @@ grLfbUnlock( GrLock_t type, GrBuffer_t buffer )
 #ifndef NDEBUG
   // grLbfUnlock - type not for GR_LFB_WRITE_ONLY
   if (type == GR_LFB_WRITE_ONLY)
-    display_warning("grLfbUnlock : write only");
+    DISPLAY_WARNING("grLfbUnlock : write only");
 #endif
 
   return FXTRUE;
@@ -1100,7 +1081,7 @@ grLfbReadRegion( GrBuffer_t src_buffer,
           glReadBuffer(current_buffer);
           break;*/
      default:
-        display_warning("grReadRegion : unknown buffer : %x", src_buffer);
+        DISPLAY_WARNING("grReadRegion : unknown buffer : %x", src_buffer);
   }
 
   if(src_buffer != GR_BUFFER_AUXBUFFER)
@@ -1170,7 +1151,7 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
         //glDrawBuffer(current_buffer);
         break;
      default:
-        display_warning("grLfbWriteRegion : unknown buffer : %x", dst_buffer);
+        DISPLAY_WARNING("grLfbWriteRegion : unknown buffer : %x", dst_buffer);
   }
 
   if(dst_buffer != GR_BUFFER_AUXBUFFER)
@@ -1223,7 +1204,7 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
       }
       break;
     default:
-      display_warning("grLfbWriteRegion : unknown format : %d", src_format);
+      DISPLAY_WARNING("grLfbWriteRegion : unknown format : %d", src_format);
     }
 
     glBindTexture(GL_TEXTURE_2D, default_texture);
@@ -1245,10 +1226,10 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
     float *buf = (float*)malloc(src_width * src_height * sizeof(float));
 
     if (src_format != GR_LFBWRITEMODE_ZA16)
-      display_warning("unknown depth buffer write format:%x", src_format);
+      DISPLAY_WARNING("unknown depth buffer write format:%x", src_format);
 
     if(dst_x || dst_y)
-      display_warning("dst_x:%d, dst_y:%d\n",dst_x, dst_y);
+      DISPLAY_WARNING("dst_x:%d, dst_y:%d\n",dst_x, dst_y);
 
     for (j=0; j<src_height; j++)
     {
@@ -1291,7 +1272,7 @@ FX_ENTRY void FX_CALL grConfigWrapperExt(FxI32 resolution, FxI32 vram, FxBool fb
 FX_ENTRY FxBool FX_CALL
 grReset( FxU32 what )
 {
-  display_warning("grReset");
+  DISPLAY_WARNING("grReset");
   return 1;
 }
 
@@ -1310,32 +1291,32 @@ grDisable( GrEnableMode_t mode )
 FX_ENTRY void FX_CALL
 grDisableAllEffects( void )
 {
-  display_warning("grDisableAllEffects");
+  DISPLAY_WARNING("grDisableAllEffects");
 }
 
 FX_ENTRY void FX_CALL
 grErrorSetCallback( GrErrorCallbackFnc_t fnc )
 {
-  display_warning("grErrorSetCallback");
+  DISPLAY_WARNING("grErrorSetCallback");
 }
 
 FX_ENTRY void FX_CALL
 grFinish(void)
 {
-  display_warning("grFinish");
+  DISPLAY_WARNING("grFinish");
 }
 
 FX_ENTRY void FX_CALL
 grFlush(void)
 {
-  display_warning("grFlush");
+  DISPLAY_WARNING("grFlush");
 }
 
 FX_ENTRY void FX_CALL
 grTexMultibase( GrChipID_t tmu,
                FxBool     enable )
 {
-  display_warning("grTexMultibase");
+  DISPLAY_WARNING("grTexMultibase");
 }
 
 FX_ENTRY void FX_CALL
@@ -1343,7 +1324,7 @@ grTexMipMapMode( GrChipID_t     tmu,
                 GrMipMapMode_t mode,
                 FxBool         lodBlend )
 {
-  display_warning("grTexMipMapMode");
+  DISPLAY_WARNING("grTexMipMapMode");
 }
 
 FX_ENTRY void FX_CALL
@@ -1352,14 +1333,14 @@ grTexDownloadTablePartial( GrTexTable_t type,
                           int          start,
                           int          end )
 {
-  display_warning("grTexDownloadTablePartial");
+  DISPLAY_WARNING("grTexDownloadTablePartial");
 }
 
 FX_ENTRY void FX_CALL
 grTexDownloadTable( GrTexTable_t type,
                    void         *data )
 {
-  display_warning("grTexDownloadTable");
+  DISPLAY_WARNING("grTexDownloadTable");
 }
 
 FX_ENTRY FxBool FX_CALL
@@ -1374,7 +1355,7 @@ grTexDownloadMipMapLevelPartial( GrChipID_t        tmu,
                                 int               start,
                                 int               end )
 {
-  display_warning("grTexDownloadMipMapLevelPartial");
+  DISPLAY_WARNING("grTexDownloadMipMapLevelPartial");
   return 1;
 }
 
@@ -1388,37 +1369,37 @@ grTexDownloadMipMapLevel( GrChipID_t        tmu,
                          FxU32             evenOdd,
                          void              *data )
 {
-  display_warning("grTexDownloadMipMapLevel");
+  DISPLAY_WARNING("grTexDownloadMipMapLevel");
 }
 
 FX_ENTRY void FX_CALL
 grTexNCCTable( GrNCCTable_t table )
 {
-  display_warning("grTexNCCTable");
+  DISPLAY_WARNING("grTexNCCTable");
 }
 
 FX_ENTRY void FX_CALL
 grViewport( FxI32 x, FxI32 y, FxI32 width, FxI32 height )
 {
-  display_warning("grViewport");
+  DISPLAY_WARNING("grViewport");
 }
 
 FX_ENTRY void FX_CALL
 grDepthRange( FxFloat n, FxFloat f )
 {
-  display_warning("grDepthRange");
+  DISPLAY_WARNING("grDepthRange");
 }
 
 FX_ENTRY void FX_CALL
 grSplash(float x, float y, float width, float height, FxU32 frame)
 {
-  display_warning("grSplash");
+  DISPLAY_WARNING("grSplash");
 }
 
 FX_ENTRY FxBool FX_CALL
 grSelectContext( GrContext_t context )
 {
-  display_warning("grSelectContext");
+  DISPLAY_WARNING("grSelectContext");
   return 1;
 }
 
@@ -1428,61 +1409,61 @@ grAADrawTriangle(
                  FxBool ab_antialias, FxBool bc_antialias, FxBool ca_antialias
                  )
 {
-  display_warning("grAADrawTriangle");
+  DISPLAY_WARNING("grAADrawTriangle");
 }
 
 FX_ENTRY void FX_CALL
 grAlphaControlsITRGBLighting( FxBool enable )
 {
-  display_warning("grAlphaControlsITRGBLighting");
+  DISPLAY_WARNING("grAlphaControlsITRGBLighting");
 }
 
 FX_ENTRY void FX_CALL
 grGlideSetVertexLayout( const void *layout )
 {
-  display_warning("grGlideSetVertexLayout");
+  DISPLAY_WARNING("grGlideSetVertexLayout");
 }
 
 FX_ENTRY void FX_CALL
 grGlideGetVertexLayout( void *layout )
 {
-  display_warning("grGlideGetVertexLayout");
+  DISPLAY_WARNING("grGlideGetVertexLayout");
 }
 
 FX_ENTRY void FX_CALL
 grGlideSetState( const void *state )
 {
-  display_warning("grGlideSetState");
+  DISPLAY_WARNING("grGlideSetState");
 }
 
 FX_ENTRY void FX_CALL
 grGlideGetState( void *state )
 {
-  display_warning("grGlideGetState");
+  DISPLAY_WARNING("grGlideGetState");
 }
 
 FX_ENTRY void FX_CALL
 grLfbWriteColorFormat(GrColorFormat_t colorFormat)
 {
-  display_warning("grLfbWriteColorFormat");
+  DISPLAY_WARNING("grLfbWriteColorFormat");
 }
 
 FX_ENTRY void FX_CALL
 grLfbWriteColorSwizzle(FxBool swizzleBytes, FxBool swapWords)
 {
-  display_warning("grLfbWriteColorSwizzle");
+  DISPLAY_WARNING("grLfbWriteColorSwizzle");
 }
 
 FX_ENTRY void FX_CALL
 grLfbConstantDepth( FxU32 depth )
 {
-  display_warning("grLfbConstantDepth");
+  DISPLAY_WARNING("grLfbConstantDepth");
 }
 
 FX_ENTRY void FX_CALL
 grLfbConstantAlpha( GrAlpha_t alpha )
 {
-  display_warning("grLfbConstantAlpha");
+  DISPLAY_WARNING("grLfbConstantAlpha");
 }
 
 FX_ENTRY void FX_CALL
@@ -1492,7 +1473,7 @@ grTexMultibaseAddress( GrChipID_t       tmu,
                       FxU32            evenOdd,
                       GrTexInfo        *info )
 {
-  display_warning("grTexMultibaseAddress");
+  DISPLAY_WARNING("grTexMultibaseAddress");
 }
 
 FX_ENTRY void FX_CALL
@@ -1513,25 +1494,25 @@ guGammaCorrectionRGB( FxFloat gammaR, FxFloat gammaG, FxFloat gammaB )
 FX_ENTRY void FX_CALL
 grDitherMode( GrDitherMode_t mode )
 {
-  display_warning("grDitherMode");
+  DISPLAY_WARNING("grDitherMode");
 }
 
 void grChromaRangeExt(GrColor_t color0, GrColor_t color1, FxU32 mode)
 {
-  display_warning("grChromaRangeExt");
+  DISPLAY_WARNING("grChromaRangeExt");
 }
 
 void grChromaRangeModeExt(GrChromakeyMode_t mode)
 {
-  display_warning("grChromaRangeModeExt");
+  DISPLAY_WARNING("grChromaRangeModeExt");
 }
 
 void grTexChromaRangeExt(GrChipID_t tmu, GrColor_t color0, GrColor_t color1, GrTexChromakeyMode_t mode)
 {
-  display_warning("grTexChromaRangeExt");
+  DISPLAY_WARNING("grTexChromaRangeExt");
 }
 
 void grTexChromaModeExt(GrChipID_t tmu, GrChromakeyMode_t mode)
 {
-  display_warning("grTexChromaRangeModeExt");
+  DISPLAY_WARNING("grTexChromaRangeModeExt");
 }
