@@ -600,12 +600,6 @@ EXPORT void CALL ProcessDList(void)
   VLOG ("ProcessDList ()\n");
 #endif
 
-  {
-    // Set an interrupt to allow the game to continue
-    *gfx.MI_INTR_REG |= 0x20;
-    gfx.CheckInterrupts();
-  }
-
   if (reset)
   {
     reset = 0;
