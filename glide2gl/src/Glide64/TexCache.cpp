@@ -57,9 +57,6 @@ uint8_t *texture_buffer = tex1;
 #include "TexMod.h"
 #include "TexModCI.h"
 #include "CRC.h"
-#ifdef TEXTURE_FILTER // Hiroshi Morii <koolsmoky@users.sourceforge.net>
-extern int ghq_dmptex_toggle_key;
-#endif
 
 typedef struct TEXINFO_t {
   int real_image_width, real_image_height;	// FOR ALIGNMENT PURPOSES ONLY!!!
@@ -70,21 +67,10 @@ typedef struct TEXINFO_t {
   uint32_t crc;
   uint32_t flags;
   int splits, splitheight;
-#ifdef TEXTURE_FILTER
-  uint64 ricecrc;
-#endif
 } TEXINFO;
 
 TEXINFO texinfo[2];
 int tex_found[2][MAX_TMU];
-
-#ifdef TEXTURE_FILTER
-typedef struct HIRESTEX_t {
-  int width, height;
-  uint16_t format;
-  uint8_t *data;
-} HIRESTEX;
-#endif
 
 //****************************************************************
 // List functions
@@ -872,45 +858,6 @@ void TexCache ()
 }
 
 
-#ifdef TEXTURE_FILTER
-/** cite from RiceVideo */
-inline uint32_t CalculateDXT(uint32_t txl2words)
-{
-  if( txl2words == 0 ) return 1;
-  else return (2048+txl2words-1)/txl2words;
-}
-
-uint32_t sizeBytes[4] = {0,1,2,4};
-
-inline uint32_t Txl2Words(uint32_t width, uint32_t size)
-{
-  if( size == 0 )
-    return max(1, width/16);
-  else
-    return max(1, width*sizeBytes[size]/8);
-}
-
-inline uint32_t ReverseDXT(uint32_t val, uint32_t lrs, uint32_t width, uint32_t size)
-{
-  if( val == 0x800 ) return 1;
-
-  int low = 2047/val;
-  if( CalculateDXT(low) > val )	low++;
-  int high = 2047/(val-1);
-
-  if( low == high )	return low;
-
-  for( int i=low; i<=high; i++ )
-  {
-    if( Txl2Words(width, size) == (uint32_t)i )
-      return i;
-  }
-
-  return	(low+high)/2;
-}
-/** end RiceVideo cite */
-#endif
-
 //****************************************************************
 // LoadTex - does the actual texture loading after everything is prepared
 
@@ -966,10 +913,6 @@ void LoadTex (int id, int tmu)
   cache->f_mirror_t = FALSE;
   cache->f_wrap_s = FALSE;
   cache->f_wrap_t = FALSE;
-#ifdef TEXTURE_FILTER
-  cache->is_hires_tex = FALSE;
-  cache->ricecrc    = texinfo[id].ricecrc;
-#endif
 
   // Add this cache to the list
   AddToList (&cachelut[cache->crc>>16], cache->crc, (uintptr_t)(cache), tmu, rdp.n_cached[tmu]);
@@ -1170,94 +1113,6 @@ void LoadTex (int id, int tmu)
 
   texture = tex1;
 
-  // Hiroshi Morii <koolsmoky@users.sourceforge.net>
-  // NOTE: Loading Hi-res texture packs and filtering should be done
-  // before the texture is modified with color palettes, etc.
-  //
-  // Since the internal texture identification needs Glide64CRC, (RiceCRC
-  // doesn't always return unique values) it seems reasonable that the
-  // extra CRC calculation for hires textures should be executed only
-  // when we get passed the texture ram cache and texture buffers for
-  // minimal calculation overhead.
-  //
-#ifdef TEXTURE_FILTER // Hiroshi Morii <koolsmoky@users.sourceforge.net>
-  GHQTexInfo ghqTexInfo;
-  memset(&ghqTexInfo, 0, sizeof(GHQTexInfo));
-  uint32_t g64_crc = cache->crc;
-  if (settings.ghq_use)
-  {
-    int bpl;
-    uint8_t* addr = (uint8_t*)(gfx.RDRAM+rdp.addr[rdp.tiles[td].t_mem]);
-    int tile_width  = texinfo[id].width;
-    int tile_height = texinfo[id].height;
-    LOAD_TILE_INFO &info = rdp.load_info[rdp.tiles[td].t_mem];
-    if (rdp.timg.set_by == 1)
-    {
-      bpl = info.tex_width << info.tex_size >> 1;
-      addr += (info.tile_ul_t * bpl) + (((info.tile_ul_s<<info.tex_size)+1)>>1);
-
-      tile_width = min(info.tile_width, info.tex_width);
-      if (info.tex_size > rdp.tiles[td].size)
-        tile_width <<= info.tex_size - rdp.tiles[td].size;
-
-      if (rdp.tiles[td].lr_t > rdp.bg_image_height)
-        tile_height = rdp.bg_image_height - rdp.tiles[td].ul_t;
-      else
-        tile_height = info.tile_height;
-    }
-    else
-    {
-      if (rdp.tiles[td].size == 3)
-        bpl = rdp.tiles[td].line << 4;
-      else if (info.dxt == 0)
-        bpl = rdp.tiles[td].line << 3;
-      else {
-        uint32_t dxt = info.dxt;
-        if (dxt > 1)
-          dxt = ReverseDXT(dxt, info.tile_width, texinfo[id].width, rdp.tiles[td].size);
-        bpl = dxt << 3;
-      }
-    }
-
-    //    uint8_t* addr = (uint8_t*)(gfx.RDRAM+rdp.addr[rdp.tiles[td].t_mem] + (rdp.tiles[td].ul_t * bpl) + (((rdp.tiles[td].ul_s<<rdp.tiles[td].size)+1)>>1));
-    uint8_t * paladdr = 0;
-    uint16_t * palette = 0;
-    if ((rdp.tiles[td].size < 2) && (rdp.tlut_mode || rdp.tiles[td].format == 2))
-    {
-      if (rdp.tiles[td].size == 1)
-        paladdr = (uint8_t*)(rdp.pal_8_rice);
-      else if (settings.ghq_hirs_altcrc)
-        paladdr = (uint8_t*)(rdp.pal_8_rice + (rdp.tiles[td].palette << 5));
-      else
-        paladdr = (uint8_t*)(rdp.pal_8_rice + (rdp.tiles[td].palette << 4));
-      palette = (rdp.pal_8 + (rdp.tiles[td].palette << 4));
-    }
-
-    // XXX: Special combiner modes are ignored for hires textures
-    // for now. Come back to this later!! The following is needed
-    // for (2xSai, hq4x, etc) enhanced/filtered textures.
-    g64_crc = CRC32( g64_crc, &cache->mod, 4 );
-    g64_crc = CRC32( g64_crc, &cache->mod_color, 4 );
-    g64_crc = CRC32( g64_crc, &cache->mod_color1, 4 );
-    //g64_crc = CRC32( g64_crc, &cache->mod_color2, 4 ); // not used?
-    g64_crc = CRC32( g64_crc, &cache->mod_factor, 4 );
-
-    cache->ricecrc = ext_ghq_checksum(addr, tile_width, tile_height, (unsigned short)(rdp.tiles[td].format << 8 | rdp.tiles[td].size), bpl, paladdr);
-    FRDP("CI RICE CRC. format: %d, size: %d, CRC: %08lx, PalCRC: %08lx\n", rdp.tiles[td].format, rdp.tiles[td].size, (uint32_t)(cache->ricecrc&0xFFFFFFFF), (uint32_t)(cache->ricecrc>>32));
-    if (ext_ghq_hirestex((uint64)g64_crc, cache->ricecrc, palette, &ghqTexInfo))
-    {
-      cache->is_hires_tex = ghqTexInfo.is_hires_tex;
-      if (!ghqTexInfo.is_hires_tex && aspect != ghqTexInfo.aspectRatioLog2)
-        ghqTexInfo.data = 0; //if aspects of current texture and found filtered texture are different, texture must be filtered again.
-    }
-  }
-
-
-  // ** handle texture splitting **
-  if (ghqTexInfo.data)
-    ;//do nothing
-  else
-#endif
     {
       result = load_table[rdp.tiles[td].size][rdp.tiles[td].format]
       ((uintptr_t)(texture), (uintptr_t)(rdp.tmem)+(rdp.tiles[td].t_mem<<3),
@@ -1358,11 +1213,7 @@ void LoadTex (int id, int tmu)
       memcpy(rdp.pal_8, tmp_pal, 512);
     }
 
-#ifdef TEXTURE_FILTER
-    if (mod && !modifyPalette && !ghqTexInfo.data)
-#else
     if (mod && !modifyPalette)
-#endif
     {
       // Convert the texture to ARGB 4444
       if (LOWORD(result) == GR_TEXFMT_ARGB_1555)
@@ -1483,124 +1334,6 @@ void LoadTex (int id, int tmu)
     cache->aspect = aspect;
 
     {
-#ifdef TEXTURE_FILTER // Hiroshi Morii <koolsmoky@users.sourceforge.net>
-      if (settings.ghq_use)
-      {
-        if (!ghqTexInfo.data && ghq_dmptex_toggle_key) {
-          unsigned char *tmpbuf = (unsigned char*)texture;
-          int tmpwidth = real_x;
-          ext_ghq_dmptx(tmpbuf, (int)texinfo[id].real_image_width, (int)texinfo[id].real_image_height, (int)tmpwidth, (unsigned short)LOWORD(result), (unsigned short)((cache->format << 8) | (cache->size)), cache->ricecrc);
-          if (tmpbuf != texture && tmpbuf) {
-            free(tmpbuf);
-          }
-        }
-
-        if (!ghqTexInfo.data)
-          if (!settings.ghq_enht_nobg || !rdp.texrecting || (texinfo[id].width <= 256))
-            ext_ghq_txfilter((unsigned char*)texture, (int)real_x, (int)real_y, LOWORD(result), (uint64)g64_crc, &ghqTexInfo);
-
-        if (ghqTexInfo.data)
-        {
-          if (ghqTexInfo.aspectRatioLog2 < GR_ASPECT_LOG2_1x8 ||
-            ghqTexInfo.aspectRatioLog2 > GR_ASPECT_LOG2_8x1 ||
-            ghqTexInfo.largeLodLog2 > GR_LOD_LOG2_2048 ||
-            ghqTexInfo.largeLodLog2 < GR_LOD_LOG2_1)
-          {
-            /* invalid dimensions */
-          }
-          else
-          {
-            texture = (uint8_t *)ghqTexInfo.data;
-            lod = ghqTexInfo.largeLodLog2;
-            int splits = cache->splits;
-            if (ghqTexInfo.is_hires_tex)
-            {
-              if (ghqTexInfo.tiles/*ghqTexInfo.untiled_width > max_tex_size*/)
-              {
-                cache->scale = 1.0f;
-                cache->c_off = 0.5f;
-                cache->splits = ghqTexInfo.tiles;//((hirestex.width-1)>>8)+1;
-                cache->splitheight = ghqTexInfo.untiled_height;
-                cache->scale_x = 1.0f;
-                cache->scale_y = float(ghqTexInfo.untiled_height*ghqTexInfo.tiles)/float(ghqTexInfo.width);//*sy;
-                {
-                  int shift;
-                  for (shift=9; (1<<shift) < ghqTexInfo.untiled_width; shift++);
-                  float mult = float(1 << shift >> 8);
-                  cache->c_scl_x *= mult;
-                  cache->c_scl_y *= mult;
-                }
-              }
-              else
-              {
-                cache->scale = 256.0f / float(1<<lod);
-                cache->c_off = cache->scale * 0.5f;
-                cache->splits = 1;
-                if (aspect != ghqTexInfo.aspectRatioLog2)
-                {
-                  float mscale = float(1<<abs(aspect - ghqTexInfo.aspectRatioLog2));
-                  if (abs(aspect) > abs(ghqTexInfo.aspectRatioLog2))
-                  {
-                    cache->c_scl_y *= mscale;
-                    cache->c_scl_x *= mscale;
-                  }
-                  /*
-                  else
-                  {
-                  if (rdp.tiles[td].mirror_s)
-                  cache->f_mirror_s = TRUE;
-                  if (rdp.tiles[td].mirror_t)
-                  cache->f_mirror_t = TRUE;
-                  //cache->c_scl_y /= mscale;
-                  //cache->c_scl_x /= mscale;
-                  }
-                  */
-                  if (ghqTexInfo.aspectRatioLog2 >= 0)
-                  {
-                    cache->scale_x = 1.0f;
-                    cache->scale_y = 1.0f/float(1<<ghqTexInfo.aspectRatioLog2);
-                  }
-                  else
-                  {
-                    cache->scale_y = 1.0f;
-                    cache->scale_x = 1.0f/float(1<<(-ghqTexInfo.aspectRatioLog2));
-                  }
-                }
-              }
-              {
-                if (rdp.tiles[td].mirror_s && texinfo[id].tile_width == 2*texinfo[id].width)
-                  cache->f_mirror_s = TRUE;
-                else if (texinfo[id].tile_width >= 2*texinfo[id].width)
-                  cache->f_wrap_s = TRUE;
-                if (rdp.tiles[td].mirror_t && texinfo[id].tile_height == 2*texinfo[id].height)
-                  cache->f_mirror_t = TRUE;
-                else if (texinfo[id].tile_height >= 2*texinfo[id].height)
-                  cache->f_wrap_t = TRUE;
-                if (cache->f_mirror_s && cache->f_mirror_t)
-                {
-                  cache->c_scl_x *= 2.0f;
-                  cache->c_scl_y *= 2.0f;
-                }
-              }
-              aspect = ghqTexInfo.aspectRatioLog2;
-              cache->lod = lod;
-              cache->aspect = aspect;
-            }
-            else
-            {
-              //cache->scale = 256.0f / float(1<<lod);
-              cache->c_off = 128.0f / float(1<<lod);
-            }
-            real_x = ghqTexInfo.width;
-            real_y = ghqTexInfo.height;
-            result = (1 << 16) | ghqTexInfo.format;
-            cache->t_info.format = ghqTexInfo.format;
-            cache->realwidth = real_x;
-            cache->realheight = real_y;
-          }
-        }
-      }
-#endif
 
       // Load the texture into texture memory
       GrTexInfo *t_info = &cache->t_info;

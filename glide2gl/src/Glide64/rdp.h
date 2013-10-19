@@ -46,11 +46,6 @@ extern char out_buf[2048];
 
 extern uint32_t frame_count; // frame counter
 
-//GlideHQ support
-#ifdef TEXTURE_FILTER
-#include "../GlideHQ/Ext_TxFilter.h"
-#endif
-
 #define MAX_CACHE   1024*4
 #define MAX_TRI_CACHE 768 // this is actually # of vertices, not triangles
 #define MAX_VTX     256
@@ -130,23 +125,6 @@ typedef struct {
   uint32_t lr_y;
 } SCISSOR;
 
-#ifdef TEXTURE_FILTER
-extern uint32_t texfltr[];
-extern uint32_t texenht[];
-extern uint32_t texcmpr[];
-extern uint32_t texhirs[];
-
-typedef struct {
-  uint16_t tile_ul_s;
-  uint16_t tile_ul_t;
-  uint16_t tile_width;
-  uint16_t tile_height;
-  uint16_t tex_width;
-  uint16_t tex_size;
-  uint32_t dxt;
-} LOAD_TILE_INFO;
-#endif
-
 // #warning no screenshot support
 /*
 typedef struct {
@@ -208,29 +186,6 @@ typedef struct {
     fbcrcNone = 0,
     fbcrcFast = 1,
     fbcrcSafe = 2} fb_crc_mode;
-
-#ifdef TEXTURE_FILTER
-  //Texture filtering options
-  int ghq_fltr;
-  int ghq_enht;
-  int ghq_cmpr;
-  int ghq_hirs;
-  int ghq_use;
-  int ghq_enht_cmpr;
-  int ghq_enht_tile;
-  int ghq_enht_f16bpp;
-  int ghq_enht_gz;
-  int ghq_enht_nobg;
-  int ghq_hirs_cmpr;
-  int ghq_hirs_tile;
-  int ghq_hirs_f16bpp;
-  int ghq_hirs_gz;
-  int ghq_hirs_altcrc;
-  int ghq_cache_save;
-  int ghq_cache_size;
-  int ghq_hirs_let_texartists_fly;
-  int ghq_hirs_dump;
-#endif
 
   //Debug
   int autodetect_ucode;
@@ -425,10 +380,6 @@ typedef struct {
   float c_scl_y;  // scale to lower-right center-texel y
 
   uint32_t mod, mod_color, mod_color1, mod_color2, mod_factor;
-#ifdef TEXTURE_FILTER
-  uint64 ricecrc;
-  int is_hires_tex;
-#endif
 } CACHE_LUT;
 
 // Lights
@@ -600,9 +551,6 @@ struct RDP_Base{
   TILE tiles[8];          // 8 tile descriptors
   uint8_t tmem[4096];        // 4k tmem
   uint32_t addr[512];        // 512 addresses (used to determine address loaded from)
-#ifdef TEXTURE_FILTER
-  LOAD_TILE_INFO load_info[512];    // 512 addresses. inforamation about tile loading.
-#endif
 
   int     cur_tile;   // current tile
   int     mipmap_level;
@@ -623,9 +571,6 @@ struct RDP_Base{
   int Persp_en;
   int persp_supported;
   int force_wrap;
-#ifdef TEXTURE_FILTER
-  uint16_t pal_8_rice[512];
-#endif
 
   // Lighting
   uint32_t num_lights;

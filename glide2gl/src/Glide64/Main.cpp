@@ -54,10 +54,6 @@
 #include <time.h>
 #define PATH_MAX MAX_PATH
 #endif
-#ifdef TEXTURE_FILTER // Hiroshi Morii <koolsmoky@users.sourceforge.net>
-#include <stdarg.h>
-int  ghq_dmptex_toggle_key = 0;
-#endif
 #if defined(__MINGW32__)
 #define swprintf _snwprintf
 #define vswprintf _vsnwprintf
@@ -338,45 +334,6 @@ void ReadSettings ()
   settings.log_unk = FALSE;
   settings.unk_clear = FALSE;
 #endif
-
-#ifdef TEXTURE_FILTER
-  
-  // settings.ghq_fltr range is 0 through 6
-  // Filters:\nApply a filter to either smooth or sharpen textures.\nThere are 4 different smoothing filters and 2 different sharpening filters.\nThe higher the number, the stronger the effect,\ni.e. \"Smoothing filter 4\" will have a much more noticeable effect than \"Smoothing filter 1\".\nBe aware that performance may have an impact depending on the game and/or the PC.\n[Recommended: your preference]
-  // _("None"),
-  // _("Smooth filtering 1"),
-  // _("Smooth filtering 2"),
-  // _("Smooth filtering 3"),
-  // _("Smooth filtering 4"),
-  // _("Sharp filtering 1"),
-  // _("Sharp filtering 2")
-
-// settings.ghq_cmpr 0=S3TC and 1=FXT1
-
-//settings.ghq_ent is ___
-// "Texture enhancement:\n7 different filters are selectable here, each one with a distinctive look.\nBe aware of possible performance impacts.\n\nIMPORTANT: 'Store' mode - saves textures in cache 'as is'. It can improve performance in games, which load many textures.\nDisable 'Ignore backgrounds' option for better result.\n\n[Recommended: your preference]"
-
-
-
-  settings.ghq_fltr = Config_ReadInt ("ghq_fltr", "Texture Enhancement: Smooth/Sharpen Filters", 0, TRUE, FALSE);
-  settings.ghq_cmpr = Config_ReadInt ("ghq_cmpr", "Texture Compression: 0 for S3TC, 1 for FXT1", 0, TRUE, FALSE);
-  settings.ghq_enht = Config_ReadInt ("ghq_enht", "Texture Enhancement: More filters", 0, TRUE, FALSE);
-  settings.ghq_hirs = Config_ReadInt ("ghq_hirs", "Hi-res texture pack format (0 for none, 1 for Rice)", 0, TRUE, FALSE);
-  settings.ghq_enht_cmpr  = Config_ReadInt ("ghq_enht_cmpr", "Compress texture cache with S3TC or FXT1", 0, TRUE, TRUE);
-  settings.ghq_enht_tile = Config_ReadInt ("ghq_enht_tile", "Tile textures (saves memory but could cause issues)", 0, TRUE, FALSE);
-  settings.ghq_enht_f16bpp = Config_ReadInt ("ghq_enht_f16bpp", "Force 16bpp textures (saves ram but lower quality)", 0, TRUE, TRUE);
-  settings.ghq_enht_gz  = Config_ReadInt ("ghq_enht_gz", "Compress texture cache", 1, TRUE, TRUE);
-  settings.ghq_enht_nobg  = Config_ReadInt ("ghq_enht_nobg", "Don't enhance textures for backgrounds", 0, TRUE, TRUE);
-  settings.ghq_hirs_cmpr  = Config_ReadInt ("ghq_hirs_cmpr", "Enable S3TC and FXT1 compression", 0, TRUE, TRUE);
-  settings.ghq_hirs_tile = Config_ReadInt ("ghq_hirs_tile", "Tile hi-res textures (saves memory but could cause issues)", 0, TRUE, TRUE);
-  settings.ghq_hirs_f16bpp = Config_ReadInt ("ghq_hirs_f16bpp", "Force 16bpp hi-res textures (saves ram but lower quality)", 0, TRUE, TRUE);
-  settings.ghq_hirs_gz  = Config_ReadInt ("ghq_hirs_gz", "Compress hi-res texture cache", 1, TRUE, TRUE);
-  settings.ghq_hirs_altcrc = Config_ReadInt ("ghq_hirs_altcrc", "Alternative CRC calculation -- emulates Rice bug", 1, TRUE, TRUE);
-  settings.ghq_cache_save = Config_ReadInt ("ghq_cache_save", "Save tex cache to disk", 1, TRUE, TRUE);
-  settings.ghq_cache_size = Config_ReadInt ("ghq_cache_size", "Texture Cache Size (MB)", 128, TRUE, FALSE);
-  settings.ghq_hirs_let_texartists_fly = Config_ReadInt ("ghq_hirs_let_texartists_fly", "Use full alpha channel -- could cause issues for some tex packs", 0, TRUE, TRUE);
-  settings.ghq_hirs_dump = Config_ReadInt ("ghq_hirs_dump", "Dump textures", 0, FALSE, TRUE);
-#endif
 }
 
 void ReadSpecialSettings (const char * name)
@@ -615,25 +572,6 @@ void guLoadTextures ()
     offset_textures = tbuf_size + 16;
 }
 
-#ifdef TEXTURE_FILTER
-void DisplayLoadProgress(const wchar_t *format, ...)
-{
-  va_list args;
-  wchar_t wbuf[INFO_BUF];
-  char buf[INFO_BUF];
-
-  // process input
-  va_start(args, format);
-  vswprintf(wbuf, INFO_BUF, format, args);
-  va_end(args);
-
-  // XXX: convert to multibyte
-  wcstombs(buf, wbuf, INFO_BUF);
-
-  //LOADING TEXTURES. PLEASE WAIT...
-}
-#endif
-
 int InitGfx ()
 {
   wchar_t romname[256];
@@ -741,56 +679,6 @@ int InitGfx ()
   grTexClampMode (1, GR_TEXTURECLAMP_CLAMP, GR_TEXTURECLAMP_CLAMP);
   grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
   rdp.update |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
-
-#ifdef TEXTURE_FILTER // Hiroshi Morii <koolsmoky@users.sourceforge.net>
-  if (!settings.ghq_use)
-  {
-    settings.ghq_use = settings.ghq_fltr || settings.ghq_enht /*|| settings.ghq_cmpr*/ || settings.ghq_hirs;
-    if (settings.ghq_use)
-    {
-      /* Plugin path */
-      int options = texfltr[settings.ghq_fltr]|texenht[settings.ghq_enht]|texcmpr[settings.ghq_cmpr]|texhirs[settings.ghq_hirs];
-      if (settings.ghq_enht_cmpr)
-        options |= COMPRESS_TEX;
-      if (settings.ghq_hirs_cmpr)
-        options |= COMPRESS_HIRESTEX;
-      //      if (settings.ghq_enht_tile)
-      //        options |= TILE_TEX;
-      if (settings.ghq_hirs_tile)
-        options |= TILE_HIRESTEX;
-      if (settings.ghq_enht_f16bpp)
-        options |= FORCE16BPP_TEX;
-      if (settings.ghq_hirs_f16bpp)
-        options |= FORCE16BPP_HIRESTEX;
-      if (settings.ghq_enht_gz)
-        options |= GZ_TEXCACHE;
-      if (settings.ghq_hirs_gz)
-        options |= GZ_HIRESTEXCACHE;
-      if (settings.ghq_cache_save)
-        options |= (DUMP_TEXCACHE|DUMP_HIRESTEXCACHE);
-      if (settings.ghq_hirs_let_texartists_fly)
-        options |= LET_TEXARTISTS_FLY;
-      if (settings.ghq_hirs_dump)
-        options |= DUMP_TEX;
-
-      ghq_dmptex_toggle_key = 0;
-
-      swprintf(romname, 256, L"%hs", rdp.RomName);
-      swprintf(foldername, sizeof(foldername), L"%hs", ConfigGetUserDataPath());
-      swprintf(cachename, sizeof(cachename), L"%hs", ConfigGetUserCachePath());
-
-      settings.ghq_use = (int)ext_ghq_init(voodoo.max_tex_size, // max texture width supported by hardware
-        voodoo.max_tex_size, // max texture height supported by hardware
-        32, // max texture bpp supported by hardware
-        options,
-        settings.ghq_cache_size * 1024*1024, // cache texture to system memory
-        foldername,
-        cachename,
-        romname, // name of ROM. must be no longer than 256 characters
-        DisplayLoadProgress);
-    }
-  }
-#endif
 
   return TRUE;
 }
@@ -946,13 +834,6 @@ void CALL CloseDLL (void)
 {
   VLOG ("CloseDLL ()\n");
 
-#ifdef TEXTURE_FILTER // Hiroshi Morii <koolsmoky@users.sourceforge.net>
-  if (settings.ghq_use)
-  {
-    ext_ghq_shutdown();
-    settings.ghq_use = 0;
-  }
-#endif
   if (fullscreen)
     ReleaseGfx ();
   ZLUT_release();
