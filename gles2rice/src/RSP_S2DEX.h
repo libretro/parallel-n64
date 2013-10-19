@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef _RSP_S2DEX_H_
 #define _RSP_S2DEX_H_
 
+// GBI commands for S2DEX microcode.
 #define S2DEX_BG_1CYC           0x01
 #define S2DEX_BG_COPY           0x02
 #define S2DEX_OBJ_RECTANGLE     0x03
@@ -34,15 +35,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define S2DEX_OBJ_LDTX_RECT_R   0xc4
 #define S2DEX_RDPHALF_0         0xe4
 
+// Struct types
 #define S2DEX_OBJLT_TXTRBLOCK   0x00001033
 #define S2DEX_OBJLT_TXTRTILE    0x00fc1034
 #define S2DEX_OBJLT_TLUT        0x00000030
+
+// Loaded types
 #define S2DEX_BGLT_LOADBLOCK    0x0033
 #define S2DEX_BGLT_LOADTILE     0xfff4
 
 typedef struct //Intel Format
 {
-  uint32    type;  // Struct classification type. Should always be 0x1033
+  uint32    type;  // Struct classification type. Should always be S2DEX_OBJLT_TXTRBLOCK (0x1033)
   uint32    image; // Texture address within the DRAM.
 
   uint16    tmem;  // TMEM load address
@@ -56,7 +60,7 @@ typedef struct //Intel Format
 
 typedef struct //Intel Format
 {
-  uint32    type;    // Struct classification type. Should always be 0xfc1034
+  uint32    type;    // Struct classification type. Should always be S2DEX_OBJLT_TXTRTILE (0xfc1034)
   uint32    image;   // Texture address within the DRAM.
 
   uint16    tmem;    // TMEM load address
@@ -71,11 +75,11 @@ typedef struct //Intel Format
 
 typedef struct // Intel Format
 {
-  uint32    type;  // Struct classification type, should always be 0x30
+  uint32    type;  // Struct classification type, should always be S2DEX_OBJLT_TLUT (0x30)
   uint32    image; // Texture address within the DRAM.
   
   uint16    pnum;  // Loaded palette number - 1
-  uint16    phead; // Number indicating the first loaded palette.
+  uint16    phead; // Number indicating the first loaded palette (Between 256 - 511).
   
   uint16    zero;  // Always 0
   
@@ -106,7 +110,7 @@ typedef struct // Intel format
   uint16  paddingY;    // Unused, always 0.
   uint16  imageH;      // Texture height
   
-  uint16  imageAdrs;   // Texture address within the TMEM.
+  uint16  imageAdrs;   // Texture header position within the TMEM.
   uint16  imageStride; // Number of bytes from one row of pixels in memory to the next row of pixels (ie. Stride)
 
   uint8   imageFlags;  // Flag used for image manipulations
@@ -174,6 +178,7 @@ typedef struct // Intel Format
   uint16    imageFlip;  // Inverts the image if 0x01 is set.
   uint16    imagePal;   // Palette number
 
+  // Set within initialization routines, should not need to be directly set.
   uint16    tmemH;
   uint16    tmemW;
   uint16    tmemLoadTH;
