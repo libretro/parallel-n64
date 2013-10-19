@@ -50,7 +50,7 @@
 extern "C" {
 #endif
 
-void CRC_BuildTable();
+void CRC_BuildTable(void);
 unsigned int CRC32( unsigned int crc, void *buffer, unsigned int count );
 
 #ifdef __cplusplus

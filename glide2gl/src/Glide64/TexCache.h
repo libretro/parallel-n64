@@ -40,9 +40,9 @@
 #ifndef TEXCACHE_H
 #define TEXCACHE_H
 
-void TexCacheInit ();
-void TexCache ();
-void ClearCache ();
+void TexCacheInit(void);
+void TexCache(void);
+void ClearCache(void);
 
 extern uint8_t * texture_buffer;
 

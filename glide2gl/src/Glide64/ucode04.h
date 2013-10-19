@@ -41,42 +41,41 @@
 // uCode 4 - RSP SW 2.0D EXT
 //****************************************************************
 
-static void uc4_vertex()
+static void uc4_vertex(void)
 {
-  int v0 = 0;     // Current vertex
-  int n = ((rdp.cmd0 >> 4) & 0xFFF) / 33 + 1; // Number of vertices to copy
-  rsp_vertex(v0, n);
+   int v0 = 0;     // Current vertex
+   int n = ((rdp.cmd0 >> 4) & 0xFFF) / 33 + 1; // Number of vertices to copy
+   rsp_vertex(v0, n);
 }
 
-static void uc4_tri1()
+static void uc4_tri1(void)
 {
-  int v1 = ((rdp.cmd1 >> 16) & 0xFF) / 5;
-  int v2 = ((rdp.cmd1 >> 8) & 0xFF) / 5;
-  int v3 = (rdp.cmd1 & 0xFF) / 5;
-  FRDP("uc4:tri1 #%d - %d, %d, %d\n", rdp.tri_n,
-    v1, v2, v3);
+   VERTEX *v[3];
 
-  VERTEX *v[3] = {
-    &rdp.vtx[v1],
-    &rdp.vtx[v2],
-    &rdp.vtx[v3]
-  };
+   int v1 = ((rdp.cmd1 >> 16) & 0xFF) / 5;
+   int v2 = ((rdp.cmd1 >> 8) & 0xFF) / 5;
+   int v3 = (rdp.cmd1 & 0xFF) / 5;
+   FRDP("uc4:tri1 #%d - %d, %d, %d\n", rdp.tri_n,
+         v1, v2, v3);
 
-  rsp_tri1(v);
+   v[0] = &rdp.vtx[v1];
+   v[1] = &rdp.vtx[v2];
+   v[2] = &rdp.vtx[v3];
+
+   rsp_tri1(v);
 }
 
-static void uc4_quad3d()
+static void uc4_quad3d(void)
 {
-  FRDP("uc4:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
+   VERTEX *v[6];
+   FRDP("uc4:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
 
-  VERTEX *v[6] = {
-    &rdp.vtx[((rdp.cmd1 >> 24) & 0xFF) / 5],
-    &rdp.vtx[((rdp.cmd1 >> 16) & 0xFF) / 5],
-    &rdp.vtx[((rdp.cmd1 >> 8) & 0xFF) / 5],
-    &rdp.vtx[((rdp.cmd1 >> 24) & 0xFF) / 5],
-    &rdp.vtx[((rdp.cmd1 >> 8) & 0xFF) / 5],
-    &rdp.vtx[(rdp.cmd1 & 0xFF) / 5]
-  };
+   v[0] = &rdp.vtx[((rdp.cmd1 >> 24) & 0xFF) / 5];
+   v[1] = &rdp.vtx[((rdp.cmd1 >> 16) & 0xFF) / 5];
+   v[2] = &rdp.vtx[((rdp.cmd1 >> 8) & 0xFF)  / 5];
+   v[3] = &rdp.vtx[((rdp.cmd1 >> 24) & 0xFF) / 5];
+   v[4] = &rdp.vtx[((rdp.cmd1 >> 8) & 0xFF)  / 5];
+   v[5] = &rdp.vtx[(rdp.cmd1 & 0xFF)         / 5];
 
-  rsp_tri2(v);
+   rsp_tri2(v);
 }

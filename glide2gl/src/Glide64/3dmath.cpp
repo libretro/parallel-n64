@@ -48,109 +48,115 @@
 
 void calc_light (VERTEX *v)
 {
-  float light_intensity = 0.0f;
-  register float color[3] = {rdp.light[rdp.num_lights].r, rdp.light[rdp.num_lights].g, rdp.light[rdp.num_lights].b};
-  for (uint32_t l=0; l<rdp.num_lights; l++)
-  {
-    light_intensity = DotProduct (rdp.light_vector[l], v->vec);
-    
-    if (light_intensity > 0.0f) 
-    {
-      color[0] += rdp.light[l].r * light_intensity;
-      color[1] += rdp.light[l].g * light_intensity;
-      color[2] += rdp.light[l].b * light_intensity;
-    }
-  }
-  
-  if (color[0] > 1.0f) color[0] = 1.0f;
-  if (color[1] > 1.0f) color[1] = 1.0f;
-  if (color[2] > 1.0f) color[2] = 1.0f;
-  
-  v->r = (uint8_t)(color[0]*255.0f);
-  v->g = (uint8_t)(color[1]*255.0f);
-  v->b = (uint8_t)(color[2]*255.0f);
+   uint32_t l;
+   float light_intensity = 0.0f;
+   float color[3];
+   color[0] = rdp.light[rdp.num_lights].r;
+   color[1] = rdp.light[rdp.num_lights].g;
+   color[2] = rdp.light[rdp.num_lights].b;
+
+   for (l = 0; l < rdp.num_lights; l++)
+   {
+      light_intensity = DotProduct (rdp.light_vector[l], v->vec);
+
+      if (light_intensity > 0.0f) 
+      {
+         color[0] += rdp.light[l].r * light_intensity;
+         color[1] += rdp.light[l].g * light_intensity;
+         color[2] += rdp.light[l].b * light_intensity;
+      }
+   }
+
+   if (color[0] > 1.0f)
+      color[0] = 1.0f;
+   if (color[1] > 1.0f)
+      color[1] = 1.0f;
+   if (color[2] > 1.0f)
+      color[2] = 1.0f;
+
+   v->r = (uint8_t)(color[0]*255.0f);
+   v->g = (uint8_t)(color[1]*255.0f);
+   v->b = (uint8_t)(color[2]*255.0f);
 }
 
-//*
 void calc_linear (VERTEX *v)
 {
-  if (settings.force_calc_sphere)
-  {
-    calc_sphere(v);
-    return;
-  }
-  DECLAREALIGN16VAR(vec[3]);
-  
-  TransformVector (v->vec, vec, rdp.model);
-  //    TransformVector (v->vec, vec, rdp.combined);
-  NormalizeVector (vec);
-  float x, y;
-  if (!rdp.use_lookat)
-  {
-    x = vec[0];
-    y = vec[1];
-  }
-  else
-  {
-    x = DotProduct (rdp.lookat[0], vec);
-    y = DotProduct (rdp.lookat[1], vec);
-  }
-  
-  if (x > 1.0f)
-    x = 1.0f;
-  else if (x < -1.0f)
-    x = -1.0f;
-  if (y > 1.0f)
-    y = 1.0f;
-  else if (y < -1.0f)
-    y = -1.0f;
-  
-  if (rdp.cur_cache[0])
-  {
-    // scale >> 6 is size to map to
-    v->ou = (acosf(x)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_s_scale >> 6);
-    v->ov = (acosf(y)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_t_scale >> 6);
-  }
-  v->uv_scaled = 1;
+   if (settings.force_calc_sphere)
+   {
+      calc_sphere(v);
+      return;
+   }
+   DECLAREALIGN16VAR(vec[3]);
+
+   TransformVector (v->vec, vec, rdp.model);
+   //    TransformVector (v->vec, vec, rdp.combined);
+   NormalizeVector (vec);
+   float x, y;
+   if (!rdp.use_lookat)
+   {
+      x = vec[0];
+      y = vec[1];
+   }
+   else
+   {
+      x = DotProduct (rdp.lookat[0], vec);
+      y = DotProduct (rdp.lookat[1], vec);
+   }
+
+   if (x > 1.0f)
+      x = 1.0f;
+   else if (x < -1.0f)
+      x = -1.0f;
+   if (y > 1.0f)
+      y = 1.0f;
+   else if (y < -1.0f)
+      y = -1.0f;
+
+   if (rdp.cur_cache[0])
+   {
+      // scale >> 6 is size to map to
+      v->ou = (acosf(x)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_s_scale >> 6);
+      v->ov = (acosf(y)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_t_scale >> 6);
+   }
+   v->uv_scaled = 1;
 #ifdef EXTREME_LOGGING
-  FRDP ("calc linear u: %f, v: %f\n", v->ou, v->ov);
+   FRDP ("calc linear u: %f, v: %f\n", v->ou, v->ov);
 #endif
 }
 
 void calc_sphere (VERTEX *v)
 {
-//  LRDP("calc_sphere\n");
-  DECLAREALIGN16VAR(vec[3]);
-  int s_scale, t_scale;
-  if (settings.hacks&hack_Chopper)
-  {
-    s_scale = min(rdp.tiles[rdp.cur_tile].org_s_scale >> 6, rdp.tiles[rdp.cur_tile].lr_s);
-    t_scale = min(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, rdp.tiles[rdp.cur_tile].lr_t);
-  }
-  else
-  {
-    s_scale = rdp.tiles[rdp.cur_tile].org_s_scale >> 6;
-    t_scale = rdp.tiles[rdp.cur_tile].org_t_scale >> 6;
-  }
-  TransformVector (v->vec, vec, rdp.model);
-  //    TransformVector (v->vec, vec, rdp.combined);
-  NormalizeVector (vec);
-  float x, y;
-  if (!rdp.use_lookat)
-  {
-    x = vec[0];
-    y = vec[1];
-  }
-  else
-  {
-    x = DotProduct (rdp.lookat[0], vec);
-    y = DotProduct (rdp.lookat[1], vec);
-  }
-  v->ou = (x * 0.5f + 0.5f) * s_scale;
-  v->ov = (y * 0.5f + 0.5f) * t_scale;
-  v->uv_scaled = 1;
+   //  LRDP("calc_sphere\n");
+   DECLAREALIGN16VAR(vec[3]);
+   int s_scale, t_scale;
+   if (settings.hacks&hack_Chopper)
+   {
+      s_scale = min(rdp.tiles[rdp.cur_tile].org_s_scale >> 6, rdp.tiles[rdp.cur_tile].lr_s);
+      t_scale = min(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, rdp.tiles[rdp.cur_tile].lr_t);
+   }
+   else
+   {
+      s_scale = rdp.tiles[rdp.cur_tile].org_s_scale >> 6;
+      t_scale = rdp.tiles[rdp.cur_tile].org_t_scale >> 6;
+   }
+   TransformVector (v->vec, vec, rdp.model);
+   NormalizeVector (vec);
+   float x, y;
+   if (!rdp.use_lookat)
+   {
+      x = vec[0];
+      y = vec[1];
+   }
+   else
+   {
+      x = DotProduct (rdp.lookat[0], vec);
+      y = DotProduct (rdp.lookat[1], vec);
+   }
+   v->ou = (x * 0.5f + 0.5f) * s_scale;
+   v->ov = (y * 0.5f + 0.5f) * t_scale;
+   v->uv_scaled = 1;
 #ifdef EXTREME_LOGGING
-  FRDP ("calc sphere u: %f, v: %f\n", v->ou, v->ov);
+   FRDP ("calc sphere u: %f, v: %f\n", v->ou, v->ov);
 #endif
 }
 
@@ -163,42 +169,43 @@ float DotProductC(register float *v1, register float *v2)
 
 void NormalizeVectorC(float *v)
 {
-    register float len;
-    len = sqrtf(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-    if (len > 0.0f)
-    {
-        v[0] /= len;
-        v[1] /= len;
-        v[2] /= len;
-    }
+   register float len;
+   len = sqrtf(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+   if (len > 0.0f)
+   {
+      v[0] /= len;
+      v[1] /= len;
+      v[2] /= len;
+   }
 }
 
 void TransformVectorC(float *src, float *dst, float mat[4][4])
 {
-  dst[0] = mat[0][0]*src[0] + mat[1][0]*src[1] + mat[2][0]*src[2];
-  dst[1] = mat[0][1]*src[0] + mat[1][1]*src[1] + mat[2][1]*src[2];
-  dst[2] = mat[0][2]*src[0] + mat[1][2]*src[1] + mat[2][2]*src[2];
+   dst[0] = mat[0][0]*src[0] + mat[1][0]*src[1] + mat[2][0]*src[2];
+   dst[1] = mat[0][1]*src[0] + mat[1][1]*src[1] + mat[2][1]*src[2];
+   dst[2] = mat[0][2]*src[0] + mat[1][2]*src[1] + mat[2][2]*src[2];
 }
 
 void InverseTransformVectorC (float *src, float *dst, float mat[4][4])
 {
-  dst[0] = mat[0][0]*src[0] + mat[0][1]*src[1] + mat[0][2]*src[2];
-  dst[1] = mat[1][0]*src[0] + mat[1][1]*src[1] + mat[1][2]*src[2];
-  dst[2] = mat[2][0]*src[0] + mat[2][1]*src[1] + mat[2][2]*src[2];
+   dst[0] = mat[0][0]*src[0] + mat[0][1]*src[1] + mat[0][2]*src[2];
+   dst[1] = mat[1][0]*src[0] + mat[1][1]*src[1] + mat[1][2]*src[2];
+   dst[2] = mat[2][0]*src[0] + mat[2][1]*src[1] + mat[2][2]*src[2];
 }
 
 void MulMatricesC(float m1[4][4],float m2[4][4],float r[4][4])
 {
-  for (int i=0; i<4; i++)
-  {
-    for (int j=0; j<4; j++)
-    {
-      r[i][j] = m1[i][0] * m2[0][j] +
-                m1[i][1] * m2[1][j] +
-                m1[i][2] * m2[2][j] +
-                m1[i][3] * m2[3][j];
-    }
-  }
+   int i, j;
+   for (i=0; i < 4; i++)
+   {
+      for (j = 0; j < 4; j++)
+      {
+         r[i][j] = m1[i][0] * m2[0][j] +
+            m1[i][1] * m2[1][j] +
+            m1[i][2] * m2[2][j] +
+            m1[i][3] * m2[3][j];
+      }
+   }
 }
 
 // 2011-01-03 Balrog - removed because is in NASM format and not 64-bit compatible
@@ -209,10 +216,9 @@ TRANSFORMVECTOR InverseTransformVector = InverseTransformVectorC;
 DOTPRODUCT DotProduct = DotProductC;
 NORMALIZEVECTOR NormalizeVector = NormalizeVectorC;
 
-
-void math_init()
+void math_init(void)
 {
-   int IsSSE = FALSE;
+   int IsSSE = false;
    int edx, eax;
    (void)edx;
    (void)eax;
@@ -238,7 +244,7 @@ void math_init()
 
    // Check for SSE
    if (edx & (1 << 25))
-      IsSSE = TRUE;
+      IsSSE = true;
 
    if (IsSSE)
    {

@@ -47,7 +47,7 @@
 
 int OpenTextureBuffer(COLOR_IMAGE & cimage);
 
-int CloseTextureBuffer(int draw = FALSE);
+int CloseTextureBuffer(int draw = false);
 
 int CopyTextureBuffer(COLOR_IMAGE & fb_from, COLOR_IMAGE & fb_to);
 

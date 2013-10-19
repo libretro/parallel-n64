@@ -47,13 +47,13 @@
 
 struct vertexi
 {
-    int x,y;       // Screen position in 16:16 bit fixed point
-    int z;         // z value in 16:16 bit fixed point
+   int x,y;       // Screen position in 16:16 bit fixed point
+   int z;         // z value in 16:16 bit fixed point
 };
 
 extern uint16_t * zLUT;
-void ZLUT_init();
-void ZLUT_release();
+void ZLUT_init(void);
+void ZLUT_release(void);
 
 void Rasterize(vertexi * vtx, int vertices, int dzdx);
 

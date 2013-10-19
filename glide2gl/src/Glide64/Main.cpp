@@ -71,12 +71,12 @@ std::ofstream loga;
 #endif
 
 #ifdef RDP_LOGGING
-int log_open = FALSE;
+int log_open = false;
 std::ofstream rdp_log;
 #endif
 
 #ifdef RDP_ERROR_LOG
-int elog_open = FALSE;
+int elog_open = false;
 std::ofstream rdp_err;
 #endif
 
@@ -113,10 +113,10 @@ std::ofstream rdp_err;
 
 GFX_INFO gfx;
 
-int fullscreen = FALSE;
-int romopen = FALSE;
+int fullscreen = false;
+int romopen = false;
 GrContext_t gfx_context = 0;
-int exception = FALSE;
+int exception = false;
 
 int evoodoo = 0;
 int ev_fullscreen = 0;
@@ -130,7 +130,7 @@ unsigned long BMASK = 0x7FFFFF;
 // Reality display processor structure
 RDP rdp;
 
-SETTINGS settings = { FALSE, 640, 480, GR_RESOLUTION_640x480, 0 };
+SETTINGS settings = { false, 640, 480, GR_RESOLUTION_640x480, 0 };
 
 VOODOO voodoo = {0, 0, 0, 0,
                  0, 0
@@ -144,657 +144,663 @@ char    capture_path[256];
 
 // SOME FUNCTION DEFINITIONS 
 
-static void DrawFrameBuffer ();
+static void DrawFrameBuffer(void);
 
 
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
 
-void _ChangeSize ()
+void _ChangeSize(void)
 {
-  rdp.scale_1024 = settings.scr_res_x / 1024.0f;
-  rdp.scale_768 = settings.scr_res_y / 768.0f;
+   rdp.scale_1024 = settings.scr_res_x / 1024.0f;
+   rdp.scale_768 = settings.scr_res_y / 768.0f;
 
-//  float res_scl_x = (float)settings.res_x / 320.0f;
-  float res_scl_y = (float)settings.res_y / 240.0f;
+   //  float res_scl_x = (float)settings.res_x / 320.0f;
+   float res_scl_y = (float)settings.res_y / 240.0f;
 
-  uint32_t scale_x = *gfx.VI_X_SCALE_REG & 0xFFF;
-  if (!scale_x) return;
-  uint32_t scale_y = *gfx.VI_Y_SCALE_REG & 0xFFF;
-  if (!scale_y) return;
+   uint32_t scale_x = *gfx.VI_X_SCALE_REG & 0xFFF;
+   if (!scale_x) return;
+   uint32_t scale_y = *gfx.VI_Y_SCALE_REG & 0xFFF;
+   if (!scale_y) return;
 
-  float fscale_x = (float)scale_x / 1024.0f;
-  float fscale_y = (float)scale_y / 2048.0f;
+   float fscale_x = (float)scale_x / 1024.0f;
+   float fscale_y = (float)scale_y / 2048.0f;
 
-  uint32_t dwHStartReg = *gfx.VI_H_START_REG;
-  uint32_t dwVStartReg = *gfx.VI_V_START_REG;
+   uint32_t dwHStartReg = *gfx.VI_H_START_REG;
+   uint32_t dwVStartReg = *gfx.VI_V_START_REG;
 
-  uint32_t hstart = dwHStartReg >> 16;
-  uint32_t hend = dwHStartReg & 0xFFFF;
+   uint32_t hstart = dwHStartReg >> 16;
+   uint32_t hend = dwHStartReg & 0xFFFF;
 
-  // dunno... but sometimes this happens
-  if (hend == hstart) hend = (int)(*gfx.VI_WIDTH_REG / fscale_x);
+   // dunno... but sometimes this happens
+   if (hend == hstart) hend = (int)(*gfx.VI_WIDTH_REG / fscale_x);
 
-  uint32_t vstart = dwVStartReg >> 16;
-  uint32_t vend = dwVStartReg & 0xFFFF;
+   uint32_t vstart = dwVStartReg >> 16;
+   uint32_t vend = dwVStartReg & 0xFFFF;
 
-  rdp.vi_width = (hend - hstart) * fscale_x;
-  rdp.vi_height = (vend - vstart) * fscale_y * 1.0126582f;
-  float aspect = (settings.adjust_aspect && (fscale_y > fscale_x) && (rdp.vi_width > rdp.vi_height)) ? fscale_x/fscale_y : 1.0f;
+   rdp.vi_width = (hend - hstart) * fscale_x;
+   rdp.vi_height = (vend - vstart) * fscale_y * 1.0126582f;
+   float aspect = (settings.adjust_aspect && (fscale_y > fscale_x) && (rdp.vi_width > rdp.vi_height)) ? fscale_x/fscale_y : 1.0f;
 
 #ifdef LOGGING
-  sprintf (out_buf, "hstart: %d, hend: %d, vstart: %d, vend: %d\n", hstart, hend, vstart, vend);
-  LOG (out_buf);
-  sprintf (out_buf, "size: %d x %d\n", (int)rdp.vi_width, (int)rdp.vi_height);
-  LOG (out_buf);
+   sprintf (out_buf, "hstart: %d, hend: %d, vstart: %d, vend: %d\n", hstart, hend, vstart, vend);
+   LOG (out_buf);
+   sprintf (out_buf, "size: %d x %d\n", (int)rdp.vi_width, (int)rdp.vi_height);
+   LOG (out_buf);
 #endif
 
-  rdp.scale_x = (float)settings.res_x / rdp.vi_width;
-  if (region > 0 && settings.pal230)
-  {
-    // odd... but pal games seem to want 230 as height...
-    rdp.scale_y = res_scl_y * (230.0f / rdp.vi_height)  * aspect;
-  }
-  else
-  {
-    rdp.scale_y = (float)settings.res_y / rdp.vi_height * aspect;
-  }
-  //  rdp.offset_x = settings.offset_x * res_scl_x;
-  //  rdp.offset_y = settings.offset_y * res_scl_y;
-  //rdp.offset_x = 0;
-  //  rdp.offset_y = 0;
-  rdp.offset_y = ((float)settings.res_y - rdp.vi_height * rdp.scale_y) * 0.5f;
-  if (((uint32_t)rdp.vi_width <= (*gfx.VI_WIDTH_REG)/2) && (rdp.vi_width > rdp.vi_height))
-    rdp.scale_y *= 0.5f;
+   rdp.scale_x = (float)settings.res_x / rdp.vi_width;
+   if (region > 0 && settings.pal230)
+   {
+      // odd... but pal games seem to want 230 as height...
+      rdp.scale_y = res_scl_y * (230.0f / rdp.vi_height)  * aspect;
+   }
+   else
+   {
+      rdp.scale_y = (float)settings.res_y / rdp.vi_height * aspect;
+   }
+   //  rdp.offset_x = settings.offset_x * res_scl_x;
+   //  rdp.offset_y = settings.offset_y * res_scl_y;
+   //rdp.offset_x = 0;
+   //  rdp.offset_y = 0;
+   rdp.offset_y = ((float)settings.res_y - rdp.vi_height * rdp.scale_y) * 0.5f;
+   if (((uint32_t)rdp.vi_width <= (*gfx.VI_WIDTH_REG)/2) && (rdp.vi_width > rdp.vi_height))
+      rdp.scale_y *= 0.5f;
 
-  rdp.scissor_o.ul_x = 0;
-  rdp.scissor_o.ul_y = 0;
-  rdp.scissor_o.lr_x = (uint32_t)rdp.vi_width;
-  rdp.scissor_o.lr_y = (uint32_t)rdp.vi_height;
+   rdp.scissor_o.ul_x = 0;
+   rdp.scissor_o.ul_y = 0;
+   rdp.scissor_o.lr_x = (uint32_t)rdp.vi_width;
+   rdp.scissor_o.lr_y = (uint32_t)rdp.vi_height;
 
-  rdp.update |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
+   rdp.update |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
 }
 
-void ChangeSize ()
+void ChangeSize(void)
 {
-  switch (settings.aspectmode)
-  {
-     case 0: //4:3
-        if (settings.scr_res_x >= settings.scr_res_y * 4.0f / 3.0f) {
-           settings.res_y = settings.scr_res_y;
-           settings.res_x = (uint32_t)(settings.res_y * 4.0f / 3.0f);
-        } else {
-           settings.res_x = settings.scr_res_x;
-           settings.res_y = (uint32_t)(settings.res_x / 4.0f * 3.0f);
-        }
-        break;
-     case 1: //16:9
-        if (settings.scr_res_x >= settings.scr_res_y * 16.0f / 9.0f) {
-           settings.res_y = settings.scr_res_y;
-           settings.res_x = (uint32_t)(settings.res_y * 16.0f / 9.0f);
-        } else {
-           settings.res_x = settings.scr_res_x;
-           settings.res_y = (uint32_t)(settings.res_x / 16.0f * 9.0f);
-        }
-        break;
-     default: //stretch or original
-        settings.res_x = settings.scr_res_x;
-        settings.res_y = settings.scr_res_y;
-  }
-  _ChangeSize ();
-  rdp.offset_x = (settings.scr_res_x - settings.res_x) / 2.0f;
-  float offset_y = (settings.scr_res_y - settings.res_y) / 2.0f;
-  settings.res_x += (uint32_t)rdp.offset_x;
-  settings.res_y += (uint32_t)offset_y;
-  rdp.offset_y += offset_y;
-  if (settings.aspectmode == 3) // original
-  {
-	  rdp.scale_x = rdp.scale_y = 1.0f;
-	  rdp.offset_x = (settings.scr_res_x - rdp.vi_width) / 2.0f;
-	  rdp.offset_y = (settings.scr_res_y - rdp.vi_height) / 2.0f;
-  }
-  //	settings.res_x = settings.scr_res_x;
-  //	settings.res_y = settings.scr_res_y;
+   switch (settings.aspectmode)
+   {
+      case 0: //4:3
+         if (settings.scr_res_x >= settings.scr_res_y * 4.0f / 3.0f)
+         {
+            settings.res_y = settings.scr_res_y;
+            settings.res_x = (uint32_t)(settings.res_y * 4.0f / 3.0f);
+         }
+         else
+         {
+            settings.res_x = settings.scr_res_x;
+            settings.res_y = (uint32_t)(settings.res_x / 4.0f * 3.0f);
+         }
+         break;
+      case 1: //16:9
+         if (settings.scr_res_x >= settings.scr_res_y * 16.0f / 9.0f)
+         {
+            settings.res_y = settings.scr_res_y;
+            settings.res_x = (uint32_t)(settings.res_y * 16.0f / 9.0f);
+         }
+         else
+         {
+            settings.res_x = settings.scr_res_x;
+            settings.res_y = (uint32_t)(settings.res_x / 16.0f * 9.0f);
+         }
+         break;
+      default: //stretch or original
+         settings.res_x = settings.scr_res_x;
+         settings.res_y = settings.scr_res_y;
+   }
+   _ChangeSize ();
+   rdp.offset_x = (settings.scr_res_x - settings.res_x) / 2.0f;
+   float offset_y = (settings.scr_res_y - settings.res_y) / 2.0f;
+   settings.res_x += (uint32_t)rdp.offset_x;
+   settings.res_y += (uint32_t)offset_y;
+   rdp.offset_y += offset_y;
+   if (settings.aspectmode == 3) // original
+   {
+      rdp.scale_x = rdp.scale_y = 1.0f;
+      rdp.offset_x = (settings.scr_res_x - rdp.vi_width) / 2.0f;
+      rdp.offset_y = (settings.scr_res_y - rdp.vi_height) / 2.0f;
+   }
+   //	settings.res_x = settings.scr_res_x;
+   //	settings.res_y = settings.scr_res_y;
 }
 
 void WriteLog(m64p_msg_level level, const char *msg, ...)
 {
 #ifdef DEBUG_GLIDE2GL
-  char buf[1024];
-  va_list args;
-  va_start(args, msg);
-  vsnprintf(buf, 1023, msg, args);
-  buf[1023]='\0';
-  va_end(args);
-  if (l_DebugCallback)
-  {
-    l_DebugCallback(l_DebugCallContext, level, buf);
-  }
-  else
-     fprintf(stdout, buf);
+   char buf[1024];
+   va_list args;
+   va_start(args, msg);
+   vsnprintf(buf, 1023, msg, args);
+   buf[1023]='\0';
+   va_end(args);
+   if (l_DebugCallback)
+   {
+      l_DebugCallback(l_DebugCallContext, level, buf);
+   }
+   else
+      fprintf(stdout, buf);
 #endif
 }
 
-void ReadSettings ()
+void ReadSettings(void)
 {
-  //  LOG("ReadSettings\n");
-  if (!Config_Open())
-  {
-    ERRLOG("Could not open configuration!");
-    return;
-  }
+   //  LOG("ReadSettings\n");
+   if (!Config_Open())
+   {
+      ERRLOG("Could not open configuration!");
+      return;
+   }
 
-  settings.card_id = (uint8_t)Config_ReadInt ("card_id", "Card ID", 0, TRUE, FALSE);
-  //settings.lang_id not needed
-  // depth_bias = -Config_ReadInt ("depth_bias", "Depth bias level", 0, TRUE, FALSE);
-  settings.scr_res_x = settings.res_x = Config_ReadScreenInt("ScreenWidth");
-  settings.scr_res_y = settings.res_y = Config_ReadScreenInt("ScreenHeight");
+   settings.card_id = (uint8_t)Config_ReadInt ("card_id", "Card ID", 0, true, false);
+   //settings.lang_id not needed
+   // depth_bias = -Config_ReadInt ("depth_bias", "Depth bias level", 0, true, false);
+   settings.scr_res_x = settings.res_x = Config_ReadScreenInt("ScreenWidth");
+   settings.scr_res_y = settings.res_y = Config_ReadScreenInt("ScreenHeight");
 
-  settings.vsync = (int)Config_ReadInt ("vsync", "Vertical sync", 0);
-  settings.ssformat = (int)Config_ReadInt("ssformat", "TODO:ssformat", 0);
-  //settings.fast_crc = (int)Config_ReadInt ("fast_crc", "Fast CRC", 0);
+   settings.vsync = (int)Config_ReadInt ("vsync", "Vertical sync", 0);
+   settings.ssformat = (int)Config_ReadInt("ssformat", "TODO:ssformat", 0);
+   //settings.fast_crc = (int)Config_ReadInt ("fast_crc", "Fast CRC", 0);
 
-  settings.show_fps = (uint8_t)Config_ReadInt ("show_fps", "Display performance stats (add together desired flags): 1=FPS counter, 2=VI/s counter, 4=% speed, 8=FPS transparent", 0, TRUE, FALSE);
-  settings.clock = (int)Config_ReadInt ("clock", "Clock enabled", 0);
-  settings.clock_24_hr = (int)Config_ReadInt ("clock_24_hr", "Clock is 24-hour", 0);
-  // settings.advanced_options only good for GUI config
-  // settings.texenh_options = only good for GUI config
-  //settings.use_hotkeys = ini->Read("hotkeys", 1l);
+   settings.show_fps = (uint8_t)Config_ReadInt ("show_fps", "Display performance stats (add together desired flags): 1=FPS counter, 2=VI/s counter, 4=% speed, 8=FPS transparent", 0, true, false);
+   settings.clock = (int)Config_ReadInt ("clock", "Clock enabled", 0);
+   settings.clock_24_hr = (int)Config_ReadInt ("clock_24_hr", "Clock is 24-hour", 0);
+   // settings.advanced_options only good for GUI config
+   // settings.texenh_options = only good for GUI config
+   //settings.use_hotkeys = ini->Read("hotkeys", 1l);
 
-  settings.wrpResolution = (uint8_t)Config_ReadInt ("wrpResolution", "Wrapper resolution", 0, TRUE, FALSE);
-  settings.wrpVRAM = (uint8_t)Config_ReadInt ("wrpVRAM", "Wrapper VRAM", 0, TRUE, FALSE);
-  settings.wrpFBO = (int)Config_ReadInt ("wrpFBO", "Wrapper FBO", 1, TRUE, TRUE);
-  settings.wrpAnisotropic = (int)Config_ReadInt ("wrpAnisotropic", "Wrapper Anisotropic Filtering", 0, TRUE, TRUE);
+   settings.wrpResolution = (uint8_t)Config_ReadInt ("wrpResolution", "Wrapper resolution", 0, true, false);
+   settings.wrpVRAM = (uint8_t)Config_ReadInt ("wrpVRAM", "Wrapper VRAM", 0, true, false);
+   settings.wrpFBO = (int)Config_ReadInt ("wrpFBO", "Wrapper FBO", 1, true, true);
+   settings.wrpAnisotropic = (int)Config_ReadInt ("wrpAnisotropic", "Wrapper Anisotropic Filtering", 0, true, true);
 
 #ifndef _ENDUSER_RELEASE_
-  settings.autodetect_ucode = (int)Config_ReadInt ("autodetect_ucode", "Auto-detect microcode", 1);
-  settings.ucode = (uint32_t)Config_ReadInt ("ucode", "Force microcode", 2, TRUE, FALSE);
-  settings.wfmode = (int)Config_ReadInt ("wfmode", "Wireframe mode: 0=Normal colors, 1=Vertex colors, 2=Red only", 1, TRUE, FALSE);
+   settings.autodetect_ucode = (int)Config_ReadInt ("autodetect_ucode", "Auto-detect microcode", 1);
+   settings.ucode = (uint32_t)Config_ReadInt ("ucode", "Force microcode", 2, true, false);
+   settings.wfmode = (int)Config_ReadInt ("wfmode", "Wireframe mode: 0=Normal colors, 1=Vertex colors, 2=Red only", 1, true, false);
 
-  settings.logging = (int)Config_ReadInt ("logging", "Logging", 0);
-  settings.log_clear = (int)Config_ReadInt ("log_clear", "", 0);
+   settings.logging = (int)Config_ReadInt ("logging", "Logging", 0);
+   settings.log_clear = (int)Config_ReadInt ("log_clear", "", 0);
 
-  settings.run_in_window = (int)Config_ReadInt ("run_in_window", "", 0);
+   settings.run_in_window = (int)Config_ReadInt ("run_in_window", "", 0);
 
-  settings.elogging = (int)Config_ReadInt ("elogging", "", 0);
-  settings.filter_cache = (int)Config_ReadInt ("filter_cache", "Filter cache", 0);
-  settings.unk_as_red = (int)Config_ReadInt ("unk_as_red", "Display unknown combines as red", 0);
-  settings.log_unk = (int)Config_ReadInt ("log_unk", "Log unknown combines", 0);
-  settings.unk_clear = (int)Config_ReadInt ("unk_clear", "", 0);
+   settings.elogging = (int)Config_ReadInt ("elogging", "", 0);
+   settings.filter_cache = (int)Config_ReadInt ("filter_cache", "Filter cache", 0);
+   settings.unk_as_red = (int)Config_ReadInt ("unk_as_red", "Display unknown combines as red", 0);
+   settings.log_unk = (int)Config_ReadInt ("log_unk", "Log unknown combines", 0);
+   settings.unk_clear = (int)Config_ReadInt ("unk_clear", "", 0);
 #else
-  settings.autodetect_ucode = TRUE;
-  settings.ucode = 2;
-  settings.wfmode = 0;
-  settings.logging = FALSE;
-  settings.log_clear = FALSE;
-  settings.run_in_window = FALSE;
-  settings.elogging = FALSE;
-  settings.filter_cache = FALSE;
-  settings.unk_as_red = FALSE;
-  settings.log_unk = FALSE;
-  settings.unk_clear = FALSE;
+   settings.autodetect_ucode = true;
+   settings.ucode = 2;
+   settings.wfmode = 0;
+   settings.logging = false;
+   settings.log_clear = false;
+   settings.run_in_window = false;
+   settings.elogging = false;
+   settings.filter_cache = false;
+   settings.unk_as_red = false;
+   settings.log_unk = false;
+   settings.unk_clear = false;
 #endif
 }
 
 void ReadSpecialSettings (const char * name)
 {
-  //  char buf [256];
-  //  sprintf(buf, "ReadSpecialSettings. Name: %s\n", name);
-  //  LOG(buf);
-  settings.hacks = 0;
+   //  char buf [256];
+   //  sprintf(buf, "ReadSpecialSettings. Name: %s\n", name);
+   //  LOG(buf);
+   settings.hacks = 0;
 
-  //detect games which require special hacks
-  if (strstr(name, (const char *)"ZELDA") || strstr(name, (const char *)"MASK"))
-    settings.hacks |= hack_Zelda;
-  else if (strstr(name, (const char *)"ROADSTERS TROPHY"))
-    settings.hacks |= hack_Zelda;
-  else if (strstr(name, (const char *)"Diddy Kong Racing"))
-    settings.hacks |= hack_Diddy;
-  else if (strstr(name, (const char *)"Tonic Trouble"))
-    settings.hacks |= hack_Tonic;
-  else if (strstr(name, (const char *)"All") && strstr(name, (const char *)"Star") && strstr(name, (const char *)"Baseball"))
-    settings.hacks |= hack_ASB;
-  else if (strstr(name, (const char *)"Beetle") || strstr(name, (const char *)"BEETLE") || strstr(name, (const char *)"HSV"))
-    settings.hacks |= hack_BAR;
-  else if (strstr(name, (const char *)"I S S 64") || strstr(name, (const char *)"J WORLD SOCCER3") || strstr(name, (const char *)"PERFECT STRIKER") || strstr(name, (const char *)"RONALDINHO SOCCER"))
-    settings.hacks |= hack_ISS64;
-  else if (strstr(name, (const char *)"MARIOKART64"))
-    settings.hacks |= hack_MK64;
-  else if (strstr(name, (const char *)"NITRO64"))
-    settings.hacks |= hack_WCWnitro;
-  else if (strstr(name, (const char *)"CHOPPER_ATTACK") || strstr(name, (const char *)"WILD CHOPPERS"))
-    settings.hacks |= hack_Chopper;
-  else if (strstr(name, (const char *)"Resident Evil II") || strstr(name, (const char *)"BioHazard II"))
-    settings.hacks |= hack_RE2;
-  else if (strstr(name, (const char *)"YOSHI STORY"))
-    settings.hacks |= hack_Yoshi;
-  else if (strstr(name, (const char *)"F-Zero X") || strstr(name, (const char *)"F-ZERO X"))
-    settings.hacks |= hack_Fzero;
-  else if (strstr(name, (const char *)"PAPER MARIO") || strstr(name, (const char *)"MARIO STORY"))
-    settings.hacks |= hack_PMario;
-  else if (strstr(name, (const char *)"TOP GEAR RALLY 2"))
-    settings.hacks |= hack_TGR2;
-  else if (strstr(name, (const char *)"TOP GEAR RALLY"))
-    settings.hacks |= hack_TGR;
-  else if (strstr(name, (const char *)"Top Gear Hyper Bike"))
-    settings.hacks |= hack_Hyperbike;
-  else if (strstr(name, (const char *)"Killer Instinct Gold") || strstr(name, (const char *)"KILLER INSTINCT GOLD"))
-    settings.hacks |= hack_KI;
-  else if (strstr(name, (const char *)"Knockout Kings 2000"))
-    settings.hacks |= hack_Knockout;
-  else if (strstr(name, (const char *)"LEGORacers"))
-    settings.hacks |= hack_Lego;
-  else if (strstr(name, (const char *)"OgreBattle64"))
-    settings.hacks |= hack_Ogre64;
-  else if (strstr(name, (const char *)"Pilot Wings64"))
-    settings.hacks |= hack_Pilotwings;
-  else if (strstr(name, (const char *)"Supercross"))
-    settings.hacks |= hack_Supercross;
-  else if (strstr(name, (const char *)"STARCRAFT 64"))
-    settings.hacks |= hack_Starcraft;
-  else if (strstr(name, (const char *)"BANJO KAZOOIE 2") || strstr(name, (const char *)"BANJO TOOIE"))
-    settings.hacks |= hack_Banjo2;
-  else if (strstr(name, (const char *)"FIFA: RTWC 98") || strstr(name, (const char *)"RoadToWorldCup98"))
-    settings.hacks |= hack_Fifa98;
-  else if (strstr(name, (const char *)"Mega Man 64") || strstr(name, (const char *)"RockMan Dash"))
-    settings.hacks |= hack_Megaman;
-  else if (strstr(name, (const char *)"MISCHIEF MAKERS") || strstr(name, (const char *)"TROUBLE MAKERS"))
-    settings.hacks |= hack_Makers;
-  else if (strstr(name, (const char *)"GOLDENEYE"))
-    settings.hacks |= hack_GoldenEye;
-  else if (strstr(name, (const char *)"PUZZLE LEAGUE"))
-    settings.hacks |= hack_PPL;
+   //detect games which require special hacks
+   if (strstr(name, (const char *)"ZELDA") || strstr(name, (const char *)"MASK"))
+      settings.hacks |= hack_Zelda;
+   else if (strstr(name, (const char *)"ROADSTERS TROPHY"))
+      settings.hacks |= hack_Zelda;
+   else if (strstr(name, (const char *)"Diddy Kong Racing"))
+      settings.hacks |= hack_Diddy;
+   else if (strstr(name, (const char *)"Tonic Trouble"))
+      settings.hacks |= hack_Tonic;
+   else if (strstr(name, (const char *)"All") && strstr(name, (const char *)"Star") && strstr(name, (const char *)"Baseball"))
+      settings.hacks |= hack_ASB;
+   else if (strstr(name, (const char *)"Beetle") || strstr(name, (const char *)"BEETLE") || strstr(name, (const char *)"HSV"))
+      settings.hacks |= hack_BAR;
+   else if (strstr(name, (const char *)"I S S 64") || strstr(name, (const char *)"J WORLD SOCCER3") || strstr(name, (const char *)"PERFECT STRIKER") || strstr(name, (const char *)"RONALDINHO SOCCER"))
+      settings.hacks |= hack_ISS64;
+   else if (strstr(name, (const char *)"MARIOKART64"))
+      settings.hacks |= hack_MK64;
+   else if (strstr(name, (const char *)"NITRO64"))
+      settings.hacks |= hack_WCWnitro;
+   else if (strstr(name, (const char *)"CHOPPER_ATTACK") || strstr(name, (const char *)"WILD CHOPPERS"))
+      settings.hacks |= hack_Chopper;
+   else if (strstr(name, (const char *)"Resident Evil II") || strstr(name, (const char *)"BioHazard II"))
+      settings.hacks |= hack_RE2;
+   else if (strstr(name, (const char *)"YOSHI STORY"))
+      settings.hacks |= hack_Yoshi;
+   else if (strstr(name, (const char *)"F-Zero X") || strstr(name, (const char *)"F-ZERO X"))
+      settings.hacks |= hack_Fzero;
+   else if (strstr(name, (const char *)"PAPER MARIO") || strstr(name, (const char *)"MARIO STORY"))
+      settings.hacks |= hack_PMario;
+   else if (strstr(name, (const char *)"TOP GEAR RALLY 2"))
+      settings.hacks |= hack_TGR2;
+   else if (strstr(name, (const char *)"TOP GEAR RALLY"))
+      settings.hacks |= hack_TGR;
+   else if (strstr(name, (const char *)"Top Gear Hyper Bike"))
+      settings.hacks |= hack_Hyperbike;
+   else if (strstr(name, (const char *)"Killer Instinct Gold") || strstr(name, (const char *)"KILLER INSTINCT GOLD"))
+      settings.hacks |= hack_KI;
+   else if (strstr(name, (const char *)"Knockout Kings 2000"))
+      settings.hacks |= hack_Knockout;
+   else if (strstr(name, (const char *)"LEGORacers"))
+      settings.hacks |= hack_Lego;
+   else if (strstr(name, (const char *)"OgreBattle64"))
+      settings.hacks |= hack_Ogre64;
+   else if (strstr(name, (const char *)"Pilot Wings64"))
+      settings.hacks |= hack_Pilotwings;
+   else if (strstr(name, (const char *)"Supercross"))
+      settings.hacks |= hack_Supercross;
+   else if (strstr(name, (const char *)"STARCRAFT 64"))
+      settings.hacks |= hack_Starcraft;
+   else if (strstr(name, (const char *)"BANJO KAZOOIE 2") || strstr(name, (const char *)"BANJO TOOIE"))
+      settings.hacks |= hack_Banjo2;
+   else if (strstr(name, (const char *)"FIFA: RTWC 98") || strstr(name, (const char *)"RoadToWorldCup98"))
+      settings.hacks |= hack_Fifa98;
+   else if (strstr(name, (const char *)"Mega Man 64") || strstr(name, (const char *)"RockMan Dash"))
+      settings.hacks |= hack_Megaman;
+   else if (strstr(name, (const char *)"MISCHIEF MAKERS") || strstr(name, (const char *)"TROUBLE MAKERS"))
+      settings.hacks |= hack_Makers;
+   else if (strstr(name, (const char *)"GOLDENEYE"))
+      settings.hacks |= hack_GoldenEye;
+   else if (strstr(name, (const char *)"PUZZLE LEAGUE"))
+      settings.hacks |= hack_PPL;
 
-  Ini * ini = Ini::OpenIni();
-  if (!ini)
-    return;
-  ini->SetPath(name);
+   Ini * ini = Ini::OpenIni();
+   if (!ini)
+      return;
+   ini->SetPath(name);
 
-  ini->Read("alt_tex_size", &(settings.alt_tex_size));
-  ini->Read("use_sts1_only", &(settings.use_sts1_only));
-  ini->Read("force_calc_sphere", &(settings.force_calc_sphere));
-  ini->Read("correct_viewport", &(settings.correct_viewport));
-  ini->Read("increase_texrect_edge", &(settings.increase_texrect_edge));
-  ini->Read("decrease_fillrect_edge", &(settings.decrease_fillrect_edge));
-  if (ini->Read("texture_correction", -1) == 0) settings.texture_correction = 0;
-  else settings.texture_correction = 1;
-  if (ini->Read("pal230", -1) == 1) settings.pal230 = 1;
-  else settings.pal230 = 0;
-  ini->Read("stipple_mode", &(settings.stipple_mode));
-  int stipple_pattern = ini->Read("stipple_pattern", -1);
-  if (stipple_pattern > 0) settings.stipple_pattern = (uint32_t)stipple_pattern;
-  ini->Read("force_microcheck", &(settings.force_microcheck));
-  ini->Read("force_quad3d", &(settings.force_quad3d));
-  ini->Read("clip_zmin", &(settings.clip_zmin));
-  ini->Read("clip_zmax", &(settings.clip_zmax));
-  ini->Read("fast_crc", &(settings.fast_crc));
-  ini->Read("adjust_aspect", &(settings.adjust_aspect), 1);
-  ini->Read("zmode_compare_less", &(settings.zmode_compare_less));
-  ini->Read("old_style_adither", &(settings.old_style_adither));
-  ini->Read("n64_z_scale", &(settings.n64_z_scale));
-  if (settings.n64_z_scale)
-    ZLUT_init();
+   ini->Read("alt_tex_size", &(settings.alt_tex_size));
+   ini->Read("use_sts1_only", &(settings.use_sts1_only));
+   ini->Read("force_calc_sphere", &(settings.force_calc_sphere));
+   ini->Read("correct_viewport", &(settings.correct_viewport));
+   ini->Read("increase_texrect_edge", &(settings.increase_texrect_edge));
+   ini->Read("decrease_fillrect_edge", &(settings.decrease_fillrect_edge));
+   if (ini->Read("texture_correction", -1) == 0) settings.texture_correction = 0;
+   else settings.texture_correction = 1;
+   if (ini->Read("pal230", -1) == 1) settings.pal230 = 1;
+   else settings.pal230 = 0;
+   ini->Read("stipple_mode", &(settings.stipple_mode));
+   int stipple_pattern = ini->Read("stipple_pattern", -1);
+   if (stipple_pattern > 0) settings.stipple_pattern = (uint32_t)stipple_pattern;
+   ini->Read("force_microcheck", &(settings.force_microcheck));
+   ini->Read("force_quad3d", &(settings.force_quad3d));
+   ini->Read("clip_zmin", &(settings.clip_zmin));
+   ini->Read("clip_zmax", &(settings.clip_zmax));
+   ini->Read("fast_crc", &(settings.fast_crc));
+   ini->Read("adjust_aspect", &(settings.adjust_aspect), 1);
+   ini->Read("zmode_compare_less", &(settings.zmode_compare_less));
+   ini->Read("old_style_adither", &(settings.old_style_adither));
+   ini->Read("n64_z_scale", &(settings.n64_z_scale));
+   if (settings.n64_z_scale)
+      ZLUT_init();
 
-  //frame buffer
-  int optimize_texrect = ini->Read("optimize_texrect", -1);
-  int ignore_aux_copy = ini->Read("ignore_aux_copy", -1);
-  int hires_buf_clear = ini->Read("hires_buf_clear", -1);
-  int read_alpha = ini->Read("fb_read_alpha", -1);
-  int useless_is_useless = ini->Read("useless_is_useless", -1);
-  int fb_crc_mode = ini->Read("fb_crc_mode", -1);
+   //frame buffer
+   int optimize_texrect = ini->Read("optimize_texrect", -1);
+   int ignore_aux_copy = ini->Read("ignore_aux_copy", -1);
+   int hires_buf_clear = ini->Read("hires_buf_clear", -1);
+   int read_alpha = ini->Read("fb_read_alpha", -1);
+   int useless_is_useless = ini->Read("useless_is_useless", -1);
+   int fb_crc_mode = ini->Read("fb_crc_mode", -1);
 
-  if (optimize_texrect > 0) settings.frame_buffer |= fb_optimize_texrect;
-  else if (optimize_texrect == 0) settings.frame_buffer &= ~fb_optimize_texrect;
-  if (ignore_aux_copy > 0) settings.frame_buffer |= fb_ignore_aux_copy;
-  else if (ignore_aux_copy == 0) settings.frame_buffer &= ~fb_ignore_aux_copy;
-  if (hires_buf_clear > 0) settings.frame_buffer |= fb_hwfbe_buf_clear;
-  else if (hires_buf_clear == 0) settings.frame_buffer &= ~fb_hwfbe_buf_clear;
-  if (read_alpha > 0) settings.frame_buffer |= fb_read_alpha;
-  else if (read_alpha == 0) settings.frame_buffer &= ~fb_read_alpha;
-  if (useless_is_useless > 0) settings.frame_buffer |= fb_useless_is_useless;
-  else settings.frame_buffer &= ~fb_useless_is_useless;
-  if (fb_crc_mode >= 0) settings.fb_crc_mode = (SETTINGS::FBCRCMODE)fb_crc_mode;
+   if (optimize_texrect > 0) settings.frame_buffer |= fb_optimize_texrect;
+   else if (optimize_texrect == 0) settings.frame_buffer &= ~fb_optimize_texrect;
+   if (ignore_aux_copy > 0) settings.frame_buffer |= fb_ignore_aux_copy;
+   else if (ignore_aux_copy == 0) settings.frame_buffer &= ~fb_ignore_aux_copy;
+   if (hires_buf_clear > 0) settings.frame_buffer |= fb_hwfbe_buf_clear;
+   else if (hires_buf_clear == 0) settings.frame_buffer &= ~fb_hwfbe_buf_clear;
+   if (read_alpha > 0) settings.frame_buffer |= fb_read_alpha;
+   else if (read_alpha == 0) settings.frame_buffer &= ~fb_read_alpha;
+   if (useless_is_useless > 0) settings.frame_buffer |= fb_useless_is_useless;
+   else settings.frame_buffer &= ~fb_useless_is_useless;
+   if (fb_crc_mode >= 0) settings.fb_crc_mode = (SETTINGS::FBCRCMODE)fb_crc_mode;
 
-  //  if (settings.custom_ini)
-  {
-    ini->Read("filtering", &(settings.filtering));
-    ini->Read("fog", &(settings.fog));
-    ini->Read("buff_clear", &(settings.buff_clear));
-    ini->Read("swapmode", &(settings.swapmode));
-    ini->Read("aspect", &(settings.aspectmode));
-    ini->Read("lodmode", &(settings.lodmode));
-	
-	PackedScreenResolution tmpRes = Config_ReadScreenSettings();
-	settings.res_data = tmpRes.resolution;
-	settings.scr_res_x = settings.res_x = tmpRes.width;
-	settings.scr_res_y = settings.res_y = tmpRes.height;
+   //  if (settings.custom_ini)
+   {
+      ini->Read("filtering", &(settings.filtering));
+      ini->Read("fog", &(settings.fog));
+      ini->Read("buff_clear", &(settings.buff_clear));
+      ini->Read("swapmode", &(settings.swapmode));
+      ini->Read("aspect", &(settings.aspectmode));
+      ini->Read("lodmode", &(settings.lodmode));
 
-    //frame buffer
-    int smart_read = ini->Read("fb_smart", -1);
-    int hires = ini->Read("fb_hires", -1);
-    int read_always = ini->Read("fb_read_always", -1);
-    int read_back_to_screen = ini->Read("read_back_to_screen", -1);
-    int cpu_write_hack = ini->Read("detect_cpu_write", -1);
-    int get_fbinfo = ini->Read("fb_get_info", -1);
-    int depth_render = ini->Read("fb_render", -1);
+      PackedScreenResolution tmpRes = Config_ReadScreenSettings();
+      settings.res_data = tmpRes.resolution;
+      settings.scr_res_x = settings.res_x = tmpRes.width;
+      settings.scr_res_y = settings.res_y = tmpRes.height;
 
-    if (smart_read > 0) settings.frame_buffer |= fb_emulation;
-    else if (smart_read == 0) settings.frame_buffer &= ~fb_emulation;
-    if (hires > 0) settings.frame_buffer |= fb_hwfbe;
-    else if (hires == 0) settings.frame_buffer &= ~fb_hwfbe;
-    if (read_always > 0) settings.frame_buffer |= fb_ref;
-    else if (read_always == 0) settings.frame_buffer &= ~fb_ref;
-    if (read_back_to_screen == 1) settings.frame_buffer |= fb_read_back_to_screen;
-    else if (read_back_to_screen == 2) settings.frame_buffer |= fb_read_back_to_screen2;
-    else if (read_back_to_screen == 0) settings.frame_buffer &= ~(fb_read_back_to_screen|fb_read_back_to_screen2);
-    if (cpu_write_hack > 0) settings.frame_buffer |= fb_cpu_write_hack;
-    else if (cpu_write_hack == 0) settings.frame_buffer &= ~fb_cpu_write_hack;
-    if (get_fbinfo > 0) settings.frame_buffer |= fb_get_info;
-    else if (get_fbinfo == 0) settings.frame_buffer &= ~fb_get_info;
-    if (depth_render > 0) settings.frame_buffer |= fb_depth_render;
-    else if (depth_render == 0) settings.frame_buffer &= ~fb_depth_render;
-    settings.frame_buffer |= fb_motionblur;
+      //frame buffer
+      int smart_read = ini->Read("fb_smart", -1);
+      int hires = ini->Read("fb_hires", -1);
+      int read_always = ini->Read("fb_read_always", -1);
+      int read_back_to_screen = ini->Read("read_back_to_screen", -1);
+      int cpu_write_hack = ini->Read("detect_cpu_write", -1);
+      int get_fbinfo = ini->Read("fb_get_info", -1);
+      int depth_render = ini->Read("fb_render", -1);
 
-  }
+      if (smart_read > 0) settings.frame_buffer |= fb_emulation;
+      else if (smart_read == 0) settings.frame_buffer &= ~fb_emulation;
+      if (hires > 0) settings.frame_buffer |= fb_hwfbe;
+      else if (hires == 0) settings.frame_buffer &= ~fb_hwfbe;
+      if (read_always > 0) settings.frame_buffer |= fb_ref;
+      else if (read_always == 0) settings.frame_buffer &= ~fb_ref;
+      if (read_back_to_screen == 1) settings.frame_buffer |= fb_read_back_to_screen;
+      else if (read_back_to_screen == 2) settings.frame_buffer |= fb_read_back_to_screen2;
+      else if (read_back_to_screen == 0) settings.frame_buffer &= ~(fb_read_back_to_screen|fb_read_back_to_screen2);
+      if (cpu_write_hack > 0) settings.frame_buffer |= fb_cpu_write_hack;
+      else if (cpu_write_hack == 0) settings.frame_buffer &= ~fb_cpu_write_hack;
+      if (get_fbinfo > 0) settings.frame_buffer |= fb_get_info;
+      else if (get_fbinfo == 0) settings.frame_buffer &= ~fb_get_info;
+      if (depth_render > 0) settings.frame_buffer |= fb_depth_render;
+      else if (depth_render == 0) settings.frame_buffer &= ~fb_depth_render;
+      settings.frame_buffer |= fb_motionblur;
 
-  if (
-           strstr(name, (const char *)"Blast Corps")
-        || strstr(name, (const char *)"ZELDA MAJORA'S MASK")
-        || strstr(name, (const char *)"ZELDA")
-        || strstr(name, (const char *)"MASK")
-        || strstr(name, (const char *)"Banjo-Kazooie")
-        || strstr(name, (const char *)"MARIOKART64")
-        || strstr(name, (const char *)"Quake")
-        || strstr(name, (const char *)"Perfect Dark")
-     )
-     settings.frame_buffer = 1;
+   }
 
-  if (
-        strstr(name, (const char *)"Resident Evil II")
-        || strstr(name, (const char *)"BioHazard II")
-     )
-     settings.frame_buffer = fb_cpu_write_hack;
+   if (
+         strstr(name, (const char *)"Blast Corps")
+         || strstr(name, (const char *)"ZELDA MAJORA'S MASK")
+         || strstr(name, (const char *)"ZELDA")
+         || strstr(name, (const char *)"MASK")
+         || strstr(name, (const char *)"Banjo-Kazooie")
+         || strstr(name, (const char *)"MARIOKART64")
+         || strstr(name, (const char *)"Quake")
+         || strstr(name, (const char *)"Perfect Dark")
+      )
+      settings.frame_buffer = 1;
 
-  if (
-        strstr(name, (const char *)"Banjo-Kazooie")
-        || strstr(name, (const char *)"MARIOKART64")
-           )
-     settings.frame_buffer |= fb_ref;
+   if (
+         strstr(name, (const char *)"Resident Evil II")
+         || strstr(name, (const char *)"BioHazard II")
+      )
+      settings.frame_buffer = fb_cpu_write_hack;
 
-  settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
+   if (
+         strstr(name, (const char *)"Banjo-Kazooie")
+         || strstr(name, (const char *)"MARIOKART64")
+      )
+      settings.frame_buffer |= fb_ref;
+
+   settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
 }
 
 int GetTexAddrUMA(int tmu, int texsize)
 {
-  int addr = voodoo.tex_min_addr[0] + voodoo.tmem_ptr[0];
-  voodoo.tmem_ptr[0] += texsize;
-  voodoo.tmem_ptr[1] = voodoo.tmem_ptr[0];
-  return addr;
+   int addr = voodoo.tex_min_addr[0] + voodoo.tmem_ptr[0];
+   voodoo.tmem_ptr[0] += texsize;
+   voodoo.tmem_ptr[1] = voodoo.tmem_ptr[0];
+   return addr;
 }
 
 // guLoadTextures
-void guLoadTextures ()
+void guLoadTextures(void)
 {
-    int tbuf_size = 0;
-    if (settings.scr_res_x <= 1024)
-    {
+   int tbuf_size = 0;
+   if (settings.scr_res_x <= 1024)
+   {
       grTextureBufferExt(  GR_TMU0, voodoo.tex_min_addr[GR_TMU0], GR_LOD_LOG2_1024, GR_LOD_LOG2_1024,
-        GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
+            GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
       tbuf_size = grTexCalcMemRequired(GR_LOD_LOG2_1024, GR_LOD_LOG2_1024,
-        GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
+            GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
       grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
       grBufferClear (0, 0, 0xFFFF);
       grRenderBuffer( GR_BUFFER_BACKBUFFER );
-    }
-    else
-    {
+   }
+   else
+   {
       grTextureBufferExt(  GR_TMU0, voodoo.tex_min_addr[GR_TMU0], GR_LOD_LOG2_2048, GR_LOD_LOG2_2048,
-        GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
+            GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
       tbuf_size = grTexCalcMemRequired(GR_LOD_LOG2_2048, GR_LOD_LOG2_2048,
-        GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
+            GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
       grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
       grBufferClear (0, 0, 0xFFFF);
       grRenderBuffer( GR_BUFFER_BACKBUFFER );
-    }
+   }
 
-    rdp.texbufs[0].tmu = GR_TMU0;
-    rdp.texbufs[0].begin = voodoo.tex_min_addr[GR_TMU0];
-    rdp.texbufs[0].end = rdp.texbufs[0].begin+tbuf_size;
-    rdp.texbufs[0].count = 0;
-    rdp.texbufs[0].clear_allowed = TRUE;
-    {
+   rdp.texbufs[0].tmu = GR_TMU0;
+   rdp.texbufs[0].begin = voodoo.tex_min_addr[GR_TMU0];
+   rdp.texbufs[0].end = rdp.texbufs[0].begin+tbuf_size;
+   rdp.texbufs[0].count = 0;
+   rdp.texbufs[0].clear_allowed = true;
+   {
       rdp.texbufs[1].tmu = GR_TMU1;
       rdp.texbufs[1].begin = rdp.texbufs[0].end;
       rdp.texbufs[1].end = rdp.texbufs[1].begin+tbuf_size;
       rdp.texbufs[1].count = 0;
-      rdp.texbufs[1].clear_allowed = TRUE;
-    }
-    offset_textures = tbuf_size + 16;
+      rdp.texbufs[1].clear_allowed = true;
+   }
+   offset_textures = tbuf_size + 16;
 }
 
-int InitGfx ()
+int InitGfx(void)
 {
-  wchar_t romname[256];
-  wchar_t foldername[PATH_MAX + 64];
-  wchar_t cachename[PATH_MAX + 64];
-  if (fullscreen)
-    ReleaseGfx ();
+   wchar_t romname[256];
+   wchar_t foldername[PATH_MAX + 64];
+   wchar_t cachename[PATH_MAX + 64];
+   if (fullscreen)
+      ReleaseGfx ();
 
-  OPEN_RDP_LOG ();  // doesn't matter if opens again; it will check for it
-  OPEN_RDP_E_LOG ();
-  VLOG ("InitGfx ()\n");
+   OPEN_RDP_LOG ();  // doesn't matter if opens again; it will check for it
+   OPEN_RDP_E_LOG ();
+   VLOG ("InitGfx ()\n");
 
-  rdp_reset ();
+   rdp_reset ();
 
-  // Initialize Glide
-  grGlideInit ();
+   // Initialize Glide
+   grGlideInit ();
 
-  // Select the Glide device
-  grSstSelect (settings.card_id);
+   // Select the Glide device
+   grSstSelect (settings.card_id);
 
-  gfx_context = grSstWinOpen (
-        0,
-        GR_REFRESH_60Hz,
-        GR_COLORFORMAT_RGBA,
-        GR_ORIGIN_UPPER_LEFT,
-        2,    // Double-buffering
-        1);   // 1 auxillary buffer
+   gfx_context = grSstWinOpen (
+         0,
+         GR_REFRESH_60Hz,
+         GR_COLORFORMAT_RGBA,
+         GR_ORIGIN_UPPER_LEFT,
+         2,    // Double-buffering
+         1);   // 1 auxillary buffer
 
-  if (!gfx_context)
-  {
-    ERRLOG("Error setting display mode");
-    //    grSstWinClose (gfx_context);
-    grGlideShutdown ();
-    return FALSE;
-  }
+   if (!gfx_context)
+   {
+      ERRLOG("Error setting display mode");
+      //    grSstWinClose (gfx_context);
+      grGlideShutdown ();
+      return false;
+   }
 
-  fullscreen = TRUE;
+   fullscreen = true;
 
-  // get the # of TMUs available
-  grGet (GR_NUM_TMU, 4, (FxI32*)&voodoo.num_tmu);
-  // get maximal texture size
-  grGet (GR_MAX_TEXTURE_SIZE, 4, (FxI32*)&voodoo.max_tex_size);
-  voodoo.sup_large_tex = !(settings.hacks & hack_PPL);
+   // get the # of TMUs available
+   grGet (GR_NUM_TMU, 4, (FxI32*)&voodoo.num_tmu);
+   // get maximal texture size
+   grGet (GR_MAX_TEXTURE_SIZE, 4, (FxI32*)&voodoo.max_tex_size);
+   voodoo.sup_large_tex = !(settings.hacks & hack_PPL);
 
-  voodoo.tex_min_addr[0] = voodoo.tex_min_addr[1] = grTexMinAddress(GR_TMU0);
-  voodoo.tex_max_addr[0] = voodoo.tex_max_addr[1] = grTexMaxAddress(GR_TMU0);
+   voodoo.tex_min_addr[0] = voodoo.tex_min_addr[1] = grTexMinAddress(GR_TMU0);
+   voodoo.tex_max_addr[0] = voodoo.tex_max_addr[1] = grTexMaxAddress(GR_TMU0);
 
-  grStipplePattern(settings.stipple_pattern);
+   grStipplePattern(settings.stipple_pattern);
 
-  InitCombine();
+   InitCombine();
 
-  grCoordinateSpace (GR_WINDOW_COORDS);
-  grVertexLayout (GR_PARAM_XY, offsetof(VERTEX,x), GR_PARAM_ENABLE);
-  grVertexLayout (GR_PARAM_Q, offsetof(VERTEX,q), GR_PARAM_ENABLE);
-  grVertexLayout (GR_PARAM_Z, offsetof(VERTEX,z), GR_PARAM_ENABLE);
-  grVertexLayout (GR_PARAM_ST0, offsetof(VERTEX,coord[0]), GR_PARAM_ENABLE);
-  grVertexLayout (GR_PARAM_ST1, offsetof(VERTEX,coord[2]), GR_PARAM_ENABLE);
-  grVertexLayout (GR_PARAM_PARGB, offsetof(VERTEX,b), GR_PARAM_ENABLE);
+   grCoordinateSpace (GR_WINDOW_COORDS);
+   grVertexLayout (GR_PARAM_XY, offsetof(VERTEX,x), GR_PARAM_ENABLE);
+   grVertexLayout (GR_PARAM_Q, offsetof(VERTEX,q), GR_PARAM_ENABLE);
+   grVertexLayout (GR_PARAM_Z, offsetof(VERTEX,z), GR_PARAM_ENABLE);
+   grVertexLayout (GR_PARAM_ST0, offsetof(VERTEX,coord[0]), GR_PARAM_ENABLE);
+   grVertexLayout (GR_PARAM_ST1, offsetof(VERTEX,coord[2]), GR_PARAM_ENABLE);
+   grVertexLayout (GR_PARAM_PARGB, offsetof(VERTEX,b), GR_PARAM_ENABLE);
 
-  grCullMode(GR_CULL_NEGATIVE);
+   grCullMode(GR_CULL_NEGATIVE);
 
-  if (settings.fog) //"FOGCOORD" extension
-  {
-     GrFog_t fog_t[64];
-     guFogGenerateLinear (fog_t, 0.0f, 255.0f);//(float)rdp.fog_multiplier + (float)rdp.fog_offset);//256.0f);
+   if (settings.fog) //"FOGCOORD" extension
+   {
+      GrFog_t fog_t[64];
+      guFogGenerateLinear (fog_t, 0.0f, 255.0f);//(float)rdp.fog_multiplier + (float)rdp.fog_offset);//256.0f);
 
-     for (int i = 63; i > 0; i--)
-     {
-        if (fog_t[i] - fog_t[i-1] > 63)
-        {
-           fog_t[i-1] = fog_t[i] - 63;
-        }
-     }
-     fog_t[0] = 0;
-     grFogTable (fog_t);
-     grVertexLayout (GR_PARAM_FOG_EXT, offsetof(VERTEX,f), GR_PARAM_ENABLE);
-  }
-  else //not supported
-     settings.fog = FALSE;
+      for (int i = 63; i > 0; i--)
+      {
+         if (fog_t[i] - fog_t[i-1] > 63)
+         {
+            fog_t[i-1] = fog_t[i] - 63;
+         }
+      }
+      fog_t[0] = 0;
+      grFogTable (fog_t);
+      grVertexLayout (GR_PARAM_FOG_EXT, offsetof(VERTEX,f), GR_PARAM_ENABLE);
+   }
+   else //not supported
+      settings.fog = false;
 
-  grDepthBufferMode (GR_DEPTHBUFFER_ZBUFFER);
-  grDepthBufferFunction(GR_CMP_LESS);
-  grDepthMask(FXTRUE);
+   grDepthBufferMode (GR_DEPTHBUFFER_ZBUFFER);
+   grDepthBufferFunction(GR_CMP_LESS);
+   grDepthMask(FXTRUE);
 
-  settings.res_x = settings.scr_res_x;
-  settings.res_y = settings.scr_res_y;
-  ChangeSize ();
+   settings.res_x = settings.scr_res_x;
+   settings.res_y = settings.scr_res_y;
+   ChangeSize ();
 
-  guLoadTextures ();
-  ClearCache ();
+   guLoadTextures ();
+   ClearCache ();
 
-  grCullMode (GR_CULL_DISABLE);
-  grDepthBufferMode (GR_DEPTHBUFFER_ZBUFFER);
-  grDepthBufferFunction (GR_CMP_ALWAYS);
-  grRenderBuffer(GR_BUFFER_BACKBUFFER);
-  grColorMask (FXTRUE, FXTRUE);
-  grDepthMask (FXTRUE);
-  grBufferClear (0, 0, 0xFFFF);
-  grBufferSwap (0);
-  grBufferClear (0, 0, 0xFFFF);
-  grDepthMask (FXFALSE);
-  grTexFilterMode (0, GR_TEXTUREFILTER_BILINEAR, GR_TEXTUREFILTER_BILINEAR);
-  grTexFilterMode (1, GR_TEXTUREFILTER_BILINEAR, GR_TEXTUREFILTER_BILINEAR);
-  grTexClampMode (0, GR_TEXTURECLAMP_CLAMP, GR_TEXTURECLAMP_CLAMP);
-  grTexClampMode (1, GR_TEXTURECLAMP_CLAMP, GR_TEXTURECLAMP_CLAMP);
-  grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
-  rdp.update |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
+   grCullMode (GR_CULL_DISABLE);
+   grDepthBufferMode (GR_DEPTHBUFFER_ZBUFFER);
+   grDepthBufferFunction (GR_CMP_ALWAYS);
+   grRenderBuffer(GR_BUFFER_BACKBUFFER);
+   grColorMask (FXTRUE, FXTRUE);
+   grDepthMask (FXTRUE);
+   grBufferClear (0, 0, 0xFFFF);
+   grBufferSwap (0);
+   grBufferClear (0, 0, 0xFFFF);
+   grDepthMask (FXFALSE);
+   grTexFilterMode (0, GR_TEXTUREFILTER_BILINEAR, GR_TEXTUREFILTER_BILINEAR);
+   grTexFilterMode (1, GR_TEXTUREFILTER_BILINEAR, GR_TEXTUREFILTER_BILINEAR);
+   grTexClampMode (0, GR_TEXTURECLAMP_CLAMP, GR_TEXTURECLAMP_CLAMP);
+   grTexClampMode (1, GR_TEXTURECLAMP_CLAMP, GR_TEXTURECLAMP_CLAMP);
+   grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
+   rdp.update |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
 
-  return TRUE;
+   return true;
 }
 
-void ReleaseGfx ()
+void ReleaseGfx(void)
 {
-  VLOG("ReleaseGfx ()\n");
+   VLOG("ReleaseGfx ()\n");
 
-  // Release graphics
-  grSstWinClose (gfx_context);
+   // Release graphics
+   grSstWinClose (gfx_context);
 
-  // Shutdown glide
-  grGlideShutdown();
+   // Shutdown glide
+   grGlideShutdown();
 
-  fullscreen = FALSE;
-  rdp.window_changed = TRUE;
+   fullscreen = false;
+   rdp.window_changed = true;
 }
 
 // new API code begins here!
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
 {
 #ifdef VISUAL_LOGGING
-  VLOG("CALL ReadScreen2 ()\n");
+   VLOG("CALL ReadScreen2 ()\n");
 #endif
-  *width = settings.res_x;
-  *height = settings.res_y;
-  if (dest)
-  {
-    uint8_t * line = (uint8_t*)dest;
+   *width = settings.res_x;
+   *height = settings.res_y;
 
-  GrLfbInfo_t info;
-  info.size = sizeof(GrLfbInfo_t);
-  if (grLfbLock (GR_LFB_READ_ONLY,
-    GR_BUFFER_FRONTBUFFER,
-    GR_LFBWRITEMODE_888,
-    GR_ORIGIN_UPPER_LEFT,
-    FXFALSE,
-    &info))
-  {
-    // Copy the screen, let's hope this works.
-      for (uint32_t y=0; y<settings.res_y; y++)
+   if (dest)
+   {
+      uint8_t * line = (uint8_t*)dest;
+
+      GrLfbInfo_t info;
+      info.size = sizeof(GrLfbInfo_t);
+      if (grLfbLock (GR_LFB_READ_ONLY,
+               GR_BUFFER_FRONTBUFFER,
+               GR_LFBWRITEMODE_888,
+               GR_ORIGIN_UPPER_LEFT,
+               FXFALSE,
+               &info))
       {
-        uint8_t *ptr = (uint8_t*) info.lfbPtr + (info.strideInBytes * y);
-        for (uint32_t x=0; x<settings.res_x; x++)
-        {
-          line[x*3]   = ptr[2];  // red
-          line[x*3+1] = ptr[1];  // green
-          line[x*3+2] = ptr[0];  // blue
-          ptr += 4;
-        }
-        line += settings.res_x * 3;
-      }
+         // Copy the screen, let's hope this works.
+         for (uint32_t y=0; y<settings.res_y; y++)
+         {
+            uint8_t *ptr = (uint8_t*) info.lfbPtr + (info.strideInBytes * y);
+            for (uint32_t x=0; x<settings.res_x; x++)
+            {
+               line[x*3]   = ptr[2];  // red
+               line[x*3+1] = ptr[1];  // green
+               line[x*3+2] = ptr[0];  // blue
+               ptr += 4;
+            }
+            line += settings.res_x * 3;
+         }
 
-      // Unlock the frontbuffer
-      grLfbUnlock (GR_LFB_READ_ONLY, GR_BUFFER_FRONTBUFFER);
-    }
+         // Unlock the frontbuffer
+         grLfbUnlock (GR_LFB_READ_ONLY, GR_BUFFER_FRONTBUFFER);
+      }
 #ifdef VISUAL_LOGGING
-    VLOG ("ReadScreen. Success.\n");
+      VLOG ("ReadScreen. Success.\n");
 #endif
-  }
+   }
 }
 
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
                                    void (*DebugCallback)(void *, int, const char *))
 {
-  VLOG("CALL PluginStartup ()\n");
-    l_DebugCallback = DebugCallback;
-    l_DebugCallContext = Context;
+   VLOG("CALL PluginStartup ()\n");
+   l_DebugCallback = DebugCallback;
+   l_DebugCallContext = Context;
 
-    const char *configDir = ConfigGetSharedDataFilepath("Glide64mk2.ini");
-    if (configDir)
-    {
-       SetConfigDir(configDir);
-       ReadSettings();
-       return M64ERR_SUCCESS;
-    }
-    else
-    {
-        ERRLOG("Couldn't find Glide64mk2.ini");
-        return M64ERR_FILES;
-    }
+   const char *configDir = ConfigGetSharedDataFilepath("Glide64mk2.ini");
+   if (configDir)
+   {
+      SetConfigDir(configDir);
+      ReadSettings();
+      return M64ERR_SUCCESS;
+   }
+   else
+   {
+      ERRLOG("Couldn't find Glide64mk2.ini");
+      return M64ERR_FILES;
+   }
 }
 
 EXPORT m64p_error CALL PluginShutdown(void)
 {
-  VLOG("CALL PluginShutdown ()\n");
-    return M64ERR_SUCCESS;
+   VLOG("CALL PluginShutdown ()\n");
+   return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
-  VLOG("CALL PluginGetVersion ()\n");
-    /* set version info */
-    if (PluginType != NULL)
-        *PluginType = M64PLUGIN_GFX;
+   VLOG("CALL PluginGetVersion ()\n");
+   /* set version info */
+   if (PluginType != NULL)
+      *PluginType = M64PLUGIN_GFX;
 
-    if (PluginVersion != NULL)
-        *PluginVersion = 0x016304;
+   if (PluginVersion != NULL)
+      *PluginVersion = 0x016304;
 
-    if (APIVersion != NULL)
-        *APIVersion = VIDEO_PLUGIN_API_VERSION;
+   if (APIVersion != NULL)
+      *APIVersion = VIDEO_PLUGIN_API_VERSION;
 
-    if (PluginNamePtr != NULL)
-        *PluginNamePtr = "Glide64mk2 Video Plugin";
+   if (PluginNamePtr != NULL)
+      *PluginNamePtr = "Glide64mk2 Video Plugin";
 
-    if (Capabilities != NULL)
-    {
-        *Capabilities = 0;
-    }
+   if (Capabilities != NULL)
+      *Capabilities = 0;
 
-    return M64ERR_SUCCESS;
+   return M64ERR_SUCCESS;
 }
 
 /******************************************************************
@@ -805,8 +811,8 @@ output:   none
 *******************************************************************/
 EXPORT void CALL CaptureScreen ( char * Directory )
 {
-  capture_screen = 1;
-  strcpy (capture_path, Directory);
+   capture_screen = 1;
+   strcpy (capture_path, Directory);
 }
 
 /******************************************************************
@@ -820,7 +826,7 @@ output:   none
 //#warning ChangeWindow unimplemented
 EXPORT void CALL ChangeWindow (void)
 {
-  VLOG ("ChangeWindow()\n");
+   VLOG ("ChangeWindow()\n");
 }
 
 /******************************************************************
@@ -832,12 +838,12 @@ output:   none
 *******************************************************************/
 void CALL CloseDLL (void)
 {
-  VLOG ("CloseDLL ()\n");
+   VLOG ("CloseDLL ()\n");
 
-  if (fullscreen)
-    ReleaseGfx ();
-  ZLUT_release();
-  ClearCache ();
+   if (fullscreen)
+      ReleaseGfx ();
+   ZLUT_release();
+   ClearCache ();
 }
 
 /******************************************************************
@@ -850,7 +856,7 @@ output:   none
 *******************************************************************/
 void CALL DrawScreen (void)
 {
-  VLOG ("DrawScreen ()\n");
+   VLOG ("DrawScreen ()\n");
 }
 
 /******************************************************************
@@ -863,16 +869,16 @@ output:   none
 *******************************************************************/
 void CALL GetDllInfo ( PLUGIN_INFO * PluginInfo )
 {
-  VLOG ("GetDllInfo ()\n");
-  PluginInfo->Version = 0x0103;     // Set to 0x0103
-  PluginInfo->Type  = PLUGIN_TYPE_GFX;  // Set to PLUGIN_TYPE_GFX
-  sprintf (PluginInfo->Name, "Glide64mk2 "G64_VERSION RELTIME);  // Name of the DLL
+   VLOG ("GetDllInfo ()\n");
+   PluginInfo->Version = 0x0103;     // Set to 0x0103
+   PluginInfo->Type  = PLUGIN_TYPE_GFX;  // Set to PLUGIN_TYPE_GFX
+   sprintf (PluginInfo->Name, "Glide64mk2 "G64_VERSION RELTIME);  // Name of the DLL
 
-  // If DLL supports memory these memory options then set them to TRUE or FALSE
-  //  if it does not support it
-  PluginInfo->NormalMemory = TRUE;  // a normal uint8_t array
-  PluginInfo->MemoryBswaped = TRUE; // a normal uint8_t array where the memory has been pre
-  // bswap on a dword (32 bits) boundry
+   // If DLL supports memory these memory options then set them to TRUE or FALSE
+   //  if it does not support it
+   PluginInfo->NormalMemory = true;  // a normal uint8_t array
+   PluginInfo->MemoryBswaped = true; // a normal uint8_t array where the memory has been pre
+   // bswap on a dword (32 bits) boundry
 }
 
 /******************************************************************
@@ -893,39 +899,39 @@ that there is a waiting interrupt.
 
 EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 {
-  VLOG ("InitiateGFX (*)\n");
-  voodoo.num_tmu = 4;
+   VLOG ("InitiateGFX (*)\n");
+   voodoo.num_tmu = 4;
 
-  // Assume scale of 1 for debug purposes
-  rdp.scale_x = 1.0f;
-  rdp.scale_y = 1.0f;
+   // Assume scale of 1 for debug purposes
+   rdp.scale_x = 1.0f;
+   rdp.scale_y = 1.0f;
 
-  memset (&settings, 0, sizeof(SETTINGS));
-  ReadSettings ();
-  char name[21] = "DEFAULT";
-  ReadSpecialSettings (name);
-  settings.res_data_org = settings.res_data;
+   memset (&settings, 0, sizeof(SETTINGS));
+   ReadSettings ();
+   char name[21] = "DEFAULT";
+   ReadSpecialSettings (name);
+   settings.res_data_org = settings.res_data;
 
-  gfx = Gfx_Info;
+   gfx = Gfx_Info;
 
-  util_init ();
-  math_init ();
-  TexCacheInit ();
-  CRC_BuildTable();
-  CountCombine();
-  if (fb_depth_render_enabled)
-    ZLUT_init();
+   util_init ();
+   math_init ();
+   TexCacheInit ();
+   CRC_BuildTable();
+   CountCombine();
+   if (fb_depth_render_enabled)
+      ZLUT_init();
 
-  grGlideInit ();
-  grSstSelect (0);
-  const char *extensions = grGetString (GR_EXTENSION);
-  grGlideShutdown ();
-  if (strstr (extensions, "EVOODOO"))
-    evoodoo = 1;
-  else
-    evoodoo = 0;
+   grGlideInit ();
+   grSstSelect (0);
+   const char *extensions = grGetString (GR_EXTENSION);
+   grGlideShutdown ();
+   if (strstr (extensions, "EVOODOO"))
+      evoodoo = 1;
+   else
+      evoodoo = 0;
 
-  return TRUE;
+   return true;
 }
 
 /******************************************************************
@@ -941,7 +947,7 @@ output:   none
 *******************************************************************/
 EXPORT void CALL MoveScreen (int xpos, int ypos)
 {
-  rdp.window_changed = TRUE;
+   rdp.window_changed = true;
 }
 
 /******************************************************************
@@ -952,26 +958,26 @@ output:   none
 *******************************************************************/
 EXPORT void CALL RomClosed (void)
 {
-  VLOG ("RomClosed ()\n");
+   VLOG ("RomClosed ()\n");
 
-  CLOSE_RDP_LOG ();
-  CLOSE_RDP_E_LOG ();
-  rdp.window_changed = TRUE;
-  romopen = FALSE;
-  if (fullscreen && evoodoo)
-    ReleaseGfx ();
+   CLOSE_RDP_LOG ();
+   CLOSE_RDP_E_LOG ();
+   rdp.window_changed = true;
+   romopen = false;
+   if (fullscreen && evoodoo)
+      ReleaseGfx ();
 }
 
 static void CheckDRAMSize()
 {
-  uint32_t test = gfx.RDRAM[0x007FFFFF] + 1;
-  if (test)
-    BMASK = 0x7FFFFF;
-  else
-    BMASK = WMASK;
+   uint32_t test = gfx.RDRAM[0x007FFFFF] + 1;
+   if (test)
+      BMASK = 0x7FFFFF;
+   else
+      BMASK = WMASK;
 #ifdef LOGGING
-  sprintf (out_buf, "Detected RDRAM size: %08lx\n", BMASK);
-  LOG (out_buf);
+   sprintf (out_buf, "Detected RDRAM size: %08lx\n", BMASK);
+   LOG (out_buf);
 #endif
 }
 
@@ -984,72 +990,72 @@ output:   none
 *******************************************************************/
 EXPORT int CALL RomOpen (void)
 {
-  VLOG ("RomOpen ()\n");
-  no_dlist = true;
-  romopen = TRUE;
-  ucode_error_report = TRUE;	// allowed to report ucode errors
-  rdp_reset ();
+   VLOG ("RomOpen ()\n");
+   no_dlist = true;
+   romopen = true;
+   ucode_error_report = true;	// allowed to report ucode errors
+   rdp_reset ();
 
-  // Get the country code & translate to NTSC(0) or PAL(1)
-  uint16_t code = ((uint16_t*)gfx.HEADER)[0x1F^1];
+   // Get the country code & translate to NTSC(0) or PAL(1)
+   uint16_t code = ((uint16_t*)gfx.HEADER)[0x1F^1];
 
-  if (code == 0x4400) region = 1; // Germany (PAL)
-  if (code == 0x4500) region = 0; // USA (NTSC)
-  if (code == 0x4A00) region = 0; // Japan (NTSC)
-  if (code == 0x5000) region = 1; // Europe (PAL)
-  if (code == 0x5500) region = 0; // Australia (NTSC)
+   if (code == 0x4400) region = 1; // Germany (PAL)
+   if (code == 0x4500) region = 0; // USA (NTSC)
+   if (code == 0x4A00) region = 0; // Japan (NTSC)
+   if (code == 0x5000) region = 1; // Europe (PAL)
+   if (code == 0x5500) region = 0; // Australia (NTSC)
 
-  char name[21] = "DEFAULT";
-  ReadSpecialSettings (name);
+   char name[21] = "DEFAULT";
+   ReadSpecialSettings (name);
 
-  // get the name of the ROM
-  for (int i=0; i<20; i++)
-    name[i] = gfx.HEADER[(32+i)^3];
-  name[20] = 0;
+   // get the name of the ROM
+   for (int i=0; i<20; i++)
+      name[i] = gfx.HEADER[(32+i)^3];
+   name[20] = 0;
 
-  // remove all trailing spaces
-  while (name[strlen(name)-1] == ' ')
-    name[strlen(name)-1] = 0;
+   // remove all trailing spaces
+   while (name[strlen(name)-1] == ' ')
+      name[strlen(name)-1] = 0;
 
-  strncpy(rdp.RomName, name, sizeof(name));
-  ReadSpecialSettings (name);
-  ClearCache ();
+   strncpy(rdp.RomName, name, sizeof(name));
+   ReadSpecialSettings (name);
+   ClearCache ();
 
-  CheckDRAMSize();
+   CheckDRAMSize();
 
-  OPEN_RDP_LOG ();
-  OPEN_RDP_E_LOG ();
+   OPEN_RDP_LOG ();
+   OPEN_RDP_E_LOG ();
 
 
-  // ** EVOODOO EXTENSIONS **
-  if (!fullscreen)
-  {
-    grGlideInit ();
-    grSstSelect (0);
-  }
-  const char *extensions = grGetString (GR_EXTENSION);
-  if (!fullscreen)
-  {
-    grGlideShutdown ();
+   // ** EVOODOO EXTENSIONS **
+   if (!fullscreen)
+   {
+      grGlideInit ();
+      grSstSelect (0);
+   }
+   const char *extensions = grGetString (GR_EXTENSION);
+   if (!fullscreen)
+   {
+      grGlideShutdown ();
 
-    if (strstr (extensions, "EVOODOO"))
-      evoodoo = 1;
-    else
-      evoodoo = 0;
+      if (strstr (extensions, "EVOODOO"))
+         evoodoo = 1;
+      else
+         evoodoo = 0;
 
-    if (evoodoo)
-      InitGfx ();
-  }
+      if (evoodoo)
+         InitGfx ();
+   }
 
-  if (strstr (extensions, "ROMNAME"))
-  {
-    char strSetRomName[] = "grSetRomName";
-    void (FX_CALL *grSetRomName)(char*);
-    grSetRomName = (void (FX_CALL *)(char*))grGetProcAddress (strSetRomName);
-    grSetRomName (name);
-  }
-  // **
-  return true;
+   if (strstr (extensions, "ROMNAME"))
+   {
+      char strSetRomName[] = "grSetRomName";
+      void (FX_CALL *grSetRomName)(char*);
+      grSetRomName = (void (FX_CALL *)(char*))grGetProcAddress (strSetRomName);
+      grSetRomName (name);
+   }
+   // **
+   return true;
 }
 
 /******************************************************************
@@ -1061,51 +1067,52 @@ input:    none
 output:   none
 *******************************************************************/
 bool no_dlist = true;
+
 EXPORT void CALL ShowCFB (void)
 {
-  no_dlist = true;
-  VLOG ("ShowCFB ()\n");
+   no_dlist = true;
+   VLOG ("ShowCFB ()\n");
 }
 
 EXPORT void CALL SetRenderingCallback(void (*callback)(int))
 {
 }
 
-void drawViRegBG()
+void drawViRegBG(void)
 {
-  LRDP("drawViRegBG\n");
-  const uint32_t VIwidth = *gfx.VI_WIDTH_REG;
-  FB_TO_SCREEN_INFO fb_info;
-  fb_info.width  = VIwidth;
-  fb_info.height = (uint32_t)rdp.vi_height;
-  if (fb_info.height == 0)
-  {
-    LRDP("Image height = 0 - skipping\n");
-    return;
-  }
-  fb_info.ul_x = 0;
+   LRDP("drawViRegBG\n");
+   const uint32_t VIwidth = *gfx.VI_WIDTH_REG;
+   FB_TO_SCREEN_INFO fb_info;
+   fb_info.width  = VIwidth;
+   fb_info.height = (uint32_t)rdp.vi_height;
+   if (fb_info.height == 0)
+   {
+      LRDP("Image height = 0 - skipping\n");
+      return;
+   }
+   fb_info.ul_x = 0;
 
-  fb_info.lr_x = VIwidth - 1;
-  //  fb_info.lr_x = (uint32_t)rdp.vi_width - 1;
-  fb_info.ul_y = 0;
-  fb_info.lr_y = fb_info.height - 1;
-  fb_info.opaque = 1;
-  fb_info.addr = *gfx.VI_ORIGIN_REG;
-  fb_info.size = *gfx.VI_STATUS_REG & 3;
-  rdp.last_bg = fb_info.addr;
+   fb_info.lr_x = VIwidth - 1;
+   //  fb_info.lr_x = (uint32_t)rdp.vi_width - 1;
+   fb_info.ul_y = 0;
+   fb_info.lr_y = fb_info.height - 1;
+   fb_info.opaque = 1;
+   fb_info.addr = *gfx.VI_ORIGIN_REG;
+   fb_info.size = *gfx.VI_STATUS_REG & 3;
+   rdp.last_bg = fb_info.addr;
 
-  bool drawn = DrawFrameBufferToScreen(fb_info);
-  if (settings.hacks&hack_Lego && drawn)
-  {
-    rdp.updatescreen = 1;
-    newSwapBuffers ();
-    DrawFrameBufferToScreen(fb_info);
-  }
+   bool drawn = DrawFrameBufferToScreen(fb_info);
+   if (settings.hacks&hack_Lego && drawn)
+   {
+      rdp.updatescreen = 1;
+      newSwapBuffers ();
+      DrawFrameBufferToScreen(fb_info);
+   }
 }
 
 }
 
-void DrawFrameBuffer ()
+void DrawFrameBuffer(void)
 {
    grDepthMask (FXTRUE);
    grColorMask (FXTRUE, FXTRUE);
@@ -1113,7 +1120,9 @@ void DrawFrameBuffer ()
    drawViRegBG();
 }
 
-extern "C" {
+extern "C"
+{
+
 /******************************************************************
 Function: UpdateScreen
 Purpose:  This function is called in response to a vsync of the
@@ -1123,46 +1132,47 @@ input:    none
 output:   none
 *******************************************************************/
 uint32_t update_screen_count = 0;
+
 EXPORT void CALL UpdateScreen (void)
 {
 #ifdef VISUAL_LOGGING
-  char out_buf[128];
-  sprintf (out_buf, "UpdateScreen (). Origin: %08x, Old origin: %08x, width: %d\n", *gfx.VI_ORIGIN_REG, rdp.vi_org_reg, *gfx.VI_WIDTH_REG);
-  VLOG (out_buf);
-  LRDP(out_buf);
+   char out_buf[128];
+   sprintf (out_buf, "UpdateScreen (). Origin: %08x, Old origin: %08x, width: %d\n", *gfx.VI_ORIGIN_REG, rdp.vi_org_reg, *gfx.VI_WIDTH_REG);
+   VLOG (out_buf);
+   LRDP(out_buf);
 #endif
 
-  uint32_t width = (*gfx.VI_WIDTH_REG) << 1;
-  if (*gfx.VI_ORIGIN_REG  > width)
-    update_screen_count++;
-  uint32_t limit = (settings.hacks&hack_Lego) ? 15 : 30;
-  if ((settings.frame_buffer&fb_cpu_write_hack) && (update_screen_count > limit) && (rdp.last_bg == 0))
-  {
-    LRDP("DirectCPUWrite hack!\n");
-    update_screen_count = 0;
-    no_dlist = true;
-    ClearCache ();
-    UpdateScreen();
-    return;
-  }
-  //*/
-  //*
-  if( no_dlist )
-  {
-    if( *gfx.VI_ORIGIN_REG  > width )
-    {
-      ChangeSize ();
-      LRDP("ChangeSize done\n");
-      DrawFrameBuffer();
-      LRDP("DrawFrameBuffer done\n");
-      rdp.updatescreen = 1;
+   uint32_t width = (*gfx.VI_WIDTH_REG) << 1;
+   if (*gfx.VI_ORIGIN_REG  > width)
+      update_screen_count++;
+   uint32_t limit = (settings.hacks&hack_Lego) ? 15 : 30;
+   if ((settings.frame_buffer&fb_cpu_write_hack) && (update_screen_count > limit) && (rdp.last_bg == 0))
+   {
+      LRDP("DirectCPUWrite hack!\n");
+      update_screen_count = 0;
+      no_dlist = true;
+      ClearCache ();
+      UpdateScreen();
+      return;
+   }
+   //*/
+   //*
+   if( no_dlist )
+   {
+      if( *gfx.VI_ORIGIN_REG  > width )
+      {
+         ChangeSize ();
+         LRDP("ChangeSize done\n");
+         DrawFrameBuffer();
+         LRDP("DrawFrameBuffer done\n");
+         rdp.updatescreen = 1;
+         newSwapBuffers ();
+      }
+      return;
+   }
+   //*/
+   if (settings.swapmode == 0)
       newSwapBuffers ();
-    }
-    return;
-  }
-  //*/
-  if (settings.swapmode == 0)
-    newSwapBuffers ();
 }
 
 static void DrawWholeFrameBufferToScreen()
@@ -1200,7 +1210,8 @@ extern void update_variables(void);
 extern unsigned retro_filtering;
 
 uint32_t curframe = 0;
-void newSwapBuffers()
+
+void newSwapBuffers(void)
 {
 #ifdef __LIBRETRO__ // Core options
    bool updated = false;
@@ -1209,41 +1220,41 @@ void newSwapBuffers()
 
    settings.filtering = retro_filtering;
 #endif
-  if (!rdp.updatescreen)
-    return;
+   if (!rdp.updatescreen)
+      return;
 
-  rdp.updatescreen = 0;
+   rdp.updatescreen = 0;
 
-  LRDP("swapped\n");
+   LRDP("swapped\n");
 
-  rdp.update |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
-  grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
-  grDepthBufferFunction (GR_CMP_ALWAYS);
-  grDepthMask (FXFALSE);
-  grCullMode (GR_CULL_DISABLE);
+   rdp.update |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
+   grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
+   grDepthBufferFunction (GR_CMP_ALWAYS);
+   grDepthMask (FXFALSE);
+   grCullMode (GR_CULL_DISABLE);
 
-  if (settings.frame_buffer & fb_read_back_to_screen)
-    DrawWholeFrameBufferToScreen();
+   if (settings.frame_buffer & fb_read_back_to_screen)
+      DrawWholeFrameBufferToScreen();
 
-  {
-    if (fb_hwfbe_enabled && !(settings.hacks&hack_RE2) && !evoodoo)
-      grAuxBufferExt( GR_BUFFER_AUXBUFFER );
-    grBufferSwap (settings.vsync);
+   {
+      if (fb_hwfbe_enabled && !(settings.hacks&hack_RE2) && !evoodoo)
+         grAuxBufferExt( GR_BUFFER_AUXBUFFER );
+      grBufferSwap (settings.vsync);
 
-    if  (settings.buff_clear || (settings.hacks&hack_PPL && settings.ucode == 6))
-    {
-      if (settings.hacks&hack_RE2 && fb_depth_render_enabled)
-        grDepthMask (FXFALSE);
-      else
-        grDepthMask (FXTRUE);
-      grBufferClear (0, 0, 0xFFFF);
-    }
-  }
+      if  (settings.buff_clear || (settings.hacks&hack_PPL && settings.ucode == 6))
+      {
+         if (settings.hacks&hack_RE2 && fb_depth_render_enabled)
+            grDepthMask (FXFALSE);
+         else
+            grDepthMask (FXTRUE);
+         grBufferClear (0, 0, 0xFFFF);
+      }
+   }
 
-  if (settings.frame_buffer & fb_read_back_to_screen2)
-    DrawWholeFrameBufferToScreen();
+   if (settings.frame_buffer & fb_read_back_to_screen2)
+      DrawWholeFrameBufferToScreen();
 
-  frame_count ++;
+   frame_count ++;
 }
 
 extern "C"
@@ -1256,7 +1267,7 @@ ViStatus registers value has been changed.
 input:    none
 output:   none
 *******************************************************************/
-EXPORT void CALL ViStatusChanged (void)
+EXPORT void CALL ViStatusChanged(void)
 {
 }
 
@@ -1267,7 +1278,7 @@ ViWidth registers value has been changed.
 input:    none
 output:   none
 *******************************************************************/
-EXPORT void CALL ViWidthChanged (void)
+EXPORT void CALL ViWidthChanged(void)
 {
 }
 

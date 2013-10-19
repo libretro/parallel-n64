@@ -44,18 +44,18 @@
 #define NOT_TMU1	0x01
 #define NOT_TMU2	0x02
 
-void util_init ();
-void render_tri (uint16_t linew);
+void util_init(void);
+void render_tri(uint16_t linew);
 
-int cull_tri (VERTEX **v);
-void draw_tri (VERTEX **v, uint16_t linew);
-void do_triangle_stuff (uint16_t linew, int old_interpolate);
-void do_triangle_stuff_2 (uint16_t linew);
-void add_tri (VERTEX *v, int n, int type);
-void apply_shade_mods (VERTEX *v);
+int cull_tri(VERTEX **v);
+void draw_tri(VERTEX **v, uint16_t linew);
+void do_triangle_stuff(uint16_t linew, int old_interpolate);
+void do_triangle_stuff_2(uint16_t linew);
+void add_tri(VERTEX *v, int n, int type);
+void apply_shade_mods(VERTEX *v);
 
-void update ();
-void update_scissor ();
+void update(void);
+void update_scissor(void);
 
 float ScaleZ(float z);
 
@@ -94,38 +94,32 @@ float ScaleZ(float z);
   #include <stdlib.h>
   #define bswap32(x) _byteswap_ulong(x)
 #else
-static inline uint32_t bswap32(uint32_t val)
-{
-	return (((val & 0xff000000) >> 24) |
-		((val & 0x00ff0000) >>  8) |
-		((val & 0x0000ff00) <<  8) |
-		((val & 0x000000ff) << 24));
-}
+#define bswap32(val) ((((val & 0xff000000) >> 24) | ((val & 0x00ff0000) >>  8) | ((val & 0x0000ff00) <<  8) | ((val & 0x000000ff) << 24)))
 #endif
 
 #define ALOWORD(x)   (*((uint16_t*)&(x)))   // low word
 
 template<class T> static inline T __ROR__(T value, unsigned int count)
 {
-  const unsigned int nbits = sizeof(T) * 8;
-  count %= nbits;
+   const unsigned int nbits = sizeof(T) * 8;
+   count %= nbits;
 
-  T low = value << (nbits - count);
-  value >>= count;
-  value |= low;
-  return value;
+   T low = value << (nbits - count);
+   value >>= count;
+   value |= low;
+   return value;
 }
 
 // rotate left
 template<class T> static T __ROL__(T value, unsigned int count)
 {
-  const unsigned int nbits = sizeof(T) * 8;
-  count %= nbits;
+   const unsigned int nbits = sizeof(T) * 8;
+   count %= nbits;
 
-  T high = value >> (nbits - count);
-  value <<= count;
-  value |= high;
-  return value;
+   T high = value >> (nbits - count);
+   value <<= count;
+   value |= high;
+   return value;
 }
 
 #endif  // ifndef Util_H

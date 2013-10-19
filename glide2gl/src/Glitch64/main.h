@@ -50,8 +50,8 @@ extern float largest_supported_anisotropy;
 
 extern int default_texture; // the infamous "32*1024*1024" is now configurable
 extern int depth_texture;
-void set_depth_shader();
-void set_bw_shader();
+void set_depth_shader(void);
+void set_bw_shader(void);
 extern float invtex[2];
 extern int buffer_cleared; // mark that the buffer has been cleared, used to check if we need to reload the texture buffer content
 
@@ -72,19 +72,19 @@ void remove_tex(unsigned int idmin, unsigned int idmax);
 void set_lambda(void);
 
 int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info );
-void init_geometry();
+void init_geometry(void);
 
-void vbo_draw();
-void vbo_disable();
+void vbo_draw(void);
+void vbo_disable(void);
 
-void init_combiner();
+void init_combiner(void);
 void updateCombiner(int i);
 void updateCombinera(int i);
 void check_compile(GLuint shader);
 void check_link(GLuint program);
-void free_combiners();
-void compile_shader();
-void set_copy_shader();
+void free_combiners(void);
+void compile_shader(void);
+void set_copy_shader(void);
 
 //Vertex Attribute Locations
 #define POSITION_ATTR 0
@@ -117,10 +117,10 @@ extern int glsl_support;
 extern unsigned int pBufferAddress;
 extern int viewport_width, viewport_height;
 
-void disable_textureSizes();
+void disable_textureSizes(void);
 
-int getFullScreenWidth();
-int getFullScreenHeight();
+int getFullScreenWidth(void);
+int getFullScreenHeight(void);
 
 #ifndef GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS // TODO: Not present
 #define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS 18283

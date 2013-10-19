@@ -26,49 +26,49 @@
 static m64p_handle video_general_section;
 static m64p_handle video_glide64_section;
 
-int Config_Open()
+int Config_Open(void)
 {
-    if (ConfigOpenSection("Video-General", &video_general_section) != M64ERR_SUCCESS ||
-        ConfigOpenSection("Video-Glide64mk2", &video_glide64_section) != M64ERR_SUCCESS)
-    {
-        ERRLOG("Could not open configuration");
-        return FALSE;
-    }
-    ConfigSetDefaultBool(video_general_section, "Fullscreen", false, "Use fullscreen mode if True, or windowed mode if False");
-    ConfigSetDefaultInt(video_general_section, "ScreenWidth", 640, "Width of output window or fullscreen width");
-    ConfigSetDefaultInt(video_general_section, "ScreenHeight", 480, "Height of output window or fullscreen height");
+   if (ConfigOpenSection("Video-General", &video_general_section) != M64ERR_SUCCESS ||
+         ConfigOpenSection("Video-Glide64mk2", &video_glide64_section) != M64ERR_SUCCESS)
+   {
+      ERRLOG("Could not open configuration");
+      return false;
+   }
+   ConfigSetDefaultBool(video_general_section, "Fullscreen", false, "Use fullscreen mode if True, or windowed mode if False");
+   ConfigSetDefaultInt(video_general_section, "ScreenWidth", 640, "Width of output window or fullscreen width");
+   ConfigSetDefaultInt(video_general_section, "ScreenHeight", 480, "Height of output window or fullscreen height");
 
-    return TRUE;
+   return true;
 }
 
 int Config_ReadScreenInt(const char *itemname)
 {
-    return ConfigGetParamInt(video_general_section, itemname);
+   return ConfigGetParamInt(video_general_section, itemname);
 }
 
 PackedScreenResolution Config_ReadScreenSettings()
 {
-    PackedScreenResolution packedResolution;
+   PackedScreenResolution packedResolution;
 
-    packedResolution.width = ConfigGetParamInt(video_general_section, "ScreenWidth");
-    packedResolution.height = ConfigGetParamInt(video_general_section, "ScreenHeight");
-    packedResolution.fullscreen = ConfigGetParamBool(video_general_section, "Fullscreen");
+   packedResolution.width = ConfigGetParamInt(video_general_section, "ScreenWidth");
+   packedResolution.height = ConfigGetParamInt(video_general_section, "ScreenHeight");
+   packedResolution.fullscreen = ConfigGetParamBool(video_general_section, "Fullscreen");
 
-    return packedResolution;
+   return packedResolution;
 }
 
 int Config_ReadInt(const char *itemname, const char *desc, int def_value, int create, int isBoolean)
 {
-    VLOG("Getting value %s", itemname);
-    if (isBoolean)
-    {
-        ConfigSetDefaultBool(video_glide64_section, itemname, def_value, desc);
-        return ConfigGetParamBool(video_glide64_section, itemname);
-    }
-    else
-    {
-        ConfigSetDefaultInt(video_glide64_section, itemname, def_value, desc);
-        return ConfigGetParamInt(video_glide64_section, itemname);
-    }
+   VLOG("Getting value %s", itemname);
+   if (isBoolean)
+   {
+      ConfigSetDefaultBool(video_glide64_section, itemname, def_value, desc);
+      return ConfigGetParamBool(video_glide64_section, itemname);
+   }
+   else
+   {
+      ConfigSetDefaultInt(video_glide64_section, itemname, def_value, desc);
+      return ConfigGetParamInt(video_glide64_section, itemname);
+   }
 
 }

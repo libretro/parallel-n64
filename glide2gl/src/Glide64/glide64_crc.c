@@ -51,39 +51,39 @@ unsigned int CRCTable[ 256 ];
 
 unsigned int Reflect( unsigned int ref, char ch )
 {
-     unsigned int value = 0;
+   unsigned int value = 0;
 
-     // Swap bit 0 for bit 7
-     // bit 1 for bit 6, etc.
-     char i;
-     for (i = 1; i < (ch + 1); i++)
-     {
-          if(ref & 1)
-               value |= 1 << (ch - i);
-          ref >>= 1;
-     }
-     return value;
+   // Swap bit 0 for bit 7
+   // bit 1 for bit 6, etc.
+   char i;
+   for (i = 1; i < (ch + 1); i++)
+   {
+      if(ref & 1)
+         value |= 1 << (ch - i);
+      ref >>= 1;
+   }
+   return value;
 }
 
 void CRC_BuildTable()
 {
-    unsigned int crc, i, j;
+   unsigned int crc, i, j;
 
-    for (i = 0; i <= 255; i++)
-	{
-        crc = Reflect( i, 8 ) << 24;
-        for (j = 0; j < 8; j++)
-			crc = (crc << 1) ^ (crc & (1 << 31) ? CRC32_POLYNOMIAL : 0);
-        
-        CRCTable[i] = Reflect( crc, 32 );
-    }
+   for (i = 0; i <= 255; i++)
+   {
+      crc = Reflect( i, 8 ) << 24;
+      for (j = 0; j < 8; j++)
+         crc = (crc << 1) ^ (crc & (1 << 31) ? CRC32_POLYNOMIAL : 0);
+
+      CRCTable[i] = Reflect( crc, 32 );
+   }
 }
 
 unsigned int CRC32( unsigned int crc, void *buffer, unsigned int count )
 {
-  unsigned int orig = crc;
-  unsigned char * p = (unsigned char*)(buffer);
-  while (count--)
-    crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
-  return crc ^ orig;
+   unsigned int orig = crc;
+   unsigned char * p = (unsigned char*)(buffer);
+   while (count--)
+      crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
+   return crc ^ orig;
 }

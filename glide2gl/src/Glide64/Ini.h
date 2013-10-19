@@ -37,8 +37,8 @@
 #include <limits.h>
 #include <stdio.h>
 
-int INI_Open ();
-void INI_Close ();
+int INI_Open(void);
+void INI_Close(void);
 void INI_InsertSpace(int space);
 int INI_FindSection (const char *sectionname, int create = true);
 const char *INI_ReadString (const char *itemname, const char *value, const char *def_value, int create = true);
@@ -49,13 +49,13 @@ void SetConfigDir( const char *configDir );
 
 class Ini
 {
-private:
-	Ini();
-	static Ini *singleton;
-public:
-	static Ini *OpenIni();
-	void SetPath(const char *path);
-	bool Read(const char *key, int *l);
-	bool Read(const char *key, int *l, int defaultVal);
-	int Read(const char *key, int defaultVal);
+   private:
+      Ini();
+      static Ini *singleton;
+   public:
+      static Ini *OpenIni();
+      void SetPath(const char *path);
+      bool Read(const char *key, int *l);
+      bool Read(const char *key, int *l, int defaultVal);
+      int Read(const char *key, int defaultVal);
 };

@@ -587,7 +587,7 @@ void DrawImage (DRAWIMAGE & d)
   rdp.bg_image_height = 0xFFFF;
 }
 
-void DrawHiresImage(DRAWIMAGE & d, int screensize = FALSE)
+void DrawHiresImage(DRAWIMAGE & d, int screensize = false)
 {
   TBUFF_COLOR_IMAGE *tbuff_tex = rdp.tbuff_tex;
   if (rdp.motionblur)
@@ -1317,366 +1317,363 @@ static void uc6_obj_rectangle_r ()
   uc6_draw_polygons (v);
 }
 
-static void uc6_obj_loadtxtr ()
+static void uc6_obj_loadtxtr(void)
 {
-  LRDP("uc6:obj_loadtxtr ");
-  rdp.s2dex_tex_loaded = TRUE;
-  rdp.update |= UPDATE_TEXTURE;
+   LRDP("uc6:obj_loadtxtr ");
+   rdp.s2dex_tex_loaded = true;
+   rdp.update |= UPDATE_TEXTURE;
 
-  uint32_t addr = segoffset(rdp.cmd1) >> 1;
-  uint32_t type = ((uint32_t*)gfx.RDRAM)[(addr + 0) >> 1];                      // 0, 1
+   uint32_t addr = segoffset(rdp.cmd1) >> 1;
+   uint32_t type = ((uint32_t*)gfx.RDRAM)[(addr + 0) >> 1];                      // 0, 1
 
-  if (type == 0x00000030) {     // TLUT
-    uint32_t image              = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
-    uint16_t  phead             = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1] - 256;        // 4
-    uint16_t  pnum              = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1] + 1;          // 5
+   if (type == 0x00000030)
+   {     // TLUT
+      uint32_t image              = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
+      uint16_t  phead             = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1] - 256;        // 4
+      uint16_t  pnum              = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1] + 1;          // 5
 
-    FRDP ("palette addr: %08lx, start: %d, num: %d\n", image, phead, pnum);
-    load_palette (image, phead, pnum);
-  }
-  else if (type == 0x00001033) {        // TxtrBlock
-    uint32_t image              = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
-    uint16_t  tmem              = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1];      // 4
-    uint16_t  tsize             = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1];      // 5
-    uint16_t  tline             = ((uint16_t *)gfx.RDRAM)[(addr + 6) ^ 1];      // 6
+      FRDP ("palette addr: %08lx, start: %d, num: %d\n", image, phead, pnum);
+      load_palette (image, phead, pnum);
+   }
+   else if (type == 0x00001033)
+   {        // TxtrBlock
+      uint32_t image              = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
+      uint16_t  tmem              = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1];      // 4
+      uint16_t  tsize             = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1];      // 5
+      uint16_t  tline             = ((uint16_t *)gfx.RDRAM)[(addr + 6) ^ 1];      // 6
 
-    FRDP ("addr: %08lx, tmem: %08lx, size: %d\n", image, tmem, tsize);
-    rdp.timg.addr = image;
-    rdp.timg.width = 1;
-    rdp.timg.size = 1;
+      FRDP ("addr: %08lx, tmem: %08lx, size: %d\n", image, tmem, tsize);
+      rdp.timg.addr = image;
+      rdp.timg.width = 1;
+      rdp.timg.size = 1;
 
-    rdp.tiles[7].t_mem = tmem;
-    rdp.tiles[7].size = 1;
-    rdp.cmd0 = 0;
-    rdp.cmd1 = 0x07000000 | (tsize << 14) | tline;
-    rdp_loadblock ();
-  }
-  else if (type == 0x00fc1034)
-  {
-    uint32_t image              = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
-    uint16_t  tmem              = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1];      // 4
-    uint16_t  twidth    = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1];      // 5
-    uint16_t  theight   = ((uint16_t *)gfx.RDRAM)[(addr + 6) ^ 1];      // 6
+      rdp.tiles[7].t_mem = tmem;
+      rdp.tiles[7].size = 1;
+      rdp.cmd0 = 0;
+      rdp.cmd1 = 0x07000000 | (tsize << 14) | tline;
+      rdp_loadblock ();
+   }
+   else if (type == 0x00fc1034)
+   {
+      uint32_t image              = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
+      uint16_t  tmem              = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1];      // 4
+      uint16_t  twidth    = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1];      // 5
+      uint16_t  theight   = ((uint16_t *)gfx.RDRAM)[(addr + 6) ^ 1];      // 6
 
-    FRDP ("tile addr: %08lx, tmem: %08lx, twidth: %d, theight: %d\n", image, tmem, twidth, theight);
+      FRDP ("tile addr: %08lx, tmem: %08lx, twidth: %d, theight: %d\n", image, tmem, twidth, theight);
 
-    int line = (twidth + 1) >> 2;
+      int line = (twidth + 1) >> 2;
 
-    rdp.timg.addr = image;
-    rdp.timg.width = line << 3;
-    rdp.timg.size = 1;
+      rdp.timg.addr = image;
+      rdp.timg.width = line << 3;
+      rdp.timg.size = 1;
 
-    rdp.tiles[7].t_mem = tmem;
-    rdp.tiles[7].line = line;
-    rdp.tiles[7].size = 1;
+      rdp.tiles[7].t_mem = tmem;
+      rdp.tiles[7].line = line;
+      rdp.tiles[7].size = 1;
 
-    rdp.cmd0 = 0;
-    rdp.cmd1 = 0x07000000 | (twidth << 14) | (theight << 2);
+      rdp.cmd0 = 0;
+      rdp.cmd1 = 0x07000000 | (twidth << 14) | (theight << 2);
 
-    rdp_loadtile ();
-  }
-  else
-  {
-    FRDP ("UNKNOWN (0x%08lx)\n", type);
-    FRDP_E ("uc6:obj_loadtxtr UNKNOWN (0x%08lx)\n", type);
-  }
-}
-
-static void uc6_obj_ldtx_sprite ()
-{
-  LRDP("uc6:obj_ldtx_sprite\n");
-
-  uint32_t addr = rdp.cmd1;
-  uc6_obj_loadtxtr ();
-  rdp.cmd1 = addr + 24;
-  uc6_obj_sprite ();
-}
-
-static void uc6_obj_ldtx_rect ()
-{
-  LRDP("uc6:obj_ldtx_rect\n");
-
-  uint32_t addr = rdp.cmd1;
-  uc6_obj_loadtxtr ();
-  rdp.cmd1 = addr + 24;
-  uc6_obj_rectangle ();
-}
-
-static void uc6_ldtx_rect_r ()
-{
-  LRDP("uc6:ldtx_rect_r\n");
-
-  uint32_t addr = rdp.cmd1;
-  uc6_obj_loadtxtr ();
-  rdp.cmd1 = addr + 24;
-  uc6_obj_rectangle_r ();
-}
-
-static void uc6_loaducode ()
-{
-  LRDP("uc6:load_ucode\n");
-  RDP_E ("uc6:load_ucode\n");
-
-  // copy the microcode data
-  uint32_t addr = segoffset(rdp.cmd1);
-  uint32_t size = (rdp.cmd0 & 0xFFFF) + 1;
-  memcpy (microcode, gfx.RDRAM+addr, size);
-
-  microcheck ();
-}
-
-void uc6_sprite2d ()
-{
-  uint32_t a = rdp.pc[rdp.pc_i] & BMASK;
-  uint32_t cmd0 = ((uint32_t*)gfx.RDRAM)[a>>2]; //check next command
-  if ( (cmd0>>24) != 0xBE )
-    return;
-
-  FRDP ("uc6:uc6_sprite2d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
-  uint32_t addr = segoffset(rdp.cmd1) >> 1;
-  DRAWIMAGE d;
-
-  d.imagePtr    = segoffset(((uint32_t*)gfx.RDRAM)[(addr+0)>>1]);       // 0,1
-  uint16_t stride = (((uint16_t *)gfx.RDRAM)[(addr+4)^1]);      // 4
-  d.imageW      = (((uint16_t *)gfx.RDRAM)[(addr+5)^1]);        // 5
-  d.imageH      = (((uint16_t *)gfx.RDRAM)[(addr+6)^1]);        // 6
-  d.imageFmt    = ((uint8_t *)gfx.RDRAM)[(((addr+7)<<1)+0)^3];  // 7
-  d.imageSiz    = ((uint8_t *)gfx.RDRAM)[(((addr+7)<<1)+1)^3];  // |
-  d.imagePal    = 0;
-  d.imageX      = (((uint16_t *)gfx.RDRAM)[(addr+8)^1]);        // 8
-  d.imageY      = (((uint16_t *)gfx.RDRAM)[(addr+9)^1]);        // 9
-  uint32_t tlut         = ((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1];      // 2, 3
-  //low-level implementation of sprite2d apparently calls setothermode command to set tlut mode
-  //However, description of sprite2d microcode just says that
-  //TlutPointer should be Null when CI images will not be used.
-  //HLE implementation sets rdp.tlut_mode=2 if TlutPointer is not null, and rdp.tlut_mode=0 otherwise
-  //Alas, it is not sufficient, since WCW Nitro uses non-Null TlutPointer for rgba textures.
-  //So, additional check added.
-  if (tlut)
-  {
-    load_palette (segoffset(tlut), 0, 256);
-    if (d.imageFmt > 0)
-      rdp.tlut_mode = 2;
-    else
-      rdp.tlut_mode = 0;
-  }
-  else
-  {
-    rdp.tlut_mode = 0;
-  }
-
-  if (d.imageW == 0)
-    return;//     d.imageW = stride;
-
-  cmd0 = ((uint32_t*)gfx.RDRAM)[a>>2]; //check next command
-  while (1)
-  {
-    if ( (cmd0>>24) == 0xBE )
-    {
-      uint32_t cmd1 = ((uint32_t*)gfx.RDRAM)[(a>>2)+1];
-      rdp.pc[rdp.pc_i] = (a+8) & BMASK;
-
-      d.scaleX  = ((cmd1>>16)&0xFFFF)/1024.0f;
-      d.scaleY  = (cmd1&0xFFFF)/1024.0f;
-      //the code below causes wrong background height in super robot spirit, so it is disabled.
-      //need to find, for which game this hack was made
-      //if( (cmd1&0xFFFF) < 0x100 )
-      //  d.scaleY = d.scaleX;
-      d.flipX = (uint8_t)((cmd0>>8)&0xFF);
-      d.flipY = (uint8_t)(cmd0&0xFF);
-
-      a = rdp.pc[rdp.pc_i] & BMASK;
-      rdp.pc[rdp.pc_i] = (a+8) & BMASK;
-      cmd0 = ((uint32_t*)gfx.RDRAM)[a>>2]; //check next command
-    }
-    if ( (cmd0>>24) == 0xBD )
-    {
-      uint32_t cmd1 = ((uint32_t*)gfx.RDRAM)[(a>>2)+1];
-
-      d.frameX  = ((short)((cmd1>>16)&0xFFFF)) / 4.0f;
-      d.frameY  = ((short)(cmd1&0xFFFF)) / 4.0f;
-      d.frameW    = (uint16_t) (d.imageW / d.scaleX);
-      d.frameH    = (uint16_t) (d.imageH / d.scaleY);
-      if (settings.hacks&hack_WCWnitro)
-      {
-        int scaleY = (int)d.scaleY;
-        d.imageH        /= scaleY;
-        d.imageY        /= scaleY;
-        stride      *= scaleY;
-        d.scaleY        = 1.0f;
-      }
-      FRDP ("imagePtr: %08lx\n", d.imagePtr);
-      FRDP ("frameX: %f, frameW: %d, frameY: %f, frameH: %d\n", d.frameX, d.frameW, d.frameY, d.frameH);
-      FRDP ("imageX: %d, imageW: %d, imageY: %d, imageH: %d\n", d.imageX, d.imageW, d.imageY, d.imageH);
-      FRDP ("imageFmt: %d, imageSiz: %d, imagePal: %d, imageStride: %d\n", d.imageFmt, d.imageSiz, d.imagePal, stride);
-      FRDP ("scaleX: %f, scaleY: %f\n", d.scaleX, d.scaleY);
-    }
-    else
-    {
-      return;
-    }
-
-    const uint32_t texsize = (d.imageW * d.imageH) << d.imageSiz >> 1;
-    const uint32_t maxTexSize = rdp.tlut_mode < 2 ? 4096 : 2048;
-
-    if (texsize > maxTexSize)
-    {
-      if (d.scaleX != 1)
-        d.scaleX *= (float)stride/(float)d.imageW;
-      d.imageW  = stride;
-      d.imageH  += d.imageY;
-      DrawImage (d);
-    }
-    else
-    {
-      uint16_t line = d.imageW;
-      if (line & 7) line += 8;  // round up
-      line >>= 3;
-      if (d.imageSiz == 0)
-      {
-        if (line%2)
-          line++;
-        line >>= 1;
-      }
-      else
-      {
-        line <<= (d.imageSiz-1);
-      }
-      if (line == 0)
-        line = 1;
-
-      rdp.timg.addr = d.imagePtr;
-      rdp.timg.width = stride;
-      rdp.tiles[7].t_mem = 0;
-      rdp.tiles[7].line = line;//(d.imageW>>3);
-      rdp.tiles[7].size = d.imageSiz;
-      rdp.cmd0 = (d.imageX << 14) | (d.imageY << 2);
-      rdp.cmd1 = 0x07000000 | ((d.imageX+d.imageW-1) << 14) | ((d.imageY+d.imageH-1) << 2);
       rdp_loadtile ();
+   }
+   else
+   {
+      FRDP ("UNKNOWN (0x%08lx)\n", type);
+      FRDP_E ("uc6:obj_loadtxtr UNKNOWN (0x%08lx)\n", type);
+   }
+}
 
-      // SetTile ()
-      TILE *tile = &rdp.tiles[0];
-      tile->format = d.imageFmt;
-      tile->size = d.imageSiz;
-      tile->line = line;//(d.imageW>>3);
-      tile->t_mem = 0;
-      tile->palette = 0;
-      tile->clamp_t = 1;
-      tile->mirror_t = 0;
-      tile->mask_t = 0;
-      tile->shift_t = 0;
-      tile->clamp_s = 1;
-      tile->mirror_s = 0;
-      tile->mask_s = 0;
-      tile->shift_s = 0;
+static void uc6_obj_ldtx_sprite(void)
+{
+   LRDP("uc6:obj_ldtx_sprite\n");
 
-      // SetTileSize ()
-      rdp.tiles[0].ul_s = d.imageX;
-      rdp.tiles[0].ul_t = d.imageY;
-      rdp.tiles[0].lr_s = d.imageX+d.imageW-1;
-      rdp.tiles[0].lr_t = d.imageY+d.imageH-1;
+   uint32_t addr = rdp.cmd1;
+   uc6_obj_loadtxtr ();
+   rdp.cmd1 = addr + 24;
+   uc6_obj_sprite ();
+}
 
-      float Z = set_sprite_combine_mode ();
+static void uc6_obj_ldtx_rect(void)
+{
+   LRDP("uc6:obj_ldtx_rect\n");
 
-      float ul_x, ul_y, lr_x, lr_y;
-      if (d.flipX)
-      {
-        ul_x = d.frameX + d.frameW;
-        lr_x = d.frameX;
-      }
-      else
-      {
-        ul_x = d.frameX;
-        lr_x = d.frameX + d.frameW;
-      }
-      if (d.flipY)
-      {
-        ul_y = d.frameY + d.frameH;
-        lr_y = d.frameY;
-      }
-      else
-      {
-        ul_y = d.frameY;
-        lr_y = d.frameY + d.frameH;
-      }
+   uint32_t addr = rdp.cmd1;
+   uc6_obj_loadtxtr ();
+   rdp.cmd1 = addr + 24;
+   uc6_obj_rectangle ();
+}
 
-      float lr_u, lr_v;
-      if (rdp.cur_cache[0]->splits > 1)
-      {
-        lr_u = (float)(d.imageW-1);
-        lr_v = (float)(d.imageH-1);
-      }
-      else
-      {
-        lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
-        lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
-      }
+static void uc6_ldtx_rect_r(void)
+{
+   LRDP("uc6:ldtx_rect_r\n");
 
-      // Make the vertices
-      VERTEX v[4] = {
-        { ul_x, ul_y, Z, 1, 0.5f, 0.5f },
-        { lr_x, ul_y, Z, 1, lr_u, 0.5f },
-        { ul_x, lr_y, Z, 1, 0.5f, lr_v },
-        { lr_x, lr_y, Z, 1, lr_u, lr_v } };
+   uint32_t addr = rdp.cmd1;
+   uc6_obj_loadtxtr ();
+   rdp.cmd1 = addr + 24;
+   uc6_obj_rectangle_r ();
+}
 
-        for (int i=0; i<4; i++)
-        {
-          v[i].x *= rdp.scale_x;
-          v[i].y *= rdp.scale_y;
-        }
+static void uc6_loaducode(void)
+{
+   LRDP("uc6:load_ucode\n");
+   RDP_E ("uc6:load_ucode\n");
 
-        //      ConvertCoordsConvert (v, 4);
-        AllowShadeMods (v, 4);
-        for (int s = 0; s < 4; s++)
-          apply_shade_mods (&(v[s]));
-        AddOffset(v, 4);
+   // copy the microcode data
+   uint32_t addr = segoffset(rdp.cmd1);
+   uint32_t size = (rdp.cmd0 & 0xFFFF) + 1;
+   memcpy (microcode, gfx.RDRAM+addr, size);
 
-        // Set vertex buffers
-        if (rdp.cur_cache[0]->splits > 1)
-        {
-          VERTEX *vptr[3];
-          int i;
-          for (i = 0; i < 3; i++)
-            vptr[i] = &v[i];
-          draw_split_triangle(vptr);
+   microcheck ();
+}
 
-          rdp.tri_n ++;
-          for (i = 0; i < 3; i++)
-            vptr[i] = &v[i+1];
-          draw_split_triangle(vptr);
-          rdp.tri_n ++;
-        }
-        else
-        {
-          rdp.vtxbuf = rdp.vtx1;        // copy from v to rdp.vtx1
-          rdp.vtxbuf2 = rdp.vtx2;
-          rdp.vtx_buffer = 0;
-          rdp.n_global = 3;
-          memcpy (rdp.vtxbuf, v, sizeof(VERTEX)*3);
-          do_triangle_stuff_2 (0);
-          rdp.tri_n ++;
-
-          rdp.vtxbuf = rdp.vtx1;        // copy from v to rdp.vtx1
-          rdp.vtxbuf2 = rdp.vtx2;
-          rdp.vtx_buffer = 0;
-          rdp.n_global = 3;
-          memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
-          do_triangle_stuff_2 (0);
-          rdp.tri_n ++;
-        }
-        rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
-
-        if (settings.fog && (rdp.flags & FOG_ENABLED))
-        {
-          grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
-        }
-
-    }
-    a = rdp.pc[rdp.pc_i] & BMASK;
-    cmd0 = ((uint32_t*)gfx.RDRAM)[a>>2]; //check next command
-    if (( (cmd0>>24) == 0xBD ) || ( (cmd0>>24) == 0xBE ))
-      rdp.pc[rdp.pc_i] = (a+8) & BMASK;
-    else
+void uc6_sprite2d(void)
+{
+   int i, s;
+   uint32_t a = rdp.pc[rdp.pc_i] & BMASK;
+   uint32_t cmd0 = ((uint32_t*)gfx.RDRAM)[a>>2]; //check next command
+   if ( (cmd0>>24) != 0xBE )
       return;
-  }
+
+   FRDP ("uc6:uc6_sprite2d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
+   uint32_t addr = segoffset(rdp.cmd1) >> 1;
+   DRAWIMAGE d;
+
+   d.imagePtr    = segoffset(((uint32_t*)gfx.RDRAM)[(addr+0)>>1]);       // 0,1
+   uint16_t stride = (((uint16_t *)gfx.RDRAM)[(addr+4)^1]);      // 4
+   d.imageW      = (((uint16_t *)gfx.RDRAM)[(addr+5)^1]);        // 5
+   d.imageH      = (((uint16_t *)gfx.RDRAM)[(addr+6)^1]);        // 6
+   d.imageFmt    = ((uint8_t *)gfx.RDRAM)[(((addr+7)<<1)+0)^3];  // 7
+   d.imageSiz    = ((uint8_t *)gfx.RDRAM)[(((addr+7)<<1)+1)^3];  // |
+   d.imagePal    = 0;
+   d.imageX      = (((uint16_t *)gfx.RDRAM)[(addr+8)^1]);        // 8
+   d.imageY      = (((uint16_t *)gfx.RDRAM)[(addr+9)^1]);        // 9
+   uint32_t tlut         = ((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1];      // 2, 3
+   //low-level implementation of sprite2d apparently calls setothermode command to set tlut mode
+   //However, description of sprite2d microcode just says that
+   //TlutPointer should be Null when CI images will not be used.
+   //HLE implementation sets rdp.tlut_mode=2 if TlutPointer is not null, and rdp.tlut_mode=0 otherwise
+   //Alas, it is not sufficient, since WCW Nitro uses non-Null TlutPointer for rgba textures.
+   //So, additional check added.
+   if (tlut)
+   {
+      load_palette (segoffset(tlut), 0, 256);
+      if (d.imageFmt > 0)
+         rdp.tlut_mode = 2;
+      else
+         rdp.tlut_mode = 0;
+   }
+   else
+      rdp.tlut_mode = 0;
+
+   if (d.imageW == 0)
+      return;//     d.imageW = stride;
+
+   cmd0 = ((uint32_t*)gfx.RDRAM)[a>>2]; //check next command
+   while (1)
+   {
+      if ( (cmd0>>24) == 0xBE )
+      {
+         uint32_t cmd1 = ((uint32_t*)gfx.RDRAM)[(a>>2)+1];
+         rdp.pc[rdp.pc_i] = (a+8) & BMASK;
+
+         d.scaleX  = ((cmd1>>16)&0xFFFF)/1024.0f;
+         d.scaleY  = (cmd1&0xFFFF)/1024.0f;
+         //the code below causes wrong background height in super robot spirit, so it is disabled.
+         //need to find, for which game this hack was made
+         //if( (cmd1&0xFFFF) < 0x100 )
+         //  d.scaleY = d.scaleX;
+         d.flipX = (uint8_t)((cmd0>>8)&0xFF);
+         d.flipY = (uint8_t)(cmd0&0xFF);
+
+         a = rdp.pc[rdp.pc_i] & BMASK;
+         rdp.pc[rdp.pc_i] = (a+8) & BMASK;
+         cmd0 = ((uint32_t*)gfx.RDRAM)[a>>2]; //check next command
+      }
+      if ( (cmd0>>24) == 0xBD )
+      {
+         uint32_t cmd1 = ((uint32_t*)gfx.RDRAM)[(a>>2)+1];
+
+         d.frameX  = ((short)((cmd1>>16)&0xFFFF)) / 4.0f;
+         d.frameY  = ((short)(cmd1&0xFFFF)) / 4.0f;
+         d.frameW    = (uint16_t) (d.imageW / d.scaleX);
+         d.frameH    = (uint16_t) (d.imageH / d.scaleY);
+         if (settings.hacks&hack_WCWnitro)
+         {
+            int scaleY = (int)d.scaleY;
+            d.imageH        /= scaleY;
+            d.imageY        /= scaleY;
+            stride      *= scaleY;
+            d.scaleY        = 1.0f;
+         }
+         FRDP ("imagePtr: %08lx\n", d.imagePtr);
+         FRDP ("frameX: %f, frameW: %d, frameY: %f, frameH: %d\n", d.frameX, d.frameW, d.frameY, d.frameH);
+         FRDP ("imageX: %d, imageW: %d, imageY: %d, imageH: %d\n", d.imageX, d.imageW, d.imageY, d.imageH);
+         FRDP ("imageFmt: %d, imageSiz: %d, imagePal: %d, imageStride: %d\n", d.imageFmt, d.imageSiz, d.imagePal, stride);
+         FRDP ("scaleX: %f, scaleY: %f\n", d.scaleX, d.scaleY);
+      }
+      else
+         return;
+
+      const uint32_t texsize = (d.imageW * d.imageH) << d.imageSiz >> 1;
+      const uint32_t maxTexSize = rdp.tlut_mode < 2 ? 4096 : 2048;
+
+      if (texsize > maxTexSize)
+      {
+         if (d.scaleX != 1)
+            d.scaleX *= (float)stride/(float)d.imageW;
+         d.imageW  = stride;
+         d.imageH  += d.imageY;
+         DrawImage (d);
+      }
+      else
+      {
+         uint16_t line = d.imageW;
+         if (line & 7) line += 8;  // round up
+         line >>= 3;
+         if (d.imageSiz == 0)
+         {
+            if (line%2)
+               line++;
+            line >>= 1;
+         }
+         else
+            line <<= (d.imageSiz-1);
+
+         if (line == 0)
+            line = 1;
+
+         rdp.timg.addr = d.imagePtr;
+         rdp.timg.width = stride;
+         rdp.tiles[7].t_mem = 0;
+         rdp.tiles[7].line = line;//(d.imageW>>3);
+         rdp.tiles[7].size = d.imageSiz;
+         rdp.cmd0 = (d.imageX << 14) | (d.imageY << 2);
+         rdp.cmd1 = 0x07000000 | ((d.imageX+d.imageW-1) << 14) | ((d.imageY+d.imageH-1) << 2);
+         rdp_loadtile ();
+
+         // SetTile ()
+         TILE *tile = &rdp.tiles[0];
+         tile->format = d.imageFmt;
+         tile->size = d.imageSiz;
+         tile->line = line;//(d.imageW>>3);
+         tile->t_mem = 0;
+         tile->palette = 0;
+         tile->clamp_t = 1;
+         tile->mirror_t = 0;
+         tile->mask_t = 0;
+         tile->shift_t = 0;
+         tile->clamp_s = 1;
+         tile->mirror_s = 0;
+         tile->mask_s = 0;
+         tile->shift_s = 0;
+
+         // SetTileSize ()
+         rdp.tiles[0].ul_s = d.imageX;
+         rdp.tiles[0].ul_t = d.imageY;
+         rdp.tiles[0].lr_s = d.imageX+d.imageW-1;
+         rdp.tiles[0].lr_t = d.imageY+d.imageH-1;
+
+         float Z = set_sprite_combine_mode ();
+
+         float ul_x, ul_y, lr_x, lr_y;
+         if (d.flipX)
+         {
+            ul_x = d.frameX + d.frameW;
+            lr_x = d.frameX;
+         }
+         else
+         {
+            ul_x = d.frameX;
+            lr_x = d.frameX + d.frameW;
+         }
+         if (d.flipY)
+         {
+            ul_y = d.frameY + d.frameH;
+            lr_y = d.frameY;
+         }
+         else
+         {
+            ul_y = d.frameY;
+            lr_y = d.frameY + d.frameH;
+         }
+
+         float lr_u, lr_v;
+         if (rdp.cur_cache[0]->splits > 1)
+         {
+            lr_u = (float)(d.imageW-1);
+            lr_v = (float)(d.imageH-1);
+         }
+         else
+         {
+            lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
+            lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
+         }
+
+         // Make the vertices
+         VERTEX v[4] = {
+            {ul_x, ul_y, Z, 1, 0.5f, 0.5f },
+         {lr_x, ul_y, Z, 1, lr_u, 0.5f },
+         {ul_x, lr_y, Z, 1, 0.5f, lr_v },
+         {lr_x, lr_y, Z, 1, lr_u, lr_v }
+         };
+
+         for (i = 0; i < 4; i++)
+         {
+            v[i].x *= rdp.scale_x;
+            v[i].y *= rdp.scale_y;
+         }
+
+         //      ConvertCoordsConvert (v, 4);
+         AllowShadeMods (v, 4);
+         for (s = 0; s < 4; s++)
+            apply_shade_mods (&(v[s]));
+         AddOffset(v, 4);
+
+         // Set vertex buffers
+         if (rdp.cur_cache[0]->splits > 1)
+         {
+            VERTEX *vptr[3];
+            int i;
+            for (i = 0; i < 3; i++)
+               vptr[i] = &v[i];
+            draw_split_triangle(vptr);
+
+            rdp.tri_n ++;
+            for (i = 0; i < 3; i++)
+               vptr[i] = &v[i+1];
+            draw_split_triangle(vptr);
+            rdp.tri_n ++;
+         }
+         else
+         {
+            rdp.vtxbuf = rdp.vtx1;        // copy from v to rdp.vtx1
+            rdp.vtxbuf2 = rdp.vtx2;
+            rdp.vtx_buffer = 0;
+            rdp.n_global = 3;
+            memcpy (rdp.vtxbuf, v, sizeof(VERTEX)*3);
+            do_triangle_stuff_2 (0);
+            rdp.tri_n ++;
+
+            rdp.vtxbuf = rdp.vtx1;        // copy from v to rdp.vtx1
+            rdp.vtxbuf2 = rdp.vtx2;
+            rdp.vtx_buffer = 0;
+            rdp.n_global = 3;
+            memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
+            do_triangle_stuff_2 (0);
+            rdp.tri_n ++;
+         }
+         rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
+
+         if (settings.fog && (rdp.flags & FOG_ENABLED))
+            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
+
+      }
+      a = rdp.pc[rdp.pc_i] & BMASK;
+      cmd0 = ((uint32_t*)gfx.RDRAM)[a>>2]; //check next command
+      if (( (cmd0>>24) == 0xBD ) || ( (cmd0>>24) == 0xBE ))
+         rdp.pc[rdp.pc_i] = (a+8) & BMASK;
+      else
+         return;
+   }
 }

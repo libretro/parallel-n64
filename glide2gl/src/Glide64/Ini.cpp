@@ -108,42 +108,38 @@ Ini *Ini::singleton = 0;
 
 Ini::Ini()
 {
-	if (!INI_Open())
-	{
-		printf("Could not find INI file!");
-		exit(1);
-	}
+   if (!INI_Open())
+   {
+      printf("Could not find INI file!");
+      exit(1);
+   }
 }
 
 Ini *Ini::OpenIni()
 {
-	if (!singleton)
-		singleton = new Ini();
-	return singleton;
+   if (!singleton)
+      singleton = new Ini();
+   return singleton;
 }
 
 void Ini::SetPath(const char *path)
 {
-	if (!INI_FindSection(path, false))
-	{
-		printf("Could not find [%s] section in INI file!", path);
-	}
+   if (!INI_FindSection(path, false))
+      printf("Could not find [%s] section in INI file!", path);
 }
 
 
 bool Ini::Read(const char *key, int *l)
 {
-	int undef = 0xDEADBEEF;
-	int tmpVal = INI_ReadInt(key, undef, false);
-	if (tmpVal == undef)
-	{
-		return false;
-	}
-	else
-	{
-		*l = tmpVal;
-		return true;
-	}
+   int undef = 0xDEADBEEF;
+   int tmpVal = INI_ReadInt(key, undef, false);
+   if (tmpVal == undef)
+      return false;
+   else
+   {
+      *l = tmpVal;
+      return true;
+   }
 }
 
 bool Ini::Read(const char *key, int *l, int defaultVal)
@@ -157,359 +153,360 @@ int Ini::Read(const char *key, int defaultVal)
 	return INI_ReadInt(key, defaultVal, false);
 }
 
-
-int INI_Open ()
+int INI_Open(void)
 {
-    const char *path = ConfigGetSharedDataFilepath("Glide64mk2.ini");
+   const char *path = ConfigGetSharedDataFilepath("Glide64mk2.ini");
 
-    LOG("opening %s\n", path);
-    ini = fopen (path, "rb");
+   LOG("opening %s\n", path);
+   ini = fopen (path, "rb");
 
-    if (ini == NULL)
-    {
-        ERRLOG("Could not find Glide64mk2.ini!");
-        return false;
-    }
+   if (ini == NULL)
+   {
+      ERRLOG("Could not find Glide64mk2.ini!");
+      return false;
+   }
 
-    sectionstart = 0;
-    last_line = 0;
-    last_line_ret = 1;
+   sectionstart = 0;
+   last_line = 0;
+   last_line_ret = 1;
 
-    return TRUE;
+   return true;
 }
 
 void INI_Close ()
 {
-    if (ini)
-       fclose(ini);
+   if (ini)
+      fclose(ini);
 }
 
 void INI_InsertSpace(int space)
 {
-  printf("Inserting space, space to insert is %d\n", space);
-    // Since there is no good way to normally insert to or delete from a certain location in
-    //  a file, this function was added.  It will insert (or delete) space bytes at the
-    //  current location.
+   printf("Inserting space, space to insert is %d\n", space);
+   // Since there is no good way to normally insert to or delete from a certain location in
+   //  a file, this function was added.  It will insert (or delete) space bytes at the
+   //  current location.
 
-    // note: negative count means delete
-    char chunk[2048];
-    int len, file, start_pos, cur_pos;
+   // note: negative count means delete
+   char chunk[2048];
+   int len, file, start_pos, cur_pos;
 
    file = fileno(ini);
 
-    start_pos = ftell(ini);
-    fseek(ini,0,SEEK_END);
+   start_pos = ftell(ini);
+   fseek(ini,0,SEEK_END);
 
-    // if adding, extend the file
-    if (space > 0)
-    {
-       int t1 = ftell(ini);
-       fseek(ini, 0L, SEEK_END);
-       int t2 = ftell(ini);
-       fseek(ini, t1, SEEK_SET);
-       ftruncate(file, t2+space);
-    }
+   // if adding, extend the file
+   if (space > 0)
+   {
+      int t1 = ftell(ini);
+      fseek(ini, 0L, SEEK_END);
+      int t2 = ftell(ini);
+      fseek(ini, t1, SEEK_SET);
+      ftruncate(file, t2+space);
+   }
 
-    while (1) {
-        cur_pos = ftell(ini);
-        len = cur_pos - start_pos;
-        if (len == 0) break;
-        if (len > 2048) len = 2048;
+   while (1) {
+      cur_pos = ftell(ini);
+      len = cur_pos - start_pos;
+      if (len == 0) break;
+      if (len > 2048) len = 2048;
 
-        fseek (ini,-len,SEEK_CUR);
-        fread (chunk,1,len,ini);
-        fseek (ini,-len+space,SEEK_CUR);
-        fwrite (chunk,1,len,ini);
-        fseek (ini,-len-space,SEEK_CUR);
-    }
+      fseek (ini,-len,SEEK_CUR);
+      fread (chunk,1,len,ini);
+      fseek (ini,-len+space,SEEK_CUR);
+      fwrite (chunk,1,len,ini);
+      fseek (ini,-len-space,SEEK_CUR);
+   }
 
-    // if deleted, make the file shorter
-    if (space < 0)
-    {
-       int t1 = ftell(ini);
-       fseek(ini, 0L, SEEK_END);
-       int t2 = ftell(ini);
-       fseek(ini, t1, SEEK_SET);
-       ftruncate(file, t2+space);
-    }
+   // if deleted, make the file shorter
+   if (space < 0)
+   {
+      int t1 = ftell(ini);
+      fseek(ini, 0L, SEEK_END);
+      int t2 = ftell(ini);
+      fseek(ini, t1, SEEK_SET);
+      ftruncate(file, t2+space);
+   }
 }
 
 int INI_FindSection (const char *sectionname, int create)
 {
-    if (ini == NULL)
-        return false;
-    printf("INI_FindSection trying to find name for %s\n", sectionname);
+   if (ini == NULL)
+      return false;
+   printf("INI_FindSection trying to find name for %s\n", sectionname);
 
-    char line[256], section[64];
-    char *p;
-    int  i, sectionfound, ret;
+   char line[256], section[64];
+   char *p;
+   int  i, sectionfound, ret;
 
-    rewind (ini);
+   rewind (ini);
 
-    last_line = 0;
-    sectionfound = 0;
+   last_line = 0;
+   sectionfound = 0;
 
-    while(!feof(ini)) {
-        ret = 0;
-        *line=0;
-        fgets(line,255,ini);
+   while(!feof(ini)) {
+      ret = 0;
+      *line=0;
+      fgets(line,255,ini);
 
-        // remove enter
-        i=strlen(line);
-    // ZIGGY there was a bug here if EOL was unix like on a short line (i.e. a line
-    // with just EOL), it would write into line[-1]
-        if(i>=1 && line[i-1]==0xa) {
-      ret=1;
-      line[i-1]=0;
-      if (i>=2 && line[i-2]==0xd) line[i-2]=0;
-    }
+      // remove enter
+      i=strlen(line);
+      // ZIGGY there was a bug here if EOL was unix like on a short line (i.e. a line
+      // with just EOL), it would write into line[-1]
+      if(i>=1 && line[i-1]==0xa) {
+         ret=1;
+         line[i-1]=0;
+         if (i>=2 && line[i-2]==0xd) line[i-2]=0;
+      }
 
-        // remove comments
-        p=line;
-        while(*p)
-        {
-            if (p[0]=='/' && p[1]=='/')
-            {
-                p[0]=0;
-                break;
-            }
-            p++;
-        }
+      // remove comments
+      p=line;
+      while(*p)
+      {
+         if (p[0]=='/' && p[1]=='/')
+         {
+            p[0]=0;
+            break;
+         }
+         p++;
+      }
 
-        // skip starting space
-        p=line;
-        while(*p<=' ' && *p) p++;
+      // skip starting space
+      p=line;
+      while(*p<=' ' && *p) p++;
 
-        // empty line
-        if(!*p) continue;
+      // empty line
+      if(!*p) continue;
 
-        last_line=ftell(ini);   // where to add if not found
-        last_line_ret = ret;
+      last_line=ftell(ini);   // where to add if not found
+      last_line_ret = ret;
 
-        if(*p!='[') continue;
+      if(*p!='[') continue;
 
-        p++;
-        for (i=0;i<63;i++)
-        {
-            if(*p==']' || !*p) break;
-            section[i]=*p++;
-        }
-        section[i]=0;
+      p++;
+      for (i=0;i<63;i++)
+      {
+         if(*p==']' || !*p) break;
+         section[i]=*p++;
+      }
+      section[i]=0;
 
-         if (!strcasecmp(section,sectionname))
-        {
-            sectionstart=ftell(ini);
-            sectionfound=1;
-            return TRUE;
-        }
-    }
+      if (!strcasecmp(section,sectionname))
+      {
+         sectionstart=ftell(ini);
+         sectionfound=1;
+         return true;
+      }
+   }
 
-    if (!sectionfound && create)
-    {
-        // create the section
-        fseek(ini,last_line,SEEK_SET);
-        INI_InsertSpace ((!last_line_ret) * 2 + 6 + strlen(sectionname));
-        if (!last_line_ret) fwrite (&cr, 1, 2, ini);
-        fwrite (&cr, 1, 2, ini);
-        sprintf (section, "[%s]", sectionname);
-        fwrite (section, 1, strlen(section), ini);
-        fwrite (&cr, 1, 2, ini);
-        sectionstart = ftell(ini);
-        last_line = sectionstart;
-        last_line_ret = 1;
-        return TRUE;
-    }
+   if (!sectionfound && create)
+   {
+      // create the section
+      fseek(ini,last_line,SEEK_SET);
+      INI_InsertSpace ((!last_line_ret) * 2 + 6 + strlen(sectionname));
+      if (!last_line_ret) fwrite (&cr, 1, 2, ini);
+      fwrite (&cr, 1, 2, ini);
+      sprintf (section, "[%s]", sectionname);
+      fwrite (section, 1, strlen(section), ini);
+      fwrite (&cr, 1, 2, ini);
+      sectionstart = ftell(ini);
+      last_line = sectionstart;
+      last_line_ret = 1;
+      return true;
+   }
 
-    return false;
+   return false;
 }
 
 // Reads the value of item 'itemname' as a string.
 const char *INI_ReadString (const char *itemname, char *value, const char *def_value, int create)
 {
-    char line[256], name[64];
-    char *p, *n;
-    int ret, i;
-    *value = 0;
+   char line[256], name[64];
+   char *p, *n;
+   int ret, i;
+   *value = 0;
 
-    fseek(ini,sectionstart,SEEK_SET);
+   fseek(ini,sectionstart,SEEK_SET);
 
-    while(!feof(ini)) {
-        ret = 0;
-        *line=0;
-        fgets(line,255,ini);
+   while(!feof(ini)) {
+      ret = 0;
+      *line=0;
+      fgets(line,255,ini);
 
-        // remove enter
-        i=strlen(line);
-    // ZIGGY there was a bug here if EOL was unix like on a short line (i.e. a line
-    // with just EOL), it would write into line[-1]
-        // OLD CODE : if(line[i-1]=='\n') ret=1, line[i-2]=0;
-        if(i>=1 && line[i-1]==0xa) {
-      ret=1;
-      line[i-1]=0;
-      if (i>=2 && line[i-2]==0xd) line[i-2]=0;
-    }
+      // remove enter
+      i=strlen(line);
+      // ZIGGY there was a bug here if EOL was unix like on a short line (i.e. a line
+      // with just EOL), it would write into line[-1]
+      // OLD CODE : if(line[i-1]=='\n') ret=1, line[i-2]=0;
+      if(i>=1 && line[i-1]==0xa) {
+         ret=1;
+         line[i-1]=0;
+         if (i>=2 && line[i-2]==0xd) line[i-2]=0;
+      }
 
-        // remove comments
-        p=line;
-        while(*p)
-        {
-            if (p[0]==';')
-            {
-                p[0]=0;
-                break;
-            }
-            p++;
-        }
+      // remove comments
+      p=line;
+      while(*p)
+      {
+         if (p[0]==';')
+         {
+            p[0]=0;
+            break;
+         }
+         p++;
+      }
 
-        // skip starting space
-        p=line;
-        while(*p<=' ' && *p) p++;
+      // skip starting space
+      p=line;
+      while(*p<=' ' && *p) p++;
 
-        // empty line
-        if(!*p) continue;
+      // empty line
+      if(!*p) continue;
 
-        // new section
-        if(*p=='[') break;
+      // new section
+      if(*p=='[') break;
 
-        last_line=ftell(ini);   // where to add if not found
-        last_line_ret = ret;
+      last_line=ftell(ini);   // where to add if not found
+      last_line_ret = ret;
 
-        // read name
-        n = name;
-        while(*p && *p!='=' && *p>' ') *n++ = *p++;
-        *n = 0;
+      // read name
+      n = name;
+      while(*p && *p!='=' && *p>' ') *n++ = *p++;
+      *n = 0;
 
-         if(!strcasecmp(name,itemname))
-        {
-            // skip spaces/equal sign
-            while(*p<=' ' || *p=='=') p++;
+      if(!strcasecmp(name,itemname))
+      {
+         // skip spaces/equal sign
+         while(*p<=' ' || *p=='=') p++;
 
-            // read value
-            n = value;
-            while(*p) *n++ = *p++;
+         // read value
+         n = value;
+         while(*p) *n++ = *p++;
 
-            // remove trailing spaces
-            while (*(n-1) == ' ') n--;
+         // remove trailing spaces
+         while (*(n-1) == ' ') n--;
 
-            *n=0;
+         *n=0;
 
-            return value;
-        }
-    }
+         return value;
+      }
+   }
 
-    // uh-oh, not found.  we need to create
-    if (create)
-    {
-        fseek(ini,last_line,SEEK_SET);
-        INI_InsertSpace ((!last_line_ret) * 2 + strlen(itemname) + strlen(def_value) + 5);
-        if (!last_line_ret) fwrite (&cr, 1, 2, ini);
-        sprintf (line, "%s = %s", itemname, def_value);
-        fwrite (line, 1, strlen(line), ini);
-        fwrite (&cr, 1, 2, ini);
-        last_line = ftell(ini);
-        last_line_ret = 1;
-    }
+   // uh-oh, not found.  we need to create
+   if (create)
+   {
+      fseek(ini,last_line,SEEK_SET);
+      INI_InsertSpace ((!last_line_ret) * 2 + strlen(itemname) + strlen(def_value) + 5);
+      if (!last_line_ret) fwrite (&cr, 1, 2, ini);
+      sprintf (line, "%s = %s", itemname, def_value);
+      fwrite (line, 1, strlen(line), ini);
+      fwrite (&cr, 1, 2, ini);
+      last_line = ftell(ini);
+      last_line_ret = 1;
+   }
 
-    strcpy (value, def_value);
-    return value;
+   strcpy (value, def_value);
+   return value;
 }
 
 // Reads the value of item 'itemname' as a string.
 void INI_WriteString (const char *itemname, const char *value)
 {
-    char line[256], name[64];
-    char *p, *n;
-    int ret, i;
+   char line[256], name[64];
+   char *p, *n;
+   int ret, i;
 
-    fseek(ini,sectionstart,SEEK_SET);
+   fseek(ini,sectionstart,SEEK_SET);
 
-    while(!feof(ini)) {
-        ret = 0;
-        *line=0;
-        fgets(line,255,ini);
+   while(!feof(ini))
+   {
+      ret = 0;
+      *line=0;
+      fgets(line,255,ini);
 
-        // remove enter
-        i=strlen(line);
-    // ZIGGY there was a bug here if EOL was unix like on a short line (i.e. a line
-    // with just EOL), it would write into line[-1]
-        // OLD CODE : if(line[i-1]=='\n') ret=1, line[i-2]=0;
-        if(i>=1 && line[i-1]==0xa) {
-      ret=1;
-      line[i-1]=0;
-      if (i>=2 && line[i-2]==0xd) line[i-2]=0;
-    }
+      // remove enter
+      i=strlen(line);
+      // ZIGGY there was a bug here if EOL was unix like on a short line (i.e. a line
+      // with just EOL), it would write into line[-1]
+      // OLD CODE : if(line[i-1]=='\n') ret=1, line[i-2]=0;
+      if(i>=1 && line[i-1]==0xa)
+      {
+         ret=1;
+         line[i-1]=0;
+         if (i>=2 && line[i-2]==0xd) line[i-2]=0;
+      }
 
-        // remove comments
-        p=line;
-        while(*p)
-        {
-            if (p[0]=='/' && p[1]=='/')
-            {
-                p[0]=0;
-                break;
-            }
-            p++;
-        }
+      // remove comments
+      p=line;
+      while(*p)
+      {
+         if (p[0]=='/' && p[1]=='/')
+         {
+            p[0]=0;
+            break;
+         }
+         p++;
+      }
 
-        // skip starting space
-        p=line;
-        while(*p<=' ' && *p) p++;
+      // skip starting space
+      p=line;
+      while(*p<=' ' && *p) p++;
 
-        // empty line
-        if(!*p) continue;
+      // empty line
+      if(!*p) continue;
 
-        // new section
-        if(*p=='[') break;
+      // new section
+      if(*p=='[') break;
 
-        last_line=ftell(ini);   // where to add if not found
-        last_line_ret = ret;
+      last_line=ftell(ini);   // where to add if not found
+      last_line_ret = ret;
 
-        // read name
-        n = name;
-        while(*p && *p!='=' && *p>' ') *n++ = *p++;
-        *n = 0;
+      // read name
+      n = name;
+      while(*p && *p!='=' && *p>' ') *n++ = *p++;
+      *n = 0;
 
-         if(!strcasecmp(name,itemname))
-        {
-            INI_InsertSpace (-i + (strlen(itemname) + strlen(value) + 5));
-            sprintf (line, "%s = %s", itemname, value);
-            fseek (ini, -i, SEEK_CUR);
-            fwrite (line, 1, strlen(line), ini);
-            fwrite (&cr, 1, 2, ini);
-            last_line = ftell(ini);
-            last_line_ret = 1;
-            return;
-        }
-    }
+      if(!strcasecmp(name,itemname))
+      {
+         INI_InsertSpace (-i + (strlen(itemname) + strlen(value) + 5));
+         sprintf (line, "%s = %s", itemname, value);
+         fseek (ini, -i, SEEK_CUR);
+         fwrite (line, 1, strlen(line), ini);
+         fwrite (&cr, 1, 2, ini);
+         last_line = ftell(ini);
+         last_line_ret = 1;
+         return;
+      }
+   }
 
-    // uh-oh, not found.  we need to create
-    fseek(ini,last_line,SEEK_SET);
-    INI_InsertSpace ((!last_line_ret) * 2 + strlen(itemname) + strlen(value) + 5);
-    if (!last_line_ret) fwrite (&cr, 1, 2, ini);
-    sprintf (line, "%s = %s", itemname, value);
-    fwrite (line, 1, strlen(line), ini);
-    fwrite (&cr, 1, 2, ini);
-    last_line = ftell(ini);
-    last_line_ret = 1;
-    return;
+   // uh-oh, not found.  we need to create
+   fseek(ini,last_line,SEEK_SET);
+   INI_InsertSpace ((!last_line_ret) * 2 + strlen(itemname) + strlen(value) + 5);
+   if (!last_line_ret) fwrite (&cr, 1, 2, ini);
+   sprintf (line, "%s = %s", itemname, value);
+   fwrite (line, 1, strlen(line), ini);
+   fwrite (&cr, 1, 2, ini);
+   last_line = ftell(ini);
+   last_line_ret = 1;
+   return;
 }
 
 int INI_ReadInt (const char *itemname, int def_value, int create)
 {
-    if (ini == NULL)
-        return def_value;
+   if (ini == NULL)
+      return def_value;
 
-    char value[64], def[64];
+   char value[64], def[64];
    sprintf(def, "%d", def_value);
-    INI_ReadString (itemname, value, def, create);
-    return atoi (value);
+   INI_ReadString (itemname, value, def, create);
+   return atoi (value);
 }
 
 void INI_WriteInt (const char *itemname, int value)
 {
-    char valstr[64];
+   char valstr[64];
    sprintf(valstr, "%d", value);
-    INI_WriteString (itemname, valstr);
+   INI_WriteString (itemname, valstr);
 }
 
 void SetConfigDir( const char *configDir )

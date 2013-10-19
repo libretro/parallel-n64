@@ -62,9 +62,17 @@ the plugin
 #include <stdint.h>
 #include "m64p.h"
 
+#ifndef max
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif 
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>		// offsetof
+#include <stddef.h>
 #include <string.h>
 #include <stdarg.h>
 #include <glide.h>
@@ -156,7 +164,7 @@ extern uint32_t resolutions[0x18][2];
 #define RDP_E(x)
 #endif
 
-__inline void FRDP (const char *fmt, ...)
+static inline void FRDP (const char *fmt, ...)
 {
 #ifdef RDP_LOGGING
 	if (!settings.logging || !log_open) return;
@@ -168,7 +176,8 @@ __inline void FRDP (const char *fmt, ...)
 	va_end(ap);
 #endif
 }
-__inline void FRDP_E (const char *fmt, ...)
+
+static inline void FRDP_E (const char *fmt, ...)
 {
 #ifdef RDP_ERROR_LOG
 	if (!settings.elogging || !elog_open) return;
@@ -209,16 +218,17 @@ void ReleaseGfx ();
 #define PLUGIN_TYPE_GFX				2
 
 /***** Structures *****/
-typedef struct {
-	uint16_t Version;        /* Set to 0x0103 */
-	uint16_t Type;           /* Set to PLUGIN_TYPE_GFX */
-	char Name[100];      /* Name of the DLL */
+typedef struct
+{
+   uint16_t Version;        /* Set to 0x0103 */
+   uint16_t Type;           /* Set to PLUGIN_TYPE_GFX */
+   char Name[100];          /* Name of the DLL */
 
-	/* If DLL supports memory these memory options then set them to TRUE or FALSE
-	   if it does not support it */
-	int NormalMemory;    /* a normal uint8_t array */
-	int MemoryBswaped;  /* a normal uint8_t array where the memory has been pre
-	                          bswap on a dword (32 bits) boundry */
+   /* If DLL supports memory these memory options then set them to TRUE or FALSE
+      if it does not support it */
+   int NormalMemory;       /* a normal uint8_t array */
+   int MemoryBswaped;      /* a normal uint8_t array where the memory has been pre
+                          bswap on a dword (32 bits) boundry */
 } PLUGIN_INFO;
 
 #define gfx gfxInfo
@@ -233,7 +243,7 @@ extern bool no_dlist;
 #endif
 
 int GetTexAddrUMA(int tmu, int texsize);
-void ReadSettings ();
+void ReadSettings(void);
 void ReadSpecialSettings (const char * name);
 
 #if defined(__cplusplus)
