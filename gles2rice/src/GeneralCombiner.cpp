@@ -579,7 +579,7 @@ int CGeneralCombiner::GenCI_Type_A_B_C_D(int curN64Stage, int curStage, GeneralC
         {
             Check1TxtrForAlpha(curN64Stage, curStage, gci, GetTexelNumber(m));
             op->Arg1 = (MUX_TEXEL0+GetTexelNumber(m));
-            if( (*m_ppGeneralDecodedMux)->isUsedInCycle(MUX_SHADE, curN64Stage) )
+            if( (*m_ppGeneralDecodedMux)->IsUsedInCycle(MUX_SHADE, curN64Stage) )
             {
                 op->op =CM_MODULATE;
                 op->Arg2 = MUX_SHADE;

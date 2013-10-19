@@ -150,10 +150,10 @@ void DecodedMux::Decode(uint32 dwMux0, uint32 dwMux1)
     cA1    = sc_Mux8[cA1];
     dA1    = sc_Mux8[dA1];
 
-    m_bShadeIsUsed[1] = isUsedInAlphaChannel(MUX_SHADE);
-    m_bShadeIsUsed[0] = isUsedInColorChannel(MUX_SHADE);
-    m_bTexel0IsUsed = isUsed(MUX_TEXEL0);
-    m_bTexel1IsUsed = isUsed(MUX_TEXEL1);
+    m_bShadeIsUsed[1] = IsUsedInAlphaChannel(MUX_SHADE);
+    m_bShadeIsUsed[0] = IsUsedInColorChannel(MUX_SHADE);
+    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0);
+    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1);
 
     m_dwShadeColorChannelFlag = 0;
     m_dwShadeAlphaChannelFlag = 0;
@@ -187,7 +187,7 @@ int DecodedMux::Count(uint8 val, int cycle, uint8 mask)
 }
 
 
-bool DecodedMux::isUsed(uint8 val, uint8 mask)
+bool DecodedMux::IsUsed(uint8 val, uint8 mask)
 {
     uint8* pmux = m_bytes;
     bool isUsed = false;
@@ -203,7 +203,7 @@ bool DecodedMux::isUsed(uint8 val, uint8 mask)
     return isUsed;
 }
 
-bool DecodedMux::isUsedInAlphaChannel(uint8 val, uint8 mask)
+bool DecodedMux::IsUsedInAlphaChannel(uint8 val, uint8 mask)
 {
     uint8* pmux = m_bytes;
     bool isUsed = false;
@@ -222,7 +222,7 @@ bool DecodedMux::isUsedInAlphaChannel(uint8 val, uint8 mask)
     return isUsed;
 }
 
-bool DecodedMux::isUsedInColorChannel(uint8 val, uint8 mask)
+bool DecodedMux::IsUsedInColorChannel(uint8 val, uint8 mask)
 {
     uint8* pmux = m_bytes;
     bool isUsed = false;
@@ -239,7 +239,7 @@ bool DecodedMux::isUsedInColorChannel(uint8 val, uint8 mask)
 }
 
 
-bool DecodedMux::isUsedInCycle(uint8 val, int cycle, CombineChannel channel, uint8 mask)
+bool DecodedMux::IsUsedInCycle(uint8 val, int cycle, CombineChannel channel, uint8 mask)
 {
     cycle *=2;
     if( channel == ALPHA_CHANNEL )
@@ -257,9 +257,9 @@ bool DecodedMux::isUsedInCycle(uint8 val, int cycle, CombineChannel channel, uin
     return false;
 }
 
-bool DecodedMux::isUsedInCycle(uint8 val, int cycle, uint8 mask)
+bool DecodedMux::IsUsedInCycle(uint8 val, int cycle, uint8 mask)
 {
-    return isUsedInCycle(val, cycle/2, cycle%2?ALPHA_CHANNEL:COLOR_CHANNEL, mask);
+    return IsUsedInCycle(val, cycle/2, cycle%2?ALPHA_CHANNEL:COLOR_CHANNEL, mask);
 }
 
 
@@ -320,8 +320,8 @@ void DecodedMuxForPixelShader::Simplify(void)
     splitType[3] = CM_FMT_TYPE_NOT_USED;
     mType = CM_FMT_TYPE_NOT_USED;
 
-    m_bTexel0IsUsed = isUsed(MUX_TEXEL0);
-    m_bTexel1IsUsed = isUsed(MUX_TEXEL1);
+    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0);
+    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1);
 }
 
 void DecodedMuxForSemiPixelShader::Reset(void)
@@ -344,8 +344,8 @@ void DecodedMuxForSemiPixelShader::Reset(void)
         ReplaceVal(MUX_TEXEL1,MUX_TEXEL0,3);
     }
 
-    m_bTexel0IsUsed = isUsed(MUX_TEXEL0);
-    m_bTexel1IsUsed = isUsed(MUX_TEXEL1);
+    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0);
+    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1);
 }
 
 void DecodedMuxForOGL14V2::Simplify(void)
@@ -361,8 +361,8 @@ void DecodedMuxForOGL14V2::Simplify(void)
     UseTextureForConstant();
     Reformat();
 
-    m_bTexel0IsUsed = isUsed(MUX_TEXEL0);
-    m_bTexel1IsUsed = isUsed(MUX_TEXEL1);
+    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0);
+    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1);
 }
 
 void DecodedMux::Simplify(void)
@@ -411,8 +411,8 @@ void DecodedMux::Simplify(void)
     Reformat();
 #endif
 
-    m_bTexel0IsUsed = isUsed(MUX_TEXEL0);
-    m_bTexel1IsUsed = isUsed(MUX_TEXEL1);
+    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0);
+    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1);
 }
 
 void DecodedMux::Reformat(bool do_complement)
@@ -648,7 +648,7 @@ void DecodedMux::Reformat(bool do_complement)
     }
 
     if( (splitType[0] == CM_FMT_TYPE_D && splitType[2]!= CM_FMT_TYPE_NOT_USED ) ||  //Cycle 1 Color
-        (isUsedInCycle(MUX_COMBINED,1,COLOR_CHANNEL) == false && isUsedInCycle(MUX_COMBINED,1,ALPHA_CHANNEL) == false && splitType[2]!= CM_FMT_TYPE_NOT_USED) )
+        (IsUsedInCycle(MUX_COMBINED,1,COLOR_CHANNEL) == false && IsUsedInCycle(MUX_COMBINED,1,ALPHA_CHANNEL) == false && splitType[2]!= CM_FMT_TYPE_NOT_USED) )
     {
         //Replace cycle 1 color with cycle 2 color because we have already replace cycle2's cmb 
         aRGB0 = aRGB1;
@@ -664,7 +664,7 @@ void DecodedMux::Reformat(bool do_complement)
     }
 
     if( (splitType[1] == CM_FMT_TYPE_D && splitType[3]!= CM_FMT_TYPE_NOT_USED ) ||  //Cycle 2 Alpha
-        ( isUsedInCycle(MUX_COMBINED,1,ALPHA_CHANNEL) == false && isUsedInCycle(MUX_COMBINED|MUX_ALPHAREPLICATE,1,COLOR_CHANNEL,MUX_MASK_WITH_ALPHA) == false && splitType[3]!= CM_FMT_TYPE_NOT_USED) )
+        ( IsUsedInCycle(MUX_COMBINED,1,ALPHA_CHANNEL) == false && IsUsedInCycle(MUX_COMBINED|MUX_ALPHAREPLICATE,1,COLOR_CHANNEL,MUX_MASK_WITH_ALPHA) == false && splitType[3]!= CM_FMT_TYPE_NOT_USED) )
     {
         //Replace cycle 1 alpha with cycle 2 alpha because we have already replace cycle2's cmb 
         aA0 = aA1;
@@ -771,18 +771,18 @@ void DecodedMux::Display(bool simplified,FILE *fp)
 int DecodedMux::HowManyConstFactors()
 {
     int n=0;
-    if( isUsed(MUX_PRIM) ) n++;
-    if( isUsed(MUX_ENV) ) n++;
-    if( isUsed(MUX_LODFRAC) ) n++;
-    if( isUsed(MUX_PRIMLODFRAC) ) n++;
+    if( IsUsed(MUX_PRIM) ) n++;
+    if( IsUsed(MUX_ENV) ) n++;
+    if( IsUsed(MUX_LODFRAC) ) n++;
+    if( IsUsed(MUX_PRIMLODFRAC) ) n++;
     return n;
 }
 
 int DecodedMux::HowManyTextures()
 {
     int n=0;
-    if( isUsed(MUX_TEXEL0) ) n++;
-    if( isUsed(MUX_TEXEL1) ) n++;
+    if( IsUsed(MUX_TEXEL0) ) n++;
+    if( IsUsed(MUX_TEXEL1) ) n++;
     return n;
 }
 
@@ -890,8 +890,8 @@ void DecodedMux::MergeShadeWithConstantsInChannel(CombineChannel channel)
     uint32 cycleVal;
     int cycleNum;
 
-    usedIn[0] = isUsedInCycle(MUX_SHADE,channel);
-    usedIn[1] = isUsedInCycle(MUX_SHADE,channel+2);
+    usedIn[0] = IsUsedInCycle(MUX_SHADE,channel);
+    usedIn[1] = IsUsedInCycle(MUX_SHADE,channel+2);
     if( usedIn[0] && usedIn[1] && GetCycle(channel)!=GetCycle(channel+2) )
     {
         //Shade is used in more than 1 cycles, and the ways it is used are different
@@ -914,7 +914,7 @@ void DecodedMux::MergeShadeWithConstantsInChannel(CombineChannel channel)
     //Update to here, Shade is either used only in 1 cycle, or the way it is used are totally
     //the same in different cycles
 
-    if( cycleVal == 0x06000000 || isUsedInCycle(MUX_COMBINED,channel+cycleNum*2) )  // (0-0)*0+Shade
+    if( cycleVal == 0x06000000 || IsUsedInCycle(MUX_COMBINED,channel+cycleNum*2) )  // (0-0)*0+Shade
     {
         return;
     }
@@ -925,7 +925,7 @@ void DecodedMux::MergeShadeWithConstantsInChannel(CombineChannel channel)
         if( usedIn[i] )
         {
             N64CombinerType &m = m_n64Combiners[channel+i*2];
-            if( isUsedInCycle(MUX_TEXEL0,i*2+channel) || isUsedInCycle(MUX_TEXEL1,i*2+channel) )
+            if( IsUsedInCycle(MUX_TEXEL0,i*2+channel) || IsUsedInCycle(MUX_TEXEL1,i*2+channel) )
             {
                 if( (m.a&MUX_MASK) == MUX_TEXEL0 || (m.a&MUX_MASK) == MUX_TEXEL1 )
                 {
@@ -988,14 +988,14 @@ void DecodedMux::UseShadeForConstant(void)
     uint8 mask = (uint8)~MUX_COMPLEMENT;
 
     int constants = 0;
-    if( isUsed(MUX_ENV) ) constants++;
-    if( isUsed(MUX_PRIM) ) constants++;
-    if( isUsed(MUX_LODFRAC) ) constants++;
-    if( isUsed(MUX_PRIMLODFRAC) ) constants++;
+    if( IsUsed(MUX_ENV) ) constants++;
+    if( IsUsed(MUX_PRIM) ) constants++;
+    if( IsUsed(MUX_LODFRAC) ) constants++;
+    if( IsUsed(MUX_PRIMLODFRAC) ) constants++;
 
     bool forceToUsed = constants>m_maxConstants;
 
-    if( !isUsedInColorChannel(MUX_SHADE) && (forceToUsed || max(splitType[0], splitType[2]) >= CM_FMT_TYPE_A_MOD_C_ADD_D) )
+    if( !IsUsedInColorChannel(MUX_SHADE) && (forceToUsed || max(splitType[0], splitType[2]) >= CM_FMT_TYPE_A_MOD_C_ADD_D) )
     {
         int countEnv = Count(MUX_ENV, N64Cycle0RGB, mask) + Count(MUX_ENV, N64Cycle1RGB, mask);
         int countPrim = Count(MUX_PRIM, N64Cycle0RGB, mask) + Count(MUX_PRIM, N64Cycle1RGB, mask);
@@ -1016,7 +1016,7 @@ void DecodedMux::UseShadeForConstant(void)
                 m_dwShadeColorChannelFlag = MUX_ENV;
             }
 
-            if( isUsedInColorChannel(MUX_SHADE|MUX_ALPHAREPLICATE, mask) )
+            if( IsUsedInColorChannel(MUX_SHADE|MUX_ALPHAREPLICATE, mask) )
             {
                 m_dwShadeAlphaChannelFlag = m_dwShadeColorChannelFlag;
                 ReplaceVal((uint8)m_dwShadeColorChannelFlag, MUX_SHADE, N64Cycle0Alpha);
@@ -1026,7 +1026,7 @@ void DecodedMux::UseShadeForConstant(void)
         }
     }
 
-    if( doAlphaChannel && !isUsedInAlphaChannel(MUX_SHADE) && !isUsedInColorChannel(MUX_SHADE|MUX_ALPHAREPLICATE,MUX_MASK_WITH_ALPHA))
+    if( doAlphaChannel && !IsUsedInAlphaChannel(MUX_SHADE) && !IsUsedInColorChannel(MUX_SHADE|MUX_ALPHAREPLICATE,MUX_MASK_WITH_ALPHA))
     {
         int countEnv = Count(MUX_ENV|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask) + Count(MUX_ENV|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
         int countPrim = Count(MUX_PRIM|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask) + Count(MUX_PRIM|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
@@ -1091,12 +1091,12 @@ void DecodedMux::UseTextureForConstant(void)
         // We can use a texture for a constant
         for( int i=0; i<2 && numofconst > m_maxConstants ; i++ )
         {
-            if( isUsed(MUX_TEXEL0+i) )
+            if( IsUsed(MUX_TEXEL0+i) )
             {
                 continue;   // can not use this texture
             }
 
-            if( isUsed(MUX_PRIM) )
+            if( IsUsed(MUX_PRIM) )
             {
                 ReplaceVal(MUX_PRIM, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_PRIM;
@@ -1104,7 +1104,7 @@ void DecodedMux::UseTextureForConstant(void)
                 continue;
             }
 
-            if( isUsed(MUX_ENV) )
+            if( IsUsed(MUX_ENV) )
             {
                 ReplaceVal(MUX_ENV, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_ENV;
@@ -1112,7 +1112,7 @@ void DecodedMux::UseTextureForConstant(void)
                 continue;
             }
 
-            if( isUsed(MUX_LODFRAC) )
+            if( IsUsed(MUX_LODFRAC) )
             {
                 ReplaceVal(MUX_LODFRAC, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_LODFRAC;
@@ -1120,7 +1120,7 @@ void DecodedMux::UseTextureForConstant(void)
                 continue;
             }
 
-            if( isUsed(MUX_PRIMLODFRAC) )
+            if( IsUsed(MUX_PRIMLODFRAC) )
             {
                 ReplaceVal(MUX_PRIMLODFRAC, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_PRIMLODFRAC;
@@ -1134,8 +1134,8 @@ void DecodedMux::UseTextureForConstant(void)
 
 void DecodedMuxForOGL14V2::UseTextureForConstant(void)
 {
-    bool envused = isUsed(MUX_ENV);
-    bool lodused = isUsed(MUX_LODFRAC);
+    bool envused = IsUsed(MUX_ENV);
+    bool lodused = IsUsed(MUX_LODFRAC);
     
     int numofconst = 0;
     if( envused ) numofconst++;
@@ -1148,7 +1148,7 @@ void DecodedMuxForOGL14V2::UseTextureForConstant(void)
         // We can use a texture for a constant
         for( int i=0; i<2 && numofconst > 0 ; i++ )
         {
-            if( isUsed(MUX_TEXEL0+i) )
+            if( IsUsed(MUX_TEXEL0+i) )
             {
                 continue;   // can not use this texture
             }
@@ -1162,7 +1162,7 @@ void DecodedMuxForOGL14V2::UseTextureForConstant(void)
                 continue;
             }
 
-            if( isUsed(MUX_LODFRAC) )
+            if( IsUsed(MUX_LODFRAC) )
             {
                 ReplaceVal(MUX_LODFRAC, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_LODFRAC;
@@ -1170,7 +1170,7 @@ void DecodedMuxForOGL14V2::UseTextureForConstant(void)
                 continue;
             }
 
-            if( isUsed(MUX_PRIMLODFRAC) )
+            if( IsUsed(MUX_PRIMLODFRAC) )
             {
                 ReplaceVal(MUX_PRIMLODFRAC, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_PRIMLODFRAC;
@@ -1397,17 +1397,17 @@ void DecodedMux::To_AB_Add_C_Format(void)   // Use by ATI Radeon
 
 void DecodedMux::CheckCombineInCycle1(void)
 {
-    if( isUsedInCycle(MUX_COMBINED,0,COLOR_CHANNEL) )
+    if( IsUsedInCycle(MUX_COMBINED,0,COLOR_CHANNEL) )
     {
         ReplaceVal(MUX_COMBINED, MUX_SHADE, 0);
     }
 
-    if( isUsedInCycle(MUX_COMBALPHA,0,COLOR_CHANNEL) )
+    if( IsUsedInCycle(MUX_COMBALPHA,0,COLOR_CHANNEL) )
     {
         ReplaceVal(MUX_COMBALPHA, MUX_SHADE|MUX_ALPHAREPLICATE, 0);
     }
 
-    if( isUsedInCycle(MUX_COMBINED,0,ALPHA_CHANNEL) )
+    if( IsUsedInCycle(MUX_COMBINED,0,ALPHA_CHANNEL) )
     {
         if( cA0 == MUX_COMBINED && cRGB0 == MUX_LODFRAC && bRGB0 == dRGB0 && bA0 == dA0 )
         {
@@ -1418,7 +1418,7 @@ void DecodedMux::CheckCombineInCycle1(void)
             ReplaceVal(MUX_COMBINED, MUX_SHADE, 1);
         }
     }
-    if( isUsedInCycle(MUX_COMBALPHA,0,ALPHA_CHANNEL) )
+    if( IsUsedInCycle(MUX_COMBALPHA,0,ALPHA_CHANNEL) )
     {
         ReplaceVal(MUX_COMBALPHA, MUX_SHADE, 1);
     }

@@ -406,9 +406,9 @@ int COGLColorCombiner4::ParseDecodedMux()
     res.units[0].tex = 0;
     res.units[1].tex = 1;
 
-    res.primIsUsed = mux.isUsed(MUX_PRIM);
-    res.envIsUsed = mux.isUsed(MUX_ENV);
-    res.lodFracIsUsed = mux.isUsed(MUX_LODFRAC) || mux.isUsed(MUX_PRIMLODFRAC);
+    res.primIsUsed = mux.IsUsed(MUX_PRIM);
+    res.envIsUsed = mux.IsUsed(MUX_ENV);
+    res.lodFracIsUsed = mux.IsUsed(MUX_LODFRAC) || mux.IsUsed(MUX_PRIMLODFRAC);
 
     return SaveParsedResult(res);
 
