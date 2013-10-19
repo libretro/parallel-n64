@@ -21,7 +21,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define GFXCONTEXT_H
 
 #include "typedefs.h"
-#include "CritSect.h"
 
 enum ClearFlag
 {
@@ -46,9 +45,7 @@ typedef struct
 // other threads from changing/releasing any of the pointers while it is
 // running.
 
-// It is based on CCritSect for Lock() and Unlock()
-
-class CGraphicsContext : public CCritSect
+class CGraphicsContext
 {
     friend class CDeviceBuilder;
     

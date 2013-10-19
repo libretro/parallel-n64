@@ -61,8 +61,6 @@ COGLGraphicsContext::~COGLGraphicsContext()
 bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed )
 {
     DebugMessage(M64MSG_INFO, "Initializing OpenGL Device Context.");
-    Lock();
-
     CGraphicsContext::Get()->m_supportTextureMirror = false;
     CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed );
 
@@ -90,8 +88,6 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWind
     TRACE0(m_strDeviceStats);
     DebugMessage(M64MSG_INFO, "Using OpenGL: %s", m_strDeviceStats);
 
-    Unlock();
-
     Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);    // Clear buffers
     UpdateFrame();
     Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
@@ -105,8 +101,6 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWind
 
 bool COGLGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed )
 {
-    Lock();
-
     CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed );
 
     int  depthBufferDepth = options.OpenglDepthBufferSetting;
@@ -120,7 +114,6 @@ bool COGLGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool
     const int iDOUBLEBUFFER = 1;
 
     InitState();
-    Unlock();
 
     Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);    // Clear buffers
     UpdateFrame();
