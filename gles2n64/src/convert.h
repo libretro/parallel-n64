@@ -205,13 +205,7 @@ static inline u16 swapword( u16 value )
 #endif
 }
 
-static inline u16 RGBA8888_RGBA4444( u32 color )
-{
-    return ((color & 0x000000f0) <<  8) |   // r
-           ((color & 0x0000f000) >>  4) |   // g
-           ((color & 0x00f00000) >> 16) |   // b
-           ((color & 0xf0000000) >> 28);    // a
-}
+#define RGBA8888_RGBA4444(color) (((color & 0x000000f0) <<  8) | ((color & 0x0000f000) >>  4) | ((color & 0x00f00000) >> 16) | ((color & 0xf0000000) >> 28))
 
 static inline u32 RGBA5551_RGBA8888( u16 color )
 {
@@ -225,10 +219,7 @@ static inline u32 RGBA5551_RGBA8888( u16 color )
 }
 
 // Just swaps the word
-static inline u16 RGBA5551_RGBA5551( u16 color )
-{
-    return swapword( color );
-}
+#define RGBA5551_RGBA5551(color) (swapword( color ))
 
 static inline u32 IA88_RGBA8888( u16 color )
 {
@@ -244,10 +235,7 @@ static inline u16 IA88_RGBA4444( u16 color )
     return (i << 12) | (i << 8) | (i << 4) | a;
 }
 
-static inline u16 IA44_RGBA4444( u8 color )
-{
-    return ((color & 0xf0) << 8) | ((color & 0xf0) << 4) | (color);
-}
+#define IA44_RGBA4444(color) (((color & 0xf0) << 8) | ((color & 0xf0) << 4) | (color))
 
 static inline u32 IA44_RGBA8888( u8 color )
 {
@@ -290,10 +278,7 @@ static inline u16 I8_RGBA4444( u8 color )
     return (c << 12) | (c << 8) | (c << 4) | c;
 }
 
-static inline u32 I8_RGBA8888( u8 color )
-{
-    return (color << 24) | (color << 16) | (color << 8) | color;
-}
+#define I8_RGBA8888(color) ((color << 24) | (color << 16) | (color << 8) | color)
 
 static inline u16 I4_RGBA4444( u8 color )
 {
@@ -301,10 +286,7 @@ static inline u16 I4_RGBA4444( u8 color )
     ret |= ret << 4; ret |= ret << 8; return ret;
 }
 
-static inline u8 I4_I8( u8 color )
-{
-    return Four2Eight[color & 0x0f];
-}
+#define I4_I8(color) (Four2Eight[color & 0x0f])
 
 static inline u16 I4_IA88( u8 color )
 {
@@ -312,11 +294,7 @@ static inline u16 I4_IA88( u8 color )
     return (c << 8) | c;
 }
 
-static inline u16 I8_IA88( u8 color )
-{
-    return (color << 8) | color;
-}
-
+#define I8_IA88(color) ((color << 8) | color)
 
 static inline u16 IA88_IA88( u16 color )
 {
