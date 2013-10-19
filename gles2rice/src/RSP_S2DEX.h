@@ -201,7 +201,7 @@ typedef struct
 
   uint8     imageSiz;   // Texel size
   uint8     imageFmt;   // Texel format
-  uint16    imageLoad;  // Can either be S2DEX_BGLT_LOADBLOCK (0x0033) or #define S2DEX_BGLT_LOADTILE (0xfff4)
+  uint16    imageLoad;  // Can either be S2DEX_BGLT_LOADBLOCK (0x0033) or S2DEX_BGLT_LOADTILE (0xfff4)
 
   uint16    imageFlip;  // Inverts the image if 0x01 is set.
   uint16    imagePal;   // Palette number
