@@ -138,11 +138,12 @@ static void DrawRE2Video(FB_TO_SCREEN_INFO & fb_info, float scale)
    float lr_x = settings.scr_res_x - 1.0f;
    float lr_u = (fb_info.width - 1)*scale;
    float lr_v = (fb_info.height - 1)*scale;
-   VERTEX v[4];
-   v[0] = { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} };
-   v[1] = { lr_x, ul_y, 1, 1, lr_u, 0.5f, lr_u, 0.5f, {lr_u, 0.5f, lr_u, 0.5f} };
-   v[2] = { ul_x, lr_y, 1, 1, 0.5f, lr_v, 0.5f, lr_v, {0.5f, lr_v, 0.5f, lr_v} };
-   v[3] = { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} };
+   VERTEX v[4] = {
+   { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} },
+   { lr_x, ul_y, 1, 1, lr_u, 0.5f, lr_u, 0.5f, {lr_u, 0.5f, lr_u, 0.5f} },
+   { ul_x, lr_y, 1, 1, 0.5f, lr_v, 0.5f, lr_v, {0.5f, lr_v, 0.5f, lr_v} },
+   { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} }
+   };
    grDrawTriangle2 (&v[0], &v[2], &v[1], &v[2], &v[3], &v[1]);
 }
 
@@ -290,11 +291,12 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO & fb_info)
       float lr_u = (float)(cur_width-1);
       float lr_v = (float)(cur_height-1);
       // Make the vertices
-      VERTEX v[4];
-      v[0] = { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} };
-      v[1] = { lr_x, ul_y, 1, 1, lr_u, 0.5f, lr_u, 0.5f, {lr_u, 0.5f, lr_u, 0.5f} };
-      v[2] = { ul_x, lr_y, 1, 1, 0.5f, lr_v, 0.5f, lr_v, {0.5f, lr_v, 0.5f, lr_v} };
-      v[3] = { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} };
+      VERTEX v[4] = {
+      { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} },
+      { lr_x, ul_y, 1, 1, lr_u, 0.5f, lr_u, 0.5f, {lr_u, 0.5f, lr_u, 0.5f} },
+      { ul_x, lr_y, 1, 1, 0.5f, lr_v, 0.5f, lr_v, {0.5f, lr_v, 0.5f, lr_v} },
+      { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} }
+      };
       grDrawTriangle2 (&v[0], &v[2], &v[1], &v[2], &v[3], &v[1]);
     }
   }
@@ -410,11 +412,12 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO & fb_info)
       float lr_u = (width-1)*scale;
       float lr_v = (height-1)*scale;
       // Make the vertices
-      VERTEX v[4];
-      v[0] = { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} };
-      v[1] = { lr_x, ul_y, 1, 1, lr_u, 0.5f, lr_u, 0.5f, {lr_u, 0.5f, lr_u, 0.5f} };
-      v[2] = { ul_x, lr_y, 1, 1, 0.5f, lr_v, 0.5f, lr_v, {0.5f, lr_v, 0.5f, lr_v} };
-      v[3] = { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} };
+      VERTEX v[4] = {
+      { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} },
+      { lr_x, ul_y, 1, 1, lr_u, 0.5f, lr_u, 0.5f, {lr_u, 0.5f, lr_u, 0.5f} },
+      { ul_x, lr_y, 1, 1, 0.5f, lr_v, 0.5f, lr_v, {0.5f, lr_v, 0.5f, lr_v} },
+      { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} }
+      };
       grDrawTriangle2 (&v[0], &v[2], &v[1], &v[2], &v[3], &v[1]);
    }
    return true;
@@ -478,11 +481,12 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO & fb_info)
          float lr_u = (float)(cur_width-1);
          float lr_v = (float)(cur_height-1);
          // Make the vertices
-         VERTEX v[4];
-         v[0] = { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} };
-         v[1] = { lr_x, ul_y, 1, 1, lr_u, 0.5f, lr_u, 0.5f, {lr_u, 0.5f, lr_u, 0.5f} };
-         v[2] = { ul_x, lr_y, 1, 1, 0.5f, lr_v, 0.5f, lr_v, {0.5f, lr_v, 0.5f, lr_v} };
-         v[3] = { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} };
+         VERTEX v[4] = {
+         { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} },
+         { lr_x, ul_y, 1, 1, lr_u, 0.5f, lr_u, 0.5f, {lr_u, 0.5f, lr_u, 0.5f} },
+         { ul_x, lr_y, 1, 1, 0.5f, lr_v, 0.5f, lr_v, {0.5f, lr_v, 0.5f, lr_v} },
+         { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} }
+         };
          grDrawTriangle2 (&v[0], &v[2], &v[1], &v[2], &v[3], &v[1]);
       }
    }
@@ -545,11 +549,12 @@ static void DrawHiresDepthBufferToScreen(FB_TO_SCREEN_INFO & fb_info)
    float lr_u = (float)rdp.scissor.lr_x * scale;
    float lr_v = (float)rdp.scissor.lr_y * scale;
    // Make the vertices
-   VERTEX v[4];
-   v[0] = { ul_x, ul_y, 1, 1, ul_u, ul_v, ul_u, ul_v, {ul_u, ul_v, ul_u, ul_v} };
-   v[1] = { lr_x, ul_y, 1, 1, lr_u, ul_v, lr_u, ul_v, {lr_u, ul_v, lr_u, ul_v} };
-   v[2] = { ul_x, lr_y, 1, 1, ul_u, lr_v, ul_u, lr_v, {ul_u, lr_v, ul_u, lr_v} };
-   v[3] = { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} };
+   VERTEX v[4] = {
+   { ul_x, ul_y, 1, 1, ul_u, ul_v, ul_u, ul_v, {ul_u, ul_v, ul_u, ul_v} },
+   { lr_x, ul_y, 1, 1, lr_u, ul_v, lr_u, ul_v, {lr_u, ul_v, lr_u, ul_v} },
+   { ul_x, lr_y, 1, 1, ul_u, lr_v, ul_u, lr_v, {ul_u, lr_v, ul_u, lr_v} },
+   { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} }
+   };
    grDrawTriangle2 (&v[0], &v[2], &v[1], &v[2], &v[3], &v[1]);
    //  grAuxBufferExt( GR_BUFFER_TEXTUREAUXBUFFER_EXT );
    rdp.update |= UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
@@ -634,10 +639,11 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO & fb_info)
    float lr_v = (height-1)*scale;
    float zero = scale*0.5f;
    // Make the vertices
-   VERTEX v[4];
-   v[0] = { ul_x, ul_y, 1, 1, zero, zero, zero, zero, {zero, zero, zero, zero} };
-   v[1] = { lr_x, ul_y, 1, 1, lr_u, zero, lr_u, zero, {lr_u, zero, lr_u, zero} };
-   v[2] = { ul_x, lr_y, 1, 1, zero, lr_v, zero, lr_v, {zero, lr_v, zero, lr_v} };
-   v[3] = { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} };
+   VERTEX v[4] = {
+   { ul_x, ul_y, 1, 1, zero, zero, zero, zero, {zero, zero, zero, zero} },
+   { lr_x, ul_y, 1, 1, lr_u, zero, lr_u, zero, {lr_u, zero, lr_u, zero} },
+   { ul_x, lr_y, 1, 1, zero, lr_v, zero, lr_v, {zero, lr_v, zero, lr_v} },
+   { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} }
+   };
    grDrawTriangle2 (&v[0], &v[2], &v[1], &v[2], &v[3], &v[1]);
 }

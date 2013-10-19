@@ -459,7 +459,7 @@ void ReadSpecialSettings (const char * name)
    else if (read_alpha == 0) settings.frame_buffer &= ~fb_read_alpha;
    if (useless_is_useless > 0) settings.frame_buffer |= fb_useless_is_useless;
    else settings.frame_buffer &= ~fb_useless_is_useless;
-   if (fb_crc_mode >= 0) settings.fb_crc_mode = (SETTINGS::FBCRCMODE)fb_crc_mode;
+   if (fb_crc_mode >= 0) settings.fb_crc_mode = fb_crc_mode;
 
    //  if (settings.custom_ini)
    {

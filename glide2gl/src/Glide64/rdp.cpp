@@ -270,7 +270,7 @@ void RDP::Reset()
    cycle_mode = 2;
    allow_combine = 1;
    rdp.update = UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
-   fog_mode = RDP::fog_enabled;
+   fog_mode = FOG_MODE_ENABLED;
    maincimg[0].addr = maincimg[1].addr = last_drawn_ci_addr = 0x7FFFFFFF;
 }
 
@@ -1331,10 +1331,10 @@ static void rdp_texrect()
     }
 
     {
-      if (rdp.fog_mode >= RDP::fog_blend)
+      if (rdp.fog_mode >= FOG_MODE_BLEND)
       {
         float fog;
-        if (rdp.fog_mode == RDP::fog_blend)
+        if (rdp.fog_mode == FOG_MODE_BLEND)
           fog = 1.0f/max(1, rdp.fog_color&0xFF);
         else
           fog = 1.0f/max(1, (~rdp.fog_color)&0xFF);

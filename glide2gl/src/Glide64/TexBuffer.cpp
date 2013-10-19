@@ -662,9 +662,9 @@ static uint32_t CalcCRC(TBUFF_COLOR_IMAGE * pTCI)
    uint32_t result = 0;
    if ((settings.frame_buffer&fb_ref) > 0)
       pTCI->crc = 0; //Since fb content changes each frame, crc check is meaningless.
-   else if (settings.fb_crc_mode == SETTINGS::fbcrcFast)
+   else if (settings.fb_crc_mode == FBCRCMODE_FAST)
       result = *((uint32_t*)(gfx.RDRAM + pTCI->addr + (pTCI->end_addr-pTCI->addr)/2));
-   else if (settings.fb_crc_mode == SETTINGS::fbcrcSafe)
+   else if (settings.fb_crc_mode == FBCRCMODE_SAFE)
    {
       uint8_t * pSrc = gfx.RDRAM + pTCI->addr;
       const uint32_t nSize = pTCI->end_addr-pTCI->addr;

@@ -407,7 +407,7 @@ void GetTexInfo (int id, int tile)
 
    CACHE_LUT *cache;
 
-   if (rdp.noise == RDP::noise_texture)
+   if (rdp.noise == NOISE_MODE_TEXTURE)
       return;
 
    uint32_t mod, modcolor, modcolor1, modcolor2, modfactor;

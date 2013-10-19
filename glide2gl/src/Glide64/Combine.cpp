@@ -4420,7 +4420,7 @@ static void cc_t0_inter_noise_using_prim ()
 
    MOD_0 (TMOD_TEX_INTER_NOISE_USING_COL);
    MOD_0_COL (rdp.prim_color);
-   rdp.noise = RDP::noise_texture;
+   rdp.noise = NOISE_MODE_TEXTURE;
 }
 
 static void cc_t0_inter_noise_using_env ()
@@ -4433,7 +4433,7 @@ static void cc_t0_inter_noise_using_env ()
 
    MOD_0 (TMOD_TEX_INTER_NOISE_USING_COL);
    MOD_0_COL (rdp.env_color);
-   rdp.noise = RDP::noise_texture;
+   rdp.noise = NOISE_MODE_TEXTURE;
 }
 
 static void cc_t0_sub_env_mul_enva_add_env ()
@@ -13569,7 +13569,7 @@ void Combine(void)
    else
       lod_frac = 10;
 
-   rdp.noise = RDP::noise_none;
+   rdp.noise = NOISE_MODE_NONE;
 
    uint32_t found = true;
 

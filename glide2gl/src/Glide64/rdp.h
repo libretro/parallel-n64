@@ -168,6 +168,10 @@ extern uint32_t frame_count; // frame counter
 #define  hack_Yoshi       (1<<27)  //Yoshi Story
 #define  hack_Zelda       (1<<28)  //zeldas hacks
 
+#define FBCRCMODE_NONE  0
+#define FBCRCMODE_FAST  1
+#define FBCRCMODE_SAFE  2
+
 // Clipping (scissors)
 typedef struct
 {
@@ -204,12 +208,7 @@ typedef struct
    int use_hotkeys;
 
    uint32_t frame_buffer;
-   enum FBCRCMODE
-   {
-      fbcrcNone = 0,
-      fbcrcFast = 1,
-      fbcrcSafe = 2
-   } fb_crc_mode;
+   unsigned fb_crc_mode;
 
    //Debug
    int autodetect_ucode;
@@ -455,6 +454,15 @@ typedef struct
 
 #define NUMTEXBUF 92
 
+#define FOG_MODE_DISABLED       0
+#define FOG_MODE_ENABLED        1
+#define FOG_MODE_BLEND          2
+#define FOG_MODE_BLEND_INVERSE  3
+
+#define NOISE_MODE_NONE         0
+#define NOISE_MODE_COMBINE      1
+#define NOISE_MODE_TEXTURE      2
+
 struct RDP_Base
 {
    float vi_width;
@@ -513,12 +521,7 @@ struct RDP_Base
    uint16_t prim_dz;
    uint8_t K4;
    uint8_t K5;
-   enum
-   {
-      noise_none,
-      noise_combine,
-      noise_texture
-   } noise;
+   unsigned noise;
 
    float col[4];   // color multiplier
    float coladd[4];  // color add/subtract
@@ -634,12 +637,7 @@ struct RDP_Base
 
    //fog related slots. Added by Gonetz
    float fog_multiplier, fog_offset;
-   enum {
-      fog_disabled,
-      fog_enabled,
-      fog_blend,
-      fog_blend_inverse
-   } fog_mode;
+   unsigned fog_mode;
 };
 
 struct RDP : public RDP_Base
