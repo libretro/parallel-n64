@@ -103,11 +103,11 @@ public:
 
     void Decode(uint32 dwMux0, uint32 dwMux1);
     virtual void Hack(void);
-    bool isUsed(uint8 fac, uint8 mask=MUX_MASK);
-    bool isUsedInAlphaChannel(uint8 fac, uint8 mask=MUX_MASK);
-    bool isUsedInColorChannel(uint8 fac, uint8 mask=MUX_MASK);
-    bool isUsedInCycle(uint8 fac, int cycle, CombineChannel channel, uint8 mask=MUX_MASK);
-    bool isUsedInCycle(uint8 fac, int cycle, uint8 mask=MUX_MASK);
+    bool IsUsed(uint8 fac, uint8 mask=MUX_MASK);
+    bool IsUsedInAlphaChannel(uint8 fac, uint8 mask=MUX_MASK);
+    bool IsUsedInColorChannel(uint8 fac, uint8 mask=MUX_MASK);
+    bool IsUsedInCycle(uint8 fac, int cycle, CombineChannel channel, uint8 mask=MUX_MASK);
+    bool IsUsedInCycle(uint8 fac, int cycle, uint8 mask=MUX_MASK);
     uint32 GetCycle(int cycle, CombineChannel channel);
     uint32 GetCycle(int cycle);
     CombinerFormatType GetCombinerFormatType(uint32 cycle);
