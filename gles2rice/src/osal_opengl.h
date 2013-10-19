@@ -81,9 +81,6 @@
 #endif
 
 // Function substitutions
-#ifndef __LIBRETRO__
-#define glClearDepth                        glClearDepthf
-#endif
 #define pglActiveTexture                    glActiveTexture
 #define pglActiveTextureARB                 glActiveTexture
 

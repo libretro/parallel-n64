@@ -14,10 +14,6 @@ extern "C" {
 #define PLUGIN_VERSION  0x000005
 #define PLUGIN_API_VERSION 0x020200
 
-#ifndef __LIBRETRO__ // Built in
-extern ptr_ConfigGetSharedDataFilepath ConfigGetSharedDataFilepath;
-#endif
-
 #ifdef __LIBRETRO__ // Avoid symbol clash
 #define renderCallback gln64RenderCallback
 #endif
