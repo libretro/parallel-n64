@@ -3,6 +3,10 @@
 
 #include <string.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef __LIBRETRO__ // Prefix symbol
 #define DotProduct gln64DotProduct
 #endif
@@ -43,6 +47,10 @@ inline void Transpose3x3Matrix( float mtx[4][4] )
 
 #ifdef __NEON_OPT
 void MathInitNeon();
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

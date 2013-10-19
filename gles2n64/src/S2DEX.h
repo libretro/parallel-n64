@@ -1,13 +1,17 @@
 #ifndef S2DEX_H
 #define S2DEX_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define G_BGLT_LOADBLOCK    0x0033
 #define G_BGLT_LOADTILE     0xfff4
 
 #define G_BG_FLAG_FLIPS     0x01
 #define G_BG_FLAG_FLIPT     0x10
 
-struct uObjScaleBg
+typedef struct
 {
   u16 imageW;     /* Texture width (8-byte alignment, u10.2) */
   u16 imageX;     /* x-coordinate of upper-left 
@@ -50,9 +54,9 @@ struct uObjScaleBg
   s32 imageYorig;  /* image drawing origin (s20.5)*/
   
   u8  padding[4];  /* Padding */
-};   /* 40 bytes */
+} uObjScaleBg;   /* 40 bytes */
 
-struct uObjBg
+typedef struct
 {
     u16 imageW;     /* Texture width (8-byte alignment, u10.2) */
     u16 imageX;     /* x-coordinate of upper-left position of texture (u10.5) */ 
@@ -96,9 +100,9 @@ struct uObjBg
     u16 tmemLoadSH; /* SH value */
     u16 tmemSize;   /* imagePtr skip value for a single load  */
     u16 tmemSizeW;  /* imagePtr skip value for one image line */
-};      /* 40 bytes */
+} uObjBg;      /* 40 bytes */
 
-struct uObjSprite
+typedef struct
 {
     u16 scaleW;      /* Width-direction scaling (u5.10) */
     s16 objX;        /* x-coordinate of upper-left corner of OBJ (s10.2) */
@@ -127,9 +131,9 @@ struct uObjSprite
                       G_IM_FMT_CI (CI format)
                       G_IM_FMT_IA (IA format)
                       G_IM_FMT_I  (I format) */
-};    /* 24 bytes */
+} uObjSprite;    /* 24 bytes */
 
-struct uObjTxtrBlock
+typedef struct
 {
     u32   type;   /* Structure identifier (G_OBJLT_TXTRBLOCK) */
     u32   image; /* Texture source address in DRAM (8-byte alignment) */
@@ -139,9 +143,9 @@ struct uObjTxtrBlock
     u16   tline;  /* Texture line width (specified by GS_TB_TLINE) */
     u32   flag;   /* Status flag */
     u32   mask;   /* Status mask */
-};     /* 24 bytes */
+} uObjTxtrBlock;     /* 24 bytes */
 
-struct uObjTxtrTile
+typedef struct
 {
     u32   type;   /* Structure identifier (G_OBJLT_TXTRTILE) */
     u32   image; /* Texture source address in DRAM (8-byte alignment) */
@@ -151,9 +155,9 @@ struct uObjTxtrTile
     u16   theight;/* Texture height (specified by GS_TT_THEIGHT) */
     u32   flag;   /* Status flag */
     u32   mask;   /* Status mask  */
-};      /* 24 bytes */
+} uObjTxtrTile; /* 24 bytes */
 
-struct uObjTxtrTLUT
+typedef struct
 {
     u32   type;   /* Structure identifier (G_OBJLT_TLUT) */
     u32   image; /* Texture source address in DRAM */
@@ -163,7 +167,7 @@ struct uObjTxtrTLUT
     u16   zero;   /* Always assign 0 */
     u32   flag;   /* Status flag */
     u32   mask;   /* Status mask */
-};      /* 24 bytes */
+} uObjTxtrTLUT;   /* 24 bytes */
 
 typedef union 
 {
@@ -178,13 +182,13 @@ struct uObjTxSprite
     uObjSprite    sprite;
 };
 
-struct uObjMtx
+typedef struct
 {
   s32 A, B, C, D;   /* s15.16 */
   s16 Y, X;         /* s10.2 */
   u16 BaseScaleY;   /* u5.10 */
   u16 BaseScaleX;   /* u5.10 */
-};
+} uObjMtx;
 
 void S2DEX_BG_1Cyc( u32 w0, u32 w1 );
 void S2DEX_BG_Copy( u32 w0, u32 w1 );
@@ -214,6 +218,10 @@ void S2DEX_Init();
 #define S2DEX_OBJ_LDTX_RECT     0xC3
 #define S2DEX_OBJ_LDTX_RECT_R   0xC4
 #define S2DEX_RDPHALF_0         0xE4
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

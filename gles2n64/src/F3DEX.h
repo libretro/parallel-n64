@@ -1,6 +1,10 @@
 #ifndef F3DEX_H
 #define F3DEX_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define F3DEX_MTX_STACKSIZE     18
 
 #define F3DEX_MTX_MODELVIEW     0x00
@@ -50,5 +54,10 @@ void F3DEX_Tri2( u32 w0, u32 w1 );
 void F3DEX_Branch_Z( u32 w0, u32 w1 );
 void F3DEX_Load_uCode( u32 w0, u32 w1 );
 void F3DEX_Init();
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
 

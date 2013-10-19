@@ -1,13 +1,12 @@
 #ifndef GLN64_H
 #define GLN64_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "m64p_config.h"
 #include "stdio.h"
-
-
-#ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#endif
 
 //#define DEBUG
 
@@ -26,6 +25,9 @@ extern ptr_ConfigGetSharedDataFilepath ConfigGetSharedDataFilepath;
 extern void (*CheckInterrupts)( void );
 extern void (*renderCallback)();
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

@@ -2,6 +2,10 @@
 #define F3D_H
 #include "Types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define F3D_MTX_STACKSIZE       10
 
 #define F3D_MTX_MODELVIEW       0x00
@@ -95,5 +99,10 @@ void F3D_RDPHalf_2( u32 w0, u32 w1 );
 void F3D_RDPHalf_Cont( u32 w0, u32 w1 );
 void F3D_Tri4( u32 w0, u32 w1 );
 void F3D_Init();
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
 

@@ -9,6 +9,15 @@
 #define F3DDKR_DMA_DL           0x07
 #define F3DDKR_DMA_OFFSETS      0xBF
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void F3DDKR_Init();
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
 

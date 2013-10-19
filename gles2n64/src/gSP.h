@@ -13,42 +13,6 @@
 #define CHANGED_FOGPOSITION     0x20
 #define CHANGED_TEXTURESCALE    0x40
 
-//#ifdef __TRIBUFFER_OPT
-//    #define gSPFlushTriangles() \
-//    if \
-//    ( \
-//        (OGL.triangles.num > 1000) || \
-//        ( \
-//            (RSP.nextCmd != G_NOOP) && \
-//            (RSP.nextCmd != G_RDPNOOP) && \
-//            (RSP.nextCmd != G_MOVEMEM) && \
-//            (RSP.nextCmd != G_ENDDL) && \
-//            (RSP.nextCmd != G_DL) && \
-//            (RSP.nextCmd != G_VTXCOLORBASE) && \
-//            (RSP.nextCmd != G_TRI1) && \
-//            (RSP.nextCmd != G_TRI2) && \
-//            (RSP.nextCmd != G_TRI4) && \
-//            (RSP.nextCmd != G_QUAD) && \
-//            (RSP.nextCmd != G_VTX) && \
-//            (RSP.nextCmd != G_MTX) \
-//        ) \
-//    ) \
-//    { \
-//        OGL_DrawTriangles(); \
-//    }
-//#else
-//    #define gSPFlushTriangles() \
-//    if \
-//    ( \
-//        (RSP.nextCmd != G_TRI1) && \
-//        (RSP.nextCmd != G_TRI2) && \
-//        (RSP.nextCmd != G_TRI4) && \
-//        (RSP.nextCmd != G_QUAD) \
-//    ) \
-//    { \
-//        OGL_DrawTriangles(); \
-//    }
-//#endif
 #define gSPFlushTriangles() \
 if \
 ( \
@@ -94,7 +58,7 @@ if \
 #define CLIP_NEGZ   0x10
 #define CLIP_POSZ   0x20
 
-struct SPVertex
+typedef struct
 {
     f32     x, y, z, w;
     f32     nx, ny, nz, __pad0;
@@ -104,17 +68,17 @@ struct SPVertex
     u32     clip;
     s16     flag;
     s16     __pad1;
-};
+} SPVertex;
 
 typedef SPVertex SPTriangle[3];
 
-struct SPLight
+typedef struct SPLight
 {
     f32 r, g, b;
     f32 x, y, z;
-};
+} SPLight;
 
-struct gSPInfo
+typedef struct
 {
     u32 segment[16];
 
@@ -136,7 +100,7 @@ struct gSPInfo
     u32 vertexColorBase;
     u32 vertexi;
 
-    SPLight lights[8];
+    struct SPLight lights[8];
 
     struct
     {
@@ -175,7 +139,7 @@ struct gSPInfo
     {
         u32 vtx, mtx;
     } DMAOffsets;
-};
+} gSPInfo;
 
 extern gSPInfo gSP;
 
@@ -238,13 +202,6 @@ void gSP4Triangles(const s32 v00, const s32 v01, const s32 v02,
                     const s32 v20, const s32 v21, const s32 v22,
                     const s32 v30, const s32 v31, const s32 v32 );
 
-
-//#ifdef __TRIBUFFER_OPT
-void __indexmap_init();
-void __indexmap_clear();
-u32 __indexmap_findunused(u32 num);
-u32 __indexmap_getnew(u32 index, u32 num);
-//#endif
 
 #ifdef __VEC4_OPT
 extern void (*gSPTransformVertex4)(u32 v, float mtx[4][4]);

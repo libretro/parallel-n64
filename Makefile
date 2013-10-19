@@ -21,7 +21,7 @@ CC_AS ?= $(CC)
 
 ifneq (,$(findstring unix,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
-   LDFLAGS += -shared -Wl,--version-script=libretro/link.T
+   LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined
    
    fpic = -fPIC
 ifneq (,$(findstring gles,$(platform)))
@@ -210,18 +210,17 @@ CFILES += \
 VIDEODIR_GLN64 = gles2n64/src
 
 # TODO: Use neon versions when possible
-gln64videosrc = $(wildcard $(VIDEODIR_GLN64)/*.cpp)
-gln64videoblack = $(VIDEODIR_GLN64)/3DMathNeon.cpp $(VIDEODIR_GLN64)/gSPNeon.cpp
 
 libretrosrc += $(wildcard libretro/*.c)
 
 ifeq ($(HAVE_NEON), 1)
-CXXFILES += $(gln64videosrc)
+CFILES += $(wildcard $(VIDEODIR_GLN64)/*.c)
 CFLAGS += -DHAVE_NEON -DSINC_LOWER_QUALITY
 CPPFLAGS += -DHAVE_NEON -DSINC_LOWER_QUALITY
 OBJECTS += libretro/utils_neon.o libretro/sinc_neon.o
 else
-CXXFILES += $(filter-out $(gln64videoblack), $(gln64videosrc))
+gln64videoblack = $(VIDEODIR_GLN64)/3DMathNeon.c $(VIDEODIR_GLN64)/gSPNeon.c
+CFILES += $(filter-out $(gln64videoblack), $(wildcard $(VIDEODIR_GLN64)/*.c))
 endif
 
 CFILES += $(libretrosrc)

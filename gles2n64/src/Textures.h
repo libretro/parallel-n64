@@ -7,10 +7,13 @@
 #include <GLES2/gl2.h>
 #endif
 
-#include "Hash.h"
 #include "convert.h"
 
-struct CachedTexture
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct CachedTexture
 {
     GLuint  glName;
     u32     address;
@@ -31,15 +34,15 @@ struct CachedTexture
     f32     shiftScaleS, shiftScaleT; // Scale to shift
     u32     textureBytes;
 
-    CachedTexture   *lower, *higher;
+    struct CachedTexture   *lower, *higher;
     u32     lastDList;
 
-};
+} CachedTexture;
 
 #define TEXTURECACHE_MAX (8 * 1024 * 1024)
 #define TEXTUREBUFFER_SIZE (512 * 1024)
 
-struct TextureCache
+typedef struct TextureCache
 {
     CachedTexture   *current[2];
     CachedTexture   *bottom, *top;
@@ -49,10 +52,7 @@ struct TextureCache
     u32             numCached;
     u32             hits, misses;
     GLuint          glNoiseNames[32];
-
-    HashMap<CachedTexture>  hash;
-
-};
+} TextureCache;
 
 extern TextureCache cache;
 
@@ -90,6 +90,10 @@ void TextureCache_ActivateTexture( u32 t, CachedTexture *texture );
 void TextureCache_ActivateNoise( u32 t );
 void TextureCache_ActivateDummy( u32 t );
 bool TextureCache_Verify();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

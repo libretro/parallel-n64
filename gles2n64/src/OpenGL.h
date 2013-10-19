@@ -1,15 +1,12 @@
 #ifndef OPENGL_H
 #define OPENGL_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <SDL_opengles2.h>
 #include "gSP.h"
-
-#ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#endif
-#ifndef max
-#define max(a,b) ((a) > (b) ? (a) : (b))
-#endif
 
 #define RS_NONE         0
 #define RS_TRIANGLE     1
@@ -47,8 +44,11 @@
 #define BLEND_XLU               0x0040
 #define BLEND_MEM_ALPHA_IN      0x4044  //  Mem * AIn + Mem * AMem
 
+#define INDEXMAP_SIZE 64
+#define VERTBUFF_SIZE 256
+#define ELEMBUFF_SIZE 1024
 
-struct GLVertex
+typedef struct
 {
     float x, y, z, w;
     struct
@@ -56,9 +56,16 @@ struct GLVertex
         float r, g, b, a;
     } color, secondaryColor;
     float s0, t0, s1, t1;
-};
+} GLVertex;
 
-struct GLInfo
+typedef struct triangles_t
+{
+   SPVertex    vertices[VERTBUFF_SIZE];
+   GLubyte     elements[ELEMBUFF_SIZE];
+   int         num;
+} triangles_t;
+
+typedef struct
 {
     bool    screenUpdate;
 
@@ -69,29 +76,13 @@ struct GLInfo
 
     float   scaleX, scaleY;
 
-#define INDEXMAP_SIZE 64
-#define VERTBUFF_SIZE 256
-#define ELEMBUFF_SIZE 1024
 
-    struct {
-        SPVertex    vertices[VERTBUFF_SIZE];
-        GLubyte     elements[ELEMBUFF_SIZE];
-        int         num;
-
-//#ifdef __TRIBUFFER_OPT
-
-        u32     indexmap[INDEXMAP_SIZE];
-        u32     indexmapinv[VERTBUFF_SIZE];
-        u32     indexmap_prev;
-        u32     indexmap_nomap;
-//#endif
-
-    } triangles;
+    struct triangles_t triangles;
 
     unsigned int    renderState;
 
     GLVertex rect[4];
-};
+} GLInfo;
 
 extern GLInfo OGL;
 
@@ -120,5 +111,10 @@ void OGL_ReadScreen( void *dest, int *width, int *height );
 
 int  OGL_CheckError();
 int  OGL_IsExtSupported( const char *extension );
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
 

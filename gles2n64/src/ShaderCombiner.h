@@ -1,6 +1,9 @@
-
 #ifndef SHADERCOMBINER_H
 #define SHADERCOMBINER_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define SC_FOGENABLED           0x1
 #define SC_ALPHAENABLED         0x2
@@ -150,7 +153,7 @@
 #define UNKNOWN         21
 
 
-struct UniformLocation
+typedef struct
 {
     struct {GLint loc; int val;} uTex0, uTex1, uNoise;
     struct {GLint loc; int val;} uEnableFog;
@@ -158,9 +161,9 @@ struct UniformLocation
     struct {GLint loc; float val[4];} uEnvColor, uPrimColor, uFogColor;
     struct {GLint loc; float val[2];}  uTexScale, uTexOffset[2], uCacheShiftScale[2],
         uCacheScale[2], uCacheOffset[2];
-};
+} UniformLocation;
 
-struct ShaderProgram
+typedef struct ShaderProgram
 {
     GLint       program;
     GLint       fragment;
@@ -173,9 +176,9 @@ struct ShaderProgram
     UniformLocation uniforms;
     gDPCombine      combine;
     u32             flags;
-    ShaderProgram   *left, *right;
+    struct ShaderProgram   *left, *right;
     u32             lastUsed;
-};
+} ShaderProgram;
 
 
 //dmux flags:
@@ -184,20 +187,18 @@ struct ShaderProgram
 #define SC_IGNORE_RGB1      (1<<2)
 #define SC_IGNORE_ALPHA1    (1<<3)
 
-class DecodedMux
+typedef struct
 {
-    public:
-        DecodedMux(u64 mux, bool cycle2);
+   gDPCombine combine;
+   int decode[4][4];
+   int flags;
+} DecodedMux;
 
-        void hack();
-        bool find(int index, int src);
-        bool swap(int cycle, int src0, int src1);
-        bool replace(int cycle, int src, int dest);
-
-        gDPCombine combine;
-        int decode[4][4];
-        int flags;
-};
+void *mux_new(u64 mux, bool cycle2);
+void mux_hack(DecodedMux *mux);
+bool mux_find(DecodedMux *mux, int index, int src);
+bool mux_swap(DecodedMux *mux, int cycle, int src0, int src1);
+bool mux_replace(DecodedMux *mux, int cycle, int src, int dest);
 
 extern int CCEncodeA[];
 extern int CCEncodeB[];
@@ -216,8 +217,12 @@ extern int              scProgramCount;
 extern void ShaderCombiner_Init();
 extern void ShaderCombiner_Destroy();
 extern void ShaderCombiner_DeleteProgram(ShaderProgram *prog);
-extern void ShaderCombiner_Set(u64 mux, int flags=-1);
+extern void ShaderCombiner_Set(u64 mux, int flags);
 extern ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

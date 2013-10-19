@@ -1,6 +1,10 @@
 #ifndef GBI_H
 #define GBI_H
-#include "Hash.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "Types.h"
 #include <stdio.h>
 
@@ -705,34 +709,33 @@ typedef struct
     s16     t2, s2;
 } DKRTriangle;
 
-struct Light
+typedef struct
 {
     u8 pad0, b, g, r;
     u8 pad1, b2, g2, r2;
     s8 pad2, z, y, x;
-};
+} Light;
 
-struct LightMM
+typedef struct
 {
     u8 pad0, b, g, r;
     u8 pad1, b2, g2, r2;
     s16 y, x, range, z;
-};
-
+} LightMM;
 
 // GBI commands
 typedef void (*GBIFunc)( u32 w0, u32 w1 );
-//extern GBIFunc GBICmd[256];
 
-struct SpecialMicrocodeInfo
+
+typedef struct
 {
     u32 type;
     u32 NoN;
     u32 crc;
     const char *text;
-};
+} SpecialMicrocodeInfo;
 
-struct MicrocodeInfo
+typedef struct MicrocodeInfo
 {
     u32 address, dataAddress;
     u16 dataSize;
@@ -741,16 +744,16 @@ struct MicrocodeInfo
     u32 crc;
     u32 *text;
 
-    MicrocodeInfo *higher, *lower;
-};
+    struct MicrocodeInfo *higher, *lower;
+} MicrocodeInfo;
 
-struct GBIInfo
+typedef struct
 {
     GBIFunc cmd[256];
 
     u32 PCStackSize, numMicrocodes;
     MicrocodeInfo *current, *top, *bottom;
-};
+} GBIInfo;
 
 extern GBIInfo GBI;
 
@@ -799,6 +802,10 @@ void GBI_Destroy();
     G_MWO_bLIGHT_7      = ucode##_MWO_bLIGHT_7; \
     G_MWO_aLIGHT_8      = ucode##_MWO_aLIGHT_8; \
     G_MWO_bLIGHT_8      = ucode##_MWO_bLIGHT_8;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

@@ -3,6 +3,10 @@
 
 #include "Types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define CHANGED_RENDERMODE      0x0001
 #define CHANGED_CYCLETYPE       0x0002
 #define CHANGED_SCISSOR         0x0004
@@ -27,7 +31,7 @@
 #define LOADTYPE_BLOCK          0
 #define LOADTYPE_TILE           1
 
-struct gDPCombine
+typedef struct
 {
     union
     {
@@ -61,9 +65,9 @@ struct gDPCombine
 
         u64             mux;
     };
-};
+} gDPCombine;
 
-struct gDPTile
+typedef struct 
 {
     u32 format, size, line, tmem, palette;
 
@@ -91,9 +95,9 @@ struct gDPTile
     u32 shiftt, shifts;
     f32 fuls, fult, flrs, flrt;
     u32 uls, ult, lrs, lrt;
-};
+} gDPTile;
 
-struct gDPInfo
+typedef struct
 {
     struct
     {
@@ -236,7 +240,7 @@ struct gDPInfo
     u32 half_1, half_2;
     u32 textureMode;
     u32 loadType;
-};
+} gDPInfo;
 
 extern gDPInfo gDP;
 
@@ -284,6 +288,10 @@ void gDPTileSync();
 void gDPPipeSync();
 void gDPLoadSync();
 void gDPNoOp();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

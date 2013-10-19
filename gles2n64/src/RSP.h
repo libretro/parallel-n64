@@ -6,8 +6,8 @@
 //#include "gSP.h"
 #include "Types.h"
 
-#ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 #define RSPMSG_CLOSE            0
@@ -30,5 +30,8 @@ void RSP_Init();
 void RSP_ProcessDList();
 void RSP_LoadMatrix( f32 mtx[4][4], u32 address );
 
+#ifdef __cplusplus
+}
 #endif
 
+#endif

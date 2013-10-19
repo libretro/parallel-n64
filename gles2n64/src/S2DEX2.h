@@ -1,6 +1,10 @@
 #ifndef S2DEX2_H
 #define S2DEX2_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void S2DEX2_Init();
 
 #define S2DEX2_OBJ_RECTANGLE_R  0xDA
@@ -16,5 +20,10 @@ void S2DEX2_Init();
 #define S2DEX2_BG_1CYC          0x09
 #define S2DEX2_BG_COPY          0x0A
 #define S2DEX2_OBJ_RENDERMODE   0x0B
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
 

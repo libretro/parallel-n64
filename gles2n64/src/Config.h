@@ -1,11 +1,17 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef __LIBRETRO__ // Prefix symbol
 #define config gln64config
 #endif
 
-struct Config
+#include <stdbool.h>
+
+typedef struct
 {
     int     version;
 
@@ -55,11 +61,15 @@ struct Config
     bool    stretchVideo;
     bool    romPAL;    //is the rom PAL
     char    romName[21];
-};
+} Config;
 
 extern Config config;
 
 void Config_LoadConfig();
 void Config_LoadRomConfig(unsigned char* header);
+
+#ifdef __cplusplus
+}
 #endif
 
+#endif

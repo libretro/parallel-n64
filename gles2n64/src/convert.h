@@ -3,7 +3,7 @@
 
 #include "Types.h"
 
-const volatile unsigned char Five2Eight[32] =
+static const volatile unsigned char Five2Eight[32] =
 {
       0, // 00000 = 00000000
       8, // 00001 = 00001000
@@ -39,7 +39,7 @@ const volatile unsigned char Five2Eight[32] =
     255  // 11111 = 11111111
 };
 
-const volatile unsigned char Four2Eight[16] =
+static const volatile unsigned char Four2Eight[16] =
 {
       0, // 0000 = 00000000
      17, // 0001 = 00010001
@@ -59,7 +59,7 @@ const volatile unsigned char Four2Eight[16] =
     255  // 1111 = 11111111
 };
 
-const volatile unsigned char Three2Four[8] =
+static const volatile unsigned char Three2Four[8] =
 {
      0, // 000 = 0000
      2, // 001 = 0010
@@ -71,7 +71,7 @@ const volatile unsigned char Three2Four[8] =
     15, // 111 = 1111
 };
 
-const volatile unsigned char Three2Eight[8] =
+static const volatile unsigned char Three2Eight[8] =
 {
       0, // 000 = 00000000
      36, // 001 = 00100100
@@ -82,7 +82,8 @@ const volatile unsigned char Three2Eight[8] =
     219, // 110 = 11011011
     255, // 111 = 11111111
 };
-const volatile unsigned char Two2Eight[4] =
+
+static const volatile unsigned char Two2Eight[4] =
 {
       0, // 00 = 00000000
      85, // 01 = 01010101
@@ -90,13 +91,13 @@ const volatile unsigned char Two2Eight[4] =
     255  // 11 = 11111111
 };
 
-const volatile unsigned char One2Four[2] =
+static const volatile unsigned char One2Four[2] =
 {
      0, // 0 = 0000
     15, // 1 = 1111
 };
 
-const volatile unsigned char One2Eight[2] =
+static const volatile unsigned char One2Eight[2] =
 {
       0, // 0 = 00000000
     255, // 1 = 11111111
@@ -164,7 +165,7 @@ static inline void DWordInterleave( void *mem, u32 numDWords )
     }
 }
 
-inline void QWordInterleave( void *mem, u32 numDWords )
+static inline void QWordInterleave( void *mem, u32 numDWords )
 {
     numDWords >>= 1; // qwords
     while( numDWords-- )
@@ -181,7 +182,7 @@ inline void QWordInterleave( void *mem, u32 numDWords )
 }
 
 
-inline u32 swapdword( u32 value )
+static inline u32 swapdword( u32 value )
 {
 #ifdef ARM_ASM
     asm("rev %0, %0" : "+r"(value)::);
@@ -194,7 +195,7 @@ inline u32 swapdword( u32 value )
 #endif
 }
 
-inline u16 swapword( u16 value )
+static inline u16 swapword( u16 value )
 {
 #ifdef ARM_ASM
     asm("rev16 %0, %0" : "+r"(value)::);
@@ -204,7 +205,7 @@ inline u16 swapword( u16 value )
 #endif
 }
 
-inline u16 RGBA8888_RGBA4444( u32 color )
+static inline u16 RGBA8888_RGBA4444( u32 color )
 {
     return ((color & 0x000000f0) <<  8) |   // r
            ((color & 0x0000f000) >>  4) |   // g
@@ -212,7 +213,7 @@ inline u16 RGBA8888_RGBA4444( u32 color )
            ((color & 0xf0000000) >> 28);    // a
 }
 
-inline u32 RGBA5551_RGBA8888( u16 color )
+static inline u32 RGBA5551_RGBA8888( u16 color )
 {
     color = swapword( color );
     u8 r, g, b, a;
@@ -224,102 +225,100 @@ inline u32 RGBA5551_RGBA8888( u16 color )
 }
 
 // Just swaps the word
-inline u16 RGBA5551_RGBA5551( u16 color )
+static inline u16 RGBA5551_RGBA5551( u16 color )
 {
     return swapword( color );
 }
 
-inline u32 IA88_RGBA8888( u16 color )
+static inline u32 IA88_RGBA8888( u16 color )
 {
     u8 a = color >> 8;
     u8 i = color & 0x00FF;
     return (a << 24) | (i << 16) | (i << 8) | i;
 }
 
-inline u16 IA88_RGBA4444( u16 color )
+static inline u16 IA88_RGBA4444( u16 color )
 {
     u8 i = color >> 12;
     u8 a = (color >> 4) & 0x000F;
     return (i << 12) | (i << 8) | (i << 4) | a;
 }
 
-inline u16 IA44_RGBA4444( u8 color )
+static inline u16 IA44_RGBA4444( u8 color )
 {
     return ((color & 0xf0) << 8) | ((color & 0xf0) << 4) | (color);
 }
 
-inline u32 IA44_RGBA8888( u8 color )
+static inline u32 IA44_RGBA8888( u8 color )
 {
     u8 i = Four2Eight[color >> 4];
     u8 a = Four2Eight[color & 0x0F];
     return (a << 24) | (i << 16) | (i << 8) | i;
 }
 
-inline u16 IA44_IA88( u8 color )
+static inline u16 IA44_IA88( u8 color )
 {
     u8 i = Four2Eight[color >> 4];
     u8 a = Four2Eight[color & 0x0F];
     return (a << 8) | i;
 }
 
-inline u16 IA31_RGBA4444( u8 color )
+static inline u16 IA31_RGBA4444( u8 color )
 {
     u8 i = Three2Four[color >> 1];
     u8 a = One2Four[color & 0x01];
     return (i << 12) | (i << 8) | (i << 4) | a;
 }
 
-inline u16 IA31_IA88( u8 color )
+static inline u16 IA31_IA88( u8 color )
 {
     u8 i = Three2Eight[color >> 1];
     u8 a = One2Eight[color & 0x01];
     return (a << 8) | i;
 }
 
-inline u32 IA31_RGBA8888( u8 color )
+static inline u32 IA31_RGBA8888( u8 color )
 {
     u8 i = Three2Eight[color >> 1];
     u8 a = One2Eight[color & 0x01];
     return (i << 24) | (i << 16) | (i << 8) | a;
 }
 
-inline u16 I8_RGBA4444( u8 color )
+static inline u16 I8_RGBA4444( u8 color )
 {
     u8 c = color >> 4;
     return (c << 12) | (c << 8) | (c << 4) | c;
 }
 
-inline u32 I8_RGBA8888( u8 color )
+static inline u32 I8_RGBA8888( u8 color )
 {
     return (color << 24) | (color << 16) | (color << 8) | color;
 }
 
-inline u16 I4_RGBA4444( u8 color )
+static inline u16 I4_RGBA4444( u8 color )
 {
     u16 ret = color & 0x0f;
-    ret |= ret << 4;
-    ret |= ret << 8;
-    return ret;
+    ret |= ret << 4; ret |= ret << 8; return ret;
 }
 
-inline u8 I4_I8( u8 color )
+static inline u8 I4_I8( u8 color )
 {
     return Four2Eight[color & 0x0f];
 }
 
-inline u16 I4_IA88( u8 color )
+static inline u16 I4_IA88( u8 color )
 {
     u32 c = Four2Eight[color & 0x0f];
     return (c << 8) | c;
 }
 
-inline u16 I8_IA88( u8 color )
+static inline u16 I8_IA88( u8 color )
 {
     return (color << 8) | color;
 }
 
 
-inline u16 IA88_IA88( u16 color )
+static inline u16 IA88_IA88( u16 color )
 {
     u8 a = (color&0xFF);
     u8 i = (color>>8);
@@ -327,7 +326,7 @@ inline u16 IA88_IA88( u16 color )
 }
 
 
-inline u32 I4_RGBA8888( u8 color )
+static inline u32 I4_RGBA8888( u8 color )
 {
     u8 c = Four2Eight[color];
     c |= c << 4;

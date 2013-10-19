@@ -1,12 +1,17 @@
 #ifndef N64_H
 #define N64_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "Types.h"
+
 
 #define MI_INTR_SP      0x1        // Bit 1: SP intr
 #define MI_INTR_DP      0x20        // Bit 5: DP intr 
 
-struct N64Regs
+typedef struct
 {
     u32 *MI_INTR;
 
@@ -33,7 +38,7 @@ struct N64Regs
     u32 *VI_V_BURST;
     u32 *VI_X_SCALE;
     u32 *VI_Y_SCALE;
-};
+} N64Regs;
 
 extern N64Regs REG;
 extern u8 *DMEM;
@@ -41,6 +46,10 @@ extern u8 *IMEM;
 extern u8 *RDRAM;
 extern u64 TMEM[512];
 extern u32 RDRAMSize;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

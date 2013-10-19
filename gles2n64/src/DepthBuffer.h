@@ -3,23 +3,26 @@
 
 #include "Types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef __LIBRETRO__ // Prefix symbol
 #define depthBuffer gln64depthBuffer
 #endif
 
-
-struct DepthBuffer
+typedef struct DepthBuffer
 {
-    DepthBuffer *higher, *lower;
+    struct DepthBuffer *higher, *lower;
 
     u32 address, cleared;
-};
+} DepthBuffer;
 
-struct DepthBufferInfo
+typedef struct
 {
     DepthBuffer *top, *bottom, *current;
     int numBuffers;
-};
+} DepthBufferInfo;
 
 extern DepthBufferInfo depthBuffer;
 
@@ -28,6 +31,10 @@ void DepthBuffer_Destroy();
 void DepthBuffer_SetBuffer( u32 address );
 void DepthBuffer_RemoveBuffer( u32 address );
 DepthBuffer *DepthBuffer_FindBuffer( u32 address );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

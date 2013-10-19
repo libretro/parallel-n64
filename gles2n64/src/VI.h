@@ -2,7 +2,11 @@
 #define VI_H
 #include "Types.h"
 
-struct VIInfo
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct
 {
     u32 width, height;
     f32 rwidth, rheight;
@@ -16,12 +20,16 @@ struct VIInfo
 
     u32 displayNum;
 
-};
+} VIInfo;
 
 extern VIInfo VI;
 
 void VI_UpdateSize();
 void VI_UpdateScreen();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
