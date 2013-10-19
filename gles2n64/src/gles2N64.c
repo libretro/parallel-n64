@@ -5,10 +5,6 @@
 
 #include <string.h>
 
-#ifndef __LIBRETRO__
-#include <cpu-features.h>
-#endif
-
 #include "m64p_types.h"
 #include "m64p_plugin.h"
 
@@ -24,16 +20,9 @@
 #include "ShaderCombiner.h"
 #include "3DMath.h"
 
-#ifndef __LIBRETRO__ // Not m64p-ae
-#include "ae_bridge.h"
-#endif
 
 #ifdef ANDROID
 #include "../cpufeatures.h"
-#endif
-
-#ifndef __LIBRETRO__ // Built in with core
-ptr_ConfigGetSharedDataFilepath ConfigGetSharedDataFilepath = NULL;
 #endif
 
 #ifdef __LIBRETRO__ // Prefix API
@@ -74,10 +63,6 @@ void        (*renderCallback)() = NULL;
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
         void *Context, void (*DebugCallback)(void *, int, const char *))
 {
-#ifndef __LIBRETRO__ // Built in with core
-    ConfigGetSharedDataFilepath = (ptr_ConfigGetSharedDataFilepath)
-            dlsym(CoreLibHandle, "ConfigGetSharedDataFilepath");
-#endif
 
 #ifdef __NEON_OPT
 #ifdef ANDROID

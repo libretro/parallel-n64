@@ -263,6 +263,7 @@ void ChangeSize ()
 
 void WriteLog(m64p_msg_level level, const char *msg, ...)
 {
+#ifdef DEBUG_GLIDE2GL
   char buf[1024];
   va_list args;
   va_start(args, msg);
@@ -275,6 +276,7 @@ void WriteLog(m64p_msg_level level, const char *msg, ...)
   }
   else
      fprintf(stdout, buf);
+#endif
 }
 
 void ReadSettings ()

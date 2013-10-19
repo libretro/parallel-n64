@@ -34,7 +34,7 @@ void OGL_EnableRunfast()
 	static const unsigned int x = 0x04086060;
 	static const unsigned int y = 0x03000000;
 	int r;
-	asm volatile (
+	__asm(
 		"fmrx	%0, fpscr			\n\t"	//r0 = FPSCR
 		"and	%0, %0, %1			\n\t"	//r0 = r0 & 0x04086060
 		"orr	%0, %0, %2			\n\t"	//r0 = r0 | 0x03000000

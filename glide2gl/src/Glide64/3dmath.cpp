@@ -239,11 +239,11 @@ void math_init()
    // Check for SSE
    if (edx & (1 << 25))
       IsSSE = TRUE;
-#endif
 
    if (IsSSE)
    {
       MulMatrices = MulMatricesSSE;
       LOG("SSE detected, using optimized math functions.\n");
    }
+#endif
 }

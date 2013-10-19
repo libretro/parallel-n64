@@ -84,71 +84,6 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWind
     if( options.colorQuality == TEXTURE_FMT_A4R4G4B4 )
         colorBufferDepth = 16;
 
-#ifndef __LIBRETRO__ // GL context provided by front-end
-    // Initialize SDL & OpenGL
-    DebugMessage(M64MSG_VERBOSE, "Initializing video subsystem...");
-    if (CoreVideo_Init() != M64ERR_SUCCESS)   
-        return false;
-
-    /* Hard-coded attribute values */
-    const int iDOUBLEBUFFER = 1;
-
-    /* Set OpenGL attributes */
-    CoreVideo_GL_SetAttribute(M64P_GL_DOUBLEBUFFER, iDOUBLEBUFFER);
-    CoreVideo_GL_SetAttribute(M64P_GL_SWAP_CONTROL, bVerticalSync);
-    CoreVideo_GL_SetAttribute(M64P_GL_BUFFER_SIZE, colorBufferDepth);
-    CoreVideo_GL_SetAttribute(M64P_GL_DEPTH_SIZE, depthBufferDepth);
-
-    /* Set multisampling */
-    if (options.multiSampling > 0)
-    {
-        CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLEBUFFERS, 1);
-        if (options.multiSampling <= 2)
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 2);
-        else if (options.multiSampling <= 4)
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 4);
-        else if (options.multiSampling <= 8)
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 8);
-        else
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 16);
-    }
-
-    /* Set the video mode */
-    m64p_video_mode ScreenMode = bWindowed ? M64VIDEO_WINDOWED : M64VIDEO_FULLSCREEN;
-    m64p_video_flags flags = M64VIDEOFLAG_SUPPORT_RESIZING;
-    if (CoreVideo_SetVideoMode(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, colorBufferDepth, ScreenMode, flags) != M64ERR_SUCCESS)
-    {
-        DebugMessage(M64MSG_ERROR, "Failed to set %i-bit video mode: %ix%i", colorBufferDepth, (int)windowSetting.uDisplayWidth, (int)windowSetting.uDisplayHeight);
-        CoreVideo_Quit();
-        return false;
-    }
-
-    /* Check that our OpenGL attributes were properly set */
-    int iActual;
-    if (CoreVideo_GL_GetAttribute(M64P_GL_DOUBLEBUFFER, &iActual) == M64ERR_SUCCESS)
-        if (iActual != iDOUBLEBUFFER)
-            DebugMessage(M64MSG_WARNING, "Failed to set GL_DOUBLEBUFFER to %i. (it's %i)", iDOUBLEBUFFER, iActual);
-    if (CoreVideo_GL_GetAttribute(M64P_GL_SWAP_CONTROL, &iActual) == M64ERR_SUCCESS)
-        if (iActual != bVerticalSync)
-            DebugMessage(M64MSG_WARNING, "Failed to set GL_SWAP_CONTROL to %i. (it's %i)", bVerticalSync, iActual);
-    if (CoreVideo_GL_GetAttribute(M64P_GL_BUFFER_SIZE, &iActual) == M64ERR_SUCCESS)
-        if (iActual != colorBufferDepth)
-            DebugMessage(M64MSG_WARNING, "Failed to set GL_BUFFER_SIZE to %i. (it's %i)", colorBufferDepth, iActual);
-    if (CoreVideo_GL_GetAttribute(M64P_GL_DEPTH_SIZE, &iActual) == M64ERR_SUCCESS)
-        if (iActual != depthBufferDepth)
-            DebugMessage(M64MSG_WARNING, "Failed to set GL_DEPTH_SIZE to %i. (it's %i)", depthBufferDepth, iActual);
-
-#if SDL_VIDEO_OPENGL
-    /* Get function pointers to OpenGL extensions (blame Microsoft Windows for this) */
-    OGLExtensions_Init();
-#endif
-
-    char caption[500];
-    sprintf(caption, "%s v%i.%i.%i", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION));
-    CoreVideo_SetCaption(caption);
-    SetWindowMode();
-#endif
-
     InitState();
     InitOGLExtension();
     sprintf(m_strDeviceStats, "%.60s - %.128s : %.60s", m_pVendorStr, m_pRenderStr, m_pVersionStr);
@@ -183,36 +118,6 @@ bool COGLGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool
 
     /* Hard-coded attribute values */
     const int iDOUBLEBUFFER = 1;
-
-#ifndef __LIBRETRO__ // GL context provided by front-end
-    /* Set OpenGL attributes */
-    CoreVideo_GL_SetAttribute(M64P_GL_DOUBLEBUFFER, iDOUBLEBUFFER);
-    CoreVideo_GL_SetAttribute(M64P_GL_SWAP_CONTROL, bVerticalSync);
-    CoreVideo_GL_SetAttribute(M64P_GL_BUFFER_SIZE, colorBufferDepth);
-    CoreVideo_GL_SetAttribute(M64P_GL_DEPTH_SIZE, depthBufferDepth);
-
-    /* Set multisampling */
-    if (options.multiSampling > 0)
-    {
-        CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLEBUFFERS, 1);
-        if (options.multiSampling <= 2)
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 2);
-        else if (options.multiSampling <= 4)
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 4);
-        else if (options.multiSampling <= 8)
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 8);
-        else
-            CoreVideo_GL_SetAttribute(M64P_GL_MULTISAMPLESAMPLES, 16);
-    }
-
-    /* Call Mupen64plus core Video Extension to resize the window, which will create a new OpenGL Context under SDL */
-    if (CoreVideo_ResizeWindow(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight) != M64ERR_SUCCESS)
-    {
-        DebugMessage(M64MSG_ERROR, "Failed to set %i-bit video mode: %ix%i", colorBufferDepth, (int)windowSetting.uDisplayWidth, (int)windowSetting.uDisplayHeight);
-        CoreVideo_Quit();
-        return false;
-    }
-#endif
 
     InitState();
     Unlock();
@@ -375,9 +280,6 @@ bool COGLGraphicsContext::IsWglExtensionSupported(const char* pExtName)
 
 void COGLGraphicsContext::CleanUp()
 {
-#ifndef __LIBRETRO__ // No CoreVideo
-    CoreVideo_Quit();
-#endif
     m_bReady = false;
 }
 
@@ -400,9 +302,7 @@ void COGLGraphicsContext::Clear(ClearFlag dwFlags, uint32 color, float depth)
     OPENGL_CHECK_ERRORS;
 }
 
-#ifdef __LIBRETRO__
 extern "C" int retro_return(bool just_flipping);
-#endif
 
 void COGLGraphicsContext::UpdateFrame(bool swaponly)
 {
@@ -512,16 +412,6 @@ bool COGLGraphicsContext::SetWindowMode()
 }
 int COGLGraphicsContext::ToggleFullscreen()
 {
-#ifndef __LIBRETRO__ // Not needed
-    if (CoreVideo_ToggleFullScreen() == M64ERR_SUCCESS)
-    {
-        m_bWindowed = !m_bWindowed;
-        if(m_bWindowed)
-            SetWindowMode();
-        else
-            SetFullscreenMode();
-    }
-#endif
     return m_bWindowed?0:1;
 }
 
