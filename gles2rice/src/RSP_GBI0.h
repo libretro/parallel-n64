@@ -384,10 +384,6 @@ void RSP_GBI1_EndDL(Gfx *gfx)
 }
 
 
-//static const char * sc_szBlClr[4] = { "In", "Mem", "Bl", "Fog" };
-//static const char * sc_szBlA1[4] = { "AIn", "AFog", "AShade", "0" };
-//static const char * sc_szBlA2[4] = { "1-A", "AMem", "1", "?" };
-
 void RSP_GBI1_SetOtherModeL(Gfx *gfx)
 {
     SP_Timing(RSP_GBI1_SetOtherModeL);

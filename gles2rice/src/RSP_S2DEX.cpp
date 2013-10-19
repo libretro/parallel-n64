@@ -18,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 
-// This file implements the S2DEX ucode, Yoshi story is using this ucodes
+// This file implements the S2DEX microcode. Yoshi's Story is using this microcode.
 
 #include "UcodeDefs.h"
 #include "Render.h"
@@ -94,22 +94,10 @@ void RSP_S2DEX_OBJ_SPRITE(Gfx *gfx)
     status.bAllowLoadFromTMEM = false;  // Because we need to use TLUT loaded by ObjTlut cmd
     PrepareTextures();
     status.bAllowLoadFromTMEM = true;
-    
-    //CRender::g_pRender->SetCombinerAndBlender();
 
     uObjTxSprite drawinfo;
     memcpy( &(drawinfo.sprite), info, sizeof(uObjSprite));
     CRender::g_pRender->DrawSpriteR(drawinfo, false, dwTile, 0, 0, drawinfo.sprite.imageW/32, drawinfo.sprite.imageH/32);
-
-
-    /*
-    static BOOL bWarned = FALSE;
-    //if (!bWarned)
-    {
-        RSP_RDP_NOIMPL("RDP: RSP_S2DEX_OBJ_SPRITE (0x%08x 0x%08x)", (gfx->words.w0), (gfx->words.w1));
-        bWarned = TRUE;
-    }
-    */
 
 #ifdef DEBUGGER
     if( (pauseAtNext && (eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI)) || logTextures )
@@ -164,22 +152,6 @@ void RSP_S2DEX_OBJ_RENDERMODE_2(Gfx *gfx)
 #ifdef DEBUGGER
 void DumpBlockParameters(uObjTxtrBlock &ptr)
 {
-    /*
-    typedef struct  {   //Intel format
-      uint32    type;       // S2DEX_OBJLT_TXTRBLOCK divided into types.                                
-      uint64    *image;     // The texture source address on DRAM.       
-  
-      uint16    tsize;      // The Texture size.  Specified by the macro  GS_TB_TSIZE().            
-      uint16    tmem;       // The  transferred TMEM word address.   (8byteWORD)  
-  
-      uint16    sid;        // STATE ID Multipled by 4.  Either one of  0,4,8 and 12.               
-      uint16    tline;      // The width of the Texture 1-line. Specified by the macro GS_TB_TLINE()
-
-      uint32    flag;       // STATE flag
-      uint32    mask;       // STATE mask
-    } uObjTxtrBlock;        // 24 bytes
-    */
-
     DebuggerAppendMsg("uObjTxtrBlock Header in RDRAM: 0x%08X", (uint32) ((char *) &ptr - (char *) g_pRDRAMu8));
     DebuggerAppendMsg("ImgAddr=0x%08X(0x%08X), tsize=0x%X, \nTMEM=0x%X, sid=%d, tline=%d, flag=0x%X, mask=0x%X\n\n",
         RSPSegmentAddr(ptr.image), ptr.image, ptr.tsize, ptr.tmem, ptr.sid/4, ptr.tline, ptr.flag, ptr.mask);
@@ -187,30 +159,6 @@ void DumpBlockParameters(uObjTxtrBlock &ptr)
 
 void DumpSpriteParameters(uObjSprite &ptr)
 {
-    /*
-    typedef struct {    // Intel format
-      uint16  scaleW;       // Scaling of the u5.10 width direction.     
-      short  objX;      // The x-coordinate of the upper-left end. s10.2 OBJ                
-  
-      uint16  paddingX; // Unused.  Always 0.        
-      uint16  imageW;       // The width of the u10.5 texture. (The length of the S-direction.) 
-  
-      uint16  scaleH;       // Scaling of the u5.10 height direction. 
-      short  objY;      // The y-coordinate of the s10.2 OBJ upper-left end.                
-  
-      uint16  paddingY; // Unused.  Always 0.              
-      uint16  imageH;       // The height of the u10.5 texture. (The length of the T-direction.)
-  
-      uint16  imageAdrs;    // The texture header position in  TMEM.  (In units of 64bit word.)
-      uint16  imageStride;  // The folding width of the texel.        (In units of 64bit word.) 
-
-      uint8   imageFlags;   // The display flag.    S2DEX_OBJ_FLAG_FLIP*  
-      uint8   imagePal; //The pallet number.  0-7                        
-      uint8   imageSiz; // The size of the texel.         TXT_SIZE_*       
-      uint8   imageFmt; // The format of the texel.   TXT_FMT_*       
-    } uObjSprite;       // 24 bytes 
-    */
-
     if( logTextures || (pauseAtNext && eventToPause == NEXT_OBJ_TXT_CMD) )
     {
         DebuggerAppendMsg("uObjSprite Header in RDRAM: 0x%08X", (uint32) ((char *) &ptr - (char *) g_pRDRAMu8));
@@ -227,21 +175,6 @@ void DumpTileParameters(uObjTxtrTile &tile)
 
 void DumpTlutParameters(uObjTxtrTLUT &tlut)
 {
-    /*
-    typedef struct  {   // Intel Format
-      uint32    type;       // S2DEX_OBJLT_TLUT divided into types.                            
-      uint32    image;
-  
-      uint16    pnum;       // The loading pallet number -1.   
-      uint16    phead;      // The pallet number of the load header.  Between 256 and 511. 
-  
-      uint16    sid;        // STATE ID  Multiplied by 4.  Either one of 0,4,8 and 12.    
-      uint16   zero;        // Assign 0 all the time.                                      
-  
-      uint32    flag;       // STATE flag  
-      uint32    mask;       // STATE mask  
-    } uObjTxtrTLUT; // 24 bytes 
-    */
     DebuggerAppendMsg("ImgAddr=0x%08X(0x%08X), pnum=%d, phead=%d, sid=%d, flag=0x%X, mask=0x%X\n\n",
         RSPSegmentAddr(tlut.image), tlut.image, tlut.pnum+1, tlut.phead, tlut.sid/4, tlut.flag, tlut.mask);
 }
@@ -362,9 +295,6 @@ void RSP_S2DEX_SPObjLoadTxSprite(Gfx *gfx)
 // Yoshi's Story uses this - 0xc3
 void RSP_S2DEX_SPObjLoadTxRect(Gfx *gfx)
 {
-    
-    
-
     uObjTxSprite* ptr = (uObjTxSprite*)(g_pRDRAMu8+(RSPSegmentAddr((gfx->words.w1))&(g_dwRamSize-1)));
     gObjTxtr = (uObjTxtr*)ptr;
     
