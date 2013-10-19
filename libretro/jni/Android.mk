@@ -2,7 +2,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := retro
+LOCAL_MODULE := retro_mupen64plus
 M64P_ROOT_DIR := ../..
 LIBRETRODIR = ../
 VIDEODIR_GLIDE = $(M64P_ROOT_DIR)/glide2gl/src
