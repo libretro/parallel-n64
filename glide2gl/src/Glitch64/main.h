@@ -61,7 +61,7 @@ extern int buffer_cleared; // mark that the buffer has been cleared, used to che
 
 #include <stdio.h>
 #define GL_GLEXT_PROTOTYPES
-#include "SDL_opengles2.h"
+#include <SDL_opengles2.h>
 #include "../glide_funcs.h"
 
 void add_tex(unsigned int id);
