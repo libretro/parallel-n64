@@ -29,7 +29,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "m64p_types.h"
 #include "m64p_common.h"
 #include "m64p_plugin.h"
-#include "osal_dynamiclib.h"
 
 #include "Config.h"
 #include "Debugger.h"
