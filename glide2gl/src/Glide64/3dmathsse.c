@@ -7,13 +7,14 @@
 void MulMatricesSSE(float m1[4][4],float m2[4][4],float r[4][4])
 {
    /* [row][col]*/
+   int i;
    typedef float v4sf __attribute__ ((vector_size (16)));
    v4sf row0 = _mm_loadu_ps(m2[0]);
    v4sf row1 = _mm_loadu_ps(m2[1]);
    v4sf row2 = _mm_loadu_ps(m2[2]);
    v4sf row3 = _mm_loadu_ps(m2[3]);
 
-   for (int i = 0; i < 4; ++i)
+   for (i = 0; i < 4; ++i)
    {
       v4sf leftrow = _mm_loadu_ps(m1[i]);
 

@@ -6,54 +6,7 @@ static void gSPTransformVertex4NEON(u32 v, float mtx[4][4])
 {
     float *ptr = &OGL.triangles.vertices[v].x;
 
-#if 0
-    volatile int tmp0, tmp1;
-	asm volatile (
-    "vld1.32 		{d0, d1}, [%1, :128]		  	\n\t"	//q0 = {x,y,z,w}
-    "add 		    %1, %1, %4   		  	\n\t"	//q0 = {x,y,z,w}
-    "vld1.32 		{d18, d19}, [%0, :128]!		\n\t"	//q9 = m
-    "vld1.32 		{d2, d3}, [%1, :128]	    	\n\t"	//q1 = {x,y,z,w}
-    "add 		    %1, %1, %4	    	  	\n\t"	//q0 = {x,y,z,w}
-    "vld1.32 		{d20, d21}, [%0, :128]!       \n\t"	//q10 = m
-    "vld1.32 		{d4, d5}, [%1, :128]	        \n\t"	//q2 = {x,y,z,w}
-    "add 		    %1, %1, %4		      	\n\t"	//q0 = {x,y,z,w}
-    "vld1.32 		{d22, d23}, [%0, :128]!       \n\t"	//q11 = m
-    "vld1.32 		{d6, d7}, [%1, :128]	        \n\t"	//q3 = {x,y,z,w}
-    "vld1.32 		{d24, d25}, [%0, :128]        \n\t"	//q12 = m
-    "sub 		    %1, %1, %6   		  	\n\t"	//q0 = {x,y,z,w}
-
-    "vmov.f32 		q13, q12  			\n\t"	//q13 = q12
-    "vmov.f32 		q14, q12   			\n\t"	//q14 = q12
-    "vmov.f32 		q15, q12    			\n\t"	//q15 = q12
-
-    "vmla.f32 		q12, q9, d0[0]			\n\t"	//q12 = q9*d0[0]
-    "vmla.f32 		q13, q9, d2[0]			\n\t"	//q13 = q9*d0[0]
-    "vmla.f32 		q14, q9, d4[0]			\n\t"	//q14 = q9*d0[0]
-    "vmla.f32 		q15, q9, d6[0]			\n\t"	//q15 = q9*d0[0]
-    "vmla.f32 		q12, q10, d0[1]			\n\t"	//q12 = q10*d0[1]
-    "vmla.f32 		q13, q10, d2[1]			\n\t"	//q13 = q10*d0[1]
-    "vmla.f32 		q14, q10, d4[1]			\n\t"	//q14 = q10*d0[1]
-    "vmla.f32 		q15, q10, d6[1]			\n\t"	//q15 = q10*d0[1]
-    "vmla.f32 		q12, q11, d1[0]			\n\t"	//q12 = q11*d1[0]
-    "vmla.f32 		q13, q11, d3[0]			\n\t"	//q13 = q11*d1[0]
-    "vmla.f32 		q14, q11, d5[0]			\n\t"	//q14 = q11*d1[0]
-    "vmla.f32 		q15, q11, d7[0]			\n\t"	//q15 = q11*d1[0]
-
-    "add 		    %0, %1, %4 		      	\n\t"	//q0 = {x,y,z,w}
-    "add 		    %2, %1, %5 		      	\n\t"	//q0 = {x,y,z,w}
-    "add 		    %3, %1, %6 	    	  	\n\t"	//q0 = {x,y,z,w}
-    "vst1.32 		{d24, d25}, [%1, :128] 		\n\t"	//q12
-    "vst1.32 		{d26, d27}, [%0, :128] 	    \n\t"	//q13
-    "vst1.32 		{d28, d29}, [%2, :128] 	    \n\t"	//q14
-    "vst1.32 		{d30, d31}, [%3, :128]     	\n\t"	//q15
-	: "+&r"(mtx), "+&r"(ptr), "+r"(tmp0), "+r"(tmp1)
-	: "I"(sizeof(SPVertex)),"I"(2 * sizeof(SPVertex)), "I"(3 * sizeof(SPVertex))
-    : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7",
-      "d18","d19", "d20", "d21", "d22", "d23", "d24",
-      "d25", "d26", "d27", "d28", "d29", "d30", "d31", "memory"
-	);
-#else
-	asm volatile (
+	__asm(
 	"vld1.32 		{d0, d1}, [%1]		  	\n\t"	//q0 = {x,y,z,w}
 	"add 		    %1, %1, %2   		  	\n\t"	//q0 = {x,y,z,w}
 	"vld1.32 		{d2, d3}, [%1]	    	\n\t"	//q1 = {x,y,z,w}
@@ -99,14 +52,13 @@ static void gSPTransformVertex4NEON(u32 v, float mtx[4][4])
       "d18","d19", "d20", "d21", "d22", "d23", "d24",
       "d25", "d26", "d27", "d28", "d29", "d30", "d31", "memory"
 	);
-#endif
 }
 
 //4x Transform normal and normalize
 static void gSPTransformNormal4NEON(u32 v, float mtx[4][4])
 {
     void *ptr = (void*)&OGL.triangles.vertices[v].nx;
-	asm volatile (
+	__asm(
     "vld1.32 		{d0, d1}, [%1]		  	\n\t"	//q0 = {x,y,z,w}
 	"add 		    %1, %1, %2  		  	\n\t"	//q0 = {x,y,z,w}
 	"vld1.32 		{d2, d3}, [%1]	    	\n\t"	//q1 = {x,y,z,w}
@@ -194,7 +146,7 @@ static void gSPLightVertex4NEON(u32 v)
     volatile void *ptr1 = &(OGL.triangles.vertices[v].nx);
     volatile void *ptr2 = result;
 	volatile void *ptr3 = gSP.matrix.modelView[gSP.matrix.modelViewi];
-	asm volatile (
+	__asm(
     "vld1.32 		{d0, d1}, [%1]		  	\n\t"	//q0 = {x,y,z,w}
 	"add 		    %1, %1, %2 		      	\n\t"	//q0 = {x,y,z,w}
 	"vld1.32 		{d2, d3}, [%1]	    	\n\t"	//q1 = {x,y,z,w}
@@ -270,7 +222,7 @@ static void gSPLightVertex4NEON(u32 v)
       "d23", "d24", "d25", "d26", "d27", "d28", "d29",
       "d30", "d31", "memory"
 	);
-    asm volatile (
+    __asm(
 
     "mov    		%0, %5        			\n\t"	//r0=sizeof(light)
     "mla    		%0, %1, %0, %2 			\n\t"	//r0=r1*r0+r2
@@ -369,13 +321,9 @@ static void gSPBillboardVertex4NEON(u32 v)
 {
     int i = 0;
 
-#ifdef __TRIBUFFER_OPT
-    i = OGL.triangles.indexmap[0];
-#endif
-
     void *ptr0 = (void*)&OGL.triangles.vertices[v].x;
     void *ptr1 = (void*)&OGL.triangles.vertices[i].x;
-    asm volatile (
+    __asm(
 
     "vld1.32 		{d0, d1}, [%0]		  	\n\t"	//q0 = {x,y,z,w}
 	"add 		    %0, %0, %2 		  	    \n\t"	//q0 = {x,y,z,w}
@@ -409,33 +357,7 @@ static void gSPBillboardVertex4NEON(u32 v)
 static void gSPTransformVertexNEON(float vtx[4], float mtx[4][4])
 {
 //optimised using cycle analyser
-#if 0
-    volatile int tmp0, tmp1;
-	asm volatile (
-	"vld1.32 		{d0, d1}, [%3, :128]		\n\t"	//q0 = *v
-	"add 		    %1, %0, #16		  	    \n\t"	//r1=r0+16
-	"vld1.32 		{d18, d19}, [%0, :128]	\n\t"	//q9 = m
-	"add 		    %2, %0, #32		  	    \n\t"	//r2=r0+32
-	"vld1.32 		{d20, d21}, [%1, :128]    \n\t"	//q10 = m+4
-	"add 		    %0, %0, #48		  	    \n\t"	//r0=r0+48
-	"vld1.32 		{d22, d23}, [%2, :128]   	\n\t"	//q11 = m+8
-	"vld1.32 		{d24, d25}, [%0, :128]  	\n\t"	//q12 = m+12
-
-    "vmla.f32 		q12, q9, d0[0]          \n\t"	//q12 = q12 + q9*Q0[0]
-    "vmul.f32 		q13, q10, d0[1]         \n\t"	//q13 = Q10*Q0[1]
-    "vmul.f32 		q14, q11, d1[0]         \n\t"	//q14 = Q11*Q0[2]
-    "vadd.f32 		q12, q12, q13           \n\t"	//q12 = q12 + q14
-    "vadd.f32 		q12, q12, q14           \n\t"	//Q12 = q12 + q15
-
-	"vst1.32 		{d24, d25}, [%3, :128]	\n\t"	//*v = q12
-
-	: "+r"(mtx), "+r"(tmp0), "+r"(tmp1) : "r"(vtx)
-    : "d0", "d1", "d18","d19","d20","d21","d22","d23","d24","d25",
-	"d26", "d27", "memory"
-	);
-
-#else
-	asm volatile (
+	__asm(
 	"vld1.32 		{d0, d1}, [%1]		  	\n\t"	//d8 = {x,y}
 	"vld1.32 		{d18, d19}, [%0]!		\n\t"	//Q1 = m
 	"vld1.32 		{d20, d21}, [%0]!   	\n\t"	//Q2 = m+4
@@ -452,7 +374,6 @@ static void gSPTransformVertexNEON(float vtx[4], float mtx[4][4])
     : "d0", "d1", "d18","d19","d20","d21","d22","d23","d24","d25",
 	"d26", "d27", "memory"
 	);
-#endif
 }
 
 static void gSPLightVertexNEON(u32 v)
@@ -466,7 +387,7 @@ static void gSPLightVertexNEON(u32 v)
     volatile void *ptr2 = result;;
     volatile void *ptr3 = gSP.matrix.modelView[gSP.matrix.modelViewi];
 
-	asm volatile (
+	__asm(
 	"vld1.32 		{d0, d1}, [%1]  		\n\t"	//Q0 = v
 	"vld1.32 		{d18, d19}, [%0]!		\n\t"	//Q1 = m
 	"vld1.32 		{d20, d21}, [%0]!	    \n\t"	//Q2 = m+4
@@ -497,7 +418,7 @@ static void gSPLightVertexNEON(u32 v)
     : "d0","d1","d2","d3","d18","d19","d20","d21","d22", "d23", "memory"
 	);
 
-    asm volatile (
+    __asm(
     "mov    		%0, #24        			\n\t"	//r0=24
     "mla    		%0, %1, %0, %2 			\n\t"	//r0=r1*r0+r2
 
@@ -539,7 +460,7 @@ static void gSPLightVertexNEON(u32 v)
 
 static void gSPBillboardVertexNEON(u32 v, u32 i)
 {
-    asm volatile (
+    __asm(
     "vld1.32 		{d2, d3}, [%0]			\n\t"	//q1={x0,y0, z0, w0}
     "vld1.32 		{d4, d5}, [%1]			\n\t"	//q2={x1,y1, z1, w1}
     "vadd.f32 		q1, q1, q2 			    \n\t"	//q1=q1+q1

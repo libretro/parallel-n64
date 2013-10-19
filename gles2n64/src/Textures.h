@@ -56,7 +56,7 @@ typedef struct TextureCache
 
 extern TextureCache cache;
 
-inline u32 pow2( u32 dim )
+static inline u32 pow2( u32 dim )
 {
     u32 i = 1;
 
@@ -65,10 +65,11 @@ inline u32 pow2( u32 dim )
     return i;
 }
 
-inline u32 powof( u32 dim )
+static inline u32 powof( u32 dim )
 {
-    u32 num = 1;
-    u32 i = 0;
+    u32 num, i;
+    num = 1;
+    i = 0;
 
     while (num < dim)
     {

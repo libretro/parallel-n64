@@ -12,11 +12,12 @@ unsigned int CRCTable[ 256 ];
 
 u32 Reflect( u32 ref, char ch )
 {
+   int i;
      u32 value = 0;
 
      // Swap bit 0 for bit 7
      // bit 1 for bit 6, etc.
-     for (int i = 1; i < (ch + 1); i++)
+     for (i = 1; i < (ch + 1); i++)
      {
           if(ref & 1)
                value |= 1 << (ch - i);
@@ -28,20 +29,21 @@ u32 Reflect( u32 ref, char ch )
 void CRC_BuildTable()
 {
     u32 crc;
+    int i, j;
 
-    for (int i = 0; i < 256; i++)
+    for (i = 0; i < 256; i++)
     {
         crc = Reflect( i, 8 ) << 24;
-        for (int j = 0; j < 8; j++)
+        for (j = 0; j < 8; j++)
             crc = (crc << 1) ^ (crc & (1 << 31) ? CRC32_POLYNOMIAL : 0);
 
         CRCTable[i] = Reflect( crc, 32 );
     }
 
 #ifdef __CRC_OPT
-    for (int i = 0; i < 256; i++)
+    for (i = 0; i < 256; i++)
     {
-        for(int j = 0; j < 3; j++)
+        for(j = 0; j < 3; j++)
         {
             CRCTable[256*(j+1) + i] = (CRCTable[256*j + i]>>8) ^ CRCTable[CRCTable[256*j + i]&0xFF];
         }

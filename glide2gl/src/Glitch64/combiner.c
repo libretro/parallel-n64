@@ -482,15 +482,9 @@ void disable_textureSizes()
 
 void compile_shader()
 {
-  int texture0_location;
-  int texture1_location;
-  int ditherTex_location;
-  int vertexOffset_location;
-  int textureSizes_location;
+  int vertexOffset_location, textureSizes_location, ditherTex_location, texture0_location, texture1_location;
+  int i, chroma_color_location, log_length;
   char *fragment_shader;
-  int i;
-  int chroma_color_location;
-  int log_length;
 
   need_to_compile = 0;
 

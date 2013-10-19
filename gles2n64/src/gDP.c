@@ -20,6 +20,7 @@
 //thank rice_video for this:
 bool _IsRenderTexture()
 {
+   int i;
     bool foundSetScissor=false;
     bool foundFillRect=false;
     bool foundSetFillColor=false;
@@ -29,7 +30,7 @@ bool _IsRenderTexture()
     unsigned int newFillColor = 0;
     unsigned int dwPC = RSP.PC[RSP.PCi];       // This points to the next instruction
 
-    for(int i=0; i<10; i++ )
+    for(i = 0; i < 10; i++)
     {
         unsigned int w0 = *(unsigned int *)(RDRAM + dwPC + i*8);
         unsigned int w1 = *(unsigned int *)(RDRAM + dwPC + 4 + i*8);
@@ -354,6 +355,7 @@ void gDPSetCombine( s32 muxs0, s32 muxs1 )
 
 void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 {
+   int i;
     if (config.updateMode == SCREEN_UPDATE_AT_CI_CHANGE)
         OGL_SwapBuffers();
 
@@ -661,6 +663,7 @@ void gDPLoadTile( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 
 void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt )
 {
+   int y;
     gDPSetTileSize( tile, uls, ult, lrs, dxt );
     gDP.loadTile = &gDP.tiles[tile];
 
@@ -691,7 +694,7 @@ void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt )
 
         if (gDP.loadTile->size == G_IM_SIZ_32b)
         {
-            for (u32 y = 0; y < height; y++)
+            for (y = 0; y < height; y++)
             {
                 UnswapCopy( src, dest, bpl );
                 if (y & 1) QWordInterleave( dest, line );
@@ -701,7 +704,7 @@ void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt )
         }
         else
         {
-            for (u32 y = 0; y < height; y++)
+            for (y = 0; y < height; y++)
             {
                 UnswapCopy( src, dest, bpl );
                 if (y & 1) DWordInterleave( dest, line );
@@ -727,6 +730,7 @@ void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt )
 
 void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 {
+   u16 j;
     gDPSetTileSize( tile, uls, ult, lrs, lrt );
 
     u16 count = (gDP.tiles[tile].lrs - gDP.tiles[tile].uls + 1) * (gDP.tiles[tile].lrt - gDP.tiles[tile].ult + 1);
@@ -740,7 +744,7 @@ void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
     int i = 0;
     while (i < count)
     {
-        for (u16 j = 0; (j < 16) && (i < count); j++, i++)
+        for (j = 0; (j < 16) && (i < count); j++, i++)
         {
             u16 color = swapword( src[i^1] );
 

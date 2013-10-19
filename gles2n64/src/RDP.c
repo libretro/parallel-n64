@@ -294,12 +294,13 @@ void RDP_TriShadeTxtrZBuff(u32 w0, u32 w1)
 
 void RDP_Init()
 {
+   int i;
     // Initialize RDP commands to RDP_UNKNOWN
-    for (int i = 0xC8; i <= 0xCF; i++)
+    for (i = 0xC8; i <= 0xCF; i++)
         GBI.cmd[i] = RDP_Unknown;
 
     // Initialize RDP commands to RDP_UNKNOWN
-    for (int i = 0xE4; i <= 0xFF; i++)
+    for (i = 0xE4; i <= 0xFF; i++)
         GBI.cmd[i] = RDP_Unknown;
 
     // Set known GBI commands

@@ -19,7 +19,7 @@ RSPInfo     RSP;
 
 void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
 {
-
+   int i, j;
     f32 recip = 1.5258789e-05f;
 
     struct _N64Matrix
@@ -28,13 +28,14 @@ void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
         u16 fraction[4][4];
     } *n64Mat = (struct _N64Matrix *)&RDRAM[address];
 
-    for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 4; j++)
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++)
             mtx[i][j] = (GLfloat)(n64Mat->integer[i][j^1]) + (GLfloat)(n64Mat->fraction[i][j^1]) * recip;
 }
 
 void RSP_ProcessDList()
 {
+   int i, j;
     VI_UpdateSize();
     OGL_UpdateScale();
     TextureCache_ActivateNoise(2);
@@ -50,8 +51,8 @@ void RSP_ProcessDList()
     gSP.matrix.modelViewi = 0;
     gSP.changed |= CHANGED_MATRIX;
 
-    for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 4; j++)
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++)
             gSP.matrix.modelView[0][i][j] = 0.0f;
 
     gSP.matrix.modelView[0][0][0] = 1.0f;

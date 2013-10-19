@@ -1207,12 +1207,13 @@ typedef struct { int value; const char* name; } value_pair;
 
 static int choose_value(const char* value_name, const value_pair* values)
 {
+   int i;
    if (value_name)
    {
       struct retro_variable var = { value_name, 0 };
       environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
-      for (int i = 0; var.value && values && values[i].name; i ++)
+      for (i = 0; var.value && values && values[i].name; i ++)
       {
          if (strcmp(values[i].name, var.value) == 0)
             return values[i].value;
@@ -1225,6 +1226,7 @@ static int choose_value(const char* value_name, const value_pair* values)
 
 EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *ParamName)
 {
+   int i;
     config_section *section;
     config_var *var;
 
@@ -1243,7 +1245,7 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
         0
     };
 
-    for (int i = 0; libretro_translate[i].ParamName; i ++)
+    for (i = 0; libretro_translate[i].ParamName; i ++)
     {
         if (strcmp(ParamName, libretro_translate[i].ParamName) == 0)
         {

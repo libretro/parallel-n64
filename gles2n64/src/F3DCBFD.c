@@ -22,7 +22,7 @@ u32 normal_address = 0;
 
 void F3DCBFD_Vtx(u32 w0, u32 w1)
 {
-
+   s32 i;
 	s32 v0, n;
     u32 address;
 	n = (w0 >> 12)&0xFF;
@@ -38,7 +38,7 @@ void F3DCBFD_Vtx(u32 w0, u32 w1)
 
     Vertex* vertex = (Vertex*)&RDRAM[address];
 
-	for (s32 i=0; i < n; i++)
+	for (i = 0; i < n; i++)
 	{
         u32 v;
 #ifdef __TRIBUFFER_OPT
@@ -159,6 +159,7 @@ void F3DCBFD_Tri4(u32 w0, u32 w1)
 
 void F3DCBFD_Init()
 {
+   int i;
     LOG(LOG_VERBOSE, "USING CBFD ucode!\n");
 
     // Set GeometryMode flags
@@ -199,10 +200,8 @@ void F3DCBFD_Init()
 
     //for some reason glide64 maps TRI4 to these locations:
 
-    for(int i = 0x10; i <= 0x1F; i++)
-    {
+    for(i = 0x10; i <= 0x1F; i++)
         GBI_SetGBI(G_TRI4, i, F3DCBFD_Tri4);
-    }
 
     GBI_SetGBI( G_BG_1CYC,              S2DEX2_BG_1CYC,             S2DEX_BG_1Cyc);
     GBI_SetGBI( G_BG_COPY,              S2DEX2_BG_COPY,             S2DEX_BG_Copy);

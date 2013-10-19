@@ -55,7 +55,8 @@ unsigned int Reflect( unsigned int ref, char ch )
 
      // Swap bit 0 for bit 7
      // bit 1 for bit 6, etc.
-     for (char i = 1; i < (ch + 1); i++)
+     char i;
+     for (i = 1; i < (ch + 1); i++)
      {
           if(ref & 1)
                value |= 1 << (ch - i);
@@ -66,12 +67,12 @@ unsigned int Reflect( unsigned int ref, char ch )
 
 void CRC_BuildTable()
 {
-    unsigned int crc;
+    unsigned int crc, i, j;
 
-    for (unsigned i = 0; i <= 255; i++)
+    for (i = 0; i <= 255; i++)
 	{
         crc = Reflect( i, 8 ) << 24;
-        for (unsigned j = 0; j < 8; j++)
+        for (j = 0; j < 8; j++)
 			crc = (crc << 1) ^ (crc & (1 << 31) ? CRC32_POLYNOMIAL : 0);
         
         CRCTable[i] = Reflect( crc, 32 );

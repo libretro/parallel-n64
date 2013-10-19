@@ -148,15 +148,16 @@ static void gSPTransformNormal4_default(u32 v, float mtx[4][4])
 
 static void gSPLightVertex4_default(u32 v)
 {
+    int i, j;
     gSPTransformNormal4(v, gSP.matrix.modelView[gSP.matrix.modelViewi]);
-    for(int j = 0; j < 4; j++)
+    for(j = 0; j < 4; j++)
     {
         f32 r,g,b;
         r = gSP.lights[gSP.numLights].r;
         g = gSP.lights[gSP.numLights].g;
         b = gSP.lights[gSP.numLights].b;
 
-        for (int i = 0; i < gSP.numLights; i++)
+        for (i = 0; i < gSP.numLights; i++)
         {
             f32 intensity = DotProduct( &OGL.triangles.vertices[v+j].nx, &gSP.lights[i].x );
             if (intensity < 0.0f) intensity = 0.0f;
@@ -313,13 +314,14 @@ static void gSPTransformVertex_default(float vtx[4], float mtx[4][4])
 
 static void gSPLightVertex_default(u32 v)
 {
+   int i;
     TransformVectorNormalize( &OGL.triangles.vertices[v].nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
 
     f32 r, g, b;
     r = gSP.lights[gSP.numLights].r;
     g = gSP.lights[gSP.numLights].g;
     b = gSP.lights[gSP.numLights].b;
-    for (int i = 0; i < gSP.numLights; i++)
+    for (i = 0; i < gSP.numLights; i++)
     {
         f32 intensity = DotProduct( &OGL.triangles.vertices[v].nx, &gSP.lights[i].x );
         if (intensity < 0.0f) intensity = 0.0f;
@@ -602,6 +604,7 @@ void gSPLookAt( u32 l )
 
 void gSPVertex( u32 v, u32 n, u32 v0 )
 {
+   int i, j;
     //flush batched triangles:
 
     u32 address = RSP_SegmentToPhysical( v );
@@ -615,12 +618,12 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
 
     if ((n + v0) <= INDEXMAP_SIZE)
     {
-        unsigned int i = v0;
+        i = v0;
 #ifdef __VEC4_OPT
         for (; i < n - (n%4) + v0; i += 4)
         {
             u32 v = i;
-            for(int j = 0; j < 4; j++)
+            for(j = 0; j < 4; j++)
             {
                 OGL.triangles.vertices[v+j].x = vertex->x;
                 OGL.triangles.vertices[v+j].y = vertex->y;
@@ -682,7 +685,7 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
 
 void gSPCIVertex( u32 v, u32 n, u32 v0 )
 {
-
+   int i, j;
 
     u32 address = RSP_SegmentToPhysical( v );
 
@@ -695,12 +698,12 @@ void gSPCIVertex( u32 v, u32 n, u32 v0 )
 
     if ((n + v0) <= INDEXMAP_SIZE)
     {
-        unsigned int i = v0;
+        i = v0;
 #ifdef __VEC4_OPT
         for (; i < n - (n%4) + v0; i += 4)
         {
             u32 v = i;
-            for(unsigned int j = 0; j < 4; j++)
+            for(j = 0; j < 4; j++)
             {
                 OGL.triangles.vertices[v+j].x = vertex->x;
                 OGL.triangles.vertices[v+j].y = vertex->y;
@@ -766,7 +769,7 @@ void gSPCIVertex( u32 v, u32 n, u32 v0 )
 
 void gSPDMAVertex( u32 v, u32 n, u32 v0 )
 {
-
+   int i, j;
     u32 address = gSP.DMAOffsets.vtx + RSP_SegmentToPhysical( v );
 
     if ((address + 10 * n) > RDRAMSize)
@@ -781,7 +784,7 @@ void gSPDMAVertex( u32 v, u32 n, u32 v0 )
         for (; i < n - (n%4) + v0; i += 4)
         {
             u32 v = i;
-            for(int j = 0; j < 4; j++)
+            for(j = 0; j < 4; j++)
             {
                 OGL.triangles.vertices[v+j].x = *(s16*)&RDRAM[address ^ 2];
                 OGL.triangles.vertices[v+j].y = *(s16*)&RDRAM[(address + 2) ^ 2];
@@ -966,6 +969,7 @@ void gSPInterpolateVertex( SPVertex *dest, f32 percent, SPVertex *first, SPVerte
 
 void gSPDMATriangles( u32 tris, u32 n )
 {
+   int i, j;
     u32 address = RSP_SegmentToPhysical( tris );
 
     if (address + sizeof( DKRTriangle ) * n > RDRAMSize)
@@ -976,7 +980,7 @@ void gSPDMATriangles( u32 tris, u32 n )
 
     DKRTriangle *triangles = (DKRTriangle*)&RDRAM[address];
 
-    for (u32 i = 0; i < n; i++)
+    for (i = 0; i < n; i++)
     {
         int mode = 0;
         if (!(triangles->flag & 0x40))
@@ -1020,6 +1024,7 @@ void gSP1Quadrangle( s32 v0, s32 v1, s32 v2, s32 v3)
 
 bool gSPCullVertices( u32 v0, u32 vn )
 {
+   int i, j;
     if (!config.enableClipping)
         return FALSE;
 
@@ -1029,7 +1034,7 @@ bool gSPCullVertices( u32 v0, u32 vn )
     if (clip == 0)
         return FALSE;
 
-    for (unsigned int i = (v0+1); i <= vn; i++)
+    for (i = (v0+1); i <= vn; i++)
     {
         v = i;
         if (OGL.triangles.vertices[v].clip != clip) return FALSE;

@@ -300,7 +300,8 @@ static size_t texture_map_cap;
 
 static GLuint find_tex_from_address(unsigned address)
 {
-   for (size_t i = 0; i < texture_map_size; i++)
+   size_t i;
+   for (i = 0; i < texture_map_size; i++)
    {
       if (texture_map[i].address == address)
          return texture_map[i].tex;
@@ -310,7 +311,8 @@ static GLuint find_tex_from_address(unsigned address)
 
 static void delete_tex_from_address(unsigned address)
 {
-   for (size_t i = 0; i < texture_map_size; i++)
+   size_t i;
+   for (i = 0; i < texture_map_size; i++)
    {
       if (texture_map[i].address == address)
       {
@@ -378,8 +380,9 @@ void sglBindTextureGlide(GLenum target, GLuint texture)
 
 void sglDeleteTexturesGlide(GLuint n, const GLuint* ids)
 {
-    for (int i = 0; i < n; i++)
-       delete_tex_from_address(ids[i] + glide_texture_offset);
+   int i;
+   for (i = 0; i < n; i++)
+      delete_tex_from_address(ids[i] + glide_texture_offset);
 }
 
 
@@ -387,10 +390,12 @@ void sglDeleteTexturesGlide(GLuint n, const GLuint* ids)
 
 void sglEnter()
 {
+   int i;
+
    if (stop)
       return;
 
-    for (int i = 0; i < MAX_ATTRIB; i ++)
+    for (i = 0; i < MAX_ATTRIB; i ++)
     {
         if (VertexAttribPointer_enabled[i]) glEnableVertexAttribArray(i);
         else                                glDisableVertexAttribArray(i);
@@ -418,13 +423,13 @@ void sglEnter()
     glUseProgram(UseProgram_program);
     glViewport(Viewport_x, Viewport_y, Viewport_width, Viewport_height);
 
-    for(int i = 0; i != SGL_CAP_MAX; i ++)
+    for(i = 0; i != SGL_CAP_MAX; i ++)
     {
         if(CapState[i]) glEnable(CapTranslate[i]);
         else            glDisable(CapTranslate[i]);
     }
 
-    for (int i = 0; i < MAX_TEXTURE; i ++)
+    for (i = 0; i < MAX_TEXTURE; i ++)
     {
         glActiveTexture(GL_TEXTURE0 + i);
         glBindTexture(GL_TEXTURE_2D, BindTexture_ids[i]);
@@ -439,10 +444,11 @@ void sglEnter()
 
 void sglExit()
 {
+   int i;
    if (stop)
       return;
 
-    for (int i = 0; i < SGL_CAP_MAX; i ++)
+    for (i = 0; i < SGL_CAP_MAX; i ++)
         glDisable(CapTranslate[i]);
 
     glBlendFunc(GL_ONE, GL_ZERO);
@@ -455,7 +461,7 @@ void sglExit()
     glUseProgram(0);
 
     // Clear textures
-    for (int i = 0; i < MAX_TEXTURE; i ++)
+    for (i = 0; i < MAX_TEXTURE; i ++)
     {
         glActiveTexture(GL_TEXTURE0 + i);
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -463,10 +469,8 @@ void sglExit()
     }
     glActiveTexture(GL_TEXTURE0);
 
-    for (int i = 0; i < MAX_ATTRIB; i ++)
-    {
+    for (i = 0; i < MAX_ATTRIB; i ++)
         glDisableVertexAttribArray(i);
-    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, retro_get_fbo_id());
 }

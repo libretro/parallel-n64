@@ -235,14 +235,15 @@ const char * _alpha_param_str(int param)
 
 void *mux_new(u64 dmux, bool cycle2)
 {
+   int i, j;
    DecodedMux *mux = malloc(sizeof(DecodedMux)); 
 
    mux->combine.mux = dmux;
    mux->flags = 0;
 
     //set to ZERO.
-    for(int i=0;i<4;i++)
-        for(int j=0; j< 4; j++)
+    for(i = 0; i < 4;i++)
+        for(j = 0; j < 4; j++)
             mux->decode[i][j] = ZERO;
 
     //rgb cycle 0
@@ -306,7 +307,7 @@ void *mux_new(u64 dmux, bool cycle2)
     }
 
     //mutiplying by zero: (A-B)*0 + C = C
-    for(int i=0 ; i<4; i++)
+    for(i = 0 ; i < 4; i++)
     {
         if (mux->decode[i][2] == ZERO)
         {
@@ -349,20 +350,20 @@ void *mux_new(u64 dmux, bool cycle2)
 
 bool mux_find(DecodedMux *dmux, int index, int src)
 {
-    for(int j=0;j<4;j++)
-    {
+   int j;
+    for(j = 0;j < 4; j++)
         if (dmux->decode[index][j] == src) return true;
-    }
     return false;
 }
 
 bool mux_replace(DecodedMux *dmux, int cycle, int src, int dest)
 {
+   int i, j;
     int r = false;
-    for(int i=0;i<2;i++)
+    for(i = 0; i < 2; i++)
     {
         int ii = (cycle == 0) ? i : (2+i);
-        for(int j=0;j<4;j++)
+        for(j = 0; j < 4;j++)
         {
             if (dmux->decode[ii][j] == src) {dmux->decode[ii][j] = dest; r=true;}
         }
@@ -372,11 +373,12 @@ bool mux_replace(DecodedMux *dmux, int cycle, int src, int dest)
 
 bool mux_swap(DecodedMux *dmux, int cycle, int src0, int src1)
 {
-    int r = false;
-    for(int i=0;i<2;i++)
+   int i, j, r;
+    r = false;
+    for(i = 0; i < 2; i++)
     {
         int ii = (cycle == 0) ? i : (2+i);
-        for(int j=0;j<4;j++)
+        for(j = 0; j < 4; j++)
         {
             if (dmux->decode[ii][j] == src0) {dmux->decode[ii][j] = src1; r=true;}
             else if (dmux->decode[ii][j] == src1) {dmux->decode[ii][j] = src0; r=true;}
@@ -717,6 +719,7 @@ void ShaderCombiner_Set(u64 mux, int flags)
 
 ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
 {
+   int i, j;
     GLint success;
     char frag[4096];
     char *buffer = frag;
@@ -728,12 +731,12 @@ ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
     prog->flags = flags;
     prog->vertex = _vertex_shader;
 
-    for(int i=0; i < ((flags & SC_2CYCLE) ? 4 : 2); i++)
+    for(i = 0; i < ((flags & SC_2CYCLE) ? 4 : 2); i++)
     {
         //make sure were not ignoring cycle:
         if ((dmux->flags&(1<<i)) == 0)
         {
-            for(int j=0;j<4;j++)
+            for(j = 0;j < 4; j++)
             {
                 prog->usesT0 |= (dmux->decode[i][j] == TEXEL0 || dmux->decode[i][j] == TEXEL0_ALPHA);
                 prog->usesT1 |= (dmux->decode[i][j] == TEXEL1 || dmux->decode[i][j] == TEXEL1_ALPHA);
@@ -751,7 +754,7 @@ ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
     if (prog->usesNoise)
         buffer += sprintf(buffer, "lowp vec4 lNoise = texture2D(uNoise, (1.0 / 1024.0) * gl_FragCoord.st); \n");
 
-    for(int i = 0; i < ((flags & SC_2CYCLE) ? 2 : 1); i++)
+    for(i = 0; i < ((flags & SC_2CYCLE) ? 2 : 1); i++)
     {
         if ((dmux->flags&(1<<(i*2))) == 0)
         {

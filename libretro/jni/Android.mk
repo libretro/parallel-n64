@@ -3,30 +3,36 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := retro
+M64P_ROOT_DIR := ../..
 LIBRETRODIR = ../
-VIDEODIR_GLIDE = ../../glide2gl/src
-VIDEODIR_RICE = ../../gles2rice/src
-RSPDIR = ../../mupen64plus-rsp-hle
-COREDIR = ../../mupen64plus-core
-VIDEODIR_GLN64 = ../../gles2n64/src
+VIDEODIR_GLIDE = $(M64P_ROOT_DIR)/glide2gl/src
+VIDEODIR_RICE = $(M64P_ROOT_DIR)/gles2rice/src
+RSPDIR = $(M64P_ROOT_DIR)/mupen64plus-rsp-hle
+COREDIR = $(M64P_ROOT_DIR)/mupen64plus-core
+VIDEODIR_GLN64 = $(M64P_ROOT_DIR)/gles2n64/src
+CXD4DIR = ../../mupen64plus-rsp-cxd4
 
 ifeq ($(TARGET_ARCH),arm)
 COMMON_FLAGS += -DANDROID_ARM -DDYNAREC -DNEW_DYNAREC=3 -DARM_ASM
 LOCAL_ARM_MODE := arm
-CFILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c $(COREDIR)/src/r4300/empty_dynarec.c
-ASMFILES += $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
-ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
-COMMON_FLAGS += -DHAVE_NEON
-ASMFILES += $(LIBRETRODIR)/sinc_neon.S $(LIBRETRODIR)/utils_neon.S
-else
-CFILES += $(LIBRETRODIR)/sinc.c $(LIBRETRODIR)/utils.c
-endif
-ASMFILES += $(LIBRETRODIR)/libco/armeabi_asm.S
+LOCAL_CFLAGS += -marm
+LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c $(COREDIR)/src/r4300/empty_dynarec.c
+LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
+LOCAL_SRC_FILES += $(LIBRETRODIR)/libco/armeabi_asm.S
+LOCAL_SRC_FILES += $(LIBRETRODIR)/sinc.c $(LIBRETRODIR)/utils.c
 endif
 
-ifeq ($(TARGET_ARCH),x86)
+ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
+COMMON_FLAGS += -DHAVE_NEON -D__NEON_OPT
+LOCAL_ARM_NEON := true
+LOCAL_SRC_FILES += $(LIBRETRODIR)/sinc_neon.S $(LIBRETRODIR)/utils_neon.S
+LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/3DMathNeon.c
+LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/gSPNeon.c
+endif
+
+ifeq ($(TARGET_ARCH_ABI),x86)
 COMMON_FLAGS += -DANDROID_X86 -DDYNAREC
-CFILES += $(COREDIR)/src/r4300/x86/assemble.c \
+LOCAL_SRC_FILES += $(COREDIR)/src/r4300/x86/assemble.c \
           $(COREDIR)/src/r4300/x86/gbc.c \
           $(COREDIR)/src/r4300/x86/gcop0.c \
           $(COREDIR)/src/r4300/x86/gcop1.c \
@@ -40,7 +46,7 @@ CFILES += $(COREDIR)/src/r4300/x86/assemble.c \
           $(COREDIR)/src/r4300/x86/gtlb.c \
           $(COREDIR)/src/r4300/x86/regcache.c \
           $(COREDIR)/src/r4300/x86/rjump.c
-CFILES   += $(VIDEODIR_GLIDE)/Glide64/3dmathsse.c
+LOCAL_SRC_FILES   += $(VIDEODIR_GLIDE)/Glide64/3dmathsse.c
 endif
 
 ifeq ($(TARGET_ARCH),mips)
@@ -48,17 +54,17 @@ COMMON_FLAGS += -DANDROID_MIPS
 endif
 
 # libretro
-CFILES += $(LIBRETRODIR)/libretro.c $(LIBRETRODIR)/glsym.c $(LIBRETRODIR)/libco/libco.c $(LIBRETRODIR)/opengl_state_machine.c \
+LOCAL_SRC_FILES += $(LIBRETRODIR)/libretro.c $(LIBRETRODIR)/glsym.c $(LIBRETRODIR)/libco/libco.c $(LIBRETRODIR)/opengl_state_machine.c \
           $(LIBRETRODIR)/audio_plugin.c $(LIBRETRODIR)/input_plugin.c $(LIBRETRODIR)/resampler.c
 
 # RSP Plugin
-CFILES += \
+LOCAL_SRC_FILES += \
     $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/cicx105.c \
     $(RSPDIR)/src/jpeg.c \
     $(RSPDIR)/src/main.c
 
-CXXFILES += \
+LOCAL_SRC_FILES += \
     $(RSPDIR)/src/ucode1.cpp \
     $(RSPDIR)/src/ucode2.cpp \
     $(RSPDIR)/src/ucode3.cpp \
@@ -66,7 +72,7 @@ CXXFILES += \
 
 # Video Plugins
 
-CXXFILES += $(VIDEODIR_RICE)/Blender.cpp \
+LOCAL_SRC_FILES += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/CombinerTable.cpp \
             $(VIDEODIR_RICE)/Config.cpp \
@@ -103,11 +109,11 @@ CXXFILES += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/TextureManager.cpp \
             $(VIDEODIR_RICE)/VectorMath.cpp \
             $(VIDEODIR_RICE)/Video.cpp
-CFILES +=   $(VIDEODIR_RICE)/liblinux/BMGImage.c \
+LOCAL_SRC_FILES +=   $(VIDEODIR_RICE)/liblinux/BMGImage.c \
             $(VIDEODIR_RICE)/liblinux/BMGUtils.c \
             $(VIDEODIR_RICE)/liblinux/bmp.c
 
-CFILES += $(VIDEODIR_GLN64)/2xSAI.c \
+LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/2xSAI.c \
             $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/Config.c \
             $(VIDEODIR_GLN64)/CRC.c \
@@ -138,7 +144,7 @@ CFILES += $(VIDEODIR_GLN64)/2xSAI.c \
             $(VIDEODIR_GLN64)/VI.c
 
 INCFLAGS += $(VIDEODIR_GLIDE)/Glitch64/inc
-CXXFILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
+LOCAL_SRC_FILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
             $(VIDEODIR_GLIDE)/Glide64/Config.cpp \
             $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.cpp \
             $(VIDEODIR_GLIDE)/Glide64/Main.cpp \
@@ -149,14 +155,14 @@ CXXFILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
             $(VIDEODIR_GLIDE)/Glide64/Combine.cpp \
             $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.cpp \
             $(VIDEODIR_GLIDE)/Glide64/TexCache.cpp \
-CFILES   += $(VIDEODIR_GLIDE)/Glitch64/combiner.c \
+LOCAL_SRC_FILES   += $(VIDEODIR_GLIDE)/Glitch64/combiner.c \
             $(VIDEODIR_GLIDE)/Glitch64/geometry.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c \
             $(VIDEODIR_GLIDE)/Glitch64/textures.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_crc.c
 
 PLATFORM_EXT := unix
-CFILES += \
+LOCAL_SRC_FILES += \
     $(COREDIR)/src/api/callbacks.c \
     $(COREDIR)/src/api/common.c \
     $(COREDIR)/src/api/config.c \
@@ -183,12 +189,9 @@ CFILES += \
     $(COREDIR)/src/r4300/interupt.c \
     $(COREDIR)/src/r4300/r4300.c
 
-CXD4DIR = ../../mupen64plus-rsp-cxd4
-CFILES += $(CXD4DIR)/rsp.c
+LOCAL_SRC_FILES += $(CXD4DIR)/rsp.c
 
-LOCAL_SRC_FILES += $(CXXFILES) $(CFILES) $(ASMFILES)
-
-COMMON_FLAGS += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DM64P_PLUGIN_API -D__LIBRETRO__ -DNO_ASM -DNOSSE -DSDL_VIDEO_OPENGL_ES2=1 -DGLES -DANDROID -DSINC_LOWER_QUALITY -DGLES -std=gnu99
+COMMON_FLAGS += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DM64P_PLUGIN_API -D__LIBRETRO__ -DNO_ASM -DNOSSE -DSDL_VIDEO_OPENGL_ES2=1 -DGLES -DANDROID -DSINC_LOWER_QUALITY -DGLES
 COMMON_OPTFLAGS = -O3 -Wall -ffast-math -fexceptions
 
 LOCAL_CFLAGS += $(COMMON_OPTFLAGS) $(COMMON_FLAGS)

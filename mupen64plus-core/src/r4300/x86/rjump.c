@@ -19,6 +19,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "api/m64p_types.h"
@@ -30,7 +31,7 @@
 #include "r4300/recomph.h"
 
  #ifdef __GNUC__
-# define ASM_NAME(name) asm(name)
+# define ASM_NAME(name) __asm(name)
 #else
 # define ASM_NAME(name)
 #endif
@@ -115,8 +116,7 @@ void dyna_start(void *code)
     #define LOAD_EBX  "movl %[save_ebx], %%ebx \n"
   #endif
 
-  asm volatile
-    (STORE_EBX
+  __asm(STORE_EBX
      " movl %%ebp, %[save_ebp] \n"
      " movl %%esp, %[save_esp] \n"
      " movl %%esi, %[save_esi] \n"

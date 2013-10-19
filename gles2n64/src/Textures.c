@@ -354,6 +354,7 @@ int isTexCacheInit = 0;
 
 void TextureCache_Init()
 {
+   int x, y, i;
     u32 dummyTexture[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
     isTexCacheInit = 1;
@@ -373,12 +374,12 @@ void TextureCache_Init()
 
     srand(time(NULL));
     u8 noise[64*64*2];
-    for (u32 i = 0; i < 32; i++)
+    for (i = 0; i < 32; i++)
     {
         glBindTexture( GL_TEXTURE_2D, cache.glNoiseNames[i] );
-        for (u32 y = 0; y < 64; y++)
+        for (y = 0; y < 64; y++)
         {
-            for (u32 x = 0; x < 64; x++)
+            for (x = 0; x < 64; x++)
             {
                 u32 r = (rand()&0xFF);
                 noise[y*64*2+x*2] = r;

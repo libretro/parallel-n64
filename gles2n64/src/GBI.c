@@ -130,12 +130,13 @@ MicrocodeInfo *GBI_AddMicrocode()
 
 void GBI_Init()
 {
+   u32 i;
     GBI.top = NULL;
     GBI.bottom = NULL;
     GBI.current = NULL;
     GBI.numMicrocodes = 0;
 
-    for (u32 i = 0; i <= 0xFF; i++)
+    for (i = 0; i <= 0xFF; i++)
         GBI.cmd[i] = GBI_Unknown;
 }
 
@@ -161,9 +162,10 @@ void GBI_Destroy()
 
 MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 {
+   int i;
     MicrocodeInfo *current;
 
-    for (unsigned int i = 0; i < GBI.numMicrocodes; i++)
+    for (i = 0; i < GBI.numMicrocodes; i++)
     {
         current = GBI.top;
 
@@ -188,7 +190,7 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
     uc_crc = CRC_Calculate( 0xFFFFFFFF, &RDRAM[uc_start & 0x1FFFFFFF], 4096);
     LOG(LOG_MINIMAL, "UCODE CRC=0x%x\n", uc_crc);
 
-    for (u32 i = 0; i < sizeof( specialMicrocodes ) / sizeof( SpecialMicrocodeInfo ); i++)
+    for (i = 0; i < sizeof( specialMicrocodes ) / sizeof( SpecialMicrocodeInfo ); i++)
     {
         if (uc_crc == specialMicrocodes[i].crc)
         {
@@ -202,7 +204,7 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
     UnswapCopy( &RDRAM[uc_dstart & 0x1FFFFFFF], uc_data, 2048 );
     strcpy( uc_str, "Not Found" );
 
-    for (u32 i = 0; i < 2048; i++)
+    for (i = 0; i < 2048; i++)
     {
         if ((uc_data[i] == 'R') && (uc_data[i+1] == 'S') && (uc_data[i+2] == 'P'))
         {
@@ -261,7 +263,7 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
     }
 
 
-    for (u32 i = 0; i < sizeof( specialMicrocodes ) / sizeof( SpecialMicrocodeInfo ); i++)
+    for (i = 0; i < sizeof( specialMicrocodes ) / sizeof( SpecialMicrocodeInfo ); i++)
     {
         if (strcmp( uc_str, specialMicrocodes[i].text ) == 0)
         {
@@ -285,6 +287,7 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 
 void GBI_MakeCurrent( MicrocodeInfo *current )
 {
+   int i;
     if (current != GBI.top)
     {
         if (current == GBI.bottom)
@@ -307,7 +310,7 @@ void GBI_MakeCurrent( MicrocodeInfo *current )
     if (!GBI.current || (GBI.current->type != current->type))
     {
 
-        for (int i = 0; i <= 0xFF; i++)
+        for (i = 0; i <= 0xFF; i++)
             GBI.cmd[i] = GBI_Unknown;
 
         RDP_Init();

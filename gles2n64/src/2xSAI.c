@@ -119,6 +119,7 @@ static inline u32 Q_INTERPOLATE8888( u32 A, u32 B, u32 C, u32 D)
 
 void _2xSaI4444( u16 *srcPtr, u16 *destPtr, u16 width, u16 height, s32 clampS, s32 clampT )
 {
+   u16 x, y;
     u16 destWidth = width << 1;
     //u16 destHeight = height << 1;
 
@@ -131,7 +132,7 @@ void _2xSaI4444( u16 *srcPtr, u16 *destPtr, u16 width, u16 height, s32 clampS, s
     s16 row0, row1, row2, row3;
     s16 col0, col1, col2, col3;
 
-    for (u16 y = 0; y < height; y++)
+    for (y = 0; y < height; y++)
     {
         if (y > 0)
             row0 = -width;
@@ -155,7 +156,7 @@ void _2xSaI4444( u16 *srcPtr, u16 *destPtr, u16 width, u16 height, s32 clampS, s
             row3 = clampT ? 0 : (1 - y) * width;
         }
 
-        for (u16 x = 0; x < width; x++)
+        for (x = 0; x < width; x++)
         {
             if (x > 0)
                 col0 = -1;
@@ -295,6 +296,7 @@ void _2xSaI4444( u16 *srcPtr, u16 *destPtr, u16 width, u16 height, s32 clampS, s
 
 void _2xSaI5551( u16 *srcPtr, u16 *destPtr, u16 width, u16 height, s32 clampS, s32 clampT )
 {
+   u16 x, y;
     u16 destWidth = width << 1;
     //u16 destHeight = height << 1;
 
@@ -307,7 +309,7 @@ void _2xSaI5551( u16 *srcPtr, u16 *destPtr, u16 width, u16 height, s32 clampS, s
     s16 row0, row1, row2, row3;
     s16 col0, col1, col2, col3;
 
-    for (u16 y = 0; y < height; y++)
+    for (y = 0; y < height; y++)
     {
         if (y > 0)
             row0 = -width;
@@ -331,7 +333,7 @@ void _2xSaI5551( u16 *srcPtr, u16 *destPtr, u16 width, u16 height, s32 clampS, s
             row3 = clampT ? 0 : (1 - y) * width;
         }
 
-        for (u16 x = 0; x < width; x++)
+        for (x = 0; x < width; x++)
         {
             if (x > 0)
                 col0 = -1;
@@ -471,6 +473,7 @@ void _2xSaI5551( u16 *srcPtr, u16 *destPtr, u16 width, u16 height, s32 clampS, s
 
 void _2xSaI8888( u32 *srcPtr, u32 *destPtr, u16 width, u16 height, s32 clampS, s32 clampT )
 {
+   u16 x, y;
     u16 destWidth = width << 1;
     //u16 destHeight = height << 1;
 
@@ -483,7 +486,7 @@ void _2xSaI8888( u32 *srcPtr, u32 *destPtr, u16 width, u16 height, s32 clampS, s
     s16 row0, row1, row2, row3;
     s16 col0, col1, col2, col3;
 
-    for (u16 y = 0; y < height; y++)
+    for (y = 0; y < height; y++)
     {
         if (y > 0)
             row0 = -width;
@@ -507,7 +510,7 @@ void _2xSaI8888( u32 *srcPtr, u32 *destPtr, u16 width, u16 height, s32 clampS, s
             row3 = clampT ? 0 : (1 - y) * width;
         }
 
-        for (u16 x = 0; x < width; x++)
+        for (x = 0; x < width; x++)
         {
             if (x > 0)
                 col0 = -1;

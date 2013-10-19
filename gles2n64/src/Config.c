@@ -102,6 +102,7 @@ const int configOptionsSize = sizeof(configOptions) / sizeof(Option);
 
 void Config_WriteConfig(const char *filename)
 {
+   int i;
     config.version = CONFIG_VERSION;
     FILE* f = fopen(filename, "w");
     if (!f)
@@ -109,7 +110,7 @@ void Config_WriteConfig(const char *filename)
         LOG(LOG_ERROR, "Could Not Open %s for writing\n", filename);
     }
 
-    for(int i=0; i<configOptionsSize; i++)
+    for(i = 0; i < configOptionsSize; i++)
     {
         Option *o = &configOptions[i];
         fprintf(f, "%s", o->name); // __LIBRETRO__: Fix warning
@@ -123,7 +124,8 @@ void Config_WriteConfig(const char *filename)
 
 void Config_SetDefault()
 {
-    for(int i=0; i < configOptionsSize; i++)
+   int i;
+    for(i = 0; i < configOptionsSize; i++)
     {
         Option *o = &configOptions[i];
         if (o->data) *(o->data) = o->initial;
@@ -132,7 +134,8 @@ void Config_SetDefault()
 
 void Config_SetOption(char* line, char* val)
 {
-    for(int i=0; i< configOptionsSize; i++)
+   int i;
+    for(i = 0; i < configOptionsSize; i++)
     {
         Option *o = &configOptions[i];
         if (strcasecmp(line, o->name) == 0)
@@ -151,9 +154,11 @@ void Config_SetOption(char* line, char* val)
 void Config_LoadRomConfig(unsigned char* header)
 {
     char line[4096];
+    int i;
 
     // get the name of the ROM
-    for (int i=0; i<20; i++) config.romName[i] = header[0x20+i];
+    for (i = 0; i < 20; i++)
+       config.romName[i] = header[0x20+i];
     config.romName[20] = '\0';
     while (config.romName[strlen(config.romName)-1] == ' ')
     {

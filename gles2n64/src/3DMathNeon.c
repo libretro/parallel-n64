@@ -2,7 +2,7 @@
 
 static void MultMatrix_neon( float m0[4][4], float m1[4][4], float dest[4][4])
 {
-    asm volatile (
+    __asm(
 	"vld1.32 		{d0, d1}, [%1]!			\n\t"	//q0 = m1
 	"vld1.32 		{d2, d3}, [%1]!	    	\n\t"	//q1 = m1+4
 	"vld1.32 		{d4, d5}, [%1]!	    	\n\t"	//q2 = m1+8
@@ -44,7 +44,7 @@ static void MultMatrix_neon( float m0[4][4], float m1[4][4], float dest[4][4])
 
 static void TransformVectorNormalize_neon(float vec[3], float mtx[4][4])
 {
-	asm volatile (
+	__asm(
 	"vld1.32 		{d0}, [%1]  			\n\t"	//Q0 = v
 	"flds    		s2, [%1, #8]  			\n\t"	//Q0 = v
 	"vld1.32 		{d18, d19}, [%0]!		\n\t"	//Q1 = m
@@ -79,7 +79,7 @@ static void TransformVectorNormalize_neon(float vec[3], float mtx[4][4])
 
 static void Normalize_neon(float v[3])
 {
-	asm volatile (
+	__asm(
 	"vld1.32 		{d4}, [%0]!	    		\n\t"	//d4={x,y}
 	"flds    		s10, [%0]   	    	\n\t"	//d5[0] = z
 	"sub    		%0, %0, #8   	    	\n\t"	//d5[0] = z
@@ -108,7 +108,7 @@ static void Normalize_neon(float v[3])
 static float DotProduct_neon( float v0[3], float v1[3] )
 {
     float dot;
-	asm volatile (
+	__asm(
 	"vld1.32 		{d8}, [%1]!			\n\t"	//d8={x0,y0}
 	"vld1.32 		{d10}, [%2]!		\n\t"	//d10={x1,y1}
 	"flds 			s18, [%1, #0]	    \n\t"	//d9[0]={z0}
