@@ -27,7 +27,7 @@
 int Config_Open(void);
 int Config_ReadScreenInt(const char *itemname);
 PackedScreenResolution Config_ReadScreenSettings(void);
-int Config_ReadInt(const char *itemname, const char *desc, int def_value, int create=true, int isBoolean=true);
+int Config_ReadInt(const char *itemname, const char *desc, int def_value, int create, int isBoolean);
 
 #endif /* CONFIG_H */
 

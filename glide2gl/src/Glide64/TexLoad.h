@@ -49,7 +49,8 @@ uint32_t LoadNone (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
 }
 
 typedef uint32_t (*texfunc)(uintptr_t, uintptr_t, int, int, int, int, int);
-texfunc load_table [4][5] = {	// [size][format]
+texfunc load_table [4][5] =
+{	// [size][format]
    {	Load4bSelect,
       LoadNone,
       Load4bCI,

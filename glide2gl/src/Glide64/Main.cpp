@@ -296,13 +296,13 @@ void ReadSettings(void)
    settings.scr_res_x = settings.res_x = Config_ReadScreenInt("ScreenWidth");
    settings.scr_res_y = settings.res_y = Config_ReadScreenInt("ScreenHeight");
 
-   settings.vsync = (int)Config_ReadInt ("vsync", "Vertical sync", 0);
-   settings.ssformat = (int)Config_ReadInt("ssformat", "TODO:ssformat", 0);
+   settings.vsync = (int)Config_ReadInt ("vsync", "Vertical sync", 0, true, true);
+   settings.ssformat = (int)Config_ReadInt("ssformat", "TODO:ssformat", 0, true, true);
    //settings.fast_crc = (int)Config_ReadInt ("fast_crc", "Fast CRC", 0);
 
    settings.show_fps = (uint8_t)Config_ReadInt ("show_fps", "Display performance stats (add together desired flags): 1=FPS counter, 2=VI/s counter, 4=% speed, 8=FPS transparent", 0, true, false);
-   settings.clock = (int)Config_ReadInt ("clock", "Clock enabled", 0);
-   settings.clock_24_hr = (int)Config_ReadInt ("clock_24_hr", "Clock is 24-hour", 0);
+   settings.clock = (int)Config_ReadInt ("clock", "Clock enabled", 0, true, true);
+   settings.clock_24_hr = (int)Config_ReadInt ("clock_24_hr", "Clock is 24-hour", 0, true, true);
    // settings.advanced_options only good for GUI config
    // settings.texenh_options = only good for GUI config
    //settings.use_hotkeys = ini->Read("hotkeys", 1l);

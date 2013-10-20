@@ -2535,7 +2535,7 @@ static void rdp_setcolorimage()
                   }
                }
                //else if (rdp.ci_status == ci_aux && !rdp.copy_ci_index)
-               //  CloseTextureBuffer();
+               //  CloseTextureBuffer(false);
 
                rdp.skip_drawing = false;
             }
@@ -2756,10 +2756,10 @@ static void rdp_setcolorimage()
             rdp.scale_x = rdp.scale_x_bak;
             rdp.scale_y = rdp.scale_y_bak;
             if (fb_hwfbe_enabled && !rdp.read_whole_frame)
-               CloseTextureBuffer();
+               CloseTextureBuffer(false);
          }
          if (fb_hwfbe_enabled && !rdp.read_whole_frame && (prev_fb.status >= ci_aux) && (rdp.ci_count > rdp.copy_ci_index))
-            CloseTextureBuffer();
+            CloseTextureBuffer(false);
 
       }
       rdp.ci_status = cur_fb.status;
