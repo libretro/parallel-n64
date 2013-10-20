@@ -312,8 +312,12 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
             // Calculate deltaZ per polygon for Decal z-mode
             double fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
             double fdz = fabs(fdzdx) + fabs(fdzdy);
+#if 0
+/* Zelda OOT - shadow of Kokiri in Kokiri Shop would go through wall - investigate if taking out this hack
+ * causes other sideeffects elsewhere */
             if ((settings.hacks & hack_Zelda) && (rdp.rm & 0x800))
                fdz *= 4.0;  // Decal mode in Zelda sometimes needs mutiplied deltaZ to work correct, e.g. roads
+#endif
             deltaZ = max(8, (int)fdz);
          }
          dzdx = (int)(fdzdx * 65536.0);
