@@ -583,8 +583,6 @@ int InitGfx(void)
    wchar_t romname[256];
    wchar_t foldername[PATH_MAX + 64];
    wchar_t cachename[PATH_MAX + 64];
-   if (fullscreen)
-      ReleaseGfx ();
 
    OPEN_RDP_LOG ();  // doesn't matter if opens again; it will check for it
    OPEN_RDP_E_LOG ();
@@ -698,6 +696,8 @@ void ReleaseGfx(void)
 
    // Shutdown glide
    grGlideShutdown();
+
+   rdp_free();
 
    fullscreen = false;
    rdp.window_changed = true;
@@ -901,6 +901,8 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 {
    VLOG ("InitiateGFX (*)\n");
    voodoo.num_tmu = 4;
+
+   rdp_new();
 
    // Assume scale of 1 for debug purposes
    rdp.scale_x = 1.0f;

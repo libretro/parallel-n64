@@ -660,10 +660,6 @@ struct RDP
    TEXTURE_BUFFER texbufs[2];
 
    char RomName[21];
-
-   RDP();
-   ~RDP();
-   void Reset();
 };
 
 void ChangeSize(void);
@@ -678,6 +674,8 @@ extern uint32_t   offset_texbuf1;
 extern int	ucode_error_report;
 
 // RDP functions
+void rdp_free(void);
+void rdp_new(void);
 void rdp_reset(void);
 
 extern const char *ACmp[];

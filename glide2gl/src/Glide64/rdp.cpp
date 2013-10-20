@@ -247,71 +247,67 @@ void microcheck ();
 static int reset = 0;
 static int old_ucode = -1;
 
-void RDP::Reset()
+void rdp_new(void)
 {
    int i;
-   // set all vertex numbers
-   for (i = 0; i < MAX_VTX; i++)
-      vtx[i].number = i;
-
-   scissor_o.ul_x = 0;
-   scissor_o.ul_y = 0;
-   scissor_o.lr_x = 320;
-   scissor_o.lr_y = 240;
-
-   vi_org_reg = *gfx.VI_ORIGIN_REG;
-   view_scale[2] = 32.0f * 511.0f;
-   view_trans[2] = 32.0f * 511.0f;
-   clip_ratio = 1.0f;
-
-   lookat[0][0] = lookat[1][1] = 1.0f;
-
-   cycle_mode = 2;
-   allow_combine = 1;
-   rdp.update = UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
-   fog_mode = FOG_MODE_ENABLED;
-   maincimg[0].addr = maincimg[1].addr = last_drawn_ci_addr = 0x7FFFFFFF;
-}
-
-RDP::RDP()
-{
-   int i;
-   vtx1 = new VERTEX[256];
-   memset(vtx1, 0, sizeof(VERTEX)*256);
-   vtx2 = new VERTEX[256];
-   memset(vtx2, 0, sizeof(VERTEX)*256);
-   vtxbuf = vtxbuf2 = 0;
-   vtx_buffer = n_global = 0;
+   rdp.vtx1 = new VERTEX[256];
+   memset(rdp.vtx1, 0, sizeof(VERTEX)*256);
+   rdp.vtx2 = new VERTEX[256];
+   memset(rdp.vtx2, 0, sizeof(VERTEX)*256);
+   rdp.vtxbuf = rdp.vtxbuf2 = 0;
+   rdp.vtx_buffer = rdp.n_global = 0;
 
    for (i = 0; i < MAX_TMU; i++)
    {
-      cache[i] = new CACHE_LUT[MAX_CACHE];
-      cur_cache[i] = 0;
-      cur_cache_n[i] = 0;
+      rdp.cache[i] = new CACHE_LUT[MAX_CACHE];
+      rdp.cur_cache[i]   = 0;
+      rdp.cur_cache_n[i] = 0;
    };
 
-   vtx = new VERTEX[MAX_VTX];
-   memset(vtx, 0, sizeof(VERTEX)*MAX_VTX);
-   v0 = vn = 0;
+   rdp.vtx = new VERTEX[MAX_VTX];
+   memset(rdp.vtx, 0, sizeof(VERTEX)*MAX_VTX);
+   rdp.v0 = rdp.vn = 0;
 
-   frame_buffers = new COLOR_IMAGE[NUMTEXBUF+2];
+   rdp.frame_buffers = new COLOR_IMAGE[NUMTEXBUF+2];
 }
 
-RDP::~RDP()
+void rdp_free(void)
 {
-   delete[] vtx1;
-   delete[] vtx2;
+   delete[] rdp.vtx1;
+   delete[] rdp.vtx2;
    for (int i = 0; i < MAX_TMU; i++)
-      delete[] cache[i];
+      delete[] rdp.cache[i];
 
-   delete[] vtx;
-   delete[] frame_buffers;
+   delete[] rdp.vtx;
+   delete[] rdp.frame_buffers;
 }
 
 void rdp_reset(void)
 {
+   int i;
    reset = 1;
-   rdp.Reset();
+
+   // set all vertex numbers
+   for (i = 0; i < MAX_VTX; i++)
+      rdp.vtx[i].number = i;
+
+   rdp.scissor_o.ul_x = 0;
+   rdp.scissor_o.ul_y = 0;
+   rdp.scissor_o.lr_x = 320;
+   rdp.scissor_o.lr_y = 240;
+
+   rdp.vi_org_reg = *gfx.VI_ORIGIN_REG;
+   rdp.view_scale[2] = 32.0f * 511.0f;
+   rdp.view_trans[2] = 32.0f * 511.0f;
+   rdp.clip_ratio = 1.0f;
+
+   rdp.lookat[0][0] = rdp.lookat[1][1] = 1.0f;
+
+   rdp.cycle_mode = 2;
+   rdp.allow_combine = 1;
+   rdp.update = UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
+   rdp.fog_mode = FOG_MODE_ENABLED;
+   rdp.maincimg[0].addr = rdp.maincimg[1].addr = rdp.last_drawn_ci_addr = 0x7FFFFFFF;
 }
 
 void microcheck(void)
