@@ -152,137 +152,140 @@ typedef struct DRAWOBJECT_t {
 
 void DrawHiresDepthImage (const DRAWIMAGE & d)
 {
-  uint16_t * src = (uint16_t*)(gfx.RDRAM+d.imagePtr);
-  uint16_t image[512*512];
-  uint16_t * dst = image;
-  for (int h = 0; h < d.imageH; h++)
-  {
-    for (int w = 0; w < d.imageW; w++)
-    {
-      *(dst++) = src[(w+h*d.imageW)^1];
-    }
-    dst += (512 - d.imageW);
-  }
-  GrTexInfo t_info;
-  t_info.format = GR_TEXFMT_RGB_565;
-  t_info.data = image;
-  t_info.smallLodLog2 = GR_LOD_LOG2_512;
-  t_info.largeLodLog2 = GR_LOD_LOG2_512;
-  t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
+   int w, h;
+   uint16_t * src = (uint16_t*)(gfx.RDRAM+d.imagePtr);
+   uint16_t image[512*512];
+   uint16_t *dst = image;
+   for (h = 0; h < d.imageH; h++)
+   {
+      for (w = 0; w < d.imageW; w++)
+         *(dst++) = src[(w+h*d.imageW)^1];
+      dst += (512 - d.imageW);
+   }
+   GrTexInfo t_info;
+   t_info.format = GR_TEXFMT_RGB_565;
+   t_info.data = image;
+   t_info.smallLodLog2 = GR_LOD_LOG2_512;
+   t_info.largeLodLog2 = GR_LOD_LOG2_512;
+   t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
 
-  grTexDownloadMipMap (rdp.texbufs[1].tmu,
-    rdp.texbufs[1].begin,
-    GR_MIPMAPLEVELMASK_BOTH,
-    &t_info);
-  grTexSource (rdp.texbufs[1].tmu,
-    rdp.texbufs[1].begin,
-    GR_MIPMAPLEVELMASK_BOTH,
-    &t_info);
-  grTexCombine( GR_TMU1,
-    GR_COMBINE_FUNCTION_LOCAL,
-    GR_COMBINE_FACTOR_NONE,
-    GR_COMBINE_FUNCTION_LOCAL,
-    GR_COMBINE_FACTOR_NONE,
-    FXFALSE,
-    FXFALSE );
-  grTexCombine( GR_TMU0,
-    GR_COMBINE_FUNCTION_SCALE_OTHER,
-    GR_COMBINE_FACTOR_ONE,
-    GR_COMBINE_FUNCTION_SCALE_OTHER,
-    GR_COMBINE_FACTOR_ONE,
-    FXFALSE,
-    FXFALSE );
-  grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-    GR_COMBINE_FACTOR_ONE,
-    GR_COMBINE_LOCAL_NONE,
-    GR_COMBINE_OTHER_TEXTURE,
-    FXFALSE);
-  grAlphaCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-    GR_COMBINE_FACTOR_ONE,
-    GR_COMBINE_LOCAL_NONE,
-    GR_COMBINE_OTHER_TEXTURE,
-    FXFALSE);
-  grAlphaBlendFunction (GR_BLEND_ONE,
-    GR_BLEND_ZERO,
-    GR_BLEND_ONE,
-    GR_BLEND_ZERO);
-  grDepthBufferFunction (GR_CMP_ALWAYS);
-  grDepthMask (FXFALSE);
+   grTexDownloadMipMap (rdp.texbufs[1].tmu,
+         rdp.texbufs[1].begin,
+         GR_MIPMAPLEVELMASK_BOTH,
+         &t_info);
+   grTexSource (rdp.texbufs[1].tmu,
+         rdp.texbufs[1].begin,
+         GR_MIPMAPLEVELMASK_BOTH,
+         &t_info);
+   grTexCombine( GR_TMU1,
+         GR_COMBINE_FUNCTION_LOCAL,
+         GR_COMBINE_FACTOR_NONE,
+         GR_COMBINE_FUNCTION_LOCAL,
+         GR_COMBINE_FACTOR_NONE,
+         FXFALSE,
+         FXFALSE );
+   grTexCombine( GR_TMU0,
+         GR_COMBINE_FUNCTION_SCALE_OTHER,
+         GR_COMBINE_FACTOR_ONE,
+         GR_COMBINE_FUNCTION_SCALE_OTHER,
+         GR_COMBINE_FACTOR_ONE,
+         FXFALSE,
+         FXFALSE );
+   grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
+         GR_COMBINE_FACTOR_ONE,
+         GR_COMBINE_LOCAL_NONE,
+         GR_COMBINE_OTHER_TEXTURE,
+         FXFALSE);
+   grAlphaCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
+         GR_COMBINE_FACTOR_ONE,
+         GR_COMBINE_LOCAL_NONE,
+         GR_COMBINE_OTHER_TEXTURE,
+         FXFALSE);
+   grAlphaBlendFunction (GR_BLEND_ONE,
+         GR_BLEND_ZERO,
+         GR_BLEND_ONE,
+         GR_BLEND_ZERO);
+   grDepthBufferFunction (GR_CMP_ALWAYS);
+   grDepthMask (FXFALSE);
 
-  GrLOD_t LOD = GR_LOD_LOG2_1024;
-  if (settings.scr_res_x > 1024)
-    LOD = GR_LOD_LOG2_2048;
+   GrLOD_t LOD = GR_LOD_LOG2_1024;
+   if (settings.scr_res_x > 1024)
+      LOD = GR_LOD_LOG2_2048;
 
-  float lr_x = (float)d.imageW * rdp.scale_x;
-  float lr_y = (float)d.imageH * rdp.scale_y;
-  float lr_u = (float)d.imageW * 0.5f;// - 0.5f;
-  float lr_v = (float)d.imageH * 0.5f;// - 0.5f;
-  VERTEX v[4] = {
-    { 0, 0, 1.0f, 1.0f, 0, 0, 0, 0 },
-    { lr_x, 0, 1.0f, 1.0f, lr_u, 0, lr_u, 0 },
-    { 0, lr_y, 1.0f, 1.0f, 0, lr_v, 0, lr_v },
-    { lr_x, lr_y, 1.0f, 1.0f, lr_u, lr_v, lr_u, lr_v }
-  };
-  AddOffset(v, 4);
-  for (int i=0; i<4; i++)
-  {
-    v[i].uc(0) = v[i].uc(1) = v[i].u0;
-    v[i].vc(0) = v[i].vc(1) = v[i].v0;
-  }
-  grTextureBufferExt( rdp.texbufs[0].tmu, rdp.texbufs[0].begin, LOD, LOD,
-    GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
-  grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
-  grAuxBufferExt( GR_BUFFER_AUXBUFFER );
-  grSstOrigin(GR_ORIGIN_UPPER_LEFT);
-  grBufferClear (0, 0, 0xFFFF);
-  grDrawTriangle2 (&v[0], &v[2], &v[1], &v[2], &v[3], &v[1]);
-  grRenderBuffer( GR_BUFFER_BACKBUFFER );
-  grTextureAuxBufferExt( rdp.texbufs[0].tmu, rdp.texbufs[0].begin, LOD, LOD,
-    GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
-  grAuxBufferExt( GR_BUFFER_TEXTUREAUXBUFFER_EXT );
-  grDepthMask (FXTRUE);
+   float lr_x = (float)d.imageW * rdp.scale_x;
+   float lr_y = (float)d.imageH * rdp.scale_y;
+   float lr_u = (float)d.imageW * 0.5f;// - 0.5f;
+   float lr_v = (float)d.imageH * 0.5f;// - 0.5f;
+   VERTEX v[4] = {
+      { 0, 0, 1.0f, 1.0f, 0, 0, 0, 0 },
+      { lr_x, 0, 1.0f, 1.0f, lr_u, 0, lr_u, 0 },
+      { 0, lr_y, 1.0f, 1.0f, 0, lr_v, 0, lr_v },
+      { lr_x, lr_y, 1.0f, 1.0f, lr_u, lr_v, lr_u, lr_v }
+   };
+   AddOffset(v, 4);
+   for (int i=0; i<4; i++)
+   {
+      v[i].uc(0) = v[i].uc(1) = v[i].u0;
+      v[i].vc(0) = v[i].vc(1) = v[i].v0;
+   }
+   grTextureBufferExt( rdp.texbufs[0].tmu, rdp.texbufs[0].begin, LOD, LOD,
+         GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
+   grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
+   grAuxBufferExt( GR_BUFFER_AUXBUFFER );
+   grSstOrigin(GR_ORIGIN_UPPER_LEFT);
+   grBufferClear (0, 0, 0xFFFF);
+   grDrawTriangle2 (&v[0], &v[2], &v[1], &v[2], &v[3], &v[1]);
+   grRenderBuffer( GR_BUFFER_BACKBUFFER );
+   grTextureAuxBufferExt( rdp.texbufs[0].tmu, rdp.texbufs[0].begin, LOD, LOD,
+         GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
+   grAuxBufferExt( GR_BUFFER_TEXTUREAUXBUFFER_EXT );
+   grDepthMask (FXTRUE);
 }
 
 
 void DrawDepthImage (const DRAWIMAGE & d)
 {
-  if (!fb_depth_render_enabled)
-    return;
-  if (d.imageH > d.imageW)
-    return;
-  LRDP("Depth image write\n");
-  if (fb_hwfbe_enabled)
-  {
-    DrawHiresDepthImage(d);
-    return;
-  }
-  float scale_x_dst = rdp.scale_x;
-  float scale_y_dst = rdp.scale_y;
-  float scale_x_src = 1.0f/rdp.scale_x;
-  float scale_y_src = 1.0f/rdp.scale_y;
-  int src_width = d.imageW;
-  int src_height = d.imageH;
-  int dst_width = min(int(src_width*scale_x_dst), (int)settings.scr_res_x);
-  int dst_height = min(int(src_height*scale_y_dst), (int)settings.scr_res_y);
-  uint16_t * src = (uint16_t*)(gfx.RDRAM+d.imagePtr);
-  uint16_t * dst = new uint16_t[dst_width*dst_height];
-  for (int y=0; y < dst_height; y++)
-  {
-    for (int x=0; x < dst_width; x++)
-    {
-      dst[x+y*dst_width] = src[(int(x*scale_x_src)+int(y*scale_y_src)*src_width)^1];
-    }
-  }
-  grLfbWriteRegion(GR_BUFFER_AUXBUFFER,
-    0,
-    0,
-    GR_LFB_SRC_FMT_ZA16,
-    dst_width,
-    dst_height,
-    FXFALSE,
-    dst_width<<1,
-    dst);
-  delete[] dst;
+   int x, y;
+
+   if (!fb_depth_render_enabled)
+      return;
+
+   if (d.imageH > d.imageW)
+      return;
+
+   LRDP("Depth image write\n");
+
+   if (fb_hwfbe_enabled)
+   {
+      DrawHiresDepthImage(d);
+      return;
+   }
+
+   float scale_x_dst = rdp.scale_x;
+   float scale_y_dst = rdp.scale_y;
+   float scale_x_src = 1.0f/rdp.scale_x;
+   float scale_y_src = 1.0f/rdp.scale_y;
+   int src_width = d.imageW;
+   int src_height = d.imageH;
+   int dst_width = min(int(src_width*scale_x_dst), (int)settings.scr_res_x);
+   int dst_height = min(int(src_height*scale_y_dst), (int)settings.scr_res_y);
+   uint16_t * src = (uint16_t*)(gfx.RDRAM+d.imagePtr);
+   uint16_t * dst = (uint16_t*)malloc(dst_width * dst_height * sizeof(uint16_t));
+   for (y = 0; y < dst_height; y++)
+   {
+      for (x = 0; x < dst_width; x++)
+         dst[x+y*dst_width] = src[(int(x*scale_x_src)+int(y*scale_y_src)*src_width)^1];
+   }
+   grLfbWriteRegion(GR_BUFFER_AUXBUFFER,
+         0,
+         0,
+         GR_LFB_SRC_FMT_ZA16,
+         dst_width,
+         dst_height,
+         FXFALSE,
+         dst_width<<1,
+         dst);
+   free(dst);
 }
 
 void DrawImage (DRAWIMAGE & d)

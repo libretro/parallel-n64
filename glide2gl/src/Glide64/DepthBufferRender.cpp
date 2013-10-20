@@ -49,16 +49,19 @@
 #include "rdp.h"
 #include "DepthBufferRender.h"
 
-uint16_t * zLUT = 0;
+uint16_t *zLUT;
+
+#define ZLUT_SIZE 0x40000
 
 void ZLUT_init(void)
 {
    int i;
    if (zLUT)
       return;
-   zLUT = new uint16_t[0x40000];
 
-   for(i=0; i<0x40000; i++)
+   zLUT = (uint16_t*)malloc(ZLUT_SIZE * sizeof(uint16_t));
+
+   for(i = 0; i< ZLUT_SIZE; i++)
    {
       uint32_t exponent = 0;
       uint32_t testbit = 1 << 17;
@@ -75,7 +78,8 @@ void ZLUT_init(void)
 
 void ZLUT_release(void)
 {
-   delete[] zLUT;
+   if (zLUT)
+      free(zLUT);
    zLUT = 0;
 }
 
