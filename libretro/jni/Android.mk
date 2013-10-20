@@ -145,11 +145,9 @@ LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/2xSAI.c \
 
 INCFLAGS += $(VIDEODIR_GLIDE)/Glitch64/inc
 LOCAL_SRC_FILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
-            $(VIDEODIR_GLIDE)/Glide64/Config.cpp \
             $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.cpp \
             $(VIDEODIR_GLIDE)/Glide64/Main.cpp \
             $(VIDEODIR_GLIDE)/Glide64/Util.cpp \
-            $(VIDEODIR_GLIDE)/Glide64/Ini.cpp \
             $(VIDEODIR_GLIDE)/Glide64/TexBuffer.cpp \
             $(VIDEODIR_GLIDE)/Glide64/rdp.cpp \
             $(VIDEODIR_GLIDE)/Glide64/Combine.cpp \
