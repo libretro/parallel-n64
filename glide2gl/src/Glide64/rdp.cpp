@@ -250,7 +250,6 @@ static int old_ucode = -1;
 void RDP::Reset()
 {
    int i;
-   memset(this, 0, sizeof(RDP_Base));
    // set all vertex numbers
    for (i = 0; i < MAX_VTX; i++)
       vtx[i].number = i;

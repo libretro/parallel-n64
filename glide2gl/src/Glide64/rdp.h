@@ -463,7 +463,7 @@ typedef struct
 #define NOISE_MODE_COMBINE      1
 #define NOISE_MODE_TEXTURE      2
 
-struct RDP_Base
+struct RDP
 {
    float vi_width;
    float vi_height;
@@ -638,10 +638,6 @@ struct RDP_Base
    //fog related slots. Added by Gonetz
    float fog_multiplier, fog_offset;
    unsigned fog_mode;
-};
-
-struct RDP : public RDP_Base
-{
    // Clipping
    int clip;     // clipping flags
    VERTEX *vtx1; //[256] copy vertex buffer #1 (used for clipping)
