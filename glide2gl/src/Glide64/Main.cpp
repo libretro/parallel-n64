@@ -38,8 +38,6 @@
 //****************************************************************
 
 #include "Gfx_1.3.h"
-#include "Ini.h"
-#include "Config.h"
 #include "Util.h"
 #include "3dmath.h"
 #include "Combine.h"
@@ -47,6 +45,20 @@
 #include "CRC.h"
 #include "FBtoScreen.h"
 #include "DepthBufferRender.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "../../../libretro/libretro.h"
+
+extern unsigned retro_filtering;
+extern retro_environment_t environ_cb;
+extern void update_variables(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #if defined(__GNUC__)
 #include <sys/time.h>
@@ -281,73 +293,1703 @@ void WriteLog(m64p_msg_level level, const char *msg, ...)
 #endif
 }
 
+
 void ReadSettings(void)
 {
-   //  LOG("ReadSettings\n");
-   if (!Config_Open())
+   retro_variable var = { "mupen64-screensize", 0 };
+   unsigned screen_width = 640;
+   unsigned screen_height = 480;
+   settings.card_id = 0;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-      ERRLOG("Could not open configuration!");
-      return;
+      if (sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
+      {
+         screen_width  = 640;
+         screen_height = 480;
+      }
    }
 
-   settings.card_id = (uint8_t)Config_ReadInt ("card_id", "Card ID", 0, true, false);
-   //settings.lang_id not needed
-   // depth_bias = -Config_ReadInt ("depth_bias", "Depth bias level", 0, true, false);
-   settings.scr_res_x = settings.res_x = Config_ReadScreenInt("ScreenWidth");
-   settings.scr_res_y = settings.res_y = Config_ReadScreenInt("ScreenHeight");
+   settings.scr_res_x = screen_width;
+   settings.scr_res_y = screen_height;
+   settings.res_x = 320;
+   settings.res_y = 240;
 
-   settings.vsync = (int)Config_ReadInt ("vsync", "Vertical sync", 0, true, true);
-   settings.ssformat = (int)Config_ReadInt("ssformat", "TODO:ssformat", 0, true, true);
-   //settings.fast_crc = (int)Config_ReadInt ("fast_crc", "Fast CRC", 0);
 
-   settings.show_fps = (uint8_t)Config_ReadInt ("show_fps", "Display performance stats (add together desired flags): 1=FPS counter, 2=VI/s counter, 4=% speed, 8=FPS transparent", 0, true, false);
-   settings.clock = (int)Config_ReadInt ("clock", "Clock enabled", 0, true, true);
-   settings.clock_24_hr = (int)Config_ReadInt ("clock_24_hr", "Clock is 24-hour", 0, true, true);
-   // settings.advanced_options only good for GUI config
-   // settings.texenh_options = only good for GUI config
-   //settings.use_hotkeys = ini->Read("hotkeys", 1l);
+   settings.vsync = 1;
+   settings.ssformat = 1;
 
-   settings.wrpResolution = (uint8_t)Config_ReadInt ("wrpResolution", "Wrapper resolution", 0, true, false);
-   settings.wrpVRAM = (uint8_t)Config_ReadInt ("wrpVRAM", "Wrapper VRAM", 0, true, false);
-   settings.wrpFBO = (int)Config_ReadInt ("wrpFBO", "Wrapper FBO", 1, true, true);
-   settings.wrpAnisotropic = (int)Config_ReadInt ("wrpAnisotropic", "Wrapper Anisotropic Filtering", 0, true, true);
+   settings.wrpResolution = 0;
+   settings.wrpVRAM = 0;
+   settings.wrpFBO = 0;
+   settings.wrpAnisotropic = 0;
 
-#ifndef _ENDUSER_RELEASE_
-   settings.autodetect_ucode = (int)Config_ReadInt ("autodetect_ucode", "Auto-detect microcode", 1);
-   settings.ucode = (uint32_t)Config_ReadInt ("ucode", "Force microcode", 2, true, false);
-   settings.wfmode = (int)Config_ReadInt ("wfmode", "Wireframe mode: 0=Normal colors, 1=Vertex colors, 2=Red only", 1, true, false);
-
-   settings.logging = (int)Config_ReadInt ("logging", "Logging", 0);
-   settings.log_clear = (int)Config_ReadInt ("log_clear", "", 0);
-
-   settings.run_in_window = (int)Config_ReadInt ("run_in_window", "", 0);
-
-   settings.elogging = (int)Config_ReadInt ("elogging", "", 0);
-   settings.filter_cache = (int)Config_ReadInt ("filter_cache", "Filter cache", 0);
-   settings.unk_as_red = (int)Config_ReadInt ("unk_as_red", "Display unknown combines as red", 0);
-   settings.log_unk = (int)Config_ReadInt ("log_unk", "Log unknown combines", 0);
-   settings.unk_clear = (int)Config_ReadInt ("unk_clear", "", 0);
-#else
    settings.autodetect_ucode = true;
    settings.ucode = 2;
-   settings.wfmode = 0;
+   settings.fog = 1;
+   settings.buff_clear = 1;
    settings.logging = false;
    settings.log_clear = false;
-   settings.run_in_window = false;
    settings.elogging = false;
    settings.filter_cache = false;
    settings.unk_as_red = false;
    settings.log_unk = false;
    settings.unk_clear = false;
-#endif
 }
+
+extern uint8_t microcode[4096];
+
+//#define HAVE_HWFBE
 
 void ReadSpecialSettings (const char * name)
 {
-   //  char buf [256];
-   //  sprintf(buf, "ReadSpecialSettings. Name: %s\n", name);
-   //  LOG(buf);
+   int smart_read, hires, get_fbinfo, read_always, depth_render, fb_crc_mode,
+       read_back_to_screen, cpu_write_hack, optimize_texrect, hires_buf_clear,
+       read_alpha, ignore_aux_copy, useless_is_useless;
+   fprintf(stderr, "ReadSpecialSettings: %s\n", name);
+
+   bool updated = false;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+      update_variables();
+   
+   if (strstr(name, (const char *)"DEFAULT"))
+   {
+      settings.filtering = 0;
+      settings.buff_clear = 1;
+      settings.swapmode = 1;
+      settings.lodmode = 0;
+
+      //frame buffer
+      smart_read = 0;
+      hires = 0;
+      get_fbinfo = 0;
+      read_always = 0;
+      depth_render = 1;
+      fb_crc_mode = 1;
+      read_back_to_screen = 0; 
+      cpu_write_hack = 0;
+      optimize_texrect = 1;
+      hires_buf_clear = 0;
+      read_alpha = 0;
+      ignore_aux_copy = 0;
+      useless_is_useless = 0;
+
+      settings.alt_tex_size = 0;
+      settings.use_sts1_only = 0;
+      settings.fast_crc = 1;
+      settings.force_microcheck = 0;
+      settings.force_quad3d = 0;
+      settings.force_calc_sphere = 0;
+      settings.texture_correction = 1;
+      //depth_bias = 20;
+      settings.increase_texrect_edge = 0;
+      settings.decrease_fillrect_edge = 0;
+      settings.stipple_mode = 2;
+      settings.stipple_pattern = (uint32_t)1041204192;
+      settings.clip_zmax = 1;
+      settings.clip_zmin = 0;
+      settings.adjust_aspect = 1;
+      settings.correct_viewport = 0;
+      settings.zmode_compare_less = 0;
+      settings.old_style_adither = 0;
+      settings.n64_z_scale = 0;
+      settings.pal230 = 0;
+   }
+
    settings.hacks = 0;
+
+   // We might want to detect some games by ucode crc, so set
+   // up uc_crc here
+   uint32_t i, uc_crc;
+   uc_crc = 0;
+
+   for (i = 0; i < 3072 >> 2; i++)
+      uc_crc += ((uint32_t*)microcode)[i];
+
+   // Glide64 mk2 INI config
+   if (strstr(name, (const char *)"1080 SNOWBOARDING"))
+   {
+      optimize_texrect = 1;
+      settings.alt_tex_size = 1;
+      //depthmode = 0
+      settings.swapmode = 2;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1;
+   }
+   else if (strstr(name, (const char *)"A Bug's Life"))
+   {
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char *)"AERO FIGHTERS ASSAUL"))
+   {
+      settings.clip_zmin = 1;
+   }
+   else if (strstr(name, (const char *)"AIDYN CHRONICLES"))
+   {
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"All-Star Baseball 20"))
+   {
+      //force_depth_compare = 1
+   }
+   else if (
+            strstr(name, (const char *)"All-Star Baseball 99")
+         || strstr(name, (const char *)"All Star Baseball 99")
+         )
+   {
+      //force_depth_compare = 1
+      //depthmode = 1
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char *)"All-Star Baseball '0"))
+   {
+      //force_depth_compare = 1
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"ARMYMENAIRCOMBAT"))
+   {
+      settings.increase_texrect_edge = 1;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"BURABURA POYON"))
+   {
+      //fix_tex_coord = 1
+      //depthmode = 0
+   }
+   // ;Bakushou Jinsei 64 - Mezease! Resort Ou.
+   else if (strstr(name, (const char *)"ÊÞ¸¼®³¼ÞÝ¾²64"))
+   {
+      //fb_info_disable = 1
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char *)"BAKU-BOMBERMAN")
+         || strstr(name, (const char *)"BOMBERMAN64E")
+         || strstr(name, (const char *)"BOMBERMAN64U"))
+   {
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"BAKUBOMB2")
+         || strstr(name, (const char *)"BOMBERMAN64U2"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char *)"BANGAIOH"))
+   {
+      //depthmode = 1
+   }
+   else if (
+            strstr(name, (const char *)"Banjo-Kazooie")
+         || strstr(name, (const char *)"BANJO KAZOOIE 2")
+         || strstr(name, (const char *)"BANJO TOOIE")
+         )
+   {
+      settings.filtering = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#else
+      read_always = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"BASS HUNTER 64"))
+   {
+      //fix_tex_coord = 1
+      //depthmode = 1
+      settings.buff_clear = 0;
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char *)"BATTLEZONE"))
+   {
+      //force_depth_compare = 1
+      //depthmode = 1
+   }
+   else if (
+            strstr(name, (const char *)"BEETLE ADVENTURE JP")
+         || strstr(name, (const char *)"Beetle Adventure Rac")
+         )
+   {
+      //wrap_big_tex = 1
+      settings.n64_z_scale = 1;
+      settings.filtering = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"Bust A Move 3 DX")
+         || strstr(name, (const char *)"Bust A Move '99")
+         )
+   {
+      settings.filtering = 2;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"Bust A Move 2"))
+   {
+      //fix_tex_coord = 1
+      settings.filtering = 2;
+      //depthmode = 1
+      settings.fog = 0;
+   }
+   else if (strstr(name, (const char *)"CARMAGEDDON64"))
+   {
+      //wrap_big_tex = 1
+      settings. filtering = 1;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"CENTRE COURT TENNIS"))
+   {
+      //soft_depth_compare = 1
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char *)"Chameleon Twist2"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char *)"extreme_g")
+         || strstr(name, (const char *)"extremeg"))
+   {
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"Extreme G 2"))
+   {
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char *)"MICKEY USA")
+         || strstr(name, (const char *)"MICKEY USA PAL")
+         )
+   {
+      settings.alt_tex_size = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char *)"MISCHIEF MAKERS")
+         || strstr(name, (const char *)"TROUBLE MAKERS"))
+   {
+      //mischief_tex_hack = 0
+      //tex_wrap_hack = 0
+      //depthmode = 1
+      settings.fog = 0;
+   }
+   else if (strstr(name, (const char*)"Tigger's Honey Hunt"))
+   {
+      settings.zmode_compare_less = 1;
+      //depthmode = 0
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"TOM AND JERRY"))
+   {
+      //depth_bias = 2
+      settings.filtering = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"SPACE DYNAMITES"))
+   {
+      settings.force_microcheck = 1;
+   }
+   else if (strstr(name, (const char*)"SPIDERMAN"))
+   {
+      settings.fast_crc = 0;
+   }
+   else if (strstr(name, (const char*)"STARCRAFT 64"))
+   {
+      settings.force_microcheck = 1;
+      settings.aspectmode = 2;
+      settings.filtering = 2;
+      //depthmode = 1
+      settings.fog = 0;
+   }
+   else if (strstr(name, (const char*)"STAR SOLDIER"))
+   {
+      settings.force_microcheck = 1;
+      settings.filtering = 1;
+      //depthmode = 1
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char*)"STAR WARS EP1 RACER"))
+   {
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char*)"TELEFOOT SOCCER 2000"))
+   {
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"TG RALLY 2"))
+   {
+      settings.filtering = 1;
+      //depthmode = 1
+      settings.buff_clear = 0;
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char*)"Tonic Trouble"))
+   {
+      //depthmode = 0
+      cpu_write_hack = 1;
+   }
+   else if (strstr(name, (const char*)"SUPERROBOTSPIRITS"))
+   {
+      settings.aspectmode = 2;
+   }
+   else if (strstr(name, (const char*)"THPS2")
+         || strstr(name, (const char*)"THPS3")
+         || strstr(name, (const char*)"TONY HAWK PRO SKATER")
+         || strstr(name, (const char*)"TONY HAWK SKATEBOARD")
+         )
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"TOP GEAR RALLY 2"))
+   {
+      settings.filtering = 1;
+      //depthmode = 1
+      settings.buff_clear = 0;
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char*)"TRIPLE PLAY 2000"))
+   {
+      //wrap_big_tex = 1
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"TSUWAMONO64"))
+   {
+      settings.force_microcheck = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char *)"TSUMI TO BATSU"))
+   {
+      settings.filtering = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char *)"MortalKombatTrilogy"))
+   {
+      settings.filtering = 2;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"Perfect Dark"))
+   {
+      useless_is_useless = 1;
+      settings.decrease_fillrect_edge = 1;
+      optimize_texrect = 0;
+      settings.filtering = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char *)"Resident Evil II") || strstr(name, (const char *)"BioHazard II"))
+   {
+      cpu_write_hack = 1;
+      settings.adjust_aspect = 0;
+      settings.n64_z_scale = 1;
+      //fix_tex_coord = 128
+      //depthmode = 0
+      settings.swapmode = 2;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"World Cup 98"))
+   {
+      //depthmode = 0
+      settings.swapmode = 0;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"EXCITEBIKE64"))
+   {
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"´¸½ÄØ°ÑG2"))
+   {
+      //depthmode = 0
+      smart_read = 0;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char *)"EARTHWORM JIM 3D"))
+   {
+      //increase_primdepth = 1
+      settings.filtering = 1;
+      //depthmode = 0
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char *)"Cruis'n USA"))
+   {
+      settings.filtering = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char *)"CruisnExotica"))
+   {
+      settings.filtering = 1;
+      //depthmode = 1
+      settings.buff_clear = 0;
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char *)"custom robo")
+         || strstr(name, (const char *)"CUSTOMROBOV2"))
+   {
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"´²º³É¾ÝÄ±ÝÄÞØ­°½"))
+   {
+      //;Eikou no Saint Andrew
+      settings.correct_viewport = 1;
+   }
+   else if (strstr(name, (const char *)"Eltail"))
+   {
+      settings.filtering = 2;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"DeadlyArts"))
+   {
+      //soft_depth_compare = 1
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      settings.clip_zmin = 1;
+   }
+   else if (strstr(name, (const char *)"Bottom of the 9th"))
+   {
+      optimize_texrect = 0;
+      settings.filtering = 1;
+      //depthmode = 0;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"BRUNSWICKBOWLING"))
+   {
+      //depthmode = 0
+      settings.buff_clear = 0;
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char *)"CHOPPER ATTACK"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char *)"CITY TOUR GP"))
+   {
+      settings.force_microcheck = 1;
+      settings.filtering = 1;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"Command&Conquer"))
+   {
+      //fix_tex_coord = 1
+      settings.adjust_aspect = 2;
+      settings.filtering = 1;
+      //depthmode = 1
+      settings.fog = 0;
+   }
+   else if (strstr(name, (const char *)"CONKER BFD"))
+   {
+      optimize_texrect = 1;
+      //ignore_previous = 1
+      settings.lodmode = 1;
+      settings.filtering = 1;
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char*)"DARK RIFT"))
+   {
+      settings.force_microcheck = 1;
+   }
+   else if (strstr(name, (const char*)"Donald Duck Goin' Qu")
+         || strstr(name, (const char*)"Donald Duck Quack At"))
+   {
+      cpu_write_hack = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"ÄÞ×´ÓÝ3 ÉËÞÀÉÏÁSOS!"))
+   {
+      //;Doraemon 3 - Nobita no Machi SOS! (J)
+      settings.clip_zmin = 1;
+   }
+   else if (strstr(name, (const char*)"DR.MARIO 64"))
+   {
+      //fix_tex_coord = 256
+      //optimize_write = 1
+      read_back_to_screen = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 0;
+#endif
+   }
+   else if (strstr(name, (const char*)"F1 POLE POSITION 64"))
+   {
+      settings.clip_zmin = 1;
+      settings.filtering = 2;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"HUMAN GRAND PRIX"))
+   {
+      settings.filtering = 2;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"F1RacingChampionship"))
+   {
+      //depthmode = 0
+      settings.buff_clear = 0;
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char*)"F1 WORLD GRAND PRIX")
+         || strstr(name, (const char*)"F1 WORLD GRAND PRIX2"))
+   {
+      //soft_depth_compare = 1
+      //wrap_big_tex = 1
+      //depthmode = 0
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"F3 Ì³×²É¼ÚÝ2"))
+   {
+      //;Fushigi no Dungeon - Furai no Shiren 2 (J) 
+      settings.decrease_fillrect_edge = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"G.A.S.P!!Fighters'NE"))
+   {
+      //soft_depth_compare = 1
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      settings.clip_zmin = 1;
+   }
+   else if (strstr(name, (const char*)"MS. PAC-MAN MM"))
+   {
+      cpu_write_hack = 1;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"NBA Courtside 2")
+         || strstr(name, (const char*)"NASCAR 2000")
+         || strstr(name, (const char*)"NASCAR 99")
+         )
+   {
+      //depthmode = 0
+      settings.buff_clear = 0;
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char*)"NBA JAM 2000")
+         || strstr(name, (const char*)"NBA JAM 99")
+         )
+   {
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"NBA LIVE 2000")
+         )
+   {
+      settings.adjust_aspect = 0;
+   }
+   else if (strstr(name, (const char*)"NBA Live 99")
+         )
+   {
+      settings.swapmode = 0;
+      settings.adjust_aspect = 0;
+   }
+   else if (strstr(name, (const char*)"NINTAMAGAMEGALLERY64"))
+   {
+      settings.force_microcheck = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"NFL QBC 2000")
+         || strstr(name, (const char*)"NFL Quarterback Club")
+         )
+   {
+      //wrap_big_tex = 1
+      //depthmode = 0
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char*)"GANBAKE GOEMON") 
+         //|| strstr(name, (const char*)"¶ÞÝÊÞÚ\ ºÞ´ÓÝ") */ TODO: illegal characters - find by ucode CRC */
+         || strstr(name, (const char*)"MYSTICAL NINJA")
+         || strstr(name, (const char*)"MYSTICAL NINJA2 SG")
+         )
+   {
+      optimize_texrect = 0;
+      settings.alt_tex_size = 1;
+      settings.filtering = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"GAUNTLET LEGENDS"))
+   {
+      //depthmode = 1
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char*)"Getter Love!!"))
+   {
+      settings.zmode_compare_less = 1;
+      //texrect_compare_less = 1
+      settings.filtering = 2;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"GOEMON2 DERODERO")
+         || strstr(name, (const char*)"GOEMONS GREAT ADV"))
+   {
+      settings.filtering = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"GOLDEN NUGGET 64"))
+   {
+      settings.filtering = 2;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"GT64"))
+   {
+      settings.force_microcheck = 1;
+      settings.filtering = 1;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"ÊÑ½À°ÓÉ¶ÞÀØ64")
+         )
+   {
+      settings.force_microcheck = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"HARVESTMOON64")
+         || strstr(name, (const char*)"ÎÞ¸¼Þ®³ÓÉ¶ÞÀØ2")
+         )
+   {
+      settings.zmode_compare_less = 1;
+      //depthmode = 0
+      settings.fog = 0;
+   }
+   else if (strstr(name, (const char*)"MGAH VOL1"))
+   {
+      settings.force_microcheck = 1;
+      //depthmode = 1
+      settings.zmode_compare_less = 1;
+      smart_read = 1;
+   }
+   else if (strstr(name, (const char*)"MARIO STORY")
+         || strstr(name, (const char*)"PAPER MARIO")
+         )
+   {
+      useless_is_useless = 1;
+      hires_buf_clear = 0;
+      optimize_texrect = 0;
+      settings.filtering = 1;
+      //depthmode = 1
+      settings.swapmode = 2;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      read_alpha = 1;
+   }
+   else if (strstr(name, (const char*)"Mia Hamm Soccer 64"))
+   {
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"NITRO64"))
+   {
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"NUCLEARSTRIKE64"))
+   {
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"NFL BLITZ")
+         || strstr(name, (const char*)"NFL BLITZ 2001")
+         || strstr(name, (const char*)"NFL BLITZ SPECIAL ED")
+         )
+   {
+      settings.lodmode = 2;
+   }
+   else if (strstr(name, (const char*)"Monaco Grand Prix")
+         || strstr(name, (const char*)"Monaco GP Racing 2")
+         )
+   {
+      //depthmode = 0
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"ÓØÀ¼®³·Þ64"))
+   {
+      //;Morita Shogi 64
+      settings.correct_viewport = 1;
+   }
+   else if (strstr(name, (const char*)"NEWTETRIS"))
+   {
+      settings.pal230 = 1;
+      //fix_tex_coord = 1
+      settings.increase_texrect_edge = 1;
+      //depthmode = 0
+      settings.fog = 0;
+   }
+   else if (strstr(name, (const char*)"MLB FEATURING K G JR"))
+   {
+      read_back_to_screen = 2;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"HSV ADVENTURE RACING"))
+   {
+      //wrap_big_tex = 1
+      settings.n64_z_scale = 1;
+      settings.filtering = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"MarioGolf64"))
+   {
+      //fb_info_disable = 1
+      ignore_aux_copy = 1;
+      settings.buff_clear = 0;
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char*)"Virtual Pool 64"))
+   {
+      //depthmode = 1
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"TWINE"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"V-RALLY"))
+   {
+      //fix_tex_coord = 3
+      settings.filtering = 1;
+      //depthmode = 0
+      settings.buff_clear = 0;
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char*)"Waialae Country Club"))
+   {
+      //wrap_big_tex = 1
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"TWISTED EDGE"))
+   {
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char*)"STAR TWINS")
+         || strstr(name, (const char*)"JET FORCE GEMINI")
+         || strstr(name, (const char*)"J F G DISPLAY")
+         )
+   {
+      read_back_to_screen = 1;
+      settings.decrease_fillrect_edge = 1;
+      settings.alt_tex_size = 1;
+      //depthmode = 1
+      settings.swapmode = 2;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"ÄÞ×´ÓÝ Ð¯ÂÉ¾²Ú²¾·"))
+   {
+      //;Doraemon - Mittsu no Seireiseki (J)
+      read_back_to_screen = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"HEIWA ÊßÁÝº Ü°ÙÄÞ64"))
+   {
+      //; Heiwa Pachinko World
+      //depthmode = 0
+      settings.fog = 0;
+      settings.swapmode = 2;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"·×¯Ä¶²¹Â 64ÀÝÃ²ÀÞÝ"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"½°Êß°ÛÎÞ¯ÄÀ²¾Ý64"))
+   {
+      //;Super Robot Taisen 64 (J)
+      settings.fast_crc = 0;
+      settings.use_sts1_only = 1;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"Supercross"))
+   {
+      //depthmode = 1
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"Top Gear Overdrive"))
+   {
+      //fb_info_disable = 1
+      //depthmode = 0
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"½½Ò!À²¾ÝÊß½ÞÙÀÞÏ"))
+   {
+      settings.force_microcheck = 1;
+      //depthmode = 1
+      settings.fog = 0;
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char*)"ÐÝÅÃÞÀÏºÞ¯ÁÜ°ÙÄÞ"))
+   {
+      //;Tamagotchi World 64 (J) 
+      settings.use_sts1_only = 1;
+      //depthmode = 0
+      settings.fog = 0;
+   }
+   else if (strstr(name, (const char*)"Taz Express"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"Top Gear Hyper Bike"))
+   {
+      //fb_info_disable = 1
+      settings.swapmode = 2;
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char*)"I S S 64"))
+   {
+      //depthmode = 1
+      settings.swapmode = 2;
+      settings.old_style_adither = 1;
+   }
+   else if (strstr(name, (const char*)"I.S.S.2000"))
+   {
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"ITF 2000")
+         || strstr(name, (const char*)"IT&F SUMMERGAMES")
+         )
+   {
+      settings.filtering = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"J_league 1997"))
+   {
+      //fix_tex_coord = 1
+      //depthmode = 1
+      settings.swapmode = 0;
+   }
+#if 0
+   // TODO: illegal characters - will have to find this game by ucode CRC
+   // later
+   else if (strstr(name, (const char*)"JØ°¸Þ\ ²ÚÌÞÝËÞ°Ä1997"))
+   {
+      //;J.League Eleven Beat 1997
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+#endif
+   else if (strstr(name, (const char*)"J WORLD SOCCER3"))
+   {
+      //depthmode = 1
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char*)"KEN GRIFFEY SLUGFEST"))
+   {
+      read_back_to_screen = 2;
+      //depthmode = 1
+      settings.swapmode = 0;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"MASTERS'98"))
+   {
+      //wrap_big_tex = 1
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"MO WORLD LEAGUE SOCC"))
+   {
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"Ç¼ÂÞØ64"))
+   {
+      //; Nushi Zuri 64
+      settings.force_microcheck = 1;
+      //wrap_big_tex = 0
+      //depthmode = 0
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"PACHINKO365NICHI"))
+   {
+      settings.correct_viewport = 1;
+   }
+   else if (strstr(name, (const char*)"PERFECT STRIKER"))
+   {
+      //depthmode = 1
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char*)"ROCKETROBOTONWHEELS"))
+   {
+      settings.clip_zmin = 1;
+   }
+   else if (strstr(name, (const char*)"SD HIRYU STADIUM"))
+   {
+      settings.force_microcheck = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"Shadow of the Empire"))
+   {
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char*)"RUSH 2049"))
+   {
+      //force_texrect_zbuf = 1
+      settings.filtering = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"SCARS"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"LEGORacers"))
+   {
+      cpu_write_hack = 1;
+      //depthmode = 1
+      settings.buff_clear = 0;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      read_alpha = 1;
+   }
+   else if (strstr(name, (const char*)"Lode Runner 3D"))
+   {
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char*)"Parlor PRO 64"))
+   {
+      settings.force_microcheck = 1;
+      settings.filtering = 1;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"PUZZLE LEAGUE N64")
+         || strstr(name, (const char*)"PUZZLE LEAGUE"))
+   {
+      //PPL = 1
+      settings.force_microcheck = 1;
+      //fix_tex_coord = 1
+      settings.filtering = 2;
+      //depthmode = 1
+      settings.fog = 0;
+      settings.buff_clear = 0;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 0;
+#endif
+      read_alpha = 1;
+   }
+   else if (strstr(name, (const char*)"POKEMON SNAP"))
+   {
+      settings.fast_crc = 0;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 0;
+#endif
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char*)"POKEMON STADIUM")
+         || strstr(name, (const char*)"POKEMON STADIUM G&S")
+         )
+   {
+      optimize_texrect = 0;
+      //depthmode = 1
+      settings.fast_crc = 0;
+      settings.buff_clear = 0;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 0;
+#endif
+      read_alpha = 1;
+      fb_crc_mode = 2;
+   }
+   else if (strstr(name, (const char*)"POKEMON STADIUM 2"))
+   {
+      optimize_texrect = 0;
+      //depthmode = 1
+      settings.fast_crc = 0;
+      settings.buff_clear = 0;
+      settings.swapmode = 2;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      read_alpha = 1;
+      fb_crc_mode = 2;
+   }
+   else if (strstr(name, (const char*)"RAINBOW SIX"))
+   {
+      settings.increase_texrect_edge = 1;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"RALLY CHALLENGE")
+         || strstr(name, (const char*)"Rally'99"))
+   {
+      settings.filtering = 1;
+      //depthmode = 1
+      settings.buff_clear = 0;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"Rayman 2"))
+   {
+      //depthmode = 0
+      cpu_write_hack = 1;
+   }
+   else if (strstr(name, (const char*)"quarterback_club_98"))
+   {
+      optimize_texrect = 0;
+      hires_buf_clear = 0;
+      settings.filtering = 1;
+      //depthmode = 1
+      settings.swapmode = 0;
+      settings.buff_clear = 0;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      read_alpha = 1;
+   }
+   else if (strstr(name, (const char*)"PowerLeague64"))
+   {
+      settings.force_quad3d = 1;
+   }
+   else if (strstr(name, (const char*)"Racing Simulation 2"))
+   {
+      //depthmode = 0
+      settings.buff_clear = 0;
+   }
+#if 0
+   else if (strstr(name, (const char*)"POLARISSNOCROSS"))
+   {
+      //fix_tex_coord = 5
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"READY 2 RUMBLE"))
+   {
+      //fix_tex_coord = 64
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"Ready to Rumble"))
+   {
+      //fix_tex_coord = 1
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"LT DUCK DODGERS"))
+   {
+      //wrap_big_tex = 1
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"LET'S SMASH"))
+   {
+      //soft_depth_compare = 1
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"LCARS - WT_Riker"))
+   {
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"RUGRATS IN PARIS"))
+   {
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"Shadowman"))
+   {
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"J LEAGUE LIVE 64"))
+   {
+      //wrap_big_tex = 1
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"Iggy's Reckin' Balls"))
+   {
+      //fix_tex_coord = 512
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"Ultraman Battle JAPA"))
+   {
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"TOP GEAR RALLY"))
+   {
+      //depth_bias = 64
+      //fillcolor_fix = 1
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"D K DISPLAY"))
+   {
+      //depthmode = 1
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char*)"MarioParty3"))
+   {
+      //fix_tex_coord = 1
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"MK_MYTHOLOGIES"))
+   {
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"NFL QBC '99"))
+   {
+      //force_depth_compare = 1
+      //wrap_big_tex = 1
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"OgreBattle64"))
+   {
+      //fb_info_disable = 1
+      //force_depth_compare = 1
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"MICROMACHINES64TURBO"))
+   {
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"Fighting Force"))
+   {
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"D K DISPLAY"))
+   {
+      //depthmode = 1
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char *)"DAFFY DUCK STARRING"))
+   {
+      //depthmode = 1
+      //wrap_big_tex = 1
+   }
+   else if (strstr(name, (const char *)"CyberTiger"))
+   {
+      //fix_tex_coord = 16
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char *)"F-Zero X") || strstr(name, (const char *)"F-ZERO X"))
+   {
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"DERBYSTALLION64"))
+   {
+      //fix_tex_coord = 1
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char *)"DUKE NUKEM"))
+   {
+      //increase_primdepth = 1
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char *)"EVANGELION"))
+   {
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"Big Mountain 2000"))
+   {
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"YAKOUTYUU2"))
+   {
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char *)"WRESTLEMANIA 2000"))
+   {
+      //depthmode = 0
+   }
+#endif
+   else if (strstr(name, (const char *)"Pilot Wings64"))
+   {
+      //depthmode = 1
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char *)"DRACULA MOKUSHIROKU")
+         || strstr(name, (const char *)"DRACULA MOKUSHIROKU2")
+         )
+   {
+      //depthmode = 0
+      //fb_clear = 1
+      settings.old_style_adither = 1;
+   }
+#if 0
+   else if (strstr(name, (const char *)"CASTLEVANIA")
+         || strstr(name, (const char *)"CASTLEVANIA2"))
+   {
+      //depthmode = 0
+      //fb_clear = 1
+   }
+#endif
+   else if (strstr(name, (const char *)"Dual heroes JAPAN")
+         || strstr(name, (const char *)"Dual heroes PAL")
+         || strstr(name, (const char *)"Dual heroes USA"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char *)"JEREMY MCGRATH SUPER"))
+   {
+      //depthmode = 0
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char *)"Kirby64"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+      settings.buff_clear = 0;
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char *)"GOLDENEYE"))
+   {
+      settings.lodmode = 1;
+      //depth_bias = 40
+      settings.filtering = 1;
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"DONKEY KONG 64"))
+   {
+      settings.lodmode = 1;
+      //depth_bias = 64
+      //depthmode = 1
+      //fb_clear = 1
+      read_always = 1;
+   }
+   else if (strstr(name, (const char *)"Glover"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0;
+   }
+   else if (strstr(name, (const char *)"GEX: ENTER THE GECKO")
+         || strstr(name, (const char *)"Gex 3 Deep Cover Gec"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0;
+   }
+   else if (strstr(name, (const char *)"WAVE RACE 64"))
+   {
+      settings.lodmode = 2;
+      settings.pal230 = 1;
+   }
+   else if (strstr(name, (const char *)"WILD CHOPPERS"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char *)"Wipeout 64"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char *)"WONDER PROJECT J2"))
+   {
+      //depthmode = 0
+      settings.buff_clear = 0;
+      settings.swapmode = 0;
+   }
+   else if (strstr(name, (const char *)"Doom64"))
+   {
+      //fillcolor_fix = 1
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"HEXEN"))
+   {
+      cpu_write_hack = 1;
+      settings.filtering = 1;
+      //depthmode = 1
+      settings.buff_clear = 0;
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char *)"ZELDA MAJORA'S MASK") || strstr(name, (const char *)"ZELDA MAJORA'S MASK")
+         || strstr(name, (const char *)"THE MASK OF MUJURA"))
+   {
+      //depth_bias = 60
+      //wrap_big_tex = 1
+      settings.filtering = 1;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+      fb_crc_mode = 0;
+   }
+   else if (strstr(name, (const char *)"THE LEGEND OF ZELDA") || strstr(name, (const char *)"ZELDA MASTER QUEST"))
+   {
+      //depth_bias = 60
+      settings.filtering = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+   }
+   else if (strstr(name, (const char*)"Re-Volt"))
+   {
+      settings.texture_correction = 0;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"RIDGE RACER 64"))
+   {
+      settings.force_calc_sphere = 1;
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"ROAD RASH 64"))
+   {
+      //depthmode = 0
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char*)"Robopon64"))
+   {
+      //depthmode = 0
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char*)"RONALDINHO SOCCER"))
+   {
+      //depthmode = 1
+      settings.swapmode = 2;
+      settings.old_style_adither = 1;
+   }
+   else if (strstr(name, (const char*)"RTL WLS2000"))
+   {
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"BIOFREAKS"))
+   {
+      //depthmode = 0
+      settings.buff_clear = 0;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"Blast Corps") || strstr(name, (const char *)"Blastdozer"))
+   {
+      //depthmode = 1
+      settings.swapmode = 0;
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      read_alpha = 1;
+   }
+   else if (strstr(name, (const char *)"blitz2k"))
+   {
+      settings.lodmode = 2;
+   }
+   else if (strstr(name, (const char *)"Body Harvest"))
+   {
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"Killer Instinct Gold") || strstr(name, (const char *)"KILLER INSTINCT GOLD"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+      settings.fog = 0;
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"KNIFE EDGE"))
+   {
+      //wrap_big_tex = 1
+      settings.fast_crc = 0;
+      settings.filtering = 1;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"Knockout Kings 2000"))
+   {
+      //fb_info_disable = 1
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      //fb_clear = 1
+      read_alpha = 1;
+   }
+   else if (strstr(name, (const char *)"MACE"))
+   {
+#if 1
+      // Not in original INI - fixes black stripes on big textures
+      // TODO: check for regressions
+      settings.alt_tex_size = 1;
+      settings.use_sts1_only = 1;
+      settings.increase_texrect_edge = 1;
+#endif
+      //fix_tex_coord = 8
+      settings.filtering = 1;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"Quake"))
+   {
+      settings.force_microcheck = 1;
+      settings.buff_clear = 0;
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char *)"QUAKE II"))
+   {
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"Holy Magic Century"))
+   {
+      settings.filtering = 2;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"Quest 64"))
+   {
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char*)"Silicon Valley"))
+   {
+      settings.filtering = 1;
+      //depthmode = 0
+   }
+   else if (strstr(name, (const char*)"SNOWBOARD KIDS2")
+         || strstr(name, (const char*)"Snobow Kids 2"))
+   {
+      settings.swapmode = 0;
+      settings.filtering = 1;
+   }
+   else if (strstr(name, (const char*)"South Park Chef's Lu")
+         || strstr(name, (const char*)"South Park: Chef's L"))
+   {
+      //fix_tex_coord = 4
+      settings.filtering = 1;
+      //depthmode = 1
+      settings.fog = 0;
+      settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"LAMBORGHINI"))
+   {
+      settings.use_sts1_only = 1;
+   }
+   else if (strstr(name, (const char*)"MAGICAL TETRIS"))
+   {
+      settings.force_microcheck = 1;
+      //depthmode = 1
+      settings.fog = 0;
+   }
+   else if (strstr(name, (const char *)"MarioParty"))
+   {
+      settings.clip_zmin = 1;
+      //depthmode = 0
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char*)"MarioParty2"))
+   {
+      //depthmode = 0
+      settings.swapmode = 2;
+   }
+   else if (strstr(name, (const char *)"Mega Man 64")
+         || strstr(name, (const char *)"RockMan Dash"))
+   {
+      settings.increase_texrect_edge = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"TUROK_DINOSAUR_HUNTE"))
+   {
+      settings.lodmode = 1;
+   }
+   else if (strstr(name, (const char *)"SUPER MARIO 64")
+         || strstr(name, (const char *)"SUPERMARIO64"))
+   {
+      //depth_bias = 32
+      settings.lodmode = 1;
+      settings.filtering = 1;
+      //depthmode = 1
+   }
+   else if (strstr(name, (const char *)"SUPERMAN"))
+   {
+      cpu_write_hack = 1;
+   }
+   else if (strstr(name, (const char *)"TETRISPHERE"))
+   {
+      settings.alt_tex_size = 1;
+      settings.use_sts1_only = 1;
+      settings.increase_texrect_edge = 1;
+      //depthmode = 1
+      smart_read = 1;
+#ifdef HAVE_HWFBE
+      hires = 1;
+#endif
+      fb_crc_mode = 2;
+   }
+   else if (strstr(name, (const char *)"MARIOKART64"))
+   {
+      settings.fast_crc = 0;
+      settings.stipple_mode = 1;
+      settings.stipple_pattern = (uint32_t)4286595040;
+      //depthmode = 1
+#ifndef HAVE_HWFBE
+      read_always = 1;
+#endif
+   }
+   else if (strstr(name, (const char *)"YOSHI STORY"))
+   {
+      //fix_tex_coord = 32
+      //depthmode = 1
+      settings.filtering = 1;
+      settings.fog = 0;
+   }
+   else
+   {
+      if (strstr(name, (const char*)"Mini Racers") ||
+            uc_crc == UCODE_MINI_RACERS_CRC1 || uc_crc == UCODE_MINI_RACERS_CRC2)
+      {
+         /* Mini Racers (prototype ROM ) does not have a valid name, so detect by ucode crc */
+         settings.force_microcheck = 1;
+         settings.buff_clear = 0;
+         smart_read = 1;
+#ifdef HAVE_HWFBE
+         hires = 1;
+#endif
+         settings.swapmode = 0;
+      }
+   }
 
    //detect games which require special hacks
    if (strstr(name, (const char *)"ZELDA") || strstr(name, (const char *)"MASK"))
@@ -411,121 +2053,75 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"PUZZLE LEAGUE"))
       settings.hacks |= hack_PPL;
 
-   Ini * ini = Ini::OpenIni();
-   if (!ini)
-      return;
-   ini->SetPath(name);
-
-   ini->Read("alt_tex_size", &(settings.alt_tex_size));
-   ini->Read("use_sts1_only", &(settings.use_sts1_only));
-   ini->Read("force_calc_sphere", &(settings.force_calc_sphere));
-   ini->Read("correct_viewport", &(settings.correct_viewport));
-   ini->Read("increase_texrect_edge", &(settings.increase_texrect_edge));
-   ini->Read("decrease_fillrect_edge", &(settings.decrease_fillrect_edge));
-   if (ini->Read("texture_correction", -1) == 0) settings.texture_correction = 0;
-   else settings.texture_correction = 1;
-   if (ini->Read("pal230", -1) == 1) settings.pal230 = 1;
-   else settings.pal230 = 0;
-   ini->Read("stipple_mode", &(settings.stipple_mode));
-   int stipple_pattern = ini->Read("stipple_pattern", -1);
-   if (stipple_pattern > 0) settings.stipple_pattern = (uint32_t)stipple_pattern;
-   ini->Read("force_microcheck", &(settings.force_microcheck));
-   ini->Read("force_quad3d", &(settings.force_quad3d));
-   ini->Read("clip_zmin", &(settings.clip_zmin));
-   ini->Read("clip_zmax", &(settings.clip_zmax));
-   ini->Read("fast_crc", &(settings.fast_crc));
-   ini->Read("adjust_aspect", &(settings.adjust_aspect), 1);
-   ini->Read("zmode_compare_less", &(settings.zmode_compare_less));
-   ini->Read("old_style_adither", &(settings.old_style_adither));
-   ini->Read("n64_z_scale", &(settings.n64_z_scale));
    if (settings.n64_z_scale)
       ZLUT_init();
 
    //frame buffer
-   int optimize_texrect = ini->Read("optimize_texrect", -1);
-   int ignore_aux_copy = ini->Read("ignore_aux_copy", -1);
-   int hires_buf_clear = ini->Read("hires_buf_clear", -1);
-   int read_alpha = ini->Read("fb_read_alpha", -1);
-   int useless_is_useless = ini->Read("useless_is_useless", -1);
-   int fb_crc_mode = ini->Read("fb_crc_mode", -1);
 
-   if (optimize_texrect > 0) settings.frame_buffer |= fb_optimize_texrect;
-   else if (optimize_texrect == 0) settings.frame_buffer &= ~fb_optimize_texrect;
-   if (ignore_aux_copy > 0) settings.frame_buffer |= fb_ignore_aux_copy;
-   else if (ignore_aux_copy == 0) settings.frame_buffer &= ~fb_ignore_aux_copy;
-   if (hires_buf_clear > 0) settings.frame_buffer |= fb_hwfbe_buf_clear;
-   else if (hires_buf_clear == 0) settings.frame_buffer &= ~fb_hwfbe_buf_clear;
-   if (read_alpha > 0) settings.frame_buffer |= fb_read_alpha;
-   else if (read_alpha == 0) settings.frame_buffer &= ~fb_read_alpha;
-   if (useless_is_useless > 0) settings.frame_buffer |= fb_useless_is_useless;
-   else settings.frame_buffer &= ~fb_useless_is_useless;
-   if (fb_crc_mode >= 0) settings.fb_crc_mode = fb_crc_mode;
+   if (optimize_texrect > 0)
+      settings.frame_buffer |= fb_optimize_texrect;
+   else if (optimize_texrect == 0)
+      settings.frame_buffer &= ~fb_optimize_texrect;
 
-   //  if (settings.custom_ini)
-   {
-      ini->Read("filtering", &(settings.filtering));
-      ini->Read("fog", &(settings.fog));
-      ini->Read("buff_clear", &(settings.buff_clear));
-      ini->Read("swapmode", &(settings.swapmode));
-      ini->Read("aspect", &(settings.aspectmode));
-      ini->Read("lodmode", &(settings.lodmode));
+   if (ignore_aux_copy > 0)
+      settings.frame_buffer |= fb_ignore_aux_copy;
+   else if (ignore_aux_copy == 0)
+      settings.frame_buffer &= ~fb_ignore_aux_copy;
 
-      PackedScreenResolution tmpRes = Config_ReadScreenSettings();
-      settings.res_data = tmpRes.resolution;
-      settings.scr_res_x = settings.res_x = tmpRes.width;
-      settings.scr_res_y = settings.res_y = tmpRes.height;
+   if (hires_buf_clear > 0)
+      settings.frame_buffer |= fb_hwfbe_buf_clear;
+   else if (hires_buf_clear == 0)
+      settings.frame_buffer &= ~fb_hwfbe_buf_clear;
 
-      //frame buffer
-      int smart_read = ini->Read("fb_smart", -1);
-      int hires = ini->Read("fb_hires", -1);
-      int read_always = ini->Read("fb_read_always", -1);
-      int read_back_to_screen = ini->Read("read_back_to_screen", -1);
-      int cpu_write_hack = ini->Read("detect_cpu_write", -1);
-      int get_fbinfo = ini->Read("fb_get_info", -1);
-      int depth_render = ini->Read("fb_render", -1);
+   if (read_alpha > 0)
+      settings.frame_buffer |= fb_read_alpha;
+   else if (read_alpha == 0)
+      settings.frame_buffer &= ~fb_read_alpha;
+   if (useless_is_useless > 0)
+      settings.frame_buffer |= fb_useless_is_useless;
+   else
+      settings.frame_buffer &= ~fb_useless_is_useless;
 
-      if (smart_read > 0) settings.frame_buffer |= fb_emulation;
-      else if (smart_read == 0) settings.frame_buffer &= ~fb_emulation;
-      if (hires > 0) settings.frame_buffer |= fb_hwfbe;
-      else if (hires == 0) settings.frame_buffer &= ~fb_hwfbe;
-      if (read_always > 0) settings.frame_buffer |= fb_ref;
-      else if (read_always == 0) settings.frame_buffer &= ~fb_ref;
-      if (read_back_to_screen == 1) settings.frame_buffer |= fb_read_back_to_screen;
-      else if (read_back_to_screen == 2) settings.frame_buffer |= fb_read_back_to_screen2;
-      else if (read_back_to_screen == 0) settings.frame_buffer &= ~(fb_read_back_to_screen|fb_read_back_to_screen2);
-      if (cpu_write_hack > 0) settings.frame_buffer |= fb_cpu_write_hack;
-      else if (cpu_write_hack == 0) settings.frame_buffer &= ~fb_cpu_write_hack;
-      if (get_fbinfo > 0) settings.frame_buffer |= fb_get_info;
-      else if (get_fbinfo == 0) settings.frame_buffer &= ~fb_get_info;
-      if (depth_render > 0) settings.frame_buffer |= fb_depth_render;
-      else if (depth_render == 0) settings.frame_buffer &= ~fb_depth_render;
-      settings.frame_buffer |= fb_motionblur;
+   if (fb_crc_mode >= 0)
+      settings.fb_crc_mode = fb_crc_mode;
 
-   }
+   if (smart_read > 0)
+      settings.frame_buffer |= fb_emulation;
+   else if (smart_read == 0)
+      settings.frame_buffer &= ~fb_emulation;
 
-   if (
-         strstr(name, (const char *)"Blast Corps")
-         || strstr(name, (const char *)"ZELDA MAJORA'S MASK")
-         || strstr(name, (const char *)"ZELDA")
-         || strstr(name, (const char *)"MASK")
-         || strstr(name, (const char *)"Banjo-Kazooie")
-         || strstr(name, (const char *)"MARIOKART64")
-         || strstr(name, (const char *)"Quake")
-         || strstr(name, (const char *)"Perfect Dark")
-      )
-      settings.frame_buffer = 1;
-
-   if (
-         strstr(name, (const char *)"Resident Evil II")
-         || strstr(name, (const char *)"BioHazard II")
-      )
-      settings.frame_buffer = fb_cpu_write_hack;
-
-   if (
-         strstr(name, (const char *)"Banjo-Kazooie")
-         || strstr(name, (const char *)"MARIOKART64")
-      )
+   if (hires > 0)
+      settings.frame_buffer |= fb_hwfbe;
+   else if (hires == 0)
+      settings.frame_buffer &= ~fb_hwfbe;
+   if (read_always > 0)
       settings.frame_buffer |= fb_ref;
+   else if (read_always == 0)
+      settings.frame_buffer &= ~fb_ref;
+
+   if (read_back_to_screen == 1)
+      settings.frame_buffer |= fb_read_back_to_screen;
+   else if (read_back_to_screen == 2)
+      settings.frame_buffer |= fb_read_back_to_screen2;
+   else if (read_back_to_screen == 0)
+      settings.frame_buffer &= ~(fb_read_back_to_screen|fb_read_back_to_screen2);
+
+   if (cpu_write_hack > 0)
+      settings.frame_buffer |= fb_cpu_write_hack;
+   else if (cpu_write_hack == 0)
+      settings.frame_buffer &= ~fb_cpu_write_hack;
+
+   if (get_fbinfo > 0)
+      settings.frame_buffer |= fb_get_info;
+   else if (get_fbinfo == 0)
+      settings.frame_buffer &= ~fb_get_info;
+
+   if (depth_render > 0)
+      settings.frame_buffer |= fb_depth_render;
+   else if (depth_render == 0)
+      settings.frame_buffer &= ~fb_depth_render;
+
+   settings.frame_buffer |= fb_motionblur;
 
    settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
 }
@@ -761,18 +2357,8 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
    l_DebugCallback = DebugCallback;
    l_DebugCallContext = Context;
 
-   const char *configDir = ConfigGetSharedDataFilepath("Glide64mk2.ini");
-   if (configDir)
-   {
-      SetConfigDir(configDir);
-      ReadSettings();
-      return M64ERR_SUCCESS;
-   }
-   else
-   {
-      ERRLOG("Couldn't find Glide64mk2.ini");
-      return M64ERR_FILES;
-   }
+   ReadSettings();
+   return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL PluginShutdown(void)
@@ -1122,8 +2708,10 @@ void DrawFrameBuffer(void)
    drawViRegBG();
 }
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 
 /******************************************************************
 Function: UpdateScreen
@@ -1202,28 +2790,26 @@ static void DrawWholeFrameBufferToScreen()
     memset(gfx.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
 }
 
-#ifdef __LIBRETRO__ // Core options
-#include "../../../libretro/libretro.h"
-extern retro_environment_t environ_cb;
-extern void update_variables(void);
-#endif
+#ifdef __cplusplus
 }
+#endif
 
-extern unsigned retro_filtering;
 
 uint32_t curframe = 0;
 
 void newSwapBuffers(void)
 {
+   if (!rdp.updatescreen)
+      return;
+
 #ifdef __LIBRETRO__ // Core options
    bool updated = false;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       update_variables();
 
-   settings.filtering = retro_filtering;
+   if (retro_filtering != 0)
+      settings.filtering = retro_filtering;
 #endif
-   if (!rdp.updatescreen)
-      return;
 
    rdp.updatescreen = 0;
 

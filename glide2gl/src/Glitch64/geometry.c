@@ -304,7 +304,7 @@ float biasFactor = 0;
 void FindBestDepthBias()
 {
 #if defined(__LIBRETRO__) // TODO: How to calculate this?
-   biasFactor = 1.0f;
+   biasFactor = 0.25f;
 #else
    float f, bestz = 0.25f;
    int x;
