@@ -40,7 +40,6 @@
 #include <math.h>
 #include "Gfx_1.3.h"
 #include "m64p.h"
-#include "Ini.h"
 #include "Config.h"
 #include "3dmath.h"
 #include "Util.h"
@@ -325,7 +324,7 @@ void microcheck(void)
    uc_crc = 0;
 
    // Check first 3k of ucode, because the last 1k sometimes contains trash
-   for (i=0; i<3072>>2; i++)
+   for (i = 0; i < 3072 >> 2; i++)
       uc_crc += ((uint32_t*)microcode)[i];
 
    FRDP_E ("crc: %08lx\n", uc_crc);
@@ -342,37 +341,248 @@ void microcheck(void)
    ucf.close ();
 #endif
 
-   FRDP("ucode = %08lx\n", uc_crc);
+   fprintf(stderr, "ucode = %08lx\n", uc_crc);
 
-   Ini * ini = Ini::OpenIni();
-   ini->SetPath("UCODE");
-   char str[9];
-   sprintf (str, "%08lx", (unsigned long)uc_crc);
-   int uc = ini->Read(str, -2);
-
-   if (uc == -2 && ucode_error_report)
-   {
-      settings.ucode = Config_ReadInt("ucode", "Force microcode", 0, true, false);
-
-      ReleaseGfx ();
-      ERRLOG("Error: uCode crc not found in INI, using currently selected uCode\n\n%08lx", (unsigned long)uc_crc);
-
-      ucode_error_report = false; // don't report any more ucode errors from this game
-   }
-   else if (uc == -1 && ucode_error_report)
-   {
-      settings.ucode = ini->Read("/SETTINGS/ucode", 0);
-
-      ReleaseGfx ();
-      ERRLOG("Error: Unsupported uCode!\n\ncrc: %08lx", (unsigned long)uc_crc);
-
-      ucode_error_report = false; // don't report any more ucode errors from this game
-   }
-   else
    {
       old_ucode = settings.ucode;
-      settings.ucode = uc;
-      FRDP("microcheck: old ucode: %d,  new ucode: %d\n", old_ucode, uc);
+
+      if (
+               uc_crc == 0x006bd77f
+            || uc_crc == 0x07200895
+            || uc_crc == UCODE_GOLDENEYE_007
+            || uc_crc == UCODE_DUKE_NUKEM_64
+            || uc_crc == UCODE_ROBOTECH_CRYSTAL_DREAMS_PROTO
+            || uc_crc == 0xb62f900f
+            || uc_crc == 0xbc03e969
+            || uc_crc == 0xd5604971
+            || uc_crc == 0xd5d68b1f
+            || uc_crc == 0xd67c2f8b
+            || uc_crc == UCODE_KILLER_INSTINCT_GOLD
+            || uc_crc == UCODE_MISCHIEF_MAKERS
+            || uc_crc == UCODE_MORTAL_KOMBAT_TRILOGY
+            || uc_crc == 0x5182f610
+            || uc_crc == UCODE_BLAST_CORPS
+            || uc_crc == UCODE_PILOTWINGS_64
+            || uc_crc == UCODE_CRUISN_USA
+            || uc_crc == UCODE_SUPER_MARIO_64
+            || uc_crc == UCODE_TETRISPHERE
+            || uc_crc == 0x4165e1fd
+            || uc_crc == 0x6e4d50af
+         )
+      {
+         settings.ucode = 0;
+         fprintf(stderr, "RSP SW 2.0X (Super Mario 64)\n");
+      }
+      else if (
+               uc_crc == 0x05165579
+            || uc_crc == 0x05777c62
+            || uc_crc == 0x057e7c62
+            || uc_crc == 0x1118b3e0
+            || uc_crc == UCODE_MINI_RACERS_CRC1
+            || uc_crc == 0x1de712ff
+            || uc_crc == 0x24cd885b
+            || uc_crc == 0x26a7879a
+            || uc_crc == 0xfb816260
+            || uc_crc == 0x2c7975d6
+            || uc_crc == 0x2d3fe3f1
+            || uc_crc == UCODE_FIGHTING_FORCE_64_CRC1
+            || uc_crc == 0x339872a6
+            || uc_crc == 0x3ff1a4ca
+            || uc_crc == 0x4340ac9b
+            || uc_crc == 0x440cfad6
+            || uc_crc == 0x4fe6df78
+            || uc_crc == 0x5257cd2a
+            || uc_crc == 0x5414030c
+            || uc_crc == 0x5414030d
+            || uc_crc == 0x559ff7d4
+            || uc_crc == UCODE_YOSHIS_STORY_CRC2
+            || uc_crc == 0x5ef4e34a
+            || uc_crc == 0x6075e9eb
+            || uc_crc == 0x60c1dcc4
+            || uc_crc == UCODE_1080_SNOWBOARDING
+            || uc_crc == 0x66c0b10a
+            || uc_crc == 0x6eaa1da8
+            || uc_crc == 0x72a4f34e
+            || uc_crc == 0x73999a23
+            || uc_crc == 0x7df75834
+            || uc_crc == UCODE_DOOM_64
+            || uc_crc == UCODE_TUROK_1
+            || uc_crc == 0x82f48073
+            || uc_crc == UCODE_MINI_RACERS_CRC2
+            || uc_crc == 0x841ce10f
+            || uc_crc == 0x863e1ca7
+            || uc_crc == UCODE_MARIO_KART_64
+            || uc_crc == 0x8d5735b2
+            || uc_crc == 0x8d5735b3
+            || uc_crc == 0x97d1b58a
+            || uc_crc == UCODE_QUAKE_64
+            || uc_crc == UCODE_WETRIX
+            || uc_crc == UCODE_STAR_FOX_64
+            || uc_crc == UCODE_FIGHTING_FORCE_64_CRC2
+            || uc_crc == 0xb4577b9c
+            || uc_crc == 0xbe78677c
+            || uc_crc == 0xbed8b069
+            || uc_crc == 0xc3704e41
+            || uc_crc == UCODE_EXTREME_G
+            || uc_crc == 0xc99a4c6c
+            || uc_crc == 0xcee7920f
+            || uc_crc == 0xd1663234
+            || uc_crc == 0xd2a9f59c
+            || uc_crc == 0xd41db5f7
+            || uc_crc == 0xd57049a5
+            || uc_crc == 0xd802ec04
+            || uc_crc == UCODE_WIPEOUT_64
+            || uc_crc == 0xe9231df2
+            || uc_crc == 0xec040469
+            || uc_crc == UCODE_DUAL_HEROES
+            || uc_crc == UCODE_HEXEN_64
+            || uc_crc == UCODE_CHAMELEON_TWIST
+            || uc_crc == UCODE_BANJO_KAZOOIE
+            || uc_crc == UCODE_MACE_THE_DARK_AGE
+            || uc_crc == 0xef54ee35
+            )
+      {
+         settings.ucode = 1;
+         fprintf(stderr, "F3DEX 1.XX (Star Fox 64)\n");
+      }
+      else if (
+               uc_crc == 0x03044b84
+            || uc_crc == 0x030f4b84
+            || uc_crc == 0x0ff79527
+            || uc_crc == UCODE_COMMAND_AND_CONQUER
+            || uc_crc == 0x1a1e18a0
+            || uc_crc == 0x1a1e1920
+            || uc_crc == UCODE_DONKEY_KONG_64
+            || uc_crc == 0x1a62dc2f
+            || uc_crc == UCODE_PAPER_MARIO
+            || uc_crc == 0x21f91874
+            || uc_crc == UCODE_ZELDA_MAJORAS_MASK
+            || uc_crc == UCODE_ZELDA_OOT
+            || uc_crc == 0x6124a508
+            || uc_crc == 0x630a61fb
+            || uc_crc == UCODE_CASTLEVANIA_64
+            || uc_crc == UCODE_CASTLEVANIA_64
+            || uc_crc == 0x65201a09
+            || uc_crc == 0x679e1205
+            || uc_crc == 0x6d8f8f8a
+            || uc_crc == 0x753be4a5
+            || uc_crc == 0xda13ab96
+            || uc_crc == 0xe65cb4ad
+            || uc_crc == 0xe1290fa2
+            || uc_crc == 0xde7d67d4
+            || uc_crc == 0x485abff2
+            || uc_crc == UCODE_STARCRAFT_64
+            || uc_crc == 0x2b291027
+            || uc_crc == 0x2f71d1d5
+            || uc_crc == 0x2f7dd1d5
+            || uc_crc == 0x485abff2
+            || uc_crc == 0x93d11f7b
+            || uc_crc == 0x93d11ffb
+            || uc_crc == 0x93d1ff7b
+            || uc_crc == UCODE_FZERO_X
+            || uc_crc == 0x955117fb
+            || uc_crc == UCODE_BIOHAZARD_2
+            || uc_crc == 0xa2d0f88e 
+            || uc_crc == 0xaa86cb1d
+            || uc_crc == 0xaae4a5b9
+            || uc_crc == 0xad0a6292
+            || uc_crc == 0xad0a6312
+            || uc_crc == 0xb62f900f
+            || uc_crc == 0xba65ea1e
+            || uc_crc == UCODE_KIRBY_64_CRYSTAL_SHARDS
+            || uc_crc == UCODE_SUPER_SMASH_BROS
+            || uc_crc == UCODE_MARIO_TENNIS
+            || uc_crc == UCODE_MEGA_MAN_64
+            || uc_crc == UCODE_RIDGE_RACER_64
+            || uc_crc == UCODE_40WINKS
+            || uc_crc == 0xcb8c9b6c
+            || uc_crc == 0xcfa35a45
+            )
+      {
+         settings.ucode = 2;
+         fprintf(stderr, "F3DEX 2.XX (The Legend of Zelda: Ocarina of Time)\n");
+      }
+      else if (
+               uc_crc == UCODE_WAVERACE_64
+            )
+      {
+         settings.ucode = 3;
+         fprintf(stderr, "F3DEX ? (WaveRace)\n");
+      }
+      else if (
+               uc_crc == UCODE_STAR_WARS_SHADOW_OF_THE_EMPIRE
+            )
+      {
+         settings.ucode = 4;
+         fprintf(stderr, "RSP SW 2.0D EXT (Star Wars: Shadows of the Empire)\n");
+      }
+      else if (
+                  uc_crc == UCODE_JET_FORCE_GEMINI
+               || uc_crc == UCODE_MICKEYS_SPEEDWAY_USA
+               || uc_crc == UCODE_DIDDY_KONG_RACING
+               || uc_crc == 0x63be08b3
+            )
+      {
+         settings.ucode = 5;
+         fprintf(stderr, "RSP SW 2.0 (Diddy Kong Racing)\n");
+      }
+      else if (
+                  uc_crc == 0x1ea9e30f
+               || uc_crc == 0x74af0a74
+               || uc_crc == 0x794c3e28
+               || uc_crc == UCODE_BANGAIOH
+               || uc_crc == 0x2b5a89c2
+               || uc_crc == UCODE_YOSHIS_STORY_CRC1
+               || uc_crc == 0xd20dedbf
+            )
+      {
+         settings.ucode = 6;
+         fprintf(stderr, "S2DEX 1.XX  (Yoshi's Story - SimCity 2000)\n");
+      }
+      else if (
+               uc_crc == UCODE_PERFECT_DARK
+            )
+      {
+         settings.ucode = 7;
+         fprintf(stderr, "RSP SW PD (Perfect Dark)\n");
+      }
+      else if (
+               uc_crc == UCODE_CONKERS_BAD_FUR_DAY
+            )
+      {
+         settings.ucode = 8;
+         fprintf(stderr, "F3DEXBG 2.08 (Conker's Bad Fur Day)\n");
+      }
+      else if (
+               uc_crc == 0x0bf36d36
+            )
+      {
+         settings.ucode = 9;
+         fprintf(stderr, "(Star Wars: Battle for Naboo)\n");
+      }
+      else if (
+                  uc_crc == 0x1f120bbb
+               || uc_crc == 0xf9893f70
+               || uc_crc == 0xff372492
+            )
+      {
+         settings.ucode = 21;
+      }
+      else if (
+               uc_crc == 0x0d7bbffb
+            || uc_crc == 0x0ff795bf
+            || uc_crc == UCODE_STAR_WARS_ROGUE_SQUADRON
+            || uc_crc == 0x844b55b5
+            || uc_crc == 0x8ec3e124
+            || uc_crc == 0xd5c4dc96
+            )
+      {
+         settings.ucode = -1;
+         fprintf(stderr, "Unknown Microcode.\n");
+      }
+
+
+      fprintf(stderr, "microcheck: old ucode: %d,  new ucode: %d\n", old_ucode, settings.ucode);
       if (uc_crc == 0x8d5735b2 || uc_crc == 0xb1821ed3 || uc_crc == 0x1118b3e0) //F3DLP.Rej ucode. perspective texture correction is not implemented
       {
          rdp.Persp_en = 1;

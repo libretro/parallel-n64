@@ -139,9 +139,9 @@ static void setup_variables_balanced(void)
       { "mupen64-disableexpmem",
          "Disable Expansion RAM; no|yes" },
       { "mupen64-gfxplugin",
-         "Graphics Plugin; auto (balanced)" },
+         "Graphics Plugin; automatic (balanced)" },
       { "mupen64-rspplugin",
-         "RSP Plugin; auto (balanced)" },
+         "RSP Plugin; automatic (balanced)" },
       { "mupen64-screensize",
          "Graphics Resolution; 640x480|1280x960|320x240" },
       { "mupen64-filtering",
@@ -407,25 +407,24 @@ static bool frame_dupe = true;
 
 void update_variables(void)
 {
-   if (gfx_plugin == GFX_GLIDE64)
-   {
-      struct retro_variable var;
-   
-      var.key = "mupen64-filtering";
-      var.value = NULL;
+   struct retro_variable var;
 
-      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-      {
-         if (strcmp(var.value, "automatic") == 0)
-            retro_filtering = 0;
-         else if (strcmp(var.value, "bilinear") == 0)
-            retro_filtering = 1;
-         else if (strcmp(var.value, "nearest") == 0)
-            retro_filtering = 2;
-      }
+   var.key = "mupen64-filtering";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (strcmp(var.value, "automatic") == 0)
+         retro_filtering = 0;
+      else if (strcmp(var.value, "bilinear") == 0)
+         retro_filtering = 1;
+      else if (strcmp(var.value, "nearest") == 0)
+         retro_filtering = 2;
    }
 
-   struct retro_variable var = { "mupen64-dupe" };
+   var.key = "mupen64-dupe";
+   var.value = NULL;
+
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       if (!strcmp(var.value, "yes"))
