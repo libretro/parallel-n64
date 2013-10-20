@@ -34,13 +34,13 @@ class CColorCombiner
     friend class CRender;
 public:
     virtual ~CColorCombiner() {};
-    COLOR GetConstFactor(uint32 colorFlag, uint32 alphaFlag, uint32 defaultColor = 0);
+    COLOR GetConstFactor(uint32 colorFlag, uint32 alphaFlag, uint32 defaultColor);
     virtual void InitCombinerMode(void);
 
     virtual bool Initialize(void)=0;
     virtual void CleanUp(void) {};
     virtual void UpdateCombiner(uint32 dwMux0, uint32 dwMux1);
-    virtual void InitCombinerBlenderForSimpleTextureDraw(uint32 tile=0)=0;
+    virtual void InitCombinerBlenderForSimpleTextureDraw(uint32 tile)=0;
     virtual void DisableCombiner(void)=0;
 
 #ifdef DEBUGGER
@@ -97,7 +97,7 @@ inline bool isTexel(uint8 val)
         return false;
 }
 
-COLOR CalculateConstFactor(uint32 colorOp, uint32 alphaOp, uint32 curCol=0);
+COLOR CalculateConstFactor(uint32 colorOp, uint32 alphaOp, uint32 curCol);
 
 #endif
 

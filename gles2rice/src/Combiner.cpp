@@ -148,7 +148,7 @@ COLOR CalculateConstFactor(uint32 colorOp, uint32 alphaOp, uint32 curCol)
 }
 
 
-COLOR CColorCombiner::GetConstFactor(uint32 colorFlag, uint32   alphaFlag, uint32 defaultColor)
+COLOR CColorCombiner::GetConstFactor(uint32 colorFlag, uint32 alphaFlag, uint32 defaultColor)
 {
     // Allows a combine mode to select what TFACTOR should be
     uint32 color = defaultColor;

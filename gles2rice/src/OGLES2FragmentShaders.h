@@ -88,7 +88,7 @@ class COGLFragmentShaderCombiner : public COGLColorCombiner
 {
 public:
     bool Initialize(void);
-    void InitCombinerBlenderForSimpleTextureDraw(uint32 tile=0);
+    void InitCombinerBlenderForSimpleTextureDraw(uint32 tile);
 protected:
     friend class OGLDeviceBuilder;
 
