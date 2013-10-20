@@ -38,7 +38,6 @@
 //****************************************************************
 
 #include "Gfx_1.3.h"
-#include "Config.h"
 #include "Util.h"
 #include "3dmath.h"
 #include "Combine.h"
