@@ -76,7 +76,7 @@ protected:
 
 uint32 GetTexelNumber(N64CombinerType &m);
 int CountTexel1Cycle(N64CombinerType &m);
-bool IsTxtrUsed(N64CombinerType &m);
+bool IsTextureUsed(N64CombinerType &m);
 
 void swap(uint8 &a, uint8 &b);
 
