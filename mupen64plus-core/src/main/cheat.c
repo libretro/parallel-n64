@@ -194,6 +194,7 @@ void cheat_apply_cheats(int entry)
     int skip;
     int execute_next;
 
+#if 0
 	// If game is Pilotwing 64, apply shadow fix
 	// Cheatcodes taken from Laughy of emutalk.net
 	// Doesn't work for japanese version 9cc4801 e42ee491 and only first rom has actually been tested
@@ -262,6 +263,7 @@ void cheat_apply_cheats(int entry)
 			execute_cheat(0x80263F01, 0x00FF, NULL);
 		}
 	}
+#endif
 
     // If game is Zelda OOT, apply subscreen delay fix
     if (strncmp((char *)ROM_HEADER.Name, "THE LEGEND OF ZELDA", 19) == 0 && entry == ENTRY_VI) {
