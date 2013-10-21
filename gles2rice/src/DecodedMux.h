@@ -111,7 +111,7 @@ public:
 
     void Decode(uint32 dwMux0, uint32 dwMux1);
     virtual void Hack(void);
-    bool IsUsed(uint8 fac, uint8 mask=MUX_MASK);
+    bool IsUsed(uint8 fac, uint8 mask);
     bool IsUsedInAlphaChannel(uint8 fac, uint8 mask=MUX_MASK);
     bool IsUsedInColorChannel(uint8 fac, uint8 mask=MUX_MASK);
     bool IsUsedInCycle(uint8 fac, int cycle, CombineChannel channel, uint8 mask=MUX_MASK);

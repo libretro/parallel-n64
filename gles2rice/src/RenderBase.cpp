@@ -984,7 +984,7 @@ void InitVertex(uint32 dwV, uint32 vtxIndex, bool bTexture, bool openGL)
 
     if( g_curRomInfo.bEnableTxtLOD && vtxIndex == 1 && gRDP.otherMode.text_lod )
     {
-        if( CRender::g_pRender->IsTexel1Enable() && CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->IsUsed(MUX_LODFRAC) )
+        if (CRender::g_pRender->IsTexel1Enable() && CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->IsUsed(MUX_LODFRAC, MUX_MASK))
         {
             ComputeLOD(openGL);
         }

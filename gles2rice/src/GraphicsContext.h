@@ -53,8 +53,8 @@ public:
     bool Ready() { return m_bReady; }
     bool IsWindowed() {return m_bWindowed;}
 
-    virtual bool Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed );
-    virtual bool ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed );
+    virtual bool Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed);
+    virtual bool ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed);
     virtual void CleanUp();
 
     virtual void Clear(ClearFlag flags, uint32 color, float depth) = 0;

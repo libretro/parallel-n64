@@ -70,7 +70,7 @@ void COGLExtDecodedMux::FurtherFormatForOGL2(void)
     // we can not use multitexture to do color combiner. Each combiner stage can only
     // use 1 texture.
 
-    if( IsUsed(MUX_TEXEL0) && IsUsed(MUX_TEXEL1) )
+    if( IsUsed(MUX_TEXEL0, MUX_MASK) && IsUsed(MUX_TEXEL1, MUX_MASK) )
     {
         if( Count(MUX_TEXEL0,0)+Count(MUX_TEXEL0,1) >= Count(MUX_TEXEL1,0)+Count(MUX_TEXEL1,1) )
         {

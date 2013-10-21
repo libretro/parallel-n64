@@ -152,8 +152,8 @@ void DecodedMux::Decode(uint32 dwMux0, uint32 dwMux1)
 
     m_bShadeIsUsed[1] = IsUsedInAlphaChannel(MUX_SHADE);
     m_bShadeIsUsed[0] = IsUsedInColorChannel(MUX_SHADE);
-    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0);
-    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1);
+    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0, MUX_MASK);
+    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1, MUX_MASK);
 
     m_dwShadeColorChannelFlag = 0;
     m_dwShadeAlphaChannelFlag = 0;
@@ -320,8 +320,8 @@ void DecodedMuxForPixelShader::Simplify(void)
     splitType[3] = CM_FMT_TYPE_NOT_USED;
     mType = CM_FMT_TYPE_NOT_USED;
 
-    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0);
-    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1);
+    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0, MUX_MASK);
+    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1, MUX_MASK);
 }
 
 void DecodedMuxForSemiPixelShader::Reset(void)
@@ -340,12 +340,12 @@ void DecodedMuxForSemiPixelShader::Reset(void)
     CheckCombineInCycle1();
     if( g_curRomInfo.bTexture1Hack )
     {
-        ReplaceVal(MUX_TEXEL1,MUX_TEXEL0,2);
-        ReplaceVal(MUX_TEXEL1,MUX_TEXEL0,3);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 2);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 3);
     }
 
-    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0);
-    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1);
+    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0, MUX_MASK);
+    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1, MUX_MASK);
 }
 
 void DecodedMuxForOGL14V2::Simplify(void)
@@ -353,16 +353,16 @@ void DecodedMuxForOGL14V2::Simplify(void)
     CheckCombineInCycle1();
     if( g_curRomInfo.bTexture1Hack )
     {
-        ReplaceVal(MUX_TEXEL1,MUX_TEXEL0,2);
-        ReplaceVal(MUX_TEXEL1,MUX_TEXEL0,3);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 2);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 3);
     }
     Reformat();
 
     UseTextureForConstant();
     Reformat();
 
-    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0);
-    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1);
+    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0, MUX_MASK);
+    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1, MUX_MASK);
 }
 
 void DecodedMux::Simplify(void)
@@ -372,8 +372,8 @@ void DecodedMux::Simplify(void)
         ConvertLODFracTo0();
     if( g_curRomInfo.bTexture1Hack )
     {
-        ReplaceVal(MUX_TEXEL1,MUX_TEXEL0,2);
-        ReplaceVal(MUX_TEXEL1,MUX_TEXEL0,3);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 2);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 3);
     }
     Reformat();
 
@@ -411,8 +411,8 @@ void DecodedMux::Simplify(void)
     Reformat();
 #endif
 
-    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0);
-    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1);
+    m_bTexel0IsUsed = IsUsed(MUX_TEXEL0, MUX_MASK);
+    m_bTexel1IsUsed = IsUsed(MUX_TEXEL1, MUX_MASK);
 }
 
 void DecodedMux::Reformat(bool do_complement)
@@ -770,19 +770,33 @@ void DecodedMux::Display(bool simplified, FILE *fp)
 
 int DecodedMux::HowManyConstFactors()
 {
-    int n=0;
-    if( IsUsed(MUX_PRIM) ) n++;
-    if( IsUsed(MUX_ENV) ) n++;
-    if( IsUsed(MUX_LODFRAC) ) n++;
-    if( IsUsed(MUX_PRIMLODFRAC) ) n++;
+    int n = 0;
+
+    if (IsUsed(MUX_PRIM, MUX_MASK))
+        n++;
+
+    if (IsUsed(MUX_ENV, MUX_MASK))
+        n++;
+
+    if (IsUsed(MUX_LODFRAC, MUX_MASK))
+        n++;
+
+    if (IsUsed(MUX_PRIMLODFRAC, MUX_MASK))
+        n++;
+
     return n;
 }
 
 int DecodedMux::HowManyTextures()
 {
-    int n=0;
-    if( IsUsed(MUX_TEXEL0) ) n++;
-    if( IsUsed(MUX_TEXEL1) ) n++;
+    int n = 0;
+
+    if (IsUsed(MUX_TEXEL0, MUX_MASK))
+        n++;
+
+    if (IsUsed(MUX_TEXEL1, MUX_MASK))
+        n++;
+
     return n;
 }
 
@@ -988,10 +1002,10 @@ void DecodedMux::UseShadeForConstant(void)
     uint8 mask = (uint8)~MUX_COMPLEMENT;
 
     int constants = 0;
-    if( IsUsed(MUX_ENV) ) constants++;
-    if( IsUsed(MUX_PRIM) ) constants++;
-    if( IsUsed(MUX_LODFRAC) ) constants++;
-    if( IsUsed(MUX_PRIMLODFRAC) ) constants++;
+    if (IsUsed(MUX_ENV, MUX_MASK)) constants++;
+    if (IsUsed(MUX_PRIM, MUX_MASK)) constants++;
+    if (IsUsed(MUX_LODFRAC, MUX_MASK)) constants++;
+    if (IsUsed(MUX_PRIMLODFRAC, MUX_MASK)) constants++;
 
     bool forceToUsed = constants>m_maxConstants;
 
@@ -1086,17 +1100,17 @@ void DecodedMux::UseTextureForConstant(void)
     int numofconst = HowManyConstFactors();
     int numOftex = HowManyTextures();
 
-    if( numofconst > m_maxConstants && numOftex < m_maxTextures )
+    if (numofconst > m_maxConstants && numOftex < m_maxTextures)
     {
         // We can use a texture for a constant
-        for( int i=0; i<2 && numofconst > m_maxConstants ; i++ )
+        for (int i=0; i<2 && numofconst > m_maxConstants ; i++)
         {
-            if( IsUsed(MUX_TEXEL0+i) )
+            if (IsUsed(MUX_TEXEL0+i, MUX_MASK))
             {
                 continue;   // can not use this texture
             }
 
-            if( IsUsed(MUX_PRIM) )
+            if (IsUsed(MUX_PRIM, MUX_MASK))
             {
                 ReplaceVal(MUX_PRIM, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_PRIM;
@@ -1104,7 +1118,7 @@ void DecodedMux::UseTextureForConstant(void)
                 continue;
             }
 
-            if( IsUsed(MUX_ENV) )
+            if (IsUsed(MUX_ENV, MUX_MASK))
             {
                 ReplaceVal(MUX_ENV, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_ENV;
@@ -1112,7 +1126,7 @@ void DecodedMux::UseTextureForConstant(void)
                 continue;
             }
 
-            if( IsUsed(MUX_LODFRAC) )
+            if (IsUsed(MUX_LODFRAC, MUX_MASK))
             {
                 ReplaceVal(MUX_LODFRAC, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_LODFRAC;
@@ -1120,7 +1134,7 @@ void DecodedMux::UseTextureForConstant(void)
                 continue;
             }
 
-            if( IsUsed(MUX_PRIMLODFRAC) )
+            if (IsUsed(MUX_PRIMLODFRAC, MUX_MASK))
             {
                 ReplaceVal(MUX_PRIMLODFRAC, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_PRIMLODFRAC;
@@ -1134,26 +1148,26 @@ void DecodedMux::UseTextureForConstant(void)
 
 void DecodedMuxForOGL14V2::UseTextureForConstant(void)
 {
-    bool envused = IsUsed(MUX_ENV);
-    bool lodused = IsUsed(MUX_LODFRAC);
+    bool envused = IsUsed(MUX_ENV, MUX_MASK);
+    bool lodused = IsUsed(MUX_LODFRAC, MUX_MASK);
     
     int numofconst = 0;
-    if( envused ) numofconst++;
-    if( lodused ) numofconst++;
+    if (envused) numofconst++;
+    if (lodused) numofconst++;
 
     int numOftex = HowManyTextures();
 
-    if( numofconst > 0 && numOftex < 2 )
+    if (numofconst > 0 && numOftex < 2)
     {
         // We can use a texture for a constant
-        for( int i=0; i<2 && numofconst > 0 ; i++ )
+        for (int i=0; i<2 && numofconst > 0 ; i++)
         {
-            if( IsUsed(MUX_TEXEL0+i) )
+            if (IsUsed(MUX_TEXEL0+i, MUX_MASK))
             {
                 continue;   // can not use this texture
             }
 
-            if( envused )
+            if (envused)
             {
                 ReplaceVal(MUX_ENV, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_ENV;
@@ -1162,7 +1176,7 @@ void DecodedMuxForOGL14V2::UseTextureForConstant(void)
                 continue;
             }
 
-            if( IsUsed(MUX_LODFRAC) )
+            if (IsUsed(MUX_LODFRAC, MUX_MASK))
             {
                 ReplaceVal(MUX_LODFRAC, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_LODFRAC;
@@ -1170,7 +1184,7 @@ void DecodedMuxForOGL14V2::UseTextureForConstant(void)
                 continue;
             }
 
-            if( IsUsed(MUX_PRIMLODFRAC) )
+            if (IsUsed(MUX_PRIMLODFRAC, MUX_MASK))
             {
                 ReplaceVal(MUX_PRIMLODFRAC, MUX_TEXEL0+i);
                 m_ColorTextureFlag[i] = MUX_PRIMLODFRAC;
