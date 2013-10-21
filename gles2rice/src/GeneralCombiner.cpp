@@ -257,7 +257,7 @@ int CGeneralCombiner::GenCI_Type_A_MOD_C(int curN64Stage, int curStage, GeneralC
 }
 int CGeneralCombiner::GenCI_Type_A_ADD_D(int curN64Stage, int curStage, GeneralCombinerInfo &gci)
 {
-    uint32 opToUse = m_bTxtOpAdd?CM_ADD:CM_MODULATE;
+    uint32 opToUse = (m_bTxtOpAdd) ? CM_ADD : CM_MODULATE;
     N64CombinerType &m = (*m_ppGeneralDecodedMux)->m_n64Combiners[curN64Stage];
     swap(m.c, m.d);
     curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci, opToUse);
@@ -271,7 +271,7 @@ int CGeneralCombiner::GenCI_Type_A_SUB_B(int curN64Stage, int curStage, GeneralC
     if( !m_bTxtOpSub )
     {
         swap(m.c, m.b);
-        curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci);
+        curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci, CM_MODULATE);
         swap(m.c, m.b);
         return curStage;
     }
@@ -329,7 +329,7 @@ int CGeneralCombiner::GenCI_Type_A_MOD_C_ADD_D(int curN64Stage, int curStage, Ge
     {
         N64CombinerType save = m;
         m.d = MUX_0;
-        curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci);
+        curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci, CM_MODULATE);
         m = save;
         m.c = MUX_0;
         m.a = MUX_COMBINED;
@@ -570,7 +570,7 @@ int CGeneralCombiner::GenCI_Type_A_B_C_D(int curN64Stage, int curStage, GeneralC
             m.a = MUX_COMBINED;
             m.c = MUX_TEXEL0+(1-texToUse);
             m.b = m.d = 0;
-            curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci);
+            curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci, CM_MODULATE);
         }
     }
     else if (CountTexel1Cycle(m) == 1)
@@ -645,7 +645,7 @@ int CGeneralCombiner::GenCI_Type_A_ADD_B_MOD_C(int curN64Stage, int curStage, Ge
     m.b = MUX_0;
     m.a = MUX_COMBINED;
     NextStage(curStage);
-    curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci);
+    curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci, CM_MODULATE);
     m = save;
 
     return curStage;
@@ -669,7 +669,7 @@ int CGeneralCombiner::GenCI_Type_A_SUB_B_MOD_C(int curN64Stage, int curStage, Ge
     m.b = MUX_0;
     m.a = MUX_COMBINED;
     NextStage(curStage);
-    curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci);
+    curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci, CM_MODULATE);
     m = save;
 
     return curStage;
@@ -818,15 +818,15 @@ int CGeneralCombiner::ParseDecodedMux()
                 n = GenCI_Type_D(j*2+i, n, gci);
                 if( j==0 && mux.splitType[i+2] != CM_FMT_TYPE_NOT_USED ) NextStage(n);  else n++;
                 break;
-            case CM_FMT_TYPE_A_ADD_D:       // = A+D
+            case CM_FMT_TYPE_A_ADD_D:           // = A+D
                 n=GenCI_Type_A_ADD_D(j*2+i, n, gci);
                 if( j==0 && mux.splitType[i+2] != CM_FMT_TYPE_NOT_USED ) NextStage(n);  else n++;
                 break;
-            case CM_FMT_TYPE_A_MOD_C:       // = A*C        can mapped to MOD(arg1,arg2)
-                n=GenCI_Type_A_MOD_C(j*2+i, n, gci);
+            case CM_FMT_TYPE_A_MOD_C:           // = A*C        can mapped to MOD(arg1,arg2)
+                n=GenCI_Type_A_MOD_C(j*2+i, n, gci, CM_MODULATE);
                 if( j==0 && mux.splitType[i+2] != CM_FMT_TYPE_NOT_USED ) NextStage(n);  else n++;
                 break;
-            case CM_FMT_TYPE_A_SUB_B:       // = A-B        can mapped to SUB(arg1,arg2)
+            case CM_FMT_TYPE_A_SUB_B:           // = A-B        can mapped to SUB(arg1,arg2)
                 n=GenCI_Type_A_SUB_B(j*2+i, n, gci);
                 if( j==0 && mux.splitType[i+2] != CM_FMT_TYPE_NOT_USED ) NextStage(n);  else n++;
                 break;
@@ -835,8 +835,8 @@ int CGeneralCombiner::ParseDecodedMux()
                 if( j==0 && mux.splitType[i+2] != CM_FMT_TYPE_NOT_USED ) NextStage(n);  else n++;
                 break;
             case CM_FMT_TYPE_A_LERP_B_C:        // = (A-B)*C+B  can mapped to LERP(arg1,arg2,arg0)
-                                    //              or mapped to BLENDALPHA(arg1,arg2) if C is
-                                    //              alpha channel or DIF, TEX, FAC, CUR
+                                                //   or mapped to BLENDALPHA(arg1,arg2) if C is
+                                                //   alpha channel or DIF, TEX, FAC, CUR
                 n=GenCI_Type_A_LERP_B_C(j*2+i, n, gci);
                 if( j==0 && mux.splitType[i+2] != CM_FMT_TYPE_NOT_USED ) NextStage(n);  else n++;
                 break;
@@ -856,7 +856,7 @@ int CGeneralCombiner::ParseDecodedMux()
                 n=GenCI_Type_A_B_C_A(j*2+i, n, gci);
                 if( j==0 && mux.splitType[i+2] != CM_FMT_TYPE_NOT_USED ) NextStage(n);  else n++;
                 break;
-            case CM_FMT_TYPE_A_B_C_D:       // = (A-B)*C+D  can not map very well in 1 stage
+            case CM_FMT_TYPE_A_B_C_D:           // = (A-B)*C+D  can not map very well in 1 stage
                 n=GenCI_Type_A_B_C_D(j*2+i, n, gci);
                 if( j==0 && mux.splitType[i+2] != CM_FMT_TYPE_NOT_USED ) NextStage(n);  else n++;
                 break;

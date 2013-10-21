@@ -176,7 +176,7 @@ protected:
     int     CheckWhichTexToUseInThisStage(int curN64Stage, int curStage, GeneralCombinerInfo &ci);
 
     int     GenCI_Type_D(int curN64Stage, int curStage, GeneralCombinerInfo &ci);
-    int     GenCI_Type_A_MOD_C(int curN64Stage, int curStage, GeneralCombinerInfo &ci, uint32 dxop=CM_MODULATE);
+    int     GenCI_Type_A_MOD_C(int curN64Stage, int curStage, GeneralCombinerInfo &ci, uint32 dxop);
     int     GenCI_Type_A_ADD_D(int curN64Stage, int curStage, GeneralCombinerInfo &ci);
     int     GenCI_Type_A_SUB_B(int curN64Stage, int curStage, GeneralCombinerInfo &ci);
     int     GenCI_Type_A_LERP_B_C(int curN64Stage, int curStage, GeneralCombinerInfo &ci);
@@ -195,7 +195,7 @@ protected:
     // checktexture = true, need to use if texture matching in the stage
     // checktexture = false, no check, just use any texture in the stage (since this stage hasn't been used)
     int     LM_GenCI_Type_D(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci);
-    int     LM_GenCI_Type_A_MOD_C(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci, uint32 dxop=CM_MODULATE);
+    int     LM_GenCI_Type_A_MOD_C(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci, uint32 dxop);
     int     LM_GenCI_Type_A_ADD_D(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci);
     int     LM_GenCI_Type_A_SUB_B(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci);
     int     LM_GenCI_Type_A_LERP_B_C(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci);
