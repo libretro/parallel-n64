@@ -65,17 +65,17 @@ static inline void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
       {
          v10 = bswap32(*v6);
          v11 = bswap32(v6[1]);
-         utmp = __ROR__((uint16_t)v10, 1);
+         utmp = __ROR16((uint16_t)v10, 1);
          ALOWORD(v10) = utmp;
-         utmp = __ROR__((uint16_t)v11, 1);
+         utmp = __ROR16((uint16_t)v11, 1);
          ALOWORD(v11) = utmp;
-         utmp = __ROR__(v10, 16);
+         utmp = __ROR32(v10, 16);
          v10 = utmp;
-         utmp = __ROR__(v11, 16); 
+         utmp = __ROR32(v11, 16); 
          v11 = utmp;
-         utmp = __ROR__((uint16_t)v10, 1);
+         utmp = __ROR16((uint16_t)v10, 1);
          ALOWORD(v10) = utmp;
-         utmp = __ROR__((uint16_t)v11, 1);
+         utmp = __ROR16((uint16_t)v11, 1);
          ALOWORD(v11) = utmp;
          *v7 = v10;
          v7[1] = v11;
@@ -94,17 +94,17 @@ static inline void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
       {
          v15 = bswap32(v12[1]);
          v16 = bswap32(*v12);
-         utmp = __ROR__((uint16_t)v15, 1);
+         utmp = __ROR16((uint16_t)v15, 1);
          ALOWORD(v15) = utmp;
-         utmp = __ROR__((uint16_t)v16, 1);
+         utmp = __ROR16((uint16_t)v16, 1);
          ALOWORD(v16) = utmp;
-         utmp = __ROR__(v15, 16);
+         utmp = __ROR32(v15, 16);
          v15 = utmp;
-         utmp = __ROR__(v16, 16);
+         utmp = __ROR32(v16, 16);
          v16 = utmp;
-         utmp = __ROR__((uint16_t)v15, 1);
+         utmp = __ROR16((uint16_t)v15, 1);
          ALOWORD(v15) = utmp;
-         utmp = __ROR__((uint16_t)v16, 1);
+         utmp = __ROR16((uint16_t)v16, 1);
          ALOWORD(v16) = utmp;
          *v13 = v15;
          v13[1] = v16;
