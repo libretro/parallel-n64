@@ -27,7 +27,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLExtCombiner.h"
 #include "GeneralCombiner.h"
 
-typedef struct {
+typedef struct
+{
     uint32  dwMux0;
     uint32  dwMux1;
 
@@ -53,7 +54,7 @@ protected:
     ~COGL_FragmentProgramCombiner();
 
     bool m_bFragmentProgramIsSupported;
-    std::vector<OGLShaderCombinerSaveType>      m_vCompiledShaders;
+    std::vector<OGLShaderCombinerSaveType> m_vCompiledShaders;
 
 private:
     virtual int ParseDecodedMux();

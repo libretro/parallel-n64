@@ -393,7 +393,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
 
         float depth = (gRDP.otherMode.depth_source == 1 ? gRDP.fPrimitiveDepth : 0 );
 
-        ApplyRDPScissor();
+        ApplyRDPScissor(false);
         TurnFogOnOff(false);
         res = RenderFillRect(dwColor, depth);
         TurnFogOnOff(gRSP.bFogEnabled);
@@ -799,7 +799,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
         TextureFilter dwFilter = m_dwMagFilter;
         m_dwMagFilter = m_dwMinFilter = FILTER_LINEAR;
         ApplyTextureFilter();
-        ApplyRDPScissor();
+        ApplyRDPScissor(false);
         res = RenderTexRect();
         m_dwMagFilter = m_dwMinFilter = dwFilter;
         ApplyTextureFilter();
@@ -809,14 +809,14 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
         TextureFilter dwFilter = m_dwMagFilter;
         m_dwMagFilter = m_dwMinFilter = FILTER_POINT;
         ApplyTextureFilter();
-        ApplyRDPScissor();
+        ApplyRDPScissor(false);
         res = RenderTexRect();
         m_dwMagFilter = m_dwMinFilter = dwFilter;
         ApplyTextureFilter();
     }
     else
     {
-        ApplyRDPScissor();
+        ApplyRDPScissor(false);
         res = RenderTexRect();
     }
     TurnFogOnOff(gRSP.bFogEnabled);
@@ -913,7 +913,7 @@ bool CRender::TexRectFlip(int nX0, int nY0, int nX1, int nY1, float fS0, float f
     SetVertexTextureUVCoord(g_texRectTVtx[3], t0u1, t0v0);
 
     TurnFogOnOff(false);
-    ApplyRDPScissor();
+    ApplyRDPScissor(false);
     bool res = RenderTexRect();
 
     TurnFogOnOff(gRSP.bFogEnabled);
@@ -1322,7 +1322,7 @@ bool CRender::DrawTriangles()
         ZBufferEnable(FALSE);
     }
 
-    ApplyScissorWithClipRatio();
+    ApplyScissorWithClipRatio(false);
 
     if( g_curRomInfo.bZHack )
     {

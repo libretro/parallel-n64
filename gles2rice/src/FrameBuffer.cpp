@@ -1399,11 +1399,11 @@ void FrameBufferManager::CloseRenderTexture(bool toSave)
 
     SetScreenMult(windowSetting.uDisplayWidth/windowSetting.fViWidth, windowSetting.uDisplayHeight/windowSetting.fViHeight);
     CRender::g_pRender->UpdateClipRectangle();
-    CRender::g_pRender->ApplyScissorWithClipRatio();
+    CRender::g_pRender->ApplyScissorWithClipRatio(false);
 
     DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_RENDER_TEXTURE, 
     {
-        DebuggerAppendMsg("Paused after saving render_texture %d:\nAddr: 0x%08x, Fmt: %s Size: %s Width: %d", m_curRenderTextureIndex,
+        DebuggerAppendMsg("Paused after saving render_texture %d:\nAddress: 0x%08x, Format: %s Size: %s Width: %d", m_curRenderTextureIndex,
             g_pRenderTextureInfo->CI_Info.dwAddr, pszImgFormat[g_pRenderTextureInfo->CI_Info.dwFormat], pszImgSize[g_pRenderTextureInfo->CI_Info.dwSize], g_pRenderTextureInfo->CI_Info.dwWidth);
     });
 }

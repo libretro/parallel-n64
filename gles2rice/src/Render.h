@@ -81,10 +81,10 @@ public:
     virtual void SetViewportRender() {}
     virtual void SetClipRatio(uint32 type, uint32 value);
     virtual void UpdateScissor() {}
-    virtual void ApplyRDPScissor(bool force=false) {}
+    virtual void ApplyRDPScissor(bool force) {}
     virtual void UpdateClipRectangle();
     virtual void UpdateScissorWithClipRatio();
-    virtual void ApplyScissorWithClipRatio(bool force=false) {}
+    virtual void ApplyScissorWithClipRatio(bool force) {}
 
     void SetTextureEnableAndScale(int dwTile, bool enable, float fScaleX, float fScaleY);
     

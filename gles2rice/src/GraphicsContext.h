@@ -24,9 +24,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 enum ClearFlag
 {
-    CLEAR_COLOR_BUFFER=0x01,
-    CLEAR_DEPTH_BUFFER=0x02,
-    CLEAR_COLOR_AND_DEPTH_BUFFER=0x03,
+    CLEAR_COLOR_BUFFER           = 0x01,
+    CLEAR_DEPTH_BUFFER           = 0x02,
+    CLEAR_COLOR_AND_DEPTH_BUFFER = 0x03,
 };
 
 
