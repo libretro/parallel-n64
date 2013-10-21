@@ -856,7 +856,7 @@ void MirrorTexture(uint32 dwTile, TxtrCacheEntry *pEntry)
 
             //if( pEntry->pTexture->m_bScaledS == false || pEntry->pTexture->m_bScaledT == false)
             //{
-            //  pEntry->pTexture->ScaleImageToSurface();
+            //  pEntry->pTexture->ScaleImageToSurface(true, true);
             //}
 
             DrawInfo srcInfo;   
