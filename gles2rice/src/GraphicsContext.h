@@ -58,7 +58,7 @@ public:
     virtual void CleanUp();
 
     virtual void Clear(ClearFlag flags, uint32 color=0xFF000000, float depth=1.0f) = 0;
-    virtual void UpdateFrame(bool swaponly=false) = 0;
+    virtual void UpdateFrame(bool swapOnly) = 0;
     virtual int ToggleFullscreen()=0;       // return 0 as the result is windowed
 
     static void InitWindowInfo();

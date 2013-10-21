@@ -664,7 +664,7 @@ void DEBUGGER_PAUSE_COUNT_N(uint32 val)
             debuggerPauseCount--;
         if(debuggerPauseCount==0)
         {
-            CGraphicsContext::Get()->UpdateFrame();
+            CGraphicsContext::Get()->UpdateFrame(false);
             debuggerPause = true;
         }   
     }

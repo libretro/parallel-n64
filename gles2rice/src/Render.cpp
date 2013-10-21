@@ -341,7 +341,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
     if(status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE)
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame();
+        CGraphicsContext::Get()->UpdateFrame(false);
         DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG, {DebuggerAppendMsg("Screen Update at 1st FillRectangle");});
     }
 
@@ -352,7 +352,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
           ((nX0+nX1 == (int)g_CI.dwWidth || nX0+nX1 == (int)g_CI.dwWidth-1 || nX0+nX1 == gRDP.scissor.left+gRDP.scissor.right || nX0+nX1 == gRDP.scissor.left+gRDP.scissor.right-1) && (nY0 == gRDP.scissor.top || nY0 == 0 || nY0+nY1 == gRDP.scissor.top+gRDP.scissor.bottom || nY0+nY1 == gRDP.scissor.top+gRDP.scissor.bottom-1)))
       {
           status.bVIOriginIsUpdated=false;
-          CGraphicsContext::Get()->UpdateFrame();
+          CGraphicsContext::Get()->UpdateFrame(false);
           DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG,{DebuggerAppendMsg("Screen Update Before Screen Clear");});
       }
   }
@@ -553,7 +553,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame();
+        CGraphicsContext::Get()->UpdateFrame(false);
         DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG,{DebuggerAppendMsg("Screen Update at 1st textRect");});
     }
 
@@ -1160,7 +1160,7 @@ bool CRender::DrawTriangles()
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame();
+        CGraphicsContext::Get()->UpdateFrame(false);
         DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG,{DebuggerAppendMsg("Screen Update at 1st triangle");});
     }
 
@@ -1170,7 +1170,7 @@ bool CRender::DrawTriangles()
     {
         if( IsUsedAsDI(g_CI.dwAddr) && gRDP.otherMode.z_cmp+gRDP.otherMode.z_upd > 0 )
         {
-            TRACE0("Warning: using Flushtris to write Zbuffer" );
+            TRACE0("Warning: using Flushtris to write Z-Buffer" );
             gRSP.numVertices = 0;
             gRSP.maxVertexID = 0;
             skipNext = true;
@@ -1372,7 +1372,7 @@ bool SaveCITextureToFile(TxtrCacheEntry &entry, char *filename, bool bShow, bool
     }
     if ( entry.ti.TLutFmt != TLUT_FMT_RGBA16 && entry.ti.TLutFmt != TLUT_FMT_IA16 )
     {
-        TRACE0("Invalid Tlut format");
+        TRACE0("Invalid texture look-up table format");
         return false;
     }
 
@@ -1386,7 +1386,7 @@ bool SaveCITextureToFile(TxtrCacheEntry &entry, char *filename, bool bShow, bool
     int tableSize;
     uint16 * pPal = (uint16 *)entry.ti.PalAddress;
 
-    // Create the pallette table
+    // Create the palette table
     if( entry.ti.Size == TXT_SIZE_4b )
     {
         // 4-bit table
@@ -1907,7 +1907,7 @@ void CRender::InitOtherModes(void)
     ApplyTextureFilter();
 
     //
-    // I can't think why the hand in mario's menu screen is rendered with an opaque rendermode,
+    // I can't think why the hand in Mario's menu screen is rendered with an opaque rendermode,
     // and no alpha threshold. We set the alpha reference to 1 to ensure that the transparent pixels
     // don't get rendered. I hope this doesn't fuck anything else up.
     //

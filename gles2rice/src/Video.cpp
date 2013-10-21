@@ -114,11 +114,11 @@ static void ChangeWindowStep2()
     windowSetting.bDisplayFullscreen = CGraphicsContext::Get()->ToggleFullscreen();
 
     CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
-    CGraphicsContext::Get()->UpdateFrame();
+    CGraphicsContext::Get()->UpdateFrame(false);
     CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
-    CGraphicsContext::Get()->UpdateFrame();
+    CGraphicsContext::Get()->UpdateFrame(false);
     CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
-    CGraphicsContext::Get()->UpdateFrame();
+    CGraphicsContext::Get()->UpdateFrame(false);
     status.bDisableFPS = false;
     status.ToToggleFullScreen = FALSE;
 }
@@ -177,7 +177,7 @@ static void UpdateScreenStep2 (void)
         {
             SetVIScales();
             CRender::GetRender()->DrawFrameBuffer(true);
-            CGraphicsContext::Get()->UpdateFrame();
+            CGraphicsContext::Get()->UpdateFrame(false);
         }
         return;
     }
@@ -186,7 +186,7 @@ static void UpdateScreenStep2 (void)
 
     if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE )
     {
-        CGraphicsContext::Get()->UpdateFrame();
+        CGraphicsContext::Get()->UpdateFrame(false);
 
         DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
         DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
@@ -200,7 +200,7 @@ static void UpdateScreenStep2 (void)
     {
         if( status.bScreenIsDrawn )
         {
-            CGraphicsContext::Get()->UpdateFrame();
+            CGraphicsContext::Get()->UpdateFrame(false);
             DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
         }
         else
@@ -224,7 +224,7 @@ static void UpdateScreenStep2 (void)
                 status.curVIOriginReg = status.curDisplayBuffer;
                 //status.curRenderBuffer = NULL;
 
-                CGraphicsContext::Get()->UpdateFrame();
+                CGraphicsContext::Get()->UpdateFrame(false);
                 DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
                 DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
                 DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);

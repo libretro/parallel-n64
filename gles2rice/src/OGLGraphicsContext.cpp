@@ -58,13 +58,13 @@ COGLGraphicsContext::~COGLGraphicsContext()
 {
 }
 
-bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed )
+bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed)
 {
     DebugMessage(M64MSG_INFO, "Initializing OpenGL Device Context.");
     CGraphicsContext::Get()->m_supportTextureMirror = false;
-    CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed );
+    CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed);
 
-    if( bWindowed )
+    if (bWindowed)
     {
         windowSetting.statusBarHeightToUse = windowSetting.statusBarHeight;
         windowSetting.toolbarHeightToUse = windowSetting.toolbarHeight;
@@ -75,11 +75,11 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWind
         windowSetting.toolbarHeightToUse = 0;
     }
 
-    int  depthBufferDepth = options.OpenglDepthBufferSetting;
-    int  colorBufferDepth = 32;
+    int depthBufferDepth = options.OpenglDepthBufferSetting;
+    int colorBufferDepth = 32;
     int bVerticalSync = windowSetting.bVerticalSync;
 
-    if( options.colorQuality == TEXTURE_FMT_A4R4G4B4 )
+    if (options.colorQuality == TEXTURE_FMT_A4R4G4B4)
         colorBufferDepth = 16;
 
     InitState();
@@ -89,9 +89,9 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWind
     DebugMessage(M64MSG_INFO, "Using OpenGL: %s", m_strDeviceStats);
 
     Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);    // Clear buffers
-    UpdateFrame();
+    UpdateFrame(false);
     Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
-    UpdateFrame();
+    UpdateFrame(false);
     
     m_bReady = true;
     status.isVertexShaderEnabled = false;
@@ -99,15 +99,15 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWind
     return true;
 }
 
-bool COGLGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed )
+bool COGLGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed)
 {
-    CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed );
+    CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed);
 
-    int  depthBufferDepth = options.OpenglDepthBufferSetting;
-    int  colorBufferDepth = 32;
+    int depthBufferDepth = options.OpenglDepthBufferSetting;
+    int colorBufferDepth = 32;
     int bVerticalSync = windowSetting.bVerticalSync;
 
-    if( options.colorQuality == TEXTURE_FMT_A4R4G4B4 )
+    if (options.colorQuality == TEXTURE_FMT_A4R4G4B4)
         colorBufferDepth = 16;
 
     /* Hard-coded attribute values */
@@ -116,9 +116,9 @@ bool COGLGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool
     InitState();
 
     Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);    // Clear buffers
-    UpdateFrame();
+    UpdateFrame(false);
     Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
-    UpdateFrame();
+    UpdateFrame(false);
     
     return true;
 }
@@ -213,7 +213,7 @@ void COGLGraphicsContext::InitOGLExtension(void)
     // Compute maxAnisotropicFiltering
     m_maxAnisotropicFiltering = 0;
 
-    if( m_bSupportAnisotropicFiltering
+    if (m_bSupportAnisotropicFiltering
     && (options.anisotropicFiltering == 2
         || options.anisotropicFiltering == 4
         || options.anisotropicFiltering == 8
@@ -224,13 +224,13 @@ void COGLGraphicsContext::InitOGLExtension(void)
         OPENGL_CHECK_ERRORS;
 
         // If the user wants more anisotropy than the hardware is capable of
-        if(options.anisotropicFiltering > (uint32) m_maxAnisotropicFiltering)
+        if (options.anisotropicFiltering > (uint32) m_maxAnisotropicFiltering)
         {
             DebugMessage(M64MSG_INFO, "A value of '%i' is set for AnisotropicFiltering option but the hardware has a maximum value of '%i' so this will be used", options.anisotropicFiltering, m_maxAnisotropicFiltering);
         }
 
         // Check if the user wants less anisotropy than the hardware is capable of
-        if((uint32) m_maxAnisotropicFiltering > options.anisotropicFiltering)
+        if ((uint32) m_maxAnisotropicFiltering > options.anisotropicFiltering)
             m_maxAnisotropicFiltering = options.anisotropicFiltering;
     }
 
@@ -261,10 +261,10 @@ bool COGLGraphicsContext::IsExtensionSupported(const char* pExtName)
 
 bool COGLGraphicsContext::IsWglExtensionSupported(const char* pExtName)
 {
-    if( m_pWglExtensionStr == NULL )
+    if (m_pWglExtensionStr == NULL)
         return false;
 
-    if( strstr((const char*)m_pWglExtensionStr, pExtName) != NULL )
+    if (strstr((const char*)m_pWglExtensionStr, pExtName) != NULL)
         return true;
     else
         return false;
@@ -280,8 +280,8 @@ void COGLGraphicsContext::CleanUp()
 void COGLGraphicsContext::Clear(ClearFlag dwFlags, uint32 color, float depth)
 {
     uint32 flag=0;
-    if( dwFlags&CLEAR_COLOR_BUFFER )    flag |= GL_COLOR_BUFFER_BIT;
-    if( dwFlags&CLEAR_DEPTH_BUFFER )    flag |= GL_DEPTH_BUFFER_BIT;
+    if (dwFlags & CLEAR_COLOR_BUFFER) flag |= GL_COLOR_BUFFER_BIT;
+    if (dwFlags & CLEAR_DEPTH_BUFFER) flag |= GL_DEPTH_BUFFER_BIT;
 
     float r = ((color>>16)&0xFF)/255.0f;
     float g = ((color>> 8)&0xFF)/255.0f;
@@ -297,7 +297,7 @@ void COGLGraphicsContext::Clear(ClearFlag dwFlags, uint32 color, float depth)
 
 extern "C" int retro_return(bool just_flipping);
 
-void COGLGraphicsContext::UpdateFrame(bool swaponly)
+void COGLGraphicsContext::UpdateFrame(bool swapOnly)
 {
     status.gFrameCount++;
 
@@ -347,37 +347,36 @@ void COGLGraphicsContext::UpdateFrame(bool swaponly)
         // free memory and get out of here
         free(buffer);
         iShotNum++;
-        }
+    }
     */
 
-   
-   // if emulator defined a render callback function, call it before buffer swap
-   if(renderCallback)
-       (*renderCallback)(status.bScreenIsDrawn);
+    // if emulator defined a render callback function, call it before buffer swap
+    if (renderCallback)
+        (*renderCallback)(status.bScreenIsDrawn);
 
    retro_return(true);
    
-   /*if(options.bShowFPS)
-     {
-    static unsigned int lastTick=0;
-    static int frames=0;
-    unsigned int nowTick = SDL_GetTicks();
-    frames++;
-    if(lastTick + 5000 <= nowTick)
-      {
-         char caption[200];
-         sprintf(caption, "%s v%i.%i.%i - %.3f VI/S", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION), frames/5.0);
-         CoreVideo_SetCaption(caption);
-         frames = 0;
-         lastTick = nowTick;
-      }
-     }*/
+   /*if (options.bShowFPS)
+    {
+        static unsigned int lastTick=0;
+        static int frames=0;
+        unsigned int nowTick = SDL_GetTicks();
+        frames++;
+        if (lastTick + 5000 <= nowTick)
+        {
+            char caption[200];
+            sprintf(caption, "%s v%i.%i.%i - %.3f VI/S", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION), frames/5.0);
+            CoreVideo_SetCaption(caption);
+            frames = 0;
+            lastTick = nowTick;
+        }
+    }*/
 
     glDepthMask(GL_TRUE);
     OPENGL_CHECK_ERRORS;
     glClearDepth(1.0f);
     OPENGL_CHECK_ERRORS;
-    if( !g_curRomInfo.bForceScreenClear )
+    if (!g_curRomInfo.bForceScreenClear)
     {
         glClear(GL_DEPTH_BUFFER_BIT);
         OPENGL_CHECK_ERRORS;

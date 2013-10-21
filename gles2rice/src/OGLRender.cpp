@@ -789,7 +789,7 @@ void OGLRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame();
+        CGraphicsContext::Get()->UpdateFrame(false);
         DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG,{DebuggerAppendMsg("Screen Update at 1st Simple2DTexture");});
     }
 

@@ -1760,7 +1760,7 @@ void FrameBufferManager::Set_CI_addr(SetImgInfo &newCI)
         else if (status.curRenderBuffer != g_CI.dwAddr)
         {
             status.curDisplayBuffer = status.curRenderBuffer;
-            CGraphicsContext::Get()->UpdateFrame();
+            CGraphicsContext::Get()->UpdateFrame(false);
             status.curRenderBuffer = g_CI.dwAddr;
             DEBUGGER_IF_DUMP(pauseAtNext,{DebuggerAppendMsg("Screen Update because CI change to %08X, Display Buffer=%08X", status.curRenderBuffer, status.curDisplayBuffer);});
         }

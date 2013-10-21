@@ -76,9 +76,9 @@ void RSP_S2DEX_OBJ_RECTANGLE(Gfx *gfx)
         {
             eventToPause = false;
             debuggerPause = true;
-            TRACE3("Paused at RSP_S2DEX_OBJ_RECTANGLE\nptr=%08X, img=%08X, Tmem=%08X",
+            TRACE3("Paused at RSP_S2DEX_OBJ_RECTANGLE\nptr=%08X, img=%08X, TMEM=%08X",
                 dwAddr,objtx.txtr.block.image, ptr->imageAdrs);
-            CGraphicsContext::g_pGraphicsContext->UpdateFrame();
+            CGraphicsContext::g_pGraphicsContext->UpdateFrame(false);
         }
     }
 #endif
@@ -91,7 +91,7 @@ void RSP_S2DEX_OBJ_SPRITE(Gfx *gfx)
     uObjSprite *info = (uObjSprite*)(g_pRDRAMu8+dwAddr);
 
     uint32 dwTile   = gRSP.curTile;
-    status.bAllowLoadFromTMEM = false;  // Because we need to use TLUT loaded by ObjTlut cmd
+    status.bAllowLoadFromTMEM = false;  // Because we need to use TLUT loaded by the ObjTlut command
     PrepareTextures();
     status.bAllowLoadFromTMEM = true;
 
@@ -105,7 +105,7 @@ void RSP_S2DEX_OBJ_SPRITE(Gfx *gfx)
         eventToPause = false;
         debuggerPause = true;
         TRACE0("Paused at RSP_S2DEX_OBJ_SPRITE");
-        CGraphicsContext::g_pGraphicsContext->UpdateFrame();
+        CGraphicsContext::g_pGraphicsContext->UpdateFrame(false);
     }
 #endif
 }
