@@ -111,12 +111,12 @@ template<class T> static inline T __ROR__(T value, unsigned int count)
 }
 
 // rotate left
-template<class T> static T __ROL__(T value, unsigned int count)
+static inline uint32_t __ROL__(uint32_t value, unsigned int count)
 {
-   const unsigned int nbits = sizeof(T) * 8;
+   const unsigned int nbits = sizeof(uint32_t) * 8;
    count %= nbits;
 
-   T high = value >> (nbits - count);
+   uint32_t high = value >> (nbits - count);
    value <<= count;
    value |= high;
    return value;
