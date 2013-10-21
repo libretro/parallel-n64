@@ -216,6 +216,45 @@ void cheat_apply_cheats(int entry)
             execute_cheat(0x801D8F4B, 0x0002, NULL);
         }
     }
+
+    // If game is Pokemon Snap, apply controller fix
+    if (strncmp((char *)ROM_HEADER.Name, "POKEMON SNAP", 12) == 0 && entry == ENTRY_VI) {
+       if (sl(ROM_HEADER.CRC1) == 0xCA12B547 && sl(ROM_HEADER.CRC2) == 0x71FA4EE4) {
+          // Pokemon Snap (U)
+          execute_cheat(0xD1382D1C, 0x0002, NULL);
+          execute_cheat(0x80382D0F, 0x0000, NULL);
+       }
+       else if (sl(ROM_HEADER.CRC1) == 0x7BB18D40 && sl(ROM_HEADER.CRC2) == 0x83138559) {
+          // Pokemon Snap (A)
+          execute_cheat(0xD1382D1C, 0x0002, NULL);
+          execute_cheat(0x80382D0F, 0x0000, NULL);
+       }
+       else if (sl(ROM_HEADER.CRC1) == 0x39119872 && sl(ROM_HEADER.CRC2) == 0x07722E9F) {
+          // Pokemon Snap Station (U)
+          execute_cheat(0xD1382D1C, 0x0002, NULL);
+          execute_cheat(0x80382D0F, 0x0000, NULL);
+       }
+       else if (sl(ROM_HEADER.CRC1) == 0xEC0F690D && sl(ROM_HEADER.CRC2) == 0x32A7438C) {
+          // Pokemon Snap (J) (V1.0)
+          execute_cheat(0xD136D22C, 0x802A, NULL);
+          execute_cheat(0x8036D21F, 0x0000, NULL);
+       }
+       else if (sl(ROM_HEADER.CRC1) == 0xE0044E9E && sl(ROM_HEADER.CRC2) == 0xCD659D0D) {
+          // Pokemon Snap (J) (V1.1)
+          execute_cheat(0xD136D22C, 0x802A, NULL);
+          execute_cheat(0x8036D21F, 0x0000, NULL);
+       }
+       else if (sl(ROM_HEADER.CRC1) == 0x5753720D && sl(ROM_HEADER.CRC2) == 0x2A8A884D) {
+          // Pokemon Snap (G)
+          execute_cheat(0xD1381BDC, 0x802C, NULL);
+          execute_cheat(0x80381BCF, 0x0000, NULL);
+       }
+       else {
+          // Pokemon Snap (E) + (F) + (I) + (S)
+          execute_cheat(0xD1381BFC, 0x802C, NULL);
+          execute_cheat(0x80381BEF, 0x0000, NULL);
+       }
+    }
     
     if (list_empty(&active_cheats))
         return;
