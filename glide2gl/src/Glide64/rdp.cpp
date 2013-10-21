@@ -596,18 +596,19 @@ static uint32_t d_ul_x, d_ul_y, d_lr_x, d_lr_y;
 
 static void DrawPartFrameBufferToScreen(void)
 {
-   FB_TO_SCREEN_INFO fb_info;
-   fb_info.addr   = rdp.cimg;
-   fb_info.size   = rdp.ci_size;
-   fb_info.width  = rdp.ci_width;
-   fb_info.height = rdp.ci_height;
-   fb_info.ul_x = d_ul_x;
-   fb_info.lr_x = d_lr_x;
-   fb_info.ul_y = d_ul_y;
-   fb_info.lr_y = d_lr_y;
-   fb_info.opaque = 0;
+   FB_TO_SCREEN_INFO *fb_info = (FB_TO_SCREEN_INFO*)malloc(sizeof(FB_TO_SCREEN_INFO));
+   fb_info->addr   = rdp.cimg;
+   fb_info->size   = rdp.ci_size;
+   fb_info->width  = rdp.ci_width;
+   fb_info->height = rdp.ci_height;
+   fb_info->ul_x = d_ul_x;
+   fb_info->lr_x = d_lr_x;
+   fb_info->ul_y = d_ul_y;
+   fb_info->lr_y = d_lr_y;
+   fb_info->opaque = 0;
    DrawFrameBufferToScreen(fb_info);
    memset(gfx.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
+   free(fb_info);
 }
 
 #define RGBA16TO32(color) \
@@ -954,12 +955,13 @@ EXPORT void CALL ProcessDList(void)
 // undef - undefined instruction, always ignore
 static void undef()
 {
-  FRDP_E("** undefined ** (%08lx)\n", rdp.cmd0);
-  FRDP("** undefined ** (%08lx) - IGNORED\n", rdp.cmd0);
 #ifdef _ENDUSER_RELEASE_
   *gfx.MI_INTR_REG |= 0x20;
   gfx.CheckInterrupts();
   rdp.halt = 1;
+#else
+  FRDP_E("** undefined ** (%08lx)\n", rdp.cmd0);
+  FRDP("** undefined ** (%08lx) - IGNORED\n", rdp.cmd0);
 #endif
 }
 
@@ -1047,21 +1049,24 @@ static void pd_zcopy ()
    }
 }
 
-static void DrawDepthBufferFog()
+static void DrawDepthBufferFog(void)
 {
   if (rdp.zi_width < 200)
     return;
-  FB_TO_SCREEN_INFO fb_info;
-  fb_info.addr   = rdp.zimg;
-  fb_info.size   = 2;
-  fb_info.width  = rdp.zi_width;
-  fb_info.height = rdp.ci_height;
-  fb_info.ul_x = rdp.scissor_o.ul_x;
-  fb_info.lr_x = rdp.scissor_o.lr_x;
-  fb_info.ul_y = rdp.scissor_o.ul_y;
-  fb_info.lr_y = rdp.scissor_o.lr_y;
-  fb_info.opaque = 0;
+
+  FB_TO_SCREEN_INFO *fb_info = (FB_TO_SCREEN_INFO*)malloc(sizeof(FB_TO_SCREEN_INFO));
+  fb_info->addr   = rdp.zimg;
+  fb_info->size   = 2;
+  fb_info->width  = rdp.zi_width;
+  fb_info->height = rdp.ci_height;
+  fb_info->ul_x = rdp.scissor_o.ul_x;
+  fb_info->lr_x = rdp.scissor_o.lr_x;
+  fb_info->ul_y = rdp.scissor_o.ul_y;
+  fb_info->lr_y = rdp.scissor_o.lr_y;
+  fb_info->opaque = 0;
+
   DrawDepthBufferToScreen(fb_info);
+  free(fb_info);
 }
 
 static void rdp_texrect()
@@ -2720,14 +2725,14 @@ static void rdp_setcolorimage()
                      }
                   }
                   else if (rdp.copy_ci_index && (settings.hacks&hack_PMario)) //tidal wave
-                     OpenTextureBuffer(rdp.frame_buffers[rdp.main_ci_index]);
+                     OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
                }
                else if (!rdp.motionblur && fb_hwfbe_enabled && !SwapOK && (rdp.ci_count <= rdp.copy_ci_index))
                {
                   if (next_fb.status == ci_aux_copy)
-                     OpenTextureBuffer(rdp.frame_buffers[rdp.main_ci_index]);
+                     OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
                   else
-                     OpenTextureBuffer(rdp.frame_buffers[rdp.copy_ci_index]);
+                     OpenTextureBuffer(&rdp.frame_buffers[rdp.copy_ci_index]);
                }
                else if (fb_hwfbe_enabled && prev_fb.status == ci_aux)
                {
@@ -2740,7 +2745,7 @@ static void rdp_setcolorimage()
                   }
                   else if (rdp.read_whole_frame)
                   {
-                     OpenTextureBuffer(rdp.frame_buffers[rdp.main_ci_index]);
+                     OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
                   }
                }
                //else if (rdp.ci_status == ci_aux && !rdp.copy_ci_index)
@@ -2755,7 +2760,7 @@ static void rdp_setcolorimage()
                {
                   if (cur_fb.width == rdp.ci_width)
                   {
-                     if (CopyTextureBuffer(prev_fb, cur_fb))
+                     if (CopyTextureBuffer(&prev_fb, &cur_fb))
                      {
                         //                      if (CloseTextureBuffer(TRUE))
                         //*
@@ -2796,7 +2801,7 @@ static void rdp_setcolorimage()
                   rdp.fb_drawn = true;
                }
                if (fb_hwfbe_enabled)
-                  OpenTextureBuffer(cur_fb);
+                  OpenTextureBuffer(&cur_fb);
             }
             break;
          case ci_old_copy:
@@ -2831,7 +2836,7 @@ static void rdp_setcolorimage()
                else
                {
                   rdp.skip_drawing = false;
-                  if (fb_hwfbe_enabled && OpenTextureBuffer(cur_fb))
+                  if (fb_hwfbe_enabled && OpenTextureBuffer(&cur_fb))
                      ;
                   else
                   {
@@ -2884,7 +2889,7 @@ static void rdp_setcolorimage()
             break;
          case ci_copy_self:
             if (fb_hwfbe_enabled && (rdp.ci_count <= rdp.copy_ci_index) && (!SwapOK || settings.swapmode == 2))
-               OpenTextureBuffer(cur_fb);
+               OpenTextureBuffer(&cur_fb);
             rdp.skip_drawing = false;
             break;
          default:
@@ -3001,7 +3006,7 @@ static void rdp_setcolorimage()
       if (!rdp.cur_image)
       {
          if (fb_hwfbe_enabled && rdp.ci_width <= 64)
-            OpenTextureBuffer(rdp.frame_buffers[rdp.ci_count - 1]);
+            OpenTextureBuffer(&rdp.frame_buffers[rdp.ci_count - 1]);
          else if (format > 2)
             rdp.skip_drawing = true;
          return;
@@ -3037,13 +3042,13 @@ static void rdp_setcolorimage()
             {
                int idx = (rdp.frame_buffers[rdp.ci_count].status == ci_aux_copy) ? rdp.main_ci_index : rdp.copy_ci_index;
                FRDP("attempt open tex buffer. status: %s, addr: %08lx\n", CIStatus[rdp.frame_buffers[idx].status], rdp.frame_buffers[idx].addr);
-               OpenTextureBuffer(rdp.frame_buffers[idx]);
+               OpenTextureBuffer(&rdp.frame_buffers[idx]);
                if (rdp.frame_buffers[rdp.copy_ci_index].status == ci_main) //tidal wave
                   rdp.copy_ci_index = 0;
             }
             else if (rdp.read_whole_frame && !rdp.cur_image)
             {
-               OpenTextureBuffer(rdp.frame_buffers[rdp.main_ci_index]);
+               OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
             }
          }
       }
@@ -3417,7 +3422,7 @@ void DetectFrameBufferUsage ()
          if (rdp.swap_ci_index < 0)
          {
             rdp.texbufs[0].clear_allowed = rdp.texbufs[1].clear_allowed = true;
-            OpenTextureBuffer(rdp.frame_buffers[rdp.main_ci_index]);
+            OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
          }
       }
       else

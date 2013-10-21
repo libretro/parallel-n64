@@ -21,10 +21,6 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <m64p_types.h>
 #include <m64p_config.h>
 
@@ -171,11 +167,20 @@ void CLOSE_LOG();
 //#define LOG
 #endif // LOGGING
 
-   
-int retro_return(bool just_flipping);
+extern void check_gl_error(const char *stmt, const char *fname, int line);
 
-#ifdef __cplusplus
-}
+//#define LOG_GL_CALLS
+
+#ifdef LOG_GL_CALLS
+#define GL_CHECK(func) \
+   do { \
+   func; \
+   check_gl_error(#func, __FILE__, __LINE__); \
+} while(0)
+#else
+#define GL_CHECK(func) func
 #endif
+
+int retro_return(bool just_flipping);
 
 #endif

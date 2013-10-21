@@ -46,19 +46,19 @@
 #include "TexBuffer.h"
 #include "CRC.h"
 
-static TBUFF_COLOR_IMAGE * AllocateTextureBuffer(COLOR_IMAGE & cimage)
+static TBUFF_COLOR_IMAGE * AllocateTextureBuffer(COLOR_IMAGE *cimage)
 {
    int i;
    TBUFF_COLOR_IMAGE texbuf;
-   texbuf.addr = cimage.addr;
-   texbuf.end_addr = cimage.addr + ((cimage.width*cimage.height)<<cimage.size>>1);
-   texbuf.width = cimage.width;
-   texbuf.height = cimage.height;
-   texbuf.format = cimage.format;
-   texbuf.size = cimage.size;
-   texbuf.scr_width = min(cimage.width * rdp.scale_x, settings.scr_res_x);
-   float height = min(rdp.vi_height,cimage.height);
-   if (cimage.status == ci_copy_self || (cimage.status == ci_copy && cimage.width == rdp.frame_buffers[rdp.main_ci_index].width))
+   texbuf.addr = cimage->addr;
+   texbuf.end_addr = cimage->addr + ((cimage->width*cimage->height)<<cimage->size>>1);
+   texbuf.width = cimage->width;
+   texbuf.height = cimage->height;
+   texbuf.format = cimage->format;
+   texbuf.size = cimage->size;
+   texbuf.scr_width = min(cimage->width * rdp.scale_x, settings.scr_res_x);
+   float height = min(rdp.vi_height,cimage->height);
+   if (cimage->status == ci_copy_self || (cimage->status == ci_copy && cimage->width == rdp.frame_buffers[rdp.main_ci_index].width))
       height = rdp.vi_height;
    texbuf.scr_height = height * rdp.scale_y;
    //  texbuf.scr_height = texbuf.height * rdp.scale_y;
@@ -134,7 +134,7 @@ static TBUFF_COLOR_IMAGE * AllocateTextureBuffer(COLOR_IMAGE & cimage)
          texbuf.tex_width = texbuf.tex_height = tex_size;
       }
    }
-   if ((cimage.format != 0))// && (cimage.width <= 64))
+   if ((cimage->format != 0))// && (cimage->width <= 64))
       texbuf.info.format = GR_TEXFMT_ALPHA_INTENSITY_88;
    else
       texbuf.info.format = GR_TEXFMT_RGB_565;
@@ -167,7 +167,7 @@ static TBUFF_COLOR_IMAGE * AllocateTextureBuffer(COLOR_IMAGE & cimage)
          TBUFF_COLOR_IMAGE & t = rdp.texbufs[i].images[rdp.texbufs[i].count - 1];
          if (rdp.read_whole_frame || rdp.motionblur)
          {
-            if ((cimage.status == ci_aux) && (rdp.cur_tex_buf == i))
+            if ((cimage->status == ci_aux) && (rdp.cur_tex_buf == i))
             {
                top = t.tex_addr + t.tex_width * (int)(t.scr_height+1) * 2;
                if (rdp.texbufs[i].end - top < required)
@@ -208,20 +208,20 @@ static TBUFF_COLOR_IMAGE * AllocateTextureBuffer(COLOR_IMAGE & cimage)
    return &(rdp.texbufs[rdp.cur_tex_buf].images[0]);
 }
 
-int OpenTextureBuffer(COLOR_IMAGE & cimage)
+int OpenTextureBuffer(COLOR_IMAGE *cimage)
 {
-  FRDP("OpenTextureBuffer. cur_tex_buf: %d, addr: %08lx, width: %d, height: %d", rdp.cur_tex_buf, cimage.addr, cimage.width, cimage.height);
+  FRDP("OpenTextureBuffer. cur_tex_buf: %d, addr: %08lx, width: %d, height: %d", rdp.cur_tex_buf, cimage->addr, cimage->width, cimage->height);
 
   int i, j, t;
   int found = false, search = true;
   TBUFF_COLOR_IMAGE *texbuf = 0;
-  uint32_t addr = cimage.addr;
-  if ((settings.hacks&hack_Banjo2) && cimage.status == ci_copy_self)
+  uint32_t addr = cimage->addr;
+  if ((settings.hacks&hack_Banjo2) && cimage->status == ci_copy_self)
     addr = rdp.frame_buffers[rdp.copy_ci_index].addr;
-  uint32_t end_addr = addr + ((cimage.width*cimage.height)<<cimage.size>>1);
+  uint32_t end_addr = addr + ((cimage->width*cimage->height)<<cimage->size>>1);
   if (rdp.motionblur)
   {
-//    if (cimage.format != 0)
+//    if (cimage->format != 0)
 //      return false;
     search = false;
   }
@@ -236,7 +236,7 @@ int OpenTextureBuffer(COLOR_IMAGE & cimage)
     {
       if (!rdp.texbufs[0].clear_allowed || !rdp.texbufs[1].clear_allowed)
       {
-        if (cimage.status == ci_main)
+        if (cimage->status == ci_main)
         {
           texbuf = &(rdp.texbufs[rdp.cur_tex_buf].images[0]);
           found = true;
@@ -246,7 +246,7 @@ int OpenTextureBuffer(COLOR_IMAGE & cimage)
           for (t = 0; (t < rdp.texbufs[rdp.cur_tex_buf].count) && !found; t++)
           {
             texbuf = &(rdp.texbufs[rdp.cur_tex_buf].images[t]);
-            if (addr == texbuf->addr && cimage.width == texbuf->width)
+            if (addr == texbuf->addr && cimage->width == texbuf->width)
             {
               texbuf->drawn = false;
               found = true;
@@ -264,13 +264,13 @@ int OpenTextureBuffer(COLOR_IMAGE & cimage)
       for (j = 0; (j < rdp.texbufs[i].count) && !found; j++)
       {
         texbuf = &(rdp.texbufs[i].images[j]);
-        if (addr == texbuf->addr && cimage.width == texbuf->width)
+        if (addr == texbuf->addr && cimage->width == texbuf->width)
         {
-          //texbuf->height = cimage.height;
+          //texbuf->height = cimage->height;
           //texbuf->end_addr = end_addr;
           texbuf->drawn = false;
-          texbuf->format = (uint16_t)cimage.format;
-          if ((cimage.format != 0))
+          texbuf->format = (uint16_t)cimage->format;
+          if ((cimage->format != 0))
             texbuf->info.format = GR_TEXFMT_ALPHA_INTENSITY_88;
           else
             texbuf->info.format = GR_TEXFMT_RGB_565;
@@ -325,7 +325,7 @@ int OpenTextureBuffer(COLOR_IMAGE & cimage)
   grTextureBufferExt( rdp.cur_image->tmu, rdp.cur_image->tex_addr, rdp.cur_image->info.smallLodLog2, rdp.cur_image->info.largeLodLog2,
     rdp.cur_image->info.aspectRatioLog2, rdp.cur_image->info.format, GR_MIPMAPLEVELMASK_BOTH );
   ///*
-  if (rdp.cur_image->clear && (settings.frame_buffer&fb_hwfbe_buf_clear) && cimage.changed)
+  if (rdp.cur_image->clear && (settings.frame_buffer&fb_hwfbe_buf_clear) && cimage->changed)
   {
     rdp.cur_image->clear = false;
     grDepthMask (FXFALSE);
@@ -333,7 +333,7 @@ int OpenTextureBuffer(COLOR_IMAGE & cimage)
     grDepthMask (FXTRUE);
   }
   //*/
-  //  memset(gfx.RDRAM+cimage.addr, 0, cimage.width*cimage.height*cimage.size);
+  //  memset(gfx.RDRAM+cimage->addr, 0, cimage->width*cimage->height*cimage->size);
   FRDP("  texaddr: %08lx, tex_width: %d, tex_height: %d, cur_tex_buf: %d, texformat: %d, motionblur: %d\n", rdp.cur_image->tex_addr, rdp.cur_image->tex_width, rdp.cur_image->tex_height, rdp.cur_tex_buf, rdp.cur_image->info.format, rdp.motionblur);
   if (!rdp.offset_x_bak)
   {
@@ -349,7 +349,7 @@ int OpenTextureBuffer(COLOR_IMAGE & cimage)
   return true;
 }
 
-static GrTextureFormat_t TexBufSetupCombiner(int force_rgb = false)
+static GrTextureFormat_t TexBufSetupCombiner(int force_rgb)
 {
    grColorCombine( GR_COMBINE_FUNCTION_SCALE_OTHER,
          GR_COMBINE_FACTOR_ONE,
@@ -436,7 +436,7 @@ int CloseTextureBuffer(int draw)
    }
    rdp.tbuff_tex = rdp.cur_image;
    rdp.cur_image = 0;
-   rdp.tbuff_tex->info.format = TexBufSetupCombiner();
+   rdp.tbuff_tex->info.format = TexBufSetupCombiner(false);
    float zero = 0.0f;
    float ul_x = rdp.offset_x;
    float ul_y = rdp.offset_y;
@@ -468,17 +468,17 @@ int CloseTextureBuffer(int draw)
    return true;
 }
 
-int CopyTextureBuffer(COLOR_IMAGE & fb_from, COLOR_IMAGE & fb_to)
+int CopyTextureBuffer(COLOR_IMAGE *fb_from, COLOR_IMAGE *fb_to)
 {
-   FRDP("CopyTextureBuffer from %08x to %08x\n", fb_from.addr, fb_to.addr);
+   FRDP("CopyTextureBuffer from %08x to %08x\n", fb_from->addr, fb_to->addr);
    if (rdp.cur_image)
    {
       rdp.cur_image->crc = 0;
-      if (rdp.cur_image->addr == fb_to.addr)
+      if (rdp.cur_image->addr == fb_to->addr)
          return CloseTextureBuffer(true);
       rdp.tbuff_tex = rdp.cur_image;
    }
-   else if (!FindTextureBuffer(fb_from.addr, (uint16_t)fb_from.width))
+   else if (!FindTextureBuffer(fb_from->addr, (uint16_t)fb_from->width))
    {
       LRDP("Can't find 'from' buffer.\n");
       return false;
@@ -589,21 +589,22 @@ int SwapTextureBuffer(void)
    if (!rdp.tbuff_tex)
       return false;
    LRDP("SwapTextureBuffer.");
-   COLOR_IMAGE ci;
-   ci.addr = rdp.tbuff_tex->addr;
-   ci.format = rdp.tbuff_tex->format;
-   ci.width = rdp.tbuff_tex->width;
-   ci.height = rdp.tbuff_tex->height;
-   ci.size = 2;
-   ci.status = ci_main;
-   ci.changed = false;
+   COLOR_IMAGE *ci = (COLOR_IMAGE*)malloc(sizeof(COLOR_IMAGE));
+   ci->addr = rdp.tbuff_tex->addr;
+   ci->format = rdp.tbuff_tex->format;
+   ci->width = rdp.tbuff_tex->width;
+   ci->height = rdp.tbuff_tex->height;
+   ci->size = 2;
+   ci->status = ci_main;
+   ci->changed = false;
    TBUFF_COLOR_IMAGE * texbuf = AllocateTextureBuffer(ci);
    if (!texbuf)
    {
       LRDP("Failed!\n");
+      free(ci);
       return false;
    }
-   TexBufSetupCombiner();
+   TexBufSetupCombiner(false);
 
    float ul_x = 0.0f;
    float ul_y = 0.0f;
@@ -654,6 +655,7 @@ int SwapTextureBuffer(void)
    if (settings.fog && (rdp.flags & FOG_ENABLED))
       grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
    LRDP("SwapTextureBuffer draw, OK\n");
+   free(ci);
    return true;
 }
 

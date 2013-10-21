@@ -130,7 +130,6 @@ int romopen = false;
 GrContext_t gfx_context = 0;
 int exception = false;
 
-int evoodoo = 0;
 int ev_fullscreen = 0;
 
 uint32_t region = 0;
@@ -2176,10 +2175,6 @@ void guLoadTextures(void)
 
 int InitGfx(void)
 {
-   wchar_t romname[256];
-   wchar_t foldername[PATH_MAX + 64];
-   wchar_t cachename[PATH_MAX + 64];
-
    OPEN_RDP_LOG ();  // doesn't matter if opens again; it will check for it
    OPEN_RDP_E_LOG ();
    VLOG ("InitGfx ()\n");
@@ -2512,12 +2507,7 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 
    grGlideInit ();
    grSstSelect (0);
-   const char *extensions = grGetString (GR_EXTENSION);
    grGlideShutdown ();
-   if (strstr (extensions, "EVOODOO"))
-      evoodoo = 1;
-   else
-      evoodoo = 0;
 
    return true;
 }
@@ -2552,8 +2542,7 @@ EXPORT void CALL RomClosed (void)
    CLOSE_RDP_E_LOG ();
    rdp.window_changed = true;
    romopen = false;
-   if (fullscreen && evoodoo)
-      ReleaseGfx ();
+   ReleaseGfx ();
 }
 
 static void CheckDRAMSize()
@@ -2621,27 +2610,9 @@ EXPORT int CALL RomOpen (void)
       grGlideInit ();
       grSstSelect (0);
    }
-   const char *extensions = grGetString (GR_EXTENSION);
-   if (!fullscreen)
-   {
-      grGlideShutdown ();
 
-      if (strstr (extensions, "EVOODOO"))
-         evoodoo = 1;
-      else
-         evoodoo = 0;
+   InitGfx ();
 
-      if (evoodoo)
-         InitGfx ();
-   }
-
-   if (strstr (extensions, "ROMNAME"))
-   {
-      char strSetRomName[] = "grSetRomName";
-      void (FX_CALL *grSetRomName)(char*);
-      grSetRomName = (void (FX_CALL *)(char*))grGetProcAddress (strSetRomName);
-      grSetRomName (name);
-   }
    // **
    return true;
 }
@@ -2669,25 +2640,23 @@ EXPORT void CALL SetRenderingCallback(void (*callback)(int))
 void drawViRegBG(void)
 {
    LRDP("drawViRegBG\n");
-   const uint32_t VIwidth = *gfx.VI_WIDTH_REG;
-   FB_TO_SCREEN_INFO fb_info;
-   fb_info.width  = VIwidth;
-   fb_info.height = (uint32_t)rdp.vi_height;
-   if (fb_info.height == 0)
-   {
-      LRDP("Image height = 0 - skipping\n");
+   if (rdp.vi_height == 0)
       return;
-   }
-   fb_info.ul_x = 0;
 
-   fb_info.lr_x = VIwidth - 1;
-   //  fb_info.lr_x = (uint32_t)rdp.vi_width - 1;
-   fb_info.ul_y = 0;
-   fb_info.lr_y = fb_info.height - 1;
-   fb_info.opaque = 1;
-   fb_info.addr = *gfx.VI_ORIGIN_REG;
-   fb_info.size = *gfx.VI_STATUS_REG & 3;
-   rdp.last_bg = fb_info.addr;
+   const uint32_t VIwidth = *gfx.VI_WIDTH_REG;
+
+   FB_TO_SCREEN_INFO *fb_info = (FB_TO_SCREEN_INFO*)malloc(sizeof(FB_TO_SCREEN_INFO));
+   fb_info->width  = VIwidth;
+   fb_info->height = (uint32_t)rdp.vi_height;
+   fb_info->ul_x = 0;
+   fb_info->lr_x = VIwidth - 1;
+   fb_info->ul_y = 0;
+   fb_info->lr_y = fb_info->height - 1;
+   fb_info->opaque = 1;
+   fb_info->addr = *gfx.VI_ORIGIN_REG;
+   fb_info->size = *gfx.VI_STATUS_REG & 3;
+
+   rdp.last_bg = fb_info->addr;
 
    bool drawn = DrawFrameBufferToScreen(fb_info);
    if (settings.hacks&hack_Lego && drawn)
@@ -2696,6 +2665,7 @@ void drawViRegBG(void)
       newSwapBuffers ();
       DrawFrameBufferToScreen(fb_info);
    }
+   free(fb_info);
 }
 
 }
@@ -2772,22 +2742,24 @@ static void DrawWholeFrameBufferToScreen()
     return;
   if (rdp.cimg == toScreenCI)
     return;
+  if (rdp.ci_height == 0)
+     return;
   toScreenCI = rdp.cimg;
-  FB_TO_SCREEN_INFO fb_info;
-  fb_info.addr   = rdp.cimg;
-  fb_info.size   = rdp.ci_size;
-  fb_info.width  = rdp.ci_width;
-  fb_info.height = rdp.ci_height;
-  if (fb_info.height == 0)
-    return;
-  fb_info.ul_x = 0;
-  fb_info.lr_x = rdp.ci_width-1;
-  fb_info.ul_y = 0;
-  fb_info.lr_y = rdp.ci_height-1;
-  fb_info.opaque = 0;
+
+  FB_TO_SCREEN_INFO *fb_info = (FB_TO_SCREEN_INFO*)malloc(sizeof(FB_TO_SCREEN_INFO));
+  fb_info->addr   = rdp.cimg;
+  fb_info->size   = rdp.ci_size;
+  fb_info->width  = rdp.ci_width;
+  fb_info->height = rdp.ci_height;
+  fb_info->ul_x = 0;
+  fb_info->lr_x = rdp.ci_width-1;
+  fb_info->ul_y = 0;
+  fb_info->lr_y = rdp.ci_height-1;
+  fb_info->opaque = 0;
   DrawFrameBufferToScreen(fb_info);
   if (!(settings.frame_buffer & fb_ref))
     memset(gfx.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
+  free(fb_info);
 }
 
 #ifdef __cplusplus
@@ -2825,7 +2797,7 @@ void newSwapBuffers(void)
       DrawWholeFrameBufferToScreen();
 
    {
-      if (fb_hwfbe_enabled && !(settings.hacks&hack_RE2) && !evoodoo)
+      if (fb_hwfbe_enabled && !(settings.hacks&hack_RE2))
          grAuxBufferExt( GR_BUFFER_AUXBUFFER );
       grBufferSwap (settings.vsync);
 

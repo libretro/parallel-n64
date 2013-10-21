@@ -482,11 +482,6 @@ int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info
 
 }
 
-#ifdef __cplusplus
-}
-#endif
-
-
 FX_ENTRY void FX_CALL
 grTextureAuxBufferExt( GrChipID_t tmu,
                       FxU32      startAddress,
@@ -1493,4 +1488,11 @@ void grTexChromaRangeExt(GrChipID_t tmu, GrColor_t color0, GrColor_t color1, GrT
 void grTexChromaModeExt(GrChipID_t tmu, GrChromakeyMode_t mode)
 {
    DISPLAY_WARNING("grTexChromaRangeModeExt");
+}
+
+void check_gl_error(const char *stmt, const char *fname, int line)
+{
+   GLenum error = glGetError();
+   if (error != GL_NO_ERROR)
+      fprintf(stderr, "OpenGL error %08x, at %s:%i - for %s\n", error, fname, line, stmt);
 }

@@ -148,7 +148,7 @@ static void rsp_vertex(int v0, int n)
    }
 }
 
-static void rsp_tri1(VERTEX **v, uint16_t linew = 0)
+static void rsp_tri1(VERTEX **v, uint16_t linew)
 {
   if (cull_tri(v))
     rdp.tri_n ++;
@@ -226,7 +226,7 @@ void modelview_push(void)
    rdp.model_i ++;
 }
 
-void modelview_pop (int num = 1)
+void modelview_pop (int num)
 {
    if (rdp.model_i > num - 1)
       rdp.model_i -= num;
@@ -568,7 +568,7 @@ static void uc0_tri1(void)
          }
       }
    }
-   rsp_tri1(v);
+   rsp_tri1(v, 0);
 }
 
 //
@@ -634,7 +634,7 @@ static void uc0_popmatrix(void)
    switch (param)
    {
       case 0: // modelview
-         modelview_pop();
+         modelview_pop(1);
          break;
       case 1: // projection, can't
          break;

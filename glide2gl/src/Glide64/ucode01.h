@@ -71,7 +71,7 @@ static void uc1_tri1()
    v[1] = &rdp.vtx[(rdp.cmd1 >> 9) & 0x7F];
    v[2] = &rdp.vtx[(rdp.cmd1 >> 1) & 0x7F];
 
-   rsp_tri1(v);
+   rsp_tri1(v, 0);
 }
 
 static void uc1_tri2(void)
