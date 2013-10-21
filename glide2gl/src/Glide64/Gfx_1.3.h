@@ -198,7 +198,6 @@ extern int fullscreen;
 extern int romopen;
 extern int debugging;
 
-extern int evoodoo;
 extern int ev_fullscreen;
 
 extern int exception;

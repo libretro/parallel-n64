@@ -130,7 +130,6 @@ int romopen = false;
 GrContext_t gfx_context = 0;
 int exception = false;
 
-int evoodoo = 0;
 int ev_fullscreen = 0;
 
 uint32_t region = 0;
@@ -2508,12 +2507,7 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 
    grGlideInit ();
    grSstSelect (0);
-   const char *extensions = grGetString (GR_EXTENSION);
    grGlideShutdown ();
-   if (strstr (extensions, "EVOODOO"))
-      evoodoo = 1;
-   else
-      evoodoo = 0;
 
    return true;
 }
@@ -2548,8 +2542,7 @@ EXPORT void CALL RomClosed (void)
    CLOSE_RDP_E_LOG ();
    rdp.window_changed = true;
    romopen = false;
-   if (fullscreen && evoodoo)
-      ReleaseGfx ();
+   ReleaseGfx ();
 }
 
 static void CheckDRAMSize()
@@ -2617,27 +2610,9 @@ EXPORT int CALL RomOpen (void)
       grGlideInit ();
       grSstSelect (0);
    }
-   const char *extensions = grGetString (GR_EXTENSION);
-   if (!fullscreen)
-   {
-      grGlideShutdown ();
 
-      if (strstr (extensions, "EVOODOO"))
-         evoodoo = 1;
-      else
-         evoodoo = 0;
+   InitGfx ();
 
-      if (evoodoo)
-         InitGfx ();
-   }
-
-   if (strstr (extensions, "ROMNAME"))
-   {
-      char strSetRomName[] = "grSetRomName";
-      void (FX_CALL *grSetRomName)(char*);
-      grSetRomName = (void (FX_CALL *)(char*))grGetProcAddress (strSetRomName);
-      grSetRomName (name);
-   }
    // **
    return true;
 }
@@ -2822,7 +2797,7 @@ void newSwapBuffers(void)
       DrawWholeFrameBufferToScreen();
 
    {
-      if (fb_hwfbe_enabled && !(settings.hacks&hack_RE2) && !evoodoo)
+      if (fb_hwfbe_enabled && !(settings.hacks&hack_RE2))
          grAuxBufferExt( GR_BUFFER_AUXBUFFER );
       grBufferSwap (settings.vsync);
 
