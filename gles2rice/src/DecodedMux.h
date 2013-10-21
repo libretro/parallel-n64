@@ -25,22 +25,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "typedefs.h"
 #include "CombinerDefs.h"
 
-typedef enum {
-    N64Cycle0RGB=0,
-    N64Cycle0Alpha=1,
-    N64Cycle1RGB=2,
-    N64Cycle1Alpha=3,
+typedef enum 
+{
+    N64Cycle0RGB   = 0,
+    N64Cycle0Alpha = 1,
+    N64Cycle1RGB   = 2,
+    N64Cycle1Alpha = 3,
 } N64StageNumberType;
 
-typedef union {
-    struct {
+typedef union
+{
+    struct
+    {
         uint32 dwMux0;
         uint32 dwMux1;
     };
     uint64 Mux64;
 } MuxType;
 
-typedef struct {
+typedef struct
+{
     MuxType ori_mux;
     MuxType simple_mux;
 } SimpleMuxMapType;
@@ -48,8 +52,10 @@ typedef struct {
 class DecodedMux
 {
 public:
-    union {
-        struct {
+    union
+    {
+        struct
+        {
             uint8 aRGB0;
             uint8 bRGB0;
             uint8 cRGB0;
@@ -75,8 +81,10 @@ public:
         N64CombinerType m_n64Combiners[4];
     };
     
-    union {
-        struct {
+    union
+    {
+        struct
+        {
             uint32 m_dwMux0;
             uint32 m_dwMux1;
         };
