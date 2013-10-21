@@ -596,18 +596,19 @@ static uint32_t d_ul_x, d_ul_y, d_lr_x, d_lr_y;
 
 static void DrawPartFrameBufferToScreen(void)
 {
-   FB_TO_SCREEN_INFO fb_info;
-   fb_info.addr   = rdp.cimg;
-   fb_info.size   = rdp.ci_size;
-   fb_info.width  = rdp.ci_width;
-   fb_info.height = rdp.ci_height;
-   fb_info.ul_x = d_ul_x;
-   fb_info.lr_x = d_lr_x;
-   fb_info.ul_y = d_ul_y;
-   fb_info.lr_y = d_lr_y;
-   fb_info.opaque = 0;
+   FB_TO_SCREEN_INFO *fb_info = (FB_TO_SCREEN_INFO*)malloc(sizeof(FB_TO_SCREEN_INFO));
+   fb_info->addr   = rdp.cimg;
+   fb_info->size   = rdp.ci_size;
+   fb_info->width  = rdp.ci_width;
+   fb_info->height = rdp.ci_height;
+   fb_info->ul_x = d_ul_x;
+   fb_info->lr_x = d_lr_x;
+   fb_info->ul_y = d_ul_y;
+   fb_info->lr_y = d_lr_y;
+   fb_info->opaque = 0;
    DrawFrameBufferToScreen(fb_info);
    memset(gfx.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
+   free(fb_info);
 }
 
 #define RGBA16TO32(color) \
@@ -1047,21 +1048,24 @@ static void pd_zcopy ()
    }
 }
 
-static void DrawDepthBufferFog()
+static void DrawDepthBufferFog(void)
 {
   if (rdp.zi_width < 200)
     return;
-  FB_TO_SCREEN_INFO fb_info;
-  fb_info.addr   = rdp.zimg;
-  fb_info.size   = 2;
-  fb_info.width  = rdp.zi_width;
-  fb_info.height = rdp.ci_height;
-  fb_info.ul_x = rdp.scissor_o.ul_x;
-  fb_info.lr_x = rdp.scissor_o.lr_x;
-  fb_info.ul_y = rdp.scissor_o.ul_y;
-  fb_info.lr_y = rdp.scissor_o.lr_y;
-  fb_info.opaque = 0;
+
+  FB_TO_SCREEN_INFO *fb_info = (FB_TO_SCREEN_INFO*)malloc(sizeof(FB_TO_SCREEN_INFO));
+  fb_info->addr   = rdp.zimg;
+  fb_info->size   = 2;
+  fb_info->width  = rdp.zi_width;
+  fb_info->height = rdp.ci_height;
+  fb_info->ul_x = rdp.scissor_o.ul_x;
+  fb_info->lr_x = rdp.scissor_o.lr_x;
+  fb_info->ul_y = rdp.scissor_o.ul_y;
+  fb_info->lr_y = rdp.scissor_o.lr_y;
+  fb_info->opaque = 0;
+
   DrawDepthBufferToScreen(fb_info);
+  free(fb_info);
 }
 
 static void rdp_texrect()

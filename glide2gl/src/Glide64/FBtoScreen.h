@@ -57,7 +57,7 @@ typedef struct
   uint32_t opaque;
 } FB_TO_SCREEN_INFO;
 
-bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO & fb_info);
-void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO & fb_info);
+bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
+void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info);
 
 #endif  // #ifndef FBtoSCREEN_H
