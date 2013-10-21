@@ -83,9 +83,9 @@ void ZLUT_release(void)
    zLUT = 0;
 }
 
-static vertexi * max_vtx;                   // Max y vertex (ending vertex)
-static vertexi * start_vtx, * end_vtx;      // First and last vertex in array
-static vertexi * right_vtx, * left_vtx;     // Current right and left vertex
+static struct vertexi *max_vtx;                   // Max y vertex (ending vertex)
+static struct vertexi *start_vtx, *end_vtx;      // First and last vertex in array
+static struct vertexi *right_vtx, *left_vtx;     // Current right and left vertex
 
 static int right_height, left_height;
 static int right_x, right_dxdy, left_x, left_dxdy;
@@ -126,7 +126,7 @@ static void RightSection(void)
 {
    // Walk backwards trough the vertex array
 
-   vertexi * v2, * v1 = right_vtx;
+   struct vertexi *v2, *v1 = right_vtx;
    if(right_vtx > start_vtx)
       v2 = right_vtx-1;     
    else
@@ -171,7 +171,7 @@ static void LeftSection(void)
 {
    // Walk forward trough the vertex array
 
-   vertexi * v2, * v1 = left_vtx;
+   struct vertexi *v2, *v1 = left_vtx;
    if(left_vtx < end_vtx)
       v2 = left_vtx+1;
    else
@@ -218,14 +218,14 @@ static void LeftSection(void)
 }
 
 
-void Rasterize(vertexi * vtx, int vertices, int dzdx)
+void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
 {
    start_vtx = vtx;        // First vertex in array
 
    // Search trough the vtx array to find min y, max y
    // and the location of these structures.
 
-   vertexi * min_vtx = vtx;
+   struct vertexi *min_vtx = vtx;
    max_vtx = vtx;
 
    int min_y = vtx->y;

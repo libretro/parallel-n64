@@ -45,7 +45,7 @@
 #define NOT_TMU2	0x02
 
 void util_init(void);
-void render_tri(uint16_t linew);
+void render_tri(uint16_t linew, int old_interpolate);
 
 int cull_tri(VERTEX **v);
 void draw_tri(VERTEX **v, uint16_t linew);

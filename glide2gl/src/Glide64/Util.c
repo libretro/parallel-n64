@@ -756,8 +756,6 @@ static void clip_w (int interpolate_colors)
    rdp.n_global = index;
 }
 
-static void render_tri (uint16_t linew, int old_interpolate);
-
 void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do the triangle stuff :P (to keep from writing code twice)
 {
    int i;
@@ -1056,7 +1054,7 @@ static void DepthBuffer(VERTEX * vtx, int n)
    int i;
    if (fb_depth_render_enabled && !(settings.hacks&hack_RE2) && dzdx && (rdp.flags & ZBUF_UPDATE))
    {
-      vertexi v[12];
+      struct vertexi v[12];
       if (u_cull_mode == 1) //cull front
       {
          for (i = 0; i < n; i++)
@@ -1482,7 +1480,7 @@ void clip_tri(int interpolate_colors)
    rdp.n_global = n;
 }
 
-static void render_tri (uint16_t linew, int old_interpolate)
+void render_tri (uint16_t linew, int old_interpolate)
 {
    int i, j, n;
    if (rdp.clip)
@@ -1952,8 +1950,8 @@ void update(void)
          uint16_t blender = (uint16_t)(rdp.othermode_l >> 16);
          if (rdp.flags & FOG_ENABLED)
          {
-            rdp_blender_setting &bl = *(rdp_blender_setting*)(&(blender));
-            if((rdp.fog_multiplier > 0) && (bl.c1_m1a==3 || bl.c1_m2a == 3 || bl.c2_m1a == 3 || bl.c2_m2a == 3))
+            rdp_blender_setting *bl = (rdp_blender_setting*)(&blender);
+            if((rdp.fog_multiplier > 0) && (bl->c1_m1a==3 || bl->c1_m2a == 3 || bl->c2_m1a == 3 || bl->c2_m2a == 3))
             {
                grFogColorValue(rdp.fog_color);
                grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);

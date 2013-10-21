@@ -109,7 +109,7 @@ static void t3dProcessRDP(uint32_t a)
 static void t3dLoadGlobState(uint32_t pgstate)
 {
    int s;
-   t3dGlobState *gstate = (t3dGlobState*)&gfx.RDRAM[segoffset(pgstate)];
+   struct t3dGlobState *gstate = (struct t3dGlobState*)&gfx.RDRAM[segoffset(pgstate)];
    FRDP ("Global state. pad0: %04lx, perspNorm: %04lx, flag: %08lx\n", gstate->pad0, gstate->perspNorm, gstate->flag);
    rdp.cmd0 = gstate->othermode0;
    rdp.cmd1 = gstate->othermode1;
@@ -201,7 +201,7 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 {
    int t;
    LRDP("Loading Turbo3D object\n");
-   t3dState *ostate = (t3dState*)&gfx.RDRAM[segoffset(pstate)];
+   struct t3dState *ostate = (struct t3dState*)&gfx.RDRAM[segoffset(pstate)];
    rdp.cur_tile = (ostate->textureState)&7;
    FRDP("tile: %d\n", rdp.cur_tile);
 
@@ -224,7 +224,7 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 
    if (!(ostate->flag&1)) //load matrix
    {
-      uint32_t addr = segoffset(pstate+sizeof(t3dState)) & BMASK;
+      uint32_t addr = segoffset(pstate+sizeof(struct t3dState)) & BMASK;
       load_matrix(rdp.combined, addr);
 #ifdef EXTREME_LOGGING
       FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
@@ -247,7 +247,7 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
       uint32_t a = segoffset(ptri);
       for (t = 0; t < ostate->triCount; t++)
       {
-         t3dTriN * tri = (t3dTriN*)&gfx.RDRAM[a];
+         struct t3dTriN * tri = (struct t3dTriN*)&gfx.RDRAM[a];
          a += 4;
          FRDP("tri #%d - %d, %d, %d\n", t, tri->v0, tri->v1, tri->v2);
          VERTEX *v[3];

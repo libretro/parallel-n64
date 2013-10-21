@@ -55,6 +55,6 @@ extern uint16_t * zLUT;
 void ZLUT_init(void);
 void ZLUT_release(void);
 
-void Rasterize(vertexi * vtx, int vertices, int dzdx);
+void Rasterize(struct vertexi * vtx, int vertices, int dzdx);
 
 #endif //DEPTH_BUFFER_RENDER_H

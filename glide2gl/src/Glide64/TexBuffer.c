@@ -164,12 +164,12 @@ static TBUFF_COLOR_IMAGE * AllocateTextureBuffer(COLOR_IMAGE *cimage)
       uint32_t top = 0;
       if (rdp.texbufs[i].count)
       {
-         TBUFF_COLOR_IMAGE & t = rdp.texbufs[i].images[rdp.texbufs[i].count - 1];
+         TBUFF_COLOR_IMAGE *t = &rdp.texbufs[i].images[rdp.texbufs[i].count - 1];
          if (rdp.read_whole_frame || rdp.motionblur)
          {
             if ((cimage->status == ci_aux) && (rdp.cur_tex_buf == i))
             {
-               top = t.tex_addr + t.tex_width * (int)(t.scr_height+1) * 2;
+               top = t->tex_addr + t->tex_width * (int)(t->scr_height+1) * 2;
                if (rdp.texbufs[i].end - top < required)
                   return 0;
             }
@@ -177,7 +177,7 @@ static TBUFF_COLOR_IMAGE * AllocateTextureBuffer(COLOR_IMAGE *cimage)
                top = rdp.texbufs[i].end;
          }
          else
-            top = t.tex_addr + t.tex_width * t.tex_height * 2;
+            top = t->tex_addr + t->tex_width * t->tex_height * 2;
          available	 = rdp.texbufs[i].end - top;
       }
       else

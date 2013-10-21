@@ -46,19 +46,11 @@
 #include "FBtoScreen.h"
 #include "DepthBufferRender.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "../../../libretro/libretro.h"
 
 extern unsigned retro_filtering;
 extern retro_environment_t environ_cb;
 extern void update_variables(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #if defined(__GNUC__)
 #include <sys/time.h>
@@ -139,7 +131,7 @@ uint32_t region = 0;
 
 unsigned long BMASK = 0x7FFFFF;
 // Reality display processor structure
-RDP rdp;
+struct RDP rdp;
 
 SETTINGS settings = { false, 640, 480, GR_RESOLUTION_640x480, 0 };
 
@@ -295,7 +287,7 @@ void WriteLog(m64p_msg_level level, const char *msg, ...)
 
 void ReadSettings(void)
 {
-   retro_variable var = { "mupen64-screensize", 0 };
+   struct retro_variable var = { "mupen64-screensize", 0 };
    unsigned screen_width = 640;
    unsigned screen_height = 480;
    settings.card_id = 0;
@@ -2296,11 +2288,6 @@ void ReleaseGfx(void)
 
 // new API code begins here!
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
 EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
 {
 #ifdef VISUAL_LOGGING
@@ -2668,8 +2655,6 @@ void drawViRegBG(void)
    free(fb_info);
 }
 
-}
-
 void DrawFrameBuffer(void)
 {
    grDepthMask (FXTRUE);
@@ -2677,11 +2662,6 @@ void DrawFrameBuffer(void)
    grBufferClear (0, 0, 0xFFFF);
    drawViRegBG();
 }
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
 
 /******************************************************************
 Function: UpdateScreen
@@ -2762,11 +2742,6 @@ static void DrawWholeFrameBufferToScreen()
   free(fb_info);
 }
 
-#ifdef __cplusplus
-}
-#endif
-
-
 uint32_t curframe = 0;
 
 void newSwapBuffers(void)
@@ -2817,9 +2792,6 @@ void newSwapBuffers(void)
    frame_count ++;
 }
 
-extern "C"
-{
-
 /******************************************************************
 Function: ViStatusChanged
 Purpose:  This function is called to notify the dll that the
@@ -2840,6 +2812,4 @@ output:   none
 *******************************************************************/
 EXPORT void CALL ViWidthChanged(void)
 {
-}
-
 }

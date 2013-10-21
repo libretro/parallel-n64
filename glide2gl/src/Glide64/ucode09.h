@@ -140,32 +140,32 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
 
    for (i = 0; i < vnum; i++)
    {
-      VERTEX &v = vtx[i];
-      v.sx = zSortRdp.scale_x * ((short*)addr)[0^1];
-      v.sy = zSortRdp.scale_y * ((short*)addr)[1^1];
-      v.sz = 1.0f;
-      v.r = addr[4^3];
-      v.g = addr[5^3];
-      v.b = addr[6^3];
-      v.a = addr[7^3];
-      v.flags = 0;
-      v.uv_scaled = 0;
-      v.uv_calculated = 0xFFFFFFFF;
-      v.shade_mod = 0;
-      v.scr_off = 0;
-      v.screen_translated = 2;
+      VERTEX *v = &vtx[i];
+      v->sx = zSortRdp.scale_x * ((short*)addr)[0^1];
+      v->sy = zSortRdp.scale_y * ((short*)addr)[1^1];
+      v->sz = 1.0f;
+      v->r = addr[4^3];
+      v->g = addr[5^3];
+      v->b = addr[6^3];
+      v->a = addr[7^3];
+      v->flags = 0;
+      v->uv_scaled = 0;
+      v->uv_calculated = 0xFFFFFFFF;
+      v->shade_mod = 0;
+      v->scr_off = 0;
+      v->screen_translated = 2;
       if (textured)
       {
-         v.ou = ((short*)addr)[4^1];
-         v.ov = ((short*)addr)[5^1];
-         v.w = Calc_invw(((int*)addr)[3]) / 31.0f;
-         v.oow = 1.0f / v.w;
-         FRDP ("v%d - sx: %f, sy: %f ou: %f, ov: %f, w: %f, r=%d, g=%d, b=%d, a=%d\n", i, v.sx/rdp.scale_x, v.sy/rdp.scale_y, v.ou*rdp.tiles[rdp.cur_tile].s_scale, v.ov*rdp.tiles[rdp.cur_tile].t_scale, v.w, v.r, v.g, v.b, v.a);
+         v->ou = ((short*)addr)[4^1];
+         v->ov = ((short*)addr)[5^1];
+         v->w = Calc_invw(((int*)addr)[3]) / 31.0f;
+         v->oow = 1.0f / v->w;
+         FRDP ("v%d - sx: %f, sy: %f ou: %f, ov: %f, w: %f, r=%d, g=%d, b=%d, a=%d\n", i, v->sx/rdp.scale_x, v->sy/rdp.scale_y, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->w, v->r, v->g, v->b, v->a);
       }
       else
       {
-         v.oow = v.w = 1.0f;
-         FRDP ("v%d - sx: %f, sy: %f r=%d, g=%d, b=%d, a=%d\n", i, v.sx/rdp.scale_x, v.sy/rdp.scale_y, v.r, v.g, v.b, v.a);
+         v->oow = v->w = 1.0f;
+         FRDP ("v%d - sx: %f, sy: %f r=%d, g=%d, b=%d, a=%d\n", i, v->sx/rdp.scale_x, v->sy/rdp.scale_y, v->r, v->g, v->b, v->a);
       }
       addr += vsize;
    }
@@ -345,32 +345,33 @@ static void uc9_light(void)
    int use_material = (csrs != 0x0ff0);
    tdest >>= 1;
    FRDP ("uc9:light n: %d, colsrs: %04lx, normales: %04lx, coldst: %04lx, texdst: %04lx\n", num, csrs, nsrs, cdest, tdest);
-   VERTEX v;
+   VERTEX *v = (VERTEX*)malloc(sizeof(VERTEX));
 
    for (i = 0; i < num; i++)
    {
-      v.vec[0] = ((char*)gfx.DMEM)[(nsrs++)^3];
-      v.vec[1] = ((char*)gfx.DMEM)[(nsrs++)^3];
-      v.vec[2] = ((char*)gfx.DMEM)[(nsrs++)^3];
-      calc_sphere (&v);
+      v->vec[0] = ((char*)gfx.DMEM)[(nsrs++)^3];
+      v->vec[1] = ((char*)gfx.DMEM)[(nsrs++)^3];
+      v->vec[2] = ((char*)gfx.DMEM)[(nsrs++)^3];
+      calc_sphere (v);
       //    calc_linear (&v);
-      NormalizeVector (v.vec);
-      calc_light (&v);
-      v.a = 0xFF;
+      NormalizeVector (v->vec);
+      calc_light (v);
+      v->a = 0xFF;
       if (use_material)
       {
-         v.r = (uint8_t)(((uint32_t)v.r * gfx.DMEM[(csrs++)^3]) >> 8);
-         v.g = (uint8_t)(((uint32_t)v.g * gfx.DMEM[(csrs++)^3]) >> 8);
-         v.b = (uint8_t)(((uint32_t)v.b * gfx.DMEM[(csrs++)^3]) >> 8);
-         v.a = gfx.DMEM[(csrs++)^3];
+         v->r = (uint8_t)(((uint32_t)v->r * gfx.DMEM[(csrs++)^3]) >> 8);
+         v->g = (uint8_t)(((uint32_t)v->g * gfx.DMEM[(csrs++)^3]) >> 8);
+         v->b = (uint8_t)(((uint32_t)v->b * gfx.DMEM[(csrs++)^3]) >> 8);
+         v->a = gfx.DMEM[(csrs++)^3];
       }
-      gfx.DMEM[(cdest++)^3] = v.r;
-      gfx.DMEM[(cdest++)^3] = v.g;
-      gfx.DMEM[(cdest++)^3] = v.b;
-      gfx.DMEM[(cdest++)^3] = v.a;
-      ((short*)gfx.DMEM)[(tdest++)^1] = (short)v.ou;
-      ((short*)gfx.DMEM)[(tdest++)^1] = (short)v.ov;
+      gfx.DMEM[(cdest++)^3] = v->r;
+      gfx.DMEM[(cdest++)^3] = v->g;
+      gfx.DMEM[(cdest++)^3] = v->b;
+      gfx.DMEM[(cdest++)^3] = v->a;
+      ((short*)gfx.DMEM)[(tdest++)^1] = (short)v->ou;
+      ((short*)gfx.DMEM)[(tdest++)^1] = (short)v->ov;
    }
+   free(v);
 }
 
 static void uc9_mtxtrnsp(void)

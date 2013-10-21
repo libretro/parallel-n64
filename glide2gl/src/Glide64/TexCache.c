@@ -82,7 +82,7 @@ typedef struct NODE_t
    uintptr_t	data;
    int		tmu;
    int		number;
-   NODE_t	*pNext;
+   struct NODE_t	*pNext;
 } NODE;
 
 NODE *cachelut[65536];

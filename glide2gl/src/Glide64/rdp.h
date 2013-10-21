@@ -111,9 +111,9 @@ extern uint32_t frame_count; // frame counter
 #define uc(x) coord[x<<1]
 #define vc(x) coord[(x<<1)+1]
 
-#if defined __VISUALC__
+#if defined __MSC_VER
 #define DECLAREALIGN16VAR(var) __declspec(align(16)) float (var)
-#elif defined __GNUG__
+#else
 #define DECLAREALIGN16VAR(var) float (var) __attribute__ ((aligned(16)))
 #endif
 
@@ -721,7 +721,7 @@ struct RDP
 
 void ChangeSize(void);
 
-extern RDP rdp;
+extern struct RDP rdp;
 extern SETTINGS settings;
 extern VOODOO voodoo;
 

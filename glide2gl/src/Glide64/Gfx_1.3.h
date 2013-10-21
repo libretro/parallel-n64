@@ -60,6 +60,7 @@ the plugin
 #define _GFX_H_INCLUDED__
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "m64p.h"
 
 #ifndef max
@@ -79,10 +80,6 @@ the plugin
 #include "../glide_funcs.h"
 #include "GlideExtensions.h"
 #include "rdp.h"
-
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
 #define _ENDUSER_RELEASE_
 
@@ -202,12 +199,8 @@ extern int ev_fullscreen;
 
 extern int exception;
 
-#ifdef __LIBRETRO__ // Export InitGfx for C
-extern "C" { int InitGfx(); }
-#else
-int InitGfx (int);
-#endif
-void ReleaseGfx ();
+int InitGfx(void);
+void ReleaseGfx(void);
 
 // The highest 8 bits are the segment # (1-16), and the lower 24 bits are the offset to
 // add to it.
