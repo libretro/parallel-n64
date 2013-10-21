@@ -31,8 +31,8 @@ public:
     uint32          dwTexture;  //Which texture to apply, 0 or 1
     bool            bTextureUsed;   
     
-    BOOL operator!=(const GeneralCombineStage & cs) const { return !(operator==(cs)); }
-    BOOL operator==(const GeneralCombineStage & cs) const 
+    bool operator!=(const GeneralCombineStage & cs) const { return !(operator==(cs)); }
+    bool operator==(const GeneralCombineStage & cs) const 
     {
         return (
             cs.colorOp.Arg1 == colorOp.Arg1 &&
@@ -67,34 +67,34 @@ public:
 
     bool        bResultIsGoodWithinStages;
     
-    BOOL operator!=(const GeneralCombinerInfo & sci) const { return !(operator==(sci)); }
-    BOOL operator==(const GeneralCombinerInfo & sci) const 
+    bool operator!=(const GeneralCombinerInfo & sci) const { return !(operator==(sci)); }
+    bool operator==(const GeneralCombinerInfo & sci) const 
     {
         if (sci.nStages != nStages)
-            return FALSE;
+            return false;
         if (sci.blendingFunc != blendingFunc)
-            return FALSE;
+            return false;
         
         for (int i = 0; i < nStages; i++)
         {
             if (sci.stages[i] != stages[i])
-                return FALSE;
+                return false;
         }
 
-        if( sci.TFactor != TFactor )
-            return FALSE;
-        if( sci.specularPostOp != specularPostOp )
-            return FALSE;
-        if( sci.m_dwShadeColorChannelFlag != m_dwShadeColorChannelFlag )
-            return FALSE;
-        if( sci.m_dwShadeAlphaChannelFlag != m_dwShadeAlphaChannelFlag )
-            return FALSE;
-        if( sci.colorTextureFlag[0] != colorTextureFlag[0] )
-            return FALSE;
-        if( sci.colorTextureFlag[1] != colorTextureFlag[1] )
-            return FALSE;
+        if (sci.TFactor != TFactor)
+            return false;
+        if (sci.specularPostOp != specularPostOp)
+            return false;
+        if (sci.m_dwShadeColorChannelFlag != m_dwShadeColorChannelFlag)
+            return false;
+        if (sci.m_dwShadeAlphaChannelFlag != m_dwShadeAlphaChannelFlag)
+            return false;
+        if (sci.colorTextureFlag[0] != colorTextureFlag[0])
+            return false;
+        if (sci.colorTextureFlag[1] != colorTextureFlag[1])
+            return false;
 
-        return TRUE;
+        return true;
     }
 };
 
@@ -120,7 +120,7 @@ enum CombinerOp
 /************************************************************************/
 /* This general combiner class is designed for general DirectX combiner */
 /* and OpenGL 1.2/1.3 combiner. Such combiners have the following       */
-/* limitions and conditions:                                            */
+/* limitations and conditions:                                          */
 /*                                                                      */
 /*  - Supporting at least 2 textures                                    */
 /*  - Supporting at least 2 combiner stages                             */
@@ -188,7 +188,7 @@ protected:
     int     GenCI_Type_A_B_C_A(int curN64Stage, int curStage, GeneralCombinerInfo &ci);
 
 
-    // New functions, generate stages within the stage limition
+    // New functions, generate stages within the stage limitation
     // And return the number of stages used
     // channel = 0  for color channel
     // channel = 1  for alpha channel
