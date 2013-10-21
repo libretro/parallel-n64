@@ -88,9 +88,9 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWind
     TRACE0(m_strDeviceStats);
     DebugMessage(M64MSG_INFO, "Using OpenGL: %s", m_strDeviceStats);
 
-    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);    // Clear buffers
+    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);    // Clear buffers
     UpdateFrame(false);
-    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
+    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
     UpdateFrame(false);
     
     m_bReady = true;
@@ -115,9 +115,9 @@ bool COGLGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool
 
     InitState();
 
-    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);    // Clear buffers
+    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);    // Clear buffers
     UpdateFrame(false);
-    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
+    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
     UpdateFrame(false);
     
     return true;

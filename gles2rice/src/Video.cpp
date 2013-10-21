@@ -113,11 +113,11 @@ static void ChangeWindowStep2()
     windowSetting.bDisplayFullscreen = !windowSetting.bDisplayFullscreen;
     windowSetting.bDisplayFullscreen = CGraphicsContext::Get()->ToggleFullscreen();
 
-    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
+    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
     CGraphicsContext::Get()->UpdateFrame(false);
-    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
+    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
     CGraphicsContext::Get()->UpdateFrame(false);
-    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER);
+    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
     CGraphicsContext::Get()->UpdateFrame(false);
     status.bDisableFPS = false;
     status.ToToggleFullScreen = FALSE;

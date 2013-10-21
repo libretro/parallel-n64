@@ -57,7 +57,7 @@ public:
     virtual bool ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed );
     virtual void CleanUp();
 
-    virtual void Clear(ClearFlag flags, uint32 color=0xFF000000, float depth=1.0f) = 0;
+    virtual void Clear(ClearFlag flags, uint32 color, float depth) = 0;
     virtual void UpdateFrame(bool swapOnly) = 0;
     virtual int ToggleFullscreen()=0;       // return 0 as the result is windowed
 
