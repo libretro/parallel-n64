@@ -2176,10 +2176,6 @@ void guLoadTextures(void)
 
 int InitGfx(void)
 {
-   wchar_t romname[256];
-   wchar_t foldername[PATH_MAX + 64];
-   wchar_t cachename[PATH_MAX + 64];
-
    OPEN_RDP_LOG ();  // doesn't matter if opens again; it will check for it
    OPEN_RDP_E_LOG ();
    VLOG ("InitGfx ()\n");
