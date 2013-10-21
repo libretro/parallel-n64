@@ -193,11 +193,6 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
 static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
 {
    uint32_t w, h, x, y;
-  if (settings.hacks&hack_RE2)
-  {
-    DrawRE2Video256(fb_info);
-    return;
-  }
   FRDP("DrawFrameBufferToScreen256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
   uint32_t width = fb_info->lr_x - fb_info->ul_x + 1;
   uint32_t height = fb_info->lr_y - fb_info->ul_y + 1;
@@ -312,7 +307,10 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    uint32_t max_size = min(voodoo.max_tex_size, 512);
    if (width > (uint32_t)max_size || height > (uint32_t)max_size)
    {
-      DrawFrameBufferToScreen256(fb_info);
+      if (settings.hacks&hack_RE2)
+         DrawRE2Video256(fb_info);
+      else
+         DrawFrameBufferToScreen256(fb_info);
       return true;
    }
    FRDP("DrawFrameBufferToScreen. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
