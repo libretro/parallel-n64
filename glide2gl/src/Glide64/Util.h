@@ -97,7 +97,7 @@ float ScaleZ(float z);
 #define bswap32(val) ((((val & 0xff000000) >> 24) | ((val & 0x00ff0000) >>  8) | ((val & 0x0000ff00) <<  8) | ((val & 0x000000ff) << 24)))
 #endif
 
-#define ALOWORD(x)   (*((uint16_t*)&(x)))   // low word
+#define ALOWORD(x)   (*((uint16_t*)&x))   // low word
 
 template<class T> static inline T __ROR__(T value, unsigned int count)
 {
