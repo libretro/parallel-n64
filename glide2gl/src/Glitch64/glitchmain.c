@@ -1489,3 +1489,10 @@ void grTexChromaModeExt(GrChipID_t tmu, GrChromakeyMode_t mode)
 {
    DISPLAY_WARNING("grTexChromaRangeModeExt");
 }
+
+void check_gl_error(const char *stmt, const char *fname, int line)
+{
+   GLenum error = glGetError();
+   if (error != GL_NO_ERROR)
+      fprintf(stderr, "OpenGL error %08x, at %s:%i - for %s\n", error, fname, line, stmt);
+}
