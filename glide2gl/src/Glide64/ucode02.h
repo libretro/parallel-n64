@@ -313,7 +313,7 @@ static void uc2_tri1(void)
    v[1] = &rdp.vtx[(rdp.cmd0 >> 9)  & 0x7F];
    v[2] = &rdp.vtx[(rdp.cmd0 >> 1)  & 0x7F];
 
-   rsp_tri1(v);
+   rsp_tri1(v, 0);
 }
 
 static void uc6_obj_ldtx_sprite(void);

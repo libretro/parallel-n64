@@ -62,7 +62,7 @@ static void uc4_tri1(void)
    v[1] = &rdp.vtx[v2];
    v[2] = &rdp.vtx[v3];
 
-   rsp_tri1(v);
+   rsp_tri1(v, 0);
 }
 
 static void uc4_quad3d(void)
