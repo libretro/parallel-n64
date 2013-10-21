@@ -112,10 +112,10 @@ public:
     void Decode(uint32 dwMux0, uint32 dwMux1);
     virtual void Hack(void);
     bool IsUsed(uint8 fac, uint8 mask);
-    bool IsUsedInAlphaChannel(uint8 fac, uint8 mask=MUX_MASK);
-    bool IsUsedInColorChannel(uint8 fac, uint8 mask=MUX_MASK);
-    bool IsUsedInCycle(uint8 fac, int cycle, CombineChannel channel, uint8 mask=MUX_MASK);
-    bool IsUsedInCycle(uint8 fac, int cycle, uint8 mask=MUX_MASK);
+    bool IsUsedInAlphaChannel(uint8 fac, uint8 mask);
+    bool IsUsedInColorChannel(uint8 fac, uint8 mask);
+    bool IsUsedInCycle(uint8 fac, int cycle, CombineChannel channel, uint8 mask);
+    bool IsUsedInCycle(uint8 fac, int cycle, uint8 mask);
     uint32 GetCycle(int cycle, CombineChannel channel);
     uint32 GetCycle(int cycle);
     CombinerFormatType GetCombinerFormatType(uint32 cycle);
@@ -123,7 +123,7 @@ public:
     static char* FormatStr(uint8 val, char *buf);
     void CheckCombineInCycle1(void);
     virtual void Simplify(void);
-    virtual void Reformat(bool do_complement = true);
+    virtual void Reformat(bool do_complement);
     virtual void To_AB_Add_CD_Format(void); // Use by TNT,Geforce
     virtual void To_AB_Add_C_Format(void);  // Use by ATI Radeon
     

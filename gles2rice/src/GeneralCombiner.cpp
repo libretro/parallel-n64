@@ -509,11 +509,11 @@ int CGeneralCombiner::GenCI_Type_A_B_C_D(int curN64Stage, int curStage, GeneralC
     StageOperate *op = ((StageOperate*)(&(gci.stages[curStage].colorOp))) + (curN64Stage%2);
 
     N64CombinerType save = m;
-    if( CountTexel1Cycle(m) == 2 )
+    if (CountTexel1Cycle(m) == 2)
     {
-        if( isTex(m.a) && !isTex(m.c) && curN64Stage == 0 && isTex(m.d) && toTex(m.a) != toTex(m.d) )
+        if (isTex(m.a) && !isTex(m.c) && curN64Stage == 0 && isTex(m.d) && toTex(m.a) != toTex(m.d))
         {
-            if( m_dwGeneralMaxStages >= 4 )
+            if (m_dwGeneralMaxStages >= 4)
             {
                 op->op = CM_SUBTRACT;
                 op->Arg1 = m.a;
@@ -573,13 +573,13 @@ int CGeneralCombiner::GenCI_Type_A_B_C_D(int curN64Stage, int curStage, GeneralC
             curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci);
         }
     }
-    else if( CountTexel1Cycle(m) == 1 )
+    else if (CountTexel1Cycle(m) == 1)
     {
-        if( m_dwGeneralMaxStages < 4 )
+        if (m_dwGeneralMaxStages < 4)
         {
             Check1TxtrForAlpha(curN64Stage, curStage, gci, GetTexelNumber(m));
             op->Arg1 = (MUX_TEXEL0+GetTexelNumber(m));
-            if( (*m_ppGeneralDecodedMux)->IsUsedInCycle(MUX_SHADE, curN64Stage) )
+            if ((*m_ppGeneralDecodedMux)->IsUsedInCycle(MUX_SHADE, curN64Stage, MUX_MASK))
             {
                 op->op =CM_MODULATE;
                 op->Arg2 = MUX_SHADE;

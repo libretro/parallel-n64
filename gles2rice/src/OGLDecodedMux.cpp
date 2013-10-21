@@ -26,7 +26,7 @@ void COGLDecodedMux::Simplify(void)
 
 void COGLDecodedMux::Reformat(void)
 {
-    DecodedMux::Reformat();
+    DecodedMux::Reformat(true);
     mType = max(max(max(splitType[0], splitType[1]),splitType[2]),splitType[3]);
 }
 
