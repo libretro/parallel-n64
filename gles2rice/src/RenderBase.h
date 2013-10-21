@@ -234,7 +234,7 @@ extern ALIGN(16, RDP_Options gRDP)
 */
 void InitRenderBase();
 void SetFogMinMax(float fMin, float fMax, float fMul, float fOffset);
-void InitVertex(uint32 dwV, uint32 vtxIndex, bool bTexture, bool openGL = true );
+void InitVertex(uint32 dwV, uint32 vtxIndex, bool bTexture, bool openGL);
 void InitVertexTextureConstants();
 bool PrepareTriangle(uint32 dwV0, uint32 dwV1, uint32 dwV2);
 bool IsTriangleVisible(uint32 dwV0, uint32 dwV1, uint32 dwV2);
@@ -301,7 +301,7 @@ inline void SetTextureGen(bool bTextureGen) { gRSP.bTextureGen = bTextureGen; }
 inline void SetNumLights(uint32 dwNumLights) 
 { 
     gRSPnumLights = dwNumLights; 
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_LIGHT,TRACE1("Set Num Of Light: %d", dwNumLights));
+    DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_LIGHT,TRACE1("Set Number Of Lights: %d", dwNumLights));
 }
 inline uint32 GetNumLights() { return gRSPnumLights; }
 inline COLOR GetVertexDiffuseColor(uint32 ver) { return g_dwVtxDifColor[ver]; }
