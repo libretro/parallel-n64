@@ -46,7 +46,7 @@ public:
     int FindRecentCIInfoIndex(uint32 addr);
     bool IsDIaRenderTexture();
 
-    int         CheckAddrInRenderTextures(uint32 addr, bool checkcrc = true);
+    int         CheckAddrInRenderTextures(uint32 addr, bool checkcrc);
     uint32      ComputeRenderTextureCRCInRDRAM(int infoIdx);
     void        CheckRenderTextureCRCInRDRAM(void);
     int         CheckRenderTexturesWithNewCI(SetImgInfo &CIinfo, uint32 height, bool byNewTxtrBuf);

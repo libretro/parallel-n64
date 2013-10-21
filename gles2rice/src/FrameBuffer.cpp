@@ -397,8 +397,8 @@ int FrameBufferManager::CheckAddrInBackBuffers(uint32 addr, uint32 memsize, bool
     if (r >= 0)
     {
         // Also check if the address is overwritten by a recent render_texture
-        //int t = CheckAddrInRenderTextures(addr,false);
-        int t =-1;
+        //int t = CheckAddrInRenderTextures(addr, false);
+        int t = -1;
         for (int i=0; i<numOfTxtBufInfos; i++)
         {
             uint32 bufHeight = gRenderTextureInfos[i].knownHeight ? gRenderTextureInfos[i].N64Height : gRenderTextureInfos[i].maxUsedHeight;
@@ -1549,7 +1549,7 @@ void FrameBufferManager::LoadTextureFromRenderTexture(TxtrCacheEntry* pEntry, in
 {
     if (infoIdx < 0 || infoIdx >= numOfTxtBufInfos)
     {
-        infoIdx = CheckAddrInRenderTextures(pEntry->ti.Address);
+        infoIdx = CheckAddrInRenderTextures(pEntry->ti.Address, true);
     }
 
     if (infoIdx >= 0 && gRenderTextureInfos[infoIdx].isUsed && gRenderTextureInfos[infoIdx].pRenderTexture)

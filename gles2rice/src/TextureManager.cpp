@@ -556,7 +556,7 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
     int txtBufIdxToLoadFrom = -1;
     if( (frameBufferOptions.bCheckRenderTextures&&!frameBufferOptions.bWriteBackBufToRDRAM) || (frameBufferOptions.bCheckBackBufs&&!frameBufferOptions.bWriteBackBufToRDRAM) )
     {
-        txtBufIdxToLoadFrom = g_pFrameBufferManager->CheckAddrInRenderTextures(pgti->Address);
+        txtBufIdxToLoadFrom = g_pFrameBufferManager->CheckAddrInRenderTextures(pgti->Address, true);
         if( txtBufIdxToLoadFrom >= 0 )
         {
             loadFromTextureBuffer = true;
@@ -577,7 +577,7 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
         if( !frameBufferOptions.bWriteBackBufToRDRAM )
         {
             // Load the texture from recent back buffer
-            txtBufIdxToLoadFrom = g_pFrameBufferManager->CheckAddrInRenderTextures(pgti->Address);
+            txtBufIdxToLoadFrom = g_pFrameBufferManager->CheckAddrInRenderTextures(pgti->Address, true);
             if( txtBufIdxToLoadFrom >= 0 )
             {
                 loadFromTextureBuffer = true;
