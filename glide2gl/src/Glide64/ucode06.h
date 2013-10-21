@@ -216,6 +216,7 @@ void DrawHiresDepthImage (const DRAWIMAGE *d)
    float lr_y = (float)d->imageH * rdp.scale_y;
    float lr_u = (float)d->imageW * 0.5f;// - 0.5f;
    float lr_v = (float)d->imageH * 0.5f;// - 0.5f;
+   int i;
    VERTEX v[4] = {
       { 0, 0, 1.0f, 1.0f, 0, 0, 0, 0 },
       { lr_x, 0, 1.0f, 1.0f, lr_u, 0, lr_u, 0 },
@@ -223,7 +224,7 @@ void DrawHiresDepthImage (const DRAWIMAGE *d)
       { lr_x, lr_y, 1.0f, 1.0f, lr_u, lr_v, lr_u, lr_v }
    };
    AddOffset(v, 4);
-   for (int i=0; i<4; i++)
+   for (i = 0; i < 4; i++)
    {
       v[i].uc(0) = v[i].uc(1) = v[i].u0;
       v[i].vc(0) = v[i].vc(1) = v[i].v0;
@@ -542,13 +543,14 @@ void DrawImage (DRAWIMAGE *d)
 
       if ((flr_x <= rdp.scissor.lr_x) || (ful_x < rdp.scissor.lr_x))
       {
+         int s;
         VERTEX v[4] = {
           { ful_x, ful_y, Z, 1.0f, ful_u, ful_v },
           { flr_x, ful_y, Z, 1.0f, flr_u, ful_v },
           { ful_x, flr_y, Z, 1.0f, ful_u, flr_v },
           { flr_x, flr_y, Z, 1.0f, flr_u, flr_v } };
           AllowShadeMods (v, 4);
-          for (int s = 0; s < 4; s++)
+          for (s = 0; s < 4; s++)
             apply_shade_mods (&(v[s]));
           ConvertCoordsConvert (v, 4);
 
@@ -617,6 +619,7 @@ void DrawHiresImage(DRAWIMAGE *d, int screensize)
       d->frameH -= (uint16_t)(2.0f*d->frameY);
   }
 
+  int s;
   float ul_x, ul_y, ul_u, ul_v, lr_x, lr_y, lr_u, lr_v;
   if (screensize)
   {
@@ -663,7 +666,7 @@ void DrawHiresImage(DRAWIMAGE *d, int screensize)
     ConvertCoordsConvert (v, 4);
     AllowShadeMods (v, 4);
     AddOffset(v, 4);
-    for (int s = 0; s < 4; s++)
+    for (s = 0; s < 4; s++)
       apply_shade_mods (&(v[s]));
     grDrawTriangle2 (&v[0], &v[2], &v[1], &v[2], &v[3], &v[1]);
     rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE | UPDATE_TEXTURE | UPDATE_ALPHA_COMPARE | UPDATE_SCISSOR;
@@ -920,8 +923,9 @@ static void draw_split_triangle(VERTEX **vtx)
 
 static void uc6_draw_polygons (VERTEX v[4])
 {
+   int s;
   AllowShadeMods (v, 4);
-  for (int s = 0; s < 4; s++)
+  for (s = 0; s < 4; s++)
     apply_shade_mods (&(v[s]));
   AddOffset(v, 4);
 
@@ -1023,6 +1027,7 @@ static void uc6_init_tile(const DRAWOBJECT *d)
 
 static void uc6_obj_rectangle ()
 {
+   int i;
   LRDP ("uc6:obj_rectangle ");
   DRAWOBJECT *d = (DRAWOBJECT*)malloc(sizeof(DRAWOBJECT));
   uc6_read_object_data(d);
@@ -1083,7 +1088,7 @@ static void uc6_obj_rectangle ()
     { lr_x, lr_y, Z, 1, lr_u, lr_v }
   };
 
-  for (int i=0; i<4; i++)
+  for (i = 0; i < 4; i++)
   {
     v[i].x *= rdp.scale_x;
     v[i].y *= rdp.scale_y;
@@ -1095,6 +1100,7 @@ static void uc6_obj_rectangle ()
 
 static void uc6_obj_sprite ()
 {
+   int i;
   LRDP ("uc6:obj_sprite ");
   DRAWOBJECT *d = (DRAWOBJECT*)malloc(sizeof(DRAWOBJECT));
   uc6_read_object_data(d);
@@ -1143,7 +1149,7 @@ static void uc6_obj_sprite ()
     { lr_x, lr_y, Z, 1, lr_u, lr_v }
   };
 
-  for (int i=0; i<4; i++)
+  for (i = 0; i < 4; i++)
   {
     float x = v[i].x;
     float y = v[i].y;
@@ -1222,6 +1228,7 @@ static uint16_t uc6_yuv_to_rgba(uint8_t y, uint8_t u, uint8_t v)
 
 static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t lr_x, uint16_t lr_y)
 {
+   uint16_t h, w;
   FRDP ("uc6:DrawYUVImageToFrameBuffer ul_x%d, ul_y%d, lr_x%d, lr_y%d\n", ul_x, ul_y, lr_x, lr_y);
   uint32_t ci_width = rdp.ci_width;
   uint32_t ci_height = rdp.ci_lower_bound;
@@ -1238,9 +1245,9 @@ static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t
   uint16_t * dst = (uint16_t*)(gfx.RDRAM+rdp.cimg);
   dst += ul_x + ul_y * ci_width;
   //yuv macro block contains 16x16 texture. we need to put it in the proper place inside cimg
-  for (uint16_t h = 0; h < 16; h++)
+  for (h = 0; h < 16; h++)
   {
-    for (uint16_t w = 0; w < 16; w+=2)
+    for (w = 0; w < 16; w+=2)
     {
       uint32_t t = *(mb++); //each uint32_t contains 2 pixels
       if ((h < height) && (w < width)) //clipping. texture image may be larger than color image
@@ -1259,6 +1266,7 @@ static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t
 
 static void uc6_obj_rectangle_r(void)
 {
+   int i;
    LRDP ("uc6:obj_rectangle_r ");
    DRAWOBJECT *d = (DRAWOBJECT*)malloc(sizeof(DRAWOBJECT));
    uc6_read_object_data(d);
@@ -1318,7 +1326,7 @@ static void uc6_obj_rectangle_r(void)
       { lr_x, lr_y, Z, 1, lr_u, lr_v }
    };
 
-   for (int i=0; i<4; i++)
+   for (i = 0; i < 4; i++)
    {
       float x = v[i].x;
       float y = v[i].y;

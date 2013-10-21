@@ -653,10 +653,11 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
          uint16_t *ptr_dst = (uint16_t*)(gfx.RDRAM+rdp.cimg);
          uint32_t *ptr_dst32 = (uint32_t*)(gfx.RDRAM+rdp.cimg);
          uint16_t c;
+         uint32_t y, x;
 
-         for (uint32_t y=0; y<height; y++)
+         for (y = 0; y < height; y++)
          {
-            for (uint32_t x=0; x<width; x++)
+            for (x = 0; x < width; x++)
             {
                c = ptr_src[x + y * width];
                if (settings.frame_buffer&fb_read_alpha)
@@ -710,18 +711,19 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
             uint32_t *ptr_dst32 = (uint32_t*)(gfx.RDRAM+rdp.cimg);
             uint16_t c;
             uint32_t stride = info.strideInBytes>>1;
+            int y, x;
 
             int read_alpha = settings.frame_buffer & fb_read_alpha;
             if ((settings.hacks&hack_PMario) && rdp.frame_buffers[rdp.ci_count-1].status != ci_aux)
                read_alpha = false;
             int x_start = 0, y_start = 0, x_end = width, y_end = height;
+
             if (settings.hacks&hack_BAR)
-            {
                x_start = 80, y_start = 24, x_end = 240, y_end = 86;
-            }
-            for (int y=y_start; y<y_end; y++)
+
+            for (y = y_start; y < y_end; y++)
             {
-               for (int x=x_start; x<x_end; x++)
+               for (x = x_start; x < x_end; x++)
                {
                   c = ptr_src[(int)(x*scale_x + rdp.offset_x) + (int)(y * scale_y + rdp.offset_y) * stride];
                   c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
@@ -1526,8 +1528,9 @@ static void rdp_texrect()
       //*
       if (n_vertices > 12)
       {
+         int k;
         float texbound = (float)(splitheight << 1);
-        for (int k = 0; k < n_vertices; k ++)
+        for (k = 0; k < n_vertices; k ++)
         {
           if (vnew[k].v0 > texbound)
             vnew[k].v0 = (float)fmod(vnew[k].v0, texbound);
@@ -1699,8 +1702,9 @@ void load_palette (uint32_t addr, uint16_t start, uint16_t count)
   LRDP("Loading palette... ");
   uint16_t *dpal = rdp.pal_8 + start;
   uint16_t end = start+count;
+  uint16_t i, p;
 
-  for (uint16_t i=start; i<end; i++)
+  for (i=start; i<end; i++)
   {
     *(dpal++) = *(uint16_t *)(gfx.RDRAM + (addr^2));
     addr += 2;
@@ -1713,7 +1717,7 @@ void load_palette (uint32_t addr, uint16_t start, uint16_t count)
   end = start + (count >> 4);
   if (end == start) // it can be if count < 16
     end = start + 1;
-  for (uint16_t p = start; p < end; p++)
+  for (p = start; p < end; p++)
   {
     rdp.pal_8_crc[p] = CRC32( 0xFFFFFFFF, &rdp.pal_8[(p << 4)], 32 );
   }
@@ -2362,6 +2366,7 @@ static void rdp_fillrect()
       }
       //if (settings.frame_buffer&fb_depth_clear)
       {
+         uint32_t y, x;
         ul_x = min(max(ul_x, rdp.scissor_o.ul_x), rdp.scissor_o.lr_x);
         lr_x = min(max(lr_x, rdp.scissor_o.ul_x), rdp.scissor_o.lr_x);
         ul_y = min(max(ul_y, rdp.scissor_o.ul_y), rdp.scissor_o.lr_y);
@@ -2371,12 +2376,10 @@ static void rdp_fillrect()
         lr_x >>= 1;
         uint32_t * dst = (uint32_t*)(gfx.RDRAM+rdp.cimg);
         dst += ul_y * zi_width_in_dwords;
-        for (uint32_t y = ul_y; y < lr_y; y++)
+        for (y = ul_y; y < lr_y; y++)
         {
-          for (uint32_t x = ul_x; x < lr_x; x++)
-          {
+          for (x = ul_x; x < lr_x; x++)
             dst[x] = rdp.fill_color;
-          }
           dst += zi_width_in_dwords;
         }
       }
@@ -2496,8 +2499,9 @@ static void rdp_fillrect()
         uint32_t cmb_mode_a = (rdp.cycle1 & 0x0FFF0000) | ((rdp.cycle2 >> 16) & 0x00000FFF);
         if (cmb_mode_c == 0x9fff9fff || cmb_mode_a == 0x09ff09ff) //shade
         {
+           int k;
           AllowShadeMods (v, 4);
-          for (int k = 0; k < 4; k++)
+          for (k = 0; k < 4; k++)
             apply_shade_mods (&v[k]);
         }
         if ((rdp.othermode_l & 0x4000) && ((rdp.othermode_l >> 16) == 0x0550)) //special blender mode for Bomberman64
@@ -2908,15 +2912,16 @@ static void rdp_setcolorimage()
          {
             if ((settings.hacks&hack_PPL) && (rdp.scale_x < 1.1f))  //need to put current image back to frame buffer
             {
+               int y, x;
                int width = cur_fb->width;
                int height = cur_fb->height;
                uint16_t *ptr_dst = (uint16_t*)malloc(width * height * sizeof(uint16_t));
                uint16_t *ptr_src = (uint16_t*)(gfx.RDRAM+cur_fb->addr);
                uint16_t c;
 
-               for (int y=0; y<height; y++)
+               for (y = 0; y < height; y++)
                {
-                  for (int x=0; x<width; x++)
+                  for (x = 0; x < width; x++)
                   {
                      c = ((ptr_src[(x + y * width)^1]) >> 1) | 0x8000;
                      ptr_dst[x + y * width] = c;
@@ -3443,8 +3448,9 @@ void DetectFrameBufferUsage ()
    {
       for (i = 0; i < voodoo.num_tmu; i++)
       {
+         int j;
          rdp.texbufs[i].clear_allowed = true;
-         for (int j = 0; j < 256; j++)
+         for (j = 0; j < 256; j++)
          {
             rdp.texbufs[i].images[j].drawn = false;
             rdp.texbufs[i].images[j].clear = true;
@@ -3764,8 +3770,9 @@ void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer,
   }
 
   {
+     int k;
     update ();
-    for (int k = 0; k < nbVtxs-1; k++)
+    for (k = 0; k < nbVtxs-1; k++)
     {
       VERTEX * v = &vtxbuf[k];
       v->x = v->x * rdp.scale_x + rdp.offset_x;

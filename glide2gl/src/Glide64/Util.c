@@ -57,7 +57,8 @@ VERTEX *vtx_list2[32];
 
 void util_init(void)
 {
-   for (int i=0; i<32; i++)
+   int i;
+   for (i = 0; i < 32; i++)
    {
       vtx_list1[i] = &rdp.vtx1[i];
       vtx_list2[i] = &rdp.vtx2[i];
@@ -287,6 +288,7 @@ VERTEX **org_vtx;
 
 void draw_tri (VERTEX **vtx, uint16_t linew)
 {
+   int i;
    deltaZ = dzdx = 0;
    if (linew == 0 && (fb_depth_render_enabled || (rdp.rm & 0xC00) == 0xC00))
    {
@@ -326,7 +328,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 
    org_vtx = vtx;
 
-   for (int i=0; i<3; i++)
+   for (i = 0; i < 3; i++)
    {
       VERTEX *v = vtx[i];
 
@@ -829,9 +831,10 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
 
 void do_triangle_stuff_2 (uint16_t linew)
 {
+   int i;
    rdp.clip = 0;
 
-   for (int i=0; i<rdp.n_global; i++)
+   for (i = 0; i<rdp.n_global; i++)
    {
       // Don't remove clipping, or it will freeze
       if (rdp.vtxbuf[i].x > rdp.clip_max_x) rdp.clip |= CLIP_XMAX;

@@ -496,6 +496,7 @@ typedef struct
 
 static void uc9_mult_mpmtx(void)
 {
+   int i;
    //int id = rdp.cmd0&0xFF;
    int num = 1+ ((rdp.cmd1 >> 24) & 0xFF);
    int src = -1024 + ((rdp.cmd1 >> 12) & 0xFFF);
@@ -508,7 +509,7 @@ static void uc9_mult_mpmtx(void)
    memset(&v, 0, sizeof(zSortVDest));
    //float scale_x = 4.0f/rdp.scale_x;
    //float scale_y = 4.0f/rdp.scale_y;
-   for (int i = 0; i < num; i++)
+   for (i = 0; i < num; i++)
    {
       short sx   = saddr[(idx++)^1];
       short sy   = saddr[(idx++)^1];

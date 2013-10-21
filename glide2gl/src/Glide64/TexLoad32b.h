@@ -75,12 +75,13 @@ uint32_t Load32bRGBA (uintptr_t dst, uintptr_t src, int wid_64, int height, int 
    uint32_t mod = (id == 0) ? cmb.mod_0 : cmb.mod_1;
    if (mod)
    {
+      uint32_t i;
       //convert to ARGB_4444
       const uint32_t tex_size = real_width * height;
       tex = (uint32_t *)dst;
       uint16_t *tex16 = (uint16_t*)dst;
       uint16_t a, r, g, b;
-      for (uint32_t i = 0; i < tex_size; i++)
+      for (i = 0; i < tex_size; i++)
       {
          c = tex[i];
          a = (c >> 28) & 0xF;

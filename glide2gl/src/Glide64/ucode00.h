@@ -70,10 +70,11 @@ static void rsp_vertex(int v0, int n)
    // This is special, not handled in update()
    if (rdp.update & UPDATE_LIGHTS)
    {
+      uint32_t l;
       rdp.update ^= UPDATE_LIGHTS;
 
       // Calculate light vectors
-      for (uint32_t l=0; l<rdp.num_lights; l++)
+      for (l = 0; l < rdp.num_lights; l++)
       {
          InverseTransformVector(&rdp.light[l].dir_x, rdp.light_vector[l], rdp.model);
          NormalizeVector (rdp.light_vector[l]);
@@ -558,8 +559,9 @@ static void uc0_tri1(void)
 
    if (settings.hacks & hack_Makers)
    {
+      int i;
       rdp.force_wrap = false;
-      for (int i = 0; i < 3; i++)
+      for (i = 0; i < 3; i++)
       {
          if (v[i]->ou < 0.0f || v[i]->ov < 0.0f)
          {

@@ -191,6 +191,7 @@ void Mirror8bT (unsigned char * tex, uint32_t mask, uint32_t max_height, uint32_
 
    uint32_t mask_height = (1 << mask);
    uint32_t mask_mask = mask_height-1;
+   uint32_t y;
 
    if (max_height <= mask_height)
       return;
@@ -198,7 +199,7 @@ void Mirror8bT (unsigned char * tex, uint32_t mask, uint32_t max_height, uint32_
 
    unsigned char * dst = tex + mask_height * line_full;
 
-   for (uint32_t y=mask_height; y<max_height; y++)
+   for (y = mask_height; y < max_height; y++)
    {
       if (y & mask_height) // mirrored
          memcpy ((void*)dst, (void*)(tex + (mask_mask - (y & mask_mask)) * line_full), line_full);
@@ -225,8 +226,9 @@ void Wrap8bT (unsigned char * tex, uint32_t mask, uint32_t max_height, uint32_t 
    int line_full = real_width;
 
    unsigned char * dst = tex + mask_height * line_full;
+   uint32_t y;
 
-   for (uint32_t y=mask_height; y<max_height; y++)
+   for (y = mask_height; y < max_height; y++)
    {
       // not mirrored
       memcpy ((void*)dst, (void*)(tex + (y & mask_mask) * line_full), line_full);
@@ -242,8 +244,9 @@ void Clamp8bT (unsigned char * tex, uint32_t height, uint32_t real_width, uint32
    int line_full = real_width;
    unsigned char * dst = tex + height * line_full;
    unsigned char * const_line = dst - line_full;
+   uint32_t y;
 
-   for (uint32_t y=height; y<clamp_to; y++)
+   for (y = height; y < clamp_to; y++)
    {
       memcpy ((void*)dst, (void*)const_line, line_full);
       dst += line_full;

@@ -232,8 +232,9 @@ void Wrap16bT (unsigned char * tex, uint32_t mask, uint32_t max_height, uint32_t
    int line_full = real_width << 1;
 
    unsigned char * dst = tex + mask_height * line_full;
+   uint32_t y;
 
-   for (uint32_t y=mask_height; y<max_height; y++)
+   for (y = mask_height; y < max_height; y++)
    {
       // not mirrored
       memcpy ((void*)dst, (void*)(tex + (y & mask_mask) * line_full), line_full);

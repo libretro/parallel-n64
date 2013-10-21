@@ -599,16 +599,15 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
    }
 
+   uint32_t y, x;
    uint16_t * tex = (uint16_t*)texture_buffer;
    uint16_t * dst = tex;
    uint16_t * src = (uint16_t*)image;
    src += fb_info->ul_x + fb_info->ul_y * fb_info->width;
-   for (uint32_t y=0; y < height; y++)
+   for (y=0; y < height; y++)
    {
-      for (uint32_t x=0; x < width; x++)
-      {
+      for (x = 0; x < width; x++)
          *(dst++) = rdp.pal_8[src[(x+y*fb_info->width)^1]>>8];
-      }
       dst += texwidth-width;
    }
    t_info.format = GR_TEXFMT_ALPHA_INTENSITY_88;

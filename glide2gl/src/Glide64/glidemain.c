@@ -2222,15 +2222,14 @@ int InitGfx(void)
 
    if (settings.fog) //"FOGCOORD" extension
    {
+      int i;
       GrFog_t fog_t[64];
       guFogGenerateLinear (fog_t, 0.0f, 255.0f);//(float)rdp.fog_multiplier + (float)rdp.fog_offset);//256.0f);
 
-      for (int i = 63; i > 0; i--)
+      for (i = 63; i > 0; i--)
       {
          if (fog_t[i] - fog_t[i-1] > 63)
-         {
             fog_t[i-1] = fog_t[i] - 63;
-         }
       }
       fog_t[0] = 0;
       grFogTable (fog_t);
@@ -2309,11 +2308,12 @@ EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
                FXFALSE,
                &info))
       {
+         uint32_t y, x;
          // Copy the screen, let's hope this works.
-         for (uint32_t y=0; y<settings.res_y; y++)
+         for (y = 0; y < settings.res_y; y++)
          {
             uint8_t *ptr = (uint8_t*) info.lfbPtr + (info.strideInBytes * y);
-            for (uint32_t x=0; x<settings.res_x; x++)
+            for (x = 0; x < settings.res_x; x++)
             {
                line[x*3]   = ptr[2];  // red
                line[x*3+1] = ptr[1];  // green
@@ -2554,6 +2554,7 @@ output:   none
 *******************************************************************/
 EXPORT int CALL RomOpen (void)
 {
+   int i;
    VLOG ("RomOpen ()\n");
    no_dlist = true;
    romopen = true;
@@ -2573,7 +2574,7 @@ EXPORT int CALL RomOpen (void)
    ReadSpecialSettings (name);
 
    // get the name of the ROM
-   for (int i=0; i<20; i++)
+   for (i = 0; i < 20; i++)
       name[i] = gfx.HEADER[(32+i)^3];
    name[20] = 0;
 

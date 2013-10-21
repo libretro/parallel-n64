@@ -220,6 +220,7 @@ static void LeftSection(void)
 
 void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
 {
+   int n;
    start_vtx = vtx;        // First vertex in array
 
    // Search trough the vtx array to find min y, max y
@@ -233,7 +234,7 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
 
    vtx++;
 
-   for(int n=1; n<vertices; n++)
+   for (n = 1; n < vertices; n++)
    {
       if(vtx->y < min_y)
       {
@@ -287,6 +288,7 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
 
       if(width > 0 && y1 >= (int)rdp.scissor_o.ul_y)
       {
+         int x;
          // Prestep initial z
 
          int prestep = (x1 << 16) - left_x;
@@ -297,7 +299,7 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
          int trueZ;
          int idx;
          uint16_t encodedZ;
-         for (int x = 0; x < width; x++)
+         for (x = 0; x < width; x++)
          {
             trueZ = z/8192;
             if (trueZ < 0) trueZ = 0;

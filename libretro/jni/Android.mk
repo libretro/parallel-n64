@@ -144,15 +144,15 @@ LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/2xSAI.c \
             $(VIDEODIR_GLN64)/VI.c
 
 INCFLAGS += $(VIDEODIR_GLIDE)/Glitch64/inc
-LOCAL_SRC_FILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
-            $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.cpp \
-            $(VIDEODIR_GLIDE)/Glide64/Main.cpp \
-            $(VIDEODIR_GLIDE)/Glide64/Util.cpp \
-            $(VIDEODIR_GLIDE)/Glide64/TexBuffer.cpp \
-            $(VIDEODIR_GLIDE)/Glide64/rdp.cpp \
-            $(VIDEODIR_GLIDE)/Glide64/Combine.cpp \
-            $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.cpp \
-            $(VIDEODIR_GLIDE)/Glide64/TexCache.cpp \
+LOCAL_SRC_FILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.c \
+            $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.c \
+            $(VIDEODIR_GLIDE)/Glide64/glidemain.c \
+            $(VIDEODIR_GLIDE)/Glide64/Util.c \
+            $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c \
+            $(VIDEODIR_GLIDE)/Glide64/rdp.c \
+            $(VIDEODIR_GLIDE)/Glide64/Combine.c \
+            $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.c \
+            $(VIDEODIR_GLIDE)/Glide64/TexCache.c
 LOCAL_SRC_FILES   += $(VIDEODIR_GLIDE)/Glitch64/combiner.c \
             $(VIDEODIR_GLIDE)/Glitch64/geometry.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c \
