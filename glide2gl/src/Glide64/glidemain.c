@@ -1736,6 +1736,7 @@ void ReadSpecialSettings (const char * name)
       //depth_bias = 60
       settings.filtering = 1;
       //depthmode = 1
+      settings.lodmode = 1;
       smart_read = 1;
 #ifdef HAVE_HWFBE
       hires = 1;
