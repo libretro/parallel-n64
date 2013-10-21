@@ -955,12 +955,13 @@ EXPORT void CALL ProcessDList(void)
 // undef - undefined instruction, always ignore
 static void undef()
 {
-  FRDP_E("** undefined ** (%08lx)\n", rdp.cmd0);
-  FRDP("** undefined ** (%08lx) - IGNORED\n", rdp.cmd0);
 #ifdef _ENDUSER_RELEASE_
   *gfx.MI_INTR_REG |= 0x20;
   gfx.CheckInterrupts();
   rdp.halt = 1;
+#else
+  FRDP_E("** undefined ** (%08lx)\n", rdp.cmd0);
+  FRDP("** undefined ** (%08lx) - IGNORED\n", rdp.cmd0);
 #endif
 }
 

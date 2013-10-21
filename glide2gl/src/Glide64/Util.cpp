@@ -671,13 +671,13 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 #define interp2p(a, b, r)  (a + (b - a) * r)
 
 //*
-static void InterpolateColors(VERTEX & va, VERTEX & vb, VERTEX & res, float percent)
+static void InterpolateColors(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
 {
-   res.b = (uint8_t)interp2p(va.b, vb.b, percent);
-   res.g = (uint8_t)interp2p(va.g, vb.g, percent);;
-   res.r = (uint8_t)interp2p(va.r, vb.r, percent);;
-   res.a = (uint8_t)interp2p(va.a, vb.a, percent);;
-   res.f = interp2p(va.f, vb.f, percent);;
+   res->b = (uint8_t)interp2p(va->b, vb->b, percent);
+   res->g = (uint8_t)interp2p(va->g, vb->g, percent);;
+   res->r = (uint8_t)interp2p(va->r, vb->r, percent);;
+   res->a = (uint8_t)interp2p(va->a, vb->a, percent);;
+   res->f = interp2p(va->f, vb->f, percent);;
 }
 
 //*/
@@ -722,7 +722,7 @@ static void clip_w (int interpolate_colors)
             rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
             rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
             if (interpolate_colors)
-               InterpolateColors(Vi, Vj, rdp.vtxbuf[index++], percent);
+               InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
             else
                rdp.vtxbuf[index++].number = Vi.number | Vj.number;
          }
@@ -743,7 +743,7 @@ static void clip_w (int interpolate_colors)
             rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
             rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
             if (interpolate_colors)
-               InterpolateColors(Vj, Vi, rdp.vtxbuf[index++], percent);
+               InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
             else
                rdp.vtxbuf[index++].number = Vi.number | Vj.number;
 
@@ -848,39 +848,39 @@ void do_triangle_stuff_2 (uint16_t linew)
 #define real_to_char(x) ((uint8_t)(((int)floor(x + 0.5)) & 0xFF))
 
 //*
-static void InterpolateColors2(VERTEX & va, VERTEX & vb, VERTEX & res, float percent)
+static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
 {
-   float w = 1.0f/(va.oow + (vb.oow-va.oow) * percent);
-   //   res.oow = va.oow + (vb.oow-va.oow) * percent;
-   //   res.q = res.oow;
-   float ba = va.b * va.oow;
-   float bb = vb.b * vb.oow;
-   res.b = real_to_char(interp2p(ba, bb, percent) * w);
-   float ga = va.g * va.oow;
-   float gb = vb.g * vb.oow;
-   res.g = real_to_char(interp2p(ga, gb, percent) * w);
-   float ra = va.r * va.oow;
-   float rb = vb.r * vb.oow;
-   res.r = real_to_char(interp2p(ra, rb, percent) * w);
-   float aa = va.a * va.oow;
-   float ab = vb.a * vb.oow;
-   res.a = real_to_char(interp2p(aa, ab, percent) * w);
-   float fa = va.f * va.oow;
-   float fb = vb.f * vb.oow;
-   res.f = interp2p(fa, fb, percent) * w;
+   float w = 1.0f/(va->oow + (vb->oow-va->oow) * percent);
+   //   res->oow = va->oow + (vb->oow-va->oow) * percent;
+   //   res->q = res->oow;
+   float ba = va->b * va->oow;
+   float bb = vb->b * vb->oow;
+   res->b = real_to_char(interp2p(ba, bb, percent) * w);
+   float ga = va->g * va->oow;
+   float gb = vb->g * vb->oow;
+   res->g = real_to_char(interp2p(ga, gb, percent) * w);
+   float ra = va->r * va->oow;
+   float rb = vb->r * vb->oow;
+   res->r = real_to_char(interp2p(ra, rb, percent) * w);
+   float aa = va->a * va->oow;
+   float ab = vb->a * vb->oow;
+   res->a = real_to_char(interp2p(aa, ab, percent) * w);
+   float fa = va->f * va->oow;
+   float fb = vb->f * vb->oow;
+   res->f = interp2p(fa, fb, percent) * w;
    /*
-      float u0a = va.u0_w * va.oow;
-      float u0b = vb.u0_w * vb.oow;
-      res.u0 = (u0a + (u0b - u0a) * percent) * w;
-      float v0a = va.v0_w * va.oow;
-      float v0b = vb.v0_w * vb.oow;
-      res.v0 = (v0a + (v0b - v0a) * percent) * w;
-      float u1a = va.u1_w * va.oow;
-      float u1b = vb.u1_w * vb.oow;
-      res.u1 = (u1a + (u1b - u1a) * percent) * w;
-      float v1a = va.v1_w * va.oow;
-      float v1b = vb.v1_w * vb.oow;
-      res.v1 = (v1a + (v1b - v1a) * percent) * w;
+      float u0a = va->u0_w * va->oow;
+      float u0b = vb->u0_w * vb->oow;
+      res->u0 = (u0a + (u0b - u0a) * percent) * w;
+      float v0a = va->v0_w * va->oow;
+      float v0b = vb->v0_w * vb->oow;
+      res->v0 = (v0a + (v0b - v0a) * percent) * w;
+      float u1a = va->u1_w * va->oow;
+      float u1b = vb->u1_w * vb->oow;
+      res->u1 = (u1a + (u1b - u1a) * percent) * w;
+      float v1a = va->v1_w * va->oow;
+      float v1b = vb->v1_w * vb->oow;
+      res->v1 = (v1a + (v1b - v1a) * percent) * w;
       */
 }
 //*/
@@ -892,67 +892,68 @@ typedef struct
    double y;
 } LineEquationType;
 
-#define EvaLine(li, x, y) ((li.x) * (x) + (li.y) * (y) + (li.d))
+#define EvaLine(li, x, y) ((li->x) * (x) + (li->y) * (y) + (li->d))
 
-static void Create1LineEq(LineEquationType &l, VERTEX &v1, VERTEX &v2, VERTEX &v3)
+static void Create1LineEq(LineEquationType *l, VERTEX *v1, VERTEX *v2, VERTEX *v3)
 {
    double x, y;
    // Line between (x1,y1) to (x2,y2)
-   l.x = v2.sy-v1.sy;
-   l.y = v1.sx-v2.sx;
-   l.d = -(l.x*v2.sx+(l.y)*v2.sy);
-   x = v3.sx;
-   y = v3.sy;
-   if (EvaLine(l,x,y)*v3.oow < 0)
+   l->x = v2->sy-v1->sy;
+   l->y = v1->sx-v2->sx;
+   l->d = -(l->x * v2->sx+ (l->y) * v2->sy);
+   x = v3->sx;
+   y = v3->sy;
+   if (EvaLine(l,x,y) * v3->oow < 0)
    {
-      l.x = -l.x;
-      l.y = -l.y;
-      l.d = -l.d;
+      l->x = -l->x;
+      l->y = -l->y;
+      l->d = -l->d;
    }
 }
 
 
 #define interp3p(a, b, c, r1, r2) ((a)+(((b)+((c)-(b))*(r2))-(a))*(r1))
 
-static void InterpolateColors3(VERTEX &v1, VERTEX &v2, VERTEX &v3, VERTEX &out)
+static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
 {
-   LineEquationType line;
+   LineEquationType *line = (LineEquationType*)malloc(sizeof(LineEquationType));
    Create1LineEq(line, v2, v3, v1);
 
-   double aDot = (out.x*line.x + out.y*line.y);
-   double bDot = (v1.sx*line.x + v1.sy*line.y);
+   double aDot = (out->x * line->x + out->y * line->y);
+   double bDot = (v1->sx * line->x + v1->sy * line->y);
 
-   double scale1 = ( - line.d - aDot) / ( bDot - aDot );
+   double scale1 = ( -line->d - aDot) / ( bDot - aDot );
 
-   double tx = out.x + scale1 * (v1.sx - out.x);
-   double ty = out.y + scale1 * (v1.sy - out.y);
+   double tx = out->x + scale1 * (v1->sx - out->x);
+   double ty = out->y + scale1 * (v1->sy - out->y);
 
    double s1 = 101.0, s2 = 101.0;
-   double den = tx - v1.sx;
+   double den = tx - v1->sx;
    if (fabs(den) > 1.0)
-      s1 = (out.x-v1.sx)/den;
+      s1 = (out->x-v1->sx)/den;
    if (s1 > 100.0f)
-      s1 = (out.y-v1.sy)/(ty-v1.sy);
+      s1 = (out->y-v1->sy)/(ty-v1->sy);
 
-   den = v3.sx - v2.sx;
+   den = v3->sx - v2->sx;
    if (fabs(den) > 1.0)
-      s2 = (tx-v2.sx)/den;
+      s2 = (tx-v2->sx)/den;
    if (s2 > 100.0f)
-      s2 =(ty-v2.sy)/(v3.sy-v2.sy);
+      s2 =(ty-v2->sy)/(v3->sy-v2->sy);
 
-   double w = 1.0/interp3p(v1.oow,v2.oow,v3.oow,s1,s2);
+   double w = 1.0/interp3p(v1->oow,v2->oow,v3->oow,s1,s2);
 
-   out.r = real_to_char(interp3p(v1.r*v1.oow,v2.r*v2.oow,v3.r*v3.oow,s1,s2)*w);
-   out.g = real_to_char(interp3p(v1.g*v1.oow,v2.g*v2.oow,v3.g*v3.oow,s1,s2)*w);
-   out.b = real_to_char(interp3p(v1.b*v1.oow,v2.b*v2.oow,v3.b*v3.oow,s1,s2)*w);
-   out.a = real_to_char(interp3p(v1.a*v1.oow,v2.a*v2.oow,v3.a*v3.oow,s1,s2)*w);
-   out.f = (float)(interp3p(v1.f*v1.oow,v2.f*v2.oow,v3.f*v3.oow,s1,s2)*w);
+   out->r = real_to_char(interp3p(v1->r*v1->oow,v2->r*v2->oow,v3->r*v3->oow,s1,s2)*w);
+   out->g = real_to_char(interp3p(v1->g*v1->oow,v2->g*v2->oow,v3->g*v3->oow,s1,s2)*w);
+   out->b = real_to_char(interp3p(v1->b*v1->oow,v2->b*v2->oow,v3->b*v3->oow,s1,s2)*w);
+   out->a = real_to_char(interp3p(v1->a*v1->oow,v2->a*v2->oow,v3->a*v3->oow,s1,s2)*w);
+   out->f = (float)(interp3p(v1->f*v1->oow,v2->f*v2->oow,v3->f*v3->oow,s1,s2)*w);
    /*
-      out.u0 = interp3p(v1.u0_w*v1.oow,v2.u0_w*v2.oow,v3.u0_w*v3.oow,s1,s2)/oow;
-      out.v0 = interp3p(v1.v0_w*v1.oow,v2.v0_w*v2.oow,v3.v0_w*v3.oow,s1,s2)/oow;
-      out.u1 = interp3p(v1.u1_w*v1.oow,v2.u1_w*v2.oow,v3.u1_w*v3.oow,s1,s2)/oow;
-      out.v1 = interp3p(v1.v1_w*v1.oow,v2.v1_w*v2.oow,v3.v1_w*v3.oow,s1,s2)/oow;
+      out->u0 = interp3p(v1->u0_w*v1->oow,v2->u0_w*v2->oow,v3->u0_w*v3->oow,s1,s2)/oow;
+      out->v0 = interp3p(v1->v0_w*v1->oow,v2->v0_w*v2->oow,v3->v0_w*v3->oow,s1,s2)/oow;
+      out->u1 = interp3p(v1->u1_w*v1->oow,v2->u1_w*v2->oow,v3->u1_w*v3->oow,s1,s2)/oow;
+      out->v1 = interp3p(v1->v1_w*v1->oow,v2->v1_w*v2->oow,v3->v1_w*v3->oow,s1,s2)/oow;
       */
+   free(line);
 }
 
 static void CalculateLOD(VERTEX *v, int n)
@@ -1119,7 +1120,7 @@ void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
                rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(Vi, Vj, rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
                else
                   rdp.vtxbuf[index++].number = Vi.number | Vj.number | 8;
             }
@@ -1139,7 +1140,7 @@ void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
                rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(Vj, Vi, rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
                else
                   rdp.vtxbuf[index++].number = Vi.number | Vj.number | 8;
 
@@ -1184,7 +1185,7 @@ void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
                rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(Vi, Vj, rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
                else
                   rdp.vtxbuf[index++].number = Vi.number | Vj.number | 8;
             }
@@ -1204,7 +1205,7 @@ void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
                rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(Vj, Vi, rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
                else
                   rdp.vtxbuf[index++].number = Vi.number | Vj.number | 8;
 
@@ -1249,7 +1250,7 @@ void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
                rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(Vi, Vj, rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
                else
                   rdp.vtxbuf[index++].number = Vi.number | Vj.number | 16;
             }
@@ -1269,7 +1270,7 @@ void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
                rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(Vj, Vi, rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
                else
                   rdp.vtxbuf[index++].number = Vi.number | Vj.number | 16;
 
@@ -1314,7 +1315,7 @@ void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
                rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(Vi, Vj, rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
                else
                   rdp.vtxbuf[index++].number = Vi.number | Vj.number | 16;
             }
@@ -1334,7 +1335,7 @@ void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
                rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(Vj, Vi, rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
                else
                   rdp.vtxbuf[index++].number = Vi.number | Vj.number | 16;
 
@@ -1380,7 +1381,7 @@ void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
                rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(Vi, Vj, rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
                else
                   rdp.vtxbuf[index++].number = Vi.number | Vj.number;
             }
@@ -1400,7 +1401,7 @@ void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
                rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(Vj, Vi, rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
                else
                   rdp.vtxbuf[index++].number = Vi.number | Vj.number;
 
@@ -1540,7 +1541,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
                v2 = org_vtx[2];
                break;
             case 7:
-               InterpolateColors3(*org_vtx[0], *org_vtx[1], *org_vtx[2], rdp.vtxbuf[i]);
+               InterpolateColors3(org_vtx[0], org_vtx[1], org_vtx[2], &rdp.vtxbuf[i]);
                continue;
                break;
          }
@@ -1561,7 +1562,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
                      percent = (rdp.vtxbuf[i].y-v1->sy)/(v2->sy-v1->sy);
                }
          }
-         InterpolateColors2(*v1, *v2, rdp.vtxbuf[i], percent);
+         InterpolateColors2(v1, v2, &rdp.vtxbuf[i], percent);
       }
    }
 
