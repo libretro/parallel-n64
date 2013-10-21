@@ -196,6 +196,7 @@ void cheat_apply_cheats(int entry)
 
 	// If game is Pilotwing 64, apply shadow fix
 	// Cheatcodes taken from Laughy of emutalk.net
+	// Doesn't work for japanese version 9cc4801 e42ee491 and only first rom has actually been tested
 	if (strncmp((char *)ROM_HEADER.Name, "Pilot Wings64", 13) == 0 && entry == ENTRY_VI) {
 		if ((sl(ROM_HEADER.CRC1) == 0xC851961C && sl(ROM_HEADER.CRC2) == 0x78FCAAFA) ||
 		(sl(ROM_HEADER.CRC1) == 0x1AA05AD5 && sl(ROM_HEADER.CRC2) == 0x46F52D80) ||
