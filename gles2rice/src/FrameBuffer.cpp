@@ -1042,8 +1042,8 @@ void FrameBufferManager::UpdateFrameBufferBeforeUpdateFrame()
             if (CRender::IsAvailable())
             {
                 RecentCIInfo &p = *(g_uRecentCIInfoPtrs[0]);
-                CRender::GetRender()->DrawFrameBuffer(false, 0,0,p.dwWidth,p.dwHeight);
-                ClearN64FrameBufferToBlack();
+                CRender::GetRender()->DrawFrameBuffer(false, 0, 0, p.dwWidth, p.dwHeight);
+                ClearN64FrameBufferToBlack(0, 0, 0, 0);
             }
         }
     }
@@ -1381,7 +1381,7 @@ void FrameBufferManager::CloseRenderTexture(bool toSave)
         else
         {
             TXTRBUF_DUMP(TRACE1("Closing render_texture %d", m_curRenderTextureIndex););
-            StoreRenderTextureToRDRAM();
+            StoreRenderTextureToRDRAM(-1);
 
             if (frameBufferOptions.bRenderTextureWriteBack)
             {
@@ -1463,7 +1463,7 @@ void FrameBufferManager::CopyBackToFrameBufferIfReadByCPU(uint32 addr)
         RecentCIInfo *info = g_uRecentCIInfoPtrs[i];
 
         StoreBackBufferToRDRAM(info->dwAddr, info->dwFormat, info->dwSize, info->dwWidth, info->dwHeight, 
-            windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, addr, 0x1000-addr%0x1000);
+            windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, addr, 0x1000-addr%0x1000, 0, SURFFMT_A8R8G8B8);
 
         TRACE1("Copy back for CI Address = %08X", info->dwAddr);
     }
@@ -1719,11 +1719,11 @@ void FrameBufferManager::Set_CI_addr(SetImgInfo &newCI)
             if (status.leftRendered != -1 && status.topRendered != -1 && status.rightRendered != -1 && status.bottomRendered != -1)
             {
                 RECT rect={status.leftRendered,status.topRendered,status.rightRendered,status.bottomRendered};
-                g_pFrameBufferManager->SaveBackBuffer(0,&rect);
+                g_pFrameBufferManager->SaveBackBuffer(0, &rect, false);
             }
             else
             {
-                g_pFrameBufferManager->SaveBackBuffer(0,NULL);
+                g_pFrameBufferManager->SaveBackBuffer(0, NULL, false);
             }
         }
     }
@@ -1774,7 +1774,7 @@ void FrameBufferManager::Set_CI_addr(SetImgInfo &newCI)
             {
                 g_pFrameBufferManager->StoreBackBufferToRDRAM(status.curRenderBuffer, 
                     newCI.dwFormat, newCI.dwSize, windowSetting.uViWidth, windowSetting.uViHeight,
-                    windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
+                    windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, 0xFFFFFFFF, 0xFFFFFFFF, 0, SURFFMT_A8R8G8B8);
             }
         }
 
@@ -2000,7 +2000,7 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32 addr, uint32 fmt, uint32 siz, 
         }
         else
         {
-            //DebuggerAppendMsg("Copy %sb FrameBuffer to Rdram, not implemented", pszImgSize[siz]);
+            //DebuggerAppendMsg("Copy %sb FrameBuffer to RDRAM, not implemented", pszImgSize[siz]);
         }
         DEBUGGER_IF_DUMP(pauseAtNext,{DebuggerAppendMsg("Copy %sb FrameBuffer to RDRAM", pszImgSize[siz]);});
     }
@@ -2023,8 +2023,8 @@ void FrameBufferManager::DisplayRenderTexture(int infoIdx)
         {
             TRACE1("Texture buffer %d:", infoIdx);
             TRACE1("Address=%08X", gRenderTextureInfos[infoIdx].CI_Info.dwAddr);
-            TRACE2("Width=%d, Created Height=%d", gRenderTextureInfos[infoIdx].N64Width,gRenderTextureInfos[infoIdx].N64Height);
-            TRACE2("Format=%d, Size=%d", gRenderTextureInfos[infoIdx].CI_Info.dwFormat,gRenderTextureInfos[infoIdx].CI_Info.dwSize);
+            TRACE2("Width=%d, Created Height=%d", gRenderTextureInfos[infoIdx].N64Width, gRenderTextureInfos[infoIdx].N64Height);
+            TRACE2("Format=%d, Size=%d", gRenderTextureInfos[infoIdx].CI_Info.dwFormat, gRenderTextureInfos[infoIdx].CI_Info.dwSize);
         }
     }
     else
@@ -2061,7 +2061,7 @@ void FrameBufferManager::SaveBackBuffer(int ciInfoIdx, RECT* pSrcRect, bool forc
         }
 
         StoreBackBufferToRDRAM( ciInfo.dwAddr, ciInfo.dwFormat, ciInfo.dwSize, width, height, 
-            windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
+            windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, 0xFFFFFFFF, 0xFFFFFFFF, 0, SURFFMT_A8R8G8B8);
 
         g_uRecentCIInfoPtrs[ciInfoIdx]->bCopied = true;
         if (ciInfoIdx == 1)    // to save the current front buffer
@@ -2085,9 +2085,9 @@ void FrameBufferManager::SaveBackBuffer(int ciInfoIdx, RECT* pSrcRect, bool forc
     gRenderTextureInfos[idx].crcCheckedAtFrame = status.gDlistCount;
     gRenderTextureInfos[idx].crcInRDRAM = ComputeRenderTextureCRCInRDRAM(idx);
 
-    DEBUGGER_IF_DUMP((logTextureBuffer&&pSrcRect==NULL),TRACE1("SaveBackBuffer at 0x%08X", ciInfo.dwAddr));
-    DEBUGGER_IF_DUMP((logTextureBuffer&&pSrcRect),TRACE5("SaveBackBuffer at 0x%08X, {%d,%d -%d,%d)", ciInfo.dwAddr,
-        pSrcRect->left,pSrcRect->top,pSrcRect->right,pSrcRect->bottom));
+    DEBUGGER_IF_DUMP((logTextureBuffer && pSrcRect==NULL), TRACE1("SaveBackBuffer at 0x%08X", ciInfo.dwAddr));
+    DEBUGGER_IF_DUMP((logTextureBuffer && pSrcRect), TRACE5("SaveBackBuffer at 0x%08X, {%d,%d -%d,%d)", ciInfo.dwAddr,
+        pSrcRect->left, pSrcRect->top, pSrcRect->right, pSrcRect->bottom));
     DEBUGGER_IF_DUMP(( pauseAtNext && eventToPause == NEXT_RENDER_TEXTURE),{g_pFrameBufferManager->DisplayRenderTexture(idx);});
 
     g_uRecentCIInfoPtrs[ciInfoIdx]->bCopied = true;
