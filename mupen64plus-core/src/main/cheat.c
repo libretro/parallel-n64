@@ -195,8 +195,12 @@ void cheat_apply_cheats(int entry)
     int execute_next;
 
 	// If game is Pilotwing 64, apply shadow fix
+	// Cheatcodes taken from Laughy of emutalk.net
 	if (strncmp((char *)ROM_HEADER.Name, "Pilot Wings64", 13) == 0 && entry == ENTRY_VI) {
-		if (sl(ROM_HEADER.CRC1) == 0xC851961C && sl(ROM_HEADER.CRC2) == 0x78FCAAFA) {
+		if ((sl(ROM_HEADER.CRC1) == 0xC851961C && sl(ROM_HEADER.CRC2) == 0x78FCAAFA) ||
+		(sl(ROM_HEADER.CRC1) == 0x1AA05AD5 && sl(ROM_HEADER.CRC2) == 0x46F52D80) ||
+		(sl(ROM_HEADER.CRC1) == 0x09CC4801 && sl(ROM_HEADER.CRC2) == 0xE42EE491) ||
+		(sl(ROM_HEADER.CRC1) == 0x70478A35 && sl(ROM_HEADER.CRC2) == 0xF9897402)){
 			execute_cheat(0xD0263B41, 0x0012, NULL);
 			execute_cheat(0x80263B41, 0x00FF, NULL);
 			execute_cheat(0xD02643C1, 0x0012, NULL);
@@ -255,7 +259,7 @@ void cheat_apply_cheats(int entry)
 			execute_cheat(0x80263EC1, 0x00FF, NULL);
 			execute_cheat(0xD0263F01, 0x003D, NULL);
 			execute_cheat(0x80263F01, 0x00FF, NULL);
-            }
+		}
 	}
 
     // If game is Zelda OOT, apply subscreen delay fix
