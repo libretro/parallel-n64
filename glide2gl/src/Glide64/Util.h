@@ -99,12 +99,26 @@ float ScaleZ(float z);
 
 #define ALOWORD(x)   (*((uint16_t*)&x))   // low word
 
+//template<typename T> static inline void printtype(T ignored);
+//template<class T> static inline T __DIKKE_LUL__(T value, unsigned int count);
+
 template<class T> static inline T __ROR__(T value, unsigned int count)
 {
    const unsigned int nbits = sizeof(T) * 8;
    count %= nbits;
 
    T low = value << (nbits - count);
+   value >>= count;
+   value |= low;
+   return value;
+}
+
+static inline short unsigned int __ROR16(short unsigned int value, unsigned int count)
+{
+   const unsigned int nbits = sizeof(short unsigned int) * 8;
+   count %= nbits;
+
+   short unsigned int low = value << (nbits - count);
    value >>= count;
    value |= low;
    return value;
