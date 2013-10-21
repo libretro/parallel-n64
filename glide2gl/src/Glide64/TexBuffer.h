@@ -45,11 +45,11 @@
 #ifndef TEXBUFFER_H
 #define TEXBUFFER_H
 
-int OpenTextureBuffer(COLOR_IMAGE & cimage);
+int OpenTextureBuffer(COLOR_IMAGE *cimage);
 
 int CloseTextureBuffer(int draw);
 
-int CopyTextureBuffer(COLOR_IMAGE & fb_from, COLOR_IMAGE & fb_to);
+int CopyTextureBuffer(COLOR_IMAGE *fb_from, COLOR_IMAGE *fb_to);
 
 int CopyDepthBuffer();
 
