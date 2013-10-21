@@ -111,7 +111,7 @@ public:
     uint32 GetCycle(int cycle, CombineChannel channel);
     uint32 GetCycle(int cycle);
     CombinerFormatType GetCombinerFormatType(uint32 cycle);
-    void Display(bool simplified=true, FILE *fp=NULL);
+    void Display(bool simplified, FILE *fp);
     static char* FormatStr(uint8 val, char *buf);
     void CheckCombineInCycle1(void);
     virtual void Simplify(void);

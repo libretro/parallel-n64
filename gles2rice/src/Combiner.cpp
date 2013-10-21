@@ -148,7 +148,7 @@ COLOR CalculateConstFactor(uint32 colorOp, uint32 alphaOp, uint32 curCol)
 }
 
 
-COLOR CColorCombiner::GetConstFactor(uint32 colorFlag, uint32   alphaFlag, uint32 defaultColor)
+COLOR CColorCombiner::GetConstFactor(uint32 colorFlag, uint32 alphaFlag, uint32 defaultColor)
 {
     // Allows a combine mode to select what TFACTOR should be
     uint32 color = defaultColor;
@@ -301,7 +301,7 @@ uint32 GetTexelNumber(N64CombinerType &m)
         return TEX_0;
 }
 
-bool IsTxtrUsed(N64CombinerType &m)
+bool IsTextureUsed(N64CombinerType &m)
 {
     if( (m.a&MUX_MASK) == MUX_TEXEL1 || (m.b&MUX_MASK) == MUX_TEXEL1 || (m.c&MUX_MASK) == MUX_TEXEL1  || (m.d&MUX_MASK) == MUX_TEXEL1 )
         return true;

@@ -372,7 +372,7 @@ void CRender::DrawSprite2D(Sprite2DInfo &info, uint32 ucode)
         s1 = info.spritePtr->SubImageHeight/g_textures[0].m_fTexHeight;
     }
 
-    //InitCombinerBlenderForSimpleTextureDraw();
+    //InitCombinerBlenderForSimpleTextureDraw(0);
     SetCombinerAndBlender();
     SetAddressUAllStages( 0, TEXTURE_UV_FLAG_CLAMP );
     SetAddressVAllStages( 0, TEXTURE_UV_FLAG_CLAMP );

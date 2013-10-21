@@ -730,11 +730,11 @@ char* DecodedMux::FormatStr(uint8 val, char *buf)
     return buf;
 }
 
-void DecodedMux::Display(bool simplified,FILE *fp)
+void DecodedMux::Display(bool simplified, FILE *fp)
 {
     DecodedMux decodedMux;
     DecodedMux *mux;
-    if( simplified )
+    if (simplified)
     {
         mux = this;
     }
@@ -749,12 +749,12 @@ void DecodedMux::Display(bool simplified,FILE *fp)
     char buf2[30];
     char buf3[30];
 
-    for( int i=0; i<2; i++ )
+    for (int i=0; i<2; i++)
     {
-        for(int j=0;j<2;j++)
+        for (int j=0; j<2; j++)
         {
             N64CombinerType &m = mux->m_n64Combiners[i+2*j];
-            if( fp )
+            if (fp != NULL)
             {
                 fprintf(fp,"%s: (%s - %s) * %s + %s\n", MuxGroupStr[i+2*j], FormatStr(m.a,buf0), 
                     FormatStr(m.b,buf1), FormatStr(m.c,buf2), FormatStr(m.d,buf3));
@@ -1186,16 +1186,16 @@ extern const char *translatedCombTypes[];
 void DecodedMux::DisplayMuxString(const char *prompt)
 {
     DebuggerAppendMsg("//Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
-    Display(false);
+    Display(false, NULL);
     TRACE0("\n");
 }
 
 void DecodedMux::DisplaySimpliedMuxString(const char *prompt)
 {
-    DebuggerAppendMsg("//Simplied Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
-    DebuggerAppendMsg("Simplied DWORDs=%08X, %08X, %08X, %08X", m_dWords[0],m_dWords[1],m_dWords[2],m_dWords[3]);
-    Display(true);
-    DebuggerAppendMsg("Simplfied type: %s", muxTypeStrs[mType]);
+    DebuggerAppendMsg("//Simplified Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
+    DebuggerAppendMsg("Simplified DWORDs=%08X, %08X, %08X, %08X", m_dWords[0],m_dWords[1],m_dWords[2],m_dWords[3]);
+    Display(true, NULL);
+    DebuggerAppendMsg("Simplified type: %s", muxTypeStrs[mType]);
     if( m_dwShadeColorChannelFlag != 0 )
     {
         if( m_dwShadeColorChannelFlag == MUX_ENV )
@@ -1251,42 +1251,43 @@ void DecodedMux::DisplayConstantsWithShade(uint32 flag,CombineChannel channel)
 extern const char *translatedCombTypes[];
 void DecodedMux::LogMuxString(const char *prompt, FILE *fp)
 {
-    fprintf(fp,"//Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
-    Display(false,fp);
+    fprintf(fp, "//Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
+    Display(false, fp);
     TRACE0("\n");
 }
 
 void DecodedMux::LogSimpliedMuxString(const char *prompt, FILE *fp)
 {
-    fprintf(fp,"//Simplied Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
-    fprintf(fp,"Simplied DWORDs=%08X, %08X, %08X, %08X\n", m_dWords[0],m_dWords[1],m_dWords[2],m_dWords[3]);
-    Display(true,fp);
-    fprintf(fp,"Simplfied type: %s", muxTypeStrs[mType]);
+    fprintf(fp, "//Simplied Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
+    fprintf(fp, "Simplied DWORDs=%08X, %08X, %08X, %08X\n", m_dWords[0],m_dWords[1],m_dWords[2],m_dWords[3]);
+    Display(true, fp);
+    fprintf(fp, "Simplfied type: %s", muxTypeStrs[mType]);
     if( m_dwShadeColorChannelFlag != 0 )
     {
         if( m_dwShadeColorChannelFlag == MUX_ENV )
             TRACE0("Shade = ENV in color channel")
         else if( m_dwShadeColorChannelFlag == MUX_PRIM )
-        TRACE0("Shade = PRIM in color channel")
+            TRACE0("Shade = PRIM in color channel")
         else if( m_dwShadeColorChannelFlag == MUX_LODFRAC )
-        TRACE0("Shade = MUX_LODFRAC in color channel")
+            TRACE0("Shade = MUX_LODFRAC in color channel")
         else if( m_dwShadeColorChannelFlag == MUX_PRIMLODFRAC )
-        TRACE0("Shade = MUX_PRIMLODFRAC in color channel")
+            TRACE0("Shade = MUX_PRIMLODFRAC in color channel")
         else
-        LogConstantsWithShade(m_dwShadeColorChannelFlag,COLOR_CHANNEL,fp);
+            LogConstantsWithShade(m_dwShadeColorChannelFlag,COLOR_CHANNEL,fp);
     }
+
     if( m_dwShadeAlphaChannelFlag != 0 )
     {
         if( m_dwShadeAlphaChannelFlag == MUX_ENV )
             TRACE0("Shade = ENV in alpha channel")
         else if( m_dwShadeAlphaChannelFlag == MUX_PRIM )
-        TRACE0("Shade = PRIM in alpha channel")
+            TRACE0("Shade = PRIM in alpha channel")
         else if( m_dwShadeAlphaChannelFlag == MUX_LODFRAC )
-        TRACE0("Shade = MUX_LODFRAC in alpha channel")
+            TRACE0("Shade = MUX_LODFRAC in alpha channel")
         else if( m_dwShadeAlphaChannelFlag == MUX_PRIMLODFRAC )
-        TRACE0("Shade = MUX_PRIMLODFRAC in alpha channel")
+            TRACE0("Shade = MUX_PRIMLODFRAC in alpha channel")
         else
-        LogConstantsWithShade(m_dwShadeAlphaChannelFlag,ALPHA_CHANNEL,fp);
+            LogConstantsWithShade(m_dwShadeAlphaChannelFlag,ALPHA_CHANNEL,fp);
     }
 
     for( int i=0; i<2; i++ )
@@ -1296,21 +1297,20 @@ void DecodedMux::LogSimpliedMuxString(const char *prompt, FILE *fp)
             if( m_ColorTextureFlag[i] == MUX_ENV )
                 TRACE1("Tex %d = ENV", i)
             else if( m_ColorTextureFlag[i] == MUX_PRIM )
-            TRACE1("Tex %d = PRIM", i)
+                TRACE1("Tex %d = PRIM", i)
             else if( m_ColorTextureFlag[i] == MUX_LODFRAC )
-            TRACE1("Tex %d = MUX_LODFRAC", i)
+                TRACE1("Tex %d = MUX_LODFRAC", i)
             else if( m_ColorTextureFlag[i] == MUX_PRIMLODFRAC )
-            TRACE1("Tex %d = MUX_PRIMLODFRAC", i)
+                TRACE1("Tex %d = MUX_PRIMLODFRAC", i)
         }
     }
-
 
     TRACE0("\n");
 }
 
 void DecodedMux::LogConstantsWithShade(uint32 flag,CombineChannel channel, FILE *fp)
 {
-    fprintf(fp,"Shade = %08X in %s channel",flag,channel==COLOR_CHANNEL?"color":"alpha");
+    fprintf(fp, "Shade = %08X in %s channel",flag,channel==COLOR_CHANNEL?"color":"alpha");
 }
 #endif
 

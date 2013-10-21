@@ -199,7 +199,7 @@ int CGeneralCombiner::GenCI_Type_D(int curN64Stage, int curStage, GeneralCombine
 
     if( !gci.stages[curStage].bTextureUsed )
         gci.stages[curStage].dwTexture = GetTexelNumber(m);
-    textureUsedInStage[curStage][curN64Stage%2] = IsTxtrUsed(m);
+    textureUsedInStage[curStage][curN64Stage%2] = IsTextureUsed(m);
     return curStage;
 }
 
@@ -250,7 +250,7 @@ int CGeneralCombiner::GenCI_Type_A_MOD_C(int curN64Stage, int curStage, GeneralC
         op->Arg0 = CM_IGNORE;
         if( !gci.stages[curStage].bTextureUsed )
             gci.stages[curStage].dwTexture = GetTexelNumber(m);
-        textureUsedInStage[curStage][curN64Stage%2] = IsTxtrUsed(m);
+        textureUsedInStage[curStage][curN64Stage%2] = IsTextureUsed(m);
     }
 
     return curStage;
@@ -315,7 +315,7 @@ int CGeneralCombiner::GenCI_Type_A_SUB_B(int curN64Stage, int curStage, GeneralC
         op->Arg0 = CM_IGNORE;
         if( !gci.stages[curStage].bTextureUsed )
             gci.stages[curStage].dwTexture = GetTexelNumber(m);
-        textureUsedInStage[curStage][curN64Stage%2] = IsTxtrUsed(m);
+        textureUsedInStage[curStage][curN64Stage%2] = IsTextureUsed(m);
     }
     return curStage;
 }
@@ -374,7 +374,7 @@ int CGeneralCombiner::GenCI_Type_A_MOD_C_ADD_D(int curN64Stage, int curStage, Ge
         op->Arg0 = m2.d;
         if( !gci.stages[curStage].bTextureUsed )
             gci.stages[curStage].dwTexture = GetTexelNumber(m2);
-        textureUsedInStage[curStage][curN64Stage%2] = IsTxtrUsed(m2);
+        textureUsedInStage[curStage][curN64Stage%2] = IsTextureUsed(m2);
     }
     else
     {
@@ -387,7 +387,7 @@ int CGeneralCombiner::GenCI_Type_A_MOD_C_ADD_D(int curN64Stage, int curStage, Ge
         op->Arg0 = (m.d);
         if( !gci.stages[curStage].bTextureUsed )
             gci.stages[curStage].dwTexture = GetTexelNumber(m);
-        textureUsedInStage[curStage][curN64Stage%2] = IsTxtrUsed(m);
+        textureUsedInStage[curStage][curN64Stage%2] = IsTextureUsed(m);
     }
 
     return curStage;
@@ -496,7 +496,7 @@ int CGeneralCombiner::GenCI_Type_A_LERP_B_C(int curN64Stage, int curStage, Gener
         }
     }
     gci.stages[curStage].dwTexture = GetTexelNumber(m);
-    textureUsedInStage[curStage][curN64Stage%2] = IsTxtrUsed(m);
+    textureUsedInStage[curStage][curN64Stage%2] = IsTextureUsed(m);
 
     m = save;
     return curStage;
@@ -706,9 +706,9 @@ void CGeneralCombiner::NextStage(int &curStage)
 void CGeneralCombiner::Check1TxtrForAlpha(int curN64Stage, int &curStage, GeneralCombinerInfo &gci, int tex)
 {
     N64CombinerType &m = (*m_ppGeneralDecodedMux)->m_n64Combiners[curN64Stage];
-    if( curN64Stage%2 && IsTxtrUsed(m) )
+    if (curN64Stage%2 && IsTextureUsed(m))
     {
-        while (curStage<m_dwGeneralMaxStages-1 && textureUsedInStage[curStage][0] && gci.stages[curStage].dwTexture != (unsigned int)(tex) )
+        while (curStage<m_dwGeneralMaxStages-1 && textureUsedInStage[curStage][0] && gci.stages[curStage].dwTexture != (unsigned int)tex)
         {
             StageOperate &op = ((StageOperate*)(&(gci.stages[curStage].colorOp)))[curN64Stage%2];
             SkipStage(op, curStage);
@@ -720,11 +720,11 @@ void CGeneralCombiner::Check1TxtrForAlpha(int curN64Stage, int &curStage, Genera
 int CGeneralCombiner::Check2TxtrForAlpha(int curN64Stage, int &curStage, GeneralCombinerInfo &gci, int tex1, int tex2)
 {
     N64CombinerType &m = (*m_ppGeneralDecodedMux)->m_n64Combiners[curN64Stage];
-    if( curN64Stage%2 && IsTxtrUsed(m) )
+    if( curN64Stage%2 && IsTextureUsed(m) )
     {
         if( tex1 == tex2 )
         {
-            while (curStage<m_dwGeneralMaxStages-1 && textureUsedInStage[curStage][0] && gci.stages[curStage].dwTexture != (unsigned int)tex1 )
+            while (curStage<m_dwGeneralMaxStages-1 && textureUsedInStage[curStage][0] && gci.stages[curStage].dwTexture != (unsigned int)tex1)
             {
                 StageOperate &op = ((StageOperate*)(&(gci.stages[curStage].colorOp)))[curN64Stage%2];
                 SkipStage(op, curStage);
@@ -1098,7 +1098,7 @@ int CGeneralCombiner::LM_GenCI_Type_D(N64CombinerType &m, int curStage, int limi
     }
 
     gci.stages[curStage].dwTexture = GetTexelNumber(m);
-    LM_textureUsedInStage[curStage] = IsTxtrUsed(m);
+    LM_textureUsedInStage[curStage] = IsTextureUsed(m);
     curStage++;
 
     return curStage-originalstage;
