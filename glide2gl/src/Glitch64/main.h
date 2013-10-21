@@ -21,10 +21,6 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <m64p_types.h>
 #include <m64p_config.h>
 
@@ -171,11 +167,6 @@ void CLOSE_LOG();
 //#define LOG
 #endif // LOGGING
 
-   
 int retro_return(bool just_flipping);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

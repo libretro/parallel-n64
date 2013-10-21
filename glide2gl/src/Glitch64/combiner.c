@@ -629,19 +629,11 @@ void set_depth_shader(void)
       glUniform1f(alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f);
 }
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void set_lambda(void)
 {
    int lambda_location = glGetUniformLocation(program_object, "lambda");
    glUniform1f(lambda_location, lambda);
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 FX_ENTRY void FX_CALL 
 grConstantColorValue( GrColor_t value )
