@@ -324,7 +324,7 @@ static inline void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int heigh
       {
          v20 = v19;
          v21 = bswap32(*((uint32_t *)v17 + 1));
-         tmp = __ROR__(*(uint16_t *)((char *)pal + ((v21 >> 23) & 0x1E)), 8);
+         tmp = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 23) & 0x1E)), 8);
          ALOWORD(v19) = tmp;
          v22 = v19 << 16;
          utmp = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 27) & 0x1E)), 8);
