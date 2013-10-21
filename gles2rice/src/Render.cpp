@@ -1545,9 +1545,9 @@ void CRender::SaveTextureToFile(CTexture &texture, char *filename, TextureChanne
                     }
                 }
 
-                if( SaveRGBABufferToPNGFile(filename, (unsigned char*)pbuf, width, height ) )
-                //if( SaveRGBABufferToPNGFile(filename, (unsigned char*)srcInfo.lpSurface, width, height, srcInfo.lPitch ) )
+                if (SaveRGBABufferToPNGFile(filename, (unsigned char*)pbuf, width, height, -1))
                 {
+                    // TODO: Implement?
                 }
             }
             else
@@ -1574,8 +1574,9 @@ void CRender::SaveTextureToFile(CTexture &texture, char *filename, TextureChanne
                     }
                 }
 
-                if( SaveRGBBufferToFile(filename, pbuf, width, height ) )
+                if (SaveRGBBufferToFile(filename, pbuf, width, height, -1))
                 {
+                    // TODO: Implement?
                 }
             }
             texture.EndUpdate(&srcInfo);
@@ -1652,7 +1653,7 @@ void CRender::SaveTextureToFile(int tex, TextureChannel channel, bool bShow)
             sprintf(filename, "\\%s#%08X#%d#%d_ci_%s_debugger", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
                 g_textures[tex].pTextureEntry->ti.Format, 
                 g_textures[tex].pTextureEntry->ti.Size, channel == TXT_ALPHA ? "a" : channel == TXT_RGBA ? "all" : "rgb");
-            SaveTextureToFile(*pEnhancedTexture, filename, channel, true, true);
+            SaveTextureToFile(*pEnhancedTexture, filename, channel, true, true, -1, -1);
             DebuggerAppendMsg("Whole texture is stored at: %s", filename);
         }
     }
@@ -1661,7 +1662,7 @@ void CRender::SaveTextureToFile(int tex, TextureChannel channel, bool bShow)
         sprintf(filename, "\\%s#%08X#%d#%d_%s", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
             g_textures[tex].pTextureEntry->ti.Format, 
             g_textures[tex].pTextureEntry->ti.Size, channel == TXT_ALPHA ? "a" : channel == TXT_RGBA ? "all" : "rgb");
-        SaveTextureToFile(*pBaseTexture, filename, channel, bShow && bInWhole, false,g_textures[tex].pTextureEntry->ti.WidthToLoad, g_textures[tex].pTextureEntry->ti.HeightToLoad);
+        SaveTextureToFile(*pBaseTexture, filename, channel, bShow && bInWhole, false, g_textures[tex].pTextureEntry->ti.WidthToLoad, g_textures[tex].pTextureEntry->ti.HeightToLoad);
         DebuggerAppendMsg("Base texture is stored at: %s", filename);
 
         if( !bInWhole && bShow )
@@ -1669,7 +1670,7 @@ void CRender::SaveTextureToFile(int tex, TextureChannel channel, bool bShow)
             sprintf(filename, "\\%s#%08X#%d#%d_%s_debugger", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
                 g_textures[tex].pTextureEntry->ti.Format, 
                 g_textures[tex].pTextureEntry->ti.Size, channel == TXT_ALPHA ? "a" : channel == TXT_RGBA ? "all" : "rgb");
-            SaveTextureToFile(*pEnhancedTexture, filename, channel, true, true);
+            SaveTextureToFile(*pEnhancedTexture, filename, channel, true, true, -1, -1);
             DebuggerAppendMsg("Whole texture is stored at: %s", filename);
         }
     }

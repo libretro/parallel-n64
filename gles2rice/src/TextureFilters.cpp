@@ -1704,8 +1704,8 @@ void DumpCachedTexture( TxtrCacheEntry &entry )
                     pSrcTexture->EndUpdate(&srcInfo);
                 }
 
-                if( aFF != 0xFF)
-                    CRender::g_pRender->SaveTextureToFile(*pSrcTexture, filename2, TXT_ALPHA, false, false);
+                if (aFF != 0xFF)
+                    CRender::g_pRender->SaveTextureToFile(*pSrcTexture, filename2, TXT_ALPHA, false, false, -1, -1);
             }       
         }
 

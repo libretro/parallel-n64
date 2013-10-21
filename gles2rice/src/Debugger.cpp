@@ -195,9 +195,9 @@ H_START:\t%08X\nV_START:\t%08X\nVI Width=%f(x %f), VI Height=%f(x %f)\n\n",
     DebuggerAppendMsg("Viewport: left=%d top=%d right=%d bottom=%d",
         gRSP.nVPLeftN, gRSP.nVPTopN , gRSP.nVPRightN,
         gRSP.nVPBottomN);
-    DebuggerAppendMsg("Current CImg: Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
+    DebuggerAppendMsg("Current CImg: Address=0x%08X, Format:%s-%sb, Width=%d\n", 
         g_CI.dwAddr, pszImgFormat[g_CI.dwFormat], pszImgSize[g_CI.dwSize], g_CI.dwWidth);
-    DebuggerAppendMsg("Current ZImg: Addr=0x%08X, Fmt:%s-%sb, Width=%d\n", 
+    DebuggerAppendMsg("Current ZImg: Address=0x%08X, Format:%s-%sb, Width=%d\n", 
         g_ZI.dwAddr, pszImgFormat[g_ZI.dwFormat], pszImgSize[g_ZI.dwSize], g_ZI.dwWidth);
 }
 
@@ -241,12 +241,12 @@ void DumpTileInfo(uint32 dwTile)
         gRDP.tiles[dwTile].hilite_sl,gRDP.tiles[dwTile].hilite_tl);
 }
 
-void DumpTexture(int tex, TextureChannel channel = TXT_RGB )
+void DumpTexture(int tex, TextureChannel channel)
 {
     CRender::GetRender()->DrawTexture(tex, channel);
 }
 
-void DumpRenderTexture(int tex=-1)
+void DumpRenderTexture(int tex)
 {
     if( CDeviceBuilder::GetBuilder()->GetGeneralDeviceType() == DIRECTX_DEVICE )
     {
@@ -261,7 +261,7 @@ void DumpRenderTexture(int tex=-1)
 
 void DumpTextureToFile(int tex, TextureChannel channel = TXT_RGB)
 {
-    CRender::GetRender()->SaveTextureToFile(tex, channel,false);
+    CRender::GetRender()->SaveTextureToFile(tex, channel, false);
 }
 
 void DumpTlut(uint16* palAddr)
@@ -399,7 +399,7 @@ void DumpCachedTexture(uint32 index)
     {
         char filename[80];
         sprintf(filename,"\\Texture%d_rgb", index);
-        CRender::GetRender()->SaveTextureToFile(*(p->pTexture), filename, TXT_RGB);
+        CRender::GetRender()->SaveTextureToFile(*(p->pTexture), filename, TXT_RGB, false, true, -1, -1);
         DebuggerAppendMsg("Display cached texture #%d of %d\n", index, gTextureManager.GetNumOfCachedTexture());
         DebuggerAppendMsg("W:%d, H:%d, RealW:%d, RealH:%d, D3DW:%d, D3DH: %d", p->ti.WidthToCreate, p->ti.HeightToCreate,
             p->ti.WidthToLoad, p->ti.HeightToLoad, p->pTexture->m_dwCreatedTextureWidth, p->pTexture->m_dwCreatedTextureHeight);
@@ -488,7 +488,7 @@ void DumpInfo(int thingToDump)
         DumpOtherMode();
         break;
     case DUMP_FRAME_BUFFER:
-        CRender::GetRender()->DrawFrameBuffer(true);
+        CRender::GetRender()->DrawFrameBuffer(true, 0, 0, 0, 0);
         break;
     case DUMP_CONTENT_AT:
         {

@@ -176,7 +176,7 @@ static void UpdateScreenStep2 (void)
         if( (*g_GraphicsInfo.VI_ORIGIN_REG & (g_dwRamSize-1) ) > width*2 && *g_GraphicsInfo.VI_H_START_REG != 0 && width != 0 )
         {
             SetVIScales();
-            CRender::GetRender()->DrawFrameBuffer(true);
+            CRender::GetRender()->DrawFrameBuffer(true, 0, 0, 0, 0);
             CGraphicsContext::Get()->UpdateFrame(false);
         }
         return;
@@ -260,7 +260,7 @@ static void ProcessDListStep2(void)
 {
     if( status.toShowCFB )
     {
-        CRender::GetRender()->DrawFrameBuffer(true);
+        CRender::GetRender()->DrawFrameBuffer(true, 0, 0, 0, 0);
         status.toShowCFB = false;
     }
 

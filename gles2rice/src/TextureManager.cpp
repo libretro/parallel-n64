@@ -774,7 +774,7 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
             if( pauseAtNext && eventToPause == NEXT_NEW_TEXTURE )
             {
                 CRender::g_pRender->SetCurrentTexture( 0, pEntry->pTexture, pEntry->ti.WidthToCreate, pEntry->ti.HeightToCreate, pEntry);
-                CRender::g_pRender->DrawTexture(0);
+                CRender::g_pRender->DrawTexture(0, TXT_RGB);
                 debuggerPause = true;
                 TRACE0("Pause after loading a new texture");
                 if( pEntry->ti.Format == TXT_FMT_YUV )
