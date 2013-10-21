@@ -194,6 +194,75 @@ void cheat_apply_cheats(int entry)
     int skip;
     int execute_next;
 
+	// If game is Pilotwing 64, apply shadow fix
+	// Cheatcodes taken from Laughy of emutalk.net
+	// Doesn't work for japanese version 9cc4801 e42ee491 and only first rom has actually been tested
+	if (strncmp((char *)ROM_HEADER.Name, "Pilot Wings64", 13) == 0 && entry == ENTRY_VI) {
+		if ((sl(ROM_HEADER.CRC1) == 0xC851961C && sl(ROM_HEADER.CRC2) == 0x78FCAAFA) ||
+		(sl(ROM_HEADER.CRC1) == 0x1AA05AD5 && sl(ROM_HEADER.CRC2) == 0x46F52D80) ||
+		(sl(ROM_HEADER.CRC1) == 0x09CC4801 && sl(ROM_HEADER.CRC2) == 0xE42EE491) ||
+		(sl(ROM_HEADER.CRC1) == 0x70478A35 && sl(ROM_HEADER.CRC2) == 0xF9897402)){
+			execute_cheat(0xD0263B41, 0x0012, NULL);
+			execute_cheat(0x80263B41, 0x00FF, NULL);
+			execute_cheat(0xD02643C1, 0x0012, NULL);
+			execute_cheat(0x802643C1, 0x00FF, NULL);
+			execute_cheat(0xD0264581, 0x0012, NULL);
+			execute_cheat(0x80264581, 0x00FF, NULL);
+			execute_cheat(0xD0263FC1, 0x0012, NULL);
+			execute_cheat(0x80263FC1, 0x00FF, NULL);
+			execute_cheat(0xD0263E81, 0x0012, NULL);
+			execute_cheat(0x80263E81, 0x00FF, NULL);
+			execute_cheat(0xD0263E41, 0x0012, NULL);
+			execute_cheat(0x80263E41, 0x00FF, NULL);
+			execute_cheat(0xD0264181, 0x0012, NULL);
+			execute_cheat(0x80264181, 0x00FF, NULL);
+			execute_cheat(0xD0264381, 0x0012, NULL);
+			execute_cheat(0x80264381, 0x00FF, NULL);
+			execute_cheat(0xD0264281, 0x0012, NULL);
+			execute_cheat(0x80264281, 0x00FF, NULL);
+			execute_cheat(0xD02639C1, 0x0020, NULL);
+			execute_cheat(0x802639C1, 0x00FF, NULL);
+			execute_cheat(0xD02640C1, 0x0020, NULL);
+			execute_cheat(0x802640C1, 0x00FF, NULL);
+			execute_cheat(0xD0264541, 0x0020, NULL);
+			execute_cheat(0x80264541, 0x00FF, NULL);
+			execute_cheat(0xD0264201, 0x0020, NULL);
+			execute_cheat(0x80264201, 0x00FF, NULL);
+			execute_cheat(0xD0263D81, 0x0020, NULL);
+			execute_cheat(0x80263D81, 0x00FF, NULL);
+			execute_cheat(0xD0263F81, 0x0020, NULL);
+			execute_cheat(0x80263F81, 0x00FF, NULL);
+			execute_cheat(0xD0263A81, 0x0029, NULL);
+			execute_cheat(0x80263A81, 0x00FF, NULL);
+			execute_cheat(0xD0264101, 0x0029, NULL);
+			execute_cheat(0x80264101, 0x00FF, NULL);
+			execute_cheat(0xD0263E01, 0x0029, NULL);
+			execute_cheat(0x80263E01, 0x00FF, NULL);
+			execute_cheat(0xD0264201, 0x0029, NULL);
+			execute_cheat(0x80264201, 0x00FF, NULL);
+			execute_cheat(0xD0264441, 0x0029, NULL);
+			execute_cheat(0x80264441, 0x00FF, NULL);
+			execute_cheat(0xD0263F81, 0x0029, NULL);
+			execute_cheat(0x80263F81, 0x00FF, NULL);
+			execute_cheat(0xD02647C1, 0x0029, NULL);
+			execute_cheat(0x802647C1, 0x00FF, NULL);
+			execute_cheat(0xD0264941, 0x0029, NULL);
+			execute_cheat(0x80264941, 0x00FF, NULL);
+			execute_cheat(0xD0264281, 0x0029, NULL);
+			execute_cheat(0x80264281, 0x00FF, NULL);
+			execute_cheat(0xD02639C1, 0x003D, NULL);
+			execute_cheat(0x802639C1, 0x00FF, NULL);
+			execute_cheat(0xD02641C1, 0x003D, NULL);
+			execute_cheat(0x802641C1, 0x00FF, NULL);
+			execute_cheat(0xD0263D41, 0x003D, NULL);
+			execute_cheat(0x80263D41, 0x00FF, NULL);
+			execute_cheat(0xD0263EC1, 0x003D, NULL);
+			execute_cheat(0x80263EC1, 0x00FF, NULL);
+			execute_cheat(0xD0263F01, 0x003D, NULL);
+			execute_cheat(0x80263F01, 0x00FF, NULL);
+		}
+	}
+
     // If game is Zelda OOT, apply subscreen delay fix
     if (strncmp((char *)ROM_HEADER.Name, "THE LEGEND OF ZELDA", 19) == 0 && entry == ENTRY_VI) {
         if (sl(ROM_HEADER.CRC1) == 0xEC7011B7 && sl(ROM_HEADER.CRC2) == 0x7616D72B) {
