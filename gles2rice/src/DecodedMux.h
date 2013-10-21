@@ -139,14 +139,14 @@ public:
     void MergeConstFactors();
     virtual void SplitComplexStages();  // Only used if the combiner supports more than 1 stages
     void ConvertLODFracTo0();
-    void ReplaceVal(uint8 val1, uint8 val2, int cycle= -1, uint8 mask = MUX_MASK);
-    void Replace1Val(uint8 &val1, const uint8 val2, uint8 mask = MUX_MASK)
+    void ReplaceVal(uint8 val1, uint8 val2, int cycle, uint8 mask);
+    void Replace1Val(uint8 &val1, const uint8 val2, uint8 mask)
     {
         val1 &= (~mask);
         val1 |= val2;
     }
     int CountTexels(void);
-    int Count(uint8 val, int cycle= -1, uint8 mask = MUX_MASK);
+    int Count(uint8 val, int cycle, uint8 mask);
 
 #ifdef DEBUGGER
     void DisplayMuxString(const char *prompt);

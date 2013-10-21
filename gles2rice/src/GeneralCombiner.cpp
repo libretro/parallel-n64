@@ -412,7 +412,7 @@ int CGeneralCombiner::GenCI_Type_A_LERP_B_C(int curN64Stage, int curStage, Gener
         gci.stages[curStage].dwTexture = texToUse;
         textureUsedInStage[curStage][curN64Stage%2] = true;
 
-        (*m_ppGeneralDecodedMux)->ReplaceVal(MUX_TEXEL0+texToUse, MUX_COMBINED, curN64Stage);
+        (*m_ppGeneralDecodedMux)->ReplaceVal(MUX_TEXEL0+texToUse, MUX_COMBINED, curN64Stage, MUX_MASK);
         NextStage(curStage);
         Check1TxtrForAlpha(curN64Stage, curStage, gci, GetTexelNumber(m));
         op = ((StageOperate*)(&(gci.stages[curStage].colorOp))) + (curN64Stage%2);
@@ -561,7 +561,7 @@ int CGeneralCombiner::GenCI_Type_A_B_C_D(int curN64Stage, int curStage, GeneralC
             gci.stages[curStage].dwTexture = texToUse;
             textureUsedInStage[curStage][curN64Stage%2] = true;
 
-            (*m_ppGeneralDecodedMux)->ReplaceVal(MUX_TEXEL0+texToUse, MUX_COMBINED, curN64Stage);
+            (*m_ppGeneralDecodedMux)->ReplaceVal(MUX_TEXEL0+texToUse, MUX_COMBINED, curN64Stage, MUX_MASK);
 
             NextStage(curStage);
             Check1TxtrForAlpha(curN64Stage, curStage, gci, GetTexelNumber(m));

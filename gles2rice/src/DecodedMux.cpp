@@ -311,8 +311,8 @@ void DecodedMuxForPixelShader::Simplify(void)
 
     if( g_curRomInfo.bTexture1Hack )
     {
-        ReplaceVal(MUX_TEXEL1,MUX_TEXEL0,2);
-        ReplaceVal(MUX_TEXEL1,MUX_TEXEL0,3);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 2, MUX_MASK);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 3, MUX_MASK);
     }
     splitType[0] = CM_FMT_TYPE_NOT_USED;
     splitType[1] = CM_FMT_TYPE_NOT_USED;
@@ -340,8 +340,8 @@ void DecodedMuxForSemiPixelShader::Reset(void)
     CheckCombineInCycle1();
     if( g_curRomInfo.bTexture1Hack )
     {
-        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 2);
-        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 3);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 2, MUX_MASK);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 3, MUX_MASK);
     }
 
     m_bTexel0IsUsed = IsUsed(MUX_TEXEL0, MUX_MASK);
@@ -353,8 +353,8 @@ void DecodedMuxForOGL14V2::Simplify(void)
     CheckCombineInCycle1();
     if (g_curRomInfo.bTexture1Hack)
     {
-        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 2);
-        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 3);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 2, MUX_MASK);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 3, MUX_MASK);
     }
     Reformat(true);
 
@@ -374,8 +374,8 @@ void DecodedMux::Simplify(void)
 
     if (g_curRomInfo.bTexture1Hack)
     {
-        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 2);
-        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 3);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 2, MUX_MASK);
+        ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 3, MUX_MASK);
     }
     Reformat(true);
 
@@ -396,16 +396,16 @@ void DecodedMux::Simplify(void)
         {
             if (m_dwShadeColorChannelFlag == m_ColorTextureFlag[i])
             {
-                ReplaceVal(MUX_SHADE,MUX_TEXEL0+i,N64Cycle0RGB);
-                ReplaceVal(MUX_SHADE,MUX_TEXEL0+i,N64Cycle1RGB);
+                ReplaceVal(MUX_SHADE, MUX_TEXEL0+i, N64Cycle0RGB, MUX_MASK);
+                ReplaceVal(MUX_SHADE, MUX_TEXEL0+i, N64Cycle1RGB, MUX_MASK);
                 m_dwShadeColorChannelFlag = 0;
             }
             if (m_dwShadeAlphaChannelFlag == m_ColorTextureFlag[i])
             {
-                ReplaceVal(MUX_SHADE,MUX_TEXEL0+i,N64Cycle0Alpha);
-                ReplaceVal(MUX_SHADE,MUX_TEXEL0+i,N64Cycle1Alpha);
-                ReplaceVal(MUX_SHADE|MUX_ALPHAREPLICATE,(MUX_TEXEL0+i)|MUX_ALPHAREPLICATE,N64Cycle0RGB,MUX_MASK_WITH_ALPHA);
-                ReplaceVal(MUX_SHADE|MUX_ALPHAREPLICATE,(MUX_TEXEL0+i)|MUX_ALPHAREPLICATE,N64Cycle1RGB,MUX_MASK_WITH_ALPHA);
+                ReplaceVal(MUX_SHADE, MUX_TEXEL0+i, N64Cycle0Alpha, MUX_MASK);
+                ReplaceVal(MUX_SHADE, MUX_TEXEL0+i, N64Cycle1Alpha, MUX_MASK);
+                ReplaceVal(MUX_SHADE|MUX_ALPHAREPLICATE, (MUX_TEXEL0+i)|MUX_ALPHAREPLICATE, N64Cycle0RGB, MUX_MASK_WITH_ALPHA);
+                ReplaceVal(MUX_SHADE|MUX_ALPHAREPLICATE, (MUX_TEXEL0+i)|MUX_ALPHAREPLICATE, N64Cycle1RGB, MUX_MASK_WITH_ALPHA);
                 m_dwShadeAlphaChannelFlag = 0;
             }
         }
@@ -806,11 +806,11 @@ int DecodedMux::CountTexels(void)
 {
     int count=0;
 
-    for( int i=0; i<4; i++ )
+    for (int i=0; i<4; i++)
     {
         N64CombinerType &m = m_n64Combiners[i];
         count = max(count, ::CountTexel1Cycle(m));
-        if( count == 2 ) 
+        if (count == 2) 
             break;
     }
 
@@ -822,16 +822,16 @@ void DecodedMux::ReplaceVal(uint8 val1, uint8 val2, int cycle, uint8 mask)
     int start = 0;
     int end = 16;
 
-    if( cycle >= 0 )
+    if (cycle >= 0)
     {
         start = cycle*4;
         end = start+4;
     }
 
     uint8* pmux = m_bytes;
-    for( int i=start; i<end; i++ )
+    for (int i=start; i<end; i++)
     {
-        if( (pmux[i]&mask) == (val1&mask) )
+        if ((pmux[i]&mask) == (val1&mask))
         {
             pmux[i] &= (~mask);
             pmux[i] |= val2;
@@ -842,7 +842,7 @@ void DecodedMux::ReplaceVal(uint8 val1, uint8 val2, int cycle, uint8 mask)
 uint32 DecodedMux::GetCycle(int cycle, CombineChannel channel)
 {
     uint32* pmux = m_dWords;
-    if( channel == COLOR_CHANNEL )
+    if (channel == COLOR_CHANNEL)
     {
         return pmux[cycle*2];
     }
@@ -896,8 +896,8 @@ void DecodedMux::MergeShadeWithConstants(void)
     // We can only try to merge shade with constants for:
     // 1 cycle mode or 2 cycle mode and shade is not used in the 2nd cycle
 
-    if( m_bShadeIsUsed[0] ) MergeShadeWithConstantsInChannel(COLOR_CHANNEL);
-    if( m_bShadeIsUsed[1] ) MergeShadeWithConstantsInChannel(ALPHA_CHANNEL);
+    if (m_bShadeIsUsed[0]) MergeShadeWithConstantsInChannel(COLOR_CHANNEL);
+    if (m_bShadeIsUsed[1]) MergeShadeWithConstantsInChannel(ALPHA_CHANNEL);
 }
 
 void DecodedMux::MergeShadeWithConstantsInChannel(CombineChannel channel)
@@ -1020,23 +1020,23 @@ void DecodedMux::UseShadeForConstant(void)
             if (countPrim >= countEnv)
             {
                 //TRACE0("Use Shade for PRIM in color channel");
-                ReplaceVal(MUX_PRIM, MUX_SHADE, N64Cycle0RGB);
-                ReplaceVal(MUX_PRIM, MUX_SHADE, N64Cycle1RGB);
+                ReplaceVal(MUX_PRIM, MUX_SHADE, N64Cycle0RGB, MUX_MASK);
+                ReplaceVal(MUX_PRIM, MUX_SHADE, N64Cycle1RGB, MUX_MASK);
                 m_dwShadeColorChannelFlag = MUX_PRIM;
             }
             else if (countEnv > 0)
             {
                 //TRACE0("Use Shade for ENV in color channel");
-                ReplaceVal(MUX_ENV, MUX_SHADE, N64Cycle0RGB);
-                ReplaceVal(MUX_ENV, MUX_SHADE, N64Cycle1RGB);
+                ReplaceVal(MUX_ENV, MUX_SHADE, N64Cycle0RGB, MUX_MASK);
+                ReplaceVal(MUX_ENV, MUX_SHADE, N64Cycle1RGB, MUX_MASK);
                 m_dwShadeColorChannelFlag = MUX_ENV;
             }
 
             if (IsUsedInColorChannel(MUX_SHADE|MUX_ALPHAREPLICATE, mask))
             {
                 m_dwShadeAlphaChannelFlag = m_dwShadeColorChannelFlag;
-                ReplaceVal((uint8)m_dwShadeColorChannelFlag, MUX_SHADE, N64Cycle0Alpha);
-                ReplaceVal((uint8)m_dwShadeColorChannelFlag, MUX_SHADE, N64Cycle1Alpha);
+                ReplaceVal((uint8)m_dwShadeColorChannelFlag, MUX_SHADE, N64Cycle0Alpha, MUX_MASK);
+                ReplaceVal((uint8)m_dwShadeColorChannelFlag, MUX_SHADE, N64Cycle1Alpha, MUX_MASK);
                 doAlphaChannel = false;
             }
         }
@@ -1050,17 +1050,23 @@ void DecodedMux::UseShadeForConstant(void)
         if (forceToUsed || max(splitType[1], splitType[3]) >= CM_FMT_TYPE_A_MOD_C_ADD_D ||
             (max(splitType[0], splitType[2]) >= CM_FMT_TYPE_A_MOD_C_ADD_D && countEnv+countPrim > 0 ))
         {
-            countEnv = Count(MUX_ENV, N64Cycle0Alpha) + Count(MUX_ENV, N64Cycle1Alpha) +
-                            Count(MUX_ENV|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask) + Count(MUX_ENV|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
-            countPrim = Count(MUX_PRIM, N64Cycle0Alpha) + Count(MUX_PRIM, N64Cycle1Alpha) +
-                            Count(MUX_PRIM|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask) + Count(MUX_PRIM|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
+            countEnv = Count(MUX_ENV, N64Cycle0Alpha, MUX_MASK) +
+                       Count(MUX_ENV, N64Cycle1Alpha, MUX_MASK) +
+                       Count(MUX_ENV|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask) +
+                       Count(MUX_ENV|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
+
+            countPrim = Count(MUX_PRIM, N64Cycle0Alpha, MUX_MASK) +
+                        Count(MUX_PRIM, N64Cycle1Alpha, MUX_MASK) +
+                        Count(MUX_PRIM|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask) + 
+                        Count(MUX_PRIM|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
+
             if (countEnv+countPrim > 0)
             {
                 if (countPrim > 0 && m_dwShadeColorChannelFlag == MUX_PRIM)
                 {
                     //TRACE0("Use Shade for PRIM in alpha channel");
-                    ReplaceVal(MUX_PRIM, MUX_SHADE, N64Cycle0Alpha);
-                    ReplaceVal(MUX_PRIM, MUX_SHADE, N64Cycle1Alpha);
+                    ReplaceVal(MUX_PRIM, MUX_SHADE, N64Cycle0Alpha, MUX_MASK);
+                    ReplaceVal(MUX_PRIM, MUX_SHADE, N64Cycle1Alpha, MUX_MASK);
                     ReplaceVal(MUX_PRIM|MUX_ALPHAREPLICATE, MUX_SHADE|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask);
                     ReplaceVal(MUX_PRIM|MUX_ALPHAREPLICATE, MUX_SHADE|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
                     m_dwShadeAlphaChannelFlag = MUX_PRIM;
@@ -1068,8 +1074,8 @@ void DecodedMux::UseShadeForConstant(void)
                 else if (countEnv>0 && m_dwShadeColorChannelFlag == MUX_ENV)
                 {
                     //TRACE0("Use Shade for PRIM in alpha channel");
-                    ReplaceVal(MUX_ENV, MUX_SHADE, N64Cycle0Alpha);
-                    ReplaceVal(MUX_ENV, MUX_SHADE, N64Cycle1Alpha);
+                    ReplaceVal(MUX_ENV, MUX_SHADE, N64Cycle0Alpha, MUX_MASK);
+                    ReplaceVal(MUX_ENV, MUX_SHADE, N64Cycle1Alpha, MUX_MASK);
                     ReplaceVal(MUX_ENV|MUX_ALPHAREPLICATE, MUX_SHADE|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask);
                     ReplaceVal(MUX_ENV|MUX_ALPHAREPLICATE, MUX_SHADE|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
                     m_dwShadeAlphaChannelFlag = MUX_ENV;
@@ -1077,8 +1083,8 @@ void DecodedMux::UseShadeForConstant(void)
                 else if (countPrim >= countEnv)
                 {
                     //TRACE0("Use Shade for PRIM in alpha channel");
-                    ReplaceVal(MUX_PRIM, MUX_SHADE, N64Cycle0Alpha);
-                    ReplaceVal(MUX_PRIM, MUX_SHADE, N64Cycle1Alpha);
+                    ReplaceVal(MUX_PRIM, MUX_SHADE, N64Cycle0Alpha, MUX_MASK);
+                    ReplaceVal(MUX_PRIM, MUX_SHADE, N64Cycle1Alpha, MUX_MASK);
                     ReplaceVal(MUX_PRIM|MUX_ALPHAREPLICATE, MUX_SHADE|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask);
                     ReplaceVal(MUX_PRIM|MUX_ALPHAREPLICATE, MUX_SHADE|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
                     m_dwShadeAlphaChannelFlag = MUX_PRIM;
@@ -1086,8 +1092,8 @@ void DecodedMux::UseShadeForConstant(void)
                 else if (countEnv > 0)
                 {
                     //TRACE0("Use Shade for ENV in alpha channel");
-                    ReplaceVal(MUX_ENV, MUX_SHADE, N64Cycle0Alpha);
-                    ReplaceVal(MUX_ENV, MUX_SHADE, N64Cycle1Alpha);
+                    ReplaceVal(MUX_ENV, MUX_SHADE, N64Cycle0Alpha, MUX_MASK);
+                    ReplaceVal(MUX_ENV, MUX_SHADE, N64Cycle1Alpha, MUX_MASK);
                     ReplaceVal(MUX_ENV|MUX_ALPHAREPLICATE, MUX_SHADE|MUX_ALPHAREPLICATE, N64Cycle0RGB, mask);
                     ReplaceVal(MUX_ENV|MUX_ALPHAREPLICATE, MUX_SHADE|MUX_ALPHAREPLICATE, N64Cycle1RGB, mask);
                     m_dwShadeAlphaChannelFlag = MUX_ENV;
@@ -1114,7 +1120,7 @@ void DecodedMux::UseTextureForConstant(void)
 
             if (IsUsed(MUX_PRIM, MUX_MASK))
             {
-                ReplaceVal(MUX_PRIM, MUX_TEXEL0+i);
+                ReplaceVal(MUX_PRIM, MUX_TEXEL0+i, -1, MUX_MASK);
                 m_ColorTextureFlag[i] = MUX_PRIM;
                 numofconst--;
                 continue;
@@ -1122,7 +1128,7 @@ void DecodedMux::UseTextureForConstant(void)
 
             if (IsUsed(MUX_ENV, MUX_MASK))
             {
-                ReplaceVal(MUX_ENV, MUX_TEXEL0+i);
+                ReplaceVal(MUX_ENV, MUX_TEXEL0+i, -1, MUX_MASK);
                 m_ColorTextureFlag[i] = MUX_ENV;
                 numofconst--;
                 continue;
@@ -1130,7 +1136,7 @@ void DecodedMux::UseTextureForConstant(void)
 
             if (IsUsed(MUX_LODFRAC, MUX_MASK))
             {
-                ReplaceVal(MUX_LODFRAC, MUX_TEXEL0+i);
+                ReplaceVal(MUX_LODFRAC, MUX_TEXEL0+i, -1, MUX_MASK);
                 m_ColorTextureFlag[i] = MUX_LODFRAC;
                 numofconst--;
                 continue;
@@ -1138,7 +1144,7 @@ void DecodedMux::UseTextureForConstant(void)
 
             if (IsUsed(MUX_PRIMLODFRAC, MUX_MASK))
             {
-                ReplaceVal(MUX_PRIMLODFRAC, MUX_TEXEL0+i);
+                ReplaceVal(MUX_PRIMLODFRAC, MUX_TEXEL0+i, -1, MUX_MASK);
                 m_ColorTextureFlag[i] = MUX_PRIMLODFRAC;
                 numofconst--;
                 continue;
@@ -1171,7 +1177,7 @@ void DecodedMuxForOGL14V2::UseTextureForConstant(void)
 
             if (envused)
             {
-                ReplaceVal(MUX_ENV, MUX_TEXEL0+i);
+                ReplaceVal(MUX_ENV, MUX_TEXEL0+i, -1, MUX_MASK);
                 m_ColorTextureFlag[i] = MUX_ENV;
                 numofconst--;
                 envused = false;
@@ -1180,7 +1186,7 @@ void DecodedMuxForOGL14V2::UseTextureForConstant(void)
 
             if (IsUsed(MUX_LODFRAC, MUX_MASK))
             {
-                ReplaceVal(MUX_LODFRAC, MUX_TEXEL0+i);
+                ReplaceVal(MUX_LODFRAC, MUX_TEXEL0+i, -1, MUX_MASK);
                 m_ColorTextureFlag[i] = MUX_LODFRAC;
                 numofconst--;
                 continue;
@@ -1188,7 +1194,7 @@ void DecodedMuxForOGL14V2::UseTextureForConstant(void)
 
             if (IsUsed(MUX_PRIMLODFRAC, MUX_MASK))
             {
-                ReplaceVal(MUX_PRIMLODFRAC, MUX_TEXEL0+i);
+                ReplaceVal(MUX_PRIMLODFRAC, MUX_TEXEL0+i, -1, MUX_MASK);
                 m_ColorTextureFlag[i] = MUX_PRIMLODFRAC;
                 numofconst--;
                 continue;
@@ -1274,10 +1280,10 @@ void DecodedMux::LogMuxString(const char *prompt, FILE *fp)
 
 void DecodedMux::LogSimpliedMuxString(const char *prompt, FILE *fp)
 {
-    fprintf(fp, "//Simplied Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
-    fprintf(fp, "Simplied DWORDs=%08X, %08X, %08X, %08X\n", m_dWords[0],m_dWords[1],m_dWords[2],m_dWords[3]);
+    fprintf(fp, "//Simplified Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
+    fprintf(fp, "Simplified DWORDs=%08X, %08X, %08X, %08X\n", m_dWords[0],m_dWords[1],m_dWords[2],m_dWords[3]);
     Display(true, fp);
-    fprintf(fp, "Simplfied type: %s", muxTypeStrs[mType]);
+    fprintf(fp, "Simplified type: %s", muxTypeStrs[mType]);
     if( m_dwShadeColorChannelFlag != 0 )
     {
         if( m_dwShadeColorChannelFlag == MUX_ENV )
@@ -1415,12 +1421,12 @@ void DecodedMux::CheckCombineInCycle1(void)
 {
     if (IsUsedInCycle(MUX_COMBINED, 0, COLOR_CHANNEL, MUX_MASK))
     {
-        ReplaceVal(MUX_COMBINED, MUX_SHADE, 0);
+        ReplaceVal(MUX_COMBINED, MUX_SHADE, 0, MUX_MASK);
     }
 
     if (IsUsedInCycle(MUX_COMBALPHA, 0, COLOR_CHANNEL, MUX_MASK))
     {
-        ReplaceVal(MUX_COMBALPHA, MUX_SHADE|MUX_ALPHAREPLICATE, 0);
+        ReplaceVal(MUX_COMBALPHA, MUX_SHADE|MUX_ALPHAREPLICATE, 0, MUX_MASK);
     }
 
     if (IsUsedInCycle(MUX_COMBINED, 0, ALPHA_CHANNEL, MUX_MASK))
@@ -1431,13 +1437,13 @@ void DecodedMux::CheckCombineInCycle1(void)
         }
         else
         {
-            ReplaceVal(MUX_COMBINED, MUX_SHADE, 1);
+            ReplaceVal(MUX_COMBINED, MUX_SHADE, 1, MUX_MASK);
         }
     }
 
     if (IsUsedInCycle(MUX_COMBALPHA, 0, ALPHA_CHANNEL, MUX_MASK))
     {
-        ReplaceVal(MUX_COMBALPHA, MUX_SHADE, 1);
+        ReplaceVal(MUX_COMBALPHA, MUX_SHADE, 1, MUX_MASK);
     }
 }
 
@@ -1518,8 +1524,8 @@ void DecodedMux::SplitComplexStages()
 
 void DecodedMux::ConvertLODFracTo0()
 {
-    ReplaceVal(MUX_LODFRAC,MUX_0);
-    ReplaceVal(MUX_PRIMLODFRAC,MUX_0);
+    ReplaceVal(MUX_LODFRAC, MUX_0, -1, MUX_MASK);
+    ReplaceVal(MUX_PRIMLODFRAC, MUX_0, -1, MUX_MASK);
 }
 
 
@@ -1529,19 +1535,19 @@ void DecodedMux::Hack(void)
     {
         if( gRSP.curTile == 1 )
         {
-            ReplaceVal(MUX_TEXEL1, MUX_TEXEL0);
+            ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, -1, MUX_MASK);
         }
     }
     else if( options.enableHackForGames == HACK_FOR_ZELDA || options.enableHackForGames == HACK_FOR_ZELDA_MM)
     {
         if( m_dwMux1 == 0xfffd9238 && m_dwMux0 == 0x00ffadff )
         {
-            ReplaceVal(MUX_TEXEL1, MUX_TEXEL0);
+            ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, -1, MUX_MASK);
         }
         else if( m_dwMux1 == 0xff5bfff8 && m_dwMux0 == 0x00121603 )
         {
             // The Zelda road trace
-            ReplaceVal(MUX_TEXEL1, MUX_0);
+            ReplaceVal(MUX_TEXEL1, MUX_0, -1, MUX_MASK);
         }
     }
     else if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS )
@@ -1560,7 +1566,7 @@ void DecodedMux::Hack(void)
         if( m_dwMux1 == 0xf1ffca7e || m_dwMux0 == 0x00115407 )
         {
             // The grass
-            ReplaceVal(MUX_TEXEL0, MUX_TEXEL1);
+            ReplaceVal(MUX_TEXEL0, MUX_TEXEL1, -1, MUX_MASK);
         }
     }
     else if( options.enableHackForGames == HACK_FOR_TOPGEARRALLY )
@@ -1573,7 +1579,7 @@ void DecodedMux::Hack(void)
         if( m_dwMux1 == 0x5ffef3fa || m_dwMux0 == 0x00317e02 )
         {
             // The grass
-            //ReplaceVal(MUX_TEXEL0, MUX_TEXEL1);
+            //ReplaceVal(MUX_TEXEL0, MUX_TEXEL1, -1, MUX_MASK);
             dA1 = MUX_COMBINED;
             //aA1 = MUX_COMBINED;
             //cA1 = MUX_TEXEL1;
