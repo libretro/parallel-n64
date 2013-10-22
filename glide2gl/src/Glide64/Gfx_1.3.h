@@ -103,20 +103,6 @@ the plugin
 #define BRIGHT_RED			// Keep enabled, option in dialog
 #endif
 
-#define FPS_FRAMES	10		// Number of frames in which to make an FPS count
-
-//#define SHOW_FULL_TEXVIEWER	// shows the entire contents of the texture in the cache viewer,
-								// usually used to debug clamping issues.
-
-
-// Usually enabled
-#define LARGE_TEXTURE_HANDLING	// allow large-textured objects to be split?
-
-// Simulations
-//#define SIMULATE_VOODOO1
-//#define SIMULATE_BANSHEE
-//********
-
 #define COLORED_DEBUGGER	// ;) pretty colors
 
 // rdram mask at 0x400000 bytes (bah, not right for majora's mask)
@@ -149,6 +135,7 @@ extern uint32_t resolutions[0x18][2];
 #define LRDP(x)
 #else
 #define LRDP(x)
+#define FRDP(x, ...)
 #endif
 
 
@@ -159,37 +146,8 @@ extern uint32_t resolutions[0x18][2];
 #define OPEN_RDP_E_LOG()
 #define CLOSE_RDP_E_LOG()
 #define RDP_E(x)
+#define FRDP_E(x, ...)
 #endif
-
-static inline void FRDP (const char *fmt, ...)
-{
-#ifdef RDP_LOGGING
-	if (!settings.logging || !log_open) return;
-
-	va_list ap;
-	va_start(ap, fmt);
-	vsprintf(out_buf, fmt, ap);
-	LRDP (out_buf);
-	va_end(ap);
-#endif
-}
-
-static inline void FRDP_E (const char *fmt, ...)
-{
-#ifdef RDP_ERROR_LOG
-	if (!settings.elogging || !elog_open) return;
-
-	sprintf (out_buf, "%08lx: (%08lx, %08lx) ", rdp.pc[rdp.pc_i]-8, rdp.cmd0, rdp.cmd1);
-	rdp_err << out_buf;
-
-	va_list ap2;
-	va_start(ap2, fmt);
-	vsprintf(out_buf, fmt, ap2);
-	rdp_err << out_buf;
-	rdp_err.flush();
-	va_end(ap2);
-#endif
-}
 
 extern int fullscreen;
 extern int romopen;
@@ -237,9 +195,5 @@ extern bool no_dlist;
 int GetTexAddrUMA(int tmu, int texsize);
 void ReadSettings(void);
 void ReadSpecialSettings (const char * name);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif //_GFX_H_INCLUDED__
