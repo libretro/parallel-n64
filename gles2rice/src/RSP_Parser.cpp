@@ -1455,7 +1455,7 @@ void DLParser_SetCImg(Gfx *gfx)
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_CI_CHANGE )
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame();
+        CGraphicsContext::Get()->UpdateFrame(false);
         TXTRBUF_OR_CI_DETAIL_DUMP(TRACE0("Screen Update at 1st CI change"););
     }
 

@@ -59,7 +59,7 @@ void RSP_S2DEX_OBJ_RECTANGLE(Gfx *gfx)
     if( g_TxtLoadBy == CMD_LOAD_OBJ_TXTR )
     {
         memcpy(&(objtx.txtr.block),&(gObjTxtr->block),sizeof(uObjTxtr));
-        CRender::g_pRender->LoadObjSprite(objtx,true);
+        CRender::g_pRender->LoadObjSprite(objtx, true);
     }
     else
     {
@@ -76,9 +76,9 @@ void RSP_S2DEX_OBJ_RECTANGLE(Gfx *gfx)
         {
             eventToPause = false;
             debuggerPause = true;
-            TRACE3("Paused at RSP_S2DEX_OBJ_RECTANGLE\nptr=%08X, img=%08X, Tmem=%08X",
+            TRACE3("Paused at RSP_S2DEX_OBJ_RECTANGLE\nptr=%08X, img=%08X, TMEM=%08X",
                 dwAddr,objtx.txtr.block.image, ptr->imageAdrs);
-            CGraphicsContext::g_pGraphicsContext->UpdateFrame();
+            CGraphicsContext::g_pGraphicsContext->UpdateFrame(false);
         }
     }
 #endif
@@ -91,7 +91,7 @@ void RSP_S2DEX_OBJ_SPRITE(Gfx *gfx)
     uObjSprite *info = (uObjSprite*)(g_pRDRAMu8+dwAddr);
 
     uint32 dwTile   = gRSP.curTile;
-    status.bAllowLoadFromTMEM = false;  // Because we need to use TLUT loaded by ObjTlut cmd
+    status.bAllowLoadFromTMEM = false;  // Because we need to use TLUT loaded by the ObjTlut command
     PrepareTextures();
     status.bAllowLoadFromTMEM = true;
 
@@ -105,7 +105,7 @@ void RSP_S2DEX_OBJ_SPRITE(Gfx *gfx)
         eventToPause = false;
         debuggerPause = true;
         TRACE0("Paused at RSP_S2DEX_OBJ_SPRITE");
-        CGraphicsContext::g_pGraphicsContext->UpdateFrame();
+        CGraphicsContext::g_pGraphicsContext->UpdateFrame(false);
     }
 #endif
 }
@@ -279,8 +279,8 @@ void RSP_S2DEX_SPObjLoadTxSprite(Gfx *gfx)
     gObjTxtr = (uObjTxtr*)ptr;
     
     //Now draw the sprite
-    CRender::g_pRender->LoadObjSprite(*ptr);
-    CRender::g_pRender->DrawSpriteR(*ptr);
+    CRender::g_pRender->LoadObjSprite(*ptr, false);
+    CRender::g_pRender->DrawSpriteR(*ptr, true, 0, 0, 0, 0, 0);
 
     DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI),
         {
@@ -299,7 +299,7 @@ void RSP_S2DEX_SPObjLoadTxRect(Gfx *gfx)
     gObjTxtr = (uObjTxtr*)ptr;
     
     //Now draw the sprite
-    CRender::g_pRender->LoadObjSprite(*ptr);
+    CRender::g_pRender->LoadObjSprite(*ptr, false);
     CRender::g_pRender->DrawSprite(*ptr, false);
 
     DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI),
@@ -318,7 +318,7 @@ void RSP_S2DEX_SPObjLoadTxRectR(Gfx *gfx)
     gObjTxtr = (uObjTxtr*)ptr;
     
     //Now draw the sprite
-    CRender::g_pRender->LoadObjSprite(*ptr);
+    CRender::g_pRender->LoadObjSprite(*ptr, false);
     CRender::g_pRender->DrawSprite(*ptr, true);
 
     DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI),
@@ -436,7 +436,7 @@ void RSP_S2DEX_BG_1CYC(Gfx *gfx)
     uint32 dwAddr = RSPSegmentAddr((gfx->words.w1));
     uObjScaleBg *sbgPtr = (uObjScaleBg *)(dwAddr+g_pRDRAMu8);
     CRender::g_pRender->LoadObjBG1CYC(*sbgPtr);
-    CRender::g_pRender->DrawObjBG1CYC(*sbgPtr);
+    CRender::g_pRender->DrawObjBG1CYC(*sbgPtr, true);
 
     DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI||eventToPause == NEXT_OBJ_BG),
         {
@@ -465,7 +465,7 @@ void RSP_S2DEX_OBJ_RECTANGLE_R(Gfx *gfx)
     uObjSprite *ptr = (uObjSprite*)(g_pRDRAMu8+dwAddr);
 
     uObjTxSprite objtx;
-    memcpy(&objtx.sprite,ptr,sizeof(uObjSprite));
+    memcpy(&objtx.sprite, ptr, sizeof(uObjSprite));
 
 
     //uObjTxSprite* ptr = (uObjTxSprite*)(g_pRDRAMu8+(RSPSegmentAddr((gfx->words.w1))&(g_dwRamSize-1)));
@@ -474,9 +474,9 @@ void RSP_S2DEX_OBJ_RECTANGLE_R(Gfx *gfx)
     //Now draw the sprite
     if( g_TxtLoadBy == CMD_LOAD_OBJ_TXTR )
     {
-        memcpy(&(objtx.txtr.block),&(gObjTxtr->block),sizeof(uObjTxtr));
-        //CRender::g_pRender->LoadObjSprite(*ptr,true);
-        CRender::g_pRender->LoadObjSprite(objtx,true);
+        memcpy(&(objtx.txtr.block), &(gObjTxtr->block), sizeof(uObjTxtr));
+        //CRender::g_pRender->LoadObjSprite(*ptr, true);
+        CRender::g_pRender->LoadObjSprite(objtx, true);
     }
     else
     {

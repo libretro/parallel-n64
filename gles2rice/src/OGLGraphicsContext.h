@@ -29,12 +29,12 @@ class COGLGraphicsContext : public CGraphicsContext
 public:
     virtual ~COGLGraphicsContext();
 
-    bool Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed );
-    bool ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed );
+    bool Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed);
+    bool ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed);
     void CleanUp();
-    void Clear(ClearFlag dwFlags, uint32 color=0xFF000000, float depth=1.0f);
+    void Clear(ClearFlag dwFlags, uint32 color, float depth);
 
-    void UpdateFrame(bool swaponly=false);
+    void UpdateFrame(bool swapOnly);
     int ToggleFullscreen();     // return 0 as the result is windowed
 
     bool IsExtensionSupported(const char* pExtName);

@@ -81,10 +81,10 @@ public:
     virtual void SetViewportRender() {}
     virtual void SetClipRatio(uint32 type, uint32 value);
     virtual void UpdateScissor() {}
-    virtual void ApplyRDPScissor(bool force=false) {}
+    virtual void ApplyRDPScissor(bool force) {}
     virtual void UpdateClipRectangle();
     virtual void UpdateScissorWithClipRatio();
-    virtual void ApplyScissorWithClipRatio(bool force=false) {}
+    virtual void ApplyScissorWithClipRatio(bool force) {}
 
     void SetTextureEnableAndScale(int dwTile, bool enable, float fScaleX, float fScaleY);
     
@@ -174,7 +174,7 @@ public:
     bool DrawTriangles();
     virtual bool RenderFlushTris()=0;
 
-    bool TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, float fScaleS, float fScaleT, bool colorFlag=false, uint32 difcolor=0xFFFFFFFF);
+    bool TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, float fScaleS, float fScaleT, bool colorFlag, uint32 difcolor);
     bool TexRectFlip(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, float fS1, float fT1);
     bool FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor);
     bool Line3D(uint32 dwV0, uint32 dwV1, uint32 dwWidth);
@@ -197,28 +197,28 @@ public:
     virtual void SetFillMode(FillMode mode)=0;
 
 #ifdef DEBUGGER
-    virtual bool DrawTexture(int tex, TextureChannel channel = TXT_RGB );
-    virtual void SaveTextureToFile(int tex, TextureChannel channel = TXT_RGB,  bool bShow = false);
+    virtual bool DrawTexture(int tex, TextureChannel channel);
+    virtual void SaveTextureToFile(int tex, TextureChannel channel, bool bShow);
 #endif
 
-    virtual void SaveTextureToFile(CTexture &texture, char *filename, TextureChannel channel = TXT_RGB,  bool bShow = false, bool bWholeTexture = true, int width = -1, int height = -1);
+    virtual void SaveTextureToFile(CTexture &texture, char *filename, TextureChannel channel, bool bShow, bool bWholeTexture, int width, int height);
 
     void LoadSprite2D(Sprite2DInfo &info, uint32 ucode);
     void LoadObjBGCopy(uObjBg &info);
     void LoadObjBG1CYC(uObjScaleBg &info);
-    void LoadObjSprite(uObjTxSprite &info, bool useTIAddr=false);
+    void LoadObjSprite(uObjTxSprite &info, bool useTIAddr);
 
-    void LoadFrameBuffer(bool useVIreg=false, uint32 left=0, uint32 top=0, uint32 width=0, uint32 height=0);
+    void LoadFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 width, uint32 height);
     void LoadTextureFromMemory(void *buf, uint32 left, uint32 top, uint32 width, uint32 height, uint32 pitch, uint32 format);
     void LoadTxtrBufIntoTexture(void);
     void DrawSprite2D(Sprite2DInfo &info, uint32 ucode);
-    void DrawSpriteR(uObjTxSprite &sprite, bool initCombiner=true, uint32 tile=0, uint32 left=0, uint32 top=0, uint32 width=0, uint32 height=0);
-    void DrawSprite(uObjTxSprite &sprite, bool rectR = true);
+    void DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32 tile, uint32 left, uint32 top, uint32 width, uint32 height);
+    void DrawSprite(uObjTxSprite &sprite, bool rectR);
     void DrawObjBGCopy(uObjBg &info);
     virtual void DrawSpriteR_Render(){};
     virtual void DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw)=0;
-    void DrawFrameBuffer(bool useVIreg=false, uint32 left=0, uint32 top=0, uint32 width=0, uint32 height=0);
-    void DrawObjBG1CYC(uObjScaleBg &bg, bool scaled=true);
+    void DrawFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 width, uint32 height);
+    void DrawObjBG1CYC(uObjScaleBg &bg, bool scaled);
 
     static CRender * g_pRender;
     static int gRenderReferenceCount;
@@ -261,8 +261,8 @@ protected:
 
 #define ffloor(a) (((int(a))<=(a))?(float)(int(a)):((float)(int(a))-1))
 
-bool SaveRGBBufferToFile(char *filename, unsigned char *buf, int width, int height, int pitch = -1);
-bool SaveRGBABufferToPNGFile(char *filename, unsigned char *buf, int width, int height, int pitch = -1);
+bool SaveRGBBufferToFile(char *filename, unsigned char *buf, int width, int height, int pitch);
+bool SaveRGBABufferToPNGFile(char *filename, unsigned char *buf, int width, int height, int pitch);
 
 #endif  //_RICE_RENDER_H
 

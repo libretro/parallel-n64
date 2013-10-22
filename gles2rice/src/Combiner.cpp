@@ -52,7 +52,7 @@ const char *cycleTypeStrs[] = {
 
 const char* constStr(uint32 op)
 {
-    if(op<=MUX_UNK)
+    if (op <= MUX_UNK)
         return constStrs[op];
     else
        return "Invalid-Const";
@@ -74,7 +74,7 @@ void swap(uint8 &a, uint8 &b)
 inline IColor GetIColor(uint8 flag, uint32 curCol)
 {
     IColor newc;
-    switch(flag&MUX_MASK)
+    switch(flag & MUX_MASK)
     {
     case MUX_0:
         newc = 0;
@@ -97,7 +97,7 @@ inline IColor GetIColor(uint8 flag, uint32 curCol)
         break;
     case MUX_UNK:
         newc = curCol;
-        if( options.enableHackForGames == HACK_FOR_CONKER )
+        if (options.enableHackForGames == HACK_FOR_CONKER)
             newc = 0xFFFFFFFF;
         break;
     default:
@@ -105,12 +105,12 @@ inline IColor GetIColor(uint8 flag, uint32 curCol)
         break;
     }
 
-    if( flag&MUX_COMPLEMENT )
+    if (flag&MUX_COMPLEMENT)
     {
         newc.Complement();
     }
 
-    if( flag&MUX_ALPHAREPLICATE )
+    if (flag&MUX_ALPHAREPLICATE)
     {
         newc.AlphaReplicate();
     }
@@ -126,23 +126,24 @@ COLOR CalculateConstFactor(uint32 colorOp, uint32 alphaOp, uint32 curCol)
 
     // For color channel
     *(uint32*)&m = colorOp;
-    if( m.c != MUX_0 && m.a!=m.b)
+    if (m.c != MUX_0 && m.a != m.b)
     {
-        if( m.a != MUX_0 )  color = GetIColor(m.a, curCol);
-        if( m.b != MUX_0 )  color -= GetIColor(m.b, curCol);
-        if( m.c != MUX_1 )  color *= GetIColor(m.c, curCol);
+        if (m.a != MUX_0) color = GetIColor(m.a, curCol);
+        if (m.b != MUX_0) color -= GetIColor(m.b, curCol);
+        if (m.c != MUX_1) color *= GetIColor(m.c, curCol);
     }
-    if( m.d != MUX_0 )  color += GetIColor(m.d, curCol);
+    if (m.d != MUX_0) color += GetIColor(m.d, curCol);
+
 
     // For alpha channel
     *(uint32*)&m = alphaOp;
-    if( m.c != MUX_0 && m.a!=m.b)
+    if (m.c != MUX_0 && m.a != m.b)
     {
-        if( m.a != MUX_0 )  alpha = GetIColor(m.a, curCol);
-        if( m.b != MUX_0 )  alpha -= GetIColor(m.b, curCol);
-        if( m.c != MUX_1 )  alpha *= GetIColor(m.c, curCol);
+        if (m.a != MUX_0) alpha = GetIColor(m.a, curCol);
+        if (m.b != MUX_0) alpha -= GetIColor(m.b, curCol);
+        if (m.c != MUX_1) alpha *= GetIColor(m.c, curCol);
     }
-    if( m.d != MUX_0 )  alpha += GetIColor(m.d, curCol);
+    if (m.d != MUX_0) alpha += GetIColor(m.d, curCol);
 
     return (COLOR)(((uint32)color&0x00FFFFFF)|((uint32)alpha&0xFF000000));
 }
@@ -154,7 +155,7 @@ COLOR CColorCombiner::GetConstFactor(uint32 colorFlag, uint32 alphaFlag, uint32 
     uint32 color = defaultColor;
     uint32 alpha = defaultColor;
 
-    switch (colorFlag&MUX_MASK)
+    switch (colorFlag & MUX_MASK)
     {
     case MUX_0:
         break;
@@ -195,18 +196,21 @@ COLOR CColorCombiner::GetConstFactor(uint32 colorFlag, uint32 alphaFlag, uint32 
         break;
     case MUX_UNK:
         color = defaultColor;
-        if( options.enableHackForGames == HACK_FOR_CONKER ) color = 0xFFFFFFFF;
+        if(options.enableHackForGames == HACK_FOR_CONKER)
+        {
+            color = 0xFFFFFFFF;
+        }
         break;
     default:
         color = defaultColor;
         break;
     }
 
-    if( colorFlag & MUX_COMPLEMENT )
+    if (colorFlag & MUX_COMPLEMENT)
     {
         color = 0xFFFFFFFF - color;
     }
-    if( colorFlag & MUX_ALPHAREPLICATE )
+    if (colorFlag & MUX_ALPHAREPLICATE)
     {
         color = color>>24;
         color = color | (color<<8) | (color <<16) | (color<<24);
@@ -215,7 +219,7 @@ COLOR CColorCombiner::GetConstFactor(uint32 colorFlag, uint32 alphaFlag, uint32 
     color &= 0x00FFFFFF;    // For color channel only, not the alpha channel
 
 
-    switch (alphaFlag&MUX_MASK)
+    switch (alphaFlag & MUX_MASK)
     {
     case MUX_0:
         break;
@@ -256,7 +260,7 @@ COLOR CColorCombiner::GetConstFactor(uint32 colorFlag, uint32 alphaFlag, uint32 
         break;
     }
 
-    if( alphaFlag & MUX_COMPLEMENT )
+    if (alphaFlag & MUX_COMPLEMENT)
     {
         alpha = 0xFFFFFFFF - alpha;
     }
@@ -277,12 +281,12 @@ int CountTexel1Cycle(N64CombinerType &m)
     int hasTexel[2];
     uint8 *p = (uint8*)&m;
 
-    for( int i=0; i<2; i++)
+    for (int i=0; i<2; i++)
     {
         hasTexel[i]=0;
-        for( int j=0; j<4; j++)
+        for (int j=0; j<4; j++)
         {
-            if( (p[j]&MUX_MASK) == MUX_TEXEL0+i )
+            if ((p[j]&MUX_MASK) == MUX_TEXEL0+i)
             {
                 hasTexel[i]=1;
                 break;
@@ -295,7 +299,7 @@ int CountTexel1Cycle(N64CombinerType &m)
 
 uint32 GetTexelNumber(N64CombinerType &m)
 {
-    if( (m.a&MUX_MASK) == MUX_TEXEL1 || (m.b&MUX_MASK) == MUX_TEXEL1 || (m.c&MUX_MASK) == MUX_TEXEL1  || (m.d&MUX_MASK) == MUX_TEXEL1 )
+    if ((m.a&MUX_MASK) == MUX_TEXEL1 || (m.b&MUX_MASK) == MUX_TEXEL1 || (m.c&MUX_MASK) == MUX_TEXEL1  || (m.d&MUX_MASK) == MUX_TEXEL1)
         return TEX_1;
     else
         return TEX_0;
@@ -303,9 +307,9 @@ uint32 GetTexelNumber(N64CombinerType &m)
 
 bool IsTextureUsed(N64CombinerType &m)
 {
-    if( (m.a&MUX_MASK) == MUX_TEXEL1 || (m.b&MUX_MASK) == MUX_TEXEL1 || (m.c&MUX_MASK) == MUX_TEXEL1  || (m.d&MUX_MASK) == MUX_TEXEL1 )
+    if((m.a&MUX_MASK) == MUX_TEXEL1 || (m.b&MUX_MASK) == MUX_TEXEL1 || (m.c&MUX_MASK) == MUX_TEXEL1  || (m.d&MUX_MASK) == MUX_TEXEL1)
         return true;
-    if( (m.a&MUX_MASK) == MUX_TEXEL0 || (m.b&MUX_MASK) == MUX_TEXEL0 || (m.c&MUX_MASK) == MUX_TEXEL0  || (m.d&MUX_MASK) == MUX_TEXEL0 )
+    if((m.a&MUX_MASK) == MUX_TEXEL0 || (m.b&MUX_MASK) == MUX_TEXEL0 || (m.c&MUX_MASK) == MUX_TEXEL0  || (m.d&MUX_MASK) == MUX_TEXEL0)
         return true;
     else
         return false;
@@ -317,23 +321,22 @@ void CColorCombiner::InitCombinerMode(void)
 {
 #ifdef DEBUGGER
     LOG_UCODE(cycleTypeStrs[gRDP.otherMode.cycle_type]);
-    if( debuggerDropDecodedMux )
+    if (debuggerDropDecodedMux)
     {
         UpdateCombiner(m_pDecodedMux->m_dwMux0, m_pDecodedMux->m_dwMux1);
     }
 #endif
 
-    if( currentRomOptions.bNormalCombiner )
+    if (currentRomOptions.bNormalCombiner)
     {
         DisableCombiner();
     }
-    else if( gRDP.otherMode.cycle_type  == CYCLE_TYPE_COPY )
+    else if (gRDP.otherMode.cycle_type  == CYCLE_TYPE_COPY)
     {
         InitCombinerCycleCopy();
         m_bCycleChanged = true;
     }
-    else if ( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL )
-    //else if ( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL && gRSP.ucode != 5 )   //hack
+    else if (gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL)
     {
         InitCombinerCycleFill();
         m_bCycleChanged = true;
@@ -350,7 +353,7 @@ bool bConkerHideShadow=false;
 void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
 {
 #ifdef DEBUGGER
-    if( debuggerDropDecodedMux )
+    if (debuggerDropDecodedMux)
     {
         debuggerDropDecodedMux = false;
         m_pDecodedMux->m_dwMux0 = m_pDecodedMux->m_dwMux1 = 0;
@@ -359,15 +362,15 @@ void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
 #endif
 
     DecodedMux &m_decodedMux = *m_pDecodedMux;
-    if( m_decodedMux.m_dwMux0 != dwMux0 || m_decodedMux.m_dwMux1 != dwMux1 )
+    if (m_decodedMux.m_dwMux0 != dwMux0 || m_decodedMux.m_dwMux1 != dwMux1)
     {
-        if( options.enableHackForGames == HACK_FOR_DR_MARIO )
+        if (options.enableHackForGames == HACK_FOR_DR_MARIO)
         {
             // Hack for Dr. Mario
-            if( dwMux1 == 0xfffcf239 && 
+            if (dwMux1 == 0xfffcf239 && 
                 ((m_decodedMux.m_dwMux0 == dwMux0 && dwMux0 == 0x00ffffff && 
-                m_decodedMux.m_dwMux1 != dwMux1 && m_decodedMux.m_dwMux1 == 0xfffcf279 ) || 
-                (m_decodedMux.m_dwMux0 == 0x00ffb3ff && m_decodedMux.m_dwMux1 == 0xff64fe7f && dwMux0 == 0x00ffffff ) ))
+                m_decodedMux.m_dwMux1 != dwMux1 && m_decodedMux.m_dwMux1 == 0xfffcf279) || 
+                (m_decodedMux.m_dwMux0 == 0x00ffb3ff && m_decodedMux.m_dwMux1 == 0xff64fe7f && dwMux0 == 0x00ffffff )))
             {
                 //dwMux1 = 0xffcf23A;
                 dwMux1 = 0xfffcf438;
@@ -376,7 +379,7 @@ void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
         uint64 mux64 = (((uint64)dwMux1)<<32)+dwMux0;
         int index=m_DecodedMuxList.find(mux64);
 
-        if( options.enableHackForGames == HACK_FOR_CONKER )
+        if (options.enableHackForGames == HACK_FOR_CONKER)
         {
             // Conker's shadow, to disable the shadow
             //Mux=0x00ffe9ff    Used in CONKER BFD
@@ -384,7 +387,7 @@ void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
             //Color1: (0 - 0) * 0 + SHADE
             //Alpha0: (1 - TEXEL0) * SHADE + 0
             //Alpha1: (1 - TEXEL0) * SHADE + 0              
-            if( dwMux1 == 0xffd21f0f && dwMux0 == 0x00ffe9ff )
+            if (dwMux1 == 0xffd21f0f && dwMux0 == 0x00ffe9ff)
             {
                 bConkerHideShadow = true;
             }
@@ -394,7 +397,7 @@ void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
             }
         }
 
-        if( index >= 0 )
+        if (index >= 0)
         {
             m_decodedMux = m_DecodedMuxList[index];
         }
@@ -408,20 +411,20 @@ void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
 
             m_decodedMux.Hack();
 
-            if( !m_bSupportMultiTexture )
+            if (!m_bSupportMultiTexture)
             {
-                m_decodedMux.ReplaceVal(MUX_TEXEL1, MUX_TEXEL0);
-                m_decodedMux.ReplaceVal(MUX_LODFRAC,1);
-                m_decodedMux.ReplaceVal(MUX_PRIMLODFRAC,1);
+                m_decodedMux.ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, -1, MUX_MASK);
+                m_decodedMux.ReplaceVal(MUX_LODFRAC, 1, -1, MUX_MASK);
+                m_decodedMux.ReplaceVal(MUX_PRIMLODFRAC, 1, -1, MUX_MASK);
             }
 
             m_decodedMux.Simplify();
-            if( m_supportedStages>1)    
+            if (m_supportedStages > 1)    
                 m_decodedMux.SplitComplexStages();
             
             m_DecodedMuxList.add(m_decodedMux.m_u64Mux, *m_pDecodedMux);
 #ifdef DEBUGGER
-            if( logCombiners ) 
+            if (logCombiners) 
             {
                 TRACE0("Add a new mux");
                 DisplayMuxString();
@@ -442,11 +445,11 @@ void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
 #ifdef DEBUGGER
 void CColorCombiner::DisplayMuxString(void)
 {
-    if( gRDP.otherMode.cycle_type == CYCLE_TYPE_COPY)
+    if (gRDP.otherMode.cycle_type == CYCLE_TYPE_COPY)
     {
         TRACE0("COPY Mode\n");
     }   
-    else if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL)
+    else if (gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL)
     {
         TRACE0("FILL Mode\n");
     }

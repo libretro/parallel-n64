@@ -556,7 +556,7 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
     int txtBufIdxToLoadFrom = -1;
     if( (frameBufferOptions.bCheckRenderTextures&&!frameBufferOptions.bWriteBackBufToRDRAM) || (frameBufferOptions.bCheckBackBufs&&!frameBufferOptions.bWriteBackBufToRDRAM) )
     {
-        txtBufIdxToLoadFrom = g_pFrameBufferManager->CheckAddrInRenderTextures(pgti->Address);
+        txtBufIdxToLoadFrom = g_pFrameBufferManager->CheckAddrInRenderTextures(pgti->Address, true);
         if( txtBufIdxToLoadFrom >= 0 )
         {
             loadFromTextureBuffer = true;
@@ -572,12 +572,12 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
         }
     }
 
-    if( frameBufferOptions.bCheckBackBufs && g_pFrameBufferManager->CheckAddrInBackBuffers(pgti->Address, pgti->HeightToLoad*pgti->Pitch) >= 0 )
+    if (frameBufferOptions.bCheckBackBufs && g_pFrameBufferManager->CheckAddrInBackBuffers(pgti->Address, pgti->HeightToLoad*pgti->Pitch, false) >= 0)
     {
         if( !frameBufferOptions.bWriteBackBufToRDRAM )
         {
             // Load the texture from recent back buffer
-            txtBufIdxToLoadFrom = g_pFrameBufferManager->CheckAddrInRenderTextures(pgti->Address);
+            txtBufIdxToLoadFrom = g_pFrameBufferManager->CheckAddrInRenderTextures(pgti->Address, true);
             if( txtBufIdxToLoadFrom >= 0 )
             {
                 loadFromTextureBuffer = true;
@@ -774,7 +774,7 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
             if( pauseAtNext && eventToPause == NEXT_NEW_TEXTURE )
             {
                 CRender::g_pRender->SetCurrentTexture( 0, pEntry->pTexture, pEntry->ti.WidthToCreate, pEntry->ti.HeightToCreate, pEntry);
-                CRender::g_pRender->DrawTexture(0);
+                CRender::g_pRender->DrawTexture(0, TXT_RGB);
                 debuggerPause = true;
                 TRACE0("Pause after loading a new texture");
                 if( pEntry->ti.Format == TXT_FMT_YUV )

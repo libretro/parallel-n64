@@ -603,18 +603,18 @@ void SSEVec3TransformNormal(void)
 #ifdef DEBUGGER
            " movss         %%xmm7,  12(%0)    \n"
 #endif
-               " mulps         %%xmm7,  %%xmm4    \n"
-               " movaps        %%xmm4,    (%0)    \n"
-               " movl              $0,  12(%0)    \n"
-               " jmp               1f             \n"
-               "0:                                \n"
-               " movss         %%xmm0,    (%0)    \n"
-               " movss         %%xmm0,  12(%0)    \n"
-               "1:                                \n"
-               :
-               : "r"(&g_normal.x), "r"(&gRSPmodelViewTopTranspose.m[0][0])
-               : "memory", "cc", "%xmm0", "%xmm1", "%xmm4", "%xmm5", "%xmm6", "%xmm7"
-               );
+           " mulps         %%xmm7,  %%xmm4    \n"
+           " movaps        %%xmm4,    (%0)    \n"
+           " movl              $0,  12(%0)    \n"
+           " jmp               1f             \n"
+           "0:                                \n"
+           " movss         %%xmm0,    (%0)    \n"
+           " movss         %%xmm0,  12(%0)    \n"
+           "1:                                \n"
+           :
+           : "r"(&g_normal.x), "r"(&gRSPmodelViewTopTranspose.m[0][0])
+           : "memory", "cc", "%xmm0", "%xmm1", "%xmm4", "%xmm5", "%xmm6", "%xmm7"
+           );
 }
 #endif
 
@@ -725,7 +725,7 @@ void InitRenderBase()
     memset(&gRDP.otherMode,0,sizeof(RDP_OtherMode));
     memset(&gRDP.tiles,0,sizeof(Tile)*8);
 
-    for( int i=0; i<MAX_VERTS; i++ )
+    for (int i=0; i<MAX_VERTS; i++)
     {
         g_clipFlag[i] = 0;
         g_vtxNonTransformed[i].w = 1;
@@ -736,7 +736,7 @@ void InitRenderBase()
 
 void SetFogMinMax(float fMin, float fMax, float fMul, float fOffset)
 {
-    if( fMin > fMax )
+    if (fMin > fMax)
     {
         float temp = fMin;
         fMin = fMax;
@@ -754,6 +754,7 @@ void SetFogMinMax(float fMin, float fMax, float fMul, float fOffset)
 
 void InitVertexColors()
 {
+    // TODO: Implement?
 }
 
 void InitVertexTextureConstants()
@@ -809,7 +810,7 @@ void ComputeLOD(bool openGL)
     RenderTexture &tex0 = g_textures[gRSP.curTile];
 
     float d,dt;
-    if( openGL )
+    if (openGL)
     {
         float x = g_vtxProjected5[0][0] / g_vtxProjected5[0][4] - g_vtxProjected5[1][0] / g_vtxProjected5[1][4];
         float y = g_vtxProjected5[0][1] / g_vtxProjected5[0][4] - g_vtxProjected5[1][1] / g_vtxProjected5[1][4];
@@ -847,11 +848,11 @@ extern uint32 lastSetTile;
 
 void InitVertex(uint32 dwV, uint32 vtxIndex, bool bTexture, bool openGL)
 {
-    VTX_DUMP(TRACE2("Init vertex (%d) to vtx buf[%d]:", dwV, vtxIndex));
+    VTX_DUMP(TRACE2("Initialize vertex (%d) to vertex buffer[%d]:", dwV, vtxIndex));
 
     TLITVERTEX &v = g_vtxBuffer[vtxIndex];
     VTX_DUMP(TRACE4("  Trans: x=%f, y=%f, z=%f, w=%f",  g_vtxTransformed[dwV].x,g_vtxTransformed[dwV].y,g_vtxTransformed[dwV].z,g_vtxTransformed[dwV].w));
-    if( openGL )
+    if (openGL)
     {
         g_vtxProjected5[vtxIndex][0] = g_vtxTransformed[dwV].x;
         g_vtxProjected5[vtxIndex][1] = g_vtxTransformed[dwV].y;
@@ -872,7 +873,7 @@ void InitVertex(uint32 dwV, uint32 vtxIndex, bool bTexture, bool openGL)
         v.z = (g_vecProjected[dwV].z + 1.0f) * 0.5f;    // DirectX minZ=0, maxZ=1
         //v.z = g_vecProjected[dwV].z;  // DirectX minZ=0, maxZ=1
         v.rhw = g_vecProjected[dwV].w;
-        VTX_DUMP(TRACE4("  Proj : x=%f, y=%f, z=%f, rhw=%f",  v.x,v.y,v.z,v.rhw));
+        VTX_DUMP(TRACE4("Projected vertex : x=%f, y=%f, z=%f, rhw=%f",  v.x, v.y, v.z, v.rhw));
 
         if( gRSP.bProcessSpecularColor )
         {
@@ -984,7 +985,7 @@ void InitVertex(uint32 dwV, uint32 vtxIndex, bool bTexture, bool openGL)
 
     if( g_curRomInfo.bEnableTxtLOD && vtxIndex == 1 && gRDP.otherMode.text_lod )
     {
-        if( CRender::g_pRender->IsTexel1Enable() && CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->IsUsed(MUX_LODFRAC) )
+        if (CRender::g_pRender->IsTexel1Enable() && CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->IsUsed(MUX_LODFRAC, MUX_MASK))
         {
             ComputeLOD(openGL);
         }
@@ -1126,7 +1127,7 @@ loopback:
         imul        eax,0x44;
         movups      xmm5, DWORD PTR gRSPlights[eax];        // Light Dir
         movups      xmm1, DWORD PTR gRSPlights[0x14][eax];  // Light color
-        mulps       xmm5, xmm4;                 // Lightdir * normals
+        mulps       xmm5, xmm4;                             // Light Dir * normals
 
         movhlps     xmm0,xmm5;
         addps       xmm0,xmm5;
@@ -1336,7 +1337,7 @@ void ProcessVertexDataSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
         VTX_DUMP( 
         {
             uint32 *dat = (uint32*)(&vert);
-            DebuggerAppendMsg("vtx %d: %08X %08X %08X %08X", i, dat[0],dat[1],dat[2],dat[3]); 
+            DebuggerAppendMsg("Vertex %d: %08X %08X %08X %08X", i, dat[0],dat[1],dat[2],dat[3]); 
             DebuggerAppendMsg("      : %f, %f, %f, %f", 
                 g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
             DebuggerAppendMsg("      : %f, %f, %f, %f", 
@@ -1382,7 +1383,7 @@ void ProcessVertexDataSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 
         // Update texture coords n.b. need to divide tu/tv by bogus scale on addition to buffer
 
-        // If the vert is already lit, then there is no normal (and hence we
+        // If the vertex is already lit, then there is no normal (and hence we
         // can't generate tex coord)
         if (gRSP.bTextureGen && gRSP.bLightingEnable )
         {
@@ -1396,7 +1397,7 @@ void ProcessVertexDataSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     }
 
     VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Cmd");});
+    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
 }
 #endif
 
@@ -1455,7 +1456,7 @@ void ProcessVertexDataNoSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
         VTX_DUMP( 
         {
             uint32 *dat = (uint32*)(&vert);
-            DebuggerAppendMsg("vtx %d: %08X %08X %08X %08X", i, dat[0],dat[1],dat[2],dat[3]); 
+            DebuggerAppendMsg("Vertex %d: %08X %08X %08X %08X", i, dat[0],dat[1],dat[2],dat[3]); 
             DebuggerAppendMsg("      : %f, %f, %f, %f", 
                 g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
             DebuggerAppendMsg("      : %f, %f, %f, %f", 
@@ -1500,7 +1501,7 @@ void ProcessVertexDataNoSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 
         // Update texture coords n.b. need to divide tu/tv by bogus scale on addition to buffer
 
-        // If the vert is already lit, then there is no normal (and hence we
+        // If the vertex is already lit, then there is no normal (and hence we
         // can't generate tex coord)
         if (gRSP.bTextureGen && gRSP.bLightingEnable )
         {
@@ -1514,7 +1515,7 @@ void ProcessVertexDataNoSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     }
 
     VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Cmd");});
+    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
 }
 
 bool PrepareTriangle(uint32 dwV0, uint32 dwV1, uint32 dwV2)
@@ -1675,7 +1676,7 @@ void ModifyVertexInfo(uint32 where, uint32 vertex, uint32 val)
             uint32 b = (val>>8)&0xFF;
             uint32 a = val&0xFF;
             g_dwVtxDifColor[vertex] = COLOR_RGBA(r, g, b, a);
-            LOG_UCODE("Modify vert %d color, 0x%08x", vertex, g_dwVtxDifColor[vertex]);
+            LOG_UCODE("Modify vertex %d color, 0x%08x", vertex, g_dwVtxDifColor[vertex]);
         }
         break;
     case RSP_MV_WORD_OFFSET_POINT_XYSCREEN:     // Modify X,Y
@@ -1706,8 +1707,8 @@ void ModifyVertexInfo(uint32 where, uint32 vertex, uint32 val)
                 SetVertexXYZ(vertex, x*2/windowSetting.fViWidth, y*2/windowSetting.fViHeight, g_vecProjected[vertex].z);
             }
 
-            LOG_UCODE("Modify vert %d: x=%d, y=%d", vertex, x, y);
-            VTX_DUMP(TRACE3("Modify vert %d: (%d,%d)", vertex, x, y));
+            LOG_UCODE("Modify vertex %d: x=%d, y=%d", vertex, x, y);
+            VTX_DUMP(TRACE3("Modify vertex %d: (%d,%d)", vertex, x, y));
         }
         break;
     case RSP_MV_WORD_OFFSET_POINT_ZSCREEN:      // Modify C
@@ -1715,8 +1716,8 @@ void ModifyVertexInfo(uint32 where, uint32 vertex, uint32 val)
             int z = val>>16;
 
             SetVertexXYZ(vertex, g_vecProjected[vertex].x, g_vecProjected[vertex].y, (((float)z/0x03FF)+0.5f)/2.0f );
-            LOG_UCODE("Modify vert %d: z=%d", vertex, z);
-            VTX_DUMP(TRACE2("Modify vert %d: z=%d", vertex, z));
+            LOG_UCODE("Modify vertex %d: z=%d", vertex, z);
+            VTX_DUMP(TRACE2("Modify vertex %d: z=%d", vertex, z));
         }
         break;
     case RSP_MV_WORD_OFFSET_POINT_ST:       // Texture
@@ -1730,7 +1731,7 @@ void ModifyVertexInfo(uint32 where, uint32 vertex, uint32 val)
         }
         break;
     }
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at ModVertex Cmd");});
+    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at ModVertex Command");});
 }
 
 void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
@@ -1793,7 +1794,7 @@ void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 
         gRSP.DKRVtxCount++;
 
-        VTX_DUMP(TRACE5("vtx %d: %f, %f, %f, %f", i, 
+        VTX_DUMP(TRACE5("Vertex %d: %f, %f, %f, %f", i, 
             g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w));
 
         if( gRSP.bFogEnabled )
@@ -1829,12 +1830,10 @@ void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
         }
         else
         {
-            int nR, nG, nB, nA;
-
-            nR = r;
-            nG = g;
-            nB = b;
-            nA = a;
+            int nR = r;
+            int nG = g;
+            int nB = b;
+            int nA = a;
             // Assign true vert colour after lighting/fogging
             g_dwVtxDifColor[i] = COLOR_RGBA(nR, nG, nB, nA);
         }
@@ -1847,7 +1846,7 @@ void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     }
 
 
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{DebuggerAppendMsg("Paused at DKR Vertex Cmd, v0=%d, vn=%d, addr=%08X", dwV0, dwNum, dwAddr);});
+    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{DebuggerAppendMsg("Paused at DKR Vertex Command, v0=%d, vn=%d, addr=%08X", dwV0, dwNum, dwAddr);});
 }
 
 
@@ -1948,7 +1947,7 @@ void ProcessVertexDataPD(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 
         VTX_DUMP( 
         {
-            DebuggerAppendMsg("vtx %d: %d %d %d", i, vert.x,vert.y,vert.z); 
+            DebuggerAppendMsg("Vertex %d: %d %d %d", i, vert.x,vert.y,vert.z); 
             DebuggerAppendMsg("      : %f, %f, %f, %f", 
                 g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
             DebuggerAppendMsg("      : %X, %X, %X, %X", r,g,b,a);
@@ -1957,7 +1956,7 @@ void ProcessVertexDataPD(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     }
 
     VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Cmd");});
+    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
 }
 
 extern uint32 dwConkerVtxZAddr;
@@ -1999,7 +1998,7 @@ void ProcessVertexDataConker(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
         VTX_DUMP( 
         {
             uint32 *dat = (uint32*)(&vert);
-            DebuggerAppendMsg("vtx %d: %08X %08X %08X %08X", i, dat[0],dat[1],dat[2],dat[3]); 
+            DebuggerAppendMsg("Vertex %d: %08X %08X %08X %08X", i, dat[0],dat[1],dat[2],dat[3]); 
             DebuggerAppendMsg("      : %f, %f, %f, %f", 
                 g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
             DebuggerAppendMsg("      : %f, %f, %f, %f", 
@@ -2078,25 +2077,30 @@ void ProcessVertexDataConker(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     }
 
     VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{DebuggerAppendMsg("Paused at Vertex Cmd");});
+    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{DebuggerAppendMsg("Paused at Vertex Command");});
 }
 
 
-typedef struct{
+typedef struct
+{
     short y;
     short x;
     short flag;
     short z;
 } RS_Vtx_XYZ;
 
-typedef union {
-    struct {
+typedef union
+{
+    struct
+    {
         uint8 a;
         uint8 b;
         uint8 g;
         uint8 r;
     };
-    struct {
+    
+    struct
+    {
         char na;    // A
         char nz;    // B
         char ny;    // G

@@ -605,7 +605,7 @@ void RSP_MoveMemViewport(uint32 dwAddr);
 void RDP_NOIMPL_WARN(const char* op);
 void RSP_GFX_Force_Matrix(uint32 dwAddr);
 void RSP_GFX_InitGeometryMode();
-void RSP_SetUcode(int ucode, uint32 ucStart=0, uint32 ucDStart=0, uint32 cdSize=0);
+void RSP_SetUcode(int ucode, uint32 ucStart, uint32 ucDStart, uint32 cdSize);
 uint32 CalcalateCRC(uint32* srcPtr, uint32 srcSize);
 void RDP_GFX_PopDL();
 

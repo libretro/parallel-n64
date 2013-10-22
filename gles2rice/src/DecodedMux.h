@@ -25,22 +25,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "typedefs.h"
 #include "CombinerDefs.h"
 
-typedef enum {
-    N64Cycle0RGB=0,
-    N64Cycle0Alpha=1,
-    N64Cycle1RGB=2,
-    N64Cycle1Alpha=3,
+typedef enum 
+{
+    N64Cycle0RGB   = 0,
+    N64Cycle0Alpha = 1,
+    N64Cycle1RGB   = 2,
+    N64Cycle1Alpha = 3,
 } N64StageNumberType;
 
-typedef union {
-    struct {
+typedef union
+{
+    struct
+    {
         uint32 dwMux0;
         uint32 dwMux1;
     };
     uint64 Mux64;
 } MuxType;
 
-typedef struct {
+typedef struct
+{
     MuxType ori_mux;
     MuxType simple_mux;
 } SimpleMuxMapType;
@@ -48,8 +52,10 @@ typedef struct {
 class DecodedMux
 {
 public:
-    union {
-        struct {
+    union
+    {
+        struct
+        {
             uint8 aRGB0;
             uint8 bRGB0;
             uint8 cRGB0;
@@ -75,8 +81,10 @@ public:
         N64CombinerType m_n64Combiners[4];
     };
     
-    union {
-        struct {
+    union
+    {
+        struct
+        {
             uint32 m_dwMux0;
             uint32 m_dwMux1;
         };
@@ -103,11 +111,11 @@ public:
 
     void Decode(uint32 dwMux0, uint32 dwMux1);
     virtual void Hack(void);
-    bool IsUsed(uint8 fac, uint8 mask=MUX_MASK);
-    bool IsUsedInAlphaChannel(uint8 fac, uint8 mask=MUX_MASK);
-    bool IsUsedInColorChannel(uint8 fac, uint8 mask=MUX_MASK);
-    bool IsUsedInCycle(uint8 fac, int cycle, CombineChannel channel, uint8 mask=MUX_MASK);
-    bool IsUsedInCycle(uint8 fac, int cycle, uint8 mask=MUX_MASK);
+    bool IsUsed(uint8 fac, uint8 mask);
+    bool IsUsedInAlphaChannel(uint8 fac, uint8 mask);
+    bool IsUsedInColorChannel(uint8 fac, uint8 mask);
+    bool IsUsedInCycle(uint8 fac, int cycle, CombineChannel channel, uint8 mask);
+    bool IsUsedInCycle(uint8 fac, int cycle, uint8 mask);
     uint32 GetCycle(int cycle, CombineChannel channel);
     uint32 GetCycle(int cycle);
     CombinerFormatType GetCombinerFormatType(uint32 cycle);
@@ -115,7 +123,7 @@ public:
     static char* FormatStr(uint8 val, char *buf);
     void CheckCombineInCycle1(void);
     virtual void Simplify(void);
-    virtual void Reformat(bool do_complement = true);
+    virtual void Reformat(bool do_complement);
     virtual void To_AB_Add_CD_Format(void); // Use by TNT,Geforce
     virtual void To_AB_Add_C_Format(void);  // Use by ATI Radeon
     
@@ -131,14 +139,14 @@ public:
     void MergeConstFactors();
     virtual void SplitComplexStages();  // Only used if the combiner supports more than 1 stages
     void ConvertLODFracTo0();
-    void ReplaceVal(uint8 val1, uint8 val2, int cycle= -1, uint8 mask = MUX_MASK);
-    void Replace1Val(uint8 &val1, const uint8 val2, uint8 mask = MUX_MASK)
+    void ReplaceVal(uint8 val1, uint8 val2, int cycle, uint8 mask);
+    void Replace1Val(uint8 &val1, const uint8 val2, uint8 mask)
     {
         val1 &= (~mask);
         val1 |= val2;
     }
     int CountTexels(void);
-    int Count(uint8 val, int cycle= -1, uint8 mask = MUX_MASK);
+    int Count(uint8 val, int cycle, uint8 mask);
 
 #ifdef DEBUGGER
     void DisplayMuxString(const char *prompt);

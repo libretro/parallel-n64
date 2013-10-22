@@ -386,7 +386,7 @@ void RSP_S2DEX_SPObjLoadTxtr_Ucode1(Gfx *gfx)
 
     // Add S2DEX ucode supporting to F3DEX, see game DT and others
     status.bUseModifiedUcodeMap = true;
-    RSP_SetUcode(1);
+    RSP_SetUcode(1, 0, 0, 0);
     memcpy( &LoadedUcodeMap, &ucodeMap1, sizeof(UcodeMap));
     
     LoadedUcodeMap[S2DEX_OBJ_MOVEMEM] = &RSP_S2DEX_OBJ_MOVEMEM;

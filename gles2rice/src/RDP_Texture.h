@@ -1923,7 +1923,7 @@ void DLParser_TexRect(Gfx *gfx)
 
                 if( !status.bDirectWriteIntoRDRAM )
                 {
-                    CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY);
+                    CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY, false, 0xFFFFFFFF);
 
                     status.dwNumTrisRendered += 2;
                 }
@@ -1931,7 +1931,7 @@ void DLParser_TexRect(Gfx *gfx)
         }
         else
         {
-            CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY);
+            CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY, false, 0xFFFFFFFF);
             status.bFrameBufferDrawnByTriangles = true;
 
             status.dwNumTrisRendered += 2;

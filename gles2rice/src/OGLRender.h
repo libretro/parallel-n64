@@ -56,8 +56,8 @@ public:
     void SetCullMode(bool bCullFront, bool bCullBack);
     void SetAlphaTestEnable(BOOL bAlphaTestEnable);
     void UpdateScissor();
-    void ApplyRDPScissor(bool force=false);
-    void ApplyScissorWithClipRatio(bool force=false);
+    void ApplyRDPScissor(bool force);
+    void ApplyScissorWithClipRatio(bool force);
 
     bool SetCurrentTexture(int tile, CTexture *handler,uint32 dwTileWidth, uint32 dwTileHeight, TxtrCacheEntry *pTextureEntry);
     bool SetCurrentTexture(int tile, TxtrCacheEntry *pTextureEntry);
@@ -72,7 +72,7 @@ public:
 
     void DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw);
     void DrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor, float depth, float rhw);
-    void InitCombinerBlenderForSimpleRectDraw(uint32 tile=0);
+    void InitCombinerBlenderForSimpleRectDraw(uint32 tile);
     void DrawSpriteR_Render();
     void DrawObjBGCopy(uObjBg &info);
     void DrawText(const char* str, RECT *rect);
@@ -86,7 +86,7 @@ public:
     void EnableMultiTexture() {m_bEnableMultiTexture=true;}
     void EndRendering(void);
 
-    void glViewportWrapper(GLint x, GLint y, GLsizei width, GLsizei height, bool flag=true);
+    void glViewportWrapper(GLint x, GLint y, GLsizei width, GLsizei height, bool flag);
     virtual void EnableTexUnit(int unitno, bool flag);
     virtual void SetTexWrapS(int unitno,GLuint flag);
     virtual void SetTexWrapT(int unitno,GLuint flag);

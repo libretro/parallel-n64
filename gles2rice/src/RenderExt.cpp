@@ -145,7 +145,7 @@ void CRender::LoadTextureFromMemory(void *buf, uint32 left, uint32 top, uint32 w
     gti.pPhysicalAddress = (uint8*)buf;
 
     gti.tileNo = -1;
-    TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false);
+    TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     //Upto here, the texture is loaded wrong because the format is wrong
 
     DrawInfo info;  
@@ -207,7 +207,7 @@ void CRender::LoadObjBGCopy(uObjBg &info)
     gti.WidthToLoad = gti.WidthToCreate;
     gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = -1;
-    TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false);
+    TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
 
     DEBUGGER_IF_DUMP((pauseAtNext && (eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI||eventToPause == NEXT_OBJ_BG)),
@@ -246,7 +246,7 @@ void CRender::LoadTxtrBufIntoTexture(void)
     gti.WidthToLoad = gti.WidthToCreate;
     gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = -1;
-    TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false);
+    TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
 }
 
@@ -293,7 +293,7 @@ void CRender::LoadSprite2D(Sprite2DInfo &info, uint32 ucode)
 
     gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = -1;
-    TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false);
+    TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
 
     DEBUGGER_IF_DUMP((pauseAtNext && (eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI||eventToPause == NEXT_SPRITE_2D)),
@@ -854,7 +854,7 @@ void CRender::LoadObjBG1CYC(uObjScaleBg &bg)
     gti.WidthToLoad = gti.WidthToCreate;
     gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = -1;
-    TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false,true,false);
+    TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
 
     DEBUGGER_IF_DUMP((pauseAtNext && (eventToPause == NEXT_OBJ_TXT_CMD||eventToPause == NEXT_FLUSH_TRI||eventToPause == NEXT_OBJ_BG)),
@@ -930,7 +930,7 @@ void CRender::LoadObjSprite(uObjTxSprite &sprite, bool useTIAddr)
     gti.WidthToLoad = gti.WidthToCreate;
     gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = -1;
-    TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false);
+    TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
 }
 

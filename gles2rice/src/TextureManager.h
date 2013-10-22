@@ -236,7 +236,7 @@ public:
 
     TxtrCacheEntry * GetBlackTexture(void);
     TxtrCacheEntry * GetConstantColorTexture(uint32 constant);
-    TxtrCacheEntry * GetTexture(TxtrInfo * pgti, bool fromTMEM, bool doCRCCheck=true, bool AutoExtendTexture = false);
+    TxtrCacheEntry * GetTexture(TxtrInfo * pgti, bool fromTMEM, bool doCRCCheck, bool AutoExtendTexture);
     
     void PurgeOldTextures();
     void RecycleAllTextures();

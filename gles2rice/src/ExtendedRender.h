@@ -35,8 +35,8 @@ class CExtendedRender
 public:
     virtual ~CExtendedRender() {}
 
-    virtual void DrawFrameBuffer(bool useVIreg=false, uint32 left=0, uint32 top=0, uint32 width=0, uint32 height=0) {};
-    virtual void LoadFrameBuffer(bool useVIreg=false, uint32 left=0, uint32 top=0, uint32 width=0, uint32 height=0) {};
+    virtual void DrawFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 width, uint32 height) {};
+    virtual void LoadFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 width, uint32 height) {};
     virtual void LoadTxtrBufFromRDRAM(void) {};
     virtual void LoadTxtrBufIntoTexture(void) {};
 
@@ -44,12 +44,12 @@ public:
     virtual void LoadSprite2D(Sprite2DInfo &info, uint32 ucode) {};
 
     
-    virtual void DrawSprite(uObjTxSprite &sprite, bool rectR = true) {};
-    virtual void DrawObjBG1CYC(uObjScaleBg &bg, bool scaled=true) {};
+    virtual void DrawSprite(uObjTxSprite &sprite, bool rectR) {};
+    virtual void DrawObjBG1CYC(uObjScaleBg &bg, bool scaled) {};
     virtual void DrawObjBGCopy(uObjBg &info) {};
     virtual void LoadObjBGCopy(uObjBg &info) {};
     virtual void LoadObjBG1CYC(uObjScaleBg &info) {};
-    virtual void LoadObjSprite(uObjTxSprite &info, bool useTIAddr=false) {};
+    virtual void LoadObjSprite(uObjTxSprite &info, bool useTIAddr) {};
 
     virtual void DrawText(const char* str, RECT *rect) {};
 };

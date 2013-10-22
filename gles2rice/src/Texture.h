@@ -28,7 +28,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ///////////////  created so far.
 class CTexture;
 
-typedef struct {
+typedef struct 
+{
     unsigned short int  dwWidth;            // Describes the width of the real texture area. Use lPitch to move between successive lines
     unsigned short int  dwHeight;           // Describes the height of the real texture area
     unsigned short int  dwCreatedWidth;     // Describes the width of the created texture area. Use lPitch to move between successive lines
@@ -38,13 +39,15 @@ typedef struct {
 } DrawInfo;
 
 
-enum TextureFmt {
+enum TextureFmt
+{
     TEXTURE_FMT_A8R8G8B8,
     TEXTURE_FMT_A4R4G4B4,
     TEXTURE_FMT_UNKNOWN,
 };
 
-enum TextureUsage {
+enum TextureUsage
+{
     AS_NORMAL,
     AS_RENDER_TARGET,
     AS_BACK_BUFFER_SAVE,
@@ -55,11 +58,11 @@ class CTexture
 public:
     virtual ~CTexture();
 
-    uint32      m_dwWidth;          // The requested Texture w/h
-    uint32      m_dwHeight;
+    uint32      m_dwWidth;    // The requested Texture width.
+    uint32      m_dwHeight;   // The requested Texture height.
 
-    unsigned int        m_dwCreatedTextureWidth;    // What was actually created
-    unsigned int        m_dwCreatedTextureHeight;
+    unsigned int m_dwCreatedTextureWidth;    // What was actually created
+    unsigned int m_dwCreatedTextureHeight;
 
     float       m_fXScale;      // = m_dwCorrectedWidth/m_dwWidth
     float       m_fYScale;      // = m_dwCorrectedHeight/m_dwWidth
@@ -74,7 +77,7 @@ public:
     
     TextureUsage    m_Usage;
 
-    virtual void ScaleImageToSurface(bool scaleS=true, bool scaleT=true);
+    virtual void ScaleImageToSurface(bool scaleS, bool scaleT);
     virtual void ClampImageToSurfaceS();
     virtual void ClampImageToSurfaceT();
 
@@ -95,7 +98,7 @@ public:
     virtual void RestoreAlphaChannel(void); // Restore Alpha channel from RGB channel
 
 protected:
-    CTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage = AS_NORMAL);
+    CTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage);
     LPRICETEXTURE   m_pTexture;
     TextureFmt      m_dwTextureFmt;
 };

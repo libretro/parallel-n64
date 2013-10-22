@@ -43,11 +43,11 @@ void hq4x_16( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int
 void hq4x_32( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int SrcPPL, int BpL );
 void hq4x_InitLUTs(void);
 
-void SmoothFilter_32(uint32 *pdata, uint32 width, uint32 height, uint32 pitch, uint32 filter=TEXTURE_ENHANCEMENT_WITH_SMOOTH_FILTER_1);
-void SmoothFilter_16(uint16 *pdata, uint32 width, uint32 height, uint32 pitch, uint32 filter=TEXTURE_ENHANCEMENT_WITH_SMOOTH_FILTER_1);
+void SmoothFilter_32(uint32 *pdata, uint32 width, uint32 height, uint32 pitch, uint32 filter);
+void SmoothFilter_16(uint16 *pdata, uint32 width, uint32 height, uint32 pitch, uint32 filter);
 
-void SharpenFilter_32(uint32 *pdata, uint32 width, uint32 height, uint32 pitch, uint32 filter=TEXTURE_SHARPEN_ENHANCEMENT);
-void SharpenFilter_16(uint16 *pdata, uint32 width, uint32 height, uint32 pitch, uint32 filter=TEXTURE_SHARPEN_ENHANCEMENT);
+void SharpenFilter_32(uint32 *pdata, uint32 width, uint32 height, uint32 pitch, uint32 filter);
+void SharpenFilter_16(uint16 *pdata, uint32 width, uint32 height, uint32 pitch, uint32 filter);
 
 void hq2x_init(unsigned bits_per_pixel);
 void hq2x_16(uint8 *srcPtr, uint32 srcPitch, uint8 *dstPtr, uint32 dstPitch, int width, int height);

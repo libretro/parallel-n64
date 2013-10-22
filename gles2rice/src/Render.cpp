@@ -341,7 +341,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
     if(status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE)
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame();
+        CGraphicsContext::Get()->UpdateFrame(false);
         DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG, {DebuggerAppendMsg("Screen Update at 1st FillRectangle");});
     }
 
@@ -352,7 +352,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
           ((nX0+nX1 == (int)g_CI.dwWidth || nX0+nX1 == (int)g_CI.dwWidth-1 || nX0+nX1 == gRDP.scissor.left+gRDP.scissor.right || nX0+nX1 == gRDP.scissor.left+gRDP.scissor.right-1) && (nY0 == gRDP.scissor.top || nY0 == 0 || nY0+nY1 == gRDP.scissor.top+gRDP.scissor.bottom || nY0+nY1 == gRDP.scissor.top+gRDP.scissor.bottom-1)))
       {
           status.bVIOriginIsUpdated=false;
-          CGraphicsContext::Get()->UpdateFrame();
+          CGraphicsContext::Get()->UpdateFrame(false);
           DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG,{DebuggerAppendMsg("Screen Update Before Screen Clear");});
       }
   }
@@ -366,7 +366,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
     // I don't know why this does not work for OpenGL
     if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL && nX0 == 0 && nY0 == 0 && ((nX1==windowSetting.uViWidth && nY1==windowSetting.uViHeight)||(nX1==windowSetting.uViWidth-1 && nY1==windowSetting.uViHeight-1)) )
     {
-        CGraphicsContext::g_pGraphicsContext->Clear(CLEAR_COLOR_BUFFER,dwColor);
+        CGraphicsContext::g_pGraphicsContext->Clear(CLEAR_COLOR_BUFFER,dwColor, 0xFF000000, 1.0f);
     }
     else
     */
@@ -393,7 +393,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
 
         float depth = (gRDP.otherMode.depth_source == 1 ? gRDP.fPrimitiveDepth : 0 );
 
-        ApplyRDPScissor();
+        ApplyRDPScissor(false);
         TurnFogOnOff(false);
         res = RenderFillRect(dwColor, depth);
         TurnFogOnOff(gRSP.bFogEnabled);
@@ -553,7 +553,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame();
+        CGraphicsContext::Get()->UpdateFrame(false);
         DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG,{DebuggerAppendMsg("Screen Update at 1st textRect");});
     }
 
@@ -799,7 +799,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
         TextureFilter dwFilter = m_dwMagFilter;
         m_dwMagFilter = m_dwMinFilter = FILTER_LINEAR;
         ApplyTextureFilter();
-        ApplyRDPScissor();
+        ApplyRDPScissor(false);
         res = RenderTexRect();
         m_dwMagFilter = m_dwMinFilter = dwFilter;
         ApplyTextureFilter();
@@ -809,14 +809,14 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
         TextureFilter dwFilter = m_dwMagFilter;
         m_dwMagFilter = m_dwMinFilter = FILTER_POINT;
         ApplyTextureFilter();
-        ApplyRDPScissor();
+        ApplyRDPScissor(false);
         res = RenderTexRect();
         m_dwMagFilter = m_dwMinFilter = dwFilter;
         ApplyTextureFilter();
     }
     else
     {
-        ApplyRDPScissor();
+        ApplyRDPScissor(false);
         res = RenderTexRect();
     }
     TurnFogOnOff(gRSP.bFogEnabled);
@@ -913,7 +913,7 @@ bool CRender::TexRectFlip(int nX0, int nY0, int nX1, int nY1, float fS0, float f
     SetVertexTextureUVCoord(g_texRectTVtx[3], t0u1, t0v0);
 
     TurnFogOnOff(false);
-    ApplyRDPScissor();
+    ApplyRDPScissor(false);
     bool res = RenderTexRect();
 
     TurnFogOnOff(gRSP.bFogEnabled);
@@ -1160,7 +1160,7 @@ bool CRender::DrawTriangles()
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame();
+        CGraphicsContext::Get()->UpdateFrame(false);
         DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_SET_CIMG,{DebuggerAppendMsg("Screen Update at 1st triangle");});
     }
 
@@ -1170,7 +1170,7 @@ bool CRender::DrawTriangles()
     {
         if( IsUsedAsDI(g_CI.dwAddr) && gRDP.otherMode.z_cmp+gRDP.otherMode.z_upd > 0 )
         {
-            TRACE0("Warning: using Flushtris to write Zbuffer" );
+            TRACE0("Warning: using Flushtris to write Z-Buffer" );
             gRSP.numVertices = 0;
             gRSP.maxVertexID = 0;
             skipNext = true;
@@ -1322,7 +1322,7 @@ bool CRender::DrawTriangles()
         ZBufferEnable(FALSE);
     }
 
-    ApplyScissorWithClipRatio();
+    ApplyScissorWithClipRatio(false);
 
     if( g_curRomInfo.bZHack )
     {
@@ -1372,7 +1372,7 @@ bool SaveCITextureToFile(TxtrCacheEntry &entry, char *filename, bool bShow, bool
     }
     if ( entry.ti.TLutFmt != TLUT_FMT_RGBA16 && entry.ti.TLutFmt != TLUT_FMT_IA16 )
     {
-        TRACE0("Invalid Tlut format");
+        TRACE0("Invalid texture look-up table format");
         return false;
     }
 
@@ -1386,7 +1386,7 @@ bool SaveCITextureToFile(TxtrCacheEntry &entry, char *filename, bool bShow, bool
     int tableSize;
     uint16 * pPal = (uint16 *)entry.ti.PalAddress;
 
-    // Create the pallette table
+    // Create the palette table
     if( entry.ti.Size == TXT_SIZE_4b )
     {
         // 4-bit table
@@ -1545,9 +1545,9 @@ void CRender::SaveTextureToFile(CTexture &texture, char *filename, TextureChanne
                     }
                 }
 
-                if( SaveRGBABufferToPNGFile(filename, (unsigned char*)pbuf, width, height ) )
-                //if( SaveRGBABufferToPNGFile(filename, (unsigned char*)srcInfo.lpSurface, width, height, srcInfo.lPitch ) )
+                if (SaveRGBABufferToPNGFile(filename, (unsigned char*)pbuf, width, height, -1))
                 {
+                    // TODO: Implement?
                 }
             }
             else
@@ -1574,8 +1574,9 @@ void CRender::SaveTextureToFile(CTexture &texture, char *filename, TextureChanne
                     }
                 }
 
-                if( SaveRGBBufferToFile(filename, pbuf, width, height ) )
+                if (SaveRGBBufferToFile(filename, pbuf, width, height, -1))
                 {
+                    // TODO: Implement?
                 }
             }
             texture.EndUpdate(&srcInfo);
@@ -1652,7 +1653,7 @@ void CRender::SaveTextureToFile(int tex, TextureChannel channel, bool bShow)
             sprintf(filename, "\\%s#%08X#%d#%d_ci_%s_debugger", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
                 g_textures[tex].pTextureEntry->ti.Format, 
                 g_textures[tex].pTextureEntry->ti.Size, channel == TXT_ALPHA ? "a" : channel == TXT_RGBA ? "all" : "rgb");
-            SaveTextureToFile(*pEnhancedTexture, filename, channel, true, true);
+            SaveTextureToFile(*pEnhancedTexture, filename, channel, true, true, -1, -1);
             DebuggerAppendMsg("Whole texture is stored at: %s", filename);
         }
     }
@@ -1661,7 +1662,7 @@ void CRender::SaveTextureToFile(int tex, TextureChannel channel, bool bShow)
         sprintf(filename, "\\%s#%08X#%d#%d_%s", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
             g_textures[tex].pTextureEntry->ti.Format, 
             g_textures[tex].pTextureEntry->ti.Size, channel == TXT_ALPHA ? "a" : channel == TXT_RGBA ? "all" : "rgb");
-        SaveTextureToFile(*pBaseTexture, filename, channel, bShow && bInWhole, false,g_textures[tex].pTextureEntry->ti.WidthToLoad, g_textures[tex].pTextureEntry->ti.HeightToLoad);
+        SaveTextureToFile(*pBaseTexture, filename, channel, bShow && bInWhole, false, g_textures[tex].pTextureEntry->ti.WidthToLoad, g_textures[tex].pTextureEntry->ti.HeightToLoad);
         DebuggerAppendMsg("Base texture is stored at: %s", filename);
 
         if( !bInWhole && bShow )
@@ -1669,7 +1670,7 @@ void CRender::SaveTextureToFile(int tex, TextureChannel channel, bool bShow)
             sprintf(filename, "\\%s#%08X#%d#%d_%s_debugger", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
                 g_textures[tex].pTextureEntry->ti.Format, 
                 g_textures[tex].pTextureEntry->ti.Size, channel == TXT_ALPHA ? "a" : channel == TXT_RGBA ? "all" : "rgb");
-            SaveTextureToFile(*pEnhancedTexture, filename, channel, true, true);
+            SaveTextureToFile(*pEnhancedTexture, filename, channel, true, true, -1, -1);
             DebuggerAppendMsg("Whole texture is stored at: %s", filename);
         }
     }
@@ -1907,7 +1908,7 @@ void CRender::InitOtherModes(void)
     ApplyTextureFilter();
 
     //
-    // I can't think why the hand in mario's menu screen is rendered with an opaque rendermode,
+    // I can't think why the hand in Mario's menu screen is rendered with an opaque rendermode,
     // and no alpha threshold. We set the alpha reference to 1 to ensure that the transparent pixels
     // don't get rendered. I hope this doesn't fuck anything else up.
     //

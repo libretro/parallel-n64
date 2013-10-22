@@ -109,24 +109,24 @@ void DumpMatrix(const Matrix &mtx, const char* prompt);
     }
 
 #define DEBUGGER_IF(op)     if(op)
-#define DEBUGGER_PAUSE(op)  if(pauseAtNext && eventToPause == op){pauseAtNext = false;CGraphicsContext::Get()->UpdateFrame(); debuggerPause = true;}
+#define DEBUGGER_PAUSE(op)  if(pauseAtNext && eventToPause == op){pauseAtNext = false;CGraphicsContext::Get()->UpdateFrame(false); debuggerPause = true;}
 extern void DEBUGGER_PAUSE_COUNT_N(uint32 event);
 extern void DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(uint32 val);
 #define DebuggerPauseCountN DEBUGGER_PAUSE_COUNT_N
 #define DEBUGGER_PAUSE_AND_DUMP(op,dumpfuc)     \
     if(pauseAtNext && eventToPause == op)   \
-    {   pauseAtNext = false;debuggerPause = true; CGraphicsContext::Get()->UpdateFrame(); dumpfuc;}
+    {   pauseAtNext = false;debuggerPause = true; CGraphicsContext::Get()->UpdateFrame(false); dumpfuc;}
 #define DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(op,dumpfuc)       \
     if(pauseAtNext && eventToPause == op)   \
     {   pauseAtNext = false;debuggerPause = true; dumpfuc;}
 
 #define DEBUGGER_PAUSE_AND_DUMP_COUNT_N(op,dumpfuc)     \
     if(pauseAtNext && eventToPause == op)   \
-{   if( debuggerPauseCount > 0 ) debuggerPauseCount--; if( debuggerPauseCount == 0 ){pauseAtNext = false;debuggerPause = true; CGraphicsContext::Get()->UpdateFrame(); dumpfuc;}}
+{   if( debuggerPauseCount > 0 ) debuggerPauseCount--; if( debuggerPauseCount == 0 ){pauseAtNext = false;debuggerPause = true; CGraphicsContext::Get()->UpdateFrame(false); dumpfuc;}}
 
 #define DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N(cond,dumpfuc)       \
     if(pauseAtNext && (cond) )  \
-{   if( debuggerPauseCount > 0 ) debuggerPauseCount--; if( debuggerPauseCount == 0 ){pauseAtNext = false;debuggerPause = true; CGraphicsContext::Get()->UpdateFrame(); dumpfuc;}}
+{   if( debuggerPauseCount > 0 ) debuggerPauseCount--; if( debuggerPauseCount == 0 ){pauseAtNext = false;debuggerPause = true; CGraphicsContext::Get()->UpdateFrame(false); dumpfuc;}}
 
 void RDP_NOIMPL_Real(const char* op,uint32,uint32) ;
 #define RSP_RDP_NOIMPL RDP_NOIMPL_Real

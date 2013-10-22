@@ -150,7 +150,7 @@ void COGLColorCombiner::InitCombinerCycleFill(void)
 void COGLColorCombiner::InitCombinerCycle12(void)
 {
     m_pOGLRender->DisableMultiTexture();
-    if( !m_bTexelsEnable )
+    if (!m_bTexelsEnable)
     {
         glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
         OPENGL_CHECK_ERRORS;
@@ -161,7 +161,7 @@ void COGLColorCombiner::InitCombinerCycle12(void)
 #if SDL_VIDEO_OPENGL
     uint32 mask = 0x1f;
     COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
-    if( pTexture )
+    if (pTexture)
     {
         m_pOGLRender->EnableTexUnit(0, true);
         m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
@@ -174,17 +174,17 @@ void COGLColorCombiner::InitCombinerCycle12(void)
     }
 #endif
 
-    bool texIsUsed = m_pDecodedMux->IsUsed(MUX_TEXEL0);
-    bool shadeIsUsedInColor = m_pDecodedMux->IsUsedInCycle(MUX_SHADE, 0, COLOR_CHANNEL);
-    bool texIsUsedInColor = m_pDecodedMux->IsUsedInCycle(MUX_TEXEL0, 0, COLOR_CHANNEL);
+    bool texIsUsed = m_pDecodedMux->IsUsed(MUX_TEXEL0, MUX_MASK);
+    bool shadeIsUsedInColor = m_pDecodedMux->IsUsedInCycle(MUX_SHADE, 0, COLOR_CHANNEL, MUX_MASK);
+    bool texIsUsedInColor = m_pDecodedMux->IsUsedInCycle(MUX_TEXEL0, 0, COLOR_CHANNEL, MUX_MASK);
 
-    if( texIsUsed )
+    if (texIsUsed)
     {
         // Parse the simplified the mux, because the OGL 1.1 combiner function is so much
         // limited, we only parse the 1st N64 combiner setting and only the RGB part
 
         N64CombinerType & comb = m_pDecodedMux->m_n64Combiners[0];
-        switch( m_pDecodedMux->mType )
+        switch (m_pDecodedMux->mType)
         {
         case CM_FMT_TYPE_NOT_USED:
         case CM_FMT_TYPE_D:             // = A
@@ -192,60 +192,66 @@ void COGLColorCombiner::InitCombinerCycle12(void)
             OPENGL_CHECK_ERRORS;
             break;
         case CM_FMT_TYPE_A_ADD_D:           // = A+D
-            if( shadeIsUsedInColor && texIsUsedInColor )
+            if (shadeIsUsedInColor && texIsUsedInColor)
             {
-                if( m_bSupportAdd )
+                if (m_bSupportAdd)
                     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_ADD);
                 else
                     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
             }
-            else if( texIsUsedInColor )
+            else if (texIsUsedInColor)
             {
                 glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
             }
             else
+            {
                 glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+            }
             OPENGL_CHECK_ERRORS;
             break;
         case CM_FMT_TYPE_A_SUB_B:           // = A-B
-            if( shadeIsUsedInColor && texIsUsedInColor )
+            if (shadeIsUsedInColor && texIsUsedInColor)
             {
-                if( m_bSupportSubtract )
+                if (m_bSupportSubtract)
                     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_SUBTRACT_ARB);
                 else
                     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
             }
-            else if( texIsUsedInColor )
+            else if (texIsUsedInColor)
             {
                 glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
             }
             else
+            {
                 glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+            }
             OPENGL_CHECK_ERRORS;
             break;
-        case CM_FMT_TYPE_A_MOD_C:           // = A*C
+        case CM_FMT_TYPE_A_MOD_C:       // = A*C
         case CM_FMT_TYPE_A_MOD_C_ADD_D: // = A*C+D
-            if( shadeIsUsedInColor && texIsUsedInColor )
+            if (shadeIsUsedInColor && texIsUsedInColor)
             {
-                if( ((comb.c & mask) == MUX_SHADE && !(comb.c&MUX_COMPLEMENT)) ||
-                    ((comb.a & mask) == MUX_SHADE && !(comb.a&MUX_COMPLEMENT)) )
+                if (((comb.c & mask) == MUX_SHADE && !(comb.c&MUX_COMPLEMENT)) ||
+                    ((comb.a & mask) == MUX_SHADE && !(comb.a&MUX_COMPLEMENT)))
                     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
                 else
                     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
             }
-            else if( texIsUsedInColor )
+            else if (texIsUsedInColor)
             {
                 glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
             }
             else
+            {
                 glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+            }
             OPENGL_CHECK_ERRORS;
             break;
         case CM_FMT_TYPE_A_LERP_B_C:    // = A*C+D
-            if( (comb.b&mask) == MUX_SHADE && (comb.c&mask)==MUX_TEXEL0 && ((comb.a&mask)==MUX_PRIM||(comb.a&mask)==MUX_ENV))
+            if ((comb.b&mask) == MUX_SHADE && (comb.c&mask) == MUX_TEXEL0 && ((comb.a&mask) == MUX_PRIM || (comb.a&mask) == MUX_ENV))
             {
                 float *fv;
-                if( (comb.a&mask)==MUX_PRIM )
+                if ((comb.a&mask) == MUX_PRIM)
                 {
                     fv = GetPrimitiveColorfv();
                 }
@@ -261,10 +267,10 @@ void COGLColorCombiner::InitCombinerCycle12(void)
                 break;
             }
         default:        // = (A-B)*C+D
-            if( shadeIsUsedInColor )
+            if (shadeIsUsedInColor)
             {
-                if( ((comb.c & mask) == MUX_SHADE && !(comb.c&MUX_COMPLEMENT)) ||
-                    ((comb.a & mask) == MUX_SHADE && !(comb.a&MUX_COMPLEMENT)) )
+                if (((comb.c & mask) == MUX_SHADE && !(comb.c&MUX_COMPLEMENT)) ||
+                    ((comb.a & mask) == MUX_SHADE && !(comb.a&MUX_COMPLEMENT)))
                     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
                 else
                     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);

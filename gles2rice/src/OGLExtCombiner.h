@@ -28,7 +28,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 typedef union 
 {
-    struct {
+    struct
+    {
         uint8   arg0;
         uint8   arg1;
         uint8   arg2;
@@ -36,17 +37,23 @@ typedef union
     uint8 args[3];
 } OGLExt1CombType;
 
-typedef struct {
-    union {
-        struct {
+typedef struct
+{
+    union
+    {
+        struct
+        {
             GLenum  rgbOp;
             GLenum  alphaOp;
         };
+
         GLenum ops[2];
     };
 
-    union {
-        struct {
+    union
+    {
+        struct
+        {
             uint8   rgbArg0;
             uint8   rgbArg1;
             uint8   rgbArg2;
@@ -54,46 +61,61 @@ typedef struct {
             uint8   alphaArg1;
             uint8   alphaArg2;
         };
-        struct {
+
+        struct
+        {
             OGLExt1CombType rgbComb;
             OGLExt1CombType alphaComb;
         };
+
         OGLExt1CombType Combs[2];
     };
 
-    union {
-        struct {
+    union
+    {
+        struct
+        {
             GLint   rgbArg0gl;
             GLint   rgbArg1gl;
             GLint   rgbArg2gl;
         };
+
         GLint glRGBArgs[3];
     };
 
-    union {
-        struct {
+    union
+    {
+        struct
+        {
             GLint   rgbFlag0gl;
             GLint   rgbFlag1gl;
             GLint   rgbFlag2gl;
         };
+
         GLint glRGBFlags[3];
     };
 
-    union {
-        struct {
+    union
+    {
+        struct
+        {
             GLint   alphaArg0gl;
             GLint   alphaArg1gl;
             GLint   alphaArg2gl;
         };
+
         GLint glAlphaArgs[3];
     };
 
-    union {
-        struct {
+    union
+    {
+        struct
+        {
             GLint   alphaFlag0gl;
             GLint   alphaFlag1gl;
             GLint   alphaFlag2gl;
         };
+
         GLint glAlphaFlags[3];
     };
 
@@ -102,7 +124,8 @@ typedef struct {
     //float scale;      //Will not be used
 } OGLExtCombinerType;
 
-typedef struct {
+typedef struct
+{
     uint32  dwMux0;
     uint32  dwMux1;
     OGLExtCombinerType units[8];
@@ -149,9 +172,9 @@ protected:
     virtual int SaveParsedResult(OGLExtCombinerSaveType &result);
     static GLint MapRGBArgFlags(uint8 arg);
     static GLint MapAlphaArgFlags(uint8 arg);
-    std::vector<OGLExtCombinerSaveType>     m_vCompiledSettings;
-    static GLint RGBArgsMap4[];
     static const char* GetOpStr(GLenum op);
+    static GLint RGBArgsMap4[];
+    std::vector<OGLExtCombinerSaveType>  m_vCompiledSettings;
 
 private:
     virtual int ParseDecodedMux2Units();

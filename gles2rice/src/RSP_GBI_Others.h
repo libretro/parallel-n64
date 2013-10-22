@@ -420,11 +420,11 @@ CTexture *ptexture = g_textures[0].m_pCTexture;
 TexRectToN64FrameBuffer_16b( (uint32)gObjMtxReal.X, (uint32)gObjMtxReal.Y, ptexture->m_dwWidth, ptexture->m_dwHeight, gRSP.curTile);
 
 #ifdef DEBUGGER
-CRender::g_pRender->DrawSpriteR(*ptr, false);
+CRender::g_pRender->DrawSpriteR(*ptr, false, 0, 0, 0, 0, 0);
 
 DEBUGGER_PAUSE_AT_COND_AND_DUMP_COUNT_N((pauseAtNext && 
 (eventToPause==NEXT_OBJ_TXT_CMD|| eventToPause==NEXT_FLUSH_TRI)),
-{DebuggerAppendMsg("OgreBatter 64 BG: Addr=%08X\n", dwAddr);});
+{DebuggerAppendMsg("Ogre Battle 64 BG: Address=%08X\n", dwAddr);});
 #endif
 }
 
@@ -1492,7 +1492,7 @@ void DLParser_RDPHalf_1_0xb4_GoldenEye(Gfx *gfx)
         float yscale = g_textures[0].m_pCTexture->m_dwHeight / (float)(y1-y0);
         //float fs0 = (short)(dw3&0xFFFF)/32768.0f*g_textures[0].m_pCTexture->m_dwWidth;
         //float ft0 = (short)(dw3>>16)/32768.0f*256;
-        CRender::g_pRender->TexRect(x0,y0,x1,y1,0,0,xscale,yscale,true,color);
+        CRender::g_pRender->TexRect(x0, y0, x1, y1, 0, 0, xscale, yscale, true, color);
 
         gDlistStack[gDlistStackPointer].pc += 312;
 
@@ -1705,7 +1705,7 @@ void DLParser_TexRect_Last_Legion(Gfx *gfx)
 
                 if( !status.bDirectWriteIntoRDRAM )
                 {
-                    CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY);
+                    CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY, false, 0xFFFFFFFF);
 
                     status.dwNumTrisRendered += 2;
                 }
@@ -1713,7 +1713,7 @@ void DLParser_TexRect_Last_Legion(Gfx *gfx)
         }
         else
         {
-            CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY);
+            CRender::g_pRender->TexRect(dwXL, dwYL, dwXH, dwYH, fS0, fT0, fDSDX, fDTDY, false, 0xFFFFFFFF);
             status.bFrameBufferDrawnByTriangles = true;
 
             status.dwNumTrisRendered += 2;

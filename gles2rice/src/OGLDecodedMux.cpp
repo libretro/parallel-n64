@@ -26,7 +26,7 @@ void COGLDecodedMux::Simplify(void)
 
 void COGLDecodedMux::Reformat(void)
 {
-    DecodedMux::Reformat();
+    DecodedMux::Reformat(true);
     mType = max(max(max(splitType[0], splitType[1]),splitType[2]),splitType[3]);
 }
 
@@ -51,18 +51,18 @@ void COGLExtDecodedMux::FurtherFormatForOGL2(void)
     // - Only allow 1 constant color. Count PRIM and ENV, left the most used one, and change
     //   the 2nd one to MUX_SHADE
 
-    if( Count(MUX_PRIM) >= Count(MUX_ENV) )
+    if (Count(MUX_PRIM, -1, MUX_MASK) >= Count(MUX_ENV, -1, MUX_MASK))
     {
-        ReplaceVal(MUX_ENV, MUX_PRIM);
-        //ReplaceVal(MUX_ENV, MUX_SHADE);
-        //ReplaceVal(MUX_ENV, MUX_1);
-        //ReplaceVal(MUX_PRIM, MUX_0);
+        ReplaceVal(MUX_ENV, MUX_PRIM, -1, MUX_MASK);
+        //ReplaceVal(MUX_ENV, MUX_SHADE, -1, MUX_MASK);
+        //ReplaceVal(MUX_ENV, MUX_1, -1, MUX_MASK);
+        //ReplaceVal(MUX_PRIM, MUX_0, -1, MUX_MASK);
     }
     else
     {
-        //ReplaceVal(MUX_PRIM, MUX_ENV);
-        //ReplaceVal(MUX_PRIM, MUX_SHADE);
-        ReplaceVal(MUX_PRIM, MUX_0);
+        //ReplaceVal(MUX_PRIM, MUX_ENV, -1, MUX_MASK);
+        //ReplaceVal(MUX_PRIM, MUX_SHADE, -1, MUX_MASK);
+        ReplaceVal(MUX_PRIM, MUX_0, -1, MUX_MASK);
     }
 
     /*
@@ -70,28 +70,28 @@ void COGLExtDecodedMux::FurtherFormatForOGL2(void)
     // we can not use multitexture to do color combiner. Each combiner stage can only
     // use 1 texture.
 
-    if( IsUsed(MUX_TEXEL0) && IsUsed(MUX_TEXEL1) )
+    if (IsUsed(MUX_TEXEL0, MUX_MASK) && IsUsed(MUX_TEXEL1, MUX_MASK))
     {
-        if( Count(MUX_TEXEL0,0)+Count(MUX_TEXEL0,1) >= Count(MUX_TEXEL1,0)+Count(MUX_TEXEL1,1) )
+        if (Count(MUX_TEXEL0, 0, MUX_MASK)+Count(MUX_TEXEL0, 1, MUX_MASK) >= Count(MUX_TEXEL1, 0, MUX_MASK)+Count(MUX_TEXEL1, 1, MUX_MASK))
         {
-            ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 0);
-            ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 1);
+            ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 0, MUX_MASK);
+            ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 1, MUX_MASK);
         }
         else
         {
-            ReplaceVal(MUX_TEXEL0, MUX_TEXEL1, 0);
-            ReplaceVal(MUX_TEXEL0, MUX_TEXEL1, 1);
+            ReplaceVal(MUX_TEXEL0, MUX_TEXEL1, 0, MUX_MASK);
+            ReplaceVal(MUX_TEXEL0, MUX_TEXEL1, 1, MUX_MASK);
         }
 
-        if( Count(MUX_TEXEL0,2)+Count(MUX_TEXEL0,3) >= Count(MUX_TEXEL1,2)+Count(MUX_TEXEL1,3) )
+        if (Count(MUX_TEXEL0, 2, MUX_MASK)+Count(MUX_TEXEL0, 3, MUX_MASK) >= Count(MUX_TEXEL1, 2, MUX_MASK)+Count(MUX_TEXEL1, 3, MUX_MASK))
         {
-            ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 2);
-            ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 3);
+            ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 2, MUX_MASK);
+            ReplaceVal(MUX_TEXEL1, MUX_TEXEL0, 3, MUX_MASK);
         }
         else
         {
-            ReplaceVal(MUX_TEXEL0, MUX_TEXEL1, 2);
-            ReplaceVal(MUX_TEXEL0, MUX_TEXEL1, 3);
+            ReplaceVal(MUX_TEXEL0, MUX_TEXEL1, 2, MUX_MASK);
+            ReplaceVal(MUX_TEXEL0, MUX_TEXEL1, 3, MUX_MASK);
         }
     }
     */
@@ -100,18 +100,18 @@ void COGLExtDecodedMux::FurtherFormatForOGL2(void)
 
 void COGLExtDecodedMuxTNT2::FurtherFormatForOGL2(void)
 {
-    if( Count(MUX_PRIM) >= Count(MUX_ENV) )
+    if (Count(MUX_PRIM, -1, MUX_MASK) >= Count(MUX_ENV, -1, MUX_MASK))
     {
-        //ReplaceVal(MUX_ENV, MUX_PRIM);
-        //ReplaceVal(MUX_ENV, MUX_SHADE);
-        ReplaceVal(MUX_ENV, MUX_1);
-        //ReplaceVal(MUX_PRIM, MUX_0);
+        //ReplaceVal(MUX_ENV, MUX_PRIM, -1, MUX_MASK);
+        //ReplaceVal(MUX_ENV, MUX_SHADE, -1, MUX_MASK);
+        ReplaceVal(MUX_ENV, MUX_1, -1, MUX_MASK);
+        //ReplaceVal(MUX_PRIM, MUX_0, -1, MUX_MASK);
     }
     else
     {
-        //ReplaceVal(MUX_PRIM, MUX_ENV);
-        //ReplaceVal(MUX_PRIM, MUX_SHADE);
-        ReplaceVal(MUX_PRIM, MUX_0);
+        //ReplaceVal(MUX_PRIM, MUX_ENV, -1, MUX_MASK);
+        //ReplaceVal(MUX_PRIM, MUX_SHADE, -1, MUX_MASK);
+        ReplaceVal(MUX_PRIM, MUX_0, -1, MUX_MASK);
     }
 }
 

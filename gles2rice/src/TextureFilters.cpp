@@ -856,7 +856,7 @@ void MirrorTexture(uint32 dwTile, TxtrCacheEntry *pEntry)
 
             //if( pEntry->pTexture->m_bScaledS == false || pEntry->pTexture->m_bScaledT == false)
             //{
-            //  pEntry->pTexture->ScaleImageToSurface();
+            //  pEntry->pTexture->ScaleImageToSurface(true, true);
             //}
 
             DrawInfo srcInfo;   
@@ -1704,8 +1704,8 @@ void DumpCachedTexture( TxtrCacheEntry &entry )
                     pSrcTexture->EndUpdate(&srcInfo);
                 }
 
-                if( aFF != 0xFF)
-                    CRender::g_pRender->SaveTextureToFile(*pSrcTexture, filename2, TXT_ALPHA, false, false);
+                if (aFF != 0xFF)
+                    CRender::g_pRender->SaveTextureToFile(*pSrcTexture, filename2, TXT_ALPHA, false, false, -1, -1);
             }       
         }
 
