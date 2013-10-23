@@ -23,11 +23,9 @@
 # include <string.h>
 # include <stdio.h>
 
-extern "C" {
-  #include "m64p_types.h"
-  #include "hle.h"
-  #include "alist_internal.h"
-}
+#include "m64p_types.h"
+#include "hle.h"
+#include "alist_internal.h"
 
 /*
 static void SPNOOP (u32 inst1, u32 inst2) {
@@ -750,15 +748,11 @@ static void MP3ADDY (u32 inst1, u32 inst2) {
     setaddr = (inst2 & 0xffffff);
 }
 
-extern "C" {
-    void rsp_run(void);
-    void mp3setup (unsigned int inst1, unsigned int inst2, unsigned int t8);
-}
+void rsp_run(void);
+void mp3setup (unsigned int inst1, unsigned int inst2, unsigned int t8);
 
 extern u32 base, dmembase;
-extern "C" {
-    extern char *pDMEM;
-}
+extern char *pDMEM;
 void MP3 (u32 inst1, u32 inst2);
 /*
  {
@@ -814,7 +808,7 @@ static void DISABLE (u32 inst1, u32 inst2) {
 }
 
 
-extern "C" const acmd_callback_t ABI3[0x10] = {
+const acmd_callback_t ABI3[0x10] = {
     DISABLE , ADPCM3 , CLEARBUFF3,  ENVMIXER3  , LOADBUFF3, RESAMPLE3  , SAVEBUFF3, MP3,
     MP3ADDY, SETVOL3, DMEMMOVE3 , LOADADPCM3 , MIXER3   , INTERLEAVE3, WHATISTHIS   , SETLOOP3
 };

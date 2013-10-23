@@ -65,10 +65,10 @@ LOCAL_SRC_FILES += \
     $(RSPDIR)/src/main.c
 
 LOCAL_SRC_FILES += \
-    $(RSPDIR)/src/ucode1.cpp \
-    $(RSPDIR)/src/ucode2.cpp \
-    $(RSPDIR)/src/ucode3.cpp \
-    $(RSPDIR)/src/ucode3mp3.cpp
+    $(RSPDIR)/src/ucode1.c \
+    $(RSPDIR)/src/ucode2.c \
+    $(RSPDIR)/src/ucode3.c \
+    $(RSPDIR)/src/ucode3mp3.c
 
 # Video Plugins
 
