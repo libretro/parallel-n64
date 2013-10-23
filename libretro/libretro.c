@@ -80,9 +80,7 @@ static void core_settings_set_defaults()
     gfx_plugin = GFX_GLN64;
     if (gfx_var.value)
     {
-       if (gfx_var.value && strcmp(gfx_var.value, "rice") == 0)
-          gfx_plugin = GFX_RICE;
-       else if(gfx_var.value && strcmp(gfx_var.value, "glide64") == 0)
+       if(gfx_var.value && strcmp(gfx_var.value, "glide64") == 0)
           gfx_plugin = GFX_GLIDE64;
     }
 
@@ -176,7 +174,7 @@ static void setup_variables(void)
       { "mupen64-disableexpmem",
          "Disable Expansion RAM; no|yes" },
       { "mupen64-gfxplugin",
-         "Graphics Plugin; gln64|glide64|rice" },
+         "Graphics Plugin; gln64|glide64" },
       { "mupen64-rspplugin",
          "RSP Plugin; hle|cxd4" },
       { "mupen64-screensize",
