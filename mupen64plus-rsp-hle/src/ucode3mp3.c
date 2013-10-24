@@ -215,6 +215,7 @@ void MP3 (u32 inst1, u32 inst2) {
     //u32 Count = 0x0480; // s4
     u32 tmp;
     //u32 inPtr, outPtr;
+    int cnt, cnt2;
 
     t6 = 0x08A0; // I think these are temporary storage buffers
     t5 = 0x0AC0;
@@ -225,12 +226,12 @@ void MP3 (u32 inst1, u32 inst2) {
     memcpy (mp3data+0xCE8, rspInfo.RDRAM+readPtr, 8); // Just do that for efficiency... may remove and use directly later anyway
     readPtr += 8; // This must be a header byte or whatnot
 
-    for (int cnt = 0; cnt < 0x480; cnt += 0x180) {
+    for (cnt = 0; cnt < 0x480; cnt += 0x180) {
         memcpy (mp3data+0xCF0, rspInfo.RDRAM+readPtr, 0x180); // DMA: 0xCF0 <- RDRAM[s5] : 0x180
         inPtr  = 0xCF0; // s7
         outPtr = 0xE70; // s3
 // --------------- Inner Loop Start --------------------
-        for (int cnt2 = 0; cnt2 < 0x180; cnt2 += 0x40) {
+        for (cnt2 = 0; cnt2 < 0x180; cnt2 += 0x40) {
             t6 &= 0xFFE0;
             t5 &= 0xFFE0;
             t6 |= t4;
