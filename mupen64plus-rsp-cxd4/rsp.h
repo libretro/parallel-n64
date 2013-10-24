@@ -175,6 +175,7 @@ void export_SP_memory(void)
     fclose(out);
     out = fopen("SP_DRAM.BIN", "wb");
     fwrite(RSP.RDRAM, sizeof(unsigned char), 0x3FFFFF + 1, out);
+    fclose(out);
     return;
 }
 

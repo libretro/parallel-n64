@@ -95,7 +95,6 @@ EXPORT void CALL DllConfig(HWND hParent)
     }
     fclose(output_log);
     output_log = NULL;
-    hParent = NULL;
     return;
 }
 #endif
