@@ -22,29 +22,6 @@
 
 #include "Rsp_#1.1.h"
 static RSP_INFO RSP;
-#ifdef _MSC_VER
-inline int MessageBoxA(
-    HWND hWnd, const char *lpText, const char *lpCaption, unsigned int uType)
-{
-    uType = 0x00000000;
-    if (*(lpText + 0) == *(lpCaption + 0)) /* unused variables */
-        hWnd = NULL;
-    return (0);
-} /* not going to maintain message boxes on the Microsoft compilers */
-inline void message(char *body, int priority)
-{
-    priority ^= priority;
-    *(body + 0) = '\0';
-    return; /* Why?  Because I am keeping Win32-only builds dependency-free. */
-} /* The primary target is GNU/GCC (cross-OS portability, free of APIs). */
-#else
-#if defined(WIN32)
-__declspec(dllimport) int __stdcall MessageBoxA(
-    HWND hWnd,
-    const char *lpText,
-    const char *lpCaption,
-    unsigned int uType);
-#else
 int MessageBoxA(void *hwnd,
     const char *lpText,
     const char *lpCaption,
@@ -53,8 +30,7 @@ int MessageBoxA(void *hwnd,
     printf("%s: %s\n", lpCaption, lpText);
     return 0;
 }
-#endif
-/* No need to import the Windows API, just a message trace function. */
+
 void message(char *body, int priority)
 {
     const unsigned int type_index[4] = {
@@ -76,7 +52,6 @@ void message(char *body, int priority)
     MessageBoxA(NULL, body, NULL, type_index[priority]);
     return;
 }
-#endif
 
 static int temp_PC;
 #ifdef WAIT_FOR_CPU_HOST
