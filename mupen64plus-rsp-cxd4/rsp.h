@@ -22,36 +22,9 @@
 
 #include "Rsp_#1.1.h"
 static RSP_INFO RSP;
-int MessageBoxA(void *hwnd,
-    const char *lpText,
-    const char *lpCaption,
-    unsigned int uType)
-{
-    printf("%s: %s\n", lpCaption, lpText);
-    return 0;
-}
 
-void message(char *body, int priority)
-{
-    const unsigned int type_index[4] = {
-        0x00000000, /* no icon or effect `MB_OK`, for O.K. encounters */
-        0x00000020, /* MB_ICONQUESTION -- curious situation in emulator */
-        0x00000030, /* MB_ICONEXCLAMATION -- might be missing RSP support */
-        0x00000010  /* MB_ICONHAND -- definite error or problem in emulator */
-    };
-
-    priority &= 03;
-    switch (MINIMUM_MESSAGE_PRIORITY)
-    { /* exit table for voiding messages of lower priority */
-        default:  return;
-        case 03:  if (priority < MINIMUM_MESSAGE_PRIORITY) return;
-        case 02:  if (priority < MINIMUM_MESSAGE_PRIORITY) return;
-        case 01:  if (priority < MINIMUM_MESSAGE_PRIORITY) return;
-        case 00:  break;
-    }
-    MessageBoxA(NULL, body, NULL, type_index[priority]);
-    return;
-}
+#define MessageBoxA(hwnd, lpText, lpCaption, uType)
+#define message(body, priority)
 
 static int temp_PC;
 #ifdef WAIT_FOR_CPU_HOST
