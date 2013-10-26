@@ -90,6 +90,7 @@ static int texbuf_i;
 
 unsigned short frameBuffer[2048*2048];
 unsigned short depthBuffer[2048*2048];
+unsigned char  buf[640 * 480 * 4];
 
 FX_ENTRY void FX_CALL
 grSstOrigin(GrOriginLocation_t  origin)
@@ -957,7 +958,6 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
       return FXTRUE;
 #endif
 
-   unsigned char *buf;
    int i,j;
 
    switch(buffer)
@@ -983,8 +983,6 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
          info->origin = origin;
          //glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, frameBuffer);
       } else {
-         buf = (unsigned char*)malloc(width*height*4);
-
          info->lfbPtr = frameBuffer;
          info->strideInBytes = width*2;
          info->writeMode = GR_LFBWRITEMODE_565;
@@ -1001,7 +999,6 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
                   (buf[j*width*4+i*4+2] >> 3);
             }
          }
-         free(buf);
       }
    }
    else
@@ -1036,7 +1033,6 @@ grLfbReadRegion( GrBuffer_t src_buffer,
                 FxU32 src_width, FxU32 src_height,
                 FxU32 dst_stride, void *dst_data )
 {
-   unsigned char *buf;
    unsigned int i,j;
    unsigned short *frameBuffer = (unsigned short*)dst_data;
    unsigned short *depthBuffer = (unsigned short*)dst_data;
@@ -1059,8 +1055,6 @@ grLfbReadRegion( GrBuffer_t src_buffer,
 
    if(src_buffer != GR_BUFFER_AUXBUFFER)
    {
-      buf = (unsigned char*)malloc(src_width*src_height*4);
-
       glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 
       for (j=0; j<src_height; j++)
@@ -1073,12 +1067,9 @@ grLfbReadRegion( GrBuffer_t src_buffer,
                (buf[(src_height-j-1)*src_width*4+i*4+2] >> 3);
          }
       }
-      free(buf);
    }
    else
    {
-      buf = (unsigned char*)malloc(src_width*src_height*2);
-
       glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, depthBuffer);
 
       for (j=0;j<src_height; j++)
@@ -1089,7 +1080,6 @@ grLfbReadRegion( GrBuffer_t src_buffer,
                ((unsigned short*)buf)[(src_height-j-1)*src_width*4+i*4];
          }
       }
-      free(buf);
    }
 
    return FXTRUE;
@@ -1103,7 +1093,6 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
                  FxBool pixelPipeline,
                  FxI32 src_stride, void *src_data )
 {
-   unsigned char *buf;
    unsigned int i,j;
    unsigned short *frameBuffer = (unsigned short*)src_data;
    int texture_number;
@@ -1129,8 +1118,6 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
 
    if(dst_buffer != GR_BUFFER_AUXBUFFER)
    {
-      buf = (unsigned char*)malloc(tex_width*tex_height*4);
-
       texture_number = GL_TEXTURE0;
       glActiveTexture(texture_number);
 
@@ -1182,7 +1169,6 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
 
       glBindTexture(GL_TEXTURE_2D, default_texture);
       glTexImage2D(GL_TEXTURE_2D, 0, 4, tex_width, tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
-      free(buf);
 
       set_copy_shader();
 
@@ -1196,8 +1182,6 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
    }
    else
    {
-      float *buf = (float*)malloc(src_width * src_height * sizeof(float));
-
       if (src_format != GR_LFBWRITEMODE_ZA16)
          DISPLAY_WARNING("unknown depth buffer write format:%x", src_format);
 
@@ -1220,8 +1204,6 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
       glClear( GL_DEPTH_BUFFER_BIT );
       glDepthMask(1);
       //glDrawPixels(src_width, src_height, GL_DEPTH_COMPONENT, GL_FLOAT, buf);
-
-      free(buf);
    }
    //glDrawBuffer(current_buffer);
    //glPopAttrib();
