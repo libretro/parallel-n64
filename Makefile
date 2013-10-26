@@ -89,7 +89,6 @@ else ifneq (,$(findstring armv,$(platform)))
    SHARED := -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined
    CPPFLAGS += -I.
 	WITH_DYNAREC=arm
-   LIBS := -lz
 ifneq (,$(findstring gles,$(platform)))
    GLES := 1
 else
@@ -224,7 +223,7 @@ OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
 CPPFLAGS   += -D__LIBRETRO__ -DM64P_PLUGIN_API -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
 CPPFLAGS   += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE $(fpic)
 CFLAGS     += -std=gnu99
-LDFLAGS    += -lm $(fpic) -lz
+LDFLAGS    += -lm $(fpic)
 
 ifeq ($(GLES), 1)
 CPPFLAGS += -DGLES

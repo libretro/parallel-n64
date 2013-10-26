@@ -52,12 +52,14 @@ void init_ucode2()
    isMKABI = isZeldaABI = false;
 }
 
-static void LOADADPCM2 (uint32_t inst1, uint32_t inst2) { // Loads an ADPCM table - Works 100% Now 03-13-01
+static void LOADADPCM2 (uint32_t inst1, uint32_t inst2)
+{ // Loads an ADPCM table - Works 100% Now 03-13-01
+   uint32_t x;
     uint32_t v0;
     v0 = (inst2 & 0xffffff);// + SEGMENTS[(inst2>>24)&0xf];
     uint16_t *table = (uint16_t *)(rspInfo.RDRAM+v0); // Zelda2 Specific...
 
-    for (uint32_t x = 0; x < ((inst1&0xffff)>>0x4); x++) {
+    for (x = 0; x < ((inst1&0xffff)>>0x4); x++) {
         adpcmtable[(0x0+(x<<3))^S] = table[0];
         adpcmtable[(0x1+(x<<3))^S] = table[1];
 
@@ -379,14 +381,16 @@ static void SAVEBUFF2 (uint32_t inst1, uint32_t inst2) { // Needs accuracy verif
 }
 
 
-static void MIXER2 (uint32_t inst1, uint32_t inst2) { // Needs accuracy verification...
+static void MIXER2 (uint32_t inst1, uint32_t inst2)
+{ // Needs accuracy verification...
+   unsigned int x;
     uint16_t dmemin  = (uint16_t)(inst2 >> 0x10);
     uint16_t dmemout = (uint16_t)(inst2 & 0xFFFF);
     uint32_t count   = ((inst1 >> 12) & 0xFF0);
     int32_t gain    = (int16_t)(inst1 & 0xFFFF);
     int32_t temp;
 
-    for (unsigned int x=0; x < count; x+=2) { // I think I can do this a lot easier 
+    for (x=0; x < count; x+=2) { // I think I can do this a lot easier 
 
         temp = (*(int16_t *)(BufferSpace+dmemin+x) * gain) >> 15;
         temp += *(int16_t *)(BufferSpace+dmemout+x);
@@ -398,7 +402,8 @@ static void MIXER2 (uint32_t inst1, uint32_t inst2) { // Needs accuracy verifica
 }
 
 
-static void RESAMPLE2 (uint32_t inst1, uint32_t inst2) {
+static void RESAMPLE2 (uint32_t inst1, uint32_t inst2)
+{
     unsigned char Flags=(u8)((inst1>>16)&0xff);
     unsigned int Pitch=((inst1&0xffff))<<1;
     uint32_t addy = (inst2 & 0xffffff);// + SEGMENTS[(inst2>>24)&0xf];
@@ -413,6 +418,7 @@ static void RESAMPLE2 (uint32_t inst1, uint32_t inst2) {
     uint32_t dstPtr=(AudioOutBuffer/2);
     int32_t temp;
     int32_t accum;
+    int i, x;
 
     if (addy > (1024*1024*8))
         addy = (inst2 & 0xffffff);
@@ -420,15 +426,15 @@ static void RESAMPLE2 (uint32_t inst1, uint32_t inst2) {
     srcPtr -= 4;
 
     if ((Flags & 0x1) == 0) {   
-        for (int x=0; x < 4; x++) //memcpy (src+srcPtr, rspInfo.RDRAM+addy, 0x8);
+        for (x = 0; x < 4; x++) //memcpy (src+srcPtr, rspInfo.RDRAM+addy, 0x8);
             src[(srcPtr+x)^S] = ((uint16_t *)rspInfo.RDRAM)[((addy/2)+x)^S];
         Accum = *(uint16_t *)(rspInfo.RDRAM+addy+10);
     } else {
-        for (int x=0; x < 4; x++)
+        for (x = 0; x < 4; x++)
             src[(srcPtr+x)^S] = 0;//*(uint16_t *)(rspInfo.RDRAM+((addy+x)^2));
     }
 
-    for(int i=0;i < ((AudioCount+0xf)&0xFFF0)/2;i++)    {
+    for(i = 0;i < ((AudioCount+0xf)&0xFFF0)/2;i++)    {
         location = (((Accum * 0x40) >> 0x10) * 8);
         //location = (Accum >> 0xa) << 0x3;
         lut = (int16_t *)(((u8 *)ResampleLUT) + location);
@@ -453,7 +459,7 @@ static void RESAMPLE2 (uint32_t inst1, uint32_t inst2) {
         srcPtr += (Accum>>16);
         Accum&=0xffff;
     }
-    for (int x=0; x < 4; x++)
+    for (x = 0; x < 4; x++)
         ((uint16_t *)rspInfo.RDRAM)[((addy/2)+x)^S] = src[(srcPtr+x)^S];
     *(uint16_t *)(rspInfo.RDRAM+addy+10) = (uint16_t)Accum;
     //memcpy (RSWORK, src+srcPtr, 0x8);
@@ -676,7 +682,9 @@ static void INTERL2 (uint32_t inst1, uint32_t inst2) {
     }
 }
 
-static void INTERLEAVE2 (uint32_t inst1, uint32_t inst2) { // Needs accuracy verification...
+static void INTERLEAVE2 (uint32_t inst1, uint32_t inst2)
+{ // Needs accuracy verification...
+   uint32_t x;
     uint32_t inL, inR;
     uint16_t *outbuff;
     uint16_t *inSrcR;
@@ -697,7 +705,7 @@ static void INTERLEAVE2 (uint32_t inst1, uint32_t inst2) { // Needs accuracy ver
     inSrcR = (uint16_t *)(BufferSpace+inR);
     inSrcL = (uint16_t *)(BufferSpace+inL);
 
-    for (uint32_t x = 0; x < (count/4); x++) {
+    for (x = 0; x < (count/4); x++) {
         Left=*(inSrcL++);
         Right=*(inSrcR++);
         Left2=*(inSrcL++);
@@ -717,7 +725,9 @@ static void INTERLEAVE2 (uint32_t inst1, uint32_t inst2) { // Needs accuracy ver
     }
 }
 
-static void ADDMIXER (uint32_t inst1, uint32_t inst2) {
+static void ADDMIXER (uint32_t inst1, uint32_t inst2)
+{
+   int cntr;
     short Count   = (inst1 >> 12) & 0x00ff0;
     uint16_t InBuffer  = (inst2 >> 16);
     uint16_t OutBuffer = inst2 & 0xffff;
@@ -726,7 +736,7 @@ static void ADDMIXER (uint32_t inst1, uint32_t inst2) {
     int32_t temp;
     inp  = (int16_t *)(BufferSpace + InBuffer);
     outp = (int16_t *)(BufferSpace + OutBuffer);
-    for (int cntr = 0; cntr < Count; cntr+=2) {
+    for (cntr = 0; cntr < Count; cntr+=2) {
         temp = *outp + *inp;
         BLARGG_CLAMP16(temp);
         *(outp++) = temp;

@@ -91,6 +91,7 @@ static void SETVOL3 (u32 inst1, u32 inst2) {
 }
 
 static void ENVMIXER3 (u32 inst1, u32 inst2) {
+   int y;
     u8 flags = (u8)((inst1 >> 16) & 0xff);
     u32 addy = (inst2 & 0xFFFFFF);
 
@@ -153,7 +154,7 @@ static void ENVMIXER3 (u32 inst1, u32 inst2) {
     //  aux2=aux3=zero;
     //}
 
-    for (int y = 0; y < (0x170/2); y++) {
+    for (y = 0; y < (0x170/2); y++) {
 
         // Left
         LAcc += LAdder;
@@ -249,13 +250,14 @@ static void CLEARBUFF3 (u32 inst1, u32 inst2) {
 }
 
 static void MIXER3 (u32 inst1, u32 inst2) { // Needs accuracy verification...
+   int x;
     u16 dmemin  = (u16)(inst2 >> 0x10)  + 0x4f0;
     u16 dmemout = (u16)(inst2 & 0xFFFF) + 0x4f0;
     //u8  flags   = (u8)((inst1 >> 16) & 0xff);
     s32 gain    = (s16)(inst1 & 0xFFFF);
     s32 temp;
 
-    for (int x=0; x < 0x170; x+=2) { // I think I can do this a lot easier
+    for (x=0; x < 0x170; x+=2) { // I think I can do this a lot easier
         temp = (*(s16 *)(BufferSpace+dmemin+x) * gain) >> 15;
         temp += *(s16 *)(BufferSpace+dmemout+x);
             
@@ -282,12 +284,12 @@ static void SAVEBUFF3 (u32 inst1, u32 inst2) {
 }
 
 static void LOADADPCM3 (u32 inst1, u32 inst2) { // Loads an ADPCM table - Works 100% Now 03-13-01
-    u32 v0;
+    u32 v0, x;
     v0 = (inst2 & 0xffffff);
     //memcpy (dmem+0x3f0, rspInfo.RDRAM+v0, inst1&0xffff); 
     //assert ((inst1&0xffff) <= 0x80);
     u16 *table = (u16 *)(rspInfo.RDRAM+v0);
-    for (u32 x = 0; x < ((inst1&0xffff)>>0x4); x++) {
+    for (x = 0; x < ((inst1&0xffff)>>0x4); x++) {
         adpcmtable[(0x0+(x<<3))^S] = table[0];
         adpcmtable[(0x1+(x<<3))^S] = table[1];
 
@@ -574,7 +576,9 @@ static void ADPCM3 (u32 inst1, u32 inst2) { // Verified to be 100% Accurate...
     memcpy(&rspInfo.RDRAM[Address],out,32);
 }
 
-static void RESAMPLE3 (u32 inst1, u32 inst2) {
+static void RESAMPLE3 (u32 inst1, u32 inst2)
+{
+   int i, x;
     unsigned char Flags=(u8)((inst2>>0x1e));
     unsigned int Pitch=((inst2>>0xe)&0xffff)<<1;
     u32 addy = (inst1 & 0xffffff);
@@ -602,15 +606,15 @@ static void RESAMPLE3 (u32 inst1, u32 inst2) {
     }
 
     if ((Flags & 0x1) == 0) {   
-        for (int x=0; x < 4; x++) //memcpy (src+srcPtr, rspInfo.RDRAM+addy, 0x8);
+        for (x=0; x < 4; x++) //memcpy (src+srcPtr, rspInfo.RDRAM+addy, 0x8);
             src[(srcPtr+x)^S] = ((u16 *)rspInfo.RDRAM)[((addy/2)+x)^S];
         Accum = *(u16 *)(rspInfo.RDRAM+addy+10);
     } else {
-        for (int x=0; x < 4; x++)
+        for (x=0; x < 4; x++)
             src[(srcPtr+x)^S] = 0;//*(u16 *)(rspInfo.RDRAM+((addy+x)^2));
     }
 
-    for(int i=0;i < 0x170/2;i++)    {
+    for(i=0;i < 0x170/2;i++)    {
         location = (((Accum * 0x40) >> 0x10) * 8);
         //location = (Accum >> 0xa) << 0x3;
         lut = (s16 *)(((u8 *)ResampleLUT) + location);
@@ -666,12 +670,14 @@ static void RESAMPLE3 (u32 inst1, u32 inst2) {
         srcPtr += (Accum>>16);
         Accum&=0xffff;
     }
-    for (int x=0; x < 4; x++)
+    for (x=0; x < 4; x++)
         ((u16 *)rspInfo.RDRAM)[((addy/2)+x)^S] = src[(srcPtr+x)^S];
     *(u16 *)(rspInfo.RDRAM+addy+10) = Accum;
 }
 
-static void INTERLEAVE3 (u32 inst1, u32 inst2) { // Needs accuracy verification...
+static void INTERLEAVE3 (u32 inst1, u32 inst2)
+{ // Needs accuracy verification...
+   int x;
     //u32 inL, inR;
     u16 *outbuff = (u16 *)(BufferSpace + 0x4f0);//(u16 *)(AudioOutBuffer+dmem);
     u16 *inSrcR;
@@ -684,7 +690,7 @@ static void INTERLEAVE3 (u32 inst1, u32 inst2) { // Needs accuracy verification.
     inSrcR = (u16 *)(BufferSpace+0xb40);
     inSrcL = (u16 *)(BufferSpace+0x9d0);
 
-    for (int x = 0; x < (0x170/4); x++) {
+    for (x = 0; x < (0x170/4); x++) {
         Left=*(inSrcL++);
         Right=*(inSrcR++);
         Left2=*(inSrcL++);

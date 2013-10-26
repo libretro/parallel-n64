@@ -197,6 +197,7 @@ static void ENVMIXER (uint32_t inst1, uint32_t inst2) {
     int32_t RRamp, LRamp;
     int32_t LAdderStart, RAdderStart, LAdderEnd, RAdderEnd;
     int32_t oMainR, oMainL, oAuxR, oAuxL;
+    int x, y;
 
     //envmixcnt++;
 
@@ -238,7 +239,7 @@ static void ENVMIXER (uint32_t inst1, uint32_t inst2) {
     oMainR = (Dry * (RTrg>>16) + 0x4000) >> 15;
     oAuxR  = (Wet * (RTrg>>16) + 0x4000)  >> 15;
 
-    for (int y = 0; y < AudioCount; y += 0x10) {
+    for (y = 0; y < AudioCount; y += 0x10) {
 
         if (LAdderStart != LTrg) {
             LAcc = LAdderStart;
@@ -260,7 +261,7 @@ static void ENVMIXER (uint32_t inst1, uint32_t inst2) {
             RVol = 0;
         }
 
-    for (int x = 0; x < 8; x++) {
+    for (x = 0; x < 8; x++) {
         i1=(int)inp[ptr^S];
         o1=(int)out[ptr^S];
         a1=(int)aux1[ptr^S];
@@ -386,7 +387,9 @@ static void ENVMIXER (uint32_t inst1, uint32_t inst2) {
     memcpy(rspInfo.RDRAM+addy, (uint8_t *)hleMixerWorkArea,80);
 }
 
-static void RESAMPLE (uint32_t inst1, uint32_t inst2) {
+static void RESAMPLE (uint32_t inst1, uint32_t inst2)
+{
+   int i ,x;
     unsigned char Flags=(uint8_t)((inst1>>16)&0xff);
     unsigned int Pitch=((inst1&0xffff))<<1;
     uint32_t addy = (inst2 & 0xffffff);// + SEGMENTS[(inst2>>24)&0xf];
@@ -409,15 +412,15 @@ static void RESAMPLE (uint32_t inst1, uint32_t inst2) {
 
     if ((Flags & 0x1) == 0) {
         //memcpy (src+srcPtr, rspInfo.RDRAM+addy, 0x8);
-        for (int x=0; x < 4; x++)
+        for (x=0; x < 4; x++)
             src[(srcPtr+x)^S] = ((uint16_t *)rspInfo.RDRAM)[((addy/2)+x)^S];
         Accum = *(uint16_t *)(rspInfo.RDRAM+addy+10);
     } else {
-        for (int x=0; x < 4; x++)
+        for (x=0; x < 4; x++)
             src[(srcPtr+x)^S] = 0;//*(uint16_t *)(rspInfo.RDRAM+((addy+x)^2));
     }
 
-    for(int i=0;i < ((AudioCount+0xf)&0xFFF0)/2;i++)    {
+    for(i=0;i < ((AudioCount+0xf)&0xFFF0)/2;i++)    {
         //location = (((Accum * 0x40) >> 0x10) * 8);
        // location is the fractional position between two samples
         location = (Accum >> 0xa) * 4;
@@ -455,7 +458,7 @@ static void RESAMPLE (uint32_t inst1, uint32_t inst2) {
         srcPtr += (Accum>>16);
         Accum&=0xffff;
     }
-    for (int x=0; x < 4; x++)
+    for (x=0; x < 4; x++)
         ((uint16_t *)rspInfo.RDRAM)[((addy/2)+x)^S] = src[(srcPtr+x)^S];
     //memcpy (RSWORK, src+srcPtr, 0x8);
     *(uint16_t *)(rspInfo.RDRAM+addy+10) = Accum;
@@ -806,7 +809,9 @@ static void DMEMMOVE (uint32_t inst1, uint32_t inst2) { // Doesn't sound just ri
     }
 }
 
-static void LOADADPCM (uint32_t inst1, uint32_t inst2) { // Loads an ADPCM table - Works 100% Now 03-13-01
+static void LOADADPCM (uint32_t inst1, uint32_t inst2)
+{ // Loads an ADPCM table - Works 100% Now 03-13-01
+   uint32_t x;
     uint32_t v0;
     v0 = (inst2 & 0xffffff);// + SEGMENTS[(inst2>>24)&0xf];
 /*  if (v0 > (1024*1024*8))
@@ -814,7 +819,7 @@ static void LOADADPCM (uint32_t inst1, uint32_t inst2) { // Loads an ADPCM table
     //memcpy (dmem+0x4c0, rspInfo.RDRAM+v0, inst1&0xffff); // Could prolly get away with not putting this in dmem
     //assert ((inst1&0xffff) <= 0x80);
     uint16_t *table = (uint16_t *)(rspInfo.RDRAM+v0);
-    for (uint32_t x = 0; x < ((inst1&0xffff)>>0x4); x++) {
+    for (x = 0; x < ((inst1&0xffff)>>0x4); x++) {
         adpcmtable[(0x0+(x<<3))^S] = table[0];
         adpcmtable[(0x1+(x<<3))^S] = table[1];
 
@@ -831,7 +836,9 @@ static void LOADADPCM (uint32_t inst1, uint32_t inst2) { // Loads an ADPCM table
 }
 
 
-static void INTERLEAVE (uint32_t inst1, uint32_t inst2) { // Works... - 3-11-01
+static void INTERLEAVE (uint32_t inst1, uint32_t inst2)
+{ // Works... - 3-11-01
+   int x;
     uint32_t inL, inR;
     uint16_t *outbuff = (uint16_t *)(AudioOutBuffer+BufferSpace);
     uint16_t *inSrcR;
@@ -844,7 +851,7 @@ static void INTERLEAVE (uint32_t inst1, uint32_t inst2) { // Works... - 3-11-01
     inSrcR = (uint16_t *)(BufferSpace+inR);
     inSrcL = (uint16_t *)(BufferSpace+inL);
 
-    for (int x = 0; x < (AudioCount/4); x++) {
+    for (x = 0; x < (AudioCount/4); x++) {
         Left=*(inSrcL++);
         Right=*(inSrcR++);
         Left2=*(inSrcL++);
@@ -865,7 +872,9 @@ static void INTERLEAVE (uint32_t inst1, uint32_t inst2) { // Works... - 3-11-01
 }
 
 
-static void MIXER (uint32_t inst1, uint32_t inst2) { // Fixed a sign issue... 03-14-01
+static void MIXER (uint32_t inst1, uint32_t inst2)
+{ // Fixed a sign issue... 03-14-01
+   int x;
     uint32_t dmemin  = (uint16_t)(inst2 >> 0x10);
     uint32_t dmemout = (uint16_t)(inst2 & 0xFFFF);
     //uint8_t  flags   = (uint8_t)((inst1 >> 16) & 0xff);
@@ -875,7 +884,7 @@ static void MIXER (uint32_t inst1, uint32_t inst2) { // Fixed a sign issue... 03
     if (AudioCount == 0)
         return;
 
-    for (int x=0; x < AudioCount; x+=2) { // I think I can do this a lot easier
+    for (x = 0; x < AudioCount; x+=2) { // I think I can do this a lot easier
         temp = (*(int16_t *)(BufferSpace+dmemin+x) * gain) >> 15;
         temp += *(int16_t *)(BufferSpace+dmemout+x);
 
