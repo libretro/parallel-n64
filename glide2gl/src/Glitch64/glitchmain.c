@@ -141,6 +141,9 @@ grSstSelect( int which_sst )
 
 int isExtensionSupported(const char *extension)
 {
+   const char *str = (const char*)glGetString(GL_EXTENSIONS);
+   if (str && strstr(str, extension))
+      return 1;
    return 0;
 }
 
@@ -214,31 +217,47 @@ grSstWinOpen(
 
    blend_func_separate_support = 1;
    packed_pixels_support = 0;
-   /*
-      if (isExtensionSupported("GL_EXT_blend_func_separate") == 0)
+   
+   if (isExtensionSupported("GL_EXT_blend_func_separate") == 0)
+   {
+      DISPLAY_WARNING("GL_EXT_blend_func_separate not supported.\n");
       blend_func_separate_support = 0;
-      else
+   }
+   else
+   {
+      printf("GL_EXT_blend_func_separate supported.\n");
       blend_func_separate_support = 1;
+   }
 
-      if (isExtensionSupported("GL_EXT_packed_pixels") == 0)
+   if (isExtensionSupported("GL_EXT_packed_pixels") == 0)
       packed_pixels_support = 0;
-      else {
-      printf("packed pixels extension used\n");
-      packed_pixels_support = 1;
-      }
-      */
+   else
+   {
+      printf("GL_EXT_packed_pixels supported.\n");
+      //packed_pixels_support = 1;
+   }
 
    if (isExtensionSupported("GL_ARB_texture_non_power_of_two") == 0)
+   {
+      DISPLAY_WARNING("GL_ARB_texture_non_power_of_two supported.\n");
       npot_support = 0;
-   else {
-      printf("NPOT extension used\n");
+   }
+   else
+   {
+      printf("GL_ARB_texture_non_power_of_two supported.\n");
       npot_support = 1;
    }
 
    if (isExtensionSupported("GL_EXT_fog_coord") == 0)
+   {
+      DISPLAY_WARNING("GL_EXT_fog_coord not supported.\n");
       fog_coord_support = 0;
+   }
    else
+   {
+      printf("GL_EXT_fog_coord supported.\n");
       fog_coord_support = 1;
+   }
 
    if (isExtensionSupported("GL_ARB_shading_language_100") &&
          isExtensionSupported("GL_ARB_shader_objects") &&
