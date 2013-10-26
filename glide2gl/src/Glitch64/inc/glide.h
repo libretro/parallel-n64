@@ -613,12 +613,6 @@ grErrorSetCallback( GrErrorCallbackFnc_t fnc );
 /*
 ** SST routines
 */
-FX_ENTRY void FX_CALL 
-grFinish(void);
-
-FX_ENTRY void FX_CALL 
-grFlush(void);
-
 FX_ENTRY GrContext_t FX_CALL 
 grSstWinOpen(
           GrScreenResolution_t screen_resolution,
@@ -708,9 +702,6 @@ FX_ENTRY void FX_CALL
 grDisableAllEffects( void );
 
 FX_ENTRY void FX_CALL 
-grDitherMode( GrDitherMode_t mode );
-
-FX_ENTRY void FX_CALL 
 grFogColorValue( GrColor_t fogcolor );
 
 FX_ENTRY void FX_CALL 
@@ -730,9 +721,6 @@ grGet( FxU32 pname, FxU32 plength, FxI32 *params );
 
 FX_ENTRY const char * FX_CALL 
 grGetString( FxU32 pname );
-
-FX_ENTRY FxBool FX_CALL 
-grReset( FxU32 what );
 
 FX_ENTRY void FX_CALL 
 grEnable( GrEnableMode_t mode );

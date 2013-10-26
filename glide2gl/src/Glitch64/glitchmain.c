@@ -1169,13 +1169,6 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
 
 // unused by glide64
 
-FX_ENTRY FxBool FX_CALL
-grReset( FxU32 what )
-{
-   DISPLAY_WARNING("grReset");
-   return 1;
-}
-
 FX_ENTRY void FX_CALL
 grEnable( GrEnableMode_t mode )
 {
@@ -1198,18 +1191,6 @@ FX_ENTRY void FX_CALL
 grErrorSetCallback( GrErrorCallbackFnc_t fnc )
 {
   DISPLAY_WARNING("grErrorSetCallback");
-}
-
-FX_ENTRY void FX_CALL
-grFinish(void)
-{
-  DISPLAY_WARNING("grFinish");
-}
-
-FX_ENTRY void FX_CALL
-grFlush(void)
-{
-  DISPLAY_WARNING("grFlush");
 }
 
 FX_ENTRY void FX_CALL
@@ -1389,12 +1370,6 @@ grGetGammaTableExt(FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue)
 FX_ENTRY void FX_CALL
 guGammaCorrectionRGB( FxFloat gammaR, FxFloat gammaG, FxFloat gammaB )
 {
-}
-
-FX_ENTRY void FX_CALL
-grDitherMode( GrDitherMode_t mode )
-{
-  DISPLAY_WARNING("grDitherMode");
 }
 
 void grChromaRangeExt(GrColor_t color0, GrColor_t color1, FxU32 mode)
