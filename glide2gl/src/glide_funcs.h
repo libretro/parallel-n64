@@ -132,8 +132,6 @@ grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
                   FxU32 shift, FxBool invert);
 
 // config functions
-FX_ENTRY void FX_CALL grConfigWrapperExt(FxI32, FxI32, FxBool, FxBool);
-FX_ENTRY GrScreenResolution_t FX_CALL grWrapperFullScreenResolutionExt(FxU32*, FxU32*);
 FX_ENTRY void FX_CALL grGetGammaTableExt(FxU32, FxU32*, FxU32*, FxU32*);
 
 extern void grChromaRangeExt(GrColor_t color0, GrColor_t color1, FxU32 mode);

@@ -1167,18 +1167,6 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
    return FXTRUE;
 }
 
-/* wrapper-specific glide extensions */
-
-FX_ENTRY GrScreenResolution_t FX_CALL grWrapperFullScreenResolutionExt(FxU32* width, FxU32* height)
-{
-   return 0;
-}
-
-FX_ENTRY void FX_CALL grConfigWrapperExt(FxI32 resolution, FxI32 vram, FxBool fbo, FxBool aniso)
-{
-   LOG("grConfigWrapperExt\r\n");
-}
-
 // unused by glide64
 
 FX_ENTRY FxBool FX_CALL
