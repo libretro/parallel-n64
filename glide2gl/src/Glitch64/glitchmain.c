@@ -498,49 +498,6 @@ grTextureAuxBufferExt( GrChipID_t tmu,
 
 FX_ENTRY void FX_CALL grAuxBufferExt( GrBuffer_t buffer );
 
-FX_ENTRY GrProc FX_CALL
-grGetProcAddress( char *procName )
-{
-   LOG("grGetProcAddress(%s)\r\n", procName);
-   if(!strcmp(procName, "grSstWinOpenExt"))
-      return (GrProc)grSstWinOpenExt;
-   if(!strcmp(procName, "grTextureBufferExt"))
-      return (GrProc)grTextureBufferExt;
-   if(!strcmp(procName, "grChromaRangeExt"))
-      return (GrProc)grChromaRangeExt;
-   if(!strcmp(procName, "grChromaRangeModeExt"))
-      return (GrProc)grChromaRangeModeExt;
-   if(!strcmp(procName, "grTexChromaRangeExt"))
-      return (GrProc)grTexChromaRangeExt;
-   if(!strcmp(procName, "grTexChromaModeExt"))
-      return (GrProc)grTexChromaModeExt;
-   // ZIGGY framebuffer copy extension
-   if(!strcmp(procName, "grFramebufferCopyExt"))
-      return (GrProc)grFramebufferCopyExt;
-   if(!strcmp(procName, "grColorCombineExt"))
-      return (GrProc)grColorCombineExt;
-   if(!strcmp(procName, "grAlphaCombineExt"))
-      return (GrProc)grAlphaCombineExt;
-   if(!strcmp(procName, "grTexColorCombineExt"))
-      return (GrProc)grTexColorCombineExt;
-   if(!strcmp(procName, "grTexAlphaCombineExt"))
-      return (GrProc)grTexAlphaCombineExt;
-   if(!strcmp(procName, "grConstantColorValueExt"))
-      return (GrProc)grConstantColorValueExt;
-   if(!strcmp(procName, "grTextureAuxBufferExt"))
-      return (GrProc)grTextureAuxBufferExt;
-   if(!strcmp(procName, "grAuxBufferExt"))
-      return (GrProc)grAuxBufferExt;
-   if(!strcmp(procName, "grWrapperFullScreenResolutionExt"))
-      return (GrProc)grWrapperFullScreenResolutionExt;
-   if(!strcmp(procName, "grConfigWrapperExt"))
-      return (GrProc)grConfigWrapperExt;
-   if(!strcmp(procName, "grGetGammaTableExt"))
-      return (GrProc)grGetGammaTableExt;
-   DISPLAY_WARNING("grGetProcAddress : %s", procName);
-   return 0;
-}
-
 FX_ENTRY FxU32 FX_CALL
 grGet( FxU32 pname, FxU32 plength, FxI32 *params )
 {
