@@ -834,7 +834,7 @@ grRenderBuffer( GrBuffer_t buffer )
          }
          //glDrawBuffer(GL_BACK);
          break;
-      case 6: // RENDER TO TEXTURE
+      case GR_BUFFER_TEXTUREBUFFER_EXT: // RENDER TO TEXTURE
          if(!render_to_texture)
          {
             savedWidth = width;
