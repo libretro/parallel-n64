@@ -80,8 +80,6 @@ static fb fbs[100];
 static int nb_fb = 0;
 static unsigned int curBufferAddr = 0;
 
-struct TMU_USAGE { int min, max; } tmu_usage[2] = { {0xfffffff, 0}, {0xfffffff, 0} };
-
 struct texbuf_t {
   FxU32 start, end;
   int fmt;
@@ -321,11 +319,7 @@ grSstWinClose( GrContext_t context )
    LOG("grSstWinClose(%d)\r\n", context);
 
    for (i=0; i<2; i++)
-   {
-      tmu_usage[i].min = 0xfffffff;
-      tmu_usage[i].max = 0;
       invtex[i] = 0;
-   }
 
    free_combiners();
    glBindFramebuffer( GL_FRAMEBUFFER, 0 );
@@ -433,10 +427,10 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
       glGenRenderbuffers( 1, &(fbs[nb_fb].zbid) );
       glBindRenderbuffer( GL_RENDERBUFFER, fbs[nb_fb].zbid );
       glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
-      fbs[nb_fb].texid = sglAddTextureMap(pBufferAddress);
       fbs[nb_fb].address = pBufferAddress;
       fbs[nb_fb].width = width;
       fbs[nb_fb].height = height;
+      fbs[nb_fb].texid = pBufferAddress;
       fbs[nb_fb].buff_clear = 0;
       add_tex(fbs[nb_fb].address);
       glBindTexture(GL_TEXTURE_2D, fbs[nb_fb].texid);
