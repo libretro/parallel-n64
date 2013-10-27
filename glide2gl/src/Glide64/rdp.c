@@ -2059,8 +2059,10 @@ static void rdp_loadblock()
     tile, ul_s, ul_t, lr_s,
     dxt, _dxt);
 
+#ifdef HAVE_HWFBE
   if (fb_hwfbe_enabled)
     setTBufTex(rdp.tiles[tile].t_mem, cnt);
+#endif
 }
 
 
@@ -2273,8 +2275,10 @@ static void rdp_loadtile()
   FRDP("loadtile: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d\n", tile,
     ul_s, ul_t, lr_s, lr_t);
 
+#ifdef HAVE_HWFBE
   if (fb_hwfbe_enabled)
     setTBufTex(rdp.tiles[tile].t_mem, rdp.tiles[tile].line*height);
+#endif
 }
 
 static void rdp_settile()
@@ -2310,6 +2314,7 @@ static void rdp_settile()
          tile->t_mem, tile->palette, str_cm[(tile->clamp_t<<1)|tile->mirror_t], tile->mask_t,
          tile->shift_t, str_cm[(tile->clamp_s<<1)|tile->mirror_s], tile->mask_s, tile->shift_s);
 
+#ifdef HAVE_HWFBE
    if (fb_hwfbe_enabled && rdp.last_tile < rdp.cur_tile + 2)
    {
       for (i = 0; i < 2; i++)
@@ -2333,6 +2338,7 @@ static void rdp_settile()
          }
       }
    }
+#endif
 }
 
 //
@@ -2646,8 +2652,10 @@ static void rdp_settextureimage()
     }
   }
 
+#ifdef HAVE_HWFBE
   if (fb_hwfbe_enabled) //search this texture among drawn texture buffers
     FindTextureBuffer(rdp.timg.addr, rdp.timg.width);
+#endif
 
   FRDP("settextureimage: format: %s, size: %s, width: %d, addr: %08lx\n",
     format[rdp.timg.format], size[rdp.timg.size],
@@ -2730,6 +2738,7 @@ static void rdp_setcolorimage()
                   else
                      OpenTextureBuffer(&rdp.frame_buffers[rdp.copy_ci_index]);
                }
+#ifdef HAVE_HWFBE
                else if (fb_hwfbe_enabled && prev_fb->status == ci_aux)
                {
                   if (rdp.motionblur)
@@ -2744,6 +2753,7 @@ static void rdp_setcolorimage()
                      OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
                   }
                }
+#endif
                //else if (rdp.ci_status == ci_aux && !rdp.copy_ci_index)
                //  CloseTextureBuffer(false);
 
@@ -2796,8 +2806,10 @@ static void rdp_setcolorimage()
                   CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
                   rdp.fb_drawn = true;
                }
+#ifdef HAVE_HWFBE
                if (fb_hwfbe_enabled)
                   OpenTextureBuffer(cur_fb);
+#endif
             }
             break;
          case ci_old_copy:
@@ -2832,9 +2844,11 @@ static void rdp_setcolorimage()
                else
                {
                   rdp.skip_drawing = false;
+#ifdef HAVE_HWFBE
                   if (fb_hwfbe_enabled && OpenTextureBuffer(cur_fb))
                      ;
                   else
+#endif
                   {
                      if (cur_fb->format != 0)
                         rdp.skip_drawing = true;
@@ -2855,6 +2869,7 @@ static void rdp_setcolorimage()
             }
             break;
          case ci_zimg:
+#ifdef HAVE_HWFBE
             if (settings.ucode != ucode_PerfectDark)
             {
                if (fb_hwfbe_enabled && !rdp.copy_ci_index && (rdp.copy_zi_index || (settings.hacks&hack_BAR)))
@@ -2868,9 +2883,11 @@ static void rdp_setcolorimage()
                   LRDP("rdp_setcolorimage - set texture depth buffer to TMU0\n");
                }
             }
+#endif
             rdp.skip_drawing = true;
             break;
          case ci_zcopy:
+#ifdef HAVE_HWFBE
             if (settings.ucode != ucode_PerfectDark)
             {
                if (fb_hwfbe_enabled && !rdp.copy_ci_index && rdp.copy_zi_index == rdp.ci_count)
@@ -2879,13 +2896,16 @@ static void rdp_setcolorimage()
                }
                rdp.skip_drawing = true;
             }
+#endif
             break;
          case ci_useless:
             rdp.skip_drawing = true;
             break;
          case ci_copy_self:
+#ifdef HAVE_HWFBE
             if (fb_hwfbe_enabled && (rdp.ci_count <= rdp.copy_ci_index) && (!SwapOK || settings.swapmode == 2))
                OpenTextureBuffer(cur_fb);
+#endif
             rdp.skip_drawing = false;
             break;
          default:
@@ -2966,11 +2986,15 @@ static void rdp_setcolorimage()
             LRDP("return to original scale\n");
             rdp.scale_x = rdp.scale_x_bak;
             rdp.scale_y = rdp.scale_y_bak;
+#ifdef HAVE_HWFBE
             if (fb_hwfbe_enabled && !rdp.read_whole_frame)
                CloseTextureBuffer(false);
+#endif
          }
+#ifdef HAVE_HWFBE
          if (fb_hwfbe_enabled && !rdp.read_whole_frame && (prev_fb->status >= ci_aux) && (rdp.ci_count > rdp.copy_ci_index))
             CloseTextureBuffer(false);
+#endif
 
       }
       rdp.ci_status = cur_fb->status;
@@ -3002,9 +3026,12 @@ static void rdp_setcolorimage()
    {
       if (!rdp.cur_image)
       {
+#ifdef HAVE_HWFBE
          if (fb_hwfbe_enabled && rdp.ci_width <= 64)
             OpenTextureBuffer(&rdp.frame_buffers[rdp.ci_count - 1]);
-         else if (format > 2)
+         else
+#endif
+         if (format > 2)
             rdp.skip_drawing = true;
          return;
       }
@@ -3033,6 +3060,7 @@ static void rdp_setcolorimage()
          newSwapBuffers();
          rdp.vi_org_reg = *gfx.VI_ORIGIN_REG;
          SwapOK = false;
+#ifdef HAVE_HWFBE
          if (fb_hwfbe_enabled)
          {
             if (rdp.copy_ci_index && (rdp.frame_buffers[rdp.ci_count-1].status != ci_zimg))
@@ -3048,6 +3076,7 @@ static void rdp_setcolorimage()
                OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
             }
          }
+#endif
       }
    }
 }
@@ -3399,6 +3428,7 @@ void DetectFrameBufferUsage ()
       rdp.read_whole_frame = true;
    if (rdp.read_whole_frame)
    {
+#ifdef HAVE_HWFBE
       if (fb_hwfbe_enabled)
       {
          if (rdp.read_previous_ci && !previous_ci_was_read && (settings.swapmode != 2) && (settings.ucode != ucode_PerfectDark))
@@ -3416,6 +3446,7 @@ void DetectFrameBufferUsage ()
          }
       }
       else
+#endif
       {
          if (rdp.motionblur)
          {
@@ -3444,6 +3475,7 @@ void DetectFrameBufferUsage ()
       }
    }
 
+#ifdef HAVE_HWFBE
    if (fb_hwfbe_enabled)
    {
       for (i = 0; i < voodoo.num_tmu; i++)
@@ -3462,6 +3494,7 @@ void DetectFrameBufferUsage ()
          rdp.copy_ci_index = rdp.main_ci_index;
       }
    }
+#endif
    rdp.ci_count = 0;
    if (settings.hacks&hack_Banjo2)
       rdp.cur_tex_buf = 0;

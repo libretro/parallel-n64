@@ -325,7 +325,7 @@ int OpenTextureBuffer(COLOR_IMAGE *cimage)
   grTextureBufferExt( rdp.cur_image->tmu, rdp.cur_image->tex_addr, rdp.cur_image->info.smallLodLog2, rdp.cur_image->info.largeLodLog2,
     rdp.cur_image->info.aspectRatioLog2, rdp.cur_image->info.format, GR_MIPMAPLEVELMASK_BOTH );
   ///*
-  if (rdp.cur_image->clear && (settings.frame_buffer&fb_hwfbe_buf_clear) && cimage->changed)
+  if (rdp.cur_image->clear && (settings.frame_buffer & fb_hwfbe_buf_clear) && cimage->changed)
   {
     rdp.cur_image->clear = false;
     grDepthMask (FXFALSE);
@@ -531,6 +531,7 @@ int CopyTextureBuffer(COLOR_IMAGE *fb_from, COLOR_IMAGE *fb_to)
    return true;
 }
 
+#ifdef HAVE_HWFBE
 int CopyDepthBuffer(void)
 {
    LRDP("CopyDepthBuffer. ");
@@ -583,6 +584,7 @@ int CopyDepthBuffer(void)
    rdp.tbuff_tex = 0;
    return true;
 }
+#endif
 
 int SwapTextureBuffer(void)
 {

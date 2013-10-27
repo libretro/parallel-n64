@@ -513,8 +513,6 @@ grTextureAuxBufferExt( GrChipID_t tmu,
    //DISPLAY_WARNING("grTextureAuxBufferExt");
 }
 
-FX_ENTRY void FX_CALL grAuxBufferExt( GrBuffer_t buffer );
-
 FX_ENTRY FxU32 FX_CALL
 grGet( FxU32 pname, FxU32 plength, FxI32 *params )
 {
@@ -799,6 +797,7 @@ grRenderBuffer( GrBuffer_t buffer )
    }
 }
 
+#ifdef HAVE_HWFBE
 FX_ENTRY void FX_CALL
 grAuxBufferExt( GrBuffer_t buffer )
 {
@@ -825,6 +824,7 @@ grAuxBufferExt( GrBuffer_t buffer )
       need_to_compile = 1;
    }
 }
+#endif
 
 FX_ENTRY void FX_CALL
 grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth )

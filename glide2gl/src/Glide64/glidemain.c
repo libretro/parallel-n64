@@ -330,8 +330,6 @@ void ReadSettings(void)
 
 extern uint8_t microcode[4096];
 
-//#define HAVE_HWFBE
-
 void ReadSpecialSettings (const char * name)
 {
    int smart_read, hires, get_fbinfo, read_always, depth_render, fb_crc_mode,
@@ -2774,8 +2772,10 @@ void newSwapBuffers(void)
       DrawWholeFrameBufferToScreen();
 
    {
+#ifdef HAVE_HWFBE
       if (fb_hwfbe_enabled)
          grAuxBufferExt( GR_BUFFER_AUXBUFFER );
+#endif
       grBufferSwap (settings.vsync);
 
       if  (settings.buff_clear || (settings.hacks&hack_PPL && settings.ucode == 6))

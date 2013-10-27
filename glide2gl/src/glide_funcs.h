@@ -154,7 +154,9 @@ grTextureAuxBufferExt( GrChipID_t tmu,
                       GrTextureFormat_t format,
                       FxU32      odd_even_mask );
 
+#ifdef HAVE_HWFBE
 FX_ENTRY void FX_CALL grAuxBufferExt( GrBuffer_t buffer );
+#endif
 
 //#define DISPLAY_WARNING_DEBUG
 

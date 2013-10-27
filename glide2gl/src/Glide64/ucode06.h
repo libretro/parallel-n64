@@ -150,6 +150,7 @@ typedef struct DRAWOBJECT_t {
   uint8_t  imageFlags;
 } DRAWOBJECT;
 
+#ifdef HAVE_HWFBE
 void DrawHiresDepthImage (const DRAWIMAGE *d)
 {
    int w, h;
@@ -242,7 +243,7 @@ void DrawHiresDepthImage (const DRAWIMAGE *d)
    grAuxBufferExt( GR_BUFFER_TEXTUREAUXBUFFER_EXT );
    grDepthMask (FXTRUE);
 }
-
+#endif
 
 void DrawDepthImage (const DRAWIMAGE *d)
 {
@@ -256,11 +257,13 @@ void DrawDepthImage (const DRAWIMAGE *d)
 
    LRDP("Depth image write\n");
 
+#ifdef HAVE_HWFBE
    if (fb_hwfbe_enabled)
    {
       DrawHiresDepthImage(d);
       return;
    }
+#endif
 
    float scale_x_dst = rdp.scale_x;
    float scale_y_dst = rdp.scale_y;
