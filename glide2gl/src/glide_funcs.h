@@ -52,8 +52,6 @@ typedef FxU32 GrCombineMode_t;
 #define GR_FBCOPY_MODE_COLOR 1
 #define GR_FBCOPY_BUFFER_BACK 0
 #define GR_FBCOPY_BUFFER_FRONT 1
-FX_ENTRY void FX_CALL grFramebufferCopyExt(int x, int y, int w, int h,
-                                           int buffer_from, int buffer_to, int mode);
 
 // COMBINE extension
 
