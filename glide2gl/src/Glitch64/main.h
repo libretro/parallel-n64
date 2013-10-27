@@ -51,10 +51,6 @@ void set_bw_shader(void);
 extern float invtex[2];
 extern int buffer_cleared; // mark that the buffer has been cleared, used to check if we need to reload the texture buffer content
 
-#ifdef __LIBRETRO__ // Part of glGenTextures fix
-#define GLIDE64 1
-#endif
-
 #include <stdio.h>
 #define GL_GLEXT_PROTOTYPES
 #include <SDL_opengles2.h>

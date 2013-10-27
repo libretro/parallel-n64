@@ -326,24 +326,6 @@ static void delete_tex_from_address(unsigned address)
    glDeleteTextures(1, &address);
 }
 
-extern unsigned glide_texture_offset;
-
-GLuint sglAddTextureMap(unsigned address)
-{
-   address += glide_texture_offset;
-   if (texture_map_size >= texture_map_cap)
-   {
-      texture_map_cap = 2 * (texture_map_cap + 1);
-      texture_map = realloc(texture_map, sizeof(*texture_map) * texture_map_cap);
-   }
-   texture_map[texture_map_size].address = address;
-   GLuint tex = 0;
-   glGenTextures(1, &tex);
-   texture_map[texture_map_size++].tex = tex;
-   return tex;
-}
-
-
 //BIND TEXTURE
 static GLuint BindTexture_ids[MAX_TEXTURE];
 void sglBindTexture(GLenum target, GLuint texture)
@@ -355,36 +337,6 @@ void sglBindTexture(GLenum target, GLuint texture)
     BindTexture_ids[ActiveTexture_texture] = texture;
     glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
 }
-
-// HACK: Texture fixes for gles2glide64 only
-void sglBindTextureGlide(GLenum target, GLuint texture)
-{
-    vbo_draw();
-#ifndef NDEBUG
-    assert(target == GL_TEXTURE_2D);
-#endif
-
-    if (texture)
-    {
-       texture += glide_texture_offset;
-       GLuint tex = find_tex_from_address(texture);
-       if (!tex)
-          tex = texture;
-       BindTexture_ids[ActiveTexture_texture] = tex;
-    }
-    else
-       BindTexture_ids[ActiveTexture_texture] = texture;
-
-    glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
-}
-
-void sglDeleteTexturesGlide(GLuint n, const GLuint* ids)
-{
-   int i;
-   for (i = 0; i < n; i++)
-      delete_tex_from_address(ids[i] + glide_texture_offset);
-}
-
 
 //ENTER/EXIT
 

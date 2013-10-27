@@ -76,12 +76,7 @@ GLuint sglAddTextureMap(unsigned address);
 
 #define glActiveTexture sglActiveTexture
 
-#ifdef GLIDE64
-#define glBindTexture sglBindTextureGlide
-#define glDeleteTextures sglDeleteTexturesGlide
-#else
 #define glBindTexture sglBindTexture
-#endif
 
 #endif
 
