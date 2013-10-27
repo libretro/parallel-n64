@@ -13,7 +13,6 @@
 #include "N64.h"
 #include "CRC.h"
 #include "convert.h"
-#include "2xSAI.h"
 //#include "FrameBuffer.h"
 
 #define FORMAT_NONE     0
@@ -654,28 +653,8 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
         }
     }
 
-    if (!config.texture.sai2x || (texFormat.format == FORMAT_I8 || texFormat.format == FORMAT_IA88))
-    {
+    if ((texFormat.format == FORMAT_I8 || texFormat.format == FORMAT_IA88))
         glTexImage2D( GL_TEXTURE_2D, 0, glFormat, glWidth, glHeight, 0, glFormat, glType, dest);
-    }
-    else
-    {
-        LOG(LOG_VERBOSE, "Using 2xSAI Filter on Texture\n");
-        texInfo->textureBytes <<= 2;
-
-        scaledDest = (u32*) malloc( texInfo->textureBytes );
-
-        if (glType == GL_UNSIGNED_BYTE)
-            _2xSaI8888( (u32*)dest, (u32*)scaledDest, texInfo->realWidth, texInfo->realHeight, texInfo->clampS, texInfo->clampT );
-        if (glType == GL_UNSIGNED_SHORT_4_4_4_4)
-            _2xSaI4444( (u16*)dest, (u16*)scaledDest, texInfo->realWidth, texInfo->realHeight, texInfo->clampS, texInfo->clampT );
-        else
-            _2xSaI5551( (u16*)dest, (u16*)scaledDest, texInfo->realWidth, texInfo->realHeight, texInfo->clampS, texInfo->clampT );
-
-        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, texInfo->realWidth << 1, texInfo->realHeight << 1, 0, GL_RGBA, glType, scaledDest );
-
-        free( scaledDest );
-    }
 
     free(dest);
     free(swapped);
@@ -821,29 +800,8 @@ void TextureCache_Load( CachedTexture *texInfo )
         }
     }
 
-    if (!config.texture.sai2x || (texFormat.format == FORMAT_I8) || (texFormat.format == FORMAT_IA88))
-    {
+    if (texFormat.format == FORMAT_I8 || texFormat.format == FORMAT_IA88)
         glTexImage2D( GL_TEXTURE_2D, 0, glFormat, glWidth, glHeight, 0, glFormat, glType, dest);
-    }
-    else
-    {
-        LOG(LOG_VERBOSE, "Using 2xSAI Filter on Texture\n");
-
-        texInfo->textureBytes <<= 2;
-
-        scaledDest = (u32*)malloc( texInfo->textureBytes );
-
-        if (glType == GL_UNSIGNED_BYTE)
-            _2xSaI8888( (u32*)dest, (u32*)scaledDest, texInfo->realWidth, texInfo->realHeight, 1, 1 );
-        else if (glType == GL_UNSIGNED_SHORT_4_4_4_4)
-            _2xSaI4444( (u16*)dest, (u16*)scaledDest, texInfo->realWidth, texInfo->realHeight, 1, 1 );
-        else
-            _2xSaI5551( (u16*)dest, (u16*)scaledDest, texInfo->realWidth, texInfo->realHeight, 1, 1 );
-
-        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, texInfo->realWidth << 1, texInfo->realHeight << 1, 0, GL_RGBA, glType, scaledDest );
-
-        free( scaledDest );
-    }
 
     free(dest);
 
@@ -1236,8 +1194,8 @@ void TextureCache_Update( u32 t )
     cache.current[t]->shiftScaleS = 1.0f;
     cache.current[t]->shiftScaleT = 1.0f;
 
-    cache.current[t]->offsetS = config.texture.sai2x ? 0.25f : 0.5f;
-    cache.current[t]->offsetT = config.texture.sai2x ? 0.25f : 0.5f;
+    cache.current[t]->offsetS = 0.5f;
+    cache.current[t]->offsetT = 0.5f;
 
     if (gSP.textureTile[t]->shifts > 10)
         cache.current[t]->shiftScaleS = (f32)(1 << (16 - gSP.textureTile[t]->shifts));
