@@ -653,8 +653,7 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
         }
     }
 
-    if ((texFormat.format == FORMAT_I8 || texFormat.format == FORMAT_IA88))
-        glTexImage2D( GL_TEXTURE_2D, 0, glFormat, glWidth, glHeight, 0, glFormat, glType, dest);
+    glTexImage2D( GL_TEXTURE_2D, 0, glFormat, glWidth, glHeight, 0, glFormat, glType, dest);
 
     free(dest);
     free(swapped);
@@ -800,8 +799,7 @@ void TextureCache_Load( CachedTexture *texInfo )
         }
     }
 
-    if (texFormat.format == FORMAT_I8 || texFormat.format == FORMAT_IA88)
-        glTexImage2D( GL_TEXTURE_2D, 0, glFormat, glWidth, glHeight, 0, glFormat, glType, dest);
+    glTexImage2D( GL_TEXTURE_2D, 0, glFormat, glWidth, glHeight, 0, glFormat, glType, dest);
 
     free(dest);
 
