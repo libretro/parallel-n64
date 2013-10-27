@@ -389,6 +389,7 @@ bool mux_swap(DecodedMux *dmux, int cycle, int src0, int src1)
 
 void mux_hack(DecodedMux *dmux)
 {
+#if 0
     if (config.hackZelda)
     {
         if(dmux->combine.mux == 0xfffd923800ffadffLL)
@@ -402,7 +403,7 @@ void mux_hack(DecodedMux *dmux)
             mux_replace(dmux, G_CYC_2CYCLE, TEXEL1, ZERO);
         }
     }
-
+#endif
 }
 
 
