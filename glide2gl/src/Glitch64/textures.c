@@ -110,14 +110,13 @@ void add_tex(unsigned int id)
 {
   texlist *aux = list;
   texlist *aux2;
-  TEXLOG("ADDTEX nbtex is now %d (%06x)\n", nbTex, id);
   if (list == NULL || id < list->id)
   {
     nbTex++;
     list = (texlist*)malloc(sizeof(texlist));
     list->next = aux;
     list->id = id;
-    return;
+    goto addtex_log;
   }
   while (aux->next != NULL && aux->next->id < id) aux = aux->next;
   // ZIGGY added this test so that add_tex now accept re-adding an existing texture
@@ -128,6 +127,8 @@ void add_tex(unsigned int id)
   aux->next = (texlist*)malloc(sizeof(texlist));
   aux->next->id = id;
   aux->next->next = aux2;
+addtex_log:
+  TEXLOG("ADDTEX nbtex is now %d (%06x)\n", nbTex, id);
 }
 
 void init_textures(void)
