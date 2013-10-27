@@ -70,8 +70,7 @@ LOCAL_SRC_FILES += \
     $(RSPDIR)/src/ucode3mp3.c
 
 # Video Plugins
-LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/2xSAI.c \
-            $(VIDEODIR_GLN64)/3DMath.c \
+LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/Config.c \
             $(VIDEODIR_GLN64)/CRC.c \
             $(VIDEODIR_GLN64)/DepthBuffer.c \
