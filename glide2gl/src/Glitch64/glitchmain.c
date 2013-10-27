@@ -884,7 +884,9 @@ grAuxBufferExt( GrBuffer_t buffer )
       //glDisable(GL_ALPHA_TEST);
       glDepthMask(GL_TRUE);
       grTexFilterMode(GR_TMU1, GR_TEXTUREFILTER_POINT_SAMPLED, GR_TEXTUREFILTER_POINT_SAMPLED);
-   } else {
+   }
+   else
+   {
       glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
       need_to_compile = 1;
    }
@@ -952,7 +954,15 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
          DISPLAY_WARNING("grLfbLock : unknown buffer : %x", buffer);
    }
 
-   if(buffer != GR_BUFFER_AUXBUFFER)
+   if(buffer == GR_BUFFER_AUXBUFFER)
+   {
+      info->lfbPtr = depthBuffer;
+      info->strideInBytes = width*2;
+      info->writeMode = GR_LFBWRITEMODE_ZA16;
+      info->origin = origin;
+      glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, depthBuffer);
+   }
+   else
    {
       if (writeMode == GR_LFBWRITEMODE_888)
       {
@@ -962,7 +972,9 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
          info->writeMode = GR_LFBWRITEMODE_888;
          info->origin = origin;
          //glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, frameBuffer);
-      } else {
+      }
+      else
+      {
          info->lfbPtr = frameBuffer;
          info->strideInBytes = width*2;
          info->writeMode = GR_LFBWRITEMODE_565;
@@ -980,14 +992,6 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
             }
          }
       }
-   }
-   else
-   {
-      info->lfbPtr = depthBuffer;
-      info->strideInBytes = width*2;
-      info->writeMode = GR_LFBWRITEMODE_ZA16;
-      info->origin = origin;
-      glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, depthBuffer);
    }
 
    return FXTRUE;
@@ -1033,7 +1037,15 @@ grLfbReadRegion( GrBuffer_t src_buffer,
          DISPLAY_WARNING("grReadRegion : unknown buffer : %x", src_buffer);
    }
 
-   if(src_buffer != GR_BUFFER_AUXBUFFER)
+   if(src_buffer == GR_BUFFER_AUXBUFFER)
+   {
+      glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, depthBuffer);
+
+      for (j = 0;j < src_height; j++)
+         for (i = 0; i < src_width; i++)
+            depthBuffer[j*(dst_stride/2)+i] = ((unsigned short*)buf)[(src_height-j-1)*src_width*4+i*4];
+   }
+   else
    {
       glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 
@@ -1045,19 +1057,6 @@ grLfbReadRegion( GrBuffer_t src_buffer,
                ((buf[(src_height-j-1)*src_width*4+i*4+0] >> 3) << 11) |
                ((buf[(src_height-j-1)*src_width*4+i*4+1] >> 2) <<  5) |
                (buf[(src_height-j-1)*src_width*4+i*4+2] >> 3);
-         }
-      }
-   }
-   else
-   {
-      glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, depthBuffer);
-
-      for (j=0;j<src_height; j++)
-      {
-         for (i=0; i<src_width; i++)
-         {
-            depthBuffer[j*(dst_stride/2)+i] =
-               ((unsigned short*)buf)[(src_height-j-1)*src_width*4+i*4];
          }
       }
    }
@@ -1096,7 +1095,29 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
          DISPLAY_WARNING("grLfbWriteRegion : unknown buffer : %x", dst_buffer);
    }
 
-   if(dst_buffer != GR_BUFFER_AUXBUFFER)
+   if(dst_buffer == GR_BUFFER_AUXBUFFER)
+   {
+#ifndef NDEBUG
+      if (src_format != GR_LFBWRITEMODE_ZA16)
+         DISPLAY_WARNING("unknown depth buffer write format:%x", src_format);
+#endif
+
+      if(dst_x || dst_y)
+         DISPLAY_WARNING("dst_x:%d, dst_y:%d\n",dst_x, dst_y);
+
+      for (j=0; j<src_height; j++)
+         for (i=0; i<src_width; i++)
+            buf[j * src_width+i] = (frameBuffer[(src_height-j-1)*(src_stride/2)+i]/(65536.0f*(2.0f/zscale)))+1-zscale/2.0f;
+
+      glEnable(GL_DEPTH_TEST);
+      glDepthFunc(GL_ALWAYS);
+
+      //glDrawBuffer(GL_BACK);
+      glClear( GL_DEPTH_BUFFER_BIT );
+      glDepthMask(1);
+      //glDrawPixels(src_width, src_height, GL_DEPTH_COMPONENT, GL_FLOAT, buf);
+   }
+   else
    {
       texture_number = GL_TEXTURE0;
       glActiveTexture(texture_number);
@@ -1159,31 +1180,6 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
             src_width,  src_height,
             tex_width,  tex_height, +1);
 
-   }
-   else
-   {
-      if (src_format != GR_LFBWRITEMODE_ZA16)
-         DISPLAY_WARNING("unknown depth buffer write format:%x", src_format);
-
-      if(dst_x || dst_y)
-         DISPLAY_WARNING("dst_x:%d, dst_y:%d\n",dst_x, dst_y);
-
-      for (j=0; j<src_height; j++)
-      {
-         for (i=0; i<src_width; i++)
-         {
-            buf[j * src_width+i] =
-               (frameBuffer[(src_height-j-1)*(src_stride/2)+i]/(65536.0f*(2.0f/zscale)))+1-zscale/2.0f;
-         }
-      }
-
-      glEnable(GL_DEPTH_TEST);
-      glDepthFunc(GL_ALWAYS);
-
-      //glDrawBuffer(GL_BACK);
-      glClear( GL_DEPTH_BUFFER_BIT );
-      glDepthMask(1);
-      //glDrawPixels(src_width, src_height, GL_DEPTH_COMPONENT, GL_FLOAT, buf);
    }
    //glDrawBuffer(current_buffer);
    //glPopAttrib();
