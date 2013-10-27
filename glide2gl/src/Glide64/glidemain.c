@@ -2774,16 +2774,13 @@ void newSwapBuffers(void)
       DrawWholeFrameBufferToScreen();
 
    {
-      if (fb_hwfbe_enabled && !(settings.hacks&hack_RE2))
+      if (fb_hwfbe_enabled)
          grAuxBufferExt( GR_BUFFER_AUXBUFFER );
       grBufferSwap (settings.vsync);
 
       if  (settings.buff_clear || (settings.hacks&hack_PPL && settings.ucode == 6))
       {
-         if (settings.hacks&hack_RE2 && fb_depth_render_enabled)
-            grDepthMask (FXFALSE);
-         else
-            grDepthMask (FXTRUE);
+         grDepthMask (FXTRUE);
          grBufferClear (0, 0, 0xFFFF);
       }
    }
