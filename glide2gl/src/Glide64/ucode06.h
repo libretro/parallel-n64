@@ -742,12 +742,14 @@ static void uc6_bg (bool bg_1cyc)
   DRAWIMAGE *d = (DRAWIMAGE*)malloc(sizeof(DRAWIMAGE));
   uc6_read_background_data(d, bg_1cyc);
 
+#ifdef HAVE_HWFBE
   if (fb_hwfbe_enabled && FindTextureBuffer(d->imagePtr, d->imageW))
   {
     DrawHiresImage(d, false);
     free(d);
     return;
   }
+#endif
 
   if (settings.ucode == ucode_F3DEX2 || (settings.hacks&hack_PPL))
   {

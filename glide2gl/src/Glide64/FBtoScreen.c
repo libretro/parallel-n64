@@ -490,6 +490,7 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
    }
 }
 
+#ifdef HAVE_HWFBE
 static void DrawHiresDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 {
    FRDP("DrawHiresDepthBufferToScreen. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
@@ -557,6 +558,7 @@ static void DrawHiresDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    //  grAuxBufferExt( GR_BUFFER_TEXTUREAUXBUFFER_EXT );
    rdp.update |= UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
 }
+#endif
 
 void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 {
