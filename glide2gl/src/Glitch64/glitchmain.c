@@ -37,6 +37,8 @@
 
 #define TEXTURE_UNITS 4
 
+extern retro_environment_t environ_cb;
+
 typedef struct
 {
   unsigned int address;
@@ -174,6 +176,8 @@ grSstWinOpen(
              int                  nColBuffers,
              int                  nAuxBuffers)
 {
+   uint32_t screen_width, screen_height;
+   struct retro_variable var = { "mupen64-screensize", 0 };
    // ZIGGY
    // allocate static texture names
    // the initial value should be big enough to support the maximal resolution
@@ -184,19 +188,19 @@ grSstWinOpen(
 
    LOG("grSstWinOpen(%d, %d, %d, %d, %d %d)\r\n", screen_resolution&~0x80000000, refresh_rate, color_format, origin_location, nColBuffers, nAuxBuffers);
 
-   width = height = 0;
-
-   m64p_handle video_general_section;
-   printf("&ConfigOpenSection is %p\n", &ConfigOpenSection);
-   if (ConfigOpenSection("Video-General", &video_general_section) != M64ERR_SUCCESS)
+   width = 640;
+   height = 480;
+   bool ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+   if (ret && var.value)
    {
-      printf("Could not open video settings");
-      return false;
+      if (sscanf(var.value ? var.value : "640x480", "%dx%d", &width, &height) != 2)
+      {
+         width = 640;
+         height = 480;
+      }
    }
-   width = ConfigGetParamInt(video_general_section, "ScreenWidth");
-   height = ConfigGetParamInt(video_general_section, "ScreenHeight");
-
    glViewport(0, 0, width, height);
+
    lfb_color_fmt = color_format;
    if (origin_location != GR_ORIGIN_UPPER_LEFT) DISPLAY_WARNING("origin must be in upper left corner");
    if (nColBuffers != 2) DISPLAY_WARNING("number of color buffer is not 2");
