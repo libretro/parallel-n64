@@ -25,6 +25,18 @@
 #include <m64p_config.h>
 
 //#define DEBUGLOG
+//#define TEXTUREMANAGEMENT_LOG
+//#define LOG_TO_STDERR
+#define LOG_TO_STDOUT
+
+#if defined(LOG_TO_STDERR)
+#define LOG_TYPE stderr
+#elif defined(LOG_TO_STDOUT)
+#define LOG_TYPE stdout
+#else
+#define LOG_TYPE stderr
+#endif
+
 
 #ifdef DEBUGLOG
 #define LOG(...) WriteLog(M64MSG_VERBOSE, __VA_ARGS__)
@@ -33,6 +45,13 @@
 #define LOG(...)
 #define LOGINFO(...)
 #endif
+
+#ifdef TEXTUREMANAGEMENT_LOG
+#define TEXLOG(...) fprintf(LOG_TYPE, __VA_ARGS__)
+#else
+#define TEXLOG(...)
+#endif
+
 void WriteLog(m64p_msg_level level, const char *msg, ...);
 
 #define zscale 1.0f

@@ -42,7 +42,6 @@
 
 int TMU_SIZE = 8*2048*2048;
 static unsigned char* texture = NULL;
-unsigned glide_texture_offset = 0;
 int packed_pixels_support = -1;
 int ati_sucks = -1;
 float largest_supported_anisotropy = 1.0f;
@@ -103,7 +102,7 @@ void remove_tex(unsigned int idmin, unsigned int idmax)
   }
   glDeleteTextures(n, t);
   free(t);
-  //printf("RMVTEX nbtex is now %d (%06x - %06x)\n", nbTex, idmin, idmax);
+  TEXLOG("RMVTEX nbtex is now %d (%06x - %06x)\n", nbTex, idmin, idmax);
 }
 
 
@@ -111,7 +110,7 @@ void add_tex(unsigned int id)
 {
   texlist *aux = list;
   texlist *aux2;
-  //printf("ADDTEX nbtex is now %d (%06x)\n", nbTex, id);
+  TEXLOG("ADDTEX nbtex is now %d (%06x)\n", nbTex, id);
   if (list == NULL || id < list->id)
   {
     nbTex++;
@@ -131,11 +130,10 @@ void add_tex(unsigned int id)
   aux->next->next = aux2;
 }
 
-void init_textures()
+void init_textures(void)
 {
   tex0_width = tex0_height = tex1_width = tex1_height = 2;
 
-  glide_texture_offset = 1024 * 1024;
   if (!texture)
      texture = (unsigned char*)malloc(2048*2048*4);
 }
