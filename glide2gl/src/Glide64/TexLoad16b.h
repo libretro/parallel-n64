@@ -37,7 +37,7 @@
 //
 //****************************************************************
 
-static inline void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
+static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
    uint32_t utmp;
    uint32_t *v6;
@@ -120,7 +120,7 @@ static inline void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
    while ( v18 != 1 );
 }
 
-static inline void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
+static INLINE void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
    uint32_t *v6;
    uint32_t *v7;

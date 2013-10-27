@@ -97,7 +97,7 @@ static int left_z, left_dzdy;
 // (x * y) >> 14
 #define imul14(x, y) ((((long long)x) * ((long long)y)) >> 14)
 
-static inline int idiv16(int x, int y)        // (x << 16) / y
+static INLINE int idiv16(int x, int y)        // (x << 16) / y
 {
 #if !defined(__GNUC__) && !defined(NO_ASM)
    __asm {

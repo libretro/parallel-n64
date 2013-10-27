@@ -39,7 +39,7 @@
 
 #include <stdint.h>
 
-static inline void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, uint16_t line, int ext, uint16_t *pal)
+static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, uint16_t line, int ext, uint16_t *pal)
 {
    int32_t  tmp;
    uint32_t utmp;
@@ -216,7 +216,7 @@ static inline void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
    while ( v26 != 1 );
 }
 
-static inline void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
+static INLINE void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
 {
    int32_t tmp;
    uint32_t utmp;
@@ -392,7 +392,7 @@ static inline void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int heigh
    while ( v26 != 1 );
 }
 
-static inline void load4bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
+static INLINE void load4bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
    uint32_t *v6;
    uint32_t *v7;
@@ -557,7 +557,7 @@ static inline void load4bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, 
    while ( v58 != 1 );
 }
 
-static inline void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
+static INLINE void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
    uint32_t *v6;
    uint32_t *v7;

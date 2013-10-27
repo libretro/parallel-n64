@@ -112,7 +112,7 @@ void vbo_disable(void)
    vertex_buffer_enabled = false;
 }
 
-static inline float ytex(int tmu, float y)
+static INLINE float ytex(int tmu, float y)
 {
    if (invtex[tmu])
       return invtex[tmu] - y;

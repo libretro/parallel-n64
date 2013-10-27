@@ -38,7 +38,7 @@
 #define S8 3
 #endif
 
-// types
+/* types */
 typedef unsigned char       u8;
 typedef unsigned short      u16;
 typedef unsigned int        u32;
@@ -78,7 +78,7 @@ typedef struct
     unsigned int yield_data_size;
 } OSTask_t;
 
-static inline const OSTask_t * const get_task()
+static INLINE const OSTask_t * const get_task()
 {
     return (OSTask_t*)(rspInfo.DMEM + 0xfc0);
 }

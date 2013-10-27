@@ -220,7 +220,7 @@ CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
 
 ### Finalize ###
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
-CPPFLAGS   += -D__LIBRETRO__ -DM64P_PLUGIN_API -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
+CPPFLAGS   += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
 CPPFLAGS   += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE $(fpic)
 CFLAGS     += -std=gnu99
 LDFLAGS    += -lm $(fpic)

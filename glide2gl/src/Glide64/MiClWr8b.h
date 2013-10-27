@@ -40,7 +40,7 @@
 //****************************************************************
 // 8-bit Horizontal Mirror
 
-static inline void mirror8bS(uint8_t *tex, uint8_t *start, int width, int height, int mask, int line, int full, int count)
+static INLINE void mirror8bS(uint8_t *tex, uint8_t *start, int width, int height, int mask, int line, int full, int count)
 {
    uint8_t *v8;
    int v9;
@@ -67,7 +67,7 @@ static inline void mirror8bS(uint8_t *tex, uint8_t *start, int width, int height
    while ( v9 );
 }
 
-static inline void wrap8bS(uint8_t *tex, uint8_t *start, int height, int mask, int line, int full, int count)
+static INLINE void wrap8bS(uint8_t *tex, uint8_t *start, int height, int mask, int line, int full, int count)
 {
    uint32_t *v7;
    int v8;
@@ -92,7 +92,7 @@ static inline void wrap8bS(uint8_t *tex, uint8_t *start, int height, int mask, i
    while ( v8 );
 }
 
-static inline void clamp8bS(uint8_t *tex, uint8_t *constant, int height, int line, int full, int count)
+static INLINE void clamp8bS(uint8_t *tex, uint8_t *constant, int height, int line, int full, int count)
 {
    uint8_t *v6;
    uint8_t *v7;

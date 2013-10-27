@@ -14,7 +14,7 @@
   #include "x86_msvc.c"
 #elif (defined(__GNUC__) && defined(__ARM_EABI__)) || (defined(__APPLE__) && __ARM_ARCH)
   #include "armeabi.c"
-#elif defined(__GNUC__) && (defined(__powerpc__) || defined(__POWERPC__) || defined(__ppc__)) // Seems to run fine on PPC G5 OSX even when no __ELF__ is defined.
+#elif defined(__GNUC__) && (defined(__powerpc__) || defined(__POWERPC__) || defined(__ppc__)) /* Seems to run fine on PPC G5 OSX even when no __ELF__ is defined. */
   #include "ppc.c"
 #elif defined(__GNUC__)
   #include "sjlj.c"

@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-// ASM co_swap.
+/* ASM co_swap. */
 void co_swap(cothread_t new_active, cothread_t old_active);
 
 static thread_local long long co_active_buffer[64];
@@ -76,7 +76,7 @@ asm (
       "jmpq *%rax # Jump back to old saved PC.\n"
 );
 #else
-asm (
+__asm__(
       ".text\n"
       ".globl co_swap\n"
       ".globl _co_swap\n"

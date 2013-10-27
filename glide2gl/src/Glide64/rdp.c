@@ -1856,7 +1856,7 @@ void setTBufTex(uint16_t t_mem, uint32_t cnt)
    }
 }
 
-static inline void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
+static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
 {
   uint32_t *v5;
   int v6;
@@ -2066,7 +2066,7 @@ static void rdp_loadblock()
 }
 
 
-static inline void loadTile(uint32_t *src, uint32_t *dst, int width, int height, int line, int off, uint32_t *end)
+static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height, int line, int off, uint32_t *end)
 {
   uint32_t *v7;
   int v8;
@@ -4024,7 +4024,7 @@ static const uint32_t rdp_command_length[64] =
 #define dp_current (*(uint32_t*)gfx.DPC_CURRENT_REG)
 #define dp_status (*(uint32_t*)gfx.DPC_STATUS_REG)
 
-inline uint32_t READ_RDP_DATA(uint32_t address)
+INLINE uint32_t READ_RDP_DATA(uint32_t address)
 {
    if (dp_status & 0x1)          // XBUS_DMEM_DMA enabled
       return rsp_dmem[(address & 0xfff)>>2];

@@ -37,7 +37,7 @@
 //
 //****************************************************************
 
-static inline void texConv_ARGB1555_ARGB4444(uint8_t *src, uint8_t *dst, int size)
+static INLINE void texConv_ARGB1555_ARGB4444(uint8_t *src, uint8_t *dst, int size)
 {
    uint32_t *v3;
    uint32_t *v4;
@@ -61,7 +61,7 @@ static inline void texConv_ARGB1555_ARGB4444(uint8_t *src, uint8_t *dst, int siz
    while ( v5 );
 }
 
-static inline void texConv_AI88_ARGB4444(uint8_t *src, uint8_t *dst, int size)
+static INLINE void texConv_AI88_ARGB4444(uint8_t *src, uint8_t *dst, int size)
 {
    uint32_t *v3, *v4;
    int v5;
@@ -83,7 +83,7 @@ static inline void texConv_AI88_ARGB4444(uint8_t *src, uint8_t *dst, int size)
    while ( v5 );
 }
 
-static inline void texConv_AI44_ARGB4444(uint8_t *src, uint8_t *dst, int size)
+static INLINE void texConv_AI44_ARGB4444(uint8_t *src, uint8_t *dst, int size)
 {
    uint32_t *v3, *v4, *v7;
    int v5;
@@ -105,7 +105,7 @@ static inline void texConv_AI44_ARGB4444(uint8_t *src, uint8_t *dst, int size)
    while ( v5 );
 }
 
-static inline void texConv_A8_ARGB4444(uint8_t *src, uint8_t *dst, int size)
+static INLINE void texConv_A8_ARGB4444(uint8_t *src, uint8_t *dst, int size)
 {
    uint32_t *v3;
    uint32_t *v4;

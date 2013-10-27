@@ -99,7 +99,7 @@ float ScaleZ(float z);
 
 #define ALOWORD(x)   (*((uint16_t*)&x))   // low word
 
-static inline unsigned int __ROR32(unsigned int value, unsigned int count)
+static INLINE unsigned int __ROR32(unsigned int value, unsigned int count)
 {
    const unsigned int nbits = sizeof(unsigned int) * 8;
    count %= nbits;
@@ -110,7 +110,7 @@ static inline unsigned int __ROR32(unsigned int value, unsigned int count)
    return value;
 }
 
-static inline short unsigned int __ROR16(short unsigned int value, unsigned int count)
+static INLINE short unsigned int __ROR16(short unsigned int value, unsigned int count)
 {
    const unsigned int nbits = sizeof(short unsigned int) * 8;
    count %= nbits;
@@ -122,7 +122,7 @@ static inline short unsigned int __ROR16(short unsigned int value, unsigned int 
 }
 
 // rotate left
-static inline uint32_t __ROL__(uint32_t value, unsigned int count)
+static INLINE uint32_t __ROL__(uint32_t value, unsigned int count)
 {
    const unsigned int nbits = sizeof(uint32_t) * 8;
    count %= nbits;

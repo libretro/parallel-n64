@@ -773,7 +773,7 @@ extern const char *CIStatus[];
 #endif
 
 // Convert from u0/v0/u1/v1 to the real coordinates without regard to tmu
-static inline void ConvertCoordsKeep (VERTEX *v, int n)
+static INLINE void ConvertCoordsKeep (VERTEX *v, int n)
 {
    int i;
    for (i = 0; i < n; i++)
@@ -786,7 +786,7 @@ static inline void ConvertCoordsKeep (VERTEX *v, int n)
 }
 
 // Convert from u0/v0/u1/v1 to the real coordinates based on the tmu they are on
-static inline void ConvertCoordsConvert (VERTEX *v, int n)
+static INLINE void ConvertCoordsConvert (VERTEX *v, int n)
 {
    int i;
    for (i = 0; i < n; i++)
@@ -798,14 +798,14 @@ static inline void ConvertCoordsConvert (VERTEX *v, int n)
    }
 }
 
-static inline void AllowShadeMods (VERTEX *v, int n)
+static INLINE void AllowShadeMods (VERTEX *v, int n)
 {
    int i;
    for (i = 0; i < n; i++)
       v[i].shade_mod = 0;
 }
 
-static inline void AddOffset (VERTEX *v, int n)
+static INLINE void AddOffset (VERTEX *v, int n)
 {
    int i;
    for (i = 0; i < n; i++)
@@ -815,7 +815,7 @@ static inline void AddOffset (VERTEX *v, int n)
    }
 }
 
-static inline void CalculateFog (VERTEX *v)
+static INLINE void CalculateFog (VERTEX *v)
 {
    if (rdp.flags & FOG_ENABLED)
    {

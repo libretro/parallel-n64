@@ -404,65 +404,66 @@ static void MIXER2 (uint32_t inst1, uint32_t inst2)
 
 static void RESAMPLE2 (uint32_t inst1, uint32_t inst2)
 {
-    unsigned char Flags=(u8)((inst1>>16)&0xff);
-    unsigned int Pitch=((inst1&0xffff))<<1;
-    uint32_t addy = (inst2 & 0xffffff);// + SEGMENTS[(inst2>>24)&0xf];
-    unsigned int Accum=0;
-    unsigned int location;
-    int16_t *lut;
-    short *dst;
-    int16_t *src;
-    dst=(short *)(BufferSpace);
-    src=(int16_t *)(BufferSpace);
-    uint32_t srcPtr=(AudioInBuffer/2);
-    uint32_t dstPtr=(AudioOutBuffer/2);
-    int32_t temp;
-    int32_t accum;
-    int i, x;
+   unsigned char Flags;
+   unsigned int Pitch, Accum, location;
+   int16_t *lut, *dst, *src;
+   uint32_t addy, srcPtr, dstPtr;
+   int32_t temp, accum, i, x;
+   Flags= (u8)((inst1>>16)&0xff);
+   Pitch= ((inst1&0xffff)) << 1;
+   addy = (inst2 & 0xffffff);
+   Accum = 0;
+   dst=(short *)(BufferSpace);
+   src=(int16_t *)(BufferSpace);
+   srcPtr=(AudioInBuffer/2);
+   dstPtr=(AudioOutBuffer/2);
 
-    if (addy > (1024*1024*8))
-        addy = (inst2 & 0xffffff);
+   if (addy > (1024*1024*8))
+      addy = (inst2 & 0xffffff);
 
-    srcPtr -= 4;
+   srcPtr -= 4;
 
-    if ((Flags & 0x1) == 0) {   
-        for (x = 0; x < 4; x++) //memcpy (src+srcPtr, rspInfo.RDRAM+addy, 0x8);
-            src[(srcPtr+x)^S] = ((uint16_t *)rspInfo.RDRAM)[((addy/2)+x)^S];
-        Accum = *(uint16_t *)(rspInfo.RDRAM+addy+10);
-    } else {
-        for (x = 0; x < 4; x++)
-            src[(srcPtr+x)^S] = 0;//*(uint16_t *)(rspInfo.RDRAM+((addy+x)^2));
-    }
+   if ((Flags & 0x1) == 0)
+   {
+      for (x = 0; x < 4; x++) /* memcpy (src+srcPtr, rspInfo.RDRAM+addy, 0x8); */
+         src[(srcPtr+x)^S] = ((uint16_t *)rspInfo.RDRAM)[((addy/2)+x)^S];
+      Accum = *(uint16_t *)(rspInfo.RDRAM+addy+10);
+   }
+   else
+   {
+      for (x = 0; x < 4; x++)
+         src[(srcPtr+x)^S] = 0;
+   }
 
-    for(i = 0;i < ((AudioCount+0xf)&0xFFF0)/2;i++)    {
-        location = (((Accum * 0x40) >> 0x10) * 8);
-        //location = (Accum >> 0xa) << 0x3;
-        lut = (int16_t *)(((u8 *)ResampleLUT) + location);
+   for(i = 0;i < ((AudioCount+0xf)&0xFFF0)/2;i++)
+   {
+      location = (((Accum * 0x40) >> 0x10) * 8);
+      lut = (int16_t *)(((u8 *)ResampleLUT) + location);
 
-        temp =  ((int32_t)*(int16_t*)(src+((srcPtr+0)^S))*((int32_t)((int16_t)lut[0])));
-        accum = (int32_t)(temp >> 15);
+      temp =  ((int32_t)*(int16_t*)(src+((srcPtr+0)^S))*((int32_t)((int16_t)lut[0])));
+      accum = (int32_t)(temp >> 15);
 
-        temp = ((int32_t)*(int16_t*)(src+((srcPtr+1)^S))*((int32_t)((int16_t)lut[1])));
-        accum += (int32_t)(temp >> 15);
+      temp = ((int32_t)*(int16_t*)(src+((srcPtr+1)^S))*((int32_t)((int16_t)lut[1])));
+      accum += (int32_t)(temp >> 15);
 
-        temp = ((int32_t)*(int16_t*)(src+((srcPtr+2)^S))*((int32_t)((int16_t)lut[2])));
-        accum += (int32_t)(temp >> 15);
-        
-        temp = ((int32_t)*(int16_t*)(src+((srcPtr+3)^S))*((int32_t)((int16_t)lut[3])));
-        accum += (int32_t)(temp >> 15);
+      temp = ((int32_t)*(int16_t*)(src+((srcPtr+2)^S))*((int32_t)((int16_t)lut[2])));
+      accum += (int32_t)(temp >> 15);
 
-        BLARGG_CLAMP16(accum);
+      temp = ((int32_t)*(int16_t*)(src+((srcPtr+3)^S))*((int32_t)((int16_t)lut[3])));
+      accum += (int32_t)(temp >> 15);
 
-        dst[dstPtr^S] = (int16_t)(accum);
-        dstPtr++;
-        Accum += Pitch;
-        srcPtr += (Accum>>16);
-        Accum&=0xffff;
-    }
-    for (x = 0; x < 4; x++)
-        ((uint16_t *)rspInfo.RDRAM)[((addy/2)+x)^S] = src[(srcPtr+x)^S];
-    *(uint16_t *)(rspInfo.RDRAM+addy+10) = (uint16_t)Accum;
-    //memcpy (RSWORK, src+srcPtr, 0x8);
+      BLARGG_CLAMP16(accum);
+
+      dst[dstPtr^S] = (int16_t)(accum);
+      dstPtr++;
+      Accum += Pitch;
+      srcPtr += (Accum>>16);
+      Accum&=0xffff;
+   }
+   for (x = 0; x < 4; x++)
+      ((uint16_t *)rspInfo.RDRAM)[((addy/2)+x)^S] = src[(srcPtr+x)^S];
+   *(uint16_t *)(rspInfo.RDRAM+addy+10) = (uint16_t)Accum;
+   //memcpy (RSWORK, src+srcPtr, 0x8);
 }
 
 static void DMEMMOVE2 (uint32_t inst1, uint32_t inst2) { // Needs accuracy verification...
@@ -765,144 +766,149 @@ static void HILOGAIN (uint32_t inst1, uint32_t inst2) {
     }
 }
 
-static void FILTER2 (uint32_t inst1, uint32_t inst2) {
-            static int cnt = 0;
-            static int16_t *lutt6;
-            static int16_t *lutt5;
-            u8 *save = (rspInfo.RDRAM+(inst2&0xFFFFFF));
-            u8 t4 = (u8)((inst1 >> 0x10) & 0xFF);
-            int x;
+static void FILTER2 (uint32_t inst1, uint32_t inst2)
+{
+   int16_t outbuff[0x3c0], *outp, *inp1, *inp2;
+   static int16_t *lutt6;
+   static int16_t *lutt5;
+   int32_t x, a;
+   int32_t out1[8];
+   uint32_t inPtr;
+   u8 *save, t4;
+   static int cnt = 0;
 
-            if (t4 > 1) { // Then set the cnt variable
-                cnt = (inst1 & 0xFFFF);
-                lutt6 = (int16_t *)save;
-//              memcpy (dmem+0xFE0, rspInfo.RDRAM+(inst2&0xFFFFFF), 0x10);
-                return;
-            }
+   save = (rspInfo.RDRAM+(inst2&0xFFFFFF));
+   t4 = (u8)((inst1 >> 0x10) & 0xFF);
 
-            if (t4 == 0) {
-//              memcpy (dmem+0xFB0, rspInfo.RDRAM+(inst2&0xFFFFFF), 0x20);
-                lutt5 = (short *)(save+0x10);
-            }
+   if (t4 > 1)
+   { /* Then set the cnt variable */
+      cnt = (inst1 & 0xFFFF);
+      lutt6 = (int16_t *)save;
+      return;
+   }
 
-            lutt5 = (short *)(save+0x10);
+   if (t4 == 0)
+      lutt5 = (short *)(save+0x10);
 
-//          lutt5 = (short *)(dmem + 0xFC0);
-//          lutt6 = (short *)(dmem + 0xFE0);
-            for (x = 0; x < 8; x++) {
-                int32_t a;
-                a = (lutt5[x] + lutt6[x]) >> 1;
-                lutt5[x] = lutt6[x] = (short)a;
-            }
-            short *inp1, *inp2; 
-            int32_t out1[8];
-            int16_t outbuff[0x3c0], *outp;
-            uint32_t inPtr = (uint32_t)(inst1&0xffff);
-            inp1 = (short *)(save);
-            outp = outbuff;
-            inp2 = (short *)(BufferSpace+inPtr);
-            for (x = 0; x < cnt; x+=0x10) {
-                out1[1] =  inp1[0]*lutt6[6];
-                out1[1] += inp1[3]*lutt6[7];
-                out1[1] += inp1[2]*lutt6[4];
-                out1[1] += inp1[5]*lutt6[5];
-                out1[1] += inp1[4]*lutt6[2];
-                out1[1] += inp1[7]*lutt6[3];
-                out1[1] += inp1[6]*lutt6[0];
-                out1[1] += inp2[1]*lutt6[1]; // 1
+   lutt5 = (short *)(save+0x10);
 
-                out1[0] =  inp1[3]*lutt6[6];
-                out1[0] += inp1[2]*lutt6[7];
-                out1[0] += inp1[5]*lutt6[4];
-                out1[0] += inp1[4]*lutt6[5];
-                out1[0] += inp1[7]*lutt6[2];
-                out1[0] += inp1[6]*lutt6[3];
-                out1[0] += inp2[1]*lutt6[0];
-                out1[0] += inp2[0]*lutt6[1];
+   //          lutt5 = (short *)(dmem + 0xFC0);
+   //          lutt6 = (short *)(dmem + 0xFE0);
+   for (x = 0; x < 8; x++)
+   {
+      a = (lutt5[x] + lutt6[x]) >> 1;
+      lutt5[x] = lutt6[x] = (short)a;
+   }
 
-                out1[3] =  inp1[2]*lutt6[6];
-                out1[3] += inp1[5]*lutt6[7];
-                out1[3] += inp1[4]*lutt6[4];
-                out1[3] += inp1[7]*lutt6[5];
-                out1[3] += inp1[6]*lutt6[2];
-                out1[3] += inp2[1]*lutt6[3];
-                out1[3] += inp2[0]*lutt6[0];
-                out1[3] += inp2[3]*lutt6[1];
+   inPtr = (uint32_t)(inst1&0xffff);
+   inp1 = (int16_t *)(save);
+   outp = outbuff;
+   inp2 = (int16_t*)(BufferSpace+inPtr);
 
-                out1[2] =  inp1[5]*lutt6[6];
-                out1[2] += inp1[4]*lutt6[7];
-                out1[2] += inp1[7]*lutt6[4];
-                out1[2] += inp1[6]*lutt6[5];
-                out1[2] += inp2[1]*lutt6[2];
-                out1[2] += inp2[0]*lutt6[3];
-                out1[2] += inp2[3]*lutt6[0];
-                out1[2] += inp2[2]*lutt6[1];
+   for (x = 0; x < cnt; x+=0x10)
+   {
+      out1[1] =  inp1[0]*lutt6[6];
+      out1[1] += inp1[3]*lutt6[7];
+      out1[1] += inp1[2]*lutt6[4];
+      out1[1] += inp1[5]*lutt6[5];
+      out1[1] += inp1[4]*lutt6[2];
+      out1[1] += inp1[7]*lutt6[3];
+      out1[1] += inp1[6]*lutt6[0];
+      out1[1] += inp2[1]*lutt6[1]; /* 1 */
 
-                out1[5] =  inp1[4]*lutt6[6];
-                out1[5] += inp1[7]*lutt6[7];
-                out1[5] += inp1[6]*lutt6[4];
-                out1[5] += inp2[1]*lutt6[5];
-                out1[5] += inp2[0]*lutt6[2];
-                out1[5] += inp2[3]*lutt6[3];
-                out1[5] += inp2[2]*lutt6[0];
-                out1[5] += inp2[5]*lutt6[1];
+      out1[0] =  inp1[3]*lutt6[6];
+      out1[0] += inp1[2]*lutt6[7];
+      out1[0] += inp1[5]*lutt6[4];
+      out1[0] += inp1[4]*lutt6[5];
+      out1[0] += inp1[7]*lutt6[2];
+      out1[0] += inp1[6]*lutt6[3];
+      out1[0] += inp2[1]*lutt6[0];
+      out1[0] += inp2[0]*lutt6[1];
 
-                out1[4] =  inp1[7]*lutt6[6];
-                out1[4] += inp1[6]*lutt6[7];
-                out1[4] += inp2[1]*lutt6[4];
-                out1[4] += inp2[0]*lutt6[5];
-                out1[4] += inp2[3]*lutt6[2];
-                out1[4] += inp2[2]*lutt6[3];
-                out1[4] += inp2[5]*lutt6[0];
-                out1[4] += inp2[4]*lutt6[1];
+      out1[3] =  inp1[2]*lutt6[6];
+      out1[3] += inp1[5]*lutt6[7];
+      out1[3] += inp1[4]*lutt6[4];
+      out1[3] += inp1[7]*lutt6[5];
+      out1[3] += inp1[6]*lutt6[2];
+      out1[3] += inp2[1]*lutt6[3];
+      out1[3] += inp2[0]*lutt6[0];
+      out1[3] += inp2[3]*lutt6[1];
 
-                out1[7] =  inp1[6]*lutt6[6];
-                out1[7] += inp2[1]*lutt6[7];
-                out1[7] += inp2[0]*lutt6[4];
-                out1[7] += inp2[3]*lutt6[5];
-                out1[7] += inp2[2]*lutt6[2];
-                out1[7] += inp2[5]*lutt6[3];
-                out1[7] += inp2[4]*lutt6[0];
-                out1[7] += inp2[7]*lutt6[1];
+      out1[2] =  inp1[5]*lutt6[6];
+      out1[2] += inp1[4]*lutt6[7];
+      out1[2] += inp1[7]*lutt6[4];
+      out1[2] += inp1[6]*lutt6[5];
+      out1[2] += inp2[1]*lutt6[2];
+      out1[2] += inp2[0]*lutt6[3];
+      out1[2] += inp2[3]*lutt6[0];
+      out1[2] += inp2[2]*lutt6[1];
 
-                out1[6] =  inp2[1]*lutt6[6];
-                out1[6] += inp2[0]*lutt6[7];
-                out1[6] += inp2[3]*lutt6[4];
-                out1[6] += inp2[2]*lutt6[5];
-                out1[6] += inp2[5]*lutt6[2];
-                out1[6] += inp2[4]*lutt6[3];
-                out1[6] += inp2[7]*lutt6[0];
-                out1[6] += inp2[6]*lutt6[1];
-                outp[1] = /*CLAMP*/((out1[1]+0x4000) >> 0xF);
-                outp[0] = /*CLAMP*/((out1[0]+0x4000) >> 0xF);
-                outp[3] = /*CLAMP*/((out1[3]+0x4000) >> 0xF);
-                outp[2] = /*CLAMP*/((out1[2]+0x4000) >> 0xF);
-                outp[5] = /*CLAMP*/((out1[5]+0x4000) >> 0xF);
-                outp[4] = /*CLAMP*/((out1[4]+0x4000) >> 0xF);
-                outp[7] = /*CLAMP*/((out1[7]+0x4000) >> 0xF);
-                outp[6] = /*CLAMP*/((out1[6]+0x4000) >> 0xF);
-                inp1 = inp2;
-                inp2 += 8;
-                outp += 8;
-            }
-//          memcpy (rspInfo.RDRAM+(inst2&0xFFFFFF), dmem+0xFB0, 0x20);
-            memcpy (save, inp2-8, 0x10);
-            memcpy (BufferSpace+(inst1&0xffff), outbuff, cnt);
+      out1[5] =  inp1[4]*lutt6[6];
+      out1[5] += inp1[7]*lutt6[7];
+      out1[5] += inp1[6]*lutt6[4];
+      out1[5] += inp2[1]*lutt6[5];
+      out1[5] += inp2[0]*lutt6[2];
+      out1[5] += inp2[3]*lutt6[3];
+      out1[5] += inp2[2]*lutt6[0];
+      out1[5] += inp2[5]*lutt6[1];
+
+      out1[4] =  inp1[7]*lutt6[6];
+      out1[4] += inp1[6]*lutt6[7];
+      out1[4] += inp2[1]*lutt6[4];
+      out1[4] += inp2[0]*lutt6[5];
+      out1[4] += inp2[3]*lutt6[2];
+      out1[4] += inp2[2]*lutt6[3];
+      out1[4] += inp2[5]*lutt6[0];
+      out1[4] += inp2[4]*lutt6[1];
+
+      out1[7] =  inp1[6]*lutt6[6];
+      out1[7] += inp2[1]*lutt6[7];
+      out1[7] += inp2[0]*lutt6[4];
+      out1[7] += inp2[3]*lutt6[5];
+      out1[7] += inp2[2]*lutt6[2];
+      out1[7] += inp2[5]*lutt6[3];
+      out1[7] += inp2[4]*lutt6[0];
+      out1[7] += inp2[7]*lutt6[1];
+
+      out1[6] =  inp2[1]*lutt6[6];
+      out1[6] += inp2[0]*lutt6[7];
+      out1[6] += inp2[3]*lutt6[4];
+      out1[6] += inp2[2]*lutt6[5];
+      out1[6] += inp2[5]*lutt6[2];
+      out1[6] += inp2[4]*lutt6[3];
+      out1[6] += inp2[7]*lutt6[0];
+      out1[6] += inp2[6]*lutt6[1];
+      outp[1] = /*CLAMP*/((out1[1]+0x4000) >> 0xF);
+      outp[0] = /*CLAMP*/((out1[0]+0x4000) >> 0xF);
+      outp[3] = /*CLAMP*/((out1[3]+0x4000) >> 0xF);
+      outp[2] = /*CLAMP*/((out1[2]+0x4000) >> 0xF);
+      outp[5] = /*CLAMP*/((out1[5]+0x4000) >> 0xF);
+      outp[4] = /*CLAMP*/((out1[4]+0x4000) >> 0xF);
+      outp[7] = /*CLAMP*/((out1[7]+0x4000) >> 0xF);
+      outp[6] = /*CLAMP*/((out1[6]+0x4000) >> 0xF);
+      inp1 = inp2;
+      inp2 += 8;
+      outp += 8;
+   }
+   memcpy (save, inp2-8, 0x10);
+   memcpy (BufferSpace+(inst1&0xffff), outbuff, cnt);
 }
 
-static void SEGMENT2 (uint32_t inst1, uint32_t inst2) {
-    if (isZeldaABI) {
-        FILTER2 (inst1, inst2);
-        return;
-    }
-    if ((inst1 & 0xffffff) == 0) {
-        isMKABI = true;
-        //SEGMENTS[(inst2>>24)&0xf] = (inst2 & 0xffffff);
-    } else {
-        isMKABI = false;
-        isZeldaABI = true;
-        FILTER2 (inst1, inst2);
-    }
+static void SEGMENT2 (uint32_t inst1, uint32_t inst2)
+{
+   if (isZeldaABI)
+   {
+      FILTER2 (inst1, inst2);
+      return;
+   }
+   if ((inst1 & 0xffffff) == 0)
+      isMKABI = true;
+   else
+   {
+      isMKABI = false;
+      isZeldaABI = true;
+      FILTER2 (inst1, inst2);
+   }
 }
 
 static void UNKNOWN (uint32_t inst1, uint32_t inst2) {

@@ -103,7 +103,7 @@ static const volatile unsigned char One2Eight[2] =
     255, // 1 = 11111111
 };
 
-static inline void UnswapCopy( void *src, void *dest, u32 numBytes )
+static INLINE void UnswapCopy( void *src, void *dest, u32 numBytes )
 {
    int i;
     // copy leading bytes
@@ -154,7 +154,7 @@ static inline void UnswapCopy( void *src, void *dest, u32 numBytes )
     }
 }
 
-static inline void DWordInterleave( void *mem, u32 numDWords )
+static INLINE void DWordInterleave( void *mem, u32 numDWords )
 {
     int tmp;
     while( numDWords-- )
@@ -166,7 +166,7 @@ static inline void DWordInterleave( void *mem, u32 numDWords )
     }
 }
 
-static inline void QWordInterleave( void *mem, u32 numDWords )
+static INLINE void QWordInterleave( void *mem, u32 numDWords )
 {
     numDWords >>= 1; // qwords
     while( numDWords-- )
@@ -183,7 +183,7 @@ static inline void QWordInterleave( void *mem, u32 numDWords )
 }
 
 
-static inline u32 swapdword( u32 value )
+static INLINE u32 swapdword( u32 value )
 {
 #ifdef ARM_ASM
     __asm("rev %0, %0" : "+r"(value)::);
@@ -196,7 +196,7 @@ static inline u32 swapdword( u32 value )
 #endif
 }
 
-static inline u16 swapword( u16 value )
+static INLINE u16 swapword( u16 value )
 {
 #ifdef ARM_ASM
     __asm("rev16 %0, %0" : "+r"(value)::);
@@ -208,7 +208,7 @@ static inline u16 swapword( u16 value )
 
 #define RGBA8888_RGBA4444(color) (((color & 0x000000f0) <<  8) | ((color & 0x0000f000) >>  4) | ((color & 0x00f00000) >> 16) | ((color & 0xf0000000) >> 28))
 
-static inline u32 RGBA5551_RGBA8888( u16 color )
+static INLINE u32 RGBA5551_RGBA8888( u16 color )
 {
     color = swapword( color );
     u8 r, g, b, a;
@@ -222,14 +222,14 @@ static inline u32 RGBA5551_RGBA8888( u16 color )
 // Just swaps the word
 #define RGBA5551_RGBA5551(color) (swapword( color ))
 
-static inline u32 IA88_RGBA8888( u16 color )
+static INLINE u32 IA88_RGBA8888( u16 color )
 {
     u8 a = color >> 8;
     u8 i = color & 0x00FF;
     return (a << 24) | (i << 16) | (i << 8) | i;
 }
 
-static inline u16 IA88_RGBA4444( u16 color )
+static INLINE u16 IA88_RGBA4444( u16 color )
 {
     u8 i = color >> 12;
     u8 a = (color >> 4) & 0x000F;
@@ -238,42 +238,42 @@ static inline u16 IA88_RGBA4444( u16 color )
 
 #define IA44_RGBA4444(color) (((color & 0xf0) << 8) | ((color & 0xf0) << 4) | (color))
 
-static inline u32 IA44_RGBA8888( u8 color )
+static INLINE u32 IA44_RGBA8888( u8 color )
 {
     u8 i = Four2Eight[color >> 4];
     u8 a = Four2Eight[color & 0x0F];
     return (a << 24) | (i << 16) | (i << 8) | i;
 }
 
-static inline u16 IA44_IA88( u8 color )
+static INLINE u16 IA44_IA88( u8 color )
 {
     u8 i = Four2Eight[color >> 4];
     u8 a = Four2Eight[color & 0x0F];
     return (a << 8) | i;
 }
 
-static inline u16 IA31_RGBA4444( u8 color )
+static INLINE u16 IA31_RGBA4444( u8 color )
 {
     u8 i = Three2Four[color >> 1];
     u8 a = One2Four[color & 0x01];
     return (i << 12) | (i << 8) | (i << 4) | a;
 }
 
-static inline u16 IA31_IA88( u8 color )
+static INLINE u16 IA31_IA88( u8 color )
 {
     u8 i = Three2Eight[color >> 1];
     u8 a = One2Eight[color & 0x01];
     return (a << 8) | i;
 }
 
-static inline u32 IA31_RGBA8888( u8 color )
+static INLINE u32 IA31_RGBA8888( u8 color )
 {
     u8 i = Three2Eight[color >> 1];
     u8 a = One2Eight[color & 0x01];
     return (i << 24) | (i << 16) | (i << 8) | a;
 }
 
-static inline u16 I8_RGBA4444( u8 color )
+static INLINE u16 I8_RGBA4444( u8 color )
 {
     u8 c = color >> 4;
     return (c << 12) | (c << 8) | (c << 4) | c;
@@ -281,7 +281,7 @@ static inline u16 I8_RGBA4444( u8 color )
 
 #define I8_RGBA8888(color) ((color << 24) | (color << 16) | (color << 8) | color)
 
-static inline u16 I4_RGBA4444( u8 color )
+static INLINE u16 I4_RGBA4444( u8 color )
 {
     u16 ret = color & 0x0f;
     ret |= ret << 4; ret |= ret << 8; return ret;
@@ -289,7 +289,7 @@ static inline u16 I4_RGBA4444( u8 color )
 
 #define I4_I8(color) (Four2Eight[color & 0x0f])
 
-static inline u16 I4_IA88( u8 color )
+static INLINE u16 I4_IA88( u8 color )
 {
     u32 c = Four2Eight[color & 0x0f];
     return (c << 8) | c;
@@ -297,7 +297,7 @@ static inline u16 I4_IA88( u8 color )
 
 #define I8_IA88(color) ((color << 8) | color)
 
-static inline u16 IA88_IA88( u16 color )
+static INLINE u16 IA88_IA88( u16 color )
 {
     u8 a = (color&0xFF);
     u8 i = (color>>8);
@@ -305,7 +305,7 @@ static inline u16 IA88_IA88( u16 color )
 }
 
 
-static inline u32 I4_RGBA8888( u8 color )
+static INLINE u32 I4_RGBA8888( u8 color )
 {
     u8 c = Four2Eight[color];
     c |= c << 4;
