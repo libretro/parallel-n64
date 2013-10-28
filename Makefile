@@ -31,6 +31,17 @@ else
    GL_LIB := -lGL
 endif
    PLATFORM_EXT := unix
+else ifneq (,$(findstring rpi,$(platform)))
+   TARGET := $(TARGET_NAME)_libretro.so
+   LDFLAGS += -shared -Wl,--version-script=libretro/link.T
+   fpic = -fPIC
+   GLES = 1
+   GL_LIB := -lGLESv2
+   CPPFLAGS = -DNOSSE -I/opt/vc/include -DARMv5_ONLY -DNO_ASM
+   OBJECTS += libretro/libco/armeabi_asm.o
+   PLATFORM_EXT := unix
+   WITH_DYNAREC=arm
+
 else ifneq (,$(findstring osx,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dylib
    LDFLAGS += -dynamiclib
