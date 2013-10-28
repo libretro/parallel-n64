@@ -335,7 +335,6 @@ int grTexFormat2GLPackedFmt(int fmt, int * gltexfmt, int * glpixfmt, int * glpac
          *glpackfmt = GL_UNSIGNED_SHORT_5_6_5;
          break;
       case GR_TEXFMT_ARGB_1555:
-         if (ati_sucks > 0) return -1; // ATI sucks as usual (fixes slowdown on ATI)
          factor = 2;
          *gltexfmt = GL_RGB5_A1;
          *glpixfmt = GL_BGRA;
@@ -428,35 +427,16 @@ grTexDownloadMipMap( GrChipID_t tmu,
       switch(info->format)
       {
          case GR_TEXFMT_ALPHA_8:
-            for (i=0; i<height; i++)
-            {
-               for (j=0; j<width; j++)
-               {
-                  unsigned int texel = (unsigned int)((unsigned char*)info->data)[m];
-                  texel |= (texel << 8);
-                  texel |= (texel << 16);
-                  ((unsigned int*)texture)[n] = texel;
-                  m++;
-                  n++;
-               }
-            }
             factor = 1;
-            glformat = GL_RGBA;
+            gltexfmt = GL_INTENSITY8;
+            glpixfmt = GL_LUMINANCE;
+            glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
-            for (i=0; i<height; i++)
-            {
-               for (j=0; j<width; j++)
-               {
-                  unsigned int texel = (unsigned int)((unsigned char*)info->data)[m];
-                  texel |= (0xFF000000 | (texel << 16) | (texel << 8));
-                  ((unsigned int*)texture)[n] = texel;
-                  m++;
-                  n++;
-               }
-            }
             factor = 1;
-            glformat = GL_ALPHA;
+            gltexfmt = GL_LUMINANCE8;
+            glpixfmt = GL_LUMINANCE;
+            glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_ALPHA_INTENSITY_44:
             for (i=0; i<height; i++)
@@ -484,106 +464,34 @@ grTexDownloadMipMap( GrChipID_t tmu,
             glformat = GL_LUMINANCE_ALPHA;
             break;
          case GR_TEXFMT_RGB_565:
-            for (i=0; i<height; i++)
-            {
-               for (j=0; j<width; j++)
-               {
-                  unsigned int texel = (unsigned int)((unsigned short*)info->data)[m];
-                  unsigned int B = texel & 0x0000F800;
-                  unsigned int G = texel & 0x000007E0;
-                  unsigned int R = texel & 0x0000001F;
-#if 0
-                  /* accurate conversion */
-                  ((unsigned int*)texture)[n] = 0xFF000000 | (R << 19) | ((R >> 2) << 16) | (G << 5) | ((G >> 9) << 8) | (B >> 8) | (B >> 13);
-#else
-                  ((unsigned int*)texture)[n] = 0xFF000000 | (R << 19) | (G << 5) | (B >> 8);
-#endif
-                  m++;
-                  n++;
-               }
-            }
             factor = 2;
-            glformat = GL_RGB;
+            gltexfmt = GL_RGB;
+            glpixfmt = GL_RGB;
+            glpackfmt = GL_UNSIGNED_SHORT_5_6_5;
             break;
          case GR_TEXFMT_ARGB_1555:
-            for (i=0; i<height; i++)
-            {
-               for (j=0; j<width; j++)
-               {
-                  unsigned int texel = (unsigned int)((unsigned short*)info->data)[m];
-                  unsigned int A = texel & 0x00008000 ? 0xFF000000 : 0;
-                  unsigned int B = texel & 0x00007C00;
-                  unsigned int G = texel & 0x000003E0;
-                  unsigned int R = texel & 0x0000001F;
-#if 0
-                  /* accurate conversion */
-                  ((unsigned int*)texture)[n] = A | (R << 19) | ((R >> 2) << 16) | (G << 6) | ((G >> 8) << 8) | (B >> 7) | (B >> 12);
-#else
-                  ((unsigned int*)texture)[n] = A | (R << 19) | (G << 6) | (B >> 7);
-#endif
-                  m++;
-                  n++;
-               }
-            }
             factor = 2;
-            glformat = GL_RGBA;
+            gltexfmt = GL_RGB5_A1;
+            glpixfmt = GL_BGRA;
+            glpackfmt = GL_UNSIGNED_SHORT_1_5_5_5_REV;
             break;
          case GR_TEXFMT_ALPHA_INTENSITY_88:
-            for (i=0; i<height; i++)
-            {
-               for (j=0; j<width; j++)
-               {
-                  unsigned int AI = (unsigned int)((unsigned short*)info->data)[m];
-                  unsigned int I = (unsigned int)(AI & 0x000000FF);
-                  ((unsigned int*)texture)[n] = (AI << 16) | (I << 8) | I;
-                  m++;
-                  n++;
-               }
-            }
             factor = 2;
-            glformat = GL_LUMINANCE_ALPHA;
+            gltexfmt = GL_LUMINANCE8_ALPHA8;
+            glpixfmt = GL_LUMINANCE_ALPHA;
+            glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_ARGB_4444:
-
-            for (i=0; i<height; i++)
-            {
-               for (j=0; j<width; j++)
-               {
-                  unsigned int texel = (unsigned int)((unsigned short*)info->data)[m];
-                  unsigned int A = texel & 0x0000F000;
-                  unsigned int B = texel & 0x00000F00;
-                  unsigned int G = texel & 0x000000F0;
-                  unsigned int R = texel & 0x0000000F;
-#if 0
-                  /* accurate conversion */
-                  ((unsigned int*)texture)[n] = (A << 16) | (A << 12) | (R << 20) | (R << 16) | (G << 8) | (G << 4) | (B >> 4) | (B >> 8);
-#else
-                  ((unsigned int*)texture)[n] = (A << 16) | (R << 20) | (G << 8) | (B >> 4);
-#endif
-                  m++;
-                  n++;
-               }
-            }
             factor = 2;
-            glformat = GL_RGBA;
+            gltexfmt = GL_RGBA4;
+            glpixfmt = GL_BGRA;
+            glpackfmt = GL_UNSIGNED_SHORT_4_4_4_4_REV;
             break;
          case GR_TEXFMT_ARGB_8888:
-            for (i=0; i<height; i++)
-            {
-               for (j=0; j<width; j++)
-               {
-                  unsigned int texel = ((unsigned int*)info->data)[m];
-                  unsigned int A = texel & 0xFF000000;
-                  unsigned int B = texel & 0x00FF0000;
-                  unsigned int G = texel & 0x0000FF00;
-                  unsigned int R = texel & 0x000000FF;
-                  ((unsigned int*)texture)[n] = A | (R << 16) | G | (B >> 16);
-                  m++;
-                  n++;
-               }
-            }
             factor = 4;
-            glformat = GL_RGBA;
+            gltexfmt = GL_RGBA8;
+            glpixfmt = GL_BGRA;
+            glpackfmt = GL_UNSIGNED_INT_8_8_8_8_REV;
             break;
             /*
                case GR_TEXFMT_ARGB_CMP_DXT1: // FXT1,DXT1,5 support - H.Morii
