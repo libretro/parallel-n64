@@ -43,8 +43,9 @@
 int TMU_SIZE = 8*2048*2048;
 static unsigned char* texture = NULL;
 int packed_pixels_support = -1;
-int ati_sucks = -1;
 float largest_supported_anisotropy = 1.0f;
+
+int (*grTexFormat2GLFmtFunc)(GrTexInfo  *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt, int * glformat);
 
 #ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE
@@ -309,9 +310,12 @@ int grTexFormatSize(int fmt)
    return factor;
 }
 
-int grTexFormat2GLPackedFmt(int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt)
+
+#ifndef GLES
+/*  packed_pixels support function, should be fastest */
+int grTexFormat2GLPackedFmt(GrTexInfo  *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt, int * glformat)
 {
-   int factor = -1;
+   int i, j, factor = -1, n = 0, m = 0;
    switch(fmt)
    {
       case GR_TEXFMT_ALPHA_8:
@@ -327,6 +331,24 @@ int grTexFormat2GLPackedFmt(int fmt, int * gltexfmt, int * glpixfmt, int * glpac
          *glpackfmt = GL_UNSIGNED_BYTE;
          break;
       case GR_TEXFMT_ALPHA_INTENSITY_44:
+         //TODO: still software texture color format conversion, rewrite
+         for (i=0; i<height; i++)
+         {
+            for (j=0; j<width; j++)
+            {
+               unsigned int texel = (unsigned int)((unsigned char*)info->data)[m];
+               /* accurate conversion */
+               unsigned int texel_hi = (texel & 0x000000F0) << 20;
+               unsigned int texel_low = texel & 0x0000000F;
+               texel_low |= (texel_low << 4);
+               texel_hi |= ((texel_hi << 4) | (texel_low << 16) | (texel_low << 8) | texel_low);
+               ((unsigned int*)texture)[n] = texel_hi;
+               m++;
+               n++;
+            }
+         }
+         factor = 1;
+         *glformat = GL_LUMINANCE_ALPHA;
          break;
       case GR_TEXFMT_RGB_565:
          factor = 2;
@@ -358,6 +380,7 @@ int grTexFormat2GLPackedFmt(int fmt, int * gltexfmt, int * glpixfmt, int * glpac
          *glpixfmt = GL_BGRA;
          *glpackfmt = GL_UNSIGNED_INT_8_8_8_8_REV;
          break;
+#ifdef HAVE_S3TC
       case GR_TEXFMT_ARGB_CMP_DXT1:  // FXT1,DXT1,5 support - H.Morii
          // HACKALERT: 3Dfx Glide uses GR_TEXFMT_ARGB_CMP_DXT1 for both opaque DXT1 and DXT1 with 1bit alpha.
          // GlideHQ compiled with GLIDE64_DXTN option enabled, uses opaqe DXT1 only.
@@ -384,8 +407,181 @@ int grTexFormat2GLPackedFmt(int fmt, int * gltexfmt, int * glpixfmt, int * glpac
          *glpixfmt = GL_COMPRESSED_RGBA_FXT1_3DFX;
          *glpackfmt = GL_COMPRESSED_RGBA_FXT1_3DFX; // XXX: what should we do about GL_COMPRESSED_RGB_FXT1_3DFX?
          break;
+#endif
       default:
          DISPLAY_WARNING("grTexFormat2GLPackedFmt : unknown texture format: %x", fmt);
+   }
+   return factor;
+}
+#endif
+
+/*  slowest, fallback function - converts texture format to GL_RGBA */
+int grTexFormat2GLFmtSlow(GrTexInfo  *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt, int * glformat)
+{
+   int factor = -1;
+   // VP fixed the texture conversions to be more accurate, also swapped
+   // the for i/j loops so that is is less likely to break the memory cache
+   int n = 0, m = 0, i, j;
+   switch(fmt)
+   {
+      case GR_TEXFMT_ALPHA_8:
+         for (i=0; i<height; i++)
+         {
+            for (j=0; j<width; j++)
+            {
+               unsigned int texel = (unsigned int)((unsigned char*)info->data)[m];
+               texel |= (texel << 8);
+               texel |= (texel << 16);
+               ((unsigned int*)texture)[n] = texel;
+               m++;
+               n++;
+            }
+         }
+         factor = 1;
+         *glformat = GL_RGBA;
+         break;
+      case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
+         for (i=0; i<height; i++)
+         {
+            for (j=0; j<width; j++)
+            {
+               unsigned int texel = (unsigned int)((unsigned char*)info->data)[m];
+               texel |= (0xFF000000 | (texel << 16) | (texel << 8));
+               ((unsigned int*)texture)[n] = texel;
+               m++;
+               n++;
+            }
+         }
+         factor = 1;
+         *glformat = GL_ALPHA;
+         break;
+      case GR_TEXFMT_ALPHA_INTENSITY_44:
+         for (i=0; i<height; i++)
+         {
+            for (j=0; j<width; j++)
+            {
+               unsigned int texel = (unsigned int)((unsigned char*)info->data)[m];
+               /* accurate conversion */
+               unsigned int texel_hi = (texel & 0x000000F0) << 20;
+               unsigned int texel_low = texel & 0x0000000F;
+               texel_low |= (texel_low << 4);
+               texel_hi |= ((texel_hi << 4) | (texel_low << 16) | (texel_low << 8) | texel_low);
+               ((unsigned int*)texture)[n] = texel_hi;
+               m++;
+               n++;
+            }
+         }
+         factor = 1;
+         *glformat = GL_LUMINANCE_ALPHA;
+         break;
+      case GR_TEXFMT_RGB_565:
+         for (i=0; i<height; i++)
+         {
+            for (j=0; j<width; j++)
+            {
+               unsigned int texel = (unsigned int)((unsigned short*)info->data)[m];
+               unsigned int B = texel & 0x0000F800;
+               unsigned int G = texel & 0x000007E0;
+               unsigned int R = texel & 0x0000001F;
+               ((unsigned int*)texture)[n] = 0xFF000000 | (R << 19) | (G << 5) | (B >> 8);
+               m++;
+               n++;
+            }
+         }
+         factor = 2;
+         *glformat = GL_RGB;
+         break;
+      case GR_TEXFMT_ARGB_1555:
+         for (i=0; i<height; i++)
+         {
+            for (j=0; j<width; j++)
+            {
+               unsigned int texel = (unsigned int)((unsigned short*)info->data)[m];
+               unsigned int A = texel & 0x00008000 ? 0xFF000000 : 0;
+               unsigned int B = texel & 0x00007C00;
+               unsigned int G = texel & 0x000003E0;
+               unsigned int R = texel & 0x0000001F;
+               ((unsigned int*)texture)[n] = A | (R << 19) | (G << 6) | (B >> 7);
+               m++;
+               n++;
+            }
+         }
+         factor = 2;
+         *glformat = GL_RGBA;
+         break;
+      case GR_TEXFMT_ALPHA_INTENSITY_88:
+         for (i=0; i<height; i++)
+         {
+            for (j=0; j<width; j++)
+            {
+               unsigned int AI = (unsigned int)((unsigned short*)info->data)[m];
+               unsigned int I = (unsigned int)(AI & 0x000000FF);
+               ((unsigned int*)texture)[n] = (AI << 16) | (I << 8) | I;
+               m++;
+               n++;
+            }
+         }
+         factor = 2;
+         *glformat = GL_LUMINANCE_ALPHA;
+         break;
+      case GR_TEXFMT_ARGB_4444:
+
+         for (i=0; i<height; i++)
+         {
+            for (j=0; j<width; j++)
+            {
+               unsigned int texel = (unsigned int)((unsigned short*)info->data)[m];
+               unsigned int A = texel & 0x0000F000;
+               unsigned int B = texel & 0x00000F00;
+               unsigned int G = texel & 0x000000F0;
+               unsigned int R = texel & 0x0000000F;
+               ((unsigned int*)texture)[n] = (A << 16) | (R << 20) | (G << 8) | (B >> 4);
+               m++;
+               n++;
+            }
+         }
+         factor = 2;
+         *glformat = GL_RGBA;
+         break;
+      case GR_TEXFMT_ARGB_8888:
+         for (i=0; i<height; i++)
+         {
+            for (j=0; j<width; j++)
+            {
+               unsigned int texel = ((unsigned int*)info->data)[m];
+               unsigned int A = texel & 0xFF000000;
+               unsigned int B = texel & 0x00FF0000;
+               unsigned int G = texel & 0x0000FF00;
+               unsigned int R = texel & 0x000000FF;
+               ((unsigned int*)texture)[n] = A | (R << 16) | G | (B >> 16);
+               m++;
+               n++;
+            }
+         }
+         factor = 4;
+         *glformat = GL_RGBA;
+         break;
+#ifdef HAVE_S3TC
+      case GR_TEXFMT_ARGB_CMP_DXT1: // FXT1,DXT1,5 support - H.Morii
+         factor = 8; // HACKALERT: factor holds block bytes
+         *glformat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
+         break;
+      case GR_TEXFMT_ARGB_CMP_DXT3: // FXT1,DXT1,5 support - H.Morii
+         factor = 16; // HACKALERT: factor holds block bytes
+         *glformat = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
+         break;
+      case GR_TEXFMT_ARGB_CMP_DXT5:
+         factor = 16;
+         *glformat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+         break;
+      case GR_TEXFMT_ARGB_CMP_FXT1:
+         factor = 8;
+         *glformat = GL_COMPRESSED_RGBA_FXT1_3DFX;
+         break;
+#endif
+      default:
+         DISPLAY_WARNING("grTexDownloadMipMap : unknown texture format: %x", info->format);
+         factor = 0;
    }
    return factor;
 }
@@ -396,7 +592,7 @@ grTexDownloadMipMap( GrChipID_t tmu,
                     FxU32      evenOdd,
                     GrTexInfo  *info )
 {
-   int width, height, i, j;
+   int width, height;
    int factor;
    int glformat = 0;
    int gltexfmt, glpixfmt, glpackfmt;
@@ -414,119 +610,20 @@ grTexDownloadMipMap( GrChipID_t tmu,
       height = width >> info->aspectRatioLog2;
    }
 
-   if (!packed_pixels_support)
-      factor = -1;
-   else
-      factor = grTexFormat2GLPackedFmt(info->format, &gltexfmt, &glpixfmt, &glpackfmt);
-
-   if (factor < 0)
-   {
-      // VP fixed the texture conversions to be more accurate, also swapped
-      // the for i/j loops so that is is less likely to break the memory cache
-      register int n = 0, m = 0;
-      switch(info->format)
-      {
-         case GR_TEXFMT_ALPHA_8:
-            factor = 1;
-            gltexfmt = GL_INTENSITY8;
-            glpixfmt = GL_LUMINANCE;
-            glpackfmt = GL_UNSIGNED_BYTE;
-            break;
-         case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
-            factor = 1;
-            gltexfmt = GL_LUMINANCE8;
-            glpixfmt = GL_LUMINANCE;
-            glpackfmt = GL_UNSIGNED_BYTE;
-            break;
-         case GR_TEXFMT_ALPHA_INTENSITY_44:
-            for (i=0; i<height; i++)
-            {
-               for (j=0; j<width; j++)
-               {
-                  unsigned int texel = (unsigned int)((unsigned char*)info->data)[m];
-#if 1
-                  /* accurate conversion */
-                  unsigned int texel_hi = (texel & 0x000000F0) << 20;
-                  unsigned int texel_low = texel & 0x0000000F;
-                  texel_low |= (texel_low << 4);
-                  texel_hi |= ((texel_hi << 4) | (texel_low << 16) | (texel_low << 8) | texel_low);
-#else
-                  unsigned int texel_hi = (texel & 0x000000F0) << 24;
-                  unsigned int texel_low = (texel & 0x0000000F) << 4;
-                  texel_hi |= ((texel_low << 16) | (texel_low << 8) | texel_low);
-#endif
-                  ((unsigned int*)texture)[n] = texel_hi;
-                  m++;
-                  n++;
-               }
-            }
-            factor = 1;
-            glformat = GL_LUMINANCE_ALPHA;
-            break;
-         case GR_TEXFMT_RGB_565:
-            factor = 2;
-            gltexfmt = GL_RGB;
-            glpixfmt = GL_RGB;
-            glpackfmt = GL_UNSIGNED_SHORT_5_6_5;
-            break;
-         case GR_TEXFMT_ARGB_1555:
-            factor = 2;
-            gltexfmt = GL_RGB5_A1;
-            glpixfmt = GL_BGRA;
-            glpackfmt = GL_UNSIGNED_SHORT_1_5_5_5_REV;
-            break;
-         case GR_TEXFMT_ALPHA_INTENSITY_88:
-            factor = 2;
-            gltexfmt = GL_LUMINANCE8_ALPHA8;
-            glpixfmt = GL_LUMINANCE_ALPHA;
-            glpackfmt = GL_UNSIGNED_BYTE;
-            break;
-         case GR_TEXFMT_ARGB_4444:
-            factor = 2;
-            gltexfmt = GL_RGBA4;
-            glpixfmt = GL_BGRA;
-            glpackfmt = GL_UNSIGNED_SHORT_4_4_4_4_REV;
-            break;
-         case GR_TEXFMT_ARGB_8888:
-            factor = 4;
-            gltexfmt = GL_RGBA8;
-            glpixfmt = GL_BGRA;
-            glpackfmt = GL_UNSIGNED_INT_8_8_8_8_REV;
-            break;
-            /*
-               case GR_TEXFMT_ARGB_CMP_DXT1: // FXT1,DXT1,5 support - H.Morii
-               factor = 8;                 // HACKALERT: factor holds block bytes
-               glformat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
-               break;
-               case GR_TEXFMT_ARGB_CMP_DXT3: // FXT1,DXT1,5 support - H.Morii
-               factor = 16;                 // HACKALERT: factor holds block bytes
-               glformat = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-               break;
-               case GR_TEXFMT_ARGB_CMP_DXT5:
-               factor = 16;
-               glformat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-               break;
-               case GR_TEXFMT_ARGB_CMP_FXT1:
-               factor = 8;
-               glformat = GL_COMPRESSED_RGBA_FXT1_3DFX;
-               break;
-               */
-         default:
-            DISPLAY_WARNING("grTexDownloadMipMap : unknown texture format: %x", info->format);
-            factor = 0;
-      }
-   }
+   factor = grTexFormat2GLFmtFunc(info, info->format, &gltexfmt, &glpixfmt, &glpackfmt, &glformat);
 
    glActiveTexture(GL_TEXTURE2);
 
    switch(info->format)
    {
+#ifdef HAVE_S3TC
       case GR_TEXFMT_ARGB_CMP_DXT1:
       case GR_TEXFMT_ARGB_CMP_DXT3:
       case GR_TEXFMT_ARGB_CMP_DXT5:
       case GR_TEXFMT_ARGB_CMP_FXT1:
          remove_tex(startAddress+1, startAddress+1+((width*height*factor)>>4));
          break;
+#endif
       default:
          remove_tex(startAddress+1, startAddress+1+(width*height*factor));
    }
@@ -539,12 +636,14 @@ grTexDownloadMipMap( GrChipID_t tmu,
 
    switch(info->format)
    {
+#ifdef HAVE_S3TC
       case GR_TEXFMT_ARGB_CMP_DXT1:
       case GR_TEXFMT_ARGB_CMP_DXT3:
       case GR_TEXFMT_ARGB_CMP_DXT5:
       case GR_TEXFMT_ARGB_CMP_FXT1:
          glCompressedTexImage2DARB(GL_TEXTURE_2D, 0, (glformat ? glformat : gltexfmt), width, height, 0, (width*height*factor)>>4, info->data);
          break;
+#endif
       default:
          if (glformat)
             glTexImage2D(GL_TEXTURE_2D, 0, glformat, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture);
