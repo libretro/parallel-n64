@@ -1,6 +1,7 @@
 // 2008.03.29 H.Morii - added SSE 3DNOW! 3x3 1x3 matrix multiplication
 //                      and 3DNOW! 4x4 4x4 matrix multiplication
 
+#ifndef __arm__
 #include <xmmintrin.h>
 #include "3dmathsse.h"
 
@@ -42,3 +43,5 @@ void MulMatricesSSE(float m1[4][4],float m2[4][4],float r[4][4])
       __builtin_ia32_storeups(r[i], destrow);
    }
 }
+
+#endif
