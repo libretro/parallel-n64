@@ -165,6 +165,7 @@ void GetTexInfo (int id, int tile)
    for (t = 0; t < MAX_TMU; t++)
       tex_found[id][t] = -1;
 
+#ifdef HAVE_HWFBE
    TBUFF_COLOR_IMAGE * pFBTex = 0;
    if (rdp.aTBuffTex[0] && rdp.aTBuffTex[0]->tile == id)
       pFBTex = rdp.aTBuffTex[0];
@@ -172,6 +173,7 @@ void GetTexInfo (int id, int tile)
       pFBTex = rdp.aTBuffTex[1];
    if (pFBTex && pFBTex->cache)
       return;
+#endif
 
    TEXINFO *info = &texinfo[id];
 
@@ -492,12 +494,13 @@ void TexCache(void)
    if (rdp.tex & 2)
       GetTexInfo (1, rdp.cur_tile+1);
 
+#ifdef HAVE_HWFBE
    TBUFF_COLOR_IMAGE * aTBuff[2] = {0, 0};
    if (rdp.aTBuffTex[0])
       aTBuff[rdp.aTBuffTex[0]->tile] = rdp.aTBuffTex[0];
    if (rdp.aTBuffTex[1])
       aTBuff[rdp.aTBuffTex[1]->tile] = rdp.aTBuffTex[1];
-
+#endif
 
    int tmu_0, tmu_1;
    int tmu_0_mode=0, tmu_1_mode=0;
@@ -735,6 +738,7 @@ void TexCache(void)
 
    if ((rdp.tex & 1) && tmu_0 < voodoo.num_tmu)
    {
+#ifdef HAVE_HWFBE
       if (aTBuff[0] && aTBuff[0]->cache)
       {
          LRDP(" | |- Hires tex T0 found in cache.\n");
@@ -742,7 +746,9 @@ void TexCache(void)
          rdp.cur_cache[0]->last_used = frame_count;
          rdp.cur_cache[0]->uses = rdp.debug_n;
       }
-      else if (tex_found[0][tmu_0] != -1)
+      else
+#endif
+         if (tex_found[0][tmu_0] != -1)
       {
          LRDP(" | |- T0 found in cache.\n");
          CACHE_LUT *cache = &rdp.cache[0][tex_found[0][0]];
@@ -760,6 +766,7 @@ void TexCache(void)
    }
    if ((rdp.tex & 2) && tmu_1 < voodoo.num_tmu)
    {
+#ifdef HAVE_HWFBE
       if (aTBuff[1] && aTBuff[1]->cache)
       {
          LRDP(" | |- Hires tex T1 found in cache.\n");
@@ -767,7 +774,9 @@ void TexCache(void)
          rdp.cur_cache[1]->last_used = frame_count;
          rdp.cur_cache[1]->uses = rdp.debug_n;
       }
-      else if (tex_found[1][tmu_1] != -1)
+      else
+#endif
+         if (tex_found[1][tmu_1] != -1)
       {
          LRDP(" | |- T1 found in cache.\n");
          CACHE_LUT *cache = &rdp.cache[0][tex_found[1][0]];
@@ -858,8 +867,10 @@ void TexCache(void)
                   mode_s,
                   mode_t);
          }
+#ifdef HAVE_HWFBE
          if (aTBuff[i] && (rdp.tex&(i+1)))
             SelectTBuffTex(aTBuff[i]);
+#endif
       }
    }
 
@@ -1108,6 +1119,7 @@ void LoadTex(int id, int tmu)
    cache->mod_color1 = modcolor1;
    cache->mod_factor = modfactor;
 
+#ifdef HAVE_HWFBE
    for (t = 0; t < 2; t++)
    {
       if (rdp.aTBuffTex[t] && rdp.aTBuffTex[t]->tile == id) //texture buffer will be used instead of frame buffer texture
@@ -1117,6 +1129,7 @@ void LoadTex(int id, int tmu)
          return;
       }
    }
+#endif
 
    uint32_t result = 0;	// keep =0 so it doesn't mess up on the first split
 

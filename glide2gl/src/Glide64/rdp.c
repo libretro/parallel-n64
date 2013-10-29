@@ -1343,6 +1343,7 @@ static void rdp_texrect()
         }
       }
 
+#ifdef HAVE_HWFBE
       if (rdp.aTBuffTex[i]) //hwfbe texture
       {
         float t0_off_x;
@@ -1373,6 +1374,7 @@ static void rdp_texrect()
           i, texUV[i].ul_u, texUV[i].ul_v, texUV[i].lr_u, texUV[i].lr_v);
       }
       else //common case
+#endif
       {
         //kill 10.5 format overflow by SIGN16 macro
         texUV[i].ul_u = SIGN16(x_i) / 32.0f;
@@ -1433,7 +1435,11 @@ static void rdp_texrect()
     //            FRDP("v[%d]  u0: %f, v0: %f, u1: %f, v1: %f\n", j, vstd[j].u0, vstd[j].v0, vstd[j].u1, vstd[j].v1);
 
 
-    if (!rdp.aTBuffTex[0] && rdp.cur_cache[0]->splits != 1)
+    if (
+#ifdef HAVE_HWFBE
+          !rdp.aTBuffTex[0] &&
+#endif
+          rdp.cur_cache[0]->splits != 1)
     {
       // ** LARGE TEXTURE HANDLING **
       // *VERY* simple algebra for texrects
@@ -1823,6 +1829,7 @@ static void rdp_settilesize()
 
 void setTBufTex(uint16_t t_mem, uint32_t cnt)
 {
+#ifdef HAVE_HWFBE
    int i;
    FRDP("setTBufTex t_mem=%d, cnt=%d\n", t_mem, cnt);
    TBUFF_COLOR_IMAGE * pTbufTex = rdp.tbuff_tex;
@@ -1854,6 +1861,7 @@ void setTBufTex(uint16_t t_mem, uint32_t cnt)
          }
       }
    }
+#endif
 }
 
 static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)

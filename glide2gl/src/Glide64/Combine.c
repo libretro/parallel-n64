@@ -964,7 +964,11 @@ static void cc_shade ()
 
 static void cc_one_mul_shade ()
 {
-   if ((settings.hacks&hack_Knockout) && (rdp.aTBuffTex[0] || rdp.aTBuffTex[1] || rdp.cur_image)) //hack for boxer shadow
+   if ((settings.hacks&hack_Knockout)&& (
+#ifdef HAVE_HWFBE
+            rdp.aTBuffTex[0] || rdp.aTBuffTex[1] ||
+#endif
+            rdp.cur_image)) //hack for boxer shadow
    {
       CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER,
             GR_COMBINE_FACTOR_LOCAL,
@@ -8712,6 +8716,7 @@ static void ac_one_sub_t0_mul_prim ()  //Aded by Gonetz
 
 static void ac_one_sub_t0_mul_shade ()  //Aded by Gonetz
 {
+#ifdef HAVE_HWFBE
    if (rdp.aTBuffTex[0] || rdp.aTBuffTex[1])
    {
       ACMB (GR_COMBINE_FUNCTION_BLEND_LOCAL,
@@ -8721,6 +8726,7 @@ static void ac_one_sub_t0_mul_shade ()  //Aded by Gonetz
       A_USE_T0 ();
    }
    else
+#endif
       ac_zero();
 }
 
@@ -13753,6 +13759,7 @@ void Combine(void)
    rdp.tex = cmb.tex;
 
    {
+#ifdef HAVE_HWFBE
       TBUFF_COLOR_IMAGE * aTBuff[2] = {0, 0};
       if (rdp.aTBuffTex[0])
          aTBuff[rdp.aTBuffTex[0]->tile] = rdp.aTBuffTex[0];
@@ -13804,6 +13811,7 @@ void Combine(void)
          }
       }
       else
+#endif
          grChromakeyMode(GR_CHROMAKEY_DISABLE);
    }
    cmb.shade_mod_hash = (rdp.cmb_flags + rdp.cmb_flags_2) * (rdp.prim_color + rdp.env_color + rdp.K5);

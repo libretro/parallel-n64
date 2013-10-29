@@ -687,7 +687,9 @@ struct RDP
    CI_STATUS ci_status;
    TBUFF_COLOR_IMAGE * cur_image;  //image currently being drawn
    TBUFF_COLOR_IMAGE * tbuff_tex;  //image, which corresponds to currently selected texture
+#ifdef HAVE_HWFBE
    TBUFF_COLOR_IMAGE * aTBuffTex[2]; 
+#endif
    uint8_t  cur_tex_buf;
    uint8_t  acc_tex_buf;
    int skip_drawing; //rendering is not required. used for frame buffer emulation
