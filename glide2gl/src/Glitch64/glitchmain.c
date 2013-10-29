@@ -28,13 +28,6 @@
 #include "g3ext.h"
 #include "main.h"
 
-// FXT1,DXT1,DXT5 support - Hiroshi Morii <koolsmoky(at)users.sourceforge.net>
-// NOTE: Glide64 + GlideHQ use the following formats
-// GL_COMPRESSED_RGB_S3TC_DXT1_EXT
-// GL_COMPRESSED_RGBA_S3TC_DXT5_EXT
-// GL_COMPRESSED_RGB_FXT1_3DFX
-// GL_COMPRESSED_RGBA_FXT1_3DFX
-
 #define TEXTURE_UNITS 4
 
 extern retro_environment_t environ_cb;

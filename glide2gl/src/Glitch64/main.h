@@ -61,7 +61,6 @@ void WriteLog(m64p_msg_level level, const char *msg, ...);
 int grTexFormatSize(int fmt);
 
 extern int packed_pixels_support;
-extern float largest_supported_anisotropy;
 
 extern int default_texture; // the infamous "32*1024*1024" is now configurable
 extern int depth_texture;

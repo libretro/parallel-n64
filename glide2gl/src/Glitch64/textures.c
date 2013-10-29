@@ -28,23 +28,15 @@
 #include <stdio.h>
 
 /* Napalm extensions to GrTextureFormat_t */
-#define GR_TEXFMT_ARGB_CMP_FXT1           0x11
 #define GR_TEXFMT_ARGB_8888               0x12
 #define GR_TEXFMT_YUYV_422                0x13
 #define GR_TEXFMT_UYVY_422                0x14
 #define GR_TEXFMT_AYUV_444                0x15
-#define GR_TEXFMT_ARGB_CMP_DXT1           0x16
-#define GR_TEXFMT_ARGB_CMP_DXT2           0x17
-#define GR_TEXFMT_ARGB_CMP_DXT3           0x18
-#define GR_TEXFMT_ARGB_CMP_DXT4           0x19
-#define GR_TEXFMT_ARGB_CMP_DXT5           0x1A
 #define GR_TEXTFMT_RGB_888                0xFF
 
 int TMU_SIZE = 8*2048*2048;
 static unsigned char* texture = NULL;
 int packed_pixels_support = -1;
-int ati_sucks = -1;
-float largest_supported_anisotropy = 1.0f;
 
 #ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE
@@ -200,14 +192,6 @@ grTexTextureMemRequired( FxU32     evenOdd,
       case GR_TEXFMT_ARGB_8888:
          return (width*height)<<2;
          break;
-      case GR_TEXFMT_ARGB_CMP_DXT1:  // FXT1,DXT1,5 support - H.Morii
-         return ((((width+0x3)&~0x3)*((height+0x3)&~0x3))>>1);
-      case GR_TEXFMT_ARGB_CMP_DXT3:
-         return ((width+0x3)&~0x3)*((height+0x3)&~0x3);
-      case GR_TEXFMT_ARGB_CMP_DXT5:
-         return ((width+0x3)&~0x3)*((height+0x3)&~0x3);
-      case GR_TEXFMT_ARGB_CMP_FXT1:
-         return ((((width+0x7)&~0x7)*((height+0x3)&~0x3))>>1);
       default:
          DISPLAY_WARNING("grTexTextureMemRequired : unknown texture format: %x", info->format);
    }
@@ -250,14 +234,6 @@ grTexCalcMemRequired(
       case GR_TEXFMT_ARGB_8888:
          return (width*height)<<2;
          break;
-      case GR_TEXFMT_ARGB_CMP_DXT1:  // FXT1,DXT1,5 support - H.Morii
-         return ((((width+0x3)&~0x3)*((height+0x3)&~0x3))>>1);
-      case GR_TEXFMT_ARGB_CMP_DXT3:
-         return ((width+0x3)&~0x3)*((height+0x3)&~0x3);
-      case GR_TEXFMT_ARGB_CMP_DXT5:
-         return ((width+0x3)&~0x3)*((height+0x3)&~0x3);
-      case GR_TEXFMT_ARGB_CMP_FXT1:
-         return ((((width+0x7)&~0x7)*((height+0x3)&~0x3))>>1);
       default:
          DISPLAY_WARNING("grTexTextureMemRequired : unknown texture format: %x", fmt);
    }
@@ -290,18 +266,6 @@ int grTexFormatSize(int fmt)
          break;
       case GR_TEXFMT_ARGB_8888:
          factor = 4;
-         break;
-      case GR_TEXFMT_ARGB_CMP_DXT1:  // FXT1,DXT1,5 support - H.Morii
-         factor = 8;                  // HACKALERT: factor holds block bytes
-         break;
-      case GR_TEXFMT_ARGB_CMP_DXT3:  // FXT1,DXT1,5 support - H.Morii
-         factor = 16;                  // HACKALERT: factor holds block bytes
-         break;
-      case GR_TEXFMT_ARGB_CMP_DXT5:
-         factor = 16;
-         break;
-      case GR_TEXFMT_ARGB_CMP_FXT1:
-         factor = 8;
          break;
       default:
          DISPLAY_WARNING("grTexFormatSize : unknown texture format: %x", fmt);
@@ -340,7 +304,6 @@ int grTexFormat2GLPackedFmt(int fmt, int * gltexfmt, int * glpixfmt, int * glpac
             *glpackfmt = GL_UNSIGNED_SHORT_5_6_5;
             break;
          case GR_TEXFMT_ARGB_1555:
-            if (ati_sucks > 0) return -1; // ATI sucks as usual (fixes slowdown on ATI)
             factor = 2;
             *gltexfmt = GL_RGB5_A1;
             *glpixfmt = GL_BGRA;
@@ -363,32 +326,6 @@ int grTexFormat2GLPackedFmt(int fmt, int * gltexfmt, int * glpixfmt, int * glpac
             *gltexfmt = GL_RGBA8;
             *glpixfmt = GL_BGRA;
             *glpackfmt = GL_UNSIGNED_INT_8_8_8_8_REV;
-            break;
-         case GR_TEXFMT_ARGB_CMP_DXT1:  // FXT1,DXT1,5 support - H.Morii
-            // HACKALERT: 3Dfx Glide uses GR_TEXFMT_ARGB_CMP_DXT1 for both opaque DXT1 and DXT1 with 1bit alpha.
-            // GlideHQ compiled with GLIDE64_DXTN option enabled, uses opaqe DXT1 only.
-            factor = 8; // HACKALERT: factor holds block bytes
-            *gltexfmt = GL_COMPRESSED_RGB_S3TC_DXT1_EXT; // these variables aren't used
-            *glpixfmt = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
-            *glpackfmt = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
-            break;
-         case GR_TEXFMT_ARGB_CMP_DXT3:
-            factor = 16;
-            *gltexfmt = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-            *glpixfmt = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-            *glpackfmt = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-            break;
-         case GR_TEXFMT_ARGB_CMP_DXT5:
-            factor = 16;
-            *gltexfmt = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-            *glpixfmt = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-            *glpackfmt = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-            break;
-         case GR_TEXFMT_ARGB_CMP_FXT1:
-            factor = 8;
-            *gltexfmt = GL_COMPRESSED_RGBA_FXT1_3DFX;
-            *glpixfmt = GL_COMPRESSED_RGBA_FXT1_3DFX;
-            *glpackfmt = GL_COMPRESSED_RGBA_FXT1_3DFX; // XXX: what should we do about GL_COMPRESSED_RGB_FXT1_3DFX?
             break;
          default:
             DISPLAY_WARNING("grTexFormat2GLPackedFmt : unknown texture format: %x", fmt);
@@ -591,24 +528,6 @@ grTexDownloadMipMap( GrChipID_t tmu,
             factor = 4;
             glformat = GL_RGBA;
             break;
-            /*
-               case GR_TEXFMT_ARGB_CMP_DXT1: // FXT1,DXT1,5 support - H.Morii
-               factor = 8;                 // HACKALERT: factor holds block bytes
-               glformat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
-               break;
-               case GR_TEXFMT_ARGB_CMP_DXT3: // FXT1,DXT1,5 support - H.Morii
-               factor = 16;                 // HACKALERT: factor holds block bytes
-               glformat = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-               break;
-               case GR_TEXFMT_ARGB_CMP_DXT5:
-               factor = 16;
-               glformat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-               break;
-               case GR_TEXFMT_ARGB_CMP_FXT1:
-               factor = 8;
-               glformat = GL_COMPRESSED_RGBA_FXT1_3DFX;
-               break;
-               */
          default:
             DISPLAY_WARNING("grTexDownloadMipMap : unknown texture format: %x", info->format);
             factor = 0;
@@ -616,41 +535,17 @@ grTexDownloadMipMap( GrChipID_t tmu,
    }
 
    glActiveTexture(GL_TEXTURE2);
-
-   switch(info->format)
-   {
-      case GR_TEXFMT_ARGB_CMP_DXT1:
-      case GR_TEXFMT_ARGB_CMP_DXT3:
-      case GR_TEXFMT_ARGB_CMP_DXT5:
-      case GR_TEXFMT_ARGB_CMP_FXT1:
-         remove_tex(startAddress+1, startAddress+1+((width*height*factor)>>4));
-         break;
-      default:
-         remove_tex(startAddress+1, startAddress+1+(width*height*factor));
-   }
+   remove_tex(startAddress+1, startAddress+1+(width*height*factor));
 
    add_tex(startAddress+1);
    glBindTexture(GL_TEXTURE_2D, startAddress+1);
 
-   if (largest_supported_anisotropy > 1.0f)
-      glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, largest_supported_anisotropy);
-
    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture);
    /*
-      switch(info->format)
-      {
-      case GR_TEXFMT_ARGB_CMP_DXT1:
-      case GR_TEXFMT_ARGB_CMP_DXT3:
-      case GR_TEXFMT_ARGB_CMP_DXT5:
-      case GR_TEXFMT_ARGB_CMP_FXT1:
-      glCompressedTexImage2DARB(GL_TEXTURE_2D, 0, (glformat ? glformat : gltexfmt), width, height, 0, (width*height*factor)>>4, info->data);
-      break;
-      default:
       if (glformat) {
       glTexImage2D(GL_TEXTURE_2D, 0, glformat, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture);
       } else
       glTexImage2D(GL_TEXTURE_2D, 0, gltexfmt, width, height, 0, glpixfmt, glpackfmt, info->data);
-      }
       */
 
    glBindTexture(GL_TEXTURE_2D, default_texture);
