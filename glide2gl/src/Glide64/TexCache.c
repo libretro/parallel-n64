@@ -1237,6 +1237,8 @@ void LoadTex(int id, int tmu)
 
    if (mod && !modifyPalette)
    {
+      /* NOTE: So far only Turok: The Dinosaur Hunter seems to fallback on this for
+       * some of its textures */
       // Convert the texture to ARGB 4444
       if (LOWORD(result) == GR_TEXFMT_ARGB_1555)
       {
