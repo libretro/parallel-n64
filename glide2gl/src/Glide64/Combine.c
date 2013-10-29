@@ -13599,10 +13599,6 @@ void Combine(void)
    cmb.ccolor = cmb.tex_ccolor = 0;
    if (cmb.cmb_ext_use || cmb.tex_cmb_ext_use)
    {
-      //have to draw something to allow use of standard combine functions
-      VERTEX v;
-      memset(&v,0,sizeof(v));
-      grDrawPoint(&v);
       cmb.cmb_ext_use = 0;
       cmb.tex_cmb_ext_use = 0;
    }
