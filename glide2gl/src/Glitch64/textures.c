@@ -342,7 +342,6 @@ grTexDownloadMipMap( GrChipID_t tmu,
 {
    int width, height, i, j;
    int factor;
-   int glformat = 0;
    int gltexfmt, glpixfmt, glpackfmt;
    LOG("grTexDownloadMipMap(%d,%d,%d)\r\n", tmu, startAddress, evenOdd);
    if (info->largeLodLog2 != info->smallLodLog2) DISPLAY_WARNING("grTexDownloadMipMap : loading more than one LOD");
@@ -363,8 +362,8 @@ grTexDownloadMipMap( GrChipID_t tmu,
    else
       factor = grTexFormat2GLPackedFmt(info->format, &gltexfmt, &glpixfmt, &glpackfmt);
 
-   if (factor < 0) {
-
+   if (factor < 0)
+   {
       // VP fixed the texture conversions to be more accurate, also swapped
       // the for i/j loops so that is is less likely to break the memory cache
       register int n = 0, m = 0;
@@ -384,7 +383,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
                }
             }
             factor = 1;
-            glformat = GL_RGBA;
+            glpixfmt = GL_RGBA;
+            gltexfmt = GL_RGBA;
+            glpackfmt = GL_UNSIGNED_BYTE;
+            info->data = texture;
             break;
          case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
             for (i=0; i<height; i++)
@@ -399,7 +401,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
                }
             }
             factor = 1;
-            glformat = GL_ALPHA;
+            glpixfmt = GL_RGBA;
+            gltexfmt = GL_RGBA;
+            glpackfmt = GL_UNSIGNED_BYTE;
+            info->data = texture;
             break;
          case GR_TEXFMT_ALPHA_INTENSITY_44:
             for (i=0; i<height; i++)
@@ -424,7 +429,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
                }
             }
             factor = 1;
-            glformat = GL_LUMINANCE_ALPHA;
+            glpixfmt = GL_RGBA;
+            gltexfmt = GL_RGBA;
+            glpackfmt = GL_UNSIGNED_BYTE;
+            info->data = texture;
             break;
          case GR_TEXFMT_RGB_565:
             for (i=0; i<height; i++)
@@ -446,7 +454,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
                }
             }
             factor = 2;
-            glformat = GL_RGB;
+            glpixfmt = GL_RGBA;
+            gltexfmt = GL_RGBA;
+            glpackfmt = GL_UNSIGNED_BYTE;
+            info->data = texture;
             break;
          case GR_TEXFMT_ARGB_1555:
             for (i=0; i<height; i++)
@@ -469,7 +480,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
                }
             }
             factor = 2;
-            glformat = GL_RGBA;
+            glpixfmt = GL_RGBA;
+            gltexfmt = GL_RGBA;
+            glpackfmt = GL_UNSIGNED_BYTE;
+            info->data = texture;
             break;
          case GR_TEXFMT_ALPHA_INTENSITY_88:
             for (i=0; i<height; i++)
@@ -484,7 +498,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
                }
             }
             factor = 2;
-            glformat = GL_LUMINANCE_ALPHA;
+            glpixfmt = GL_RGBA;
+            gltexfmt = GL_RGBA;
+            glpackfmt = GL_UNSIGNED_BYTE;
+            info->data = texture;
             break;
          case GR_TEXFMT_ARGB_4444:
 
@@ -508,7 +525,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
                }
             }
             factor = 2;
-            glformat = GL_RGBA;
+            glpixfmt = GL_RGBA;
+            gltexfmt = GL_RGBA;
+            glpackfmt = GL_UNSIGNED_BYTE;
+            info->data = texture;
             break;
          case GR_TEXFMT_ARGB_8888:
             for (i=0; i<height; i++)
@@ -526,7 +546,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
                }
             }
             factor = 4;
-            glformat = GL_RGBA;
+            glpixfmt = GL_RGBA;
+            gltexfmt = GL_RGBA;
+            glpackfmt = GL_UNSIGNED_BYTE;
+            info->data = texture;
             break;
          default:
             DISPLAY_WARNING("grTexDownloadMipMap : unknown texture format: %x", info->format);
@@ -540,14 +563,7 @@ grTexDownloadMipMap( GrChipID_t tmu,
    add_tex(startAddress+1);
    glBindTexture(GL_TEXTURE_2D, startAddress+1);
 
-   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture);
-   /*
-      if (glformat) {
-      glTexImage2D(GL_TEXTURE_2D, 0, glformat, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture);
-      } else
-      glTexImage2D(GL_TEXTURE_2D, 0, gltexfmt, width, height, 0, glpixfmt, glpackfmt, info->data);
-      */
-
+   glTexImage2D(GL_TEXTURE_2D, 0, gltexfmt, width, height, 0, glpixfmt, glpackfmt, info->data);
    glBindTexture(GL_TEXTURE_2D, default_texture);
 }
 

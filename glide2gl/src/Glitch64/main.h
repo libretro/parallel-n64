@@ -197,11 +197,4 @@ extern void check_gl_error(const char *stmt, const char *fname, int line);
 
 int retro_return(bool just_flipping);
 
-int (*grTexFormat2GLFmtFunc)(GrTexInfo  *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt, int * glformat);
-
-#ifndef GLES
-int grTexFormat2GLPackedFmt(GrTexInfo  *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt, int * glformat);
-#endif
-int grTexFormat2GLFmtSlow(GrTexInfo  *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt, int * glformat);
-
 #endif
