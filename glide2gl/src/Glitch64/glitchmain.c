@@ -228,8 +228,10 @@ grSstWinOpen(
       packed_pixels_support = 0;
    else
    {
+#ifndef GLES
       printf("GL_EXT_packed_pixels supported.\n");
       packed_pixels_support = 1;
+#endif
    }
 
    if (isExtensionSupported("GL_ARB_texture_non_power_of_two") == 0)
@@ -259,11 +261,6 @@ grSstWinOpen(
          isExtensionSupported("GL_ARB_fragment_shader") &&
          isExtensionSupported("GL_ARB_vertex_shader"))
    {}
-
-   if (isExtensionSupported("GL_EXT_texture_compression_s3tc") == 0 )
-      DISPLAY_WARNING("Your video card doesn't support GL_EXT_texture_compression_s3tc extension");
-   if (isExtensionSupported("GL_3DFX_texture_compression_FXT1") == 0)
-      DISPLAY_WARNING("Your video card doesn't support GL_3DFX_texture_compression_FXT1 extension");
 
    glViewport(0, 0, width, height);
    viewport_width = width;
