@@ -231,18 +231,12 @@ grSstWinOpen(
       blend_func_separate_support = 1;
    }
 
-   grTexFormat2GLFmtFunc = grTexFormat2GLFmtSlow;
-
    if (isExtensionSupported("GL_EXT_packed_pixels") == 0)
       packed_pixels_support = 0;
    else
    {
       printf("GL_EXT_packed_pixels supported.\n");
-      packed_pixels_support = 1;
-      // TODO: Make packed_pixels work for GLES2 too (possibly?)
-#ifndef GLES
-      grTexFormat2GLFmtFunc = grTexFormat2GLPackedFmt;
-#endif
+      //packed_pixels_support = 1;
    }
 
    if (isExtensionSupported("GL_ARB_texture_non_power_of_two") == 0)
