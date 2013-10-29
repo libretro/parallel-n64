@@ -1096,7 +1096,7 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
       }
 
       glBindTexture(GL_TEXTURE_2D, default_texture);
-      glTexImage2D(GL_TEXTURE_2D, 0, 4, tex_width, tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+      glTexSubImage2D(GL_TEXTURE_2D, 0, 4, tex_width, tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 
       set_copy_shader();
 
