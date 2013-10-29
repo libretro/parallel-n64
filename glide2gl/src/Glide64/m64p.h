@@ -32,18 +32,4 @@
 
 void WriteLog(m64p_msg_level level, const char *msg, ...);
 
-//The Glide API originally used an integer to pick an enumerated resolution.
-//To accomodate arbitrary resolutions, pack it into a 32-bit struct
-//so we don't have to change function signatures
-union PackedScreenResolution
-{
-   struct 
-   {
-      int width : 16;
-      int height : 15;
-      int fullscreen : 1;
-   };
-   int resolution;
-};
-
 #endif
