@@ -229,7 +229,7 @@ grSstWinOpen(
    else
    {
       printf("GL_EXT_packed_pixels supported.\n");
-      //packed_pixels_support = 1;
+      packed_pixels_support = 1;
    }
 
    if (isExtensionSupported("GL_ARB_texture_non_power_of_two") == 0)
