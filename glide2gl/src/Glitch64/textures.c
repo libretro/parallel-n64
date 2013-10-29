@@ -557,6 +557,16 @@ grTexDownloadMipMap( GrChipID_t tmu,
             info->data = texture;
             break;
          case GR_TEXFMT_ARGB_8888:
+#ifdef GLES
+            if (bgra8888_support)
+            {
+               factor = 4;
+               gltexfmt = GL_BGRA_EXT;
+               glpixfmt = GL_BGRA_EXT;
+               glpackfmt = GL_UNSIGNED_BYTE;
+               break;
+            }
+#endif
             for (i=0; i<height; i++)
             {
                for (j=0; j<width; j++)

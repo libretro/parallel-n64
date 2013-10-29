@@ -47,6 +47,7 @@ int nbAuxBuffers, current_buffer;
 int width, widtho, heighto, height;
 int saved_width, saved_height;
 int blend_func_separate_support;
+int bgra8888_support;
 int npot_support;
 int fog_coord_support;
 int render_to_texture = 0;
@@ -261,6 +262,19 @@ grSstWinOpen(
          isExtensionSupported("GL_ARB_fragment_shader") &&
          isExtensionSupported("GL_ARB_vertex_shader"))
    {}
+
+#ifdef GLES
+   if (isExtensionSupported("GL_EXT_texture_format_BGRA8888"))
+   {
+      printf("GL_EXT_texture_format_BGRA8888 supported.\n");
+      bgra8888_support = 1;
+   }
+   else
+   {
+      DISPLAY_WARNING("GL_EXT_texture_format_BGRA8888 not supported.\n");
+      bgra8888_support = 0;
+   }
+#endif
 
    glViewport(0, 0, width, height);
    viewport_width = width;

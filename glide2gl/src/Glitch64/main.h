@@ -122,6 +122,7 @@ extern int TMU_SIZE;
 
 extern int blend_func_separate_support;
 extern int fog_coord_support;
+extern int bgra8888_support;
 //extern int pbuffer_support;
 extern int glsl_support;
 extern unsigned int pBufferAddress;
