@@ -4032,13 +4032,8 @@ static const uint32_t rdp_command_length[64] =
 #define dp_current (*(uint32_t*)gfx.DPC_CURRENT_REG)
 #define dp_status (*(uint32_t*)gfx.DPC_STATUS_REG)
 
-INLINE uint32_t READ_RDP_DATA(uint32_t address)
-{
-   if (dp_status & 0x1)          // XBUS_DMEM_DMA enabled
-      return rsp_dmem[(address & 0xfff)>>2];
-   else
-      return rdram[address>>2];
-}
+// dp_status & 0x1 = XBUS_DMEM_DMA enabled
+#define READ_RDP_DATA(address) ((dp_status & 0x1) ? (rsp_dmem[((address) & 0xfff)>>2]) : (rdram[(address) >> 2]))
 
 static void rdphalf_1(void)
 {
