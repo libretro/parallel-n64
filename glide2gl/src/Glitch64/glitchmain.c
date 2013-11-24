@@ -225,15 +225,12 @@ grSstWinOpen(
       blend_func_separate_support = 1;
    }
 
-   if (isExtensionSupported("GL_EXT_packed_pixels") == 0)
-      packed_pixels_support = 0;
-   else
-   {
-#ifndef GLES
-      printf("GL_EXT_packed_pixels supported.\n");
-      packed_pixels_support = 1;
+   // we can assume that non-GLES has GL_EXT_packed_pixels
+   // support -it's included since OpenGL 1.2
+#ifdef GLES
+   if (isExtensionSupported("GL_EXT_packed_pixels") != 0)
 #endif
-   }
+      packed_pixels_support = 1;
 
    if (isExtensionSupported("GL_ARB_texture_non_power_of_two") == 0)
    {
