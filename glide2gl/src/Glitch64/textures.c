@@ -400,17 +400,18 @@ grTexDownloadMipMap( GrChipID_t tmu,
             {
                for (j=0; j<width; j++)
                {
-                  unsigned int texel = (unsigned int)((unsigned char*)info->data)[m];
-                  texel |= (texel << 8);
-                  texel |= (texel << 16);
-                  ((unsigned int*)texture)[n] = texel;
+                  unsigned short texel = (unsigned short)((unsigned char*)info->data)[m];
+
+                  // Replicate glide's ALPHA_8 to match gl's LUMINANCE_ALPHA
+                  // This is to make up for the lack of INTENSITY in gles
+                  ((unsigned short*)texture)[n] = texel | (texel << 8);
                   m++;
                   n++;
                }
             }
             factor = 1;
-            glpixfmt = GL_RGBA;
-            gltexfmt = GL_RGBA;
+            glpixfmt = GL_LUMINANCE_ALPHA;
+            gltexfmt = GL_LUMINANCE_ALPHA;
             glpackfmt = GL_UNSIGNED_BYTE;
             info->data = texture;
             break;
@@ -490,17 +491,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
             {
                for (j=0; j<width; j++)
                {
-                  unsigned int texel = (unsigned int)((unsigned short*)info->data)[m];
-                  unsigned int A = texel & 0x00008000 ? 0xFF000000 : 0;
-                  unsigned int B = texel & 0x00007C00;
-                  unsigned int G = texel & 0x000003E0;
-                  unsigned int R = texel & 0x0000001F;
-#if 0
-                  /* accurate conversion */
-                  ((unsigned int*)texture)[n] = A | (R << 19) | ((R >> 2) << 16) | (G << 6) | ((G >> 8) << 8) | (B >> 7) | (B >> 12);
-#else
-                  ((unsigned int*)texture)[n] = A | (R << 19) | (G << 6) | (B >> 7);
-#endif
+                  unsigned short texel = ((unsigned short*)info->data)[m];
+
+                  // Shift-rotate glide's ARGB_1555 to match gl's RGB5_A1
+                  ((unsigned short*)texture)[n] = (texel << 1) | (texel >> 15);
                   m++;
                   n++;
                }
@@ -508,7 +502,7 @@ grTexDownloadMipMap( GrChipID_t tmu,
             factor = 2;
             glpixfmt = GL_RGBA;
             gltexfmt = GL_RGBA;
-            glpackfmt = GL_UNSIGNED_BYTE;
+            glpackfmt = GL_UNSIGNED_SHORT_5_5_5_1;
             info->data = texture;
             break;
          case GR_TEXFMT_ALPHA_INTENSITY_88:
