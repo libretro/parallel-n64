@@ -300,26 +300,18 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
          {
             for (j=0; j<width; j++)
             {
-               unsigned int texel = (unsigned int)((unsigned char*)info->data)[m];
-#if 1
-               /* accurate conversion */
-               unsigned int texel_hi = (texel & 0x000000F0) << 20;
-               unsigned int texel_low = texel & 0x0000000F;
-               texel_low |= (texel_low << 4);
-               texel_hi |= ((texel_hi << 4) | (texel_low << 16) | (texel_low << 8) | texel_low);
-#else
-               unsigned int texel_hi = (texel & 0x000000F0) << 24;
-               unsigned int texel_low = (texel & 0x0000000F) << 4;
-               texel_hi |= ((texel_low << 16) | (texel_low << 8) | texel_low);
-#endif
-               ((unsigned int*)texture)[n] = texel_hi;
+               unsigned short texel = (unsigned short)((unsigned char*)info->data)[m];
+
+               // Replicate glide's ALPHA_INTENSITY_44 to match gl's LUMINANCE_ALPHA
+               texel = (texel & 0x00F0) << 4 | (texel & 0x000F);
+               ((unsigned short*)texture)[n] = (texel << 4) | texel;
                m++;
                n++;
             }
          }
          factor = 1;
-         *glpixfmt = GL_RGBA;
-         *gltexfmt = GL_RGBA;
+         *gltexfmt = GL_LUMINANCE_ALPHA;
+         *glpixfmt = GL_LUMINANCE_ALPHA;
          *glpackfmt = GL_UNSIGNED_BYTE;
          info->data = texture;
          break;
@@ -438,26 +430,18 @@ grTexDownloadMipMap( GrChipID_t tmu,
             {
                for (j=0; j<width; j++)
                {
-                  unsigned int texel = (unsigned int)((unsigned char*)info->data)[m];
-#if 1
-                  /* accurate conversion */
-                  unsigned int texel_hi = (texel & 0x000000F0) << 20;
-                  unsigned int texel_low = texel & 0x0000000F;
-                  texel_low |= (texel_low << 4);
-                  texel_hi |= ((texel_hi << 4) | (texel_low << 16) | (texel_low << 8) | texel_low);
-#else
-                  unsigned int texel_hi = (texel & 0x000000F0) << 24;
-                  unsigned int texel_low = (texel & 0x0000000F) << 4;
-                  texel_hi |= ((texel_low << 16) | (texel_low << 8) | texel_low);
-#endif
-                  ((unsigned int*)texture)[n] = texel_hi;
+                  unsigned short texel = (unsigned short)((unsigned char*)info->data)[m];
+
+                  // Replicate glide's ALPHA_INTENSITY_44 to match gl's LUMINANCE_ALPHA
+                  texel = (texel & 0x00F0) << 4 | (texel & 0x000F);
+                  ((unsigned short*)texture)[n] = (texel << 4) | texel;
                   m++;
                   n++;
                }
             }
             factor = 1;
-            glpixfmt = GL_RGBA;
-            gltexfmt = GL_RGBA;
+            glpixfmt = GL_LUMINANCE_ALPHA;
+            gltexfmt = GL_LUMINANCE_ALPHA;
             glpackfmt = GL_UNSIGNED_BYTE;
             info->data = texture;
             break;
