@@ -1,10 +1,10 @@
 # Vector Technology as Implemented for Use with a RISC and SIMD Technology Signal Processor
-A vector processor uses long registers addressable by segment-precision, where each segment is _n_ bits wide.  The power of a vector processor is that many complex matrix operations, whose algorithms take many scalar CPU instructions and clock cycles to emulate on a regular, personal computer processor, can often times formulate and transfer the correct result in less than a single clock cycle.  The impossibilty to replicate this precise behavior has paved the way for vendor businesses to protect their systems against software virtualization (usually, using an emulator) since the introduction of display devices rendering three-dimensional graphics.  The Nintendo 64 was the first video game system to employ this convenience to their advantage.
+A vector processor uses long registers addressable by segment-precision, where each segment is _n_ bits wide.  The power of a vector processor is that many complex matrix operations, whose algorithms take many scalar CPU instructions and clock cycles to emulate on a regular, personal computer processor, can often times formulate and transfer the correct result in less than a single clock cycle.  The impossibility to replicate this precise behavior has paved the way for vendor businesses to protect their systems against hardware emulation since the introduction of display devices rendering three-dimensional graphics.  The Nintendo 64 was the first video game system to employ this convenience to their advantage.
 ***
 
 ## Project Reality's Signal Processor
 
-In the engineering makeup of the Nintendo 64 (original codename:  Project Reality) is a modified MIPS family revision 4000 co-processor called the "Reality Coprocessor" (RCP).  More importantly, the signal processor in this component is responsible for all vector memory operations and transactions, which are almost all impossible to emulate with full accuracy on a scalar, personal computer processor.  The vector technology implemented into this design is that accepted from Silicon Graphics, Inc.
+In the engineering make-up of the Nintendo 64 (original codename:  Project Reality) is a modified MIPS family revision 4000 co-processor called the "Reality Coprocessor" (RCP).  More importantly, the signal processor in this component is responsible for all vector memory operations and transactions, which are almost all impossible to emulate with full accuracy on a scalar, personal computer processor.  The vector technology implemented into this design is that accepted from Silicon Graphics, Inc.
 
 ### RSP Vector Operation Matrices
 
@@ -26,7 +26,7 @@ Multiply instructions are the most frequent and classifiable as follows:
 * If `(format & 0b100) != 0`, then the operation is double-precision (`VMUD*` and `VMAD*`).
 
 <table border="1">
-<tr align="center"><td><i>opcode</i></td><td>Type</td></tr>
+<tr align="center"><td><i>op-code</i></td><td>Type</td></tr>
 <tr><td>0 0 a x x x</td><td>multiply</td></tr>
 <tr><td>0 1 x x x x</td><td>add</td></tr>
 <tr><td>1 0 0 x x x</td><td>select</td></tr>

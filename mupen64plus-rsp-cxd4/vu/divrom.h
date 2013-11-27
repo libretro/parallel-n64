@@ -1,28 +1,11 @@
-/*
- * mupen64plus-rsp-cxd4 - RSP Interpreter
- * Copyright (C) 2012-2013  RJ 'Iconoclast' Swedlow
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
-
 #ifndef _DIVROM_H
 #define _DIVROM_H
 
 static int DivIn = 0; /* buffered numerator of division read from vector file */
 static int DivOut = 0; /* global division result set by VRCP/VRCPL/VRSQ/VRSQH */
-/*static int MovIn; *//* We do not emulate this register (obsolete, for VMOV). */
+#if (0)
+static int MovIn; /* We do not emulate this register (obsolete, for VMOV). */
+#endif
 
 static int DPH;
 /*
@@ -38,7 +21,7 @@ static int DPH;
 
 /*
  * 11-bit vector divide result look-up table
- * Thanks to Ville Linde @ MAME for organizing.
+ * Thanks to MooglyGuy @ MESS for organizing.
  */
 static const unsigned short div_ROM[1024] = {
     0xFFFF,
