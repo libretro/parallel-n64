@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "libretro.h"
+#include "performance.h"
 #include "resampler.h"
 #include "utils.h"
 #include "libco.h"
@@ -387,6 +388,10 @@ void retro_init(void)
 
 void retro_deinit(void)
 {
+#ifdef PERF_TEST
+   rarch_perf_log();
+#endif
+
     CoreShutdown();
 
     if (resampler && resampler_data)
