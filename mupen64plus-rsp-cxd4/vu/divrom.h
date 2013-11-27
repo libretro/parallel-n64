@@ -1049,4 +1049,57 @@ static const unsigned short div_ROM[1024] = {
     0x0040,
     0x6A64
 };
+
+enum {
+    SP_DIV_SQRT_NO,
+    SP_DIV_SQRT_YES
+};
+enum {
+    SP_DIV_PRECISION_SINGLE = 0,
+    SP_DIV_PRECISION_DOUBLE = 1,
+    SP_DIV_PRECISION_CURRENT
+};
+
+INLINE static void do_div(int data, int sqrt, int precision)
+{
+    long addr;
+    int fetch;
+    int shift;
+
+    if (precision == SP_DIV_PRECISION_SINGLE)
+        data = (data < 0) ? -data : +data;
+    if (precision == SP_DIV_PRECISION_DOUBLE && data < 0)
+        data = (data >= -32768) ? -data : ~data;
+
+/*
+ * Note, from the code just above, that data cannot be negative.
+ * (data >= 0) is unconditionally forced by the above algorithm.
+ */
+    addr = data;
+    if (data == 0x00000000)
+    {
+        shift = (precision == SP_DIV_PRECISION_SINGLE) ? 16 : 0;
+        addr = addr << shift;
+    }
+    else
+        for (shift = 0; addr >= 0x00000000; addr <<= 1, shift++);
+    addr = (addr >> 22) & 0x000001FF;
+
+    if (sqrt == SP_DIV_SQRT_YES)
+    {
+        addr &= 0x000001FE;
+        addr |= 0x00000200 | (shift & 1);
+    }
+    fetch = div_ROM[addr];
+    shift ^= 31; /* flipping shift direction from left- to right- */
+    shift >>= (sqrt == SP_DIV_SQRT_YES);
+    DivOut = (0x40000000 | (fetch << 14)) >> shift;
+    if (DivIn == 0) /* corner case:  overflow via division by zero */
+        DivOut = 0x7FFFFFFF;
+    else if (DivIn == -32768) /* corner case:  signed underflow barrier */
+        DivOut = 0xFFFF0000;
+    else
+        DivOut ^= (DivIn < 0) ? ~0 : 0;
+    return;
+}
 #endif

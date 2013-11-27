@@ -1,10 +1,10 @@
 #include "vu.h"
 
-static void VNOP(void)
+static void VNOP(int vd, int vs, int vt, int e)
 {
-    const int WB_inhibit = 1;
+    const int WB_inhibit = vd = vs = vt = e = 1;
 
     if (WB_inhibit)
-        message("VNOP", WB_inhibit);
+        return; /* message("VNOP", WB_inhibit); */
     return;
 }

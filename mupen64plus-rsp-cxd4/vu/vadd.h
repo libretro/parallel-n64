@@ -14,14 +14,11 @@ INLINE static void clr_ci(short* VD, short* VS, short* VT)
     return;
 }
 
-static void VADD(void)
+static void VADD(int vd, int vs, int vt, int e)
 {
     short ST[N];
-    const int vd = (inst.W >> 6) & 31;
-    const int vs = inst.R.rd;
-    const int vt = inst.R.rt;
 
-    SHUFFLE_VECTOR(ST, VR[vt], inst.R.rs & 0xF);
+    SHUFFLE_VECTOR(ST, VR[vt], e);
     clr_ci(VR[vd], VR[vs], ST);
     return;
 }

@@ -33,16 +33,19 @@ static void VSAR(int vd, int vs, int vt, int e)
 }
 #endif
 
-static void VSAW(void)
+static void VSAW(int vd, int vs, int vt, int e)
 {
-    const int vd = (inst.W >> 6) & 31;
-    const int e  = (inst.R.rs & 0xF) ^ 0x8; /* &= 7 */
+    register int i;
+
+    vs = 0; /* unused--old VSAR algorithm */
+    vt = 0; /* unused but mysteriously set many times */
+    if (vs | vt)
+        return;
+    e ^= 0x8; /* &= 7 */
 
     if (e > 0x2)
-    {
-        register int i;
-
-        message("VSAW\nInvalid mask.", 2);
+    { /* branch very unlikely...never seen a game do VSAW illegally */
+        message("VSAW\nIllegal mask.", 2);
         for (i = 0; i < N; i++)
             VR[vd][i] = 0x0000; /* override behavior (zilmar) */
         return;

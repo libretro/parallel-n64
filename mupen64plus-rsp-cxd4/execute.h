@@ -39,7 +39,7 @@ void run_task(void)
 #endif
         if (inst.W >> 25 == 0x25) /* is a VU instruction */
         {
-            COP2_C2[inst.W & 077]();
+            COP2_C2[inst.R.func](inst.R.sa, inst.R.rd, inst.R.rt, inst.R.rs&15);
         }
         else
         {

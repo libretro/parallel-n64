@@ -1,7 +1,7 @@
 /******************************************************************************\
 * Project:  Simple Vector Unit Benchmark                                       *
 * Authors:  Iconoclast                                                         *
-* Release:  2013.10.08                                                         *
+* Release:  2013.11.26                                                         *
 * License:  none (public domain)                                               *
 \******************************************************************************/
 #ifndef _BENCH_H
@@ -25,7 +25,7 @@
 
 #define NUMBER_OF_VU_OPCODES    38
 
-static void (*bench_tests[NUMBER_OF_VU_OPCODES])(void) = {
+static void (*bench_tests[NUMBER_OF_VU_OPCODES])(int, int, int, int) = {
     VMULF, VMACF, /* signed single-precision fractions */
     VMULU, VMACU, /* unsigned single-precision fractions */
 
@@ -50,11 +50,7 @@ static void (*bench_tests[NUMBER_OF_VU_OPCODES])(void) = {
     VRCPL, VRSQL, /* double-precision reciprocal look-ups */
     VRCPH, VRSQH,
 
-    VMOV, NOP
-/*
- * Careful:  Not "VNOP", because I put a message there to find ROMs using it.
- * We bench the normal NOP function from su.h to compare this dummy function.
- */
+    VMOV, VNOP
 };
 
 const char test_names[NUMBER_OF_VU_OPCODES][8] = {
@@ -106,6 +102,7 @@ EXPORT void CALL DllTest(HWND hParent)
         message("Cannot run RSP tests while playing!", 3);
         return;
     }
+    inst.W = 0x00000000;
     inst.R.rs = 0x8; /* just to shut up VSAW illegal element warnings */
 
     message(notice_starting, 1);
@@ -117,7 +114,7 @@ EXPORT void CALL DllTest(HWND hParent)
     {
         t1 = clock();
         for (j = -0x1000000; j < 0; j++)
-            bench_tests[i]();
+            bench_tests[i](0, 0, 0, 8);
         t2 = clock();
         delta = (float)(t2 - t1) / CLOCKS_PER_SEC;
         fprintf(log, "%s:  %.3f s\n", test_names[i], delta);

@@ -24,14 +24,11 @@ INLINE static void do_ne(short* VD, short* VS, short* VT)
     return;
 }
 
-static void VNE(void)
+static void VNE(int vd, int vs, int vt, int e)
 {
     short ST[N];
-    const int vd = (inst.W >> 6) & 31;
-    const int vs = inst.R.rd;
-    const int vt = inst.R.rt;
 
-    SHUFFLE_VECTOR(ST, VR[vt], inst.R.rs & 0xF);
+    SHUFFLE_VECTOR(ST, VR[vt], e);
     do_ne(VR[vd], VR[vs], ST);
     return;
 }

@@ -1,7 +1,7 @@
 /******************************************************************************\
 * Project:  MSP Emulation Layer for Vector Unit Computational Operations       *
 * Authors:  Iconoclast                                                         *
-* Release:  2013.10.11                                                         *
+* Release:  2013.11.26                                                         *
 * License:  none (public domain)                                               *
 \******************************************************************************/
 #ifndef _VU_H
@@ -41,28 +41,22 @@ ALIGNED static short VACC[3][N];
 #include "clamp.h"
 #include "cf.h"
 
-/*
- * Due to GCC's interpretation of `inst.R.sa` persisting across many
- * versions to-date, adding in one extra garbage move, we usually are not
- * going to write "inst.R.sa" out as the vector destination specifier decode.
- *
- * (inst.W >> 6) & 31 || (inst.W & 0x07FF) >> 6 || (inst.I.imm & 0x07FF) >> 6
- * // inst.R.sa
- */
-
-static void res_V(void)
+static void res_V(int vd, int vs, int vt, int e)
 {
     register int i;
 
+    vs = vt = e = 0;
+    if (vs != vt || vt != e)
+        return;
     message("C2\nRESERVED", 2); /* uncertain how to handle reserved, untested */
     for (i = 0; i < N; i++)
-        VR[(inst.W >> 6) & 31][i] = 0x0000; /* override behavior (bpoint) */
+        VR[vd][i] = 0x0000; /* override behavior (bpoint) */
     return;
 }
-static void res_M(void)
+static void res_M(int vd, int vs, int vt, int e)
 {
-    message("VMUL IQ", 1);
-    res_V();
+    message("VMUL IQ", 2);
+    res_V(vd, vs, vt, e);
     return; /* Ultra64 OS did have these, so one could implement this ext. */
 }
 
@@ -108,7 +102,7 @@ static void res_M(void)
 #include "vsubc.h"
 #include "vxor.h"
 
-static void (*COP2_C2[64])(void) = {
+static void (*COP2_C2[64])(int, int, int, int) = {
     VMULF  ,VMULU  ,res_M  ,res_M  ,VMUDL  ,VMUDM  ,VMUDN  ,VMUDH  , /* 000 */
     VMACF  ,VMACU  ,res_M  ,VMACQ  ,VMADL  ,VMADM  ,VMADN  ,VMADH  , /* 001 */
     VADD   ,VSUB   ,res_V  ,VABS   ,VADDC  ,VSUBC  ,res_V  ,res_V  , /* 010 */

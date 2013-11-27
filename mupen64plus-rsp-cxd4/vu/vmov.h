@@ -1,12 +1,8 @@
 #include "vu.h"
 
-static void VMOV(void)
+static void VMOV(int vd, int de, int vt, int e)
 {
-    const int vd = (inst.W >> 6) & 31;
-    const int de = inst.R.rd & 07;
-    const int vt = inst.R.rt;
-
-    SHUFFLE_VECTOR(VACC_L, VR[vt], inst.R.rs & 0xF);
-    VR[vd][de] = VACC_L[inst.R.rs & 07];
+    SHUFFLE_VECTOR(VACC_L, VR[vt], e);
+    VR[vd][de &= 07] = VACC_L[e & 07];
     return;
 }

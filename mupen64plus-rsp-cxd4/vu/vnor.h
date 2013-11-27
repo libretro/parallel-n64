@@ -10,14 +10,11 @@ INLINE void do_nor(short* VD, short* VS, short* VT)
     return;
 }
 
-static void VNOR(void)
+static void VNOR(int vd, int vs, int vt, int e)
 {
     short ST[N];
-    const int vd = (inst.W >> 6) & 31;
-    const int vs = inst.R.rd;
-    const int vt = inst.R.rt;
 
-    SHUFFLE_VECTOR(ST, VR[vt], inst.R.rs & 0xF);
+    SHUFFLE_VECTOR(ST, VR[vt], e);
     do_nor(VR[vd], VR[vs], ST);
     return;
 }

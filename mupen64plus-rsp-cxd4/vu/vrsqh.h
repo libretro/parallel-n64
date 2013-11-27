@@ -1,15 +1,11 @@
 #include "vu.h"
 #include "divrom.h"
 
-static void VRSQH(void)
+static void VRSQH(int vd, int de, int vt, int e)
 {
-    const int vd = (inst.W >> 6) & 31;
-    const int de = inst.R.rd & 07;
-    const int vt = inst.R.rt;
-
-    DivIn = VR[vt][inst.R.rs & 07] << 16;
-    SHUFFLE_VECTOR(VACC_L, VR[vt], inst.R.rs & 0xF);
-    VR[vd][de] = DivOut >> 16;
-    DPH = 1;
+    DivIn = VR[vt][e & 07] << 16;
+    SHUFFLE_VECTOR(VACC_L, VR[vt], e);
+    VR[vd][de &= 07] = DivOut >> 16;
+    DPH = SP_DIV_PRECISION_DOUBLE;
     return;
 }

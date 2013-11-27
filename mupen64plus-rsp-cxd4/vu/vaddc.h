@@ -17,14 +17,11 @@ INLINE static void set_co(short* VD, short* VS, short* VT)
     return;
 }
 
-static void VADDC(void)
+static void VADDC(int vd, int vs, int vt, int e)
 {
     short ST[N];
-    const int vd = (inst.W >> 6) & 31;
-    const int vs = inst.R.rd;
-    const int vt = inst.R.rt;
 
-    SHUFFLE_VECTOR(ST, VR[vt], inst.R.rs & 0xF);
+    SHUFFLE_VECTOR(ST, VR[vt], e);
     set_co(VR[vd], VR[vs], ST);
     return;
 }
