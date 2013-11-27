@@ -1245,6 +1245,8 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
         0
     };
 
+    int defaults[] = { 1, 0, 640, 480 };
+
     for (i = 0; libretro_translate[i].ParamName; i ++)
     {
         if (strcmp(ParamName, libretro_translate[i].ParamName) == 0)
@@ -1252,7 +1254,8 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
             int result = choose_value(libretro_translate[i].RetroName, libretro_translate[i].Values);
             if (result >= 0)
                 return result;
-            break;
+            else
+		return defaults[i];
        }
     }
 
