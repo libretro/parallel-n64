@@ -1,4 +1,5 @@
 LOCAL_PATH := $(call my-dir)
+PERFTEST = 0
 
 include $(CLEAR_VARS)
 
@@ -54,7 +55,7 @@ endif
 
 # libretro
 LOCAL_SRC_FILES += $(LIBRETRODIR)/libretro.c $(LIBRETRODIR)/adler32.c $(LIBRETRODIR)/glsym.c $(LIBRETRODIR)/libco/libco.c $(LIBRETRODIR)/opengl_state_machine.c \
-          $(LIBRETRODIR)/audio_plugin.c $(LIBRETRODIR)/input_plugin.c $(LIBRETRODIR)/resampler.c
+          $(LIBRETRODIR)/audio_plugin.c $(LIBRETRODIR)/input_plugin.c $(LIBRETRODIR)/resampler.c $(LIBRETRODIR)/performance.c $(LIBRETRODIR)/performance/performance_android.c
 
 # RSP Plugin
 LOCAL_SRC_FILES += \
@@ -84,7 +85,6 @@ LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/GBI.c \
             $(VIDEODIR_GLN64)/gDP.c \
             $(VIDEODIR_GLN64)/gles2N64.c \
-            $(VIDEODIR_GLN64)/../cpufeatures.c \
             $(VIDEODIR_GLN64)/gSP.c \
             $(VIDEODIR_GLN64)/L3D.c \
             $(VIDEODIR_GLN64)/L3DEX2.c \
@@ -145,13 +145,18 @@ LOCAL_SRC_FILES += \
 
 LOCAL_SRC_FILES += $(CXD4DIR)/rsp.c
 
-COMMON_FLAGS += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DM64P_PLUGIN_API -D__LIBRETRO__ -DINLINE="inline" -DNO_ASM -DNOSSE -DSDL_VIDEO_OPENGL_ES2=1 -DGLES -DANDROID -DSINC_LOWER_QUALITY -DGLES
+COMMON_FLAGS += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DM64P_PLUGIN_API -D__LIBRETRO__ -DINLINE="inline" -DNO_ASM -DNOSSE -DSDL_VIDEO_OPENGL_ES2=1 -DGLES -DANDROID -DSINC_LOWER_QUALITY -DGLES -DHAVE_LOGGER
 COMMON_OPTFLAGS = -O3 -ffast-math
 
 LOCAL_CFLAGS += $(COMMON_OPTFLAGS) $(COMMON_FLAGS)
 LOCAL_CXXFLAGS += $(COMMON_OPTFLAGS) $(COMMON_FLAGS)
 LOCAL_LDLIBS += -llog -lGLESv2
 LOCAL_C_INCLUDES = $(INCFLAGS) $(COREDIR)/src $(COREDIR)/src/api ../libco ../
+
+ifeq ($(PERFTEST), 1)
+LOCAL_CFLAGS += -DPERF_TEST
+LOCAL_CXXFLAGS += -DPERF_TEST
+endif
 
 include $(BUILD_SHARED_LIBRARY)
 

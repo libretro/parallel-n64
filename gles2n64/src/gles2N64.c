@@ -22,7 +22,7 @@
 
 
 #ifdef ANDROID
-#include "../cpufeatures.h"
+#include "../../libretro/performance/performance_android.h"
 #endif
 
 #ifdef __LIBRETRO__ // Prefix API

@@ -1,5 +1,6 @@
 DEBUG=0
 GLIDE2GL=1
+PERF_TEST=0
 
 UNAME=$(shell uname -a)
 
@@ -213,6 +214,11 @@ OBJECTS += libretro/utils_neon.o libretro/sinc_neon.o
 else
 gln64videoblack = $(VIDEODIR_GLN64)/3DMathNeon.c $(VIDEODIR_GLN64)/gSPNeon.c
 CFILES += $(filter-out $(gln64videoblack), $(wildcard $(VIDEODIR_GLN64)/*.c))
+endif
+
+ifeq ($(PERF_TEST), 1)
+CFLAGS += -DPERF_TEST
+CPPFLAGS += -DPERF_TEST
 endif
 
 CFILES += $(libretrosrc)
