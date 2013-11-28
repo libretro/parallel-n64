@@ -1716,8 +1716,7 @@ void ReadSpecialSettings (const char * name)
       settings.buff_clear = 0;
       settings.swapmode = 2;
    }
-   else if (strstr(name, (const char *)"ZELDA MAJORA'S MASK") || strstr(name, (const char *)"ZELDA MAJORA'S MASK")
-         || strstr(name, (const char *)"THE MASK OF MUJURA"))
+   else if (strstr(name, (const char *)"ZELDA MAJORA'S MASK") || strstr(name, (const char *)"THE MASK OF MUJURA"))
    {
       //depth_bias = 60
       //wrap_big_tex = 1
