@@ -1,28 +1,11 @@
-/*
- * mupen64plus-rsp-cxd4 - RSP Interpreter
- * Copyright (C) 2012-2013  RJ 'Iconoclast' Swedlow
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
-
 #ifndef _DIVROM_H
 #define _DIVROM_H
 
 static int DivIn = 0; /* buffered numerator of division read from vector file */
 static int DivOut = 0; /* global division result set by VRCP/VRCPL/VRSQ/VRSQH */
-/*static int MovIn; *//* We do not emulate this register (obsolete, for VMOV). */
+#if (0)
+static int MovIn; /* We do not emulate this register (obsolete, for VMOV). */
+#endif
 
 static int DPH;
 /*
@@ -38,7 +21,7 @@ static int DPH;
 
 /*
  * 11-bit vector divide result look-up table
- * Thanks to Ville Linde @ MAME for organizing.
+ * Thanks to MooglyGuy @ MESS for organizing.
  */
 static const unsigned short div_ROM[1024] = {
     0xFFFF,
@@ -1066,4 +1049,57 @@ static const unsigned short div_ROM[1024] = {
     0x0040,
     0x6A64
 };
+
+enum {
+    SP_DIV_SQRT_NO,
+    SP_DIV_SQRT_YES
+};
+enum {
+    SP_DIV_PRECISION_SINGLE = 0,
+    SP_DIV_PRECISION_DOUBLE = 1,
+    SP_DIV_PRECISION_CURRENT
+};
+
+INLINE static void do_div(int data, int sqrt, int precision)
+{
+    long addr;
+    int fetch;
+    int shift;
+
+    if (precision == SP_DIV_PRECISION_SINGLE)
+        data = (data < 0) ? -data : +data;
+    if (precision == SP_DIV_PRECISION_DOUBLE && data < 0)
+        data = (data >= -32768) ? -data : ~data;
+
+/*
+ * Note, from the code just above, that data cannot be negative.
+ * (data >= 0) is unconditionally forced by the above algorithm.
+ */
+    addr = data;
+    if (data == 0x00000000)
+    {
+        shift = (precision == SP_DIV_PRECISION_SINGLE) ? 16 : 0;
+        addr = addr << shift;
+    }
+    else
+        for (shift = 0; addr >= 0x00000000; addr <<= 1, shift++);
+    addr = (addr >> 22) & 0x000001FF;
+
+    if (sqrt == SP_DIV_SQRT_YES)
+    {
+        addr &= 0x000001FE;
+        addr |= 0x00000200 | (shift & 1);
+    }
+    fetch = div_ROM[addr];
+    shift ^= 31; /* flipping shift direction from left- to right- */
+    shift >>= (sqrt == SP_DIV_SQRT_YES);
+    DivOut = (0x40000000 | (fetch << 14)) >> shift;
+    if (DivIn == 0) /* corner case:  overflow via division by zero */
+        DivOut = 0x7FFFFFFF;
+    else if (DivIn == -32768) /* corner case:  signed underflow barrier */
+        DivOut = 0xFFFF0000;
+    else
+        DivOut ^= (DivIn < 0) ? ~0 : 0;
+    return;
+}
 #endif
