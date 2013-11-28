@@ -3569,9 +3569,11 @@ void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer,
   dxhdy = (int32_t)(w6);
   dxmdy = (int32_t)(w8);
 
-  if (yl & (0x800<<2)) yl |= 0xfffff000<<2;
-  if (ym & (0x800<<2)) ym |= 0xfffff000<<2;
-  if (yh & (0x800<<2)) yh |= 0xfffff000<<2;
+  //TODO: negative overflows - commenting them out seems to cause no regressions
+  //if experiencing any regressions to do with triangles, check back here
+  //if (yl & (0x800<<2)) yl |= 0xfffff000<<2;
+  //if (ym & (0x800<<2)) ym |= 0xfffff000<<2;
+  //if (yh & (0x800<<2)) yh |= 0xfffff000<<2;
 
   yh &= ~3;
 
