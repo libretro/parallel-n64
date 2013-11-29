@@ -71,7 +71,9 @@ else ifneq (,$(findstring ios,$(platform)))
    CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
    CPPFLAGS += -DNO_ASM -DIOS -DNOSSE -DHAVE_POSIX_MEMALIGN
+   CPPFLAGS += -DARM
    PLATFORM_EXT := unix
+   WITH_DYNAREC=arm
 else ifneq (,$(findstring android,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_android.so
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined -Wl,--warn-common
