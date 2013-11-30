@@ -67,11 +67,11 @@ else ifneq (,$(findstring ios,$(platform)))
 
    OBJECTS += libretro/libco/armeabi_asm.o
 
-   CC = clang -arch armv7 -isysroot $(IOSSDK)
-   CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
-   CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
+   CC = clang -arch armv7 -isysroot $(IOSSDK) -miphoneos-version-min=5.0
+   CC_AS = perl ./tools/gas-preprocessor.pl $(CC) -miphoneos-version-min=5.0
+   CXX = clang++ -arch armv7 -isysroot $(IOSSDK) -miphoneos-version-min=5.0
    CPPFLAGS += -DNO_ASM -DIOS -DNOSSE -DHAVE_POSIX_MEMALIGN
-   CPPFLAGS += -DARM
+   CPPFLAGS += -DARM -miphoneos-version-min=5.0
    PLATFORM_EXT := unix
    WITH_DYNAREC=arm
 else ifneq (,$(findstring android,$(platform)))
