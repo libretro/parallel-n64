@@ -360,28 +360,6 @@ grDrawTriangle( const void *a, const void *b, const void *c )
 }
 
 FX_ENTRY void FX_CALL
-grDrawTriangle2( const void *a, const void *b, const void *c,
-      const void *d, const void *e, const void *f)
-{
-   LOG("grDrawTriangle()\r\n\t");
-
-   if(need_to_compile)
-      compile_shader();
-
-   if(vertex_buffer_count + 6 > VERTEX_BUFFER_SIZE)
-      vbo_draw();
-
-   vertex_draw_mode = GL_TRIANGLES;
-   memcpy(&vertex_buffer[vertex_buffer_count],a,VERTEX_SIZE);
-   memcpy(&vertex_buffer[vertex_buffer_count+1],b,VERTEX_SIZE);
-   memcpy(&vertex_buffer[vertex_buffer_count+2],c,VERTEX_SIZE);
-   memcpy(&vertex_buffer[vertex_buffer_count+3],d,VERTEX_SIZE);
-   memcpy(&vertex_buffer[vertex_buffer_count+4],e,VERTEX_SIZE);
-   memcpy(&vertex_buffer[vertex_buffer_count+5],f,VERTEX_SIZE);
-   vertex_buffer_count += 6;
-}
-
-FX_ENTRY void FX_CALL
 grDrawVertexArray(FxU32 mode, FxU32 Count, void *pointers2)
 {
    void **pointers = (void**)pointers2;

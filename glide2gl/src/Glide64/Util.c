@@ -1673,7 +1673,8 @@ void render_tri (uint16_t linew, int old_interpolate)
             v[3].x = V1->x - wx;
             v[3].y = V1->y + wy;
          }
-         grDrawTriangle2(&v[0], &v[1], &v[2], &v[1], &v[2], &v[3]);
+         grDrawTriangle(&v[0], &v[1], &v[2]);
+         grDrawTriangle(&v[1], &v[2], &v[3]);
       }
       else
       {

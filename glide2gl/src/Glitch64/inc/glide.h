@@ -568,10 +568,6 @@ FX_ENTRY void FX_CALL
 grDrawTriangle( const void *a, const void *b, const void *c );
 
 FX_ENTRY void FX_CALL
-grDrawTriangle2( const void *a, const void *b, const void *c,
-      const void *d, const void *e, const void *f);
-
-FX_ENTRY void FX_CALL
 grVertexLayout(FxU32 param, FxI32 offset, FxU32 mode);
 
 FX_ENTRY void FX_CALL 
