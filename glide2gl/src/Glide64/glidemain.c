@@ -330,6 +330,8 @@ void ReadSettings(void)
 
 extern uint8_t microcode[4096];
 
+extern bool no_audio;
+
 void ReadSpecialSettings (const char * name)
 {
    int smart_read, hires, get_fbinfo, read_always, depth_render, fb_crc_mode,
@@ -1208,6 +1210,10 @@ void ReadSpecialSettings (const char * name)
       //fb_info_disable = 1
       //depthmode = 0
       settings.buff_clear = 0;
+   }
+   else if (strstr(name, (const char*)"TOP GEAR RALLY"))
+   {
+      no_audio = true;
    }
    else if (strstr(name, (const char*)"ΩΩ“!¿≤æ› ﬂΩﬁŸ¿ﬁœ"))
    {

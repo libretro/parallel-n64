@@ -30,6 +30,7 @@ static cothread_t emulator_thread;
 static bool emu_thread_has_run = false; // < This is used to ensure the core_gl_context_reset
                                         //   function doesn't try to reinit graphics before needed
 static bool flip_only;
+bool no_audio;
 static savestates_job state_job_done;
 
 static const rarch_resampler_t *resampler;
@@ -554,6 +555,9 @@ void retro_unload_game(void)
 
 void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
 {
+   if (no_audio)
+      return;
+
    audio_convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
 
    double ratio = 44100.0 / freq;
