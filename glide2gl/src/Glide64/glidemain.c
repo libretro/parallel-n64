@@ -2771,10 +2771,6 @@ void newSwapBuffers(void)
       DrawWholeFrameBufferToScreen();
 
    {
-#ifdef HAVE_HWFBE
-      if (fb_hwfbe_enabled)
-         grAuxBufferExt( GR_BUFFER_AUXBUFFER );
-#endif
       grBufferSwap (settings.vsync);
 
       if  (settings.buff_clear || (settings.hacks&hack_PPL && settings.ucode == 6))
