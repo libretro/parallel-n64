@@ -81,6 +81,7 @@ static void EmptyFunc(void)
         X##FBGetFrameBufferInfo \
     }
 
+DEFINE_GFX(rice);
 DEFINE_GFX(gln64);
 DEFINE_GFX(glide64);
 
@@ -287,6 +288,7 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
 {
     switch (gfx_plugin)
     {
+        case GFX_RICE:  gfx = gfx_rice; break;
         case GFX_GLN64: gfx = gfx_gln64; break;
         default:        gfx = gfx_glide64; break;
     }
