@@ -189,6 +189,17 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
        ROM_SETTINGS.players = 1;
        DebugMessage(M64MSG_INFO, "Yoshi's Story INI patches applied.");
     }
+    else if(
+          (sl(ROM_HEADER.CRC1) == 0xFEE97010 && sl(ROM_HEADER.CRC2) == 0x4E94A9A0)
+          || (sl(ROM_HEADER.CRC1) == 0x2500267E && sl(ROM_HEADER.CRC2) == 0x2A7EC3CE)
+          )
+    {
+       strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+       ROM_SETTINGS.savetype = EEPROM_16KB;
+       ROM_SETTINGS.players = 4;
+       ROM_SETTINGS.rumble = 1;
+       DebugMessage(M64MSG_INFO, "RR64 Ridge Racer 64 INI patches applied.");
+    }
     /* Look up this ROM in the .ini file and fill in goodname, etc */
     else if ((entry=ini_search_by_md5(digest)) != NULL ||
         (entry=ini_search_by_crc(sl(ROM_HEADER.CRC1),sl(ROM_HEADER.CRC2))) != NULL)
