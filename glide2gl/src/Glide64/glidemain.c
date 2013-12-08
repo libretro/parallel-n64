@@ -365,7 +365,6 @@ void ReadSpecialSettings (const char * name)
       ignore_aux_copy = 0;
       useless_is_useless = 0;
 
-      settings.use_sts1_only = 0;
       settings.fast_crc = 1;
       settings.force_microcheck = 0;
       settings.force_quad3d = 0;
@@ -1189,7 +1188,6 @@ void ReadSpecialSettings (const char * name)
    {
       //;Super Robot Taisen 64 (J)
       settings.fast_crc = 0;
-      settings.use_sts1_only = 1;
       smart_read = 1;
 #ifdef HAVE_HWFBE
       hires = 1;
@@ -1220,7 +1218,6 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"–›≈√ﬁ¿œ∫ﬁØ¡‹∞Ÿƒﬁ"))
    {
       //;Tamagotchi World 64 (J) 
-      settings.use_sts1_only = 1;
       //depthmode = 0
       settings.fog = 0;
    }
@@ -1839,7 +1836,6 @@ void ReadSpecialSettings (const char * name)
 #if 1
       // Not in original INI - fixes black stripes on big textures
       // TODO: check for regressions
-      settings.use_sts1_only = 1;
       settings.increase_texrect_edge = 1;
 #endif
       //fix_tex_coord = 8
@@ -1890,7 +1886,6 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"LAMBORGHINI"))
    {
-      settings.use_sts1_only = 1;
    }
    else if (strstr(name, (const char*)"MAGICAL TETRIS"))
    {
@@ -1937,7 +1932,6 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"TETRISPHERE"))
    {
-      settings.use_sts1_only = 1;
       settings.increase_texrect_edge = 1;
       //depthmode = 1
       smart_read = 1;

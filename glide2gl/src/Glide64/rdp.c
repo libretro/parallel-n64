@@ -1790,30 +1790,11 @@ static void rdp_settilesize()
   else if (wrong_tile == (int)tile)
     wrong_tile = -1;
 
-  if (settings.use_sts1_only)
-  {
-    // ** USE FIRST SETTILESIZE ONLY **
-    // This option helps certain textures while using the 'Alternate texture size method',
-    //  but may break others.  (should help more than break)
-
-    if (tile_set)
-    {
-      // coords in 10.2 format
-      rdp.tiles[tile].ul_s = ul_s;
-      rdp.tiles[tile].ul_t = ul_t;
-      rdp.tiles[tile].lr_s = lr_s;
-      rdp.tiles[tile].lr_t = lr_t;
-      tile_set = 0;
-    }
-  }
-  else
-  {
-    // coords in 10.2 format
-    rdp.tiles[tile].ul_s = ul_s;
-    rdp.tiles[tile].ul_t = ul_t;
-    rdp.tiles[tile].lr_s = lr_s;
-    rdp.tiles[tile].lr_t = lr_t;
-  }
+  // coords in 10.2 format
+  rdp.tiles[tile].ul_s = ul_s;
+  rdp.tiles[tile].ul_t = ul_t;
+  rdp.tiles[tile].lr_s = lr_s;
+  rdp.tiles[tile].lr_t = lr_t;
 
   // handle wrapping
   if (rdp.tiles[tile].lr_s < rdp.tiles[tile].ul_s) rdp.tiles[tile].lr_s += 0x400;
