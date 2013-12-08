@@ -83,28 +83,6 @@ static INLINE void texConv_AI88_ARGB4444(uint8_t *src, uint8_t *dst, int size)
    while ( v5 );
 }
 
-static INLINE void texConv_AI44_ARGB4444(uint8_t *src, uint8_t *dst, int size)
-{
-   uint32_t *v3, *v4, *v7;
-   int v5;
-   uint32_t v6;
-
-   v3 = (uint32_t *)src;
-   v4 = (uint32_t *)dst;
-   v5 = size;
-   do
-   {
-      v6 = *v3;
-      ++v3;
-      *v4 = ((((uint16_t)v6 << 8) & 0xFF00 & 0xF00u) >> 8) | ((((uint16_t)v6 << 8) & 0xFF00 & 0xF00u) >> 4) | (uint16_t)(((uint16_t)v6 << 8) & 0xFF00) | (((v6 << 16) & 0xF000000) >> 8) | (((v6 << 16) & 0xF000000) >> 4) | ((v6 << 16) & 0xFF000000);
-      v7 = v4 + 1;
-      *v7 = (((v6 >> 8) & 0xF00) >> 8) | (((v6 >> 8) & 0xF00) >> 4) | ((v6 >> 8) & 0xFF00) | ((v6 & 0xF000000) >> 8) | ((v6 & 0xF000000) >> 4) | (v6 & 0xFF000000);
-      v4 = v7 + 1;
-      --v5;
-   }
-   while ( v5 );
-}
-
 static INLINE void texConv_A8_ARGB4444(uint8_t *src, uint8_t *dst, int size)
 {
    uint32_t *v3;
@@ -143,13 +121,6 @@ void TexConv_ARGB1555_ARGB4444 (unsigned char * src, unsigned char * dst, int wi
 void TexConv_AI88_ARGB4444 (unsigned char * src, unsigned char * dst, int width, int height)
 {
    texConv_AI88_ARGB4444(src, dst, ((width * height) >> 1));
-}
-
-// 4 pixels are converted in one loop
-// NOTE: width * height must be a multiple of 4
-void TexConv_AI44_ARGB4444 (unsigned char * src, unsigned char * dst, int width, int height)
-{
-   texConv_AI44_ARGB4444(src, dst, ((width * height) >> 2));
 }
 
 // 4 pixels are converted in one loop

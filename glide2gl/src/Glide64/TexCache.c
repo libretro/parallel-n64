@@ -1252,7 +1252,17 @@ void LoadTex(int id, int tmu)
       }
       else if (LOWORD(result) == GR_TEXFMT_ALPHA_INTENSITY_44)
       {
-         TexConv_AI44_ARGB4444 ((texture), (tex2), real_x, real_y);
+         // 4 pixels are converted in one loop
+         // NOTE: width * height must be a multiple of 4
+         uint32_t *_src = (uint32_t *)texture;
+         uint32_t *_dst = (uint32_t *)tex2;
+         int size = ((real_x * real_y) >> 2);
+         do
+         {
+            uint32_t v6 = *_src++;
+            *_dst++ = ((((uint16_t)v6 << 8) & 0xFF00 & 0xF00u) >> 8) | ((((uint16_t)v6 << 8) & 0xFF00 & 0xF00u) >> 4) | (uint16_t)(((uint16_t)v6 << 8) & 0xFF00) | (((v6 << 16) & 0xF000000) >> 8) | (((v6 << 16) & 0xF000000) >> 4) | ((v6 << 16) & 0xFF000000);
+            *_dst++ = (((v6 >> 8) & 0xF00) >> 8) | (((v6 >> 8) & 0xF00) >> 4) | ((v6 >> 8) & 0xFF00) | ((v6 & 0xF000000) >> 8) | ((v6 & 0xF000000) >> 4) | (v6 & 0xFF000000);
+         }while(--size);
          texture = tex2;
       }
       else if (LOWORD(result) == GR_TEXFMT_ALPHA_8)
