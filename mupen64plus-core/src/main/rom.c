@@ -303,6 +303,7 @@ void romdatabase_open(void)
     int counter, value, lineno;
     unsigned char index;
     const char *pathname = ConfigGetSharedDataFilepath("mupen64plus.ini");
+    DebugMessage(M64MSG_WARNING, "ROM Database: %s", pathname);
 
     if(g_romdatabase.have_database)
         return;
