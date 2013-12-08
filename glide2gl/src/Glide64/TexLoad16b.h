@@ -39,7 +39,6 @@
 
 static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-   uint32_t utmp;
    uint32_t *v6;
    uint32_t *v7;
    int v8;
@@ -63,27 +62,17 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
       v9 = wid_64;
       do
       {
-         v10 = bswap32(*v6);
-         v11 = bswap32(v6[1]);
-         utmp = __ROR16((uint16_t)v10, 1);
-         ALOWORD(v10) = utmp;
-         utmp = __ROR16((uint16_t)v11, 1);
-         ALOWORD(v11) = utmp;
-         utmp = __ROR32(v10, 16);
-         v10 = utmp;
-         utmp = __ROR32(v11, 16); 
-         v11 = utmp;
-         utmp = __ROR16((uint16_t)v10, 1);
-         ALOWORD(v10) = utmp;
-         utmp = __ROR16((uint16_t)v11, 1);
-         ALOWORD(v11) = utmp;
-         *v7 = v10;
-         v7[1] = v11;
-         v6 += 2;
-         v7 += 2;
-         --v9;
-      }
-      while ( v9 );
+         v10 = bswap32(*v6++);
+         v11 = bswap32(*v6++);
+         ALOWORD(v10) = __ROR16((uint16_t)v10, 1);
+         ALOWORD(v11) = __ROR16((uint16_t)v11, 1);
+         v10 = __ROR32(v10, 16);
+         v11 = __ROR32(v11, 16); 
+         ALOWORD(v10) = __ROR16((uint16_t)v10, 1);
+         ALOWORD(v11) = __ROR16((uint16_t)v11, 1);
+         *v7++ = v10;
+         *v7++ = v11;
+      }while (--v9);
       if ( v17 == 1 )
          break;
       v18 = v17 - 1;
@@ -92,27 +81,18 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
       v14 = wid_64;
       do
       {
-         v15 = bswap32(v12[1]);
-         v16 = bswap32(*v12);
-         utmp = __ROR16((uint16_t)v15, 1);
-         ALOWORD(v15) = utmp;
-         utmp = __ROR16((uint16_t)v16, 1);
-         ALOWORD(v16) = utmp;
-         utmp = __ROR32(v15, 16);
-         v15 = utmp;
-         utmp = __ROR32(v16, 16);
-         v16 = utmp;
-         utmp = __ROR16((uint16_t)v15, 1);
-         ALOWORD(v15) = utmp;
-         utmp = __ROR16((uint16_t)v16, 1);
-         ALOWORD(v16) = utmp;
-         *v13 = v15;
-         v13[1] = v16;
-         v12 += 2;
-         v13 += 2;
-         --v14;
+         v16 = bswap32(*v12++);
+         v15 = bswap32(*v12++);
+         ALOWORD(v15) = __ROR16((uint16_t)v15, 1);
+         ALOWORD(v16) = __ROR16((uint16_t)v16, 1);
+         v15 = __ROR32(v15, 16);
+         v16 = __ROR32(v16, 16);
+         ALOWORD(v15) = __ROR16((uint16_t)v15, 1);
+         ALOWORD(v16) = __ROR16((uint16_t)v16, 1);
+         *v13++ = v15;
+         *v13++ = v16;
       }
-      while ( v14 );
+      while (--v14);
       v6 = (uint32_t *)&src[(line + (uintptr_t)v12 - (uintptr_t)src) & 0xFFF];
       v7 = (uint32_t *)((char *)v13 + ext);
       v8 = v18 - 1;
