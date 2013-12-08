@@ -167,8 +167,20 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     ROM_PARAMS.headername[20] = '\0';
     trim(ROM_PARAMS.headername); /* Remove trailing whitespace from ROM name. */
 
+    if(
+             sl(ROM_HEADER.CRC1) == 0xC2E9AA9A && sl(ROM_HEADER.CRC2) == 0x475D70AA
+          || sl(ROM_HEADER.CRC1) == 0xC9176D39 && sl(ROM_HEADER.CRC2) == 0xEA4779D1
+          || sl(ROM_HEADER.CRC1) == 0x155B7CDF && sl(ROM_HEADER.CRC2) == 0xF0DA7325
+      )
+    {
+       strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+       strcat(ROM_SETTINGS.goodname, " (unknown rom)");
+       ROM_SETTINGS.savetype = EEPROM_16KB;
+       ROM_SETTINGS.players = 1;
+       DebugMessage(M64MSG_INFO, "Banjo Tooie INI patches applied.");
+    }
     /* Look up this ROM in the .ini file and fill in goodname, etc */
-    if ((entry=ini_search_by_md5(digest)) != NULL ||
+    else if ((entry=ini_search_by_md5(digest)) != NULL ||
         (entry=ini_search_by_crc(sl(ROM_HEADER.CRC1),sl(ROM_HEADER.CRC2))) != NULL)
     {
         strncpy(ROM_SETTINGS.goodname, entry->goodname, 255);
