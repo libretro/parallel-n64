@@ -211,6 +211,17 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
        ROM_SETTINGS.players = 4;
        DebugMessage(M64MSG_INFO, "Mario Tennis INI patches applied.");
     }
+    else if(
+          (sl(ROM_HEADER.CRC1) == 0x147E0EDB && sl(ROM_HEADER.CRC2) == 0x36C5B12C)
+          || (sl(ROM_HEADER.CRC1) == 0xAC000A2B && sl(ROM_HEADER.CRC2) == 0x38E3A55C)
+          )
+    {
+       strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+       ROM_SETTINGS.savetype = EEPROM_16KB;
+       ROM_SETTINGS.players = 1;
+       ROM_SETTINGS.rumble = 1;
+       DebugMessage(M64MSG_INFO, "Neon Genesis Evangelion INI patches applied.");
+    }
     /* Look up this ROM in the .ini file and fill in goodname, etc */
     else if ((entry=ini_search_by_md5(digest)) != NULL ||
         (entry=ini_search_by_crc(sl(ROM_HEADER.CRC1),sl(ROM_HEADER.CRC2))) != NULL)
