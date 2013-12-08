@@ -276,10 +276,9 @@ int grTexFormatSize(int fmt)
 #ifndef GLES
 static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt)
 {
-   int i, j, m, n, factor;
+   int i, j, factor;
    factor = -1;
-   m = 0;
-   n = 0;
+   unsigned size_tex = width * height;
    switch(fmt)
    {
       case GR_TEXFMT_ALPHA_8:
@@ -295,25 +294,21 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
          *glpackfmt = GL_UNSIGNED_BYTE;
          break;
       case GR_TEXFMT_ALPHA_INTENSITY_44:
-         //FIXME - still CPU software color conversion
-         for (i=0; i<height; i++)
          {
-            for (j=0; j<width; j++)
-            {
-               unsigned short texel = (unsigned short)((unsigned char*)info->data)[m];
-
+            unsigned short *texture_ptr = &((unsigned short*)texture)[size_tex];
+            //FIXME - still CPU software color conversion
+            do{
+               unsigned short texel = (unsigned short)((unsigned char*)info->data)[size_tex];
                // Replicate glide's ALPHA_INTENSITY_44 to match gl's LUMINANCE_ALPHA
                texel = (texel & 0x00F0) << 4 | (texel & 0x000F);
-               ((unsigned short*)texture)[n] = (texel << 4) | texel;
-               m++;
-               n++;
-            }
+               *texture_ptr-- = (texel << 4) | texel;
+            }while(size_tex--);
+            factor = 1;
+            *gltexfmt = GL_LUMINANCE_ALPHA;
+            *glpixfmt = GL_LUMINANCE_ALPHA;
+            *glpackfmt = GL_UNSIGNED_BYTE;
+            info->data = texture;
          }
-         factor = 1;
-         *gltexfmt = GL_LUMINANCE_ALPHA;
-         *glpixfmt = GL_LUMINANCE_ALPHA;
-         *glpackfmt = GL_UNSIGNED_BYTE;
-         info->data = texture;
          break;
       case GR_TEXFMT_RGB_565:
          factor = 2;
@@ -385,6 +380,7 @@ grTexDownloadMipMap( GrChipID_t tmu,
       // VP fixed the texture conversions to be more accurate, also swapped
       // the for i/j loops so that is is less likely to break the memory cache
       register int n = 0, m = 0;
+      unsigned size_tex = width * height;
       switch(info->format)
       {
          case GR_TEXFMT_ALPHA_8:
@@ -426,24 +422,21 @@ grTexDownloadMipMap( GrChipID_t tmu,
             info->data = texture;
             break;
          case GR_TEXFMT_ALPHA_INTENSITY_44:
-            for (i=0; i<height; i++)
             {
-               for (j=0; j<width; j++)
-               {
-                  unsigned short texel = (unsigned short)((unsigned char*)info->data)[m];
-
+               unsigned short *texture_ptr = &((unsigned short*)texture)[size_tex];
+               //FIXME - still CPU software color conversion
+               do{
+                  unsigned short texel = (unsigned short)((unsigned char*)info->data)[size_tex];
                   // Replicate glide's ALPHA_INTENSITY_44 to match gl's LUMINANCE_ALPHA
                   texel = (texel & 0x00F0) << 4 | (texel & 0x000F);
-                  ((unsigned short*)texture)[n] = (texel << 4) | texel;
-                  m++;
-                  n++;
-               }
+                  *texture_ptr-- = (texel << 4) | texel;
+               }while(size_tex--);
+               factor = 1;
+               glpixfmt = GL_LUMINANCE_ALPHA;
+               gltexfmt = GL_LUMINANCE_ALPHA;
+               glpackfmt = GL_UNSIGNED_BYTE;
+               info->data = texture;
             }
-            factor = 1;
-            glpixfmt = GL_LUMINANCE_ALPHA;
-            gltexfmt = GL_LUMINANCE_ALPHA;
-            glpackfmt = GL_UNSIGNED_BYTE;
-            info->data = texture;
             break;
          case GR_TEXFMT_RGB_565:
             for (i=0; i<height; i++)
