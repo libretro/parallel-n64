@@ -200,6 +200,17 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
        ROM_SETTINGS.rumble = 1;
        DebugMessage(M64MSG_INFO, "RR64 Ridge Racer 64 INI patches applied.");
     }
+    else if(
+          (sl(ROM_HEADER.CRC1) == 0x839F3AD5 && sl(ROM_HEADER.CRC2) == 0x406D15FA)
+          || (sl(ROM_HEADER.CRC1) == 0x5001CF4F  && sl(ROM_HEADER.CRC2) == 0xF30CB3BD)
+          || (sl(ROM_HEADER.CRC1) == 0x3A6C42B5  && sl(ROM_HEADER.CRC2) == 0x1ACADA1B)
+          )
+    {
+       strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+       ROM_SETTINGS.savetype = EEPROM_16KB;
+       ROM_SETTINGS.players = 4;
+       DebugMessage(M64MSG_INFO, "Mario Tennis INI patches applied.");
+    }
     /* Look up this ROM in the .ini file and fill in goodname, etc */
     else if ((entry=ini_search_by_md5(digest)) != NULL ||
         (entry=ini_search_by_crc(sl(ROM_HEADER.CRC1),sl(ROM_HEADER.CRC2))) != NULL)
