@@ -39,74 +39,39 @@
 
 static INLINE void texConv_ARGB1555_ARGB4444(uint8_t *src, uint8_t *dst, int size)
 {
-   uint32_t *v3;
-   uint32_t *v4;
-   int v5;
-   uint32_t v6;
-   uint32_t v7;
-
-   v3 = (uint32_t *)src;
-   v4 = (uint32_t *)dst;
-   v5 = size;
+   uint32_t *_src = (uint32_t *)src;
+   uint32_t *_dst = (uint32_t *)dst;
 
    do
    {
-      v6 = *v3;
-      ++v3;
-      v7 = v6;
-      *v4 = ((v7 & 0x1E001E) >> 1) | ((v6 & 0x3C003C0) >> 2) | ((v6 & 0x78007800) >> 3) | ((v6 & 0x80008000) >> 3) | ((v6 & 0x80008000) >> 2) | ((v6 & 0x80008000) >> 1) | (v6 & 0x80008000);
-      ++v4;
-      --v5;
-   }
-   while ( v5 );
+      uint32_t v6 = *_src++;
+      *_dst++ = ((v6 & 0x1E001E) >> 1) | ((v6 & 0x3C003C0) >> 2) | ((v6 & 0x78007800) >> 3) | ((v6 & 0x80008000) >> 3) | ((v6 & 0x80008000) >> 2) | ((v6 & 0x80008000) >> 1) | (v6 & 0x80008000);
+   }while (--size);
 }
 
 static INLINE void texConv_AI88_ARGB4444(uint8_t *src, uint8_t *dst, int size)
 {
-   uint32_t *v3, *v4;
-   int v5;
-   uint32_t v6, v7;
-
-   v3 = (uint32_t *)src;
-   v4 = (uint32_t *)dst;
-   v5 = size;
+   uint32_t *_src = (uint32_t *)src;
+   uint32_t *_dst = (uint32_t *)dst;
 
    do
    {
-      v6 = *v3;
-      ++v3;
-      v7 = v6;
-      *v4 = (16 * (v7 & 0xF000F0) >> 8) | (v7 & 0xF000F0) | (16 * (v7 & 0xF000F0)) | (v6 & 0xF000F000);
-      ++v4;
-      --v5;
-   }
-   while ( v5 );
+      uint32_t v6 = *_src++;
+      *_dst++ = (16 * (v6 & 0xF000F0) >> 8) | (v6 & 0xF000F0) | (16 * (v6 & 0xF000F0)) | (v6 & 0xF000F000);
+   }while (--size);
 }
 
 static INLINE void texConv_A8_ARGB4444(uint8_t *src, uint8_t *dst, int size)
 {
-   uint32_t *v3;
-   uint32_t *v4;
-   int v5;
-   uint32_t v6;
-   uint32_t v7;
-   uint32_t *v8;
+   uint32_t *_src = (uint32_t *)src;
+   uint32_t *_dst = (uint32_t *)dst;
 
-   v3 = (uint32_t *)src;
-   v4 = (uint32_t *)dst;
-   v5 = size;
    do
    {
-      v6 = *v3;
-      ++v3;
-      v7 = v6;
-      *v4 = ((v6 & 0xF0) << 8 >> 12) | (uint8_t)(v6 & 0xF0) | (16 * (uint8_t)(v6 & 0xF0) & 0xFFFFFFF) | ((uint8_t)(v6 & 0xF0) << 8) | (16 * (uint16_t)(v6 & 0xF000) & 0xFFFFF) | (((uint16_t)(v6 & 0xF000) << 8) & 0xFFFFFF) | (((uint16_t)(v6 & 0xF000) << 12) & 0xFFFFFFF) | ((uint16_t)(v6 & 0xF000) << 16);
-      v8 = v4 + 1;
-      *v8 = ((v7 & 0xF00000) >> 20) | ((v7 & 0xF00000) >> 16) | ((v7 & 0xF00000) >> 12) | ((v7 & 0xF00000) >> 8) | ((v6 & 0xF0000000) >> 12) | ((v6 & 0xF0000000) >> 8) | ((v6 & 0xF0000000) >> 4) | (v6 & 0xF0000000);
-      v4 = v8 + 1;
-      --v5;
-   }
-   while ( v5 );
+      uint32_t v6 = *_src++;
+      *_dst++ = ((v6 & 0xF0) << 8 >> 12) | (uint8_t)(v6 & 0xF0) | (16 * (uint8_t)(v6 & 0xF0) & 0xFFFFFFF) | ((uint8_t)(v6 & 0xF0) << 8) | (16 * (uint16_t)(v6 & 0xF000) & 0xFFFFF) | (((uint16_t)(v6 & 0xF000) << 8) & 0xFFFFFF) | (((uint16_t)(v6 & 0xF000) << 12) & 0xFFFFFFF) | ((uint16_t)(v6 & 0xF000) << 16);
+      *_dst++ = ((v6 & 0xF00000) >> 20) | ((v6 & 0xF00000) >> 16) | ((v6 & 0xF00000) >> 12) | ((v6 & 0xF00000) >> 8) | ((v6 & 0xF0000000) >> 12) | ((v6 & 0xF0000000) >> 8) | ((v6 & 0xF0000000) >> 4) | (v6 & 0xF0000000);
+   } while (--size);
 }
 
 // 2 pixels are converted in one loop
