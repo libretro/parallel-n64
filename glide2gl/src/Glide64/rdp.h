@@ -284,7 +284,6 @@ typedef struct
    int offset_x, offset_y;
    int scale_x, scale_y;
    int fast_crc;
-   int alt_tex_size;
    int use_sts1_only;
    int flame_corona; //hack for zeldas flame's corona
    int increase_texrect_edge; // add 1 to lower right corner coordinates of texrect

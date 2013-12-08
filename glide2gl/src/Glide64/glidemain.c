@@ -365,7 +365,6 @@ void ReadSpecialSettings (const char * name)
       ignore_aux_copy = 0;
       useless_is_useless = 0;
 
-      settings.alt_tex_size = 0;
       settings.use_sts1_only = 0;
       settings.fast_crc = 1;
       settings.force_microcheck = 0;
@@ -401,7 +400,6 @@ void ReadSpecialSettings (const char * name)
    if (strstr(name, (const char *)"1080 SNOWBOARDING"))
    {
       optimize_texrect = 1;
-      settings.alt_tex_size = 1;
       //depthmode = 0
       settings.swapmode = 2;
       smart_read = 1;
@@ -573,7 +571,6 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char *)"MICKEY USA PAL")
          )
    {
-      settings.alt_tex_size = 1;
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -964,7 +961,6 @@ void ReadSpecialSettings (const char * name)
          )
    {
       optimize_texrect = 0;
-      settings.alt_tex_size = 1;
       settings.filtering = 1;
       //depthmode = 1
       smart_read = 1;
@@ -1155,7 +1151,6 @@ void ReadSpecialSettings (const char * name)
    {
       read_back_to_screen = 1;
       settings.decrease_fillrect_edge = 1;
-      settings.alt_tex_size = 1;
       //depthmode = 1
       settings.swapmode = 2;
       smart_read = 1;
@@ -1844,7 +1839,6 @@ void ReadSpecialSettings (const char * name)
 #if 1
       // Not in original INI - fixes black stripes on big textures
       // TODO: check for regressions
-      settings.alt_tex_size = 1;
       settings.use_sts1_only = 1;
       settings.increase_texrect_edge = 1;
 #endif
@@ -1943,7 +1937,6 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"TETRISPHERE"))
    {
-      settings.alt_tex_size = 1;
       settings.use_sts1_only = 1;
       settings.increase_texrect_edge = 1;
       //depthmode = 1
