@@ -301,7 +301,15 @@ void dma_si_write(void)
     //si_register.si_stat |= 1;
 
     update_count();
-    add_interupt_event(SI_INT, /*0x100*/0x900);
+    if (strcmp(ROM_SETTINGS.goodname, "BANJO TOOIE") == 0)
+    {
+       //add_interupt_event(SI_INT, /*0x100*/0x900);
+       MI_register.mi_intr_reg |= 0x02; // SI
+       si_register.si_stat |= 0x1000; // INTERRUPT
+       check_interupt();
+    }
+    else
+       add_interupt_event(SI_INT, /*0x100*/0x900);
 }
 
 void dma_si_read(void)
@@ -325,6 +333,13 @@ void dma_si_read(void)
     //si_register.si_stat |= 1;
 
     update_count();
-    add_interupt_event(SI_INT, /*0x100*/0x900);
+    if (strcmp(ROM_SETTINGS.goodname, "BANJO TOOIE") == 0)
+    {
+       MI_register.mi_intr_reg |= 0x02; // SI
+       si_register.si_stat |= 0x1000; // INTERRUPT
+       check_interupt();
+    }
+    else
+       add_interupt_event(SI_INT, /*0x100*/0x900);
 }
 

@@ -174,7 +174,6 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       )
     {
        strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
-       strcat(ROM_SETTINGS.goodname, " (unknown rom)");
        ROM_SETTINGS.savetype = EEPROM_16KB;
        ROM_SETTINGS.players = 1;
        DebugMessage(M64MSG_INFO, "Banjo Tooie INI patches applied.");
