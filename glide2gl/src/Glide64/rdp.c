@@ -1878,10 +1878,7 @@ static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt
   uint32_t v14;
   int v15;
   int v16;
-  uint32_t *v17;
   int v18;
-  uint32_t v19;
-  uint32_t v20;
   int i;
 
   v5 = dst;
@@ -1898,34 +1895,26 @@ static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt
     do
     {
       v10 = __ROL__(v10, 8);
-      --v8;
-    }
-    while ( v8 );
+    }while (--v8);
     do
     {
       v10 = __ROL__(v10, 8);
       *(uint8_t *)v5 = v10;
       v5 = (uint32_t *)((char *)v5 + 1);
-      --v9;
     }
-    while ( v9 );
+    while (--v9);
     v12 = *v11;
     v7 = v11 + 1;
-    *v5 = bswap32(v12);
-    ++v5;
+    *v5++ = bswap32(v12);
     v6 = cnt - 1;
     if ( cnt != 1 )
     {
 LABEL_23:
       do
       {
-        *v5 = bswap32(*v7);
-        v5[1] = bswap32(v7[1]);
-        v7 += 2;
-        v5 += 2;
-        --v6;
-      }
-      while ( v6 );
+        *v5++ = bswap32(*v7++);
+        *v5++ = bswap32(*v7++);
+      }while (--v6 );
     }
     v13 = off & 3;
     if ( off & 3 )
@@ -1936,55 +1925,50 @@ LABEL_23:
         v14 = __ROL__(v14, 8);
         *(uint8_t *)v5 = v14;
         v5 = (uint32_t *)((char *)v5 + 1);
-        --v13;
-      }
-      while ( v13 );
+      }while (--v13);
     }
   }
   v15 = cnt;
   v16 = 0;
-  v17 = dst;
   v18 = 0;
 dxt_test:
-  while ( 1 )
+  do
   {
-    v17 += 2;
-    --v15;
-    if ( !v15 )
-      break;
-    v16 += dxt;
-    if ( v16 < 0 )
-    {
-      while ( 1 )
-      {
-        ++v18;
-        --v15;
-        if ( !v15 )
-          goto end_dxt_test;
-        v16 += dxt;
-        if ( v16 >= 0 )
+     dst += 2;
+     if ( !--v15 )
+        break;
+     v16 += dxt;
+     if ( v16 < 0 )
+     {
+        do
         {
-          for ( i = v15; v18; --v18 )
-          {
-            v19 = *v17;
-            *v17 = v17[1];
-            v17[1] = v19;
-            v17 += 2;
-          }
-          v15 = i;
-          goto dxt_test;
-        }
-      }
-    }
-  }
+           ++v18;
+           if ( !--v15 )
+              goto end_dxt_test;
+           v16 += dxt;
+           if ( v16 >= 0 )
+           {
+              for ( i = v15; v18; --v18 )
+              {
+                 *dst    ^= dst[1];
+                 dst[1] ^= *dst;
+                 *dst    ^= dst[1];
+                 dst += 2;
+              }
+              v15 = i;
+              goto dxt_test;
+           }
+        }while(1);
+     }
+  }while(1);
 end_dxt_test:
   while ( v18 )
   {
-    v20 = *v17;
-    *v17 = v17[1];
-    v17[1] = v20;
-    v17 += 2;
-    --v18;
+     *dst    ^= dst[1];
+     dst[1] ^= *dst;
+     *dst    ^= dst[1];
+     dst += 2;
+     --v18;
   }
 }
 
@@ -2091,7 +2075,6 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height,
   int v19;
   uint32_t v20;
   int v21;
-  uint32_t v22;
   int v23;
   uint32_t *v24;
   int v25;
@@ -2133,34 +2116,24 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height,
       do
       {
         v16 = __ROL__(v16, 8);
-        --v14;
-      }
-      while ( v14 );
+      }while (--v14 );
       do
       {
         v16 = __ROL__(v16, 8);
         *(uint8_t *)v7 = v16;
         v7 = (uint32_t *)((char *)v7 + 1);
-        --v15;
-      }
-      while ( v15 );
+      }while(--v15 );
       v18 = *v17;
       v13 = v17 + 1;
-      *v7 = bswap32(v18);
-      ++v7;
-      --v8;
-      if ( v8 )
+      *v7++ = bswap32(v18);
+      if (--v8)
       {
 LABEL_20:
         do
         {
-          *v7 = bswap32(*v13);
-          v7[1] = bswap32(v13[1]);
-          v13 += 2;
-          v7 += 2;
-          --v8;
-        }
-        while ( v8 );
+          *v7++ = bswap32(*v13++);
+          *v7++ = bswap32(*v13++);
+        }while (--v8);
       }
       v19 = v23 & 3;
       if ( v23 & 3 )
@@ -2171,9 +2144,8 @@ LABEL_20:
           v20 = __ROL__(v20, 8);
           *(uint8_t *)v7 = v20;
           v7 = (uint32_t *)((char *)v7 + 1);
-          --v19;
         }
-        while ( v19 );
+        while (--v19);
       }
     }
     v9 = v27;
@@ -2187,21 +2159,18 @@ LABEL_20:
       {
         do
         {
-          v22 = *v7;
-          *v7 = v7[1];
-          v7[1] = v22;
-          v7 += 2;
-          --v8;
-        }
-        while ( v8 );
+           *v7    ^= v7[1];
+           v7[1] ^= *v7;
+           *v7    ^= v7[1];
+           v7 += 2;
+        }while (--v8);
       }
       v21 = v29;
       v8 = v30;
     }
     v10 = line + v26;
     v12 = v21 - 1;
-  }
-  while ( v12 );
+  }while ( v12 );
 }
 
 void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
