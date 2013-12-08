@@ -178,6 +178,17 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
        ROM_SETTINGS.players = 1;
        DebugMessage(M64MSG_INFO, "Banjo Tooie INI patches applied.");
     }
+    else if(
+             (sl(ROM_HEADER.CRC1) == 0x2337d8e8 && sl(ROM_HEADER.CRC2) == 0x6b8e7cec)
+             || (sl(ROM_HEADER.CRC1) == 0x2DCFCA60 && sl(ROM_HEADER.CRC2) == 0x8354B147)
+             || (sl(ROM_HEADER.CRC1) == 0xD3F97D49 && sl(ROM_HEADER.CRC2) == 0x6924135B)
+          )
+    {
+       strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+       ROM_SETTINGS.savetype = EEPROM_16KB;
+       ROM_SETTINGS.players = 1;
+       DebugMessage(M64MSG_INFO, "Yoshi's Story INI patches applied.");
+    }
     /* Look up this ROM in the .ini file and fill in goodname, etc */
     else if ((entry=ini_search_by_md5(digest)) != NULL ||
         (entry=ini_search_by_crc(sl(ROM_HEADER.CRC1),sl(ROM_HEADER.CRC2))) != NULL)
