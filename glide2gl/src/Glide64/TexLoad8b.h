@@ -40,8 +40,6 @@
 
 static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
 {
-   int32_t tmp;
-   uint32_t utmp;
    uint8_t *v7;
    uint32_t *v8, *v13, *v15, *v17, *v18, *v23;
    int v9, v10, v11, v19, v20, v25, v26;
@@ -59,34 +57,24 @@ static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
          v11 = v10;
          v12 = bswap32(*(uint32_t *)v7);
          v13 = (uint32_t *)(v7 + 4);
-         tmp = __ROR16(*(uint16_t *)((char *)pal + ((v12 >> 15) & 0x1FE)), 1);
-         ALOWORD(v10) = tmp;
+         ALOWORD(v10) = __ROR16(*(uint16_t *)((char *)pal + ((v12 >> 15) & 0x1FE)), 1);
          v14 = v10 << 16;
-         utmp = __ROR16(*(uint16_t *)((char *)pal + ((v12 >> 23) & 0x1FE)), 1);
-         ALOWORD(v14) = utmp;
+         ALOWORD(v14) = __ROR16(*(uint16_t *)((char *)pal + ((v12 >> 23) & 0x1FE)), 1);
          *v8 = v14;
          v15 = v8 + 1;
-         utmp = __ROR16(*(uint16_t *)((char *)pal + (2 * (uint16_t)v12 & 0x1FE)), 1);
-         ALOWORD(v14) = utmp;
+         ALOWORD(v14) = __ROR16(*(uint16_t *)((char *)pal + (2 * (uint16_t)v12 & 0x1FE)), 1);
          v14 <<= 16;
-         utmp = __ROR16(*(uint16_t *)((char *)pal + ((v12 >> 7) & 0x1FE)), 1);
-         ALOWORD(v14) = utmp;
-         *v15 = v14;
-         ++v15;
+         ALOWORD(v14) = __ROR16(*(uint16_t *)((char *)pal + ((v12 >> 7) & 0x1FE)), 1);
+         *v15++ = v14;
          v16 = bswap32(*v13);
          v7 = (uint8_t *)(v13 + 1);
-         utmp = __ROR16(*(uint16_t *)((char *)pal + ((v16 >> 15) & 0x1FE)), 1);
-         ALOWORD(v14) = utmp;
+         ALOWORD(v14) = __ROR16(*(uint16_t *)((char *)pal + ((v16 >> 15) & 0x1FE)), 1);
          v14 <<= 16;
-         utmp =__ROR16(*(uint16_t *)((char *)pal + ((v16 >> 23) & 0x1FE)), 1);
-         ALOWORD(v14) = utmp;
-         *v15 = v14;
-         ++v15;
-         utmp = __ROR16(*(uint16_t *)((char *)pal + (2 * (uint16_t)v16 & 0x1FE)), 1);
-         ALOWORD(v14) = utmp;
+         ALOWORD(v14) =__ROR16(*(uint16_t *)((char *)pal + ((v16 >> 23) & 0x1FE)), 1);
+         *v15++ = v14;
+         ALOWORD(v14) = __ROR16(*(uint16_t *)((char *)pal + (2 * (uint16_t)v16 & 0x1FE)), 1);
          v14 <<= 16;
-         utmp = __ROR16(*(uint16_t *)((char *)pal + ((v16 >> 7) & 0x1FE)), 1);
-         ALOWORD(v14) = utmp;
+         ALOWORD(v14) = __ROR16(*(uint16_t *)((char *)pal + ((v16 >> 7) & 0x1FE)), 1);
          *v15 = v14;
          v8 = v15 + 1;
          v10 = v11 - 1;
@@ -102,34 +90,24 @@ static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
       {
          v20 = v19;
          v21 = bswap32(v17[1]);
-         tmp = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 15) & 0x1FE)), 1);
-         ALOWORD(v19) = tmp;
+         ALOWORD(v19) = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 15) & 0x1FE)), 1);
          v22 = v19 << 16;
-         utmp = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 23) & 0x1FE)), 1);
-         ALOWORD(v22) = utmp;
+         ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 23) & 0x1FE)), 1);
          *v18 = v22;
          v23 = v18 + 1;
-         utmp = __ROR16(*(uint16_t *)((char *)pal + (2 * (uint16_t)v21 & 0x1FE)), 1);
-         ALOWORD(v22) = utmp;
+         ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + (2 * (uint16_t)v21 & 0x1FE)), 1);
          v22 <<= 16;
-         utmp = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 7) & 0x1FE)), 1);
-         ALOWORD(v22) = utmp;
-         *v23 = v22;
-         ++v23;
+         ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 7) & 0x1FE)), 1);
+         *v23++ = v22;
          v24 = bswap32(*v17);
          v17 = (uint32_t *)&src[((uintptr_t)v17 + 8 - (uintptr_t)src) & 0x7FF];
-         utmp = __ROR16(*(uint16_t *)((char *)pal + ((v24 >> 15) & 0x1FE)), 1);
-         ALOWORD(v22) = utmp;
+         ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v24 >> 15) & 0x1FE)), 1);
          v22 <<= 16;
-         utmp = __ROR16(*(uint16_t *)((char *)pal + ((v24 >> 23) & 0x1FE)), 1);
-         ALOWORD(v22) = utmp;
-         *v23 = v22;
-         ++v23;
-         utmp = __ROR16(*(uint16_t *)((char *)pal + (2 * (uint16_t)v24 & 0x1FE)), 1);
-         ALOWORD(v22) = utmp;
+         ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v24 >> 23) & 0x1FE)), 1);
+         *v23++ = v22;
+         ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + (2 * (uint16_t)v24 & 0x1FE)), 1);
          v22 <<= 16;
-         utmp = __ROR16(*(uint16_t *)((char *)pal + ((v24 >> 7) & 0x1FE)), 1);
-         ALOWORD(v22) = utmp;
+         ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v24 >> 7) & 0x1FE)), 1);
          *v23 = v22;
          v18 = v23 + 1;
          v19 = v20 - 1;
@@ -138,8 +116,7 @@ static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
       v7 = &src[(line + (uintptr_t)v17 - (uintptr_t)src) & 0x7FF];
       v8 = (uint32_t *)((char *)v18 + ext);
       v9 = v26 - 1;
-   }
-   while ( v26 != 1 );
+   }while ( v26 != 1 );
 }
 
 static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
