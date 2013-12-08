@@ -1173,6 +1173,7 @@ static void rdp_texrect()
   }
 
   //*
+#ifdef HAVE_HWFBE
   if (rdp.tbuff_tex && (settings.frame_buffer & fb_optimize_texrect))
   {
     LRDP("Attempt to optimize texrect\n");
@@ -1197,6 +1198,7 @@ static void rdp_texrect()
     }
     return;
   }
+#endif
   //*/
   // framebuffer workaround for Zelda: MM LOT
   if ((rdp.othermode_l & 0xFFFF0000) == 0x0f5a0000)

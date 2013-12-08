@@ -398,11 +398,11 @@ void ReadSpecialSettings (const char * name)
    // Glide64 mk2 INI config
    if (strstr(name, (const char *)"1080 SNOWBOARDING"))
    {
-      optimize_texrect = 1;
       //depthmode = 0
       settings.swapmode = 2;
       smart_read = 1;
 #ifdef HAVE_HWFBE
+      optimize_texrect = 1;
       hires = 1;
 #endif
       //fb_clear = 1;
@@ -693,11 +693,11 @@ void ReadSpecialSettings (const char * name)
    {
       useless_is_useless = 1;
       settings.decrease_fillrect_edge = 1;
-      optimize_texrect = 0;
       settings.filtering = 1;
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
+      optimize_texrect = 0;
       hires = 1;
 #endif
       //fb_clear = 1
@@ -796,11 +796,11 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"Bottom of the 9th"))
    {
-      optimize_texrect = 0;
       settings.filtering = 1;
       //depthmode = 0;
       smart_read = 1;
 #ifdef HAVE_HWFBE
+      optimize_texrect = 0;
       hires = 1;
 #endif
    }
@@ -831,13 +831,13 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"CONKER BFD"))
    {
-      optimize_texrect = 1;
       //ignore_previous = 1
       settings.lodmode = 1;
       settings.filtering = 1;
       //depthmode = 0
       smart_read = 1;
 #ifdef HAVE_HWFBE
+      optimize_texrect = 1;
       hires = 1;
 #endif
       //fb_clear = 1
@@ -959,11 +959,11 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char*)"MYSTICAL NINJA2 SG")
          )
    {
-      optimize_texrect = 0;
       settings.filtering = 1;
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
+      optimize_texrect = 0;
       hires = 1;
 #endif
    }
@@ -1027,12 +1027,12 @@ void ReadSpecialSettings (const char * name)
    {
       useless_is_useless = 1;
       hires_buf_clear = 0;
-      optimize_texrect = 0;
       settings.filtering = 1;
       //depthmode = 1
       settings.swapmode = 2;
       smart_read = 1;
 #ifdef HAVE_HWFBE
+      optimize_texrect = 0;
       hires = 1;
 #endif
       read_alpha = 1;
@@ -1401,12 +1401,12 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char*)"POKEMON STADIUM G&S")
          )
    {
-      optimize_texrect = 0;
       //depthmode = 1
       settings.fast_crc = 0;
       settings.buff_clear = 0;
       smart_read = 1;
 #ifdef HAVE_HWFBE
+      optimize_texrect = 0;
       hires = 0;
 #endif
       read_alpha = 1;
@@ -1414,13 +1414,13 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"POKEMON STADIUM 2"))
    {
-      optimize_texrect = 0;
       //depthmode = 1
       settings.fast_crc = 0;
       settings.buff_clear = 0;
       settings.swapmode = 2;
       smart_read = 1;
 #ifdef HAVE_HWFBE
+      optimize_texrect = 0;
       hires = 1;
 #endif
       read_alpha = 1;
@@ -1449,7 +1449,6 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"quarterback_club_98"))
    {
-      optimize_texrect = 0;
       hires_buf_clear = 0;
       settings.filtering = 1;
       //depthmode = 1
@@ -1457,6 +1456,7 @@ void ReadSpecialSettings (const char * name)
       settings.buff_clear = 0;
       smart_read = 1;
 #ifdef HAVE_HWFBE
+      optimize_texrect = 0;
       hires = 1;
 #endif
       read_alpha = 1;
