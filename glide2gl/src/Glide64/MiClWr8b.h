@@ -42,82 +42,51 @@
 
 static INLINE void mirror8bS(uint8_t *tex, uint8_t *start, int width, int height, int mask, int line, int full, int count)
 {
-   uint8_t *v8;
-   int v9;
-   int v10;
+   uint8_t *v8 = start;
 
-   v8 = start;
-   v9 = height;
    do
    {
-      v10 = 0;
+      int v10 = 0;
       do
       {
          if ( width & (v10 + width) )
             *v8++ = *(&tex[mask] - (mask & v10));
          else
             *v8++ = tex[mask & v10];
-         ++v10;
-      }
-      while ( v10 != count );
+      }while ( ++v10 != count );
       v8 += line;
       tex += full;
-      --v9;
-   }
-   while ( v9 );
+   }while ( --height);
 }
 
 static INLINE void wrap8bS(uint8_t *tex, uint8_t *start, int height, int mask, int line, int full, int count)
 {
-   uint32_t *v7;
-   int v8;
-   int v9;
+   uint32_t *v7 = (uint32_t *)start;
 
-   v7 = (uint32_t *)start;
-   v8 = height;
    do
    {
-      v9 = 0;
+      int v9 = 0;
       do
       {
-         *v7 = *(uint32_t *)&tex[4 * (mask & v9)];
-         ++v7;
-         ++v9;
-      }
-      while ( v9 != count );
+         *v7++ = *(uint32_t *)&tex[4 * (mask & v9++)];
+      }while ( v9 != count );
       v7 = (uint32_t *)((char *)v7 + line);
       tex += full;
-      --v8;
-   }
-   while ( v8 );
+   }while (--height);
 }
 
 static INLINE void clamp8bS(uint8_t *tex, uint8_t *constant, int height, int line, int full, int count)
 {
-   uint8_t *v6;
-   uint8_t *v7;
-   int v8;
-   uint8_t v9;
-   int v10;
-
-   v6 = constant;
-   v7 = tex;
-   v8 = height;
    do
    {
-      v9 = *v6;
-      v10 = count;
+      unsigned i = count;
       do
       {
-         *v7++ = v9;
-         --v10;
-      }
-      while ( v10 );
-      v6 += full;
-      v7 += line;
-      --v8;
-   }
-   while ( v8 );
+         *tex++ = *constant;
+      }while(--i);
+      constant += full;
+      tex += line;
+   }while (--height);
 }
 
 void Mirror8bS (unsigned char * tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)

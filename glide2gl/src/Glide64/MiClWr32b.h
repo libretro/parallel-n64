@@ -43,89 +43,54 @@
 
 static INLINE void mirror32bS(uint8_t *tex, uint8_t *start, int width, int height, int mask, int line, int full, int count)
 {
-   uint32_t *v8;
-   int v9;
-   int v10;
+   uint32_t *v8 = (uint32_t *)start;
 
-   v8 = (uint32_t *)start;
-   v9 = height;
    do
    {
-      v10 = 0;
+      int v10 = 0;
       do
       {
          if ( width & (v10 + width) )
-         {
-            *v8 = *(uint32_t *)(&tex[mask] - (mask & 4 * v10));
-            ++v8;
-         }
+            *v8++ = *(uint32_t *)(&tex[mask] - (mask & 4 * v10));
          else
-         {
-            *v8 = *(uint32_t *)&tex[mask & 4 * v10];
-            ++v8;
-         }
-         ++v10;
-      }
-      while ( v10 != count );
+            *v8++ = *(uint32_t *)&tex[mask & 4 * v10];
+      }while (++v10 != count );
       v8 = (uint32_t *)((char *)v8 + line);
       tex += full;
-      --v9;
-   }
-   while ( v9 );
+   }while (--height);
 }
 
 static INLINE void wrap32bS(uint8_t *tex, uint8_t *start, int height, int mask, int line, int full, int count)
 {
-   uint32_t *v7;
-   int v8;
-   int v9;
+   uint32_t *v7 = (uint32_t *)start;
 
-   v7 = (uint32_t *)start;
-   v8 = height;
    do
    {
-      v9 = 0;
+      int v9 = 0;
       do
       {
-         *v7 = *(uint32_t *)&tex[4 * (mask & v9)];
-         ++v7;
-         ++v9;
-      }
-      while ( v9 != count );
+         *v7++ = *(uint32_t *)&tex[4 * (mask & v9)];
+      }while (--v9 != count );
       v7 = (uint32_t *)((char *)v7 + line);
       tex += full;
-      --v8;
-   }
-   while ( v8 );
+   }while (--height);
 }
 
 static INLINE void clamp32bS(uint8_t *tex, uint8_t *constant, int height, int line, int full, int count)
 {
-   uint32_t *v6;
-   uint32_t *v7;
-   int v8;
-   uint32_t v9;
-   int v10;
+   uint32_t *v6 = (uint32_t *)constant;
+   uint32_t *v7 = (uint32_t *)tex;
 
-   v6 = (uint32_t *)constant;
-   v7 = (uint32_t *)tex;
-   v8 = height;
    do
    {
-      v9 = *v6;
-      v10 = count;
+      int v10 = count;
       do
       {
-         *v7 = v9;
-         ++v7;
-         --v10;
-      }
-      while ( v10 );
+         *v7++ = *v6;
+      }while (--v10);
       v6 = (uint32_t *)((char *)v6 + full);
       v7 = (uint32_t *)((char *)v7 + line);
-      --v8;
-   }
-   while ( v8 );
+   }while (--height);
 }
 
 //****************************************************************
