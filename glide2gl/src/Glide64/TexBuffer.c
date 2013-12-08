@@ -64,8 +64,6 @@ static TBUFF_COLOR_IMAGE * AllocateTextureBuffer(COLOR_IMAGE *cimage)
    //  texbuf.scr_height = texbuf.height * rdp.scale_y;
 
    uint16_t max_size = max((uint16_t)texbuf.scr_width, (uint16_t)texbuf.scr_height);
-   if (max_size > voodoo.max_tex_size) //texture size is too large
-      return 0;
    uint32_t tex_size;
    //calculate LOD
    switch ((max_size-1) >> 6)

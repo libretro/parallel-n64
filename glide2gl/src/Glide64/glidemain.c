@@ -2190,8 +2190,6 @@ int InitGfx(void)
 
    // get the # of TMUs available
    grGet (GR_NUM_TMU, 4, (FxI32*)&voodoo.num_tmu);
-   // get maximal texture size
-   grGet (GR_MAX_TEXTURE_SIZE, 4, (FxI32*)&voodoo.max_tex_size);
    voodoo.tex_min_addr[0] = voodoo.tex_min_addr[1] = grTexMinAddress(GR_TMU0);
    voodoo.tex_max_addr[0] = voodoo.tex_max_addr[1] = grTexMaxAddress(GR_TMU0);
 

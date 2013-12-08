@@ -306,8 +306,7 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       return false;
    uint32_t width = fb_info->lr_x - fb_info->ul_x + 1;
    uint32_t height = fb_info->lr_y - fb_info->ul_y + 1;
-   uint32_t max_size = min(voodoo.max_tex_size, 512);
-   if (width > (uint32_t)max_size || height > (uint32_t)max_size)
+   if (width > 512 || height > 512)
    {
       if (settings.hacks&hack_RE2)
          DrawRE2Video256(fb_info);
@@ -569,7 +568,7 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 {
    uint32_t width = fb_info->lr_x - fb_info->ul_x + 1;
    uint32_t height = fb_info->lr_y - fb_info->ul_y + 1;
-   if (width > (uint32_t)voodoo.max_tex_size || height > (uint32_t)voodoo.max_tex_size || width > 512)
+   if (width > 512)
    {
       DrawDepthBufferToScreen256(fb_info);
       return;
