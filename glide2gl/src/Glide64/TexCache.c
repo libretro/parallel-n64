@@ -904,13 +904,6 @@ void LoadTex(int id, int tmu)
    uint32_t size_x = rdp.tiles[td].width;
    uint32_t size_y = rdp.tiles[td].height;
 
-   // make size_x and size_y both powers of two
-   if (!voodoo.sup_large_tex)
-   {
-      if (size_x > 256) size_x = 256;
-      if (size_y > 256) size_y = 256;
-   }
-
    int shift;
    for (shift=0; (1<<shift) < (int)size_x; shift++);
    size_x = 1 << shift;

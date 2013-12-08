@@ -8433,14 +8433,7 @@ static void ac__t0_mul_t1__mul_prim ()
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_TEXTURE);
    CA_PRIM ();
-   if (voodoo.sup_large_tex || rdp.tiles[1].lr_s < 256) //hack for RR64 pause screen
-   {
-      A_T0_MUL_T1 ();
-   }
-   else
-   {
-      A_USE_T0 ();
-   }
+   A_T0_MUL_T1 ();
 }
 
 static void ac__t0_mul_t1__mul_env ()
