@@ -40,55 +40,6 @@
 //****************************************************************
 // 8-bit Horizontal Mirror
 
-static INLINE void mirror8bS(uint8_t *tex, uint8_t *start, int width, int height, int mask, int line, int full, int count)
-{
-   uint8_t *v8 = start;
-
-   do
-   {
-      int v10 = 0;
-      do
-      {
-         if ( width & (v10 + width) )
-            *v8++ = *(&tex[mask] - (mask & v10));
-         else
-            *v8++ = tex[mask & v10];
-      }while ( ++v10 != count );
-      v8 += line;
-      tex += full;
-   }while ( --height);
-}
-
-static INLINE void wrap8bS(uint8_t *tex, uint8_t *start, int height, int mask, int line, int full, int count)
-{
-   uint32_t *v7 = (uint32_t *)start;
-
-   do
-   {
-      int v9 = 0;
-      do
-      {
-         *v7++ = *(uint32_t *)&tex[4 * (mask & v9++)];
-      }while ( v9 != count );
-      v7 = (uint32_t *)((char *)v7 + line);
-      tex += full;
-   }while (--height);
-}
-
-static INLINE void clamp8bS(uint8_t *tex, uint8_t *constant, int height, int line, int full, int count)
-{
-   do
-   {
-      unsigned i = count;
-      do
-      {
-         *tex++ = *constant;
-      }while(--i);
-      constant += full;
-      tex += line;
-   }while (--height);
-}
-
 void Mirror8bS (unsigned char * tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
 {
    if (mask == 0)
@@ -106,7 +57,20 @@ void Mirror8bS (unsigned char * tex, uint32_t mask, uint32_t max_width, uint32_t
    if (line < 0)
       return;
    unsigned char * start = tex + (mask_width);
-   mirror8bS (tex, start, mask_width, height, mask_mask, line, line_full, count);
+
+   do
+   {
+      int v10 = 0;
+      do
+      {
+         if ( mask_width & (v10 + mask_width) )
+            *start++ = *(&tex[mask_mask] - (mask_mask & v10));
+         else
+            *start++ = tex[mask_mask & v10];
+      }while ( ++v10 != count );
+      start += line;
+      tex += line_full;
+   }while ( --height);
 }
 
 //****************************************************************
@@ -128,8 +92,19 @@ void Wrap8bS (unsigned char * tex, uint32_t mask, uint32_t max_width, uint32_t r
    int line = line_full - (count << 2);
    if (line < 0)
       return;
-   unsigned char * start = tex + (mask_width);
-   wrap8bS (tex, start, height, mask_mask, line, line_full, count);
+
+   uint32_t *start = (uint32_t *)(unsigned char*)(tex + mask_width);
+
+   do
+   {
+      int v9 = 0;
+      do
+      {
+         *start++ = *(uint32_t *)&tex[4 * (mask_mask & v9++)];
+      }while ( v9 != count );
+      start = (uint32_t *)((char *)start + line);
+      tex += line_full;
+   }while (--height);
 }
 
 //****************************************************************
@@ -147,7 +122,17 @@ void Clamp8bS (unsigned char * tex, uint32_t width, uint32_t clamp_to, uint32_t 
 
    int line_full = real_width;
    int line = width;
-   clamp8bS (dest, constant, real_height, line, line_full, count);
+
+   do
+   {
+      unsigned i = count;
+      do
+      {
+         *dest++ = *constant;
+      }while(--i);
+      constant += line_full;
+      dest += line;
+   }while (--real_height);
 }
 
 //****************************************************************
