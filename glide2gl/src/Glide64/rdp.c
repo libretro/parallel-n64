@@ -1877,15 +1877,12 @@ static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt
     v11 = v7 + 1;
     do
     {
-      v10 = __ROL__(v10, 8);
+      *(uint8_t*)v5 = __ROL__(v10, 8);
     }while (--v8);
     do
     {
-      v10 = __ROL__(v10, 8);
-      *(uint8_t *)v5 = v10;
       v5 = (uint32_t *)((char *)v5 + 1);
-    }
-    while (--v9);
+    }while (--v9);
     v12 = *v11;
     v7 = v11 + 1;
     *v5++ = bswap32(v12);
@@ -2098,12 +2095,10 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height,
       v17 = v13 + 1;
       do
       {
-        v16 = __ROL__(v16, 8);
+        *(uint8_t*)v7 = __ROL__(v16, 8);
       }while (--v14 );
       do
       {
-        v16 = __ROL__(v16, 8);
-        *(uint8_t *)v7 = v16;
         v7 = (uint32_t *)((char *)v7 + 1);
       }while(--v15 );
       v18 = *v17;
@@ -2124,11 +2119,9 @@ LABEL_20:
         v20 = *(uint32_t *)((char *)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
         do
         {
-          v20 = __ROL__(v20, 8);
-          *(uint8_t *)v7 = v20;
+          *(uint8_t*)v7 = __ROL__(v20, 8);
           v7 = (uint32_t *)((char *)v7 + 1);
-        }
-        while (--v19);
+        }while (--v19);
       }
     }
     v9 = v27;
