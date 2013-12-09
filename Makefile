@@ -207,10 +207,7 @@ VIDEODIR_RICE=gles2rice/src
 CPPFLAGS += -DSDL_VIDEO_OPENGL_ES2=1
 #LDFLAGS += -lpng
 
-ricevideosrc = $(wildcard $(VIDEODIR_RICE)/*.cpp)
-ricevideoblack = $(VIDEODIR_RICE)/CNvTNTCombiner.cpp $(VIDEODIR_RICE)/OGLCombinerNV.cpp $(VIDEODIR_RICE)/OGLCombinerTNT2.cpp \
-             $(VIDEODIR_RICE)/OGLExtensions.cpp $(VIDEODIR_RICE)/OGLFragmentShaders.cpp 
-CXXFILES += $(filter-out $(ricevideoblack), $(ricevideosrc))
+CXXFILES += $(wildcard $(VIDEODIR_RICE)/*.cpp)
 
 CFILES += \
    $(VIDEODIR_RICE)/osal_files_$(PLATFORM_EXT).c \
