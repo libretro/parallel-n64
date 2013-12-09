@@ -18,11 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "osal_opengl.h"
 
-#if SDL_VIDEO_OPENGL
-#include "OGLExtensions.h"
-#elif SDL_VIDEO_OPENGL_ES2
 #include "OGLES2FragmentShaders.h"
-#endif
 #include "OGLDebug.h"
 #include "OGLRender.h"
 #include "OGLGraphicsContext.h"
@@ -157,13 +153,6 @@ void OGLRender::ApplyTextureFilter()
 
 void OGLRender::SetShadeMode(RenderShadeMode mode)
 {
-#if SDL_VIDEO_OPENGL
-    if( mode == SHADE_SMOOTH )
-        glShadeModel(GL_SMOOTH);
-    else
-        glShadeModel(GL_FLAT);
-    OPENGL_CHECK_ERRORS;
-#endif
 }
 
 void OGLRender::ZBufferEnable(BOOL bZBuffer)
@@ -283,38 +272,16 @@ void OGLRender::SetAlphaRef(uint32 dwAlpha)
     if (m_dwAlpha != dwAlpha)
     {
         m_dwAlpha = dwAlpha;
-#if SDL_VIDEO_OPENGL
-        glAlphaFunc(GL_GEQUAL, (float)dwAlpha);
-        OPENGL_CHECK_ERRORS;
-#endif
     }
 }
 
 void OGLRender::ForceAlphaRef(uint32 dwAlpha)
 {
-#if SDL_VIDEO_OPENGL
-    float ref = dwAlpha/255.0f;
-    glAlphaFunc(GL_GEQUAL, ref);
-    OPENGL_CHECK_ERRORS;
-#elif SDL_VIDEO_OPENGL_ES2
     m_dwAlpha = dwAlpha;
-#endif
 }
 
 void OGLRender::SetFillMode(FillMode mode)
 {
-#if SDL_VIDEO_OPENGL
-    if( mode == RICE_FILLMODE_WINFRAME )
-    {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        OPENGL_CHECK_ERRORS;
-    }
-    else
-    {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        OPENGL_CHECK_ERRORS;
-    }
-#endif
 }
 
 void OGLRender::SetCullMode(bool bCullFront, bool bCullBack)
@@ -576,25 +543,6 @@ bool OGLRender::RenderFillRect(uint32 dwColor, float depth)
 
 bool OGLRender::RenderLine3D()
 {
-#if SDL_VIDEO_OPENGL
-    ApplyZBias(0);  // disable z offsets
-
-    glBegin(GL_TRIANGLE_FAN);
-
-    glColor4f(m_line3DVtx[1].r, m_line3DVtx[1].g, m_line3DVtx[1].b, m_line3DVtx[1].a);
-    glVertex3f(m_line3DVector[3].x, m_line3DVector[3].y, -m_line3DVtx[1].z);
-    glVertex3f(m_line3DVector[2].x, m_line3DVector[2].y, -m_line3DVtx[0].z);
-    
-    glColor4ub(m_line3DVtx[0].r, m_line3DVtx[0].g, m_line3DVtx[0].b, m_line3DVtx[0].a);
-    glVertex3f(m_line3DVector[1].x, m_line3DVector[1].y, -m_line3DVtx[1].z);
-    glVertex3f(m_line3DVector[0].x, m_line3DVector[0].y, -m_line3DVtx[0].z);
-
-    glEnd();
-    OPENGL_CHECK_ERRORS;
-
-    ApplyZBias(m_dwZBias);  // set Z offset back to previous value
-#endif
-
     return true;
 }
 
@@ -980,12 +928,6 @@ void OGLRender::ApplyScissorWithClipRatio(bool force)
 
 void OGLRender::SetFogMinMax(float fMin, float fMax)
 {
-#if SDL_VIDEO_OPENGL
-    glFogf(GL_FOG_START, gRSPfFogMin); // Fog Start Depth
-    OPENGL_CHECK_ERRORS;
-    glFogf(GL_FOG_END, gRSPfFogMax); // Fog End Depth
-    OPENGL_CHECK_ERRORS;
-#endif
 }
 
 void OGLRender::TurnFogOnOff(bool flag)
@@ -1017,9 +959,6 @@ void OGLRender::SetFogColor(uint32 r, uint32 g, uint32 b, uint32 a)
     gRDP.fvFogColor[1] = g/255.0f;      //g
     gRDP.fvFogColor[2] = b/255.0f;      //b
     gRDP.fvFogColor[3] = a/255.0f;      //a
-#if SDL_VIDEO_OPENGL
-    glFogfv(GL_FOG_COLOR, gRDP.fvFogColor); // Set Fog Color
-#endif
     OPENGL_CHECK_ERRORS;
 }
 
@@ -1038,10 +977,6 @@ void OGLRender::DisableMultiTexture()
 
 void OGLRender::EndRendering(void)
 {
-#if SDL_VIDEO_OPENGL
-    glFlush();
-    OPENGL_CHECK_ERRORS;
-#endif
     if( CRender::gRenderReferenceCount > 0 ) 
         CRender::gRenderReferenceCount--;
 }

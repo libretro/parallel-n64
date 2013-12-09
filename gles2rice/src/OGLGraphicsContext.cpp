@@ -22,9 +22,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "m64p_plugin.h"
 #include "Config.h"
 #include "Debugger.h"
-#if SDL_VIDEO_OPENGL
-#include "OGLExtensions.h"
-#endif
 #include "OGLDebug.h"
 #include "OGLGraphicsContext.h"
 #include "TextureManager.h"
@@ -139,18 +136,6 @@ void COGLGraphicsContext::InitState(void)
     glClearDepth(1.0f);
     OPENGL_CHECK_ERRORS;
 
-#if SDL_VIDEO_OPENGL
-    glShadeModel(GL_SMOOTH);
-    OPENGL_CHECK_ERRORS;
-
-    //position viewer 
-    //glMatrixMode(GL_MODELVIEW);
-    //glLoadIdentity();
-
-    glDisable(GL_ALPHA_TEST);
-    OPENGL_CHECK_ERRORS;
-#endif
-
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     OPENGL_CHECK_ERRORS;
     glDisable(GL_BLEND);
@@ -160,20 +145,11 @@ void COGLGraphicsContext::InitState(void)
     OPENGL_CHECK_ERRORS;
     glDisable(GL_CULL_FACE);
     OPENGL_CHECK_ERRORS;
-#if SDL_VIDEO_OPENGL
-    glDisable(GL_NORMALIZE);
-    OPENGL_CHECK_ERRORS;
-#endif
 
     glDepthFunc(GL_LEQUAL);
     OPENGL_CHECK_ERRORS;
     glEnable(GL_DEPTH_TEST);
     OPENGL_CHECK_ERRORS;
-
-#if SDL_VIDEO_OPENGL
-    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
-    OPENGL_CHECK_ERRORS;
-#endif
 
     glEnable(GL_BLEND);
     OPENGL_CHECK_ERRORS;
@@ -211,18 +187,7 @@ void COGLGraphicsContext::InitOGLExtension(void)
             m_maxAnisotropicFiltering = options.anisotropicFiltering;
     }
 
-#if SDL_VIDEO_OPENGL
-    // Nvidia only extension features (optional)
-    m_bSupportNVRegisterCombiner = IsExtensionSupported("GL_NV_register_combiners");
-    m_bSupportTextureMirrorRepeat = IsExtensionSupported("GL_IBM_texture_mirrored_repeat") || IsExtensionSupported("ARB_texture_mirrored_repeat");
-    m_supportTextureMirror = m_bSupportTextureMirrorRepeat;
-    m_bSupportTextureLOD = IsExtensionSupported("GL_EXT_texture_lod");
-    m_bSupportBlendColor = IsExtensionSupported("GL_EXT_blend_color");
-    m_bSupportBlendSubtract = IsExtensionSupported("GL_EXT_blend_subtract");
-    m_bSupportNVTextureEnvCombine4 = IsExtensionSupported("GL_NV_texture_env_combine4");
-#else
     m_supportTextureMirror = true;
-#endif
 }
 
 bool COGLGraphicsContext::IsExtensionSupported(const char* pExtName)
