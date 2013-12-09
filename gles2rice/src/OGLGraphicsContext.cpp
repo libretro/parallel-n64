@@ -177,44 +177,15 @@ void COGLGraphicsContext::InitState(void)
 
     glEnable(GL_BLEND);
     OPENGL_CHECK_ERRORS;
-#if SDL_VIDEO_OPENGL
-    glEnable(GL_ALPHA_TEST);
-    OPENGL_CHECK_ERRORS;
-
-    glMatrixMode(GL_PROJECTION);
-    OPENGL_CHECK_ERRORS;
-    glLoadIdentity();
-    OPENGL_CHECK_ERRORS;
-    
-    glDepthRange(-1, 1);
-
-#elif SDL_VIDEO_OPENGL_ES2
     glDepthRangef(-1.0f, 1.0f);
-#endif
     OPENGL_CHECK_ERRORS;
 }
 
 void COGLGraphicsContext::InitOGLExtension(void)
 {
-#if SDL_VIDEO_OPENGL
-    // important extension features, it is very bad not to have these feature
-    m_bSupportMultiTexture = IsExtensionSupported(OSAL_GL_ARB_MULTITEXTURE);
-    m_bSupportTextureEnvCombine = IsExtensionSupported("GL_EXT_texture_env_combine");
-    
-    m_bSupportSeparateSpecularColor = IsExtensionSupported("GL_EXT_separate_specular_color");
-    m_bSupportSecondColor = IsExtensionSupported("GL_EXT_secondary_color");
-    m_bSupportFogCoord = IsExtensionSupported("GL_EXT_fog_coord");
-    m_bSupportTextureObject = IsExtensionSupported("GL_EXT_texture_object");
-
-    // Optional extension features
-    m_bSupportRescaleNormal = IsExtensionSupported("GL_EXT_rescale_normal");
-    m_bSupportLODBias = IsExtensionSupported("GL_EXT_texture_lod_bias");
-    m_bSupportAnisotropicFiltering = IsExtensionSupported("GL_EXT_texture_filter_anisotropic");
-#else
     m_bSupportMultiTexture = true;
     m_bSupportFogCoord = false;
     m_bSupportAnisotropicFiltering = true;
-#endif
 
     // Compute maxAnisotropicFiltering
     m_maxAnisotropicFiltering = 0;
