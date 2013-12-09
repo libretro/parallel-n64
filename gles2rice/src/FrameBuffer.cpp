@@ -601,177 +601,170 @@ uint32 CalculateRDRAMCRC(void *pPhysicalAddress, uint32 left, uint32 top, uint32
     }
     else
     {
-        try
-        {
-            dwAsmdwBytesPerLine = ((width<<size)+1)/2;
+       dwAsmdwBytesPerLine = ((width<<size)+1)/2;
 
-            pAsmStart = (uint8*)(pPhysicalAddress);
-            pAsmStart += (top * pitchInBytes) + (((left<<size)+1)>>1);
+       pAsmStart = (uint8*)(pPhysicalAddress);
+       pAsmStart += (top * pitchInBytes) + (((left<<size)+1)>>1);
 
-            dwAsmHeight = height - 1;
-            dwAsmPitch = pitchInBytes;
+       dwAsmHeight = height - 1;
+       dwAsmPitch = pitchInBytes;
 
 #if defined(NO_ASM)
-            uint32 pitch = pitchInBytes>>2;
-            uint32* pStart = (uint32*)pPhysicalAddress;
-            pStart += (top * pitch) + (((left<<size)+1)>>3);
+       uint32 pitch = pitchInBytes>>2;
+       uint32* pStart = (uint32*)pPhysicalAddress;
+       pStart += (top * pitch) + (((left<<size)+1)>>3);
 
-            int y = dwAsmHeight;
+       int y = dwAsmHeight;
 
-            while (y >= 0)
-            {
-                uint32 esi = 0;
-                int x = dwAsmdwBytesPerLine - 4;
-                while (x >= 0)
-                {
-                    esi = *(uint32*)(pAsmStart + x);
-                    esi ^= x;
+       while (y >= 0)
+       {
+          uint32 esi = 0;
+          int x = dwAsmdwBytesPerLine - 4;
+          while (x >= 0)
+          {
+             esi = *(uint32*)(pAsmStart + x);
+             esi ^= x;
 
-                    dwAsmCRC = (dwAsmCRC << 4) + ((dwAsmCRC >> 28) & 15);
-                    dwAsmCRC += esi;
-                    x-=4;
-                }
-                esi ^= y;
-                dwAsmCRC += esi;
-                pAsmStart += dwAsmPitch;
-                y--;
-            }
+             dwAsmCRC = (dwAsmCRC << 4) + ((dwAsmCRC >> 28) & 15);
+             dwAsmCRC += esi;
+             x-=4;
+          }
+          esi ^= y;
+          dwAsmCRC += esi;
+          pAsmStart += dwAsmPitch;
+          y--;
+       }
 
 #elif !defined(__GNUC__) // !defined(NO_ASM)
-            __asm 
-            {
-                push eax
-                push ebx
-                push ecx
-                push edx
-                push esi
+       __asm 
+       {
+          push eax
+             push ebx
+             push ecx
+             push edx
+             push esi
 
-                mov ecx, pAsmStart;             // = pStart
-                mov edx, 0                      // The CRC
-                mov eax, dwAsmHeight            // = y
-l2:             mov ebx, dwAsmdwBytesPerLine    // = x
-                sub ebx, 4
-l1:             mov esi, [ecx+ebx]
-                xor esi, ebx
-                rol edx, 4
-                add edx, esi
-                sub ebx, 4
-                jge l1
-                xor esi, eax
-                add edx, esi
-                add ecx, dwAsmPitch
-                dec eax
-                jge l2
+             mov ecx, pAsmStart;             // = pStart
+          mov edx, 0                      // The CRC
+             mov eax, dwAsmHeight            // = y
+             l2:             mov ebx, dwAsmdwBytesPerLine    // = x
+             sub ebx, 4
+             l1:             mov esi, [ecx+ebx]
+             xor esi, ebx
+             rol edx, 4
+             add edx, esi
+             sub ebx, 4
+             jge l1
+             xor esi, eax
+             add edx, esi
+             add ecx, dwAsmPitch
+             dec eax
+             jge l2
 
-                mov dwAsmCRC, edx
+             mov dwAsmCRC, edx
 
-                pop esi
-                pop edx
-                pop ecx
-                pop ebx
-                pop eax
-            }
+             pop esi
+             pop edx
+             pop ecx
+             pop ebx
+             pop eax
+       }
 #elif defined(__x86_64__) // defined(__GNUC__) && !defined(NO_ASM)
-        asm volatile(" xorl          %k2,      %k2           \n"
-                     " movslq        %k4,      %q4           \n"
-                     "0:                                     \n"
-                     " movslq         %3,    %%rbx           \n"
-                     " sub            $4,    %%rbx           \n"
-                     "1:                                     \n"
-                     " movl (%0,%%rbx,1),    %%eax           \n"
-                     " xorl        %%ebx,    %%eax           \n"
-                     " roll           $4,      %k2           \n"
-                     " addl        %%eax,      %k2           \n"
-                     " sub            $4,    %%rbx           \n"
-                     " jge            1b                     \n"
-                     " xorl          %k1,    %%eax           \n"
-                     " addl        %%eax,      %k2           \n"
-                     " add           %q4,       %0           \n"
-                     " decl          %k1                     \n"
-                     " jge            0b                     \n"
-                     : "+r"(pAsmStart), "+r"(dwAsmHeight), "=&r"(dwAsmCRC)
-                     : "m"(dwAsmdwBytesPerLine), "r"(dwAsmPitch)
-                     : "%rbx", "%rax", "memory", "cc"
-                     );
+       asm volatile(" xorl          %k2,      %k2           \n"
+             " movslq        %k4,      %q4           \n"
+             "0:                                     \n"
+             " movslq         %3,    %%rbx           \n"
+             " sub            $4,    %%rbx           \n"
+             "1:                                     \n"
+             " movl (%0,%%rbx,1),    %%eax           \n"
+             " xorl        %%ebx,    %%eax           \n"
+             " roll           $4,      %k2           \n"
+             " addl        %%eax,      %k2           \n"
+             " sub            $4,    %%rbx           \n"
+             " jge            1b                     \n"
+             " xorl          %k1,    %%eax           \n"
+             " addl        %%eax,      %k2           \n"
+             " add           %q4,       %0           \n"
+             " decl          %k1                     \n"
+             " jge            0b                     \n"
+             : "+r"(pAsmStart), "+r"(dwAsmHeight), "=&r"(dwAsmCRC)
+             : "m"(dwAsmdwBytesPerLine), "r"(dwAsmPitch)
+             : "%rbx", "%rax", "memory", "cc"
+             );
 #elif !defined(__PIC__) // !defined(__x86_64__) && defined(__GNUC__) && !defined(NO_ASM)
-           asm volatile("pusha                        \n"
-                "mov    %[pAsmStart], %%ecx           \n" // = pStart
-                "mov    $0, %%edx                     \n" // The CRC
-                "mov    %[dwAsmHeight], %%eax         \n" // = y
-                "0:                                   \n" //l2:
-                "mov    %[dwAsmdwBytesPerLine], %%ebx \n" // = x
-                "sub    $4, %%ebx                     \n"
-                "1:                                   \n" //l1:
-                "mov    (%%ecx,%%ebx), %%esi          \n"
-                "xor %%ebx, %%esi                     \n"
-                "rol $4, %%edx                        \n"
-                "add %%esi, %%edx                     \n"
-                "sub    $4, %%ebx                     \n"
-                "jge 1b                               \n" //jge l1
-                "xor %%eax, %%esi                     \n"
-                "add %%esi, %%edx                     \n"
-                "add %[dwAsmPitch], %%ecx             \n"
-                "dec %%eax                            \n"
-                "jge 0b                               \n" //jge l2
-                
-                "mov    %%edx, %[dwAsmCRC]            \n"
-                "popa                                 \n"
-                : [pAsmStart]"+m"(pAsmStart), [dwAsmHeight]"+m"(dwAsmHeight), [dwAsmCRC]"=m"(dwAsmCRC)
-                : [dwAsmdwBytesPerLine]"m"(dwAsmdwBytesPerLine), [dwAsmPitch]"m"(dwAsmPitch)
+       asm volatile("pusha                        \n"
+             "mov    %[pAsmStart], %%ecx           \n" // = pStart
+             "mov    $0, %%edx                     \n" // The CRC
+             "mov    %[dwAsmHeight], %%eax         \n" // = y
+             "0:                                   \n" //l2:
+             "mov    %[dwAsmdwBytesPerLine], %%ebx \n" // = x
+             "sub    $4, %%ebx                     \n"
+             "1:                                   \n" //l1:
+             "mov    (%%ecx,%%ebx), %%esi          \n"
+             "xor %%ebx, %%esi                     \n"
+             "rol $4, %%edx                        \n"
+             "add %%esi, %%edx                     \n"
+             "sub    $4, %%ebx                     \n"
+             "jge 1b                               \n" //jge l1
+             "xor %%eax, %%esi                     \n"
+             "add %%esi, %%edx                     \n"
+             "add %[dwAsmPitch], %%ecx             \n"
+             "dec %%eax                            \n"
+             "jge 0b                               \n" //jge l2
+
+             "mov    %%edx, %[dwAsmCRC]            \n"
+             "popa                                 \n"
+             : [pAsmStart]"+m"(pAsmStart), [dwAsmHeight]"+m"(dwAsmHeight), [dwAsmCRC]"=m"(dwAsmCRC)
+             : [dwAsmdwBytesPerLine]"m"(dwAsmdwBytesPerLine), [dwAsmPitch]"m"(dwAsmPitch)
                 : "memory", "cc"
-                );
+                   );
 #else // defined(__PIC__) && !defined(__x86_64__) && defined(__GNUC__) && !defined(NO_ASM)
-           unsigned int saveEBX;
-           unsigned int saveEAX;
-           unsigned int saveECX;
-           unsigned int saveEDX;
-           unsigned int saveESI;
-           unsigned int asmdwBytesPerLine = dwAsmdwBytesPerLine;
-           unsigned int asmPitch = dwAsmPitch;
-           unsigned int asmHeight = dwAsmHeight;
-           unsigned int asmCRC;
-           asm volatile("mov    %%ebx, %2                  \n"
-                "mov    %%eax, %5                  \n"
-                "mov    %%ecx, %7                  \n"
-                "mov    %%edx, %8                  \n"
-                "mov    %%esi, %9                  \n"
-                "mov    %0, %%ecx                  \n" // = pStart
-                "mov    $0, %%edx                  \n" // The CRC
-                "mov    %1, %%eax                  \n" // = y
-                "0:                                \n" //l2:
-                "mov    %3, %%ebx                  \n" // = x
-                "sub    $4, %%ebx                  \n"
-                "1:                                \n" //l1:
-                "mov    (%%ecx,%%ebx), %%esi       \n"
-                "xor %%ebx, %%esi                  \n"
-                "rol $4, %%edx                     \n"
-                "add %%esi, %%edx                  \n"
-                "sub    $4, %%ebx                  \n"
-                "jge 1b                            \n" //jge l1
-                "xor %%eax, %%esi                  \n"
-                "add %%esi, %%edx                  \n"
-                "add %4, %%ecx                     \n"
-                "dec %%eax                         \n"
-                "jge 0b                            \n" //jge l2
-                
-                "mov    %2, %%ebx                  \n"
-                "mov    %%edx, %6                  \n"
-                "mov    %5, %%eax                  \n"
-                "mov    %7, %%ecx                  \n"
-                "mov    %8, %%edx                  \n"
-                "mov    %9, %%esi                  \n"
-                :
-                : "m"(pAsmStart), "m"(asmHeight), "m"(saveEBX), "m"(asmdwBytesPerLine), "m"(asmPitch), "m"(saveEAX), 
-                "m"(asmCRC), "m"(saveECX), "m"(saveEDX), "m"(saveESI)
-                : "memory", "cc"
+       unsigned int saveEBX;
+       unsigned int saveEAX;
+       unsigned int saveECX;
+       unsigned int saveEDX;
+       unsigned int saveESI;
+       unsigned int asmdwBytesPerLine = dwAsmdwBytesPerLine;
+       unsigned int asmPitch = dwAsmPitch;
+       unsigned int asmHeight = dwAsmHeight;
+       unsigned int asmCRC;
+       asm volatile("mov    %%ebx, %2                  \n"
+             "mov    %%eax, %5                  \n"
+             "mov    %%ecx, %7                  \n"
+             "mov    %%edx, %8                  \n"
+             "mov    %%esi, %9                  \n"
+             "mov    %0, %%ecx                  \n" // = pStart
+             "mov    $0, %%edx                  \n" // The CRC
+             "mov    %1, %%eax                  \n" // = y
+             "0:                                \n" //l2:
+             "mov    %3, %%ebx                  \n" // = x
+             "sub    $4, %%ebx                  \n"
+             "1:                                \n" //l1:
+             "mov    (%%ecx,%%ebx), %%esi       \n"
+             "xor %%ebx, %%esi                  \n"
+             "rol $4, %%edx                     \n"
+             "add %%esi, %%edx                  \n"
+             "sub    $4, %%ebx                  \n"
+             "jge 1b                            \n" //jge l1
+             "xor %%eax, %%esi                  \n"
+             "add %%esi, %%edx                  \n"
+             "add %4, %%ecx                     \n"
+             "dec %%eax                         \n"
+             "jge 0b                            \n" //jge l2
+
+             "mov    %2, %%ebx                  \n"
+             "mov    %%edx, %6                  \n"
+             "mov    %5, %%eax                  \n"
+             "mov    %7, %%ecx                  \n"
+             "mov    %8, %%edx                  \n"
+             "mov    %9, %%esi                  \n"
+             :
+             : "m"(pAsmStart), "m"(asmHeight), "m"(saveEBX), "m"(asmdwBytesPerLine), "m"(asmPitch), "m"(saveEAX), 
+          "m"(asmCRC), "m"(saveECX), "m"(saveEDX), "m"(saveESI)
+             : "memory", "cc"
                 );
-           dwAsmCRC = asmCRC;
+       dwAsmCRC = asmCRC;
 #endif
-        }
-        catch(...)
-        {
-            TRACE0("Exception in texture CRC calculation");
-        }
     }
     return dwAsmCRC;
 }

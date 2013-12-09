@@ -7,6 +7,7 @@ LOCAL_MODULE := retro_mupen64plus
 M64P_ROOT_DIR := ../..
 LIBRETRODIR = ../
 VIDEODIR_GLIDE = $(M64P_ROOT_DIR)/glide2gl/src
+VIDEODIR_RICE = $(M64P_ROOT_DIR)/gles2rice/src
 RSPDIR = $(M64P_ROOT_DIR)/mupen64plus-rsp-hle
 COREDIR = $(M64P_ROOT_DIR)/mupen64plus-core
 VIDEODIR_GLN64 = $(M64P_ROOT_DIR)/gles2n64/src
@@ -71,6 +72,47 @@ LOCAL_SRC_FILES += \
     $(RSPDIR)/src/ucode3mp3.c
 
 # Video Plugins
+LOCAL_SRC_FILES += $(VIDEODIR_RICE)/Blender.cpp \
+            $(VIDEODIR_RICE)/Combiner.cpp \
+            $(VIDEODIR_RICE)/CombinerTable.cpp \
+            $(VIDEODIR_RICE)/Config.cpp \
+            $(VIDEODIR_RICE)/ConvertImage16.cpp \
+            $(VIDEODIR_RICE)/ConvertImage.cpp \
+            $(VIDEODIR_RICE)/Debugger.cpp \
+            $(VIDEODIR_RICE)/DecodedMux.cpp \
+            $(VIDEODIR_RICE)/DeviceBuilder.cpp \
+            $(VIDEODIR_RICE)/DirectXDecodedMux.cpp \
+            $(VIDEODIR_RICE)/FrameBuffer.cpp \
+            $(VIDEODIR_RICE)/GeneralCombiner.cpp \
+            $(VIDEODIR_RICE)/GraphicsContext.cpp \
+            $(VIDEODIR_RICE)/OGLCombiner.cpp \
+            $(VIDEODIR_RICE)/OGLDecodedMux.cpp \
+            $(VIDEODIR_RICE)/OGLES2FragmentShaders.cpp \
+            $(VIDEODIR_RICE)/OGLExtCombiner.cpp \
+            $(VIDEODIR_RICE)/OGLExtRender.cpp \
+            $(VIDEODIR_RICE)/OGLGraphicsContext.cpp \
+            $(VIDEODIR_RICE)/OGLRender.cpp \
+            $(VIDEODIR_RICE)/OGLRenderExt.cpp \
+            $(VIDEODIR_RICE)/OGLTexture.cpp \
+            $(VIDEODIR_RICE)/osal_files_unix.c \
+            $(VIDEODIR_RICE)/RenderBase.cpp \
+            $(VIDEODIR_RICE)/Render.cpp \
+            $(VIDEODIR_RICE)/RenderExt.cpp \
+            $(VIDEODIR_RICE)/RenderTexture.cpp \
+            $(VIDEODIR_RICE)/RSP_Parser.cpp \
+            $(VIDEODIR_RICE)/RSP_S2DEX.cpp \
+            $(VIDEODIR_RICE)/Texture.cpp \
+            $(VIDEODIR_RICE)/TextureFilters_2xsai.cpp \
+            $(VIDEODIR_RICE)/TextureFilters.cpp \
+            $(VIDEODIR_RICE)/TextureFilters_hq2x.cpp \
+            $(VIDEODIR_RICE)/TextureFilters_hq4x.cpp \
+            $(VIDEODIR_RICE)/TextureManager.cpp \
+            $(VIDEODIR_RICE)/VectorMath.cpp \
+            $(VIDEODIR_RICE)/Video.cpp
+LOCAL_SRC_FILES += $(VIDEODIR_RICE)/liblinux/BMGImage.c \
+            $(VIDEODIR_RICE)/liblinux/BMGUtils.c \
+            $(VIDEODIR_RICE)/liblinux/bmp.c
+
 LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/Config.c \
             $(VIDEODIR_GLN64)/CRC.c \

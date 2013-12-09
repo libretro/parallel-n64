@@ -84,7 +84,6 @@ CTextureManager::CTextureManager() :
     m_pOldestTexture            = NULL;
 
     m_pCacheTxtrList = new TxtrCacheEntry *[m_numOfCachedTxtrList];
-    SAFE_CHECK(m_pCacheTxtrList);
 
     for (uint32 i = 0; i < m_numOfCachedTxtrList; i++)
         m_pCacheTxtrList[i] = NULL;
@@ -699,102 +698,93 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
     pEntry->bExternalTxtrChecked = false;
     pEntry->maxCI = maxCI;
 
-    try 
+    if (pEntry->pTexture != NULL)
     {
-        if (pEntry->pTexture != NULL)
-        {
-            if( pEntry->pTexture->m_dwCreatedTextureWidth < pgti->WidthToCreate )
-            {
-                pEntry->ti.WidthToLoad = pEntry->pTexture->m_dwCreatedTextureWidth;
-                pEntry->pTexture->m_bScaledS = false;
-                pEntry->pTexture->m_bScaledT = false;
-            }
-            if( pEntry->pTexture->m_dwCreatedTextureHeight < pgti->HeightToCreate )
-            {
-                pEntry->ti.HeightToLoad = pEntry->pTexture->m_dwCreatedTextureHeight;
-                pEntry->pTexture->m_bScaledT = false;
-                pEntry->pTexture->m_bScaledS = false;
-            }
-            
-            TextureFmt dwType = pEntry->pTexture->GetSurfaceFormat();
-            SAFE_DELETE(pEntry->pEnhancedTexture);
-            pEntry->dwEnhancementFlag = TEXTURE_NO_ENHANCEMENT;
+       if( pEntry->pTexture->m_dwCreatedTextureWidth < pgti->WidthToCreate )
+       {
+          pEntry->ti.WidthToLoad = pEntry->pTexture->m_dwCreatedTextureWidth;
+          pEntry->pTexture->m_bScaledS = false;
+          pEntry->pTexture->m_bScaledT = false;
+       }
+       if( pEntry->pTexture->m_dwCreatedTextureHeight < pgti->HeightToCreate )
+       {
+          pEntry->ti.HeightToLoad = pEntry->pTexture->m_dwCreatedTextureHeight;
+          pEntry->pTexture->m_bScaledT = false;
+          pEntry->pTexture->m_bScaledS = false;
+       }
 
-            if (dwType != TEXTURE_FMT_UNKNOWN)
-            {
-                if( loadFromTextureBuffer )
-                {
-                    g_pFrameBufferManager->LoadTextureFromRenderTexture(pEntry, txtBufIdxToLoadFrom);
-                    DEBUGGER_IF_DUMP((pauseAtNext && loadFromTextureBuffer) ,
-                    {DebuggerAppendMsg("Load texture from render_texture %d", txtBufIdxToLoadFrom);}
-                    );
+       TextureFmt dwType = pEntry->pTexture->GetSurfaceFormat();
+       SAFE_DELETE(pEntry->pEnhancedTexture);
+       pEntry->dwEnhancementFlag = TEXTURE_NO_ENHANCEMENT;
 
-                    extern void ConvertTextureRGBAtoI(TxtrCacheEntry* pEntry, bool alpha);
-                    if( g_pRenderTextureInfo->CI_Info.dwFormat == TXT_FMT_I )
-                    {
-                        // Convert texture from RGBA to I
-                        ConvertTextureRGBAtoI(pEntry,false);
-                    }
-                    else if( g_pRenderTextureInfo->CI_Info.dwFormat == TXT_FMT_IA )
-                    {
-                        // Convert texture from RGBA to IA
-                        ConvertTextureRGBAtoI(pEntry,true);
-                    }
-                }
-                else
-                {
-                    LOG_TEXTURE(TRACE0("   Load new texture from RDRAM:\n"));
-                    if (dwType == TEXTURE_FMT_A8R8G8B8)
-                    {
-                        ConvertTexture(pEntry, fromTMEM);
-                    }
-                    else
-                        ConvertTexture_16(pEntry, fromTMEM);
-                    pEntry->FrameLastUpdated = status.gDlistCount;
-                    SAFE_DELETE(pEntry->pEnhancedTexture);
-                    pEntry->dwEnhancementFlag = TEXTURE_NO_ENHANCEMENT;
-                }
-            }
+       if (dwType != TEXTURE_FMT_UNKNOWN)
+       {
+          if( loadFromTextureBuffer )
+          {
+             g_pFrameBufferManager->LoadTextureFromRenderTexture(pEntry, txtBufIdxToLoadFrom);
+             DEBUGGER_IF_DUMP((pauseAtNext && loadFromTextureBuffer) ,
+                   {DebuggerAppendMsg("Load texture from render_texture %d", txtBufIdxToLoadFrom);}
+                   );
 
-            pEntry->ti.WidthToLoad = pgti->WidthToLoad;
-            pEntry->ti.HeightToLoad = pgti->HeightToLoad;
-            
-            if( AutoExtendTexture )
-            {
-                ExpandTextureS(pEntry);
-                ExpandTextureT(pEntry);
-            }
+             extern void ConvertTextureRGBAtoI(TxtrCacheEntry* pEntry, bool alpha);
+             if( g_pRenderTextureInfo->CI_Info.dwFormat == TXT_FMT_I )
+             {
+                // Convert texture from RGBA to I
+                ConvertTextureRGBAtoI(pEntry,false);
+             }
+             else if( g_pRenderTextureInfo->CI_Info.dwFormat == TXT_FMT_IA )
+             {
+                // Convert texture from RGBA to IA
+                ConvertTextureRGBAtoI(pEntry,true);
+             }
+          }
+          else
+          {
+             LOG_TEXTURE(TRACE0("   Load new texture from RDRAM:\n"));
+             if (dwType == TEXTURE_FMT_A8R8G8B8)
+             {
+                ConvertTexture(pEntry, fromTMEM);
+             }
+             else
+                ConvertTexture_16(pEntry, fromTMEM);
+             pEntry->FrameLastUpdated = status.gDlistCount;
+             SAFE_DELETE(pEntry->pEnhancedTexture);
+             pEntry->dwEnhancementFlag = TEXTURE_NO_ENHANCEMENT;
+          }
+       }
 
-            if( options.bDumpTexturesToFiles && !loadFromTextureBuffer )
-            {
-                DumpCachedTexture(*pEntry);
-            }
+       pEntry->ti.WidthToLoad = pgti->WidthToLoad;
+       pEntry->ti.HeightToLoad = pgti->HeightToLoad;
+
+       if( AutoExtendTexture )
+       {
+          ExpandTextureS(pEntry);
+          ExpandTextureT(pEntry);
+       }
+
+       if( options.bDumpTexturesToFiles && !loadFromTextureBuffer )
+       {
+          DumpCachedTexture(*pEntry);
+       }
 
 #ifdef DEBUGGER
-            if( pauseAtNext && eventToPause == NEXT_NEW_TEXTURE )
-            {
-                CRender::g_pRender->SetCurrentTexture( 0, pEntry->pTexture, pEntry->ti.WidthToCreate, pEntry->ti.HeightToCreate, pEntry);
-                CRender::g_pRender->DrawTexture(0, TXT_RGB);
-                debuggerPause = true;
-                TRACE0("Pause after loading a new texture");
-                if( pEntry->ti.Format == TXT_FMT_YUV )
-                {
-                    TRACE0("This is YUV texture");
-                }
-                DebuggerAppendMsg("W:%d, H:%d, RealW:%d, RealH:%d, D3DW:%d, D3DH: %d", pEntry->ti.WidthToCreate, pEntry->ti.HeightToCreate,
-                    pEntry->ti.WidthToLoad, pEntry->ti.HeightToLoad, pEntry->pTexture->m_dwCreatedTextureWidth, pEntry->pTexture->m_dwCreatedTextureHeight);
-                DebuggerAppendMsg("ScaledS:%s, ScaledT:%s, CRC=%08X", pEntry->pTexture->m_bScaledS?"T":"F", pEntry->pTexture->m_bScaledT?"T":"F", pEntry->dwCRC);
-                DebuggerPause();
-                CRender::g_pRender->SetCurrentTexture( 0, NULL, 64, 64, NULL);
-            }
+       if( pauseAtNext && eventToPause == NEXT_NEW_TEXTURE )
+       {
+          CRender::g_pRender->SetCurrentTexture( 0, pEntry->pTexture, pEntry->ti.WidthToCreate, pEntry->ti.HeightToCreate, pEntry);
+          CRender::g_pRender->DrawTexture(0, TXT_RGB);
+          debuggerPause = true;
+          TRACE0("Pause after loading a new texture");
+          if( pEntry->ti.Format == TXT_FMT_YUV )
+          {
+             TRACE0("This is YUV texture");
+          }
+          DebuggerAppendMsg("W:%d, H:%d, RealW:%d, RealH:%d, D3DW:%d, D3DH: %d", pEntry->ti.WidthToCreate, pEntry->ti.HeightToCreate,
+                pEntry->ti.WidthToLoad, pEntry->ti.HeightToLoad, pEntry->pTexture->m_dwCreatedTextureWidth, pEntry->pTexture->m_dwCreatedTextureHeight);
+          DebuggerAppendMsg("ScaledS:%s, ScaledT:%s, CRC=%08X", pEntry->pTexture->m_bScaledS?"T":"F", pEntry->pTexture->m_bScaledT?"T":"F", pEntry->dwCRC);
+          DebuggerPause();
+          CRender::g_pRender->SetCurrentTexture( 0, NULL, 64, 64, NULL);
+       }
 #endif
-        }
-    }
-    catch (...)
-    {
-        TRACE0("Exception in texture decompression");
-        g_lastTextureEntry = NULL;
-        return NULL;
     }
 
     pEntry->lastEntry = g_lastTextureEntry;

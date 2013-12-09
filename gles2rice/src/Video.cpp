@@ -264,16 +264,7 @@ static void ProcessDListStep2(void)
         status.toShowCFB = false;
     }
 
-    try
-    {
-        DLParser_Process((OSTask *)(g_GraphicsInfo.DMEM + 0x0FC0));
-    }
-    catch (...)
-    {
-        TRACE0("Unknown Error in ProcessDList");
-        TriggerDPInterrupt();
-        TriggerSPInterrupt();
-    }
+    DLParser_Process((OSTask *)(g_GraphicsInfo.DMEM + 0x0FC0));
 }   
 
 static bool StartVideo(void)
@@ -314,25 +305,18 @@ static bool StartVideo(void)
     
     InitExternalTextures();
 
-    try {
-        CDeviceBuilder::GetBuilder()->CreateGraphicsContext();
-        CGraphicsContext::InitWindowInfo();
+    CDeviceBuilder::GetBuilder()->CreateGraphicsContext();
+    CGraphicsContext::InitWindowInfo();
 
-        bool res = CGraphicsContext::Get()->Initialize(640, 480, !windowSetting.bDisplayFullscreen);
-        if (!res)
-        {
-            return false;
-        }
-        CDeviceBuilder::GetBuilder()->CreateRender();
-        CRender::GetRender()->Initialize();
-        DLParser_Init();
-        status.bGameIsRunning = true;
-    }
-    catch(...)
+    bool res = CGraphicsContext::Get()->Initialize(640, 480, !windowSetting.bDisplayFullscreen);
+    if (!res)
     {
-        DebugMessage(M64MSG_ERROR, "Exception caught while starting video renderer");
-        throw 0;
+       return false;
     }
+    CDeviceBuilder::GetBuilder()->CreateRender();
+    CRender::GetRender()->Initialize();
+    DLParser_Init();
+    status.bGameIsRunning = true;
    
     return true;
 }
@@ -341,22 +325,16 @@ static void StopVideo()
 {
     status.bGameIsRunning = false;
 
-    try {
-        CloseExternalTextures();
+    CloseExternalTextures();
 
-        // Kill all textures?
-        gTextureManager.RecycleAllTextures();
-        gTextureManager.CleanUp();
-        RDP_Cleanup();
+    // Kill all textures?
+    gTextureManager.RecycleAllTextures();
+    gTextureManager.CleanUp();
+    RDP_Cleanup();
 
-        CDeviceBuilder::GetBuilder()->DeleteRender();
-        CGraphicsContext::Get()->CleanUp();
-        CDeviceBuilder::GetBuilder()->DeleteGraphicsContext();
-        }
-    catch(...)
-    {
-        TRACE0("Some exceptions during RomClosed");
-    }
+    CDeviceBuilder::GetBuilder()->DeleteRender();
+    CGraphicsContext::Get()->CleanUp();
+    CDeviceBuilder::GetBuilder()->DeleteGraphicsContext();
 
     windowSetting.dps = windowSetting.fps = -1;
     windowSetting.lastSecDlistCount = windowSetting.lastSecFrameCount = 0xFFFFFFFF;
@@ -731,16 +709,7 @@ EXPORT void CALL ResizeVideoOutput(int width, int height)
 
 EXPORT void CALL ProcessRDPList(void)
 {
-    try
-    {
-        RDP_DLParser_Process();
-    }
-    catch (...)
-    {
-        TRACE0("Unknown Error in ProcessRDPList");
-        TriggerDPInterrupt();
-        TriggerSPInterrupt();
-    }
+   RDP_DLParser_Process();
 }   
 
 EXPORT void CALL ProcessDList(void)
