@@ -53,8 +53,16 @@ class COGL_FragmentProgramCombiner : public COGLColorCombiner4
 {
 public:
     bool Initialize(void);
-    float m_AlphaRef;
-    void UpdateFog(bool bEnable);
+
+    void SetFogState(bool bEnable)
+    {
+       bFogState = bEnable;
+    }
+
+    void SetAlphaTestState(bool bEnable)
+    {
+       bAlphaTestState = bEnable;
+    }
 
 protected:
     friend class OGLDeviceBuilder;
@@ -76,6 +84,11 @@ private:
     int FindCompiledMux();
     virtual void GenerateCombinerSetting(int index);
     virtual void GenerateCombinerSettingConstants(int index);
+    float m_AlphaRef;
+    bool bAlphaTestState;
+    bool bAlphaTestPreviousState;
+    bool bFogState;
+    bool bFogPreviousState;
 
 #ifdef DEBUGGER
     void DisplaySimpleMuxString(void);
