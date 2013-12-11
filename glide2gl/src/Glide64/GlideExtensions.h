@@ -21,7 +21,6 @@
 #define GR_BUFFER_TEXTUREBUFFER_EXT       0x6
 #define GR_BUFFER_TEXTUREAUXBUFFER_EXT    0x7
 
-typedef FxU32 GrPixelFormat_t;
 #define GR_PIXFMT_RGB_565                 0x03
 #define GR_PIXFMT_ARGB_1555               0x0004
 #define GR_PIXFMT_ARGB_8888               0x0005
@@ -45,7 +44,6 @@ typedef FxU32 GrPixelFormat_t;
 #define GR_CMBX_TMU_CALPHA                0x10
 #define GR_CMBX_TMU_CCOLOR                0x11
 
-typedef FxU32 GrCombineMode_t;
 #define GR_FUNC_MODE_ZERO                 0x00
 #define GR_FUNC_MODE_X                    0x01
 #define GR_FUNC_MODE_ONE_MINUS_X          0x02
