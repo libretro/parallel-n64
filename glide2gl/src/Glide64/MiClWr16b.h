@@ -37,56 +37,6 @@
 //
 //****************************************************************
 
-static INLINE void mirror16bS(uint8_t *tex, uint8_t *start, int width, int height, int mask, int line, int full, int count)
-{
-   uint16_t *v8 = (uint16_t *)start;
-   do
-   {
-      int v10 = 0;
-      do
-      {
-         if ( width & (v10 + width) )
-            *v8++ = *(uint16_t *)(&tex[mask] - (mask & 2 * v10));
-         else
-            *v8++ = *(uint16_t *)&tex[mask & 2 * v10];
-      }while ( ++v10 != count );
-      v8 = (uint16_t *)((char *)v8 + line);
-      tex += full;
-   }while (--height);
-}
-
-static INLINE void wrap16bS(uint8_t *tex, uint8_t *start, int height, int mask, int line, int full, int count)
-{
-   uint32_t *v7 = (uint32_t *)start;
-
-   do
-   {
-      int v9 = 0;
-      do
-      {
-         *v7++ = *(uint32_t *)&tex[4 * (mask & v9)];
-      }while ( ++v9 != count );
-      v7 = (uint32_t *)((char *)v7 + line);
-      tex += full;
-   }while(--height);
-}
-
-static INLINE void clamp16bS(uint8_t *tex, uint8_t *constant, int height, int line, int full, int count)
-{
-   uint16_t *v6 = (uint16_t *)constant;
-   uint16_t *v7 = (uint16_t *)tex;
-   do
-   {
-      int v10 = count;
-      do
-      {
-         *v7++ = *v6;
-      }while (--v10 );
-      v6 = (uint16_t *)((char *)v6 + full);
-      v7 = (uint16_t *)((char *)v7 + line);
-   }while(--height);
-}
-
 //****************************************************************
 // 16-bit Horizontal Mirror
 #include <stdint.h>
@@ -108,8 +58,20 @@ void Mirror16bS (unsigned char * tex, uint32_t mask, uint32_t max_width, uint32_
    int line = line_full - (count << 1);
    if (line < 0)
       return;
-   unsigned char *start = tex + (mask_width << 1);
-   mirror16bS (tex, start, mask_width, height, mask_mask, line, line_full, count);
+   uint16_t *v8 = (uint16_t *)(unsigned char*)(tex + (mask_width << 1));
+   do
+   {
+      int v10 = 0;
+      do
+      {
+         if ( mask_width & (v10 + mask_width) )
+            *v8++ = *(uint16_t *)(&tex[mask_mask] - (mask_mask & 2 * v10));
+         else
+            *v8++ = *(uint16_t *)&tex[mask_mask & 2 * v10];
+      }while ( ++v10 != count );
+      v8 = (uint16_t *)((char *)v8 + line);
+      tex += line_full;
+   }while (--height);
 }
 
 //****************************************************************
@@ -132,7 +94,18 @@ void Wrap16bS (unsigned char * tex, uint32_t mask, uint32_t max_width, uint32_t 
    if (line < 0)
       return;
    unsigned char * start = tex + (mask_width << 1);
-   wrap16bS (tex, start, height, mask_mask, line, line_full, count);
+   uint32_t *v7 = (uint32_t *)start;
+
+   do
+   {
+      int v9 = 0;
+      do
+      {
+         *v7++ = *(uint32_t *)&tex[4 * (mask_mask & v9)];
+      }while ( ++v9 != count );
+      v7 = (uint32_t *)((char *)v7 + line);
+      tex += line_full;
+   }while(--height);
 }
 
 //****************************************************************
@@ -150,7 +123,18 @@ void Clamp16bS (unsigned char * tex, uint32_t width, uint32_t clamp_to, uint32_t
    int line_full = real_width << 1;
    int line = width << 1;
 
-   clamp16bS (dest, constant, real_height, line, line_full, count);
+   uint16_t *v6 = (uint16_t *)constant;
+   uint16_t *v7 = (uint16_t *)dest;
+   do
+   {
+      int v10 = count;
+      do
+      {
+         *v7++ = *v6;
+      }while (--v10 );
+      v6 = (uint16_t *)((char *)v6 + line_full);
+      v7 = (uint16_t *)((char *)v7 + line);
+   }while(--real_height);
 }
 
 //****************************************************************
