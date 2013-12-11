@@ -112,14 +112,6 @@ typedef FxU32 GrStencilOp_t;
 #define GR_STENCIL_MODE_EXT      0x07
 #define GR_OPENGL_MODE_EXT       0x08
 
-typedef FxU32 GrCCUColor_t;
-
-typedef FxU32 GrACUColor_t;
-
-typedef FxU32 GrTCCUColor_t;
-
-typedef FxU32 GrTACUColor_t;
-
 #define GR_CMBX_ZERO                      0x00
 #define GR_CMBX_TEXTURE_ALPHA             0x01
 #define GR_CMBX_ALOCAL                    0x02
@@ -139,7 +131,6 @@ typedef FxU32 GrTACUColor_t;
 #define GR_CMBX_TMU_CALPHA                0x10
 #define GR_CMBX_TMU_CCOLOR                0x11
 
-typedef FxU32 GrCombineMode_t;
 #define GR_FUNC_MODE_ZERO                 0x00
 #define GR_FUNC_MODE_X                    0x01
 #define GR_FUNC_MODE_ONE_MINUS_X          0x02
