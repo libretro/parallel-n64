@@ -188,6 +188,8 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
 EXPORT void CALL inputGetKeys( int Control, BUTTONS *Keys )
 {
    int16_t analogX, analogY;
+   if (Keys == NULL)
+      return;
 
     Keys->Value = 0;
     Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
