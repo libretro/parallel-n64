@@ -30,32 +30,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 extern void InitExternalTextures(void);
 extern void CloseExternalTextures(void);
 
-void Texture2x_32( DrawInfo &srcInfo, DrawInfo &destInfo);
-void Texture2x_16( DrawInfo &srcInfo, DrawInfo &destInfo);
-
-void Texture2x_Interp_32( DrawInfo &srcInfo, DrawInfo &destInfo);
-void Texture2x_Interp_16( DrawInfo &srcInfo, DrawInfo &destInfo);
-
-void Super2xSaI_32( uint32 *srcPtr, uint32 *destPtr, uint32 width, uint32 height, uint32 pitch);
-void Super2xSaI_16( uint16 *srcPtr, uint16 *destPtr, uint32 width, uint32 height, uint32 pitch);
-
-void hq4x_16( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int SrcPPL, int BpL );
-void hq4x_32( unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int SrcPPL, int BpL );
-void hq4x_InitLUTs(void);
-
-void SmoothFilter_32(uint32 *pdata, uint32 width, uint32 height, uint32 pitch, uint32 filter);
-void SmoothFilter_16(uint16 *pdata, uint32 width, uint32 height, uint32 pitch, uint32 filter);
-
-void SharpenFilter_32(uint32 *pdata, uint32 width, uint32 height, uint32 pitch, uint32 filter);
-void SharpenFilter_16(uint16 *pdata, uint32 width, uint32 height, uint32 pitch, uint32 filter);
-
-void hq2x_init(unsigned bits_per_pixel);
-void hq2x_16(uint8 *srcPtr, uint32 srcPitch, uint8 *dstPtr, uint32 dstPitch, int width, int height);
-void hq2x_32(uint8 *srcPtr, uint32 srcPitch, uint8 *dstPtr, uint32 dstPitch, int width, int height);
-
-void lq2x_16(uint8 *srcPtr, uint32 srcPitch, uint8 *dstPtr, uint32 dstPitch, int width, int height);
-void lq2x_32(uint8 *srcPtr, uint32 srcPitch, uint8 *dstPtr, uint32 dstPitch, int width, int height);
-
 typedef enum _IMAGE_FILEFORMAT 
 {
     XIFF_BMP = 0,
