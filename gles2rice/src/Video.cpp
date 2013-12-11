@@ -38,7 +38,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "GraphicsContext.h"
 #include "Render.h"
 #include "RSP_Parser.h"
-#include "TextureFilters.h"
 #include "TextureManager.h"
 #include "Video.h"
 #include "version.h"
@@ -303,8 +302,6 @@ static bool StartVideo(void)
     else
         status.fRatio = 9/11.0f;;
     
-    InitExternalTextures();
-
     CDeviceBuilder::GetBuilder()->CreateGraphicsContext();
     CGraphicsContext::InitWindowInfo();
 
@@ -324,8 +321,6 @@ static bool StartVideo(void)
 static void StopVideo()
 {
     status.bGameIsRunning = false;
-
-    CloseExternalTextures();
 
     // Kill all textures?
     gTextureManager.RecycleAllTextures();

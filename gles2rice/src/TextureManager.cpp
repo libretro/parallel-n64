@@ -762,11 +762,6 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
           ExpandTextureT(pEntry);
        }
 
-       if( options.bDumpTexturesToFiles && !loadFromTextureBuffer )
-       {
-          DumpCachedTexture(*pEntry);
-       }
-
 #ifdef DEBUGGER
        if( pauseAtNext && eventToPause == NEXT_NEW_TEXTURE )
        {

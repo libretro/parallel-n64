@@ -29,7 +29,6 @@ void SetTmemFlag(uint32 tmemAddr, uint32 size);
 bool IsTmemFlagValid(uint32 tmemAddr);
 uint32 GetValidTmemInfoIndex(uint32 tmemAddr);
 
-void EnhanceTexture(TxtrCacheEntry *pEntry);
 void MirrorTexture(uint32 tileno, TxtrCacheEntry *pEntry);
 void LoadHiresTexture( TxtrCacheEntry &entry );
 
@@ -1158,31 +1157,8 @@ void PrepareTextures()
                 TxtrCacheEntry *pEntry = LoadTexture(tilenos[i]);
                 if (pEntry && pEntry->pTexture )
                 {
-                    if( pEntry->txtrBufIdx <= 0 )
-                    {
-                        if( pEntry->pEnhancedTexture && pEntry->dwEnhancementFlag == TEXTURE_EXTERNAL && !options.bLoadHiResTextures )
-                        {
-                            SAFE_DELETE(pEntry->pEnhancedTexture);
-                        }
-
-                        if( pEntry->pEnhancedTexture == NULL )
-                        {
-                            MirrorTexture(tilenos[i], pEntry);;
-                        }
-
-                        if( options.bLoadHiResTextures && (pEntry->pEnhancedTexture == NULL || pEntry->dwEnhancementFlag < TEXTURE_EXTERNAL ) )
-                        {
-                            LoadHiresTexture(*pEntry);
-                        }
-
-                        if( pEntry->pEnhancedTexture == NULL || (pEntry->dwEnhancementFlag != options.textureEnhancement && pEntry->dwEnhancementFlag < TEXTURE_EXTERNAL ) )
-                        {
-                            EnhanceTexture(pEntry);
-                        }
-                    }
-
                     CRender::g_pRender->SetCurrentTexture( tilenos[i], 
-                        (pEntry->pEnhancedTexture)?pEntry->pEnhancedTexture:pEntry->pTexture,
+                        pEntry->pTexture,
                         pEntry->ti.WidthToLoad, pEntry->ti.HeightToLoad, pEntry);
                 }
                 else
