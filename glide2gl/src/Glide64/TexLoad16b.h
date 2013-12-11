@@ -52,7 +52,9 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
    uint32_t v16;
    int v17;
    int v18;
+   unsigned int nbits;
 
+   nbits = sizeof(unsigned int) * 8;
    v6 = (uint32_t *)src;
    v7 = (uint32_t *)dst;
    v8 = height;
@@ -66,8 +68,8 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
          v11 = bswap32(*v6++);
          ALOWORD(v10) = __ROR16((uint16_t)v10, 1);
          ALOWORD(v11) = __ROR16((uint16_t)v11, 1);
-         v10 = __ROR32(v10, 16);
-         v11 = __ROR32(v11, 16); 
+         v10 = __ROR32(v10, 16, nbits);
+         v11 = __ROR32(v11, 16, nbits); 
          ALOWORD(v10) = __ROR16((uint16_t)v10, 1);
          ALOWORD(v11) = __ROR16((uint16_t)v11, 1);
          *v7++ = v10;
@@ -85,8 +87,8 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
          v15 = bswap32(*v12++);
          ALOWORD(v15) = __ROR16((uint16_t)v15, 1);
          ALOWORD(v16) = __ROR16((uint16_t)v16, 1);
-         v15 = __ROR32(v15, 16);
-         v16 = __ROR32(v16, 16);
+         v15 = __ROR32(v15, 16, nbits);
+         v16 = __ROR32(v16, 16, nbits);
          ALOWORD(v15) = __ROR16((uint16_t)v15, 1);
          ALOWORD(v16) = __ROR16((uint16_t)v16, 1);
          *v13++ = v15;
