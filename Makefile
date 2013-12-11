@@ -210,11 +210,7 @@ CPPFLAGS += -DSDL_VIDEO_OPENGL_ES2=1
 CXXFILES += $(wildcard $(VIDEODIR_RICE)/*.cpp)
 
 CFILES += \
-   $(VIDEODIR_RICE)/osal_files_$(PLATFORM_EXT).c \
-   $(VIDEODIR_RICE)/liblinux/BMGImage.c \
-   $(VIDEODIR_RICE)/liblinux/BMGUtils.c \
-   $(VIDEODIR_RICE)/liblinux/bmp.c 
-   #$(VIDEODIR_RICE)/liblinux/pngrw.c
+   $(VIDEODIR_RICE)/osal_files_$(PLATFORM_EXT).c
 
 # gln64
 VIDEODIR_GLN64 = gles2n64/src

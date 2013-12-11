@@ -26,8 +26,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "FrameBuffer.h"
 #include "Render.h"
 
-#include "liblinux/BMGLibPNG.h"
-
 #include <algorithm>
 
 extern FiddledVtx * g_pVtxBase;
@@ -2019,93 +2017,10 @@ void CRender::SetTextureFilter(uint32 dwFilter)
 
 bool SaveRGBBufferToFile(char *filename, unsigned char *buf, int width, int height, int pitch)
 {
-    if( pitch == -1 )
-        pitch = width*3;
-
-    if( strcasecmp(right(filename,3),"bmp") == 0 )
-    {
-        BITMAPFILEHEADER fileHeader;
-        BITMAPINFOHEADER infoHeader;
-
-        infoHeader.biSize = sizeof( BITMAPINFOHEADER );
-        infoHeader.biWidth = width;
-        infoHeader.biHeight = height;
-        infoHeader.biPlanes = 1;
-        infoHeader.biBitCount = 24;
-        infoHeader.biCompression = BI_RGB;
-        infoHeader.biSizeImage = width * height * 3;
-        infoHeader.biXPelsPerMeter = 0;
-        infoHeader.biYPelsPerMeter = 0;
-        infoHeader.biClrUsed = 0;
-        infoHeader.biClrImportant = 0;
-
-        fileHeader.bfType = 19778;
-        fileHeader.bfSize = sizeof( BITMAPFILEHEADER ) + sizeof( BITMAPINFOHEADER ) + infoHeader.biSizeImage;
-        fileHeader.bfReserved1 = fileHeader.bfReserved2 = 0;
-        fileHeader.bfOffBits = sizeof( BITMAPFILEHEADER ) + sizeof( BITMAPINFOHEADER );
-
-
-        FILE *f = fopen(filename, "wb");
-        if(f != NULL)
-        {
-            if (fwrite(&fileHeader, sizeof(BITMAPFILEHEADER), 1, f) != 1 ||
-                fwrite(&infoHeader, sizeof(BITMAPINFOHEADER), 1, f) != 1 ||
-                fwrite(buf, infoHeader.biSizeImage, 1, f) != 1)
-                printf("failed to write out texture data to image file '%s'", filename);
-            
-            fclose(f);
-            return true;
-        }
-        else
-        {
-            // Do something
-            TRACE1("Fail to create file %s", filename);
-            return false;
-        }   
-    }
-    else
-    {
-        if( strcasecmp(right(filename,4),".png") != 0 )
-            strcat(filename,".png");
-
-        struct BMGImageStruct img;
-        memset(&img, 0, sizeof(BMGImageStruct));
-        InitBMGImage(&img);
-        img.bits = buf;
-        img.bits_per_pixel = 24;
-        img.height = height;
-        img.width = width;
-        img.scan_width = pitch;
-        BMG_Error code = WritePNG(filename, img);
-
-        if( code == BMG_OK )
-            return true;
-        else
-            return false;
-    }
 }
 
 bool SaveRGBABufferToPNGFile(char *filename, unsigned char *buf, int width, int height, int pitch)
 {
-    if( pitch == -1 )
-        pitch = width*4;
-
-    if( strcasecmp(right(filename,4),".png") != 0 )
-        strcat(filename,".png");
-
-    struct BMGImageStruct img;
-    memset(&img, 0, sizeof(BMGImageStruct));
-    InitBMGImage(&img);
-    img.bits = buf;
-    img.bits_per_pixel = 32;
-    img.height = height;
-    img.width = width;
-    img.scan_width = pitch;
-    BMG_Error code = WritePNG(filename, img);
-
-    if( code == BMG_OK )
-        return true;
-    else
-        return false;
+   return false;
 }
 
