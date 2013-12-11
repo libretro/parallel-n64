@@ -293,17 +293,9 @@ static INLINE void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
       v9 = wid_64;
       do
       {
-         v10 = *v6;
-         v11 = v6 + 1;
-         *v7 = v10;
-         v12 = v7 + 1;
-         v13 = *v11;
-         v6 = v11 + 1;
-         *v12 = v13;
-         v7 = v12 + 1;
-         --v9;
-      }
-      while ( v9 );
+         *v7++ = *v6++;
+         *v7++ = *v6++;
+      }while (--v9);
       if ( v19 == 1 )
          break;
       v20 = v19 - 1;
@@ -312,15 +304,11 @@ static INLINE void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
       v16 = wid_64;
       do
       {
-         *v15 = v14[1];
-         v17 = v15 + 1;
-         v18 = *v14;
-         v14 += 2;
-         *v17 = v18;
-         v15 = v17 + 1;
-         --v16;
-      }
-      while ( v16 );
+         uint32_t col2 = *v14++;
+         uint32_t col1 = *v14++;
+         *v15++ = col1;
+         *v15++ = col2;
+      }while (--v16);
       v6 = (uint32_t *)((char *)v14 + line);
       v7 = (uint32_t *)((char *)v15 + ext);
       v8 = v20 - 1;
