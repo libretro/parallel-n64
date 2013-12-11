@@ -123,30 +123,22 @@ static INLINE void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height,
       v9 = wid_64;
       do
       {
-         v10 = v6[1];
-         *v7 = *v6;
-         v7[1] = v10;
-         v6 += 2;
-         v7 += 2;
-         --v9;
-      }
-      while ( v9 );
+         *v7++ = *v6++;
+         *v7++ = *v6++;
+      }while (--v9 );
       if ( v15 == 1 )
          break;
       v16 = v15 - 1;
       v11 = (uint32_t *)((char *)v6 + line);
       v12 = (uint32_t *)((char *)v7 + ext);
-      v13 = wid_64;
+      v9 = wid_64;
       do
       {
          v14 = *v11;
-         *v12 = v11[1];
-         v12[1] = v14;
+         *v12++ = v11[1];
+         *v12++ = v14;
          v11 += 2;
-         v12 += 2;
-         --v13;
-      }
-      while ( v13 );
+      }while (--v9 );
       v6 = (uint32_t *)((char *)v11 + line);
       v7 = (uint32_t *)((char *)v12 + ext);
       v8 = v16 - 1;
