@@ -26,10 +26,6 @@ typedef FxU32 GrPixelFormat_t;
 #define GR_PIXFMT_ARGB_1555               0x0004
 #define GR_PIXFMT_ARGB_8888               0x0005
 
-typedef FxU32 GrCCUColor_t;
-typedef FxU32 GrACUColor_t;
-typedef FxU32 GrTCCUColor_t;
-typedef FxU32 GrTACUColor_t;
 #define GR_CMBX_ZERO                      0x00
 #define GR_CMBX_TEXTURE_ALPHA             0x01
 #define GR_CMBX_ALOCAL                    0x02
