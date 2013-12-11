@@ -52,13 +52,7 @@ extern char* right (const char * src, int nchars);
 //========================================================================
 CRender * CRender::GetRender(void)
 {
-    if( CRender::g_pRender == NULL )
-    {
-        DebugMessage(M64MSG_ERROR, "g_pRender is NULL");
-        exit(0);
-    }
-    else
-        return CRender::g_pRender;
+   return CRender::g_pRender;
 }
 bool CRender::IsAvailable()
 {
