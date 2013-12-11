@@ -232,7 +232,6 @@ static INLINE void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height,
    uint32_t *v16;
    uint32_t *v17;
    int v18;
-   uint32_t *v19;
    uint32_t v20;
    int v21;
    int v22;
@@ -262,20 +261,17 @@ static INLINE void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height,
       if ( v21 == 1 )
          break;
       v22 = v21 - 1;
+      v18 = wid_64;
       v16 = (uint32_t *)((char *)v6 + line);
       v17 = (uint32_t *)((char *)v7 + ext);
-      v18 = wid_64;
       do
       {
-         *v17 = (16 * v16[1] & 0xF0F0F0F0) | ((v16[1] >> 4) & 0xF0F0F0F);
-         v19 = v17 + 1;
-         v20 = *v16;
-         v16 += 2;
-         *v19 = (16 * v20 & 0xF0F0F0F0) | ((v20 >> 4) & 0xF0F0F0F);
-         v17 = v19 + 1;
-         --v18;
+         v20 = *v16++;
+         *v17++ = ((v16[0] << 4) & 0xF0F0F0F0) | ((v16[0] >> 4) & 0xF0F0F0F);
+         v16++;
+         *v17++ = ((v20 << 4) & 0xF0F0F0F0) | ((v20 >> 4) & 0xF0F0F0F);
       }
-      while ( v18 );
+      while (--v18);
       v6 = (uint32_t *)((char *)v16 + line);
       v7 = (uint32_t *)((char *)v17 + ext);
       v8 = v22 - 1;
