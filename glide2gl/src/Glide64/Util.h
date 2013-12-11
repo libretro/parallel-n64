@@ -101,16 +101,7 @@ float ScaleZ(float z);
 
 #define __ROR32(value, count, nbits) ((value >> (count % (nbits))) | (value << ((nbits) - (count % (nbits)))))
 
-static INLINE short unsigned int __ROR16(short unsigned int value, unsigned int count)
-{
-   const unsigned int nbits = sizeof(short unsigned int) * 8;
-   count %= nbits;
-
-   short unsigned int low = value << (nbits - count);
-   value >>= count;
-   value |= low;
-   return value;
-}
+#define __ROR16(value, count, nbits) (((value >> (count % nbits)) | (value << (nbits - (count % nbits)))))
 
 // rotate left
 #define __ROL__(value, count, nbits) ((value << (count % (nbits))) | (value >> ((nbits) - (count % (nbits)))))
