@@ -113,15 +113,6 @@ static INLINE short unsigned int __ROR16(short unsigned int value, unsigned int 
 }
 
 // rotate left
-static INLINE uint32_t __ROL__(uint32_t value, unsigned int count)
-{
-   const unsigned int nbits = sizeof(uint32_t) * 8;
-   count %= nbits;
-
-   uint32_t high = value >> (nbits - count);
-   value <<= count;
-   value |= high;
-   return value;
-}
+#define __ROL__(value, count, nbits) ((value << (count % (nbits))) | (value >> ((nbits) - (count % (nbits)))))
 
 #endif  // ifndef Util_H

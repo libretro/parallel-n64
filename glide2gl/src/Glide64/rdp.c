@@ -1863,7 +1863,9 @@ static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt
   int v16;
   int v18;
   int i;
+  unsigned int nbits;
 
+  nbits = sizeof(unsigned int) * 8;
   v5 = dst;
   v6 = cnt;
   if ( cnt )
@@ -1877,11 +1879,11 @@ static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt
     v11 = v7 + 1;
     do
     {
-      v10 = __ROL__(v10, 8);
+      v10 = __ROL__(v10, 8, nbits);
     }while (--v8);
     do
     {
-      v10 = __ROL__(v10, 8);
+      v10 = __ROL__(v10, 8, nbits);
       *(uint8_t *)v5 = v10;
       v5 = (uint32_t *)((char *)v5 + 1);
     }
@@ -1905,7 +1907,7 @@ LABEL_23:
       v14 = *(uint32_t *)((char *)src + ((8 * cnt + off) & 0xFFFFFFFC));
       do
       {
-        v14 = __ROL__(v14, 8);
+        v14 = __ROL__(v14, 8, nbits);
         *(uint8_t *)v5 = v14;
         v5 = (uint32_t *)((char *)v5 + 1);
       }while (--v13);
@@ -2067,7 +2069,9 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height,
   int v29;
   int v30;
   uint32_t *v31;
+  unsigned int nbits;
 
+  nbits = sizeof(unsigned int) * 8;
   v7 = dst;
   v8 = width;
   v9 = src;
@@ -2098,11 +2102,11 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height,
       v17 = v13 + 1;
       do
       {
-        v16 = __ROL__(v16, 8);
+        v16 = __ROL__(v16, 8, nbits);
       }while (--v14 );
       do
       {
-        v16 = __ROL__(v16, 8);
+        v16 = __ROL__(v16, 8, nbits);
         *(uint8_t *)v7 = v16;
         v7 = (uint32_t *)((char *)v7 + 1);
       }while(--v15 );
@@ -2124,7 +2128,7 @@ LABEL_20:
         v20 = *(uint32_t *)((char *)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
         do
         {
-          v20 = __ROL__(v20, 8);
+          v20 = __ROL__(v20, 8, nbits);
           *(uint8_t *)v7 = v20;
           v7 = (uint32_t *)((char *)v7 + 1);
         }
