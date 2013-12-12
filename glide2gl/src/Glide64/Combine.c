@@ -141,41 +141,34 @@ COMBINE cmb;
 
 // To use textures
 #define USE_T0() \
-  rdp.best_tex = 0; \
   cmb.tex |= 1, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_LOCAL
 #define USE_T1() \
-  rdp.best_tex = 1; \
   cmb.tex |= 2, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER, \
   cmb.tmu0_fac = GR_COMBINE_FACTOR_ONE;
 #define T0_ADD_T1() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL, \
   cmb.tmu0_fac = GR_COMBINE_FACTOR_ONE
 #define T0_MUL_T1() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER, \
   cmb.tmu0_fac = GR_COMBINE_FACTOR_LOCAL
 #define T0_MUL_T1_ADD_T0() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL, \
   cmb.tmu0_fac = GR_COMBINE_FACTOR_LOCAL
 #define T0A_MUL_T1() \
-  rdp.best_tex = 1; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER, \
   cmb.tmu0_fac = GR_COMBINE_FACTOR_LOCAL_ALPHA
 #define T0_MUL_T1A() \
-  rdp.best_tex = 1; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL_ALPHA, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER, \
@@ -188,8 +181,6 @@ COMBINE cmb;
   USE_T0(); \
 }\
   else {\
-  if (factor <= 0x80) rdp.best_tex = 0; \
-  else rdp.best_tex = 1; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_BLEND, \
@@ -205,8 +196,6 @@ COMBINE cmb;
   USE_T1(); \
 }\
   else {\
-  if (factor <= 0x80) rdp.best_tex = 0; \
-  else rdp.best_tex = 1; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_BLEND, \
@@ -215,19 +204,16 @@ COMBINE cmb;
   cmb.dc0_detailmax = cmb.dc1_detailmax = percent; \
 }
 #define T0_INTER_T1_USING_T0() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_BLEND, \
   cmb.tmu0_fac = GR_COMBINE_FACTOR_LOCAL
 #define T1_INTER_T0_USING_T0() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_BLEND, \
   cmb.tmu0_fac = GR_COMBINE_FACTOR_ONE_MINUS_LOCAL
 #define T0_INTER_T1_USING_T1() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
   cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
@@ -248,13 +234,11 @@ COMBINE cmb;
   cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR;
 
 #define T0_INTER_T1_USING_T1A() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_BLEND, \
   cmb.tmu0_fac = GR_COMBINE_FACTOR_OTHER_ALPHA
 #define T0_INTER_T1_USING_PRIM() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
   cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
@@ -276,7 +260,6 @@ COMBINE cmb;
   cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR; 
 
 #define T1_INTER_T0_USING_PRIM() /* inverse of above */\
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
   cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
@@ -298,7 +281,6 @@ COMBINE cmb;
   cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR;
 
 #define T0_INTER_T1_USING_ENV() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
   cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
@@ -320,7 +302,6 @@ COMBINE cmb;
   cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR;
 
 #define T1_INTER_T0_USING_ENV() /* inverse of above */\
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
   cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
@@ -342,7 +323,6 @@ COMBINE cmb;
   cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR;
 
 #define T0_INTER_T1_USING_SHADEA() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
   cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
@@ -363,7 +343,6 @@ COMBINE cmb;
   cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR;
 
 #define T1_INTER_T0_USING_SHADEA() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
   cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
@@ -384,19 +363,16 @@ COMBINE cmb;
   cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR;
 
 #define T1_SUB_T0() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL, \
   cmb.tmu0_fac = GR_COMBINE_FACTOR_ONE
 #define T1_SUB_T0_MUL_T0() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL, \
   cmb.tmu0_fac = GR_COMBINE_FACTOR_LOCAL
 #define T1_MUL_PRIMLOD_ADD_T0() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL, \
@@ -404,7 +380,6 @@ COMBINE cmb;
   percent = (float)(lod_frac) / 255.0f, \
   cmb.dc0_detailmax = cmb.dc1_detailmax = percent
 #define T1_MUL_PRIMA_ADD_T0() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL, \
@@ -412,7 +387,6 @@ COMBINE cmb;
   percent = (float)(rdp.prim_color&0xFF) / 255.0f, \
   cmb.dc0_detailmax = cmb.dc1_detailmax = percent
 #define T1_MUL_ENVA_ADD_T0() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL, \
@@ -439,7 +413,6 @@ COMBINE cmb;
   cmb.dc0_detailmax = cmb.dc1_detailmax = percent;
 
 #define PRIM_INTER_T0_USING_SHADEA() \
-  rdp.best_tex = 0; \
   cmb.tex |= 1, \
   cmb.t0c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
   cmb.t0c_ext_a_mode = GR_FUNC_MODE_X, \
@@ -481,19 +454,16 @@ COMBINE cmb;
   cmb.tmu0_a_func = GR_COMBINE_FUNCTION_SCALE_OTHER, \
   cmb.tmu0_a_fac = GR_COMBINE_FACTOR_LOCAL
 #define A_T0_INTER_T1_USING_T0A() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_a_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_a_func = GR_COMBINE_FUNCTION_BLEND, \
   cmb.tmu0_a_fac = GR_COMBINE_FACTOR_LOCAL_ALPHA
 #define A_T1_INTER_T0_USING_T0A() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_a_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_a_func = GR_COMBINE_FUNCTION_BLEND, \
   cmb.tmu0_a_fac = GR_COMBINE_FACTOR_ONE_MINUS_LOCAL_ALPHA
 #define A_T0_INTER_T1_USING_T1A() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_a_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_a_func = GR_COMBINE_FUNCTION_BLEND, \
@@ -529,7 +499,6 @@ COMBINE cmb;
   cmb.dc0_detailmax = cmb.dc1_detailmax = percent; \
 }
 #define A_T0_INTER_T1_USING_SHADEA() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.t1a_ext_a = GR_CMBX_LOCAL_TEXTURE_ALPHA, \
   cmb.t1a_ext_a_mode = GR_FUNC_MODE_ZERO, \
@@ -550,7 +519,6 @@ COMBINE cmb;
   cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_ALPHA;
 
 #define A_T1_MUL_PRIMLOD_ADD_T0() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_a_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_a_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL, \
@@ -558,7 +526,6 @@ COMBINE cmb;
   percent = (float)(lod_frac) / 255.0f, \
   cmb.dc0_detailmax = cmb.dc1_detailmax = percent
 #define A_T1_MUL_PRIMA_ADD_T0() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_a_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_a_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL, \
@@ -566,7 +533,6 @@ COMBINE cmb;
   percent = (float)(rdp.prim_color&0xFF) / 255.0f, \
   cmb.dc0_detailmax = cmb.dc1_detailmax = percent
 #define A_T1_MUL_ENVA_ADD_T0() \
-  rdp.best_tex = 0; \
   cmb.tex |= 3, \
   cmb.tmu1_a_func = GR_COMBINE_FUNCTION_LOCAL, \
   cmb.tmu0_a_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL, \
@@ -909,7 +875,6 @@ static void cc_t0_mul_t1_add_t0 () //Added by Gonetz
    MOD_0 (TMOD_COL_INTER_TEX_USING_COL1);
    MOD_0_COL (rdp.env_color & 0xFFFFFF00);
    MOD_0_COL1 (col1 & 0xFFFFFF00);
-   rdp.best_tex = 0;
    cmb.tex |= 3;
    cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL;
    cmb.tmu1_a_func = GR_COMBINE_FUNCTION_LOCAL;
@@ -1057,7 +1022,6 @@ static void cc__t0_inter_one_using_t1__mul_prim ()
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_TEXTURE);
    CC_PRIM ();
-   rdp.best_tex = 0;
    cmb.tex |= 3;
    cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL;
    cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL;
@@ -1971,7 +1935,6 @@ static void cc__t1_mul_t0_add_t0__add_prim_mul_shade () //Aded by Gonetz
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
    MULSHADE_PRIM ();
-   rdp.best_tex = 0;
    cmb.tex |= 3;
    cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL;
    cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL;
@@ -2419,7 +2382,6 @@ static void cc_one_sub_t1_mul_t0a_add_t0_mul_env_add_prim ()
    CC_PRIM ();
    MOD_0 (TMOD_TEX_MUL_COL);
    MOD_0_COL (rdp.env_color & 0xFFFFFF00);
-   rdp.best_tex = 0;
    cmb.tex |= 3;
    cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL;
    cmb.tmu1_invert = 1;
@@ -4853,7 +4815,6 @@ static void cc_prim_sub_env_mul__t0_sub_t0_mul_prima__add_env ()
          GR_COMBINE_OTHER_CONSTANT);
    CC_PRIM ();
    SETSHADE_ENV ();
-   rdp.best_tex = 0;
    cmb.tex |= 1;
    cmb.tmu0_func = GR_COMBINE_FUNCTION_BLEND_LOCAL;
    cmb.tmu0_fac = GR_COMBINE_FACTOR_DETAIL_FACTOR;
@@ -4886,7 +4847,6 @@ static void cc_prim_sub_env_mul__t0_add_t1a__add_env ()
          GR_COMBINE_OTHER_CONSTANT);
    CC_PRIM ();
    SETSHADE_ENV ();
-   rdp.best_tex = 0;
    cmb.tex |= 3;
    cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL_ALPHA;
    cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL;
@@ -8959,7 +8919,6 @@ static void ac__one_sub_t0_mul_t1_add_t0__mul_prim ()  //Aded by Gonetz
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_TEXTURE);
    CA_PRIM ();
-   rdp.best_tex = 0;
    cmb.tex |= 3;
    cmb.tmu1_a_func = GR_COMBINE_FUNCTION_LOCAL;
    cmb.tmu0_a_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL;
