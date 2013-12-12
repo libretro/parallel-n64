@@ -1387,9 +1387,10 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"POKEMON SNAP"))
    {
       //depthmode = 1
-      smart_read = 1;
 #ifdef HAVE_HWFBE
       hires = 0;
+#else
+      read_always = 1;
 #endif
       //fb_clear = 1
    }
