@@ -127,6 +127,9 @@ void init_textures(void)
 {
   tex0_width = tex0_height = tex1_width = tex1_height = 2;
 
+  list = NULL;
+  nbTex = 0;
+
   if (!texture)
      texture = (unsigned char*)malloc(2048*2048*4);
 }
