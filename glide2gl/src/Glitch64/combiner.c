@@ -2779,12 +2779,23 @@ FX_ENTRY void FX_CALL
 grConstantColorValueExtZero(GrChipID_t    tmu,
                         GrColor_t     value)
 {
-   LOG("grConstantColorValueExt(%d,%d)\r\n", tmu, value);
+   LOG("grConstantColorValueExtZero(%d,%d)\r\n", tmu, value);
 
-   ccolor0[0] = 0;
-   ccolor0[1] = 0;
-   ccolor0[2] = 0;
-   ccolor0[3] = 0;
+
+   if (tmu == GR_TMU0)
+   {
+      ccolor1[0] = 0;
+      ccolor1[1] = 0;
+      ccolor1[2] = 0;
+      ccolor1[3] = 0;
+   }
+   else
+   {
+      ccolor0[0] = 0;
+      ccolor0[1] = 0;
+      ccolor0[2] = 0;
+      ccolor0[3] = 0;
+   }
 
    vbo_draw();
 
