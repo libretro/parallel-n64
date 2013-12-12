@@ -365,7 +365,6 @@ void ReadSpecialSettings (const char * name)
       ignore_aux_copy = 0;
       useless_is_useless = 0;
 
-      settings.fast_crc = 1;
       settings.force_microcheck = 0;
       settings.force_quad3d = 0;
       settings.force_calc_sphere = 0;
@@ -603,7 +602,6 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"SPIDERMAN"))
    {
-      settings.fast_crc = 0;
    }
    else if (strstr(name, (const char*)"STARCRAFT 64"))
    {
@@ -1187,7 +1185,6 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"½°Êß°ÛÎÞ¯ÄÀ²¾Ý64"))
    {
       //;Super Robot Taisen 64 (J)
-      settings.fast_crc = 0;
       smart_read = 1;
 #ifdef HAVE_HWFBE
       hires = 1;
@@ -1389,7 +1386,6 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"POKEMON SNAP"))
    {
-      settings.fast_crc = 0;
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -1402,7 +1398,6 @@ void ReadSpecialSettings (const char * name)
          )
    {
       //depthmode = 1
-      settings.fast_crc = 0;
       settings.buff_clear = 0;
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -1415,7 +1410,6 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"POKEMON STADIUM 2"))
    {
       //depthmode = 1
-      settings.fast_crc = 0;
       settings.buff_clear = 0;
       settings.swapmode = 2;
       smart_read = 1;
@@ -1816,7 +1810,6 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"KNIFE EDGE"))
    {
       //wrap_big_tex = 1
-      settings.fast_crc = 0;
       settings.filtering = 1;
       //depthmode = 1
    }
@@ -1942,7 +1935,6 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"MARIOKART64"))
    {
-      settings.fast_crc = 0;
       settings.stipple_mode = 1;
       settings.stipple_pattern = (uint32_t)4286595040;
       //depthmode = 1

@@ -288,7 +288,6 @@ void GetTexInfo (int id, int tile)
    if (rdp.tiles[tile].size == 3)
       line <<= 1;
    uint32_t crc = 0;
-   if (settings.fast_crc)
    {
       line = (line - wid_64) << 3;
       if (wid_64 < 1)
@@ -306,37 +305,6 @@ void GetTexInfo (int id, int tile)
             crc += textureCRC(addr+0x800, wid_64_2, crc_height, line_2);
          }
       }
-   }
-   else
-   {
-      int y;
-      crc = 0xFFFFFFFF;
-      uintptr_t addr = (uintptr_t)(rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
-      uint32_t line2 = max(line,1);
-      if (rdp.tiles[tile].size < 3)
-      {
-         line2 <<= 3;
-         for (y = 0; y < crc_height; y++)
-         {
-            crc = CRC32( crc, (void*)(addr), bpl );
-            addr += line2;
-         }
-      }
-      else //32b texture
-      {
-         line2 <<= 2;
-         //32b texel is split in two 16b parts, so bpl/2 and line/2.
-         //Min value for bpl is 4, because when width==1 first 2 bytes of tmem will not be used.
-         bpl = max(bpl >> 1, 4);
-         for (y = 0; y < crc_height; y++)
-         {
-            crc = CRC32( crc, (void*)(addr), bpl);
-            crc = CRC32( crc, (void*)(addr + 0x800), bpl);
-            addr += line2;
-         }
-      }
-      line = (line - wid_64) << 3;
-      if (wid_64 < 1) wid_64 = 1;
    }
    if ((rdp.tiles[tile].size < 2) && (rdp.tlut_mode || rdp.tiles[tile].format == 2))
    {
