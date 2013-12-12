@@ -41,6 +41,7 @@
 
 #include <math.h>
 #include "3dmath.h"
+#include "../../../libretro/performance.h"
 
 #ifndef NOSSE
 #include <xmmintrin.h>
@@ -267,46 +268,17 @@ static float DotProductNeon(float *v0, float *v1)
 
 void math_init(void)
 {
-   int IsSSE = false;
-   int IsNEON = false;
-   int edx, eax;
-   (void)edx;
-   (void)eax;
-   (void)IsSSE;
-   (void)IsNEON;
+   struct rarch_cpu_features cpu;
+   rarch_get_cpu_features(&cpu);
 
-#if defined(__GNUC__) && !defined(NO_ASM) && !defined(NOSSE)
-#if defined(__x86_64__)
-   asm volatile(" cpuid;        "
-         : "=a"(eax), "=d"(edx)
-         : "0"(1)
-         : "rbx", "rcx"
-         );
-#else
-   asm volatile(" push %%ebx;   "
-         " push %%ecx;   "
-         " cpuid;        "
-         " pop %%ecx;    "
-         " pop %%ebx;    "
-         : "=a"(eax), "=d"(edx)
-         : "0"(1)
-         :
-         );
-#endif
-
-   // Check for SSE
-   if (edx & (1 << 25))
-      IsSSE = true;
-
-   if (IsSSE)
+#if !defined(NOSSE)
+   if (cpu.simd & RARCH_SIMD_SSE2)
    {
       MulMatrices = MulMatricesSSE;
       LOG("SSE detected, using (some) optimized math functions.\n");
    }
 #elif defined(HAVE_NEON)
-   IsNEON = true;
-
-   if (IsNEON)
+   if (cpu.simd & RARCH_SIMD_NEON)
    {
       DotProduct = DotProductNeon;
       LOG("NEON detected, using (some) optimized math functions.\n");
