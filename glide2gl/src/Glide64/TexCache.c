@@ -663,7 +663,7 @@ void TexCache(void)
          else
          {
             grTexCombine (tmu_1, cmb.tmu1_func, cmb.tmu1_fac, cmb.tmu1_a_func, cmb.tmu1_a_fac, cmb.tmu1_invert, cmb.tmu1_a_invert);
-            grConstantColorValueExt(tmu_1, 0);
+            grConstantColorValueExtZero(tmu_1, 0);
          }
          grTexDetailControl (tmu_1, cmb.dc1_lodbias, cmb.dc1_detailscale, cmb.dc1_detailmax);
          grTexLodBiasValue (tmu_1, cmb.lodbias1);
@@ -690,7 +690,7 @@ void TexCache(void)
          else
          {
             grTexCombine (tmu_0, cmb.tmu0_func, cmb.tmu0_fac, cmb.tmu0_a_func, cmb.tmu0_a_fac, cmb.tmu0_invert, cmb.tmu0_a_invert);
-            grConstantColorValueExt(tmu_0, 0);
+            grConstantColorValueExtZero(tmu_0, 0);
          }
          grTexDetailControl (tmu_0, cmb.dc0_lodbias, cmb.dc0_detailscale, cmb.dc0_detailmax);
          grTexLodBiasValue (tmu_0, cmb.lodbias0);

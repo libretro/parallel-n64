@@ -117,6 +117,10 @@ FX_ENTRY void FX_CALL
 grConstantColorValueExt(GrChipID_t    tmu,
                         GrColor_t     value);
 
+FX_ENTRY void FX_CALL
+grConstantColorValueExtZero(GrChipID_t    tmu,
+                        GrColor_t     value);
+
 FX_ENTRY void FX_CALL 
 grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
                   GrCCUColor_t b, GrCombineMode_t b_mode,

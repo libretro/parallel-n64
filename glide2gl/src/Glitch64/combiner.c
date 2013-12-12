@@ -2774,3 +2774,28 @@ grConstantColorValueExt(GrChipID_t    tmu,
       GL_CHECK(glUniform4f(ccolor1_location, ccolor1[0], ccolor1[1], ccolor1[2], ccolor1[3]));
    }
 }
+
+FX_ENTRY void FX_CALL
+grConstantColorValueExtZero(GrChipID_t    tmu,
+                        GrColor_t     value)
+{
+   LOG("grConstantColorValueExt(%d,%d)\r\n", tmu, value);
+
+   ccolor0[0] = 0;
+   ccolor0[1] = 0;
+   ccolor0[2] = 0;
+   ccolor0[3] = 0;
+
+   vbo_draw();
+
+   if (tmu == GR_TMU0)
+   {
+      ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
+      GL_CHECK(glUniform4f(ccolor1_location, ccolor1[0], ccolor1[1], ccolor1[2], ccolor1[3]));
+   }
+   else
+   {
+      ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
+      GL_CHECK(glUniform4f(ccolor0_location, ccolor0[0], ccolor0[1], ccolor0[2], ccolor0[3]));
+   }
+}
