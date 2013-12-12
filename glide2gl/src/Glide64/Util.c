@@ -981,7 +981,7 @@ static void CalculateLOD(VERTEX *v, int n)
       else
       detailmax = 1.0f - rdp.lod_fraction;
       grTexDetailControl (GR_TMU0, dc0_lodbias, dc0_detailscale, detailmax);
-      if (num_tmu == 2)
+      if (NUM_TMU == 2)
       grTexDetailControl (GR_TMU1, dc1_lodbias, dc1_detailscale, detailmax);
       return;
       }

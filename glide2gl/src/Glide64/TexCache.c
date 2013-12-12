@@ -641,7 +641,7 @@ void TexCache(void)
             return;
       }
 
-      if (tmu_1 < voodoo.num_tmu)
+      if (tmu_1 < NUM_TMU)
       {
          if (cmb.tex_cmb_ext_use)
          {
@@ -668,7 +668,7 @@ void TexCache(void)
          grTexDetailControl (tmu_1, cmb.dc1_lodbias, cmb.dc1_detailscale, cmb.dc1_detailmax);
          grTexLodBiasValue (tmu_1, cmb.lodbias1);
       }
-      if (tmu_0 < voodoo.num_tmu)
+      if (tmu_0 < NUM_TMU)
       {
          if (cmb.tex_cmb_ext_use)
          {
@@ -697,7 +697,7 @@ void TexCache(void)
       }
    }
 
-   if ((rdp.tex & 1) && tmu_0 < voodoo.num_tmu)
+   if ((rdp.tex & 1) && tmu_0 < NUM_TMU)
    {
 #ifdef HAVE_HWFBE
       if (aTBuff[0] && aTBuff[0]->cache)
@@ -725,7 +725,7 @@ void TexCache(void)
       else
          LoadTex (0, tmu_0);
    }
-   if ((rdp.tex & 2) && tmu_1 < voodoo.num_tmu)
+   if ((rdp.tex & 2) && tmu_1 < NUM_TMU)
    {
 #ifdef HAVE_HWFBE
       if (aTBuff[1] && aTBuff[1]->cache)
@@ -755,7 +755,7 @@ void TexCache(void)
    }
 
    {
-      for (i = 0; i < 2; i++)
+      for (i = 0; i < NUM_TMU; i++)
       {
          int tmu;
          if (i==0)
@@ -763,7 +763,7 @@ void TexCache(void)
          else if (i==1)
             tmu=tmu_1;
 
-         if (tmu >= voodoo.num_tmu)
+         if (tmu >= NUM_TMU)
             continue;
 
          int tile = rdp.cur_tile + i;

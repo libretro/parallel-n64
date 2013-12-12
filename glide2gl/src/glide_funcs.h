@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+#define NUM_TMU 2
+
 // Vertex structure
 typedef struct
 {

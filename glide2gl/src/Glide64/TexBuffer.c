@@ -156,7 +156,7 @@ static TBUFF_COLOR_IMAGE * AllocateTextureBuffer(COLOR_IMAGE *cimage)
    uint32_t required = grTexCalcMemRequired(texbuf.info.smallLodLog2, texbuf.info.largeLodLog2,
          texbuf.info.aspectRatioLog2, texbuf.info.format);
    //find free space
-   for (i = 0; i < voodoo.num_tmu; i++)
+   for (i = 0; i < NUM_TMU; i++)
    {
       uint32_t available = 0;
       uint32_t top = 0;
@@ -257,7 +257,7 @@ int OpenTextureBuffer(COLOR_IMAGE *cimage)
   }
   if (search)
   {
-    for (i = 0; (i < voodoo.num_tmu) && !found; i++)
+    for (i = 0; i < NUM_TMU && !found; i++)
     {
       for (j = 0; (j < rdp.texbufs[i].count) && !found; j++)
       {
@@ -690,7 +690,7 @@ int FindTextureBuffer(uint32_t addr, uint16_t width)
    FRDP("FindTextureBuffer. addr: %08lx, width: %d, scale_x: %f\n", addr, width, rdp.scale_x);
    int found = false;
    uint32_t shift = 0;
-   for (i = 0; i < voodoo.num_tmu && !found; i++)
+   for (i = 0; i < NUM_TMU && !found; i++)
    {
       uint8_t index = rdp.cur_tex_buf^i;
       for (j = 0; j < rdp.texbufs[index].count && !found; j++)

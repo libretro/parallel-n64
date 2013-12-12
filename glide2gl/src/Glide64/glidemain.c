@@ -2189,7 +2189,6 @@ int InitGfx(void)
    fullscreen = true;
 
    // get the # of TMUs available
-   grGet (GR_NUM_TMU, 4, (FxI32*)&voodoo.num_tmu);
    voodoo.tex_max_addr = grTexMaxAddress(GR_TMU0);
 
    grStipplePattern(settings.stipple_pattern);
@@ -2454,8 +2453,6 @@ that there is a waiting interrupt.
 EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 {
    VLOG ("InitiateGFX (*)\n");
-   voodoo.num_tmu = 4;
-
    rdp_new();
 
    // Assume scale of 1 for debug purposes
