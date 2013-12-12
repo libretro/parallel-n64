@@ -425,12 +425,6 @@ void GetTexInfo (int id, int tile)
    LRDP(" | | | +- Done.\n | | +- GetTexInfo end\n");
 }
 
-// Chooses the best TMU to load to (the one with the most memory)
-int ChooseBestTmu (int tmu1, int tmu2)
-{
-   return 0;
-}
-
 // Select texture from texture buffer
 static void SelectTBuffTex(TBUFF_COLOR_IMAGE * pTBuffTex)
 {
@@ -479,7 +473,7 @@ void TexCache(void)
       else if (tex_found[1][1] != -1)	// T1 found in tmu 1
          tmu_1 = 1;
       else	// T1 not found
-         tmu_1 = ChooseBestTmu (0, 1);
+         tmu_1 = 0;
 
       tmu_0 = !tmu_1;
       tmu_0_mode = (tmu_0==1)?TMUMODE_NONE:TMUMODE_PASSTHRU;
@@ -491,7 +485,7 @@ void TexCache(void)
       else if (tex_found[0][1] != -1)	// T0 found in tmu 1
          tmu_0 = 1;
       else	// T0 not found
-         tmu_0 = ChooseBestTmu (0, 1);
+         tmu_0 = 0;
 
       tmu_1 = !tmu_0;
       tmu_1_mode = (tmu_1==1)?TMUMODE_NONE:TMUMODE_PASSTHRU;
