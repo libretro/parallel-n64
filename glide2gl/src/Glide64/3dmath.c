@@ -43,7 +43,7 @@
 #include "3dmath.h"
 
 #ifndef NOSSE
-#include "3dmathsse.h"
+#include <xmmintrin.h>
 #endif
 
 void calc_light (VERTEX *v)
@@ -160,23 +160,25 @@ void calc_sphere (VERTEX *v)
 #endif
 }
 
-float DotProductC(register float *v1, register float *v2)
+float DotProductC(register float *v0, register float *v1)
 {
-    register float result;
-    result = v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
-    return(result);
+    float dot;
+    dot = v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2];
+    return dot;
 }
 
 void NormalizeVectorC(float *v)
 {
-   register float len;
-   len = sqrtf(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-   if (len > 0.0f)
-   {
-      v[0] /= len;
-      v[1] /= len;
-      v[2] /= len;
-   }
+    float len;
+
+    len = (float)(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    if (len != 0.0)
+    {
+        len = (float)sqrt( len );
+        v[0] /= (float)len;
+        v[1] /= (float)len;
+        v[2] /= (float)len;
+    }
 }
 
 void TransformVectorC(float *src, float *dst, float mat[4][4])
@@ -195,16 +197,13 @@ void InverseTransformVectorC (float *src, float *dst, float mat[4][4])
 
 void MulMatricesC(float m1[4][4],float m2[4][4],float r[4][4])
 {
-   int i, j;
+   int i;
    for (i=0; i < 4; i++)
    {
-      for (j = 0; j < 4; j++)
-      {
-         r[i][j] = m1[i][0] * m2[0][j] +
-            m1[i][1] * m2[1][j] +
-            m1[i][2] * m2[2][j] +
-            m1[i][3] * m2[3][j];
-      }
+      r[i][0] = m1[i][0] * m2[0][0] + m1[i][1] * m2[1][0] + m1[i][2] * m2[2][0] + m1[i][3] * m2[3][0];
+      r[i][1] = m1[i][0] * m2[0][1] + m1[i][1] * m2[1][1] + m1[i][2] * m2[2][1] + m1[i][3] * m2[3][1];
+      r[i][2] = m1[i][0] * m2[0][2] + m1[i][1] * m2[1][2] + m1[i][2] * m2[2][2] + m1[i][3] * m2[3][2];
+      r[i][3] = m1[i][0] * m2[0][3] + m1[i][1] * m2[1][3] + m1[i][2] * m2[2][3] + m1[i][3] * m2[3][3];
    }
 }
 
@@ -215,6 +214,37 @@ TRANSFORMVECTOR TransformVector = TransformVectorC;
 TRANSFORMVECTOR InverseTransformVector = InverseTransformVectorC;
 DOTPRODUCT DotProduct = DotProductC;
 NORMALIZEVECTOR NormalizeVector = NormalizeVectorC;
+
+#if !defined(NOSSE)
+// 2008.03.29 H.Morii - added SSE 3DNOW! 3x3 1x3 matrix multiplication
+//                      and 3DNOW! 4x4 4x4 matrix multiplication
+
+void MulMatricesSSE(float m1[4][4],float m2[4][4],float r[4][4])
+{
+   /* [row][col]*/
+   int i;
+   typedef float v4sf __attribute__ ((vector_size (16)));
+   v4sf row0 = _mm_loadu_ps(m2[0]);
+   v4sf row1 = _mm_loadu_ps(m2[1]);
+   v4sf row2 = _mm_loadu_ps(m2[2]);
+   v4sf row3 = _mm_loadu_ps(m2[3]);
+
+   for (i = 0; i < 4; ++i)
+   {
+      v4sf leftrow = _mm_loadu_ps(m1[i]);
+
+      // Fill tmp with four copies of leftrow[0]
+      // Calculate the four first summands
+      v4sf destrow = _mm_shuffle_ps (leftrow, leftrow, 0) * row0;
+
+      destrow += (_mm_shuffle_ps (leftrow, leftrow, 1 + (1 << 2) + (1 << 4) + (1 << 6))) * row1;
+      destrow += (_mm_shuffle_ps (leftrow, leftrow, 2 + (2 << 2) + (2 << 4) + (2 << 6))) * row2;
+      destrow += (_mm_shuffle_ps (leftrow, leftrow, 3 + (3 << 2) + (3 << 4) + (3 << 6))) * row3;
+
+      __builtin_ia32_storeups(r[i], destrow);
+   }
+}
+#endif
 
 void math_init(void)
 {
@@ -253,3 +283,4 @@ void math_init(void)
    }
 #endif
 }
+
