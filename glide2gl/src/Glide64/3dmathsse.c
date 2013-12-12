@@ -20,25 +20,12 @@ void MulMatricesSSE(float m1[4][4],float m2[4][4],float r[4][4])
       v4sf leftrow = _mm_loadu_ps(m1[i]);
 
       // Fill tmp with four copies of leftrow[0]
-      v4sf tmp = leftrow;
-      tmp = _mm_shuffle_ps (tmp, tmp, 0);
       // Calculate the four first summands
-      v4sf destrow = tmp * row0;
+      v4sf destrow = _mm_shuffle_ps (leftrow, leftrow, 0) * row0;
 
-      // Fill tmp with four copies of leftrow[1]
-      tmp = leftrow;
-      tmp = _mm_shuffle_ps (tmp, tmp, 1 + (1 << 2) + (1 << 4) + (1 << 6));
-      destrow += tmp * row1;
-
-      // Fill tmp with four copies of leftrow[2]
-      tmp = leftrow;
-      tmp = _mm_shuffle_ps (tmp, tmp, 2 + (2 << 2) + (2 << 4) + (2 << 6));
-      destrow += tmp * row2;
-
-      // Fill tmp with four copies of leftrow[3]
-      tmp = leftrow;
-      tmp = _mm_shuffle_ps (tmp, tmp, 3 + (3 << 2) + (3 << 4) + (3 << 6));
-      destrow += tmp * row3;
+      destrow += (_mm_shuffle_ps (leftrow, leftrow, 1 + (1 << 2) + (1 << 4) + (1 << 6))) * row1;
+      destrow += (_mm_shuffle_ps (leftrow, leftrow, 2 + (2 << 2) + (2 << 4) + (2 << 6))) * row2;
+      destrow += (_mm_shuffle_ps (leftrow, leftrow, 3 + (3 << 2) + (3 << 4) + (3 << 6))) * row3;
 
       __builtin_ia32_storeups(r[i], destrow);
    }
