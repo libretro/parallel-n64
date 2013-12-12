@@ -937,38 +937,21 @@ static void uc6_draw_polygons (VERTEX v[4])
   AddOffset(v, 4);
 
   // Set vertex buffers
-  if (rdp.cur_cache[0] && rdp.cur_cache[0]->splits > 1)
-  {
-    VERTEX *vptr[3];
-    int i;
-    for (i = 0; i < 3; i++)
-      vptr[i] = &v[i];
-    draw_split_triangle(vptr);
+  rdp.vtxbuf = rdp.vtx1;      // copy from v to rdp.vtx1
+  rdp.vtxbuf2 = rdp.vtx2;
+  rdp.vtx_buffer = 0;
+  rdp.n_global = 3;
+  memcpy (rdp.vtxbuf, v, sizeof(VERTEX)*3);
+  do_triangle_stuff_2 (0);
+  rdp.tri_n ++;
 
-    rdp.tri_n ++;
-    for (i = 0; i < 3; i++)
-      vptr[i] = &v[i+1];
-    draw_split_triangle(vptr);
-    rdp.tri_n ++;
-  }
-  else
-  {
-    rdp.vtxbuf = rdp.vtx1;      // copy from v to rdp.vtx1
-    rdp.vtxbuf2 = rdp.vtx2;
-    rdp.vtx_buffer = 0;
-    rdp.n_global = 3;
-    memcpy (rdp.vtxbuf, v, sizeof(VERTEX)*3);
-    do_triangle_stuff_2 (0);
-    rdp.tri_n ++;
-
-    rdp.vtxbuf = rdp.vtx1;      // copy from v to rdp.vtx1
-    rdp.vtxbuf2 = rdp.vtx2;
-    rdp.vtx_buffer = 0;
-    rdp.n_global = 3;
-    memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
-    do_triangle_stuff_2 (0);
-    rdp.tri_n ++;
-  }
+  rdp.vtxbuf = rdp.vtx1;      // copy from v to rdp.vtx1
+  rdp.vtxbuf2 = rdp.vtx2;
+  rdp.vtx_buffer = 0;
+  rdp.n_global = 3;
+  memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
+  do_triangle_stuff_2 (0);
+  rdp.tri_n ++;
   rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
   if (settings.fog && (rdp.flags & FOG_ENABLED))
@@ -1060,17 +1043,9 @@ static void uc6_obj_rectangle ()
   float lr_x = d->objX + d->imageW/d->scaleW;
   float ul_y = d->objY;
   float lr_y = d->objY + d->imageH/d->scaleH;
-  float ul_u, lr_u, ul_v, lr_v;
-  if (rdp.cur_cache[0]->splits > 1)
-  {
-    lr_u = (float)(d->imageW-1);
-    lr_v = (float)(d->imageH-1);
-  }
-  else
-  {
-    lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
-    lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
-  }
+  float ul_u, ul_v;
+  float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
+  float lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
 
   if (d->imageFlags&0x01) //flipS
   {
@@ -1119,17 +1094,9 @@ static void uc6_obj_sprite ()
   float lr_x = d->objX + d->imageW/d->scaleW;
   float ul_y = d->objY;
   float lr_y = d->objY + d->imageH/d->scaleH;
-  float ul_u, lr_u, ul_v, lr_v;
-  if (rdp.cur_cache[0]->splits > 1)
-  {
-    lr_u = (float)(d->imageW-1);
-    lr_v = (float)(d->imageH-1);
-  }
-  else
-  {
-    lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
-    lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
-  }
+  float ul_u, ul_v;
+  float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
+  float lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
 
   if (d->imageFlags&0x01) //flipS
   {
@@ -1298,17 +1265,9 @@ static void uc6_obj_rectangle_r(void)
    float lr_x = (d->objX + d->imageW/d->scaleW)/mat_2d.BaseScaleX;
    float ul_y = d->objY/mat_2d.BaseScaleY;
    float lr_y = (d->objY + d->imageH/d->scaleH)/mat_2d.BaseScaleY;
-   float ul_u, lr_u, ul_v, lr_v;
-   if (rdp.cur_cache[0]->splits > 1)
-   {
-      lr_u = (float)(d->imageW-1);
-      lr_v = (float)(d->imageH-1);
-   }
-   else
-   {
-      lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
-      lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
-   }
+   float ul_u, ul_v;
+   float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
+   float lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
 
    if (d->imageFlags&0x01) //flipS
    {
@@ -1632,17 +1591,8 @@ void uc6_sprite2d(void)
             lr_y = d->frameY + d->frameH;
          }
 
-         float lr_u, lr_v;
-         if (rdp.cur_cache[0]->splits > 1)
-         {
-            lr_u = (float)(d->imageW-1);
-            lr_v = (float)(d->imageH-1);
-         }
-         else
-         {
-            lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
-            lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
-         }
+         float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
+         float lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
 
          // Make the vertices
          VERTEX v[4] = {
@@ -1665,38 +1615,21 @@ void uc6_sprite2d(void)
          AddOffset(v, 4);
 
          // Set vertex buffers
-         if (rdp.cur_cache[0]->splits > 1)
-         {
-            VERTEX *vptr[3];
-            int i;
-            for (i = 0; i < 3; i++)
-               vptr[i] = &v[i];
-            draw_split_triangle(vptr);
+         rdp.vtxbuf = rdp.vtx1;        // copy from v to rdp.vtx1
+         rdp.vtxbuf2 = rdp.vtx2;
+         rdp.vtx_buffer = 0;
+         rdp.n_global = 3;
+         memcpy (rdp.vtxbuf, v, sizeof(VERTEX)*3);
+         do_triangle_stuff_2 (0);
+         rdp.tri_n ++;
 
-            rdp.tri_n ++;
-            for (i = 0; i < 3; i++)
-               vptr[i] = &v[i+1];
-            draw_split_triangle(vptr);
-            rdp.tri_n ++;
-         }
-         else
-         {
-            rdp.vtxbuf = rdp.vtx1;        // copy from v to rdp.vtx1
-            rdp.vtxbuf2 = rdp.vtx2;
-            rdp.vtx_buffer = 0;
-            rdp.n_global = 3;
-            memcpy (rdp.vtxbuf, v, sizeof(VERTEX)*3);
-            do_triangle_stuff_2 (0);
-            rdp.tri_n ++;
-
-            rdp.vtxbuf = rdp.vtx1;        // copy from v to rdp.vtx1
-            rdp.vtxbuf2 = rdp.vtx2;
-            rdp.vtx_buffer = 0;
-            rdp.n_global = 3;
-            memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
-            do_triangle_stuff_2 (0);
-            rdp.tri_n ++;
-         }
+         rdp.vtxbuf = rdp.vtx1;        // copy from v to rdp.vtx1
+         rdp.vtxbuf2 = rdp.vtx2;
+         rdp.vtx_buffer = 0;
+         rdp.n_global = 3;
+         memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
+         do_triangle_stuff_2 (0);
+         rdp.tri_n ++;
          rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
          if (settings.fog && (rdp.flags & FOG_ENABLED))

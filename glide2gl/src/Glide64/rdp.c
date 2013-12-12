@@ -1432,121 +1432,6 @@ static void rdp_texrect()
     VERTEX *vptr = vstd;
     int n_vertices = 4;
 
-    VERTEX *vnew = 0;
-    //          for (int j =0; j < 4; j++)
-    //            FRDP("v[%d]  u0: %f, v0: %f, u1: %f, v1: %f\n", j, vstd[j].u0, vstd[j].v0, vstd[j].u1, vstd[j].v1);
-
-
-    if (
-#ifdef HAVE_HWFBE
-          !rdp.aTBuffTex[0] &&
-#endif
-          rdp.cur_cache[0]->splits != 1)
-    {
-      // ** LARGE TEXTURE HANDLING **
-      // *VERY* simple algebra for texrects
-      float min_u, min_x, max_u, max_x;
-      if (vstd[0].u0 < vstd[1].u0)
-      {
-        min_u = vstd[0].u0;
-        min_x = vstd[0].x;
-        max_u = vstd[1].u0;
-        max_x = vstd[1].x;
-      }
-      else
-      {
-        min_u = vstd[1].u0;
-        min_x = vstd[1].x;
-        max_u = vstd[0].u0;
-        max_x = vstd[0].x;
-      }
-
-      int start_u_256, end_u_256;
-      start_u_256 = (int)min_u >> 8;
-      end_u_256 = (int)max_u >> 8;
-      //FRDP(" min_u: %f, max_u: %f start: %d, end: %d\n", min_u, max_u, start_u_256, end_u_256);
-
-      int splitheight = rdp.cur_cache[0]->splitheight;
-
-      int num_verts_line = 2 + ((end_u_256-start_u_256)<<1);
-      n_vertices = num_verts_line << 1;
-      vnew = (VERTEX*)malloc(n_vertices * sizeof(VERTEX));
-      vptr = vnew;
-
-      vnew[0] = vstd[0];
-      vnew[0].u0 -= 256.0f * start_u_256;
-      vnew[0].v0 += splitheight * start_u_256;
-      vnew[0].u1 -= 256.0f * start_u_256;
-      vnew[0].v1 += splitheight * start_u_256;
-      vnew[1] = vstd[2];
-      vnew[1].u0 -= 256.0f * start_u_256;
-      vnew[1].v0 += splitheight * start_u_256;
-      vnew[1].u1 -= 256.0f * start_u_256;
-      vnew[1].v1 += splitheight * start_u_256;
-      vnew[n_vertices-2] = vstd[1];
-      vnew[n_vertices-2].u0 -= 256.0f * end_u_256;
-      vnew[n_vertices-2].v0 += splitheight * end_u_256;
-      vnew[n_vertices-2].u1 -= 256.0f * end_u_256;
-      vnew[n_vertices-2].v1 += splitheight * end_u_256;
-      vnew[n_vertices-1] = vstd[3];
-      vnew[n_vertices-1].u0 -= 256.0f * end_u_256;
-      vnew[n_vertices-1].v0 += splitheight * end_u_256;
-      vnew[n_vertices-1].u1 -= 256.0f * end_u_256;
-      vnew[n_vertices-1].v1 += splitheight * end_u_256;
-
-      // find the equation of the line of u,x
-      float m = (max_x - min_x) / (max_u - min_u);  // m = delta x / delta u
-      float b = min_x - m * min_u;          // b = y - m * x
-
-      for (i=start_u_256; i<end_u_256; i++)
-      {
-        // Find where x = current 256 multiple
-        float x = m * ((i<<8)+256) + b;
-
-        int vn = 2 + ((i-start_u_256)<<2);
-        vnew[vn] = vstd[0];
-        vnew[vn].x = x;
-        vnew[vn].u0 = 255.5f;
-        vnew[vn].v0 += (float)splitheight * i;
-        vnew[vn].u1 = 255.5f;
-        vnew[vn].v1 += (float)splitheight * i;
-
-        vn ++;
-        vnew[vn] = vstd[2];
-        vnew[vn].x = x;
-        vnew[vn].u0 = 255.5f;
-        vnew[vn].v0 += (float)splitheight * i;
-        vnew[vn].u1 = 255.5f;
-        vnew[vn].v1 += (float)splitheight * i;
-
-        vn ++;
-        vnew[vn] = vnew[vn-2];
-        vnew[vn].u0 = 0.5f;
-        vnew[vn].v0 += (float)splitheight;
-        vnew[vn].u1 = 0.5f;
-        vnew[vn].v1 += (float)splitheight;
-
-        vn ++;
-        vnew[vn] = vnew[vn-2];
-        vnew[vn].u0 = 0.5f;
-        vnew[vn].v0 += (float)splitheight;
-        vnew[vn].u1 = 0.5f;
-        vnew[vn].v1 += (float)splitheight;
-      }
-      //*
-      if (n_vertices > 12)
-      {
-         int k;
-        float texbound = (float)(splitheight << 1);
-        for (k = 0; k < n_vertices; k ++)
-        {
-          if (vnew[k].v0 > texbound)
-            vnew[k].v0 = (float)fmod(vnew[k].v0, texbound);
-        }
-      }
-      //*/
-    }
-
     AllowShadeMods (vptr, n_vertices);
     for (i=0; i<n_vertices; i++)
     {
@@ -1574,9 +1459,6 @@ static void rdp_texrect()
 
       rdp.tri_n += 2;
     }
-
-    if (vnew)
-       free(vnew);
 }
 
 static void rdp_loadsync()

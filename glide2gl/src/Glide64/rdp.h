@@ -414,7 +414,6 @@ typedef struct {
 
   int uses;             // 1 triangle that uses this texture
 
-  int splits;           // number of splits
   int splitheight;
 
   float c_off;          // ul center texel offset (both x and y)

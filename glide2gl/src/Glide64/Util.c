@@ -498,188 +498,20 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 
    vtx[0]->not_zclipped = vtx[1]->not_zclipped = vtx[2]->not_zclipped = 1;
 
-   if (rdp.cur_cache[0] && (rdp.tex & 1) && (rdp.cur_cache[0]->splits > 1)
-#ifdef HAVE_HWFBE
-         && !rdp.aTBuffTex[0]
-#endif
-         && !rdp.clip)
-   {
-      int index,i,j, min_256,max_256, cur_256,left_256,right_256;
-      float percent;
+   // Set vertex buffers
+   rdp.vtxbuf = rdp.vtx1;  // copy from v to rdp.vtx1
+   rdp.vtxbuf2 = rdp.vtx2;
+   rdp.vtx_buffer = 0;
+   rdp.n_global = 3;
 
-      min_256 = min((int)vtx[0]->u0,(int)vtx[1]->u0); // bah, don't put two mins on one line
-      min_256 = min(min_256,(int)vtx[2]->u0) >> 8;  // or it will be calculated twice
+   rdp.vtxbuf[0] = *vtx[0];
+   rdp.vtxbuf[0].number = 1;
+   rdp.vtxbuf[1] = *vtx[1];
+   rdp.vtxbuf[1].number = 2;
+   rdp.vtxbuf[2] = *vtx[2];
+   rdp.vtxbuf[2].number = 4;
 
-      max_256 = max((int)vtx[0]->u0,(int)vtx[1]->u0); // not like it makes much difference
-      max_256 = max(max_256,(int)vtx[2]->u0) >> 8;  // anyway :P
-
-      for (cur_256=min_256; cur_256<=max_256; cur_256++)
-      {
-         left_256 = cur_256 << 8;
-         right_256 = (cur_256+1) << 8;
-
-         // Set vertex buffers
-         rdp.vtxbuf = rdp.vtx1;  // copy from v to rdp.vtx1
-         rdp.vtxbuf2 = rdp.vtx2;
-         rdp.vtx_buffer = 0;
-         rdp.n_global = 3;
-         index = 0;
-
-         // ** Left plane **
-         for (i=0; i<3; i++)
-         {
-            j = i+1;
-            if (j == 3) j = 0;
-
-            VERTEX *v1 = vtx[i];
-            VERTEX *v2 = vtx[j];
-
-            if (v1->u0 >= left_256)
-            {
-               if (v2->u0 >= left_256)   // Both are in, save the last one
-               {
-                  rdp.vtxbuf[index] = *v2;
-                  rdp.vtxbuf[index].u0 -= left_256;
-                  rdp.vtxbuf[index++].v0 += cur_256 * rdp.cur_cache[0]->splitheight;
-               }
-               else      // First is in, second is out, save intersection
-               {
-                  percent = (left_256 - v1->u0) / (v2->u0 - v1->u0);
-                  rdp.vtxbuf[index].x = v1->x + (v2->x - v1->x) * percent;
-                  rdp.vtxbuf[index].y = v1->y + (v2->y - v1->y) * percent;
-                  rdp.vtxbuf[index].z = v1->z + (v2->z - v1->z) * percent;
-                  rdp.vtxbuf[index].w = v1->w + (v2->w - v1->w) * percent;
-                  rdp.vtxbuf[index].f = v1->f + (v2->f - v1->f) * percent;
-                  rdp.vtxbuf[index].u0 = 0.5f;
-                  rdp.vtxbuf[index].v0 = v1->v0 + (v2->v0 - v1->v0) * percent +
-                     cur_256 * rdp.cur_cache[0]->splitheight;
-                  rdp.vtxbuf[index].u1 = v1->u1 + (v2->u1 - v1->u1) * percent;
-                  rdp.vtxbuf[index].v1 = v1->v1 + (v2->v1 - v1->v1) * percent;
-                  rdp.vtxbuf[index].b = (uint8_t)(v1->b + (v2->b - v1->b) * percent);
-                  rdp.vtxbuf[index].g = (uint8_t)(v1->g + (v2->g - v1->g) * percent);
-                  rdp.vtxbuf[index].r = (uint8_t)(v1->r + (v2->r - v1->r) * percent);
-                  rdp.vtxbuf[index++].a = (uint8_t)(v1->a + (v2->a - v1->a) * percent);
-               }
-            }
-            else
-            {
-               //if (v2->u0 < left_256)  // Both are out, save nothing
-               if (v2->u0 >= left_256) // First is out, second is in, save intersection & in point
-               {
-                  percent = (left_256 - v2->u0) / (v1->u0 - v2->u0);
-                  rdp.vtxbuf[index].x = v2->x + (v1->x - v2->x) * percent;
-                  rdp.vtxbuf[index].y = v2->y + (v1->y - v2->y) * percent;
-                  rdp.vtxbuf[index].z = v2->z + (v1->z - v2->z) * percent;
-                  rdp.vtxbuf[index].w = v2->w + (v1->w - v2->w) * percent;
-                  rdp.vtxbuf[index].f = v2->f + (v1->f - v2->f) * percent;
-                  rdp.vtxbuf[index].u0 = 0.5f;
-                  rdp.vtxbuf[index].v0 = v2->v0 + (v1->v0 - v2->v0) * percent +
-                     cur_256 * rdp.cur_cache[0]->splitheight;
-                  rdp.vtxbuf[index].u1 = v2->u1 + (v1->u1 - v2->u1) * percent;
-                  rdp.vtxbuf[index].v1 = v2->v1 + (v1->v1 - v2->v1) * percent;
-                  rdp.vtxbuf[index].b = (uint8_t)(v2->b + (v1->b - v2->b) * percent);
-                  rdp.vtxbuf[index].g = (uint8_t)(v2->g + (v1->g - v2->g) * percent);
-                  rdp.vtxbuf[index].r = (uint8_t)(v2->r + (v1->r - v2->r) * percent);
-                  rdp.vtxbuf[index++].a = (uint8_t)(v2->a + (v1->a - v2->a) * percent);
-
-                  // Save the in point
-                  rdp.vtxbuf[index] = *v2;
-                  rdp.vtxbuf[index].u0 -= left_256;
-                  rdp.vtxbuf[index++].v0 += cur_256 * rdp.cur_cache[0]->splitheight;
-               }
-            }
-         }
-         rdp.n_global = index;
-
-         rdp.vtxbuf = rdp.vtx2;  // now vtx1 holds the value, & vtx2 is the destination
-         rdp.vtxbuf2 = rdp.vtx1;
-         rdp.vtx_buffer ^= 1;
-         index = 0;
-
-         for (i=0; i<rdp.n_global; i++)
-         {
-            j = i+1;
-            if (j == rdp.n_global) j = 0;
-
-            VERTEX *v1 = &rdp.vtxbuf2[i];
-            VERTEX *v2 = &rdp.vtxbuf2[j];
-
-            // ** Right plane **
-            if (v1->u0 <= right_256)
-            {
-               if (v2->u0 <= right_256)   // Both are in, save the last one
-               {
-                  rdp.vtxbuf[index] = *v2;
-                  rdp.vtxbuf[index++].not_zclipped = 0;
-               }
-               else      // First is in, second is out, save intersection
-               {
-                  percent = (right_256 - v1->u0) / (v2->u0 - v1->u0);
-                  rdp.vtxbuf[index].x = v1->x + (v2->x - v1->x) * percent;
-                  rdp.vtxbuf[index].y = v1->y + (v2->y - v1->y) * percent;
-                  rdp.vtxbuf[index].z = v1->z + (v2->z - v1->z) * percent;
-                  rdp.vtxbuf[index].w = v1->w + (v2->w - v1->w) * percent;
-                  rdp.vtxbuf[index].f = v1->f + (v2->f - v1->f) * percent;
-                  rdp.vtxbuf[index].u0 = 255.5f;
-                  rdp.vtxbuf[index].v0 = v1->v0 + (v2->v0 - v1->v0) * percent;
-                  rdp.vtxbuf[index].u1 = v1->u1 + (v2->u1 - v1->u1) * percent;
-                  rdp.vtxbuf[index].v1 = v1->v1 + (v2->v1 - v1->v1) * percent;
-                  rdp.vtxbuf[index].b = (uint8_t)(v1->b + (v2->b - v1->b) * percent);
-                  rdp.vtxbuf[index].g = (uint8_t)(v1->g + (v2->g - v1->g) * percent);
-                  rdp.vtxbuf[index].r = (uint8_t)(v1->r + (v2->r - v1->r) * percent);
-                  rdp.vtxbuf[index].a = (uint8_t)(v1->a + (v2->a - v1->a) * percent);
-                  rdp.vtxbuf[index++].not_zclipped = 0;
-               }
-            }
-            else
-            {
-               //if (v2->u0 > 256.0f)  // Both are out, save nothing
-               if (v2->u0 <= right_256) // First is out, second is in, save intersection & in point
-               {
-                  percent = (right_256 - v2->u0) / (v1->u0 - v2->u0);
-                  rdp.vtxbuf[index].x = v2->x + (v1->x - v2->x) * percent;
-                  rdp.vtxbuf[index].y = v2->y + (v1->y - v2->y) * percent;
-                  rdp.vtxbuf[index].z = v2->z + (v1->z - v2->z) * percent;
-                  rdp.vtxbuf[index].w = v2->w + (v1->w - v2->w) * percent;
-                  rdp.vtxbuf[index].f = v2->f + (v1->f - v2->f) * percent;
-                  rdp.vtxbuf[index].u0 = 255.5f;
-                  rdp.vtxbuf[index].v0 = v2->v0 + (v1->v0 - v2->v0) * percent;
-                  rdp.vtxbuf[index].u1 = v2->u1 + (v1->u1 - v2->u1) * percent;
-                  rdp.vtxbuf[index].v1 = v2->v1 + (v1->v1 - v2->v1) * percent;
-                  rdp.vtxbuf[index].b = (uint8_t)(v2->b + (v1->b - v2->b) * percent);
-                  rdp.vtxbuf[index].g = (uint8_t)(v2->g + (v1->g - v2->g) * percent);
-                  rdp.vtxbuf[index].r = (uint8_t)(v2->r + (v1->r - v2->r) * percent);
-                  rdp.vtxbuf[index].a = (uint8_t)(v2->a + (v1->a - v2->a) * percent);
-                  rdp.vtxbuf[index++].not_zclipped = 0;
-
-                  // Save the in point
-                  rdp.vtxbuf[index] = *v2;
-                  rdp.vtxbuf[index++].not_zclipped = 0;
-               }
-            }
-         }
-         rdp.n_global = index;
-
-         do_triangle_stuff (linew, true);
-      }
-   }
-   else
-   {
-      // Set vertex buffers
-      rdp.vtxbuf = rdp.vtx1;  // copy from v to rdp.vtx1
-      rdp.vtxbuf2 = rdp.vtx2;
-      rdp.vtx_buffer = 0;
-      rdp.n_global = 3;
-
-      rdp.vtxbuf[0] = *vtx[0];
-      rdp.vtxbuf[0].number = 1;
-      rdp.vtxbuf[1] = *vtx[1];
-      rdp.vtxbuf[1].number = 2;
-      rdp.vtxbuf[2] = *vtx[2];
-      rdp.vtxbuf[2].number = 4;
-
-      do_triangle_stuff (linew, false);
-   }
+   do_triangle_stuff (linew, false);
 }
 
 #define interp2p(a, b, r)  (a + (b - a) * r)

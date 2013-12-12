@@ -67,7 +67,7 @@ typedef struct TEXINFO_t
    int wid_64, line;
    uint32_t crc;
    uint32_t flags;
-   int splits, splitheight;
+   int splitheight;
 } TEXINFO;
 
 TEXINFO texinfo[2];
@@ -236,8 +236,7 @@ void GetTexInfo (int id, int tile)
 
    bpl = width << rdp.tiles[tile].size >> 1;
 
-   info->splits = 1;
-
+#ifndef NDEBUG
    LRDP(" | | |-+ Texture approved:\n");
    FRDP (" | | | |- tmem: %08lx\n", rdp.tiles[tile].t_mem);
    FRDP (" | | | |- load width: %d\n", width);
@@ -247,6 +246,7 @@ void GetTexInfo (int id, int tile)
    FRDP (" | | | |- size: %d\n", rdp.tiles[tile].size);
    FRDP (" | | | +- format: %d\n", rdp.tiles[tile].format);
    LRDP(" | | |- Calculating CRC... ");
+#endif
 
    // ** CRC CHECK
 
@@ -1024,9 +1024,7 @@ void LoadTex(int id, int tmu)
       cache->scale_y *= (float)cache->height / (float)real_y;
    }
 
-   int splits = texinfo[id].splits;
-   cache->splits = texinfo[id].splits;
-   cache->splitheight = real_y / cache->splits;
+   cache->splitheight = real_y;
    if (cache->splitheight < texinfo[id].splitheight)
       cache->splitheight = texinfo[id].splitheight;
 
