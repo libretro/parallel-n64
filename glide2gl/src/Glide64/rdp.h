@@ -52,8 +52,6 @@ extern uint32_t frame_count; // frame counter
 
 #define MAX_TMU     2
 
-#define TEXMEM_2MB_EDGE 2097152
-
 // Supported flags
 #define SUP_TEXMIRROR 0x00000001
 
@@ -322,7 +320,6 @@ typedef struct
 {
    int num_tmu;
    uint32_t tmem_ptr[MAX_TMU];
-   uint32_t tex_min_addr[MAX_TMU];
    uint32_t tex_max_addr[MAX_TMU];
 } VOODOO;
 

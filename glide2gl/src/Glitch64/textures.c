@@ -145,13 +145,6 @@ void free_textures()
 }
 
 FX_ENTRY FxU32 FX_CALL
-grTexMinAddress( GrChipID_t tmu )
-{
-  LOG("grTexMinAddress(%d)\r\n", tmu);
-  return 0;
-}
-
-FX_ENTRY FxU32 FX_CALL
 grTexMaxAddress( GrChipID_t tmu )
 {
   LOG("grTexMaxAddress(%d)\r\n", tmu);

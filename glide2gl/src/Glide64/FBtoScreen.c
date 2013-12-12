@@ -181,11 +181,11 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
    t_info.data = tex;
    int tmu = SetupFBtoScreenCombiner(grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &t_info), fb_info->opaque);
    grTexDownloadMipMap (tmu,
-         voodoo.tex_min_addr[tmu]+voodoo.tmem_ptr[tmu],
+         voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,
          &t_info);
    grTexSource (tmu,
-         voodoo.tex_min_addr[tmu]+voodoo.tmem_ptr[tmu],
+         voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,
          &t_info);
    DrawRE2Video(fb_info, 1.0f);
@@ -221,9 +221,7 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
   bound = fb_info->size == 2 ? bound >> 1 : bound >> 2;
   uint8_t r, g, b, a;
   uint32_t cur_width, cur_height, cur_tail;
-  uint32_t tex_adr = voodoo.tex_min_addr[tmu]+voodoo.tmem_ptr[tmu];
-  if ((voodoo.tmem_ptr[tmu] < TEXMEM_2MB_EDGE) && (voodoo.tmem_ptr[tmu]+tex_size*width256*height256 > TEXMEM_2MB_EDGE))
-    tex_adr = TEXMEM_2MB_EDGE;
+  uint32_t tex_adr = voodoo.tmem_ptr[tmu];
 
   for (h = 0; h < height256; h++)
   {
@@ -392,11 +390,11 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 
    int tmu = SetupFBtoScreenCombiner(grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &t_info), fb_info->opaque);
    grTexDownloadMipMap (tmu,
-         voodoo.tex_min_addr[tmu]+voodoo.tmem_ptr[tmu],
+         voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,
          &t_info);
    grTexSource (tmu,
-         voodoo.tex_min_addr[tmu]+voodoo.tmem_ptr[tmu],
+         voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,
          &t_info);
 
@@ -451,9 +449,7 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
    uint32_t w_tail = width%256;
    uint32_t h_tail = height%256;
    uint32_t cur_width, cur_height, cur_tail;
-   uint32_t tex_adr = voodoo.tex_min_addr[tmu]+voodoo.tmem_ptr[tmu];
-   if ((voodoo.tmem_ptr[tmu] < TEXMEM_2MB_EDGE) && (voodoo.tmem_ptr[tmu]+tex_size*width256*height256 > TEXMEM_2MB_EDGE))
-      tex_adr = TEXMEM_2MB_EDGE;
+   uint32_t tex_adr = voodoo.tmem_ptr[tmu];
 
    for (h = 0; h < height256; h++)
    {
@@ -629,11 +625,11 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
          GR_COMBINE_OTHER_CONSTANT,
          FXFALSE);
    grTexDownloadMipMap (tmu,
-         voodoo.tex_min_addr[tmu]+voodoo.tmem_ptr[tmu],
+         voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,
          &t_info);
    grTexSource (tmu,
-         voodoo.tex_min_addr[tmu]+voodoo.tmem_ptr[tmu],
+         voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,
          &t_info);
    float ul_x = fb_info->ul_x * rdp.scale_x + rdp.offset_x;

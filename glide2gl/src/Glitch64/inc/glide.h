@@ -752,9 +752,6 @@ grTexTextureMemRequired( FxU32     evenOdd,
                                  GrTexInfo *info   );
 
 FX_ENTRY FxU32 FX_CALL 
-grTexMinAddress( GrChipID_t tmu );
-
-FX_ENTRY FxU32 FX_CALL 
 grTexMaxAddress( GrChipID_t tmu );
 
 FX_ENTRY void FX_CALL 

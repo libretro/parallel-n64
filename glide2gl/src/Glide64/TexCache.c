@@ -718,7 +718,7 @@ void TexCache(void)
          rdp.cur_cache[0]->last_used = frame_count;
          rdp.cur_cache[0]->uses = rdp.debug_n;
          grTexSource (tmu_0,
-               (voodoo.tex_min_addr[tmu_0] + cache->tmem_addr),
+               cache->tmem_addr,
                GR_MIPMAPLEVELMASK_BOTH,
                &cache->t_info);
       }
@@ -746,7 +746,7 @@ void TexCache(void)
          rdp.cur_cache[1]->last_used = frame_count;
          rdp.cur_cache[1]->uses = rdp.debug_n;
          grTexSource (tmu_1,
-               (voodoo.tex_min_addr[tmu_1] + cache->tmem_addr),
+               cache->tmem_addr,
                GR_MIPMAPLEVELMASK_BOTH,
                &cache->t_info);
       }

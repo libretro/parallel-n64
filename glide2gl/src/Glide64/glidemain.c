@@ -2110,7 +2110,7 @@ void ReadSpecialSettings (const char * name)
 
 int GetTexAddrUMA(int tmu, int texsize)
 {
-   int addr = voodoo.tex_min_addr[0] + voodoo.tmem_ptr[0];
+   int addr = voodoo.tmem_ptr[0];
    voodoo.tmem_ptr[0] += texsize;
    voodoo.tmem_ptr[1] = voodoo.tmem_ptr[0];
    return addr;
@@ -2122,7 +2122,7 @@ void guLoadTextures(void)
    int tbuf_size = 0;
    if (settings.scr_res_x <= 1024)
    {
-      grTextureBufferExt(  GR_TMU0, voodoo.tex_min_addr[GR_TMU0], GR_LOD_LOG2_1024, GR_LOD_LOG2_1024,
+      grTextureBufferExt(  GR_TMU0, 0, GR_LOD_LOG2_1024, GR_LOD_LOG2_1024,
             GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
       tbuf_size = grTexCalcMemRequired(GR_LOD_LOG2_1024, GR_LOD_LOG2_1024,
             GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
@@ -2132,7 +2132,7 @@ void guLoadTextures(void)
    }
    else
    {
-      grTextureBufferExt(  GR_TMU0, voodoo.tex_min_addr[GR_TMU0], GR_LOD_LOG2_2048, GR_LOD_LOG2_2048,
+      grTextureBufferExt(  GR_TMU0, 0, GR_LOD_LOG2_2048, GR_LOD_LOG2_2048,
             GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
       tbuf_size = grTexCalcMemRequired(GR_LOD_LOG2_2048, GR_LOD_LOG2_2048,
             GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
@@ -2142,7 +2142,7 @@ void guLoadTextures(void)
    }
 
    rdp.texbufs[0].tmu = GR_TMU0;
-   rdp.texbufs[0].begin = voodoo.tex_min_addr[GR_TMU0];
+   rdp.texbufs[0].begin = 0;
    rdp.texbufs[0].end = rdp.texbufs[0].begin+tbuf_size;
    rdp.texbufs[0].count = 0;
    rdp.texbufs[0].clear_allowed = true;
@@ -2190,7 +2190,6 @@ int InitGfx(void)
 
    // get the # of TMUs available
    grGet (GR_NUM_TMU, 4, (FxI32*)&voodoo.num_tmu);
-   voodoo.tex_min_addr[0] = voodoo.tex_min_addr[1] = grTexMinAddress(GR_TMU0);
    voodoo.tex_max_addr[0] = voodoo.tex_max_addr[1] = grTexMaxAddress(GR_TMU0);
 
    grStipplePattern(settings.stipple_pattern);
