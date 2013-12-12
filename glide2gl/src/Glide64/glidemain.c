@@ -609,7 +609,6 @@ void ReadSpecialSettings (const char * name)
       settings.aspectmode = 2;
       settings.filtering = 2;
       //depthmode = 1
-      settings.fog = 0;
    }
    else if (strstr(name, (const char*)"STAR SOLDIER"))
    {
@@ -1805,7 +1804,6 @@ void ReadSpecialSettings (const char * name)
    {
       settings.filtering = 1;
       //depthmode = 0
-      settings.fog = 0;
       settings.buff_clear = 0;
    }
    else if (strstr(name, (const char*)"KNIFE EDGE"))
