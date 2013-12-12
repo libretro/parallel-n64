@@ -1333,7 +1333,7 @@ void LoadTex(int id, int tmu)
       uint32_t texture_size = grTexTextureMemRequired (GR_MIPMAPLEVELMASK_BOTH, t_info);
 
       // Check for end of memory (too many textures to fit, clear cache)
-      if (voodoo.tmem_ptr[tmu]+texture_size >= voodoo.tex_max_addr[tmu])
+      if (voodoo.tmem_ptr[tmu]+texture_size >= voodoo.tex_max_addr)
       {
          LRDP("Cache size reached, clearing...\n");
          ClearCache ();

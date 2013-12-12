@@ -51,7 +51,7 @@ static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
 {
    int tmu;
 
-   if (voodoo.tmem_ptr[GR_TMU0]+texture_size < voodoo.tex_max_addr[0])
+   if (voodoo.tmem_ptr[GR_TMU0]+texture_size < voodoo.tex_max_addr)
    {
       tmu = GR_TMU0;
       grTexCombine( GR_TMU1,
@@ -71,7 +71,7 @@ static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
    }
    else
    {
-      if (voodoo.tmem_ptr[GR_TMU1]+texture_size >= voodoo.tex_max_addr[1])
+      if (voodoo.tmem_ptr[GR_TMU1]+texture_size >= voodoo.tex_max_addr)
          ClearCache ();
       tmu = GR_TMU1;
       grTexCombine( GR_TMU1,
