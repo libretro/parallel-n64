@@ -102,16 +102,9 @@ LOCAL_SRC_FILES += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/RSP_Parser.cpp \
             $(VIDEODIR_RICE)/RSP_S2DEX.cpp \
             $(VIDEODIR_RICE)/Texture.cpp \
-            $(VIDEODIR_RICE)/TextureFilters_2xsai.cpp \
-            $(VIDEODIR_RICE)/TextureFilters.cpp \
-            $(VIDEODIR_RICE)/TextureFilters_hq2x.cpp \
-            $(VIDEODIR_RICE)/TextureFilters_hq4x.cpp \
             $(VIDEODIR_RICE)/TextureManager.cpp \
             $(VIDEODIR_RICE)/VectorMath.cpp \
             $(VIDEODIR_RICE)/Video.cpp
-LOCAL_SRC_FILES += $(VIDEODIR_RICE)/liblinux/BMGImage.c \
-            $(VIDEODIR_RICE)/liblinux/BMGUtils.c \
-            $(VIDEODIR_RICE)/liblinux/bmp.c
 
 LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/Config.c \
