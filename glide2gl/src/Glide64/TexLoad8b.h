@@ -226,6 +226,7 @@ static INLINE void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height,
 {
    uint32_t *v6;
    uint32_t *v7;
+   int v8;
    int v9;
    uint32_t v10;
    uint32_t v11;
@@ -234,36 +235,45 @@ static INLINE void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height,
    uint32_t v15;
    uint32_t *v16;
    uint32_t *v17;
+   int v18;
+   uint32_t v20;
    int v21;
    int v22;
 
    v6 = (uint32_t *)src;
    v7 = (uint32_t *)dst;
+   v8 = height;
    do
    {
+      v21 = v8;
       v9 = wid_64;
       do
       {
          uint32_t col1 = *v6++;
          uint32_t col2 = *v6++;
          *v7++ = ((col1 << 4) & 0xF0F0F0F0) | ((col1 >> 4) & 0xF0F0F0F);
-         *v7++ = ((col2 << 4) & 0xF0F0F0F0) | ((col2 >> 4) & 0xF0F0F0F);
-      }while (--v9);
+         *v7++ = (col2 << 4) & 0xF0F0F0F0 | ((col2 >> 4) & 0xF0F0F0F);
+      }
+      while (--v9);
       if ( v21 == 1 )
          break;
-      v9 = wid_64;
+      v22 = v21 - 1;
+      v18 = wid_64;
       v16 = (uint32_t *)((char *)v6 + line);
       v17 = (uint32_t *)((char *)v7 + ext);
       do
       {
-         uint32_t col2 = *v16++;
-         uint32_t col1 = *v16++;
-         *v17++ = ((col1 << 4) & 0xF0F0F0F0) | ((col1 >> 4) & 0xF0F0F0F);
-         *v17++ = ((col2 << 4) & 0xF0F0F0F0) | ((col2 >> 4) & 0xF0F0F0F);
-      }while (--v9);
+         v20 = *v16++;
+         *v17++ = ((v16[0] << 4) & 0xF0F0F0F0) | ((v16[0] >> 4) & 0xF0F0F0F);
+         v16++;
+         *v17++ = ((v20 << 4) & 0xF0F0F0F0) | ((v20 >> 4) & 0xF0F0F0F);
+      }
+      while (--v18);
       v6 = (uint32_t *)((char *)v16 + line);
       v7 = (uint32_t *)((char *)v17 + ext);
-   }while ( --height != 1 );
+      v8 = v22 - 1;
+   }
+   while ( v22 != 1 );
 }
 
 static INLINE void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
