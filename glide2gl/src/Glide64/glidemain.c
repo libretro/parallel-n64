@@ -135,9 +135,7 @@ struct RDP rdp;
 
 SETTINGS settings = { false, 640, 480, GR_RESOLUTION_640x480, 0 };
 
-VOODOO voodoo = {0, 0, 0, 0,
-                 0, 0
-                };
+VOODOO voodoo = {0, 0};
 
 uint32_t   offset_textures = 0;
 uint32_t   offset_texbuf1 = 0;
