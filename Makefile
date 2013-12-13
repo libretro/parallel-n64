@@ -31,6 +31,7 @@ ifneq (,$(findstring gles,$(platform)))
 else
    GL_LIB := -lGL
 endif
+   CPPFLAGS += -msse -msse2
    PLATFORM_EXT := unix
 else ifneq (,$(findstring rpi,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
