@@ -1760,9 +1760,7 @@ static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt
     }while (--v8);
     do
     {
-      v10 = __ROL__(v10, 8, nbits);
-      *(uint8_t *)v5 = v10;
-      v5 = (uint32_t *)((char *)v5 + 1);
+      *v5++ = __ROL__(v10, 8, nbits);
     }while (--v9);
     *v5++ = bswap32(*v7++);
     v6 = cnt - 1;
@@ -1781,9 +1779,7 @@ LABEL_23:
       v14 = *(uint32_t *)((char *)src + ((8 * cnt + off) & 0xFFFFFFFC));
       do
       {
-        v14 = __ROL__(v14, 8, nbits);
-        *(uint8_t *)v5 = v14;
-        v5 = (uint32_t *)((char *)v5 + 1);
+        *v5++ = __ROL__(v14, 8, nbits);
       }while (--v13);
     }
   }
