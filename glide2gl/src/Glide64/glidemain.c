@@ -1742,6 +1742,8 @@ void ReadSpecialSettings (const char * name)
       smart_read = 1;
 #ifdef HAVE_HWFBE
       hires = 1;
+#else
+      read_always = 1;
 #endif
    }
    else if (strstr(name, (const char*)"ROAD RASH 64"))
