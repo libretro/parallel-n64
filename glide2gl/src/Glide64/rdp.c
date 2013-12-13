@@ -1737,14 +1737,10 @@ static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt
   uint32_t v8;
   int v9;
   uint32_t v10;
-  uint32_t *v11;
-  uint32_t v12;
   uint32_t v13;
   uint32_t v14;
-  int v15;
   int v16;
   int v18;
-  int i;
   unsigned int nbits;
 
   nbits = sizeof(unsigned int) * 8;
@@ -1757,8 +1753,7 @@ static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt
     if ( !(off & 3) )
       goto LABEL_23;
     v9 = 4 - v8;
-    v10 = *v7;
-    v11 = v7 + 1;
+    v10 = *v7++;
     do
     {
       v10 = __ROL__(v10, 8, nbits);
@@ -1768,11 +1763,8 @@ static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt
       v10 = __ROL__(v10, 8, nbits);
       *(uint8_t *)v5 = v10;
       v5 = (uint32_t *)((char *)v5 + 1);
-    }
-    while (--v9);
-    v12 = *v11;
-    v7 = v11 + 1;
-    *v5++ = bswap32(v12);
+    }while (--v9);
+    *v5++ = bswap32(*v7++);
     v6 = cnt - 1;
     if ( cnt != 1 )
     {
@@ -1795,14 +1787,14 @@ LABEL_23:
       }while (--v13);
     }
   }
-  v15 = cnt;
+  v6 = cnt;
   v16 = 0;
   v18 = 0;
 dxt_test:
   do
   {
      dst += 2;
-     if ( !--v15 )
+     if ( !--v6 )
         break;
      v16 += dxt;
      if ( v16 < 0 )
@@ -1810,19 +1802,18 @@ dxt_test:
         do
         {
            ++v18;
-           if ( !--v15 )
+           if ( !--v6 )
               goto end_dxt_test;
            v16 += dxt;
            if ( v16 >= 0 )
            {
-              for ( i = v15; v18; --v18 )
+              do
               {
                  *dst    ^= dst[1];
                  dst[1] ^= *dst;
                  *dst    ^= dst[1];
                  dst += 2;
-              }
-              v15 = i;
+              }while(--v18);
               goto dxt_test;
            }
         }while(1);
