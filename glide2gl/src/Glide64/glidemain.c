@@ -1613,14 +1613,15 @@ void ReadSpecialSettings (const char * name)
       //fb_clear = 1
       settings.old_style_adither = 1;
    }
-#if 0
    else if (strstr(name, (const char *)"CASTLEVANIA")
          || strstr(name, (const char *)"CASTLEVANIA2"))
    {
       //depthmode = 0
       //fb_clear = 1
-   }
+#ifndef HAVE_HWFBE
+      read_always = 1;
 #endif
+   }
    else if (strstr(name, (const char *)"Dual heroes JAPAN")
          || strstr(name, (const char *)"Dual heroes PAL")
          || strstr(name, (const char *)"Dual heroes USA"))
