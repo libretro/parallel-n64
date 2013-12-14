@@ -54,9 +54,8 @@ uint32_t Load32bRGBA (uintptr_t dst, uintptr_t src, int wid_64, int height, int 
    const uint32_t width = max(1, wid_64 << 1);
    const int ext = real_width - width;
    line = width + (line>>2);
-   uint32_t s, t, c;
+   uint32_t s, t;
    uint32_t * tex = (uint32_t*)dst;
-   uint16_t rg, ba;
    for (t = 0; t < (uint32_t)height; t++)
    {
       uint32_t tline = tbase + line * t;
@@ -64,10 +63,7 @@ uint32_t Load32bRGBA (uintptr_t dst, uintptr_t src, int wid_64, int height, int 
       for (s = 0; s < width; s++)
       {
          uint32_t taddr = ((tline + s) ^ xorval) & 0x3ff;
-         rg = tmem16[taddr];
-         ba = tmem16[taddr|0x400];
-         c = ((ba&0xFF)<<24) | (rg << 8) | (ba>>8);
-         *tex++ = c;
+         *tex++ = ((tmem16[taddr|0x400] & 0xFF)<<24) | (tmem16[taddr] << 8) | (tmem16[taddr|0x400] >> 8);
       }
       tex += ext;
    }
@@ -75,21 +71,16 @@ uint32_t Load32bRGBA (uintptr_t dst, uintptr_t src, int wid_64, int height, int 
    uint32_t mod = (id == 0) ? cmb.mod_0 : cmb.mod_1;
    if (mod)
    {
-      uint32_t i;
       //convert to ARGB_4444
-      const uint32_t tex_size = real_width * height;
+      uint32_t tex_size = real_width * height;
       tex = (uint32_t *)dst;
       uint16_t *tex16 = (uint16_t*)dst;
-      uint16_t a, r, g, b;
-      for (i = 0; i < tex_size; i++)
+      uint32_t c;
+      do
       {
-         c = tex[i];
-         a = (c >> 28) & 0xF;
-         r = (c >> 20) & 0xF;
-         g = (c >> 12) & 0xF;
-         b = (c >> 4)  & 0xF;
-         tex16[i] = (a <<12) | (r << 8) | (g << 4) | b;
-      }
+         c = *tex++;
+         *tex16++ = (((c >> 28) & 0xF) <<12) | (((c >> 20) & 0xF) << 8) | (((c >> 12) & 0xF) << 4) | ((c >> 4)  & 0xF);
+      }while(--tex_size);
       return (1 << 16) | GR_TEXFMT_ARGB_4444;
    }
    return (2 << 16) | GR_TEXFMT_ARGB_8888;
