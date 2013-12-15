@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include <algorithm>
+#include <math.h>
 #include <SDL.h>
 
 #include "ConvertImage.h"
@@ -27,6 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Video.h"
 #include "ucode.h"
 #include <time.h>
+
 
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
@@ -1309,12 +1311,18 @@ void DLParser_FillRect(Gfx *gfx)
         if( !status.bCIBufferIsRendered )
             g_pFrameBufferManager->ActiveTextureBuffer();
 
-        status.leftRendered = status.leftRendered<0 ? x0 : min((int)x0,status.leftRendered);
-        status.topRendered = status.topRendered<0 ? y0 : min((int)y0,status.topRendered);
-        status.rightRendered = status.rightRendered<0 ? x1 : max((int)x1,status.rightRendered);
-        status.bottomRendered = status.bottomRendered<0 ? y1 : max((int)y1,status.bottomRendered);
+        int cond1 =  (((int)x0 < status.leftRendered) ? ((int)x0) : (status.leftRendered));
+        int cond2 =  (((int)y0 < status.topRendered) ? ((int)y0) : (status.topRendered));
+        int cond3 =  ((status.rightRendered > ((int)x1)) ? ((int)x1) : (status.rightRendered));
+        int cond4 =  ((status.bottomRendered > ((int)y1)) ? ((int)y1) : (status.bottomRendered));
+        int cond5 =  ((g_pRenderTextureInfo->maxUsedHeight > ((int)y1)) ? ((int)y1) : (g_pRenderTextureInfo->maxUsedHeight));
 
-        g_pRenderTextureInfo->maxUsedHeight = max(g_pRenderTextureInfo->maxUsedHeight,(int)y1);
+        status.leftRendered = status.leftRendered < 0 ? x0 : cond1;
+        status.topRendered = status.topRendered<0 ? y0 : cond2;
+        status.rightRendered = status.rightRendered<0 ? x1 : cond3;
+        status.bottomRendered = status.bottomRendered<0 ? y1 : cond4;
+
+        g_pRenderTextureInfo->maxUsedHeight = cond5;
 
         if( status.bDirectWriteIntoRDRAM || ( x0==0 && y0==0 && (x1 == g_pRenderTextureInfo->N64Width || x1 == g_pRenderTextureInfo->N64Width-1 ) ) )
         {
@@ -1384,12 +1392,18 @@ void DLParser_FillRect(Gfx *gfx)
         LOG_UCODE("    Filling Rectangle");
         if( frameBufferOptions.bSupportRenderTextures || frameBufferOptions.bCheckBackBufs )
         {
+           int cond1 =  (((int)x0 < status.leftRendered) ? ((int)x0) : (status.leftRendered));
+           int cond2 =  (((int)y0 < status.topRendered) ? ((int)y0) : (status.topRendered));
+           int cond3 =  ((status.rightRendered > ((int)x1)) ? ((int)x1) : (status.rightRendered));
+           int cond4 =  ((status.bottomRendered > ((int)y1)) ? ((int)y1) : (status.bottomRendered));
+           int cond5 =  ((g_pRenderTextureInfo->maxUsedHeight > ((int)y1)) ? ((int)y1) : (g_pRenderTextureInfo->maxUsedHeight));
+
             if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
 
-            status.leftRendered = status.leftRendered<0 ? x0 : min((int)x0,status.leftRendered);
-            status.topRendered = status.topRendered<0 ? y0 : min((int)y0,status.topRendered);
-            status.rightRendered = status.rightRendered<0 ? x1 : max((int)x1,status.rightRendered);
-            status.bottomRendered = status.bottomRendered<0 ? y1 : max((int)y1,status.bottomRendered);
+            status.leftRendered = status.leftRendered<0 ? x0 : cond1;
+            status.topRendered = status.topRendered<0 ? y0 : cond2;
+            status.rightRendered = status.rightRendered<0 ? x1 : cond3;
+            status.bottomRendered = status.bottomRendered<0 ? y1 : cond4;
         }
 
         if( gRDP.otherMode.cycle_type == CYCLE_TYPE_FILL )

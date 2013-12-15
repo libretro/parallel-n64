@@ -23,6 +23,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Config.h"
 #include "RenderBase.h"
 
+#ifndef min
+#define min(a,b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
+
 #define ALLOW_USE_TEXTURE_FOR_CONSTANTS
 
 static const uint8 sc_Mux32[32] = 
@@ -701,7 +709,9 @@ void DecodedMux::Reformat(bool do_complement)
         m_n64Combiners[3].d = MUX_COMBINED;
     }
     
-    mType = max(max(max(splitType[0], splitType[1]),splitType[2]),splitType[3]);
+    unsigned cond3 = max(splitType[0], splitType[1]);
+    unsigned cond2 = max(cond3,splitType[2]);
+    mType = (CombinerFormatType)max(cond2,splitType[3]);
 }
 
 const char* MuxGroupStr[4] =

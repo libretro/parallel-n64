@@ -18,11 +18,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 // Texture related ucode
+#ifndef RDP_TEXTURE_H
+#define RDP_TEXTURE_H
 
 #include <algorithm>
 
 #include <stdlib.h>
 #include "Render.h"
+
+#ifndef min
+#define min(a,b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
 
 uint32 g_TmemFlag[16];
 void SetTmemFlag(uint32 tmemAddr, uint32 size);
@@ -2227,3 +2237,7 @@ void SetTmemFlag(uint32 tmemAddr, uint32 size)
     }
 }
 
+#undef min
+#undef max
+
+#endif

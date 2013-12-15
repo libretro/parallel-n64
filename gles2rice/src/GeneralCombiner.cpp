@@ -27,6 +27,10 @@ extern const int numOf2StageCombiners;
 extern GeneralCombinerInfo CombinerTable2Stages[];
 extern GeneralCombinerInfo CombinerTable3Stages[];
 
+#ifndef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
+
 CGeneralCombiner::CGeneralCombiner()
 {
     m_lastGeneralIndex=0;

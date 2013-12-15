@@ -17,8 +17,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include <exception>
-#include <cmath>
+#include <math.h>
 
 #include "ConvertImage.h"
 #include "DeviceBuilder.h"

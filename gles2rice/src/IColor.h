@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #endif
+
 #ifndef max
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #endif
@@ -185,6 +186,8 @@ public:
     }
 };
 
+#undef min
+#undef max
 
 #endif
 

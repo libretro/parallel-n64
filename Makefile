@@ -92,7 +92,6 @@ else ifneq (,$(findstring android,$(platform)))
    CPPFLAGS += $(CPUFLAGS)
 	CFLAGS += $(CPUFLAGS) -DANDROID
 	CPPFLAGS += -DARM_ASM -D__NEON_OPT
-	CFILES += gles2n64/cpufeatures.c
    
    fpic = -fPIC
    PLATFORM_EXT := unix
@@ -113,9 +112,8 @@ else ifeq ($(platform), qnx)
    HAVE_NEON = 1
 	CPUFLAGS += -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=softfp -D__arm__
    CPPFLAGS += $(CPUFLAGS)
-	CFLAGS += $(CPUFLAGS) -DANDROID
+	CFLAGS += $(CPUFLAGS) -D__QNX__
 	CPPFLAGS += -DARM_ASM -D__NEON_OPT
-	CFILES += gles2n64/cpufeatures.c
    
    fpic = -fPIC
    PLATFORM_EXT := unix

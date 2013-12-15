@@ -18,6 +18,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "OGLDecodedMux.h"
 
+#ifndef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
+
 //========================================================================
 void COGLDecodedMux::Simplify(void)
 {
@@ -27,7 +31,9 @@ void COGLDecodedMux::Simplify(void)
 void COGLDecodedMux::Reformat(void)
 {
     DecodedMux::Reformat(true);
-    mType = max(max(max(splitType[0], splitType[1]),splitType[2]),splitType[3]);
+    unsigned cond3 = max(splitType[0], splitType[1]);
+    unsigned cond2 = max(cond3,splitType[2]);
+    mType = (CombinerFormatType)max(cond2,splitType[3]);
 }
 
 void COGLExtDecodedMux::Simplify(void)
