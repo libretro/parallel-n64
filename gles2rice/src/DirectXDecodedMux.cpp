@@ -20,11 +20,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "DirectXDecodedMux.h"
 #include <algorithm>
 
-#ifdef min
-#undef min
+#ifndef min
+#define min(a,b) ((a) < (b) ? (a) : (b))
 #endif
-#ifdef max
-#undef max
+#ifndef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
 #endif
 
 //This function is called after Reformat to handel two texels in 1 cycle, D3D can not handle
@@ -163,5 +163,7 @@ void CDirectXDecodedMux::Reformat(bool do_complement)
 {
     DecodedMux::Reformat(do_complement);
     ReformatAgainWithTwoTexels();
-    mType = std::max(std::max(std::max(splitType[0], splitType[1]),splitType[2]),splitType[3]);
+    unsigned cond3 = max(splitType[0], splitType[1]);
+    unsigned cond2 = max(cond3, splitType[2]);
+    mType = (CombinerFormatType)max(cond2,splitType[3]);
 }
