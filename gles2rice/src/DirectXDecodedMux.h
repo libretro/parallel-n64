@@ -16,6 +16,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
+#ifdef D3D
+
 #include "DecodedMux.h"
 
 #ifndef _DIRECTX_DECODEDMUX_H_
@@ -29,4 +31,4 @@ class CDirectXDecodedMux : public DecodedMux
 
 #endif
 
-
+#endif

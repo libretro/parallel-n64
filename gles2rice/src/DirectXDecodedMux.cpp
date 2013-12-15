@@ -16,6 +16,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
+#ifdef D3D
+
 #include "Combiner.h"
 #include "DirectXDecodedMux.h"
 #include <algorithm>
@@ -166,4 +168,4 @@ void CDirectXDecodedMux::Reformat(bool do_complement)
     mType = std::max(std::max(std::max(splitType[0], splitType[1]),splitType[2]),splitType[3]);
 }
 
-
+#endif
