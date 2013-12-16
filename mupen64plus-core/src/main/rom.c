@@ -265,6 +265,15 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
        count_per_op = 1;
     }
 
+    if(
+          (sl(ROM_HEADER.CRC1) == 0x6AA4DDE7  && sl(ROM_HEADER.CRC2) == 0xE3E2F4E7) /* BattleTanx (U) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x3D615CF5 && sl(ROM_HEADER.CRC2) == 0x6984930A)  /* BattleTanx (U) [b1][t1] [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x9A75C9C2 && sl(ROM_HEADER.CRC2) == 0xA4488353)  /* BattleTanx (U) [f1] (PAL) */
+      )
+    {
+       count_per_op = 3;
+    }
+
     /* print out a bunch of info about the ROM */
     DebugMessage(M64MSG_INFO, "Goodname: %s", ROM_SETTINGS.goodname);
     DebugMessage(M64MSG_INFO, "Headername: %s", ROM_PARAMS.headername);
