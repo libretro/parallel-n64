@@ -257,6 +257,9 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
           || (sl(ROM_HEADER.CRC1) == 0x9AB3B50A   && sl(ROM_HEADER.CRC2) == 0xBC666105) /* Hexen (G) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9CAB6AEA   && sl(ROM_HEADER.CRC2) == 0x87C61C00) /* Hexen (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xE6BA0A06   && sl(ROM_HEADER.CRC2) == 0x8A3D2C2F) /* Hexen (U) [t1] */
+          || (sl(ROM_HEADER.CRC1) == 0x7EAE2488   && sl(ROM_HEADER.CRC2) == 0x9D40A35A) /* Biohazard 2 (J) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x9B500E8E   && sl(ROM_HEADER.CRC2) == 0xE90550B3) /* Resident Evil 2 (E) (M2) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0xAA18B1A5   && sl(ROM_HEADER.CRC2) == 0x7DB6AEB)  /* Resident Evil 2 (U) [!] */
           )
     {
        count_per_op = 1;
