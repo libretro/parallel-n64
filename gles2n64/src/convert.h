@@ -130,7 +130,8 @@ static INLINE void UnswapCopy( void *src, void *dest, u32 numBytes )
     while (numDWords--)
     {
         u32 dword = *(u32 *)src;
-#ifdef ARM_ASM
+#if defined(ARM_ASM) && !defined(__QNX__)
+        /* TODO/FIXME - expected string literal before ')' token with QNX */
         __asm("rev %0, %0" : "+r"(dword)::);
 #else
         dword = ((dword<<24)|((dword<<8)&0x00FF0000)|((dword>>8)&0x0000FF00)|(dword>>24));
@@ -185,7 +186,7 @@ static INLINE void QWordInterleave( void *mem, u32 numDWords )
 
 static INLINE u32 swapdword( u32 value )
 {
-#ifdef ARM_ASM
+#if defined(ARM_ASM) && !defined(__QNX__)
     __asm("rev %0, %0" : "+r"(value)::);
     return value;
 #else
@@ -198,7 +199,7 @@ static INLINE u32 swapdword( u32 value )
 
 static INLINE u16 swapword( u16 value )
 {
-#ifdef ARM_ASM
+#if defined(ARM_ASM) && !defined(__QNX__)
     __asm("rev16 %0, %0" : "+r"(value)::);
     return value;
 #else
