@@ -275,6 +275,22 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
        count_per_op = 3;
     }
 
+    delay_si = 1; /* default */
+
+    if(
+             sl(ROM_HEADER.CRC1) == 0xC2E9AA9A && sl(ROM_HEADER.CRC2) == 0x475D70AA
+          || sl(ROM_HEADER.CRC1) == 0xC9176D39 && sl(ROM_HEADER.CRC2) == 0xEA4779D1
+          || sl(ROM_HEADER.CRC1) == 0x155B7CDF && sl(ROM_HEADER.CRC2) == 0xF0DA7325
+          //|| (sl(ROM_HEADER.CRC1) == 0xB58B8CD  && sl(ROM_HEADER.CRC2) == 0xB7B291D2) /* Body Harvest */
+          //|| (sl(ROM_HEADER.CRC1) == 0x6F66B92D && sl(ROM_HEADER.CRC2) == 0x80B9E520) /* Body Harvest */
+          //|| (sl(ROM_HEADER.CRC1) == 0x5326696F && sl(ROM_HEADER.CRC2) == 0xFE9A99C3) /* Body Harvest */
+          //|| (sl(ROM_HEADER.CRC1) == 0xC535091F && sl(ROM_HEADER.CRC2) == 0xD60CCF6C) /* Body Harvest */
+          //|| (sl(ROM_HEADER.CRC1) == 0xA46EE3   && sl(ROM_HEADER.CRC2) == 0x554158C6) /* Body Harvest */
+      )
+    {
+       delay_si = 0;
+    }
+
     /* print out a bunch of info about the ROM */
     DebugMessage(M64MSG_INFO, "Goodname: %s", ROM_SETTINGS.goodname);
     DebugMessage(M64MSG_INFO, "Headername: %s", ROM_PARAMS.headername);

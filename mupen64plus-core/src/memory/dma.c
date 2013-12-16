@@ -44,6 +44,8 @@
 #include "main/rom.h"
 #include "main/util.h"
 
+int delay_si = 0;
+
 void dma_pi_read(void)
 {
     unsigned int i;
@@ -301,15 +303,15 @@ void dma_si_write(void)
     //si_register.si_stat |= 1;
 
     update_count();
-    if (strcmp(ROM_SETTINGS.goodname, "BANJO TOOIE") == 0)
+
+    if (delay_si)
+       add_interupt_event(SI_INT, /*0x100*/0x900);
+    else
     {
-       //add_interupt_event(SI_INT, /*0x100*/0x900);
        MI_register.mi_intr_reg |= 0x02; // SI
        si_register.si_stat |= 0x1000; // INTERRUPT
        check_interupt();
     }
-    else
-       add_interupt_event(SI_INT, /*0x100*/0x900);
 }
 
 void dma_si_read(void)
@@ -333,13 +335,14 @@ void dma_si_read(void)
     //si_register.si_stat |= 1;
 
     update_count();
-    if (strcmp(ROM_SETTINGS.goodname, "BANJO TOOIE") == 0)
+
+    if (delay_si)
+       add_interupt_event(SI_INT, /*0x100*/0x900);
+    else
     {
        MI_register.mi_intr_reg |= 0x02; // SI
        si_register.si_stat |= 0x1000; // INTERRUPT
        check_interupt();
     }
-    else
-       add_interupt_event(SI_INT, /*0x100*/0x900);
 }
 

@@ -33,6 +33,8 @@ extern int g_EmulatorRunning;
 
 extern m64p_frame_callback g_FrameCallback;
 
+extern int delay_si;
+
 void new_frame(void);
 
 int  main_set_core_defaults(void);
