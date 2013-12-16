@@ -23,6 +23,8 @@
 /** @file SDL_opengl.h
  *  This is a simple file to encapsulate the OpenGL API headers
  */
+#ifndef _SDL_OPENGLES2_LIBRETRO_H
+#define _SDL_OPENGLES2_LIBRETRO_H
 
 #ifdef GLES
 
@@ -51,3 +53,5 @@ typedef GLclampf GLclampd;
 
 #include "opengl_state_machine.h"
 #include "glsym.h"
+
+#endif
