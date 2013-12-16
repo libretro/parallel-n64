@@ -283,7 +283,7 @@ m64p_error main_run(void)
 
     /* set some other core parameters based on the config file values */
     no_compiled_jump = ConfigGetParamBool(g_CoreConfig, "NoCompiledJump");
-    count_per_op = ConfigGetParamInt(g_CoreConfig, "CountPerOp");
+    //count_per_op = ConfigGetParamInt(g_CoreConfig, "CountPerOp");
 
     if (count_per_op <= 0)
        count_per_op = 2;

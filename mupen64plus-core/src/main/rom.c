@@ -39,6 +39,8 @@
 #include "memory/memory.h"
 #include "osal/preproc.h"
 
+#include "../r4300/r4300.h"
+
 #define DEFAULT 16
 
 #define CHUNKSIZE 1024*128 /* Read files 128KB at a time. */
@@ -241,6 +243,20 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
         ROM_SETTINGS.status = 0;
         ROM_SETTINGS.players = 0;
         ROM_SETTINGS.rumble = 0;
+    }
+
+    /* count_per_op tweaks */
+    // see - https://github.com/paulscode/mupen64plus-ae/commit/5d5ff6af92d035eb66ee281239b9f10c9ce0e866
+    if(
+             (sl(ROM_HEADER.CRC1) == 0xB58B8CD  && sl(ROM_HEADER.CRC2) == 0xB7B291D2)
+          || (sl(ROM_HEADER.CRC1) == 0x6F66B92D && sl(ROM_HEADER.CRC2) == 0x80B9E520)
+          || (sl(ROM_HEADER.CRC1) == 0x5326696F && sl(ROM_HEADER.CRC2) == 0xFE9A99C3)
+          || (sl(ROM_HEADER.CRC1) == 0xC535091F && sl(ROM_HEADER.CRC2) == 0xD60CCF6C)
+          || (sl(ROM_HEADER.CRC1) == 0xA46EE3   && sl(ROM_HEADER.CRC2) == 0x554158C6)
+          )
+    {
+       /* Body Harvest */
+       count_per_op = 1;
     }
 
     /* print out a bunch of info about the ROM */
