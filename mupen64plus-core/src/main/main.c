@@ -136,6 +136,7 @@ int main_set_core_defaults(void)
     ConfigSetDefaultBool(g_CoreConfig, "NoCompiledJump", 0, "Disable compiled jump commands in dynamic recompiler (should be set to False) ");
     ConfigSetDefaultBool(g_CoreConfig, "DisableExtraMem", 0, "Disable 4MB expansion RAM pack. May be necessary for some games");
     ConfigSetDefaultBool(g_CoreConfig, "EnableDebugger", 0, "Activate the R4300 debugger when ROM execution begins, if core was built with Debugger support");
+    ConfigSetDefaultInt(g_CoreConfig, "CountPerOp", 0, "Force number of cycles per emulated instruction.");
 
     if (bSaveConfig)
         ConfigSaveSection("Core");
@@ -282,6 +283,10 @@ m64p_error main_run(void)
 
     /* set some other core parameters based on the config file values */
     no_compiled_jump = ConfigGetParamBool(g_CoreConfig, "NoCompiledJump");
+    count_per_op = ConfigGetParamInt(g_CoreConfig, "CountPerOp");
+
+    if (count_per_op <= 0)
+       count_per_op = 2;
 
     // initialize memory, and do byte-swapping if it's not been done yet
     if (g_MemHasBeenBSwapped == 0)

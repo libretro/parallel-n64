@@ -54,7 +54,7 @@ typedef unsigned int u_int;
 
 #define MAXBLOCK 4096
 #define MAX_OUTPUT_BLOCK_SIZE 262144
-#define CLOCK_DIVIDER 2
+#define CLOCK_DIVIDER count_per_op
 
 void *base_addr;
 
