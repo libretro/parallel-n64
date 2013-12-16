@@ -108,20 +108,6 @@ n** -----------------------------------------------------------------------
 #  define GLIDE_ENDIAN    GLIDE_ENDIAN_LITTLE
 #endif
 
-/* Check for OS */
-#if defined(__IRIX__) || defined(__sparc__) || defined(__linux__) || \
-	defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
-#  define GLIDE_OS        GLIDE_OS_UNIX
-#elif defined(__DOS__)
-#  define GLIDE_OS        GLIDE_OS_DOS32
-#elif defined(__WIN32__)
-#  define GLIDE_OS        GLIDE_OS_WIN32
-#elif defined(macintosh) || defined(__APPLE__)
-#  define GLIDE_OS        GLIDE_OS_MACOS
-#else
-#error "Unknown OS"
-#endif
-
 /* Check for Simulator vs. Hardware */
 #if HAL_CSIM || HWC_CSIM
 #  define GLIDE_SST       GLIDE_SST_SIM
@@ -143,7 +129,7 @@ n** -----------------------------------------------------------------------
 #endif
 
 
-#define GLIDE_PLATFORM (GLIDE_ENDIAN | GLIDE_OS | GLIDE_SST | GLIDE_HW)
+#define GLIDE_PLATFORM (GLIDE_ENDIAN | GLIDE_SST | GLIDE_HW)
 
 /*
 ** Control the number of TMUs
