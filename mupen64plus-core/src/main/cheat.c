@@ -266,6 +266,17 @@ void cheat_apply_cheats(int entry)
 	}
 #endif
 
+#if 0
+   if ((
+         strncmp((char *)ROM_HEADER.Name, (const char *)"BANJO KAZOOIE 2", 15) == 0
+         || strncmp((char *)ROM_HEADER.Name, (const char *)"BANJO TOOIE", 11) == 0
+         ) && entry == ENTRY_VI)
+   {
+      execute_cheat(0x8107913C, 0x0000, NULL);
+      execute_cheat(0x8107913E, 0x0000, NULL);
+   }
+#endif
+
     // If game is Zelda OOT, apply subscreen delay fix
     if (strncmp((char *)ROM_HEADER.Name, "THE LEGEND OF ZELDA", 19) == 0 && entry == ENTRY_VI) {
         if (sl(ROM_HEADER.CRC1) == 0xEC7011B7 && sl(ROM_HEADER.CRC2) == 0x7616D72B) {
