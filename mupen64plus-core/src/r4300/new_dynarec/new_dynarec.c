@@ -25,7 +25,7 @@
 #include <stdint.h> //include for uint64_t
 #include <assert.h>
 
-#if defined(__LIBRETRO__) && defined(IOS)
+#if defined(__LIBRETRO__) && (defined(IOS) || defined(__QNX__))
 typedef unsigned char u_char;
 typedef unsigned int u_int;
 #define MAP_ANONYMOUS MAP_ANON
