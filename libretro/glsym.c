@@ -115,7 +115,8 @@ static const struct gl_proc_map proc_map[] = {
 
 void glsym_init_procs(retro_hw_get_proc_address_t cb)
 {
-   for (unsigned i = 0; i < ARRAY_SIZE(proc_map); i++)
+   unsigned i;
+   for (i = 0; i < ARRAY_SIZE(proc_map); i++)
    {
       retro_proc_address_t proc = cb(proc_map[i].sym);
       if (!proc)

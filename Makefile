@@ -76,6 +76,7 @@ else ifneq (,$(findstring ios,$(platform)))
    PLATFORM_EXT := unix
    WITH_DYNAREC=arm
 else ifneq (,$(findstring android,$(platform)))
+   fpic = -fPIC
    TARGET := $(TARGET_NAME)_libretro_android.so
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined -Wl,--warn-common
    GL_LIB := -lGLESv2
@@ -93,9 +94,9 @@ else ifneq (,$(findstring android,$(platform)))
 	CFLAGS += $(CPUFLAGS) -DANDROID
 	CPPFLAGS += -DARM_ASM -D__NEON_OPT
    
-   fpic = -fPIC
    PLATFORM_EXT := unix
 else ifeq ($(platform), qnx)
+   fpic = -fPIC
    TARGET := $(TARGET_NAME)_libretro_qnx.so
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined -Wl,--warn-common
    GL_LIB := -lGLESv2
@@ -115,7 +116,6 @@ else ifeq ($(platform), qnx)
 	CFLAGS += $(CPUFLAGS) -D__QNX__
 	CPPFLAGS += -DARM_ASM -D__NEON_OPT
    
-   fpic = -fPIC
    PLATFORM_EXT := unix
 else ifneq (,$(findstring armv,$(platform)))
    CC = gcc
@@ -274,9 +274,6 @@ CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
 CPPFLAGS   += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
 CPPFLAGS   += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE $(fpic)
-ifneq ($(platform), qnx)
-CFLAGS     += -std=gnu99
-endif
 LDFLAGS    += -lm $(fpic)
 
 ifeq ($(GLES), 1)
