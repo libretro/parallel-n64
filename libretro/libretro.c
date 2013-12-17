@@ -16,6 +16,7 @@
 #include "main/version.h"
 #include "main/savestates.h"
 
+static retro_log_printf_t log_cb = NULL;
 static retro_video_refresh_t video_cb = NULL;
 static retro_input_poll_t poll_cb = NULL;
 retro_input_state_t input_cb = NULL;
@@ -68,7 +69,8 @@ static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
 {
     char buffer[1024];
     snprintf(buffer, 1024, "mupen64plus: %s\n", aMessage);
-    printf("%s", buffer);
+    if (log_cb)
+       log_cb(RETRO_LOG_INFO, buffer);
 }
 
 static m64p_rom_header romgame;
@@ -197,14 +199,13 @@ static void EmuThreadFunction()
 {
     emu_thread_has_run = true;
 
-    if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0))
-    {
-        printf("mupen64plus: Failed to initialize core\n");
-    }
+    if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0) && log_cb)
+        log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to initialize core\n");
 
     if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
     {
-        printf("mupen64plus: Failed to load ROM\n");
+       if (log_cb)
+          log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load ROM\n");
         goto load_fail;
     }
 
@@ -213,7 +214,8 @@ static void EmuThreadFunction()
 
     if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(romgame), &romgame))
     {
-       printf("mupen64plus; Failed to query ROM header information\n");
+       if (log_cb)
+          log_cb(RETRO_LOG_ERROR, "mupen64plus; Failed to query ROM header information\n");
        goto load_fail;
     }
 
@@ -241,8 +243,9 @@ load_fail:
     //NEVER RETURN! That's how libco rolls
     while(1)
     {
-        printf("Running Dead N64 Emulator");
-        co_switch(main_thread);
+       if (log_cb)
+          log_cb(RETRO_LOG_ERROR, "Running Dead N64 Emulator");
+       co_switch(main_thread);
     }
 }
 
@@ -377,16 +380,22 @@ unsigned retro_get_region (void)
 
 void retro_init(void)
 {
-    unsigned colorMode = RETRO_PIXEL_FORMAT_XRGB8888;
-    environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
+   struct retro_log_callback log;
+   unsigned colorMode = RETRO_PIXEL_FORMAT_XRGB8888;
 
-    rarch_resampler_realloc(&resampler_data, &resampler, NULL, 1.0);
-    audio_in_buffer_float = malloc(4096 * sizeof(float));
-    audio_out_buffer_float = malloc(4096 * sizeof(float));
-    audio_out_buffer_s16 = malloc(4096 * sizeof(int16_t));
-    audio_convert_init_simd();
-    
-    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
+   environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log);
+   if (log.log)
+      log_cb = log.log;
+
+   environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
+
+   rarch_resampler_realloc(&resampler_data, &resampler, NULL, 1.0);
+   audio_in_buffer_float = malloc(4096 * sizeof(float));
+   audio_out_buffer_float = malloc(4096 * sizeof(float));
+   audio_out_buffer_s16 = malloc(4096 * sizeof(int16_t));
+   audio_convert_init_simd();
+
+   environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
 }
 
 void retro_deinit(void)
@@ -533,8 +542,9 @@ bool retro_load_game(const struct retro_game_info *game)
     
     if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &render_iface))
     {
-        printf("mupen64plus: libretro frontend doesn't have OpenGL support.");
-        return false;
+       if (log_cb)
+          log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
+       return false;
     }
 
     game_data = malloc(game->size);
