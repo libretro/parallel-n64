@@ -16,7 +16,7 @@
 #include "main/version.h"
 #include "main/savestates.h"
 
-static retro_log_printf_t log_cb = NULL;
+retro_log_printf_t log_cb = NULL;
 static retro_video_refresh_t video_cb = NULL;
 static retro_input_poll_t poll_cb = NULL;
 retro_input_state_t input_cb = NULL;

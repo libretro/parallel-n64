@@ -1,6 +1,9 @@
 #include "glsym.h"
 #include <string.h>
 #include <stdio.h>
+#include "libretro.h"
+
+extern retro_log_printf_t log_cb;
 
 #if !defined(GLES) && !defined(__APPLE__)
 PFNGLCREATEPROGRAMPROC pglCreateProgram;
@@ -119,8 +122,8 @@ void glsym_init_procs(retro_hw_get_proc_address_t cb)
    for (i = 0; i < ARRAY_SIZE(proc_map); i++)
    {
       retro_proc_address_t proc = cb(proc_map[i].sym);
-      if (!proc)
-         fprintf(stderr, "Symbol %s not found!\n", proc_map[i].sym);
+      if (!proc && log_cb)
+         log_cb(RETRO_LOG_ERROR, "Symbol %s not found!\n", proc_map[i].sym);
       memcpy(proc_map[i].proc, &proc, sizeof(proc));
    }
 }
