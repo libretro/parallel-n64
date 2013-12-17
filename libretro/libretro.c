@@ -17,6 +17,7 @@
 
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 retro_perf_log_t perf_log_cb = NULL;
+retro_perf_register_t perf_register_cb = NULL;
 
 retro_log_printf_t log_cb = NULL;
 static retro_video_refresh_t video_cb = NULL;
@@ -395,6 +396,8 @@ void retro_init(void)
       perf_log_cb = perf.perf_log;
    if (perf.get_cpu_features)
       perf_get_cpu_features_cb = perf.get_cpu_features;
+   if (perf.perf_register)
+      perf_register_cb = perf.perf_register;
 
    environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
 
