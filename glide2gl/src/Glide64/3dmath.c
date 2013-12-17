@@ -38,10 +38,10 @@
 //****************************************************************
 
 #include "Gfx_1.3.h"
+#include "../../libretro/SDL.h"
 
 #include <math.h>
 #include "3dmath.h"
-#include "../../../libretro/performance.h"
 
 #ifndef NOSSE
 #include <xmmintrin.h>
@@ -268,20 +268,24 @@ static float DotProductNeon(float *v0, float *v1)
 
 void math_init(void)
 {
-   struct rarch_cpu_features cpu;
-   rarch_get_cpu_features(&cpu);
+   unsigned cpu = 0;
+
+   if (perf_get_cpu_features_cb)
+      perf_get_cpu_features_cb(&cpu);
 
 #if !defined(NOSSE)
-   if (cpu.simd & RARCH_SIMD_SSE2)
+   if (cpu & RETRO_SIMD_SSE2)
    {
       MulMatrices = MulMatricesSSE;
-      LOG("SSE detected, using (some) optimized math functions.\n");
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "SSE detected, using (some) optimized math functions.\n");
    }
 #elif defined(HAVE_NEON)
-   if (cpu.simd & RARCH_SIMD_NEON)
+   if (cpu & RETRO_SIMD_NEON)
    {
       DotProduct = DotProductNeon;
-      LOG("NEON detected, using (some) optimized math functions.\n");
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "NEON detected, using (some) optimized math functions.\n");
    }
 #endif
 }

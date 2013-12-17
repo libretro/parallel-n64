@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "libretro.h"
-#include "performance.h"
 #include "resampler.h"
 #include "utils.h"
 #include "libco.h"
@@ -15,6 +14,9 @@
 #include "memory/memory.h"
 #include "main/version.h"
 #include "main/savestates.h"
+
+retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
+retro_perf_log_t perf_log_cb = NULL;
 
 retro_log_printf_t log_cb = NULL;
 static retro_video_refresh_t video_cb = NULL;
@@ -381,11 +383,18 @@ unsigned retro_get_region (void)
 void retro_init(void)
 {
    struct retro_log_callback log;
+   struct retro_perf_callback perf;
    unsigned colorMode = RETRO_PIXEL_FORMAT_XRGB8888;
 
    environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log);
    if (log.log)
       log_cb = log.log;
+
+   environ_cb(RETRO_ENVIRONMENT_GET_PERF_INTERFACE, &perf);
+   if (perf.perf_log)
+      perf_log_cb = perf.perf_log;
+   if (perf.get_cpu_features)
+      perf_get_cpu_features_cb = perf.get_cpu_features;
 
    environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
 
@@ -400,9 +409,8 @@ void retro_init(void)
 
 void retro_deinit(void)
 {
-#ifdef PERF_TEST
-   rarch_perf_log();
-#endif
+   if (perf_log_cb)
+      perf_log_cb();
 
     CoreShutdown();
 
@@ -431,8 +439,7 @@ void update_variables(void)
    {
       if (strcmp(var.value, "automatic") == 0)
          retro_filtering = 0;
-      else if (strcmp(var.value, "bilinear") == 0)
-         retro_filtering = 1;
+      else if (strcmp(var.value, "bilinear") == 0) retro_filtering = 1;
       else if (strcmp(var.value, "nearest") == 0)
          retro_filtering = 2;
    }
