@@ -15,6 +15,7 @@
 #include "main/version.h"
 #include "main/savestates.h"
 
+retro_perf_get_counter_t perf_get_counter_cb = NULL;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 retro_perf_log_t perf_log_cb = NULL;
 retro_perf_register_t perf_register_cb = NULL;
@@ -396,6 +397,8 @@ void retro_init(void)
       perf_log_cb = perf.perf_log;
    if (perf.get_cpu_features)
       perf_get_cpu_features_cb = perf.get_cpu_features;
+   if (perf.get_perf_counter)
+      perf_get_counter_cb = perf.get_perf_counter;
    if (perf.perf_register)
       perf_register_cb = perf.perf_register;
 
