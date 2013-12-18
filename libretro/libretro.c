@@ -15,10 +15,8 @@
 #include "main/version.h"
 #include "main/savestates.h"
 
-retro_perf_get_counter_t perf_get_counter_cb = NULL;
+struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
-retro_perf_log_t perf_log_cb = NULL;
-retro_perf_register_t perf_register_cb = NULL;
 
 retro_log_printf_t log_cb = NULL;
 static retro_video_refresh_t video_cb = NULL;
@@ -385,22 +383,15 @@ unsigned retro_get_region (void)
 void retro_init(void)
 {
    struct retro_log_callback log;
-   struct retro_perf_callback perf;
    unsigned colorMode = RETRO_PIXEL_FORMAT_XRGB8888;
 
    environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log);
    if (log.log)
       log_cb = log.log;
 
-   environ_cb(RETRO_ENVIRONMENT_GET_PERF_INTERFACE, &perf);
-   if (perf.perf_log)
-      perf_log_cb = perf.perf_log;
-   if (perf.get_cpu_features)
-      perf_get_cpu_features_cb = perf.get_cpu_features;
-   if (perf.get_perf_counter)
-      perf_get_counter_cb = perf.get_perf_counter;
-   if (perf.perf_register)
-      perf_register_cb = perf.perf_register;
+   environ_cb(RETRO_ENVIRONMENT_GET_PERF_INTERFACE, &perf_cb);
+   if (perf_cb.get_cpu_features)
+      perf_get_cpu_features_cb = perf_cb.get_cpu_features;
 
    environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
 
@@ -415,8 +406,8 @@ void retro_init(void)
 
 void retro_deinit(void)
 {
-   if (perf_log_cb)
-      perf_log_cb();
+   if (perf_cb.perf_log)
+      perf_cb.perf_log();
 
     CoreShutdown();
 
