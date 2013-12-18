@@ -271,7 +271,7 @@ void math_init(void)
    unsigned cpu = 0;
 
    if (perf_get_cpu_features_cb)
-      perf_get_cpu_features_cb(&cpu);
+      cpu = perf_get_cpu_features_cb();
 
 #if !defined(NOSSE)
    if (cpu & RETRO_SIMD_SSE2)
