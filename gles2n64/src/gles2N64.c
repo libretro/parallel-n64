@@ -60,16 +60,16 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
 {
 
 #ifdef __NEON_OPT
-#ifdef ANDROID
-    if (android_getCpuFamily() == ANDROID_CPU_FAMILY_ARM &&
-            (android_getCpuFeatures() & ANDROID_CPU_ARM_FEATURE_NEON) != 0)
-    {
-#endif
-        MathInitNeon();
-        gSPInitNeon();
-#ifdef ANDROID
-    }
-#endif
+   unsigned cpu = 0;
+
+   if (perf_get_cpu_features_cb)
+      cpu = perf_get_cpu_features_cb();
+
+   if (cpu & RETRO_SIMD_NEON)
+   {
+      MathInitNeon();
+      gSPInitNeon();
+   }
 #endif
     return M64ERR_SUCCESS;
 }
