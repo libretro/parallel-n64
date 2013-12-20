@@ -19,6 +19,7 @@
 #include "Textures.h"
 #include "ShaderCombiner.h"
 #include "3DMath.h"
+#include "../../libretro/SDL.h"
 
 #ifdef __LIBRETRO__ // Prefix API
 #define VIDEO_TAG(X) gln64##X
