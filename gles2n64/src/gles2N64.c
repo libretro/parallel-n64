@@ -20,11 +20,6 @@
 #include "ShaderCombiner.h"
 #include "3DMath.h"
 
-
-#ifdef ANDROID
-#include "../../libretro/performance/performance_android.h"
-#endif
-
 #ifdef __LIBRETRO__ // Prefix API
 #define VIDEO_TAG(X) gln64##X
 
