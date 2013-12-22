@@ -613,9 +613,9 @@ static void DrawPartFrameBufferToScreen(void)
 
 #define RGBA16TO32(color) \
   ((color&1)?0xFF:0) | \
-  ((uint32_t)((float)((color&0xF800) >> 11) / 31.0f * 255.0f) << 24) | \
-  ((uint32_t)((float)((color&0x07C0) >> 6) / 31.0f * 255.0f) << 16) | \
-  ((uint32_t)((float)((color&0x003E) >> 1) / 31.0f * 255.0f) << 8)
+  ((uint32_t)(((color & 0xF800) >> 11)) << 24) | \
+  ((uint32_t)(((color & 0x07C0) >> 6)) << 16) | \
+  ((uint32_t)(((color & 0x003E) >> 1)) << 8)
 
 static void CopyFrameBuffer (GrBuffer_t buffer)
 {
@@ -660,15 +660,9 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
             for (x = 0; x < width; x++)
             {
                c = ptr_src[x + y * width];
-               if (settings.frame_buffer&fb_read_alpha)
-               {
-                  if (c > 0)
-                     c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-               }
+               if ((settings.frame_buffer & fb_read_alpha) && c <= 0) {}
                else
-               {
                   c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-               }
                if (rdp.ci_size == 2)
                   ptr_dst[(x + y * width)^1] = c;
                else
