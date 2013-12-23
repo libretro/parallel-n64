@@ -168,11 +168,8 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
       {
          col = *(src++);
          r = (uint8_t)((col >> 24)&0xFF);
-         r = (uint8_t)((float)r / 255.0f * 31.0f);
          g = (uint8_t)((col >> 16)&0xFF);
-         g = (uint8_t)((float)g / 255.0f * 63.0f);
          b = (uint8_t)((col >>  8)&0xFF);
-         b = (uint8_t)((float)b / 255.0f * 31.0f);
          *(dst++) = (r << 11) | (g << 5) | b;
       }
       src += (fb_info->width - 256);
@@ -257,12 +254,9 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
               break;
             c32 = src32[idx];
             r = (uint8_t)((c32 >> 24)&0xFF);
-            r = (uint8_t)((float)r / 255.0f * 31.0f);
             g = (uint8_t)((c32 >> 16)&0xFF);
-            g = (uint8_t)((float)g / 255.0f * 63.0f);
             b = (uint8_t)((c32 >>  8)&0xFF);
-            b = (uint8_t)((float)b / 255.0f * 31.0f);
-            a = (c32&0xFF) ? 1 : 0;
+            a = (c32 & 0xFF) ? 1 : 0;
             *(dst++) = (a<<15) | (r << 10) | (g << 5) | b;
           }
           dst += cur_tail;
