@@ -260,6 +260,16 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
           || (sl(ROM_HEADER.CRC1) == 0x7EAE2488   && sl(ROM_HEADER.CRC2) == 0x9D40A35A) /* Biohazard 2 (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9B500E8E   && sl(ROM_HEADER.CRC2) == 0xE90550B3) /* Resident Evil 2 (E) (M2) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xAA18B1A5   && sl(ROM_HEADER.CRC2) == 0x7DB6AEB)  /* Resident Evil 2 (U) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x60C437E5   && sl(ROM_HEADER.CRC2) == 0xA2251EE3)  /* Shadow Man (E) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0xEA06F8C3  && sl(ROM_HEADER.CRC2) == 0x7C2DEED)  /* Shadow Man (F) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x84D5FD75  && sl(ROM_HEADER.CRC2) == 0xBBFD3CDF)  /* Shadow Man (G) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x720278EC && sl(ROM_HEADER.CRC2) == 0x594B7975)  /* Shadow Man (G) [f1] */
+          || (sl(ROM_HEADER.CRC1) == 0x3A4760B5 && sl(ROM_HEADER.CRC2) == 0x2D74D410)  /* Shadow Man (U) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x34822023 && sl(ROM_HEADER.CRC2) == 0x65BC50A5)  /* Shadow Man (U) [b3] */
+          || (sl(ROM_HEADER.CRC1) == 0x82342320 && sl(ROM_HEADER.CRC2) == 0xBC65A550)  /* Shadow Man (U) [t1] */
+          || (sl(ROM_HEADER.CRC1) == 0x7433D9D7 && sl(ROM_HEADER.CRC2) == 0x2C4322D0)  /* Quake II (E) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0xBDA8F143 && sl(ROM_HEADER.CRC2) == 0xB1AF2D62)  /* Quake II (U) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x4F8B1784 && sl(ROM_HEADER.CRC2) == 0x763A4E04)  /* Quake II (U) [f1] (PAL) */
           )
     {
        count_per_op = 1;
