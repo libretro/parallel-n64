@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <fstream>
 
 #include <stdlib.h>
+#include "../../libretro/SDL.h"
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "osal_preproc.h"
@@ -393,37 +394,18 @@ bool isMMXSupported()
 
 bool isSSESupported() 
 {
-    int SSESupport = 0;
+   unsigned cpu = 0;
 
-// And finally, check the CPUID for Streaming SIMD Extensions support.
-#if !defined(__GNUC__) && !defined(NO_ASM)
-    _asm
-	{
-            mov      eax, 1          // Put a "1" in eax to tell CPUID to get the feature bits
-            cpuid                    // Perform CPUID (puts processor feature info into EDX)
-            and      edx, 02000000h  // Test bit 25, for Streaming SIMD Extensions existence.
-            mov      SSESupport, edx // SIMD Extensions).  Set return value to 1 to indicate,
-    }
-#elif defined(__GNUC__) && defined(__x86_64__) && !defined(NO_ASM)
-  return true;
-#elif !defined(NO_ASM) // GCC assumed
-   asm volatile (
-         "push %%ebx                       \n"
-         "mov $1, %%eax                    \n"  // Put a "1" in eax to tell CPUID to get the feature bits
-         "cpuid                            \n"  // Perform CPUID (puts processor feature info into EDX)
-         "and       $0x02000000, %%edx     \n"  // Test bit 25, for Streaming SIMD Extensions existence.
-         "pop %%ebx                        \n"
-         : "=d"(SSESupport)
-         :
-         : "memory", "cc", "eax", "ecx"
-         );
-# endif
-    
-    if (SSESupport != 0) 
-        return true; 
-    else 
-        return false; 
-} 
+   if (perf_get_cpu_features_cb)
+      cpu = perf_get_cpu_features_cb();
+
+#if !defined(NOSSE)
+   if (cpu & RETRO_SIMD_SSE2)
+      return true;
+#endif
+
+   return false; 
+}
 
 static void ReadConfiguration(void)
 {
