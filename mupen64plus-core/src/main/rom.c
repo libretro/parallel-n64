@@ -253,10 +253,43 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
           || (sl(ROM_HEADER.CRC1) == 0x5326696F && sl(ROM_HEADER.CRC2) == 0xFE9A99C3) /* Body Harvest */
           || (sl(ROM_HEADER.CRC1) == 0xC535091F && sl(ROM_HEADER.CRC2) == 0xD60CCF6C) /* Body Harvest */
           || (sl(ROM_HEADER.CRC1) == 0xA46EE3   && sl(ROM_HEADER.CRC2) == 0x554158C6) /* Body Harvest */
+          || (sl(ROM_HEADER.CRC1) == 0x11936D8C   && sl(ROM_HEADER.CRC2) == 0x6F2C4B43) /* Donkey Kong 64 (E) */
+          || (sl(ROM_HEADER.CRC1) == 0x1F95CAAA  && sl(ROM_HEADER.CRC2) == 0x47FC22A) /* Donkey Kong 64 (E) [f1] (Boot&Save) */
+          || (sl(ROM_HEADER.CRC1) == 0x53C89A7  && sl(ROM_HEADER.CRC2) == 0xA5064302) /* Donkey Kong 64 (J) */
+          || (sl(ROM_HEADER.CRC1) == 0xEC58EABF && sl(ROM_HEADER.CRC2) == 0xAD7C7169) /* Donkey Kong 64 (U) */
+          || (sl(ROM_HEADER.CRC1) == 0xCE84793D && sl(ROM_HEADER.CRC2) == 0x27ECC1AD) /* Donkey Kong 64 (U) [f1] (Save) */
+          || (sl(ROM_HEADER.CRC1) == 0xCED986FD && sl(ROM_HEADER.CRC2) == 0x3344AC38) /* Donkey Kong 64 (U) [f3] */
+          || (sl(ROM_HEADER.CRC1) == 0xDD4ABAB && sl(ROM_HEADER.CRC2) == 0xB5A2A91E) /* Donkey Kong 64 - Kiosk (U) */
+          || (sl(ROM_HEADER.CRC1) == 0xF5C21403 && sl(ROM_HEADER.CRC2) == 0x8FCA0710) /* Donkey Kong 64 - Kiosk (U) [f1] */
+          || (sl(ROM_HEADER.CRC1) == 0xDC36626A && sl(ROM_HEADER.CRC2) == 0x3F3770CB) /* Duke Nukem - Zero Hour [E] */
+          || (sl(ROM_HEADER.CRC1) == 0xBD8008B && sl(ROM_HEADER.CRC2) == 0x26051E1D) /* Duke Nukem - Zero Hour [E] [f1] */
+          || (sl(ROM_HEADER.CRC1) == 0x32CA974B && sl(ROM_HEADER.CRC2) == 0xB2C29C50) /* Duke Nukem - Zero Hour [F] */
+          || (sl(ROM_HEADER.CRC1) == 0x4DAF07F && sl(ROM_HEADER.CRC2) == 0xD18E688) /* Duke Nukem - Zero Hour [U] */
+          || (sl(ROM_HEADER.CRC1) == 0xEABCB7F9 && sl(ROM_HEADER.CRC2) == 0x4FF876F8) /* Duke Nukem - Zero Hour [U] [b2] */
+          || (sl(ROM_HEADER.CRC1) == 0xBCEAF9B7 && sl(ROM_HEADER.CRC2) == 0xF84FF876) /* Duke Nukem - Zero Hour [U] [t1] */
+          || (sl(ROM_HEADER.CRC1) == 0x66CF0FFE && sl(ROM_HEADER.CRC2) == 0xAD697F9C) /* Fighting Force 64 (E) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x32EFC7CB && sl(ROM_HEADER.CRC2) == 0xC3EA3F20) /* Fighting Force 64 (U) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x655BE931 && sl(ROM_HEADER.CRC2) == 0x9FB2E4FB) /* Fighting Force 64 (U) [t1] */
+          || (sl(ROM_HEADER.CRC1) == 0x6976748D && sl(ROM_HEADER.CRC2) == 0x1BF61F62) /* Fighting Force 64 (U) [t1][f1] (PAL) */
+          || (sl(ROM_HEADER.CRC1) == 0x98DF9DFC  && sl(ROM_HEADER.CRC2) == 0x6606C189) /* Harvest Moon 64 (U) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x6BCF21E8 && sl(ROM_HEADER.CRC2) == 0xCAB5AF4F) /* Harvest Moon 64 (U) [f1] (PAL) */
+          || (sl(ROM_HEADER.CRC1) == 0x60CC9644  && sl(ROM_HEADER.CRC2) == 0xC62AE877) /* Harvest Moon 64 (U) [t1] */
+          || (sl(ROM_HEADER.CRC1) == 0xB3D451C6  && sl(ROM_HEADER.CRC2) == 0xE1CB58E2) /* Bokujou Monogatari 2 (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x95B2B30B   && sl(ROM_HEADER.CRC2) == 0x2B6415C1) /* Hexen (E) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9AB3B50A   && sl(ROM_HEADER.CRC2) == 0xBC666105) /* Hexen (G) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9CAB6AEA   && sl(ROM_HEADER.CRC2) == 0x87C61C00) /* Hexen (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xE6BA0A06   && sl(ROM_HEADER.CRC2) == 0x8A3D2C2F) /* Hexen (U) [t1] */
+          || (sl(ROM_HEADER.CRC1) == 0x979B263E  && sl(ROM_HEADER.CRC2) == 0xF8470004) /* Killer Instinct Gold (E) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x9E8FE2BA  && sl(ROM_HEADER.CRC2) == 0x8B270770) /* Killer Instinct Gold (U) (V1.0) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0xCB06B744  && sl(ROM_HEADER.CRC2) == 0x633194DB) /* Killer Instinct Gold (U) (V1.0) [b1][t1] */
+          || (sl(ROM_HEADER.CRC1) == 0x6CB44B7  && sl(ROM_HEADER.CRC2) == 0x3163DB94) /* Killer Instinct Gold (U) (V1.0) [b2] */
+          || (sl(ROM_HEADER.CRC1) == 0x9E8FE2BA  && sl(ROM_HEADER.CRC2) == 0x8B270770) /* Killer Instinct Gold (U) (V1.0) [o1] */
+          || (sl(ROM_HEADER.CRC1) == 0x6CB44B7  && sl(ROM_HEADER.CRC2) == 0x3163DB94) /* Killer Instinct Gold (U) (V1.0) [t1] */
+          || (sl(ROM_HEADER.CRC1) == 0xCB06B744  && sl(ROM_HEADER.CRC2) == 0x633194DB) /* Killer Instinct Gold (U) (V1.0) [t2] */
+          || (sl(ROM_HEADER.CRC1) == 0x9E8FCDFA  && sl(ROM_HEADER.CRC2) == 0x49F5652B) /* Killer Instinct Gold (U) (V1.1) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0xF908CA4C  && sl(ROM_HEADER.CRC2) == 0x36464327) /* Killer Instinct Gold (U) (V1.2) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x6CB44B7  && sl(ROM_HEADER.CRC2) == 0x3163DB94) /* Killer Instinct Gold (U) (V1.2) [b1] */
+          || (sl(ROM_HEADER.CRC1) == 0xF908CA4C  && sl(ROM_HEADER.CRC2) == 0x36464327) /* Killer Instinct Gold (U) (V1.2) [o1] */
           || (sl(ROM_HEADER.CRC1) == 0x7EAE2488   && sl(ROM_HEADER.CRC2) == 0x9D40A35A) /* Biohazard 2 (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9B500E8E   && sl(ROM_HEADER.CRC2) == 0xE90550B3) /* Resident Evil 2 (E) (M2) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xAA18B1A5   && sl(ROM_HEADER.CRC2) == 0x7DB6AEB)  /* Resident Evil 2 (U) [!] */
@@ -270,6 +303,9 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
           || (sl(ROM_HEADER.CRC1) == 0x7433D9D7 && sl(ROM_HEADER.CRC2) == 0x2C4322D0)  /* Quake II (E) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xBDA8F143 && sl(ROM_HEADER.CRC2) == 0xB1AF2D62)  /* Quake II (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x4F8B1784 && sl(ROM_HEADER.CRC2) == 0x763A4E04)  /* Quake II (U) [f1] (PAL) */
+          || (sl(ROM_HEADER.CRC1) == 0x54310E7D && sl(ROM_HEADER.CRC2) == 0x6B5430D8)  /* Wipeout 64 (E) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x132D2732 && sl(ROM_HEADER.CRC2) == 0xC70E9118)  /* Wipeout 64 (U) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0xA6A99491 && sl(ROM_HEADER.CRC2) == 0x52B4E765)  /* Wipeout 64 (U) [t1] */
           )
     {
        count_per_op = 1;
