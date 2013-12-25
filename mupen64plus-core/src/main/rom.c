@@ -248,11 +248,16 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     /* count_per_op tweaks */
     // see - https://github.com/paulscode/mupen64plus-ae/commit/5d5ff6af92d035eb66ee281239b9f10c9ce0e866
     if(
-             (sl(ROM_HEADER.CRC1) == 0xB58B8CD  && sl(ROM_HEADER.CRC2) == 0xB7B291D2) /* Body Harvest */
+          (sl(ROM_HEADER.CRC1) == 0xB98BA456  && sl(ROM_HEADER.CRC2) == 0x5B2B76AF) /* 64 de Hakken!! Tamagotchi Minna de Tamagotchi World (J) [!]*/
+          || (sl(ROM_HEADER.CRC1) == 0x9C961069  && sl(ROM_HEADER.CRC2) == 0xF5EA488D) /* 64 Oozumou (J) [!]*/
+          || (sl(ROM_HEADER.CRC1) == 0xD76333AC  && sl(ROM_HEADER.CRC2) == 0xCB6219D) /* Bass Rush - ECOGEAR PowerWorm Championship (J) (J) [!]*/
+          || (sl(ROM_HEADER.CRC1) == 0xD137A2CA  && sl(ROM_HEADER.CRC2) == 0x62B65053) /* Bass Tsuri No. 1 - Shigesato Itoi's Bass Fishing (J) [!]*/
+          || (sl(ROM_HEADER.CRC1) == 0xB58B8CD  && sl(ROM_HEADER.CRC2) == 0xB7B291D2) /* Body Harvest */
           || (sl(ROM_HEADER.CRC1) == 0x6F66B92D && sl(ROM_HEADER.CRC2) == 0x80B9E520) /* Body Harvest */
           || (sl(ROM_HEADER.CRC1) == 0x5326696F && sl(ROM_HEADER.CRC2) == 0xFE9A99C3) /* Body Harvest */
           || (sl(ROM_HEADER.CRC1) == 0xC535091F && sl(ROM_HEADER.CRC2) == 0xD60CCF6C) /* Body Harvest */
           || (sl(ROM_HEADER.CRC1) == 0xA46EE3   && sl(ROM_HEADER.CRC2) == 0x554158C6) /* Body Harvest */
+          || (sl(ROM_HEADER.CRC1) == 0xF8009DB0   && sl(ROM_HEADER.CRC2) == 0x6B291823) /* City-Tour GP - Zennihon GT Senshuken (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x11936D8C   && sl(ROM_HEADER.CRC2) == 0x6F2C4B43) /* Donkey Kong 64 (E) */
           || (sl(ROM_HEADER.CRC1) == 0x1F95CAAA  && sl(ROM_HEADER.CRC2) == 0x47FC22A) /* Donkey Kong 64 (E) [f1] (Boot&Save) */
           || (sl(ROM_HEADER.CRC1) == 0x53C89A7  && sl(ROM_HEADER.CRC2) == 0xA5064302) /* Donkey Kong 64 (J) */
@@ -271,9 +276,14 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
           || (sl(ROM_HEADER.CRC1) == 0x32EFC7CB && sl(ROM_HEADER.CRC2) == 0xC3EA3F20) /* Fighting Force 64 (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x655BE931 && sl(ROM_HEADER.CRC2) == 0x9FB2E4FB) /* Fighting Force 64 (U) [t1] */
           || (sl(ROM_HEADER.CRC1) == 0x6976748D && sl(ROM_HEADER.CRC2) == 0x1BF61F62) /* Fighting Force 64 (U) [t1][f1] (PAL) */
+          || (sl(ROM_HEADER.CRC1) == 0xF774EAEE && sl(ROM_HEADER.CRC2) == 0xF0D8B13E) /* Fushigi no Dungeon - Fuurai no Shiren 2 (J) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x95A80114 && sl(ROM_HEADER.CRC2) == 0xE0B72A7F)  /* Hamster Monogatari 64 (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x98DF9DFC  && sl(ROM_HEADER.CRC2) == 0x6606C189) /* Harvest Moon 64 (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x6BCF21E8 && sl(ROM_HEADER.CRC2) == 0xCAB5AF4F) /* Harvest Moon 64 (U) [f1] (PAL) */
           || (sl(ROM_HEADER.CRC1) == 0x60CC9644  && sl(ROM_HEADER.CRC2) == 0xC62AE877) /* Harvest Moon 64 (U) [t1] */
+          || (sl(ROM_HEADER.CRC1) == 0x35FF8F1A && sl(ROM_HEADER.CRC2) == 0x6E79E3BE)  /* Hiryuu no Ken Twin (J) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0xAF19D9F5 && sl(ROM_HEADER.CRC2) == 0xB70223CC)  /* Jikkyou G1 Stable (J) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0xE0A79F8C && sl(ROM_HEADER.CRC2) == 0x32CC97FA)  /* Jikkyou World Soccer 3 (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xB3D451C6  && sl(ROM_HEADER.CRC2) == 0xE1CB58E2) /* Bokujou Monogatari 2 (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x95B2B30B   && sl(ROM_HEADER.CRC2) == 0x2B6415C1) /* Hexen (E) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9AB3B50A   && sl(ROM_HEADER.CRC2) == 0xBC666105) /* Hexen (G) [!] */
@@ -290,6 +300,8 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
           || (sl(ROM_HEADER.CRC1) == 0xF908CA4C  && sl(ROM_HEADER.CRC2) == 0x36464327) /* Killer Instinct Gold (U) (V1.2) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x6CB44B7  && sl(ROM_HEADER.CRC2) == 0x3163DB94) /* Killer Instinct Gold (U) (V1.2) [b1] */
           || (sl(ROM_HEADER.CRC1) == 0xF908CA4C  && sl(ROM_HEADER.CRC2) == 0x36464327) /* Killer Instinct Gold (U) (V1.2) [o1] */
+          || (sl(ROM_HEADER.CRC1) == 0x3BA7CDDC  && sl(ROM_HEADER.CRC2) == 0x464E52A0) /* Mario Story (J) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x9BA10C4E  && sl(ROM_HEADER.CRC2) == 0x408ABD3) /* Pro Mahjong Kiwame 64 (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x7EAE2488   && sl(ROM_HEADER.CRC2) == 0x9D40A35A) /* Biohazard 2 (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9B500E8E   && sl(ROM_HEADER.CRC2) == 0xE90550B3) /* Resident Evil 2 (E) (M2) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xAA18B1A5   && sl(ROM_HEADER.CRC2) == 0x7DB6AEB)  /* Resident Evil 2 (U) [!] */
@@ -300,9 +312,12 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
           || (sl(ROM_HEADER.CRC1) == 0x3A4760B5 && sl(ROM_HEADER.CRC2) == 0x2D74D410)  /* Shadow Man (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x34822023 && sl(ROM_HEADER.CRC2) == 0x65BC50A5)  /* Shadow Man (U) [b3] */
           || (sl(ROM_HEADER.CRC1) == 0x82342320 && sl(ROM_HEADER.CRC2) == 0xBC65A550)  /* Shadow Man (U) [t1] */
+          || (sl(ROM_HEADER.CRC1) == 0xFE4B6B43 && sl(ROM_HEADER.CRC2) == 0x81D29A7)  /* Triple Play 2000 (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x7433D9D7 && sl(ROM_HEADER.CRC2) == 0x2C4322D0)  /* Quake II (E) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xBDA8F143 && sl(ROM_HEADER.CRC2) == 0xB1AF2D62)  /* Quake II (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x4F8B1784 && sl(ROM_HEADER.CRC2) == 0x763A4E04)  /* Quake II (U) [f1] (PAL) */
+          || (sl(ROM_HEADER.CRC1) == 0x98F9F2D0 && sl(ROM_HEADER.CRC2) == 0x3D9F09C)  /* Virtual Pool 64 (E) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x4E4A7643 && sl(ROM_HEADER.CRC2) == 0xA37439D7)  /* Virtual Pool 64 (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x54310E7D && sl(ROM_HEADER.CRC2) == 0x6B5430D8)  /* Wipeout 64 (E) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x132D2732 && sl(ROM_HEADER.CRC2) == 0xC70E9118)  /* Wipeout 64 (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xA6A99491 && sl(ROM_HEADER.CRC2) == 0x52B4E765)  /* Wipeout 64 (U) [t1] */
