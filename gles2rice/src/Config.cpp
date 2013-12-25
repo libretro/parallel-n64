@@ -362,35 +362,16 @@ BOOL InitConfiguration(void)
 
 bool isMMXSupported() 
 { 
-    int IsMMXSupported = 0; 
+   unsigned cpu = 0;
+
+   if (perf_get_cpu_features_cb)
+      cpu = perf_get_cpu_features_cb();
+
+   if (cpu & RETRO_SIMD_MMX)
+      return true;
    
-#if !defined(__GNUC__) && !defined(NO_ASM)
-    __asm 
-    { 
-        mov eax,1   // CPUID level 1 
-        cpuid       // EDX = feature flag 
-        and edx,0x800000        // test bit 23 of feature flag 
-        mov IsMMXSupported,edx  // != 0 if MMX is supported 
-    } 
-#elif defined(__GNUC__) && defined(__x86_64__) && !defined(NO_ASM)
-  return true;
-#elif !defined(NO_ASM) // GCC assumed
-   asm volatile (
-         "push %%ebx           \n"
-         "mov $1, %%eax        \n"  // CPUID level 1 
-         "cpuid                \n"      // EDX = feature flag 
-         "and $0x800000, %%edx \n"      // test bit 23 of feature flag 
-         "pop %%ebx            \n"
-         : "=d"(IsMMXSupported)
-         :
-         : "memory", "cc", "eax", "ecx"
-         );
-#endif
-    if (IsMMXSupported != 0) 
-        return true; 
-    else 
-        return false; 
-} 
+   return false; 
+}
 
 bool isSSESupported() 
 {
@@ -399,10 +380,8 @@ bool isSSESupported()
    if (perf_get_cpu_features_cb)
       cpu = perf_get_cpu_features_cb();
 
-#if !defined(NOSSE)
    if (cpu & RETRO_SIMD_SSE2)
       return true;
-#endif
 
    return false; 
 }
