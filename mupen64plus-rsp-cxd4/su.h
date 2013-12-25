@@ -434,7 +434,7 @@ static union {
 
 static void LB(void) /* 100000 sssss ttttt iiiiiiiiiiiiiiii */
 {
-    register unsigned long addr;
+    register signed long addr;
     const signed int offset = (signed short)(inst.I.imm);
 
     addr = BES(SR[inst.I.rs] + offset) & 0x00000FFF;
@@ -444,7 +444,7 @@ static void LB(void) /* 100000 sssss ttttt iiiiiiiiiiiiiiii */
 }
 static void LH(void) /* 100001 sssss ttttt iiiiiiiiiiiiiiii */
 {
-    register unsigned long addr;
+    register signed long addr;
     const int rt = inst.I.rt;
     const signed int offset = (signed short)(inst.I.imm);
 
@@ -456,7 +456,10 @@ static void LH(void) /* 100001 sssss ttttt iiiiiiiiiiiiiiii */
         SR_B(rt, 3) = RSP.DMEM[addr + BES(0x000)];
     }
     else
-        SR[rt] = *(short *)(RSP.DMEM + addr - HES(0x000)*(addr%4 - 1));
+    {
+        short *s = (short *)(RSP.DMEM + addr - HES(0x000)*(addr%4 - 1));
+        SR[rt] = *(short *)(s);
+    }
     SR[rt] = (signed short)(SR[rt]);
     SR[0] = 0x00000000;
     return;
@@ -464,7 +467,7 @@ static void LH(void) /* 100001 sssss ttttt iiiiiiiiiiiiiiii */
 extern void ULW(int rd, unsigned long addr);
 static void LW(void) /* 100011 sssss ttttt iiiiiiiiiiiiiiii */
 {
-    register unsigned long addr;
+    register signed long addr;
     const int rt = inst.I.rt;
     const signed int offset = (signed short)(inst.I.imm);
 
@@ -480,7 +483,7 @@ static void LW(void) /* 100011 sssss ttttt iiiiiiiiiiiiiiii */
 }
 static void LBU(void) /* 100100 sssss ttttt iiiiiiiiiiiiiiii */
 {
-    register unsigned long addr;
+    register signed long addr;
     const signed int offset = (signed short)(inst.I.imm);
 
     addr = BES(SR[inst.I.rs] + offset) & 0x00000FFF;
@@ -490,7 +493,7 @@ static void LBU(void) /* 100100 sssss ttttt iiiiiiiiiiiiiiii */
 }
 static void LHU(void) /* 100101 sssss ttttt iiiiiiiiiiiiiiii */
 {
-    register unsigned long addr;
+    register signed long addr;
     const int rt = inst.I.rt;
     const signed int offset = (signed short)(inst.I.imm);
 
@@ -508,7 +511,7 @@ static void LHU(void) /* 100101 sssss ttttt iiiiiiiiiiiiiiii */
 }
 static void SB(void) /* 101000 sssss ttttt iiiiiiiiiiiiiiii */
 {
-    register unsigned long addr;
+    register signed long addr;
     const signed int offset = (signed short)(inst.I.imm);
 
     addr = BES(SR[inst.I.rs] + offset) & 0x00000FFF;
@@ -517,7 +520,7 @@ static void SB(void) /* 101000 sssss ttttt iiiiiiiiiiiiiiii */
 }
 static void SH(void) /* 101001 sssss ttttt iiiiiiiiiiiiiiii */
 {
-    register unsigned long addr;
+    register signed long addr;
     const int rt = inst.I.rt;
     const signed int offset = (signed short)(inst.I.imm);
 
@@ -535,7 +538,7 @@ static void SH(void) /* 101001 sssss ttttt iiiiiiiiiiiiiiii */
 extern void USW(int rs, unsigned long addr);
 static void SW(void) /* 101011 sssss ttttt iiiiiiiiiiiiiiii */
 {
-    register unsigned long addr;
+    register signed long addr;
     const int rt = inst.I.rt;
     const signed int offset = (signed short)(inst.I.imm);
 
@@ -941,7 +944,7 @@ static void C2(void)
 /*** Scalar, Coprocessor Operations (vector unit, scalar cache transfers) ***/
 void LS_Group_I(int direction, int length)
 { /* Group I vector loads and stores, as defined in SGI's patent. */
-    register unsigned long addr;
+    register signed long addr;
     register int i;
     register int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const signed int offset = SE(inst.SW, 6);
@@ -966,7 +969,7 @@ static void LSV(void)
     LS_Group_I(0, sizeof(short) > 2 ? 2 : sizeof(short));
     return;
 #else
-    register unsigned long addr;
+    register signed long addr;
     const int vt   = inst.R.rt;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const signed int offset = SE(inst.SW, 6);
@@ -993,7 +996,7 @@ static void LLV(void)
     return;
 #else
     int correction;
-    register unsigned long addr;
+    register signed long addr;
     const int vt = inst.R.rt;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const signed int offset = SE(inst.SW, 6);
@@ -1022,7 +1025,7 @@ static void LDV(void)
     LS_Group_I(0, 8);
     return;
 #else
-    register unsigned long addr;
+    register signed long addr;
     const int vt = inst.R.rt;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const signed int offset = SE(inst.SW, 6);
@@ -1119,7 +1122,7 @@ static void SSV(void)
     LS_Group_I(1, sizeof(short) > 2 ? 2 : sizeof(short));
     return;
 #else
-    register unsigned long addr;
+    register signed long addr;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const int vt = inst.R.rt;
     const signed int offset = SE(inst.SW, 6);
@@ -1146,7 +1149,7 @@ static void SLV(void)
     return;
 #else
     int correction;
-    register unsigned long addr;
+    register signed long addr;
     const int vt = inst.R.rt;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const signed int offset = SE(inst.SW, 6);
@@ -1175,7 +1178,7 @@ static void SDV(void)
     LS_Group_I(1, 8);
     return;
 #else
-    register unsigned long addr;
+    register signed long addr;
     const int vt = inst.R.rt;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const signed int offset = SE(inst.SW, 6);
@@ -1264,7 +1267,7 @@ static void SDV(void)
  */
 static void LPV(void)
 {
-    register unsigned long addr;
+    register signed long addr;
     register int b;
     const int vt = inst.R.rt;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
@@ -1378,7 +1381,7 @@ static void LPV(void)
 }
 static void LUV(void)
 {
-    register unsigned long addr;
+    register signed long addr;
     register int b;
     const int vt = inst.R.rt;
     int e = (inst.W & 0x000007FF) >> (6 + 1); /* fixme ? */ /* inst.R.sa >> 1 */
@@ -1501,7 +1504,7 @@ static void LUV(void)
 static void SPV(void)
 {
     register int b;
-    register unsigned long addr;
+    register signed long addr;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const int vt = inst.R.rt;
     const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
@@ -1615,7 +1618,7 @@ static void SPV(void)
 static void SUV(void)
 {
     register int b;
-    register unsigned long addr;
+    register signed long addr;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const int vt = inst.R.rt;
     const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
@@ -1664,7 +1667,7 @@ static void SUV(void)
  */
 static void LHV(void)
 {
-    register unsigned long addr;
+    register signed long addr;
     const int vt = inst.R.rt;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
@@ -1712,7 +1715,7 @@ static void LFV(void)
 }
 static void SHV(void)
 {
-    register unsigned long addr;
+    register signed long addr;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const int vt = inst.R.rt;
     const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
@@ -1741,7 +1744,7 @@ static void SHV(void)
 }
 static void SFV(void)
 {
-    register unsigned long addr;
+    register signed long addr;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const int vt = inst.R.rt;
     const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
@@ -1775,7 +1778,7 @@ static void SFV(void)
  */
 static void LQV(void)
 {
-    register unsigned long addr;
+    register signed long addr;
     register int b;
     const int vt = inst.R.rt;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* Boss Game Studios trap */
@@ -1852,7 +1855,7 @@ static void LQV(void)
 }
 static void LRV(void)
 {
-    register unsigned long addr;
+    register signed long addr;
     register int b;
     const int vt = inst.R.rt;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* Boss Game Studios trap */
@@ -1921,7 +1924,7 @@ static void LRV(void)
 }
 static void SQV(void)
 {
-    register unsigned long addr;
+    register signed long addr;
     register int b;
     const int vt = inst.R.rt;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
@@ -1980,7 +1983,7 @@ static void SQV(void)
 }
 static void SRV(void)
 {
-    register unsigned long addr;
+    register signed long addr;
     register int b;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const int vt = inst.R.rt;
@@ -2055,7 +2058,7 @@ static void SRV(void)
 static void LTV(void)
 {
     register int i;
-    register unsigned long addr;
+    register signed long addr;
     const int vt = inst.R.rt;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
@@ -2101,7 +2104,7 @@ static void SWV(void)
 static void STV(void)
 {
     register int i;
-    register unsigned long addr;
+    register signed long addr;
     const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
     const int vt = inst.R.rt;
     const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
@@ -2229,7 +2232,7 @@ static void LXI(void)
 } /* should translate to `ADDI[U] rt, $zero, imm` */
 static void LBA(void)
 { /* "Load Byte from Absolute Address" (unofficial, created by me) */
-    register unsigned long addr;
+    register signed long addr;
     const signed int offset = (signed short)(inst.I.imm);
 
     addr = BES(0x00000000 + offset) & 0x00000FFF;
@@ -2239,7 +2242,7 @@ static void LBA(void)
 }
 static void LHA(void)
 { /* "Load Halfword from Absolute Address" (unofficial, created by me) */
-    register unsigned long addr;
+    register signed long addr;
     const int rt = inst.I.rt;
     const signed int offset = (signed short)(inst.I.imm);
 
@@ -2258,7 +2261,7 @@ static void LHA(void)
 }
 static void LWA(void)
 { /* "Load Word from Absolute Address" (unofficial, created by me) */
-    register unsigned long addr;
+    register signed long addr;
     const int rt = inst.I.rt;
     const signed int offset = (signed short)(inst.I.imm);
 
@@ -2274,7 +2277,7 @@ static void LWA(void)
 }
 static void LBUA(void)
 { /* "Load Byte Unsigned from Absolute Address" (unofficial, created by me) */
-    register unsigned long addr;
+    register signed long addr;
     const signed int offset = (signed short)(inst.I.imm);
 
     addr = BES(0x00000000 + offset) & 0x00000FFF;
@@ -2284,7 +2287,7 @@ static void LBUA(void)
 }
 static void LHUA(void)
 { /* "Load Halfword Unsigned from Absolute Address" (unofficial...) */
-    register unsigned long addr;
+    register signed long addr;
     const int rt = inst.I.rt;
     const signed int offset = (signed short)(inst.I.imm);
 
@@ -2302,7 +2305,7 @@ static void LHUA(void)
 }
 static void SBA(void)
 { /* "Store Byte from Absolute Address" (unofficial, created by me) */
-    register unsigned long addr;
+    register signed long addr;
     const signed int offset = (signed short)(inst.I.imm);
 
     addr = BES(0x00000000 + offset) & 0x00000FFF;
@@ -2311,7 +2314,7 @@ static void SBA(void)
 }
 static void SHA(void)
 { /* "Store Halfword from Absolute Address" (unofficial, created by me) */
-    register unsigned long addr;
+    register signed long addr;
     const int rt = inst.I.rt;
     const signed int offset = (signed short)(inst.I.imm);
 
@@ -2328,7 +2331,7 @@ static void SHA(void)
 }
 static void SWA(void)
 { /* "Store Word from Absolute Address" (unofficial, created by me) */
-    register unsigned long addr;
+    register signed long addr;
     const int rt = inst.I.rt;
     const signed int offset = (signed short)(inst.I.imm);
 
