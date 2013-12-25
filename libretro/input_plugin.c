@@ -185,6 +185,11 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
 #define ASTICK_DEADZONE 0x2000
 #define CSTICK_DEADZONE 0x4000
 
+#define CSTICK_RIGHT 0x200
+#define CSTICK_LEFT 0x100
+#define CSTICK_UP 0x800
+#define CSTICK_DOWN 0x400
+
 EXPORT void CALL inputGetKeys( int Control, BUTTONS *Keys )
 {
    int16_t analogX, analogY;
@@ -362,7 +367,8 @@ EXPORT void CALL inputGetKeys( int Control, BUTTONS *Keys )
        Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
        Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
 
-       bool hold_cstick = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
+       bool hold_cstick = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2) ||
+          input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT);
        if (hold_cstick)
        {
           Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
@@ -381,10 +387,10 @@ EXPORT void CALL inputGetKeys( int Control, BUTTONS *Keys )
        analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
 
        if (abs(analogX) > CSTICK_DEADZONE)
-          Keys->Value |= (analogX < 0) ? 0x200 : 0x100;
+          Keys->Value |= (analogX < 0) ? CSTICK_RIGHT : CSTICK_LEFT;
 
        if (abs(analogY) > CSTICK_DEADZONE)
-          Keys->Value |= (analogY < 0) ? 0x800 : 0x400;
+          Keys->Value |= (analogY < 0) ? CSTICK_UP : CSTICK_DOWN;
     }
 
 //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
@@ -393,6 +399,7 @@ EXPORT void CALL inputGetKeys( int Control, BUTTONS *Keys )
     // Analog stick range is from -80 to 80
     analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
     analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
+
 
     if (abs(analogX) > ASTICK_DEADZONE)
     {
