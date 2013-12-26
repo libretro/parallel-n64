@@ -55,6 +55,7 @@ unsigned char* rom = NULL;
 int rom_size = 0;
 
 unsigned char isGoldeneyeRom = 0;
+extern unsigned int frame_dupe;
 
 m64p_rom_header   ROM_HEADER;
 rom_params        ROM_PARAMS;
@@ -339,6 +340,9 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     {
        count_per_op = 3;
     }
+
+    if (frame_dupe)
+       count_per_op = 1;
 
     delay_si = 1; /* default */
 

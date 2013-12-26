@@ -154,8 +154,8 @@ static void setup_variables_balanced(void)
          "Graphics Resolution; 640x480|1280x960|320x240" },
       { "mupen64-filtering",
          "Texture filtering; automatic|bilinear|nearest" },
-      { "mupen64-dupe",
-         "Frame duping; no|yes" },
+      { "mupen64-framerate",
+         "Framerate (restart); original|fullspeed" },
       { NULL, NULL },
    };
 
@@ -191,8 +191,8 @@ static void setup_variables(void)
          "Graphics Resolution; 640x480|1280x960|320x240" },
       { "mupen64-filtering",
          "Texture filtering; automatic|bilinear|nearest" },
-      { "mupen64-dupe",
-         "Frame duping; no|yes" },
+      { "mupen64-framerate",
+         "Framerate (restart); original|fullspeed" },
       { NULL, NULL },
    };
 
@@ -424,8 +424,8 @@ void retro_deinit(void)
     }
 }
 
-unsigned retro_filtering = 0;
-static bool frame_dupe = true;
+unsigned int retro_filtering = 0;
+unsigned int frame_dupe = false;
 
 void update_variables(void)
 {
@@ -443,15 +443,15 @@ void update_variables(void)
          retro_filtering = 2;
    }
 
-   var.key = "mupen64-dupe";
+   var.key = "mupen64-framerate";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-      if (!strcmp(var.value, "yes"))
-         frame_dupe = true;
-      else if (!strcmp(var.value, "no"))
+      if (!strcmp(var.value, "original"))
          frame_dupe = false;
+      else if (!strcmp(var.value, "fullspeed"))
+         frame_dupe = true;
    }
    
    
