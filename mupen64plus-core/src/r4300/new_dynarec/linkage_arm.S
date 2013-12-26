@@ -50,8 +50,7 @@
   name: \
   ESYM(name)
 
-// r7 is preserved, but add it for EABI alignment..
-#define EXTRA_UNSAVED_REGS r7, r9,
+#define EXTRA_UNSAVED_REGS r9,
 
 #endif
 
@@ -684,7 +683,7 @@ FUNCTION(jump_eret):
 
 FUNCTION(new_dyna_start):
 	load_varadr r12, dynarec_local
-        add     r12, #28
+   add   r12, #28
 	load_varadr_ext	r1, out
 	mov	r0, #0xa4000000
 	stmia	r12, {r4, r5, r6, r7, r8, r9, sl, fp, lr}
