@@ -428,6 +428,8 @@ unsigned int retro_filtering = 0;
 unsigned int frame_dupe = false;
 unsigned int initial_boot = true;
 
+extern void glide_set_filtering(unsigned value);
+
 void update_variables(void)
 {
    struct retro_variable var;
@@ -527,6 +529,12 @@ void update_variables(void)
             pad_pak_types[3] = p4_pak;
       }
    }
+
+   if (retro_filtering != 0 && !initial_boot)
+   {
+      if (gfx_plugin == GFX_GLIDE64)
+         glide_set_filtering(retro_filtering);
+   }
 }
 
 bool retro_load_game(const struct retro_game_info *game)
@@ -603,6 +611,8 @@ unsigned int FAKE_SDL_TICKS;
 static bool pushed_frame;
 void retro_run (void)
 {
+   bool updated = false;
+
     FAKE_SDL_TICKS += 16;
     pushed_frame = false;
 
@@ -612,6 +622,9 @@ run_again:
     sglEnter();
     co_switch(emulator_thread);
     sglExit();
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+       update_variables();
 
     if (flip_only)
     {

@@ -48,10 +48,6 @@
 
 #include "../../../libretro/libretro.h"
 
-extern unsigned retro_filtering;
-extern retro_environment_t environ_cb;
-extern void update_variables(void);
-
 #if defined(__GNUC__)
 #include <sys/time.h>
 #elif defined(__MSC__)
@@ -282,6 +278,7 @@ void WriteLog(m64p_msg_level level, const char *msg, ...)
 #endif
 }
 
+extern retro_environment_t environ_cb;
 
 void ReadSettings(void)
 {
@@ -2720,19 +2717,15 @@ static void DrawWholeFrameBufferToScreen()
 
 uint32_t curframe = 0;
 
+void glide_set_filtering(unsigned value)
+{
+   settings.filtering = value;
+}
+
 void newSwapBuffers(void)
 {
    if (!rdp.updatescreen)
       return;
-
-#ifdef __LIBRETRO__ // Core options
-   bool updated = false;
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
-      update_variables();
-
-   if (retro_filtering != 0)
-      settings.filtering = retro_filtering;
-#endif
 
    rdp.updatescreen = 0;
 
