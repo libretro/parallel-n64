@@ -426,6 +426,7 @@ void retro_deinit(void)
 
 unsigned int retro_filtering = 0;
 unsigned int frame_dupe = false;
+unsigned int initial_boot = true;
 
 void update_variables(void)
 {
@@ -446,14 +447,13 @@ void update_variables(void)
    var.key = "mupen64-framerate";
    var.value = NULL;
 
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && initial_boot)
    {
       if (!strcmp(var.value, "original"))
          frame_dupe = false;
       else if (!strcmp(var.value, "fullspeed"))
          frame_dupe = true;
    }
-   
    
    {
       struct retro_variable pk1var = { "mupen64-pak1" };
@@ -534,6 +534,7 @@ bool retro_load_game(const struct retro_game_info *game)
    format_saved_memory(); // < defined in mupen64plus-core/src/memory/memory.c
 
    update_variables();
+   initial_boot = false;
 
    memset(&render_iface, 0, sizeof(render_iface));
 #ifndef GLES
