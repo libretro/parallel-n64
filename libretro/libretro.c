@@ -378,8 +378,8 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
 unsigned retro_get_region (void)
 {
-    // TODO
-    return RETRO_REGION_NTSC;
+   m64p_system_type region = rom_country_code_to_system_type(romgame.Country_code);
+   return ((region == SYSTEM_PAL) ? RETRO_REGION_PAL : RETRO_REGION_NTSC);
 }
 
 void retro_init(void)
