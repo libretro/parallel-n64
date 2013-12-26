@@ -191,44 +191,17 @@ uint32_t Load16bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int li
 
 uint16_t yuv_to_rgb565(uint8_t y, uint8_t u, uint8_t v)
 {
-   //*
-   float r = y + (1.370705f * (v-128));
-   float g = y - (0.698001f * (v-128)) - (0.337633f * (u-128));
-   float b = y + (1.732446f * (u-128));
-   r *= 0.125f;
-   g *= 0.25f;
-   b *= 0.125f;
-   //clipping the result
-   if (r > 31)
-      r = 31;
-   if (g > 63)
-      g = 63;
-   if (b > 31)
-      b = 31;
-   if (r < 0)
-      r = 0;
-   if (g < 0)
-      g = 0;
-   if (b < 0)
-      b = 0;
-   uint16_t c = (uint16_t)(((uint16_t)(r) << 11) |
-         ((uint16_t)(g) << 5) |
-         (uint16_t)(b) );
-   return c;
-   //*/
-   /*
-      const uint32_t c = y - 16;
-      const uint32_t d = u - 128;
-      const uint32_t e = v - 128;
+   const uint32_t c = y - 16;
+   const uint32_t d = u - 128;
+   const uint32_t e = v - 128;
 
-      uint32_t r =  (298 * c           + 409 * e + 128) & 0xf800;
-      uint32_t g = ((298 * c - 100 * d - 208 * e + 128) >> 5) & 0x7e0;
-      uint32_t b = ((298 * c + 516 * d           + 128) >> 11) & 0x1f;
+   uint32_t r =  (298 * c           + 409 * e + 128) & 0xf800;
+   uint32_t g = ((298 * c - 100 * d - 208 * e + 128) >> 5) & 0x7e0;
+   uint32_t b = ((298 * c + 516 * d           + 128) >> 11) & 0x1f;
 
-      WORD texel = (WORD)(r | g | b);
+   uint16_t texel = (uint16_t)(r | g | b);
 
-      return texel;
-      */
+   return texel;
 }
 
 //****************************************************************
