@@ -125,7 +125,7 @@ uint32_t region = 0;
 // ref rate
 // 60=0x0, 70=0x1, 72=0x2, 75=0x3, 80=0x4, 90=0x5, 100=0x6, 85=0x7, 120=0x8, none=0xff
 
-unsigned long BMASK = 0x7FFFFF;
+uint32_t BMASK = 0x7FFFFF;
 // Reality display processor structure
 struct RDP rdp;
 

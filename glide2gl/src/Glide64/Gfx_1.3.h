@@ -107,7 +107,7 @@ the plugin
 
 // rdram mask at 0x400000 bytes (bah, not right for majora's mask)
 //#define BMASK	0x7FFFFF
-extern unsigned long BMASK;
+extern uint32_t BMASK;
 #define WMASK	0x3FFFFF
 #define DMASK	0x1FFFFF
 

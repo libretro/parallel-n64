@@ -6,6 +6,7 @@
 /* @(#) $Id$ */
 
 #define ZLIB_INTERNAL
+#include <stdint.h>
 #include <stddef.h>
 #include "zlib.h"
 
@@ -50,8 +51,8 @@ uLong ZEXPORT adler32(adler, buf, len)
     const Bytef *buf;
     uInt len;
 {
-    unsigned long s1 = adler & 0xffff;
-    unsigned long s2 = (adler >> 16) & 0xffff;
+    uint32_t s1 = adler & 0xffff;
+    uint32_t s2 = (adler >> 16) & 0xffff;
     int k;
 
     if (buf == NULL)

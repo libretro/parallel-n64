@@ -23,9 +23,9 @@
 #else // _WIN32
 #include <stdlib.h>
 #endif // _WIN32
+#include <stdint.h>
 #include "glide.h"
 #include "main.h"
-#include <stdio.h>
 
 /* Napalm extensions to GrTextureFormat_t */
 #define GR_TEXFMT_ARGB_8888               0x12

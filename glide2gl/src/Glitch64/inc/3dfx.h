@@ -35,9 +35,9 @@ typedef signed   int    FxI32;
 typedef unsigned int    FxU32;
 #else
 typedef signed   long   FxI32;
-typedef unsigned long   FxU32;
+typedef uint32_t   FxU32;
 #endif
-typedef unsigned long   AnyPtr;
+typedef uintptr_t   AnyPtr;
 typedef int             FxBool;
 typedef float           FxFloat;
 typedef double          FxDouble;
@@ -45,7 +45,7 @@ typedef double          FxDouble;
 /*
 ** color types
 */
-typedef unsigned long                FxColor_t;
+typedef uint32_t                FxColor_t;
 typedef struct { float r, g, b, a; } FxColor4;
 
 /*
