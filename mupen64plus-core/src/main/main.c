@@ -212,10 +212,6 @@ m64p_error main_reset(int do_hard_reset)
 * global functions, callbacks from the r4300 core or from other plugins
 */
 
-static void video_plugin_render_callback(int bScreenRedrawn)
-{
-}
-
 void new_frame(void)
 {
     if (g_FrameCallback != NULL)
@@ -264,9 +260,6 @@ m64p_error main_run(void)
     {
         audio.romClosed(); gfx.romClosed(); free_memory(); return M64ERR_PLUGIN_FAIL;
     }
-
-    // setup rendering callback from video plugin to the core, for screenshots and On-Screen-Display
-    gfx.setRenderingCallback(video_plugin_render_callback);
 
 #ifdef DBG
     if (ConfigGetParamBool(g_CoreConfig, "EnableDebugger"))
