@@ -73,7 +73,6 @@ int         g_EmulatorRunning = 0;      // need separate boolean to tell if emul
 
 /** static (local) variables **/
 static int   l_CurrentFrame = 0;         // frame counter
-static int   l_FrameAdvance = 0;         // variable to check if we pause on next frame
 
 /*********************************************************************************************************
 * helper functions
@@ -145,38 +144,6 @@ int main_set_core_defaults(void)
     return 1;
 }
 
-static int main_is_paused(void)
-{
-    return (g_EmulatorRunning && rompause);
-}
-
-void main_toggle_pause(void)
-{
-    if (!g_EmulatorRunning)
-        return;
-
-    if (rompause)
-    {
-        DebugMessage(M64MSG_STATUS, "Emulation continued.");
-        StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
-    }
-    else
-    {
-        DebugMessage(M64MSG_STATUS, "Emulation paused.");
-        StateChanged(M64CORE_EMU_STATE, M64EMU_PAUSED);
-    }
-
-    rompause = !rompause;
-    l_FrameAdvance = 0;
-}
-
-void main_advance_one(void)
-{
-    l_FrameAdvance = 1;
-    rompause = 0;
-    StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
-}
-
 m64p_error main_core_state_query(m64p_core_param param, int *rval)
 {
     switch (param)
@@ -184,8 +151,6 @@ m64p_error main_core_state_query(m64p_core_param param, int *rval)
         case M64CORE_EMU_STATE:
             if (!g_EmulatorRunning)
                 *rval = M64EMU_STOPPED;
-            else if (rompause)
-                *rval = M64EMU_PAUSED;
             else
                 *rval = M64EMU_RUNNING;
             break;
@@ -214,14 +179,6 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
             }
             else if (val == M64EMU_RUNNING)
             {
-                if (main_is_paused())
-                    main_toggle_pause();
-                return M64ERR_SUCCESS;
-            }
-            else if (val == M64EMU_PAUSED)
-            {    
-                if (!main_is_paused())
-                    main_toggle_pause();
                 return M64ERR_SUCCESS;
             }
             return M64ERR_INPUT_INVALID;
@@ -266,12 +223,6 @@ void new_frame(void)
 
     /* advance the current frame */
     l_CurrentFrame++;
-
-    if (l_FrameAdvance) {
-        rompause = 1;
-        l_FrameAdvance = 0;
-        StateChanged(M64CORE_EMU_STATE, M64EMU_PAUSED);
-    }
 }
 
 /*********************************************************************************************************
@@ -357,11 +308,6 @@ void main_stop(void)
         return;
 
     DebugMessage(M64MSG_STATUS, "Stopping emulation.");
-    if (rompause)
-    {
-        rompause = 0;
-        StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
-    }
     stop = 1;
 #ifdef DBG
     if(g_DebuggerActive)
