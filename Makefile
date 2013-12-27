@@ -60,7 +60,7 @@ ifeq ($(firstword $(filter amd64,$(UNAME))),amd64)
 endif
 else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
-   CPPFLAGS += -DIOS -marm
+   CPPFLAGS += -DIOS -marm -mllvm -arm-reserve-r9
    LDFLAGS += -dynamiclib -marm
    fpic = -fPIC
    GLES = 1
