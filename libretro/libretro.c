@@ -55,6 +55,8 @@ static enum rsp_plugin_type rsp_plugin;
 static uint32_t screen_width;
 static uint32_t screen_height;
 
+extern unsigned int VI_REFRESH;
+
 // after the controller's CONTROL* member has been assigned we can update
 // them straight from here...
 extern struct
@@ -154,6 +156,8 @@ static void setup_variables_balanced(void)
          "Graphics Resolution; 640x480|1280x960|320x240" },
       { "mupen64-filtering",
          "Texture filtering; automatic|bilinear|nearest" },
+      { "mupen64-virefresh",
+         "VI Refresh; 1500|2200" },
       { "mupen64-framerate",
          "Framerate (restart); original|fullspeed" },
       { NULL, NULL },
@@ -191,6 +195,8 @@ static void setup_variables(void)
          "Graphics Resolution; 640x480|1280x960|320x240" },
       { "mupen64-filtering",
          "Texture filtering; automatic|bilinear|nearest" },
+      { "mupen64-virefresh",
+         "VI Refresh (Overclock); 1500|2200" },
       { "mupen64-framerate",
          "Framerate (restart); original|fullspeed" },
       { NULL, NULL },
@@ -444,6 +450,17 @@ void update_variables(void)
       else if (strcmp(var.value, "bilinear") == 0) retro_filtering = 1;
       else if (strcmp(var.value, "nearest") == 0)
          retro_filtering = 2;
+   }
+
+   var.key = "mupen64-virefresh";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "1500"))
+         VI_REFRESH = 1500;
+      else if (!strcmp(var.value, "2200"))
+         VI_REFRESH = 2200;
    }
 
    var.key = "mupen64-framerate";

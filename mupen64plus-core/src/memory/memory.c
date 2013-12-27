@@ -134,6 +134,8 @@ static FrameBufferInfo frameBufferInfos[6];
 static char framebufferRead[0x800];
 static int firstFrameBufferSetting;
 
+unsigned int VI_REFRESH = 1500;
+
 // uncomment to output count of calls to write_rdram():
 //#define COUNT_WRITE_RDRAM_CALLS 1
 
@@ -2561,7 +2563,7 @@ void read_vi(void)
     {
     case 0x10:
         update_count();
-        vi_register.vi_current = (vi_register.vi_delay-(next_vi-Count))/1500;
+        vi_register.vi_current = (vi_register.vi_delay-(next_vi-Count))/VI_REFRESH;
         vi_register.vi_current = (vi_register.vi_current&(~1))|vi_field;
         break;
     }
@@ -2577,7 +2579,7 @@ void read_vib(void)
     case 0x12:
     case 0x13:
         update_count();
-        vi_register.vi_current = (vi_register.vi_delay-(next_vi-Count))/1500;
+        vi_register.vi_current = (vi_register.vi_delay-(next_vi-Count))/VI_REFRESH;
         vi_register.vi_current = (vi_register.vi_current&(~1))|vi_field;
         break;
     }
@@ -2592,7 +2594,7 @@ void read_vih(void)
     case 0x10:
     case 0x12:
         update_count();
-        vi_register.vi_current = (vi_register.vi_delay-(next_vi-Count))/1500;
+        vi_register.vi_current = (vi_register.vi_delay-(next_vi-Count))/VI_REFRESH;
         vi_register.vi_current = (vi_register.vi_current&(~1))|vi_field;
         break;
     }
@@ -2606,7 +2608,7 @@ void read_vid(void)
     {
     case 0x10:
         update_count();
-        vi_register.vi_current = (vi_register.vi_delay-(next_vi-Count))/1500;
+        vi_register.vi_current = (vi_register.vi_delay-(next_vi-Count))/VI_REFRESH;
         vi_register.vi_current = (vi_register.vi_current&(~1))|vi_field;
         break;
     }

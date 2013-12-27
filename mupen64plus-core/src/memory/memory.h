@@ -24,6 +24,8 @@
 
 #include "osal/preproc.h"
 
+extern unsigned int VI_REFRESH;
+
 int init_memory(int DoByteSwap);
 void free_memory(void);
 #define read_word_in_memory() readmem[address>>16]()
