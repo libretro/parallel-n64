@@ -276,10 +276,6 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
           || (sl(ROM_HEADER.CRC1) == 0xF8009DB0   && sl(ROM_HEADER.CRC2) == 0x6B291823) /* City-Tour GP - Zennihon GT Senshuken (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x11936D8C   && sl(ROM_HEADER.CRC2) == 0x6F2C4B43) /* Donkey Kong 64 (E) */
           || (sl(ROM_HEADER.CRC1) == 0x1F95CAAA  && sl(ROM_HEADER.CRC2) == 0x47FC22A) /* Donkey Kong 64 (E) [f1] (Boot&Save) */
-          || (sl(ROM_HEADER.CRC1) == 0x53C89A7  && sl(ROM_HEADER.CRC2) == 0xA5064302) /* Donkey Kong 64 (J) */
-          || (sl(ROM_HEADER.CRC1) == 0xEC58EABF && sl(ROM_HEADER.CRC2) == 0xAD7C7169) /* Donkey Kong 64 (U) */
-          || (sl(ROM_HEADER.CRC1) == 0xCE84793D && sl(ROM_HEADER.CRC2) == 0x27ECC1AD) /* Donkey Kong 64 (U) [f1] (Save) */
-          || (sl(ROM_HEADER.CRC1) == 0xCED986FD && sl(ROM_HEADER.CRC2) == 0x3344AC38) /* Donkey Kong 64 (U) [f3] */
           || (sl(ROM_HEADER.CRC1) == 0xDD4ABAB && sl(ROM_HEADER.CRC2) == 0xB5A2A91E) /* Donkey Kong 64 - Kiosk (U) */
           || (sl(ROM_HEADER.CRC1) == 0xF5C21403 && sl(ROM_HEADER.CRC2) == 0x8FCA0710) /* Donkey Kong 64 - Kiosk (U) [f1] */
           || (sl(ROM_HEADER.CRC1) == 0xDC36626A && sl(ROM_HEADER.CRC2) == 0x3F3770CB) /* Duke Nukem - Zero Hour [E] */
