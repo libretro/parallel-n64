@@ -82,9 +82,9 @@ struct texbuf_t {
 static struct texbuf_t texbufs[NB_TEXBUFS];
 static int texbuf_i;
 
-unsigned short frameBuffer[2048*2048];
-unsigned short depthBuffer[2048*2048];
-unsigned char  buf[640 * 480 * 4];
+unsigned short frameBuffer[1024*1024];
+unsigned short depthBuffer[1024*1024];
+unsigned char  buf[1280 * 960 * 4];
 
 FX_ENTRY void FX_CALL
 grSstOrigin(GrOriginLocation_t  origin)
