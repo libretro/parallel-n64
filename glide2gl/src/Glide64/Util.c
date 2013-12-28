@@ -103,7 +103,7 @@ int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
       return false;
    }
 
-#define SW_CULLING
+//#define SW_CULLING
 #ifdef SW_CULLING
 #if 1 // H.Morii - faster float comparisons with zero area check added
 
