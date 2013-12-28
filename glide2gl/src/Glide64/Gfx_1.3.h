@@ -149,11 +149,8 @@ extern uint32_t resolutions[0x18][2];
 #define FRDP_E(x, ...)
 #endif
 
-extern int fullscreen;
 extern int romopen;
 extern int debugging;
-
-extern int ev_fullscreen;
 
 extern int exception;
 

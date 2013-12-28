@@ -113,12 +113,9 @@ std::ofstream rdp_err;
 
 GFX_INFO gfx;
 
-int fullscreen = false;
 int romopen = false;
 GrContext_t gfx_context = 0;
 int exception = false;
-
-int ev_fullscreen = 0;
 
 uint32_t region = 0;
 
@@ -2175,8 +2172,6 @@ int InitGfx(void)
       return false;
    }
 
-   fullscreen = true;
-
    // get the # of TMUs available
    voodoo.tex_max_addr = grTexMaxAddress(GR_TMU0);
 
@@ -2254,9 +2249,6 @@ void ReleaseGfx(void)
    grGlideShutdown();
 
    rdp_free();
-
-   fullscreen = false;
-   rdp.window_changed = true;
 }
 
 // new API code begins here!
@@ -2382,8 +2374,6 @@ void CALL CloseDLL (void)
 {
    VLOG ("CloseDLL ()\n");
 
-   if (fullscreen)
-      ReleaseGfx ();
    ZLUT_release();
    ClearCache ();
 }
@@ -2484,7 +2474,6 @@ output:   none
 *******************************************************************/
 EXPORT void CALL MoveScreen (int xpos, int ypos)
 {
-   rdp.window_changed = true;
 }
 
 /******************************************************************
@@ -2499,7 +2488,6 @@ EXPORT void CALL RomClosed (void)
 
    CLOSE_RDP_LOG ();
    CLOSE_RDP_E_LOG ();
-   rdp.window_changed = true;
    romopen = false;
    ReleaseGfx ();
 }
@@ -2565,11 +2553,8 @@ EXPORT int CALL RomOpen (void)
 
 
    // ** EVOODOO EXTENSIONS **
-   if (!fullscreen)
-   {
-      grGlideInit ();
-      grSstSelect (0);
-   }
+   grGlideInit ();
+   grSstSelect (0);
 
    InitGfx ();
 

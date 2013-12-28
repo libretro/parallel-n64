@@ -516,8 +516,6 @@ struct RDP
    float vi_width;
    float vi_height;
 
-   int window_changed;
-
    float offset_x, offset_y, offset_x_bak, offset_y_bak;
 
    float scale_x, scale_1024, scale_x_bak;
