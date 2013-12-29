@@ -2590,27 +2590,26 @@ void drawViRegBG(void)
 
    const uint32_t VIwidth = *gfx.VI_WIDTH_REG;
 
-   FB_TO_SCREEN_INFO *fb_info = (FB_TO_SCREEN_INFO*)malloc(sizeof(FB_TO_SCREEN_INFO));
-   fb_info->width  = VIwidth;
-   fb_info->height = (uint32_t)rdp.vi_height;
-   fb_info->ul_x = 0;
-   fb_info->lr_x = VIwidth - 1;
-   fb_info->ul_y = 0;
-   fb_info->lr_y = fb_info->height - 1;
-   fb_info->opaque = 1;
-   fb_info->addr = *gfx.VI_ORIGIN_REG;
-   fb_info->size = *gfx.VI_STATUS_REG & 3;
+   FB_TO_SCREEN_INFO fb_info;;
+   fb_info.width  = VIwidth;
+   fb_info.height = (uint32_t)rdp.vi_height;
+   fb_info.ul_x = 0;
+   fb_info.lr_x = VIwidth - 1;
+   fb_info.ul_y = 0;
+   fb_info.lr_y = fb_info.height - 1;
+   fb_info.opaque = 1;
+   fb_info.addr = *gfx.VI_ORIGIN_REG;
+   fb_info.size = *gfx.VI_STATUS_REG & 3;
 
-   rdp.last_bg = fb_info->addr;
+   rdp.last_bg = fb_info.addr;
 
-   bool drawn = DrawFrameBufferToScreen(fb_info);
+   bool drawn = DrawFrameBufferToScreen(&fb_info);
    if (settings.hacks&hack_Lego && drawn)
    {
       rdp.updatescreen = 1;
       newSwapBuffers ();
-      DrawFrameBufferToScreen(fb_info);
+      DrawFrameBufferToScreen(&fb_info);
    }
-   free(fb_info);
 }
 
 void DrawFrameBuffer(void)
@@ -2684,20 +2683,19 @@ static void DrawWholeFrameBufferToScreen()
      return;
   toScreenCI = rdp.cimg;
 
-  FB_TO_SCREEN_INFO *fb_info = (FB_TO_SCREEN_INFO*)malloc(sizeof(FB_TO_SCREEN_INFO));
-  fb_info->addr   = rdp.cimg;
-  fb_info->size   = rdp.ci_size;
-  fb_info->width  = rdp.ci_width;
-  fb_info->height = rdp.ci_height;
-  fb_info->ul_x = 0;
-  fb_info->lr_x = rdp.ci_width-1;
-  fb_info->ul_y = 0;
-  fb_info->lr_y = rdp.ci_height-1;
-  fb_info->opaque = 0;
-  DrawFrameBufferToScreen(fb_info);
+  FB_TO_SCREEN_INFO fb_info;
+  fb_info.addr   = rdp.cimg;
+  fb_info.size   = rdp.ci_size;
+  fb_info.width  = rdp.ci_width;
+  fb_info.height = rdp.ci_height;
+  fb_info.ul_x = 0;
+  fb_info.lr_x = rdp.ci_width-1;
+  fb_info.ul_y = 0;
+  fb_info.lr_y = rdp.ci_height-1;
+  fb_info.opaque = 0;
+  DrawFrameBufferToScreen(&fb_info);
   if (!(settings.frame_buffer & fb_ref))
     memset(gfx.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
-  free(fb_info);
 }
 
 uint32_t curframe = 0;

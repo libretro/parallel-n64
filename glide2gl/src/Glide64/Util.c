@@ -761,13 +761,13 @@ static void Create1LineEq(LineEquationType *l, VERTEX *v1, VERTEX *v2, VERTEX *v
 
 static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
 {
-   LineEquationType *line = (LineEquationType*)malloc(sizeof(LineEquationType));
-   Create1LineEq(line, v2, v3, v1);
+   LineEquationType line;
+   Create1LineEq(&line, v2, v3, v1);
 
-   double aDot = (out->x * line->x + out->y * line->y);
-   double bDot = (v1->sx * line->x + v1->sy * line->y);
+   double aDot = (out->x * line.x + out->y * line.y);
+   double bDot = (v1->sx * line.x + v1->sy * line.y);
 
-   double scale1 = ( -line->d - aDot) / ( bDot - aDot );
+   double scale1 = ( -line.d - aDot) / ( bDot - aDot );
 
    double tx = out->x + scale1 * (v1->sx - out->x);
    double ty = out->y + scale1 * (v1->sy - out->y);
@@ -798,7 +798,6 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
       out->u1 = interp3p(v1->u1_w*v1->oow,v2->u1_w*v2->oow,v3->u1_w*v3->oow,s1,s2)/oow;
       out->v1 = interp3p(v1->v1_w*v1->oow,v2->v1_w*v2->oow,v3->v1_w*v3->oow,s1,s2)/oow;
       */
-   free(line);
 }
 
 static void CalculateLOD(VERTEX *v, int n)

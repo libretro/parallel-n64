@@ -345,33 +345,32 @@ static void uc9_light(void)
    int use_material = (csrs != 0x0ff0);
    tdest >>= 1;
    FRDP ("uc9:light n: %d, colsrs: %04lx, normales: %04lx, coldst: %04lx, texdst: %04lx\n", num, csrs, nsrs, cdest, tdest);
-   VERTEX *v = (VERTEX*)malloc(sizeof(VERTEX));
+   VERTEX v;
 
    for (i = 0; i < num; i++)
    {
-      v->vec[0] = ((int8_t*)gfx.DMEM)[(nsrs++)^3];
-      v->vec[1] = ((int8_t*)gfx.DMEM)[(nsrs++)^3];
-      v->vec[2] = ((int8_t*)gfx.DMEM)[(nsrs++)^3];
-      calc_sphere (v);
+      v.vec[0] = ((int8_t*)gfx.DMEM)[(nsrs++)^3];
+      v.vec[1] = ((int8_t*)gfx.DMEM)[(nsrs++)^3];
+      v.vec[2] = ((int8_t*)gfx.DMEM)[(nsrs++)^3];
+      calc_sphere (&v);
       //    calc_linear (&v);
-      NormalizeVector (v->vec);
-      calc_light (v);
-      v->a = 0xFF;
+      NormalizeVector (v.vec);
+      calc_light(&v);
+      v.a = 0xFF;
       if (use_material)
       {
-         v->r = (uint8_t)(((uint32_t)v->r * gfx.DMEM[(csrs++)^3]) >> 8);
-         v->g = (uint8_t)(((uint32_t)v->g * gfx.DMEM[(csrs++)^3]) >> 8);
-         v->b = (uint8_t)(((uint32_t)v->b * gfx.DMEM[(csrs++)^3]) >> 8);
-         v->a = gfx.DMEM[(csrs++)^3];
+         v.r = (uint8_t)(((uint32_t)v.r * gfx.DMEM[(csrs++)^3]) >> 8);
+         v.g = (uint8_t)(((uint32_t)v.g * gfx.DMEM[(csrs++)^3]) >> 8);
+         v.b = (uint8_t)(((uint32_t)v.b * gfx.DMEM[(csrs++)^3]) >> 8);
+         v.a = gfx.DMEM[(csrs++)^3];
       }
-      gfx.DMEM[(cdest++)^3] = v->r;
-      gfx.DMEM[(cdest++)^3] = v->g;
-      gfx.DMEM[(cdest++)^3] = v->b;
-      gfx.DMEM[(cdest++)^3] = v->a;
-      ((int16_t*)gfx.DMEM)[(tdest++)^1] = (int16_t)v->ou;
-      ((int16_t*)gfx.DMEM)[(tdest++)^1] = (int16_t)v->ov;
+      gfx.DMEM[(cdest++)^3] = v.r;
+      gfx.DMEM[(cdest++)^3] = v.g;
+      gfx.DMEM[(cdest++)^3] = v.b;
+      gfx.DMEM[(cdest++)^3] = v.a;
+      ((int16_t*)gfx.DMEM)[(tdest++)^1] = (int16_t)v.ou;
+      ((int16_t*)gfx.DMEM)[(tdest++)^1] = (int16_t)v.ov;
    }
-   free(v);
 }
 
 static void uc9_mtxtrnsp(void)

@@ -593,19 +593,18 @@ int SwapTextureBuffer(void)
    if (!rdp.tbuff_tex)
       return false;
    LRDP("SwapTextureBuffer.");
-   COLOR_IMAGE *ci = (COLOR_IMAGE*)malloc(sizeof(COLOR_IMAGE));
-   ci->addr = rdp.tbuff_tex->addr;
-   ci->format = rdp.tbuff_tex->format;
-   ci->width = rdp.tbuff_tex->width;
-   ci->height = rdp.tbuff_tex->height;
-   ci->size = 2;
-   ci->status = ci_main;
-   ci->changed = false;
-   TBUFF_COLOR_IMAGE * texbuf = AllocateTextureBuffer(ci);
+   COLOR_IMAGE ci;
+   ci.addr = rdp.tbuff_tex->addr;
+   ci.format = rdp.tbuff_tex->format;
+   ci.width = rdp.tbuff_tex->width;
+   ci.height = rdp.tbuff_tex->height;
+   ci.size = 2;
+   ci.status = ci_main;
+   ci.changed = false;
+   TBUFF_COLOR_IMAGE * texbuf = AllocateTextureBuffer(&ci);
    if (!texbuf)
    {
       LRDP("Failed!\n");
-      free(ci);
       return false;
    }
    TexBufSetupCombiner(false);
@@ -660,7 +659,6 @@ int SwapTextureBuffer(void)
    if (settings.fog && (rdp.flags & FOG_ENABLED))
       grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
    LRDP("SwapTextureBuffer draw, OK\n");
-   free(ci);
    return true;
 }
 

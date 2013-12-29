@@ -741,33 +741,28 @@ static void uc6_bg (bool bg_1cyc)
   }
   FRDP ("%s #%d, #%d\n", strFuncName, rdp.tri_n, rdp.tri_n+1);
 
-  DRAWIMAGE *d = (DRAWIMAGE*)malloc(sizeof(DRAWIMAGE));
-  uc6_read_background_data(d, bg_1cyc);
+  DRAWIMAGE d;
+  uc6_read_background_data(&d, bg_1cyc);
 
 #ifdef HAVE_HWFBE
-  if (fb_hwfbe_enabled && FindTextureBuffer(d->imagePtr, d->imageW))
+  if (fb_hwfbe_enabled && FindTextureBuffer(d.imagePtr, d.imageW))
   {
     DrawHiresImage(d, false);
-    free(d);
     return;
   }
 #endif
 
   if (settings.ucode == ucode_F3DEX2 || (settings.hacks&hack_PPL))
   {
-    if ( (d->imagePtr != rdp.cimg) && (d->imagePtr != rdp.ocimg) && d->imagePtr) //can't draw from framebuffer
-      DrawImage (d);
+    if ( (d.imagePtr != rdp.cimg) && (d.imagePtr != rdp.ocimg) && d.imagePtr) //can't draw from framebuffer
+      DrawImage(&d);
     else
     {
       FRDP("%s skipped\n", strFuncName);
     }
   }
   else
-  {
-    DrawImage (d);
-  }
-
-  free(d);
+    DrawImage (&d);
 }
 
 static void uc6_bg_1cyc ()
@@ -1019,42 +1014,40 @@ static void uc6_obj_rectangle ()
 {
    int i;
   LRDP ("uc6:obj_rectangle ");
-  DRAWOBJECT *d = (DRAWOBJECT*)malloc(sizeof(DRAWOBJECT));
-  uc6_read_object_data(d);
+  DRAWOBJECT d;
+  uc6_read_object_data(&d);
 
-  if (d->imageAdrs > 4096)
+  if (d.imageAdrs > 4096)
   {
-    FRDP("tmem: %08lx is out of bounds! return\n", d->imageAdrs);
-    free(d);
+    FRDP("tmem: %08lx is out of bounds! return\n", d.imageAdrs);
     return;
   }
   if (!rdp.s2dex_tex_loaded)
   {
     LRDP("Texture was not loaded! return\n");
-    free(d);
     return;
   }
 
-  uc6_init_tile(d);
+  uc6_init_tile(&d);
 
-  float Z = set_sprite_combine_mode ();
+  float Z = set_sprite_combine_mode();
 
-  float ul_x = d->objX;
-  float lr_x = d->objX + d->imageW/d->scaleW;
-  float ul_y = d->objY;
-  float lr_y = d->objY + d->imageH/d->scaleH;
+  float ul_x = d.objX;
+  float lr_x = d.objX + d.imageW / d.scaleW;
+  float ul_y = d.objY;
+  float lr_y = d.objY + d.imageH / d.scaleH;
   float ul_u, ul_v;
   float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
   float lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
 
-  if (d->imageFlags&0x01) //flipS
+  if (d.imageFlags & 0x01) //flipS
   {
     ul_u = lr_u;
     lr_u = 0.5f;
   }
   else
     ul_u = 0.5f;
-  if (d->imageFlags&0x10) //flipT
+  if (d.imageFlags & 0x10) //flipT
   {
     ul_v = lr_v;
     lr_v = 0.5f;
@@ -1077,35 +1070,34 @@ static void uc6_obj_rectangle ()
   }
 
   uc6_draw_polygons (v);
-  free(d);
 }
 
 static void uc6_obj_sprite ()
 {
    int i;
   LRDP ("uc6:obj_sprite ");
-  DRAWOBJECT *d = (DRAWOBJECT*)malloc(sizeof(DRAWOBJECT));
-  uc6_read_object_data(d);
-  uc6_init_tile(d);
+  DRAWOBJECT d;
+  uc6_read_object_data(&d);
+  uc6_init_tile(&d);
 
   float Z = set_sprite_combine_mode ();
 
-  float ul_x = d->objX;
-  float lr_x = d->objX + d->imageW/d->scaleW;
-  float ul_y = d->objY;
-  float lr_y = d->objY + d->imageH/d->scaleH;
+  float ul_x = d.objX;
+  float lr_x = d.objX + d.imageW / d.scaleW;
+  float ul_y = d.objY;
+  float lr_y = d.objY + d.imageH / d.scaleH;
   float ul_u, ul_v;
   float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
   float lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
 
-  if (d->imageFlags&0x01) //flipS
+  if (d.imageFlags & 0x01) //flipS
   {
     ul_u = lr_u;
     lr_u = 0.5f;
   }
   else
     ul_u = 0.5f;
-  if (d->imageFlags&0x10) //flipT
+  if (d.imageFlags & 0x10) //flipT
   {
     ul_v = lr_v;
     lr_v = 0.5f;
@@ -1132,7 +1124,6 @@ static void uc6_obj_sprite ()
   }
 
   uc6_draw_polygons (v);
-  free(d);
 }
 
 static void uc6_obj_movemem ()
@@ -1242,41 +1233,40 @@ static void uc6_obj_rectangle_r(void)
 {
    int i;
    LRDP ("uc6:obj_rectangle_r ");
-   DRAWOBJECT *d = (DRAWOBJECT*)malloc(sizeof(DRAWOBJECT));
-   uc6_read_object_data(d);
+   DRAWOBJECT d;
+   uc6_read_object_data(&d);
 
-   if (d->imageFmt == 1 && (settings.hacks&hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
+   if (d.imageFmt == 1 && (settings.hacks&hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
    {
-      float ul_x = d->objX/mat_2d.BaseScaleX + mat_2d.X;
-      float lr_x = (d->objX + d->imageW/d->scaleW)/mat_2d.BaseScaleX + mat_2d.X;
-      float ul_y = d->objY/mat_2d.BaseScaleY + mat_2d.Y;
-      float lr_y = (d->objY + d->imageH/d->scaleH)/mat_2d.BaseScaleY + mat_2d.Y;
+      float ul_x = d.objX/mat_2d.BaseScaleX + mat_2d.X;
+      float lr_x = (d.objX + d.imageW / d.scaleW) / mat_2d.BaseScaleX + mat_2d.X;
+      float ul_y = d.objY / mat_2d.BaseScaleY + mat_2d.Y;
+      float lr_y = (d.objY + d.imageH / d.scaleH) / mat_2d.BaseScaleY + mat_2d.Y;
       uc6_DrawYUVImageToFrameBuffer((uint16_t)ul_x, (uint16_t)ul_y, (uint16_t)lr_x, (uint16_t)lr_y);
       rdp.tri_n += 2;
-      free(d);
       return;
    }
 
-   uc6_init_tile(d);
+   uc6_init_tile(&d);
 
    float Z = set_sprite_combine_mode ();
 
-   float ul_x = d->objX/mat_2d.BaseScaleX;
-   float lr_x = (d->objX + d->imageW/d->scaleW)/mat_2d.BaseScaleX;
-   float ul_y = d->objY/mat_2d.BaseScaleY;
-   float lr_y = (d->objY + d->imageH/d->scaleH)/mat_2d.BaseScaleY;
+   float ul_x = d.objX / mat_2d.BaseScaleX;
+   float lr_x = (d.objX + d.imageW / d.scaleW) / mat_2d.BaseScaleX;
+   float ul_y = d.objY / mat_2d.BaseScaleY;
+   float lr_y = (d.objY + d.imageH / d.scaleH) / mat_2d.BaseScaleY;
    float ul_u, ul_v;
-   float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
-   float lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
+   float lr_u = 255.0f * rdp.cur_cache[0]->scale_x;
+   float lr_v = 255.0f * rdp.cur_cache[0]->scale_y;
 
-   if (d->imageFlags&0x01) //flipS
+   if (d.imageFlags & 0x01) //flipS
    {
       ul_u = lr_u;
       lr_u = 0.5f;
    }
    else
       ul_u = 0.5f;
-   if (d->imageFlags&0x10) //flipT
+   if (d.imageFlags&0x10) //flipT
    {
       ul_v = lr_v;
       lr_v = 0.5f;
@@ -1301,7 +1291,6 @@ static void uc6_obj_rectangle_r(void)
    }
 
    uc6_draw_polygons (v);
-   free(d);
 }
 
 static void uc6_obj_loadtxtr(void)
@@ -1424,17 +1413,17 @@ void uc6_sprite2d(void)
 
    FRDP ("uc6:uc6_sprite2d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
    uint32_t addr = segoffset(rdp.cmd1) >> 1;
-   DRAWIMAGE *d = (DRAWIMAGE*)malloc(sizeof(DRAWIMAGE));
+   DRAWIMAGE d;
 
-   d->imagePtr    = segoffset(((uint32_t*)gfx.RDRAM)[(addr+0)>>1]);       // 0,1
+   d.imagePtr    = segoffset(((uint32_t*)gfx.RDRAM)[(addr+0)>>1]);       // 0,1
    uint16_t stride = (((uint16_t *)gfx.RDRAM)[(addr+4)^1]);      // 4
-   d->imageW      = (((uint16_t *)gfx.RDRAM)[(addr+5)^1]);        // 5
-   d->imageH      = (((uint16_t *)gfx.RDRAM)[(addr+6)^1]);        // 6
-   d->imageFmt    = ((uint8_t *)gfx.RDRAM)[(((addr+7)<<1)+0)^3];  // 7
-   d->imageSiz    = ((uint8_t *)gfx.RDRAM)[(((addr+7)<<1)+1)^3];  // |
-   d->imagePal    = 0;
-   d->imageX      = (((uint16_t *)gfx.RDRAM)[(addr+8)^1]);        // 8
-   d->imageY      = (((uint16_t *)gfx.RDRAM)[(addr+9)^1]);        // 9
+   d.imageW      = (((uint16_t *)gfx.RDRAM)[(addr+5)^1]);        // 5
+   d.imageH      = (((uint16_t *)gfx.RDRAM)[(addr+6)^1]);        // 6
+   d.imageFmt    = ((uint8_t *)gfx.RDRAM)[(((addr+7)<<1)+0)^3];  // 7
+   d.imageSiz    = ((uint8_t *)gfx.RDRAM)[(((addr+7)<<1)+1)^3];  // |
+   d.imagePal    = 0;
+   d.imageX      = (((uint16_t *)gfx.RDRAM)[(addr+8)^1]);        // 8
+   d.imageY      = (((uint16_t *)gfx.RDRAM)[(addr+9)^1]);        // 9
    uint32_t tlut         = ((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1];      // 2, 3
    //low-level implementation of sprite2d apparently calls setothermode command to set tlut mode
    //However, description of sprite2d microcode just says that
@@ -1445,7 +1434,7 @@ void uc6_sprite2d(void)
    if (tlut)
    {
       load_palette (segoffset(tlut), 0, 256);
-      if (d->imageFmt > 0)
+      if (d.imageFmt > 0)
          rdp.tlut_mode = 2;
       else
          rdp.tlut_mode = 0;
@@ -1453,28 +1442,25 @@ void uc6_sprite2d(void)
    else
       rdp.tlut_mode = 0;
 
-   if (d->imageW == 0)
-   {
-      free(d);
-      return;//     d->imageW = stride;
-   }
+   if (d.imageW == 0)
+      return;//     d.imageW = stride;
 
    cmd0 = ((uint32_t*)gfx.RDRAM)[a>>2]; //check next command
-   while (1)
+   do
    {
       if ( (cmd0>>24) == 0xBE )
       {
          uint32_t cmd1 = ((uint32_t*)gfx.RDRAM)[(a>>2)+1];
          rdp.pc[rdp.pc_i] = (a+8) & BMASK;
 
-         d->scaleX  = ((cmd1>>16)&0xFFFF)/1024.0f;
-         d->scaleY  = (cmd1&0xFFFF)/1024.0f;
+         d.scaleX  = ((cmd1>>16)&0xFFFF)/1024.0f;
+         d.scaleY  = (cmd1&0xFFFF)/1024.0f;
          //the code below causes wrong background height in super robot spirit, so it is disabled->
          //need to find, for which game this hack was made
          //if( (cmd1&0xFFFF) < 0x100 )
-         //  d->scaleY = d->scaleX;
-         d->flipX = (uint8_t)((cmd0>>8)&0xFF);
-         d->flipY = (uint8_t)(cmd0&0xFF);
+         //  d.scaleY = d.scaleX;
+         d.flipX = (uint8_t)((cmd0>>8)&0xFF);
+         d.flipY = (uint8_t)(cmd0&0xFF);
 
          a = rdp.pc[rdp.pc_i] & BMASK;
          rdp.pc[rdp.pc_i] = (a+8) & BMASK;
@@ -1484,72 +1470,72 @@ void uc6_sprite2d(void)
       {
          uint32_t cmd1 = ((uint32_t*)gfx.RDRAM)[(a>>2)+1];
 
-         d->frameX  = ((int16_t)((cmd1>>16)&0xFFFF)) / 4.0f;
-         d->frameY  = ((int16_t)(cmd1&0xFFFF)) / 4.0f;
-         d->frameW    = (uint16_t) (d->imageW / d->scaleX);
-         d->frameH    = (uint16_t) (d->imageH / d->scaleY);
+         d.frameX  = ((int16_t)((cmd1>>16)&0xFFFF)) / 4.0f;
+         d.frameY  = ((int16_t)(cmd1&0xFFFF)) / 4.0f;
+         d.frameW    = (uint16_t) (d.imageW / d.scaleX);
+         d.frameH    = (uint16_t) (d.imageH / d.scaleY);
          if (settings.hacks&hack_WCWnitro)
          {
-            int scaleY = (int)d->scaleY;
-            d->imageH        /= scaleY;
-            d->imageY        /= scaleY;
+            int scaleY = (int)d.scaleY;
+            d.imageH        /= scaleY;
+            d.imageY        /= scaleY;
             stride      *= scaleY;
-            d->scaleY        = 1.0f;
+            d.scaleY        = 1.0f;
          }
-         FRDP ("imagePtr: %08lx\n", d->imagePtr);
-         FRDP ("frameX: %f, frameW: %d, frameY: %f, frameH: %d\n", d->frameX, d->frameW, d->frameY, d->frameH);
-         FRDP ("imageX: %d, imageW: %d, imageY: %d, imageH: %d\n", d->imageX, d->imageW, d->imageY, d->imageH);
-         FRDP ("imageFmt: %d, imageSiz: %d, imagePal: %d, imageStride: %d\n", d->imageFmt, d->imageSiz, d->imagePal, stride);
-         FRDP ("scaleX: %f, scaleY: %f\n", d->scaleX, d->scaleY);
+#ifndef NDEBUG
+         FRDP ("imagePtr: %08lx\n", d.imagePtr);
+         FRDP ("frameX: %f, frameW: %d, frameY: %f, frameH: %d\n", d.frameX, d.frameW, d.frameY, d.frameH);
+         FRDP ("imageX: %d, imageW: %d, imageY: %d, imageH: %d\n", d.imageX, d.imageW, d.imageY, d.imageH);
+         FRDP ("imageFmt: %d, imageSiz: %d, imagePal: %d, imageStride: %d\n", d.imageFmt, d.imageSiz, d.imagePal, stride);
+         FRDP ("scaleX: %f, scaleY: %f\n", d.scaleX, d.scaleY);
+#endif
       }
       else
-      {
-         free(d);
          return;
-      }
 
-      const uint32_t texsize = (d->imageW * d->imageH) << d->imageSiz >> 1;
+      const uint32_t texsize = (d.imageW * d.imageH) << d.imageSiz >> 1;
       const uint32_t maxTexSize = rdp.tlut_mode < 2 ? 4096 : 2048;
 
       if (texsize > maxTexSize)
       {
-         if (d->scaleX != 1)
-            d->scaleX *= (float)stride/(float)d->imageW;
-         d->imageW  = stride;
-         d->imageH  += d->imageY;
-         DrawImage (d);
+         if (d.scaleX != 1)
+            d.scaleX *= (float)stride / (float)d.imageW;
+         d.imageW  = stride;
+         d.imageH  += d.imageY;
+         DrawImage (&d);
       }
       else
       {
-         uint16_t line = d->imageW;
-         if (line & 7) line += 8;  // round up
+         uint16_t line = d.imageW;
+         if (line & 7)
+            line += 8;  // round up
          line >>= 3;
-         if (d->imageSiz == 0)
+         if (d.imageSiz == 0)
          {
             if (line%2)
                line++;
             line >>= 1;
          }
          else
-            line <<= (d->imageSiz-1);
+            line <<= (d.imageSiz-1);
 
          if (line == 0)
             line = 1;
 
-         rdp.timg.addr = d->imagePtr;
+         rdp.timg.addr = d.imagePtr;
          rdp.timg.width = stride;
          rdp.tiles[7].t_mem = 0;
-         rdp.tiles[7].line = line;//(d->imageW>>3);
-         rdp.tiles[7].size = d->imageSiz;
-         rdp.cmd0 = (d->imageX << 14) | (d->imageY << 2);
-         rdp.cmd1 = 0x07000000 | ((d->imageX+d->imageW-1) << 14) | ((d->imageY+d->imageH-1) << 2);
+         rdp.tiles[7].line = line;//(d.imageW>>3);
+         rdp.tiles[7].size = d.imageSiz;
+         rdp.cmd0 = (d.imageX << 14) | (d.imageY << 2);
+         rdp.cmd1 = 0x07000000 | ((d.imageX + d.imageW-1) << 14) | ((d.imageY + d.imageH-1) << 2);
          rdp_loadtile ();
 
          // SetTile ()
          TILE *tile = &rdp.tiles[0];
-         tile->format = d->imageFmt;
-         tile->size = d->imageSiz;
-         tile->line = line;//(d->imageW>>3);
+         tile->format = d.imageFmt;
+         tile->size = d.imageSiz;
+         tile->line = line;//(d.imageW>>3);
          tile->t_mem = 0;
          tile->palette = 0;
          tile->clamp_t = 1;
@@ -1562,33 +1548,33 @@ void uc6_sprite2d(void)
          tile->shift_s = 0;
 
          // SetTileSize ()
-         rdp.tiles[0].ul_s = d->imageX;
-         rdp.tiles[0].ul_t = d->imageY;
-         rdp.tiles[0].lr_s = d->imageX+d->imageW-1;
-         rdp.tiles[0].lr_t = d->imageY+d->imageH-1;
+         rdp.tiles[0].ul_s = d.imageX;
+         rdp.tiles[0].ul_t = d.imageY;
+         rdp.tiles[0].lr_s = d.imageX + d.imageW-1;
+         rdp.tiles[0].lr_t = d.imageY + d.imageH-1;
 
          float Z = set_sprite_combine_mode ();
 
          float ul_x, ul_y, lr_x, lr_y;
-         if (d->flipX)
+         if (d.flipX)
          {
-            ul_x = d->frameX + d->frameW;
-            lr_x = d->frameX;
+            ul_x = d.frameX + d.frameW;
+            lr_x = d.frameX;
          }
          else
          {
-            ul_x = d->frameX;
-            lr_x = d->frameX + d->frameW;
+            ul_x = d.frameX;
+            lr_x = d.frameX + d.frameW;
          }
-         if (d->flipY)
+         if (d.flipY)
          {
-            ul_y = d->frameY + d->frameH;
-            lr_y = d->frameY;
+            ul_y = d.frameY + d.frameH;
+            lr_y = d.frameY;
          }
          else
          {
-            ul_y = d->frameY;
-            lr_y = d->frameY + d->frameH;
+            ul_y = d.frameY;
+            lr_y = d.frameY + d.frameH;
          }
 
          float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
@@ -1597,9 +1583,9 @@ void uc6_sprite2d(void)
          // Make the vertices
          VERTEX v[4] = {
             {ul_x, ul_y, Z, 1, 0.5f, 0.5f },
-         {lr_x, ul_y, Z, 1, lr_u, 0.5f },
-         {ul_x, lr_y, Z, 1, 0.5f, lr_v },
-         {lr_x, lr_y, Z, 1, lr_u, lr_v }
+            {lr_x, ul_y, Z, 1, lr_u, 0.5f },
+            {ul_x, lr_y, Z, 1, 0.5f, lr_v },
+            {lr_x, lr_y, Z, 1, lr_u, lr_v }
          };
 
          for (i = 0; i < 4; i++)
@@ -1641,12 +1627,6 @@ void uc6_sprite2d(void)
       if (( (cmd0>>24) == 0xBD ) || ( (cmd0>>24) == 0xBE ))
          rdp.pc[rdp.pc_i] = (a+8) & BMASK;
       else
-      {
-         free(d);
          return;
-      }
-   }
-   
-   if (d)
-      free(d);
+   }while(1);
 }
