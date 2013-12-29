@@ -680,11 +680,11 @@ static void render_rectangle(int texture_number,
    data[4]   =     ((int)dst_x);                             //X 1
    data[5]   =     invert*-((int)dst_y + (int)src_height);   //Y 1
    data[6]   =     0.0f;                                     //U 1
-   data[7]   =     (float)src_height / (float)tex_height;    //V 1
+   data[7]   =     (float)src_height;                        //V 1
    data[8]   =     ((int)dst_x + (int)src_width);
    data[9]  =     invert*-((int)dst_y + (int)src_height);
-   data[10]  =     (float)src_width / (float)tex_width;
-   data[11]  =     (float)src_height / (float)tex_height;
+   data[10]  =     (float)src_width;
+   data[11]  =     (float)src_height;
    data[12]  =     ((int)dst_x);
    data[13]  =     invert*-((int)dst_y);
    data[14]  =     0.0f;
@@ -1009,36 +1009,10 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
    unsigned int i,j;
    uint16_t *frameBuffer = (uint16_t*)src_data;
    int texture_number;
-   unsigned int tex_width = 1, tex_height = 1;
    LOG("grLfbWriteRegion(%d,%d,%d,%d,%d,%d,%d,%d)\r\n",dst_buffer, dst_x, dst_y, src_format, src_width, src_height, pixelPipeline, src_stride);
-
-   //glPushAttrib(GL_ALL_ATTRIB_BITS);
-
-   while (tex_width < src_width) tex_width <<= 1;
-   while (tex_height < src_height) tex_height <<= 1;
-
-   switch(dst_buffer)
-   {
-      case GR_BUFFER_BACKBUFFER:
-         //glDrawBuffer(GL_BACK);
-         break;
-      case GR_BUFFER_AUXBUFFER:
-         //glDrawBuffer(current_buffer);
-         break;
-      default:
-         DISPLAY_WARNING("grLfbWriteRegion : unknown buffer : %x", dst_buffer);
-   }
 
    if(dst_buffer == GR_BUFFER_AUXBUFFER)
    {
-#ifndef NDEBUG
-      if (src_format != GR_LFBWRITEMODE_ZA16)
-         DISPLAY_WARNING("unknown depth buffer write format:%x", src_format);
-#endif
-
-      if(dst_x || dst_y)
-         DISPLAY_WARNING("dst_x:%d, dst_y:%d\n",dst_x, dst_y);
-
       for (j=0; j<src_height; j++)
          for (i=0; i<src_width; i++)
             buf[j * src_width+i] = (frameBuffer[(src_height-j-1)*(src_stride/2)+i]/(65536.0f*(2.0f/zscale)))+1-zscale/2.0f;
@@ -1057,53 +1031,22 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
       glActiveTexture(texture_number);
 
       const unsigned int half_stride = src_stride / 2;
-      switch(src_format)
+
+      /* src_format is GR_LFBWRITEMODE_555 */
+      for (j=0; j<src_height; j++)
       {
-         case GR_LFB_SRC_FMT_1555:
-            for (j=0; j<src_height; j++)
-            {
-               for (i=0; i<src_width; i++)
-               {
-                  const unsigned int col = frameBuffer[j*half_stride+i];
-                  buf[j*tex_width*4+i*4+0]=((col>>10)&0x1F)<<3;
-                  buf[j*tex_width*4+i*4+1]=((col>>5)&0x1F)<<3;
-                  buf[j*tex_width*4+i*4+2]=((col>>0)&0x1F)<<3;
-                  buf[j*tex_width*4+i*4+3]= (col>>15) ? 0xFF : 0;
-               }
-            }
-            break;
-         case GR_LFBWRITEMODE_555:
-            for (j=0; j<src_height; j++)
-            {
-               for (i=0; i<src_width; i++)
-               {
-                  const unsigned int col = frameBuffer[j*half_stride+i];
-                  buf[j*tex_width*4+i*4+0]=((col>>10)&0x1F)<<3;
-                  buf[j*tex_width*4+i*4+1]=((col>>5)&0x1F)<<3;
-                  buf[j*tex_width*4+i*4+2]=((col>>0)&0x1F)<<3;
-                  buf[j*tex_width*4+i*4+3]=0xFF;
-               }
-            }
-            break;
-         case GR_LFBWRITEMODE_565:
-            for (j=0; j<src_height; j++)
-            {
-               for (i=0; i<src_width; i++)
-               {
-                  const unsigned int col = frameBuffer[j*half_stride+i];
-                  buf[j*tex_width*4+i*4+0]=((col>>11)&0x1F)<<3;
-                  buf[j*tex_width*4+i*4+1]=((col>>5)&0x3F)<<2;
-                  buf[j*tex_width*4+i*4+2]=((col>>0)&0x1F)<<3;
-                  buf[j*tex_width*4+i*4+3]=0xFF;
-               }
-            }
-            break;
-         default:
-            DISPLAY_WARNING("grLfbWriteRegion : unknown format : %d", src_format);
+         for (i=0; i<src_width; i++)
+         {
+            const unsigned int col = frameBuffer[j*half_stride+i];
+            buf[j*src_width*4+i*4+0]=((col>>10)&0x1F)<<3;
+            buf[j*src_width*4+i*4+1]=((col>>5)&0x1F)<<3;
+            buf[j*src_width*4+i*4+2]=((col>>0)&0x1F)<<3;
+            buf[j*src_width*4+i*4+3]=0xFF;
+         }
       }
 
       glBindTexture(GL_TEXTURE_2D, default_texture);
-      glTexSubImage2D(GL_TEXTURE_2D, 0, 4, tex_width, tex_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+      glTexSubImage2D(GL_TEXTURE_2D, 0, 4, src_width, src_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 
       set_copy_shader();
 
@@ -1112,11 +1055,9 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
       render_rectangle(texture_number,
             dst_x, dst_y,
             src_width,  src_height,
-            tex_width,  tex_height, +1);
+            src_width,  src_height, +1);
 
    }
-   //glDrawBuffer(current_buffer);
-   //glPopAttrib();
    return FXTRUE;
 }
 
