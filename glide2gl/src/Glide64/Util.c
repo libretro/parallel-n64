@@ -44,6 +44,7 @@
 #include "3dmath.h"
 #include "TexCache.h"
 #include "DepthBufferRender.h"
+#include "GBI.h"
 
 #define Vj rdp.vtxbuf2[j]
 #define Vi rdp.vtxbuf2[i]
