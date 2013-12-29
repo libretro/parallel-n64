@@ -36,6 +36,7 @@
 // * Do NOT send me the whole project or file that you modified.  Take out your modified code sections, and tell me where to put them.  If people sent the whole thing, I would have many different versions, but no idea how to combine them all.
 //
 //****************************************************************
+#include "GBI.h"
 
 #define ucode_Fast3D 0
 #define ucode_F3DEX 1
@@ -120,7 +121,7 @@ static void rsp_vertex(int v0, int n)
       if (v->w < 0.1f) v->scr_off |= 16;
       //    if (v->z_w > 1.0f) v->scr_off |= 32;
 
-      if (rdp.geom_mode & 0x00020000)
+      if (rdp.geom_mode & G_LIGHTING)
       {
          v->vec[0] = ((int8_t*)gfx.RDRAM)[(addr+i + 12)^3];
          v->vec[1] = ((int8_t*)gfx.RDRAM)[(addr+i + 13)^3];
@@ -400,7 +401,7 @@ static void uc0_movemem()
          }
          break;
 
-      case 0x82:
+      case G_MV_LOOKATY:
          {
             a = segoffset(rdp.cmd1) & 0x00ffffff;
             int8_t dir_x = ((int8_t*)gfx.RDRAM)[(a+8)^3];
@@ -417,7 +418,7 @@ static void uc0_movemem()
          }
          break;
 
-      case 0x84:
+      case G_MV_LOOKATX:
          a = segoffset(rdp.cmd1) & 0x00ffffff;
          rdp.lookat[0][0] = (float)(((int8_t*)gfx.RDRAM)[(a+8)^3]) / 127.0f;
          rdp.lookat[0][1] = (float)(((int8_t*)gfx.RDRAM)[(a+9)^3]) / 127.0f;
@@ -426,16 +427,16 @@ static void uc0_movemem()
          FRDP("lookat_x (%f, %f, %f)\n", rdp.lookat[1][0], rdp.lookat[1][1], rdp.lookat[1][2]);
          break;
 
-      case 0x86:
-      case 0x88:
-      case 0x8a:
-      case 0x8c:
-      case 0x8e:
-      case 0x90:
-      case 0x92:
-      case 0x94:
+      case G_MV_L0:
+      case G_MV_L1:
+      case G_MV_L2:
+      case G_MV_L3:
+      case G_MV_L4:
+      case G_MV_L5:
+      case G_MV_L6:
+      case G_MV_L7:
          // Get the light #
-         i = (((rdp.cmd0 >> 16) & 0xff) - 0x86) >> 1;
+         i = (((rdp.cmd0 >> 16) & 0xff) - G_MV_L0) >> 1;
          a = segoffset(rdp.cmd1) & 0x00ffffff;
 
          // Get the data
@@ -458,7 +459,7 @@ static void uc0_movemem()
          break;
 
 
-      case 0x9E:  //gSPForceMatrix command. Modification of uc2_movemem:matrix. Gonetz.
+      case G_MV_MATRIX_1:  //gSPForceMatrix command. Modification of uc2_movemem:matrix. Gonetz.
          {
             // do not update the combined matrix!
             rdp.update &= ~UPDATE_MULT_MAT;
@@ -479,17 +480,17 @@ static void uc0_movemem()
          break;
 
          //next 3 command should never appear since they will be skipped in previous command
-      case 0x98:
+      case G_MV_MATRIX_2:
          RDP_E ("uc0:movemem matrix 0 - ERROR!\n");
          LRDP("matrix 0 - IGNORED\n");
          break;
 
-      case 0x9A:
+      case G_MV_MATRIX_3:
          RDP_E ("uc0:movemem matrix 1 - ERROR!\n");
          LRDP("matrix 1 - IGNORED\n");
          break;
 
-      case 0x9C:
+      case G_MV_MATRIX_4:
          RDP_E ("uc0:movemem matrix 2 - ERROR!\n");
          LRDP("matrix 2 - IGNORED\n");
          break;
@@ -521,7 +522,7 @@ static void uc0_displaylist()
 
    switch (push)
    {
-      case 0: // push
+      case G_DL_PUSH: // push
          if (rdp.pc_i >= 9)
          {
             RDP_E ("** DL stack overflow **");
@@ -532,7 +533,7 @@ static void uc0_displaylist()
          rdp.pc[rdp.pc_i] = addr;  // jump to the address
          break;
 
-      case 1: // no push
+      case G_DL_NOPUSH: // no push
          rdp.pc[rdp.pc_i] = addr;  // just jump to the address
          break;
 
@@ -658,7 +659,7 @@ static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
          uc6_obj_sprite();
          break;
 
-      case 0x10:    // RGBA
+      case G_MWO_POINT_RGBA:    // RGBA
          v->r = (uint8_t)(val >> 24);
          v->g = (uint8_t)((val >> 16) & 0xFF);
          v->b = (uint8_t)((val >> 8) & 0xFF);
@@ -668,7 +669,7 @@ static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
          FRDP ("RGBA: %d, %d, %d, %d\n", v->r, v->g, v->b, v->a);
          break;
 
-      case 0x14:    // ST
+      case G_MWO_POINT_ST:    // ST
          {
             float scale = rdp.Persp_en ? 0.03125f : 0.015625f;
             v->ou = (float)((int16_t)(val>>16)) * scale;
@@ -680,7 +681,7 @@ static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
                v->ou, v->ov);
          break;
 
-      case 0x18:    // XY screen
+      case G_MWO_POINT_XYSCREEN:    // XY screen
          {
             float scr_x = (float)((int16_t)(val>>16)) / 4.0f;
             float scr_y = (float)((int16_t)(val&0xFFFF)) / 4.0f;
@@ -706,7 +707,7 @@ static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
          }
          break;
 
-      case 0x1C:    // Z screen
+      case G_MWO_POINT_ZSCREEN:    // Z screen
          {
             float scr_z = (float)((int16_t)(val>>16));
             v->z_w = (scr_z - rdp.view_trans[2]) / rdp.view_scale[2];
@@ -731,12 +732,12 @@ static void uc0_moveword(void)
    // Find which command this is (lowest byte of cmd0)
    switch (rdp.cmd0 & 0xFF)
    {
-      case 0x00:
+      case G_MW_MATRIX:
          RDP_E ("uc0:moveword matrix - IGNORED\n");
          LRDP("matrix - IGNORED\n");
          break;
 
-      case 0x02:
+      case G_MW_NUMLIGHT:
          rdp.num_lights = ((rdp.cmd1 - 0x80000000) >> 5) - 1;  // inverse of equation
          if (rdp.num_lights > 8)
             rdp.num_lights = 0;
@@ -745,7 +746,7 @@ static void uc0_moveword(void)
          FRDP ("numlights: %d\n", rdp.num_lights);
          break;
 
-      case 0x04:
+      case G_MW_CLIP:
          if (((rdp.cmd0>>8)&0xFFFF) == 0x04)
          {
             rdp.clip_ratio = sqrt((float)rdp.cmd1);
@@ -754,13 +755,13 @@ static void uc0_moveword(void)
          FRDP ("clip %08lx, %08lx\n", rdp.cmd0, rdp.cmd1);
          break;
 
-      case 0x06:  // segment
+      case G_MW_SEGMENT:  // segment
          FRDP ("segment: %08lx -> seg%d\n", rdp.cmd1, (rdp.cmd0 >> 10) & 0x0F);
          if ((rdp.cmd1&BMASK)<BMASK)
             rdp.segment[(rdp.cmd0 >> 10) & 0x0F] = rdp.cmd1;
          break;
 
-      case 0x08:
+      case G_MW_FOG:
          {
             rdp.fog_multiplier = (int16_t)(rdp.cmd1 >> 16);
             rdp.fog_offset = (int16_t)(rdp.cmd1 & 0x0000FFFF);
@@ -768,7 +769,7 @@ static void uc0_moveword(void)
          }
          break;
 
-      case 0x0a:  // moveword LIGHTCOL
+      case G_MW_LIGHTCOL:  // moveword LIGHTCOL
          {
             int n = (rdp.cmd0&0xE000) >> 13;
             FRDP ("lightcol light:%d, %08lx\n", n, rdp.cmd1);
@@ -780,7 +781,7 @@ static void uc0_moveword(void)
          }
          break;
 
-      case 0x0c:
+      case G_MW_POINTS:
          {
             uint16_t val = (uint16_t)((rdp.cmd0 >> 8) & 0xFFFF);
             uint16_t vtx = val / 40;
@@ -790,7 +791,7 @@ static void uc0_moveword(void)
          }
          break;
 
-      case 0x0e:
+      case G_MW_PERSPNORM:
          LRDP("perspnorm - IGNORED\n");
          break;
 
@@ -894,16 +895,16 @@ static void uc0_setothermode_h(void)
       FRDP ("cycletype: %d\n", rdp.cycle_mode);
    }
 
-   if (mask & 0x00010000)  // LOD enable
+   if (mask & G_LOD)  // LOD enable
    {
-      rdp.LOD_en = (rdp.othermode_h & 0x00010000) ? true : false;
+      rdp.LOD_en = (rdp.othermode_h & G_LOD) ? true : false;
       FRDP ("LOD_en: %d\n", rdp.LOD_en);
    }
 
-   if (mask & 0x00080000)  // Persp enable
+   if (mask & G_TEXTURE_GEN_LINEAR)  // Persp enable
    {
       if (rdp.persp_supported)
-         rdp.Persp_en = (rdp.othermode_h & 0x00080000) ? true : false;
+         rdp.Persp_en = (rdp.othermode_h & G_TEXTURE_GEN_LINEAR) ? true : false;
       FRDP ("Persp_en: %d\n", rdp.Persp_en);
    }
 
@@ -976,7 +977,7 @@ static void uc0_setgeometrymode(void)
    rdp.geom_mode |= rdp.cmd1;
    FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", rdp.cmd1, rdp.geom_mode);
 
-   if (rdp.cmd1 & 0x00000001)  // Z-Buffer enable
+   if (rdp.cmd1 & G_ZBUFFER)  // Z-Buffer enable
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -1002,7 +1003,7 @@ static void uc0_setgeometrymode(void)
    }
 
    //Added by Gonetz
-   if (rdp.cmd1 & 0x00010000)      // Fog enable
+   if (rdp.cmd1 & G_FOG)      // Fog enable
    {
       if (!(rdp.flags & FOG_ENABLED))
       {
@@ -1018,7 +1019,7 @@ static void uc0_cleargeometrymode(void)
 
    rdp.geom_mode &= (~rdp.cmd1);
 
-   if (rdp.cmd1 & 0x00000001)  // Z-Buffer enable
+   if (rdp.cmd1 & G_ZBUFFER)  // Z-Buffer enable
    {
       if (rdp.flags & ZBUF_ENABLED)
       {
@@ -1044,7 +1045,7 @@ static void uc0_cleargeometrymode(void)
    }
 
    //Added by Gonetz
-   if (rdp.cmd1 & 0x00010000)      // Fog enable
+   if (rdp.cmd1 & G_FOG)      // Fog enable
    {
       if (rdp.flags & FOG_ENABLED)
       {
