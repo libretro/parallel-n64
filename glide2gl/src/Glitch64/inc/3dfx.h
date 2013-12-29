@@ -26,17 +26,12 @@
 /*
 ** basic data types
 */
-typedef unsigned char   FxU8;
-typedef signed   char   FxI8;
-typedef unsigned short  FxU16;
-typedef signed   short  FxI16;
-#if defined(__alpha__) || defined (__LP64__)
-typedef signed   int    FxI32;
-typedef unsigned int    FxU32;
-#else
-typedef signed   long   FxI32;
+typedef uint8_t FxU8;
+typedef int8_t  FxI8;
+typedef uint16_t  FxU16;
+typedef int16_t  FxI16;
+typedef int32_t   FxI32;
 typedef uint32_t   FxU32;
-#endif
 typedef uintptr_t   AnyPtr;
 typedef int             FxBool;
 typedef float           FxFloat;
@@ -57,7 +52,6 @@ typedef struct { float r, g, b, a; } FxColor4;
 /*
 ** helper macros
 */
-#define FXUNUSED( a ) ((void)(a))
 #define FXBIT( i )    ( 1L << (i) )
 
 /*
@@ -102,32 +96,6 @@ typedef struct { float r, g, b, a; } FxColor4;
 #  warning define FX_ENTRY & FX_CALL for your compiler
 #  define FX_ENTRY extern
 #  define FX_CALL
-#endif
-
-/*
-** x86 compiler specific stuff
-*/
-#if defined(__BORLANDC_)
-#  define REALMODE
-
-#  define REGW( a, b ) ((a).x.b)
-#  define REGB( a, b ) ((a).h.b)
-#  define INT86( a, b, c ) int86(a,b,c)
-#  define INT86X( a, b, c, d ) int86x(a,b,c,d)
-
-#  define RM_SEG( a ) FP_SEG( a )
-#  define RM_OFF( a ) FP_OFF( a )
-#elif defined(__WATCOMC__)
-#  undef FP_SEG
-#  undef FP_OFF
-
-#  define REGW( a, b ) ((a).w.b)
-#  define REGB( a, b ) ((a).h.b)
-#  define INT86( a, b, c ) int386(a,b,c)
-#  define INT86X( a, b, c, d ) int386x(a,b,c,d)
-
-#  define RM_SEG( a )  ( ( ( ( FxU32 ) (a) ) & 0x000F0000 ) >> 4 )
-#  define RM_OFF( a )  ( ( FxU16 ) (a) )
 #endif
 
 #endif /* !__3DFX_H__ */
