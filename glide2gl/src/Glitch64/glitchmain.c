@@ -173,7 +173,7 @@ grSstWinOpen(
    // ZIGGY
    // allocate static texture names
    // the initial value should be big enough to support the maximal resolution
-   free_texture = 32*2048*2048;
+   free_texture = 32*1024*1024;
    default_texture = free_texture++;
    color_texture = free_texture++;
    depth_texture = free_texture++;
