@@ -47,6 +47,7 @@
 #include "TexBuffer.h"
 #include "FBtoScreen.h"
 #include "CRC.h"
+#include "GBI.h"
 
 #ifdef __LIBRETRO__ // Prefix API
 #define VIDEO_TAG(X) glide64##X
@@ -3857,7 +3858,7 @@ static const uint32_t rdp_command_length[64] =
 static void rdphalf_1(void)
 {
    uint32_t cmd = rdp.cmd1 >> 24;
-   if (cmd >= 0xc8 && cmd <=0xcf) //triangle command
+   if (cmd >= G_TRI_FILL && cmd <= G_TRI_SHADE_TXTR_ZBUFF) //triangle command
    {
       LRDP("rdphalf_1 - lle triangle\n");
       rdp_cmd_ptr = 0;

@@ -339,11 +339,11 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 #endif
          v->uv_calculated = rdp.tex_ctr;
 
-         if (!(rdp.geom_mode & 0x00020000))
+         if (!(rdp.geom_mode & G_LIGHTING))
          {
-            if (!(rdp.geom_mode & 0x00000200))
+            if (!(rdp.geom_mode & UPDATE_SCISSOR))
             {
-               if (rdp.geom_mode & 0x00000004) // flat shading
+               if (rdp.geom_mode & G_SHADE) // flat shading
                {
                   int flag = min(2, (rdp.cmd1 >> 24) & 3);
                   v->a = vtx[flag]->a;
@@ -1340,7 +1340,7 @@ void render_tri (uint16_t linew, int old_interpolate)
    }
 
    //*
-   if ((rdp.clip & CLIP_ZMIN) && (rdp.othermode_l & 0x00000030))
+   if ((rdp.clip & CLIP_ZMIN) && (rdp.othermode_l & G_OBJLT_TLUT))
    {
 
       int to_render = false;
@@ -1567,44 +1567,44 @@ void update(void)
    {
       FRDP (" |- render_mode_changed zbuf - decal: %s, update: %s, compare: %s\n",
             str_yn[(rdp.othermode_l & 0x00000400)?1:0],
-            str_yn[(rdp.othermode_l&0x00000020)?1:0],
-            str_yn[(rdp.othermode_l&0x00000010)?1:0]);
+            str_yn[(rdp.othermode_l & UPDATE_BIASLEVEL)?1:0],
+            str_yn[(rdp.othermode_l & ALPHA_COMPARE)?1:0]);
 
       rdp.render_mode_changed &= ~0x00000C30;
       rdp.update |= UPDATE_ZBUF_ENABLED;
 
       // Update?
-      if ((rdp.othermode_l & 0x00000020))
+      if ((rdp.othermode_l & FORCE_BL))
          rdp.flags |= ZBUF_UPDATE;
       else
          rdp.flags &= ~ZBUF_UPDATE;
 
       // Compare?
-      if (rdp.othermode_l & 0x00000010)
+      if (rdp.othermode_l & ALPHA_COMPARE)
          rdp.flags |= ZBUF_COMPARE;
       else
          rdp.flags &= ~ZBUF_COMPARE;
    }
 
    // Alpha compare
-   if (rdp.render_mode_changed & 0x00001000)
+   if (rdp.render_mode_changed & CULL_FRONT)
    {
       FRDP (" |- render_mode_changed alpha compare - on: %s\n",
-            str_yn[(rdp.othermode_l&0x00001000)?1:0]);
-      rdp.render_mode_changed &= ~0x00001000;
+            str_yn[(rdp.othermode_l & CULL_FRONT)?1:0]);
+      rdp.render_mode_changed &= ~CULL_FRONT;
       rdp.update |= UPDATE_ALPHA_COMPARE;
 
-      if (rdp.othermode_l & 0x00001000)
+      if (rdp.othermode_l & CULL_FRONT)
          rdp.flags |= ALPHA_COMPARE;
       else
          rdp.flags &= ~ALPHA_COMPARE;
    }
 
-   if (rdp.render_mode_changed & 0x00002000) // alpha cvg sel
+   if (rdp.render_mode_changed & CULL_BACK) // alpha cvg sel
    {
       FRDP (" |- render_mode_changed alpha cvg sel - on: %s\n",
-            str_yn[(rdp.othermode_l&0x00002000)?1:0]);
-      rdp.render_mode_changed &= ~0x00002000;
+            str_yn[(rdp.othermode_l & CULL_BACK)?1:0]);
+      rdp.render_mode_changed &= ~CULL_BACK;
       rdp.update |= UPDATE_COMBINE;
       rdp.update |= UPDATE_ALPHA_COMPARE;
    }
@@ -1712,9 +1712,9 @@ void update(void)
          // already logged above
          rdp.update ^= UPDATE_ALPHA_COMPARE;
 
-         //	  if (rdp.acmp == 1 && !(rdp.othermode_l & 0x00002000) && !force_full_alpha)
-         //      if (rdp.acmp == 1 && !(rdp.othermode_l & 0x00002000) && (rdp.blend_color&0xFF))
-         if (rdp.acmp == 1 && !(rdp.othermode_l & 0x00002000) && (!(rdp.othermode_l & 0x00004000) || (rdp.blend_color&0xFF)))
+         //	  if (rdp.acmp == 1 && !(rdp.othermode_l & CULL_BACK) && !force_full_alpha)
+         //      if (rdp.acmp == 1 && !(rdp.othermode_l & CULL_BACK) && (rdp.blend_color&0xFF))
+         if (rdp.acmp == 1 && !(rdp.othermode_l & CULL_BACK) && (!(rdp.othermode_l & 0x00004000) || (rdp.blend_color&0xFF)))
          {
             uint8_t reference = (uint8_t)(rdp.blend_color&0xFF);
             grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER);

@@ -182,7 +182,7 @@ static void uc2_vertex(void)
       if (v->w < 0.1f) v->scr_off |= 16;
       //    if (v->z_w > 1.0f) v->scr_off |= 32;
 
-      if (rdp.geom_mode & 0x00020000)
+      if (rdp.geom_mode & G_LIGHTING)
       {
          v->vec[0] = ((int8_t*)gfx.RDRAM)[(addr+i + 12)^3];
          v->vec[1] = ((int8_t*)gfx.RDRAM)[(addr+i + 13)^3];
@@ -432,7 +432,7 @@ static void uc2_geom_mode(void)
 
    FRDP ("result:%08lx\n", rdp.geom_mode);
 
-   if (rdp.geom_mode & 0x00000001) // Z-Buffer enable
+   if (rdp.geom_mode & G_ZBUFFER) // Z-Buffer enable
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -465,7 +465,7 @@ static void uc2_geom_mode(void)
          rdp.update |= UPDATE_CULL_MODE;
       }
    }
-   if (rdp.geom_mode & 0x00002000) // Back culling
+   if (rdp.geom_mode & CULL_BACK) // Back culling
    {
       if (!(rdp.flags & CULL_BACK))
       {
@@ -483,7 +483,7 @@ static void uc2_geom_mode(void)
    }
 
    //Added by Gonetz
-   if (rdp.geom_mode & 0x00010000)      // Fog enable
+   if (rdp.geom_mode & FOG_ENABLED)      // Fog enable
    {
       if (!(rdp.flags & FOG_ENABLED))
       {
@@ -584,7 +584,7 @@ static void uc2_moveword(void)
       // NOTE: right now it's assuming that it sets the integer part first.  This could
       //  be easily fixed, but only if i had something to test with.
 
-      case 0x00:  // moveword matrix
+      case G_MW_MATRIX:  // moveword matrix
          {
             // do matrix pre-mult so it's re-updated next time
             if (rdp.update & UPDATE_MULT_MAT)
@@ -621,13 +621,13 @@ static void uc2_moveword(void)
          }
          break;
 
-      case 0x02:
+      case G_MW_NUMLIGHT:
          rdp.num_lights = data / 24;
          rdp.update |= UPDATE_LIGHTS;
          FRDP ("numlights: %d\n", rdp.num_lights);
          break;
 
-      case 0x04:
+      case G_MW_CLIP:
          if (offset == 0x04)
          {
             rdp.clip_ratio = sqrt((float)rdp.cmd1);
@@ -636,16 +636,14 @@ static void uc2_moveword(void)
          FRDP ("mw_clip %08lx, %08lx\n", rdp.cmd0, rdp.cmd1);
          break;
 
-      case 0x06:  // moveword SEGMENT
+      case G_MW_SEGMENT:  // moveword SEGMENT
          {
             FRDP ("SEGMENT %08lx -> seg%d\n", data, offset >> 2);
             if ((data&BMASK)<BMASK)
                rdp.segment[(offset >> 2) & 0xF] = data;
          }
          break;
-
-
-      case 0x08:
+      case G_MW_FOG:
          {
             rdp.fog_multiplier = (int16_t)(rdp.cmd1 >> 16);
             rdp.fog_offset = (int16_t)(rdp.cmd1 & 0x0000FFFF);
@@ -658,7 +656,7 @@ static void uc2_moveword(void)
          }
          break;
 
-      case 0x0a:  // moveword LIGHTCOL
+      case G_MW_LIGHTCOL:  // moveword LIGHTCOL
          {
             int n = offset / 24;
             FRDP ("lightcol light:%d, %08lx\n", n, data);
@@ -670,12 +668,12 @@ static void uc2_moveword(void)
          }
          break;
 
-      case 0x0c:
+      case G_MW_FORCEMTX:
          RDP_E ("uc2:moveword forcemtx - IGNORED\n");
          LRDP("forcemtx - IGNORED\n");
          break;
 
-      case 0x0e:
+      case G_MW_PERSPNORM:
          LRDP("perspnorm - IGNORED\n");
          break;
 
@@ -702,7 +700,7 @@ static void uc2_movemem(void)
          uc6_obj_movemem ();
          break;
 
-      case 8:   // VIEWPORT
+      case F3DEX2_MV_VIEWPORT:   // VIEWPORT
          {
             uint32_t a = addr >> 1;
             int16_t scale_x = ((int16_t*)gfx.RDRAM)[(a+0)^1] >> 2;
@@ -725,7 +723,7 @@ static void uc2_movemem(void)
          }
          break;
 
-      case 10:  // LIGHT
+      case G_MV_LIGHT:  // LIGHT
          {
             int n = ofs / 24;
 
@@ -782,7 +780,7 @@ static void uc2_movemem(void)
          }
          break;
 
-      case 14:  // matrix
+      case G_MV_MATRIX:  // matrix
          {
             // do not update the combined matrix!
             rdp.update &= ~UPDATE_MULT_MAT;

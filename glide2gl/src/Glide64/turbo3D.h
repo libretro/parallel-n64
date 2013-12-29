@@ -40,6 +40,7 @@
 // Created by Gonetz, 2008
 //
 //****************************************************************
+#include "GBI.h"
 
 /******************Turbo3D microcode*************************/
 
@@ -96,7 +97,7 @@ static void t3dProcessRDP(uint32_t a)
          rdp.cmd0 = ((uint32_t*)gfx.RDRAM)[a++];
          rdp.cmd1 = ((uint32_t*)gfx.RDRAM)[a++];
          uint32_t cmd = rdp.cmd0>>24;
-         if (cmd == 0xE4 || cmd == 0xE5)
+         if (cmd == G_TEXRECT || cmd == G_TEXRECTFLIP)
          {
             rdp.cmd2 = ((uint32_t*)gfx.RDRAM)[a++];
             rdp.cmd3 = ((uint32_t*)gfx.RDRAM)[a++];
@@ -234,8 +235,8 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 #endif
    }
 
-   rdp.geom_mode &= ~0x00020000;
-   rdp.geom_mode |= 0x00000200;
+   rdp.geom_mode &= ~G_LIGHTING;
+   rdp.geom_mode |= UPDATE_SCISSOR;
    if (pvtx) //load vtx
       t3d_vertex(segoffset(pvtx) & BMASK, ostate->vtxV0, ostate->vtxCount);
 
