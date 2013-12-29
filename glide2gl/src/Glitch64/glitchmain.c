@@ -82,9 +82,9 @@ struct texbuf_t {
 static struct texbuf_t texbufs[NB_TEXBUFS];
 static int texbuf_i;
 
-unsigned short frameBuffer[1024*1024];
-unsigned short depthBuffer[1024*1024];
-unsigned char  buf[1280 * 960 * 4];
+uint16_t frameBuffer[1024*1024];
+uint16_t depthBuffer[1024*1024];
+uint8_t  buf[1280 * 960 * 4];
 
 FX_ENTRY void FX_CALL
 grSstOrigin(GrOriginLocation_t  origin)
@@ -952,8 +952,8 @@ grLfbReadRegion( GrBuffer_t src_buffer,
                 FxU32 dst_stride, void *dst_data )
 {
    unsigned int i,j;
-   unsigned short *frameBuffer = (unsigned short*)dst_data;
-   unsigned short *depthBuffer = (unsigned short*)dst_data;
+   uint16_t *frameBuffer = (uint16_t*)dst_data;
+   uint16_t *depthBuffer = (uint16_t*)dst_data;
    LOG("grLfbReadRegion(%d,%d,%d,%d,%d,%d)\r\n", src_buffer, src_x, src_y, src_width, src_height, dst_stride);
 
    switch(src_buffer)
@@ -977,7 +977,7 @@ grLfbReadRegion( GrBuffer_t src_buffer,
 
       for (j = 0;j < src_height; j++)
          for (i = 0; i < src_width; i++)
-            depthBuffer[j*(dst_stride/2)+i] = ((unsigned short*)buf)[(src_height-j-1)*src_width*4+i*4];
+            depthBuffer[j*(dst_stride/2)+i] = ((uint16_t*)buf)[(src_height-j-1)*src_width*4+i*4];
    }
    else
    {
@@ -1007,7 +1007,7 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
                  FxI32 src_stride, void *src_data )
 {
    unsigned int i,j;
-   unsigned short *frameBuffer = (unsigned short*)src_data;
+   uint16_t *frameBuffer = (uint16_t*)src_data;
    int texture_number;
    unsigned int tex_width = 1, tex_height = 1;
    LOG("grLfbWriteRegion(%d,%d,%d,%d,%d,%d,%d,%d)\r\n",dst_buffer, dst_x, dst_y, src_format, src_width, src_height, pixelPipeline, src_stride);

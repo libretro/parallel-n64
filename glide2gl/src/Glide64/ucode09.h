@@ -141,8 +141,8 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
    for (i = 0; i < vnum; i++)
    {
       VERTEX *v = &vtx[i];
-      v->sx = zSortRdp.scale_x * ((short*)addr)[0^1];
-      v->sy = zSortRdp.scale_y * ((short*)addr)[1^1];
+      v->sx = zSortRdp.scale_x * ((int16_t*)addr)[0^1];
+      v->sy = zSortRdp.scale_y * ((int16_t*)addr)[1^1];
       v->sz = 1.0f;
       v->r = addr[4^3];
       v->g = addr[5^3];
@@ -156,8 +156,8 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
       v->screen_translated = 2;
       if (textured)
       {
-         v->ou = ((short*)addr)[4^1];
-         v->ov = ((short*)addr)[5^1];
+         v->ou = ((int16_t*)addr)[4^1];
+         v->ov = ((int16_t*)addr)[5^1];
          v->w = Calc_invw(((int*)addr)[3]) / 31.0f;
          v->oow = 1.0f / v->w;
          FRDP ("v%d - sx: %f, sy: %f ou: %f, ov: %f, w: %f, r=%d, g=%d, b=%d, a=%d\n", i, v->sx/rdp.scale_x, v->sy/rdp.scale_y, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->w, v->r, v->g, v->b, v->a);
@@ -368,8 +368,8 @@ static void uc9_light(void)
       gfx.DMEM[(cdest++)^3] = v->g;
       gfx.DMEM[(cdest++)^3] = v->b;
       gfx.DMEM[(cdest++)^3] = v->a;
-      ((short*)gfx.DMEM)[(tdest++)^1] = (short)v->ou;
-      ((short*)gfx.DMEM)[(tdest++)^1] = (short)v->ov;
+      ((int16_t*)gfx.DMEM)[(tdest++)^1] = (int16_t)v->ou;
+      ((int16_t*)gfx.DMEM)[(tdest++)^1] = (int16_t)v->ov;
    }
    free(v);
 }
@@ -484,12 +484,12 @@ static void uc9_mtxcat(void)
 
 typedef struct
 {
-   short sy;
-   short sx;
+   int16_t sy;
+   int16_t sx;
    int   invw;
-   short yi;
-   short xi;
-   short wi;
+   int16_t yi;
+   int16_t xi;
+   int16_t wi;
    uint8_t fog;
    uint8_t cc;
 } zSortVDest;
@@ -502,7 +502,7 @@ static void uc9_mult_mpmtx(void)
    int src = -1024 + ((rdp.cmd1 >> 12) & 0xFFF);
    int dst = -1024 + (rdp.cmd1 & 0xFFF);
    FRDP ("uc9:mult_mpmtx from: %04lx  to: %04lx n: %d\n", src, dst, num);
-   short * saddr = (short*)(gfx.DMEM+src);
+   int16_t * saddr = (int16_t*)(gfx.DMEM+src);
    zSortVDest * daddr = (zSortVDest*)(gfx.DMEM+dst);
    int idx = 0;
    zSortVDest v;
@@ -511,19 +511,19 @@ static void uc9_mult_mpmtx(void)
    //float scale_y = 4.0f/rdp.scale_y;
    for (i = 0; i < num; i++)
    {
-      short sx   = saddr[(idx++)^1];
-      short sy   = saddr[(idx++)^1];
-      short sz   = saddr[(idx++)^1];
+      int16_t sx   = saddr[(idx++)^1];
+      int16_t sy   = saddr[(idx++)^1];
+      int16_t sz   = saddr[(idx++)^1];
       float x = sx*rdp.combined[0][0] + sy*rdp.combined[1][0] + sz*rdp.combined[2][0] + rdp.combined[3][0];
       float y = sx*rdp.combined[0][1] + sy*rdp.combined[1][1] + sz*rdp.combined[2][1] + rdp.combined[3][1];
       float z = sx*rdp.combined[0][2] + sy*rdp.combined[1][2] + sz*rdp.combined[2][2] + rdp.combined[3][2];
       float w = sx*rdp.combined[0][3] + sy*rdp.combined[1][3] + sz*rdp.combined[2][3] + rdp.combined[3][3];
-      v.sx = (short)(zSortRdp.view_trans[0] + x / w * zSortRdp.view_scale[0]);
-      v.sy = (short)(zSortRdp.view_trans[1] + y / w * zSortRdp.view_scale[1]);
+      v.sx = (int16_t)(zSortRdp.view_trans[0] + x / w * zSortRdp.view_scale[0]);
+      v.sy = (int16_t)(zSortRdp.view_trans[1] + y / w * zSortRdp.view_scale[1]);
 
-      v.xi = (short)x;
-      v.yi = (short)y;
-      v.wi = (short)w;
+      v.xi = (int16_t)x;
+      v.yi = (int16_t)y;
+      v.wi = (int16_t)w;
       v.invw = Calc_invw((int)(w * 31.0));
 
       if (w < 0.0f)
@@ -643,14 +643,14 @@ void uc9_movemem(void)
       case 12:   // VIEWPORT
          {
             uint32_t a = addr >> 1;
-            short scale_x = ((short*)gfx.RDRAM)[(a+0)^1] >> 2;
-            short scale_y = ((short*)gfx.RDRAM)[(a+1)^1] >> 2;
-            short scale_z = ((short*)gfx.RDRAM)[(a+2)^1];
-            rdp.fog_multiplier = ((short*)gfx.RDRAM)[(a+3)^1];
-            short trans_x = ((short*)gfx.RDRAM)[(a+4)^1] >> 2;
-            short trans_y = ((short*)gfx.RDRAM)[(a+5)^1] >> 2;
-            short trans_z = ((short*)gfx.RDRAM)[(a+6)^1];
-            rdp.fog_offset = ((short*)gfx.RDRAM)[(a+7)^1];
+            int16_t scale_x = ((int16_t*)gfx.RDRAM)[(a+0)^1] >> 2;
+            int16_t scale_y = ((int16_t*)gfx.RDRAM)[(a+1)^1] >> 2;
+            int16_t scale_z = ((int16_t*)gfx.RDRAM)[(a+2)^1];
+            rdp.fog_multiplier = ((int16_t*)gfx.RDRAM)[(a+3)^1];
+            int16_t trans_x = ((int16_t*)gfx.RDRAM)[(a+4)^1] >> 2;
+            int16_t trans_y = ((int16_t*)gfx.RDRAM)[(a+5)^1] >> 2;
+            int16_t trans_z = ((int16_t*)gfx.RDRAM)[(a+6)^1];
+            rdp.fog_offset = ((int16_t*)gfx.RDRAM)[(a+7)^1];
             rdp.view_scale[0] = scale_x * rdp.scale_x;
             rdp.view_scale[1] = scale_y * rdp.scale_y;
             rdp.view_scale[2] = 32.0f * scale_z;

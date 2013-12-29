@@ -139,8 +139,8 @@ typedef struct DRAWOBJECT_t {
   float objY;
   float scaleW;
   float scaleH;
-  short imageW;
-  short imageH;
+  int16_t imageW;
+  int16_t imageH;
 
   uint16_t  imageStride;
   uint16_t  imageAdrs;

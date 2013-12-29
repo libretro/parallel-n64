@@ -35,7 +35,7 @@
 #define GR_TEXTFMT_RGB_888                0xFF
 
 int TMU_SIZE = 8*2048*2048;
-static unsigned char* texture = NULL;
+static uint8_t* texture = NULL;
 int packed_pixels_support = -1;
 
 #ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
@@ -131,7 +131,7 @@ void init_textures(void)
   nbTex = 0;
 
   if (!texture)
-     texture = (unsigned char*)malloc(2048*2048*4);
+     texture = (uint8_t*)malloc(2048*2048*4);
 }
 
 void free_textures()
@@ -291,10 +291,10 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
          break;
       case GR_TEXFMT_ALPHA_INTENSITY_44:
          {
-            unsigned short *texture_ptr = &((unsigned short*)texture)[size_tex];
+            uint16_t *texture_ptr = &((uint16_t*)texture)[size_tex];
             //FIXME - still CPU software color conversion
             do{
-               unsigned short texel = (unsigned short)((unsigned char*)info->data)[size_tex];
+               uint16_t texel = (uint16_t)((uint8_t*)info->data)[size_tex];
                // Replicate glide's ALPHA_INTENSITY_44 to match gl's LUMINANCE_ALPHA
                texel = (texel & 0x00F0) << 4 | (texel & 0x000F);
                *texture_ptr-- = (texel << 4) | texel;
@@ -381,11 +381,11 @@ grTexDownloadMipMap( GrChipID_t tmu,
          case GR_TEXFMT_ALPHA_8:
             do
             {
-               unsigned short texel = (unsigned short)((unsigned char*)info->data)[size_tex];
+               uint16_t texel = (uint16_t)((uint8_t*)info->data)[size_tex];
 
                // Replicate glide's ALPHA_8 to match gl's LUMINANCE_ALPHA
                // This is to make up for the lack of INTENSITY in gles
-               ((unsigned short*)texture)[size_tex] = texel | (texel << 8);
+               ((uint16_t*)texture)[size_tex] = texel | (texel << 8);
             }while(size_tex--);
             factor = 1;
             glpixfmt = GL_LUMINANCE_ALPHA;
@@ -396,7 +396,7 @@ grTexDownloadMipMap( GrChipID_t tmu,
          case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
             do
             {
-               unsigned int texel = (unsigned int)((unsigned char*)info->data)[size_tex];
+               unsigned int texel = (unsigned int)((uint8_t*)info->data)[size_tex];
                texel |= (0xFF000000 | (texel << 16) | (texel << 8));
                ((unsigned int*)texture)[size_tex] = texel;
             }while(size_tex--);
@@ -408,10 +408,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
             break;
          case GR_TEXFMT_ALPHA_INTENSITY_44:
             {
-               unsigned short *texture_ptr = &((unsigned short*)texture)[size_tex];
+               uint16_t *texture_ptr = &((uint16_t*)texture)[size_tex];
                //FIXME - still CPU software color conversion
                do{
-                  unsigned short texel = (unsigned short)((unsigned char*)info->data)[size_tex];
+                  uint16_t texel = (uint16_t)((uint8_t*)info->data)[size_tex];
                   // Replicate glide's ALPHA_INTENSITY_44 to match gl's LUMINANCE_ALPHA
                   texel = (texel & 0x00F0) << 4 | (texel & 0x000F);
                   *texture_ptr-- = (texel << 4) | texel;
@@ -426,7 +426,7 @@ grTexDownloadMipMap( GrChipID_t tmu,
          case GR_TEXFMT_RGB_565:
             do
             {
-               unsigned int texel = (unsigned int)((unsigned short*)info->data)[size_tex];
+               unsigned int texel = (unsigned int)((uint16_t*)info->data)[size_tex];
                unsigned int B = texel & 0x0000F800;
                unsigned int G = texel & 0x000007E0;
                unsigned int R = texel & 0x0000001F;
@@ -441,10 +441,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
          case GR_TEXFMT_ARGB_1555:
             do
             {
-               unsigned short texel = ((unsigned short*)info->data)[size_tex];
+               uint16_t texel = ((uint16_t*)info->data)[size_tex];
 
                // Shift-rotate glide's ARGB_1555 to match gl's RGB5_A1
-               ((unsigned short*)texture)[size_tex] = (texel << 1) | (texel >> 15);
+               ((uint16_t*)texture)[size_tex] = (texel << 1) | (texel >> 15);
             }while(size_tex--);
             factor = 2;
             glpixfmt = GL_RGBA;
@@ -455,7 +455,7 @@ grTexDownloadMipMap( GrChipID_t tmu,
          case GR_TEXFMT_ALPHA_INTENSITY_88:
             do
             {
-               unsigned int AI = (unsigned int)((unsigned short*)info->data)[size_tex];
+               unsigned int AI = (unsigned int)((uint16_t*)info->data)[size_tex];
                unsigned int I = (unsigned int)(AI & 0x000000FF);
                ((unsigned int*)texture)[size_tex] = (AI << 16) | (I << 8) | I;
             }while(size_tex--);
@@ -468,7 +468,7 @@ grTexDownloadMipMap( GrChipID_t tmu,
          case GR_TEXFMT_ARGB_4444:
             do
             {
-               unsigned int texel = (unsigned int)((unsigned short*)info->data)[size_tex];
+               unsigned int texel = (unsigned int)((uint16_t*)info->data)[size_tex];
                unsigned int A = texel & 0x0000F000;
                unsigned int B = texel & 0x00000F00;
                unsigned int G = texel & 0x000000F0;

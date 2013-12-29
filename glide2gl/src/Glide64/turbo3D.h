@@ -52,14 +52,14 @@ struct t3dGlobState
    uint32_t		othermode1;
    uint32_t		segBases[16];
    /* the viewport to use */
-   short     vsacle1;
-   short     vsacle0;
-   short     vsacle3;
-   short     vsacle2;
-   short     vtrans1;
-   short     vtrans0;
-   short     vtrans3;
-   short     vtrans2;
+   int16_t     vsacle1;
+   int16_t     vsacle0;
+   int16_t     vsacle3;
+   int16_t     vsacle2;
+   int16_t     vtrans1;
+   int16_t     vtrans0;
+   int16_t     vtrans3;
+   int16_t     vtrans2;
    uint32_t  rdpCmds;
 };
 
@@ -121,12 +121,12 @@ static void t3dLoadGlobState(uint32_t pgstate)
       FRDP ("segment: %08lx -> seg%d\n", rdp.segment[s], s);
    }
 
-   short scale_x = gstate->vsacle0 / 4;
-   short scale_y = gstate->vsacle1 / 4;;
-   short scale_z = gstate->vsacle2;
-   short trans_x = gstate->vtrans0 / 4;
-   short trans_y = gstate->vtrans1 / 4;
-   short trans_z = gstate->vtrans2;
+   int16_t scale_x = gstate->vsacle0 / 4;
+   int16_t scale_y = gstate->vsacle1 / 4;;
+   int16_t scale_z = gstate->vsacle2;
+   int16_t trans_x = gstate->vtrans0 / 4;
+   int16_t trans_y = gstate->vtrans1 / 4;
+   int16_t trans_z = gstate->vtrans2;
    rdp.view_scale[0] = scale_x * rdp.scale_x;
    rdp.view_scale[1] = -scale_y * rdp.scale_y;
    rdp.view_scale[2] = 32.0f * scale_z;
@@ -152,12 +152,12 @@ static void t3d_vertex(uint32_t addr, uint32_t v0, uint32_t n)
    for (i = 0; i < n; i+=16)
    {
       VERTEX *v = &rdp.vtx[v0 + (i>>4)];
-      x   = (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 0)^1];
-      y   = (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 1)^1];
-      z   = (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 2)^1];
+      x   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 0)^1];
+      y   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 1)^1];
+      z   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 2)^1];
       v->flags  = ((uint16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 3)^1];
-      v->ou   = 2.0f * (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 4)^1];
-      v->ov   = 2.0f * (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 5)^1];
+      v->ou   = 2.0f * (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 4)^1];
+      v->ov   = 2.0f * (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 5)^1];
       v->uv_scaled = 0;
       v->r = ((uint8_t*)gfx.RDRAM)[(addr+i + 12)^3];
       v->g = ((uint8_t*)gfx.RDRAM)[(addr+i + 13)^3];

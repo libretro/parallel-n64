@@ -61,9 +61,9 @@ static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
    uint32_t v24;
    int v25;
    int v26;
-   unsigned int nbits;
+   uint32_t nbits;
 
-   nbits = sizeof(short unsigned int) * 8;
+   nbits = sizeof(uint16_t) * 8;
    v7 = src;
    v8 = dst;
    v9 = height;
@@ -193,9 +193,9 @@ static INLINE void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int heigh
    uint32_t v24;
    int v25;
    int v26;
-   unsigned int nbits;
+   uint32_t nbits;
 
-   nbits = sizeof(short unsigned int) * 8;
+   nbits = sizeof(uint16_t) * 8;
 
    v7 = src;
    v8 = (uint32_t *)dst;
@@ -482,8 +482,8 @@ static INLINE void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
    uint32_t v14;
    uint32_t *v15;
    uint32_t v16;
-   unsigned int v17;
-   unsigned int v18;
+   uint32_t v17;
+   uint32_t v18;
    uint32_t v19;
    uint32_t v20;
    uint32_t *v21;

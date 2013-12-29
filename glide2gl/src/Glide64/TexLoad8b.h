@@ -44,9 +44,9 @@ static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
    uint32_t *v8, *v13, *v15, *v17, *v18, *v23;
    int v9, v10, v11, v19, v20, v25, v26;
    uint32_t v12, v14, v16, v21, v22, v24;
-   unsigned int nbits;
+   uint32_t nbits;
 
-   nbits = sizeof(short unsigned int) * 8;
+   nbits = sizeof(uint16_t) * 8;
    v7 = src;
    v8 = (uint32_t *)dst;
    v9 = height;
@@ -143,9 +143,9 @@ static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
    uint32_t v24;
    int v25;
    int v26;
-   unsigned int nbits;
+   uint32_t nbits;
 
-   nbits = sizeof(short unsigned int) * 8;
+   nbits = sizeof(uint16_t) * 8;
 
    v7 = (uint32_t *)src;
    v8 = (uint32_t *)dst;
@@ -337,7 +337,7 @@ uint32_t Load8bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
    if (height < 1)
       height = 1;
    int ext = (real_width - (wid_64 << 3));
-   unsigned short * pal = rdp.pal_8;
+   uint16_t* pal = rdp.pal_8;
 
    switch (rdp.tlut_mode)
    {

@@ -331,10 +331,10 @@ void microcheck(void)
 #ifdef LOG_UCODE
    std::ofstream ucf;
    ucf.open ("ucode.txt", std::ios::out | std::ios::binary);
-   char d;
+   int8_t d;
    for (i=0; i<0x400000; i++)
    {
-      d = ((char*)gfx.RDRAM)[i^3];
+      d = ((int8_t*)gfx.RDRAM)[i^3];
       ucf.write (&d, 1);
    }
    ucf.close ();
@@ -852,7 +852,7 @@ EXPORT void CALL ProcessDList(void)
   d_lr_y = 0;
   depth_buffer_fog = true;
 
-  //analize possible frame buffer usage
+  //analyze possible frame buffer usage
   if (fb_emulation_enabled)
     DetectFrameBufferUsage();
   if (!(settings.hacks&hack_Lego) || rdp.num_of_ci > 1)
@@ -1132,17 +1132,17 @@ static void rdp_texrect()
   float ul_x, ul_y, lr_x, lr_y;
   if (rdp.cycle_mode == 2)
   {
-    ul_x = max(0.0f, (short)((rdp.cmd1 & 0x00FFF000) >> 14));
-    ul_y = max(0.0f, (short)((rdp.cmd1 & 0x00000FFF) >> 2));
-    lr_x = max(0.0f, (short)((rdp.cmd0 & 0x00FFF000) >> 14));
-    lr_y = max(0.0f, (short)((rdp.cmd0 & 0x00000FFF) >> 2));
+    ul_x = max(0.0f, (int16_t)((rdp.cmd1 & 0x00FFF000) >> 14));
+    ul_y = max(0.0f, (int16_t)((rdp.cmd1 & 0x00000FFF) >> 2));
+    lr_x = max(0.0f, (int16_t)((rdp.cmd0 & 0x00FFF000) >> 14));
+    lr_y = max(0.0f, (int16_t)((rdp.cmd0 & 0x00000FFF) >> 2));
   }
   else
   {
-    ul_x = max(0.0f, ((short)((rdp.cmd1 & 0x00FFF000) >> 12)) / 4.0f);
-    ul_y = max(0.0f, ((short)(rdp.cmd1 & 0x00000FFF)) / 4.0f);
-    lr_x = max(0.0f, ((short)((rdp.cmd0 & 0x00FFF000) >> 12)) / 4.0f);
-    lr_y = max(0.0f, ((short)(rdp.cmd0 & 0x00000FFF)) / 4.0f);
+    ul_x = max(0.0f, ((int16_t)((rdp.cmd1 & 0x00FFF000) >> 12)) / 4.0f);
+    ul_y = max(0.0f, ((int16_t)(rdp.cmd1 & 0x00000FFF)) / 4.0f);
+    lr_x = max(0.0f, ((int16_t)((rdp.cmd0 & 0x00FFF000) >> 12)) / 4.0f);
+    lr_y = max(0.0f, ((int16_t)(rdp.cmd0 & 0x00000FFF)) / 4.0f);
   }
 
   if (ul_x >= lr_x)
@@ -1255,8 +1255,8 @@ static void rdp_texrect()
   //needed to detect and avoid overflow after shifting
   int32_t off_x_i = (rdp.cmd2 >> 16) & 0xFFFF;
   int32_t off_y_i = rdp.cmd2 & 0xFFFF;
-  float dsdx = (float)((short)((rdp.cmd3 & 0xFFFF0000) >> 16)) / 1024.0f;
-  float dtdy = (float)((short)(rdp.cmd3 & 0x0000FFFF)) / 1024.0f;
+  float dsdx = (float)((int16_t)((rdp.cmd3 & 0xFFFF0000) >> 16)) / 1024.0f;
+  float dtdy = (float)((int16_t)(rdp.cmd3 & 0x0000FFFF)) / 1024.0f;
   if (off_x_i & 0x8000) //check for sign bit
     off_x_i |= ~0xffff; //make it negative
   //the same as for off_x_i
@@ -1742,7 +1742,7 @@ static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt
   v6 = cnt;
   if ( cnt )
   {
-    v7 = (uint32_t *)((char *)src + (off & 0xFFFFFFFC));
+    v7 = (uint32_t *)((int8_t*)src + (off & 0xFFFFFFFC));
     v8 = off & 3;
     if ( !(off & 3) )
       goto LABEL_23;
@@ -1770,7 +1770,7 @@ LABEL_23:
     v13 = off & 3;
     if ( off & 3 )
     {
-      v14 = *(uint32_t *)((char *)src + ((8 * cnt + off) & 0xFFFFFFFC));
+      v14 = *(uint32_t *)((int8_t*)src + ((8 * cnt + off) & 0xFFFFFFFC));
       do
       {
         *v5++ = __ROL__(v14, 8, nbits);
@@ -1880,7 +1880,7 @@ static void rdp_loadblock()
   //angrylion's advice to use ul_s in texture image offset and cnt calculations.
   //Helps to fix Vigilante 8 jpeg backgrounds and logos
   uint32_t off = rdp.timg.addr + (ul_s << rdp.tiles[tile].size >> 1);
-  unsigned char *dst = ((unsigned char *)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
+  uint8_t *dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
   uint32_t cnt = lr_s-ul_s+1;
   if (rdp.tiles[tile].size == 3)
     cnt <<= 1;
@@ -1956,7 +1956,7 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height,
       v25 = v8;
       v24 = v9;
       v23 = v10;
-      v13 = (uint32_t *)((char *)v9 + (v10 & 0xFFFFFFFC));
+      v13 = (uint32_t *)((int8_t*)v9 + (v10 & 0xFFFFFFFC));
       v14 = v10 & 3;
       if ( !(v10 & 3) )
         goto LABEL_20;
@@ -1971,7 +1971,7 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height,
       {
         v16 = __ROL__(v16, 8, nbits);
         *(uint8_t *)v7 = v16;
-        v7 = (uint32_t *)((char *)v7 + 1);
+        v7 = (uint32_t *)((int8_t*)v7 + 1);
       }while(--v15 );
       v18 = *v17;
       v13 = v17 + 1;
@@ -1988,12 +1988,12 @@ LABEL_20:
       v19 = v23 & 3;
       if ( v23 & 3 )
       {
-        v20 = *(uint32_t *)((char *)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
+        v20 = *(uint32_t *)((int8_t*)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
         do
         {
           v20 = __ROL__(v20, 8, nbits);
           *(uint8_t *)v7 = v20;
-          v7 = (uint32_t *)((char *)v7 + 1);
+          v7 = (uint32_t *)((int8_t*)v7 + 1);
         }
         while (--v19);
       }
@@ -2095,8 +2095,8 @@ static void rdp_loadtile()
       return;
 
     uint32_t wid_64 = rdp.tiles[tile].line;
-    unsigned char *dst = ((unsigned char *)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
-    unsigned char *end = ((unsigned char *)rdp.tmem) + 4096 - (wid_64<<3);
+    uint8_t *dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
+    uint8_t *end = ((uint8_t*)rdp.tmem) + 4096 - (wid_64<<3);
     loadTile((uint32_t *)gfx.RDRAM, (uint32_t *)dst, wid_64, height, line_n, offs, (uint32_t *)end);
   }
   FRDP("loadtile: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d\n", tile,

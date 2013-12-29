@@ -54,8 +54,8 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
    int v18;
    unsigned int nbits, nbits16;
 
-   nbits = sizeof(unsigned int) * 8;
-   nbits16 = sizeof(short unsigned int) * 8;
+   nbits = sizeof(uint32_t) * 8;
+   nbits16 = sizeof(uint16_t) * 8;
    v6 = (uint32_t *)src;
    v7 = (uint32_t *)dst;
    v8 = height;
