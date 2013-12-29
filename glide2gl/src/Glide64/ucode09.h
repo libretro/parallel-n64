@@ -303,9 +303,9 @@ static void uc9_fmlight(void)
       rdp.light[i].g = (float)(((uint8_t*)gfx.DMEM)[(a+1)^3]) / 255.0f;
       rdp.light[i].b = (float)(((uint8_t*)gfx.DMEM)[(a+2)^3]) / 255.0f;
       rdp.light[i].a = 1.0f;
-      rdp.light[i].dir_x = (float)(((char*)gfx.DMEM)[(a+8)^3]) / 127.0f;
-      rdp.light[i].dir_y = (float)(((char*)gfx.DMEM)[(a+9)^3]) / 127.0f;
-      rdp.light[i].dir_z = (float)(((char*)gfx.DMEM)[(a+10)^3]) / 127.0f;
+      rdp.light[i].dir_x = (float)(((int8_t*)gfx.DMEM)[(a+8)^3]) / 127.0f;
+      rdp.light[i].dir_y = (float)(((int8_t*)gfx.DMEM)[(a+9)^3]) / 127.0f;
+      rdp.light[i].dir_z = (float)(((int8_t*)gfx.DMEM)[(a+10)^3]) / 127.0f;
       FRDP ("light: n: %d, r: %.3f, g: %.3f, b: %.3f, x: %.3f, y: %.3f, z: %.3f\n",
             i, rdp.light[i].r, rdp.light[i].g, rdp.light[i].b,
             rdp.light[i].dir_x, rdp.light[i].dir_y, rdp.light[i].dir_z);
@@ -318,9 +318,9 @@ static void uc9_fmlight(void)
 
    for (i = 0; i < 2; i++)
    {
-      float dir_x = (float)(((char*)gfx.DMEM)[(a+8)^3]) / 127.0f;
-      float dir_y = (float)(((char*)gfx.DMEM)[(a+9)^3]) / 127.0f;
-      float dir_z = (float)(((char*)gfx.DMEM)[(a+10)^3]) / 127.0f;
+      float dir_x = (float)(((int8_t*)gfx.DMEM)[(a+8)^3]) / 127.0f;
+      float dir_y = (float)(((int8_t*)gfx.DMEM)[(a+9)^3]) / 127.0f;
+      float dir_z = (float)(((int8_t*)gfx.DMEM)[(a+10)^3]) / 127.0f;
       if (sqrt(dir_x*dir_x + dir_y*dir_y + dir_z*dir_z) < 0.98)
       {
          rdp.use_lookat = false;
@@ -349,9 +349,9 @@ static void uc9_light(void)
 
    for (i = 0; i < num; i++)
    {
-      v->vec[0] = ((char*)gfx.DMEM)[(nsrs++)^3];
-      v->vec[1] = ((char*)gfx.DMEM)[(nsrs++)^3];
-      v->vec[2] = ((char*)gfx.DMEM)[(nsrs++)^3];
+      v->vec[0] = ((int8_t*)gfx.DMEM)[(nsrs++)^3];
+      v->vec[1] = ((int8_t*)gfx.DMEM)[(nsrs++)^3];
+      v->vec[2] = ((int8_t*)gfx.DMEM)[(nsrs++)^3];
       calc_sphere (v);
       //    calc_linear (&v);
       NormalizeVector (v->vec);
