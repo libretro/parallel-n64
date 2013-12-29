@@ -445,9 +445,9 @@ static void uc0_movemem()
          rdp.light[i].a = 1.0f;
          // ** Thanks to Icepir8 for pointing this out **
          // Lighting must be signed byte instead of byte
-         rdp.light[i].dir_x = (float)(((char*)gfx.RDRAM)[(a+8)^3]) / 127.0f;
-         rdp.light[i].dir_y = (float)(((char*)gfx.RDRAM)[(a+9)^3]) / 127.0f;
-         rdp.light[i].dir_z = (float)(((char*)gfx.RDRAM)[(a+10)^3]) / 127.0f;
+         rdp.light[i].dir_x = (float)(((int8_t*)gfx.RDRAM)[(a+8)^3]) / 127.0f;
+         rdp.light[i].dir_y = (float)(((int8_t*)gfx.RDRAM)[(a+9)^3]) / 127.0f;
+         rdp.light[i].dir_z = (float)(((int8_t*)gfx.RDRAM)[(a+10)^3]) / 127.0f;
          // **
 
          //rdp.update |= UPDATE_LIGHTS;
