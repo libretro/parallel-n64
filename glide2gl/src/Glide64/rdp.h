@@ -365,8 +365,8 @@ typedef struct
    uint16_t t_lr_s;     // lower right s coordinate
    uint16_t t_lr_t;     // lower right t coordinate
 
-   uint32_t width;      // texture tile width in texel space
-   uint32_t height;     // texture tile height in texel space
+   uint32_t width;
+   uint32_t height;
 
    // uc0:texture
    uint8_t on;
