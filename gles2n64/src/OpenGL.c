@@ -90,22 +90,7 @@ void OGL_InitStates()
     glDepthMask( GL_FALSE );
     glEnable( GL_SCISSOR_TEST );
 
-///// paulscode, fixes missing graphics on Qualcomm, Adreno:
-    glDepthRangef(0.0f, 1.0f);
-/*
-    // default values (only seem to work on OMAP!)
-    glPolygonOffset(0.2f, 0.2f);
-*/
-// some other settings that have been tried, which do not work:
-    //glDepthRangef(1.0f, 0.0f);  // reverses depth-order on OMAP3 chipsets
-    //glPolygonOffset(-0.2f, -0.2f);
-    //glDepthRangef( 0.09f, (float)0x7FFF );  // should work, but not on Adreno
-    //glPolygonOffset( -0.2f, 0.2f );
-    //glDepthRangef(0.0f, (float)0x7FFF);  // what Yongzh used, broken on Adreno
-    //glPolygonOffset(0.2f, 0.2f);
-/////
-    
-
+    glPolygonOffset(-3.0f, -3.0f);
     glViewport(0, 0, config.screen.width, config.screen.height);
 }
 
