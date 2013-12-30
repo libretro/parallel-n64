@@ -1663,7 +1663,7 @@ void update(void)
          // already logged above
          rdp.update ^= UPDATE_ZBUF_ENABLED;
 
-         if (((rdp.flags & ZBUF_ENABLED) || rdp.zsrc == 1) && rdp.cycle_mode < 2)
+         if (((rdp.flags & ZBUF_ENABLED) || rdp.zsrc == 1) && rdp.cycle_mode < G_CYC_COPY)
          {
             if (rdp.flags & ZBUF_COMPARE)
             {
@@ -1753,7 +1753,7 @@ void update(void)
                LRDP (" |- alpha compare: none\n");
             }
          }
-         if (rdp.acmp == 3 && rdp.cycle_mode < 2)
+         if (rdp.acmp == 3 && rdp.cycle_mode < G_CYC_COPY)
          {
             if (settings.old_style_adither || rdp.alpha_dither_mode != 3)
             {

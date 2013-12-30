@@ -39,9 +39,9 @@
 
 // STANDARD DRAWIMAGE - draws a 2d image based on the following structure
 
-static float set_sprite_combine_mode ()
+static float set_sprite_combine_mode(void)
 {
-  if (rdp.cycle_mode == 2)
+  if (rdp.cycle_mode == G_CYC_COPY)
   {
     rdp.tex = 1;
     rdp.allow_combine = 0;
@@ -64,7 +64,7 @@ static float set_sprite_combine_mode ()
 
   // set z buffer mode
   float Z = 0.0f;
-  if ((rdp.othermode_l & 0x00000030) && rdp.cycle_mode < 2)
+  if ((rdp.othermode_l & 0x00000030) && rdp.cycle_mode < G_CYC_COPY)
   {
     if (rdp.zsrc == 1)
     {
@@ -85,7 +85,7 @@ static float set_sprite_combine_mode ()
   grFogMode (GR_FOG_DISABLE);
   rdp.update |= UPDATE_CULL_MODE | UPDATE_FOG_ENABLED;
 
-  if (rdp.cycle_mode == 2)
+  if (rdp.cycle_mode == G_CYC_COPY)
   {
     grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
       GR_COMBINE_FACTOR_ONE,
@@ -113,7 +113,7 @@ static float set_sprite_combine_mode ()
   return Z;
 }
 
-void uc6_sprite2d ();
+void uc6_sprite2d(void);
 
 typedef struct DRAWIMAGE_t {
   float frameX;
@@ -449,7 +449,7 @@ void DrawImage (DRAWIMAGE *d)
   rdp.tiles[0].lr_t = y_size-1;
 
   const float Z = set_sprite_combine_mode ();
-  if (rdp.cycle_mode == 2)
+  if (rdp.cycle_mode == G_CYC_COPY)
     rdp.allow_combine = 0;
 
   {
@@ -765,12 +765,12 @@ static void uc6_bg (bool bg_1cyc)
     DrawImage (&d);
 }
 
-static void uc6_bg_1cyc ()
+static void uc6_bg_1cyc(void)
 {
   uc6_bg(true);
 }
 
-static void uc6_bg_copy ()
+static void uc6_bg_copy(void)
 {
   uc6_bg(false);
 }
@@ -1072,7 +1072,7 @@ static void uc6_obj_rectangle ()
   uc6_draw_polygons (v);
 }
 
-static void uc6_obj_sprite ()
+static void uc6_obj_sprite(void)
 {
    int i;
   LRDP ("uc6:obj_sprite ");
@@ -1126,7 +1126,7 @@ static void uc6_obj_sprite ()
   uc6_draw_polygons (v);
 }
 
-static void uc6_obj_movemem ()
+static void uc6_obj_movemem(void)
 {
   LRDP("uc6:obj_movemem\n");
 
@@ -1157,13 +1157,13 @@ static void uc6_obj_movemem ()
   }
 }
 
-static void uc6_select_dl ()
+static void uc6_select_dl(void)
 {
   LRDP("uc6:select_dl\n");
   RDP_E ("uc6:select_dl\n");
 }
 
-static void uc6_obj_rendermode ()
+static void uc6_obj_rendermode(void)
 {
   LRDP("uc6:obj_rendermode\n");
   RDP_E ("uc6:obj_rendermode\n");
@@ -1249,7 +1249,7 @@ static void uc6_obj_rectangle_r(void)
 
    uc6_init_tile(&d);
 
-   float Z = set_sprite_combine_mode ();
+   float Z = set_sprite_combine_mode();
 
    float ul_x = d.objX / mat_2d.BaseScaleX;
    float lr_x = (d.objX + d.imageW / d.scaleW) / mat_2d.BaseScaleX;

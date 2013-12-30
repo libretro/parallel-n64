@@ -311,7 +311,7 @@ void rdp_reset(void)
 
    rdp.lookat[0][0] = rdp.lookat[1][1] = 1.0f;
 
-   rdp.cycle_mode = 2;
+   rdp.cycle_mode = G_CYC_COPY;
    rdp.allow_combine = 1;
    rdp.update = UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
    rdp.fog_mode = FOG_MODE_ENABLED;
@@ -1129,7 +1129,7 @@ static void rdp_texrect()
   //  FRDP ("rdp.cycle1 %08lx, rdp.cycle2 %08lx\n", rdp.cycle1, rdp.cycle2);
 
   float ul_x, ul_y, lr_x, lr_y;
-  if (rdp.cycle_mode == 2)
+  if (rdp.cycle_mode == G_CYC_COPY)
   {
     ul_x = max(0.0f, (int16_t)((rdp.cmd1 & 0x00FFF000) >> 14));
     ul_y = max(0.0f, (int16_t)((rdp.cmd1 & 0x00000FFF) >> 2));
@@ -1150,7 +1150,7 @@ static void rdp_texrect()
     return;
   }
 
-  if (rdp.cycle_mode > 1)
+  if (rdp.cycle_mode > G_CYC_2CYCLE)
   {
     lr_x += 1.0f;
     lr_y += 1.0f;
@@ -1261,7 +1261,7 @@ static void rdp_texrect()
   if (off_y_i & 0x8000)
     off_y_i |= ~0xffff;
 
-  if (rdp.cycle_mode == 2)
+  if (rdp.cycle_mode == G_CYC_COPY)
     dsdx /= 4.0f;
 
   float s_ul_x = ul_x * rdp.scale_x + rdp.offset_x;
@@ -2177,7 +2177,7 @@ static void rdp_fillrect()
     LRDP("Fillrect. Wrong coordinates. Skipped\n");
     return;
   }
-  int pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (rdp.cycle_mode == 3) && (rdp.fill_color == 0xFFFCFFFC);
+  int pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (rdp.cycle_mode == G_CYC_FILL) && (rdp.fill_color == 0xFFFCFFFC);
   if ((rdp.cimg == rdp.zimg) || (fb_emulation_enabled && rdp.frame_buffers[rdp.ci_count-1].status == ci_zimg) || pd_multiplayer)
   {
     LRDP("Fillrect - cleared the depth buffer\n");
@@ -2220,7 +2220,7 @@ static void rdp_fillrect()
     return;
   }
 
-  if (rdp.cur_image && (rdp.cur_image->format != 0) && (rdp.cycle_mode == 3) && (rdp.cur_image->width == lr_x - ul_x) && (rdp.cur_image->height == lr_y - ul_y))
+  if (rdp.cur_image && (rdp.cur_image->format != 0) && (rdp.cycle_mode == G_CYC_FILL) && (rdp.cur_image->width == lr_x - ul_x) && (rdp.cur_image->height == lr_y - ul_y))
   {
     uint32_t color = rdp.fill_color;
     if (rdp.ci_size < 3)
@@ -2241,7 +2241,7 @@ static void rdp_fillrect()
   // Update scissor
   update_scissor ();
 
-  if (settings.decrease_fillrect_edge && rdp.cycle_mode == 0)
+  if (settings.decrease_fillrect_edge && rdp.cycle_mode == G_CYC_1CYCLE)
   {
     lr_x--; lr_y--;
   }
@@ -2267,7 +2267,7 @@ static void rdp_fillrect()
   {
     grFogMode (GR_FOG_DISABLE);
 
-    const float Z = (rdp.cycle_mode == 3) ? 0.0f : set_sprite_combine_mode();
+    const float Z = (rdp.cycle_mode == G_CYC_FILL) ? 0.0f : set_sprite_combine_mode();
 
     // Draw the rectangle
     VERTEX v[4] = {
@@ -2276,7 +2276,7 @@ static void rdp_fillrect()
       { (float)s_ul_x, (float)s_lr_y, Z, 1.0f,  0,0,0,0,  {0,0,0,0}, 0,0, 0,0,0,0},
       { (float)s_lr_x, (float)s_lr_y, Z, 1.0f,  0,0,0,0,  {0,0,0,0}, 0,0, 0,0,0,0} };
 
-      if (rdp.cycle_mode == 3)
+      if (rdp.cycle_mode == G_CYC_FILL)
       {
         uint32_t color = rdp.fill_color;
 
