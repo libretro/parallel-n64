@@ -82,8 +82,7 @@ struct texbuf_t {
 static struct texbuf_t texbufs[NB_TEXBUFS];
 static int texbuf_i;
 
-uint16_t frameBuffer[1024*1024];
-uint16_t depthBuffer[1024*1024];
+uint16_t buf_tex[1024*1024];
 uint8_t  buf[1280 * 960 * 4];
 
 FX_ENTRY void FX_CALL
@@ -868,12 +867,6 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
 {
    LOG("grLfbLock(%d,%d,%d,%d,%d)\r\n", type, buffer, writeMode, origin, pixelPipeline);
 
-#ifndef NDEBUG
-   // grLfblock is nop for GR_LBFB_WRITE_ONLY
-   if (type == GR_LFB_WRITE_ONLY)
-      return FXTRUE;
-#endif
-
    int i,j;
 
    switch(buffer)
@@ -890,26 +883,26 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
 
    if(buffer == GR_BUFFER_AUXBUFFER)
    {
-      info->lfbPtr = depthBuffer;
+      info->lfbPtr = buf_tex;
       info->strideInBytes = width*2;
       info->writeMode = GR_LFBWRITEMODE_ZA16;
       info->origin = origin;
-      glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, depthBuffer);
+      glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, buf_tex);
    }
    else
    {
       if (writeMode == GR_LFBWRITEMODE_888)
       {
          //printf("LfbLock GR_LFBWRITEMODE_888\n");
-         info->lfbPtr = frameBuffer;
+         info->lfbPtr = buf_tex; 
          info->strideInBytes = width*4;
          info->writeMode = GR_LFBWRITEMODE_888;
          info->origin = origin;
-         //glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, frameBuffer);
+         //glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, buf_tex);
       }
       else
       {
-         info->lfbPtr = frameBuffer;
+         info->lfbPtr = buf_tex;
          info->strideInBytes = width*2;
          info->writeMode = GR_LFBWRITEMODE_565;
          info->origin = origin;
@@ -919,7 +912,7 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
          {
             for (i=0; i<width; i++)
             {
-               frameBuffer[(height-j-1)*width+i] =
+               buf_tex[(height-j-1)*width+i] =
                   ((buf[j*width*4+i*4+0] >> 3) << 11) |
                   ((buf[j*width*4+i*4+1] >> 2) <<  5) |
                   (buf[j*width*4+i*4+2] >> 3);
@@ -952,8 +945,7 @@ grLfbReadRegion( GrBuffer_t src_buffer,
                 FxU32 dst_stride, void *dst_data )
 {
    unsigned int i,j;
-   uint16_t *frameBuffer = (uint16_t*)dst_data;
-   uint16_t *depthBuffer = (uint16_t*)dst_data;
+   uint16_t *dst = (uint16_t*)dst_data;
    LOG("grLfbReadRegion(%d,%d,%d,%d,%d,%d)\r\n", src_buffer, src_x, src_y, src_width, src_height, dst_stride);
 
    switch(src_buffer)
@@ -973,21 +965,21 @@ grLfbReadRegion( GrBuffer_t src_buffer,
 
    if(src_buffer == GR_BUFFER_AUXBUFFER)
    {
-      glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, depthBuffer);
+      glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, dst);
 
       for (j = 0;j < src_height; j++)
          for (i = 0; i < src_width; i++)
-            depthBuffer[j*(dst_stride/2)+i] = ((uint16_t*)buf)[(src_height-j-1)*src_width*4+i*4];
+            dst[j*(dst_stride/2)+i] = ((uint16_t*)buf)[(src_height-j-1)*src_width*4+i*4];
    }
    else
    {
-      glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+      glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_RGBA, GL_UNSIGNED_BYTE, dst);
 
       for (j=0; j<src_height; j++)
       {
          for (i=0; i<src_width; i++)
          {
-            frameBuffer[j*(dst_stride/2)+i] =
+            dst[j*(dst_stride/2)+i] =
                ((buf[(src_height-j-1)*src_width*4+i*4+0] >> 3) << 11) |
                ((buf[(src_height-j-1)*src_width*4+i*4+1] >> 2) <<  5) |
                (buf[(src_height-j-1)*src_width*4+i*4+2] >> 3);
