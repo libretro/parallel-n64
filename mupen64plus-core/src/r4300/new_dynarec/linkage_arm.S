@@ -564,8 +564,7 @@ FUNCTION(cc_interrupt):
 	bl	get_addr_ht
 	mov	pc, r0
 .E3:
-	add	r12, fp, #28
-	ldmia	r12, {r4, r5, r6, r7, r8, r9, sl, fp, pc}
+	ldmfd	sp!, {r4, r5, r6, r7, r8, r9, sl, fp, ip, pc}
 .E4:
 	/* Move 'dirty' blocks to the 'clean' list */
 	lsl	r5, r2, #3
@@ -678,12 +677,10 @@ FUNCTION(jump_eret):
 	.size	jump_eret, .-jump_eret
 
 FUNCTION(new_dyna_start):
-	load_varadr r12, dynarec_local
-   add   r12, #28
+	stmfd	sp!, {r4, r5, r6, r7, r8, r9, sl, fp, ip, lr}
+	load_varadr fp, dynarec_local
 	load_varadr_ext	r1, out
 	mov	r0, #0xa4000000
-	stmia	r12, {r4, r5, r6, r7, r8, r9, sl, fp, lr}
-	sub	fp, r12, #28
 	ldr	r4, [r1]
 	add	r0, r0, #0x40
 	bl	new_recompile_block
@@ -696,79 +693,79 @@ FUNCTION(new_dyna_start):
 	.size	new_dyna_start, .-new_dyna_start
 
 FUNCTION(invalidate_addr_r0):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, r9, r12, lr}
 	lsr	r0, r0, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r0, .-invalidate_addr_r0
 
 FUNCTION(invalidate_addr_r1):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, r9, r12, lr}
 	lsr	r0, r1, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r1, .-invalidate_addr_r1
 
 FUNCTION(invalidate_addr_r2):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, r9, r12, lr}
 	lsr	r0, r2, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r2, .-invalidate_addr_r2
 
 FUNCTION(invalidate_addr_r3):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, r9, r12, lr}
 	lsr	r0, r3, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r3, .-invalidate_addr_r3
 
 FUNCTION(invalidate_addr_r4):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, r9, r12, lr}
 	lsr	r0, r4, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r4, .-invalidate_addr_r4
 
 FUNCTION(invalidate_addr_r5):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, r9, r12, lr}
 	lsr	r0, r5, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r5, .-invalidate_addr_r5
 
 FUNCTION(invalidate_addr_r6):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, r9, r12, lr}
 	lsr	r0, r6, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r6, .-invalidate_addr_r6
 
 FUNCTION(invalidate_addr_r7):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, r9, r12, lr}
 	lsr	r0, r7, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r7, .-invalidate_addr_r7
 
 FUNCTION(invalidate_addr_r8):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, r9, r12, lr}
 	lsr	r0, r8, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r8, .-invalidate_addr_r8
 
 FUNCTION(invalidate_addr_r9):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, r9, r12, lr}
 	lsr	r0, r9, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r9, .-invalidate_addr_r9
 
 FUNCTION(invalidate_addr_r10):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, r9, r12, lr}
 	lsr	r0, r10, #12	
 	b	invalidate_addr_call
 	.size	invalidate_addr_r10, .-invalidate_addr_r10
 
 FUNCTION(invalidate_addr_r12):
-	stmia	fp, {r0, r1, r2, r3, r12, lr}
+	stmia	fp, {r0, r1, r2, r3, r9, r12, lr}
 	lsr	r0, r12, #12	
 	.size	invalidate_addr_r12, .-invalidate_addr_r12
 
 FUNCTION(invalidate_addr_call): // Not global?
 	bl	invalidate_block
-	ldmia	fp, {r0, r1, r2, r3, r12, pc}
+	ldmia	fp, {r0, r1, r2, r3, r9, r12, pc}
 	.size	invalidate_addr_call, .-invalidate_addr_call
 
 FUNCTION(write_rdram_new):
@@ -882,14 +879,14 @@ FUNCTION(read_nomemd_new):
 	.size	read_nomemd_new, .-read_nomemd_new
 
 FUNCTION(write_nomem_new):
-	str	r3, [fp, #24]
-	str	lr, [fp, #28]
+	str	r3, [fp, #28]
+	str	lr, [fp, #32]
 	bl	do_invalidate
 	ldr	r2, [fp, #LO_address-LO_dynarec_local]
 	add	r12, fp, #LO_memory_map-LO_dynarec_local
-	ldr	lr, [fp, #28]
+	ldr	lr, [fp, #32]
 	lsr	r0, r2, #12
-	ldr	r3, [fp, #24]
+	ldr	r3, [fp, #28]
 	ldr	r12, [r12, r0, lsl #2]
 	mov	r1, #0xc
 	tst	r12, #0x40000000
@@ -900,14 +897,14 @@ FUNCTION(write_nomem_new):
 	.size	write_nomem_new, .-write_nomem_new
 
 FUNCTION(write_nomemb_new):
-	str	r3, [fp, #24]
-	str	lr, [fp, #28]
+	str	r3, [fp, #28]
+	str	lr, [fp, #32]
 	bl	do_invalidate
 	ldr	r2, [fp, #LO_address-LO_dynarec_local]
 	add	r12, fp, #LO_memory_map-LO_dynarec_local
-	ldr	lr, [fp, #28]
+	ldr	lr, [fp, #32]
 	lsr	r0, r2, #12
-	ldr	r3, [fp, #24]
+	ldr	r3, [fp, #28]
 	ldr	r12, [r12, r0, lsl #2]
 	mov	r1, #0xc
 	tst	r12, #0x40000000
@@ -919,14 +916,14 @@ FUNCTION(write_nomemb_new):
 	.size	write_nomemb_new, .-write_nomemb_new
 
 FUNCTION(write_nomemh_new):
-	str	r3, [fp, #24]
-	str	lr, [fp, #28]
+	str	r3, [fp, #28]
+	str	lr, [fp, #32]
 	bl	do_invalidate
 	ldr	r2, [fp, #LO_address-LO_dynarec_local]
 	add	r12, fp, #LO_memory_map-LO_dynarec_local
-	ldr	lr, [fp, #28]
+	ldr	lr, [fp, #32]
 	lsr	r0, r2, #12
-	ldr	r3, [fp, #24]
+	ldr	r3, [fp, #28]
 	ldr	r12, [r12, r0, lsl #2]
 	mov	r1, #0xc
 	lsls	r12, #2
@@ -938,14 +935,14 @@ FUNCTION(write_nomemh_new):
 	.size	write_nomemh_new, .-write_nomemh_new
 
 FUNCTION(write_nomemd_new):
-	str	r3, [fp, #24]
-	str	lr, [fp, #28]
+	str	r3, [fp, #28]
+	str	lr, [fp, #32]
 	bl	do_invalidate
 	ldr	r2, [fp, #LO_address-LO_dynarec_local]
 	add	r12, fp, #LO_memory_map-LO_dynarec_local
-	ldr	lr, [fp, #28]
+	ldr	lr, [fp, #32]
 	lsr	r0, r2, #12
-	ldr	r3, [fp, #24]
+	ldr	r3, [fp, #28]
 	ldr	r12, [r12, r0, lsl #2]
 	mov	r1, #0xc
 	lsls	r12, #2
