@@ -18,6 +18,12 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#ifndef __MACH__
+#define CALLER_SAVE_REGS 0x100f
+#else
+#define CALLER_SAVE_REGS 0x120f
+#endif
+
 extern int cycle_count;
 extern int last_count;
 extern int pcaddr;
@@ -2458,33 +2464,39 @@ static void emit_jno_unlikely(int a)
   output_w32(0x72800000|rd_rn_rm(15,15,0));
 }
 
+static void save_regs_all(u_int reglist)
+{
+  int i;
+  if(!reglist) return;
+  assem_debug("stmia fp,{");
+  for(i=0;i<16;i++)
+    if(reglist&(1<<i))
+      assem_debug("r%d,",i);
+  assem_debug("}\n");
+  output_w32(0xe88b0000|reglist);
+}
+static void restore_regs_all(u_int reglist)
+{
+  int i;
+  if(!reglist) return;
+  assem_debug("ldmia fp,{");
+  for(i=0;i<16;i++)
+    if(reglist&(1<<i))
+      assem_debug("r%d,",i);
+  assem_debug("}\n");
+  output_w32(0xe89b0000|reglist);
+}
 // Save registers before function call
 static void save_regs(u_int reglist)
 {
-  reglist&=0x100f; // only save the caller-save registers, r0-r3, r12
-  if(!reglist) return;
-  assem_debug("stmia fp,{");
-  if(reglist&1) assem_debug("r0, ");
-  if(reglist&2) assem_debug("r1, ");
-  if(reglist&4) assem_debug("r2, ");
-  if(reglist&8) assem_debug("r3, ");
-  if(reglist&0x1000) assem_debug("r12");
-  assem_debug("}");
-  output_w32(0xe88b0000|reglist);
+  reglist&=CALLER_SAVE_REGS; // only save the caller-save registers, r0-r3, r12
+  save_regs_all(reglist);
 }
 // Restore registers after function call
 static void restore_regs(u_int reglist)
 {
-  reglist&=0x100f; // only restore the caller-save registers, r0-r3, r12
-  if(!reglist) return;
-  assem_debug("ldmia fp,{");
-  if(reglist&1) assem_debug("r0, ");
-  if(reglist&2) assem_debug("r1, ");
-  if(reglist&4) assem_debug("r2, ");
-  if(reglist&8) assem_debug("r3, ");
-  if(reglist&0x1000) assem_debug("r12");
-  assem_debug("}");
-  output_w32(0xe89b0000|reglist);
+  reglist&=CALLER_SAVE_REGS;
+  restore_regs_all(reglist);
 }
 
 // Write back consts using r14 so we don't disturb the other registers
@@ -2616,10 +2628,10 @@ static void do_readstub(int n)
   save_regs(reglist);
   ds=i_regs!=&regs[i];
   int real_rs=(itype[i]==LOADLR)?-1:get_reg(i_regmap,rs1[i]);
-  u_int cmask=ds?-1:(0x100f|~i_regs->wasconst);
-  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&0x100f,i);
+  u_int cmask=ds?-1:(CALLER_SAVE_REGS|~i_regs->wasconst);
+  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&CALLER_SAVE_REGS,i);
   wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty&cmask&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs)));
-  if(!ds) wb_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&~0x100f,i);
+  if(!ds) wb_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&~CALLER_SAVE_REGS,i);
   emit_shrimm(rs,16,1);
   int cc=get_reg(i_regmap,CCREG);
   if(cc<0) {
@@ -2797,10 +2809,10 @@ static void do_writestub(int n)
   save_regs(reglist);
   ds=i_regs!=&regs[i];
   int real_rs=get_reg(i_regmap,rs1[i]);
-  u_int cmask=ds?-1:(0x100f|~i_regs->wasconst);
-  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&0x100f,i);
+  u_int cmask=ds?-1:(CALLER_SAVE_REGS|~i_regs->wasconst);
+  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&CALLER_SAVE_REGS,i);
   wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty&cmask&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs)));
-  if(!ds) wb_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&~0x100f,i);
+  if(!ds) wb_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&~CALLER_SAVE_REGS,i);
   emit_shrimm(rs,16,1);
   int cc=get_reg(i_regmap,CCREG);
   if(cc<0) {
@@ -4158,7 +4170,7 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
         assert(m2h>=0);
         assert(m1l>=0);
         assert(m2l>=0);
-        save_regs(0x100f);
+        save_regs(CALLER_SAVE_REGS);
         if(m1l != 0)
            emit_mov(m1l,0);
         if(m1h == 0)
@@ -4174,7 +4186,7 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
         else if(m2h > 3)
            emit_mov(m2h,3);
         emit_call((int)&mult64);
-        restore_regs(0x100f);
+        restore_regs(CALLER_SAVE_REGS);
         signed char hih=get_reg(i_regs->regmap,HIREG|64);
         signed char hil=get_reg(i_regs->regmap,HIREG);
         if(hih>=0) emit_loadreg(HIREG|64,hih);
@@ -4194,7 +4206,7 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
         assert(m2h>=0);
         assert(m1l>=0);
         assert(m2l>=0);
-        save_regs(0x100f);
+        save_regs(CALLER_SAVE_REGS);
         if(m1l!=0) emit_mov(m1l,0);
         if(m1h==0) emit_readword((int)&dynarec_local,1);
         else if(m1h>1) emit_mov(m1h,1);
@@ -4203,7 +4215,7 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
         if(m2h<3) emit_readword((int)&dynarec_local+m2h*4,3);
         else if(m2h>3) emit_mov(m2h,3);
         emit_call((int)&multu64);
-        restore_regs(0x100f);
+        restore_regs(CALLER_SAVE_REGS);
         signed char hih=get_reg(i_regs->regmap,HIREG|64);
         signed char hil=get_reg(i_regs->regmap,HIREG);
         signed char loh=get_reg(i_regs->regmap,LOREG|64);
@@ -4274,7 +4286,7 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
         assert(d2h>=0);
         assert(d1l>=0);
         assert(d2l>=0);
-        save_regs(0x100f);
+        save_regs(CALLER_SAVE_REGS);
         if(d1l!=0) emit_mov(d1l,0);
         if(d1h==0) emit_readword((int)&dynarec_local,1);
         else if(d1h>1) emit_mov(d1h,1);
@@ -4283,7 +4295,7 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
         if(d2h<3) emit_readword((int)&dynarec_local+d2h*4,3);
         else if(d2h>3) emit_mov(d2h,3);
         emit_call((int)&div64);
-        restore_regs(0x100f);
+        restore_regs(CALLER_SAVE_REGS);
         signed char hih=get_reg(i_regs->regmap,HIREG|64);
         signed char hil=get_reg(i_regs->regmap,HIREG);
         signed char loh=get_reg(i_regs->regmap,LOREG|64);
@@ -4307,7 +4319,7 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
         assert(d2h>=0);
         assert(d1l>=0);
         assert(d2l>=0);
-        save_regs(0x100f);
+        save_regs(CALLER_SAVE_REGS);
         if(d1l!=0) emit_mov(d1l,0);
         if(d1h==0) emit_readword((int)&dynarec_local,1);
         else if(d1h>1) emit_mov(d1h,1);
@@ -4316,7 +4328,7 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
         if(d2h<3) emit_readword((int)&dynarec_local+d2h*4,3);
         else if(d2h>3) emit_mov(d2h,3);
         emit_call((int)&divu64);
-        restore_regs(0x100f);
+        restore_regs(CALLER_SAVE_REGS);
         signed char hih=get_reg(i_regs->regmap,HIREG|64);
         signed char hil=get_reg(i_regs->regmap,HIREG);
         signed char loh=get_reg(i_regs->regmap,LOREG|64);
