@@ -252,7 +252,7 @@ void GetTexInfo (int id, int tile)
    // ** CRC CHECK
 
    wid_64 = width << (rdp.tiles[tile].size) >> 1;
-   if (rdp.tiles[tile].size == 3)
+   if (rdp.tiles[tile].size == G_IM_SIZ_32b)
    {
       if (wid_64 & 15) wid_64 += 16;
       wid_64 &= 0xFFFFFFF0;
@@ -286,7 +286,7 @@ void GetTexInfo (int id, int tile)
    }
 
    line = rdp.tiles[tile].line;
-   if (rdp.tiles[tile].size == 3)
+   if (rdp.tiles[tile].size == G_IM_SIZ_32b)
       line <<= 1;
    uint32_t crc = 0;
    {
@@ -309,7 +309,7 @@ void GetTexInfo (int id, int tile)
    }
    if ((rdp.tiles[tile].size < 2) && (rdp.tlut_mode || rdp.tiles[tile].format == G_IM_FMT_CI))
    {
-      if (rdp.tiles[tile].size == 0)
+      if (rdp.tiles[tile].size == G_IM_SIZ_4b)
          crc += rdp.pal_8_crc[rdp.tiles[tile].palette];
       else
          crc += rdp.pal_256_crc;
@@ -831,10 +831,10 @@ void LoadTex(int id, int tmu)
 
    //!Hackalert
    //GoldenEye water texture. It has CI format in fact, but the game set it to RGBA
-   if ((settings.hacks&hack_GoldenEye) && rdp.tiles[td].format == G_IM_FMT_RGBA && rdp.tlut_mode == 2 && rdp.tiles[td].size == 2)
+   if ((settings.hacks&hack_GoldenEye) && rdp.tiles[td].format == G_IM_FMT_RGBA && rdp.tlut_mode == 2 && rdp.tiles[td].size == G_IM_SIZ_16b)
    {
       rdp.tiles[td].format = G_IM_FMT_CI;
-      rdp.tiles[td].size = 1;
+      rdp.tiles[td].size = G_IM_SIZ_8b;
    }
 
    // Set the data
