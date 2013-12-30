@@ -13894,7 +13894,7 @@ void CombineBlender(void)
       A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
       }
       */
-   else if (blendmode == 0x0040) // Mia Soccer Lights
+   else if (blendmode == BLEND_XLU) // Mia Soccer Lights
       A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
    else if ((settings.hacks&hack_Pilotwings) && (rdp.othermode_l & 0x80)) //CLR_ON_CVG without FORCE_BL
       A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);

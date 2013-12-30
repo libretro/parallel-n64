@@ -386,6 +386,7 @@ extern "C" {
 //Blender
 #define BLEND_FOG_ASHADE   0xc800
 #define BLEND_FOG_APRIME   0xc400
+#define BLEND_XLU          0x0040
 
 #ifdef __cplusplus
 }
