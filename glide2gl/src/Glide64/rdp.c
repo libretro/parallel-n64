@@ -2051,7 +2051,7 @@ static void rdp_loadtile()
     //     wrong_tile = -1;
   }
 
-  if (rdp.tbuff_tex)// && (rdp.tiles[tile].format == 0))
+  if (rdp.tbuff_tex)// && (rdp.tiles[tile].format == G_IM_FMT_RGBA))
   {
     FRDP("loadtile: tbuff_tex ul_s: %d, ul_t:%d\n", ul_s, ul_t);
     rdp.tbuff_tex->tile_uls = ul_s;
@@ -2147,7 +2147,7 @@ static void rdp_settile()
                if (rdp.aTBuffTex[i]->size == tile->size)
                {
                   rdp.aTBuffTex[i]->tile = rdp.last_tile;
-                  rdp.aTBuffTex[i]->info.format = tile->format == 0 ? GR_TEXFMT_RGB_565 : GR_TEXFMT_ALPHA_INTENSITY_88;
+                  rdp.aTBuffTex[i]->info.format = tile->format == G_IM_FMT_RGBA ? GR_TEXFMT_RGB_565 : GR_TEXFMT_ALPHA_INTENSITY_88;
                   FRDP("rdp.aTBuffTex[%d] tile=%d, format=%s\n", i, rdp.last_tile, tile->format == 0 ? "RGB565" : "Alpha88");
                }
                else
@@ -2220,7 +2220,7 @@ static void rdp_fillrect()
     return;
   }
 
-  if (rdp.cur_image && (rdp.cur_image->format != 0) && (rdp.cycle_mode == G_CYC_FILL) && (rdp.cur_image->width == lr_x - ul_x) && (rdp.cur_image->height == lr_y - ul_y))
+  if (rdp.cur_image && (rdp.cur_image->format != G_IM_FMT_RGBA) && (rdp.cycle_mode == G_CYC_FILL) && (rdp.cur_image->width == lr_x - ul_x) && (rdp.cur_image->height == lr_y - ul_y))
   {
     uint32_t color = rdp.fill_color;
     if (rdp.ci_size < 3)
@@ -2446,7 +2446,7 @@ static void rdp_settextureimage()
   rdp.timg.addr = segoffset(rdp.cmd1);
   if (ucode5_texshiftaddr)
   {
-    if (rdp.timg.format == 0)
+    if (rdp.timg.format == G_IM_FMT_RGBA)
     {
       uint16_t * t = (uint16_t*)(gfx.RDRAM+ucode5_texshiftaddr);
       ucode5_texshift = t[ucode5_texshiftcount^1];
@@ -2661,7 +2661,7 @@ static void rdp_setcolorimage()
             */
          case ci_aux:
             {
-               if (!fb_hwfbe_enabled && cur_fb->format != 0)
+               if (!fb_hwfbe_enabled && cur_fb->format != G_IM_FMT_RGBA)
                   rdp.skip_drawing = true;
                else
                {
@@ -2736,7 +2736,7 @@ static void rdp_setcolorimage()
 
       if ((rdp.ci_count > 0) && (prev_fb->status >= ci_aux)) //for Pokemon Stadium
       {
-         if (!fb_hwfbe_enabled && prev_fb->format == 0)
+         if (!fb_hwfbe_enabled && prev_fb->format == G_IM_FMT_RGBA)
             CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
          else if ((settings.hacks&hack_Knockout) && prev_fb->width < 100)
             CopyFrameBuffer (GR_BUFFER_TEXTUREBUFFER_EXT);
@@ -2844,7 +2844,7 @@ static void rdp_setcolorimage()
    FRDP("setcolorimage - %08lx, width: %d,  height: %d, format: %d, size: %d\n", rdp.cmd1, rdp.ci_width, rdp.ci_height, format, rdp.ci_size);
    FRDP("cimg: %08lx, ocimg: %08lx, SwapOK: %d\n", rdp.cimg, rdp.ocimg, SwapOK);
 
-   if (format != 0) //can't draw into non RGBA buffer
+   if (format != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
    {
       if (!rdp.cur_image)
       {
