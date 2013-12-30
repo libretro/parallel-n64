@@ -43,17 +43,17 @@
 
 static void fb_uc0_moveword(void)
 {
-   if ((rdp.cmd0 & 0xFF) == 0x06)  // segment
+   if ((rdp.cmd0 & 0xFF) == G_MW_SEGMENT)  // segment
       rdp.segment[(rdp.cmd0 >> 10) & 0x0F] = rdp.cmd1;
 }
 
 static void fb_uc2_moveword(void)
 {
-  if (((rdp.cmd0 >> 16) & 0xFF) == 0x06)  // segment
+  if (((rdp.cmd0 >> 16) & 0xFF) == G_MW_SEGMENT)  // segment
     rdp.segment[((rdp.cmd0 & 0xFFFF) >> 2)&0xF] = rdp.cmd1;
 }
 
-static void fb_bg_copy ()
+static void fb_bg_copy(void)
 {
    if (rdp.main_ci == 0)
       return;

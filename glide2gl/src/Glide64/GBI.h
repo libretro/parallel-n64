@@ -379,8 +379,13 @@ extern "C" {
 #define G_DL_PUSH       0x00
 #define G_DL_NOPUSH     0x01
 
-//Ucode 2 flags - F3DEX2
+//F3DEX2
 #define F3DEX2_MV_VIEWPORT 8
+#define F3DEX2_ENDDL       0xDF
+
+//Blender
+#define BLEND_FOG_ASHADE   0xc800
+#define BLEND_FOG_APRIME   0xc400
 
 #ifdef __cplusplus
 }

@@ -1822,10 +1822,8 @@ void LoadBlock32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, ui
 static void rdp_loadblock()
 {
   if (rdp.skip_drawing)
-  {
-    LRDP("loadblock skipped\n");
     return;
-  }
+
   uint32_t tile = (uint32_t)((rdp.cmd1 >> 24) & 0x07);
   uint32_t dxt = (uint32_t)(rdp.cmd1 & 0x0FFF);
   uint16_t lr_s = (uint16_t)(rdp.cmd1 >> 14) & 0x3FF;
@@ -2025,10 +2023,8 @@ void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, u
 static void rdp_loadtile()
 {
   if (rdp.skip_drawing)
-  {
-    LRDP("loadtile skipped\n");
     return;
-  }
+
   rdp.timg.set_by = 1;  // load tile
 
   uint32_t tile = (uint32_t)((rdp.cmd1 >> 24) & 0x07);

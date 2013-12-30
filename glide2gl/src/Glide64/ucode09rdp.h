@@ -40,6 +40,7 @@
 // December 2008 Created by Gonetz (Gonetz@ngs.ru)
 //
 //****************************************************************
+#include "GBI.h"
 
 void uc9_rpdcmd(void)
 {
@@ -51,15 +52,15 @@ void uc9_rpdcmd(void)
       rdp.LLE = 1;
       uint32_t cmd = 0;
 
-      while(1) 
+      do
       {
          rdp.cmd0 = ((uint32_t*)gfx.RDRAM)[a++];   
          cmd = rdp.cmd0>>24; 
-         if (cmd == 0xDF)
+         if (cmd == F3DEX2_ENDDL)
             break;
          rdp.cmd1 = ((uint32_t*)gfx.RDRAM)[a++]; 
 
-         if (cmd == 0xE4 || cmd == 0xE5)
+         if (cmd == G_TEXRECT || cmd == G_TEXRECTFLIP)
          {
             a++;
             rdp.cmd2 = ((uint32_t*)gfx.RDRAM)[a++]; 
@@ -67,7 +68,7 @@ void uc9_rpdcmd(void)
             rdp.cmd3 = ((uint32_t*)gfx.RDRAM)[a++];
          }
          gfx_instruction[ucode_zSort][cmd] ();
-      };
+      }while(1);
       rdp.LLE = 0;
    }
 }

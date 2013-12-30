@@ -449,7 +449,7 @@ static void uc2_geom_mode(void)
          rdp.update |= UPDATE_ZBUF_ENABLED;
       }
    }
-   if (rdp.geom_mode & 0x00001000) // Front culling
+   if (rdp.geom_mode & CULL_FRONT) // Front culling
    {
       if (!(rdp.flags & CULL_FRONT))
       {

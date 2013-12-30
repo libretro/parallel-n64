@@ -40,6 +40,7 @@
 #include "Gfx_1.3.h"
 #include "Util.h"
 #include "Combine.h"
+#include "GBI.h"
 
 #define FASTSEARCH  // Enable fast combine mode searching algorithm
 
@@ -13790,7 +13791,7 @@ void CombineBlender(void)
          case 0xcb02:
             // Battlezone
             // clr_in * a + clr_in * (1-a)
-         case 0xc800:
+         case BLEND_FOG_ASHADE:
          case 0x00c0:
             //ISS64
          case 0xc302:

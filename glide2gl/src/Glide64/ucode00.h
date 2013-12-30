@@ -279,12 +279,7 @@ void load_matrix (float m[4][4], uint32_t addr)
    for (x = 0; x < 16; x += 4)
    {
       for (y=0; y<4; y++)
-      {
-         m[x>>2][y] = (float)(
-               (((int32_t)src[(addr+x+y)^1]) << 16) |
-               src[(addr+x+y+16)^1]
-               ) / 65536.0f;
-      }
+         m[x>>2][y] = (float)((((int32_t)src[(addr+x+y)^1]) << 16) | src[(addr+x+y+16)^1]) / 65536.0f;
    }
 }
 
@@ -508,12 +503,10 @@ static void uc0_displaylist()
 {
    uint32_t addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
 
+   // Don't execute display list
    // This fixes partially Gauntlet: Legends
    if (addr == rdp.pc[rdp.pc_i] - 8)
-   {
-      LRDP("display list not executed!\n");
       return;
-   }
 
    uint32_t push = (rdp.cmd0 >> 16) & 0xFF; // push the old location?
 
@@ -583,8 +576,6 @@ static void uc0_enddl(void)
 
    if (rdp.pc_i == 0)
    {
-      LRDP("RDP end\n");
-
       // Halt execution here
       rdp.halt = 1;
    }
@@ -985,7 +976,7 @@ static void uc0_setgeometrymode(void)
          rdp.update |= UPDATE_ZBUF_ENABLED;
       }
    }
-   if (rdp.cmd1 & 0x00001000)  // Front culling
+   if (rdp.cmd1 & CULL_FRONT)  // Front culling
    {
       if (!(rdp.flags & CULL_FRONT))
       {
@@ -993,7 +984,7 @@ static void uc0_setgeometrymode(void)
          rdp.update |= UPDATE_CULL_MODE;
       }
    }
-   if (rdp.cmd1 & 0x00002000)  // Back culling
+   if (rdp.cmd1 & CULL_BACK)  // Back culling
    {
       if (!(rdp.flags & CULL_BACK))
       {
@@ -1027,7 +1018,7 @@ static void uc0_cleargeometrymode(void)
          rdp.update |= UPDATE_ZBUF_ENABLED;
       }
    }
-   if (rdp.cmd1 & 0x00001000)  // Front culling
+   if (rdp.cmd1 & CULL_FRONT)  // Front culling
    {
       if (rdp.flags & CULL_FRONT)
       {
@@ -1035,7 +1026,7 @@ static void uc0_cleargeometrymode(void)
          rdp.update |= UPDATE_CULL_MODE;
       }
    }
-   if (rdp.cmd1 & 0x00002000)  // Back culling
+   if (rdp.cmd1 & CULL_BACK)  // Back culling
    {
       if (rdp.flags & CULL_BACK)
       {
@@ -1084,19 +1075,6 @@ static void uc0_tri4(void)
    VERTEX *v[12];
 
    LRDP("uc0:tri4");
-   FRDP(" #%d, #%d, #%d, #%d - %d, %d, %d - %d, %d, %d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1, rdp.tri_n+2, rdp.tri_n+3,
-         (rdp.cmd1 >> 28) & 0xF,
-         (rdp.cmd0 >> 12) & 0xF,
-         (rdp.cmd1 >> 24) & 0xF,
-         (rdp.cmd1 >> 20) & 0xF,
-         (rdp.cmd0 >> 8) & 0xF,
-         (rdp.cmd1 >> 16) & 0xF,
-         (rdp.cmd1 >> 12) & 0xF,
-         (rdp.cmd0 >> 4) & 0xF,
-         (rdp.cmd1 >> 8) & 0xF,
-         (rdp.cmd1 >> 4) & 0xF,
-         (rdp.cmd0 >> 0) & 0xF,
-         (rdp.cmd1 >> 0) & 0xF);
 
    v[0 ]  = &rdp.vtx[(rdp.cmd1 >> 28) & 0xF];
    v[1 ]  = &rdp.vtx[(rdp.cmd0 >> 12) & 0xF];

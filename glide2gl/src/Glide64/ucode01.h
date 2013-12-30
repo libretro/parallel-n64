@@ -52,20 +52,12 @@ static void uc1_vertex(void)
 // tri1 - renders a triangle
 //
 
-static void uc1_tri1()
+static void uc1_tri1(void)
 {
    VERTEX *v[3];
 
    if (rdp.skip_drawing)
-   {
-      LRDP("uc1:tri1. skipped\n");
       return;
-   }
-
-   FRDP("uc1:tri1 #%d - %d, %d, %d - %08lx - %08lx\n", rdp.tri_n,
-         ((rdp.cmd1 >> 17) & 0x7F),
-         ((rdp.cmd1 >> 9) & 0x7F),
-         ((rdp.cmd1 >> 1) & 0x7F), rdp.cmd0, rdp.cmd1);
 
    v[0] = &rdp.vtx[(rdp.cmd1 >> 17) & 0x7F];
    v[1] = &rdp.vtx[(rdp.cmd1 >> 9) & 0x7F];
@@ -79,19 +71,7 @@ static void uc1_tri2(void)
    VERTEX *v[6];
 
    if (rdp.skip_drawing)
-   {
-      LRDP("uc1:tri2. skipped\n");
       return;
-   }
-
-   LRDP("uc1:tri2");
-   FRDP(" #%d, #%d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1,
-         ((rdp.cmd0 >> 17) & 0x7F),
-         ((rdp.cmd0 >> 9) & 0x7F),
-         ((rdp.cmd0 >> 1) & 0x7F),
-         ((rdp.cmd1 >> 17) & 0x7F),
-         ((rdp.cmd1 >> 9) & 0x7F),
-         ((rdp.cmd1 >> 1) & 0x7F));
 
    v[0] = &rdp.vtx[(rdp.cmd0 >> 17) & 0x7F];
    v[1] = &rdp.vtx[(rdp.cmd0 >> 9)  & 0x7F];
@@ -150,7 +130,7 @@ static void uc1_rdphalf_1(void)
    rdphalf_1();
 }
 
-static void uc1_branch_z()
+static void uc1_branch_z(void)
 {
    uint32_t addr = segoffset(branch_dl);
    FRDP ("uc1:branch_less_z, addr: %08lx\n", addr);
