@@ -31,6 +31,7 @@ extern retro_environment_t environ_cb;
 extern retro_input_state_t input_cb;
 extern struct retro_rumble_interface rumble;
 extern int pad_pak_types[4];
+extern uint16_t button_orientation;
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_types.h"
@@ -612,8 +613,16 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
    }
    else
    {
-      Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-      Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
+      if (button_orientation == 1)
+      {
+         Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
+         Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
+      }
+      else
+      {
+         Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
+         Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
+      }
    }
 
    // C buttons

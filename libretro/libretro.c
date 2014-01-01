@@ -32,6 +32,7 @@ static cothread_t main_thread;
 static cothread_t emulator_thread;
 static bool emu_thread_has_run = false; // < This is used to ensure the core_gl_context_reset
                                         //   function doesn't try to reinit graphics before needed
+uint16_t button_orientation = 0;
 static bool flip_only;
 bool no_audio;
 static savestates_job state_job_done;
@@ -181,6 +182,8 @@ static void setup_variables(void)
 #else
          "CPU Core; cached_interpreter|pure_interpreter" },
 #endif
+      {"mupen64-button-orientation-ab",
+        "Buttons B and A; BA|YB"},
       {"mupen64-pak1",
         "Player 1 Pak; none|memory|rumble"},
       {"mupen64-pak2",
@@ -455,6 +458,17 @@ void update_variables(void)
          retro_filtering = 2;
    }
 
+   var.key = "mupen64-button-orientation-ab";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "BA"))
+         button_orientation = 0;
+      else if (!strcmp(var.value, "YB"))
+         button_orientation = 1;
+   }
+
    var.key = "mupen64-gfxplugin-accuracy";
    var.value = NULL;
 
@@ -489,6 +503,7 @@ void update_variables(void)
       else if (!strcmp(var.value, "fullspeed"))
          frame_dupe = true;
    }
+
    
    {
       struct retro_variable pk1var = { "mupen64-pak1" };
