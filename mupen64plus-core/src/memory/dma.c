@@ -44,11 +44,11 @@
 #include "main/rom.h"
 #include "main/util.h"
 
-int delay_si = 0;
+int32_t delay_si = 0;
 
 void dma_pi_read(void)
 {
-    unsigned int i;
+    uint32_t i;
 
     if (pi_register.pi_cart_addr_reg >= 0x08000000
             && pi_register.pi_cart_addr_reg < 0x08010000)
@@ -58,7 +58,7 @@ void dma_pi_read(void)
             for (i=0; i < (pi_register.pi_rd_len_reg & 0xFFFFFF)+1; i++)
             {
                 saved_memory.sram[((pi_register.pi_cart_addr_reg-0x08000000)+i)^S8] =
-                    ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8];
+                    ((uint8_t*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8];
             }
 
             flashram_info.use_flashram = -1;
@@ -80,8 +80,8 @@ void dma_pi_read(void)
 
 void dma_pi_write(void)
 {
-    unsigned int longueur;
-    int i;
+    uint32_t longueur;
+    int32_t i;
 
     if (pi_register.pi_cart_addr_reg < 0x10000000)
     {
@@ -90,11 +90,11 @@ void dma_pi_write(void)
         {
             if (flashram_info.use_flashram != 1)
             {
-                int i;
+                int32_t i;
 
-                for (i=0; i<(int)(pi_register.pi_wr_len_reg & 0xFFFFFF)+1; i++)
+                for (i=0; i< (int32_t)(pi_register.pi_wr_len_reg & 0xFFFFFF)+1; i++)
                 {
-                    ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
+                    ((uint8_t*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
                         saved_memory.sram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFF)+i)^S8];
                 }
 
@@ -111,7 +111,7 @@ void dma_pi_write(void)
         }
         else
         {
-            DebugMessage(M64MSG_WARNING, "Unknown dma write 0x%x in dma_pi_write()", (int)pi_register.pi_cart_addr_reg);
+            DebugMessage(M64MSG_WARNING, "Unknown dma write 0x%x in dma_pi_write()", (int32_t)pi_register.pi_cart_addr_reg);
         }
 
         pi_register.read_pi_status_reg |= 1;
@@ -132,7 +132,7 @@ void dma_pi_write(void)
 
     longueur = (pi_register.pi_wr_len_reg & 0xFFFFFF)+1;
     i = (pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF;
-    longueur = (i + (int) longueur) > rom_size ?
+    longueur = (i + (int32_t)longueur) > rom_size ?
                (rom_size - i) : longueur;
     longueur = (pi_register.pi_dram_addr_reg + longueur) > 0x7FFFFF ?
                (0x7FFFFF - pi_register.pi_dram_addr_reg) : longueur;
@@ -148,11 +148,11 @@ void dma_pi_write(void)
 
     if (r4300emu != CORE_PURE_INTERPRETER)
     {
-        for (i=0; i<(int)longueur; i++)
+        for (i=0; i<(int32_t)longueur; i++)
         {
-            unsigned long rdram_address1 = pi_register.pi_dram_addr_reg+i+0x80000000;
-            unsigned long rdram_address2 = pi_register.pi_dram_addr_reg+i+0xa0000000;
-            ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
+            uint32_t rdram_address1 = pi_register.pi_dram_addr_reg+i+0x80000000;
+            uint32_t rdram_address2 = pi_register.pi_dram_addr_reg+i+0xa0000000;
+            ((uint8_t*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
                 rom[(((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF)+i)^S8];
 
             if (!invalid_code[rdram_address1>>12])
@@ -180,9 +180,9 @@ void dma_pi_write(void)
     }
     else
     {
-        for (i=0; i<(int)longueur; i++)
+        for (i=0; i<(int32_t)longueur; i++)
         {
-            ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
+            ((uint8_t*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
                 rom[(((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF)+i)^S8];
         }
     }
@@ -232,19 +232,19 @@ void dma_pi_write(void)
 
 void dma_sp_write(void)
 {
-    unsigned int i,j;
+    uint32_t i,j;
 
-    unsigned int l = sp_register.sp_rd_len_reg;
+    uint32_t l = sp_register.sp_rd_len_reg;
 
-    unsigned int length = ((l & 0xfff) | 7) + 1;
-    unsigned int count = ((l >> 12) & 0xff) + 1;
-    unsigned int skip = ((l >> 20) & 0xfff);
+    uint32_t length = ((l & 0xfff) | 7) + 1;
+    uint32_t count = ((l >> 12) & 0xff) + 1;
+    uint32_t skip = ((l >> 20) & 0xfff);
  
-    unsigned int memaddr = sp_register.sp_mem_addr_reg & 0xfff;
-    unsigned int dramaddr = sp_register.sp_dram_addr_reg & 0xffffff;
+    uint32_t memaddr = sp_register.sp_mem_addr_reg & 0xfff;
+    uint32_t dramaddr = sp_register.sp_dram_addr_reg & 0xffffff;
 
-    unsigned char *spmem = ((sp_register.sp_mem_addr_reg & 0x1000) != 0) ? (unsigned char*)SP_IMEM : (unsigned char*)SP_DMEM;
-    unsigned char *dram = (unsigned char*)rdram;
+    uint8_t *spmem = ((sp_register.sp_mem_addr_reg & 0x1000) != 0) ? (uint8_t*)SP_IMEM : (uint8_t*)SP_DMEM;
+    uint8_t *dram = (uint8_t*)rdram;
 
     for(j=0; j<count; j++) {
         for(i=0; i<length; i++) {
@@ -258,19 +258,19 @@ void dma_sp_write(void)
 
 void dma_sp_read(void)
 {
-    unsigned int i,j;
+    uint32_t i,j;
 
-    unsigned int l = sp_register.sp_wr_len_reg;
+    uint32_t l = sp_register.sp_wr_len_reg;
 
-    unsigned int length = ((l & 0xfff) | 7) + 1;
-    unsigned int count = ((l >> 12) & 0xff) + 1;
-    unsigned int skip = ((l >> 20) & 0xfff);
+    uint32_t length = ((l & 0xfff) | 7) + 1;
+    uint32_t count = ((l >> 12) & 0xff) + 1;
+    uint32_t skip = ((l >> 20) & 0xfff);
 
-    unsigned int memaddr = sp_register.sp_mem_addr_reg & 0xfff;
-    unsigned int dramaddr = sp_register.sp_dram_addr_reg & 0xffffff;
+    uint32_t memaddr = sp_register.sp_mem_addr_reg & 0xfff;
+    uint32_t dramaddr = sp_register.sp_dram_addr_reg & 0xffffff;
 
-    unsigned char *spmem = ((sp_register.sp_mem_addr_reg & 0x1000) != 0) ? (unsigned char*)SP_IMEM : (unsigned char*)SP_DMEM;
-    unsigned char *dram = (unsigned char*)rdram;
+    uint8_t *spmem = ((sp_register.sp_mem_addr_reg & 0x1000) != 0) ? (uint8_t*)SP_IMEM : (uint8_t*)SP_DMEM;
+    uint8_t *dram = (uint8_t*)rdram;
 
     for(j=0; j<count; j++) {
         for(i=0; i<length; i++) {
@@ -284,7 +284,7 @@ void dma_sp_read(void)
 
 void dma_si_write(void)
 {
-    int i;
+    int32_t i;
 
     if (si_register.si_pif_addr_wr64b != 0x1FC007C0)
     {
@@ -316,7 +316,7 @@ void dma_si_write(void)
 
 void dma_si_read(void)
 {
-    int i;
+    int32_t i;
 
     if (si_register.si_pif_addr_rd64b != 0x1FC007C0)
     {

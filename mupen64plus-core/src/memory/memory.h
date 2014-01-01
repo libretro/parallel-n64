@@ -22,9 +22,10 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+#include <stdint.h>
 #include "osal/preproc.h"
 
-extern unsigned int VI_REFRESH;
+extern uint32_t VI_REFRESH;
 
 int init_memory(int DoByteSwap);
 void free_memory(void);
@@ -36,29 +37,29 @@ void free_memory(void);
 #define write_byte_in_memory() writememb[address >>16]()
 #define write_hword_in_memory() writememh[address >>16]()
 #define write_dword_in_memory() writememd[address >>16]()
-extern unsigned int SP_DMEM[0x1000/4*2];
-extern unsigned char *SP_DMEMb;
-extern unsigned int *SP_IMEM;
-extern unsigned char *SP_IMEMb;
-extern unsigned int PIF_RAM[0x40/4];
-extern unsigned char *PIF_RAMb;
+extern uint32_t SP_DMEM[0x1000/4*2];
+extern uint8_t *SP_DMEMb;
+extern uint32_t *SP_IMEM;
+extern uint8_t *SP_IMEMb;
+extern uint32_t PIF_RAM[0x40/4];
+extern uint8_t *PIF_RAMb;
 
 typedef struct _save_memory_data
 {
-    unsigned char eeprom[0x200];
-    unsigned char mempack[4][0x8000];
-    unsigned char sram[0x8000];
-    unsigned char flashram[0x20000];
+    uint8_t eeprom[0x200];
+    uint8_t mempack[4][0x8000];
+    uint8_t sram[0x8000];
+    uint8_t flashram[0x20000];
 } save_memory_data;
 extern save_memory_data saved_memory;
 void format_saved_memory(void);
 
-extern ALIGN(16, unsigned int rdram[0x800000/4]);
+extern ALIGN(16, uint32_t rdram[0x800000/4]);
 
-extern unsigned int address, word;
-extern unsigned char cpu_byte;
-extern unsigned short hword;
-extern unsigned long long dword, *rdword;
+extern uint32_t address, word;
+extern uint8_t cpu_byte;
+extern uint16_t hword;
+extern uint64_t dword, *rdword;
 
 extern void (*readmem[0x10000])(void);
 extern void (*readmemb[0x10000])(void);
@@ -69,150 +70,150 @@ extern void (*writememb[0x10000])(void);
 extern void (*writememh[0x10000])(void);
 extern void (*writememd[0x10000])(void);
 
-extern unsigned int *readrdramreg[0x10000];
-extern unsigned int *readrspreg[0x10000];
-extern unsigned int *readrsp[0x10000];
-extern unsigned int *readmi[0x10000];
-extern unsigned int *readvi[0x10000];
-extern unsigned int *readai[0x10000];
-extern unsigned int *readpi[0x10000];
-extern unsigned int *readri[0x10000];
-extern unsigned int *readsi[0x10000];
-extern unsigned int *readdp[0x10000];
-extern unsigned int *readdps[0x10000];
+extern uint32_t *readrdramreg[0x10000];
+extern uint32_t *readrspreg[0x10000];
+extern uint32_t *readrsp[0x10000];
+extern uint32_t *readmi[0x10000];
+extern uint32_t *readvi[0x10000];
+extern uint32_t *readai[0x10000];
+extern uint32_t *readpi[0x10000];
+extern uint32_t *readri[0x10000];
+extern uint32_t *readsi[0x10000];
+extern uint32_t *readdp[0x10000];
+extern uint32_t *readdps[0x10000];
 
 typedef struct _RDRAM_register
 {
-   unsigned int rdram_config;
-   unsigned int rdram_device_id;
-   unsigned int rdram_delay;
-   unsigned int rdram_mode;
-   unsigned int rdram_ref_interval;
-   unsigned int rdram_ref_row;
-   unsigned int rdram_ras_interval;
-   unsigned int rdram_min_interval;
-   unsigned int rdram_addr_select;
-   unsigned int rdram_device_manuf;
+   uint32_t rdram_config;
+   uint32_t rdram_device_id;
+   uint32_t rdram_delay;
+   uint32_t rdram_mode;
+   uint32_t rdram_ref_interval;
+   uint32_t rdram_ref_row;
+   uint32_t rdram_ras_interval;
+   uint32_t rdram_min_interval;
+   uint32_t rdram_addr_select;
+   uint32_t rdram_device_manuf;
 } RDRAM_register;
 
 typedef struct _SP_register
 {
-   unsigned int sp_mem_addr_reg;
-   unsigned int sp_dram_addr_reg;
-   unsigned int sp_rd_len_reg;
-   unsigned int sp_wr_len_reg;
-   unsigned int w_sp_status_reg;
-   unsigned int sp_status_reg;
-   unsigned int sp_dma_full_reg;
-   unsigned int sp_dma_busy_reg;
-   unsigned int sp_semaphore_reg;
+   uint32_t sp_mem_addr_reg;
+   uint32_t sp_dram_addr_reg;
+   uint32_t sp_rd_len_reg;
+   uint32_t sp_wr_len_reg;
+   uint32_t w_sp_status_reg;
+   uint32_t sp_status_reg;
+   uint32_t sp_dma_full_reg;
+   uint32_t sp_dma_busy_reg;
+   uint32_t sp_semaphore_reg;
 } SP_register;
 
 typedef struct _RSP_register
 {
-   unsigned int rsp_pc;
-   unsigned int rsp_ibist;
+   uint32_t rsp_pc;
+   uint32_t rsp_ibist;
 } RSP_register;
 
 typedef struct _DPC_register
 {
-   unsigned int dpc_start;
-   unsigned int dpc_end;
-   unsigned int dpc_current;
-   unsigned int w_dpc_status;
-   unsigned int dpc_status;
-   unsigned int dpc_clock;
-   unsigned int dpc_bufbusy;
-   unsigned int dpc_pipebusy;
-   unsigned int dpc_tmem;
+   uint32_t dpc_start;
+   uint32_t dpc_end;
+   uint32_t dpc_current;
+   uint32_t w_dpc_status;
+   uint32_t dpc_status;
+   uint32_t dpc_clock;
+   uint32_t dpc_bufbusy;
+   uint32_t dpc_pipebusy;
+   uint32_t dpc_tmem;
 } DPC_register;
 
 typedef struct _DPS_register
 {
-   unsigned int dps_tbist;
-   unsigned int dps_test_mode;
-   unsigned int dps_buftest_addr;
-   unsigned int dps_buftest_data;
+   uint32_t dps_tbist;
+   uint32_t dps_test_mode;
+   uint32_t dps_buftest_addr;
+   uint32_t dps_buftest_data;
 } DPS_register;
 
 typedef struct _mips_register
 {
-   unsigned int w_mi_init_mode_reg;
-   unsigned int mi_init_mode_reg;
-   unsigned int mi_version_reg;
-   unsigned int mi_intr_reg;
-   unsigned int mi_intr_mask_reg;
-   unsigned int w_mi_intr_mask_reg;
+   uint32_t w_mi_init_mode_reg;
+   uint32_t mi_init_mode_reg;
+   uint32_t mi_version_reg;
+   uint32_t mi_intr_reg;
+   uint32_t mi_intr_mask_reg;
+   uint32_t w_mi_intr_mask_reg;
 } mips_register;
 
 typedef struct _VI_register
 {
-   unsigned int vi_status;
-   unsigned int vi_origin;
-   unsigned int vi_width;
-   unsigned int vi_v_intr;
-   unsigned int vi_current;
-   unsigned int vi_burst;
-   unsigned int vi_v_sync;
-   unsigned int vi_h_sync;
-   unsigned int vi_leap;
-   unsigned int vi_h_start;
-   unsigned int vi_v_start;
-   unsigned int vi_v_burst;
-   unsigned int vi_x_scale;
-   unsigned int vi_y_scale;
-   unsigned int vi_delay;
+   uint32_t vi_status;
+   uint32_t vi_origin;
+   uint32_t vi_width;
+   uint32_t vi_v_intr;
+   uint32_t vi_current;
+   uint32_t vi_burst;
+   uint32_t vi_v_sync;
+   uint32_t vi_h_sync;
+   uint32_t vi_leap;
+   uint32_t vi_h_start;
+   uint32_t vi_v_start;
+   uint32_t vi_v_burst;
+   uint32_t vi_x_scale;
+   uint32_t vi_y_scale;
+   uint32_t vi_delay;
 } VI_register;
 
 typedef struct _AI_register
 {
-   unsigned int ai_dram_addr;
-   unsigned int ai_len;
-   unsigned int ai_control;
-   unsigned int ai_status;
-   unsigned int ai_dacrate;
-   unsigned int ai_bitrate;
-   unsigned int next_delay;
-   unsigned int next_len;
-   unsigned int current_delay;
-   unsigned int current_len;
+   uint32_t ai_dram_addr;
+   uint32_t ai_len;
+   uint32_t ai_control;
+   uint32_t ai_status;
+   uint32_t ai_dacrate;
+   uint32_t ai_bitrate;
+   uint32_t next_delay;
+   uint32_t next_len;
+   uint32_t current_delay;
+   uint32_t current_len;
 } AI_register;
 
 typedef struct _PI_register
 {
-   unsigned int pi_dram_addr_reg;
-   unsigned int pi_cart_addr_reg;
-   unsigned int pi_rd_len_reg;
-   unsigned int pi_wr_len_reg;
-   unsigned int read_pi_status_reg;
-   unsigned int pi_bsd_dom1_lat_reg;
-   unsigned int pi_bsd_dom1_pwd_reg;
-   unsigned int pi_bsd_dom1_pgs_reg;
-   unsigned int pi_bsd_dom1_rls_reg;
-   unsigned int pi_bsd_dom2_lat_reg;
-   unsigned int pi_bsd_dom2_pwd_reg;
-   unsigned int pi_bsd_dom2_pgs_reg;
-   unsigned int pi_bsd_dom2_rls_reg;
+   uint32_t pi_dram_addr_reg;
+   uint32_t pi_cart_addr_reg;
+   uint32_t pi_rd_len_reg;
+   uint32_t pi_wr_len_reg;
+   uint32_t read_pi_status_reg;
+   uint32_t pi_bsd_dom1_lat_reg;
+   uint32_t pi_bsd_dom1_pwd_reg;
+   uint32_t pi_bsd_dom1_pgs_reg;
+   uint32_t pi_bsd_dom1_rls_reg;
+   uint32_t pi_bsd_dom2_lat_reg;
+   uint32_t pi_bsd_dom2_pwd_reg;
+   uint32_t pi_bsd_dom2_pgs_reg;
+   uint32_t pi_bsd_dom2_rls_reg;
 } PI_register;
 
 typedef struct _RI_register
 {
-   unsigned int ri_mode;
-   unsigned int ri_config;
-   unsigned int ri_current_load;
-   unsigned int ri_select;
-   unsigned int ri_refresh;
-   unsigned int ri_latency;
-   unsigned int ri_error;
-   unsigned int ri_werror;
+   uint32_t ri_mode;
+   uint32_t ri_config;
+   uint32_t ri_current_load;
+   uint32_t ri_select;
+   uint32_t ri_refresh;
+   uint32_t ri_latency;
+   uint32_t ri_error;
+   uint32_t ri_werror;
 } RI_register;
 
 typedef struct _SI_register
 {
-   unsigned int si_dram_addr;
-   unsigned int si_pif_addr_rd64b;
-   unsigned int si_pif_addr_wr64b;
-   unsigned int si_stat;
+   uint32_t si_dram_addr;
+   uint32_t si_pif_addr_rd64b;
+   uint32_t si_pif_addr_wr64b;
+   uint32_t si_stat;
 } SI_register;
 
 extern RDRAM_register rdram_register;
@@ -227,7 +228,7 @@ extern AI_register ai_register;
 extern DPC_register dpc_register;
 extern DPS_register dps_register;
 
-extern unsigned char *const rdramb;
+extern uint8_t *const rdramb;
 
 #ifndef M64P_BIG_ENDIAN
 #define sl(mot) \
@@ -412,14 +413,14 @@ void make_w_mi_init_mode_reg(void);
 void update_MI_intr_mode_reg(void);
 void update_MI_init_mask_reg(void);
 void make_w_mi_intr_mask_reg(void);
-void update_ai_dacrate(unsigned int word);
-void update_vi_status(unsigned int word);
-void update_vi_width(unsigned int word);
+void update_ai_dacrate(uint32_t word);
+void update_vi_status(uint32_t word);
+void update_vi_width(uint32_t word);
 
 /* Returns a pointer to a block of contiguous memory
  * Can access RDRAM, SP_DMEM, SP_IMEM and ROM, using TLB if necessary
  * Useful for getting fast access to a zone with executable code. */
-unsigned int *fast_mem_access(unsigned int address);
+uint32_t *fast_mem_access(uint32_t address);
 
 #endif
 

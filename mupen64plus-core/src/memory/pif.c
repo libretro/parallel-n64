@@ -41,7 +41,7 @@
 
 /*static void mempack_format(void)
 {
-    unsigned char init[] =
+    uint8_t init[] =
     {
         0x81,0x01,0x02,0x03, 0x04,0x05,0x06,0x07, 0x08,0x09,0x0a,0x0b, 0x0c,0x0d,0x0e,0x0f,
         0x10,0x11,0x12,0x13, 0x14,0x15,0x16,0x17, 0x18,0x19,0x1a,0x1b, 0x1c,0x1d,0x1e,0x1f,
@@ -85,13 +85,13 @@ void print_pif(void)
 }
 #endif
 
-static unsigned char byte2bcd(int n)
+static uint8_t byte2bcd(int n)
 {
     n %= 100;
     return ((n / 10) << 4) | (n % 10);
 }
 
-static void EepromCommand(unsigned char *Command)
+static void EepromCommand(uint8_t *Command)
 {
     time_t curtime_time;
     struct tm *curtime;
@@ -182,10 +182,10 @@ static void EepromCommand(unsigned char *Command)
     }
 }
 
-static unsigned char mempack_crc(unsigned char *data)
+static uint8_t mempack_crc(uint8_t *data)
 {
     int i;
-    unsigned char CRC = 0;
+    uint8_t CRC = 0;
     for (i=0; i<=0x20; i++)
     {
         int mask;
@@ -200,7 +200,7 @@ static unsigned char mempack_crc(unsigned char *data)
     return CRC;
 }
 
-static void internal_ReadController(int Control, unsigned char *Command)
+static void internal_ReadController(int Control, uint8_t *Command)
 {
     switch (Command[2])
     {
@@ -212,7 +212,7 @@ static void internal_ReadController(int Control, unsigned char *Command)
         {
             BUTTONS Keys;
             input.getKeys(Control, &Keys);
-            *((unsigned int *)(Command + 3)) = Keys.Value;
+            *((uint32_t*)(Command + 3)) = Keys.Value;
 #ifdef COMPARE_CORE
             CoreCompareDataSync(4, Command+3);
 #endif
@@ -243,7 +243,7 @@ static void internal_ReadController(int Control, unsigned char *Command)
     }
 }
 
-static void internal_ControllerCommand(int Control, unsigned char *Command)
+static void internal_ControllerCommand(int Control, uint8_t *Command)
 {
     switch (Command[2])
     {
@@ -376,7 +376,7 @@ static void internal_ControllerCommand(int Control, unsigned char *Command)
 
 void update_pif_write(void)
 {
-    char challenge[30], response[30];
+    int8_t challenge[30], response[30];
     int i=0, channel=0;
     if (PIF_RAMb[0x3F] > 1)
     {

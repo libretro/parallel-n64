@@ -30,8 +30,8 @@
 #include "r4300/macros.h"
 #include "main/rom.h"
 
-unsigned int tlb_LUT_r[0x100000];
-unsigned int tlb_LUT_w[0x100000];
+uint32_t tlb_LUT_r[0x100000];
+uint32_t tlb_LUT_w[0x100000];
 
 void tlb_unmap(tlb *entry)
 {

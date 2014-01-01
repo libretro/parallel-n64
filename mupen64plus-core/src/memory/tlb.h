@@ -24,34 +24,34 @@
 
 typedef struct _tlb
 {
-   short mask;
-   int vpn2;
-   char g;
-   unsigned char asid;
-   int pfn_even;
-   char c_even;
-   char d_even;
-   char v_even;
-   int pfn_odd;
-   char c_odd;
-   char d_odd;
-   char v_odd;
-   char r;
-   //int check_parity_mask;
+   int16_t mask;
+   int32_t vpn2;
+   int8_t g;
+   uint8_t asid;
+   int32_t pfn_even;
+   int8_t c_even;
+   int8_t d_even;
+   int8_t v_even;
+   int32_t pfn_odd;
+   int8_t c_odd;
+   int8_t d_odd;
+   int8_t v_odd;
+   int8_t r;
+   //int32_t check_parity_mask;
    
-   unsigned int start_even;
-   unsigned int end_even;
-   unsigned int phys_even;
-   unsigned int start_odd;
-   unsigned int end_odd;
-   unsigned int phys_odd;
+   uint32_t start_even;
+   uint32_t end_even;
+   uint32_t phys_even;
+   uint32_t start_odd;
+   uint32_t end_odd;
+   uint32_t phys_odd;
 } tlb;
 
-extern unsigned int tlb_LUT_r[0x100000];
-extern unsigned int tlb_LUT_w[0x100000];
+extern uint32_t tlb_LUT_r[0x100000];
+extern uint32_t tlb_LUT_w[0x100000];
 void tlb_unmap(tlb *entry);
 void tlb_map(tlb *entry);
-unsigned int virtual_to_physical_address(unsigned int addresse, int w);
+uint32_t virtual_to_physical_address(uint32_t addresse, int w);
 
 #endif
 
