@@ -239,7 +239,7 @@ void ConvertIA4(CTexture *pTexture, const TxtrInfo &tinfo)
     uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
 
 #ifdef DEBUGGER
-    if (((long long)pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
+    if (((int64_t)pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
 #endif
 
     if (!pTexture->StartUpdate(&dInfo))
@@ -343,7 +343,7 @@ void ConvertIA8(CTexture *pTexture, const TxtrInfo &tinfo)
     uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
 
 #ifdef DEBUGGER
-    if (((long long)pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
+    if (((int64_t)pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
 #endif
 
     if (!pTexture->StartUpdate(&dInfo))
@@ -483,7 +483,7 @@ void ConvertI4(CTexture *pTexture, const TxtrInfo &tinfo)
     uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
 
 #ifdef DEBUGGER
-    if (((long long) pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
+    if (((int64_t) pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
 #endif
 
     if (!pTexture->StartUpdate(&dInfo))
@@ -594,7 +594,7 @@ void ConvertI8(CTexture *pTexture, const TxtrInfo &tinfo)
     DrawInfo dInfo;
     uint32_t nFiddle;
 
-    long long pSrc = (long long) tinfo.pPhysicalAddress;
+    int64_t pSrc = (int64_t) tinfo.pPhysicalAddress;
     if (!pTexture->StartUpdate(&dInfo))
         return;
 
@@ -796,7 +796,7 @@ void ConvertCI4_IA16(CTexture *pTexture, const TxtrInfo &tinfo)
     uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
 
 #ifdef DEBUGGER
-    if (((long long) pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
+    if (((int64_t) pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
 #endif
 
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
@@ -904,7 +904,7 @@ void ConvertCI8_RGBA16(CTexture *pTexture, const TxtrInfo &tinfo)
     uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
 
 #ifdef DEBUGGER
-    if (((long long) pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
+    if (((int64_t) pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
 #endif
 
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
@@ -979,7 +979,7 @@ void ConvertCI8_IA16(CTexture *pTexture, const TxtrInfo &tinfo)
     uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
 
 #ifdef DEBUGGER
-    if (((long long) pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
+    if (((int64_t) pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
 #endif
 
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
