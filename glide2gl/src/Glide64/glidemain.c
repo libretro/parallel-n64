@@ -323,6 +323,7 @@ void ReadSettings(void)
 extern uint8_t microcode[4096];
 
 extern bool no_audio;
+extern uint32_t gfx_plugin_accuracy;
 
 void ReadSpecialSettings (const char * name)
 {
@@ -2021,6 +2022,27 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"PUZZLE LEAGUE"))
       settings.hacks |= hack_PPL;
 
+   switch (gfx_plugin_accuracy)
+   {
+      case 2: /* HIGH */
+
+         break;
+      case 1: /* MEDIUM */
+         if (read_always > 0) // turn off read_always
+         {
+            read_always = 0;
+            if (smart_read == 0) // turn on smart_read instead
+               smart_read = 1;
+         }
+         break;
+      case 0: /* LOW */
+         if (read_always > 0)
+            read_always = 0;
+         if (smart_read > 0)
+            smart_read = 0;
+         break; 
+   }
+
    if (settings.n64_z_scale)
       ZLUT_init();
 
@@ -2088,6 +2110,8 @@ void ReadSpecialSettings (const char * name)
       settings.frame_buffer |= fb_depth_render;
    else if (depth_render == 0)
       settings.frame_buffer &= ~fb_depth_render;
+
+
 
    settings.frame_buffer |= fb_motionblur;
 

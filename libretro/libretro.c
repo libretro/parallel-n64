@@ -51,6 +51,7 @@ static uint8_t* game_data;
 static uint32_t game_size;
 
 static enum gfx_plugin_type gfx_plugin;
+uint32_t gfx_plugin_accuracy = 2;
 static enum rsp_plugin_type rsp_plugin;
 static uint32_t screen_width;
 static uint32_t screen_height;
@@ -64,7 +65,6 @@ extern struct
     CONTROL *control;
     BUTTONS buttons;
 } controller[4];
-
 // ...but it won't be at least the first time we're called, in that case set
 // these instead for input_plugin to read.
 int pad_pak_types[4];
@@ -111,6 +111,19 @@ static void core_settings_set_defaults(void)
        if(gfx_var.value && strcmp(gfx_var.value, "glide64") == 0)
           gfx_plugin = GFX_GLIDE64;
     }
+
+   gfx_var.key = "mupen64-gfxplugin-accuracy";
+   gfx_var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var) && gfx_var.value)
+   {
+       if (gfx_var.value && strcmp(gfx_var.value, "high") == 0)
+          gfx_plugin_accuracy = 2;
+       if (gfx_var.value && strcmp(gfx_var.value, "medium") == 0)
+          gfx_plugin_accuracy = 1;
+       if (gfx_var.value && strcmp(gfx_var.value, "low") == 0)
+          gfx_plugin_accuracy = 0;
+   }
 
     /* Load RSP plugin core option */
     struct retro_variable rsp_var = { "mupen64-rspplugin", 0 };
@@ -178,12 +191,18 @@ static void setup_variables(void)
         "Player 4 Pak; none|memory|rumble"},
       { "mupen64-disableexpmem",
          "Disable Expansion RAM; no|yes" },
+      { "mupen64-gfxplugin-accuracy",
+#ifdef GLES
+         "GFX Accuracy (restart); medium|high|low" },
+#else
+         "GFX Accuracy (restart); high|medium|low" },
+#endif
       { "mupen64-gfxplugin",
-         "Graphics Plugin; auto|glide64|gln64|rice" },
+         "GFX Plugin; auto|glide64|gln64|rice" },
       { "mupen64-rspplugin",
          "RSP Plugin; auto|hle|cxd4" },
       { "mupen64-screensize",
-         "Graphics Resolution; 640x480|1280x960|320x240" },
+         "Resolution (restart); 640x480|1280x960|320x240" },
       { "mupen64-filtering",
          "Texture filtering; automatic|bilinear|nearest" },
       { "mupen64-virefresh",
@@ -434,6 +453,19 @@ void update_variables(void)
       else if (strcmp(var.value, "bilinear") == 0) retro_filtering = 1;
       else if (strcmp(var.value, "nearest") == 0)
          retro_filtering = 2;
+   }
+
+   var.key = "mupen64-gfxplugin-accuracy";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+       if (var.value && strcmp(var.value, "high") == 0)
+          gfx_plugin_accuracy = 2;
+       if (var.value && strcmp(var.value, "medium") == 0)
+          gfx_plugin_accuracy = 1;
+       if (var.value && strcmp(var.value, "low") == 0)
+          gfx_plugin_accuracy = 0;
    }
 
    var.key = "mupen64-virefresh";
