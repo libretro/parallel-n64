@@ -256,6 +256,7 @@ static void non_task_dispatching()
 
 static void handle_unknown_task(uint32_t sum)
 {
+#if 0
     char filename[256];
     const OSTask_t * const task = get_task();
 
@@ -288,6 +289,7 @@ static void handle_unknown_task(uint32_t sum)
         sprintf(&filename[0], "data_%x.bin", sum);
         dump_binary(filename, rspInfo.RDRAM + (task->data_ptr & 0x7fffff), task->data_size);
     }
+#endif
 }
 
 static void handle_unknown_non_task(uint32_t sum)
