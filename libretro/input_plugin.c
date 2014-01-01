@@ -27,6 +27,7 @@
 
 #include "libretro.h"
 
+extern retro_environment_t environ_cb;
 extern retro_input_state_t input_cb;
 extern struct retro_rumble_interface rumble;
 extern int pad_pak_types[4];
@@ -38,6 +39,7 @@ extern int pad_pak_types[4];
 #include "m64p_config.h"
 
 #include "../src/main/rom.h"
+extern m64p_rom_header ROM_HEADER;
 
 // Some stuff from n-rage plugin
 #define RD_GETSTATUS        0x00        // get status
@@ -49,6 +51,8 @@ extern int pad_pak_types[4];
 #define RD_WRITEEPROM       0x05        // write eeprom
 
 #define PAK_IO_RUMBLE       0xC000      // the address where rumble-commands are sent to
+
+#define FRAME_DURATION 24
 
 /* global data definitions */
 struct
@@ -191,8 +195,10 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
 #define CSTICK_DOWN 0x400
 
 typedef void (*get_keys_t)(int, BUTTONS*);
+static void inputGetKeys_default( int Control, BUTTONS *Keys );
 
-get_keys_t getKeys;
+get_keys_t getKeys = inputGetKeys_default;
+int timeout = 0;
 
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
 {
@@ -218,7 +224,12 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
    }
    else
       Keys->Y_AXIS = 0;
+
+   if (input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) && --timeout <= 0)
+      inputInitiateCallback(ROM_HEADER.Name);
 }
+
+extern void inputInitiateCallback(const char *headername);
 
 static void inputGetKeys_6ButtonFighters(int Control, BUTTONS *Keys)
 {
@@ -231,6 +242,7 @@ static void inputGetKeys_6ButtonFighters(int Control, BUTTONS *Keys)
    Keys->U_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
 
    Keys->START_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
+
    Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
    Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
    Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
@@ -541,6 +553,7 @@ static void inputGetKeys_WWF(int Control, BUTTONS *Keys)
    Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
    Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
 
+
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
 
@@ -595,6 +608,79 @@ EXPORT void CALL inputGetKeys( int Control, BUTTONS *Keys )
 }
 
 
+void inputInitiateCallback(const char *headername)
+{
+   struct retro_message msg; 
+   char msg_local[256];
+
+   if (getKeys != &inputGetKeys_default)
+   {
+      getKeys = inputGetKeys_default;
+      snprintf(msg_local, sizeof(msg_local), "Controls: Default");
+      msg.msg = msg_local;
+      msg.frames = FRAME_DURATION;
+      timeout = FRAME_DURATION / 2;
+      if (environ_cb)
+         environ_cb(RETRO_ENVIRONMENT_SET_MESSAGE, (void*)&msg);
+      return;
+   }
+
+    if (
+             (strcmp(headername, "KILLER INSTINCT GOLD") == 0) ||
+          (strcmp(headername, "Killer Instinct Gold") == 0) ||
+          (strcmp(headername, "CLAYFIGHTER 63") == 0) ||
+          (strcmp(headername, "Clayfighter SC") == 0) ||
+          (strcmp(headername, "RAKUGAKIDS") == 0))
+       getKeys = inputGetKeys_6ButtonFighters;
+    else if (strcmp(headername, "BIOFREAKS") == 0)
+       getKeys = inputGetKeys_Biofreaks;
+    else if (strcmp(headername, "DARK RIFT") == 0)
+       getKeys = inputGetKeys_DarkRift;
+    else if (strcmp(headername, "XENAWARRIORPRINCESS") == 0)
+       getKeys = inputGetKeys_XENA;
+   else if ((strcmp(headername, "I S S 64") == 0) ||
+         (strcmp(headername, "J WORLD SOCCER3") == 0) ||
+         (strcmp(headername, "J.WORLD CUP 98") == 0) ||
+         (strcmp(headername, "I.S.S.98") == 0) ||
+         (strcmp(headername, "PERFECT STRIKER2") == 0) ||
+         (strcmp(headername, "I.S.S.2000") == 0))
+      getKeys = inputGetKeys_ISS;
+    else if (strcmp(headername, "MACE") == 0)
+       getKeys = inputGetKeys_Mace;
+    else if ((strcmp(headername, "MISCHIEF MAKERS") == 0) ||
+          (strcmp(headername, "TROUBLE MAKERS") == 0))
+       getKeys = inputGetKeys_MischiefMakers;
+   else if ((strcmp(headername, "MortalKombatTrilogy") == 0) ||
+         (strcmp(headername, "WAR GODS") == 0))
+       getKeys = inputGetKeys_MKTrilogy;
+   else if (strcmp(headername, "MORTAL KOMBAT 4") == 0)
+       getKeys = inputGetKeys_MK4;
+   else if (strcmp(headername, "MK_MYTHOLOGIES") == 0)
+       getKeys = inputGetKeys_MKMythologies;
+   else if ((strcmp(headername, "RAMPAGE") == 0) ||
+         (strcmp(headername, "RAMPAGE2") == 0))
+       getKeys = inputGetKeys_Rampage;
+   else if ((strcmp(headername, "READY 2 RUMBLE") == 0) ||
+         (strcmp(headername, "Ready to Rumble") == 0))
+       getKeys = inputGetKeys_Ready2Rumble;
+   else if (strcmp(headername, "Wipeout 64") == 0)
+       getKeys = inputGetKeys_Wipeout64;
+   else if ((strcmp(headername, "WRESTLEMANIA 2000") == 0) ||
+         (strcmp(headername, "WWF No Mercy") == 0))
+       getKeys = inputGetKeys_WWF;
+
+   if (getKeys == &inputGetKeys_default)
+      return;
+
+   snprintf(msg_local, sizeof(msg_local), "Controls: Alternate");
+   msg.msg = msg_local;
+   msg.frames = FRAME_DURATION;
+   timeout = FRAME_DURATION / 2;
+   if (environ_cb)
+      environ_cb(RETRO_ENVIRONMENT_SET_MESSAGE, (void*)&msg);
+}
+
+
 /******************************************************************
   Function: InitiateControllers
   Purpose:  This function initialises how each of the controllers
@@ -623,56 +709,6 @@ EXPORT void CALL inputInitiateControllers(CONTROL_INFO ControlInfo)
     }
 
 }
-
-EXPORT void CALL inputInitiateCallback(const char *headername)
-{
-   getKeys = inputGetKeys_default;
-
-    if (
-             (strcmp(headername, "KILLER INSTINCT GOLD") == 0) ||
-          (strcmp(headername, "Killer Instinct Gold") == 0) ||
-          (strcmp(headername, "CLAYFIGHTER 63") == 0) ||
-          (strcmp(headername, "Clayfighter SC") == 0) ||
-          (strcmp(headername, "RAKUGAKIDS") == 0))
-       getKeys = inputGetKeys_6ButtonFighters;
-    else if (strcmp(headername, "BIOFREAKS") == 0)
-       getKeys = inputGetKeys_Biofreaks;
-    else if (strcmp(ROM_PARAMS.headername, "DARK RIFT") == 0)
-       getKeys = inputGetKeys_DarkRift;
-    else if (strcmp(headername, "XENAWARRIORPRINCESS") == 0)
-       getKeys = inputGetKeys_XENA;
-   else if ((strcmp(ROM_PARAMS.headername, "I S S 64") == 0) ||
-         (strcmp(ROM_PARAMS.headername, "J WORLD SOCCER3") == 0) ||
-         (strcmp(ROM_PARAMS.headername, "J.WORLD CUP 98") == 0) ||
-         (strcmp(ROM_PARAMS.headername, "I.S.S.98") == 0) ||
-         (strcmp(ROM_PARAMS.headername, "PERFECT STRIKER2") == 0) ||
-         (strcmp(ROM_PARAMS.headername, "I.S.S.2000") == 0))
-      getKeys = inputGetKeys_ISS;
-    else if (strcmp(ROM_PARAMS.headername, "MACE") == 0)
-       getKeys = inputGetKeys_Mace;
-    else if ((strcmp(ROM_PARAMS.headername, "MISCHIEF MAKERS") == 0) ||
-          (strcmp(ROM_PARAMS.headername, "TROUBLE MAKERS") == 0))
-       getKeys = inputGetKeys_MischiefMakers;
-   else if ((strcmp(ROM_PARAMS.headername, "MortalKombatTrilogy") == 0) ||
-         (strcmp(ROM_PARAMS.headername, "WAR GODS") == 0))
-       getKeys = inputGetKeys_MKTrilogy;
-   else if (strcmp(ROM_PARAMS.headername, "MORTAL KOMBAT 4") == 0)
-       getKeys = inputGetKeys_MK4;
-   else if (strcmp(ROM_PARAMS.headername, "MK_MYTHOLOGIES") == 0)
-       getKeys = inputGetKeys_MKMythologies;
-   else if ((strcmp(ROM_PARAMS.headername, "RAMPAGE") == 0) ||
-         (strcmp(ROM_PARAMS.headername, "RAMPAGE2") == 0))
-       getKeys = inputGetKeys_Rampage;
-   else if ((strcmp(ROM_PARAMS.headername, "READY 2 RUMBLE") == 0) ||
-         (strcmp(ROM_PARAMS.headername, "Ready to Rumble") == 0))
-       getKeys = inputGetKeys_Ready2Rumble;
-   else if (strcmp(ROM_PARAMS.headername, "Wipeout 64") == 0)
-       getKeys = inputGetKeys_Wipeout64;
-   else if ((strcmp(ROM_PARAMS.headername, "WRESTLEMANIA 2000") == 0) ||
-         (strcmp(ROM_PARAMS.headername, "WWF No Mercy") == 0))
-       getKeys = inputGetKeys_WWF;
-}
-
 
 /******************************************************************
   Function: ReadController

@@ -77,7 +77,7 @@ static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
        log_cb(RETRO_LOG_INFO, buffer);
 }
 
-static m64p_rom_header ROM_HEADER;
+m64p_rom_header ROM_HEADER;
 
 static void core_settings_autoselect_gfx_plugin(void)
 {
