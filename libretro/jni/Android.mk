@@ -63,6 +63,7 @@ LOCAL_SRC_FILES += \
     $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/cicx105.c \
     $(RSPDIR)/src/jpeg.c \
+    $(RSPDIR)/src/musyx.c \
     $(RSPDIR)/src/main.c
 
 LOCAL_SRC_FILES += \
