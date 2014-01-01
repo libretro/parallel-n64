@@ -49,7 +49,7 @@ unsigned int count_per_op = 2;
 int llbit, rompause;
 #if NEW_DYNAREC != NEW_DYNAREC_ARM
 int stop;
-long long int reg[32], hi, lo;
+int64_t reg[32], hi, lo;
 unsigned int reg_cop0[32];
 float *reg_cop1_simple[32];
 double *reg_cop1_double[32];
@@ -57,8 +57,8 @@ int FCR0, FCR31;
 unsigned int next_interupt;
 precomp_instr *PC;
 #endif
-long long int local_rs;
-long long int reg_cop1_fgr_64[32];
+int64_t local_rs;
+int64_t reg_cop1_fgr_64[32];
 tlb tlb_e[32];
 unsigned int delay_slot, skip_jump = 0, dyna_interp = 0, last_addr;
 unsigned int CIC_Chip;
@@ -86,7 +86,7 @@ int rounding_mode = 0x33F, trunc_mode = 0xF3F, round_mode = 0x33F,
    { \
       const int take_jump = (condition); \
       const unsigned int jump_target = (destination); \
-      long long int *link_register = (link); \
+      int64_t *link_register = (link); \
       if (cop1 && check_cop1_unusable()) return; \
       if (!likely || take_jump) \
       { \
@@ -118,7 +118,7 @@ int rounding_mode = 0x33F, trunc_mode = 0xF3F, round_mode = 0x33F,
    { \
       const int take_jump = (condition); \
       const unsigned int jump_target = (destination); \
-      long long int *link_register = (link); \
+      int64_t *link_register = (link); \
       if (cop1 && check_cop1_unusable()) return; \
       if (!likely || take_jump) \
       { \

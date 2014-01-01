@@ -27,8 +27,9 @@
 #include "api/callbacks.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
-extern long long int reg[32];
+extern int64_t reg[32];
 
 #define RAX 0
 #define RCX 1
