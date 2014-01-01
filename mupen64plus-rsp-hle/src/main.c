@@ -24,6 +24,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_types.h"
@@ -193,7 +194,10 @@ static int try_fast_task_dispatching()
 
     switch (task->type)
     {
-        case 1: if (FORWARD_GFX) { forward_gfx_task(); return 1; } break;
+        case 1:
+           if (*(uint32_t *)(rspInfo.DMEM + 0xFF0) == 0x00000000)
+              break; /* Resident Evil 2 */
+           if (FORWARD_GFX) { forward_gfx_task(); return 1; } break;
 
         case 2:
             if (FORWARD_AUDIO) { forward_audio_task(); return 1; }
