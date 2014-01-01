@@ -294,6 +294,7 @@ static void handle_unknown_task(uint32_t sum)
 
 static void handle_unknown_non_task(uint32_t sum)
 {
+#if 0
     char filename[256];
 
     RSP_DEBUG_MESSAGE(M64MSG_WARNING, "unknown RSP code: sum: %x PC:%x", sum, *rspInfo.SP_PC_REG);
@@ -304,6 +305,7 @@ static void handle_unknown_non_task(uint32_t sum)
 
     sprintf(&filename[0], "dmem_%x.bin", sum);
     dump_binary(filename, rspInfo.DMEM, 0x1000);
+#endif
 }
 
 
@@ -406,6 +408,7 @@ static uint32_t sum_bytes(const uint8_t *bytes, uint32_t size)
 static void dump_binary(const int8_t * const filename, const uint8_t * const bytes,
                         uint32_t size)
 {
+#if 0
     FILE *f;
 
     // if file already exists, do nothing
@@ -432,10 +435,12 @@ static void dump_binary(const int8_t * const filename, const uint8_t * const byt
     {
         fclose(f);
     }
+#endif
 }
 
 static void dump_task(const char * const filename, const OSTask_t * const task)
 {
+#if 0
     FILE *f;
 
     f = fopen(filename, "r");
@@ -466,5 +471,7 @@ static void dump_task(const char * const filename, const OSTask_t * const task)
     {
         fclose(f);
     }
+#endif
 }
+
 
