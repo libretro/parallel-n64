@@ -200,6 +200,8 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys );
 get_keys_t getKeys = inputGetKeys_default;
 int timeout = 0;
 
+extern void inputInitiateCallback(const char *headername);
+
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
 {
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
@@ -229,7 +231,6 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
       inputInitiateCallback(ROM_HEADER.Name);
 }
 
-extern void inputInitiateCallback(const char *headername);
 
 static void inputGetKeys_6ButtonFighters(int Control, BUTTONS *Keys)
 {
@@ -557,6 +558,33 @@ static void inputGetKeys_WWF(int Control, BUTTONS *Keys)
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
 
+static void inputGetKeys_RR64( int Control, BUTTONS *Keys )
+{
+   bool hold_cstick;
+   int16_t analogX, analogY;
+
+   Keys->Value = 0;
+   Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
+   Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
+   Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
+   Keys->U_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
+
+   Keys->START_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
+
+   Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
+
+   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
+
+   //Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
+   //Keys->L_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
+   //Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
+
+   inputGetKeys_reuse(analogX, analogY, Control, Keys);
+}
+
 static void inputGetKeys_default( int Control, BUTTONS *Keys )
 {
    bool hold_cstick;
@@ -638,6 +666,8 @@ void inputInitiateCallback(const char *headername)
        getKeys = inputGetKeys_DarkRift;
     else if (strcmp(headername, "XENAWARRIORPRINCESS") == 0)
        getKeys = inputGetKeys_XENA;
+    else if (strcmp(headername, "RIDGE RACER 64") == 0)
+       getKeys = inputGetKeys_RR64;
    else if ((strcmp(headername, "I S S 64") == 0) ||
          (strcmp(headername, "J WORLD SOCCER3") == 0) ||
          (strcmp(headername, "J.WORLD CUP 98") == 0) ||
