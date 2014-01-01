@@ -29,14 +29,14 @@
   typedef enum { FE_TONEAREST = 0, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD } eRoundType;
   static void fesetround(eRoundType RoundType)
   {
-    static const unsigned int msRound[4] = { _RC_NEAR, _RC_CHOP, _RC_UP, _RC_DOWN };
-    unsigned int oldX87, oldSSE2;
+    static const uint32_t msRound[4] = { _RC_NEAR, _RC_CHOP, _RC_UP, _RC_DOWN };
+    uint32_t oldX87, oldSSE2;
     __control87_2(msRound[RoundType], _MCW_RC, &oldX87, &oldSSE2);
   }
   static __inline double round(double x) { return floor(x + 0.5); }
   static __inline float roundf(float x) { return (float) floor(x + 0.5); }
-  static __inline double trunc(double x) { return (double) (int) x; }
-  static __inline float truncf(float x) { return (float) (int) x; }
+  static __inline double trunc(double x) { return (double) (int32_t) x; }
+  static __inline float truncf(float x) { return (float) (int32_t) x; }
   #define isnan _isnan
 #elif defined(ANDROID)
 #define M64P_FPU_INLINE static __inline
@@ -56,7 +56,8 @@ typedef __uint32_t fexcept_t;
 #define _FPSCR_RMODE_SHIFT 22
 
 #ifndef __ANDROID__
-static __inline int fegetenv(fenv_t* __envp) {
+static __inline int32_t fegetenv(fenv_t* __envp)
+{
   fenv_t _fpscr;
 #if !defined(__SOFTFP__)
   #if !defined(__thumb__) || defined(__thumb2__)
@@ -81,7 +82,7 @@ static __inline int fegetenv(fenv_t* __envp) {
   return 0;
 }
 
-static __inline int fesetenv(const fenv_t* __envp) {
+static __inline int32_t fesetenv(const fenv_t* __envp) {
   fenv_t _fpscr = *__envp;
 #if !defined(__SOFTFP__)
   #if !defined(__thumb__) || defined(__thumb2__)
@@ -105,7 +106,7 @@ static __inline int fesetenv(const fenv_t* __envp) {
   return 0;
 }
   
-static __inline int fesetround(int __round) {
+static __inline int32_t fesetround(int32_t __round) {
   fenv_t _fpscr;
   fegetenv(&_fpscr);
   _fpscr &= ~(0x3 << _FPSCR_RMODE_SHIFT);
@@ -139,22 +140,22 @@ M64P_FPU_INLINE void set_rounding(void)
   }
 }
 
-M64P_FPU_INLINE void cvt_s_w(int *source,float *dest)
+M64P_FPU_INLINE void cvt_s_w(int32_t *source,float *dest)
 {
   set_rounding();
   *dest = (float) *source;
 }
-M64P_FPU_INLINE void cvt_d_w(int *source,double *dest)
+M64P_FPU_INLINE void cvt_d_w(int32_t *source,double *dest)
 {
   set_rounding();
   *dest = (double) *source;
 }
-M64P_FPU_INLINE void cvt_s_l(long long *source,float *dest)
+M64P_FPU_INLINE void cvt_s_l(int64_t *source,float *dest)
 {
   set_rounding();
   *dest = (float) *source;
 }
-M64P_FPU_INLINE void cvt_d_l(long long *source,double *dest)
+M64P_FPU_INLINE void cvt_d_l(int64_t *source,double *dest)
 {
   set_rounding();
   *dest = (double) *source;
@@ -170,73 +171,73 @@ M64P_FPU_INLINE void cvt_s_d(double *source,float *dest)
   *dest = (float) *source;
 }
 
-M64P_FPU_INLINE void round_l_s(float *source,long long *dest)
+M64P_FPU_INLINE void round_l_s(float *source,int64_t *dest)
 {
-  *dest = (long long) roundf(*source);
+  *dest = (int64_t) roundf(*source);
 }
-M64P_FPU_INLINE void round_w_s(float *source,int *dest)
+M64P_FPU_INLINE void round_w_s(float *source, int32_t *dest)
 {
-  *dest = (int) roundf(*source);
+  *dest = (int32_t) roundf(*source);
 }
-M64P_FPU_INLINE void trunc_l_s(float *source,long long *dest)
+M64P_FPU_INLINE void trunc_l_s(float *source,int64_t *dest)
 {
-  *dest = (long long) truncf(*source);
+  *dest = (int64_t) truncf(*source);
 }
-M64P_FPU_INLINE void trunc_w_s(float *source,int *dest)
+M64P_FPU_INLINE void trunc_w_s(float *source,int32_t *dest)
 {
-  *dest = (int) truncf(*source);
+  *dest = (int32_t) truncf(*source);
 }
-M64P_FPU_INLINE void ceil_l_s(float *source,long long *dest)
+M64P_FPU_INLINE void ceil_l_s(float *source,int64_t *dest)
 {
-  *dest = (long long) ceilf(*source);
+  *dest = (int64_t) ceilf(*source);
 }
-M64P_FPU_INLINE void ceil_w_s(float *source,int *dest)
+M64P_FPU_INLINE void ceil_w_s(float *source,int32_t *dest)
 {
-  *dest = (int) ceilf(*source);
+  *dest = (int32_t) ceilf(*source);
 }
-M64P_FPU_INLINE void floor_l_s(float *source,long long *dest)
+M64P_FPU_INLINE void floor_l_s(float *source,int64_t *dest)
 {
-  *dest = (long long) floorf(*source);
+  *dest = (int64_t) floorf(*source);
 }
-M64P_FPU_INLINE void floor_w_s(float *source,int *dest)
+M64P_FPU_INLINE void floor_w_s(float *source,int32_t *dest)
 {
-  *dest = (int) floorf(*source);
-}
-
-M64P_FPU_INLINE void round_l_d(double *source,long long *dest)
-{
-  *dest = (long long) round(*source);
-}
-M64P_FPU_INLINE void round_w_d(double *source,int *dest)
-{
-  *dest = (int) round(*source);
-}
-M64P_FPU_INLINE void trunc_l_d(double *source,long long *dest)
-{
-  *dest = (long long) trunc(*source);
-}
-M64P_FPU_INLINE void trunc_w_d(double *source,int *dest)
-{
-  *dest = (int) trunc(*source);
-}
-M64P_FPU_INLINE void ceil_l_d(double *source,long long *dest)
-{
-  *dest = (long long) ceil(*source);
-}
-M64P_FPU_INLINE void ceil_w_d(double *source,int *dest)
-{
-  *dest = (int) ceil(*source);
-}
-M64P_FPU_INLINE void floor_l_d(double *source,long long *dest)
-{
-  *dest = (long long) floor(*source);
-}
-M64P_FPU_INLINE void floor_w_d(double *source,int *dest)
-{
-  *dest = (int) floor(*source);
+  *dest = (int32_t) floorf(*source);
 }
 
-M64P_FPU_INLINE void cvt_w_s(float *source,int *dest)
+M64P_FPU_INLINE void round_l_d(double *source,int64_t *dest)
+{
+  *dest = (int64_t) round(*source);
+}
+M64P_FPU_INLINE void round_w_d(double *source, int32_t *dest)
+{
+  *dest = (int32_t) round(*source);
+}
+M64P_FPU_INLINE void trunc_l_d(double *source,int64_t *dest)
+{
+  *dest = (int64_t) trunc(*source);
+}
+M64P_FPU_INLINE void trunc_w_d(double *source, int32_t *dest)
+{
+  *dest = (int32_t) trunc(*source);
+}
+M64P_FPU_INLINE void ceil_l_d(double *source,int64_t *dest)
+{
+  *dest = (int64_t) ceil(*source);
+}
+M64P_FPU_INLINE void ceil_w_d(double *source,int32_t *dest)
+{
+  *dest = (int32_t) ceil(*source);
+}
+M64P_FPU_INLINE void floor_l_d(double *source,int64_t *dest)
+{
+  *dest = (int64_t) floor(*source);
+}
+M64P_FPU_INLINE void floor_w_d(double *source,int32_t *dest)
+{
+  *dest = (int32_t) floor(*source);
+}
+
+M64P_FPU_INLINE void cvt_w_s(float *source,int32_t *dest)
 {
   set_rounding();
   switch(FCR31&3)
@@ -247,7 +248,7 @@ M64P_FPU_INLINE void cvt_w_s(float *source,int *dest)
     case 3: floor_w_s(source,dest);return;
   }
 }
-M64P_FPU_INLINE void cvt_w_d(double *source,int *dest)
+M64P_FPU_INLINE void cvt_w_d(double *source,int32_t *dest)
 {
   set_rounding();
   switch(FCR31&3)
@@ -258,7 +259,7 @@ M64P_FPU_INLINE void cvt_w_d(double *source,int *dest)
     case 3: floor_w_d(source,dest);return;
   }
 }
-M64P_FPU_INLINE void cvt_l_s(float *source,long long *dest)
+M64P_FPU_INLINE void cvt_l_s(float *source,int64_t *dest)
 {
   set_rounding();
   switch(FCR31&3)
@@ -269,7 +270,7 @@ M64P_FPU_INLINE void cvt_l_s(float *source,long long *dest)
     case 3: floor_l_s(source,dest);return;
   }
 }
-M64P_FPU_INLINE void cvt_l_d(double *source,long long *dest)
+M64P_FPU_INLINE void cvt_l_d(double *source,int64_t *dest)
 {
   set_rounding();
   switch(FCR31&3)
@@ -281,7 +282,7 @@ M64P_FPU_INLINE void cvt_l_d(double *source,long long *dest)
   }
 }
 
-M64P_FPU_INLINE void c_f_s()
+M64P_FPU_INLINE void c_f_s(void)
 {
   FCR31 &= ~0x800000;
 }
@@ -367,7 +368,7 @@ M64P_FPU_INLINE void c_ngt_s(float *source,float *target)
   FCR31 = *source<=*target ? FCR31|0x800000 : FCR31&~0x800000;
 }
 
-M64P_FPU_INLINE void c_f_d()
+M64P_FPU_INLINE void c_f_d(void)
 {
   FCR31 &= ~0x800000;
 }
