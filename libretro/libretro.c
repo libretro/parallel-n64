@@ -77,9 +77,23 @@ static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
        log_cb(RETRO_LOG_INFO, buffer);
 }
 
-static m64p_rom_header romgame;
+static m64p_rom_header ROM_HEADER;
 
-static void core_settings_set_defaults()
+static void core_settings_autoselect_gfx_plugin(void)
+{
+   struct retro_variable gfx_var = { "mupen64-gfxplugin", 0 };
+
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
+
+   if (gfx_var.value && strcmp(gfx_var.value, "auto") != 0)
+      return;
+
+   gfx_plugin = GFX_GLIDE64;
+}
+
+static void core_settings_autoselect_rsp_plugin(void);
+
+static void core_settings_set_defaults(void)
 {
     /* Load GFX plugin core option */
     struct retro_variable gfx_var = { "mupen64-gfxplugin", 0 };
@@ -88,6 +102,8 @@ static void core_settings_set_defaults()
     gfx_plugin = GFX_GLIDE64;
     if (gfx_var.value)
     {
+       if (gfx_var.value && strcmp(gfx_var.value, "auto") == 0)
+          core_settings_autoselect_gfx_plugin();
        if (gfx_var.value && strcmp(gfx_var.value, "gln64") == 0)
           gfx_plugin = GFX_GLN64;
        if (gfx_var.value && strcmp(gfx_var.value, "rice") == 0)
@@ -103,74 +119,49 @@ static void core_settings_set_defaults()
     rsp_plugin = RSP_HLE;
     if (rsp_var.value)
     {
+       if (rsp_var.value && strcmp(rsp_var.value, "auto") == 0)
+          core_settings_autoselect_rsp_plugin();
+       if (rsp_var.value && strcmp(rsp_var.value, "hle") == 0)
+          rsp_plugin = RSP_HLE;
        if (rsp_var.value && strcmp(rsp_var.value, "cxd4") == 0)
           rsp_plugin = RSP_CXD4;
     }
 }
 
-static void core_settings_set_balanced(void)
+
+
+static void core_settings_autoselect_rsp_plugin(void)
 {
-   struct retro_variable gfx_var = { "mupen64-gfxplugin", 0 };
    struct retro_variable rsp_var = { "mupen64-rspplugin", 0 };
 
-   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
-   gfx_plugin = GFX_GLIDE64;
-   rsp_plugin = RSP_CXD4;
+   if (rsp_var.value && strcmp(rsp_var.value, "auto") != 0)
+      return;
+
+   rsp_plugin = RSP_HLE;
 
    if (
-         (strcmp(romgame.Name, "Perfect Dark") == 0)
+          (sl(ROM_HEADER.CRC1) == 0x7EAE2488   && sl(ROM_HEADER.CRC2) == 0x9D40A35A) /* Biohazard 2 (J) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x9B500E8E   && sl(ROM_HEADER.CRC2) == 0xE90550B3) /* Resident Evil 2 (E) (M2) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0xAA18B1A5   && sl(ROM_HEADER.CRC2) == 0x7DB6AEB)  /* Resident Evil 2 (U) [!] */
+#ifndef GLES
+          || (strcmp(ROM_HEADER.Name, "GOLDENEYE") == 0)
+          || (strcmp(ROM_HEADER.Name, "Pilot Wings64") == 0)
+#endif
+          || (strcmp(ROM_HEADER.Name, "GAUNTLET LEGENDS") == 0)
       )
    {
-      rsp_plugin = RSP_HLE;
+      rsp_plugin = RSP_CXD4;
    }
-}
 
-static void setup_variables_balanced(void)
-{
-   struct retro_variable variables[] = {
-      { "mupen64-balanced-profile",
-         "Balanced profile; no|yes" },
-      { "mupen64-cpucore",
-#ifdef DYNAREC
-         "CPU Core; dynamic_recompiler|cached_interpreter|pure_interpreter" },
-#else
-         "CPU Core; cached_interpreter|pure_interpreter" },
-#endif
-      {"mupen64-pak1",
-        "Player 1 Pak; none|memory|rumble"},
-      {"mupen64-pak2",
-        "Player 2 Pak; none|memory|rumble"},
-      {"mupen64-pak3",
-        "Player 3 Pak; none|memory|rumble"},
-      {"mupen64-pak4",
-        "Player 4 Pak; none|memory|rumble"},
-      { "mupen64-disableexpmem",
-         "Disable Expansion RAM; no|yes" },
-      { "mupen64-gfxplugin",
-         "Graphics Plugin; automatic (balanced)" },
-      { "mupen64-rspplugin",
-         "RSP Plugin; automatic (balanced)" },
-      { "mupen64-screensize",
-         "Graphics Resolution; 640x480|1280x960|320x240" },
-      { "mupen64-filtering",
-         "Texture filtering; automatic|bilinear|nearest" },
-      { "mupen64-virefresh",
-         "VI Refresh; 1500|2200" },
-      { "mupen64-framerate",
-         "Framerate (restart); original|fullspeed" },
-      { NULL, NULL },
-   };
-
-   environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
+   if (strcmp(ROM_HEADER.Name, "CONKER BFD") == 0)
+      rsp_plugin = RSP_HLE;
 }
 
 static void setup_variables(void)
 {
    struct retro_variable variables[] = {
-      { "mupen64-balanced-profile",
-         "Balanced profile; no|yes" },
       { "mupen64-cpucore",
 #ifdef DYNAREC
          "CPU Core; dynamic_recompiler|cached_interpreter|pure_interpreter" },
@@ -188,9 +179,9 @@ static void setup_variables(void)
       { "mupen64-disableexpmem",
          "Disable Expansion RAM; no|yes" },
       { "mupen64-gfxplugin",
-         "Graphics Plugin; glide64|gln64|rice" },
+         "Graphics Plugin; auto|glide64|gln64|rice" },
       { "mupen64-rspplugin",
-         "RSP Plugin; hle|cxd4" },
+         "RSP Plugin; auto|hle|cxd4" },
       { "mupen64-screensize",
          "Graphics Resolution; 640x480|1280x960|320x240" },
       { "mupen64-filtering",
@@ -222,7 +213,7 @@ static void EmuThreadFunction()
     free(game_data);
     game_data = 0;
 
-    if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(romgame), &romgame))
+    if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
     {
        if (log_cb)
           log_cb(RETRO_LOG_ERROR, "mupen64plus; Failed to query ROM header information\n");
@@ -230,15 +221,8 @@ static void EmuThreadFunction()
     }
 
     core_settings_set_defaults();
-
-    struct retro_variable var = { "mupen64-balanced-profile", 0 };
-
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value
-          && (strcmp(var.value, "yes") == 0))
-    {
-       core_settings_set_balanced();
-       setup_variables_balanced();
-    }
+    core_settings_autoselect_gfx_plugin();
+    core_settings_autoselect_rsp_plugin();
 
     plugin_connect_all(gfx_plugin, rsp_plugin);
 
@@ -362,7 +346,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    struct retro_variable var = { "mupen64-screensize", 0 };
    screen_width = 640;
    screen_height = 480;
-   m64p_system_type region = rom_country_code_to_system_type(romgame.Country_code);
+   m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.Country_code);
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -384,7 +368,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
 unsigned retro_get_region (void)
 {
-   m64p_system_type region = rom_country_code_to_system_type(romgame.Country_code);
+   m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.Country_code);
    return ((region == SYSTEM_PAL) ? RETRO_REGION_PAL : RETRO_REGION_NTSC);
 }
 
