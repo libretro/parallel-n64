@@ -52,12 +52,12 @@ void init_flashram(void)
     flashram_info.status = 0;
 }
 
-unsigned int flashram_status(void)
+uint32_t flashram_status(void)
 {
-    return (unsigned int) (flashram_info.status >> 32);
+    return (uint32_t) (flashram_info.status >> 32);
 }
 
-void flashram_command(unsigned int command)
+void flashram_command(uint32_t command)
 {
     switch (command & 0xff000000)
     {
@@ -82,7 +82,7 @@ void flashram_command(unsigned int command)
             break;
         case ERASE_MODE:
         {
-            unsigned int i;
+            uint32_t i;
             for (i=flashram_info.erase_offset; i<(flashram_info.erase_offset+128); i++)
             {
                 saved_memory.flashram[i^S8] = 0xff;
@@ -95,7 +95,7 @@ void flashram_command(unsigned int command)
             for (i=0; i<128; i++)
             {
                 saved_memory.flashram[(flashram_info.erase_offset+i)^S8]=
-                    ((unsigned char*)rdram)[(flashram_info.write_pointer+i)^S8];
+                    ((uint8_t*)rdram)[(flashram_info.write_pointer+i)^S8];
             }
         }
         break;
@@ -124,18 +124,18 @@ void flashram_command(unsigned int command)
 
 void dma_read_flashram(void)
 {
-    unsigned int i;
+    uint32_t i;
 
     switch (flashram_info.mode)
     {
     case STATUS_MODE:
-        rdram[pi_register.pi_dram_addr_reg/4] = (unsigned int)(flashram_info.status >> 32);
-        rdram[pi_register.pi_dram_addr_reg/4+1] = (unsigned int)(flashram_info.status);
+        rdram[pi_register.pi_dram_addr_reg/4] = (uint32_t)(flashram_info.status >> 32);
+        rdram[pi_register.pi_dram_addr_reg/4+1] = (uint32_t)(flashram_info.status);
         break;
     case READ_MODE:
         for (i=0; i<(pi_register.pi_wr_len_reg & 0x0FFFFFF)+1; i++)
         {
-            ((unsigned char*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
+            ((uint8_t*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
                 saved_memory.flashram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFF)*2+i)^S8];
         }
         break;

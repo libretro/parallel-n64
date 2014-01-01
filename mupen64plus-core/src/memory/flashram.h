@@ -21,16 +21,16 @@
 
 typedef struct _flashram_info
 {
-	int use_flashram;
-	int mode;
-	unsigned long long status;
-	unsigned int erase_offset, write_pointer;
+	int32_t use_flashram;
+	int32_t mode;
+	uint64_t status;
+	uint32_t erase_offset, write_pointer;
 } Flashram_info;
 
 extern Flashram_info flashram_info;
 
 void init_flashram(void);
-void flashram_command(unsigned int command);
-unsigned int flashram_status(void);
+void flashram_command(uint32_t command);
+uint32_t flashram_status(void);
 void dma_read_flashram(void);
 void dma_write_flashram(void);
