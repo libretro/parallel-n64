@@ -61,7 +61,7 @@ static INLINE void vector_copy(short* VD, short* VS)
 
 static INLINE void SIGNED_CLAMP_ADD(short* VD, short* VS, short* VT)
 {
-    long sum[N];
+    int32_t sum[N];
     short hi[N], lo[N];
     register int i;
 
@@ -82,7 +82,7 @@ static INLINE void SIGNED_CLAMP_ADD(short* VD, short* VS, short* VT)
 }
 static INLINE void SIGNED_CLAMP_SUB(short* VD, short* VS, short* VT)
 {
-    long dif[N];
+    int32_t dif[N];
     short hi[N], lo[N];
     register int i;
 

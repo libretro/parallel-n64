@@ -2,7 +2,7 @@
 
 INLINE static void set_co(short* VD, short* VS, short* VT)
 { /* set CARRY and carry out from sum */
-    long sum[N];
+    int32_t sum[N];
     register int i;
 
     for (i = 0; i < N; i++)

@@ -2,8 +2,8 @@
 
 INLINE static void do_madh(short* VD, short* VS, short* VT)
 {
-    long product[N];
-    unsigned long addend[N];
+    int32_t product[N];
+    uint32_t addend[N];
     register int i;
 
     for (i = 0; i < N; i++)

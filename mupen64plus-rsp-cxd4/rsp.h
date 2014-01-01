@@ -49,7 +49,7 @@ static int MFC0_count[32];
 #include "su.h"
 #include "vu/vu.h"
 
-extern void step_SP_commands(unsigned long inst);
+extern void step_SP_commands(uint32_t inst);
 extern void export_SP_memory(void);
 extern void trace_RSP_registers(void);
 static FILE *output_log;
@@ -58,7 +58,7 @@ static FILE *output_log;
 extern void run_task(void);
 #include "execute.h"
 
-void step_SP_commands(unsigned long inst)
+void step_SP_commands(uint32_t inst)
 {
     if (output_log)
     {
@@ -97,7 +97,7 @@ void step_SP_commands(unsigned long inst)
 void export_data_cache(void)
 {
     FILE* out;
-    register unsigned long addr;
+    register uint32_t addr;
     const int m = 0x7FFF % sizeof(unsigned int); /* swap mask */
 
     out = fopen("rcpcache.dhex", "wb");
@@ -110,7 +110,7 @@ void export_data_cache(void)
 void export_instruction_cache(void)
 {
     FILE* out;
-    register unsigned long addr;
+    register uint32_t addr;
     const int m = 0x7FFF % sizeof(unsigned int); /* swap mask */
 
     out = fopen("rcpcache.ihex", "wb");
@@ -123,7 +123,7 @@ void export_instruction_cache(void)
 void export_DRAM(void)
 {
     FILE* out;
-    register unsigned long addr;
+    register uint32_t addr;
     const int m = 0x7FFF % sizeof(unsigned int); /* swap mask */
     const int MiB = 8; /* to-do:  any way to detect RDRAM size in MB? */
     const int limit = MiB * 1024 * 1024;

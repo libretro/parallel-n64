@@ -2,7 +2,7 @@
 
 INLINE static void set_bo(short* VD, short* VS, short* VT)
 { /* set CARRY and borrow out from difference */
-    long dif[N];
+    int32_t dif[N];
     register int i;
 
     for (i = 0; i < N; i++)

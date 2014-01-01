@@ -2,7 +2,7 @@
 
 INLINE static void do_madm(short* VD, short* VS, short* VT)
 {
-    unsigned long addend[N];
+    uint32_t addend[N];
     register int i;
 
     for (i = 0; i < N; i++)

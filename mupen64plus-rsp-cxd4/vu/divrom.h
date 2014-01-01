@@ -1062,7 +1062,7 @@ enum {
 
 INLINE static void do_div(int data, int sqrt, int precision)
 {
-    long addr;
+    int32_t addr;
     int fetch;
     int shift;
 

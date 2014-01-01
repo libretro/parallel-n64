@@ -21,10 +21,10 @@ struct HDC__ {int unused;};
 typedef struct HDC__ *HDC;
 
 typedef struct tagRECT {
-    long left;
-    long top;
-    long right;
-    long bottom;
+    int32_t left;
+    int32_t top;
+    int32_t right;
+    int32_t bottom;
 } RECT;
 typedef struct tagPAINTSTRUCT {
     HDC hdc;
@@ -65,26 +65,26 @@ typedef struct {
     unsigned char *DMEM;
     unsigned char *IMEM;
 
-    unsigned long *MI_INTR_REG;
+    uint32_t *MI_INTR_REG;
 
-    unsigned long *SP_MEM_ADDR_REG;
-    unsigned long *SP_DRAM_ADDR_REG;
-    unsigned long *SP_RD_LEN_REG;
-    unsigned long *SP_WR_LEN_REG;
-    unsigned long *SP_STATUS_REG;
-    unsigned long *SP_DMA_FULL_REG;
-    unsigned long *SP_DMA_BUSY_REG;
-    unsigned long *SP_PC_REG;
-    unsigned long *SP_SEMAPHORE_REG;
+    uint32_t *SP_MEM_ADDR_REG;
+    uint32_t *SP_DRAM_ADDR_REG;
+    uint32_t *SP_RD_LEN_REG;
+    uint32_t *SP_WR_LEN_REG;
+    uint32_t *SP_STATUS_REG;
+    uint32_t *SP_DMA_FULL_REG;
+    uint32_t *SP_DMA_BUSY_REG;
+    uint32_t *SP_PC_REG;
+    uint32_t *SP_SEMAPHORE_REG;
 
-    unsigned long *DPC_START_REG;
-    unsigned long *DPC_END_REG;
-    unsigned long *DPC_CURRENT_REG;
-    unsigned long *DPC_STATUS_REG;
-    unsigned long *DPC_CLOCK_REG;
-    unsigned long *DPC_BUFBUSY_REG;
-    unsigned long *DPC_PIPEBUSY_REG;
-    unsigned long *DPC_TMEM_REG;
+    uint32_t *DPC_START_REG;
+    uint32_t *DPC_END_REG;
+    uint32_t *DPC_CURRENT_REG;
+    uint32_t *DPC_STATUS_REG;
+    uint32_t *DPC_CLOCK_REG;
+    uint32_t *DPC_BUFBUSY_REG;
+    uint32_t *DPC_PIPEBUSY_REG;
+    uint32_t *DPC_TMEM_REG;
 
     void (*CheckInterrupts)(void);
     void (*ProcessDList)(void);
