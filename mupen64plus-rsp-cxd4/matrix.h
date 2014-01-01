@@ -109,7 +109,7 @@ void disassemble(int IW)
     const int rd = (IW & 0x0000FFFF) >> 11;
     const int rt = (IW >> 16) & 31;
     const int rs = (IW >> 21) & 31;
-    const int op = (IW >> 26) & 31;
+    const int op = (IW >> 26) & 63;
 
     if ((op & ~001) == 000) /* SPECIAL/REGIMM */
         ID = op + 1;
