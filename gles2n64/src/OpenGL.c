@@ -77,7 +77,12 @@ void OGL_InitStates()
     glDepthMask( GL_FALSE );
     glEnable( GL_SCISSOR_TEST );
 
+#ifdef GLES
+    glDepthRangef(0.0f, 1.0f);
+    glPolygonOffset(0.2f, 0.2f);
+#else
     glPolygonOffset(-3.0f, -3.0f);
+#endif
     glViewport(0, 0, config.screen.width, config.screen.height);
 }
 
