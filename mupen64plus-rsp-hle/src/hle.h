@@ -24,6 +24,7 @@
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_plugin.h"
+#include <stdint.h>
 
 #define RSP_HLE_VERSION        0x016305
 #define RSP_PLUGIN_API_VERSION 0x020000
@@ -38,47 +39,36 @@
 #define S8 3
 #endif
 
-/* types */
-typedef unsigned char       u8;
-typedef unsigned short      u16;
-typedef unsigned int        u32;
-typedef unsigned long long  u64;
-
-typedef signed char         s8;
-typedef signed short        s16;
-typedef signed int          s32;
-typedef signed long long    s64;
-
 extern RSP_INFO rspInfo;
 
 typedef struct
 {
-    unsigned int type;
-    unsigned int flags;
+    uint32_t type;
+    uint32_t flags;
 
-    unsigned int ucode_boot;
-    unsigned int ucode_boot_size;
+    uint32_t ucode_boot;
+    uint32_t ucode_boot_size;
 
-    unsigned int ucode;
-    unsigned int ucode_size;
+    uint32_t ucode;
+    uint32_t ucode_size;
 
-    unsigned int ucode_data;
-    unsigned int ucode_data_size;
+    uint32_t ucode_data;
+    uint32_t ucode_data_size;
 
-    unsigned int dram_stack;
-    unsigned int dram_stack_size;
+    uint32_t dram_stack;
+    uint32_t dram_stack_size;
 
-    unsigned int output_buff;
-    unsigned int output_buff_size;
+    uint32_t output_buff;
+    uint32_t output_buff_size;
 
-    unsigned int data_ptr;
-    unsigned int data_size;
+    uint32_t data_ptr;
+    uint32_t data_size;
 
-    unsigned int yield_data_ptr;
-    unsigned int yield_data_size;
+    uint32_t yield_data_ptr;
+    uint32_t yield_data_size;
 } OSTask_t;
 
-static INLINE const OSTask_t * const get_task()
+static INLINE const OSTask_t * const get_task(void)
 {
     return (OSTask_t*)(rspInfo.DMEM + 0xfc0);
 }
@@ -90,7 +80,7 @@ static INLINE const OSTask_t * const get_task()
 #endif
 
 #define BLARGG_CLAMP16(io) \
-   if ((s16)io != io) \
+   if ((int16_t)io != io) \
       io = (io >> 31) ^ 0x7FFF
 
 #endif

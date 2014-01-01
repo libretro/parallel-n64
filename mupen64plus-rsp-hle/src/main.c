@@ -51,20 +51,20 @@
 
 
 /* helper functions prototypes */
-static unsigned int sum_bytes(const unsigned char *bytes, unsigned int size);
-static void dump_binary(const char * const filename, const unsigned char * const bytes,
-                        unsigned int size);
+static uint32_t sum_bytes(const uint8_t *bytes, uint32_t size);
+static void dump_binary(const int8_t * const filename, const uint8_t* const bytes,
+                        uint32_t size);
 static void dump_task(const char * const filename, const OSTask_t * const task);
 
-static void handle_unknown_task(unsigned int sum);
-static void handle_unknown_non_task(unsigned int sum);
+static void handle_unknown_task(uint32_t sum);
+static void handle_unknown_non_task(uint32_t sum);
 
 /* global variables */
 RSP_INFO rspInfo;
 
 /* local variables */
 static const int FORWARD_AUDIO = 0, FORWARD_GFX = 1;
-static void (*l_DebugCallback)(void *, int, const char *) = NULL;
+static void (*l_DebugCallback)(void *, int, const int8_t *) = NULL;
 static void *l_DebugCallContext = NULL;
 static int l_PluginInit = 0;
 
@@ -81,12 +81,12 @@ static int l_PluginInit = 0;
  *
  * Using ucode_boot_size should be more robust in this regard.
  **/
-static int is_task()
+static int is_task(void)
 {
     return (get_task()->ucode_boot_size <= 0x1000);
 }
 
-static void rsp_break(unsigned int setbits)
+static void rsp_break(uint32_t setbits)
 {
     *rspInfo.SP_STATUS_REG |= setbits | RSP_STATUS_BROKE | RSP_STATUS_HALT;
 
@@ -97,7 +97,7 @@ static void rsp_break(unsigned int setbits)
     }
 }
 
-static void forward_gfx_task()
+static void forward_gfx_task(void)
 {
     if (rspInfo.ProcessDlistList != NULL)
     {
@@ -106,7 +106,7 @@ static void forward_gfx_task()
     }
 }
 
-static void forward_audio_task()
+static void forward_audio_task(void)
 {
     if (rspInfo.ProcessAlistList != NULL)
     {
@@ -117,23 +117,21 @@ static void forward_audio_task()
         printf("FANK\n");
 }
 
-static void show_cfb()
+static void show_cfb(void)
 {
     if (rspInfo.ShowCFB != NULL)
-    {
         rspInfo.ShowCFB();
-    }
 }
 
 static int try_fast_audio_dispatching()
 {
     /* identify audio ucode by using the content of ucode_data */
     const OSTask_t * const task = get_task();
-    const unsigned char * const udata_ptr = rspInfo.RDRAM + task->ucode_data;
+    const uint8_t * const udata_ptr = rspInfo.RDRAM + task->ucode_data;
 
-    if (*(unsigned int*)(udata_ptr + 0) == 0x00000001)
+    if (*(uint32_t*)(udata_ptr + 0) == 0x00000001)
     {
-        if (*(unsigned int*)(udata_ptr + 0x30) == 0xf0000f00)
+        if (*(uint32_t*)(udata_ptr + 0x30) == 0xf0000f00)
         {
             /**
             * Many games including:
@@ -161,7 +159,7 @@ static int try_fast_audio_dispatching()
     }
     else
     {
-        if (*(unsigned int*)(udata_ptr + 0x10) == 0x00000001)
+        if (*(uint32_t*)(udata_ptr + 0x10) == 0x00000001)
         {
             /**
              * Musyx ucode found in following games:
@@ -213,8 +211,7 @@ static int try_fast_task_dispatching()
 static void normal_task_dispatching()
 {
     const OSTask_t * const task = get_task();
-    const unsigned int sum =
-        sum_bytes(rspInfo.RDRAM + task->ucode, min(task->ucode_size, 0xf80) >> 1);
+    const uint32_t sum = sum_bytes(rspInfo.RDRAM + task->ucode, min(task->ucode_size, 0xf80) >> 1);
 
     switch (sum)
     {
@@ -243,7 +240,7 @@ static void normal_task_dispatching()
 
 static void non_task_dispatching()
 {
-    const unsigned int sum = sum_bytes(rspInfo.IMEM, 0x1000 >> 1);
+    const uint32_t sum = sum_bytes(rspInfo.IMEM, 0x1000 >> 1);
 
     switch(sum)
     {
@@ -256,7 +253,7 @@ static void non_task_dispatching()
     handle_unknown_non_task(sum);
 }
 
-static void handle_unknown_task(unsigned int sum)
+static void handle_unknown_task(uint32_t sum)
 {
     char filename[256];
     const OSTask_t * const task = get_task();
@@ -292,7 +289,7 @@ static void handle_unknown_task(unsigned int sum)
     }
 }
 
-static void handle_unknown_non_task(unsigned int sum)
+static void handle_unknown_non_task(uint32_t sum)
 {
     char filename[256];
 
@@ -360,7 +357,7 @@ EXPORT m64p_error CALL hlePluginGetVersion(m64p_plugin_type *PluginType, int *Pl
     return M64ERR_SUCCESS;
 }
 
-EXPORT unsigned int CALL hleDoRspCycles(unsigned int Cycles)
+EXPORT unsigned int CALL hleDoRspCycles(uint32_t Cycles)
 {
     if (is_task())
     {
@@ -376,7 +373,7 @@ EXPORT unsigned int CALL hleDoRspCycles(unsigned int Cycles)
     return Cycles;
 }
 
-EXPORT void CALL hleInitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
+EXPORT void CALL hleInitiateRSP(RSP_INFO Rsp_Info, uint32_t *CycleCount)
 {
     rspInfo = Rsp_Info;
 }
@@ -391,10 +388,10 @@ EXPORT void CALL hleRomClosed(void)
 
 
 /* local helper functions */
-static unsigned int sum_bytes(const unsigned char *bytes, unsigned int size)
+static uint32_t sum_bytes(const uint8_t *bytes, uint32_t size)
 {
-    unsigned int sum = 0;
-    const unsigned char * const bytes_end = bytes + size;
+    uint32_t sum = 0;
+    const uint8_t * const bytes_end = bytes + size;
 
     while (bytes != bytes_end)
         sum += *bytes++;
@@ -403,8 +400,8 @@ static unsigned int sum_bytes(const unsigned char *bytes, unsigned int size)
 }
 
 
-static void dump_binary(const char * const filename, const unsigned char * const bytes,
-                        unsigned int size)
+static void dump_binary(const int8_t * const filename, const uint8_t * const bytes,
+                        uint32_t size)
 {
     FILE *f;
 
