@@ -330,34 +330,34 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 typedef struct 
 {
-    uint32  type;
-    uint32  flags;
+    uint32_t  type;
+    uint32_t  flags;
 
-    uint32  ucode_boot;
-    uint32  ucode_boot_size;
+    uint32_t  ucode_boot;
+    uint32_t  ucode_boot_size;
 
-    uint32  ucode;
-    uint32  ucode_size;
+    uint32_t  ucode;
+    uint32_t  ucode_size;
 
-    uint32  ucode_data;
-    uint32  ucode_data_size;
+    uint32_t  ucode_data;
+    uint32_t  ucode_data_size;
 
-    uint32  dram_stack;
-    uint32  dram_stack_size;
+    uint32_t  dram_stack;
+    uint32_t  dram_stack_size;
 
-    uint32  output_buff;
-    uint32  output_buff_size;
+    uint32_t  output_buff;
+    uint32_t  output_buff_size;
 
-    uint32  data_ptr;
-    uint32  data_size;
+    uint32_t  data_ptr;
+    uint32_t  data_size;
 
-    uint32  yield_data_ptr;
-    uint32  yield_data_size;
+    uint32_t  yield_data_ptr;
+    uint32_t  yield_data_size;
 } OSTask_t;
 
 typedef union {
     OSTask_t        t;
-    uint64  force_structure_alignment;
+    uint64_t  force_structure_alignment;
 } OSTask;
 
 #define MAX_DL_STACK_SIZE   32
@@ -365,30 +365,30 @@ typedef union {
 
 typedef struct {
     bool    used;
-    uint32  crc_size;
-    uint32  crc_800;
-    uint32  ucode;
-    uint32  minor_ver;
-    uint32  variant;
+    uint32_t  crc_size;
+    uint32_t  crc_800;
+    uint32_t  ucode;
+    uint32_t  minor_ver;
+    uint32_t  variant;
     char    rspstr[200];
 
-    uint32  ucStart;
-    uint32  ucSize;
-    uint32  ucDStart;
-    uint32  ucDSize;
-    uint32  ucCRC;
-    uint32  ucDWORD1;
-    uint32  ucDWORD2;
-    uint32  ucDWORD3;
-    uint32  ucDWORD4;
+    uint32_t  ucStart;
+    uint32_t  ucSize;
+    uint32_t  ucDStart;
+    uint32_t  ucDSize;
+    uint32_t  ucCRC;
+    uint32_t  ucDWORD1;
+    uint32_t  ucDWORD2;
+    uint32_t  ucDWORD3;
+    uint32_t  ucDWORD4;
 } UcodeInfo;
 
 
 typedef struct
 {
-    uint32      ucode;
-    uint32      crc_size;
-    uint32      crc_800;
+    uint32_t      ucode;
+    uint32_t      crc_size;
+    uint32_t      crc_800;
     const unsigned char * ucode_name;
     bool        non_nearclip;
     bool        reject;
@@ -401,7 +401,7 @@ struct TileDescriptor
     unsigned int dwSize     :2;     // e.g 4/8/16/32bpp
     unsigned int dwLine     :9;     // Ummm...
     unsigned int dwPalette  :4;     // 0..15 - a palette index?
-    uint32 dwTMem;                  // Texture memory location
+    uint32_t dwTMem;                  // Texture memory location
 
     unsigned int bClampS    :1;
     unsigned int bClampT    :1;
@@ -439,8 +439,8 @@ struct LoadCmdInfo
 };
 
 typedef struct {    // This is in Intel format
-    uint32 SourceImagePointer;
-    uint32 TlutPointer;
+    uint32_t SourceImagePointer;
+    uint32_t TlutPointer;
 
     short SubImageWidth;
     short Stride;
@@ -460,8 +460,8 @@ typedef struct{
     short py;
     float scaleX;
     float scaleY;
-    uint8  flipX; 
-    uint8  flipY;
+    uint8_t  flipX; 
+    uint8_t  flipY;
     SpriteStruct *spritePtr;
 } Sprite2DInfo;
 
@@ -526,8 +526,8 @@ typedef struct
             unsigned int        pad : 8;                    // 24..31 - padding
 
         };
-        uint64          _u64;
-        uint32          _u32[2];
+        uint64_t          _u64;
+        uint32_t          _u32[2];
     };
 } RDP_OtherMode;
 
@@ -549,7 +549,7 @@ typedef enum
 
 typedef struct 
 {
-    uint32 pc;
+    uint32_t pc;
     int countdown;
 } DListStack;
 
@@ -561,25 +561,25 @@ typedef struct
 
 // Mask down to 0x003FFFFF?
 #define RSPSegmentAddr(seg) ( gRSP.segments[((seg)>>24)&0x0F] + ((seg)&0x00FFFFFF) )
-#define RDRAM_UWORD(addr)   (*(uint32 *)((addr)+g_pRDRAMu8))
-#define RDRAM_SWORD(addr)   (*(s32 *)((addr)+g_pRDRAMu8))
-#define RDRAM_UHALF(addr)   (*(uint16 *)(((addr)^2)+g_pRDRAMu8))
-#define RDRAM_SHALF(addr)   (*(short *)(((addr)^2)+g_pRDRAMu8))
-#define RDRAM_UBYTE(addr)   (*(uint8 *)(((addr)^3)+g_pRDRAMu8))
-#define RDRAM_SBYTE(addr)   (*(s8 *)(((addr)^3)+g_pRDRAMu8))
-#define pRDRAM_UWORD(addr)  ((uint32 *)((addr)+g_pRDRAMu8))
-#define pRDRAM_SWORD(addr)  ((s32 *)((addr)+g_pRDRAMu8))
-#define pRDRAM_UHALF(addr)  ((uint16 *)(((addr)^2)+g_pRDRAMu8))
-#define pRDRAM_SHALF(addr)  ((short *)(((addr)^2)+g_pRDRAMu8))
-#define pRDRAM_UBYTE(addr)  ((uint8 *)(((addr)^3)+g_pRDRAMu8))
-#define pRDRAM_SBYTE(addr)  ((s8 *)(((addr)^3)+g_pRDRAMu8))
+#define RDRAM_UWORD(addr)   (*(uint32_t_t *)((addr)+g_pRDRAMu8))
+#define RDRAM_SWORD(addr)   (*(int32_t *)((addr)+g_pRDRAMu8))
+#define RDRAM_UHALF(addr)   (*(uint16_t *)(((addr)^2)+g_pRDRAMu8))
+#define RDRAM_SHALF(addr)   (*(int16_t *)(((addr)^2)+g_pRDRAMu8))
+#define RDRAM_UBYTE(addr)   (*(uint8_t *)(((addr)^3)+g_pRDRAMu8))
+#define RDRAM_SBYTE(addr)   (*(int8_t *)(((addr)^3)+g_pRDRAMu8))
+#define pRDRAM_UWORD(addr)  ((uint32_t_t *)((addr)+g_pRDRAMu8))
+#define pRDRAM_SWORD(addr)  ((int32_t *)((addr)+g_pRDRAMu8))
+#define pRDRAM_UHALF(addr)  ((uint16_t *)(((addr)^2)+g_pRDRAMu8))
+#define pRDRAM_SHALF(addr)  ((int16_t*)(((addr)^2)+g_pRDRAMu8))
+#define pRDRAM_UBYTE(addr)  ((uint8_t *)(((addr)^3)+g_pRDRAMu8))
+#define pRDRAM_SBYTE(addr)  ((int8_t *)(((addr)^3)+g_pRDRAMu8))
 
-extern uint16 g_wRDPTlut[];
+extern uint16_t g_wRDPTlut[];
 extern const char *textluttype[4];
 
 extern const char *pszImgFormat[8];
 extern const char *pszImgSize[4];
-extern uint8 pnImgSize[4];
+extern uint8_t pnImgSize[4];
 extern const char *textlutname[4];
 
 extern SetImgInfo g_CI;
@@ -599,26 +599,26 @@ void RDP_DLParser_Process(void);
 
 void PrepareTextures();
 void RDP_InitRenderState();
-void DisplayVertexInfo(uint32 dwAddr, uint32 dwV0, uint32 dwN);
-void RSP_MoveMemLight(uint32 dwLight, uint32 dwAddr);
-void RSP_MoveMemViewport(uint32 dwAddr);
+void DisplayVertexInfo(uint32_t dwAddr, uint32_t dwV0, uint32_t dwN);
+void RSP_MoveMemLight(uint32_t dwLight, uint32_t dwAddr);
+void RSP_MoveMemViewport(uint32_t dwAddr);
 void RDP_NOIMPL_WARN(const char* op);
-void RSP_GFX_Force_Matrix(uint32 dwAddr);
+void RSP_GFX_Force_Matrix(uint32_t dwAddr);
 void RSP_GFX_InitGeometryMode();
-void RSP_SetUcode(int ucode, uint32 ucStart, uint32 ucDStart, uint32 cdSize);
-uint32 CalcalateCRC(uint32* srcPtr, uint32 srcSize);
+void RSP_SetUcode(int ucode, uint32_t ucStart, uint32_t ucDStart, uint32_t cdSize);
+uint32_t CalcalateCRC(uint32_t* srcPtr, uint32_t srcSize);
 void RDP_GFX_PopDL();
 
 extern Matrix matToLoad;
-void LoadMatrix(uint32 addr);
+void LoadMatrix(uint32_t addr);
 
-unsigned int ComputeCRC32(unsigned int crc, const uint8 *buf, unsigned int len);
+unsigned int ComputeCRC32(unsigned int crc, const uint8_t *buf, unsigned int len);
 
 void TriggerDPInterrupt();
 void TriggerSPInterrupt();
-uint32 DLParser_CheckUcode(uint32 ucStart, uint32 ucDStart, uint32 ucSize, uint32 ucDSize);
+uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSize, uint32_t ucDSize);
 
-bool IsUsedAsDI(uint32 addr);
+bool IsUsedAsDI(uint32_t addr);
 
 #if defined(DEBUGGER)
   void __cdecl LOG_UCODE(const char* szFormat, ...);

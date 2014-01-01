@@ -50,8 +50,8 @@ extern ALIGN(16, XVECTOR4 g_vecProjected[MAX_VERTS])
 extern float        g_vtxProjected5[1000][5];
 extern float        g_vtxProjected5Clipped[2000][5];
 extern VECTOR2      g_fVtxTxtCoords[MAX_VERTS];
-extern uint32       g_dwVtxDifColor[MAX_VERTS];
-//extern uint32     g_dwVtxFlags[MAX_VERTS];            // Z_POS Z_NEG etc
+extern uint32_t       g_dwVtxDifColor[MAX_VERTS];
+//extern uint32_t     g_dwVtxFlags[MAX_VERTS];            // Z_POS Z_NEG etc
 
 extern RenderTexture g_textures[MAX_TEXTURES];
 
@@ -61,9 +61,9 @@ extern unsigned short   g_vtxIndex[1000];
 extern TLITVERTEX       g_clippedVtxBuffer[2000];
 extern int              g_clippedVtxCount;
 
-extern uint8            g_oglVtxColors[1000][4];
-extern uint32           g_clipFlag[MAX_VERTS];
-extern uint32           g_clipFlag2[MAX_VERTS];
+extern uint8_t            g_oglVtxColors[1000][4];
+extern uint32_t           g_clipFlag[MAX_VERTS];
+extern uint32_t           g_clipFlag2[MAX_VERTS];
 extern float            g_fFogCoord[MAX_VERTS];
 
 extern TLITVERTEX       g_texRectTVtx[4];
@@ -81,7 +81,7 @@ extern EXTERNAL_VERTEX  g_vtxForExternal[MAX_VERTS];
 /*      Don't move                                                      */
 /************************************************************************/
 
-extern uint32             gRSPnumLights;
+extern uint32_t             gRSPnumLights;
 extern Light              gRSPlights[16];
 extern ALIGN(16, Matrix   gRSPworldProjectTransported)
 extern ALIGN(16, Matrix   gRSPworldProject)
@@ -113,7 +113,7 @@ typedef struct
     /*      Don't move above                                                */
     /************************************************************************/
     bool    bTextureEnabled;
-    uint32  curTile;
+    uint32_t  curTile;
     float   fTexScaleX;
     float   fTexScaleY;
 
@@ -125,14 +125,14 @@ typedef struct
     bool    bFogEnabled;
     BOOL    bZBufferEnabled;
 
-    uint32  ambientLightColor;
-    uint32  ambientLightIndex;
+    uint32_t  ambientLightColor;
+    uint32_t  ambientLightIndex;
 
-    uint32  projectionMtxTop;
-    uint32  modelViewMtxTop;
+    uint32_t  projectionMtxTop;
+    uint32_t  modelViewMtxTop;
 
-    uint32  numVertices;
-    uint32  maxVertexID;
+    uint32_t  numVertices;
+    uint32_t  maxVertexID;
 
     int     nVPLeftN, nVPTopN, nVPRightN, nVPBottomN, nVPWidthN, nVPHeightN, maxZ;
     int     clip_ratio_negx,    clip_ratio_negy,    clip_ratio_posx,    clip_ratio_posy;
@@ -148,13 +148,13 @@ typedef struct
     bool    bCombinedMatrixIsUpdated;
     bool    bLightIsUpdated;
 
-    uint32  segments[16];
+    uint32_t  segments[16];
 
     int     DKRCMatrixIndex;
     int     DKRVtxCount;
     bool    DKRBillBoard;
-    uint32  dwDKRVtxAddr;
-    uint32  dwDKRMatrixAddr;
+    uint32_t  dwDKRVtxAddr;
+    uint32_t  dwDKRMatrixAddr;
     Matrix  DKRMatrixes[4];
     XVECTOR4  DKRBaseVec;
 
@@ -188,35 +188,35 @@ typedef struct
 extern ALIGN(16, RSP_Options gRSP)
 
 typedef struct {
-    uint32  keyR;
-    uint32  keyG;
-    uint32  keyB;
-    uint32  keyA;
-    uint32  keyRGB;
-    uint32  keyRGBA;
+    uint32_t  keyR;
+    uint32_t  keyG;
+    uint32_t  keyB;
+    uint32_t  keyA;
+    uint32_t  keyRGB;
+    uint32_t  keyRGBA;
     float   fKeyA;
     
     bool    bFogEnableInBlender;
 
-    uint32  fogColor;
-    uint32  primitiveColor;
-    uint32  envColor;
-    uint32  primitiveDepth;
-    uint32  primLODMin;
-    uint32  primLODFrac;
-    uint32  LODFrac;
+    uint32_t  fogColor;
+    uint32_t  primitiveColor;
+    uint32_t  envColor;
+    uint32_t  primitiveDepth;
+    uint32_t  primLODMin;
+    uint32_t  primLODFrac;
+    uint32_t  LODFrac;
 
     float   fPrimitiveDepth;
     float   fvFogColor[4];
     float   fvPrimitiveColor[4];
     float   fvEnvColor[4];
 
-    uint32  fillColor;
-    uint32  originalFillColor;
+    uint32_t  fillColor;
+    uint32_t  originalFillColor;
 
-    uint32  geometryMode;
-    uint32  otherModeL;
-    uint32  otherModeH;
+    uint32_t  geometryMode;
+    uint32_t  otherModeL;
+    uint32_t  otherModeH;
     RDP_OtherMode otherMode;
 
     Tile    tiles[8];
@@ -234,23 +234,23 @@ extern ALIGN(16, RDP_Options gRDP)
 */
 void InitRenderBase();
 void SetFogMinMax(float fMin, float fMax, float fMul, float fOffset);
-void InitVertex(uint32 dwV, uint32 vtxIndex, bool bTexture, bool openGL);
+void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture, bool openGL);
 void InitVertexTextureConstants();
-bool PrepareTriangle(uint32 dwV0, uint32 dwV1, uint32 dwV2);
-bool IsTriangleVisible(uint32 dwV0, uint32 dwV1, uint32 dwV2);
-extern void (*ProcessVertexData)(uint32 dwAddr, uint32 dwV0, uint32 dwNum);
+bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2);
+bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2);
+extern void (*ProcessVertexData)(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
 #if !defined(NO_ASM)
-void ProcessVertexDataSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum);
+void ProcessVertexDataSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
 #endif
-void ProcessVertexDataNoSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum);
-void ProcessVertexDataExternal(uint32 dwAddr, uint32 dwV0, uint32 dwNum);
-void SetPrimitiveColor(uint32 dwCol, uint32 LODMin, uint32 LODFrac);
-void SetPrimitiveDepth(uint32 z, uint32 dwDZ);
-void SetVertexXYZ(uint32 vertex, float x, float y, float z);
-void ModifyVertexInfo(uint32 where, uint32 vertex, uint32 val);
-void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum);
-void SetLightCol(uint32 dwLight, uint32 dwCol);
-void SetLightDirection(uint32 dwLight, float x, float y, float z, float range);
+void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
+void ProcessVertexDataExternal(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
+void SetPrimitiveColor(uint32_t dwCol, uint32_t LODMin, uint32_t LODFrac);
+void SetPrimitiveDepth(uint32_t z, uint32_t dwDZ);
+void SetVertexXYZ(uint32_t vertex, float x, float y, float z);
+void ModifyVertexInfo(uint32_t where, uint32_t vertex, uint32_t val);
+void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
+void SetLightCol(uint32_t dwLight, uint32_t dwCol);
+void SetLightDirection(uint32_t dwLight, float x, float y, float z, float range);
 void ForceMainTextureIndex(int dwTile); 
 void UpdateCombinedMatrix();
 
@@ -270,10 +270,10 @@ inline float ViewPortTranslatei_x(float x) { return x*windowSetting.fMultX; }
 inline float ViewPortTranslatei_y(float y) { return y*windowSetting.fMultY; }
 
 inline float GetPrimitiveDepth() { return gRDP.fPrimitiveDepth; }
-inline uint32 GetPrimitiveColor() { return gRDP.primitiveColor; }
+inline uint32_t GetPrimitiveColor() { return gRDP.primitiveColor; }
 inline float* GetPrimitiveColorfv() { return gRDP.fvPrimitiveColor; }
-inline uint32 GetLODFrac() { return gRDP.LODFrac; }
-inline void SetEnvColor(uint32 dwCol) 
+inline uint32_t GetLODFrac() { return gRDP.LODFrac; }
+inline void SetEnvColor(uint32_t dwCol) 
 { 
     gRDP.colorsAreReloaded = true;
     gRDP.envColor = dwCol; 
@@ -282,10 +282,10 @@ inline void SetEnvColor(uint32 dwCol)
     gRDP.fvEnvColor[2] = ((dwCol)&0xFF)/255.0f;         // B
     gRDP.fvEnvColor[3] = ((dwCol>>24)&0xFF)/255.0f;     // A
 }
-inline uint32 GetEnvColor() { return gRDP.envColor; }
+inline uint32_t GetEnvColor() { return gRDP.envColor; }
 inline float* GetEnvColorfv() { return gRDP.fvEnvColor; }
 
-inline void SetAmbientLight(uint32 color) 
+inline void SetAmbientLight(uint32_t color) 
 { 
     gRSP.ambientLightColor = color; 
     gRSP.fAmbientLightR = (float)RGBA_GETRED(gRSP.ambientLightColor);
@@ -298,15 +298,15 @@ inline void SetLighting(bool bLighting) { gRSP.bLightingEnable = bLighting; }
 
 // Generate texture coords?
 inline void SetTextureGen(bool bTextureGen) { gRSP.bTextureGen = bTextureGen; }
-inline void SetNumLights(uint32 dwNumLights) 
+inline void SetNumLights(uint32_t dwNumLights) 
 { 
     gRSPnumLights = dwNumLights; 
     DEBUGGER_PAUSE_AND_DUMP(NEXT_SET_LIGHT,TRACE1("Set Number Of Lights: %d", dwNumLights));
 }
-inline uint32 GetNumLights() { return gRSPnumLights; }
-inline COLOR GetVertexDiffuseColor(uint32 ver) { return g_dwVtxDifColor[ver]; }
+inline uint32_t GetNumLights() { return gRSPnumLights; }
+inline COLOR GetVertexDiffuseColor(uint32_t ver) { return g_dwVtxDifColor[ver]; }
 inline void SetScreenMult(float fMultX, float fMultY) { windowSetting.fMultX = fMultX; windowSetting.fMultY = fMultY; }
-inline COLOR GetLightCol(uint32 dwLight) { return gRSPlights[dwLight].col; }
+inline COLOR GetLightCol(uint32_t dwLight) { return gRSPlights[dwLight].col; }
 
 #endif
 

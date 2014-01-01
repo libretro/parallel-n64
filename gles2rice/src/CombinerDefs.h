@@ -49,7 +49,7 @@ enum
     MUX_K5             = 16,
     MUX_UNK,            //Use this if you want to factor to be set to 0
 
-    // Don't change value of these three flags, then need to be within 1 uint8
+    // Don't change value of these three flags, then need to be within 1 uint8_t
     MUX_NEG            = 0x20, //Support by NVidia register combiner
     MUX_ALPHAREPLICATE = 0x40,
     MUX_COMPLEMENT     = 0x80,
@@ -102,10 +102,10 @@ typedef enum {
 
 
 typedef struct {
-    uint8 a;
-    uint8 b;
-    uint8 c;
-    uint8 d;
+    uint8_t a;
+    uint8_t b;
+    uint8_t c;
+    uint8_t d;
 } N64CombinerType;
 
 #define CONST_FLAG4(a,b,c,d)    (a|(b<<8)|(c<<16)|(d<<24))  //(A-B)*C+D
@@ -125,10 +125,10 @@ enum { TEX_0=0, TEX_1=1};
 
 
 typedef struct {
-    uint32 op;
-    uint32 Arg1;
-    uint32 Arg2;
-    uint32 Arg0;
+    uint32_t op;
+    uint32_t Arg1;
+    uint32_t Arg2;
+    uint32_t Arg0;
 } StageOperate;
 
 #endif

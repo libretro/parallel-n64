@@ -212,14 +212,14 @@ typedef struct {
 
     BOOL    bShowFPS;
 
-    uint32  mipmapping;
-    uint32  fogMethod;
-    uint32  forceTextureFilter;
-    uint32  textureEnhancement;
-    uint32  textureEnhancementControl;
-    uint32  textureQuality;
-    uint32  anisotropicFiltering;
-    uint32  multiSampling;
+    uint32_t  mipmapping;
+    uint32_t  fogMethod;
+    uint32_t  forceTextureFilter;
+    uint32_t  textureEnhancement;
+    uint32_t  textureEnhancementControl;
+    uint32_t  textureQuality;
+    uint32_t  anisotropicFiltering;
+    uint32_t  multiSampling;
     BOOL    bTexRectOnly;
     BOOL    bSmallTextureOnly;
     BOOL    bDumpTexturesToFiles;
@@ -228,7 +228,7 @@ typedef struct {
 
     int     OpenglDepthBufferSetting;
     int     OpenglRenderSetting;
-    uint32  colorQuality;
+    uint32_t  colorQuality;
 
     HACK_FOR_GAMES  enableHackForGames;
 } GlobalOptions;
@@ -257,10 +257,10 @@ typedef struct {
 } FrameBufferOptions;
 
 typedef struct {
-    uint32  N64FrameBufferEmuType;
-    uint32  N64FrameBufferWriteBackControl;
-    uint32  N64RenderToTextureEmuType;
-    uint32  screenUpdateSetting;
+    uint32_t  N64FrameBufferEmuType;
+    uint32_t  N64FrameBufferWriteBackControl;
+    uint32_t  N64RenderToTextureEmuType;
+    uint32_t  screenUpdateSetting;
     BOOL    bNormalCombiner;
     BOOL    bNormalBlender;
     BOOL    bFastTexCRC;
@@ -277,13 +277,13 @@ typedef struct IniSection
     char    name[50];
 
     // Options with changeable default values
-    uint32  dwNormalCombiner;
-    uint32  dwNormalBlender;
-    uint32  dwFastTextureCRC;
-    uint32  dwAccurateTextureMapping;
-    uint32  dwFrameBufferOption;
-    uint32  dwRenderToTextureOption;
-    uint32  dwScreenUpdateSetting;
+    uint32_t  dwNormalCombiner;
+    uint32_t  dwNormalBlender;
+    uint32_t  dwFastTextureCRC;
+    uint32_t  dwAccurateTextureMapping;
+    uint32_t  dwFrameBufferOption;
+    uint32_t  dwRenderToTextureOption;
+    uint32_t  dwScreenUpdateSetting;
 
     // Options with FALSE as default values
     BOOL    bDisableBlender;
@@ -305,49 +305,49 @@ typedef struct IniSection
 
     int     VIWidth;
     int     VIHeight;
-    uint32  UseCIWidthAndRatio;
+    uint32_t  UseCIWidthAndRatio;
 
-    uint32  dwFullTMEM;
+    uint32_t  dwFullTMEM;
     BOOL    bTxtSizeMethod2;
     BOOL    bEnableTxtLOD;
 } section;
 
 struct ROMHeader
 {
-    uint8  x1, x2, x3, x4;
-    uint32 dwClockRate;
-    uint32 dwBootAddressOffset;
-    uint32 dwRelease;
-    uint32 dwCRC1;
-    uint32 dwCRC2;
-    uint64   qwUnknown1;
+    uint8_t  x1, x2, x3, x4;
+    uint32_t dwClockRate;
+    uint32_t dwBootAddressOffset;
+    uint32_t dwRelease;
+    uint32_t dwCRC1;
+    uint32_t dwCRC2;
+    uint64_t   qwUnknown1;
     char  szName[20];
-    uint32 dwUnknown2;
-    uint16  wUnknown3;
-    uint8  nUnknown4;
-    uint8  nManufacturer;
-    uint16  wCartID;
-    s8    nCountryID;
-    uint8  nUnknown5;
+    uint32_t dwUnknown2;
+    uint16_t  wUnknown3;
+    uint8_t  nUnknown4;
+    uint8_t  nManufacturer;
+    uint16_t  wCartID;
+    int8_t    nCountryID;
+    uint8_t  nUnknown5;
 };
 
 typedef struct 
 {
     // Other info from the rom. This is for convenience
     unsigned char   szGameName[50+1];
-    s8  nCountryID;
+    int8_t  nCountryID;
 
     // Copy of the ROM header
     ROMHeader   romheader;
 
     // With changeable default values
-    uint32  dwNormalCombiner;
-    uint32  dwNormalBlender;
-    uint32  dwAccurateTextureMapping;
-    uint32  dwFastTextureCRC;
-    uint32  dwFrameBufferOption;
-    uint32  dwRenderToTextureOption;
-    uint32  dwScreenUpdateSetting;
+    uint32_t  dwNormalCombiner;
+    uint32_t  dwNormalBlender;
+    uint32_t  dwAccurateTextureMapping;
+    uint32_t  dwFastTextureCRC;
+    uint32_t  dwFrameBufferOption;
+    uint32_t  dwRenderToTextureOption;
+    uint32_t  dwScreenUpdateSetting;
 
     // With FALSE as its default values
     BOOL    bForceScreenClear;
@@ -368,18 +368,18 @@ typedef struct
     BOOL    bDisableCulling;
     int     VIWidth;
     int     VIHeight;
-    uint32  UseCIWidthAndRatio;
+    uint32_t  UseCIWidthAndRatio;
 
-    uint32  dwFullTMEM;
+    uint32_t  dwFullTMEM;
     BOOL    bTxtSizeMethod2;
     BOOL    bEnableTxtLOD;
 } GameSetting, *LPGAMESETTING;
 
 typedef struct
 {
-    s8  nCountryID;
+    int8_t  nCountryID;
     char* szName;
-    uint32 nTvType;
+    uint32_t nTvType;
 } CountryIDInfo;
 
 #define TV_SYSTEM_NTSC      1
@@ -398,11 +398,11 @@ extern BOOL InitConfiguration(void);
 extern BOOL LoadConfiguration(void);
 extern void WriteIniFile();
 extern BOOL ReadIniFile();
-extern void OutputSectionDetails(uint32 i, FILE * fh);
+extern void OutputSectionDetails(uint32_t i, FILE * fh);
 extern void GenerateCurrentRomOptions();
 extern void Ini_GetRomOptions(LPGAMESETTING pGameSetting);
 extern void Ini_StoreRomOptions(LPGAMESETTING pGameSetting);
-extern uint32 CountryCodeToTVSystem(uint32 countryCode);
+extern uint32_t CountryCodeToTVSystem(uint32_t countryCode);
 extern void ROM_GetRomNameFromHeader(unsigned char * szName, ROMHeader * pHdr);
 
 #endif

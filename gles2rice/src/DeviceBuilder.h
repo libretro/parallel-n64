@@ -33,7 +33,7 @@ class CDeviceBuilder
 public:
     virtual CGraphicsContext * CreateGraphicsContext(void)=0;
     virtual CRender * CreateRender(void)=0;
-    virtual CTexture * CreateTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage = AS_NORMAL)=0;
+    virtual CTexture * CreateTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage = AS_NORMAL)=0;
     virtual CColorCombiner * CreateColorCombiner(CRender *pRender)=0;
     virtual CBlender * CreateAlphaBlender(CRender *pRender)=0;
 
@@ -68,7 +68,7 @@ class OGLDeviceBuilder : public CDeviceBuilder
 public:
     CGraphicsContext * CreateGraphicsContext(void);
     CRender * CreateRender(void);
-    CTexture * CreateTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage = AS_NORMAL);
+    CTexture * CreateTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage = AS_NORMAL);
     CColorCombiner * CreateColorCombiner(CRender *pRender);
     CBlender * CreateAlphaBlender(CRender *pRender);
 

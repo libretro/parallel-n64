@@ -32,11 +32,11 @@ enum ClearFlag
 
 typedef struct
 {
-    uint32  addr;   //N64 RDRAM address
-    uint32  size;   //N64 buffer size
-    uint32  format; //N64 format
-    uint32  width;
-    uint32  height;
+    uint32_t  addr;   //N64 RDRAM address
+    uint32_t  size;   //N64 buffer size
+    uint32_t  format; //N64 format
+    uint32_t  width;
+    uint32_t  height;
 } TextureBufferShortInfo;
 
 
@@ -53,11 +53,11 @@ public:
     bool Ready() { return m_bReady; }
     bool IsWindowed() {return m_bWindowed;}
 
-    virtual bool Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed);
-    virtual bool ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed);
+    virtual bool Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
+    virtual bool ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
     virtual void CleanUp();
 
-    virtual void Clear(ClearFlag flags, uint32 color, float depth) = 0;
+    virtual void Clear(ClearFlag flags, uint32_t color, float depth) = 0;
     virtual void UpdateFrame(bool swapOnly) = 0;
     virtual int ToggleFullscreen()=0;       // return 0 as the result is windowed
 
@@ -71,9 +71,9 @@ public:
     static  int          m_maxAnisotropy;
 
 protected:
-    static  uint32      m_dwWindowStyle;       // Saved window style for mode switches
-    static  uint32      m_dwWindowExStyle;     // Saved window style for mode switches
-    static  uint32      m_dwStatusWindowStyle; // Saved window style for mode switches
+    static  uint32_t      m_dwWindowStyle;       // Saved window style for mode switches
+    static  uint32_t      m_dwWindowExStyle;     // Saved window style for mode switches
+    static  uint32_t      m_dwStatusWindowStyle; // Saved window style for mode switches
 
     static  bool        m_deviceCapsIsInitialized;
 

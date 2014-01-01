@@ -123,9 +123,9 @@ void CBlender::InitBlenderMode(void)                    // Set Alpha Blender mod
 #define BLEND_MEM_ALPHA_IN      0x4044  //  Mem * AIn + Mem * AMem
 
 
-    uint32 blendmode_1 = (uint32)( gRDP.otherMode.blender & 0xcccc );
-    uint32 blendmode_2 = (uint32)( gRDP.otherMode.blender & 0x3333 );
-    uint32 cycletype = gRDP.otherMode.cycle_type;
+    uint32_t blendmode_1 = (uint32_t)( gRDP.otherMode.blender & 0xcccc );
+    uint32_t blendmode_2 = (uint32_t)( gRDP.otherMode.blender & 0x3333 );
+    uint32_t cycletype = gRDP.otherMode.cycle_type;
 
     switch( cycletype )
     {
@@ -267,15 +267,15 @@ void CBlender::InitBlenderMode(void)                    // Set Alpha Blender mod
 #ifdef DEBUGGER
             if( pauseAtNext )
             {
-                uint32 dwM1A_1 = (gRDP.otherMode.blender>>14) & 0x3;
-                uint32 dwM1B_1 = (gRDP.otherMode.blender>>10) & 0x3;
-                uint32 dwM2A_1 = (gRDP.otherMode.blender>>6) & 0x3;
-                uint32 dwM2B_1 = (gRDP.otherMode.blender>>2) & 0x3;
+                uint32_t dwM1A_1 = (gRDP.otherMode.blender>>14) & 0x3;
+                uint32_t dwM1B_1 = (gRDP.otherMode.blender>>10) & 0x3;
+                uint32_t dwM2A_1 = (gRDP.otherMode.blender>>6) & 0x3;
+                uint32_t dwM2B_1 = (gRDP.otherMode.blender>>2) & 0x3;
 
-                uint32 dwM1A_2 = (gRDP.otherMode.blender>>12) & 0x3;
-                uint32 dwM1B_2 = (gRDP.otherMode.blender>>8) & 0x3;
-                uint32 dwM2A_2 = (gRDP.otherMode.blender>>4) & 0x3;
-                uint32 dwM2B_2 = (gRDP.otherMode.blender   ) & 0x3;
+                uint32_t dwM1A_2 = (gRDP.otherMode.blender>>12) & 0x3;
+                uint32_t dwM1B_2 = (gRDP.otherMode.blender>>8) & 0x3;
+                uint32_t dwM2A_2 = (gRDP.otherMode.blender>>4) & 0x3;
+                uint32_t dwM2B_2 = (gRDP.otherMode.blender   ) & 0x3;
 
                 TRACE0("Unknown Blender Mode: 2 cycle");
                 DebuggerAppendMsg( "\tblender:\t\t%04x - Cycle1:\t%s * %s + %s * %s\n\t\t%04x - Cycle2:\t%s * %s + %s * %s", blendmode_1,
@@ -380,15 +380,15 @@ void CBlender::InitBlenderMode(void)                    // Set Alpha Blender mod
 #ifdef DEBUGGER
             if( pauseAtNext )
             {
-                uint32 dwM1A_1 = (gRDP.otherMode.blender>>14) & 0x3;
-                uint32 dwM1B_1 = (gRDP.otherMode.blender>>10) & 0x3;
-                uint32 dwM2A_1 = (gRDP.otherMode.blender>>6) & 0x3;
-                uint32 dwM2B_1 = (gRDP.otherMode.blender>>2) & 0x3;
+                uint32_t dwM1A_1 = (gRDP.otherMode.blender>>14) & 0x3;
+                uint32_t dwM1B_1 = (gRDP.otherMode.blender>>10) & 0x3;
+                uint32_t dwM2A_1 = (gRDP.otherMode.blender>>6) & 0x3;
+                uint32_t dwM2B_1 = (gRDP.otherMode.blender>>2) & 0x3;
 
-                uint32 dwM1A_2 = (gRDP.otherMode.blender>>12) & 0x3;
-                uint32 dwM1B_2 = (gRDP.otherMode.blender>>8) & 0x3;
-                uint32 dwM2A_2 = (gRDP.otherMode.blender>>4) & 0x3;
-                uint32 dwM2B_2 = (gRDP.otherMode.blender   ) & 0x3;
+                uint32_t dwM1A_2 = (gRDP.otherMode.blender>>12) & 0x3;
+                uint32_t dwM1B_2 = (gRDP.otherMode.blender>>8) & 0x3;
+                uint32_t dwM2A_2 = (gRDP.otherMode.blender>>4) & 0x3;
+                uint32_t dwM2B_2 = (gRDP.otherMode.blender   ) & 0x3;
 
                 TRACE0("Unknown Blender Mode: 1 cycle");
                 DebuggerAppendMsg( "\tblender:\t\t%04x - Cycle1:\t%s * %s + %s * %s\n\t\t\tCycle2:\t%s * %s + %s * %s", blendmode_1,

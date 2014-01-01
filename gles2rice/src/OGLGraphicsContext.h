@@ -29,10 +29,10 @@ class COGLGraphicsContext : public CGraphicsContext
 public:
     virtual ~COGLGraphicsContext();
 
-    bool Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed);
-    bool ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed);
+    bool Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
+    bool ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
     void CleanUp();
-    void Clear(ClearFlag dwFlags, uint32 color, float depth);
+    void Clear(ClearFlag dwFlags, uint32_t color, float depth);
 
     void UpdateFrame(bool swapOnly);
     int ToggleFullscreen();     // return 0 as the result is windowed

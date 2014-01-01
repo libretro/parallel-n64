@@ -29,7 +29,7 @@ extern RDPInstruction   *currentUcodeMap;
 typedef RDPInstruction UcodeMap[256] ;
 
 
-//#define UcodeFunc(name)   void name(uint32, uint32)
+//#define UcodeFunc(name)   void name(uint32_t, uint32_t)
 #define UcodeFunc(name) void name(Gfx*)
 
 UcodeFunc(RSP_RDP_Nothing);

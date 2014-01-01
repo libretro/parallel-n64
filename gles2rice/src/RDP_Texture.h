@@ -34,12 +34,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #endif
 
-uint32 g_TmemFlag[16];
-void SetTmemFlag(uint32 tmemAddr, uint32 size);
-bool IsTmemFlagValid(uint32 tmemAddr);
-uint32 GetValidTmemInfoIndex(uint32 tmemAddr);
+uint32_t g_TmemFlag[16];
+void SetTmemFlag(uint32_t tmemAddr, uint32_t size);
+bool IsTmemFlagValid(uint32_t tmemAddr);
+uint32_t GetValidTmemInfoIndex(uint32_t tmemAddr);
 
-void MirrorTexture(uint32 tileno, TxtrCacheEntry *pEntry);
+void MirrorTexture(uint32_t tileno, TxtrCacheEntry *pEntry);
 void LoadHiresTexture( TxtrCacheEntry &entry );
 
 
@@ -51,11 +51,11 @@ TmemType g_Tmem;
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
-uint32 sizeShift[4] = {2,1,0,0};
-uint32 sizeIncr[4] = {3,1,0,0};
-uint32 sizeBytes[4] = {0,1,2,4};
+uint32_t sizeShift[4] = {2,1,0,0};
+uint32_t sizeIncr[4] = {3,1,0,0};
+uint32_t sizeBytes[4] = {0,1,2,4};
 
-inline uint32 Txl2Words(uint32 width, uint32 size)
+inline uint32_t Txl2Words(uint32_t width, uint32_t size)
 {
     if( size == TXT_SIZE_4b )
         return max(1, width/16);
@@ -63,14 +63,14 @@ inline uint32 Txl2Words(uint32 width, uint32 size)
         return max(1, width*sizeBytes[size]/8);
 }
 
-inline uint32 CalculateImgSize(uint32 width, uint32 height, uint32 size)
+inline uint32_t CalculateImgSize(uint32_t width, uint32_t height, uint32_t size)
 {
     //(((width)*(height) + siz##_INCR) >> siz##_SHIFT) -1
     return (((width)*(height) + sizeIncr[size]) >> sizeShift[size]) -1;
 }
 
 
-inline uint32 CalculateDXT(uint32 txl2words)
+inline uint32_t CalculateDXT(uint32_t txl2words)
 {
     //#define CALC_DXT(width, b_txl)    ((2048 + TXL2WORDS(width, b_txl) - 1) / TXL2WORDS(width, b_txl))
     if( txl2words == 0 )
@@ -79,7 +79,7 @@ inline uint32 CalculateDXT(uint32 txl2words)
         return (2048+txl2words-1)/txl2words;
 }
 
-inline uint32 ReverseDXT(uint32 val, uint32 lrs, uint32 width, uint32 size)
+inline uint32_t ReverseDXT(uint32_t val, uint32_t lrs, uint32_t width, uint32_t size)
 {
     //#define TXL2WORDS(txls, b_txl)    MAX(1, ((txls)*(b_txl)/8))
     if( val == 0x800 )
@@ -107,7 +107,7 @@ inline uint32 ReverseDXT(uint32 val, uint32 lrs, uint32 width, uint32 size)
 // rewrite these routine by myself.
 // Rice, 02/24/2004
 
-inline void UnswapCopy( void *src, void *dest, uint32 numBytes )
+inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
 {
 #if !defined(__GNUC__) && !defined(NO_ASM)
     __asm
@@ -296,7 +296,7 @@ Done:
 #endif
 }
 
-inline void DWordInterleave( void *mem, uint32 numDWords )
+inline void DWordInterleave( void *mem, uint32_t numDWords )
 {
 #if !defined(__GNUC__) && !defined(NO_ASM)
     __asm {
@@ -349,7 +349,7 @@ DWordInterleaveLoop:
 #endif
 }
 
-inline void QWordInterleave( void *mem, uint32 numDWords )
+inline void QWordInterleave( void *mem, uint32_t numDWords )
 {
 #if !defined(__GNUC__) && !defined(NO_ASM)
     __asm
@@ -421,7 +421,7 @@ QWordInterleaveLoop:
 #endif
 }
 
-inline uint32 swapdword( uint32 value )
+inline uint32_t swapdword( uint32_t value )
 {
 #if defined(__INTEL_COMPILER) && !defined(NO_ASM)
     __asm
@@ -451,7 +451,7 @@ inline uint32 swapdword( uint32 value )
 #endif
 }
 
-inline uint16 swapword( uint16 value )
+inline uint16_t swapword( uint16_t value )
 {
 #if defined(__INTEL_COMPILER) && !defined(NO_ASM)
     __asm
@@ -473,7 +473,7 @@ inline uint16 swapword( uint16 value )
 }
 
 
-void ComputeTileDimension(int mask, int clamp, int mirror, int width, uint32 &widthToCreate, uint32 &widthToLoad)
+void ComputeTileDimension(int mask, int clamp, int mirror, int width, uint32_t &widthToCreate, uint32_t &widthToLoad)
 {
     int maskwidth = mask > 0 ? (1<<mask) : 0;
     widthToCreate = widthToLoad = width;
@@ -547,7 +547,7 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     Tile &tile = gRDP.tiles[tileno];
     Tile &loadtile = gRDP.tiles[RDP_TXT_LOADTILE];
 
-    uint32 dwPitch;
+    uint32_t dwPitch;
 
     // Now Initialize the texture dimension
     int dwTileWidth;
@@ -705,7 +705,7 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         }
         else
         {
-            uint32 DXT = info->dxt;
+            uint32_t DXT = info->dxt;
             if( info->dxt > 1 )
             {
                 DXT = ReverseDXT(info->dxt, info->sh, dwTileWidth, tile.dwSize);
@@ -725,7 +725,7 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         //  info->bSetBy == CMD_LOADBLOCK )
     {
         // We have got the pitch now, recheck the width_to_load
-        uint32 pitchwidth = dwPitch<<1>>tile.dwSize;
+        uint32_t pitchwidth = dwPitch<<1>>tile.dwSize;
         if( pitchwidth == (unsigned int)dwTileMaskWidth )
         {
             gti.WidthToLoad = pitchwidth;
@@ -736,8 +736,8 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         //if( (gti.HeightToLoad < gti.HeightToCreate  ) && tile.dwMaskT > 0 && gti.HeightToLoad != dwTileMaskHeight &&
         //  info->bSetBy == CMD_LOADBLOCK )
     {
-        //uint32 pitchwidth = dwPitch<<1>>tile.dwSize;
-        uint32 pitchHeight = (info->dwTotalWords<<1)/dwPitch;
+        //uint32_t pitchwidth = dwPitch<<1>>tile.dwSize;
+        uint32_t pitchHeight = (info->dwTotalWords<<1)/dwPitch;
         if( pitchHeight == (unsigned int)dwTileMaskHeight || gti.HeightToLoad == 1 )
         {
             gti.HeightToLoad = pitchHeight;
@@ -757,13 +757,13 @@ bool CalculateTileSizes_method_2(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         gti.TopToLoad = (info->tl<<info->dwSize)>>tile.dwSize;
     }
 
-    uint32 total64BitWordsToLoad = (gti.HeightToLoad*gti.WidthToLoad)>>(4-tile.dwSize);
+    uint32_t total64BitWordsToLoad = (gti.HeightToLoad*gti.WidthToLoad)>>(4-tile.dwSize);
     if( total64BitWordsToLoad + tile.dwTMem > 0x200 )
     {
         //TRACE0("Warning: texture loading TMEM is over range");
         if( gti.WidthToLoad > gti.HeightToLoad )
         {
-            uint32 newheight = (dwPitch << 1 )>> tile.dwSize;
+            uint32_t newheight = (dwPitch << 1 )>> tile.dwSize;
             tile.dwWidth = gti.WidthToLoad = gti.WidthToCreate = min(newheight, (gti.WidthToLoad&0xFFFFFFFE));
             tile.dwHeight = gti.HeightToCreate = gti.HeightToLoad = ((0x200 - tile.dwTMem) << (4-tile.dwSize)) / gti.WidthToLoad;
         }
@@ -853,7 +853,7 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
         }
         else
         {
-            uint32 DXT = info->dxt;
+            uint32_t DXT = info->dxt;
             if( info->dxt > 1 )
             {
                 DXT = ReverseDXT(info->dxt, info->sh, loadwidth, tile.dwSize);
@@ -1014,13 +1014,13 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     }
 
     // Double check
-    uint32 total64BitWordsToLoad = (gti.HeightToLoad*gti.WidthToLoad)>>(4-tile.dwSize);
+    uint32_t total64BitWordsToLoad = (gti.HeightToLoad*gti.WidthToLoad)>>(4-tile.dwSize);
     if( total64BitWordsToLoad + tile.dwTMem > 0x200 )
     {
         //TRACE0("Warning: texture loading tmem is over range");
         if( gti.WidthToLoad > gti.HeightToLoad )
         {
-            uint32 newheight = (tile.dwPitch << 1 )>> tile.dwSize;
+            uint32_t newheight = (tile.dwPitch << 1 )>> tile.dwSize;
             tile.dwWidth = gti.WidthToLoad = gti.WidthToCreate = min(newheight, (gti.WidthToLoad&0xFFFFFFFE));
             tile.dwHeight = gti.HeightToCreate = gti.HeightToLoad = ((0x200 - tile.dwTMem) << (4-tile.dwSize)) / gti.WidthToLoad;
         }
@@ -1056,7 +1056,7 @@ bool CalculateTileSizes_method_1(int tileno, TMEMLoadMapInfo *info, TxtrInfo &gt
     return true;
 }
 
-TxtrCacheEntry* LoadTexture(uint32 tileno)
+TxtrCacheEntry* LoadTexture(uint32_t tileno)
 {
     //TxtrCacheEntry *pEntry = NULL;
     TxtrInfo gti;
@@ -1064,7 +1064,7 @@ TxtrCacheEntry* LoadTexture(uint32 tileno)
     Tile &tile = gRDP.tiles[tileno];
 
     // Retrieve the tile loading info
-    uint32 infoTmemAddr = tile.dwTMem;
+    uint32_t infoTmemAddr = tile.dwTMem;
     TMEMLoadMapInfo *info = &g_tmemLoadAddrMap[infoTmemAddr];
     if( !IsTmemFlagValid(infoTmemAddr) )
     {
@@ -1089,12 +1089,12 @@ TxtrCacheEntry* LoadTexture(uint32 tileno)
     if (gti.Format == TXT_FMT_CI && gti.TLutFmt == TLUT_FMT_NONE )
         gti.TLutFmt = TLUT_FMT_RGBA16;      // Force RGBA
 
-    gti.PalAddress = (uchar *) (&g_wRDPTlut[0]);
+    gti.PalAddress = (uint8_t *) (&g_wRDPTlut[0]);
     if( !options.bUseFullTMEM && tile.dwSize == TXT_SIZE_4b )
         gti.PalAddress += 16  * 2 * tile.dwPalette; 
 
     gti.Address = (info->dwLoadAddress+(tile.dwTMem-infoTmemAddr)*8) & (g_dwRamSize-1) ;
-    gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = tileno;
 
     if( g_curRomInfo.bTxtSizeMethod2 )
@@ -1121,7 +1121,7 @@ TxtrCacheEntry* LoadTexture(uint32 tileno)
         //&& ((gti.Pitch<<1)>>gti.Size) > 128 && status.primitiveType == PRIM_TEXTRECT
         )
     {
-        uint32 idx = tileno-gRSP.curTile;
+        uint32_t idx = tileno-gRSP.curTile;
         status.LargerTileRealLeft[idx] = gti.LeftToLoad;
         gti.LeftToLoad=0;
         gti.WidthToLoad = gti.WidthToCreate = ((gti.Pitch<<1)>>gti.Size);
@@ -1185,27 +1185,27 @@ void PrepareTextures()
     }
 }
 
-extern uint32 g_TxtLoadBy;;
+extern uint32_t g_TxtLoadBy;;
 
 void DLParser_LoadTLut(Gfx *gfx)
 {
     gRDP.textureIsChanged = true;
 
-    uint32 tileno = gfx->loadtile.tile;
-    uint32 uls = gfx->loadtile.sl/4;
-    uint32 ult = gfx->loadtile.tl/4;
-    uint32 lrs = gfx->loadtile.sh/4;
-    uint32 lrt = gfx->loadtile.th/4;
+    uint32_t tileno = gfx->loadtile.tile;
+    uint32_t uls = gfx->loadtile.sl/4;
+    uint32_t ult = gfx->loadtile.tl/4;
+    uint32_t lrs = gfx->loadtile.sh/4;
+    uint32_t lrt = gfx->loadtile.th/4;
 
 #ifdef DEBUGGER
-    uint32 dwTLutFmt = (gRDP.otherModeH >> RSP_SETOTHERMODE_SHIFT_TEXTLUT)&0x3;
+    uint32_t dwTLutFmt = (gRDP.otherModeH >> RSP_SETOTHERMODE_SHIFT_TEXTLUT)&0x3;
 #endif
     // Starting location in the palettes
-    uint32 dwTMEMOffset = gRDP.tiles[tileno].dwTMem - 256;  
+    uint32_t dwTMEMOffset = gRDP.tiles[tileno].dwTMem - 256;  
 
     // Number to copy
-    uint32 dwCount = ((uint16)((gfx->words.w1) >> 14) & 0x03FF) + 1;
-    uint32 dwRDRAMOffset = 0;
+    uint32_t dwCount = ((uint16_t)((gfx->words.w1) >> 14) & 0x03FF) + 1;
+    uint32_t dwRDRAMOffset = 0;
 
     Tile &tile = gRDP.tiles[tileno];
     tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
@@ -1227,17 +1227,17 @@ void DLParser_LoadTLut(Gfx *gfx)
 
     dwCount = (lrs - uls)+1;
     dwRDRAMOffset = (uls + ult*g_TI.dwWidth )*2;
-    uint32 dwPalAddress = g_TI.dwAddr + dwRDRAMOffset;
+    uint32_t dwPalAddress = g_TI.dwAddr + dwRDRAMOffset;
 
     //Copy PAL to the PAL memory
-    uint16 *srcPal = (uint16*)(g_pRDRAMu8 + (dwPalAddress& (g_dwRamSize-1)) );
-    for (uint32 i=0; i<dwCount && i<0x100; i++)
+    uint16_t *srcPal = (uint16_t*)(g_pRDRAMu8 + (dwPalAddress& (g_dwRamSize-1)) );
+    for (uint32_t i=0; i<dwCount && i<0x100; i++)
         g_wRDPTlut[(i+dwTMEMOffset)^1] = srcPal[i^1];
 
     if( options.bUseFullTMEM )
     {
-        for (uint32 i=0; i<dwCount && i+tile.dwTMem<0x200; i++)
-            *(uint16*)(&g_Tmem.g_Tmem64bit[tile.dwTMem+i]) = srcPal[i^1];
+        for (uint32_t i=0; i<dwCount && i+tile.dwTMem<0x200; i++)
+            *(uint16_t*)(&g_Tmem.g_Tmem64bit[tile.dwTMem+i]) = srcPal[i^1];
     }
 
     LOG_TEXTURE(
@@ -1252,7 +1252,7 @@ void DLParser_LoadTLut(Gfx *gfx)
         {
             char buf[2000];
             strcpy(buf, "Data:\n");
-            for(uint32 i=0; i<16; i++ )
+            for(uint32_t i=0; i<16; i++ )
             {
                 sprintf(buf+strlen(buf), "%04X ", g_wRDPTlut[dwTMEMOffset+i]);
                 if(i%4 == 3)
@@ -1275,16 +1275,16 @@ void DLParser_LoadBlock(Gfx *gfx)
 {
     gRDP.textureIsChanged = true;
 
-    uint32 tileno   = gfx->loadtile.tile;
-    uint32 uls      = gfx->loadtile.sl;
-    uint32 ult      = gfx->loadtile.tl;
-    uint32 lrs      = gfx->loadtile.sh;
-    uint32 dxt      = gfx->loadtile.th;                 // 1.11 fixed point
+    uint32_t tileno   = gfx->loadtile.tile;
+    uint32_t uls      = gfx->loadtile.sl;
+    uint32_t ult      = gfx->loadtile.tl;
+    uint32_t lrs      = gfx->loadtile.sh;
+    uint32_t dxt      = gfx->loadtile.th;                 // 1.11 fixed point
 
     Tile &tile = gRDP.tiles[tileno];
     tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
 
-    uint32 size     = lrs+1;
+    uint32_t size     = lrs+1;
     if( tile.dwSize == TXT_SIZE_32b )   size<<=1;
 
     SetTmemFlag(tile.dwTMem, size>>2);
@@ -1344,29 +1344,29 @@ void DLParser_LoadBlock(Gfx *gfx)
 
     if( options.bUseFullTMEM )
     {
-        uint32 bytes = (lrs + 1) << tile.dwSize >> 1;
-        uint32 address = g_TI.dwAddr + ult * g_TI.bpl + (uls << g_TI.dwSize >> 1);
+        uint32_t bytes = (lrs + 1) << tile.dwSize >> 1;
+        uint32_t address = g_TI.dwAddr + ult * g_TI.bpl + (uls << g_TI.dwSize >> 1);
         if ((bytes == 0) || ((address + bytes) > g_dwRamSize) || (((tile.dwTMem << 3) + bytes) > 4096))
         {
             return;
         }
-        uint64* src = (uint64*)(g_pRDRAMu8+address);
-        uint64* dest = &g_Tmem.g_Tmem64bit[tile.dwTMem];
+        uint64_t* src = (uint64_t*)(g_pRDRAMu8+address);
+        uint64_t* dest = &g_Tmem.g_Tmem64bit[tile.dwTMem];
 
         if( dxt > 0)
         {
-            void (*Interleave)( void *mem, uint32 numDWords );
+            void (*Interleave)( void *mem, uint32_t numDWords );
 
-            uint32 line = (2047 + dxt) / dxt;
-            uint32 bpl = line << 3;
-            uint32 height = bytes / bpl;
+            uint32_t line = (2047 + dxt) / dxt;
+            uint32_t bpl = line << 3;
+            uint32_t height = bytes / bpl;
 
             if (tile.dwSize == TXT_SIZE_32b)
                 Interleave = QWordInterleave;
             else
                 Interleave = DWordInterleave;
 
-            for (uint32 y = 0; y < height; y++)
+            for (uint32_t y = 0; y < height; y++)
             {
                 UnswapCopy( src, dest, bpl );
                 if (y & 1) Interleave( dest, line );
@@ -1393,9 +1393,9 @@ void DLParser_LoadBlock(Gfx *gfx)
     DEBUGGER_PAUSE_COUNT_N(NEXT_TEXTURE_CMD);
 }
 
-void swap(uint32 &a, uint32 &b)
+void swap(uint32_t &a, uint32_t &b)
 {
-    uint32 temp = a;
+    uint32_t temp = a;
     a = b;
     b = temp;
 }
@@ -1403,11 +1403,11 @@ void DLParser_LoadTile(Gfx *gfx)
 {
     gRDP.textureIsChanged = true;
 
-    uint32 tileno   = gfx->loadtile.tile;
-    uint32 uls      = gfx->loadtile.sl/4;
-    uint32 ult      = gfx->loadtile.tl/4;
-    uint32 lrs      = gfx->loadtile.sh/4;
-    uint32 lrt      = gfx->loadtile.th/4;
+    uint32_t tileno   = gfx->loadtile.tile;
+    uint32_t uls      = gfx->loadtile.sl/4;
+    uint32_t ult      = gfx->loadtile.tl/4;
+    uint32_t lrs      = gfx->loadtile.sh/4;
+    uint32_t lrt      = gfx->loadtile.th/4;
 
     Tile &tile = gRDP.tiles[tileno];
     tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
@@ -1422,9 +1422,9 @@ void DLParser_LoadTile(Gfx *gfx)
     tile.bSizeIsValid = true;
 
     // compute block height, and bpl of source and destination
-    uint32 bpl = (lrs - uls + 1) << tile.dwSize >> 1;
-    uint32 height = lrt - ult + 1;
-    uint32 line = tile.dwLine;
+    uint32_t bpl = (lrs - uls + 1) << tile.dwSize >> 1;
+    uint32_t height = lrt - ult + 1;
+    uint32_t line = tile.dwLine;
     if (tile.dwSize == TXT_SIZE_32b) line <<= 1;
 
     if (((tile.dwTMem << 3) + line * height) > 4096)  // check destination ending point (TMEM is 4k bytes)
@@ -1432,7 +1432,7 @@ void DLParser_LoadTile(Gfx *gfx)
 
     if( options.bUseFullTMEM )
     {
-        void (*Interleave)( void *mem, uint32 numDWords );
+        void (*Interleave)( void *mem, uint32_t numDWords );
 
         if( g_TI.bpl == 0 )
         {
@@ -1446,9 +1446,9 @@ void DLParser_LoadTile(Gfx *gfx)
             }
         }
 
-        uint32 address = g_TI.dwAddr + tile.tl * g_TI.bpl + (tile.sl << g_TI.dwSize >> 1);
-        uint64* src = (uint64*)&g_pRDRAMu8[address];
-        uint8* dest = (uint8*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+        uint32_t address = g_TI.dwAddr + tile.tl * g_TI.bpl + (tile.sl << g_TI.dwSize >> 1);
+        uint64_t* src = (uint64_t*)&g_pRDRAMu8[address];
+        uint8_t* dest = (uint8_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
 
         if ((address + height * bpl) > g_dwRamSize) // check source ending point
         {
@@ -1472,7 +1472,7 @@ void DLParser_LoadTile(Gfx *gfx)
             return;
         }
 
-        for (uint32 y = 0; y < height; y++)
+        for (uint32_t y = 0; y < height; y++)
         {
             UnswapCopy( src, dest, bpl );
             if (y & 1) Interleave( dest, line );
@@ -1489,7 +1489,7 @@ void DLParser_LoadTile(Gfx *gfx)
             gRDP.tiles[i].lastTileCmd = CMD_LOADTILE;
     }
 
-    uint32 size = line * height;
+    uint32_t size = line * height;
     SetTmemFlag(tile.dwTMem,size );
 
     LOG_TEXTURE(
@@ -1554,12 +1554,12 @@ void DLParser_LoadTile(Gfx *gfx)
 
 
 const char *pszOnOff[2] = {"Off", "On"};
-uint32 lastSetTile;
+uint32_t lastSetTile;
 void DLParser_SetTile(Gfx *gfx)
 {
     gRDP.textureIsChanged = true;
 
-    uint32 tileno       = gfx->settile.tile;
+    uint32_t tileno       = gfx->settile.tile;
     Tile &tile = gRDP.tiles[tileno];
     tile.bForceWrapS = tile.bForceWrapT = tile.bForceClampS = tile.bForceClampT = false;
 
@@ -1650,7 +1650,7 @@ void DLParser_SetTileSize(Gfx *gfx)
 {
     gRDP.textureIsChanged = true;
 
-    uint32 tileno   = gfx->loadtile.tile;
+    uint32_t tileno   = gfx->loadtile.tile;
     int sl      = gfx->loadtile.sl;
     int tl      = gfx->loadtile.tl;
     int sh      = gfx->loadtile.sh;
@@ -1771,11 +1771,11 @@ void DLParser_TexRect(Gfx *gfx)
 
     // This command used 128bits, and not 64 bits. This means that we have to look one 
     // Command ahead in the buffer, and update the PC.
-    uint32 dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
-    uint32 dwCmd2 = *(uint32 *)(g_pRDRAMu8 + dwPC+4);
-    uint32 dwCmd3 = *(uint32 *)(g_pRDRAMu8 + dwPC+4+8);
-    uint32 dwHalf1 = *(uint32 *)(g_pRDRAMu8 + dwPC);
-    uint32 dwHalf2 = *(uint32 *)(g_pRDRAMu8 + dwPC+8);
+    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+    uint32_t dwCmd2 = *(uint32_t *)(g_pRDRAMu8 + dwPC+4);
+    uint32_t dwCmd3 = *(uint32_t *)(g_pRDRAMu8 + dwPC+4+8);
+    uint32_t dwHalf1 = *(uint32_t *)(g_pRDRAMu8 + dwPC);
+    uint32_t dwHalf2 = *(uint32_t *)(g_pRDRAMu8 + dwPC+8);
 
     if( options.enableHackForGames == HACK_FOR_ALL_STAR_BASEBALL || options.enableHackForGames == HACK_FOR_MLB )
     {
@@ -1810,18 +1810,18 @@ void DLParser_TexRect(Gfx *gfx)
     }
 
 
-    LOG_UCODE("0x%08x: %08x %08x", dwPC, *(uint32 *)(g_pRDRAMu8 + dwPC+0), *(uint32 *)(g_pRDRAMu8 + dwPC+4));
-    LOG_UCODE("0x%08x: %08x %08x", dwPC+8, *(uint32 *)(g_pRDRAMu8 + dwPC+8), *(uint32 *)(g_pRDRAMu8 + dwPC+8+4));
+    LOG_UCODE("0x%08x: %08x %08x", dwPC, *(uint32_t *)(g_pRDRAMu8 + dwPC+0), *(uint32_t *)(g_pRDRAMu8 + dwPC+4));
+    LOG_UCODE("0x%08x: %08x %08x", dwPC+8, *(uint32_t *)(g_pRDRAMu8 + dwPC+8), *(uint32_t *)(g_pRDRAMu8 + dwPC+8+4));
 
-    uint32 dwXH     = (((gfx->words.w0)>>12)&0x0FFF)/4;
-    uint32 dwYH     = (((gfx->words.w0)    )&0x0FFF)/4;
-    uint32 tileno   = ((gfx->words.w1)>>24)&0x07;
-    uint32 dwXL     = (((gfx->words.w1)>>12)&0x0FFF)/4;
-    uint32 dwYL     = (((gfx->words.w1)    )&0x0FFF)/4;
-    uint16 uS       = (uint16)(  dwCmd2>>16)&0xFFFF;
-    uint16 uT       = (uint16)(  dwCmd2    )&0xFFFF;
-    uint16  uDSDX   = (uint16)((  dwCmd3>>16)&0xFFFF);
-    uint16  uDTDY       = (uint16)((  dwCmd3    )&0xFFFF);
+    uint32_t dwXH     = (((gfx->words.w0)>>12)&0x0FFF)/4;
+    uint32_t dwYH     = (((gfx->words.w0)    )&0x0FFF)/4;
+    uint32_t tileno   = ((gfx->words.w1)>>24)&0x07;
+    uint32_t dwXL     = (((gfx->words.w1)>>12)&0x0FFF)/4;
+    uint32_t dwYL     = (((gfx->words.w1)    )&0x0FFF)/4;
+    uint16_t uS       = (uint16_t)(  dwCmd2>>16)&0xFFFF;
+    uint16_t uT       = (uint16_t)(  dwCmd2    )&0xFFFF;
+    uint16_t  uDSDX   = (uint16_t)((  dwCmd3>>16)&0xFFFF);
+    uint16_t  uDTDY       = (uint16_t)((  dwCmd3    )&0xFFFF);
     
 
     if( (int)dwXL >= gRDP.scissor.right || (int)dwYL >= gRDP.scissor.bottom || (int)dwXH < gRDP.scissor.left || (int)dwYH < gRDP.scissor.top )
@@ -1836,7 +1836,7 @@ void DLParser_TexRect(Gfx *gfx)
     short    s16DSDX  = *(short*)(&uDSDX);
     short  s16DTDY  = *(short*)(&uDTDY);
 
-    uint32 curTile = gRSP.curTile;
+    uint32_t curTile = gRSP.curTile;
     ForceMainTextureIndex(tileno);
 
     float fS0 = s16S / 32.0f;
@@ -1845,7 +1845,7 @@ void DLParser_TexRect(Gfx *gfx)
     float fDSDX = s16DSDX / 1024.0f;
     float fDTDY = s16DTDY / 1024.0f;
 
-    uint32 cycletype = gRDP.otherMode.cycle_type;
+    uint32_t cycletype = gRDP.otherMode.cycle_type;
 
     if (cycletype == CYCLE_TYPE_COPY)
     {
@@ -1937,24 +1937,24 @@ void DLParser_TexRectFlip(Gfx *gfx)
 
     // This command used 128bits, and not 64 bits. This means that we have to look one 
     // Command ahead in the buffer, and update the PC.
-    uint32 dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
-    uint32 dwCmd2 = *(uint32 *)(g_pRDRAMu8 + dwPC+4);
-    uint32 dwCmd3 = *(uint32 *)(g_pRDRAMu8 + dwPC+4+8);
+    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+    uint32_t dwCmd2 = *(uint32_t *)(g_pRDRAMu8 + dwPC+4);
+    uint32_t dwCmd3 = *(uint32_t *)(g_pRDRAMu8 + dwPC+4+8);
 
     // Increment PC so that it points to the right place
     gDlistStack[gDlistStackPointer].pc += 16;
 
-    uint32 dwXH     = (((gfx->words.w0)>>12)&0x0FFF)/4;
-    uint32 dwYH     = (((gfx->words.w0)    )&0x0FFF)/4;
-    uint32 tileno   = ((gfx->words.w1)>>24)&0x07;
-    uint32 dwXL     = (((gfx->words.w1)>>12)&0x0FFF)/4;
-    uint32 dwYL     = (((gfx->words.w1)    )&0x0FFF)/4;
-    uint32 dwS      = (  dwCmd2>>16)&0xFFFF;
-    uint32 dwT      = (  dwCmd2    )&0xFFFF;
+    uint32_t dwXH     = (((gfx->words.w0)>>12)&0x0FFF)/4;
+    uint32_t dwYH     = (((gfx->words.w0)    )&0x0FFF)/4;
+    uint32_t tileno   = ((gfx->words.w1)>>24)&0x07;
+    uint32_t dwXL     = (((gfx->words.w1)>>12)&0x0FFF)/4;
+    uint32_t dwYL     = (((gfx->words.w1)    )&0x0FFF)/4;
+    uint32_t dwS      = (  dwCmd2>>16)&0xFFFF;
+    uint32_t dwT      = (  dwCmd2    )&0xFFFF;
     int  nDSDX     = (int)(short)((  dwCmd3>>16)&0xFFFF);
     int  nDTDY     = (int)(short)((  dwCmd3    )&0xFFFF);
 
-    uint32 curTile = gRSP.curTile;
+    uint32_t curTile = gRSP.curTile;
     ForceMainTextureIndex(tileno);
     
     float fS0 = (float)dwS / 32.0f;
@@ -1963,7 +1963,7 @@ void DLParser_TexRectFlip(Gfx *gfx)
     float fDSDX = (float)nDSDX / 1024.0f;
     float fDTDY = (float)nDTDY / 1024.0f;
 
-    uint32 cycletype = gRDP.otherMode.cycle_type;
+    uint32_t cycletype = gRDP.otherMode.cycle_type;
 
     if (cycletype == CYCLE_TYPE_COPY)
     {
@@ -2013,9 +2013,9 @@ void DLParser_TexRectFlip(Gfx *gfx)
  *  everything into the block of memory, this will be slow.
  */
 typedef struct TmemInfoEntry{
-    uint32 start;
-    uint32 length;
-    uint32 rdramAddr;
+    uint32_t start;
+    uint32_t length;
+    uint32_t rdramAddr;
     TmemInfoEntry* next;
 } TmemInfoEntry;
 
@@ -2040,7 +2040,7 @@ void TMEM_Init()
     tmenEntryBuffer[i-1].next = NULL;
 }
 
-void TMEM_SetBlock(uint32 tmemstart, uint32 length, uint32 rdramaddr)
+void TMEM_SetBlock(uint32_t tmemstart, uint32_t length, uint32_t rdramaddr)
 {
     TmemInfoEntry *p=g_pTMEMInfo;
 
@@ -2122,7 +2122,7 @@ void TMEM_SetBlock(uint32 tmemstart, uint32 length, uint32 rdramaddr)
     }
 }
 
-uint32 TMEM_GetRdramAddr(uint32 tmemstart, uint32 length)
+uint32_t TMEM_GetRdramAddr(uint32_t tmemstart, uint32_t length)
 {
     return 0;
 }
@@ -2132,17 +2132,17 @@ uint32 TMEM_GetRdramAddr(uint32 tmemstart, uint32 length)
  *  New implementation of texture loading
  */
 
-bool IsTmemFlagValid(uint32 tmemAddr)
+bool IsTmemFlagValid(uint32_t tmemAddr)
 {
-    uint32 index = tmemAddr>>5;
-    uint32 bitIndex = (tmemAddr&0x1F);
+    uint32_t index = tmemAddr>>5;
+    uint32_t bitIndex = (tmemAddr&0x1F);
     return ((g_TmemFlag[index] & (1<<bitIndex))!=0);
 }
 
-uint32 GetValidTmemInfoIndex(uint32 tmemAddr)
+uint32_t GetValidTmemInfoIndex(uint32_t tmemAddr)
 {
-    uint32 index = tmemAddr>>5;
-    uint32 bitIndex = (tmemAddr&0x1F);
+    uint32_t index = tmemAddr>>5;
+    uint32_t bitIndex = (tmemAddr&0x1F);
 
     if ((g_TmemFlag[index] & (1<<bitIndex))!=0 )    //This address is valid
     {
@@ -2150,14 +2150,14 @@ uint32 GetValidTmemInfoIndex(uint32 tmemAddr)
     }
     else
     {
-        for( uint32 x=index+1; x != 0; x-- )
+        for( uint32_t x=index+1; x != 0; x-- )
         {
-            uint32 i = x - 1;
+            uint32_t i = x - 1;
             if( g_TmemFlag[i] != 0 )
             {
-                for( uint32 y=0x20; y != 0; y-- )
+                for( uint32_t y=0x20; y != 0; y-- )
                 {
-                    uint32 j = y - 1;
+                    uint32_t j = y - 1;
                     if( (g_TmemFlag[i] & (1<<j)) != 0 )
                     {
                         return ((i<<5)+j);
@@ -2171,10 +2171,10 @@ uint32 GetValidTmemInfoIndex(uint32 tmemAddr)
 }
 
 
-void SetTmemFlag(uint32 tmemAddr, uint32 size)
+void SetTmemFlag(uint32_t tmemAddr, uint32_t size)
 {
-    uint32 index = tmemAddr>>5;
-    uint32 bitIndex = (tmemAddr&0x1F);
+    uint32_t index = tmemAddr>>5;
+    uint32_t bitIndex = (tmemAddr&0x1F);
 
 #ifdef DEBUGGER
     if( size > 0x200 )
@@ -2186,7 +2186,7 @@ void SetTmemFlag(uint32 tmemAddr, uint32 size)
 
     if( bitIndex == 0 )
     {
-        uint32 i;
+        uint32_t i;
         for( i=0; i< (size>>5); i++ )
         {
             g_TmemFlag[index+i] = 0;
@@ -2204,8 +2204,8 @@ void SetTmemFlag(uint32 tmemAddr, uint32 size)
     {
         if( bitIndex + size <= 0x1F )
         {
-            uint32 val = g_TmemFlag[index];
-            uint32 mask = (1<<(bitIndex))-1;
+            uint32_t val = g_TmemFlag[index];
+            uint32_t mask = (1<<(bitIndex))-1;
             mask |= ~((1<<(bitIndex + size))-1);
             val &= mask;
             val |= (1<<bitIndex);
@@ -2214,15 +2214,15 @@ void SetTmemFlag(uint32 tmemAddr, uint32 size)
         else
         {
             //ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size);
-            uint32 val = g_TmemFlag[index];
-            uint32 mask = (1<<bitIndex)-1;
+            uint32_t val = g_TmemFlag[index];
+            uint32_t mask = (1<<bitIndex)-1;
             val &= mask;
             val |= (1<<bitIndex);
             g_TmemFlag[index] = val;
             index++;
             size -= (0x20-bitIndex);
 
-            uint32 i;
+            uint32_t i;
             for( i=0; i< (size>>5); i++ )
             {
                 g_TmemFlag[index+i] = 0;

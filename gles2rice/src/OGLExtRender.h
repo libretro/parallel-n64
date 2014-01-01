@@ -29,8 +29,8 @@ public:
     void DisBindTexture(GLuint texture, int unitno);
     void TexCoord2f(float u, float v);
     void TexCoord(TLITVERTEX &vtxInfo);
-    void SetTextureUFlag(TextureUVFlag dwFlag, uint32 tile);
-    void SetTextureVFlag(TextureUVFlag dwFlag, uint32 tile);
+    void SetTextureUFlag(TextureUVFlag dwFlag, uint32_t tile);
+    void SetTextureVFlag(TextureUVFlag dwFlag, uint32_t tile);
     void EnableTexUnit(int unitno, bool flag);
     void SetTexWrapS(int unitno,GLuint flag);
     void SetTexWrapT(int unitno,GLuint flag);

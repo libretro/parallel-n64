@@ -32,7 +32,7 @@ public:
     virtual void NormalAlphaBlender(void)=0;
     virtual void DisableAlphaBlender(void)=0;
     
-    virtual void BlendFunc(uint32 srcFunc, uint32 desFunc)=0;
+    virtual void BlendFunc(uint32_t srcFunc, uint32_t desFunc)=0;
 
     virtual void Enable()=0;
     virtual void Disable()=0;

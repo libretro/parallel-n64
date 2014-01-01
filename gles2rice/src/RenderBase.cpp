@@ -17,6 +17,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+#include <stdint.h>
 #include <math.h>
 #include <vector>
 
@@ -130,11 +131,11 @@ ALIGN(16,XVECTOR4 g_vtxTransformed[MAX_VERTS])
 float       g_vtxProjected5[1000][5];
 float       g_vtxProjected5Clipped[2000][5];
 
-//uint32        g_dwVtxFlags[MAX_VERTS];            // Z_POS Z_NEG etc
+//uint32_t        g_dwVtxFlags[MAX_VERTS];            // Z_POS Z_NEG etc
 VECTOR2     g_fVtxTxtCoords[MAX_VERTS];
-uint32      g_dwVtxDifColor[MAX_VERTS];
-uint32      g_clipFlag[MAX_VERTS];
-uint32      g_clipFlag2[MAX_VERTS];
+uint32_t      g_dwVtxDifColor[MAX_VERTS];
+uint32_t      g_clipFlag[MAX_VERTS];
+uint32_t      g_clipFlag2[MAX_VERTS];
 RenderTexture g_textures[MAX_TEXTURES];
 float       g_fFogCoord[MAX_VERTS];
 
@@ -142,7 +143,7 @@ EXTERNAL_VERTEX g_vtxForExternal[MAX_VERTS];
 
 TLITVERTEX          g_vtxBuffer[1000];
 TLITVERTEX          g_clippedVtxBuffer[2000];
-uint8               g_oglVtxColors[1000][4];
+uint8_t               g_oglVtxColors[1000][4];
 int                 g_clippedVtxCount=0;
 TLITVERTEX          g_texRectTVtx[4];
 unsigned short      g_vtxIndex[1000];
@@ -152,7 +153,7 @@ float               gRSPfFogMin;
 float               gRSPfFogMax;
 float               gRSPfFogDivider;
 
-uint32          gRSPnumLights;
+uint32_t          gRSPnumLights;
 Light   gRSPlights[16];
 
 ALIGN(16,Matrix  gRSPworldProjectTransported)
@@ -164,7 +165,7 @@ ALIGN(16,Matrix  dkrMatrixTransposed)
 N64Light        gRSPn64lights[16];
 
 
-void (*ProcessVertexData)(uint32 dwAddr, uint32 dwV0, uint32 dwNum)=NULL;
+void (*ProcessVertexData)(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)=NULL;
 
 /*
  *  
@@ -290,11 +291,11 @@ __declspec( naked ) void  __fastcall SSEVec3Transform(int i)
         shufps  xmm4, xmm5, 0xe4;   // move xmm5 high DWORS to xmm4
         movhlps xmm5, xmm0;         // xmm4, xmm5 are mirrored
 
-        shufps  xmm4, xmm4, 0x08;   // move xmm4's 3rd uint32 to its 2nd uint32
-        shufps  xmm5, xmm5, 0x0d;   // move xmm5's 4th uint32 to its 2nd uint32, 
-                                    // and move its 2nd uint32 to its 1st uint32
+        shufps  xmm4, xmm4, 0x08;   // move xmm4's 3rd uint32_t to its 2nd uint32_t
+        shufps  xmm5, xmm5, 0x0d;   // move xmm5's 4th uint32_t to its 2nd uint32_t, 
+                                    // and move its 2nd uint32_t to its 1st uint32_t
         
-        addps   xmm4, xmm5;     // results are in 1st and 2nd uint32
+        addps   xmm4, xmm5;     // results are in 1st and 2nd uint32_t
 
 
         movhlps xmm0, xmm6;     // xmm6 high to xmm0 low
@@ -307,11 +308,11 @@ __declspec( naked ) void  __fastcall SSEVec3Transform(int i)
         shufps  xmm6, xmm7, 0xe4;   // move xmm7 high DWORS to xmm6
         movhlps xmm7, xmm0;         // xmm6, xmm7 are mirrored
 
-        shufps  xmm6, xmm6, 0x08;   // move xmm6's 3rd uint32 to its 2nd uint32
-        shufps  xmm7, xmm7, 0x0d;   // move xmm7's 4th uint32 to its 2nd uint32, 
-                                    // and move its 2nd uint32 to its 1st uint32
+        shufps  xmm6, xmm6, 0x08;   // move xmm6's 3rd uint32_t to its 2nd uint32_t
+        shufps  xmm7, xmm7, 0x0d;   // move xmm7's 4th uint32_t to its 2nd uint32_t, 
+                                    // and move its 2nd uint32_t to its 1st uint32_t
         
-        addps   xmm6, xmm7;     // results are in 1st and 2nd uint32
+        addps   xmm6, xmm7;     // results are in 1st and 2nd uint32_t
         
         movlhps xmm4, xmm6;     // final result is in xmm4
         movaps  DWORD PTR g_vtxTransformed [ecx], xmm4;
@@ -358,11 +359,11 @@ __declspec( naked ) void  __fastcall SSEVec3TransformDKR(XVECTOR4 &pOut, const X
         shufps  xmm4, xmm5, 0xe4;   // move xmm5 high DWORS to xmm4
         movhlps xmm5, xmm0;         // xmm4, xmm5 are mirrored
 
-        shufps  xmm4, xmm4, 0x08;   // move xmm4's 3rd uint32 to its 2nd uint32
-        shufps  xmm5, xmm5, 0x0d;   // move xmm5's 4th uint32 to its 2nd uint32, 
-        // and move its 2nd uint32 to its 1st uint32
+        shufps  xmm4, xmm4, 0x08;   // move xmm4's 3rd uint32_t to its 2nd uint32_t
+        shufps  xmm5, xmm5, 0x0d;   // move xmm5's 4th uint32_t to its 2nd uint32_t, 
+        // and move its 2nd uint32_t to its 1st uint32_t
 
-        addps   xmm4, xmm5;     // results are in 1st and 2nd uint32
+        addps   xmm4, xmm5;     // results are in 1st and 2nd uint32_t
 
 
         movhlps xmm0, xmm6;     // xmm6 high to xmm0 low
@@ -375,11 +376,11 @@ __declspec( naked ) void  __fastcall SSEVec3TransformDKR(XVECTOR4 &pOut, const X
         shufps  xmm6, xmm7, 0xe4;   // move xmm7 high DWORS to xmm6
         movhlps xmm7, xmm0;         // xmm6, xmm7 are mirrored
 
-        shufps  xmm6, xmm6, 0x08;   // move xmm6's 3rd uint32 to its 2nd uint32
-        shufps  xmm7, xmm7, 0x0d;   // move xmm7's 4th uint32 to its 2nd uint32, 
-        // and move its 2nd uint32 to its 1st uint32
+        shufps  xmm6, xmm6, 0x08;   // move xmm6's 3rd uint32_t to its 2nd uint32_t
+        shufps  xmm7, xmm7, 0x0d;   // move xmm7's 4th uint32_t to its 2nd uint32_t, 
+        // and move its 2nd uint32_t to its 1st uint32_t
 
-        addps   xmm6, xmm7;     // results are in 1st and 2nd uint32
+        addps   xmm6, xmm7;     // results are in 1st and 2nd uint32_t
 
         movlhps xmm4, xmm6;     // final result is in xmm4
         movaps  DWORD PTR [ecx], xmm4;
@@ -515,10 +516,10 @@ __declspec( naked ) void  __fastcall SSEVec3TransformNormal()
         shufps  xmm4, xmm5, 0xe4;   // move xmm5 high DWORS to xmm4
         movhlps xmm5, xmm0;         // xmm4, xmm5 are mirrored
 
-        shufps  xmm4, xmm4, 0x08;   // move xmm4's 3rd uint32 to its 2nd uint32
-        shufps  xmm5, xmm5, 0x0d;   // move xmm5's 4th uint32 to its 2nd uint32, 
+        shufps  xmm4, xmm4, 0x08;   // move xmm4's 3rd uint32_t to its 2nd uint32_t
+        shufps  xmm5, xmm5, 0x0d;   // move xmm5's 4th uint32_t to its 2nd uint32_t, 
 
-        addps   xmm4, xmm5;     // results are in 1st and 2nd uint32
+        addps   xmm4, xmm5;     // results are in 1st and 2nd uint32_t
 
         movaps  xmm1,xmm4;
         mulps   xmm1,xmm1;  //square
@@ -531,12 +532,12 @@ __declspec( naked ) void  __fastcall SSEVec3TransformNormal()
 
         movlhps xmm0, xmm6;
         shufps  xmm0, xmm0, 0x03;
-        addss   xmm0, xmm6;     // result of add is at xmm0's 1st uint32
+        addss   xmm0, xmm6;     // result of add is at xmm0's 1st uint32_t
 
         movlhps xmm4, xmm0;
 
         mulss   xmm0,xmm0;
-        addss   xmm7,xmm0;      // xmm7 1st uint32 is the sum of squares
+        addss   xmm7,xmm0;      // xmm7 1st uint32_t is the sum of squares
 
 #ifdef DEBUGGER
         movaps  DWORD PTR [g_normal], xmm4;
@@ -847,14 +848,14 @@ void ComputeLOD(bool openGL)
     frac = (lod / powf(2.0f,floorf(frac)));
     frac = frac - floorf(frac);
     //DEBUGGER_IF_DUMP(pauseAtNext,{DebuggerAppendMsg("LOD = %f, frac = %f", lod, frac);});
-    gRDP.LODFrac = (uint32)(frac*255);
+    gRDP.LODFrac = (uint32_t)(frac*255);
     CRender::g_pRender->SetCombinerAndBlender();
 }
 
 bool bHalfTxtScale=false;
-extern uint32 lastSetTile;
+extern uint32_t lastSetTile;
 
-void InitVertex(uint32 dwV, uint32 vtxIndex, bool bTexture, bool openGL)
+void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture, bool openGL)
 {
     VTX_DUMP(TRACE2("Initialize vertex (%d) to vertex buffer[%d]:", dwV, vtxIndex));
 
@@ -889,13 +890,13 @@ void InitVertex(uint32 dwV, uint32 vtxIndex, bool bTexture, bool openGL)
             if( gRSP.bFogEnabled )
             {
                 v.dcSpecular &= 0x00FFFFFF;
-                uint32  fogFct = 0xFF-(uint8)((g_fFogCoord[dwV]-gRSPfFogMin)*gRSPfFogDivider);
+                uint32_t  fogFct = 0xFF-(uint8_t)((g_fFogCoord[dwV]-gRSPfFogMin)*gRSPfFogDivider);
                 v.dcSpecular |= (fogFct<<24);
             }
         }
         else if( gRSP.bFogEnabled )
         {
-            uint32  fogFct = 0xFF-(uint8)((g_fFogCoord[dwV]-gRSPfFogMin)*gRSPfFogDivider);
+            uint32_t  fogFct = 0xFF-(uint8_t)((g_fFogCoord[dwV]-gRSPfFogMin)*gRSPfFogDivider);
             v.dcSpecular = (fogFct<<24);
         }
     }
@@ -1007,7 +1008,7 @@ void InitVertex(uint32 dwV, uint32 vtxIndex, bool bTexture, bool openGL)
     VTX_DUMP(TRACE0(""));
 }
 
-uint32 LightVert(XVECTOR4 & norm, int vidx)
+uint32_t LightVert(XVECTOR4 & norm, int vidx)
 {
     float fCosT;
 
@@ -1085,10 +1086,10 @@ uint32 LightVert(XVECTOR4 & norm, int vidx)
     if (r > 255) r = 255;
     if (g > 255) g = 255;
     if (b > 255) b = 255;
-    return ((0xff000000)|(((uint32)r)<<16)|(((uint32)g)<<8)|((uint32)b));
+    return ((0xff000000)|(((uint32_t)r)<<16)|(((uint32_t)g)<<8)|((uint32_t)b));
 }
 
-uint32 LightVertNew(XVECTOR4 & norm)
+uint32_t LightVertNew(XVECTOR4 & norm)
 {
     // Do ambient
     register float r = gRSP.fAmbientLightR;
@@ -1111,7 +1112,7 @@ uint32 LightVertNew(XVECTOR4 & norm)
     if (r > 255) r = 255;
     if (g > 255) g = 255;
     if (b > 255) b = 255;
-    return ((0xff000000)|(((uint32)r)<<16)|(((uint32)g)<<8)|((uint32)b));
+    return ((0xff000000)|(((uint32_t)r)<<16)|(((uint32_t)g)<<8)|((uint32_t)b));
 }
 
 
@@ -1120,7 +1121,7 @@ float onef = 1.0f;
 float fcosT;
 
 #if !defined(__GNUC__) && !defined(NO_ASM)
-__declspec( naked ) uint32  __fastcall SSELightVert()
+__declspec( naked ) uint32_t  __fastcall SSELightVert()
 {
     __asm
     {
@@ -1158,14 +1159,14 @@ breakout:
         minps       xmm0,xmm3;
 
         // Without using a memory
-        cvtss2si    eax,xmm0;       // move the 1st uint32 to eax
+        cvtss2si    eax,xmm0;       // move the 1st uint32_t to eax
         shl         eax,10h;
         or          eax,0FF000000h;
-        shufps      xmm0,xmm0,0E5h; // move the 2nd uint32 to the 1st uint32
-        cvtss2si    ecx,xmm0;       // move the 1st uint32 to ecx
+        shufps      xmm0,xmm0,0E5h; // move the 2nd uint32_t to the 1st uint32_t
+        cvtss2si    ecx,xmm0;       // move the 1st uint32_t to ecx
         shl         ecx,8;
         or          eax,ecx;
-        shufps      xmm0,xmm0,0E6h; // Move the 3rd uint32 to the 1st uint32
+        shufps      xmm0,xmm0,0E6h; // Move the 3rd uint32_t to the 1st uint32_t
         cvtss2si    ecx,xmm0;
         or          eax,ecx;
 
@@ -1173,9 +1174,9 @@ breakout:
     }
 }
 #elif defined(__GNUC__) && defined(__x86_64__) && !defined(NO_ASM)
-uint32 SSELightVert(void)
+uint32_t SSELightVert(void)
 {
-  uint32 rval;
+  uint32_t rval;
   float f255 = 255.0, fZero = 0.0;
   
   asm volatile(" movaps        %1,  %%xmm3    \n" // xmm3 == gRSP.fAmbientLight{RGBA}
@@ -1222,9 +1223,9 @@ uint32 SSELightVert(void)
   return rval;
 }
 #elif !defined(NO_ASM) // 32-bit GCC assumed
-uint32 SSELightVert(void)
+uint32_t SSELightVert(void)
 {
-  uint32 rval;
+  uint32_t rval;
   float f255 = 255.0, fZero = 0.0;
 
   asm volatile(" movaps            %1,  %%xmm3    \n"
@@ -1278,11 +1279,11 @@ inline void ReplaceAlphaWithFogFactor(int i)
     {
         // Use fog factor to replace vertex alpha
         if( g_vecProjected[i].z > 1 )
-            *(((uint8*)&(g_dwVtxDifColor[i]))+3) = 0xFF;
+            *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = 0xFF;
         if( g_vecProjected[i].z < 0 )
-            *(((uint8*)&(g_dwVtxDifColor[i]))+3) = 0;
+            *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = 0;
         else
-            *(((uint8*)&(g_dwVtxDifColor[i]))+3) = (uint8)(g_vecProjected[i].z*255);    
+            *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = (uint8_t)(g_vecProjected[i].z*255);    
     }
 }
 
@@ -1301,7 +1302,7 @@ inline void ReplaceAlphaWithFogFactor(int i)
 // Don't inline - it's too big with the transform macros
 
 #if !defined(NO_ASM)
-void ProcessVertexDataSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
+void ProcessVertexDataSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
     UpdateCombinedMatrix();
 
@@ -1320,7 +1321,7 @@ void ProcessVertexDataSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     FiddledVtx * pVtxBase = (FiddledVtx*)(g_pRDRAMu8 + dwAddr);
     g_pVtxBase = pVtxBase;
 
-    for (uint32 i = dwV0; i < dwV0 + dwNum; i++)
+    for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
     {
         SP_Timing(RSP_GBI0_Vtx);
 
@@ -1344,7 +1345,7 @@ void ProcessVertexDataSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 
         VTX_DUMP( 
         {
-            uint32 *dat = (uint32*)(&vert);
+            uint32_t *dat = (uint32_t*)(&vert);
             DebuggerAppendMsg("Vertex %d: %08X %08X %08X %08X", i, dat[0],dat[1],dat[2],dat[3]); 
             DebuggerAppendMsg("      : %f, %f, %f, %f", 
                 g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
@@ -1365,7 +1366,7 @@ void ProcessVertexDataSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
                 g_dwVtxDifColor[i] = SSELightVert();
             else
                 g_dwVtxDifColor[i] = LightVert(g_normal, i);
-            *(((uint8*)&(g_dwVtxDifColor[i]))+3) = vert.rgba.a; // still use alpha from the vertex
+            *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = vert.rgba.a; // still use alpha from the vertex
         }
         else
         {
@@ -1409,7 +1410,7 @@ void ProcessVertexDataSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 }
 #endif
 
-void ProcessVertexDataNoSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
+void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
 
     UpdateCombinedMatrix();
@@ -1429,7 +1430,7 @@ void ProcessVertexDataNoSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     FiddledVtx * pVtxBase = (FiddledVtx*)(g_pRDRAMu8 + dwAddr);
     g_pVtxBase = pVtxBase;
 
-    for (uint32 i = dwV0; i < dwV0 + dwNum; i++)
+    for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
     {
         SP_Timing(RSP_GBI0_Vtx);
 
@@ -1463,7 +1464,7 @@ void ProcessVertexDataNoSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 
         VTX_DUMP( 
         {
-            uint32 *dat = (uint32*)(&vert);
+            uint32_t *dat = (uint32_t*)(&vert);
             DebuggerAppendMsg("Vertex %d: %08X %08X %08X %08X", i, dat[0],dat[1],dat[2],dat[3]); 
             DebuggerAppendMsg("      : %f, %f, %f, %f", 
                 g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
@@ -1481,7 +1482,7 @@ void ProcessVertexDataNoSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 
             Vec3TransformNormal(g_normal, gRSPmodelViewTop);
             g_dwVtxDifColor[i] = LightVert(g_normal, i);
-            *(((uint8*)&(g_dwVtxDifColor[i]))+3) = vert.rgba.a; // still use alpha from the vertex
+            *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = vert.rgba.a; // still use alpha from the vertex
         }
         else
         {
@@ -1526,7 +1527,7 @@ void ProcessVertexDataNoSSE(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
 }
 
-bool PrepareTriangle(uint32 dwV0, uint32 dwV1, uint32 dwV2)
+bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
 {
     if( status.isVertexShaderEnabled || status.bUseHW_T_L )
     {
@@ -1558,7 +1559,7 @@ bool PrepareTriangle(uint32 dwV0, uint32 dwV1, uint32 dwV2)
 
 // Returns TRUE if it thinks the triangle is visible
 // Returns FALSE if it is clipped
-bool IsTriangleVisible(uint32 dwV0, uint32 dwV1, uint32 dwV2)
+bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
 {
     //return true;  //fix me
 
@@ -1624,7 +1625,7 @@ bool IsTriangleVisible(uint32 dwV0, uint32 dwV1, uint32 dwV2)
 }
 
 
-void SetPrimitiveColor(uint32 dwCol, uint32 LODMin, uint32 LODFrac)
+void SetPrimitiveColor(uint32_t dwCol, uint32_t LODMin, uint32_t LODFrac)
 {
     gRDP.colorsAreReloaded = true;
     gRDP.primitiveColor = dwCol;
@@ -1641,7 +1642,7 @@ void SetPrimitiveColor(uint32 dwCol, uint32 LODMin, uint32 LODFrac)
     gRDP.fvPrimitiveColor[3] = ((dwCol>>24)&0xFF)/255.0f;  // A
 }
 
-void SetPrimitiveDepth(uint32 z, uint32 dwDZ)
+void SetPrimitiveDepth(uint32_t z, uint32_t dwDZ)
 {
     gRDP.primitiveDepth = z & 0x7FFF;
     gRDP.fPrimitiveDepth = (float)(gRDP.primitiveDepth)/(float)0x8000;
@@ -1662,7 +1663,7 @@ void SetPrimitiveDepth(uint32 z, uint32 dwDZ)
 #endif
 }
 
-void SetVertexXYZ(uint32 vertex, float x, float y, float z)
+void SetVertexXYZ(uint32_t vertex, float x, float y, float z)
 {
     g_vecProjected[vertex].x = x;
     g_vecProjected[vertex].y = y;
@@ -1673,27 +1674,27 @@ void SetVertexXYZ(uint32 vertex, float x, float y, float z)
     g_vtxTransformed[vertex].z = z*g_vtxTransformed[vertex].w;
 }
 
-void ModifyVertexInfo(uint32 where, uint32 vertex, uint32 val)
+void ModifyVertexInfo(uint32_t where, uint32_t vertex, uint32_t val)
 {
     switch (where)
     {
     case RSP_MV_WORD_OFFSET_POINT_RGBA:     // Modify RGBA
         {
-            uint32 r = (val>>24)&0xFF;
-            uint32 g = (val>>16)&0xFF;
-            uint32 b = (val>>8)&0xFF;
-            uint32 a = val&0xFF;
+            uint32_t r = (val>>24)&0xFF;
+            uint32_t g = (val>>16)&0xFF;
+            uint32_t b = (val>>8)&0xFF;
+            uint32_t a = val&0xFF;
             g_dwVtxDifColor[vertex] = COLOR_RGBA(r, g, b, a);
             LOG_UCODE("Modify vertex %d color, 0x%08x", vertex, g_dwVtxDifColor[vertex]);
         }
         break;
     case RSP_MV_WORD_OFFSET_POINT_XYSCREEN:     // Modify X,Y
         {
-            uint16 nX = (uint16)(val>>16);
+            uint16_t nX = (uint16_t)(val>>16);
             short x = *((short*)&nX);
             x /= 4;
 
-            uint16 nY = (uint16)(val&0xFFFF);
+            uint16_t nY = (uint16_t)(val&0xFFFF);
             short y = *((short*)&nY);
             y /= 4;
 
@@ -1742,7 +1743,7 @@ void ModifyVertexInfo(uint32 where, uint32 vertex, uint32 val)
     DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at ModVertex Command");});
 }
 
-void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
+void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
     UpdateCombinedMatrix();
 
@@ -1766,8 +1767,8 @@ void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     VTX_DUMP(TRACE2("DKR Setting Vertexes\nCMatrix = %d, Add base=%s", gRSP.DKRCMatrixIndex, gRSP.DKRBillBoard?"true":"false"));
 
     int nOff = 0;
-    uint32 end = dwV0 + dwNum;
-    for (uint32 i = dwV0; i < end; i++)
+    uint32_t end = dwV0 + dwNum;
+    for (uint32_t i = dwV0; i < end; i++)
     {
         XVECTOR3 w;
 
@@ -1817,10 +1818,10 @@ void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
         short wA = *(short*)((pVtxBase+nOff + 6) ^ 2);
         short wB = *(short*)((pVtxBase+nOff + 8) ^ 2);
 
-        s8 r = (s8)(wA >> 8);
-        s8 g = (s8)(wA);
-        s8 b = (s8)(wB >> 8);
-        s8 a = (s8)(wB);
+        int8_t r = (int8_t)(wA >> 8);
+        int8_t g = (int8_t)(wA);
+        int8_t b = (int8_t)(wB >> 8);
+        int8_t a = (int8_t)(wB);
 
         if (gRSP.bLightingEnable)
         {
@@ -1858,15 +1859,15 @@ void ProcessVertexDataDKR(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 }
 
 
-extern uint32 dwPDCIAddr;
-void ProcessVertexDataPD(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
+extern uint32_t dwPDCIAddr;
+void ProcessVertexDataPD(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
     UpdateCombinedMatrix();
 
     N64VtxPD * pVtxBase = (N64VtxPD*)(g_pRDRAMu8 + dwAddr);
     g_pVtxBase = (FiddledVtx*)pVtxBase; // Fix me
 
-    for (uint32 i = dwV0; i < dwV0 + dwNum; i++)
+    for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
     {
         N64VtxPD &vert = pVtxBase[i - dwV0];
 
@@ -1893,11 +1894,11 @@ void ProcessVertexDataPD(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 
         RSP_Vtx_Clipping(i);
 
-        uint8 *addr = g_pRDRAMu8+dwPDCIAddr+ (vert.cidx&0xFF);
-        uint32 a = addr[0];
-        uint32 r = addr[3];
-        uint32 g = addr[2];
-        uint32 b = addr[1];
+        uint8_t *addr = g_pRDRAMu8+dwPDCIAddr+ (vert.cidx&0xFF);
+        uint32_t a = addr[0];
+        uint32_t r = addr[3];
+        uint32_t g = addr[2];
+        uint32_t b = addr[1];
 
         if( gRSP.bLightingEnable )
         {
@@ -1916,7 +1917,7 @@ void ProcessVertexDataPD(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
                 Vec3TransformNormal(g_normal, gRSPmodelViewTop);
                 g_dwVtxDifColor[i] = LightVert(g_normal, i);
             }
-            *(((uint8*)&(g_dwVtxDifColor[i]))+3) = (uint8)a;    // still use alpha from the vertex
+            *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = (uint8_t)a;    // still use alpha from the vertex
         }
         else
         {
@@ -1967,8 +1968,8 @@ void ProcessVertexDataPD(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
 }
 
-extern uint32 dwConkerVtxZAddr;
-void ProcessVertexDataConker(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
+extern uint32_t dwConkerVtxZAddr;
+void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
     UpdateCombinedMatrix();
 
@@ -1976,7 +1977,7 @@ void ProcessVertexDataConker(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
     g_pVtxBase = pVtxBase;
     //short *vertexColoraddr = (short*)(g_pRDRAMu8+dwConkerVtxZAddr);
 
-    for (uint32 i = dwV0; i < dwV0 + dwNum; i++)
+    for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
     {
         SP_Timing(RSP_GBI0_Vtx);
 
@@ -2005,7 +2006,7 @@ void ProcessVertexDataConker(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
 
         VTX_DUMP( 
         {
-            uint32 *dat = (uint32*)(&vert);
+            uint32_t *dat = (uint32_t*)(&vert);
             DebuggerAppendMsg("Vertex %d: %08X %08X %08X %08X", i, dat[0],dat[1],dat[2],dat[3]); 
             DebuggerAppendMsg("      : %f, %f, %f, %f", 
                 g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
@@ -2018,10 +2019,10 @@ void ProcessVertexDataConker(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
         if( gRSP.bLightingEnable )
         {
             {
-                uint32 r= ((gRSP.ambientLightColor>>16)&0xFF);
-                uint32 g= ((gRSP.ambientLightColor>> 8)&0xFF);
-                uint32 b= ((gRSP.ambientLightColor    )&0xFF);
-                for( uint32 k=1; k<=gRSPnumLights; k++)
+                uint32_t r= ((gRSP.ambientLightColor>>16)&0xFF);
+                uint32_t g= ((gRSP.ambientLightColor>> 8)&0xFF);
+                uint32_t b= ((gRSP.ambientLightColor    )&0xFF);
+                for( uint32_t k=1; k<=gRSPnumLights; k++)
                 {
                     r += gRSPlights[k].r;
                     g += gRSPlights[k].g;
@@ -2042,7 +2043,7 @@ void ProcessVertexDataConker(uint32 dwAddr, uint32 dwV0, uint32 dwNum)
                 g_dwVtxDifColor[i] |= (b    );          
             }
 
-            *(((uint8*)&(g_dwVtxDifColor[i]))+3) = vert.rgba.a; // still use alpha from the vertex
+            *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = vert.rgba.a; // still use alpha from the vertex
         }
         else
         {
@@ -2101,10 +2102,10 @@ typedef union
 {
     struct
     {
-        uint8 a;
-        uint8 b;
-        uint8 g;
-        uint8 r;
+        uint8_t a;
+        uint8_t b;
+        uint8_t g;
+        uint8_t r;
     };
     
     struct
@@ -2117,17 +2118,17 @@ typedef union
 } RS_Vtx_Color;
 
 
-void ProcessVertexData_Rogue_Squadron(uint32 dwXYZAddr, uint32 dwColorAddr, uint32 dwXYZCmd, uint32 dwColorCmd)
+void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, uint32_t dwXYZCmd, uint32_t dwColorCmd)
 {
     UpdateCombinedMatrix();
 
-    uint32 dwV0 = 0;
-    uint32 dwNum = (dwXYZCmd&0xFF00)>>10;
+    uint32_t dwV0 = 0;
+    uint32_t dwNum = (dwXYZCmd&0xFF00)>>10;
 
     RS_Vtx_XYZ * pVtxXYZBase = (RS_Vtx_XYZ*)(g_pRDRAMu8 + dwXYZAddr);
     RS_Vtx_Color * pVtxColorBase = (RS_Vtx_Color*)(g_pRDRAMu8 + dwColorAddr);
 
-    for (uint32 i = dwV0; i < dwV0 + dwNum; i++)
+    for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
     {
         RS_Vtx_XYZ & vertxyz = pVtxXYZBase[i - dwV0];
         RS_Vtx_Color & vertcolors = pVtxColorBase[i - dwV0];
@@ -2181,7 +2182,7 @@ void ProcessVertexData_Rogue_Squadron(uint32 dwXYZAddr, uint32 dwColorAddr, uint
                 Vec3TransformNormal(g_normal, gRSPmodelViewTop);
                 g_dwVtxDifColor[i] = LightVert(g_normal, i);
             }
-            *(((uint8*)&(g_dwVtxDifColor[i]))+3) = vertcolors.a;    // still use alpha from the vertex
+            *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = vertcolors.a;    // still use alpha from the vertex
         }
         else
         {
@@ -2224,11 +2225,11 @@ void ProcessVertexData_Rogue_Squadron(uint32 dwXYZAddr, uint32 dwColorAddr, uint
     DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Cmd");});
 }
 
-void SetLightCol(uint32 dwLight, uint32 dwCol)
+void SetLightCol(uint32_t dwLight, uint32_t dwCol)
 {
-    gRSPlights[dwLight].r = (uint8)((dwCol >> 24)&0xFF);
-    gRSPlights[dwLight].g = (uint8)((dwCol >> 16)&0xFF);
-    gRSPlights[dwLight].b = (uint8)((dwCol >>  8)&0xFF);
+    gRSPlights[dwLight].r = (uint8_t)((dwCol >> 24)&0xFF);
+    gRSPlights[dwLight].g = (uint8_t)((dwCol >> 16)&0xFF);
+    gRSPlights[dwLight].b = (uint8_t)((dwCol >>  8)&0xFF);
     gRSPlights[dwLight].a = 255;    // Ignore light alpha
     gRSPlights[dwLight].fr = (float)gRSPlights[dwLight].r;
     gRSPlights[dwLight].fg = (float)gRSPlights[dwLight].g;
@@ -2239,7 +2240,7 @@ void SetLightCol(uint32 dwLight, uint32 dwCol)
     LIGHT_DUMP(TRACE2("Set Light %d color: %08X", dwLight, dwCol));
 }
 
-void SetLightDirection(uint32 dwLight, float x, float y, float z, float range)
+void SetLightDirection(uint32_t dwLight, float x, float y, float z, float range)
 {
     //gRSP.bLightIsUpdated = true;
 
@@ -2352,14 +2353,14 @@ void HackZAll()
 {
     if( CDeviceBuilder::m_deviceGeneralType == DIRECTX_DEVICE )
     {
-        for( uint32 i=0; i<gRSP.numVertices; i++)
+        for( uint32_t i=0; i<gRSP.numVertices; i++)
         {
             g_vtxBuffer[i].z = HackZ(g_vtxBuffer[i].z);
         }
     }
     else
     {
-        for( uint32 i=0; i<gRSP.numVertices; i++)
+        for( uint32_t i=0; i<gRSP.numVertices; i++)
         {
             float w = g_vtxProjected5[i][3];
             g_vtxProjected5[i][2] = HackZ(g_vtxProjected5[i][2]/w)*w;

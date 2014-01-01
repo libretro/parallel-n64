@@ -49,15 +49,15 @@ CGraphicsContext::~CGraphicsContext()
     g_pFrameBufferManager->CloseUp();
 }
 
-uint32 CGraphicsContext::m_dwWindowStyle=0;         // Saved window style for mode switches
-uint32 CGraphicsContext::m_dwWindowExStyle=0;       // Saved window style for mode switches
-uint32 CGraphicsContext::m_dwStatusWindowStyle=0;   // Saved window style for mode switches
+uint32_t CGraphicsContext::m_dwWindowStyle=0;         // Saved window style for mode switches
+uint32_t CGraphicsContext::m_dwWindowExStyle=0;       // Saved window style for mode switches
+uint32_t CGraphicsContext::m_dwStatusWindowStyle=0;   // Saved window style for mode switches
 
 void CGraphicsContext::InitWindowInfo()
 {
 }
 
-bool CGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed)
+bool CGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed)
 {
     m_bWindowed = bWindowed;
 
@@ -65,7 +65,7 @@ bool CGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowe
     return true;
 }
 
-bool CGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed )
+bool CGraphicsContext::ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed )
 {
     return true;
 }

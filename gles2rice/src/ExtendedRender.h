@@ -35,13 +35,13 @@ class CExtendedRender
 public:
     virtual ~CExtendedRender() {}
 
-    virtual void DrawFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 width, uint32 height) {};
-    virtual void LoadFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 width, uint32 height) {};
+    virtual void DrawFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height) {};
+    virtual void LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height) {};
     virtual void LoadTxtrBufFromRDRAM(void) {};
     virtual void LoadTxtrBufIntoTexture(void) {};
 
-    virtual void DrawSprite2D(Sprite2DInfo &info, uint32 ucode) {};
-    virtual void LoadSprite2D(Sprite2DInfo &info, uint32 ucode) {};
+    virtual void DrawSprite2D(Sprite2DInfo &info, uint32_t ucode) {};
+    virtual void LoadSprite2D(Sprite2DInfo &info, uint32_t ucode) {};
 
     
     virtual void DrawSprite(uObjTxSprite &sprite, bool rectR) {};

@@ -41,7 +41,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 static m64p_handle l_ConfigVideoRice = NULL;
 static m64p_handle l_ConfigVideoGeneral = NULL;
 
-static int FindIniEntry(uint32 dwCRC1, uint32 dwCRC2, uint8 nCountryID, char* szName, int PrintInfo); 
+static int FindIniEntry(uint32_t dwCRC1, uint32_t dwCRC2, uint8_t nCountryID, char* szName, int PrintInfo); 
 
 const char *frameBufferSettings[] =
 {
@@ -1068,7 +1068,7 @@ std::ifstream & getline(std::ifstream & is, char *str)
 
 void WriteIniFile()
 {
-    uint32 i;
+    uint32_t i;
     FILE * fhIn;
     FILE * fhOut;
 
@@ -1169,7 +1169,7 @@ void WriteIniFile()
     bIniIsChanged = false;
 }
 
-void OutputSectionDetails(uint32 i, FILE * fh)
+void OutputSectionDetails(uint32_t i, FILE * fh)
 {
     fprintf(fh, "{%s}\n", IniSections[i].crccheck);
 
@@ -1268,9 +1268,9 @@ void OutputSectionDetails(uint32 i, FILE * fh)
 // The resulting value is returned
 void __cdecl DebuggerAppendMsg (const char * Message, ...);
 
-static int FindIniEntry(uint32 dwCRC1, uint32 dwCRC2, uint8 nCountryID, char* szName, int PrintInfo)
+static int FindIniEntry(uint32_t dwCRC1, uint32_t dwCRC2, uint8_t nCountryID, char* szName, int PrintInfo)
 {
-    uint32 i;
+    uint32_t i;
     unsigned char szCRC[50+1];
 
     // Generate the CRC-ID for this rom:
@@ -1347,9 +1347,9 @@ void ROM_GetRomNameFromHeader(unsigned char * szName, ROMHeader * pHdr)
     }
 }
 
-uint32 CountryCodeToTVSystem(uint32 countryCode)
+uint32_t CountryCodeToTVSystem(uint32_t countryCode)
 {
-    uint32 system;
+    uint32_t system;
     switch(countryCode)
     {
         /* Demo */

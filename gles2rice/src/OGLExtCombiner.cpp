@@ -429,7 +429,7 @@ int COGLColorCombiner4::FindCompiledMux()
         debuggerDropCombiners = false;
     }
 #endif
-    for( uint32 i=0; i<m_vCompiledSettings.size(); i++ )
+    for( uint32_t i=0; i<m_vCompiledSettings.size(); i++ )
     {
         if( m_vCompiledSettings[i].dwMux0 == m_pDecodedMux->m_dwMux0 && m_vCompiledSettings[i].dwMux1 == m_pDecodedMux->m_dwMux1 )
             return (int)i;
@@ -458,22 +458,22 @@ GLint COGLColorCombiner2::RGBArgsMap2[] =
 
 //========================================================================
 
-GLint COGLColorCombiner4::MapRGBArgs(uint8 arg)
+GLint COGLColorCombiner4::MapRGBArgs(uint8_t arg)
 {
     return RGBArgsMap4[arg&MUX_MASK];
 }
 
-GLint COGLColorCombiner4v2::MapRGBArgs(uint8 arg)
+GLint COGLColorCombiner4v2::MapRGBArgs(uint8_t arg)
 {
     return RGBArgsMap4v2[arg&MUX_MASK];
 }
 
-GLint COGLColorCombiner2::MapRGBArgs(uint8 arg)
+GLint COGLColorCombiner2::MapRGBArgs(uint8_t arg)
 {
     return RGBArgsMap2[arg&MUX_MASK];
 }
 
-GLint COGLColorCombiner4::MapRGBArgFlags(uint8 arg)
+GLint COGLColorCombiner4::MapRGBArgFlags(uint8_t arg)
 {
     if( (arg & MUX_ALPHAREPLICATE) && (arg & MUX_COMPLEMENT) )
     {
@@ -491,22 +491,22 @@ GLint COGLColorCombiner4::MapRGBArgFlags(uint8 arg)
         return GL_SRC_COLOR;
 }
 
-GLint COGLColorCombiner4::MapAlphaArgs(uint8 arg)
+GLint COGLColorCombiner4::MapAlphaArgs(uint8_t arg)
 {
     return RGBArgsMap4[arg&MUX_MASK];
 }
 
-GLint COGLColorCombiner4v2::MapAlphaArgs(uint8 arg)
+GLint COGLColorCombiner4v2::MapAlphaArgs(uint8_t arg)
 {
     return RGBArgsMap4v2[arg&MUX_MASK];
 }
 
-GLint COGLColorCombiner2::MapAlphaArgs(uint8 arg)
+GLint COGLColorCombiner2::MapAlphaArgs(uint8_t arg)
 {
     return RGBArgsMap2[arg&MUX_MASK];
 }
 
-GLint COGLColorCombiner4::MapAlphaArgFlags(uint8 arg)
+GLint COGLColorCombiner4::MapAlphaArgFlags(uint8_t arg)
 {
     if(arg & MUX_COMPLEMENT) 
     {
@@ -700,12 +700,12 @@ int COGLColorCombiner2::ParseDecodedMux()
         //OGLExt1CombType &colorComb = unit.Combs[0];
         //OGLExt1CombType &alphaComb = unit.Combs[1];
 
-        unit.rgbArg0 = (uint8)generalRes.stages[unitNo].colorOp.Arg1;
-        unit.rgbArg1 = (uint8)generalRes.stages[unitNo].colorOp.Arg2;
-        unit.rgbArg2 = (uint8)generalRes.stages[unitNo].colorOp.Arg0;
-        unit.alphaArg0 = (uint8)generalRes.stages[unitNo].alphaOp.Arg1;
-        unit.alphaArg1 = (uint8)generalRes.stages[unitNo].alphaOp.Arg2;
-        unit.alphaArg2 = (uint8)generalRes.stages[unitNo].alphaOp.Arg0;
+        unit.rgbArg0 = (uint8_t)generalRes.stages[unitNo].colorOp.Arg1;
+        unit.rgbArg1 = (uint8_t)generalRes.stages[unitNo].colorOp.Arg2;
+        unit.rgbArg2 = (uint8_t)generalRes.stages[unitNo].colorOp.Arg0;
+        unit.alphaArg0 = (uint8_t)generalRes.stages[unitNo].alphaOp.Arg1;
+        unit.alphaArg1 = (uint8_t)generalRes.stages[unitNo].alphaOp.Arg2;
+        unit.alphaArg2 = (uint8_t)generalRes.stages[unitNo].alphaOp.Arg0;
 
         unit.rgbOp = GeneralToGLMaps[generalRes.stages[unitNo].colorOp.op];
         if( unit.rgbOp == GL_MODULATE_ADD_ATI && !m_bTxtOpMulAdd )

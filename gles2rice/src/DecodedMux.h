@@ -37,10 +37,10 @@ typedef union
 {
     struct
     {
-        uint32 dwMux0;
-        uint32 dwMux1;
+        uint32_t dwMux0;
+        uint32_t dwMux1;
     };
-    uint64 Mux64;
+    uint64_t Mux64;
 } MuxType;
 
 typedef struct
@@ -56,28 +56,28 @@ public:
     {
         struct
         {
-            uint8 aRGB0;
-            uint8 bRGB0;
-            uint8 cRGB0;
-            uint8 dRGB0;
+            uint8_t aRGB0;
+            uint8_t bRGB0;
+            uint8_t cRGB0;
+            uint8_t dRGB0;
             
-            uint8 aA0;
-            uint8 bA0;
-            uint8 cA0;
-            uint8 dA0;
+            uint8_t aA0;
+            uint8_t bA0;
+            uint8_t cA0;
+            uint8_t dA0;
             
-            uint8 aRGB1;
-            uint8 bRGB1;
-            uint8 cRGB1;
-            uint8 dRGB1;
+            uint8_t aRGB1;
+            uint8_t bRGB1;
+            uint8_t cRGB1;
+            uint8_t dRGB1;
             
-            uint8 aA1;
-            uint8 bA1;
-            uint8 cA1;
-            uint8 dA1;
+            uint8_t aA1;
+            uint8_t bA1;
+            uint8_t cA1;
+            uint8_t dA1;
         };
-        uint8  m_bytes[16];
-        uint32 m_dWords[4];
+        uint8_t  m_bytes[16];
+        uint32_t m_dWords[4];
         N64CombinerType m_n64Combiners[4];
     };
     
@@ -85,18 +85,18 @@ public:
     {
         struct
         {
-            uint32 m_dwMux0;
-            uint32 m_dwMux1;
+            uint32_t m_dwMux0;
+            uint32_t m_dwMux1;
         };
-        uint64 m_u64Mux;
+        uint64_t m_u64Mux;
     };
 
     CombinerFormatType splitType[4];
     CombinerFormatType mType;
     
-    uint32 m_dwShadeColorChannelFlag;
-    uint32 m_dwShadeAlphaChannelFlag;
-    uint32 m_ColorTextureFlag[2];   // I may use a texture to represent a constant color
+    uint32_t m_dwShadeColorChannelFlag;
+    uint32_t m_dwShadeAlphaChannelFlag;
+    uint32_t m_ColorTextureFlag[2];   // I may use a texture to represent a constant color
                                     // when there are more constant colors are used than    
                                     // the system can support
 
@@ -109,18 +109,18 @@ public:
     int  m_maxTextures;     // 1 or 2
 
 
-    void Decode(uint32 dwMux0, uint32 dwMux1);
+    void Decode(uint32_t dwMux0, uint32_t dwMux1);
     virtual void Hack(void);
-    bool IsUsed(uint8 fac, uint8 mask);
-    bool IsUsedInAlphaChannel(uint8 fac, uint8 mask);
-    bool IsUsedInColorChannel(uint8 fac, uint8 mask);
-    bool IsUsedInCycle(uint8 fac, int cycle, CombineChannel channel, uint8 mask);
-    bool IsUsedInCycle(uint8 fac, int cycle, uint8 mask);
-    uint32 GetCycle(int cycle, CombineChannel channel);
-    uint32 GetCycle(int cycle);
-    CombinerFormatType GetCombinerFormatType(uint32 cycle);
+    bool IsUsed(uint8_t fac, uint8_t mask);
+    bool IsUsedInAlphaChannel(uint8_t fac, uint8_t mask);
+    bool IsUsedInColorChannel(uint8_t fac, uint8_t mask);
+    bool IsUsedInCycle(uint8_t fac, int cycle, CombineChannel channel, uint8_t mask);
+    bool IsUsedInCycle(uint8_t fac, int cycle, uint8_t mask);
+    uint32_t GetCycle(int cycle, CombineChannel channel);
+    uint32_t GetCycle(int cycle);
+    CombinerFormatType GetCombinerFormatType(uint32_t cycle);
     void Display(bool simplified, FILE *fp);
-    static char* FormatStr(uint8 val, char *buf);
+    static char* FormatStr(uint8_t val, char *buf);
     void CheckCombineInCycle1(void);
     virtual void Simplify(void);
     virtual void Reformat(bool do_complement);
@@ -139,26 +139,26 @@ public:
     void MergeConstFactors();
     virtual void SplitComplexStages();  // Only used if the combiner supports more than 1 stages
     void ConvertLODFracTo0();
-    void ReplaceVal(uint8 val1, uint8 val2, int cycle, uint8 mask);
-    void Replace1Val(uint8 &val1, const uint8 val2, uint8 mask)
+    void ReplaceVal(uint8_t val1, uint8_t val2, int cycle, uint8_t mask);
+    void Replace1Val(uint8_t &val1, const uint8_t val2, uint8_t mask)
     {
         val1 &= (~mask);
         val1 |= val2;
     }
     int CountTexels(void);
-    int Count(uint8 val, int cycle, uint8 mask);
+    int Count(uint8_t val, int cycle, uint8_t mask);
 
 #ifdef DEBUGGER
     void DisplayMuxString(const char *prompt);
     void DisplaySimpliedMuxString(const char *prompt);
-    void DisplayConstantsWithShade(uint32 flag,CombineChannel channel);
+    void DisplayConstantsWithShade(uint32_t flag,CombineChannel channel);
 #else
     void DisplayMuxString(const char *prompt) {}
     void DisplaySimpliedMuxString(const char *prompt){}
-    void DisplayConstantsWithShade(uint32 flag,CombineChannel channel){}
+    void DisplayConstantsWithShade(uint32_t flag,CombineChannel channel){}
     void LogMuxString(const char *prompt, FILE *fp);
     void LogSimpliedMuxString(const char *prompt, FILE *fp);
-    void LogConstantsWithShade(uint32 flag,CombineChannel channel, FILE *fp);
+    void LogConstantsWithShade(uint32_t flag,CombineChannel channel, FILE *fp);
 #endif
 
     virtual DecodedMux& operator=(const DecodedMux& mux)
@@ -190,9 +190,9 @@ public:
         return *this;
     }
 
-    static inline bool IsConstFactor(uint8 val)
+    static inline bool IsConstFactor(uint8_t val)
     {
-        uint8 v = val&MUX_MASK;
+        uint8_t v = val&MUX_MASK;
         return( v == MUX_0 || v == MUX_1 || v == MUX_PRIM || v == MUX_ENV || v == MUX_LODFRAC || v == MUX_PRIMLODFRAC );
     }
 

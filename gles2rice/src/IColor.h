@@ -30,10 +30,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 class IColor {
 public:
-    uint8 r;
-    uint8 g;
-    uint8 b;
-    uint8 a;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
 
     IColor(COLOR rgba)
     {
@@ -65,10 +65,10 @@ public:
     inline IColor operator + (const IColor &sec) const
     {
         IColor newc;
-        newc.r = (uint8)min((unsigned int) r + (unsigned int) sec.r, 0xFF);
-        newc.g = (uint8)min((unsigned int) g + (unsigned int) sec.g, 0xFF);
-        newc.b = (uint8)min((unsigned int) b + (unsigned int) sec.b, 0xFF);
-        newc.a = (uint8)min((unsigned int) a + (unsigned int) sec.a, 0xFF);
+        newc.r = (uint8_t)min((unsigned int) r + (unsigned int) sec.r, 0xFF);
+        newc.g = (uint8_t)min((unsigned int) g + (unsigned int) sec.g, 0xFF);
+        newc.b = (uint8_t)min((unsigned int) b + (unsigned int) sec.b, 0xFF);
+        newc.a = (uint8_t)min((unsigned int) a + (unsigned int) sec.a, 0xFF);
 
         return newc;
     }
@@ -86,37 +86,37 @@ public:
     inline IColor operator * (const IColor &sec) const
     {
         IColor newc;
-        newc.r = (uint8)min((unsigned int) r * (unsigned int) sec.r / 256,255);
-        newc.g = (uint8)min((unsigned int) g * (unsigned int) sec.g / 256,255);
-        newc.b = (uint8)min((unsigned int) b * (unsigned int) sec.b / 256,255);
-        newc.a = (uint8)min((unsigned int) a * (unsigned int) sec.a / 256,255);
+        newc.r = (uint8_t)min((unsigned int) r * (unsigned int) sec.r / 256,255);
+        newc.g = (uint8_t)min((unsigned int) g * (unsigned int) sec.g / 256,255);
+        newc.b = (uint8_t)min((unsigned int) b * (unsigned int) sec.b / 256,255);
+        newc.a = (uint8_t)min((unsigned int) a * (unsigned int) sec.a / 256,255);
         return newc;
     }
 
     inline IColor& operator += (const IColor &sec)
     {
-        r = uint8(min((unsigned int) r + (unsigned int) sec.r, 255));
-        g = uint8(min((unsigned int) g + (unsigned int) sec.g, 255));
-        b = uint8(min((unsigned int) b + (unsigned int) sec.b, 255));
-        a = uint8(min((unsigned int) a + (unsigned int) sec.a, 255));
+        r = uint8_t(min((unsigned int) r + (unsigned int) sec.r, 255));
+        g = uint8_t(min((unsigned int) g + (unsigned int) sec.g, 255));
+        b = uint8_t(min((unsigned int) b + (unsigned int) sec.b, 255));
+        a = uint8_t(min((unsigned int) a + (unsigned int) sec.a, 255));
         return *this;
     }
 
     inline IColor& operator -= (const IColor &sec)
     {
-        r = uint8(max(int(r)-int(sec.r),0));
-        g = uint8(max(int(g)-int(sec.g),0));
-        b = uint8(max(int(b)-int(sec.b),0));
-        a = uint8(max(int(a)-int(sec.a),0));
+        r = uint8_t(max(int(r)-int(sec.r),0));
+        g = uint8_t(max(int(g)-int(sec.g),0));
+        b = uint8_t(max(int(b)-int(sec.b),0));
+        a = uint8_t(max(int(a)-int(sec.a),0));
         return *this;
     }
 
     inline IColor& operator *= (const IColor &sec)
     {
-        r = uint8(min((unsigned int) r * (unsigned int) sec.r / 256,255));
-        g = uint8(min((unsigned int) g * (unsigned int) sec.g / 256,255));
-        b = uint8(min((unsigned int) b * (unsigned int) sec.b / 256,255));
-        a = uint8(min((unsigned int) a * (unsigned int) sec.a / 256,255));
+        r = uint8_t(min((unsigned int) r * (unsigned int) sec.r / 256,255));
+        g = uint8_t(min((unsigned int) g * (unsigned int) sec.g / 256,255));
+        b = uint8_t(min((unsigned int) b * (unsigned int) sec.b / 256,255));
+        a = uint8_t(min((unsigned int) a * (unsigned int) sec.a / 256,255));
         return *this;
     }
     

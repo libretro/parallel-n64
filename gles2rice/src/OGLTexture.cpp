@@ -25,7 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLTexture.h"
 #include "TextureManager.h"
 
-COGLTexture::COGLTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage) :
+COGLTexture::COGLTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage) :
     CTexture(dwWidth,dwHeight,usage),
     m_glFmt(GL_RGBA)
 {
@@ -36,7 +36,7 @@ COGLTexture::COGLTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage) :
     OPENGL_CHECK_ERRORS;
 
     // Make the width and height be the power of 2
-    uint32 w;
+    uint32_t w;
     for (w = 1; w < dwWidth; w <<= 1);
     m_dwCreatedTextureWidth = w;
     for (w = 1; w < dwHeight; w <<= 1);
@@ -83,8 +83,8 @@ bool COGLTexture::StartUpdate(DrawInfo *di)
     if (m_pTexture == NULL)
         return false;
 
-    di->dwHeight = (uint16)m_dwHeight;
-    di->dwWidth = (uint16)m_dwWidth;
+    di->dwHeight = (uint16_t)m_dwHeight;
+    di->dwWidth = (uint16_t)m_dwWidth;
     di->dwCreatedHeight = m_dwCreatedTextureHeight;
     di->dwCreatedWidth = m_dwCreatedTextureWidth;
     di->lpSurface = m_pTexture;

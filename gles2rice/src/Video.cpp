@@ -64,7 +64,7 @@ RECT frameWriteByCPURect;
 std::vector<RECT> frameWriteByCPURects;
 RECT frameWriteByCPURectArray[20][20];
 bool frameWriteByCPURectFlag[20][20];
-std::vector<uint32> frameWriteRecord;
+std::vector<uint32_t> frameWriteRecord;
 
 void (*renderCallback)(int) = NULL;
 
@@ -171,7 +171,7 @@ static void UpdateScreenStep2 (void)
     if( status.gDlistCount == 0 )
     {
         // CPU frame buffer update
-        uint32 width = *g_GraphicsInfo.VI_WIDTH_REG;
+        uint32_t width = *g_GraphicsInfo.VI_WIDTH_REG;
         if( (*g_GraphicsInfo.VI_ORIGIN_REG & (g_dwRamSize-1) ) > width*2 && *g_GraphicsInfo.VI_H_START_REG != 0 && width != 0 )
         {
             SetVIScales();
@@ -356,11 +356,11 @@ void SetVIScales()
     else
     {
         float xscale, yscale;
-        uint32 val = *g_GraphicsInfo.VI_X_SCALE_REG & 0xFFF;
+        uint32_t val = *g_GraphicsInfo.VI_X_SCALE_REG & 0xFFF;
         xscale = (float)val / (1<<10);
-        uint32 start = *g_GraphicsInfo.VI_H_START_REG >> 16;
-        uint32 end = *g_GraphicsInfo.VI_H_START_REG&0xFFFF;
-        uint32 width = *g_GraphicsInfo.VI_WIDTH_REG;
+        uint32_t start = *g_GraphicsInfo.VI_H_START_REG >> 16;
+        uint32_t end = *g_GraphicsInfo.VI_H_START_REG&0xFFFF;
+        uint32_t width = *g_GraphicsInfo.VI_WIDTH_REG;
         windowSetting.fViWidth = (end-start)*xscale;
         if( abs((int)(windowSetting.fViWidth - width) ) < 8 ) 
         {
@@ -419,10 +419,10 @@ void SetVIScales()
 
         windowSetting.uViHeight = (unsigned short)(windowSetting.fViHeight/4);
         windowSetting.fViHeight = windowSetting.uViHeight *= 4;
-        uint16 optimizeHeight = (uint16)(windowSetting.uViWidth*status.fRatio);
+        uint16_t optimizeHeight = (uint16_t)(windowSetting.uViWidth*status.fRatio);
         optimizeHeight &= ~3;
 
-        uint16 optimizeHeight2 = (uint16)(windowSetting.uViWidth*3/4);
+        uint16_t optimizeHeight2 = (uint16_t)(windowSetting.uViWidth*3/4);
         optimizeHeight2 &= ~3;
 
         if( windowSetting.uViHeight != optimizeHeight && windowSetting.uViHeight != optimizeHeight2 )
@@ -671,7 +671,7 @@ EXPORT int CALL InitiateGFX(GFX_INFO Gfx_Info)
     memcpy(&g_GraphicsInfo, &Gfx_Info, sizeof(GFX_INFO));
 
     g_pRDRAMu8          = Gfx_Info.RDRAM;
-    g_pRDRAMu32         = (uint32*)Gfx_Info.RDRAM;
+    g_pRDRAMu32         = (uint32_t*)Gfx_Info.RDRAM;
     g_pRDRAMs8          = (signed char *)Gfx_Info.RDRAM;
 
     windowSetting.fViWidth = 320;
@@ -729,11 +729,11 @@ EXPORT void CALL ProcessDList(void)
             may belong to depth buffer
   input:    addr        rdram address
             val         val
-            size        1 = uint8, 2 = uint16, 4 = uint32
+            size        1 = uint8_t, 2 = uint16_t, 4 = uint32_t
   output:   none
 *******************************************************************/ 
 
-EXPORT void CALL FBRead(uint32 addr)
+EXPORT void CALL FBRead(uint32_t addr)
 {
     g_pFrameBufferManager->FrameBufferReadByCPU(addr);
 }
@@ -749,11 +749,11 @@ EXPORT void CALL FBRead(uint32 addr)
 
   input:    addr        rdram address
             val         val
-            size        1 = uint8, 2 = uint16, 4 = uint32
+            size        1 = uint8_t, 2 = uint16_t, 4 = uint32_t
   output:   none
 *******************************************************************/ 
 
-EXPORT void CALL FBWrite(uint32 addr, uint32 size)
+EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
 {
     g_pFrameBufferManager->FrameBufferWriteByCPU(addr, size);
 }

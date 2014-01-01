@@ -25,7 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // Probably shouldn't need more than 4096 * 4096
 
-CTexture::CTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage) :
+CTexture::CTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage) :
     m_dwWidth(dwWidth),
     m_dwHeight(dwHeight),
     m_dwCreatedTextureWidth(dwWidth),
@@ -57,7 +57,7 @@ TextureFmt CTexture::GetSurfaceFormat(void)
         return m_dwTextureFmt;
 }
 
-uint32 CTexture::GetPixelSize()
+uint32_t CTexture::GetPixelSize()
 {
     if( m_dwTextureFmt == TEXTURE_FMT_A8R8G8B8 )
         return 4;
@@ -76,18 +76,18 @@ uint32 CTexture::GetPixelSize()
 // limition
 void CTexture::ScaleImageToSurface(bool scaleS, bool scaleT)
 {
-    uint8 g_ucTempBuffer[1024*1024*4];
+    uint8_t g_ucTempBuffer[1024*1024*4];
 
     if( scaleS==false && scaleT==false) return;
 
     // If the image is not scaled, call this function to scale the real image to
     // the D3D given dimension
 
-    uint32 width = scaleS ? m_dwWidth : m_dwCreatedTextureWidth;
-    uint32 height = scaleT ? m_dwHeight : m_dwCreatedTextureHeight;
+    uint32_t width = scaleS ? m_dwWidth : m_dwCreatedTextureWidth;
+    uint32_t height = scaleT ? m_dwHeight : m_dwCreatedTextureHeight;
 
-    uint32 xDst, yDst;
-    uint32 xSrc, ySrc;
+    uint32_t xDst, yDst;
+    uint32_t xSrc, ySrc;
 
     DrawInfo di;
 
@@ -103,10 +103,10 @@ void CTexture::ScaleImageToSurface(bool scaleS, bool scaleT)
     {
     case 4:
         {
-            memcpy((uint8*)g_ucTempBuffer, (uint8*)(di.lpSurface), m_dwHeight*m_dwCreatedTextureWidth*4);
+            memcpy((uint8_t*)g_ucTempBuffer, (uint8_t*)(di.lpSurface), m_dwHeight*m_dwCreatedTextureWidth*4);
 
-            uint32 * pDst;
-            uint32 * pSrc;
+            uint32_t * pDst;
+            uint32_t * pSrc;
             
             for (yDst = 0; yDst < m_dwCreatedTextureHeight; yDst++)
             {
@@ -114,14 +114,14 @@ void CTexture::ScaleImageToSurface(bool scaleS, bool scaleT)
                 // I'd rather do this but sometimes very narrow (i.e. 1 pixel)
                 // surfaces are created which results in  /0...
                 //ySrc = (yDst * (m_dwHeight-1)) / (d3dTextureHeight-1);
-                ySrc = (uint32)((yDst * height) / m_dwCreatedTextureHeight+0.49f);
+                ySrc = (uint32_t)((yDst * height) / m_dwCreatedTextureHeight+0.49f);
                 
-                pSrc = (uint32*)((uint8*)g_ucTempBuffer + (ySrc * m_dwCreatedTextureWidth * 4));
-                pDst = (uint32*)((uint8*)di.lpSurface + (yDst * di.lPitch));
+                pSrc = (uint32_t*)((uint8_t*)g_ucTempBuffer + (ySrc * m_dwCreatedTextureWidth * 4));
+                pDst = (uint32_t*)((uint8_t*)di.lpSurface + (yDst * di.lPitch));
                 
                 for (xDst = 0; xDst < m_dwCreatedTextureWidth; xDst++)
                 {
-                    xSrc = (uint32)((xDst * width) / m_dwCreatedTextureWidth+0.49f);
+                    xSrc = (uint32_t)((xDst * width) / m_dwCreatedTextureWidth+0.49f);
                     pDst[xDst] = pSrc[xSrc];
                 }
             }
@@ -130,18 +130,18 @@ void CTexture::ScaleImageToSurface(bool scaleS, bool scaleT)
         break;
     case 2:
         {
-            memcpy((uint8*)g_ucTempBuffer, (uint8*)(di.lpSurface), m_dwHeight*m_dwCreatedTextureWidth*2);
+            memcpy((uint8_t*)g_ucTempBuffer, (uint8_t*)(di.lpSurface), m_dwHeight*m_dwCreatedTextureWidth*2);
 
-            uint16 * pDst;
-            uint16 * pSrc;
+            uint16_t * pDst;
+            uint16_t * pSrc;
             
             for (yDst = 0; yDst < m_dwCreatedTextureHeight; yDst++)
             {
                 // ySrc ranges from 0..m_dwHeight
                 ySrc = (yDst * height) / m_dwCreatedTextureHeight;
                 
-                pSrc = (uint16*)((uint8*)g_ucTempBuffer + (ySrc * m_dwCreatedTextureWidth * 2));
-                pDst = (uint16*)((uint8*)di.lpSurface + (yDst * di.lPitch));
+                pSrc = (uint16_t*)((uint8_t*)g_ucTempBuffer + (ySrc * m_dwCreatedTextureWidth * 2));
+                pDst = (uint16_t*)((uint8_t*)di.lpSurface + (yDst * di.lPitch));
                 
                 for (xDst = 0; xDst < m_dwCreatedTextureWidth; xDst++)
                 {
@@ -168,11 +168,11 @@ void CTexture::ClampImageToSurfaceS()
         {
             if(  m_dwTextureFmt == TEXTURE_FMT_A8R8G8B8 )
             {
-                for( uint32 y = 0; y<m_dwHeight; y++ )
+                for( uint32_t y = 0; y<m_dwHeight; y++ )
                 {
-                    uint32* line = (uint32*)((uint8*)di.lpSurface+di.lPitch*y);
-                    uint32 val = line[m_dwWidth-1];
-                    for( uint32 x=m_dwWidth; x<m_dwCreatedTextureWidth; x++ )
+                    uint32_t* line = (uint32_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
+                    uint32_t val = line[m_dwWidth-1];
+                    for( uint32_t x=m_dwWidth; x<m_dwCreatedTextureWidth; x++ )
                     {
                         line[x] = val;
                     }
@@ -180,11 +180,11 @@ void CTexture::ClampImageToSurfaceS()
             }
             else
             {
-                for( uint32 y = 0; y<m_dwHeight; y++ )
+                for( uint32_t y = 0; y<m_dwHeight; y++ )
                 {
-                    uint16* line = (uint16*)((uint8*)di.lpSurface+di.lPitch*y);
-                    uint16 val = line[m_dwWidth-1];
-                    for( uint32 x=m_dwWidth; x<m_dwCreatedTextureWidth; x++ )
+                    uint16_t* line = (uint16_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
+                    uint16_t val = line[m_dwWidth-1];
+                    for( uint32_t x=m_dwWidth; x<m_dwCreatedTextureWidth; x++ )
                     {
                         line[x] = val;
                     }
@@ -205,11 +205,11 @@ void CTexture::ClampImageToSurfaceT()
         {
             if(  m_dwTextureFmt == TEXTURE_FMT_A8R8G8B8 )
             {
-                uint32* linesrc = (uint32*)((uint8*)di.lpSurface+di.lPitch*(m_dwHeight-1));
-                for( uint32 y = m_dwHeight; y<m_dwCreatedTextureHeight; y++ )
+                uint32_t* linesrc = (uint32_t*)((uint8_t*)di.lpSurface+di.lPitch*(m_dwHeight-1));
+                for( uint32_t y = m_dwHeight; y<m_dwCreatedTextureHeight; y++ )
                 {
-                    uint32* linedst = (uint32*)((uint8*)di.lpSurface+di.lPitch*y);
-                    for( uint32 x=0; x<m_dwCreatedTextureWidth; x++ )
+                    uint32_t* linedst = (uint32_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
+                    for( uint32_t x=0; x<m_dwCreatedTextureWidth; x++ )
                     {
                         linedst[x] = linesrc[x];
                     }
@@ -217,11 +217,11 @@ void CTexture::ClampImageToSurfaceT()
             }
             else
             {
-                uint16* linesrc = (uint16*)((uint8*)di.lpSurface+di.lPitch*(m_dwHeight-1));
-                for( uint32 y = m_dwHeight; y<m_dwCreatedTextureHeight; y++ )
+                uint16_t* linesrc = (uint16_t*)((uint8_t*)di.lpSurface+di.lPitch*(m_dwHeight-1));
+                for( uint32_t y = m_dwHeight; y<m_dwCreatedTextureHeight; y++ )
                 {
-                    uint16* linedst = (uint16*)((uint8*)di.lpSurface+di.lPitch*y);
-                    for( uint32 x=0; x<m_dwCreatedTextureWidth; x++ )
+                    uint16_t* linedst = (uint16_t*)((uint8_t*)di.lpSurface+di.lPitch*y);
+                    for( uint32_t x=0; x<m_dwCreatedTextureWidth; x++ )
                     {
                         linedst[x] = linesrc[x];
                     }
@@ -239,24 +239,24 @@ void CTexture::RestoreAlphaChannel(void)
 
     if ( StartUpdate(&di) )
     {
-        uint32 *pSrc = (uint32 *)di.lpSurface;
+        uint32_t *pSrc = (uint32_t *)di.lpSurface;
         int lPitch = di.lPitch;
 
-        for (uint32 y = 0; y < m_dwHeight; y++)
+        for (uint32_t y = 0; y < m_dwHeight; y++)
         {
-            uint32 * dwSrc = (uint32 *)((uint8 *)pSrc + y*lPitch);
-            for (uint32 x = 0; x < m_dwWidth; x++)
+            uint32_t * dwSrc = (uint32_t *)((uint8_t *)pSrc + y*lPitch);
+            for (uint32_t x = 0; x < m_dwWidth; x++)
             {
-                uint32 dw = dwSrc[x];
-                uint32 dwRed   = (uint8)((dw & 0x00FF0000)>>16);
-                uint32 dwGreen = (uint8)((dw & 0x0000FF00)>>8 );
-                uint32 dwBlue  = (uint8)((dw & 0x000000FF)    );
-                uint32 dwAlpha = (dwRed+dwGreen+dwBlue)/3;
+                uint32_t dw = dwSrc[x];
+                uint32_t dwRed   = (uint8_t)((dw & 0x00FF0000)>>16);
+                uint32_t dwGreen = (uint8_t)((dw & 0x0000FF00)>>8 );
+                uint32_t dwBlue  = (uint8_t)((dw & 0x000000FF)    );
+                uint32_t dwAlpha = (dwRed+dwGreen+dwBlue)/3;
                 dw &= 0x00FFFFFF;
                 dw |= (dwAlpha<<24);
 
                 /*
-                uint32 dw = dwSrc[x];
+                uint32_t dw = dwSrc[x];
                 if( (dw&0x00FFFFFF) > 0 )
                     dw |= 0xFF000000;
                 else

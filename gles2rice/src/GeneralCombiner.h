@@ -28,7 +28,7 @@ class GeneralCombineStage
 public:
     StageOperate    colorOp;
     StageOperate    alphaOp;
-    uint32          dwTexture;  //Which texture to apply, 0 or 1
+    uint32_t          dwTexture;  //Which texture to apply, 0 or 1
     bool            bTextureUsed;   
     
     bool operator!=(const GeneralCombineStage & cs) const { return !(operator==(cs)); }
@@ -51,17 +51,17 @@ public:
 class GeneralCombinerInfo
 {
 public:
-    uint32      muxDWords[4];   // Simplified Mux
-    uint32      dwMux0;
-    uint32      dwMux1;
+    uint32_t      muxDWords[4];   // Simplified Mux
+    uint32_t      dwMux0;
+    uint32_t      dwMux1;
     int        nStages;
     
     BlendingFunc  blendingFunc;
-    uint32      TFactor;
-    uint32      m_dwShadeColorChannelFlag;
-    uint32      m_dwShadeAlphaChannelFlag;
-    uint32      specularPostOp;
-    uint32      colorTextureFlag[2];        
+    uint32_t      TFactor;
+    uint32_t      m_dwShadeColorChannelFlag;
+    uint32_t      m_dwShadeAlphaChannelFlag;
+    uint32_t      specularPostOp;
+    uint32_t      colorTextureFlag[2];        
     
     GeneralCombineStage stages[8];
 
@@ -176,7 +176,7 @@ protected:
     int     CheckWhichTexToUseInThisStage(int curN64Stage, int curStage, GeneralCombinerInfo &ci);
 
     int     GenCI_Type_D(int curN64Stage, int curStage, GeneralCombinerInfo &ci);
-    int     GenCI_Type_A_MOD_C(int curN64Stage, int curStage, GeneralCombinerInfo &ci, uint32 dxop);
+    int     GenCI_Type_A_MOD_C(int curN64Stage, int curStage, GeneralCombinerInfo &ci, uint32_t dxop);
     int     GenCI_Type_A_ADD_D(int curN64Stage, int curStage, GeneralCombinerInfo &ci);
     int     GenCI_Type_A_SUB_B(int curN64Stage, int curStage, GeneralCombinerInfo &ci);
     int     GenCI_Type_A_LERP_B_C(int curN64Stage, int curStage, GeneralCombinerInfo &ci);
@@ -195,7 +195,7 @@ protected:
     // checktexture = true, need to use if texture matching in the stage
     // checktexture = false, no check, just use any texture in the stage (since this stage hasn't been used)
     int     LM_GenCI_Type_D(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci);
-    int     LM_GenCI_Type_A_MOD_C(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci, uint32 dxop);
+    int     LM_GenCI_Type_A_MOD_C(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci, uint32_t dxop);
     int     LM_GenCI_Type_A_ADD_D(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci);
     int     LM_GenCI_Type_A_SUB_B(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci);
     int     LM_GenCI_Type_A_LERP_B_C(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci);
@@ -207,7 +207,7 @@ protected:
     int     LM_GenCI_Type_A_B_C_A(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &ci);
     void    LM_GenCI_Init(GeneralCombinerInfo &ci);
     int     LM_ParseDecodedMux();
-    bool    LM_Check1TxtrForAlpha(int curStage, GeneralCombinerInfo &ci, uint32 val);
+    bool    LM_Check1TxtrForAlpha(int curStage, GeneralCombinerInfo &ci, uint32_t val);
     void    LM_SkipStage(StageOperate &op);
 
 

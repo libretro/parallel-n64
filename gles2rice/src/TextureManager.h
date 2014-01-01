@@ -39,29 +39,29 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 class TxtrInfo
 {
 public:
-    uint32 WidthToCreate;
-    uint32 HeightToCreate;
+    uint32_t WidthToCreate;
+    uint32_t HeightToCreate;
 
-    uint32 Address;
+    uint32_t Address;
     void  *pPhysicalAddress;
 
-    uint32 Format;
-    uint32 Size;
+    uint32_t Format;
+    uint32_t Size;
 
     int  LeftToLoad;
     int  TopToLoad;
-    uint32 WidthToLoad;
-    uint32 HeightToLoad;
-    uint32 Pitch;
+    uint32_t WidthToLoad;
+    uint32_t HeightToLoad;
+    uint32_t Pitch;
 
-    uchar *PalAddress;
-    uint32 TLutFmt;
-    uint32 Palette;
+    uint8_t *PalAddress;
+    uint32_t TLutFmt;
+    uint32_t Palette;
     
     BOOL  bSwapped;
     
-    uint32 maskS;
-    uint32 maskT;
+    uint32_t maskS;
+    uint32_t maskT;
 
     BOOL  clampS;
     BOOL  clampT;
@@ -144,19 +144,19 @@ typedef struct TxtrCacheEntry
     struct TxtrCacheEntry *pLastYoungest;
 
     TxtrInfo ti;
-    uint32      dwCRC;
-    uint32      dwPalCRC;
+    uint32_t      dwCRC;
+    uint32_t      dwPalCRC;
     int         maxCI;
 
-    uint32  dwUses;         // Total times used (for stats)
-    uint32  dwTimeLastUsed; // timeGetTime of time of last usage
-    uint32  FrameLastUsed;  // Frame # that this was last used
-    uint32  FrameLastUpdated;
+    uint32_t  dwUses;         // Total times used (for stats)
+    uint32_t  dwTimeLastUsed; // timeGetTime of time of last usage
+    uint32_t  FrameLastUsed;  // Frame # that this was last used
+    uint32_t  FrameLastUpdated;
 
     CTexture    *pTexture;
     CTexture    *pEnhancedTexture;
 
-    uint32      dwEnhancementFlag;
+    uint32_t      dwEnhancementFlag;
     int         txtrBufIdx;
     bool        bExternalTxtrChecked;
 
@@ -170,60 +170,60 @@ typedef struct TxtrCacheEntry
 class CTextureManager
 {
 protected:
-    TxtrCacheEntry * CreateNewCacheEntry(uint32 dwAddr, uint32 dwWidth, uint32 dwHeight);
+    TxtrCacheEntry * CreateNewCacheEntry(uint32_t dwAddr, uint32_t dwWidth, uint32_t dwHeight);
     void AddTexture(TxtrCacheEntry *pEntry);
     void RemoveTexture(TxtrCacheEntry * pEntry);
     void RecycleTexture(TxtrCacheEntry *pEntry);
-    TxtrCacheEntry * ReviveTexture( uint32 width, uint32 height );
+    TxtrCacheEntry * ReviveTexture( uint32_t width, uint32_t height );
     TxtrCacheEntry * GetTxtrCacheEntry(TxtrInfo * pti);
     
     void ConvertTexture(TxtrCacheEntry * pEntry, bool fromTMEM);
     void ConvertTexture_16(TxtrCacheEntry * pEntry, bool fromTMEM);
 
-    void ClampS32(uint32 *array, uint32 width, uint32 towidth, uint32 arrayWidth, uint32 rows);
-    void ClampS16(uint16 *array, uint32 width, uint32 towidth, uint32 arrayWidth, uint32 rows);
-    void ClampT32(uint32 *array, uint32 height, uint32 toheight, uint32 arrayWidth, uint32 cols);
-    void ClampT16(uint16 *array, uint32 height, uint32 toheight, uint32 arrayWidth, uint32 cols);
+    void ClampS32(uint32_t *array, uint32_t width, uint32_t towidth, uint32_t arrayWidth, uint32_t rows);
+    void ClampS16(uint16_t *array, uint32_t width, uint32_t towidth, uint32_t arrayWidth, uint32_t rows);
+    void ClampT32(uint32_t *array, uint32_t height, uint32_t toheight, uint32_t arrayWidth, uint32_t cols);
+    void ClampT16(uint16_t *array, uint32_t height, uint32_t toheight, uint32_t arrayWidth, uint32_t cols);
 
-    void MirrorS32(uint32 *array, uint32 width, uint32 mask, uint32 towidth, uint32 arrayWidth, uint32 rows);
-    void MirrorS16(uint16 *array, uint32 width, uint32 mask, uint32 towidth, uint32 arrayWidth, uint32 rows);
-    void MirrorT32(uint32 *array, uint32 height, uint32 mask, uint32 toheight, uint32 arrayWidth, uint32 cols);
-    void MirrorT16(uint16 *array, uint32 height, uint32 mask, uint32 toheight, uint32 arrayWidth, uint32 cols);
+    void MirrorS32(uint32_t *array, uint32_t width, uint32_t mask, uint32_t towidth, uint32_t arrayWidth, uint32_t rows);
+    void MirrorS16(uint16_t *array, uint32_t width, uint32_t mask, uint32_t towidth, uint32_t arrayWidth, uint32_t rows);
+    void MirrorT32(uint32_t *array, uint32_t height, uint32_t mask, uint32_t toheight, uint32_t arrayWidth, uint32_t cols);
+    void MirrorT16(uint16_t *array, uint32_t height, uint32_t mask, uint32_t toheight, uint32_t arrayWidth, uint32_t cols);
 
-    void WrapS32(uint32 *array, uint32 width, uint32 mask, uint32 towidth, uint32 arrayWidth, uint32 rows);
-    void WrapS16(uint16 *array, uint32 width, uint32 mask, uint32 towidth, uint32 arrayWidth, uint32 rows);
-    void WrapT32(uint32 *array, uint32 height, uint32 mask, uint32 toheight, uint32 arrayWidth, uint32 cols);
-    void WrapT16(uint16 *array, uint32 height, uint32 mask, uint32 toheight, uint32 arrayWidth, uint32 cols);
+    void WrapS32(uint32_t *array, uint32_t width, uint32_t mask, uint32_t towidth, uint32_t arrayWidth, uint32_t rows);
+    void WrapS16(uint16_t *array, uint32_t width, uint32_t mask, uint32_t towidth, uint32_t arrayWidth, uint32_t rows);
+    void WrapT32(uint32_t *array, uint32_t height, uint32_t mask, uint32_t toheight, uint32_t arrayWidth, uint32_t cols);
+    void WrapT16(uint16_t *array, uint32_t height, uint32_t mask, uint32_t toheight, uint32_t arrayWidth, uint32_t cols);
 
     void ExpandTextureS(TxtrCacheEntry * pEntry);
     void ExpandTextureT(TxtrCacheEntry * pEntry);
-    void ExpandTexture(TxtrCacheEntry * pEntry, uint32 sizeOfLoad, uint32 sizeToCreate, uint32 sizeCreated,
-        int arrayWidth, int flag, int mask, int mirror, int clamp, uint32 otherSize);
+    void ExpandTexture(TxtrCacheEntry * pEntry, uint32_t sizeOfLoad, uint32_t sizeToCreate, uint32_t sizeCreated,
+        int arrayWidth, int flag, int mask, int mirror, int clamp, uint32_t otherSize);
 
-    uint32 Hash(uint32 dwValue);
+    uint32_t Hash(uint32_t dwValue);
     bool TCacheEntryIsLoaded(TxtrCacheEntry *pEntry);
 
-    void updateColorTexture(CTexture *ptexture, uint32 color);
+    void updateColorTexture(CTexture *ptexture, uint32_t color);
     
 public:
-    void Wrap(void *array, uint32 width, uint32 mask, uint32 towidth, uint32 arrayWidth, uint32 rows, int flag, int size );
-    void Clamp(void *array, uint32 width, uint32 towidth, uint32 arrayWidth, uint32 rows, int flag, int size );
-    void Mirror(void *array, uint32 width, uint32 mask, uint32 towidth, uint32 arrayWidth, uint32 rows, int flag, int size );
+    void Wrap(void *array, uint32_t width, uint32_t mask, uint32_t towidth, uint32_t arrayWidth, uint32_t rows, int flag, int size );
+    void Clamp(void *array, uint32_t width, uint32_t towidth, uint32_t arrayWidth, uint32_t rows, int flag, int size );
+    void Mirror(void *array, uint32_t width, uint32_t mask, uint32_t towidth, uint32_t arrayWidth, uint32_t rows, int flag, int size );
     
 protected:
     TxtrCacheEntry * m_pHead;
     TxtrCacheEntry ** m_pCacheTxtrList;
-    uint32 m_numOfCachedTxtrList;
+    uint32_t m_numOfCachedTxtrList;
 
     TxtrCacheEntry m_blackTextureEntry;
     TxtrCacheEntry m_PrimColorTextureEntry;
     TxtrCacheEntry m_EnvColorTextureEntry;
     TxtrCacheEntry m_LODFracTextureEntry;
     TxtrCacheEntry m_PrimLODFracTextureEntry;
-    TxtrCacheEntry * GetPrimColorTexture(uint32 color);
-    TxtrCacheEntry * GetEnvColorTexture(uint32 color);
-    TxtrCacheEntry * GetLODFracTexture(uint8 fac);
-    TxtrCacheEntry * GetPrimLODFracTexture(uint8 fac);
+    TxtrCacheEntry * GetPrimColorTexture(uint32_t color);
+    TxtrCacheEntry * GetEnvColorTexture(uint32_t color);
+    TxtrCacheEntry * GetLODFracTexture(uint8_t fac);
+    TxtrCacheEntry * GetPrimLODFracTexture(uint8_t fac);
 
     void MakeTextureYoungest(TxtrCacheEntry *pEntry);
     unsigned int m_currentTextureMemUsage;
@@ -235,7 +235,7 @@ public:
     ~CTextureManager();
 
     TxtrCacheEntry * GetBlackTexture(void);
-    TxtrCacheEntry * GetConstantColorTexture(uint32 constant);
+    TxtrCacheEntry * GetConstantColorTexture(uint32_t constant);
     TxtrCacheEntry * GetTexture(TxtrInfo * pgti, bool fromTMEM, bool doCRCCheck, bool AutoExtendTexture);
     
     void PurgeOldTextures();
@@ -244,8 +244,8 @@ public:
     bool CleanUp();
     
 #ifdef DEBUGGER
-    TxtrCacheEntry * GetCachedTexture(uint32 tex);
-    uint32 GetNumOfCachedTexture();
+    TxtrCacheEntry * GetCachedTexture(uint32_t tex);
+    uint32_t GetNumOfCachedTexture();
 #endif
 };
 

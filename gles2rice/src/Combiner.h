@@ -34,13 +34,13 @@ class CColorCombiner
     friend class CRender;
 public:
     virtual ~CColorCombiner() {};
-    COLOR GetConstFactor(uint32 colorFlag, uint32 alphaFlag, uint32 defaultColor);
+    COLOR GetConstFactor(uint32_t colorFlag, uint32_t alphaFlag, uint32_t defaultColor);
     virtual void InitCombinerMode(void);
 
     virtual bool Initialize(void)=0;
     virtual void CleanUp(void) {};
-    virtual void UpdateCombiner(uint32 dwMux0, uint32 dwMux1);
-    virtual void InitCombinerBlenderForSimpleTextureDraw(uint32 tile)=0;
+    virtual void UpdateCombiner(uint32_t dwMux0, uint32_t dwMux1);
+    virtual void InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)=0;
     virtual void DisableCombiner(void)=0;
 
 #ifdef DEBUGGER
@@ -71,17 +71,17 @@ protected:
 
     CRender *m_pRender;
 
-    CSortedList<uint64, DecodedMux> m_DecodedMuxList;
+    CSortedList<uint64_t, DecodedMux> m_DecodedMuxList;
 };
 
-uint32 GetTexelNumber(N64CombinerType &m);
+uint32_t GetTexelNumber(N64CombinerType &m);
 int CountTexel1Cycle(N64CombinerType &m);
 bool IsTextureUsed(N64CombinerType &m);
 
-void swap(uint8 &a, uint8 &b);
+void swap(uint8_t &a, uint8_t &b);
 
 
-inline bool isEqual(uint8 val1, uint8 val2)
+inline bool isEqual(uint8_t val1, uint8_t val2)
 {
     if( (val1&MUX_MASK) == (val2&MUX_MASK) )
         return true;
@@ -89,7 +89,7 @@ inline bool isEqual(uint8 val1, uint8 val2)
         return false;
 }
 
-inline bool isTexel(uint8 val)
+inline bool isTexel(uint8_t val)
 {
     if( (val&MUX_MASK) == MUX_TEXEL0 || (val&MUX_MASK) == MUX_TEXEL1 )
         return true;
@@ -97,7 +97,7 @@ inline bool isTexel(uint8 val)
         return false;
 }
 
-COLOR CalculateConstFactor(uint32 colorOp, uint32 alphaOp, uint32 curCol);
+COLOR CalculateConstFactor(uint32_t colorOp, uint32_t alphaOp, uint32_t curCol);
 
 #endif
 

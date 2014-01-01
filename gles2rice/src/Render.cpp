@@ -18,6 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #define M64P_PLUGIN_PROTOTYPES 1
+#include <stdint.h>
 #include "osal_preproc.h"
 #include "m64p_plugin.h"
 
@@ -286,7 +287,7 @@ void CRender::SetWorldProjectMatrix(Matrix &mtx)
 #ifdef DEBUGGER
     if( pauseAtNext && (eventToPause == NEXT_TRIANGLE || eventToPause == NEXT_FLUSH_TRI || eventToPause == NEXT_MATRIX_CMD ) )
     {
-        uint32 dwPC = gDlistStack[gDlistStackPointer].pc-8;
+        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc-8;
         DebuggerAppendMsg("Force Matrix: pc=%08X", dwPC);
         DumpMatrix(mtx, "Force Matrix, loading new world-project matrix");
     }
@@ -297,9 +298,9 @@ void CRender::SetWorldProjectMatrix(Matrix &mtx)
     gRSP.bCombinedMatrixIsUpdated = true;
 }
 
-void CRender::SetMux(uint32 dwMux0, uint32 dwMux1)
+void CRender::SetMux(uint32_t dwMux0, uint32_t dwMux1)
 {
-    uint64 tempmux = (((uint64)dwMux0) << 32) | (uint64)dwMux1;
+    uint64_t tempmux = (((uint64_t)dwMux0) << 32) | (uint64_t)dwMux1;
     if( m_Mux != tempmux )
     {
         m_Mux = tempmux;
@@ -335,7 +336,7 @@ void CRender::RenderReset()
     gRSP.fTexScaleY = 1/32.0f;
 }
 
-bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
+bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
 {
     LOG_UCODE("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%8X", nX0, nY0, nX1, nY1, dwColor);
 
@@ -423,7 +424,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor)
 }
 
 
-bool CRender::Line3D(uint32 dwV0, uint32 dwV1, uint32 dwWidth)
+bool CRender::Line3D(uint32_t dwV0, uint32_t dwV1, uint32_t dwWidth)
 {
     LOG_UCODE("Line3D: Vtx0=%d, Vtx1=%d, Width=%d", dwV0, dwV1, dwWidth);
     if( !status.bCIBufferIsRendered )
@@ -497,7 +498,7 @@ bool CRender::Line3D(uint32 dwV0, uint32 dwV1, uint32 dwWidth)
 }
 
 bool CRender::RemapTextureCoordinate
-    (float t0, float t1, uint32 tileWidth, uint32 mask, float textureWidth, float &u0, float &u1)
+    (float t0, float t1, uint32_t tileWidth, uint32_t mask, float textureWidth, float &u0, float &u1)
 {
     int s0 = (int)t0;
     int s1 = (int)t1;
@@ -549,7 +550,7 @@ bool CRender::RemapTextureCoordinate
     }
 }
 
-bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, float fScaleS, float fScaleT, bool colorFlag, uint32 diffuseColor)
+bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, float fScaleS, float fScaleT, bool colorFlag, uint32_t diffuseColor)
 {
     if( options.enableHackForGames == HACK_FOR_DUKE_NUKEM )
     {
@@ -990,7 +991,7 @@ void CRender::StartDrawSimple2DTexture(float x0, float y0, float x1, float y1, f
     g_texRectTVtx[0].rhw = g_texRectTVtx[1].rhw = g_texRectTVtx[2].rhw = g_texRectTVtx[3].rhw = rhw;
 }
 
-void CRender::StartDrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor, float depth, float rhw)
+void CRender::StartDrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor, float depth, float rhw)
 {
     m_simpleRectVtx[0].x = ViewPortTranslatei_x(nX0);
     m_simpleRectVtx[1].x = ViewPortTranslatei_x(nX1);
@@ -998,11 +999,11 @@ void CRender::StartDrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32 dwC
     m_simpleRectVtx[1].y = ViewPortTranslatei_y(nY1);
 }
 
-void CRender::SetAddressUAllStages(uint32 dwTile, TextureUVFlag dwFlag)
+void CRender::SetAddressUAllStages(uint32_t dwTile, TextureUVFlag dwFlag)
 {
 }
 
-void CRender::SetAddressVAllStages(uint32 dwTile, TextureUVFlag dwFlag)
+void CRender::SetAddressVAllStages(uint32_t dwTile, TextureUVFlag dwFlag)
 {
 }
 
@@ -1018,7 +1019,7 @@ void CRender::SetAllTexelRepeatFlag()
 }
 
 
-void CRender::SetTexelRepeatFlags(uint32 dwTile)
+void CRender::SetTexelRepeatFlags(uint32_t dwTile)
 {
     Tile &tile = gRDP.tiles[dwTile];
 
@@ -1106,7 +1107,7 @@ void CRender::SetFogFlagForNegativeW()
 
     bool flag=gRSP.bFogEnabled;
     
-    for (uint32 i = 0; i < gRSP.numVertices; i++) 
+    for (uint32_t i = 0; i < gRSP.numVertices; i++) 
     {
         if( g_vtxBuffer[i].rhw < 0 )
             flag = false;
@@ -1264,7 +1265,7 @@ bool CRender::DrawTriangles()
 
         if( halfscaleS < 1 )
         {
-            for( uint32 i=0; i<gRSP.numVertices; i++ )
+            for( uint32_t i=0; i<gRSP.numVertices; i++ )
             {
                 if( t == 0 )
                 {
@@ -1293,7 +1294,7 @@ bool CRender::DrawTriangles()
         bool clampS=true;
         bool clampT=true;
 
-        for( uint32 i=0; i<gRSP.numVertices; i++ )
+        for( uint32_t i=0; i<gRSP.numVertices; i++ )
         {
             float w = CDeviceBuilder::GetGeneralDeviceType() == OGL_DEVICE ? g_vtxProjected5[i][3] : g_vtxBuffer[i].rhw; 
             if( w < 0 || g_vtxBuffer[i].tcord[t].u > 1.0 || g_vtxBuffer[i].tcord[t].u < 0.0  )
@@ -1303,7 +1304,7 @@ bool CRender::DrawTriangles()
             }
         }
 
-        for( uint32 i=0; i<gRSP.numVertices; i++ )
+        for( uint32_t i=0; i<gRSP.numVertices; i++ )
         {
             float w = CDeviceBuilder::GetGeneralDeviceType() == OGL_DEVICE ? g_vtxProjected5[i][3] : g_vtxBuffer[i].rhw; 
             if( w < 0 || g_vtxBuffer[i].tcord[t].v > 1.0 || g_vtxBuffer[i].tcord[t].v < 0.0  )
@@ -1358,7 +1359,7 @@ bool CRender::DrawTriangles()
     return res;
 }
 
-inline int ReverseCITableLookup(uint32 *pTable, int size, uint32 val)
+inline int ReverseCITableLookup(uint32_t *pTable, int size, uint32_t val)
 {
     for( int i=0; i<size; i++)
     {
@@ -1389,16 +1390,16 @@ bool SaveCITextureToFile(TxtrCacheEntry &entry, char *filename, bool bShow, bool
         return false;
     }
 
-    uint32 *pTable = NULL;
+    uint32_t *pTable = NULL;
     int tableSize;
-    uint16 * pPal = (uint16 *)entry.ti.PalAddress;
+    uint16_t * pPal = (uint16_t *)entry.ti.PalAddress;
 
     // Create the palette table
     if( entry.ti.Size == TXT_SIZE_4b )
     {
         // 4-bit table
         tableSize = 16;
-        pTable = new uint32[16];
+        pTable = new uint32_t[16];
 
         for( int i=0; i<16; i++ )
         {
@@ -1409,7 +1410,7 @@ bool SaveCITextureToFile(TxtrCacheEntry &entry, char *filename, bool bShow, bool
     {
         // 8-bit table
         tableSize = 256;
-        pTable = new uint32[256];
+        pTable = new uint32_t[256];
 
         for( int i=0; i<256; i++ )
         {
@@ -1433,7 +1434,7 @@ bool SaveCITextureToFile(TxtrCacheEntry &entry, char *filename, bool bShow, bool
         int idx = 0;
         for( int i=height-1; i>=0; i--)
         {
-            uint32 *pSrc = (uint32*)((unsigned char*)srcInfo.lpSurface+srcInfo.lPitch * i);
+            uint32_t *pSrc = (uint32_t*)((unsigned char*)srcInfo.lpSurface+srcInfo.lPitch * i);
             for( int j=0; j<width; j++)
             {
                 int val = ReverseCITableLookup(pTable, tableSize, *pSrc);
@@ -1542,10 +1543,10 @@ void CRender::SaveTextureToFile(CTexture &texture, char *filename, TextureChanne
         {
             if( channel == TXT_RGBA )
             {
-                uint32 *pbuf2 = (uint32*)pbuf;
+                uint32_t *pbuf2 = (uint32_t*)pbuf;
                 for( int i=height-1; i>=0; i--)
                 {
-                    uint32 *pSrc = (uint32*)((unsigned char*)srcInfo.lpSurface+srcInfo.lPitch * i);
+                    uint32_t *pSrc = (uint32_t*)((unsigned char*)srcInfo.lpSurface+srcInfo.lPitch * i);
                     for( int j=0; j<width; j++)
                     {
                         *pbuf2++ = *pSrc++;
@@ -1690,9 +1691,9 @@ void SetVertexTextureUVCoord(TexCord &dst, float s, float t, int tile, TxtrCache
     RenderTexture &txtr = g_textures[tile];
     RenderTextureInfo &info = gRenderTextureInfos[pEntry->txtrBufIdx-1];
 
-    uint32 addrOffset = g_TI.dwAddr-info.CI_Info.dwAddr;
-    uint32 extraTop = (addrOffset>>(info.CI_Info.dwSize-1)) /info.CI_Info.dwWidth;
-    uint32 extraLeft = (addrOffset>>(info.CI_Info.dwSize-1))%info.CI_Info.dwWidth;
+    uint32_t addrOffset = g_TI.dwAddr-info.CI_Info.dwAddr;
+    uint32_t extraTop = (addrOffset>>(info.CI_Info.dwSize-1)) /info.CI_Info.dwWidth;
+    uint32_t extraLeft = (addrOffset>>(info.CI_Info.dwSize-1))%info.CI_Info.dwWidth;
 
     if( pEntry->txtrBufIdx > 0  )
     {
@@ -1762,7 +1763,7 @@ void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T,
     }
 }
 
-void CRender::SetClipRatio(uint32 type, uint32 w1)
+void CRender::SetClipRatio(uint32_t type, uint32_t w1)
 {
     bool modified = false;
     switch(type)
@@ -1879,12 +1880,12 @@ void CRender::UpdateScissorWithClipRatio()
     gRSP.real_clip_scissor_bottom = std::min(gRSP.real_clip_scissor_bottom, windowSetting.uViHeight-1);
 
     WindowSettingStruct &w = windowSetting;
-    w.clipping.left = (uint32)(gRSP.real_clip_scissor_left*windowSetting.fMultX);
-    w.clipping.top  = (uint32)(gRSP.real_clip_scissor_top*windowSetting.fMultY);
-    w.clipping.bottom = (uint32)(gRSP.real_clip_scissor_bottom*windowSetting.fMultY);
-    w.clipping.right = (uint32)(gRSP.real_clip_scissor_right*windowSetting.fMultX);
-    if( w.clipping.left > 0 || w.clipping.top > 0 || w.clipping.right < (uint32)windowSetting.uDisplayWidth-1 ||
-        w.clipping.bottom < (uint32)windowSetting.uDisplayHeight-1 )
+    w.clipping.left = (uint32_t)(gRSP.real_clip_scissor_left*windowSetting.fMultX);
+    w.clipping.top  = (uint32_t)(gRSP.real_clip_scissor_top*windowSetting.fMultY);
+    w.clipping.bottom = (uint32_t)(gRSP.real_clip_scissor_bottom*windowSetting.fMultY);
+    w.clipping.right = (uint32_t)(gRSP.real_clip_scissor_right*windowSetting.fMultX);
+    if( w.clipping.left > 0 || w.clipping.top > 0 || w.clipping.right < (uint32_t)windowSetting.uDisplayWidth-1 ||
+        w.clipping.bottom < (uint32_t)windowSetting.uDisplayHeight-1 )
     {
         w.clipping.needToClip = true;
     }
@@ -1892,8 +1893,8 @@ void CRender::UpdateScissorWithClipRatio()
     {
         w.clipping.needToClip = false;
     }
-    w.clipping.width = (uint32)((gRSP.real_clip_scissor_right-gRSP.real_clip_scissor_left+1)*windowSetting.fMultX);
-    w.clipping.height = (uint32)((gRSP.real_clip_scissor_bottom-gRSP.real_clip_scissor_top+1)*windowSetting.fMultY);
+    w.clipping.width = (uint32_t)((gRSP.real_clip_scissor_right-gRSP.real_clip_scissor_left+1)*windowSetting.fMultX);
+    w.clipping.height = (uint32_t)((gRSP.real_clip_scissor_bottom-gRSP.real_clip_scissor_top+1)*windowSetting.fMultY);
 
     float halfx = gRSP.nVPWidthN/2.0f;
     float halfy = gRSP.nVPHeightN/2.0f;
@@ -1984,7 +1985,7 @@ void CRender::InitOtherModes(void)
 }
 
 
-void CRender::SetTextureFilter(uint32 dwFilter)
+void CRender::SetTextureFilter(uint32_t dwFilter)
 {
     if( options.forceTextureFilter == FORCE_DEFAULT_FILTER )
     {

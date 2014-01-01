@@ -193,7 +193,7 @@ void COGLFragmentShaderCombiner::InitCombinerCycleFill(void)
 {
     COGLColorCombiner::InitCombinerCycleFill();
 }
-void COGLFragmentShaderCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32 tile)
+void COGLFragmentShaderCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)
 {
     COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(tile);
 }
@@ -414,7 +414,7 @@ const char *muxToFP_Maps[][2] = {
 
 char oglNewFP[4092];
 
-char* MuxToOC(uint8 val)
+char* MuxToOC(uint8_t val)
 {
     // For color channel
     if( val&MUX_ALPHAREPLICATE )
@@ -423,13 +423,13 @@ char* MuxToOC(uint8 val)
         return (char*)muxToFP_Maps[val&0x1F][0];
 }
 
-char* MuxToOA(uint8 val)
+char* MuxToOA(uint8_t val)
 {
     // For alpha channel
     return (char*)muxToFP_Maps[val&0x1F][1];
 }
 
-static void CheckFpVars(uint8 MuxVar, bool &bNeedT0, bool &bNeedT1)
+static void CheckFpVars(uint8_t MuxVar, bool &bNeedT0, bool &bNeedT1)
 {
     MuxVar &= 0x1f;
     if (MuxVar == MUX_TEXEL0 || MuxVar == MUX_T0_ALPHA)
@@ -453,7 +453,7 @@ void COGL_FragmentProgramCombiner::GenerateProgramStr()
     {
         for( int channel=0; channel<2; channel++)
         {
-            char* (*func)(uint8) = channel==0?MuxToOC:MuxToOA;
+            char* (*func)(uint8_t) = channel==0?MuxToOC:MuxToOA;
             char *dst = channel==0?(char*)"rgb":(char*)"a";
             N64CombinerType &m = mux.m_n64Combiners[cycle*2+channel];
             switch( mux.splitType[cycle*2+channel] )
@@ -670,7 +670,7 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSetting(int index)
 
     glEnableVertexAttribArray(VS_COLOR);
     OPENGL_CHECK_ERRORS;
-    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8)*4, &(g_oglVtxColors[0][0]) );
+    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8_t)*4, &(g_oglVtxColors[0][0]) );
     OPENGL_CHECK_ERRORS;
 
     glEnableVertexAttribArray(VS_FOG);
@@ -739,7 +739,7 @@ int COGL_FragmentProgramCombiner::FindCompiledMux()
         debuggerDropCombiners = false;
     }
 #endif
-    for( uint32 i=0; i<m_vCompiledShaders.size(); i++ )
+    for( uint32_t i=0; i<m_vCompiledShaders.size(); i++ )
     {
         if( m_vCompiledShaders[i].dwMux0 == m_pDecodedMux->m_dwMux0 
             && m_vCompiledShaders[i].dwMux1 == m_pDecodedMux->m_dwMux1 

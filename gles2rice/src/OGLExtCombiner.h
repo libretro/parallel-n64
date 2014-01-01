@@ -30,11 +30,11 @@ typedef union
 {
     struct
     {
-        uint8   arg0;
-        uint8   arg1;
-        uint8   arg2;
+        uint8_t   arg0;
+        uint8_t   arg1;
+        uint8_t   arg2;
     };
-    uint8 args[3];
+    uint8_t args[3];
 } OGLExt1CombType;
 
 typedef struct
@@ -54,12 +54,12 @@ typedef struct
     {
         struct
         {
-            uint8   rgbArg0;
-            uint8   rgbArg1;
-            uint8   rgbArg2;
-            uint8   alphaArg0;
-            uint8   alphaArg1;
-            uint8   alphaArg2;
+            uint8_t   rgbArg0;
+            uint8_t   rgbArg1;
+            uint8_t   rgbArg2;
+            uint8_t   alphaArg0;
+            uint8_t   alphaArg1;
+            uint8_t   alphaArg2;
         };
 
         struct
@@ -126,11 +126,11 @@ typedef struct
 
 typedef struct
 {
-    uint32  dwMux0;
-    uint32  dwMux1;
+    uint32_t  dwMux0;
+    uint32_t  dwMux1;
     OGLExtCombinerType units[8];
     int     numOfUnits;
-    uint32  constantColor;
+    uint32_t  constantColor;
 
     // For 1.4 v2 combiner
     bool    primIsUsed;
@@ -161,8 +161,8 @@ protected:
     bool m_bSupportModSub_ATI;
     GLint m_maxTexUnits;
     int m_lastIndex;
-    uint32 m_dwLastMux0;
-    uint32 m_dwLastMux1;
+    uint32_t m_dwLastMux0;
+    uint32_t m_dwLastMux1;
 
 #ifdef DEBUGGER
     void DisplaySimpleMuxString(void);
@@ -170,8 +170,8 @@ protected:
 
 protected:
     virtual int SaveParsedResult(OGLExtCombinerSaveType &result);
-    static GLint MapRGBArgFlags(uint8 arg);
-    static GLint MapAlphaArgFlags(uint8 arg);
+    static GLint MapRGBArgFlags(uint8_t arg);
+    static GLint MapAlphaArgFlags(uint8_t arg);
     static const char* GetOpStr(GLenum op);
     static GLint RGBArgsMap4[];
     std::vector<OGLExtCombinerSaveType>  m_vCompiledSettings;
@@ -180,8 +180,8 @@ private:
     virtual int ParseDecodedMux2Units();
     virtual int FindCompiledMux();
 
-    virtual GLint MapRGBArgs(uint8 arg);
-    virtual GLint MapAlphaArgs(uint8 arg);
+    virtual GLint MapRGBArgs(uint8_t arg);
+    virtual GLint MapAlphaArgs(uint8_t arg);
 };
 
 
@@ -208,8 +208,8 @@ protected:
     static GLint RGBArgsMap4v2[];
 
 private:
-    virtual GLint MapRGBArgs(uint8 arg);
-    virtual GLint MapAlphaArgs(uint8 arg);
+    virtual GLint MapRGBArgs(uint8_t arg);
+    virtual GLint MapAlphaArgs(uint8_t arg);
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -234,8 +234,8 @@ private:
     virtual void GenerateCombinerSetting(int index);
     virtual void GenerateCombinerSettingConstants(int index);
 
-    virtual GLint MapRGBArgs(uint8 arg);
-    virtual GLint MapAlphaArgs(uint8 arg);
+    virtual GLint MapRGBArgs(uint8_t arg);
+    virtual GLint MapAlphaArgs(uint8_t arg);
     static GLint RGBArgsMap2[];
 };
 

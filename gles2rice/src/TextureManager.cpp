@@ -84,7 +84,7 @@ CTextureManager::CTextureManager() :
 
     m_pCacheTxtrList = new TxtrCacheEntry *[m_numOfCachedTxtrList];
 
-    for (uint32 i = 0; i < m_numOfCachedTxtrList; i++)
+    for (uint32_t i = 0; i < m_numOfCachedTxtrList; i++)
         m_pCacheTxtrList[i] = NULL;
 
     memset(&m_blackTextureEntry, 0, sizeof(TxtrCacheEntry));
@@ -155,10 +155,10 @@ void CTextureManager::PurgeOldTextures()
     if (g_bUseSetTextureMem)
         return;
 
-    static const uint32 dwFramesToKill = 5*30;          // 5 secs at 30 fps
-    static const uint32 dwFramesToDelete = 30*30;       // 30 secs at 30 fps
+    static const uint32_t dwFramesToKill = 5*30;          // 5 secs at 30 fps
+    static const uint32_t dwFramesToDelete = 30*30;       // 30 secs at 30 fps
     
-    for ( uint32 i = 0; i < m_numOfCachedTxtrList; i++ )
+    for ( uint32_t i = 0; i < m_numOfCachedTxtrList; i++ )
     {
         TxtrCacheEntry * pEntry;
         TxtrCacheEntry * pNext;
@@ -208,13 +208,13 @@ void CTextureManager::RecycleAllTextures()
     if (m_pCacheTxtrList == NULL)
         return;
     
-    uint32 dwCount = 0;
-    uint32 dwTotalUses = 0;
+    uint32_t dwCount = 0;
+    uint32_t dwTotalUses = 0;
     
     m_pYoungestTexture          = NULL;
     m_pOldestTexture            = NULL;
 
-    for (uint32 i = 0; i < m_numOfCachedTxtrList; i++)
+    for (uint32_t i = 0; i < m_numOfCachedTxtrList; i++)
     {
         while (m_pCacheTxtrList[i])
         {
@@ -236,7 +236,7 @@ void CTextureManager::RecheckHiresForAllTextures()
     if (m_pCacheTxtrList == NULL)
         return;
 
-    for (uint32 i = 0; i < m_numOfCachedTxtrList; i++)
+    for (uint32_t i = 0; i < m_numOfCachedTxtrList; i++)
     {
         while (m_pCacheTxtrList[i])
         {
@@ -278,7 +278,7 @@ void CTextureManager::RecycleTexture(TxtrCacheEntry *pEntry)
 }
 
 // Search for a texture of the specified dimensions to recycle
-TxtrCacheEntry * CTextureManager::ReviveTexture( uint32 width, uint32 height )
+TxtrCacheEntry * CTextureManager::ReviveTexture( uint32_t width, uint32_t height )
 {
     if (g_bUseSetTextureMem)
         return NULL;
@@ -306,7 +306,7 @@ TxtrCacheEntry * CTextureManager::ReviveTexture( uint32 width, uint32 height )
 }
 
 
-uint32 CTextureManager::Hash(uint32 dwValue)
+uint32_t CTextureManager::Hash(uint32_t dwValue)
 {
     // Divide by four, because most textures will be on a 4 byte boundry, so bottom four
     // bits are null
@@ -360,7 +360,7 @@ void CTextureManager::MakeTextureYoungest(TxtrCacheEntry *pEntry)
 
 void CTextureManager::AddTexture(TxtrCacheEntry *pEntry)
 {   
-    uint32 dwKey = Hash(pEntry->ti.Address);
+    uint32_t dwKey = Hash(pEntry->ti.Address);
     
     if (m_pCacheTxtrList == NULL)
         return;
@@ -385,7 +385,7 @@ TxtrCacheEntry * CTextureManager::GetTxtrCacheEntry(TxtrInfo * pti)
         return NULL;
     
     // See if it is already in the hash table
-    uint32 dwKey = Hash(pti->Address);
+    uint32_t dwKey = Hash(pti->Address);
 
     for (pEntry = m_pCacheTxtrList[dwKey]; pEntry; pEntry = pEntry->pNext)
     {
@@ -407,7 +407,7 @@ void CTextureManager::RemoveTexture(TxtrCacheEntry * pEntry)
         return;
 
     // See if it is already in the hash table
-    uint32 dwKey = Hash(pEntry->ti.Address);
+    uint32_t dwKey = Hash(pEntry->ti.Address);
 
     TxtrCacheEntry* pPrev = NULL;
     TxtrCacheEntry* pCurr = m_pCacheTxtrList[dwKey];
@@ -452,14 +452,14 @@ void CTextureManager::RemoveTexture(TxtrCacheEntry * pEntry)
     }
 }
     
-TxtrCacheEntry * CTextureManager::CreateNewCacheEntry(uint32 dwAddr, uint32 dwWidth, uint32 dwHeight)
+TxtrCacheEntry * CTextureManager::CreateNewCacheEntry(uint32_t dwAddr, uint32_t dwWidth, uint32_t dwHeight)
 {
     TxtrCacheEntry * pEntry = NULL;
 
     if (g_bUseSetTextureMem)
     {
-        uint32 widthToCreate = dwWidth;
-        uint32 heightToCreate = dwHeight;
+        uint32_t widthToCreate = dwWidth;
+        uint32_t heightToCreate = dwHeight;
         unsigned int freeUpSize = (widthToCreate * heightToCreate * 4) + g_amountToFree;
 
         // make sure there is enough room for the new texture by deleting old textures
@@ -526,12 +526,12 @@ TxtrCacheEntry * CTextureManager::CreateNewCacheEntry(uint32 dwAddr, uint32 dwWi
 
 // If already in table, return
 // Otherwise, create surfaces, and load texture into memory
-uint32 dwAsmHeight;
-uint32 dwAsmPitch;
-uint32 dwAsmdwBytesPerLine;
-uint32 dwAsmCRC;
-uint32 dwAsmCRC2;
-uint8* pAsmStart;
+uint32_t dwAsmHeight;
+uint32_t dwAsmPitch;
+uint32_t dwAsmdwBytesPerLine;
+uint32_t dwAsmCRC;
+uint32_t dwAsmCRC2;
+uint8_t* pAsmStart;
 
 TxtrCacheEntry *g_lastTextureEntry=NULL;
 bool lastEntryModified = false;
@@ -547,7 +547,7 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
     gRDP.texturesAreReloaded = true;
 
     dwAsmCRC = 0;
-    uint32 dwPalCRC = 0;
+    uint32_t dwPalCRC = 0;
 
     pEntry = GetTxtrCacheEntry(pgti);
     bool loadFromTextureBuffer=false;
@@ -612,7 +612,7 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
     if ( doCRCCheck && (pgti->Format == TXT_FMT_CI || (pgti->Format == TXT_FMT_RGBA && pgti->Size <= TXT_SIZE_8b )))
     {
         //maxCI = pgti->Size == TXT_SIZE_8b ? 255 : 15;
-        extern unsigned char CalculateMaxCI(void *pPhysicalAddress, uint32 left, uint32 top, uint32 width, uint32 height, uint32 size, uint32 pitchInBytes );
+        extern unsigned char CalculateMaxCI(void *pPhysicalAddress, uint32_t left, uint32_t top, uint32_t width, uint32_t height, uint32_t size, uint32_t pitchInBytes );
 
         if( !pEntry || pEntry->dwCRC != dwAsmCRC || pEntry->maxCI < 0 )
         {
@@ -624,9 +624,9 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
         }
 
         //Check PAL CRC
-        uint8 * pStart;
-        uint32 dwPalSize = 16;
-        uint32 dwOffset;
+        uint8_t * pStart;
+        uint32_t dwPalSize = 16;
+        uint32_t dwOffset;
 
         if( pgti->Size == TXT_SIZE_8b )
         {
@@ -638,14 +638,14 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
             dwOffset = pgti->Palette << 4;
         }
 
-        pStart = (uint8*)pgti->PalAddress+dwOffset*2;
-        //uint32 y;
+        pStart = (uint8_t*)pgti->PalAddress+dwOffset*2;
+        //uint32_t y;
         //for (y = 0; y < dwPalSize*2; y+=4)
         //{
-        //  dwPalCRC = (dwPalCRC + *(uint32*)&pStart[y]);
+        //  dwPalCRC = (dwPalCRC + *(uint32_t*)&pStart[y]);
         //}
 
-        uint32 dwAsmCRCSave = dwAsmCRC;
+        uint32_t dwAsmCRCSave = dwAsmCRC;
         //dwPalCRC = CalculateRDRAMCRC(pStart, 0, 0, dwPalSize, 1, TXT_SIZE_16b, dwPalSize*2);
         dwPalCRC = CalculateRDRAMCRC(pStart, 0, 0, maxCI+1, 1, TXT_SIZE_16b, dwPalSize*2);
         dwAsmCRC = dwAsmCRCSave;
@@ -791,10 +791,10 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
 
 
 const char *pszImgFormat[8] = {"RGBA", "YUV", "CI", "IA", "I", "?1", "?2", "?3"};
-uint8 pnImgSize[4]   = {4, 8, 16, 32};
+uint8_t pnImgSize[4]   = {4, 8, 16, 32};
 const char *textlutname[4] = {"RGB16", "I16?", "RGBA16", "IA16"};
 
-extern uint16 g_wRDPTlut[];
+extern uint16_t g_wRDPTlut[];
 extern ConvertFunction  gConvertFunctions_FullTMEM[ 8 ][ 4 ];
 extern ConvertFunction  gConvertFunctions[ 8 ][ 4 ];
 extern ConvertFunction  gConvertTlutFunctions[ 8 ][ 4 ];
@@ -803,7 +803,7 @@ extern ConvertFunction  gConvertFunctions_16_FullTMEM[ 8 ][ 4 ];
 extern ConvertFunction  gConvertTlutFunctions_16[ 8 ][ 4 ];
 void CTextureManager::ConvertTexture(TxtrCacheEntry * pEntry, bool fromTMEM)
 {
-    static uint32 dwCount = 0;
+    static uint32_t dwCount = 0;
     
     ConvertFunction pF;
     if( options.bUseFullTMEM && fromTMEM && status.bAllowLoadFromTMEM )
@@ -849,7 +849,7 @@ void CTextureManager::ConvertTexture(TxtrCacheEntry * pEntry, bool fromTMEM)
 
 void CTextureManager::ConvertTexture_16(TxtrCacheEntry * pEntry, bool fromTMEM)
 {
-    static uint32 dwCount = 0;
+    static uint32_t dwCount = 0;
     
     ConvertFunction pF;
 
@@ -880,13 +880,13 @@ void CTextureManager::ConvertTexture_16(TxtrCacheEntry * pEntry, bool fromTMEM)
     dwCount++;
 }
 
-void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32 sizeToLoad, uint32 sizeToCreate, uint32 sizeCreated,
-    int arrayWidth, int flag, int mask, int mirror, int clamp, uint32 otherSize)
+void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32_t sizeToLoad, uint32_t sizeToCreate, uint32_t sizeCreated,
+    int arrayWidth, int flag, int mask, int mirror, int clamp, uint32_t otherSize)
 {
     if( sizeToLoad >= sizeCreated )
         return;
 
-    uint32 maskWidth = (1<<mask);
+    uint32_t maskWidth = (1<<mask);
     int size = pEntry->pTexture->GetPixelSize();
 
 #ifdef DEBUGGER
@@ -933,7 +933,7 @@ void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32 sizeToLoad, 
 
     if( sizeToLoad == maskWidth )
     {
-        uint32 tempwidth = clamp ? sizeToCreate : sizeCreated;
+        uint32_t tempwidth = clamp ? sizeToCreate : sizeCreated;
         if( mirror )
         {
             Mirror(di.lpSurface, sizeToLoad, mask, tempwidth,
@@ -994,7 +994,7 @@ void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32 sizeToLoad, 
 void CTextureManager::ExpandTextureS(TxtrCacheEntry * pEntry)
 {
     TxtrInfo &ti =  pEntry->ti;
-    uint32 textureWidth = pEntry->pTexture->m_dwCreatedTextureWidth;
+    uint32_t textureWidth = pEntry->pTexture->m_dwCreatedTextureWidth;
     ExpandTexture(pEntry, ti.WidthToLoad, ti.WidthToCreate, textureWidth, 
         textureWidth, S_FLAG, ti.maskS, ti.mirrorS, ti.clampS, ti.HeightToLoad);
 }
@@ -1002,269 +1002,269 @@ void CTextureManager::ExpandTextureS(TxtrCacheEntry * pEntry)
 void CTextureManager::ExpandTextureT(TxtrCacheEntry * pEntry)
 {
     TxtrInfo &ti =  pEntry->ti;
-    uint32 textureHeight = pEntry->pTexture->m_dwCreatedTextureHeight;
-    uint32 textureWidth = pEntry->pTexture->m_dwCreatedTextureWidth;
+    uint32_t textureHeight = pEntry->pTexture->m_dwCreatedTextureHeight;
+    uint32_t textureWidth = pEntry->pTexture->m_dwCreatedTextureWidth;
     ExpandTexture(pEntry, ti.HeightToLoad, ti.HeightToCreate, textureHeight,
         textureWidth, T_FLAG, ti.maskT, ti.mirrorT, ti.clampT, ti.WidthToLoad);
 }
 
 
-void CTextureManager::ClampS32(uint32 *array, uint32 width, uint32 towidth, uint32 arrayWidth, uint32 rows)
+void CTextureManager::ClampS32(uint32_t *array, uint32_t width, uint32_t towidth, uint32_t arrayWidth, uint32_t rows)
 {
     if ((int) width <= 0 || (int) towidth < 0)
         return;
 
-    for( uint32 y = 0; y<rows; y++ )
+    for( uint32_t y = 0; y<rows; y++ )
     {
-        uint32* line = array+y*arrayWidth;
-        uint32 val = line[width-1];
-        for( uint32 x=width; x<towidth; x++ )
+        uint32_t* line = array+y*arrayWidth;
+        uint32_t val = line[width-1];
+        for( uint32_t x=width; x<towidth; x++ )
         {
             line[x] = val;
         }
     }
 }
 
-void CTextureManager::ClampS16(uint16 *array, uint32 width, uint32 towidth, uint32 arrayWidth, uint32 rows)
+void CTextureManager::ClampS16(uint16_t *array, uint32_t width, uint32_t towidth, uint32_t arrayWidth, uint32_t rows)
 {
     if ((int) width <= 0 || (int) towidth < 0)
         return;
 
-    for( uint32 y = 0; y<rows; y++ )
+    for( uint32_t y = 0; y<rows; y++ )
     {
-        uint16* line = array+y*arrayWidth;
-        uint16 val = line[width-1];
-        for( uint32 x=width; x<towidth; x++ )
+        uint16_t* line = array+y*arrayWidth;
+        uint16_t val = line[width-1];
+        for( uint32_t x=width; x<towidth; x++ )
         {
             line[x] = val;
         }
     }
 }
 
-void CTextureManager::ClampT32(uint32 *array, uint32 height, uint32 toheight, uint32 arrayWidth, uint32 cols)
+void CTextureManager::ClampT32(uint32_t *array, uint32_t height, uint32_t toheight, uint32_t arrayWidth, uint32_t cols)
 {
     if ((int) height <= 0 || (int) toheight < 0)
         return;
 
-    uint32* linesrc = array+arrayWidth*(height-1);
-    for( uint32 y = height; y<toheight; y++ )
+    uint32_t* linesrc = array+arrayWidth*(height-1);
+    for( uint32_t y = height; y<toheight; y++ )
     {
-        uint32* linedst = array+arrayWidth*y;
-        for( uint32 x=0; x<arrayWidth; x++ )
+        uint32_t* linedst = array+arrayWidth*y;
+        for( uint32_t x=0; x<arrayWidth; x++ )
         {
             linedst[x] = linesrc[x];
         }
     }
 }
 
-void CTextureManager::ClampT16(uint16 *array, uint32 height, uint32 toheight, uint32 arrayWidth, uint32 cols)
+void CTextureManager::ClampT16(uint16_t *array, uint32_t height, uint32_t toheight, uint32_t arrayWidth, uint32_t cols)
 {
     if ((int) height <= 0 || (int) toheight < 0)
         return;
 
-    uint16* linesrc = array+arrayWidth*(height-1);
-    for( uint32 y = height; y<toheight; y++ )
+    uint16_t* linesrc = array+arrayWidth*(height-1);
+    for( uint32_t y = height; y<toheight; y++ )
     {
-        uint16* linedst = array+arrayWidth*y;
-        for( uint32 x=0; x<arrayWidth; x++ )
+        uint16_t* linedst = array+arrayWidth*y;
+        for( uint32_t x=0; x<arrayWidth; x++ )
         {
             linedst[x] = linesrc[x];
         }
     }
 }
 
-void CTextureManager::MirrorS32(uint32 *array, uint32 width, uint32 mask, uint32 towidth, uint32 arrayWidth, uint32 rows)
+void CTextureManager::MirrorS32(uint32_t *array, uint32_t width, uint32_t mask, uint32_t towidth, uint32_t arrayWidth, uint32_t rows)
 {
-    uint32 maskval1 = (1<<mask)-1;
-    uint32 maskval2 = (1<<(mask+1))-1;
+    uint32_t maskval1 = (1<<mask)-1;
+    uint32_t maskval2 = (1<<(mask+1))-1;
 
-    for( uint32 y = 0; y<rows; y++ )
+    for( uint32_t y = 0; y<rows; y++ )
     {
-        uint32* line = array+y*arrayWidth;
-        for( uint32 x=width; x<towidth; x++ )
+        uint32_t* line = array+y*arrayWidth;
+        for( uint32_t x=width; x<towidth; x++ )
         {
             line[x] = (x&maskval2)<=maskval1 ? line[x&maskval1] : line[maskval2-(x&maskval2)];
         }
     }
 }
 
-void CTextureManager::MirrorS16(uint16 *array, uint32 width, uint32 mask, uint32 towidth, uint32 arrayWidth, uint32 rows)
+void CTextureManager::MirrorS16(uint16_t *array, uint32_t width, uint32_t mask, uint32_t towidth, uint32_t arrayWidth, uint32_t rows)
 {
-    uint32 maskval1 = (1<<mask)-1;
-    uint32 maskval2 = (1<<(mask+1))-1;
+    uint32_t maskval1 = (1<<mask)-1;
+    uint32_t maskval2 = (1<<(mask+1))-1;
 
-    for( uint32 y = 0; y<rows; y++ )
+    for( uint32_t y = 0; y<rows; y++ )
     {
-        uint16* line = array+y*arrayWidth;
-        for( uint32 x=width; x<towidth; x++ )
+        uint16_t* line = array+y*arrayWidth;
+        for( uint32_t x=width; x<towidth; x++ )
         {
             line[x] = (x&maskval2)<=maskval1 ? line[x&maskval1] : line[maskval2-(x&maskval2)];
         }
     }
 }
 
-void CTextureManager::MirrorT32(uint32 *array, uint32 height, uint32 mask, uint32 toheight, uint32 arrayWidth, uint32 cols)
+void CTextureManager::MirrorT32(uint32_t *array, uint32_t height, uint32_t mask, uint32_t toheight, uint32_t arrayWidth, uint32_t cols)
 {
-    uint32 maskval1 = (1<<mask)-1;
-    uint32 maskval2 = (1<<(mask+1))-1;
+    uint32_t maskval1 = (1<<mask)-1;
+    uint32_t maskval2 = (1<<(mask+1))-1;
 
-    for( uint32 y = height; y<toheight; y++ )
+    for( uint32_t y = height; y<toheight; y++ )
     {
-        uint32 srcy = (y&maskval2)<=maskval1 ? y&maskval1 : maskval2-(y&maskval2);
-        uint32* linesrc = array+arrayWidth*srcy;
-        uint32* linedst = array+arrayWidth*y;;
-        for( uint32 x=0; x<arrayWidth; x++ )
+        uint32_t srcy = (y&maskval2)<=maskval1 ? y&maskval1 : maskval2-(y&maskval2);
+        uint32_t* linesrc = array+arrayWidth*srcy;
+        uint32_t* linedst = array+arrayWidth*y;;
+        for( uint32_t x=0; x<arrayWidth; x++ )
         {
             linedst[x] = linesrc[x];
         }
     }
 }
 
-void CTextureManager::MirrorT16(uint16 *array, uint32 height, uint32 mask, uint32 toheight, uint32 arrayWidth, uint32 cols)
+void CTextureManager::MirrorT16(uint16_t *array, uint32_t height, uint32_t mask, uint32_t toheight, uint32_t arrayWidth, uint32_t cols)
 {
-    uint32 maskval1 = (1<<mask)-1;
-    uint32 maskval2 = (1<<(mask+1))-1;
+    uint32_t maskval1 = (1<<mask)-1;
+    uint32_t maskval2 = (1<<(mask+1))-1;
 
-    for( uint32 y = height; y<toheight; y++ )
+    for( uint32_t y = height; y<toheight; y++ )
     {
-        uint32 srcy = (y&maskval2)<=maskval1 ? y&maskval1 : maskval2-(y&maskval2);
-        uint16* linesrc = array+arrayWidth*srcy;
-        uint16* linedst = array+arrayWidth*y;;
-        for( uint32 x=0; x<arrayWidth; x++ )
+        uint32_t srcy = (y&maskval2)<=maskval1 ? y&maskval1 : maskval2-(y&maskval2);
+        uint16_t* linesrc = array+arrayWidth*srcy;
+        uint16_t* linedst = array+arrayWidth*y;;
+        for( uint32_t x=0; x<arrayWidth; x++ )
         {
             linedst[x] = linesrc[x];
         }
     }
 }
 
-void CTextureManager::WrapS32(uint32 *array, uint32 width, uint32 mask, uint32 towidth, uint32 arrayWidth, uint32 rows)
+void CTextureManager::WrapS32(uint32_t *array, uint32_t width, uint32_t mask, uint32_t towidth, uint32_t arrayWidth, uint32_t rows)
 {
-    uint32 maskval = (1<<mask)-1;
+    uint32_t maskval = (1<<mask)-1;
 
-    for( uint32 y = 0; y<rows; y++ )
+    for( uint32_t y = 0; y<rows; y++ )
     {
-        uint32* line = array+y*arrayWidth;
-        for( uint32 x=width; x<towidth; x++ )
+        uint32_t* line = array+y*arrayWidth;
+        for( uint32_t x=width; x<towidth; x++ )
         {
             line[x] = line[(x&maskval)<width?(x&maskval):towidth-(x&maskval)];
         }
     }
 }
 
-void CTextureManager::WrapS16(uint16 *array, uint32 width, uint32 mask, uint32 towidth, uint32 arrayWidth, uint32 rows)
+void CTextureManager::WrapS16(uint16_t *array, uint32_t width, uint32_t mask, uint32_t towidth, uint32_t arrayWidth, uint32_t rows)
 {
-    uint32 maskval = (1<<mask)-1;
+    uint32_t maskval = (1<<mask)-1;
 
-    for( uint32 y = 0; y<rows; y++ )
+    for( uint32_t y = 0; y<rows; y++ )
     {
-        uint16* line = array+y*arrayWidth;
-        for( uint32 x=width; x<towidth; x++ )
+        uint16_t* line = array+y*arrayWidth;
+        for( uint32_t x=width; x<towidth; x++ )
         {
             line[x] = line[(x&maskval)<width?(x&maskval):towidth-(x&maskval)];
         }
     }
 }
 
-void CTextureManager::WrapT32(uint32 *array, uint32 height, uint32 mask, uint32 toheight, uint32 arrayWidth, uint32 cols)
+void CTextureManager::WrapT32(uint32_t *array, uint32_t height, uint32_t mask, uint32_t toheight, uint32_t arrayWidth, uint32_t cols)
 {
-    uint32 maskval = (1<<mask)-1;
-    for( uint32 y = height; y<toheight; y++ )
+    uint32_t maskval = (1<<mask)-1;
+    for( uint32_t y = height; y<toheight; y++ )
     {
-        uint32* linesrc = array+arrayWidth*(y>maskval?y&maskval:y-height);
-        uint32* linedst = array+arrayWidth*y;;
-        for( uint32 x=0; x<arrayWidth; x++ )
+        uint32_t* linesrc = array+arrayWidth*(y>maskval?y&maskval:y-height);
+        uint32_t* linedst = array+arrayWidth*y;;
+        for( uint32_t x=0; x<arrayWidth; x++ )
         {
             linedst[x] = linesrc[x];
         }
     }
 }
 
-void CTextureManager::WrapT16(uint16 *array, uint32 height, uint32 mask, uint32 toheight, uint32 arrayWidth, uint32 cols)
+void CTextureManager::WrapT16(uint16_t *array, uint32_t height, uint32_t mask, uint32_t toheight, uint32_t arrayWidth, uint32_t cols)
 {
-    uint32 maskval = (1<<mask)-1;
-    for( uint32 y = height; y<toheight; y++ )
+    uint32_t maskval = (1<<mask)-1;
+    for( uint32_t y = height; y<toheight; y++ )
     {
-        uint16* linesrc = array+arrayWidth*(y>maskval?y&maskval:y-height);
-        uint16* linedst = array+arrayWidth*y;;
-        for( uint32 x=0; x<arrayWidth; x++ )
+        uint16_t* linesrc = array+arrayWidth*(y>maskval?y&maskval:y-height);
+        uint16_t* linedst = array+arrayWidth*y;;
+        for( uint32_t x=0; x<arrayWidth; x++ )
         {
             linedst[x] = linesrc[x];
         }
     }
 }
 
-void CTextureManager::Clamp(void *array, uint32 width, uint32 towidth, uint32 arrayWidth, uint32 rows, int flag, int size )
+void CTextureManager::Clamp(void *array, uint32_t width, uint32_t towidth, uint32_t arrayWidth, uint32_t rows, int flag, int size )
 {
     if( flag == S_FLAG )    // s
     {
         if( size == 4 ) // 32 bit
         {
-            ClampS32((uint32*)array, width, towidth, arrayWidth, rows);
+            ClampS32((uint32_t*)array, width, towidth, arrayWidth, rows);
         }
         else    // 16 bits
         {
-            ClampS16((uint16*)array, width, towidth, arrayWidth, rows);
+            ClampS16((uint16_t*)array, width, towidth, arrayWidth, rows);
         }
     }
     else    // t
     {
         if( size == 4 ) // 32 bit
         {
-            ClampT32((uint32*)array, width, towidth, arrayWidth, rows);
+            ClampT32((uint32_t*)array, width, towidth, arrayWidth, rows);
         }
         else    // 16 bits
         {
-            ClampT16((uint16*)array, width, towidth, arrayWidth, rows);
+            ClampT16((uint16_t*)array, width, towidth, arrayWidth, rows);
         }
     }
 }
-void CTextureManager::Wrap(void *array, uint32 width, uint32 mask, uint32 towidth, uint32 arrayWidth, uint32 rows, int flag, int size )
+void CTextureManager::Wrap(void *array, uint32_t width, uint32_t mask, uint32_t towidth, uint32_t arrayWidth, uint32_t rows, int flag, int size )
 {
     if( flag == S_FLAG )    // s
     {
         if( size == 4 ) // 32 bit
         {
-            WrapS32((uint32*)array, width, mask, towidth, arrayWidth, rows);
+            WrapS32((uint32_t*)array, width, mask, towidth, arrayWidth, rows);
         }
         else    // 16 bits
         {
-            WrapS16((uint16*)array, width, mask, towidth, arrayWidth, rows);
+            WrapS16((uint16_t*)array, width, mask, towidth, arrayWidth, rows);
         }
     }
     else    // t
     {
         if( size == 4 ) // 32 bit
         {
-            WrapT32((uint32*)array, width, mask, towidth, arrayWidth, rows);
+            WrapT32((uint32_t*)array, width, mask, towidth, arrayWidth, rows);
         }
         else    // 16 bits
         {
-            WrapT16((uint16*)array, width, mask, towidth, arrayWidth, rows);
+            WrapT16((uint16_t*)array, width, mask, towidth, arrayWidth, rows);
         }
     }
 }
-void CTextureManager::Mirror(void *array, uint32 width, uint32 mask, uint32 towidth, uint32 arrayWidth, uint32 rows, int flag, int size )
+void CTextureManager::Mirror(void *array, uint32_t width, uint32_t mask, uint32_t towidth, uint32_t arrayWidth, uint32_t rows, int flag, int size )
 {
     if( flag == S_FLAG )    // s
     {
         if( size == 4 ) // 32 bit
         {
-            MirrorS32((uint32*)array, width, mask, towidth, arrayWidth, rows);
+            MirrorS32((uint32_t*)array, width, mask, towidth, arrayWidth, rows);
         }
         else    // 16 bits
         {
-            MirrorS16((uint16*)array, width, mask, towidth, arrayWidth, rows);
+            MirrorS16((uint16_t*)array, width, mask, towidth, arrayWidth, rows);
         }
     }
     else    // t
     {
         if( size == 4 ) // 32 bit
         {
-            MirrorT32((uint32*)array, width, mask, towidth, arrayWidth, rows);
+            MirrorT32((uint32_t*)array, width, mask, towidth, arrayWidth, rows);
         }
         else    // 16 bits
         {
-            MirrorT16((uint16*)array, width, mask, towidth, arrayWidth, rows);
+            MirrorT16((uint16_t*)array, width, mask, towidth, arrayWidth, rows);
         }
     }
 
@@ -1272,10 +1272,10 @@ void CTextureManager::Mirror(void *array, uint32 width, uint32 mask, uint32 towi
 
 
 #ifdef DEBUGGER
-TxtrCacheEntry * CTextureManager::GetCachedTexture(uint32 tex)
+TxtrCacheEntry * CTextureManager::GetCachedTexture(uint32_t tex)
 {
-    uint32 size = 0;
-    for( uint32 i=0; i<m_numOfCachedTxtrList; i++ )
+    uint32_t size = 0;
+    for( uint32_t i=0; i<m_numOfCachedTxtrList; i++ )
     {
         if( m_pCacheTxtrList[i] == NULL )
             continue;
@@ -1294,10 +1294,10 @@ TxtrCacheEntry * CTextureManager::GetCachedTexture(uint32 tex)
     }
     return NULL;
 }
-uint32 CTextureManager::GetNumOfCachedTexture()
+uint32_t CTextureManager::GetNumOfCachedTexture()
 {
-    uint32 size = 0;
-    for( uint32 i=0; i<m_numOfCachedTxtrList; i++ )
+    uint32_t size = 0;
+    for( uint32_t i=0; i<m_numOfCachedTxtrList; i++ )
     {
         if( m_pCacheTxtrList[i] == NULL )
             continue;
@@ -1328,9 +1328,9 @@ TxtrCacheEntry * CTextureManager::GetBlackTexture(void)
     }
     return &m_blackTextureEntry;
 }
-TxtrCacheEntry * CTextureManager::GetPrimColorTexture(uint32 color)
+TxtrCacheEntry * CTextureManager::GetPrimColorTexture(uint32_t color)
 {
-    static uint32 mcolor = 0;
+    static uint32_t mcolor = 0;
     if( m_PrimColorTextureEntry.pTexture == NULL )
     {
         m_PrimColorTextureEntry.pTexture = CDeviceBuilder::GetBuilder()->CreateTexture(4, 4);
@@ -1348,9 +1348,9 @@ TxtrCacheEntry * CTextureManager::GetPrimColorTexture(uint32 color)
     mcolor = color;
     return &m_PrimColorTextureEntry;
 }
-TxtrCacheEntry * CTextureManager::GetEnvColorTexture(uint32 color)
+TxtrCacheEntry * CTextureManager::GetEnvColorTexture(uint32_t color)
 {
-    static uint32 mcolor = 0;
+    static uint32_t mcolor = 0;
     if( m_EnvColorTextureEntry.pTexture == NULL )
     {
         m_EnvColorTextureEntry.pTexture = CDeviceBuilder::GetBuilder()->CreateTexture(4, 4);
@@ -1369,16 +1369,16 @@ TxtrCacheEntry * CTextureManager::GetEnvColorTexture(uint32 color)
     mcolor = color;
     return &m_EnvColorTextureEntry;
 }
-TxtrCacheEntry * CTextureManager::GetLODFracTexture(uint8 fac)
+TxtrCacheEntry * CTextureManager::GetLODFracTexture(uint8_t fac)
 {
-    static uint8 mfac = 0;
+    static uint8_t mfac = 0;
     if( m_LODFracTextureEntry.pTexture == NULL )
     {
         m_LODFracTextureEntry.pTexture = CDeviceBuilder::GetBuilder()->CreateTexture(4, 4);
         m_LODFracTextureEntry.ti.WidthToCreate = 4;
         m_LODFracTextureEntry.ti.HeightToCreate = 4;
-        uint32 factor = fac;
-        uint32 color = fac;
+        uint32_t factor = fac;
+        uint32_t color = fac;
         color |= factor << 8;
         color |= color << 16;
         updateColorTexture(m_LODFracTextureEntry.pTexture,color);
@@ -1386,8 +1386,8 @@ TxtrCacheEntry * CTextureManager::GetLODFracTexture(uint8 fac)
     }
     else if( mfac != fac )
     {
-        uint32 factor = fac;
-        uint32 color = fac;
+        uint32_t factor = fac;
+        uint32_t color = fac;
         color |= factor << 8;
         color |= color << 16;
         updateColorTexture(m_LODFracTextureEntry.pTexture,color);
@@ -1398,16 +1398,16 @@ TxtrCacheEntry * CTextureManager::GetLODFracTexture(uint8 fac)
     return &m_LODFracTextureEntry;
 }
 
-TxtrCacheEntry * CTextureManager::GetPrimLODFracTexture(uint8 fac)
+TxtrCacheEntry * CTextureManager::GetPrimLODFracTexture(uint8_t fac)
 {
-    static uint8 mfac = 0;
+    static uint8_t mfac = 0;
     if( m_PrimLODFracTextureEntry.pTexture == NULL )
     {
         m_PrimLODFracTextureEntry.pTexture = CDeviceBuilder::GetBuilder()->CreateTexture(4, 4);
         m_PrimLODFracTextureEntry.ti.WidthToCreate = 4;
         m_PrimLODFracTextureEntry.ti.HeightToCreate = 4;
-        uint32 factor = fac;
-        uint32 color = fac;
+        uint32_t factor = fac;
+        uint32_t color = fac;
         color |= factor << 8;
         color |= color << 16;
         updateColorTexture(m_PrimLODFracTextureEntry.pTexture,color);
@@ -1415,8 +1415,8 @@ TxtrCacheEntry * CTextureManager::GetPrimLODFracTexture(uint8 fac)
     }
     else if( mfac != fac )
     {
-        uint32 factor = fac;
-        uint32 color = fac;
+        uint32_t factor = fac;
+        uint32_t color = fac;
         color |= factor << 8;
         color |= color << 16;
         updateColorTexture(m_PrimLODFracTextureEntry.pTexture,color);
@@ -1427,7 +1427,7 @@ TxtrCacheEntry * CTextureManager::GetPrimLODFracTexture(uint8 fac)
     return &m_PrimLODFracTextureEntry;
 }
 
-TxtrCacheEntry * CTextureManager::GetConstantColorTexture(uint32 constant)
+TxtrCacheEntry * CTextureManager::GetConstantColorTexture(uint32_t constant)
 {
     switch( constant )
     {
@@ -1438,15 +1438,15 @@ TxtrCacheEntry * CTextureManager::GetConstantColorTexture(uint32 constant)
         return GetEnvColorTexture(gRDP.envColor);
         break;
     case MUX_LODFRAC:
-        return GetLODFracTexture((uint8)gRDP.LODFrac);
+        return GetLODFracTexture((uint8_t)gRDP.LODFrac);
         break;
     default:    // MUX_PRIMLODFRAC
-        return GetPrimLODFracTexture((uint8)gRDP.primLODFrac);
+        return GetPrimLODFracTexture((uint8_t)gRDP.primLODFrac);
         break;
     }
 }
 
-void CTextureManager::updateColorTexture(CTexture *ptexture, uint32 color)
+void CTextureManager::updateColorTexture(CTexture *ptexture, uint32_t color)
 {
     DrawInfo di;
     if( !(ptexture->StartUpdate(&di)) )
@@ -1460,8 +1460,8 @@ void CTextureManager::updateColorTexture(CTexture *ptexture, uint32 color)
     {
     case 2: // 16 bits
         {
-            uint16 *buf = (uint16*)di.lpSurface;
-            uint16 color16= (uint16)((color>>4)&0xF);
+            uint16_t *buf = (uint16_t*)di.lpSurface;
+            uint16_t color16= (uint16_t)((color>>4)&0xF);
             color16 |= ((color>>12)&0xF)<<4;
             color16 |= ((color>>20)&0xF)<<8;
             color16 |= ((color>>28)&0xF)<<12;
@@ -1473,7 +1473,7 @@ void CTextureManager::updateColorTexture(CTexture *ptexture, uint32 color)
         break;
     case 4: // 32 bits
         {
-            uint32 *buf = (uint32*)di.lpSurface;
+            uint32_t *buf = (uint32_t*)di.lpSurface;
             for( int i=0; i<16; i++ )
             {
                 buf[i] = color;
@@ -1490,13 +1490,13 @@ void ConvertTextureRGBAtoI(TxtrCacheEntry* pEntry, bool alpha)
     DrawInfo srcInfo;   
     if( pEntry->pTexture->StartUpdate(&srcInfo) )
     {
-        uint32 *buf;
-        uint32 val;
-        uint32 r,g,b,a,i;
+        uint32_t *buf;
+        uint32_t val;
+        uint32_t r,g,b,a,i;
 
         for(int nY = 0; nY < srcInfo.dwCreatedHeight; nY++)
         {
-            buf = (uint32*)((uint8*)srcInfo.lpSurface+nY*srcInfo.lPitch);
+            buf = (uint32_t*)((uint8_t*)srcInfo.lpSurface+nY*srcInfo.lPitch);
             for(int nX = 0; nX < srcInfo.dwCreatedWidth; nX++)
             {
                 val = buf[nX];

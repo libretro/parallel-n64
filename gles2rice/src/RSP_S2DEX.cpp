@@ -19,20 +19,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 
 // This file implements the S2DEX microcode. Yoshi's Story is using this microcode.
-
+#include <stdint.h>
 #include "UcodeDefs.h"
 #include "Render.h"
 #include "Timing.h"
 
 uObjTxtr *gObjTxtr = NULL;
 uObjTxtrTLUT *gObjTlut = NULL;
-uint32 gObjTlutAddr = 0;
+uint32_t gObjTlutAddr = 0;
 uObjMtx *gObjMtx = NULL;
 uObjSubMtx *gSubObjMtx = NULL;
 uObjMtxReal gObjMtxReal = {1, 0, 0, 1, 0, 0, 0, 0};
 Matrix g_MtxReal(1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1);
 
-uint32 g_TxtLoadBy = CMD_LOAD_OBJ_TXTR;
+uint32_t g_TxtLoadBy = CMD_LOAD_OBJ_TXTR;
 
 
 // Yoshi's Story uses this - 0x02
@@ -41,7 +41,7 @@ void RSP_S2DEX_BG_COPY(Gfx *gfx)
     SP_Timing(DP_Minimal16);
     DP_Timing(DP_Minimal16);
 
-    uint32 dwAddr = RSPSegmentAddr((gfx->words.w1));
+    uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     uObjBg *sbgPtr = (uObjBg*)(g_pRDRAMu8+dwAddr);
     CRender::g_pRender->LoadObjBGCopy(*sbgPtr);
     CRender::g_pRender->DrawObjBGCopy(*sbgPtr);
@@ -50,7 +50,7 @@ void RSP_S2DEX_BG_COPY(Gfx *gfx)
 // Yoshi's Story uses this - 0x03
 void RSP_S2DEX_OBJ_RECTANGLE(Gfx *gfx)
 {
-    uint32 dwAddr = RSPSegmentAddr((gfx->words.w1));
+    uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     uObjSprite *ptr = (uObjSprite*)(g_pRDRAMu8+dwAddr);
 
     uObjTxSprite objtx;
@@ -87,10 +87,10 @@ void RSP_S2DEX_OBJ_RECTANGLE(Gfx *gfx)
 // Yoshi's Story uses this - 0x04
 void RSP_S2DEX_OBJ_SPRITE(Gfx *gfx)
 {
-    uint32 dwAddr = RSPSegmentAddr((gfx->words.w1));
+    uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     uObjSprite *info = (uObjSprite*)(g_pRDRAMu8+dwAddr);
 
-    uint32 dwTile   = gRSP.curTile;
+    uint32_t dwTile   = gRSP.curTile;
     status.bAllowLoadFromTMEM = false;  // Because we need to use TLUT loaded by the ObjTlut command
     PrepareTextures();
     status.bAllowLoadFromTMEM = true;
@@ -152,7 +152,7 @@ void RSP_S2DEX_OBJ_RENDERMODE_2(Gfx *gfx)
 #ifdef DEBUGGER
 void DumpBlockParameters(uObjTxtrBlock &ptr)
 {
-    DebuggerAppendMsg("uObjTxtrBlock Header in RDRAM: 0x%08X", (uint32) ((char *) &ptr - (char *) g_pRDRAMu8));
+    DebuggerAppendMsg("uObjTxtrBlock Header in RDRAM: 0x%08X", (uint32_t) ((char *) &ptr - (char *) g_pRDRAMu8));
     DebuggerAppendMsg("ImgAddr=0x%08X(0x%08X), tsize=0x%X, \nTMEM=0x%X, sid=%d, tline=%d, flag=0x%X, mask=0x%X\n\n",
         RSPSegmentAddr(ptr.image), ptr.image, ptr.tsize, ptr.tmem, ptr.sid/4, ptr.tline, ptr.flag, ptr.mask);
 }
@@ -161,7 +161,7 @@ void DumpSpriteParameters(uObjSprite &ptr)
 {
     if( logTextures || (pauseAtNext && eventToPause == NEXT_OBJ_TXT_CMD) )
     {
-        DebuggerAppendMsg("uObjSprite Header in RDRAM: 0x%08X", (uint32) ((char *) &ptr - (char *) g_pRDRAMu8));
+        DebuggerAppendMsg("uObjSprite Header in RDRAM: 0x%08X", (uint32_t) ((char *) &ptr - (char *) g_pRDRAMu8));
         DebuggerAppendMsg("X=%d, Y=%d, W=%d, H=%d, scaleW=%f, scaleH=%f\n"
             "TAddr=0x%X, Stride=%d, Flag=0x%X, Pal=%d, Fmt=%s-%db\n\n", 
             ptr.objX/4, ptr.objY/4, ptr.imageW/32, ptr.imageH/32, ptr.scaleW/1024.0f, ptr.scaleH/1024.0f,
@@ -184,7 +184,7 @@ void DumpTxtrInfo(uObjTxtr *ptr)
 {
     if( logTextures || (pauseAtNext && eventToPause == NEXT_OBJ_TXT_CMD) )
     {
-        DebuggerAppendMsg("uObjTxtr Header in RDRAM: 0x%08X", (uint32) ((char *) ptr - (char *) g_pRDRAMu8));
+        DebuggerAppendMsg("uObjTxtr Header in RDRAM: 0x%08X", (uint32_t) ((char *) ptr - (char *) g_pRDRAMu8));
         switch( ptr->block.type )
         {
         case S2DEX_OBJLT_TXTRBLOCK:
@@ -235,7 +235,7 @@ void RSP_S2DEX_SPObjLoadTxtr(Gfx *gfx)
     if( gObjTxtr->block.type == S2DEX_OBJLT_TLUT )
     {
         gObjTlut = (uObjTxtrTLUT*)gObjTxtr;
-        gObjTlutAddr = (uint32)(RSPSegmentAddr(gObjTlut->image));
+        gObjTlutAddr = (uint32_t)(RSPSegmentAddr(gObjTlut->image));
         
         // Copy tlut
         int size = gObjTlut->pnum+1;
@@ -246,15 +246,15 @@ void RSP_S2DEX_SPObjLoadTxtr(Gfx *gfx)
             size = 0x100 - offset;
         }
 
-        uint32 addr = (gObjTlutAddr);//&0xFFFFFFFC);
+        uint32_t addr = (gObjTlutAddr);//&0xFFFFFFFC);
         //if( addr & 3 ) addr = (addr&0xFFFFFFF0)+8;;
-        //uint16 *srcPal = (uint16*)(g_pRDRAMu8 + (addr& (g_dwRamSize-1)) );
+        //uint16_t *srcPal = (uint16_t*)(g_pRDRAMu8 + (addr& (g_dwRamSize-1)) );
 
         for( int i=offset; i<offset+size; i++ )
         {
             g_wRDPTlut[i^1] = RDRAM_UHALF(addr);
             addr += 2;
-            //g_wRDPTlut[i] = (*(uint16 *)(addr+g_pRDRAMu8));
+            //g_wRDPTlut[i] = (*(uint16_t *)(addr+g_pRDRAMu8));
             //g_wRDPTlut[i] = *(srcPal++);
         }
     }
@@ -339,8 +339,8 @@ void RSP_S2DEX_RDPHALF_0(Gfx *gfx)
     //0x001d3c90: b4000000 00000000 RSP_RDPHALF_1
     //0x001d3c98: b3000000 04000400 RSP_RDPHALF_2
 
-    uint32 dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
-    uint32 dwNextUcode = *(uint32 *)(g_pRDRAMu8 + dwPC);
+    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+    uint32_t dwNextUcode = *(uint32_t *)(g_pRDRAMu8 + dwPC);
 
     if( (dwNextUcode>>24) != S2DEX_SELECT_DL )
     {
@@ -364,9 +364,9 @@ void RSP_S2DEX_RDPHALF_0(Gfx *gfx)
 // Yoshi's Story uses this - 0x05
 void RSP_S2DEX_OBJ_MOVEMEM(Gfx *gfx)
 {
-    uint32 dwCommand = ((gfx->words.w0)>>16)&0xFF;
-    uint32 dwLength  = ((gfx->words.w0))    &0xFFFF;
-    uint32 dwAddr = RSPSegmentAddr((gfx->words.w1));
+    uint32_t dwCommand = ((gfx->words.w0)>>16)&0xFF;
+    uint32_t dwLength  = ((gfx->words.w0))    &0xFFFF;
+    uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
 
     if( dwAddr >= g_dwRamSize )
     {
@@ -433,7 +433,7 @@ void RSP_S2DEX_BG_1CYC(Gfx *gfx)
     SP_Timing(DP_Minimal16);
     DP_Timing(DP_Minimal16);
 
-    uint32 dwAddr = RSPSegmentAddr((gfx->words.w1));
+    uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     uObjScaleBg *sbgPtr = (uObjScaleBg *)(dwAddr+g_pRDRAMu8);
     CRender::g_pRender->LoadObjBG1CYC(*sbgPtr);
     CRender::g_pRender->DrawObjBG1CYC(*sbgPtr, true);
@@ -461,7 +461,7 @@ void RSP_S2DEX_BG_1CYC_2(Gfx *gfx)
 // Yoshi's Story uses this - 0xb2
 void RSP_S2DEX_OBJ_RECTANGLE_R(Gfx *gfx)
 {
-    uint32 dwAddr = RSPSegmentAddr((gfx->words.w1));
+    uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     uObjSprite *ptr = (uObjSprite*)(g_pRDRAMu8+dwAddr);
 
     uObjTxSprite objtx;

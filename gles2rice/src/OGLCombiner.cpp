@@ -29,7 +29,7 @@
 #include "OGLTexture.h"
 
 //========================================================================
-uint32 DirectX_OGL_BlendFuncMaps [] =
+uint32_t DirectX_OGL_BlendFuncMaps [] =
 {
     GL_SRC_ALPHA,               //Nothing
     GL_ZERO,                    //BLEND_ZERO               = 1,
@@ -176,7 +176,7 @@ void COGLBlender::DisableAlphaBlender(void)
 }
 
 
-void COGLBlender::BlendFunc(uint32 srcFunc, uint32 desFunc)
+void COGLBlender::BlendFunc(uint32_t srcFunc, uint32_t desFunc)
 {
     glBlendFunc(DirectX_OGL_BlendFuncMaps[srcFunc], DirectX_OGL_BlendFuncMaps[desFunc]);
     OPENGL_CHECK_ERRORS;
@@ -194,7 +194,7 @@ void COGLBlender::Disable()
     OPENGL_CHECK_ERRORS;
 }
 
-void COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32 tile)
+void COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)
 {
     m_pOGLRender->DisableMultiTexture();
     if( g_textures[tile].m_pCTexture )

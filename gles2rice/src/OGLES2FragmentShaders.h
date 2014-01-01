@@ -29,8 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 typedef struct
 {
-    uint32  dwMux0;
-    uint32  dwMux1;
+    uint32_t  dwMux0;
+    uint32_t  dwMux1;
 
     bool    fogIsUsed;
     bool    alphaTest;
@@ -102,7 +102,7 @@ class COGLFragmentShaderCombiner : public COGLColorCombiner
 {
 public:
     bool Initialize(void);
-    void InitCombinerBlenderForSimpleTextureDraw(uint32 tile);
+    void InitCombinerBlenderForSimpleTextureDraw(uint32_t tile);
 protected:
     friend class OGLDeviceBuilder;
 

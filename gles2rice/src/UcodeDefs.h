@@ -22,236 +22,236 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 typedef struct {
     union {
-        unsigned int w0;
+        uint32_t w0;
         struct {
-            unsigned int arg0:24;
-            unsigned int cmd:8;
+            uint32_t arg0:24;
+            uint32_t cmd:8;
         };
     };
-    unsigned int w1;
+    uint32_t w1;
 } Gwords;
 
 typedef struct {
-    unsigned int w0;
-    unsigned int v2:8;
-    unsigned int v1:8;
-    unsigned int v0:8;
-    unsigned int flag:8;
+    uint32_t w0;
+    uint32_t v2:8;
+    uint32_t v1:8;
+    uint32_t v0:8;
+    uint32_t flag:8;
 } GGBI0_Tri1;
 
 typedef struct {
-    unsigned int v0:8;
-    unsigned int v1:8;
-    unsigned int v2:8;
-    unsigned int cmd:8;
-    unsigned int pad:24;
-    unsigned int flag:8;
+    uint32_t v0:8;
+    uint32_t v1:8;
+    uint32_t v2:8;
+    uint32_t cmd:8;
+    uint32_t pad:24;
+    uint32_t flag:8;
 } GGBI2_Tri1;
 
 typedef struct {
-    unsigned int :1;
-    unsigned int v3:7;
-    unsigned int :1;
-    unsigned int v4:7;
-    unsigned int :1;
-    unsigned int v5:7;
-    unsigned int cmd:8;
-    unsigned int :1;
-    unsigned int v0:7;
-    unsigned int :1;
-    unsigned int v1:7;
-    unsigned int :1;
-    unsigned int v2:7;
-    unsigned int flag:8;
+    uint32_t :1;
+    uint32_t v3:7;
+    uint32_t :1;
+    uint32_t v4:7;
+    uint32_t :1;
+    uint32_t v5:7;
+    uint32_t cmd:8;
+    uint32_t :1;
+    uint32_t v0:7;
+    uint32_t :1;
+    uint32_t v1:7;
+    uint32_t :1;
+    uint32_t v2:7;
+    uint32_t flag:8;
 } GGBI2_Tri2;
 
 typedef struct {
-    unsigned int w0;
-    unsigned int v2:8;
-    unsigned int v1:8;
-    unsigned int v0:8;
-    unsigned int v3:8;
+    uint32_t w0;
+    uint32_t v2:8;
+    uint32_t v1:8;
+    uint32_t v0:8;
+    uint32_t v3:8;
 } GGBI0_Ln3DTri2;
 
 typedef struct {
-    unsigned int v5:8;
-    unsigned int v4:8;
-    unsigned int v3:8;
-    unsigned int cmd:8;
+    uint32_t v5:8;
+    uint32_t v4:8;
+    uint32_t v3:8;
+    uint32_t cmd:8;
 
-    unsigned int v2:8;
-    unsigned int v1:8;
-    unsigned int v0:8;
-    unsigned int flag:8;
+    uint32_t v2:8;
+    uint32_t v1:8;
+    uint32_t v0:8;
+    uint32_t flag:8;
 } GGBI1_Tri2;
 
 typedef struct {
-    unsigned int v3:8;
-    unsigned int v4:8;
-    unsigned int v5:8;
-    unsigned int cmd:8;
+    uint32_t v3:8;
+    uint32_t v4:8;
+    uint32_t v5:8;
+    uint32_t cmd:8;
 
-    unsigned int v0:8;
-    unsigned int v1:8;
-    unsigned int v2:8;
-    unsigned int flag:8;
+    uint32_t v0:8;
+    uint32_t v1:8;
+    uint32_t v2:8;
+    uint32_t flag:8;
 } GGBI2_Line3D;
 
 typedef struct {
-    unsigned int len:16;
-    unsigned int v0:4;
-    unsigned int n:4;
-    unsigned int cmd:8;
-    unsigned int addr;
+    uint32_t len:16;
+    uint32_t v0:4;
+    uint32_t n:4;
+    uint32_t cmd:8;
+    uint32_t addr;
 } GGBI0_Vtx;
 
 typedef struct {
-    unsigned int len:10;
-    unsigned int n:6;
-    unsigned int :1;
-    unsigned int v0:7;
-    unsigned int cmd:8;
-    unsigned int addr;
+    uint32_t len:10;
+    uint32_t n:6;
+    uint32_t :1;
+    uint32_t v0:7;
+    uint32_t cmd:8;
+    uint32_t addr;
 } GGBI1_Vtx;
 
 typedef struct {
-    unsigned int vend:8;
-    unsigned int :4;
-    unsigned int n:8;
-    unsigned int :4;
-    unsigned int cmd:8;
-    unsigned int addr;
+    uint32_t vend:8;
+    uint32_t :4;
+    uint32_t n:8;
+    uint32_t :4;
+    uint32_t cmd:8;
+    uint32_t addr;
 } GGBI2_Vtx;
 
 typedef struct {
-    unsigned int    width:12;
-    unsigned int    :7;
-    unsigned int    siz:2;
-    unsigned int    fmt:3;
-    unsigned int    cmd:8;
-    unsigned int    addr;
+    uint32_t    width:12;
+    uint32_t    :7;
+    uint32_t    siz:2;
+    uint32_t    fmt:3;
+    uint32_t    cmd:8;
+    uint32_t    addr;
 } GSetImg;
 
 typedef struct {
-    unsigned int    prim_level:8;
-    unsigned int    prim_min_level:8;
-    unsigned int    pad:8;
-    unsigned int    cmd:8;
+    uint32_t    prim_level:8;
+    uint32_t    prim_min_level:8;
+    uint32_t    pad:8;
+    uint32_t    cmd:8;
 
     union {
-        unsigned int    color;
+        uint32_t    color;
         struct {
-            unsigned int fillcolor:16;
-            unsigned int fillcolor2:16;
+            uint32_t fillcolor:16;
+            uint32_t fillcolor2:16;
         };
         struct {
-            unsigned int a:8;
-            unsigned int b:8;
-            unsigned int g:8;
-            unsigned int r:8;
+            uint32_t a:8;
+            uint32_t b:8;
+            uint32_t g:8;
+            uint32_t r:8;
         };
     };
 } GSetColor;
 
 typedef struct {
-    unsigned int    :16;
-    unsigned int    param:8;
-    unsigned int    cmd:8;
-    unsigned int    addr;
+    uint32_t    :16;
+    uint32_t    param:8;
+    uint32_t    cmd:8;
+    uint32_t    addr;
 } GGBI0_Dlist;
 
 typedef struct {
-    unsigned int    len:16;
-    unsigned int    projection:1;
-    unsigned int    load:1;
-    unsigned int    push:1;
-    unsigned int    :5;
-    unsigned int    cmd:8;
-    unsigned int    addr;
+    uint32_t    len:16;
+    uint32_t    projection:1;
+    uint32_t    load:1;
+    uint32_t    push:1;
+    uint32_t    :5;
+    uint32_t    cmd:8;
+    uint32_t    addr;
 } GGBI0_Matrix;
 
 typedef struct {
-    unsigned int    :24;
-    unsigned int    cmd:8;
-    unsigned int    projection:1;
-    unsigned int    :31;
+    uint32_t    :24;
+    uint32_t    cmd:8;
+    uint32_t    projection:1;
+    uint32_t    :31;
 } GGBI0_PopMatrix;
 
 typedef struct {
     union {
         struct {
-            unsigned int    param:8;
-            unsigned int    len:16;
-            unsigned int    cmd:8;
+            uint32_t    param:8;
+            uint32_t    len:16;
+            uint32_t    cmd:8;
         };
         struct {
-            unsigned int    nopush:1;
-            unsigned int    load:1;
-            unsigned int    projection:1;
-            unsigned int    :5;
-            unsigned int    len2:16;
-            unsigned int    cmd2:8;
+            uint32_t    nopush:1;
+            uint32_t    load:1;
+            uint32_t    projection:1;
+            uint32_t    :5;
+            uint32_t    len2:16;
+            uint32_t    cmd2:8;
         };
     };
-    unsigned int    addr;
+    uint32_t    addr;
 } GGBI2_Matrix;
 
 typedef struct {
-    unsigned int    type:8;
-    unsigned int    offset:16;
-    unsigned int    cmd:8;
-    unsigned int    value;
+    uint32_t    type:8;
+    uint32_t    offset:16;
+    uint32_t    cmd:8;
+    uint32_t    value;
 } GGBI0_MoveWord;
 
 typedef struct {
-    unsigned int    offset:16;
-    unsigned int    type:8;
-    unsigned int    cmd:8;
-    unsigned int    value;
+    uint32_t    offset:16;
+    uint32_t    type:8;
+    uint32_t    cmd:8;
+    uint32_t    value;
 } GGBI2_MoveWord;
 
 typedef struct {
-    unsigned int    enable_gbi0:1;
-    unsigned int    enable_gbi2:1;
-    unsigned int    :6;
-    unsigned int    tile:3;
-    unsigned int    level:3;
-    unsigned int    :10;
-    unsigned int    cmd:8;
-    unsigned int    scaleT:16;
-    unsigned int    scaleS:16;
+    uint32_t    enable_gbi0:1;
+    uint32_t    enable_gbi2:1;
+    uint32_t    :6;
+    uint32_t    tile:3;
+    uint32_t    level:3;
+    uint32_t    :10;
+    uint32_t    cmd:8;
+    uint32_t    scaleT:16;
+    uint32_t    scaleS:16;
 } GTexture;
 
 typedef struct {
-    unsigned int    tl:12;
-    unsigned int    sl:12;
-    unsigned int    cmd:8;
+    uint32_t    tl:12;
+    uint32_t    sl:12;
+    uint32_t    cmd:8;
 
-    unsigned int    th:12;
-    unsigned int    sh:12;
-    unsigned int    tile:3;
-    unsigned int    pad:5;
+    uint32_t    th:12;
+    uint32_t    sh:12;
+    uint32_t    tile:3;
+    uint32_t    pad:5;
 } Gloadtile;
 
 typedef struct {
-    unsigned int    tmem:9;
-    unsigned int    line:9;
-    unsigned int    pad0:1;
-    unsigned int    siz:2;
-    unsigned int    fmt:3;
-    unsigned int    cmd:8;
+    uint32_t    tmem:9;
+    uint32_t    line:9;
+    uint32_t    pad0:1;
+    uint32_t    siz:2;
+    uint32_t    fmt:3;
+    uint32_t    cmd:8;
 
-    unsigned int    shifts:4;
-    unsigned int    masks:4;
-    unsigned int    ms:1;
-    unsigned int    cs:1;
-    unsigned int    shiftt:4;
-    unsigned int    maskt:4;
-    unsigned int    mt:1;
-    unsigned int    ct:1;
-    unsigned int    palette:4;
-    unsigned int    tile:3;
-    unsigned int    pad1:5;
+    uint32_t    shifts:4;
+    uint32_t    masks:4;
+    uint32_t    ms:1;
+    uint32_t    cs:1;
+    uint32_t    shiftt:4;
+    uint32_t    maskt:4;
+    uint32_t    mt:1;
+    uint32_t    ct:1;
+    uint32_t    palette:4;
+    uint32_t    tile:3;
+    uint32_t    pad1:5;
 } Gsettile;
 
 typedef union {
@@ -290,31 +290,31 @@ typedef union {
     Gsettilesize    settilesize;
     Gloadtlut   loadtlut;
     */
-    long long int   force_structure_alignment;
+    int64_t   force_structure_alignment;
 } Gfx;
 
 typedef union {
     struct {
-        unsigned int    w0;
-        unsigned int    w1;
-        unsigned int    w2;
-        unsigned int    w3;
+        uint32_t    w0;
+        uint32_t    w1;
+        uint32_t    w2;
+        uint32_t    w3;
     };
     struct {
-        unsigned int    yl:12;  /* Y coordinate of upper left   */
-        unsigned int    xl:12;  /* X coordinate of upper left   */
-        unsigned int    cmd:8;  /* command          */
+        uint32_t    yl:12;  /* Y coordinate of upper left   */
+        uint32_t    xl:12;  /* X coordinate of upper left   */
+        uint32_t    cmd:8;  /* command          */
 
-        unsigned int    yh:12;  /* Y coordinate of lower right  */
-        unsigned int    xh:12;  /* X coordinate of lower right  */
-        unsigned int    tile:3; /* Tile descriptor index    */
-        unsigned int    pad1:5; /* Padding          */
+        uint32_t    yh:12;  /* Y coordinate of lower right  */
+        uint32_t    xh:12;  /* X coordinate of lower right  */
+        uint32_t    tile:3; /* Tile descriptor index    */
+        uint32_t    pad1:5; /* Padding          */
 
-        unsigned int    t:16;   /* T texture coord at top left  */
-        unsigned int    s:16;   /* S texture coord at top left  */
+        uint32_t    t:16;   /* T texture coord at top left  */
+        uint32_t    s:16;   /* S texture coord at top left  */
 
-        unsigned int    dtdy:16;/* Change in T per change in Y  */
-        unsigned int    dsdx:16;/* Change in S per change in X  */
+        uint32_t    dtdy:16;/* Change in T per change in Y  */
+        uint32_t    dsdx:16;/* Change in S per change in X  */
     };
 } Gtexrect;
 

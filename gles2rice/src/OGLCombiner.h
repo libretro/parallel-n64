@@ -31,7 +31,7 @@ class COGLColorCombiner : public CColorCombiner
 {
 public:
     bool Initialize(void);
-    void InitCombinerBlenderForSimpleTextureDraw(uint32 tile);
+    void InitCombinerBlenderForSimpleTextureDraw(uint32_t tile);
 protected:
     friend class OGLDeviceBuilder;
 
@@ -58,7 +58,7 @@ class COGLBlender : public CBlender
 public:
     void NormalAlphaBlender(void);
     void DisableAlphaBlender(void);
-    void BlendFunc(uint32 srcFunc, uint32 desFunc);
+    void BlendFunc(uint32_t srcFunc, uint32_t desFunc);
     void Enable();
     void Disable();
 

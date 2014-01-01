@@ -16,7 +16,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-
+#include <stdint.h>
 #include "Combiner.h"
 #include "Config.h"
 #include "RenderBase.h"
@@ -50,7 +50,7 @@ const char *cycleTypeStrs[] = {
     "Fill Mode"
 };
 
-const char* constStr(uint32 op)
+const char* constStr(uint32_t op)
 {
     if (op <= MUX_UNK)
         return constStrs[op];
@@ -59,9 +59,9 @@ const char* constStr(uint32 op)
 }
 #endif
 
-void swap(uint8 &a, uint8 &b)
+void swap(uint8_t &a, uint8_t &b)
 {
-    uint8 c=a;
+    uint8_t c=a;
     a=b;
     b=c;
 }
@@ -71,7 +71,7 @@ void swap(uint8 &a, uint8 &b)
 
 //========================================================================
 
-inline IColor GetIColor(uint8 flag, uint32 curCol)
+inline IColor GetIColor(uint8_t flag, uint32_t curCol)
 {
     IColor newc;
     switch(flag & MUX_MASK)
@@ -118,14 +118,14 @@ inline IColor GetIColor(uint8 flag, uint32 curCol)
     return newc;
 }
 
-COLOR CalculateConstFactor(uint32 colorOp, uint32 alphaOp, uint32 curCol)
+COLOR CalculateConstFactor(uint32_t colorOp, uint32_t alphaOp, uint32_t curCol)
 {
     N64CombinerType m;
     IColor color(curCol);
     IColor alpha(curCol);
 
     // For color channel
-    *(uint32*)&m = colorOp;
+    *(uint32_t*)&m = colorOp;
     if (m.c != MUX_0 && m.a != m.b)
     {
         if (m.a != MUX_0) color = GetIColor(m.a, curCol);
@@ -136,7 +136,7 @@ COLOR CalculateConstFactor(uint32 colorOp, uint32 alphaOp, uint32 curCol)
 
 
     // For alpha channel
-    *(uint32*)&m = alphaOp;
+    *(uint32_t*)&m = alphaOp;
     if (m.c != MUX_0 && m.a != m.b)
     {
         if (m.a != MUX_0) alpha = GetIColor(m.a, curCol);
@@ -145,15 +145,15 @@ COLOR CalculateConstFactor(uint32 colorOp, uint32 alphaOp, uint32 curCol)
     }
     if (m.d != MUX_0) alpha += GetIColor(m.d, curCol);
 
-    return (COLOR)(((uint32)color&0x00FFFFFF)|((uint32)alpha&0xFF000000));
+    return (COLOR)(((uint32_t)color&0x00FFFFFF)|((uint32_t)alpha&0xFF000000));
 }
 
 
-COLOR CColorCombiner::GetConstFactor(uint32 colorFlag, uint32 alphaFlag, uint32 defaultColor)
+COLOR CColorCombiner::GetConstFactor(uint32_t colorFlag, uint32_t alphaFlag, uint32_t defaultColor)
 {
     // Allows a combine mode to select what TFACTOR should be
-    uint32 color = defaultColor;
-    uint32 alpha = defaultColor;
+    uint32_t color = defaultColor;
+    uint32_t alpha = defaultColor;
 
     switch (colorFlag & MUX_MASK)
     {
@@ -279,7 +279,7 @@ bool    gUsingEnvColour = false;
 int CountTexel1Cycle(N64CombinerType &m)
 {
     int hasTexel[2];
-    uint8 *p = (uint8*)&m;
+    uint8_t *p = (uint8_t*)&m;
 
     for (int i=0; i<2; i++)
     {
@@ -297,7 +297,7 @@ int CountTexel1Cycle(N64CombinerType &m)
     return hasTexel[0]+hasTexel[1];
 }
 
-uint32 GetTexelNumber(N64CombinerType &m)
+uint32_t GetTexelNumber(N64CombinerType &m)
 {
     if ((m.a&MUX_MASK) == MUX_TEXEL1 || (m.b&MUX_MASK) == MUX_TEXEL1 || (m.c&MUX_MASK) == MUX_TEXEL1  || (m.d&MUX_MASK) == MUX_TEXEL1)
         return TEX_1;
@@ -350,7 +350,7 @@ void CColorCombiner::InitCombinerMode(void)
 
 
 bool bConkerHideShadow=false;
-void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
+void CColorCombiner::UpdateCombiner(uint32_t dwMux0, uint32_t dwMux1)
 {
 #ifdef DEBUGGER
     if (debuggerDropDecodedMux)
@@ -376,7 +376,7 @@ void CColorCombiner::UpdateCombiner(uint32 dwMux0, uint32 dwMux1)
                 dwMux1 = 0xfffcf438;
             }
         }
-        uint64 mux64 = (((uint64)dwMux1)<<32)+dwMux0;
+        uint64_t mux64 = (((uint64_t)dwMux1)<<32)+dwMux0;
         int index=m_DecodedMuxList.find(mux64);
 
         if (options.enableHackForGames == HACK_FOR_CONKER)

@@ -208,7 +208,7 @@ CRender * OGLDeviceBuilder::CreateRender(void)
     return m_pRender;
 }
 
-CTexture * OGLDeviceBuilder::CreateTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage)
+CTexture * OGLDeviceBuilder::CreateTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage)
 {
     COGLTexture *txtr = new COGLTexture(dwWidth, dwHeight, usage);
     if( txtr->m_pTexture == NULL )

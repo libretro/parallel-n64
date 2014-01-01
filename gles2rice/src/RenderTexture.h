@@ -28,22 +28,22 @@ typedef struct {
     CRenderTexture *pRenderTexture;
     SetImgInfo  CI_Info;
 
-    uint32      bufferWidth;
-    uint32      bufferHeight;
-    uint32      N64Width;
-    uint32      N64Height;
+    uint32_t      bufferWidth;
+    uint32_t      bufferHeight;
+    uint32_t      N64Width;
+    uint32_t      N64Height;
     float       scaleX;
     float       scaleY;
 
     int         maxUsedHeight;
-    uint32      updateAtFrame;
-    uint32      updateAtUcodeCount;
+    uint32_t      updateAtFrame;
+    uint32_t      updateAtUcodeCount;
 
     bool        isUsed;
-    uint32      knownHeight;
+    uint32_t      knownHeight;
 
-    uint32      crcInRDRAM;
-    uint32      crcCheckedAtFrame;
+    uint32_t      crcInRDRAM;
+    uint32_t      crcCheckedAtFrame;
 
     TxtrCacheEntry txtEntry;
 } RenderTextureInfo;

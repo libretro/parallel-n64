@@ -25,19 +25,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "TextureManager.h"
 
 
-static const uint8 OneToEight[2] =
+static const uint8_t OneToEight[2] =
 {
     0x00,       // 0 -> 00 00 00 00
     0xff        // 1 -> 11 11 11 11
 };
 
-static const uint8 OneToFour[2] =
+static const uint8_t OneToFour[2] =
 {
     0x00,       // 0 -> 00 00 
     0x0f        // 1 -> 11 11 
 };
 
-static const uint8 TwoToEight[4] =
+static const uint8_t TwoToEight[4] =
 {
     0x00,       // 00 -> 00 00 00 00
     0x55,       // 01 -> 01 01 01 01
@@ -45,7 +45,7 @@ static const uint8 TwoToEight[4] =
     0xff        // 11 -> 11 11 11 11
 };
 
-static const uint8 TwoToFour[4] =
+static const uint8_t TwoToFour[4] =
 {
     0x0,        // 00 -> 00 00 
     0x5,        // 01 -> 01 01 
@@ -53,7 +53,7 @@ static const uint8 TwoToFour[4] =
     0xf         // 11 -> 11 11
 };
 
-static const uint8 ThreeToEight[8] =
+static const uint8_t ThreeToEight[8] =
 {
     0x00,       // 000 -> 00 00 00 00
     0x24,       // 001 -> 00 10 01 00
@@ -65,7 +65,7 @@ static const uint8 ThreeToEight[8] =
     0xff        // 111 -> 11 11 11 11
 };
 
-static const uint8 ThreeToFour[8] =
+static const uint8_t ThreeToFour[8] =
 {
     0x0,        // 000 -> 00 00 00 00
     0x2,        // 001 -> 00 10 01 00
@@ -77,7 +77,7 @@ static const uint8 ThreeToFour[8] =
     0xf         // 111 -> 11 11 11 11
 };
 
-static const uint8 FourToEight[16] = 
+static const uint8_t FourToEight[16] = 
 {
     0x00, 0x11, 0x22, 0x33,
     0x44, 0x55, 0x66, 0x77,
@@ -85,7 +85,7 @@ static const uint8 FourToEight[16] =
     0xcc, 0xdd, 0xee, 0xff
 };
 
-static const uint16 FourToSixteen[16] = 
+static const uint16_t FourToSixteen[16] = 
 {
     0x0000, 0x1111, 0x2222, 0x3333,
     0x4444, 0x5555, 0x6666, 0x7777,
@@ -93,7 +93,7 @@ static const uint16 FourToSixteen[16] =
     0xcccc, 0xdddd, 0xeeee, 0xffff
 };
 
-static const uint8 FiveToEight[32] =
+static const uint8_t FiveToEight[32] =
 {
     0x00, // 00000 -> 00000000
     0x08, // 00001 -> 00001000
@@ -150,88 +150,88 @@ static const uint8 FiveToEight[32] =
 #define RGBA565_GreenShift  5
 #define RGBA565_BlueShift   0
 
-inline uint16 ConvertRGBTo555(uint8 red, uint8 grn, uint8 blu)
+inline uint16_t ConvertRGBTo555(uint8_t red, uint8_t grn, uint8_t blu)
 {
-    return (uint16)(((uint16)(red >> 3) << RGBA5551_RedShift) |
-                  ((uint16)(grn >> 3) << RGBA5551_GreenShift) |
-                  ((uint16)(blu >> 3) << RGBA5551_BlueShift) |
-                  ((uint16)(1)        << RGBA5551_AlphaShift));
+    return (uint16_t)(((uint16_t)(red >> 3) << RGBA5551_RedShift) |
+                  ((uint16_t)(grn >> 3) << RGBA5551_GreenShift) |
+                  ((uint16_t)(blu >> 3) << RGBA5551_BlueShift) |
+                  ((uint16_t)(1)        << RGBA5551_AlphaShift));
 }
 
-inline uint16 ConvertRGBTo565(uint8 red, uint8 grn, uint8 blu)
+inline uint16_t ConvertRGBTo565(uint8_t red, uint8_t grn, uint8_t blu)
 {
-    return (uint16)(((uint16)(red >> 3) << RGBA565_RedShift) |
-                  ((uint16)(grn >> 2) << RGBA565_GreenShift) |
-                  ((uint16)(blu >> 3) << RGBA565_BlueShift));
+    return (uint16_t)(((uint16_t)(red >> 3) << RGBA565_RedShift) |
+                  ((uint16_t)(grn >> 2) << RGBA565_GreenShift) |
+                  ((uint16_t)(blu >> 3) << RGBA565_BlueShift));
 }
-inline uint16 Convert555To565(uint16 w555)
+inline uint16_t Convert555To565(uint16_t w555)
 {
     // Probably a faster method by fudging the low bits..
 
-    uint8 red = FiveToEight[(w555&RGBA5551_RedMask)  >> RGBA5551_RedShift];
-    uint8 grn = FiveToEight[(w555&RGBA5551_GreenMask)>> RGBA5551_GreenShift];
-    uint8 blu = FiveToEight[(w555&RGBA5551_BlueMask) >> RGBA5551_BlueShift];
+    uint8_t red = FiveToEight[(w555&RGBA5551_RedMask)  >> RGBA5551_RedShift];
+    uint8_t grn = FiveToEight[(w555&RGBA5551_GreenMask)>> RGBA5551_GreenShift];
+    uint8_t blu = FiveToEight[(w555&RGBA5551_BlueMask) >> RGBA5551_BlueShift];
 
     return ConvertRGBTo565(red, grn, blu);
 }
 
-#define R4G4B4A4_MAKE(r,g,b,a)  ((uint16)(((a) << 12) | ((r)<< 8) | ((g)<<4) | (b)))
+#define R4G4B4A4_MAKE(r,g,b,a)  ((uint16_t)(((a) << 12) | ((r)<< 8) | ((g)<<4) | (b)))
 
 
-inline uint32 Convert555ToRGBA(uint16 w555)
+inline uint32_t Convert555ToRGBA(uint16_t w555)
 {
-    uint32 dwRed   = FiveToEight[(w555&RGBA5551_RedMask)  >> RGBA5551_RedShift];
-    uint32 dwGreen = FiveToEight[(w555&RGBA5551_GreenMask)>> RGBA5551_GreenShift];
-    uint32 dwBlue  = FiveToEight[(w555&RGBA5551_BlueMask) >> RGBA5551_BlueShift];
-    uint32 dwAlpha =             (w555&RGBA5551_AlphaMask) ? 0xFF : 0x00;
+    uint32_t dwRed   = FiveToEight[(w555&RGBA5551_RedMask)  >> RGBA5551_RedShift];
+    uint32_t dwGreen = FiveToEight[(w555&RGBA5551_GreenMask)>> RGBA5551_GreenShift];
+    uint32_t dwBlue  = FiveToEight[(w555&RGBA5551_BlueMask) >> RGBA5551_BlueShift];
+    uint32_t dwAlpha =             (w555&RGBA5551_AlphaMask) ? 0xFF : 0x00;
     return COLOR_RGBA(dwRed, dwGreen, dwBlue, dwAlpha);
 
 }
-inline uint16 Convert555ToR4G4B4A4(uint16 w555)
+inline uint16_t Convert555ToR4G4B4A4(uint16_t w555)
 {
-    uint8 dwRed   = ((w555&RGBA5551_RedMask)  >> RGBA5551_RedShift)>>1;
-    uint8 dwGreen = ((w555&RGBA5551_GreenMask)>> RGBA5551_GreenShift)>>1;
-    uint8 dwBlue  = ((w555&RGBA5551_BlueMask) >> RGBA5551_BlueShift)>>1;
-    uint8 dwAlpha =             (w555&RGBA5551_AlphaMask) ? 0xF : 0x0;
+    uint8_t dwRed   = ((w555&RGBA5551_RedMask)  >> RGBA5551_RedShift)>>1;
+    uint8_t dwGreen = ((w555&RGBA5551_GreenMask)>> RGBA5551_GreenShift)>>1;
+    uint8_t dwBlue  = ((w555&RGBA5551_BlueMask) >> RGBA5551_BlueShift)>>1;
+    uint8_t dwAlpha =             (w555&RGBA5551_AlphaMask) ? 0xF : 0x0;
 
     return R4G4B4A4_MAKE(dwRed, dwGreen, dwBlue, dwAlpha);
 }
 
-inline uint32 ConvertIA4ToRGBA(uint8 IA4)
+inline uint32_t ConvertIA4ToRGBA(uint8_t IA4)
 {
-    uint32 I = ThreeToEight[(IA4 & 0x0F) >> 1];
-    uint32 A = OneToEight[(IA4 & 0x01)];        
+    uint32_t I = ThreeToEight[(IA4 & 0x0F) >> 1];
+    uint32_t A = OneToEight[(IA4 & 0x01)];        
     return COLOR_RGBA(I, I, I, A);
 }
 
-inline uint16 ConvertIA4ToR4G4B4A4(uint8 IA4)
+inline uint16_t ConvertIA4ToR4G4B4A4(uint8_t IA4)
 {
-    uint32 I = ThreeToFour[(IA4 & 0x0F) >> 1];
-    uint32 A = OneToFour[(IA4 & 0x01)];     
+    uint32_t I = ThreeToFour[(IA4 & 0x0F) >> 1];
+    uint32_t A = OneToFour[(IA4 & 0x01)];     
     return R4G4B4A4_MAKE(I, I, I, A);
 }
-inline uint32 ConvertI4ToRGBA(uint8 I4)
+inline uint32_t ConvertI4ToRGBA(uint8_t I4)
 {
-    uint32 I = FourToEight[I4 & 0x0F];
+    uint32_t I = FourToEight[I4 & 0x0F];
     return COLOR_RGBA(I, I, I, I);
 }
 
-inline uint16 ConvertI4ToR4G4B4A4(uint8 I4)
+inline uint16_t ConvertI4ToR4G4B4A4(uint8_t I4)
 {
     return FourToSixteen[I4 & 0x0F];
 }
 
-inline uint32 ConvertIA16ToRGBA(uint16 wIA)
+inline uint32_t ConvertIA16ToRGBA(uint16_t wIA)
 {
-    uint32 dwIntensity = (wIA >> 8) & 0xFF;
-    uint32 dwAlpha     = (wIA     ) & 0xFF;
+    uint32_t dwIntensity = (wIA >> 8) & 0xFF;
+    uint32_t dwAlpha     = (wIA     ) & 0xFF;
     return COLOR_RGBA(dwIntensity, dwIntensity, dwIntensity, dwAlpha);
 }
 
-inline uint16 ConvertIA16ToR4G4B4A4(uint16 wIA)
+inline uint16_t ConvertIA16ToR4G4B4A4(uint16_t wIA)
 {
-    uint16 dwIntensity = (wIA >> 12) & 0x0F;
-    uint16 dwAlpha     = (wIA >> 4) & 0x0F;
+    uint16_t dwIntensity = (wIA >> 12) & 0x0F;
+    uint16_t dwAlpha     = (wIA >> 4) & 0x0F;
 
     return R4G4B4A4_MAKE(dwIntensity, dwIntensity, dwIntensity, dwAlpha);
 }
@@ -239,8 +239,8 @@ inline uint16 ConvertIA16ToR4G4B4A4(uint16 wIA)
 extern int g_convk0,g_convk1,g_convk2,g_convk3,g_convk4,g_convk5;
 extern float g_convc0,g_convc1,g_convc2,g_convc3,g_convc4,g_convc5;
 
-uint32 ConvertYUV16ToR8G8B8(int Y, int U, int V);
-uint16 ConvertYUV16ToR4G4B4(int Y, int U, int V);
+uint32_t ConvertYUV16ToR8G8B8(int Y, int U, int V);
+uint16_t ConvertYUV16ToR4G4B4(int Y, int U, int V);
 
 
 typedef void    ( * ConvertFunction )( CTexture * p_texture, const TxtrInfo & ti );

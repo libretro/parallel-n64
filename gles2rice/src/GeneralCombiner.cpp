@@ -49,16 +49,16 @@ CGeneralCombiner::CGeneralCombiner()
     m_dwGeneralMaxStages=2;
 }
 
-bool isTex(uint32 val)
+bool isTex(uint32_t val)
 {
     return ( (val&MUX_MASK) == MUX_TEXEL0 || (val&MUX_MASK) == MUX_TEXEL1 );
 }
-int toTex(uint32 val)
+int toTex(uint32_t val)
 {
     return (val&MUX_MASK)-MUX_TEXEL0;
 }
 
-bool isComb(uint32 val)
+bool isComb(uint32_t val)
 {
     return (val&MUX_MASK)==MUX_COMBINED;
 }
@@ -90,15 +90,15 @@ void CGeneralCombiner::General_DisplayBlendingStageInfo(GeneralCombinerInfo &gci
 {
     char str1[30],str2[30],str3[30];
     DebuggerAppendMsg("\nStages:%d, Alpha:%s, Factor:%s, Specular:%s Dif Color:0x%X Dif Alpha:0x%X\n", 
-        gci.nStages, BlendFuncStr[gci.blendingFunc], DecodedMux::FormatStr((uint8)gci.TFactor,str1),
-        DecodedMux::FormatStr((uint8)gci.specularPostOp,str2), gci.m_dwShadeColorChannelFlag, gci.m_dwShadeAlphaChannelFlag);
+        gci.nStages, BlendFuncStr[gci.blendingFunc], DecodedMux::FormatStr((uint8_t)gci.TFactor,str1),
+        DecodedMux::FormatStr((uint8_t)gci.specularPostOp,str2), gci.m_dwShadeColorChannelFlag, gci.m_dwShadeAlphaChannelFlag);
 
     for( int i=0; i<gci.nStages; i++ )
     {
         GeneralCombineStage &s = gci.stages[i];
         DebuggerAppendMsg("%d:Color: %s - %s, %s, %s%s\n", i,
-            cmopstrs[s.colorOp.op], DecodedMux::FormatStr((uint8)s.colorOp.Arg1, str1),     s.colorOp.Arg2==CM_IGNORE?"":DecodedMux::FormatStr((uint8)s.colorOp.Arg2, str2), 
-            s.colorOp.Arg0==CM_IGNORE?"":DecodedMux::FormatStr((uint8)s.colorOp.Arg0, str3),
+            cmopstrs[s.colorOp.op], DecodedMux::FormatStr((uint8_t)s.colorOp.Arg1, str1),     s.colorOp.Arg2==CM_IGNORE?"":DecodedMux::FormatStr((uint8_t)s.colorOp.Arg2, str2), 
+            s.colorOp.Arg0==CM_IGNORE?"":DecodedMux::FormatStr((uint8_t)s.colorOp.Arg0, str3),
             s.dwTexture!=0?" -Tex1":"");
     }
     
@@ -106,9 +106,9 @@ void CGeneralCombiner::General_DisplayBlendingStageInfo(GeneralCombinerInfo &gci
     {
         GeneralCombineStage &s = gci.stages[i];
         DebuggerAppendMsg("%d:Alpha: %s - %s, %s, %s%s\n", i,
-            cmopstrs[s.alphaOp.op], DecodedMux::FormatStr((uint8)s.alphaOp.Arg1, str1), 
-            s.alphaOp.Arg2==CM_IGNORE?"":DecodedMux::FormatStr((uint8)s.alphaOp.Arg2, str2),
-            s.alphaOp.Arg0==CM_IGNORE?"":DecodedMux::FormatStr((uint8)s.alphaOp.Arg0, str3),
+            cmopstrs[s.alphaOp.op], DecodedMux::FormatStr((uint8_t)s.alphaOp.Arg1, str1), 
+            s.alphaOp.Arg2==CM_IGNORE?"":DecodedMux::FormatStr((uint8_t)s.alphaOp.Arg2, str2),
+            s.alphaOp.Arg0==CM_IGNORE?"":DecodedMux::FormatStr((uint8_t)s.alphaOp.Arg0, str3),
             s.dwTexture!=0?" -Tex1":"");
     }
     TRACE0("\n\n");
@@ -207,7 +207,7 @@ int CGeneralCombiner::GenCI_Type_D(int curN64Stage, int curStage, GeneralCombine
     return curStage;
 }
 
-int CGeneralCombiner::GenCI_Type_A_MOD_C(int curN64Stage, int curStage, GeneralCombinerInfo &gci, uint32 dxop)
+int CGeneralCombiner::GenCI_Type_A_MOD_C(int curN64Stage, int curStage, GeneralCombinerInfo &gci, uint32_t dxop)
 {
     N64CombinerType &m = (*m_ppGeneralDecodedMux)->m_n64Combiners[curN64Stage];
     StageOperate *op = ((StageOperate*)(&(gci.stages[curStage].colorOp))) + (curN64Stage%2);
@@ -261,7 +261,7 @@ int CGeneralCombiner::GenCI_Type_A_MOD_C(int curN64Stage, int curStage, GeneralC
 }
 int CGeneralCombiner::GenCI_Type_A_ADD_D(int curN64Stage, int curStage, GeneralCombinerInfo &gci)
 {
-    uint32 opToUse = (m_bTxtOpAdd) ? CM_ADD : CM_MODULATE;
+    uint32_t opToUse = (m_bTxtOpAdd) ? CM_ADD : CM_MODULATE;
     N64CombinerType &m = (*m_ppGeneralDecodedMux)->m_n64Combiners[curN64Stage];
     swap(m.c, m.d);
     curStage = GenCI_Type_A_MOD_C(curN64Stage, curStage, gci, opToUse);
@@ -358,7 +358,7 @@ int CGeneralCombiner::GenCI_Type_A_MOD_C_ADD_D(int curN64Stage, int curStage, Ge
 
         N64CombinerType m2 = m;
 
-        uint8* vals = (uint8*)&m2;
+        uint8_t* vals = (uint8_t*)&m2;
         for( int i=0; i<4; i++ )
         {
             if( (unsigned int)(vals[i]&MUX_MASK) == MUX_TEXEL0 + gci.stages[curStage].dwTexture )
@@ -1034,7 +1034,7 @@ int CGeneralCombiner::FindCompiledMux( )
     }
 #endif
 
-    for( uint32 i=0; i<m_vCompiledCombinerStages.size(); i++ )
+    for( uint32_t i=0; i<m_vCompiledCombinerStages.size(); i++ )
     {
         if( m_vCompiledCombinerStages[i].dwMux0 == (*m_ppGeneralDecodedMux)->m_dwMux0 && m_vCompiledCombinerStages[i].dwMux1 == (*m_ppGeneralDecodedMux)->m_dwMux1 )
         {
@@ -1064,7 +1064,7 @@ void CGeneralCombiner::LM_GenCI_Init(GeneralCombinerInfo &gci)
 
 
 //#define fillstage(opr,a1,a2,a3)   {op->op=opr;op->Arg1=a1;op->Arg2=a2;op->Arg0=a3;curStage++;}
-inline void FillStage(StageOperate &op, uint32 opr, uint32 a1, uint32 a2, uint32 a3)
+inline void FillStage(StageOperate &op, uint32_t opr, uint32_t a1, uint32_t a2, uint32_t a3)
 {
     op.op = opr;
     op.Arg1 = a1;
@@ -1107,7 +1107,7 @@ int CGeneralCombiner::LM_GenCI_Type_D(N64CombinerType &m, int curStage, int limi
 
     return curStage-originalstage;
 }
-int CGeneralCombiner::LM_GenCI_Type_A_MOD_C(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &gci, uint32 dxop)
+int CGeneralCombiner::LM_GenCI_Type_A_MOD_C(N64CombinerType &m, int curStage, int limit, int channel, bool checktexture, GeneralCombinerInfo &gci, uint32_t dxop)
 {
     int originalstage=curStage;
     StageOperate *op = ((StageOperate*)(&(gci.stages[curStage].colorOp))) + channel;
@@ -1296,7 +1296,7 @@ int CGeneralCombiner::LM_ParseDecodedMux()
     return 0;
 }
 
-bool CGeneralCombiner::LM_Check1TxtrForAlpha(int curStage, GeneralCombinerInfo &gci, uint32 val )
+bool CGeneralCombiner::LM_Check1TxtrForAlpha(int curStage, GeneralCombinerInfo &gci, uint32_t val )
 {
     return !( isTex(val) && LM_textureUsedInStage[curStage] && gci.stages[curStage].dwTexture != (unsigned int)toTex(val) );
 }

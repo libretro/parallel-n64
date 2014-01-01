@@ -27,9 +27,9 @@ extern Matrix g_MtxReal;
 
 //========================================================================
 
-void CRender::LoadFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 width, uint32 height)
+void CRender::LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height)
 {
-    uint32 VIwidth = *g_GraphicsInfo.VI_WIDTH_REG;
+    uint32_t VIwidth = *g_GraphicsInfo.VI_WIDTH_REG;
 
     TxtrInfo gti;
 
@@ -48,7 +48,7 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 wid
         gti.LeftToLoad  = 0;
         gti.TopToLoad   = 0;
 
-        gti.PalAddress = (uchar *) &g_wRDPTlut[0];
+        gti.PalAddress = (uint8_t *) &g_wRDPTlut[0];
 
         gti.WidthToCreate   = windowSetting.uViWidth;;
         gti.HeightToCreate  = windowSetting.uViHeight;
@@ -65,7 +65,7 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 wid
     {
         gti.Format  = g_CI.dwFormat;
         gti.Size    = g_CI.dwSize;
-        gti.PalAddress = (uchar *) &g_wRDPTlut[0];
+        gti.PalAddress = (uint8_t *) &g_wRDPTlut[0];
 
         gti.Address = RSPSegmentAddr(g_CI.dwAddr);
 
@@ -115,7 +115,7 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 wid
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;
 
-    gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
 
@@ -123,7 +123,7 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 wid
         SetCurrentTexture( 0, pEntry->pTexture, pEntry->ti.WidthToCreate, pEntry->ti.HeightToCreate, pEntry);
 }
 
-void CRender::LoadTextureFromMemory(void *buf, uint32 left, uint32 top, uint32 width, uint32 height, uint32 pitch, uint32 format)
+void CRender::LoadTextureFromMemory(void *buf, uint32_t left, uint32_t top, uint32_t width, uint32_t height, uint32_t pitch, uint32_t format)
 {
     TxtrInfo gti;
     gti.Format  = g_CI.dwFormat;
@@ -142,7 +142,7 @@ void CRender::LoadTextureFromMemory(void *buf, uint32 left, uint32 top, uint32 w
 
     gti.HeightToLoad = height;
     gti.WidthToLoad = width;
-    gti.pPhysicalAddress = (uint8*)buf;
+    gti.pPhysicalAddress = (uint8_t*)buf;
 
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
@@ -151,11 +151,11 @@ void CRender::LoadTextureFromMemory(void *buf, uint32 left, uint32 top, uint32 w
     DrawInfo info;  
     if( pEntry->pTexture->StartUpdate(&info) )
     {
-        for( uint32 i=0; i<height; i++)
+        for( uint32_t i=0; i<height; i++)
         {
-            uint32 *psrc = (uint32*)((uint8*)buf+pitch*(i+top))+left;
-            uint32 *pdst = (uint32*)((uint8*)info.lpSurface+i*info.lPitch);
-            for( uint32 j=0; j<width; j++)
+            uint32_t *psrc = (uint32_t*)((uint8_t*)buf+pitch*(i+top))+left;
+            uint32_t *pdst = (uint32_t*)((uint8_t*)info.lpSurface+i*info.lPitch);
+            for( uint32_t j=0; j<width; j++)
             {
                 pdst[j]=psrc[j];
             }
@@ -175,7 +175,7 @@ void CRender::LoadObjBGCopy(uObjBg &info)
     gti.TopToLoad   = 0;
     gti.Palette     = info.imagePal;
 
-    gti.PalAddress  = (uchar *) &g_wRDPTlut[0];
+    gti.PalAddress  = (uint8_t *) &g_wRDPTlut[0];
     gti.bSwapped    = FALSE;
     gti.TLutFmt     = TLUT_FMT_RGBA16;  //RGBA16
 
@@ -188,7 +188,7 @@ void CRender::LoadObjBGCopy(uObjBg &info)
             gti.WidthToCreate == 0x200 )
         {
             // Hack for RE2
-            uint32 w = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
+            uint32_t w = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
             gti.HeightToCreate = (gti.WidthToCreate*gti.HeightToCreate)/w;
             gti.WidthToCreate = w;
         }
@@ -205,7 +205,7 @@ void CRender::LoadObjBGCopy(uObjBg &info)
 
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;
-    gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
@@ -233,7 +233,7 @@ void CRender::LoadTxtrBufIntoTexture(void)
     gti.TopToLoad       = 0;
     gti.Palette = 0;
 
-    gti.PalAddress = (uchar *) &g_wRDPTlut[0];
+    gti.PalAddress = (uint8_t *) &g_wRDPTlut[0];
     gti.bSwapped    = FALSE;
 
     gti.WidthToCreate       = g_pRenderTextureInfo->N64Width;
@@ -244,13 +244,13 @@ void CRender::LoadTxtrBufIntoTexture(void)
 
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;
-    gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
 }
 
-void CRender::LoadSprite2D(Sprite2DInfo &info, uint32 ucode)
+void CRender::LoadSprite2D(Sprite2DInfo &info, uint32_t ucode)
 {
     TxtrInfo gti;
 
@@ -259,16 +259,16 @@ void CRender::LoadSprite2D(Sprite2DInfo &info, uint32 ucode)
 
     gti.Address = RSPSegmentAddr(info.spritePtr->SourceImagePointer);
     gti.Palette = 0;
-    gti.PalAddress = (uchar *) (g_pRDRAMu8 + RSPSegmentAddr(info.spritePtr->TlutPointer));
+    gti.PalAddress = (uint8_t *) (g_pRDRAMu8 + RSPSegmentAddr(info.spritePtr->TlutPointer));
 
     if( options.enableHackForGames == HACK_FOR_NITRO )
     {
-        gti.WidthToCreate   = (uint32)(info.spritePtr->SubImageWidth/info.scaleX);
-        gti.HeightToCreate  = (uint32)(info.spritePtr->SubImageHeight/info.scaleY);
-        gti.LeftToLoad      = (uint32)(info.spritePtr->SourceImageOffsetS/info.scaleX);
-        gti.TopToLoad       = (uint32)(info.spritePtr->SourceImageOffsetT/info.scaleY);
+        gti.WidthToCreate   = (uint32_t)(info.spritePtr->SubImageWidth/info.scaleX);
+        gti.HeightToCreate  = (uint32_t)(info.spritePtr->SubImageHeight/info.scaleY);
+        gti.LeftToLoad      = (uint32_t)(info.spritePtr->SourceImageOffsetS/info.scaleX);
+        gti.TopToLoad       = (uint32_t)(info.spritePtr->SourceImageOffsetT/info.scaleY);
         gti.Pitch   = info.spritePtr->Stride << gti.Size >> 1;
-        gti.Pitch   = (uint32)(gti.Pitch*info.scaleY);
+        gti.Pitch   = (uint32_t)(gti.Pitch*info.scaleY);
     }
     else
     {
@@ -291,7 +291,7 @@ void CRender::LoadSprite2D(Sprite2DInfo &info, uint32 ucode)
     gti.TLutFmt     = TLUT_FMT_RGBA16;  //RGBA16
     gti.bSwapped    = FALSE;
 
-    gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
@@ -308,7 +308,7 @@ void CRender::LoadSprite2D(Sprite2DInfo &info, uint32 ucode)
 }
 
 
-void CRender::DrawSprite2D(Sprite2DInfo &info, uint32 ucode)
+void CRender::DrawSprite2D(Sprite2DInfo &info, uint32_t ucode)
 {
     if( !status.bCIBufferIsRendered )
         g_pFrameBufferManager->ActiveTextureBuffer();
@@ -385,7 +385,7 @@ void CRender::DrawSprite2D(Sprite2DInfo &info, uint32 ucode)
 }
 
 
-void CRender::DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32 tile, uint32 left, uint32 top, uint32 width, uint32 height)   // With Rotation
+void CRender::DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32_t tile, uint32_t left, uint32_t top, uint32_t width, uint32_t height)   // With Rotation
 {
     if( !status.bCIBufferIsRendered )
         g_pFrameBufferManager->ActiveTextureBuffer();
@@ -460,7 +460,7 @@ void CRender::DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32 tile, 
     DrawSpriteR_Render();
 }
 
-void CRender::DrawFrameBuffer(bool useVIreg, uint32 left, uint32 top, uint32 width, uint32 height)
+void CRender::DrawFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height)
 {
     BeginRendering();
 
@@ -523,10 +523,10 @@ void CRender::DrawObjBGCopy(uObjBg &info)
     }
     SetCombinerAndBlender();
 
-    uint32 frameH = info.frameH;
-    uint32 frameW = info.frameW;
-    uint32 imageH = info.imageH;
-    uint32 imageW = info.imageW;
+    uint32_t frameH = info.frameH;
+    uint32_t frameW = info.frameW;
+    uint32_t imageH = info.imageH;
+    uint32_t imageW = info.imageW;
 
     if( options.bEnableHacks )
     {
@@ -534,7 +534,7 @@ void CRender::DrawObjBGCopy(uObjBg &info)
             frameW == 0x800 )
         {
             // Hack for RE2
-            uint32 width = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
+            uint32_t width = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
             imageH = frameH = (frameW/4*frameH/4)/width*4;
             imageW = frameW = width*4;
         }
@@ -814,16 +814,16 @@ void CRender::DrawSprite(uObjTxSprite &sprite, bool rectR)  // Without Rotation
 
 void CRender::LoadObjBG1CYC(uObjScaleBg &bg)
 {
-    uint32 imageWidth = bg.imageW/4;
-    uint32 imageHeight = bg.imageH/4;
+    uint32_t imageWidth = bg.imageW/4;
+    uint32_t imageHeight = bg.imageH/4;
 
     TxtrInfo gti;
     gti.Format = bg.imageFmt;
     gti.Size   = bg.imageSiz;
 
-    //uint8* img = (uint8*)(g_pRDRAMu8+RSPSegmentAddr(bg.imagePtr));
+    //uint8_t* img = (uint8_t*)(g_pRDRAMu8+RSPSegmentAddr(bg.imagePtr));
     
-    uchar *palAddr = (uchar *) &g_wRDPTlut[0];
+    uint8_t *palAddr = (uint8_t *) &g_wRDPTlut[0];
     gti.Address = RSPSegmentAddr(bg.imagePtr);
 
     gti.LeftToLoad     = 0;
@@ -852,7 +852,7 @@ void CRender::LoadObjBG1CYC(uObjScaleBg &bg)
 
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;
-    gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
@@ -874,7 +874,7 @@ void CRender::LoadObjSprite(uObjTxSprite &sprite, bool useTIAddr)
     gti.Format  = sprite.sprite.imageFmt;
     gti.Size    = sprite.sprite.imageSiz;
 
-    uchar *palAddr = (uchar *) &g_wRDPTlut[0];
+    uint8_t *palAddr = (uint8_t *) &g_wRDPTlut[0];
 
     gti.Address = RSPSegmentAddr(sprite.txtr.block.image);
     gti.Address += sprite.sprite.imageAdrs<<3;
@@ -928,7 +928,7 @@ void CRender::LoadObjSprite(uObjTxSprite &sprite, bool useTIAddr)
 
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;
-    gti.pPhysicalAddress = ((uint8*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);

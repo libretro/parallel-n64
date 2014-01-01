@@ -107,7 +107,7 @@ void COGLExtRender::SetTexWrapT(int unitno,GLuint flag)
 }
 
 extern UVFlagMap OGLXUVFlagMaps[];
-void COGLExtRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32 dwTile)
+void COGLExtRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32_t dwTile)
 {
     TileUFlags[dwTile] = dwFlag;
     if( !m_bEnableMultiTexture )
@@ -150,7 +150,7 @@ void COGLExtRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32 dwTile)
         }
     }
 }
-void COGLExtRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32 dwTile)
+void COGLExtRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32_t dwTile)
 {
     TileVFlags[dwTile] = dwFlag;
     if( !m_bEnableMultiTexture )
@@ -209,8 +209,8 @@ void COGLExtRender::EnableTexUnit(int unitno, bool flag)
 
 void COGLExtRender::ApplyTextureFilter()
 {
-    static uint32 minflag[8], magflag[8];
-    static uint32 mtex[8];
+    static uint32_t minflag[8], magflag[8];
+    static uint32_t mtex[8];
 
     int iMinFilter, iMagFilter;
 

@@ -22,11 +22,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Render.h"
 
 Sprite2DInfo g_Sprite2DInfo;
-uint32 g_SavedUcode=1;
+uint32_t g_SavedUcode=1;
  
 void RSP_GBI_Sprite2DBase(Gfx *gfx)
 {
-    uint32 dwAddr = RSPSegmentAddr((gfx->words.w1));
+    uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     dwAddr &= (g_dwRamSize-1);
 
     //RSP_RDP_NOIMPL("RDP: Sprite2D (0x%08x 0x%08x)", (gfx->words.w0), (gfx->words.w1));
@@ -37,8 +37,8 @@ void RSP_GBI_Sprite2DBase(Gfx *gfx)
 }
 
 typedef struct{
-    uint32 SourceImagePointer;
-    uint32 TlutPointer;
+    uint32_t SourceImagePointer;
+    uint32_t TlutPointer;
 
     short SubImageWidth;
     short Stride;
@@ -63,7 +63,7 @@ typedef struct{
 
 void RSP_GBI_Sprite2D_PuzzleMaster64(Gfx *gfx)
 {
-    uint32 dwAddr = RSPSegmentAddr((gfx->words.w1));
+    uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     dwAddr &= (g_dwRamSize-1);
 
     g_Sprite2DInfo.spritePtr = (SpriteStruct *)(g_pRDRAMs8+dwAddr);
@@ -131,8 +131,8 @@ void RSP_GBI1_Sprite2DScaleFlip(Gfx *gfx)
         g_Sprite2DInfo.scaleY = g_Sprite2DInfo.scaleX;
     }
 
-    g_Sprite2DInfo.flipX = (uint8)(((gfx->words.w0)>>8)&0xFF);
-    g_Sprite2DInfo.flipY = (uint8)((gfx->words.w0)&0xFF);
+    g_Sprite2DInfo.flipX = (uint8_t)(((gfx->words.w0)>>8)&0xFF);
+    g_Sprite2DInfo.flipY = (uint8_t)((gfx->words.w0)&0xFF);
     //RSP_RDP_NOIMPL("RSP_SPRITE2D_SCALEFLIP is not implemented", (gfx->words.w0), (gfx->words.w1));
     DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_SPRITE_2D, 
         {DebuggerAppendMsg("Pause after Sprite2DScaleFlip, Flip (%d,%d), Scale (%f, %f)\n", g_Sprite2DInfo.flipX, g_Sprite2DInfo.flipY,

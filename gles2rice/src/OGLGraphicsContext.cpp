@@ -55,7 +55,7 @@ COGLGraphicsContext::~COGLGraphicsContext()
 {
 }
 
-bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed)
+bool COGLGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed)
 {
     DebugMessage(M64MSG_INFO, "Initializing OpenGL Device Context.");
     CGraphicsContext::Get()->m_supportTextureMirror = false;
@@ -96,7 +96,7 @@ bool COGLGraphicsContext::Initialize(uint32 dwWidth, uint32 dwHeight, bool bWind
     return true;
 }
 
-bool COGLGraphicsContext::ResizeInitialize(uint32 dwWidth, uint32 dwHeight, bool bWindowed)
+bool COGLGraphicsContext::ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed)
 {
     CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed);
 
@@ -177,13 +177,13 @@ void COGLGraphicsContext::InitOGLExtension(void)
         OPENGL_CHECK_ERRORS;
 
         // If the user wants more anisotropy than the hardware is capable of
-        if (options.anisotropicFiltering > (uint32) m_maxAnisotropicFiltering)
+        if (options.anisotropicFiltering > (uint32_t) m_maxAnisotropicFiltering)
         {
             DebugMessage(M64MSG_INFO, "A value of '%i' is set for AnisotropicFiltering option but the hardware has a maximum value of '%i' so this will be used", options.anisotropicFiltering, m_maxAnisotropicFiltering);
         }
 
         // Check if the user wants less anisotropy than the hardware is capable of
-        if ((uint32) m_maxAnisotropicFiltering > options.anisotropicFiltering)
+        if ((uint32_t) m_maxAnisotropicFiltering > options.anisotropicFiltering)
             m_maxAnisotropicFiltering = options.anisotropicFiltering;
     }
 
@@ -222,9 +222,9 @@ void COGLGraphicsContext::CleanUp()
 }
 
 
-void COGLGraphicsContext::Clear(ClearFlag dwFlags, uint32 color, float depth)
+void COGLGraphicsContext::Clear(ClearFlag dwFlags, uint32_t color, float depth)
 {
-    uint32 flag=0;
+    uint32_t flag=0;
     if (dwFlags & CLEAR_COLOR_BUFFER) flag |= GL_COLOR_BUFFER_BIT;
     if (dwFlags & CLEAR_DEPTH_BUFFER) flag |= GL_DEPTH_BUFFER_BIT;
 

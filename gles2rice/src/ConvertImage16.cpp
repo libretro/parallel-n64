@@ -16,7 +16,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-
+#include <stdint.h>
 #include "Config.h"
 #include "ConvertImage.h"
 #include "RenderBase.h"
@@ -67,12 +67,12 @@ extern bool conkerSwapHack;
 void ConvertRGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    uint32 x, y;
-    uint32 nFiddle;
+    uint32_t x, y;
+    uint32_t nFiddle;
 
     // Copy of the base pointer
-    uint16 * pSrc = (uint16*)(tinfo.pPhysicalAddress);
-    uint8 * pByteSrc = (uint8 *)pSrc;
+    uint16_t * pSrc = (uint16_t*)(tinfo.pPhysicalAddress);
+    uint8_t * pByteSrc = (uint8_t *)pSrc;
 
     if (!pTexture->StartUpdate(&dInfo))
         return;
@@ -87,15 +87,15 @@ void ConvertRGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
                 nFiddle = 0x2 | 0x4;
 
             // dwDst points to start of destination row
-            uint16 * wDst = (uint16 *)((uint8 *)dInfo.lpSurface + y*dInfo.lPitch);
+            uint16_t * wDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
             // DWordOffset points to the current dword we're looking at
             // (process 2 pixels at a time). May be a problem if we don't start on even pixel
-            uint32 dwWordOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
+            uint32_t dwWordOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
 
             for (x = 0; x < tinfo.WidthToLoad; x++)
             {
-                uint16 w = *(uint16 *)&pByteSrc[dwWordOffset ^ nFiddle];
+                uint16_t w = *(uint16_t *)&pByteSrc[dwWordOffset ^ nFiddle];
 
                 wDst[x] = Convert555ToR4G4B4A4(w);
                 
@@ -109,15 +109,15 @@ void ConvertRGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
         for (y = 0; y < tinfo.HeightToLoad; y++)
         {
             // dwDst points to start of destination row
-            uint16 * wDst = (uint16 *)((uint8 *)dInfo.lpSurface + y*dInfo.lPitch);
+            uint16_t * wDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
             // DWordOffset points to the current dword we're looking at
             // (process 2 pixels at a time). May be a problem if we don't start on even pixel
-            uint32 dwWordOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
+            uint32_t dwWordOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
 
             for (x = 0; x < tinfo.WidthToLoad; x++)
             {
-                uint16 w = *(uint16 *)&pByteSrc[dwWordOffset ^ 0x2];
+                uint16_t w = *(uint16_t *)&pByteSrc[dwWordOffset ^ 0x2];
 
                 wDst[x] = Convert555ToR4G4B4A4(w);
                 
@@ -134,7 +134,7 @@ void ConvertRGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
 void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    uint32 * pSrc = (uint32*)(tinfo.pPhysicalAddress);
+    uint32_t * pSrc = (uint32_t*)(tinfo.pPhysicalAddress);
     if (!pTexture->StartUpdate(&dInfo))
         return;
 
@@ -142,22 +142,22 @@ void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo &tinfo)
     {
         Tile &tile = gRDP.tiles[tinfo.tileNo];
 
-        uint32 *pWordSrc;
+        uint32_t *pWordSrc;
         if( tinfo.tileNo >= 0 )
         {
-            pWordSrc = (uint32*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+            pWordSrc = (uint32_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
 
-            for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+            for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
             {
-                uint16 * dwDst = (uint16 *)((uint8 *)dInfo.lpSurface + y*dInfo.lPitch);
+                uint16_t * dwDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
-                uint32 nFiddle = ( y&1 )? 0x2 : 0;
+                uint32_t nFiddle = ( y&1 )? 0x2 : 0;
                 int idx = tile.dwLine*4*y;
 
-                for (uint32 x = 0; x < tinfo.WidthToLoad; x++, idx++)
+                for (uint32_t x = 0; x < tinfo.WidthToLoad; x++, idx++)
                 {
-                    uint32 w = pWordSrc[idx^nFiddle];
-                    uint8* psw = (uint8*)&w;
+                    uint32_t w = pWordSrc[idx^nFiddle];
+                    uint8_t* psw = (uint8_t*)&w;
                     dwDst[x] = R4G4B4A4_MAKE( (psw[0]>>4), (psw[1]>>4), (psw[2]>>4), (psw[3]>>4));
                 }
             }
@@ -167,14 +167,14 @@ void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo &tinfo)
     {
         if (tinfo.bSwapped)
         {
-            for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+            for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
             {
                 if ((y%2) == 0)
                 {
-                    uint16 *pDst = (uint16*)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
-                    uint8 *pS = (uint8 *)pSrc + (y+tinfo.TopToLoad) * tinfo.Pitch + (tinfo.LeftToLoad*4);
+                    uint16_t *pDst = (uint16_t*)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
+                    uint8_t *pS = (uint8_t *)pSrc + (y+tinfo.TopToLoad) * tinfo.Pitch + (tinfo.LeftToLoad*4);
 
-                    for (uint32 x = 0; x < tinfo.WidthToLoad; x++)
+                    for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
                     {
 
                         *pDst++ = R4G4B4A4_MAKE((pS[3]>>4),  // Red
@@ -186,12 +186,12 @@ void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo &tinfo)
                 }
                 else
                 {
-                    uint16 *pDst = (uint16*)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
-                    uint8 *pS = (uint8 *)pSrc + (y+tinfo.TopToLoad) * tinfo.Pitch + (tinfo.LeftToLoad*4);
+                    uint16_t *pDst = (uint16_t*)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
+                    uint8_t *pS = (uint8_t *)pSrc + (y+tinfo.TopToLoad) * tinfo.Pitch + (tinfo.LeftToLoad*4);
                     int n;
 
                     n = 0;
-                    for (uint32 x = 0; x < tinfo.WidthToLoad; x++)
+                    for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
                     {
                         *pDst++ = R4G4B4A4_MAKE((pS[(n^0x8) + 3]>>4),   // Red
                                                 (pS[(n^0x8) + 2]>>4),   // Green
@@ -205,12 +205,12 @@ void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo &tinfo)
         }
         else
         {
-            for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+            for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
             {
-                uint16 *pDst = (uint16*)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
-                uint8 *pS = (uint8 *)pSrc + (y+tinfo.TopToLoad) * tinfo.Pitch + (tinfo.LeftToLoad*4);
+                uint16_t *pDst = (uint16_t*)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
+                uint8_t *pS = (uint8_t *)pSrc + (y+tinfo.TopToLoad) * tinfo.Pitch + (tinfo.LeftToLoad*4);
 
-                for (uint32 x = 0; x < tinfo.WidthToLoad; x++)
+                for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
                 {
                     *pDst++ = R4G4B4A4_MAKE((pS[3]>>4),     // Red
                                             (pS[2]>>4),     // Green
@@ -232,17 +232,17 @@ void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo &tinfo)
 void ConvertIA4_16(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    uint32 nFiddle;
+    uint32_t nFiddle;
 
-    uint8 * pSrc = (uint8*)(tinfo.pPhysicalAddress);
+    uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
     if (!pTexture->StartUpdate(&dInfo))
         return;
 
     if (tinfo.bSwapped)
     {
-        for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
-            uint16 *pDst = (uint16*)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t *pDst = (uint16_t*)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
             // For odd lines, swap words too
             if ((y%2) == 0)
@@ -252,12 +252,12 @@ void ConvertIA4_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
 
             // This may not work if X is not even?
-            uint32 dwByteOffset = (y+tinfo.TopToLoad) * tinfo.Pitch + (tinfo.LeftToLoad/2);
+            uint32_t dwByteOffset = (y+tinfo.TopToLoad) * tinfo.Pitch + (tinfo.LeftToLoad/2);
 
             // Do two pixels at a time
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x+=2)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x+=2)
             {
-                uint8 b = pSrc[dwByteOffset ^ nFiddle];
+                uint8_t b = pSrc[dwByteOffset ^ nFiddle];
 
                 // Even
                 *pDst++ = R4G4B4A4_MAKE(ThreeToFour[(b & 0xE0) >> 5],
@@ -277,17 +277,17 @@ void ConvertIA4_16(CTexture *pTexture, const TxtrInfo &tinfo)
     }
     else
     {
-        for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
-            uint16 *pDst = (uint16*)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t *pDst = (uint16_t*)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
             // This may not work if X is not even?
-            uint32 dwByteOffset = (y+tinfo.TopToLoad) * tinfo.Pitch + (tinfo.LeftToLoad/2);
+            uint32_t dwByteOffset = (y+tinfo.TopToLoad) * tinfo.Pitch + (tinfo.LeftToLoad/2);
 
             // Do two pixels at a time
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x+=2)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x+=2)
             {
-                uint8 b = pSrc[dwByteOffset ^ 0x3];
+                uint8_t b = pSrc[dwByteOffset ^ 0x3];
 
                 // Even
                 *pDst++ = R4G4B4A4_MAKE(ThreeToFour[(b & 0xE0) >> 5],
@@ -314,15 +314,15 @@ void ConvertIA4_16(CTexture *pTexture, const TxtrInfo &tinfo)
 void ConvertIA8_16(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    uint32 nFiddle;
+    uint32_t nFiddle;
 
-    uint8 * pSrc = (uint8*)(tinfo.pPhysicalAddress);
+    uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
     if (!pTexture->StartUpdate(&dInfo))
         return;
 
     if (tinfo.bSwapped)
     {
-        for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
             // For odd lines, swap words too
             if ((y%2) == 0)
@@ -331,13 +331,13 @@ void ConvertIA8_16(CTexture *pTexture, const TxtrInfo &tinfo)
                 nFiddle = 0x7;
 
 
-            uint16 *pDst = (uint16 *)((uint8*)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t *pDst = (uint16_t *)((uint8_t*)dInfo.lpSurface + y * dInfo.lPitch);
             // Points to current byte
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
 
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x++)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
             {
-                uint8 b = pSrc[dwByteOffset ^ nFiddle];
+                uint8_t b = pSrc[dwByteOffset ^ nFiddle];
 
                 *pDst++ = R4G4B4A4_MAKE( ((b&0xf0)>>4),((b&0xf0)>>4),((b&0xf0)>>4),(b&0x0f));
 
@@ -347,16 +347,16 @@ void ConvertIA8_16(CTexture *pTexture, const TxtrInfo &tinfo)
     }
     else
     {
-        for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
-            uint16 *pDst = (uint16*)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t *pDst = (uint16_t*)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
             // Points to current byte
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
 
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x++)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
             {
-                uint8 b = pSrc[dwByteOffset ^ 0x3];
+                uint8_t b = pSrc[dwByteOffset ^ 0x3];
 
                 *pDst++ = R4G4B4A4_MAKE(((b&0xf0)>>4),((b&0xf0)>>4),((b&0xf0)>>4),(b&0x0f));
 
@@ -375,25 +375,25 @@ void ConvertIA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
 
-    uint16 * pSrc = (uint16*)(tinfo.pPhysicalAddress);
-    uint8 * pByteSrc = (uint8 *)pSrc;
+    uint16_t * pSrc = (uint16_t*)(tinfo.pPhysicalAddress);
+    uint8_t * pByteSrc = (uint8_t *)pSrc;
 
     if (!pTexture->StartUpdate(&dInfo))
         return;
         
-    for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+    for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
     {
-        uint16 *pDst = (uint16*)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+        uint16_t *pDst = (uint16_t*)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
         // Points to current word
-        uint32 dwWordOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
+        uint32_t dwWordOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
 
-        for (uint32 x = 0; x < tinfo.WidthToLoad; x++)
+        for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
         {
-            uint16 w = *(uint16 *)&pByteSrc[dwWordOffset^0x2];
+            uint16_t w = *(uint16_t *)&pByteSrc[dwWordOffset^0x2];
 
-            uint8 i = (uint8)(w >> 12);
-            uint8 a = (uint8)(w & 0xFF);
+            uint8_t i = (uint8_t)(w >> 12);
+            uint8_t a = (uint8_t)(w & 0xFF);
 
             *pDst++ = R4G4B4A4_MAKE(i, i, i, (a>>4));
 
@@ -411,20 +411,20 @@ void ConvertIA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
 void ConvertI4_16(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    uint32 nFiddle;
+    uint32_t nFiddle;
 
-    uint8 * pSrc = (uint8*)(tinfo.pPhysicalAddress);
+    uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
     if (!pTexture->StartUpdate(&dInfo))
         return;
 
     if (tinfo.bSwapped)
     {
-        for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
-            uint16 *pDst = (uint16*)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t *pDst = (uint16_t*)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
             // Might not work with non-even starting X
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
 
             // For odd lines, swap words too
             if( !conkerSwapHack || (y&4) == 0 )
@@ -442,9 +442,9 @@ void ConvertI4_16(CTexture *pTexture, const TxtrInfo &tinfo)
                     nFiddle = 0x7;
             }
 
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x+=2)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x+=2)
             {
-                uint8 b = pSrc[dwByteOffset ^ nFiddle];
+                uint8_t b = pSrc[dwByteOffset ^ nFiddle];
 
                 // Even
                 //*pDst++ = R4G4B4A4_MAKE(b>>4, b>>4, b>>4, b>>4);
@@ -459,16 +459,16 @@ void ConvertI4_16(CTexture *pTexture, const TxtrInfo &tinfo)
     }
     else
     {
-        for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
-            uint8 *pDst = (uint8 *)dInfo.lpSurface + y * dInfo.lPitch;
+            uint8_t *pDst = (uint8_t *)dInfo.lpSurface + y * dInfo.lPitch;
 
             // Might not work with non-even starting X
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
 
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x+=2)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x+=2)
             {
-                uint8 b = pSrc[dwByteOffset ^ 0x3];
+                uint8_t b = pSrc[dwByteOffset ^ 0x3];
 
                 // Even
                 //*pDst++ = R4G4B4A4_MAKE(b>>4, b>>4, b>>4, b>>4);
@@ -491,7 +491,7 @@ void ConvertI4_16(CTexture *pTexture, const TxtrInfo &tinfo)
 void ConvertI8_16(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    uint32 nFiddle;
+    uint32_t nFiddle;
 
     long long pSrc = (long long) (tinfo.pPhysicalAddress);
     if (!pTexture->StartUpdate(&dInfo))
@@ -499,20 +499,20 @@ void ConvertI8_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
     if (tinfo.bSwapped)
     {
-        for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
             if ((y%2) == 0)
                 nFiddle = 0x3;
             else
                 nFiddle = 0x7;
 
-            uint16 *pDst = (uint16*)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t *pDst = (uint16_t*)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
 
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x++)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
             {
-                uint8 b = *(uint8*)((pSrc+dwByteOffset)^nFiddle);
+                uint8_t b = *(uint8_t*)((pSrc+dwByteOffset)^nFiddle);
 
                 *pDst++ = R4G4B4A4_MAKE(b>>4,
                                         b>>4,
@@ -525,15 +525,15 @@ void ConvertI8_16(CTexture *pTexture, const TxtrInfo &tinfo)
     }
     else
     {
-        for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
-            uint16 *pDst = (uint16*)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t *pDst = (uint16_t*)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
 
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x++)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
             {
-                uint8 b = *(uint8*)((pSrc+dwByteOffset)^0x3);
+                uint8_t b = *(uint8_t*)((pSrc+dwByteOffset)^0x3);
 
                 *pDst++ = R4G4B4A4_MAKE(b>>4,
                                         b>>4,
@@ -555,17 +555,17 @@ void ConvertI8_16(CTexture *pTexture, const TxtrInfo &tinfo)
 void ConvertCI4_RGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    uint32 nFiddle;
+    uint32_t nFiddle;
 
-    uint8 * pSrc = (uint8*)(tinfo.pPhysicalAddress);
-    uint16 * pPal = (uint16 *)tinfo.PalAddress;
+    uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
+    uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     if (!pTexture->StartUpdate(&dInfo))
         return;
 
     if (tinfo.bSwapped)
     {
 
-        for (uint32 y = 0; y <  tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y <  tinfo.HeightToLoad; y++)
         {
             if ((y%2) == 0)
                 nFiddle = 0x3;
@@ -573,16 +573,16 @@ void ConvertCI4_RGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
                 nFiddle = 0x7;
 
 
-            uint16 * pDst = (uint16 *)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t * pDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
 
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x+=2)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x+=2)
             {
-                uint8 b = pSrc[dwByteOffset ^ nFiddle];
+                uint8_t b = pSrc[dwByteOffset ^ nFiddle];
 
-                uint8 bhi = (b&0xf0)>>4;
-                uint8 blo = (b&0x0f);
+                uint8_t bhi = (b&0xf0)>>4;
+                uint8_t blo = (b&0x0f);
 
                 pDst[0] = Convert555ToR4G4B4A4(pPal[bhi^1]);    // Remember palette is in different endian order!
                 pDst[1] = Convert555ToR4G4B4A4(pPal[blo^1]);    // Remember palette is in different endian order!
@@ -595,18 +595,18 @@ void ConvertCI4_RGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
     }
     else
     {
-        for (uint32 y = 0; y <  tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y <  tinfo.HeightToLoad; y++)
         {
-            uint16 * pDst = (uint16 *)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t * pDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
 
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x+=2)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x+=2)
             {
-                uint8 b = pSrc[dwByteOffset ^ 0x3];
+                uint8_t b = pSrc[dwByteOffset ^ 0x3];
 
-                uint8 bhi = (b&0xf0)>>4;
-                uint8 blo = (b&0x0f);
+                uint8_t bhi = (b&0xf0)>>4;
+                uint8_t blo = (b&0x0f);
 
                 pDst[0] = Convert555ToR4G4B4A4(pPal[bhi^1]);    // Remember palette is in different endian order!
                 pDst[1] = Convert555ToR4G4B4A4(pPal[blo^1]);    // Remember palette is in different endian order!
@@ -655,32 +655,32 @@ void ConvertCI8_16( CTexture * p_texture, const TxtrInfo & tinfo )
 void ConvertCI4_IA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    uint32 nFiddle;
+    uint32_t nFiddle;
 
-    uint8 * pSrc = (uint8*)(tinfo.pPhysicalAddress);
-    uint16 * pPal = (uint16 *)tinfo.PalAddress;
+    uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
+    uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     if (!pTexture->StartUpdate(&dInfo))
         return;
 
     if (tinfo.bSwapped)
     {
-        for (uint32 y = 0; y <  tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y <  tinfo.HeightToLoad; y++)
         {
             if ((y%2) == 0)
                 nFiddle = 0x3;
             else
                 nFiddle = 0x7;
 
-            uint16 * pDst = (uint16 *)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t * pDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
 
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x+=2)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x+=2)
             {
-                uint8 b = pSrc[dwByteOffset ^ nFiddle];
+                uint8_t b = pSrc[dwByteOffset ^ nFiddle];
 
-                uint8 bhi = (b&0xf0)>>4;
-                uint8 blo = (b&0x0f);
+                uint8_t bhi = (b&0xf0)>>4;
+                uint8_t blo = (b&0x0f);
 
                 pDst[0] = ConvertIA16ToR4G4B4A4(pPal[bhi^1]);   // Remember palette is in different endian order!
                 pDst[1] = ConvertIA16ToR4G4B4A4(pPal[blo^1]);   // Remember palette is in different endian order!
@@ -691,18 +691,18 @@ void ConvertCI4_IA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
     }
     else
     {
-        for (uint32 y = 0; y <  tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y <  tinfo.HeightToLoad; y++)
         {
-            uint16 * pDst = (uint16 *)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t * pDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
 
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x+=2)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x+=2)
             {
-                uint8 b = pSrc[dwByteOffset ^ 0x3];
+                uint8_t b = pSrc[dwByteOffset ^ 0x3];
 
-                uint8 bhi = (b&0xf0)>>4;
-                uint8 blo = (b&0x0f);
+                uint8_t bhi = (b&0xf0)>>4;
+                uint8_t blo = (b&0x0f);
 
                 pDst[0] = ConvertIA16ToR4G4B4A4(pPal[bhi^1]);   // Remember palette is in different endian order!
                 pDst[1] = ConvertIA16ToR4G4B4A4(pPal[blo^1]);   // Remember palette is in different endian order!
@@ -722,29 +722,29 @@ void ConvertCI4_IA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
 void ConvertCI8_RGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    uint32 nFiddle;
+    uint32_t nFiddle;
 
-    uint8 * pSrc = (uint8*)(tinfo.pPhysicalAddress);
-    uint16 * pPal = (uint16 *)tinfo.PalAddress;
+    uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
+    uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     if (!pTexture->StartUpdate(&dInfo))
         return;
 
     if (tinfo.bSwapped)
     {
-        for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
             if ((y%2) == 0)
                 nFiddle = 0x3;
             else
                 nFiddle = 0x7;
 
-            uint16 *pDst = (uint16 *)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t *pDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
             
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x++)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
             {
-                uint8 b = pSrc[dwByteOffset ^ nFiddle];
+                uint8_t b = pSrc[dwByteOffset ^ nFiddle];
 
                 *pDst++ = Convert555ToR4G4B4A4(pPal[b^1]);  // Remember palette is in different endian order!
 
@@ -754,15 +754,15 @@ void ConvertCI8_RGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
     }
     else
     {
-        for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
-            uint16 *pDst = (uint16 *)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t *pDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
             
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x++)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
             {
-                uint8 b = pSrc[dwByteOffset ^ 0x3];
+                uint8_t b = pSrc[dwByteOffset ^ 0x3];
 
                 *pDst++ = Convert555ToR4G4B4A4(pPal[b^1]);  // Remember palette is in different endian order!
 
@@ -780,29 +780,29 @@ void ConvertCI8_RGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
 void ConvertCI8_IA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    uint32 nFiddle;
+    uint32_t nFiddle;
 
-    uint8 * pSrc = (uint8*)(tinfo.pPhysicalAddress);
-    uint16 * pPal = (uint16 *)tinfo.PalAddress;
+    uint8_t * pSrc = (uint8_t*)(tinfo.pPhysicalAddress);
+    uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     if (!pTexture->StartUpdate(&dInfo))
         return;
 
     if (tinfo.bSwapped)
     {
-        for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
             if ((y%2) == 0)
                 nFiddle = 0x3;
             else
                 nFiddle = 0x7;
 
-            uint16 *pDst = (uint16 *)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t *pDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
             
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x++)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
             {
-                uint8 b = pSrc[dwByteOffset ^ nFiddle];
+                uint8_t b = pSrc[dwByteOffset ^ nFiddle];
 
                 *pDst++ = ConvertIA16ToR4G4B4A4(pPal[b^1]); // Remember palette is in different endian order!
 
@@ -812,15 +812,15 @@ void ConvertCI8_IA16_16(CTexture *pTexture, const TxtrInfo &tinfo)
     }
     else
     {
-        for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+        for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
         {
-            uint16 *pDst = (uint16 *)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+            uint16_t *pDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
-            uint32 dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
+            uint32_t dwByteOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
             
-            for (uint32 x = 0; x < tinfo.WidthToLoad; x++)
+            for (uint32_t x = 0; x < tinfo.WidthToLoad; x++)
             {
-                uint8 b = pSrc[dwByteOffset ^ 0x3];
+                uint8_t b = pSrc[dwByteOffset ^ 0x3];
 
                 *pDst++ = ConvertIA16ToR4G4B4A4(pPal[b^1]); // Remember palette is in different endian order!
 
@@ -840,32 +840,32 @@ void ConvertYUV_16(CTexture *pTexture, const TxtrInfo &tinfo)
     if (!pTexture->StartUpdate(&dInfo))
         return;
 
-    uint32 x, y;
-    uint32 nFiddle;
+    uint32_t x, y;
+    uint32_t nFiddle;
 
     if( options.bUseFullTMEM )
     {
         Tile &tile = gRDP.tiles[tinfo.tileNo];
 
-        uint16 * pSrc;
+        uint16_t * pSrc;
         if( tinfo.tileNo >= 0 )
-            pSrc = (uint16*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+            pSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
         else
-            pSrc = (uint16*)(tinfo.pPhysicalAddress);
+            pSrc = (uint16_t*)(tinfo.pPhysicalAddress);
 
-        uint8 * pByteSrc = (uint8 *)pSrc;
+        uint8_t * pByteSrc = (uint8_t *)pSrc;
         for (y = 0; y < tinfo.HeightToLoad; y++)
         {
             nFiddle = ( y&1 )? 0x4 : 0;
             int dwWordOffset = tinfo.tileNo>=0? tile.dwLine*8*y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
-            uint16 * wDst = (uint16 *)((uint8 *)dInfo.lpSurface + y*dInfo.lPitch);
+            uint16_t * wDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
             for (x = 0; x < tinfo.WidthToLoad/2; x++)
             {
-                int y0 = *(uint8*)&pByteSrc[(dwWordOffset+1)^nFiddle];
-                int y1 = *(uint8*)&pByteSrc[(dwWordOffset+3)^nFiddle];
-                int u0 = *(uint8*)&pByteSrc[(dwWordOffset  )^nFiddle];
-                int v0 = *(uint8*)&pByteSrc[(dwWordOffset+2)^nFiddle];
+                int y0 = *(uint8_t*)&pByteSrc[(dwWordOffset+1)^nFiddle];
+                int y1 = *(uint8_t*)&pByteSrc[(dwWordOffset+3)^nFiddle];
+                int u0 = *(uint8_t*)&pByteSrc[(dwWordOffset  )^nFiddle];
+                int v0 = *(uint8_t*)&pByteSrc[(dwWordOffset+2)^nFiddle];
 
                 wDst[x*2+0] = ConvertYUV16ToR4G4B4(y0,u0,v0);
                 wDst[x*2+1] = ConvertYUV16ToR4G4B4(y1,u0,v0);
@@ -877,8 +877,8 @@ void ConvertYUV_16(CTexture *pTexture, const TxtrInfo &tinfo)
     else
     {
         // Copy of the base pointer
-        uint16 * pSrc = (uint16*)(tinfo.pPhysicalAddress);
-        uint8 * pByteSrc = (uint8 *)pSrc;
+        uint16_t * pSrc = (uint16_t*)(tinfo.pPhysicalAddress);
+        uint8_t * pByteSrc = (uint8_t *)pSrc;
 
 
         if (tinfo.bSwapped)
@@ -891,18 +891,18 @@ void ConvertYUV_16(CTexture *pTexture, const TxtrInfo &tinfo)
                     nFiddle = 0x2 | 0x4;
 
                 // dwDst points to start of destination row
-                uint16 * wDst = (uint16 *)((uint8 *)dInfo.lpSurface + y*dInfo.lPitch);
+                uint16_t * wDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
                 // DWordOffset points to the current dword we're looking at
                 // (process 2 pixels at a time). May be a problem if we don't start on even pixel
-                uint32 dwWordOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
+                uint32_t dwWordOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
 
                 for (x = 0; x < tinfo.WidthToLoad/2; x++)
                 {
-                    uint32 y0 = *(uint8*)&pByteSrc[(dwWordOffset+1)^nFiddle];
-                    uint32 y1 = *(uint8*)&pByteSrc[(dwWordOffset+3)^nFiddle];
-                    uint32 u0 = *(uint8*)&pByteSrc[(dwWordOffset  )^nFiddle];
-                    uint32 v0 = *(uint8*)&pByteSrc[(dwWordOffset+2)^nFiddle];
+                    uint32_t y0 = *(uint8_t*)&pByteSrc[(dwWordOffset+1)^nFiddle];
+                    uint32_t y1 = *(uint8_t*)&pByteSrc[(dwWordOffset+3)^nFiddle];
+                    uint32_t u0 = *(uint8_t*)&pByteSrc[(dwWordOffset  )^nFiddle];
+                    uint32_t v0 = *(uint8_t*)&pByteSrc[(dwWordOffset+2)^nFiddle];
 
                     wDst[x*2+0] = ConvertYUV16ToR4G4B4(y0,u0,v0);
                     wDst[x*2+1] = ConvertYUV16ToR4G4B4(y1,u0,v0);
@@ -916,18 +916,18 @@ void ConvertYUV_16(CTexture *pTexture, const TxtrInfo &tinfo)
             for (y = 0; y < tinfo.HeightToLoad; y++)
             {
                 // dwDst points to start of destination row
-                uint16 * wDst = (uint16 *)((uint8 *)dInfo.lpSurface + y*dInfo.lPitch);
+                uint16_t * wDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
                 // DWordOffset points to the current dword we're looking at
                 // (process 2 pixels at a time). May be a problem if we don't start on even pixel
-                uint32 dwWordOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
+                uint32_t dwWordOffset = ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad * 2);
 
                 for (x = 0; x < tinfo.WidthToLoad/2; x++)
                 {
-                    uint32 y0 = *(uint8*)&pByteSrc[(dwWordOffset+1)^3];
-                    uint32 y1 = *(uint8*)&pByteSrc[(dwWordOffset+3)^3];
-                    uint32 u0 = *(uint8*)&pByteSrc[(dwWordOffset  )^3];
-                    uint32 v0 = *(uint8*)&pByteSrc[(dwWordOffset+2)^3];
+                    uint32_t y0 = *(uint8_t*)&pByteSrc[(dwWordOffset+1)^3];
+                    uint32_t y1 = *(uint8_t*)&pByteSrc[(dwWordOffset+3)^3];
+                    uint32_t u0 = *(uint8_t*)&pByteSrc[(dwWordOffset  )^3];
+                    uint32_t v0 = *(uint8_t*)&pByteSrc[(dwWordOffset+2)^3];
 
                     wDst[x*2+0] = ConvertYUV16ToR4G4B4(y0,u0,v0);
                     wDst[x*2+1] = ConvertYUV16ToR4G4B4(y1,u0,v0);
@@ -942,16 +942,16 @@ void ConvertYUV_16(CTexture *pTexture, const TxtrInfo &tinfo)
     pTexture->SetOthersVariables();
 }
 
-uint16 ConvertYUV16ToR4G4B4(int Y, int U, int V)
+uint16_t ConvertYUV16ToR4G4B4(int Y, int U, int V)
 {
-    uint32 A=1;
-    uint32 R1 = Y + g_convk0 * V;
-    uint32 G1 = Y + g_convk1 * U + g_convk2 * V;
-    uint32 B1 = Y + g_convk3 * U;
-    uint32 R = (R1 - g_convk4) * g_convk5 + R1;
-    uint32 G = (G1 - g_convk4) * g_convk5 + G1;
-    uint32 B = (B1 - g_convk4) * g_convk5 + B1;
-    return (uint16)R4G4B4A4_MAKE((R>>4), (G>>4), (B>>4), 0xF*A);
+    uint32_t A=1;
+    uint32_t R1 = Y + g_convk0 * V;
+    uint32_t G1 = Y + g_convk1 * U + g_convk2 * V;
+    uint32_t B1 = Y + g_convk3 * U;
+    uint32_t R = (R1 - g_convk4) * g_convk5 + R1;
+    uint32_t G = (G1 - g_convk4) * g_convk5 + G1;
+    uint32_t B = (B1 - g_convk4) * g_convk5 + B1;
+    return (uint16_t)R4G4B4A4_MAKE((R>>4), (G>>4), (B>>4), 0xF*A);
 }
 
 
@@ -963,19 +963,19 @@ void Convert4b_16(CTexture *pTexture, const TxtrInfo &tinfo)
     if (!pTexture->StartUpdate(&dInfo)) 
         return;
 
-    uint16 * pPal = (uint16 *)tinfo.PalAddress;
+    uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_UNKNOWN);
     if( tinfo.Format <= TXT_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
 
     Tile &tile = gRDP.tiles[tinfo.tileNo];
 
-    uint8 *pByteSrc = tinfo.tileNo >= 0 ? (uint8*)&g_Tmem.g_Tmem64bit[tile.dwTMem] : (uint8*)(tinfo.pPhysicalAddress);
+    uint8_t *pByteSrc = tinfo.tileNo >= 0 ? (uint8_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem] : (uint8_t*)(tinfo.pPhysicalAddress);
 
-    for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+    for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
     {
-        uint16 * pDst = (uint16 *)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+        uint16_t * pDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
-        uint32 nFiddle;
+        uint32_t nFiddle;
         if( tinfo.tileNo < 0 )  
         {
             if (tinfo.bSwapped)
@@ -997,11 +997,11 @@ void Convert4b_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
         int idx = tinfo.tileNo>=0 ? tile.dwLine*8*y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + (tinfo.LeftToLoad / 2);
 
-        for (uint32 x = 0; x < tinfo.WidthToLoad; x+=2, idx++)
+        for (uint32_t x = 0; x < tinfo.WidthToLoad; x+=2, idx++)
         {
-            uint8 b = pByteSrc[idx^nFiddle];
-            uint8 bhi = (b&0xf0)>>4;
-            uint8 blo = (b&0x0f);
+            uint8_t b = pByteSrc[idx^nFiddle];
+            uint8_t bhi = (b&0xf0)>>4;
+            uint8_t blo = (b&0x0f);
 
             if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != TXT_FMT_IA && tinfo.Format != TXT_FMT_I) )
             {
@@ -1063,24 +1063,24 @@ void Convert8b_16(CTexture *pTexture, const TxtrInfo &tinfo)
         return;
 
 
-    uint16 * pPal = (uint16 *)tinfo.PalAddress;
+    uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_UNKNOWN);
     if( tinfo.Format <= TXT_FMT_CI ) bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
 
     Tile &tile = gRDP.tiles[tinfo.tileNo];
 
-    uint8 *pByteSrc;
+    uint8_t *pByteSrc;
     if( tinfo.tileNo >= 0 )
-        pByteSrc = (uint8*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+        pByteSrc = (uint8_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
     else
-        pByteSrc = (uint8*)(tinfo.pPhysicalAddress);
+        pByteSrc = (uint8_t*)(tinfo.pPhysicalAddress);
 
 
-    for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+    for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
     {
-        uint16 * pDst = (uint16 *)((uint8 *)dInfo.lpSurface + y * dInfo.lPitch);
+        uint16_t * pDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y * dInfo.lPitch);
 
-        uint32 nFiddle;
+        uint32_t nFiddle;
         if( tinfo.tileNo < 0 )  
         {
             if (tinfo.bSwapped)
@@ -1102,9 +1102,9 @@ void Convert8b_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
         int idx = tinfo.tileNo>=0? tile.dwLine*8*y : ((y+tinfo.TopToLoad) * tinfo.Pitch) + tinfo.LeftToLoad;
 
-        for (uint32 x = 0; x < tinfo.WidthToLoad; x++, idx++)
+        for (uint32_t x = 0; x < tinfo.WidthToLoad; x++, idx++)
         {
-            uint8 b = pByteSrc[idx^nFiddle];
+            uint8_t b = pByteSrc[idx^nFiddle];
 
             if( gRDP.otherMode.text_tlut>=2 || ( tinfo.Format != TXT_FMT_IA && tinfo.Format != TXT_FMT_I) )
             {
@@ -1153,18 +1153,18 @@ void Convert16b_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
     Tile &tile = gRDP.tiles[tinfo.tileNo];
 
-    uint16 *pWordSrc;
+    uint16_t *pWordSrc;
     if( tinfo.tileNo >= 0 )
-        pWordSrc = (uint16*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
+        pWordSrc = (uint16_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
     else
-        pWordSrc = (uint16*)(tinfo.pPhysicalAddress);
+        pWordSrc = (uint16_t*)(tinfo.pPhysicalAddress);
 
 
-    for (uint32 y = 0; y < tinfo.HeightToLoad; y++)
+    for (uint32_t y = 0; y < tinfo.HeightToLoad; y++)
     {
-        uint16 * dwDst = (uint16 *)((uint8 *)dInfo.lpSurface + y*dInfo.lPitch);
+        uint16_t * dwDst = (uint16_t *)((uint8_t *)dInfo.lpSurface + y*dInfo.lPitch);
 
-        uint32 nFiddle;
+        uint32_t nFiddle;
         if( tinfo.tileNo < 0 )  
         {
             if (tinfo.bSwapped)
@@ -1186,10 +1186,10 @@ void Convert16b_16(CTexture *pTexture, const TxtrInfo &tinfo)
 
         int idx = tinfo.tileNo>=0? tile.dwLine*4*y : (((y+tinfo.TopToLoad) * tinfo.Pitch)>>1) + tinfo.LeftToLoad;
 
-        for (uint32 x = 0; x < tinfo.WidthToLoad; x++, idx++)
+        for (uint32_t x = 0; x < tinfo.WidthToLoad; x++, idx++)
         {
-            uint16 w = pWordSrc[idx^nFiddle];
-            uint16 w2 = tinfo.tileNo>=0? ((w>>8)|(w<<8)) : w;
+            uint16_t w = pWordSrc[idx^nFiddle];
+            uint16_t w2 = tinfo.tileNo>=0? ((w>>8)|(w<<8)) : w;
 
             if( tinfo.Format == TXT_FMT_RGBA )
             {
@@ -1200,8 +1200,8 @@ void Convert16b_16(CTexture *pTexture, const TxtrInfo &tinfo)
             }
             else if( tinfo.Format >= TXT_FMT_IA )
             {
-                uint8 i = (uint8)(w2 >> 12);
-                uint8 a = (uint8)(w2 & 0xFF);
+                uint8_t i = (uint8_t)(w2 >> 12);
+                uint8_t a = (uint8_t)(w2 & 0xFF);
                 dwDst[x] = R4G4B4A4_MAKE(i, i, i, (a>>4));
             }
         }

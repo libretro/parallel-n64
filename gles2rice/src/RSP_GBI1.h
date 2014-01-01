@@ -22,9 +22,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 void RSP_GBI1_Vtx(Gfx *gfx)
 {
-    uint32 addr = RSPSegmentAddr((gfx->gbi1vtx.addr));
-    uint32 v0  = gfx->gbi1vtx.v0;
-    uint32 n   = gfx->gbi1vtx.n;
+    uint32_t addr = RSPSegmentAddr((gfx->gbi1vtx.addr));
+    uint32_t v0  = gfx->gbi1vtx.v0;
+    uint32_t n   = gfx->gbi1vtx.n;
 
     LOG_UCODE("    Address 0x%08x, v0: %d, Num: %d, Length: 0x%04x", addr, v0, n, gfx->gbi1vtx.len);
 
@@ -56,9 +56,9 @@ void RSP_GBI1_ModifyVtx(Gfx *gfx)
     }
     else
     {
-        uint32 dwWhere = ((gfx->words.w0) >> 16) & 0xFF;
-        uint32 dwVert   = (((gfx->words.w0)      ) & 0xFFFF) / 2;
-        uint32 dwValue  = (gfx->words.w1);
+        uint32_t dwWhere = ((gfx->words.w0) >> 16) & 0xFF;
+        uint32_t dwVert   = (((gfx->words.w0)      ) & 0xFFFF) / 2;
+        uint32_t dwValue  = (gfx->words.w1);
 
         if( dwVert > 80 )
         {
@@ -89,17 +89,17 @@ void RSP_GBI1_Tri2(Gfx *gfx)
     bool bTexturesAreEnabled = CRender::g_pRender->IsTextureEnabled();
 
     // While the next command pair is Tri2, add vertices
-    uint32 dwPC = gDlistStack[gDlistStackPointer].pc;
+    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
 
     do {
         // Vertex indices are multiplied by 10 for Mario64, by 2 for MarioKart
-        uint32 dwV0 = gfx->gbi1tri2.v0/gRSP.vertexMult;
-        uint32 dwV1 = gfx->gbi1tri2.v1/gRSP.vertexMult;
-        uint32 dwV2 = gfx->gbi1tri2.v2/gRSP.vertexMult;
+        uint32_t dwV0 = gfx->gbi1tri2.v0/gRSP.vertexMult;
+        uint32_t dwV1 = gfx->gbi1tri2.v1/gRSP.vertexMult;
+        uint32_t dwV2 = gfx->gbi1tri2.v2/gRSP.vertexMult;
 
-        uint32 dwV3 = gfx->gbi1tri2.v3/gRSP.vertexMult;
-        uint32 dwV4 = gfx->gbi1tri2.v4/gRSP.vertexMult;
-        uint32 dwV5 = gfx->gbi1tri2.v5/gRSP.vertexMult;
+        uint32_t dwV3 = gfx->gbi1tri2.v3/gRSP.vertexMult;
+        uint32_t dwV4 = gfx->gbi1tri2.v4/gRSP.vertexMult;
+        uint32_t dwV5 = gfx->gbi1tri2.v5/gRSP.vertexMult;
 
         // Do first tri
         if (IsTriangleVisible(dwV0, dwV1, dwV2))
@@ -140,9 +140,9 @@ void RSP_GBI1_Tri2(Gfx *gfx)
         gfx++;
         dwPC += 8;
 #ifdef DEBUGGER
-    } while (!(pauseAtNext && eventToPause==NEXT_TRIANGLE) && gfx->words.cmd == (uint8)RSP_TRI2);
+    } while (!(pauseAtNext && eventToPause==NEXT_TRIANGLE) && gfx->words.cmd == (uint8_t)RSP_TRI2);
 #else
-    } while( gfx->words.cmd == (uint8)RSP_TRI2);
+    } while( gfx->words.cmd == (uint8_t)RSP_TRI2);
 #endif
 
 
@@ -163,18 +163,18 @@ void RSP_GBI1_BranchZ(Gfx *gfx)
 {
     SP_Timing(RSP_GBI1_BranchZ);
 
-    uint32 vtx = ((gfx->words.w0)&0xFFF)>>1;
+    uint32_t vtx = ((gfx->words.w0)&0xFFF)>>1;
     float vtxdepth = g_vecProjected[vtx].z/g_vecProjected[vtx].w;
 
 #ifdef DEBUGGER
-    if( debuggerEnableZBuffer==FALSE || vtxdepth <= (s32)gfx->words.w1 || g_curRomInfo.bForceDepthBuffer )
+    if( debuggerEnableZBuffer==FALSE || vtxdepth <= (int32_t)gfx->words.w1 || g_curRomInfo.bForceDepthBuffer )
 #else
-    if( vtxdepth <= (s32)(gfx->words.w1) || g_curRomInfo.bForceDepthBuffer )
+    if( vtxdepth <= (int32_t)(gfx->words.w1) || g_curRomInfo.bForceDepthBuffer )
 #endif
     {
-        uint32 dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
-        uint32 dwDL = *(uint32 *)(g_pRDRAMu8 + dwPC-12);
-        uint32 dwAddr = RSPSegmentAddr(dwDL);
+        uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
+        uint32_t dwDL = *(uint32_t *)(g_pRDRAMu8 + dwPC-12);
+        uint32_t dwAddr = RSPSegmentAddr(dwDL);
 
         LOG_UCODE("BranchZ to DisplayList 0x%08x", dwAddr);
         gDlistStack[gDlistStackPointer].pc = dwAddr;
@@ -199,18 +199,18 @@ void RSP_GBI1_LoadUCode(Gfx *gfx)
     SP_Timing(RSP_GBI1_LoadUCode);
 
     //TRACE0("Load ucode");
-    uint32 dwPC = gDlistStack[gDlistStackPointer].pc;
-    uint32 dwUcStart = RSPSegmentAddr((gfx->words.w1));
-    uint32 dwSize = ((gfx->words.w0)&0xFFFF)+1;
-    uint32 dwUcDStart = RSPSegmentAddr(*(uint32 *)(g_pRDRAMu8 + dwPC-12));
+    uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
+    uint32_t dwUcStart = RSPSegmentAddr((gfx->words.w1));
+    uint32_t dwSize = ((gfx->words.w0)&0xFFFF)+1;
+    uint32_t dwUcDStart = RSPSegmentAddr(*(uint32_t *)(g_pRDRAMu8 + dwPC-12));
 
-    uint32 ucode = DLParser_CheckUcode(dwUcStart, dwUcDStart, dwSize, 8);
+    uint32_t ucode = DLParser_CheckUcode(dwUcStart, dwUcDStart, dwSize, 8);
     RSP_SetUcode(ucode, dwUcStart, dwUcDStart, dwSize);
 
     DEBUGGER_PAUSE_AND_DUMP(NEXT_SWITCH_UCODE,{DebuggerAppendMsg("Pause at loading ucode");});
 }
 
-void RSP_GFX_Force_Matrix(uint32 dwAddr)
+void RSP_GFX_Force_Matrix(uint32_t dwAddr)
 {
     if (dwAddr + 64 > g_dwRamSize)
     {
@@ -227,25 +227,25 @@ void RSP_GFX_Force_Matrix(uint32 dwAddr)
 }
 
 
-void DisplayVertexInfo(uint32 dwAddr, uint32 dwV0, uint32 dwN)
+void DisplayVertexInfo(uint32_t dwAddr, uint32_t dwV0, uint32_t dwN)
 {
 #ifdef DEBUGGER
-        s8 *pcSrc = (s8 *)(g_pRDRAMu8 + dwAddr);
+        int8_t *pcSrc = (int8_t *)(g_pRDRAMu8 + dwAddr);
         short *psSrc = (short *)(g_pRDRAMu8 + dwAddr);
 
-        for (uint32 dwV = dwV0; dwV < dwV0 + dwN; dwV++)
+        for (uint32_t dwV = dwV0; dwV < dwV0 + dwN; dwV++)
         {
             float x = (float)psSrc[0^0x1];
             float y = (float)psSrc[1^0x1];
             float z = (float)psSrc[2^0x1];
 
-            //uint32 wFlags = g_dwVtxFlags[dwV]; //(uint16)psSrc[3^0x1];
-            uint32 wFlags = 0;
+            //uint32_t wFlags = g_dwVtxFlags[dwV]; //(uint16_t)psSrc[3^0x1];
+            uint32_t wFlags = 0;
 
-            uint8 a = pcSrc[12^0x3];
-            uint8 b = pcSrc[13^0x3];
-            uint8 c = pcSrc[14^0x3];
-            uint8 d = pcSrc[15^0x3];
+            uint8_t a = pcSrc[12^0x3];
+            uint8_t b = pcSrc[13^0x3];
+            uint8_t c = pcSrc[14^0x3];
+            uint8_t d = pcSrc[15^0x3];
             
             //int nTU = (int)(short)(psSrc[4^0x1]<<4);
             //int nTV = (int)(short)(psSrc[5^0x1]<<4);
@@ -266,7 +266,7 @@ void DisplayVertexInfo(uint32 dwAddr, uint32 dwV0, uint32 dwN)
 #endif
 }
 
-void RSP_MoveMemLight(uint32 dwLight, uint32 dwAddr)
+void RSP_MoveMemLight(uint32_t dwLight, uint32_t dwAddr)
 {
     if( dwLight >= 16 )
     {
@@ -274,8 +274,8 @@ void RSP_MoveMemLight(uint32 dwLight, uint32 dwAddr)
         return;
     }
 
-    s8 * pcBase = g_pRDRAMs8 + dwAddr;
-    uint32 * pdwBase = (uint32 *)pcBase;
+    int8_t * pcBase = g_pRDRAMs8 + dwAddr;
+    uint32_t * pdwBase = (uint32_t *)pcBase;
 
 
     float range = 0, x, y, z;
@@ -311,7 +311,7 @@ void RSP_MoveMemLight(uint32 dwLight, uint32 dwAddr)
     {
         LOG_UCODE("      (Ambient Light)");
 
-        uint32 dwCol = COLOR_RGBA( (gRSPn64lights[dwLight].dwRGBA >> 24)&0xFF,
+        uint32_t dwCol = COLOR_RGBA( (gRSPn64lights[dwLight].dwRGBA >> 24)&0xFF,
                       (gRSPn64lights[dwLight].dwRGBA >> 16)&0xFF,
                       (gRSPn64lights[dwLight].dwRGBA >>  8)&0xFF, 0xff);
 
@@ -330,7 +330,7 @@ void RSP_MoveMemLight(uint32 dwLight, uint32 dwAddr)
     }
 }
 
-void RSP_MoveMemViewport(uint32 dwAddr)
+void RSP_MoveMemViewport(uint32_t dwAddr)
 {
     if( dwAddr+16 >= g_dwRamSize )
     {

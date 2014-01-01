@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-
+#include <stdint.h>
 #include <algorithm>
 
 #include "GeneralCombiner.h"
@@ -33,7 +33,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define ALLOW_USE_TEXTURE_FOR_CONSTANTS
 
-static const uint8 sc_Mux32[32] = 
+static const uint8_t sc_Mux32[32] = 
 {
     MUX_COMBINED, MUX_TEXEL0,   MUX_TEXEL1, MUX_PRIM,
     MUX_SHADE,    MUX_ENV,      MUX_1,      MUX_COMBINED|MUX_ALPHAREPLICATE,
@@ -45,14 +45,14 @@ static const uint8 sc_Mux32[32] =
     MUX_UNK, MUX_UNK, MUX_UNK, MUX_0
 };
 
-static const uint8 sc_Mux16[16] = 
+static const uint8_t sc_Mux16[16] = 
 {
     MUX_COMBINED, MUX_TEXEL0,   MUX_TEXEL1, MUX_PRIM,
     MUX_SHADE,    MUX_ENV,      MUX_1,      MUX_COMBALPHA,
     MUX_TEXEL0|MUX_ALPHAREPLICATE, MUX_TEXEL1|MUX_ALPHAREPLICATE, MUX_PRIM|MUX_ALPHAREPLICATE, MUX_SHADE|MUX_ALPHAREPLICATE,
     MUX_ENV|MUX_ALPHAREPLICATE, MUX_LODFRAC, MUX_PRIMLODFRAC, MUX_0 
 };
-static const uint8 sc_Mux8[8] = 
+static const uint8_t sc_Mux8[8] = 
 {
     MUX_COMBINED, MUX_TEXEL0,   MUX_TEXEL1, MUX_PRIM,
     MUX_SHADE,    MUX_ENV,      MUX_1,      MUX_0
@@ -110,30 +110,30 @@ const char* muxTypeStrs[] = {
     "CM_FMT_TYPE_NOT_CHECKED",
 };
 
-void DecodedMux::Decode(uint32 dwMux0, uint32 dwMux1)
+void DecodedMux::Decode(uint32_t dwMux0, uint32_t dwMux1)
 {
     m_dwMux0 = dwMux0;
     m_dwMux1 = dwMux1;
 
-    aRGB0  = uint8((dwMux0>>20)&0x0F);  // c1 c1        // a0
-    bRGB0  = uint8((dwMux1>>28)&0x0F);  // c1 c2        // b0
-    cRGB0  = uint8((dwMux0>>15)&0x1F);  // c1 c3        // c0
-    dRGB0  = uint8((dwMux1>>15)&0x07);  // c1 c4        // d0
+    aRGB0  = uint8_t((dwMux0>>20)&0x0F);  // c1 c1        // a0
+    bRGB0  = uint8_t((dwMux1>>28)&0x0F);  // c1 c2        // b0
+    cRGB0  = uint8_t((dwMux0>>15)&0x1F);  // c1 c3        // c0
+    dRGB0  = uint8_t((dwMux1>>15)&0x07);  // c1 c4        // d0
     
-    aA0    = uint8((dwMux0>>12)&0x07);  // c1 a1        // Aa0
-    bA0    = uint8((dwMux1>>12)&0x07);  // c1 a2        // Ab0
-    cA0    = uint8((dwMux0>>9 )&0x07);  // c1 a3        // Ac0
-    dA0    = uint8((dwMux1>>9 )&0x07);  // c1 a4        // Ad0
+    aA0    = uint8_t((dwMux0>>12)&0x07);  // c1 a1        // Aa0
+    bA0    = uint8_t((dwMux1>>12)&0x07);  // c1 a2        // Ab0
+    cA0    = uint8_t((dwMux0>>9 )&0x07);  // c1 a3        // Ac0
+    dA0    = uint8_t((dwMux1>>9 )&0x07);  // c1 a4        // Ad0
     
-    aRGB1  = uint8((dwMux0>>5 )&0x0F);  // c2 c1        // a1
-    bRGB1  = uint8((dwMux1>>24)&0x0F);  // c2 c2        // b1
-    cRGB1  = uint8((dwMux0    )&0x1F);  // c2 c3        // c1
-    dRGB1  = uint8((dwMux1>>6 )&0x07);  // c2 c4        // d1
+    aRGB1  = uint8_t((dwMux0>>5 )&0x0F);  // c2 c1        // a1
+    bRGB1  = uint8_t((dwMux1>>24)&0x0F);  // c2 c2        // b1
+    cRGB1  = uint8_t((dwMux0    )&0x1F);  // c2 c3        // c1
+    dRGB1  = uint8_t((dwMux1>>6 )&0x07);  // c2 c4        // d1
     
-    aA1    = uint8((dwMux1>>21)&0x07);  // c2 a1        // Aa1
-    bA1    = uint8((dwMux1>>3 )&0x07);  // c2 a2        // Ab1
-    cA1    = uint8((dwMux1>>18)&0x07);  // c2 a3        // Ac1
-    dA1    = uint8((dwMux1    )&0x07);  // c2 a4        // Ad1
+    aA1    = uint8_t((dwMux1>>21)&0x07);  // c2 a1        // Aa1
+    bA1    = uint8_t((dwMux1>>3 )&0x07);  // c2 a2        // Ab1
+    cA1    = uint8_t((dwMux1>>18)&0x07);  // c2 a3        // Ac1
+    dA1    = uint8_t((dwMux1    )&0x07);  // c2 a4        // Ad1
 
     //This function will translate the decode mux info further, so we can use
     //the decode data better.
@@ -169,9 +169,9 @@ void DecodedMux::Decode(uint32 dwMux0, uint32 dwMux1)
     m_ColorTextureFlag[1] = 0;
 }
 
-int DecodedMux::Count(uint8 val, int cycle, uint8 mask)
+int DecodedMux::Count(uint8_t val, int cycle, uint8_t mask)
 {
-    uint8* pmux = m_bytes;
+    uint8_t* pmux = m_bytes;
     int count=0;
     int start=0;
     int end=16;
@@ -195,9 +195,9 @@ int DecodedMux::Count(uint8 val, int cycle, uint8 mask)
 }
 
 
-bool DecodedMux::IsUsed(uint8 val, uint8 mask)
+bool DecodedMux::IsUsed(uint8_t val, uint8_t mask)
 {
-    uint8* pmux = m_bytes;
+    uint8_t* pmux = m_bytes;
     bool isUsed = false;
     for( int i=0; i<16; i++ )
     {
@@ -211,9 +211,9 @@ bool DecodedMux::IsUsed(uint8 val, uint8 mask)
     return isUsed;
 }
 
-bool DecodedMux::IsUsedInAlphaChannel(uint8 val, uint8 mask)
+bool DecodedMux::IsUsedInAlphaChannel(uint8_t val, uint8_t mask)
 {
-    uint8* pmux = m_bytes;
+    uint8_t* pmux = m_bytes;
     bool isUsed = false;
     for (int i=0; i<16; i++)
     {
@@ -230,9 +230,9 @@ bool DecodedMux::IsUsedInAlphaChannel(uint8 val, uint8 mask)
     return isUsed;
 }
 
-bool DecodedMux::IsUsedInColorChannel(uint8 val, uint8 mask)
+bool DecodedMux::IsUsedInColorChannel(uint8_t val, uint8_t mask)
 {
-    uint8* pmux = m_bytes;
+    uint8_t* pmux = m_bytes;
     bool isUsed = false;
     for (int i=0; i<16; i++)
     {
@@ -247,13 +247,13 @@ bool DecodedMux::IsUsedInColorChannel(uint8 val, uint8 mask)
 }
 
 
-bool DecodedMux::IsUsedInCycle(uint8 val, int cycle, CombineChannel channel, uint8 mask)
+bool DecodedMux::IsUsedInCycle(uint8_t val, int cycle, CombineChannel channel, uint8_t mask)
 {
     cycle *=2;
     if (channel == ALPHA_CHANNEL)
         cycle++;
 
-    uint8* pmux = m_bytes;
+    uint8_t* pmux = m_bytes;
     for (int i=0; i<4; i++)
     {
         if ((pmux[i+cycle*4]&mask) == (val&mask))
@@ -265,7 +265,7 @@ bool DecodedMux::IsUsedInCycle(uint8 val, int cycle, CombineChannel channel, uin
     return false;
 }
 
-bool DecodedMux::IsUsedInCycle(uint8 val, int cycle, uint8 mask)
+bool DecodedMux::IsUsedInCycle(uint8_t val, int cycle, uint8_t mask)
 {
     return IsUsedInCycle(val, cycle/2, cycle%2?ALPHA_CHANNEL:COLOR_CHANNEL, mask);
 }
@@ -297,7 +297,7 @@ void DecodedMux::ConvertComplements()
 }
 
 
-CombinerFormatType DecodedMux::GetCombinerFormatType(uint32 cycle)
+CombinerFormatType DecodedMux::GetCombinerFormatType(uint32_t cycle)
 {
     //Analyze the formula
     /*
@@ -523,7 +523,7 @@ void DecodedMux::Reformat(bool do_complement)
         {
             if( (i == N64Cycle0RGB || i == N64Cycle0Alpha) && splitType[i+2]!=CM_FMT_TYPE_NOT_USED )    //Cycle 1's Color or Alpha
             {
-                uint8 saveD = m.d;
+                uint8_t saveD = m.d;
                 for( int j=0; j<4; j++ )
                 {
                     if( (m_bytes[j+i*4+8]&MUX_MASK) == MUX_COMBINED )
@@ -722,7 +722,7 @@ const char* MuxGroupStr[4] =
     "Alpha1",
 };
 
-char* DecodedMux::FormatStr(uint8 val, char *buf)
+char* DecodedMux::FormatStr(uint8_t val, char *buf)
 {
     if( val == CM_IGNORE_BYTE )
     {
@@ -827,7 +827,7 @@ int DecodedMux::CountTexels(void)
     return count;
 }
 
-void DecodedMux::ReplaceVal(uint8 val1, uint8 val2, int cycle, uint8 mask)
+void DecodedMux::ReplaceVal(uint8_t val1, uint8_t val2, int cycle, uint8_t mask)
 {
     int start = 0;
     int end = 16;
@@ -838,7 +838,7 @@ void DecodedMux::ReplaceVal(uint8 val1, uint8 val2, int cycle, uint8 mask)
         end = start+4;
     }
 
-    uint8* pmux = m_bytes;
+    uint8_t* pmux = m_bytes;
     for (int i=start; i<end; i++)
     {
         if ((pmux[i]&mask) == (val1&mask))
@@ -849,9 +849,9 @@ void DecodedMux::ReplaceVal(uint8 val1, uint8 val2, int cycle, uint8 mask)
     }
 }
 
-uint32 DecodedMux::GetCycle(int cycle, CombineChannel channel)
+uint32_t DecodedMux::GetCycle(int cycle, CombineChannel channel)
 {
-    uint32* pmux = m_dWords;
+    uint32_t* pmux = m_dWords;
     if (channel == COLOR_CHANNEL)
     {
         return pmux[cycle*2];
@@ -863,7 +863,7 @@ uint32 DecodedMux::GetCycle(int cycle, CombineChannel channel)
 
 }
 
-uint32 DecodedMux::GetCycle(int cycle)
+uint32_t DecodedMux::GetCycle(int cycle)
 {
     return m_dWords[cycle];
 }
@@ -882,7 +882,7 @@ enum ShadeConstMergeType
 
 typedef struct 
 {
-uint64 mux; // simplified
+uint64_t mux; // simplified
 ShadeConstMergeType op;
 } ShadeConstMergeMapType;
 
@@ -913,7 +913,7 @@ void DecodedMux::MergeShadeWithConstants(void)
 void DecodedMux::MergeShadeWithConstantsInChannel(CombineChannel channel)
 {
     bool usedIn[2];
-    uint32 cycleVal;
+    uint32_t cycleVal;
     int cycleNum;
 
     usedIn[0] = IsUsedInCycle(MUX_SHADE, channel,   MUX_MASK);
@@ -1011,7 +1011,7 @@ void DecodedMux::UseShadeForConstant(void)
     // This function should be called after constants have been merged
 
     bool doAlphaChannel = true;
-    uint8 mask = (uint8)~MUX_COMPLEMENT;
+    uint8_t mask = (uint8_t)~MUX_COMPLEMENT;
 
     int constants = 0;
     if (IsUsed(MUX_ENV, MUX_MASK)) constants++;
@@ -1045,8 +1045,8 @@ void DecodedMux::UseShadeForConstant(void)
             if (IsUsedInColorChannel(MUX_SHADE|MUX_ALPHAREPLICATE, mask))
             {
                 m_dwShadeAlphaChannelFlag = m_dwShadeColorChannelFlag;
-                ReplaceVal((uint8)m_dwShadeColorChannelFlag, MUX_SHADE, N64Cycle0Alpha, MUX_MASK);
-                ReplaceVal((uint8)m_dwShadeColorChannelFlag, MUX_SHADE, N64Cycle1Alpha, MUX_MASK);
+                ReplaceVal((uint8_t)m_dwShadeColorChannelFlag, MUX_SHADE, N64Cycle0Alpha, MUX_MASK);
+                ReplaceVal((uint8_t)m_dwShadeColorChannelFlag, MUX_SHADE, N64Cycle1Alpha, MUX_MASK);
                 doAlphaChannel = false;
             }
         }
@@ -1274,7 +1274,7 @@ void DecodedMux::DisplaySimpliedMuxString(const char *prompt)
     TRACE0("\n");
 }
 
-void DecodedMux::DisplayConstantsWithShade(uint32 flag,CombineChannel channel)
+void DecodedMux::DisplayConstantsWithShade(uint32_t flag,CombineChannel channel)
 {
     DebuggerAppendMsg("Shade = %08X in %s channel",flag,channel==COLOR_CHANNEL?"color":"alpha");
 }
@@ -1340,7 +1340,7 @@ void DecodedMux::LogSimpliedMuxString(const char *prompt, FILE *fp)
     TRACE0("\n");
 }
 
-void DecodedMux::LogConstantsWithShade(uint32 flag,CombineChannel channel, FILE *fp)
+void DecodedMux::LogConstantsWithShade(uint32_t flag,CombineChannel channel, FILE *fp)
 {
     fprintf(fp, "Shade = %08X in %s channel",flag,channel==COLOR_CHANNEL?"color":"alpha");
 }

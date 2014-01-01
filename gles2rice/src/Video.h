@@ -41,20 +41,20 @@ typedef struct {
     BOOL    screenSaverStatus;
 
     struct {
-        uint32      left;
-        uint32      top;
-        uint32      right;
-        uint32      bottom;
-        uint32      width;
-        uint32      height;
+        uint32_t      left;
+        uint32_t      top;
+        uint32_t      right;
+        uint32_t      bottom;
+        uint32_t      width;
+        uint32_t      height;
         bool        needToClip;
     } clipping;
 
     int     timer;
     float   fps;    // frame per second
     float   dps;    // dlist per second
-    uint32  lastSecFrameCount;
-    uint32  lastSecDlistCount;
+    uint32_t  lastSecFrameCount;
+    uint32_t  lastSecDlistCount;
 }WindowSettingStruct;
 
 typedef enum 
@@ -78,45 +78,45 @@ typedef enum
 
 typedef struct {
     bool    bGameIsRunning;
-    uint32  dwTvSystem;
+    uint32_t  dwTvSystem;
     float   fRatio;
 
     BOOL    frameReadByCPU;
     BOOL    frameWriteByCPU;
 
-    uint32  SPCycleCount;       // Count how many CPU cycles SP used in this DLIST
-    uint32  DPCycleCount;       // Count how many CPU cycles DP used in this DLIST
+    uint32_t  SPCycleCount;       // Count how many CPU cycles SP used in this DLIST
+    uint32_t  DPCycleCount;       // Count how many CPU cycles DP used in this DLIST
 
-    uint32  dwNumTrisRendered;
-    uint32  dwNumDListsCulled;
-    uint32  dwNumTrisClipped;
-    uint32  dwNumVertices;
-    uint32  dwBiggestVertexIndex;
+    uint32_t  dwNumTrisRendered;
+    uint32_t  dwNumDListsCulled;
+    uint32_t  dwNumTrisClipped;
+    uint32_t  dwNumVertices;
+    uint32_t  dwBiggestVertexIndex;
 
-    uint32  gDlistCount;
-    uint32  gFrameCount;
-    uint32  gUcodeCount;
-    uint32  gRDPTime;
+    uint32_t  gDlistCount;
+    uint32_t  gFrameCount;
+    uint32_t  gUcodeCount;
+    uint32_t  gRDPTime;
     BOOL    ToToggleFullScreen;
     bool    ToResize;
-    uint32  gNewResizeWidth, gNewResizeHeight;
+    uint32_t  gNewResizeWidth, gNewResizeHeight;
     bool    bDisableFPS;
 
     bool    bUseModifiedUcodeMap;
     bool    ucodeHasBeenSet;
     bool    bUcodeIsKnown;
 
-    uint32  curRenderBuffer;
-    uint32  curDisplayBuffer;
-    uint32  curVIOriginReg;
+    uint32_t  curRenderBuffer;
+    uint32_t  curDisplayBuffer;
+    uint32_t  curVIOriginReg;
     CurScissorType  curScissor;
 
     PrimitiveType primitiveType;
 
-    uint32  lastPurgeTimeTime;      // Time textures were last purged
+    uint32_t  lastPurgeTimeTime;      // Time textures were last purged
 
     bool    UseLargerTile[2];       // This is a speed up for large tile loading,
-    uint32  LargerTileRealLeft[2];  // works only for TexRect, LoadTile, large width, large pitch
+    uint32_t  LargerTileRealLeft[2];  // works only for TexRect, LoadTile, large width, large pitch
 
     bool    bVIOriginIsUpdated;
     bool    bCIBufferIsRendered;
@@ -157,10 +157,10 @@ extern PluginStatus status;
 extern GFX_INFO g_GraphicsInfo;
 extern WindowSettingStruct windowSetting;
 
-extern unsigned int   g_dwRamSize;
-extern unsigned int  *g_pRDRAMu32;
-extern signed char   *g_pRDRAMs8;
-extern unsigned char *g_pRDRAMu8;
+extern uint32_t   g_dwRamSize;
+extern uint32_t  *g_pRDRAMu32;
+extern int8_t   *g_pRDRAMs8;
+extern uint8_t *g_pRDRAMu8;
 
 #ifdef __LIBRETRO__ // Prefix symbol
 #define renderCallback ricerenderCallback

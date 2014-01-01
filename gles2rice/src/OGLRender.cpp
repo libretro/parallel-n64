@@ -106,7 +106,7 @@ void OGLRender::Initialize(void)
        OPENGL_CHECK_ERRORS;
     }
 
-    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8)*4, &(g_oglVtxColors[0][0]) );
+    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8_t)*4, &(g_oglVtxColors[0][0]) );
     OPENGL_CHECK_ERRORS;
 }
 //===================================================================
@@ -118,8 +118,8 @@ TextureFilterMap OglTexFilterMap[2]=
 
 void OGLRender::ApplyTextureFilter()
 {
-    static uint32 minflag=0xFFFF, magflag=0xFFFF;
-    static uint32 mtex;
+    static uint32_t minflag=0xFFFF, magflag=0xFFFF;
+    static uint32_t mtex;
 
     if( m_texUnitEnabled[0] )
     {
@@ -180,7 +180,7 @@ void OGLRender::ZBufferEnable(BOOL bZBuffer)
 
 void OGLRender::ClearBuffer(bool cbuffer, bool zbuffer)
 {
-    uint32 flag=0;
+    uint32_t flag=0;
     if( cbuffer )   flag |= GL_COLOR_BUFFER_BIT;
     if( zbuffer )   flag |= GL_DEPTH_BUFFER_BIT;
     float depth = ((gRDP.originalFillColor&0xFFFF)>>2)/(float)0x3FFF;
@@ -192,7 +192,7 @@ void OGLRender::ClearBuffer(bool cbuffer, bool zbuffer)
 
 void OGLRender::ClearZBuffer(float depth)
 {
-    uint32 flag=GL_DEPTH_BUFFER_BIT;
+    uint32_t flag=GL_DEPTH_BUFFER_BIT;
     glClearDepth(depth);
     OPENGL_CHECK_ERRORS;
     glClear(flag);
@@ -267,7 +267,7 @@ void OGLRender::SetZBias(int bias)
     ApplyZBias(bias);
 }
 
-void OGLRender::SetAlphaRef(uint32 dwAlpha)
+void OGLRender::SetAlphaRef(uint32_t dwAlpha)
 {
     if (m_dwAlpha != dwAlpha)
     {
@@ -275,7 +275,7 @@ void OGLRender::SetAlphaRef(uint32 dwAlpha)
     }
 }
 
-void OGLRender::ForceAlphaRef(uint32 dwAlpha)
+void OGLRender::ForceAlphaRef(uint32_t dwAlpha)
 {
     m_dwAlpha = dwAlpha;
 }
@@ -315,7 +315,7 @@ void OGLRender::SetCullMode(bool bCullFront, bool bCullBack)
     }
 }
 
-bool OGLRender::SetCurrentTexture(int tile, CTexture *handler,uint32 dwTileWidth, uint32 dwTileHeight, TxtrCacheEntry *pTextureEntry)
+bool OGLRender::SetCurrentTexture(int tile, CTexture *handler,uint32_t dwTileWidth, uint32_t dwTileHeight, TxtrCacheEntry *pTextureEntry)
 {
     RenderTexture &texture = g_textures[tile];
     texture.pTextureEntry = pTextureEntry;
@@ -358,12 +358,12 @@ bool OGLRender::SetCurrentTexture(int tile, TxtrCacheEntry *pEntry)
     return true;
 }
 
-void OGLRender::SetAddressUAllStages(uint32 dwTile, TextureUVFlag dwFlag)
+void OGLRender::SetAddressUAllStages(uint32_t dwTile, TextureUVFlag dwFlag)
 {
     SetTextureUFlag(dwFlag, dwTile);
 }
 
-void OGLRender::SetAddressVAllStages(uint32 dwTile, TextureUVFlag dwFlag)
+void OGLRender::SetAddressVAllStages(uint32_t dwTile, TextureUVFlag dwFlag)
 {
     SetTextureVFlag(dwFlag, dwTile);
 }
@@ -399,7 +399,7 @@ void OGLRender::SetTexWrapT(int unitno,GLuint flag)
     }
 }
 
-void OGLRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32 dwTile)
+void OGLRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32_t dwTile)
 {
     TileUFlags[dwTile] = dwFlag;
     if( dwTile == gRSP.curTile )    // For basic OGL, only support the 1st texel
@@ -413,7 +413,7 @@ void OGLRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32 dwTile)
         SetTexWrapS(0, OGLXUVFlagMaps[dwFlag].realFlag);
     }
 }
-void OGLRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32 dwTile)
+void OGLRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32_t dwTile)
 {
     TileVFlags[dwTile] = dwFlag;
     if( dwTile == gRSP.curTile )    // For basic OGL, only support the 1st texel
@@ -481,7 +481,7 @@ bool OGLRender::RenderTexRect()
     OPENGL_CHECK_ERRORS;
 
     //Restore old pointers
-    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8)*4, &(g_oglVtxColors[0][0]) );
+    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8_t)*4, &(g_oglVtxColors[0][0]) );
     glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][0]));
     glVertexAttribPointer(VS_TEXCOORD0,2,GL_FLOAT,GL_FALSE, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[0].u));
     glVertexAttribPointer(VS_TEXCOORD1,2,GL_FLOAT,GL_FALSE, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[1].u));
@@ -492,7 +492,7 @@ bool OGLRender::RenderTexRect()
     return true;
 }
 
-bool OGLRender::RenderFillRect(uint32 dwColor, float depth)
+bool OGLRender::RenderFillRect(uint32_t dwColor, float depth)
 {
     float a = (dwColor>>24)/255.0f;
     float r = ((dwColor>>16)&0xFF)/255.0f;
@@ -530,7 +530,7 @@ bool OGLRender::RenderFillRect(uint32 dwColor, float depth)
     OPENGL_CHECK_ERRORS;
 
     //Restore old pointers
-    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8)*4, &(g_oglVtxColors[0][0]) );
+    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8_t)*4, &(g_oglVtxColors[0][0]) );
     glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][0]));
     glEnableVertexAttribArray(VS_TEXCOORD0);
     glEnableVertexAttribArray(VS_TEXCOORD1);
@@ -690,7 +690,7 @@ void OGLRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
     OPENGL_CHECK_ERRORS;
 
     //Restore old pointers
-    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8)*4, &(g_oglVtxColors[0][0]) );
+    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8_t)*4, &(g_oglVtxColors[0][0]) );
     glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][0]));
     glVertexAttribPointer(VS_TEXCOORD0,2,GL_FLOAT,GL_FALSE, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[0].u));
     glVertexAttribPointer(VS_TEXCOORD1,2,GL_FLOAT,GL_FALSE, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[1].u));
@@ -699,7 +699,7 @@ void OGLRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
     OPENGL_CHECK_ERRORS;
 }
 
-void OGLRender::DrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColor, float depth, float rhw)
+void OGLRender::DrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor, float depth, float rhw)
 {
     StartDrawSimpleRect(nX0, nY0, nX1, nY1, dwColor, depth, rhw);
 
@@ -736,7 +736,7 @@ void OGLRender::DrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColo
     OPENGL_CHECK_ERRORS;
 
     //Restore old pointers
-    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8)*4, &(g_oglVtxColors[0][0]) );
+    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8_t)*4, &(g_oglVtxColors[0][0]) );
     glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][0]));
     glEnableVertexAttribArray(VS_TEXCOORD0);
     glEnableVertexAttribArray(VS_TEXCOORD1);
@@ -746,7 +746,7 @@ void OGLRender::DrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32 dwColo
     OPENGL_CHECK_ERRORS;
 }
 
-void OGLRender::InitCombinerBlenderForSimpleRectDraw(uint32 tile)
+void OGLRender::InitCombinerBlenderForSimpleRectDraw(uint32_t tile)
 {
     //glEnable(GL_CULL_FACE);
     EnableTexUnit(0, false);
@@ -760,9 +760,9 @@ void OGLRender::InitCombinerBlenderForSimpleRectDraw(uint32 tile)
 
 COLOR OGLRender::PostProcessDiffuseColor(COLOR curDiffuseColor)
 {
-    uint32 color = curDiffuseColor;
-    uint32 colorflag = m_pColorCombiner->m_pDecodedMux->m_dwShadeColorChannelFlag;
-    uint32 alphaflag = m_pColorCombiner->m_pDecodedMux->m_dwShadeAlphaChannelFlag;
+    uint32_t color = curDiffuseColor;
+    uint32_t colorflag = m_pColorCombiner->m_pDecodedMux->m_dwShadeColorChannelFlag;
+    uint32_t alphaflag = m_pColorCombiner->m_pDecodedMux->m_dwShadeAlphaChannelFlag;
     if( colorflag+alphaflag != MUX_0 )
     {
         if( (colorflag & 0xFFFFFF00) == 0 && (alphaflag & 0xFFFFFF00) == 0 )
@@ -872,8 +872,8 @@ void OGLRender::UpdateScissor()
     if( options.bEnableHacks && g_CI.dwWidth == 0x200 && gRDP.scissor.right == 0x200 && g_CI.dwWidth>(*g_GraphicsInfo.VI_WIDTH_REG & 0xFFF) )
     {
         // Hack for RE2
-        uint32 width = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
-        uint32 height = (gRDP.scissor.right*gRDP.scissor.bottom)/width;
+        uint32_t width = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
+        uint32_t height = (gRDP.scissor.right*gRDP.scissor.bottom)/width;
         glEnable(GL_SCISSOR_TEST);
         OPENGL_CHECK_ERRORS;
         glScissor(0, int(height*windowSetting.fMultY+windowSetting.statusBarHeightToUse),
@@ -894,8 +894,8 @@ void OGLRender::ApplyRDPScissor(bool force)
     if( options.bEnableHacks && g_CI.dwWidth == 0x200 && gRDP.scissor.right == 0x200 && g_CI.dwWidth>(*g_GraphicsInfo.VI_WIDTH_REG & 0xFFF) )
     {
         // Hack for RE2
-        uint32 width = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
-        uint32 height = (gRDP.scissor.right*gRDP.scissor.bottom)/width;
+        uint32_t width = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
+        uint32_t height = (gRDP.scissor.right*gRDP.scissor.bottom)/width;
         glEnable(GL_SCISSOR_TEST);
         OPENGL_CHECK_ERRORS;
         glScissor(0, int(height*windowSetting.fMultY+windowSetting.statusBarHeightToUse),
@@ -952,7 +952,7 @@ void OGLRender::SetFogEnable(bool bEnable)
     OPENGL_CHECK_ERRORS;
 }
 
-void OGLRender::SetFogColor(uint32 r, uint32 g, uint32 b, uint32 a)
+void OGLRender::SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
 {
     gRDP.fogColor = COLOR_RGBA(r, g, b, a); 
     gRDP.fvFogColor[0] = r/255.0f;      //r

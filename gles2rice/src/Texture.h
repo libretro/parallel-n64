@@ -58,8 +58,8 @@ class CTexture
 public:
     virtual ~CTexture();
 
-    uint32      m_dwWidth;    // The requested Texture width.
-    uint32      m_dwHeight;   // The requested Texture height.
+    uint32_t      m_dwWidth;    // The requested Texture width.
+    uint32_t      m_dwHeight;   // The requested Texture height.
 
     unsigned int m_dwCreatedTextureWidth;    // What was actually created
     unsigned int m_dwCreatedTextureHeight;
@@ -83,7 +83,7 @@ public:
 
     virtual LPRICETEXTURE GetTexture() { return m_pTexture; }
 
-    uint32          GetPixelSize();
+    uint32_t          GetPixelSize();
     TextureFmt      GetSurfaceFormat(void); // Surface pixel format...
     inline void     SetOthersVariables(void)
     {
@@ -98,7 +98,7 @@ public:
     virtual void RestoreAlphaChannel(void); // Restore Alpha channel from RGB channel
 
 protected:
-    CTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage);
+    CTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage);
     LPRICETEXTURE   m_pTexture;
     TextureFmt      m_dwTextureFmt;
 };

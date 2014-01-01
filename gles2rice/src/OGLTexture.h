@@ -36,7 +36,7 @@ public:
     GLuint m_glFmt;
 protected:
     friend class OGLDeviceBuilder;
-    COGLTexture(uint32 dwWidth, uint32 dwHeight, TextureUsage usage);
+    COGLTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage);
 };
 
 
