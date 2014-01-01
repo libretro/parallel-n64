@@ -358,6 +358,7 @@ void ReadSpecialSettings (const char * name)
       ignore_aux_copy = 0;
       useless_is_useless = 0;
 
+      settings.alt_tex_size = 0;
       settings.force_microcheck = 0;
       settings.force_quad3d = 0;
       settings.force_calc_sphere = 0;
@@ -390,6 +391,7 @@ void ReadSpecialSettings (const char * name)
    // Glide64 mk2 INI config
    if (strstr(name, (const char *)"1080 SNOWBOARDING"))
    {
+      //settings.alt_tex_size = 1;
       //depthmode = 0
       settings.swapmode = 2;
       smart_read = 1;
@@ -562,6 +564,7 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char *)"MICKEY USA PAL")
          )
    {
+      settings.alt_tex_size = 1;
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -949,11 +952,12 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char*)"MYSTICAL NINJA2 SG")
          )
    {
+      optimize_texrect = 0;
+      settings.alt_tex_size = 1;
       settings.filtering = 1;
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
-      optimize_texrect = 0;
       hires = 1;
 #endif
    }
@@ -1140,6 +1144,7 @@ void ReadSpecialSettings (const char * name)
    {
       read_back_to_screen = 1;
       settings.decrease_fillrect_edge = 1;
+      //settings.alt_tex_size = 1;
       //depthmode = 1
       settings.swapmode = 2;
       smart_read = 1;
@@ -1920,6 +1925,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"TETRISPHERE"))
    {
+      settings.alt_tex_size = 1;
       settings.increase_texrect_edge = 1;
       //depthmode = 1
       smart_read = 1;

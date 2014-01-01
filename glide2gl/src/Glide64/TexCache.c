@@ -190,42 +190,81 @@ void GetTexInfo (int id, int tile)
    mask_width = (rdp.tiles[tile].mask_s==0)?(tile_width):(1 << rdp.tiles[tile].mask_s);
    mask_height = (rdp.tiles[tile].mask_t==0)?(tile_height):(1 << rdp.tiles[tile].mask_t);
 
-   // ** NORMAL TEXTURE SIZE METHOD **
-   // This is the 'correct' method for determining texture size
-
-   if (mask_width > 256 && mask_height > 256)
+   if (settings.alt_tex_size)
    {
-      mask_width = tile_width;
-      mask_height = tile_height;
-   }
+      // ** ALTERNATE TEXTURE SIZE METHOD **
+      // Helps speed in some games that loaded weird-sized textures, but could break other
+      //  textures.
 
-   // Get the width/height to load
-   if ((rdp.tiles[tile].clamp_s && tile_width <= 256) )
-   {
-      // loading width
-      width = min(mask_width, tile_width);
-      // actual width
-      rdp.tiles[tile].width = tile_width;
+      // Get the width/height to load
+      if ((rdp.tiles[tile].clamp_s && tile_width <= 256) || (mask_width > 256))
+      {
+         // loading width
+         width = min(mask_width, tile_width);
+         // actual width
+         rdp.tiles[tile].width = tile_width;
+      }
+      else
+      {
+         // wrap all the way
+         width = min(mask_width, tile_width);	// changed from mask_width only
+         rdp.tiles[tile].width = width;
+      }
+
+      if ((rdp.tiles[tile].clamp_t && tile_height <= 256) || (mask_height > 256))
+      {
+         // loading height
+         height = min(mask_height, tile_height);
+         // actual height
+         rdp.tiles[tile].height = tile_height;
+      }
+      else
+      {
+         // wrap all the way
+         height = min(mask_height, tile_height);
+         rdp.tiles[tile].height = height;
+      }
    }
    else
    {
-      // wrap all the way
-      width = mask_width;
-      rdp.tiles[tile].width = mask_width;
-   }
+      // ** NORMAL TEXTURE SIZE METHOD **
+      // This is the 'correct' method for determining texture size, but may cause certain
+      //  textures to load too large & make the whole game go slow.
 
-   if ((rdp.tiles[tile].clamp_t && tile_height <= 256) || (mask_height > 256))
-   {
-      // loading height
-      height = min(mask_height, tile_height);
-      // actual height
-      rdp.tiles[tile].height = tile_height;
-   }
-   else
-   {
-      // wrap all the way
-      height = mask_height;
-      rdp.tiles[tile].height = mask_height;
+      if (mask_width > 256 && mask_height > 256)
+      {
+         mask_width = tile_width;
+         mask_height = tile_height;
+      }
+
+      // Get the width/height to load
+      if ((rdp.tiles[tile].clamp_s && tile_width <= 256) )//|| (mask_width > 256))
+      {
+         // loading width
+         width = min(mask_width, tile_width);
+         // actual width
+         rdp.tiles[tile].width = tile_width;
+      }
+      else
+      {
+         // wrap all the way
+         width = mask_width;
+         rdp.tiles[tile].width = mask_width;
+      }
+
+      if ((rdp.tiles[tile].clamp_t && tile_height <= 256) || (mask_height > 256))
+      {
+         // loading height
+         height = min(mask_height, tile_height);
+         // actual height
+         rdp.tiles[tile].height = tile_height;
+      }
+      else
+      {
+         // wrap all the way
+         height = mask_height;
+         rdp.tiles[tile].height = mask_height;
+      }
    }
 
    // without any large texture fixing-up; for alignment
