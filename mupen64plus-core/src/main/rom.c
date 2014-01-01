@@ -303,6 +303,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
           || (sl(ROM_HEADER.CRC1) == 0x9AB3B50A   && sl(ROM_HEADER.CRC2) == 0xBC666105) /* Hexen (G) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9CAB6AEA   && sl(ROM_HEADER.CRC2) == 0x87C61C00) /* Hexen (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xE6BA0A06   && sl(ROM_HEADER.CRC2) == 0x8A3D2C2F) /* Hexen (U) [t1] */
+#ifndef GLES // Less powerful hardware to play with -count_per_op = 1 would be slow
           || (sl(ROM_HEADER.CRC1) == 0x979B263E  && sl(ROM_HEADER.CRC2) == 0xF8470004) /* Killer Instinct Gold (E) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9E8FE2BA  && sl(ROM_HEADER.CRC2) == 0x8B270770) /* Killer Instinct Gold (U) (V1.0) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xCB06B744  && sl(ROM_HEADER.CRC2) == 0x633194DB) /* Killer Instinct Gold (U) (V1.0) [b1][t1] */
@@ -314,6 +315,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
           || (sl(ROM_HEADER.CRC1) == 0xF908CA4C  && sl(ROM_HEADER.CRC2) == 0x36464327) /* Killer Instinct Gold (U) (V1.2) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x6CB44B7  && sl(ROM_HEADER.CRC2) == 0x3163DB94) /* Killer Instinct Gold (U) (V1.2) [b1] */
           || (sl(ROM_HEADER.CRC1) == 0xF908CA4C  && sl(ROM_HEADER.CRC2) == 0x36464327) /* Killer Instinct Gold (U) (V1.2) [o1] */
+#endif
           || (sl(ROM_HEADER.CRC1) == 0x3BA7CDDC  && sl(ROM_HEADER.CRC2) == 0x464E52A0) /* Mario Story (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9BA10C4E  && sl(ROM_HEADER.CRC2) == 0x408ABD3) /* Pro Mahjong Kiwame 64 (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x7EAE2488   && sl(ROM_HEADER.CRC2) == 0x9D40A35A) /* Biohazard 2 (J) [!] */
