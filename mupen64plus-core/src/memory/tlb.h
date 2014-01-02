@@ -22,6 +22,8 @@
 #ifndef TLB_H
 #define TLB_H
 
+#include <stdint.h>
+
 typedef struct _tlb
 {
    int16_t mask;
