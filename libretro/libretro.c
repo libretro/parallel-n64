@@ -404,9 +404,10 @@ void retro_init(void)
    else
       log_cb = NULL;
 
-   environ_cb(RETRO_ENVIRONMENT_GET_PERF_INTERFACE, &perf_cb);
-   if (perf_cb.get_cpu_features)
+   if (environ_cb(RETRO_ENVIRONMENT_GET_PERF_INTERFACE, &perf_cb))
       perf_get_cpu_features_cb = perf_cb.get_cpu_features;
+   else
+      perf_get_cpu_features_cb = NULL;
 
    environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
 
