@@ -119,8 +119,6 @@ static void swap_rom(unsigned char* localrom, unsigned char* imagetype, int load
         *imagetype = Z64IMAGE;
 }
 
-extern void inputInitiateCallback(const char *headername);
-
 m64p_error open_rom(const unsigned char* romimage, unsigned int size)
 {
     md5_state_t state;
@@ -400,8 +398,6 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     isGoldeneyeRom = 0;
     if(strcmp(ROM_PARAMS.headername, "GOLDENEYE") == 0)
        isGoldeneyeRom = 1;
-
-    inputInitiateCallback(ROM_PARAMS.headername);
 
     return M64ERR_SUCCESS;
 }

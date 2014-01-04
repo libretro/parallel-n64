@@ -62,11 +62,16 @@ struct
     BUTTONS buttons;
 } controller[4];
 
+static void inputGetKeys_default( int Control, BUTTONS *Keys );
+typedef void (*get_keys_t)(int, BUTTONS*);
+get_keys_t getKeys = inputGetKeys_default;
+
 /* Mupen64Plus plugin functions */
 EXPORT m64p_error CALL inputPluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
                                    void (*DebugCallback)(void *, int, const char *))
 {
-    return M64ERR_SUCCESS;
+   getKeys = inputGetKeys_default;
+   return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL inputPluginShutdown(void)
@@ -195,10 +200,6 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
 #define CSTICK_UP 0x800
 #define CSTICK_DOWN 0x400
 
-typedef void (*get_keys_t)(int, BUTTONS*);
-static void inputGetKeys_default( int Control, BUTTONS *Keys );
-
-get_keys_t getKeys = inputGetKeys_default;
 int timeout = 0;
 
 extern void inputInitiateCallback(const char *headername);
