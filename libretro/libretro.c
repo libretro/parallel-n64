@@ -15,6 +15,8 @@
 #include "main/version.h"
 #include "main/savestates.h"
 
+#define MAX_AUDIO_FRAMES 2048
+
 struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 
@@ -412,9 +414,9 @@ void retro_init(void)
    environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
 
    rarch_resampler_realloc(&resampler_data, &resampler, NULL, 1.0);
-   audio_in_buffer_float = malloc(4096 * sizeof(float));
-   audio_out_buffer_float = malloc(4096 * sizeof(float));
-   audio_out_buffer_s16 = malloc(4096 * sizeof(int16_t));
+   audio_in_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
+   audio_out_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
+   audio_out_buffer_s16 = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
    audio_convert_init_simd();
 
    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
@@ -635,9 +637,18 @@ void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
    if (no_audio)
       return;
 
+   double ratio = 44100.0 / freq;
+   size_t max_frames = freq > 44100 ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
+
+   size_t remain_frames = 0;
+   if (frames > max_frames)
+   {
+      remain_frames = frames - max_frames;
+      frames = max_frames;
+   }
+
    audio_convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
 
-   double ratio = 44100.0 / freq;
    struct resampler_data data = {0};
    data.data_in = audio_in_buffer_float;
    data.data_out = audio_out_buffer_float;
@@ -655,6 +666,9 @@ void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
       data.output_frames -= ret;
       out += ret * 2;
    }
+
+   if (remain_frames)
+      retro_audio_batch_cb(raw_data + frames * 2, remain_frames, freq);
 }
 
 unsigned int FAKE_SDL_TICKS;
