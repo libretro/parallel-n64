@@ -134,20 +134,16 @@ void F3DCBFD_MoveMem(u32 w0, u32 w1)
 
         case F3DCBFD_MV_LIGHT:
         {
-           if (config.enableLighting)
+           u32 offset = (w0 >> 5) & 0x3FFF; 
+           u32 n = 0xFF;
+           if (offset >= 48)
            {
-              // OBS: Broken, needs some work
-              u32 address = RSP_SegmentToPhysical(w1);
-              u32 offset = (w0 >> 5) & 0x3FFF; 
-              u32 n = offset / 48;
-              if (n < 2)
-              {
-                 // MV_LOOKAT
-                 return;
-              }
-              n -= 2;
-
+              n = (offset - 48) / 48;
               gSPLight(w1, n);
+           }
+           else
+           {
+              //FIXME
            }
            break;
         }
