@@ -23,6 +23,10 @@ extern "C" {
 #define F3DCBFD     11
 #define NONE        12
 
+#define F3DCBFD_MV_VIEWPORT     8
+#define F3DCBFD_MV_LIGHT        10
+#define F3DCBFD_MV_NORMAL       14
+
 #ifdef MAINDEF
 const char *MicrocodeTypes[] =
 {

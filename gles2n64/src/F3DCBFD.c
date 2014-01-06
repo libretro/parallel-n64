@@ -117,10 +117,6 @@ void F3DCBFD_MoveWord(u32 w0, u32 w1)
     }
 }
 
-#define F3DCBFD_MV_VIEWPORT     8
-#define F3DCBFD_MV_LIGHT        10
-#define F3DCBFD_MV_NORMAL       14
-
 void F3DCBFD_MoveMem(u32 w0, u32 w1)
 {
 #ifdef __TRIBUFFER_OPT

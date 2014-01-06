@@ -248,13 +248,13 @@ static void uc8_moveword(void)
       // NOTE: right now it's assuming that it sets the integer part first.  This could
       //  be easily fixed, but only if i had something to test with.
 
-      case 0x02:
+      case G_MW_NUMLIGHT:
          rdp.num_lights = (data / 48);
          rdp.update |= UPDATE_LIGHTS;
          FRDP ("numlights: %d\n", rdp.num_lights);
          break;
 
-      case 0x04:
+      case G_MW_CLIP:
          if (offset == 0x04)
          {
             rdp.clip_ratio = sqrt((float)rdp.cmd1);
@@ -263,14 +263,14 @@ static void uc8_moveword(void)
          FRDP ("mw_clip %08lx, %08lx\n", rdp.cmd0, rdp.cmd1);
          break;
 
-      case 0x06:  // moveword SEGMENT
+      case G_MW_SEGMENT:  // moveword SEGMENT
          {
             FRDP ("SEGMENT %08lx -> seg%d\n", data, offset >> 2);
             rdp.segment[(offset >> 2) & 0xF] = data;
          }
          break;
 
-      case 0x08:
+      case G_MW_FOG:
          {
             rdp.fog_multiplier = (int16_t)(rdp.cmd1 >> 16);
             rdp.fog_offset = (int16_t)(rdp.cmd1 & 0x0000FFFF);
@@ -287,7 +287,7 @@ static void uc8_moveword(void)
          LRDP("perspnorm - IGNORED\n");
          break;
 
-      case 0x10:  // moveword coord mod
+      case G_MV_COORDMOD:  // moveword coord mod
          {
             uint8_t n = offset >> 2;
 
@@ -342,7 +342,7 @@ static void uc8_movemem(void)
 
    switch (idx)
    {
-      case 8:   // VIEWPORT
+      case F3DCBFD_MV_VIEWPORT:   // VIEWPORT
          {
             uint32_t a = addr >> 1;
             int16_t scale_x = ((int16_t*)gfx.RDRAM)[(a+0)^1] >> 2;
@@ -365,7 +365,7 @@ static void uc8_movemem(void)
          }
          break;
 
-      case 10:  // LIGHT
+      case F3DCBFD_MV_LIGHT:  // LIGHT
          {
             int n = (ofs / 48);
             if (n < 2)
@@ -422,10 +422,10 @@ static void uc8_movemem(void)
          }
          break;
 
-      case 14: //Normales
+      case F3DCBFD_MV_NORMAL: //Normals
          {
             uc8_normale_addr = segoffset(rdp.cmd1);
-            FRDP ("Normale - addr: %08lx\n", uc8_normale_addr);
+            FRDP ("Normals - addr: %08lx\n", uc8_normale_addr);
 #ifdef EXTREME_LOGGING
             for (i = 0; i < 32; i++)
             {

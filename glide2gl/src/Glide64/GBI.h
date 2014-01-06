@@ -20,6 +20,10 @@ extern "C" {
 #define F3DCBFD     11
 #define NONE        12
 
+#define F3DCBFD_MV_VIEWPORT     8
+#define F3DCBFD_MV_LIGHT        10
+#define F3DCBFD_MV_NORMAL       14
+
 // Fixed point conversion factors
 #define FIXED2FLOATRECIP1   0.5f
 #define FIXED2FLOATRECIP2   0.25f
