@@ -20,9 +20,6 @@ extern "C" {
 #define F3DCBFD     11
 #define NONE        12
 
-#define F3DCBFD_MV_VIEWPORT     8
-#define F3DCBFD_MV_LIGHT        10
-#define F3DCBFD_MV_NORMAL       14
 
 // Fixed point conversion factors
 #define FIXED2FLOATRECIP1   0.5f
@@ -383,9 +380,14 @@ extern "C" {
 #define G_DL_PUSH       0x00
 #define G_DL_NOPUSH     0x01
 
-//F3DEX2
+#define F3D_MV_VIEWPORT 0x80
+
 #define F3DEX2_MV_VIEWPORT 8
 #define F3DEX2_ENDDL       0xDF
+
+#define F3DCBFD_MV_VIEWPORT     8
+#define F3DCBFD_MV_LIGHT        10
+#define F3DCBFD_MV_NORMAL       14
 
 //Blender
 #define BLEND_FOG_ASHADE   0xc800

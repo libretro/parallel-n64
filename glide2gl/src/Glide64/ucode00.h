@@ -192,7 +192,7 @@ static void rsp_tri2 (VERTEX **v)
 //
 // uc0:vertex - loads vertices
 //
-static void uc0_vertex()
+static void uc0_vertex(void)
 {
   int v0 = (rdp.cmd0 >> 16) & 0xF;      // Current vertex
   int n = ((rdp.cmd0 >> 20) & 0xF) + 1; // Number of vertices to copy
@@ -228,6 +228,7 @@ void modelview_push(void)
    rdp.model_i ++;
 }
 
+//gSPPopMatrixN
 void modelview_pop (int num)
 {
    if (rdp.model_i > num - 1)
@@ -286,7 +287,7 @@ void load_matrix (float m[4][4], uint32_t addr)
 //
 // uc0:matrix - performs matrix operations
 //
-static void uc0_matrix()
+static void uc0_matrix(void)
 {
    LRDP("uc0:matrix ");
 
@@ -356,7 +357,7 @@ static void uc0_matrix()
 //
 // uc0:movemem - loads a structure with data
 //
-static void uc0_movemem()
+static void uc0_movemem(void)
 {
    LRDP("uc0:movemem ");
 
@@ -365,7 +366,7 @@ static void uc0_movemem()
    // Check the command
    switch ((rdp.cmd0 >> 16) & 0xFF)
    {
-      case 0x80:
+      case F3D_MV_VIEWPORT:
          {
             a = (segoffset(rdp.cmd1) & 0xFFFFFF) >> 1;
 
@@ -499,7 +500,7 @@ static void uc0_movemem()
 //
 // uc0:displaylist - makes a call to another section of code
 //
-static void uc0_displaylist()
+static void uc0_displaylist(void)
 {
    uint32_t addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
 
@@ -570,6 +571,7 @@ static void uc0_tri1(void)
 //
 // uc0:enddl - ends a call made by uc0:displaylist
 //
+//gSPEndDisplayList
 static void uc0_enddl(void)
 {
    LRDP("uc0:enddl\n");
@@ -640,6 +642,7 @@ static void uc0_popmatrix(void)
 
 static void uc6_obj_sprite(void);
 
+//gSPModifyVertex
 static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
 {
    VERTEX *v = &rdp.vtx[vtx];
@@ -854,14 +857,14 @@ static void uc0_setothermode_h(void)
 
    if (mask & 0x00000030)  // alpha dither mode
    {
-      rdp.alpha_dither_mode = (rdp.othermode_h >> 4) & 0x3;
+      rdp.alpha_dither_mode = (rdp.othermode_h >> G_MDSFT_ALPHADITHER) & 0x3;
       FRDP ("alpha dither mode: %s\n", str_dither[rdp.alpha_dither_mode]);
    }
 
 #ifndef NDEBUG
    if (mask & 0x000000C0)  // rgb dither mode
    {
-      uint32_t dither_mode = (rdp.othermode_h >> 6) & 0x3;
+      uint32_t dither_mode = (rdp.othermode_h >> G_MDSFT_RGBDITHER) & 0x3;
       FRDP ("rgb dither mode: %s\n", str_dither[dither_mode]);
    }
 #endif
@@ -963,6 +966,7 @@ static void uc0_setothermode_l(void)
    // there is not one setothermode_l that's not handled :)
 }
 
+//gSPSetGeometryMode
 static void uc0_setgeometrymode(void)
 {
    rdp.geom_mode |= rdp.cmd1;
@@ -1004,6 +1008,7 @@ static void uc0_setgeometrymode(void)
    }
 }
 
+//gSPClearGeometryMode
 static void uc0_cleargeometrymode(void)
 {
    FRDP("uc0:cleargeometrymode %08lx\n", rdp.cmd1);
@@ -1046,6 +1051,7 @@ static void uc0_cleargeometrymode(void)
    }
 }
 
+//gSPLine3D
 static void uc0_line3d(void)
 {
    uint32_t v0 = ((rdp.cmd1 >> 16) & 0xff) / 10;

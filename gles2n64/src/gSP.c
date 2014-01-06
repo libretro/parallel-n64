@@ -26,7 +26,7 @@ extern u32 uc_crc, uc_dcrc;
 extern char uc_str[256];
 #endif
 
-void gSPCombineMatrices();
+void gSPCombineMatrices(void);
 
 void gSPTriangle(s32 v0, s32 v1, s32 v2)
 {
@@ -342,7 +342,7 @@ static void gSPBillboardVertex_default(u32 v, u32 i)
     OGL.triangles.vertices[v].w += OGL.triangles.vertices[i].w;
 }
 
-void gSPCombineMatrices()
+void gSPCombineMatrices(void)
 {
     MultMatrix(gSP.matrix.projection, gSP.matrix.modelView[gSP.matrix.modelViewi], gSP.matrix.combined);
     gSP.changed &= ~CHANGED_MATRIX;
@@ -442,12 +442,12 @@ void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
     }
 }
 
-void gSPNoOp()
+void gSPNoOp(void)
 {
     gSPFlushTriangles();
 }
 
-void gSPTriangleUnknown()
+void gSPTriangleUnknown(void)
 {
 }
 
@@ -1214,7 +1214,7 @@ void gSPTexture( f32 sc, f32 tc, s32 level, s32 tile, s32 on )
     gSP.changed |= CHANGED_TEXTURESCALE;
 }
 
-void gSPEndDisplayList()
+void gSPEndDisplayList(void)
 {
     if (RSP.PCi > 0)
         RSP.PCi--;
