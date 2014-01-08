@@ -24,7 +24,7 @@
 #define glClearDepthf glClearDepth
 #endif
 
-void OGL_UpdateDepthUpdate();
+void OGL_UpdateDepthUpdate(void);
 
 GLInfo OGL;
 
@@ -66,7 +66,7 @@ int OGL_IsExtSupported( const char *extension )
 
 extern void _glcompiler_error(GLint shader);
 
-void OGL_InitStates()
+void OGL_InitStates(void)
 {
     GLint   success;
 
@@ -86,7 +86,7 @@ void OGL_InitStates()
     glViewport(0, 0, config.screen.width, config.screen.height);
 }
 
-void OGL_UpdateScale()
+void OGL_UpdateScale(void)
 {
     OGL.scaleX = (float)config.screen.width / (float)VI.width;
     OGL.scaleY = (float)config.screen.height / (float)VI.height;
@@ -94,7 +94,7 @@ void OGL_UpdateScale()
 
 int retro_return(bool just_flipping);
 
-bool OGL_Start()
+bool OGL_Start(void)
 {
     OGL_InitStates();
 
@@ -161,7 +161,7 @@ bool OGL_Start()
     return TRUE;
 }
 
-void OGL_Stop()
+void OGL_Stop(void)
 {
     LOG(LOG_MINIMAL, "Stopping OpenGL\n");
 
@@ -169,7 +169,7 @@ void OGL_Stop()
     TextureCache_Destroy();
 }
 
-void OGL_UpdateCullFace()
+void OGL_UpdateCullFace(void)
 {
     if (config.enableFaceCulling && (gSP.geometryMode & G_CULL_BOTH))
     {
@@ -185,7 +185,7 @@ void OGL_UpdateCullFace()
         glDisable(GL_CULL_FACE);
 }
 
-void OGL_UpdateViewport()
+void OGL_UpdateViewport(void)
 {
     int x, y, w, h;
     x = (int)(gSP.viewport.x * OGL.scaleX);
@@ -195,7 +195,7 @@ void OGL_UpdateViewport()
     glViewport(x, y, w, h);
 }
 
-void OGL_UpdateDepthUpdate()
+void OGL_UpdateDepthUpdate(void)
 {
     if (gDP.otherMode.depthUpdate)
         glDepthMask(GL_TRUE);
@@ -203,7 +203,7 @@ void OGL_UpdateDepthUpdate()
         glDepthMask(GL_FALSE);
 }
 
-void OGL_UpdateScissor()
+void OGL_UpdateScissor(void)
 {
     int x, y, w, h;
     x = (int)(gDP.scissor.ulx * OGL.scaleX);
@@ -215,7 +215,7 @@ void OGL_UpdateScissor()
 }
 
 //copied from RICE VIDEO
-void OGL_SetBlendMode()
+void OGL_SetBlendMode(void)
 {
 
     u32 blender = gDP.otherMode.l >> 16;
@@ -348,7 +348,7 @@ void OGL_SetBlendMode()
 
 }
 
-void OGL_UpdateStates()
+void OGL_UpdateStates(void)
 {
     if (gDP.otherMode.cycleType == G_CYC_COPY)
         ShaderCombiner_Set(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0), -1);
@@ -529,7 +529,7 @@ void OGL_AddTriangle(int v0, int v1, int v2)
     OGL.triangles.elements[OGL.triangles.num++] = v2;
 }
 
-void OGL_SetColorArray()
+void OGL_SetColorArray(void)
 {
     if (scProgramCurrent->usesCol)
         glEnableVertexAttribArray(SC_COLOR);
@@ -537,7 +537,7 @@ void OGL_SetColorArray()
         glDisableVertexAttribArray(SC_COLOR);
 }
 
-void OGL_SetTexCoordArrays()
+void OGL_SetTexCoordArrays(void)
 {
     if (scProgramCurrent->usesT0)
         glEnableVertexAttribArray(SC_TEXCOORD0);
@@ -550,7 +550,7 @@ void OGL_SetTexCoordArrays()
         glDisableVertexAttribArray(SC_TEXCOORD1);
 }
 
-void OGL_DrawTriangles()
+void OGL_DrawTriangles(void)
 {
     if (OGL.renderingToTexture && config.ignoreOffscreenRendering)
     {
@@ -820,7 +820,7 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
     OGL_UpdateViewport();
 }
 
-void OGL_ClearDepthBuffer()
+void OGL_ClearDepthBuffer(void)
 {
     if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
 
@@ -856,7 +856,7 @@ void OGL_ClearColorBuffer( float *color )
 
 }
 
-int OGL_CheckError()
+int OGL_CheckError(void)
 {
     GLenum e = glGetError();
     if (e != GL_NO_ERROR)
@@ -875,7 +875,7 @@ int OGL_CheckError()
     return 0;
 }
 
-void OGL_SwapBuffers()
+void OGL_SwapBuffers(void)
 {
     // if emulator defined a render callback function, call it before
  	 // buffer swap
