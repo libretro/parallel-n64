@@ -355,6 +355,8 @@ static u_int get_clean_addr(int addr)
   return (u_int)ptr;
 }
 
+extern uint8_t isGoldeneyeRom;
+
 static int verify_dirty(void *addr)
 {
   u_int *ptr=(u_int *)addr;
@@ -388,6 +390,12 @@ static int verify_dirty(void *addr)
     source = source+(map_value<<2);
   }
   //DebugMessage(M64MSG_VERBOSE, "verify_dirty: %x %x %x",source,copy,len);
+#ifdef IOS
+  // Hack to workaround crash
+  if (isGoldeneyeRom)
+     return 1;
+  else
+#endif
   return !memcmp((void *)source,(void *)copy,len);
 }
 
