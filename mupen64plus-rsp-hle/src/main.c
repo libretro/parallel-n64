@@ -100,9 +100,6 @@ static void rsp_break(uint32_t setbits)
 
 static void forward_gfx_task(void)
 {
-   if (*(uint32_t *)(rspInfo.DMEM + 0xFF0) == 0x00000000)
-      return; /* Resident Evil 2 */
-
     if (rspInfo.ProcessDlistList != NULL)
     {
         rspInfo.ProcessDlistList();
