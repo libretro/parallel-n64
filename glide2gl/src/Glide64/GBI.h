@@ -394,6 +394,9 @@ extern "C" {
 #define BLEND_FOG_APRIME   0xc400
 #define BLEND_XLU          0x0040
 
+#define ZMODE_DEC          0xc00
+#define ZLUT_SIZE          0x40000
+
 #ifdef __cplusplus
 }
 #endif

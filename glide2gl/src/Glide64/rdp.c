@@ -944,7 +944,7 @@ EXPORT void CALL ProcessDList(void)
 }
 
 // undef - undefined instruction, always ignore
-static void undef()
+static void undef(void)
 {
 #ifdef _ENDUSER_RELEASE_
   *gfx.MI_INTR_REG |= 0x20;
@@ -957,18 +957,18 @@ static void undef()
 }
 
 // spnoop - no operation, always ignore
-static void spnoop()
+static void spnoop(void)
 {
   LRDP("spnoop\n");
 }
 
 // noop - no operation, always ignore
-static void rdp_noop()
+static void rdp_noop(void)
 {
   LRDP("noop\n");
 }
 
-static void ys_memrect ()
+static void ys_memrect(void)
 {
   uint32_t tile = (uint16_t)((rdp.cmd1 & 0x07000000) >> 24);
 
@@ -1003,7 +1003,7 @@ static void ys_memrect ()
   }
 }
 
-static void pm_palette_mod ()
+static void pm_palette_mod(void)
 {
    int i;
    uint8_t envr = (uint8_t)((float)((rdp.env_color >> 24)&0xFF)/255.0f*31.0f);
@@ -1021,7 +1021,7 @@ static void pm_palette_mod ()
    LRDP("Texrect palette modification\n");
 }
 
-static void pd_zcopy ()
+static void pd_zcopy(void)
 {
    int x;
    uint16_t ul_x = (uint16_t)((rdp.cmd1 & 0x00FFF000) >> 14);
@@ -1059,7 +1059,7 @@ static void DrawDepthBufferFog(void)
   DrawDepthBufferToScreen(&fb_info);
 }
 
-static void rdp_texrect()
+static void rdp_texrect(void)
 {
   if (!rdp.LLE)
   {
@@ -1457,22 +1457,22 @@ static void rdp_texrect()
     }
 }
 
-static void rdp_loadsync()
+static void rdp_loadsync(void)
 {
   LRDP("loadsync - ignored\n");
 }
 
-static void rdp_pipesync()
+static void rdp_pipesync(void)
 {
   LRDP("pipesync - ignored\n");
 }
 
-static void rdp_tilesync()
+static void rdp_tilesync(void)
 {
   LRDP("tilesync - ignored\n");
 }
 
-static void rdp_fullsync()
+static void rdp_fullsync(void)
 {
   // Set an interrupt to allow the game to continue
   *gfx.MI_INTR_REG |= 0x20;
@@ -1480,7 +1480,7 @@ static void rdp_fullsync()
   LRDP("fullsync\n");
 }
 
-static void rdp_setkeygb()
+static void rdp_setkeygb(void)
 {
   uint32_t sB = rdp.cmd1&0xFF;
   uint32_t cB = (rdp.cmd1>>8)&0xFF;
@@ -1491,7 +1491,7 @@ static void rdp_setkeygb()
   FRDP("setkeygb. cG=%02lx, sG=%02lx, cB=%02lx, sB=%02lx\n", cG, sG, cB, sB);
 }
 
-static void rdp_setkeyr()
+static void rdp_setkeyr(void)
 {
   uint32_t sR = rdp.cmd1&0xFF;
   uint32_t cR = (rdp.cmd1>>8)&0xFF;
@@ -1500,7 +1500,7 @@ static void rdp_setkeyr()
   FRDP("setkeyr. cR=%02lx, sR=%02lx\n", cR, sR);
 }
 
-static void rdp_setconvert()
+static void rdp_setconvert(void)
 {
   /*
   rdp.YUV_C0 = 1.1647f  ;
@@ -1519,7 +1519,7 @@ static void rdp_setconvert()
 // setscissor - sets the screen clipping rectangle
 //
 
-static void rdp_setscissor()
+static void rdp_setscissor(void)
 {
   // clipper resolution is 320x240, scale based on computer resolution
   rdp.scissor_o.ul_x = /*min(*/(uint32_t)(((rdp.cmd0 & 0x00FFF000) >> 14))/*, 320)*/;
@@ -1546,7 +1546,7 @@ static void rdp_setscissor()
   }
 }
 
-static void rdp_setprimdepth()
+static void rdp_setprimdepth(void)
 {
   rdp.prim_depth = (uint16_t)((rdp.cmd1 >> 16) & 0x7FFF);
   rdp.prim_dz = (uint16_t)(rdp.cmd1 & 0x7FFF);
@@ -1554,7 +1554,7 @@ static void rdp_setprimdepth()
   FRDP("setprimdepth: %d\n", rdp.prim_depth);
 }
 
-static void rdp_setothermode()
+static void rdp_setothermode(void)
 {
 #define F3DEX2_SETOTHERMODE(cmd,sft,len,data) { \
   rdp.cmd0 = (cmd<<24) | ((32-(sft)-(len))<<8) | (((len)-1)); \
@@ -1611,7 +1611,7 @@ void load_palette (uint32_t addr, uint16_t start, uint16_t count)
   LRDP("Done.\n");
 }
 
-static void rdp_loadtlut()
+static void rdp_loadtlut(void)
 {
    int i, j;
    uint32_t tile = (rdp.cmd1 >> 24) & 0x07;
@@ -1652,7 +1652,7 @@ static void rdp_loadtlut()
 }
 
 int tile_set = 0;
-static void rdp_settilesize()
+static void rdp_settilesize(void)
 {
   uint32_t tile = (rdp.cmd1 >> 24) & 0x07;
   rdp.last_tile_size = tile;
@@ -1823,7 +1823,8 @@ end_dxt_test:
 }
 
 void LoadBlock32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt);
-static void rdp_loadblock()
+
+static void rdp_loadblock(void)
 {
   if (rdp.skip_drawing)
     return;
@@ -2024,7 +2025,8 @@ LABEL_20:
 }
 
 void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
-static void rdp_loadtile()
+
+static void rdp_loadtile(void)
 {
   if (rdp.skip_drawing)
     return;
@@ -2106,7 +2108,7 @@ static void rdp_loadtile()
 #endif
 }
 
-static void rdp_settile()
+static void rdp_settile(void)
 {
    int i;
    tile_set = 1; // used to check if we only load the first settilesize
@@ -2170,7 +2172,7 @@ static void rdp_settile()
 // fillrect - fills a rectangle
 //
 
-static void rdp_fillrect()
+static void rdp_fillrect(void)
 {
   uint32_t ul_x = ((rdp.cmd1 & 0x00FFF000) >> 14);
   uint32_t ul_y = (rdp.cmd1 & 0x00000FFF) >> 2;
@@ -2358,7 +2360,7 @@ static void rdp_fillrect()
 // setfillcolor - sets the filling color
 //
 
-static void rdp_setfillcolor()
+static void rdp_setfillcolor(void)
 {
   rdp.fill_color = rdp.cmd1;
   rdp.update |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
@@ -2366,7 +2368,7 @@ static void rdp_setfillcolor()
   FRDP("setfillcolor: %08lx\n", rdp.cmd1);
 }
 
-static void rdp_setfogcolor()
+static void rdp_setfogcolor(void)
 {
   rdp.fog_color = rdp.cmd1;
   rdp.update |= UPDATE_COMBINE | UPDATE_FOG_ENABLED;
@@ -2374,7 +2376,7 @@ static void rdp_setfogcolor()
   FRDP("setfogcolor - %08lx\n", rdp.cmd1);
 }
 
-static void rdp_setblendcolor()
+static void rdp_setblendcolor(void)
 {
   rdp.blend_color = rdp.cmd1;
   rdp.update |= UPDATE_COMBINE;
@@ -2382,7 +2384,7 @@ static void rdp_setblendcolor()
   FRDP("setblendcolor: %08lx\n", rdp.cmd1);
 }
 
-static void rdp_setprimcolor()
+static void rdp_setprimcolor(void)
 {
   rdp.prim_color = rdp.cmd1;
   rdp.prim_lodmin = (rdp.cmd0 >> 8) & 0xFF;
@@ -2393,7 +2395,7 @@ static void rdp_setprimcolor()
     rdp.prim_lodfrac);
 }
 
-static void rdp_setenvcolor()
+static void rdp_setenvcolor(void)
 {
   rdp.env_color = rdp.cmd1;
   rdp.update |= UPDATE_COMBINE;
@@ -2401,7 +2403,7 @@ static void rdp_setenvcolor()
   FRDP("setenvcolor: %08lx\n", rdp.cmd1);
 }
 
-static void rdp_setcombine()
+static void rdp_setcombine(void)
 {
   rdp.c_a0  = (uint8_t)((rdp.cmd0 >> 20) & 0xF);
   rdp.c_b0  = (uint8_t)((rdp.cmd1 >> 28) & 0xF);
@@ -2439,7 +2441,7 @@ static void rdp_setcombine()
 // settextureimage - sets the source for an image copy
 //
 
-static void rdp_settextureimage()
+static void rdp_settextureimage(void)
 {
   static const char *format[]   = { "RGBA", "YUV", "CI", "IA", "I", "?", "?", "?" };
   static const char *size[]     = { "4bit", "8bit", "16bit", "32bit" };
@@ -2488,7 +2490,7 @@ static void rdp_settextureimage()
     rdp.timg.width, rdp.timg.addr);
 }
 
-static void rdp_setdepthimage()
+static void rdp_setdepthimage(void)
 {
   rdp.zimg = segoffset(rdp.cmd1) & BMASK;
   rdp.zi_width = rdp.ci_width;
@@ -2496,7 +2498,7 @@ static void rdp_setdepthimage()
 }
 
 int SwapOK = true;
-static void RestoreScale()
+static void RestoreScale(void)
 {
   FRDP("Return to original scale: x = %f, y = %f\n", rdp.scale_x_bak, rdp.scale_y_bak);
   rdp.scale_x = rdp.scale_x_bak;
@@ -2518,7 +2520,7 @@ static void RestoreScale()
 
 static uint32_t swapped_addr = 0;
 
-static void rdp_setcolorimage()
+static void rdp_setcolorimage(void)
 {
    int i;
 
@@ -2907,7 +2909,7 @@ static void rdp_setcolorimage()
    }
 }
 
-static void rsp_reserved0()
+static void rsp_reserved0(void)
 {
   if (settings.ucode == ucode_DiddyKong)
   {
@@ -2922,17 +2924,17 @@ static void rsp_reserved0()
   }
 }
 
-static void rsp_reserved1()
+static void rsp_reserved1(void)
 {
   LRDP("reserved1 - ignored\n");
 }
 
-static void rsp_reserved2()
+static void rsp_reserved2(void)
 {
   LRDP("reserved2\n");
 }
 
-static void rsp_reserved3()
+static void rsp_reserved3(void)
 {
   LRDP("reserved3 - ignored\n");
 }
@@ -3344,6 +3346,18 @@ static uint32_t rdp_cmd_ptr = 0;
 static uint32_t rdp_cmd_cur = 0;
 static uint32_t rdp_cmd_data[0x1000];
 
+#define XSCALE(x) ((float)(x)/(1<<18))
+#define YSCALE(y) ((float)(y)/(1<<2))
+#define ZSCALE(z) ((rdp.zsrc == 1)? (float)(rdp.prim_depth) : (float)((uint32_t)(z))/0xffff0000)
+  //#define WSCALE(w) (rdp.Persp_en? (float(uint32_t(w) + 0x10000)/0xffff0000) : 1.0f)
+  //#define WSCALE(w) (rdp.Persp_en? 4294901760.0/(w + 65536) : 1.0f)
+#define WSCALE(w) (rdp.Persp_en? 65536.0f/ (float)((w+ 0xffff)>>16) : 1.0f)
+#define CSCALE(c) (((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18)
+#define _PERSP(w) ( w )
+#define PERSP(s, w) ( ((int64_t)(s) << 20) / (_PERSP(w)? _PERSP(w):1) )
+#define SSCALE(s, _w) (rdp.Persp_en? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
+#define TSCALE(s, w) (rdp.Persp_en? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
+
 void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer,
                   uint32_t * rdp_cmd)
 {
@@ -3442,17 +3456,6 @@ void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer,
   dzdx >>= 2;  dzde >>= 2;
   dwdx >>= 2;  dwde >>= 2;
 
-#define XSCALE(x) ((float)(x)/(1<<18))
-#define YSCALE(y) ((float)(y)/(1<<2))
-#define ZSCALE(z) ((rdp.zsrc == 1)? (float)(rdp.prim_depth) : (float)((uint32_t)(z))/0xffff0000)
-  //#define WSCALE(w) (rdp.Persp_en? (float(uint32_t(w) + 0x10000)/0xffff0000) : 1.0f)
-  //#define WSCALE(w) (rdp.Persp_en? 4294901760.0/(w + 65536) : 1.0f)
-#define WSCALE(w) (rdp.Persp_en? 65536.0f/ (float)((w+ 0xffff)>>16) : 1.0f)
-#define CSCALE(c) (((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18)
-#define _PERSP(w) ( w )
-#define PERSP(s, w) ( ((int64_t)(s) << 20) / (_PERSP(w)? _PERSP(w):1) )
-#define SSCALE(s, _w) (rdp.Persp_en? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
-#define TSCALE(s, w) (rdp.Persp_en? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
 
   int nbVtxs = 0;
   VERTEX vtxbuf[12];
@@ -3708,49 +3711,49 @@ static void rdp_triangle(int shade, int texture, int zbuffer)
   lle_triangle(rdp.cmd0, rdp.cmd1, shade, texture, zbuffer, rdp_cmd_data + rdp_cmd_cur);
 }
 
-static void rdp_trifill()
+static void rdp_trifill(void)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 0, 0, 0, rdp_cmd_data + rdp_cmd_cur);
   LRDP("trifill\n");
 }
 
-static void rdp_trishade()
+static void rdp_trishade(void)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 1, 0, 0, rdp_cmd_data + rdp_cmd_cur);
   LRDP("trishade\n");
 }
 
-static void rdp_tritxtr()
+static void rdp_tritxtr(void)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 0, 1, 0, rdp_cmd_data + rdp_cmd_cur);
   LRDP("tritxtr\n");
 }
 
-static void rdp_trishadetxtr()
+static void rdp_trishadetxtr(void)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 1, 1, 0, rdp_cmd_data + rdp_cmd_cur);
   LRDP("trishadetxtr\n");
 }
 
-static void rdp_trifillz()
+static void rdp_trifillz(void)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 0, 0, 1, rdp_cmd_data + rdp_cmd_cur);
   LRDP("trifillz\n");
 }
 
-static void rdp_trishadez()
+static void rdp_trishadez(void)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 1, 0, 1, rdp_cmd_data + rdp_cmd_cur);
   LRDP("trishadez\n");
 }
 
-static void rdp_tritxtrz()
+static void rdp_tritxtrz(void)
 {
    lle_triangle(rdp.cmd0, rdp.cmd1, 0, 1, 1, rdp_cmd_data + rdp_cmd_cur);
    LRDP("tritxtrz\n");
 }
 
-static void rdp_trishadetxtrz()
+static void rdp_trishadetxtrz(void)
 {
    lle_triangle(rdp.cmd0, rdp.cmd1, 1, 1, 1, rdp_cmd_data + rdp_cmd_cur);
    LRDP("trishadetxtrz\n");

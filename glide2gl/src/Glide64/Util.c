@@ -291,7 +291,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 {
    int i;
    deltaZ = dzdx = 0;
-   if (linew == 0 && (fb_depth_render_enabled || (rdp.rm & 0xC00) == 0xC00))
+   if (linew == 0 && (fb_depth_render_enabled || (rdp.rm & ZMODE_DEC) == ZMODE_DEC))
    {
       double X0 = vtx[0]->sx / rdp.scale_x;
       double Y0 = vtx[0]->sy / rdp.scale_y;
@@ -310,7 +310,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
          double diffz_02 = vtx[0]->sz - vtx[2]->sz;
          double diffz_12 = vtx[1]->sz - vtx[2]->sz;
          double fdzdx = (diffz_02 * diffy_12 - diffz_12 * diffy_02) / denom;
-         if ((rdp.rm & 0xC00) == 0xC00)
+         if ((rdp.rm & ZMODE_DEC) == ZMODE_DEC)
          {
             // Calculate deltaZ per polygon for Decal z-mode
             double fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
@@ -884,15 +884,15 @@ float ScaleZ(float z)
       int iz = (int)(z*8.0f+0.5f);
       if (iz < 0)
          iz = 0;
-      else if (iz >= 0x40000)
-         iz = 0x40000 - 1;
+      else if (iz >= ZLUT_SIZE)
+         iz = ZLUT_SIZE - 1;
       return (float)zLUT[iz];
    }
    if (z  < 0.0f)
       return 0.0f;
    z *= 1.9f;
-   if (z > 65534.0f)
-      return 65534.0f;
+   if (z > 65535.0f)
+      return 65535.0f;
    return z;
 }
 
@@ -1667,7 +1667,7 @@ void update(void)
          {
             if (rdp.flags & ZBUF_COMPARE)
             {
-               switch ((rdp.rm & 0xC00)>>10)
+               switch ((rdp.rm & ZMODE_DEC) >> 10)
                {
                   case 0:
                      grDepthBiasLevel(0);
