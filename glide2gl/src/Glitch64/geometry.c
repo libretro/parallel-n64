@@ -47,6 +47,8 @@ static int fog_ext_en;
 int inverted_culling;
 int culling_mode;
 
+void *previous_pointers;
+
 #define VERTEX_BUFFER_SIZE 1500 //Max amount of vertices to buffer, this seems large enough.
 static VERTEX vertex_buffer[VERTEX_BUFFER_SIZE];
 static int vertex_buffer_count = 0;
@@ -67,25 +69,28 @@ void vbo_draw(void)
 //Buffer vertices instead of glDrawArrays(...)
 static void vbo_buffer(GLenum mode,GLint first,GLsizei count,void* pointers)
 {
-   if(!vertex_buffer_enabled)
+   if(!vertex_buffer_enabled && previous_pointers != pointers)
    {
+      VERTEX *v = (VERTEX*)&vertex_buffer[0];
       // enable vertex buffer if not already enabled
 
       vertex_buffer_enabled = true;
       glEnableVertexAttribArray(POSITION_ATTR);
-      glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, &vertex_buffer[0].x); //Position
+      glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, &v->x); //Position
 
       glEnableVertexAttribArray(COLOUR_ATTR);
-      glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, &vertex_buffer[0].b); //Colour
+      glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, &v->b); //Colour
 
       glEnableVertexAttribArray(TEXCOORD_0_ATTR);
-      glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &vertex_buffer[0].coord[2]); //Tex0
+      glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &v->coord[2]); //Tex0
 
       glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-      glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &vertex_buffer[0].coord[0]); //Tex1
+      glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &v->coord[0]); //Tex1
 
       glEnableVertexAttribArray(FOG_ATTR);
-      glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, &vertex_buffer[0].f); //Fog
+      glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, &v->f); //Fog
+      
+      previous_pointers = pointers;
    }
 
    if((count != 3 && mode != GL_TRIANGLES) || vertex_buffer_count + count > VERTEX_BUFFER_SIZE)
@@ -387,11 +392,6 @@ grDrawVertexArray(FxU32 mode, FxU32 Count, void *pointers2)
    if(need_to_compile)
       compile_shader();
 
-#ifndef NDEBUG
-   if(mode != GR_TRIANGLE_FAN)
-      DISPLAY_WARNING("grDrawVertexArray : unknown mode : %x", mode);
-#endif
-
    vbo_buffer(GL_TRIANGLE_FAN,0,Count,pointers[0]);
 }
 
@@ -406,20 +406,6 @@ grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers, FxU32 strid
    if(need_to_compile)
       compile_shader();
 
-#ifdef NDEBUG
    //only calls ever made are for GR_TRIANGLE_STRIP from Glide64 - so optimize for that
    vbo_buffer(GL_TRIANGLE_STRIP,0,Count,pointers);
-#else
-   switch(mode)
-   {
-      case GR_TRIANGLE_STRIP:
-         vbo_buffer(GL_TRIANGLE_STRIP,0,Count,pointers);
-         break;
-      case GR_TRIANGLE_FAN:
-         vbo_buffer(GL_TRIANGLE_FAN,0,Count,pointers);
-         break;
-      default:
-         DISPLAY_WARNING("grDrawVertexArrayContiguous : unknown mode : %x", mode);
-   }
-#endif
 }
