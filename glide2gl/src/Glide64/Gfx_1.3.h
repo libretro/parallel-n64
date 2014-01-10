@@ -62,6 +62,7 @@ the plugin
 #include <stdint.h>
 #include <stdbool.h>
 #include "m64p.h"
+#include "RSP_Parser.h"
 
 #ifndef max
 #define max(a, b) ((a) > (b) ? (a) : (b))

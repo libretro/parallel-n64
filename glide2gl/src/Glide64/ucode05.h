@@ -118,7 +118,7 @@ static void uc5_vertex(void)
    if (settings.hacks&hack_Diddy)
       n++;
 
-   if (rdp.cmd0 & 0x00010000)
+   if (rdp.cmd0 & G_FOG)
    {
       if (billboarding)
          vtx_last = 1;
@@ -351,7 +351,7 @@ static void uc5_setgeometrymode(void)
    }
 
    //Added by Gonetz
-   if (rdp.cmd1 & 0x00010000)      // Fog enable
+   if (rdp.cmd1 & G_FOG)      // Fog enable
    {
       if (!(rdp.flags & FOG_ENABLED))
       {
@@ -376,7 +376,7 @@ static void uc5_cleargeometrymode(void)
       }
    }
    //Added by Gonetz
-   if (rdp.cmd1 & 0x00010000)      // Fog enable
+   if (rdp.cmd1 & G_FOG)      // Fog enable
    {
       if (rdp.flags & FOG_ENABLED)
       {

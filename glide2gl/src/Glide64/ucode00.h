@@ -734,7 +734,7 @@ static void uc0_moveword(void)
       case G_MW_NUMLIGHT:
          rdp.num_lights = ((rdp.cmd1 - 0x80000000) >> 5) - 1;  // inverse of equation
          if (rdp.num_lights > 8)
-            rdp.num_lights = 0;
+            rdp.num_lights = NUMLIGHTS_0;
 
          rdp.update |= UPDATE_LIGHTS;
          FRDP ("numlights: %d\n", rdp.num_lights);
@@ -945,7 +945,7 @@ static void uc0_setothermode_l(void)
       rdp.update |= UPDATE_ALPHA_COMPARE;
    }
 
-   if (mask & 0x00000004)  // z-src selection
+   if (mask & ZBUF_COMPARE)  // z-src selection
    {
       rdp.zsrc = (rdp.othermode_l & 0x00000004) >> 2;
       FRDP ("z-src sel: %s\n", str_zs[rdp.zsrc]);
@@ -959,7 +959,7 @@ static void uc0_setothermode_l(void)
       rdp.render_mode_changed |= rdp.rm ^ rdp.othermode_l;
       rdp.rm = rdp.othermode_l;
       if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
-         rdp.othermode_l |= /*0x00000020 |*/ 0x00000010;
+         rdp.othermode_l |= UPDATE_BIASLEVEL | UPDATE_LIGHTS;
       FRDP ("rendermode: %08lx\n", rdp.othermode_l);  // just output whole othermode_l
    }
 
