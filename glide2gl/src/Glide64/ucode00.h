@@ -603,15 +603,15 @@ static void uc0_culldl(void)
       v = &rdp.vtx[i];
       // Check if completely off the screen (quick frustrum clipping for 90 FOV)
       if (v->x >= -v->w)
-         cond |= 0x01;
+         cond |= X_CLIP_MAX;
       if (v->x <= v->w)
-         cond |= 0x02;
+         cond |= X_CLIP_MIN;
       if (v->y >= -v->w)
-         cond |= 0x04;
+         cond |= Y_CLIP_MAX;
       if (v->y <= v->w)
-         cond |= 0x08;
+         cond |= Y_CLIP_MIN;
       if (v->w >= 0.1f)
-         cond |= 0x10;
+         cond |= Z_CLIP_MAX;
 
       if (cond == 0x1F)
          return;

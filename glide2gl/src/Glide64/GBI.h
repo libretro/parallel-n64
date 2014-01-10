@@ -399,6 +399,13 @@ extern "C" {
 #define ZMODE_DECAL        0xc00
 #define ZLUT_SIZE          0x40000
 
+#define X_CLIP_MAX  0x01
+#define X_CLIP_MIN  0x02
+#define Y_CLIP_MAX  0x04
+#define Y_CLIP_MIN  0x08
+#define Z_CLIP_MAX  0x10
+#define Z_CLIP_MIN  0x20
+
 #ifdef __cplusplus
 }
 #endif
