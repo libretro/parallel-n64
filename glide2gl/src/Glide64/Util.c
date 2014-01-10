@@ -291,7 +291,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 {
    int i;
    deltaZ = dzdx = 0;
-   if (linew == 0 && (fb_depth_render_enabled || (rdp.rm & ZMODE_DEC) == ZMODE_DEC))
+   if (linew == 0 && (fb_depth_render_enabled || (rdp.rm & ZMODE_DECAL) == ZMODE_DECAL))
    {
       double X0 = vtx[0]->sx / rdp.scale_x;
       double Y0 = vtx[0]->sy / rdp.scale_y;
@@ -310,7 +310,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
          double diffz_02 = vtx[0]->sz - vtx[2]->sz;
          double diffz_12 = vtx[1]->sz - vtx[2]->sz;
          double fdzdx = (diffz_02 * diffy_12 - diffz_12 * diffy_02) / denom;
-         if ((rdp.rm & ZMODE_DEC) == ZMODE_DEC)
+         if ((rdp.rm & ZMODE_DECAL) == ZMODE_DECAL)
          {
             // Calculate deltaZ per polygon for Decal z-mode
             double fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
@@ -1667,7 +1667,7 @@ void update(void)
          {
             if (rdp.flags & ZBUF_COMPARE)
             {
-               switch ((rdp.rm & ZMODE_DEC) >> 10)
+               switch ((rdp.rm & ZMODE_DECAL) >> 10)
                {
                   case 0:
                      grDepthBiasLevel(0);
