@@ -281,9 +281,13 @@ grDepthMask( FxBool mask )
 
 extern retro_log_printf_t log_cb;
 float biasFactor = 0;
+bool biasFound = false;
 void FindBestDepthBias(void)
 {
 #if defined(__LIBRETRO__) // TODO: How to calculate this?
+   if (biasFound)
+      return;
+
    const char *renderer = (const char*)glGetString(GL_RENDERER);
 
    if (log_cb)
@@ -297,6 +301,8 @@ void FindBestDepthBias(void)
       biasFactor = -1.5f;
    else
       biasFactor = 0.25f;
+
+   biasFound = true;
 #else
    float f, bestz = 0.25f;
    int x;
