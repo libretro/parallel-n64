@@ -302,9 +302,11 @@ void FindBestDepthBias(void)
       log_cb(RETRO_LOG_INFO, "\n");
    }
 
+#if 0
    if (strstr(renderer, "SGX"))  //PowerVR SGX
       biasFactor = -1.5f;
    else
+#endif
       biasFactor = 0.25f;
 
    biasFound = true;
