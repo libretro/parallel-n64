@@ -55,21 +55,26 @@ void F3DCBFD_Vtx(u32 w0, u32 w1)
 		OGL.triangles.vertices[v].s = _FIXED2FLOAT(vertex->s, 5);
 		OGL.triangles.vertices[v].t = _FIXED2FLOAT(vertex->t, 5);
 
-        if (config.enableLighting && gSP.geometryMode & G_LIGHTING)
+      if (config.enableLighting && gSP.geometryMode & G_LIGHTING)
 		{
 			OGL.triangles.vertices[v].nx = ((s8*)RDRAM)[(normal_address + (i<<1) + (v0<<1) + 0)^3];
 			OGL.triangles.vertices[v].ny = ((s8*)RDRAM)[(normal_address + (i<<1) + (v0<<1) + 1)^3];
 			OGL.triangles.vertices[v].nz = (s8)(vertex->flag&0xff);
 		}
 
-        gSPProcessVertex(v);
+      gSPProcessVertex(v);
 
-        if (config.enableLighting && gSP.geometryMode & G_LIGHTING)
+      u32 nonblack;
+      nonblack += OGL.triangles.vertices[v].r;
+      nonblack += OGL.triangles.vertices[v].g;
+      nonblack += OGL.triangles.vertices[v].b;
+
+      if (config.enableLighting && (gSP.geometryMode & G_LIGHTING) && (nonblack != 0))
 		{
             OGL.triangles.vertices[v].r = OGL.triangles.vertices[v].r * vertex->color.r * 0.0039215689f;
             OGL.triangles.vertices[v].g = OGL.triangles.vertices[v].g * vertex->color.g * 0.0039215689f;
             OGL.triangles.vertices[v].b = OGL.triangles.vertices[v].b * vertex->color.b * 0.0039215689f;
-            OGL.triangles.vertices[v].a = OGL.triangles.vertices[v].a * vertex->color.a * 0.0039215689f;
+            OGL.triangles.vertices[v].a = vertex->color.a * 0.0039215689f;
 		}
 		else
 		{
@@ -131,16 +136,14 @@ void F3DCBFD_MoveMem(u32 w0, u32 w1)
         case F3DCBFD_MV_LIGHT:
         {
            u32 offset = (w0 >> 5) & 0x3FFF; 
-           u32 n = 0xFF;
-           if (offset >= 48)
+           u32 n = offset / 48;
+           if (n < 2)
            {
-              n = (offset - 48) / 48;
-              gSPLight(w1, n);
+              //LookAt
+              return;
            }
-           else
-           {
-              //FIXME
-           }
+           n--;
+           gSPLight(w1, n);
            break;
         }
 
