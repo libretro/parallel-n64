@@ -279,11 +279,24 @@ grDepthMask( FxBool mask )
    glDepthMask(mask);
 }
 
+extern retro_log_printf_t log_cb;
 float biasFactor = 0;
-void FindBestDepthBias()
+void FindBestDepthBias(void)
 {
 #if defined(__LIBRETRO__) // TODO: How to calculate this?
-   biasFactor = 0.25f;
+   const char *renderer = (const char*)glGetString(GL_RENDERER);
+
+   if (log_cb)
+   {
+      log_cb(RETRO_LOG_INFO, "GL_RENDERER:\n");
+      log_cb(RETRO_LOG_INFO, renderer);
+      log_cb(RETRO_LOG_INFO, "\n");
+   }
+
+   if (strstr(renderer, "SGX"))  //PowerVR SGX
+      biasFactor = -1.5f;
+   else
+      biasFactor = 0.25f;
 #else
    float f, bestz = 0.25f;
    int x;
