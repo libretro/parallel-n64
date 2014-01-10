@@ -1302,7 +1302,7 @@ static void uc6_obj_loadtxtr(void)
    uint32_t addr = segoffset(rdp.cmd1) >> 1;
    uint32_t type = ((uint32_t*)gfx.RDRAM)[(addr + 0) >> 1];                      // 0, 1
 
-   if (type == 0x00000030)
+   if (type == G_OBJLT_TLUT)
    {     // TLUT
       uint32_t image              = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
       uint16_t  phead             = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1] - 256;        // 4
@@ -1311,7 +1311,7 @@ static void uc6_obj_loadtxtr(void)
       FRDP ("palette addr: %08lx, start: %d, num: %d\n", image, phead, pnum);
       load_palette (image, phead, pnum);
    }
-   else if (type == 0x00001033)
+   else if (type == G_OBJLT_TXTRBLOCK)
    {        // TxtrBlock
       uint32_t image              = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
       uint16_t  tmem              = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1];      // 4
@@ -1329,7 +1329,7 @@ static void uc6_obj_loadtxtr(void)
       rdp.cmd1 = 0x07000000 | (tsize << 14) | tline;
       rdp_loadblock ();
    }
-   else if (type == 0x00fc1034)
+   else if (type == G_OBJLT_TXTRTILE)
    {
       uint32_t image              = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
       uint16_t  tmem              = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1];      // 4
