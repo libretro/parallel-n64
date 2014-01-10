@@ -253,7 +253,7 @@ void MulMatricesSSE(float m1[4][4],float m2[4][4],float r[4][4])
       destrow += (_mm_shuffle_ps (leftrow, leftrow, 2 + (2 << 2) + (2 << 4) + (2 << 6))) * row2;
       destrow += (_mm_shuffle_ps (leftrow, leftrow, 3 + (3 << 2) + (3 << 4) + (3 << 6))) * row3;
 
-      __builtin_ia32_storeups(r[i], destrow);
+      _mm_storeu_ps(r[i], destrow);
    }
 }
 #elif defined(HAVE_NEON)
