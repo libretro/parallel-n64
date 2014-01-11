@@ -163,9 +163,7 @@ void calc_sphere (VERTEX *v)
 
 float DotProductC(float *v0, float *v1)
 {
-    float dot;
-    dot = v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2];
-    return dot;
+    return v0[0] * v1[0] + v0[1] * v1[1] + v0[2] * v1[2];
 }
 
 void NormalizeVectorC(float *v)
