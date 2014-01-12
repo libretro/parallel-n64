@@ -168,16 +168,14 @@ float DotProductC(float *v0, float *v1)
 
 void NormalizeVectorC(float *v)
 {
-    float len;
+   float len = squareRoot((float)(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]));
 
-    len = (float)(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-    if (len != 0.0)
-    {
-        len = (float)squareRoot(len);
-        v[0] /= (float)len;
-        v[1] /= (float)len;
-        v[2] /= (float)len;
-    }
+   if (len == 0.0)
+      return;
+
+   v[0] /= (float)len;
+   v[1] /= (float)len;
+   v[2] /= (float)len;
 }
 
 void TransformVectorC(float *src, float *dst, float mat[4][4])
