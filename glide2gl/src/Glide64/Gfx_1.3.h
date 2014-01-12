@@ -185,6 +185,8 @@ static inline float squareRoot(float x)
   return *(float*) &i;
 }
 
+#define glide64_acos(x) ((-0.69813170079773212 * x * x - 0.87266462599716477) * x + 1.5707963267948966)
+
 #define gfx gfxInfo
 
 extern GFX_INFO gfx;

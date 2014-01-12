@@ -116,8 +116,8 @@ void calc_linear (VERTEX *v)
    if (rdp.cur_cache[0])
    {
       // scale >> 6 is size to map to
-      v->ou = (acosf(x)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_s_scale >> 6);
-      v->ov = (acosf(y)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_t_scale >> 6);
+      v->ou = (glide64_acos(x)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_s_scale >> 6);
+      v->ov = (glide64_acos(y)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_t_scale >> 6);
    }
    v->uv_scaled = 1;
 #ifdef EXTREME_LOGGING
