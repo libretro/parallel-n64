@@ -297,3 +297,35 @@ void math_init(void)
 #endif
 }
 
+float glide64_log2(float i)
+{
+   float LogBodge=0.346607f;
+   float x;
+   float y;
+   x=*(int *)&i;
+   x*= 1.0 / (1 << 23); //1/pow(2,23);
+   x=x-127;
+
+   y=x-floorf(x);
+   y=(y-y*y)*LogBodge;
+   return x+y;
+}
+
+
+static float glide64_pow2(float i)
+{
+   float PowBodge=0.33971f;
+   float x;
+   float y=i-floorf(i);
+   y=(y-y*y)*PowBodge;
+
+   x=i+127-y;
+   x*= (1 << 23);
+   *(int*)&x=(int)x;
+   return x;
+}
+
+float glide64_pow(float a, float b)
+{
+   return glide64_pow2(b * glide64_log2(a));
+}
