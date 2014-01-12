@@ -321,7 +321,7 @@ static void uc9_fmlight(void)
       float dir_x = (float)(((int8_t*)gfx.DMEM)[(a+8)^3]) / 127.0f;
       float dir_y = (float)(((int8_t*)gfx.DMEM)[(a+9)^3]) / 127.0f;
       float dir_z = (float)(((int8_t*)gfx.DMEM)[(a+10)^3]) / 127.0f;
-      if (sqrt(dir_x*dir_x + dir_y*dir_y + dir_z*dir_z) < 0.98)
+      if (squareRoot(dir_x*dir_x + dir_y*dir_y + dir_z*dir_z) < 0.98)
       {
          rdp.use_lookat = false;
          return;

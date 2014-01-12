@@ -173,7 +173,7 @@ void NormalizeVectorC(float *v)
     len = (float)(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
     if (len != 0.0)
     {
-        len = (float)sqrt( len );
+        len = (float)squareRoot(len);
         v[0] /= (float)len;
         v[1] /= (float)len;
         v[2] /= (float)len;

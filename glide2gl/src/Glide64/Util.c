@@ -828,11 +828,11 @@ static void CalculateLOD(VERTEX *v, int n)
    {
       deltaS = (v[1].u0/v[1].q - v[0].u0/v[0].q) * s_scale;
       deltaT = (v[1].v0/v[1].q - v[0].v0/v[0].q) * t_scale;
-      deltaTexels = sqrt( deltaS * deltaS + deltaT * deltaT );
+      deltaTexels = squareRoot( deltaS * deltaS + deltaT * deltaT );
 
       deltaX = (v[1].x - v[0].x)/rdp.scale_x;
       deltaY = (v[1].y - v[0].y)/rdp.scale_y;
-      deltaPixels = sqrt( deltaX * deltaX + deltaY * deltaY );
+      deltaPixels = squareRoot( deltaX * deltaX + deltaY * deltaY );
 
       lodFactor = deltaTexels / deltaPixels;
    }
@@ -847,11 +847,11 @@ static void CalculateLOD(VERTEX *v, int n)
          deltaT = (v[j].v0/v[j].q - v[i].v0/v[i].q) * t_scale;
          //    deltaS = v[j].ou - v[i].ou;
          //    deltaT = v[j].ov - v[i].ov;
-         deltaTexels = sqrt( deltaS * deltaS + deltaT * deltaT );
+         deltaTexels = squareRoot( deltaS * deltaS + deltaT * deltaT );
 
          deltaX = (v[j].x - v[i].x)/rdp.scale_x;
          deltaY = (v[j].y - v[i].y)/rdp.scale_y;
-         deltaPixels = sqrt( deltaX * deltaX + deltaY * deltaY );
+         deltaPixels = squareRoot( deltaX * deltaX + deltaY * deltaY );
 
          lodFactor += deltaTexels / deltaPixels;
       }
@@ -1493,7 +1493,7 @@ void render_tri (uint16_t linew, int old_interpolate)
          {
             float dx = V1->x - V0->x;
             float dy = V1->y - V0->y;
-            float len = sqrtf(dx*dx + dy*dy);
+            float len = squareRoot(dx*dx + dy*dy);
             float wx = dy * width * rdp.scale_x / len;
             float wy = dx * width * rdp.scale_y / len;
             v[0].x = V0->x + wx;

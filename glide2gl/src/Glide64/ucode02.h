@@ -57,7 +57,7 @@ static void calc_point_light (VERTEX *v, float * vpos)
          lvec[2] = rdp.light[l].z - vpos[2];
 
          float light_len2 = lvec[0]*lvec[0] + lvec[1]*lvec[1] + lvec[2]*lvec[2];
-         float light_len = sqrtf(light_len2);
+         float light_len = squareRoot(light_len2);
 #ifdef EXTREME_LOGGING
          FRDP ("calc_point_light: len: %f, len2: %f\n", light_len, light_len2);
 #endif
@@ -630,7 +630,7 @@ static void uc2_moveword(void)
       case G_MW_CLIP:
          if (offset == 0x04)
          {
-            rdp.clip_ratio = sqrt((float)rdp.cmd1);
+            rdp.clip_ratio = squareRoot((float)rdp.cmd1);
             rdp.update |= UPDATE_VIEWPORT;
          }
          FRDP ("mw_clip %08lx, %08lx\n", rdp.cmd0, rdp.cmd1);

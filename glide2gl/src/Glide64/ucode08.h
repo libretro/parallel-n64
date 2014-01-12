@@ -257,7 +257,7 @@ static void uc8_moveword(void)
       case G_MW_CLIP:
          if (offset == 0x04)
          {
-            rdp.clip_ratio = sqrt((float)rdp.cmd1);
+            rdp.clip_ratio = squareRoot((float)rdp.cmd1);
             rdp.update |= UPDATE_VIEWPORT;
          }
          FRDP ("mw_clip %08lx, %08lx\n", rdp.cmd0, rdp.cmd1);
