@@ -178,6 +178,34 @@ void NormalizeVectorC(float *v)
    v[2] /= (float)len;
 }
 
+void NormalizeVectorNeon(float *v)
+{
+   asm volatile (
+         "vld1.32                 {d4}, [%0]!                         \n\t"        //d4={x,y}
+         "flds                 s10, [%0]                  \n\t"        //d5[0] = z
+         "sub                 %0, %0, #8                  \n\t"        //d5[0] = z
+         "vmul.f32                 d0, d4, d4                                \n\t"        //d0= d4*d4
+         "vpadd.f32                 d0, d0, d0                                \n\t"        //d0 = d[0] + d[1]
+         "vmla.f32                 d0, d5, d5                                \n\t"        //d0 = d0 + d5*d5
+
+         "vmov.f32                 d1, d0                                        \n\t"        //d1 = d0
+         "vrsqrte.f32         d0, d0                                        \n\t"        //d0 = ~ 1.0 / sqrt(d0)
+         "vmul.f32                 d2, d0, d1                                \n\t"        //d2 = d0 * d1
+         "vrsqrts.f32         d3, d2, d0                                \n\t"        //d3 = (3 - d0 * d2) / 2
+         "vmul.f32                 d0, d0, d3                                \n\t"        //d0 = d0 * d3
+         "vmul.f32                 d2, d0, d1                                \n\t"        //d2 = d0 * d1
+         "vrsqrts.f32         d3, d2, d0                                \n\t"        //d3 = (3 - d0 * d3) / 2
+         "vmul.f32                 d0, d0, d3                                \n\t"        //d0 = d0 * d4
+
+         "vmul.f32                 q2, q2, d0[0]                        \n\t"        //d0= d2*d4
+         "vst1.32                 {d4}, [%0]!                         \n\t"        //d2={x0,y0}, d3={z0, w0}
+         "fsts                 s10, [%0]                         \n\t"        //d2={x0,y0}, d3={z0, w0}
+
+:"+r"(v) :
+   : "d0", "d1", "d2", "d3", "d4", "d5", "memory"
+      );
+}
+
 void TransformVectorC(float *src, float *dst, float mat[4][4])
 {
    dst[0] = mat[0][0]*src[0] + mat[1][0]*src[1] + mat[2][0]*src[2];
@@ -332,6 +360,7 @@ void math_init(void)
 #elif defined(HAVE_NEON)
    if (cpu & RETRO_SIMD_NEON)
    {
+      NormalizeVector = NormalizeVectorNeon;
       MulMatrices = MulMatricesNeon;
       DotProduct = DotProductNeon;
       if (log_cb)
