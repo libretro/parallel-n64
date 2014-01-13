@@ -271,6 +271,48 @@ static float DotProductNeon(float *v0, float *v1)
         );
    return dot;
 }
+
+void MulMatricesNeon(float m0[4][4],float m1[4][4],float dest[4][4])
+{
+     asm volatile (
+        "vld1.32                 {d0, d1}, [%1]!                        \n\t"        //q0 = m1
+        "vld1.32                 {d2, d3}, [%1]!                 \n\t"        //q1 = m1+4
+        "vld1.32                 {d4, d5}, [%1]!                 \n\t"        //q2 = m1+8
+        "vld1.32                 {d6, d7}, [%1]                 \n\t"        //q3 = m1+12
+        "vld1.32                 {d16, d17}, [%0]!                \n\t"        //q8 = m0
+        "vld1.32                 {d18, d19}, [%0]!         \n\t"        //q9 = m0+4
+        "vld1.32                 {d20, d21}, [%0]!         \n\t"        //q10 = m0+8
+        "vld1.32                 {d22, d23}, [%0]         \n\t"        //q11 = m0+12
+
+        "vmul.f32                 q12, q8, d0[0]                         \n\t"        //q12 = q8 * d0[0]
+        "vmul.f32                 q13, q8, d2[0]                  \n\t"        //q13 = q8 * d2[0]
+        "vmul.f32                 q14, q8, d4[0]                  \n\t"        //q14 = q8 * d4[0]
+        "vmul.f32                 q15, q8, d6[0]                         \n\t"        //q15 = q8 * d6[0]
+        "vmla.f32                 q12, q9, d0[1]                         \n\t"        //q12 = q9 * d0[1]
+        "vmla.f32                 q13, q9, d2[1]                  \n\t"        //q13 = q9 * d2[1]
+        "vmla.f32                 q14, q9, d4[1]                  \n\t"        //q14 = q9 * d4[1]
+        "vmla.f32                 q15, q9, d6[1]                  \n\t"        //q15 = q9 * d6[1]
+        "vmla.f32                 q12, q10, d1[0]                 \n\t"        //q12 = q10 * d0[0]
+        "vmla.f32                 q13, q10, d3[0]                 \n\t"        //q13 = q10 * d2[0]
+        "vmla.f32                 q14, q10, d5[0]                 \n\t"        //q14 = q10 * d4[0]
+        "vmla.f32                 q15, q10, d7[0]                 \n\t"        //q15 = q10 * d6[0]
+        "vmla.f32                 q12, q11, d1[1]                 \n\t"        //q12 = q11 * d0[1]
+        "vmla.f32                 q13, q11, d3[1]                 \n\t"        //q13 = q11 * d2[1]
+        "vmla.f32                 q14, q11, d5[1]                 \n\t"        //q14 = q11 * d4[1]
+        "vmla.f32                 q15, q11, d7[1]                  \n\t"        //q15 = q11 * d6[1]
+
+        "vst1.32                 {d24, d25}, [%2]!                 \n\t"        //d = q12
+        "vst1.32                 {d26, d27}, [%2]!          \n\t"        //d+4 = q13
+        "vst1.32                 {d28, d29}, [%2]!          \n\t"        //d+8 = q14
+        "vst1.32                 {d30, d31}, [%2]          \n\t"        //d+12 = q15
+
+        :"+r"(m1), "+r"(m0), "+r"(dest):
+    : "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7",
+    "d16", "d17", "d18", "d19", "d20", "d21", "d22", "d23",
+    "d24", "d25", "d26", "d27", "d28", "d29", "d30", "d31",
+    "memory"
+        );
+}
 #endif
 
 void math_init(void)
@@ -290,6 +332,7 @@ void math_init(void)
 #elif defined(HAVE_NEON)
    if (cpu & RETRO_SIMD_NEON)
    {
+      MulMatrices = MulMatricesNeon;
       DotProduct = DotProductNeon;
       if (log_cb)
          log_cb(RETRO_LOG_INFO, "NEON detected, using (some) optimized math functions.\n");
