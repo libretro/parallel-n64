@@ -1553,7 +1553,7 @@ FX_ENTRY float FX_CALL
 guFogTableIndexToW( int i )
 {
    LOG("guFogTableIndexToW(%d)\r\n", i);
-   return (float)(glide64_pow(2.0, 3.0+(double)(i>>2)) / (8-(i&3)));
+   return (float)(glide64_pow(2.0, 3.0 + (float)(i>>2)) / (8-(i&3)));
 }
 
 FX_ENTRY void FX_CALL
