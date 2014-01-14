@@ -285,8 +285,9 @@ grDepthMask( FxBool mask )
 }
 
 extern retro_log_printf_t log_cb;
-float biasFactor = 0;
 bool biasFound = false;
+float polygonOffsetFactor;
+float polygonOffsetUnits;
 void FindBestDepthBias(void)
 {
 #if defined(__LIBRETRO__) // TODO: How to calculate this?
@@ -296,21 +297,14 @@ void FindBestDepthBias(void)
    const char *renderer = (const char*)glGetString(GL_RENDERER);
 
    if (log_cb)
-   {
-      log_cb(RETRO_LOG_INFO, "GL_RENDERER:\n");
-      log_cb(RETRO_LOG_INFO, renderer);
-      log_cb(RETRO_LOG_INFO, "\n");
-   }
+      log_cb(RETRO_LOG_INFO, "GL_RENDERER: %s\n", renderer);
 
-#if 0
-   if (strstr(renderer, "SGX"))  //PowerVR SGX
-      biasFactor = -1.5f;
-   else
-#endif
-      biasFactor = 0.25f;
+   polygonOffsetFactor = -3.0f;
+   polygonOffsetUnits  = -3.0f;
 
    biasFound = true;
 #else
+#if 0
    float f, bestz = 0.25f;
    int x;
    if (biasFactor) return;
@@ -347,6 +341,7 @@ void FindBestDepthBias(void)
    //printf(" --> bias factor %g\n", biasFactor);
    glPopAttrib();
 #endif
+#endif
 }
 
 FX_ENTRY void FX_CALL
@@ -355,7 +350,7 @@ grDepthBiasLevel( FxI32 level )
    LOG("grDepthBiasLevel(%d)\r\n", level);
    if (level)
    {
-      glPolygonOffset(0, (float)level*biasFactor);
+      glPolygonOffset(polygonOffsetFactor, polygonOffsetUnits);
       glEnable(GL_POLYGON_OFFSET_FILL);
    }
    else
