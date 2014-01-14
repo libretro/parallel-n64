@@ -118,13 +118,11 @@ extern GLuint retro_get_fbo_id();
 static GLuint Framebuffer_framebuffer = 0;
 void sglBindFramebuffer(GLenum target, GLuint framebuffer)
 {
-    vbo_draw();
-#ifndef NDEBUG
-    assert(target == GL_FRAMEBUFFER);
-#endif
+   if (stop)
+      return;
 
-   if (!stop)
-      glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
+   vbo_draw();
+   glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
 }
 
 //BLEND FUNC
@@ -149,97 +147,125 @@ void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum 
 }
 
 
-//CLEAR COLOR
 static GLclampf ClearColor_red = 0.0f, ClearColor_green = 0.0f, ClearColor_blue = 0.0f, ClearColor_alpha = 0.0f;
 void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
-    vbo_draw();
-    ClearColor_red = red;
-    ClearColor_green = green;
-    ClearColor_blue = blue;
-    ClearColor_alpha = alpha;
+   if (!(red != ClearColor_red || green != ClearColor_green || blue != ClearColor_blue || alpha != ClearColor_alpha))
+      return;
 
-    glClearColor(ClearColor_red, ClearColor_green, ClearColor_blue, ClearColor_alpha);
+   vbo_draw();
+   glClearColor(red, green, blue, alpha);
+   ClearColor_red = red;
+   ClearColor_green = green;
+   ClearColor_blue = blue;
+   ClearColor_alpha = alpha;
 }
 
-//CLEAR DEPTH
 static GLdouble ClearDepth_value = 1.0;
-void sglClearDepth(GLdouble value)
+void sglClearDepth(GLdouble depth)
 {
-    vbo_draw();
-    ClearDepth_value = value;
-    glClearDepth(ClearDepth_value);
+   if (!(depth != ClearDepth_value))
+      return;
+
+   vbo_draw();
+   glClearDepth(depth);
+   ClearDepth_value = depth;
 }
 
-//COLOR MASK
 static GLboolean ColorMask_red = GL_TRUE;
 static GLboolean ColorMask_green = GL_TRUE;
 static GLboolean ColorMask_blue = GL_TRUE;
 static GLboolean ColorMask_alpha = GL_TRUE;
+
 void sglColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha)
 {
-    vbo_draw();
-    ColorMask_red = red;
-    ColorMask_green = green;
-    ColorMask_blue = blue;
-    ColorMask_alpha = alpha;
-    glColorMask(ColorMask_red, ColorMask_green, ColorMask_blue, ColorMask_alpha);
+   bool do_check = (red != ColorMask_red || green != ColorMask_green || blue != ColorMask_blue || alpha != ColorMask_alpha);
+
+   if (!do_check)
+      return;
+
+   vbo_draw();
+   glColorMask(red, green, blue, alpha);
+   ColorMask_red = red;
+   ColorMask_green = green;
+   ColorMask_blue = blue;
+   ColorMask_alpha = alpha;
 }
 
 //CULL FACE
 static GLenum CullFace_mode = GL_BACK;
+
 void sglCullFace(GLenum mode)
 {
-    vbo_draw();
-    CullFace_mode = mode;
-    glCullFace(CullFace_mode);
+   if (mode == CullFace_mode)
+      return;
+
+   vbo_draw();
+   glCullFace(mode);
+   CullFace_mode = mode;
 }
 
 //DEPTH FUNC
 static GLenum DepthFunc_func = GL_LESS;
 void sglDepthFunc(GLenum func)
 {
-    vbo_draw();
-    DepthFunc_func = func;
-    glDepthFunc(DepthFunc_func);
+  if (func == DepthFunc_func)
+     return;
+
+  vbo_draw();
+  glDepthFunc(func);
+  DepthFunc_func = func;
 }
 
 //DEPTH MASK
 static GLboolean DepthMask_flag = GL_TRUE;
 void sglDepthMask(GLboolean flag)
 {
-    vbo_draw();
-    DepthMask_flag = flag;
-    glDepthMask(DepthMask_flag);
+  if (flag == DepthMask_flag)
+     return;
+
+  vbo_draw();
+  glDepthMask(flag);
+  DepthMask_flag = flag;
 }
 
 //DEPTH RANGE
-static GLclampd DepthRange_nearVal = 0.0, DepthRange_farVal = 1.0;
-void sglDepthRange(GLclampd nearVal, GLclampd farVal)
+static GLclampd DepthRange_zNear = 0.0, DepthRange_zFar = 1.0;
+
+void sglDepthRange(GLclampd zNear, GLclampd zFar)
 {
-    vbo_draw();
-    DepthRange_nearVal = nearVal;
-    DepthRange_farVal = farVal;
-    glDepthRange(DepthRange_nearVal, DepthRange_farVal);
+   if (!(zNear != DepthRange_zNear || zFar != DepthRange_zFar))
+      return;
+
+   vbo_draw();
+   glDepthRange(zNear, zFar);
+   DepthRange_zNear = zNear;
+   DepthRange_zFar = zFar;
 }
 
 //FRONTFACE
 static GLenum FrontFace_mode = GL_CCW;
 void sglFrontFace(GLenum mode)
 {
-    vbo_draw();
-    FrontFace_mode = mode;
-    glFrontFace(FrontFace_mode);
+   if (mode == FrontFace_mode)
+      return;
+
+   vbo_draw();
+   glFrontFace(mode);
+   FrontFace_mode = mode;
 }
 
 //POLYGON OFFSET
 static GLfloat PolygonOffset_factor = 0.0f, PolygonOffset_units = 0.0f;
 void sglPolygonOffset(GLfloat factor, GLfloat units)
 {
-    vbo_draw();
-    PolygonOffset_factor = factor;
-    PolygonOffset_units = units;
-    glPolygonOffset(PolygonOffset_factor, PolygonOffset_units);
+  if (!(factor != PolygonOffset_factor || units != PolygonOffset_units))
+     return;
+
+  vbo_draw();
+  glPolygonOffset(factor, units);
+  PolygonOffset_factor = factor;
+  PolygonOffset_units = units;
 }
 
 //SCISSOR
@@ -247,21 +273,29 @@ static GLint Scissor_x = 0, Scissor_y = 0;
 static GLsizei Scissor_width = 640, Scissor_height = 480;
 void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 {
-    vbo_draw();
-    Scissor_x = x;
-    Scissor_y = y;
-    Scissor_width = width;
-    Scissor_height = height;
-    glScissor(Scissor_x, Scissor_y, Scissor_width, Scissor_height);
+  bool do_check = (x != Scissor_x || y != Scissor_y || width != Scissor_width || height != Scissor_height);
+
+  if (!do_check)
+     return;
+
+  vbo_draw();
+  glScissor(x, y, width, height);
+  Scissor_x = x;
+  Scissor_y = y;
+  Scissor_width = width;
+  Scissor_height = height;
 }
 
 //USE PROGRAM
 static GLuint UseProgram_program = 0;
 void sglUseProgram(GLuint program)
 {
-    vbo_draw();
-    UseProgram_program = program;
-    glUseProgram(program);
+   if (program == UseProgram_program)
+      return;
+
+   vbo_draw();
+   glUseProgram(program);
+   UseProgram_program = program;
 }
 
 //VIEWPORT
@@ -269,12 +303,17 @@ static GLint Viewport_x = 0, Viewport_y = 0;
 static GLsizei Viewport_width = 640, Viewport_height = 480;
 void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
-    vbo_draw();
-    Viewport_x = x;
-    Viewport_y = y;
-    Viewport_width = width;
-    Viewport_height = height;
-    glViewport(Viewport_x, Viewport_y, Viewport_width, Viewport_height);
+   bool do_check = (x != Viewport_x || y != Viewport_y || width != Viewport_width || height != Viewport_height);
+
+   if (!do_check)
+      return;
+
+   vbo_draw();
+   glViewport(x, y, width, height);
+   Viewport_x = x;
+   Viewport_y = y;
+   Viewport_width = width;
+   Viewport_height = height;
 }
 
 //ACTIVE TEXTURE
@@ -282,18 +321,32 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 static GLenum ActiveTexture_texture = 0;
 void sglActiveTexture(GLenum texture)
 {
-    vbo_draw();
-    assert((texture - GL_TEXTURE0) < MAX_TEXTURE);
+   if (texture == ActiveTexture_texture)
+      return;
 
-    ActiveTexture_texture = texture - GL_TEXTURE0;
-    glActiveTexture(texture);
+   vbo_draw();
+   glActiveTexture(texture);
+   ActiveTexture_texture = texture - GL_TEXTURE0;
 }
 
+static GLuint BindTexture_ids[MAX_TEXTURE];
+void sglBindTexture(GLenum target, GLuint texture)
+{
+   if (BindTexture_ids[ActiveTexture_texture] == texture)
+      return;
+
+   vbo_draw();
+   glBindTexture(target, texture);
+   BindTexture_ids[ActiveTexture_texture] = texture;
+}
+
+#if 0
 struct tex_map
 {
    unsigned address;
    GLuint tex;
 };
+
 static struct tex_map *texture_map;
 static size_t texture_map_size;
 static size_t texture_map_cap;
@@ -325,22 +378,12 @@ static void delete_tex_from_address(unsigned address)
 
    glDeleteTextures(1, &address);
 }
-
-//BIND TEXTURE
-static GLuint BindTexture_ids[MAX_TEXTURE];
-void sglBindTexture(GLenum target, GLuint texture)
-{
-    vbo_draw();
-#ifndef NDEBUG
-    assert(target == GL_TEXTURE_2D);
 #endif
-    BindTexture_ids[ActiveTexture_texture] = texture;
-    glBindTexture(target, BindTexture_ids[ActiveTexture_texture]);
-}
+
 
 //ENTER/EXIT
 
-void sglEnter()
+void sglEnter(void)
 {
    int i;
 
@@ -349,14 +392,17 @@ void sglEnter()
 
     for (i = 0; i < MAX_ATTRIB; i ++)
     {
-        if (VertexAttribPointer_enabled[i]) glEnableVertexAttribArray(i);
-        else                                glDisableVertexAttribArray(i);
+        if (VertexAttribPointer_enabled[i])
+           glEnableVertexAttribArray(i);
+        else
+           glDisableVertexAttribArray(i);
 
         if (!VertexAttribPointer_is4f[i])
-            glVertexAttribPointer(i, VertexAttribPointer_size[i], VertexAttribPointer_type[i], VertexAttribPointer_normalized[i],
-                                 VertexAttribPointer_stride[i], VertexAttribPointer_pointer[i]);
+            glVertexAttribPointer(i, VertexAttribPointer_size[i], VertexAttribPointer_type[i],
+                  VertexAttribPointer_normalized[i], VertexAttribPointer_stride[i], VertexAttribPointer_pointer[i]);
         else
-            glVertexAttrib4f(i, VertexAttribPointer_4f[i][0], VertexAttribPointer_4f[i][1], VertexAttribPointer_4f[i][2], VertexAttribPointer_4f[i][3]);
+            glVertexAttrib4f(i, VertexAttribPointer_4f[i][0], VertexAttribPointer_4f[i][1],
+                  VertexAttribPointer_4f[i][2], VertexAttribPointer_4f[i][3]);
     }
 
     sglBindFramebuffer(GL_FRAMEBUFFER, Framebuffer_framebuffer); // < sgl is intentional
@@ -368,7 +414,7 @@ void sglEnter()
     glCullFace(CullFace_mode);
     glDepthFunc(DepthFunc_func);
     glDepthMask(DepthMask_flag);
-    glDepthRange(DepthRange_nearVal, DepthRange_farVal);
+    glDepthRange(DepthRange_zNear, DepthRange_zFar);
     glFrontFace(FrontFace_mode);
     glPolygonOffset(PolygonOffset_factor, PolygonOffset_units);
     glScissor(Scissor_x, Scissor_y, Scissor_width, Scissor_height);
@@ -377,8 +423,10 @@ void sglEnter()
 
     for(i = 0; i != SGL_CAP_MAX; i ++)
     {
-        if(CapState[i]) glEnable(CapTranslate[i]);
-        else            glDisable(CapTranslate[i]);
+        if (CapState[i])
+           glEnable(CapTranslate[i]);
+        else
+           glDisable(CapTranslate[i]);
     }
 
     for (i = 0; i < MAX_TEXTURE; i ++)
@@ -390,11 +438,10 @@ void sglEnter()
 
     glActiveTexture(GL_TEXTURE0 + ActiveTexture_texture);
 
-    //
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void sglExit()
+void sglExit(void)
 {
    int i;
    if (stop)
@@ -426,4 +473,3 @@ void sglExit()
 
     glBindFramebuffer(GL_FRAMEBUFFER, retro_get_fbo_id());
 }
-
