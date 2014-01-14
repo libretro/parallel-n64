@@ -151,7 +151,7 @@ void remove_tex(unsigned int idmin, unsigned int idmax)
       list = aux;
       nbTex--;
    }
-   while (aux != NULL && aux->next != NULL)
+   while (aux && aux->next)
    {
       if (aux->next->id >= idmin && aux->next->id < idmax)
       {
@@ -231,9 +231,9 @@ void add_tex(unsigned int id)
     list->id = id;
     goto addtex_log;
   }
-  while (aux->next != NULL && aux->next->id < id) aux = aux->next;
+  while (aux->next && aux->next->id < id) aux = aux->next;
   // ZIGGY added this test so that add_tex now accept re-adding an existing texture
-  if (aux->next != NULL && aux->next->id == id)
+  if (aux->next && aux->next->id == id)
      return;
   nbTex++;
   aux2 = aux->next;
@@ -256,14 +256,12 @@ void init_textures(void)
      texture = (uint8_t*)malloc(2048*2048*4);
 }
 
-void free_textures()
+void free_textures(void)
 {
   remove_tex(0x00000000, 0xFFFFFFFF);
-  if (texture != NULL)
-  {
+  if (texture)
     free(texture);
-    texture = NULL;
-  }
+  texture = NULL;
 }
 
 FX_ENTRY FxU32 FX_CALL
