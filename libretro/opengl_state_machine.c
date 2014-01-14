@@ -164,7 +164,7 @@ void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 static GLdouble ClearDepth_value = 1.0;
 void sglClearDepth(GLdouble depth)
 {
-   if (!(depth != ClearDepth_value))
+   if (depth == ClearDepth_value)
       return;
 
    vbo_draw();
