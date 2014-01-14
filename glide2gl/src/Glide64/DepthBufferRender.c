@@ -92,33 +92,12 @@ static int right_x, right_dxdy, left_x, left_dxdy;
 static int left_z, left_dzdy;
 
 // ( x * y) >> 16
-#define imul16(x, y) ((((long long)x) * ((long long)y)) >> 16)
+#define imul16(x, y) ((((int64_t)x) * ((int64_t)y)) >> 16)
 
 // (x * y) >> 14
-#define imul14(x, y) ((((long long)x) * ((long long)y)) >> 14)
+#define imul14(x, y) ((((int64_t)x) * ((int64_t)y)) >> 14)
 
-static INLINE int idiv16(int x, int y)        // (x << 16) / y
-{
-#if !defined(__GNUC__) && !defined(NO_ASM)
-   __asm {
-      mov   eax, x
-         mov   ebx, y
-         mov   edx,eax   
-         sar   edx,16
-         shl   eax,16    
-         idiv  ebx  
-         mov   x, eax
-   }
-#elif !defined(NO_ASM)
-   int reminder;
-   asm ("idivl %[divisor]"
-         : "=a" (x), "=d" (reminder)
-         : [divisor] "g" (y), "d" (x >> 16), "a" (x << 16));
-#else
-   x = (((long long)x) << 16) / ((long long)y);
-#endif
-   return x;
-}
+#define idiv16(x, y) ((((int64_t)x) << 16) / ((int64_t)y))
 
 #define iceil(x) (((x + 0xffff) >> 16))
 
