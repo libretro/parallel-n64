@@ -293,28 +293,28 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
    deltaZ = dzdx = 0;
    if (linew == 0 && (fb_depth_render_enabled || (rdp.rm & ZMODE_DECAL) == ZMODE_DECAL))
    {
-      double X0 = vtx[0]->sx / rdp.scale_x;
-      double Y0 = vtx[0]->sy / rdp.scale_y;
-      double X1 = vtx[1]->sx / rdp.scale_x;
-      double Y1 = vtx[1]->sy / rdp.scale_y;
-      double X2 = vtx[2]->sx / rdp.scale_x;
-      double Y2 = vtx[2]->sy / rdp.scale_y;
-      double diffy_02 = Y0 - Y2;
-      double diffy_12 = Y1 - Y2;
-      double diffx_02 = X0 - X2;
-      double diffx_12 = X1 - X2;
+      float X0 = vtx[0]->sx / rdp.scale_x;
+      float Y0 = vtx[0]->sy / rdp.scale_y;
+      float X1 = vtx[1]->sx / rdp.scale_x;
+      float Y1 = vtx[1]->sy / rdp.scale_y;
+      float X2 = vtx[2]->sx / rdp.scale_x;
+      float Y2 = vtx[2]->sy / rdp.scale_y;
+      float diffy_02 = Y0 - Y2;
+      float diffy_12 = Y1 - Y2;
+      float diffx_02 = X0 - X2;
+      float diffx_12 = X1 - X2;
 
-      double denom = (diffx_02 * diffy_12 - diffx_12 * diffy_02);
+      float denom = (diffx_02 * diffy_12 - diffx_12 * diffy_02);
       if(denom*denom > 0.0)
       {
-         double diffz_02 = vtx[0]->sz - vtx[2]->sz;
-         double diffz_12 = vtx[1]->sz - vtx[2]->sz;
-         double fdzdx = (diffz_02 * diffy_12 - diffz_12 * diffy_02) / denom;
+         float diffz_02 = vtx[0]->sz - vtx[2]->sz;
+         float diffz_12 = vtx[1]->sz - vtx[2]->sz;
+         float fdzdx = (diffz_02 * diffy_12 - diffz_12 * diffy_02) / denom;
          if ((rdp.rm & ZMODE_DECAL) == ZMODE_DECAL)
          {
             // Calculate deltaZ per polygon for Decal z-mode
-            double fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
-            double fdz = fabs(fdzdx) + fabs(fdzdy);
+            float fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
+            float fdz = fabs(fdzdx) + fabs(fdzdy);
 #if 0
 /* Zelda OOT - shadow of Kokiri in Kokiri Shop would go through wall - investigate if taking out this hack
  * causes other sideeffects elsewhere */
@@ -323,8 +323,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 #endif
             deltaZ = max(8, (int)fdz);
          }
-         dzdx = (int)(fdzdx * 65536.0);
-      }
+         dzdx = (int)(fdzdx * 65536.0); }
    }
 
    org_vtx = vtx;
@@ -733,16 +732,16 @@ static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percen
 
 typedef struct
 {
-   double d;
-   double x;
-   double y;
+   float d;
+   float x;
+   float y;
 } LineEquationType;
 
 #define EvaLine(li, x, y) ((li->x) * (x) + (li->y) * (y) + (li->d))
 
 static void Create1LineEq(LineEquationType *l, VERTEX *v1, VERTEX *v2, VERTEX *v3)
 {
-   double x, y;
+   float x, y;
    // Line between (x1,y1) to (x2,y2)
    l->x = v2->sy-v1->sy;
    l->y = v1->sx-v2->sx;
@@ -765,16 +764,16 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
    LineEquationType line;
    Create1LineEq(&line, v2, v3, v1);
 
-   double aDot = (out->x * line.x + out->y * line.y);
-   double bDot = (v1->sx * line.x + v1->sy * line.y);
+   float aDot = (out->x * line.x + out->y * line.y);
+   float bDot = (v1->sx * line.x + v1->sy * line.y);
 
-   double scale1 = ( -line.d - aDot) / ( bDot - aDot );
+   float scale1 = ( -line.d - aDot) / ( bDot - aDot );
 
-   double tx = out->x + scale1 * (v1->sx - out->x);
-   double ty = out->y + scale1 * (v1->sy - out->y);
+   float tx = out->x + scale1 * (v1->sx - out->x);
+   float ty = out->y + scale1 * (v1->sy - out->y);
 
-   double s1 = 101.0, s2 = 101.0;
-   double den = tx - v1->sx;
+   float s1 = 101.0, s2 = 101.0;
+   float den = tx - v1->sx;
    if (fabs(den) > 1.0)
       s1 = (out->x-v1->sx)/den;
    if (s1 > 100.0f)
@@ -786,7 +785,7 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
    if (s2 > 100.0f)
       s2 =(ty-v2->sy)/(v3->sy-v2->sy);
 
-   double w = 1.0/interp3p(v1->oow,v2->oow,v3->oow,s1,s2);
+   float w = 1.0/interp3p(v1->oow,v2->oow,v3->oow,s1,s2);
 
    out->r = real_to_char(interp3p(v1->r*v1->oow,v2->r*v2->oow,v3->r*v3->oow,s1,s2)*w);
    out->g = real_to_char(interp3p(v1->g*v1->oow,v2->g*v2->oow,v3->g*v3->oow,s1,s2)*w);
@@ -820,8 +819,8 @@ static void CalculateLOD(VERTEX *v, int n)
       */
    float deltaS, deltaT;
    float deltaX, deltaY;
-   double deltaTexels, deltaPixels, lodFactor = 0;
-   double intptr;
+   float deltaTexels, deltaPixels, lodFactor = 0;
+   float intptr;
    float s_scale = rdp.tiles[rdp.cur_tile].width / 255.0f;
    float t_scale = rdp.tiles[rdp.cur_tile].height / 255.0f;
    if (settings.lodmode == 1)
@@ -863,7 +862,7 @@ static void CalculateLOD(VERTEX *v, int n)
    float lod_fraction = 1.0f;
 
    if (lod_tile < rdp.cur_tile + rdp.mipmap_level)
-      lod_fraction = max((float)modf(lodFactor / glide64_pow(2.,lod_tile),&intptr), rdp.prim_lodmin / 255.0f);
+      lod_fraction = max((float)modff(lodFactor / glide64_pow(2.,lod_tile),&intptr), rdp.prim_lodmin / 255.0f);
 
    float detailmax;
 
