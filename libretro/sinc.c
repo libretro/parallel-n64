@@ -22,8 +22,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "libretro.h"
 
-#define RARCH_LOG(...) fprintf(stderr, __VA_ARGS__)
+extern retro_log_printf_t log_cb;
 
 #ifdef __SSE__
 #include <xmmintrin.h>
@@ -487,17 +488,22 @@ static void *resampler_sinc_new(double bandwidth_mod)
    init_sinc_table(re, cutoff, re->phase_table, 1 << PHASE_BITS, re->taps, SINC_COEFF_LERP);
 
 #if defined(__AVX__) && ENABLE_AVX
-   RARCH_LOG("Sinc resampler [AVX]\n");
+   if (log_cb)
+      log_cb(RETRO_LOG_INFO, "Sinc resampler [AVX]\n");
 #elif defined(__SSE__)
-   RARCH_LOG("Sinc resampler [SSE]\n");
+   if (log_cb)
+      log_cb(RETRO_LOG_INFO, "Sinc resampler [SSE]\n");
 #elif defined(HAVE_NEON)
    process_sinc_func = process_sinc_neon;
-   RARCH_LOG("Sinc resampler [%s]\n", "NEON");
+   if (log_cb)
+      log_cb(RETRO_LOG_INFO, "Sinc resampler [%s]\n", "NEON");
 #else
-   RARCH_LOG("Sinc resampler [C]\n");
+   if (log_cb)
+      log_cb(RETRO_LOG_INFO, "Sinc resampler [C]\n");
 #endif
 
-   RARCH_LOG("SINC params (%u phase bits, %u taps).\n", PHASE_BITS, re->taps);
+   if (log_cb)
+      log_cb(RETRO_LOG_INFO, "SINC params (%u phase bits, %u taps).\n", PHASE_BITS, re->taps);
    return re;
 
 error:

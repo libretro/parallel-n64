@@ -14,7 +14,10 @@
  */
 
 #include <stdbool.h>
+#include "libretro.h"
 #include "utils.h"
+
+extern retro_log_printf_t log_cb;
 
 #if defined(__SSE2__)
 #include <emmintrin.h>
@@ -177,7 +180,7 @@ void audio_convert_init_simd(void)
    */
    audio_convert_s16_to_float_arm = audio_convert_s16_to_float_neon;
    audio_convert_float_to_s16_arm = audio_convert_float_to_s16_neon;
-#elif defined(__SSE2__)
+#elif defined(__SSE2__) && defined(ANDROID_X86)
    audio_convert_s16_to_float_arm = audio_convert_s16_to_float_SSE2;
    audio_convert_float_to_s16_arm = audio_convert_float_to_s16_SSE2;
 #endif
