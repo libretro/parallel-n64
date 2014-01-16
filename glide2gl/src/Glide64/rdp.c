@@ -48,6 +48,7 @@
 #include "FBtoScreen.h"
 #include "CRC.h"
 #include "GBI.h"
+#include "../../libretro/SDL.h"
 
 #ifdef __LIBRETRO__ // Prefix API
 #define VIDEO_TAG(X) glide64##X
@@ -246,9 +247,12 @@ void microcheck ();
 static int reset = 0;
 static int old_ucode = -1;
 
+static void uc2_vertex_neon(void);
+
 void rdp_new(void)
 {
-   int i;
+   unsigned i, cpu;
+   cpu = 0;
    rdp.vtx1 = (VERTEX*)malloc(256 * sizeof(VERTEX));
    memset(rdp.vtx1, 0, 256 * sizeof(VERTEX));
    rdp.vtx2 = (VERTEX*)malloc(256 * sizeof(VERTEX));
@@ -268,6 +272,14 @@ void rdp_new(void)
    rdp.v0 = rdp.vn = 0;
 
    rdp.frame_buffers = (COLOR_IMAGE*)malloc((NUMTEXBUF+2) * sizeof(COLOR_IMAGE));
+
+   if (perf_get_cpu_features_cb)
+      cpu = perf_get_cpu_features_cb();
+
+#if defined(HAVE_NEON)
+   if (cpu & RETRO_SIMD_NEON)
+      gfx_instruction[2][1] = uc2_vertex_neon;
+#endif
 }
 
 void rdp_free(void)
