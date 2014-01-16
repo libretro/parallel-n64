@@ -177,6 +177,9 @@ void audio_convert_init_simd(void)
    */
    audio_convert_s16_to_float_arm = audio_convert_s16_to_float_neon;
    audio_convert_float_to_s16_arm = audio_convert_float_to_s16_neon;
+#elif defined(__SSE2__)
+   audio_convert_s16_to_float_arm = audio_convert_s16_to_float_SSE2;
+   audio_convert_float_to_s16_arm = audio_convert_float_to_s16_SSE2;
 #endif
 }
 

@@ -101,12 +101,16 @@ void dyna_start(void *code)
    }
 #elif defined(__GNUC__) && defined(__i386__)
   #if defined(__PIC__)
+#ifdef ANDROID
+    #  define GET_PC_THUNK_STR(reg) "__i686.get_pc_thunk." #reg
+#else
     /* for -fPIC (shared libraries) */
     #if __GNUC_PREREQ (4, 7)
     #  define GET_PC_THUNK_STR(reg) "__x86.get_pc_thunk." #reg
     #else
     #  define GET_PC_THUNK_STR(reg) "__i686.get_pc_thunk." #reg
     #endif
+#endif
     #define STORE_EBX
     #define LOAD_EBX "call  " GET_PC_THUNK_STR(bx) "     \n" \
                      "addl $_GLOBAL_OFFSET_TABLE_, %%ebx \n"
