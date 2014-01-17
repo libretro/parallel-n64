@@ -181,7 +181,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
        ROM_SETTINGS.players = 1;
        DebugMessage(M64MSG_INFO, "Banjo Tooie INI patches applied.");
     }
-    if(
+    else if(
           (sl(ROM_HEADER.CRC1) == 0x11936D8C   && sl(ROM_HEADER.CRC2) == 0x6F2C4B43) /* Donkey Kong 64 (E) */
           || (sl(ROM_HEADER.CRC1) == 0x1F95CAAA  && sl(ROM_HEADER.CRC2) == 0x47FC22A) /* Donkey Kong 64 (E) [f1] (Boot&Save) */
           || (sl(ROM_HEADER.CRC1) == 0x53C89A7  && sl(ROM_HEADER.CRC2) == 0xA5064302) /* Donkey Kong 64 (J) */
