@@ -761,7 +761,10 @@ EXPORT void CALL inputInitiateControllers(CONTROL_INFO ControlInfo)
   note:     This function is only needed if the DLL is allowing raw
             data.
 *******************************************************************/
-EXPORT void CALL inputReadController(int Control, unsigned char *Command) { }
+EXPORT void CALL inputReadController(int Control, unsigned char *Command)
+{
+   inputControllerCommand(Control, Command);
+}
 
 /******************************************************************
   Function: RomClosed
