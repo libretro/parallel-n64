@@ -1485,17 +1485,23 @@ static void rdp_texrect(void)
 
 static void rdp_loadsync(void)
 {
+#ifdef EXTREME_LOGGING
   LRDP("loadsync - ignored\n");
+#endif
 }
 
 static void rdp_pipesync(void)
 {
+#ifdef EXTREME_LOGGING
   LRDP("pipesync - ignored\n");
+#endif
 }
 
 static void rdp_tilesync(void)
 {
+#ifdef EXTREME_LOGGING
   LRDP("tilesync - ignored\n");
+#endif
 }
 
 static void rdp_fullsync(void)
@@ -1503,7 +1509,9 @@ static void rdp_fullsync(void)
   // Set an interrupt to allow the game to continue
   *gfx.MI_INTR_REG |= 0x20;
   gfx.CheckInterrupts();
+#ifdef EXTREME_LOGGING
   LRDP("fullsync\n");
+#endif
 }
 
 static void rdp_setkeygb(void)
@@ -1514,7 +1522,10 @@ static void rdp_setkeygb(void)
   uint32_t cG = (rdp.cmd1>>24)&0xFF;
   rdp.SCALE = (rdp.SCALE&0xFF0000FF) | (sG<<16) | (sB<<8);
   rdp.CENTER = (rdp.CENTER&0xFF0000FF) | (cG<<16) | (cB<<8);
+
+#ifdef EXTREME_LOGGING
   FRDP("setkeygb. cG=%02lx, sG=%02lx, cB=%02lx, sB=%02lx\n", cG, sG, cB, sB);
+#endif
 }
 
 static void rdp_setkeyr(void)
@@ -1523,7 +1534,10 @@ static void rdp_setkeyr(void)
   uint32_t cR = (rdp.cmd1>>8)&0xFF;
   rdp.SCALE = (rdp.SCALE&0x00FFFFFF) | (sR<<24);
   rdp.CENTER = (rdp.CENTER&0x00FFFFFF) | (cR<<24);
+
+#ifdef EXTREME_LOGGING
   FRDP("setkeyr. cR=%02lx, sR=%02lx\n", cR, sR);
+#endif
 }
 
 static void rdp_setconvert(void)
@@ -1538,7 +1552,9 @@ static void rdp_setconvert(void)
   rdp.K4 = (uint8_t)(rdp.cmd1>>9)&0x1FF;
   rdp.K5 = (uint8_t)(rdp.cmd1&0x1FF);
   //  RDP_E("setconvert - IGNORED\n");
+#ifdef EXTREME_LOGGING
   FRDP("setconvert. K4=%02lx K5=%02lx\n", rdp.K4, rdp.K5);
+#endif
 }
 
 //
@@ -1557,19 +1573,21 @@ static void rdp_setscissor(void)
   rdp.ci_lower_bound = rdp.scissor_o.lr_y;
   rdp.scissor_set = true;
 
+#ifdef EXTREME_LOGGING
   FRDP("setscissor: (%d,%d) -> (%d,%d)\n", rdp.scissor_o.ul_x, rdp.scissor_o.ul_y,
     rdp.scissor_o.lr_x, rdp.scissor_o.lr_y);
+#endif
 
   rdp.update |= UPDATE_SCISSOR;
 
-  if (rdp.view_scale[0] == 0) //viewport is not set?
-  {
-    rdp.view_scale[0] = (rdp.scissor_o.lr_x>>1)*rdp.scale_x;
-    rdp.view_scale[1] = (rdp.scissor_o.lr_y>>1)*-rdp.scale_y;
-    rdp.view_trans[0] = rdp.view_scale[0];
-    rdp.view_trans[1] = -rdp.view_scale[1];
-    rdp.update |= UPDATE_VIEWPORT;
-  }
+  if (rdp.view_scale[0] != 0) //viewport is set?
+     return;
+
+  rdp.view_scale[0] = (rdp.scissor_o.lr_x>>1)*rdp.scale_x;
+  rdp.view_scale[1] = (rdp.scissor_o.lr_y>>1)*-rdp.scale_y;
+  rdp.view_trans[0] = rdp.view_scale[0];
+  rdp.view_trans[1] = -rdp.view_scale[1];
+  rdp.update |= UPDATE_VIEWPORT;
 }
 
 static void rdp_setprimdepth(void)
@@ -1577,11 +1595,11 @@ static void rdp_setprimdepth(void)
   rdp.prim_depth = (uint16_t)((rdp.cmd1 >> 16) & 0x7FFF);
   rdp.prim_dz = (uint16_t)(rdp.cmd1 & 0x7FFF);
 
+#ifdef EXTREME_LOGGING
   FRDP("setprimdepth: %d\n", rdp.prim_depth);
+#endif
 }
 
-static void rdp_setothermode(void)
-{
 #define F3DEX2_SETOTHERMODE(cmd,sft,len,data) { \
   rdp.cmd0 = (cmd<<24) | ((32-(sft)-(len))<<8) | (((len)-1)); \
   rdp.cmd1 = data; \
@@ -1593,7 +1611,12 @@ static void rdp_setothermode(void)
   gfx_instruction[settings.ucode][cmd] (); \
 }
 
+static void rdp_setothermode(void)
+{
+
+#ifdef EXTREME_LOGGING
   LRDP("rdp_setothermode\n");
+#endif
 
   if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
   {
@@ -1611,30 +1634,29 @@ static void rdp_setothermode(void)
 
 void load_palette (uint32_t addr, uint16_t start, uint16_t count)
 {
-  LRDP("Loading palette... ");
-  uint16_t *dpal = rdp.pal_8 + start;
-  uint16_t end = start+count;
-  uint16_t i, p;
+#ifdef EXTREME_LOGGING
+   LRDP("Loading palette... ");
+#endif
+   uint16_t *dpal = rdp.pal_8 + start;
+   uint16_t end = start+count;
+   uint16_t i, p;
 
-  for (i=start; i<end; i++)
-  {
-    *(dpal++) = *(uint16_t *)(gfx.RDRAM + (addr^2));
-    addr += 2;
+   for (i=start; i<end; i++)
+   {
+      *(dpal++) = *(uint16_t *)(gfx.RDRAM + (addr^2));
+      addr += 2;
 
 #ifdef TLUT_LOGGING
-    FRDP ("%d: %08lx\n", i, *(uint16_t *)(gfx.RDRAM + (addr^2)));
+      FRDP ("%d: %08lx\n", i, *(uint16_t *)(gfx.RDRAM + (addr^2)));
 #endif
-  }
-  start >>= 4;
-  end = start + (count >> 4);
-  if (end == start) // it can be if count < 16
-    end = start + 1;
-  for (p = start; p < end; p++)
-  {
-    rdp.pal_8_crc[p] = CRC32( 0xFFFFFFFF, &rdp.pal_8[(p << 4)], 32 );
-  }
-  rdp.pal_256_crc = CRC32( 0xFFFFFFFF, rdp.pal_8_crc, 64 );
-  LRDP("Done.\n");
+   }
+   start >>= 4;
+   end = start + (count >> 4);
+   if (end == start) // it can be if count < 16
+      end = start + 1;
+   for (p = start; p < end; p++)
+      rdp.pal_8_crc[p] = CRC32( 0xFFFFFFFF, &rdp.pal_8[(p << 4)], 32 );
+   rdp.pal_256_crc = CRC32( 0xFFFFFFFF, rdp.pal_8_crc, 64 );
 }
 
 static void rdp_loadtlut(void)
@@ -1648,30 +1670,33 @@ static void rdp_loadtlut(void)
    if (rdp.timg.addr + (count<<1) > BMASK)
       count = (uint16_t)((BMASK - rdp.timg.addr) >> 1);
 
-   if (start+count > 256) count = 256-start;
+   if (start+count > 256)
+      count = 256-start;
 
+#ifdef EXTREME_LOGGING
    FRDP("loadtlut: tile: %d, start: %d, count: %d, from: %08lx\n", tile, start, count,
          rdp.timg.addr);
+#endif
 
    load_palette (rdp.timg.addr, start, count);
 
    rdp.timg.addr += count << 1;
 
-   if (rdp.tbuff_tex) //paranoid check.
+   if (!rdp.tbuff_tex) //paranoid check.
+      return;
+
+   //the buffer is definitely wrong, as there must be no CI frame buffers
+   //find and remove it
+   for (i = 0; i < NUM_TMU; i++)
    {
-      //the buffer is definitely wrong, as there must be no CI frame buffers
-      //find and remove it
-      for (i = 0; i < NUM_TMU; i++)
+      for (j = 0; j < rdp.texbufs[i].count; j++)
       {
-         for (j = 0; j < rdp.texbufs[i].count; j++)
+         if (&(rdp.texbufs[i].images[j]) == rdp.tbuff_tex)
          {
-            if (&(rdp.texbufs[i].images[j]) == rdp.tbuff_tex)
-            {
-               rdp.texbufs[i].count--;
-               if (j < rdp.texbufs[i].count)
-                  memcpy(&(rdp.texbufs[i].images[j]), &(rdp.texbufs[i].images[j+1]), sizeof(TBUFF_COLOR_IMAGE)*(rdp.texbufs[i].count-j));
-               return;
-            }
+            rdp.texbufs[i].count--;
+            if (j < rdp.texbufs[i].count)
+               memcpy(&(rdp.texbufs[i].images[j]), &(rdp.texbufs[i].images[j+1]), sizeof(TBUFF_COLOR_IMAGE)*(rdp.texbufs[i].count-j));
+            return;
          }
       }
    }
@@ -1710,8 +1735,10 @@ static void rdp_settilesize(void)
 
   rdp.first = 1;
 
+#ifdef EXTREME_LOGGING
   FRDP ("settilesize: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d, f_ul_s: %f, f_ul_t: %f\n",
     tile, ul_s, ul_t, lr_s, lr_t, rdp.tiles[tile].f_ul_s, rdp.tiles[tile].f_ul_t);
+#endif
 }
 
 void setTBufTex(uint16_t t_mem, uint32_t cnt)
@@ -1922,9 +1949,11 @@ static void rdp_loadblock(void)
 
   rdp.update |= UPDATE_TEXTURE;
 
+#ifdef EXTREME_LOGGING
   FRDP ("loadblock: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, dxt: %08lx -> %08lx\n",
     tile, ul_s, ul_t, lr_s,
     dxt, _dxt);
+#endif
 
 #ifdef HAVE_HWFBE
   if (fb_hwfbe_enabled)
@@ -2085,7 +2114,9 @@ static void rdp_loadtile(void)
 
   if (rdp.tbuff_tex)// && (rdp.tiles[tile].format == G_IM_FMT_RGBA))
   {
+#ifdef EXTREME_LOGGING
     FRDP("loadtile: tbuff_tex ul_s: %d, ul_t:%d\n", ul_s, ul_t);
+#endif
     rdp.tbuff_tex->tile_uls = ul_s;
     rdp.tbuff_tex->tile_ult = ul_t;
   }
@@ -2109,9 +2140,7 @@ static void rdp_loadtile(void)
     return;
 
   if (rdp.timg.size == 3)
-  {
     LoadTile32b(tile, ul_s, ul_t, width, height);
-  }
   else
   {
     // check if points to bad location
@@ -2125,8 +2154,10 @@ static void rdp_loadtile(void)
     uint8_t *end = ((uint8_t*)rdp.tmem) + 4096 - (wid_64<<3);
     loadTile((uint32_t *)gfx.RDRAM, (uint32_t *)dst, wid_64, height, line_n, offs, (uint32_t *)end);
   }
+#ifdef EXTREME_LOGGING
   FRDP("loadtile: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d\n", tile,
     ul_s, ul_t, lr_s, lr_t);
+#endif
 
 #ifdef HAVE_HWFBE
   if (fb_hwfbe_enabled)
@@ -2160,12 +2191,14 @@ static void rdp_settile(void)
 
    rdp.update |= UPDATE_TEXTURE;
 
+#ifdef EXTREME_LOGGING
    FRDP ("settile: tile: %d, format: %s, size: %s, line: %d, "
          "t_mem: %08lx, palette: %d, clamp_t/mirror_t: %s, mask_t: %d, "
          "shift_t: %d, clamp_s/mirror_s: %s, mask_s: %d, shift_s: %d\n",
          rdp.last_tile, str_format[tile->format], str_size[tile->size], tile->line,
          tile->t_mem, tile->palette, str_cm[(tile->clamp_t<<1)|tile->mirror_t], tile->mask_t,
          tile->shift_t, str_cm[(tile->clamp_s<<1)|tile->mirror_s], tile->mask_s, tile->shift_s);
+#endif
 
 #ifdef HAVE_HWFBE
    if (fb_hwfbe_enabled && rdp.last_tile < rdp.cur_tile + 2)
@@ -2206,26 +2239,30 @@ static void rdp_fillrect(void)
   uint32_t lr_y = ((rdp.cmd0 & 0x00000FFF) >> 2) + 1;
   if ((ul_x > lr_x) || (ul_y > lr_y))
   {
+#ifdef EXTREME_LOGGING
     LRDP("Fillrect. Wrong coordinates. Skipped\n");
+#endif
     return;
   }
   int pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (rdp.cycle_mode == G_CYC_FILL) && (rdp.fill_color == 0xFFFCFFFC);
   if ((rdp.cimg == rdp.zimg) || (fb_emulation_enabled && rdp.frame_buffers[rdp.ci_count-1].status == ci_zimg) || pd_multiplayer)
   {
-    LRDP("Fillrect - cleared the depth buffer\n");
-    {
-      if (!(settings.hacks&hack_Hyperbike) || rdp.ci_width > 64) //do not clear main depth buffer for aux depth buffers
-      {
+#ifdef EXTREME_LOGGING
+     LRDP("Fillrect - cleared the depth buffer\n");
+#endif
+
+     if (!(settings.hacks&hack_Hyperbike) || rdp.ci_width > 64) //do not clear main depth buffer for aux depth buffers
+     {
         update_scissor ();
         grDepthMask (FXTRUE);
         grColorMask (FXFALSE, FXFALSE);
         grBufferClear (0, 0, rdp.fill_color ? rdp.fill_color&0xFFFF : 0xFFFF);
         grColorMask (FXTRUE, FXTRUE);
         rdp.update |= UPDATE_ZBUF_ENABLED;
-      }
-      //if (settings.frame_buffer&fb_depth_clear)
-      {
-         uint32_t y, x;
+     }
+     //if (settings.frame_buffer&fb_depth_clear)
+     {
+        uint32_t y, x;
         ul_x = min(max(ul_x, rdp.scissor_o.ul_x), rdp.scissor_o.lr_x);
         lr_x = min(max(lr_x, rdp.scissor_o.ul_x), rdp.scissor_o.lr_x);
         ul_y = min(max(ul_y, rdp.scissor_o.ul_y), rdp.scissor_o.lr_y);
@@ -2237,18 +2274,19 @@ static void rdp_fillrect(void)
         dst += ul_y * zi_width_in_dwords;
         for (y = ul_y; y < lr_y; y++)
         {
-          for (x = ul_x; x < lr_x; x++)
-            dst[x] = rdp.fill_color;
-          dst += zi_width_in_dwords;
+           for (x = ul_x; x < lr_x; x++)
+              dst[x] = rdp.fill_color;
+           dst += zi_width_in_dwords;
         }
-      }
-    }
-    return;
+     }
+     return;
   }
 
   if (rdp.skip_drawing)
   {
+#ifdef EXTREME_LOGGING
     LRDP("Fillrect skipped\n");
+#endif
     return;
   }
 
@@ -2266,7 +2304,9 @@ static void rdp_fillrect(void)
     grBufferClear (color, 0, 0xFFFF);
     grDepthMask (FXTRUE);
     rdp.update |= UPDATE_ZBUF_ENABLED;
+#ifdef EXTREME_LOGGING
     LRDP("Fillrect - cleared the texture buffer\n");
+#endif
     return;
   }
 
@@ -2277,11 +2317,13 @@ static void rdp_fillrect(void)
   {
     lr_x--; lr_y--;
   }
+#ifdef EXTREME_LOGGING
   FRDP("fillrect (%d,%d) -> (%d,%d), cycle mode: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, rdp.cycle_mode,
     rdp.tri_n, rdp.tri_n+1);
 
   FRDP("scissor (%d,%d) -> (%d,%d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x,
     rdp.scissor.lr_y);
+#endif
 
   // KILL the floating point error with 0.01f
   int32_t s_ul_x = (uint32_t)min(max(ul_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
@@ -2294,7 +2336,9 @@ static void rdp_fillrect(void)
   if ((uint32_t)s_ul_x > settings.res_x) s_ul_x = settings.res_x;
   if ((uint32_t)s_ul_y > settings.res_y) s_ul_y = settings.res_y;
 
+#ifdef EXTREME_LOGGING
   FRDP (" - %d, %d, %d, %d\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
+#endif
 
   {
     grFogMode (GR_FOG_DISABLE);
@@ -2391,7 +2435,9 @@ static void rdp_setfillcolor(void)
   rdp.fill_color = rdp.cmd1;
   rdp.update |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
 
+#ifdef EXTREME_LOGGING
   FRDP("setfillcolor: %08lx\n", rdp.cmd1);
+#endif
 }
 
 static void rdp_setfogcolor(void)
@@ -2399,7 +2445,9 @@ static void rdp_setfogcolor(void)
   rdp.fog_color = rdp.cmd1;
   rdp.update |= UPDATE_COMBINE | UPDATE_FOG_ENABLED;
 
+#ifdef EXTREME_LOGGING
   FRDP("setfogcolor - %08lx\n", rdp.cmd1);
+#endif
 }
 
 static void rdp_setblendcolor(void)
@@ -2407,7 +2455,9 @@ static void rdp_setblendcolor(void)
   rdp.blend_color = rdp.cmd1;
   rdp.update |= UPDATE_COMBINE;
 
+#ifdef EXTREME_LOGGING
   FRDP("setblendcolor: %08lx\n", rdp.cmd1);
+#endif
 }
 
 static void rdp_setprimcolor(void)
@@ -2417,8 +2467,10 @@ static void rdp_setprimcolor(void)
   rdp.prim_lodfrac = max(rdp.cmd0 & 0xFF, rdp.prim_lodmin);
   rdp.update |= UPDATE_COMBINE;
 
+#ifdef EXTREME_LOGGING
   FRDP("setprimcolor: %08lx, lodmin: %d, lodfrac: %d\n", rdp.cmd1, rdp.prim_lodmin,
     rdp.prim_lodfrac);
+#endif
 }
 
 static void rdp_setenvcolor(void)
@@ -2426,7 +2478,9 @@ static void rdp_setenvcolor(void)
   rdp.env_color = rdp.cmd1;
   rdp.update |= UPDATE_COMBINE;
 
+#ifdef EXTREME_LOGGING
   FRDP("setenvcolor: %08lx\n", rdp.cmd1);
+#endif
 }
 
 static void rdp_setcombine(void)
@@ -2456,11 +2510,13 @@ static void rdp_setcombine(void)
 
   rdp.update |= UPDATE_COMBINE;
 
+#ifdef EXTREME_LOGGING
   FRDP("setcombine\na0=%s b0=%s c0=%s d0=%s\nAa0=%s Ab0=%s Ac0=%s Ad0=%s\na1=%s b1=%s c1=%s d1=%s\nAa1=%s Ab1=%s Ac1=%s Ad1=%s\n",
     Mode0[rdp.c_a0], Mode1[rdp.c_b0], Mode2[rdp.c_c0], Mode3[rdp.c_d0],
     Alpha0[rdp.c_Aa0], Alpha1[rdp.c_Ab0], Alpha2[rdp.c_Ac0], Alpha3[rdp.c_Ad0],
     Mode0[rdp.c_a1], Mode1[rdp.c_b1], Mode2[rdp.c_c1], Mode3[rdp.c_d1],
     Alpha0[rdp.c_Aa1], Alpha1[rdp.c_Ab1], Alpha2[rdp.c_Ac1], Alpha3[rdp.c_Ad1]);
+#endif
 }
 
 //
@@ -2511,16 +2567,20 @@ static void rdp_settextureimage(void)
     FindTextureBuffer(rdp.timg.addr, rdp.timg.width);
 #endif
 
+#ifdef EXTREME_LOGGING
   FRDP("settextureimage: format: %s, size: %s, width: %d, addr: %08lx\n",
     format[rdp.timg.format], size[rdp.timg.size],
     rdp.timg.width, rdp.timg.addr);
+#endif
 }
 
 static void rdp_setdepthimage(void)
 {
   rdp.zimg = segoffset(rdp.cmd1) & BMASK;
   rdp.zi_width = rdp.ci_width;
+#ifdef EXTREME_LOGGING
   FRDP("setdepthimage - %08lx\n", rdp.zimg);
+#endif
 }
 
 int SwapOK = true;
@@ -2873,8 +2933,11 @@ static void rdp_setcolorimage(void)
    uint32_t format = (rdp.cmd0 >> 21) & 0x7;
    rdp.ci_size = (rdp.cmd0 >> 19) & 0x3;
    rdp.ci_end = rdp.cimg + ((rdp.ci_width*rdp.ci_height)<<(rdp.ci_size-1));
+
+#ifdef  EXTREME_LOGGING
    FRDP("setcolorimage - %08lx, width: %d,  height: %d, format: %d, size: %d\n", rdp.cmd1, rdp.ci_width, rdp.ci_height, format, rdp.ci_size);
    FRDP("cimg: %08lx, ocimg: %08lx, SwapOK: %d\n", rdp.cimg, rdp.ocimg, SwapOK);
+#endif
 
    if (format != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
    {
@@ -2920,7 +2983,9 @@ static void rdp_setcolorimage(void)
             if (rdp.copy_ci_index && (rdp.frame_buffers[rdp.ci_count-1].status != ci_zimg))
             {
                int idx = (rdp.frame_buffers[rdp.ci_count].status == ci_aux_copy) ? rdp.main_ci_index : rdp.copy_ci_index;
+#ifdef  EXTREME_LOGGING
                FRDP("attempt open tex buffer. status: %s, addr: %08lx\n", CIStatus[rdp.frame_buffers[idx].status], rdp.frame_buffers[idx].addr);
+#endif
                OpenTextureBuffer(&rdp.frame_buffers[idx]);
                if (rdp.frame_buffers[rdp.copy_ci_index].status == ci_main) //tidal wave
                   rdp.copy_ci_index = 0;
@@ -2937,32 +3002,36 @@ static void rdp_setcolorimage(void)
 
 static void rsp_reserved0(void)
 {
-  if (settings.ucode == ucode_DiddyKong)
-  {
-    ucode5_texshiftaddr = segoffset(rdp.cmd1);
-    ucode5_texshiftcount = 0;
-    FRDP("uc5_texshift. addr: %08lx\n", ucode5_texshiftaddr);
-  }
-  else
-  {
-    RDP_E("reserved0 - IGNORED\n");
-    LRDP("reserved0 - IGNORED\n");
-  }
+  if (settings.ucode != ucode_DiddyKong)
+     return;
+
+  ucode5_texshiftaddr = segoffset(rdp.cmd1);
+  ucode5_texshiftcount = 0;
+
+#ifdef EXTREME_LOGGING
+  FRDP("uc5_texshift. addr: %08lx\n", ucode5_texshiftaddr);
+#endif
 }
 
 static void rsp_reserved1(void)
 {
+#ifdef EXTREME_LOGGING
   LRDP("reserved1 - ignored\n");
+#endif
 }
 
 static void rsp_reserved2(void)
 {
+#ifdef EXTREME_LOGGING
   LRDP("reserved2\n");
+#endif
 }
 
 static void rsp_reserved3(void)
 {
+#ifdef EXTREME_LOGGING
   LRDP("reserved3 - ignored\n");
+#endif
 }
 
 /******************************************************************
@@ -2983,8 +3052,6 @@ output:   none
 
 EXPORT void CALL FBRead(uint32_t addr)
 {
-  LOG ("FBRead ()\n");
-
   if (cpu_fb_ignore)
     return;
   if (cpu_fb_write_called)
@@ -2995,7 +3062,11 @@ EXPORT void CALL FBRead(uint32_t addr)
   }
   cpu_fb_read_called = true;
   uint32_t a = segoffset(addr);
+
+#ifdef EXTREME_LOGGING
   FRDP("FBRead. addr: %08lx\n", a);
+#endif
+
   if (!rdp.fb_drawn && (a >= rdp.cimg) && (a < rdp.ci_end))
   {
     fbreads_back++;
@@ -3043,7 +3114,6 @@ output:   none
 *******************************************************************/
 EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
 {
-  LOG ("FBWrite ()\n");
   if (cpu_fb_ignore)
     return;
   if (cpu_fb_read_called)
@@ -3054,7 +3124,11 @@ EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
   }
   cpu_fb_write_called = true;
   uint32_t a = segoffset(addr);
+
+#ifdef EXTREME_LOGGING
   FRDP("FBWrite. addr: %08lx\n", a);
+#endif
+
   if (a < rdp.cimg || a > rdp.ci_end)
     return;
   cpu_fb_write = true;
@@ -3093,14 +3167,14 @@ Plugin can return up to 6 frame buffer info
 EXPORT void CALL FBGetFrameBufferInfo(void *p)
 {
    int i;
-#ifdef VISUAL_LOGGING
-   VLOG ("FBGetFrameBufferInfo ()\n");
-#endif
    FrameBufferInfo * pinfo = (FrameBufferInfo *)p;
    memset(pinfo,0,sizeof(FrameBufferInfo)*6);
    if (!(settings.frame_buffer&fb_get_info))
       return;
+
+#ifdef EXTREME_LOGGING
    LRDP("FBGetFrameBufferInfo ()\n");
+#endif
    //*
    if (fb_emulation_enabled)
    {
@@ -3359,7 +3433,9 @@ void DetectFrameBufferUsage(void)
    rdp.maincimg[0] = rdp.frame_buffers[rdp.main_ci_index];
    //    rdp.scale_x = rdp.scale_x_bak;
    //    rdp.scale_y = rdp.scale_y_bak;
+#ifdef EXTREME_LOGGING
    LRDP("DetectFrameBufferUsage End\n");
+#endif
 }
 
 /*******************************************
@@ -3740,49 +3816,65 @@ static void rdp_triangle(int shade, int texture, int zbuffer)
 static void rdp_trifill(void)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 0, 0, 0, rdp_cmd_data + rdp_cmd_cur);
+#ifdef EXTREME_LOGGING
   LRDP("trifill\n");
+#endif
 }
 
 static void rdp_trishade(void)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 1, 0, 0, rdp_cmd_data + rdp_cmd_cur);
+#ifdef EXTREME_LOGGING
   LRDP("trishade\n");
+#endif
 }
 
 static void rdp_tritxtr(void)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 0, 1, 0, rdp_cmd_data + rdp_cmd_cur);
+#ifdef EXTREME_LOGGING
   LRDP("tritxtr\n");
+#endif
 }
 
 static void rdp_trishadetxtr(void)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 1, 1, 0, rdp_cmd_data + rdp_cmd_cur);
+#ifdef EXTREME_LOGGING
   LRDP("trishadetxtr\n");
+#endif
 }
 
 static void rdp_trifillz(void)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 0, 0, 1, rdp_cmd_data + rdp_cmd_cur);
+#ifdef EXTREME_LOGGING
   LRDP("trifillz\n");
+#endif
 }
 
 static void rdp_trishadez(void)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 1, 0, 1, rdp_cmd_data + rdp_cmd_cur);
+#ifdef EXTREME_LOGGING
   LRDP("trishadez\n");
+#endif
 }
 
 static void rdp_tritxtrz(void)
 {
    lle_triangle(rdp.cmd0, rdp.cmd1, 0, 1, 1, rdp_cmd_data + rdp_cmd_cur);
+#ifdef EXTREME_LOGGING
    LRDP("tritxtrz\n");
+#endif
 }
 
 static void rdp_trishadetxtrz(void)
 {
    lle_triangle(rdp.cmd0, rdp.cmd1, 1, 1, 1, rdp_cmd_data + rdp_cmd_cur);
+#ifdef EXTREME_LOGGING
    LRDP("trishadetxtrz\n");
+#endif
 }
 
 static rdp_instr rdp_command_table[64] =
