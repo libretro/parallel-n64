@@ -466,10 +466,12 @@ void update_uniforms(shader_program_key prog)
    GL_CHECK(glUniform4f(prog.chroma_color_location, chroma_color[0], chroma_color[1],
          chroma_color[2], chroma_color[3]));
 
+#ifndef GLES
    if(dither_enabled)
    {
       GL_CHECK(glUniform1i(prog.ditherTex_location, 2));
    }
+#endif
 
    set_lambda();
 }
@@ -537,7 +539,9 @@ void compile_shader(void)
    fragment_shader = (char*)malloc(4096);
 
    strcpy(fragment_shader, fragment_shader_header);
+#ifndef GLES
    if(dither_enabled) strcat(fragment_shader, fragment_shader_dither);
+#endif
    switch (blackandwhite0) {
       case 1: strcat(fragment_shader, fragment_shader_readtex0bw); break;
       case 2: strcat(fragment_shader, fragment_shader_readtex0bw_2); break;
