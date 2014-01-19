@@ -530,22 +530,16 @@ cpu_instruction_table current_instruction_table;
 
 static unsigned int update_invalid_addr(unsigned int addr)
 {
-   if (addr >= 0x80000000 && addr < 0xa0000000)
-     {
-    if (invalid_code[addr>>12]) invalid_code[(addr+0x20000000)>>12] = 1;
-    if (invalid_code[(addr+0x20000000)>>12]) invalid_code[addr>>12] = 1;
-    return addr;
-     }
-   else if (addr >= 0xa0000000 && addr < 0xc0000000)
-     {
-    if (invalid_code[addr>>12]) invalid_code[(addr-0x20000000)>>12] = 1;
-    if (invalid_code[(addr-0x20000000)>>12]) invalid_code[addr>>12] = 1;
-    return addr;
-     }
+   if (addr >= 0x80000000 && addr < 0xc0000000)
+   {
+      if (invalid_code[addr>>12]) invalid_code[(addr^0x20000000)>>12] = 1;
+      if (invalid_code[(addr^0x20000000)>>12]) invalid_code[addr>>12] = 1;
+      return addr;
+   }
    else
-     {
-    unsigned int paddr = virtual_to_physical_address(addr, 2);
-    if (paddr)
+   {
+      unsigned int paddr = virtual_to_physical_address(addr, 2);
+      if (paddr)
       {
          unsigned int beg_paddr = paddr - (addr - (addr&~0xFFF));
          update_invalid_addr(paddr);
@@ -554,8 +548,8 @@ static unsigned int update_invalid_addr(unsigned int addr)
          if (invalid_code[addr>>12]) invalid_code[(beg_paddr+0x000)>>12] = 1;
          if (invalid_code[addr>>12]) invalid_code[(beg_paddr+0xFFC)>>12] = 1;
       }
-    return paddr;
-     }
+      return paddr;
+   }
 }
 
 #define addr jump_to_address
