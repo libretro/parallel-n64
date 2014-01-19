@@ -209,7 +209,7 @@ static int try_fast_task_dispatching()
 static void normal_task_dispatching()
 {
     const OSTask_t * const task = get_task();
-    const uint32_t sum = sum_bytes(rspInfo.RDRAM + task->ucode, min(task->ucode_size, 0xf80) >> 1);
+    const uint32_t sum = sum_bytes(dram_u8(task->ucode), min(task->ucode_size, 0xf80) >> 1);
 
     switch (sum)
     {
@@ -264,27 +264,27 @@ static void handle_unknown_task(uint32_t sum)
     
     // dump ucode_boot
     sprintf(&filename[0], "ucode_boot_%x.bin", sum);
-    dump_binary(filename, rspInfo.RDRAM + (task->ucode_boot & 0x7fffff), task->ucode_boot_size);
+    dump_binary(filename, dram_u8(task->ucode_boot), task->ucode_boot_size);
 
     // dump ucode
     if (task->ucode != 0)
     {
         sprintf(&filename[0], "ucode_%x.bin", sum);
-        dump_binary(filename, rspInfo.RDRAM + (task->ucode & 0x7fffff), 0xf80);
+        dump_binary(filename, dram_u8(task->ucode), 0xf80);
     }
 
     // dump ucode_data
     if (task->ucode_data != 0)
     {
         sprintf(&filename[0], "ucode_data_%x.bin", sum);
-        dump_binary(filename, rspInfo.RDRAM + (task->ucode_data & 0x7fffff), task->ucode_data_size);
+        dump_binary(filename, dram_u8(task->ucode_data), task->ucode_data_size);
     }
 
     // dump data
     if (task->data_ptr != 0)
     {
         sprintf(&filename[0], "data_%x.bin", sum);
-        dump_binary(filename, rspInfo.RDRAM + (task->data_ptr & 0x7fffff), task->data_size);
+        dump_binary(filename, dram_u8(task->data_ptr), task->data_size);
     }
 #endif
 }
