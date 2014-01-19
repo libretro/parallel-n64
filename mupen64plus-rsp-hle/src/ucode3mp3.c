@@ -580,19 +580,19 @@ static void InnerLoop () {
                 for (i = 0; i < 8; i++) {
                     // v0
                     v = (*(int16_t *)(mp3data+((tmp-0x40)^S16)) * hi0);
-                    BLARGG_CLAMP16(v);
+                    v = clamp_s16(v);
                     *(int16_t *)((uint8_t *)mp3data+((tmp-0x40)^S16)) = (int16_t)v;
                     // v17
                     v = (*(int16_t *)(mp3data+((tmp-0x30)^S16)) * hi0);
-                    BLARGG_CLAMP16(v);
+                    v = clamp_s16(v);
                     *(int16_t *)((uint8_t *)mp3data+((tmp-0x30)^S16)) = v;
                     // v2
                     v = (*(int16_t *)(mp3data+((tmp-0x1E)^S16)) * hi1);
-                    BLARGG_CLAMP16(v);
+                    v = clamp_s16(v);
                     *(int16_t *)((uint8_t *)mp3data+((tmp-0x1E)^S16)) = v;
                     // v4
                     v = (*(int16_t *)(mp3data+((tmp-0xE)^S16)) * hi1);
-                    BLARGG_CLAMP16(v);
+                    v = clamp_s16(v);
                     *(int16_t *)((uint8_t *)mp3data+((tmp-0xE)^S16)) = v;
                     tmp += 2;
                 }

@@ -140,9 +140,5 @@ void dram_store_u32(const uint32_t* src, uint32_t address, size_t count);
 #define RSP_DEBUG_MESSAGE(level, format, ...) (void)0
 #endif
 
-#define BLARGG_CLAMP16(io) \
-   if ((int16_t)io != io) \
-      io = (io >> 31) ^ 0x7FFF
-
 #endif
 

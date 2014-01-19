@@ -228,70 +228,76 @@ static void ENVMIXER2 (uint32_t w1, uint32_t w2) {
     }
 
 
-    while (count > 0) {
-        int temp, x;
-        for (x=0; x < 0x8; x++) {
-            vec9  = (int16_t)(((int32_t)buffs3[x^S] * (uint32_t)env[0]) >> 0x10) ^ v2[0];
-            vec10 = (int16_t)(((int32_t)buffs3[x^S] * (uint32_t)env[2]) >> 0x10) ^ v2[1];
-            temp = bufft6[x^S] + vec9;
-            BLARGG_CLAMP16(temp);
-            bufft6[x^S] = temp;
-            temp = bufft7[x^S] + vec10;
-            BLARGG_CLAMP16(temp);
-            bufft7[x^S] = temp;
-            vec9  = (int16_t)(((int32_t)vec9  * (uint32_t)env[4]) >> 0x10) ^ v2[2];
-            vec10 = (int16_t)(((int32_t)vec10 * (uint32_t)env[4]) >> 0x10) ^ v2[3];
-            if (w1 & 0x10) {
-                temp = buffs0[x^S] + vec10;
-                BLARGG_CLAMP16(temp);
-                buffs0[x^S] = temp;
-                temp = buffs1[x^S] + vec9;
-                BLARGG_CLAMP16(temp);
-                buffs1[x^S] = temp;
-            } else {
-                temp = buffs0[x^S] + vec9;
-                BLARGG_CLAMP16(temp);
-                buffs0[x^S] = temp;
-                temp = buffs1[x^S] + vec10;
-                BLARGG_CLAMP16(temp);
-                buffs1[x^S] = temp;
-            }
-        }
+    while (count)
+    {
+       int temp, x;
+       for (x=0; x < 0x8; x++)
+       {
+          vec9  = (int16_t)(((int32_t)buffs3[x^S] * (uint32_t)env[0]) >> 0x10) ^ v2[0];
+          vec10 = (int16_t)(((int32_t)buffs3[x^S] * (uint32_t)env[2]) >> 0x10) ^ v2[1];
+          temp = bufft6[x^S] + vec9;
+          temp = clamp_s16(temp);
+          bufft6[x^S] = temp;
+          temp = bufft7[x^S] + vec10;
+          temp = clamp_s16(temp);
+          bufft7[x^S] = temp;
+          vec9  = (int16_t)(((int32_t)vec9  * (uint32_t)env[4]) >> 0x10) ^ v2[2];
+          vec10 = (int16_t)(((int32_t)vec10 * (uint32_t)env[4]) >> 0x10) ^ v2[3];
+          if (w1 & 0x10)
+          {
+             temp = buffs0[x^S] + vec10;
+             temp = clamp_s16(temp);
+             buffs0[x^S] = temp;
+             temp = buffs1[x^S] + vec9;
+             temp = clamp_s16(temp);
+             buffs1[x^S] = temp;
+          }
+          else
+          {
+             temp = buffs0[x^S] + vec9;
+             temp = clamp_s16(temp);
+             buffs0[x^S] = temp;
+             temp = buffs1[x^S] + vec10;
+             temp = clamp_s16(temp);
+             buffs1[x^S] = temp;
+          }
+       }
 
-        if (!isMKABI)
-        for (x=0x8; x < 0x10; x++) {
-            vec9  = (int16_t)(((int32_t)buffs3[x^S] * (uint32_t)env[1]) >> 0x10) ^ v2[0];
-            vec10 = (int16_t)(((int32_t)buffs3[x^S] * (uint32_t)env[3]) >> 0x10) ^ v2[1];
-            temp = bufft6[x^S] + vec9;
-            BLARGG_CLAMP16(temp);
-            bufft6[x^S] = temp;
-           temp = bufft7[x^S] + vec10;
-            BLARGG_CLAMP16(temp);
-            bufft7[x^S] = temp;
-            vec9  = (int16_t)(((int32_t)vec9  * (uint32_t)env[5]) >> 0x10) ^ v2[2];
-            vec10 = (int16_t)(((int32_t)vec10 * (uint32_t)env[5]) >> 0x10) ^ v2[3];
-            if (w1 & 0x10) {
+       if (!isMKABI)
+          for (x=0x8; x < 0x10; x++)
+          {
+             vec9  = (int16_t)(((int32_t)buffs3[x^S] * (uint32_t)env[1]) >> 0x10) ^ v2[0];
+             vec10 = (int16_t)(((int32_t)buffs3[x^S] * (uint32_t)env[3]) >> 0x10) ^ v2[1];
+             temp = bufft6[x^S] + vec9;
+             temp = clamp_s16(temp);
+             bufft6[x^S] = temp;
+             temp = bufft7[x^S] + vec10;
+             temp = clamp_s16(temp);
+             bufft7[x^S] = temp;
+             vec9  = (int16_t)(((int32_t)vec9  * (uint32_t)env[5]) >> 0x10) ^ v2[2];
+             vec10 = (int16_t)(((int32_t)vec10 * (uint32_t)env[5]) >> 0x10) ^ v2[3];
+             if (w1 & 0x10) {
                 temp = buffs0[x^S] + vec10;
-                BLARGG_CLAMP16(temp);
+                temp = clamp_s16(temp);
                 buffs0[x^S] = temp;
                 temp = buffs1[x^S] + vec9;
-                BLARGG_CLAMP16(temp);
+                temp = clamp_s16(temp);
                 buffs1[x^S] = temp;
-            } else {
+             } else {
                 temp = buffs0[x^S] + vec9;
-                BLARGG_CLAMP16(temp);
+                temp = clamp_s16(temp);
                 buffs0[x^S] = temp;
                 temp = buffs1[x^S] + vec10;
-                BLARGG_CLAMP16(temp);
+                temp = clamp_s16(temp);
                 buffs1[x^S] = temp;
-            }
-        }
-        bufft6 += adder; bufft7 += adder;
-        buffs0 += adder; buffs1 += adder;
-        buffs3 += adder; count  -= adder;
-        env[0] += (uint16_t)s5; env[1] += (uint16_t)s5;
-        env[2] += (uint16_t)s6; env[3] += (uint16_t)s6;
-        env[4] += (uint16_t)t3; env[5] += (uint16_t)t3;
+             }
+          }
+       bufft6 += adder; bufft7 += adder;
+       buffs0 += adder; buffs1 += adder;
+       buffs3 += adder; count  -= adder;
+       env[0] += (uint16_t)s5; env[1] += (uint16_t)s5;
+       env[2] += (uint16_t)s6; env[3] += (uint16_t)s6;
+       env[4] += (uint16_t)t3; env[5] += (uint16_t)t3;
     }
 }
 

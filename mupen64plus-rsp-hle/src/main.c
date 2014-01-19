@@ -100,31 +100,26 @@ static void rsp_break(uint32_t setbits)
 
 static void forward_gfx_task(void)
 {
-    if (rspInfo.ProcessDlistList != NULL)
-    {
-        rspInfo.ProcessDlistList();
-        *rspInfo.DPC_STATUS_REG &= ~DP_STATUS_FREEZE;
-    }
+   if (rspInfo.ProcessDlistList)
+   {
+      rspInfo.ProcessDlistList();
+      *rspInfo.DPC_STATUS_REG &= ~DP_STATUS_FREEZE;
+   }
 }
 
 static void forward_audio_task(void)
 {
-    if (rspInfo.ProcessAlistList != NULL)
-    {
-        printf("Fink\n");
-        rspInfo.ProcessAlistList();
-    }
-    else
-        printf("FANK\n");
+   if (rspInfo.ProcessAlistList)
+      rspInfo.ProcessAlistList();
 }
 
 static void show_cfb(void)
 {
-    if (rspInfo.ShowCFB != NULL)
-        rspInfo.ShowCFB();
+   if (rspInfo.ShowCFB)
+      rspInfo.ShowCFB();
 }
 
-static int try_fast_audio_dispatching()
+static int try_fast_audio_dispatching(void)
 {
     /* identify audio ucode by using the content of ucode_data */
     uint32_t ucode_data = *dmem_u32(TASK_UCODE_DATA);
@@ -212,27 +207,37 @@ static int try_fast_audio_dispatching()
     return 0;
 }
 
-static int try_fast_task_dispatching()
+static int try_fast_task_dispatching(void)
 {
     /* identify task ucode by its type */
 
     switch (*dmem_u32(TASK_TYPE))
     {
-        case 1:
-           if (FORWARD_GFX) { forward_gfx_task(); return 1; } break;
-
-        case 2:
-            if (FORWARD_AUDIO) { forward_audio_task(); return 1; }
-            else if (try_fast_audio_dispatching()) { return 1; }
-            break;
-
-        case 7: show_cfb(); return 1;
+       case 1:
+          if (FORWARD_GFX)
+          {
+             forward_gfx_task();
+             return 1;
+          }
+          break;
+       case 2:
+          if (FORWARD_AUDIO)
+          {
+             forward_audio_task();
+             return 1;
+          }
+          else if (try_fast_audio_dispatching())
+             return 1;
+          break;
+       case 7:
+          show_cfb();
+          return 1;
     }
 
     return 0;
 }
 
-static void normal_task_dispatching()
+static void normal_task_dispatching(void)
 {
     const uint32_t sum = sum_bytes((void*)dram_u32(*dmem_u32(TASK_UCODE)), min(*dmem_u32(TASK_UCODE_SIZE), 0xf80) >> 1);
 
@@ -261,7 +266,7 @@ static void normal_task_dispatching()
     handle_unknown_task(sum);
 }
 
-static void non_task_dispatching()
+static void non_task_dispatching(void)
 {
     const uint32_t sum = sum_bytes(rspInfo.IMEM, 0x1000 >> 1);
 
@@ -388,18 +393,19 @@ EXPORT m64p_error CALL hlePluginGetVersion(m64p_plugin_type *PluginType, int *Pl
 
 EXPORT unsigned int CALL hleDoRspCycles(uint32_t Cycles)
 {
-    if (is_task())
-    {
-        if (!try_fast_task_dispatching()) { normal_task_dispatching(); }
-        rsp_break(RSP_STATUS_TASKDONE);
-    }
-    else
-    {
-        non_task_dispatching();
-        rsp_break(0);
-    }
+   if (is_task())
+   {
+      if (!try_fast_task_dispatching())
+         normal_task_dispatching();
+      rsp_break(RSP_STATUS_TASKDONE);
+   }
+   else
+   {
+      non_task_dispatching();
+      rsp_break(0);
+   }
 
-    return Cycles;
+   return Cycles;
 }
 
 EXPORT void CALL hleInitiateRSP(RSP_INFO Rsp_Info, uint32_t *CycleCount)
@@ -502,20 +508,22 @@ static void dump_task(const char * const filename)
 /* memory access helper functions */
 void dmem_load_u8 (uint8_t* dst, uint16_t address, size_t count)
 {
-    while (count != 0) {
-        *(dst++) = *dmem_u8(address);
-        address += 1;
-        --count;
-    }
+   while (count)
+   {
+      *(dst++) = *dmem_u8(address);
+      address += 1;
+      --count;
+   }
 }
 
 void dmem_load_u16(uint16_t* dst, uint16_t address, size_t count)
 {
-    while (count != 0) {
-        *(dst++) = *dmem_u16(address);
-        address += 2;
-        --count;
-    }
+   while (count)
+   {
+      *(dst++) = *dmem_u16(address);
+      address += 2;
+      --count;
+   }
 }
 
 void dmem_load_u32(uint32_t* dst, uint16_t address, size_t count)
@@ -526,20 +534,22 @@ void dmem_load_u32(uint32_t* dst, uint16_t address, size_t count)
 
 void dmem_store_u8 (const uint8_t* src, uint16_t address, size_t count)
 {
-    while (count != 0) {
-        *dmem_u8(address) = *(src++);
-        address += 1;
-        --count;
-    }
+   while (count)
+   {
+      *dmem_u8(address) = *(src++);
+      address += 1;
+      --count;
+   }
 }
 
 void dmem_store_u16(const uint16_t* src, uint16_t address, size_t count)
 {
-    while (count != 0) {
-        *dmem_u16(address) = *(src++);
-        address += 2;
-        --count;
-    }
+   while (count)
+   {
+      *dmem_u16(address) = *(src++);
+      address += 2;
+      --count;
+   }
 }
 
 void dmem_store_u32(const uint32_t* src, uint16_t address, size_t count)
@@ -551,20 +561,22 @@ void dmem_store_u32(const uint32_t* src, uint16_t address, size_t count)
 
 void dram_load_u8 (uint8_t* dst, uint32_t address, size_t count)
 {
-    while (count != 0) {
-        *(dst++) = *dram_u8(address);
-        address += 1;
-        --count;
-    }
+   while (count)
+   {
+      *(dst++) = *dram_u8(address);
+      address += 1;
+      --count;
+   }
 }
 
 void dram_load_u16(uint16_t* dst, uint32_t address, size_t count)
 {
-    while (count != 0) {
-        *(dst++) = *dram_u16(address);
-        address += 2;
-        --count;
-    }
+   while (count)
+   {
+      *(dst++) = *dram_u16(address);
+      address += 2;
+      --count;
+   }
 }
 
 void dram_load_u32(uint32_t* dst, uint32_t address, size_t count)
@@ -575,20 +587,22 @@ void dram_load_u32(uint32_t* dst, uint32_t address, size_t count)
 
 void dram_store_u8 (const uint8_t* src, uint32_t address, size_t count)
 {
-    while (count != 0) {
-        *dram_u8(address) = *(src++);
-        address += 1;
-        --count;
-    }
+   while (count)
+   {
+      *dram_u8(address) = *(src++);
+      address += 1;
+      --count;
+   }
 }
 
 void dram_store_u16(const uint16_t* src, uint32_t address, size_t count)
 {
-    while (count != 0) {
-        *dram_u16(address) = *(src++);
-        address += 2;
-        --count;
-    }
+   while (count)
+   {
+      *dram_u16(address) = *(src++);
+      address += 2;
+      --count;
+   }
 }
 
 void dram_store_u32(const uint32_t* src, uint32_t address, size_t count)

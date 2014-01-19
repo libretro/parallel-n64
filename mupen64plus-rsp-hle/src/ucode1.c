@@ -132,7 +132,8 @@ static void CLEARBUFF (uint32_t w1, uint32_t w2)
 
 //FILE *dfile = fopen ("d:\\envmix.txt", "wt");
 
-static void ENVMIXER (uint32_t w1, uint32_t w2) {
+static void ENVMIXER (uint32_t w1, uint32_t w2)
+{
     //static int32_t envmixcnt = 0;
     uint8_t flags = (uint8_t)((w1 >> 16) & 0xff);
     uint32_t addy = (w2 & 0xFFFFFF);// + SEGMENTS[(w2>>24)&0xf];
@@ -316,9 +317,9 @@ static void ENVMIXER (uint32_t w1, uint32_t w2) {
 
         a1=((int64_t)(((int64_t)a1*0xfffe)+((int64_t)i1*MainL*2)+0x8000)>>16);*/
 
-        BLARGG_CLAMP16(o1);
+        o1 = clamp_s16(o1);
 
-        BLARGG_CLAMP16(a1);
+        a1 = clamp_s16(a1);
 
         out[ptr^S]=o1;
         aux1[ptr^S]=a1;
@@ -329,8 +330,8 @@ static void ENVMIXER (uint32_t w1, uint32_t w2) {
             a2+=(/*(a2*0x7fff)+*/(i1*AuxR)+0x4000)>>15;
             a3+=(/*(a3*0x7fff)+*/(i1*AuxL)+0x4000)>>15;
 
-            BLARGG_CLAMP16(a2);
-            BLARGG_CLAMP16(a3);
+            a2 = clamp_s16(a2);
+            a3 = clamp_s16(a3);
 
             aux2[ptr^S]=a2;
             aux3[ptr^S]=a3;
