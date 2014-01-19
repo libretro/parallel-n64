@@ -88,13 +88,18 @@ float ScaleZ(float z);
 			lx = lc; \
 		}
 
-#if defined(__GNUC__)
-  #define bswap32(x) __builtin_bswap32(x)
-#elif defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
-  #include <stdlib.h>
-  #define bswap32(x) _byteswap_ulong(x)
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+#include <stdlib.h>
+#define bswap32(x) _byteswap_ulong(x)
 #else
-#define bswap32(val) ((((val & 0xff000000) >> 24) | ((val & 0x00ff0000) >>  8) | ((val & 0x0000ff00) <<  8) | ((val & 0x000000ff) << 24)))
+static inline uint32_t bswap32(uint32_t val)
+{
+   return (((val & 0xff000000) >> 24) |
+         ((val & 0x00ff0000) >>  8) |
+         ((val & 0x0000ff00) <<  8) |
+         ((val & 0x000000ff) << 24));
+
+}
 #endif
 
 #define ALOWORD(x)   (*((uint16_t*)&x))   // low word
