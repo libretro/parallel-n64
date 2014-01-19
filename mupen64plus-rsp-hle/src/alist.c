@@ -41,7 +41,7 @@ extern const acmd_callback_t ABI3[0x10];
 /* local functions */
 void alist_process(const acmd_callback_t abi[], unsigned int abi_size)
 {
-    uint32_t inst1, inst2;
+    uint32_t w1, w2;
     unsigned int acmd;
 
     const uint32_t *alist = dram_u32(*dmem_u32(TASK_DATA_PTR));
@@ -49,13 +49,13 @@ void alist_process(const acmd_callback_t abi[], unsigned int abi_size)
 
     while (alist != alist_end)
     {
-        inst1 = *(alist++);
-        inst2 = *(alist++);
+        w1 = *(alist++);
+        w2 = *(alist++);
 
-        acmd = inst1 >> 24;
+        acmd = w1 >> 24;
 
         if (acmd < abi_size)
-            (*abi[acmd])(inst1, inst2);
+            (*abi[acmd])(w1, w2);
 #ifndef NDEBUG
         else
         {

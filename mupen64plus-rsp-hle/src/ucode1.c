@@ -122,7 +122,7 @@ Address/Range       Description
     #define MEMMASK 0x3FFFFF
 #endif
 
-static void SPNOOP (uint32_t inst1, uint32_t inst2) {
+static void SPNOOP (uint32_t w1, uint32_t w2) {
     //MessageBox (NULL, "Unknown Audio Command in ABI 1", "Audio HLE Error", MB_OK);
 }
 
@@ -161,19 +161,19 @@ const uint16_t ResampleLUT [0x200] = {
     0xFFD8, 0x0E5F, 0x6696, 0x0B39, 0xFFDF, 0x0D46, 0x66AD, 0x0C39
 };
 
-static void CLEARBUFF (uint32_t inst1, uint32_t inst2) {
-    uint32_t addr = (uint32_t)(inst1 & 0xffff);
-    uint32_t count = (uint32_t)(inst2 & 0xffff);
+static void CLEARBUFF (uint32_t w1, uint32_t w2) {
+    uint32_t addr = (uint32_t)(w1 & 0xffff);
+    uint32_t count = (uint32_t)(w2 & 0xffff);
     addr &= 0xFFFC;
     memset(BufferSpace+addr, 0, (count+3)&0xFFFC);
 }
 
 //FILE *dfile = fopen ("d:\\envmix.txt", "wt");
 
-static void ENVMIXER (uint32_t inst1, uint32_t inst2) {
+static void ENVMIXER (uint32_t w1, uint32_t w2) {
     //static int32_t envmixcnt = 0;
-    uint8_t flags = (uint8_t)((inst1 >> 16) & 0xff);
-    uint32_t addy = (inst2 & 0xFFFFFF);// + SEGMENTS[(inst2>>24)&0xf];
+    uint8_t flags = (uint8_t)((w1 >> 16) & 0xff);
+    uint32_t addy = (w2 & 0xFFFFFF);// + SEGMENTS[(w2>>24)&0xf];
     //static
 // ********* Make sure these conditions are met... ***********
     /*if ((l_alist.in | l_alist.out | AudioAuxA | AudioAuxC | AudioAuxE | l_alist.count) & 0x3) {
@@ -393,12 +393,12 @@ static void ENVMIXER (uint32_t inst1, uint32_t inst2) {
     memcpy(rspInfo.RDRAM+addy, (uint8_t *)save_buffer,80);
 }
 
-static void RESAMPLE (uint32_t inst1, uint32_t inst2)
+static void RESAMPLE (uint32_t w1, uint32_t w2)
 {
    int32_t i ,x;
-    uint8_t Flags=(uint8_t)((inst1>>16)&0xff);
-    uint32_t Pitch=((inst1&0xffff))<<1;
-    uint32_t addy = (inst2 & 0xffffff);// + SEGMENTS[(inst2>>24)&0xf];
+    uint8_t Flags=(uint8_t)((w1>>16)&0xff);
+    uint32_t Pitch=((w1&0xffff))<<1;
+    uint32_t addy = (w2 & 0xffffff);// + SEGMENTS[(w2>>24)&0xf];
     uint32_t Accum=0;
     uint32_t location;
     int16_t *lut/*, *lut2*/;
@@ -412,7 +412,7 @@ static void RESAMPLE (uint32_t inst1, uint32_t inst2)
     int32_t accum;
 /*
     if (addy > (1024*1024*8))
-        addy = (inst2 & 0xffffff);
+        addy = (w2 & 0xffffff);
 */
     srcPtr -= 4;
 
@@ -470,12 +470,12 @@ static void RESAMPLE (uint32_t inst1, uint32_t inst2)
     *(uint16_t *)(rspInfo.RDRAM+addy+10) = Accum;
 }
 
-static void SETVOL (uint32_t inst1, uint32_t inst2) {
+static void SETVOL (uint32_t w1, uint32_t w2) {
 // Might be better to unpack these depending on the flags...
-    uint8_t flags = (uint8_t)((inst1 >> 16) & 0xff);
-    uint16_t vol = (int16_t)(inst1 & 0xffff);
-    //uint16_t voltarg =(uint16_t)((inst2 >> 16)&0xffff);
-    uint16_t volrate = (uint16_t)((inst2 & 0xffff));
+    uint8_t flags = (uint8_t)((w1 >> 16) & 0xff);
+    uint16_t vol = (int16_t)(w1 & 0xffff);
+    //uint16_t voltarg =(uint16_t)((w2 >> 16)&0xffff);
+    uint16_t volrate = (uint16_t)((w2 & 0xffff));
 
     if (flags & A_AUX) {
         l_alist.dry = (int16_t)vol;         // m_MainVol
@@ -497,36 +497,36 @@ static void SETVOL (uint32_t inst1, uint32_t inst2) {
 //uint16_t l_alist.rate[0]; // 0x0012(T8)
     if(flags & A_LEFT) { // Set the Ramping values Target, Ramp
         //l_alist.loop = (((uint32_t)vol << 0x10) | (uint32_t)voltarg);
-        l_alist.target[0]  = (int16_t)inst1;      // m_LeftVol
-        //l_alist.rate[0] = (int32_t)inst2;
-        l_alist.rate[0] = (int32_t)inst2;//(uint16_t)(inst2) | (int32_t)(int16_t)(inst2 << 0x10);
+        l_alist.target[0]  = (int16_t)w1;      // m_LeftVol
+        //l_alist.rate[0] = (int32_t)w2;
+        l_alist.rate[0] = (int32_t)w2;//(uint16_t)(w2) | (int32_t)(int16_t)(w2 << 0x10);
         //fprintf (dfile, "Ramp Left: %f\n", (float)l_alist.rate[0]/65536.0);
-        //fprintf (dfile, "Ramp Left: %08X\n", inst2);
+        //fprintf (dfile, "Ramp Left: %08X\n", w2);
         //l_alist.rate[0] = (int16_t)voltarg;  // m_LeftVolTarget
         //VolRate_Left = (int16_t)volrate;  // m_LeftVolRate
     } else { // A_RIGHT
-        l_alist.target[1]  = (int16_t)inst1;     // m_RightVol
-        //l_alist.rate[1] = (int32_t)inst2;
-        l_alist.rate[1] = (int32_t)inst2;//(uint16_t)(inst2 >> 0x10) | (int32_t)(int16_t)(inst2 << 0x10);
+        l_alist.target[1]  = (int16_t)w1;     // m_RightVol
+        //l_alist.rate[1] = (int32_t)w2;
+        l_alist.rate[1] = (int32_t)w2;//(uint16_t)(w2 >> 0x10) | (int32_t)(int16_t)(w2 << 0x10);
         //fprintf (dfile, "Ramp Right: %f\n", (float)l_alist.rate[1]/65536.0);
-        //fprintf (dfile, "Ramp Right: %08X\n", inst2);
+        //fprintf (dfile, "Ramp Right: %08X\n", w2);
         //l_alist.rate[1] = (int16_t)voltarg; // m_RightVolTarget
         //VolRate_Right = (int16_t)volrate; // m_RightVolRate
     }
 }
 
-static void UNKNOWN (uint32_t inst1, uint32_t inst2) {}
+static void UNKNOWN (uint32_t w1, uint32_t w2) {}
 
-static void SETLOOP (uint32_t inst1, uint32_t inst2) {
-    l_alist.loop = (inst2 & 0xffffff);// + SEGMENTS[(inst2>>24)&0xf];
+static void SETLOOP (uint32_t w1, uint32_t w2) {
+    l_alist.loop = (w2 & 0xffffff);// + SEGMENTS[(w2>>24)&0xf];
     //l_alist.target[0]  = (int16_t)(l_alist.loop >> 16);        // m_LeftVol
     //l_alist.rate[0] = (int16_t)(l_alist.loop);    // m_LeftVolTarget
 }
 
-static void ADPCM (uint32_t inst1, uint32_t inst2) { // Work in progress! :)
-    uint8_t Flags=(uint8_t)(inst1>>16)&0xff;
-    //uint16_t Gain=(uint16_t)(inst1&0xffff);
-    uint32_t Address=(inst2 & 0xffffff);// + SEGMENTS[(inst2>>24)&0xf];
+static void ADPCM (uint32_t w1, uint32_t w2) { // Work in progress! :)
+    uint8_t Flags=(uint8_t)(w1>>16)&0xff;
+    //uint16_t Gain=(uint16_t)(w1&0xffff);
+    uint32_t Address=(w2 & 0xffffff);// + SEGMENTS[(w2>>24)&0xf];
     uint16_t inPtr=0;
     //int16_t *out=(int16_t *)(testbuff+(l_alist.out>>2));
     int16_t *out=(int16_t *)(BufferSpace+l_alist.out);
@@ -541,7 +541,7 @@ static void ADPCM (uint32_t inst1, uint32_t inst2) { // Work in progress! :)
     int16_t *book1,*book2;
 /*
     if (Address > (1024*1024*8))
-        Address = (inst2 & 0xffffff);
+        Address = (w2 & 0xffffff);
 */
     memset(out,0,32);
 
@@ -766,46 +766,46 @@ static void ADPCM (uint32_t inst1, uint32_t inst2) { // Work in progress! :)
     memcpy(&rspInfo.RDRAM[Address],out,32);
 }
 
-static void LOADBUFF (uint32_t inst1, uint32_t inst2) { // memcpy causes static... endianess issue :(
+static void LOADBUFF (uint32_t w1, uint32_t w2) { // memcpy causes static... endianess issue :(
     uint32_t v0;
     //uint32_t cnt;
     if (l_alist.count == 0)
         return;
-    v0 = (inst2 & 0xfffffc);// + SEGMENTS[(inst2>>24)&0xf];
+    v0 = (w2 & 0xfffffc);// + SEGMENTS[(w2>>24)&0xf];
     memcpy (BufferSpace+(l_alist.in&0xFFFC), rspInfo.RDRAM+v0, (l_alist.count+3)&0xFFFC);
 }
 
-static void SAVEBUFF (uint32_t inst1, uint32_t inst2) { // memcpy causes static... endianess issue :(
+static void SAVEBUFF (uint32_t w1, uint32_t w2) { // memcpy causes static... endianess issue :(
     uint32_t v0;
     //uint32_t cnt;
     if (l_alist.count == 0)
         return;
-    v0 = (inst2 & 0xfffffc);// + SEGMENTS[(inst2>>24)&0xf];
+    v0 = (w2 & 0xfffffc);// + SEGMENTS[(w2>>24)&0xf];
     memcpy (rspInfo.RDRAM+v0, BufferSpace+(l_alist.out&0xFFFC), (l_alist.count+3)&0xFFFC);
 }
 
-static void SETBUFF (uint32_t inst1, uint32_t inst2) { // Should work ;-)
-    if ((inst1 >> 0x10) & 0x8) { // A_AUX - Auxillary Sound Buffer Settings
-        l_alist.dry_right      = (uint16_t)(inst1);
-        l_alist.wet_left       = (uint16_t)((inst2 >> 0x10));
-        l_alist.wet_right      = (uint16_t)(inst2);
+static void SETBUFF (uint32_t w1, uint32_t w2) { // Should work ;-)
+    if ((w1 >> 0x10) & 0x8) { // A_AUX - Auxillary Sound Buffer Settings
+        l_alist.dry_right      = (uint16_t)(w1);
+        l_alist.wet_left       = (uint16_t)((w2 >> 0x10));
+        l_alist.wet_right      = (uint16_t)(w2);
     } else {        // A_MAIN - Main Sound Buffer Settings
-        l_alist.in   = (uint16_t)(inst1); // 0x00
-        l_alist.out  = (uint16_t)((inst2 >> 0x10)); // 0x02
-        l_alist.count      = (uint16_t)(inst2); // 0x04
+        l_alist.in   = (uint16_t)(w1); // 0x00
+        l_alist.out  = (uint16_t)((w2 >> 0x10)); // 0x02
+        l_alist.count      = (uint16_t)(w2); // 0x04
     }
 }
 
-static void DMEMMOVE (uint32_t inst1, uint32_t inst2) { // Doesn't sound just right?... will fix when HLE is ready - 03-11-01
+static void DMEMMOVE (uint32_t w1, uint32_t w2) { // Doesn't sound just right?... will fix when HLE is ready - 03-11-01
     uint32_t v0, v1;
     uint32_t cnt;
-    if ((inst2 & 0xffff)==0)
+    if ((w2 & 0xffff)==0)
         return;
-    v0 = (inst1 & 0xFFFF);
-    v1 = (inst2 >> 0x10);
+    v0 = (w1 & 0xFFFF);
+    v1 = (w2 >> 0x10);
     //assert ((v1 & 0x3) == 0);
     //assert ((v0 & 0x3) == 0);
-    uint32_t count = ((inst2+3) & 0xfffc);
+    uint32_t count = ((w2+3) & 0xfffc);
     //v0 = (v0) & 0xfffc;
     //v1 = (v1) & 0xfffc;
 
@@ -815,17 +815,17 @@ static void DMEMMOVE (uint32_t inst1, uint32_t inst2) { // Doesn't sound just ri
     }
 }
 
-static void LOADADPCM (uint32_t inst1, uint32_t inst2)
+static void LOADADPCM (uint32_t w1, uint32_t w2)
 { // Loads an ADPCM table - Works 100% Now 03-13-01
    uint32_t x;
     uint32_t v0;
-    v0 = (inst2 & 0xffffff);// + SEGMENTS[(inst2>>24)&0xf];
+    v0 = (w2 & 0xffffff);// + SEGMENTS[(w2>>24)&0xf];
 /*  if (v0 > (1024*1024*8))
-        v0 = (inst2 & 0xffffff);*/
-    //memcpy (dmem+0x4c0, rspInfo.RDRAM+v0, inst1&0xffff); // Could prolly get away with not putting this in dmem
-    //assert ((inst1&0xffff) <= 0x80);
+        v0 = (w2 & 0xffffff);*/
+    //memcpy (dmem+0x4c0, rspInfo.RDRAM+v0, w1&0xffff); // Could prolly get away with not putting this in dmem
+    //assert ((w1&0xffff) <= 0x80);
     uint16_t *table = (uint16_t *)(rspInfo.RDRAM+v0);
-    for (x = 0; x < ((inst1&0xffff)>>0x4); x++) {
+    for (x = 0; x < ((w1&0xffff)>>0x4); x++) {
         l_alist.table[(0x0+(x<<3))^S] = table[0];
         l_alist.table[(0x1+(x<<3))^S] = table[1];
 
@@ -842,7 +842,7 @@ static void LOADADPCM (uint32_t inst1, uint32_t inst2)
 }
 
 
-static void INTERLEAVE (uint32_t inst1, uint32_t inst2)
+static void INTERLEAVE (uint32_t w1, uint32_t w2)
 { // Works... - 3-11-01
    int32_t x;
     uint32_t inL, inR;
@@ -851,8 +851,8 @@ static void INTERLEAVE (uint32_t inst1, uint32_t inst2)
     uint16_t *inSrcL;
     uint16_t Left, Right, Left2, Right2;
 
-    inL = inst2 & 0xFFFF;
-    inR = (inst2 >> 16) & 0xFFFF;
+    inL = w2 & 0xFFFF;
+    inR = (w2 >> 16) & 0xFFFF;
 
     inSrcR = (uint16_t *)(BufferSpace+inR);
     inSrcL = (uint16_t *)(BufferSpace+inL);
@@ -878,13 +878,13 @@ static void INTERLEAVE (uint32_t inst1, uint32_t inst2)
 }
 
 
-static void MIXER (uint32_t inst1, uint32_t inst2)
+static void MIXER (uint32_t w1, uint32_t w2)
 { // Fixed a sign issue... 03-14-01
    int32_t x;
-    uint32_t dmemin  = (uint16_t)(inst2 >> 0x10);
-    uint32_t dmemout = (uint16_t)(inst2 & 0xFFFF);
-    //uint8_t  flags   = (uint8_t)((inst1 >> 16) & 0xff);
-    int32_t gain    = (int16_t)(inst1 & 0xFFFF);
+    uint32_t dmemin  = (uint16_t)(w2 >> 0x10);
+    uint32_t dmemout = (uint16_t)(w2 & 0xFFFF);
+    //uint8_t  flags   = (uint8_t)((w1 >> 16) & 0xff);
+    int32_t gain    = (int16_t)(w1 & 0xFFFF);
     int32_t temp;
 
     if (l_alist.count == 0)
@@ -934,11 +934,11 @@ void alist_process_audio_bc(void)
 }
 
 /*  BACKUPS
-void MIXER (uint32_t inst1, uint32_t inst2) { // Fixed a sign issue... 03-14-01
-    uint16_t dmemin  = (uint16_t)(inst2 >> 0x10);
-    uint16_t dmemout = (uint16_t)(inst2 & 0xFFFF);
-    uint16_t gain    = (uint16_t)(inst1 & 0xFFFF);
-    uint8_t  flags   = (uint8_t)((inst1 >> 16) & 0xff);
+void MIXER (uint32_t w1, uint32_t w2) { // Fixed a sign issue... 03-14-01
+    uint16_t dmemin  = (uint16_t)(w2 >> 0x10);
+    uint16_t dmemout = (uint16_t)(w2 & 0xFFFF);
+    uint16_t gain    = (uint16_t)(w1 & 0xFFFF);
+    uint8_t  flags   = (uint8_t)((w1 >> 16) & 0xff);
     uint64_t temp;
 
     if (l_alist.count == 0)
