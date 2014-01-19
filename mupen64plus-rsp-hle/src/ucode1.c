@@ -116,11 +116,6 @@ Address/Range       Description
 0x5C0..0xF7F        Buffers...
 0xF80..0xFFF        <Unknown>
 ***************************************************/
-#ifdef USE_EXPANSION
-    #define MEMMASK 0x7FFFFF
-#else
-    #define MEMMASK 0x3FFFFF
-#endif
 
 static void SPNOOP (uint32_t w1, uint32_t w2) {
     //MessageBox (NULL, "Unknown Audio Command in ABI 1", "Audio HLE Error", MB_OK);
