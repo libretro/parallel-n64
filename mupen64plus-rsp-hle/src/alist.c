@@ -43,7 +43,7 @@ extern const acmd_callback_t ABI2[0x20];
 extern const acmd_callback_t ABI3[0x10];
 
 /* local functions */
-static int16_t* sample(unsigned pos)
+static inline int16_t* sample(unsigned pos)
 {
     return (int16_t*)BufferSpace + (pos ^ S);
 }
