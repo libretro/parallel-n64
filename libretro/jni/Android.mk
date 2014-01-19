@@ -62,7 +62,8 @@ LOCAL_SRC_FILES += \
     $(RSPDIR)/src/cicx105.c \
     $(RSPDIR)/src/jpeg.c \
     $(RSPDIR)/src/musyx.c \
-    $(RSPDIR)/src/main.c
+    $(RSPDIR)/src/main.c \
+    $(RSPDIR)/src/hle_audio.c
 
 LOCAL_SRC_FILES += \
     $(RSPDIR)/src/ucode1.c \

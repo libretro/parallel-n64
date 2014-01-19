@@ -27,6 +27,7 @@ extern const uint16_t ResampleLUT[0x200];
 
 #include "m64p_types.h"
 #include "hle.h"
+#include "hle_audio.h"
 
 /* various constants */
 enum { SUBFRAME_SIZE = 192 };
@@ -610,7 +611,7 @@ void mix_voice_samples(musyx_t *musyx, uint32_t voice_ptr,
     for (i = 0; i < SUBFRAME_SIZE; ++i) {
         /* update sample and resample_lut pointers and then pitch_accu */
         sample += (pitch_accu >> 16);
-        const int16_t *lut = (int16_t *)(ResampleLUT + ((pitch_accu & 0xfc00) >> 8));
+        const int16_t *lut = (RESAMPLE_LUT  + ((pitch_accu & 0xfc00) >> 8));
         pitch_accu &= 0xffff;
         pitch_accu += pitch_step;
 

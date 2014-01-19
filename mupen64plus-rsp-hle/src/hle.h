@@ -128,7 +128,5 @@ void dram_store_u32(const uint32_t* src, uint32_t address, size_t count);
    if ((int16_t)io != io) \
       io = (io >> 31) ^ 0x7FFF
 
-extern const uint16_t ResampleLUT [0x200];
-
 #endif
 
