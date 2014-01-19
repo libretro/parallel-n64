@@ -766,22 +766,24 @@ static void ADPCM (uint32_t w1, uint32_t w2) { // Work in progress! :)
     memcpy(&rspInfo.RDRAM[Address],out,32);
 }
 
-static void LOADBUFF (uint32_t w1, uint32_t w2) { // memcpy causes static... endianess issue :(
-    uint32_t v0;
-    //uint32_t cnt;
+static void LOADBUFF (uint32_t w1, uint32_t w2)
+{
+       uint32_t address = (w2 & 0xffffff);
+
     if (l_alist.count == 0)
         return;
-    v0 = (w2 & 0xfffffc);// + SEGMENTS[(w2>>24)&0xf];
-    memcpy (BufferSpace+(l_alist.in&0xFFFC), rspInfo.RDRAM+v0, (l_alist.count+3)&0xFFFC);
+
+    alist_load(l_alist.in & ~3, address & ~3, (l_alist.count + 3) & ~3);
 }
 
-static void SAVEBUFF (uint32_t w1, uint32_t w2) { // memcpy causes static... endianess issue :(
-    uint32_t v0;
-    //uint32_t cnt;
-    if (l_alist.count == 0)
-        return;
-    v0 = (w2 & 0xfffffc);// + SEGMENTS[(w2>>24)&0xf];
-    memcpy (rspInfo.RDRAM+v0, BufferSpace+(l_alist.out&0xFFFC), (l_alist.count+3)&0xFFFC);
+static void SAVEBUFF (uint32_t w1, uint32_t w2)
+{
+   uint32_t address = (w2 & 0xffffff);
+
+   if (l_alist.count == 0)
+      return;
+
+   alist_save(l_alist.out & ~3, address & ~3, (l_alist.count + 3) & ~3);
 }
 
 static void SETBUFF (uint32_t w1, uint32_t w2) { // Should work ;-)

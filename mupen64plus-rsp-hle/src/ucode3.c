@@ -261,20 +261,22 @@ static void MIXER3 (uint32_t w1, uint32_t w2)
    alist_mix(dmemo, dmemi, 0x170, gain);
 }
 
-static void LOADBUFF3 (uint32_t w1, uint32_t w2) {
-    uint32_t v0;
-    uint32_t cnt = (((w1 >> 0xC)+3)&0xFFC);
-    v0 = (w2 & 0xfffffc);
-    uint32_t src = (w1&0xffc)+0x4f0;
-    memcpy (BufferSpace+src, rspInfo.RDRAM+v0, cnt);
+static void LOADBUFF3 (uint32_t w1, uint32_t w2)
+{
+   uint16_t count = (w1 >> 12) & 0xfff;
+   uint16_t dmem = (w1 & 0xfff) + 0x4f0;
+   uint32_t address = (w2 & 0xffffff);
+
+   alist_load(dmem & ~3, address & ~3, (count + 3) & ~3);
 }
 
-static void SAVEBUFF3 (uint32_t w1, uint32_t w2) {
-    uint32_t v0;
-    uint32_t cnt = (((w1 >> 0xC)+3)&0xFFC);
-    v0 = (w2 & 0xfffffc);
-    uint32_t src = (w1&0xffc)+0x4f0;
-    memcpy (rspInfo.RDRAM+v0, BufferSpace+src, cnt);
+static void SAVEBUFF3 (uint32_t w1, uint32_t w2)
+{
+   uint16_t count = (w1 >> 12) & 0xfff;
+   uint16_t dmem = (w1 & 0xfff) + 0x4f0;
+   uint32_t address = (w2 & 0xffffff);
+
+   alist_save(dmem & ~3, address & ~3, (count + 3) & ~3);
 }
 
 static void LOADADPCM3 (uint32_t w1, uint32_t w2) { // Loads an ADPCM table - Works 100% Now 03-13-01

@@ -21,6 +21,9 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <stdint.h>
+#include <string.h>
+
 #include "hle.h"
 #include "alist_internal.h"
 
@@ -65,9 +68,19 @@ void alist_process(const acmd_callback_t abi[], unsigned int abi_size)
     }
 }
 
+void alist_load(uint16_t dmem, uint32_t address, uint16_t count)
+{
+   memcpy(BufferSpace + dmem, rspInfo.RDRAM + address, count);
+}
+
+void alist_save(uint16_t dmem, uint32_t address, uint16_t count)
+{
+   memcpy(rspInfo.RDRAM + address, BufferSpace + dmem, count);
+}
+
 void alist_move(uint16_t dmemo, uint16_t dmemi, uint16_t count)
 {
-   while (count != 0)
+   while (count)
    {
       BufferSpace[(dmemo++)^S8] = BufferSpace[(dmemi++)^S8];
       --count;

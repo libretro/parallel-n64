@@ -369,18 +369,22 @@ static void CLEARBUFF2 (uint32_t w1, uint32_t w2) {
         memset(BufferSpace+addr, 0, count);
 }
 
-static void LOADBUFF2 (uint32_t w1, uint32_t w2) { // Needs accuracy verification...
-    uint32_t v0;
-    uint32_t cnt = (((w1 >> 0xC)+3)&0xFFC);
-    v0 = (w2 & 0xfffffc);// + SEGMENTS[(w2>>24)&0xf];
-    memcpy (BufferSpace+(w1&0xfffc), rspInfo.RDRAM+v0, (cnt+3)&0xFFFC);
+static void LOADBUFF2 (uint32_t w1, uint32_t w2)
+{
+   uint16_t count = (w1 >> 12) & 0xfff;
+   uint16_t dmem = (w1 & 0xfff);
+   uint32_t address = (w2 & 0xffffff);
+
+   alist_load(dmem & ~3, address & ~3, (count + 3) & ~3);
 }
 
-static void SAVEBUFF2 (uint32_t w1, uint32_t w2) { // Needs accuracy verification...
-    uint32_t v0;
-    uint32_t cnt = (((w1 >> 0xC)+3)&0xFFC);
-    v0 = (w2 & 0xfffffc);// + SEGMENTS[(w2>>24)&0xf];
-    memcpy (rspInfo.RDRAM+v0, BufferSpace+(w1&0xfffc), (cnt+3)&0xFFFC);
+static void SAVEBUFF2 (uint32_t w1, uint32_t w2)
+{
+   uint16_t count = (w1 >> 12) & 0xfff;
+   uint16_t dmem = (w1 & 0xfff);
+   uint32_t address = (w2 & 0xffffff);
+
+   alist_save(dmem & ~3, address & ~3, (count + 3) & ~3);
 }
 
 
