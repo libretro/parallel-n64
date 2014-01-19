@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus-rsp-hle - alist.c                                         *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2012 Bobby Smiles                                       *
+ *   Copyright (C) 2014 Bobby Smiles                                       *
  *   Copyright (C) 2009 Richard Goedeken                                   *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
@@ -28,7 +28,7 @@
 #include "alist_internal.h"
 #include "hle_audio.h"
 
-/* FIXME: use DMEM instead */
+/* FIXME: make local */
 uint8_t BufferSpace[0x10000];
 
 // FIXME: this decomposition into 3 ABI is not accurate,
