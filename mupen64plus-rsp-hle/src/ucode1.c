@@ -796,23 +796,16 @@ static void SETBUFF (uint32_t w1, uint32_t w2) { // Should work ;-)
     }
 }
 
-static void DMEMMOVE (uint32_t w1, uint32_t w2) { // Doesn't sound just right?... will fix when HLE is ready - 03-11-01
-    uint32_t v0, v1;
-    uint32_t cnt;
-    if ((w2 & 0xffff)==0)
-        return;
-    v0 = (w1 & 0xFFFF);
-    v1 = (w2 >> 0x10);
-    //assert ((v1 & 0x3) == 0);
-    //assert ((v0 & 0x3) == 0);
-    uint32_t count = ((w2+3) & 0xfffc);
-    //v0 = (v0) & 0xfffc;
-    //v1 = (v1) & 0xfffc;
+static void DMEMMOVE (uint32_t w1, uint32_t w2)
+{
+   uint16_t dmemi = w1;
+    uint16_t dmemo = (w2 >> 16);
+    uint16_t count = w2;
 
-    //memcpy (BufferSpace+v1, BufferSpace+v0, count-1);
-    for (cnt = 0; cnt < count; cnt++) {
-        *(uint8_t *)(BufferSpace+((cnt+v1)^S8)) = *(uint8_t *)(BufferSpace+((cnt+v0)^S8));
-    }
+    if (count == 0)
+        return;
+
+    alist_move(dmemo, dmemi, (count + 3) & ~3);
 }
 
 static void LOADADPCM (uint32_t w1, uint32_t w2)

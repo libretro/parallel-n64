@@ -299,17 +299,13 @@ static void LOADADPCM3 (uint32_t w1, uint32_t w2) { // Loads an ADPCM table - Wo
     }
 }
 
-static void DMEMMOVE3 (uint32_t w1, uint32_t w2) { // Needs accuracy verification...
-    uint32_t v0, v1;
-    uint32_t cnt;
-    v0 = (w1 & 0xFFFF) + 0x4f0;
-    v1 = (w2 >> 0x10) + 0x4f0;
-    uint32_t count = ((w2+3) & 0xfffc);
+static void DMEMMOVE3 (uint32_t w1, uint32_t w2)
+{
+   uint16_t dmemi = w1 + 0x4f0;
+   uint16_t dmemo = (w2 >> 16) + 0x4f0;
+   uint16_t count = w2;
 
-    //memcpy (dmem+v1, dmem+v0, count-1);
-    for (cnt = 0; cnt < count; cnt++) {
-        *(uint8_t *)(BufferSpace+((cnt+v1)^S8)) = *(uint8_t *)(BufferSpace+((cnt+v0)^S8));
-    }
+   alist_move(dmemo, dmemi, (count + 3) & ~3);
 }
 
 static void SETLOOP3 (uint32_t w1, uint32_t w2) {
