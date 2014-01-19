@@ -912,10 +912,26 @@ static void MIXER (uint32_t inst1, uint32_t inst2)
 //Command: RESAMPLE - Calls:  48 - Total Time: 276354 - Avg Time:  5757.38 - Percent: 22.95%
 
 
-const acmd_callback_t ABI1[0x10] = { // TOP Performace Hogs: MIXER, RESAMPLE, ENVMIXER
+static const acmd_callback_t ABI1[0x10] = { // TOP Performace Hogs: MIXER, RESAMPLE, ENVMIXER
     SPNOOP , ADPCM , CLEARBUFF, ENVMIXER  , LOADBUFF, RESAMPLE  , SAVEBUFF, UNKNOWN,
     SETBUFF, SETVOL, DMEMMOVE , LOADADPCM , MIXER   , INTERLEAVE, UNKNOWN , SETLOOP
 };
+
+/* global functions */
+void alist_process_audio(void)
+{
+    alist_process(ABI1, 0x10);
+}
+
+void alist_process_audio_ge(void)
+{
+    alist_process(ABI1, 0x10);
+}
+
+void alist_process_audio_bc(void)
+{
+    alist_process(ABI1, 0x10);
+}
 
 /*  BACKUPS
 void MIXER (uint32_t inst1, uint32_t inst2) { // Fixed a sign issue... 03-14-01
