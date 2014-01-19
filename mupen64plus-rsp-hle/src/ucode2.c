@@ -385,23 +385,13 @@ static void SAVEBUFF2 (uint32_t w1, uint32_t w2) { // Needs accuracy verificatio
 
 
 static void MIXER2 (uint32_t w1, uint32_t w2)
-{ // Needs accuracy verification...
-   unsigned int x;
-    uint16_t dmemin  = (uint16_t)(w2 >> 0x10);
-    uint16_t dmemout = (uint16_t)(w2 & 0xFFFF);
-    uint32_t count   = ((w1 >> 12) & 0xFF0);
-    int32_t gain    = (int16_t)(w1 & 0xFFFF);
-    int32_t temp;
+{
+   uint16_t count = (w1 >> 12) & 0xff0;
+   int16_t  gain  = w1;
+   uint16_t dmemi = (w2 >> 16);
+   uint16_t dmemo = w2;
 
-    for (x=0; x < count; x+=2) { // I think I can do this a lot easier 
-
-        temp = (*(int16_t *)(BufferSpace+dmemin+x) * gain) >> 15;
-        temp += *(int16_t *)(BufferSpace+dmemout+x);
-            
-        BLARGG_CLAMP16(temp);
-
-        *(uint16_t *)(BufferSpace+dmemout+x) = (uint16_t)(temp & 0xFFFF);
-    }
+   alist_mix(dmemo, dmemi, count, gain);
 }
 
 

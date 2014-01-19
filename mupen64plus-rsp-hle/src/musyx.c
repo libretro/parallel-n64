@@ -158,16 +158,6 @@ static void mix_fir4(int16_t* y, const int16_t* x, int16_t hgain, const int16_t*
 static void interleave_stage(musyx_t *musyx, uint32_t output_ptr);
 
 
-static inline int16_t clamp_s16(int32_t x)
-{
-    if (x > 32767)
-        x = 32767;
-    else if (x < -32768)
-        x = -32768;
-
-    return x;
-}
-
 static inline unsigned int align(unsigned int x, unsigned amount)
 {
     --amount;

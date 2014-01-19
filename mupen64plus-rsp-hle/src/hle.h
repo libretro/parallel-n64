@@ -62,6 +62,14 @@ enum {
    TASK_YIELD_DATA_SIZE    = 0xffc
 };
 
+static inline int16_t clamp_s16(int_fast32_t x)
+{
+   x = (x < INT16_MIN) ? INT16_MIN: x;
+   x = (x > INT16_MAX) ? INT16_MAX: x;
+
+   return x;
+}
+
 static inline uint8_t* const dmem_u8(uint16_t address)
 {
     return (uint8_t*)(&rspInfo.DMEM[(address & 0xfff) ^ S8]);

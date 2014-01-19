@@ -252,22 +252,13 @@ static void CLEARBUFF3 (uint32_t w1, uint32_t w2) {
     memset(BufferSpace+addr+0x4f0, 0, count);
 }
 
-static void MIXER3 (uint32_t w1, uint32_t w2) { // Needs accuracy verification...
-   int x;
-    uint16_t dmemin  = (uint16_t)(w2 >> 0x10)  + 0x4f0;
-    uint16_t dmemout = (uint16_t)(w2 & 0xFFFF) + 0x4f0;
-    //uint8_t  flags   = (uint8_t)((w1 >> 16) & 0xff);
-    int32_t gain    = (int16_t)(w1 & 0xFFFF);
-    int32_t temp;
+static void MIXER3 (uint32_t w1, uint32_t w2)
+{
+   int16_t  gain  = w1;
+   uint16_t dmemi = (w2 >> 16) + 0x4f0;
+   uint16_t dmemo = w2 + 0x4f0;
 
-    for (x=0; x < 0x170; x+=2) { // I think I can do this a lot easier
-        temp = (*(int16_t *)(BufferSpace+dmemin+x) * gain) >> 15;
-        temp += *(int16_t *)(BufferSpace+dmemout+x);
-            
-        BLARGG_CLAMP16(temp);
-
-        *(uint16_t *)(BufferSpace+dmemout+x) = (uint16_t)(temp & 0xFFFF);
-    }
+   alist_mix(dmemo, dmemi, 0x170, gain);
 }
 
 static void LOADBUFF3 (uint32_t w1, uint32_t w2) {

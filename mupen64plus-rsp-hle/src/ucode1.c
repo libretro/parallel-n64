@@ -855,25 +855,15 @@ static void INTERLEAVE (uint32_t w1, uint32_t w2)
 
 
 static void MIXER (uint32_t w1, uint32_t w2)
-{ // Fixed a sign issue... 03-14-01
-   int32_t x;
-    uint32_t dmemin  = (uint16_t)(w2 >> 0x10);
-    uint32_t dmemout = (uint16_t)(w2 & 0xFFFF);
-    //uint8_t  flags   = (uint8_t)((w1 >> 16) & 0xff);
-    int32_t gain    = (int16_t)(w1 & 0xFFFF);
-    int32_t temp;
+{
+   int16_t gain = w1;
+   uint16_t dmemi = (w2 >> 16);
+   uint16_t dmemo = w2;
 
-    if (l_alist.count == 0)
-        return;
+   if (l_alist.count == 0)
+      return;
 
-    for (x = 0; x < l_alist.count; x+=2) { // I think I can do this a lot easier
-        temp = (*(int16_t *)(BufferSpace+dmemin+x) * gain) >> 15;
-        temp += *(int16_t *)(BufferSpace+dmemout+x);
-
-        BLARGG_CLAMP16(temp);
-
-        *(uint16_t *)(BufferSpace+dmemout+x) = (uint16_t)(temp & 0xFFFF);
-    }
+   alist_mix(dmemo, dmemi, l_alist.count, gain);
 }
 
 // TOP Performance Hogs:
