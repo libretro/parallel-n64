@@ -27,6 +27,23 @@
 #include "hle.h"
 #include "alist_internal.h"
 
+/* alist naudio state */
+
+static struct
+{
+    /* gains */
+    int16_t dry;
+    int16_t wet;
+    /* envelopes (0:left, 1:right) */
+    int16_t vol[2];
+    int16_t target[2];
+    int32_t rate[2];
+    /* ADPCM loop point address */
+    uint32_t loop;
+    /* storage for ADPCM table and polef coefficients */
+    uint16_t table[16 * 8];
+} l_alist;
+
 /*
 static void SPNOOP (uint32_t inst1, uint32_t inst2) {
     RSP_DEBUG_MESSAGE(M64MSG_ERROR, "Unknown/Unimplemented Audio Command %i in ABI 3", (int)(inst1 >> 24));
@@ -35,23 +52,6 @@ static void SPNOOP (uint32_t inst1, uint32_t inst2) {
 
 extern const uint16_t ResampleLUT [0x200];
 
-extern uint32_t loopval;
-
-extern int16_t Env_Dry;
-extern int16_t Env_Wet;
-extern int16_t Vol_Left;
-extern int16_t Vol_Right;
-extern int16_t VolTrg_Left;
-extern int32_t VolRamp_Left;
-//extern uint16_t VolRate_Left;
-extern int16_t VolTrg_Right;
-extern int32_t VolRamp_Right;
-//extern uint16_t VolRate_Right;
-
-
-extern int16_t save_buffer[256];
-extern uint16_t adpcmtable[0x88];
-
 extern uint8_t BufferSpace[0x10000];
 
 /*
@@ -59,16 +59,16 @@ static void SETVOL3 (uint32_t inst1, uint32_t inst2) { // Swapped Rate_Left and 
     uint8_t Flags = (uint8_t)(inst1 >> 0x10);
     if (Flags & 0x4) { // 288
         if (Flags & 0x2) { // 290
-            VolTrg_Left  = *(int16_t*)&inst1;
-            VolRamp_Left = *(int32_t*)&inst2;
+            l_alist.target[0]  = *(int16_t*)&inst1;
+            l_alist.rate[0] = *(int32_t*)&inst2;
         } else {
-            VolTrg_Right  = *(int16_t*)&inst1;
-            VolRamp_Right = *(int32_t*)&inst2;
+            l_alist.target[1]  = *(int16_t*)&inst1;
+            l_alist.rate[1] = *(int32_t*)&inst2;
         }
     } else {
-        Vol_Left    = *(int16_t*)&inst1;
-        Env_Dry     = (int16_t)(*(int32_t*)&inst2 >> 0x10);
-        Env_Wet     = *(int16_t*)&inst2;
+        l_alist.vol[0]    = *(int16_t*)&inst1;
+        l_alist.dry     = (int16_t)(*(int32_t*)&inst2 >> 0x10);
+        l_alist.wet     = *(int16_t*)&inst2;
     }
 }
 */
@@ -76,17 +76,17 @@ static void SETVOL3 (uint32_t inst1, uint32_t inst2) {
     uint8_t Flags = (uint8_t)(inst1 >> 0x10);
     if (Flags & 0x4) { // 288
         if (Flags & 0x2) { // 290
-            Vol_Left  = (int16_t)inst1; // 0x50
-            Env_Dry   = (int16_t)(inst2 >> 0x10); // 0x4E
-            Env_Wet   = (int16_t)inst2; // 0x4C
+            l_alist.vol[0]  = (int16_t)inst1; // 0x50
+            l_alist.dry   = (int16_t)(inst2 >> 0x10); // 0x4E
+            l_alist.wet   = (int16_t)inst2; // 0x4C
         } else {
-            VolTrg_Right  = (int16_t)inst1; // 0x46
-            //VolRamp_Right = (uint16_t)(inst2 >> 0x10) | (int32_t)(int16_t)(inst2 << 0x10);
-            VolRamp_Right = (int32_t)inst2; // 0x48/0x4A
+            l_alist.target[1]  = (int16_t)inst1; // 0x46
+            //l_alist.rate[1] = (uint16_t)(inst2 >> 0x10) | (int32_t)(int16_t)(inst2 << 0x10);
+            l_alist.rate[1] = (int32_t)inst2; // 0x48/0x4A
         }
     } else {
-        VolTrg_Left  = (int16_t)inst1; // 0x40
-        VolRamp_Left = (int32_t)inst2; // 0x42/0x44
+        l_alist.target[0]  = (int16_t)inst1; // 0x40
+        l_alist.rate[0] = (int32_t)inst2; // 0x42/0x44
     }
 }
 
@@ -116,21 +116,23 @@ static void ENVMIXER3 (uint32_t inst1, uint32_t inst2) {
     int16_t LTrg, RTrg;
     int16_t save_buffer[40];
 
-    Vol_Right = (int16_t)inst1;
+    l_alist.vol[1] = (int16_t)inst1;
 
     if (flags & A_INIT) {
-        LAdder = VolRamp_Left / 8;
+        LAdder = l_alist.rate[0] / 8;
         LAcc  = 0;
-        LVol  = Vol_Left;
-        LSig = (int16_t)(VolRamp_Left >> 16);
+        LVol  = l_alist.vol[0];
+        LSig = (int16_t)(l_alist.rate[0] >> 16);
 
-        RAdder = VolRamp_Right / 8;
+        RAdder = l_alist.rate[1] / 8;
         RAcc  = 0;
-        RVol  = Vol_Right;
-        RSig = (int16_t)(VolRamp_Right >> 16);
+        RVol  = l_alist.vol[1];
+        RSig = (int16_t)(l_alist.rate[1] >> 16);
 
-        Wet = (int16_t)Env_Wet; Dry = (int16_t)Env_Dry; // Save Wet/Dry values
-        LTrg = VolTrg_Left; RTrg = VolTrg_Right; // Save Current Left/Right Targets
+        Wet = (int16_t)l_alist.wet;
+        Dry = (int16_t)l_alist.dry; // Save Wet/Dry values
+        LTrg = l_alist.target[0];
+        RTrg = l_alist.target[1]; // Save Current Left/Right Targets
     } else {
         memcpy((uint8_t *)save_buffer, rspInfo.RDRAM+addy, 80);
         Wet    = *(int16_t *)(save_buffer +  0); // 0-1
@@ -291,17 +293,17 @@ static void LOADADPCM3 (uint32_t inst1, uint32_t inst2) { // Loads an ADPCM tabl
     //assert ((inst1&0xffff) <= 0x80);
     uint16_t *table = (uint16_t *)(rspInfo.RDRAM+v0);
     for (x = 0; x < ((inst1&0xffff)>>0x4); x++) {
-        adpcmtable[(0x0+(x<<3))^S] = table[0];
-        adpcmtable[(0x1+(x<<3))^S] = table[1];
+        l_alist.table[(0x0+(x<<3))^S] = table[0];
+        l_alist.table[(0x1+(x<<3))^S] = table[1];
 
-        adpcmtable[(0x2+(x<<3))^S] = table[2];
-        adpcmtable[(0x3+(x<<3))^S] = table[3];
+        l_alist.table[(0x2+(x<<3))^S] = table[2];
+        l_alist.table[(0x3+(x<<3))^S] = table[3];
 
-        adpcmtable[(0x4+(x<<3))^S] = table[4];
-        adpcmtable[(0x5+(x<<3))^S] = table[5];
+        l_alist.table[(0x4+(x<<3))^S] = table[4];
+        l_alist.table[(0x5+(x<<3))^S] = table[5];
 
-        adpcmtable[(0x6+(x<<3))^S] = table[6];
-        adpcmtable[(0x7+(x<<3))^S] = table[7];
+        l_alist.table[(0x6+(x<<3))^S] = table[6];
+        l_alist.table[(0x7+(x<<3))^S] = table[7];
         table += 8;
     }
 }
@@ -320,7 +322,7 @@ static void DMEMMOVE3 (uint32_t inst1, uint32_t inst2) { // Needs accuracy verif
 }
 
 static void SETLOOP3 (uint32_t inst1, uint32_t inst2) {
-    loopval = (inst2 & 0xffffff);
+    l_alist.loop = (inst2 & 0xffffff);
 }
 
 static void ADPCM3 (uint32_t inst1, uint32_t inst2) { // Verified to be 100% Accurate...
@@ -348,9 +350,9 @@ static void ADPCM3 (uint32_t inst1, uint32_t inst2) { // Verified to be 100% Acc
         {/*
             for(int i=0;i<16;i++)
             {
-                out[i]=*(int16_t *)&rspInfo.RDRAM[(loopval+i*2)^2];
+                out[i]=*(int16_t *)&rspInfo.RDRAM[(l_alist.loop+i*2)^2];
             }*/
-            memcpy(out,&rspInfo.RDRAM[loopval],32);
+            memcpy(out,&rspInfo.RDRAM[l_alist.loop],32);
         }
         else
         {/*
@@ -377,7 +379,7 @@ static void ADPCM3 (uint32_t inst1, uint32_t inst2) { // Verified to be 100% Acc
         code=BufferSpace[(0x4f0+inPtr)^S8];
         index=code&0xf;
         index<<=4;                                  // index into the adpcm code table
-        book1=(int16_t *)&adpcmtable[index];
+        book1=(int16_t *)&l_alist.table[index];
         book2=book1+8;
         code>>=4;                                   // upper nibble is scale
         vscale=(0x8000>>((12-code)-1));         // very strange. 0x8000 would be .5 in 16:16 format
@@ -772,7 +774,7 @@ void MP3 (uint32_t inst1, uint32_t inst2);
     memcpy (BufferSpace, dmembase+rspInfo.RDRAM, 0x10);
     ((uint32_t*)BufferSpace)[0x0] = base;
     ((uint32_t*)BufferSpace)[0x008/4] += base;
-    ((uint32_t*)BufferSpace)[0xFFC/4] = loopval;
+    ((uint32_t*)BufferSpace)[0xFFC/4] = l_alist.loop;
     ((uint32_t*)BufferSpace)[0xFF8/4] = dmembase;
 
     memcpy (imem+0x238, rspInfo.RDRAM+((uint32_t*)BufferSpace)[0x008/4], 0x9C0);
@@ -780,7 +782,7 @@ void MP3 (uint32_t inst1, uint32_t inst2);
     pDMEM = (int8_t*)BufferSpace;
     rsp_run (void);
     dmembase = ((uint32_t*)BufferSpace)[0xFF8/4];
-    loopval  = ((uint32_t*)BufferSpace)[0xFFC/4];
+    l_alist.loop  = ((uint32_t*)BufferSpace)[0xFFC/4];
 //0x1A98  SW       S1, 0x0FF4 (R0)
 //0x1A9C  SW       S0, 0x0FF8 (R0)
 //0x1AA0  SW       T7, 0x0FFC (R0)

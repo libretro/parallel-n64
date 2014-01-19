@@ -29,18 +29,23 @@
 #include "hle.h"
 #include "alist_internal.h"
 
-extern uint8_t BufferSpace[0x10000];
+/* alist state */
+
+static struct
+{
+    /* main buffers */
+    uint16_t in;
+    uint16_t out;
+    uint16_t count;
+    /* ADPCM loop point address */
+    uint32_t loop;
+    /* storage for ADPCM table and polef coefficients */
+    uint16_t table[16 * 8];
+} l_alist;
 
 static void SPNOOP (uint32_t inst1, uint32_t inst2) {
     RSP_DEBUG_MESSAGE(M64MSG_ERROR, "Unknown/Unimplemented Audio Command %i in ABI 2", (int32_t)(inst1 >> 24));
 }
-extern uint16_t AudioInBuffer;       // 0x0000(T8)
-extern uint16_t AudioOutBuffer;      // 0x0002(T8)
-extern uint16_t AudioCount;          // 0x0004(T8)
-extern uint32_t loopval;         // 0x0010(T8)
-extern uint32_t SEGMENTS[0x10];
-
-extern uint16_t adpcmtable[0x88];
 
 extern const uint16_t ResampleLUT [0x200];
 
@@ -60,29 +65,29 @@ static void LOADADPCM2 (uint32_t inst1, uint32_t inst2)
     uint16_t *table = (uint16_t *)(rspInfo.RDRAM+v0); // Zelda2 Specific...
 
     for (x = 0; x < ((inst1&0xffff)>>0x4); x++) {
-        adpcmtable[(0x0+(x<<3))^S] = table[0];
-        adpcmtable[(0x1+(x<<3))^S] = table[1];
+        l_alist.table[(0x0+(x<<3))^S] = table[0];
+        l_alist.table[(0x1+(x<<3))^S] = table[1];
 
-        adpcmtable[(0x2+(x<<3))^S] = table[2];
-        adpcmtable[(0x3+(x<<3))^S] = table[3];
+        l_alist.table[(0x2+(x<<3))^S] = table[2];
+        l_alist.table[(0x3+(x<<3))^S] = table[3];
 
-        adpcmtable[(0x4+(x<<3))^S] = table[4];
-        adpcmtable[(0x5+(x<<3))^S] = table[5];
+        l_alist.table[(0x4+(x<<3))^S] = table[4];
+        l_alist.table[(0x5+(x<<3))^S] = table[5];
 
-        adpcmtable[(0x6+(x<<3))^S] = table[6];
-        adpcmtable[(0x7+(x<<3))^S] = table[7];
+        l_alist.table[(0x6+(x<<3))^S] = table[6];
+        l_alist.table[(0x7+(x<<3))^S] = table[7];
         table += 8;
     }
 }
 
 static void SETLOOP2 (uint32_t inst1, uint32_t inst2) {
-    loopval = inst2 & 0xffffff; // No segment?
+    l_alist.loop = inst2 & 0xffffff; // No segment?
 }
 
 static void SETBUFF2 (uint32_t inst1, uint32_t inst2) {
-    AudioInBuffer   = (uint16_t)(inst1);            // 0x00
-    AudioOutBuffer  = (uint16_t)((inst2 >> 0x10)); // 0x02
-    AudioCount      = (uint16_t)(inst2);            // 0x04
+    l_alist.in   = (uint16_t)(inst1);            // 0x00
+    l_alist.out  = (uint16_t)((inst2 >> 0x10)); // 0x02
+    l_alist.count      = (uint16_t)(inst2);            // 0x04
 }
 
 static void ADPCM2 (uint32_t inst1, uint32_t inst2) { // Verified to be 100% Accurate...
@@ -90,10 +95,10 @@ static void ADPCM2 (uint32_t inst1, uint32_t inst2) { // Verified to be 100% Acc
     //uint16_t Gain=(uint16_t)(inst1&0xffff);
     uint32_t Address=(inst2 & 0xffffff);// + SEGMENTS[(inst2>>24)&0xf];
     uint16_t inPtr=0;
-    //int16_t *out=(int16_t *)(testbuff+(AudioOutBuffer>>2));
-    int16_t *out=(int16_t*)(BufferSpace+AudioOutBuffer);
-    //uint8_t *in=(uint8_t*)(BufferSpace+AudioInBuffer);
-    int16_t count=(int16_t)AudioCount;
+    //int16_t *out=(int16_t *)(testbuff+(l_alist.out>>2));
+    int16_t *out=(int16_t*)(BufferSpace+l_alist.out);
+    //uint8_t *in=(uint8_t*)(BufferSpace+l_alist.in);
+    int16_t count=(int16_t)l_alist.count;
     uint8_t icode;
     uint8_t code;
     int vscale;
@@ -127,9 +132,9 @@ static void ADPCM2 (uint32_t inst1, uint32_t inst2) { // Verified to be 100% Acc
         {/*
             for(int i=0;i<16;i++)
             {
-                out[i]=*(int16_t*)&rspInfo.RDRAM[(loopval+i*2)^2];
+                out[i]=*(int16_t*)&rspInfo.RDRAM[(l_alist.loop+i*2)^2];
             }*/
-            memcpy(out,&rspInfo.RDRAM[loopval],32);
+            memcpy(out,&rspInfo.RDRAM[l_alist.loop],32);
         }
         else
         {/*
@@ -147,10 +152,10 @@ static void ADPCM2 (uint32_t inst1, uint32_t inst2) { // Verified to be 100% Acc
     int32_t inp2[8];
     out+=16;
     while(count>0) {
-        code=BufferSpace[(AudioInBuffer+inPtr)^S8];
+        code=BufferSpace[(l_alist.in+inPtr)^S8];
         index=code&0xf;
         index<<=4;
-        book1=(int16_t*)&adpcmtable[index];
+        book1=(int16_t*)&l_alist.table[index];
         book2=book1+8;
         code>>=4;
         vscale=(0x8000>>((srange-code)-1));
@@ -159,7 +164,7 @@ static void ADPCM2 (uint32_t inst1, uint32_t inst2) { // Verified to be 100% Acc
         j=0;
 
         while(j<8) {
-            icode=BufferSpace[(AudioInBuffer+inPtr)^S8];
+            icode=BufferSpace[(l_alist.in+inPtr)^S8];
             inPtr++;
 
             inp1[j]=(int16_t)((icode&mask1) << 8);          // this will in effect be signed
@@ -189,7 +194,7 @@ static void ADPCM2 (uint32_t inst1, uint32_t inst2) { // Verified to be 100% Acc
 
         j=0;
         while(j<8) {
-            icode=BufferSpace[(AudioInBuffer+inPtr)^S8];
+            icode=BufferSpace[(l_alist.in+inPtr)^S8];
             inPtr++;
 
             inp2[j]=(int16_t)((icode&mask1) << 8);
@@ -415,8 +420,8 @@ static void RESAMPLE2 (uint32_t inst1, uint32_t inst2)
    Accum = 0;
    dst=(int16_t*)(BufferSpace);
    src=(int16_t *)(BufferSpace);
-   srcPtr=(AudioInBuffer/2);
-   dstPtr=(AudioOutBuffer/2);
+   srcPtr=(l_alist.in/2);
+   dstPtr=(l_alist.out/2);
 
    if (addy > (1024*1024*8))
       addy = (inst2 & 0xffffff);
@@ -435,7 +440,7 @@ static void RESAMPLE2 (uint32_t inst1, uint32_t inst2)
          src[(srcPtr+x)^S] = 0;
    }
 
-   for(i = 0;i < ((AudioCount+0xf)&0xFFF0)/2;i++)
+   for(i = 0;i < ((l_alist.count+0xf)&0xFFF0)/2;i++)
    {
       location = (((Accum * 0x40) >> 0x10) * 8);
       lut = (int16_t *)(((uint8_t*)ResampleLUT) + location);
@@ -694,8 +699,8 @@ static void INTERLEAVE2 (uint32_t inst1, uint32_t inst2)
     uint32_t count;
     count   = ((inst1 >> 12) & 0xFF0);
     if (count == 0) {
-        outbuff = (uint16_t *)(AudioOutBuffer+BufferSpace);
-        count = AudioCount;
+        outbuff = (uint16_t *)(l_alist.out+BufferSpace);
+        count = l_alist.count;
     } else {
         outbuff = (uint16_t *)((inst1&0xFFFF)+BufferSpace);
     }
