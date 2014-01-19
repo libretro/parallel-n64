@@ -58,7 +58,7 @@ static TBUFF_COLOR_IMAGE * AllocateTextureBuffer(COLOR_IMAGE *cimage)
    texbuf.size = cimage->size;
    texbuf.scr_width = min(cimage->width * rdp.scale_x, settings.scr_res_x);
    float height = min(rdp.vi_height,cimage->height);
-   if (cimage->status == ci_copy_self || (cimage->status == ci_copy && cimage->width == rdp.frame_buffers[rdp.main_ci_index].width))
+   if (cimage->status == CI_COPY_SELF || (cimage->status == CI_COPY && cimage->width == rdp.frame_buffers[rdp.main_ci_index].width))
       height = rdp.vi_height;
    texbuf.scr_height = height * rdp.scale_y;
    //  texbuf.scr_height = texbuf.height * rdp.scale_y;
@@ -165,7 +165,7 @@ static TBUFF_COLOR_IMAGE * AllocateTextureBuffer(COLOR_IMAGE *cimage)
          TBUFF_COLOR_IMAGE *t = &rdp.texbufs[i].images[rdp.texbufs[i].count - 1];
          if (rdp.read_whole_frame || rdp.motionblur)
          {
-            if ((cimage->status == ci_aux) && (rdp.cur_tex_buf == i))
+            if ((cimage->status == CI_AUX) && (rdp.cur_tex_buf == i))
             {
                top = t->tex_addr + t->tex_width * (int)(t->scr_height+1) * 2;
                if (rdp.texbufs[i].end - top < required)
@@ -214,7 +214,7 @@ int OpenTextureBuffer(COLOR_IMAGE *cimage)
   int found = false, search = true;
   TBUFF_COLOR_IMAGE *texbuf = 0;
   uint32_t addr = cimage->addr;
-  if ((settings.hacks&hack_Banjo2) && cimage->status == ci_copy_self)
+  if ((settings.hacks&hack_Banjo2) && cimage->status == CI_COPY_SELF)
     addr = rdp.frame_buffers[rdp.copy_ci_index].addr;
   uint32_t end_addr = addr + ((cimage->width*cimage->height)<<cimage->size>>1);
   if (rdp.motionblur)
@@ -234,7 +234,7 @@ int OpenTextureBuffer(COLOR_IMAGE *cimage)
     {
       if (!rdp.texbufs[0].clear_allowed || !rdp.texbufs[1].clear_allowed)
       {
-        if (cimage->status == ci_main)
+        if (cimage->status == CI_MAIN)
         {
           texbuf = &(rdp.texbufs[rdp.cur_tex_buf].images[0]);
           found = true;
@@ -599,7 +599,7 @@ int SwapTextureBuffer(void)
    ci.width = rdp.tbuff_tex->width;
    ci.height = rdp.tbuff_tex->height;
    ci.size = 2;
-   ci.status = ci_main;
+   ci.status = CI_MAIN;
    ci.changed = false;
    TBUFF_COLOR_IMAGE * texbuf = AllocateTextureBuffer(&ci);
    if (!texbuf)

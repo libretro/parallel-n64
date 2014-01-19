@@ -489,16 +489,16 @@ typedef struct
 
 typedef enum
 {
-   ci_main,      //0, main color image
-   ci_zimg,      //1, depth image
-   ci_unknown,   //2, status is unknown
-   ci_useless,   //3, status is unclear
-   ci_old_copy,  //4, auxiliary color image, copy of last color image from previous frame
-   ci_copy,      //5, auxiliary color image, copy of previous color image
-   ci_copy_self, //6, main color image, it's content will be used to draw into itself
-   ci_zcopy,     //7, auxiliary color image, copy of depth image
-   ci_aux,       //8, auxiliary color image
-   ci_aux_copy   //9, auxiliary color image, partial copy of previous color image
+   CI_MAIN,      //0, main color image
+   CI_ZIMG,      //1, depth image
+   CI_UNKNOWN,   //2, status is unknown
+   CI_USELESS,   //3, status is unclear
+   CI_OLD_COPY,  //4, auxiliary color image, copy of last color image from previous frame
+   CI_COPY,      //5, auxiliary color image, copy of previous color image
+   CI_COPY_SELF, //6, main color image, it's content will be used to draw into itself
+   CI_ZCOPY,     //7, auxiliary color image, copy of depth image
+   CI_AUX,       //8, auxiliary color image
+   CI_AUX_COPY   //9, auxiliary color image, partial copy of previous color image
 } CI_STATUS;
 
 // Frame buffers
