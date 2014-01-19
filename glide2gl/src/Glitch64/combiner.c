@@ -1656,32 +1656,31 @@ grChromakeyValue( GrColor_t value )
          chroma_color[2], chroma_color[3]));
 }
 
-static void setPattern()
+static void setPattern(void)
 {
    int i;
-   GLubyte stip[32*4];
-   for(i=0; i<32; i++)
-   {
-      unsigned int val = (rand() << 17) | ((rand() & 1) << 16) | (rand() << 1) | (rand() & 1);
-      stip[i*4+0] = (val >> 24) & 0xFF;
-      stip[i*4+1] = (val >> 16) & 0xFF;
-      stip[i*4+2] = (val >> 8) & 0xFF;
-      stip[i*4+3] = val & 0xFF;
-   }
    GLubyte texture[32*32*4];
    for(i=0; i<32; i++)
    {
-      int j;
+      GLubyte stip[4];
+      uint32_t randval, val, j;
+      randval = rand();
+      val = (randval << 17) | ((randval & 1) << 16) | (randval << 1) | (randval & 1);
+      stip[0] = (val >> 24) & 0xFF;
+      stip[1] = (val >> 16) & 0xFF;
+      stip[2] = (val >> 8) & 0xFF;
+      stip[3] = val & 0xFF;
+
       for(j=0; j<4; j++)
       {
-         texture[(i*32+j*8+0)*4+3] = ((stip[i*4+j] >> 7) & 1) ? 255 : 0;
-         texture[(i*32+j*8+1)*4+3] = ((stip[i*4+j] >> 6) & 1) ? 255 : 0;
-         texture[(i*32+j*8+2)*4+3] = ((stip[i*4+j] >> 5) & 1) ? 255 : 0;
-         texture[(i*32+j*8+3)*4+3] = ((stip[i*4+j] >> 4) & 1) ? 255 : 0;
-         texture[(i*32+j*8+4)*4+3] = ((stip[i*4+j] >> 3) & 1) ? 255 : 0;
-         texture[(i*32+j*8+5)*4+3] = ((stip[i*4+j] >> 2) & 1) ? 255 : 0;
-         texture[(i*32+j*8+6)*4+3] = ((stip[i*4+j] >> 1) & 1) ? 255 : 0;
-         texture[(i*32+j*8+7)*4+3] = ((stip[i*4+j] >> 0) & 1) ? 255 : 0;
+         texture[(i*32+j*8+0)*4+3] = ((stip[j] >> 7) & 1) ? 255 : 0;
+         texture[(i*32+j*8+1)*4+3] = ((stip[j] >> 6) & 1) ? 255 : 0;
+         texture[(i*32+j*8+2)*4+3] = ((stip[j] >> 5) & 1) ? 255 : 0;
+         texture[(i*32+j*8+3)*4+3] = ((stip[j] >> 4) & 1) ? 255 : 0;
+         texture[(i*32+j*8+4)*4+3] = ((stip[j] >> 3) & 1) ? 255 : 0;
+         texture[(i*32+j*8+5)*4+3] = ((stip[j] >> 2) & 1) ? 255 : 0;
+         texture[(i*32+j*8+6)*4+3] = ((stip[j] >> 1) & 1) ? 255 : 0;
+         texture[(i*32+j*8+7)*4+3] = ((stip[j] >> 0) & 1) ? 255 : 0;
       }
    }
    glActiveTexture(GL_TEXTURE2);
