@@ -310,52 +310,14 @@ static void DUPLICATE2(uint32_t w1, uint32_t w2) {
         Count--;
     }
 }
-/*
-static void INTERL2 (uint32_t w1, uint32_t w2) { // Make your own...
-    short Count = w1 & 0xffff;
-    unsigned short  Out   = w2 & 0xffff;
-    unsigned short In     = (w2 >> 16);
 
-    short *src,*dst,tmp;
-    src=(short *)&BufferSpace[In];
-    dst=(short *)&BufferSpace[Out];
-    while(Count)
-    {
-        *(dst++)=*(src++);
-        src++;
-        *(dst++)=*(src++);
-        src++;
-        *(dst++)=*(src++);
-        src++;
-        *(dst++)=*(src++);
-        src++;
-        *(dst++)=*(src++);
-        src++;
-        *(dst++)=*(src++);
-        src++;
-        *(dst++)=*(src++);
-        src++;
-        *(dst++)=*(src++);
-        src++;
-        Count-=8;
-    }
-}
-*/
+static void INTERL2 (uint32_t w1, uint32_t w2)
+{
+   uint16_t count = w1;
+   uint16_t dmemi = (w2 >> 16);
+   uint16_t dmemo = w2;
 
-static void INTERL2 (uint32_t w1, uint32_t w2) {
-    int16_t Count = w1 & 0xffff;
-    uint16_t  Out   = w2 & 0xffff;
-    uint16_t In     = (w2 >> 16);
-
-    uint8_t *src,*dst/*,tmp*/;
-    src=(uint8_t*)(BufferSpace);//[In];
-    dst=(uint8_t*)(BufferSpace);//[Out];
-    while(Count) {
-        *(int16_t*)(dst+(Out^S8)) = *(int16_t*)(src+(In^S8));
-        Out += 2;
-        In  += 4;
-        Count--;
-    }
+   alist_copy_every_other_sample(dmemo, dmemi, count);
 }
 
 static void INTERLEAVE2 (uint32_t w1, uint32_t w2)

@@ -98,6 +98,17 @@ void alist_move(uint16_t dmemo, uint16_t dmemi, uint16_t count)
    }
 }
 
+void alist_copy_every_other_sample(uint16_t dmemo, uint16_t dmemi, uint16_t count)
+{
+   while (count)
+   {
+      *(uint16_t*)(BufferSpace + (dmemo^S8)) = *(uint16_t*)(BufferSpace + (dmemi^S8));
+      dmemo += 2;
+      dmemi += 4;
+      --count;
+   }
+}
+
 void alist_interleave(uint16_t dmemo, uint16_t left, uint16_t right, uint16_t count)
 {
     uint16_t *dst = (uint16_t*)(BufferSpace + dmemo);
