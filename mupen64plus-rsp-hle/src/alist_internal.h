@@ -47,4 +47,6 @@ extern uint16_t AudioInBuffer, AudioOutBuffer, AudioCount;
 extern uint16_t AudioAuxA, AudioAuxC, AudioAuxE;
 extern uint32_t loopval; // Value set by A_SETLOOP : Possible conflict with SETVOLUME???
 
+extern uint8_t BufferSpace[0x10000];
+
 #endif

@@ -23,6 +23,10 @@
 
 #include "hle.h"
 #include "alist_internal.h"
+#include "alist.h"
+
+/* FIXME: use DMEM instead */
+uint8_t BufferSpace[0x10000];
 
 // FIXME: this decomposition into 3 ABI is not accurate,
 // there are a least 9 or 10 different ABI, each with one or a few revisions
