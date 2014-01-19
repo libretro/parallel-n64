@@ -205,10 +205,8 @@ static int32_t dot4(const int16_t *x, const int16_t *y)
  **************************************************************************/
 void musyx_task(void)
 {
-    const OSTask_t *const task = get_task();
-
-    uint32_t sfd_ptr   = task->data_ptr;
-    uint32_t sfd_count = task->data_size;
+    uint32_t sfd_ptr   = *dmem_u32(TASK_DATA_PTR);
+    uint32_t sfd_count = *dmem_u32(TASK_DATA_SIZE);
 
     DebugMessage(M64MSG_VERBOSE, "musyx_task: *data=%x, #SF=%d",
                  sfd_ptr,

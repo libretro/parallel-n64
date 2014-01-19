@@ -43,37 +43,24 @@
 
 extern RSP_INFO rspInfo;
 
-typedef struct
-{
-    uint32_t type;
-    uint32_t flags;
-
-    uint32_t ucode_boot;
-    uint32_t ucode_boot_size;
-
-    uint32_t ucode;
-    uint32_t ucode_size;
-
-    uint32_t ucode_data;
-    uint32_t ucode_data_size;
-
-    uint32_t dram_stack;
-    uint32_t dram_stack_size;
-
-    uint32_t output_buff;
-    uint32_t output_buff_size;
-
-    uint32_t data_ptr;
-    uint32_t data_size;
-
-    uint32_t yield_data_ptr;
-    uint32_t yield_data_size;
-} OSTask_t;
-
-static INLINE const OSTask_t * const get_task(void)
-{
-    return (OSTask_t*)(rspInfo.DMEM + 0xfc0);
-}
+enum {
+   TASK_TYPE               = 0xfc0,
+   TASK_FLAGS              = 0xfc4,
+   TASK_UCODE_BOOT         = 0xfc8,
+   TASK_UCODE_BOOT_SIZE    = 0xfcc,
+   TASK_UCODE              = 0xfd0,
+   TASK_UCODE_SIZE         = 0xfd4,
+   TASK_UCODE_DATA         = 0xfd8,
+   TASK_UCODE_DATA_SIZE    = 0xfdc,
+   TASK_DRAM_STACK         = 0xfe0,
+   TASK_DRAM_STACK_SIZE    = 0xfe4,
+   TASK_OUTPUT_BUFF        = 0xfe8,
+   TASK_OUTPUT_BUFF_SIZE   = 0xfec,
+   TASK_DATA_PTR           = 0xff0,
+   TASK_DATA_SIZE          = 0xff4,
+   TASK_YIELD_DATA_PTR     = 0xff8,
+   TASK_YIELD_DATA_SIZE    = 0xffc
+};
 
 static inline uint8_t* const dmem_u8(uint16_t address)
 {

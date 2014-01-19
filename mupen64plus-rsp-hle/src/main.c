@@ -55,7 +55,7 @@
 static uint32_t sum_bytes(const uint8_t *bytes, uint32_t size);
 static void dump_binary(const int8_t * const filename, const uint8_t* const bytes,
                         uint32_t size);
-static void dump_task(const char * const filename, const OSTask_t * const task);
+static void dump_task(const char * const filename);
 
 static void handle_unknown_task(uint32_t sum);
 static void handle_unknown_non_task(uint32_t sum);
@@ -82,9 +82,9 @@ static int l_PluginInit = 0;
  *
  * Using ucode_boot_size should be more robust in this regard.
  **/
-static int is_task(void)
+static inline int is_task(void)
 {
-    return (get_task()->ucode_boot_size <= 0x1000);
+   return (*dmem_u32(TASK_UCODE_BOOT_SIZE) <= 0x1000);
 }
 
 static void rsp_break(uint32_t setbits)
@@ -127,7 +127,7 @@ static void show_cfb(void)
 static int try_fast_audio_dispatching()
 {
     /* identify audio ucode by using the content of ucode_data */
-    uint32_t ucode_data = get_task()->ucode_data;
+    uint32_t ucode_data = *dmem_u32(TASK_UCODE_DATA);
 
     if (*dram_u32(ucode_data) == 0x00000001)
     {
@@ -188,9 +188,8 @@ static int try_fast_audio_dispatching()
 static int try_fast_task_dispatching()
 {
     /* identify task ucode by its type */
-    const OSTask_t * const task = get_task();
 
-    switch (task->type)
+    switch (*dmem_u32(TASK_TYPE))
     {
         case 1:
            if (FORWARD_GFX) { forward_gfx_task(); return 1; } break;
@@ -208,8 +207,7 @@ static int try_fast_task_dispatching()
 
 static void normal_task_dispatching()
 {
-    const OSTask_t * const task = get_task();
-    const uint32_t sum = sum_bytes(dram_u8(task->ucode), min(task->ucode_size, 0xf80) >> 1);
+    const uint32_t sum = sum_bytes(dram_u8(*dmem_u32(TASK_UCODE)), min(*dmem_u32(TASK_UCODE_SIZE), 0xf80) >> 1);
 
     switch (sum)
     {
@@ -255,36 +253,38 @@ static void handle_unknown_task(uint32_t sum)
 {
 #if 0
     char filename[256];
-    const OSTask_t * const task = get_task();
+    uint32_t ucode = *dmem_u32(TASK_UCODE);
+    uint32_t ucode_data = *dmem_u32(TASK_UCODE_DATA);
+    uint32_t data_ptr = *dmem_u32(TASK_DATA_PTR);
 
     RSP_DEBUG_MESSAGE(M64MSG_WARNING, "unknown OSTask: sum %x PC:%x", sum, *rspInfo.SP_PC_REG);
 
     sprintf(&filename[0], "task_%x.log", sum);
-    dump_task(filename, task);
+    dump_task(filename);
     
     // dump ucode_boot
     sprintf(&filename[0], "ucode_boot_%x.bin", sum);
-    dump_binary(filename, dram_u8(task->ucode_boot), task->ucode_boot_size);
+    dump_binary(filename, dram_u8(*dmem_u32(TASK_UCODE_BOOT)), *dmem_u32(TASK_UCODE_BOOT_SIZE));
 
     // dump ucode
-    if (task->ucode != 0)
+    if (ucode != 0)
     {
         sprintf(&filename[0], "ucode_%x.bin", sum);
-        dump_binary(filename, dram_u8(task->ucode), 0xf80);
+        dump_binary(filename, dram_u8(ucode), 0xf80);
     }
 
     // dump ucode_data
-    if (task->ucode_data != 0)
+    if (ucode_data != 0)
     {
         sprintf(&filename[0], "ucode_data_%x.bin", sum);
-        dump_binary(filename, dram_u8(task->ucode_data), task->ucode_data_size);
+        dump_binary(filename, dram_u8(ucode_data), *dmem_u32(TASK_UCODE_DATA_SIZE));
     }
 
     // dump data
-    if (task->data_ptr != 0)
+    if (data_ptr != 0)
     {
         sprintf(&filename[0], "data_%x.bin", sum);
-        dump_binary(filename, dram_u8(task->data_ptr), task->data_size);
+        dump_binary(filename, dram_u8(data_ptr), *dmem_u32(TASK_DATA_SIZE));
     }
 #endif
 }
@@ -435,7 +435,7 @@ static void dump_binary(const int8_t * const filename, const uint8_t * const byt
 #endif
 }
 
-static void dump_task(const char * const filename, const OSTask_t * const task)
+static void dump_task(const char * const filename)
 {
 #if 0
     FILE *f;
@@ -454,14 +454,15 @@ static void dump_task(const char * const filename, const OSTask_t * const task)
             "output_buff = %#08x *size = %#x\n"
             "data        = %#08x size  = %#x\n"
             "yield_data  = %#08x size  = %#x\n",
-            task->type, task->flags,
-            task->ucode_boot, task->ucode_boot_size,
-            task->ucode, task->ucode_size,
-            task->ucode_data, task->ucode_data_size,
-            task->dram_stack, task->dram_stack_size,
-            task->output_buff, task->output_buff_size,
-            task->data_ptr, task->data_size,
-            task->yield_data_ptr, task->yield_data_size);
+            *dmem_u32(TASK_TYPE),
+            *dmem_u32(TASK_FLAGS),
+            *dmem_u32(TASK_UCODE_BOOT),     *dmem_u32(TASK_UCODE_BOOT_SIZE),
+            *dmem_u32(TASK_UCODE),          *dmem_u32(TASK_UCODE_SIZE),
+            *dmem_u32(TASK_UCODE_DATA),     *dmem_u32(TASK_UCODE_DATA_SIZE),
+            *dmem_u32(TASK_DRAM_STACK),     *dmem_u32(TASK_DRAM_STACK_SIZE),
+            *dmem_u32(TASK_OUTPUT_BUFF),    *dmem_u32(TASK_OUTPUT_BUFF_SIZE),
+            *dmem_u32(TASK_DATA_PTR),       *dmem_u32(TASK_DATA_SIZE),
+            *dmem_u32(TASK_YIELD_DATA_PTR), *dmem_u32(TASK_YIELD_DATA_SIZE));
         fclose(f);
     }
     else
