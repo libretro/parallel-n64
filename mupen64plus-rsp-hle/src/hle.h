@@ -62,6 +62,15 @@ enum {
    TASK_YIELD_DATA_SIZE    = 0xffc
 };
 
+#if 1
+static inline int16_t clamp_s16(int_fast32_t x)
+{
+   if ((int16_t)x != x)
+      x = (x >> 31) ^ 0x7FFF;
+
+   return x;
+}
+#else
 static inline int16_t clamp_s16(int_fast32_t x)
 {
    x = (x < INT16_MIN) ? INT16_MIN: x;
@@ -69,6 +78,7 @@ static inline int16_t clamp_s16(int_fast32_t x)
 
    return x;
 }
+#endif
 
 static inline unsigned int align(unsigned int x, unsigned amount)
 {
