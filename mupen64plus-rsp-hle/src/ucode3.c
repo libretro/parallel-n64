@@ -571,101 +571,19 @@ static void ADPCM3 (uint32_t w1, uint32_t w2) { // Verified to be 100% Accurate.
 
 static void RESAMPLE3 (uint32_t w1, uint32_t w2)
 {
-   int i, x;
-    uint8_t Flags=(uint8_t)((w2>>0x1e));
-    uint32_t Pitch=((w2>>0xe)&0xffff)<<1;
-    uint32_t addy = (w1 & 0xffffff);
-    uint32_t Accum=0;
-    uint32_t location;
-    int16_t *lut;
-    int16_t *dst;
-    int16_t *src;
-    dst=(int16_t *)(BufferSpace);
-    src=(int16_t *)(BufferSpace);
-    uint32_t srcPtr=((((w2>>2)&0xfff)+0x4f0)/2);
-    uint32_t dstPtr;//=(AudioOutBuffer/2);
-    int32_t temp;
-    int32_t accum;
+   uint32_t address = (w1 & 0xffffff);
+   uint8_t flags = (w2 >> 30);
+   uint16_t pitch = (w2 >> 14);
+   uint16_t dmemi = ((w2 >> 2) & 0xfff) + 0x4f0;
+   uint16_t dmemo = (w2 & 0x3) ? 0x660 : 0x4f0;
 
-    //if (addy > (1024*1024*8))
-    //  addy = (w2 & 0xffffff);
-
-    srcPtr -= 4;
-
-    if (w2 & 0x3) {
-        dstPtr = 0x660/2;
-    } else {
-        dstPtr = 0x4f0/2;
-    }
-
-    if ((Flags & 0x1) == 0) {   
-        for (x=0; x < 4; x++) //memcpy (src+srcPtr, rspInfo.RDRAM+addy, 0x8);
-            src[(srcPtr+x)^S] = ((uint16_t *)rspInfo.RDRAM)[((addy/2)+x)^S];
-        Accum = *(uint16_t *)(rspInfo.RDRAM+addy+10);
-    } else {
-        for (x=0; x < 4; x++)
-            src[(srcPtr+x)^S] = 0;//*(uint16_t *)(rspInfo.RDRAM+((addy+x)^2));
-    }
-
-    for(i=0;i < 0x170/2;i++)    {
-        location = (((Accum * 0x40) >> 0x10) * 8);
-        //location = (Accum >> 0xa) << 0x3;
-        lut = (int16_t *)(((uint8_t *)ResampleLUT) + location);
-
-        temp =  ((int32_t)*(int16_t*)(src+((srcPtr+0)^S))*((int32_t)((int16_t)lut[0])));
-        accum = (int32_t)(temp >> 15);
-
-        temp = ((int32_t)*(int16_t*)(src+((srcPtr+1)^S))*((int32_t)((int16_t)lut[1])));
-        accum += (int32_t)(temp >> 15);
-
-        temp = ((int32_t)*(int16_t*)(src+((srcPtr+2)^S))*((int32_t)((int16_t)lut[2])));
-        accum += (int32_t)(temp >> 15);
-        
-        temp = ((int32_t)*(int16_t*)(src+((srcPtr+3)^S))*((int32_t)((int16_t)lut[3])));
-        accum += (int32_t)(temp >> 15);
-/*      temp =  ((int64_t)*(int16_t*)(src+((srcPtr+0)^S))*((int64_t)((int16_t)lut[0]<<1)));
-        if (temp & 0x8000) temp = (temp^0x8000) + 0x10000;
-        else temp = (temp^0x8000);
-        temp = (int32_t)(temp >> 16);
-        if ((int32_t)temp > 32767) temp = 32767;
-        if ((int32_t)temp < -32768) temp = -32768;
-        accum = (int32_t)(int16_t)temp;
-
-        temp = ((int64_t)*(int16_t*)(src+((srcPtr+1)^S))*((int64_t)((int16_t)lut[1]<<1)));
-        if (temp & 0x8000) temp = (temp^0x8000) + 0x10000;
-        else temp = (temp^0x8000);
-        temp = (int32_t)(temp >> 16);
-        if ((int32_t)temp > 32767) temp = 32767;
-        if ((int32_t)temp < -32768) temp = -32768;
-        accum += (int32_t)(int16_t)temp;
-
-        temp = ((int64_t)*(int16_t*)(src+((srcPtr+2)^S))*((int64_t)((int16_t)lut[2]<<1)));
-        if (temp & 0x8000) temp = (temp^0x8000) + 0x10000;
-        else temp = (temp^0x8000);
-        temp = (int32_t)(temp >> 16);
-        if ((int32_t)temp > 32767) temp = 32767;
-        if ((int32_t)temp < -32768) temp = -32768;
-        accum += (int32_t)(int16_t)temp;
-
-        temp = ((int64_t)*(int16_t*)(src+((srcPtr+3)^S))*((int64_t)((int16_t)lut[3]<<1)));
-        if (temp & 0x8000) temp = (temp^0x8000) + 0x10000;
-        else temp = (temp^0x8000);
-        temp = (int32_t)(temp >> 16);
-        if ((int32_t)temp > 32767) temp = 32767;
-        if ((int32_t)temp < -32768) temp = -32768;
-        accum += (int32_t)(int16_t)temp;*/
-
-        BLARGG_CLAMP16(accum);
-
-        dst[dstPtr^S] = (accum);
-        dstPtr++;
-        Accum += Pitch;
-        srcPtr += (Accum>>16);
-        Accum&=0xffff;
-    }
-    for (x=0; x < 4; x++)
-        ((uint16_t *)rspInfo.RDRAM)[((addy/2)+x)^S] = src[(srcPtr+x)^S];
-    *(uint16_t *)(rspInfo.RDRAM+addy+10) = Accum;
+   alist_resample(
+         flags & 0x1,
+         dmemo,
+         dmemi,
+         0x170,
+         pitch << 1,
+         address);
 }
 
 static void INTERLEAVE3 (uint32_t w1, uint32_t w2)

@@ -22,6 +22,7 @@
 #ifndef ALIST_INTERNAL_H
 #define ALIST_INTERNAL_H
 
+#include <stdbool.h>
 #include "hle.h"
 
 typedef void (*acmd_callback_t)(uint32_t w1, uint32_t w2);
@@ -33,6 +34,10 @@ void alist_save(uint16_t dmem, uint32_t address, uint16_t count);
 void alist_move(uint16_t dmemo, uint16_t dmemi, uint16_t count);
 void alist_interleave(uint16_t dmemo, uint16_t left, uint16_t right, uint16_t count);
 void alist_mix(uint16_t dmemo, uint16_t dmemi, uint16_t count, int16_t gain);
+
+void alist_resample(bool init,
+      uint16_t dmemo, uint16_t dmemi, uint16_t count,
+      uint32_t pitch, uint32_t address);
 
 /*
  * Audio flags
