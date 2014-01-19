@@ -127,13 +127,12 @@ static void show_cfb(void)
 static int try_fast_audio_dispatching()
 {
     /* identify audio ucode by using the content of ucode_data */
-    const OSTask_t * const task = get_task();
-    const uint8_t * const udata_ptr = rspInfo.RDRAM + task->ucode_data;
+    uint32_t ucode_data = get_task()->ucode_data;
 
-    if (*(uint32_t*)(udata_ptr + 0) == 0x00000001)
+    if (*dram_u32(ucode_data) == 0x00000001)
     {
-        if (*(uint32_t*)(udata_ptr + 0x30) == 0xf0000f00)
-        {
+       if (*dram_u32(ucode_data + 0x30) == 0xf0000f00)
+       {
             /**
             * Many games including:
             * Super Mario 64, Diddy Kong Racing, BlastCorp, GoldenEye, ... (most common)
@@ -160,7 +159,7 @@ static int try_fast_audio_dispatching()
     }
     else
     {
-        if (*(uint32_t*)(udata_ptr + 0x10) == 0x00000001)
+        if (*dram_u32(ucode_data + 0x10) == 0x00000001)
         {
             /**
              * Musyx ucode found in following games:
