@@ -70,6 +70,12 @@ static inline int16_t clamp_s16(int_fast32_t x)
    return x;
 }
 
+static inline unsigned int align(unsigned int x, unsigned amount)
+{
+   --amount;
+   return (x + amount) & ~amount;
+}
+
 static inline uint8_t* const dmem_u8(uint16_t address)
 {
     return (uint8_t*)(&rspInfo.DMEM[(address & 0xfff) ^ S8]);
