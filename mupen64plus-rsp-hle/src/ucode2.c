@@ -687,46 +687,21 @@ static void INTERL2 (uint32_t w1, uint32_t w2) {
 }
 
 static void INTERLEAVE2 (uint32_t w1, uint32_t w2)
-{ // Needs accuracy verification...
-   uint32_t x;
-    uint32_t inL, inR;
-    uint16_t *outbuff;
-    uint16_t *inSrcR;
-    uint16_t *inSrcL;
-    uint16_t Left, Right, Left2, Right2;
-    uint32_t count;
-    count   = ((w1 >> 12) & 0xFF0);
-    if (count == 0) {
-        outbuff = (uint16_t *)(l_alist.out+BufferSpace);
-        count = l_alist.count;
-    } else {
-        outbuff = (uint16_t *)((w1&0xFFFF)+BufferSpace);
-    }
+{
+   uint16_t dmemo;
+   uint16_t count = ((w1 >> 12) & 0xff0);
+   uint16_t left = (w2 >> 16);
+   uint16_t right = w2;
 
-    inR = w2 & 0xFFFF;
-    inL = (w2 >> 16) & 0xFFFF;
+   /* FIXME: needs ABI splitting */
+   if (count == 0) {
+      count = l_alist.count;
+      dmemo = l_alist.out;
+   }
+   else
+      dmemo = w1;
 
-    inSrcR = (uint16_t *)(BufferSpace+inR);
-    inSrcL = (uint16_t *)(BufferSpace+inL);
-
-    for (x = 0; x < (count/4); x++) {
-        Left=*(inSrcL++);
-        Right=*(inSrcR++);
-        Left2=*(inSrcL++);
-        Right2=*(inSrcR++);
-
-#ifdef M64P_BIG_ENDIAN
-        *(outbuff++)=Right;
-        *(outbuff++)=Left;
-        *(outbuff++)=Right2;
-        *(outbuff++)=Left2;
-#else
-        *(outbuff++)=Right2;
-        *(outbuff++)=Left2;
-        *(outbuff++)=Right;
-        *(outbuff++)=Left;
-#endif
-    }
+   alist_interleave(dmemo, left, right, count);
 }
 
 static void ADDMIXER (uint32_t w1, uint32_t w2)

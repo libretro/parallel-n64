@@ -679,47 +679,8 @@ static void RESAMPLE3 (uint32_t w1, uint32_t w2)
 }
 
 static void INTERLEAVE3 (uint32_t w1, uint32_t w2)
-{ // Needs accuracy verification...
-   int x;
-    //uint32_t inL, inR;
-    uint16_t *outbuff = (uint16_t *)(BufferSpace + 0x4f0);//(uint16_t *)(AudioOutBuffer+dmem);
-    uint16_t *inSrcR;
-    uint16_t *inSrcL;
-    uint16_t Left, Right, Left2, Right2;
-
-    //inR = w2 & 0xFFFF;
-    //inL = (w2 >> 16) & 0xFFFF;
-
-    inSrcR = (uint16_t *)(BufferSpace+0xb40);
-    inSrcL = (uint16_t *)(BufferSpace+0x9d0);
-
-    for (x = 0; x < (0x170/4); x++) {
-        Left=*(inSrcL++);
-        Right=*(inSrcR++);
-        Left2=*(inSrcL++);
-        Right2=*(inSrcR++);
-
-#ifdef M64P_BIG_ENDIAN
-        *(outbuff++)=Right;
-        *(outbuff++)=Left;
-        *(outbuff++)=Right2;
-        *(outbuff++)=Left2;
-#else
-        *(outbuff++)=Right2;
-        *(outbuff++)=Left2;
-        *(outbuff++)=Right;
-        *(outbuff++)=Left;
-#endif
-/*
-        Left=*(inSrcL++);
-        Right=*(inSrcR++);
-        *(outbuff++)=(uint16_t)Left;
-        Left >>= 16;
-        *(outbuff++)=(uint16_t)Right;
-        Right >>= 16;
-        *(outbuff++)=(uint16_t)Left;
-        *(outbuff++)=(uint16_t)Right;*/
-    }
+{
+   alist_interleave(0x4f0, 0x9d0, 0xb40, 0x170);
 }
 
 //static void UNKNOWN (uint32_t w1, uint32_t w2);
