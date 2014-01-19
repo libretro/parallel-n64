@@ -49,7 +49,7 @@ extern int32_t VolRamp_Right;
 //extern uint16_t VolRate_Right;
 
 
-extern int16_t hleMixerWorkArea[256];
+extern int16_t save_buffer[256];
 extern uint16_t adpcmtable[0x88];
 
 extern uint8_t BufferSpace[0x10000];
@@ -114,6 +114,7 @@ static void ENVMIXER3 (uint32_t inst1, uint32_t inst2) {
     int16_t RSig, LSig; // Most significant part of the Ramp Value
     int16_t Wet, Dry;
     int16_t LTrg, RTrg;
+    int16_t save_buffer[40];
 
     Vol_Right = (int16_t)inst1;
 
@@ -131,20 +132,20 @@ static void ENVMIXER3 (uint32_t inst1, uint32_t inst2) {
         Wet = (int16_t)Env_Wet; Dry = (int16_t)Env_Dry; // Save Wet/Dry values
         LTrg = VolTrg_Left; RTrg = VolTrg_Right; // Save Current Left/Right Targets
     } else {
-        memcpy((uint8_t *)hleMixerWorkArea, rspInfo.RDRAM+addy, 80);
-        Wet    = *(int16_t *)(hleMixerWorkArea +  0); // 0-1
-        Dry    = *(int16_t *)(hleMixerWorkArea +  2); // 2-3
-        LTrg   = *(int16_t *)(hleMixerWorkArea +  4); // 4-5
-        RTrg   = *(int16_t *)(hleMixerWorkArea +  6); // 6-7
-        LAdder = *(int32_t *)(hleMixerWorkArea +  8); // 8-9 (hleMixerWorkArea is a 16bit pointer)
-        RAdder = *(int32_t *)(hleMixerWorkArea + 10); // 10-11
-        LAcc   = *(int32_t *)(hleMixerWorkArea + 12); // 12-13
-        RAcc   = *(int32_t *)(hleMixerWorkArea + 14); // 14-15
-        LVol   = *(int32_t *)(hleMixerWorkArea + 16); // 16-17
-        RVol   = *(int32_t *)(hleMixerWorkArea + 18); // 18-19
-        LSig   = *(int16_t *)(hleMixerWorkArea + 20); // 20-21
-        RSig   = *(int16_t *)(hleMixerWorkArea + 22); // 22-23
-        //uint32_t test  = *(int32_t *)(hleMixerWorkArea + 24); // 22-23
+        memcpy((uint8_t *)save_buffer, rspInfo.RDRAM+addy, 80);
+        Wet    = *(int16_t *)(save_buffer +  0); // 0-1
+        Dry    = *(int16_t *)(save_buffer +  2); // 2-3
+        LTrg   = *(int16_t *)(save_buffer +  4); // 4-5
+        RTrg   = *(int16_t *)(save_buffer +  6); // 6-7
+        LAdder = *(int32_t *)(save_buffer +  8); // 8-9 (save_buffer is a 16bit pointer)
+        RAdder = *(int32_t *)(save_buffer + 10); // 10-11
+        LAcc   = *(int32_t *)(save_buffer + 12); // 12-13
+        RAcc   = *(int32_t *)(save_buffer + 14); // 14-15
+        LVol   = *(int32_t *)(save_buffer + 16); // 16-17
+        RVol   = *(int32_t *)(save_buffer + 18); // 18-19
+        LSig   = *(int16_t *)(save_buffer + 20); // 20-21
+        RSig   = *(int16_t *)(save_buffer + 22); // 22-23
+        //uint32_t test  = *(int32_t *)(save_buffer + 24); // 22-23
         //if (test != 0x13371337)
     }
 
@@ -227,20 +228,20 @@ static void ENVMIXER3 (uint32_t inst1, uint32_t inst2) {
         }
     //}
 
-    *(int16_t *)(hleMixerWorkArea +  0) = Wet; // 0-1
-    *(int16_t *)(hleMixerWorkArea +  2) = Dry; // 2-3
-    *(int16_t *)(hleMixerWorkArea +  4) = LTrg; // 4-5
-    *(int16_t *)(hleMixerWorkArea +  6) = RTrg; // 6-7
-    *(int32_t *)(hleMixerWorkArea +  8) = LAdder; // 8-9 (hleMixerWorkArea is a 16bit pointer)
-    *(int32_t *)(hleMixerWorkArea + 10) = RAdder; // 10-11
-    *(int32_t *)(hleMixerWorkArea + 12) = LAcc; // 12-13
-    *(int32_t *)(hleMixerWorkArea + 14) = RAcc; // 14-15
-    *(int32_t *)(hleMixerWorkArea + 16) = LVol; // 16-17
-    *(int32_t *)(hleMixerWorkArea + 18) = RVol; // 18-19
-    *(int16_t *)(hleMixerWorkArea + 20) = LSig; // 20-21
-    *(int16_t *)(hleMixerWorkArea + 22) = RSig; // 22-23
-    //*(uint32_t *)(hleMixerWorkArea + 24) = 0x13371337; // 22-23
-    memcpy(rspInfo.RDRAM+addy, (uint8_t *)hleMixerWorkArea,80);
+    *(int16_t *)(save_buffer +  0) = Wet; // 0-1
+    *(int16_t *)(save_buffer +  2) = Dry; // 2-3
+    *(int16_t *)(save_buffer +  4) = LTrg; // 4-5
+    *(int16_t *)(save_buffer +  6) = RTrg; // 6-7
+    *(int32_t *)(save_buffer +  8) = LAdder; // 8-9 (save_buffer is a 16bit pointer)
+    *(int32_t *)(save_buffer + 10) = RAdder; // 10-11
+    *(int32_t *)(save_buffer + 12) = LAcc; // 12-13
+    *(int32_t *)(save_buffer + 14) = RAcc; // 14-15
+    *(int32_t *)(save_buffer + 16) = LVol; // 16-17
+    *(int32_t *)(save_buffer + 18) = RVol; // 18-19
+    *(int16_t *)(save_buffer + 20) = LSig; // 20-21
+    *(int16_t *)(save_buffer + 22) = RSig; // 22-23
+    //*(uint32_t *)(save_buffer + 24) = 0x13371337; // 22-23
+    memcpy(rspInfo.RDRAM+addy, (uint8_t *)save_buffer,80);
 }
 
 static void CLEARBUFF3 (uint32_t inst1, uint32_t inst2) {
