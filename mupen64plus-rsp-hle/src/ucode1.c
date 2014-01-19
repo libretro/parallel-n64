@@ -161,11 +161,12 @@ const uint16_t ResampleLUT [0x200] = {
     0xFFD8, 0x0E5F, 0x6696, 0x0B39, 0xFFDF, 0x0D46, 0x66AD, 0x0C39
 };
 
-static void CLEARBUFF (uint32_t w1, uint32_t w2) {
-    uint32_t addr = (uint32_t)(w1 & 0xffff);
-    uint32_t count = (uint32_t)(w2 & 0xffff);
-    addr &= 0xFFFC;
-    memset(BufferSpace+addr, 0, (count+3)&0xFFFC);
+static void CLEARBUFF (uint32_t w1, uint32_t w2)
+{
+   uint16_t dmem  = w1;
+   uint16_t count = w2;
+
+   alist_clear(dmem & ~3, (count + 3) & ~3);
 }
 
 //FILE *dfile = fopen ("d:\\envmix.txt", "wt");
