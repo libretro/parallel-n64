@@ -21,7 +21,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <stdint.h>
-# include <string.h>
+#include <string.h>
 
 #include "hle.h"
 #include "alist_internal.h"

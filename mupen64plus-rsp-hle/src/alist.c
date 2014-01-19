@@ -23,7 +23,6 @@
 
 #include "hle.h"
 #include "alist_internal.h"
-#include "alist.h"
 
 /* FIXME: use DMEM instead */
 uint8_t BufferSpace[0x10000];

@@ -23,9 +23,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 
-#include "m64p_types.h"
 #include "hle.h"
 #include "alist_internal.h"
 
