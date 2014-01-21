@@ -580,6 +580,8 @@ uint32_t Load4bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
    if (height < 1)
       height = 1;
    int ext = (real_width - (wid_64 << 4)) << 1;
+   if (ext < 0)
+      ext = 0;
 
    if (rdp.tlut_mode == 0)
    {
