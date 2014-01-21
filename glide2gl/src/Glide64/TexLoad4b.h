@@ -581,7 +581,7 @@ uint32_t Load4bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
       height = 1;
    int ext = (real_width - (wid_64 << 4));
    if (real_width + ext < 0) // negative dst pitch, just put it to 0
-      ext = real_width;
+      ext = -real_width;
    ext <<= 1;
 
    if (rdp.tlut_mode == 0)
