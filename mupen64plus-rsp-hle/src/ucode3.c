@@ -55,40 +55,29 @@ extern const uint16_t ResampleLUT [0x200];
 
 extern uint8_t BufferSpace[0x10000];
 
-/*
-static void SETVOL3 (uint32_t w1, uint32_t w2) { // Swapped Rate_Left and Vol
-    uint8_t Flags = (uint8_t)(w1 >> 0x10);
-    if (Flags & 0x4) { // 288
-        if (Flags & 0x2) { // 290
-            l_alist.target[0]  = *(int16_t*)&w1;
-            l_alist.rate[0] = *(int32_t*)&w2;
-        } else {
-            l_alist.target[1]  = *(int16_t*)&w1;
-            l_alist.rate[1] = *(int32_t*)&w2;
-        }
-    } else {
-        l_alist.vol[0]    = *(int16_t*)&w1;
-        l_alist.dry     = (int16_t)(*(int32_t*)&w2 >> 0x10);
-        l_alist.wet     = *(int16_t*)&w2;
-    }
-}
-*/
-static void SETVOL3 (uint32_t w1, uint32_t w2) {
-    uint8_t Flags = (uint8_t)(w1 >> 0x10);
-    if (Flags & 0x4) { // 288
-        if (Flags & 0x2) { // 290
-            l_alist.vol[0]  = (int16_t)w1; // 0x50
-            l_alist.dry   = (int16_t)(w2 >> 0x10); // 0x4E
-            l_alist.wet   = (int16_t)w2; // 0x4C
-        } else {
-            l_alist.target[1]  = (int16_t)w1; // 0x46
-            //l_alist.rate[1] = (uint16_t)(w2 >> 0x10) | (int32_t)(int16_t)(w2 << 0x10);
-            l_alist.rate[1] = (int32_t)w2; // 0x48/0x4A
-        }
-    } else {
-        l_alist.target[0]  = (int16_t)w1; // 0x40
-        l_alist.rate[0] = (int32_t)w2; // 0x42/0x44
-    }
+static void SETVOL3 (uint32_t w1, uint32_t w2)
+{
+   uint8_t flags = (w1 >> 16);
+
+   if (flags & 0x4)
+   {
+      if (flags & 0x2)
+      {
+         l_alist.vol[0] = w1;
+         l_alist.dry = (w2 >> 16);
+         l_alist.wet = w2;
+      }
+      else
+      {
+         l_alist.target[1] = w1;
+         l_alist.rate[1] = w2;
+      }
+   }
+   else
+   {
+      l_alist.target[0] = w1;
+      l_alist.rate[0] = w2;
+   }
 }
 
 static void ENVMIXER3 (uint32_t w1, uint32_t w2) {

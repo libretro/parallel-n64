@@ -371,49 +371,26 @@ static void RESAMPLE (uint32_t w1, uint32_t w2)
          address);
 }
 
-static void SETVOL (uint32_t w1, uint32_t w2) {
-// Might be better to unpack these depending on the flags...
-    uint8_t flags = (uint8_t)((w1 >> 16) & 0xff);
-    uint16_t vol = (int16_t)(w1 & 0xffff);
-    //uint16_t voltarg =(uint16_t)((w2 >> 16)&0xffff);
-    uint16_t volrate = (uint16_t)((w2 & 0xffff));
+static void SETVOL (uint32_t w1, uint32_t w2)
+{
+   uint8_t flags = (w1 >> 16);
 
-    if (flags & A_AUX) {
-        l_alist.dry = (int16_t)vol;         // m_MainVol
-        l_alist.wet = (int16_t)volrate;     // m_AuxVol
-        return;
-    }
+   if (flags & A_AUX)
+   {
+      l_alist.dry = w1;
+      l_alist.wet = w2;
+   }
+   else {
+      unsigned lr = (flags & A_LEFT) ? 0 : 1;
 
-    if(flags & A_VOL) { // Set the Source(start) Volumes
-        if(flags & A_LEFT) {
-            l_alist.vol[0] = (int16_t)vol;    // m_LeftVolume
-        } else { // A_RIGHT
-            l_alist.vol[1] = (int16_t)vol;   // m_RightVolume
-        }
-        return;
-    }
-
-//0x370             Loop Value (shared location)
-//0x370             Target Volume (Left)
-//uint16_t l_alist.rate[0]; // 0x0012(T8)
-    if(flags & A_LEFT) { // Set the Ramping values Target, Ramp
-        //l_alist.loop = (((uint32_t)vol << 0x10) | (uint32_t)voltarg);
-        l_alist.target[0]  = (int16_t)w1;      // m_LeftVol
-        //l_alist.rate[0] = (int32_t)w2;
-        l_alist.rate[0] = (int32_t)w2;//(uint16_t)(w2) | (int32_t)(int16_t)(w2 << 0x10);
-        //fprintf (dfile, "Ramp Left: %f\n", (float)l_alist.rate[0]/65536.0);
-        //fprintf (dfile, "Ramp Left: %08X\n", w2);
-        //l_alist.rate[0] = (int16_t)voltarg;  // m_LeftVolTarget
-        //VolRate_Left = (int16_t)volrate;  // m_LeftVolRate
-    } else { // A_RIGHT
-        l_alist.target[1]  = (int16_t)w1;     // m_RightVol
-        //l_alist.rate[1] = (int32_t)w2;
-        l_alist.rate[1] = (int32_t)w2;//(uint16_t)(w2 >> 0x10) | (int32_t)(int16_t)(w2 << 0x10);
-        //fprintf (dfile, "Ramp Right: %f\n", (float)l_alist.rate[1]/65536.0);
-        //fprintf (dfile, "Ramp Right: %08X\n", w2);
-        //l_alist.rate[1] = (int16_t)voltarg; // m_RightVolTarget
-        //VolRate_Right = (int16_t)volrate; // m_RightVolRate
-    }
+      if (flags & A_VOL)
+         l_alist.vol[lr] = w1;
+      else
+      {
+         l_alist.target[lr] = w1;
+         l_alist.rate[lr] = w2;
+      }
+   }
 }
 
 static void UNKNOWN (uint32_t w1, uint32_t w2) {}
