@@ -1653,7 +1653,6 @@ grStipplePattern(
                  GrStipplePattern_t stipple)
 {
    LOG("grStipplePattern(%x)\r\n", stipple);
-   srand(stipple);
 }
 
 FX_ENTRY void FX_CALL
@@ -1664,18 +1663,10 @@ grStippleMode( GrStippleMode_t mode )
    {
       case GR_STIPPLE_DISABLE:
          dither_enabled = 0;
-         glActiveTexture(GL_TEXTURE2);
-         glDisable(GL_TEXTURE_2D);
          break;
       case GR_STIPPLE_PATTERN:
-         dither_enabled = 1;
-         glActiveTexture(GL_TEXTURE2);
-         glEnable(GL_TEXTURE_2D);
-         break;
       case GR_STIPPLE_ROTATE:
          dither_enabled = 1;
-         glActiveTexture(GL_TEXTURE2);
-         glEnable(GL_TEXTURE_2D);
          break;
       default:
          DISPLAY_WARNING("grStippleMode:%x", mode);
