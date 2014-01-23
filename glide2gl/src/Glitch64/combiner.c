@@ -118,11 +118,7 @@ SHADER_VARYING
 // using gl_FragCoord is terribly slow on ATI and varying variables don't work for some unknown
 // reason, so we use the unused components of the texture2 coordinates
 static const char* fragment_shader_dither =
-"  float dithx = (gl_TexCoord[2].b + 1.0)*0.5*1000.0; \n"
-"  float dithy = (gl_TexCoord[2].a + 1.0)*0.5*1000.0; \n"
-"  if(texture2D(ditherTex, vec2((dithx-32.0*floor(dithx/32.0))/32.0, \n"
-"                               (dithy-32.0*floor(dithy/32.0))/32.0)).a > 0.5) discard; \n"
-;
+"  if(fract(sin(dot(gl_TexCoord[2].ab,vec2(12.9898,78.233))) * 341.86363515625)>0.5) discard;\n";
 
 static const char* fragment_shader_default =
 "  gl_FragColor = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
@@ -1652,49 +1648,12 @@ grChromakeyValue( GrColor_t value )
          chroma_color[2], chroma_color[3]));
 }
 
-static void setPattern(void)
-{
-   int i;
-   GLubyte texture[32*32*4];
-   for(i=0; i<32; i++)
-   {
-      GLubyte stip[4];
-      uint32_t randval, val, j;
-      randval = rand();
-      val = (randval << 17) | ((randval & 1) << 16) | (randval << 1) | (randval & 1);
-      stip[0] = (val >> 24) & 0xFF;
-      stip[1] = (val >> 16) & 0xFF;
-      stip[2] = (val >> 8) & 0xFF;
-      stip[3] = val & 0xFF;
-
-      for(j=0; j<4; j++)
-      {
-         texture[(i*32+j*8+0)*4+3] = ((stip[j] >> 7) & 1) ? 255 : 0;
-         texture[(i*32+j*8+1)*4+3] = ((stip[j] >> 6) & 1) ? 255 : 0;
-         texture[(i*32+j*8+2)*4+3] = ((stip[j] >> 5) & 1) ? 255 : 0;
-         texture[(i*32+j*8+3)*4+3] = ((stip[j] >> 4) & 1) ? 255 : 0;
-         texture[(i*32+j*8+4)*4+3] = ((stip[j] >> 3) & 1) ? 255 : 0;
-         texture[(i*32+j*8+5)*4+3] = ((stip[j] >> 2) & 1) ? 255 : 0;
-         texture[(i*32+j*8+6)*4+3] = ((stip[j] >> 1) & 1) ? 255 : 0;
-         texture[(i*32+j*8+7)*4+3] = ((stip[j] >> 0) & 1) ? 255 : 0;
-      }
-   }
-   glActiveTexture(GL_TEXTURE2);
-   glEnable(GL_TEXTURE_2D);
-   glBindTexture(GL_TEXTURE_2D, 33*1024*1024);
-   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-   glDisable(GL_TEXTURE_2D);
-}
-
 FX_ENTRY void FX_CALL
 grStipplePattern(
                  GrStipplePattern_t stipple)
 {
    LOG("grStipplePattern(%x)\r\n", stipple);
    srand(stipple);
-   setPattern();
 }
 
 FX_ENTRY void FX_CALL
@@ -1709,13 +1668,11 @@ grStippleMode( GrStippleMode_t mode )
          glDisable(GL_TEXTURE_2D);
          break;
       case GR_STIPPLE_PATTERN:
-         setPattern();
          dither_enabled = 1;
          glActiveTexture(GL_TEXTURE2);
          glEnable(GL_TEXTURE_2D);
          break;
       case GR_STIPPLE_ROTATE:
-         setPattern();
          dither_enabled = 1;
          glActiveTexture(GL_TEXTURE2);
          glEnable(GL_TEXTURE_2D);
