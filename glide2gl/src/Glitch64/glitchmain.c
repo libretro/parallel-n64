@@ -27,6 +27,7 @@
 #include "glide.h"
 #include "g3ext.h"
 #include "main.h"
+#include "../../libretro/SDL.h"
 
 #define TEXTURE_UNITS 4
 
@@ -1289,6 +1290,6 @@ void grTexChromaModeExt(GrChipID_t tmu, GrChromakeyMode_t mode)
 void check_gl_error(const char *stmt, const char *fname, int line)
 {
    GLenum error = glGetError();
-   if (error != GL_NO_ERROR)
-      fprintf(stderr, "OpenGL error %08x, at %s:%i - for %s\n", error, fname, line, stmt);
+   if (error != GL_NO_ERROR && log_cb)
+      log_cb(RETRO_LOG_INFO, "OpenGL error %08x, at %s:%i - for %s\n", error, fname, line, stmt);
 }
