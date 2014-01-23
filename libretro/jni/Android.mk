@@ -20,8 +20,7 @@ LOCAL_CFLAGS += -marm
 LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c $(COREDIR)/src/r4300/empty_dynarec.c
 LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
 LOCAL_SRC_FILES += $(LIBRETRODIR)/libco/armeabi_asm.S
-LOCAL_SRC_FILES += $(LIBRETRODIR)/sinc.c $(LIBRETRODIR)/utils.c
-ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
+ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
 COMMON_FLAGS += -DHAVE_NEON -D__NEON_OPT
 LOCAL_ARM_NEON := true
 LOCAL_SRC_FILES += $(LIBRETRODIR)/sinc_neon.S $(LIBRETRODIR)/utils_neon.S
@@ -31,7 +30,7 @@ endif
 endif
 
 ifeq ($(TARGET_ARCH),x86)
-COMMON_FLAGS += -DANDROID_X86 -DDYNAREC -D__SSE2__
+COMMON_FLAGS += -DANDROID_X86 -DDYNAREC -D__SSE2__ -D__SSE__
 LOCAL_SRC_FILES += $(COREDIR)/src/r4300/x86/assemble.c \
           $(COREDIR)/src/r4300/x86/gbc.c \
           $(COREDIR)/src/r4300/x86/gcop0.c \
@@ -54,7 +53,7 @@ endif
 
 # libretro
 LOCAL_SRC_FILES += $(LIBRETRODIR)/libretro.c $(LIBRETRODIR)/adler32.c $(LIBRETRODIR)/glsym.c $(LIBRETRODIR)/libco/libco.c $(LIBRETRODIR)/opengl_state_machine.c \
-          $(LIBRETRODIR)/audio_plugin.c $(LIBRETRODIR)/input_plugin.c $(LIBRETRODIR)/resampler.c
+          $(LIBRETRODIR)/audio_plugin.c $(LIBRETRODIR)/input_plugin.c $(LIBRETRODIR)/resampler.c $(LIBRETRODIR)/sinc.c $(LIBRETRODIR)/utils.c
 
 # RSP Plugin
 LOCAL_SRC_FILES += \

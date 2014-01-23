@@ -111,7 +111,7 @@ void dyna_start(void *code)
    #endif
 
     /* for -fPIC (shared libraries) */
-    #if __GNUC_PREREQ (4, 7)
+    #if defined(ANDROID_X86) || __GNUC_PREREQ (4, 7)
     #  define GET_PC_THUNK_STR(reg) "__x86.get_pc_thunk." #reg
     #else
     #  define GET_PC_THUNK_STR(reg) "__i686.get_pc_thunk." #reg

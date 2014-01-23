@@ -169,20 +169,15 @@ static void audio_convert_float_to_s16_neon(int16_t *out, const float *in, size_
 
 void audio_convert_init_simd(void)
 {
-#if defined(HAVE_NEON)
-   /*
-   struct rarch_cpu_features cpu;
+   unsigned cpu = 0;
    rarch_get_cpu_features(&cpu);
-   audio_convert_s16_to_float_arm = cpu.simd & RARCH_SIMD_NEON ?
+
+   (void)cpu;
+#if defined(HAVE_NEON)
+   audio_convert_s16_to_float_arm = cpu & RETRO_SIMD_NEON ?
       audio_convert_s16_to_float_neon : audio_convert_s16_to_float_C;
-   audio_convert_float_to_s16_arm = cpu.simd & RARCH_SIMD_NEON ?
+   audio_convert_float_to_s16_arm = cpu & RETRO_SIMD_NEON ?
       audio_convert_float_to_s16_neon : audio_convert_float_to_s16_C;
-   */
-   audio_convert_s16_to_float_arm = audio_convert_s16_to_float_neon;
-   audio_convert_float_to_s16_arm = audio_convert_float_to_s16_neon;
-#elif defined(__SSE2__) && defined(ANDROID_X86)
-   audio_convert_s16_to_float_arm = audio_convert_s16_to_float_SSE2;
-   audio_convert_float_to_s16_arm = audio_convert_float_to_s16_SSE2;
 #endif
 }
 
