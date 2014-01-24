@@ -209,7 +209,7 @@ static void setup_variables(void)
       { "mupen64-rspplugin",
          "RSP Plugin; auto|hle|cxd4" },
       { "mupen64-screensize",
-         "Resolution (restart); 640x360|640x480|720x576|800x600|960x540|960x640|1024x576|1024x768|1280x720|1280x768|1280x960|1280x1024|1600x1200|1920x1080|1920x1200|1920x1600|2048x1152|2048x1536|2048x2048|3200x2048|3200x2400|3840x2160|3840x2400|320x240" },
+         "Resolution (restart); 640x360|640x480|720x576|800x600|960x540|960x640|1024x576|1024x768|1280x720|1280x768|1280x960|1280x1024|1600x1200|1920x1080|1920x1200|1920x1600|2048x1152|2048x1536|2048x2048|3200x2048|320x240" },
       { "mupen64-filtering",
          "Texture filtering; automatic|bilinear|nearest" },
       { "mupen64-virefresh",
