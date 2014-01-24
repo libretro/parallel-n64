@@ -45,6 +45,10 @@ static struct
     uint32_t loop;
     /* storage for ADPCM table and polef coefficients */
     int16_t table[16 * 8];
+
+    /* filter audio command state */
+    uint16_t filter_count;
+    uint32_t filter_lut_address[2];
 } l_alist;
 
 static void SPNOOP (uint32_t w1, uint32_t w2) {
@@ -272,130 +276,21 @@ static void HILOGAIN (uint32_t w1, uint32_t w2)
 
 static void FILTER2 (uint32_t w1, uint32_t w2)
 {
-   int16_t outbuff[0x3c0], *outp, *inp1, *inp2;
-   static int16_t *lutt6;
-   static int16_t *lutt5;
-   int32_t x, a;
-   int32_t out1[8];
-   uint32_t inPtr;
-   uint8_t *save, t4;
-   static int cnt = 0;
+   uint8_t flags = (w1 >> 16);
+   uint32_t address = (w2 & 0xffffff);
 
-   save = (rspInfo.RDRAM+(w2&0xFFFFFF));
-   t4 = (uint8_t)((w1 >> 0x10) & 0xFF);
-
-   if (t4 > 1)
-   { /* Then set the cnt variable */
-      cnt = (w1 & 0xFFFF);
-      lutt6 = (int16_t *)save;
-      return;
-   }
-
-   if (t4 == 0)
-      lutt5 = (int16_t*)(save+0x10);
-
-   lutt5 = (int16_t*)(save+0x10);
-
-   //          lutt5 = (int16_t*)(dmem + 0xFC0);
-   //          lutt6 = (int16_t*)(dmem + 0xFE0);
-   for (x = 0; x < 8; x++)
+   if (flags > 1)
    {
-      a = (lutt5[x] + lutt6[x]) >> 1;
-      lutt5[x] = lutt6[x] = (int16_t)a;
+      l_alist.filter_count = w1;
+      l_alist.filter_lut_address[0] = address; // t6
    }
-
-   inPtr = (uint32_t)(w1&0xffff);
-   inp1 = (int16_t *)(save);
-   outp = outbuff;
-   inp2 = (int16_t*)(BufferSpace+inPtr);
-
-   for (x = 0; x < cnt; x+=0x10)
+   else
    {
-      out1[1] =  inp1[0]*lutt6[6];
-      out1[1] += inp1[3]*lutt6[7];
-      out1[1] += inp1[2]*lutt6[4];
-      out1[1] += inp1[5]*lutt6[5];
-      out1[1] += inp1[4]*lutt6[2];
-      out1[1] += inp1[7]*lutt6[3];
-      out1[1] += inp1[6]*lutt6[0];
-      out1[1] += inp2[1]*lutt6[1]; /* 1 */
+      uint16_t dmem = w1;
 
-      out1[0] =  inp1[3]*lutt6[6];
-      out1[0] += inp1[2]*lutt6[7];
-      out1[0] += inp1[5]*lutt6[4];
-      out1[0] += inp1[4]*lutt6[5];
-      out1[0] += inp1[7]*lutt6[2];
-      out1[0] += inp1[6]*lutt6[3];
-      out1[0] += inp2[1]*lutt6[0];
-      out1[0] += inp2[0]*lutt6[1];
-
-      out1[3] =  inp1[2]*lutt6[6];
-      out1[3] += inp1[5]*lutt6[7];
-      out1[3] += inp1[4]*lutt6[4];
-      out1[3] += inp1[7]*lutt6[5];
-      out1[3] += inp1[6]*lutt6[2];
-      out1[3] += inp2[1]*lutt6[3];
-      out1[3] += inp2[0]*lutt6[0];
-      out1[3] += inp2[3]*lutt6[1];
-
-      out1[2] =  inp1[5]*lutt6[6];
-      out1[2] += inp1[4]*lutt6[7];
-      out1[2] += inp1[7]*lutt6[4];
-      out1[2] += inp1[6]*lutt6[5];
-      out1[2] += inp2[1]*lutt6[2];
-      out1[2] += inp2[0]*lutt6[3];
-      out1[2] += inp2[3]*lutt6[0];
-      out1[2] += inp2[2]*lutt6[1];
-
-      out1[5] =  inp1[4]*lutt6[6];
-      out1[5] += inp1[7]*lutt6[7];
-      out1[5] += inp1[6]*lutt6[4];
-      out1[5] += inp2[1]*lutt6[5];
-      out1[5] += inp2[0]*lutt6[2];
-      out1[5] += inp2[3]*lutt6[3];
-      out1[5] += inp2[2]*lutt6[0];
-      out1[5] += inp2[5]*lutt6[1];
-
-      out1[4] =  inp1[7]*lutt6[6];
-      out1[4] += inp1[6]*lutt6[7];
-      out1[4] += inp2[1]*lutt6[4];
-      out1[4] += inp2[0]*lutt6[5];
-      out1[4] += inp2[3]*lutt6[2];
-      out1[4] += inp2[2]*lutt6[3];
-      out1[4] += inp2[5]*lutt6[0];
-      out1[4] += inp2[4]*lutt6[1];
-
-      out1[7] =  inp1[6]*lutt6[6];
-      out1[7] += inp2[1]*lutt6[7];
-      out1[7] += inp2[0]*lutt6[4];
-      out1[7] += inp2[3]*lutt6[5];
-      out1[7] += inp2[2]*lutt6[2];
-      out1[7] += inp2[5]*lutt6[3];
-      out1[7] += inp2[4]*lutt6[0];
-      out1[7] += inp2[7]*lutt6[1];
-
-      out1[6] =  inp2[1]*lutt6[6];
-      out1[6] += inp2[0]*lutt6[7];
-      out1[6] += inp2[3]*lutt6[4];
-      out1[6] += inp2[2]*lutt6[5];
-      out1[6] += inp2[5]*lutt6[2];
-      out1[6] += inp2[4]*lutt6[3];
-      out1[6] += inp2[7]*lutt6[0];
-      out1[6] += inp2[6]*lutt6[1];
-      outp[1] = /*CLAMP*/((out1[1]+0x4000) >> 0xF);
-      outp[0] = /*CLAMP*/((out1[0]+0x4000) >> 0xF);
-      outp[3] = /*CLAMP*/((out1[3]+0x4000) >> 0xF);
-      outp[2] = /*CLAMP*/((out1[2]+0x4000) >> 0xF);
-      outp[5] = /*CLAMP*/((out1[5]+0x4000) >> 0xF);
-      outp[4] = /*CLAMP*/((out1[4]+0x4000) >> 0xF);
-      outp[7] = /*CLAMP*/((out1[7]+0x4000) >> 0xF);
-      outp[6] = /*CLAMP*/((out1[6]+0x4000) >> 0xF);
-      inp1 = inp2;
-      inp2 += 8;
-      outp += 8;
+      l_alist.filter_lut_address[1] = address + 0x10; // t5
+      alist_filter(dmem, l_alist.filter_count, address, l_alist.filter_lut_address);
    }
-   memcpy (save, inp2-8, 0x10);
-   memcpy (BufferSpace+(w1&0xffff), outbuff, cnt);
 }
 
 static void SEGMENT2 (uint32_t w1, uint32_t w2)
