@@ -348,6 +348,10 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
           (sl(ROM_HEADER.CRC1) == 0x6AA4DDE7  && sl(ROM_HEADER.CRC2) == 0xE3E2F4E7) /* BattleTanx (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x3D615CF5 && sl(ROM_HEADER.CRC2) == 0x6984930A)  /* BattleTanx (U) [b1][t1] [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9A75C9C2 && sl(ROM_HEADER.CRC2) == 0xA4488353)  /* BattleTanx (U) [f1] (PAL) */
+          || (sl(ROM_HEADER.CRC1) == 0xC16C421B && sl(ROM_HEADER.CRC2) == 0xA21580F7)  /* Disney's Donald Duck - Goin' Quackers (U) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x3DF17480 && sl(ROM_HEADER.CRC2) == 0x193DED5A)  /* Donald Duck - Quack Attack (E) (M5) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x85E42D70 && sl(ROM_HEADER.CRC2) == 0x132BD5C2)  /* Donald Duck - Quack Attack (E) (M5) [b1] */
+          || (sl(ROM_HEADER.CRC1) == 0x8A5B9018 && sl(ROM_HEADER.CRC2) == 0x0A661D8F)  /* Donald Duck - Quack Attack (E) (M5) [f1] (NTSC) */
           || (sl(ROM_HEADER.CRC1) == 0x1AA05AD5 && sl(ROM_HEADER.CRC2) == 0x46F52D80)  /* Pilotwings 64 (E) (M3) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9CC4801 && sl(ROM_HEADER.CRC2) == 0xE42EE491)  /* Pilotwings 64 (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xC851961C && sl(ROM_HEADER.CRC2) == 0x78FCAAFA)  /* Pilotwings 64 (U) [!] */
