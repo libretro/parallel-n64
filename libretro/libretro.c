@@ -56,8 +56,8 @@ static uint32_t game_size;
 static enum gfx_plugin_type gfx_plugin;
 uint32_t gfx_plugin_accuracy = 2;
 static enum rsp_plugin_type rsp_plugin;
-static uint32_t screen_width;
-static uint32_t screen_height;
+uint32_t screen_width;
+uint32_t screen_height;
 
 extern unsigned int VI_REFRESH;
 

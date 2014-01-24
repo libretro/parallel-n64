@@ -121,7 +121,7 @@ void Config_WriteConfig(const char *filename)
     fclose(f);
 }
 
-void Config_SetDefault()
+void Config_SetDefault(void)
 {
    int i;
     for(i = 0; i < configOptionsSize; i++)
@@ -240,7 +240,10 @@ void Config_LoadRomConfig(unsigned char* header)
     fclose(f);
 }
 
-void Config_LoadConfig()
+extern uint32_t screen_width;
+extern uint32_t screen_height;
+
+void Config_LoadConfig(void)
 {
     FILE *f;
     char line[4096];
@@ -249,8 +252,8 @@ void Config_LoadConfig()
     Config_SetDefault();
 
     // __LIBRETRO__: Get screen size
-    config.screen.width = ConfigGetParamInt(0, "ScreenWidth");
-    config.screen.height = ConfigGetParamInt(0, "ScreenHeight");
+    config.screen.width = screen_width;
+    config.screen.height = screen_height;
 
 
     // read configuration
