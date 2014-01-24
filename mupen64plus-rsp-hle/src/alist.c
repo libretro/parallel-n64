@@ -215,7 +215,7 @@ void alist_envmix_exp(
 
    uint32_t ptr = 0;
    int x, y;
-   short save_buffer[40];
+   int16_t *save_buffer = (int16_t*)(rspInfo.RDRAM + address);
 
    if (init) {
       ramps[0].value = (vol[0] << 16);
@@ -227,7 +227,6 @@ void alist_envmix_exp(
       exp_seq[0] = (vol[0] * rate[0]);
       exp_seq[1] = (vol[1] * rate[1]);
    } else {
-      memcpy((uint8_t *)save_buffer, (rspInfo.RDRAM + address), 80);
       wet = *(int16_t *)(save_buffer + 0); /* 0-1 */
       dry = *(int16_t *)(save_buffer + 2); /* 2-3 */
       ramps[0].target = *(int32_t *)(save_buffer + 4); /* 4-5 */
@@ -290,7 +289,6 @@ void alist_envmix_exp(
    *(int32_t *)(save_buffer + 14) = exp_seq[1]; /* 14-15 */
    *(int32_t *)(save_buffer + 16) = ramps[0].value; /* 12-13 */
    *(int32_t *)(save_buffer + 18) = ramps[1].value; /* 14-15 */
-   memcpy(rspInfo.RDRAM + address, (uint8_t *)save_buffer, 80);
 }
 
 void alist_envmix_lin(
@@ -306,7 +304,7 @@ void alist_envmix_lin(
 {
    size_t k;
    struct ramp_t ramps[2];
-   int16_t save_buffer[40];
+   int16_t *save_buffer = (int16_t*)(rspInfo.RDRAM + address);
 
    const int16_t * const in = (int16_t*)(BufferSpace + dmemi);
    int16_t* const dl = (int16_t*)(BufferSpace + dmem_dl);
@@ -323,7 +321,6 @@ void alist_envmix_lin(
       ramps[1].target = (target[1] << 16);
    }
    else {
-      memcpy((uint8_t *)save_buffer, rspInfo.RDRAM + address, 80);
       wet = *(int16_t *)(save_buffer + 0); /* 0-1 */
       dry = *(int16_t *)(save_buffer + 2); /* 2-3 */
       ramps[0].target = *(int16_t *)(save_buffer + 4) << 16; /* 4-5 */
@@ -363,7 +360,6 @@ void alist_envmix_lin(
    *(int32_t *)(save_buffer + 10) = ramps[1].step; /* 10-11 */
    *(int32_t *)(save_buffer + 16) = ramps[0].value; /* 16-17 */
    *(int32_t *)(save_buffer + 18) = ramps[1].value; /* 18-19 */
-   memcpy(rspInfo.RDRAM + address, (uint8_t *)save_buffer, 80);
 }
 
 void alist_envmix_nead(
