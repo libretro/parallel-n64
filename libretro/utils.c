@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include "libretro.h"
 #include "utils.h"
+#include "SDL.h"
 
 extern retro_log_printf_t log_cb;
 
@@ -170,9 +171,10 @@ static void audio_convert_float_to_s16_neon(int16_t *out, const float *in, size_
 void audio_convert_init_simd(void)
 {
    unsigned cpu = 0;
-   rarch_get_cpu_features(&cpu);
+   
+   if (perf_get_cpu_features_cb)
+      cpu = perf_get_cpu_features_cb();
 
-   (void)cpu;
 #if defined(HAVE_NEON)
    audio_convert_s16_to_float_arm = cpu & RETRO_SIMD_NEON ?
       audio_convert_s16_to_float_neon : audio_convert_s16_to_float_C;
