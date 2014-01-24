@@ -83,8 +83,8 @@ struct texbuf_t {
 static struct texbuf_t texbufs[NB_TEXBUFS];
 static int texbuf_i;
 
-uint16_t frameBuffer[1024*1024];
-uint16_t depthBuffer[1024*1024];
+uint16_t frameBuffer[1280*960];
+uint16_t depthBuffer[1280*960];
 uint8_t  buf[1280 * 960 * 4];
 
 FX_ENTRY void FX_CALL
