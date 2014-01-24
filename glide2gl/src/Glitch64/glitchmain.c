@@ -57,7 +57,7 @@ int buffer_cleared;
 // ZIGGY
 // to allocate a new static texture name, take the value (free_texture++)
 int free_texture;
-int default_texture; // the infamous "32*1024*1024" is now configurable
+int default_texture;
 int current_texture;
 int depth_texture, color_texture;
 int glsl_support = 1;
@@ -83,9 +83,9 @@ struct texbuf_t {
 static struct texbuf_t texbufs[NB_TEXBUFS];
 static int texbuf_i;
 
-uint16_t frameBuffer[1280*960];
-uint16_t depthBuffer[1280*960];
-uint8_t  buf[1280 * 960 * 4];
+uint16_t *frameBuffer;
+uint16_t *depthBuffer;
+uint8_t  *buf;
 
 FX_ENTRY void FX_CALL
 grSstOrigin(GrOriginLocation_t  origin)
@@ -169,20 +169,13 @@ grSstWinOpen(
              int                  nColBuffers,
              int                  nAuxBuffers)
 {
-   uint32_t screen_width, screen_height;
+   uint32_t screen_width, screen_height, screen_width_min, screen_height_min;
    struct retro_variable var = { "mupen64-screensize", 0 };
-   // ZIGGY
-   // allocate static texture names
-   // the initial value should be big enough to support the maximal resolution
-   free_texture = 32*1024*1024;
-   default_texture = free_texture++;
-   color_texture = free_texture++;
-   depth_texture = free_texture++;
 
    LOG("grSstWinOpen(%d, %d, %d, %d, %d %d)\r\n", screen_resolution&~0x80000000, refresh_rate, color_format, origin_location, nColBuffers, nAuxBuffers);
 
-   width = 640;
-   height = 480;
+   width = screen_width_min = 640;
+   height = screen_height_min = 480;
    bool ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
    if (ret && var.value)
    {
@@ -192,6 +185,22 @@ grSstWinOpen(
          height = 480;
       }
    }
+
+   if (width > screen_width_min)
+      screen_width_min = width;
+   if (height > screen_height_min)
+      screen_height_min = height;
+
+   // ZIGGY
+   // allocate static texture names
+   // the initial value should be big enough to support the maximal resolution
+   free_texture = 32 * screen_width_min * screen_height_min;
+   default_texture = free_texture++;
+   color_texture = free_texture++;
+   depth_texture = free_texture++;
+   frameBuffer = (uint16_t*)malloc(screen_width_min * screen_height_min);
+   depthBuffer = (uint16_t*)malloc(screen_width_min * screen_height_min);
+   buf = (uint8_t*)malloc(screen_width_min * screen_height_min * 4);
    glViewport(0, 0, width, height);
 
    lfb_color_fmt = color_format;
@@ -322,6 +331,16 @@ grSstWinClose( GrContext_t context )
 
    for (i=0; i<2; i++)
       invtex[i] = 0;
+
+   if (frameBuffer)
+      free(frameBuffer);
+   if (depthBuffer)
+      free(depthBuffer);
+   if (buf)
+      free(buf);
+   frameBuffer = NULL;
+   depthBuffer = NULL;
+   buf = NULL;
 
    free_combiners();
    glBindFramebuffer( GL_FRAMEBUFFER, 0 );
