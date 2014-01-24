@@ -363,9 +363,8 @@ static void WHATISTHIS (uint32_t w1, uint32_t w2) {
 }
 
 //static FILE *fp = fopen ("d:\\mp3info.txt", "wt");
-uint32_t setaddr;
-static void MP3ADDY (uint32_t w1, uint32_t w2) {
-    setaddr = (w2 & 0xffffff);
+static void MP3ADDY (uint32_t w1, uint32_t w2)
+{
 }
 
 void rsp_run(void);
