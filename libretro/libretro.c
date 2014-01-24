@@ -58,6 +58,8 @@ uint32_t gfx_plugin_accuracy = 2;
 static enum rsp_plugin_type rsp_plugin;
 uint32_t screen_width;
 uint32_t screen_height;
+uint32_t pot_width;
+uint32_t pot_height;
 
 extern unsigned int VI_REFRESH;
 
@@ -207,7 +209,7 @@ static void setup_variables(void)
       { "mupen64-rspplugin",
          "RSP Plugin; auto|hle|cxd4" },
       { "mupen64-screensize",
-         "Resolution (restart); 640x360|640x480|720x576|800x600|960x540|960x640|1024x576|1024x768|1280x720|1280x768|1280x960|1280x1024|1600x1200|1920x1080|1920x1200|1920x1600|2048x1152|2048x1536|2048x2048|320x240" },
+         "Resolution (restart); 640x360|640x480|720x576|800x600|960x540|960x640|1024x576|1024x768|1280x720|1280x768|1280x960|1280x1024|1600x1200|1920x1080|1920x1200|1920x1600|2048x1152|2048x1536|2048x2048|3200x2048|3200x2400|3840x2160|3840x2400|320x240" },
       { "mupen64-filtering",
          "Texture filtering; automatic|bilinear|nearest" },
       { "mupen64-virefresh",
@@ -269,7 +271,7 @@ load_fail:
 
 //
 
-const char* retro_get_system_directory()
+const char* retro_get_system_directory(void)
 {
     const char* dir;
     environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir);
@@ -277,7 +279,7 @@ const char* retro_get_system_directory()
     return dir ? dir : ".";
 }
 
-static void core_gl_context_reset()
+static void core_gl_context_reset(void)
 {
    glsym_init_procs(render_iface.get_proc_address);
 
@@ -290,12 +292,12 @@ static void core_gl_context_reset()
       gles2n64_reset();
 }
 
-GLuint retro_get_fbo_id()
+GLuint retro_get_fbo_id(void)
 {
     return render_iface.get_current_framebuffer();
 }
 
-void vbo_draw();
+void vbo_draw(void);
 
 int retro_return(bool just_flipping)
 {
@@ -366,20 +368,7 @@ static m64p_system_type rom_country_code_to_system_type(unsigned short country_c
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
-   // TODO
-   struct retro_variable var = { "mupen64-screensize", 0 };
-   screen_width = 640;
-   screen_height = 480;
    m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.Country_code);
-
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-   {
-      if (sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
-      {
-         screen_width = 640;
-         screen_height = 480;
-      }
-   }
 
    info->geometry.base_width = screen_width;
    info->geometry.base_height = screen_height;
@@ -420,6 +409,8 @@ void retro_init(void)
    audio_convert_init_simd();
 
    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
+   pot_width = 1024;
+   pot_height = 1024;
 }
 
 void retro_deinit(void)
@@ -449,6 +440,26 @@ extern void glide_set_filtering(unsigned value);
 void update_variables(void)
 {
    struct retro_variable var;
+
+   var.key = "mupen64-screensize";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
+      {
+         screen_width = 640;
+         screen_height = 480;
+      }
+      while((pot_width < screen_width) || (pot_height < screen_height))
+      {
+         pot_width <<= 1;
+         pot_height <<= 1;
+         
+      }
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "POT width: %d height: %d\n", pot_width, pot_height);
+   }
 
    var.key = "mupen64-filtering";
    var.value = NULL;

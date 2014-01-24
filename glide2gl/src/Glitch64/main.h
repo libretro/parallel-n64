@@ -117,7 +117,6 @@ extern int lfb_color_fmt;
 extern int need_to_compile;
 extern int blackandwhite0;
 extern int blackandwhite1;
-extern int TMU_SIZE;
 
 extern int blend_func_separate_support;
 extern int fog_coord_support;
