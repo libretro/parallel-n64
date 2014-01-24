@@ -117,13 +117,9 @@ void alist_copy_every_other_sample(uint16_t dmemo, uint16_t dmemi, uint16_t coun
 
 void alist_repeat64(uint16_t dmemo, uint16_t dmemi, uint8_t count)
 {
-   uint16_t buffer[64];
-
-   memcpy(buffer, BufferSpace + dmemi, 128);
-
    while(count)
    {
-      memcpy(BufferSpace + dmemo, buffer, 128);
+      memcpy(BufferSpace + dmemo, BufferSpace + dmemi, 128);
       dmemo += 128;
       --count;
    }
