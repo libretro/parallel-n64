@@ -207,7 +207,7 @@ static void setup_variables(void)
       { "mupen64-rspplugin",
          "RSP Plugin; auto|hle|cxd4" },
       { "mupen64-screensize",
-         "Resolution (restart); 640x480|1280x960|320x240" },
+         "Resolution (restart); 640x480|1280x960|1600x1200|320x240" },
       { "mupen64-filtering",
          "Texture filtering; automatic|bilinear|nearest" },
       { "mupen64-virefresh",

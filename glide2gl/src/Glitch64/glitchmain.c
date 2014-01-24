@@ -198,9 +198,9 @@ grSstWinOpen(
    default_texture = free_texture++;
    color_texture = free_texture++;
    depth_texture = free_texture++;
-   frameBuffer = (uint16_t*)malloc(screen_width_min * screen_height_min);
-   depthBuffer = (uint16_t*)malloc(screen_width_min * screen_height_min);
-   buf = (uint8_t*)malloc(screen_width_min * screen_height_min * 4);
+   frameBuffer = (uint16_t*)malloc(screen_width_min * screen_height_min * sizeof(uint16_t));
+   depthBuffer = (uint16_t*)malloc(screen_width_min * screen_height_min * sizeof(uint16_t));
+   buf = (uint8_t*)malloc(screen_width_min * screen_height_min * 4 * sizeof(uint8_t));
    glViewport(0, 0, width, height);
 
    lfb_color_fmt = color_format;
