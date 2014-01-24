@@ -28,8 +28,7 @@
 #include "alist_internal.h"
 #include "hle_audio.h"
 
-/* FIXME: make local */
-uint8_t BufferSpace[0x10000];
+static uint8_t BufferSpace[0x10000];
 
 // FIXME: this decomposition into 3 ABI is not accurate,
 // there are a least 9 or 10 different ABI, each with one or a few revisions
