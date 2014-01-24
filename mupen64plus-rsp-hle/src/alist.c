@@ -47,7 +47,7 @@ static inline int16_t* sample(unsigned pos)
     return (int16_t*)BufferSpace + (pos ^ S);
 }
 
-static void swap(int16_t **a, int16_t **b)
+static inline void swap(int16_t **a, int16_t **b)
 {
    int16_t* tmp = *b;
    *b = *a;
