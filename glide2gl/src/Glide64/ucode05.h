@@ -341,7 +341,7 @@ static void uc5_setgeometrymode(void)
 
    rdp.geom_mode |= rdp.cmd1;
 
-   if (rdp.cmd1 & 0x00000001)  // Z-Buffer enable
+   if (rdp.cmd1 & G_ZBUFFER)  // Z-Buffer enable
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -367,7 +367,7 @@ static void uc5_cleargeometrymode(void)
 
    rdp.geom_mode &= (~rdp.cmd1);
 
-   if (rdp.cmd1 & 0x00000001)  // Z-Buffer enable
+   if (rdp.cmd1 & G_ZBUFFER)  // Z-Buffer enable
    {
       if (rdp.flags & ZBUF_ENABLED)
       {
