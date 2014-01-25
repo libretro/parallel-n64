@@ -119,7 +119,9 @@ SHADER_VARYING
 // using gl_FragCoord is terribly slow on ATI and varying variables don't work for some unknown
 // reason, so we use the unused components of the texture2 coordinates
 static const char* fragment_shader_dither =
-"  if(fract(sin(dot(gl_TexCoord[2].ab,vec2(12.9898,78.233))) * 341.86363515625)>0.5) discard;\n";
+"  highp float temp=abs(sin((gl_TexCoord[2].a*100.0)+sin((gl_TexCoord[2].a*100.0)+(gl_TexCoord[2].b*100.0))))*170.0; \n"
+"  if ((fract(temp)+fract(temp/2.0)+fract(temp/4.0))>1.5) discard; \n"
+;
 
 static const char* fragment_shader_default =
 "  gl_FragColor = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
