@@ -49,21 +49,12 @@
 #define Vj rdp.vtxbuf2[j]
 #define Vi rdp.vtxbuf2[i]
 
-VERTEX *vtx_list1[32];  // vertex indexing
-VERTEX *vtx_list2[32];
-
 //
 // util_init - initialize data for the functions in this file
 //
 
 void util_init(void)
 {
-   int i;
-   for (i = 0; i < 32; i++)
-   {
-      vtx_list1[i] = &rdp.vtx1[i];
-      vtx_list2[i] = &rdp.vtx2[i];
-   }
 }
 
 static uint32_t u_cull_mode = 0;
@@ -1451,7 +1442,7 @@ void render_tri (uint16_t linew, int old_interpolate)
       */
    {
 
-      //      VERTEX ** pv = rdp.vtx_buffer?(vtx_list2):(vtx_list1);
+      //      VERTEX ** pv = rdp.vtx_buffer? &rdp.vtx2 : &rdp.vtx1;
       //      for (int k = 0; k < n; k ++)
       //			FRDP ("DRAW[%d]: v.x = %f, v.y = %f, v.z = %f, v.u = %f, v.v = %f\n", k, pv[k]->x, pv[k]->y, pv[k]->z, pv[k]->coord[rdp.t0<<1], pv[k]->coord[(rdp.t0<<1)+1]);
       //        pv[k]->y = settings.res_y - pv[k]->y;
@@ -1512,7 +1503,7 @@ void render_tri (uint16_t linew, int old_interpolate)
          DepthBuffer(rdp.vtxbuf, n);
          if ((rdp.rm & 0xC10) == 0xC10)
             grDepthBiasLevel (-deltaZ);
-         grDrawVertexArray (GR_TRIANGLE_FAN, n, rdp.vtx_buffer?(&vtx_list2):(&vtx_list1));
+         grDrawVertexArray (GR_TRIANGLE_FAN, n, rdp.vtx_buffer? &rdp.vtx2 : &rdp.vtx1);
       }
    }
 }
