@@ -28,6 +28,8 @@
 #include "hle.h"
 #include "alist_internal.h"
 
+void MP3(uint32_t w1, uint32_t w2);
+
 /* alist naudio state */
 
 static struct
@@ -45,17 +47,38 @@ static struct
     int16_t table[16 * 8];
 } l_alist;
 
-/*
-static void SPNOOP (uint32_t w1, uint32_t w2) {
-    RSP_DEBUG_MESSAGE(M64MSG_ERROR, "Unknown/Unimplemented Audio Command %i in ABI 3", (int)(w1 >> 24));
+/* audio commands definition */
+static void UNKNOWN(uint32_t w1, uint32_t w2)
+{
+    uint8_t acmd = (w1 >> 24);
+
+    DebugMessage(M64MSG_WARNING,
+            "Unknown audio comand %d: %08x %08x",
+            acmd, w1, w2);
 }
-*/
 
-extern const uint16_t ResampleLUT [0x200];
+static void SPNOOP(uint32_t w1, uint32_t w2)
+{
+}
 
-extern uint8_t BufferSpace[0x10000];
+static void NAUDIO_0000(uint32_t w1, uint32_t w2)
+{
+    /* ??? */
+    UNKNOWN(w1, w2);
+}
 
-static void SETVOL3 (uint32_t w1, uint32_t w2)
+static void NAUDIO_02B0(uint32_t w1, uint32_t w2)
+{
+    /* ??? */
+    /* UNKNOWN(w1, w2); commented to avoid constant spamming during gameplay */
+}
+
+static void NAUDIO_14(uint32_t w1, uint32_t w2)
+{
+    /* TODO */
+}
+
+static void SETVOL(uint32_t w1, uint32_t w2)
 {
    uint8_t flags = (w1 >> 16);
 
@@ -80,7 +103,7 @@ static void SETVOL3 (uint32_t w1, uint32_t w2)
    }
 }
 
-static void ENVMIXER3 (uint32_t w1, uint32_t w2)
+static void ENVMIXER(uint32_t w1, uint32_t w2)
 {
    uint8_t flags = (w1 >> 16);
    uint32_t address = (w2 & 0xffffff);
@@ -103,14 +126,14 @@ static void ENVMIXER3 (uint32_t w1, uint32_t w2)
          address);
 }
 
-static void CLEARBUFF3 (uint32_t w1, uint32_t w2)
+static void CLEARBUFF(uint32_t w1, uint32_t w2)
 {
    uint16_t dmem  = w1 + 0x4f0;
    uint16_t count = w2;
    alist_clear(dmem, count);
 }
 
-static void MIXER3 (uint32_t w1, uint32_t w2)
+static void MIXER(uint32_t w1, uint32_t w2)
 {
    int16_t  gain  = w1;
    uint16_t dmemi = (w2 >> 16) + 0x4f0;
@@ -119,7 +142,7 @@ static void MIXER3 (uint32_t w1, uint32_t w2)
    alist_mix(dmemo, dmemi, 0x170, gain);
 }
 
-static void LOADBUFF3 (uint32_t w1, uint32_t w2)
+static void LOADBUFF(uint32_t w1, uint32_t w2)
 {
    uint16_t count = (w1 >> 12) & 0xfff;
    uint16_t dmem = (w1 & 0xfff) + 0x4f0;
@@ -128,7 +151,7 @@ static void LOADBUFF3 (uint32_t w1, uint32_t w2)
    alist_load(dmem & ~3, address & ~3, (count + 3) & ~3);
 }
 
-static void SAVEBUFF3 (uint32_t w1, uint32_t w2)
+static void SAVEBUFF(uint32_t w1, uint32_t w2)
 {
    uint16_t count = (w1 >> 12) & 0xfff;
    uint16_t dmem = (w1 & 0xfff) + 0x4f0;
@@ -137,7 +160,7 @@ static void SAVEBUFF3 (uint32_t w1, uint32_t w2)
    alist_save(dmem & ~3, address & ~3, (count + 3) & ~3);
 }
 
-static void LOADADPCM3 (uint32_t w1, uint32_t w2)
+static void LOADADPCM(uint32_t w1, uint32_t w2)
 {
    uint16_t count = (w1 & 0xffff);
    uint32_t address = (w2 & 0xffffff);
@@ -145,7 +168,7 @@ static void LOADADPCM3 (uint32_t w1, uint32_t w2)
    dram_load_u16((uint16_t*)l_alist.table, address, count >> 1);
 }
 
-static void DMEMMOVE3 (uint32_t w1, uint32_t w2)
+static void DMEMMOVE(uint32_t w1, uint32_t w2)
 {
    uint16_t dmemi = w1 + 0x4f0;
    uint16_t dmemo = (w2 >> 16) + 0x4f0;
@@ -154,11 +177,11 @@ static void DMEMMOVE3 (uint32_t w1, uint32_t w2)
    alist_move(dmemo, dmemi, (count + 3) & ~3);
 }
 
-static void SETLOOP3 (uint32_t w1, uint32_t w2) {
+static void SETLOOP(uint32_t w1, uint32_t w2) {
     l_alist.loop = (w2 & 0xffffff);
 }
 
-static void ADPCM3 (uint32_t w1, uint32_t w2)
+static void ADPCM(uint32_t w1, uint32_t w2)
 {
    uint32_t address = (w1 & 0xffffff);
    uint8_t flags = (w2 >> 28);
@@ -178,7 +201,7 @@ static void ADPCM3 (uint32_t w1, uint32_t w2)
          address);
 }
 
-static void RESAMPLE3 (uint32_t w1, uint32_t w2)
+static void RESAMPLE(uint32_t w1, uint32_t w2)
 {
    uint32_t address = (w1 & 0xffffff);
    uint8_t flags = (w2 >> 30);
@@ -195,132 +218,86 @@ static void RESAMPLE3 (uint32_t w1, uint32_t w2)
          address);
 }
 
-static void INTERLEAVE3 (uint32_t w1, uint32_t w2)
+static void INTERLEAVE(uint32_t w1, uint32_t w2)
 {
    alist_interleave(0x4f0, 0x9d0, 0xb40, 0x170);
 }
 
-//static void UNKNOWN (uint32_t w1, uint32_t w2);
-/*
-typedef struct {
-    uint8_t sync;
-
-    uint8_t error_protection   : 1;    //  0=yes, 1=no
-    uint8_t lay                : 2;    // 4-lay = layerI, II or III
-    uint8_t version            : 1;    // 3=mpeg 1.0, 2=mpeg 2.5 0=mpeg 2.0
-    uint8_t sync2              : 4;
-
-    uint8_t extension          : 1;    // Unknown
-    uint8_t padding            : 1;    // padding
-    uint8_t sampling_freq      : 2;    // see table below
-    uint8_t bitrate_index      : 4;    //     see table below
-
-    uint8_t emphasis           : 2;    //see table below
-    uint8_t original           : 1;    // 0=no 1=yes
-    uint8_t copyright          : 1;    // 0=no 1=yes
-    uint8_t mode_ext           : 2;    // used with "joint stereo" mode
-    uint8_t mode               : 2;    // Channel Mode
-} mp3struct;
-
-mp3struct mp3;
-FILE *mp3dat;
-*/
-
-static void WHATISTHIS (uint32_t w1, uint32_t w2) {
+static void WHATISTHIS (uint32_t w1, uint32_t w2)
+{
 }
 
-//static FILE *fp = fopen ("d:\\mp3info.txt", "wt");
 static void MP3ADDY (uint32_t w1, uint32_t w2)
 {
 }
 
-void rsp_run(void);
-void mp3setup (uint32_t w1, uint32_t w2, uint32_t t8);
-
-extern uint32_t base, dmembase;
-extern int8_t *pDMEM;
-void MP3 (uint32_t w1, uint32_t w2);
-/*
- {
-//  return;
-    // Setup Registers...
-    mp3setup (w1, w2, 0xFA0);
-    
-    // Setup Memory Locations...
-    //uint32_t base = ((uint32_t*)dmem)[0xFD0/4]; // Should be 000291A0
-    memcpy (BufferSpace, dmembase+rspInfo.RDRAM, 0x10);
-    ((uint32_t*)BufferSpace)[0x0] = base;
-    ((uint32_t*)BufferSpace)[0x008/4] += base;
-    ((uint32_t*)BufferSpace)[0xFFC/4] = l_alist.loop;
-    ((uint32_t*)BufferSpace)[0xFF8/4] = dmembase;
-
-    memcpy (imem+0x238, rspInfo.RDRAM+((uint32_t*)BufferSpace)[0x008/4], 0x9C0);
-    ((uint32_t*)BufferSpace)[0xFF4/4] = setaddr;
-    pDMEM = (int8_t*)BufferSpace;
-    rsp_run (void);
-    dmembase = ((uint32_t*)BufferSpace)[0xFF8/4];
-    l_alist.loop  = ((uint32_t*)BufferSpace)[0xFFC/4];
-//0x1A98  SW       S1, 0x0FF4 (R0)
-//0x1A9C  SW       S0, 0x0FF8 (R0)
-//0x1AA0  SW       T7, 0x0FFC (R0)
-//0x1AA4  SW       T3, 0x0FF0 (R0)
-    //fprintf (fp, "mp3: w1: %08X, w2: %08X\n", w1, w2);
-}*/
-/*
-FFT = Fast Fourier Transform
-DCT = Discrete Cosine Transform
-MPEG-1 Layer 3 retains Layer 2's 1152-sample window, as well as the FFT polyphase filter for
-backward compatibility, but adds a modified DCT filter. DCT's advantages over DFTs (discrete
-Fourier transforms) include half as many multiply-accumulate operations and half the 
-generated coefficients because the sinusoidal portion of the calculation is absent, and DCT 
-generally involves simpler math. The finite lengths of a conventional DCTs' bandpass impulse
-responses, however, may result in block-boundary effects. MDCTs overlap the analysis blocks 
-and lowpass-filter the decoded audio to remove aliases, eliminating these effects. MDCTs also 
-have a higher transform coding gain than the standard DCT, and their basic functions 
-correspond to better bandpass response. 
-
-MPEG-1 Layer 3's DCT sub-bands are unequally sized, and correspond to the human auditory 
-system's critical bands. In Layer 3 decoders must support both constant- and variable-bit-rate 
-bit streams. (However, many Layer 1 and 2 decoders also handle variable bit rates). Finally, 
-Layer 3 encoders Huffman-code the quantized coefficients before archiving or transmission for 
-additional lossless compression. Bit streams range from 32 to 320 kbps, and 128-kbps rates 
-achieve near-CD quality, an important specification to enable dual-channel ISDN 
-(integrated-services-digital-network) to be the future high-bandwidth pipe to the home. 
-
-*/
-static void DISABLE (uint32_t w1, uint32_t w2) {
-    //MessageBox (NULL, "Help", "ABI 3 Command 0", MB_OK);
-    //ChangeABI (5);
+static void DISABLE (uint32_t w1, uint32_t w2)
+{
 }
 
-
-static const acmd_callback_t ABI3[0x10] = {
-    DISABLE , ADPCM3 , CLEARBUFF3,  ENVMIXER3  , LOADBUFF3, RESAMPLE3  , SAVEBUFF3, MP3,
-    MP3ADDY, SETVOL3, DMEMMOVE3 , LOADADPCM3 , MIXER3   , INTERLEAVE3, WHATISTHIS   , SETLOOP3
-};
-
-
+/* global functions */
 void alist_process_naudio(void)
 {
-    alist_process(ABI3, 0x10);
+   static const acmd_callback_t ABI[0x10] = {
+      SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER,
+      LOADBUFF,       RESAMPLE,       SAVEBUFF,       NAUDIO_0000,
+      NAUDIO_0000,    SETVOL,         DMEMMOVE,       LOADADPCM,
+      MIXER,          INTERLEAVE,     NAUDIO_02B0,    SETLOOP
+   };
+
+   alist_process(ABI, 0x10);
 }
 
+/* Banjo Kazooie */
 void alist_process_naudio_bk(void)
 {
-    alist_process(ABI3, 0x10);
+   /* TODO: see what differs from alist_process_naudio */
+   static const acmd_callback_t ABI[0x10] = {
+      SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER,
+      LOADBUFF,       RESAMPLE,       SAVEBUFF,       NAUDIO_0000,
+      NAUDIO_0000,    SETVOL,         DMEMMOVE,       LOADADPCM,
+      MIXER,          INTERLEAVE,     NAUDIO_02B0,    SETLOOP
+   };
+
+   alist_process(ABI, 0x10);
 }
 
+/* Donkey Kong 64 */
 void alist_process_naudio_dk(void)
 {
-    alist_process(ABI3, 0x10);
+   /* TODO: see what differs from alist_process_naudio */
+   static const acmd_callback_t ABI[0x10] = {
+      SPNOOP, ADPCM, CLEARBUFF, ENVMIXER,
+      LOADBUFF, RESAMPLE, SAVEBUFF, MIXER,
+      MIXER, SETVOL, DMEMMOVE, LOADADPCM,
+      MIXER, INTERLEAVE, NAUDIO_02B0, SETLOOP
+   };
+
+   alist_process(ABI, 0x10);
 }
 
 void alist_process_naudio_mp3(void)
 {
-    alist_process(ABI3, 0x10);
+   static const acmd_callback_t ABI[0x10] = {
+      UNKNOWN, ADPCM, CLEARBUFF, ENVMIXER,
+      LOADBUFF, RESAMPLE, SAVEBUFF, MP3,
+      MP3ADDY, SETVOL, DMEMMOVE, LOADADPCM,
+      MIXER, INTERLEAVE, NAUDIO_14, SETLOOP
+   };
+
+   alist_process(ABI, 0x10);
 }
 
+/* Conker's Bad Fur Day */
 void alist_process_naudio_cbfd(void)
 {
-    alist_process(ABI3, 0x10);
+   /* TODO: see what differs from alist_process_naudio_mp3 */
+   static const acmd_callback_t ABI[0x10] = {
+      UNKNOWN, ADPCM, CLEARBUFF, ENVMIXER,
+      LOADBUFF, RESAMPLE, SAVEBUFF, MP3,
+      MP3ADDY, SETVOL, DMEMMOVE, LOADADPCM,
+      MIXER, INTERLEAVE, NAUDIO_14, SETLOOP
+   };
+
+   alist_process(ABI, 0x10);
 }
