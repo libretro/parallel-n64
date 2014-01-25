@@ -143,10 +143,10 @@ static void uc2_vertex_neon(void)
    }
 
    uint32_t geom_mode = rdp.geom_mode;
-   if ((settings.hacks&hack_Fzero) && (rdp.geom_mode & 0x40000))
+   if ((settings.hacks&hack_Fzero) && (rdp.geom_mode & G_TEXTURE_GEN))
    {
       if (((int16_t*)gfx.RDRAM)[(((addr) >> 1) + 4)^1] || ((int16_t*)gfx.RDRAM)[(((addr) >> 1) + 5)^1])
-         rdp.geom_mode ^= 0x40000;
+         rdp.geom_mode ^= G_TEXTURE_GEN;
    }
 
    float32x4_t comb0, comb1, comb2, comb3;
@@ -201,7 +201,7 @@ static void uc2_vertex_neon(void)
          v->vec[1] = ((int8_t*)gfx.RDRAM)[(addr+i + 13)^3];
          v->vec[2] = ((int8_t*)gfx.RDRAM)[(addr+i + 14)^3];
          //	  FRDP("Calc light. x: %f, y: %f z: %f\n", v->vec[0], v->vec[1], v->vec[2]);
-         //      if (!(rdp.geom_mode & 0x800000))
+         //      if (!(rdp.geom_mode & G_CLIPPING))
          {
             if (rdp.geom_mode & G_TEXTURE_GEN)
             {
@@ -333,7 +333,7 @@ static void uc2_vertex(void)
          v->vec[1] = ((int8_t*)gfx.RDRAM)[(addr+i + 13)^3];
          v->vec[2] = ((int8_t*)gfx.RDRAM)[(addr+i + 14)^3];
          //	  FRDP("Calc light. x: %f, y: %f z: %f\n", v->vec[0], v->vec[1], v->vec[2]);
-         //      if (!(rdp.geom_mode & 0x800000))
+         //      if (!(rdp.geom_mode & G_CLIPPING))
          {
             if (rdp.geom_mode & G_TEXTURE_GEN)
             {
@@ -763,7 +763,7 @@ static void uc2_moveword(void)
          break;
 
       case G_MW_CLIP:
-         if (offset == 0x04)
+         if (offset == G_MW_CLIP)
          {
             rdp.clip_ratio = squareRoot((float)rdp.cmd1);
             rdp.update |= UPDATE_VIEWPORT;

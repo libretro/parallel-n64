@@ -133,7 +133,7 @@ static void uc8_vertex(void)
       FRDP ("r: %02lx, g: %02lx, b: %02lx, a: %02lx\n", v->r, v->g, v->b, v->a);
 #endif
 
-      if ((rdp.geom_mode & 0x00020000))
+      if ((rdp.geom_mode & G_LIGHTING))
       {
          uint32_t shift = v0 << 1;
          v->vec[0] = ((int8_t*)gfx.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 0)^3];
@@ -441,10 +441,7 @@ static void uc8_movemem(void)
 static void uc8_tri4(void) //by Gugaman Apr 19 2002
 {
    if (rdp.skip_drawing)
-   {
-      LRDP("uc8:tri4. skipped\n");
       return;
-   }
 
    FRDP("uc8:tri4 (#%d - #%d), %d-%d-%d, %d-%d-%d, %d-%d-%d, %d-%d-%d\n",
          rdp.tri_n,

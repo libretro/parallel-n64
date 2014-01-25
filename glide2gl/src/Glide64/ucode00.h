@@ -728,7 +728,7 @@ static void uc0_moveword(void)
          //FRDP ("numlights: %d\n", rdp.num_lights);
          break;
       case G_MW_CLIP:
-         if (((rdp.cmd0>>8)&0xFFFF) == 0x04)
+         if (((rdp.cmd0>>8)&0xFFFF) == G_MW_CLIP)
          {
             rdp.clip_ratio = squareRoot((float)rdp.cmd1);
             rdp.update |= UPDATE_VIEWPORT;
@@ -786,7 +786,8 @@ static void uc0_moveword(void)
 static void uc0_texture(void)
 {
    int tile = (rdp.cmd0 >> 8) & 0x07;
-   if (tile == 7 && (settings.hacks&hack_Supercross)) tile = 0; //fix for supercross 2000
+   if (tile == 7 && (settings.hacks&hack_Supercross))
+      tile = 0; //fix for supercross 2000
    rdp.mipmap_level = (rdp.cmd0 >> 11) & 0x07;
    uint32_t on = (rdp.cmd0 & 0xFF);
    rdp.cur_tile = tile;
@@ -934,7 +935,7 @@ static void uc0_setothermode_l(void)
 
    if (mask & ZBUF_COMPARE)  // z-src selection
    {
-      rdp.zsrc = (rdp.othermode_l & 0x00000004) >> 2;
+      rdp.zsrc = (rdp.othermode_l & G_SHADE) >> 2;
       rdp.update |= UPDATE_ZBUF_ENABLED;
       //FRDP ("z-src sel: %s\n", str_zs[rdp.zsrc]);
       //FRDP ("z-src sel: %08lx\n", rdp.zsrc);

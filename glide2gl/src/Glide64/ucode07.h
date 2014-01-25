@@ -138,7 +138,7 @@ static void uc7_vertex(void)
       v->a = color[0];
       CalculateFog (v);
 
-      if (rdp.geom_mode & 0x00020000)
+      if (rdp.geom_mode & G_LIGHTING)
       {
          v->vec[0] = (int8_t)color[3];
          v->vec[1] = (int8_t)color[2];

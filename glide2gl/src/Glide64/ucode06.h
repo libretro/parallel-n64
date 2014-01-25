@@ -709,7 +709,7 @@ static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
   d->imageSiz    = ((uint8_t *)gfx.RDRAM)[(((addr+11)<<1)+1)^3]; // |
   d->imagePal    = ((uint16_t *)gfx.RDRAM)[(addr+12)^1]; // 12
   uint16_t imageFlip = ((uint16_t *)gfx.RDRAM)[(addr+13)^1];    // 13;
-  d->flipX       = (uint8_t)imageFlip&0x01;
+  d->flipX       = (uint8_t)imageFlip & G_BG_FLAG_FLIPS;
 
   if (bReadScale)
   {
@@ -1040,14 +1040,14 @@ static void uc6_obj_rectangle ()
   float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
   float lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
 
-  if (d.imageFlags & 0x01) //flipS
+  if (d.imageFlags & G_BG_FLAG_FLIPS) /* flipS */
   {
     ul_u = lr_u;
     lr_u = 0.5f;
   }
   else
     ul_u = 0.5f;
-  if (d.imageFlags & 0x10) //flipT
+  if (d.imageFlags & G_BG_FLAG_FLIPT) //flipT
   {
     ul_v = lr_v;
     lr_v = 0.5f;
@@ -1090,14 +1090,14 @@ static void uc6_obj_sprite(void)
   float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
   float lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
 
-  if (d.imageFlags & 0x01) //flipS
+  if (d.imageFlags & G_BG_FLAG_FLIPS) /* flipS */
   {
     ul_u = lr_u;
     lr_u = 0.5f;
   }
   else
     ul_u = 0.5f;
-  if (d.imageFlags & 0x10) //flipT
+  if (d.imageFlags & G_BG_FLAG_FLIPT) /* flipT */
   {
     ul_v = lr_v;
     lr_v = 0.5f;
@@ -1259,14 +1259,14 @@ static void uc6_obj_rectangle_r(void)
    float lr_u = 255.0f * rdp.cur_cache[0]->scale_x;
    float lr_v = 255.0f * rdp.cur_cache[0]->scale_y;
 
-   if (d.imageFlags & 0x01) //flipS
+   if (d.imageFlags & G_BG_FLAG_FLIPS) //flipS
    {
       ul_u = lr_u;
       lr_u = 0.5f;
    }
    else
       ul_u = 0.5f;
-   if (d.imageFlags&0x10) //flipT
+   if (d.imageFlags & G_BG_FLAG_FLIPT) //flipT
    {
       ul_v = lr_v;
       lr_v = 0.5f;

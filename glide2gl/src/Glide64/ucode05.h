@@ -302,7 +302,7 @@ static void uc5_moveword(void)
          FRDP ("matrix billboard - %s\n", str_offon[billboarding]);
          break;
 
-      case 0x04:  // clip (verified same)
+      case G_MW_CLIP:  // clip (verified same)
          if (((rdp.cmd0>>8)&0xFFFF) == 0x04)
          {
             rdp.clip_ratio = squareRoot((float)rdp.cmd1);
@@ -311,12 +311,12 @@ static void uc5_moveword(void)
          FRDP ("clip %08lx, %08lx\n", rdp.cmd0, rdp.cmd1);
          break;
 
-      case 0x06:  // segment (verified same)
+      case G_MW_SEGMENT:  // segment (verified same)
          FRDP ("segment: %08lx -> seg%d\n", rdp.cmd1, (rdp.cmd0 >> 10) & 0x0F);
          rdp.segment[(rdp.cmd0 >> 10) & 0x0F] = rdp.cmd1;
          break;
 
-      case 0x08:
+      case G_MW_FOG:
          {
             rdp.fog_multiplier = (int16_t)(rdp.cmd1 >> 16);
             rdp.fog_offset = (int16_t)(rdp.cmd1 & 0x0000FFFF);
