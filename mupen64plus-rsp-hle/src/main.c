@@ -417,8 +417,6 @@ EXPORT void CALL hleRomClosed(void)
 {
     memset(rspInfo.DMEM, 0, 0x1000);
     memset(rspInfo.IMEM, 0, 0x1000);
-
-    init_ucode2();
 }
 
 

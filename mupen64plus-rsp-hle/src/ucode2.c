@@ -51,21 +51,21 @@ static struct
     uint32_t filter_lut_address[2];
 } l_alist;
 
-static void SPNOOP (uint32_t w1, uint32_t w2) {
-    RSP_DEBUG_MESSAGE(M64MSG_ERROR, "Unknown/Unimplemented Audio Command %i in ABI 2", (int32_t)(w1 >> 24));
-}
-
-extern const uint16_t ResampleLUT [0x200];
-
-bool isMKABI = false;
-bool isZeldaABI = false;
-
-void init_ucode2()
+/* audio commands definition */
+static void UNKNOWN(uint32_t w1, uint32_t w2)
 {
-   isMKABI = isZeldaABI = false;
+   uint8_t acmd = (w1 >> 24);
+
+   DebugMessage(M64MSG_WARNING,
+         "Unknown audio comand %d: %08x %08x",
+         acmd, w1, w2);
 }
 
-static void LOADADPCM2 (uint32_t w1, uint32_t w2)
+static void SPNOOP(uint32_t w1, uint32_t w2)
+{
+}
+
+static void LOADADPCM(uint32_t w1, uint32_t w2)
 {
    uint16_t count = (w1 & 0xffff);
    uint32_t address = (w2 & 0xffffff);
@@ -73,18 +73,19 @@ static void LOADADPCM2 (uint32_t w1, uint32_t w2)
    dram_load_u16((uint16_t*)l_alist.table, address, count >> 1);
 }
 
-static void SETLOOP2 (uint32_t w1, uint32_t w2) {
+static void SETLOOP(uint32_t w1, uint32_t w2)
+{
     l_alist.loop = w2 & 0xffffff; // No segment?
 }
 
-static void SETBUFF2 (uint32_t w1, uint32_t w2)
+static void SETBUFF(uint32_t w1, uint32_t w2)
 {
    l_alist.in   = w1;
    l_alist.out  = (w2 >> 16);
    l_alist.count = w2;
 }
 
-static void ADPCM2 (uint32_t w1, uint32_t w2)
+static void ADPCM(uint32_t w1, uint32_t w2)
 {
    uint8_t flags = (w1 >> 16);
    uint32_t address = (w2 & 0xffffff);
@@ -101,7 +102,7 @@ static void ADPCM2 (uint32_t w1, uint32_t w2)
          address);
 }
 
-static void CLEARBUFF2 (uint32_t w1, uint32_t w2)
+static void CLEARBUFF(uint32_t w1, uint32_t w2)
 {
    uint16_t dmem  = w1;
    uint16_t count = w2;
@@ -112,7 +113,7 @@ static void CLEARBUFF2 (uint32_t w1, uint32_t w2)
    alist_clear(dmem, count);
 }
 
-static void LOADBUFF2 (uint32_t w1, uint32_t w2)
+static void LOADBUFF(uint32_t w1, uint32_t w2)
 {
    uint16_t count = (w1 >> 12) & 0xfff;
    uint16_t dmem = (w1 & 0xfff);
@@ -121,7 +122,7 @@ static void LOADBUFF2 (uint32_t w1, uint32_t w2)
    alist_load(dmem & ~3, address & ~3, (count + 3) & ~3);
 }
 
-static void SAVEBUFF2 (uint32_t w1, uint32_t w2)
+static void SAVEBUFF(uint32_t w1, uint32_t w2)
 {
    uint16_t count = (w1 >> 12) & 0xfff;
    uint16_t dmem = (w1 & 0xfff);
@@ -130,8 +131,7 @@ static void SAVEBUFF2 (uint32_t w1, uint32_t w2)
    alist_save(dmem & ~3, address & ~3, (count + 3) & ~3);
 }
 
-
-static void MIXER2 (uint32_t w1, uint32_t w2)
+static void MIXER(uint32_t w1, uint32_t w2)
 {
    uint16_t count = (w1 >> 12) & 0xff0;
    int16_t  gain  = w1;
@@ -142,7 +142,7 @@ static void MIXER2 (uint32_t w1, uint32_t w2)
 }
 
 
-static void RESAMPLE2 (uint32_t w1, uint32_t w2)
+static void RESAMPLE(uint32_t w1, uint32_t w2)
 {
    uint8_t flags = (w1 >> 16);
    uint16_t pitch = w1;
@@ -157,7 +157,7 @@ static void RESAMPLE2 (uint32_t w1, uint32_t w2)
          address);
 }
 
-static void DMEMMOVE2 (uint32_t w1, uint32_t w2)
+static void DMEMMOVE(uint32_t w1, uint32_t w2)
 {
    uint16_t dmemi = w1;
    uint16_t dmemo = (w2 >> 16);
@@ -169,25 +169,57 @@ static void DMEMMOVE2 (uint32_t w1, uint32_t w2)
    alist_move(dmemo, dmemi, (count + 3) & ~3);
 }
 
+static void ENVSETUP1_MK(uint32_t w1, uint32_t w2)
+{
+   l_alist.env_values[2] = (w1 >> 8) & 0xff00;
+   l_alist.env_steps[2]  = 0;
+   l_alist.env_steps[0]  = (w2 >> 16);
+   l_alist.env_steps[1]  = w2;
+}
+
+
 static void ENVSETUP1 (uint32_t w1, uint32_t w2)
 {
     l_alist.env_values[2] = (w1 >> 8) & 0xff00;
     l_alist.env_steps[2] = w1;
     l_alist.env_steps[0] = (w2 >> 16);
     l_alist.env_steps[1] = w2;
-
-    /* FIXME: MKABI needs its own ABI */
-    if (isMKABI)
-        l_alist.env_steps[2] = 0;
 }
 
-static void ENVSETUP2 (uint32_t w1, uint32_t w2)
+static void ENVSETUP2(uint32_t w1, uint32_t w2)
 {
    l_alist.env_values[0] = (w2 >> 16);
    l_alist.env_values[1] = w2;
 }
 
-static void ENVMIXER2 (uint32_t w1, uint32_t w2)
+static void ENVMIXER_MK(uint32_t w1, uint32_t w2)
+{
+   int16_t xors[4];
+
+   uint16_t dmemi = (w1 >> 12) & 0xff0;
+   uint8_t  count = (w1 >>  8) & 0xff;
+
+   xors[2] = 0;    /* unsupported by this ucode */
+   xors[3] = 0;    /* unsupported by this ucode */
+   xors[0] = 0 - (int16_t)((w1 & 0x2) >> 1);
+   xors[1] = 0 - (int16_t)((w1 & 0x1)     );
+
+   uint16_t dmem_dl = (w2 >> 20) & 0xff0;
+   uint16_t dmem_dr = (w2 >> 12) & 0xff0;
+   uint16_t dmem_wl = (w2 >>  4) & 0xff0;
+   uint16_t dmem_wr = (w2 <<  4) & 0xff0;
+
+   alist_envmix_nead(
+         false,  /* unsupported by this ucode */
+         dmem_dl, dmem_dr,
+         dmem_wl, dmem_wr,
+         dmemi, count,
+         l_alist.env_values,
+         l_alist.env_steps,
+         xors);
+}
+
+static void ENVMIXER(uint32_t w1, uint32_t w2)
 {
    int16_t xors[4];
 
@@ -203,14 +235,6 @@ static void ENVMIXER2 (uint32_t w1, uint32_t w2)
    uint16_t dmem_wl = (w2 >> 4) & 0xff0;
    uint16_t dmem_wr = (w2 << 4) & 0xff0;
 
-   /* FIXME: MKABI needs its own ABI */
-   if (isMKABI)
-   {
-      swap_wet_LR = 0;
-      xors[2] = 0;
-      xors[3] = 0;
-   }
-
    alist_envmix_nead(
          swap_wet_LR,
          dmem_dl, dmem_dr,
@@ -221,7 +245,7 @@ static void ENVMIXER2 (uint32_t w1, uint32_t w2)
          xors);
 }
 
-static void DUPLICATE2(uint32_t w1, uint32_t w2)
+static void DUPLICATE(uint32_t w1, uint32_t w2)
 {
    uint8_t count = (w1 >> 16);
    uint16_t dmemi = w1;
@@ -230,7 +254,7 @@ static void DUPLICATE2(uint32_t w1, uint32_t w2)
    alist_repeat64(dmemo, dmemi, count);
 }
 
-static void INTERL2 (uint32_t w1, uint32_t w2)
+static void INTERL(uint32_t w1, uint32_t w2)
 {
    uint16_t count = w1;
    uint16_t dmemi = (w2 >> 16);
@@ -239,22 +263,25 @@ static void INTERL2 (uint32_t w1, uint32_t w2)
    alist_copy_every_other_sample(dmemo, dmemi, count);
 }
 
-static void INTERLEAVE2 (uint32_t w1, uint32_t w2)
+static void INTERLEAVE_MK(uint32_t w1, uint32_t w2)
 {
-   uint16_t dmemo;
-   uint16_t count = ((w1 >> 12) & 0xff0);
    uint16_t left = (w2 >> 16);
    uint16_t right = w2;
 
-   /* FIXME: needs ABI splitting */
-   if (count == 0) {
-      count = l_alist.count;
-      dmemo = l_alist.out;
-   }
-   else
-      dmemo = w1;
+   if (l_alist.count == 0)
+      return;
 
-   alist_interleave(dmemo, left, right, count);
+   alist_interleave(l_alist.out, left, right, l_alist.count);
+}
+
+static void INTERLEAVE(uint32_t w1, uint32_t w2)
+{
+    uint16_t count = ((w1 >> 12) & 0xff0);
+    uint16_t dmemo = w1;
+    uint16_t left = (w2 >> 16);
+    uint16_t right = w2;
+
+    alist_interleave(dmemo, left, right, count);
 }
 
 static void ADDMIXER (uint32_t w1, uint32_t w2)
@@ -274,7 +301,7 @@ static void HILOGAIN (uint32_t w1, uint32_t w2)
    alist_multQ44(dmem, count, gain);
 }
 
-static void FILTER2 (uint32_t w1, uint32_t w2)
+static void FILTER(uint32_t w1, uint32_t w2)
 {
    uint8_t flags = (w1 >> 16);
    uint32_t address = (w2 & 0xffffff);
@@ -293,103 +320,185 @@ static void FILTER2 (uint32_t w1, uint32_t w2)
    }
 }
 
-static void SEGMENT2 (uint32_t w1, uint32_t w2)
+static void SEGMENT(uint32_t w1, uint32_t w2)
 {
-   if (isZeldaABI)
-   {
-      FILTER2 (w1, w2);
-      return;
-   }
-   if ((w1 & 0xffffff) == 0)
-      isMKABI = true;
-   else
-   {
-      isMKABI = false;
-      isZeldaABI = true;
-      FILTER2 (w1, w2);
-   }
 }
 
-static void UNKNOWN (uint32_t w1, uint32_t w2) {
+static void NEAD_16(uint32_t w1, uint32_t w2)
+{
 }
-/*
-void (*ABI2[0x20])(void) = {
-    SPNOOP, ADPCM2, CLEARBUFF2, SPNOOP, SPNOOP, RESAMPLE2, SPNOOP, SEGMENT2,
-    SETBUFF2, SPNOOP, DMEMMOVE2, LOADADPCM2, MIXER2, INTERLEAVE2, HILOGAIN, SETLOOP2,
-    SPNOOP, INTERL2, ENVSETUP1, ENVMIXER2, LOADBUFF2, SAVEBUFF2, ENVSETUP2, SPNOOP,
-    SPNOOP, SPNOOP, SPNOOP, SPNOOP, SPNOOP, SPNOOP, SPNOOP, SPNOOP
-};*/
 
-static const acmd_callback_t ABI2[0x20] = {
-    SPNOOP , ADPCM2, CLEARBUFF2, UNKNOWN, ADDMIXER, RESAMPLE2, UNKNOWN, SEGMENT2,
-    SETBUFF2 , DUPLICATE2, DMEMMOVE2, LOADADPCM2, MIXER2, INTERLEAVE2, HILOGAIN, SETLOOP2,
-    SPNOOP, INTERL2 , ENVSETUP1, ENVMIXER2, LOADBUFF2, SAVEBUFF2, ENVSETUP2, SPNOOP,
-    HILOGAIN , SPNOOP, DUPLICATE2 , UNKNOWN    , SPNOOP  , SPNOOP    , SPNOOP  , SPNOOP
-};
-/*
-void (*ABI2[0x20])(void) = {
-    SPNOOP , ADPCM2, CLEARBUFF2, SPNOOP, SPNOOP, RESAMPLE2  , SPNOOP  , SEGMENT2,
-    SETBUFF2 , DUPLICATE2, DMEMMOVE2, LOADADPCM2, MIXER2, INTERLEAVE2, SPNOOP, SETLOOP2,
-    SPNOOP, INTERL2 , ENVSETUP1, ENVMIXER2, LOADBUFF2, SAVEBUFF2, ENVSETUP2, SPNOOP,
-    SPNOOP , SPNOOP, SPNOOP , SPNOOP    , SPNOOP  , SPNOOP    , SPNOOP  , SPNOOP
-};*/
-/* NOTES:
+static void POLEF(uint32_t w1, uint32_t w2)
+{
+}
 
-  FILTER/SEGMENT - Still needs to be finished up... add FILTER?
-  UNKNOWWN #27   - Is this worth doing?  Looks like a pain in the ass just for WaveRace64
-*/
+static void RESAMPLE_ZOH(uint32_t w1, uint32_t w2)
+{
+}
 
 void alist_process_mk(void)
 {
-    alist_process(ABI2, 0x20);
-}
+    static const acmd_callback_t ABI[0x20] = {
+        SPNOOP, ADPCM, CLEARBUFF, SPNOOP,
+        SPNOOP, RESAMPLE, SPNOOP, SEGMENT,
+        SETBUFF, SPNOOP, DMEMMOVE, LOADADPCM,
+        MIXER, INTERLEAVE_MK, POLEF, SETLOOP,
+        NEAD_16, INTERL, ENVSETUP1_MK, ENVMIXER_MK,
+        LOADBUFF, SAVEBUFF, ENVSETUP2, SPNOOP,
+        SPNOOP, SPNOOP, SPNOOP, SPNOOP,
+        SPNOOP, SPNOOP, SPNOOP, SPNOOP
+    };
 
-void alist_process_sfj(void)
-{
-    alist_process(ABI2, 0x20);
-}
-
-void alist_process_wrjb(void)
-{
-    alist_process(ABI2, 0x20);
+    alist_process(ABI, 0x20);
 }
 
 void alist_process_sf(void)
 {
-    alist_process(ABI2, 0x20);
+    static const acmd_callback_t ABI[0x20] = {
+        SPNOOP, ADPCM, CLEARBUFF, SPNOOP,
+        ADDMIXER, RESAMPLE, RESAMPLE_ZOH, SPNOOP,
+        SETBUFF, SPNOOP, DMEMMOVE, LOADADPCM,
+        MIXER, INTERLEAVE_MK, POLEF, SETLOOP,
+        NEAD_16, INTERL, ENVSETUP1, ENVMIXER,
+        LOADBUFF, SAVEBUFF, ENVSETUP2, SPNOOP,
+        HILOGAIN, UNKNOWN, DUPLICATE, SPNOOP,
+        SPNOOP, SPNOOP, SPNOOP, SPNOOP
+    };
+
+    alist_process(ABI, 0x20);
 }
 
+void alist_process_sfj(void)
+{
+    static const acmd_callback_t ABI[0x20] = {
+        SPNOOP, ADPCM, CLEARBUFF, SPNOOP,
+        ADDMIXER, RESAMPLE, RESAMPLE_ZOH, SPNOOP,
+        SETBUFF, SPNOOP, DMEMMOVE, LOADADPCM,
+        MIXER, INTERLEAVE_MK, POLEF, SETLOOP,
+        NEAD_16, INTERL, ENVSETUP1, ENVMIXER,
+        LOADBUFF, SAVEBUFF, ENVSETUP2, UNKNOWN,
+        HILOGAIN, UNKNOWN, DUPLICATE, SPNOOP,
+        SPNOOP, SPNOOP, SPNOOP, SPNOOP
+    };
+
+    alist_process(ABI, 0x20);
+}
+
+/* F-Zero X */
 void alist_process_fz(void)
 {
-    alist_process(ABI2, 0x20);
+    static const acmd_callback_t ABI[0x20] = {
+        UNKNOWN, ADPCM, CLEARBUFF, SPNOOP,
+        ADDMIXER, RESAMPLE, SPNOOP, SPNOOP,
+        SETBUFF, SPNOOP, DMEMMOVE, LOADADPCM,
+        MIXER, INTERLEAVE, SPNOOP, SETLOOP,
+        NEAD_16, INTERL, ENVSETUP1, ENVMIXER,
+        LOADBUFF, SAVEBUFF, ENVSETUP2, UNKNOWN,
+        SPNOOP, UNKNOWN, DUPLICATE, SPNOOP,
+        SPNOOP, SPNOOP, SPNOOP, SPNOOP
+    };
+
+    alist_process(ABI, 0x20);
+}
+
+void alist_process_wrjb(void)
+{
+    static const acmd_callback_t ABI[0x20] = {
+        SPNOOP, ADPCM, CLEARBUFF, UNKNOWN,
+        ADDMIXER, RESAMPLE, RESAMPLE_ZOH, SPNOOP,
+        SETBUFF, SPNOOP, DMEMMOVE, LOADADPCM,
+        MIXER, INTERLEAVE, SPNOOP, SETLOOP,
+        NEAD_16, INTERL, ENVSETUP1, ENVMIXER,
+        LOADBUFF, SAVEBUFF, ENVSETUP2, UNKNOWN,
+        HILOGAIN, UNKNOWN, DUPLICATE, FILTER,
+        SPNOOP, SPNOOP, SPNOOP, SPNOOP
+    };
+
+    alist_process(ABI, 0x20);
 }
 
 void alist_process_ys(void)
 {
-    alist_process(ABI2, 0x20);
+    static const acmd_callback_t ABI[0x18] = {
+        UNKNOWN, ADPCM, CLEARBUFF, UNKNOWN,
+        ADDMIXER, RESAMPLE, RESAMPLE_ZOH, FILTER,
+        SETBUFF, DUPLICATE, DMEMMOVE, LOADADPCM,
+        MIXER, INTERLEAVE, HILOGAIN, SETLOOP,
+        NEAD_16, INTERL, ENVSETUP1, ENVMIXER,
+        LOADBUFF, SAVEBUFF, ENVSETUP2, UNKNOWN
+    };
+
+    alist_process(ABI, 0x18);
 }
 
+/* 1080 Snowboarding */
 void alist_process_1080(void)
 {
-    alist_process(ABI2, 0x20);
+    static const acmd_callback_t ABI[0x18] = {
+        UNKNOWN, ADPCM, CLEARBUFF, UNKNOWN,
+        ADDMIXER, RESAMPLE, RESAMPLE_ZOH, FILTER,
+        SETBUFF, DUPLICATE, DMEMMOVE, LOADADPCM,
+        MIXER, INTERLEAVE, HILOGAIN, SETLOOP,
+        NEAD_16, INTERL, ENVSETUP1, ENVMIXER,
+        LOADBUFF, SAVEBUFF, ENVSETUP2, UNKNOWN
+    };
+
+    alist_process(ABI, 0x18);
 }
 
+/* Legend of Zelda: Ocarina of Time */
 void alist_process_oot(void)
 {
-    alist_process(ABI2, 0x20);
+    static const acmd_callback_t ABI[0x18] = {
+        UNKNOWN, ADPCM, CLEARBUFF, UNKNOWN,
+        ADDMIXER, RESAMPLE, RESAMPLE_ZOH, FILTER,
+        SETBUFF, DUPLICATE, DMEMMOVE, LOADADPCM,
+        MIXER, INTERLEAVE, HILOGAIN, SETLOOP,
+        NEAD_16, INTERL, ENVSETUP1, ENVMIXER,
+        LOADBUFF, SAVEBUFF, ENVSETUP2, UNKNOWN
+    };
+
+    alist_process(ABI, 0x18);
 }
 
 void alist_process_mm(void)
 {
-    alist_process(ABI2, 0x20);
+    static const acmd_callback_t ABI[0x18] = {
+        UNKNOWN, ADPCM, CLEARBUFF, SPNOOP,
+        ADDMIXER, RESAMPLE, RESAMPLE_ZOH, FILTER,
+        SETBUFF, DUPLICATE, DMEMMOVE, LOADADPCM,
+        MIXER, INTERLEAVE, HILOGAIN, SETLOOP,
+        NEAD_16, INTERL, ENVSETUP1, ENVMIXER,
+        LOADBUFF, SAVEBUFF, ENVSETUP2, UNKNOWN
+    };
+
+    alist_process(ABI, 0x18);
 }
 
 void alist_process_mmb(void)
 {
-    alist_process(ABI2, 0x20);
+    static const acmd_callback_t ABI[0x18] = {
+        SPNOOP, ADPCM, CLEARBUFF, SPNOOP,
+        ADDMIXER, RESAMPLE, RESAMPLE_ZOH, FILTER,
+        SETBUFF, DUPLICATE, DMEMMOVE, LOADADPCM,
+        MIXER, INTERLEAVE, HILOGAIN, SETLOOP,
+        NEAD_16, INTERL, ENVSETUP1, ENVMIXER,
+        LOADBUFF, SAVEBUFF, ENVSETUP2, UNKNOWN
+    };
+
+    alist_process(ABI, 0x18);
 }
 
 void alist_process_ac(void)
 {
-    alist_process(ABI2, 0x20);
+    static const acmd_callback_t ABI[0x18] = {
+        UNKNOWN, ADPCM, CLEARBUFF, SPNOOP,
+        ADDMIXER, RESAMPLE, RESAMPLE_ZOH, FILTER,
+        SETBUFF, DUPLICATE, DMEMMOVE, LOADADPCM,
+        MIXER, INTERLEAVE, HILOGAIN, SETLOOP,
+        NEAD_16, INTERL, ENVSETUP1, ENVMIXER,
+        LOADBUFF, SAVEBUFF, ENVSETUP2, UNKNOWN
+    };
+
+    alist_process(ABI, 0x18);
 }
