@@ -355,6 +355,15 @@ static void POLEF(uint32_t w1, uint32_t w2)
 
 static void RESAMPLE_ZOH(uint32_t w1, uint32_t w2)
 {
+   uint16_t pitch = w1;
+   uint16_t pitch_accu = w2;
+
+   alist_resample_zoh(
+         l_alist.out,
+         l_alist.in,
+         l_alist.count,
+         pitch << 1,
+         pitch_accu);
 }
 
 void alist_process_mk(void)
