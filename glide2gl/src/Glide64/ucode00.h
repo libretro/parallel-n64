@@ -126,9 +126,9 @@ static void rsp_vertex(int v0, int n)
          v->vec[0] = ((int8_t*)gfx.RDRAM)[(addr+i + 12)^3];
          v->vec[1] = ((int8_t*)gfx.RDRAM)[(addr+i + 13)^3];
          v->vec[2] = ((int8_t*)gfx.RDRAM)[(addr+i + 14)^3];
-         if (rdp.geom_mode & 0x40000)
+         if (rdp.geom_mode & G_TEXTURE_GEN)
          {
-            if (rdp.geom_mode & 0x80000)
+            if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
                calc_linear (v);
             else
                calc_sphere (v);

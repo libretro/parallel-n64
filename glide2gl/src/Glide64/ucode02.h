@@ -203,22 +203,12 @@ static void uc2_vertex_neon(void)
          //	  FRDP("Calc light. x: %f, y: %f z: %f\n", v->vec[0], v->vec[1], v->vec[2]);
          //      if (!(rdp.geom_mode & 0x800000))
          {
-            if (rdp.geom_mode & 0x40000)
+            if (rdp.geom_mode & G_TEXTURE_GEN)
             {
-               if (rdp.geom_mode & 0x80000)
-               {
+               if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
                   calc_linear (v);
-#ifdef EXTREME_LOGGING
-                  FRDP ("calc linear: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
-#endif
-               }
                else
-               {
                   calc_sphere (v);
-#ifdef EXTREME_LOGGING
-                  FRDP ("calc sphere: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
-#endif
-               }
             }
          }
          if (rdp.geom_mode & 0x00400000)
@@ -294,10 +284,10 @@ static void uc2_vertex(void)
    }
 
    uint32_t geom_mode = rdp.geom_mode;
-   if ((settings.hacks&hack_Fzero) && (rdp.geom_mode & 0x40000))
+   if ((settings.hacks&hack_Fzero) && (rdp.geom_mode & G_TEXTURE_GEN))
    {
       if (((int16_t*)gfx.RDRAM)[(((addr) >> 1) + 4)^1] || ((int16_t*)gfx.RDRAM)[(((addr) >> 1) + 5)^1])
-         rdp.geom_mode ^= 0x40000;
+         rdp.geom_mode ^= G_TEXTURE_GEN;
    }
 
    for (i=0; i < (n<<4); i+=16)
@@ -345,22 +335,12 @@ static void uc2_vertex(void)
          //	  FRDP("Calc light. x: %f, y: %f z: %f\n", v->vec[0], v->vec[1], v->vec[2]);
          //      if (!(rdp.geom_mode & 0x800000))
          {
-            if (rdp.geom_mode & 0x40000)
+            if (rdp.geom_mode & G_TEXTURE_GEN)
             {
-               if (rdp.geom_mode & 0x80000)
-               {
+               if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
                   calc_linear (v);
-#ifdef EXTREME_LOGGING
-                  FRDP ("calc linear: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
-#endif
-               }
                else
-               {
                   calc_sphere (v);
-#ifdef EXTREME_LOGGING
-                  FRDP ("calc sphere: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
-#endif
-               }
             }
          }
          if (rdp.geom_mode & 0x00400000)

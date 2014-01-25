@@ -144,20 +144,10 @@ static void uc7_vertex(void)
          v->vec[1] = (int8_t)color[2];
          v->vec[2] = (int8_t)color[1];
 
-         if (rdp.geom_mode & 0x80000) 
-         {
-            calc_linear (v);
-#ifdef EXTREME_LOGGING
-            FRDP ("calc linear: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
-#endif
-         }
-         else if (rdp.geom_mode & 0x40000) 
-         {
-            calc_sphere (v);
-#ifdef EXTREME_LOGGING
-            FRDP ("calc sphere: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
-#endif
-         }
+         if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR) 
+            calc_linear(v);
+         else if (rdp.geom_mode & G_TEXTURE_GEN) 
+            calc_sphere(v);
 
          NormalizeVector (v->vec);
 

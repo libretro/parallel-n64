@@ -140,20 +140,10 @@ static void uc8_vertex(void)
          v->vec[1] = ((int8_t*)gfx.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 1)^3];
          v->vec[2] = (int8_t)(v->flags&0xff);
 
-         if (rdp.geom_mode & 0x80000)
-         {
+         if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
             calc_linear (v);
-#ifdef EXTREME_LOGGING
-            FRDP ("calc linear: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
-#endif
-         }
-         else if (rdp.geom_mode & 0x40000)
-         {
+         else if (rdp.geom_mode & G_TEXTURE_GEN)
             calc_sphere (v);
-#ifdef EXTREME_LOGGING
-            FRDP ("calc sphere: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
-#endif
-         }
          //     FRDP("calc light. r: 0x%02lx, g: 0x%02lx, b: 0x%02lx, nx: %.3f, ny: %.3f, nz: %.3f\n", v->r, v->g, v->b, v->vec[0], v->vec[1], v->vec[2]);
          FRDP("v[%d] calc light. r: 0x%02lx, g: 0x%02lx, b: 0x%02lx\n", i>>4, v->r, v->g, v->b);
          float color[3] = {rdp.light[rdp.num_lights].r, rdp.light[rdp.num_lights].g, rdp.light[rdp.num_lights].b};
