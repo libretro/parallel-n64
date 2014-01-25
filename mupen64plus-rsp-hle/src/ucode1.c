@@ -330,6 +330,7 @@ void alist_process_audio(void)
    alist_process(ABI, 0x10);
 }
 
+/* GoldenEye 007 */
 void alist_process_audio_ge(void)
 {
     /* TODO: see what differs from alist_process_audio */
@@ -342,6 +343,7 @@ void alist_process_audio_ge(void)
     alist_process(ABI, 0x10);
 }
 
+/* Blast Corps */
 void alist_process_audio_bc(void)
 {
    /* TODO: see what differs from alist_process_audio */
@@ -353,39 +355,3 @@ void alist_process_audio_bc(void)
    };
    alist_process(ABI, 0x10);
 }
-
-/*  BACKUPS
-void MIXER (uint32_t w1, uint32_t w2) { // Fixed a sign issue... 03-14-01
-    uint16_t dmemin  = (uint16_t)(w2 >> 0x10);
-    uint16_t dmemout = (uint16_t)(w2 & 0xFFFF);
-    uint16_t gain    = (uint16_t)(w1 & 0xFFFF);
-    uint8_t  flags   = (uint8_t)((w1 >> 16) & 0xff);
-    uint64_t temp;
-
-    if (l_alist.count == 0)
-        return;
-
-    for (int32_t x=0; x < l_alist.count; x+=2) { // I think I can do this a lot easier
-        temp = (int64_t)(*(int16_t *)(BufferSpace+dmemout+x)) * (int64_t)((int16_t)(0x7FFF)*2);
-
-        if (temp & 0x8000)
-            temp = (temp^0x8000) + 0x10000;
-        else
-            temp = (temp^0x8000);
-
-        temp = (temp & 0xFFFFFFFFFFFF);
-
-        temp += ((*(int16_t *)(BufferSpace+dmemin+x) * (int64_t)((int16_t)gain*2))) & 0xFFFFFFFFFFFF;
-            
-        temp = (int32_t)(temp >> 16);
-        if ((int32_t)temp > 32767) 
-            temp = 32767;
-        if ((int32_t)temp < -32768) 
-            temp = -32768;
-
-        *(uint16_t *)(BufferSpace+dmemout+x) = (uint16_t)(temp & 0xFFFF);
-    }
-}
-*/
-
-
