@@ -118,8 +118,9 @@ Address/Range       Description
 0xF80..0xFFF        <Unknown>
 ***************************************************/
 
-static void SPNOOP (uint32_t w1, uint32_t w2) {
-    //MessageBox (NULL, "Unknown Audio Command in ABI 1", "Audio HLE Error", MB_OK);
+/* audio commands definition */
+static void SPNOOP (uint32_t w1, uint32_t w2)
+{
 }
 
 static void CLEARBUFF (uint32_t w1, uint32_t w2)
@@ -187,9 +188,8 @@ static void SETVOL (uint32_t w1, uint32_t w2)
    }
 }
 
-static void UNKNOWN (uint32_t w1, uint32_t w2) {}
-
-static void SETLOOP (uint32_t w1, uint32_t w2) {
+static void SETLOOP (uint32_t w1, uint32_t w2)
+{
     l_alist.loop = (w2 & 0xffffff);// + SEGMENTS[(w2>>24)&0xf];
     //l_alist.target[0]  = (int16_t)(l_alist.loop >> 16);        // m_LeftVol
     //l_alist.rate[0] = (int16_t)(l_alist.loop);    // m_LeftVolTarget
@@ -307,25 +307,51 @@ static void MIXER (uint32_t w1, uint32_t w2)
 //Command: RESAMPLE - Calls:  48 - Total Time: 276354 - Avg Time:  5757.38 - Percent: 22.95%
 
 
-static const acmd_callback_t ABI1[0x10] = { // TOP Performace Hogs: MIXER, RESAMPLE, ENVMIXER
-    SPNOOP , ADPCM , CLEARBUFF, ENVMIXER  , LOADBUFF, RESAMPLE  , SAVEBUFF, UNKNOWN,
-    SETBUFF, SETVOL, DMEMMOVE , LOADADPCM , MIXER   , INTERLEAVE, UNKNOWN , SETLOOP
-};
+static void SEGMENT(uint32_t w1, uint32_t w2)
+{
+   /* TODO */
+}
+
+static void POLEF(uint32_t w1, uint32_t w2)
+{
+   /* TODO */
+}
+
 
 /* global functions */
 void alist_process_audio(void)
 {
-    alist_process(ABI1, 0x10);
+   static const acmd_callback_t ABI[0x10] = { // TOP Performace Hogs: MIXER, RESAMPLE, ENVMIXER
+      SPNOOP,     ADPCM,      CLEARBUFF,  ENVMIXER, 
+      LOADBUFF,   RESAMPLE,   SAVEBUFF,   SEGMENT,
+      SETBUFF,    SETVOL,     DMEMMOVE,   LOADADPCM,
+      MIXER,      INTERLEAVE, POLEF,      SETLOOP
+   };
+   alist_process(ABI, 0x10);
 }
 
 void alist_process_audio_ge(void)
 {
-    alist_process(ABI1, 0x10);
+    /* TODO: see what differs from alist_process_audio */
+    static const acmd_callback_t ABI[0x10] = {
+        SPNOOP,         ADPCM ,         CLEARBUFF,      ENVMIXER,
+        LOADBUFF,       RESAMPLE,       SAVEBUFF,       SEGMENT,
+        SETBUFF,        SETVOL,         DMEMMOVE,       LOADADPCM,
+        MIXER,          INTERLEAVE,     POLEF,          SETLOOP
+    };
+    alist_process(ABI, 0x10);
 }
 
 void alist_process_audio_bc(void)
 {
-    alist_process(ABI1, 0x10);
+   /* TODO: see what differs from alist_process_audio */
+   static const acmd_callback_t ABI[0x10] = {
+      SPNOOP,         ADPCM ,         CLEARBUFF,      ENVMIXER,
+      LOADBUFF,       RESAMPLE,       SAVEBUFF,       SEGMENT,
+      SETBUFF,        SETVOL,         DMEMMOVE,       LOADADPCM,
+      MIXER,          INTERLEAVE,     POLEF,          SETLOOP
+   };
+   alist_process(ABI, 0x10);
 }
 
 /*  BACKUPS
