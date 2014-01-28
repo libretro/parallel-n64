@@ -115,6 +115,9 @@ SHADER_VARYING
 "                                  \n"
 "void main()                       \n"
 "{                                 \n"
+"  vec2 tex_pix_a,tex_pix_b,tex_pix_c,half_tex,UVCentered;  \n"
+"  vec4 sample_a,sample_b,sample_c;    \n"
+"  float interp_x,interp_y;            \n"
 ;
 
 // using gl_FragCoord is terribly slow on ATI and varying variables don't work for some unknown
@@ -128,8 +131,20 @@ static const char* fragment_shader_default =
 "  gl_FragColor = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
 ;
 
-static const char* fragment_shader_readtex0color =
-"  vec4 readtex0 = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
+static const char* fragment_shader_readtex0color =		
+"  tex_pix_a = vec2(1.0/realTextureSizes.x,0);  \n"
+"  tex_pix_b = vec2(0.0,1.0/realTextureSizes.y);  \n"
+"  tex_pix_c = vec2(tex_pix_a.x,tex_pix_b.y);  \n"
+"  half_tex = vec2(tex_pix_a.x*0.5,tex_pix_b.y*0.5);  \n"
+"  UVCentered = gl_TexCoord[0].xy - half_tex;  \n"
+"  vec4 readtex0 = texture2D(texture0,UVCentered);    \n"
+"  sample_a = texture2D(texture0,UVCentered+tex_pix_a);    \n"
+"  sample_b = texture2D(texture0,UVCentered+tex_pix_b);    \n"
+"  sample_c = texture2D(texture0,UVCentered+tex_pix_c);    \n"
+"  interp_x = fract(UVCentered.x * realTextureSizes.x);    \n"
+"  interp_y = fract(UVCentered.y * realTextureSizes.y);    \n"
+"  readtex0 = (readtex0 + interp_x * (sample_a - readtex0) + interp_y * (sample_b - readtex0))*(1-step(1, interp_x + interp_y));      \n"
+"  readtex0 += (sample_c + (1-interp_x) * (sample_b - sample_c) + (1-interp_y) * (sample_a - sample_c))*step(1, interp_x + interp_y);        \n"
 ;
 
 static const char* fragment_shader_readtex0bw =
@@ -142,23 +157,19 @@ static const char* fragment_shader_readtex0bw_2 =
 ;
 
 static const char* fragment_shader_readtex1color =
-//"  vec4 readtex1 = texture2D(texture1, vec2(gl_TexCoord[1])); \n"
-"  vec2 texSize = realTextureSizes.zw; \n"
-//"  texSize = vec2(64.0,64.0);  \n"
-"  vec2 tex_pix_a = vec2(1.0/texSize.x,0);  \n"
-"  vec2 tex_pix_b = vec2(0.0,1.0/texSize.y);  \n"
-"  vec2 tex_pix_c = vec2(tex_pix_a.x,tex_pix_b.y);  \n"
-"  vec2 half_tex = vec2(tex_pix_a.x*0.5,tex_pix_b.y*0.5);  \n"
-"  vec2 UVCentered = gl_TexCoord[1].xy - half_tex;  \n"
-"  vec4 diffuseColor = texture2D(texture1,UVCentered);    \n"
-"  vec4 sample_a = texture2D(texture1,UVCentered+tex_pix_a);    \n"
-"  vec4 sample_b = texture2D(texture1,UVCentered+tex_pix_b);    \n"
-"  vec4 sample_c = texture2D(texture1,UVCentered+tex_pix_c);    \n"
-"  float interp_x = fract(UVCentered.x * texSize.x);    \n"
-"  float interp_y = fract(UVCentered.y * texSize.y);    \n"
-"  diffuseColor = (diffuseColor + interp_x * (sample_a - diffuseColor) + interp_y * (sample_b - diffuseColor))*(1-step(1, interp_x + interp_y));      \n"
-"  diffuseColor += (sample_c + (1-interp_x) * (sample_b - sample_c) + (1-interp_y) * (sample_a - sample_c))*step(1, interp_x + interp_y);        \n"
-"  vec4 readtex1 = diffuseColor ;  \n"
+"  tex_pix_a = vec2(1.0/realTextureSizes.z,0);  \n"
+"  tex_pix_b = vec2(0.0,1.0/realTextureSizes.w);  \n"
+"  tex_pix_c = vec2(tex_pix_a.x,tex_pix_b.y);  \n"
+"  half_tex = vec2(tex_pix_a.x*0.5,tex_pix_b.y*0.5);  \n"
+"  UVCentered = gl_TexCoord[1].xy - half_tex;  \n"
+"  vec4 readtex1 = texture2D(texture1,UVCentered);    \n"
+"  sample_a = texture2D(texture1,UVCentered+tex_pix_a);    \n"
+"  sample_b = texture2D(texture1,UVCentered+tex_pix_b);    \n"
+"  sample_c = texture2D(texture1,UVCentered+tex_pix_c);    \n"
+"  interp_x = fract(UVCentered.x * realTextureSizes.z);    \n"
+"  interp_y = fract(UVCentered.y * realTextureSizes.w);    \n"
+"  readtex1 = (readtex1 + interp_x * (sample_a - readtex1) + interp_y * (sample_b - readtex1))*(1-step(1, interp_x + interp_y));      \n"
+"  readtex1 += (sample_c + (1-interp_x) * (sample_b - sample_c) + (1-interp_y) * (sample_a - sample_c))*step(1, interp_x + interp_y);        \n"
 ;
 
 static const char* fragment_shader_readtex1bw =
