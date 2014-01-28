@@ -149,25 +149,16 @@ static const char* fragment_shader_readtex1color =
 "  vec2 tex_pix_b = vec2(0.0,1.0/texSize.y);  \n"
 "  vec2 tex_pix_c = vec2(tex_pix_a.x,tex_pix_b.y);  \n"
 "  vec2 half_tex = vec2(tex_pix_a.x*0.5,tex_pix_b.y*0.5);  \n"
-"  vec2 UVCentered = fract(gl_TexCoord[1].xy) - half_tex;  \n"
+"  vec2 UVCentered = gl_TexCoord[1].xy - half_tex;  \n"
 "  vec4 diffuseColor = texture2D(texture1,UVCentered);    \n"
 "  vec4 sample_a = texture2D(texture1,UVCentered+tex_pix_a);    \n"
 "  vec4 sample_b = texture2D(texture1,UVCentered+tex_pix_b);    \n"
 "  vec4 sample_c = texture2D(texture1,UVCentered+tex_pix_c);    \n"
 "  float interp_x = fract(UVCentered.x * texSize.x);    \n"
 "  float interp_y = fract(UVCentered.y * texSize.y);    \n"
-"  if (UVCentered.x < 0.0)     \n"
-"  {        \n"
-"     interp_x = 1-interp_x*(-1);     \n"
-"  }        \n"
-"  if (UVCentered.y < 0.0)        \n"
-"  {        \n"
-"     interp_y = 1-interp_y*(-1);      \n"
-"  }        \n"
 "  diffuseColor = (diffuseColor + interp_x * (sample_a - diffuseColor) + interp_y * (sample_b - diffuseColor))*(1-step(1, interp_x + interp_y));      \n"
 "  diffuseColor += (sample_c + (1-interp_x) * (sample_b - sample_c) + (1-interp_y) * (sample_a - sample_c))*step(1, interp_x + interp_y);        \n"
 "  vec4 readtex1 = diffuseColor ;  \n"
-
 ;
 
 static const char* fragment_shader_readtex1bw =
