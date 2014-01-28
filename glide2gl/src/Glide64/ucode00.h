@@ -349,6 +349,75 @@ static void uc0_matrix(void)
    //FRDP ("{%f,%f,%f,%f}\n", rdp.proj[3][0], rdp.proj[3][1], rdp.proj[3][2], rdp.proj[3][3]);
 }
 
+static void gSPViewport(void)
+{
+   int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
+   uint32_t a;
+   a = (segoffset(rdp.cmd1) & 0xFFFFFF) >> 1;
+
+   scale_x = ((int16_t*)gfx.RDRAM)[(a+0)^1] / 4;
+   scale_y = ((int16_t*)gfx.RDRAM)[(a+1)^1] / 4;
+   scale_z = ((int16_t*)gfx.RDRAM)[(a+2)^1];
+   trans_x = ((int16_t*)gfx.RDRAM)[(a+4)^1] / 4;
+   trans_y = ((int16_t*)gfx.RDRAM)[(a+5)^1] / 4;
+   trans_z = ((int16_t*)gfx.RDRAM)[(a+6)^1];
+   if (settings.correct_viewport)
+   {
+      scale_x = abs(scale_x);
+      scale_y = abs(scale_y);
+   }
+   rdp.view_scale[0] = scale_x * rdp.scale_x;
+   rdp.view_scale[1] = -scale_y * rdp.scale_y;
+   rdp.view_scale[2] = 32.0f * scale_z;
+   rdp.view_trans[0] = trans_x * rdp.scale_x;
+   rdp.view_trans[1] = trans_y * rdp.scale_y;
+   rdp.view_trans[2] = 32.0f * trans_z;
+
+   // there are other values than x and y, but I don't know what they do
+
+   rdp.update |= UPDATE_VIEWPORT;
+}
+
+static void gSPLight(unsigned index)
+{
+   uint32_t a = segoffset(rdp.cmd1) & 0x00ffffff;
+
+   // Get the data
+   rdp.light[index].r = (float)(((uint8_t*)gfx.RDRAM)[(a+0)^3]) / 255.0f;
+   rdp.light[index].g = (float)(((uint8_t*)gfx.RDRAM)[(a+1)^3]) / 255.0f;
+   rdp.light[index].b = (float)(((uint8_t*)gfx.RDRAM)[(a+2)^3]) / 255.0f;
+   rdp.light[index].a = 1.0f;
+   // ** Thanks to Icepir8 for pointing this out **
+   // Lighting must be signed byte instead of byte
+   rdp.light[index].dir_x = (float)(((int8_t*)gfx.RDRAM)[(a+8)^3]) / 127.0f;
+   rdp.light[index].dir_y = (float)(((int8_t*)gfx.RDRAM)[(a+9)^3]) / 127.0f;
+   rdp.light[index].dir_z = (float)(((int8_t*)gfx.RDRAM)[(a+10)^3]) / 127.0f;
+   // **
+
+   //rdp.update |= UPDATE_LIGHTS;
+
+   //FRDP ("light: n: %d, r: %.3f, g: %.3f, b: %.3f, x: %.3f, y: %.3f, z: %.3f\n", i, rdp.light[i].r, rdp.light[i].g, rdp.light[i].b, rdp.light_vector[i][0], rdp.light_vector[i][1], rdp.light_vector[i][2]);
+}
+
+//gSPForceMatrix command. Modification of uc2_movemem:matrix. Gonetz.
+static void gSPForceMatrix(void)
+{
+   uint32_t addr;
+   // do not update the combined matrix!
+   rdp.update &= ~UPDATE_MULT_MAT;
+
+   addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
+   load_matrix(rdp.combined, addr);
+
+   addr = rdp.pc[rdp.pc_i] & BMASK;
+   rdp.pc[rdp.pc_i] = (addr+24) & BMASK; //skip next 3 command, b/c they all are part of gSPForceMatrix
+
+   //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
+   //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
+   //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
+   //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
+}
+
 //
 // uc0:movemem - loads a structure with data
 //
@@ -362,35 +431,8 @@ static void uc0_movemem(void)
    switch ((rdp.cmd0 >> 16) & 0xFF)
    {
       case F3D_MV_VIEWPORT:
-         {
-            a = (segoffset(rdp.cmd1) & 0xFFFFFF) >> 1;
-
-            int16_t scale_x = ((int16_t*)gfx.RDRAM)[(a+0)^1] / 4;
-            int16_t scale_y = ((int16_t*)gfx.RDRAM)[(a+1)^1] / 4;
-            int16_t scale_z = ((int16_t*)gfx.RDRAM)[(a+2)^1];
-            int16_t trans_x = ((int16_t*)gfx.RDRAM)[(a+4)^1] / 4;
-            int16_t trans_y = ((int16_t*)gfx.RDRAM)[(a+5)^1] / 4;
-            int16_t trans_z = ((int16_t*)gfx.RDRAM)[(a+6)^1];
-            if (settings.correct_viewport)
-            {
-               scale_x = abs(scale_x);
-               scale_y = abs(scale_y);
-            }
-            rdp.view_scale[0] = scale_x * rdp.scale_x;
-            rdp.view_scale[1] = -scale_y * rdp.scale_y;
-            rdp.view_scale[2] = 32.0f * scale_z;
-            rdp.view_trans[0] = trans_x * rdp.scale_x;
-            rdp.view_trans[1] = trans_y * rdp.scale_y;
-            rdp.view_trans[2] = 32.0f * trans_z;
-
-            // there are other values than x and y, but I don't know what they do
-
-            rdp.update |= UPDATE_VIEWPORT;
-
-            //FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, rdp.cmd1);
-         }
+         gSPViewport();
          break;
-
       case G_MV_LOOKATY:
          {
             a = segoffset(rdp.cmd1) & 0x00ffffff;
@@ -427,44 +469,13 @@ static void uc0_movemem(void)
       case G_MV_L7:
          // Get the light #
          i = (((rdp.cmd0 >> 16) & 0xff) - G_MV_L0) >> 1;
-         a = segoffset(rdp.cmd1) & 0x00ffffff;
-
-         // Get the data
-         rdp.light[i].r = (float)(((uint8_t*)gfx.RDRAM)[(a+0)^3]) / 255.0f;
-         rdp.light[i].g = (float)(((uint8_t*)gfx.RDRAM)[(a+1)^3]) / 255.0f;
-         rdp.light[i].b = (float)(((uint8_t*)gfx.RDRAM)[(a+2)^3]) / 255.0f;
-         rdp.light[i].a = 1.0f;
-         // ** Thanks to Icepir8 for pointing this out **
-         // Lighting must be signed byte instead of byte
-         rdp.light[i].dir_x = (float)(((int8_t*)gfx.RDRAM)[(a+8)^3]) / 127.0f;
-         rdp.light[i].dir_y = (float)(((int8_t*)gfx.RDRAM)[(a+9)^3]) / 127.0f;
-         rdp.light[i].dir_z = (float)(((int8_t*)gfx.RDRAM)[(a+10)^3]) / 127.0f;
-         // **
-
-         //rdp.update |= UPDATE_LIGHTS;
-
-         //FRDP ("light: n: %d, r: %.3f, g: %.3f, b: %.3f, x: %.3f, y: %.3f, z: %.3f\n", i, rdp.light[i].r, rdp.light[i].g, rdp.light[i].b, rdp.light_vector[i][0], rdp.light_vector[i][1], rdp.light_vector[i][2]);
+         gSPLight(i);
          break;
 
 
-      case G_MV_MATRIX_1:  //gSPForceMatrix command. Modification of uc2_movemem:matrix. Gonetz.
-         {
-            // do not update the combined matrix!
-            rdp.update &= ~UPDATE_MULT_MAT;
-
-            uint32_t addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
-            load_matrix(rdp.combined, addr);
-
-            addr = rdp.pc[rdp.pc_i] & BMASK;
-            rdp.pc[rdp.pc_i] = (addr+24) & BMASK; //skip next 3 command, b/c they all are part of gSPForceMatrix
-
-            //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
-            //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
-            //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
-            //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
-         }
+      case G_MV_MATRIX_1:
+         gSPForceMatrix();
          break;
-
          //next 3 command should never appear since they will be skipped in previous command
       case G_MV_MATRIX_2:
          //RDP_E ("uc0:movemem matrix 0 - ERROR!\n");
@@ -706,11 +717,38 @@ static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
    }
 }
 
+static void gSPModifyVertex(uint32_t w1)
+{
+   uint16_t val = (uint16_t)((rdp.cmd0 >> 8) & 0xFFFF);
+   uint16_t vtx = val / 40;
+   uint8_t where = val%40;
+   uc0_modifyvtx(where, vtx, w1);
+   //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
+}
+
+static void gSPFogFactor(void)
+{
+   rdp.fog_multiplier = (int16_t)(rdp.cmd1 >> 16);
+   rdp.fog_offset = (int16_t)(rdp.cmd1 & 0x0000FFFF);
+   //FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
+}
+
+static void gSPClipRatio(uint32_t w1)
+{
+   if (((rdp.cmd0 >> 8) & 0xFFFF) == G_MW_CLIP)
+   {
+      rdp.clip_ratio = squareRoot((float)w1);
+      rdp.update |= UPDATE_VIEWPORT;
+   }
+   //FRDP ("clip %08lx, %08lx\n", rdp.cmd0, w1);
+}
+
 //
 // uc0:moveword - moves a word to someplace, like the segment pointers
 //
 static void uc0_moveword(void)
 {
+   uint32_t w1 = rdp.cmd1;
    //LRDP("uc0:moveword ");
 
    // Find which command this is (lowest byte of cmd0)
@@ -722,54 +760,39 @@ static void uc0_moveword(void)
          break;
 
       case G_MW_NUMLIGHT:
-         rdp.num_lights = ((rdp.cmd1 - 0x80000000) >> 5) - 1;  // inverse of equation
+         rdp.num_lights = ((w1 - 0x80000000) >> 5) - 1;  // inverse of equation
          if (rdp.num_lights > 8)
             rdp.num_lights = NUMLIGHTS_0; rdp.update |= UPDATE_LIGHTS;
          //FRDP ("numlights: %d\n", rdp.num_lights);
          break;
       case G_MW_CLIP:
-         if (((rdp.cmd0>>8)&0xFFFF) == G_MW_CLIP)
-         {
-            rdp.clip_ratio = squareRoot((float)rdp.cmd1);
-            rdp.update |= UPDATE_VIEWPORT;
-         }
-         //FRDP ("clip %08lx, %08lx\n", rdp.cmd0, rdp.cmd1);
+         gSPClipRatio(w1);
          break;
 
       case G_MW_SEGMENT:  // segment
-         //FRDP ("segment: %08lx -> seg%d\n", rdp.cmd1, (rdp.cmd0 >> 10) & 0x0F);
-         if ((rdp.cmd1&BMASK)<BMASK)
-            rdp.segment[(rdp.cmd0 >> 10) & 0x0F] = rdp.cmd1;
+         //FRDP ("segment: %08lx -> seg%d\n", w1, (rdp.cmd0 >> 10) & 0x0F);
+         if ((w1 & BMASK) < BMASK)
+            rdp.segment[(rdp.cmd0 >> 10) & 0x0F] = w1;
          break;
 
       case G_MW_FOG:
-         {
-            rdp.fog_multiplier = (int16_t)(rdp.cmd1 >> 16);
-            rdp.fog_offset = (int16_t)(rdp.cmd1 & 0x0000FFFF);
-            //FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
-         }
+         gSPFogFactor();
          break;
 
       case G_MW_LIGHTCOL:  // moveword LIGHTCOL
          {
             int n = (rdp.cmd0&0xE000) >> 13;
-            //FRDP ("lightcol light:%d, %08lx\n", n, rdp.cmd1);
+            //FRDP ("lightcol light:%d, %08lx\n", n, w1);
 
-            rdp.light[n].r = (float)((rdp.cmd1 >> 24) & 0xFF) / 255.0f;
-            rdp.light[n].g = (float)((rdp.cmd1 >> 16) & 0xFF) / 255.0f;
-            rdp.light[n].b = (float)((rdp.cmd1 >> 8) & 0xFF) / 255.0f;
+            rdp.light[n].r = (float)((w1 >> 24) & 0xFF) / 255.0f;
+            rdp.light[n].g = (float)((w1 >> 16) & 0xFF) / 255.0f;
+            rdp.light[n].b = (float)((w1 >> 8) & 0xFF) / 255.0f;
             rdp.light[n].a = 255;
          }
          break;
 
       case G_MW_POINTS:
-         {
-            uint16_t val = (uint16_t)((rdp.cmd0 >> 8) & 0xFFFF);
-            uint16_t vtx = val / 40;
-            uint8_t where = val%40;
-            uc0_modifyvtx(where, vtx, rdp.cmd1);
-            //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, rdp.cmd1);
-         }
+         gSPModifyVertex(w1);
          break;
 
       case G_MW_PERSPNORM:
