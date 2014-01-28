@@ -1,3 +1,4 @@
+#test
 DEBUG=0
 GLIDE2GL=1
 PERF_TEST=0
