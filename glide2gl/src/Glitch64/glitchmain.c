@@ -75,14 +75,6 @@ static fb fbs[100];
 static int nb_fb = 0;
 static unsigned int curBufferAddr = 0;
 
-struct texbuf_t {
-  FxU32 start, end;
-  int fmt;
-};
-#define NB_TEXBUFS 128 // MUST be a power of two
-static struct texbuf_t texbufs[NB_TEXBUFS];
-static int texbuf_i;
-
 uint16_t *frameBuffer;
 uint16_t *depthBuffer;
 uint8_t  *buf;
@@ -301,12 +293,6 @@ grSstWinOpen(
    current_buffer = GL_BACK;
 
    texture_unit = GL_TEXTURE0;
-
-   {
-      int i;
-      for (i=0; i<NB_TEXBUFS; i++)
-         texbufs[i].start = texbufs[i].end = 0xffffffff;
-   }
 
    FindBestDepthBias();
 
