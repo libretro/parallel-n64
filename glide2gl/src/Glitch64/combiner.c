@@ -100,6 +100,7 @@ SHADER_HEADER
 "uniform sampler2D texture0;       \n"
 "uniform sampler2D texture1;       \n"
 "uniform sampler2D ditherTex;      \n"
+"uniform vec4 realTextureSizes;    \n"
 "uniform vec4 constant_color;      \n"
 "uniform vec4 ccolor0;             \n"
 "uniform vec4 ccolor1;             \n"
@@ -141,7 +142,32 @@ static const char* fragment_shader_readtex0bw_2 =
 ;
 
 static const char* fragment_shader_readtex1color =
-"  vec4 readtex1 = texture2D(texture1, vec2(gl_TexCoord[1])); \n"
+//"  vec4 readtex1 = texture2D(texture1, vec2(gl_TexCoord[1])); \n"
+"  vec2 texSize = realTextureSizes.zw; \n"
+//"  texSize = vec2(64.0,64.0);  \n"
+"  vec2 tex_pix_a = vec2(1.0/texSize.x,0);  \n"
+"  vec2 tex_pix_b = vec2(0.0,1.0/texSize.y);  \n"
+"  vec2 tex_pix_c = vec2(tex_pix_a.x,tex_pix_b.y);  \n"
+"  vec2 half_tex = vec2(tex_pix_a.x*0.5,tex_pix_b.y*0.5);  \n"
+"  vec2 UVCentered = gl_TexCoord[1].xy - half_tex;  \n"
+"  vec4 diffuseColor = texture2D(texture1,UVCentered);    \n"
+"  vec4 sample_a = texture2D(texture1,UVCentered+tex_pix_a);    \n"
+"  vec4 sample_b = texture2D(texture1,UVCentered+tex_pix_b);    \n"
+"  vec4 sample_c = texture2D(texture1,UVCentered+tex_pix_c);    \n"
+"  float interp_x = fract(UVCentered.x * texSize.x);    \n"
+"  float interp_y = fract(UVCentered.y * texSize.y);    \n"
+"  if (UVCentered.x < 0.0)     \n"
+"  {        \n"
+"     interp_x = 1-interp_x*(-1);     \n"
+"  }        \n"
+"  if (UVCentered.y < 0.0)        \n"
+"  {        \n"
+"     interp_y = 1-interp_y*(-1);      \n"
+"  }        \n"
+"  diffuseColor = (diffuseColor + interp_x * (sample_a - diffuseColor) + interp_y * (sample_b - diffuseColor))*(1-step(1, interp_x + interp_y));      \n"
+"  diffuseColor += (sample_c + (1-interp_x) * (sample_b - sample_c) + (1-interp_y) * (sample_a - sample_c))*step(1, interp_x + interp_y);        \n"
+"  vec4 readtex1 = diffuseColor ;  \n"
+
 ;
 
 static const char* fragment_shader_readtex1bw =
@@ -414,7 +440,8 @@ typedef struct _shader_program_key
    int texture0_location;
    int texture1_location;
    int vertexOffset_location;
-   int textureSizes_location;
+   int textureSizes_location;   
+   int realTextureSizes_location;
    int fogModeEndScale_location;
    int fogColor_location;
    int alphaRef_location;
@@ -436,8 +463,22 @@ void update_uniforms(shader_program_key prog)
    GL_CHECK(glUniform1i(prog.texture0_location, 0));
    GL_CHECK(glUniform1i(prog.texture1_location, 1));
 
+   GLint tex0W,tex0H,tex1W,tex1H;
+   glActiveTexture(GL_TEXTURE0);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_WIDTH,&tex0W);
+   glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_HEIGHT,&tex0H);
+
+   glActiveTexture(GL_TEXTURE1);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_WIDTH,&tex1W);
+   glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_HEIGHT,&tex1H);
+
    GL_CHECK(glUniform3f(prog.vertexOffset_location,widtho,heighto,inverted_culling ? -1.0f : 1.0f));
    GL_CHECK(glUniform4f(prog.textureSizes_location,tex0_width,tex0_height,tex1_width,tex1_height));
+   GL_CHECK(glUniform4f(prog.realTextureSizes_location,tex0W,tex0H,tex1W,tex1H));
 
    GL_CHECK(glUniform3f(prog.fogModeEndScale_location,
          fog_enabled != 2 ? 0.0f : 1.0f,
@@ -582,6 +623,7 @@ void compile_shader(void)
    shader_programs[number_of_programs].texture1_location = glGetUniformLocation(program_object, "texture1");
    shader_programs[number_of_programs].vertexOffset_location = glGetUniformLocation(program_object, "vertexOffset");
    shader_programs[number_of_programs].textureSizes_location = glGetUniformLocation(program_object, "textureSizes");
+   shader_programs[number_of_programs].realTextureSizes_location = glGetUniformLocation(program_object, "realTextureSizes");
    shader_programs[number_of_programs].fogModeEndScale_location = glGetUniformLocation(program_object, "fogModeEndScale");
    shader_programs[number_of_programs].fogColor_location = glGetUniformLocation(program_object, "fogColor");
    shader_programs[number_of_programs].alphaRef_location = glGetUniformLocation(program_object, "alphaRef");
