@@ -378,6 +378,39 @@ static void gSPViewport(void)
    rdp.update |= UPDATE_VIEWPORT;
 }
 
+static void gSPTexture(void)
+{
+   uint32_t on;
+   int tile;
+   tile = (rdp.cmd0 >> 8) & 0x07;
+   if (tile == 7 && (settings.hacks&hack_Supercross))
+      tile = 0; //fix for supercross 2000
+   rdp.mipmap_level = (rdp.cmd0 >> 11) & 0x07;
+   on = (rdp.cmd0 & 0xFF);
+   rdp.cur_tile = tile;
+
+   rdp.tiles[tile].on = 0;
+
+   if (on)
+   {
+      uint16_t s = (uint16_t)((rdp.cmd1 >> 16) & 0xFFFF);
+      uint16_t t = (uint16_t)(rdp.cmd1 & 0xFFFF);
+
+      TILE *tmp_tile = &rdp.tiles[tile];
+      tmp_tile->on = 1;
+      tmp_tile->org_s_scale = s;
+      tmp_tile->org_t_scale = t;
+      tmp_tile->s_scale = (float)(s+1)/65536.0f;
+      tmp_tile->t_scale = (float)(t+1)/65536.0f;
+      tmp_tile->s_scale /= 32.0f;
+      tmp_tile->t_scale /= 32.0f;
+
+      rdp.update |= UPDATE_TEXTURE;
+
+      //FRDP("uc0:texture: tile: %d, mipmap_lvl: %d, on: %d, s_scale: %f, t_scale: %f\n", tile, rdp.mipmap_level, on, tmp_tile->s_scale, tmp_tile->t_scale);
+   }
+}
+
 static void gSPLight(unsigned index)
 {
    uint32_t a = segoffset(rdp.cmd1) & 0x00ffffff;
@@ -806,38 +839,10 @@ static void uc0_moveword(void)
    }
 }
 
+
 static void uc0_texture(void)
 {
-   int tile = (rdp.cmd0 >> 8) & 0x07;
-   if (tile == 7 && (settings.hacks&hack_Supercross))
-      tile = 0; //fix for supercross 2000
-   rdp.mipmap_level = (rdp.cmd0 >> 11) & 0x07;
-   uint32_t on = (rdp.cmd0 & 0xFF);
-   rdp.cur_tile = tile;
-
-   if (on)
-   {
-      uint16_t s = (uint16_t)((rdp.cmd1 >> 16) & 0xFFFF);
-      uint16_t t = (uint16_t)(rdp.cmd1 & 0xFFFF);
-
-      TILE *tmp_tile = &rdp.tiles[tile];
-      tmp_tile->on = 1;
-      tmp_tile->org_s_scale = s;
-      tmp_tile->org_t_scale = t;
-      tmp_tile->s_scale = (float)(s+1)/65536.0f;
-      tmp_tile->t_scale = (float)(t+1)/65536.0f;
-      tmp_tile->s_scale /= 32.0f;
-      tmp_tile->t_scale /= 32.0f;
-
-      rdp.update |= UPDATE_TEXTURE;
-
-      //FRDP("uc0:texture: tile: %d, mipmap_lvl: %d, on: %d, s_scale: %f, t_scale: %f\n", tile, rdp.mipmap_level, on, tmp_tile->s_scale, tmp_tile->t_scale);
-   }
-   else
-   {
-      //LRDP("uc0:texture skipped b/c of off\n");
-      rdp.tiles[tile].on = 0;
-   }
+   gSPTexture();
 }
 
 static void uc0_setothermode_h(void)
