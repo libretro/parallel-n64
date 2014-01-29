@@ -289,7 +289,7 @@ static void core_gl_context_reset(void)
    if (gfx_plugin == GFX_GLIDE64 && emu_thread_has_run)
       InitGfx();
    else if (gfx_plugin == GFX_GLN64 && emu_thread_has_run)
-	  gles2n64_reset();
+      gles2n64_reset();
 }
 
 GLuint retro_get_fbo_id(void)
@@ -631,7 +631,7 @@ bool retro_load_game(const struct retro_game_info *game)
     game_size = game->size;
 
     main_thread = co_active();
-	emulator_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
+    emulator_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
 
     return true;
 }
