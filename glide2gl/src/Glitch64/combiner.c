@@ -130,8 +130,10 @@ static const char* fragment_shader_dither =
 static const char* fragment_shader_default =
 "  gl_FragColor = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
 ;
-
-static const char* fragment_shader_readtex0color =		
+static const char* fragment_shader_readtex0color =
+"  vec4 readtex0 = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
+;
+static const char* fragment_shader_readtex0color_3point =
 "  tex_pix_a = vec2(1.0/realTextureSizes.x,0);  \n"
 "  tex_pix_b = vec2(0.0,1.0/realTextureSizes.y);  \n"
 "  tex_pix_c = vec2(tex_pix_a.x,tex_pix_b.y);  \n"
@@ -157,6 +159,10 @@ static const char* fragment_shader_readtex0bw_2 =
 ;
 
 static const char* fragment_shader_readtex1color =
+"  vec4 readtex1 = texture2D(texture1, vec2(gl_TexCoord[1])); \n"
+;
+
+static const char* fragment_shader_readtex1color_3point =
 "  tex_pix_a = vec2(1.0/realTextureSizes.z,0);  \n"
 "  tex_pix_b = vec2(0.0,1.0/realTextureSizes.w);  \n"
 "  tex_pix_c = vec2(tex_pix_a.x,tex_pix_b.y);  \n"
@@ -236,11 +242,11 @@ SHADER_VARYING
 "}                                                                          \n" 
 ;
 
-static char fragment_shader_color_combiner[1024];
-static char fragment_shader_alpha_combiner[1024];
-static char fragment_shader_texture1[1024];
-static char fragment_shader_texture0[1024];
-static char fragment_shader_chroma[1024];
+static char fragment_shader_color_combiner[1024*2];
+static char fragment_shader_alpha_combiner[1024*2];
+static char fragment_shader_texture1[1024*2];
+static char fragment_shader_texture0[1024*2];
+static char fragment_shader_chroma[1024*2];
 static char shader_log[2048];
 
 void check_compile(GLuint shader)
@@ -467,14 +473,10 @@ void update_uniforms(shader_program_key prog)
 
    GLint tex0W,tex0H,tex1W,tex1H;
    glActiveTexture(GL_TEXTURE0);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
    glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_WIDTH,&tex0W);
    glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_HEIGHT,&tex0H);
 
    glActiveTexture(GL_TEXTURE1);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
    glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_WIDTH,&tex1W);
    glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_HEIGHT,&tex1H);
 
@@ -576,19 +578,20 @@ void compile_shader(void)
       compile_chroma_shader();
    }
 
-   fragment_shader = (char*)malloc(4096);
+   fragment_shader = (char*)malloc(4096*2);
 
    strcpy(fragment_shader, fragment_shader_header);
    if(dither_enabled) strcat(fragment_shader, fragment_shader_dither);
    switch (blackandwhite0) {
       case 1: strcat(fragment_shader, fragment_shader_readtex0bw); break;
       case 2: strcat(fragment_shader, fragment_shader_readtex0bw_2); break;
-      default: strcat(fragment_shader, fragment_shader_readtex0color);
+	  default: strcat(fragment_shader, three_point_filter0?fragment_shader_readtex0color_3point:fragment_shader_readtex0color);
    }
    switch (blackandwhite1) {
       case 1: strcat(fragment_shader, fragment_shader_readtex1bw); break;
       case 2: strcat(fragment_shader, fragment_shader_readtex1bw_2); break;
-      default: strcat(fragment_shader, fragment_shader_readtex1color);
+	  default: strcat(fragment_shader,  three_point_filter1?fragment_shader_readtex1color_3point:fragment_shader_readtex1color);
+	   printf("\n three_point_filter1: %i",three_point_filter1);
    }
    strcat(fragment_shader, fragment_shader_texture0);
    strcat(fragment_shader, fragment_shader_texture1);

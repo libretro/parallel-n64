@@ -772,12 +772,12 @@ void TexCache(void)
 
          if (settings.filtering == 0)
          {
-            int filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_BILINEAR;
+			int filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_3POINT_LINEAR;
             grTexFilterMode (tmu, filter, filter);
          }
          else
          {
-            int filter = (settings.filtering==1)?GR_TEXTUREFILTER_BILINEAR:GR_TEXTUREFILTER_POINT_SAMPLED;
+			int filter = (settings.filtering==1)?GR_TEXTUREFILTER_3POINT_LINEAR:(settings.filtering==2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_BILINEAR;
             grTexFilterMode (tmu, filter, filter);
          }
 

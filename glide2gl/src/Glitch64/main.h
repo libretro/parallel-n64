@@ -37,7 +37,7 @@
 #define LOG_TYPE stderr
 #endif
 
-
+//#define DEBUGLOG
 #ifdef DEBUGLOG
 #define LOG(...) WriteLog(M64MSG_VERBOSE, __VA_ARGS__)
 #define LOGINFO(...) WriteLog(M64MSG_INFO, __VA_ARGS__)
@@ -117,6 +117,7 @@ extern int lfb_color_fmt;
 extern int need_to_compile;
 extern int blackandwhite0;
 extern int blackandwhite1;
+extern int three_point_filter0,three_point_filter1;
 
 extern int blend_func_separate_support;
 extern int fog_coord_support;
