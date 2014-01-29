@@ -292,6 +292,7 @@ void ReadSettings(void)
          screen_height = 480;
       }
    }
+
    settings.scr_res_x = screen_width;
    settings.scr_res_y = screen_height;
    settings.res_x = 320;
