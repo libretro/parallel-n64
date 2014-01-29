@@ -1418,7 +1418,7 @@ void ReadSpecialSettings (const char * name)
       optimize_texrect = 0;
       hires = 1;
 #endif
-	  read_alpha =  1;
+	  read_alpha = 1;
       fb_crc_mode = 2;
    }
    else if (strstr(name, (const char*)"RAINBOW SIX"))
