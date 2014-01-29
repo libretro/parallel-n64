@@ -532,6 +532,10 @@ void ReadSpecialSettings (const char * name)
       settings. filtering = 1;
       //depthmode = 1
    }
+   else if (strstr(name, (const char *)"HYDRO THUNDER"))
+   {
+      settings. filtering = 1;
+   }
    else if (strstr(name, (const char *)"CENTRE COURT TENNIS"))
    {
       //soft_depth_compare = 1
