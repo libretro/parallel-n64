@@ -443,6 +443,8 @@ typedef struct _shader_program_key
    int dither_enabled;
    int blackandwhite0;
    int blackandwhite1;
+   int three_point_filter0;
+   int three_point_filter1;
    GLuint fragment_shader_object;
    GLuint program_object;
    int texture0_location;
@@ -530,6 +532,9 @@ void compile_shader(void)
    int i, chroma_color_location, log_length;
    char *fragment_shader;
 
+
+
+
    need_to_compile = 0;
 
    for( i = 0; i < number_of_programs; i++)
@@ -545,7 +550,9 @@ void compile_shader(void)
             prog.chroma_enabled == chroma_enabled &&
             prog.dither_enabled == dither_enabled &&
             prog.blackandwhite0 == blackandwhite0 &&
-            prog.blackandwhite1 == blackandwhite1)
+			prog.blackandwhite1 == blackandwhite1 &&
+			prog.three_point_filter0 == three_point_filter0 &&
+			prog.three_point_filter1 == three_point_filter1)
       {
          program_object = shader_programs[i].program_object;
          glUseProgram(program_object);
@@ -571,6 +578,8 @@ void compile_shader(void)
    shader_programs[number_of_programs].dither_enabled = dither_enabled;
    shader_programs[number_of_programs].blackandwhite0 = blackandwhite0;
    shader_programs[number_of_programs].blackandwhite1 = blackandwhite1;
+   shader_programs[number_of_programs].three_point_filter0 = three_point_filter0;
+   shader_programs[number_of_programs].three_point_filter1 = three_point_filter1;
 
    if(chroma_enabled)
    {

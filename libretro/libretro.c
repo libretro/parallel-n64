@@ -474,6 +474,8 @@ void update_variables(void)
 		  retro_filtering = 2;
 	  else if (strcmp(var.value, "bilinear") == 0)
 		  retro_filtering = 3;
+	  if (gfx_plugin == GFX_GLIDE64)
+		  glide_set_filtering(retro_filtering);
    }
 
    var.key = "mupen64-button-orientation-ab";
@@ -596,11 +598,7 @@ void update_variables(void)
       }
    }
 
-   if (retro_filtering != 0 && !initial_boot)
-   {
-      if (gfx_plugin == GFX_GLIDE64)
-         glide_set_filtering(retro_filtering);
-   }
+
 }
 
 bool retro_load_game(const struct retro_game_info *game)
