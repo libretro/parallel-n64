@@ -2486,7 +2486,6 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
    ReadSettings ();
    char name[21] = "DEFAULT";
    ReadSpecialSettings (name);
-
    settings.res_data_org = settings.res_data;
 
    gfx = Gfx_Info;
