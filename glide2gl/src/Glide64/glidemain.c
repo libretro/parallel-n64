@@ -338,7 +338,7 @@ void ReadSpecialSettings (const char * name)
    
    if (strstr(name, (const char *)"DEFAULT"))
    {
-	  settings.filtering = 0;
+      settings.filtering = 0;
       settings.buff_clear = 1;
       settings.swapmode = 1;
       settings.lodmode = 0;
@@ -1419,7 +1419,7 @@ void ReadSpecialSettings (const char * name)
       optimize_texrect = 0;
       hires = 1;
 #endif
-	  read_alpha = 1;
+      read_alpha = 1;
       fb_crc_mode = 2;
    }
    else if (strstr(name, (const char*)"RAINBOW SIX"))
@@ -1715,7 +1715,7 @@ void ReadSpecialSettings (const char * name)
    {
       //depth_bias = 60
       //wrap_big_tex = 1
-	  settings.filtering = 1;
+      settings.filtering = 1;
       smart_read = 1;
 #ifdef HAVE_HWFBE
       hires = 1;
