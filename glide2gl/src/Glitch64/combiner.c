@@ -100,6 +100,7 @@ SHADER_HEADER
 "uniform sampler2D texture0;       \n"
 "uniform sampler2D texture1;       \n"
 "uniform sampler2D ditherTex;      \n"
+"uniform vec4 realTextureSizes;    \n"
 "uniform vec4 constant_color;      \n"
 "uniform vec4 ccolor0;             \n"
 "uniform vec4 ccolor1;             \n"
@@ -114,6 +115,9 @@ SHADER_VARYING
 "                                  \n"
 "void main()                       \n"
 "{                                 \n"
+"  vec2 tex_pix_a,tex_pix_b,tex_pix_c,half_tex,UVCentered;  \n"
+"  vec4 sample_a,sample_b,sample_c;    \n"
+"  float interp_x,interp_y;            \n"
 ;
 
 // using gl_FragCoord is terribly slow on ATI and varying variables don't work for some unknown
@@ -126,9 +130,23 @@ static const char* fragment_shader_dither =
 static const char* fragment_shader_default =
 "  gl_FragColor = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
 ;
-
 static const char* fragment_shader_readtex0color =
 "  vec4 readtex0 = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
+;
+static const char* fragment_shader_readtex0color_3point =
+"  tex_pix_a = vec2(1.0/realTextureSizes.x,0);  \n"
+"  tex_pix_b = vec2(0.0,1.0/realTextureSizes.y);  \n"
+"  tex_pix_c = vec2(tex_pix_a.x,tex_pix_b.y);  \n"
+"  half_tex = vec2(tex_pix_a.x*0.5,tex_pix_b.y*0.5);  \n"
+"  UVCentered = gl_TexCoord[0].xy - half_tex;  \n"
+"  vec4 readtex0 = texture2D(texture0,UVCentered);    \n"
+"  sample_a = texture2D(texture0,UVCentered+tex_pix_a);    \n"
+"  sample_b = texture2D(texture0,UVCentered+tex_pix_b);    \n"
+"  sample_c = texture2D(texture0,UVCentered+tex_pix_c);    \n"
+"  interp_x = fract(UVCentered.x * realTextureSizes.x);    \n"
+"  interp_y = fract(UVCentered.y * realTextureSizes.y);    \n"
+"  readtex0 = (readtex0 + interp_x * (sample_a - readtex0) + interp_y * (sample_b - readtex0))*(1-step(1, interp_x + interp_y));      \n"
+"  readtex0 += (sample_c + (1-interp_x) * (sample_b - sample_c) + (1-interp_y) * (sample_a - sample_c))*step(1, interp_x + interp_y);        \n"
 ;
 
 static const char* fragment_shader_readtex0bw =
@@ -142,6 +160,22 @@ static const char* fragment_shader_readtex0bw_2 =
 
 static const char* fragment_shader_readtex1color =
 "  vec4 readtex1 = texture2D(texture1, vec2(gl_TexCoord[1])); \n"
+;
+
+static const char* fragment_shader_readtex1color_3point =
+"  tex_pix_a = vec2(1.0/realTextureSizes.z,0);  \n"
+"  tex_pix_b = vec2(0.0,1.0/realTextureSizes.w);  \n"
+"  tex_pix_c = vec2(tex_pix_a.x,tex_pix_b.y);  \n"
+"  half_tex = vec2(tex_pix_a.x*0.5,tex_pix_b.y*0.5);  \n"
+"  UVCentered = gl_TexCoord[1].xy - half_tex;  \n"
+"  vec4 readtex1 = texture2D(texture1,UVCentered);    \n"
+"  sample_a = texture2D(texture1,UVCentered+tex_pix_a);    \n"
+"  sample_b = texture2D(texture1,UVCentered+tex_pix_b);    \n"
+"  sample_c = texture2D(texture1,UVCentered+tex_pix_c);    \n"
+"  interp_x = fract(UVCentered.x * realTextureSizes.z);    \n"
+"  interp_y = fract(UVCentered.y * realTextureSizes.w);    \n"
+"  readtex1 = (readtex1 + interp_x * (sample_a - readtex1) + interp_y * (sample_b - readtex1))*(1-step(1, interp_x + interp_y));      \n"
+"  readtex1 += (sample_c + (1-interp_x) * (sample_b - sample_c) + (1-interp_y) * (sample_a - sample_c))*step(1, interp_x + interp_y);        \n"
 ;
 
 static const char* fragment_shader_readtex1bw =
@@ -208,11 +242,11 @@ SHADER_VARYING
 "}                                                                          \n" 
 ;
 
-static char fragment_shader_color_combiner[1024];
-static char fragment_shader_alpha_combiner[1024];
-static char fragment_shader_texture1[1024];
-static char fragment_shader_texture0[1024];
-static char fragment_shader_chroma[1024];
+static char fragment_shader_color_combiner[1024*2];
+static char fragment_shader_alpha_combiner[1024*2];
+static char fragment_shader_texture1[1024*2];
+static char fragment_shader_texture0[1024*2];
+static char fragment_shader_chroma[1024*2];
 static char shader_log[2048];
 
 void check_compile(GLuint shader)
@@ -414,7 +448,8 @@ typedef struct _shader_program_key
    int texture0_location;
    int texture1_location;
    int vertexOffset_location;
-   int textureSizes_location;
+   int textureSizes_location;   
+   int realTextureSizes_location;
    int fogModeEndScale_location;
    int fogColor_location;
    int alphaRef_location;
@@ -436,8 +471,18 @@ void update_uniforms(shader_program_key prog)
    GL_CHECK(glUniform1i(prog.texture0_location, 0));
    GL_CHECK(glUniform1i(prog.texture1_location, 1));
 
+   GLint tex0W,tex0H,tex1W,tex1H;
+   glActiveTexture(GL_TEXTURE0);
+   glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_WIDTH,&tex0W);
+   glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_HEIGHT,&tex0H);
+
+   glActiveTexture(GL_TEXTURE1);
+   glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_WIDTH,&tex1W);
+   glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_HEIGHT,&tex1H);
+
    GL_CHECK(glUniform3f(prog.vertexOffset_location,widtho,heighto,inverted_culling ? -1.0f : 1.0f));
    GL_CHECK(glUniform4f(prog.textureSizes_location,tex0_width,tex0_height,tex1_width,tex1_height));
+   GL_CHECK(glUniform4f(prog.realTextureSizes_location,tex0W,tex0H,tex1W,tex1H));
 
    GL_CHECK(glUniform3f(prog.fogModeEndScale_location,
          fog_enabled != 2 ? 0.0f : 1.0f,
@@ -533,19 +578,20 @@ void compile_shader(void)
       compile_chroma_shader();
    }
 
-   fragment_shader = (char*)malloc(4096);
+   fragment_shader = (char*)malloc(4096*2);
 
    strcpy(fragment_shader, fragment_shader_header);
    if(dither_enabled) strcat(fragment_shader, fragment_shader_dither);
    switch (blackandwhite0) {
       case 1: strcat(fragment_shader, fragment_shader_readtex0bw); break;
       case 2: strcat(fragment_shader, fragment_shader_readtex0bw_2); break;
-      default: strcat(fragment_shader, fragment_shader_readtex0color);
+	  default: strcat(fragment_shader, three_point_filter0?fragment_shader_readtex0color_3point:fragment_shader_readtex0color);
    }
    switch (blackandwhite1) {
       case 1: strcat(fragment_shader, fragment_shader_readtex1bw); break;
       case 2: strcat(fragment_shader, fragment_shader_readtex1bw_2); break;
-      default: strcat(fragment_shader, fragment_shader_readtex1color);
+	  default: strcat(fragment_shader,  three_point_filter1?fragment_shader_readtex1color_3point:fragment_shader_readtex1color);
+	   printf("\n three_point_filter1: %i",three_point_filter1);
    }
    strcat(fragment_shader, fragment_shader_texture0);
    strcat(fragment_shader, fragment_shader_texture1);
@@ -582,6 +628,7 @@ void compile_shader(void)
    shader_programs[number_of_programs].texture1_location = glGetUniformLocation(program_object, "texture1");
    shader_programs[number_of_programs].vertexOffset_location = glGetUniformLocation(program_object, "vertexOffset");
    shader_programs[number_of_programs].textureSizes_location = glGetUniformLocation(program_object, "textureSizes");
+   shader_programs[number_of_programs].realTextureSizes_location = glGetUniformLocation(program_object, "realTextureSizes");
    shader_programs[number_of_programs].fogModeEndScale_location = glGetUniformLocation(program_object, "fogModeEndScale");
    shader_programs[number_of_programs].fogColor_location = glGetUniformLocation(program_object, "fogColor");
    shader_programs[number_of_programs].alphaRef_location = glGetUniformLocation(program_object, "alphaRef");
