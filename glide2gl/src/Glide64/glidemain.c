@@ -337,7 +337,7 @@ void ReadSpecialSettings (const char * name)
    
    if (strstr(name, (const char *)"DEFAULT"))
    {
-      settings.filtering = 0;
+	  settings.filtering = 0;
       settings.buff_clear = 1;
       settings.swapmode = 1;
       settings.lodmode = 0;
@@ -445,7 +445,7 @@ void ReadSpecialSettings (const char * name)
       //depthmode = 0
    }
    // ;Bakushou Jinsei 64 - Mezease! Resort Ou.
-   else if (strstr(name, (const char *)"ï¿½Þ¸ï¿½ï¿½ï¿½ï¿½ï¿½Ý¾ï¿½64"))
+   else if (strstr(name, (const char *)"ÊÞ¸¼®³¼ÞÝ¾²64"))
    {
       //fb_info_disable = 1
       //depthmode = 0
@@ -728,7 +728,7 @@ void ReadSpecialSettings (const char * name)
       hires = 1;
 #endif
    }
-   else if (strstr(name, (const char *)"ï¿½ï¿½ï¿½ï¿½Ø°ï¿½G2"))
+   else if (strstr(name, (const char *)"´¸½ÄØ°ÑG2"))
    {
       //depthmode = 0
       smart_read = 0;
@@ -770,7 +770,7 @@ void ReadSpecialSettings (const char * name)
       hires = 1;
 #endif
    }
-   else if (strstr(name, (const char *)"ï¿½ï¿½ï¿½ï¿½É¾ï¿½Ä±ï¿½ï¿½ï¿½Ø­ï¿½ï¿½"))
+   else if (strstr(name, (const char *)"´²º³É¾ÝÄ±ÝÄÞØ­°½"))
    {
       //;Eikou no Saint Andrew
       settings.correct_viewport = 1;
@@ -848,7 +848,7 @@ void ReadSpecialSettings (const char * name)
       cpu_write_hack = 1;
       //depthmode = 0
    }
-   else if (strstr(name, (const char*)"ï¿½ï¿½×´ï¿½ï¿½3 ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½SOS!"))
+   else if (strstr(name, (const char*)"ÄÞ×´ÓÝ3 ÉËÞÀÉÏÁSOS!"))
    {
       //;Doraemon 3 - Nobita no Machi SOS! (J)
       settings.clip_zmin = 1;
@@ -889,7 +889,7 @@ void ReadSpecialSettings (const char * name)
       //depthmode = 0
       settings.buff_clear = 0;
    }
-   else if (strstr(name, (const char*)"F3 Ì³×²É¼ï¿½ï¿½2"))
+   else if (strstr(name, (const char*)"F3 Ì³×²É¼ÚÝ2"))
    {
       //;Fushigi no Dungeon - Furai no Shiren 2 (J) 
       settings.decrease_fillrect_edge = 1;
@@ -950,7 +950,7 @@ void ReadSpecialSettings (const char * name)
       settings.swapmode = 0;
    }
    else if (strstr(name, (const char*)"GANBAKE GOEMON") 
-         //|| strstr(name, (const char*)"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\ ï¿½Þ´ï¿½ï¿½") */ TODO: illegal characters - find by ucode CRC */
+         //|| strstr(name, (const char*)"¶ÞÝÊÞÚ\ ºÞ´ÓÝ") */ TODO: illegal characters - find by ucode CRC */
          || strstr(name, (const char*)"MYSTICAL NINJA")
          || strstr(name, (const char*)"MYSTICAL NINJA2 SG")
          )
@@ -997,14 +997,14 @@ void ReadSpecialSettings (const char * name)
       settings.filtering = 1;
       //depthmode = 1
    }
-   else if (strstr(name, (const char*)"ï¿½Ñ½ï¿½ï¿½ï¿½É¶ï¿½ï¿½ï¿½64")
+   else if (strstr(name, (const char*)"ÊÑ½À°ÓÉ¶ÞÀØ64")
          )
    {
       settings.force_microcheck = 1;
       //depthmode = 0
    }
    else if (strstr(name, (const char*)"HARVESTMOON64")
-         || strstr(name, (const char*)"ï¿½Þ¸ï¿½Þ®ï¿½ï¿½É¶ï¿½ï¿½ï¿½2")
+         || strstr(name, (const char*)"ÎÞ¸¼Þ®³ÓÉ¶ÞÀØ2")
          )
    {
       settings.zmode_compare_less = 1;
@@ -1063,7 +1063,7 @@ void ReadSpecialSettings (const char * name)
       //depthmode = 0
       settings.buff_clear = 0;
    }
-   else if (strstr(name, (const char*)"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½64"))
+   else if (strstr(name, (const char*)"ÓØÀ¼®³·Þ64"))
    {
       //;Morita Shogi 64
       settings.correct_viewport = 1;
@@ -1155,7 +1155,7 @@ void ReadSpecialSettings (const char * name)
       hires = 1;
 #endif
    }
-   else if (strstr(name, (const char*)"ï¿½ï¿½×´ï¿½ï¿½ Ð¯ï¿½É¾ï¿½Ú²ï¿½ï¿½"))
+   else if (strstr(name, (const char*)"ÄÞ×´ÓÝ Ð¯ÂÉ¾²Ú²¾·"))
    {
       //;Doraemon - Mittsu no Seireiseki (J)
       read_back_to_screen = 1;
@@ -1165,7 +1165,7 @@ void ReadSpecialSettings (const char * name)
       hires = 1;
 #endif
    }
-   else if (strstr(name, (const char*)"HEIWA ï¿½ï¿½ï¿½Ýº Ü°ï¿½ï¿½ï¿½64"))
+   else if (strstr(name, (const char*)"HEIWA ÊßÁÝº Ü°ÙÄÞ64"))
    {
       //; Heiwa Pachinko World
       //depthmode = 0
@@ -1176,13 +1176,13 @@ void ReadSpecialSettings (const char * name)
       hires = 1;
 #endif
    }
-   else if (strstr(name, (const char*)"ï¿½×¯Ä¶ï¿½ï¿½ï¿½ 64ï¿½ï¿½Ã²ï¿½ï¿½ï¿½"))
+   else if (strstr(name, (const char*)"·×¯Ä¶²¹Â 64ÀÝÃ²ÀÞÝ"))
    {
       settings.filtering = 1;
       //depthmode = 0
       settings.buff_clear = 0;
    }
-   else if (strstr(name, (const char*)"ï¿½ï¿½ï¿½ß°ï¿½ï¿½Þ¯ï¿½ï¿½ï¿½ï¿½ï¿½64"))
+   else if (strstr(name, (const char*)"½°Êß°ÛÎÞ¯ÄÀ²¾Ý64"))
    {
       //;Super Robot Taisen 64 (J)
       smart_read = 1;
@@ -1205,14 +1205,14 @@ void ReadSpecialSettings (const char * name)
    {
       no_audio = true;
    }
-   else if (strstr(name, (const char*)"ï¿½ï¿½ï¿½!ï¿½ï¿½ï¿½ï¿½ï¿½ß½ï¿½ï¿½ï¿½ï¿½ï¿½"))
+   else if (strstr(name, (const char*)"½½Ò!À²¾ÝÊß½ÞÙÀÞÏ"))
    {
       settings.force_microcheck = 1;
       //depthmode = 1
       settings.fog = 0;
       settings.swapmode = 0;
    }
-   else if (strstr(name, (const char*)"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÏºÞ¯ï¿½Ü°ï¿½ï¿½ï¿½"))
+   else if (strstr(name, (const char*)"ÐÝÅÃÞÀÏºÞ¯ÁÜ°ÙÄÞ"))
    {
       //;Tamagotchi World 64 (J) 
       //depthmode = 0
@@ -1269,7 +1269,7 @@ void ReadSpecialSettings (const char * name)
 #if 0
    // TODO: illegal characters - will have to find this game by ucode CRC
    // later
-   else if (strstr(name, (const char*)"JØ°ï¿½ï¿½\ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Þ°ï¿½1997"))
+   else if (strstr(name, (const char*)"JØ°¸Þ\ ²ÚÌÞÝËÞ°Ä1997"))
    {
       //;J.League Eleven Beat 1997
       smart_read = 1;
@@ -1306,7 +1306,7 @@ void ReadSpecialSettings (const char * name)
    {
       settings.buff_clear = 0;
    }
-   else if (strstr(name, (const char*)"Ç¼ï¿½ï¿½ï¿½64"))
+   else if (strstr(name, (const char*)"Ç¼ÂÞØ64"))
    {
       //; Nushi Zuri 64
       settings.force_microcheck = 1;
@@ -1418,7 +1418,7 @@ void ReadSpecialSettings (const char * name)
       optimize_texrect = 0;
       hires = 1;
 #endif
-      read_alpha = 1;
+	  read_alpha =  1;
       fb_crc_mode = 2;
    }
    else if (strstr(name, (const char*)"RAINBOW SIX"))
@@ -1714,7 +1714,7 @@ void ReadSpecialSettings (const char * name)
    {
       //depth_bias = 60
       //wrap_big_tex = 1
-      settings.filtering = 1;
+	  settings.filtering = 1;
       smart_read = 1;
 #ifdef HAVE_HWFBE
       hires = 1;
