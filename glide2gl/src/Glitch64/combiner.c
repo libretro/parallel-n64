@@ -591,7 +591,6 @@ void compile_shader(void)
       case 1: strcat(fragment_shader, fragment_shader_readtex1bw); break;
       case 2: strcat(fragment_shader, fragment_shader_readtex1bw_2); break;
 	  default: strcat(fragment_shader,  three_point_filter1?fragment_shader_readtex1color_3point:fragment_shader_readtex1color);
-	   printf("\n three_point_filter1: %i",three_point_filter1);
    }
    strcat(fragment_shader, fragment_shader_texture0);
    strcat(fragment_shader, fragment_shader_texture1);
