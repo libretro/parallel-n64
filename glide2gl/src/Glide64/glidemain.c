@@ -604,7 +604,6 @@ void ReadSpecialSettings (const char * name)
    {
       settings.force_microcheck = 1;
       settings.aspectmode = 2;
-      settings.filtering = 2;
       //depthmode = 1
    }
    else if (strstr(name, (const char*)"STAR SOLDIER"))
