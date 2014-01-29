@@ -578,6 +578,7 @@ void ReadSpecialSettings (const char * name)
       //mischief_tex_hack = 0
       //tex_wrap_hack = 0
       //depthmode = 1
+      settings.filtering = 1;
       settings.fog = 0;
    }
    else if (strstr(name, (const char*)"Tigger's Honey Hunt"))
