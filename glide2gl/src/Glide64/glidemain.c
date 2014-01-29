@@ -292,7 +292,6 @@ void ReadSettings(void)
          screen_height = 480;
       }
    }
-
    settings.scr_res_x = screen_width;
    settings.scr_res_y = screen_height;
    settings.res_x = 320;
@@ -338,7 +337,7 @@ void ReadSpecialSettings (const char * name)
    
    if (strstr(name, (const char *)"DEFAULT"))
    {
-      settings.filtering = 0;
+	  settings.filtering = 0;
       settings.buff_clear = 1;
       settings.swapmode = 1;
       settings.lodmode = 0;
@@ -1715,7 +1714,7 @@ void ReadSpecialSettings (const char * name)
    {
       //depth_bias = 60
       //wrap_big_tex = 1
-      settings.filtering = 1;
+	  settings.filtering = 1;
       smart_read = 1;
 #ifdef HAVE_HWFBE
       hires = 1;
@@ -2126,6 +2125,17 @@ void ReadSpecialSettings (const char * name)
    settings.frame_buffer |= fb_motionblur;
 
    settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
+
+   struct retro_variable var = { "mupen64-filtering", 0 };
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+	  if (strcmp(var.value, "N64 3-point") == 0)
+		 glide_set_filtering(1);
+	  else if (strcmp(var.value, "nearest") == 0)
+		 glide_set_filtering(2);
+	  else if (strcmp(var.value, "bilinear") == 0)
+		 glide_set_filtering(3);
+   }
 }
 
 int GetTexAddrUMA(int tmu, int texsize)
@@ -2476,6 +2486,7 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
    ReadSettings ();
    char name[21] = "DEFAULT";
    ReadSpecialSettings (name);
+
    settings.res_data_org = settings.res_data;
 
    gfx = Gfx_Info;
@@ -2733,10 +2744,13 @@ static void DrawWholeFrameBufferToScreen()
 }
 
 uint32_t curframe = 0;
-
+extern int need_to_compile;
 void glide_set_filtering(unsigned value)
 {
-   settings.filtering = value;
+	if(settings.filtering != value){
+		need_to_compile = 1;
+		settings.filtering = value;
+	}
 }
 
 void newSwapBuffers(void)
