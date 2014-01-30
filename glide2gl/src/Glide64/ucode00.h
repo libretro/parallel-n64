@@ -229,18 +229,15 @@ void modelview_push(void)
 }
 
 //gSPPopMatrixN
-void modelview_pop (int num)
+// FIXME - not consistent with glN64
+static void gSPPopMatrixN(uint32_t num)
 {
    if (rdp.model_i > num - 1)
-      rdp.model_i -= num;
-   else
    {
-      //RDP_E ("** Model matrix stack error ** too many pops\n");
-      //LRDP("** Model matrix stack error ** too many pops\n");
-      return;
+      rdp.model_i -= num;
+      memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
+      rdp.update |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
    }
-   memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
-   rdp.update |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
 }
 
 void modelview_load_push (float m[4][4])
@@ -669,7 +666,7 @@ static void uc0_popmatrix(uint32_t w0, uint32_t w1)
    switch (w1)
    {
       case 0: // modelview
-         modelview_pop(1);
+         gSPPopMatrixN(1);
          break;
       case 1: // projection, can't
          break;
@@ -768,10 +765,10 @@ static void gSPModifyVertex(uint32_t w1)
    //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
 }
 
-static void gSPFogFactor(void)
+static void gSPFogFactor(int16_t fm, int16_t fo)
 {
-   rdp.fog_multiplier = (int16_t)(rdp.cmd1 >> 16);
-   rdp.fog_offset = (int16_t)(rdp.cmd1 & 0x0000FFFF);
+   rdp.fog_multiplier = fm;
+   rdp.fog_offset = fo;
    //FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
 }
 
@@ -819,7 +816,7 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_FOG:
-         gSPFogFactor();
+         gSPFogFactor((int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ));
          break;
 
       case G_MW_LIGHTCOL:  // moveword LIGHTCOL

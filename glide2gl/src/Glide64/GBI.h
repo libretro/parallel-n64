@@ -20,7 +20,6 @@ extern "C" {
 #define F3DCBFD     11
 #define NONE        12
 
-
 // Fixed point conversion factors
 #define FIXED2FLOATRECIP1   0.5f
 #define FIXED2FLOATRECIP2   0.25f
@@ -38,6 +37,15 @@ extern "C" {
 #define FIXED2FLOATRECIP14  6.1035156e-05f
 #define FIXED2FLOATRECIP15  3.0517578e-05f
 #define FIXED2FLOATRECIP16  1.5258789e-05f
+
+#define _FIXED2FLOAT( v, b ) \
+    ((float)v * FIXED2FLOATRECIP##b)
+
+// Useful macros for decoding GBI command's parameters
+#define _SHIFTL( v, s, w )  \
+    (((uint32_t)v & ((0x01 << w) - 1)) << s)
+#define _SHIFTR( v, s, w )  \
+    (((uint32_t)v >> s) & ((0x01 << w) - 1))
 
 // BG flags
 #define G_BGLT_LOADBLOCK    0x0033
