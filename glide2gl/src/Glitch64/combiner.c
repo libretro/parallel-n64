@@ -81,10 +81,10 @@ static int a_combiner_ext = 0;
 #endif
 
 #define SHADER_HEADER \
-"#version " GLSL_VERSION "          \n" \
-"#define gl_Color vFrontColor       \n" \
-"#define gl_FrontColor vFrontColor  \n" \
-"#define gl_TexCoord vTexCoord      \n"
+"#version " GLSL_VERSION          "\n" \
+"#define gl_Color vFrontColor      \n" \
+"#define gl_FrontColor vFrontColor \n" \
+"#define gl_TexCoord vTexCoord     \n" \
 
 #define SHADER_VARYING \
 "varying highp vec4 gl_FrontColor;  \n" \
@@ -93,31 +93,34 @@ static int a_combiner_ext = 0;
 static const char* fragment_shader_header =
 SHADER_HEADER
 #if !defined(__LIBRETRO__) || defined(GLES) // Desktop GL fix
-"precision lowp float;             \n"
+"precision lowp float;          \n"
 #else
-"#define highp                     \n"
+"#define highp                  \n"
 #endif
-"uniform sampler2D texture0;       \n"
-"uniform sampler2D texture1;       \n"
-"uniform sampler2D ditherTex;      \n"
-"uniform vec4 realTextureSizes;    \n"
-"uniform vec4 constant_color;      \n"
-"uniform vec4 ccolor0;             \n"
-"uniform vec4 ccolor1;             \n"
-"uniform vec4 chroma_color;        \n"
-"uniform float lambda;             \n"
-"uniform vec3 fogColor;            \n"
-"uniform float alphaRef;           \n"
+"uniform sampler2D texture0;    \n"
+"uniform sampler2D texture1;    \n"
+"uniform vec4 currentSizes;     \n"  //textureSizes doesn't contain the correct sizes, use this one instead for offset calculations
+"uniform vec4 constant_color;   \n"
+"uniform vec4 ccolor0;          \n"
+"uniform vec4 ccolor1;          \n"
+"uniform vec4 chroma_color;     \n"
+"uniform float lambda;          \n"
+"uniform vec3 fogColor;         \n"
+"uniform float alphaRef;        \n"
+"#define TEX0             texture2D(texture0, gl_TexCoord[0].xy) \n" \
+"#define TEX0_OFFSET(off) texture2D(texture0, gl_TexCoord[0].xy - off/currentSizes.xy) \n" \
+"#define TEX1             texture2D(texture1, gl_TexCoord[1].xy) \n" \
+"#define TEX1_OFFSET(off) texture2D(texture1, gl_TexCoord[1].xy - off/currentSizes.zw) \n" \
+
 SHADER_VARYING
-"                                  \n"
+"\n"
 "void test_chroma(vec4 ctexture1); \n"
-"                                  \n"
-"                                  \n"
-"void main()                       \n"
-"{                                 \n"
-"  vec2 tex_pix_a,tex_pix_b,tex_pix_c,half_tex,UVCentered;  \n"
-"  vec4 sample_a,sample_b,sample_c;    \n"
-"  float interp_x,interp_y;            \n"
+"\n"
+"\n"
+"void main()\n"
+"{\n"
+"  vec2 offset; \n"
+"  vec4 c0,c1,c2; \n"		
 ;
 
 // using gl_FragCoord is terribly slow on ATI and varying variables don't work for some unknown
@@ -128,95 +131,77 @@ static const char* fragment_shader_dither =
 ;
 
 static const char* fragment_shader_default =
-"  gl_FragColor = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
+"  gl_FragColor = TEX0; \n"
 ;
 static const char* fragment_shader_readtex0color =
-"  vec4 readtex0 = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
+"  vec4 readtex0 = TEX0; \n"
 ;
 static const char* fragment_shader_readtex0color_3point =
-"  tex_pix_a = vec2(1.0/realTextureSizes.x,0);  \n"
-"  tex_pix_b = vec2(0.0,1.0/realTextureSizes.y);  \n"
-"  tex_pix_c = vec2(tex_pix_a.x,tex_pix_b.y);  \n"
-"  half_tex = vec2(tex_pix_a.x*0.5,tex_pix_b.y*0.5);  \n"
-"  UVCentered = gl_TexCoord[0].xy - half_tex;  \n"
-"  vec4 readtex0 = texture2D(texture0,UVCentered);    \n"
-"  sample_a = texture2D(texture0,UVCentered+tex_pix_a);    \n"
-"  sample_b = texture2D(texture0,UVCentered+tex_pix_b);    \n"
-"  sample_c = texture2D(texture0,UVCentered+tex_pix_c);    \n"
-"  interp_x = fract(UVCentered.x * realTextureSizes.x);    \n"
-"  interp_y = fract(UVCentered.y * realTextureSizes.y);    \n"
-"  readtex0 = (readtex0 + interp_x * (sample_a - readtex0) + interp_y * (sample_b - readtex0))*(1-step(1, interp_x + interp_y));      \n"
-"  readtex0 += (sample_c + (1-interp_x) * (sample_b - sample_c) + (1-interp_y) * (sample_a - sample_c))*step(1, interp_x + interp_y);        \n"
+"  offset=fract(gl_TexCoord[0].xy*currentSizes.xy-vec2(0.5,0.5)); \n"
+"  offset-=step(1.0,offset.x+offset.y); \n"
+"  c0=TEX0_OFFSET(offset); \n"
+"  c1=TEX0_OFFSET(vec2(offset.x-sign(offset.x),offset.y)); \n"
+"  c2=TEX0_OFFSET(vec2(offset.x,offset.y-sign(offset.y))); \n"
+"  vec4 readtex0 =c0+abs(offset.x)*(c1-c0)+abs(offset.y)*(c2-c0); \n"
 ;
 
 static const char* fragment_shader_readtex0bw =
-"  vec4 readtex0 = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
-"  readtex0 = vec4(vec3(readtex0.b),                          \n"
-"                  readtex0.r + readtex0.g * 8.0 / 256.0);    \n"
+"  vec4 readtex0 = TEX0; \n"
+"  readtex0 = vec4(vec3(readtex0.b), readtex0.r + readtex0.g * 8.0 / 256.0); \n"
 ;
 static const char* fragment_shader_readtex0bw_2 =
-"  vec4 readtex0 = vec4(dot(texture2D(texture0, vec2(gl_TexCoord[0])), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
+"  vec4 readtex0 = vec4(dot(TEX0, vec4(1.0/3, 1.0/3, 1.0/3, 0))); \n"
 ;
 
 static const char* fragment_shader_readtex1color =
-"  vec4 readtex1 = texture2D(texture1, vec2(gl_TexCoord[1])); \n"
+"  vec4 readtex1 = TEX1; \n"
 ;
 
 static const char* fragment_shader_readtex1color_3point =
-"  tex_pix_a = vec2(1.0/realTextureSizes.z,0);  \n"
-"  tex_pix_b = vec2(0.0,1.0/realTextureSizes.w);  \n"
-"  tex_pix_c = vec2(tex_pix_a.x,tex_pix_b.y);  \n"
-"  half_tex = vec2(tex_pix_a.x*0.5,tex_pix_b.y*0.5);  \n"
-"  UVCentered = gl_TexCoord[1].xy - half_tex;  \n"
-"  vec4 readtex1 = texture2D(texture1,UVCentered);    \n"
-"  sample_a = texture2D(texture1,UVCentered+tex_pix_a);    \n"
-"  sample_b = texture2D(texture1,UVCentered+tex_pix_b);    \n"
-"  sample_c = texture2D(texture1,UVCentered+tex_pix_c);    \n"
-"  interp_x = fract(UVCentered.x * realTextureSizes.z);    \n"
-"  interp_y = fract(UVCentered.y * realTextureSizes.w);    \n"
-"  readtex1 = (readtex1 + interp_x * (sample_a - readtex1) + interp_y * (sample_b - readtex1))*(1-step(1, interp_x + interp_y));      \n"
-"  readtex1 += (sample_c + (1-interp_x) * (sample_b - sample_c) + (1-interp_y) * (sample_a - sample_c))*step(1, interp_x + interp_y);        \n"
-;
+"  offset=fract(gl_TexCoord[1].xy*currentSizes.zw-vec2(0.5,0.5)); \n"
+"  offset-=step(1.0,offset.x+offset.y); \n"
+"  c0=TEX1_OFFSET(offset); \n"
+"  c1=TEX1_OFFSET(vec2(offset.x-sign(offset.x),offset.y)); \n"
+"  c2=TEX1_OFFSET(vec2(offset.x,offset.y-sign(offset.y))); \n"
+"  vec4 readtex1 =c0+abs(offset.x)*(c1-c0)+abs(offset.y)*(c2-c0); \n";
 
 static const char* fragment_shader_readtex1bw =
-"  vec4 readtex1 = texture2D(texture1, vec2(gl_TexCoord[1])); \n"
-"  readtex1 = vec4(vec3(readtex1.b),                          \n"
-"                  readtex1.r + readtex1.g * 8.0 / 256.0);    \n"
+"  vec4 readtex1 = TEX1; \n"
+"  readtex1 = vec4(vec3(readtex1.b), readtex1.r + readtex1.g * 8.0 / 256.0); \n"
 ;
 static const char* fragment_shader_readtex1bw_2 =
-"  vec4 readtex1 = vec4(dot(texture2D(texture1, vec2(gl_TexCoord[1])), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
+"  vec4 readtex1 = vec4(dot(TEX1, vec4(1.0/3, 1.0/3, 1.0/3, 0))); \n"
 ;
 
 static const char* fragment_shader_fog =
-"  float fog;                                                                         \n"
-"  fog = gl_TexCoord[0].b;                                                            \n"
+"  float fog;  \n"
+"  fog = gl_TexCoord[0].b;  \n"
 "  gl_FragColor.rgb = mix(fogColor, gl_FragColor.rgb, fog); \n"
 ;
 
 static const char* fragment_shader_end =
 "if(gl_FragColor.a <= alphaRef) {discard;}   \n"
-"                                \n"
-"}                               \n"
+"}\n"
 ;
 
 static const char* vertex_shader =
 SHADER_HEADER
 #if defined(__LIBRETRO__) && !defined(GLES) // Desktop GL fix
-"#define highp                                                  \n"
+"#define highp                         \n"
 #endif
-"#define Z_MAX 65536.0                                          \n"
-"attribute highp vec4 aVertex;                                  \n"
-"attribute highp vec4 aColor;                                   \n"
-"attribute highp vec4 aMultiTexCoord0;                          \n"
-"attribute highp vec4 aMultiTexCoord1;                          \n"
-"attribute float aFog;                                          \n"
-"uniform vec3 vertexOffset;                                     \n" //Moved some calculations from grDrawXXX to shader
-"uniform vec4 textureSizes;                                     \n" 
-"uniform vec3 fogModeEndScale;                                  \n" //0 = Mode, 1 = gl_Fog.end, 2 = gl_Fog.scale
+"#define Z_MAX 65536.0                 \n"
+"attribute highp vec4 aVertex;         \n"
+"attribute highp vec4 aColor;          \n"
+"attribute highp vec4 aMultiTexCoord0; \n"
+"attribute highp vec4 aMultiTexCoord1; \n"
+"attribute float aFog;                 \n"
+"uniform vec3 vertexOffset;            \n" //Moved some calculations from grDrawXXX to shader
+"uniform vec4 textureSizes;            \n" 
+"uniform vec3 fogModeEndScale;         \n" //0 = Mode, 1 = gl_Fog.end, 2 = gl_Fog.scale
 SHADER_VARYING
-"                                                               \n"
-"void main()                                                    \n"
-"{                                                              \n"
+"\n"
+"void main()\n"
+"{\n"
 "  float q = aVertex.w;                                                     \n"
 "  float invertY = vertexOffset.z;                                          \n" //Usually 1.0 but -1.0 when rendering to a texture (see inverted_culling grRenderBuffer)
 "  gl_Position.x = (aVertex.x - vertexOffset.x) / vertexOffset.x;           \n"
@@ -225,15 +210,15 @@ SHADER_VARYING
 "  gl_Position.w = 1.0;                                                     \n"
 "  gl_Position /= q;                                                        \n"
 "  gl_FrontColor = aColor.bgra;                                             \n"
-"                                                                           \n"
+"\n"
 "  gl_TexCoord[0] = vec4(aMultiTexCoord0.xy / q / textureSizes.xy,0,1);     \n"
 "  gl_TexCoord[1] = vec4(aMultiTexCoord1.xy / q / textureSizes.zw,0,1);     \n"
-"                                                                           \n"
+"\n"
 "  float fogV = (1.0 / mix(q,aFog,fogModeEndScale[0])) / 255.0;             \n"
-"  //if(fogMode == 2) {                                                     \n"
-"  //  fogV = 1.0 / aFog / 255                                              \n"
-"  //}                                                                      \n"
-"                                                                           \n"
+//"  //if(fogMode == 2) {                                                     \n"
+//"  //  fogV = 1.0 / aFog / 255                                              \n"
+//"  //}                                                                      \n"
+"\n"
 "  float f = (fogModeEndScale[1] - fogV) * fogModeEndScale[2];              \n"
 "  f = clamp(f, 0.0, 1.0);                                                  \n"
 "  gl_TexCoord[0].b = f;                                                    \n"
@@ -258,6 +243,7 @@ void check_compile(GLuint shader)
       char log[1024];
       glGetShaderInfoLog(shader,1024,NULL,log);
       LOGINFO(log);
+	  printf("\n%s",log);
    }
 }
 
@@ -451,11 +437,10 @@ typedef struct _shader_program_key
    int texture1_location;
    int vertexOffset_location;
    int textureSizes_location;   
-   int realTextureSizes_location;
+   int currentSizes_location;
    int fogModeEndScale_location;
    int fogColor_location;
    int alphaRef_location;
-   int ditherTex_location;
    int chroma_color_location;
 } shader_program_key;
 
@@ -484,7 +469,7 @@ void update_uniforms(shader_program_key prog)
 
    GL_CHECK(glUniform3f(prog.vertexOffset_location,widtho,heighto,inverted_culling ? -1.0f : 1.0f));
    GL_CHECK(glUniform4f(prog.textureSizes_location,tex0_width,tex0_height,tex1_width,tex1_height));
-   GL_CHECK(glUniform4f(prog.realTextureSizes_location,tex0W,tex0H,tex1W,tex1H));
+   GL_CHECK(glUniform4f(prog.currentSizes_location,tex0W,tex0H,tex1W,tex1H));
 
    GL_CHECK(glUniform3f(prog.fogModeEndScale_location,
          fog_enabled != 2 ? 0.0f : 1.0f,
@@ -512,11 +497,6 @@ void update_uniforms(shader_program_key prog)
    GL_CHECK(glUniform4f(prog.chroma_color_location, chroma_color[0], chroma_color[1],
          chroma_color[2], chroma_color[3]));
 
-   if(dither_enabled)
-   {
-      GL_CHECK(glUniform1i(prog.ditherTex_location, 2));
-   }
-
    set_lambda();
 }
 
@@ -528,11 +508,9 @@ void disable_textureSizes(void)
 
 void compile_shader(void)
 {
-   int vertexOffset_location, textureSizes_location, ditherTex_location, texture0_location, texture1_location;
+   int vertexOffset_location, textureSizes_location, texture0_location, texture1_location;
    int i, chroma_color_location, log_length;
    char *fragment_shader;
-
-
 
 
    need_to_compile = 0;
@@ -636,12 +614,11 @@ void compile_shader(void)
    shader_programs[number_of_programs].texture1_location = glGetUniformLocation(program_object, "texture1");
    shader_programs[number_of_programs].vertexOffset_location = glGetUniformLocation(program_object, "vertexOffset");
    shader_programs[number_of_programs].textureSizes_location = glGetUniformLocation(program_object, "textureSizes");
-   shader_programs[number_of_programs].realTextureSizes_location = glGetUniformLocation(program_object, "realTextureSizes");
+   shader_programs[number_of_programs].currentSizes_location = glGetUniformLocation(program_object, "currentSizes");
    shader_programs[number_of_programs].fogModeEndScale_location = glGetUniformLocation(program_object, "fogModeEndScale");
    shader_programs[number_of_programs].fogColor_location = glGetUniformLocation(program_object, "fogColor");
    shader_programs[number_of_programs].alphaRef_location = glGetUniformLocation(program_object, "alphaRef");
    shader_programs[number_of_programs].chroma_color_location = glGetUniformLocation(program_object, "chroma_color");
-   shader_programs[number_of_programs].ditherTex_location = glGetUniformLocation(program_object, "ditherTex");
 
    update_uniforms(shader_programs[number_of_programs]);
 
