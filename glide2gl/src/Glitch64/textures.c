@@ -34,13 +34,11 @@
 #define GR_TEXFMT_AYUV_444                0x15
 #define GR_TEXTFMT_RGB_888                0xFF
 
+#define TMU_SIZE (8 * 2048 * 2048)
 static uint8_t* texture = NULL;
 int packed_pixels_support = -1;
 extern unsigned screen_width;
 extern unsigned screen_height;
-extern unsigned pot_width;
-extern unsigned pot_height;
-unsigned int TMU_SIZE;
 
 #ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE
@@ -258,7 +256,7 @@ void init_textures(void)
   nbTex = 0;
 
   if (!texture)
-     texture = (uint8_t*)malloc(pot_width * pot_width * 4);
+     texture = (uint8_t*)malloc(((TMU_SIZE) / 2));
 }
 
 void free_textures(void)
@@ -273,7 +271,7 @@ FX_ENTRY FxU32 FX_CALL
 grTexMaxAddress( GrChipID_t tmu )
 {
   LOG("grTexMaxAddress(%d)\r\n", tmu);
-  return (pot_width * pot_height * 8) * 2 - 1;
+  return (TMU_SIZE * 2) - 1;
 }
 
 FX_ENTRY FxU32 FX_CALL

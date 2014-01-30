@@ -58,8 +58,6 @@ uint32_t gfx_plugin_accuracy = 2;
 static enum rsp_plugin_type rsp_plugin;
 uint32_t screen_width;
 uint32_t screen_height;
-uint32_t pot_width;
-uint32_t pot_height;
 
 extern unsigned int VI_REFRESH;
 
@@ -409,8 +407,6 @@ void retro_init(void)
    audio_convert_init_simd();
 
    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
-   pot_width = 1024;
-   pot_height = 1024;
 }
 
 void retro_deinit(void)
@@ -451,14 +447,6 @@ void update_variables(void)
          screen_width = 640;
          screen_height = 480;
       }
-      while((pot_width < screen_width) || (pot_height < screen_height))
-      {
-         pot_width <<= 1;
-         pot_height <<= 1;
-         
-      }
-      if (log_cb)
-         log_cb(RETRO_LOG_INFO, "POT width: %d height: %d\n", pot_width, pot_height);
    }
 
    var.key = "mupen64-filtering";
