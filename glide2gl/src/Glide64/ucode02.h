@@ -102,7 +102,7 @@ static void uc2_vertex_neon(uint32_t w0, uint32_t w1)
    
    if (!(rdp.cmd0 & 0x00FFFFFF))
    {
-      uc6_obj_rectangle();
+      uc6_obj_rectangle(w0, w1);
       return;
    }
 
