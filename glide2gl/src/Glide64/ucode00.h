@@ -411,20 +411,20 @@ static void gSPTexture(void)
    }
 }
 
-static void gSPLight(unsigned index)
+static void gSPLight(uint32_t l, unsigned n)
 {
-   uint32_t a = segoffset(rdp.cmd1) & 0x00ffffff;
+   uint32_t address = segoffset(l) & 0x00ffffff;
 
    // Get the data
-   rdp.light[index].r = (float)(((uint8_t*)gfx.RDRAM)[(a+0)^3]) / 255.0f;
-   rdp.light[index].g = (float)(((uint8_t*)gfx.RDRAM)[(a+1)^3]) / 255.0f;
-   rdp.light[index].b = (float)(((uint8_t*)gfx.RDRAM)[(a+2)^3]) / 255.0f;
-   rdp.light[index].a = 1.0f;
+   rdp.light[n].r = (float)(((uint8_t*)gfx.RDRAM)[(address+0)^3]) / 255.0f;
+   rdp.light[n].g = (float)(((uint8_t*)gfx.RDRAM)[(address+1)^3]) / 255.0f;
+   rdp.light[n].b = (float)(((uint8_t*)gfx.RDRAM)[(address+2)^3]) / 255.0f;
+   rdp.light[n].a = 1.0f;
    // ** Thanks to Icepir8 for pointing this out **
    // Lighting must be signed byte instead of byte
-   rdp.light[index].dir_x = (float)(((int8_t*)gfx.RDRAM)[(a+8)^3]) / 127.0f;
-   rdp.light[index].dir_y = (float)(((int8_t*)gfx.RDRAM)[(a+9)^3]) / 127.0f;
-   rdp.light[index].dir_z = (float)(((int8_t*)gfx.RDRAM)[(a+10)^3]) / 127.0f;
+   rdp.light[n].dir_x = (float)(((int8_t*)gfx.RDRAM)[(address+8)^3]) / 127.0f;
+   rdp.light[n].dir_y = (float)(((int8_t*)gfx.RDRAM)[(address+9)^3]) / 127.0f;
+   rdp.light[n].dir_z = (float)(((int8_t*)gfx.RDRAM)[(address+10)^3]) / 127.0f;
    // **
 
    //rdp.update |= UPDATE_LIGHTS;
@@ -433,17 +433,17 @@ static void gSPLight(unsigned index)
 }
 
 //gSPForceMatrix command. Modification of uc2_movemem:matrix. Gonetz.
-static void gSPForceMatrix(void)
+static void gSPForceMatrix(uint32_t mptr)
 {
-   uint32_t addr;
+   uint32_t address;
    // do not update the combined matrix!
    rdp.update &= ~UPDATE_MULT_MAT;
 
-   addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
-   load_matrix(rdp.combined, addr);
+   address = segoffset(mptr) & 0x00FFFFFF;
+   load_matrix(rdp.combined, address);
 
-   addr = rdp.pc[rdp.pc_i] & BMASK;
-   rdp.pc[rdp.pc_i] = (addr+24) & BMASK; //skip next 3 command, b/c they all are part of gSPForceMatrix
+   address = rdp.pc[rdp.pc_i] & BMASK;
+   rdp.pc[rdp.pc_i] = (address + 24) & BMASK; //skip next 3 command, b/c they all are part of gSPForceMatrix
 
    //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
    //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
@@ -502,12 +502,12 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
       case G_MV_L7:
          // Get the light #
          i = (((w0 >> 16) & 0xff) - G_MV_L0) >> 1;
-         gSPLight(i);
+         gSPLight(w1, i);
          break;
 
 
       case G_MV_MATRIX_1:
-         gSPForceMatrix();
+         gSPForceMatrix(w1);
          break;
          //next 3 command should never appear since they will be skipped in previous command
       case G_MV_MATRIX_2:
@@ -767,6 +767,7 @@ static void gSPFogFactor(void)
    //FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
 }
 
+// FIXME - not consistent with glN64
 static void gSPClipRatio(uint32_t w0, uint32_t w1)
 {
    if (((w0 >> 8) & 0xFFFF) == G_MW_CLIP)

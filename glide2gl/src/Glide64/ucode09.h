@@ -258,8 +258,8 @@ static void uc9_object(uint32_t w0, uint32_t w1)
    rdpcmds[1] = 0;
    rdpcmds[2] = 0;
 
-   cmd1 = rdp.cmd1;
-   zHeader = segoffset(rdp.cmd0);
+   cmd1 = w1;
+   zHeader = segoffset(w0);
 
    while (zHeader)
       zHeader = uc9_load_object(zHeader, rdpcmds);
@@ -276,9 +276,9 @@ static void uc9_mix(uint32_t w0, uint32_t w1)
 static void uc9_fmlight(uint32_t w0, uint32_t w1)
 {
    uint32_t i;
-   int mid = rdp.cmd0&0xFF;
-   rdp.num_lights = 1 + ((rdp.cmd1 >> 12) & 0xFF);
-   uint32_t a = -1024 + (rdp.cmd1 & 0xFFF);
+   int mid = w0 & 0xFF;
+   rdp.num_lights = 1 + ((w1 >> 12) & 0xFF);
+   uint32_t a = -1024 + (w1 & 0xFFF);
    FRDP ("uc9:fmlight matrix: %d, num: %d, dmem: %04lx\n", mid, rdp.num_lights, a);
 
    M44 *m;
@@ -342,11 +342,11 @@ static void uc9_fmlight(uint32_t w0, uint32_t w1)
 static void uc9_light(uint32_t w0, uint32_t w1)
 {
    uint32_t i;
-   uint32_t csrs = -1024 + ((rdp.cmd0 >> 12) & 0xFFF);
-   uint32_t nsrs = -1024 + (rdp.cmd0 & 0xFFF);
-   uint32_t num = 1 + ((rdp.cmd1 >> 24) & 0xFF);
-   uint32_t cdest = -1024 + ((rdp.cmd1 >> 12) & 0xFFF);
-   uint32_t tdest = -1024 + (rdp.cmd1 & 0xFFF);
+   uint32_t csrs = -1024 + ((w0 >> 12) & 0xFFF);
+   uint32_t nsrs = -1024 + (w0 & 0xFFF);
+   uint32_t num = 1 + ((w1 >> 24) & 0xFF);
+   uint32_t cdest = -1024 + ((w1 >> 12) & 0xFFF);
+   uint32_t tdest = -1024 + (w1 & 0xFFF);
    int use_material = (csrs != 0x0ff0);
    tdest >>= 1;
    FRDP ("uc9:light n: %d, colsrs: %04lx, normales: %04lx, coldst: %04lx, texdst: %04lx\n", num, csrs, nsrs, cdest, tdest);
@@ -384,7 +384,7 @@ static void uc9_mtxtrnsp(uint32_t w0, uint32_t w1)
    /*
    LRDP("uc9:mtxtrnsp ");
    M44 *s;
-   switch (rdp.cmd1&0xF)
+   switch (w1 & 0xF)
    {
       case 4:
          s = (M44*)rdp.model;
@@ -416,9 +416,9 @@ static void uc9_mtxcat(uint32_t w0, uint32_t w1)
    LRDP("uc9:mtxcat ");
    M44 *s;
    M44 *t;
-   uint32_t S = rdp.cmd0 & 0xF;
-   uint32_t T = (rdp.cmd1 >> 16) & 0xF;
-   uint32_t D = rdp.cmd1 & 0xF;
+   uint32_t S = w0 & 0xF;
+   uint32_t T = (w1 >> 16) & 0xF;
+   uint32_t D = w1 & 0xF;
 
    switch (S)
    {
@@ -501,10 +501,10 @@ typedef struct
 static void uc9_mult_mpmtx(uint32_t w0, uint32_t w1)
 {
    int i;
-   //int id = rdp.cmd0&0xFF;
-   int num = 1+ ((rdp.cmd1 >> 24) & 0xFF);
-   int src = -1024 + ((rdp.cmd1 >> 12) & 0xFFF);
-   int dst = -1024 + (rdp.cmd1 & 0xFFF);
+   //int id = w0 & 0xFF;
+   int num = 1+ ((w1 >> 24) & 0xFF);
+   int src = -1024 + ((w1 >> 12) & 0xFFF);
+   int dst = -1024 + (w1 & 0xFFF);
    FRDP ("uc9:mult_mpmtx from: %04lx  to: %04lx n: %d\n", src, dst, num);
    int16_t * saddr = (int16_t*)(gfx.DMEM+src);
    zSortVDest * daddr = (zSortVDest*)(gfx.DMEM+dst);
@@ -577,12 +577,12 @@ static void uc9_send_signal(uint32_t w0, uint32_t w1)
 void uc9_movemem(uint32_t w0, uint32_t w1)
 {
    LRDP("uc9:movemem\n");
-   int idx = rdp.cmd0 & 0x0E;
-   int ofs = ((rdp.cmd0>>6)&0x1ff)<<3;
-   int len = (1 + ((rdp.cmd0>>15)&0x1ff))<<3;
+   int idx = w0 & 0x0E;
+   int ofs = ((w0 >> 6) & 0x1ff)<<3;
+   int len = (1 + ((w0 >> 15) & 0x1ff))<<3;
    FRDP ("uc9:movemem ofs: %d, len: %d. ", ofs, len);
-   int flag = rdp.cmd0 & 0x01;
-   uint32_t addr = segoffset(rdp.cmd1);
+   int flag = w0 & 0x01;
+   uint32_t addr = segoffset(w1);
 
    switch (idx)
    {

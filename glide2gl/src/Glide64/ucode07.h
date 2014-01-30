@@ -48,7 +48,7 @@ uint32_t pd_col_addr = 0;
 static void uc7_colorbase(uint32_t w0, uint32_t w1)
 {
    LRDP("uc7_colorbase\n");
-   pd_col_addr = segoffset(rdp.cmd1);
+   pd_col_addr = segoffset(w1);
 }
 
 typedef struct 
@@ -85,12 +85,12 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
       }
    }
 
-   uint32_t addr = segoffset(rdp.cmd1);
+   uint32_t addr = segoffset(w1);
    uint32_t v0, i, n;
    float x, y, z;
 
-   rdp.v0 = v0 = (rdp.cmd0 & 0x0F0000) >> 16;
-   rdp.vn = n = ((rdp.cmd0 & 0xF00000) >> 20) + 1;
+   rdp.v0 = v0 = (w0 & 0x0F0000) >> 16;
+   rdp.vn = n = ((w0 & 0xF00000) >> 20) + 1;
 
    FRDP ("uc7:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
 

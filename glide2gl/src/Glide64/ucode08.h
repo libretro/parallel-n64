@@ -53,12 +53,12 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
    }
 
    uint32_t l;
-   uint32_t addr = segoffset(rdp.cmd1);
+   uint32_t addr = segoffset(w1);
    int v0, i, n;
    float x, y, z;
 
-   rdp.vn = n = (rdp.cmd0 >> 12) & 0xFF;
-   rdp.v0 = v0 = ((rdp.cmd0 >> 1) & 0x7F) - n;
+   rdp.vn = n = (w0 >> 12) & 0xFF;
+   rdp.v0 = v0 = ((w0 >> 1) & 0x7F) - n;
 
    FRDP ("uc8:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
 
@@ -227,9 +227,9 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
 static void uc8_moveword(uint32_t w0, uint32_t w1)
 {
    int k;
-   uint8_t index = (uint8_t)((rdp.cmd0 >> 16) & 0xFF);
-   uint16_t offset = (uint16_t)(rdp.cmd0 & 0xFFFF);
-   uint32_t data = rdp.cmd1;
+   uint8_t index = (uint8_t)((w0 >> 16) & 0xFF);
+   uint16_t offset = (uint16_t)(w0 & 0xFFFF);
+   uint32_t data = w1;
 
    FRDP ("uc8:moveword ");
 
@@ -247,10 +247,10 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
       case G_MW_CLIP:
          if (offset == 0x04)
          {
-            rdp.clip_ratio = squareRoot((float)rdp.cmd1);
+            rdp.clip_ratio = squareRoot((float)w1);
             rdp.update |= UPDATE_VIEWPORT;
          }
-         FRDP ("mw_clip %08lx, %08lx\n", rdp.cmd0, rdp.cmd1);
+         FRDP ("mw_clip %08lx, %08lx\n", w0, w1);
          break;
 
       case G_MW_SEGMENT:  // moveword SEGMENT
@@ -262,8 +262,8 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
 
       case G_MW_FOG:
          {
-            rdp.fog_multiplier = (int16_t)(rdp.cmd1 >> 16);
-            rdp.fog_offset = (int16_t)(rdp.cmd1 & 0x0000FFFF);
+            rdp.fog_multiplier = (int16_t)(w1 >> 16);
+            rdp.fog_offset = (int16_t)(w1 & 0x0000FFFF);
             FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
          }
          break;
@@ -282,27 +282,27 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
             uint8_t n = offset >> 2;
 
             FRDP ("coord mod:%d, %08lx\n", n, data);
-            if (rdp.cmd0&8)
+            if (w0 & 8)
                return;
-            uint32_t idx = (rdp.cmd0>>1)&3;
-            uint32_t pos = rdp.cmd0&0x30;
+            uint32_t idx = (w0 >> 1)&3;
+            uint32_t pos = w0 & 0x30;
             if (pos == 0)
             {
-               uc8_coord_mod[0+idx] = (int16_t)(rdp.cmd1>>16);
-               uc8_coord_mod[1+idx] = (int16_t)(rdp.cmd1&0xffff);
+               uc8_coord_mod[0+idx] = (int16_t)(w1 >> 16);
+               uc8_coord_mod[1+idx] = (int16_t)(w1 & 0xffff);
             }
             else if (pos == 0x10)
             {
-               uc8_coord_mod[4+idx] = (rdp.cmd1>>16)/65536.0f;
-               uc8_coord_mod[5+idx] = (rdp.cmd1&0xffff)/65536.0f;
+               uc8_coord_mod[4+idx] = (w1 >> 16) / 65536.0f;
+               uc8_coord_mod[5+idx] = (w1 & 0xffff) / 65536.0f;
                uc8_coord_mod[12+idx] = uc8_coord_mod[0+idx] + uc8_coord_mod[4+idx];
                uc8_coord_mod[13+idx] = uc8_coord_mod[1+idx] + uc8_coord_mod[5+idx];
 
             }
             else if (pos == 0x20)
             {
-               uc8_coord_mod[8+idx] = (int16_t)(rdp.cmd1>>16);
-               uc8_coord_mod[9+idx] = (int16_t)(rdp.cmd1&0xffff);
+               uc8_coord_mod[8+idx] = (int16_t)(w1 >> 16);
+               uc8_coord_mod[9+idx] = (int16_t)(w1 & 0xffff);
 #ifdef EXTREME_LOGGING
                if (idx)
                {
@@ -324,9 +324,9 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
 static void uc8_movemem(uint32_t w0, uint32_t w1)
 {
    int i, t;
-   int idx = rdp.cmd0 & 0xFF;
-   uint32_t addr = segoffset(rdp.cmd1);
-   int ofs = (rdp.cmd0 >> 5) & 0x3FFF;
+   int idx = w0 & 0xFF;
+   uint32_t addr = segoffset(w1);
+   int ofs = (w0 >> 5) & 0x3FFF;
 
    FRDP ("uc8:movemem ofs:%d ", ofs);
 
@@ -414,7 +414,7 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
 
       case F3DCBFD_MV_NORMAL: //Normals
          {
-            uc8_normale_addr = segoffset(rdp.cmd1);
+            uc8_normale_addr = segoffset(w1);
             FRDP ("Normals - addr: %08lx\n", uc8_normale_addr);
 #ifdef EXTREME_LOGGING
             for (i = 0; i < 32; i++)
@@ -446,32 +446,32 @@ static void uc8_tri4(uint32_t w0, uint32_t w1) //by Gugaman Apr 19 2002
    FRDP("uc8:tri4 (#%d - #%d), %d-%d-%d, %d-%d-%d, %d-%d-%d, %d-%d-%d\n",
          rdp.tri_n,
          rdp.tri_n+3,
-         ((rdp.cmd0 >> 23) & 0x1F),
-         ((rdp.cmd0 >> 18) & 0x1F),
-         ((((rdp.cmd0 >> 15) & 0x7) << 2) | ((rdp.cmd1 >> 30) &0x3)),
-         ((rdp.cmd0 >> 10) & 0x1F),
-         ((rdp.cmd0 >> 5) & 0x1F),
-         ((rdp.cmd0 >> 0) & 0x1F),
-         ((rdp.cmd1 >> 25) & 0x1F),
-         ((rdp.cmd1 >> 20) & 0x1F),
-         ((rdp.cmd1 >> 15) & 0x1F),
-         ((rdp.cmd1 >> 10) & 0x1F),
-         ((rdp.cmd1 >> 5) & 0x1F),
-         ((rdp.cmd1 >> 0) & 0x1F));
+         ((w0 >> 23) & 0x1F),
+         ((w0 >> 18) & 0x1F),
+         ((((w0 >> 15) & 0x7) << 2) | ((w1 >> 30) &0x3)),
+         ((w0 >> 10) & 0x1F),
+         ((w0 >> 5) & 0x1F),
+         ((w0 >> 0) & 0x1F),
+         ((w1 >> 25) & 0x1F),
+         ((w1 >> 20) & 0x1F),
+         ((w1 >> 15) & 0x1F),
+         ((w1 >> 10) & 0x1F),
+         ((w1 >> 5) & 0x1F),
+         ((w1 >> 0) & 0x1F));
 
    VERTEX *v[12] = {
-      &rdp.vtx[(rdp.cmd0 >> 23) & 0x1F],
-      &rdp.vtx[(rdp.cmd0 >> 18) & 0x1F],
-      &rdp.vtx[((((rdp.cmd0 >> 15) & 0x7) << 2) | ((rdp.cmd1 >> 30) &0x3))],
-      &rdp.vtx[(rdp.cmd0 >> 10) & 0x1F],
-      &rdp.vtx[(rdp.cmd0 >> 5) & 0x1F],
-      &rdp.vtx[(rdp.cmd0 >> 0) & 0x1F],
-      &rdp.vtx[(rdp.cmd1 >> 25) & 0x1F],
-      &rdp.vtx[(rdp.cmd1 >> 20) & 0x1F],
-      &rdp.vtx[(rdp.cmd1 >> 15) & 0x1F],
-      &rdp.vtx[(rdp.cmd1 >> 10) & 0x1F],
-      &rdp.vtx[(rdp.cmd1 >> 5) & 0x1F],
-      &rdp.vtx[(rdp.cmd1 >> 0) & 0x1F]
+      &rdp.vtx[(w0 >> 23) & 0x1F],
+      &rdp.vtx[(w0 >> 18) & 0x1F],
+      &rdp.vtx[((((w0 >> 15) & 0x7) << 2) | ((w1 >> 30) &0x3))],
+      &rdp.vtx[(w0 >> 10) & 0x1F],
+      &rdp.vtx[(w0 >> 5) & 0x1F],
+      &rdp.vtx[(w0 >> 0) & 0x1F],
+      &rdp.vtx[(w1 >> 25) & 0x1F],
+      &rdp.vtx[(w1 >> 20) & 0x1F],
+      &rdp.vtx[(w1 >> 15) & 0x1F],
+      &rdp.vtx[(w1 >> 10) & 0x1F],
+      &rdp.vtx[(w1 >> 5) & 0x1F],
+      &rdp.vtx[(w1 >> 0) & 0x1F]
    };
 
    int updated = 0;

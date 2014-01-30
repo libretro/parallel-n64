@@ -3981,7 +3981,7 @@ static const uint32_t rdp_command_length[64] =
 
 static void rdphalf_1(uint32_t w0, uint32_t w1)
 {
-   uint32_t cmd = w1 >> 24;
+   uint32_t cmd = rdp.cmd1 >> 24;
    if (cmd >= G_TRI_FILL && cmd <= G_TRI_SHADE_TXTR_ZBUFF) //triangle command
    {
       LRDP("rdphalf_1 - lle triangle\n");
@@ -3991,7 +3991,7 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
 
       do
       {
-         rdp_cmd_data[rdp_cmd_ptr++] = w1;
+         rdp_cmd_data[rdp_cmd_ptr++] = rdp.cmd1;
          // check DL counter
          if (rdp.dl_count != -1)
          {

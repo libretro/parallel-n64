@@ -45,8 +45,8 @@ uint32_t dma_offset_vtx = 0;
 
 static void uc5_dma_offsets(uint32_t w0, uint32_t w1)
 {
-  dma_offset_mtx = rdp.cmd0 & 0x00FFFFFF;
-  dma_offset_vtx = rdp.cmd1 & 0x00FFFFFF;
+  dma_offset_mtx = w0 & 0x00FFFFFF;
+  dma_offset_vtx = w1 & 0x00FFFFFF;
   vtx_last = 0;
   FRDP("uc5:dma_offsets - mtx: %08lx, vtx: %08lx\n", dma_offset_mtx, dma_offset_vtx);
 }
@@ -54,18 +54,18 @@ static void uc5_dma_offsets(uint32_t w0, uint32_t w1)
 static void uc5_matrix(uint32_t w0, uint32_t w1)
 {
    // Use segment offset to get the address
-   uint32_t addr = dma_offset_mtx + (segoffset(rdp.cmd1) & BMASK);
+   uint32_t addr = dma_offset_mtx + (segoffset(w1) & BMASK);
 
-   uint8_t n = (uint8_t)((rdp.cmd0 >> 16) & 0xF);
+   uint8_t n = (uint8_t)((w0 >> 16) & 0xF);
    uint8_t multiply;
 
    if (n == 0) //DKR
    {
-      n = (uint8_t)((rdp.cmd0 >> 22) & 0x3);
+      n = (uint8_t)((w0 >> 22) & 0x3);
       multiply = 0;
    }
    else //JF
-      multiply = (uint8_t)((rdp.cmd0 >> 23) & 0x1);
+      multiply = (uint8_t)((w0 >> 23) & 0x1);
 
    cur_mtx = n;
 
@@ -105,7 +105,7 @@ static void uc5_matrix(uint32_t w0, uint32_t w1)
 static void uc5_vertex(uint32_t w0, uint32_t w1)
 {
    int i;
-   uint32_t addr = dma_offset_vtx + (segoffset(rdp.cmd1) & BMASK);
+   uint32_t addr = dma_offset_vtx + (segoffset(w1) & BMASK);
 
    // | cccc cccc 1111 1??? 0000 0002 2222 2222 | cmd1 = address |
    // c = vtx command
@@ -114,11 +114,11 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
    // ? = unknown, but used
    // 0 = unused
 
-   int n = ((rdp.cmd0 >> 19) & 0x1F);// + 1;
+   int n = ((w0 >> 19) & 0x1F);// + 1;
    if (settings.hacks&hack_Diddy)
       n++;
 
-   if (rdp.cmd0 & G_FOG)
+   if (w0 & G_FOG)
    {
       if (billboarding)
          vtx_last = 1;
@@ -126,7 +126,7 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
    else
       vtx_last = 0;
 
-   int first = ((rdp.cmd0 >> 9) & 0x1F) + vtx_last;
+   int first = ((w0 >> 9) & 0x1F) + vtx_last;
    FRDP ("uc5:vertex - addr: %08lx, first: %d, count: %d, matrix: %08lx\n", addr, first, n, cur_mtx);
 
    int prj = cur_mtx;
@@ -206,9 +206,9 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
    // 2 = method #2 of getting count
    // 0 = unused
 
-   uint32_t addr = segoffset(rdp.cmd1) & BMASK;
-   int num = (rdp.cmd0 & 0xFFF0) >> 4;
-   //int num = ((rdp.cmd0 & 0x00F00000) >> 20) + 1;  // same thing!
+   uint32_t addr = segoffset(w1) & BMASK;
+   int num = (w0 & 0xFFF0) >> 4;
+   //int num = ((w0 & 0x00F00000) >> 20) + 1;  // same thing!
    FRDP("uc5:tridma #%d - addr: %08lx, count: %d\n", rdp.tri_n, addr, num);
 
    int i, start, v0, v1, v2, flags;
@@ -275,8 +275,8 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
 
 static void uc5_dl_in_mem(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr = segoffset(rdp.cmd1) & BMASK;
-   int count = (rdp.cmd0 & 0x00FF0000) >> 16;
+   uint32_t addr = segoffset(w1) & BMASK;
+   int count = (w0 & 0x00FF0000) >> 16;
    FRDP ("uc5:dl_in_mem - addr: %08lx, count: %d\n", addr, count);
 
    if (rdp.pc_i >= 9)
@@ -295,53 +295,53 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
    LRDP("uc5:moveword ");
 
    // Find which command this is (lowest byte of cmd0)
-   switch (rdp.cmd0 & 0xFF)
+   switch (w0 & 0xFF)
    {
       case 0x02:  // moveword matrix 2 billboard
-         billboarding = (rdp.cmd1 & 1);
+         billboarding = (w1 & 1);
          FRDP ("matrix billboard - %s\n", str_offon[billboarding]);
          break;
 
       case G_MW_CLIP:  // clip (verified same)
-         if (((rdp.cmd0>>8)&0xFFFF) == 0x04)
+         if (((w0 >> 8) & 0xFFFF) == 0x04)
          {
-            rdp.clip_ratio = squareRoot((float)rdp.cmd1);
+            rdp.clip_ratio = squareRoot((float)w1);
             rdp.update |= UPDATE_VIEWPORT;
          }
-         FRDP ("clip %08lx, %08lx\n", rdp.cmd0, rdp.cmd1);
+         FRDP ("clip %08lx, %08lx\n", w0, w1);
          break;
 
       case G_MW_SEGMENT:  // segment (verified same)
-         FRDP ("segment: %08lx -> seg%d\n", rdp.cmd1, (rdp.cmd0 >> 10) & 0x0F);
-         rdp.segment[(rdp.cmd0 >> 10) & 0x0F] = rdp.cmd1;
+         FRDP ("segment: %08lx -> seg%d\n", w1, (w0 >> 10) & 0x0F);
+         rdp.segment[(w0 >> 10) & 0x0F] = w1;
          break;
 
       case G_MW_FOG:
          {
-            rdp.fog_multiplier = (int16_t)(rdp.cmd1 >> 16);
-            rdp.fog_offset = (int16_t)(rdp.cmd1 & 0x0000FFFF);
+            rdp.fog_multiplier = (int16_t)(w1 >> 16);
+            rdp.fog_offset = (int16_t)(w1 & 0x0000FFFF);
             FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
             //	  rdp.update |= UPDATE_FOG_ENABLED;
          }
          break;
 
       case 0x0a:  // moveword matrix select
-         cur_mtx = (rdp.cmd1 >> 6) & 3;
+         cur_mtx = (w1 >> 6) & 3;
          FRDP ("matrix select - mtx: %d\n", cur_mtx);
          break;
 
       default:
-         FRDP ("(unknown) %02lx - IGNORED\n", rdp.cmd0&0xFF);
+         FRDP ("(unknown) %02lx - IGNORED\n", w0 & 0xFF);
    }
 }
 
 static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
 {
-   FRDP("uc0:setgeometrymode %08lx\n", rdp.cmd1);
+   FRDP("uc0:setgeometrymode %08lx\n", w1);
 
-   rdp.geom_mode |= rdp.cmd1;
+   rdp.geom_mode |= w1;
 
-   if (rdp.cmd1 & G_ZBUFFER)  // Z-Buffer enable
+   if (w1 & G_ZBUFFER)  // Z-Buffer enable
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -351,7 +351,7 @@ static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
    }
 
    //Added by Gonetz
-   if (rdp.cmd1 & G_FOG)      // Fog enable
+   if (w1 & G_FOG)      // Fog enable
    {
       if (!(rdp.flags & FOG_ENABLED))
       {
@@ -363,11 +363,11 @@ static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
 
 static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1)
 {
-   FRDP("uc0:cleargeometrymode %08lx\n", rdp.cmd1);
+   FRDP("uc0:cleargeometrymode %08lx\n", w1);
 
-   rdp.geom_mode &= (~rdp.cmd1);
+   rdp.geom_mode &= (~w1);
 
-   if (rdp.cmd1 & G_ZBUFFER)  // Z-Buffer enable
+   if (w1 & G_ZBUFFER)  // Z-Buffer enable
    {
       if (rdp.flags & ZBUF_ENABLED)
       {
@@ -376,7 +376,7 @@ static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1)
       }
    }
    //Added by Gonetz
-   if (rdp.cmd1 & G_FOG)      // Fog enable
+   if (w1 & G_FOG)      // Fog enable
    {
       if (rdp.flags & FOG_ENABLED)
       {
