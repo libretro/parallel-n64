@@ -41,14 +41,14 @@
 // uCode 4 - RSP SW 2.0D EXT
 //****************************************************************
 
-static void uc4_vertex(void)
+static void uc4_vertex(uint32_t w0, uint32_t w1)
 {
    int v0 = 0;     // Current vertex
    int n = ((rdp.cmd0 >> 4) & 0xFFF) / 33 + 1; // Number of vertices to copy
    rsp_vertex(v0, n);
 }
 
-static void uc4_tri1(void)
+static void uc4_tri1(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[3];
 
@@ -65,7 +65,7 @@ static void uc4_tri1(void)
    rsp_tri1(v, 0);
 }
 
-static void uc4_quad3d(void)
+static void uc4_quad3d(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[6];
    FRDP("uc4:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);

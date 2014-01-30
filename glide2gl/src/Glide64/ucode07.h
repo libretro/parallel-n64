@@ -45,7 +45,7 @@
 
 uint32_t pd_col_addr = 0;
 
-static void uc7_colorbase(void)
+static void uc7_colorbase(uint32_t w0, uint32_t w1)
 {
    LRDP("uc7_colorbase\n");
    pd_col_addr = segoffset(rdp.cmd1);
@@ -63,7 +63,7 @@ typedef struct
    int16_t s;
 } vtx_uc7;
 
-static void uc7_vertex(void)
+static void uc7_vertex(uint32_t w0, uint32_t w1)
 {
    uint32_t l;
    if (rdp.update & UPDATE_MULT_MAT)

@@ -113,7 +113,7 @@ static float set_sprite_combine_mode(void)
   return Z;
 }
 
-void uc6_sprite2d(void);
+void uc6_sprite2d(uint32_t w0, uint32_t w1);
 
 typedef struct DRAWIMAGE_t {
   float frameX;
@@ -523,7 +523,7 @@ void DrawImage (DRAWIMAGE *d)
       // LoadTile ()
       rdp.cmd0 = ((int)rdp.tiles[0].ul_s << 14) | ((int)rdp.tiles[0].ul_t << 2);
       rdp.cmd1 = ((int)rdp.tiles[0].lr_s << 14) | ((int)rdp.tiles[0].lr_t << 2);
-      rdp_loadtile ();
+      rdp_loadtile(rdp.cmd0, rdp.cmd1);
 
       TexCache ();
       // **
@@ -765,12 +765,12 @@ static void uc6_bg (bool bg_1cyc)
     DrawImage (&d);
 }
 
-static void uc6_bg_1cyc(void)
+static void uc6_bg_1cyc(uint32_t w0, uint32_t w1)
 {
   uc6_bg(true);
 }
 
-static void uc6_bg_copy(void)
+static void uc6_bg_copy(uint32_t w0, uint32_t w1)
 {
   uc6_bg(false);
 }
@@ -1010,7 +1010,7 @@ static void uc6_init_tile(const DRAWOBJECT *d)
   rdp.tiles[0].lr_t = (d->imageH>0)?d->imageH-1:0;
 }
 
-static void uc6_obj_rectangle ()
+static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
 {
    int i;
   LRDP ("uc6:obj_rectangle ");
@@ -1072,7 +1072,7 @@ static void uc6_obj_rectangle ()
   uc6_draw_polygons (v);
 }
 
-static void uc6_obj_sprite(void)
+static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
 {
    int i;
   LRDP ("uc6:obj_sprite ");
@@ -1126,7 +1126,7 @@ static void uc6_obj_sprite(void)
   uc6_draw_polygons (v);
 }
 
-static void uc6_obj_movemem(void)
+static void uc6_obj_movemem(uint32_t w0, uint32_t w1)
 {
   LRDP("uc6:obj_movemem\n");
 
@@ -1157,13 +1157,13 @@ static void uc6_obj_movemem(void)
   }
 }
 
-static void uc6_select_dl(void)
+static void uc6_select_dl(uint32_t w0, uint32_t w1)
 {
   LRDP("uc6:select_dl\n");
   RDP_E ("uc6:select_dl\n");
 }
 
-static void uc6_obj_rendermode(void)
+static void uc6_obj_rendermode(uint32_t w0, uint32_t w1)
 {
   LRDP("uc6:obj_rendermode\n");
   RDP_E ("uc6:obj_rendermode\n");
@@ -1229,7 +1229,7 @@ static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t
   }
 }
 
-static void uc6_obj_rectangle_r(void)
+static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 {
    int i;
    LRDP ("uc6:obj_rectangle_r ");
@@ -1293,7 +1293,7 @@ static void uc6_obj_rectangle_r(void)
    uc6_draw_polygons (v);
 }
 
-static void uc6_obj_loadtxtr(void)
+static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
 {
    LRDP("uc6:obj_loadtxtr ");
    rdp.s2dex_tex_loaded = true;
@@ -1327,7 +1327,7 @@ static void uc6_obj_loadtxtr(void)
       rdp.tiles[7].size = 1;
       rdp.cmd0 = 0;
       rdp.cmd1 = 0x07000000 | (tsize << 14) | tline;
-      rdp_loadblock ();
+      rdp_loadblock(rdp.cmd0, rdp.cmd1);
    }
    else if (type == G_OBJLT_TXTRTILE)
    {
@@ -1351,7 +1351,7 @@ static void uc6_obj_loadtxtr(void)
       rdp.cmd0 = 0;
       rdp.cmd1 = 0x07000000 | (twidth << 14) | (theight << 2);
 
-      rdp_loadtile ();
+      rdp_loadtile(rdp.cmd0, rdp.cmd1);
    }
    else
    {
@@ -1360,37 +1360,37 @@ static void uc6_obj_loadtxtr(void)
    }
 }
 
-static void uc6_obj_ldtx_sprite(void)
+static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1)
 {
    LRDP("uc6:obj_ldtx_sprite\n");
 
    uint32_t addr = rdp.cmd1;
-   uc6_obj_loadtxtr ();
+   uc6_obj_loadtxtr(w0, w1);
    rdp.cmd1 = addr + 24;
-   uc6_obj_sprite ();
+   uc6_obj_sprite(w0, w1);
 }
 
-static void uc6_obj_ldtx_rect(void)
+static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1)
 {
    LRDP("uc6:obj_ldtx_rect\n");
 
    uint32_t addr = rdp.cmd1;
-   uc6_obj_loadtxtr ();
+   uc6_obj_loadtxtr(w0, w1);
    rdp.cmd1 = addr + 24;
-   uc6_obj_rectangle ();
+   uc6_obj_rectangle(w0, w1);
 }
 
-static void uc6_ldtx_rect_r(void)
+static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
 {
    LRDP("uc6:ldtx_rect_r\n");
 
    uint32_t addr = rdp.cmd1;
-   uc6_obj_loadtxtr ();
+   uc6_obj_loadtxtr(w0, w1);
    rdp.cmd1 = addr + 24;
-   uc6_obj_rectangle_r ();
+   uc6_obj_rectangle_r(w0, w1);
 }
 
-static void uc6_loaducode(void)
+static void uc6_loaducode(uint32_t w0, uint32_t w1)
 {
    LRDP("uc6:load_ucode\n");
    RDP_E ("uc6:load_ucode\n");
@@ -1403,7 +1403,7 @@ static void uc6_loaducode(void)
    microcheck ();
 }
 
-void uc6_sprite2d(void)
+void uc6_sprite2d(uint32_t w0, uint32_t w1)
 {
    int i, s;
    uint32_t a = rdp.pc[rdp.pc_i] & BMASK;
@@ -1529,7 +1529,7 @@ void uc6_sprite2d(void)
          rdp.tiles[7].size = d.imageSiz;
          rdp.cmd0 = (d.imageX << 14) | (d.imageY << 2);
          rdp.cmd1 = 0x07000000 | ((d.imageX + d.imageW-1) << 14) | ((d.imageY + d.imageH-1) << 2);
-         rdp_loadtile ();
+         rdp_loadtile(rdp.cmd0, rdp.cmd1);
 
          // SetTile ()
          TILE *tile = &rdp.tiles[0];

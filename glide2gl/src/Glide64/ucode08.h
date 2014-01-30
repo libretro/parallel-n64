@@ -44,7 +44,7 @@
 uint32_t uc8_normale_addr = 0;
 float uc8_coord_mod[16];
 
-static void uc8_vertex(void)
+static void uc8_vertex(uint32_t w0, uint32_t w1)
 {
    if (rdp.update & UPDATE_MULT_MAT)
    {
@@ -224,7 +224,7 @@ static void uc8_vertex(void)
    }
 }
 
-static void uc8_moveword(void)
+static void uc8_moveword(uint32_t w0, uint32_t w1)
 {
    int k;
    uint8_t index = (uint8_t)((rdp.cmd0 >> 16) & 0xFF);
@@ -321,7 +321,7 @@ static void uc8_moveword(void)
    }
 }
 
-static void uc8_movemem(void)
+static void uc8_movemem(uint32_t w0, uint32_t w1)
 {
    int i, t;
    int idx = rdp.cmd0 & 0xFF;
@@ -438,7 +438,7 @@ static void uc8_movemem(void)
 }
 
 
-static void uc8_tri4(void) //by Gugaman Apr 19 2002
+static void uc8_tri4(uint32_t w0, uint32_t w1) //by Gugaman Apr 19 2002
 {
    if (rdp.skip_drawing)
       return;

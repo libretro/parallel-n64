@@ -41,7 +41,7 @@
 // vertex - loads vertices
 //
 
-static void uc3_vertex(void)
+static void uc3_vertex(uint32_t w0, uint32_t w1)
 {
    int v0 = ((rdp.cmd0 >> 16) & 0xFF) / 5;      // Current vertex
    int n = (uint16_t)((rdp.cmd0 & 0xFFFF) + 1) / 0x210;    // Number to copy
@@ -59,7 +59,7 @@ static void uc3_vertex(void)
 // tri1 - renders a triangle
 //
 
-static void uc3_tri1(void)
+static void uc3_tri1(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[3];
    FRDP("uc3:tri1 #%d - %d, %d, %d - %08lx - %08lx\n", rdp.tri_n,
@@ -74,7 +74,7 @@ static void uc3_tri1(void)
    rsp_tri1(v, 0);
 }
 
-static void uc3_tri2(void)
+static void uc3_tri2(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[6];
    FRDP("uc3:tri2 #%d, #%d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1,
@@ -95,7 +95,7 @@ static void uc3_tri2(void)
    rsp_tri2(v);
 }
 
-static void uc3_quad3d(void)
+static void uc3_quad3d(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[6];
    FRDP("uc3:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);

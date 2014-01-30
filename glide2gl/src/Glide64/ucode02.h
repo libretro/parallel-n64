@@ -91,12 +91,12 @@ static void calc_point_light (VERTEX *v, float * vpos)
    v->b = (uint8_t)(color[2]*255.0f);
 }
 
-static void uc6_obj_rectangle(void);
+static void uc6_obj_rectangle(uint32_t w0, uint32_t w1);
 
 #ifdef HAVE_NEON
 #include <arm_neon.h>
 
-static void uc2_vertex_neon(void)
+static void uc2_vertex_neon(uint32_t w0, uint32_t w1)
 {
    uint32_t i, l;
    
@@ -237,13 +237,13 @@ static void uc2_vertex_neon(void)
 }
 #endif
 
-static void uc2_vertex(void)
+static void uc2_vertex(uint32_t w0, uint32_t w1)
 {
    uint32_t i, l;
    
    if (!(rdp.cmd0 & 0x00FFFFFF))
    {
-      uc6_obj_rectangle();
+      uc6_obj_rectangle(w0, w1);
       return;
    }
 
@@ -368,7 +368,7 @@ static void uc2_vertex(void)
    rdp.geom_mode = geom_mode;
 }
 
-static void uc2_modifyvtx(void)
+static void uc2_modifyvtx(uint32_t w0, uint32_t w1)
 {
    uint8_t where = (uint8_t)((rdp.cmd0 >> 16) & 0xFF);
    uint16_t vtx = (uint16_t)((rdp.cmd0 >> 1) & 0xFFFF);
@@ -377,7 +377,7 @@ static void uc2_modifyvtx(void)
    uc0_modifyvtx(where, vtx, rdp.cmd1);
 }
 
-static void uc2_culldl(void)
+static void uc2_culldl(uint32_t w0, uint32_t w1)
 {
    uint16_t i, vStart, vEnd, cond;
 
@@ -419,16 +419,16 @@ static void uc2_culldl(void)
    }
 
    LRDP(" - ");  // specify that the enddl is not a real command
-   uc0_enddl();
+   uc0_enddl(w0, w1);
 }
 
-static void uc6_obj_loadtxtr(void);
+static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1);
 
-static void uc2_tri1(void)
+static void uc2_tri1(uint32_t w0, uint32_t w1)
 {
    if ((rdp.cmd0 & 0x00FFFFFF) == 0x17)
    {
-      uc6_obj_loadtxtr();
+      uc6_obj_loadtxtr(w0, w1);
       return;
    }
 
@@ -451,22 +451,22 @@ static void uc2_tri1(void)
    rsp_tri1(v, 0);
 }
 
-static void uc6_obj_ldtx_sprite(void);
-static void uc6_obj_ldtx_rect(void);
+static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1);
+static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1);
 
-static void uc2_quad(void)
+static void uc2_quad(uint32_t w0, uint32_t w1)
 {
    if ((rdp.cmd0 & 0x00FFFFFF) == 0x2F)
    {
       uint32_t command = rdp.cmd0>>24;
       if (command == 0x6)
       {
-         uc6_obj_ldtx_sprite();
+         uc6_obj_ldtx_sprite(w0, w1);
          return;
       }
       if (command == 0x7)
       {
-         uc6_obj_ldtx_rect();
+         uc6_obj_ldtx_rect(w0, w1);
          return;
       }
    }
@@ -499,12 +499,12 @@ static void uc2_quad(void)
    rsp_tri2(v);
 }
 
-static void uc6_ldtx_rect_r(void);
+static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1);
 
-static void uc2_line3d(void)
+static void uc2_line3d(uint32_t w0, uint32_t w1)
 {
    if ((rdp.cmd0 & 0xFF) == 0x2F)
-      uc6_ldtx_rect_r();
+      uc6_ldtx_rect_r(w0, w1);
    else
    {
       FRDP("uc2:line3d #%d, #%d - %d, %d\n", rdp.tri_n, rdp.tri_n+1,
@@ -527,22 +527,22 @@ static void uc2_line3d(void)
    }
 }
 
-static void uc2_special3(void)
+static void uc2_special3(uint32_t w0, uint32_t w1)
 {
    LRDP("uc2:special3\n");
 }
 
-static void uc2_special2(void)
+static void uc2_special2(uint32_t w0, uint32_t w1)
 {
    LRDP("uc2:special2\n");
 }
 
-static void uc2_dma_io(void)
+static void uc2_dma_io(uint32_t w0, uint32_t w1)
 {
    LRDP("uc2:dma_io\n");
 }
 
-static void uc2_pop_matrix(void)
+static void uc2_pop_matrix(uint32_t w0, uint32_t w1)
 {
    FRDP ("uc2:pop_matrix %08lx, %08lx\n", rdp.cmd0, rdp.cmd1);
 
@@ -550,7 +550,7 @@ static void uc2_pop_matrix(void)
    modelview_pop (rdp.cmd1 >> 6);
 }
 
-static void uc2_geom_mode(void)
+static void uc2_geom_mode(uint32_t w0, uint32_t w1)
 {
    // Switch around some things
    uint32_t clr_mode = (rdp.cmd0 & 0x00DFC9FF) |
@@ -636,13 +636,13 @@ static void uc2_geom_mode(void)
    }
 }
 
-static void uc6_obj_rectangle_r(void);
+static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1);
 
-static void uc2_matrix(void)
+static void uc2_matrix(uint32_t w0, uint32_t w1)
 {
    if (!(rdp.cmd0 & 0x00FFFFFF))
    {
-      uc6_obj_rectangle_r();
+      uc6_obj_rectangle_r(w0, w1);
       return;
    }
    LRDP("uc2:matrix\n");
@@ -706,7 +706,7 @@ static void uc2_matrix(void)
 #endif
 }
 
-static void uc2_moveword(void)
+static void uc2_moveword(uint32_t w0, uint32_t w1)
 {
    uint8_t index = (uint8_t)((rdp.cmd0 >> 16) & 0xFF);
    uint16_t offset = (uint16_t)(rdp.cmd0 & 0xFFFF);
@@ -818,9 +818,9 @@ static void uc2_moveword(void)
    }
 }
 
-static void uc6_obj_movemem(void);
+static void uc6_obj_movemem(uint32_t w0, uint32_t w1);
 
-static void uc2_movemem(void)
+static void uc2_movemem(uint32_t w0, uint32_t w1)
 {
    int idx = rdp.cmd0 & 0xFF;
    uint32_t addr = segoffset(rdp.cmd1);
@@ -832,7 +832,7 @@ static void uc2_movemem(void)
    {
       case 0:
       case 2:
-         uc6_obj_movemem ();
+         uc6_obj_movemem(w0, w1);
          break;
 
       case F3DEX2_MV_VIEWPORT:   // VIEWPORT
@@ -936,17 +936,17 @@ static void uc2_movemem(void)
    }
 }
 
-static void uc2_load_ucode(void)
+static void uc2_load_ucode(uint32_t w0, uint32_t w1)
 {
    LRDP("uc2:load_ucode\n");
 }
 
-static void uc2_rdphalf_2(void)
+static void uc2_rdphalf_2(uint32_t w0, uint32_t w1)
 {
    LRDP("uc2:rdphalf_2\n");
 }
 
-static void uc2_dlist_cnt(void)
+static void uc2_dlist_cnt(uint32_t w0, uint32_t w1)
 {
    uint32_t addr = segoffset(rdp.cmd1) & BMASK;
    int count = rdp.cmd0 & 0x000000FF;

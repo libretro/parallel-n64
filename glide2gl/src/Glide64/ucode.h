@@ -37,7 +37,7 @@
 //
 //****************************************************************
 
-typedef void (*rdp_instr)(void);
+typedef void (*rdp_instr)(uint32_t w1, uint32_t w2);
 
 // RDP graphic instructions pointer table
 

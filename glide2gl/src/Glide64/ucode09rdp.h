@@ -42,7 +42,7 @@
 //****************************************************************
 #include "GBI.h"
 
-void uc9_rpdcmd(void)
+void uc9_rpdcmd(uint32_t w0, uint32_t w1)
 {
    uint32_t a = segoffset(rdp.cmd1) >> 2;
    FRDP ("uc9:rdpcmd addr: %08lx\n", a);
@@ -67,7 +67,7 @@ void uc9_rpdcmd(void)
             a++;
             rdp.cmd3 = ((uint32_t*)gfx.RDRAM)[a++];
          }
-         gfx_instruction[ucode_zSort][cmd] ();
+         gfx_instruction[ucode_zSort][cmd](w0, w1);
       }while(1);
       rdp.LLE = 0;
    }

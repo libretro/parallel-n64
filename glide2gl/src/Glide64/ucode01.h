@@ -41,7 +41,7 @@
 // vertex - loads vertices
 //
 
-static void uc1_vertex(void)
+static void uc1_vertex(uint32_t w0, uint32_t w1)
 {
    int v0 = (rdp.cmd0 >> 17) & 0x7F;     // Current vertex
    int n = (rdp.cmd0 >> 10) & 0x3F;    // Number to copy
@@ -52,7 +52,7 @@ static void uc1_vertex(void)
 // tri1 - renders a triangle
 //
 
-static void uc1_tri1(void)
+static void uc1_tri1(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[3];
 
@@ -66,7 +66,7 @@ static void uc1_tri1(void)
    rsp_tri1(v, 0);
 }
 
-static void uc1_tri2(void)
+static void uc1_tri2(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[6];
 
@@ -83,7 +83,7 @@ static void uc1_tri2(void)
    rsp_tri2(v);
 }
 
-static void uc1_line3d(void)
+static void uc1_line3d(uint32_t w0, uint32_t w1)
 {
    if (!settings.force_quad3d && ((rdp.cmd1&0xFF000000) == 0) && ((rdp.cmd0&0x00FFFFFF) == 0))
    {
@@ -123,14 +123,14 @@ static void uc1_line3d(void)
 
 uint32_t branch_dl = 0;
 
-static void uc1_rdphalf_1(void)
+static void uc1_rdphalf_1(uint32_t w0, uint32_t w1)
 {
    LRDP("uc1:rdphalf_1\n");
    branch_dl = rdp.cmd1;
-   rdphalf_1();
+   rdphalf_1(w0, w1);
 }
 
-static void uc1_branch_z(void)
+static void uc1_branch_z(uint32_t w0, uint32_t w1)
 {
    uint32_t addr = segoffset(branch_dl);
    FRDP ("uc1:branch_less_z, addr: %08lx\n", addr);

@@ -41,19 +41,19 @@
 //
 //****************************************************************
 
-static void fb_uc0_moveword(void)
+static void fb_uc0_moveword(uint32_t w0, uint32_t w1)
 {
    if ((rdp.cmd0 & 0xFF) == G_MW_SEGMENT)  // segment
       rdp.segment[(rdp.cmd0 >> 10) & 0x0F] = rdp.cmd1;
 }
 
-static void fb_uc2_moveword(void)
+static void fb_uc2_moveword(uint32_t w0, uint32_t w1)
 {
   if (((rdp.cmd0 >> 16) & 0xFF) == G_MW_SEGMENT)  // segment
     rdp.segment[((rdp.cmd0 & 0xFFFF) >> 2)&0xF] = rdp.cmd1;
 }
 
-static void fb_bg_copy(void)
+static void fb_bg_copy(uint32_t w0, uint32_t w1)
 {
    if (rdp.main_ci == 0)
       return;
@@ -106,7 +106,7 @@ static void fb_bg_copy(void)
    }
 }
 
-static void fb_setscissor(void)
+static void fb_setscissor(uint32_t w0, uint32_t w1)
 {
    rdp.scissor_o.lr_y = (uint32_t)(((rdp.cmd1 & 0x00000FFF) >> 2));
    if (rdp.ci_count)
@@ -123,7 +123,7 @@ static void fb_setscissor(void)
    }
 }
 
-static void fb_uc2_movemem(void)
+static void fb_uc2_movemem(uint32_t w0, uint32_t w1)
 {
    if ((rdp.cmd0 & 0xFF) == 8)
    {
@@ -142,7 +142,7 @@ static void fb_uc2_movemem(void)
    }
 }
 
-static void fb_rect(void)
+static void fb_rect(uint32_t w0, uint32_t w1)
 {
    if (rdp.frame_buffers[rdp.ci_count-1].width == 32)
       return;
@@ -161,12 +161,12 @@ static void fb_rect(void)
    }
 }
 
-static void fb_rdphalf_1(void)
+static void fb_rdphalf_1(uint32_t w0, uint32_t w1)
 {
    branch_dl = rdp.cmd1;
 }
 
-static void fb_settextureimage(void)
+static void fb_settextureimage(uint32_t w0, uint32_t w1)
 {
    if (rdp.main_ci == 0)
       return;
@@ -282,7 +282,7 @@ static void fb_settextureimage(void)
    }
 }
 
-static void fb_loadtxtr(void)
+static void fb_loadtxtr(uint32_t w0, uint32_t w1)
 {
    if (rdp.frame_buffers[rdp.ci_count-1].status == CI_UNKNOWN)
    {
@@ -291,7 +291,7 @@ static void fb_loadtxtr(void)
    }
 }
 
-static void fb_setdepthimage(void)
+static void fb_setdepthimage(uint32_t w0, uint32_t w1)
 {
    int i;
    rdp.zimg = segoffset(rdp.cmd1) & BMASK;
@@ -333,7 +333,7 @@ static void fb_setdepthimage(void)
    }
 }
 
-static void fb_setcolorimage(void)
+static void fb_setcolorimage(uint32_t w0, uint32_t w1)
 {
    rdp.ocimg = rdp.cimg;
    rdp.cimg = segoffset(rdp.cmd1) & BMASK;

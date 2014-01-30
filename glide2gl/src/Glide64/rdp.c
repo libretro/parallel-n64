@@ -174,54 +174,56 @@ int ucode_error_report = true;
 int wrong_tile = -1;
 
 // ** RDP graphics functions **
-static void undef(void);
+static void undef(uint32_t w0, uint32_t w1);
 
-static void spnoop(void);
+static void spnoop(uint32_t w0, uint32_t w1);
 
-static void rdp_noop(void);
-static void rdp_texrect(void);
-//static void rdp_texrectflip(void);
-static void rdp_loadsync(void);
-static void rdp_pipesync(void);
-static void rdp_tilesync(void);
-static void rdp_fullsync(void);
-static void rdp_setkeygb(void);
-static void rdp_setkeyr(void);
-static void rdp_setconvert(void);
-static void rdp_setscissor(void);
-static void rdp_setprimdepth(void);
-static void rdp_setothermode(void);
-static void rdp_loadtlut(void);
-static void rdp_settilesize(void);
-static void rdp_loadblock(void);
-static void rdp_loadtile(void);
-static void rdp_settile(void);
-static void rdp_fillrect(void);
-static void rdp_setfillcolor(void);
-static void rdp_setfogcolor(void);
-static void rdp_setblendcolor(void);
-static void rdp_setprimcolor(void);
-static void rdp_setenvcolor(void);
-static void rdp_setcombine(void);
-static void rdp_settextureimage(void);
-static void rdp_setdepthimage(void);
-static void rdp_setcolorimage(void);
-static void rdp_trifill(void);
-static void rdp_trishade(void);
-static void rdp_tritxtr(void);
-static void rdp_trishadetxtr(void);
-static void rdp_trifillz(void);
-static void rdp_trishadez(void);
-static void rdp_tritxtrz(void);
-static void rdp_trishadetxtrz(void);
-static void rdphalf_1(void);
-static void rdphalf_2(void);
-static void rdphalf_cont(void);
+static void rdp_noop(uint32_t w0, uint32_t w1);
+static void rdp_texrect(uint32_t w0, uint32_t w1);
+//static void rdp_texrectflip(uint32_t w0, uint32_t w1);
+static void rdp_loadsync(uint32_t w0, uint32_t w1);
+static void rdp_pipesync(uint32_t w0, uint32_t w1);
+static void rdp_tilesync(uint32_t w0, uint32_t w1);
+static void rdp_fullsync(uint32_t w0, uint32_t w1);
+static void rdp_setkeygb(uint32_t w0, uint32_t w1);
+static void rdp_setkeyr(uint32_t w0, uint32_t w1);
+static void rdp_setconvert(uint32_t w0, uint32_t w1);
+static void rdp_setscissor(uint32_t w0, uint32_t w1);
+static void rdp_setprimdepth(uint32_t w0, uint32_t w1);
+static void rdp_setothermode(uint32_t w0, uint32_t w1);
+static void rdp_loadtlut(uint32_t w0, uint32_t w1);
+static void rdp_settilesize(uint32_t w0, uint32_t w1);
+static void rdp_loadblock(uint32_t w0, uint32_t w1);
+static void rdp_loadtile(uint32_t w0, uint32_t w1);
+static void rdp_settile(uint32_t w0, uint32_t w1);
+static void rdp_fillrect(uint32_t w0, uint32_t w1);
+static void rdp_setfillcolor(uint32_t w0, uint32_t w1);
+static void rdp_setfogcolor(uint32_t w0, uint32_t w1);
+static void rdp_setblendcolor(uint32_t w0, uint32_t w1);
+static void rdp_setprimcolor(uint32_t w0, uint32_t w1);
+static void rdp_setenvcolor(uint32_t w0, uint32_t w1);
+static void rdp_setcombine(uint32_t w0, uint32_t w1);
+static void rdp_settextureimage(uint32_t w0, uint32_t w1);
+static void rdp_setdepthimage(uint32_t w0, uint32_t w1);
+static void rdp_setcolorimage(uint32_t w0, uint32_t w1);
+static void rdp_trifill(uint32_t w0, uint32_t w1);
+static void rdp_trishade(uint32_t w0, uint32_t w1);
+static void rdp_tritxtr(uint32_t w0, uint32_t w1);
+static void rdp_trishadetxtr(uint32_t w0, uint32_t w1);
+static void rdp_trifillz(uint32_t w0, uint32_t w1);
+static void rdp_trishadez(uint32_t w0, uint32_t w1);
+static void rdp_tritxtrz(uint32_t w0, uint32_t w1);
+static void rdp_trishadetxtrz(uint32_t w0, uint32_t w1);
+static void rdphalf_1(uint32_t w0, uint32_t w1);
+static void rdphalf_2(uint32_t w0, uint32_t w1);
+static void rdphalf_cont(uint32_t w0, uint32_t w1);
 
-static void rsp_reserved0(void);
-static void rsp_reserved1(void);
-static void rsp_reserved2(void);
-static void rsp_reserved3(void);
+static void rsp_reserved0(uint32_t w0, uint32_t w1);
+static void rsp_reserved1(uint32_t w0, uint32_t w1);
+static void rsp_reserved2(uint32_t w0, uint32_t w1);
+static void rsp_reserved3(uint32_t w0, uint32_t w1);
+
+static void uc2_vertex_neon(uint32_t w0, uint32_t w1);
 
 static void ys_memrect(void);
 
@@ -247,7 +249,6 @@ void microcheck ();
 static int reset = 0;
 static int old_ucode = -1;
 
-static void uc2_vertex_neon(void);
 
 void rdp_new(void)
 {
@@ -899,7 +900,7 @@ EXPORT void CALL ProcessDList(void)
     DrawPartFrameBufferToScreen();
   if ((settings.hacks&hack_Tonic) && dlist_length < 16)
   {
-    rdp_fullsync();
+    rdp_fullsync(rdp.cmd0, rdp.cmd1);
     FRDP_E("DLIST is too short!\n");
     return;
   }
@@ -934,7 +935,7 @@ EXPORT void CALL ProcessDList(void)
         rdp.pc[rdp.pc_i] = (a+8) & BMASK;
 
         // Process this instruction
-        gfx_instruction[settings.ucode][rdp.cmd0>>24] ();
+        gfx_instruction[settings.ucode][rdp.cmd0>>24](rdp.cmd0, rdp.cmd1);
 
         // check DL counter
         if (rdp.dl_count != -1)
@@ -970,7 +971,7 @@ EXPORT void CALL ProcessDList(void)
 }
 
 // undef - undefined instruction, always ignore
-static void undef(void)
+static void undef(uint32_t w0, uint32_t w1)
 {
 #ifdef _ENDUSER_RELEASE_
   *gfx.MI_INTR_REG |= 0x20;
@@ -983,13 +984,13 @@ static void undef(void)
 }
 
 // spnoop - no operation, always ignore
-static void spnoop(void)
+static void spnoop(uint32_t w0, uint32_t w1)
 {
   LRDP("spnoop\n");
 }
 
 // noop - no operation, always ignore
-static void rdp_noop(void)
+static void rdp_noop(uint32_t w0, uint32_t w1)
 {
   LRDP("noop\n");
 }
@@ -1085,7 +1086,7 @@ static void DrawDepthBufferFog(void)
   DrawDepthBufferToScreen(&fb_info);
 }
 
-static void rdp_texrect(void)
+static void rdp_texrect(uint32_t w0, uint32_t w1)
 {
   if (!rdp.LLE)
   {
@@ -1483,28 +1484,28 @@ static void rdp_texrect(void)
     }
 }
 
-static void rdp_loadsync(void)
+static void rdp_loadsync(uint32_t w0, uint32_t w1)
 {
 #ifdef EXTREME_LOGGING
   LRDP("loadsync - ignored\n");
 #endif
 }
 
-static void rdp_pipesync(void)
+static void rdp_pipesync(uint32_t w0, uint32_t w1)
 {
 #ifdef EXTREME_LOGGING
   LRDP("pipesync - ignored\n");
 #endif
 }
 
-static void rdp_tilesync(void)
+static void rdp_tilesync(uint32_t w0, uint32_t w1)
 {
 #ifdef EXTREME_LOGGING
   LRDP("tilesync - ignored\n");
 #endif
 }
 
-static void rdp_fullsync(void)
+static void rdp_fullsync(uint32_t w0, uint32_t w1)
 {
   // Set an interrupt to allow the game to continue
   *gfx.MI_INTR_REG |= 0x20;
@@ -1514,7 +1515,7 @@ static void rdp_fullsync(void)
 #endif
 }
 
-static void rdp_setkeygb(void)
+static void rdp_setkeygb(uint32_t w0, uint32_t w1)
 {
   uint32_t sB = rdp.cmd1&0xFF;
   uint32_t cB = (rdp.cmd1>>8)&0xFF;
@@ -1528,7 +1529,7 @@ static void rdp_setkeygb(void)
 #endif
 }
 
-static void rdp_setkeyr(void)
+static void rdp_setkeyr(uint32_t w0, uint32_t w1)
 {
   uint32_t sR = rdp.cmd1&0xFF;
   uint32_t cR = (rdp.cmd1>>8)&0xFF;
@@ -1540,7 +1541,7 @@ static void rdp_setkeyr(void)
 #endif
 }
 
-static void rdp_setconvert(void)
+static void rdp_setconvert(uint32_t w0, uint32_t w1)
 {
   /*
   rdp.YUV_C0 = 1.1647f  ;
@@ -1561,7 +1562,7 @@ static void rdp_setconvert(void)
 // setscissor - sets the screen clipping rectangle
 //
 
-static void rdp_setscissor(void)
+static void rdp_setscissor(uint32_t w0, uint32_t w1)
 {
   // clipper resolution is 320x240, scale based on computer resolution
   rdp.scissor_o.ul_x = /*min(*/(uint32_t)(((rdp.cmd0 & 0x00FFF000) >> 14))/*, 320)*/;
@@ -1590,7 +1591,7 @@ static void rdp_setscissor(void)
   rdp.update |= UPDATE_VIEWPORT;
 }
 
-static void rdp_setprimdepth(void)
+static void rdp_setprimdepth(uint32_t w0, uint32_t w1)
 {
   rdp.prim_depth = (uint16_t)((rdp.cmd1 >> 16) & 0x7FFF);
   rdp.prim_dz = (uint16_t)(rdp.cmd1 & 0x7FFF);
@@ -1603,15 +1604,15 @@ static void rdp_setprimdepth(void)
 #define F3DEX2_SETOTHERMODE(cmd,sft,len,data) { \
   rdp.cmd0 = (cmd<<24) | ((32-(sft)-(len))<<8) | (((len)-1)); \
   rdp.cmd1 = data; \
-  gfx_instruction[settings.ucode][cmd] (); \
+  gfx_instruction[settings.ucode][cmd](rdp.cmd0, rdp.cmd1); \
 }
 #define SETOTHERMODE(cmd,sft,len,data) { \
   rdp.cmd0 = (cmd<<24) | ((sft)<<8) | (len); \
   rdp.cmd1 = data; \
-  gfx_instruction[settings.ucode][cmd] (); \
+  gfx_instruction[settings.ucode][cmd](rdp.cmd0, rdp.cmd1); \
 }
 
-static void rdp_setothermode(void)
+static void rdp_setothermode(uint32_t w0, uint32_t w1)
 {
 
 #ifdef EXTREME_LOGGING
@@ -1659,7 +1660,7 @@ void load_palette (uint32_t addr, uint16_t start, uint16_t count)
    rdp.pal_256_crc = CRC32( 0xFFFFFFFF, rdp.pal_8_crc, 64 );
 }
 
-static void rdp_loadtlut(void)
+static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 {
    int i, j;
    uint32_t tile = (rdp.cmd1 >> 24) & 0x07;
@@ -1703,7 +1704,7 @@ static void rdp_loadtlut(void)
 }
 
 int tile_set = 0;
-static void rdp_settilesize(void)
+static void rdp_settilesize(uint32_t w0, uint32_t w1)
 {
   uint32_t tile = (rdp.cmd1 >> 24) & 0x07;
   rdp.last_tile_size = tile;
@@ -1877,7 +1878,7 @@ end_dxt_test:
 
 void LoadBlock32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt);
 
-static void rdp_loadblock(void)
+static void rdp_loadblock(uint32_t w0, uint32_t w1)
 {
   if (rdp.skip_drawing)
     return;
@@ -2081,7 +2082,7 @@ LABEL_20:
 
 void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
 
-static void rdp_loadtile(void)
+static void rdp_loadtile(uint32_t w0, uint32_t w1)
 {
   if (rdp.skip_drawing)
     return;
@@ -2165,7 +2166,7 @@ static void rdp_loadtile(void)
 #endif
 }
 
-static void rdp_settile(void)
+static void rdp_settile(uint32_t w0, uint32_t w1)
 {
    int i;
    tile_set = 1; // used to check if we only load the first settilesize
@@ -2231,7 +2232,7 @@ static void rdp_settile(void)
 // fillrect - fills a rectangle
 //
 
-static void rdp_fillrect(void)
+static void rdp_fillrect(uint32_t w0, uint32_t w1)
 {
   uint32_t ul_x = ((rdp.cmd1 & 0x00FFF000) >> 14);
   uint32_t ul_y = (rdp.cmd1 & 0x00000FFF) >> 2;
@@ -2430,7 +2431,7 @@ static void rdp_fillrect(void)
 // setfillcolor - sets the filling color
 //
 
-static void rdp_setfillcolor(void)
+static void rdp_setfillcolor(uint32_t w0, uint32_t w1)
 {
   rdp.fill_color = rdp.cmd1;
   rdp.update |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
@@ -2440,7 +2441,7 @@ static void rdp_setfillcolor(void)
 #endif
 }
 
-static void rdp_setfogcolor(void)
+static void rdp_setfogcolor(uint32_t w0, uint32_t w1)
 {
   rdp.fog_color = rdp.cmd1;
   rdp.update |= UPDATE_COMBINE | UPDATE_FOG_ENABLED;
@@ -2450,7 +2451,7 @@ static void rdp_setfogcolor(void)
 #endif
 }
 
-static void rdp_setblendcolor(void)
+static void rdp_setblendcolor(uint32_t w0, uint32_t w1)
 {
   rdp.blend_color = rdp.cmd1;
   rdp.update |= UPDATE_COMBINE;
@@ -2460,7 +2461,7 @@ static void rdp_setblendcolor(void)
 #endif
 }
 
-static void rdp_setprimcolor(void)
+static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 {
   rdp.prim_color = rdp.cmd1;
   rdp.prim_lodmin = (rdp.cmd0 >> 8) & 0xFF;
@@ -2473,7 +2474,7 @@ static void rdp_setprimcolor(void)
 #endif
 }
 
-static void rdp_setenvcolor(void)
+static void rdp_setenvcolor(uint32_t w0, uint32_t w1)
 {
   rdp.env_color = rdp.cmd1;
   rdp.update |= UPDATE_COMBINE;
@@ -2483,7 +2484,7 @@ static void rdp_setenvcolor(void)
 #endif
 }
 
-static void rdp_setcombine(void)
+static void rdp_setcombine(uint32_t w0, uint32_t w1)
 {
   rdp.c_a0  = (uint8_t)((rdp.cmd0 >> 20) & 0xF);
   rdp.c_b0  = (uint8_t)((rdp.cmd1 >> 28) & 0xF);
@@ -2523,7 +2524,7 @@ static void rdp_setcombine(void)
 // settextureimage - sets the source for an image copy
 //
 
-static void rdp_settextureimage(void)
+static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 {
   static const char *format[]   = { "RGBA", "YUV", "CI", "IA", "I", "?", "?", "?" };
   static const char *size[]     = { "4bit", "8bit", "16bit", "32bit" };
@@ -2574,7 +2575,7 @@ static void rdp_settextureimage(void)
 #endif
 }
 
-static void rdp_setdepthimage(void)
+static void rdp_setdepthimage(uint32_t w0, uint32_t w1)
 {
   rdp.zimg = segoffset(rdp.cmd1) & BMASK;
   rdp.zi_width = rdp.ci_width;
@@ -2606,7 +2607,7 @@ static void RestoreScale(void)
 
 static uint32_t swapped_addr = 0;
 
-static void rdp_setcolorimage(void)
+static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 {
    int i;
 
@@ -3000,7 +3001,7 @@ static void rdp_setcolorimage(void)
    }
 }
 
-static void rsp_reserved0(void)
+static void rsp_reserved0(uint32_t w0, uint32_t w1)
 {
   if (settings.ucode != ucode_DiddyKong)
      return;
@@ -3013,21 +3014,21 @@ static void rsp_reserved0(void)
 #endif
 }
 
-static void rsp_reserved1(void)
+static void rsp_reserved1(uint32_t w0, uint32_t w1)
 {
 #ifdef EXTREME_LOGGING
   LRDP("reserved1 - ignored\n");
 #endif
 }
 
-static void rsp_reserved2(void)
+static void rsp_reserved2(uint32_t w0, uint32_t w1)
 {
 #ifdef EXTREME_LOGGING
   LRDP("reserved2\n");
 #endif
 }
 
-static void rsp_reserved3(void)
+static void rsp_reserved3(uint32_t w0, uint32_t w1)
 {
 #ifdef EXTREME_LOGGING
   LRDP("reserved3 - ignored\n");
@@ -3266,7 +3267,7 @@ void DetectFrameBufferUsage(void)
       rdp.pc[rdp.pc_i] = (a+8) & BMASK;
 
       if ((uintptr_t)((void*)(gfx_instruction_lite[settings.ucode][rdp.cmd0>>24])))
-         gfx_instruction_lite[settings.ucode][rdp.cmd0>>24] ();
+         gfx_instruction_lite[settings.ucode][rdp.cmd0>>24](rdp.cmd0, rdp.cmd1);
 
       // check DL counter
       if (rdp.dl_count != -1)
@@ -3813,7 +3814,7 @@ static void rdp_triangle(int shade, int texture, int zbuffer)
   lle_triangle(rdp.cmd0, rdp.cmd1, shade, texture, zbuffer, rdp_cmd_data + rdp_cmd_cur);
 }
 
-static void rdp_trifill(void)
+static void rdp_trifill(uint32_t w0, uint32_t w1)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 0, 0, 0, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
@@ -3821,7 +3822,7 @@ static void rdp_trifill(void)
 #endif
 }
 
-static void rdp_trishade(void)
+static void rdp_trishade(uint32_t w0, uint32_t w1)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 1, 0, 0, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
@@ -3829,7 +3830,7 @@ static void rdp_trishade(void)
 #endif
 }
 
-static void rdp_tritxtr(void)
+static void rdp_tritxtr(uint32_t w0, uint32_t w1)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 0, 1, 0, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
@@ -3837,7 +3838,7 @@ static void rdp_tritxtr(void)
 #endif
 }
 
-static void rdp_trishadetxtr(void)
+static void rdp_trishadetxtr(uint32_t w0, uint32_t w1)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 1, 1, 0, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
@@ -3845,7 +3846,7 @@ static void rdp_trishadetxtr(void)
 #endif
 }
 
-static void rdp_trifillz(void)
+static void rdp_trifillz(uint32_t w0, uint32_t w1)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 0, 0, 1, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
@@ -3853,7 +3854,7 @@ static void rdp_trifillz(void)
 #endif
 }
 
-static void rdp_trishadez(void)
+static void rdp_trishadez(uint32_t w0, uint32_t w1)
 {
   lle_triangle(rdp.cmd0, rdp.cmd1, 1, 0, 1, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
@@ -3861,7 +3862,7 @@ static void rdp_trishadez(void)
 #endif
 }
 
-static void rdp_tritxtrz(void)
+static void rdp_tritxtrz(uint32_t w0, uint32_t w1)
 {
    lle_triangle(rdp.cmd0, rdp.cmd1, 0, 1, 1, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
@@ -3869,7 +3870,7 @@ static void rdp_tritxtrz(void)
 #endif
 }
 
-static void rdp_trishadetxtrz(void)
+static void rdp_trishadetxtrz(uint32_t w0, uint32_t w1)
 {
    lle_triangle(rdp.cmd0, rdp.cmd1, 1, 1, 1, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
@@ -3980,7 +3981,7 @@ static const uint32_t rdp_command_length[64] =
 // dp_status & 0x1 = XBUS_DMEM_DMA enabled
 #define READ_RDP_DATA(address) ((dp_status & 0x1) ? (rsp_dmem[((address) & 0xfff)>>2]) : (rdram[(address) >> 2]))
 
-static void rdphalf_1(void)
+static void rdphalf_1(uint32_t w0, uint32_t w1)
 {
    uint32_t cmd = rdp.cmd1 >> 24;
    if (cmd >= G_TRI_FILL && cmd <= G_TRI_SHADE_TXTR_ZBUFF) //triangle command
@@ -4028,19 +4029,19 @@ static void rdphalf_1(void)
          else
          rglSingleTriangle = false;
          */
-      rdp_command_table[cmd]();
+      rdp_command_table[cmd](rdp.cmd0, rdp.cmd1);
    }
    else
       LRDP("rdphalf_1 - IGNORED\n");
 }
 
-static void rdphalf_2(void)
+static void rdphalf_2(uint32_t w0, uint32_t w1)
 {
    RDP_E("rdphalf_2 - IGNORED\n");
    LRDP("rdphalf_2 - IGNORED\n");
 }
 
-static void rdphalf_cont(void)
+static void rdphalf_cont(uint32_t w0, uint32_t w1)
 {
    RDP_E("rdphalf_cont - IGNORED\n");
    LRDP("rdphalf_cont - IGNORED\n");
@@ -4101,7 +4102,7 @@ EXPORT void CALL ProcessRDPList(void)
       rdp.cmd1 = rdp_cmd_data[rdp_cmd_cur+1];
       rdp.cmd2 = rdp_cmd_data[rdp_cmd_cur+2];
       rdp.cmd3 = rdp_cmd_data[rdp_cmd_cur+3];
-      rdp_command_table[cmd]();
+      rdp_command_table[cmd](rdp.cmd0, rdp.cmd1);
 
       rdp_cmd_cur += rdp_command_length[cmd] / 4;
    };
@@ -4109,6 +4110,4 @@ EXPORT void CALL ProcessRDPList(void)
    rdp.LLE = false;
    dp_start = dp_end;
    dp_status &= ~0x0002;
-
-   //}
 }

@@ -189,7 +189,7 @@ static void rsp_tri2 (VERTEX **v)
 //
 // uc0:vertex - loads vertices
 //
-static void uc0_vertex(void)
+static void uc0_vertex(uint32_t w0, uint32_t w1)
 {
   int v0 = (rdp.cmd0 >> 16) & 0xF;      // Current vertex
   int n = ((rdp.cmd0 >> 20) & 0xF) + 1; // Number of vertices to copy
@@ -284,7 +284,7 @@ void load_matrix (float m[4][4], uint32_t addr)
 //
 // uc0:matrix - performs matrix operations
 //
-static void uc0_matrix(void)
+static void uc0_matrix(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:matrix ");
 
@@ -454,7 +454,7 @@ static void gSPForceMatrix(void)
 //
 // uc0:movemem - loads a structure with data
 //
-static void uc0_movemem(void)
+static void uc0_movemem(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:movemem ");
 
@@ -535,7 +535,7 @@ static void uc0_movemem(void)
 //
 // uc0:displaylist - makes a call to another section of code
 //
-static void uc0_displaylist(void)
+static void uc0_displaylist(uint32_t w0, uint32_t w1)
 {
    uint32_t addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
 
@@ -576,7 +576,7 @@ static void uc0_displaylist(void)
 //
 // tri1 - renders a triangle
 //
-static void uc0_tri1(void)
+static void uc0_tri1(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[3];
    //FRDP("uc0:tri1 #%d - %d, %d, %d\n", rdp.tri_n, ((rdp.cmd1>>16) & 0xFF) / 10, ((rdp.cmd1>>8) & 0xFF) / 10, (rdp.cmd1 & 0xFF) / 10);
@@ -605,7 +605,7 @@ static void uc0_tri1(void)
 // uc0:enddl - ends a call made by uc0:displaylist
 //
 //gSPEndDisplayList
-static void uc0_enddl(void)
+static void uc0_enddl(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:enddl\n");
 
@@ -618,7 +618,7 @@ static void uc0_enddl(void)
    rdp.pc_i --;
 }
 
-static void uc0_culldl(void)
+static void uc0_culldl(uint32_t w0, uint32_t w1)
 {
    uint16_t i;
    uint8_t vStart = (uint8_t)((rdp.cmd0 & 0x00FFFFFF) / 40) & 0xF;
@@ -651,10 +651,10 @@ static void uc0_culldl(void)
    }
 
    LRDP(" - ");  // specify that the enddl is not a real command
-   uc0_enddl();
+   uc0_enddl(w0, w1);
 }
 
-static void uc0_popmatrix(void)
+static void uc0_popmatrix(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:popmatrix\n");
 
@@ -675,17 +675,20 @@ static void uc0_popmatrix(void)
    }
 }
 
-static void uc6_obj_sprite(void);
+static void uc6_obj_sprite(uint32_t w0, uint32_t w1);
 
 //gSPModifyVertex
 static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
 {
    VERTEX *v = &rdp.vtx[vtx];
+   uint32_t w0, w1;
+   w0 = rdp.cmd0;
+   w1 = rdp.cmd1;
 
    switch (where)
    {
       case 0:
-         uc6_obj_sprite();
+         uc6_obj_sprite(w0, w1);
          break;
 
       case G_MWO_POINT_RGBA:    // RGBA
@@ -766,7 +769,7 @@ static void gSPFogFactor(void)
    //FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
 }
 
-static void gSPClipRatio(uint32_t w1)
+static void gSPClipRatio(uint32_t w0, uint32_t w1)
 {
    if (((rdp.cmd0 >> 8) & 0xFFFF) == G_MW_CLIP)
    {
@@ -779,9 +782,8 @@ static void gSPClipRatio(uint32_t w1)
 //
 // uc0:moveword - moves a word to someplace, like the segment pointers
 //
-static void uc0_moveword(void)
+static void uc0_moveword(uint32_t w0, uint32_t w1)
 {
-   uint32_t w1 = rdp.cmd1;
    //LRDP("uc0:moveword ");
 
    // Find which command this is (lowest byte of cmd0)
@@ -799,7 +801,7 @@ static void uc0_moveword(void)
          //FRDP ("numlights: %d\n", rdp.num_lights);
          break;
       case G_MW_CLIP:
-         gSPClipRatio(w1);
+         gSPClipRatio(w0, w1);
          break;
 
       case G_MW_SEGMENT:  // segment
@@ -840,12 +842,12 @@ static void uc0_moveword(void)
 }
 
 
-static void uc0_texture(void)
+static void uc0_texture(uint32_t w0, uint32_t w1)
 {
    gSPTexture();
 }
 
-static void uc0_setothermode_h(void)
+static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:setothermode_h: ");
 
@@ -927,7 +929,7 @@ static void uc0_setothermode_h(void)
 #endif
 }
 
-static void uc0_setothermode_l(void)
+static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:setothermode_l ");
 
@@ -983,7 +985,7 @@ static void uc0_setothermode_l(void)
 }
 
 //gSPSetGeometryMode
-static void uc0_setgeometrymode(void)
+static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
 {
    rdp.geom_mode |= rdp.cmd1;
    //FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", rdp.cmd1, rdp.geom_mode);
@@ -1025,7 +1027,7 @@ static void uc0_setgeometrymode(void)
 }
 
 //gSPClearGeometryMode
-static void uc0_cleargeometrymode(void)
+static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 {
    //FRDP("uc0:cleargeometrymode %08lx\n", rdp.cmd1);
 
@@ -1068,7 +1070,7 @@ static void uc0_cleargeometrymode(void)
 }
 
 //gSPLine3D
-static void uc0_line3d(void)
+static void uc0_line3d(uint32_t w0, uint32_t w1)
 {
    uint32_t v0 = ((rdp.cmd1 >> 16) & 0xff) / 10;
    uint32_t v1 = ((rdp.cmd1 >>  8) & 0xff) / 10;
@@ -1090,7 +1092,7 @@ static void uc0_line3d(void)
    //FRDP("uc0:line3d v0:%d, v1:%d, width:%d\n", v0, v1, width);
 }
 
-static void uc0_tri4(void)
+static void uc0_tri4(uint32_t w0, uint32_t w1)
 {
    // c0: 0000 0123, c1: 456789ab
    // becomes: 405 617 829 a3b

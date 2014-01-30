@@ -41,7 +41,7 @@
 //
 //****************************************************************
 
-void uc9_rpdcmd(void);
+void uc9_rpdcmd(uint32_t w0, uint32_t w1);
 
 typedef float M44[4][4];
 
@@ -192,8 +192,13 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
 
 static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
 {
-   uint32_t type = zHeader & 7;
-   uint8_t * addr = gfx.RDRAM + (zHeader&0xFFFFFFF8);
+   uint32_t type, w0, w1;
+   uint8_t *addr;
+   
+   w0 = rdp.cmd0;
+   w1 = rdp.cmd1;
+   type = zHeader & 7;
+   addr = gfx.RDRAM + (zHeader&0xFFFFFFF8);
 
    switch (type)
    {
@@ -204,7 +209,7 @@ static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
             if (rdp.cmd1 != rdpcmds[0])
             {
                rdpcmds[0] = rdp.cmd1;
-               uc9_rpdcmd();
+               uc9_rpdcmd(w0, w1);
             }
             update();
             uc9_draw_object(addr + 8, type);
@@ -218,18 +223,18 @@ static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
             if (rdp.cmd1 != rdpcmds[0])
             {
                rdpcmds[0] = rdp.cmd1;
-               uc9_rpdcmd();
+               uc9_rpdcmd(w0, w1);
             }
             rdp.cmd1 = ((uint32_t*)addr)[2];
             if (rdp.cmd1 != rdpcmds[1])
             {
-               uc9_rpdcmd();
+               uc9_rpdcmd(w0, w1);
                rdpcmds[1] = rdp.cmd1;
             }
             rdp.cmd1 = ((uint32_t*)addr)[3];
             if (rdp.cmd1 != rdpcmds[2])
             {
-               uc9_rpdcmd();
+               uc9_rpdcmd(w0, w1);
                rdpcmds[2] = rdp.cmd1;
             }
             if (type)
@@ -243,7 +248,7 @@ static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
    return segoffset(((uint32_t*)addr)[0]);
 }
 
-static void uc9_object(void)
+static void uc9_object(uint32_t w0, uint32_t w1)
 {
    uint32_t cmd1, zHeader;
    uint32_t rdpcmds[3];
@@ -263,12 +268,12 @@ static void uc9_object(void)
       zHeader = uc9_load_object(zHeader, rdpcmds);
 }
 
-static void uc9_mix(void)
+static void uc9_mix(uint32_t w0, uint32_t w1)
 {
   LRDP("uc9:mix IGNORED\n");
 }
 
-static void uc9_fmlight(void)
+static void uc9_fmlight(uint32_t w0, uint32_t w1)
 {
    uint32_t i;
    int mid = rdp.cmd0&0xFF;
@@ -334,7 +339,7 @@ static void uc9_fmlight(void)
    rdp.use_lookat = true;
 }
 
-static void uc9_light(void)
+static void uc9_light(uint32_t w0, uint32_t w1)
 {
    uint32_t i;
    uint32_t csrs = -1024 + ((rdp.cmd0 >> 12) & 0xFFF);
@@ -373,7 +378,7 @@ static void uc9_light(void)
    }
 }
 
-static void uc9_mtxtrnsp(void)
+static void uc9_mtxtrnsp(uint32_t w0, uint32_t w1)
 {
    LRDP("uc9:mtxtrnsp - ignored\n");
    /*
@@ -406,7 +411,7 @@ static void uc9_mtxtrnsp(void)
     */
 }
 
-static void uc9_mtxcat(void)
+static void uc9_mtxcat(uint32_t w0, uint32_t w1)
 {
    LRDP("uc9:mtxcat ");
    M44 *s;
@@ -493,7 +498,7 @@ typedef struct
    uint8_t cc;
 } zSortVDest;
 
-static void uc9_mult_mpmtx(void)
+static void uc9_mult_mpmtx(uint32_t w0, uint32_t w1)
 {
    int i;
    //int id = rdp.cmd0&0xFF;
@@ -549,27 +554,27 @@ static void uc9_mult_mpmtx(void)
    }
 }
 
-static void uc9_link_subdl(void)
+static void uc9_link_subdl(uint32_t w0, uint32_t w1)
 {
    LRDP("uc9:link_subdl IGNORED\n");
 }
 
-static void uc9_set_subdl(void)
+static void uc9_set_subdl(uint32_t w0, uint32_t w1)
 {
    LRDP("uc9:set_subdl IGNORED\n");
 }
 
-static void uc9_wait_signal(void)
+static void uc9_wait_signal(uint32_t w0, uint32_t w1)
 {
    LRDP("uc9:wait_signal IGNORED\n");
 }
 
-static void uc9_send_signal(void)
+static void uc9_send_signal(uint32_t w0, uint32_t w1)
 {
    LRDP("uc9:send_signal IGNORED\n");
 }
 
-void uc9_movemem(void)
+void uc9_movemem(uint32_t w0, uint32_t w1)
 {
    LRDP("uc9:movemem\n");
    int idx = rdp.cmd0 & 0x0E;
@@ -687,9 +692,9 @@ void uc9_movemem(void)
    }
 }
 
-static void uc9_setscissor(void)
+static void uc9_setscissor(uint32_t w0, uint32_t w1)
 {
-   rdp_setscissor();
+   rdp_setscissor(w0, w1);
 
    if ((rdp.scissor_o.lr_x - rdp.scissor_o.ul_x) > (zSortRdp.view_scale[0] - zSortRdp.view_trans[0]))
    {

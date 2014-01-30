@@ -43,7 +43,7 @@ int vtx_last = 0;
 uint32_t dma_offset_mtx = 0;
 uint32_t dma_offset_vtx = 0;
 
-static void uc5_dma_offsets ()
+static void uc5_dma_offsets(uint32_t w0, uint32_t w1)
 {
   dma_offset_mtx = rdp.cmd0 & 0x00FFFFFF;
   dma_offset_vtx = rdp.cmd1 & 0x00FFFFFF;
@@ -51,7 +51,7 @@ static void uc5_dma_offsets ()
   FRDP("uc5:dma_offsets - mtx: %08lx, vtx: %08lx\n", dma_offset_mtx, dma_offset_vtx);
 }
 
-static void uc5_matrix(void)
+static void uc5_matrix(uint32_t w0, uint32_t w1)
 {
    // Use segment offset to get the address
    uint32_t addr = dma_offset_mtx + (segoffset(rdp.cmd1) & BMASK);
@@ -102,7 +102,7 @@ static void uc5_matrix(void)
 #endif
 }
 
-static void uc5_vertex(void)
+static void uc5_vertex(uint32_t w0, uint32_t w1)
 {
    int i;
    uint32_t addr = dma_offset_vtx + (segoffset(rdp.cmd1) & BMASK);
@@ -194,7 +194,7 @@ static void uc5_vertex(void)
    vtx_last += n;
 }
 
-static void uc5_tridma(void)
+static void uc5_tridma(uint32_t w0, uint32_t w1)
 {
    vtx_last = 0;    // we've drawn something, so the vertex index needs resetting
    if (rdp.skip_drawing)
@@ -273,7 +273,7 @@ static void uc5_tridma(void)
    }
 }
 
-static void uc5_dl_in_mem(void)
+static void uc5_dl_in_mem(uint32_t w0, uint32_t w1)
 {
    uint32_t addr = segoffset(rdp.cmd1) & BMASK;
    int count = (rdp.cmd0 & 0x00FF0000) >> 16;
@@ -290,7 +290,7 @@ static void uc5_dl_in_mem(void)
    rdp.dl_count = count + 1;
 }
 
-static void uc5_moveword(void)
+static void uc5_moveword(uint32_t w0, uint32_t w1)
 {
    LRDP("uc5:moveword ");
 
@@ -335,7 +335,7 @@ static void uc5_moveword(void)
    }
 }
 
-static void uc5_setgeometrymode(void)
+static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
 {
    FRDP("uc0:setgeometrymode %08lx\n", rdp.cmd1);
 
@@ -361,7 +361,7 @@ static void uc5_setgeometrymode(void)
    }
 }
 
-static void uc5_cleargeometrymode(void)
+static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1)
 {
    FRDP("uc0:cleargeometrymode %08lx\n", rdp.cmd1);
 

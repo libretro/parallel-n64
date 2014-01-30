@@ -93,7 +93,7 @@ static void t3dProcessRDP(uint32_t a)
       rdp.cmd1 = ((uint32_t*)gfx.RDRAM)[a++];
       while (rdp.cmd0 + rdp.cmd1)
       {
-         gfx_instruction[0][rdp.cmd0>>24]();
+         gfx_instruction[0][rdp.cmd0>>24](rdp.cmd0, rdp.cmd1);
          rdp.cmd0 = ((uint32_t*)gfx.RDRAM)[a++];
          rdp.cmd1 = ((uint32_t*)gfx.RDRAM)[a++];
          uint32_t cmd = rdp.cmd0>>24;
@@ -114,7 +114,7 @@ static void t3dLoadGlobState(uint32_t pgstate)
    FRDP ("Global state. pad0: %04lx, perspNorm: %04lx, flag: %08lx\n", gstate->pad0, gstate->perspNorm, gstate->flag);
    rdp.cmd0 = gstate->othermode0;
    rdp.cmd1 = gstate->othermode1;
-   rdp_setothermode();
+   rdp_setothermode(rdp.cmd0, rdp.cmd1);
 
    for (s = 0; s < 16; s++)
    {
@@ -218,10 +218,10 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 
    rdp.cmd0 = ostate->othermode0;
    rdp.cmd1 = ostate->othermode1;
-   rdp_setothermode();
+   rdp_setothermode(rdp.cmd0, rdp.cmd1);
 
    rdp.cmd1 = ostate->renderState;
-   uc0_setgeometrymode();
+   uc0_setgeometrymode(rdp.cmd0, rdp.cmd1);
 
    if (!(ostate->flag&1)) //load matrix
    {
