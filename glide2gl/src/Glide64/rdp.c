@@ -233,6 +233,7 @@ uint32_t uc_crc;
 void microcheck ();
 
 // ** UCODE FUNCTIONS **
+#include "glide64_gSP.h"
 #include "ucode00.h"
 #include "ucode01.h"
 #include "ucode02.h"
