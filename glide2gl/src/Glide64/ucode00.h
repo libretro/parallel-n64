@@ -932,17 +932,8 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
    //LRDP("uc0:setothermode_l ");
 
    int shift, len;
-   if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
-   {
-      len = (w0 & 0xFF) + 1;
-      shift = 32 - ((w0 >> 8) & 0xFF) - len;
-      if (shift < 0) shift = 0;
-   }
-   else
-   {
-      len = w0 & 0xFF;
-      shift = (w0 >> 8) & 0xFF;
-   }
+   len = w0 & 0xFF;
+   shift = (w0 >> 8) & 0xFF;
 
    uint32_t mask = 0;
    int i = len;

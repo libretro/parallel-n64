@@ -978,3 +978,51 @@ static void uc2_dlist_cnt(uint32_t w0, uint32_t w1)
    rdp.pc[rdp.pc_i] = addr;  // jump to the address
    rdp.dl_count = count + 1;
 }
+
+static void uc2_setothermode_l(uint32_t w0, uint32_t w1)
+{
+
+   int shift, len;
+   len = (w0 & 0xFF) + 1;
+   shift = 32 - ((w0 >> 8) & 0xFF) - len;
+   if (shift < 0)
+      shift = 0;
+
+   uint32_t mask = 0;
+   int i = len;
+   for (; i; i--)
+      mask = (mask << 1) | 1;
+   mask <<= shift;
+
+   rdp.cmd1 &= mask;
+   rdp.othermode_l &= ~mask;
+   rdp.othermode_l |= rdp.cmd1;
+
+   if (mask & 0x00000003)  // alpha compare
+   {
+      rdp.acmp = rdp.othermode_l & 0x00000003;
+      rdp.update |= UPDATE_ALPHA_COMPARE;
+      //FRDP ("alpha compare %s\n", ACmp[rdp.acmp]);
+   }
+
+   if (mask & ZBUF_COMPARE)  // z-src selection
+   {
+      rdp.zsrc = (rdp.othermode_l & G_SHADE) >> 2;
+      rdp.update |= UPDATE_ZBUF_ENABLED;
+      //FRDP ("z-src sel: %s\n", str_zs[rdp.zsrc]);
+      //FRDP ("z-src sel: %08lx\n", rdp.zsrc);
+   }
+
+   if (mask & 0xFFFFFFF8)  // rendermode / blender bits
+   {
+      rdp.update |= UPDATE_FOG_ENABLED; //if blender has no fog bits, fog must be set off
+      rdp.render_mode_changed |= rdp.rm ^ rdp.othermode_l;
+      rdp.rm = rdp.othermode_l;
+      if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
+         rdp.othermode_l |= UPDATE_BIASLEVEL | UPDATE_LIGHTS;
+      //FRDP ("rendermode: %08lx\n", rdp.othermode_l);  // just output whole othermode_l
+   }
+
+   // there is not one setothermode_l that's not handled :)
+   //LRDP("uc2:setothermode_l ");
+}
