@@ -233,6 +233,7 @@ uint32_t uc_crc;
 void microcheck ();
 
 // ** UCODE FUNCTIONS **
+#include "glide64_gDP.h"
 #include "glide64_gSP.h"
 #include "ucode00.h"
 #include "ucode01.h"
@@ -1509,38 +1510,27 @@ static void rdp_tilesync(uint32_t w0, uint32_t w1)
 
 static void rdp_fullsync(uint32_t w0, uint32_t w1)
 {
-  // Set an interrupt to allow the game to continue
-  *gfx.MI_INTR_REG |= 0x20;
-  gfx.CheckInterrupts();
-#ifdef EXTREME_LOGGING
-  LRDP("fullsync\n");
-#endif
+   gDPFullSync();
 }
 
 static void rdp_setkeygb(uint32_t w0, uint32_t w1)
 {
-  uint32_t sB = w1 & 0xFF;
-  uint32_t cB = (w1 >> 8) & 0xFF;
-  uint32_t sG = (w1 >> 16) & 0xFF;
-  uint32_t cG = (w1 >> 24) & 0xFF;
-  rdp.SCALE = (rdp.SCALE & 0xFF0000FF) | (sG << 16) | (sB << 8);
-  rdp.CENTER = (rdp.CENTER & 0xFF0000FF) | (cG << 16) | (cB << 8);
+   uint32_t wG = 0; //stub
+   uint32_t wB = 0; //stub
+   uint32_t sB = w1 & 0xFF;
+   uint32_t cB = (w1 >> 8) & 0xFF;
+   uint32_t sG = (w1 >> 16) & 0xFF;
+   uint32_t cG = (w1 >> 24) & 0xFF;
 
-#ifdef EXTREME_LOGGING
-  FRDP("setkeygb. cG=%02lx, sG=%02lx, cB=%02lx, sB=%02lx\n", cG, sG, cB, sB);
-#endif
+   gDPSetKeyGB(cG, sG, wG, cB, sB, wB);
 }
 
 static void rdp_setkeyr(uint32_t w0, uint32_t w1)
 {
-  uint32_t sR = w1 & 0xFF;
-  uint32_t cR = (w1 >> 8) & 0xFF;
-  rdp.SCALE = (rdp.SCALE & 0x00FFFFFF) | (sR << 24);
-  rdp.CENTER = (rdp.CENTER & 0x00FFFFFF) | (cR << 24);
-
-#ifdef EXTREME_LOGGING
-  FRDP("setkeyr. cR=%02lx, sR=%02lx\n", cR, sR);
-#endif
+   uint32_t wR = 0; //stub
+   uint32_t sR = w1 & 0xFF;
+   uint32_t cR = (w1 >> 8) & 0xFF;
+   gDPSetKeyR(cR, sR, wR);
 }
 
 static void rdp_setconvert(uint32_t w0, uint32_t w1)
@@ -1566,41 +1556,17 @@ static void rdp_setconvert(uint32_t w0, uint32_t w1)
 
 static void rdp_setscissor(uint32_t w0, uint32_t w1)
 {
-  // clipper resolution is 320x240, scale based on computer resolution
-  rdp.scissor_o.ul_x = /*min(*/(uint32_t)(((w0 & 0x00FFF000) >> 14))/*, 320)*/;
-  rdp.scissor_o.ul_y = /*min(*/(uint32_t)(((w0 & 0x00000FFF) >> 2))/*, 240)*/;
-  rdp.scissor_o.lr_x = /*min(*/(uint32_t)(((w1 & 0x00FFF000) >> 14))/*, 320)*/;
-  rdp.scissor_o.lr_y = /*min(*/(uint32_t)(((w1 & 0x00000FFF) >> 2))/*, 240)*/;
-
-  rdp.ci_upper_bound = rdp.scissor_o.ul_y;
-  rdp.ci_lower_bound = rdp.scissor_o.lr_y;
-  rdp.scissor_set = true;
-
-#ifdef EXTREME_LOGGING
-  FRDP("setscissor: (%d,%d) -> (%d,%d)\n", rdp.scissor_o.ul_x, rdp.scissor_o.ul_y,
-    rdp.scissor_o.lr_x, rdp.scissor_o.lr_y);
-#endif
-
-  rdp.update |= UPDATE_SCISSOR;
-
-  if (rdp.view_scale[0] != 0) //viewport is set?
-     return;
-
-  rdp.view_scale[0] = (rdp.scissor_o.lr_x>>1)*rdp.scale_x;
-  rdp.view_scale[1] = (rdp.scissor_o.lr_y>>1)*-rdp.scale_y;
-  rdp.view_trans[0] = rdp.view_scale[0];
-  rdp.view_trans[1] = -rdp.view_scale[1];
-  rdp.update |= UPDATE_VIEWPORT;
+   gDPSetScissor(0,
+         /*min(*/(uint32_t)(((w0 & 0x00FFF000) >> 14))/*, 320)*/,
+         /*min(*/(uint32_t)(((w0 & 0x00000FFF) >> 2))/*, 240)*/,
+         /*min(*/(uint32_t)(((w1 & 0x00FFF000) >> 14))/*, 320)*/,
+         /*min(*/(uint32_t)(((w1 & 0x00000FFF) >> 2))/*, 240)*/
+         );
 }
 
 static void rdp_setprimdepth(uint32_t w0, uint32_t w1)
 {
-  rdp.prim_depth = (uint16_t)((w1 >> 16) & 0x7FFF);
-  rdp.prim_dz = (uint16_t)(w1 & 0x7FFF);
-
-#ifdef EXTREME_LOGGING
-  FRDP("setprimdepth: %d\n", rdp.prim_depth);
-#endif
+   gDPSetPrimDepth(0 /* stub */, 0 /* stub */);
 }
 
 #define F3DEX2_SETOTHERMODE(cmd,sft,len,data) { \
