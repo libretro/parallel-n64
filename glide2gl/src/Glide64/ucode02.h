@@ -158,13 +158,14 @@ static void uc2_vertex_neon(uint32_t w0, uint32_t w1)
 
    for (i=0; i < (n<<4); i+=16)
    {
+      int16_t *rdram = (int16_t*)gfx.RDRAM;
       VERTEX *v = &rdp.vtx[v0 + (i>>4)];
-      x   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 0)^1];
-      y   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 1)^1];
-      z   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 2)^1];
+      x   = (float)rdram[(((addr+i) >> 1) + 0)^1];
+      y   = (float)rdram[(((addr+i) >> 1) + 1)^1];
+      z   = (float)rdram[(((addr+i) >> 1) + 2)^1];
       v->flags  = ((uint16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 3)^1];
-      v->ou   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 4)^1];
-      v->ov   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 5)^1];
+      v->ou   = (float)rdram[(((addr+i) >> 1) + 4)^1];
+      v->ov   = (float)rdram[(((addr+i) >> 1) + 5)^1];
       v->uv_scaled = 0;
       v->a    = ((uint8_t*)gfx.RDRAM)[(addr+i + 15)^3];
 
@@ -197,9 +198,10 @@ static void uc2_vertex_neon(uint32_t w0, uint32_t w1)
 
       if (rdp.geom_mode & G_LIGHTING)
       {
-         v->vec[0] = ((int8_t*)gfx.RDRAM)[(addr+i + 12)^3];
-         v->vec[1] = ((int8_t*)gfx.RDRAM)[(addr+i + 13)^3];
-         v->vec[2] = ((int8_t*)gfx.RDRAM)[(addr+i + 14)^3];
+         int8_t *rdram_s8 = (int8_t*)gfx.RDRAM;
+         v->vec[0] = rdram_s8[(addr+i + 12)^3];
+         v->vec[1] = rdram_s8[(addr+i + 13)^3];
+         v->vec[2] = rdram_s8[(addr+i + 14)^3];
          //	  FRDP("Calc light. x: %f, y: %f z: %f\n", v->vec[0], v->vec[1], v->vec[2]);
          //      if (!(rdp.geom_mode & G_CLIPPING))
          {
@@ -224,9 +226,10 @@ static void uc2_vertex_neon(uint32_t w0, uint32_t w1)
       }
       else
       {
-         v->r = ((uint8_t*)gfx.RDRAM)[(addr+i + 12)^3];
-         v->g = ((uint8_t*)gfx.RDRAM)[(addr+i + 13)^3];
-         v->b = ((uint8_t*)gfx.RDRAM)[(addr+i + 14)^3];
+         uint8_t *rdram_u8 = (uint8_t*)gfx.RDRAM;
+         v->r = rdram_u8[(addr+i + 12)^3];
+         v->g = rdram_u8[(addr+i + 13)^3];
+         v->b = rdram_u8[(addr+i + 14)^3];
       }
 #ifdef EXTREME_LOGGING
       FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
@@ -329,9 +332,10 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
 
       if (rdp.geom_mode & G_LIGHTING)
       {
-         v->vec[0] = ((int8_t*)gfx.RDRAM)[(addr+i + 12)^3];
-         v->vec[1] = ((int8_t*)gfx.RDRAM)[(addr+i + 13)^3];
-         v->vec[2] = ((int8_t*)gfx.RDRAM)[(addr+i + 14)^3];
+         int8_t *rdram_s8 = (int8_t*)gfx.RDRAM;
+         v->vec[0] = rdram_s8[(addr+i + 12)^3];
+         v->vec[1] = rdram_s8[(addr+i + 13)^3];
+         v->vec[2] = rdram_s8[(addr+i + 14)^3];
          //	  FRDP("Calc light. x: %f, y: %f z: %f\n", v->vec[0], v->vec[1], v->vec[2]);
          //      if (!(rdp.geom_mode & G_CLIPPING))
          {
@@ -356,9 +360,10 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
       }
       else
       {
-         v->r = ((uint8_t*)gfx.RDRAM)[(addr+i + 12)^3];
-         v->g = ((uint8_t*)gfx.RDRAM)[(addr+i + 13)^3];
-         v->b = ((uint8_t*)gfx.RDRAM)[(addr+i + 14)^3];
+         uint8_t *rdram_u8 = (uint8_t*)gfx.RDRAM;
+         v->r = rdram_u8[(addr+i + 12)^3];
+         v->g = rdram_u8[(addr+i + 13)^3];
+         v->b = rdram_u8[(addr+i + 14)^3];
       }
 #ifdef EXTREME_LOGGING
       FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
@@ -837,13 +842,17 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
 
       case F3DEX2_MV_VIEWPORT:   // VIEWPORT
          {
-            uint32_t a = addr >> 1;
-            int16_t scale_x = ((int16_t*)gfx.RDRAM)[(a+0)^1] >> 2;
-            int16_t scale_y = ((int16_t*)gfx.RDRAM)[(a+1)^1] >> 2;
-            int16_t scale_z = ((int16_t*)gfx.RDRAM)[(a+2)^1];
-            int16_t trans_x = ((int16_t*)gfx.RDRAM)[(a+4)^1] >> 2;
-            int16_t trans_y = ((int16_t*)gfx.RDRAM)[(a+5)^1] >> 2;
-            int16_t trans_z = ((int16_t*)gfx.RDRAM)[(a+6)^1];
+            int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z,
+                    *rdram_s16;
+            uint32_t a;
+            rdram_s16 = (int16_t*)gfx.RDRAM;
+            a = addr >> 1;
+            scale_x = rdram_s16[(a+0)^1] >> 2;
+            scale_y = rdram_s16[(a+1)^1] >> 2;
+            scale_z = rdram_s16[(a+2)^1];
+            trans_x = rdram_s16[(a+4)^1] >> 2;
+            trans_y = rdram_s16[(a+5)^1] >> 2;
+            trans_z = rdram_s16[(a+6)^1];
             rdp.view_scale[0] = scale_x * rdp.scale_x;
             rdp.view_scale[1] = -scale_y * rdp.scale_y;
             rdp.view_scale[2] = 32.0f * scale_z;
@@ -860,15 +869,19 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
 
       case G_MV_LIGHT:  // LIGHT
          {
-            int n = ofs / 24;
+            int8_t *rdram_s8;
+            int n;
+            rdram_s8 = (int8_t*)gfx.RDRAM;
+            n = ofs / 24;
 
             if (n < 2)
             {
-               int8_t dir_x = ((int8_t*)gfx.RDRAM)[(addr+8)^3];
+               int8_t dir_x, dir_y, dir_z;
+               dir_x = rdram_s8[(addr+8)^3];
                rdp.lookat[n][0] = (float)(dir_x) / 127.0f;
-               int8_t dir_y = ((int8_t*)gfx.RDRAM)[(addr+9)^3];
+               dir_y = rdram_s8[(addr+9)^3];
                rdp.lookat[n][1] = (float)(dir_y) / 127.0f;
-               int8_t dir_z = ((int8_t*)gfx.RDRAM)[(addr+10)^3];
+               dir_z = rdram_s8[(addr+10)^3];
                rdp.lookat[n][2] = (float)(dir_z) / 127.0f;
                rdp.use_lookat = true;
                if (n == 1)
@@ -895,9 +908,9 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             rdp.light[n].a = 1.0f;
             // ** Thanks to Icepir8 for pointing this out **
             // Lighting must be signed byte instead of byte
-            rdp.light[n].dir_x = (float)(((int8_t*)gfx.RDRAM)[(addr+8)^3]) / 127.0f;
-            rdp.light[n].dir_y = (float)(((int8_t*)gfx.RDRAM)[(addr+9)^3]) / 127.0f;
-            rdp.light[n].dir_z = (float)(((int8_t*)gfx.RDRAM)[(addr+10)^3]) / 127.0f;
+            rdp.light[n].dir_x = (float)(rdram_s8[(addr+8)^3]) / 127.0f;
+            rdp.light[n].dir_y = (float)(rdram_s8[(addr+9)^3]) / 127.0f;
+            rdp.light[n].dir_z = (float)(rdram_s8[(addr+10)^3]) / 127.0f;
             uint32_t a = addr >> 1;
             rdp.light[n].x = (float)(((int16_t*)gfx.RDRAM)[(a+4)^1]);
             rdp.light[n].y = (float)(((int16_t*)gfx.RDRAM)[(a+5)^1]);

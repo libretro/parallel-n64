@@ -43,8 +43,8 @@
 
 static void uc3_vertex(uint32_t w0, uint32_t w1)
 {
-   int v0 = ((rdp.cmd0 >> 16) & 0xFF) / 5;      // Current vertex
-   int n = (uint16_t)((rdp.cmd0 & 0xFFFF) + 1) / 0x210;    // Number to copy
+   int v0 = ((w0 >> 16) & 0xFF) / 5;      // Current vertex
+   int n = (uint16_t)((w0 & 0xFFFF) + 1) / 0x210;    // Number to copy
 
    if (v0 >= 32)
       v0 = 31;
@@ -63,13 +63,13 @@ static void uc3_tri1(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[3];
    FRDP("uc3:tri1 #%d - %d, %d, %d - %08lx - %08lx\n", rdp.tri_n,
-         ((rdp.cmd1 >> 16) & 0xFF)/5,
-         ((rdp.cmd1 >> 8) & 0xFF)/5,
-         ((rdp.cmd1     ) & 0xFF)/5, rdp.cmd0, rdp.cmd1);
+         ((w1 >> 16) & 0xFF)/5,
+         ((w1 >> 8) & 0xFF)/5,
+         ((w1     ) & 0xFF)/5, w0, w1);
 
-   v[0] = &rdp.vtx[((rdp.cmd1 >> 16) & 0xFF) / 5];
-   v[1] = &rdp.vtx[((rdp.cmd1 >> 8)  & 0xFF) / 5];
-   v[2] = &rdp.vtx[(rdp.cmd1 & 0xFF)         / 5];
+   v[0] = &rdp.vtx[((w1 >> 16) & 0xFF) / 5];
+   v[1] = &rdp.vtx[((w1 >> 8)  & 0xFF) / 5];
+   v[2] = &rdp.vtx[(w1 & 0xFF)         / 5];
 
    rsp_tri1(v, 0);
 }
@@ -78,19 +78,19 @@ static void uc3_tri2(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[6];
    FRDP("uc3:tri2 #%d, #%d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1,
-         ((rdp.cmd0 >> 16) & 0xFF)/5,
-         ((rdp.cmd0 >>  8) & 0xFF)/5,
-         ((rdp.cmd0      ) & 0xFF)/5,
-         ((rdp.cmd1 >> 16) & 0xFF)/5,
-         ((rdp.cmd1 >>  8) & 0xFF)/5,
-         ((rdp.cmd1      ) & 0xFF)/5);
+         ((w0 >> 16) & 0xFF)/5,
+         ((w0 >>  8) & 0xFF)/5,
+         ((w0      ) & 0xFF)/5,
+         ((w1 >> 16) & 0xFF)/5,
+         ((w1 >>  8) & 0xFF)/5,
+         ((w1      ) & 0xFF)/5);
 
-   v[0] = &rdp.vtx[((rdp.cmd0 >> 16) & 0xFF) / 5];
-   v[1] = &rdp.vtx[((rdp.cmd0 >> 8) & 0xFF)  / 5];
-   v[2] = &rdp.vtx[(rdp.cmd0 & 0xFF)         / 5];
-   v[3] = &rdp.vtx[((rdp.cmd1 >> 16) & 0xFF) / 5];
-   v[4] = &rdp.vtx[((rdp.cmd1 >> 8) & 0xFF)  / 5];
-   v[5] = &rdp.vtx[(rdp.cmd1 & 0xFF)         / 5];
+   v[0] = &rdp.vtx[((w0 >> 16) & 0xFF) / 5];
+   v[1] = &rdp.vtx[((w0 >> 8) & 0xFF)  / 5];
+   v[2] = &rdp.vtx[(w0 & 0xFF)         / 5];
+   v[3] = &rdp.vtx[((w1 >> 16) & 0xFF) / 5];
+   v[4] = &rdp.vtx[((w1 >> 8) & 0xFF)  / 5];
+   v[5] = &rdp.vtx[(w1 & 0xFF)         / 5];
 
    rsp_tri2(v);
 }
@@ -100,12 +100,12 @@ static void uc3_quad3d(uint32_t w0, uint32_t w1)
    VERTEX *v[6];
    FRDP("uc3:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
 
-   v[0] = &rdp.vtx[((rdp.cmd1 >> 24) & 0xFF) / 5];
-   v[1] = &rdp.vtx[((rdp.cmd1 >> 16) & 0xFF) / 5];
-   v[2] = &rdp.vtx[((rdp.cmd1 >> 8) & 0xFF)  / 5];
-   v[3] = &rdp.vtx[(rdp.cmd1 & 0xFF)         / 5];
-   v[4] = &rdp.vtx[((rdp.cmd1 >> 24) & 0xFF) / 5];
-   v[5] = &rdp.vtx[((rdp.cmd1 >> 8) & 0xFF)  / 5];
+   v[0] = &rdp.vtx[((w1 >> 24) & 0xFF) / 5];
+   v[1] = &rdp.vtx[((w1 >> 16) & 0xFF) / 5];
+   v[2] = &rdp.vtx[((w1 >> 8) & 0xFF)  / 5];
+   v[3] = &rdp.vtx[(w1 & 0xFF)         / 5];
+   v[4] = &rdp.vtx[((w1 >> 24) & 0xFF) / 5];
+   v[5] = &rdp.vtx[((w1 >> 8) & 0xFF)  / 5];
 
    rsp_tri2(v);
 }
