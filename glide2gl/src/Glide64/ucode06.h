@@ -1130,8 +1130,8 @@ static void uc6_obj_movemem(uint32_t w0, uint32_t w1)
 {
   LRDP("uc6:obj_movemem\n");
 
-  int index = w0 & 0xFFFF;
-  uint32_t addr = segoffset(w1) >> 1;
+  int index = rdp.cmd0 & 0xFFFF;
+  uint32_t addr = segoffset(rdp.cmd1) >> 1;
 
   if (index == 0) {     // movemem matrix
     mat_2d.A = ((int*)gfx.RDRAM)[(addr+0)>>1] / 65536.0f;
@@ -1299,7 +1299,7 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
    rdp.s2dex_tex_loaded = true;
    rdp.update |= UPDATE_TEXTURE;
 
-   uint32_t addr = segoffset(w1) >> 1;
+   uint32_t addr = segoffset(rdp.cmd1) >> 1;
    uint32_t type = ((uint32_t*)gfx.RDRAM)[(addr + 0) >> 1];                      // 0, 1
 
    if (type == G_OBJLT_TLUT)
@@ -1364,9 +1364,9 @@ static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1)
 {
    LRDP("uc6:obj_ldtx_sprite\n");
 
-   uint32_t addr = w1;
+   uint32_t addr = rdp.cmd1;
    uc6_obj_loadtxtr(w0, w1);
-   w1 = addr + 24;
+   rdp.cmd1 = addr + 24;
    uc6_obj_sprite(w0, w1);
 }
 
@@ -1374,9 +1374,9 @@ static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1)
 {
    LRDP("uc6:obj_ldtx_rect\n");
 
-   uint32_t addr = w1;
+   uint32_t addr = rdp.cmd1;
    uc6_obj_loadtxtr(w0, w1);
-   w1 = addr + 24;
+   rdp.cmd1 = addr + 24;
    uc6_obj_rectangle(w0, w1);
 }
 
@@ -1384,9 +1384,9 @@ static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
 {
    LRDP("uc6:ldtx_rect_r\n");
 
-   uint32_t addr = w1;
+   uint32_t addr = rdp.cmd1;
    uc6_obj_loadtxtr(w0, w1);
-   w1 = addr + 24;
+   rdp.cmd1 = addr + 24;
    uc6_obj_rectangle_r(w0, w1);
 }
 
@@ -1396,8 +1396,8 @@ static void uc6_loaducode(uint32_t w0, uint32_t w1)
    RDP_E ("uc6:load_ucode\n");
 
    // copy the microcode data
-   uint32_t addr = segoffset(w1);
-   uint32_t size = (w0 & 0xFFFF) + 1;
+   uint32_t addr = segoffset(rdp.cmd1);
+   uint32_t size = (rdp.cmd0 & 0xFFFF) + 1;
    memcpy (microcode, gfx.RDRAM+addr, size);
 
    microcheck ();
@@ -1412,7 +1412,7 @@ void uc6_sprite2d(uint32_t w0, uint32_t w1)
       return;
 
    FRDP ("uc6:uc6_sprite2d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
-   uint32_t addr = segoffset(w1) >> 1;
+   uint32_t addr = segoffset(rdp.cmd1) >> 1;
    DRAWIMAGE d;
 
    d.imagePtr    = segoffset(((uint32_t*)gfx.RDRAM)[(addr+0)>>1]);       // 0,1
