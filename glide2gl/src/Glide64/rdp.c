@@ -191,6 +191,7 @@ static void rdp_setconvert(uint32_t w0, uint32_t w1);
 static void rdp_setscissor(uint32_t w0, uint32_t w1);
 static void rdp_setprimdepth(uint32_t w0, uint32_t w1);
 static void rdp_setothermode(uint32_t w0, uint32_t w1);
+static void rdp_uc2_setothermode(uint32_t w0, uint32_t w1);
 static void rdp_loadtlut(uint32_t w0, uint32_t w1);
 static void rdp_settilesize(uint32_t w0, uint32_t w1);
 static void rdp_loadblock(uint32_t w0, uint32_t w1);
@@ -1614,21 +1615,18 @@ static void rdp_setprimdepth(uint32_t w0, uint32_t w1)
 
 static void rdp_setothermode(uint32_t w0, uint32_t w1)
 {
+  SETOTHERMODE(0xB9, 0, 32, w1);            // SETOTHERMODE_L
+  SETOTHERMODE(0xBA, 0, 32, w0 & 0x00FFFFFF);       // SETOTHERMODE_H
 
-#ifdef EXTREME_LOGGING
-  LRDP("rdp_setothermode\n");
-#endif
+  //LRDP("rdp_setothermode\n");
+}
 
-  if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
-  {
-    F3DEX2_SETOTHERMODE(0xE2, 0, 32, w1);         // SETOTHERMODE_L
-    F3DEX2_SETOTHERMODE(0xE3, 0, 32, w0 & 0x00FFFFFF);    // SETOTHERMODE_H
-  }
-  else
-  {
-    SETOTHERMODE(0xB9, 0, 32, w1);            // SETOTHERMODE_L
-    SETOTHERMODE(0xBA, 0, 32, w0 & 0x00FFFFFF);       // SETOTHERMODE_H
-  }
+static void rdp_uc2_setothermode(uint32_t w0, uint32_t w1)
+{
+   F3DEX2_SETOTHERMODE(0xE2, 0, 32, w1);         // SETOTHERMODE_L
+   F3DEX2_SETOTHERMODE(0xE3, 0, 32, w0 & 0x00FFFFFF);    // SETOTHERMODE_H
+
+  //LRDP("rdp_uc2_setothermode\n");
 }
 
 void load_palette (uint32_t addr, uint16_t start, uint16_t count)
