@@ -982,11 +982,12 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
    // there is not one setothermode_l that's not handled :)
 }
 
-//gSPSetGeometryMode
-static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
+static void gSPSetGeometryMode(uint32_t w1)
 {
    rdp.geom_mode |= w1;
-   //FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", w1, rdp.geom_mode);
+
+   // TODO - should we look at all these state changes at this point?
+   // This isn't done in gln64
 
    if (w1 & G_ZBUFFER)  // Z-Buffer enable
    {
@@ -1022,15 +1023,16 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_FOG_ENABLED;
       }
    }
+   //FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", w1, rdp.geom_mode);
 }
 
-//gSPClearGeometryMode
-static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
+static void gSPClearGeometryMode(uint32_t w1)
 {
-   //FRDP("uc0:cleargeometrymode %08lx\n", w1);
-
    rdp.geom_mode &= (~w1);
 
+   // TODO - should we look at all these state changes at this point?
+   // This isn't done in gln64
+   
    if (w1 & G_ZBUFFER)  // Z-Buffer enable
    {
       if (rdp.flags & ZBUF_ENABLED)
@@ -1065,6 +1067,18 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_FOG_ENABLED;
       }
    }
+   //FRDP("uc0:cleargeometrymode %08lx\n", w1);
+}
+
+static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
+{
+   gSPSetGeometryMode(w1);
+}
+
+
+static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
+{
+   gSPClearGeometryMode(w1);
 }
 
 //gSPLine3D
