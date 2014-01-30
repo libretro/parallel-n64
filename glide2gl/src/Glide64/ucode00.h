@@ -680,8 +680,8 @@ static void uc0_popmatrix(uint32_t w0, uint32_t w1)
 
 static void uc6_obj_sprite(uint32_t w0, uint32_t w1);
 
-//gSPModifyVertex
-static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
+// FIXME - call not consistent with glN64
+static void gSPModifyVertex(uint8_t where, uint16_t vtx, uint32_t val)
 {
    VERTEX *v = &rdp.vtx[vtx];
    uint32_t w0, w1;
@@ -754,14 +754,6 @@ static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
          //LRDP("UNKNOWN\n");
          break;
    }
-}
-
-static void gSPModifyVertex(uint32_t w1)
-{
-   uint16_t val = (uint16_t)((rdp.cmd0 >> 8) & 0xFFFF);
-   uint16_t vtx = val / 40;
-   uint8_t where = val%40;
-   uc0_modifyvtx(where, vtx, w1);
    //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
 }
 
@@ -832,7 +824,8 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_POINTS:
-         gSPModifyVertex(w1);
+         // FIXME - call not consistent with glN64
+         gSPModifyVertex((((uint16_t)((w0 >> 8) & 0xFFFF)) % 40), (((uint16_t)((w0 >> 8) & 0xFFFF)) / 40), w1);
          break;
 
       case G_MW_PERSPNORM:
