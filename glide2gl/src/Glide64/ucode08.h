@@ -576,3 +576,77 @@ static void uc8_setothermode_l(uint32_t w0, uint32_t w1)
    // there is not one setothermode_l that's not handled :)
    //LRDP("uc0:setothermode_l ");
 }
+
+static void uc8_setothermode_h(uint32_t w0, uint32_t w1)
+{
+
+   int shift, len;
+   len = (w0 & 0xFF) + 1;
+   shift = 32 - ((w0 >> 8) & 0xFF) - len;
+
+   uint32_t mask = 0;
+   int i = len;
+   for (; i; i--)
+      mask = (mask << 1) | 1;
+   mask <<= shift;
+
+   rdp.cmd1 &= mask;
+   rdp.othermode_h &= ~mask;
+   rdp.othermode_h |= rdp.cmd1;
+
+   if (mask & 0x00000030)  // alpha dither mode
+   {
+      rdp.alpha_dither_mode = (rdp.othermode_h >> G_MDSFT_ALPHADITHER) & 0x3;
+      //FRDP ("alpha dither mode: %s\n", str_dither[rdp.alpha_dither_mode]);
+   }
+
+#ifndef NDEBUG
+   if (mask & 0x000000C0)  // rgb dither mode
+   {
+      uint32_t dither_mode = (rdp.othermode_h >> G_MDSFT_RGBDITHER) & 0x3;
+      //FRDP ("rgb dither mode: %s\n", str_dither[dither_mode]);
+   }
+#endif
+
+   if (mask & 0x00003000)  // filter mode
+   {
+      rdp.filter_mode = (int)((rdp.othermode_h & 0x00003000) >> 12);
+      rdp.update |= UPDATE_TEXTURE;
+      //FRDP ("filter mode: %s\n", str_filter[rdp.filter_mode]);
+   }
+
+   if (mask & 0x0000C000)  // tlut mode
+   {
+      rdp.tlut_mode = (uint8_t)((rdp.othermode_h & 0x0000C000) >> 14);
+      //FRDP ("tlut mode: %s\n", str_tlut[rdp.tlut_mode]);
+   }
+
+   if (mask & 0x00300000)  // cycle type
+   {
+      rdp.cycle_mode = (uint8_t)((rdp.othermode_h & 0x00300000) >> 20);
+      rdp.update |= UPDATE_ZBUF_ENABLED;
+      //FRDP ("cycletype: %d\n", rdp.cycle_mode);
+   }
+
+   if (mask & G_LOD)  // LOD enable
+   {
+      rdp.LOD_en = (rdp.othermode_h & G_LOD) ? true : false;
+      //FRDP ("LOD_en: %d\n", rdp.LOD_en);
+   }
+
+   if (mask & G_TEXTURE_GEN_LINEAR)  // Persp enable
+   {
+      if (rdp.persp_supported)
+         rdp.Persp_en = (rdp.othermode_h & G_TEXTURE_GEN_LINEAR) ? true : false;
+      //FRDP ("Persp_en: %d\n", rdp.Persp_en);
+   }
+
+#ifndef NDEBUG
+   uint32_t unk = mask & 0x0FFC60F0F;
+   if (unk)  // unknown portions, LARGE
+   {
+      //FRDP ("UNKNOWN PORTIONS: shift: %d, len: %d, unknowns: %08lx\n", shift, len, unk);
+   }
+#endif
+   //LRDP("uc8:setothermode_h: ");
+}
