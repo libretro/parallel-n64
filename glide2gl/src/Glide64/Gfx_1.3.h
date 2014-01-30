@@ -161,6 +161,7 @@ void ReleaseGfx(void);
 // The highest 8 bits are the segment # (1-16), and the lower 24 bits are the offset to
 // add to it.
 #define segoffset(so) ((rdp.segment[(so>>24)&0x0f] + (so&BMASK)) & BMASK)
+#define RSP_SegmentToPhysical(so) (((rdp.segment[(so>>24)&0x0f] + (so&BMASK)) & BMASK) & 0x00ffffff)
 
 /* Plugin types */
 #define PLUGIN_TYPE_GFX				2

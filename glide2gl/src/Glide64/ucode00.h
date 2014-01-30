@@ -52,7 +52,7 @@
 
 static void rsp_vertex(int v0, int n)
 {
-   uint32_t addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
+   uint32_t addr = RSP_SegmentToPhysical(rdp.cmd1);
    int i;
    float x, y, z;
 
@@ -292,7 +292,7 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
    //LRDP("uc0:matrix ");
 
    // Use segment offset to get the address
-   uint32_t addr = segoffset(w1) & 0x00FFFFFF;
+   uint32_t addr = RSP_SegmentToPhysical(w1);
    uint8_t command = (uint8_t)((w0 >> 16) & 0xFF);
 
    DECLAREALIGN16VAR(m[4][4]);
@@ -352,19 +352,18 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
    //FRDP ("{%f,%f,%f,%f}\n", rdp.proj[3][0], rdp.proj[3][1], rdp.proj[3][2], rdp.proj[3][3]);
 }
 
-static void gSPViewport(void)
+static void gSPViewport(uint32_t v)
 {
    int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, *rdram;
-   uint32_t a;
-   a = (segoffset(rdp.cmd1) & 0xFFFFFF) >> 1;
+   uint32_t address = (segoffset(v) & 0xFFFFFF) >> 1;
    rdram = (int16_t*)gfx.RDRAM;
 
-   scale_x = rdram[(a+0)^1] / 4;
-   scale_y = rdram[(a+1)^1] / 4;
-   scale_z = rdram[(a+2)^1];
-   trans_x = rdram[(a+4)^1] / 4;
-   trans_y = rdram[(a+5)^1] / 4;
-   trans_z = rdram[(a+6)^1];
+   scale_x = rdram[(address + 0)^1] / 4;
+   scale_y = rdram[(address + 1)^1] / 4;
+   scale_z = rdram[(address + 2)^1];
+   trans_x = rdram[(address + 4)^1] / 4;
+   trans_y = rdram[(address + 5)^1] / 4;
+   trans_z = rdram[(address + 6)^1];
    if (settings.correct_viewport)
    {
       scale_x = abs(scale_x);
@@ -417,7 +416,7 @@ static void gSPTexture(void)
 
 static void gSPLight(uint32_t l, unsigned n)
 {
-   uint32_t address = segoffset(l) & 0x00ffffff;
+   uint32_t address = RSP_SegmentToPhysical(l);
 
    // Get the data
    rdp.light[n].r = (float)(((uint8_t*)gfx.RDRAM)[(address+0)^3]) / 255.0f;
@@ -443,7 +442,7 @@ static void gSPForceMatrix(uint32_t mptr)
    // do not update the combined matrix!
    rdp.update &= ~UPDATE_MULT_MAT;
 
-   address = segoffset(mptr) & 0x00FFFFFF;
+   address = RSP_SegmentToPhysical(mptr);
    load_matrix(rdp.combined, address);
 
    address = rdp.pc[rdp.pc_i] & BMASK;
@@ -468,12 +467,12 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
    switch ((w0 >> 16) & 0xFF)
    {
       case F3D_MV_VIEWPORT:
-         gSPViewport();
+         gSPViewport(w1);
          break;
       case G_MV_LOOKATY:
          {
             int8_t dir_x, dir_y, dir_z, *rdram;
-            a = segoffset(w1) & 0x00ffffff;
+            a = RSP_SegmentToPhysical(w1);
             rdram = (int8_t*)gfx.RDRAM;
             dir_x = rdram[(a+8)^3];
             dir_y = rdram[(a+9)^3];
@@ -492,7 +491,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
       case G_MV_LOOKATX:
          {
             int8_t *rdram = (int8_t*)gfx.RDRAM;
-            a = segoffset(w1) & 0x00ffffff;
+            a = RSP_SegmentToPhysical(w1);
             rdp.lookat[0][0] = (float)(rdram[(a+8)^3]) / 127.0f;
             rdp.lookat[0][1] = (float)(rdram[(a+9)^3]) / 127.0f;
             rdp.lookat[0][2] = (float)(rdram[(a+10)^3]) / 127.0f;
@@ -546,7 +545,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 //
 static void uc0_displaylist(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr = segoffset(w1) & 0x00FFFFFF;
+   uint32_t addr = RSP_SegmentToPhysical(w1);
 
    // Don't execute display list
    // This fixes partially Gauntlet: Legends
@@ -805,7 +804,8 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
       case G_MW_NUMLIGHT:
          rdp.num_lights = ((w1 - 0x80000000) >> 5) - 1;  // inverse of equation
          if (rdp.num_lights > 8)
-            rdp.num_lights = NUMLIGHTS_0; rdp.update |= UPDATE_LIGHTS;
+            rdp.num_lights = NUMLIGHTS_0;
+         rdp.update |= UPDATE_LIGHTS;
          //FRDP ("numlights: %d\n", rdp.num_lights);
          break;
       case G_MW_CLIP:
