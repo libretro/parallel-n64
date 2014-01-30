@@ -191,8 +191,8 @@ static void rsp_tri2 (VERTEX **v)
 //
 static void uc0_vertex(uint32_t w0, uint32_t w1)
 {
-  int v0 = (rdp.cmd0 >> 16) & 0xF;      // Current vertex
-  int n = ((rdp.cmd0 >> 20) & 0xF) + 1; // Number of vertices to copy
+  int v0 = (w0 >> 16) & 0xF;      // Current vertex
+  int n = ((w0 >> 20) & 0xF) + 1; // Number of vertices to copy
   rsp_vertex(v0, n);
 }
 
@@ -289,8 +289,8 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
    //LRDP("uc0:matrix ");
 
    // Use segment offset to get the address
-   uint32_t addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
-   uint8_t command = (uint8_t)((rdp.cmd0 >> 16) & 0xFF);
+   uint32_t addr = segoffset(w1) & 0x00FFFFFF;
+   uint8_t command = (uint8_t)((w0 >> 16) & 0xFF);
 
    DECLAREALIGN16VAR(m[4][4]);
    load_matrix(m, addr);
@@ -461,14 +461,14 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
    uint32_t i,a;
 
    // Check the command
-   switch ((rdp.cmd0 >> 16) & 0xFF)
+   switch ((w0 >> 16) & 0xFF)
    {
       case F3D_MV_VIEWPORT:
          gSPViewport();
          break;
       case G_MV_LOOKATY:
          {
-            a = segoffset(rdp.cmd1) & 0x00ffffff;
+            a = segoffset(w1) & 0x00ffffff;
             int8_t dir_x = ((int8_t*)gfx.RDRAM)[(a+8)^3];
             int8_t dir_y = ((int8_t*)gfx.RDRAM)[(a+9)^3];
             int8_t dir_z = ((int8_t*)gfx.RDRAM)[(a+10)^3];
@@ -484,7 +484,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
          break;
 
       case G_MV_LOOKATX:
-         a = segoffset(rdp.cmd1) & 0x00ffffff;
+         a = segoffset(w1) & 0x00ffffff;
          rdp.lookat[0][0] = (float)(((int8_t*)gfx.RDRAM)[(a+8)^3]) / 127.0f;
          rdp.lookat[0][1] = (float)(((int8_t*)gfx.RDRAM)[(a+9)^3]) / 127.0f;
          rdp.lookat[0][2] = (float)(((int8_t*)gfx.RDRAM)[(a+10)^3]) / 127.0f;
@@ -501,7 +501,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
       case G_MV_L6:
       case G_MV_L7:
          // Get the light #
-         i = (((rdp.cmd0 >> 16) & 0xff) - G_MV_L0) >> 1;
+         i = (((w0 >> 16) & 0xff) - G_MV_L0) >> 1;
          gSPLight(i);
          break;
 
@@ -526,8 +526,8 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
          break;
 #if 0
       default:
-         FRDP_E ("uc0:movemem unknown (index: 0x%08lx)\n", (rdp.cmd0 >> 16) & 0xFF);
-         FRDP ("unknown (index: 0x%08lx)\n", (rdp.cmd0 >> 16) & 0xFF);
+         FRDP_E ("uc0:movemem unknown (index: 0x%08lx)\n", (w0 >> 16) & 0xFF);
+         FRDP ("unknown (index: 0x%08lx)\n", (w0 >> 16) & 0xFF);
 #endif
    }
 }
@@ -537,17 +537,17 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 //
 static void uc0_displaylist(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
+   uint32_t addr = segoffset(w1) & 0x00FFFFFF;
 
    // Don't execute display list
    // This fixes partially Gauntlet: Legends
    if (addr == rdp.pc[rdp.pc_i] - 8)
       return;
 
-   uint32_t push = (rdp.cmd0 >> 16) & 0xFF; // push the old location?
+   uint32_t push = (w0 >> 16) & 0xFF; // push the old location?
 
    //FRDP("uc0:displaylist: %08lx, push:%s", addr, push?"no":"yes");
-   //FRDP(" (seg %d, offset %08lx)\n", (rdp.cmd1>>24)&0x0F, rdp.cmd1&0x00FFFFFF);
+   //FRDP(" (seg %d, offset %08lx)\n", (w1 >> 24)&0x0F, w1 & 0x00FFFFFF);
 
    switch (push)
    {
@@ -579,11 +579,11 @@ static void uc0_displaylist(uint32_t w0, uint32_t w1)
 static void uc0_tri1(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[3];
-   //FRDP("uc0:tri1 #%d - %d, %d, %d\n", rdp.tri_n, ((rdp.cmd1>>16) & 0xFF) / 10, ((rdp.cmd1>>8) & 0xFF) / 10, (rdp.cmd1 & 0xFF) / 10);
+   //FRDP("uc0:tri1 #%d - %d, %d, %d\n", rdp.tri_n, ((w1 >> 16) & 0xFF) / 10, ((w1 >> 8) & 0xFF) / 10, (w1 & 0xFF) / 10);
 
-   v[0] = &rdp.vtx[((rdp.cmd1 >> 16) & 0xFF) / 10];
-   v[1] = &rdp.vtx[((rdp.cmd1 >> 8) & 0xFF) / 10];
-   v[2] = &rdp.vtx[(rdp.cmd1 & 0xFF) / 10];
+   v[0] = &rdp.vtx[((w1 >> 16) & 0xFF) / 10];
+   v[1] = &rdp.vtx[((w1 >> 8) & 0xFF) / 10];
+   v[2] = &rdp.vtx[(w1 & 0xFF) / 10];
 
    if (settings.hacks & hack_Makers)
    {
@@ -621,8 +621,8 @@ static void uc0_enddl(uint32_t w0, uint32_t w1)
 static void uc0_culldl(uint32_t w0, uint32_t w1)
 {
    uint16_t i;
-   uint8_t vStart = (uint8_t)((rdp.cmd0 & 0x00FFFFFF) / 40) & 0xF;
-   uint8_t vEnd = (uint8_t)(rdp.cmd1 / 40) & 0x0F;
+   uint8_t vStart = (uint8_t)((w0 & 0x00FFFFFF) / 40) & 0xF;
+   uint8_t vEnd = (uint8_t)(w1 / 40) & 0x0F;
    uint32_t cond = 0;
    VERTEX *v;
 
@@ -658,9 +658,7 @@ static void uc0_popmatrix(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:popmatrix\n");
 
-   uint32_t param = rdp.cmd1;
-
-   switch (param)
+   switch (w1)
    {
       case 0: // modelview
          modelview_pop(1);
@@ -669,8 +667,8 @@ static void uc0_popmatrix(uint32_t w0, uint32_t w1)
          break;
 #if 0
       default:
-         FRDP_E ("Unknown uc0:popmatrix command: 0x%08lx\n", param);
-         FRDP ("Unknown uc0:popmatrix command: 0x%08lx\n", param);
+         FRDP_E ("Unknown uc0:popmatrix command: 0x%08lx\n", w1);
+         FRDP ("Unknown uc0:popmatrix command: 0x%08lx\n", w1);
 #endif
    }
 }
@@ -771,12 +769,12 @@ static void gSPFogFactor(void)
 
 static void gSPClipRatio(uint32_t w0, uint32_t w1)
 {
-   if (((rdp.cmd0 >> 8) & 0xFFFF) == G_MW_CLIP)
+   if (((w0 >> 8) & 0xFFFF) == G_MW_CLIP)
    {
       rdp.clip_ratio = squareRoot((float)w1);
       rdp.update |= UPDATE_VIEWPORT;
    }
-   //FRDP ("clip %08lx, %08lx\n", rdp.cmd0, w1);
+   //FRDP ("clip %08lx, %08lx\n", w0, w1);
 }
 
 //
@@ -787,7 +785,7 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
    //LRDP("uc0:moveword ");
 
    // Find which command this is (lowest byte of cmd0)
-   switch (rdp.cmd0 & 0xFF)
+   switch (w0 & 0xFF)
    {
       case G_MW_MATRIX:
          //RDP_E ("uc0:moveword matrix - IGNORED\n");
@@ -805,9 +803,9 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_SEGMENT:  // segment
-         //FRDP ("segment: %08lx -> seg%d\n", w1, (rdp.cmd0 >> 10) & 0x0F);
+         //FRDP ("segment: %08lx -> seg%d\n", w1, (w0 >> 10) & 0x0F);
          if ((w1 & BMASK) < BMASK)
-            rdp.segment[(rdp.cmd0 >> 10) & 0x0F] = w1;
+            rdp.segment[(w0 >> 10) & 0x0F] = w1;
          break;
 
       case G_MW_FOG:
@@ -816,7 +814,7 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 
       case G_MW_LIGHTCOL:  // moveword LIGHTCOL
          {
-            int n = (rdp.cmd0&0xE000) >> 13;
+            int n = (w0 & 0xE000) >> 13;
             //FRDP ("lightcol light:%d, %08lx\n", n, w1);
 
             rdp.light[n].r = (float)((w1 >> 24) & 0xFF) / 255.0f;
@@ -835,8 +833,8 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          break;
 #if 0
       default:
-         FRDP_E ("uc0:moveword unknown (index: 0x%08lx)\n", rdp.cmd0 & 0xFF);
-         FRDP ("unknown (index: 0x%08lx)\n", rdp.cmd0 & 0xFF);
+         FRDP_E ("uc0:moveword unknown (index: 0x%08lx)\n", w0 & 0xFF);
+         FRDP ("unknown (index: 0x%08lx)\n", w0 & 0xFF);
 #endif
    }
 }
@@ -854,13 +852,13 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
    int shift, len;
    if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
    {
-      len = (rdp.cmd0 & 0xFF) + 1;
-      shift = 32 - ((rdp.cmd0 >> 8) & 0xFF) - len;
+      len = (w0 & 0xFF) + 1;
+      shift = 32 - ((w0 >> 8) & 0xFF) - len;
    }
    else
    {
-      shift = (rdp.cmd0 >> 8) & 0xFF;
-      len = rdp.cmd0 & 0xFF;
+      shift = (w0 >> 8) & 0xFF;
+      len = w0 & 0xFF;
    }
 
    uint32_t mask = 0;
@@ -936,14 +934,14 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
    int shift, len;
    if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
    {
-      len = (rdp.cmd0 & 0xFF) + 1;
-      shift = 32 - ((rdp.cmd0 >> 8) & 0xFF) - len;
+      len = (w0 & 0xFF) + 1;
+      shift = 32 - ((w0 >> 8) & 0xFF) - len;
       if (shift < 0) shift = 0;
    }
    else
    {
-      len = rdp.cmd0 & 0xFF;
-      shift = (rdp.cmd0 >> 8) & 0xFF;
+      len = w0 & 0xFF;
+      shift = (w0 >> 8) & 0xFF;
    }
 
    uint32_t mask = 0;
@@ -987,10 +985,10 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
 //gSPSetGeometryMode
 static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
 {
-   rdp.geom_mode |= rdp.cmd1;
-   //FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", rdp.cmd1, rdp.geom_mode);
+   rdp.geom_mode |= w1;
+   //FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", w1, rdp.geom_mode);
 
-   if (rdp.cmd1 & G_ZBUFFER)  // Z-Buffer enable
+   if (w1 & G_ZBUFFER)  // Z-Buffer enable
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -998,7 +996,7 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_ZBUF_ENABLED;
       }
    }
-   if (rdp.cmd1 & CULL_FRONT)  // Front culling
+   if (w1 & CULL_FRONT)  // Front culling
    {
       if (!(rdp.flags & CULL_FRONT))
       {
@@ -1006,7 +1004,7 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_CULL_MODE;
       }
    }
-   if (rdp.cmd1 & CULL_BACK)  // Back culling
+   if (w1 & CULL_BACK)  // Back culling
    {
       if (!(rdp.flags & CULL_BACK))
       {
@@ -1016,7 +1014,7 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
    }
 
    //Added by Gonetz
-   if (rdp.cmd1 & G_FOG)      // Fog enable
+   if (w1 & G_FOG)      // Fog enable
    {
       if (!(rdp.flags & FOG_ENABLED))
       {
@@ -1029,11 +1027,11 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
 //gSPClearGeometryMode
 static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 {
-   //FRDP("uc0:cleargeometrymode %08lx\n", rdp.cmd1);
+   //FRDP("uc0:cleargeometrymode %08lx\n", w1);
 
-   rdp.geom_mode &= (~rdp.cmd1);
+   rdp.geom_mode &= (~w1);
 
-   if (rdp.cmd1 & G_ZBUFFER)  // Z-Buffer enable
+   if (w1 & G_ZBUFFER)  // Z-Buffer enable
    {
       if (rdp.flags & ZBUF_ENABLED)
       {
@@ -1041,7 +1039,7 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_ZBUF_ENABLED;
       }
    }
-   if (rdp.cmd1 & CULL_FRONT)  // Front culling
+   if (w1 & CULL_FRONT)  // Front culling
    {
       if (rdp.flags & CULL_FRONT)
       {
@@ -1049,7 +1047,7 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_CULL_MODE;
       }
    }
-   if (rdp.cmd1 & CULL_BACK)  // Back culling
+   if (w1 & CULL_BACK)  // Back culling
    {
       if (rdp.flags & CULL_BACK)
       {
@@ -1059,7 +1057,7 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
    }
 
    //Added by Gonetz
-   if (rdp.cmd1 & G_FOG)      // Fog enable
+   if (w1 & G_FOG)      // Fog enable
    {
       if (rdp.flags & FOG_ENABLED)
       {
@@ -1072,9 +1070,9 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 //gSPLine3D
 static void uc0_line3d(uint32_t w0, uint32_t w1)
 {
-   uint32_t v0 = ((rdp.cmd1 >> 16) & 0xff) / 10;
-   uint32_t v1 = ((rdp.cmd1 >>  8) & 0xff) / 10;
-   uint16_t width = (uint16_t)(rdp.cmd1 & 0xFF) + 3;
+   uint32_t v0 = ((w1 >> 16) & 0xff) / 10;
+   uint32_t v1 = ((w1 >>  8) & 0xff) / 10;
+   uint16_t width = (uint16_t)(w1 & 0xFF) + 3;
 
    VERTEX *v[3];
    v[0] = &rdp.vtx[v1];
@@ -1100,18 +1098,18 @@ static void uc0_tri4(uint32_t w0, uint32_t w1)
 
    //LRDP("uc0:tri4");
 
-   v[0 ]  = &rdp.vtx[(rdp.cmd1 >> 28) & 0xF];
-   v[1 ]  = &rdp.vtx[(rdp.cmd0 >> 12) & 0xF];
-   v[2 ]  = &rdp.vtx[(rdp.cmd1 >> 24) & 0xF];
-   v[3 ]  = &rdp.vtx[(rdp.cmd1 >> 20) & 0xF];
-   v[4 ]  = &rdp.vtx[(rdp.cmd0 >> 8)  & 0xF];
-   v[5 ]  = &rdp.vtx[(rdp.cmd1 >> 16) & 0xF];
-   v[6 ]  = &rdp.vtx[(rdp.cmd1 >> 12) & 0xF],
-   v[7 ]  = &rdp.vtx[(rdp.cmd0 >> 4) & 0xF];
-   v[8 ]  = &rdp.vtx[(rdp.cmd1 >> 8) & 0xF];
-   v[9 ]  = &rdp.vtx[(rdp.cmd1 >> 4) & 0xF];
-   v[10]  = &rdp.vtx[(rdp.cmd0 >> 0) & 0xF];
-   v[11]  = &rdp.vtx[(rdp.cmd1 >> 0) & 0xF];
+   v[0 ]  = &rdp.vtx[(w1 >> 28) & 0xF];
+   v[1 ]  = &rdp.vtx[(w0 >> 12) & 0xF];
+   v[2 ]  = &rdp.vtx[(w1 >> 24) & 0xF];
+   v[3 ]  = &rdp.vtx[(w1 >> 20) & 0xF];
+   v[4 ]  = &rdp.vtx[(w0 >> 8)  & 0xF];
+   v[5 ]  = &rdp.vtx[(w1 >> 16) & 0xF];
+   v[6 ]  = &rdp.vtx[(w1 >> 12) & 0xF],
+   v[7 ]  = &rdp.vtx[(w0 >> 4) & 0xF];
+   v[8 ]  = &rdp.vtx[(w1 >> 8) & 0xF];
+   v[9 ]  = &rdp.vtx[(w1 >> 4) & 0xF];
+   v[10]  = &rdp.vtx[(w0 >> 0) & 0xF];
+   v[11]  = &rdp.vtx[(w1 >> 0) & 0xF];
 
    int updated = 0;
 
