@@ -220,6 +220,7 @@ static void rdphalf_2(uint32_t w0, uint32_t w1);
 static void rdphalf_cont(uint32_t w0, uint32_t w1);
 
 static void rsp_reserved0(uint32_t w0, uint32_t w1);
+static void rsp_uc5_reserved0(uint32_t w0, uint32_t w1);
 static void rsp_reserved1(uint32_t w0, uint32_t w1);
 static void rsp_reserved2(uint32_t w0, uint32_t w1);
 static void rsp_reserved3(uint32_t w0, uint32_t w1);
@@ -1669,40 +1670,12 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 int tile_set = 0;
 static void rdp_settilesize(uint32_t w0, uint32_t w1)
 {
-  uint32_t tile = (w1 >> 24) & 0x07;
-  rdp.last_tile_size = tile;
-
-  rdp.tiles[tile].f_ul_s = (float)((w0 >> 12) & 0xFFF) / 4.0f;
-  rdp.tiles[tile].f_ul_t = (float)(w0 & 0xFFF) / 4.0f;
-
-  int ul_s = (((uint16_t)(w0 >> 14)) & 0x03ff);
-  int ul_t = (((uint16_t)(w0 >> 2 )) & 0x03ff);
-  int lr_s = (((uint16_t)(w1 >> 14)) & 0x03ff);
-  int lr_t = (((uint16_t)(w1 >> 2 )) & 0x03ff);
-
-  if (lr_s == 0 && ul_s == 0)  //pokemon puzzle league set such tile size
-    wrong_tile = tile;
-  else if (wrong_tile == (int)tile)
-    wrong_tile = -1;
-
-  // coords in 10.2 format
-  rdp.tiles[tile].ul_s = ul_s;
-  rdp.tiles[tile].ul_t = ul_t;
-  rdp.tiles[tile].lr_s = lr_s;
-  rdp.tiles[tile].lr_t = lr_t;
-
-  // handle wrapping
-  if (rdp.tiles[tile].lr_s < rdp.tiles[tile].ul_s) rdp.tiles[tile].lr_s += 0x400;
-  if (rdp.tiles[tile].lr_t < rdp.tiles[tile].ul_t) rdp.tiles[tile].lr_t += 0x400;
-
-  rdp.update |= UPDATE_TEXTURE;
-
-  rdp.first = 1;
-
-#ifdef EXTREME_LOGGING
-  FRDP ("settilesize: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d, f_ul_s: %f, f_ul_t: %f\n",
-    tile, ul_s, ul_t, lr_s, lr_t, rdp.tiles[tile].f_ul_s, rdp.tiles[tile].f_ul_t);
-#endif
+   gDPSetTileSize((w1 >> 24) & 0x07,
+         (((uint16_t)(w0 >> 14)) & 0x03ff),
+         (((uint16_t)(w0 >> 2 )) & 0x03ff),
+         (((uint16_t)(w1 >> 14)) & 0x03ff),
+         (((uint16_t)(w1 >> 2 )) & 0x03ff)
+         );
 }
 
 void setTBufTex(uint16_t t_mem, uint32_t cnt)
@@ -1926,207 +1899,15 @@ static void rdp_loadblock(uint32_t w0, uint32_t w1)
 }
 
 
-static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height, int line, int off, uint32_t *end)
-{
-  uint32_t *v7;
-  int v8;
-  uint32_t *v9;
-  int v10;
-  int v11;
-  int v12;
-  uint32_t *v13;
-  int v14;
-  int v15;
-  uint32_t v16;
-  uint32_t *v17;
-  uint32_t v18;
-  int v19;
-  uint32_t v20;
-  int v21;
-  int v23;
-  uint32_t *v24;
-  int v25;
-  int v26;
-  uint32_t *v27;
-  int v28;
-  int v29;
-  int v30;
-  uint32_t *v31;
-  unsigned int nbits;
-
-  nbits = sizeof(unsigned int) * 8;
-  v7 = dst;
-  v8 = width;
-  v9 = src;
-  v10 = off;
-  v11 = 0;
-  v12 = height;
-  do
-  {
-    if ( end < v7 )
-      break;
-    v31 = v7;
-    v30 = v8;
-    v29 = v12;
-    v28 = v11;
-    v27 = v9;
-    v26 = v10;
-    if ( v8 )
-    {
-      v25 = v8;
-      v24 = v9;
-      v23 = v10;
-      v13 = (uint32_t *)((int8_t*)v9 + (v10 & 0xFFFFFFFC));
-      v14 = v10 & 3;
-      if ( !(v10 & 3) )
-        goto LABEL_20;
-      v15 = 4 - v14;
-      v16 = *v13;
-      v17 = v13 + 1;
-      do
-      {
-        v16 = __ROL__(v16, 8, nbits);
-      }while (--v14 );
-      do
-      {
-        v16 = __ROL__(v16, 8, nbits);
-        *(uint8_t *)v7 = v16;
-        v7 = (uint32_t *)((int8_t*)v7 + 1);
-      }while(--v15 );
-      v18 = *v17;
-      v13 = v17 + 1;
-      *v7++ = bswap32(v18);
-      if (--v8)
-      {
-LABEL_20:
-        do
-        {
-          *v7++ = bswap32(*v13++);
-          *v7++ = bswap32(*v13++);
-        }while (--v8);
-      }
-      v19 = v23 & 3;
-      if ( v23 & 3 )
-      {
-        v20 = *(uint32_t *)((int8_t*)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
-        do
-        {
-          v20 = __ROL__(v20, 8, nbits);
-          *(uint8_t *)v7 = v20;
-          v7 = (uint32_t *)((int8_t*)v7 + 1);
-        }
-        while (--v19);
-      }
-    }
-    v9 = v27;
-    v21 = v29;
-    v8 = v30;
-    v11 = v28 ^ 1;
-    if ( v28 == 1 )
-    {
-      v7 = v31;
-      if ( v30 )
-      {
-        do
-        {
-           *v7    ^= v7[1];
-           v7[1] ^= *v7;
-           *v7    ^= v7[1];
-           v7 += 2;
-        }while (--v8);
-      }
-      v21 = v29;
-      v8 = v30;
-    }
-    v10 = line + v26;
-    v12 = v21 - 1;
-  }while ( v12 );
-}
-
-void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
 
 static void rdp_loadtile(uint32_t w0, uint32_t w1)
 {
-  if (rdp.skip_drawing)
-    return;
-
-  rdp.timg.set_by = 1;  // load tile
-
-  uint32_t tile = (uint32_t)((w1 >> 24) & 0x07);
-
-  rdp.addr[rdp.tiles[tile].t_mem] = rdp.timg.addr;
-
-  uint16_t ul_s = (uint16_t)((w0 >> 14) & 0x03FF);
-  uint16_t ul_t = (uint16_t)((w0 >> 2 ) & 0x03FF);
-  uint16_t lr_s = (uint16_t)((w1 >> 14) & 0x03FF);
-  uint16_t lr_t = (uint16_t)((w1 >> 2 ) & 0x03FF);
-
-  if (lr_s < ul_s || lr_t < ul_t) return;
-
-  if (wrong_tile >= 0)  //there was a tile with zero length
-  {
-    rdp.tiles[wrong_tile].lr_s = lr_s;
-
-    if (rdp.tiles[tile].size > rdp.tiles[wrong_tile].size)
-      rdp.tiles[wrong_tile].lr_s <<= (rdp.tiles[tile].size - rdp.tiles[wrong_tile].size);
-    else if (rdp.tiles[tile].size < rdp.tiles[wrong_tile].size)
-      rdp.tiles[wrong_tile].lr_s >>= (rdp.tiles[wrong_tile].size - rdp.tiles[tile].size);
-    rdp.tiles[wrong_tile].lr_t = lr_t;
-    rdp.tiles[wrong_tile].mask_s = rdp.tiles[wrong_tile].mask_t = 0;
-    //     wrong_tile = -1;
-  }
-
-  if (rdp.tbuff_tex)// && (rdp.tiles[tile].format == G_IM_FMT_RGBA))
-  {
-#ifdef EXTREME_LOGGING
-    FRDP("loadtile: tbuff_tex ul_s: %d, ul_t:%d\n", ul_s, ul_t);
-#endif
-    rdp.tbuff_tex->tile_uls = ul_s;
-    rdp.tbuff_tex->tile_ult = ul_t;
-  }
-
-  if ((settings.hacks&hack_Tonic) && tile == 7)
-  {
-    rdp.tiles[0].ul_s = ul_s;
-    rdp.tiles[0].ul_t = ul_t;
-    rdp.tiles[0].lr_s = lr_s;
-    rdp.tiles[0].lr_t = lr_t;
-  }
-
-  uint32_t height = lr_t - ul_t + 1;   // get height
-  uint32_t width = lr_s - ul_s + 1;
-
-  int line_n = rdp.timg.width << rdp.tiles[tile].size >> 1;
-  uint32_t offs = ul_t * line_n;
-  offs += ul_s << rdp.tiles[tile].size >> 1;
-  offs += rdp.timg.addr;
-  if (offs >= BMASK)
-    return;
-
-  if (rdp.timg.size == 3)
-    LoadTile32b(tile, ul_s, ul_t, width, height);
-  else
-  {
-    // check if points to bad location
-    if (offs + line_n*height > BMASK)
-      height = (BMASK - offs) / line_n;
-    if (height == 0)
-      return;
-
-    uint32_t wid_64 = rdp.tiles[tile].line;
-    uint8_t *dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
-    uint8_t *end = ((uint8_t*)rdp.tmem) + 4096 - (wid_64<<3);
-    loadTile((uint32_t *)gfx.RDRAM, (uint32_t *)dst, wid_64, height, line_n, offs, (uint32_t *)end);
-  }
-#ifdef EXTREME_LOGGING
-  FRDP("loadtile: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d\n", tile,
-    ul_s, ul_t, lr_s, lr_t);
-#endif
-
-#ifdef HAVE_HWFBE
-  if (fb_hwfbe_enabled)
-    setTBufTex(rdp.tiles[tile].t_mem, rdp.tiles[tile].line*height);
-#endif
+   gDPLoadTile((uint32_t)((w1 >> 24) & 0x07),
+         (uint16_t)((w0 >> 14) & 0x03FF),
+         (uint16_t)((w0 >> 2 ) & 0x03FF),
+         (uint16_t)((w1 >> 14) & 0x03FF),
+         (uint16_t)((w1 >> 2 ) & 0x03FF)
+         );
 }
 
 static void rdp_settile(uint32_t w0, uint32_t w1)
@@ -2966,9 +2747,10 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 
 static void rsp_reserved0(uint32_t w0, uint32_t w1)
 {
-  if (settings.ucode != ucode_DiddyKong)
-     return;
+}
 
+static void rsp_uc5_reserved0(uint32_t w0, uint32_t w1)
+{
   ucode5_texshiftaddr = segoffset(w1);
   ucode5_texshiftcount = 0;
 

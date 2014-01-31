@@ -416,7 +416,7 @@ static rdp_instr gfx_instruction[10][256] =
       // uCode 5 - RSP SW 2.0 Diddy
       // 00-3f
       // games: Diddy Kong Racing
-      spnoop,                     uc5_matrix,             rsp_reserved0,              uc0_movemem,
+      spnoop,                     uc5_matrix,             rsp_uc5_reserved0,              uc0_movemem,
       uc5_vertex,                                     uc5_tridma,                            uc0_displaylist,                  uc5_dl_in_mem,
       rsp_reserved3,              uc6_sprite2d,           undef,                      undef,
       undef,                      undef,                      undef,                      undef,        
