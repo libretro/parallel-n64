@@ -619,15 +619,7 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_LIGHTCOL:  // moveword LIGHTCOL
-         {
-            int n = (w0 & 0xE000) >> 13;
-            //FRDP ("lightcol light:%d, %08lx\n", n, w1);
-
-            rdp.light[n].r = (float)((w1 >> 24) & 0xFF) / 255.0f;
-            rdp.light[n].g = (float)((w1 >> 16) & 0xFF) / 255.0f;
-            rdp.light[n].b = (float)((w1 >> 8) & 0xFF) / 255.0f;
-            rdp.light[n].a = 255;
-         }
+         gSPLightColor((w0 & 0xE000) >> 13, w1);
          break;
 
       case G_MW_POINTS:

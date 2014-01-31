@@ -272,3 +272,12 @@ static inline void gSPNumLights(int32_t n)
    rdp.update |= UPDATE_LIGHTS;
    //FRDP ("numlights: %d\n", rdp.num_lights);
 }
+
+static void gSPLightColor( uint32_t n, uint32_t w1)
+{
+   rdp.light[n].r = (float)((w1 >> 24) & 0xFF) / 255.0f;
+   rdp.light[n].g = (float)((w1 >> 16) & 0xFF) / 255.0f;
+   rdp.light[n].b = (float)((w1 >> 8) & 0xFF) / 255.0f;
+   rdp.light[n].a = 255;
+   //FRDP ("lightcol light:%d, %08lx\n", n, w1);
+}

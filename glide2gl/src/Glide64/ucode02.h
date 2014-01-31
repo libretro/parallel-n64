@@ -779,19 +779,9 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          if (offset == 0x04)
             rdp.tlut_mode = (w1 == 0xffffffff) ? 0 : 2; 
          break;
-
-      case G_MW_LIGHTCOL:  // moveword LIGHTCOL
-         {
-            int n = offset / 24;
-            FRDP ("lightcol light:%d, %08lx\n", n, w1);
-
-            rdp.light[n].r = (float)((w1 >> 24) & 0xFF) / 255.0f;
-            rdp.light[n].g = (float)((w1 >> 16) & 0xFF) / 255.0f;
-            rdp.light[n].b = (float)((w1 >> 8) & 0xFF) / 255.0f;
-            rdp.light[n].a = 255;
-         }
+      case G_MW_LIGHTCOL:
+         gSPLightColor(offset / 24, w1);
          break;
-
       case G_MW_FORCEMTX:
          RDP_E ("uc2:moveword forcemtx - IGNORED\n");
          LRDP("forcemtx - IGNORED\n");
