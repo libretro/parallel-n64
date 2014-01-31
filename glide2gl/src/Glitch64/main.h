@@ -105,6 +105,7 @@ void set_copy_shader(void);
 
 extern int width, height, widtho, heighto;
 extern int tex0_width, tex0_height, tex1_width, tex1_height;
+extern int tex0_exactWidth,tex0_exactHeight,tex1_exactWidth,tex1_exactHeight;
 extern float texture_env_color[4];
 extern int fog_enabled;
 extern float lambda;

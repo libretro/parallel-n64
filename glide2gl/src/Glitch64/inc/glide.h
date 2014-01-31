@@ -510,6 +510,8 @@ typedef struct {
     GrLOD_t           largeLodLog2;
     GrAspectRatio_t   aspectRatioLog2;
     GrTextureFormat_t format;
+    int               width;
+    int               height;
     void              *data;
 } GrTexInfo;
 
