@@ -100,7 +100,7 @@ static void uc2_vertex_neon(uint32_t w0, uint32_t w1)
 {
    uint32_t i, l;
    
-   if (!(rdp.cmd0 & 0x00FFFFFF))
+   if (!(w0 & 0x00FFFFFF))
    {
       uc6_obj_rectangle(w0, w1);
       return;
@@ -126,12 +126,12 @@ static void uc2_vertex_neon(uint32_t w0, uint32_t w1)
       }
    }
 
-   uint32_t addr = segoffset(rdp.cmd1);
+   uint32_t addr = segoffset(w1);
    int v0, n;
    float x, y, z;
 
-   rdp.vn = n = (rdp.cmd0 >> 12) & 0xFF;
-   rdp.v0 = v0 = ((rdp.cmd0 >> 1) & 0x7F) - n;
+   rdp.vn = n = (w0 >> 12) & 0xFF;
+   rdp.v0 = v0 = ((w0 >> 1) & 0x7F) - n;
 
    FRDP ("uc2:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
 
@@ -244,7 +244,7 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
 {
    uint32_t i, l;
    
-   if (!(rdp.cmd0 & 0x00FFFFFF))
+   if (!(w0 & 0x00FFFFFF))
    {
       uc6_obj_rectangle(w0, w1);
       return;
@@ -270,12 +270,12 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
       }
    }
 
-   uint32_t addr = segoffset(rdp.cmd1);
+   uint32_t addr = segoffset(w1);
    int v0, n;
    float x, y, z;
 
-   rdp.vn = n = (rdp.cmd0 >> 12) & 0xFF;
-   rdp.v0 = v0 = ((rdp.cmd0 >> 1) & 0x7F) - n;
+   rdp.vn = n = (w0 >> 12) & 0xFF;
+   rdp.v0 = v0 = ((w0 >> 1) & 0x7F) - n;
 
    FRDP ("uc2:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
 
@@ -386,8 +386,8 @@ static void uc2_culldl(uint32_t w0, uint32_t w1)
 {
    uint16_t i, vStart, vEnd, cond;
 
-   vStart = (uint16_t)(rdp.cmd0 & 0xFFFF) >> 1;
-   vEnd = (uint16_t)(rdp.cmd1 & 0xFFFF) >> 1;
+   vStart = (uint16_t)(w0 & 0xFFFF) >> 1;
+   vEnd = (uint16_t)(w1 & 0xFFFF) >> 1;
    cond = 0;
    FRDP ("uc2:culldl start: %d, end: %d\n", vStart, vEnd);
 
@@ -431,7 +431,7 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1);
 
 static void uc2_tri1(uint32_t w0, uint32_t w1)
 {
-   if ((rdp.cmd0 & 0x00FFFFFF) == 0x17)
+   if ((w0 & 0x00FFFFFF) == 0x17)
    {
       uc6_obj_loadtxtr(w0, w1);
       return;
@@ -444,14 +444,14 @@ static void uc2_tri1(uint32_t w0, uint32_t w1)
    }
 
    FRDP("uc2:tri1 #%d - %d, %d, %d\n", rdp.tri_n,
-         ((rdp.cmd0 >> 17) & 0x7F),
-         ((rdp.cmd0 >> 9) & 0x7F),
-         ((rdp.cmd0 >> 1) & 0x7F));
+         ((w0 >> 17) & 0x7F),
+         ((w0 >> 9) & 0x7F),
+         ((w0 >> 1) & 0x7F));
 
    VERTEX *v[3];
-   v[0] = &rdp.vtx[(rdp.cmd0 >> 17) & 0x7F];
-   v[1] = &rdp.vtx[(rdp.cmd0 >> 9)  & 0x7F];
-   v[2] = &rdp.vtx[(rdp.cmd0 >> 1)  & 0x7F];
+   v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
+   v[1] = &rdp.vtx[(w0 >> 9)  & 0x7F];
+   v[2] = &rdp.vtx[(w0 >> 1)  & 0x7F];
 
    rsp_tri1(v, 0);
 }
@@ -461,9 +461,9 @@ static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1);
 
 static void uc2_quad(uint32_t w0, uint32_t w1)
 {
-   if ((rdp.cmd0 & 0x00FFFFFF) == 0x2F)
+   if ((w0 & 0x00FFFFFF) == 0x2F)
    {
-      uint32_t command = rdp.cmd0>>24;
+      uint32_t command = w0 >> 24;
       if (command == 0x6)
       {
          uc6_obj_ldtx_sprite(w0, w1);
@@ -485,21 +485,21 @@ static void uc2_quad(uint32_t w0, uint32_t w1)
    LRDP("uc2:quad");
 
    FRDP(" #%d, #%d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1,
-         ((rdp.cmd0 >> 17) & 0x7F),
-         ((rdp.cmd0 >> 9) & 0x7F),
-         ((rdp.cmd0 >> 1) & 0x7F),
-         ((rdp.cmd1 >> 17) & 0x7F),
-         ((rdp.cmd1 >> 9) & 0x7F),
-         ((rdp.cmd1 >> 1) & 0x7F));
+         ((w0 >> 17) & 0x7F),
+         ((w0 >> 9) & 0x7F),
+         ((w0 >> 1) & 0x7F),
+         ((w1 >> 17) & 0x7F),
+         ((w1 >> 9) & 0x7F),
+         ((w1 >> 1) & 0x7F));
 
    VERTEX *v[6];
 
-   v[0] = &rdp.vtx[(rdp.cmd0 >> 17) & 0x7F];
-   v[1] = &rdp.vtx[(rdp.cmd0 >> 9)  & 0x7F];
-   v[2] = &rdp.vtx[(rdp.cmd0 >> 1)  & 0x7F];
-   v[3] = &rdp.vtx[(rdp.cmd1 >> 17) & 0x7F];
-   v[4] = &rdp.vtx[(rdp.cmd1 >> 9)  & 0x7F];
-   v[5] = &rdp.vtx[(rdp.cmd1 >> 1)  & 0x7F];
+   v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
+   v[1] = &rdp.vtx[(w0 >> 9)  & 0x7F];
+   v[2] = &rdp.vtx[(w0 >> 1)  & 0x7F];
+   v[3] = &rdp.vtx[(w1 >> 17) & 0x7F];
+   v[4] = &rdp.vtx[(w1 >> 9)  & 0x7F];
+   v[5] = &rdp.vtx[(w1 >> 1)  & 0x7F];
 
    rsp_tri2(v);
 }
@@ -508,20 +508,20 @@ static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1);
 
 static void uc2_line3d(uint32_t w0, uint32_t w1)
 {
-   if ((rdp.cmd0 & 0xFF) == 0x2F)
+   if ((w0 & 0xFF) == 0x2F)
       uc6_ldtx_rect_r(w0, w1);
    else
    {
       FRDP("uc2:line3d #%d, #%d - %d, %d\n", rdp.tri_n, rdp.tri_n+1,
-            (rdp.cmd0 >> 17) & 0x7F,
-            (rdp.cmd0 >> 9) & 0x7F);
+            (w0 >> 17) & 0x7F,
+            (w0 >> 9) & 0x7F);
 
       VERTEX *v[3] = {
-         &rdp.vtx[(rdp.cmd0 >> 17) & 0x7F],
-         &rdp.vtx[(rdp.cmd0 >> 9) & 0x7F],
-         &rdp.vtx[(rdp.cmd0 >> 9) & 0x7F]
+         &rdp.vtx[(w0 >> 17) & 0x7F],
+         &rdp.vtx[(w0 >> 9) & 0x7F],
+         &rdp.vtx[(w0 >> 9) & 0x7F]
       };
-      uint16_t width = (uint16_t)(rdp.cmd0 + 3)&0xFF;
+      uint16_t width = (uint16_t)(w0 + 3)&0xFF;
       uint32_t cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
       rdp.flags |= CULLMASK;
       rdp.update |= UPDATE_CULL_MODE;
@@ -552,18 +552,18 @@ static void uc2_pop_matrix(uint32_t w0, uint32_t w1)
    FRDP ("uc2:pop_matrix %08lx, %08lx\n", w0, w1);
 
    // Just pop the modelview matrix
-   gSPPopMatrixN(rdp.cmd1 >> 6);
+   gSPPopMatrixN(w1 >> 6);
 }
 
 static void uc2_geom_mode(uint32_t w0, uint32_t w1)
 {
    // Switch around some things
-   uint32_t clr_mode = (rdp.cmd0 & 0x00DFC9FF) |
-      ((rdp.cmd0 & 0x00000600) << 3) |
-      ((rdp.cmd0 & 0x00200000) >> 12) | 0xFF000000;
-   uint32_t set_mode = (rdp.cmd1 & 0xFFDFC9FF) |
-      ((rdp.cmd1 & 0x00000600) << 3) |
-      ((rdp.cmd1 & 0x00200000) >> 12);
+   uint32_t clr_mode = (w0 & 0x00DFC9FF) |
+      ((w0 & 0x00000600) << 3) |
+      ((w0 & 0x00200000) >> 12) | 0xFF000000;
+   uint32_t set_mode = (w1 & 0xFFDFC9FF) |
+      ((w1 & 0x00000600) << 3) |
+      ((w1 & 0x00200000) >> 12);
 
    FRDP("uc2:geom_mode c:%08lx, s:%08lx ", clr_mode, set_mode);
 
@@ -645,7 +645,7 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1);
 
 static void uc2_matrix(uint32_t w0, uint32_t w1)
 {
-   if (!(rdp.cmd0 & 0x00FFFFFF))
+   if (!(w0 & 0x00FFFFFF))
    {
       uc6_obj_rectangle_r(w0, w1);
       return;
@@ -653,9 +653,9 @@ static void uc2_matrix(uint32_t w0, uint32_t w1)
    LRDP("uc2:matrix\n");
 
    DECLAREALIGN16VAR(m[4][4]);
-   load_matrix(m, segoffset(rdp.cmd1));
+   load_matrix(m, segoffset(w1));
 
-   uint8_t command = (uint8_t)((rdp.cmd0 ^ 1) & 0xFF);
+   uint8_t command = (uint8_t)((w0 ^ 1) & 0xFF);
    switch (command)
    {
       case 0: // modelview mul nopush
@@ -713,9 +713,8 @@ static void uc2_matrix(uint32_t w0, uint32_t w1)
 
 static void uc2_moveword(uint32_t w0, uint32_t w1)
 {
-   uint8_t index = (uint8_t)((rdp.cmd0 >> 16) & 0xFF);
-   uint16_t offset = (uint16_t)(rdp.cmd0 & 0xFFFF);
-   uint32_t data = rdp.cmd1;
+   uint8_t index = (uint8_t)((w0 >> 16) & 0xFF);
+   uint16_t offset = (uint16_t)(w0 & 0xFFFF);
 
    FRDP ("uc2:moveword ");
 
@@ -733,28 +732,28 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
                MulMatrices(rdp.model, rdp.proj, rdp.combined);
             }
 
-            if (rdp.cmd0 & 0x20)  // fractional part
+            if (w0 & 0x20)  // fractional part
             {
-               int index_x = (rdp.cmd0 & 0x1F) >> 1;
+               int index_x = (w0 & 0x1F) >> 1;
                int index_y = index_x >> 2;
                index_x &= 3;
 
-               float fpart = (rdp.cmd1>>16)/65536.0f;
+               float fpart = (w1 >> 16) / 65536.0f;
                rdp.combined[index_y][index_x] = (float)(int)rdp.combined[index_y][index_x];
                rdp.combined[index_y][index_x] += fpart;
 
-               fpart = (rdp.cmd1&0xFFFF)/65536.0f;
+               fpart = (w1 & 0xFFFF) / 65536.0f;
                rdp.combined[index_y][index_x+1] = (float)(int)rdp.combined[index_y][index_x+1];
                rdp.combined[index_y][index_x+1] += fpart;
             }
             else
             {
-               int index_x = (rdp.cmd0 & 0x1F) >> 1;
+               int index_x = (w0 & 0x1F) >> 1;
                int index_y = index_x >> 2;
                index_x &= 3;
 
-               rdp.combined[index_y][index_x] = (int16_t)(rdp.cmd1>>16);
-               rdp.combined[index_y][index_x+1] = (int16_t)(rdp.cmd1&0xFFFF);
+               rdp.combined[index_y][index_x] = (int16_t)(w1 >> 16);
+               rdp.combined[index_y][index_x+1] = (int16_t)(w1 & 0xFFFF);
             }
 
             LRDP("matrix\n");
@@ -762,7 +761,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_NUMLIGHT:
-         rdp.num_lights = data / 24;
+         rdp.num_lights = w1 / 24;
          rdp.update |= UPDATE_LIGHTS;
          FRDP ("numlights: %d\n", rdp.num_lights);
          break;
@@ -770,40 +769,40 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
       case G_MW_CLIP:
          if (offset == G_MW_CLIP)
          {
-            rdp.clip_ratio = squareRoot((float)rdp.cmd1);
+            rdp.clip_ratio = squareRoot((float)w1);
             rdp.update |= UPDATE_VIEWPORT;
          }
-         FRDP ("mw_clip %08lx, %08lx\n", rdp.cmd0, rdp.cmd1);
+         FRDP ("mw_clip %08lx, %08lx\n", w0, w1);
          break;
 
       case G_MW_SEGMENT:  // moveword SEGMENT
          {
-            FRDP ("SEGMENT %08lx -> seg%d\n", data, offset >> 2);
-            if ((data&BMASK)<BMASK)
-               rdp.segment[(offset >> 2) & 0xF] = data;
+            FRDP ("SEGMENT %08lx -> seg%d\n", w1, offset >> 2);
+            if ((w1 & BMASK) < BMASK)
+               rdp.segment[(offset >> 2) & 0xF] = w1;
          }
          break;
       case G_MW_FOG:
          {
-            rdp.fog_multiplier = (int16_t)(rdp.cmd1 >> 16);
-            rdp.fog_offset = (int16_t)(rdp.cmd1 & 0x0000FFFF);
+            rdp.fog_multiplier = (int16_t)(w1 >> 16);
+            rdp.fog_offset = (int16_t)(w1 & 0x0000FFFF);
             FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
 
             //offset must be 0 for move_fog, but it can be non zero in Nushi Zuri 64 - Shiokaze ni Notte
             //low-level display list has setothermode commands in this place, so this is obviously not move_fog.
             if (offset == 0x04)
-               rdp.tlut_mode = (data == 0xffffffff) ? 0 : 2; 
+               rdp.tlut_mode = (w1 == 0xffffffff) ? 0 : 2; 
          }
          break;
 
       case G_MW_LIGHTCOL:  // moveword LIGHTCOL
          {
             int n = offset / 24;
-            FRDP ("lightcol light:%d, %08lx\n", n, data);
+            FRDP ("lightcol light:%d, %08lx\n", n, w1);
 
-            rdp.light[n].r = (float)((data >> 24) & 0xFF) / 255.0f;
-            rdp.light[n].g = (float)((data >> 16) & 0xFF) / 255.0f;
-            rdp.light[n].b = (float)((data >> 8) & 0xFF) / 255.0f;
+            rdp.light[n].r = (float)((w1 >> 24) & 0xFF) / 255.0f;
+            rdp.light[n].g = (float)((w1 >> 16) & 0xFF) / 255.0f;
+            rdp.light[n].b = (float)((w1 >> 8) & 0xFF) / 255.0f;
             rdp.light[n].a = 255;
          }
          break;
@@ -827,9 +826,9 @@ static void uc6_obj_movemem(uint32_t w0, uint32_t w1);
 
 static void uc2_movemem(uint32_t w0, uint32_t w1)
 {
-   int idx = rdp.cmd0 & 0xFF;
-   uint32_t addr = segoffset(rdp.cmd1);
-   int ofs = (rdp.cmd0 >> 5) & 0x7F8;
+   int idx = w0 & 0xFF;
+   uint32_t addr = segoffset(w1);
+   int ofs = (w0 >> 5) & 0x7F8;
 
    FRDP ("uc2:movemem ofs:%d ", ofs);
 
@@ -932,7 +931,7 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          {
             // do not update the combined matrix!
             rdp.update &= ~UPDATE_MULT_MAT;
-            load_matrix(rdp.combined, segoffset(rdp.cmd1));
+            load_matrix(rdp.combined, segoffset(w1));
 
 #ifdef EXTREME_LOGGING
             FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
@@ -961,9 +960,8 @@ static void uc2_rdphalf_2(uint32_t w0, uint32_t w1)
 
 static void uc2_dlist_cnt(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr = segoffset(rdp.cmd1) & BMASK;
-   int count = rdp.cmd0 & 0x000000FF;
-   FRDP ("dl_count - addr: %08lx, count: %d\n", addr, count);
+   uint32_t addr = segoffset(w1) & BMASK;
+   int count = w0 & 0x000000FF;
 
    if (addr == 0)
       return;
@@ -977,6 +975,7 @@ static void uc2_dlist_cnt(uint32_t w0, uint32_t w1)
    rdp.pc_i ++;  // go to the next PC in the stack
    rdp.pc[rdp.pc_i] = addr;  // jump to the address
    rdp.dl_count = count + 1;
+   FRDP ("dl_count - addr: %08lx, count: %d\n", addr, count);
 }
 
 static void uc2_setothermode_l(uint32_t w0, uint32_t w1)
