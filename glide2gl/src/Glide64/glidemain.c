@@ -139,7 +139,7 @@ char    capture_path[256];
 // SOME FUNCTION DEFINITIONS 
 
 static void DrawFrameBuffer(void);
-
+void glide_set_filtering(unsigned value);
 
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;

@@ -45,6 +45,7 @@ extern unsigned screen_height;
 #endif
 
 int tex0_width, tex0_height, tex1_width, tex1_height;
+int tex0_exactWidth,tex0_exactHeight,tex1_exactWidth,tex1_exactHeight;
 int three_point_filter0,three_point_filter1;
 float lambda;
 
@@ -643,6 +644,8 @@ grTexDownloadMipMap( GrChipID_t tmu,
    glBindTexture(GL_TEXTURE_2D, startAddress+1);
 
    glTexImage2D(GL_TEXTURE_2D, 0, gltexfmt, width, height, 0, glpixfmt, glpackfmt, info->data);
+   info->width = width;
+   info->height = height;
    glBindTexture(GL_TEXTURE_2D, default_texture);
 }
 
@@ -674,6 +677,8 @@ grTexSource( GrChipID_t tmu,
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter0);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s0);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t0);
+      tex0_exactWidth = info->width;
+      tex0_exactHeight = info->height;
    }
    else
    {
@@ -695,6 +700,8 @@ grTexSource( GrChipID_t tmu,
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter1);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s1);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t1);
+      tex1_exactWidth = info->width;
+      tex1_exactHeight = info->height;
    }
    if(!CheckTextureBufferFormat(tmu, startAddress+1, info))
    {
