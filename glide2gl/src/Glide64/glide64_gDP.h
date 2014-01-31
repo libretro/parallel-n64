@@ -501,3 +501,32 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
       setTBufTex(rdp.tiles[tile].t_mem, cnt);
 #endif
 }
+
+static inline void gDPSetAlphaCompare( uint32_t mode )
+{
+   rdp.othermode_l |= 0x00000003;
+   rdp.acmp = mode;
+   rdp.update |= UPDATE_ALPHA_COMPARE;
+   //FRDP ("alpha compare %s\n", ACmp[rdp.acmp]);
+}
+
+static inline void gDPSetDepthSource( uint32_t source )
+{
+   rdp.zsrc = source;
+   rdp.update |= UPDATE_ZBUF_ENABLED;
+   //FRDP ("z-src sel: %s\n", str_zs[rdp.zsrc]);
+   //FRDP ("z-src sel: %08lx\n", rdp.zsrc);
+}
+
+static void gDPSetRenderMode( uint32_t mode1, uint32_t mode2 )
+{
+   rdp.othermode_l &= 0x00000007;
+   rdp.othermode_l |= mode1;
+   rdp.othermode_l |= mode2;
+   rdp.update |= UPDATE_FOG_ENABLED; //if blender has no fog bits, fog must be set off
+   rdp.render_mode_changed |= rdp.rm ^ rdp.othermode_l;
+   rdp.rm = rdp.othermode_l;
+   if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
+      rdp.othermode_l |= UPDATE_BIASLEVEL | UPDATE_LIGHTS;
+   //FRDP ("rendermode: %08lx\n", rdp.othermode_l);  // just output whole othermode_l
+}

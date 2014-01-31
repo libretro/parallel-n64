@@ -737,27 +737,13 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
     switch (_SHIFTR( w0, 8, 8 ))
     {
        case G_MDSFT_ALPHACOMPARE:
-          rdp.othermode_l |= 0x00000003;
-          rdp.acmp = w1 >> G_MDSFT_ALPHACOMPARE;
-          rdp.update |= UPDATE_ALPHA_COMPARE;
-          //FRDP ("alpha compare %s\n", ACmp[rdp.acmp]);
+          gDPSetAlphaCompare(w1 >> G_MDSFT_ALPHACOMPARE);
           break;
        case G_MDSFT_ZSRCSEL:
-          rdp.zsrc = w1 >> G_MDSFT_ZSRCSEL;
-          rdp.update |= UPDATE_ZBUF_ENABLED;
-          //FRDP ("z-src sel: %s\n", str_zs[rdp.zsrc]);
-          //FRDP ("z-src sel: %08lx\n", rdp.zsrc);
+          gDPSetDepthSource(w1 >> G_MDSFT_ZSRCSEL);
           break;
        case G_MDSFT_RENDERMODE:
-          rdp.othermode_l &= 0x00000007;
-          rdp.othermode_l |= w1 & 0xCCCCFFFF;
-          rdp.othermode_l |= w1 & 0x3333FFFF;
-          rdp.update |= UPDATE_FOG_ENABLED; //if blender has no fog bits, fog must be set off
-          rdp.render_mode_changed |= rdp.rm ^ rdp.othermode_l;
-          rdp.rm = rdp.othermode_l;
-          if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
-             rdp.othermode_l |= UPDATE_BIASLEVEL | UPDATE_LIGHTS;
-          //FRDP ("rendermode: %08lx\n", rdp.othermode_l);  // just output whole othermode_l
+          gDPSetRenderMode(w1 & 0xCCCCFFFF, w1 & 0x3333FFFF);
           break;
        default:
           {
