@@ -322,8 +322,6 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
 
 static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
 {
-   FRDP("uc0:setgeometrymode %08lx\n", w1);
-
    rdp.geom_mode |= w1;
 
    if (w1 & G_ZBUFFER)  // Z-Buffer enable
@@ -344,12 +342,12 @@ static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_FOG_ENABLED;
       }
    }
+
+   //FRDP("uc0:setgeometrymode %08lx\n", w1);
 }
 
 static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1)
 {
-   FRDP("uc0:cleargeometrymode %08lx\n", w1);
-
    rdp.geom_mode &= (~w1);
 
    if (w1 & G_ZBUFFER)  // Z-Buffer enable
@@ -369,4 +367,5 @@ static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_FOG_ENABLED;
       }
    }
+   //FRDP("uc0:cleargeometrymode %08lx\n", w1);
 }

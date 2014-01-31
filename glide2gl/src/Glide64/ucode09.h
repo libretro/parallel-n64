@@ -41,7 +41,6 @@
 //
 //****************************************************************
 
-void uc9_rpdcmd(uint32_t w0, uint32_t w1);
 
 typedef float M44[4][4];
 
@@ -574,7 +573,7 @@ static void uc9_send_signal(uint32_t w0, uint32_t w1)
    LRDP("uc9:send_signal IGNORED\n");
 }
 
-void uc9_movemem(uint32_t w0, uint32_t w1)
+static void uc9_movemem(uint32_t w0, uint32_t w1)
 {
    LRDP("uc9:movemem\n");
    int idx = w0 & 0x0E;

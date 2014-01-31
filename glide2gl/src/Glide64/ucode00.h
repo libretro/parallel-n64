@@ -38,18 +38,6 @@
 //****************************************************************
 #include "GBI.h"
 
-#define ucode_Fast3D 0
-#define ucode_F3DEX 1
-#define ucode_F3DEX2 2
-#define ucode_WaveRace 3
-#define ucode_StarWars 4
-#define ucode_DiddyKong 5
-#define ucode_S2DEX 6
-#define ucode_PerfectDark 7
-#define ucode_CBFD 8
-#define ucode_zSort 9
-#define ucode_Turbo3d 21
-
 static void rsp_vertex(int v0, int n)
 {
    uint32_t addr = RSP_SegmentToPhysical(rdp.cmd1);
@@ -201,19 +189,19 @@ static void uc0_vertex(uint32_t w0, uint32_t w1)
 
 // ** Definitions **
 
-void modelview_load (float m[4][4])
+static void modelview_load (float m[4][4])
 {
    CopyMatrix(rdp.model, m, 64); // 4*4*4 (float)
    rdp.update |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
 }
 
-void modelview_mul (float m[4][4])
+static void modelview_mul (float m[4][4])
 {
    MulMatrices(m, rdp.model, rdp.model);
    rdp.update |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
 }
 
-void modelview_push(void)
+static void modelview_push(void)
 {
    if (rdp.model_i == rdp.model_stack_size)
       return;
@@ -221,31 +209,31 @@ void modelview_push(void)
    CopyMatrix(rdp.model_stack[rdp.model_i++], rdp.model, 64);
 }
 
-void modelview_load_push (float m[4][4])
+static void modelview_load_push (float m[4][4])
 {
    modelview_push();
    modelview_load(m);
 }
 
-void modelview_mul_push (float m[4][4])
+static void modelview_mul_push (float m[4][4])
 {
    modelview_push();
    modelview_mul (m);
 }
 
-void projection_load (float m[4][4])
+static void projection_load (float m[4][4])
 {
    CopyMatrix(rdp.proj, m, 64); // 4*4*4 (float)
    rdp.update |= UPDATE_MULT_MAT;
 }
 
-void projection_mul (float m[4][4])
+static void projection_mul (float m[4][4])
 {
    MulMatrices(m, rdp.proj, rdp.proj);
    rdp.update |= UPDATE_MULT_MAT;
 }
 
-void load_matrix (float m[4][4], uint32_t addr)
+static void load_matrix (float m[4][4], uint32_t addr)
 {
    //FRDP ("matrix - addr: %08lx\n", addr);
    int x,y;  // matrix index
@@ -518,85 +506,6 @@ static void uc0_culldl(uint32_t w0, uint32_t w1)
 static void uc0_popmatrix(uint32_t w0, uint32_t w1)
 {
    gSPPopMatrix(w1);
-}
-
-static void uc6_obj_sprite(uint32_t w0, uint32_t w1);
-
-// FIXME - call not consistent with glN64
-static void gSPModifyVertex(uint8_t where, uint16_t vtx, uint32_t val)
-{
-   VERTEX *v = &rdp.vtx[vtx];
-   uint32_t w0, w1;
-   w0 = rdp.cmd0;
-   w1 = rdp.cmd1;
-
-   switch (where)
-   {
-      case 0:
-         uc6_obj_sprite(w0, w1);
-         break;
-
-      case G_MWO_POINT_RGBA:    // RGBA
-         v->r = (uint8_t)(val >> 24);
-         v->g = (uint8_t)((val >> 16) & 0xFF);
-         v->b = (uint8_t)((val >> 8) & 0xFF);
-         v->a = (uint8_t)(val & 0xFF);
-         v->shade_mod = 0;
-
-         //FRDP ("RGBA: %d, %d, %d, %d\n", v->r, v->g, v->b, v->a);
-         break;
-
-      case G_MWO_POINT_ST:    // ST
-         {
-            float scale = rdp.Persp_en ? 0.03125f : 0.015625f;
-            v->ou = (float)((int16_t)(val>>16)) * scale;
-            v->ov = (float)((int16_t)(val&0xFFFF)) * scale;
-            v->uv_calculated = 0xFFFFFFFF;
-            v->uv_scaled = 1;
-         }
-         //FRDP ("u/v: (%04lx, %04lx), (%f, %f)\n", (int16_t)(val>>16), (int16_t)(val&0xFFFF), v->ou, v->ov);
-         break;
-
-      case G_MWO_POINT_XYSCREEN:    // XY screen
-         {
-            float scr_x = (float)((int16_t)(val>>16)) / 4.0f;
-            float scr_y = (float)((int16_t)(val&0xFFFF)) / 4.0f;
-            v->screen_translated = 2;
-            v->sx = scr_x * rdp.scale_x + rdp.offset_x;
-            v->sy = scr_y * rdp.scale_y + rdp.offset_y;
-            if (v->w < 0.01f)
-            {
-               v->w = 1.0f;
-               v->oow = 1.0f;
-               v->z_w = 1.0f;
-            }
-            v->sz = rdp.view_trans[2] + v->z_w * rdp.view_scale[2];
-
-            v->scr_off = 0;
-            if (scr_x < 0) v->scr_off |= 1;
-            if (scr_x > rdp.vi_width) v->scr_off |= 2;
-            if (scr_y < 0) v->scr_off |= 4;
-            if (scr_y > rdp.vi_height) v->scr_off |= 8;
-            if (v->w < 0.1f) v->scr_off |= 16;
-
-            //FRDP ("x/y: (%f, %f)\n", scr_x, scr_y);
-         }
-         break;
-
-      case G_MWO_POINT_ZSCREEN:    // Z screen
-         {
-            float scr_z = (float)((int16_t)(val>>16));
-            v->z_w = (scr_z - rdp.view_trans[2]) / rdp.view_scale[2];
-            v->z = v->z_w * v->w;
-            //FRDP ("z: %f\n", scr_z);
-         }
-         break;
-
-      default:
-         //LRDP("UNKNOWN\n");
-         break;
-   }
-   //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
 }
 
 //

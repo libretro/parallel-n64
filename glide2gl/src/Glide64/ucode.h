@@ -37,6 +37,207 @@
 //
 //****************************************************************
 
+#ifndef _GLIDE64_UCODE_GENERIC_H
+#define _GLIDE64_UCODE_GENERIC_H
+
+#define ucode_Fast3D 0
+#define ucode_F3DEX 1
+#define ucode_F3DEX2 2
+#define ucode_WaveRace 3
+#define ucode_StarWars 4
+#define ucode_DiddyKong 5
+#define ucode_S2DEX 6
+#define ucode_PerfectDark 7
+#define ucode_CBFD 8
+#define ucode_zSort 9
+#define ucode_Turbo3d 21
+
+// ** RDP graphics functions **
+static void undef(uint32_t w0, uint32_t w1);
+
+static void spnoop(uint32_t w0, uint32_t w1);
+
+static void rdp_noop(uint32_t w0, uint32_t w1);
+static void rdp_texrect(uint32_t w0, uint32_t w1);
+//static void rdp_texrectflip(uint32_t w0, uint32_t w1);
+static void rdp_loadsync(uint32_t w0, uint32_t w1);
+static void rdp_pipesync(uint32_t w0, uint32_t w1);
+static void rdp_tilesync(uint32_t w0, uint32_t w1);
+static void rdp_fullsync(uint32_t w0, uint32_t w1);
+static void rdp_setkeygb(uint32_t w0, uint32_t w1);
+static void rdp_setkeyr(uint32_t w0, uint32_t w1);
+static void rdp_setconvert(uint32_t w0, uint32_t w1);
+static void rdp_setscissor(uint32_t w0, uint32_t w1);
+static void rdp_setprimdepth(uint32_t w0, uint32_t w1);
+static void rdp_setothermode(uint32_t w0, uint32_t w1);
+static void rdp_uc2_setothermode(uint32_t w0, uint32_t w1);
+static void rdp_loadtlut(uint32_t w0, uint32_t w1);
+static void rdp_settilesize(uint32_t w0, uint32_t w1);
+static void rdp_loadblock(uint32_t w0, uint32_t w1);
+static void rdp_loadtile(uint32_t w0, uint32_t w1);
+static void rdp_settile(uint32_t w0, uint32_t w1);
+static void rdp_fillrect(uint32_t w0, uint32_t w1);
+static void rdp_setfillcolor(uint32_t w0, uint32_t w1);
+static void rdp_setfogcolor(uint32_t w0, uint32_t w1);
+static void rdp_setblendcolor(uint32_t w0, uint32_t w1);
+static void rdp_setprimcolor(uint32_t w0, uint32_t w1);
+static void rdp_setenvcolor(uint32_t w0, uint32_t w1);
+static void rdp_setcombine(uint32_t w0, uint32_t w1);
+static void rdp_settextureimage(uint32_t w0, uint32_t w1);
+static void rdp_setdepthimage(uint32_t w0, uint32_t w1);
+static void rdp_setcolorimage(uint32_t w0, uint32_t w1);
+static void rdp_trifill(uint32_t w0, uint32_t w1);
+static void rdp_trishade(uint32_t w0, uint32_t w1);
+static void rdp_tritxtr(uint32_t w0, uint32_t w1);
+static void rdp_trishadetxtr(uint32_t w0, uint32_t w1);
+static void rdp_trifillz(uint32_t w0, uint32_t w1);
+static void rdp_trishadez(uint32_t w0, uint32_t w1);
+static void rdp_tritxtrz(uint32_t w0, uint32_t w1);
+static void rdp_trishadetxtrz(uint32_t w0, uint32_t w1);
+static void rdphalf_1(uint32_t w0, uint32_t w1);
+static void rdphalf_2(uint32_t w0, uint32_t w1);
+static void rdphalf_cont(uint32_t w0, uint32_t w1);
+
+static void rsp_reserved0(uint32_t w0, uint32_t w1);
+static void rsp_uc5_reserved0(uint32_t w0, uint32_t w1);
+static void rsp_reserved1(uint32_t w0, uint32_t w1);
+static void rsp_reserved2(uint32_t w0, uint32_t w1);
+static void rsp_reserved3(uint32_t w0, uint32_t w1);
+
+static void ys_memrect(uint32_t w0, uint32_t w1);
+
+static void uc6_obj_sprite(uint32_t w0, uint32_t w1);
+
+static void modelview_load (float m[4][4]);
+static void modelview_mul (float m[4][4]);
+static void modelview_push(void);
+static void modelview_load_push (float m[4][4]);
+static void modelview_mul_push (float m[4][4]);
+static void projection_load (float m[4][4]);
+static void projection_mul (float m[4][4]);
+static void load_matrix (float m[4][4], uint32_t addr);
+
+static void rsp_vertex(int v0, int n);
+static void rsp_tri1(VERTEX **v, uint16_t linew);
+static void rsp_tri2 (VERTEX **v);
+
+static float set_sprite_combine_mode(void);
+
+//ucode 00
+static void uc0_vertex(uint32_t w0, uint32_t w1);
+static void uc0_matrix(uint32_t w0, uint32_t w1);
+static void uc0_movemem(uint32_t w0, uint32_t w1);
+static void uc0_displaylist(uint32_t w0, uint32_t w1);
+static void uc0_tri1(uint32_t w0, uint32_t w1);
+static void uc0_tri1_mischief(uint32_t w0, uint32_t w1);
+static void uc0_enddl(uint32_t w0, uint32_t w1);
+static void uc0_culldl(uint32_t w0, uint32_t w1);
+static void uc0_popmatrix(uint32_t w0, uint32_t w1);
+static void uc0_moveword(uint32_t w0, uint32_t w1);
+static void uc0_texture(uint32_t w0, uint32_t w1);
+static void uc0_setothermode_h(uint32_t w0, uint32_t w1);
+static void uc0_setothermode_l(uint32_t w0, uint32_t w1);
+static void uc0_setgeometrymode(uint32_t w0, uint32_t w1);
+static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1);
+static void uc0_line3d(uint32_t w0, uint32_t w1);
+static void uc0_tri4(uint32_t w0, uint32_t w1);
+
+//ucode01
+static void uc1_vertex(uint32_t w0, uint32_t w1);
+static void uc1_tri1(uint32_t w0, uint32_t w1);
+static void uc1_tri2(uint32_t w0, uint32_t w1);
+static void uc1_line3d(uint32_t w0, uint32_t w1);
+static void uc1_rdphalf_1(uint32_t w0, uint32_t w1);
+static void uc1_branch_z(uint32_t w0, uint32_t w1);
+
+static void uc6_select_dl(uint32_t w0, uint32_t w1);
+static void uc6_obj_rendermode(uint32_t w0, uint32_t w1);
+static void uc6_bg_1cyc(uint32_t w0, uint32_t w1);
+static void uc6_bg_copy(uint32_t w0, uint32_t w1);
+static void uc6_loaducode(uint32_t w0, uint32_t w1);
+static void uc6_sprite2d(uint32_t w0, uint32_t w1);
+static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1);
+static void uc6_obj_rectangle(uint32_t w0, uint32_t w1);
+static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1);
+static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1);
+static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1);
+static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1);
+static void uc6_obj_movemem(uint32_t w0, uint32_t w1);
+
+//ucode02
+static void calc_point_light (VERTEX *v, float * vpos);
+static void uc2_quad(uint32_t w0, uint32_t w1);
+static void uc2_vertex_neon(uint32_t w0, uint32_t w1);
+static void uc2_vertex(uint32_t w0, uint32_t w1);
+static void uc2_modifyvtx(uint32_t w0, uint32_t w1);
+static void uc2_culldl(uint32_t w0, uint32_t w1);
+static void uc2_tri1(uint32_t w0, uint32_t w1);
+static void uc2_line3d(uint32_t w0, uint32_t w1);
+static void uc2_special3(uint32_t w0, uint32_t w1);
+static void uc2_special2(uint32_t w0, uint32_t w1);
+static void uc2_dma_io(uint32_t w0, uint32_t w1);
+static void uc2_pop_matrix(uint32_t w0, uint32_t w1);
+static void uc2_geom_mode(uint32_t w0, uint32_t w1);
+static void uc2_matrix(uint32_t w0, uint32_t w1);
+static void uc2_moveword(uint32_t w0, uint32_t w1);
+static void uc2_movemem(uint32_t w0, uint32_t w1);
+static void uc2_load_ucode(uint32_t w0, uint32_t w1);
+static void uc2_rdphalf_2(uint32_t w0, uint32_t w1);
+static void uc2_dlist_cnt(uint32_t w0, uint32_t w1);
+static void uc2_setothermode_l(uint32_t w0, uint32_t w1);
+static void uc2_setothermode_h(uint32_t w0, uint32_t w1);
+
+//ucode03
+static void uc3_vertex(uint32_t w0, uint32_t w1);
+static void uc3_tri1(uint32_t w0, uint32_t w1);
+static void uc3_tri2(uint32_t w0, uint32_t w1);
+static void uc3_quad3d(uint32_t w0, uint32_t w1);
+
+//ucode04
+static void uc4_vertex(uint32_t w0, uint32_t w1);
+static void uc4_tri1(uint32_t w0, uint32_t w1);
+static void uc4_quad3d(uint32_t w0, uint32_t w1);
+
+//ucode05
+static void uc5_dma_offsets(uint32_t w0, uint32_t w1);
+static void uc5_matrix(uint32_t w0, uint32_t w1);
+static void uc5_vertex(uint32_t w0, uint32_t w1);
+static void uc5_tridma(uint32_t w0, uint32_t w1);
+static void uc5_dl_in_mem(uint32_t w0, uint32_t w1);
+static void uc5_moveword(uint32_t w0, uint32_t w1);
+static void uc5_setgeometrymode(uint32_t w0, uint32_t w1);
+static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1);
+
+//ucode07
+static void uc7_colorbase(uint32_t w0, uint32_t w1);
+static void uc7_vertex(uint32_t w0, uint32_t w1);
+
+//ucode08
+static void uc8_vertex(uint32_t w0, uint32_t w1);
+static void uc8_moveword(uint32_t w0, uint32_t w1);
+static void uc8_movemem(uint32_t w0, uint32_t w1);
+static void uc8_tri4(uint32_t w0, uint32_t w1);
+static void uc8_setothermode_l(uint32_t w0, uint32_t w1);
+static void uc8_setothermode_h(uint32_t w0, uint32_t w1);
+
+//ucode09
+static void uc9_rpdcmd(uint32_t w0, uint32_t w1);
+static void uc9_draw_object (uint8_t * addr, uint32_t type);
+static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds);
+static void uc9_object(uint32_t w0, uint32_t w1);
+static void uc9_mix(uint32_t w0, uint32_t w1);
+static void uc9_fmlight(uint32_t w0, uint32_t w1);
+static void uc9_light(uint32_t w0, uint32_t w1);
+static void uc9_mtxtrnsp(uint32_t w0, uint32_t w1);
+static void uc9_mtxcat(uint32_t w0, uint32_t w1);
+static void uc9_mult_mpmtx(uint32_t w0, uint32_t w1);
+static void uc9_link_subdl(uint32_t w0, uint32_t w1);
+static void uc9_set_subdl(uint32_t w0, uint32_t w1);
+static void uc9_wait_signal(uint32_t w0, uint32_t w1);
+static void uc9_send_signal(uint32_t w0, uint32_t w1);
+static void uc9_movemem(uint32_t w0, uint32_t w1);
+static void uc9_setscissor(uint32_t w0, uint32_t w1);
+
 typedef void (*rdp_instr)(uint32_t w1, uint32_t w2);
 
 // RDP graphic instructions pointer table
@@ -790,3 +991,6 @@ static rdp_instr gfx_instruction[10][256] =
       rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
    },
 };
+
+
+#endif

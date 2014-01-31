@@ -91,8 +91,6 @@ static void calc_point_light (VERTEX *v, float * vpos)
    v->b = (uint8_t)(color[2]*255.0f);
 }
 
-static void uc6_obj_rectangle(uint32_t w0, uint32_t w1);
-
 #ifdef HAVE_NEON
 #include <arm_neon.h>
 
@@ -427,8 +425,6 @@ static void uc2_culldl(uint32_t w0, uint32_t w1)
    uc0_enddl(w0, w1);
 }
 
-static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1);
-
 static void uc2_tri1(uint32_t w0, uint32_t w1)
 {
    if ((w0 & 0x00FFFFFF) == 0x17)
@@ -455,9 +451,6 @@ static void uc2_tri1(uint32_t w0, uint32_t w1)
 
    rsp_tri1(v, 0);
 }
-
-static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1);
-static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1);
 
 static void uc2_quad(uint32_t w0, uint32_t w1)
 {
@@ -503,8 +496,6 @@ static void uc2_quad(uint32_t w0, uint32_t w1)
 
    rsp_tri2(v);
 }
-
-static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1);
 
 static void uc2_line3d(uint32_t w0, uint32_t w1)
 {
@@ -640,8 +631,6 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       }
    }
 }
-
-static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1);
 
 static void uc2_matrix(uint32_t w0, uint32_t w1)
 {
@@ -796,8 +785,6 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          FRDP ("unknown (index: 0x%08lx, offset 0x%08lx)\n", index, offset);
    }
 }
-
-static void uc6_obj_movemem(uint32_t w0, uint32_t w1);
 
 static void uc2_movemem(uint32_t w0, uint32_t w1)
 {

@@ -3,6 +3,7 @@ extern void LoadBlock32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t l
 extern uint32_t ucode5_texshiftaddr;
 extern uint32_t ucode5_texshiftcount;
 extern uint16_t ucode5_texshift;
+extern int tile_set;
 
 static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height, int line, int off, uint32_t *end)
 {
@@ -291,6 +292,66 @@ static void gDPSetTileSize(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t
 #endif
 }
 
+static void gDPSetTile( uint32_t format, uint32_t size, uint32_t line, uint32_t tmem,
+      uint32_t palette, uint32_t cmt, uint32_t cms, uint32_t maskt, uint32_t masks, uint32_t shiftt, uint32_t shifts,
+      uint32_t mirrort, uint32_t mirrors)
+{
+   uint32_t w1;
+   int i;
+   TILE *tile;
+
+   w1 = rdp.cmd1;
+   tile_set = 1; // used to check if we only load the first settilesize
+   rdp.first = 0;
+   rdp.last_tile = (uint32_t)((w1 >> 24) & 0x07);
+
+   tile = (TILE*)&rdp.tiles[rdp.last_tile];
+   tile->format   = format; 
+   tile->size     = size;
+   tile->line     = line;
+   tile->t_mem    = tmem;
+   tile->palette  = palette;
+   tile->clamp_t  = cmt;
+   tile->clamp_s  = cms;
+   tile->mask_t   = maskt;
+   tile->mask_s   = masks;
+   tile->shift_t  = shiftt;
+   tile->shift_s  = shifts;
+   tile->mirror_t = mirrort;
+   tile->mirror_s = mirrors;
+
+   rdp.update |= UPDATE_TEXTURE;
+
+
+#ifdef HAVE_HWFBE
+   if (fb_hwfbe_enabled && rdp.last_tile < rdp.cur_tile + 2)
+   {
+      for (i = 0; i < 2; i++)
+      {
+         if (rdp.aTBuffTex[i])
+         {
+            if (rdp.aTBuffTex[i]->t_mem == tile->t_mem)
+            {
+               if (rdp.aTBuffTex[i]->size == tile->size)
+               {
+                  rdp.aTBuffTex[i]->tile = rdp.last_tile;
+                  rdp.aTBuffTex[i]->info.format = tile->format == G_IM_FMT_RGBA ? GR_TEXFMT_RGB_565 : GR_TEXFMT_ALPHA_INTENSITY_88;
+                  FRDP("rdp.aTBuffTex[%d] tile=%d, format=%s\n", i, rdp.last_tile, tile->format == 0 ? "RGB565" : "Alpha88");
+               }
+               else
+                  rdp.aTBuffTex[i] = 0;
+               break;
+            }
+            else if (rdp.aTBuffTex[i]->tile == rdp.last_tile) //wrong! t_mem must be the same
+               rdp.aTBuffTex[i] = 0;
+         }
+      }
+   }
+#endif
+
+   //FRDP ("settile: tile: %d, format: %s, size: %s, line: %d, ""t_mem: %08lx, palette: %d, clamp_t/mirror_t: %s, mask_t: %d, ""shift_t: %d, clamp_s/mirror_s: %s, mask_s: %d, shift_s: %d\n",rdp.last_tile, str_format[tile->format], str_size[tile->size], tile->line, tile->t_mem, tile->palette, str_cm[(tile->clamp_t<<1)|tile->mirror_t], tile->mask_t, tile->shift_t, str_cm[(tile->clamp_s<<1)|tile->mirror_s], tile->mask_s, tile->shift_s);
+}
+
 void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
 
 static void gDPLoadTile( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt )
@@ -529,4 +590,234 @@ static void gDPSetRenderMode( uint32_t mode1, uint32_t mode2 )
    if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
       rdp.othermode_l |= UPDATE_BIASLEVEL | UPDATE_LIGHTS;
    //FRDP ("rendermode: %08lx\n", rdp.othermode_l);  // just output whole othermode_l
+}
+
+static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t lr_y )
+{
+   if ((ul_x > lr_x) || (ul_y > lr_y))
+   {
+#ifdef EXTREME_LOGGING
+      LRDP("Fillrect. Wrong coordinates. Skipped\n");
+#endif
+      return;
+   }
+   int pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (rdp.cycle_mode == G_CYC_FILL) && (rdp.fill_color == 0xFFFCFFFC);
+   if ((rdp.cimg == rdp.zimg) || (fb_emulation_enabled && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) || pd_multiplayer)
+   {
+      //LRDP("Fillrect - cleared the depth buffer\n");
+
+      if (!(settings.hacks&hack_Hyperbike) || rdp.ci_width > 64) //do not clear main depth buffer for aux depth buffers
+      {
+         update_scissor ();
+         grDepthMask (FXTRUE);
+         grColorMask (FXFALSE, FXFALSE);
+         grBufferClear (0, 0, rdp.fill_color ? rdp.fill_color&0xFFFF : 0xFFFF);
+         grColorMask (FXTRUE, FXTRUE);
+         rdp.update |= UPDATE_ZBUF_ENABLED;
+      }
+      //if (settings.frame_buffer&fb_depth_clear)
+      {
+         uint32_t y, x;
+         ul_x = min(max(ul_x, rdp.scissor_o.ul_x), rdp.scissor_o.lr_x);
+         lr_x = min(max(lr_x, rdp.scissor_o.ul_x), rdp.scissor_o.lr_x);
+         ul_y = min(max(ul_y, rdp.scissor_o.ul_y), rdp.scissor_o.lr_y);
+         lr_y = min(max(lr_y, rdp.scissor_o.ul_y), rdp.scissor_o.lr_y);
+         uint32_t zi_width_in_dwords = rdp.ci_width >> 1;
+         ul_x >>= 1;
+         lr_x >>= 1;
+         uint32_t * dst = (uint32_t*)(gfx.RDRAM+rdp.cimg);
+         dst += ul_y * zi_width_in_dwords;
+         for (y = ul_y; y < lr_y; y++)
+         {
+            for (x = ul_x; x < lr_x; x++)
+               dst[x] = rdp.fill_color;
+            dst += zi_width_in_dwords;
+         }
+      }
+      return;
+   }
+
+   if (rdp.skip_drawing)
+      return; //Fillrect skipped
+
+   if (rdp.cur_image && (rdp.cur_image->format != G_IM_FMT_RGBA) && (rdp.cycle_mode == G_CYC_FILL) && (rdp.cur_image->width == lr_x - ul_x) && (rdp.cur_image->height == lr_y - ul_y))
+   {
+      uint32_t color = rdp.fill_color;
+      if (rdp.ci_size < 3)
+      {
+         color = ((color&1)?0xFF:0) |
+            ((uint32_t)(((color&0xF800) >> 11)) << 24) |
+            ((uint32_t)(((color&0x07C0) >> 6)) << 16) |
+            ((uint32_t)(((color&0x003E) >> 1)) << 8);
+      }
+      grDepthMask (FXFALSE);
+      grBufferClear (color, 0, 0xFFFF);
+      grDepthMask (FXTRUE);
+      rdp.update |= UPDATE_ZBUF_ENABLED;
+#ifdef EXTREME_LOGGING
+      LRDP("Fillrect - cleared the texture buffer\n");
+#endif
+      return;
+   }
+
+   update_scissor();
+
+   if (settings.decrease_fillrect_edge && rdp.cycle_mode == G_CYC_1CYCLE)
+      lr_x--; lr_y--;
+   //FRDP("fillrect (%d,%d) -> (%d,%d), cycle mode: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, rdp.cycle_mode, rdp.tri_n, rdp.tri_n+1);
+   //FRDP("scissor (%d,%d) -> (%d,%d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
+
+   // KILL the floating point error with 0.01f
+   int32_t s_ul_x = (uint32_t)min(max(ul_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
+   int32_t s_lr_x = (uint32_t)min(max(lr_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
+   int32_t s_ul_y = (uint32_t)min(max(ul_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
+   int32_t s_lr_y = (uint32_t)min(max(lr_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
+
+   if (s_lr_x < 0) s_lr_x = 0;
+   if (s_lr_y < 0) s_lr_y = 0;
+   if ((uint32_t)s_ul_x > settings.res_x) s_ul_x = settings.res_x;
+   if ((uint32_t)s_ul_y > settings.res_y) s_ul_y = settings.res_y;
+
+   //FRDP (" - %d, %d, %d, %d\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
+
+   {
+      grFogMode (GR_FOG_DISABLE);
+
+      const float Z = (rdp.cycle_mode == G_CYC_FILL) ? 0.0f : set_sprite_combine_mode();
+
+      // Draw the rectangle
+      VERTEX v[4] = {
+         { (float)s_ul_x, (float)s_ul_y, Z, 1.0f,  0,0,0,0,  {0,0,0,0}, 0,0, 0,0,0,0},
+         { (float)s_lr_x, (float)s_ul_y, Z, 1.0f,  0,0,0,0,  {0,0,0,0}, 0,0, 0,0,0,0},
+         { (float)s_ul_x, (float)s_lr_y, Z, 1.0f,  0,0,0,0,  {0,0,0,0}, 0,0, 0,0,0,0},
+         { (float)s_lr_x, (float)s_lr_y, Z, 1.0f,  0,0,0,0,  {0,0,0,0}, 0,0, 0,0,0,0} };
+
+      if (rdp.cycle_mode == G_CYC_FILL)
+      {
+         uint32_t color = rdp.fill_color;
+
+         if ((settings.hacks&hack_PMario) && rdp.frame_buffers[rdp.ci_count-1].status == CI_AUX)
+         {
+            //background of auxiliary frame buffers must have zero alpha.
+            //make it black, set 0 alpha to plack pixels on frame buffer read
+            color = 0;
+         }
+         else if (rdp.ci_size < 3)
+         {
+            color = ((color&1)?0xFF:0) |
+               ((uint32_t)((float)((color&0xF800) >> 11) / 31.0f * 255.0f) << 24) |
+               ((uint32_t)((float)((color&0x07C0) >> 6) / 31.0f * 255.0f) << 16) |
+               ((uint32_t)((float)((color&0x003E) >> 1) / 31.0f * 255.0f) << 8);
+         }
+
+         grConstantColorValue (color);
+
+         grColorCombine (GR_COMBINE_FUNCTION_LOCAL,
+               GR_COMBINE_FACTOR_NONE,
+               GR_COMBINE_LOCAL_CONSTANT,
+               GR_COMBINE_OTHER_NONE,
+               FXFALSE);
+
+         grAlphaCombine (GR_COMBINE_FUNCTION_LOCAL,
+               GR_COMBINE_FACTOR_NONE,
+               GR_COMBINE_LOCAL_CONSTANT,
+               GR_COMBINE_OTHER_NONE,
+               FXFALSE);
+
+         grAlphaBlendFunction (GR_BLEND_ONE, GR_BLEND_ZERO, GR_BLEND_ONE, GR_BLEND_ZERO);
+
+         grAlphaTestFunction (GR_CMP_ALWAYS);
+         grStippleMode(GR_STIPPLE_DISABLE);
+
+         grCullMode(GR_CULL_DISABLE);
+         grFogMode (GR_FOG_DISABLE);
+         grDepthBufferFunction (GR_CMP_ALWAYS);
+         grDepthMask (FXFALSE);
+
+         rdp.update |= UPDATE_COMBINE | UPDATE_CULL_MODE | UPDATE_FOG_ENABLED | UPDATE_ZBUF_ENABLED;
+      }
+      else
+      {
+         uint32_t cmb_mode_c = (rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF);
+         uint32_t cmb_mode_a = (rdp.cycle1 & 0x0FFF0000) | ((rdp.cycle2 >> 16) & 0x00000FFF);
+         if (cmb_mode_c == 0x9fff9fff || cmb_mode_a == 0x09ff09ff) //shade
+         {
+            int k;
+            AllowShadeMods (v, 4);
+            for (k = 0; k < 4; k++)
+               apply_shade_mods (&v[k]);
+         }
+         if ((rdp.othermode_l & 0x4000) && ((rdp.othermode_l >> 16) == 0x0550)) //special blender mode for Bomberman64
+         {
+            grAlphaCombine (GR_COMBINE_FUNCTION_LOCAL,
+                  GR_COMBINE_FACTOR_NONE,
+                  GR_COMBINE_LOCAL_CONSTANT,
+                  GR_COMBINE_OTHER_NONE,
+                  FXFALSE);
+            grConstantColorValue((cmb.ccolor&0xFFFFFF00)|(rdp.fog_color&0xFF));
+            rdp.update |= UPDATE_COMBINE;
+         }
+      }
+
+      grDrawTriangle(&v[0], &v[2], &v[1]);
+      grDrawTriangle(&v[2], &v[3], &v[1]);
+
+      rdp.tri_n += 2;
+   }
+}
+
+static void gDPSetEnvColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a )
+{
+   rdp.env_color = rdp.cmd1;
+   rdp.update |= UPDATE_COMBINE;
+
+   //FRDP("setenvcolor: %08lx\n", w1);
+}
+
+// Sets the source for an image copy
+static void gDPSetTextureImage( uint32_t format, uint32_t size, uint32_t width, uint32_t address )
+{
+   //static const char *format[]   = { "RGBA", "YUV", "CI", "IA", "I", "?", "?", "?" };
+   //static const char *size[]     = { "4bit", "8bit", "16bit", "32bit" };
+   rdp.timg.format = format;
+   rdp.timg.size   = size;
+   rdp.timg.width  = width;
+   rdp.timg.addr   = address;
+ 
+   if (ucode5_texshiftaddr)
+   {
+      if (rdp.timg.format == G_IM_FMT_RGBA)
+      {
+         uint16_t * t = (uint16_t*)(gfx.RDRAM+ucode5_texshiftaddr);
+         ucode5_texshift = t[ucode5_texshiftcount^1];
+         rdp.timg.addr += ucode5_texshift;
+      }
+      else
+      {
+         ucode5_texshiftaddr = 0;
+         ucode5_texshift = 0;
+         ucode5_texshiftcount = 0;
+      }
+   }
+   rdp.s2dex_tex_loaded = true;
+   rdp.update |= UPDATE_TEXTURE;
+
+   if (rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF && (rdp.timg.addr >= rdp.cimg) && (rdp.timg.addr < rdp.ci_end))
+   {
+      if (!rdp.fb_drawn)
+      {
+         if (!rdp.cur_image)
+            CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+         else
+            CloseTextureBuffer(true);
+         rdp.fb_drawn = true;
+      }
+   }
+
+#ifdef HAVE_HWFBE
+   if (fb_hwfbe_enabled) //search this texture among drawn texture buffers
+      FindTextureBuffer(rdp.timg.addr, rdp.timg.width);
+#endif
+
+   //FRDP("settextureimage: format: %s, size: %s, width: %d, addr: %08lx\n", format[rdp.timg.format], size[rdp.timg.size], rdp.timg.width, rdp.timg.addr);
 }

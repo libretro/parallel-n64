@@ -165,4 +165,3 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
       vertex++;
    }
 }
-

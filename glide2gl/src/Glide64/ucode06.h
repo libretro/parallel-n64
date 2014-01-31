@@ -113,8 +113,6 @@ static float set_sprite_combine_mode(void)
   return Z;
 }
 
-void uc6_sprite2d(uint32_t w0, uint32_t w1);
-
 typedef struct DRAWIMAGE_t {
   float frameX;
   float frameY;
@@ -608,7 +606,7 @@ void DrawHiresImage(DRAWIMAGE *d, int screensize)
 
   setTBufTex(rdp.tbuff_tex->t_mem, rdp.tbuff_tex->width << rdp.tbuff_tex->size >> 1);
 
-  const float Z = set_sprite_combine_mode ();
+  const float Z = set_sprite_combine_mode();
   grClipWindow (0, 0, settings.res_x, settings.res_y);
 
   if (d->imageW%2 == 1) d->imageW -= 1;
@@ -1080,7 +1078,7 @@ static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
   uc6_read_object_data(&d);
   uc6_init_tile(&d);
 
-  float Z = set_sprite_combine_mode ();
+  float Z = set_sprite_combine_mode();
 
   float ul_x = d.objX;
   float lr_x = d.objX + d.imageW / d.scaleW;
@@ -1403,7 +1401,7 @@ static void uc6_loaducode(uint32_t w0, uint32_t w1)
    microcheck ();
 }
 
-void uc6_sprite2d(uint32_t w0, uint32_t w1)
+static void uc6_sprite2d(uint32_t w0, uint32_t w1)
 {
    int i, s;
    uint32_t a = rdp.pc[rdp.pc_i] & BMASK;
