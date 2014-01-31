@@ -767,32 +767,19 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_CLIP:
-         if (offset == G_MW_CLIP)
-         {
-            rdp.clip_ratio = squareRoot((float)w1);
-            rdp.update |= UPDATE_VIEWPORT;
-         }
-         FRDP ("mw_clip %08lx, %08lx\n", w0, w1);
+         gSPClipRatio(w0, w1);
          break;
-
-      case G_MW_SEGMENT:  // moveword SEGMENT
-         {
-            FRDP ("SEGMENT %08lx -> seg%d\n", w1, offset >> 2);
-            if ((w1 & BMASK) < BMASK)
-               gSPSegment((offset >> 2) & 0xF, w1);
-         }
+      case G_MW_SEGMENT:
+         if ((w1 & BMASK) < BMASK)
+            gSPSegment((offset >> 2) & 0xF, w1);
          break;
       case G_MW_FOG:
-         {
-            rdp.fog_multiplier = (int16_t)(w1 >> 16);
-            rdp.fog_offset = (int16_t)(w1 & 0x0000FFFF);
-            FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
+         gSPFogFactor((int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ));
 
-            //offset must be 0 for move_fog, but it can be non zero in Nushi Zuri 64 - Shiokaze ni Notte
-            //low-level display list has setothermode commands in this place, so this is obviously not move_fog.
-            if (offset == 0x04)
-               rdp.tlut_mode = (w1 == 0xffffffff) ? 0 : 2; 
-         }
+         //offset must be 0 for move_fog, but it can be non zero in Nushi Zuri 64 - Shiokaze ni Notte
+         //low-level display list has setothermode commands in this place, so this is obviously not move_fog.
+         if (offset == 0x04)
+            rdp.tlut_mode = (w1 == 0xffffffff) ? 0 : 2; 
          break;
 
       case G_MW_LIGHTCOL:  // moveword LIGHTCOL
@@ -963,15 +950,9 @@ static void uc2_dlist_cnt(uint32_t w0, uint32_t w1)
    uint32_t addr = segoffset(w1) & BMASK;
    int count = w0 & 0x000000FF;
 
-   if (addr == 0)
+   if (rdp.pc_i >= 9 || addr == 0)
       return;
 
-   if (rdp.pc_i >= 9)
-   {
-      RDP_E ("** DL stack overflow **\n");
-      LRDP("** DL stack overflow **\n");
-      return;
-   }
    rdp.pc_i ++;  // go to the next PC in the stack
    rdp.pc[rdp.pc_i] = addr;  // jump to the address
    rdp.dl_count = count + 1;
