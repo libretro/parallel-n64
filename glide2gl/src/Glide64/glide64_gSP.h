@@ -19,7 +19,7 @@ static void gSPPopMatrixN(uint32_t num)
    }
 }
 
-static void gSPViewport(uint32_t v)
+static void gSPViewport(uint32_t v, bool correct_viewport)
 {
    int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, *rdram;
    uint32_t address = (segoffset(v) & 0xFFFFFF) >> 1;
@@ -31,7 +31,7 @@ static void gSPViewport(uint32_t v)
    trans_x = rdram[(address + 4)^1] / 4;
    trans_y = rdram[(address + 5)^1] / 4;
    trans_z = rdram[(address + 6)^1];
-   if (settings.correct_viewport)
+   if (correct_viewport)
    {
       scale_x = abs(scale_x);
       scale_y = abs(scale_y);
@@ -46,6 +46,7 @@ static void gSPViewport(uint32_t v)
    // there are other values than x and y, but I don't know what they do
 
    rdp.update |= UPDATE_VIEWPORT;
+   //FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, a);
 }
 
 static void gSPTexture(void)

@@ -815,32 +815,8 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          break;
 
       case F3DEX2_MV_VIEWPORT:   // VIEWPORT
-         {
-            int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z,
-                    *rdram_s16;
-            uint32_t a;
-            rdram_s16 = (int16_t*)gfx.RDRAM;
-            a = addr >> 1;
-            scale_x = rdram_s16[(a+0)^1] >> 2;
-            scale_y = rdram_s16[(a+1)^1] >> 2;
-            scale_z = rdram_s16[(a+2)^1];
-            trans_x = rdram_s16[(a+4)^1] >> 2;
-            trans_y = rdram_s16[(a+5)^1] >> 2;
-            trans_z = rdram_s16[(a+6)^1];
-            rdp.view_scale[0] = scale_x * rdp.scale_x;
-            rdp.view_scale[1] = -scale_y * rdp.scale_y;
-            rdp.view_scale[2] = 32.0f * scale_z;
-            rdp.view_trans[0] = trans_x * rdp.scale_x;
-            rdp.view_trans[1] = trans_y * rdp.scale_y;
-            rdp.view_trans[2] = 32.0f * trans_z;
-
-            rdp.update |= UPDATE_VIEWPORT;
-
-            FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z,
-                  trans_x, trans_y, trans_z, a);
-         }
+         gSPViewport(w1, false);
          break;
-
       case G_MV_LIGHT:  // LIGHT
          {
             int8_t *rdram_s8;

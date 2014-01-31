@@ -342,7 +342,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
    switch ((w0 >> 16) & 0xFF)
    {
       case F3D_MV_VIEWPORT:
-         gSPViewport(w1);
+         gSPViewport(w1, settings.correct_viewport);
          break;
       case G_MV_LOOKATY:
          {
