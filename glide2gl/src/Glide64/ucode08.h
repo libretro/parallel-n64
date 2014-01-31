@@ -238,9 +238,7 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
       //  be easily fixed, but only if i had something to test with.
 
       case G_MW_NUMLIGHT:
-         rdp.num_lights = (w1 / 48);
-         rdp.update |= UPDATE_LIGHTS;
-         FRDP ("numlights: %d\n", rdp.num_lights);
+         gSPNumLights(w1 / 48);
          break;
 
       case G_MW_CLIP:

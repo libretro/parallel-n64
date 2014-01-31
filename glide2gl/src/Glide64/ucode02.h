@@ -761,9 +761,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_NUMLIGHT:
-         rdp.num_lights = w1 / 24;
-         rdp.update |= UPDATE_LIGHTS;
-         FRDP ("numlights: %d\n", rdp.num_lights);
+         gSPNumLights( w1 / 24 );
          break;
 
       case G_MW_CLIP:

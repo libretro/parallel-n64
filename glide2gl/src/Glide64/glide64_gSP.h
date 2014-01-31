@@ -265,3 +265,10 @@ static inline void gSPSegment( int32_t seg, int32_t base )
     rdp.segment[seg] = base;
     //FRDP ("segment: %08lx -> seg%d\n", seg, base);
 }
+
+static inline void gSPNumLights(int32_t n)
+{
+   rdp.num_lights = (n <= 8) ? n : 0;
+   rdp.update |= UPDATE_LIGHTS;
+   //FRDP ("numlights: %d\n", rdp.num_lights);
+}
