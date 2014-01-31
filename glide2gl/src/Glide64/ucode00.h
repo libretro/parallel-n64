@@ -209,9 +209,7 @@ void modelview_load (float m[4][4])
 
 void modelview_mul (float m[4][4])
 {
-   DECLAREALIGN16VAR(m_src[4][4]);
-   CopyMatrix(m_src, rdp.model, 64);
-   MulMatrices(m, m_src, rdp.model);
+   MulMatrices(m, rdp.model, rdp.model);
    rdp.update |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
 }
 
@@ -243,9 +241,7 @@ void projection_load (float m[4][4])
 
 void projection_mul (float m[4][4])
 {
-   DECLAREALIGN16VAR(m_src[4][4]);
-   CopyMatrix(m_src, rdp.proj, 64);
-   MulMatrices(m, m_src, rdp.proj);
+   MulMatrices(m, rdp.proj, rdp.proj);
    rdp.update |= UPDATE_MULT_MAT;
 }
 
