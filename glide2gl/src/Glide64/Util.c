@@ -1651,7 +1651,6 @@ void update(void)
       // Z buffer
       if (rdp.update & UPDATE_ZBUF_ENABLED)
       {
-         // already logged above
          rdp.update ^= UPDATE_ZBUF_ENABLED;
 
          if (((rdp.flags & ZBUF_ENABLED) || rdp.zsrc == 1) && rdp.cycle_mode < G_CYC_COPY)
@@ -1701,7 +1700,6 @@ void update(void)
       // Alpha compare
       if (rdp.update & UPDATE_ALPHA_COMPARE)
       {
-         // already logged above
          rdp.update ^= UPDATE_ALPHA_COMPARE;
 
          //	  if (rdp.acmp == 1 && !(rdp.othermode_l & CULL_BACK) && !force_full_alpha)
@@ -1760,6 +1758,7 @@ void update(void)
             grStippleMode(GR_STIPPLE_DISABLE);
          }
       }
+
       // Cull mode (leave this in for z-clipped triangles)
       if (rdp.update & UPDATE_CULL_MODE)
       {
@@ -1853,8 +1852,7 @@ void update(void)
       }
    }
 
-   if (rdp.update & UPDATE_SCISSOR)
-      update_scissor ();
+   update_scissor ();
 
    LRDP (" + update end\n");
 }

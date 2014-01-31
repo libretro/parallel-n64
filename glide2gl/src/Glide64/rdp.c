@@ -1895,13 +1895,10 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
     return;
   }
 
-  // Update scissor
-  update_scissor ();
+  update_scissor();
 
   if (settings.decrease_fillrect_edge && rdp.cycle_mode == G_CYC_1CYCLE)
-  {
     lr_x--; lr_y--;
-  }
 #ifdef EXTREME_LOGGING
   FRDP("fillrect (%d,%d) -> (%d,%d), cycle mode: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, rdp.cycle_mode,
     rdp.tri_n, rdp.tri_n+1);
