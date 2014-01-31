@@ -1219,10 +1219,7 @@ void gSPEndDisplayList(void)
     if (RSP.PCi > 0)
         RSP.PCi--;
     else
-    {
-        RSP.halt = TRUE;
-    }
-
+       RSP.halt = TRUE;
 }
 
 void gSPGeometryMode( u32 clear, u32 set )

@@ -420,39 +420,14 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 //
 static void uc0_displaylist(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr = RSP_SegmentToPhysical(w1);
-
-   // Don't execute display list
-   // This fixes partially Gauntlet: Legends
-   if (addr == rdp.pc[rdp.pc_i] - 8)
-      return;
-
-   uint32_t push = (w0 >> 16) & 0xFF; // push the old location?
-
-   //FRDP("uc0:displaylist: %08lx, push:%s", addr, push?"no":"yes");
-   //FRDP(" (seg %d, offset %08lx)\n", (w1 >> 24)&0x0F, w1 & 0x00FFFFFF);
-
-   switch (push)
+   switch (_SHIFTR( w0, 16, 8 ))
    {
       case G_DL_PUSH: // push
-         if (rdp.pc_i >= 9)
-         {
-            //RDP_E ("** DL stack overflow **");
-            //LRDP("** DL stack overflow **\n");
-            return;
-         }
-         rdp.pc_i ++;  // go to the next PC in the stack
-         rdp.pc[rdp.pc_i] = addr;  // jump to the address
+         gSPDisplayList(w1);
          break;
-
       case G_DL_NOPUSH: // no push
-         rdp.pc[rdp.pc_i] = addr;  // just jump to the address
+         gSPBranchList(w1);
          break;
-#if 0
-      default:
-         RDP_E("Unknown displaylist operation\n");
-         LRDP("Unknown displaylist operation\n");
-#endif
    }
 }
 
@@ -487,18 +462,9 @@ static void uc0_tri1(uint32_t w0, uint32_t w1)
 //
 // uc0:enddl - ends a call made by uc0:displaylist
 //
-//gSPEndDisplayList
 static void uc0_enddl(uint32_t w0, uint32_t w1)
 {
-   //LRDP("uc0:enddl\n");
-
-   if (rdp.pc_i == 0)
-   {
-      // Halt execution here
-      rdp.halt = 1;
-   }
-
-   rdp.pc_i --;
+   gSPEndDisplayList();
 }
 
 static void uc0_culldl(uint32_t w0, uint32_t w1)
@@ -539,21 +505,7 @@ static void uc0_culldl(uint32_t w0, uint32_t w1)
 
 static void uc0_popmatrix(uint32_t w0, uint32_t w1)
 {
-   //LRDP("uc0:popmatrix\n");
-
-   switch (w1)
-   {
-      case 0: // modelview
-         gSPPopMatrixN(1);
-         break;
-      case 1: // projection, can't
-         break;
-#if 0
-      default:
-         FRDP_E ("Unknown uc0:popmatrix command: 0x%08lx\n", w1);
-         FRDP ("Unknown uc0:popmatrix command: 0x%08lx\n", w1);
-#endif
-   }
+   gSPPopMatrix(w1);
 }
 
 static void uc6_obj_sprite(uint32_t w0, uint32_t w1);

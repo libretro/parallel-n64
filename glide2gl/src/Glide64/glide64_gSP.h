@@ -1,4 +1,14 @@
 // FIXME - not consistent with glN64
+static void gSPPopMatrix(uint32_t param)
+{
+   if (rdp.model_i > 0)
+   {
+      rdp.model_i--;
+      memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
+      rdp.update |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
+   }
+}
+
 static void gSPPopMatrixN(uint32_t num)
 {
    if (rdp.model_i > num - 1)
@@ -215,4 +225,37 @@ static void gSPClearGeometryMode(uint32_t w1)
       }
    }
    //FRDP("uc0:cleargeometrymode %08lx\n", w1);
+}
+
+static void gSPDisplayList(uint32_t dl)
+{
+   uint32_t address = RSP_SegmentToPhysical(dl);
+
+   // Don't execute display list
+   // This fixes partially Gauntlet: Legends (first condition)
+   if (address == rdp.pc[rdp.pc_i] - 8 || rdp.pc_i >= 9)
+      return;
+
+   rdp.pc_i ++;  // go to the next PC in the stack
+   rdp.pc[rdp.pc_i] = address;  // jump to the address
+}
+
+static void gSPBranchList(uint32_t dl)
+{
+   uint32_t address = RSP_SegmentToPhysical(dl);
+
+   // Don't execute display list
+   // This fixes partially Gauntlet: Legends (first condition)
+   if (address == rdp.pc[rdp.pc_i] - 8 || rdp.pc_i >= 9)
+      return;
+
+   rdp.pc[rdp.pc_i] = address;  // just jump to the address
+}
+
+static void gSPEndDisplayList(void)
+{
+   if (rdp.pc_i > 0)
+      rdp.pc_i --;
+   else
+      rdp.halt = 1; // Halt execution here
 }
