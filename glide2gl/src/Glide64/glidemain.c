@@ -45,8 +45,8 @@
 #include "CRC.h"
 #include "FBtoScreen.h"
 #include "DepthBufferRender.h"
-
-#include "../../../libretro/libretro.h"
+#include "../../libretro/libretro.h"
+#include "../../libretro/SDL.h"
 
 #if defined(__GNUC__)
 #include <sys/time.h>
@@ -54,31 +54,9 @@
 #include <time.h>
 #define PATH_MAX MAX_PATH
 #endif
-#if defined(__MINGW32__)
-#define swprintf _snwprintf
-#define vswprintf _vsnwprintf
-#endif
 
 #define G64_VERSION "G64 Mk2"
 #define RELTIME "Date: " __DATE__// " Time: " __TIME__
-
-#ifdef EXT_LOGGING
-std::ofstream extlog;
-#endif
-
-#ifdef LOGGING
-std::ofstream loga;
-#endif
-
-#ifdef RDP_LOGGING
-int log_open = false;
-std::ofstream rdp_log;
-#endif
-
-#ifdef RDP_ERROR_LOG
-int elog_open = false;
-std::ofstream rdp_err;
-#endif
 
 #ifdef __LIBRETRO__ // Prefix API
 #define VIDEO_TAG(X) glide64##X
@@ -2544,10 +2522,9 @@ static void CheckDRAMSize()
       BMASK = 0x7FFFFF;
    else
       BMASK = WMASK;
-#ifdef LOGGING
-   sprintf (out_buf, "Detected RDRAM size: %08lx\n", BMASK);
-   LOG (out_buf);
-#endif
+
+   if (log_cb)
+      log_cb(RETRO_LOG_INFO, "Detected RDRAM size: %08lx\n", BMASK);
 }
 
 /******************************************************************
@@ -2718,7 +2695,7 @@ EXPORT void CALL UpdateScreen (void)
       newSwapBuffers ();
 }
 
-static void DrawWholeFrameBufferToScreen()
+static void DrawWholeFrameBufferToScreen(void)
 {
   static uint32_t toScreenCI = 0;
   if (rdp.ci_width < 200)
