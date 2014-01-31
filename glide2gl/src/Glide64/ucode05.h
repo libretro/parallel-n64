@@ -280,11 +280,8 @@ static void uc5_dl_in_mem(uint32_t w0, uint32_t w1)
    FRDP ("uc5:dl_in_mem - addr: %08lx, count: %d\n", addr, count);
 
    if (rdp.pc_i >= 9)
-   {
-      RDP_E ("** DL stack overflow **\n");
-      LRDP("** DL stack overflow **\n");
       return;
-   }
+
    rdp.pc_i ++;  // go to the next PC in the stack
    rdp.pc[rdp.pc_i] = addr;  // jump to the address
    rdp.dl_count = count + 1;
@@ -302,27 +299,15 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
          FRDP ("matrix billboard - %s\n", str_offon[billboarding]);
          break;
 
-      case G_MW_CLIP:  // clip (verified same)
-         if (((w0 >> 8) & 0xFFFF) == 0x04)
-         {
-            rdp.clip_ratio = squareRoot((float)w1);
-            rdp.update |= UPDATE_VIEWPORT;
-         }
-         FRDP ("clip %08lx, %08lx\n", w0, w1);
+      case G_MW_CLIP:
+         gSPClipRatio(w0, w1);
          break;
 
-      case G_MW_SEGMENT:  // segment (verified same)
-         FRDP ("segment: %08lx -> seg%d\n", w1, (w0 >> 10) & 0x0F);
-         rdp.segment[(w0 >> 10) & 0x0F] = w1;
+      case G_MW_SEGMENT:
+         gSPSegment((w0 >> 10) & 0x0F, w1);
          break;
-
       case G_MW_FOG:
-         {
-            rdp.fog_multiplier = (int16_t)(w1 >> 16);
-            rdp.fog_offset = (int16_t)(w1 & 0x0000FFFF);
-            FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
-            //	  rdp.update |= UPDATE_FOG_ENABLED;
-         }
+         gSPFogFactor((int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ));
          break;
 
       case 0x0a:  // moveword matrix select

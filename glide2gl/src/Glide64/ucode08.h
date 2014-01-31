@@ -229,7 +229,6 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
    int k;
    uint8_t index = (uint8_t)((w0 >> 16) & 0xFF);
    uint16_t offset = (uint16_t)(w0 & 0xFFFF);
-   uint32_t data = w1;
 
    FRDP ("uc8:moveword ");
 
@@ -239,33 +238,21 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
       //  be easily fixed, but only if i had something to test with.
 
       case G_MW_NUMLIGHT:
-         rdp.num_lights = (data / 48);
+         rdp.num_lights = (w1 / 48);
          rdp.update |= UPDATE_LIGHTS;
          FRDP ("numlights: %d\n", rdp.num_lights);
          break;
 
       case G_MW_CLIP:
-         if (offset == 0x04)
-         {
-            rdp.clip_ratio = squareRoot((float)w1);
-            rdp.update |= UPDATE_VIEWPORT;
-         }
-         FRDP ("mw_clip %08lx, %08lx\n", w0, w1);
+         gSPClipRatio(w0, w1);
          break;
 
-      case G_MW_SEGMENT:  // moveword SEGMENT
-         {
-            FRDP ("SEGMENT %08lx -> seg%d\n", data, offset >> 2);
-            rdp.segment[(offset >> 2) & 0xF] = data;
-         }
+      case G_MW_SEGMENT:
+         gSPSegment((offset >> 2) & 0xF, w1);
          break;
 
       case G_MW_FOG:
-         {
-            rdp.fog_multiplier = (int16_t)(w1 >> 16);
-            rdp.fog_offset = (int16_t)(w1 & 0x0000FFFF);
-            FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
-         }
+         gSPFogFactor((int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ));
          break;
 
       case 0x0c:
@@ -281,7 +268,7 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
          {
             uint8_t n = offset >> 2;
 
-            FRDP ("coord mod:%d, %08lx\n", n, data);
+            FRDP ("coord mod:%d, %08lx\n", n, w1);
             if (w0 & 8)
                return;
             uint32_t idx = (w0 >> 1)&3;

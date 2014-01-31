@@ -117,10 +117,7 @@ static void t3dLoadGlobState(uint32_t pgstate)
    rdp_setothermode(rdp.cmd0, rdp.cmd1);
 
    for (s = 0; s < 16; s++)
-   {
-      rdp.segment[s] = gstate->segBases[s];
-      FRDP ("segment: %08lx -> seg%d\n", rdp.segment[s], s);
-   }
+      gSPSegment(s, gstate->segBases[s]);
 
    int16_t scale_x = gstate->vsacle0 / 4;
    int16_t scale_y = gstate->vsacle1 / 4;;

@@ -613,10 +613,9 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          gSPClipRatio(w0, w1);
          break;
 
-      case G_MW_SEGMENT:  // segment
-         //FRDP ("segment: %08lx -> seg%d\n", w1, (w0 >> 10) & 0x0F);
+      case G_MW_SEGMENT:
          if ((w1 & BMASK) < BMASK)
-            rdp.segment[(w0 >> 10) & 0x0F] = w1;
+            gSPSegment((w0 >> 10) & 0x0F, w1);
          break;
 
       case G_MW_FOG:

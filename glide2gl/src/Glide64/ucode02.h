@@ -779,7 +779,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          {
             FRDP ("SEGMENT %08lx -> seg%d\n", w1, offset >> 2);
             if ((w1 & BMASK) < BMASK)
-               rdp.segment[(offset >> 2) & 0xF] = w1;
+               gSPSegment((offset >> 2) & 0xF, w1);
          }
          break;
       case G_MW_FOG:

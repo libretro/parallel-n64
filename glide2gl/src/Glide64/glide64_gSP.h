@@ -259,3 +259,9 @@ static void gSPEndDisplayList(void)
    else
       rdp.halt = 1; // Halt execution here
 }
+
+static inline void gSPSegment( int32_t seg, int32_t base )
+{
+    rdp.segment[seg] = base;
+    //FRDP ("segment: %08lx -> seg%d\n", seg, base);
+}
