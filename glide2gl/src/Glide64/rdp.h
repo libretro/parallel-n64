@@ -874,6 +874,7 @@ static INLINE void CalculateFog (VERTEX *v)
 }
 
 void newSwapBuffers(void);
+extern void rdp_setfuncs(void);
 extern int SwapOK;
 
 // ** utility functions

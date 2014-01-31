@@ -444,7 +444,18 @@ static void uc0_tri1(uint32_t w0, uint32_t w1)
    v[1] = &rdp.vtx[((w1 >> 8) & 0xFF) / 10];
    v[2] = &rdp.vtx[(w1 & 0xFF) / 10];
 
-   if (settings.hacks & hack_Makers)
+   rsp_tri1(v, 0);
+}
+
+static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
+{
+   VERTEX *v[3];
+   //FRDP("uc0:tri1 #%d - %d, %d, %d\n", rdp.tri_n, ((w1 >> 16) & 0xFF) / 10, ((w1 >> 8) & 0xFF) / 10, (w1 & 0xFF) / 10);
+
+   v[0] = &rdp.vtx[((w1 >> 16) & 0xFF) / 10];
+   v[1] = &rdp.vtx[((w1 >> 8) & 0xFF) / 10];
+   v[2] = &rdp.vtx[(w1 & 0xFF) / 10];
+
    {
       int i;
       rdp.force_wrap = false;

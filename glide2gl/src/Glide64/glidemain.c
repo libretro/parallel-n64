@@ -2602,6 +2602,7 @@ EXPORT int CALL RomOpen (void)
    grSstSelect (0);
 
    InitGfx ();
+   rdp_setfuncs();
 
    // **
    return true;

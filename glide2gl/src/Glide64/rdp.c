@@ -285,6 +285,17 @@ void rdp_new(void)
    if (cpu & RETRO_SIMD_NEON)
       gfx_instruction[2][1] = uc2_vertex_neon;
 #endif
+
+}
+
+void rdp_setfuncs(void)
+{
+   if (settings.hacks & hack_Makers)
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "Applying Mischief Makers function pointer table tweak...\n");
+      gfx_instruction[0][191] = uc0_tri1_mischief;
+   }
 }
 
 void rdp_free(void)
