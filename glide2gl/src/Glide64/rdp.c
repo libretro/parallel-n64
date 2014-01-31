@@ -1486,32 +1486,24 @@ static void rdp_setkeygb(uint32_t w0, uint32_t w1)
 
 static void rdp_setkeyr(uint32_t w0, uint32_t w1)
 {
-   uint32_t wR = 0; //stub
-   uint32_t sR = w1 & 0xFF;
-   uint32_t cR = (w1 >> 8) & 0xFF;
-   gDPSetKeyR(cR, sR, wR);
+   gDPSetKeyR(
+         (w1 >> 8) & 0xFF,    /* cR */
+         w1 & 0xFF,           /* sR */
+         0                    /* wR */
+         );
 }
 
 static void rdp_setconvert(uint32_t w0, uint32_t w1)
 {
-  /*
-  rdp.YUV_C0 = 1.1647f  ;
-  rdp.YUV_C1 = 0.79931f ;
-  rdp.YUV_C2 = -0.1964f ;
-  rdp.YUV_C3 = -0.40651f;
-  rdp.YUV_C4 = 1.014f   ;
-  */
-  rdp.K4 = (uint8_t)(w1>>9) & 0x1FF;
-  rdp.K5 = (uint8_t)(w1 & 0x1FF);
-  //  RDP_E("setconvert - IGNORED\n");
-#ifdef EXTREME_LOGGING
-  FRDP("setconvert. K4=%02lx K5=%02lx\n", rdp.K4, rdp.K5);
-#endif
+   gDPSetConvert(
+         0,                    /* k0 */
+         0,                    /* k1 */
+         0,                    /* k2 */
+         0,                    /* k3 */
+         (w1 >> 9) & 0x1FF,    /* k4 */
+         (w1 & 0x1FF)          /* k5 */
+         );
 }
-
-//
-// setscissor - sets the screen clipping rectangle
-//
 
 static void rdp_setscissor(uint32_t w0, uint32_t w1)
 {
@@ -1853,7 +1845,14 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
                      rdp.scale_x = sx;
                      rdp.scale_y = sy;
                   }
-                  if (!fb_hwfbe_enabled)
+#ifdef HAVE_HWFBE
+                  if (fb_hwfbe_enabled)
+                  {
+                     if (rdp.copy_ci_index && (settings.hacks&hack_PMario))   // tidal wave
+                        OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
+                  }
+                  else
+#endif
                   {
                      if ((rdp.num_of_ci > 1) &&
                            (next_fb->status == CI_AUX) &&
@@ -1863,9 +1862,8 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
                         rdp.scale_y = 1.0f;
                      }
                   }
-                  else if (rdp.copy_ci_index && (settings.hacks&hack_PMario)) //tidal wave
-                     OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
                }
+#ifdef HAVE_HWFBE
                else if (!rdp.motionblur && fb_hwfbe_enabled && !SwapOK && (rdp.ci_count <= rdp.copy_ci_index))
                {
                   if (next_fb->status == CI_AUX_COPY)
@@ -1873,7 +1871,6 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
                   else
                      OpenTextureBuffer(&rdp.frame_buffers[rdp.copy_ci_index]);
                }
-#ifdef HAVE_HWFBE
                else if (fb_hwfbe_enabled && prev_fb->status == CI_AUX)
                {
                   if (rdp.motionblur)
@@ -1974,7 +1971,11 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
             */
          case CI_AUX:
             {
-               if (!fb_hwfbe_enabled && cur_fb->format != G_IM_FMT_RGBA)
+               if (
+#ifdef HAVE_HWFBE
+                     !fb_hwfbe_enabled &&
+#endif
+                     cur_fb->format != G_IM_FMT_RGBA)
                   rdp.skip_drawing = true;
                else
                {
@@ -2054,14 +2055,23 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
          else if ((settings.hacks&hack_Knockout) && prev_fb->width < 100)
             CopyFrameBuffer (GR_BUFFER_TEXTUREBUFFER_EXT);
       }
-      if (!fb_hwfbe_enabled && cur_fb->status == CI_COPY)
+
+      if (
+#ifdef HAVE_HWFBE
+            !fb_hwfbe_enabled &&
+#endif
+            cur_fb->status == CI_COPY)
       {
          if (!rdp.motionblur && (rdp.num_of_ci > rdp.ci_count+1) && (next_fb->status != CI_AUX))
          {
             RestoreScale();
          }
       }
-      if (!fb_hwfbe_enabled && cur_fb->status == CI_AUX)
+      if (
+#ifdef HAVE_HWFBE
+            !fb_hwfbe_enabled &&
+#endif
+            cur_fb->status == CI_AUX)
       {
          if (cur_fb->format == 0)
          {
@@ -2155,10 +2165,8 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
    rdp.ci_size = (w0 >> 19) & 0x3;
    rdp.ci_end = rdp.cimg + ((rdp.ci_width*rdp.ci_height)<<(rdp.ci_size-1));
 
-#ifdef  EXTREME_LOGGING
-   FRDP("setcolorimage - %08lx, width: %d,  height: %d, format: %d, size: %d\n", w1, rdp.ci_width, rdp.ci_height, format, rdp.ci_size);
-   FRDP("cimg: %08lx, ocimg: %08lx, SwapOK: %d\n", rdp.cimg, rdp.ocimg, SwapOK);
-#endif
+   //FRDP("setcolorimage - %08lx, width: %d,  height: %d, format: %d, size: %d\n", w1, rdp.ci_width, rdp.ci_height, format, rdp.ci_size);
+   //FRDP("cimg: %08lx, ocimg: %08lx, SwapOK: %d\n", rdp.cimg, rdp.ocimg, SwapOK);
 
    if (format != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
    {

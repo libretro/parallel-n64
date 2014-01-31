@@ -821,3 +821,17 @@ static void gDPSetTextureImage( uint32_t format, uint32_t size, uint32_t width, 
 
    //FRDP("settextureimage: format: %s, size: %s, width: %d, addr: %08lx\n", format[rdp.timg.format], size[rdp.timg.size], rdp.timg.width, rdp.timg.addr);
 }
+
+static void gDPSetConvert(int32_t k0, int32_t k1, int32_t k2, int32_t k3, int32_t k4, int32_t k5)
+{
+   /*
+      rdp.YUV_C0 = 1.1647f  ;
+      rdp.YUV_C1 = 0.79931f ;
+      rdp.YUV_C2 = -0.1964f ;
+      rdp.YUV_C3 = -0.40651f;
+      rdp.YUV_C4 = 1.014f   ;
+      */
+   rdp.K4 = k4;
+   rdp.K5 = k5;
+   //FRDP("setconvert. K4=%02lx K5=%02lx\n", rdp.K4, rdp.K5);
+}
