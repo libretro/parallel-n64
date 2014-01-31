@@ -391,6 +391,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 
       case G_MV_MATRIX_1:
          gSPForceMatrix(w1);
+         rdp.pc[rdp.pc_i] = ((rdp.pc[rdp.pc_i] & BMASK) + 24) & BMASK; //skip next 3 command, b/c they all are part of gSPForceMatrix
          break;
          //next 3 command should never appear since they will be skipped in previous command
       case G_MV_MATRIX_2:

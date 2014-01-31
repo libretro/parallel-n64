@@ -819,20 +819,21 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          break;
       case G_MV_LIGHT:  // LIGHT
          {
+            uint8_t *rdram_u8;
             int8_t *rdram_s8;
             int n;
             rdram_s8 = (int8_t*)gfx.RDRAM;
+            rdram_u8 = (uint8_t*)gfx.RDRAM;
             n = ofs / 24;
 
             if (n < 2)
             {
-               int8_t dir_x, dir_y, dir_z;
+               int8_t dir_x, dir_y;
                dir_x = rdram_s8[(addr+8)^3];
-               rdp.lookat[n][0] = (float)(dir_x) / 127.0f;
                dir_y = rdram_s8[(addr+9)^3];
-               rdp.lookat[n][1] = (float)(dir_y) / 127.0f;
-               dir_z = rdram_s8[(addr+10)^3];
-               rdp.lookat[n][2] = (float)(dir_z) / 127.0f;
+               rdp.lookat[n][0] = (float)dir_x / 127.0f;
+               rdp.lookat[n][1] = (float)dir_y / 127.0f;
+               rdp.lookat[n][2] = (float)(rdram_s8[(addr+10)^3]) / 127.0f;
                rdp.use_lookat = true;
                if (n == 1)
                {
@@ -843,18 +844,16 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
                return;
             }
             n -= 2;
-            if (n > 7) return;
+            if (n > 7)
+               return;
 
             // Get the data
-            uint8_t col = gfx.RDRAM[(addr+0)^3];
-            rdp.light[n].r = (float)col / 255.0f;
-            rdp.light[n].nonblack = col;
-            col = gfx.RDRAM[(addr+1)^3];
-            rdp.light[n].g = (float)col / 255.0f;
-            rdp.light[n].nonblack += col;
-            col = gfx.RDRAM[(addr+2)^3];
-            rdp.light[n].b = (float)col / 255.0f;
-            rdp.light[n].nonblack += col;
+            rdp.light[n].r = (float)rdram_u8[(addr+0)^3] / 255.0f;
+            rdp.light[n].nonblack = rdram_u8[(addr+0)^3];
+            rdp.light[n].g = (float)rdram_u8[(addr+1)^3] / 255.0f;
+            rdp.light[n].nonblack += rdram_u8[(addr+1)^3];
+            rdp.light[n].b = (float)rdram_u8[(addr+2)^3] / 255.0f;
+            rdp.light[n].nonblack += rdram_u8[(addr+2)^3];
             rdp.light[n].a = 1.0f;
             // ** Thanks to Icepir8 for pointing this out **
             // Lighting must be signed byte instead of byte
@@ -878,21 +877,9 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          }
          break;
 
-      case G_MV_MATRIX:  // matrix
-         {
-            // do not update the combined matrix!
-            rdp.update &= ~UPDATE_MULT_MAT;
-            load_matrix(rdp.combined, segoffset(w1));
-
-#ifdef EXTREME_LOGGING
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
-#endif
-         }
+      case G_MV_MATRIX:
+         gSPForceMatrix(w1);
          break;
-
       default:
          FRDP ("uc2:matrix unknown (%d)\n", idx);
          FRDP ("** UNKNOWN %d\n", idx);

@@ -113,9 +113,6 @@ static void gSPForceMatrix(uint32_t mptr)
    address = RSP_SegmentToPhysical(mptr);
    load_matrix(rdp.combined, address);
 
-   address = rdp.pc[rdp.pc_i] & BMASK;
-   rdp.pc[rdp.pc_i] = (address + 24) & BMASK; //skip next 3 command, b/c they all are part of gSPForceMatrix
-
    //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
    //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
    //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
