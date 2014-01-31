@@ -179,9 +179,9 @@ void alist_interleave(uint16_t dmemo, uint16_t left, uint16_t right, uint16_t co
 
 struct ramp_t
 {
-    int32_t value;
-    int32_t step;
-    int32_t target;
+    int64_t value;
+    int64_t step;
+    int64_t target;
 };
 
 static void ramp_step(struct ramp_t* ramp)
