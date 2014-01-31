@@ -41,6 +41,8 @@ void calc_light (VERTEX *v);
 void calc_linear (VERTEX *v);
 void calc_sphere (VERTEX *v);
 
+#define CopyMatrix(m0, m1, size) memcpy(m0, m1, size)
+
 void math_init();
 
 typedef void (*MULMATRIX)(float m1[4][4],float m2[4][4],float r[4][4]); 

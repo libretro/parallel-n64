@@ -203,14 +203,14 @@ static void uc0_vertex(uint32_t w0, uint32_t w1)
 
 void modelview_load (float m[4][4])
 {
-   memcpy (rdp.model, m, 64);  // 4*4*4(float)
+   CopyMatrix(rdp.model, m, 64); // 4*4*4 (float)
    rdp.update |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
 }
 
 void modelview_mul (float m[4][4])
 {
    DECLAREALIGN16VAR(m_src[4][4]);
-   memcpy (m_src, rdp.model, 64);
+   CopyMatrix(m_src, rdp.model, 64);
    MulMatrices(m, m_src, rdp.model);
    rdp.update |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
 }
@@ -218,14 +218,9 @@ void modelview_mul (float m[4][4])
 void modelview_push(void)
 {
    if (rdp.model_i == rdp.model_stack_size)
-   {
-      //RDP_E ("** Model matrix stack overflow ** too many pushes\n");
-      //LRDP("** Model matrix stack overflow ** too many pushes\n");
       return;
-   }
 
-   memcpy (rdp.model_stack[rdp.model_i], rdp.model, 64);
-   rdp.model_i ++;
+   CopyMatrix(rdp.model_stack[rdp.model_i++], rdp.model, 64);
 }
 
 void modelview_load_push (float m[4][4])
@@ -242,14 +237,14 @@ void modelview_mul_push (float m[4][4])
 
 void projection_load (float m[4][4])
 {
-   memcpy (rdp.proj, m, 64); // 4*4*4(float)
+   CopyMatrix(rdp.proj, m, 64); // 4*4*4 (float)
    rdp.update |= UPDATE_MULT_MAT;
 }
 
 void projection_mul (float m[4][4])
 {
    DECLAREALIGN16VAR(m_src[4][4]);
-   memcpy (m_src, rdp.proj, 64);
+   CopyMatrix(m_src, rdp.proj, 64);
    MulMatrices(m, m_src, rdp.proj);
    rdp.update |= UPDATE_MULT_MAT;
 }
