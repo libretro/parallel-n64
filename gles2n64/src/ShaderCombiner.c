@@ -175,62 +175,62 @@ const char * _vertzhack = "                                 \n"\
 
 const char * _color_param_str(int param)
 {
-    switch(param)
-    {
-        case COMBINED:          return "lFragColor.rgb";
-        case TEXEL0:            return "lTex0.rgb";
-        case TEXEL1:            return "lTex1.rgb";
-        case PRIMITIVE:         return "uPrimColor.rgb";
-        case SHADE:             return "vShadeColor.rgb";
-        case ENVIRONMENT:       return "uEnvColor.rgb";
-        case CENTER:            return "vec3(0.0)";
-        case SCALE:             return "vec3(0.0)";
-        case COMBINED_ALPHA:    return "vec3(lFragColor.a)";
-        case TEXEL0_ALPHA:      return "vec3(lTex0.a)";
-        case TEXEL1_ALPHA:      return "vec3(lTex1.a)";
-        case PRIMITIVE_ALPHA:   return "vec3(uPrimColor.a)";
-        case SHADE_ALPHA:       return "vec3(vShadeColor.a)";
-        case ENV_ALPHA:         return "vec3(uEnvColor.a)";
-        case LOD_FRACTION:      return "vec3(0.0)";
-        case PRIM_LOD_FRAC:     return "vec3(uPrimLODFrac)";
-        case NOISE:             return "lNoise.rgb";
-        case K4:                return "vec3(uK4)";
-        case K5:                return "vec3(uK5)";
-        case ONE:               return "vec3(1.0)";
-        case ZERO:              return "vec3(0.0)";
-        default:
-            return "vec3(0.0)";
-    }
+   switch(param)
+   {
+      case COMBINED:          return "lFragColor.rgb";
+      case TEXEL0:            return "lTex0.rgb";
+      case TEXEL1:            return "lTex1.rgb";
+      case PRIMITIVE:         return "uPrimColor.rgb";
+      case SHADE:             return "vShadeColor.rgb";
+      case ENVIRONMENT:       return "uEnvColor.rgb";
+      case CENTER:            return "vec3(0.0)";
+      case SCALE:             return "vec3(0.0)";
+      case COMBINED_ALPHA:    return "vec3(lFragColor.a)";
+      case TEXEL0_ALPHA:      return "vec3(lTex0.a)";
+      case TEXEL1_ALPHA:      return "vec3(lTex1.a)";
+      case PRIMITIVE_ALPHA:   return "vec3(uPrimColor.a)";
+      case SHADE_ALPHA:       return "vec3(vShadeColor.a)";
+      case ENV_ALPHA:         return "vec3(uEnvColor.a)";
+      case LOD_FRACTION:      return "vec3(0.0)";
+      case PRIM_LOD_FRAC:     return "vec3(uPrimLODFrac)";
+      case NOISE:             return "lNoise.rgb";
+      case K4:                return "vec3(uK4)";
+      case K5:                return "vec3(uK5)";
+      case ONE:               return "vec3(1.0)";
+      case ZERO:              return "vec3(0.0)";
+      default:
+                              return "vec3(0.0)";
+   }
 }
 
 const char * _alpha_param_str(int param)
 {
-    switch(param)
-    {
-        case COMBINED:          return "lFragColor.a";
-        case TEXEL0:            return "lTex0.a";
-        case TEXEL1:            return "lTex1.a";
-        case PRIMITIVE:         return "uPrimColor.a";
-        case SHADE:             return "vShadeColor.a";
-        case ENVIRONMENT:       return "uEnvColor.a";
-        case CENTER:            return "0.0";
-        case SCALE:             return "0.0";
-        case COMBINED_ALPHA:    return "lFragColor.a";
-        case TEXEL0_ALPHA:      return "lTex0.a";
-        case TEXEL1_ALPHA:      return "lTex1.a";
-        case PRIMITIVE_ALPHA:   return "uPrimColor.a";
-        case SHADE_ALPHA:       return "vShadeColor.a";
-        case ENV_ALPHA:         return "uEnvColor.a";
-        case LOD_FRACTION:      return "0.0";
-        case PRIM_LOD_FRAC:     return "uPrimLODFrac";
-        case NOISE:             return "lNoise.a";
-        case K4:                return "uK4";
-        case K5:                return "uK5";
-        case ONE:               return "1.0";
-        case ZERO:              return "0.0";
-        default:
-            return "0.0";
-    }
+   switch(param)
+   {
+      case COMBINED:          return "lFragColor.a";
+      case TEXEL0:            return "lTex0.a";
+      case TEXEL1:            return "lTex1.a";
+      case PRIMITIVE:         return "uPrimColor.a";
+      case SHADE:             return "vShadeColor.a";
+      case ENVIRONMENT:       return "uEnvColor.a";
+      case CENTER:            return "0.0";
+      case SCALE:             return "0.0";
+      case COMBINED_ALPHA:    return "lFragColor.a";
+      case TEXEL0_ALPHA:      return "lTex0.a";
+      case TEXEL1_ALPHA:      return "lTex1.a";
+      case PRIMITIVE_ALPHA:   return "uPrimColor.a";
+      case SHADE_ALPHA:       return "vShadeColor.a";
+      case ENV_ALPHA:         return "uEnvColor.a";
+      case LOD_FRACTION:      return "0.0";
+      case PRIM_LOD_FRAC:     return "uPrimLODFrac";
+      case NOISE:             return "lNoise.a";
+      case K4:                return "uK4";
+      case K5:                return "uK5";
+      case ONE:               return "1.0";
+      case ZERO:              return "0.0";
+      default:
+                              return "0.0";
+   }
 }
 
 void *mux_new(u64 dmux, bool cycle2)
@@ -241,595 +241,576 @@ void *mux_new(u64 dmux, bool cycle2)
    mux->combine.mux = dmux;
    mux->flags = 0;
 
-    //set to ZERO.
-    for(i = 0; i < 4;i++)
-        for(j = 0; j < 4; j++)
-            mux->decode[i][j] = ZERO;
+   //set to ZERO.
+   for(i = 0; i < 4;i++)
+      for(j = 0; j < 4; j++)
+         mux->decode[i][j] = ZERO;
 
-    //rgb cycle 0
-    mux->decode[0][0] = saRGBExpanded[mux->combine.saRGB0];
-    mux->decode[0][1] = sbRGBExpanded[mux->combine.sbRGB0];
-    mux->decode[0][2] = mRGBExpanded[mux->combine.mRGB0];
-    mux->decode[0][3] = aRGBExpanded[mux->combine.aRGB0];
-    mux->decode[1][0] = saAExpanded[mux->combine.saA0];
-    mux->decode[1][1] = sbAExpanded[mux->combine.sbA0];
-    mux->decode[1][2] = mAExpanded[mux->combine.mA0];
-    mux->decode[1][3] = aAExpanded[mux->combine.aA0];
-    if (cycle2)
-    {
-        //rgb cycle 1
-        mux->decode[2][0] = saRGBExpanded[mux->combine.saRGB1];
-        mux->decode[2][1] = sbRGBExpanded[mux->combine.sbRGB1];
-        mux->decode[2][2] = mRGBExpanded[mux->combine.mRGB1];
-        mux->decode[2][3] = aRGBExpanded[mux->combine.aRGB1];
-        mux->decode[3][0] = saAExpanded[mux->combine.saA1];
-        mux->decode[3][1] = sbAExpanded[mux->combine.sbA1];
-        mux->decode[3][2] = mAExpanded[mux->combine.mA1];
-        mux->decode[3][3] = aAExpanded[mux->combine.aA1];
+   //rgb cycle 0
+   mux->decode[0][0] = saRGBExpanded[mux->combine.saRGB0];
+   mux->decode[0][1] = sbRGBExpanded[mux->combine.sbRGB0];
+   mux->decode[0][2] = mRGBExpanded[mux->combine.mRGB0];
+   mux->decode[0][3] = aRGBExpanded[mux->combine.aRGB0];
+   mux->decode[1][0] = saAExpanded[mux->combine.saA0];
+   mux->decode[1][1] = sbAExpanded[mux->combine.sbA0];
+   mux->decode[1][2] = mAExpanded[mux->combine.mA0];
+   mux->decode[1][3] = aAExpanded[mux->combine.aA0];
+   if (cycle2)
+   {
+      //rgb cycle 1
+      mux->decode[2][0] = saRGBExpanded[mux->combine.saRGB1];
+      mux->decode[2][1] = sbRGBExpanded[mux->combine.sbRGB1];
+      mux->decode[2][2] = mRGBExpanded[mux->combine.mRGB1];
+      mux->decode[2][3] = aRGBExpanded[mux->combine.aRGB1];
+      mux->decode[3][0] = saAExpanded[mux->combine.saA1];
+      mux->decode[3][1] = sbAExpanded[mux->combine.sbA1];
+      mux->decode[3][2] = mAExpanded[mux->combine.mA1];
+      mux->decode[3][3] = aAExpanded[mux->combine.aA1];
 
-        //texel 0/1 are swapped in 2nd cycle.
-        mux_swap(mux, 1, TEXEL0, TEXEL1);
-        mux_swap(mux, 1, TEXEL0_ALPHA, TEXEL1_ALPHA);
-    }
+      //texel 0/1 are swapped in 2nd cycle.
+      mux_swap(mux, 1, TEXEL0, TEXEL1);
+      mux_swap(mux, 1, TEXEL0_ALPHA, TEXEL1_ALPHA);
+   }
 
-    //simplifying mux:
-    if (mux_replace(mux, G_CYC_1CYCLE, LOD_FRACTION, ZERO) || mux_replace(mux, G_CYC_2CYCLE, LOD_FRACTION, ZERO))
-        LOG(LOG_VERBOSE, "SC Replacing LOD_FRACTION with ZERO\n");
+   //simplifying mux:
+   if (mux_replace(mux, G_CYC_1CYCLE, LOD_FRACTION, ZERO) || mux_replace(mux, G_CYC_2CYCLE, LOD_FRACTION, ZERO))
+      LOG(LOG_VERBOSE, "SC Replacing LOD_FRACTION with ZERO\n");
 #if 1
-    if (mux_replace(mux, G_CYC_1CYCLE, K4, ZERO) || mux_replace(mux, G_CYC_2CYCLE, K4, ZERO))
-        LOG(LOG_VERBOSE, "SC Replacing K4 with ZERO\n");
+   if (mux_replace(mux, G_CYC_1CYCLE, K4, ZERO) || mux_replace(mux, G_CYC_2CYCLE, K4, ZERO))
+      LOG(LOG_VERBOSE, "SC Replacing K4 with ZERO\n");
 
-    if (mux_replace(mux, G_CYC_1CYCLE, K5, ZERO) || mux_replace(mux, G_CYC_2CYCLE, K5, ZERO))
-        LOG(LOG_VERBOSE, "SC Replacing K5 with ZERO\n");
+   if (mux_replace(mux, G_CYC_1CYCLE, K5, ZERO) || mux_replace(mux, G_CYC_2CYCLE, K5, ZERO))
+      LOG(LOG_VERBOSE, "SC Replacing K5 with ZERO\n");
 #endif
 
-    if (mux_replace(mux, G_CYC_1CYCLE, CENTER, ZERO) || mux_replace(mux, G_CYC_2CYCLE, CENTER, ZERO))
-        LOG(LOG_VERBOSE, "SC Replacing CENTER with ZERO\n");
+   if (mux_replace(mux, G_CYC_1CYCLE, CENTER, ZERO) || mux_replace(mux, G_CYC_2CYCLE, CENTER, ZERO))
+      LOG(LOG_VERBOSE, "SC Replacing CENTER with ZERO\n");
 
-    if (mux_replace(mux, G_CYC_1CYCLE, SCALE, ZERO) || mux_replace(mux, G_CYC_2CYCLE, SCALE, ZERO))
-        LOG(LOG_VERBOSE, "SC Replacing SCALE with ZERO\n");
+   if (mux_replace(mux, G_CYC_1CYCLE, SCALE, ZERO) || mux_replace(mux, G_CYC_2CYCLE, SCALE, ZERO))
+      LOG(LOG_VERBOSE, "SC Replacing SCALE with ZERO\n");
 
-    //Combiner has initial value of zero in cycle 0
-    if (mux_replace(mux, G_CYC_1CYCLE, COMBINED, ZERO))
-        LOG(LOG_VERBOSE, "SC Setting CYCLE1 COMBINED to ZERO\n");
+   //Combiner has initial value of zero in cycle 0
+   if (mux_replace(mux, G_CYC_1CYCLE, COMBINED, ZERO))
+      LOG(LOG_VERBOSE, "SC Setting CYCLE1 COMBINED to ZERO\n");
 
-    if (mux_replace(mux, G_CYC_1CYCLE, COMBINED_ALPHA, ZERO))
-        LOG(LOG_VERBOSE, "SC Setting CYCLE1 COMBINED_ALPHA to ZERO\n");
+   if (mux_replace(mux, G_CYC_1CYCLE, COMBINED_ALPHA, ZERO))
+      LOG(LOG_VERBOSE, "SC Setting CYCLE1 COMBINED_ALPHA to ZERO\n");
 
-    if (!config.enableNoise)
-    {
-        if (mux_replace(mux, G_CYC_1CYCLE, NOISE, ZERO))
-            LOG(LOG_VERBOSE, "SC Setting CYCLE1 NOISE to ZERO\n");
+   if (!config.enableNoise)
+   {
+      if (mux_replace(mux, G_CYC_1CYCLE, NOISE, ZERO))
+         LOG(LOG_VERBOSE, "SC Setting CYCLE1 NOISE to ZERO\n");
 
-        if (mux_replace(mux, G_CYC_2CYCLE, NOISE, ZERO))
-            LOG(LOG_VERBOSE, "SC Setting CYCLE2 NOISE to ZERO\n");
+      if (mux_replace(mux, G_CYC_2CYCLE, NOISE, ZERO))
+         LOG(LOG_VERBOSE, "SC Setting CYCLE2 NOISE to ZERO\n");
 
-    }
+   }
 
-    //mutiplying by zero: (A-B)*0 + C = C
-    for(i = 0 ; i < 4; i++)
-    {
-        if (mux->decode[i][2] == ZERO)
-        {
-            mux->decode[i][0] = ZERO;
-            mux->decode[i][1] = ZERO;
-        }
-    }
+   //mutiplying by zero: (A-B)*0 + C = C
+   for(i = 0 ; i < 4; i++)
+   {
+      if (mux->decode[i][2] == ZERO)
+      {
+         mux->decode[i][0] = ZERO;
+         mux->decode[i][1] = ZERO;
+      }
+   }
 
-    //(A1-B1)*C1 + D1
-    //(A2-B2)*C2 + D2
-    //1. ((A1-B1)*C1 + D1 - B2)*C2 + D2 = A1*C1*C2 - B1*C1*C2 + D1*C2 - B2*C2 + D2
-    //2. (A2 - (A1-B1)*C1 - D1)*C2 + D2 = A2*C2 - A1*C1*C2 + B1*C1*C2 - D1*C2 + D2
-    //3. (A2 - B2)*((A1-B1)*C1 + D1) + D2 = A2*A1*C1 - A2*B1*C1 + A2*D1 - B2*A1*C1 + B2*B1*C1 - B2*D1 + D2
-    //4. (A2-B2)*C2 + (A1-B1)*C1 + D1 = A2*C2 - B2*C2 + A1*C1 - B1*C1 + D1
+   //(A1-B1)*C1 + D1
+   //(A2-B2)*C2 + D2
+   //1. ((A1-B1)*C1 + D1 - B2)*C2 + D2 = A1*C1*C2 - B1*C1*C2 + D1*C2 - B2*C2 + D2
+   //2. (A2 - (A1-B1)*C1 - D1)*C2 + D2 = A2*C2 - A1*C1*C2 + B1*C1*C2 - D1*C2 + D2
+   //3. (A2 - B2)*((A1-B1)*C1 + D1) + D2 = A2*A1*C1 - A2*B1*C1 + A2*D1 - B2*A1*C1 + B2*B1*C1 - B2*D1 + D2
+   //4. (A2-B2)*C2 + (A1-B1)*C1 + D1 = A2*C2 - B2*C2 + A1*C1 - B1*C1 + D1
 
-    if (cycle2)
-    {
+   if (cycle2)
+   {
 
-        if (!mux_find(mux, 2, COMBINED))
-            mux->flags |= SC_IGNORE_RGB0;
+      if (!mux_find(mux, 2, COMBINED))
+         mux->flags |= SC_IGNORE_RGB0;
 
-        if (!(mux_find(mux, 2, COMBINED_ALPHA) || mux_find(mux, 3, COMBINED_ALPHA) || mux_find(mux, 3, COMBINED)))
-            mux->flags |= SC_IGNORE_ALPHA0;
+      if (!(mux_find(mux, 2, COMBINED_ALPHA) || mux_find(mux, 3, COMBINED_ALPHA) || mux_find(mux, 3, COMBINED)))
+         mux->flags |= SC_IGNORE_ALPHA0;
 
-        if (mux->decode[2][0] == ZERO && mux->decode[2][1] == ZERO && mux->decode[2][2] == ZERO && mux->decode[2][3] == COMBINED)
-        {
-            mux->flags |= SC_IGNORE_RGB1;
-        }
+      if (mux->decode[2][0] == ZERO && mux->decode[2][1] == ZERO && mux->decode[2][2] == ZERO && mux->decode[2][3] == COMBINED)
+         mux->flags |= SC_IGNORE_RGB1;
 
-        if (mux->decode[3][0] == ZERO && mux->decode[3][1] == ZERO && mux->decode[3][2] == ZERO &&
+      if (mux->decode[3][0] == ZERO && mux->decode[3][1] == ZERO && mux->decode[3][2] == ZERO &&
             (mux->decode[3][3] == COMBINED_ALPHA || mux->decode[3][3] == COMBINED))
-        {
-            mux->flags |= SC_IGNORE_ALPHA1;
-        }
+         mux->flags |= SC_IGNORE_ALPHA1;
+   }
 
-    }
-
-    return mux;
+   return mux;
 }
 
 bool mux_find(DecodedMux *dmux, int index, int src)
 {
    int j;
-    for(j = 0;j < 4; j++)
-        if (dmux->decode[index][j] == src) return true;
-    return false;
+   for(j = 0;j < 4; j++)
+      if (dmux->decode[index][j] == src) return true;
+   return false;
 }
 
 bool mux_replace(DecodedMux *dmux, int cycle, int src, int dest)
 {
-   int i, j;
-    int r = false;
-    for(i = 0; i < 2; i++)
-    {
-        int ii = (cycle == 0) ? i : (2+i);
-        for(j = 0; j < 4;j++)
-        {
-            if (dmux->decode[ii][j] == src) {dmux->decode[ii][j] = dest; r=true;}
-        }
-    }
-    return r;
+   int i, j, r;
+   r = false;
+
+   for(i = 0; i < 2; i++)
+   {
+      int ii = (cycle == 0) ? i : (2+i);
+      for(j = 0; j < 4;j++)
+         if (dmux->decode[ii][j] == src) {dmux->decode[ii][j] = dest; r=true;}
+   }
+   return r;
 }
 
 bool mux_swap(DecodedMux *dmux, int cycle, int src0, int src1)
 {
    int i, j, r;
-    r = false;
-    for(i = 0; i < 2; i++)
-    {
-        int ii = (cycle == 0) ? i : (2+i);
-        for(j = 0; j < 4; j++)
-        {
-            if (dmux->decode[ii][j] == src0) {dmux->decode[ii][j] = src1; r=true;}
-            else if (dmux->decode[ii][j] == src1) {dmux->decode[ii][j] = src0; r=true;}
-        }
-    }
-    return r;
+   r = false;
+   for(i = 0; i < 2; i++)
+   {
+      int ii = (cycle == 0) ? i : (2+i);
+      for(j = 0; j < 4; j++)
+      {
+         if (dmux->decode[ii][j] == src0) {dmux->decode[ii][j] = src1; r=true;}
+         else if (dmux->decode[ii][j] == src1) {dmux->decode[ii][j] = src0; r=true;}
+      }
+   }
+   return r;
 }
 
 void mux_hack(DecodedMux *dmux)
 {
+   (void)dmux;
 #if 0
-    if (config.hackZelda)
-    {
-        if(dmux->combine.mux == 0xfffd923800ffadffLL)
-        {
-            mux_replace(dmux, G_CYC_1CYCLE, TEXEL1, TEXEL0);
-            mux_replace(dmux, G_CYC_2CYCLE, TEXEL1, TEXEL0);
-        }
-        else if (dmux->combine.mux == 0xff5bfff800121603LL)
-        {
-            mux_replace(dmux, G_CYC_1CYCLE, TEXEL1, ZERO);
-            mux_replace(dmux, G_CYC_2CYCLE, TEXEL1, ZERO);
-        }
-    }
+   if (config.hackZelda)
+   {
+      if(dmux->combine.mux == 0xfffd923800ffadffLL)
+      {
+         mux_replace(dmux, G_CYC_1CYCLE, TEXEL1, TEXEL0);
+         mux_replace(dmux, G_CYC_2CYCLE, TEXEL1, TEXEL0);
+      }
+      else if (dmux->combine.mux == 0xff5bfff800121603LL)
+      {
+         mux_replace(dmux, G_CYC_1CYCLE, TEXEL1, ZERO);
+         mux_replace(dmux, G_CYC_2CYCLE, TEXEL1, ZERO);
+      }
+   }
 #endif
 }
 
 
 int _program_compare(ShaderProgram *prog, DecodedMux *dmux, u32 flags)
 {
-    if (prog)
-        return ((prog->combine.mux == dmux->combine.mux) && (prog->flags == flags));
-    else
-        return 1;
+   if (prog)
+      return ((prog->combine.mux == dmux->combine.mux) && (prog->flags == flags));
+   else
+      return 1;
 }
 
 void _glcompiler_error(GLint shader)
 {
-    int len, i;
-    char* log;
+   int len, i;
+   char* log;
 
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
-    log = (char*) malloc(len + 1);
-    glGetShaderInfoLog(shader, len, &i, log);
-    log[len] = 0;
-    LOG(LOG_ERROR, "COMPILE ERROR: %s \n", log);
-    free(log);
+   glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
+   log = (char*) malloc(len + 1);
+   glGetShaderInfoLog(shader, len, &i, log);
+   log[len] = 0;
+   LOG(LOG_ERROR, "COMPILE ERROR: %s \n", log);
+   free(log);
 }
 
 void _gllinker_error(GLint program)
 {
-    int len, i;
-    char* log;
+   int len, i;
+   char* log;
 
-    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
-    log = (char*) malloc(len + 1);
-    glGetProgramInfoLog(program, len, &i, log);
-    log[len] = 0;
-    LOG(LOG_ERROR, "LINK ERROR: %s \n", log);
-    free(log);
-};
+   glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
+   log = (char*)malloc(len + 1);
+   glGetProgramInfoLog(program, len, &i, log);
+   log[len] = 0;
+   LOG(LOG_ERROR, "LINK ERROR: %s \n", log);
+   free(log);
+}
 
 void _locate_attributes(ShaderProgram *p)
 {
-    glBindAttribLocation(p->program, SC_POSITION,   "aPosition");
-    glBindAttribLocation(p->program, SC_COLOR,      "aColor");
-    glBindAttribLocation(p->program, SC_TEXCOORD0,  "aTexCoord0");
-    glBindAttribLocation(p->program, SC_TEXCOORD1,  "aTexCoord1");
-};
+   glBindAttribLocation(p->program, SC_POSITION,   "aPosition");
+   glBindAttribLocation(p->program, SC_COLOR,      "aColor");
+   glBindAttribLocation(p->program, SC_TEXCOORD0,  "aTexCoord0");
+   glBindAttribLocation(p->program, SC_TEXCOORD1,  "aTexCoord1");
+}
 
 #define LocateUniform(A) \
     p->uniforms.A.loc = glGetUniformLocation(p->program, #A);
 
 void _locate_uniforms(ShaderProgram *p)
 {
-    LocateUniform(uTex0);
-    LocateUniform(uTex1);
-    LocateUniform(uNoise);
-    LocateUniform(uEnvColor);
-    LocateUniform(uPrimColor);
-    LocateUniform(uPrimLODFrac);
-    LocateUniform(uK4);
-    LocateUniform(uK5);
-    LocateUniform(uFogColor);
-    LocateUniform(uEnableFog);
-    LocateUniform(uRenderState);
-    LocateUniform(uFogMultiplier);
-    LocateUniform(uFogOffset);
-    LocateUniform(uAlphaRef);
-    LocateUniform(uTexScale);
-    LocateUniform(uTexOffset[0]);
-    LocateUniform(uTexOffset[1]);
-    LocateUniform(uCacheShiftScale[0]);
-    LocateUniform(uCacheShiftScale[1]);
-    LocateUniform(uCacheScale[0]);
-    LocateUniform(uCacheScale[1]);
-    LocateUniform(uCacheOffset[0]);
-    LocateUniform(uCacheOffset[1]);
+   LocateUniform(uTex0);
+   LocateUniform(uTex1);
+   LocateUniform(uNoise);
+   LocateUniform(uEnvColor);
+   LocateUniform(uPrimColor);
+   LocateUniform(uPrimLODFrac);
+   LocateUniform(uK4);
+   LocateUniform(uK5);
+   LocateUniform(uFogColor);
+   LocateUniform(uEnableFog);
+   LocateUniform(uRenderState);
+   LocateUniform(uFogMultiplier);
+   LocateUniform(uFogOffset);
+   LocateUniform(uAlphaRef);
+   LocateUniform(uTexScale);
+   LocateUniform(uTexOffset[0]);
+   LocateUniform(uTexOffset[1]);
+   LocateUniform(uCacheShiftScale[0]);
+   LocateUniform(uCacheShiftScale[1]);
+   LocateUniform(uCacheScale[0]);
+   LocateUniform(uCacheScale[1]);
+   LocateUniform(uCacheOffset[0]);
+   LocateUniform(uCacheOffset[1]);
 }
 
-void _force_uniforms()
+void _force_uniforms(void)
 {
-    SC_ForceUniform1i(uTex0, 0);
-    SC_ForceUniform1i(uTex1, 1);
-    SC_ForceUniform1i(uNoise, 2);
-    SC_ForceUniform4fv(uEnvColor, &gDP.envColor.r);
-    SC_ForceUniform4fv(uPrimColor, &gDP.primColor.r);
-    SC_ForceUniform1f(uPrimLODFrac, gDP.primColor.l);
-    SC_ForceUniform1f(uK4, gDP.convert.k4);
-    SC_ForceUniform1f(uK5, gDP.convert.k5);
-    SC_ForceUniform4fv(uFogColor, &gDP.fogColor.r);
-    SC_ForceUniform1i(uEnableFog, ((config.enableFog==1) && (gSP.geometryMode & G_FOG)));
-    SC_ForceUniform1f(uRenderState, OGL.renderState);
-    SC_ForceUniform1f(uFogMultiplier, (float) gSP.fog.multiplier / 255.0f);
-    SC_ForceUniform1f(uFogOffset, (float) gSP.fog.offset / 255.0f);
-    SC_ForceUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5 : gDP.blendColor.a);
-    SC_ForceUniform2f(uTexScale, gSP.texture.scales, gSP.texture.scalet);
+   SC_ForceUniform1i(uTex0, 0);
+   SC_ForceUniform1i(uTex1, 1);
+   SC_ForceUniform1i(uNoise, 2);
+   SC_ForceUniform4fv(uEnvColor, &gDP.envColor.r);
+   SC_ForceUniform4fv(uPrimColor, &gDP.primColor.r);
+   SC_ForceUniform1f(uPrimLODFrac, gDP.primColor.l);
+   SC_ForceUniform1f(uK4, gDP.convert.k4);
+   SC_ForceUniform1f(uK5, gDP.convert.k5);
+   SC_ForceUniform4fv(uFogColor, &gDP.fogColor.r);
+   SC_ForceUniform1i(uEnableFog, ((config.enableFog==1) && (gSP.geometryMode & G_FOG)));
+   SC_ForceUniform1f(uRenderState, OGL.renderState);
+   SC_ForceUniform1f(uFogMultiplier, (float) gSP.fog.multiplier / 255.0f);
+   SC_ForceUniform1f(uFogOffset, (float) gSP.fog.offset / 255.0f);
+   SC_ForceUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5 : gDP.blendColor.a);
+   SC_ForceUniform2f(uTexScale, gSP.texture.scales, gSP.texture.scalet);
 
-    if (gSP.textureTile[0]){
-        SC_ForceUniform2f(uTexOffset[0], gSP.textureTile[0]->fuls, gSP.textureTile[0]->fult);
-    } else {
-        SC_ForceUniform2f(uTexOffset[0], 0.0f, 0.0f);
-    }
+   if (gSP.textureTile[0])
+      SC_ForceUniform2f(uTexOffset[0], gSP.textureTile[0]->fuls, gSP.textureTile[0]->fult);
+   else
+      SC_ForceUniform2f(uTexOffset[0], 0.0f, 0.0f);
 
-    if (gSP.textureTile[1])
-    {
-        SC_ForceUniform2f(uTexOffset[1], gSP.textureTile[1]->fuls, gSP.textureTile[1]->fult);
-    }
-    else
-    {
-        SC_ForceUniform2f(uTexOffset[1], 0.0f, 0.0f);
-    }
+   if (gSP.textureTile[1])
+      SC_ForceUniform2f(uTexOffset[1], gSP.textureTile[1]->fuls, gSP.textureTile[1]->fult);
+   else
+      SC_ForceUniform2f(uTexOffset[1], 0.0f, 0.0f);
 
-    if (cache.current[0])
-    {
-        SC_ForceUniform2f(uCacheShiftScale[0], cache.current[0]->shiftScaleS, cache.current[0]->shiftScaleT);
-        SC_ForceUniform2f(uCacheScale[0], cache.current[0]->scaleS, cache.current[0]->scaleT);
-        SC_ForceUniform2f(uCacheOffset[0], cache.current[0]->offsetS, cache.current[0]->offsetT);
-    }
-    else
-    {
-        SC_ForceUniform2f(uCacheShiftScale[0], 1.0f, 1.0f);
-        SC_ForceUniform2f(uCacheScale[0], 1.0f, 1.0f);
-        SC_ForceUniform2f(uCacheOffset[0], 0.0f, 0.0f);
-    }
+   if (cache.current[0])
+   {
+      SC_ForceUniform2f(uCacheShiftScale[0], cache.current[0]->shiftScaleS, cache.current[0]->shiftScaleT);
+      SC_ForceUniform2f(uCacheScale[0], cache.current[0]->scaleS, cache.current[0]->scaleT);
+      SC_ForceUniform2f(uCacheOffset[0], cache.current[0]->offsetS, cache.current[0]->offsetT);
+   }
+   else
+   {
+      SC_ForceUniform2f(uCacheShiftScale[0], 1.0f, 1.0f);
+      SC_ForceUniform2f(uCacheScale[0], 1.0f, 1.0f);
+      SC_ForceUniform2f(uCacheOffset[0], 0.0f, 0.0f);
+   }
 
-    if (cache.current[1])
-    {
-        SC_ForceUniform2f(uCacheShiftScale[1], cache.current[1]->shiftScaleS, cache.current[1]->shiftScaleT);
-        SC_ForceUniform2f(uCacheScale[1], cache.current[1]->scaleS, cache.current[1]->scaleT);
-        SC_ForceUniform2f(uCacheOffset[1], cache.current[1]->offsetS, cache.current[1]->offsetT);
-    }
-    else
-    {
-        SC_ForceUniform2f(uCacheShiftScale[1], 1.0f, 1.0f);
-        SC_ForceUniform2f(uCacheScale[1], 1.0f, 1.0f);
-        SC_ForceUniform2f(uCacheOffset[1], 0.0f, 0.0f);
-    }
+   if (cache.current[1])
+   {
+      SC_ForceUniform2f(uCacheShiftScale[1], cache.current[1]->shiftScaleS, cache.current[1]->shiftScaleT);
+      SC_ForceUniform2f(uCacheScale[1], cache.current[1]->scaleS, cache.current[1]->scaleT);
+      SC_ForceUniform2f(uCacheOffset[1], cache.current[1]->offsetS, cache.current[1]->offsetT);
+   }
+   else
+   {
+      SC_ForceUniform2f(uCacheShiftScale[1], 1.0f, 1.0f);
+      SC_ForceUniform2f(uCacheScale[1], 1.0f, 1.0f);
+      SC_ForceUniform2f(uCacheOffset[1], 0.0f, 0.0f);
+   }
 }
 
-void _update_uniforms()
+void _update_uniforms(void)
 {
-    SC_SetUniform4fv(uEnvColor, &gDP.envColor.r);
-    SC_SetUniform4fv(uPrimColor, &gDP.primColor.r);
-    SC_SetUniform1f(uPrimLODFrac, gDP.primColor.l);
-    SC_SetUniform4fv(uFogColor, &gDP.fogColor.r);
-    SC_SetUniform1i(uEnableFog, (config.enableFog && (gSP.geometryMode & G_FOG)));
-    SC_SetUniform1f(uRenderState, OGL.renderState);
-    SC_SetUniform1f(uFogMultiplier, (float) gSP.fog.multiplier / 255.0f);
-    SC_SetUniform1f(uFogOffset, (float) gSP.fog.offset / 255.0f);
-    SC_SetUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5 : gDP.blendColor.a);
-    SC_SetUniform1f(uK4, gDP.convert.k4);
-    SC_SetUniform1f(uK5, gDP.convert.k5);
+   SC_SetUniform4fv(uEnvColor, &gDP.envColor.r);
+   SC_SetUniform4fv(uPrimColor, &gDP.primColor.r);
+   SC_SetUniform1f(uPrimLODFrac, gDP.primColor.l);
+   SC_SetUniform4fv(uFogColor, &gDP.fogColor.r);
+   SC_SetUniform1i(uEnableFog, (config.enableFog && (gSP.geometryMode & G_FOG)));
+   SC_SetUniform1f(uRenderState, OGL.renderState);
+   SC_SetUniform1f(uFogMultiplier, (float) gSP.fog.multiplier / 255.0f);
+   SC_SetUniform1f(uFogOffset, (float) gSP.fog.offset / 255.0f);
+   SC_SetUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5 : gDP.blendColor.a);
+   SC_SetUniform1f(uK4, gDP.convert.k4);
+   SC_SetUniform1f(uK5, gDP.convert.k5);
 
-    //for some reason i must force these...
-    SC_ForceUniform2f(uTexScale, gSP.texture.scales, gSP.texture.scalet);
-    if (scProgramCurrent->usesT0)
-    {
-        if (gSP.textureTile[0])
-        {
-            SC_ForceUniform2f(uTexOffset[0], gSP.textureTile[0]->fuls, gSP.textureTile[0]->fult);
-        }
-        if (cache.current[0])
-        {
-            SC_ForceUniform2f(uCacheShiftScale[0], cache.current[0]->shiftScaleS, cache.current[0]->shiftScaleT);
-            SC_ForceUniform2f(uCacheScale[0], cache.current[0]->scaleS, cache.current[0]->scaleT);
-            SC_ForceUniform2f(uCacheOffset[0], cache.current[0]->offsetS, cache.current[0]->offsetT);
-        }
-    }
+   //for some reason i must force these...
+   SC_ForceUniform2f(uTexScale, gSP.texture.scales, gSP.texture.scalet);
+   if (scProgramCurrent->usesT0)
+   {
+      if (gSP.textureTile[0])
+      {
+         SC_ForceUniform2f(uTexOffset[0], gSP.textureTile[0]->fuls, gSP.textureTile[0]->fult);
+      }
+      if (cache.current[0])
+      {
+         SC_ForceUniform2f(uCacheShiftScale[0], cache.current[0]->shiftScaleS, cache.current[0]->shiftScaleT);
+         SC_ForceUniform2f(uCacheScale[0], cache.current[0]->scaleS, cache.current[0]->scaleT);
+         SC_ForceUniform2f(uCacheOffset[0], cache.current[0]->offsetS, cache.current[0]->offsetT);
+      }
+   }
 
-    if (scProgramCurrent->usesT1)
-    {
-        if (gSP.textureTile[1])
-        {
-            SC_ForceUniform2f(uTexOffset[1], gSP.textureTile[1]->fuls, gSP.textureTile[1]->fult);
-        }
-        if (cache.current[1])
-        {
-            SC_ForceUniform2f(uCacheShiftScale[1], cache.current[1]->shiftScaleS, cache.current[1]->shiftScaleT);
-            SC_ForceUniform2f(uCacheScale[1], cache.current[1]->scaleS, cache.current[1]->scaleT);
-            SC_ForceUniform2f(uCacheOffset[1], cache.current[1]->offsetS, cache.current[1]->offsetT);
-        }
-    }
-};
+   if (scProgramCurrent->usesT1)
+   {
+      if (gSP.textureTile[1])
+      {
+         SC_ForceUniform2f(uTexOffset[1], gSP.textureTile[1]->fuls, gSP.textureTile[1]->fult);
+      }
+      if (cache.current[1])
+      {
+         SC_ForceUniform2f(uCacheShiftScale[1], cache.current[1]->shiftScaleS, cache.current[1]->shiftScaleT);
+         SC_ForceUniform2f(uCacheScale[1], cache.current[1]->scaleS, cache.current[1]->scaleT);
+         SC_ForceUniform2f(uCacheOffset[1], cache.current[1]->offsetS, cache.current[1]->offsetT);
+      }
+   }
+}
 
-void ShaderCombiner_Init()
+void ShaderCombiner_Init(void)
 {
-    //compile vertex shader:
-    GLint success;
-    const char *src[1];
-    char buff[4096];
-    char *str = buff;
+   //compile vertex shader:
+   GLint success;
+   const char *src[1];
+   char buff[4096], *str;
+   str = buff;
 
-    str += sprintf(str, "%s", _vert);
-    if (config.enableFog)
-    {
-        str += sprintf(str, "%s", _vertfog);
-    }
-    if (config.zHack)
-    {
-        str += sprintf(str, "%s", _vertzhack);
-    }
+   str += sprintf(str, "%s", _vert);
+   if (config.enableFog)
+      str += sprintf(str, "%s", _vertfog);
+   if (config.zHack)
+      str += sprintf(str, "%s", _vertzhack);
 
-    str += sprintf(str, "}\n\n");
+   str += sprintf(str, "}\n\n");
 
-    src[0] = buff;
-    _vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(_vertex_shader, 1, (const char**) src, NULL);
-    glCompileShader(_vertex_shader);
-    glGetShaderiv(_vertex_shader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        _glcompiler_error(_vertex_shader);
-    }
-};
+   src[0] = buff;
+   _vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+   glShaderSource(_vertex_shader, 1, (const char**) src, NULL);
+   glCompileShader(_vertex_shader);
+   glGetShaderiv(_vertex_shader, GL_COMPILE_STATUS, &success);
+   if (!success)
+      _glcompiler_error(_vertex_shader);
+}
 
 void ShaderCombiner_DeletePrograms(ShaderProgram *prog)
 {
-    if (prog)
-    {
-        ShaderCombiner_DeletePrograms(prog->left);
-        ShaderCombiner_DeletePrograms(prog->right);
-        glDeleteProgram(prog->program);
-        //glDeleteShader(prog->fragment);
-        free(prog);
-        scProgramCount--;
-    }
+   if (prog)
+   {
+      ShaderCombiner_DeletePrograms(prog->left);
+      ShaderCombiner_DeletePrograms(prog->right);
+      glDeleteProgram(prog->program);
+      //glDeleteShader(prog->fragment);
+      free(prog);
+      scProgramCount--;
+   }
 }
 
-void ShaderCombiner_Destroy()
+void ShaderCombiner_Destroy(void)
 {
-    ShaderCombiner_DeletePrograms(scProgramRoot);
-    glDeleteShader(_vertex_shader);
-    scProgramCount = scProgramChanged = 0;
-    scProgramRoot = scProgramCurrent = NULL;
+   ShaderCombiner_DeletePrograms(scProgramRoot);
+   glDeleteShader(_vertex_shader);
+   scProgramCount = scProgramChanged = 0;
+   scProgramRoot = scProgramCurrent = NULL;
 }
 
 void ShaderCombiner_Set(u64 mux, int flags)
 {
-    //banjo tooie hack
-    if ((gDP.otherMode.cycleType == G_CYC_1CYCLE) && (mux == 0x00ffe7ffffcf9fcfLL))
-    {
-        mux = EncodeCombineMode( 0, 0, 0, 0, TEXEL0, 0, PRIMITIVE, 0,
-                                 0, 0, 0, 0, TEXEL0, 0, PRIMITIVE, 0 );
-    }
+   //banjo tooie hack
+   if ((gDP.otherMode.cycleType == G_CYC_1CYCLE) && (mux == 0x00ffe7ffffcf9fcfLL))
+      mux = EncodeCombineMode( 0, 0, 0, 0, TEXEL0, 0, PRIMITIVE, 0,
+            0, 0, 0, 0, TEXEL0, 0, PRIMITIVE, 0 );
 
-    //determine flags
-    if (flags == -1)
-    {
-        flags = 0;
-        if ((config.enableFog) && (gSP.geometryMode & G_FOG))
-            flags |= SC_FOGENABLED;
+   //determine flags
+   if (flags == -1)
+   {
+      flags = 0;
+      if ((config.enableFog) && (gSP.geometryMode & G_FOG))
+         flags |= SC_FOGENABLED;
 
-        if (config.enableAlphaTest)
-        {
-            if ((gDP.otherMode.alphaCompare == G_AC_THRESHOLD) && !(gDP.otherMode.alphaCvgSel)){
-                flags |= SC_ALPHAENABLED;
-                if (gDP.blendColor.a > 0.0f) flags |= SC_ALPHAGREATER;
-            } else if (gDP.otherMode.cvgXAlpha){
-                flags |= SC_ALPHAENABLED;
-                flags |= SC_ALPHAGREATER;
-            }
-        }
+      if (config.enableAlphaTest)
+      {
+         if ((gDP.otherMode.alphaCompare == G_AC_THRESHOLD) && !(gDP.otherMode.alphaCvgSel))
+         {
+            flags |= SC_ALPHAENABLED;
+            if (gDP.blendColor.a > 0.0f)
+               flags |= SC_ALPHAGREATER;
+         }
+         else if (gDP.otherMode.cvgXAlpha)
+         {
+            flags |= SC_ALPHAENABLED;
+            flags |= SC_ALPHAGREATER;
+         }
+      }
 
-        if (gDP.otherMode.cycleType == G_CYC_2CYCLE)
-            flags |= SC_2CYCLE;
-    }
+      if (gDP.otherMode.cycleType == G_CYC_2CYCLE)
+         flags |= SC_2CYCLE;
+   }
 
 
-    DecodedMux *dmux;
-    dmux = mux_new(mux, flags&SC_2CYCLE);
-    mux_hack(mux);
+   DecodedMux *dmux;
+   dmux = mux_new(mux, flags&SC_2CYCLE);
+   mux_hack(mux);
 
-    //if already bound:
-    if (scProgramCurrent)
-    {
-        if (_program_compare(scProgramCurrent, dmux, flags))
-        {
-            scProgramChanged = 0;
-            return;
-        }
-    }
+   //if already bound:
+   if (scProgramCurrent)
+   {
+      if (_program_compare(scProgramCurrent, dmux, flags))
+      {
+         scProgramChanged = 0;
+         return;
+      }
+   }
 
-    //traverse binary tree for cached programs
-    scProgramChanged = 1;
-    ShaderProgram *root = scProgramRoot;
-    ShaderProgram *prog = root;
-    while(!_program_compare(prog, dmux, flags))
-    {
-        root = prog;
-        if (prog->combine.mux < dmux->combine.mux)
-            prog = prog->right;
-        else
-            prog = prog->left;
-    }
+   //traverse binary tree for cached programs
+   scProgramChanged = 1;
+   ShaderProgram *root = scProgramRoot;
+   ShaderProgram *prog = root;
+   while(!_program_compare(prog, dmux, flags))
+   {
+      root = prog;
+      if (prog->combine.mux < dmux->combine.mux)
+         prog = prog->right;
+      else
+         prog = prog->left;
+   }
 
-    //build new program
-    if (!prog)
-    {
-        scProgramCount++;
-        prog = ShaderCombiner_Compile(dmux, flags);
-        if (!root)
-            scProgramRoot = prog;
-        else if (root->combine.mux < dmux->combine.mux)
-            root->right = prog;
-        else
-            root->left = prog;
+   //build new program
+   if (!prog)
+   {
+      scProgramCount++;
+      prog = ShaderCombiner_Compile(dmux, flags);
+      if (!root)
+         scProgramRoot = prog;
+      else if (root->combine.mux < dmux->combine.mux)
+         root->right = prog;
+      else
+         root->left = prog;
 
-    }
+   }
 
-    prog->lastUsed = OGL.frame_dl;
-    scProgramCurrent = prog;
-    glUseProgram(prog->program);
-    _force_uniforms();
+   prog->lastUsed = OGL.frame_dl;
+   scProgramCurrent = prog;
+   glUseProgram(prog->program);
+   _force_uniforms();
 
-    if (dmux)
-       free(dmux);
+   if (dmux)
+      free(dmux);
 }
 
 ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
 {
    int i, j;
-    GLint success;
-    char frag[4096];
-    char *buffer = frag;
-    ShaderProgram *prog = (ShaderProgram*) malloc(sizeof(ShaderProgram));
+   GLint success;
+   char frag[4096];
+   char *buffer = frag;
+   ShaderProgram *prog = (ShaderProgram*) malloc(sizeof(ShaderProgram));
 
-    prog->left = prog->right = NULL;
-    prog->usesT0 = prog->usesT1 = prog->usesCol = prog->usesNoise = 0;
-    prog->combine = dmux->combine;
-    prog->flags = flags;
-    prog->vertex = _vertex_shader;
+   prog->left = prog->right = NULL;
+   prog->usesT0 = prog->usesT1 = prog->usesCol = prog->usesNoise = 0;
+   prog->combine = dmux->combine;
+   prog->flags = flags;
+   prog->vertex = _vertex_shader;
 
-    for(i = 0; i < ((flags & SC_2CYCLE) ? 4 : 2); i++)
-    {
-        //make sure were not ignoring cycle:
-        if ((dmux->flags&(1<<i)) == 0)
-        {
-            for(j = 0;j < 4; j++)
-            {
-                prog->usesT0 |= (dmux->decode[i][j] == TEXEL0 || dmux->decode[i][j] == TEXEL0_ALPHA);
-                prog->usesT1 |= (dmux->decode[i][j] == TEXEL1 || dmux->decode[i][j] == TEXEL1_ALPHA);
-                prog->usesCol |= (dmux->decode[i][j] == SHADE || dmux->decode[i][j] == SHADE_ALPHA);
-                prog->usesNoise |= (dmux->decode[i][j] == NOISE);
-            }
-        }
-    }
+   for(i = 0; i < ((flags & SC_2CYCLE) ? 4 : 2); i++)
+   {
+      //make sure were not ignoring cycle:
+      if ((dmux->flags&(1<<i)) == 0)
+      {
+         for(j = 0;j < 4; j++)
+         {
+            prog->usesT0 |= (dmux->decode[i][j] == TEXEL0 || dmux->decode[i][j] == TEXEL0_ALPHA);
+            prog->usesT1 |= (dmux->decode[i][j] == TEXEL1 || dmux->decode[i][j] == TEXEL1_ALPHA);
+            prog->usesCol |= (dmux->decode[i][j] == SHADE || dmux->decode[i][j] == SHADE_ALPHA);
+            prog->usesNoise |= (dmux->decode[i][j] == NOISE);
+         }
+      }
+   }
 
-    buffer += sprintf(buffer, "%s", _frag_header);
-    if (prog->usesT0)
-        buffer += sprintf(buffer, "lowp vec4 lTex0 = texture2D(uTex0, vTexCoord0); \n");
-    if (prog->usesT1)
-        buffer += sprintf(buffer, "lowp vec4 lTex1 = texture2D(uTex1, vTexCoord1); \n");
-    if (prog->usesNoise)
-        buffer += sprintf(buffer, "lowp vec4 lNoise = texture2D(uNoise, (1.0 / 1024.0) * gl_FragCoord.st); \n");
+   buffer += sprintf(buffer, "%s", _frag_header);
+   if (prog->usesT0)
+      buffer += sprintf(buffer, "lowp vec4 lTex0 = texture2D(uTex0, vTexCoord0); \n");
+   if (prog->usesT1)
+      buffer += sprintf(buffer, "lowp vec4 lTex1 = texture2D(uTex1, vTexCoord1); \n");
+   if (prog->usesNoise)
+      buffer += sprintf(buffer, "lowp vec4 lNoise = texture2D(uNoise, (1.0 / 1024.0) * gl_FragCoord.st); \n");
 
-    for(i = 0; i < ((flags & SC_2CYCLE) ? 2 : 1); i++)
-    {
-        if ((dmux->flags&(1<<(i*2))) == 0)
-        {
-            buffer += sprintf(buffer, "lFragColor.rgb = (%s - %s) * %s + %s; \n",
-                _color_param_str(dmux->decode[i*2][0]),
-                _color_param_str(dmux->decode[i*2][1]),
-                _color_param_str(dmux->decode[i*2][2]),
-                _color_param_str(dmux->decode[i*2][3])
-                );
-        }
+   for(i = 0; i < ((flags & SC_2CYCLE) ? 2 : 1); i++)
+   {
+      if ((dmux->flags&(1<<(i*2))) == 0)
+      {
+         buffer += sprintf(buffer, "lFragColor.rgb = (%s - %s) * %s + %s; \n",
+               _color_param_str(dmux->decode[i*2][0]),
+               _color_param_str(dmux->decode[i*2][1]),
+               _color_param_str(dmux->decode[i*2][2]),
+               _color_param_str(dmux->decode[i*2][3])
+               );
+      }
 
-        if ((dmux->flags&(1<<(i*2+1))) == 0)
-        {
-            buffer += sprintf(buffer, "lFragColor.a = (%s - %s) * %s + %s; \n",
-                _alpha_param_str(dmux->decode[i*2+1][0]),
-                _alpha_param_str(dmux->decode[i*2+1][1]),
-                _alpha_param_str(dmux->decode[i*2+1][2]),
-                _alpha_param_str(dmux->decode[i*2+1][3])
-                );
-        }
-        buffer += sprintf(buffer, "gl_FragColor = lFragColor; \n");
-    };
+      if ((dmux->flags&(1<<(i*2+1))) == 0)
+      {
+         buffer += sprintf(buffer, "lFragColor.a = (%s - %s) * %s + %s; \n",
+               _alpha_param_str(dmux->decode[i*2+1][0]),
+               _alpha_param_str(dmux->decode[i*2+1][1]),
+               _alpha_param_str(dmux->decode[i*2+1][2]),
+               _alpha_param_str(dmux->decode[i*2+1][3])
+               );
+      }
+      buffer += sprintf(buffer, "gl_FragColor = lFragColor; \n");
+   };
 
-    //fog
-    if (flags&SC_FOGENABLED)
-    {
-        buffer += sprintf(buffer, "gl_FragColor = mix(gl_FragColor, uFogColor, vFactor); \n");
-    }
+   //fog
+   if (flags&SC_FOGENABLED)
+   {
+      buffer += sprintf(buffer, "gl_FragColor = mix(gl_FragColor, uFogColor, vFactor); \n");
+   }
 
-    //alpha function
-    if (flags&SC_ALPHAENABLED)
-    {
-        if (flags&SC_ALPHAGREATER)
-            buffer += sprintf(buffer, "if (gl_FragColor.a < uAlphaRef) %s;\n", config.hackAlpha ? "gl_FragColor.a = 0" : "discard");
-        else
-            buffer += sprintf(buffer, "if (gl_FragColor.a <= uAlphaRef) %s;\n", config.hackAlpha ? "gl_FragColor.a = 0" : "discard");
-    }
-    buffer += sprintf(buffer, "} \n\n");
-    *buffer = 0;
+   //alpha function
+   if (flags&SC_ALPHAENABLED)
+   {
+      if (flags&SC_ALPHAGREATER)
+         buffer += sprintf(buffer, "if (gl_FragColor.a < uAlphaRef) %s;\n", config.hackAlpha ? "gl_FragColor.a = 0" : "discard");
+      else
+         buffer += sprintf(buffer, "if (gl_FragColor.a <= uAlphaRef) %s;\n", config.hackAlpha ? "gl_FragColor.a = 0" : "discard");
+   }
+   buffer += sprintf(buffer, "} \n\n");
+   *buffer = 0;
 
-    prog->program = glCreateProgram();
+   prog->program = glCreateProgram();
 
-    //Compile:
-    char *src[1];
-    src[0] = frag;
-    GLint len[1];
-    len[0] = min(4096, strlen(frag));
-    prog->fragment = glCreateShader(GL_FRAGMENT_SHADER);
+   //Compile:
+   char *src[1];
+   src[0] = frag;
+   GLint len[1];
+   len[0] = min(4096, strlen(frag));
+   prog->fragment = glCreateShader(GL_FRAGMENT_SHADER);
 
-    glShaderSource(prog->fragment, 1, (const char**) src, len);
-    glCompileShader(prog->fragment);
+   glShaderSource(prog->fragment, 1, (const char**) src, len);
+   glCompileShader(prog->fragment);
 
 
-    glGetShaderiv(prog->fragment, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        _glcompiler_error(prog->fragment);
-    }
+   glGetShaderiv(prog->fragment, GL_COMPILE_STATUS, &success);
+   if (!success)
+      _glcompiler_error(prog->fragment);
 
-    //link
-    _locate_attributes(prog);
-    glAttachShader(prog->program, prog->fragment);
-    glAttachShader(prog->program, prog->vertex);
-    glLinkProgram(prog->program);
-    glGetProgramiv(prog->program, GL_LINK_STATUS, &success);
-    if (!success)
-    {
-        _gllinker_error(prog->program);
-    }
+   //link
+   _locate_attributes(prog);
+   glAttachShader(prog->program, prog->fragment);
+   glAttachShader(prog->program, prog->vertex);
+   glLinkProgram(prog->program);
+   glGetProgramiv(prog->program, GL_LINK_STATUS, &success);
+   if (!success)
+      _gllinker_error(prog->program);
 
-    //remove fragment shader:
-    glDeleteShader(prog->fragment);
+   //remove fragment shader:
+   glDeleteShader(prog->fragment);
 
-    _locate_uniforms(prog);
-    return prog;
+   _locate_uniforms(prog);
+   return prog;
 }
-

@@ -102,12 +102,12 @@ void GBI_Unknown( u32 w0, u32 w1 )
 {
 }
 
-static int MicrocodeDialog()
+static int MicrocodeDialog(void)
 {
     return 0;
 }
 
-MicrocodeInfo *GBI_AddMicrocode()
+MicrocodeInfo *GBI_AddMicrocode(void)
 {
     MicrocodeInfo *newtop = (MicrocodeInfo*)malloc( sizeof( MicrocodeInfo ) );
 
@@ -128,210 +128,205 @@ MicrocodeInfo *GBI_AddMicrocode()
     return newtop;
 }
 
-void GBI_Init()
+void GBI_Init(void)
 {
    u32 i;
-    GBI.top = NULL;
-    GBI.bottom = NULL;
-    GBI.current = NULL;
-    GBI.numMicrocodes = 0;
+   GBI.top = NULL;
+   GBI.bottom = NULL;
+   GBI.current = NULL;
+   GBI.numMicrocodes = 0;
 
-    for (i = 0; i <= 0xFF; i++)
-        GBI.cmd[i] = GBI_Unknown;
+   for (i = 0; i <= 0xFF; i++)
+      GBI.cmd[i] = GBI_Unknown;
 }
 
-void GBI_Destroy()
+void GBI_Destroy(void)
 {
-    while (GBI.bottom)
-    {
-        MicrocodeInfo *newBottom = GBI.bottom->higher;
+   while (GBI.bottom)
+   {
+      MicrocodeInfo *newBottom = GBI.bottom->higher;
 
-        if (GBI.bottom == GBI.top)
-            GBI.top = NULL;
+      if (GBI.bottom == GBI.top)
+         GBI.top = NULL;
 
-        free( GBI.bottom );
+      free( GBI.bottom );
 
-        GBI.bottom = newBottom;
+      GBI.bottom = newBottom;
 
-        if (GBI.bottom)
-            GBI.bottom->lower = NULL;
+      if (GBI.bottom)
+         GBI.bottom->lower = NULL;
 
-        GBI.numMicrocodes--;
-    }
+      GBI.numMicrocodes--;
+   }
 }
 
 MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 {
    int i;
-    MicrocodeInfo *current;
+   MicrocodeInfo *current;
 
-    for (i = 0; i < GBI.numMicrocodes; i++)
-    {
-        current = GBI.top;
+   for (i = 0; i < GBI.numMicrocodes; i++)
+   {
+      current = GBI.top;
 
-        while (current)
-        {
-            if ((current->address == uc_start) && (current->dataAddress == uc_dstart) && (current->dataSize == uc_dsize))
-                return current;
-
-            current = current->lower;
-        }
-    }
-
-    current = GBI_AddMicrocode();
-
-    current->address = uc_start;
-    current->dataAddress = uc_dstart;
-    current->dataSize = uc_dsize;
-    current->NoN = FALSE;
-    current->type = NONE;
-
-    // See if we can identify it by CRC
-    uc_crc = CRC_Calculate( 0xFFFFFFFF, &RDRAM[uc_start & 0x1FFFFFFF], 4096);
-    LOG(LOG_MINIMAL, "UCODE CRC=0x%x\n", uc_crc);
-
-    for (i = 0; i < sizeof( specialMicrocodes ) / sizeof( SpecialMicrocodeInfo ); i++)
-    {
-        if (uc_crc == specialMicrocodes[i].crc)
-        {
-            current->type = specialMicrocodes[i].type;
+      while (current)
+      {
+         if ((current->address == uc_start) && (current->dataAddress == uc_dstart) && (current->dataSize == uc_dsize))
             return current;
-        }
-    }
 
-    // See if we can identify it by text
-    char uc_data[2048];
-    UnswapCopy( &RDRAM[uc_dstart & 0x1FFFFFFF], uc_data, 2048 );
-    strcpy( uc_str, "Not Found" );
+         current = current->lower;
+      }
+   }
 
-    for (i = 0; i < 2048; i++)
-    {
-        if ((uc_data[i] == 'R') && (uc_data[i+1] == 'S') && (uc_data[i+2] == 'P'))
-        {
-            u32 j = 0;
-            while (uc_data[i+j] > 0x0A)
+   current = GBI_AddMicrocode();
+
+   current->address = uc_start;
+   current->dataAddress = uc_dstart;
+   current->dataSize = uc_dsize;
+   current->NoN = FALSE;
+   current->type = NONE;
+
+   // See if we can identify it by CRC
+   uc_crc = CRC_Calculate( 0xFFFFFFFF, &RDRAM[uc_start & 0x1FFFFFFF], 4096);
+   LOG(LOG_MINIMAL, "UCODE CRC=0x%x\n", uc_crc);
+
+   for (i = 0; i < sizeof( specialMicrocodes ) / sizeof( SpecialMicrocodeInfo ); i++)
+   {
+      if (uc_crc == specialMicrocodes[i].crc)
+      {
+         current->type = specialMicrocodes[i].type;
+         return current;
+      }
+   }
+
+   // See if we can identify it by text
+   char uc_data[2048];
+   UnswapCopy( &RDRAM[uc_dstart & 0x1FFFFFFF], uc_data, 2048 );
+   strcpy( uc_str, "Not Found" );
+
+   for (i = 0; i < 2048; i++)
+   {
+      if ((uc_data[i] == 'R') && (uc_data[i+1] == 'S') && (uc_data[i+2] == 'P'))
+      {
+         u32 j = 0;
+         while (uc_data[i+j] > 0x0A)
+         {
+            uc_str[j] = uc_data[i+j];
+            j++;
+         }
+
+         uc_str[j] = 0x00;
+
+         int type = NONE;
+
+         if (strncmp( &uc_str[4], "SW", 2 ) == 0)
+         {
+            type = F3D;
+         }
+         else if (strncmp( &uc_str[4], "Gfx", 3 ) == 0)
+         {
+            current->NoN = (strncmp( &uc_str[20], ".NoN", 4 ) == 0);
+
+            if (strncmp( &uc_str[14], "F3D", 3 ) == 0)
             {
-                uc_str[j] = uc_data[i+j];
-                j++;
+               if (uc_str[28] == '1')
+                  type = F3DEX;
+               else if (uc_str[31] == '2')
+                  type = F3DEX2;
             }
-
-            uc_str[j] = 0x00;
-
-            int type = NONE;
-
-            if (strncmp( &uc_str[4], "SW", 2 ) == 0)
+            else if (strncmp( &uc_str[14], "L3D", 3 ) == 0)
             {
-                type = F3D;
+               if (uc_str[28] == '1')
+                  type = L3DEX;
+               else if (uc_str[31] == '2')
+                  type = L3DEX2;
             }
-            else if (strncmp( &uc_str[4], "Gfx", 3 ) == 0)
+            else if (strncmp( &uc_str[14], "S2D", 3 ) == 0)
             {
-                current->NoN = (strncmp( &uc_str[20], ".NoN", 4 ) == 0);
-
-                if (strncmp( &uc_str[14], "F3D", 3 ) == 0)
-                {
-                    if (uc_str[28] == '1')
-                        type = F3DEX;
-                    else if (uc_str[31] == '2')
-                        type = F3DEX2;
-                }
-                else if (strncmp( &uc_str[14], "L3D", 3 ) == 0)
-                {
-                    if (uc_str[28] == '1')
-                        type = L3DEX;
-                    else if (uc_str[31] == '2')
-                        type = L3DEX2;
-                }
-                else if (strncmp( &uc_str[14], "S2D", 3 ) == 0)
-                {
-                    if (uc_str[28] == '1')
-                        type = S2DEX;
-                    else if (uc_str[31] == '2')
-                        type = S2DEX2;
-                }
+               if (uc_str[28] == '1')
+                  type = S2DEX;
+               else if (uc_str[31] == '2')
+                  type = S2DEX2;
             }
+         }
 
-            LOG(LOG_VERBOSE, "UCODE STRING=%s\n", uc_str);
+         LOG(LOG_VERBOSE, "UCODE STRING=%s\n", uc_str);
 
-            if (type != NONE)
-            {
-                current->type = type;
-                return current;
-            }
-
-            break;
-        }
-    }
-
-
-    for (i = 0; i < sizeof( specialMicrocodes ) / sizeof( SpecialMicrocodeInfo ); i++)
-    {
-        if (strcmp( uc_str, specialMicrocodes[i].text ) == 0)
-        {
-            current->type = specialMicrocodes[i].type;
+         if (type != NONE)
+         {
+            current->type = type;
             return current;
-        }
-    }
+         }
 
-    // Let the user choose the microcode
-    LOG(LOG_ERROR, "[gles2n64]: Warning - unknown ucode!!!\n");
-    if(last_good_ucode != (u32)-1)
-    {
-        current->type=last_good_ucode;
-    }
-    else
-    {
-        current->type = MicrocodeDialog();
-    }
-    return current;
+         break;
+      }
+   }
+
+
+   for (i = 0; i < sizeof( specialMicrocodes ) / sizeof( SpecialMicrocodeInfo ); i++)
+   {
+      if (strcmp( uc_str, specialMicrocodes[i].text ) == 0)
+      {
+         current->type = specialMicrocodes[i].type;
+         return current;
+      }
+   }
+
+   // Let the user choose the microcode
+   LOG(LOG_ERROR, "[gles2n64]: Warning - unknown ucode!!!\n");
+   if(last_good_ucode != (u32)-1)
+      current->type=last_good_ucode;
+   else
+      current->type = MicrocodeDialog();
+   return current;
 }
 
 void GBI_MakeCurrent( MicrocodeInfo *current )
 {
    int i;
-    if (current != GBI.top)
-    {
-        if (current == GBI.bottom)
-        {
-            GBI.bottom = current->higher;
-            GBI.bottom->lower = NULL;
-        }
-        else
-        {
-            current->higher->lower = current->lower;
-            current->lower->higher = current->higher;
-        }
+   if (current != GBI.top)
+   {
+      if (current == GBI.bottom)
+      {
+         GBI.bottom = current->higher;
+         GBI.bottom->lower = NULL;
+      }
+      else
+      {
+         current->higher->lower = current->lower;
+         current->lower->higher = current->higher;
+      }
 
-        current->higher = NULL;
-        current->lower = GBI.top;
-        GBI.top->higher = current;
-        GBI.top = current;
-    }
+      current->higher = NULL;
+      current->lower = GBI.top;
+      GBI.top->higher = current;
+      GBI.top = current;
+   }
 
-    if (!GBI.current || (GBI.current->type != current->type))
-    {
+   if (!GBI.current || (GBI.current->type != current->type))
+   {
 
-        for (i = 0; i <= 0xFF; i++)
-            GBI.cmd[i] = GBI_Unknown;
+      for (i = 0; i <= 0xFF; i++)
+         GBI.cmd[i] = GBI_Unknown;
 
-        RDP_Init();
-        switch (current->type)
-        {
-            case F3D:       F3D_Init();     break;
-            case F3DEX:     F3DEX_Init();   break;
-            case F3DEX2:    F3DEX2_Init();  break;
-            case L3D:       L3D_Init();     break;
-            case L3DEX:     L3DEX_Init();   break;
-            case L3DEX2:    L3DEX2_Init();  break;
-            case S2DEX:     S2DEX_Init();   break;
-            case S2DEX2:    S2DEX2_Init();  break;
-            case F3DDKR:    F3DDKR_Init();  break;
-            case F3DWRUS:   F3DWRUS_Init(); break;
-            case F3DPD:     F3DPD_Init();   break;
-            case F3DCBFD:   F3DCBFD_Init(); break;
-        }
-    }
+      RDP_Init();
+      switch (current->type)
+      {
+         case F3D:       F3D_Init();     break;
+         case F3DEX:     F3DEX_Init();   break;
+         case F3DEX2:    F3DEX2_Init();  break;
+         case L3D:       L3D_Init();     break;
+         case L3DEX:     L3DEX_Init();   break;
+         case L3DEX2:    L3DEX2_Init();  break;
+         case S2DEX:     S2DEX_Init();   break;
+         case S2DEX2:    S2DEX2_Init();  break;
+         case F3DDKR:    F3DDKR_Init();  break;
+         case F3DWRUS:   F3DWRUS_Init(); break;
+         case F3DPD:     F3DPD_Init();   break;
+         case F3DCBFD:   F3DCBFD_Init(); break;
+      }
+   }
 
 
-    GBI.current = current;
+   GBI.current = current;
 }
-

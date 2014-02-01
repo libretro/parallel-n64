@@ -7,7 +7,7 @@ extern "C" {
 
 #define F3DPD_VTXCOLORBASE      0x07
 
-void F3DPD_Init();
+void F3DPD_Init(void);
 
 #ifdef __cplusplus
 }

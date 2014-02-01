@@ -214,8 +214,8 @@ extern ShaderProgram    *scProgramCurrent;
 extern int              scProgramChanged;
 extern int              scProgramCount;
 
-extern void ShaderCombiner_Init();
-extern void ShaderCombiner_Destroy();
+extern void ShaderCombiner_Init(void);
+extern void ShaderCombiner_Destroy(void);
 extern void ShaderCombiner_DeleteProgram(ShaderProgram *prog);
 extern void ShaderCombiner_Set(u64 mux, int flags);
 extern ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags);

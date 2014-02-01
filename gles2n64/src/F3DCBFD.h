@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void F3DCBFD_Init();
+void F3DCBFD_Init(void);
 
 #ifdef __cplusplus
 }

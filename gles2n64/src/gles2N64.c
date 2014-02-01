@@ -59,7 +59,6 @@ void        (*renderCallback)() = NULL;
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
         void *Context, void (*DebugCallback)(void *, int, const char *))
 {
-
 #ifdef __NEON_OPT
    unsigned cpu = 0;
 
@@ -72,38 +71,38 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
       gSPInitNeon();
    }
 #endif
-    return M64ERR_SUCCESS;
+   return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL PluginShutdown(void)
 {
-    OGL_Stop();  // paulscode, OGL_Stop missing from Yongzh's code
-    return M64ERR_SUCCESS; // __LIBRETRO__: Fix warning
+   OGL_Stop();  // paulscode, OGL_Stop missing from Yongzh's code
+   return M64ERR_SUCCESS; // __LIBRETRO__: Fix warning
 }
 
 EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType,
         int *PluginVersion, int *APIVersion, const char **PluginNamePtr,
         int *Capabilities)
 {
-    /* set version info */
-    if (PluginType != NULL)
-        *PluginType = M64PLUGIN_GFX;
+   /* set version info */
+   if (PluginType != NULL)
+      *PluginType = M64PLUGIN_GFX;
 
-    if (PluginVersion != NULL)
-        *PluginVersion = PLUGIN_VERSION;
+   if (PluginVersion != NULL)
+      *PluginVersion = PLUGIN_VERSION;
 
-    if (APIVersion != NULL)
-        *APIVersion = PLUGIN_API_VERSION;
-    
-    if (PluginNamePtr != NULL)
-        *PluginNamePtr = PLUGIN_NAME;
+   if (APIVersion != NULL)
+      *APIVersion = PLUGIN_API_VERSION;
 
-    if (Capabilities != NULL)
-    {
-        *Capabilities = 0;
-    }
-                    
-    return M64ERR_SUCCESS;
+   if (PluginNamePtr != NULL)
+      *PluginNamePtr = PLUGIN_NAME;
+
+   if (Capabilities != NULL)
+   {
+      *Capabilities = 0;
+   }
+
+   return M64ERR_SUCCESS;
 }
 
 EXPORT void CALL ChangeWindow (void)
@@ -195,17 +194,18 @@ EXPORT void CALL ShowCFB (void)
 
 EXPORT void CALL UpdateScreen (void)
 {
-    //has there been any display lists since last update
-    if (OGL.frame_prevdl == OGL.frame_dl) return;
+   //has there been any display lists since last update
+   if (OGL.frame_prevdl == OGL.frame_dl)
+      return;
 
-    OGL.frame_prevdl = OGL.frame_dl;
+   OGL.frame_prevdl = OGL.frame_dl;
 
-    if (OGL.mustRenderDlist)
-    {
-        OGL.screenUpdate=true;
-        VI_UpdateScreen();
-        OGL.mustRenderDlist = false;
-    }
+   if (OGL.mustRenderDlist)
+   {
+      OGL.screenUpdate=true;
+      VI_UpdateScreen();
+      OGL.mustRenderDlist = false;
+   }
 }
 
 EXPORT void CALL ViStatusChanged (void)
@@ -286,27 +286,27 @@ EXPORT void CALL FBGetFrameBufferInfo(void *p)
 // paulscode, API changed this to "ReadScreen2" in Mupen64Plus 1.99.4
 EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
 {
-/* TODO: 'int front' was added in 1.99.4.  What to do with this here? */
-    OGL_ReadScreen(dest, width, height);
+   /* TODO: 'int front' was added in 1.99.4.  What to do with this here? */
+   OGL_ReadScreen(dest, width, height);
 }
 
 EXPORT void CALL SetRenderingCallback(void (*callback)())
 {
-    renderCallback = callback;
+   renderCallback = callback;
 }
 
-EXPORT void CALL StartGL()
+EXPORT void CALL StartGL(void)
 {
-    OGL_Start();
+   OGL_Start();
 }
 
-EXPORT void CALL StopGL()
+EXPORT void CALL StopGL(void)
 {
-    OGL_Stop();
+   OGL_Stop();
 }
 
 #ifdef __LIBRETRO__
-void gles2n64_reset()
+void gles2n64_reset(void)
 {
    // HACK: Check for leaks!
    OGL_Stop();

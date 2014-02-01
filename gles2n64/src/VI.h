@@ -24,8 +24,8 @@ typedef struct
 
 extern VIInfo VI;
 
-void VI_UpdateSize();
-void VI_UpdateScreen();
+void VI_UpdateSize(void);
+void VI_UpdateScreen(void);
 
 #ifdef __cplusplus
 }

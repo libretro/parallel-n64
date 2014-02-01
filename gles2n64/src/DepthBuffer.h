@@ -26,8 +26,8 @@ typedef struct
 
 extern DepthBufferInfo depthBuffer;
 
-void DepthBuffer_Init();
-void DepthBuffer_Destroy();
+void DepthBuffer_Init(void);
+void DepthBuffer_Destroy(void);
 void DepthBuffer_SetBuffer( u32 address );
 void DepthBuffer_RemoveBuffer( u32 address );
 DepthBuffer *DepthBuffer_FindBuffer( u32 address );

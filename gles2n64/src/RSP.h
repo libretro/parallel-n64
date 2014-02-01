@@ -26,8 +26,8 @@ extern RSPInfo RSP;
 
 #define RSP_SegmentToPhysical( segaddr ) ((gSP.segment[(segaddr >> 24) & 0x0F] + (segaddr & 0x00FFFFFF)) & 0x00FFFFFF)
 
-void RSP_Init();
-void RSP_ProcessDList();
+void RSP_Init(void);
+void RSP_ProcessDList(void);
 void RSP_LoadMatrix( f32 mtx[4][4], u32 address );
 
 #ifdef __cplusplus

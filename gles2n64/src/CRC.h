@@ -10,7 +10,7 @@ extern "C" {
 #define CRCTable gln64CRCTable
 #endif
 
-void CRC_BuildTable();
+void CRC_BuildTable(void);
 
 u32 CRC_Calculate( u32 crc, void *buffer, u32 count );
 u32 CRC_CalculatePalette( u32 crc, void *buffer, u32 count );

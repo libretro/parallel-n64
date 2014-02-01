@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void S2DEX2_Init();
+void S2DEX2_Init(void);
 
 #define S2DEX2_OBJ_RECTANGLE_R  0xDA
 #define S2DEX2_OBJ_MOVEMEM      0xDC

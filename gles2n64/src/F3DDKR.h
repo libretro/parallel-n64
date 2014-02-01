@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-void F3DDKR_Init();
+void F3DDKR_Init(void);
 
 #ifdef __cplusplus
 }

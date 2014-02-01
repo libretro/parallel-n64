@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #define F3DWRUS_TRI2        0xB1
-void F3DWRUS_Init();
+void F3DWRUS_Init(void);
 
 #ifdef __cplusplus
 }
