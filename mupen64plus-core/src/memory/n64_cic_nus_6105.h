@@ -91,8 +91,10 @@
 #ifndef N64_CIC_NUS_6105_H
 #define N64_CIC_NUS_6105_H
 
+#include <stdint.h>
+
 #define CHL_LEN 0x20
 
-void n64_cic_nus_6105(char chl[], char rsp[], int len);
+void n64_cic_nus_6105(int8_t chl[], int8_t rsp[], int len);
 
 #endif /* N64_CIC_NUS_6105_H */

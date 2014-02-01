@@ -31,6 +31,7 @@
 #include "main.h"
 #include "rom.h"
 #include "list.h"
+#include "eventloop.h"
 
 #include <stdlib.h>
 #include <stdio.h>

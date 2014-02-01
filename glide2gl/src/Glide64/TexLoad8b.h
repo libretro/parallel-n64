@@ -252,7 +252,7 @@ static INLINE void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height,
          uint32_t col1 = *v6++;
          uint32_t col2 = *v6++;
          *v7++ = ((col1 << 4) & 0xF0F0F0F0) | ((col1 >> 4) & 0xF0F0F0F);
-         *v7++ = (col2 << 4) & 0xF0F0F0F0 | ((col2 >> 4) & 0xF0F0F0F);
+         *v7++ = ((col2 << 4) & 0xF0F0F0F0) | ((col2 >> 4) & 0xF0F0F0F);
       }
       while (--v9);
       if ( v21 == 1 )

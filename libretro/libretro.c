@@ -162,16 +162,16 @@ static void core_settings_autoselect_rsp_plugin(void)
           || (sl(ROM_HEADER.CRC1) == 0x9B500E8E   && sl(ROM_HEADER.CRC2) == 0xE90550B3) /* Resident Evil 2 (E) (M2) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xAA18B1A5   && sl(ROM_HEADER.CRC2) == 0x7DB6AEB)  /* Resident Evil 2 (U) [!] */
 #ifndef GLES
-          || (strcmp(ROM_HEADER.Name, "GOLDENEYE") == 0)
-          || (strcmp(ROM_HEADER.Name, "Pilot Wings64") == 0)
+          || (strcmp(ROM_HEADER.Name, (const char*)"GOLDENEYE") == 0)
+          || (strcmp(ROM_HEADER.Name, (const char*)"Pilot Wings64") == 0)
 #endif
-          || (strcmp(ROM_HEADER.Name, "GAUNTLET LEGENDS") == 0)
+          || (strcmp(ROM_HEADER.Name, (const char*)"GAUNTLET LEGENDS") == 0)
       )
    {
       rsp_plugin = RSP_CXD4;
    }
 
-   if (strcmp(ROM_HEADER.Name, "CONKER BFD") == 0)
+   if (strcmp(ROM_HEADER.Name, (const char*)"CONKER BFD") == 0)
       rsp_plugin = RSP_HLE;
 }
 

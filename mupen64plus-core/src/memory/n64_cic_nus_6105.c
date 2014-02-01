@@ -90,7 +90,7 @@
 
 #include "n64_cic_nus_6105.h"
 
-void n64_cic_nus_6105(char chl[], char rsp[], int len)
+void n64_cic_nus_6105(int8_t chl[], int8_t rsp[], int len)
 {
     static char lut0[0x10] = {
         0x4, 0x7, 0xA, 0x7, 0xE, 0x5, 0xE, 0x1, 
