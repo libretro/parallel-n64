@@ -759,7 +759,7 @@ void TexCache(void)
    {
       for (i = 0; i < NUM_TMU; i++)
       {
-         int tmu;
+         int tmu, tile, filter;
          if (i==0)
             tmu=tmu_0;
          else if (i==1)
@@ -768,18 +768,13 @@ void TexCache(void)
          if (tmu >= NUM_TMU)
             continue;
 
-         int tile = rdp.cur_tile + i;
+         tile = rdp.cur_tile + i;
 
          if (settings.filtering == 0)
-         {
-			int filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_3POINT_LINEAR;
-            grTexFilterMode (tmu, filter, filter);
-         }
+            filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_3POINT_LINEAR;
          else
-         {
-			int filter = (settings.filtering==1)?GR_TEXTUREFILTER_3POINT_LINEAR:(settings.filtering==2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_BILINEAR;
-            grTexFilterMode (tmu, filter, filter);
-         }
+            filter = (settings.filtering==1)?GR_TEXTUREFILTER_3POINT_LINEAR:(settings.filtering==2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_BILINEAR;
+         grTexFilterMode (tmu, filter, filter);
 
          if (rdp.cur_cache[i])
          {
