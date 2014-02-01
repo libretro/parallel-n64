@@ -663,7 +663,10 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
    update_scissor();
 
    if (settings.decrease_fillrect_edge && rdp.cycle_mode == G_CYC_1CYCLE)
-      lr_x--; lr_y--;
+   {
+      lr_x--;
+      lr_y--;
+   }
    //FRDP("fillrect (%d,%d) -> (%d,%d), cycle mode: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, rdp.cycle_mode, rdp.tri_n, rdp.tri_n+1);
    //FRDP("scissor (%d,%d) -> (%d,%d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
 
