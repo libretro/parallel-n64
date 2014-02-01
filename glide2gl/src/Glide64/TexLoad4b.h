@@ -41,31 +41,13 @@
 
 static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, uint16_t line, int ext, uint16_t *pal)
 {
-   uint8_t *v7;
-   uint8_t *v8;
-   int v9;
-   int v10;
-   int v11;
-   uint32_t v12;
-   uint8_t *v13;
-   uint32_t v14;
-   uint32_t *v15;
-   uint32_t v16;
-   uint8_t *v17;
-   uint32_t *v18;
-   int v19;
-   int v20;
-   uint32_t v21;
-   uint32_t v22;
-   uint32_t *v23;
-   uint32_t v24;
-   int v25;
-   int v26;
-   uint32_t nbits;
+   uint8_t *v7, *v8, *v13, *v17;
+   int32_t v9, v10, v11, v19, v20, v25, v26;
+   uint32_t v12, v14, *v15, v16, *v18, v21, v22,*v23, v24, nbits;
 
    nbits = sizeof(uint16_t) * 8;
-   v7 = src;
-   v8 = dst;
+   v7 = (uint8_t*)src;
+   v8 = (uint8_t*)dst;
    v9 = height;
    do
    {
@@ -114,12 +96,12 @@ static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
          *v15 = v14;
          v8 = (uint8_t *)(v15 + 1);
          v10 = v11 - 1;
-      }
-      while ( v11 != 1 );
+      }while ( v11 != 1 );
+
       if ( v25 == 1 )
          break;
       v26 = v25 - 1;
-      v17 = &src[(line + (uintptr_t)v7 - (uintptr_t)src) & 0x7FF];
+      v17 = (uint8_t*)(&src[(line + (uintptr_t)v7 - (uintptr_t)src) & 0x7FF]);
       v18 = (uint32_t *)&v8[ext];
       v19 = wid_64;
       do
@@ -144,7 +126,7 @@ static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
          ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 3) & 0x1E)), 1, nbits);
          *v23++ = v22;
          v24 = bswap32(*(uint32_t *)v17);
-         v17 = &src[((uintptr_t)v17 + 8 - (uintptr_t)src) & 0x7FF];
+         v17 = (uint8_t*)(&src[((uintptr_t)v17 + 8 - (uintptr_t)src) & 0x7FF]);
          ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v24 >> 23) & 0x1E)), 1, nbits);
          v22 <<= 16;
          ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v24 >> 27) & 0x1E)), 1, nbits);
@@ -167,37 +149,18 @@ static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
       v7 = &src[(line + (uintptr_t)v17 - (uintptr_t)src) & 0x7FF];
       v8 = (uint8_t *)((char *)v18 + ext);
       v9 = v26 - 1;
-   }
-   while ( v26 != 1 );
+   }while ( v26 != 1 );
 }
 
 static INLINE void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
 {
    uint8_t *v7;
-   uint32_t *v8;
-   int v9;
-   int v10;
-   int v11;
-   uint32_t v12;
-   uint32_t *v13;
-   uint32_t v14;
-   uint32_t *v15;
-   uint32_t v16;
-   uint8_t *v17;
-   uint32_t *v18;
-   int v19;
-   int v20;
-   uint32_t v21;
-   uint32_t v22;
-   uint32_t *v23;
-   uint32_t v24;
-   int v25;
-   int v26;
-   uint32_t nbits;
+   uint32_t *v8, v12, *v13, v14, *v15, v16, *v17, *v18, v21, v22, *v23, v24, nbits;
+   int32_t v9, v10, v11, v19, v20, v25, v26;
 
    nbits = sizeof(uint16_t) * 8;
 
-   v7 = src;
+   v7 = (uint8_t*)src;
    v8 = (uint32_t *)dst;
    v9 = height;
    do
@@ -246,12 +209,12 @@ static INLINE void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int heigh
          *v15 = v14;
          v8 = v15 + 1;
          v10 = v11 - 1;
-      }
-      while ( v11 != 1 );
+      }while ( v11 != 1 );
+
       if ( v25 == 1 )
          break;
       v26 = v25 - 1;
-      v17 = &src[(line + (uintptr_t)v7 - (uintptr_t)src) & 0x7FF];
+      v17 = (uint32_t*)(&src[(line + (uintptr_t)v7 - (uintptr_t)src) & 0x7FF]);
       v18 = (uint32_t *)((char *)v8 + ext);
       v19 = wid_64;
       do
@@ -276,7 +239,7 @@ static INLINE void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int heigh
          ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 3) & 0x1E)), 8, nbits);
          *v23++ = v22;
          v24 = bswap32(*(uint32_t *)v17);
-         v17 = &src[((uintptr_t)v17 + 8 - (uintptr_t)src) & 0x7FF];
+         v17 = (uint32_t*)(&src[((uintptr_t)v17 + 8 - (uintptr_t)src) & 0x7FF]);
          ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v24 >> 23) & 0x1E)), 8, nbits);
          v22 <<= 16;
          ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v24 >> 27) & 0x1E)), 8, nbits);
@@ -295,70 +258,18 @@ static INLINE void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int heigh
          *v23 = v22;
          v18 = v23 + 1;
          v19 = v20 - 1;
-      }
-      while ( v20 != 1 );
+      }while ( v20 != 1 );
       v7 = &src[(line + (uintptr_t)v17 - (uintptr_t)src) & 0x7FF];
       v8 = (uint32_t *)((char *)v18 + ext);
       v9 = v26 - 1;
-   }
-   while ( v26 != 1 );
+   }while ( v26 != 1 );
 }
 
 static INLINE void load4bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-   uint32_t *v6;
-   uint32_t *v7;
-   int v8;
-   int v9;
-   int v10;
-   uint32_t v11;
-   uint32_t *v12;
-   uint32_t v13;
-   uint32_t v14;
-   uint32_t v15;
-   uint32_t *v16;
-   uint32_t v17;
-   uint32_t v18;
-   uint32_t v19;
-   uint32_t v20;
-   uint32_t v21;
-   uint32_t v22;
-   uint32_t v23;
-   uint32_t v24;
-   uint32_t v25;
-   uint32_t v26;
-   uint32_t v27;
-   uint32_t v28;
-   uint32_t v29;
-   uint32_t v30;
-   uint32_t v31;
-   uint32_t v32;
-   uint32_t *v33;
-   uint32_t *v34;
-   int v35;
-   int v36;
-   uint32_t v37;
-   uint32_t v38;
-   uint32_t v39;
-   uint32_t *v40;
-   uint32_t v41;
-   uint32_t v42;
-   uint32_t v43;
-   uint32_t v44;
-   uint32_t v45;
-   uint32_t v46;
-   uint32_t v47;
-   uint32_t v48;
-   uint32_t v49;
-   uint32_t v50;
-   uint32_t v51;
-   uint32_t v52;
-   uint32_t v53;
-   uint32_t v54;
-   uint32_t v55;
-   uint32_t v56;
-   int v57;
-   int v58;
+   uint32_t *v6, *v7, v11, *v12, v13, v14, v15, *v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31, v32,
+            *v33, *v34, v37, v38, v39, *v40, v41, v42, v43, v44, v45, v46, v47, v48, v49, v50, v51, v52, v53, v54, v55, v56;
+   int32_t v8, v9, v10, v35, v36, v57, v58;
 
    v6 = (uint32_t *)src;
    v7 = (uint32_t *)dst;
@@ -411,8 +322,8 @@ static INLINE void load4bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, 
          *v16 = ((((v24 << 24) & 0xE000000) >> 3) & 0x1000000) | ((v24 << 24) & 0xE000000) | (8 * ((v24 << 28) & 0x10000000)) | (4 * ((v24 << 28) & 0x10000000)) | (2 * ((v24 << 28) & 0x10000000)) | ((v24 << 28) & 0x10000000) | (v31 & 0x10000) | v32;
          v7 = v16 + 1;
          v9 = v10 - 1;
-      }
-      while ( v10 != 1 );
+      }while ( v10 != 1 );
+
       if ( v57 == 1 )
          break;
       v58 = v57 - 1;
@@ -460,50 +371,22 @@ static INLINE void load4bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, 
          *v40 = ((((v48 << 24) & 0xE000000) >> 3) & 0x1000000) | ((v48 << 24) & 0xE000000) | (8 * ((v48 << 28) & 0x10000000)) | (4 * ((v48 << 28) & 0x10000000)) | (2 * ((v48 << 28) & 0x10000000)) | ((v48 << 28) & 0x10000000) | (v55 & 0x10000) | v56;
          v34 = v40 + 1;
          v35 = v36 - 1;
-      }
-      while ( v36 != 1 );
+      }while ( v36 != 1 );
       v6 = (uint32_t *)((char *)v33 + line);
       v7 = (uint32_t *)((char *)v34 + ext);
       v8 = v58 - 1;
-   }
-   while ( v58 != 1 );
+   }while ( v58 != 1 );
 }
 
 static INLINE void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-   uint32_t *v6;
-   uint32_t *v7;
-   int v8;
-   int v9;
-   int v10;
-   uint32_t v11;
-   uint32_t *v12;
-   uint32_t v13;
-   uint32_t v14;
-   uint32_t *v15;
-   uint32_t v16;
-   uint32_t v17;
-   uint32_t v18;
-   uint32_t v19;
-   uint32_t v20;
-   uint32_t *v21;
-   uint32_t *v22;
-   int v23;
-   int v24;
-   uint32_t v25;
-   uint32_t v26;
-   uint32_t *v27;
-   uint32_t v28;
-   uint32_t v29;
-   uint32_t v30;
-   uint32_t v31;
-   uint32_t v32;
-   int v33;
-   int v34;
+   uint32_t *v6, *v7, v11, *v12, v13, v14, *v15, v16, v17, v18, v19, v20, *v21, *v22, v25, v26, *v27, v28, v29, v30, v31, v32;
+   int32_t v8, v9, v10, v23, v24, v33, v34;
 
    v6 = (uint32_t *)src;
    v7 = (uint32_t *)dst;
    v8 = height;
+
    do
    {
       v33 = v8;
@@ -532,8 +415,8 @@ static INLINE void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
          *v15 = (16 * ((v18 << 24) & 0xF000000)) | ((v18 << 24) & 0xF000000) | (16 * (v20 & 0xF0000)) | (v20 & 0xF0000) | (16 * (v18 & 0xF00)) | (v18 & 0xF00) | (16 * ((uint16_t)v18 >> 12)) | ((uint16_t)v18 >> 12);
          v7 = v15 + 1;
          v9 = v10 - 1;
-      }
-      while ( v10 != 1 );
+      }while ( v10 != 1 );
+
       if ( v33 == 1 )
          break;
       v34 = v33 - 1;
@@ -561,13 +444,11 @@ static INLINE void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
          *v27 = (16 * ((v30 << 24) & 0xF000000)) | ((v30 << 24) & 0xF000000) | (16 * (v32 & 0xF0000)) | (v32 & 0xF0000) | (16 * (v30 & 0xF00)) | (v30 & 0xF00) | (16 * ((uint16_t)v30 >> 12)) | ((uint16_t)v30 >> 12);
          v22 = v27 + 1;
          v23 = v24 - 1;
-      }
-      while ( v24 != 1 );
+      }while ( v24 != 1 );
       v6 = (uint32_t *)((char *)v21 + line);
       v7 = (uint32_t *)((char *)v22 + ext);
       v8 = v34 - 1;
-   }
-   while ( v34 != 1 );
+   }while ( v34 != 1 );
 }
 
 //****************************************************************
@@ -575,11 +456,14 @@ static INLINE void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
 
 uint32_t Load4bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
+   int32_t ext;
+   uintptr_t pal;
    if (wid_64 < 1)
       wid_64 = 1;
    if (height < 1)
       height = 1;
-   int ext = (real_width - (wid_64 << 4));
+
+   ext = (real_width - (wid_64 << 4));
    if (real_width + ext < 0) // negative dst pitch, just put it to 0
       ext = -real_width;
    ext <<= 1;
@@ -592,7 +476,7 @@ uint32_t Load4bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
       return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;
    }
 
-   uintptr_t pal = (uintptr_t)(rdp.pal_8 + (rdp.tiles[tile].palette << 4));
+   pal = (uintptr_t)(rdp.pal_8 + (rdp.tiles[tile].palette << 4));
    if (rdp.tlut_mode == 2)
    {
       load4bCI ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext, (uint16_t *)pal);
@@ -610,6 +494,7 @@ uint32_t Load4bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
 
 uint32_t Load4bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
+   int32_t ext;
    if (rdp.tlut_mode != 0)
       return Load4bCI (dst, src, wid_64, height, line, real_width, tile);
 
@@ -617,7 +502,7 @@ uint32_t Load4bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
       wid_64 = 1;
    if (height < 1)
       height = 1;
-   int ext = (real_width - (wid_64 << 4));
+   ext = (real_width - (wid_64 << 4));
    load4bIA ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
    return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;
 }
@@ -627,6 +512,7 @@ uint32_t Load4bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
 
 uint32_t Load4bI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
+   int32_t ext;
    if (rdp.tlut_mode != 0)
       return Load4bCI (dst, src, wid_64, height, line, real_width, tile);
 
@@ -634,7 +520,7 @@ uint32_t Load4bI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line
       wid_64 = 1;
    if (height < 1)
       height = 1;
-   int ext = (real_width - (wid_64 << 4));
+   ext = (real_width - (wid_64 << 4));
    load4bI ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
 
    return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;

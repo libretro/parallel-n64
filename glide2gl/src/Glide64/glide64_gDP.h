@@ -7,184 +7,184 @@ extern int tile_set;
 
 static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height, int line, int off, uint32_t *end)
 {
-  uint32_t *v7, *v9, *v13, v16, *v17, v18, v20, *v24, *v27, *v31, nbits;
-  int v8, v10, v11, v12, v14, v15, v19, v21, v23, v25, v26, v28, v29, v30;
+   uint32_t *v7, *v9, *v13, v16, *v17, v18, v20, *v24, *v27, *v31, nbits;
+   int v8, v10, v11, v12, v14, v15, v19, v21, v23, v25, v26, v28, v29, v30;
 
-  nbits = sizeof(uint32_t) * 8;
-  v7 = dst;
-  v8 = width;
-  v9 = src;
-  v10 = off;
-  v11 = 0;
-  v12 = height;
-  do
-  {
-    if ( end < v7 )
-      break;
-    v31 = v7;
-    v30 = v8;
-    v29 = v12;
-    v28 = v11;
-    v27 = v9;
-    v26 = v10;
-    if ( v8 )
-    {
-      v25 = v8;
-      v24 = v9;
-      v23 = v10;
-      v13 = (uint32_t *)((int8_t*)v9 + (v10 & 0xFFFFFFFC));
-      v14 = v10 & 3;
-      if ( !(v10 & 3) )
-        goto LABEL_20;
-      v15 = 4 - v14;
-      v16 = *v13;
-      v17 = v13 + 1;
-      do
+   nbits = sizeof(uint32_t) * 8;
+   v7 = dst;
+   v8 = width;
+   v9 = src;
+   v10 = off;
+   v11 = 0;
+   v12 = height;
+   do
+   {
+      if ( end < v7 )
+         break;
+      v31 = v7;
+      v30 = v8;
+      v29 = v12;
+      v28 = v11;
+      v27 = v9;
+      v26 = v10;
+      if ( v8 )
       {
-        v16 = __ROL__(v16, 8, nbits);
-      }while (--v14 );
-      do
-      {
-        v16 = __ROL__(v16, 8, nbits);
-        *(uint8_t *)v7 = v16;
-        v7 = (uint32_t *)((int8_t*)v7 + 1);
-      }while(--v15 );
-      v18 = *v17;
-      v13 = v17 + 1;
-      *v7++ = bswap32(v18);
-      if (--v8)
-      {
+         v25 = v8;
+         v24 = v9;
+         v23 = v10;
+         v13 = (uint32_t *)((int8_t*)v9 + (v10 & 0xFFFFFFFC));
+         v14 = v10 & 3;
+         if ( !(v10 & 3) )
+            goto LABEL_20;
+         v15 = 4 - v14;
+         v16 = *v13;
+         v17 = v13 + 1;
+         do
+         {
+            v16 = __ROL__(v16, 8, nbits);
+         }while (--v14 );
+         do
+         {
+            v16 = __ROL__(v16, 8, nbits);
+            *(uint8_t *)v7 = v16;
+            v7 = (uint32_t *)((int8_t*)v7 + 1);
+         }while(--v15 );
+         v18 = *v17;
+         v13 = v17 + 1;
+         *v7++ = bswap32(v18);
+         if (--v8)
+         {
 LABEL_20:
-        do
-        {
-          *v7++ = bswap32(*v13++);
-          *v7++ = bswap32(*v13++);
-        }while (--v8);
+            do
+            {
+               *v7++ = bswap32(*v13++);
+               *v7++ = bswap32(*v13++);
+            }while (--v8);
+         }
+         v19 = v23 & 3;
+         if ( v23 & 3 )
+         {
+            v20 = *(uint32_t *)((int8_t*)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
+            do
+            {
+               v20 = __ROL__(v20, 8, nbits);
+               *(uint8_t *)v7 = v20;
+               v7 = (uint32_t *)((int8_t*)v7 + 1);
+            }
+            while (--v19);
+         }
       }
-      v19 = v23 & 3;
-      if ( v23 & 3 )
-      {
-        v20 = *(uint32_t *)((int8_t*)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
-        do
-        {
-          v20 = __ROL__(v20, 8, nbits);
-          *(uint8_t *)v7 = v20;
-          v7 = (uint32_t *)((int8_t*)v7 + 1);
-        }
-        while (--v19);
-      }
-    }
-    v9 = v27;
-    v21 = v29;
-    v8 = v30;
-    v11 = v28 ^ 1;
-    if ( v28 == 1 )
-    {
-      v7 = v31;
-      if ( v30 )
-      {
-        do
-        {
-           *v7    ^= v7[1];
-           v7[1] ^= *v7;
-           *v7    ^= v7[1];
-           v7 += 2;
-        }while (--v8);
-      }
+      v9 = v27;
       v21 = v29;
       v8 = v30;
-    }
-    v10 = line + v26;
-    v12 = v21 - 1;
-  }while ( v12 );
+      v11 = v28 ^ 1;
+      if ( v28 == 1 )
+      {
+         v7 = v31;
+         if ( v30 )
+         {
+            do
+            {
+               *v7    ^= v7[1];
+               v7[1] ^= *v7;
+               *v7    ^= v7[1];
+               v7 += 2;
+            }while (--v8);
+         }
+         v21 = v29;
+         v8 = v30;
+      }
+      v10 = line + v26;
+      v12 = v21 - 1;
+   }while ( v12 );
 }
 
 static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
 {
-  uint32_t *v5, *v7, v8, v10, v13, v14, nbits;
-  int32_t v6, v9, v16, v18;
+   uint32_t *v5, *v7, v8, v10, v13, v14, nbits;
+   int32_t v6, v9, v16, v18;
 
-  nbits = sizeof(uint32_t) * 8;
-  v5 = dst;
-  v6 = cnt;
-  if ( cnt )
-  {
-    v7 = (uint32_t *)((int8_t*)src + (off & 0xFFFFFFFC));
-    v8 = off & 3;
-    if ( !(off & 3) )
-      goto LABEL_23;
-    v9 = 4 - v8;
-    v10 = *v7++;
-    do
-    {
-      v10 = __ROL__(v10, 8, nbits);
-    }while (--v8);
-    do
-    {
-      *v5++ = __ROL__(v10, 8, nbits);
-    }while (--v9);
-    *v5++ = bswap32(*v7++);
-    v6 = cnt - 1;
-    if ( cnt != 1 )
-    {
+   nbits = sizeof(uint32_t) * 8;
+   v5 = dst;
+   v6 = cnt;
+   if ( cnt )
+   {
+      v7 = (uint32_t *)((int8_t*)src + (off & 0xFFFFFFFC));
+      v8 = off & 3;
+      if ( !(off & 3) )
+         goto LABEL_23;
+      v9 = 4 - v8;
+      v10 = *v7++;
+      do
+      {
+         v10 = __ROL__(v10, 8, nbits);
+      }while (--v8);
+      do
+      {
+         *v5++ = __ROL__(v10, 8, nbits);
+      }while (--v9);
+      *v5++ = bswap32(*v7++);
+      v6 = cnt - 1;
+      if ( cnt != 1 )
+      {
 LABEL_23:
-      do
+         do
+         {
+            *v5++ = bswap32(*v7++);
+            *v5++ = bswap32(*v7++);
+         }while (--v6 );
+      }
+      v13 = off & 3;
+      if ( off & 3 )
       {
-        *v5++ = bswap32(*v7++);
-        *v5++ = bswap32(*v7++);
-      }while (--v6 );
-    }
-    v13 = off & 3;
-    if ( off & 3 )
-    {
-      v14 = *(uint32_t *)((int8_t*)src + ((8 * cnt + off) & 0xFFFFFFFC));
-      do
-      {
-        *v5++ = __ROL__(v14, 8, nbits);
-      }while (--v13);
-    }
-  }
-  v6 = cnt;
-  v16 = 0;
-  v18 = 0;
+         v14 = *(uint32_t *)((int8_t*)src + ((8 * cnt + off) & 0xFFFFFFFC));
+         do
+         {
+            *v5++ = __ROL__(v14, 8, nbits);
+         }while (--v13);
+      }
+   }
+   v6 = cnt;
+   v16 = 0;
+   v18 = 0;
 dxt_test:
-  do
-  {
-     dst += 2;
-     if ( !--v6 )
-        break;
-     v16 += dxt;
-     if ( v16 < 0 )
-     {
-        do
-        {
-           ++v18;
-           if ( !--v6 )
-              goto end_dxt_test;
-           v16 += dxt;
-           if ( v16 >= 0 )
-           {
-              do
-              {
-                 *dst    ^= dst[1];
-                 dst[1] ^= *dst;
-                 *dst    ^= dst[1];
-                 dst += 2;
-              }while(--v18);
-              goto dxt_test;
-           }
-        }while(1);
-     }
-  }while(1);
+   do
+   {
+      dst += 2;
+      if ( !--v6 )
+         break;
+      v16 += dxt;
+      if ( v16 < 0 )
+      {
+         do
+         {
+            ++v18;
+            if ( !--v6 )
+               goto end_dxt_test;
+            v16 += dxt;
+            if ( v16 >= 0 )
+            {
+               do
+               {
+                  *dst    ^= dst[1];
+                  dst[1] ^= *dst;
+                  *dst    ^= dst[1];
+                  dst += 2;
+               }while(--v18);
+               goto dxt_test;
+            }
+         }while(1);
+      }
+   }while(1);
 end_dxt_test:
-  while ( v18 )
-  {
-     *dst    ^= dst[1];
-     dst[1] ^= *dst;
-     *dst    ^= dst[1];
-     dst += 2;
-     --v18;
-  }
+   while ( v18 )
+   {
+      *dst    ^= dst[1];
+      dst[1] ^= *dst;
+      *dst    ^= dst[1];
+      dst += 2;
+      --v18;
+   }
 }
 
 static void gDPFullSync(void)
@@ -320,9 +320,6 @@ static void gDPSetTile( uint32_t format, uint32_t size, uint32_t line, uint32_t 
    tile->mirror_t = mirrort;
    tile->mirror_s = mirrors;
 
-   rdp.update |= UPDATE_TEXTURE;
-
-
 #ifdef HAVE_HWFBE
    if (fb_hwfbe_enabled && rdp.last_tile < rdp.cur_tile + 2)
    {
@@ -348,6 +345,8 @@ static void gDPSetTile( uint32_t format, uint32_t size, uint32_t line, uint32_t 
       }
    }
 #endif
+
+   rdp.update |= UPDATE_TEXTURE;
 
    //FRDP ("settile: tile: %d, format: %s, size: %s, line: %d, ""t_mem: %08lx, palette: %d, clamp_t/mirror_t: %s, mask_t: %d, ""shift_t: %d, clamp_s/mirror_s: %s, mask_s: %d, shift_s: %d\n",rdp.last_tile, str_format[tile->format], str_size[tile->size], tile->line, tile->t_mem, tile->palette, str_cm[(tile->clamp_t<<1)|tile->mirror_t], tile->mask_t, tile->shift_t, str_cm[(tile->clamp_s<<1)|tile->mirror_s], tile->mask_s, tile->shift_s);
 }
@@ -786,12 +785,12 @@ static void gDPSetTextureImage( uint32_t format, uint32_t size, uint32_t width, 
    rdp.timg.size   = size;
    rdp.timg.width  = width;
    rdp.timg.addr   = address;
- 
+
    if (ucode5_texshiftaddr)
    {
       if (rdp.timg.format == G_IM_FMT_RGBA)
       {
-         uint16_t * t = (uint16_t*)(gfx.RDRAM+ucode5_texshiftaddr);
+         uint16_t *t = (uint16_t*)(gfx.RDRAM+ucode5_texshiftaddr);
          ucode5_texshift = t[ucode5_texshiftcount^1];
          rdp.timg.addr += ucode5_texshift;
       }

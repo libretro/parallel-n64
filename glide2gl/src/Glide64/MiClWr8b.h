@@ -40,23 +40,27 @@
 //****************************************************************
 // 8-bit Horizontal Mirror
 
-void Mirror8bS (unsigned char * tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
+void Mirror8bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
 {
+   uint32_t mask_width, mask_mask;
+   int32_t count, line_full, line;
+   uint8_t *start;
+
    if (mask == 0)
       return;
 
-   uint32_t mask_width = (1 << mask);
-   uint32_t mask_mask = (mask_width-1);
+   mask_width = (1 << mask);
+   mask_mask = (mask_width-1);
    if (mask_width >= max_width)
       return;
-   int count = max_width - mask_width;
+   count = max_width - mask_width;
    if (count <= 0)
       return;
-   int line_full = real_width;
-   int line = line_full - (count);
+   line_full = real_width;
+   line = line_full - (count);
    if (line < 0)
       return;
-   unsigned char * start = tex + (mask_width);
+   start = (uint8_t*)(tex + (mask_width));
 
    do
    {
@@ -77,23 +81,25 @@ void Mirror8bS (unsigned char * tex, uint32_t mask, uint32_t max_width, uint32_t
 // 8-bit Horizontal Wrap (like mirror) ** UNTESTED **
 
 
-void Wrap8bS (unsigned char * tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
+void Wrap8bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
 {
+   int32_t count, line_full, line;
+   uint32_t mask_width, mask_mask, *start;
    if (mask == 0)
       return;
 
-   uint32_t mask_width = (1 << mask);
-   uint32_t mask_mask = (mask_width-1) >> 2;
+   mask_width = (1 << mask);
+   mask_mask = (mask_width-1) >> 2;
    if (mask_width >= max_width)
       return;
-   int count = (max_width - mask_width) >> 2;
+   count = (max_width - mask_width) >> 2;
    if (count <= 0) return;
-   int line_full = real_width;
-   int line = line_full - (count << 2);
+   line_full = real_width;
+   line = line_full - (count << 2);
    if (line < 0)
       return;
 
-   uint32_t *start = (uint32_t *)(unsigned char*)(tex + mask_width);
+   start = (uint32_t *)(uint8_t*)(tex + mask_width);
 
    do
    {
@@ -111,17 +117,19 @@ void Wrap8bS (unsigned char * tex, uint32_t mask, uint32_t max_width, uint32_t r
 // 8-bit Horizontal Clamp
 
 
-void Clamp8bS (unsigned char * tex, uint32_t width, uint32_t clamp_to, uint32_t real_width, uint32_t real_height)
+void Clamp8bS (uint8_t *tex, uint32_t width, uint32_t clamp_to, uint32_t real_width, uint32_t real_height)
 {
+   uint8_t *dest, *constant;
+   int32_t count, line_full, line;
+
    if (real_width <= width)
       return;
 
-   unsigned char * dest = tex + (width);
-   unsigned char * constant = dest-1;
-   int count = clamp_to - width;
-
-   int line_full = real_width;
-   int line = width;
+   dest = tex + (width);
+   constant = dest-1;
+   count = clamp_to - width;
+   line_full = real_width;
+   line = width;
 
    do
    {
@@ -138,20 +146,22 @@ void Clamp8bS (unsigned char * tex, uint32_t width, uint32_t clamp_to, uint32_t 
 //****************************************************************
 // 8-bit Vertical Mirror
 
-void Mirror8bT (unsigned char * tex, uint32_t mask, uint32_t max_height, uint32_t real_width)
+void Mirror8bT (uint8_t *tex, uint32_t mask, uint32_t max_height, uint32_t real_width)
 {
+   uint8_t *dst;
+   int32_t line_full;
+   uint32_t mask_height, mask_mask, y;
    if (mask == 0)
       return;
 
-   uint32_t mask_height = (1 << mask);
-   uint32_t mask_mask = mask_height-1;
-   uint32_t y;
+   mask_height = (1 << mask);
+   mask_mask = mask_height-1;
 
    if (max_height <= mask_height)
       return;
-   int line_full = real_width;
 
-   unsigned char * dst = tex + mask_height * line_full;
+   line_full = real_width;
+   dst = (uint8_t*)(tex + mask_height * line_full);
 
    for (y = mask_height; y < max_height; y++)
    {
@@ -167,20 +177,23 @@ void Mirror8bT (unsigned char * tex, uint32_t mask, uint32_t max_height, uint32_
 //****************************************************************
 // 8-bit Vertical Wrap
 
-void Wrap8bT (unsigned char * tex, uint32_t mask, uint32_t max_height, uint32_t real_width)
+void Wrap8bT (uint8_t *tex, uint32_t mask, uint32_t max_height, uint32_t real_width)
 {
+   uint8_t *dst;
+   int32_t line_full;
+   uint32_t y, mask_height, mask_mask;
+
    if (mask == 0)
       return;
 
-   uint32_t mask_height = (1 << mask);
-   uint32_t mask_mask = mask_height-1;
+   mask_height = (1 << mask);
+   mask_mask = mask_height-1;
 
    if (max_height <= mask_height)
       return;
-   int line_full = real_width;
+   line_full = real_width;
 
-   unsigned char * dst = tex + mask_height * line_full;
-   uint32_t y;
+   dst = (uint8_t*)(tex + mask_height * line_full);
 
    for (y = mask_height; y < max_height; y++)
    {
@@ -193,12 +206,15 @@ void Wrap8bT (unsigned char * tex, uint32_t mask, uint32_t max_height, uint32_t 
 //****************************************************************
 // 8-bit Vertical Clamp
 
-void Clamp8bT (unsigned char * tex, uint32_t height, uint32_t real_width, uint32_t clamp_to)
+void Clamp8bT (uint8_t *tex, uint32_t height, uint32_t real_width, uint32_t clamp_to)
 {
-   int line_full = real_width;
-   unsigned char * dst = tex + height * line_full;
-   unsigned char * const_line = dst - line_full;
+   uint8_t *dst, *const_line;
    uint32_t y;
+   int32_t line_full;
+
+   line_full = real_width;
+   dst = tex + height * line_full;
+   const_line = dst - line_full;
 
    for (y = height; y < clamp_to; y++)
    {
@@ -206,4 +222,3 @@ void Clamp8bT (unsigned char * tex, uint32_t height, uint32_t real_width, uint32
       dst += line_full;
    }
 }
-

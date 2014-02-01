@@ -39,11 +39,14 @@
 
 // 2 pixels are converted in one loop
 // NOTE: width * height must be a multiple of 2
-static INLINE void TexConv_ARGB1555_ARGB4444 (unsigned char * src, unsigned char * dst, int width, int height)
+static INLINE void TexConv_ARGB1555_ARGB4444 (uint8_t * src, uint8_t * dst, int width, int height)
 {
-   int size = (width * height) >> 1;
-   uint32_t *_src = (uint32_t *)src;
-   uint32_t *_dst = (uint32_t *)dst;
+   int32_t size;
+   uint32_t *_src, *_dst;
+
+   size = (width * height) >> 1;
+   _src = (uint32_t *)src;
+   _dst = (uint32_t *)dst;
 
    do
    {
@@ -54,11 +57,15 @@ static INLINE void TexConv_ARGB1555_ARGB4444 (unsigned char * src, unsigned char
 
 // 4 pixels are converted in one loop
 // NOTE: width * height must be a multiple of 4
-static INLINE void TexConv_AI44_ARGB4444 (unsigned char * src, unsigned char * dst, int width, int height)
+static INLINE void TexConv_AI44_ARGB4444 (uint8_t * src, uint8_t * dst, int width, int height)
 {
-   int size = (width * height) >> 2;
-   uint32_t *_src = (uint32_t *)src;
-   uint32_t *_dst = (uint32_t *)dst;
+   int32_t size;
+   uint32_t *_src, *_dst;
+
+   size = (width * height) >> 2;
+   _src = (uint32_t *)src;
+   _dst = (uint32_t *)dst;
+
    do
    {
       uint32_t v6 = *_src++;
@@ -69,11 +76,14 @@ static INLINE void TexConv_AI44_ARGB4444 (unsigned char * src, unsigned char * d
 
 // 2 pixels are converted in one loop
 // NOTE: width * height must be a multiple of 2
-static INLINE void TexConv_AI88_ARGB4444 (unsigned char * src, unsigned char * dst, int width, int height)
+static INLINE void TexConv_AI88_ARGB4444 (uint8_t *src, uint8_t *dst, int width, int height)
 {
-   int size = (width * height) >> 1;
-   uint32_t *_src = (uint32_t *)src;
-   uint32_t *_dst = (uint32_t *)dst;
+   int32_t size;
+   uint32_t *_src, *_dst;
+
+   size = (width * height) >> 1;
+   _src = (uint32_t *)src;
+   _dst = (uint32_t *)dst;
 
    do
    {
@@ -84,11 +94,14 @@ static INLINE void TexConv_AI88_ARGB4444 (unsigned char * src, unsigned char * d
 
 // 4 pixels are converted in one loop
 // NOTE: width * height must be a multiple of 4
-static INLINE void TexConv_A8_ARGB4444 (unsigned char * src, unsigned char * dst, int width, int height)
+static INLINE void TexConv_A8_ARGB4444 (uint8_t *src, uint8_t *dst, int width, int height)
 {
-   int size = (width * height) >> 2;
-   uint32_t *_src = (uint32_t *)src;
-   uint32_t *_dst = (uint32_t *)dst;
+   int32_t size;
+   uint32_t *_src, *_dst;
+
+   size = (width * height) >> 2;
+   _src = (uint32_t *)src;
+   _dst = (uint32_t *)dst;
 
    do
    {
