@@ -46,8 +46,6 @@
 #include "DepthBufferRender.h"
 #include "GBI.h"
 
-#define Vj rdp.vtxbuf2[j]
-#define Vi rdp.vtxbuf2[i]
 
 //forward decls
 void glide64SPClipVertex(uint32_t i);
@@ -542,53 +540,53 @@ static void clip_w (int interpolate_colors)
       j = i+1;
       if (j == 3) j = 0;
 
-      if (Vi.w >= 0.01f)
+      if (rdp.vtxbuf2[i].w >= 0.01f)
       {
-         if (Vj.w >= 0.01f)    // Both are in, save the last one
+         if (rdp.vtxbuf2[j].w >= 0.01f)    // Both are in, save the last one
          {
-            rdp.vtxbuf[index] = Vj;
+            rdp.vtxbuf[index] = rdp.vtxbuf2[j];
             rdp.vtxbuf[index++].not_zclipped = 1;
          }
          else      // First is in, second is out, save intersection
          {
-            percent = (-Vi.w) / (Vj.w - Vi.w);
+            percent = (-rdp.vtxbuf2[i].w) / (rdp.vtxbuf2[j].w - rdp.vtxbuf2[i].w);
             rdp.vtxbuf[index].not_zclipped = 0;
-            rdp.vtxbuf[index].x = Vi.x + (Vj.x - Vi.x) * percent;
-            rdp.vtxbuf[index].y = Vi.y + (Vj.y - Vi.y) * percent;
-            rdp.vtxbuf[index].z = Vi.z + (Vj.z - Vi.z) * percent;
+            rdp.vtxbuf[index].x = rdp.vtxbuf2[i].x + (rdp.vtxbuf2[j].x - rdp.vtxbuf2[i].x) * percent;
+            rdp.vtxbuf[index].y = rdp.vtxbuf2[i].y + (rdp.vtxbuf2[j].y - rdp.vtxbuf2[i].y) * percent;
+            rdp.vtxbuf[index].z = rdp.vtxbuf2[i].z + (rdp.vtxbuf2[j].z - rdp.vtxbuf2[i].z) * percent;
             rdp.vtxbuf[index].w = 0.01f;
-            rdp.vtxbuf[index].u0 = Vi.u0 + (Vj.u0 - Vi.u0) * percent;
-            rdp.vtxbuf[index].v0 = Vi.v0 + (Vj.v0 - Vi.v0) * percent;
-            rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
-            rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
+            rdp.vtxbuf[index].u0 = rdp.vtxbuf2[i].u0 + (rdp.vtxbuf2[j].u0 - rdp.vtxbuf2[i].u0) * percent;
+            rdp.vtxbuf[index].v0 = rdp.vtxbuf2[i].v0 + (rdp.vtxbuf2[j].v0 - rdp.vtxbuf2[i].v0) * percent;
+            rdp.vtxbuf[index].u1 = rdp.vtxbuf2[i].u1 + (rdp.vtxbuf2[j].u1 - rdp.vtxbuf2[i].u1) * percent;
+            rdp.vtxbuf[index].v1 = rdp.vtxbuf2[i].v1 + (rdp.vtxbuf2[j].v1 - rdp.vtxbuf2[i].v1) * percent;
             if (interpolate_colors)
-               InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
+               InterpolateColors(&rdp.vtxbuf2[i], &rdp.vtxbuf2[j], &rdp.vtxbuf[index++], percent);
             else
-               rdp.vtxbuf[index++].number = Vi.number | Vj.number;
+               rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number;
          }
       }
       else
       {
-         //if (Vj.w < 0.01f) // Both are out, save nothing
-         if (Vj.w >= 0.01f)  // First is out, second is in, save intersection & in point
+         //if (rdp.vtxbuf2[j].w < 0.01f) // Both are out, save nothing
+         if (rdp.vtxbuf2[j].w >= 0.01f)  // First is out, second is in, save intersection & in point
          {
-            percent = (-Vj.w) / (Vi.w - Vj.w);
+            percent = (-rdp.vtxbuf2[j].w) / (rdp.vtxbuf2[i].w - rdp.vtxbuf2[j].w);
             rdp.vtxbuf[index].not_zclipped = 0;
-            rdp.vtxbuf[index].x = Vj.x + (Vi.x - Vj.x) * percent;
-            rdp.vtxbuf[index].y = Vj.y + (Vi.y - Vj.y) * percent;
-            rdp.vtxbuf[index].z = Vj.z + (Vi.z - Vj.z) * percent;
+            rdp.vtxbuf[index].x = rdp.vtxbuf2[j].x + (rdp.vtxbuf2[i].x - rdp.vtxbuf2[j].x) * percent;
+            rdp.vtxbuf[index].y = rdp.vtxbuf2[j].y + (rdp.vtxbuf2[i].y - rdp.vtxbuf2[j].y) * percent;
+            rdp.vtxbuf[index].z = rdp.vtxbuf2[j].z + (rdp.vtxbuf2[i].z - rdp.vtxbuf2[j].z) * percent;
             rdp.vtxbuf[index].w = 0.01f;
-            rdp.vtxbuf[index].u0 = Vj.u0 + (Vi.u0 - Vj.u0) * percent;
-            rdp.vtxbuf[index].v0 = Vj.v0 + (Vi.v0 - Vj.v0) * percent;
-            rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
-            rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
+            rdp.vtxbuf[index].u0 = rdp.vtxbuf2[j].u0 + (rdp.vtxbuf2[i].u0 - rdp.vtxbuf2[j].u0) * percent;
+            rdp.vtxbuf[index].v0 = rdp.vtxbuf2[j].v0 + (rdp.vtxbuf2[i].v0 - rdp.vtxbuf2[j].v0) * percent;
+            rdp.vtxbuf[index].u1 = rdp.vtxbuf2[j].u1 + (rdp.vtxbuf2[i].u1 - rdp.vtxbuf2[j].u1) * percent;
+            rdp.vtxbuf[index].v1 = rdp.vtxbuf2[j].v1 + (rdp.vtxbuf2[i].v1 - rdp.vtxbuf2[j].v1) * percent;
             if (interpolate_colors)
-               InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
+               InterpolateColors(&rdp.vtxbuf2[j], &rdp.vtxbuf2[i], &rdp.vtxbuf[index++], percent);
             else
-               rdp.vtxbuf[index++].number = Vi.number | Vj.number;
+               rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number;
 
             // Save the in point
-            rdp.vtxbuf[index] = Vj;
+            rdp.vtxbuf[index] = rdp.vtxbuf2[j];
             rdp.vtxbuf[index++].not_zclipped = 1;
          }
       }
@@ -610,9 +608,7 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
    {
       if (rdp.vtxbuf[i].not_zclipped)// && rdp.zsrc != 1)
       {
-#ifdef EXTREME_LOGGING
-         FRDP (" * NOT ZCLIPPPED: %d\n", rdp.vtxbuf[i].number);
-#endif
+         //FRDP (" * NOT ZCLIPPPED: %d\n", rdp.vtxbuf[i].number);
          rdp.vtxbuf[i].x = rdp.vtxbuf[i].sx;
          rdp.vtxbuf[i].y = rdp.vtxbuf[i].sy;
          rdp.vtxbuf[i].z = rdp.vtxbuf[i].sz;
@@ -624,9 +620,7 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
       }
       else
       {
-#ifdef EXTREME_LOGGING
-         FRDP (" * ZCLIPPED: %d\n", rdp.vtxbuf[i].number);
-#endif
+         //FRDP (" * ZCLIPPED: %d\n", rdp.vtxbuf[i].number);
          rdp.vtxbuf[i].q = 1.0f / rdp.vtxbuf[i].w;
          rdp.vtxbuf[i].x = rdp.view_trans[0] + rdp.vtxbuf[i].x * rdp.vtxbuf[i].q * rdp.view_scale[0] + rdp.offset_x;
          rdp.vtxbuf[i].y = rdp.view_trans[1] + rdp.vtxbuf[i].y * rdp.vtxbuf[i].q * rdp.view_scale[1] + rdp.offset_y;
@@ -931,50 +925,50 @@ void clip_tri(int interpolate_colors)
          j = i+1;
          if (j == n) j = 0;
 
-         if (Vi.x <= rdp.clip_max_x)
+         if (rdp.vtxbuf2[i].x <= rdp.clip_max_x)
          {
-            if (Vj.x <= rdp.clip_max_x)   // Both are in, save the last one
+            if (rdp.vtxbuf2[j].x <= rdp.clip_max_x)   // Both are in, save the last one
             {
-               rdp.vtxbuf[index++] = Vj;
+               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (rdp.clip_max_x - Vi.x) / (Vj.x - Vi.x);
+               percent = (rdp.clip_max_x - rdp.vtxbuf2[i].x) / (rdp.vtxbuf2[j].x - rdp.vtxbuf2[i].x);
                rdp.vtxbuf[index].x = rdp.clip_max_x;
-               rdp.vtxbuf[index].y = Vi.y + (Vj.y - Vi.y) * percent;
-               rdp.vtxbuf[index].z = Vi.z + (Vj.z - Vi.z) * percent;
-               rdp.vtxbuf[index].q = Vi.q + (Vj.q - Vi.q) * percent;
-               rdp.vtxbuf[index].u0 = Vi.u0 + (Vj.u0 - Vi.u0) * percent;
-               rdp.vtxbuf[index].v0 = Vi.v0 + (Vj.v0 - Vi.v0) * percent;
-               rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
-               rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
+               rdp.vtxbuf[index].y = rdp.vtxbuf2[i].y + (rdp.vtxbuf2[j].y - rdp.vtxbuf2[i].y) * percent;
+               rdp.vtxbuf[index].z = rdp.vtxbuf2[i].z + (rdp.vtxbuf2[j].z - rdp.vtxbuf2[i].z) * percent;
+               rdp.vtxbuf[index].q = rdp.vtxbuf2[i].q + (rdp.vtxbuf2[j].q - rdp.vtxbuf2[i].q) * percent;
+               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[i].u0 + (rdp.vtxbuf2[j].u0 - rdp.vtxbuf2[i].u0) * percent;
+               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[i].v0 + (rdp.vtxbuf2[j].v0 - rdp.vtxbuf2[i].v0) * percent;
+               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[i].u1 + (rdp.vtxbuf2[j].u1 - rdp.vtxbuf2[i].u1) * percent;
+               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[i].v1 + (rdp.vtxbuf2[j].v1 - rdp.vtxbuf2[i].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&rdp.vtxbuf2[i], &rdp.vtxbuf2[j], &rdp.vtxbuf[index++], percent);
                else
-                  rdp.vtxbuf[index++].number = Vi.number | Vj.number | 8;
+                  rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number | 8;
             }
          }
          else
          {
-            //if (Vj.x > rdp.clip_max_x)  // Both are out, save nothing
-            if (Vj.x <= rdp.clip_max_x) // First is out, second is in, save intersection & in point
+            //if (rdp.vtxbuf2[j].x > rdp.clip_max_x)  // Both are out, save nothing
+            if (rdp.vtxbuf2[j].x <= rdp.clip_max_x) // First is out, second is in, save intersection & in point
             {
-               percent = (rdp.clip_max_x - Vj.x) / (Vi.x - Vj.x);
+               percent = (rdp.clip_max_x - rdp.vtxbuf2[j].x) / (rdp.vtxbuf2[i].x - rdp.vtxbuf2[j].x);
                rdp.vtxbuf[index].x = rdp.clip_max_x;
-               rdp.vtxbuf[index].y = Vj.y + (Vi.y - Vj.y) * percent;
-               rdp.vtxbuf[index].z = Vj.z + (Vi.z - Vj.z) * percent;
-               rdp.vtxbuf[index].q = Vj.q + (Vi.q - Vj.q) * percent;
-               rdp.vtxbuf[index].u0 = Vj.u0 + (Vi.u0 - Vj.u0) * percent;
-               rdp.vtxbuf[index].v0 = Vj.v0 + (Vi.v0 - Vj.v0) * percent;
-               rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
-               rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
+               rdp.vtxbuf[index].y = rdp.vtxbuf2[j].y + (rdp.vtxbuf2[i].y - rdp.vtxbuf2[j].y) * percent;
+               rdp.vtxbuf[index].z = rdp.vtxbuf2[j].z + (rdp.vtxbuf2[i].z - rdp.vtxbuf2[j].z) * percent;
+               rdp.vtxbuf[index].q = rdp.vtxbuf2[j].q + (rdp.vtxbuf2[i].q - rdp.vtxbuf2[j].q) * percent;
+               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[j].u0 + (rdp.vtxbuf2[i].u0 - rdp.vtxbuf2[j].u0) * percent;
+               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[j].v0 + (rdp.vtxbuf2[i].v0 - rdp.vtxbuf2[j].v0) * percent;
+               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[j].u1 + (rdp.vtxbuf2[i].u1 - rdp.vtxbuf2[j].u1) * percent;
+               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[j].v1 + (rdp.vtxbuf2[i].v1 - rdp.vtxbuf2[j].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&rdp.vtxbuf2[j], &rdp.vtxbuf2[i], &rdp.vtxbuf[index++], percent);
                else
-                  rdp.vtxbuf[index++].number = Vi.number | Vj.number | 8;
+                  rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number | 8;
 
                // Save the in point
-               rdp.vtxbuf[index++] = Vj;
+               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
          }
       }
@@ -996,50 +990,50 @@ void clip_tri(int interpolate_colors)
          j = i+1;
          if (j == n) j = 0;
 
-         if (Vi.x >= rdp.clip_min_x)
+         if (rdp.vtxbuf2[i].x >= rdp.clip_min_x)
          {
-            if (Vj.x >= rdp.clip_min_x)   // Both are in, save the last one
+            if (rdp.vtxbuf2[j].x >= rdp.clip_min_x)   // Both are in, save the last one
             {
-               rdp.vtxbuf[index++] = Vj;
+               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (rdp.clip_min_x - Vi.x) / (Vj.x - Vi.x);
+               percent = (rdp.clip_min_x - rdp.vtxbuf2[i].x) / (rdp.vtxbuf2[j].x - rdp.vtxbuf2[i].x);
                rdp.vtxbuf[index].x = rdp.clip_min_x;
-               rdp.vtxbuf[index].y = Vi.y + (Vj.y - Vi.y) * percent;
-               rdp.vtxbuf[index].z = Vi.z + (Vj.z - Vi.z) * percent;
-               rdp.vtxbuf[index].q = Vi.q + (Vj.q - Vi.q) * percent;
-               rdp.vtxbuf[index].u0 = Vi.u0 + (Vj.u0 - Vi.u0) * percent;
-               rdp.vtxbuf[index].v0 = Vi.v0 + (Vj.v0 - Vi.v0) * percent;
-               rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
-               rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
+               rdp.vtxbuf[index].y = rdp.vtxbuf2[i].y + (rdp.vtxbuf2[j].y - rdp.vtxbuf2[i].y) * percent;
+               rdp.vtxbuf[index].z = rdp.vtxbuf2[i].z + (rdp.vtxbuf2[j].z - rdp.vtxbuf2[i].z) * percent;
+               rdp.vtxbuf[index].q = rdp.vtxbuf2[i].q + (rdp.vtxbuf2[j].q - rdp.vtxbuf2[i].q) * percent;
+               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[i].u0 + (rdp.vtxbuf2[j].u0 - rdp.vtxbuf2[i].u0) * percent;
+               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[i].v0 + (rdp.vtxbuf2[j].v0 - rdp.vtxbuf2[i].v0) * percent;
+               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[i].u1 + (rdp.vtxbuf2[j].u1 - rdp.vtxbuf2[i].u1) * percent;
+               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[i].v1 + (rdp.vtxbuf2[j].v1 - rdp.vtxbuf2[i].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&rdp.vtxbuf2[i], &rdp.vtxbuf2[j], &rdp.vtxbuf[index++], percent);
                else
-                  rdp.vtxbuf[index++].number = Vi.number | Vj.number | 8;
+                  rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number | 8;
             }
          }
          else
          {
-            //if (Vj.x < rdp.clip_min_x)  // Both are out, save nothing
-            if (Vj.x >= rdp.clip_min_x) // First is out, second is in, save intersection & in point
+            //if (rdp.vtxbuf2[j].x < rdp.clip_min_x)  // Both are out, save nothing
+            if (rdp.vtxbuf2[j].x >= rdp.clip_min_x) // First is out, second is in, save intersection & in point
             {
-               percent = (rdp.clip_min_x - Vj.x) / (Vi.x - Vj.x);
+               percent = (rdp.clip_min_x - rdp.vtxbuf2[j].x) / (rdp.vtxbuf2[i].x - rdp.vtxbuf2[j].x);
                rdp.vtxbuf[index].x = rdp.clip_min_x;
-               rdp.vtxbuf[index].y = Vj.y + (Vi.y - Vj.y) * percent;
-               rdp.vtxbuf[index].z = Vj.z + (Vi.z - Vj.z) * percent;
-               rdp.vtxbuf[index].q = Vj.q + (Vi.q - Vj.q) * percent;
-               rdp.vtxbuf[index].u0 = Vj.u0 + (Vi.u0 - Vj.u0) * percent;
-               rdp.vtxbuf[index].v0 = Vj.v0 + (Vi.v0 - Vj.v0) * percent;
-               rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
-               rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
+               rdp.vtxbuf[index].y = rdp.vtxbuf2[j].y + (rdp.vtxbuf2[i].y - rdp.vtxbuf2[j].y) * percent;
+               rdp.vtxbuf[index].z = rdp.vtxbuf2[j].z + (rdp.vtxbuf2[i].z - rdp.vtxbuf2[j].z) * percent;
+               rdp.vtxbuf[index].q = rdp.vtxbuf2[j].q + (rdp.vtxbuf2[i].q - rdp.vtxbuf2[j].q) * percent;
+               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[j].u0 + (rdp.vtxbuf2[i].u0 - rdp.vtxbuf2[j].u0) * percent;
+               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[j].v0 + (rdp.vtxbuf2[i].v0 - rdp.vtxbuf2[j].v0) * percent;
+               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[j].u1 + (rdp.vtxbuf2[i].u1 - rdp.vtxbuf2[j].u1) * percent;
+               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[j].v1 + (rdp.vtxbuf2[i].v1 - rdp.vtxbuf2[j].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&rdp.vtxbuf2[j], &rdp.vtxbuf2[i], &rdp.vtxbuf[index++], percent);
                else
-                  rdp.vtxbuf[index++].number = Vi.number | Vj.number | 8;
+                  rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number | 8;
 
                // Save the in point
-               rdp.vtxbuf[index++] = Vj;
+               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
          }
       }
@@ -1061,50 +1055,50 @@ void clip_tri(int interpolate_colors)
          j = i+1;
          if (j == n) j = 0;
 
-         if (Vi.y <= rdp.clip_max_y)
+         if (rdp.vtxbuf2[i].y <= rdp.clip_max_y)
          {
-            if (Vj.y <= rdp.clip_max_y)   // Both are in, save the last one
+            if (rdp.vtxbuf2[j].y <= rdp.clip_max_y)   // Both are in, save the last one
             {
-               rdp.vtxbuf[index++] = Vj;
+               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (rdp.clip_max_y - Vi.y) / (Vj.y - Vi.y);
-               rdp.vtxbuf[index].x = Vi.x + (Vj.x - Vi.x) * percent;
+               percent = (rdp.clip_max_y - rdp.vtxbuf2[i].y) / (rdp.vtxbuf2[j].y - rdp.vtxbuf2[i].y);
+               rdp.vtxbuf[index].x = rdp.vtxbuf2[i].x + (rdp.vtxbuf2[j].x - rdp.vtxbuf2[i].x) * percent;
                rdp.vtxbuf[index].y = rdp.clip_max_y;
-               rdp.vtxbuf[index].z = Vi.z + (Vj.z - Vi.z) * percent;
-               rdp.vtxbuf[index].q = Vi.q + (Vj.q - Vi.q) * percent;
-               rdp.vtxbuf[index].u0 = Vi.u0 + (Vj.u0 - Vi.u0) * percent;
-               rdp.vtxbuf[index].v0 = Vi.v0 + (Vj.v0 - Vi.v0) * percent;
-               rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
-               rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
+               rdp.vtxbuf[index].z = rdp.vtxbuf2[i].z + (rdp.vtxbuf2[j].z - rdp.vtxbuf2[i].z) * percent;
+               rdp.vtxbuf[index].q = rdp.vtxbuf2[i].q + (rdp.vtxbuf2[j].q - rdp.vtxbuf2[i].q) * percent;
+               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[i].u0 + (rdp.vtxbuf2[j].u0 - rdp.vtxbuf2[i].u0) * percent;
+               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[i].v0 + (rdp.vtxbuf2[j].v0 - rdp.vtxbuf2[i].v0) * percent;
+               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[i].u1 + (rdp.vtxbuf2[j].u1 - rdp.vtxbuf2[i].u1) * percent;
+               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[i].v1 + (rdp.vtxbuf2[j].v1 - rdp.vtxbuf2[i].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&rdp.vtxbuf2[i], &rdp.vtxbuf2[j], &rdp.vtxbuf[index++], percent);
                else
-                  rdp.vtxbuf[index++].number = Vi.number | Vj.number | 16;
+                  rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number | 16;
             }
          }
          else
          {
-            //if (Vj.y > rdp.clip_max_y)  // Both are out, save nothing
-            if (Vj.y <= rdp.clip_max_y) // First is out, second is in, save intersection & in point
+            //if (rdp.vtxbuf2[j].y > rdp.clip_max_y)  // Both are out, save nothing
+            if (rdp.vtxbuf2[j].y <= rdp.clip_max_y) // First is out, second is in, save intersection & in point
             {
-               percent = (rdp.clip_max_y - Vj.y) / (Vi.y - Vj.y);
-               rdp.vtxbuf[index].x = Vj.x + (Vi.x - Vj.x) * percent;
+               percent = (rdp.clip_max_y - rdp.vtxbuf2[j].y) / (rdp.vtxbuf2[i].y - rdp.vtxbuf2[j].y);
+               rdp.vtxbuf[index].x = rdp.vtxbuf2[j].x + (rdp.vtxbuf2[i].x - rdp.vtxbuf2[j].x) * percent;
                rdp.vtxbuf[index].y = rdp.clip_max_y;
-               rdp.vtxbuf[index].z = Vj.z + (Vi.z - Vj.z) * percent;
-               rdp.vtxbuf[index].q = Vj.q + (Vi.q - Vj.q) * percent;
-               rdp.vtxbuf[index].u0 = Vj.u0 + (Vi.u0 - Vj.u0) * percent;
-               rdp.vtxbuf[index].v0 = Vj.v0 + (Vi.v0 - Vj.v0) * percent;
-               rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
-               rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
+               rdp.vtxbuf[index].z = rdp.vtxbuf2[j].z + (rdp.vtxbuf2[i].z - rdp.vtxbuf2[j].z) * percent;
+               rdp.vtxbuf[index].q = rdp.vtxbuf2[j].q + (rdp.vtxbuf2[i].q - rdp.vtxbuf2[j].q) * percent;
+               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[j].u0 + (rdp.vtxbuf2[i].u0 - rdp.vtxbuf2[j].u0) * percent;
+               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[j].v0 + (rdp.vtxbuf2[i].v0 - rdp.vtxbuf2[j].v0) * percent;
+               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[j].u1 + (rdp.vtxbuf2[i].u1 - rdp.vtxbuf2[j].u1) * percent;
+               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[j].v1 + (rdp.vtxbuf2[i].v1 - rdp.vtxbuf2[j].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&rdp.vtxbuf2[j], &rdp.vtxbuf2[i], &rdp.vtxbuf[index++], percent);
                else
-                  rdp.vtxbuf[index++].number = Vi.number | Vj.number | 16;
+                  rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number | 16;
 
                // Save the in point
-               rdp.vtxbuf[index++] = Vj;
+               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
          }
       }
@@ -1126,50 +1120,50 @@ void clip_tri(int interpolate_colors)
          j = i+1;
          if (j == n) j = 0;
 
-         if (Vi.y >= rdp.clip_min_y)
+         if (rdp.vtxbuf2[i].y >= rdp.clip_min_y)
          {
-            if (Vj.y >= rdp.clip_min_y)   // Both are in, save the last one
+            if (rdp.vtxbuf2[j].y >= rdp.clip_min_y)   // Both are in, save the last one
             {
-               rdp.vtxbuf[index++] = Vj;
+               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (rdp.clip_min_y - Vi.y) / (Vj.y - Vi.y);
-               rdp.vtxbuf[index].x = Vi.x + (Vj.x - Vi.x) * percent;
+               percent = (rdp.clip_min_y - rdp.vtxbuf2[i].y) / (rdp.vtxbuf2[j].y - rdp.vtxbuf2[i].y);
+               rdp.vtxbuf[index].x = rdp.vtxbuf2[i].x + (rdp.vtxbuf2[j].x - rdp.vtxbuf2[i].x) * percent;
                rdp.vtxbuf[index].y = rdp.clip_min_y;
-               rdp.vtxbuf[index].z = Vi.z + (Vj.z - Vi.z) * percent;
-               rdp.vtxbuf[index].q = Vi.q + (Vj.q - Vi.q) * percent;
-               rdp.vtxbuf[index].u0 = Vi.u0 + (Vj.u0 - Vi.u0) * percent;
-               rdp.vtxbuf[index].v0 = Vi.v0 + (Vj.v0 - Vi.v0) * percent;
-               rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
-               rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
+               rdp.vtxbuf[index].z = rdp.vtxbuf2[i].z + (rdp.vtxbuf2[j].z - rdp.vtxbuf2[i].z) * percent;
+               rdp.vtxbuf[index].q = rdp.vtxbuf2[i].q + (rdp.vtxbuf2[j].q - rdp.vtxbuf2[i].q) * percent;
+               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[i].u0 + (rdp.vtxbuf2[j].u0 - rdp.vtxbuf2[i].u0) * percent;
+               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[i].v0 + (rdp.vtxbuf2[j].v0 - rdp.vtxbuf2[i].v0) * percent;
+               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[i].u1 + (rdp.vtxbuf2[j].u1 - rdp.vtxbuf2[i].u1) * percent;
+               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[i].v1 + (rdp.vtxbuf2[j].v1 - rdp.vtxbuf2[i].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&rdp.vtxbuf2[i], &rdp.vtxbuf2[j], &rdp.vtxbuf[index++], percent);
                else
-                  rdp.vtxbuf[index++].number = Vi.number | Vj.number | 16;
+                  rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number | 16;
             }
          }
          else
          {
-            //if (Vj.y < rdp.clip_min_y)  // Both are out, save nothing
-            if (Vj.y >= rdp.clip_min_y) // First is out, second is in, save intersection & in point
+            //if (rdp.vtxbuf2[j].y < rdp.clip_min_y)  // Both are out, save nothing
+            if (rdp.vtxbuf2[j].y >= rdp.clip_min_y) // First is out, second is in, save intersection & in point
             {
-               percent = (rdp.clip_min_y - Vj.y) / (Vi.y - Vj.y);
-               rdp.vtxbuf[index].x = Vj.x + (Vi.x - Vj.x) * percent;
+               percent = (rdp.clip_min_y - rdp.vtxbuf2[j].y) / (rdp.vtxbuf2[i].y - rdp.vtxbuf2[j].y);
+               rdp.vtxbuf[index].x = rdp.vtxbuf2[j].x + (rdp.vtxbuf2[i].x - rdp.vtxbuf2[j].x) * percent;
                rdp.vtxbuf[index].y = rdp.clip_min_y;
-               rdp.vtxbuf[index].z = Vj.z + (Vi.z - Vj.z) * percent;
-               rdp.vtxbuf[index].q = Vj.q + (Vi.q - Vj.q) * percent;
-               rdp.vtxbuf[index].u0 = Vj.u0 + (Vi.u0 - Vj.u0) * percent;
-               rdp.vtxbuf[index].v0 = Vj.v0 + (Vi.v0 - Vj.v0) * percent;
-               rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
-               rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
+               rdp.vtxbuf[index].z = rdp.vtxbuf2[j].z + (rdp.vtxbuf2[i].z - rdp.vtxbuf2[j].z) * percent;
+               rdp.vtxbuf[index].q = rdp.vtxbuf2[j].q + (rdp.vtxbuf2[i].q - rdp.vtxbuf2[j].q) * percent;
+               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[j].u0 + (rdp.vtxbuf2[i].u0 - rdp.vtxbuf2[j].u0) * percent;
+               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[j].v0 + (rdp.vtxbuf2[i].v0 - rdp.vtxbuf2[j].v0) * percent;
+               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[j].u1 + (rdp.vtxbuf2[i].u1 - rdp.vtxbuf2[j].u1) * percent;
+               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[j].v1 + (rdp.vtxbuf2[i].v1 - rdp.vtxbuf2[j].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&rdp.vtxbuf2[j], &rdp.vtxbuf2[i], &rdp.vtxbuf[index++], percent);
                else
-                  rdp.vtxbuf[index++].number = Vi.number | Vj.number | 16;
+                  rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number | 16;
 
                // Save the in point
-               rdp.vtxbuf[index++] = Vj;
+               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
          }
       }
@@ -1192,50 +1186,50 @@ void clip_tri(int interpolate_colors)
          j = i+1;
          if (j == n) j = 0;
 
-         if (Vi.z < maxZ)
+         if (rdp.vtxbuf2[i].z < maxZ)
          {
-            if (Vj.z < maxZ)   // Both are in, save the last one
+            if (rdp.vtxbuf2[j].z < maxZ)   // Both are in, save the last one
             {
-               rdp.vtxbuf[index++] = Vj;
+               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (maxZ - Vi.z) / (Vj.z - Vi.z);
-               rdp.vtxbuf[index].x = Vi.x + (Vj.x - Vi.x) * percent;
-               rdp.vtxbuf[index].y = Vi.y + (Vj.y - Vi.y) * percent;
+               percent = (maxZ - rdp.vtxbuf2[i].z) / (rdp.vtxbuf2[j].z - rdp.vtxbuf2[i].z);
+               rdp.vtxbuf[index].x = rdp.vtxbuf2[i].x + (rdp.vtxbuf2[j].x - rdp.vtxbuf2[i].x) * percent;
+               rdp.vtxbuf[index].y = rdp.vtxbuf2[i].y + (rdp.vtxbuf2[j].y - rdp.vtxbuf2[i].y) * percent;
                rdp.vtxbuf[index].z = maxZ - 0.001f;
-               rdp.vtxbuf[index].q = Vi.q + (Vj.q - Vi.q) * percent;
-               rdp.vtxbuf[index].u0 = Vi.u0 + (Vj.u0 - Vi.u0) * percent;
-               rdp.vtxbuf[index].v0 = Vi.v0 + (Vj.v0 - Vi.v0) * percent;
-               rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
-               rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
+               rdp.vtxbuf[index].q = rdp.vtxbuf2[i].q + (rdp.vtxbuf2[j].q - rdp.vtxbuf2[i].q) * percent;
+               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[i].u0 + (rdp.vtxbuf2[j].u0 - rdp.vtxbuf2[i].u0) * percent;
+               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[i].v0 + (rdp.vtxbuf2[j].v0 - rdp.vtxbuf2[i].v0) * percent;
+               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[i].u1 + (rdp.vtxbuf2[j].u1 - rdp.vtxbuf2[i].u1) * percent;
+               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[i].v1 + (rdp.vtxbuf2[j].v1 - rdp.vtxbuf2[i].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&rdp.vtxbuf2[i], &rdp.vtxbuf2[j], &rdp.vtxbuf[index++], percent);
                else
-                  rdp.vtxbuf[index++].number = Vi.number | Vj.number;
+                  rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number;
             }
          }
          else
          {
-            //if (Vj.z > maxZ)  // Both are out, save nothing
-            if (Vj.z < maxZ) // First is out, second is in, save intersection & in point
+            //if (rdp.vtxbuf2[j].z > maxZ)  // Both are out, save nothing
+            if (rdp.vtxbuf2[j].z < maxZ) // First is out, second is in, save intersection & in point
             {
-               percent = (maxZ - Vj.z) / (Vi.z - Vj.z);
-               rdp.vtxbuf[index].x = Vj.x + (Vi.x - Vj.x) * percent;
-               rdp.vtxbuf[index].y = Vj.y + (Vi.y - Vj.y) * percent;
+               percent = (maxZ - rdp.vtxbuf2[j].z) / (rdp.vtxbuf2[i].z - rdp.vtxbuf2[j].z);
+               rdp.vtxbuf[index].x = rdp.vtxbuf2[j].x + (rdp.vtxbuf2[i].x - rdp.vtxbuf2[j].x) * percent;
+               rdp.vtxbuf[index].y = rdp.vtxbuf2[j].y + (rdp.vtxbuf2[i].y - rdp.vtxbuf2[j].y) * percent;
                rdp.vtxbuf[index].z = maxZ - 0.001f;;
-               rdp.vtxbuf[index].q = Vj.q + (Vi.q - Vj.q) * percent;
-               rdp.vtxbuf[index].u0 = Vj.u0 + (Vi.u0 - Vj.u0) * percent;
-               rdp.vtxbuf[index].v0 = Vj.v0 + (Vi.v0 - Vj.v0) * percent;
-               rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
-               rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
+               rdp.vtxbuf[index].q = rdp.vtxbuf2[j].q + (rdp.vtxbuf2[i].q - rdp.vtxbuf2[j].q) * percent;
+               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[j].u0 + (rdp.vtxbuf2[i].u0 - rdp.vtxbuf2[j].u0) * percent;
+               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[j].v0 + (rdp.vtxbuf2[i].v0 - rdp.vtxbuf2[j].v0) * percent;
+               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[j].u1 + (rdp.vtxbuf2[i].u1 - rdp.vtxbuf2[j].u1) * percent;
+               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[j].v1 + (rdp.vtxbuf2[i].v1 - rdp.vtxbuf2[j].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&rdp.vtxbuf2[j], &rdp.vtxbuf2[i], &rdp.vtxbuf[index++], percent);
                else
-                  rdp.vtxbuf[index++].number = Vi.number | Vj.number;
+                  rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number;
 
                // Save the in point
-               rdp.vtxbuf[index++] = Vj;
+               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
          }
       }
@@ -1258,50 +1252,50 @@ void clip_tri(int interpolate_colors)
          j = i+1;
          if (j == n) j = 0;
 
-         if (Vi.z >= 0.0f)
+         if (rdp.vtxbuf2[i].z >= 0.0f)
          {
-            if (Vj.z >= 0.0f)   // Both are in, save the last one
+            if (rdp.vtxbuf2[j].z >= 0.0f)   // Both are in, save the last one
             {
-               rdp.vtxbuf[index++] = Vj;
+               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (-Vi.z) / (Vj.z - Vi.z);
-               rdp.vtxbuf[index].x = Vi.x + (Vj.x - Vi.x) * percent;
-               rdp.vtxbuf[index].y = Vi.y + (Vj.y - Vi.y) * percent;
+               percent = (-rdp.vtxbuf2[i].z) / (rdp.vtxbuf2[j].z - rdp.vtxbuf2[i].z);
+               rdp.vtxbuf[index].x = rdp.vtxbuf2[i].x + (rdp.vtxbuf2[j].x - rdp.vtxbuf2[i].x) * percent;
+               rdp.vtxbuf[index].y = rdp.vtxbuf2[i].y + (rdp.vtxbuf2[j].y - rdp.vtxbuf2[i].y) * percent;
                rdp.vtxbuf[index].z = 0.0f;
-               rdp.vtxbuf[index].q = Vi.q + (Vj.q - Vi.q) * percent;
-               rdp.vtxbuf[index].u0 = Vi.u0 + (Vj.u0 - Vi.u0) * percent;
-               rdp.vtxbuf[index].v0 = Vi.v0 + (Vj.v0 - Vi.v0) * percent;
-               rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
-               rdp.vtxbuf[index].v1 = Vi.v1 + (Vj.v1 - Vi.v1) * percent;
+               rdp.vtxbuf[index].q = rdp.vtxbuf2[i].q + (rdp.vtxbuf2[j].q - rdp.vtxbuf2[i].q) * percent;
+               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[i].u0 + (rdp.vtxbuf2[j].u0 - rdp.vtxbuf2[i].u0) * percent;
+               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[i].v0 + (rdp.vtxbuf2[j].v0 - rdp.vtxbuf2[i].v0) * percent;
+               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[i].u1 + (rdp.vtxbuf2[j].u1 - rdp.vtxbuf2[i].u1) * percent;
+               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[i].v1 + (rdp.vtxbuf2[j].v1 - rdp.vtxbuf2[i].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&Vi, &Vj, &rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&rdp.vtxbuf2[i], &rdp.vtxbuf2[j], &rdp.vtxbuf[index++], percent);
                else
-                  rdp.vtxbuf[index++].number = Vi.number | Vj.number;
+                  rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number;
             }
          }
          else
          {
-            //if (Vj.z < 0.0f)  // Both are out, save nothing
-            if (Vj.z >= 0.0f) // First is out, second is in, save intersection & in point
+            //if (rdp.vtxbuf2[j].z < 0.0f)  // Both are out, save nothing
+            if (rdp.vtxbuf2[j].z >= 0.0f) // First is out, second is in, save intersection & in point
             {
-               percent = (-Vj.z) / (Vi.z - Vj.z);
-               rdp.vtxbuf[index].x = Vj.x + (Vi.x - Vj.x) * percent;
-               rdp.vtxbuf[index].y = Vj.y + (Vi.y - Vj.y) * percent;
+               percent = (-rdp.vtxbuf2[j].z) / (rdp.vtxbuf2[i].z - rdp.vtxbuf2[j].z);
+               rdp.vtxbuf[index].x = rdp.vtxbuf2[j].x + (rdp.vtxbuf2[i].x - rdp.vtxbuf2[j].x) * percent;
+               rdp.vtxbuf[index].y = rdp.vtxbuf2[j].y + (rdp.vtxbuf2[i].y - rdp.vtxbuf2[j].y) * percent;
                rdp.vtxbuf[index].z = 0.0f;;
-               rdp.vtxbuf[index].q = Vj.q + (Vi.q - Vj.q) * percent;
-               rdp.vtxbuf[index].u0 = Vj.u0 + (Vi.u0 - Vj.u0) * percent;
-               rdp.vtxbuf[index].v0 = Vj.v0 + (Vi.v0 - Vj.v0) * percent;
-               rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
-               rdp.vtxbuf[index].v1 = Vj.v1 + (Vi.v1 - Vj.v1) * percent;
+               rdp.vtxbuf[index].q = rdp.vtxbuf2[j].q + (rdp.vtxbuf2[i].q - rdp.vtxbuf2[j].q) * percent;
+               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[j].u0 + (rdp.vtxbuf2[i].u0 - rdp.vtxbuf2[j].u0) * percent;
+               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[j].v0 + (rdp.vtxbuf2[i].v0 - rdp.vtxbuf2[j].v0) * percent;
+               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[j].u1 + (rdp.vtxbuf2[i].u1 - rdp.vtxbuf2[j].u1) * percent;
+               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[j].v1 + (rdp.vtxbuf2[i].v1 - rdp.vtxbuf2[j].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&Vj, &Vi, &rdp.vtxbuf[index++], percent);
+                  InterpolateColors(&rdp.vtxbuf2[j], &rdp.vtxbuf2[i], &rdp.vtxbuf[index++], percent);
                else
-                  rdp.vtxbuf[index++].number = Vi.number | Vj.number;
+                  rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number;
 
                // Save the in point
-               rdp.vtxbuf[index++] = Vj;
+               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
          }
       }
