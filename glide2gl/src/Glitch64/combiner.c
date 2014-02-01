@@ -238,12 +238,13 @@ void check_compile(GLuint shader)
 {
    GLint success;
    glGetShaderiv(shader,GL_COMPILE_STATUS,&success);
-   if(!success)
+
+   if (!success)
    {
       char log[1024];
       glGetShaderInfoLog(shader,1024,NULL,log);
-      LOGINFO(log);
-	  printf("\n%s",log);
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, log);
    }
 }
 
@@ -251,11 +252,13 @@ void check_link(GLuint program)
 {
    GLint success;
    glGetProgramiv(program,GL_LINK_STATUS,&success);
-   if(!success)
+
+   if (!success)
    {
       char log[1024];
       glGetProgramInfoLog(program,1024,NULL,log);
-      LOGINFO(log);
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, log);
    }
 }
 
