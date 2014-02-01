@@ -5,8 +5,7 @@
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* any later version.
+* the Free Software Foundation; either version 2 of the License, or * any later version.
 *
 * This program is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -179,6 +178,120 @@ extern void microcheck(void);
 
 //forward decls
 static void CopyFrameBuffer (GrBuffer_t buffer);
+
+void calc_light (VERTEX *v)
+{
+   uint32_t l;
+   float light_intensity = 0.0f;
+   float color[3];
+   color[0] = rdp.light[rdp.num_lights].r;
+   color[1] = rdp.light[rdp.num_lights].g;
+   color[2] = rdp.light[rdp.num_lights].b;
+
+   for (l = 0; l < rdp.num_lights; l++)
+   {
+      light_intensity = DotProduct (rdp.light_vector[l], v->vec);
+
+      if (light_intensity > 0.0f) 
+      {
+         color[0] += rdp.light[l].r * light_intensity;
+         color[1] += rdp.light[l].g * light_intensity;
+         color[2] += rdp.light[l].b * light_intensity;
+      }
+   }
+
+   if (color[0] > 1.0f)
+      color[0] = 1.0f;
+   if (color[1] > 1.0f)
+      color[1] = 1.0f;
+   if (color[2] > 1.0f)
+      color[2] = 1.0f;
+
+   v->r = (uint8_t)(color[0]*255.0f);
+   v->g = (uint8_t)(color[1]*255.0f);
+   v->b = (uint8_t)(color[2]*255.0f);
+}
+
+void calc_linear (VERTEX *v)
+{
+   if (settings.force_calc_sphere)
+   {
+      calc_sphere(v);
+      return;
+   }
+   DECLAREALIGN16VAR(vec[3]);
+
+   TransformVector (v->vec, vec, rdp.model);
+   //    TransformVector (v->vec, vec, rdp.combined);
+   NormalizeVector (vec);
+   float x, y;
+   if (!rdp.use_lookat)
+   {
+      x = vec[0];
+      y = vec[1];
+   }
+   else
+   {
+      x = DotProduct (rdp.lookat[0], vec);
+      y = DotProduct (rdp.lookat[1], vec);
+   }
+
+   if (x > 1.0f)
+      x = 1.0f;
+   else if (x < -1.0f)
+      x = -1.0f;
+   if (y > 1.0f)
+      y = 1.0f;
+   else if (y < -1.0f)
+      y = -1.0f;
+
+   if (rdp.cur_cache[0])
+   {
+      // scale >> 6 is size to map to
+      v->ou = (glide64_acos(x)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_s_scale >> 6);
+      v->ov = (glide64_acos(y)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_t_scale >> 6);
+   }
+   v->uv_scaled = 1;
+#ifdef EXTREME_LOGGING
+   FRDP ("calc linear u: %f, v: %f\n", v->ou, v->ov);
+#endif
+}
+
+void calc_sphere (VERTEX *v)
+{
+   //  LRDP("calc_sphere\n");
+   DECLAREALIGN16VAR(vec[3]);
+   int s_scale, t_scale;
+   if (settings.hacks&hack_Chopper)
+   {
+      s_scale = min(rdp.tiles[rdp.cur_tile].org_s_scale >> 6, rdp.tiles[rdp.cur_tile].lr_s);
+      t_scale = min(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, rdp.tiles[rdp.cur_tile].lr_t);
+   }
+   else
+   {
+      s_scale = rdp.tiles[rdp.cur_tile].org_s_scale >> 6;
+      t_scale = rdp.tiles[rdp.cur_tile].org_t_scale >> 6;
+   }
+   TransformVector (v->vec, vec, rdp.model);
+   NormalizeVector (vec);
+   float x, y;
+   if (!rdp.use_lookat)
+   {
+      x = vec[0];
+      y = vec[1];
+   }
+   else
+   {
+      x = DotProduct (rdp.lookat[0], vec);
+      y = DotProduct (rdp.lookat[1], vec);
+   }
+   v->ou = (x * 0.5f + 0.5f) * s_scale;
+   v->ov = (y * 0.5f + 0.5f) * t_scale;
+   v->uv_scaled = 1;
+#ifdef EXTREME_LOGGING
+   FRDP ("calc sphere u: %f, v: %f\n", v->ou, v->ov);
+#endif
+}
 
 // ** UCODE FUNCTIONS **
 #include "ucode.h"
