@@ -433,12 +433,14 @@ void GetTexInfo (int id, int tile)
    LRDP(" | | | +- Done.\n | | +- GetTexInfo end\n");
 }
 
-// Select texture from texture buffer
-static void SelectTBuffTex(TBUFF_COLOR_IMAGE * pTBuffTex)
+#ifdef HAVE_HWFBE
+static inline void SelectTBuffTex(TBUFF_COLOR_IMAGE * pTBuffTex)
 {
-   FRDP ("SelectTBuffTex: tex: %d, tmu: %d, tile: %d\n", rdp.tex, pTBuffTex->tmu, pTBuffTex->tile);
+   // Select texture from texture buffer
    grTexSource(pTBuffTex->tile, pTBuffTex->tex_addr, GR_MIPMAPLEVELMASK_BOTH, &(pTBuffTex->info) );
+   //FRDP ("SelectTBuffTex: tex: %d, tmu: %d, tile: %d\n", rdp.tex, pTBuffTex->tmu, pTBuffTex->tile);
 }
+#endif
 
 #define TMUMODE_NORMAL		0
 #define TMUMODE_PASSTHRU	1
@@ -1180,9 +1182,7 @@ void LoadTex(int id, int tmu)
    }
 
    if (modifyPalette)
-   {
       memcpy(rdp.pal_8, tmp_pal, 512);
-   }
 
    if (mod && !modifyPalette)
    {
@@ -1219,12 +1219,6 @@ void LoadTex(int id, int tmu)
          TexConv_A8_ARGB4444 ((texture), (tex2), real_x, real_y);
          texture = tex2;
       }
-      /*else if (LOWORD(result) == GR_TEXFMT_ARGB_4444)
-        {
-        memcpy (tex2, texture, (real_x*real_y) << 1);
-        texture = tex2;
-        }*/ // we can skip memcpy since "texture" won't be swapped between "tex1" and "tex2" after this.
-      // Hiroshi Morii <koolsmoky@users.sourceoforge.net>
 
       result = (1 << 16) | GR_TEXFMT_ARGB_4444;
 
