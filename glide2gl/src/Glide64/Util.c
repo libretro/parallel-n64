@@ -49,6 +49,9 @@
 #define Vj rdp.vtxbuf2[j]
 #define Vi rdp.vtxbuf2[i]
 
+//forward decls
+void glide64SPClipVertex(uint32_t i);
+
 //
 // util_init - initialize data for the functions in this file
 //
@@ -643,11 +646,8 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
       if (rdp.zsrc == 1)
          rdp.vtxbuf[i].z = rdp.prim_depth;
 
+      glide64SPClipVertex(i);
       // Don't remove clipping, or it will freeze
-      if (rdp.vtxbuf[i].x > rdp.clip_max_x) rdp.clip |= CLIP_XMAX;
-      if (rdp.vtxbuf[i].x < rdp.clip_min_x) rdp.clip |= CLIP_XMIN;
-      if (rdp.vtxbuf[i].y > rdp.clip_max_y) rdp.clip |= CLIP_YMAX;
-      if (rdp.vtxbuf[i].y < rdp.clip_min_y) rdp.clip |= CLIP_YMIN;
       if (rdp.vtxbuf[i].z > maxZ)           rdp.clip |= CLIP_ZMAX;
       if (rdp.vtxbuf[i].z < 0.0f)           rdp.clip |= CLIP_ZMIN;
       no_clip &= rdp.vtxbuf[i].screen_translated;
@@ -670,13 +670,7 @@ void do_triangle_stuff_2 (uint16_t linew)
    rdp.clip = 0;
 
    for (i = 0; i<rdp.n_global; i++)
-   {
-      // Don't remove clipping, or it will freeze
-      if (rdp.vtxbuf[i].x > rdp.clip_max_x) rdp.clip |= CLIP_XMAX;
-      if (rdp.vtxbuf[i].x < rdp.clip_min_x) rdp.clip |= CLIP_XMIN;
-      if (rdp.vtxbuf[i].y > rdp.clip_max_y) rdp.clip |= CLIP_YMAX;
-      if (rdp.vtxbuf[i].y < rdp.clip_min_y) rdp.clip |= CLIP_YMIN;
-   }
+      glide64SPClipVertex(i);
 
    render_tri (linew, true);
 }
