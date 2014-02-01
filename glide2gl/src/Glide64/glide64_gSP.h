@@ -364,3 +364,11 @@ void glide64SPClipVertex(uint32_t i)
    if (rdp.vtxbuf[i].y > rdp.clip_max_y) rdp.clip |= CLIP_YMAX;
    if (rdp.vtxbuf[i].y < rdp.clip_min_y) rdp.clip |= CLIP_YMIN;
 }
+
+static void gSPBranchLessZ( uint32_t branchdl, uint32_t vtx, float zval )
+{
+   uint32_t address = RSP_SegmentToPhysical( branchdl );
+   if( fabs(rdp.vtx[vtx].z) <= zval )
+      rdp.pc[rdp.pc_i] = address;
+   //FRDP ("uc1:branch_less_z, addr: %08lx\n", address);
+}
