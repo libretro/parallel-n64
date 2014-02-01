@@ -73,7 +73,7 @@ void Mirror16bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_
          else
             *v8++ = *(uint16_t *)&tex[mask_mask & 2 * v10];
       }while ( ++v10 != count );
-      v8 = (uint16_t *)((char *)v8 + line);
+      v8 = (uint16_t *)((int8_t*)v8 + line);
       tex += line_full;
    }while (--height);
 }
@@ -110,7 +110,7 @@ void Wrap16bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_wi
       {
          *v7++ = *(uint32_t *)&tex[4 * (mask_mask & v9)];
       }while ( ++v9 != count );
-      v7 = (uint32_t *)((char *)v7 + line);
+      v7 = (uint32_t *)((int8_t*)v7 + line);
       tex += line_full;
    }while(--height);
 }
@@ -143,8 +143,8 @@ void Clamp16bS (uint8_t *tex, uint32_t width, uint32_t clamp_to, uint32_t real_w
       {
          *v7++ = *v6;
       }while (--v10 );
-      v6 = (uint16_t *)((char *)v6 + line_full);
-      v7 = (uint16_t *)((char *)v7 + line);
+      v6 = (uint16_t *)((int8_t*)v6 + line_full);
+      v7 = (uint16_t *)((int8_t*)v7 + line);
    }while(--real_height);
 }
 

@@ -55,7 +55,7 @@ static INLINE void mirror32bS(uint8_t *tex, uint8_t *start, int width, int heigh
          else
             *v8++ = *(uint32_t *)&tex[mask & 4 * v10];
       }while (++v10 != count );
-      v8 = (uint32_t *)((char *)v8 + line);
+      v8 = (uint32_t *)((int8_t*)v8 + line);
       tex += full;
    }while (--height);
 }
@@ -71,7 +71,7 @@ static INLINE void wrap32bS(uint8_t *tex, uint8_t *start, int height, int mask, 
       {
          *v7++ = *(uint32_t *)&tex[4 * (mask & v9)];
       }while (--v9 != count );
-      v7 = (uint32_t *)((char *)v7 + line);
+      v7 = (uint32_t *)((int8_t*)v7 + line);
       tex += full;
    }while (--height);
 }
@@ -89,8 +89,8 @@ static INLINE void clamp32bS(uint8_t *tex, uint8_t *constant, int height, int li
       {
          *v7++ = *v6;
       }while (--v10);
-      v6 = (uint32_t *)((char *)v6 + full);
-      v7 = (uint32_t *)((char *)v7 + line);
+      v6 = (uint32_t *)((int8_t*)v6 + full);
+      v7 = (uint32_t *)((int8_t*)v7 + line);
    }while (--height);
 }
 

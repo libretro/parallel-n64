@@ -108,7 +108,7 @@ void Wrap8bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_wid
       {
          *start++ = *(uint32_t *)&tex[4 * (mask_mask & v9++)];
       }while ( v9 != count );
-      start = (uint32_t *)((char *)start + line);
+      start = (uint32_t *)((int8_t*)start + line);
       tex += line_full;
    }while (--height);
 }

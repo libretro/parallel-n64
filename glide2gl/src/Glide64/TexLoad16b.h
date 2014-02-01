@@ -68,7 +68,7 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
          break;
       v18 = v17 - 1;
       v12 = (uint32_t *)&src[(line + (uintptr_t)v6 - (uintptr_t)src) & 0xFFF];
-      v13 = (uint32_t *)((char *)v7 + ext);
+      v13 = (uint32_t *)((int8_t *)v7 + ext);
       v14 = wid_64;
       do
       {
@@ -85,7 +85,7 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
       }
       while (--v14);
       v6 = (uint32_t *)&src[(line + (uintptr_t)v12 - (uintptr_t)src) & 0xFFF];
-      v7 = (uint32_t *)((char *)v13 + ext);
+      v7 = (uint32_t *)((int8_t *)v13 + ext);
       v8 = v18 - 1;
    }while ( v18 != 1 );
 }
@@ -110,8 +110,8 @@ static INLINE void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height,
       if ( v15 == 1 )
          break;
       v16 = v15 - 1;
-      v11 = (uint32_t *)((char *)v6 + line);
-      v12 = (uint32_t *)((char *)v7 + ext);
+      v11 = (uint32_t *)((int8_t *)v6 + line);
+      v12 = (uint32_t *)((int8_t *)v7 + ext);
       v9 = wid_64;
       do
       {
@@ -120,8 +120,8 @@ static INLINE void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height,
          *v12++ = v14;
          v11 += 2;
       }while (--v9 );
-      v6 = (uint32_t *)((char *)v11 + line);
-      v7 = (uint32_t *)((char *)v12 + ext);
+      v6 = (uint32_t *)((int8_t *)v11 + line);
+      v7 = (uint32_t *)((int8_t *)v12 + ext);
       v8 = v16 - 1;
    }while ( v16 != 1 );
 }
