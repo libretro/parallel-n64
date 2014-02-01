@@ -319,24 +319,27 @@ void rdp_new(void)
    unsigned i, cpu;
    cpu = 0;
    rdp.vtx1 = (VERTEX*)malloc(256 * sizeof(VERTEX));
-   memset(rdp.vtx1, 0, 256 * sizeof(VERTEX));
    rdp.vtx2 = (VERTEX*)malloc(256 * sizeof(VERTEX));
+   rdp.vtx  = (VERTEX*)malloc(MAX_VTX * sizeof(VERTEX));
+   rdp.frame_buffers = (COLOR_IMAGE*)malloc((NUMTEXBUF+2) * sizeof(COLOR_IMAGE));
+
+   memset(rdp.vtx1, 0, 256 * sizeof(VERTEX));
    memset(rdp.vtx2, 0, 256 * sizeof(VERTEX));
-   rdp.vtxbuf = rdp.vtxbuf2 = 0;
-   rdp.vtx_buffer = rdp.n_global = 0;
+   memset(rdp.vtx,  0, MAX_VTX * sizeof(VERTEX));
+
+   rdp.vtxbuf = 0;
+   rdp.vtxbuf2 = 0;
+   rdp.vtx_buffer = 0;
+   rdp.n_global = 0;
+   rdp.v0 = 0;
+   rdp.vn = 0;
 
    for (i = 0; i < MAX_TMU; i++)
    {
       rdp.cache[i] = (CACHE_LUT*)malloc(MAX_CACHE * sizeof(CACHE_LUT));
       rdp.cur_cache[i]   = 0;
       rdp.cur_cache_n[i] = 0;
-   };
-
-   rdp.vtx = (VERTEX*)malloc(MAX_VTX * sizeof(VERTEX));
-   memset(rdp.vtx, 0, sizeof(VERTEX)*MAX_VTX);
-   rdp.v0 = rdp.vn = 0;
-
-   rdp.frame_buffers = (COLOR_IMAGE*)malloc((NUMTEXBUF+2) * sizeof(COLOR_IMAGE));
+   }
 
    if (perf_get_cpu_features_cb)
       cpu = perf_get_cpu_features_cb();
