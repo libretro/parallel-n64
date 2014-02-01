@@ -54,16 +54,10 @@ static int min_filter1, mag_filter1, wrap_s1, wrap_t1;
 
 unsigned char *filter(unsigned char *source, int width, int height, int *width2, int *height2);
 
-//#define TEXBSP
 typedef struct _texlist
 {
    unsigned int id;
-#ifdef TEXBSP
-   struct _texlist *left;
-   struct _texlist *right;
-#else
    struct _texlist *next;
-#endif
 } texlist;
 
 static int nbTex = 0;
@@ -71,73 +65,6 @@ static texlist *list = NULL;
 
 void remove_tex(unsigned int idmin, unsigned int idmax)
 {
-#ifdef TEXBSP
-   GLuint texbsplist[nbTex];
-   int	nbdel = 0;
-   // 1st look at initial point that is <= at idmin and than go right until id > idmax. Deleting all in between, and reattach list is needed
-   texlist *aux = (texlist*)list;
-   bool reattach = false;
-   texlist *debut, *fin, *temp;
-   // Empty list, easy
-   if (list==NULL)
-      return;
-   if ((idmin==0x00000000) && (idmax==0xffffffff))
-   {
-      // delete everything, quite easy
-      debut = list->right;
-      fin = list->left;
-      while ((debut) && (fin))
-      {
-         if (debut)
-         {
-            texbsplist[nbdel++]=debut->id;
-            temp = debut->right;
-            free(debut);
-            debut = temp;
-         }
-         if (fin)
-         {
-            texbsplist[nbdel++]=fin->id;
-            temp = fin->left;
-            free(fin);
-            fin = temp;
-         }
-      }
-      texbsplist[nbdel++]=list->id;
-      free(list);
-      list=NULL;
-      glDeleteTextures(nbdel, texbsplist);
-      nbTex = 0;
-      return;
-   }
-   // General case, range delete
-   // find starting point.
-   debut = list;
-   while ((debut->id > idmin) && debut->right)
-      debut = debut->right;
-   while (debut->left && (debut->left->id < idmin))
-      debut = debut->left;
-   fin = debut->right;
-   // and now delete
-   while (debut && (debut->id >= idmin) && (debut->id < idmax))
-   {
-      temp = debut->left;
-      texbsplist[nbdel++] = debut->id;
-      free(debut);
-      debut=temp;
-   }
-   // rechain the list
-   if (fin)
-      fin->left = debut;
-   if (debut)
-      debut->right = fin;
-   if (debut)
-      list = debut;
-   else
-      list = fin;		//change anchor
-   glDeleteTextures(nbdel, texbsplist);
-   nbTex -= nbdel;
-#else
    unsigned int *t;
    int n = 0;
    texlist *aux = list;
@@ -172,59 +99,11 @@ void remove_tex(unsigned int idmin, unsigned int idmax)
    glDeleteTextures(n, t);
    free(t);
    TEXLOG("RMVTEX nbtex is now %d (%06x - %06x)\n", nbTex, idmin, idmax);
-#endif
 }
 
 
 void add_tex(unsigned int id)
 {
-#ifdef TEXBSP
- if (list == NULL)
- {
-    list = (texlist*)malloc(sizeof(texlist));
-    list->left = NULL; list->right = NULL;
-    list->id = id;
-    nbTex++;
-    return;
- }
-
- texlist *bsp = list;
- if (bsp->id>=id)
- {	// go left
-	while ((bsp->left!=NULL) && (bsp->left->id > id))
-		bsp=bsp->left;
-	if (bsp->id = id)
-      return;
-	texlist *aux = (texlist*)bsp->left;
-	texlist *ins = (texlist*)malloc(sizeof(texlist)); 
-	ins->left = aux;
-	ins->right = bsp;
-	ins->id = id;
-	bsp->left = ins;
-	if (aux)
-      aux->right = ins;
-	nbTex++;
-	list=bsp;	// new anchor
- }
- else
- {			// go right
-	while ((bsp->right!=NULL) && (bsp->right->id < id))
-		bsp=bsp->right;
-
-	if (bsp->id = id)
-      return;
-	texlist *aux = bsp->right;
-	texlist *ins = (texlist*)malloc(sizeof(texlist)); 
-	ins->right = aux;
-	ins->left = bsp;
-	ins->id = id;
-	bsp->right = ins;
-	if (aux)
-      aux->left = ins;
-	nbTex++;
-	list=bsp;	// new anchor
- }
-#else
   texlist *aux = list;
   texlist *aux2;
   if (list == NULL || id < list->id)
@@ -246,7 +125,6 @@ void add_tex(unsigned int id)
   aux->next->next = aux2;
 addtex_log:
   TEXLOG("ADDTEX nbtex is now %d (%06x)\n", nbTex, id);
-#endif
 }
 
 void init_textures(void)
