@@ -1213,6 +1213,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
     return;
   }
 
+#ifdef HAVE_HWFBE
   if ((settings.ucode == ucode_CBFD) && rdp.cur_image && rdp.cur_image->format)
   {
     //FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.timg.addr, rdp.maincimg[1].addr, rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size);
@@ -1220,6 +1221,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
     rdp.tri_n += 2;
     return;
   }
+#endif
 
   if ((settings.ucode == ucode_PerfectDark) && (rdp.frame_buffers[rdp.ci_count-1].status == CI_ZCOPY))
   {
@@ -2292,7 +2294,9 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 
    if (format != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
    {
+#ifdef HAVE_HWFBE
       if (!rdp.cur_image)
+#endif
       {
 #ifdef HAVE_HWFBE
          if (fb_hwfbe_enabled && rdp.ci_width <= 64)
@@ -2317,7 +2321,11 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
          rdp.updatescreen = 1;
 
       int viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *gfx.VI_ORIGIN_REG)) ? false : true;
-      if ((rdp.zimg != rdp.cimg) && (rdp.ocimg != rdp.cimg) && SwapOK && viSwapOK && !rdp.cur_image)
+      if ((rdp.zimg != rdp.cimg) && (rdp.ocimg != rdp.cimg) && SwapOK && viSwapOK
+#ifdef HAVE_HWFBE
+            && !rdp.cur_image
+#endif
+            )
       {
          if (fb_emulation_enabled)
             rdp.maincimg[0] = rdp.frame_buffers[rdp.main_ci_index];
@@ -2780,14 +2788,15 @@ void DetectFrameBufferUsage(void)
    }
 #endif
    rdp.ci_count = 0;
+#ifdef HAVE_HWFBE
    if (settings.hacks&hack_Banjo2)
       rdp.cur_tex_buf = 0;
+#endif
    rdp.maincimg[0] = rdp.frame_buffers[rdp.main_ci_index];
    //    rdp.scale_x = rdp.scale_x_bak;
    //    rdp.scale_y = rdp.scale_y_bak;
-#ifdef EXTREME_LOGGING
-   LRDP("DetectFrameBufferUsage End\n");
-#endif
+  
+   //LRDP("DetectFrameBufferUsage End\n");
 }
 
 /*******************************************

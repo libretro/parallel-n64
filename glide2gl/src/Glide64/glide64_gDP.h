@@ -378,14 +378,14 @@ static void gDPLoadTile( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs
       //     wrong_tile = -1;
    }
 
+#ifdef HAVE_HWFBE
    if (rdp.tbuff_tex)// && (rdp.tiles[tile].format == G_IM_FMT_RGBA))
    {
-#ifdef EXTREME_LOGGING
-      FRDP("loadtile: tbuff_tex uls: %d, ult:%d\n", uls, ult);
-#endif
       rdp.tbuff_tex->tile_uls = uls;
       rdp.tbuff_tex->tile_ult = ult;
+      //FRDP("loadtile: tbuff_tex uls: %d, ult:%d\n", uls, ult);
    }
+#endif
 
    if ((settings.hacks&hack_Tonic) && tile == 7)
    {
@@ -562,7 +562,7 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
 #endif
 }
 
-static inline void gDPSetAlphaCompare( uint32_t mode )
+static INLINE void gDPSetAlphaCompare( uint32_t mode )
 {
    rdp.othermode_l |= 0x00000003;
    rdp.acmp = mode;
@@ -570,7 +570,7 @@ static inline void gDPSetAlphaCompare( uint32_t mode )
    //FRDP ("alpha compare %s\n", ACmp[rdp.acmp]);
 }
 
-static inline void gDPSetDepthSource( uint32_t source )
+static INLINE void gDPSetDepthSource( uint32_t source )
 {
    rdp.zsrc = source;
    rdp.update |= UPDATE_ZBUF_ENABLED;
@@ -639,6 +639,7 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
    if (rdp.skip_drawing)
       return; //Fillrect skipped
 
+#ifdef HAVE_HWFBE
    if (rdp.cur_image && (rdp.cur_image->format != G_IM_FMT_RGBA) && (rdp.cycle_mode == G_CYC_FILL) && (rdp.cur_image->width == lr_x - ul_x) && (rdp.cur_image->height == lr_y - ul_y))
    {
       uint32_t color = rdp.fill_color;
@@ -653,11 +654,10 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
       grBufferClear (color, 0, 0xFFFF);
       grDepthMask (FXTRUE);
       rdp.update |= UPDATE_ZBUF_ENABLED;
-#ifdef EXTREME_LOGGING
-      LRDP("Fillrect - cleared the texture buffer\n");
-#endif
+      //LRDP("Fillrect - cleared the texture buffer\n");
       return;
    }
+#endif
 
    update_scissor();
 
@@ -808,11 +808,13 @@ static void gDPSetTextureImage( uint32_t format, uint32_t size, uint32_t width, 
    {
       if (!rdp.fb_drawn)
       {
+#ifdef HAVE_HWFBE
          if (!rdp.cur_image)
             CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
-#ifdef HAVE_HWFBE
          else
             CloseTextureBuffer(true);
+#else
+         CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
 #endif
          rdp.fb_drawn = true;
       }
