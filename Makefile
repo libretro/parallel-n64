@@ -1,5 +1,6 @@
 DEBUG=0
 GLIDE2GL=1
+HAVE_HWFBE=0
 PERF_TEST=0
 
 UNAME=$(shell uname -a)
@@ -265,10 +266,26 @@ else
 VIDEODIR_GLIDE = gles2glide64/src
 endif
 CPPFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
-CFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.c)
+CFILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.c \
+			 $(VIDEODIR_GLIDE)/Glide64/Combine.c \
+			 $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.c \
+			 $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.c \
+			 $(VIDEODIR_GLIDE)/Glide64/glide64_crc.c \
+			 $(VIDEODIR_GLIDE)/Glide64/glidemain.c \
+			 $(VIDEODIR_GLIDE)/Glide64/rdp.c \
+			 $(VIDEODIR_GLIDE)/Glide64/TexCache.c \
+			 $(VIDEODIR_GLIDE)/Glide64/Util.c
 CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp)
+
 CFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.c)
 CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
+
+ifeq ($(HAVE_HWFBE), 1)
+HWFBE_FLAGS := -DHAVE_HWFBE
+CFLAGS += $(HWFBE_FLAGS)
+CPPFLAGS += $(HWFBE_FLAGS)
+CXXFILES += $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c
+endif
 
 ### Finalize ###
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)

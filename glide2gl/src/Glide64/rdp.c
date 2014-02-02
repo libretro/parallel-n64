@@ -43,7 +43,9 @@
 #include "Util.h"
 #include "Combine.h"
 #include "TexCache.h"
+#ifdef HAVE_HWFBE
 #include "TexBuffer.h"
+#endif
 #include "FBtoScreen.h"
 #include "CRC.h"
 #include "GBI.h"

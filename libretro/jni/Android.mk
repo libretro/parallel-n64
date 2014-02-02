@@ -1,5 +1,6 @@
 LOCAL_PATH := $(call my-dir)
 PERFTEST = 0
+HAVE_HWFBE = 0
 
 include $(CLEAR_VARS)
 
@@ -138,7 +139,6 @@ LOCAL_SRC_FILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.c \
             $(VIDEODIR_GLIDE)/Glide64/glidemain.c \
             $(VIDEODIR_GLIDE)/Glide64/Util.c \
-            $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c \
             $(VIDEODIR_GLIDE)/Glide64/rdp.c \
             $(VIDEODIR_GLIDE)/Glide64/Combine.c \
             $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.c \
@@ -148,6 +148,11 @@ LOCAL_SRC_FILES   += $(VIDEODIR_GLIDE)/Glitch64/combiner.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c \
             $(VIDEODIR_GLIDE)/Glitch64/textures.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_crc.c
+
+ifeq ($(HAVE_HWFBE), 1)
+COMMON_FLAGS += -DHAVE_HWFBE
+LOCAL_SRC_FILES += $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c
+endif
 
 PLATFORM_EXT := unix
 LOCAL_SRC_FILES += \
