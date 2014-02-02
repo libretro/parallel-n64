@@ -1037,8 +1037,10 @@ EXPORT void CALL ProcessDList(void)
   }
   if (settings.frame_buffer & fb_ref)
     CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
-  if (rdp.cur_image)
+#ifdef HAVE_HWFBE
+  if (rdp.cur_image && fb_hwfbe_enabled)
     CloseTextureBuffer(rdp.read_whole_frame && ((settings.hacks&hack_PMario) || rdp.swap_ci_index >= 0));
+#endif
 
   if ((settings.hacks&hack_TGR2) && rdp.vi_org_reg != *gfx.VI_ORIGIN_REG && CI_SET)
   {
@@ -1739,9 +1741,9 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
          );
 }
 
-void setTBufTex(uint16_t t_mem, uint32_t cnt)
-{
 #ifdef HAVE_HWFBE
+static void setTBufTex(uint16_t t_mem, uint32_t cnt)
+{
    int i;
    FRDP("setTBufTex t_mem=%d, cnt=%d\n", t_mem, cnt);
    TBUFF_COLOR_IMAGE * pTbufTex = rdp.tbuff_tex;
@@ -1773,8 +1775,8 @@ void setTBufTex(uint16_t t_mem, uint32_t cnt)
          }
       }
    }
-#endif
 }
+#endif
 
 static void rdp_loadblock(uint32_t w0, uint32_t w1)
 {
@@ -2009,7 +2011,8 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
                {
                   if (cur_fb->width == rdp.ci_width)
                   {
-                     if (CopyTextureBuffer(prev_fb, cur_fb))
+#ifdef HAVE_HWFBE
+                     if (fb_hwfbe_enabled && CopyTextureBuffer(prev_fb, cur_fb))
                      {
                         //                      if (CloseTextureBuffer(TRUE))
                         //*
@@ -2022,6 +2025,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
                         //*/
                      }
                      else
+#endif
                      {
                         if (!rdp.fb_drawn || prev_fb->status == CI_COPY_SELF)
                         {
@@ -2031,8 +2035,10 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
                         memcpy(gfx.RDRAM+cur_fb->addr,gfx.RDRAM+rdp.cimg, (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
                      }
                   }
-                  else
+#ifdef HAVE_HWFBE
+                  else if (fb_hwfbe_enabled)
                      CloseTextureBuffer(true);
+#endif
                }
                else
                   memset(gfx.RDRAM+cur_fb->addr, 0, cur_fb->width*cur_fb->height*rdp.ci_size);
@@ -2042,9 +2048,12 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
          case CI_AUX_COPY:
             {
                rdp.skip_drawing = false;
-               if (CloseTextureBuffer(prev_fb->status != CI_AUX_COPY))
+#ifdef HAVE_HWFBE
+               if (fb_hwfbe_enabled && CloseTextureBuffer(prev_fb->status != CI_AUX_COPY))
                   ;
-               else if (!rdp.fb_drawn)
+               else
+#endif
+               if (!rdp.fb_drawn)
                {
                   CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
                   rdp.fb_drawn = true;

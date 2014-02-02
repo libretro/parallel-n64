@@ -46,6 +46,7 @@
 #include "TexBuffer.h"
 #include "CRC.h"
 
+#ifdef HAVE_HWFBE
 static TBUFF_COLOR_IMAGE * AllocateTextureBuffer(COLOR_IMAGE *cimage)
 {
    int i;
@@ -370,13 +371,18 @@ static GrTextureFormat_t TexBufSetupCombiner(int force_rgb)
    grDepthMask (FXFALSE);
    grCullMode (GR_CULL_DISABLE);
    grFogMode (GR_FOG_DISABLE);
+#ifdef HAVE_HWFBE
    GrTextureFormat_t buf_format = (rdp.tbuff_tex) ? rdp.tbuff_tex->info.format : GR_TEXFMT_RGB_565;
+#else
+   GrTextureFormat_t buf_format = GR_TEXFMT_RGB_565;
+#endif
    GrCombineFunction_t color_source = GR_COMBINE_FUNCTION_LOCAL;
    if  (!force_rgb && rdp.black_ci_index > 0 && rdp.black_ci_index <= rdp.copy_ci_index)
    {
       color_source = GR_COMBINE_FUNCTION_LOCAL_ALPHA;
       buf_format = GR_TEXFMT_ALPHA_INTENSITY_88;
    }
+#ifdef HAVE_HWFBE
    if (rdp.tbuff_tex->tmu == GR_TMU0)
    {
       grTexCombine( GR_TMU1,
@@ -395,6 +401,7 @@ static GrTextureFormat_t TexBufSetupCombiner(int force_rgb)
             FXTRUE );
    }
    else
+#endif
    {
       grTexCombine( GR_TMU1,
             color_source,
@@ -433,8 +440,8 @@ int CloseTextureBuffer(int draw)
       return true;
    }
    rdp.tbuff_tex = rdp.cur_image;
-   rdp.cur_image = 0;
    rdp.tbuff_tex->info.format = TexBufSetupCombiner(false);
+   rdp.cur_image = 0;
    float zero = 0.0f;
    float ul_x = rdp.offset_x;
    float ul_y = rdp.offset_y;
@@ -532,7 +539,6 @@ int CopyTextureBuffer(COLOR_IMAGE *fb_from, COLOR_IMAGE *fb_to)
    return true;
 }
 
-#ifdef HAVE_HWFBE
 int CopyDepthBuffer(void)
 {
    LRDP("CopyDepthBuffer. ");
@@ -586,7 +592,6 @@ int CopyDepthBuffer(void)
    rdp.tbuff_tex = 0;
    return true;
 }
-#endif
 
 int SwapTextureBuffer(void)
 {
@@ -745,3 +750,4 @@ int FindTextureBuffer(uint32_t addr, uint16_t width)
    LRDP("FindTextureBuffer, not found\n");
    return false;
 }
+#endif

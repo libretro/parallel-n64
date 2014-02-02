@@ -881,6 +881,8 @@ extern int SwapOK;
 
 // ** utility functions
 void load_palette (uint32_t addr, uint16_t start, uint16_t count);
+#ifdef HAVE_HWFBE
 void setTBufTex(uint16_t t_mem, uint32_t cnt);
+#endif
 
 #endif  // ifndef RDP_H

@@ -595,6 +595,7 @@ void DrawImage (DRAWIMAGE *d)
   rdp.bg_image_height = 0xFFFF;
 }
 
+#ifdef HAVE_HWFBE
 void DrawHiresImage(DRAWIMAGE *d, int screensize)
 {
   TBUFF_COLOR_IMAGE *tbuff_tex = (TBUFF_COLOR_IMAGE*)rdp.tbuff_tex;
@@ -675,8 +676,8 @@ void DrawHiresImage(DRAWIMAGE *d, int screensize)
     rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE | UPDATE_TEXTURE | UPDATE_ALPHA_COMPARE | UPDATE_SCISSOR;
     rdp.tri_n += 2;
   rdp.tbuff_tex = tbuff_tex;
-
 }
+#endif
 
 //****************************************************************
 

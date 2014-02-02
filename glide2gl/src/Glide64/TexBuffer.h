@@ -45,16 +45,13 @@
 #ifndef TEXBUFFER_H
 #define TEXBUFFER_H
 
+#ifdef HAVE_HWFBE
 int OpenTextureBuffer(COLOR_IMAGE *cimage);
-
 int CloseTextureBuffer(int draw);
-
 int CopyTextureBuffer(COLOR_IMAGE *fb_from, COLOR_IMAGE *fb_to);
-
-int CopyDepthBuffer();
-
-int SwapTextureBuffer();
-
+int CopyDepthBuffer(void);
+int SwapTextureBuffer(void);
 int FindTextureBuffer(uint32_t addr, uint16_t width);
+#endif
 
 #endif  // ifndef TEXBUFFER

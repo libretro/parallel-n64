@@ -810,8 +810,10 @@ static void gDPSetTextureImage( uint32_t format, uint32_t size, uint32_t width, 
       {
          if (!rdp.cur_image)
             CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+#ifdef HAVE_HWFBE
          else
             CloseTextureBuffer(true);
+#endif
          rdp.fb_drawn = true;
       }
    }
