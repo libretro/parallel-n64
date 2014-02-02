@@ -1665,21 +1665,15 @@ static void rdp_uc2_setothermode(uint32_t w0, uint32_t w1)
 
 void load_palette (uint32_t addr, uint16_t start, uint16_t count)
 {
-#ifdef EXTREME_LOGGING
-   LRDP("Loading palette... ");
-#endif
-   uint16_t *dpal = rdp.pal_8 + start;
-   uint16_t end = start+count;
-   uint16_t i, p;
+   uint16_t *dpal, end, i, p;
+   dpal = (uint16_t*)(rdp.pal_8 + start);
+   end = start+count;
 
    for (i=start; i<end; i++)
    {
       *(dpal++) = *(uint16_t *)(gfx.RDRAM + (addr^2));
       addr += 2;
-
-#ifdef TLUT_LOGGING
-      FRDP ("%d: %08lx\n", i, *(uint16_t *)(gfx.RDRAM + (addr^2)));
-#endif
+      //FRDP ("%d: %08lx\n", i, *(uint16_t *)(gfx.RDRAM + (addr^2)));
    }
    start >>= 4;
    end = start + (count >> 4);
@@ -1692,11 +1686,14 @@ void load_palette (uint32_t addr, uint16_t start, uint16_t count)
 
 static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 {
-   int i, j;
-   uint32_t tile = (w1 >> 24) & 0x07;
-   uint16_t start = rdp.tiles[tile].t_mem - 256; // starting location in the palettes
-   //  uint16_t start = ((uint16_t)(w1 >> 2) & 0x3FF) + 1;
-   uint16_t count = ((uint16_t)(w1 >> 14) & 0x3FF) + 1;    // number to copy
+   int32_t i, j;
+   uint32_t tile;
+   uint16_t start, count;
+
+   tile = (w1 >> 24) & 0x07;
+   start = rdp.tiles[tile].t_mem - 256; // starting location in the palettes
+   //start = ((uint16_t)(w1 >> 2) & 0x3FF) + 1;
+   count = ((uint16_t)(w1 >> 14) & 0x3FF) + 1;    // number to copy
 
    if (rdp.timg.addr + (count<<1) > BMASK)
       count = (uint16_t)((BMASK - rdp.timg.addr) >> 1);
@@ -1704,15 +1701,11 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
    if (start+count > 256)
       count = 256-start;
 
-#ifdef EXTREME_LOGGING
-   FRDP("loadtlut: tile: %d, start: %d, count: %d, from: %08lx\n", tile, start, count,
-         rdp.timg.addr);
-#endif
-
    load_palette (rdp.timg.addr, start, count);
 
    rdp.timg.addr += count << 1;
 
+#ifdef HAVE_HWFBE
    if (!rdp.tbuff_tex) //paranoid check.
       return;
 
@@ -1731,6 +1724,8 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
          }
       }
    }
+#endif
+   //FRDP("loadtlut: tile: %d, start: %d, count: %d, from: %08lx\n", tile, start, count, rdp.timg.addr);
 }
 
 int tile_set = 0;
