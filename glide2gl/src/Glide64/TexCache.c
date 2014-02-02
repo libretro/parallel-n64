@@ -1108,10 +1108,10 @@ void LoadTex(int id, int tmu)
       {
          if (size == 1)
             Clamp16bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
-         else if (size != 2)
-            Clamp8bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
-         else
+         else if (size == 2)
             Clamp32bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
+         else
+            Clamp8bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
       }
 
       if (texinfo[id].width < (int)real_x)
@@ -1121,11 +1121,11 @@ void LoadTex(int id, int tmu)
             if (size == 1)
                Mirror16bS ((texture), rdp.tiles[td].mask_s,
                      real_x, real_x, texinfo[id].height);
-            else if (size != 2)
-               Mirror8bS ((texture), rdp.tiles[td].mask_s,
+            else if (size == 2)
+               Mirror32bS ((texture), rdp.tiles[td].mask_s,
                      real_x, real_x, texinfo[id].height);
             else
-               Mirror32bS ((texture), rdp.tiles[td].mask_s,
+               Mirror8bS ((texture), rdp.tiles[td].mask_s,
                      real_x, real_x, texinfo[id].height);
          }
          else
@@ -1133,11 +1133,11 @@ void LoadTex(int id, int tmu)
             if (size == 1)
                Wrap16bS ((texture), rdp.tiles[td].mask_s,
                      real_x, real_x, texinfo[id].height);
-            else if (size != 2)
-               Wrap8bS ((texture), rdp.tiles[td].mask_s,
+            else if (size == 2)
+               Wrap32bS ((texture), rdp.tiles[td].mask_s,
                      real_x, real_x, texinfo[id].height);
             else
-               Wrap32bS ((texture), rdp.tiles[td].mask_s,
+               Wrap8bS ((texture), rdp.tiles[td].mask_s,
                      real_x, real_x, texinfo[id].height);
          }
       }
@@ -1146,10 +1146,10 @@ void LoadTex(int id, int tmu)
       {
          if (size == 1)
             Clamp16bT ((texture), texinfo[id].height, real_x, min_y);
-         else if (size != 2)
-            Clamp8bT ((texture), texinfo[id].height, real_x, min_y);
-         else
+         else if (size == 2)
             Clamp32bT ((texture), texinfo[id].height, real_x, min_y);
+         else
+            Clamp8bT ((texture), texinfo[id].height, real_x, min_y);
       }
 
       if (texinfo[id].height < (int)real_y)
@@ -1159,11 +1159,11 @@ void LoadTex(int id, int tmu)
             if (size == 1)
                Mirror16bT ((texture), rdp.tiles[td].mask_t,
                      real_y, real_x);
-            else if (size != 2)
-               Mirror8bT ((texture), rdp.tiles[td].mask_t,
+            else if (size == 2)
+               Mirror32bT ((texture), rdp.tiles[td].mask_t,
                      real_y, real_x);
             else
-               Mirror32bT ((texture), rdp.tiles[td].mask_t,
+               Mirror8bT ((texture), rdp.tiles[td].mask_t,
                      real_y, real_x);
          }
          else
@@ -1171,11 +1171,11 @@ void LoadTex(int id, int tmu)
             if (size == 1)
                Wrap16bT ((texture), rdp.tiles[td].mask_t,
                      real_y, real_x);
-            else if (size != 2)
-               Wrap8bT ((texture), rdp.tiles[td].mask_t,
+            else if (size == 2)
+               Wrap32bT ((texture), rdp.tiles[td].mask_t,
                      real_y, real_x);
             else
-               Wrap32bT ((texture), rdp.tiles[td].mask_t,
+               Wrap8bT ((texture), rdp.tiles[td].mask_t,
                      real_y, real_x);
          }
       }
