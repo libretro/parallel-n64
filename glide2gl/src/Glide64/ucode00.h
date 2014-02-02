@@ -48,13 +48,9 @@ static void rsp_vertex(int v0, int n)
    rdp.vn = n;  // Number to copy
 
    // This is special, not handled in update(), but here
-   // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
+   // Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
    if (rdp.update & UPDATE_MULT_MAT)
-   {
-      rdp.update ^= UPDATE_MULT_MAT;
-      MulMatrices(rdp.model, rdp.proj, rdp.combined);
-   }
-   // *
+      gSPCombineMatrices();
 
    // This is special, not handled in update()
    if (rdp.update & UPDATE_LIGHTS)

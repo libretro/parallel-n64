@@ -372,3 +372,10 @@ static void gSPBranchLessZ( uint32_t branchdl, uint32_t vtx, float zval )
       rdp.pc[rdp.pc_i] = address;
    //FRDP ("uc1:branch_less_z, addr: %08lx\n", address);
 }
+
+static void gSPCombineMatrices(void)
+{
+   MulMatrices(rdp.model, rdp.proj, rdp.combined);
+   rdp.update ^= UPDATE_MULT_MAT;
+}
+

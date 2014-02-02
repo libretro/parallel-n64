@@ -67,10 +67,7 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
 {
    uint32_t l;
    if (rdp.update & UPDATE_MULT_MAT)
-   {
-      rdp.update ^= UPDATE_MULT_MAT;
-      MulMatrices(rdp.model, rdp.proj, rdp.combined);
-   }
+      gSPCombineMatrices();
 
    // This is special, not handled in update()
    if (rdp.update & UPDATE_LIGHTS)

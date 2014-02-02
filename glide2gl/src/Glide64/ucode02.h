@@ -107,10 +107,7 @@ static void uc2_vertex_neon(uint32_t w0, uint32_t w1)
    // This is special, not handled in update(), but here
    // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
    if (rdp.update & UPDATE_MULT_MAT)
-   {
-      rdp.update ^= UPDATE_MULT_MAT;
-      MulMatrices(rdp.model, rdp.proj, rdp.combined);
-   }
+      gSPCombineMatrices();
 
    if (rdp.update & UPDATE_LIGHTS)
    {
@@ -251,10 +248,7 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
    // This is special, not handled in update(), but here
    // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
    if (rdp.update & UPDATE_MULT_MAT)
-   {
-      rdp.update ^= UPDATE_MULT_MAT;
-      MulMatrices(rdp.model, rdp.proj, rdp.combined);
-   }
+      gSPCombineMatrices();
 
    if (rdp.update & UPDATE_LIGHTS)
    {
@@ -716,10 +710,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          {
             // do matrix pre-mult so it's re-updated next time
             if (rdp.update & UPDATE_MULT_MAT)
-            {
-               rdp.update ^= UPDATE_MULT_MAT;
-               MulMatrices(rdp.model, rdp.proj, rdp.combined);
-            }
+               gSPCombineMatrices();
 
             if (w0 & 0x20)  // fractional part
             {

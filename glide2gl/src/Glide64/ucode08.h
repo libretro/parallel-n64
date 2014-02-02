@@ -47,10 +47,7 @@ float uc8_coord_mod[16];
 static void uc8_vertex(uint32_t w0, uint32_t w1)
 {
    if (rdp.update & UPDATE_MULT_MAT)
-   {
-      rdp.update ^= UPDATE_MULT_MAT;
-      MulMatrices(rdp.model, rdp.proj, rdp.combined);
-   }
+      gSPCombineMatrices();
 
    uint32_t l;
    uint32_t addr = segoffset(w1);
