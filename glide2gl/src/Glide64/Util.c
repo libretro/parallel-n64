@@ -561,7 +561,7 @@ static void clip_w (int interpolate_colors)
             rdp.vtxbuf[index].x = vtxbuf2_i->x + (vtxbuf2_j->x - vtxbuf2_i->x) * percent;
             rdp.vtxbuf[index].y = vtxbuf2_i->y + (vtxbuf2_j->y - vtxbuf2_i->y) * percent;
             rdp.vtxbuf[index].z = vtxbuf2_i->z + (vtxbuf2_j->z - vtxbuf2_i->z) * percent;
-            rdp.vtxbuf[index].w = 0.01f;
+            rdp.vtxbuf[index].w = 1.00f;
             rdp.vtxbuf[index].u0 = vtxbuf2_i->u0 + (vtxbuf2_j->u0 - vtxbuf2_i->u0) * percent;
             rdp.vtxbuf[index].v0 = vtxbuf2_i->v0 + (vtxbuf2_j->v0 - vtxbuf2_i->v0) * percent;
             rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
@@ -581,7 +581,7 @@ static void clip_w (int interpolate_colors)
             rdp.vtxbuf[index].x = vtxbuf2_j->x + (vtxbuf2_i->x - vtxbuf2_j->x) * percent;
             rdp.vtxbuf[index].y = vtxbuf2_j->y + (vtxbuf2_i->y - vtxbuf2_j->y) * percent;
             rdp.vtxbuf[index].z = vtxbuf2_j->z + (vtxbuf2_i->z - vtxbuf2_j->z) * percent;
-            rdp.vtxbuf[index].w = 0.01f;
+            rdp.vtxbuf[index].w = 1.00f;
             rdp.vtxbuf[index].u0 = vtxbuf2_j->u0 + (vtxbuf2_i->u0 - vtxbuf2_j->u0) * percent;
             rdp.vtxbuf[index].v0 = vtxbuf2_j->v0 + (vtxbuf2_i->v0 - vtxbuf2_j->v0) * percent;
             rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
