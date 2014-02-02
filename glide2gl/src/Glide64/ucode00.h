@@ -639,35 +639,44 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:setothermode_l ");
 
-    switch (_SHIFTR( w0, 8, 8 ))
-    {
-       case G_MDSFT_ALPHACOMPARE:
-          gDPSetAlphaCompare(w1 >> G_MDSFT_ALPHACOMPARE);
-          break;
-       case G_MDSFT_ZSRCSEL:
-          gDPSetDepthSource(w1 >> G_MDSFT_ZSRCSEL);
-          break;
-       case G_MDSFT_RENDERMODE:
-          gDPSetRenderMode(w1 & 0xCCCCFFFF, w1 & 0x3333FFFF);
-          break;
-       default:
-          {
-             int shift, len;
-             len = w0 & 0xFF;
-             shift = (w0 >> 8) & 0xFF;
+   int shift, len;
+   len = w0 & 0xFF;
+   shift = (w0 >> 8) & 0xFF;
 
-             uint32_t mask = 0;
-             int i = len;
-             for (; i; i--)
-                mask = (mask << 1) | 1;
-             mask <<= shift;
+   uint32_t mask = 0;
+   int i = len;
+   for (; i; i--)
+      mask = (mask << 1) | 1;
+   mask <<= shift;
 
-             rdp.cmd1 &= mask;
-             rdp.othermode_l &= ~mask;
-             rdp.othermode_l |= rdp.cmd1;
-          }
-          break;
-    }
+   rdp.cmd1 &= mask;
+   rdp.othermode_l &= ~mask;
+   rdp.othermode_l |= rdp.cmd1;
+
+   if (mask & 0x00000003)  // alpha compare
+   {
+      rdp.acmp = rdp.othermode_l & 0x00000003;
+      rdp.update |= UPDATE_ALPHA_COMPARE;
+      //FRDP ("alpha compare %s\n", ACmp[rdp.acmp]);
+   }
+
+   if (mask & ZBUF_COMPARE)  // z-src selection
+   {
+      rdp.zsrc = (rdp.othermode_l & G_SHADE) >> 2;
+      rdp.update |= UPDATE_ZBUF_ENABLED;
+      //FRDP ("z-src sel: %s\n", str_zs[rdp.zsrc]);
+      //FRDP ("z-src sel: %08lx\n", rdp.zsrc);
+   }
+
+   if (mask & 0xFFFFFFF8)  // rendermode / blender bits
+   {
+      rdp.update |= UPDATE_FOG_ENABLED; //if blender has no fog bits, fog must be set off
+      rdp.render_mode_changed |= rdp.rm ^ rdp.othermode_l;
+      rdp.rm = rdp.othermode_l;
+      if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
+         rdp.othermode_l |= UPDATE_BIASLEVEL | UPDATE_LIGHTS;
+      //FRDP ("rendermode: %08lx\n", rdp.othermode_l);  // just output whole othermode_l
+   }
 
    // there is not one setothermode_l that's not handled :)
 }
