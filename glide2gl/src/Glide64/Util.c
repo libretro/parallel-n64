@@ -307,12 +307,8 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
             // Calculate deltaZ per polygon for Decal z-mode
             float fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
             float fdz = fabs(fdzdx) + fabs(fdzdy);
-#if 0
-/* Zelda OOT - shadow of Kokiri in Kokiri Shop would go through wall - investigate if taking out this hack
- * causes other sideeffects elsewhere */
             if ((settings.hacks & hack_Zelda) && (rdp.rm & 0x800))
                fdz *= 4.0;  // Decal mode in Zelda sometimes needs mutiplied deltaZ to work correct, e.g. roads
-#endif
             deltaZ = max(8, (int)fdz);
          }
          dzdx = (int)(fdzdx * 65536.0); }
@@ -561,7 +557,7 @@ static void clip_w (int interpolate_colors)
             rdp.vtxbuf[index].x = vtxbuf2_i->x + (vtxbuf2_j->x - vtxbuf2_i->x) * percent;
             rdp.vtxbuf[index].y = vtxbuf2_i->y + (vtxbuf2_j->y - vtxbuf2_i->y) * percent;
             rdp.vtxbuf[index].z = vtxbuf2_i->z + (vtxbuf2_j->z - vtxbuf2_i->z) * percent;
-            rdp.vtxbuf[index].w = 1.00f;
+            rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
             rdp.vtxbuf[index].u0 = vtxbuf2_i->u0 + (vtxbuf2_j->u0 - vtxbuf2_i->u0) * percent;
             rdp.vtxbuf[index].v0 = vtxbuf2_i->v0 + (vtxbuf2_j->v0 - vtxbuf2_i->v0) * percent;
             rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
@@ -581,7 +577,7 @@ static void clip_w (int interpolate_colors)
             rdp.vtxbuf[index].x = vtxbuf2_j->x + (vtxbuf2_i->x - vtxbuf2_j->x) * percent;
             rdp.vtxbuf[index].y = vtxbuf2_j->y + (vtxbuf2_i->y - vtxbuf2_j->y) * percent;
             rdp.vtxbuf[index].z = vtxbuf2_j->z + (vtxbuf2_i->z - vtxbuf2_j->z) * percent;
-            rdp.vtxbuf[index].w = 1.00f;
+            rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
             rdp.vtxbuf[index].u0 = vtxbuf2_j->u0 + (vtxbuf2_i->u0 - vtxbuf2_j->u0) * percent;
             rdp.vtxbuf[index].v0 = vtxbuf2_j->v0 + (vtxbuf2_i->v0 - vtxbuf2_j->v0) * percent;
             rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;

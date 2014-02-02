@@ -291,6 +291,8 @@ typedef struct
 
 typedef struct
 {
+   uint32_t depth_bias;
+
    int card_id;
    int lang_id;
 

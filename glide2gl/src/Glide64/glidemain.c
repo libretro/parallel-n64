@@ -341,7 +341,7 @@ void ReadSpecialSettings (const char * name)
       settings.force_quad3d = 0;
       settings.force_calc_sphere = 0;
       settings.texture_correction = 1;
-      //depth_bias = 20;
+      settings.depth_bias = 20;
       settings.increase_texrect_edge = 0;
       settings.decrease_fillrect_edge = 0;
       settings.stipple_mode = 2;
@@ -571,7 +571,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"TOM AND JERRY"))
    {
-      //depth_bias = 2
+      settings.depth_bias = 2;
       settings.filtering = 1;
       //depthmode = 0
    }
@@ -1444,6 +1444,12 @@ void ReadSpecialSettings (const char * name)
       //depthmode = 0
       settings.buff_clear = 0;
    }
+   else if (strstr(name, (const char*)"TOP GEAR RALLY"))
+   {
+      settings.depth_bias = 64;
+      //fillcolor_fix = 1
+      //depthmode = 0
+   }
 #if 0
    else if (strstr(name, (const char*)"POLARISSNOCROSS"))
    {
@@ -1494,12 +1500,6 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"Ultraman Battle JAPA"))
    {
-      //depthmode = 0
-   }
-   else if (strstr(name, (const char*)"TOP GEAR RALLY"))
-   {
-      //depth_bias = 64
-      //fillcolor_fix = 1
       //depthmode = 0
    }
    else if (strstr(name, (const char*)"D K DISPLAY"))
@@ -1584,6 +1584,7 @@ void ReadSpecialSettings (const char * name)
 #endif
    else if (strstr(name, (const char *)"Pilot Wings64"))
    {
+      settings.depth_bias = 10;
       //depthmode = 1
       settings.buff_clear = 0;
    }
@@ -1627,7 +1628,7 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"GOLDENEYE"))
    {
       settings.lodmode = 1;
-      //depth_bias = 40
+      settings.depth_bias = 40;
       settings.filtering = 1;
       //depthmode = 0
       smart_read = 1;
@@ -1638,7 +1639,7 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"DONKEY KONG 64"))
    {
       settings.lodmode = 1;
-      //depth_bias = 64
+      settings.depth_bias = 64;
       //depthmode = 1
       //fb_clear = 1
       read_always = 1;
@@ -1691,7 +1692,6 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"ZELDA MAJORA'S MASK") || strstr(name, (const char *)"THE MASK OF MUJURA"))
    {
-      //depth_bias = 60
       //wrap_big_tex = 1
       settings.filtering = 1;
       smart_read = 1;
@@ -1703,7 +1703,6 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"THE LEGEND OF ZELDA") || strstr(name, (const char *)"ZELDA MASTER QUEST"))
    {
-      //depth_bias = 60
       settings.filtering = 1;
       //depthmode = 1
       settings.lodmode = 1;
@@ -1896,7 +1895,7 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"SUPER MARIO 64")
          || strstr(name, (const char *)"SUPERMARIO64"))
    {
-      //depth_bias = 32
+      settings.depth_bias = 64;
       settings.lodmode = 1;
       settings.filtering = 1;
       //depthmode = 1
@@ -1918,6 +1917,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"MARIOKART64"))
    {
+      settings.depth_bias = 30;
       settings.stipple_mode = 1;
       settings.stipple_pattern = (uint32_t)4286595040;
       //depthmode = 1
