@@ -1527,21 +1527,21 @@ void add_tri(VERTEX *v, int n, int type)
 
 void update_scissor(void)
 {
-   if (rdp.update & UPDATE_SCISSOR)
-   {
-      rdp.update ^= UPDATE_SCISSOR;
 
-      // KILL the floating point error with 0.01f
-      rdp.scissor.ul_x = (uint32_t)max(min((rdp.scissor_o.ul_x * rdp.scale_x + rdp.offset_x + 0.01f),settings.res_x),0);
-      rdp.scissor.lr_x = (uint32_t)max(min((rdp.scissor_o.lr_x * rdp.scale_x + rdp.offset_x + 0.01f),settings.res_x),0);
-      rdp.scissor.ul_y = (uint32_t)max(min((rdp.scissor_o.ul_y * rdp.scale_y + rdp.offset_y + 0.01f),settings.res_y),0);
-      rdp.scissor.lr_y = (uint32_t)max(min((rdp.scissor_o.lr_y * rdp.scale_y + rdp.offset_y + 0.01f),settings.res_y),0);
-      //grClipWindow specifies the hardware clipping window. Any pixels outside the clipping window are rejected.
-      //Values are inclusive for minimum x and y values and exclusive for maximum x and y values.
-      grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
-      FRDP (" |- scissor - (%d, %d) -> (%d, %d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y,
-            rdp.scissor.lr_x, rdp.scissor.lr_y);
-   }
+   if (!(rdp.update & UPDATE_SCISSOR))
+      return;
+
+   // KILL the floating point error with 0.01f
+   rdp.scissor.ul_x = (uint32_t)max(min((rdp.scissor_o.ul_x * rdp.scale_x + rdp.offset_x + 0.01f),settings.res_x),0);
+   rdp.scissor.lr_x = (uint32_t)max(min((rdp.scissor_o.lr_x * rdp.scale_x + rdp.offset_x + 0.01f),settings.res_x),0);
+   rdp.scissor.ul_y = (uint32_t)max(min((rdp.scissor_o.ul_y * rdp.scale_y + rdp.offset_y + 0.01f),settings.res_y),0);
+   rdp.scissor.lr_y = (uint32_t)max(min((rdp.scissor_o.lr_y * rdp.scale_y + rdp.offset_y + 0.01f),settings.res_y),0);
+   //grClipWindow specifies the hardware clipping window. Any pixels outside the clipping window are rejected.
+   //Values are inclusive for minimum x and y values and exclusive for maximum x and y values.
+   grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
+
+   rdp.update ^= UPDATE_SCISSOR;
+   //FRDP (" |- scissor - (%d, %d) -> (%d, %d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
 }
 
 //
