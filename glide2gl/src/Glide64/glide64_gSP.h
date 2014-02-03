@@ -406,6 +406,7 @@ static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
 
 static void gsSP2Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t flag0, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t flag1)
 {
+   int updated;
    VERTEX *v[6];
 
    v[0] = &rdp.vtx[v00];
@@ -415,6 +416,24 @@ static void gsSP2Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t fl
    v[4] = &rdp.vtx[v11];
    v[5] = &rdp.vtx[v12];
 
-   rsp_tri2(v);
+   updated = 0;
+
+   if (!cull_tri(v))
+      updated |= (1 << 0);
+   rdp.tri_n ++;
+
+   if (!cull_tri(v+3))
+      updated |= (1 << 1);
+   rdp.tri_n ++;
+
+   if (!updated)
+      return;
+
+   update();
+
+   if (updated & (1 << 0))
+      draw_tri (v, 0);
+   if (updated & (1 << 1))
+      draw_tri (v+3, 0);
    //FRDP("uc1:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
 }

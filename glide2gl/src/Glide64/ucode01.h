@@ -68,19 +68,19 @@ static void uc1_tri1(uint32_t w0, uint32_t w1)
 
 static void uc1_tri2(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[6];
-
    if (rdp.skip_drawing)
       return;
 
-   v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
-   v[1] = &rdp.vtx[(w0 >> 9)  & 0x7F];
-   v[2] = &rdp.vtx[(w0 >> 1)  & 0x7F];
-   v[3] = &rdp.vtx[(w1 >> 17) & 0x7F];
-   v[4] = &rdp.vtx[(w1 >> 9)  & 0x7F];
-   v[5] = &rdp.vtx[(w1 >> 1)  & 0x7F];
-
-   rsp_tri2(v);
+   gsSP2Triangles(
+         (w0 >> 17) & 0x7F,      /* v00 */
+         (w0 >> 9)  & 0x7F,      /* v01 */
+         (w0 >> 1)  & 0x7F,      /* v02 */
+         0,                      /* flag0 */
+         (w1 >> 17) & 0x7F,      /* v10 */
+         (w1 >> 9)  & 0x7F,      /* v11 */
+         (w1 >> 1)  & 0x7F,      /* v12 */
+         0                       /* flag1 */
+         );
 }
 
 static void uc1_line3d(uint32_t w0, uint32_t w1)

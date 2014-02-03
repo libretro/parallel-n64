@@ -144,29 +144,6 @@ static void rsp_tri1(VERTEX **v, uint16_t linew)
   rdp.tri_n ++;
 }
 
-static void rsp_tri2 (VERTEX **v)
-{
-  int updated = 0;
-
-  if (!cull_tri(v))
-    updated |= (1 << 0);
-  rdp.tri_n ++;
-
-  if (!cull_tri(v+3))
-    updated |= (1 << 1);
-  rdp.tri_n ++;
-
-  if (!updated)
-     return;
-
-  update();
-
-  if (updated & (1 << 0))
-     draw_tri (v, 0);
-  if (updated & (1 << 1))
-     draw_tri (v+3, 0);
-}
-
 //
 // uc0:vertex - loads vertices
 //

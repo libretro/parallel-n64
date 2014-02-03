@@ -76,36 +76,28 @@ static void uc3_tri1(uint32_t w0, uint32_t w1)
 
 static void uc3_tri2(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[6];
-   FRDP("uc3:tri2 #%d, #%d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1,
-         ((w0 >> 16) & 0xFF)/5,
-         ((w0 >>  8) & 0xFF)/5,
-         ((w0      ) & 0xFF)/5,
-         ((w1 >> 16) & 0xFF)/5,
-         ((w1 >>  8) & 0xFF)/5,
-         ((w1      ) & 0xFF)/5);
-
-   v[0] = &rdp.vtx[((w0 >> 16) & 0xFF) / 5];
-   v[1] = &rdp.vtx[((w0 >> 8) & 0xFF)  / 5];
-   v[2] = &rdp.vtx[(w0 & 0xFF)         / 5];
-   v[3] = &rdp.vtx[((w1 >> 16) & 0xFF) / 5];
-   v[4] = &rdp.vtx[((w1 >> 8) & 0xFF)  / 5];
-   v[5] = &rdp.vtx[(w1 & 0xFF)         / 5];
-
-   rsp_tri2(v);
+   gsSP2Triangles(
+         ((w0 >> 16) & 0xFF) / 5,    /* v00 */
+         ((w0 >> 8) & 0xFF)  / 5,    /* v01 */
+         (w0 & 0xFF)         / 5,    /* v02 */
+         0,                          /* flag0 */
+         ((w1 >> 16) & 0xFF) / 5,    /* v10 */
+         ((w1 >> 8) & 0xFF)  / 5,    /* v11 */
+         (w1 & 0xFF)         / 5,    /* v12 */
+         0                           /* flag1 */
+         );
 }
 
 static void uc3_quad3d(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[6];
-   FRDP("uc3:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
-
-   v[0] = &rdp.vtx[((w1 >> 24) & 0xFF) / 5];
-   v[1] = &rdp.vtx[((w1 >> 16) & 0xFF) / 5];
-   v[2] = &rdp.vtx[((w1 >> 8) & 0xFF)  / 5];
-   v[3] = &rdp.vtx[(w1 & 0xFF)         / 5];
-   v[4] = &rdp.vtx[((w1 >> 24) & 0xFF) / 5];
-   v[5] = &rdp.vtx[((w1 >> 8) & 0xFF)  / 5];
-
-   rsp_tri2(v);
+   gsSP2Triangles(
+         ((w1 >> 24) & 0xFF) / 5,   /* v00 */
+         ((w1 >> 16) & 0xFF) / 5,   /* v01 */
+         ((w1 >> 8) & 0xFF)  / 5,   /* v02 */
+         0,                         /* flag0 */
+         (w1 & 0xFF)         / 5,   /* v10 */
+         ((w1 >> 24) & 0xFF) / 5,   /* v11 */
+         ((w1 >> 8) & 0xFF)  / 5,   /* v12 */
+         0                          /* flag1 */
+         );
 }
