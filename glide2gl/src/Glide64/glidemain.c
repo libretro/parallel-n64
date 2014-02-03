@@ -1890,6 +1890,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"TUROK_DINOSAUR_HUNTE"))
    {
+      settings.depth_bias = 1;
       settings.lodmode = 1;
    }
    else if (strstr(name, (const char *)"SUPER MARIO 64")
