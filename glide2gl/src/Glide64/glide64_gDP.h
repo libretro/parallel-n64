@@ -296,11 +296,9 @@ static void gDPSetTile( uint32_t format, uint32_t size, uint32_t line, uint32_t 
       uint32_t palette, uint32_t cmt, uint32_t cms, uint32_t maskt, uint32_t masks, uint32_t shiftt, uint32_t shifts,
       uint32_t mirrort, uint32_t mirrors)
 {
-   uint32_t w1;
    int i;
    TILE *tile;
 
-   w1 = rdp.cmd1;
    tile_set = 1; // used to check if we only load the first settilesize
    rdp.first = 0;
    rdp.last_tile = tile_idx;
@@ -770,7 +768,8 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
 
 static void gDPSetEnvColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a )
 {
-   rdp.env_color = rdp.cmd1;
+   uint32_t w1 = rdp.cmd1;
+   rdp.env_color = w1;
    rdp.update |= UPDATE_COMBINE;
 
    //FRDP("setenvcolor: %08lx\n", w1);
