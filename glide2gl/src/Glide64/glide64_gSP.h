@@ -389,7 +389,6 @@ static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
    uint32_t cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
    rdp.flags |= CULLMASK;
    rdp.update |= UPDATE_CULL_MODE;
-   rsp_tri1(v, wd);
 
    if (!cull_tri(v))
    {
@@ -403,4 +402,19 @@ static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
    rdp.update |= UPDATE_CULL_MODE;
 
    //FRDP("uc0:line3d v0:%d, v1:%d, width:%d\n", v0, v1, wd);
+}
+
+static void gsSP2Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t flag0, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t flag1)
+{
+   VERTEX *v[6];
+
+   v[0] = &rdp.vtx[v00];
+   v[1] = &rdp.vtx[v01];
+   v[2] = &rdp.vtx[v02];
+   v[3] = &rdp.vtx[v10];
+   v[4] = &rdp.vtx[v11];
+   v[5] = &rdp.vtx[v12];
+
+   rsp_tri2(v);
+   //FRDP("uc1:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
 }

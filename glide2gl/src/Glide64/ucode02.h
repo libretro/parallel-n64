@@ -448,7 +448,6 @@ static void uc2_tri1(uint32_t w0, uint32_t w1)
 
 static void uc2_quad(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[6];
    if ((w0 & 0x00FFFFFF) == 0x2F)
    {
       uint32_t command = w0 >> 24;
@@ -467,17 +466,16 @@ static void uc2_quad(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing)
       return;
 
-   v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
-   v[1] = &rdp.vtx[(w0 >> 9)  & 0x7F];
-   v[2] = &rdp.vtx[(w0 >> 1)  & 0x7F];
-   v[3] = &rdp.vtx[(w1 >> 17) & 0x7F];
-   v[4] = &rdp.vtx[(w1 >> 9)  & 0x7F];
-   v[5] = &rdp.vtx[(w1 >> 1)  & 0x7F];
-
-   rsp_tri2(v);
-
-   //LRDP("uc2:quad");
-   //FRDP(" #%d, #%d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1, ((w0 >> 17) & 0x7F), ((w0 >> 9) & 0x7F), ((w0 >> 1) & 0x7F), ((w1 >> 17) & 0x7F), ((w1 >> 9) & 0x7F), ((w1 >> 1) & 0x7F));
+   gsSP2Triangles(
+         (w0 >> 17) & 0x7F,      /* v00 */
+         (w0 >> 9)  & 0x7F,      /* v01 */
+         (w0 >> 1)  & 0x7F,      /* v02 */
+         0,                      /* flag0 */
+         (w1 >> 17) & 0x7F,      /* v10 */
+         (w1 >> 9)  & 0x7F,      /* v11 */
+         (w1 >> 1)  & 0x7F,      /* v12 */
+         0                       /* flag1 */
+         );
 }
 
 static void uc2_line3d(uint32_t w0, uint32_t w1)
@@ -485,26 +483,12 @@ static void uc2_line3d(uint32_t w0, uint32_t w1)
    if ((w0 & 0xFF) == 0x2F)
       uc6_ldtx_rect_r(w0, w1);
    else
-   {
-      uint16_t width;
-      uint32_t cull_mode;
-      VERTEX *v[3];
-
-      v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
-      v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
-      v[2] = &rdp.vtx[(w0 >> 9) & 0x7F];
-
-      width = (uint16_t)(w0 + 3)&0xFF;
-      cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
-      rdp.flags |= CULLMASK;
-      rdp.update |= UPDATE_CULL_MODE;
-      rsp_tri1(v, width);
-      rdp.flags ^= CULLMASK;
-      rdp.flags |= cull_mode << CULLSHIFT;
-      rdp.update |= UPDATE_CULL_MODE;
-
-      //FRDP("uc2:line3d #%d, #%d - %d, %d\n", rdp.tri_n, rdp.tri_n+1, (w0 >> 17) & 0x7F, (w0 >> 9) & 0x7F);
-   }
+      gSPLineW3D(
+            (w0 >> 9) & 0x7F,    /* v0 */
+            (w0 >> 17) & 0x7F,   /* v1 */
+            (w0 + 3) & 0xFF,     /* wd */
+            0                    /* flags (stub) */
+            );
 }
 
 static void uc2_special3(uint32_t w0, uint32_t w1)

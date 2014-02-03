@@ -671,8 +671,8 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 static void uc0_line3d(uint32_t w0, uint32_t w1)
 {
    gSPLineW3D(
-         ((w1 >> 16) & 0xff) / 10,     /* v0 */
-         ((w1 >>  8) & 0xff) / 10,     /* v1 */
+         ((w1 >>  8) & 0xff) / 10,     /* v0 */
+         ((w1 >> 16) & 0xff) / 10,     /* v1 */
          (w1 & 0xFF) + 3,              /* wd */
          0                             /* flag (stub) */
          );
