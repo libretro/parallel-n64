@@ -875,7 +875,7 @@ static INLINE void CalculateFog (VERTEX *v)
       v->f = 1.0f;
 }
 
-static INLINE void glideSetVertexFlatShading(VERTEX *v, uint32_t w1)
+static INLINE void glideSetVertexFlatShading(VERTEX *v, VERTEX **vtx, uint32_t w1)
 {
    int flag = min(2, (w1 >> 24) & 3);
    v->a = vtx[flag]->a;

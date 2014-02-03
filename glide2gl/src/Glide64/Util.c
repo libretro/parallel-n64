@@ -293,7 +293,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
             if (!(rdp.geom_mode & UPDATE_SCISSOR))
             {
                if (rdp.geom_mode & G_SHADE)
-                  glideSetVertexFlatShading(v, rdp.cmd1);
+                  glideSetVertexFlatShading(v, vtx, rdp.cmd1);
                else
                   glideSetVertexPrimShading(v, rdp.prim_color);
             }
