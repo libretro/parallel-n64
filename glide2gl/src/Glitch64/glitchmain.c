@@ -857,10 +857,7 @@ grBufferSwap( FxU32 swap_interval )
 
    // don't swap while rendering to texture
    if (render_to_texture)
-   {
-      retro_return(false);
       return;
-   }
 
    retro_return(true);
 
