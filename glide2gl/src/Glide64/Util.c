@@ -65,16 +65,14 @@ static uint32_t u_cull_mode = 0;
 
 int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
 {
-   int i;
+   int i, draw;
+   float x1, y1, x2, y2, area;
 
    if (v[0]->scr_off & v[1]->scr_off & v[2]->scr_off)
-   {
-      LRDP (" clipped\n");
       return true;
-   }
 
    // Triangle can't be culled, if it need clipping
-   int draw = false;
+   draw = false;
 
    for (i=0; i<3; i++)
    {
@@ -96,60 +94,25 @@ int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
       return false;
    }
 
-//#define SW_CULLING
-#ifdef SW_CULLING
-#if 1 // H.Morii - faster float comparisons with zero area check added
-
-   const float x1 = v[0]->sx - v[1]->sx;
-   const float y1 = v[0]->sy - v[1]->sy;
-   const float x2 = v[2]->sx - v[1]->sx;
-   const float y2 = v[2]->sy - v[1]->sy;
-   const float area = y1*x2 - x1*y2;
-
-   const int iarea = *(int*)&area;
-   const unsigned int mode = (u_cull_mode << 19UL);
-   u_cull_mode >>= CULLSHIFT;
-
-   if ((iarea & 0x7FFFFFFF) == 0)
-   {
-      LRDP (" zero area triangles\n");
-      return true;
-   }
-
-   if ((rdp.flags & CULLMASK) && ((int)(iarea ^ mode)) >= 0)
-   {
-      LRDP (" culled\n");
-      return true;
-   }
-#else
-
-   float x1 = v[0]->sx - v[1]->sx;
-   float y1 = v[0]->sy - v[1]->sy;
-   float x2 = v[2]->sx - v[1]->sx;
-   float y2 = v[2]->sy - v[1]->sy;
+   x1 = v[0]->sx - v[1]->sx;
+   y1 = v[0]->sy - v[1]->sy;
+   x2 = v[2]->sx - v[1]->sx;
+   y2 = v[2]->sy - v[1]->sy;
+   area = y1 * x2 - x1 * y2;
 
    u_cull_mode >>= CULLSHIFT;
+
    switch (u_cull_mode)
    {
       case 1: // cull front
-         //    if ((x1*y2 - y1*x2) < 0.0f) //counter-clockwise, positive
-         if ((y1*x2-x1*y2) < 0.0f) //counter-clockwise, positive
-         {
-            LRDP (" culled!\n");
+         if (area < 0.0f) //counter-clockwise, positive
             return true;
-         }
-         return false;
+         break;
       case 2: // cull back
-         //    if ((x1*y2 - y1*x2) >= 0.0f) //clockwise, negative
-         if ((y1*x2-x1*y2) >= 0.0f) //clockwise, negative
-         {
-            LRDP (" culled!\n");
+         if (area >= 0.0f) //clockwise, negative
             return true;
-         }
-         return false;
+         break;
    }
-#endif
-#endif
 
    return false;
 }
@@ -322,36 +285,17 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 
       if (v->uv_calculated != rdp.tex_ctr)
       {
-#ifdef EXTREME_LOGGING
-         FRDP(" * CALCULATING VERTEX U/V: %d\n", v->number);
-#endif
+         //FRDP(" * CALCULATING VERTEX U/V: %d\n", v->number);
          v->uv_calculated = rdp.tex_ctr;
 
          if (!(rdp.geom_mode & G_LIGHTING))
          {
             if (!(rdp.geom_mode & UPDATE_SCISSOR))
             {
-               if (rdp.geom_mode & G_SHADE) // flat shading
-               {
-                  int flag = min(2, (rdp.cmd1 >> 24) & 3);
-                  v->a = vtx[flag]->a;
-                  v->b = vtx[flag]->b;
-                  v->g = vtx[flag]->g;
-                  v->r = vtx[flag]->r;
-#ifdef EXTREME_LOGGING
-                  FRDP(" * Flat shaded, flag%d - r: %d, g: %d, b: %d, a: %d\n", flag, v->r, v->g, v->b, v->a);
-#endif
-               }
-               else  // prim color
-               {
-#ifdef EXTREME_LOGGING
-                  FRDP(" * Prim shaded %08lx\n", rdp.prim_color);
-#endif
-                  v->a = (uint8_t)(rdp.prim_color & 0xFF);
-                  v->b = (uint8_t)((rdp.prim_color >> 8) & 0xFF);
-                  v->g = (uint8_t)((rdp.prim_color >> 16) & 0xFF);
-                  v->r = (uint8_t)((rdp.prim_color >> 24) & 0xFF);
-               }
+               if (rdp.geom_mode & G_SHADE)
+                  glideSetVertexFlatShading(v, rdp.cmd1);
+               else
+                  glideSetVertexPrimShading(v, rdp.prim_color);
             }
          }
 
@@ -665,7 +609,7 @@ void do_triangle_stuff_2 (uint16_t linew)
    int i;
    rdp.clip = 0;
 
-   for (i = 0; i<rdp.n_global; i++)
+   for (i = 0; i < rdp.n_global; i++)
       glide64SPClipVertex(i);
 
    render_tri (linew, true);
@@ -902,6 +846,7 @@ static void DepthBuffer(VERTEX * vtx, int n)
       }
       Rasterize(v, n, dzdx);
    }
+
    for (i = 0; i < n; i++)
       vtx[i].z = ScaleZ(vtx[i].z);
 }
@@ -1409,28 +1354,25 @@ void render_tri (uint16_t linew, int old_interpolate)
    }
 
    ConvertCoordsConvert (rdp.vtxbuf, n);
-   if (rdp.fog_mode == FOG_MODE_ENABLED)
+
+   float fog;
+
+   switch (rdp.fog_mode)
    {
-      for (i = 0; i < n; i++)
-      {
-         rdp.vtxbuf[i].f = 1.0f/max(4.0f, rdp.vtxbuf[i].f);
-      }
-   }
-   else if (rdp.fog_mode == FOG_MODE_BLEND)
-   {
-      float fog = 1.0f/max(1, rdp.fog_color&0xFF);
-      for (i = 0; i < n; i++)
-      {
-         rdp.vtxbuf[i].f = fog;
-      }
-   }
-   else if (rdp.fog_mode == FOG_MODE_BLEND_INVERSE)
-   {
-      float fog = 1.0f/max(1, (~rdp.fog_color)&0xFF);
-      for (i = 0; i < n; i++)
-      {
-         rdp.vtxbuf[i].f = fog;
-      }
+      case FOG_MODE_ENABLED:
+         for (i = 0; i < n; i++)
+            rdp.vtxbuf[i].f = 1.0f/max(4.0f, rdp.vtxbuf[i].f);
+         break;
+      case FOG_MODE_BLEND:
+         fog = 1.0f/max(1, rdp.fog_color&0xFF);
+         for (i = 0; i < n; i++)
+            rdp.vtxbuf[i].f = fog;
+         break;
+      case FOG_MODE_BLEND_INVERSE:
+         fog = 1.0f/max(1, (~rdp.fog_color)&0xFF);
+         for (i = 0; i < n; i++)
+            rdp.vtxbuf[i].f = fog;
+         break;
    }
 
    if (settings.lodmode > 0 && rdp.cur_tile < rdp.mipmap_level)

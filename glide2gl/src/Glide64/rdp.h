@@ -875,6 +875,25 @@ static INLINE void CalculateFog (VERTEX *v)
       v->f = 1.0f;
 }
 
+static INLINE void glideSetVertexFlatShading(VERTEX *v, uint32_t w1)
+{
+   int flag = min(2, (w1 >> 24) & 3);
+   v->a = vtx[flag]->a;
+   v->b = vtx[flag]->b;
+   v->g = vtx[flag]->g;
+   v->r = vtx[flag]->r;
+   //FRDP(" * Flat shaded, flag%d - r: %d, g: %d, b: %d, a: %d\n", flag, v->r, v->g, v->b, v->a);
+}
+
+static INLINE void glideSetVertexPrimShading(VERTEX *v, uint32_t prim_color)
+{
+   v->a = (uint8_t)(prim_color & 0xFF);
+   v->b = (uint8_t)((prim_color >> 8) & 0xFF);
+   v->g = (uint8_t)((prim_color >> 16) & 0xFF);
+   v->r = (uint8_t)((prim_color >> 24) & 0xFF);
+   //FRDP(" * Prim shaded %08lx\n", rdp.prim_color);
+}
+
 void newSwapBuffers(void);
 extern void rdp_setfuncs(void);
 extern int SwapOK;
