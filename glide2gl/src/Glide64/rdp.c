@@ -2147,16 +2147,16 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
             rdp.skip_drawing = true;
             break;
          case CI_ZCOPY:
-#ifdef HAVE_HWFBE
             if (settings.ucode != ucode_PerfectDark)
             {
+#ifdef HAVE_HWFBE
                if (fb_hwfbe_enabled && !rdp.copy_ci_index && rdp.copy_zi_index == rdp.ci_count)
                {
                   CopyDepthBuffer();
                }
+#endif
                rdp.skip_drawing = true;
             }
-#endif
             break;
          case CI_USELESS:
             rdp.skip_drawing = true;
