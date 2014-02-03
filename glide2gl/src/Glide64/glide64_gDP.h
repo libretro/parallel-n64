@@ -292,7 +292,7 @@ static void gDPSetTileSize(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t
 #endif
 }
 
-static void gDPSetTile( uint32_t format, uint32_t size, uint32_t line, uint32_t tmem,
+static void gDPSetTile( uint32_t format, uint32_t size, uint32_t line, uint32_t tmem, uint32_t tile_idx,
       uint32_t palette, uint32_t cmt, uint32_t cms, uint32_t maskt, uint32_t masks, uint32_t shiftt, uint32_t shifts,
       uint32_t mirrort, uint32_t mirrors)
 {
@@ -303,9 +303,9 @@ static void gDPSetTile( uint32_t format, uint32_t size, uint32_t line, uint32_t 
    w1 = rdp.cmd1;
    tile_set = 1; // used to check if we only load the first settilesize
    rdp.first = 0;
-   rdp.last_tile = (uint32_t)((w1 >> 24) & 0x07);
+   rdp.last_tile = tile_idx;
 
-   tile = (TILE*)&rdp.tiles[rdp.last_tile];
+   tile = (TILE*)&rdp.tiles[tile_idx];
    tile->format   = format; 
    tile->size     = size;
    tile->line     = line;

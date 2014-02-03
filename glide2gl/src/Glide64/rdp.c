@@ -1816,6 +1816,7 @@ static void rdp_settile(uint32_t w0, uint32_t w1)
          ((w0 >> 19) & 0x03),       /* size   */
          ((w0 >> 9) & 0x01FF),      /* line   */
          (w0 & 0x1FF),              /* tmem   */
+         ((w1 >> 24) & 0x07),       /* tile index no */
          ((w1 >> 20) & 0x0F),       /* palette */
          ((w1 >> 19) & 0x01),       /* clamp_t */
          ((w1 >> 9) & 0x01),        /* clamp_s */

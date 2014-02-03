@@ -427,21 +427,22 @@ void DrawImage (DRAWIMAGE *d)
   rdp.timg.width = (d->imageW%2)?d->imageW-1:d->imageW;
   rdp.timg.set_by = 0;
 
-  // SetTile ()
-  TILE *tile = &rdp.tiles[0];
-  tile->format = d->imageFmt;   // RGBA
-  tile->size = d->imageSiz;             // 16-bit
-  tile->line = line;
-  tile->t_mem = 0;
-  tile->palette = (uint8_t)d->imagePal;
-  tile->clamp_t = 1;
-  tile->mirror_t = 0;
-  tile->mask_t = 0;
-  tile->shift_t = 0;
-  tile->clamp_s = 1;
-  tile->mirror_s = 0;
-  tile->mask_s = 0;
-  tile->shift_s = 0;
+  gDPSetTile(
+        d->imageFmt,               /* format (RGBA) */
+        d->imageSiz,               /* size (16-bit) */
+        line,                      /* line   */
+        0,                         /* tmem   */
+        0,                         /* tile index no */
+        (uint8_t)d->imagePal,      /* palette */
+        1,                         /* clamp_t */
+        1,                         /* clamp_s */
+        0,                         /* mask_t */
+        0,                         /* mask_s */
+        0,                         /* shift_t */
+        0,                         /* shift_s */
+        0,                         /* mirror_t */
+        0                          /* mirror_s */
+        );
 
   rdp.tiles[0].ul_s = 0;
   rdp.tiles[0].ul_t = 0;
