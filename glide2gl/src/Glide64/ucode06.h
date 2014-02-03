@@ -151,7 +151,7 @@ typedef struct DRAWOBJECT_t {
 } DRAWOBJECT;
 
 #ifdef HAVE_HWFBE
-void DrawHiresDepthImage (const DRAWIMAGE *d)
+static void DrawHiresDepthImage (const DRAWIMAGE *d)
 {
    int w, h;
    uint16_t * src = (uint16_t*)(gfx.RDRAM + d->imagePtr);
@@ -246,17 +246,14 @@ void DrawHiresDepthImage (const DRAWIMAGE *d)
 }
 #endif
 
-void DrawDepthImage (const DRAWIMAGE *d)
+static void DrawDepthImage (const DRAWIMAGE *d)
 {
-   int x, y;
+   float scale_x_src, scale_y_src, scale_x_dst, scale_y_dst;
+   uint16_t *src, *dst;
+   int32_t x, y, src_width, src_height, dst_width, dst_height;
 
-   if (!fb_depth_render_enabled)
+   if (!fb_depth_render_enabled || d->imageH > d->imageW)
       return;
-
-   if (d->imageH > d->imageW)
-      return;
-
-   LRDP("Depth image write\n");
 
 #ifdef HAVE_HWFBE
    if (fb_hwfbe_enabled)
@@ -266,16 +263,17 @@ void DrawDepthImage (const DRAWIMAGE *d)
    }
 #endif
 
-   float scale_x_dst = rdp.scale_x;
-   float scale_y_dst = rdp.scale_y;
-   float scale_x_src = 1.0f/rdp.scale_x;
-   float scale_y_src = 1.0f/rdp.scale_y;
-   int src_width = d->imageW;
-   int src_height = d->imageH;
-   int dst_width = min((int)(src_width*scale_x_dst), (int)settings.scr_res_x);
-   int dst_height = min((int)(src_height*scale_y_dst), (int)settings.scr_res_y);
-   uint16_t * src = (uint16_t*)(gfx.RDRAM+d->imagePtr);
-   uint16_t * dst = (uint16_t*)malloc(dst_width * dst_height * sizeof(uint16_t));
+   scale_x_dst = rdp.scale_x;
+   scale_y_dst = rdp.scale_y;
+   scale_x_src = 1.0f/rdp.scale_x;
+   scale_y_src = 1.0f/rdp.scale_y;
+   src_width = d->imageW;
+   src_height = d->imageH;
+   dst_width = min((int)(src_width*scale_x_dst), (int)settings.scr_res_x);
+   dst_height = min((int)(src_height*scale_y_dst), (int)settings.scr_res_y);
+   src = (uint16_t*)(gfx.RDRAM+d->imagePtr);
+   dst = (uint16_t*)malloc(dst_width * dst_height * sizeof(uint16_t));
+
    for (y = 0; y < dst_height; y++)
    {
       for (x = 0; x < dst_width; x++)
@@ -291,9 +289,11 @@ void DrawDepthImage (const DRAWIMAGE *d)
          dst_width<<1,
          dst);
    free(dst);
+
+   //LRDP("Depth image write\n");
 }
 
-void DrawImage (DRAWIMAGE *d)
+static void DrawImage (DRAWIMAGE *d)
 {
   if (d->imageW == 0 || d->imageH == 0 || d->frameH == 0)
      return;
@@ -419,12 +419,13 @@ void DrawImage (DRAWIMAGE *d)
   int min_256_v = ul_v >> y_shift;
   //int max_256_v = (lr_v-1) >> y_shift;
 
+  gDPSetTextureImage(
+        d->imageFmt,                                 /* format - RGBA */
+        d->imageSiz,                                 /* size   - 16-bit */
+        (d->imageW%2) ? (d->imageW-1) : (d->imageW), /* width */
+        d->imagePtr                                  /* address */
+        );
 
-  // SetTextureImage ()
-  rdp.timg.format = d->imageFmt;        // RGBA
-  rdp.timg.size = d->imageSiz;          // 16-bit
-  rdp.timg.addr = d->imagePtr;
-  rdp.timg.width = (d->imageW%2)?d->imageW-1:d->imageW;
   rdp.timg.set_by = 0;
 
   gDPSetTile(
@@ -730,16 +731,10 @@ static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
 
 static void uc6_bg (bool bg_1cyc)
 {
-  static const char *strFuncNames[] = {"uc6:bg_1cyc", "uc6:bg_copy"};
-  const char *strFuncName =  bg_1cyc ? strFuncNames[0] : strFuncNames[1];
-  if (rdp.skip_drawing)
-  {
-    FRDP("%s skipped\n", strFuncName);
-    return;
-  }
-  FRDP ("%s #%d, #%d\n", strFuncName, rdp.tri_n, rdp.tri_n+1);
-
   DRAWIMAGE d;
+  if (rdp.skip_drawing)
+    return;
+
   uc6_read_background_data(&d, bg_1cyc);
 
 #ifdef HAVE_HWFBE
@@ -750,17 +745,14 @@ static void uc6_bg (bool bg_1cyc)
   }
 #endif
 
-  if (settings.ucode == ucode_F3DEX2 || (settings.hacks&hack_PPL))
-  {
-    if ( (d.imagePtr != rdp.cimg) && (d.imagePtr != rdp.ocimg) && d.imagePtr) //can't draw from framebuffer
-      DrawImage(&d);
-    else
-    {
-      FRDP("%s skipped\n", strFuncName);
-    }
-  }
-  else
-    DrawImage (&d);
+  if (
+        (settings.ucode == ucode_F3DEX2 || (settings.hacks&hack_PPL)) &&
+        !((d.imagePtr != rdp.cimg) && (d.imagePtr != rdp.ocimg) && d.imagePtr)
+     ) // can't draw from framebuffer, skip
+     return;
+
+  DrawImage (&d);
+  //FRDP ("%s #%d, #%d\n", bg_1cyc ? "uc6:bg_1cyc" : "uc6:bg_copy", rdp.tri_n, rdp.tri_n+1);
 }
 
 static void uc6_bg_1cyc(uint32_t w0, uint32_t w1)
