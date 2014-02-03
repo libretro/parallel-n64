@@ -86,25 +86,12 @@ static void uc1_tri2(uint32_t w0, uint32_t w1)
 static void uc1_line3d(uint32_t w0, uint32_t w1)
 {
    if (!settings.force_quad3d && ((w1 & 0xFF000000) == 0) && ((w0 & 0x00FFFFFF) == 0))
-   {
-      VERTEX *v[3];
-      uint16_t width = (uint16_t)(w1 & 0xFF) + 3;
-
-      FRDP("uc1:line3d width: %d #%d, #%d - %d, %d\n", width, rdp.tri_n, rdp.tri_n+1,
-            (w1 >> 17) & 0x7F,
-            (w1 >> 9) & 0x7F);
-
-      v[0] = &rdp.vtx[(w1 >> 17) & 0x7F];
-      v[1] = &rdp.vtx[(w1 >> 9)  & 0x7F];
-      v[2] = &rdp.vtx[(w1 >> 9)  & 0x7F];
-      uint32_t cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
-      rdp.flags |= CULLMASK;
-      rdp.update |= UPDATE_CULL_MODE;
-      rsp_tri1(v, width);
-      rdp.flags ^= CULLMASK;
-      rdp.flags |= cull_mode << CULLSHIFT;
-      rdp.update |= UPDATE_CULL_MODE;
-   }
+      gSPLineW3D(
+            (w1 >> 17) & 0x7F,      /* v0 */
+            (w1 >> 9)  & 0x7F,      /* v1 */
+            (w1 & 0xFF) + 3,        /* wd */
+            0                       /* flag (stub */
+            );
    else
    {
       VERTEX *v[6];

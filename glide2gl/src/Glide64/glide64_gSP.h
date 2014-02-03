@@ -379,3 +379,28 @@ static void gSPCombineMatrices(void)
    rdp.update ^= UPDATE_MULT_MAT;
 }
 
+static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
+{
+   VERTEX *v[3];
+   v[0] = &rdp.vtx[v1];
+   v[1] = &rdp.vtx[v0];
+   v[2] = &rdp.vtx[v0];
+
+   uint32_t cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
+   rdp.flags |= CULLMASK;
+   rdp.update |= UPDATE_CULL_MODE;
+   rsp_tri1(v, wd);
+
+   if (!cull_tri(v))
+   {
+      update();
+      draw_tri (v, wd);
+   }
+   rdp.tri_n ++;
+
+   rdp.flags ^= CULLMASK;
+   rdp.flags |= cull_mode << CULLSHIFT;
+   rdp.update |= UPDATE_CULL_MODE;
+
+   //FRDP("uc0:line3d v0:%d, v1:%d, width:%d\n", v0, v1, wd);
+}

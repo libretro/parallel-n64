@@ -668,27 +668,14 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
    gSPClearGeometryMode(w1);
 }
 
-//gSPLine3D
 static void uc0_line3d(uint32_t w0, uint32_t w1)
 {
-   uint32_t v0 = ((w1 >> 16) & 0xff) / 10;
-   uint32_t v1 = ((w1 >>  8) & 0xff) / 10;
-   uint16_t width = (uint16_t)(w1 & 0xFF) + 3;
-
-   VERTEX *v[3];
-   v[0] = &rdp.vtx[v1];
-   v[1] = &rdp.vtx[v0];
-   v[2] = &rdp.vtx[v0];
-
-   uint32_t cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
-   rdp.flags |= CULLMASK;
-   rdp.update |= UPDATE_CULL_MODE;
-   rsp_tri1(v, width);
-   rdp.flags ^= CULLMASK;
-   rdp.flags |= cull_mode << CULLSHIFT;
-   rdp.update |= UPDATE_CULL_MODE;
-
-   //FRDP("uc0:line3d v0:%d, v1:%d, width:%d\n", v0, v1, width);
+   gSPLineW3D(
+         ((w1 >> 16) & 0xff) / 10,     /* v0 */
+         ((w1 >>  8) & 0xff) / 10,     /* v1 */
+         (w1 & 0xFF) + 3,              /* wd */
+         0                             /* flag (stub) */
+         );
 }
 
 static void uc0_tri4(uint32_t w0, uint32_t w1)
