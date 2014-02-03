@@ -2734,7 +2734,10 @@ void glide_set_filtering(unsigned value)
 void newSwapBuffers(void)
 {
    if (!rdp.updatescreen)
+   {
+      retro_return(false);
       return;
+   }
 
    rdp.updatescreen = 0;
 
