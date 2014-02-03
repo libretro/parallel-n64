@@ -159,12 +159,12 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
          v->ov = ((int16_t*)addr)[5^1];
          v->w = Calc_invw(((int*)addr)[3]) / 31.0f;
          v->oow = 1.0f / v->w;
-         FRDP ("v%d - sx: %f, sy: %f ou: %f, ov: %f, w: %f, r=%d, g=%d, b=%d, a=%d\n", i, v->sx/rdp.scale_x, v->sy/rdp.scale_y, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->w, v->r, v->g, v->b, v->a);
+         //FRDP ("v%d - sx: %f, sy: %f ou: %f, ov: %f, w: %f, r=%d, g=%d, b=%d, a=%d\n", i, v->sx/rdp.scale_x, v->sy/rdp.scale_y, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->w, v->r, v->g, v->b, v->a);
       }
       else
       {
          v->oow = v->w = 1.0f;
-         FRDP ("v%d - sx: %f, sy: %f r=%d, g=%d, b=%d, a=%d\n", i, v->sx/rdp.scale_x, v->sy/rdp.scale_y, v->r, v->g, v->b, v->a);
+         //FRDP ("v%d - sx: %f, sy: %f r=%d, g=%d, b=%d, a=%d\n", i, v->sx/rdp.scale_x, v->sy/rdp.scale_y, v->r, v->g, v->b, v->a);
       }
       addr += vsize;
    }
@@ -176,16 +176,13 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
    pV[3] = &vtx[3];
 
    draw_tri (pV, 0);
-   if (vnum == 3)
+   //FRDP("uc9:Tri #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
+   rdp.tri_n ++;
+   if (vnum != 3)
    {
-      FRDP("uc9:Tri #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
-      rdp.tri_n ++;
-   }
-   else
-   {
-      FRDP("uc9:Quad #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
+      //FRDP("uc9:Quad #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
       draw_tri (pV+1, 0);
-      rdp.tri_n += 2;
+      rdp.tri_n++;
    }
 }
 

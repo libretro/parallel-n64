@@ -136,41 +136,35 @@ static void rsp_vertex(int v0, int n)
 
 static void rsp_tri1(VERTEX **v, uint16_t linew)
 {
-  if (cull_tri(v))
-    rdp.tri_n ++;
-  else
+  if (!cull_tri(v))
   {
     update();
     draw_tri (v, linew);
-    rdp.tri_n ++;
   }
+  rdp.tri_n ++;
 }
 
 static void rsp_tri2 (VERTEX **v)
 {
   int updated = 0;
 
-  if (cull_tri(v))
-    rdp.tri_n ++;
-  else
-  {
-    updated = 1;
-    update();
+  if (!cull_tri(v))
+    updated |= (1 << 0);
+  rdp.tri_n ++;
 
-    draw_tri (v, 0);
-    rdp.tri_n ++;
-  }
+  if (!cull_tri(v+3))
+    updated |= (1 << 1);
+  rdp.tri_n ++;
 
-  if (cull_tri(v+3))
-    rdp.tri_n ++;
-  else
-  {
-    if (!updated)
-      update();
+  if (!updated)
+     return;
 
-    draw_tri (v+3, 0);
-    rdp.tri_n ++;
-  }
+  update();
+
+  if (updated & (1 << 0))
+     draw_tri (v, 0);
+  if (updated & (1 << 1))
+     draw_tri (v+3, 0);
 }
 
 //
@@ -720,56 +714,33 @@ static void uc0_tri4(uint32_t w0, uint32_t w1)
 
    int updated = 0;
 
-   if (cull_tri(v))
-      rdp.tri_n ++;
-   else
-   {
-      updated = 1;
-      update();
+   if (!cull_tri(v))
+      updated |= (1 << 0);
+   rdp.tri_n ++;
 
+   if (!cull_tri(v+3))
+      updated |= (1 << 1);
+   rdp.tri_n ++;
+
+   if (!cull_tri(v+6))
+      updated |= (1 << 2);
+   rdp.tri_n ++;
+
+   if (!cull_tri(v+9))
+      updated |= (1 << 3);
+   rdp.tri_n ++;
+
+   if (!updated)
+      return;
+
+   update();
+
+   if (updated & (1 << 0))
       draw_tri (v, 0);
-      rdp.tri_n ++;
-   }
-
-   if (cull_tri(v+3))
-      rdp.tri_n ++;
-   else
-   {
-      if (!updated)
-      {
-         updated = 1;
-         update();
-      }
-
+   if (updated & (1 << 1))
       draw_tri (v+3, 0);
-      rdp.tri_n ++;
-   }
-
-   if (cull_tri(v+6))
-      rdp.tri_n ++;
-   else
-   {
-      if (!updated)
-      {
-         updated = 1;
-         update();
-      }
-
+   if (updated & (1 << 2))
       draw_tri (v+6, 0);
-      rdp.tri_n ++;
-   }
-
-   if (cull_tri(v+9))
-      rdp.tri_n ++;
-   else
-   {
-      if (!updated)
-      {
-         updated = 1;
-         update();
-      }
-
+   if (updated & (1 << 3))
       draw_tri (v+9, 0);
-      rdp.tri_n ++;
-   }
 }

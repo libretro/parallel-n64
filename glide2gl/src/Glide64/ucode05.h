@@ -261,15 +261,12 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
       v[1]->uv_calculated = 0xFFFFFFFF;
       v[2]->uv_calculated = 0xFFFFFFFF;
 
-      if (cull_tri(v))
-         rdp.tri_n ++;
-      else
+      if (!cull_tri(v))
       {
          update ();
-
          draw_tri (v, 0);
-         rdp.tri_n ++;
       }
+      rdp.tri_n ++;
    }
 }
 

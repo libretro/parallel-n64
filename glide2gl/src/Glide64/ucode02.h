@@ -448,6 +448,7 @@ static void uc2_tri1(uint32_t w0, uint32_t w1)
 
 static void uc2_quad(uint32_t w0, uint32_t w1)
 {
+   VERTEX *v[6];
    if ((w0 & 0x00FFFFFF) == 0x2F)
    {
       uint32_t command = w0 >> 24;
@@ -464,22 +465,7 @@ static void uc2_quad(uint32_t w0, uint32_t w1)
    }
 
    if (rdp.skip_drawing)
-   {
-      LRDP("uc2_quad. skipped\n");
       return;
-   }
-
-   LRDP("uc2:quad");
-
-   FRDP(" #%d, #%d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1,
-         ((w0 >> 17) & 0x7F),
-         ((w0 >> 9) & 0x7F),
-         ((w0 >> 1) & 0x7F),
-         ((w1 >> 17) & 0x7F),
-         ((w1 >> 9) & 0x7F),
-         ((w1 >> 1) & 0x7F));
-
-   VERTEX *v[6];
 
    v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
    v[1] = &rdp.vtx[(w0 >> 9)  & 0x7F];
@@ -489,6 +475,9 @@ static void uc2_quad(uint32_t w0, uint32_t w1)
    v[5] = &rdp.vtx[(w1 >> 1)  & 0x7F];
 
    rsp_tri2(v);
+
+   //LRDP("uc2:quad");
+   //FRDP(" #%d, #%d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1, ((w0 >> 17) & 0x7F), ((w0 >> 9) & 0x7F), ((w0 >> 1) & 0x7F), ((w1 >> 17) & 0x7F), ((w1 >> 9) & 0x7F), ((w1 >> 1) & 0x7F));
 }
 
 static void uc2_line3d(uint32_t w0, uint32_t w1)
@@ -497,23 +486,24 @@ static void uc2_line3d(uint32_t w0, uint32_t w1)
       uc6_ldtx_rect_r(w0, w1);
    else
    {
-      FRDP("uc2:line3d #%d, #%d - %d, %d\n", rdp.tri_n, rdp.tri_n+1,
-            (w0 >> 17) & 0x7F,
-            (w0 >> 9) & 0x7F);
+      uint16_t width;
+      uint32_t cull_mode;
+      VERTEX *v[3];
 
-      VERTEX *v[3] = {
-         &rdp.vtx[(w0 >> 17) & 0x7F],
-         &rdp.vtx[(w0 >> 9) & 0x7F],
-         &rdp.vtx[(w0 >> 9) & 0x7F]
-      };
-      uint16_t width = (uint16_t)(w0 + 3)&0xFF;
-      uint32_t cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
+      v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
+      v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
+      v[2] = &rdp.vtx[(w0 >> 9) & 0x7F];
+
+      width = (uint16_t)(w0 + 3)&0xFF;
+      cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
       rdp.flags |= CULLMASK;
       rdp.update |= UPDATE_CULL_MODE;
       rsp_tri1(v, width);
       rdp.flags ^= CULLMASK;
       rdp.flags |= cull_mode << CULLSHIFT;
       rdp.update |= UPDATE_CULL_MODE;
+
+      //FRDP("uc2:line3d #%d, #%d - %d, %d\n", rdp.tri_n, rdp.tri_n+1, (w0 >> 17) & 0x7F, (w0 >> 9) & 0x7F);
    }
 }
 
@@ -534,10 +524,9 @@ static void uc2_dma_io(uint32_t w0, uint32_t w1)
 
 static void uc2_pop_matrix(uint32_t w0, uint32_t w1)
 {
-   FRDP ("uc2:pop_matrix %08lx, %08lx\n", w0, w1);
-
    // Just pop the modelview matrix
    gSPPopMatrixN(w1 >> 6);
+   //FRDP ("uc2:pop_matrix %08lx, %08lx\n", w0, w1);
 }
 
 static void uc2_geom_mode(uint32_t w0, uint32_t w1)

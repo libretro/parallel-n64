@@ -547,6 +547,7 @@ void DrawImage (DRAWIMAGE *d)
 
       if ((flr_x <= rdp.scissor.lr_x) || (ful_x < rdp.scissor.lr_x))
       {
+         //not clipped
          int s;
         VERTEX v[4] = {
           { ful_x, ful_y, Z, 1.0f, ful_u, ful_v },
@@ -560,13 +561,8 @@ void DrawImage (DRAWIMAGE *d)
 
           grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v, sizeof(VERTEX));
 
-          rdp.tri_n += 2;
       }
-      else
-      {
-        rdp.tri_n += 2;
-        LRDP("Clipped!\n");
-      }
+      rdp.tri_n += 2;
 
       // increment whatever caused this split
       tb_u += x_size - (x_size-(nlr_u-cb_u));

@@ -245,21 +245,18 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
       uint32_t a = segoffset(ptri);
       for (t = 0; t < ostate->triCount; t++)
       {
-         struct t3dTriN * tri = (struct t3dTriN*)&gfx.RDRAM[a];
-         a += 4;
-         FRDP("tri #%d - %d, %d, %d\n", t, tri->v0, tri->v1, tri->v2);
          VERTEX *v[3];
+         struct t3dTriN * tri = (struct t3dTriN*)&gfx.RDRAM[a];
+
+         a += 4;
          v[0] = &rdp.vtx[tri->v0];
          v[1] = &rdp.vtx[tri->v1];
          v[2] = &rdp.vtx[tri->v2];
 
-         if (cull_tri(v))
-            rdp.tri_n ++;
-         else
-         {
+         if (!cull_tri(v))
             draw_tri(v, 0);
-            rdp.tri_n ++;
-         }
+         rdp.tri_n ++;
+         //FRDP("tri #%d - %d, %d, %d\n", t, tri->v0, tri->v1, tri->v2);
       }
    }
 }
