@@ -1033,7 +1033,7 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char*)"NFL BLITZ SPECIAL ED")
          )
    {
-      settings.lodmode = 2;
+      settings.lodmode = 1;
    }
    else if (strstr(name, (const char*)"Monaco Grand Prix")
          || strstr(name, (const char*)"Monaco GP Racing 2")
@@ -1657,7 +1657,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"WAVE RACE 64"))
    {
-      settings.lodmode = 2;
+      settings.lodmode = 1;
       settings.pal230 = 1;
    }
    else if (strstr(name, (const char *)"WILD CHOPPERS"))
@@ -1772,7 +1772,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"blitz2k"))
    {
-      settings.lodmode = 2;
+      settings.lodmode = 1;
    }
    else if (strstr(name, (const char *)"Body Harvest"))
    {
