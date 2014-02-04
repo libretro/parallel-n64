@@ -1,3 +1,63 @@
+//forward decls
+extern void glide64SPClipVertex(uint32_t i);
+
+//software backface culling. Gonetz
+// mega modifications by Dave2001
+
+static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
+{
+   int i, draw;
+   float x1, y1, x2, y2, area;
+
+   if (v[0]->scr_off & v[1]->scr_off & v[2]->scr_off)
+      return true;
+
+   // Triangle can't be culled, if it need clipping
+   draw = false;
+
+   for (i=0; i<3; i++)
+   {
+      if (!v[i]->screen_translated)
+      {
+         v[i]->sx = rdp.view_trans[0] + v[i]->x_w * rdp.view_scale[0] + rdp.offset_x;
+         v[i]->sy = rdp.view_trans[1] + v[i]->y_w * rdp.view_scale[1] + rdp.offset_y;
+         v[i]->sz = rdp.view_trans[2] + v[i]->z_w * rdp.view_scale[2];
+         v[i]->screen_translated = 1;
+      }
+      if (v[i]->w < 0.01f) //need clip_z. can't be culled now
+         draw = 1;
+   }
+
+   rdp.u_cull_mode = (rdp.flags & CULLMASK);
+   if (draw || rdp.u_cull_mode == 0 || rdp.u_cull_mode == CULLMASK) //no culling set
+   {
+      rdp.u_cull_mode >>= CULLSHIFT;
+      return false;
+   }
+
+   x1 = v[0]->sx - v[1]->sx;
+   y1 = v[0]->sy - v[1]->sy;
+   x2 = v[2]->sx - v[1]->sx;
+   y2 = v[2]->sy - v[1]->sy;
+   area = y1 * x2 - x1 * y2;
+
+   rdp.u_cull_mode >>= CULLSHIFT;
+
+   switch (rdp.u_cull_mode)
+   {
+      case 1: // cull front
+         if (area < 0.0f) //counter-clockwise, positive
+            return true;
+         break;
+      case 2: // cull back
+         if (area >= 0.0f) //clockwise, negative
+            return true;
+         break;
+   }
+
+   return false;
+}
+
 // FIXME - not consistent with glN64
 static void gSPPopMatrix(uint32_t param)
 {

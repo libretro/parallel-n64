@@ -569,6 +569,7 @@ typedef struct
 
 struct RDP
 {
+   uint32_t u_cull_mode;
    float vi_width;
    float vi_height;
 

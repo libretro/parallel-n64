@@ -46,10 +46,6 @@
 #include "DepthBufferRender.h"
 #include "GBI.h"
 
-
-//forward decls
-void glide64SPClipVertex(uint32_t i);
-
 //
 // util_init - initialize data for the functions in this file
 //
@@ -57,66 +53,6 @@ void glide64SPClipVertex(uint32_t i);
 void util_init(void)
 {
 }
-
-static uint32_t u_cull_mode = 0;
-
-//software backface culling. Gonetz
-// mega modifications by Dave2001
-
-int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
-{
-   int i, draw;
-   float x1, y1, x2, y2, area;
-
-   if (v[0]->scr_off & v[1]->scr_off & v[2]->scr_off)
-      return true;
-
-   // Triangle can't be culled, if it need clipping
-   draw = false;
-
-   for (i=0; i<3; i++)
-   {
-      if (!v[i]->screen_translated)
-      {
-         v[i]->sx = rdp.view_trans[0] + v[i]->x_w * rdp.view_scale[0] + rdp.offset_x;
-         v[i]->sy = rdp.view_trans[1] + v[i]->y_w * rdp.view_scale[1] + rdp.offset_y;
-         v[i]->sz = rdp.view_trans[2] + v[i]->z_w * rdp.view_scale[2];
-         v[i]->screen_translated = 1;
-      }
-      if (v[i]->w < 0.01f) //need clip_z. can't be culled now
-         draw = 1;
-   }
-
-   u_cull_mode = (rdp.flags & CULLMASK);
-   if (draw || u_cull_mode == 0 || u_cull_mode == CULLMASK) //no culling set
-   {
-      u_cull_mode >>= CULLSHIFT;
-      return false;
-   }
-
-   x1 = v[0]->sx - v[1]->sx;
-   y1 = v[0]->sy - v[1]->sy;
-   x2 = v[2]->sx - v[1]->sx;
-   y2 = v[2]->sy - v[1]->sy;
-   area = y1 * x2 - x1 * y2;
-
-   u_cull_mode >>= CULLSHIFT;
-
-   switch (u_cull_mode)
-   {
-      case 1: // cull front
-         if (area < 0.0f) //counter-clockwise, positive
-            return true;
-         break;
-      case 2: // cull back
-         if (area >= 0.0f) //clockwise, negative
-            return true;
-         break;
-   }
-
-   return false;
-}
-
 
 void apply_shade_mods (VERTEX *v)
 {
@@ -826,7 +762,7 @@ static void DepthBuffer(VERTEX * vtx, int n)
    if (fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE))
    {
       struct vertexi v[12];
-      if (u_cull_mode == 1) //cull front
+      if (rdp.u_cull_mode == 1) //cull front
       {
          for (i = 0; i < n; i++)
          {

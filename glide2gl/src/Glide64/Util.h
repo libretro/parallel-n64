@@ -47,7 +47,6 @@
 void util_init(void);
 void render_tri(uint16_t linew, int old_interpolate);
 
-int cull_tri(VERTEX **v);
 void draw_tri(VERTEX **v, uint16_t linew);
 void do_triangle_stuff(uint16_t linew, int old_interpolate);
 void do_triangle_stuff_2(uint16_t linew);
