@@ -43,9 +43,9 @@ static void calc_point_light (VERTEX *v, float * vpos)
    float light_intensity = 0.0f;
    float color[3];
 
-   color[0] = rdp.light[rdp.num_lights].r;
-   color[1] = rdp.light[rdp.num_lights].g;
-   color[2] = rdp.light[rdp.num_lights].b;
+   color[0] = rdp.light[rdp.num_lights].col[0];
+   color[1] = rdp.light[rdp.num_lights].col[1];
+   color[2] = rdp.light[rdp.num_lights].col[2];
 
    for (l = 0; l < rdp.num_lights; l++)
    {
@@ -73,9 +73,9 @@ static void calc_point_light (VERTEX *v, float * vpos)
 
       if (light_intensity > 0.0f)
       {
-         color[0] += rdp.light[l].r * light_intensity;
-         color[1] += rdp.light[l].g * light_intensity;
-         color[2] += rdp.light[l].b * light_intensity;
+         color[0] += rdp.light[l].col[0] * light_intensity;
+         color[1] += rdp.light[l].col[1] * light_intensity;
+         color[2] += rdp.light[l].col[2] * light_intensity;
       }
    }
 
@@ -792,13 +792,13 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
                return;
 
             // Get the data
-            rdp.light[n].r = (float)rdram_u8[(addr+0)^3] / 255.0f;
+            rdp.light[n].col[0] = (float)rdram_u8[(addr+0)^3] / 255.0f;
             rdp.light[n].nonblack = rdram_u8[(addr+0)^3];
-            rdp.light[n].g = (float)rdram_u8[(addr+1)^3] / 255.0f;
+            rdp.light[n].col[1] = (float)rdram_u8[(addr+1)^3] / 255.0f;
             rdp.light[n].nonblack += rdram_u8[(addr+1)^3];
-            rdp.light[n].b = (float)rdram_u8[(addr+2)^3] / 255.0f;
+            rdp.light[n].col[2] = (float)rdram_u8[(addr+2)^3] / 255.0f;
             rdp.light[n].nonblack += rdram_u8[(addr+2)^3];
-            rdp.light[n].a = 1.0f;
+            rdp.light[n].col[3] = 1.0f;
             // ** Thanks to Icepir8 for pointing this out **
             // Lighting must be signed byte instead of byte
             rdp.light[n].dir_x = (float)(rdram_s8[(addr+8)^3]) / 127.0f;

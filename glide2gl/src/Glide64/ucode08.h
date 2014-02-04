@@ -143,7 +143,7 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
             calc_sphere (v);
          //     FRDP("calc light. r: 0x%02lx, g: 0x%02lx, b: 0x%02lx, nx: %.3f, ny: %.3f, nz: %.3f\n", v->r, v->g, v->b, v->vec[0], v->vec[1], v->vec[2]);
          FRDP("v[%d] calc light. r: 0x%02lx, g: 0x%02lx, b: 0x%02lx\n", i>>4, v->r, v->g, v->b);
-         float color[3] = {rdp.light[rdp.num_lights].r, rdp.light[rdp.num_lights].g, rdp.light[rdp.num_lights].b};
+         float color[3] = {rdp.light[rdp.num_lights].col[0], rdp.light[rdp.num_lights].col[1], rdp.light[rdp.num_lights].col[2]};
          FRDP("ambient light. r: %f, g: %f, b: %f\n", color[0], color[1], color[2]);
          float light_intensity = 0.0f;
          uint32_t l;
@@ -172,18 +172,18 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
                   FRDP("light %d, len: %f, p_intensity : %f\n", l, len, p_i);
                }
                //*/
-               color[0] += rdp.light[l].r * light_intensity;
-               color[1] += rdp.light[l].g * light_intensity;
-               color[2] += rdp.light[l].b * light_intensity;
+               color[0] += rdp.light[l].col[0] * light_intensity;
+               color[1] += rdp.light[l].col[1] * light_intensity;
+               color[2] += rdp.light[l].col[2] * light_intensity;
                FRDP("light %d r: %f, g: %f, b: %f\n", l, color[0], color[1], color[2]);
             }
             light_intensity = DotProduct (rdp.light_vector[l], v->vec);
             FRDP("light %d, intensity : %f\n", l, light_intensity);
             if (light_intensity > 0.0f)
             {
-               color[0] += rdp.light[l].r * light_intensity;
-               color[1] += rdp.light[l].g * light_intensity;
-               color[2] += rdp.light[l].b * light_intensity;
+               color[0] += rdp.light[l].col[0] * light_intensity;
+               color[1] += rdp.light[l].col[1] * light_intensity;
+               color[2] += rdp.light[l].col[2] * light_intensity;
             }
             FRDP("light %d r: %f, g: %f, b: %f\n", l, color[0], color[1], color[2]);
          }
@@ -201,9 +201,9 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
                   light_intensity = rdp.light[l].ca / len;
                   if (light_intensity > 1.0f) light_intensity = 1.0f;
                   FRDP("light %d, p_intensity : %f\n", l, light_intensity);
-                  color[0] += rdp.light[l].r * light_intensity;
-                  color[1] += rdp.light[l].g * light_intensity;
-                  color[2] += rdp.light[l].b * light_intensity;
+                  color[0] += rdp.light[l].col[0] * light_intensity;
+                  color[1] += rdp.light[l].col[1] * light_intensity;
+                  color[2] += rdp.light[l].col[2] * light_intensity;
                   //FRDP("light %d r: %f, g: %f, b: %f\n", l, color[0], color[1], color[2]);
                }
             }
@@ -363,15 +363,15 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
             }
             n -= 2;
             uint8_t col = gfx.RDRAM[(addr+0)^3];
-            rdp.light[n].r = (float)col / 255.0f;
+            rdp.light[n].col[0] = (float)col / 255.0f;
             rdp.light[n].nonblack = col;
             col = gfx.RDRAM[(addr+1)^3];
-            rdp.light[n].g = (float)col / 255.0f;
+            rdp.light[n].col[1] = (float)col / 255.0f;
             rdp.light[n].nonblack += col;
             col = gfx.RDRAM[(addr+2)^3];
-            rdp.light[n].b = (float)col / 255.0f;
+            rdp.light[n].col[2] = (float)col / 255.0f;
             rdp.light[n].nonblack += col;
-            rdp.light[n].a = 1.0f;
+            rdp.light[n].col[3] = 1.0f;
             rdp.light[n].dir_x = (float)(((int8_t*)gfx.RDRAM)[(addr+8)^3]) / 127.0f;
             rdp.light[n].dir_y = (float)(((int8_t*)gfx.RDRAM)[(addr+9)^3]) / 127.0f;
             rdp.light[n].dir_z = (float)(((int8_t*)gfx.RDRAM)[(addr+10)^3]) / 127.0f;

@@ -151,10 +151,10 @@ static void gSPLight(uint32_t l, unsigned n)
    uint32_t address = RSP_SegmentToPhysical(l);
 
    // Get the data
-   rdp.light[n].r = (float)(((uint8_t*)gfx.RDRAM)[(address+0)^3]) / 255.0f;
-   rdp.light[n].g = (float)(((uint8_t*)gfx.RDRAM)[(address+1)^3]) / 255.0f;
-   rdp.light[n].b = (float)(((uint8_t*)gfx.RDRAM)[(address+2)^3]) / 255.0f;
-   rdp.light[n].a = 1.0f;
+   rdp.light[n].col[0] = (float)(((uint8_t*)gfx.RDRAM)[(address+0)^3]) / 255.0f;
+   rdp.light[n].col[1] = (float)(((uint8_t*)gfx.RDRAM)[(address+1)^3]) / 255.0f;
+   rdp.light[n].col[2] = (float)(((uint8_t*)gfx.RDRAM)[(address+2)^3]) / 255.0f;
+   rdp.light[n].col[3] = 1.0f;
    // ** Thanks to Icepir8 for pointing this out **
    // Lighting must be signed byte instead of byte
    rdp.light[n].dir_x = (float)(((int8_t*)gfx.RDRAM)[(address+8)^3]) / 127.0f;
@@ -337,10 +337,10 @@ static inline void gSPNumLights(int32_t n)
 
 static void gSPLightColor( uint32_t n, uint32_t w1)
 {
-   rdp.light[n].r = (float)((w1 >> 24) & 0xFF) / 255.0f;
-   rdp.light[n].g = (float)((w1 >> 16) & 0xFF) / 255.0f;
-   rdp.light[n].b = (float)((w1 >> 8) & 0xFF) / 255.0f;
-   rdp.light[n].a = 255;
+   rdp.light[n].col[0] = (float)((w1 >> 24) & 0xFF) / 255.0f;
+   rdp.light[n].col[1] = (float)((w1 >> 16) & 0xFF) / 255.0f;
+   rdp.light[n].col[2] = (float)((w1 >> 8) & 0xFF) / 255.0f;
+   rdp.light[n].col[3] = 255;
    //FRDP ("lightcol light:%d, %08lx\n", n, w1);
 }
 

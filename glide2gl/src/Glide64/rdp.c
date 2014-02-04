@@ -215,9 +215,9 @@ void calc_light (VERTEX *v)
    uint32_t l;
    float light_intensity = 0.0f;
    float color[3];
-   color[0] = rdp.light[rdp.num_lights].r;
-   color[1] = rdp.light[rdp.num_lights].g;
-   color[2] = rdp.light[rdp.num_lights].b;
+   color[0] = rdp.light[rdp.num_lights].col[0];
+   color[1] = rdp.light[rdp.num_lights].col[1];
+   color[2] = rdp.light[rdp.num_lights].col[2];
 
    for (l = 0; l < rdp.num_lights; l++)
    {
@@ -225,9 +225,9 @@ void calc_light (VERTEX *v)
 
       if (light_intensity > 0.0f) 
       {
-         color[0] += rdp.light[l].r * light_intensity;
-         color[1] += rdp.light[l].g * light_intensity;
-         color[2] += rdp.light[l].b * light_intensity;
+         color[0] += rdp.light[l].col[0] * light_intensity;
+         color[1] += rdp.light[l].col[1] * light_intensity;
+         color[2] += rdp.light[l].col[2] * light_intensity;
       }
    }
 

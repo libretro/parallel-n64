@@ -481,7 +481,7 @@ typedef struct {
 
 typedef struct
 {
-   float r, g, b, a;             // color
+   float col[4];             // color
    float dir_x, dir_y, dir_z;    // direction towards the light source
    float x, y, z, w;             // light position
    float ca, la, qa;
