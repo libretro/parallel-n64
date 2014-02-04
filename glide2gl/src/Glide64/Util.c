@@ -71,7 +71,7 @@ typedef struct
 
 #define interp2p(a, b, r)  (a + (b - a) * r)
 #define interp3p(a, b, c, r1, r2) ((a)+(((b)+((c)-(b))*(r2))-(a))*(r1))
-#define real_to_char(x) ((uint8_t)(((int)floor(x + 0.5)) & 0xFF))
+#define real_to_char(x) ((uint8_t)(((int)glide64_floor(x + 0.5)) & 0xFF))
 #define EvaLine(li, x, y) ((li->x) * (x) + (li->y) * (y) + (li->d))
 
 //

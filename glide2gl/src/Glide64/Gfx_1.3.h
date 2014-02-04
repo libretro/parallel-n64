@@ -187,6 +187,7 @@ static inline float squareRoot(float x)
 }
 
 #define glide64_acos(x) ((-0.69813170079773212 * x * x - 0.87266462599716477) * x + 1.5707963267948966)
+#define glide64_floor(x) (((x) < 0) ? ((int32_t)(x) == (x)) ? ((int32_t)(x)) : ((int32_t)(x) -1) : ((int32_t)(x)))
 extern float glide64_pow(float a, float b);
 
 #define gfx gfxInfo

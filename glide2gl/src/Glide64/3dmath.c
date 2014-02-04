@@ -265,7 +265,7 @@ float glide64_log2(float i)
    x*= 1.0 / (1 << 23); //1/pow(2,23);
    x=x-127;
 
-   y=x-floorf(x);
+   y=x-glide64_floor(x);
    y=(y-y*y)*LogBodge;
    return x+y;
 }
@@ -275,7 +275,7 @@ static float glide64_pow2(float i)
 {
    float PowBodge=0.33971f;
    float x;
-   float y=i-floorf(i);
+   float y=i-glide64_floor(i);
    y=(y-y*y)*PowBodge;
 
    x=i+127-y;

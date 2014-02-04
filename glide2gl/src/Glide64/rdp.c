@@ -1303,9 +1303,9 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
   if (settings.increase_texrect_edge)
   {
-    if (floor(lr_x) != lr_x)
+    if (glide64_floor(lr_x) != lr_x)
       lr_x = ceil(lr_x);
-    if (floor(lr_y) != lr_y)
+    if (glide64_floor(lr_y) != lr_y)
       lr_y = ceil(lr_y);
   }
 
