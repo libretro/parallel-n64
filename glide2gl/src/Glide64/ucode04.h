@@ -54,7 +54,9 @@ static void uc4_tri1(uint32_t w0, uint32_t w1)
          ((w1 >> 16) & 0xFF) / 5,   /* v0 */
          ((w1 >> 8) & 0xFF) / 5,    /* v1 */
          (w1 & 0xFF) / 5,           /* v2 */
-         0);
+         0,
+         true
+         );
 }
 
 static void uc4_quad3d(uint32_t w0, uint32_t w1)

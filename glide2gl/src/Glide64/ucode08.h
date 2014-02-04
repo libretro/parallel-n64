@@ -425,56 +425,27 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
 
 static void uc8_tri4(uint32_t w0, uint32_t w1) //by Gugaman Apr 19 2002
 {
-   VERTEX *v[12];
    if (rdp.skip_drawing)
       return;
 
-   v[0] = &rdp.vtx[(w0 >> 23) & 0x1F];
-   v[1] = &rdp.vtx[(w0 >> 18) & 0x1F];
-   v[2] = &rdp.vtx[((((w0 >> 15) & 0x7) << 2) | ((w1 >> 30) &0x3))];
-   v[3] = &rdp.vtx[(w0 >> 10) & 0x1F];
-   v[4] = &rdp.vtx[(w0 >> 5) & 0x1F];
-   v[5] = &rdp.vtx[(w0 >> 0) & 0x1F];
-   v[6] = &rdp.vtx[(w1 >> 25) & 0x1F];
-   v[7] = &rdp.vtx[(w1 >> 20) & 0x1F];
-   v[8] = &rdp.vtx[(w1 >> 15) & 0x1F];
-   v[9] = &rdp.vtx[(w1 >> 10) & 0x1F];
-   v[10] = &rdp.vtx[(w1 >> 5) & 0x1F];
-   v[11] = &rdp.vtx[(w1 >> 0) & 0x1F];
-
-   int updated = 0;
-
-   if (!cull_tri(v))
-      updated |= (1 << 0);
-   rdp.tri_n ++;
-
-   if (!cull_tri(v+3))
-      updated |= (1 << 1);
-   rdp.tri_n ++;
-
-   if (!cull_tri(v+6))
-      updated |= (1 << 2);
-   rdp.tri_n ++;
-
-   if (!cull_tri(v+9))
-      updated |= (1 << 3);
-   rdp.tri_n ++;
-
-   if (!updated)
-      return;
-
-   update();
-
-   if (updated & (1 << 0))
-      draw_tri (v, 0);
-   if (updated & (1 << 1))
-      draw_tri (v+3, 0);
-   if (updated & (1 << 2))
-      draw_tri (v+6, 0);
-   if (updated & (1 << 3))
-      draw_tri (v+9, 0);
-
-   //FRDP("uc8:tri4 (#%d - #%d), %d-%d-%d, %d-%d-%d, %d-%d-%d, %d-%d-%d\n", rdp.tri_n, rdp.tri_n+3, ((w0 >> 23) & 0x1F), ((w0 >> 18) & 0x1F), ((((w0 >> 15) & 0x7) << 2) | ((w1 >> 30) &0x3)), ((w0 >> 10) & 0x1F), ((w0 >> 5) & 0x1F), ((w0 >> 0) & 0x1F), ((w1 >> 25) & 0x1F), ((w1 >> 20) & 0x1F), ((w1 >> 15) & 0x1F), ((w1 >> 10) & 0x1F), ((w1 >> 5) & 0x1F), ((w1 >> 0) & 0x1F));
+   gsSP4Triangles(
+         (w0 >> 23) & 0x1F,     /* v00 */
+         (w0 >> 18) & 0x1F,     /* v01 */
+         ((((w0 >> 15) & 0x7) << 2) | ((w1 >> 30) &0x3)),   /* v02 */
+         0,                     /* flag0 */
+         (w0 >> 10) & 0x1F,     /* v10 */
+         (w0 >> 5) & 0x1F,      /* v11 */
+         (w0 >> 0) & 0x1F,      /* v12 */
+         0,                     /* flag1 */
+         (w1 >> 25) & 0x1F,     /* v20 */
+         (w1 >> 20) & 0x1F,     /* v21 */
+         (w1 >> 15) & 0x1F,     /* v22 */
+         0,                     /* flag2 */
+         (w1 >> 10) & 0x1F,     /* v30 */
+         (w1 >> 5) & 0x1F,      /* v31 */
+         (w1 >> 0) & 0x1F,      /* v32 */
+         0                      /* flag3 */
+         );
 }
 
 static void uc8_setothermode_l(uint32_t w0, uint32_t w1)

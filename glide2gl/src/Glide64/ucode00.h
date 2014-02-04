@@ -386,7 +386,8 @@ static void uc0_tri1(uint32_t w0, uint32_t w1)
          ((w1 >> 16) & 0xFF) / 10,     /* v0 */
          ((w1 >> 8) & 0xFF) / 10,      /* v1 */
          (w1 & 0xFF) / 10,             /* v2 */
-         0);
+         0,
+         true);
 }
 
 static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
@@ -414,7 +415,8 @@ static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
          ((w1 >> 16) & 0xFF) / 10,  /* v0 */
          ((w1 >> 8) & 0xFF) / 10,   /* v1 */
          (w1 & 0xFF) / 10,          /* v2 */
-         0
+         0,
+         true
          );
 }
 
@@ -651,52 +653,23 @@ static void uc0_tri4(uint32_t w0, uint32_t w1)
 {
    // c0: 0000 0123, c1: 456789ab
    // becomes: 405 617 829 a3b
-   VERTEX *v[12];
 
-   //LRDP("uc0:tri4");
-
-   v[0 ]  = &rdp.vtx[(w1 >> 28) & 0xF];
-   v[1 ]  = &rdp.vtx[(w0 >> 12) & 0xF];
-   v[2 ]  = &rdp.vtx[(w1 >> 24) & 0xF];
-   v[3 ]  = &rdp.vtx[(w1 >> 20) & 0xF];
-   v[4 ]  = &rdp.vtx[(w0 >> 8)  & 0xF];
-   v[5 ]  = &rdp.vtx[(w1 >> 16) & 0xF];
-   v[6 ]  = &rdp.vtx[(w1 >> 12) & 0xF],
-   v[7 ]  = &rdp.vtx[(w0 >> 4) & 0xF];
-   v[8 ]  = &rdp.vtx[(w1 >> 8) & 0xF];
-   v[9 ]  = &rdp.vtx[(w1 >> 4) & 0xF];
-   v[10]  = &rdp.vtx[(w0 >> 0) & 0xF];
-   v[11]  = &rdp.vtx[(w1 >> 0) & 0xF];
-
-   int updated = 0;
-
-   if (!cull_tri(v))
-      updated |= (1 << 0);
-   rdp.tri_n ++;
-
-   if (!cull_tri(v+3))
-      updated |= (1 << 1);
-   rdp.tri_n ++;
-
-   if (!cull_tri(v+6))
-      updated |= (1 << 2);
-   rdp.tri_n ++;
-
-   if (!cull_tri(v+9))
-      updated |= (1 << 3);
-   rdp.tri_n ++;
-
-   if (!updated)
-      return;
-
-   update();
-
-   if (updated & (1 << 0))
-      draw_tri (v, 0);
-   if (updated & (1 << 1))
-      draw_tri (v+3, 0);
-   if (updated & (1 << 2))
-      draw_tri (v+6, 0);
-   if (updated & (1 << 3))
-      draw_tri (v+9, 0);
+   gsSP4Triangles(
+         (w1 >> 28) & 0xF,    /* v00 */
+         (w0 >> 12) & 0xF,    /* v01 */
+         (w1 >> 24) & 0xF,    /* v02 */
+         0,                   /* flag0 */
+         (w1 >> 20) & 0xF,    /* v10 */
+         (w0 >> 8)  & 0xF,    /* v11 */
+         (w1 >> 16) & 0xF,    /* v12 */
+         0,                   /* flag1 */
+         (w1 >> 12) & 0xF,    /* v20 */
+         (w0 >> 4) & 0xF,     /* v21 */
+         (w1 >> 8) & 0xF,     /* v22 */
+         0,                   /* flag2 */
+         (w1 >> 4) & 0xF,     /* v30 */
+         (w0 >> 0) & 0xF,     /* v31 */
+         (w1 >> 0) & 0xF,     /* v32 */
+         0                    /* flag3 */
+         );
 }

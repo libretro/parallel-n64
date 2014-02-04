@@ -434,7 +434,8 @@ static void uc2_tri1(uint32_t w0, uint32_t w1)
          (w0 >> 17) & 0x7F,      /* v0 */
          (w0 >> 9)  & 0x7F,      /* v1 */
          (w0 >> 1)  & 0x7F,      /* v2 */
-         0
+         0,
+         true
          );
 }
 

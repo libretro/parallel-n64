@@ -379,6 +379,9 @@ static void gSPCombineMatrices(void)
    rdp.update ^= UPDATE_MULT_MAT;
 }
 
+// Generates one line, using vertices v0, v1 in the internal vertex
+// buffer.
+// Allows you to specify the line width (wd) in half-pixel units
 static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
 {
    VERTEX *v[3];
@@ -404,7 +407,8 @@ static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
    //FRDP("uc0:line3d v0:%d, v1:%d, width:%d\n", v0, v1, wd);
 }
 
-static void gsSP1Triangle(int32_t v0, int32_t v1, int32_t v2, int32_t flag)
+// Draw a single triangle face
+static void gsSP1Triangle(int32_t v0, int32_t v1, int32_t v2, int32_t flag, bool do_update)
 {
    VERTEX *v[3];
 
@@ -414,13 +418,15 @@ static void gsSP1Triangle(int32_t v0, int32_t v1, int32_t v2, int32_t flag)
 
    if (!cull_tri(v))
    {
-      update();
+      if (do_update)
+         update();
       draw_tri (v, 0);
    }
    rdp.tri_n ++;
    //FRDP("gsSP1Triangle #%d - %d, %d, %d\n", rdp.tri_n, v1, v2, v3);
 }
 
+// Draw two triangle faces
 static void gsSP2Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t flag0, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t flag1)
 {
    int updated;
@@ -453,4 +459,61 @@ static void gsSP2Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t fl
    if (updated & (1 << 1))
       draw_tri (v+3, 0);
    //FRDP("uc1:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
+}
+
+// Draw four triangle faces
+static void gsSP4Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t flag0,
+      uint32_t v10, uint32_t v11, uint32_t v12, uint32_t flag1,
+      uint32_t v20, uint32_t v21, uint32_t v22, uint32_t flag2,
+      uint32_t v30, uint32_t v31, uint32_t v32, uint32_t flag3
+      )
+{
+   int updated;
+   VERTEX *v[12];
+
+   v[0]  = &rdp.vtx[v00];
+   v[1]  = &rdp.vtx[v01];
+   v[2]  = &rdp.vtx[v02];
+   v[3]  = &rdp.vtx[v10];
+   v[4]  = &rdp.vtx[v11];
+   v[5]  = &rdp.vtx[v12];
+   v[6]  = &rdp.vtx[v20];
+   v[7]  = &rdp.vtx[v21];
+   v[8]  = &rdp.vtx[v22];
+   v[9]  = &rdp.vtx[v30];
+   v[10] = &rdp.vtx[v31];
+   v[11] = &rdp.vtx[v32];
+
+   updated = 0;
+
+   if (!cull_tri(v))
+      updated |= (1 << 0);
+   rdp.tri_n ++;
+
+   if (!cull_tri(v+3))
+      updated |= (1 << 1);
+   rdp.tri_n ++;
+
+   if (!cull_tri(v+6))
+      updated |= (1 << 2);
+   rdp.tri_n ++;
+
+   if (!cull_tri(v+9))
+      updated |= (1 << 3);
+   rdp.tri_n ++;
+
+   if (!updated)
+      return;
+
+   update();
+
+   if (updated & (1 << 0))
+      draw_tri (v, 0);
+   if (updated & (1 << 1))
+      draw_tri (v+3, 0);
+   if (updated & (1 << 2))
+      draw_tri (v+6, 0);
+   if (updated & (1 << 3))
+      draw_tri (v+9, 0);
+   //FRDP("uc8:tri4 (#%d - #%d), %d-%d-%d, %d-%d-%d, %d-%d-%d, %d-%d-%d\n", rdp.tri_n, rdp.tri_n+3, ((w0 >> 23) & 0x1F), ((w0 >> 18) & 0x1F), ((((w0 >> 15) & 0x7) << 2) | ((w1 >> 30) &0x3)), ((w0 >> 10) & 0x1F), ((w0 >> 5) & 0x1F), ((w0 >> 0) & 0x1F), ((w1 >> 25) & 0x1F), ((w1 >> 20) & 0x1F), ((w1 >> 15) & 0x1F), ((w1 >> 10) & 0x1F), ((w1 >> 5) & 0x1F), ((w1 >> 0) & 0x1F));
 }
