@@ -439,6 +439,26 @@ static void gSPCombineMatrices(void)
    rdp.update ^= UPDATE_MULT_MAT;
 }
 
+static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, int32_t wd)
+{
+   int i, vcount;
+   bool updated_once = false;
+   for (i = 0; i < iterations; i++)
+   {
+      if (!cull_tri(v + vcount))
+      {
+         if (do_update && !updated_once)
+         {
+            update();
+            updated_once = true;
+         }
+         draw_tri (v + vcount, wd);
+      }
+      rdp.tri_n ++;
+      vcount += 3;
+   }
+}
+
 // Generates one line, using vertices v0, v1 in the internal vertex
 // buffer.
 // Allows you to specify the line width (wd) in half-pixel units
@@ -453,12 +473,7 @@ static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
    rdp.flags |= CULLMASK;
    rdp.update |= UPDATE_CULL_MODE;
 
-   if (!cull_tri(v))
-   {
-      update();
-      draw_tri (v, wd);
-   }
-   rdp.tri_n ++;
+   cull_trianglefaces(v, 1, true, wd);
 
    rdp.flags ^= CULLMASK;
    rdp.flags |= cull_mode << CULLSHIFT;
@@ -476,20 +491,14 @@ static void gsSP1Triangle(int32_t v0, int32_t v1, int32_t v2, int32_t flag, bool
    v[1] = &rdp.vtx[v1];
    v[2] = &rdp.vtx[v2];
 
-   if (!cull_tri(v))
-   {
-      if (do_update)
-         update();
-      draw_tri (v, 0);
-   }
-   rdp.tri_n ++;
+   cull_trianglefaces(v, 1, do_update, 0);
+
    //FRDP("gsSP1Triangle #%d - %d, %d, %d\n", rdp.tri_n, v1, v2, v3);
 }
 
 // Draw two triangle faces
 static void gsSP2Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t flag0, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t flag1)
 {
-   int updated;
    VERTEX *v[6];
 
    v[0] = &rdp.vtx[v00];
@@ -499,25 +508,7 @@ static void gsSP2Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t fl
    v[4] = &rdp.vtx[v11];
    v[5] = &rdp.vtx[v12];
 
-   updated = 0;
-
-   if (!cull_tri(v))
-      updated |= (1 << 0);
-   rdp.tri_n ++;
-
-   if (!cull_tri(v+3))
-      updated |= (1 << 1);
-   rdp.tri_n ++;
-
-   if (!updated)
-      return;
-
-   update();
-
-   if (updated & (1 << 0))
-      draw_tri (v, 0);
-   if (updated & (1 << 1))
-      draw_tri (v+3, 0);
+   cull_trianglefaces(v, 2, true, 0);
    //FRDP("uc1:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
 }
 
@@ -528,7 +519,6 @@ static void gsSP4Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t fl
       uint32_t v30, uint32_t v31, uint32_t v32, uint32_t flag3
       )
 {
-   int updated;
    VERTEX *v[12];
 
    v[0]  = &rdp.vtx[v00];
@@ -544,36 +534,7 @@ static void gsSP4Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t fl
    v[10] = &rdp.vtx[v31];
    v[11] = &rdp.vtx[v32];
 
-   updated = 0;
+   cull_trianglefaces(v, 4, true, 0);
 
-   if (!cull_tri(v))
-      updated |= (1 << 0);
-   rdp.tri_n ++;
-
-   if (!cull_tri(v+3))
-      updated |= (1 << 1);
-   rdp.tri_n ++;
-
-   if (!cull_tri(v+6))
-      updated |= (1 << 2);
-   rdp.tri_n ++;
-
-   if (!cull_tri(v+9))
-      updated |= (1 << 3);
-   rdp.tri_n ++;
-
-   if (!updated)
-      return;
-
-   update();
-
-   if (updated & (1 << 0))
-      draw_tri (v, 0);
-   if (updated & (1 << 1))
-      draw_tri (v+3, 0);
-   if (updated & (1 << 2))
-      draw_tri (v+6, 0);
-   if (updated & (1 << 3))
-      draw_tri (v+9, 0);
    //FRDP("uc8:tri4 (#%d - #%d), %d-%d-%d, %d-%d-%d, %d-%d-%d, %d-%d-%d\n", rdp.tri_n, rdp.tri_n+3, ((w0 >> 23) & 0x1F), ((w0 >> 18) & 0x1F), ((((w0 >> 15) & 0x7) << 2) | ((w1 >> 30) &0x3)), ((w0 >> 10) & 0x1F), ((w0 >> 5) & 0x1F), ((w0 >> 0) & 0x1F), ((w1 >> 25) & 0x1F), ((w1 >> 20) & 0x1F), ((w1 >> 15) & 0x1F), ((w1 >> 10) & 0x1F), ((w1 >> 5) & 0x1F), ((w1 >> 0) & 0x1F));
 }
