@@ -257,7 +257,7 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
       // Calculate light vectors
       for (l = 0; l < rdp.num_lights; l++)
       {
-         InverseTransformVector(&rdp.light[l].dir_x, rdp.light_vector[l], rdp.model);
+         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
          NormalizeVector (rdp.light_vector[l]);
       }
    }
@@ -801,9 +801,9 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             rdp.light[n].col[3] = 1.0f;
             // ** Thanks to Icepir8 for pointing this out **
             // Lighting must be signed byte instead of byte
-            rdp.light[n].dir_x = (float)(rdram_s8[(addr+8)^3]) / 127.0f;
-            rdp.light[n].dir_y = (float)(rdram_s8[(addr+9)^3]) / 127.0f;
-            rdp.light[n].dir_z = (float)(rdram_s8[(addr+10)^3]) / 127.0f;
+            rdp.light[n].dir[0] = (float)(rdram_s8[(addr+8)^3]) / 127.0f;
+            rdp.light[n].dir[1] = (float)(rdram_s8[(addr+9)^3]) / 127.0f;
+            rdp.light[n].dir[2] = (float)(rdram_s8[(addr+10)^3]) / 127.0f;
             uint32_t a = addr >> 1;
             rdp.light[n].x = (float)(((int16_t*)gfx.RDRAM)[(a+4)^1]);
             rdp.light[n].y = (float)(((int16_t*)gfx.RDRAM)[(a+5)^1]);

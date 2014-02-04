@@ -74,7 +74,7 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
       // Calculate light vectors
       for (l = 0; l < rdp.num_lights; l++)
       {
-         InverseTransformVector(&rdp.light[l].dir_x, rdp.light_vector[l], rdp.model);
+         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
          NormalizeVector (rdp.light_vector[l]);
 #ifdef EXTREME_LOGGING
          FRDP("light_vector[%d] x: %f, y: %f, z: %f\n", l, rdp.light_vector[l][0], rdp.light_vector[l][1], rdp.light_vector[l][2]);
@@ -372,9 +372,9 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
             rdp.light[n].col[2] = (float)col / 255.0f;
             rdp.light[n].nonblack += col;
             rdp.light[n].col[3] = 1.0f;
-            rdp.light[n].dir_x = (float)(((int8_t*)gfx.RDRAM)[(addr+8)^3]) / 127.0f;
-            rdp.light[n].dir_y = (float)(((int8_t*)gfx.RDRAM)[(addr+9)^3]) / 127.0f;
-            rdp.light[n].dir_z = (float)(((int8_t*)gfx.RDRAM)[(addr+10)^3]) / 127.0f;
+            rdp.light[n].dir[0] = (float)(((int8_t*)gfx.RDRAM)[(addr+8)^3]) / 127.0f;
+            rdp.light[n].dir[1] = (float)(((int8_t*)gfx.RDRAM)[(addr+9)^3]) / 127.0f;
+            rdp.light[n].dir[2] = (float)(((int8_t*)gfx.RDRAM)[(addr+10)^3]) / 127.0f;
             // **
             uint32_t a = addr >> 1;
             rdp.light[n].x = (float)(((int16_t*)gfx.RDRAM)[(a+16)^1]);

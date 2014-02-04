@@ -481,8 +481,8 @@ typedef struct {
 
 typedef struct
 {
-   float col[4];             // color
-   float dir_x, dir_y, dir_z;    // direction towards the light source
+   float col[4];                 // diffuse light value color (RGBA)
+   float dir[3];                 // direction towards light source (normalized
    float x, y, z, w;             // light position
    float ca, la, qa;
    uint32_t nonblack;

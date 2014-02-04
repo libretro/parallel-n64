@@ -77,7 +77,7 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
       // Calculate light vectors
       for (l = 0; l < rdp.num_lights; l++)
       {
-         InverseTransformVector(&rdp.light[l].dir_x, rdp.light_vector[l], rdp.model);
+         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
          NormalizeVector (rdp.light_vector[l]);
       }
    }

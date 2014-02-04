@@ -299,11 +299,11 @@ static void uc9_fmlight(uint32_t w0, uint32_t w1)
       rdp.light[i].col[1] = (float)(((uint8_t*)gfx.DMEM)[(a+1)^3]) / 255.0f;
       rdp.light[i].col[2] = (float)(((uint8_t*)gfx.DMEM)[(a+2)^3]) / 255.0f;
       rdp.light[i].col[3] = 1.0f;
-      rdp.light[i].dir_x = (float)(((int8_t*)gfx.DMEM)[(a+8)^3]) / 127.0f;
-      rdp.light[i].dir_y = (float)(((int8_t*)gfx.DMEM)[(a+9)^3]) / 127.0f;
-      rdp.light[i].dir_z = (float)(((int8_t*)gfx.DMEM)[(a+10)^3]) / 127.0f;
+      rdp.light[i].dir[0] = (float)(((int8_t*)gfx.DMEM)[(a+8)^3]) / 127.0f;
+      rdp.light[i].dir[1] = (float)(((int8_t*)gfx.DMEM)[(a+9)^3]) / 127.0f;
+      rdp.light[i].dir[2] = (float)(((int8_t*)gfx.DMEM)[(a+10)^3]) / 127.0f;
       //FRDP ("light: n: %d, r: %.3f, g: %.3f, b: %.3f, x: %.3f, y: %.3f, z: %.3f\n", i, rdp.light[i].r, rdp.light[i].g, rdp.light[i].b, rdp.light[i].dir_x, rdp.light[i].dir_y, rdp.light[i].dir_z);
-      InverseTransformVector(&rdp.light[i].dir_x, rdp.light_vector[i], *m);
+      InverseTransformVector(&rdp.light[i].dir[0], rdp.light_vector[i], *m);
       NormalizeVector (rdp.light_vector[i]);
       //FRDP ("light vector: n: %d, x: %.3f, y: %.3f, z: %.3f\n", i, rdp.light_vector[i][0], rdp.light_vector[i][1], rdp.light_vector[i][2]);
       a += 24;

@@ -61,7 +61,7 @@ static void rsp_vertex(int v0, int n)
       // Calculate light vectors
       for (l = 0; l < rdp.num_lights; l++)
       {
-         InverseTransformVector(&rdp.light[l].dir_x, rdp.light_vector[l], rdp.model);
+         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
          NormalizeVector (rdp.light_vector[l]);
       }
    }

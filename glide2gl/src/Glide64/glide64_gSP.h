@@ -157,9 +157,9 @@ static void gSPLight(uint32_t l, unsigned n)
    rdp.light[n].col[3] = 1.0f;
    // ** Thanks to Icepir8 for pointing this out **
    // Lighting must be signed byte instead of byte
-   rdp.light[n].dir_x = (float)(((int8_t*)gfx.RDRAM)[(address+8)^3]) / 127.0f;
-   rdp.light[n].dir_y = (float)(((int8_t*)gfx.RDRAM)[(address+9)^3]) / 127.0f;
-   rdp.light[n].dir_z = (float)(((int8_t*)gfx.RDRAM)[(address+10)^3]) / 127.0f;
+   rdp.light[n].dir[0] = (float)(((int8_t*)gfx.RDRAM)[(address+8)^3]) / 127.0f;
+   rdp.light[n].dir[1] = (float)(((int8_t*)gfx.RDRAM)[(address+9)^3]) / 127.0f;
+   rdp.light[n].dir[2] = (float)(((int8_t*)gfx.RDRAM)[(address+10)^3]) / 127.0f;
    // **
 
    //rdp.update |= UPDATE_LIGHTS;
