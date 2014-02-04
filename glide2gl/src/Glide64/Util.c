@@ -407,71 +407,54 @@ static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percen
       */
 }
 
-static void CalculateLOD(VERTEX *v, int n)
+static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
 {
-   //rdp.update |= UPDATE_TEXTURE;
-   /*
-      if (rdp.lod_calculated)
-      {
-      float detailmax;
-      if (dc0_detailmax < 0.5)
-      detailmax = rdp.lod_fraction;
-      else
-      detailmax = 1.0f - rdp.lod_fraction;
-      grTexDetailControl (GR_TMU0, dc0_lodbias, dc0_detailscale, detailmax);
-      if (NUM_TMU == 2)
-      grTexDetailControl (GR_TMU1, dc1_lodbias, dc1_detailscale, detailmax);
-      return;
-      }
-      */
-   float deltaS, deltaT;
-   float deltaX, deltaY;
-   float deltaTexels, deltaPixels, lodFactor = 0;
-   float intptr;
-   float s_scale = rdp.tiles[rdp.cur_tile].width / 255.0f;
-   float t_scale = rdp.tiles[rdp.cur_tile].height / 255.0f;
-   if (settings.lodmode == 1)
+   float deltaS, deltaT, deltaX, deltaY, deltaTexels, deltaPixels, lodFactor, intptr, s_scale, t_scale,
+         lod_fraction, detailmax;
+   int i, j, ilod, lod_tile;
+   s_scale = rdp.tiles[rdp.cur_tile].width / 255.0f;
+   t_scale = rdp.tiles[rdp.cur_tile].height / 255.0f;
+   lodFactor = 0;
+
+   switch (lodmode)
    {
-      deltaS = (v[1].u0/v[1].q - v[0].u0/v[0].q) * s_scale;
-      deltaT = (v[1].v0/v[1].q - v[0].v0/v[0].q) * t_scale;
-      deltaTexels = squareRoot( deltaS * deltaS + deltaT * deltaT );
+      case G_TL_TILE:
+         for (i = 0; i < n; i++)
+         {
+            j = (i < n-1) ? i + 1 : 0;
 
-      deltaX = (v[1].x - v[0].x)/rdp.scale_x;
-      deltaY = (v[1].y - v[0].y)/rdp.scale_y;
-      deltaPixels = squareRoot( deltaX * deltaX + deltaY * deltaY );
+            deltaS = (v[j].u0/v[j].q - v[i].u0/v[i].q) * s_scale;
+            deltaT = (v[j].v0/v[j].q - v[i].v0/v[i].q) * t_scale;
+            deltaTexels = squareRoot( deltaS * deltaS + deltaT * deltaT );
 
-      lodFactor = deltaTexels / deltaPixels;
-   }
-   else
-   {
-      int i, j;
-      for (i = 0; i < n; i++)
-      {
-         j = (i < n-1) ? i + 1 : 0;
+            deltaX = (v[j].x - v[i].x)/rdp.scale_x;
+            deltaY = (v[j].y - v[i].y)/rdp.scale_y;
+            deltaPixels = squareRoot( deltaX * deltaX + deltaY * deltaY );
 
-         deltaS = (v[j].u0/v[j].q - v[i].u0/v[i].q) * s_scale;
-         deltaT = (v[j].v0/v[j].q - v[i].v0/v[i].q) * t_scale;
-         //    deltaS = v[j].ou - v[i].ou;
-         //    deltaT = v[j].ov - v[i].ov;
+            lodFactor += deltaTexels / deltaPixels;
+         }
+         // Divide by n (n edges) to find average
+         lodFactor = lodFactor / n;
+         break;
+      case G_TL_LOD:
+         deltaS = (v[1].u0/v[1].q - v[0].u0/v[0].q) * s_scale;
+         deltaT = (v[1].v0/v[1].q - v[0].v0/v[0].q) * t_scale;
          deltaTexels = squareRoot( deltaS * deltaS + deltaT * deltaT );
 
-         deltaX = (v[j].x - v[i].x)/rdp.scale_x;
-         deltaY = (v[j].y - v[i].y)/rdp.scale_y;
+         deltaX = (v[1].x - v[0].x)/rdp.scale_x;
+         deltaY = (v[1].y - v[0].y)/rdp.scale_y;
          deltaPixels = squareRoot( deltaX * deltaX + deltaY * deltaY );
 
-         lodFactor += deltaTexels / deltaPixels;
-      }
-      // Divide by n (n edges) to find average
-      lodFactor = lodFactor / n;
+         lodFactor = deltaTexels / deltaPixels;
+         break;
    }
-   int ilod = (int)lodFactor;
-   int lod_tile = min((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + rdp.mipmap_level);
-   float lod_fraction = 1.0f;
+
+   ilod = (int)lodFactor;
+   lod_tile = min((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + rdp.mipmap_level);
+   lod_fraction = 1.0f;
 
    if (lod_tile < rdp.cur_tile + rdp.mipmap_level)
       lod_fraction = max((float)modff(lodFactor / glide64_pow(2.,lod_tile),&intptr), rdp.prim_lodmin / 255.0f);
-
-   float detailmax;
 
    if (cmb.dc0_detailmax < 0.5f)
       detailmax = lod_fraction;
@@ -480,7 +463,7 @@ static void CalculateLOD(VERTEX *v, int n)
 
    grTexDetailControl (GR_TMU0, cmb.dc0_lodbias, cmb.dc0_detailscale, detailmax);
    grTexDetailControl (GR_TMU1, cmb.dc1_lodbias, cmb.dc1_detailscale, detailmax);
-   FRDP("CalculateLOD factor: %f, tile: %d, lod_fraction: %f\n", (float)lodFactor, lod_tile, lod_fraction);
+   //FRDP("CalculateLOD factor: %f, tile: %d, lod_fraction: %f\n", (float)lodFactor, lod_tile, lod_fraction);
 }
 
 static void DepthBuffer(VERTEX * vtx, int n)
@@ -1038,8 +1021,8 @@ static void render_tri (uint16_t linew, int old_interpolate)
          break;
    }
 
-   if (settings.lodmode > 0 && rdp.cur_tile < rdp.mipmap_level)
-      CalculateLOD(rdp.vtxbuf, n);
+   if (settings.lodmode && rdp.cur_tile < rdp.mipmap_level)
+      CalculateLOD(rdp.vtxbuf, n, settings.lodmode);
 
    cmb.cmb_ext_use = cmb.tex_cmb_ext_use = 0;
 
