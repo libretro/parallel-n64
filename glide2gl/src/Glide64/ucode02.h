@@ -428,22 +428,14 @@ static void uc2_tri1(uint32_t w0, uint32_t w1)
    }
 
    if (rdp.skip_drawing)
-   {
-      LRDP("uc2:tri1. skipped\n");
       return;
-   }
 
-   FRDP("uc2:tri1 #%d - %d, %d, %d\n", rdp.tri_n,
-         ((w0 >> 17) & 0x7F),
-         ((w0 >> 9) & 0x7F),
-         ((w0 >> 1) & 0x7F));
-
-   VERTEX *v[3];
-   v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
-   v[1] = &rdp.vtx[(w0 >> 9)  & 0x7F];
-   v[2] = &rdp.vtx[(w0 >> 1)  & 0x7F];
-
-   rsp_tri1(v, 0);
+   gsSP1Triangle(
+         (w0 >> 17) & 0x7F,      /* v0 */
+         (w0 >> 9)  & 0x7F,      /* v1 */
+         (w0 >> 1)  & 0x7F,      /* v2 */
+         0
+         );
 }
 
 static void uc2_quad(uint32_t w0, uint32_t w1)

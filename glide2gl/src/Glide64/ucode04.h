@@ -50,19 +50,11 @@ static void uc4_vertex(uint32_t w0, uint32_t w1)
 
 static void uc4_tri1(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[3];
-
-   int v1 = ((w1 >> 16) & 0xFF) / 5;
-   int v2 = ((w1 >> 8) & 0xFF) / 5;
-   int v3 = (w1 & 0xFF) / 5;
-   FRDP("uc4:tri1 #%d - %d, %d, %d\n", rdp.tri_n,
-         v1, v2, v3);
-
-   v[0] = &rdp.vtx[v1];
-   v[1] = &rdp.vtx[v2];
-   v[2] = &rdp.vtx[v3];
-
-   rsp_tri1(v, 0);
+   gsSP1Triangle(
+         ((w1 >> 16) & 0xFF) / 5,   /* v0 */
+         ((w1 >> 8) & 0xFF) / 5,    /* v1 */
+         (w1 & 0xFF) / 5,           /* v2 */
+         0);
 }
 
 static void uc4_quad3d(uint32_t w0, uint32_t w1)

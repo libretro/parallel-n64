@@ -404,6 +404,23 @@ static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
    //FRDP("uc0:line3d v0:%d, v1:%d, width:%d\n", v0, v1, wd);
 }
 
+static void gsSP1Triangle(int32_t v0, int32_t v1, int32_t v2, int32_t flag)
+{
+   VERTEX *v[3];
+
+   v[0] = &rdp.vtx[v0]; 
+   v[1] = &rdp.vtx[v1];
+   v[2] = &rdp.vtx[v2];
+
+   if (!cull_tri(v))
+   {
+      update();
+      draw_tri (v, 0);
+   }
+   rdp.tri_n ++;
+   //FRDP("gsSP1Triangle #%d - %d, %d, %d\n", rdp.tri_n, v1, v2, v3);
+}
+
 static void gsSP2Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t flag0, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t flag1)
 {
    int updated;

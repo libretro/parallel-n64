@@ -61,17 +61,12 @@ static void uc3_vertex(uint32_t w0, uint32_t w1)
 
 static void uc3_tri1(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v[3];
-   FRDP("uc3:tri1 #%d - %d, %d, %d - %08lx - %08lx\n", rdp.tri_n,
-         ((w1 >> 16) & 0xFF)/5,
-         ((w1 >> 8) & 0xFF)/5,
-         ((w1     ) & 0xFF)/5, w0, w1);
-
-   v[0] = &rdp.vtx[((w1 >> 16) & 0xFF) / 5];
-   v[1] = &rdp.vtx[((w1 >> 8)  & 0xFF) / 5];
-   v[2] = &rdp.vtx[(w1 & 0xFF)         / 5];
-
-   rsp_tri1(v, 0);
+   gsSP1Triangle(
+         ((w1 >> 16) & 0xFF) / 5,      /* v0 */
+         ((w1 >> 8)  & 0xFF) / 5,      /* v1 */
+         (w1 & 0xFF)         / 5,      /* v2 */
+         0
+         );
 }
 
 static void uc3_tri2(uint32_t w0, uint32_t w1)
