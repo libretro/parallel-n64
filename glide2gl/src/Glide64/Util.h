@@ -45,47 +45,15 @@
 #define NOT_TMU2	0x02
 
 void util_init(void);
-void render_tri(uint16_t linew, int old_interpolate);
 
-void draw_tri(VERTEX **v, uint16_t linew);
 void do_triangle_stuff(uint16_t linew, int old_interpolate);
 void do_triangle_stuff_2(uint16_t linew);
-void add_tri(VERTEX *v, int n, int type);
 void apply_shade_mods(VERTEX *v);
 
 void update(void);
 void update_scissor(void);
 
 float ScaleZ(float z);
-
-// positional and texel coordinate clipping
-#define CCLIP(ux,lx,ut,lt,uc,lc) \
-		if (ux > lx || lx < uc || ux > lc) { rdp.tri_n += 2; return; } \
-		if (ux < uc) { \
-			float p = (uc-ux)/(lx-ux); \
-			ut = p*(lt-ut)+ut; \
-			ux = uc; \
-		} \
-		if (lx > lc) { \
-			float p = (lc-ux)/(lx-ux); \
-			lt = p*(lt-ut)+ut; \
-			lx = lc; \
-		}
-
-#define CCLIP2(ux,lx,ut,lt,un,ln,uc,lc) \
-		if (ux > lx || lx < uc || ux > lc) { rdp.tri_n += 2; return; } \
-		if (ux < uc) { \
-			float p = (uc-ux)/(lx-ux); \
-			ut = p*(lt-ut)+ut; \
-			un = p*(ln-un)+un; \
-			ux = uc; \
-		} \
-		if (lx > lc) { \
-			float p = (lc-ux)/(lx-ux); \
-			lt = p*(lt-ut)+ut; \
-			ln = p*(ln-un)+un; \
-			lx = lc; \
-		}
 
 #if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
 #include <stdlib.h>

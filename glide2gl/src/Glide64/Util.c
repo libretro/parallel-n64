@@ -46,12 +46,59 @@
 #include "DepthBufferRender.h"
 #include "GBI.h"
 
+extern int dzdx;
+extern int deltaZ;
+extern VERTEX **org_vtx;
+
+typedef struct
+{
+   float d;
+   float x;
+   float y;
+} LineEquationType;
+
+typedef struct
+{
+   unsigned int	c2_m2b:2;
+   unsigned int	c1_m2b:2;
+   unsigned int	c2_m2a:2;
+   unsigned int	c1_m2a:2;
+   unsigned int	c2_m1b:2;
+   unsigned int	c1_m1b:2;
+   unsigned int	c2_m1a:2;
+   unsigned int	c1_m1a:2;
+} rdp_blender_setting;
+
+#define interp2p(a, b, r)  (a + (b - a) * r)
+#define interp3p(a, b, c, r1, r2) ((a)+(((b)+((c)-(b))*(r2))-(a))*(r1))
+#define real_to_char(x) ((uint8_t)(((int)floor(x + 0.5)) & 0xFF))
+#define EvaLine(li, x, y) ((li->x) * (x) + (li->y) * (y) + (li->d))
+
 //
 // util_init - initialize data for the functions in this file
 //
 
 void util_init(void)
 {
+}
+
+float ScaleZ(float z)
+{
+   if (settings.n64_z_scale)
+   {
+      int iz = (int)(z*8.0f+0.5f);
+      if (iz < 0)
+         iz = 0;
+      else if (iz >= ZLUT_SIZE)
+         iz = ZLUT_SIZE - 1;
+      return (float)zLUT[iz];
+   }
+   if (z  < 0.0f)
+      return 0.0f;
+   z *= 1.9f;
+   if (z > 65535.0f)
+      return 65535.0f;
+   return z;
 }
 
 void apply_shade_mods (VERTEX *v)
@@ -174,217 +221,6 @@ void apply_shade_mods (VERTEX *v)
    }
 }
 
-static int dzdx = 0;
-static int deltaZ = 0;
-VERTEX **org_vtx;
-
-void draw_tri (VERTEX **vtx, uint16_t linew)
-{
-   int i;
-   deltaZ = dzdx = 0;
-   if (linew == 0 && (fb_depth_render_enabled || (rdp.rm & ZMODE_DECAL) == ZMODE_DECAL))
-   {
-      float X0 = vtx[0]->sx / rdp.scale_x;
-      float Y0 = vtx[0]->sy / rdp.scale_y;
-      float X1 = vtx[1]->sx / rdp.scale_x;
-      float Y1 = vtx[1]->sy / rdp.scale_y;
-      float X2 = vtx[2]->sx / rdp.scale_x;
-      float Y2 = vtx[2]->sy / rdp.scale_y;
-      float diffy_02 = Y0 - Y2;
-      float diffy_12 = Y1 - Y2;
-      float diffx_02 = X0 - X2;
-      float diffx_12 = X1 - X2;
-
-      float denom = (diffx_02 * diffy_12 - diffx_12 * diffy_02);
-      if(denom*denom > 0.0)
-      {
-         float diffz_02 = vtx[0]->sz - vtx[2]->sz;
-         float diffz_12 = vtx[1]->sz - vtx[2]->sz;
-         float fdzdx = (diffz_02 * diffy_12 - diffz_12 * diffy_02) / denom;
-         if ((rdp.rm & ZMODE_DECAL) == ZMODE_DECAL)
-         {
-            // Calculate deltaZ per polygon for Decal z-mode
-            float fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
-            float fdz = fabs(fdzdx) + fabs(fdzdy);
-            if ((settings.hacks & hack_Zelda) && (rdp.rm & 0x800))
-               fdz *= 4.0;  // Decal mode in Zelda sometimes needs mutiplied deltaZ to work correct, e.g. roads
-            deltaZ = max(8, (int)fdz);
-         }
-         dzdx = (int)(fdzdx * 65536.0); }
-   }
-
-   org_vtx = vtx;
-
-   for (i = 0; i < 3; i++)
-   {
-      VERTEX *v = vtx[i];
-
-      if (v->uv_calculated != rdp.tex_ctr)
-      {
-         //FRDP(" * CALCULATING VERTEX U/V: %d\n", v->number);
-         v->uv_calculated = rdp.tex_ctr;
-
-         if (!(rdp.geom_mode & G_LIGHTING))
-         {
-            if (!(rdp.geom_mode & UPDATE_SCISSOR))
-            {
-               if (rdp.geom_mode & G_SHADE)
-                  glideSetVertexFlatShading(v, vtx, rdp.cmd1);
-               else
-                  glideSetVertexPrimShading(v, rdp.prim_color);
-            }
-         }
-
-         // Fix texture coordinates
-         if (!v->uv_scaled)
-         {
-            v->ou *= rdp.tiles[rdp.cur_tile].s_scale;
-            v->ov *= rdp.tiles[rdp.cur_tile].t_scale;
-            v->uv_scaled = 1;
-            if (!rdp.Persp_en)
-            {
-               //          v->oow = v->w = 1.0f;
-               v->ou *= 0.5f;
-               v->ov *= 0.5f;
-            }
-         }
-         v->u1 = v->u0 = v->ou;
-         v->v1 = v->v0 = v->ov;
-
-         if (rdp.tex >= 1 && rdp.cur_cache[0])
-         {
-#ifdef HAVE_HWFBE
-            if (rdp.aTBuffTex[0])
-            {
-               v->u0 += rdp.aTBuffTex[0]->u_shift + rdp.aTBuffTex[0]->tile_uls;
-               v->v0 += rdp.aTBuffTex[0]->v_shift + rdp.aTBuffTex[0]->tile_ult;
-            }
-#endif
-
-            if (rdp.tiles[rdp.cur_tile].shift_s)
-            {
-               if (rdp.tiles[rdp.cur_tile].shift_s > 10)
-                  v->u0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_s));
-               else
-                  v->u0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_s);
-            }
-            if (rdp.tiles[rdp.cur_tile].shift_t)
-            {
-               if (rdp.tiles[rdp.cur_tile].shift_t > 10)
-                  v->v0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_t));
-               else
-                  v->v0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
-            }
-
-#ifdef HAVE_HWFBE
-            if (rdp.aTBuffTex[0])
-            {
-               if (rdp.aTBuffTex[0]->tile_uls != (int)rdp.tiles[rdp.cur_tile].f_ul_s)
-                  v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
-               if (rdp.aTBuffTex[0]->tile_ult != (int)rdp.tiles[rdp.cur_tile].f_ul_t || (settings.hacks&hack_Megaman))
-                  v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t; //required for megaman (boss special attack)
-               v->u0 *= rdp.aTBuffTex[0]->u_scale;
-               v->v0 *= rdp.aTBuffTex[0]->v_scale;
-#ifdef EXTREME_LOGGING
-               FRDP("tbuff_tex t0: (%f, %f)->(%f, %f)\n", v->ou, v->ov, v->u0, v->v0);
-#endif
-            }
-            else
-#endif
-            {
-               v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
-               v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t;
-               v->u0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_x * v->u0;
-               v->v0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_y * v->v0;
-            }
-            v->u0_w = v->u0 / v->w;
-            v->v0_w = v->v0 / v->w;
-         }
-
-         if (rdp.tex >= 2 && rdp.cur_cache[1])
-         {
-#ifdef HAVE_HWFBE
-            if (rdp.aTBuffTex[1])
-            {
-               v->u1 += rdp.aTBuffTex[1]->u_shift + rdp.aTBuffTex[1]->tile_uls;
-               v->v1 += rdp.aTBuffTex[1]->v_shift + rdp.aTBuffTex[1]->tile_ult;
-            }
-#endif
-            if (rdp.tiles[rdp.cur_tile+1].shift_s)
-            {
-               if (rdp.tiles[rdp.cur_tile+1].shift_s > 10)
-                  v->u1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_s));
-               else
-                  v->u1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_s);
-            }
-            if (rdp.tiles[rdp.cur_tile+1].shift_t)
-            {
-               if (rdp.tiles[rdp.cur_tile+1].shift_t > 10)
-                  v->v1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_t));
-               else
-                  v->v1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
-            }
-
-#ifdef HAVE_HWFBE
-            if (rdp.aTBuffTex[1])
-            {
-               if (rdp.aTBuffTex[1]->tile_uls != (int)rdp.tiles[rdp.cur_tile].f_ul_s)
-                  v->u1 -= rdp.tiles[rdp.cur_tile].f_ul_s;
-               v->u1 *= rdp.aTBuffTex[1]->u_scale;
-               v->v1 *= rdp.aTBuffTex[1]->v_scale;
-#ifdef EXTREME_LOGGING
-               FRDP("tbuff_tex t1: (%f, %f)->(%f, %f)\n", v->ou, v->ov, v->u1, v->v1);
-#endif
-            }
-            else
-#endif
-            {
-               v->u1 -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
-               v->v1 -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
-               v->u1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_x * v->u1;
-               v->v1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_y * v->v1;
-            }
-
-            v->u1_w = v->u1 / v->w;
-            v->v1_w = v->v1 / v->w;
-         }
-         //      FRDP(" * CALCULATING VERTEX U/V: %d  u0: %f, v0: %f, u1: %f, v1: %f\n", v->number, v->u0, v->v0, v->u1, v->v1);
-      }
-#ifdef EXTREME_LOGGING
-      FRDP("draw_tri. v[%d] ou=%f, ov = %f\n", i, v->ou, v->ov);
-#endif
-      if (v->shade_mod != cmb.shade_mod_hash)
-         apply_shade_mods (v);
-   } //for
-
-   rdp.clip = 0;
-
-   if ((vtx[0]->scr_off & 16) ||
-         (vtx[1]->scr_off & 16) ||
-         (vtx[2]->scr_off & 16))
-      rdp.clip |= CLIP_WMIN;
-
-   vtx[0]->not_zclipped = vtx[1]->not_zclipped = vtx[2]->not_zclipped = 1;
-
-   // Set vertex buffers
-   rdp.vtxbuf = rdp.vtx1;  // copy from v to rdp.vtx1
-   rdp.vtxbuf2 = rdp.vtx2;
-   rdp.vtx_buffer = 0;
-   rdp.n_global = 3;
-
-   rdp.vtxbuf[0] = *vtx[0];
-   rdp.vtxbuf[0].number = 1;
-   rdp.vtxbuf[1] = *vtx[1];
-   rdp.vtxbuf[1].number = 2;
-   rdp.vtxbuf[2] = *vtx[2];
-   rdp.vtxbuf[2].number = 4;
-
-   do_triangle_stuff (linew, false);
-}
-
-#define interp2p(a, b, r)  (a + (b - a) * r)
-
-//*
 static void InterpolateColors(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
 {
    res->b = (uint8_t)interp2p(va->b, vb->b, percent);
@@ -392,6 +228,64 @@ static void InterpolateColors(VERTEX *va, VERTEX *vb, VERTEX *res, float percent
    res->r = (uint8_t)interp2p(va->r, vb->r, percent);;
    res->a = (uint8_t)interp2p(va->a, vb->a, percent);;
    res->f = interp2p(va->f, vb->f, percent);;
+}
+
+static void Create1LineEq(LineEquationType *l, VERTEX *v1, VERTEX *v2, VERTEX *v3)
+{
+   float x, y;
+   // Line between (x1,y1) to (x2,y2)
+   l->x = v2->sy-v1->sy;
+   l->y = v1->sx-v2->sx;
+   l->d = -(l->x * v2->sx+ (l->y) * v2->sy);
+   x = v3->sx;
+   y = v3->sy;
+   if (EvaLine(l,x,y) * v3->oow < 0)
+   {
+      l->x = -l->x;
+      l->y = -l->y;
+      l->d = -l->d;
+   }
+}
+
+static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
+{
+   LineEquationType line;
+   Create1LineEq(&line, v2, v3, v1);
+
+   float aDot = (out->x * line.x + out->y * line.y);
+   float bDot = (v1->sx * line.x + v1->sy * line.y);
+
+   float scale1 = ( -line.d - aDot) / ( bDot - aDot );
+
+   float tx = out->x + scale1 * (v1->sx - out->x);
+   float ty = out->y + scale1 * (v1->sy - out->y);
+
+   float s1 = 101.0, s2 = 101.0;
+   float den = tx - v1->sx;
+   if (fabs(den) > 1.0)
+      s1 = (out->x-v1->sx)/den;
+   if (s1 > 100.0f)
+      s1 = (out->y-v1->sy)/(ty-v1->sy);
+
+   den = v3->sx - v2->sx;
+   if (fabs(den) > 1.0)
+      s2 = (tx-v2->sx)/den;
+   if (s2 > 100.0f)
+      s2 =(ty-v2->sy)/(v3->sy-v2->sy);
+
+   float w = 1.0/interp3p(v1->oow,v2->oow,v3->oow,s1,s2);
+
+   out->r = real_to_char(interp3p(v1->r*v1->oow,v2->r*v2->oow,v3->r*v3->oow,s1,s2)*w);
+   out->g = real_to_char(interp3p(v1->g*v1->oow,v2->g*v2->oow,v3->g*v3->oow,s1,s2)*w);
+   out->b = real_to_char(interp3p(v1->b*v1->oow,v2->b*v2->oow,v3->b*v3->oow,s1,s2)*w);
+   out->a = real_to_char(interp3p(v1->a*v1->oow,v2->a*v2->oow,v3->a*v3->oow,s1,s2)*w);
+   out->f = (float)(interp3p(v1->f*v1->oow,v2->f*v2->oow,v3->f*v3->oow,s1,s2)*w);
+   /*
+      out->u0 = interp3p(v1->u0_w*v1->oow,v2->u0_w*v2->oow,v3->u0_w*v3->oow,s1,s2)/oow;
+      out->v0 = interp3p(v1->v0_w*v1->oow,v2->v0_w*v2->oow,v3->v0_w*v3->oow,s1,s2)/oow;
+      out->u1 = interp3p(v1->u1_w*v1->oow,v2->u1_w*v2->oow,v3->u1_w*v3->oow,s1,s2)/oow;
+      out->v1 = interp3p(v1->v1_w*v1->oow,v2->v1_w*v2->oow,v3->v1_w*v3->oow,s1,s2)/oow;
+      */
 }
 
 //*/
@@ -476,84 +370,7 @@ static void clip_w (int interpolate_colors)
    rdp.n_global = index;
 }
 
-void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do the triangle stuff :P (to keep from writing code twice)
-{
-   int i;
 
-   if (rdp.clip & CLIP_WMIN)
-      clip_w (old_interpolate);
-
-   float maxZ = (rdp.zsrc != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : rdp.prim_depth;
-
-   uint8_t no_clip = 2;
-   for (i=0; i<rdp.n_global; i++)
-   {
-      if (rdp.vtxbuf[i].not_zclipped)// && rdp.zsrc != 1)
-      {
-         //FRDP (" * NOT ZCLIPPPED: %d\n", rdp.vtxbuf[i].number);
-         rdp.vtxbuf[i].x = rdp.vtxbuf[i].sx;
-         rdp.vtxbuf[i].y = rdp.vtxbuf[i].sy;
-         rdp.vtxbuf[i].z = rdp.vtxbuf[i].sz;
-         rdp.vtxbuf[i].q = rdp.vtxbuf[i].oow;
-         rdp.vtxbuf[i].u0 = rdp.vtxbuf[i].u0_w;
-         rdp.vtxbuf[i].v0 = rdp.vtxbuf[i].v0_w;
-         rdp.vtxbuf[i].u1 = rdp.vtxbuf[i].u1_w;
-         rdp.vtxbuf[i].v1 = rdp.vtxbuf[i].v1_w;
-      }
-      else
-      {
-         //FRDP (" * ZCLIPPED: %d\n", rdp.vtxbuf[i].number);
-         rdp.vtxbuf[i].q = 1.0f / rdp.vtxbuf[i].w;
-         rdp.vtxbuf[i].x = rdp.view_trans[0] + rdp.vtxbuf[i].x * rdp.vtxbuf[i].q * rdp.view_scale[0] + rdp.offset_x;
-         rdp.vtxbuf[i].y = rdp.view_trans[1] + rdp.vtxbuf[i].y * rdp.vtxbuf[i].q * rdp.view_scale[1] + rdp.offset_y;
-         rdp.vtxbuf[i].z = rdp.view_trans[2] + rdp.vtxbuf[i].z * rdp.vtxbuf[i].q * rdp.view_scale[2];
-         if (rdp.tex >= 1)
-         {
-            rdp.vtxbuf[i].u0 *= rdp.vtxbuf[i].q;
-            rdp.vtxbuf[i].v0 *= rdp.vtxbuf[i].q;
-         }
-         if (rdp.tex >= 2)
-         {
-            rdp.vtxbuf[i].u1 *= rdp.vtxbuf[i].q;
-            rdp.vtxbuf[i].v1 *= rdp.vtxbuf[i].q;
-         }
-      }
-
-      if (rdp.zsrc == 1)
-         rdp.vtxbuf[i].z = rdp.prim_depth;
-
-      glide64SPClipVertex(i);
-      // Don't remove clipping, or it will freeze
-      if (rdp.vtxbuf[i].z > maxZ)           rdp.clip |= CLIP_ZMAX;
-      if (rdp.vtxbuf[i].z < 0.0f)           rdp.clip |= CLIP_ZMIN;
-      no_clip &= rdp.vtxbuf[i].screen_translated;
-   }
-   if (no_clip)
-      rdp.clip = 0;
-   else
-   {
-      if (!settings.clip_zmin)
-         rdp.clip &= ~CLIP_ZMIN;
-      if (!settings.clip_zmax)
-         rdp.clip &= ~CLIP_ZMAX;
-   }
-   render_tri (linew, old_interpolate);
-}
-
-void do_triangle_stuff_2 (uint16_t linew)
-{
-   int i;
-   rdp.clip = 0;
-
-   for (i = 0; i < rdp.n_global; i++)
-      glide64SPClipVertex(i);
-
-   render_tri (linew, true);
-}
-
-#define real_to_char(x) ((uint8_t)(((int)floor(x + 0.5)) & 0xFF))
-
-//*
 static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
 {
    float w = 1.0f/(va->oow + (vb->oow-va->oow) * percent);
@@ -587,77 +404,6 @@ static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percen
       float v1a = va->v1_w * va->oow;
       float v1b = vb->v1_w * vb->oow;
       res->v1 = (v1a + (v1b - v1a) * percent) * w;
-      */
-}
-//*/
-
-typedef struct
-{
-   float d;
-   float x;
-   float y;
-} LineEquationType;
-
-#define EvaLine(li, x, y) ((li->x) * (x) + (li->y) * (y) + (li->d))
-
-static void Create1LineEq(LineEquationType *l, VERTEX *v1, VERTEX *v2, VERTEX *v3)
-{
-   float x, y;
-   // Line between (x1,y1) to (x2,y2)
-   l->x = v2->sy-v1->sy;
-   l->y = v1->sx-v2->sx;
-   l->d = -(l->x * v2->sx+ (l->y) * v2->sy);
-   x = v3->sx;
-   y = v3->sy;
-   if (EvaLine(l,x,y) * v3->oow < 0)
-   {
-      l->x = -l->x;
-      l->y = -l->y;
-      l->d = -l->d;
-   }
-}
-
-
-#define interp3p(a, b, c, r1, r2) ((a)+(((b)+((c)-(b))*(r2))-(a))*(r1))
-
-static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
-{
-   LineEquationType line;
-   Create1LineEq(&line, v2, v3, v1);
-
-   float aDot = (out->x * line.x + out->y * line.y);
-   float bDot = (v1->sx * line.x + v1->sy * line.y);
-
-   float scale1 = ( -line.d - aDot) / ( bDot - aDot );
-
-   float tx = out->x + scale1 * (v1->sx - out->x);
-   float ty = out->y + scale1 * (v1->sy - out->y);
-
-   float s1 = 101.0, s2 = 101.0;
-   float den = tx - v1->sx;
-   if (fabs(den) > 1.0)
-      s1 = (out->x-v1->sx)/den;
-   if (s1 > 100.0f)
-      s1 = (out->y-v1->sy)/(ty-v1->sy);
-
-   den = v3->sx - v2->sx;
-   if (fabs(den) > 1.0)
-      s2 = (tx-v2->sx)/den;
-   if (s2 > 100.0f)
-      s2 =(ty-v2->sy)/(v3->sy-v2->sy);
-
-   float w = 1.0/interp3p(v1->oow,v2->oow,v3->oow,s1,s2);
-
-   out->r = real_to_char(interp3p(v1->r*v1->oow,v2->r*v2->oow,v3->r*v3->oow,s1,s2)*w);
-   out->g = real_to_char(interp3p(v1->g*v1->oow,v2->g*v2->oow,v3->g*v3->oow,s1,s2)*w);
-   out->b = real_to_char(interp3p(v1->b*v1->oow,v2->b*v2->oow,v3->b*v3->oow,s1,s2)*w);
-   out->a = real_to_char(interp3p(v1->a*v1->oow,v2->a*v2->oow,v3->a*v3->oow,s1,s2)*w);
-   out->f = (float)(interp3p(v1->f*v1->oow,v2->f*v2->oow,v3->f*v3->oow,s1,s2)*w);
-   /*
-      out->u0 = interp3p(v1->u0_w*v1->oow,v2->u0_w*v2->oow,v3->u0_w*v3->oow,s1,s2)/oow;
-      out->v0 = interp3p(v1->v0_w*v1->oow,v2->v0_w*v2->oow,v3->v0_w*v3->oow,s1,s2)/oow;
-      out->u1 = interp3p(v1->u1_w*v1->oow,v2->u1_w*v2->oow,v3->u1_w*v3->oow,s1,s2)/oow;
-      out->v1 = interp3p(v1->v1_w*v1->oow,v2->v1_w*v2->oow,v3->v1_w*v3->oow,s1,s2)/oow;
       */
 }
 
@@ -737,25 +483,6 @@ static void CalculateLOD(VERTEX *v, int n)
    FRDP("CalculateLOD factor: %f, tile: %d, lod_fraction: %f\n", (float)lodFactor, lod_tile, lod_fraction);
 }
 
-float ScaleZ(float z)
-{
-   if (settings.n64_z_scale)
-   {
-      int iz = (int)(z*8.0f+0.5f);
-      if (iz < 0)
-         iz = 0;
-      else if (iz >= ZLUT_SIZE)
-         iz = ZLUT_SIZE - 1;
-      return (float)zLUT[iz];
-   }
-   if (z  < 0.0f)
-      return 0.0f;
-   z *= 1.9f;
-   if (z > 65535.0f)
-      return 65535.0f;
-   return z;
-}
-
 static void DepthBuffer(VERTEX * vtx, int n)
 {
    int i;
@@ -787,7 +514,7 @@ static void DepthBuffer(VERTEX * vtx, int n)
       vtx[i].z = ScaleZ(vtx[i].z);
 }
 
-void clip_tri(int interpolate_colors)
+static void clip_tri(int interpolate_colors)
 {
    int i,j,index,n=rdp.n_global;
    float percent;
@@ -1205,7 +932,7 @@ void clip_tri(int interpolate_colors)
    rdp.n_global = n;
 }
 
-void render_tri (uint16_t linew, int old_interpolate)
+static void render_tri (uint16_t linew, int old_interpolate)
 {
    int i, j, n;
    if (rdp.clip)
@@ -1393,6 +1120,81 @@ void render_tri (uint16_t linew, int old_interpolate)
    }
 }
 
+void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do the triangle stuff :P (to keep from writing code twice)
+{
+   int i;
+
+   if (rdp.clip & CLIP_WMIN)
+      clip_w (old_interpolate);
+
+   float maxZ = (rdp.zsrc != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : rdp.prim_depth;
+
+   uint8_t no_clip = 2;
+   for (i=0; i<rdp.n_global; i++)
+   {
+      if (rdp.vtxbuf[i].not_zclipped)// && rdp.zsrc != 1)
+      {
+         //FRDP (" * NOT ZCLIPPPED: %d\n", rdp.vtxbuf[i].number);
+         rdp.vtxbuf[i].x = rdp.vtxbuf[i].sx;
+         rdp.vtxbuf[i].y = rdp.vtxbuf[i].sy;
+         rdp.vtxbuf[i].z = rdp.vtxbuf[i].sz;
+         rdp.vtxbuf[i].q = rdp.vtxbuf[i].oow;
+         rdp.vtxbuf[i].u0 = rdp.vtxbuf[i].u0_w;
+         rdp.vtxbuf[i].v0 = rdp.vtxbuf[i].v0_w;
+         rdp.vtxbuf[i].u1 = rdp.vtxbuf[i].u1_w;
+         rdp.vtxbuf[i].v1 = rdp.vtxbuf[i].v1_w;
+      }
+      else
+      {
+         //FRDP (" * ZCLIPPED: %d\n", rdp.vtxbuf[i].number);
+         rdp.vtxbuf[i].q = 1.0f / rdp.vtxbuf[i].w;
+         rdp.vtxbuf[i].x = rdp.view_trans[0] + rdp.vtxbuf[i].x * rdp.vtxbuf[i].q * rdp.view_scale[0] + rdp.offset_x;
+         rdp.vtxbuf[i].y = rdp.view_trans[1] + rdp.vtxbuf[i].y * rdp.vtxbuf[i].q * rdp.view_scale[1] + rdp.offset_y;
+         rdp.vtxbuf[i].z = rdp.view_trans[2] + rdp.vtxbuf[i].z * rdp.vtxbuf[i].q * rdp.view_scale[2];
+         if (rdp.tex >= 1)
+         {
+            rdp.vtxbuf[i].u0 *= rdp.vtxbuf[i].q;
+            rdp.vtxbuf[i].v0 *= rdp.vtxbuf[i].q;
+         }
+         if (rdp.tex >= 2)
+         {
+            rdp.vtxbuf[i].u1 *= rdp.vtxbuf[i].q;
+            rdp.vtxbuf[i].v1 *= rdp.vtxbuf[i].q;
+         }
+      }
+
+      if (rdp.zsrc == 1)
+         rdp.vtxbuf[i].z = rdp.prim_depth;
+
+      glide64SPClipVertex(i);
+      // Don't remove clipping, or it will freeze
+      if (rdp.vtxbuf[i].z > maxZ)           rdp.clip |= CLIP_ZMAX;
+      if (rdp.vtxbuf[i].z < 0.0f)           rdp.clip |= CLIP_ZMIN;
+      no_clip &= rdp.vtxbuf[i].screen_translated;
+   }
+   if (no_clip)
+      rdp.clip = 0;
+   else
+   {
+      if (!settings.clip_zmin)
+         rdp.clip &= ~CLIP_ZMIN;
+      if (!settings.clip_zmax)
+         rdp.clip &= ~CLIP_ZMAX;
+   }
+   render_tri (linew, old_interpolate);
+}
+
+void do_triangle_stuff_2 (uint16_t linew)
+{
+   int i;
+   rdp.clip = 0;
+
+   for (i = 0; i < rdp.n_global; i++)
+      glide64SPClipVertex(i);
+
+   render_tri (linew, true);
+}
+
 void add_tri(VERTEX *v, int n, int type)
 {
    //FRDP ("ENTER (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)\n", v[0].x, v[0].y, v[0].w,
@@ -1401,7 +1203,6 @@ void add_tri(VERTEX *v, int n, int type)
 
 void update_scissor(void)
 {
-
    if (!(rdp.update & UPDATE_SCISSOR))
       return;
 
@@ -1421,22 +1222,10 @@ void update_scissor(void)
 //
 // update - update states if they need it
 //
-
-typedef struct
-{
-   unsigned int	c2_m2b:2;
-   unsigned int	c1_m2b:2;
-   unsigned int	c2_m2a:2;
-   unsigned int	c1_m2a:2;
-   unsigned int	c2_m1b:2;
-   unsigned int	c1_m1b:2;
-   unsigned int	c2_m1a:2;
-   unsigned int	c1_m1a:2;
-} rdp_blender_setting;
-
 void update(void)
 {
    LRDP ("-+ update called\n");
+
    // Check for rendermode changes
    // Z buffer
    if (rdp.render_mode_changed & 0x00000C30)

@@ -825,7 +825,6 @@ static void draw_split_triangle(VERTEX **vtx)
       }
       else
       {
-        //if (v2->u0 < left_256)  // Both are out, save nothing
         if (v2->u0 >= left_256) // First is out, second is in, save intersection & in point
         {
           percent = (left_256 - v2->u0) / (v1->u0 - v2->u0);
@@ -887,7 +886,6 @@ static void draw_split_triangle(VERTEX **vtx)
       }
       else
       {
-        //if (v2->u0 > 256.0f)  // Both are out, save nothing
         if (v2->u0 <= 256.0f) // First is out, second is in, save intersection & in point
         {
           percent = (right_256 - v2->u0) / (v1->u0 - v2->u0);
@@ -940,9 +938,7 @@ static void uc6_draw_polygons (VERTEX v[4])
   rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
   if (settings.fog && (rdp.flags & FOG_ENABLED))
-  {
     grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
-  }
 }
 
 static void uc6_read_object_data (DRAWOBJECT *d)

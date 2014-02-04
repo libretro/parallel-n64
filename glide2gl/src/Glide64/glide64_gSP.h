@@ -1,6 +1,10 @@
 //forward decls
 extern void glide64SPClipVertex(uint32_t i);
 
+int dzdx = 0;
+int deltaZ = 0;
+VERTEX **org_vtx;
+
 //software backface culling. Gonetz
 // mega modifications by Dave2001
 
@@ -439,13 +443,217 @@ static void gSPCombineMatrices(void)
    rdp.update ^= UPDATE_MULT_MAT;
 }
 
-static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, int32_t wd)
+static void draw_tri (VERTEX **vtx, uint16_t linew)
+{
+   int i;
+   deltaZ = dzdx = 0;
+   if (linew == 0 && (fb_depth_render_enabled || (rdp.rm & ZMODE_DECAL) == ZMODE_DECAL))
+   {
+      float X0 = vtx[0]->sx / rdp.scale_x;
+      float Y0 = vtx[0]->sy / rdp.scale_y;
+      float X1 = vtx[1]->sx / rdp.scale_x;
+      float Y1 = vtx[1]->sy / rdp.scale_y;
+      float X2 = vtx[2]->sx / rdp.scale_x;
+      float Y2 = vtx[2]->sy / rdp.scale_y;
+      float diffy_02 = Y0 - Y2;
+      float diffy_12 = Y1 - Y2;
+      float diffx_02 = X0 - X2;
+      float diffx_12 = X1 - X2;
+
+      float denom = (diffx_02 * diffy_12 - diffx_12 * diffy_02);
+      if(denom*denom > 0.0)
+      {
+         float diffz_02 = vtx[0]->sz - vtx[2]->sz;
+         float diffz_12 = vtx[1]->sz - vtx[2]->sz;
+         float fdzdx = (diffz_02 * diffy_12 - diffz_12 * diffy_02) / denom;
+         if ((rdp.rm & ZMODE_DECAL) == ZMODE_DECAL)
+         {
+            // Calculate deltaZ per polygon for Decal z-mode
+            float fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
+            float fdz = fabs(fdzdx) + fabs(fdzdy);
+            if ((settings.hacks & hack_Zelda) && (rdp.rm & 0x800))
+               fdz *= 4.0;  // Decal mode in Zelda sometimes needs mutiplied deltaZ to work correct, e.g. roads
+            deltaZ = max(8, (int)fdz);
+         }
+         dzdx = (int)(fdzdx * 65536.0); }
+   }
+
+   org_vtx = vtx;
+
+   for (i = 0; i < 3; i++)
+   {
+      VERTEX *v = vtx[i];
+
+      if (v->uv_calculated != rdp.tex_ctr)
+      {
+         //FRDP(" * CALCULATING VERTEX U/V: %d\n", v->number);
+         v->uv_calculated = rdp.tex_ctr;
+
+         if (!(rdp.geom_mode & G_LIGHTING))
+         {
+            if (!(rdp.geom_mode & UPDATE_SCISSOR))
+            {
+               if (rdp.geom_mode & G_SHADE)
+                  glideSetVertexFlatShading(v, vtx, rdp.cmd1);
+               else
+                  glideSetVertexPrimShading(v, rdp.prim_color);
+            }
+         }
+
+         // Fix texture coordinates
+         if (!v->uv_scaled)
+         {
+            v->ou *= rdp.tiles[rdp.cur_tile].s_scale;
+            v->ov *= rdp.tiles[rdp.cur_tile].t_scale;
+            v->uv_scaled = 1;
+            if (!rdp.Persp_en)
+            {
+               //          v->oow = v->w = 1.0f;
+               v->ou *= 0.5f;
+               v->ov *= 0.5f;
+            }
+         }
+         v->u1 = v->u0 = v->ou;
+         v->v1 = v->v0 = v->ov;
+
+         if (rdp.tex >= 1 && rdp.cur_cache[0])
+         {
+#ifdef HAVE_HWFBE
+            if (rdp.aTBuffTex[0])
+            {
+               v->u0 += rdp.aTBuffTex[0]->u_shift + rdp.aTBuffTex[0]->tile_uls;
+               v->v0 += rdp.aTBuffTex[0]->v_shift + rdp.aTBuffTex[0]->tile_ult;
+            }
+#endif
+
+            if (rdp.tiles[rdp.cur_tile].shift_s)
+            {
+               if (rdp.tiles[rdp.cur_tile].shift_s > 10)
+                  v->u0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_s));
+               else
+                  v->u0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_s);
+            }
+            if (rdp.tiles[rdp.cur_tile].shift_t)
+            {
+               if (rdp.tiles[rdp.cur_tile].shift_t > 10)
+                  v->v0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_t));
+               else
+                  v->v0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
+            }
+
+#ifdef HAVE_HWFBE
+            if (rdp.aTBuffTex[0])
+            {
+               if (rdp.aTBuffTex[0]->tile_uls != (int)rdp.tiles[rdp.cur_tile].f_ul_s)
+                  v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
+               if (rdp.aTBuffTex[0]->tile_ult != (int)rdp.tiles[rdp.cur_tile].f_ul_t || (settings.hacks&hack_Megaman))
+                  v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t; //required for megaman (boss special attack)
+               v->u0 *= rdp.aTBuffTex[0]->u_scale;
+               v->v0 *= rdp.aTBuffTex[0]->v_scale;
+#ifdef EXTREME_LOGGING
+               FRDP("tbuff_tex t0: (%f, %f)->(%f, %f)\n", v->ou, v->ov, v->u0, v->v0);
+#endif
+            }
+            else
+#endif
+            {
+               v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
+               v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t;
+               v->u0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_x * v->u0;
+               v->v0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_y * v->v0;
+            }
+            v->u0_w = v->u0 / v->w;
+            v->v0_w = v->v0 / v->w;
+         }
+
+         if (rdp.tex >= 2 && rdp.cur_cache[1])
+         {
+#ifdef HAVE_HWFBE
+            if (rdp.aTBuffTex[1])
+            {
+               v->u1 += rdp.aTBuffTex[1]->u_shift + rdp.aTBuffTex[1]->tile_uls;
+               v->v1 += rdp.aTBuffTex[1]->v_shift + rdp.aTBuffTex[1]->tile_ult;
+            }
+#endif
+            if (rdp.tiles[rdp.cur_tile+1].shift_s)
+            {
+               if (rdp.tiles[rdp.cur_tile+1].shift_s > 10)
+                  v->u1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_s));
+               else
+                  v->u1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_s);
+            }
+            if (rdp.tiles[rdp.cur_tile+1].shift_t)
+            {
+               if (rdp.tiles[rdp.cur_tile+1].shift_t > 10)
+                  v->v1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_t));
+               else
+                  v->v1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
+            }
+
+#ifdef HAVE_HWFBE
+            if (rdp.aTBuffTex[1])
+            {
+               if (rdp.aTBuffTex[1]->tile_uls != (int)rdp.tiles[rdp.cur_tile].f_ul_s)
+                  v->u1 -= rdp.tiles[rdp.cur_tile].f_ul_s;
+               v->u1 *= rdp.aTBuffTex[1]->u_scale;
+               v->v1 *= rdp.aTBuffTex[1]->v_scale;
+#ifdef EXTREME_LOGGING
+               FRDP("tbuff_tex t1: (%f, %f)->(%f, %f)\n", v->ou, v->ov, v->u1, v->v1);
+#endif
+            }
+            else
+#endif
+            {
+               v->u1 -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
+               v->v1 -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
+               v->u1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_x * v->u1;
+               v->v1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_y * v->v1;
+            }
+
+            v->u1_w = v->u1 / v->w;
+            v->v1_w = v->v1 / v->w;
+         }
+         //      FRDP(" * CALCULATING VERTEX U/V: %d  u0: %f, v0: %f, u1: %f, v1: %f\n", v->number, v->u0, v->v0, v->u1, v->v1);
+      }
+#ifdef EXTREME_LOGGING
+      FRDP("draw_tri. v[%d] ou=%f, ov = %f\n", i, v->ou, v->ov);
+#endif
+      if (v->shade_mod != cmb.shade_mod_hash)
+         apply_shade_mods (v);
+   } //for
+
+   rdp.clip = 0;
+
+   if ((vtx[0]->scr_off & 16) ||
+         (vtx[1]->scr_off & 16) ||
+         (vtx[2]->scr_off & 16))
+      rdp.clip |= CLIP_WMIN;
+
+   vtx[0]->not_zclipped = vtx[1]->not_zclipped = vtx[2]->not_zclipped = 1;
+
+   // Set vertex buffers
+   rdp.vtxbuf = rdp.vtx1;  // copy from v to rdp.vtx1
+   rdp.vtxbuf2 = rdp.vtx2;
+   rdp.vtx_buffer = 0;
+   rdp.n_global = 3;
+
+   rdp.vtxbuf[0] = *vtx[0];
+   rdp.vtxbuf[0].number = 1;
+   rdp.vtxbuf[1] = *vtx[1];
+   rdp.vtxbuf[1].number = 2;
+   rdp.vtxbuf[2] = *vtx[2];
+   rdp.vtxbuf[2].number = 4;
+
+   do_triangle_stuff (linew, false);
+}
+
+static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, bool do_cull, int32_t wd)
 {
    int i, vcount;
    bool updated_once = false;
    for (i = 0; i < iterations; i++)
    {
-      if (!cull_tri(v + vcount))
+      if (do_cull && !cull_tri(v + vcount))
       {
          if (do_update && !updated_once)
          {
@@ -454,6 +662,8 @@ static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, 
          }
          draw_tri (v + vcount, wd);
       }
+      else if (!do_cull)
+         draw_tri (v + vcount, wd);
       rdp.tri_n ++;
       vcount += 3;
    }
@@ -473,7 +683,7 @@ static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
    rdp.flags |= CULLMASK;
    rdp.update |= UPDATE_CULL_MODE;
 
-   cull_trianglefaces(v, 1, true, wd);
+   cull_trianglefaces(v, 1, true, true, wd);
 
    rdp.flags ^= CULLMASK;
    rdp.flags |= cull_mode << CULLSHIFT;
@@ -491,7 +701,7 @@ static void gsSP1Triangle(int32_t v0, int32_t v1, int32_t v2, int32_t flag, bool
    v[1] = &rdp.vtx[v1];
    v[2] = &rdp.vtx[v2];
 
-   cull_trianglefaces(v, 1, do_update, 0);
+   cull_trianglefaces(v, 1, do_update, true, 0);
 
    //FRDP("gsSP1Triangle #%d - %d, %d, %d\n", rdp.tri_n, v1, v2, v3);
 }
@@ -508,7 +718,7 @@ static void gsSP2Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t fl
    v[4] = &rdp.vtx[v11];
    v[5] = &rdp.vtx[v12];
 
-   cull_trianglefaces(v, 2, true, 0);
+   cull_trianglefaces(v, 2, true, true, 0);
    //FRDP("uc1:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
 }
 
@@ -534,7 +744,7 @@ static void gsSP4Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t fl
    v[10] = &rdp.vtx[v31];
    v[11] = &rdp.vtx[v32];
 
-   cull_trianglefaces(v, 4, true, 0);
+   cull_trianglefaces(v, 4, true, true, 0);
 
    //FRDP("uc8:tri4 (#%d - #%d), %d-%d-%d, %d-%d-%d, %d-%d-%d, %d-%d-%d\n", rdp.tri_n, rdp.tri_n+3, ((w0 >> 23) & 0x1F), ((w0 >> 18) & 0x1F), ((((w0 >> 15) & 0x7) << 2) | ((w1 >> 30) &0x3)), ((w0 >> 10) & 0x1F), ((w0 >> 5) & 0x1F), ((w0 >> 0) & 0x1F), ((w1 >> 25) & 0x1F), ((w1 >> 20) & 0x1F), ((w1 >> 15) & 0x1F), ((w1 >> 10) & 0x1F), ((w1 >> 5) & 0x1F), ((w1 >> 0) & 0x1F));
 }

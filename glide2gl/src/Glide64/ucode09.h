@@ -175,15 +175,10 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
    pV[2] = &vtx[2];
    pV[3] = &vtx[3];
 
-   draw_tri (pV, 0);
-   //FRDP("uc9:Tri #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
-   rdp.tri_n ++;
+   cull_trianglefaces(pV, 1, false, false, 0); 
+
    if (vnum != 3)
-   {
-      //FRDP("uc9:Quad #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
-      draw_tri (pV+1, 0);
-      rdp.tri_n++;
-   }
+      cull_trianglefaces(pV + 1, 1, false, false, 0); 
 }
 
 static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
