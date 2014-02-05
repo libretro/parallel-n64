@@ -1,3 +1,32 @@
+// positional and texel coordinate clipping
+#define CCLIP(ux,lx,ut,lt,uc,lc) \
+		if (ux > lx || lx < uc || ux > lc) { rdp.tri_n += 2; return; } \
+		if (ux < uc) { \
+			float p = (uc-ux)/(lx-ux); \
+			ut = p*(lt-ut)+ut; \
+			ux = uc; \
+		} \
+		if (lx > lc) { \
+			float p = (lc-ux)/(lx-ux); \
+			lt = p*(lt-ut)+ut; \
+			lx = lc; \
+		}
+
+#define CCLIP2(ux,lx,ut,lt,un,ln,uc,lc) \
+		if (ux > lx || lx < uc || ux > lc) { rdp.tri_n += 2; return; } \
+		if (ux < uc) { \
+			float p = (uc-ux)/(lx-ux); \
+			ut = p*(lt-ut)+ut; \
+			un = p*(ln-un)+un; \
+			ux = uc; \
+		} \
+		if (lx > lc) { \
+			float p = (lc-ux)/(lx-ux); \
+			lt = p*(lt-ut)+ut; \
+			ln = p*(ln-un)+un; \
+			lx = lc; \
+		}
+
 //forward decls
 extern void glide64SPClipVertex(uint32_t i);
 

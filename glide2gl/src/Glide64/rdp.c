@@ -82,35 +82,6 @@
 #define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
 #endif
 
-// positional and texel coordinate clipping
-#define CCLIP(ux,lx,ut,lt,uc,lc) \
-		if (ux > lx || lx < uc || ux > lc) { rdp.tri_n += 2; return; } \
-		if (ux < uc) { \
-			float p = (uc-ux)/(lx-ux); \
-			ut = p*(lt-ut)+ut; \
-			ux = uc; \
-		} \
-		if (lx > lc) { \
-			float p = (lc-ux)/(lx-ux); \
-			lt = p*(lt-ut)+ut; \
-			lx = lc; \
-		}
-
-#define CCLIP2(ux,lx,ut,lt,un,ln,uc,lc) \
-		if (ux > lx || lx < uc || ux > lc) { rdp.tri_n += 2; return; } \
-		if (ux < uc) { \
-			float p = (uc-ux)/(lx-ux); \
-			ut = p*(lt-ut)+ut; \
-			un = p*(ln-un)+un; \
-			ux = uc; \
-		} \
-		if (lx > lc) { \
-			float p = (lc-ux)/(lx-ux); \
-			lt = p*(lt-ut)+ut; \
-			ln = p*(ln-un)+un; \
-			lx = lc; \
-		}
-
 const char *ACmp[] = { "NONE", "THRESHOLD", "UNKNOWN", "DITHER" };
 
 const char *Mode0[] = { "COMBINED",    "TEXEL0",
