@@ -377,6 +377,7 @@ static void uc2_modifyvtx(uint32_t w0, uint32_t w1)
 static void uc2_culldl(uint32_t w0, uint32_t w1)
 {
    uint16_t i, vStart, vEnd, cond;
+   VERTEX *v;
 
    vStart = (uint16_t)(w0 & 0xFFFF) >> 1;
    vEnd = (uint16_t)(w1 & 0xFFFF) >> 1;
@@ -388,26 +389,27 @@ static void uc2_culldl(uint32_t w0, uint32_t w1)
 
    for (i = vStart; i <= vEnd; i++)
    {
+#if 0
+      v = (VERTEX*)&rdp.vtx[i];
+
       /*
-         VERTEX v = &rdp.vtx[i];
-      // Check if completely off the screen (quick frustrum clipping for 90 FOV)
+       * Check if completely off the screen
+       * (quick frustrum clipping for 90 FOV)
+       */
+
       if (v->x >= -v->w)
-      cond |= 0x01;
+         cond |= X_CLIP_MAX;
       if (v->x <= v->w)
-      cond |= 0x02;
+         cond |= X_CLIP_MIN;
       if (v->y >= -v->w)
-      cond |= 0x04;
+         cond |= Y_CLIP_MAX;
       if (v->y <= v->w)
-      cond |= 0x08;
+         cond |= Y_CLIP_MIN;
       if (v->w >= 0.1f)
-      cond |= 0x10;
+         cond |= Z_CLIP_MAX;
 
       if (cond == 0x1F)
-      return;
-      //*/
-
-#ifdef EXTREME_LOGGING
-      FRDP (" v[%d] = (%02f, %02f, %02f, 0x%02lx)\n", i, rdp.vtx[i].x, rdp.vtx[i].y, rdp.vtx[i].w, rdp.vtx[i].scr_off);
+         return;
 #endif
 
       cond |= (~rdp.vtx[i].scr_off) & 0x1F;

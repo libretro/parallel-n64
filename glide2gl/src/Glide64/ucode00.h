@@ -443,8 +443,13 @@ static void uc0_culldl(uint32_t w0, uint32_t w1)
 
    for (i = vStart; i <= vEnd; i++)
    {
-      v = &rdp.vtx[i];
-      // Check if completely off the screen (quick frustrum clipping for 90 FOV)
+      v = (VERTEX*)&rdp.vtx[i];
+
+      /*
+       * Check if completely off the screen
+       * (quick frustrum clipping for 90 FOV)
+       */
+
       if (v->x >= -v->w)
          cond |= X_CLIP_MAX;
       if (v->x <= v->w)
