@@ -1385,23 +1385,17 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
 static void rdp_loadsync(uint32_t w0, uint32_t w1)
 {
-#ifdef EXTREME_LOGGING
-  LRDP("loadsync - ignored\n");
-#endif
+   gDPLoadSync();
 }
 
 static void rdp_pipesync(uint32_t w0, uint32_t w1)
 {
-#ifdef EXTREME_LOGGING
-  LRDP("pipesync - ignored\n");
-#endif
+   gDPPipeSync();
 }
 
 static void rdp_tilesync(uint32_t w0, uint32_t w1)
 {
-#ifdef EXTREME_LOGGING
-  LRDP("tilesync - ignored\n");
-#endif
+   gDPTileSync();
 }
 
 static void rdp_fullsync(uint32_t w0, uint32_t w1)
