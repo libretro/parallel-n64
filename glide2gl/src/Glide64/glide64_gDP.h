@@ -1476,17 +1476,13 @@ static void gDPSetColorImage(int32_t fmt, int32_t siz, int32_t width, int32_t im
             if (rdp.copy_ci_index && (rdp.frame_buffers[rdp.ci_count-1].status != CI_ZIMG))
             {
                int idx = (rdp.frame_buffers[rdp.ci_count].status == CI_AUX_COPY) ? rdp.main_ci_index : rdp.copy_ci_index;
-#ifdef  EXTREME_LOGGING
-               FRDP("attempt open tex buffer. status: %s, addr: %08lx\n", CIStatus[rdp.frame_buffers[idx].status], rdp.frame_buffers[idx].addr);
-#endif
                OpenTextureBuffer(&rdp.frame_buffers[idx]);
                if (rdp.frame_buffers[rdp.copy_ci_index].status == CI_MAIN) //tidal wave
                   rdp.copy_ci_index = 0;
+               //FRDP("attempt open tex buffer. status: %s, addr: %08lx\n", CIStatus[rdp.frame_buffers[idx].status], rdp.frame_buffers[idx].addr);
             }
             else if (rdp.read_whole_frame && !rdp.cur_image)
-            {
                OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
-            }
          }
 #endif
       }
