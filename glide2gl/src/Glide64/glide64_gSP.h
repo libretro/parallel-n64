@@ -91,7 +91,17 @@ static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
    return false;
 }
 
-// FIXME - not consistent with glN64
+/*
+ * Pops from one matrix stack.
+ *
+ * The modelview matrix stack is 10 levels deep, and the projection
+ * matrix stack is 1 level deep (so it is impossible to pop a projection
+ * matrix stack).
+ *
+ * param - the flag field identifying the matrix stack to pop
+ *       - G_MTX_MODELVIEW  - modelview matrix stack
+ *       - G_MTX_PROJECTION - projection matrix stack (not implemented)
+ */
 static void gSPPopMatrix(uint32_t param)
 {
    if (rdp.model_i > 0)
@@ -112,6 +122,24 @@ static void gSPPopMatrixN(uint32_t num)
    }
 }
 
+/*
+ * Sets the viewport area. The viewport sructure elements have a 
+ * 2-bit fraction required for scaling to sub-pixel positions.
+ * This can be used to handle the fraction values in the viewport.
+ *
+ * vscale, vtrans are the screen coordinates. The aray indices
+ * 0, 1, 2 correspond to x, y, z while array index 3 is used for
+ * alignment.
+ *
+ * The viewport is the area the image occupies on the screen.
+ *
+ * v      - segment address to the viewport structure "Vp".
+ * vscale - scale applied to the normalized homogeneous coordinates
+ *          after 4x4 projection transformation.
+ * vtrans - the offset added to the scaled value.
+ *
+ * FIXME: Not spec-conformant.
+ */
 static void gSPViewport(uint32_t v, bool correct_viewport)
 {
    int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, *rdram;
@@ -188,6 +216,18 @@ static void gSPTexture(int32_t sc, int32_t tc, int32_t level,
    //FRDP("uc0:texture: tile: %d, mipmap_lvl: %d, on: %d, s_scale: %f, t_scale: %f\n", tile, rdp.mipmap_level, on, tmp_tile->s_scale, tmp_tile->t_scale);
 }
 
+/*
+ * Loads one Light structure into the RSP.
+ *
+ * Loads one Light structure at the specified position in the light buffer.
+ * Use gSPNumLights to specify the number of lights to use in the lighting
+ * calculation. When gSPNuLights specifies N number of lights, the 1st to
+ * Nth lights are used as directional lights (color and direction), and N+1
+ * light is used as the ambient light (color only).
+ *
+ * l - pointer to Light structure.
+ * n - the light number that is replaced (1 to 8).
+ */
 static void gSPLight(uint32_t l, unsigned n)
 {
    uint32_t address = RSP_SegmentToPhysical(l);
@@ -209,15 +249,26 @@ static void gSPLight(uint32_t l, unsigned n)
    //FRDP ("light: n: %d, r: %.3f, g: %.3f, b: %.3f, x: %.3f, y: %.3f, z: %.3f\n", i, rdp.light[i].r, rdp.light[i].g, rdp.light[i].b, rdp.light_vector[i][0], rdp.light_vector[i][1], rdp.light_vector[i][2]);
 }
 
-//gSPForceMatrix command. Modification of uc2_movemem:matrix. Gonetz.
+/*
+ * Loads new matrix without performing multiplication.
+ *
+ * Loads a new matrix (indicated by mptr) on to the top of the RSP's matrix stack.
+ * Without undergoing matrix multiplication, this new matrix replaces the single
+ * matrix (the concatenated matrix of the modelview and projection matrices) used
+ * for the entire transformation.
+ *
+ * There is no matrix pushing or popping on the model view and projection matrix
+ * stacks, and the tops of the stack are not modified.
+ *
+ * mptr - The pointer to the matrix to load.
+ */
 static void gSPForceMatrix(uint32_t mptr)
 {
-   uint32_t address;
+   uint32_t address = RSP_SegmentToPhysical(mptr);
+   load_matrix(rdp.combined, address);
+
    // do not update the combined matrix!
    rdp.update &= ~UPDATE_MULT_MAT;
-
-   address = RSP_SegmentToPhysical(mptr);
-   load_matrix(rdp.combined, address);
 
    //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
    //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
@@ -232,7 +283,39 @@ static void gSPFogFactor(int16_t fm, int16_t fo)
    //FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
 }
 
-// FIXME - not consistent with glN64
+/*
+ * Specifies the size ratio between the clipping box and the scissoring
+ * box in order to boost performance.
+ *
+ * Following explanation assumes scissoring box is the same size as the viewport
+ * region:
+ *
+ * Scissoring is performed by rasterizing the entire triangle and then deleting
+ * pixels which lay outside the screen (this consumes processing time in the RDP).
+ *
+ * Clipping is performed by converting a large triangle that protrudes out of the
+ * clipping box, into a number of small triangles, all of which fit inside the clipping
+ * box (this consumes RSP processing time in the RSP).
+ *
+ * When the clipping box is near in size to the scissoring box there are more occasions
+ * for clipping, which places a greater burden on the RSP. In addition, RDP processing
+ * speed declines because there is also more rendering.
+ *
+ * Conversely, when the clipping box is much larger than the scissoring box, ther are
+ * fewer occasions for clipping so the burden on the RSP declines. However, RDP
+ * processing speed will also decline because there are more occasions for scissoring
+ * (which is performed by the RDP).
+ *
+ * r - the relative size (Clipping box: scissoring box)
+ *   - FRUSTRATIO_1 (1:1)
+ *   - FRUSTRATIO_2 (2:1)
+ *   - FRUSTRATIO_3 (3:1)
+ *   - FRUSTRATIO_4 (4:1)
+ *   - FRUSTRATIO_5 (5:1)
+ *   - FRUSTRATIO_6 (6:1)
+ *
+ * FIXME - not consistent with glN64
+ */
 static void gSPClipRatio(uint32_t w0, uint32_t w1)
 {
    if (((w0 >> 8) & 0xFFFF) == G_MW_CLIP)
@@ -243,14 +326,50 @@ static void gSPClipRatio(uint32_t w0, uint32_t w1)
    //FRDP ("clip %08lx, %08lx\n", w0, w1);
 }
 
-static void gSPSetGeometryMode(uint32_t w1)
+/*
+ * Sets the geometry pipeline modes enabled.
+ *
+ * Sets modes for culling, lighting, specular highlights, reflection mapping,
+ * fog, etc. use gSPClearGeometryMode to disable the modes.
+ *
+ * Numerous specifications can be set for mode with a bit sum of the following
+ * flags:
+ *
+ * mode - the geometry pipeline mode:
+ *      - G_SHADE          - Enables calculation of vertex color for a triangle.
+ *      - G_LIGHTING       - Enables lighting calculations.
+ *      - G_SHADING_SMOOTH - Enables Gouraud shading.
+ *                           When this is not enabled, flat shading is used for the
+ *                           triangle, based on the color of one vertex (see gSP1Triangle).
+ *                           G_SHADE must be enabled to calculate vertex color.
+ *      - G_ZBUFFER        - Enables Z buffer calculations.
+ *                           Other Z buffer-related parameters for the frame buffer must
+ *                           also be set.
+ *      - G_TEXTURE_GEN    - Enables automatic generation of the texture's s, t coordinates.
+ *                           Spherical mapping based on the normal vector is used.
+ *      - G_TEXTURE_GEN_LINEAR  - Enables automatic generation of the texture's, t coordinates.
+ *      - G_CULL_FRONT     - Enables front-face culling.
+ *                           * Does not support F3DLX.Rej but does support F3DLX2.Rej.
+ *      - G_CULL_BACK      - Enables back-face culling.
+ *      - G_CULL_BOTH      - Enables both back-face and front-face culling.
+ *                           * Does not support F3DLX.Rej but does support F3DLX2.Rej.
+ *      - G_FOG            - Enables generation of vertex alpha coordinate fog parameters.
+ *      - G_CLIPPING       - Enables clipping.
+ *                           This mode is enabled in the initial state. When disabled, clipping
+ *                           is not performed. This mode can only be used with F3DLX and F3DLX.NoN.
+ *
+ * Other elements which have their own commands also exist for the RSP rendering state. These
+ * involve chaning the state with something more complicated than a single bit, or using other
+ * commands to optimize the RSP geometry engine.
+ */
+static void gSPSetGeometryMode(uint32_t mode)
 {
-   rdp.geom_mode |= w1;
+   rdp.geom_mode |= mode;
 
    // TODO - should we look at all these state changes at this point?
    // This isn't done in gln64
 
-   if (w1 & G_ZBUFFER)  // Z-Buffer enable
+   if (mode & G_ZBUFFER)  // Z-Buffer enable
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -258,7 +377,7 @@ static void gSPSetGeometryMode(uint32_t w1)
          rdp.update |= UPDATE_ZBUF_ENABLED;
       }
    }
-   if (w1 & CULL_FRONT)  // Front culling
+   if (mode & CULL_FRONT)  // Front culling
    {
       if (!(rdp.flags & CULL_FRONT))
       {
@@ -266,7 +385,7 @@ static void gSPSetGeometryMode(uint32_t w1)
          rdp.update |= UPDATE_CULL_MODE;
       }
    }
-   if (w1 & CULL_BACK)  // Back culling
+   if (mode & CULL_BACK)  // Back culling
    {
       if (!(rdp.flags & CULL_BACK))
       {
@@ -276,7 +395,7 @@ static void gSPSetGeometryMode(uint32_t w1)
    }
 
    //Added by Gonetz
-   if (w1 & G_FOG)      // Fog enable
+   if (mode & G_FOG)      // Fog enable
    {
       if (!(rdp.flags & FOG_ENABLED))
       {
@@ -284,17 +403,50 @@ static void gSPSetGeometryMode(uint32_t w1)
          rdp.update |= UPDATE_FOG_ENABLED;
       }
    }
-   //FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", w1, rdp.geom_mode);
+   //FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", mode, rdp.geom_mode);
 }
 
-static void gSPClearGeometryMode(uint32_t w1)
+/*
+ * Disables the geometry pipeline modes.
+ *
+ * Disables pipeline modes for culling, lighting, specular highlights reflection
+ * mapping, fog, etc. To enable these various modes, use gSPSetGeometryMode.
+ *
+ * By disabling G_CLIPPING, processing time can be reduced because the data required
+ * for clipping decision does not need to be calculated by gSPVertex. Also, clipping
+ * is performd in GSP1Triangle, GSP2Triangles and gSP1Quadrangle.
+ *
+ * mode - the geometry pipeline mode:
+ *      - G_SHADE          - Disables calculation of vertex color for a triangle.
+ *      - G_LIGHTING       - Disables lighting calculations.
+ *      - G_SHADING_SMOOTH - Disables Gouraud shading.
+ *                           When this is not enabled, flat shading is used for the
+ *                           triangle, based on the color of one vertex (see gSP1Triangle).
+ *                           G_SHADE must be enabled to calculate vertex color.
+ *      - G_ZBUFFER        - Disables Z buffer calculations.
+ *                           Other Z buffer-related parameters for the frame buffer must
+ *                           also be set.
+ *      - G_TEXTURE_GEN    - Disables automatic generation of the texture's s, t coordinates.
+ *                           Spherical mapping based on the normal vector is used.
+ *      - G_TEXTURE_GEN_LINEAR  - Disables automatic generation of the texture's, t coordinates.
+ *      - G_CULL_FRONT     - Disables front-face culling.
+ *                           * Does not support F3DLX.Rej but does support F3DLX2.Rej.
+ *      - G_CULL_BACK      - Disables back-face culling.
+ *      - G_CULL_BOTH      - Disables both back-face and front-face culling.
+ *                           * Does not support F3DLX.Rej but does support F3DLX2.Rej.
+ *      - G_FOG            - Disables generation of vertex alpha coordinate fog parameters.
+ *      - G_CLIPPING       - Disables clipping.
+ *                           This mode is enabled in the initial state. When disabled, clipping
+ *                           is not performed. This mode can only be used with F3DLX and F3DLX.NoN.
+ */
+static void gSPClearGeometryMode(uint32_t mode)
 {
-   rdp.geom_mode &= (~w1);
+   rdp.geom_mode &= (~mode);
 
    // TODO - should we look at all these state changes at this point?
    // This isn't done in gln64
    
-   if (w1 & G_ZBUFFER)  // Z-Buffer enable
+   if (mode & G_ZBUFFER)  // Z-Buffer enable
    {
       if (rdp.flags & ZBUF_ENABLED)
       {
@@ -302,7 +454,7 @@ static void gSPClearGeometryMode(uint32_t w1)
          rdp.update |= UPDATE_ZBUF_ENABLED;
       }
    }
-   if (w1 & CULL_FRONT)  // Front culling
+   if (mode & CULL_FRONT)  // Front culling
    {
       if (rdp.flags & CULL_FRONT)
       {
@@ -310,7 +462,7 @@ static void gSPClearGeometryMode(uint32_t w1)
          rdp.update |= UPDATE_CULL_MODE;
       }
    }
-   if (w1 & CULL_BACK)  // Back culling
+   if (mode & CULL_BACK)  // Back culling
    {
       if (rdp.flags & CULL_BACK)
       {
@@ -320,7 +472,7 @@ static void gSPClearGeometryMode(uint32_t w1)
    }
 
    //Added by Gonetz
-   if (w1 & G_FOG)      // Fog enable
+   if (mode & G_FOG)      // Fog enable
    {
       if (rdp.flags & FOG_ENABLED)
       {
@@ -328,9 +480,21 @@ static void gSPClearGeometryMode(uint32_t w1)
          rdp.update |= UPDATE_FOG_ENABLED;
       }
    }
-   //FRDP("uc0:cleargeometrymode %08lx\n", w1);
+   //FRDP("uc0:cleargeometrymode %08lx\n", mode);
 }
 
+/*
+ * Calls a child display list from the current display list.
+ *
+ * This kind of display list hierarchy can be used to make
+ * re-use of display lists or to structure the display list
+ * data in a way that reflects the actual rendering model.
+ *
+ * The display list hierarchy can have up to 10 steps (18 
+ * steps for gSPf3DEX.fifo.o and gSPF3DEX.NoN.fifo.o).
+ *
+ * d - Segment address of the child display list.
+ */
 static void gSPDisplayList(uint32_t dl)
 {
    uint32_t address = RSP_SegmentToPhysical(dl);
@@ -344,6 +508,16 @@ static void gSPDisplayList(uint32_t dl)
    rdp.pc[rdp.pc_i] = address;  // jump to the address
 }
 
+/*
+ * Branches from the current display list to a child display list.
+ *
+ * This dffers from gSPDisplayList in that the display list to be
+ * used is not pushed onto the calling stack. In other words, this
+ * macro's call is a "jump" and not a "call" like the gSPDisplayList
+ * macro.
+ *
+ * dl - pointer to the child display list.
+ */
 static void gSPBranchList(uint32_t dl)
 {
    uint32_t address = RSP_SegmentToPhysical(dl);
@@ -356,6 +530,12 @@ static void gSPBranchList(uint32_t dl)
    rdp.pc[rdp.pc_i] = address;  // just jump to the address
 }
 
+/*
+ * Ends a display list.
+ *
+ * When this macro is executed, the RSP pops the display list stack and,
+ * if the display list stack is empty, ends the graphics process.
+ */
 static void gSPEndDisplayList(void)
 {
    if (rdp.pc_i > 0)
@@ -364,19 +544,70 @@ static void gSPEndDisplayList(void)
       rdp.halt = 1; // Halt execution here
 }
 
-static inline void gSPSegment( int32_t seg, int32_t base )
+/*
+ * Sets the segment register and the base address.
+ *
+ * All pointers in the display list in the Reality Co-Processor (RCP)
+ * are segment addresses composed of a segment base and offset address.
+ * The actual addresses are calculated by the Reality Signal Processor (RSP)
+ * using the following translation:
+ *
+ * Physical address = Base address [Segment ID] + Offset
+ *
+ * seg  - Segment ID (0-15)
+ * base - Base physical address
+ */
+static INLINE void gSPSegment( int32_t seg, int32_t base )
 {
     rdp.segment[seg] = base;
     //FRDP ("segment: %08lx -> seg%d\n", seg, base);
 }
 
-static inline void gSPNumLights(int32_t n)
+/*
+ * Specifies the number of Light structures to load into the RSP.
+ *
+ * Specifies the number of lights used in lighting calculations. This macro is
+ * used in association with gSPLight, which loads the light that will be
+ * actually used. When this macro specifies N number of lights, the 1st to Nth lights
+ * are used as directional lights (color and direction), and Nth + 1 light is used
+ * as the ambient light (color only). 
+ *
+ * To only use ambient light, set the "n" argument to NUMLIGHTS_0 so the first
+ * light is set to the ambient light color.
+ *
+ * n - the number of diffuse lights to use for lighting at one time:
+ *   - NUMLIGHTS_0 (0 diffuse lights)
+ *   - NUMLIGHTS_1 (1 diffuse light)
+ *   - NUMLIGHTS_2 (2 diffuse lights)
+ *   - NUMLIGHTS_3 (3 diffuse lights)
+ *   - NUMLIGHTS_4 (4 diffuse lights)
+ *   - NUMLIGHTS_5 (5 diffuse lights)
+ *   - NUMLIGHTS_6 (6 diffuse lights)
+ *   - NUMLIGHTS-7 (7 diffuse lights)
+ */
+static INLINE void gSPNumLights(int32_t n)
 {
    rdp.num_lights = (n <= 8) ? n : 0;
    rdp.update |= UPDATE_LIGHTS;
    //FRDP ("numlights: %d\n", rdp.num_lights);
 }
 
+/*
+ * Changes the color of the specified light without using DMA
+ * (as a result, no extra memory is required).
+ *
+ * n           - the light number whose color is being modified
+ *             - LIGHT_1 - First light
+ *             - LIGHT_2 - Second light
+ *             - LIGHT_3 - Third light
+ *             - LIGHT_4 - Fourth light
+ *             - LIGHT_5 - Fifth light
+ *             - LIGHT_6 - Sixth light
+ *             - LIGHT_7 - Seventh light
+ *             - LIGHT_8 - Eight light
+ * packedColor - the new light color (32-bit value 0xRRGGBB??)
+ *               (?? is ignored)
+ */
 static void gSPLightColor( uint32_t n, uint32_t packedColor)
 {
    rdp.light[n].col[0] = _SHIFTR( packedColor, 24, 8 ) * 0.0039215689f;
@@ -387,7 +618,7 @@ static void gSPLightColor( uint32_t n, uint32_t packedColor)
 }
 
 /*
- * Modifies partof the vertex data after the data has been sent to the RSP by
+ * Modifies part of the vertex data after the data has been sent to the RSP by
  * gSPVertex. The new value that is to be assigned to the part described by
  * 'where' is specified as follows in 'val':
  *
@@ -485,6 +716,27 @@ void glide64SPClipVertex(uint32_t i)
    if (rdp.vtxbuf[i].y < rdp.clip_min_y) rdp.clip |= CLIP_YMIN;
 }
 
+/*
+ * Conditionally branches the display list.
+ *
+ * When the depth value of the vertex specified by vtx is less than or 
+ * equal to zval, the display list is branhed to the display list indicated
+ * by branchdl. when it is more than zval,nothing is done. This provides
+ * an easy way to perform LOD processing on a model.
+ *
+ * branchdl - pointer to the display list branch.
+ * vtx      - Vertex (index in the vertex buffer).
+ * zval     - The Z value which becomes the branch condition.
+ * near     - the location of the near plane (a value specified by either guPerspective
+ *            or guOrtho).
+ * far      - the location of a far plane (a value specified by either guPerspective
+ *            or guOrtho).
+ * flag     - The projection method:
+ *          - G_BZ_PERSP (Perspective projection)
+ *          - G_BZ_ORTHO (Orthogonal projection)
+ *
+ * FIXME - not spec conformant.
+ */
 static void gSPBranchLessZ( uint32_t branchdl, uint32_t vtx, float zval )
 {
    uint32_t address = RSP_SegmentToPhysical( branchdl );
@@ -725,9 +977,27 @@ static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, 
    }
 }
 
-// Generates one line, using vertices v0, v1 in the internal vertex
-// buffer.
-// Allows you to specify the line width (wd) in half-pixel units
+/*
+ * Generates one line with the specified width using the vertices
+ * v0, v1 loaded in the internal vertex buffer by the gSPVertex
+ * macro.
+ *
+ * The line width wd is specified in half-pixel units. Note that when
+ * the line is actually generated, 1.5 pixel (the minimum line width)
+ * is added to this specified width. In other words, specifying 0
+ * half-pixels draws a 1.5 pixel-wide line, specifying 1 half-pixel
+ * (0.5-pixel) draws a 2.0 pixel-wide line, etc.
+ *
+ * For other features of this macro, see GSPLine3D. This macro works
+ * only when line microcode (L3DEX, L3DEX2) is loaded.
+ *
+ * v0   - vertex buffer index (0-31).
+ * v1   - vertex buffer index (0-31).
+ * wd   - Line width (0~255, in half-pixel units).
+ * flag - The line flat-shading index (0~1):
+ *        0 - Draws line using the v0 color.
+ *        1 - Draws line using the v1 color.
+ */
 static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
 {
    VERTEX *v[3];
@@ -748,7 +1018,21 @@ static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
    //FRDP("uc0:line3d v0:%d, v1:%d, width:%d\n", v0, v1, wd);
 }
 
-// Draw a single triangle face
+/*
+ * Draws 1 triangle.
+ *
+ * Generates a single triangle face (using the vertices v0, v1, and v2) in the
+ * internal vertex buffer loaded by the gSPvertex macro. The flag (0, 1, or 2)
+ * identifies which of the three vertices contains the normal or the color for the
+ * face (for flat shading).
+ *
+ * v0   - vertex buffer index (variable ranges per microcode).
+ * v1   - vertex buffer index (variable ranges per microcode).
+ * v2   - vertex buffer index (variable ranges per microcode).
+ * flag - Triangle face flag 0~2
+ *
+ * FIXME: not spec-conformant (do_update)
+ */
 static void gsSP1Triangle(int32_t v0, int32_t v1, int32_t v2, int32_t flag, bool do_update)
 {
    VERTEX *v[3];
@@ -762,7 +1046,29 @@ static void gsSP1Triangle(int32_t v0, int32_t v1, int32_t v2, int32_t flag, bool
    //FRDP("gsSP1Triangle #%d - %d, %d, %d\n", rdp.tri_n, v1, v2, v3);
 }
 
-// Draw two triangle faces
+/*
+ * Draws 2 triangles.
+ *
+ * Generates the first triangle face (using the vertices v00, v01, and v02) in the
+ * internal vertex buffer loaded by the gSPvertex macro.
+ *
+ * Generates the second triangle face (using the vertices v10, v11, and v12) in the
+ * internal vertex buffer loaded by the gSPVertex macro. 
+ *
+ * flag0 (0, 1, or 2)
+ * identifies which of the three vertices (v00, v01, v02) contains the normal or the color for the
+ * face (for flat shading).
+ *
+ * v01   - vertex buffer index 1st triangle (variable ranges per microcode).
+ * v01   - vertex buffer index triangle (variable ranges per microcode).
+ * v02   - vertex buffer index triangle(variable ranges per microcode).
+ * flag  - Triangle face flag 0~2 (for v00, v01, v02)
+ * v10   - vertex buffer index 2nd triangle (variable ranges per microcode).
+ * v11   - vertex buffer index 2nd triangle (variable ranges per microcode).
+ * v12   - vertex buffer index 2nd triangle (variable ranges per microcode).
+ * flag1 - Triangle face flag 0~2 (for v10, v11, v12)
+ *
+ */
 static void gsSP2Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t flag0, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t flag1)
 {
    VERTEX *v[6];
