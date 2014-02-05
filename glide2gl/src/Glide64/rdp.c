@@ -1419,7 +1419,7 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
 
 static void rdp_setprimdepth(uint32_t w0, uint32_t w1)
 {
-   gDPSetPrimDepth(0 /* stub */, 0 /* stub */);
+   gDPSetPrimDepth((w1 >> 16) & 0x7FFF, w1 & 0x7FFF);
 }
 
 #define F3DEX2_SETOTHERMODE(cmd,sft,len,data) { \
@@ -2678,8 +2678,12 @@ static const uint32_t rdp_command_length[64] =
 #define dp_current (*(uint32_t*)gfx.DPC_CURRENT_REG)
 #define dp_status (*(uint32_t*)gfx.DPC_STATUS_REG)
 
-// dp_status & 0x1 = XBUS_DMEM_DMA enabled
-#define READ_RDP_DATA(address) ((dp_status & 0x1) ? (rsp_dmem[((address) & 0xfff)>>2]) : (rdram[(address) >> 2]))
+static INLINE uint32_t READ_RDP_DATA(uint32_t address)
+{
+   if (dp_status & 0x1) /* XBUS_DMEM_DMA enabled */
+      return rsp_dmem[(address & 0xfff) >> 2];
+   return rdram[address >> 2];
+}
 
 static void rdphalf_1(uint32_t w0, uint32_t w1)
 {

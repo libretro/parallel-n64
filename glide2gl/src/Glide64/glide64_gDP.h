@@ -339,14 +339,13 @@ static void gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float
 * entire primitive RDP. The Z format used in the blender (B) is
 * 15.3 fixed point. The primitive Z is a 16-bit register.
 *
-* z - Z-value (16-bit precision, s15).
+* z  - Z-value (16-bit precision, s15).
 * dz - deltaZ value (16-bit precision, s15).
 */
 static void gDPSetPrimDepth( uint16_t z, uint16_t dz )
 {
-   uint32_t w1 = rdp.cmd1;
-   rdp.prim_depth = (uint16_t)((w1 >> 16) & 0x7FFF);
-   rdp.prim_dz = (uint16_t)(w1 & 0x7FFF);
+   rdp.prim_depth = z;
+   rdp.prim_dz = dz;
 
    //FRDP("setprimdepth: %d\n", rdp.prim_depth);
 }
@@ -1035,7 +1034,7 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
 *
 * It is also used for rendering a second specular highlight (Hilite2). The
 * value in this environment color register determines the highlight color
-* for HIlite2.
+* for Hilite2.
 *
 * r - red component of RGBA color (8-bit precision, 0~255)
 * g - red component of RGBA color (8-bit precision, 0~255)
