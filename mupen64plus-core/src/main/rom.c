@@ -305,6 +305,11 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
           || (sl(ROM_HEADER.CRC1) == 0x9AB3B50A   && sl(ROM_HEADER.CRC2) == 0xBC666105) /* Hexen (G) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9CAB6AEA   && sl(ROM_HEADER.CRC2) == 0x87C61C00) /* Hexen (U) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xE6BA0A06   && sl(ROM_HEADER.CRC2) == 0x8A3D2C2F) /* Hexen (U) [t1] */
+          || (sl(ROM_HEADER.CRC1) == 0xB58988E9   && sl(ROM_HEADER.CRC2) == 0xB1FC4BE8) /* Hydro Thunder (E) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0xEDFB6B01   && sl(ROM_HEADER.CRC2) == 0x8893F62C) /* Hydro Thunder (E) [f1] (NTSC) */
+          || (sl(ROM_HEADER.CRC1) == 0xC8DC65EB   && sl(ROM_HEADER.CRC2) == 0x3D8C8904) /* Hydro Thunder (U) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x63CCD041   && sl(ROM_HEADER.CRC2) == 0xF12A8BC0) /* Hydro Thunder (U) [f1] (PAL) */
+          || (sl(ROM_HEADER.CRC1) == 0xB6DB2595   && sl(ROM_HEADER.CRC2) == 0xBC45273B) /* Hydro Thunder (U) [t1] */
 #ifndef GLES // Less powerful hardware to play with -count_per_op = 1 would be slow
           || (sl(ROM_HEADER.CRC1) == 0x979B263E  && sl(ROM_HEADER.CRC2) == 0xF8470004) /* Killer Instinct Gold (E) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9E8FE2BA  && sl(ROM_HEADER.CRC2) == 0x8B270770) /* Killer Instinct Gold (U) (V1.0) [!] */
