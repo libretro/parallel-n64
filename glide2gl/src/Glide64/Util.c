@@ -250,18 +250,18 @@ static void Create1LineEq(LineEquationType *l, VERTEX *v1, VERTEX *v2, VERTEX *v
 static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
 {
    LineEquationType line;
+   float aDot, bDot, scale1, tx, ty, s1, s2, den, w;
    Create1LineEq(&line, v2, v3, v1);
 
-   float aDot = (out->x * line.x + out->y * line.y);
-   float bDot = (v1->sx * line.x + v1->sy * line.y);
+   aDot = (out->x * line.x + out->y * line.y);
+   bDot = (v1->sx * line.x + v1->sy * line.y);
+   scale1 = ( -line.d - aDot) / ( bDot - aDot );
+   tx = out->x + scale1 * (v1->sx - out->x);
+   ty = out->y + scale1 * (v1->sy - out->y);
+   s1 = 101.0;
+   s2 = 101.0;
+   den = tx - v1->sx;
 
-   float scale1 = ( -line.d - aDot) / ( bDot - aDot );
-
-   float tx = out->x + scale1 * (v1->sx - out->x);
-   float ty = out->y + scale1 * (v1->sy - out->y);
-
-   float s1 = 101.0, s2 = 101.0;
-   float den = tx - v1->sx;
    if (fabs(den) > 1.0)
       s1 = (out->x-v1->sx)/den;
    if (s1 > 100.0f)
@@ -273,7 +273,7 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
    if (s2 > 100.0f)
       s2 =(ty-v2->sy)/(v3->sy-v2->sy);
 
-   float w = 1.0/interp3p(v1->oow,v2->oow,v3->oow,s1,s2);
+   w = 1.0/interp3p(v1->oow,v2->oow,v3->oow,s1,s2);
 
    out->r = real_to_char(interp3p(v1->r*v1->oow,v2->r*v2->oow,v3->r*v3->oow,s1,s2)*w);
    out->g = real_to_char(interp3p(v1->g*v1->oow,v2->g*v2->oow,v3->g*v3->oow,s1,s2)*w);
@@ -373,38 +373,25 @@ static void clip_w (int interpolate_colors)
 
 static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
 {
-   float w = 1.0f/(va->oow + (vb->oow-va->oow) * percent);
+   float w, ba, bb, ga, gb, ra, rb, aa, ab, fa, fb;
+   w = 1.0f/(va->oow + (vb->oow-va->oow) * percent);
    //   res->oow = va->oow + (vb->oow-va->oow) * percent;
    //   res->q = res->oow;
-   float ba = va->b * va->oow;
-   float bb = vb->b * vb->oow;
+   ba = va->b * va->oow;
+   bb = vb->b * vb->oow;
    res->b = real_to_char(interp2p(ba, bb, percent) * w);
-   float ga = va->g * va->oow;
-   float gb = vb->g * vb->oow;
+   ga = va->g * va->oow;
+   gb = vb->g * vb->oow;
    res->g = real_to_char(interp2p(ga, gb, percent) * w);
-   float ra = va->r * va->oow;
-   float rb = vb->r * vb->oow;
+   ra = va->r * va->oow;
+   rb = vb->r * vb->oow;
    res->r = real_to_char(interp2p(ra, rb, percent) * w);
-   float aa = va->a * va->oow;
-   float ab = vb->a * vb->oow;
+   aa = va->a * va->oow;
+   ab = vb->a * vb->oow;
    res->a = real_to_char(interp2p(aa, ab, percent) * w);
-   float fa = va->f * va->oow;
-   float fb = vb->f * vb->oow;
+   fa = va->f * va->oow;
+   fb = vb->f * vb->oow;
    res->f = interp2p(fa, fb, percent) * w;
-   /*
-      float u0a = va->u0_w * va->oow;
-      float u0b = vb->u0_w * vb->oow;
-      res->u0 = (u0a + (u0b - u0a) * percent) * w;
-      float v0a = va->v0_w * va->oow;
-      float v0b = vb->v0_w * vb->oow;
-      res->v0 = (v0a + (v0b - v0a) * percent) * w;
-      float u1a = va->u1_w * va->oow;
-      float u1b = vb->u1_w * vb->oow;
-      res->u1 = (u1a + (u1b - u1a) * percent) * w;
-      float v1a = va->v1_w * va->oow;
-      float v1b = vb->v1_w * vb->oow;
-      res->v1 = (v1a + (v1b - v1a) * percent) * w;
-      */
 }
 
 static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
