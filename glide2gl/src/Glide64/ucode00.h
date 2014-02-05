@@ -434,7 +434,13 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 
 static void uc0_texture(uint32_t w0, uint32_t w1)
 {
-   gSPTexture();
+   gSPTexture(
+         (w1 >> 16) & 0xFFFF,          /* sc */
+         (w1 & 0xFFFF),                /* tc */
+         (w0 >> 11) & 0x07,            /* level */
+         (w0 >> 8) & 0x07,             /* tile */
+         (w0 & 0xFF)                   /* on */
+         );
 }
 
 static void uc0_setothermode_h(uint32_t w0, uint32_t w1)

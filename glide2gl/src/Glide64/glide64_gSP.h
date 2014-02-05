@@ -142,37 +142,50 @@ static void gSPViewport(uint32_t v, bool correct_viewport)
    //FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, a);
 }
 
-static void gSPTexture(void)
+/*
+ * Enables/disables textures and sets the scaling value for texturing in the
+ * RSP.
+ *
+ * The texture coordinates are computed by the RSP using the following formula:
+ *
+ * (Displayed texture coordinates) = (Scale value) * (Shifted texture coordinate values (see note))
+ *
+ * Shifted texture coordinate values: These are the values of the texture coordinates obtained
+ * from the Vtx structure after they have been shifted by the "shift" parameter set in the texture
+ * tile attributes.
+ *
+ * sc    - scaling value for the texture's s coordinate (16-bit precision, .16)
+ * tc    - scaling value for the texture's t coordinate (16-bit precision, .16)
+ * level - one less than the maximum number of MIP-map levels (max - 1)
+ * tile  - tile descriptor index (3-bit precision, 0~7)
+ * on    - texture flag - G_ON (texture on) | G_OFF (texture off)
+ */
+static void gSPTexture(int32_t sc, int32_t tc, int32_t level,
+      int32_t tile, int32_t on)
 {
-   uint32_t on;
-   int tile;
-   tile = (rdp.cmd0 >> 8) & 0x07;
+   TILE *tmp_tile;
    if (tile == 7 && (settings.hacks&hack_Supercross))
       tile = 0; //fix for supercross 2000
-   rdp.mipmap_level = (rdp.cmd0 >> 11) & 0x07;
-   on = (rdp.cmd0 & 0xFF);
+   rdp.mipmap_level = level;
    rdp.cur_tile = tile;
 
    rdp.tiles[tile].on = 0;
 
-   if (on)
-   {
-      uint16_t s = (uint16_t)((rdp.cmd1 >> 16) & 0xFFFF);
-      uint16_t t = (uint16_t)(rdp.cmd1 & 0xFFFF);
+   if (!on)
+      return;
 
-      TILE *tmp_tile = &rdp.tiles[tile];
-      tmp_tile->on = 1;
-      tmp_tile->org_s_scale = s;
-      tmp_tile->org_t_scale = t;
-      tmp_tile->s_scale = (float)(s+1)/65536.0f;
-      tmp_tile->t_scale = (float)(t+1)/65536.0f;
-      tmp_tile->s_scale /= 32.0f;
-      tmp_tile->t_scale /= 32.0f;
+   tmp_tile = (TILE*)&rdp.tiles[tile];
+   tmp_tile->on = 1;
+   tmp_tile->org_s_scale = sc;
+   tmp_tile->org_t_scale = tc;
+   tmp_tile->s_scale = (float)(sc+1)/65536.0f;
+   tmp_tile->t_scale = (float)(tc+1)/65536.0f;
+   tmp_tile->s_scale /= 32.0f;
+   tmp_tile->t_scale /= 32.0f;
 
-      rdp.update |= UPDATE_TEXTURE;
+   rdp.update |= UPDATE_TEXTURE;
 
-      //FRDP("uc0:texture: tile: %d, mipmap_lvl: %d, on: %d, s_scale: %f, t_scale: %f\n", tile, rdp.mipmap_level, on, tmp_tile->s_scale, tmp_tile->t_scale);
-   }
+   //FRDP("uc0:texture: tile: %d, mipmap_lvl: %d, on: %d, s_scale: %f, t_scale: %f\n", tile, rdp.mipmap_level, on, tmp_tile->s_scale, tmp_tile->t_scale);
 }
 
 static void gSPLight(uint32_t l, unsigned n)
