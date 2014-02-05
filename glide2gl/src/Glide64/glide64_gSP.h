@@ -276,6 +276,14 @@ static void gSPForceMatrix(uint32_t mptr)
    //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
 }
 
+/*
+ * Fog formula: alpha(fog) = (eyespace z) * fm  + fo  CLAMPED 0 to 255
+ *
+ * NOTE: (eyespace z) ranges from -1 to 1
+ *
+ * fm - Z multiplier
+ * fo - Z offset
+ */
 static void gSPFogFactor(int16_t fm, int16_t fo)
 {
    rdp.fog_multiplier = fm;
