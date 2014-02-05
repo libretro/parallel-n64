@@ -1,9 +1,13 @@
 //forward decls
 extern void LoadBlock32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt);
+extern void RestoreScale(void);
+
 extern uint32_t ucode5_texshiftaddr;
 extern uint32_t ucode5_texshiftcount;
 extern uint16_t ucode5_texshift;
 extern int tile_set;
+extern int CI_SET;
+extern uint32_t swapped_addr;
 
 static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height, int line, int off, uint32_t *end)
 {
@@ -187,6 +191,13 @@ end_dxt_test:
    }
 }
 
+/*
+ * Will stall the pipeline until the last command that reads or writes
+ * from the frame buffer finishes. This is useful for ensuring an entire
+ * scene is fully drawn before swapping frame buffers or reusing a frame
+ * buffer as a texture image.
+ *
+ */
 static void gDPFullSync(void)
 {
    // Set an interrupt to allow the game to continue
@@ -218,6 +229,17 @@ static void gDPSetKeyGB(uint32_t cG, uint32_t sG, uint32_t wG, uint32_t cB, uint
 #endif
 }
 
+/* Tells the RDP to rasterize geometry falling inside the scissor
+ * box. Coordinates are given with respect to screen space.
+ *
+ * ulx - X coordinate of the top left corner of the scissor box. 
+ *
+ * uly - Y coordinate of the top left corner of the scissor box
+ *
+ * lrx - X coordinate of the bottom right corner of the scissor box.
+ *
+ * lry - Y coordinate of the bottom right corner of the scissor box.
+ */
 static void gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry )
 {
    (void)mode;
@@ -289,6 +311,56 @@ static void gDPSetTileSize(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t
    //FRDP ("settilesize: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d, f_ul_s: %f, f_ul_t: %f\n", tile, ul_s, ul_t, lr_s, lr_t, rdp.tiles[tile].f_ul_s, rdp.tiles[tile].f_ul_t);
 }
 
+/*
+ * Tells the RDP about a texture that is to be loaded out of a previously specified
+ * Texture Image.
+ *
+ * format - Controls the output format of the rasterized image.
+ *
+ * - 000 - RGBA
+ * - 001 - YUV
+ * - 010 - Color Index (CI)
+ * - 011 - Intensity Alpha (IA)
+ * - 011 - Intensity (I)
+ *
+ * size - Size of an individual pixel in terms of bits
+ * 
+ * - 00 - 4 bits
+ *   01 - 8 bits (Color Index)
+ *   10 - 16 bits (RGBA)
+ *   11 - 32 bits (RGBA)
+ *
+ * line - The width of the texture to be stored in terms of 64 bit words. 
+ *
+ * tmem - The location in texture memory (TMEM) to store the texture in
+ * terms of 64 bit words. This implies that textures must be 8 byte
+ * aligned in TMEM.
+ *
+ * tile_idx - The tile ID to give this texture.
+ *
+ * palette -For 4 bit sprites, this is the palette number. In effect, this is
+ * the upper 4bits to make an 8 bit color index pixel which will then be looked up
+ * in a palette.
+ *
+ * cmt - Enables clamping in the T direction when texturing primitives.
+ *
+ * cms - Enables clamping in the S direction when texturing primitives.
+ *
+ * maskt - Number of bits to mask or mirror in the T direction.
+ *
+ * masks - Number of bits to mask or mirror in the S direction.
+ *
+ * shiftt - Level of detail shift in the T direction.
+ *
+ * shifts - Level of detail shift in the S direction.
+ *
+ * mirrort - Enable mirroring in the T direction when texturing primitives.
+ *
+ * mirrors - Enable mirroring in the S direction when texturing primitives.
+ *
+ * FIXME NOTE: we're using unsigned 32 bit here - yet 64 bit words is being implied as
+ * input operands
+ */
 static void gDPSetTile( uint32_t format, uint32_t size, uint32_t line, uint32_t tmem, uint32_t tile_idx,
       uint32_t palette, uint32_t cmt, uint32_t cms, uint32_t maskt, uint32_t masks, uint32_t shiftt, uint32_t shifts,
       uint32_t mirrort, uint32_t mirrors)
@@ -348,6 +420,23 @@ static void gDPSetTile( uint32_t format, uint32_t size, uint32_t line, uint32_t 
 
 void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
 
+/*
+ * Tells the RDP to pull actual texture data out of a texture set by
+ * Set Texture Image and place it in TMEM in a texture slot defined by Set Tile.
+ * The tile ID references a tile that has been set up by Set Tile.
+ *
+ * tile - The tile ID to load this texture into.
+ *
+ * uls - Low S coordinate of texture (10.5 fixed point format).
+ *
+ * ult - Low T coordinate of texture (10.5 fixed point format).
+ *
+ * lrs - High S coordinate of texture (10.5 fixed point format).
+ *
+ * lrt - High T coordinate of texture (10.5 fixed point format).
+ *
+ * FIXME - description for ul and lr might need to be inverted 
+ */
 static void gDPLoadTile( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt )
 {
    if (rdp.skip_drawing)
@@ -426,6 +515,15 @@ static void gDPLoadTile( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs
 #endif
 }
 
+/*
+ * Tells the RDP what color to use when rasterizing a Fill Rectangle
+ * command. For 32 bit color mode, this is the RGBA value to set each
+ * pixel to.
+ *
+ * For 16bit color mode, this is two 16 bit colors packed into one 32bit field.
+ *
+ * c - Color to fill non-textured rectangles with.
+ */
 static void gDPSetFillColor(uint32_t c)
 {
    rdp.fill_color = c;
@@ -586,16 +684,30 @@ static void gDPSetRenderMode( uint32_t mode1, uint32_t mode2 )
    //FRDP ("rendermode: %08lx\n", rdp.othermode_l);  // just output whole othermode_l
 }
 
+/*
+ * Draws a rectangle to the frame buffer using the color specified in the Set Fill Color
+ * command. Before using the Fill Rectangle command, the RDP must be set up in fill mode
+ * using the Cycle Type parameter in the Set Other Modes command.
+ *
+ * ul_x - Low X coordinate of rectangle (10.2 fixed point format)
+ *
+ * ul_y - Low Y coordinate of rectangle (10.2 fixed point format)
+ *
+ * lr_x - High X coordinate of rectangle (10.2 fixed point format)
+ *
+ * lr_y - High Y coordinate of rectangle (10.2 fixed point format)
+ *
+ * FIXME - description for ul and lr might need to be inverted 
+ */
 static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t lr_y )
 {
-   if ((ul_x > lr_x) || (ul_y > lr_y))
-   {
-#ifdef EXTREME_LOGGING
-      LRDP("Fillrect. Wrong coordinates. Skipped\n");
-#endif
+   int pd_multiplayer;
+   if ((ul_x > lr_x) || (ul_y > lr_y)) // Wrong coordinates, skip
       return;
-   }
-   int pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (rdp.cycle_mode == G_CYC_FILL) && (rdp.fill_color == 0xFFFCFFFC);
+
+   pd_multiplayer = (settings.ucode == ucode_PerfectDark) 
+      && (rdp.cycle_mode == G_CYC_FILL) && (rdp.fill_color == 0xFFFCFFFC);
+
    if ((rdp.cimg == rdp.zimg) || (fb_emulation_enabled && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) || pd_multiplayer)
    {
       //LRDP("Fillrect - cleared the depth buffer\n");
@@ -611,15 +723,15 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
       }
       //if (settings.frame_buffer&fb_depth_clear)
       {
-         uint32_t y, x;
+         uint32_t y, x, zi_width_in_dwords, *dst;
          ul_x = min(max(ul_x, rdp.scissor_o.ul_x), rdp.scissor_o.lr_x);
          lr_x = min(max(lr_x, rdp.scissor_o.ul_x), rdp.scissor_o.lr_x);
          ul_y = min(max(ul_y, rdp.scissor_o.ul_y), rdp.scissor_o.lr_y);
          lr_y = min(max(lr_y, rdp.scissor_o.ul_y), rdp.scissor_o.lr_y);
-         uint32_t zi_width_in_dwords = rdp.ci_width >> 1;
+         zi_width_in_dwords = rdp.ci_width >> 1;
          ul_x >>= 1;
          lr_x >>= 1;
-         uint32_t * dst = (uint32_t*)(gfx.RDRAM+rdp.cimg);
+         dst = (uint32_t*)(gfx.RDRAM+rdp.cimg);
          dst += ul_y * zi_width_in_dwords;
          for (y = ul_y; y < lr_y; y++)
          {
@@ -772,7 +884,480 @@ static void gDPSetEnvColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a )
    //FRDP("setenvcolor: %08lx\n", w1);
 }
 
-// Sets the source for an image copy
+/*
+ * Sets the location of the frame buffer in memory where the DP should rasterize
+ * geometry. The Color Format bits are normally set to RGBA and the Pixel Size 
+ * set to match the bit dpeth specified in the VI_CONTROL_REG register.
+ *
+ * fmt - Controls the output format of the rasterized image
+ *
+ * - 000 - RGBA
+ * - 001 - YUV
+ * - 010 - Color Index (CI)
+ * - 011 - Intensity Alpha (IA)
+ * - 011 - Intensity (I)
+ *
+ * size - Size of an individual pixel in terms of bits
+ *
+ * - 00  - 4 bits
+ * - 01  - 8 bits (Color Index)
+ * - 10  - 16 bits (RGBA)
+ * - 11  - 32 bits (RGBA)
+ *
+ * width - Width of frame buffer in memory minus one. This width should correspond
+ * to the width of the frame buffer given to the VI_H_WIDTH_REG register.
+ *
+ * img - The address in memory where the frame buffer resides.
+ */
+static void gDPSetColorImage(int32_t fmt, int32_t siz, int32_t width, int32_t img)
+{
+   int i;
+
+   if (fb_emulation_enabled && (rdp.num_of_ci < NUMTEXBUF))
+   {
+      COLOR_IMAGE *cur_fb, *prev_fb, *next_fb;
+      cur_fb  = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count];
+      prev_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count?rdp.ci_count-1:0];
+      next_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count+1];
+
+      switch (cur_fb->status)
+      {
+         case CI_MAIN:
+            {
+
+               if (rdp.ci_count == 0)
+               {
+                  if ((rdp.ci_status == CI_AUX)) //for PPL
+                  {
+                     float sx = rdp.scale_x;
+                     float sy = rdp.scale_y;
+                     rdp.scale_x = 1.0f;
+                     rdp.scale_y = 1.0f;
+                     CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+                     rdp.scale_x = sx;
+                     rdp.scale_y = sy;
+                  }
+#ifdef HAVE_HWFBE
+                  if (fb_hwfbe_enabled)
+                  {
+                     if (rdp.copy_ci_index && (settings.hacks&hack_PMario))   // tidal wave
+                        OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
+                  }
+                  else
+#endif
+                  {
+                     if ((rdp.num_of_ci > 1) &&
+                           (next_fb->status == CI_AUX) &&
+                           (next_fb->width >= cur_fb->width))
+                     {
+                        rdp.scale_x = 1.0f;
+                        rdp.scale_y = 1.0f;
+                     }
+                  }
+               }
+#ifdef HAVE_HWFBE
+               else if (!rdp.motionblur && fb_hwfbe_enabled && !SwapOK && (rdp.ci_count <= rdp.copy_ci_index))
+               {
+                  if (next_fb->status == CI_AUX_COPY)
+                     OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
+                  else
+                     OpenTextureBuffer(&rdp.frame_buffers[rdp.copy_ci_index]);
+               }
+               else if (fb_hwfbe_enabled && prev_fb->status == CI_AUX)
+               {
+                  if (rdp.motionblur)
+                  {
+                     rdp.cur_image = &(rdp.texbufs[rdp.cur_tex_buf].images[0]);
+                     grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
+                     grTextureBufferExt( rdp.cur_image->tmu, rdp.cur_image->tex_addr, rdp.cur_image->info.smallLodLog2, rdp.cur_image->info.largeLodLog2,
+                           rdp.cur_image->info.aspectRatioLog2, rdp.cur_image->info.format, GR_MIPMAPLEVELMASK_BOTH );
+                  }
+                  else if (rdp.read_whole_frame)
+                  {
+                     OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
+                  }
+               }
+#endif
+               //else if (rdp.ci_status == CI_AUX && !rdp.copy_ci_index)
+               //  CloseTextureBuffer(false);
+
+               rdp.skip_drawing = false;
+            }
+            break;
+         case CI_COPY:
+            {
+               if (!rdp.motionblur || (settings.frame_buffer&fb_motionblur))
+               {
+                  if (cur_fb->width == rdp.ci_width)
+                  {
+#ifdef HAVE_HWFBE
+                     if (fb_hwfbe_enabled && CopyTextureBuffer(prev_fb, cur_fb))
+                     {
+                        //                      if (CloseTextureBuffer(TRUE))
+                        //*
+                        if ((settings.hacks&hack_Zelda) && (rdp.frame_buffers[rdp.ci_count+2].status == CI_AUX) && !rdp.fb_drawn) //hack for photo camera in Zelda MM
+                        {
+                           CopyFrameBuffer (GR_BUFFER_TEXTUREBUFFER_EXT);
+                           rdp.fb_drawn = true;
+                           memcpy(gfx.RDRAM+cur_fb->addr,gfx.RDRAM+rdp.cimg, (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
+                        }
+                        //*/
+                     }
+                     else
+#endif
+                     {
+                        if (!rdp.fb_drawn || prev_fb->status == CI_COPY_SELF)
+                        {
+                           CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+                           rdp.fb_drawn = true;
+                        }
+                        memcpy(gfx.RDRAM+cur_fb->addr,gfx.RDRAM+rdp.cimg, (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
+                     }
+                  }
+#ifdef HAVE_HWFBE
+                  else if (fb_hwfbe_enabled)
+                     CloseTextureBuffer(true);
+#endif
+               }
+               else
+                  memset(gfx.RDRAM+cur_fb->addr, 0, cur_fb->width*cur_fb->height*rdp.ci_size);
+               rdp.skip_drawing = true;
+            }
+            break;
+         case CI_AUX_COPY:
+            {
+               rdp.skip_drawing = false;
+#ifdef HAVE_HWFBE
+               if (fb_hwfbe_enabled && CloseTextureBuffer(prev_fb->status != CI_AUX_COPY))
+                  ;
+               else
+#endif
+                  if (!rdp.fb_drawn)
+                  {
+                     CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+                     rdp.fb_drawn = true;
+                  }
+#ifdef HAVE_HWFBE
+               if (fb_hwfbe_enabled)
+                  OpenTextureBuffer(cur_fb);
+#endif
+            }
+            break;
+         case CI_OLD_COPY:
+            {
+               if (!rdp.motionblur || (settings.frame_buffer&fb_motionblur))
+               {
+                  if (cur_fb->width == rdp.ci_width)
+                  {
+                     memcpy(gfx.RDRAM+cur_fb->addr,gfx.RDRAM+rdp.maincimg[1].addr, (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
+                  }
+                  //rdp.skip_drawing = true;
+               }
+               else
+               {
+                  memset(gfx.RDRAM+cur_fb->addr, 0, (cur_fb->width*cur_fb->height)<<rdp.ci_size>>1);
+               }
+            }
+            break;
+            /*
+               else if (rdp.frame_buffers[rdp.ci_count].status == ci_main_i)
+               {
+            // CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+            rdp.scale_x = rdp.scale_x_bak;
+            rdp.scale_y = rdp.scale_y_bak;
+            rdp.skip_drawing = false;
+            }
+            */
+         case CI_AUX:
+            {
+               if (
+#ifdef HAVE_HWFBE
+                     !fb_hwfbe_enabled &&
+#endif
+                     cur_fb->format != G_IM_FMT_RGBA)
+                  rdp.skip_drawing = true;
+               else
+               {
+                  rdp.skip_drawing = false;
+#ifdef HAVE_HWFBE
+                  if (fb_hwfbe_enabled && OpenTextureBuffer(cur_fb))
+                     ;
+                  else
+#endif
+                  {
+                     if (cur_fb->format != 0)
+                        rdp.skip_drawing = true;
+                     if (rdp.ci_count == 0)
+                     {
+                        //           if (rdp.num_of_ci > 1)
+                        //           {
+                        rdp.scale_x = 1.0f;
+                        rdp.scale_y = 1.0f;
+                        //           }
+                     }
+                     else if (!fb_hwfbe_enabled && (prev_fb->status == CI_MAIN) &&
+                           (prev_fb->width == cur_fb->width)) // for Pokemon Stadium
+                        CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+                  }
+               }
+               cur_fb->status = CI_AUX;
+            }
+            break;
+         case CI_ZIMG:
+#ifdef HAVE_HWFBE
+            if (settings.ucode != ucode_PerfectDark)
+            {
+               if (fb_hwfbe_enabled && !rdp.copy_ci_index && (rdp.copy_zi_index || (settings.hacks&hack_BAR)))
+               {
+                  GrLOD_t LOD = GR_LOD_LOG2_1024;
+                  if (settings.scr_res_x > 1024)
+                     LOD = GR_LOD_LOG2_2048;
+                  grTextureAuxBufferExt( rdp.texbufs[0].tmu, rdp.texbufs[0].begin, LOD, LOD,
+                        GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
+                  grAuxBufferExt( GR_BUFFER_TEXTUREAUXBUFFER_EXT );
+                  LRDP("rdp_setcolorimage - set texture depth buffer to TMU0\n");
+               }
+            }
+#endif
+            rdp.skip_drawing = true;
+            break;
+         case CI_ZCOPY:
+            if (settings.ucode != ucode_PerfectDark)
+            {
+#ifdef HAVE_HWFBE
+               if (fb_hwfbe_enabled && !rdp.copy_ci_index && rdp.copy_zi_index == rdp.ci_count)
+               {
+                  CopyDepthBuffer();
+               }
+#endif
+               rdp.skip_drawing = true;
+            }
+            break;
+         case CI_USELESS:
+            rdp.skip_drawing = true;
+            break;
+         case CI_COPY_SELF:
+#ifdef HAVE_HWFBE
+            if (fb_hwfbe_enabled && (rdp.ci_count <= rdp.copy_ci_index) && (!SwapOK || settings.swapmode == 2))
+               OpenTextureBuffer(cur_fb);
+#endif
+            rdp.skip_drawing = false;
+            break;
+         default:
+            rdp.skip_drawing = false;
+      }
+
+      if ((rdp.ci_count > 0) && (prev_fb->status >= CI_AUX)) //for Pokemon Stadium
+      {
+         if (!fb_hwfbe_enabled && prev_fb->format == G_IM_FMT_RGBA)
+            CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+         else if ((settings.hacks&hack_Knockout) && prev_fb->width < 100)
+            CopyFrameBuffer (GR_BUFFER_TEXTUREBUFFER_EXT);
+      }
+
+      if (
+#ifdef HAVE_HWFBE
+            !fb_hwfbe_enabled &&
+#endif
+            cur_fb->status == CI_COPY)
+      {
+         if (!rdp.motionblur && (rdp.num_of_ci > rdp.ci_count+1) && (next_fb->status != CI_AUX))
+         {
+            RestoreScale();
+         }
+      }
+      if (
+#ifdef HAVE_HWFBE
+            !fb_hwfbe_enabled &&
+#endif
+            cur_fb->status == CI_AUX)
+      {
+         if (cur_fb->format == 0)
+         {
+            if ((settings.hacks&hack_PPL) && (rdp.scale_x < 1.1f))  //need to put current image back to frame buffer
+            {
+               int y, x, width, height;
+               uint16_t *ptr_dst, *ptr_src, c;
+               width = cur_fb->width;
+               height = cur_fb->height;
+               ptr_dst = (uint16_t*)malloc(width * height * sizeof(uint16_t));
+               ptr_src = (uint16_t*)(gfx.RDRAM+cur_fb->addr);
+
+               for (y = 0; y < height; y++)
+               {
+                  for (x = 0; x < width; x++)
+                  {
+                     c = ((ptr_src[(x + y * width)^1]) >> 1) | 0x8000;
+                     ptr_dst[x + y * width] = c;
+                  }
+               }
+               grLfbWriteRegion(GR_BUFFER_BACKBUFFER,
+                     (uint32_t)rdp.offset_x,
+                     (uint32_t)rdp.offset_y,
+                     GR_LFB_SRC_FMT_555,
+                     width,
+                     height,
+                     FXFALSE,
+                     width<<1,
+                     ptr_dst);
+
+               free(ptr_dst);
+            }
+            /*
+               else  //just clear buffer
+               {
+
+               grColorMask(FXTRUE, FXTRUE);
+               grBufferClear (0, 0, 0xFFFF);
+               }
+               */
+         }
+      }
+
+      if ((cur_fb->status == CI_MAIN) && (rdp.ci_count > 0))
+      {
+         int to_org_res = true;
+         for (i = rdp.ci_count + 1; i < rdp.num_of_ci; i++)
+         {
+            if ((rdp.frame_buffers[i].status != CI_MAIN) && (rdp.frame_buffers[i].status != CI_ZIMG) && (rdp.frame_buffers[i].status != CI_ZCOPY))
+            {
+               to_org_res = false;
+               break;
+            }
+         }
+         if (to_org_res)
+         {
+            LRDP("return to original scale\n");
+            rdp.scale_x = rdp.scale_x_bak;
+            rdp.scale_y = rdp.scale_y_bak;
+#ifdef HAVE_HWFBE
+            if (fb_hwfbe_enabled && !rdp.read_whole_frame)
+               CloseTextureBuffer(false);
+#endif
+         }
+#ifdef HAVE_HWFBE
+         if (fb_hwfbe_enabled && !rdp.read_whole_frame && (prev_fb->status >= CI_AUX) && (rdp.ci_count > rdp.copy_ci_index))
+            CloseTextureBuffer(false);
+#endif
+
+      }
+      rdp.ci_status = cur_fb->status;
+      rdp.ci_count++;
+   }
+
+   rdp.ocimg = rdp.cimg;
+   rdp.cimg = img;
+   rdp.ci_width = width;
+   if (fb_emulation_enabled)
+      rdp.ci_height = rdp.frame_buffers[rdp.ci_count-1].height;
+   else if (rdp.ci_width == 32)
+      rdp.ci_height = 32;
+   else
+      rdp.ci_height = rdp.scissor_o.lr_y;
+   if (rdp.zimg == rdp.cimg)
+   {
+      rdp.zi_width = rdp.ci_width;
+      //    int zi_height = min((int)rdp.zi_width*3/4, (int)rdp.vi_height);
+      //    rdp.zi_words = rdp.zi_width * zi_height;
+   }
+   rdp.ci_size = siz;
+   rdp.ci_end = rdp.cimg + ((rdp.ci_width*rdp.ci_height)<<(rdp.ci_size-1));
+
+
+   if (fmt != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
+   {
+#ifdef HAVE_HWFBE
+      if (!rdp.cur_image)
+#endif
+      {
+#ifdef HAVE_HWFBE
+         if (fb_hwfbe_enabled && rdp.ci_width <= 64)
+            OpenTextureBuffer(&rdp.frame_buffers[rdp.ci_count - 1]);
+         else
+#endif
+            if (fmt > 2)
+               rdp.skip_drawing = true;
+         return;
+      }
+   }
+   else
+   {
+      if (!fb_emulation_enabled)
+         rdp.skip_drawing = false;
+   }
+
+   CI_SET = true;
+   if (settings.swapmode > 0)
+   {
+      if (rdp.zimg == rdp.cimg)
+         rdp.updatescreen = 1;
+
+      int viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *gfx.VI_ORIGIN_REG)) ? false : true;
+      if ((rdp.zimg != rdp.cimg) && (rdp.ocimg != rdp.cimg) && SwapOK && viSwapOK
+#ifdef HAVE_HWFBE
+            && !rdp.cur_image
+#endif
+         )
+      {
+         if (fb_emulation_enabled)
+            rdp.maincimg[0] = rdp.frame_buffers[rdp.main_ci_index];
+         else
+            rdp.maincimg[0].addr = rdp.cimg;
+         rdp.last_drawn_ci_addr = (settings.swapmode == 2) ? swapped_addr : rdp.maincimg[0].addr;
+         swapped_addr = rdp.cimg;
+         newSwapBuffers();
+         rdp.vi_org_reg = *gfx.VI_ORIGIN_REG;
+         SwapOK = false;
+#ifdef HAVE_HWFBE
+         if (fb_hwfbe_enabled)
+         {
+            if (rdp.copy_ci_index && (rdp.frame_buffers[rdp.ci_count-1].status != CI_ZIMG))
+            {
+               int idx = (rdp.frame_buffers[rdp.ci_count].status == CI_AUX_COPY) ? rdp.main_ci_index : rdp.copy_ci_index;
+#ifdef  EXTREME_LOGGING
+               FRDP("attempt open tex buffer. status: %s, addr: %08lx\n", CIStatus[rdp.frame_buffers[idx].status], rdp.frame_buffers[idx].addr);
+#endif
+               OpenTextureBuffer(&rdp.frame_buffers[idx]);
+               if (rdp.frame_buffers[rdp.copy_ci_index].status == CI_MAIN) //tidal wave
+                  rdp.copy_ci_index = 0;
+            }
+            else if (rdp.read_whole_frame && !rdp.cur_image)
+            {
+               OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
+            }
+         }
+#endif
+      }
+   }
+   //FRDP("setcolorimage - %08lx, width: %d,  height: %d, format: %d, size: %d\n", w1, rdp.ci_width, rdp.ci_height, fmt, rdp.ci_size);
+   //FRDP("cimg: %08lx, ocimg: %08lx, SwapOK: %d\n", rdp.cimg, rdp.ocimg, SwapOK);
+}
+
+/* Sets the location of the current texture buffer in memory where
+ * subsequent LoadTile commands source their data.
+ *
+ * format - Controls the input format of the texture buffer
+ * in RDRAM.
+ *
+ * - 000 - RGBA
+ *   001 - YUV
+ *   010 - Color Index (CI)
+ *   011 - Intensity Alpha (IA)
+ *   011 - Intensity (I)
+ *
+ * size - Size of an individual pixel in terms of bits.
+ *
+ * - 00 (4 bits, Color index, IA, I)
+ * - 01 (8 bits, Color Index, IA, I)
+ * - 10 (16 bits, RGBA, YUV, IA)
+ * - 11 (32 bits, RGBA)
+ *
+ * width - Width of texture buffer in memory minus one. This is
+ * provided merely for convenience, so individual textures can be
+ * easily copied out of a composite image map.
+ *
+ * address - The address in memory where the texture buffer resides.
+ */
 static void gDPSetTextureImage( uint32_t format, uint32_t size, uint32_t width, uint32_t address )
 {
    //static const char *format[]   = { "RGBA", "YUV", "CI", "IA", "I", "?", "?", "?" };
