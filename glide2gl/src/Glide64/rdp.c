@@ -178,6 +178,10 @@ uint8_t microcode[4096];
 uint32_t uc_crc;
 extern void microcheck(void);
 
+/* used to check if we only load the first settilesize
+FIXME: can this be used for speedhack purposes? It isn't used anywhere */
+int tile_set; 
+
 //forward decls
 static void CopyFrameBuffer (GrBuffer_t buffer);
 
@@ -1514,7 +1518,6 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
    //FRDP("loadtlut: tile: %d, start: %d, count: %d, from: %08lx\n", tile, start, count, rdp.timg.addr);
 }
 
-int tile_set = 0;
 static void rdp_settilesize(uint32_t w0, uint32_t w1)
 {
    gDPSetTileSize((w1 >> 24) & 0x07,
@@ -1611,11 +1614,12 @@ static void rdp_settile(uint32_t w0, uint32_t w1)
 
 static void rdp_fillrect(uint32_t w0, uint32_t w1)
 {
-  uint32_t ul_x = ((w1 & 0x00FFF000) >> 14);
-  uint32_t ul_y = (w1 & 0x00000FFF) >> 2;
-  uint32_t lr_x = ((w0 & 0x00FFF000) >> 14) + 1;
-  uint32_t lr_y = ((w0 & 0x00000FFF) >> 2) + 1;
-  gDPFillRectangle(ul_x, ul_y, lr_x, lr_y);
+  gDPFillRectangle(
+        ((w1 & 0x00FFF000) >> 14),        /* ul_x */
+        (w1 & 0x00000FFF) >> 2,           /* ul_y */
+        ((w0 & 0x00FFF000) >> 14) + 1,    /* lr_x */
+        ((w0 & 0x00000FFF) >> 2) + 1      /* lr_y */
+        );
 }
 
 static void rdp_setfillcolor(uint32_t w0, uint32_t w1)
@@ -2735,8 +2739,7 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
          */
       rdp_command_table[cmd](rdp.cmd0, rdp.cmd1);
    }
-   else
-      LRDP("rdphalf_1 - IGNORED\n");
+   //LRDP("rdphalf_1\n");
 }
 
 static void rdphalf_2(uint32_t w0, uint32_t w1)
