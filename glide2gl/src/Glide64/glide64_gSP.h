@@ -842,7 +842,7 @@ static void gSPTextureRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uin
       uint32_t tile, int32_t off_x_i, int32_t off_y_i, int32_t _dsdx, int32_t _dtdy,
       uint32_t flip)
 {
-   uint32_t prev_tile, cmd0;
+   uint32_t prev_tile;
    float Z, dsdx, dtdy, s_ul_x, s_lr_x, s_ul_y, s_lr_y, off_size_x, off_size_y;
    int i;
 
