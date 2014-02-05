@@ -1380,14 +1380,14 @@ static void rdp_fullsync(uint32_t w0, uint32_t w1)
 
 static void rdp_setkeygb(uint32_t w0, uint32_t w1)
 {
-   uint32_t wG = 0; //stub
-   uint32_t wB = 0; //stub
-   uint32_t sB = w1 & 0xFF;
-   uint32_t cB = (w1 >> 8) & 0xFF;
-   uint32_t sG = (w1 >> 16) & 0xFF;
-   uint32_t cG = (w1 >> 24) & 0xFF;
-
-   gDPSetKeyGB(cG, sG, wG, cB, sB, wB);
+   gDPSetKeyGB(
+         (w1 >> 24) & 0xFF,    /* cG */
+         (w1 >> 16) & 0xFF,    /* sG */
+         (w0 >> 12) & 0xFFF,   /* wG */
+         (w1 >> 8) & 0xFF,     /* cB */
+         w1 & 0xFF,            /* sB */
+         w0 & 0xFFF            /* wB */
+         );
 }
 
 static void rdp_setkeyr(uint32_t w0, uint32_t w1)
@@ -1404,7 +1404,7 @@ static void rdp_setconvert(uint32_t w0, uint32_t w1)
    gDPSetConvert(
          (w0 >> 13) & 0x1ff,                       /* k0 */
          (w0 >> 4) & 0x1ff,                        /* k1 */
-         ((w1 & 0xf) << 5) | ((w2 >> 27) & 0x1f),  /* k2 */
+         ((w0 & 0xf) << 5) | ((w1 >> 27) & 0x1f),  /* k2 */
          (w1 >> 18) & 0x1ff,                       /* k3 */
          (w1 >> 9) & 0x1FF,                        /* k4 */
          (w1 & 0x1FF)                              /* k5 */
@@ -1629,17 +1629,34 @@ static void rdp_setfillcolor(uint32_t w0, uint32_t w1)
 
 static void rdp_setfogcolor(uint32_t w0, uint32_t w1)
 {
-   gDPSetFogColor(0 /*stub */, 0 /* stub */, 0 /* stub */, 0 /* stub */);
+   gDPSetFogColor(
+         (w1 >> 24) & 0xFF,      /* r */
+         (w1 >> 16) & 0xFF,      /* g */
+         (w1 >>  8) & 0xFF,      /* b */
+         (w1 >>  0) & 0xFF       /* a */
+         );
 }
 
 static void rdp_setblendcolor(uint32_t w0, uint32_t w1)
 {
-   gDPSetBlendColor(0 /*stub */, 0 /* stub */, 0 /* stub */, 0 /* stub */);
+   gDPSetBlendColor(
+         (w1 >> 24) & 0xFF,      /* r */
+         (w1 >> 16) & 0xFF,      /* g */
+         (w1 >>  8) & 0xFF,      /* b */
+         (w1 >>  0) & 0xFF       /* a */
+         );
 }
 
 static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 {
-   gDPSetPrimColor(0 /* stub */, 0 /* stub */, 0 /* stub */, 0 /* stub */, 0 /* stub */, 0 /* stub */);
+   gDPSetPrimColor(
+         (w0 >> 8) & 0x1f,    /* m */
+         w0 & 0xff,           /* l */
+         (w1 >> 24) & 0xff,   /* r */
+         (w1 >> 16) & 0xff,   /* g */
+         (w1 >>  8) & 0xff,   /* b */
+         (w1 >>  0) & 0xff    /* a */
+         );
 }
 
 static void rdp_setenvcolor(uint32_t w0, uint32_t w1)
