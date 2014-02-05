@@ -386,20 +386,38 @@ static void gSPLightColor( uint32_t n, uint32_t packedColor)
    //FRDP ("lightcol light:%d, %08lx\n", n, w1);
 }
 
-// FIXME - call not consistent with glN64
-static void gSPModifyVertex(uint8_t where, uint16_t vtx, uint32_t val)
+/*
+ * Modifies partof the vertex data after the data has been sent to the RSP by
+ * gSPVertex. The new value that is to be assigned to the part described by
+ * 'where' is specified as follows in 'val':
+ *
+ * Color (G_MW0_POINT_RGBA):
+ *   R, G, B and alpha (4 bytes each) from high-order byte to low-order byte.
+ * Texture coordinate s, t values (G_MW0_POINT_ST):
+ *   High-order 16 bits are the s coordinate value. Low-order 16 bits are the
+ *   t coordinate value (s13.2)
+ * Screen coordinate x, y values (G_MW0_POINT_XYSCREEN):
+ *   High-order 16 bits are the s coordinate value. Low-order 16 bits are the
+ *   y coordinate value (s13.2)
+ *   * The upper-left corner of the screen is (0,0). Positive x values increase
+ *   to the right, and positive y value increase downward.
+ * Screen coordinate z value (G_MW0_POINT_ZSCREEN):
+ *   All 32 bits are the z-coordinate value (16.6, 0x00000000~0x03ff0000) 
+ *
+ * vtx   - specifies which RSP vertex to modify
+ * where - specifies which part of vertex data to modify:
+ *         G_MW0_POINT_RGBA (Color)
+ *         G_MW0_POINT_ST (Texture coordinate s, t values)
+ *         G_MW0_POINT_XYSCREEN (Screen coordinate x, y values)
+ *         G_MW0_POINT_ZSCREEN (Screen coordinate z value)
+ * val   - new value (32-bit integer) for the data part specified by where.
+ */
+static void gSPModifyVertex(uint32_t vtx, uint32_t where,  uint32_t val)
 {
    VERTEX *v = &rdp.vtx[vtx];
-   uint32_t w0, w1;
-   w0 = rdp.cmd0;
-   w1 = rdp.cmd1;
 
    switch (where)
    {
-      case 0:
-         uc6_obj_sprite(w0, w1);
-         break;
-
       case G_MWO_POINT_RGBA:    // RGBA
          v->r = (uint8_t)(val >> 24);
          v->g = (uint8_t)((val >> 16) & 0xFF);
@@ -455,12 +473,8 @@ static void gSPModifyVertex(uint8_t where, uint16_t vtx, uint32_t val)
             //FRDP ("z: %f\n", scr_z);
          }
          break;
-
-      default:
-         //LRDP("UNKNOWN\n");
-         break;
    }
-   //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
+   //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, val);
 }
 
 void glide64SPClipVertex(uint32_t i)

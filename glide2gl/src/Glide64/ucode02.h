@@ -367,11 +367,12 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
 
 static void uc2_modifyvtx(uint32_t w0, uint32_t w1)
 {
-   uint8_t where = (uint8_t)((w0 >> 16) & 0xFF);
-   uint16_t vtx = (uint16_t)((w0 >> 1) & 0xFFFF);
-
-   gSPModifyVertex(where, vtx, w1);
-   FRDP ("uc2:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
+   gSPModifyVertex(
+         (w0 >> 1) & 0xFFFF,  /* vtx */
+         (w0 >> 16) & 0xFF,   /* where */
+         w1                   /* val */
+         );
+   //FRDP ("uc2:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
 }
 
 static void uc2_culldl(uint32_t w0, uint32_t w1)

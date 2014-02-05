@@ -387,7 +387,7 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:moveword ");
 
-   // Find which command this is (lowest byte of cmd0)
+   // Find which command this is (lowest byte of w0)
    switch (w0 & 0xFF)
    {
       case G_MW_MATRIX:
@@ -416,8 +416,13 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_POINTS:
-         // FIXME - call not consistent with glN64
-         gSPModifyVertex((((uint16_t)((w0 >> 8) & 0xFFFF)) % 40), (((uint16_t)((w0 >> 8) & 0xFFFF)) / 40), w1);
+         {
+            uint32_t where = ((w0 >> 8) & 0xFFFF) % 40;
+            if (where == 0)
+               uc6_obj_sprite(w0, w1);
+            else
+               gSPModifyVertex((((w0 >> 8) & 0xFFFF) / 40), where, w1);
+         }
          break;
 
       case G_MW_PERSPNORM:
