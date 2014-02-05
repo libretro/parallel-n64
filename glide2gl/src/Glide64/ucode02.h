@@ -419,7 +419,7 @@ static void uc2_culldl(uint32_t w0, uint32_t w1)
    }
 
    LRDP(" - ");  // specify that the enddl is not a real command
-   uc0_enddl(w0, w1);
+   gSPEndDisplayList();
 }
 
 static void uc2_tri1(uint32_t w0, uint32_t w1)
