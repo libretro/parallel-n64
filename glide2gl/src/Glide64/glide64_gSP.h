@@ -748,3 +748,256 @@ static void gsSP4Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t fl
 
    //FRDP("uc8:tri4 (#%d - #%d), %d-%d-%d, %d-%d-%d, %d-%d-%d, %d-%d-%d\n", rdp.tri_n, rdp.tri_n+3, ((w0 >> 23) & 0x1F), ((w0 >> 18) & 0x1F), ((((w0 >> 15) & 0x7) << 2) | ((w1 >> 30) &0x3)), ((w0 >> 10) & 0x1F), ((w0 >> 5) & 0x1F), ((w0 >> 0) & 0x1F), ((w1 >> 25) & 0x1F), ((w1 >> 20) & 0x1F), ((w1 >> 15) & 0x1F), ((w1 >> 10) & 0x1F), ((w1 >> 5) & 0x1F), ((w1 >> 0) & 0x1F));
 }
+
+//angrylion's macro, helps to cut overflowed values.
+#define SIGN16(x) (((x) & 0x8000) ? ((x) | ~0xffff) : ((x) & 0xffff))
+
+/*
+ * Tells RDP to draw a textured 2D rectangle. Afterwards you can call the gDPFillRectangle
+ * command to fill rectangles with a solid color.
+ *
+ * The rectangle drawn is iclusive of the coordinates specified in copy mode. In one-cycle
+ * or two-cycle mode, the rectangle is drawn exclusive of the bottom and right edges in order to
+ * provide proper anti-aliasing in these modes.
+ *
+ * ul_x - High X coordinate of rectangle (10.2 fixed point format)
+ *
+ * ul_y - High Y coordinate of rectangle (10.2 fixed point format)
+ *
+ * lr_x - Low X coordinate of rectangle (10.2 fixed point format)
+ *
+ * lr_y - Low Y coordinate of rectangle (10.2 fixed point format)
+ *
+ * tile - The texture tile number that selects one of 8 texture tile descriptors in the RDP.
+ *
+ * off_x_i - Specify the texture coordinate of the upper-left corner of the 
+ *        rectangle (10.5 fixed point format).
+ *
+ * off_y_i - Specify the texture coordinate of the upper-left corner of the
+ *        rectangle (10.5 fixed point format).
+ *
+ * dsdx - Specifies change in s per change in x (10.5 fixed point format).
+ *
+ * dtdy - Specifies change in s per change in y (10.5 fixed point format).
+ *
+ * flip - Specifies whether texture rectangle needs flipping.
+ */
+static void gSPTextureRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32_t lr_y,
+      uint32_t tile, int32_t off_x_i, int32_t off_y_i, int32_t _dsdx, int32_t _dtdy,
+      uint32_t flip)
+{
+   uint32_t prev_tile, cmd0;
+   float Z, dsdx, dtdy, s_ul_x, s_lr_x, s_ul_y, s_lr_y, off_size_x, off_size_y;
+   int i;
+
+   rdp.texrecting = 1;
+
+   prev_tile = rdp.cur_tile;
+   rdp.cur_tile = tile;
+
+   Z = set_sprite_combine_mode ();
+
+   rdp.texrecting = 0;
+
+   if (!rdp.cur_cache[0])
+   {
+      rdp.cur_tile = prev_tile;
+      rdp.tri_n += 2;
+      return;
+   }
+
+   // ****
+   // ** Texrect offset by Gugaman **
+   //
+   //integer representation of texture coordinate.
+   //needed to detect and avoid overflow after shifting
+   dsdx = (float)(int16_t)(_dsdx) / 1024.0f;
+   dtdy = (float)(int16_t)(_dtdy) / 1024.0f;
+   if (off_x_i & 0x8000) //check for sign bit
+      off_x_i |= ~0xffff; //make it negative
+   //the same as for off_x_i
+   if (off_y_i & 0x8000)
+      off_y_i |= ~0xffff;
+
+   if (rdp.cycle_mode == G_CYC_COPY)
+      dsdx /= 4.0f;
+
+   s_ul_x = ul_x * rdp.scale_x + rdp.offset_x;
+   s_lr_x = lr_x * rdp.scale_x + rdp.offset_x;
+   s_ul_y = ul_y * rdp.scale_y + rdp.offset_y;
+   s_lr_y = lr_y * rdp.scale_y + rdp.offset_y;
+
+   //FRDP("texrect (%.2f, %.2f, %.2f, %.2f), tile: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, tile, rdp.tri_n, rdp.tri_n+1);
+   //FRDP ("(%f, %f) -> (%f, %f), s: (%d, %d) -> (%d, %d)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y, rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
+   //FRDP("\toff_x: %f, off_y: %f, dsdx: %f, dtdy: %f\n", off_x_i/32.0f, off_y_i/32.0f, dsdx, dtdy);
+
+   if (flip == 0xE5 )
+   {
+      //texrectflip
+      off_size_x = (lr_y - ul_y - 1) * dsdx;
+      off_size_y = (lr_x - ul_x - 1) * dtdy;
+   }
+   else
+   {
+      off_size_x = (lr_x - ul_x - 1) * dsdx;
+      off_size_y = (lr_y - ul_y - 1) * dtdy;
+   }
+
+   struct {
+      float ul_u, ul_v, lr_u, lr_v;
+   } texUV[2]; //struct for texture coordinates
+
+   //calculate texture coordinates
+   for (i = 0; i < 2; i++)
+   {
+      if (rdp.cur_cache[i] && (rdp.tex & (i+1)))
+      {
+         float sx = 1, sy = 1;
+         int x_i = off_x_i, y_i = off_y_i;
+         TILE *tile = &rdp.tiles[rdp.cur_tile + i];
+         //shifting
+         if (tile->shift_s)
+         {
+            if (tile->shift_s > 10)
+            {
+               uint8_t iShift = (16 - tile->shift_s);
+               x_i <<= iShift;
+               sx = (float)(1 << iShift);
+            }
+            else
+            {
+               uint8_t iShift = tile->shift_s;
+               x_i >>= iShift;
+               sx = 1.0f/(float)(1 << iShift);
+            }
+         }
+         if (tile->shift_t)
+         {
+            if (tile->shift_t > 10)
+            {
+               uint8_t iShift = (16 - tile->shift_t);
+               y_i <<= iShift;
+               sy = (float)(1 << iShift);
+            }
+            else
+            {
+               uint8_t iShift = tile->shift_t;
+               y_i >>= iShift;
+               sy = 1.0f/(float)(1 << iShift);
+            }
+         }
+
+#ifdef HAVE_HWFBE
+         if (rdp.aTBuffTex[i]) //hwfbe texture
+         {
+            float t0_off_x;
+            float t0_off_y;
+            if (off_x_i + off_y_i == 0)
+            {
+               t0_off_x = tile->ul_s;
+               t0_off_y = tile->ul_t;
+            }
+            else
+            {
+               t0_off_x = off_x_i/32.0f;
+               t0_off_y = off_y_i/32.0f;
+            }
+            t0_off_x += rdp.aTBuffTex[i]->u_shift;// + tile->ul_s; //commented for Paper Mario motion blur
+            t0_off_y += rdp.aTBuffTex[i]->v_shift;// + tile->ul_t;
+            texUV[i].ul_u = t0_off_x * sx;
+            texUV[i].ul_v = t0_off_y * sy;
+
+            texUV[i].lr_u = texUV[i].ul_u + off_size_x * sx;
+            texUV[i].lr_v = texUV[i].ul_v + off_size_y * sy;
+
+            texUV[i].ul_u *= rdp.aTBuffTex[i]->u_scale;
+            texUV[i].ul_v *= rdp.aTBuffTex[i]->v_scale;
+            texUV[i].lr_u *= rdp.aTBuffTex[i]->u_scale;
+            texUV[i].lr_v *= rdp.aTBuffTex[i]->v_scale;
+            FRDP("tbuff_tex[%d] ul_u: %f, ul_v: %f, lr_u: %f, lr_v: %f\n",
+                  i, texUV[i].ul_u, texUV[i].ul_v, texUV[i].lr_u, texUV[i].lr_v);
+         }
+         else //common case
+#endif
+         {
+            //kill 10.5 format overflow by SIGN16 macro
+            texUV[i].ul_u = SIGN16(x_i) / 32.0f;
+            texUV[i].ul_v = SIGN16(y_i) / 32.0f;
+
+            texUV[i].ul_u -= tile->f_ul_s;
+            texUV[i].ul_v -= tile->f_ul_t;
+
+            texUV[i].lr_u = texUV[i].ul_u + off_size_x * sx;
+            texUV[i].lr_v = texUV[i].ul_v + off_size_y * sy;
+
+            texUV[i].ul_u = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_x * texUV[i].ul_u;
+            texUV[i].lr_u = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_x * texUV[i].lr_u;
+            texUV[i].ul_v = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_y * texUV[i].ul_v;
+            texUV[i].lr_v = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_y * texUV[i].lr_v;
+         }
+      }
+      else
+      {
+         texUV[i].ul_u = texUV[i].ul_v = texUV[i].lr_u = texUV[i].lr_v = 0;
+      }
+   }
+   rdp.cur_tile = prev_tile;
+
+   // ****
+
+   FRDP ("  scissor: (%d, %d) -> (%d, %d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
+
+   CCLIP2 (s_ul_x, s_lr_x, texUV[0].ul_u, texUV[0].lr_u, texUV[1].ul_u, texUV[1].lr_u, (float)rdp.scissor.ul_x, (float)rdp.scissor.lr_x);
+   CCLIP2 (s_ul_y, s_lr_y, texUV[0].ul_v, texUV[0].lr_v, texUV[1].ul_v, texUV[1].lr_v, (float)rdp.scissor.ul_y, (float)rdp.scissor.lr_y);
+
+   FRDP ("  draw at: (%f, %f) -> (%f, %f)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
+
+   VERTEX vstd[4] = {
+      { s_ul_x, s_ul_y, Z, 1.0f, texUV[0].ul_u, texUV[0].ul_v, texUV[1].ul_u, texUV[1].ul_v, {0, 0, 0, 0}, 255 },
+      { s_lr_x, s_ul_y, Z, 1.0f, texUV[0].lr_u, texUV[0].ul_v, texUV[1].lr_u, texUV[1].ul_v, {0, 0, 0, 0}, 255 },
+      { s_ul_x, s_lr_y, Z, 1.0f, texUV[0].ul_u, texUV[0].lr_v, texUV[1].ul_u, texUV[1].lr_v, {0, 0, 0, 0}, 255 },
+      { s_lr_x, s_lr_y, Z, 1.0f, texUV[0].lr_u, texUV[0].lr_v, texUV[1].lr_u, texUV[1].lr_v, {0, 0, 0, 0}, 255 } };
+
+   if ( flip == 0xE5 )
+   {
+      //texrectflip
+      vstd[1].u0 = texUV[0].ul_u;
+      vstd[1].v0 = texUV[0].lr_v;
+      vstd[1].u1 = texUV[1].ul_u;
+      vstd[1].v1 = texUV[1].lr_v;
+
+      vstd[2].u0 = texUV[0].lr_u;
+      vstd[2].v0 = texUV[0].ul_v;
+      vstd[2].u1 = texUV[1].lr_u;
+      vstd[2].v1 = texUV[1].ul_v;
+   }
+
+   VERTEX *vptr = vstd;
+   int n_vertices = 4;
+
+   AllowShadeMods (vptr, n_vertices);
+   for (i=0; i<n_vertices; i++)
+      apply_shade_mods (&vptr[i]);
+
+   {
+      if (rdp.fog_mode >= FOG_MODE_BLEND)
+      {
+         float fog;
+         if (rdp.fog_mode == FOG_MODE_BLEND)
+            fog = 1.0f/max(1, rdp.fog_color&0xFF);
+         else
+            fog = 1.0f/max(1, (~rdp.fog_color)&0xFF);
+
+         for (i = 0; i < n_vertices; i++)
+            vptr[i].f = fog;
+
+         grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
+      }
+
+      ConvertCoordsConvert (vptr, n_vertices);
+
+      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, n_vertices, vptr, sizeof(VERTEX));
+
+      rdp.tri_n += 2;
+   }
+}

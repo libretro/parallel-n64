@@ -1204,402 +1204,183 @@ static void DrawDepthBufferFog(void)
 
 static void rdp_texrect(uint32_t w0, uint32_t w1)
 {
-  if (!rdp.LLE)
-  {
-    uint32_t a = rdp.pc[rdp.pc_i];
-    uint8_t cmdHalf1 = gfx.RDRAM[a+3];
-    uint8_t cmdHalf2 = gfx.RDRAM[a+11];
-    a >>= 2;
-    if ((cmdHalf1 == 0xE1 && cmdHalf2 == 0xF1) || (cmdHalf1 == 0xB4 && cmdHalf2 == 0xB3) || (cmdHalf1 == 0xB3 && cmdHalf2 == 0xB2))
-    {
-      //gSPTextureRectangle
-      rdp.cmd2 = ((uint32_t*)gfx.RDRAM)[a+1];
-      rdp.cmd3 = ((uint32_t*)gfx.RDRAM)[a+3];
-      rdp.pc[rdp.pc_i] += 16;
-    }
-    else
-    {
-      //gDPTextureRectangle
-      if (settings.hacks&hack_ASB)
-        rdp.cmd2 = 0;
+   float ul_x, ul_y, lr_x, lr_y;
+   uint32_t a;
+   uint8_t cmdHalf1, cmdHalf2;
+   if (!rdp.LLE)
+   {
+      a = rdp.pc[rdp.pc_i];
+      cmdHalf1 = gfx.RDRAM[a+3];
+      cmdHalf2 = gfx.RDRAM[a+11];
+      a >>= 2;
+      if ((cmdHalf1 == 0xE1 && cmdHalf2 == 0xF1) || (cmdHalf1 == 0xB4 && cmdHalf2 == 0xB3) || (cmdHalf1 == 0xB3 && cmdHalf2 == 0xB2))
+      {
+         //gSPTextureRectangle
+         rdp.cmd2 = ((uint32_t*)gfx.RDRAM)[a+1];
+         rdp.cmd3 = ((uint32_t*)gfx.RDRAM)[a+3];
+         rdp.pc[rdp.pc_i] += 16;
+      }
       else
-        rdp.cmd2 = ((uint32_t*)gfx.RDRAM)[a+0];
-      rdp.cmd3 = ((uint32_t*)gfx.RDRAM)[a+1];
-      rdp.pc[rdp.pc_i] += 8;
-    }
-  }
-  if ((settings.hacks&hack_Yoshi) && settings.ucode == ucode_S2DEX)
-  {
-    ys_memrect(w0, w1);
-    return;
-  }
+      {
+         //gDPTextureRectangle
+         if (settings.hacks&hack_ASB)
+            rdp.cmd2 = 0;
+         else
+            rdp.cmd2 = ((uint32_t*)gfx.RDRAM)[a+0];
+         rdp.cmd3 = ((uint32_t*)gfx.RDRAM)[a+1];
+         rdp.pc[rdp.pc_i] += 8;
+      }
+   }
 
-  if (rdp.skip_drawing || (!fb_emulation_enabled && (rdp.cimg == rdp.zimg)))
-  {
-    if ((settings.hacks&hack_PMario) && rdp.ci_status == CI_USELESS)
-    {
-      pm_palette_mod ();
-    }
-    else
-    {
-      LRDP("Texrect skipped\n");
-    }
-    return;
-  }
-
-#ifdef HAVE_HWFBE
-  if ((settings.ucode == ucode_CBFD) && rdp.cur_image && rdp.cur_image->format)
-  {
-    //FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.timg.addr, rdp.maincimg[1].addr, rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size);
-    LRDP("Shadow texrect is skipped.\n");
-    rdp.tri_n += 2;
-    return;
-  }
-#endif
-
-  if ((settings.ucode == ucode_PerfectDark) && (rdp.frame_buffers[rdp.ci_count-1].status == CI_ZCOPY))
-  {
-    pd_zcopy(w0, w1);
-    LRDP("Depth buffer copied.\n");
-    rdp.tri_n += 2;
-    return;
-  }
-
-  if ((rdp.othermode_l >> 16) == 0x3c18 && rdp.cycle1 == 0x03ffffff && rdp.cycle2 == 0x01ff1fff) //depth image based fog
-  {
-    if (!depth_buffer_fog)
+   if ((settings.hacks&hack_Yoshi) && settings.ucode == ucode_S2DEX)
+   {
+      ys_memrect(w0, w1);
       return;
-    if (settings.fog)
-      DrawDepthBufferFog();
-    depth_buffer_fog = false;
-    return;
-  }
+   }
 
-  //  FRDP ("rdp.cycle1 %08lx, rdp.cycle2 %08lx\n", rdp.cycle1, rdp.cycle2);
-
-  float ul_x, ul_y, lr_x, lr_y;
-  if (rdp.cycle_mode == G_CYC_COPY)
-  {
-    ul_x = max(0.0f, (int16_t)((w1 & 0x00FFF000) >> 14));
-    ul_y = max(0.0f, (int16_t)((w1 & 0x00000FFF) >> 2));
-    lr_x = max(0.0f, (int16_t)((w0 & 0x00FFF000) >> 14));
-    lr_y = max(0.0f, (int16_t)((w0 & 0x00000FFF) >> 2));
-  }
-  else
-  {
-    ul_x = max(0.0f, ((int16_t)((w1 & 0x00FFF000) >> 12)) / 4.0f);
-    ul_y = max(0.0f, ((int16_t)(w1 & 0x00000FFF)) / 4.0f);
-    lr_x = max(0.0f, ((int16_t)((w0 & 0x00FFF000) >> 12)) / 4.0f);
-    lr_y = max(0.0f, ((int16_t)(w0 & 0x00000FFF)) / 4.0f);
-  }
-
-  if (ul_x >= lr_x)
-  {
-    FRDP("Wrong Texrect: ul_x: %f, lr_x: %f\n", ul_x, lr_x);
-    return;
-  }
-
-  if (rdp.cycle_mode > G_CYC_2CYCLE)
-  {
-    lr_x += 1.0f;
-    lr_y += 1.0f;
-  } else if (lr_y - ul_y < 1.0f)
-    lr_y = ceil(lr_y);
-
-  if (settings.increase_texrect_edge)
-  {
-    if (glide64_floor(lr_x) != lr_x)
-      lr_x = ceil(lr_x);
-    if (glide64_floor(lr_y) != lr_y)
-      lr_y = ceil(lr_y);
-  }
-
-  //*
-#ifdef HAVE_HWFBE
-  if (rdp.tbuff_tex && (settings.frame_buffer & fb_optimize_texrect))
-  {
-    LRDP("Attempt to optimize texrect\n");
-    if (!rdp.tbuff_tex->drawn)
-    {
-      DRAWIMAGE d;
-      d.imageX  = 0;
-      d.imageW  = (uint16_t)rdp.tbuff_tex->width;
-      d.frameX  = (uint16_t)ul_x;
-      d.frameW  = (uint16_t)(rdp.tbuff_tex->width);
-
-      d.imageY  = 0;
-      d.imageH  = (uint16_t)rdp.tbuff_tex->height;
-      d.frameY  = (uint16_t)ul_y;
-      d.frameH  = (uint16_t)(rdp.tbuff_tex->height);
-      FRDP("texrect. ul_x: %d, ul_y: %d, lr_x: %d, lr_y: %d, width: %d, height: %d\n", ul_x, ul_y, lr_x, lr_y, rdp.tbuff_tex->width, rdp.tbuff_tex->height);
-      d.scaleX  = 1.0f;
-      d.scaleY  = 1.0f;
-      DrawHiresImage(&d, rdp.tbuff_tex->width == rdp.ci_width);
-      rdp.tbuff_tex->drawn = true;
-    }
-    return;
-  }
-#endif
-  //*/
-  // framebuffer workaround for Zelda: MM LOT
-  if ((rdp.othermode_l & 0xFFFF0000) == 0x0f5a0000)
-    return;
-
-  /*Gonetz*/
-  //hack for Zelda MM. it removes black texrects which cover all geometry in "Link meets Zelda" cut scene
-  if ((settings.hacks&hack_Zelda) && rdp.timg.addr >= rdp.cimg && rdp.timg.addr < rdp.ci_end)
-  {
-    FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.cur_cache[0]->addr, rdp.cimg, rdp.cimg+rdp.ci_width*rdp.ci_height*2);
-    rdp.tri_n += 2;
-    return;
-  }
-  //*
-  //hack for Banjo2. it removes black texrects under Banjo
-  if (!fb_hwfbe_enabled && ((rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF)) == 0xFFFFFFFF && (rdp.othermode_l & 0xFFFF0000) == 0x00500000)
-  {
-    rdp.tri_n += 2;
-    return;
-  }
-  //*/
-  //*
-  //remove motion blur in night vision
-  if ((settings.ucode == ucode_PerfectDark) && (rdp.maincimg[1].addr != rdp.maincimg[0].addr) && (rdp.timg.addr >= rdp.maincimg[1].addr) && (rdp.timg.addr < (rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size)))
-  {
-    if (fb_emulation_enabled)
-      if (rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF)
-      {
-        //FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.timg.addr, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width*rdp.ci_height*rdp.ci_size);
-        LRDP("Wrong Texrect.\n");
-        rdp.tri_n += 2;
-        return;
-      }
-  }
-  //*/
-
-  int i;
-
-  uint32_t tile = (uint16_t)((w1 & 0x07000000) >> 24);
-
-  rdp.texrecting = 1;
-
-  uint32_t prev_tile = rdp.cur_tile;
-  rdp.cur_tile = tile;
-
-  const float Z = set_sprite_combine_mode ();
-
-  rdp.texrecting = 0;
-
-  if (!rdp.cur_cache[0])
-  {
-    rdp.cur_tile = prev_tile;
-    rdp.tri_n += 2;
-    return;
-  }
-  // ****
-  // ** Texrect offset by Gugaman **
-  //
-  //integer representation of texture coordinate.
-  //needed to detect and avoid overflow after shifting
-  int32_t off_x_i = (rdp.cmd2 >> 16) & 0xFFFF;
-  int32_t off_y_i = rdp.cmd2 & 0xFFFF;
-  float dsdx = (float)((int16_t)((rdp.cmd3 & 0xFFFF0000) >> 16)) / 1024.0f;
-  float dtdy = (float)((int16_t)(rdp.cmd3 & 0x0000FFFF)) / 1024.0f;
-  if (off_x_i & 0x8000) //check for sign bit
-    off_x_i |= ~0xffff; //make it negative
-  //the same as for off_x_i
-  if (off_y_i & 0x8000)
-    off_y_i |= ~0xffff;
-
-  if (rdp.cycle_mode == G_CYC_COPY)
-    dsdx /= 4.0f;
-
-  float s_ul_x = ul_x * rdp.scale_x + rdp.offset_x;
-  float s_lr_x = lr_x * rdp.scale_x + rdp.offset_x;
-  float s_ul_y = ul_y * rdp.scale_y + rdp.offset_y;
-  float s_lr_y = lr_y * rdp.scale_y + rdp.offset_y;
-
-  FRDP("texrect (%.2f, %.2f, %.2f, %.2f), tile: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, tile, rdp.tri_n, rdp.tri_n+1);
-  FRDP ("(%f, %f) -> (%f, %f), s: (%d, %d) -> (%d, %d)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y, rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
-  FRDP("\toff_x: %f, off_y: %f, dsdx: %f, dtdy: %f\n", off_x_i/32.0f, off_y_i/32.0f, dsdx, dtdy);
-
-  float off_size_x;
-  float off_size_y;
-
-  if ( ((w0 >> 24)&0xFF) == 0xE5 ) //texrectflip
-  {
-    {
-      off_size_x = (lr_y - ul_y - 1) * dsdx;
-      off_size_y = (lr_x - ul_x - 1) * dtdy;
-    }
-  }
-  else
-  {
-    {
-      off_size_x = (lr_x - ul_x - 1) * dsdx;
-      off_size_y = (lr_y - ul_y - 1) * dtdy;
-    }
-  }
-
-  struct {
-    float ul_u, ul_v, lr_u, lr_v;
-  } texUV[2]; //struct for texture coordinates
-  //angrylion's macro, helps to cut overflowed values.
-  #define SIGN16(x) (((x) & 0x8000) ? ((x) | ~0xffff) : ((x) & 0xffff))
-
-  //calculate texture coordinates
-  for (i = 0; i < 2; i++)
-  {
-    if (rdp.cur_cache[i] && (rdp.tex & (i+1)))
-    {
-      float sx = 1, sy = 1;
-      int x_i = off_x_i, y_i = off_y_i;
-      TILE *tile = &rdp.tiles[rdp.cur_tile + i];
-      //shifting
-      if (tile->shift_s)
-      {
-        if (tile->shift_s > 10)
-        {
-          uint8_t iShift = (16 - tile->shift_s);
-          x_i <<= iShift;
-          sx = (float)(1 << iShift);
-        }
-        else
-        {
-          uint8_t iShift = tile->shift_s;
-          x_i >>= iShift;
-          sx = 1.0f/(float)(1 << iShift);
-        }
-      }
-      if (tile->shift_t)
-      {
-        if (tile->shift_t > 10)
-        {
-          uint8_t iShift = (16 - tile->shift_t);
-          y_i <<= iShift;
-          sy = (float)(1 << iShift);
-        }
-        else
-        {
-          uint8_t iShift = tile->shift_t;
-          y_i >>= iShift;
-          sy = 1.0f/(float)(1 << iShift);
-        }
-      }
+   if (rdp.skip_drawing || (!fb_emulation_enabled && (rdp.cimg == rdp.zimg)))
+   {
+      if ((settings.hacks&hack_PMario) && rdp.ci_status == CI_USELESS)
+         pm_palette_mod ();
+      return;
+   }
 
 #ifdef HAVE_HWFBE
-      if (rdp.aTBuffTex[i]) //hwfbe texture
-      {
-        float t0_off_x;
-        float t0_off_y;
-        if (off_x_i + off_y_i == 0)
-        {
-          t0_off_x = tile->ul_s;
-          t0_off_y = tile->ul_t;
-        }
-        else
-        {
-          t0_off_x = off_x_i/32.0f;
-          t0_off_y = off_y_i/32.0f;
-        }
-        t0_off_x += rdp.aTBuffTex[i]->u_shift;// + tile->ul_s; //commented for Paper Mario motion blur
-        t0_off_y += rdp.aTBuffTex[i]->v_shift;// + tile->ul_t;
-        texUV[i].ul_u = t0_off_x * sx;
-        texUV[i].ul_v = t0_off_y * sy;
-
-        texUV[i].lr_u = texUV[i].ul_u + off_size_x * sx;
-        texUV[i].lr_v = texUV[i].ul_v + off_size_y * sy;
-
-        texUV[i].ul_u *= rdp.aTBuffTex[i]->u_scale;
-        texUV[i].ul_v *= rdp.aTBuffTex[i]->v_scale;
-        texUV[i].lr_u *= rdp.aTBuffTex[i]->u_scale;
-        texUV[i].lr_v *= rdp.aTBuffTex[i]->v_scale;
-        FRDP("tbuff_tex[%d] ul_u: %f, ul_v: %f, lr_u: %f, lr_v: %f\n",
-          i, texUV[i].ul_u, texUV[i].ul_v, texUV[i].lr_u, texUV[i].lr_v);
-      }
-      else //common case
-#endif
-      {
-        //kill 10.5 format overflow by SIGN16 macro
-        texUV[i].ul_u = SIGN16(x_i) / 32.0f;
-        texUV[i].ul_v = SIGN16(y_i) / 32.0f;
-
-        texUV[i].ul_u -= tile->f_ul_s;
-        texUV[i].ul_v -= tile->f_ul_t;
-
-        texUV[i].lr_u = texUV[i].ul_u + off_size_x * sx;
-        texUV[i].lr_v = texUV[i].ul_v + off_size_y * sy;
-
-        texUV[i].ul_u = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_x * texUV[i].ul_u;
-        texUV[i].lr_u = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_x * texUV[i].lr_u;
-        texUV[i].ul_v = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_y * texUV[i].ul_v;
-        texUV[i].lr_v = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_y * texUV[i].lr_v;
-      }
-    }
-    else
-    {
-      texUV[i].ul_u = texUV[i].ul_v = texUV[i].lr_u = texUV[i].lr_v = 0;
-    }
-  }
-  rdp.cur_tile = prev_tile;
-
-  // ****
-
-  FRDP ("  scissor: (%d, %d) -> (%d, %d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
-
-  CCLIP2 (s_ul_x, s_lr_x, texUV[0].ul_u, texUV[0].lr_u, texUV[1].ul_u, texUV[1].lr_u, (float)rdp.scissor.ul_x, (float)rdp.scissor.lr_x);
-  CCLIP2 (s_ul_y, s_lr_y, texUV[0].ul_v, texUV[0].lr_v, texUV[1].ul_v, texUV[1].lr_v, (float)rdp.scissor.ul_y, (float)rdp.scissor.lr_y);
-
-  FRDP ("  draw at: (%f, %f) -> (%f, %f)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
-
-  VERTEX vstd[4] = {
-    { s_ul_x, s_ul_y, Z, 1.0f, texUV[0].ul_u, texUV[0].ul_v, texUV[1].ul_u, texUV[1].ul_v, {0, 0, 0, 0}, 255 },
-    { s_lr_x, s_ul_y, Z, 1.0f, texUV[0].lr_u, texUV[0].ul_v, texUV[1].lr_u, texUV[1].ul_v, {0, 0, 0, 0}, 255 },
-    { s_ul_x, s_lr_y, Z, 1.0f, texUV[0].ul_u, texUV[0].lr_v, texUV[1].ul_u, texUV[1].lr_v, {0, 0, 0, 0}, 255 },
-    { s_lr_x, s_lr_y, Z, 1.0f, texUV[0].lr_u, texUV[0].lr_v, texUV[1].lr_u, texUV[1].lr_v, {0, 0, 0, 0}, 255 } };
-
-    if ( ((w0 >> 24)&0xFF) == 0xE5 ) //texrectflip
-    {
-      vstd[1].u0 = texUV[0].ul_u;
-      vstd[1].v0 = texUV[0].lr_v;
-      vstd[1].u1 = texUV[1].ul_u;
-      vstd[1].v1 = texUV[1].lr_v;
-
-      vstd[2].u0 = texUV[0].lr_u;
-      vstd[2].v0 = texUV[0].ul_v;
-      vstd[2].u1 = texUV[1].lr_u;
-      vstd[2].v1 = texUV[1].ul_v;
-    }
-
-    VERTEX *vptr = vstd;
-    int n_vertices = 4;
-
-    AllowShadeMods (vptr, n_vertices);
-    for (i=0; i<n_vertices; i++)
-    {
-      apply_shade_mods (&vptr[i]);
-    }
-
-    {
-      if (rdp.fog_mode >= FOG_MODE_BLEND)
-      {
-        float fog;
-        if (rdp.fog_mode == FOG_MODE_BLEND)
-          fog = 1.0f/max(1, rdp.fog_color&0xFF);
-        else
-          fog = 1.0f/max(1, (~rdp.fog_color)&0xFF);
-        for (i = 0; i < n_vertices; i++)
-        {
-          vptr[i].f = fog;
-        }
-        grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
-      }
-
-      ConvertCoordsConvert (vptr, n_vertices);
-
-      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, n_vertices, vptr, sizeof(VERTEX));
-
+   if ((settings.ucode == ucode_CBFD) && rdp.cur_image && rdp.cur_image->format)
+   {
+      //FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.timg.addr, rdp.maincimg[1].addr, rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size);
+      //LRDP("Shadow texrect is skipped.\n");
       rdp.tri_n += 2;
-    }
+      return;
+   }
+#endif
+
+   if ((settings.ucode == ucode_PerfectDark) && (rdp.frame_buffers[rdp.ci_count-1].status == CI_ZCOPY))
+   {
+      // Copy depth buffer */
+      pd_zcopy(w0, w1);
+      rdp.tri_n += 2;
+      return;
+   }
+
+   if ((rdp.othermode_l >> 16) == 0x3c18 && rdp.cycle1 == 0x03ffffff && rdp.cycle2 == 0x01ff1fff) //depth image based fog
+   {
+      if (!depth_buffer_fog)
+         return;
+      if (settings.fog)
+         DrawDepthBufferFog();
+      depth_buffer_fog = false;
+      return;
+   }
+
+   //  FRDP ("rdp.cycle1 %08lx, rdp.cycle2 %08lx\n", rdp.cycle1, rdp.cycle2);
+
+   if (rdp.cycle_mode == G_CYC_COPY)
+   {
+      ul_x = max(0.0f, (int16_t)((w1 & 0x00FFF000) >> 14));
+      ul_y = max(0.0f, (int16_t)((w1 & 0x00000FFF) >> 2));
+      lr_x = max(0.0f, (int16_t)((w0 & 0x00FFF000) >> 14));
+      lr_y = max(0.0f, (int16_t)((w0 & 0x00000FFF) >> 2));
+   }
+   else
+   {
+      ul_x = max(0.0f, ((int16_t)((w1 & 0x00FFF000) >> 12)) / 4.0f);
+      ul_y = max(0.0f, ((int16_t)(w1 & 0x00000FFF)) / 4.0f);
+      lr_x = max(0.0f, ((int16_t)((w0 & 0x00FFF000) >> 12)) / 4.0f);
+      lr_y = max(0.0f, ((int16_t)(w0 & 0x00000FFF)) / 4.0f);
+   }
+
+   if (ul_x >= lr_x) // Wrong texrect
+      return;
+
+   if (rdp.cycle_mode > G_CYC_2CYCLE)
+   {
+      lr_x += 1.0f;
+      lr_y += 1.0f;
+   }
+   else if (lr_y - ul_y < 1.0f)
+      lr_y = ceil(lr_y);
+
+   if (settings.increase_texrect_edge)
+   {
+      if (glide64_floor(lr_x) != lr_x)
+         lr_x = ceil(lr_x);
+      if (glide64_floor(lr_y) != lr_y)
+         lr_y = ceil(lr_y);
+   }
+
+   //*
+#ifdef HAVE_HWFBE
+   if (rdp.tbuff_tex && (settings.frame_buffer & fb_optimize_texrect))
+   {
+      LRDP("Attempt to optimize texrect\n");
+      if (!rdp.tbuff_tex->drawn)
+      {
+         DRAWIMAGE d;
+         d.imageX  = 0;
+         d.imageW  = (uint16_t)rdp.tbuff_tex->width;
+         d.frameX  = (uint16_t)ul_x;
+         d.frameW  = (uint16_t)(rdp.tbuff_tex->width);
+
+         d.imageY  = 0;
+         d.imageH  = (uint16_t)rdp.tbuff_tex->height;
+         d.frameY  = (uint16_t)ul_y;
+         d.frameH  = (uint16_t)(rdp.tbuff_tex->height);
+         FRDP("texrect. ul_x: %d, ul_y: %d, lr_x: %d, lr_y: %d, width: %d, height: %d\n", ul_x, ul_y, lr_x, lr_y, rdp.tbuff_tex->width, rdp.tbuff_tex->height);
+         d.scaleX  = 1.0f;
+         d.scaleY  = 1.0f;
+         DrawHiresImage(&d, rdp.tbuff_tex->width == rdp.ci_width);
+         rdp.tbuff_tex->drawn = true;
+      }
+      return;
+   }
+#endif
+   // framebuffer workaround for Zelda: MM LOT
+   if ((rdp.othermode_l & 0xFFFF0000) == 0x0f5a0000)
+      return;
+
+   /*Gonetz*/
+   //hack for Zelda MM. it removes black texrects which cover all geometry in "Link meets Zelda" cut scene
+   if ((settings.hacks&hack_Zelda) && rdp.timg.addr >= rdp.cimg && rdp.timg.addr < rdp.ci_end)
+   {
+      FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.cur_cache[0]->addr, rdp.cimg, rdp.cimg+rdp.ci_width*rdp.ci_height*2);
+      rdp.tri_n += 2;
+      return;
+   }
+   //*
+   //hack for Banjo2. it removes black texrects under Banjo
+   if (!fb_hwfbe_enabled && ((rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF)) == 0xFFFFFFFF && (rdp.othermode_l & 0xFFFF0000) == 0x00500000)
+   {
+      rdp.tri_n += 2;
+      return;
+   }
+   //*/
+   //*
+   //remove motion blur in night vision
+   if ((settings.ucode == ucode_PerfectDark) && (rdp.maincimg[1].addr != rdp.maincimg[0].addr) && (rdp.timg.addr >= rdp.maincimg[1].addr) && (rdp.timg.addr < (rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size)))
+   {
+      if (fb_emulation_enabled)
+         if (rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF)
+         {
+            //FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.timg.addr, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width*rdp.ci_height*rdp.ci_size);
+            LRDP("Wrong Texrect.\n");
+            rdp.tri_n += 2;
+            return;
+         }
+   }
+
+   gSPTextureRectangle(
+         ul_x,                             /* ul_x */
+         ul_y,                             /* ul_y */
+         lr_x,                             /* lr_x */
+         lr_y,                             /* lr_y */
+         (w1 & 0x07000000) >> 24,          /* tile */
+         (rdp.cmd2 >> 16) & 0xFFFF,        /* s - FIXME - not sure if correct to pass here */
+         rdp.cmd2 & 0xFFFF,                /* t - FIXME - not sure if correct to pass here */
+         ((rdp.cmd3 & 0xFFFF0000) >> 16),  /* dsdx */
+         (rdp.cmd3 & 0x0000FFFF),          /* dtdy */
+         ((w0 >> 24)&0xFF)                 /* flip - FIXME - not spec conformant */
+         );
 }
 
 static void rdp_loadsync(uint32_t w0, uint32_t w1)
