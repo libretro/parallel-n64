@@ -240,6 +240,19 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
        ROM_SETTINGS.rumble = 1;
        DebugMessage(M64MSG_INFO, "Neon Genesis Evangelion INI patches applied.");
     }
+        else if(
+          (sl(ROM_HEADER.CRC1) == 0x19AB29AF && sl(ROM_HEADER.CRC2) == 0xC71BCD28)
+          || (sl(ROM_HEADER.CRC1) == 0x65EEE53A  && sl(ROM_HEADER.CRC2) == 0xED7D733C)
+          || (sl(ROM_HEADER.CRC1) == 0x85F5A08A  && sl(ROM_HEADER.CRC2) == 0xEAC7053E)
+          || (sl(ROM_HEADER.CRC1) == 0x3BA7CDDC  && sl(ROM_HEADER.CRC2) == 0x464E52A0)
+          )
+    {
+       strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+       ROM_SETTINGS.savetype = FLASH_RAM;
+       ROM_SETTINGS.players = 1;
+       ROM_SETTINGS.rumble = 1;
+       DebugMessage(M64MSG_INFO, "Paper Mario INI patches applied.");
+    }
     /* Look up this ROM in the .ini file and fill in goodname, etc */
     else if ((entry=ini_search_by_md5(digest)) != NULL ||
         (entry=ini_search_by_crc(sl(ROM_HEADER.CRC1),sl(ROM_HEADER.CRC2))) != NULL)
