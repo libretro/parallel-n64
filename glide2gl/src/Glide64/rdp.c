@@ -1395,19 +1395,19 @@ static void rdp_setkeyr(uint32_t w0, uint32_t w1)
    gDPSetKeyR(
          (w1 >> 8) & 0xFF,    /* cR */
          w1 & 0xFF,           /* sR */
-         0                    /* wR */
+         (w1 >> 16) & 0xFFF   /* wR */
          );
 }
 
 static void rdp_setconvert(uint32_t w0, uint32_t w1)
 {
    gDPSetConvert(
-         0,                    /* k0 */
-         0,                    /* k1 */
-         0,                    /* k2 */
-         0,                    /* k3 */
-         (w1 >> 9) & 0x1FF,    /* k4 */
-         (w1 & 0x1FF)          /* k5 */
+         (w0 >> 13) & 0x1ff,                       /* k0 */
+         (w0 >> 4) & 0x1ff,                        /* k1 */
+         ((w1 & 0xf) << 5) | ((w2 >> 27) & 0x1f),  /* k2 */
+         (w1 >> 18) & 0x1ff,                       /* k3 */
+         (w1 >> 9) & 0x1FF,                        /* k4 */
+         (w1 & 0x1FF)                              /* k5 */
          );
 }
 
