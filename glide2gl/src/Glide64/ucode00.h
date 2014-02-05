@@ -127,7 +127,7 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
 
    switch (command)
    {
-      case 0: // modelview mul nopush
+      case G_MTX_NOPUSH: // modelview mul nopush
          //LRDP("modelview mul\n");
          modelview_mul (m);
          break;
@@ -138,7 +138,7 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
          projection_mul(m);
          break;
 
-      case 2: // modelview load nopush
+      case G_MTX_LOAD: // modelview load nopush
          //LRDP("modelview load\n");
          modelview_load(m);
          break;
@@ -336,43 +336,12 @@ static void uc0_enddl(uint32_t w0, uint32_t w1)
 
 static void uc0_culldl(uint32_t w0, uint32_t w1)
 {
-   uint16_t i;
-   uint8_t vStart = (uint8_t)((w0 & 0x00FFFFFF) / 40) & 0xF;
-   uint8_t vEnd = (uint8_t)(w1 / 40) & 0x0F;
-   uint32_t cond = 0;
-   VERTEX *v;
+   gSPCullDisplayList(
+         ((w0 & 0x00FFFFFF) / 40) & 0xF,     /* v0 */
+         (w1 / 40) & 0x0F                    /* vn */
+         );
 
    //FRDP("uc0:culldl start: %d, end: %d\n", vStart, vEnd);
-
-   if (vEnd < vStart)
-      return;
-
-   for (i = vStart; i <= vEnd; i++)
-   {
-      v = (VERTEX*)&rdp.vtx[i];
-
-      /*
-       * Check if completely off the screen
-       * (quick frustrum clipping for 90 FOV)
-       */
-
-      if (v->x >= -v->w)
-         cond |= X_CLIP_MAX;
-      if (v->x <= v->w)
-         cond |= X_CLIP_MIN;
-      if (v->y >= -v->w)
-         cond |= Y_CLIP_MAX;
-      if (v->y <= v->w)
-         cond |= Y_CLIP_MIN;
-      if (v->w >= 0.1f)
-         cond |= Z_CLIP_MAX;
-
-      if (cond == 0x1F)
-         return;
-   }
-
-   LRDP(" - ");  // specify that the enddl is not a real command
-   uc0_enddl(w0, w1);
 }
 
 static void uc0_popmatrix(uint32_t w0, uint32_t w1)

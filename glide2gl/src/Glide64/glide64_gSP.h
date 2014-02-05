@@ -545,6 +545,52 @@ static void gSPEndDisplayList(void)
 }
 
 /*
+ * Does volume culling.
+ *
+ * This macro measuers whether or not the viewing volume and bounding volumes
+ * intersect. If the bounding volume of an object is completely outside of the
+ * viewing volume, this function operates like the gSPEndDisplayList macro,
+ * and the remaining portion of the display list is skipped.
+ *
+ * v0 - Index of first vertex to check (v0 < vn).
+ * v1 - Index of the last vertex check (vn > v0).
+ */
+static void gSPCullDisplayList(uint32_t v0, uint32_t vn)
+{
+   uint32_t i, cond;
+   VERTEX *v;
+
+   if (vn < v0)
+      return;
+
+   for (i = v0; i <= vn; i++)
+   {
+      v = (VERTEX*)&rdp.vtx[i];
+
+      /*
+       * Check if completely off the screen
+       * (quick frustrum clipping for 90 FOV)
+       */
+
+      if (v->x >= -v->w)
+         cond |= X_CLIP_MAX;
+      if (v->x <= v->w)
+         cond |= X_CLIP_MIN;
+      if (v->y >= -v->w)
+         cond |= Y_CLIP_MAX;
+      if (v->y <= v->w)
+         cond |= Y_CLIP_MIN;
+      if (v->w >= 0.1f)
+         cond |= Z_CLIP_MAX;
+
+      if (cond == 0x1F)
+         return;
+   }
+
+   gSPEndDisplayList();
+}
+
+/*
  * Sets the segment register and the base address.
  *
  * All pointers in the display list in the Reality Co-Processor (RCP)

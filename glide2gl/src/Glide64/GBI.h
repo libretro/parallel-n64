@@ -414,6 +414,15 @@ extern "C" {
 #define Z_CLIP_MAX  0x10
 #define Z_CLIP_MIN  0x20
 
+// G_MTX: parameter flags
+# define G_MTX_MODELVIEW	0x00	/* matrix types */
+# define G_MTX_PROJECTION	0x04
+# define G_MTX_MUL		0x00	/* concat or load */
+# define G_MTX_LOAD		0x02
+# define G_MTX_NOPUSH		0x00	/* push or not */
+# define G_MTX_PUSH		0x01
+
+
 #ifdef __cplusplus
 }
 #endif
