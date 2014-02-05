@@ -43,9 +43,11 @@
 
 static void uc4_vertex(uint32_t w0, uint32_t w1)
 {
-   int v0 = 0;     // Current vertex
-   int n = ((w0 >> 4) & 0xFFF) / 33 + 1; // Number of vertices to copy
-   rsp_vertex(v0, n);
+   gSPVertex(
+         RSP_SegmentToPhysical(w1),        /* v - Current vertex */
+         ((w0 >> 4) & 0xFFF) / 33 + 1,     /* n - Number of vertices to copy */
+         0                                 /* v0 */
+         );
 }
 
 static void uc4_tri1(uint32_t w0, uint32_t w1)

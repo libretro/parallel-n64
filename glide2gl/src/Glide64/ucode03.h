@@ -52,7 +52,11 @@ static void uc3_vertex(uint32_t w0, uint32_t w1)
    if ((v0 + n) > 32)
       n = 32 - v0;
 
-   rsp_vertex(v0, n);
+   gSPVertex(
+         RSP_SegmentToPhysical(w1),        /* v - Current vertex */
+         n,                                /* n - Number of vertices to copy */
+         v0                                /* v0 */
+         );
 }
 
 //

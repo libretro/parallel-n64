@@ -38,110 +38,16 @@
 //****************************************************************
 #include "GBI.h"
 
-static void rsp_vertex(int v0, int n)
-{
-   uint32_t addr = RSP_SegmentToPhysical(rdp.cmd1);
-   int i;
-   float x, y, z;
-
-   rdp.v0 = v0; // Current vertex
-   rdp.vn = n;  // Number to copy
-
-   // This is special, not handled in update(), but here
-   // Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
-   if (rdp.update & UPDATE_MULT_MAT)
-      gSPCombineMatrices();
-
-   // This is special, not handled in update()
-   if (rdp.update & UPDATE_LIGHTS)
-   {
-      uint32_t l;
-      rdp.update ^= UPDATE_LIGHTS;
-
-      // Calculate light vectors
-      for (l = 0; l < rdp.num_lights; l++)
-      {
-         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
-         NormalizeVector (rdp.light_vector[l]);
-      }
-   }
-
-   //FRDP ("rsp:vertex v0:%d, n:%d, from: %08lx\n", v0, n, addr);
-
-   for (i=0; i < (n<<4); i+=16)
-   {
-      VERTEX *v = (VERTEX*)&rdp.vtx[v0 + (i>>4)];
-      int16_t *rdram = (int16_t*)gfx.RDRAM;
-      x   = (float)rdram[(((addr+i) >> 1) + 0)^1];
-      y   = (float)rdram[(((addr+i) >> 1) + 1)^1];
-      z   = (float)rdram[(((addr+i) >> 1) + 2)^1];
-      v->flags  = ((uint16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 3)^1];
-      v->ou = (float)rdram[(((addr+i) >> 1) + 4)^1];
-      v->ov = (float)rdram[(((addr+i) >> 1) + 5)^1];
-      v->uv_scaled = 0;
-      v->a    = ((uint8_t*)gfx.RDRAM)[(addr+i + 15)^3];
-
-      v->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
-      v->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
-      v->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
-      v->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
-
-
-      if (fabs(v->w) < 0.001) v->w = 0.001f;
-      v->oow = 1.0f / v->w;
-      v->x_w = v->x * v->oow;
-      v->y_w = v->y * v->oow;
-      v->z_w = v->z * v->oow;
-      CalculateFog (v);
-
-      v->uv_calculated = 0xFFFFFFFF;
-      v->screen_translated = 0;
-      v->shade_mod = 0;
-
-      v->scr_off = 0;
-      if (v->x < -v->w) v->scr_off |= 1;
-      if (v->x > v->w) v->scr_off |= 2;
-      if (v->y < -v->w) v->scr_off |= 4;
-      if (v->y > v->w) v->scr_off |= 8;
-      if (v->w < 0.1f) v->scr_off |= 16;
-      //    if (v->z_w > 1.0f) v->scr_off |= 32;
-
-      if (rdp.geom_mode & G_LIGHTING)
-      {
-         int8_t *rdram = (int8_t*)gfx.RDRAM;
-         v->vec[0] = rdram[(addr+i + 12)^3];
-         v->vec[1] = rdram[(addr+i + 13)^3];
-         v->vec[2] = rdram[(addr+i + 14)^3];
-         if (rdp.geom_mode & G_TEXTURE_GEN)
-         {
-            if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
-               calc_linear (v);
-            else
-               calc_sphere (v);
-         }
-         NormalizeVector (v->vec);
-
-         calc_light (v);
-      }
-      else
-      {
-         uint8_t *rdram = (uint8_t*)gfx.RDRAM;
-         v->r = rdram[(addr+i + 12)^3];
-         v->g = rdram[(addr+i + 13)^3];
-         v->b = rdram[(addr+i + 14)^3];
-      }
-      //FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
-   }
-}
-
 //
 // uc0:vertex - loads vertices
 //
 static void uc0_vertex(uint32_t w0, uint32_t w1)
 {
-  int v0 = (w0 >> 16) & 0xF;      // Current vertex
-  int n = ((w0 >> 20) & 0xF) + 1; // Number of vertices to copy
-  rsp_vertex(v0, n);
+   gSPVertex(
+         RSP_SegmentToPhysical(w1),       /* v - Current vertex */
+         ((w0 >> 20) & 0xF) + 1,          /* n - Number of vertices to copy */
+         (w0 >> 16) & 0xF                 /* v0 */
+         );
 }
 
 // ** Definitions **

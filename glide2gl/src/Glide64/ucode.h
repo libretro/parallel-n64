@@ -117,8 +117,6 @@ static void projection_load (float m[4][4]);
 static void projection_mul (float m[4][4]);
 static void load_matrix (float m[4][4], uint32_t addr);
 
-static void rsp_vertex(int v0, int n);
-
 static float set_sprite_combine_mode(void);
 
 //ucode 00
