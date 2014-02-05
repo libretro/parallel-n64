@@ -1414,10 +1414,10 @@ static void rdp_setconvert(uint32_t w0, uint32_t w1)
 static void rdp_setscissor(uint32_t w0, uint32_t w1)
 {
    gDPSetScissor(0,
-         /*min(*/(uint32_t)(((w0 & 0x00FFF000) >> 14))/*, 320)*/,
-         /*min(*/(uint32_t)(((w0 & 0x00000FFF) >> 2))/*, 240)*/,
-         /*min(*/(uint32_t)(((w1 & 0x00FFF000) >> 14))/*, 320)*/,
-         /*min(*/(uint32_t)(((w1 & 0x00000FFF) >> 2))/*, 240)*/
+         ((w0 >> 12) & 0xFFF) >> 2,   /* ulx */
+         ((w0 >> 0) & 0xFFF) >> 2,    /* uly */
+         ((w1 >> 12) & 0xFFF) >> 2,   /* lrx */
+         ((w1 >> 0) & 0xFFF) >> 2     /* lry */
          );
 }
 
