@@ -1944,9 +1944,12 @@ void DetectFrameBufferUsage(void)
    if (dlist_start == 0)
       return;
 
+#ifdef HAVE_HWFBE
    int tidal = false;
    if ((settings.hacks&hack_PMario) && (rdp.copy_ci_index || rdp.frame_buffers[rdp.copy_ci_index].status == CI_COPY_SELF))
       tidal = true;
+#endif
+
    uint32_t ci = rdp.cimg, zi = rdp.zimg;
    uint32_t ci_height = rdp.frame_buffers[(rdp.ci_count > 0)?rdp.ci_count-1:0].height;
    rdp.main_ci = rdp.main_ci_end = rdp.main_ci_bg = rdp.ci_count = 0;
