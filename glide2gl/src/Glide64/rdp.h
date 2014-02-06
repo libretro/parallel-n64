@@ -812,8 +812,9 @@ extern const char *CIStatus[];
 #define FBL_D_0 3
 
 #ifndef HIWORD
-#define HIWORD(a) ((unsigned int)(a) >> 16)
+#define HIWORD(a) ((uint32_t)(a) >> 16)
 #endif
+
 #ifndef LOWORD
 #define LOWORD(a) ((a) & 0xFFFF)
 #endif

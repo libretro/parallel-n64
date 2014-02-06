@@ -134,22 +134,6 @@ typedef struct DRAWIMAGE_t {
   float scaleY;
 } DRAWIMAGE;
 
-typedef struct DRAWOBJECT_t {
-  float objX;
-  float objY;
-  float scaleW;
-  float scaleH;
-  int16_t imageW;
-  int16_t imageH;
-
-  uint16_t  imageStride;
-  uint16_t  imageAdrs;
-  uint8_t  imageFmt;
-  uint8_t  imageSiz;
-  uint8_t  imagePal;
-  uint8_t  imageFlags;
-} DRAWOBJECT;
-
 #ifdef HAVE_HWFBE
 static void DrawHiresDepthImage (const DRAWIMAGE *d)
 {
@@ -687,14 +671,6 @@ void DrawHiresImage(DRAWIMAGE *d, int screensize)
 
 //****************************************************************
 
-
-struct MAT2D {
-  float A, B, C, D;
-  float X, Y;
-  float BaseScaleX;
-  float BaseScaleY;
-} mat_2d = {1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
-
 static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
 {
    uint32_t addr = segoffset(rdp.cmd1) >> 1;
@@ -1065,56 +1041,7 @@ static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
 
 static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
 {
-   int i;
-  LRDP ("uc6:obj_sprite ");
-  DRAWOBJECT d;
-  uc6_read_object_data(&d);
-  uc6_init_tile(&d);
-
-  float Z = set_sprite_combine_mode();
-
-  float ul_x = d.objX;
-  float lr_x = d.objX + d.imageW / d.scaleW;
-  float ul_y = d.objY;
-  float lr_y = d.objY + d.imageH / d.scaleH;
-  float ul_u, ul_v;
-  float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
-  float lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
-
-  if (d.imageFlags & G_BG_FLAG_FLIPS) /* flipS */
-  {
-    ul_u = lr_u;
-    lr_u = 0.5f;
-  }
-  else
-    ul_u = 0.5f;
-  if (d.imageFlags & G_BG_FLAG_FLIPT) /* flipT */
-  {
-    ul_v = lr_v;
-    lr_v = 0.5f;
-  }
-  else
-    ul_v = 0.5f;
-
-  // Make the vertices
-  //    FRDP("scale_x: %f, scale_y: %f\n", rdp.cur_cache[0]->scale_x, rdp.cur_cache[0]->scale_y);
-
-  VERTEX v[4] = {
-    { ul_x, ul_y, Z, 1, ul_u, ul_v },
-    { lr_x, ul_y, Z, 1, lr_u, ul_v },
-    { ul_x, lr_y, Z, 1, ul_u, lr_v },
-    { lr_x, lr_y, Z, 1, lr_u, lr_v }
-  };
-
-  for (i = 0; i < 4; i++)
-  {
-    float x = v[i].x;
-    float y = v[i].y;
-    v[i].x = (x * mat_2d.A + y * mat_2d.B + mat_2d.X) * rdp.scale_x;
-    v[i].y = (x * mat_2d.C + y * mat_2d.D + mat_2d.Y) * rdp.scale_y;
-  }
-
-  uc6_draw_polygons (v);
+   gSPObjSprite();
 }
 
 static void uc6_obj_movemem(uint32_t w0, uint32_t w1)
@@ -1291,12 +1218,7 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
 
 static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc6:obj_ldtx_sprite\n");
-
-   uint32_t addr = rdp.cmd1;
-   gSPObjLoadTxtr(w1);
-   rdp.cmd1 = addr + 24;
-   uc6_obj_sprite(w0, w1);
+   gSPObjLoadTxSprite(w1);
 }
 
 static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1)

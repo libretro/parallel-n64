@@ -1,3 +1,27 @@
+typedef struct DRAWOBJECT_t
+{
+  float objX;
+  float objY;
+  float scaleW;
+  float scaleH;
+  int16_t imageW;
+  int16_t imageH;
+
+  uint16_t  imageStride;
+  uint16_t  imageAdrs;
+  uint8_t  imageFmt;
+  uint8_t  imageSiz;
+  uint8_t  imagePal;
+  uint8_t  imageFlags;
+} DRAWOBJECT;
+
+struct MAT2D {
+  float A, B, C, D;
+  float X, Y;
+  float BaseScaleX;
+  float BaseScaleY;
+} mat_2d = {1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
+
 // positional and texel coordinate clipping
 #define CCLIP(ux,lx,ut,lt,uc,lc) \
 		if (ux > lx || lx < uc || ux > lc) { rdp.tri_n += 2; return; } \
@@ -29,6 +53,9 @@
 
 //forward decls
 extern void glide64SPClipVertex(uint32_t i);
+static void uc6_draw_polygons (VERTEX v[4]);
+static void uc6_read_object_data (DRAWOBJECT *d);
+static void uc6_init_tile(const DRAWOBJECT *d);
 
 int dzdx = 0;
 int deltaZ = 0;
@@ -1648,4 +1675,85 @@ static void gSPObjLoadTxtr(uint32_t tx )
          break;
    }
    //LRDP("uc6:obj_loadtxtr ");
+}
+
+/*
+ * Draws rotating spites using the data in the 2D matrix.
+ * One of the three sprite-drawing macros that are part of
+ * the S2DEX microcode.
+ * FIXME - not spec conformant.
+ * */
+static void gSPObjSprite(void)
+{
+   int i;
+   float Z, ul_x, lr_x, ul_y, lr_y, ul_u, ul_v, lr_u, lr_v;
+   DRAWOBJECT d;
+
+   //LRDP ("uc6:obj_sprite ");
+
+   uc6_read_object_data(&d);
+   uc6_init_tile(&d);
+
+   Z = set_sprite_combine_mode();
+
+   ul_x = d.objX;
+   lr_x = d.objX + d.imageW / d.scaleW;
+   ul_y = d.objY;
+   lr_y = d.objY + d.imageH / d.scaleH;
+   lr_u = 255.0f * rdp.cur_cache[0]->scale_x;
+   lr_v = 255.0f * rdp.cur_cache[0]->scale_y;
+
+   ul_u = 0.5f;
+   ul_v = 0.5f;
+   if (d.imageFlags & G_BG_FLAG_FLIPS) /* flipS */
+   {
+      ul_u = lr_u;
+      lr_u = 0.5f;
+   }
+   if (d.imageFlags & G_BG_FLAG_FLIPT) /* flipT */
+   {
+      ul_v = lr_v;
+      lr_v = 0.5f;
+   }
+
+   // Make the vertices
+   //    FRDP("scale_x: %f, scale_y: %f\n", rdp.cur_cache[0]->scale_x, rdp.cur_cache[0]->scale_y);
+
+   VERTEX v[4] = {
+      { ul_x, ul_y, Z, 1, ul_u, ul_v },
+      { lr_x, ul_y, Z, 1, lr_u, ul_v },
+      { ul_x, lr_y, Z, 1, ul_u, lr_v },
+      { lr_x, lr_y, Z, 1, lr_u, lr_v }
+   };
+
+   for (i = 0; i < 4; i++)
+   {
+      float x = v[i].x;
+      float y = v[i].y;
+      v[i].x = (x * mat_2d.A + y * mat_2d.B + mat_2d.X) * rdp.scale_x;
+      v[i].y = (x * mat_2d.C + y * mat_2d.D + mat_2d.Y) * rdp.scale_y;
+   }
+
+   uc6_draw_polygons (v);
+}
+
+/*
+ * Performs the texture load operation and then
+ * draws a rotating sprite by using the data stored
+ * in the 2D matrix.
+ *
+ * It is one of the three compound-processing macros
+ * that are part of the S2DEX microcode. Essentially,
+ * this macro does the work of two macros (gSPObjLoadTxtr
+ * and gSPObjSprite) with one macro
+ *
+ * txsp - pointer to theUObjTxSprite structure that holds
+ *        the texture loading and sprite drawing data
+ */
+static void gSPObjLoadTxSprite(uint32_t txsp)
+{
+   gSPObjLoadTxtr(txsp);
+   rdp.cmd1 = txsp + 24;
+   gSPObjSprite();
+   //LRDP("uc6:obj_ldtx_sprite\n");
 }
