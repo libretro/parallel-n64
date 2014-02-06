@@ -2778,30 +2778,26 @@ output:   none
 *******************************************************************/
 EXPORT void CALL ProcessRDPList(void)
 {
-#ifdef VISUAL_LOGGING
-   VLOG ("ProcessRDPList ()\n");
-   LRDP("ProcessRDPList ()\n");
-#endif
-
+   int32_t length;
    uint32_t i;
-   uint32_t cmd, length, cmd_length;
+   uint32_t cmd, cmd_length;
+
    rdp_cmd_ptr = 0;
    rdp_cmd_cur = 0;
-
-   if (dp_end <= dp_current) return;
    length = dp_end - dp_current;
+
+   if (dp_end <= dp_current)
+      return;
+
+   if (length < 0)
+   {
+      dp_current = dp_end;
+      return;
+   }
 
    // load command data
    for (i=0; i < length; i += 4)
-   {
-      rdp_cmd_data[rdp_cmd_ptr++] = READ_RDP_DATA(dp_current + i);
-#ifdef VISUAL_LOGGING
-      if (rdp_cmd_ptr >= 0x1000)
-      {
-         FRDP("rdp_process_list: rdp_cmd_ptr overflow %x %x --> %x\n", length, dp_current, dp_end);
-      }
-#endif
-   }
+      rdp_cmd_data[rdp_cmd_ptr++] = READ_RDP_DATA((dp_current & 0x1fffffff) + i);
 
    dp_current = dp_end;
 
@@ -2811,7 +2807,9 @@ EXPORT void CALL ProcessRDPList(void)
    // check if more data is needed
    if (cmd_length < rdp_command_length[cmd])
       return;
+
    rdp.LLE = true;
+
    while (rdp_cmd_cur < rdp_cmd_ptr)
    {
       cmd = (rdp_cmd_data[rdp_cmd_cur] >> 24) & 0x3f;
@@ -2824,6 +2822,7 @@ EXPORT void CALL ProcessRDPList(void)
       rdp.cmd1 = rdp_cmd_data[rdp_cmd_cur+1];
       rdp.cmd2 = rdp_cmd_data[rdp_cmd_cur+2];
       rdp.cmd3 = rdp_cmd_data[rdp_cmd_cur+3];
+
       rdp_command_table[cmd](rdp.cmd0, rdp.cmd1);
 
       rdp_cmd_cur += rdp_command_length[cmd] / 4;
@@ -2832,4 +2831,6 @@ EXPORT void CALL ProcessRDPList(void)
    rdp.LLE = false;
    dp_start = dp_end;
    dp_status &= ~0x0002;
+   rdp_cmd_cur = 0;
+   rdp_cmd_ptr = 0;
 }
