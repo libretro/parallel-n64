@@ -143,8 +143,6 @@ static void t3d_vertex(uint32_t addr, uint32_t v0, uint32_t n)
    uint32_t i;
    float x, y, z;
 
-   rdp.v0 = v0; // Current vertex
-   rdp.vn = n; // Number of vertices to copy
    n <<= 4;
 
    for (i = 0; i < n; i+=16)

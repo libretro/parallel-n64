@@ -337,8 +337,6 @@ void rdp_new(void)
    rdp.vtxbuf2 = 0;
    rdp.vtx_buffer = 0;
    rdp.n_global = 0;
-   rdp.v0 = 0;
-   rdp.vn = 0;
 
    for (i = 0; i < MAX_TMU; i++)
    {

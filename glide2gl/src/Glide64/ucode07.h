@@ -86,8 +86,7 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
    uint32_t v0, i, n;
    float x, y, z;
 
-   rdp.v0 = v0 = (w0 & 0x0F0000) >> 16;
-   rdp.vn = n = ((w0 & 0xF00000) >> 20) + 1;
+   v0 = (w0 & 0x0F0000) >> 16;
 
    FRDP ("uc7:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
 

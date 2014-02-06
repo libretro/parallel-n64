@@ -96,7 +96,11 @@ static void calc_point_light (VERTEX *v, float * vpos)
 
 static void uc2_vertex_neon(uint32_t w0, uint32_t w1)
 {
-   uint32_t i, l;
+   uint32_t i, l, addr, geom_mode;
+   int v0, n;
+   float x, y, z;
+   float32x4_t comb0, comb1, comb2, comb3;
+   float32x4_t v_xyzw;
    
    if (!(w0 & 0x00FFFFFF))
    {
@@ -104,48 +108,25 @@ static void uc2_vertex_neon(uint32_t w0, uint32_t w1)
       return;
    }
 
-   // This is special, not handled in update(), but here
-   // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
-   if (rdp.update & UPDATE_MULT_MAT)
-      gSPCombineMatrices();
+   pre_update();
 
-   if (rdp.update & UPDATE_LIGHTS)
-   {
-      rdp.update ^= UPDATE_LIGHTS;
+   addr = segoffset(w1);
 
-      // Calculate light vectors
-      for (l = 0; l < rdp.num_lights; l++)
-      {
-         InverseTransformVector(&rdp.light[l].dir_x, rdp.light_vector[l], rdp.model);
-         NormalizeVector (rdp.light_vector[l]);
-      }
-   }
-
-   uint32_t addr = segoffset(w1);
-   int v0, n;
-   float x, y, z;
-
-   rdp.vn = n = (w0 >> 12) & 0xFF;
-   rdp.v0 = v0 = ((w0 >> 1) & 0x7F) - n;
+   n = (w0 >> 12) & 0xFF;
+   v0 = ((w0 >> 1) & 0x7F) - n;
 
    FRDP ("uc2:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
 
    if (v0 < 0)
-   {
-      RDP_E ("** ERROR: uc2:vertex v0 < 0\n");
-      LRDP("** ERROR: uc2:vertex v0 < 0\n");
       return;
-   }
 
-   uint32_t geom_mode = rdp.geom_mode;
+   geom_mode = rdp.geom_mode;
    if ((settings.hacks&hack_Fzero) && (rdp.geom_mode & G_TEXTURE_GEN))
    {
       if (((int16_t*)gfx.RDRAM)[(((addr) >> 1) + 4)^1] || ((int16_t*)gfx.RDRAM)[(((addr) >> 1) + 5)^1])
          rdp.geom_mode ^= G_TEXTURE_GEN;
    }
 
-   float32x4_t comb0, comb1, comb2, comb3;
-   float32x4_t v_xyzw;
    comb0 = vld1q_f32(rdp.combined[0]);
    comb1 = vld1q_f32(rdp.combined[1]);
    comb2 = vld1q_f32(rdp.combined[2]);
@@ -237,7 +218,9 @@ static void uc2_vertex_neon(uint32_t w0, uint32_t w1)
 
 static void uc2_vertex(uint32_t w0, uint32_t w1)
 {
-   uint32_t i, l;
+   uint32_t i, l, addr;
+   int v0, n;
+   float x, y, z;
    
    if (!(w0 & 0x00FFFFFF))
    {
@@ -245,38 +228,17 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
       return;
    }
 
-   // This is special, not handled in update(), but here
-   // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
-   if (rdp.update & UPDATE_MULT_MAT)
-      gSPCombineMatrices();
+   pre_update();
 
-   if (rdp.update & UPDATE_LIGHTS)
-   {
-      rdp.update ^= UPDATE_LIGHTS;
+   addr = segoffset(w1);
 
-      // Calculate light vectors
-      for (l = 0; l < rdp.num_lights; l++)
-      {
-         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
-         NormalizeVector (rdp.light_vector[l]);
-      }
-   }
-
-   uint32_t addr = segoffset(w1);
-   int v0, n;
-   float x, y, z;
-
-   rdp.vn = n = (w0 >> 12) & 0xFF;
-   rdp.v0 = v0 = ((w0 >> 1) & 0x7F) - n;
+   n = (w0 >> 12) & 0xFF;
+   v0 = ((w0 >> 1) & 0x7F) - n;
 
    FRDP ("uc2:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
 
    if (v0 < 0)
-   {
-      RDP_E ("** ERROR: uc2:vertex v0 < 0\n");
-      LRDP("** ERROR: uc2:vertex v0 < 0\n");
       return;
-   }
 
    uint32_t geom_mode = rdp.geom_mode;
    if ((settings.hacks&hack_Fzero) && (rdp.geom_mode & G_TEXTURE_GEN))
@@ -285,88 +247,11 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
          rdp.geom_mode ^= G_TEXTURE_GEN;
    }
 
-   for (i=0; i < (n<<4); i+=16)
-   {
-      VERTEX *v = &rdp.vtx[v0 + (i>>4)];
-      x   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 0)^1];
-      y   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 1)^1];
-      z   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 2)^1];
-      v->flags  = ((uint16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 3)^1];
-      v->ou   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 4)^1];
-      v->ov   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 5)^1];
-      v->uv_scaled = 0;
-      v->a    = ((uint8_t*)gfx.RDRAM)[(addr+i + 15)^3];
-
-      v->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
-      v->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
-      v->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
-      v->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
-
-      v->uv_calculated = 0xFFFFFFFF;
-      v->screen_translated = 0;
-      v->shade_mod = 0;
-
-      if (fabs(v->w) < 0.001) v->w = 0.001f;
-      v->oow = 1.0f / v->w;
-      v->x_w = v->x * v->oow;
-      v->y_w = v->y * v->oow;
-      v->z_w = v->z * v->oow;
-      CalculateFog (v);
-
-
-      v->scr_off = 0;
-      if (v->x < -v->w)
-         v->scr_off |= 1;
-      if (v->x > v->w)
-         v->scr_off |= 2;
-      if (v->y < -v->w)
-         v->scr_off |= 4;
-      if (v->y > v->w)
-         v->scr_off |= 8;
-      if (v->w < 0.1f)
-         v->scr_off |= 16;
-#if 0
-      if (v->z_w > 1.0f)
-         v->scr_off |= 32;
-#endif
-
-      if (rdp.geom_mode & G_LIGHTING)
-      {
-         int8_t *rdram_s8 = (int8_t*)gfx.RDRAM;
-         v->vec[0] = rdram_s8[(addr+i + 12)^3];
-         v->vec[1] = rdram_s8[(addr+i + 13)^3];
-         v->vec[2] = rdram_s8[(addr+i + 14)^3];
-         //	  FRDP("Calc light. x: %f, y: %f z: %f\n", v->vec[0], v->vec[1], v->vec[2]);
-         //      if (!(rdp.geom_mode & G_CLIPPING))
-         {
-            if (rdp.geom_mode & G_TEXTURE_GEN)
-            {
-               if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
-                  calc_linear (v);
-               else
-                  calc_sphere (v);
-            }
-         }
-         if (rdp.geom_mode & 0x00400000)
-         {
-            float tmpvec[3] = {x, y, z};
-            calc_point_light (v, tmpvec);
-         }
-         else
-         {
-            NormalizeVector (v->vec);
-            calc_light (v);
-         }
-      }
-      else
-      {
-         uint8_t *rdram_u8 = (uint8_t*)gfx.RDRAM;
-         v->r = rdram_u8[(addr+i + 12)^3];
-         v->g = rdram_u8[(addr+i + 13)^3];
-         v->b = rdram_u8[(addr+i + 14)^3];
-      }
-      //FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
-   }
+   gSPVertex(
+         addr,          /* v - Current vertex */
+         n,             /* n */
+         v0             /* v0 */
+         );
 
    rdp.geom_mode = geom_mode;
 }

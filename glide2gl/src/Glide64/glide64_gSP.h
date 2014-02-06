@@ -1454,9 +1454,6 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
    int i;
    float x, y, z;
 
-   rdp.v0 = v0; // Current vertex
-   rdp.vn = n;  // Number to copy
-
    for (i=0; i < (n<<4); i+=16)
    {
       VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i>>4)];
@@ -1516,9 +1513,17 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
             else
                calc_sphere (vert);
          }
-         NormalizeVector (vert->vec);
 
-         calc_light (vert);
+         if (settings.ucode == 2 && rdp.geom_mode & 0x00400000)
+         {
+            float tmpvec[3] = {x, y, z};
+            calc_point_light (vert, tmpvec);
+         }
+         else
+         {
+            NormalizeVector (vert->vec);
+            calc_light (vert);
+         }
       }
       else
       {

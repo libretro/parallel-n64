@@ -54,17 +54,14 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
    int v0, i, n;
    float x, y, z;
 
-   rdp.vn = n = (w0 >> 12) & 0xFF;
-   rdp.v0 = v0 = ((w0 >> 1) & 0x7F) - n;
+   n = (w0 >> 12) & 0xFF;
+   v0 = ((w0 >> 1) & 0x7F) - n;
 
    FRDP ("uc8:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
 
    if (v0 < 0)
-   {
-      RDP_E ("** ERROR: uc2:vertex v0 < 0\n");
-      LRDP("** ERROR: uc2:vertex v0 < 0\n");
       return;
-   }
+
    //*
    // This is special, not handled in update()
    if (rdp.update & UPDATE_LIGHTS)
@@ -76,12 +73,10 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
       {
          InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
          NormalizeVector (rdp.light_vector[l]);
-#ifdef EXTREME_LOGGING
-         FRDP("light_vector[%d] x: %f, y: %f, z: %f\n", l, rdp.light_vector[l][0], rdp.light_vector[l][1], rdp.light_vector[l][2]);
-#endif
+         //FRDP("light_vector[%d] x: %f, y: %f, z: %f\n", l, rdp.light_vector[l][0], rdp.light_vector[l][1], rdp.light_vector[l][2]);
       }
    }
-   //*/
+
    for (i=0; i < (n<<4); i+=16)
    {
       VERTEX *v = &rdp.vtx[v0 + (i>>4)];

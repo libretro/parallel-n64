@@ -758,7 +758,6 @@ struct RDP
 
    // Vertices
    VERTEX *vtx; //[MAX_VTX]
-   int v0, vn;
 
    COLOR_IMAGE *frame_buffers; //[NUMTEXBUF+2]
    TEXTURE_BUFFER texbufs[2];
