@@ -2148,15 +2148,14 @@ void DetectFrameBufferUsage(void)
          rdp.copy_ci_index = rdp.main_ci_index;
       }
    }
-#endif
-   rdp.ci_count = 0;
-#ifdef HAVE_HWFBE
+
    if (settings.hacks&hack_Banjo2)
       rdp.cur_tex_buf = 0;
 #endif
+   rdp.ci_count = 0;
    rdp.maincimg[0] = rdp.frame_buffers[rdp.main_ci_index];
-   //    rdp.scale_x = rdp.scale_x_bak;
-   //    rdp.scale_y = rdp.scale_y_bak;
+   //rdp.scale_x = rdp.scale_x_bak;
+   //rdp.scale_y = rdp.scale_y_bak;
   
    //LRDP("DetectFrameBufferUsage End\n");
 }
