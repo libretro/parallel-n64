@@ -65,26 +65,13 @@ typedef struct
 
 static void uc7_vertex(uint32_t w0, uint32_t w1)
 {
-   uint32_t l;
-   if (rdp.update & UPDATE_MULT_MAT)
-      gSPCombineMatrices();
-
-   // This is special, not handled in update()
-   if (rdp.update & UPDATE_LIGHTS)
-   {
-      rdp.update ^= UPDATE_LIGHTS;
-
-      // Calculate light vectors
-      for (l = 0; l < rdp.num_lights; l++)
-      {
-         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
-         NormalizeVector (rdp.light_vector[l]);
-      }
-   }
-
-   uint32_t addr = segoffset(w1);
+   uint32_t l, addr;
    uint32_t v0, i, n;
    float x, y, z;
+
+   pre_update();
+
+   addr = segoffset(w1);
 
    v0 = (w0 & 0x0F0000) >> 16;
    n = ((w0 & 0xF00000) >> 20) + 1;
@@ -104,9 +91,7 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
       v->ov   = (float)vertex->t;
       v->uv_scaled = 0;
 
-#ifdef EXTREME_LOGGING
       //    FRDP ("before: v%d - x: %f, y: %f, z: %f, flags: %04lx, ou: %f, ov: %f\n", i>>4, x, y, z, v->flags, v->ou, v->ov);
-#endif
 
       v->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
       v->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
@@ -156,9 +141,7 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
          v->g = color[2];
          v->b = color[1];
       }
-#ifdef EXTREME_LOGGING
-      FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f\n", i>>4, v->x, v->y, v->z, v->w, v->ou, v->ov);
-#endif
+      //FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f\n", i>>4, v->x, v->y, v->z, v->w, v->ou, v->ov);
       vertex++;
    }
 }

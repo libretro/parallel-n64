@@ -46,13 +46,11 @@ float uc8_coord_mod[16];
 
 static void uc8_vertex(uint32_t w0, uint32_t w1)
 {
-   if (rdp.update & UPDATE_MULT_MAT)
-      gSPCombineMatrices();
-
-   uint32_t l;
-   uint32_t addr = segoffset(w1);
-   int v0, i, n;
+   uint32_t l, addr;
+   int32_t v0, i, n;
    float x, y, z;
+
+   addr = segoffset(w1);
 
    n = (w0 >> 12) & 0xFF;
    v0 = ((w0 >> 1) & 0x7F) - n;
@@ -62,20 +60,7 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
    if (v0 < 0)
       return;
 
-   //*
-   // This is special, not handled in update()
-   if (rdp.update & UPDATE_LIGHTS)
-   {
-      rdp.update ^= UPDATE_LIGHTS;
-
-      // Calculate light vectors
-      for (l = 0; l < rdp.num_lights; l++)
-      {
-         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
-         NormalizeVector (rdp.light_vector[l]);
-         //FRDP("light_vector[%d] x: %f, y: %f, z: %f\n", l, rdp.light_vector[l][0], rdp.light_vector[l][1], rdp.light_vector[l][2]);
-      }
-   }
+   pre_update();
 
    for (i=0; i < (n<<4); i+=16)
    {
