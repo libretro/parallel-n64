@@ -1536,3 +1536,116 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
    }
    //FRDP ("rsp:vertex v0:%d, n:%d, from: %08lx\n", v0, n, addr);
 }
+
+
+/*
+ * An S2DEX microcode macro that loads the texture data
+ * into the uObjTxtr data structure by refering to the
+ * texture loading parameters held by three data structures.
+ *
+ * It must be used before you can draw sprites.
+ *
+ * It processes the following three different texture types
+ * (methods) distinguished by the uObjTxtr structure's type
+ * member:
+ *
+ * - G_OBJLT_TXTRBLOCK - Texture load using LoadBlock
+ * - G_OBJLT_TXTRTILE  - Texture load using LoadTile
+ * - G_OBJLT_TLUT      - TLUT load
+ *
+ * Texture loading by using LoadBlock can be faster than
+ * texture loading by using LoadTile. However, there is a 
+ * limitation to loadable texture width.
+ *
+ * tx - Address to the texture load data structure
+ */
+static void gSPObjLoadTxtr(uint32_t tx )
+{
+   uint32_t addr, type;
+   addr = segoffset(tx) >> 1;
+   type = ((uint32_t*)gfx.RDRAM)[(addr + 0) >> 1];                      // 0, 1
+
+   rdp.s2dex_tex_loaded = true;
+   rdp.update |= UPDATE_TEXTURE;
+
+   switch (type)
+   {
+      case G_OBJLT_TLUT:
+         {
+            uint32_t image;
+            uint16_t phead, pnum;
+
+            image = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
+            phead = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1] - 256;        // 4
+            pnum  = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1] + 1;          // 5
+
+            load_palette (image, phead, pnum);
+            //FRDP ("palette addr: %08lx, start: %d, num: %d\n", image, phead, pnum);
+         }
+         break;
+      case G_OBJLT_TXTRBLOCK:
+         {
+            uint32_t image;
+            uint16_t tmem, tsize, tline;
+            image = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
+            tmem  = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1];      // 4
+            tsize = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1];      // 5
+            tline = ((uint16_t *)gfx.RDRAM)[(addr + 6) ^ 1];      // 6
+
+            FRDP ("addr: %08lx, tmem: %08lx, size: %d\n", image, tmem, tsize);
+            rdp.timg.addr = image;
+            rdp.timg.width = 1;
+            rdp.timg.size = 1;
+
+            rdp.tiles[7].t_mem = tmem;
+            rdp.tiles[7].size = 1;
+            rdp.cmd0 = 0;
+            rdp.cmd1 = 0x07000000 | (tsize << 14) | tline;
+
+            if (!rdp.skip_drawing)
+               gDPLoadBlock(
+                     ((rdp.cmd1 >> 24) & 0x07), 
+                     (rdp.cmd0 >> 14) & 0x3FF, /* ul_s */
+                     (rdp.cmd0 >>  2) & 0x3FF, /* ul_t */
+                     (rdp.cmd1 >> 14) & 0x3FF, /* lr_s */
+                     (rdp.cmd1 & 0x0FFF) /* dxt */
+                     );
+         }
+         break;
+      case G_OBJLT_TXTRTILE:
+         {
+            int32_t line;
+            uint32_t image;
+            uint16_t tmem, twidth, theight;
+            image   = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
+            tmem    = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1];      // 4
+            twidth  = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1];      // 5
+            theight = ((uint16_t *)gfx.RDRAM)[(addr + 6) ^ 1];      // 6
+
+            FRDP ("tile addr: %08lx, tmem: %08lx, twidth: %d, theight: %d\n", image, tmem, twidth, theight);
+
+            line = (twidth + 1) >> 2;
+
+            rdp.timg.addr = image;
+            rdp.timg.width = line << 3;
+            rdp.timg.size = 1;
+
+            rdp.tiles[7].t_mem = tmem;
+            rdp.tiles[7].line = line;
+            rdp.tiles[7].size = 1;
+
+            rdp.cmd0 = 0;
+            rdp.cmd1 = 0x07000000 | (twidth << 14) | (theight << 2);
+
+            gDPLoadTile(
+                  ((rdp.cmd1 >> 24) & 0x07), /* tile */
+                  ((rdp.cmd0 >> 14) & 0x03FF), /* ul_s */
+                  ((rdp.cmd0 >> 2 ) & 0x03FF), /*ul_t */
+                  ((rdp.cmd1 >> 14) & 0x03FF), /* lr_s */
+                  ((rdp.cmd1 >> 2 ) & 0x03FF) /* lr_t */
+                  );
+         }
+         break;
+   }
+   //LRDP("uc6:obj_loadtxtr ");
+}

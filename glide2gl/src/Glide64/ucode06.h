@@ -295,387 +295,393 @@ static void DrawDepthImage (const DRAWIMAGE *d)
 
 static void DrawImage (DRAWIMAGE *d)
 {
-  if (d->imageW == 0 || d->imageH == 0 || d->frameH == 0)
-     return;
-
-  int x_size, y_size, x_shift, y_shift, line;
-  // choose optimum size for the format/size
-  switch (d->imageSiz)
-  {
-  case 0:
-    if (rdp.tlut_mode < 2)
-    {
-      y_size = 64;
-      y_shift = 6;
-    }
-    else
-    {
-      y_size = 32;
-      y_shift = 5;
-    }
-    x_size = 128;
-    x_shift = 7;
-    line = 8;
-    break;
-  case 1:
-    if (rdp.tlut_mode < 2)
-    {
-      y_size = 64;
-      y_shift = 6;
-    }
-    else
-    {
-      y_size = 32;
-      y_shift = 5;
-    }
-    x_size = 64;
-    x_shift = 6;
-    line = 8;
-    break;
-  case 2:
-    x_size = 64;
-    y_size = 32;
-    x_shift = 6;
-    y_shift = 5;
-    line = 16;
-    break;
-  case 3:
-    x_size = 32;
-    y_size = 16;
-    x_shift = 4;
-    y_shift = 3;
-    line = 16;
-    break;
-  default:
-    FRDP("DrawImage. unknown image size: %d\n", d->imageSiz);
-    return;
-  }
-
-  if (rdp.ci_width == 512 && !no_dlist) //RE2
-  {
-    uint16_t width = (uint16_t)(*gfx.VI_WIDTH_REG & 0xFFF);
-    d->frameH = d->imageH = (d->frameW*d->frameH)/width;
-    d->frameW = d->imageW = width;
-    if (rdp.zimg == rdp.cimg)
-    {
-      DrawDepthImage(d);
-      rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE |
-        UPDATE_ALPHA_COMPARE | UPDATE_VIEWPORT;
+   if (d->imageW == 0 || d->imageH == 0 || d->frameH == 0)
       return;
-    }
-  }
 
-  if ((settings.hacks&hack_PPL) > 0)
-  {
-    if (d->imageY > d->imageH)
-      d->imageY = (d->imageY%d->imageH);
-  }
-  else if ((settings.hacks&hack_Starcraft) > 0)
-  {
-    if (d->imageH%2 == 1)
-      d->imageH -= 1;
-  }
-  else
-  {
-    if ( (d->frameX > 0) && (d->frameW == rdp.ci_width) )
-      d->frameW -= (uint16_t)(2.0f*d->frameX);
-    if ( (d->frameY > 0) && (d->frameH == rdp.ci_height) )
-      d->frameH -= (uint16_t)(2.0f*d->frameY);
-  }
+   int x_size, y_size, x_shift, y_shift, line;
+   // choose optimum size for the format/size
+   switch (d->imageSiz)
+   {
+      case 0:
+         if (rdp.tlut_mode < 2)
+         {
+            y_size = 64;
+            y_shift = 6;
+         }
+         else
+         {
+            y_size = 32;
+            y_shift = 5;
+         }
+         x_size = 128;
+         x_shift = 7;
+         line = 8;
+         break;
+      case 1:
+         if (rdp.tlut_mode < 2)
+         {
+            y_size = 64;
+            y_shift = 6;
+         }
+         else
+         {
+            y_size = 32;
+            y_shift = 5;
+         }
+         x_size = 64;
+         x_shift = 6;
+         line = 8;
+         break;
+      case 2:
+         x_size = 64;
+         y_size = 32;
+         x_shift = 6;
+         y_shift = 5;
+         line = 16;
+         break;
+      case 3:
+         x_size = 32;
+         y_size = 16;
+         x_shift = 4;
+         y_shift = 3;
+         line = 16;
+         break;
+      default:
+         FRDP("DrawImage. unknown image size: %d\n", d->imageSiz);
+         return;
+   }
 
-  int ul_u = (int)d->imageX;
-  int ul_v = (int)d->imageY;
-  int lr_u = (int)d->imageX + (int)(d->frameW * d->scaleX);
-  int lr_v = (int)d->imageY + (int)(d->frameH * d->scaleY);
-
-  float ul_x, ul_y, lr_x, lr_y;
-  if (d->flipX)
-  {
-    ul_x = d->frameX + d->frameW;
-    lr_x = d->frameX;
-  }
-  else
-  {
-    ul_x = d->frameX;
-    lr_x = d->frameX + d->frameW;
-  }
-  if (d->flipY)
-  {
-    ul_y = d->frameY + d->frameH;
-    lr_y = d->frameY;
-  }
-  else
-  {
-    ul_y = d->frameY;
-    lr_y = d->frameY + d->frameH;
-  }
-
-  int min_wrap_u = ul_u / d->imageW;
-  //int max_wrap_u = lr_u / d->wrapW;
-  int min_wrap_v = ul_v / d->imageH;
-  //int max_wrap_v = lr_v / d->wrapH;
-  int min_256_u = ul_u >> x_shift;
-  //int max_256_u = (lr_u-1) >> x_shift;
-  int min_256_v = ul_v >> y_shift;
-  //int max_256_v = (lr_v-1) >> y_shift;
-
-  gDPSetTextureImage(
-        d->imageFmt,                                 /* format - RGBA */
-        d->imageSiz,                                 /* size   - 16-bit */
-        (d->imageW%2) ? (d->imageW-1) : (d->imageW), /* width */
-        d->imagePtr                                  /* address */
-        );
-
-  rdp.timg.set_by = 0;
-
-  gDPSetTile(
-        d->imageFmt,               /* format (RGBA) */
-        d->imageSiz,               /* size (16-bit) */
-        line,                      /* line   */
-        0,                         /* tmem   */
-        0,                         /* tile index no */
-        (uint8_t)d->imagePal,      /* palette */
-        1,                         /* clamp_t */
-        1,                         /* clamp_s */
-        0,                         /* mask_t */
-        0,                         /* mask_s */
-        0,                         /* shift_t */
-        0,                         /* shift_s */
-        0,                         /* mirror_t */
-        0                          /* mirror_s */
-        );
-
-  rdp.tiles[0].ul_s = 0;
-  rdp.tiles[0].ul_t = 0;
-  rdp.tiles[0].lr_s = x_size-1;
-  rdp.tiles[0].lr_t = y_size-1;
-
-  const float Z = set_sprite_combine_mode ();
-  if (rdp.cycle_mode == G_CYC_COPY)
-    rdp.allow_combine = 0;
-
-  {
-    if (rdp.ci_width == 512 && !no_dlist)
-      grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
-    else if (d->scaleX == 1.0f && d->scaleY == 1.0f)
-      grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
-    else
-      grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, min(rdp.scissor.lr_x, (uint32_t)((d->frameX+d->imageW/d->scaleX+0.5f)*rdp.scale_x)), min(rdp.scissor.lr_y, (uint32_t)((d->frameY+d->imageH/d->scaleY+0.5f)*rdp.scale_y)));
-    rdp.update |=  UPDATE_SCISSOR;
-  }
-
-  // Texture ()
-  rdp.cur_tile = 0;
-
-  float nul_x, nul_y, nlr_x, nlr_y;
-  int nul_u, nul_v, nlr_u, nlr_v;
-  float ful_u, ful_v, flr_u, flr_v;
-  float ful_x, ful_y, flr_x, flr_y;
-
-  float mx = (float)(lr_x - ul_x) / (float)(lr_u - ul_u);
-  float bx = ul_x - mx * ul_u;
-
-  float my = (float)(lr_y - ul_y) / (float)(lr_v - ul_v);
-  float by = ul_y - my * ul_v;
-
-  int cur_wrap_u, cur_wrap_v, cur_u, cur_v;
-  int cb_u, cb_v;       // coordinate-base
-  int tb_u, tb_v;       // texture-base
-
-  nul_v = ul_v;
-  nul_y = ul_y;
-
-  // #162
-
-  cur_wrap_v = min_wrap_v + 1;
-  cur_v = min_256_v + 1;
-  cb_v = ((cur_v-1)<<y_shift);
-  while (cb_v >= d->imageH) cb_v -= d->imageH;
-  tb_v = cb_v;
-  rdp.bg_image_height = d->imageH;
-
-  while (1)
-  {
-    cur_wrap_u = min_wrap_u + 1;
-    cur_u = min_256_u + 1;
-
-    // calculate intersection with this point
-    nlr_v = min (min (cur_wrap_v*d->imageH, (cur_v<<y_shift)), lr_v);
-    nlr_y = my * nlr_v + by;
-
-    nul_u = ul_u;
-    nul_x = ul_x;
-    cb_u = ((cur_u-1)<<x_shift);
-    while (cb_u >= d->imageW) cb_u -= d->imageW;
-    tb_u = cb_u;
-
-    while (1)
-    {
-      // calculate intersection with this point
-      nlr_u = min (min (cur_wrap_u*d->imageW, (cur_u<<x_shift)), lr_u);
-      nlr_x = mx * nlr_u + bx;
-
-      // ** Load the texture, constant portions have been set above
-      // SetTileSize ()
-      rdp.tiles[0].ul_s = tb_u;
-      rdp.tiles[0].ul_t = tb_v;
-      rdp.tiles[0].lr_s = tb_u+x_size-1;
-      rdp.tiles[0].lr_t = tb_v+y_size-1;
-
-      // LoadTile ()
-      rdp.cmd0 = ((int)rdp.tiles[0].ul_s << 14) | ((int)rdp.tiles[0].ul_t << 2);
-      rdp.cmd1 = ((int)rdp.tiles[0].lr_s << 14) | ((int)rdp.tiles[0].lr_t << 2);
-      rdp_loadtile(rdp.cmd0, rdp.cmd1);
-
-      TexCache ();
-      // **
-
-      ful_u = (float)nul_u - cb_u;
-      flr_u = (float)nlr_u - cb_u;
-      ful_v = (float)nul_v - cb_v;
-      flr_v = (float)nlr_v - cb_v;
-
-      ful_u *= rdp.cur_cache[0]->c_scl_x;
-      ful_v *= rdp.cur_cache[0]->c_scl_y;
-      flr_u *= rdp.cur_cache[0]->c_scl_x;
-      flr_v *= rdp.cur_cache[0]->c_scl_y;
-
-      ful_x = nul_x * rdp.scale_x + rdp.offset_x;
-      flr_x = nlr_x * rdp.scale_x + rdp.offset_x;
-      ful_y = nul_y * rdp.scale_y + rdp.offset_y;
-      flr_y = nlr_y * rdp.scale_y + rdp.offset_y;
-
-      // Make the vertices
-
-      if ((flr_x <= rdp.scissor.lr_x) || (ful_x < rdp.scissor.lr_x))
+   if (rdp.ci_width == 512 && !no_dlist) //RE2
+   {
+      uint16_t width = (uint16_t)(*gfx.VI_WIDTH_REG & 0xFFF);
+      d->frameH = d->imageH = (d->frameW*d->frameH)/width;
+      d->frameW = d->imageW = width;
+      if (rdp.zimg == rdp.cimg)
       {
-         //not clipped
-         int s;
-        VERTEX v[4] = {
-          { ful_x, ful_y, Z, 1.0f, ful_u, ful_v },
-          { flr_x, ful_y, Z, 1.0f, flr_u, ful_v },
-          { ful_x, flr_y, Z, 1.0f, ful_u, flr_v },
-          { flr_x, flr_y, Z, 1.0f, flr_u, flr_v } };
-          AllowShadeMods (v, 4);
-          for (s = 0; s < 4; s++)
-            apply_shade_mods (&(v[s]));
-          ConvertCoordsConvert (v, 4);
-
-          grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v, sizeof(VERTEX));
-
+         DrawDepthImage(d);
+         rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE |
+            UPDATE_ALPHA_COMPARE | UPDATE_VIEWPORT;
+         return;
       }
-      rdp.tri_n += 2;
+   }
 
-      // increment whatever caused this split
-      tb_u += x_size - (x_size-(nlr_u-cb_u));
-      cb_u = nlr_u;
-      if (nlr_u == cur_wrap_u*d->imageW) {
-        cur_wrap_u ++;
-        tb_u = 0;
+   if ((settings.hacks&hack_PPL) > 0)
+   {
+      if (d->imageY > d->imageH)
+         d->imageY = (d->imageY%d->imageH);
+   }
+   else if ((settings.hacks&hack_Starcraft) > 0)
+   {
+      if (d->imageH%2 == 1)
+         d->imageH -= 1;
+   }
+   else
+   {
+      if ( (d->frameX > 0) && (d->frameW == rdp.ci_width) )
+         d->frameW -= (uint16_t)(2.0f*d->frameX);
+      if ( (d->frameY > 0) && (d->frameH == rdp.ci_height) )
+         d->frameH -= (uint16_t)(2.0f*d->frameY);
+   }
+
+   int ul_u = (int)d->imageX;
+   int ul_v = (int)d->imageY;
+   int lr_u = (int)d->imageX + (int)(d->frameW * d->scaleX);
+   int lr_v = (int)d->imageY + (int)(d->frameH * d->scaleY);
+
+   float ul_x, ul_y, lr_x, lr_y;
+   if (d->flipX)
+   {
+      ul_x = d->frameX + d->frameW;
+      lr_x = d->frameX;
+   }
+   else
+   {
+      ul_x = d->frameX;
+      lr_x = d->frameX + d->frameW;
+   }
+   if (d->flipY)
+   {
+      ul_y = d->frameY + d->frameH;
+      lr_y = d->frameY;
+   }
+   else
+   {
+      ul_y = d->frameY;
+      lr_y = d->frameY + d->frameH;
+   }
+
+   int min_wrap_u = ul_u / d->imageW;
+   //int max_wrap_u = lr_u / d->wrapW;
+   int min_wrap_v = ul_v / d->imageH;
+   //int max_wrap_v = lr_v / d->wrapH;
+   int min_256_u = ul_u >> x_shift;
+   //int max_256_u = (lr_u-1) >> x_shift;
+   int min_256_v = ul_v >> y_shift;
+   //int max_256_v = (lr_v-1) >> y_shift;
+
+   gDPSetTextureImage(
+         d->imageFmt,                                 /* format - RGBA */
+         d->imageSiz,                                 /* size   - 16-bit */
+         (d->imageW%2) ? (d->imageW-1) : (d->imageW), /* width */
+         d->imagePtr                                  /* address */
+         );
+
+   rdp.timg.set_by = 0;
+
+   gDPSetTile(
+         d->imageFmt,               /* format (RGBA) */
+         d->imageSiz,               /* size (16-bit) */
+         line,                      /* line   */
+         0,                         /* tmem   */
+         0,                         /* tile index no */
+         (uint8_t)d->imagePal,      /* palette */
+         1,                         /* clamp_t */
+         1,                         /* clamp_s */
+         0,                         /* mask_t */
+         0,                         /* mask_s */
+         0,                         /* shift_t */
+         0,                         /* shift_s */
+         0,                         /* mirror_t */
+         0                          /* mirror_s */
+         );
+
+   rdp.tiles[0].ul_s = 0;
+   rdp.tiles[0].ul_t = 0;
+   rdp.tiles[0].lr_s = x_size-1;
+   rdp.tiles[0].lr_t = y_size-1;
+
+   const float Z = set_sprite_combine_mode ();
+   if (rdp.cycle_mode == G_CYC_COPY)
+      rdp.allow_combine = 0;
+
+   {
+      if (rdp.ci_width == 512 && !no_dlist)
+         grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
+      else if (d->scaleX == 1.0f && d->scaleY == 1.0f)
+         grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
+      else
+         grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, min(rdp.scissor.lr_x, (uint32_t)((d->frameX+d->imageW/d->scaleX+0.5f)*rdp.scale_x)), min(rdp.scissor.lr_y, (uint32_t)((d->frameY+d->imageH/d->scaleY+0.5f)*rdp.scale_y)));
+      rdp.update |=  UPDATE_SCISSOR;
+   }
+
+   // Texture ()
+   rdp.cur_tile = 0;
+
+   float nul_x, nul_y, nlr_x, nlr_y;
+   int nul_u, nul_v, nlr_u, nlr_v;
+   float ful_u, ful_v, flr_u, flr_v;
+   float ful_x, ful_y, flr_x, flr_y;
+
+   float mx = (float)(lr_x - ul_x) / (float)(lr_u - ul_u);
+   float bx = ul_x - mx * ul_u;
+
+   float my = (float)(lr_y - ul_y) / (float)(lr_v - ul_v);
+   float by = ul_y - my * ul_v;
+
+   int cur_wrap_u, cur_wrap_v, cur_u, cur_v;
+   int cb_u, cb_v;       // coordinate-base
+   int tb_u, tb_v;       // texture-base
+
+   nul_v = ul_v;
+   nul_y = ul_y;
+
+   // #162
+
+   cur_wrap_v = min_wrap_v + 1;
+   cur_v = min_256_v + 1;
+   cb_v = ((cur_v-1)<<y_shift);
+   while (cb_v >= d->imageH) cb_v -= d->imageH;
+   tb_v = cb_v;
+   rdp.bg_image_height = d->imageH;
+
+   while (1)
+   {
+      cur_wrap_u = min_wrap_u + 1;
+      cur_u = min_256_u + 1;
+
+      // calculate intersection with this point
+      nlr_v = min (min (cur_wrap_v*d->imageH, (cur_v<<y_shift)), lr_v);
+      nlr_y = my * nlr_v + by;
+
+      nul_u = ul_u;
+      nul_x = ul_x;
+      cb_u = ((cur_u-1)<<x_shift);
+      while (cb_u >= d->imageW) cb_u -= d->imageW;
+      tb_u = cb_u;
+
+      while (1)
+      {
+         // calculate intersection with this point
+         nlr_u = min (min (cur_wrap_u*d->imageW, (cur_u<<x_shift)), lr_u);
+         nlr_x = mx * nlr_u + bx;
+
+         // ** Load the texture, constant portions have been set above
+         // SetTileSize ()
+         rdp.tiles[0].ul_s = tb_u;
+         rdp.tiles[0].ul_t = tb_v;
+         rdp.tiles[0].lr_s = tb_u+x_size-1;
+         rdp.tiles[0].lr_t = tb_v+y_size-1;
+
+         // LoadTile ()
+         rdp.cmd0 = ((int)rdp.tiles[0].ul_s << 14) | ((int)rdp.tiles[0].ul_t << 2);
+         rdp.cmd1 = ((int)rdp.tiles[0].lr_s << 14) | ((int)rdp.tiles[0].lr_t << 2);
+         gDPLoadTile(
+               ((rdp.cmd1 >> 24) & 0x07), /* tile */
+               ((rdp.cmd0 >> 14) & 0x03FF), /* ul_s */
+               ((rdp.cmd0 >> 2 ) & 0x03FF), /*ul_t */
+               ((rdp.cmd1 >> 14) & 0x03FF), /* lr_s */
+               ((rdp.cmd1 >> 2 ) & 0x03FF) /* lr_t */
+               );
+
+         TexCache ();
+         // **
+
+         ful_u = (float)nul_u - cb_u;
+         flr_u = (float)nlr_u - cb_u;
+         ful_v = (float)nul_v - cb_v;
+         flr_v = (float)nlr_v - cb_v;
+
+         ful_u *= rdp.cur_cache[0]->c_scl_x;
+         ful_v *= rdp.cur_cache[0]->c_scl_y;
+         flr_u *= rdp.cur_cache[0]->c_scl_x;
+         flr_v *= rdp.cur_cache[0]->c_scl_y;
+
+         ful_x = nul_x * rdp.scale_x + rdp.offset_x;
+         flr_x = nlr_x * rdp.scale_x + rdp.offset_x;
+         ful_y = nul_y * rdp.scale_y + rdp.offset_y;
+         flr_y = nlr_y * rdp.scale_y + rdp.offset_y;
+
+         // Make the vertices
+
+         if ((flr_x <= rdp.scissor.lr_x) || (ful_x < rdp.scissor.lr_x))
+         {
+            //not clipped
+            int s;
+            VERTEX v[4] = {
+               { ful_x, ful_y, Z, 1.0f, ful_u, ful_v },
+               { flr_x, ful_y, Z, 1.0f, flr_u, ful_v },
+               { ful_x, flr_y, Z, 1.0f, ful_u, flr_v },
+               { flr_x, flr_y, Z, 1.0f, flr_u, flr_v } };
+            AllowShadeMods (v, 4);
+            for (s = 0; s < 4; s++)
+               apply_shade_mods (&(v[s]));
+            ConvertCoordsConvert (v, 4);
+
+            grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v, sizeof(VERTEX));
+
+         }
+         rdp.tri_n += 2;
+
+         // increment whatever caused this split
+         tb_u += x_size - (x_size-(nlr_u-cb_u));
+         cb_u = nlr_u;
+         if (nlr_u == cur_wrap_u*d->imageW) {
+            cur_wrap_u ++;
+            tb_u = 0;
+         }
+         if (nlr_u == (cur_u<<x_shift)) cur_u ++;
+         if (nlr_u == lr_u) break;
+         nul_u = nlr_u;
+         nul_x = nlr_x;
       }
-      if (nlr_u == (cur_u<<x_shift)) cur_u ++;
-      if (nlr_u == lr_u) break;
-      nul_u = nlr_u;
-      nul_x = nlr_x;
-    }
 
-    tb_v += y_size - (y_size-(nlr_v-cb_v));
-    cb_v = nlr_v;
-    if (nlr_v == cur_wrap_v*d->imageH) {
-      cur_wrap_v ++;
-      tb_v = 0;
-    }
-    if (nlr_v == (cur_v<<y_shift)) cur_v ++;
-    if (nlr_v == lr_v) break;
-    nul_v = nlr_v;
-    nul_y = nlr_y;
-  }
+      tb_v += y_size - (y_size-(nlr_v-cb_v));
+      cb_v = nlr_v;
+      if (nlr_v == cur_wrap_v*d->imageH) {
+         cur_wrap_v ++;
+         tb_v = 0;
+      }
+      if (nlr_v == (cur_v<<y_shift)) cur_v ++;
+      if (nlr_v == lr_v) break;
+      nul_v = nlr_v;
+      nul_y = nlr_y;
+   }
 
-  rdp.allow_combine = 1;
-  rdp.bg_image_height = 0xFFFF;
+   rdp.allow_combine = 1;
+   rdp.bg_image_height = 0xFFFF;
 }
 
 #ifdef HAVE_HWFBE
 void DrawHiresImage(DRAWIMAGE *d, int screensize)
 {
-  TBUFF_COLOR_IMAGE *tbuff_tex = (TBUFF_COLOR_IMAGE*)rdp.tbuff_tex;
-  if (rdp.motionblur)
-    rdp.tbuff_tex = &(rdp.texbufs[rdp.cur_tex_buf^1].images[0]);
-  else if (rdp.tbuff_tex == 0)
-    return;
-  FRDP("DrawHiresImage. fb format=%d\n", rdp.tbuff_tex->info.format);
+   TBUFF_COLOR_IMAGE *tbuff_tex = (TBUFF_COLOR_IMAGE*)rdp.tbuff_tex;
+   if (rdp.motionblur)
+      rdp.tbuff_tex = &(rdp.texbufs[rdp.cur_tex_buf^1].images[0]);
+   else if (rdp.tbuff_tex == 0)
+      return;
+   FRDP("DrawHiresImage. fb format=%d\n", rdp.tbuff_tex->info.format);
 
-  setTBufTex(rdp.tbuff_tex->t_mem, rdp.tbuff_tex->width << rdp.tbuff_tex->size >> 1);
+   setTBufTex(rdp.tbuff_tex->t_mem, rdp.tbuff_tex->width << rdp.tbuff_tex->size >> 1);
 
-  const float Z = set_sprite_combine_mode();
-  grClipWindow (0, 0, settings.res_x, settings.res_y);
+   const float Z = set_sprite_combine_mode();
+   grClipWindow (0, 0, settings.res_x, settings.res_y);
 
-  if (d->imageW%2 == 1) d->imageW -= 1;
-  if (d->imageH%2 == 1) d->imageH -= 1;
-  if (d->imageY > d->imageH) d->imageY = (d->imageY%d->imageH);
+   if (d->imageW%2 == 1) d->imageW -= 1;
+   if (d->imageH%2 == 1) d->imageH -= 1;
+   if (d->imageY > d->imageH) d->imageY = (d->imageY%d->imageH);
 
-  if (!(settings.hacks&hack_PPL))
-  {
-    if ( (d->frameX > 0) && (d->frameW == rdp.ci_width) )
-      d->frameW -= (uint16_t)(2.0f*d->frameX);
-    if ( (d->frameY > 0) && (d->frameH == rdp.ci_height) )
-      d->frameH -= (uint16_t)(2.0f*d->frameY);
-  }
+   if (!(settings.hacks&hack_PPL))
+   {
+      if ( (d->frameX > 0) && (d->frameW == rdp.ci_width) )
+         d->frameW -= (uint16_t)(2.0f*d->frameX);
+      if ( (d->frameY > 0) && (d->frameH == rdp.ci_height) )
+         d->frameH -= (uint16_t)(2.0f*d->frameY);
+   }
 
-  int s;
-  float ul_x, ul_y, ul_u, ul_v, lr_x, lr_y, lr_u, lr_v;
-  if (screensize)
-  {
-    ul_x = 0.0f;
-    ul_y = 0.0f;
-    ul_u = 0.15f;
-    ul_v = 0.15f;
-    lr_x = rdp.tbuff_tex->scr_width;
-    lr_y = rdp.tbuff_tex->scr_height;
-    lr_u = rdp.tbuff_tex->lr_u;
-    lr_v = rdp.tbuff_tex->lr_v;
-  }
-  else
-  {
-    ul_u = d->imageX;
-    ul_v = d->imageY;
-    lr_u = d->imageX + (d->frameW * d->scaleX) ;
-    lr_v = d->imageY + (d->frameH * d->scaleY) ;
+   int s;
+   float ul_x, ul_y, ul_u, ul_v, lr_x, lr_y, lr_u, lr_v;
+   if (screensize)
+   {
+      ul_x = 0.0f;
+      ul_y = 0.0f;
+      ul_u = 0.15f;
+      ul_v = 0.15f;
+      lr_x = rdp.tbuff_tex->scr_width;
+      lr_y = rdp.tbuff_tex->scr_height;
+      lr_u = rdp.tbuff_tex->lr_u;
+      lr_v = rdp.tbuff_tex->lr_v;
+   }
+   else
+   {
+      ul_u = d->imageX;
+      ul_v = d->imageY;
+      lr_u = d->imageX + (d->frameW * d->scaleX) ;
+      lr_v = d->imageY + (d->frameH * d->scaleY) ;
 
-    ul_x = d->frameX;
-    ul_y = d->frameY;
+      ul_x = d->frameX;
+      ul_y = d->frameY;
 
-    lr_x = d->frameX + d->frameW;
-    lr_y = d->frameY + d->frameH;
-    ul_x *= rdp.scale_x;
-    lr_x *= rdp.scale_x;
-    ul_y *= rdp.scale_y;
-    lr_y *= rdp.scale_y;
-    ul_u *= rdp.tbuff_tex->u_scale;
-    lr_u *= rdp.tbuff_tex->u_scale;
-    ul_v *= rdp.tbuff_tex->v_scale;
-    lr_v *= rdp.tbuff_tex->v_scale;
-    ul_u = max(0.15f, ul_u);
-    ul_v = max(0.15f, ul_v);
-    if (lr_x > rdp.scissor.lr_x) lr_x = (float)rdp.scissor.lr_x;
-    if (lr_y > rdp.scissor.lr_y) lr_y = (float)rdp.scissor.lr_y;
-  }
-  // Make the vertices
-  VERTEX v[4] = {
-    { ul_x, ul_y, Z, 1.0f, ul_u, ul_v, ul_u, ul_v },
-    { lr_x, ul_y, Z, 1.0f, lr_u, ul_v, lr_u, ul_v },
-    { ul_x, lr_y, Z, 1.0f, ul_u, lr_v, ul_u, lr_v },
-    { lr_x, lr_y, Z, 1.0f, lr_u, lr_v, lr_u, lr_v } };
-    ConvertCoordsConvert (v, 4);
-    AllowShadeMods (v, 4);
-    AddOffset(v, 4);
-    for (s = 0; s < 4; s++)
+      lr_x = d->frameX + d->frameW;
+      lr_y = d->frameY + d->frameH;
+      ul_x *= rdp.scale_x;
+      lr_x *= rdp.scale_x;
+      ul_y *= rdp.scale_y;
+      lr_y *= rdp.scale_y;
+      ul_u *= rdp.tbuff_tex->u_scale;
+      lr_u *= rdp.tbuff_tex->u_scale;
+      ul_v *= rdp.tbuff_tex->v_scale;
+      lr_v *= rdp.tbuff_tex->v_scale;
+      ul_u = max(0.15f, ul_u);
+      ul_v = max(0.15f, ul_v);
+      if (lr_x > rdp.scissor.lr_x) lr_x = (float)rdp.scissor.lr_x;
+      if (lr_y > rdp.scissor.lr_y) lr_y = (float)rdp.scissor.lr_y;
+   }
+   // Make the vertices
+   VERTEX v[4] = {
+      { ul_x, ul_y, Z, 1.0f, ul_u, ul_v, ul_u, ul_v },
+      { lr_x, ul_y, Z, 1.0f, lr_u, ul_v, lr_u, ul_v },
+      { ul_x, lr_y, Z, 1.0f, ul_u, lr_v, ul_u, lr_v },
+      { lr_x, lr_y, Z, 1.0f, lr_u, lr_v, lr_u, lr_v } };
+   ConvertCoordsConvert (v, 4);
+   AllowShadeMods (v, 4);
+   AddOffset(v, 4);
+   for (s = 0; s < 4; s++)
       apply_shade_mods (&(v[s]));
-    grDrawTriangle(&v[0], &v[2], &v[1]);
-    grDrawTriangle(&v[2], &v[3], &v[1]);
-    rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE | UPDATE_TEXTURE | UPDATE_ALPHA_COMPARE | UPDATE_SCISSOR;
-    rdp.tri_n += 2;
-  rdp.tbuff_tex = tbuff_tex;
+   grDrawTriangle(&v[0], &v[2], &v[1]);
+   grDrawTriangle(&v[2], &v[3], &v[1]);
+   rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE | UPDATE_TEXTURE | UPDATE_ALPHA_COMPARE | UPDATE_SCISSOR;
+   rdp.tri_n += 2;
+   rdp.tbuff_tex = tbuff_tex;
 }
 #endif
 
@@ -691,68 +697,67 @@ struct MAT2D {
 
 static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
 {
-  uint32_t addr = segoffset(rdp.cmd1) >> 1;
+   uint32_t addr = segoffset(rdp.cmd1) >> 1;
 
-  d->imageX      = (((uint16_t *)gfx.RDRAM)[(addr+0)^1] >> 5);   // 0
-  d->imageW      = (((uint16_t *)gfx.RDRAM)[(addr+1)^1] >> 2);   // 1
-  d->frameX      = ((int16_t*)gfx.RDRAM)[(addr+2)^1] / 4.0f;       // 2
-  d->frameW      = ((uint16_t *)gfx.RDRAM)[(addr+3)^1] >> 2;             // 3
+   d->imageX      = (((uint16_t *)gfx.RDRAM)[(addr+0)^1] >> 5);   // 0
+   d->imageW      = (((uint16_t *)gfx.RDRAM)[(addr+1)^1] >> 2);   // 1
+   d->frameX      = ((int16_t*)gfx.RDRAM)[(addr+2)^1] / 4.0f;       // 2
+   d->frameW      = ((uint16_t *)gfx.RDRAM)[(addr+3)^1] >> 2;             // 3
 
-  d->imageY      = (((uint16_t *)gfx.RDRAM)[(addr+4)^1] >> 5);   // 4
-  d->imageH      = (((uint16_t *)gfx.RDRAM)[(addr+5)^1] >> 2);   // 5
-  d->frameY      = ((int16_t*)gfx.RDRAM)[(addr+6)^1] / 4.0f;       // 6
-  d->frameH      = ((uint16_t *)gfx.RDRAM)[(addr+7)^1] >> 2;             // 7
+   d->imageY      = (((uint16_t *)gfx.RDRAM)[(addr+4)^1] >> 5);   // 4
+   d->imageH      = (((uint16_t *)gfx.RDRAM)[(addr+5)^1] >> 2);   // 5
+   d->frameY      = ((int16_t*)gfx.RDRAM)[(addr+6)^1] / 4.0f;       // 6
+   d->frameH      = ((uint16_t *)gfx.RDRAM)[(addr+7)^1] >> 2;             // 7
 
-  d->imagePtr    = segoffset(((uint32_t*)gfx.RDRAM)[(addr+8)>>1]);       // 8,9
-  d->imageFmt    = ((uint8_t *)gfx.RDRAM)[(((addr+11)<<1)+0)^3]; // 11
-  d->imageSiz    = ((uint8_t *)gfx.RDRAM)[(((addr+11)<<1)+1)^3]; // |
-  d->imagePal    = ((uint16_t *)gfx.RDRAM)[(addr+12)^1]; // 12
-  uint16_t imageFlip = ((uint16_t *)gfx.RDRAM)[(addr+13)^1];    // 13;
-  d->flipX       = (uint8_t)imageFlip & G_BG_FLAG_FLIPS;
+   d->imagePtr    = segoffset(((uint32_t*)gfx.RDRAM)[(addr+8)>>1]);       // 8,9
+   d->imageFmt    = ((uint8_t *)gfx.RDRAM)[(((addr+11)<<1)+0)^3]; // 11
+   d->imageSiz    = ((uint8_t *)gfx.RDRAM)[(((addr+11)<<1)+1)^3]; // |
+   d->imagePal    = ((uint16_t *)gfx.RDRAM)[(addr+12)^1]; // 12
+   uint16_t imageFlip = ((uint16_t *)gfx.RDRAM)[(addr+13)^1];    // 13;
+   d->flipX       = (uint8_t)imageFlip & G_BG_FLAG_FLIPS;
 
-  if (bReadScale)
-  {
-    d->scaleX      = ((int16_t*)gfx.RDRAM)[(addr+14)^1] / 1024.0f;  // 14
-    d->scaleY      = ((int16_t*)gfx.RDRAM)[(addr+15)^1] / 1024.0f;  // 15
-  }
-  else
-    d->scaleX = d->scaleY = 1.0f;
+   if (bReadScale)
+   {
+      d->scaleX      = ((int16_t*)gfx.RDRAM)[(addr+14)^1] / 1024.0f;  // 14
+      d->scaleY      = ((int16_t*)gfx.RDRAM)[(addr+15)^1] / 1024.0f;  // 15
+   }
+   else
+      d->scaleX = d->scaleY = 1.0f;
 
-  d->flipY       = 0;
-  int imageYorig= ((int *)gfx.RDRAM)[(addr+16)>>1] >> 5;
-  rdp.last_bg = d->imagePtr;
+   d->flipY       = 0;
+   int imageYorig= ((int *)gfx.RDRAM)[(addr+16)>>1] >> 5;
+   rdp.last_bg = d->imagePtr;
 
-  FRDP ("imagePtr: %08lx\n", d->imagePtr);
-  FRDP ("frameX: %f, frameW: %d, frameY: %f, frameH: %d\n", d->frameX, d->frameW, d->frameY, d->frameH);
-  FRDP ("imageX: %d, imageW: %d, imageY: %d, imageH: %d\n", d->imageX, d->imageW, d->imageY, d->imageH);
-  FRDP ("imageYorig: %d, scaleX: %f, scaleY: %f\n", imageYorig, d->scaleX, d->scaleY);
-  FRDP ("imageFmt: %d, imageSiz: %d, imagePal: %d, imageFlip: %d\n", d->imageFmt, d->imageSiz, d->imagePal, d->flipX);
+   FRDP ("imagePtr: %08lx\n", d->imagePtr);
+   FRDP ("frameX: %f, frameW: %d, frameY: %f, frameH: %d\n", d->frameX, d->frameW, d->frameY, d->frameH);
+   FRDP ("imageX: %d, imageW: %d, imageY: %d, imageH: %d\n", d->imageX, d->imageW, d->imageY, d->imageH);
+   FRDP ("imageYorig: %d, scaleX: %f, scaleY: %f\n", imageYorig, d->scaleX, d->scaleY);
+   FRDP ("imageFmt: %d, imageSiz: %d, imagePal: %d, imageFlip: %d\n", d->imageFmt, d->imageSiz, d->imagePal, d->flipX);
 }
 
 static void uc6_bg (bool bg_1cyc)
 {
-  DRAWIMAGE d;
-  if (rdp.skip_drawing)
-    return;
+   DRAWIMAGE d;
+   bool draw_from_fb;
+   if (rdp.skip_drawing)
+      return;
 
-  uc6_read_background_data(&d, bg_1cyc);
+   uc6_read_background_data(&d, bg_1cyc);
 
 #ifdef HAVE_HWFBE
-  if (fb_hwfbe_enabled && FindTextureBuffer(d.imagePtr, d.imageW))
-  {
-    DrawHiresImage(d, false);
-    return;
-  }
+   if (fb_hwfbe_enabled && FindTextureBuffer(d.imagePtr, d.imageW))
+   {
+      DrawHiresImage(d, false);
+      return;
+   }
 #endif
 
-  if (
-        (settings.ucode == ucode_F3DEX2 || (settings.hacks&hack_PPL)) &&
-        !((d.imagePtr != rdp.cimg) && (d.imagePtr != rdp.ocimg) && d.imagePtr)
-     ) // can't draw from framebuffer, skip
-     return;
+   draw_from_fb = !((settings.ucode == ucode_F3DEX2 || (settings.hacks&hack_PPL))
+      && !((d.imagePtr != rdp.cimg) && (d.imagePtr != rdp.ocimg) && d.imagePtr));
 
-  DrawImage (&d);
-  //FRDP ("%s #%d, #%d\n", bg_1cyc ? "uc6:bg_1cyc" : "uc6:bg_copy", rdp.tri_n, rdp.tri_n+1);
+   if (draw_from_fb)
+      DrawImage (&d);
+   //FRDP ("%s #%d, #%d\n", bg_1cyc ? "uc6:bg_1cyc" : "uc6:bg_copy", rdp.tri_n, rdp.tri_n+1);
 }
 
 static void uc6_bg_1cyc(uint32_t w0, uint32_t w1)
@@ -914,61 +919,61 @@ static void draw_split_triangle(VERTEX **vtx)
 static void uc6_draw_polygons (VERTEX v[4])
 {
    int s;
-  AllowShadeMods (v, 4);
-  for (s = 0; s < 4; s++)
-    apply_shade_mods (&(v[s]));
-  AddOffset(v, 4);
+   AllowShadeMods (v, 4);
+   for (s = 0; s < 4; s++)
+      apply_shade_mods (&(v[s]));
+   AddOffset(v, 4);
 
-  // Set vertex buffers
-  rdp.vtxbuf = rdp.vtx1;      // copy from v to rdp.vtx1
-  rdp.vtxbuf2 = rdp.vtx2;
-  rdp.vtx_buffer = 0;
-  rdp.n_global = 3;
-  memcpy (rdp.vtxbuf, v, sizeof(VERTEX)*3);
-  do_triangle_stuff_2 (0);
-  rdp.tri_n ++;
+   // Set vertex buffers
+   rdp.vtxbuf = rdp.vtx1;      // copy from v to rdp.vtx1
+   rdp.vtxbuf2 = rdp.vtx2;
+   rdp.vtx_buffer = 0;
+   rdp.n_global = 3;
+   memcpy (rdp.vtxbuf, v, sizeof(VERTEX)*3);
+   do_triangle_stuff_2 (0);
+   rdp.tri_n ++;
 
-  rdp.vtxbuf = rdp.vtx1;      // copy from v to rdp.vtx1
-  rdp.vtxbuf2 = rdp.vtx2;
-  rdp.vtx_buffer = 0;
-  rdp.n_global = 3;
-  memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
-  do_triangle_stuff_2 (0);
-  rdp.tri_n ++;
-  rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
+   rdp.vtxbuf = rdp.vtx1;      // copy from v to rdp.vtx1
+   rdp.vtxbuf2 = rdp.vtx2;
+   rdp.vtx_buffer = 0;
+   rdp.n_global = 3;
+   memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
+   do_triangle_stuff_2 (0);
+   rdp.tri_n ++;
+   rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
-  if (settings.fog && (rdp.flags & FOG_ENABLED))
-    grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
+   if (settings.fog && (rdp.flags & FOG_ENABLED))
+      grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
 }
 
 static void uc6_read_object_data (DRAWOBJECT *d)
 {
-  uint32_t addr = segoffset(rdp.cmd1) >> 1;
+   uint32_t addr = segoffset(rdp.cmd1) >> 1;
 
-  d->objX            = ((int16_t*)gfx.RDRAM)[(addr+0)^1] / 4.0f;               // 0
-  d->scaleW  = ((uint16_t *)gfx.RDRAM)[(addr+1)^1] / 1024.0f;        // 1
-  d->imageW  = ((int16_t*)gfx.RDRAM)[(addr+2)^1] >> 5;                 // 2, 3 is padding
-  d->objY            = ((int16_t*)gfx.RDRAM)[(addr+4)^1] / 4.0f;               // 4
-  d->scaleH  = ((uint16_t *)gfx.RDRAM)[(addr+5)^1] / 1024.0f;        // 5
-  d->imageH  = ((int16_t*)gfx.RDRAM)[(addr+6)^1] >> 5;                 // 6, 7 is padding
+   d->objX            = ((int16_t*)gfx.RDRAM)[(addr+0)^1] / 4.0f;               // 0
+   d->scaleW  = ((uint16_t *)gfx.RDRAM)[(addr+1)^1] / 1024.0f;        // 1
+   d->imageW  = ((int16_t*)gfx.RDRAM)[(addr+2)^1] >> 5;                 // 2, 3 is padding
+   d->objY            = ((int16_t*)gfx.RDRAM)[(addr+4)^1] / 4.0f;               // 4
+   d->scaleH  = ((uint16_t *)gfx.RDRAM)[(addr+5)^1] / 1024.0f;        // 5
+   d->imageH  = ((int16_t*)gfx.RDRAM)[(addr+6)^1] >> 5;                 // 6, 7 is padding
 
-  d->imageStride = ((uint16_t *)gfx.RDRAM)[(addr+8)^1];                  // 8
-  d->imageAdrs           = ((uint16_t *)gfx.RDRAM)[(addr+9)^1];                  // 9
-  d->imageFmt             = ((uint8_t *)gfx.RDRAM)[(((addr+10)<<1)+0)^3]; // 10
-  d->imageSiz             = ((uint8_t *)gfx.RDRAM)[(((addr+10)<<1)+1)^3]; // |
-  d->imagePal             = ((uint8_t *)gfx.RDRAM)[(((addr+10)<<1)+2)^3]; // 11
-  d->imageFlags   = ((uint8_t *)gfx.RDRAM)[(((addr+10)<<1)+3)^3]; // |
+   d->imageStride = ((uint16_t *)gfx.RDRAM)[(addr+8)^1];                  // 8
+   d->imageAdrs           = ((uint16_t *)gfx.RDRAM)[(addr+9)^1];                  // 9
+   d->imageFmt             = ((uint8_t *)gfx.RDRAM)[(((addr+10)<<1)+0)^3]; // 10
+   d->imageSiz             = ((uint8_t *)gfx.RDRAM)[(((addr+10)<<1)+1)^3]; // |
+   d->imagePal             = ((uint8_t *)gfx.RDRAM)[(((addr+10)<<1)+2)^3]; // 11
+   d->imageFlags   = ((uint8_t *)gfx.RDRAM)[(((addr+10)<<1)+3)^3]; // |
 
-  if (d->imageW < 0)
-    d->imageW = (int16_t)rdp.scissor_o.lr_x - (int16_t)d->objX - d->imageW;
-  if (d->imageH < 0)
-    d->imageH = (int16_t)rdp.scissor_o.lr_y - (int16_t)d->objY - d->imageH;
+   if (d->imageW < 0)
+      d->imageW = (int16_t)rdp.scissor_o.lr_x - (int16_t)d->objX - d->imageW;
+   if (d->imageH < 0)
+      d->imageH = (int16_t)rdp.scissor_o.lr_y - (int16_t)d->objY - d->imageH;
 
-  FRDP ("#%d, #%d\n"
-    "objX: %f, scaleW: %f, imageW: %d\n"
-    "objY: %f, scaleH: %f, imageH: %d\n"
-    "size: %d, format: %d\n", rdp.tri_n, rdp.tri_n+1,
-    d->objX, d->scaleW, d->imageW, d->objY, d->scaleH, d->imageH, d->imageSiz, d->imageFmt);
+   FRDP ("#%d, #%d\n"
+         "objX: %f, scaleW: %f, imageW: %d\n"
+         "objY: %f, scaleH: %f, imageH: %d\n"
+         "size: %d, format: %d\n", rdp.tri_n, rdp.tri_n+1,
+         d->objX, d->scaleW, d->imageW, d->objY, d->scaleH, d->imageH, d->imageSiz, d->imageFmt);
 }
 
 static void uc6_init_tile(const DRAWOBJECT *d)
@@ -1281,69 +1286,7 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
 static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc6:obj_loadtxtr ");
-   rdp.s2dex_tex_loaded = true;
-   rdp.update |= UPDATE_TEXTURE;
-
-   uint32_t addr = segoffset(rdp.cmd1) >> 1;
-   uint32_t type = ((uint32_t*)gfx.RDRAM)[(addr + 0) >> 1];                      // 0, 1
-
-   if (type == G_OBJLT_TLUT)
-   {     // TLUT
-      uint32_t image              = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
-      uint16_t  phead             = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1] - 256;        // 4
-      uint16_t  pnum              = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1] + 1;          // 5
-
-      FRDP ("palette addr: %08lx, start: %d, num: %d\n", image, phead, pnum);
-      load_palette (image, phead, pnum);
-   }
-   else if (type == G_OBJLT_TXTRBLOCK)
-   {        // TxtrBlock
-      uint32_t image              = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
-      uint16_t  tmem              = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1];      // 4
-      uint16_t  tsize             = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1];      // 5
-      uint16_t  tline             = ((uint16_t *)gfx.RDRAM)[(addr + 6) ^ 1];      // 6
-
-      FRDP ("addr: %08lx, tmem: %08lx, size: %d\n", image, tmem, tsize);
-      rdp.timg.addr = image;
-      rdp.timg.width = 1;
-      rdp.timg.size = 1;
-
-      rdp.tiles[7].t_mem = tmem;
-      rdp.tiles[7].size = 1;
-      rdp.cmd0 = 0;
-      rdp.cmd1 = 0x07000000 | (tsize << 14) | tline;
-      rdp_loadblock(rdp.cmd0, rdp.cmd1);
-   }
-   else if (type == G_OBJLT_TXTRTILE)
-   {
-      uint32_t image              = segoffset(((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1]);   // 2, 3
-      uint16_t  tmem              = ((uint16_t *)gfx.RDRAM)[(addr + 4) ^ 1];      // 4
-      uint16_t  twidth    = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1];      // 5
-      uint16_t  theight   = ((uint16_t *)gfx.RDRAM)[(addr + 6) ^ 1];      // 6
-
-      FRDP ("tile addr: %08lx, tmem: %08lx, twidth: %d, theight: %d\n", image, tmem, twidth, theight);
-
-      int line = (twidth + 1) >> 2;
-
-      rdp.timg.addr = image;
-      rdp.timg.width = line << 3;
-      rdp.timg.size = 1;
-
-      rdp.tiles[7].t_mem = tmem;
-      rdp.tiles[7].line = line;
-      rdp.tiles[7].size = 1;
-
-      rdp.cmd0 = 0;
-      rdp.cmd1 = 0x07000000 | (twidth << 14) | (theight << 2);
-
-      rdp_loadtile(rdp.cmd0, rdp.cmd1);
-   }
-   else
-   {
-      FRDP ("UNKNOWN (0x%08lx)\n", type);
-      FRDP_E ("uc6:obj_loadtxtr UNKNOWN (0x%08lx)\n", type);
-   }
+   gSPObjLoadTxtr(w1);
 }
 
 static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1)
@@ -1351,7 +1294,7 @@ static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1)
    LRDP("uc6:obj_ldtx_sprite\n");
 
    uint32_t addr = rdp.cmd1;
-   uc6_obj_loadtxtr(w0, w1);
+   gSPObjLoadTxtr(w1);
    rdp.cmd1 = addr + 24;
    uc6_obj_sprite(w0, w1);
 }
@@ -1361,7 +1304,7 @@ static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1)
    LRDP("uc6:obj_ldtx_rect\n");
 
    uint32_t addr = rdp.cmd1;
-   uc6_obj_loadtxtr(w0, w1);
+   gSPObjLoadTxtr(w1);
    rdp.cmd1 = addr + 24;
    uc6_obj_rectangle(w0, w1);
 }
@@ -1371,7 +1314,7 @@ static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
    LRDP("uc6:ldtx_rect_r\n");
 
    uint32_t addr = rdp.cmd1;
-   uc6_obj_loadtxtr(w0, w1);
+   gSPObjLoadTxtr(w1);
    rdp.cmd1 = addr + 24;
    uc6_obj_rectangle_r(w0, w1);
 }
@@ -1392,17 +1335,20 @@ static void uc6_loaducode(uint32_t w0, uint32_t w1)
 static void uc6_sprite2d(uint32_t w0, uint32_t w1)
 {
    int i, s;
-   uint32_t a = rdp.pc[rdp.pc_i] & BMASK;
-   uint32_t cmd0 = ((uint32_t*)gfx.RDRAM)[a>>2]; //check next command
-   if ( (cmd0>>24) != 0xBE )
+   uint16_t stride;
+   uint32_t a, cmd0, addr, tlut;
+   DRAWIMAGE d;
+
+   a = rdp.pc[rdp.pc_i] & BMASK;
+   cmd0 = ((uint32_t*)gfx.RDRAM)[a>>2]; //check next command
+   if ( (cmd0 >> 24) != 0xBE )
       return;
 
    FRDP ("uc6:uc6_sprite2d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
-   uint32_t addr = segoffset(rdp.cmd1) >> 1;
-   DRAWIMAGE d;
+   addr = segoffset(w1) >> 1;
 
    d.imagePtr    = segoffset(((uint32_t*)gfx.RDRAM)[(addr+0)>>1]);       // 0,1
-   uint16_t stride = (((uint16_t *)gfx.RDRAM)[(addr+4)^1]);      // 4
+   stride        = (((uint16_t *)gfx.RDRAM)[(addr+4)^1]);      // 4
    d.imageW      = (((uint16_t *)gfx.RDRAM)[(addr+5)^1]);        // 5
    d.imageH      = (((uint16_t *)gfx.RDRAM)[(addr+6)^1]);        // 6
    d.imageFmt    = ((uint8_t *)gfx.RDRAM)[(((addr+7)<<1)+0)^3];  // 7
@@ -1410,13 +1356,15 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
    d.imagePal    = 0;
    d.imageX      = (((uint16_t *)gfx.RDRAM)[(addr+8)^1]);        // 8
    d.imageY      = (((uint16_t *)gfx.RDRAM)[(addr+9)^1]);        // 9
-   uint32_t tlut         = ((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1];      // 2, 3
+   tlut          = ((uint32_t*)gfx.RDRAM)[(addr + 2) >> 1];      // 2, 3
+
    //low-level implementation of sprite2d apparently calls setothermode command to set tlut mode
    //However, description of sprite2d microcode just says that
    //TlutPointer should be Null when CI images will not be used->
    //HLE implementation sets rdp.tlut_mode=2 if TlutPointer is not null, and rdp.tlut_mode=0 otherwise
    //Alas, it is not sufficient, since WCW Nitro uses non-Null TlutPointer for rgba textures.
    //So, additional check added->
+   
    if (tlut)
    {
       load_palette (segoffset(tlut), 0, 256);
@@ -1515,7 +1463,13 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          rdp.tiles[7].size = d.imageSiz;
          rdp.cmd0 = (d.imageX << 14) | (d.imageY << 2);
          rdp.cmd1 = 0x07000000 | ((d.imageX + d.imageW-1) << 14) | ((d.imageY + d.imageH-1) << 2);
-         rdp_loadtile(rdp.cmd0, rdp.cmd1);
+         gDPLoadTile(
+               ((rdp.cmd1 >> 24) & 0x07), /* tile */
+               ((rdp.cmd0 >> 14) & 0x03FF), /* ul_s */
+               ((rdp.cmd0 >> 2 ) & 0x03FF), /*ul_t */
+               ((rdp.cmd1 >> 14) & 0x03FF), /* lr_s */
+               ((rdp.cmd1 >> 2 ) & 0x03FF) /* lr_t */
+               );
 
          // SetTile ()
          TILE *tile = &rdp.tiles[0];
