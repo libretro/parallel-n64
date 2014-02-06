@@ -954,27 +954,30 @@ static void uc6_read_object_data (DRAWOBJECT *d)
 
 static void uc6_init_tile(const DRAWOBJECT *d)
 {
-  // SetTile ()
-  TILE *tile = &rdp.tiles[0];
-  tile->format = d->imageFmt;      // RGBA
-  tile->size = d->imageSiz;                // 16-bit
-  tile->line = d->imageStride;
-  tile->t_mem = d->imageAdrs;
-  tile->palette = d->imagePal;
-  tile->clamp_t = 1;
-  tile->mirror_t = 0;
-  tile->mask_t = 0;
-  tile->shift_t = 0;
-  tile->clamp_s = 1;
-  tile->mirror_s = 0;
-  tile->mask_s = 0;
-  tile->shift_s = 0;
+   gDPSetTile(
+         d->imageFmt,         /* format - RGBA */
+         d->imageSiz,         /* size - 16-bit */
+         d->imageStride,      /* line */
+         d->imageAdrs,        /* tmem */
+         0,                   /* tile_idx */
+         d->imagePal,         /* palette */
+         1,                   /* cmt */
+         1,                   /* cms */
+         0,                   /* mask_t */
+         0,                   /* mask_s */
+         0,                   /* shiftt */
+         0,                   /* shifts */
+         0,                   /* mirrort */
+         0                    /* mirrors */
+         );
 
-  // SetTileSize ()
-  rdp.tiles[0].ul_s = 0;
-  rdp.tiles[0].ul_t = 0;
-  rdp.tiles[0].lr_s = (d->imageW>0)?d->imageW-1:0;
-  rdp.tiles[0].lr_t = (d->imageH>0)?d->imageH-1:0;
+  gDPSetTileSize(
+        0,                                      /* tile */
+        0,                                      /* ul_s */
+        0,                                      /* ul_t */
+        (d->imageW > 0) ? d->imageW-1 : 0,      /* lr_s */
+        (d->imageH > 0) ? d->imageH-1 : 0       /* lr_t */
+        );
 }
 
 static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
