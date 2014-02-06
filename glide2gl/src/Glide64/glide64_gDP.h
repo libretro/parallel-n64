@@ -464,6 +464,13 @@ static void gDPSetTile( uint32_t format, uint32_t size, uint32_t line, uint32_t 
    tile->mirror_t = mirrort;
    tile->mirror_s = mirrors;
 
+   if ((settings.hacks&hack_GoldenEye) && tile->format == G_IM_FMT_RGBA && rdp.tlut_mode == 2 && tile->size == G_IM_SIZ_16b)
+   {
+      /* Hack -GoldenEye water texture in Frigate stage. It has CI format in fact, but the game set it to RGBA */
+      tile->format = G_IM_FMT_CI;
+      tile->size = G_IM_SIZ_8b;
+   }
+
 #ifdef HAVE_HWFBE
    if (fb_hwfbe_enabled && rdp.last_tile < rdp.cur_tile + 2)
    {
