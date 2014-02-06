@@ -315,12 +315,20 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
 
 
       v->scr_off = 0;
-      if (v->x < -v->w) v->scr_off |= 1;
-      if (v->x > v->w) v->scr_off |= 2;
-      if (v->y < -v->w) v->scr_off |= 4;
-      if (v->y > v->w) v->scr_off |= 8;
-      if (v->w < 0.1f) v->scr_off |= 16;
-      //    if (v->z_w > 1.0f) v->scr_off |= 32;
+      if (v->x < -v->w)
+         v->scr_off |= 1;
+      if (v->x > v->w)
+         v->scr_off |= 2;
+      if (v->y < -v->w)
+         v->scr_off |= 4;
+      if (v->y > v->w)
+         v->scr_off |= 8;
+      if (v->w < 0.1f)
+         v->scr_off |= 16;
+#if 0
+      if (v->z_w > 1.0f)
+         v->scr_off |= 32;
+#endif
 
       if (rdp.geom_mode & G_LIGHTING)
       {
@@ -357,9 +365,7 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
          v->g = rdram_u8[(addr+i + 13)^3];
          v->b = rdram_u8[(addr+i + 14)^3];
       }
-#ifdef EXTREME_LOGGING
-      FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
-#endif
+      //FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
    }
 
    rdp.geom_mode = geom_mode;

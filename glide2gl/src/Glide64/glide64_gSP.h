@@ -1418,22 +1418,9 @@ static void gSPTextureRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uin
    }
 }
 
-/*
- * Loads into the RSP vertex buffer the vertices that will be used by the 
- * gSP1Triangle commands to generate polygons.
- *
- * v  - Segment address of the vertex list.
- * n  - Number of vertices (1 - 32).
- * v0 - Starting index in vertex buffer where vertices are to be loaded.
- */
-static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
+
+static void pre_update(void)
 {
-   int i;
-   float x, y, z;
-
-   rdp.v0 = v0; // Current vertex
-   rdp.vn = n;  // Number to copy
-
    // This is special, not handled in update(), but here
    // Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
    if (rdp.update & UPDATE_MULT_MAT)
@@ -1452,8 +1439,23 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
          NormalizeVector (rdp.light_vector[l]);
       }
    }
+}
 
-   //FRDP ("rsp:vertex v0:%d, n:%d, from: %08lx\n", v0, n, addr);
+/*
+ * Loads into the RSP vertex buffer the vertices that will be used by the 
+ * gSP1Triangle commands to generate polygons.
+ *
+ * v  - Segment address of the vertex list.
+ * n  - Number of vertices (1 - 32).
+ * v0 - Starting index in vertex buffer where vertices are to be loaded.
+ */
+static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
+{
+   int i;
+   float x, y, z;
+
+   rdp.v0 = v0; // Current vertex
+   rdp.vn = n;  // Number to copy
 
    for (i=0; i < (n<<4); i+=16)
    {
@@ -1473,6 +1475,9 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
       vert->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
       vert->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
 
+      vert->uv_calculated = 0xFFFFFFFF;
+      vert->screen_translated = 0;
+      vert->shade_mod = 0;
 
       if (fabs(vert->w) < 0.001)
          vert->w = 0.001f;
@@ -1481,10 +1486,6 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
       vert->y_w = vert->y * vert->oow;
       vert->z_w = vert->z * vert->oow;
       CalculateFog (vert);
-
-      vert->uv_calculated = 0xFFFFFFFF;
-      vert->screen_translated = 0;
-      vert->shade_mod = 0;
 
       vert->scr_off = 0;
       if (vert->x < -vert->w)
@@ -1528,4 +1529,5 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
       }
       //FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
    }
+   //FRDP ("rsp:vertex v0:%d, n:%d, from: %08lx\n", v0, n, addr);
 }
