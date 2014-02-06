@@ -315,6 +315,11 @@ static void gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float
    rdp.ci_lower_bound = rdp.scissor_o.lr_y;
    rdp.scissor_set = true;
 
+#ifdef EXTREME_LOGGING
+   FRDP("setscissor: (%d,%d) -> (%d,%d)\n", rdp.scissor_o.ul_x, rdp.scissor_o.ul_y,
+         rdp.scissor_o.lr_x, rdp.scissor_o.lr_y);
+#endif
+
    rdp.update |= UPDATE_SCISSOR;
 
    if (rdp.view_scale[0] != 0) //viewport is set?
@@ -325,8 +330,6 @@ static void gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float
    rdp.view_trans[0] = rdp.view_scale[0];
    rdp.view_trans[1] = -rdp.view_scale[1];
    rdp.update |= UPDATE_VIEWPORT;
-
-   //FRDP("setscissor: (%d,%d) -> (%d,%d)\n", rdp.scissor_o.ul_x, rdp.scissor_o.ul_y, rdp.scissor_o.lr_x, rdp.scissor_o.lr_y);
 }
 
 /*
