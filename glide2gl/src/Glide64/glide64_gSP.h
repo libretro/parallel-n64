@@ -1757,3 +1757,41 @@ static void gSPObjLoadTxSprite(uint32_t txsp)
    gSPObjSprite();
    //LRDP("uc6:obj_ldtx_sprite\n");
 }
+
+/* 
+ * An S2DEX microcode macro that loads the
+ * 2D matrix data that exists in the uObjMtx data
+ * structure to the 2D matrix area in the RSP.
+ */
+static void gSPObjMatrix(uint32_t mtx)
+{
+  uint32_t addr = segoffset(mtx) >> 1;
+  
+  mat_2d.A = ((int*)gfx.RDRAM)[(addr+0)>>1] / 65536.0f;
+  mat_2d.B = ((int*)gfx.RDRAM)[(addr+2)>>1] / 65536.0f;
+  mat_2d.C = ((int*)gfx.RDRAM)[(addr+4)>>1] / 65536.0f;
+  mat_2d.D = ((int*)gfx.RDRAM)[(addr+6)>>1] / 65536.0f;
+  mat_2d.X = ((int16_t*)gfx.RDRAM)[(addr+8)^1] / 4.0f;
+  mat_2d.Y = ((int16_t*)gfx.RDRAM)[(addr+9)^1] / 4.0f;
+  mat_2d.BaseScaleX = ((uint16_t*)gfx.RDRAM)[(addr+10)^1] / 1024.0f;
+  mat_2d.BaseScaleY = ((uint16_t*)gfx.RDRAM)[(addr+11)^1] / 1024.0f;
+
+  //FRDP ("mat_2d\nA: %f, B: %f, c: %f, D: %f\nX: %f, Y: %f\nBaseScaleX: %f, BaseScaleY: %f\n", mat_2d.A, mat_2d.B, mat_2d.C, mat_2d.D, mat_2d.X, mat_2d.Y, mat_2d.BaseScaleX, mat_2d.BaseScaleY);
+}
+
+/* 
+ * An S2DEX microcode macro that loads the
+ * 2D matrix data that exists in the uObjMtx data
+ * structure to the 2D submatrix area in the RSP.
+ */
+static void gSPObjSubMatrix(uint32_t mtx)
+{
+   uint32_t addr = segoffset(mtx) >> 1;
+
+   mat_2d.X = ((int16_t*)gfx.RDRAM)[(addr+0)^1] / 4.0f;
+   mat_2d.Y = ((int16_t*)gfx.RDRAM)[(addr+1)^1] / 4.0f;
+   mat_2d.BaseScaleX = ((uint16_t*)gfx.RDRAM)[(addr+2)^1] / 1024.0f;
+   mat_2d.BaseScaleY = ((uint16_t*)gfx.RDRAM)[(addr+3)^1] / 1024.0f;
+
+   //FRDP ("submatrix\nX: %f, Y: %f\nBaseScaleX: %f, BaseScaleY: %f\n", mat_2d.X, mat_2d.Y, mat_2d.BaseScaleX, mat_2d.BaseScaleY);
+}

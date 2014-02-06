@@ -1049,33 +1049,11 @@ static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
 
 static void uc6_obj_movemem(uint32_t w0, uint32_t w1)
 {
-  LRDP("uc6:obj_movemem\n");
-
-  int index = rdp.cmd0 & 0xFFFF;
-  uint32_t addr = segoffset(rdp.cmd1) >> 1;
-
-  if (index == 0) {     // movemem matrix
-    mat_2d.A = ((int*)gfx.RDRAM)[(addr+0)>>1] / 65536.0f;
-    mat_2d.B = ((int*)gfx.RDRAM)[(addr+2)>>1] / 65536.0f;
-    mat_2d.C = ((int*)gfx.RDRAM)[(addr+4)>>1] / 65536.0f;
-    mat_2d.D = ((int*)gfx.RDRAM)[(addr+6)>>1] / 65536.0f;
-    mat_2d.X = ((int16_t*)gfx.RDRAM)[(addr+8)^1] / 4.0f;
-    mat_2d.Y = ((int16_t*)gfx.RDRAM)[(addr+9)^1] / 4.0f;
-    mat_2d.BaseScaleX = ((uint16_t*)gfx.RDRAM)[(addr+10)^1] / 1024.0f;
-    mat_2d.BaseScaleY = ((uint16_t*)gfx.RDRAM)[(addr+11)^1] / 1024.0f;
-
-    FRDP ("mat_2d\nA: %f, B: %f, c: %f, D: %f\nX: %f, Y: %f\nBaseScaleX: %f, BaseScaleY: %f\n",
-      mat_2d.A, mat_2d.B, mat_2d.C, mat_2d.D, mat_2d.X, mat_2d.Y, mat_2d.BaseScaleX, mat_2d.BaseScaleY);
-  }
-  else if (index == 2) {        // movemem submatrix
-    mat_2d.X = ((int16_t*)gfx.RDRAM)[(addr+0)^1] / 4.0f;
-    mat_2d.Y = ((int16_t*)gfx.RDRAM)[(addr+1)^1] / 4.0f;
-    mat_2d.BaseScaleX = ((uint16_t*)gfx.RDRAM)[(addr+2)^1] / 1024.0f;
-    mat_2d.BaseScaleY = ((uint16_t*)gfx.RDRAM)[(addr+3)^1] / 1024.0f;
-
-    FRDP ("submatrix\nX: %f, Y: %f\nBaseScaleX: %f, BaseScaleY: %f\n",
-      mat_2d.X, mat_2d.Y, mat_2d.BaseScaleX, mat_2d.BaseScaleY);
-  }
+  if (_SHIFTR( w0, 0, 16 ) == 0)
+     gSPObjMatrix(w1);
+  else if (_SHIFTR( w0, 0, 16 ) == 2)
+     gSPObjSubMatrix(w1);
+  //LRDP("uc6:obj_movemem\n");
 }
 
 static void uc6_select_dl(uint32_t w0, uint32_t w1)
