@@ -64,6 +64,8 @@ void CRC_BuildTable(void)
   +(uint32_t)(((const uint8_t *)(d))[0]) )
 #endif
 
+#if 0
+/* SuperFastHash */
 uint32_t CRC32(uint32_t hash, const char * data, int len)
 {
   uint32_t tmp;
@@ -110,3 +112,56 @@ uint32_t CRC32(uint32_t hash, const char * data, int len)
 
   return hash;
 }
+#else
+
+#define MAGIC 0x5bd1e995
+#define MAGIC2 24
+/* MurmurHash2 */
+uint32_t CRC32(uint32_t seed, const char *key, int len)
+{
+   // 'm' and 'r' are mixing constants generated offline.
+   // They're not really 'magic', they just happen to work well.
+
+   // Initialize the hash to a 'random' value
+
+   uint32_t h = seed ^ len;
+
+   // Mix 4 bytes at a time into the hash
+
+   const uint8_t* data = (const uint8_t*)key;
+
+   while(len >= 4)
+   {
+      uint32_t k = *(uint32_t*)data;
+
+      k *= MAGIC;
+      k ^= k >> MAGIC2;
+      k *= MAGIC;
+
+      h *= MAGIC;
+      h ^= k;
+
+      data += 4;
+      len -= 4;
+   }
+
+   // Handle the last few bytes of the input array
+
+   switch(len)
+   {
+      case 3: h ^= data[2] << 16;
+      case 2: h ^= data[1] << 8;
+      case 1: h ^= data[0];
+              h *= MAGIC;
+   };
+
+   // Do a few final mixes of the hash to ensure the last few
+   // bytes are well-incorporated.
+
+   h ^= h >> 13;
+   h *= MAGIC;
+   h ^= h >> 15;
+
+   return h;
+}
+#endif
