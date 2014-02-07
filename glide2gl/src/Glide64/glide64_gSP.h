@@ -1038,8 +1038,10 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
 
 static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, bool do_cull, int32_t wd)
 {
-   int i, vcount;
+   int32_t i, vcount;
    bool updated_once = false;
+   vcount = 0;
+
    for (i = 0; i < iterations; i++)
    {
       if (do_cull && !cull_tri(v + vcount))
