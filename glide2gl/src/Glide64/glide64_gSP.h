@@ -598,6 +598,8 @@ static void gSPCullDisplayList(uint32_t v0, uint32_t vn)
    if (vn < v0)
       return;
 
+   cond = 0;
+
    for (i = v0; i <= vn; i++)
    {
       v = (VERTEX*)&rdp.vtx[i];
