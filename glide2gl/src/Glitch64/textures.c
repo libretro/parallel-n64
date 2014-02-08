@@ -659,8 +659,11 @@ grTexFilterMode(
 	  glActiveTexture(GL_TEXTURE0);
 	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter0);
 	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter0);
+#ifdef DISABLE_3POINT
+     three_point_filter0=false;
+#else
 	  three_point_filter0=(magfilter_mode == GR_TEXTUREFILTER_3POINT_LINEAR);
-
+#endif
    }
    else
    {
@@ -673,7 +676,11 @@ grTexFilterMode(
 	  glActiveTexture(GL_TEXTURE1);
 	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter1);
 	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter1);
+#ifdef DISABLE_3POINT
+	  three_point_filter1= false;
+#else
 	  three_point_filter1=(magfilter_mode == GR_TEXTUREFILTER_3POINT_LINEAR);
+#endif
    }
    need_to_compile = 1;
 }

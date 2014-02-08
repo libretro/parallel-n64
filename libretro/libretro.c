@@ -457,7 +457,11 @@ void update_variables(void)
 	  if (strcmp(var.value, "automatic") == 0)
 		  retro_filtering = 0;
 	  else if (strcmp(var.value, "N64 3-point") == 0)
+#ifdef DISABLE_3POINT
+		  retro_filtering = 3;
+#else
 		  retro_filtering = 1;
+#endif
 	  else if (strcmp(var.value, "nearest") == 0)
 		  retro_filtering = 2;
 	  else if (strcmp(var.value, "bilinear") == 0)

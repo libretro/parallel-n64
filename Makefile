@@ -294,7 +294,7 @@ CPPFLAGS   += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE $(fpic)
 LDFLAGS    += -lm $(fpic)
 
 ifeq ($(GLES), 1)
-CPPFLAGS += -DGLES
+CPPFLAGS += -DGLES -DDISABLE_3POINT
 endif
 
 ifeq ($(DEBUG), 1)
