@@ -350,7 +350,9 @@ void rdp_new(void)
 
 #if defined(HAVE_NEON)
    if (cpu & RETRO_SIMD_NEON)
-      gfx_instruction[2][1] = uc2_vertex_neon;
+      _gSPVertex = gSPVertexNEON;
+#else
+      _gSPVertex = gSPVertex;
 #endif
 
 }

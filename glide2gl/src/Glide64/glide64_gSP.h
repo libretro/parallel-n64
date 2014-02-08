@@ -1568,6 +1568,106 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
    //FRDP ("rsp:vertex v0:%d, n:%d, from: %08lx\n", v0, n, addr);
 }
 
+#ifdef HAVE_NEON
+#include <arm_neon.h>
+
+static void gSPVertexNEON(uint32_t addr, uint32_t n, uint32_t v0)
+{
+   int i;
+   float x, y, z;
+   float32x4_t comb0, comb1, comb2, comb3;
+   float32x4_t v_xyzw;
+
+   comb0 = vld1q_f32(rdp.combined[0]);
+   comb1 = vld1q_f32(rdp.combined[1]);
+   comb2 = vld1q_f32(rdp.combined[2]);
+   comb3 = vld1q_f32(rdp.combined[3]);
+
+   for (i=0; i < (n<<4); i+=16)
+   {
+      VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i>>4)];
+      int16_t *rdram = (int16_t*)gfx.RDRAM;
+      x   = (float)rdram[(((addr+i) >> 1) + 0)^1];
+      y   = (float)rdram[(((addr+i) >> 1) + 1)^1];
+      z   = (float)rdram[(((addr+i) >> 1) + 2)^1];
+      vert->flags  = ((uint16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 3)^1];
+      vert->ou = (float)rdram[(((addr+i) >> 1) + 4)^1];
+      vert->ov = (float)rdram[(((addr+i) >> 1) + 5)^1];
+      vert->uv_scaled = 0;
+      vert->a    = ((uint8_t*)gfx.RDRAM)[(addr+i + 15)^3];
+
+      v_xyzw  = vmulq_n_f32(comb0,x)+vmulq_n_f32(comb1,y)+vmulq_n_f32(comb2,z)+comb3;
+      vert->x = vgetq_lane_f32(v_xyzw,0);
+      vert->y = vgetq_lane_f32(v_xyzw,1);
+      vert->z = vgetq_lane_f32(v_xyzw,2);
+      vert->w = vgetq_lane_f32(v_xyzw,3);
+
+      vert->uv_calculated = 0xFFFFFFFF;
+      vert->screen_translated = 0;
+      vert->shade_mod = 0;
+
+      if (fabs(vert->w) < 0.001)
+         vert->w = 0.001f;
+      vert->oow = 1.0f / vert->w;
+      v_xyzw = vmulq_n_f32(v_xyzw,vert->oow);
+      vert->x_w=vgetq_lane_f32(v_xyzw,0);
+      vert->y_w=vgetq_lane_f32(v_xyzw,1);
+      vert->z_w=vgetq_lane_f32(v_xyzw,2);
+      CalculateFog (vert);
+
+      vert->scr_off = 0;
+      if (vert->x < -vert->w)
+         vert->scr_off |= 1;
+      if (vert->x > vert->w)
+         vert->scr_off |= 2;
+      if (vert->y < -vert->w)
+         vert->scr_off |= 4;
+      if (vert->y > vert->w)
+         vert->scr_off |= 8;
+      if (vert->w < 0.1f)
+         vert->scr_off |= 16;
+#if 0
+      if (vert->z_w > 1.0f)
+         vert->scr_off |= 32;
+#endif
+
+      if (rdp.geom_mode & G_LIGHTING)
+      {
+         int8_t *rdram = (int8_t*)gfx.RDRAM;
+         vert->vec[0] = rdram[(addr+i + 12)^3];
+         vert->vec[1] = rdram[(addr+i + 13)^3];
+         vert->vec[2] = rdram[(addr+i + 14)^3];
+         if (rdp.geom_mode & G_TEXTURE_GEN)
+         {
+            if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
+               calc_linear (vert);
+            else
+               calc_sphere (vert);
+         }
+
+         if (settings.ucode == 2 && rdp.geom_mode & 0x00400000)
+         {
+            float tmpvec[3] = {x, y, z};
+            calc_point_light (vert, tmpvec);
+         }
+         else
+         {
+            NormalizeVector (vert->vec);
+            calc_light (vert);
+         }
+      }
+      else
+      {
+         uint8_t *rdram = (uint8_t*)gfx.RDRAM;
+         vert->r = rdram[(addr+i + 12)^3];
+         vert->g = rdram[(addr+i + 13)^3];
+         vert->b = rdram[(addr+i + 14)^3];
+      }
+      //FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
+   }
+   //FRDP ("rsp:vertex v0:%d, n:%d, from: %08lx\n", v0, n, addr);
+}
+#endif
 
 /*
  * An S2DEX microcode macro that loads the texture data

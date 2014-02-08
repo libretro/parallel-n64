@@ -206,4 +206,6 @@ int GetTexAddrUMA(int tmu, int texsize);
 void ReadSettings(void);
 void ReadSpecialSettings (const char * name);
 
+void (*_gSPVertex)(uint32_t addr, uint32_t n, uint32_t v0);
+
 #endif //_GFX_H_INCLUDED__
