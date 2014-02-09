@@ -2183,7 +2183,7 @@ static uint32_t rdp_cmd_data[0x1000];
 #define SSCALE(s, _w) (rdp.Persp_en? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
 #define TSCALE(s, w) (rdp.Persp_en? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
 
-void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer,
+static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer,
                   uint32_t * rdp_cmd)
 {
   rdp.cur_tile = (w1 >> 16) & 0x7;

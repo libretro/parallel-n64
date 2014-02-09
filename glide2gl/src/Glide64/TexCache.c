@@ -43,7 +43,7 @@
 #include "Util.h"
 #include "GBI.h"
 
-void LoadTex (int id, int tmu);
+static void LoadTex (int id, int tmu);
 
 uint8_t tex1[1024*1024*4];		// temporary texture
 uint8_t tex2[1024*1024*4];
@@ -88,7 +88,7 @@ typedef struct NODE_t
 
 NODE *cachelut[65536];
 
-void AddToList (NODE **list, uint32_t crc, uintptr_t data, int tmu, int number)
+static void AddToList (NODE **list, uint32_t crc, uintptr_t data, int tmu, int number)
 {
    NODE *node = (NODE*)malloc(sizeof(NODE));
    node->crc = crc;
@@ -101,7 +101,7 @@ void AddToList (NODE **list, uint32_t crc, uintptr_t data, int tmu, int number)
    rdp.n_cached[tmu^1] = rdp.n_cached[tmu];
 }
 
-void DeleteList (NODE **list)
+static void DeleteList (NODE **list)
 {
    while (*list)
    {
@@ -133,7 +133,7 @@ void ClearCache(void)
 }
 
 //****************************************************************
-uint32_t textureCRC(uint8_t *addr, int width, int height, int line)
+static uint32_t textureCRC(uint8_t *addr, int width, int height, int line)
 {
    uint32_t crc = 0;
    uint32_t *pixelpos;
@@ -157,7 +157,7 @@ uint32_t textureCRC(uint8_t *addr, int width, int height, int line)
 }
 
 // Gets information for either t0 or t1, checks if in cache & fills tex_found
-void GetTexInfo (int id, int tile)
+static void GetTexInfo (int id, int tile)
 {
    int t;
    FRDP (" | |-+ GetTexInfo (id: %d, tile: %d)\n", id, tile);
@@ -837,9 +837,8 @@ void TexCache(void)
    LRDP(" | +- TexCache End\n");
 }
 
-
 // Does the actual texture loading after everything is prepared
-void LoadTex(int id, int tmu)
+static void LoadTex(int id, int tmu)
 {
    int t;
    FRDP (" | |-+ LoadTex (id: %d, tmu: %d)\n", id, tmu);
