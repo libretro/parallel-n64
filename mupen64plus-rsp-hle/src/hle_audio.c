@@ -87,7 +87,7 @@ void adpcm_compute_residuals(int16_t* dst, const int16_t* src,
 
    size_t i;
 
-   for(i = 0; i < 8; ++i)
+   for(i = 0; i < count; ++i)
    {
       int32_t accu = (int32_t)src[i] << 11;
       accu += book1[i]*l1 + book2[i]*l2 + rdot(i, book2, src);
