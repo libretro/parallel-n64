@@ -106,7 +106,7 @@ void alist_process(const acmd_callback_t abi[], unsigned int abi_size)
         w1 = *(alist++);
         w2 = *(alist++);
 
-        acmd = w1 >> 24;
+        acmd = (w1 >> 24) & 0x7f;
 
         if (acmd < abi_size)
             (*abi[acmd])(w1, w2);
