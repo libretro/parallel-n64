@@ -22,11 +22,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <stddef.h>
 
-extern const uint16_t ResampleLUT[0x200];
-
+#include "m64p_plugin.h"
 #include "m64p_types.h"
 #include "hle.h"
+#include "musyx.h"
 #include "hle_audio.h"
 
 /* various constants */
@@ -42,8 +43,18 @@ enum {
     SFD_VOICE_BITMASK   = 0x4,
     SFD_STATE_PTR       = 0x8,
     SFD_SFX_PTR         = 0xc,
+    SFD_VOICES          = 0x10,
 
-    SFD_VOICES          = 0x10
+    /* v2 only */
+    SFD2_10_PTR         = 0x10,
+    SFD2_14_BITMASK     = 0x14,
+    SFD2_15_BITMASK     = 0x15,
+    SFD2_16_BITMASK     = 0x16,
+    SFD2_18_PTR         = 0x18,
+    SFD2_1C_PTR         = 0x1c,
+    SFD2_20_PTR         = 0x20,
+    SFD2_24_PTR         = 0x24,
+    SFD2_VOICES         = 0x28
 };
 
 enum {
@@ -83,7 +94,9 @@ enum {
     STATE_LAST_SAMPLE   = 0x0,
     STATE_BASE_VOL      = 0x100,
     STATE_CC0           = 0x110,
-    STATE_740_LAST4     = 0x290
+    STATE_740_LAST4_V1  = 0x290,
+
+    STATE_740_LAST4_V2  = 0x110
 };
 
 enum {
@@ -93,7 +106,8 @@ enum {
     SFX_FIR4_HGAIN      = 0x0a,
     SFX_TAP_DELAYS      = 0x0c,
     SFX_TAP_GAINS       = 0x2c,
-    // padding          = 0x3c
+    SFX_U16_3C          = 0x3c,
+    SFX_U16_3E          = 0x3e,
     SFX_FIR4_HCOEFFS    = 0x40
 };
 
@@ -113,15 +127,17 @@ typedef struct {
     int16_t subframe_740_last4[4];
 } musyx_t;
 
-#define DebugMessage(a, ...) ((void)0)
-
 /* helper functions prototypes */
 static void load_base_vol(int32_t *base_vol, uint32_t address);
 static void save_base_vol(const int32_t *base_vol, uint32_t address);
-static void update_base_vol(int32_t *base_vol, uint32_t voice_mask,
-                            uint32_t last_sample_ptr);
+static void update_base_vol_v1(int32_t *base_vol,
+                               uint32_t voice_mask, uint32_t last_sample_ptr);
+static void update_base_vol_v2(int32_t *base_vol,
+                               uint32_t voice_mask, uint32_t last_sample_ptr,
+                               uint8_t mask_15, uint32_t ptr_24);
 
-static void init_subframes(musyx_t *musyx);
+static void init_subframes_v1(musyx_t *musyx);
+static void init_subframes_v2(musyx_t *musyx);
 
 static uint32_t voice_stage(musyx_t *musyx, uint32_t voice_ptr,
                             uint32_t last_sample_ptr);
@@ -138,15 +154,26 @@ static void adpcm_decode_frames(int16_t *dst, const uint8_t *src,
                                 const int16_t *table, uint8_t count,
                                 uint8_t skip_samples);
 
+static void adpcm_predict_frame(int16_t *dst, const uint8_t *src,
+                                const uint8_t *nibbles,
+                                unsigned int rshift);
+
 static void mix_voice_samples(musyx_t *musyx, uint32_t voice_ptr,
                               const int16_t *samples, unsigned segbase,
                               unsigned offset, uint32_t last_sample_ptr);
 
-static void sfx_stage(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx);
-static void mix_subframes(int16_t* y, const int16_t* x, int16_t hgain);
-static void mix_fir4(int16_t* y, const int16_t* x, int16_t hgain, const int16_t* hcoeffs);
+static void sfx_stage_v1(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx);
+static void sfx_stage_v2(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx);
 
-static void interleave_stage(musyx_t *musyx, uint32_t output_ptr);
+static void mix_samples(int16_t *y, int16_t x, int16_t hgain);
+static void mix_subframes(int16_t *y, const int16_t *x, int16_t hgain);
+static void mix_fir4(int16_t *y, const int16_t *x, int16_t hgain, const int16_t *hcoeffs);
+
+
+static void interleave_stage_v1(musyx_t *musyx, uint32_t output_ptr);
+
+static void interleave_stage_v2(musyx_t *musyx, uint16_t mask_16, uint32_t ptr_18,
+                                uint32_t ptr_1c, uint32_t output_ptr);
 
 static int32_t dot4(const int16_t *x, const int16_t *y)
 {
@@ -160,48 +187,48 @@ static int32_t dot4(const int16_t *x, const int16_t *y)
 }
 
 /**************************************************************************
- * MusyX audio ucode
+ * MusyX v1 audio ucode
  **************************************************************************/
-void musyx_task(void)
+void musyx_v1_task(void)
 {
     uint32_t sfd_ptr   = *dmem_u32(TASK_DATA_PTR);
     uint32_t sfd_count = *dmem_u32(TASK_DATA_SIZE);
+    uint32_t state_ptr;
+    musyx_t musyx;
 
-    DebugMessage(M64MSG_VERBOSE, "musyx_task: *data=%x, #SF=%d",
+    DebugMessage(M64MSG_VERBOSE, "musyx_v1_task: *data=%x, #SF=%d",
                  sfd_ptr,
                  sfd_count);
 
-    uint32_t state_ptr = *dram_u32(sfd_ptr + SFD_STATE_PTR);
-
-    musyx_t musyx;
+    state_ptr = *dram_u32(sfd_ptr + SFD_STATE_PTR);
 
     /* load initial state */
     load_base_vol(musyx.base_vol, state_ptr + STATE_BASE_VOL);
     dram_load_u16((uint16_t *)musyx.cc0, state_ptr + STATE_CC0, SUBFRAME_SIZE);
-    dram_load_u16((uint16_t *)musyx.subframe_740_last4, state_ptr + STATE_740_LAST4,
+    dram_load_u16((uint16_t *)musyx.subframe_740_last4, state_ptr + STATE_740_LAST4_V1,
              4);
 
     for (;;) {
-        /* parse SFD structre */
-        /*uint16_t voice_count = *dram_u16(sfd_ptr + SFD_VOICE_COUNT);*/
+        /* parse SFD structure */
         uint16_t sfx_index   = *dram_u16(sfd_ptr + SFD_SFX_INDEX);
         uint32_t voice_mask  = *dram_u32(sfd_ptr + SFD_VOICE_BITMASK);
         uint32_t sfx_ptr     = *dram_u32(sfd_ptr + SFD_SFX_PTR);
         uint32_t voice_ptr       = sfd_ptr + SFD_VOICES;
         uint32_t last_sample_ptr = state_ptr + STATE_LAST_SAMPLE;
+        uint32_t output_ptr;
 
         /* initialize internal subframes using updated base volumes */
-        update_base_vol(musyx.base_vol, voice_mask, last_sample_ptr);
-        init_subframes(&musyx);
+        update_base_vol_v1(musyx.base_vol, voice_mask, last_sample_ptr);
+        init_subframes_v1(&musyx);
 
         /* active voices get mixed into L,R,cc0,e50 subframes (optional) */
-        uint32_t output_ptr = voice_stage(&musyx, voice_ptr, last_sample_ptr);
+        output_ptr = voice_stage(&musyx, voice_ptr, last_sample_ptr);
 
         /* apply delay-based effects (optional) */
-        sfx_stage(&musyx, sfx_ptr, sfx_index);
+        sfx_stage_v1(&musyx, sfx_ptr, sfx_index);
 
         /* emit interleaved L,R subframes */
-        interleave_stage(&musyx, output_ptr);
+        interleave_stage_v1(&musyx, output_ptr);
 
         --sfd_count;
         if (sfd_count == 0)
@@ -214,11 +241,89 @@ void musyx_task(void)
     /* writeback updated state */
     save_base_vol(musyx.base_vol, state_ptr + STATE_BASE_VOL);
     dram_store_u16((uint16_t *)musyx.cc0, state_ptr + STATE_CC0, SUBFRAME_SIZE);
-    dram_store_u16((uint16_t *)musyx.subframe_740_last4, state_ptr + STATE_740_LAST4,
+    dram_store_u16((uint16_t *)musyx.subframe_740_last4, state_ptr + STATE_740_LAST4_V1,
               4);
 }
 
-void load_base_vol(int32_t *base_vol, uint32_t address)
+/**************************************************************************
+ * MusyX v2 audio ucode
+ **************************************************************************/
+void musyx_v2_task(void)
+{
+    uint32_t sfd_ptr   = *dmem_u32(TASK_DATA_PTR);
+    uint32_t sfd_count = *dmem_u32(TASK_DATA_SIZE);
+    musyx_t musyx;
+
+    DebugMessage(M64MSG_VERBOSE, "musyx_v2_task: *data=%x, #SF=%d",
+                 sfd_ptr,
+                 sfd_count);
+
+    for (;;) {
+        /* parse SFD structure */
+        uint16_t sfx_index       = *dram_u16(sfd_ptr + SFD_SFX_INDEX);
+        uint32_t voice_mask      = *dram_u32(sfd_ptr + SFD_VOICE_BITMASK);
+        uint32_t state_ptr       = *dram_u32(sfd_ptr + SFD_STATE_PTR);
+        uint32_t sfx_ptr         = *dram_u32(sfd_ptr + SFD_SFX_PTR);
+        uint32_t voice_ptr       = sfd_ptr + SFD2_VOICES;
+
+        uint32_t ptr_10          = *dram_u32(sfd_ptr + SFD2_10_PTR);
+        uint8_t  mask_14         = *dram_u8 (sfd_ptr + SFD2_14_BITMASK);
+        uint8_t  mask_15         = *dram_u8 (sfd_ptr + SFD2_15_BITMASK);
+        uint16_t mask_16         = *dram_u16(sfd_ptr + SFD2_16_BITMASK);
+        uint32_t ptr_18          = *dram_u32(sfd_ptr + SFD2_18_PTR);
+        uint32_t ptr_1c          = *dram_u32(sfd_ptr + SFD2_1C_PTR);
+        uint32_t ptr_20          = *dram_u32(sfd_ptr + SFD2_20_PTR);
+        uint32_t ptr_24          = *dram_u32(sfd_ptr + SFD2_24_PTR);
+
+        uint32_t last_sample_ptr = state_ptr + STATE_LAST_SAMPLE;
+        uint32_t output_ptr;
+
+        /* load state */
+        load_base_vol(musyx.base_vol, state_ptr + STATE_BASE_VOL);
+        dram_load_u16((uint16_t *)musyx.subframe_740_last4,
+                state_ptr + STATE_740_LAST4_V2, 4);
+
+        /* initialize internal subframes using updated base volumes */
+        update_base_vol_v2(musyx.base_vol, voice_mask, last_sample_ptr, mask_15, ptr_24);
+        init_subframes_v2(&musyx);
+
+        if (ptr_10) {
+            /* TODO */
+            DebugMessage(M64MSG_WARNING, "ptr_10=%08x mask_14=%02x ptr_24=%08x",
+                    ptr_10, mask_14, ptr_24);
+        }
+
+        /* active voices get mixed into L,R,cc0,e50 subframes (optional) */
+        output_ptr = voice_stage(&musyx, voice_ptr, last_sample_ptr);
+
+        /* apply delay-based effects (optional) */
+        sfx_stage_v2(&musyx, sfx_ptr, sfx_index);
+
+        dram_store_u16((uint16_t*)musyx.left,  output_ptr                  , SUBFRAME_SIZE);
+        dram_store_u16((uint16_t*)musyx.right, output_ptr + 2*SUBFRAME_SIZE, SUBFRAME_SIZE);
+        dram_store_u16((uint16_t*)musyx.cc0,   output_ptr + 4*SUBFRAME_SIZE, SUBFRAME_SIZE);
+
+        /* store state */
+        save_base_vol(musyx.base_vol, state_ptr + STATE_BASE_VOL);
+        dram_store_u16((uint16_t*)musyx.subframe_740_last4,
+                state_ptr + STATE_740_LAST4_V2, 4);
+
+        if (mask_16)
+            interleave_stage_v2(&musyx, mask_16, ptr_18, ptr_1c, ptr_20);
+
+        --sfd_count;
+        if (sfd_count == 0)
+            break;
+
+        sfd_ptr += SFD2_VOICES + MAX_VOICES * VOICE_SIZE;
+    }
+}
+
+
+
+
+
+static void load_base_vol(int32_t *base_vol, uint32_t address)
 {
     base_vol[0] = ((uint32_t)(*dram_u16(address))     << 16) | (*dram_u16(address +  8));
     base_vol[1] = ((uint32_t)(*dram_u16(address + 2)) << 16) | (*dram_u16(address + 10));
@@ -226,7 +331,7 @@ void load_base_vol(int32_t *base_vol, uint32_t address)
     base_vol[3] = ((uint32_t)(*dram_u16(address + 6)) << 16) | (*dram_u16(address + 14));
 }
 
-void save_base_vol(const int32_t *base_vol, uint32_t address)
+static void save_base_vol(const int32_t *base_vol, uint32_t address)
 {
     unsigned k;
 
@@ -241,8 +346,8 @@ void save_base_vol(const int32_t *base_vol, uint32_t address)
     }
 }
 
-void update_base_vol(int32_t *base_vol, uint32_t voice_mask,
-                     uint32_t last_sample_ptr)
+static void update_base_vol_v1(int32_t *base_vol,
+                               uint32_t voice_mask, uint32_t last_sample_ptr)
 {
     unsigned i, k;
     uint32_t mask;
@@ -271,7 +376,53 @@ void update_base_vol(int32_t *base_vol, uint32_t voice_mask,
                  base_vol[0], base_vol[1], base_vol[2], base_vol[3]);
 }
 
-void init_subframes(musyx_t *musyx)
+static void update_base_vol_v2(int32_t *base_vol,
+                               uint32_t voice_mask, uint32_t last_sample_ptr,
+                               uint8_t mask_15, uint32_t ptr_24)
+{
+    unsigned i, k;
+    uint32_t mask;
+
+    DebugMessage(M64MSG_VERBOSE, "base_vol voice_mask = %08x", voice_mask);
+    DebugMessage(M64MSG_VERBOSE, "BEFORE: base_vol = %08x %08x %08x %08x",
+                 base_vol[0], base_vol[1], base_vol[2], base_vol[3]);
+
+    /* optim: skip voices contributions entirely if voice_mask is empty */
+    if (voice_mask != 0) {
+        for (i = 0, mask = 1; i < MAX_VOICES;
+             ++i, mask <<= 1, last_sample_ptr += 8) {
+            if ((voice_mask & mask) == 0)
+                continue;
+
+            for (k = 0; k < 4; ++k)
+                base_vol[k] += (int16_t)*dram_u16(last_sample_ptr + k * 2);
+        }
+    }
+
+    /* optim: skip contributions entirely if mask_15 is empty */
+    if (mask_15 != 0) {
+        for(i = 0, mask = 1; i < 4;
+                ++i, mask <<= 1, ptr_24 += 8) {
+            if ((mask_15 & mask) == 0)
+                continue;
+
+            for(k = 0; k < 4; ++k)
+                base_vol[k] += (int16_t)*dram_u16(ptr_24 + k * 2);
+        }
+    }
+
+    /* apply 3% decay */
+    for (k = 0; k < 4; ++k)
+        base_vol[k] = (base_vol[k] * 0x0000f850) >> 16;
+
+    DebugMessage(M64MSG_VERBOSE, "AFTER: base_vol = %08x %08x %08x %08x",
+                 base_vol[0], base_vol[1], base_vol[2], base_vol[3]);
+}
+
+
+
+
+static void init_subframes_v1(musyx_t *musyx)
 {
     unsigned i;
 
@@ -291,9 +442,34 @@ void init_subframes(musyx_t *musyx)
     }
 }
 
+static void init_subframes_v2(musyx_t *musyx)
+{
+    unsigned i,k;
+
+    int16_t values[4] = {
+        clamp_s16(musyx->base_vol[0]),
+        clamp_s16(musyx->base_vol[1]),
+        clamp_s16(musyx->base_vol[2]),
+        clamp_s16(musyx->base_vol[3])
+    };
+
+    int16_t* subframes[4] = {
+        musyx->left,
+        musyx->right,
+        musyx->cc0,
+        musyx->e50
+    };
+
+    for (i = 0; i < SUBFRAME_SIZE; ++i) {
+
+        for(k = 0; k < 4; ++k)
+            *(subframes[k]++) = values[k];
+    }
+}
+
 /* Process voices, and returns interleaved subframe destination address */
-uint32_t voice_stage(musyx_t *musyx, uint32_t voice_ptr,
-                     uint32_t last_sample_ptr)
+static uint32_t voice_stage(musyx_t *musyx, uint32_t voice_ptr,
+                            uint32_t last_sample_ptr)
 {
     uint32_t output_ptr;
     int i = 0;
@@ -302,16 +478,15 @@ uint32_t voice_stage(musyx_t *musyx, uint32_t voice_ptr,
     if (*dram_u16(voice_ptr + VOICE_CATSRC_0 + CATSRC_SIZE1) == 0) {
         DebugMessage(M64MSG_VERBOSE, "Skipping Voice stage");
         output_ptr = *dram_u32(voice_ptr + VOICE_INTERLEAVED_PTR);
-    }
-    /* otherwise process voices until a non null output_ptr is encountered */
-    else {
+    } else {
+        /* otherwise process voices until a non null output_ptr is encountered */
         for (;;) {
-            DebugMessage(M64MSG_VERBOSE, "Processing Voice #%d", i);
-
             /* load voice samples (PCM16 or APDCM) */
             int16_t samples[SAMPLE_BUFFER_SIZE];
             unsigned segbase;
             unsigned offset;
+
+            DebugMessage(M64MSG_VERBOSE, "Processing Voice #%d", i);
 
             if (*dram_u8(voice_ptr + VOICE_ADPCM_FRAMES) == 0)
                 load_samples_PCM16(voice_ptr, samples, &segbase, &offset);
@@ -336,21 +511,21 @@ uint32_t voice_stage(musyx_t *musyx, uint32_t voice_ptr,
     return output_ptr;
 }
 
-void dma_cat8(uint8_t *dst, uint32_t catsrc_ptr)
+static void dma_cat8(uint8_t *dst, uint32_t catsrc_ptr)
 {
     uint32_t ptr1  = *dram_u32(catsrc_ptr + CATSRC_PTR1);
     uint32_t ptr2  = *dram_u32(catsrc_ptr + CATSRC_PTR2);
     uint16_t size1 = *dram_u16(catsrc_ptr + CATSRC_SIZE1);
     uint16_t size2 = *dram_u16(catsrc_ptr + CATSRC_SIZE2);
 
+    size_t count1 = size1;
+    size_t count2 = size2;
+
     DebugMessage(M64MSG_VERBOSE, "dma_cat: %08x %08x %04x %04x",
                  ptr1,
                  ptr2,
                  size1,
                  size2);
-
-    size_t count1 = size1;
-    size_t count2 = size2;
 
     dram_load_u8(dst, ptr1, count1);
 
@@ -360,21 +535,21 @@ void dma_cat8(uint8_t *dst, uint32_t catsrc_ptr)
     dram_load_u8(dst + count1, ptr2, count2);
 }
 
-void dma_cat16(uint16_t *dst, uint32_t catsrc_ptr)
+static void dma_cat16(uint16_t *dst, uint32_t catsrc_ptr)
 {
     uint32_t ptr1  = *dram_u32(catsrc_ptr + CATSRC_PTR1);
     uint32_t ptr2  = *dram_u32(catsrc_ptr + CATSRC_PTR2);
     uint16_t size1 = *dram_u16(catsrc_ptr + CATSRC_SIZE1);
     uint16_t size2 = *dram_u16(catsrc_ptr + CATSRC_SIZE2);
 
+    size_t count1 = size1 >> 1;
+    size_t count2 = size2 >> 1;
+
     DebugMessage(M64MSG_VERBOSE, "dma_cat: %08x %08x %04x %04x",
                  ptr1,
                  ptr2,
                  size1,
                  size2);
-
-    size_t count1 = size1 >> 1;
-    size_t count2 = size2 >> 1;
 
     dram_load_u16(dst, ptr1, count1);
 
@@ -384,16 +559,17 @@ void dma_cat16(uint16_t *dst, uint32_t catsrc_ptr)
     dram_load_u16(dst + count1, ptr2, count2);
 }
 
-void load_samples_PCM16(uint32_t voice_ptr, int16_t *samples, unsigned *segbase,
-                        unsigned *offset)
+static void load_samples_PCM16(uint32_t voice_ptr, int16_t *samples,
+                               unsigned *segbase, unsigned *offset)
 {
-    DebugMessage(M64MSG_VERBOSE, "Format: PCM16");
 
     uint8_t  u8_3e  = *dram_u8(voice_ptr + VOICE_SKIP_SAMPLES);
     uint16_t u16_40 = *dram_u16(voice_ptr + VOICE_U16_40);
     uint16_t u16_42 = *dram_u16(voice_ptr + VOICE_U16_42);
 
     unsigned count = align(u16_40 + u8_3e, 4);
+
+    DebugMessage(M64MSG_VERBOSE, "Format: PCM16");
 
     *segbase = SAMPLE_BUFFER_SIZE - count;
     *offset  = u8_3e;
@@ -404,26 +580,27 @@ void load_samples_PCM16(uint32_t voice_ptr, int16_t *samples, unsigned *segbase,
         dma_cat16((uint16_t *)samples, voice_ptr + VOICE_CATSRC_1);
 }
 
-void load_samples_ADPCM(uint32_t voice_ptr, int16_t *samples, unsigned *segbase,
-                        unsigned *offset)
+static void load_samples_ADPCM(uint32_t voice_ptr, int16_t *samples,
+                               unsigned *segbase, unsigned *offset)
 {
     /* decompressed samples cannot exceed 0x400 bytes;
      * ADPCM has a compression ratio of 5/16 */
     uint8_t buffer[SAMPLE_BUFFER_SIZE * 2 * 5 / 16];
     int16_t adpcm_table[128];
 
-    DebugMessage(M64MSG_VERBOSE, "Format: ADPCM");
-
     uint8_t u8_3c = *dram_u8(voice_ptr + VOICE_ADPCM_FRAMES    );
     uint8_t u8_3d = *dram_u8(voice_ptr + VOICE_ADPCM_FRAMES + 1);
     uint8_t u8_3e = *dram_u8(voice_ptr + VOICE_SKIP_SAMPLES    );
     uint8_t u8_3f = *dram_u8(voice_ptr + VOICE_SKIP_SAMPLES + 1);
     uint32_t adpcm_table_ptr = *dram_u32(voice_ptr + VOICE_ADPCM_TABLE_PTR);
+    unsigned count;
+
+    DebugMessage(M64MSG_VERBOSE, "Format: ADPCM");
 
     DebugMessage(M64MSG_VERBOSE, "Loading ADPCM table: %08x", adpcm_table_ptr);
     dram_load_u16((uint16_t *)adpcm_table, adpcm_table_ptr, 128);
 
-    unsigned count = u8_3c << 5;
+    count = u8_3c << 5;
 
     *segbase = SAMPLE_BUFFER_SIZE - count;
     *offset  = u8_3e & 0x1f;
@@ -437,34 +614,17 @@ void load_samples_ADPCM(uint32_t voice_ptr, int16_t *samples, unsigned *segbase,
     }
 }
 
-static void adpcm_predict_frame(int16_t *dst, const uint8_t *src,
-                                const uint8_t *nibbles,
-                                unsigned int rshift)
+static void adpcm_decode_frames(int16_t *dst, const uint8_t *src,
+                                const int16_t *table, uint8_t count,
+                                uint8_t skip_samples)
 {
-   unsigned int i;
-
-   *(dst++) = (src[0] << 8) | src[1];
-   *(dst++) = (src[2] << 8) | src[3];
-
-   for (i = 1; i < 16; ++i)
-   {
-      uint8_t byte = nibbles[i];
-
-      *(dst++) = adpcm_predict_sample(byte, 0xf0, 8, rshift);
-      *(dst++) = adpcm_predict_sample(byte, 0x0f, 12, rshift);
-   }
-}
-
-void adpcm_decode_frames(int16_t *dst, const uint8_t *src, const int16_t *table,
-                         uint8_t count, uint8_t skip_samples)
-{
-    DebugMessage(M64MSG_VERBOSE, "ADPCM decode: count=%d, skip=%d", count,
-                 skip_samples);
-
     int16_t frame[32];
     const uint8_t *nibbles = src + 8;
     unsigned i;
     bool jump_gap = false;
+
+    DebugMessage(M64MSG_VERBOSE, "ADPCM decode: count=%d, skip=%d", count,
+                 skip_samples);
 
     if (skip_samples >= 32) {
         jump_gap = true;
@@ -473,10 +633,10 @@ void adpcm_decode_frames(int16_t *dst, const uint8_t *src, const int16_t *table,
     }
 
     for (i = 0; i < count; ++i) {
-        uint8_t code = nibbles[0];
+        uint8_t c2 = nibbles[0];
 
-        const int16_t *book = (code & 0xf0) + table;
-        unsigned int rshift = (code & 0x0f);
+        const int16_t *book = (c2 & 0xf0) + table;
+        unsigned int rshift = (c2 & 0x0f);
 
         adpcm_predict_frame(frame, src, nibbles, rshift);
 
@@ -498,15 +658,32 @@ void adpcm_decode_frames(int16_t *dst, const uint8_t *src, const int16_t *table,
     }
 }
 
-void mix_voice_samples(musyx_t *musyx, uint32_t voice_ptr,
-                       const int16_t *samples, unsigned segbase,
-                       unsigned offset, uint32_t last_sample_ptr)
+static void adpcm_predict_frame(int16_t *dst, const uint8_t *src,
+                                const uint8_t *nibbles,
+                                unsigned int rshift)
+{
+    unsigned int i;
+
+    *(dst++) = (src[0] << 8) | src[1];
+    *(dst++) = (src[2] << 8) | src[3];
+
+    for (i = 1; i < 16; ++i) {
+        uint8_t byte = nibbles[i];
+
+        *(dst++) = adpcm_predict_sample(byte, 0xf0,  8, rshift);
+        *(dst++) = adpcm_predict_sample(byte, 0x0f, 12, rshift);
+    }
+}
+
+static void mix_voice_samples(musyx_t *musyx, uint32_t voice_ptr,
+                              const int16_t *samples, unsigned segbase,
+                              unsigned offset, uint32_t last_sample_ptr)
 {
     int i, k;
 
     /* parse VOICE structure */
     const uint16_t pitch_q16   = *dram_u16(voice_ptr + VOICE_PITCH_Q16);
-    const uint16_t pitch_shift = *dram_u16(voice_ptr + VOICE_PITCH_SHIFT); // Q4.12
+    const uint16_t pitch_shift = *dram_u16(voice_ptr + VOICE_PITCH_SHIFT); /* Q4.12 */
 
     const uint16_t end_point     = *dram_u16(voice_ptr + VOICE_END_POINT);
     const uint16_t restart_point = *dram_u16(voice_ptr + VOICE_RESTART_POINT);
@@ -551,19 +728,22 @@ void mix_voice_samples(musyx_t *musyx, uint32_t voice_ptr,
                  v4_env_step[0], v4_env_step[1], v4_env_step[2], v4_env_step[3]);
 
     for (i = 0; i < SUBFRAME_SIZE; ++i) {
-        /* update sample and resample_lut pointers and then pitch_accu */
+        /* update sample and lut pointers and then pitch_accu */
+        const int16_t *lut = (RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8));
+        int dist;
+        int16_t v;
+
         sample += (pitch_accu >> 16);
-        const int16_t *lut = (RESAMPLE_LUT  + ((pitch_accu & 0xfc00) >> 8));
         pitch_accu &= 0xffff;
         pitch_accu += pitch_step;
 
         /* handle end/restart points */
-        int dist = sample - sample_end;
+        dist = sample - sample_end;
         if (dist >= 0)
             sample = sample_restart + dist;
 
         /* apply resample filter */
-        int16_t v = clamp_s16(dot4(sample, lut));
+        v = clamp_s16(dot4(sample, lut));
 
         for (k = 0; k < 4; ++k) {
             /* envmix */
@@ -585,36 +765,43 @@ void mix_voice_samples(musyx_t *musyx, uint32_t voice_ptr,
 }
 
 
-void sfx_stage(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
+static void sfx_stage_v1(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
 {
-    DebugMessage(M64MSG_VERBOSE, "SFX: %08x, idx=%d", sfx_ptr, idx);
-
-    if (sfx_ptr == 0)
-        return;
-
-    unsigned i;
+    unsigned int i;
 
     int16_t buffer[SUBFRAME_SIZE + 4];
-    int16_t* subframe = buffer + 4;
+    int16_t *subframe = buffer + 4;
+
     uint32_t tap_delays[8];
     int16_t tap_gains[8];
     int16_t fir4_hcoeffs[4];
 
     int16_t delayed[SUBFRAME_SIZE];
-    int32_t dpos, dlength;
+    int dpos, dlength;
 
     const uint32_t pos = idx * SUBFRAME_SIZE;
 
-    /* load sfx parameters */
-    uint32_t cbuffer_ptr    = *dram_u32(sfx_ptr + SFX_CBUFFER_PTR);
-    uint32_t cbuffer_length = *dram_u32(sfx_ptr + SFX_CBUFFER_LENGTH);
+    uint32_t cbuffer_ptr;
+    uint32_t cbuffer_length;
+    uint16_t tap_count;
+    int16_t fir4_hgain;
 
-    uint16_t tap_count      = *dram_u16(sfx_ptr + SFX_TAP_COUNT);
+    DebugMessage(M64MSG_VERBOSE, "SFX: %08x, idx=%d", sfx_ptr, idx);
+
+    if (sfx_ptr == 0)
+        return;
+
+    /* load sfx  parameters */
+    cbuffer_ptr    = *dram_u32(sfx_ptr + SFX_CBUFFER_PTR);
+    cbuffer_length = *dram_u32(sfx_ptr + SFX_CBUFFER_LENGTH);
+
+    tap_count      = *dram_u16(sfx_ptr + SFX_TAP_COUNT);
+
     dram_load_u32(tap_delays, sfx_ptr + SFX_TAP_DELAYS, 8);
-    dram_load_u16((uint16_t*)tap_gains,  sfx_ptr + SFX_TAP_GAINS,  8);
+    dram_load_u16((uint16_t *)tap_gains,  sfx_ptr + SFX_TAP_GAINS,  8);
 
-    int16_t fir4_hgain     = *dram_u16(sfx_ptr + SFX_FIR4_HGAIN);
-    dram_load_u16((uint16_t*)fir4_hcoeffs, sfx_ptr + SFX_FIR4_HCOEFFS, 4);
+    fir4_hgain     = *dram_u16(sfx_ptr + SFX_FIR4_HGAIN);
+    dram_load_u16((uint16_t *)fir4_hcoeffs, sfx_ptr + SFX_FIR4_HCOEFFS, 4);
 
     DebugMessage(M64MSG_VERBOSE, "cbuffer: ptr=%08x length=%x", cbuffer_ptr,
                  cbuffer_length);
@@ -624,18 +811,18 @@ void sfx_stage(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
                  fir4_hcoeffs[3]);
 
     DebugMessage(M64MSG_VERBOSE,
-            "tap count=%d\n"
-            "delays: %08x %08x %08x %08x %08x %08x %08x %08x\n"
-            "gains:  %04x %04x %04x %04x %04x %04x %04x %04x",
-            tap_count,
-            tap_delays[0],tap_delays[1],tap_delays[2],tap_delays[3],
-            tap_delays[4],tap_delays[5],tap_delays[6],tap_delays[7],
-            tap_gains[0],tap_gains[1],tap_gains[2],tap_gains[3],
-            tap_gains[4],tap_gains[5],tap_gains[6],tap_gains[7]);
-    
+                 "tap count=%d\n"
+                 "delays: %08x %08x %08x %08x %08x %08x %08x %08x\n"
+                 "gains:  %04x %04x %04x %04x %04x %04x %04x %04x",
+                 tap_count,
+                 tap_delays[0], tap_delays[1], tap_delays[2], tap_delays[3],
+                 tap_delays[4], tap_delays[5], tap_delays[6], tap_delays[7],
+                 tap_gains[0], tap_gains[1], tap_gains[2], tap_gains[3],
+                 tap_gains[4], tap_gains[5], tap_gains[6], tap_gains[7]);
+
     /* mix up to 8 delayed subframes */
     memset(subframe, 0, SUBFRAME_SIZE * sizeof(subframe[0]));
-    for(i = 0; i < tap_count; ++i) {
+    for (i = 0; i < tap_count; ++i) {
 
         dpos = pos - tap_delays[i];
         if (dpos <= 0)
@@ -644,41 +831,144 @@ void sfx_stage(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
 
         if (dpos + SUBFRAME_SIZE > cbuffer_length) {
             dlength = cbuffer_length - dpos;
-            dram_load_u16((uint16_t*)delayed + dlength, cbuffer_ptr, SUBFRAME_SIZE - dlength);
+            dram_load_u16((uint16_t *)delayed + dlength, cbuffer_ptr, SUBFRAME_SIZE - dlength);
         }
 
-        dram_load_u16((uint16_t*)delayed, cbuffer_ptr + dpos * 2, dlength);
+        dram_load_u16((uint16_t *)delayed, cbuffer_ptr + dpos * 2, dlength);
 
         mix_subframes(subframe, delayed, tap_gains[i]);
     }
 
     /* add resulting subframe to L/R subframes */
-    for(i = 0; i < SUBFRAME_SIZE; ++i) {
-       int16_t v = subframe[i];
-       musyx->left[i]  = clamp_s16(musyx->left[i]  + v);
-       musyx->right[i] = clamp_s16(musyx->right[i] + v);
+    for (i = 0; i < SUBFRAME_SIZE; ++i) {
+        int16_t v = subframe[i];
+        musyx->left[i]  = clamp_s16(musyx->left[i]  + v);
+        musyx->right[i] = clamp_s16(musyx->right[i] + v);
     }
 
     /* apply FIR4 filter and writeback filtered result */
-    memcpy(buffer, musyx->subframe_740_last4, 4*sizeof(int16_t));
-    memcpy(musyx->subframe_740_last4, subframe + SUBFRAME_SIZE - 4, 4*sizeof(int16_t));
+    memcpy(buffer, musyx->subframe_740_last4, 4 * sizeof(int16_t));
+    memcpy(musyx->subframe_740_last4, subframe + SUBFRAME_SIZE - 4, 4 * sizeof(int16_t));
     mix_fir4(musyx->e50, buffer + 1, fir4_hgain, fir4_hcoeffs);
-    dram_store_u16((uint16_t*)musyx->e50, cbuffer_ptr + pos * 2, SUBFRAME_SIZE);
+    dram_store_u16((uint16_t *)musyx->e50, cbuffer_ptr + pos * 2, SUBFRAME_SIZE);
 }
 
-void mix_subframes(int16_t* y, const int16_t* x, int16_t hgain)
+static void sfx_stage_v2(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
 {
-    unsigned i;
+    unsigned int i;
 
-    for(i = 0; i < SUBFRAME_SIZE; ++i) {
-        int32_t v = (hgain * x[i]) >> 15;
-        y[i] = clamp_s16(y[i] + v);
+    int16_t buffer[SUBFRAME_SIZE + 4];
+    int16_t *subframe = buffer + 4;
+
+    uint32_t tap_delays[8];
+    int16_t tap_gains[8];
+    int16_t fir4_hcoeffs[4];
+
+    int16_t delayed[SUBFRAME_SIZE];
+    int dpos, dlength;
+
+    const uint32_t pos = idx * SUBFRAME_SIZE;
+
+    uint32_t cbuffer_ptr;
+    uint32_t cbuffer_length;
+    uint16_t tap_count;
+    int16_t fir4_hgain;
+    uint16_t sfx_3c, sfx_3e;
+
+
+    DebugMessage(M64MSG_VERBOSE, "SFX: %08x, idx=%d", sfx_ptr, idx);
+
+    if (sfx_ptr == 0)
+        return;
+
+    /* load sfx  parameters */
+    cbuffer_ptr    = *dram_u32(sfx_ptr + SFX_CBUFFER_PTR);
+    cbuffer_length = *dram_u32(sfx_ptr + SFX_CBUFFER_LENGTH);
+
+    tap_count      = *dram_u16(sfx_ptr + SFX_TAP_COUNT);
+
+    dram_load_u32(tap_delays, sfx_ptr + SFX_TAP_DELAYS, 8);
+    dram_load_u16((uint16_t *)tap_gains,  sfx_ptr + SFX_TAP_GAINS,  8);
+
+    fir4_hgain     = *dram_u16(sfx_ptr + SFX_FIR4_HGAIN);
+    dram_load_u16((uint16_t *)fir4_hcoeffs, sfx_ptr + SFX_FIR4_HCOEFFS, 4);
+
+    sfx_3c         = *dram_u16(sfx_ptr + SFX_U16_3C);
+    sfx_3e         = *dram_u16(sfx_ptr + SFX_U16_3E);
+
+    DebugMessage(M64MSG_VERBOSE, "cbuffer: ptr=%08x length=%x", cbuffer_ptr,
+                 cbuffer_length);
+
+    DebugMessage(M64MSG_VERBOSE, "fir4: hgain=%04x hcoeff=%04x %04x %04x %04x",
+                 fir4_hgain, fir4_hcoeffs[0], fir4_hcoeffs[1], fir4_hcoeffs[2],
+                 fir4_hcoeffs[3]);
+
+    DebugMessage(M64MSG_VERBOSE,
+                 "tap count=%d\n"
+                 "delays: %08x %08x %08x %08x %08x %08x %08x %08x\n"
+                 "gains:  %04x %04x %04x %04x %04x %04x %04x %04x",
+                 tap_count,
+                 tap_delays[0], tap_delays[1], tap_delays[2], tap_delays[3],
+                 tap_delays[4], tap_delays[5], tap_delays[6], tap_delays[7],
+                 tap_gains[0], tap_gains[1], tap_gains[2], tap_gains[3],
+                 tap_gains[4], tap_gains[5], tap_gains[6], tap_gains[7]);
+
+    DebugMessage(M64MSG_VERBOSE, "sfx_3c=%04x sfx_3e=%04x", sfx_3c, sfx_3e);
+
+    /* mix up to 8 delayed subframes */
+    memset(subframe, 0, SUBFRAME_SIZE * sizeof(subframe[0]));
+    for (i = 0; i < tap_count; ++i) {
+
+        dpos = pos - tap_delays[i];
+        if (dpos <= 0)
+            dpos += cbuffer_length;
+        dlength = SUBFRAME_SIZE;
+
+        if (dpos + SUBFRAME_SIZE > cbuffer_length) {
+            dlength = cbuffer_length - dpos;
+            dram_load_u16((uint16_t *)delayed + dlength, cbuffer_ptr, SUBFRAME_SIZE - dlength);
+        }
+
+        dram_load_u16((uint16_t *)delayed, cbuffer_ptr + dpos * 2, dlength);
+
+        mix_subframes(subframe, delayed, tap_gains[i]);
     }
- }
- 
-void mix_fir4(int16_t* y, const int16_t* x, int16_t hgain, const int16_t* hcoeffs)
+
+    /* add resulting subframe to L/R/C subframes */
+    for (i = 0; i < SUBFRAME_SIZE; ++i) {
+        int16_t v = subframe[i];
+        int16_t v1 = (int32_t)(v * sfx_3c) >> 16;
+        int16_t v2 = (int32_t)(v * sfx_3e) >> 16;
+
+        musyx->left[i]  = clamp_s16(musyx->left[i]  + v1);
+        musyx->right[i] = clamp_s16(musyx->right[i] + v1);
+        musyx->cc0[i]   = clamp_s16(musyx->cc0[i]   + v2);
+    }
+
+    /* apply FIR4 filter and writeback filtered result */
+    memcpy(buffer, musyx->subframe_740_last4, 4 * sizeof(int16_t));
+    memcpy(musyx->subframe_740_last4, subframe + SUBFRAME_SIZE - 4, 4 * sizeof(int16_t));
+    mix_fir4(musyx->e50, buffer + 1, fir4_hgain, fir4_hcoeffs);
+    dram_store_u16((uint16_t *)musyx->e50, cbuffer_ptr + pos * 2, SUBFRAME_SIZE);
+}
+
+
+static void mix_samples(int16_t *y, int16_t x, int16_t hgain)
 {
-    unsigned i;
+    *y = clamp_s16(*y + ((x * hgain + 0x4000) >> 15));
+}
+
+static void mix_subframes(int16_t *y, const int16_t *x, int16_t hgain)
+{
+    unsigned int i;
+
+    for (i = 0; i < SUBFRAME_SIZE; ++i)
+        mix_samples(&y[i], x[i], hgain);
+}
+
+static void mix_fir4(int16_t *y, const int16_t *x, int16_t hgain, const int16_t *hcoeffs)
+{
+    unsigned int i;
     int32_t h[4];
 
     h[0] = (hgain * hcoeffs[0]) >> 15;
@@ -686,25 +976,31 @@ void mix_fir4(int16_t* y, const int16_t* x, int16_t hgain, const int16_t* hcoeff
     h[2] = (hgain * hcoeffs[2]) >> 15;
     h[3] = (hgain * hcoeffs[3]) >> 15;
 
-    for(i = 0; i < SUBFRAME_SIZE; ++i) {
-        int32_t v = (h[0]*x[i] + h[1]*x[i+1] + h[2]*x[i+2] + h[3]*x[i+3]) >> 15;
+    for (i = 0; i < SUBFRAME_SIZE; ++i) {
+        int32_t v = (h[0] * x[i] + h[1] * x[i + 1] + h[2] * x[i + 2] + h[3] * x[i + 3]) >> 15;
         y[i] = clamp_s16(y[i] + v);
     }
 }
 
-
-void interleave_stage(musyx_t *musyx, uint32_t output_ptr)
+static void interleave_stage_v1(musyx_t *musyx, uint32_t output_ptr)
 {
-    DebugMessage(M64MSG_VERBOSE, "interleave: %08x", output_ptr);
-
     size_t i;
 
-    int16_t base_left  = clamp_s16(musyx->base_vol[0]);
-    int16_t base_right = clamp_s16(musyx->base_vol[1]);
+    int16_t base_left;
+    int16_t base_right;
 
-    int16_t *left  = musyx->left;
-    int16_t *right = musyx->right;
-    uint32_t *dst  = dram_u32(output_ptr);
+    int16_t *left;
+    int16_t *right;
+    uint32_t *dst;
+
+    DebugMessage(M64MSG_VERBOSE, "interleave: %08x", output_ptr);
+
+    base_left  = clamp_s16(musyx->base_vol[0]);
+    base_right = clamp_s16(musyx->base_vol[1]);
+
+    left  = musyx->left;
+    right = musyx->right;
+    dst  = dram_u32(output_ptr);
 
     for (i = 0; i < SUBFRAME_SIZE; ++i) {
         uint16_t l = clamp_s16(*(left++)  + base_left);
@@ -712,4 +1008,53 @@ void interleave_stage(musyx_t *musyx, uint32_t output_ptr)
 
         *(dst++) = (l << 16) | r;
     }
+}
+
+static void interleave_stage_v2(musyx_t *musyx, uint16_t mask_16, uint32_t ptr_18,
+                                uint32_t ptr_1c, uint32_t output_ptr)
+{
+    unsigned i, k;
+    int16_t subframe[SUBFRAME_SIZE];
+    uint32_t *dst;
+    uint16_t mask;
+
+    DebugMessage(M64MSG_VERBOSE, "mask_16=%04x ptr_18=%08x ptr_1c=%08x output_ptr=%08x",
+            mask_16, ptr_18, ptr_1c, output_ptr);
+
+    /* compute L_total, R_total and update subframe @ptr_1c */
+    memset(subframe, 0, SUBFRAME_SIZE*sizeof(subframe[0]));
+
+    for(i = 0; i < SUBFRAME_SIZE; ++i) {
+        int16_t v = *dram_u16(ptr_1c + i*2);
+        musyx->left[i] = v;
+        musyx->right[i] = clamp_s16(-v);
+    }
+
+    for (k = 0, mask = 1; k < 8; ++k, mask <<= 1, ptr_18 += 8) {
+        int16_t hgain;
+        uint32_t address;
+
+        if ((mask_16 & mask) == 0)
+            continue;
+
+        address = *dram_u32(ptr_18);
+        hgain   = *dram_u16(ptr_18 + 4);
+
+        for(i = 0; i < SUBFRAME_SIZE; ++i, address += 2) {
+            mix_samples(&musyx->left[i],  *dram_u16(address), hgain);
+            mix_samples(&musyx->right[i], *dram_u16(address + 2*SUBFRAME_SIZE), hgain);
+            mix_samples(&subframe[i],     *dram_u16(address + 4*SUBFRAME_SIZE), hgain);
+        }
+    }
+
+    /* interleave L_total and R_total */
+    dst = dram_u32(output_ptr);
+    for(i = 0; i < SUBFRAME_SIZE; ++i) {
+        uint16_t l = musyx->left[i];
+        uint16_t r = musyx->right[i];
+        *(dst++) = (l << 16) | r;
+    }
+
+    /* writeback subframe @ptr_1c */
+    dram_store_u16((uint16_t*)subframe, ptr_1c, SUBFRAME_SIZE);
 }

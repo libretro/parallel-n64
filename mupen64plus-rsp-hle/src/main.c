@@ -169,10 +169,8 @@ static int try_fast_audio_dispatching(void)
                 alist_process_mmb(); return 1;
              case 0x1eac11b8: /* AnimalCrossing */
                 alist_process_ac(); return 1;
-
              case 0x00010010: /* MusyX v2 (IndianaJones, BattleForNaboo) */
-                /* TODO: implement ucode */
-                break;
+                musyx_v2_task(); return 1;
 
              default:
                 DebugMessage(M64MSG_WARNING, "ABI2 identification regression: v=%08x", v);
@@ -188,7 +186,7 @@ static int try_fast_audio_dispatching(void)
                               RogueSquadron, ResidentEvil2, PolarisSnoCross,
                               TheWorldIsNotEnough, RugratsInParis, NBAShowTime,
                               HydroThunder, Tarzan, GauntletLegend, Rush2049 */
-             musyx_task(); return 1;
+             musyx_v1_task(); return 1;
           case 0x0000127c: /* naudio (many games) */
              alist_process_naudio(); return 1;
           case 0x00001280: /* BanjoKazooie */
