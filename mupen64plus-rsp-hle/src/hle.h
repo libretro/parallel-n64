@@ -62,7 +62,7 @@ enum {
    TASK_YIELD_DATA_SIZE    = 0xffc
 };
 
-#if 1
+#if 0
 static inline int16_t clamp_s16(int_fast32_t x)
 {
    if ((int16_t)x != x)
