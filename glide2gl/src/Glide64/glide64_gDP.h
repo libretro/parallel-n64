@@ -954,8 +954,6 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
    //FRDP (" - %d, %d, %d, %d\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 
    {
-      grFogMode (GR_FOG_DISABLE);
-
       const float Z = (rdp.cycle_mode == G_CYC_FILL) ? 0.0f : set_sprite_combine_mode();
 
       // Draw the rectangle
@@ -1003,7 +1001,6 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
          grStippleMode(GR_STIPPLE_DISABLE);
 
          grCullMode(GR_CULL_DISABLE);
-         grFogMode (GR_FOG_DISABLE);
          grDepthBufferFunction (GR_CMP_ALWAYS);
          grDepthMask (FXFALSE);
 
