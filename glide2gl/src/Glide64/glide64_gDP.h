@@ -715,6 +715,9 @@ static void gDPSetDepthImage( uint32_t address )
 */
 static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt )
 {
+  if (rdp.skip_drawing)
+    return;
+
    if (ucode5_texshiftaddr)
    {
       if (ucode5_texshift % ((lr_s+1)<<3))

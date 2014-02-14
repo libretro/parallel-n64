@@ -1120,6 +1120,9 @@ static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
  */
 static void gsSP1Triangle(int32_t v0, int32_t v1, int32_t v2, int32_t flag, bool do_update)
 {
+   if (rdp.skip_drawing)
+      return;
+
    VERTEX *v[3];
 
    v[0] = &rdp.vtx[v0]; 
@@ -1157,6 +1160,9 @@ static void gsSP1Triangle(int32_t v0, int32_t v1, int32_t v2, int32_t flag, bool
 static void gsSP2Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t flag0, uint32_t v10, uint32_t v11, uint32_t v12, uint32_t flag1)
 {
    VERTEX *v[6];
+   
+   if (rdp.skip_drawing)
+      return;
 
    v[0] = &rdp.vtx[v00];
    v[1] = &rdp.vtx[v01];
@@ -1177,6 +1183,9 @@ static void gsSP4Triangles(uint32_t v00, uint32_t v01, uint32_t v02, uint32_t fl
       )
 {
    VERTEX *v[12];
+
+   if (rdp.skip_drawing)
+      return;
 
    v[0]  = &rdp.vtx[v00];
    v[1]  = &rdp.vtx[v01];

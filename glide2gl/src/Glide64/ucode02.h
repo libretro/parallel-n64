@@ -196,9 +196,6 @@ static void uc2_tri1(uint32_t w0, uint32_t w1)
       return;
    }
 
-   if (rdp.skip_drawing)
-      return;
-
    gsSP1Triangle(
          (w0 >> 17) & 0x7F,      /* v0 */
          (w0 >> 9)  & 0x7F,      /* v1 */
@@ -224,9 +221,6 @@ static void uc2_quad(uint32_t w0, uint32_t w1)
          return;
       }
    }
-
-   if (rdp.skip_drawing)
-      return;
 
    gsSP2Triangles(
          (w0 >> 17) & 0x7F,      /* v00 */

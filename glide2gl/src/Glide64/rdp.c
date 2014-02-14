@@ -1566,9 +1566,6 @@ static void setTBufTex(uint16_t t_mem, uint32_t cnt)
 
 static void rdp_loadblock(uint32_t w0, uint32_t w1)
 {
-  if (rdp.skip_drawing)
-    return;
-
   // lr_s specifies number of 64-bit words to copy
   // 10.2 format
   gDPLoadBlock(

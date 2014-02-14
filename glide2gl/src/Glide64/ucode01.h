@@ -57,9 +57,6 @@ static void uc1_vertex(uint32_t w0, uint32_t w1)
 
 static void uc1_tri1(uint32_t w0, uint32_t w1)
 {
-   if (rdp.skip_drawing)
-      return;
-
    gsSP1Triangle(
          (w1 >> 17) & 0x7F,   /* v0 */
          (w1 >> 9) & 0x7F,    /* v1 */
@@ -71,9 +68,6 @@ static void uc1_tri1(uint32_t w0, uint32_t w1)
 
 static void uc1_tri2(uint32_t w0, uint32_t w1)
 {
-   if (rdp.skip_drawing)
-      return;
-
    gsSP2Triangles(
          (w0 >> 17) & 0x7F,      /* v00 */
          (w0 >> 9)  & 0x7F,      /* v01 */

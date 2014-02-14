@@ -197,8 +197,6 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
 static void uc5_tridma(uint32_t w0, uint32_t w1)
 {
    vtx_last = 0;    // we've drawn something, so the vertex index needs resetting
-   if (rdp.skip_drawing)
-      return;
 
    // | cccc cccc 2222 0000 1111 1111 1111 0000 | cmd1 = address |
    // c = tridma command

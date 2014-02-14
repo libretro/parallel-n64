@@ -405,9 +405,6 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
 
 static void uc8_tri4(uint32_t w0, uint32_t w1) //by Gugaman Apr 19 2002
 {
-   if (rdp.skip_drawing)
-      return;
-
    gsSP4Triangles(
          (w0 >> 23) & 0x1F,     /* v00 */
          (w0 >> 18) & 0x1F,     /* v01 */
