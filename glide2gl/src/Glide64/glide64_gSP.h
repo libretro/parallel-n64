@@ -2011,7 +2011,15 @@ static void gSPSetOtherMode(int32_t cmd, int32_t sft, int32_t len, uint32_t data
             gDPSetDepthSource(rdp.cmd1 >> G_MDSFT_ZSRCSEL);
 
          if (mask & 0xFFFFFFF8) // rendermode / blender bits
-            gDPSetRenderMode(rdp.cmd1 & 0xCCCCFFFF, rdp.cmd1 & 0x3333FFFF);
+         {
+            //gDPSetRenderMode(rdp.cmd1 & 0xCCCCFFFF, rdp.cmd1 & 0x3333FFFF);
+            rdp.update |= UPDATE_FOG_ENABLED; //if blender has no fog bits, fog must be set off
+            rdp.render_mode_changed |= rdp.rm ^ rdp.othermode_l;
+            rdp.rm = rdp.othermode_l;
+            if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
+               rdp.othermode_l |= UPDATE_BIASLEVEL | UPDATE_LIGHTS;
+            //FRDP ("rendermode: %08lx\n", rdp.othermode_l);  // just output whole othermode_l
+         }
          break;
    }
 }
