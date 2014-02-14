@@ -1908,3 +1908,101 @@ static void gSPObjSubMatrix(uint32_t mtx)
 
    //FRDP ("submatrix\nX: %f, Y: %f\nBaseScaleX: %f, BaseScaleY: %f\n", mat_2d.X, mat_2d.Y, mat_2d.BaseScaleX, mat_2d.BaseScaleY);
 }
+
+/*
+ * Sets or clears the RDP 'othermode'.
+ *
+ * It is the underlying macro used by the RSP geometry engine to
+ * update and cache the RDP rendering state. All of the RDP state-setting
+ * macros are built using this macro.
+ *
+ * cmd - Can be set to either G_SETOTHERMODE_H or G_SETOTHERMODE_L.
+ * sft - Shift value to create the mask with.
+ * len - Length of field (mask)
+ * data - Data to set or clear (TODO - stub for now)
+ */
+static void gSPSetOtherMode(int32_t cmd, int32_t sft, int32_t len, uint32_t data)
+{
+   uint32_t mask = 0;
+   int i = len;
+   for (; i; i--)
+      mask = (mask << 1) | 1;
+   mask <<= sft;
+
+   rdp.cmd1 &= mask;
+
+   switch (cmd)
+   {
+      case G_SETOTHERMODE_H:
+         rdp.othermode_h &= ~mask;
+         rdp.othermode_h |= rdp.cmd1;
+
+         if (mask & 0x00000030)  // alpha dither mode
+         {
+            rdp.alpha_dither_mode = (rdp.othermode_h >> G_MDSFT_ALPHADITHER) & 0x3;
+            //FRDP ("alpha dither mode: %s\n", str_dither[rdp.alpha_dither_mode]);
+         }
+
+#ifndef NDEBUG
+         if (mask & 0x000000C0)  // rgb dither mode
+         {
+            uint32_t dither_mode = (rdp.othermode_h >> G_MDSFT_RGBDITHER) & 0x3;
+            //FRDP ("rgb dither mode: %s\n", str_dither[dither_mode]);
+         }
+#endif
+
+         if (mask & 0x00003000)  // filter mode
+         {
+            rdp.filter_mode = (int)((rdp.othermode_h & 0x00003000) >> 12);
+            rdp.update |= UPDATE_TEXTURE;
+            //FRDP ("filter mode: %s\n", str_filter[rdp.filter_mode]);
+         }
+
+         if (mask & 0x0000C000)  // tlut mode
+         {
+            rdp.tlut_mode = (uint8_t)((rdp.othermode_h & 0x0000C000) >> 14);
+            //FRDP ("tlut mode: %s\n", str_tlut[rdp.tlut_mode]);
+         }
+
+         if (mask & 0x00300000)  // cycle type
+         {
+            rdp.cycle_mode = (uint8_t)((rdp.othermode_h & 0x00300000) >> 20);
+            rdp.update |= UPDATE_ZBUF_ENABLED;
+            //FRDP ("cycletype: %d\n", rdp.cycle_mode);
+         }
+
+         if (mask & G_LOD)  // LOD enable
+         {
+            rdp.LOD_en = (rdp.othermode_h & G_LOD) ? true : false;
+            //FRDP ("LOD_en: %d\n", rdp.LOD_en);
+         }
+
+         if (mask & G_TEXTURE_GEN_LINEAR)  // Persp enable
+         {
+            if (rdp.persp_supported)
+               rdp.Persp_en = (rdp.othermode_h & G_TEXTURE_GEN_LINEAR) ? true : false;
+            //FRDP ("Persp_en: %d\n", rdp.Persp_en);
+         }
+
+#ifndef NDEBUG
+         if (mask & 0x0FFC60F0F)  // unknown portions, LARGE
+         {
+            //FRDP ("UNKNOWN PORTIONS: shift: %d, len: %d, unknowns: %08lx\n", shift, len, unk);
+         }
+#endif
+         break;
+      case G_SETOTHERMODE_L:
+         rdp.othermode_l &= ~mask;
+         rdp.othermode_l |= rdp.cmd1;
+
+         if (mask & 0x00000003)
+            gDPSetAlphaCompare(rdp.cmd1 >> G_MDSFT_ALPHACOMPARE);
+
+         if (mask & ZBUF_COMPARE)
+            gDPSetDepthSource(rdp.cmd1 >> G_MDSFT_ZSRCSEL);
+
+         if (mask & 0xFFFFFFF8) // rendermode / blender bits
+            gDPSetRenderMode(rdp.cmd1 & 0xCCCCFFFF, rdp.cmd1 & 0x3333FFFF);
+         break;
+   }
+}

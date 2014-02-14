@@ -228,6 +228,9 @@ extern "C" {
 #define G_TRI_SHADE_TXTR        0xCE    /* shade, texture triangle:  11001110 */
 #define G_TRI_SHADE_TXTR_ZBUFF  0xCF    /* shade, txtr, zbuff trngl: 11001111 */
 
+#define G_SETOTHERMODE_H	0xe3
+#define G_SETOTHERMODE_L	0xe2
+
 /*
  * G_SETOTHERMODE_L sft: shift count
  */
