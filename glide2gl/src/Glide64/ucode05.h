@@ -312,50 +312,10 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
 
 static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
 {
-   rdp.geom_mode |= w1;
-
-   if (w1 & G_ZBUFFER)  // Z-Buffer enable
-   {
-      if (!(rdp.flags & ZBUF_ENABLED))
-      {
-         rdp.flags |= ZBUF_ENABLED;
-         rdp.update |= UPDATE_ZBUF_ENABLED;
-      }
-   }
-
-   //Added by Gonetz
-   if (w1 & G_FOG)      // Fog enable
-   {
-      if (!(rdp.flags & FOG_ENABLED))
-      {
-         rdp.flags |= FOG_ENABLED;
-         rdp.update |= UPDATE_FOG_ENABLED;
-      }
-   }
-
-   //FRDP("uc0:setgeometrymode %08lx\n", w1);
+   gSPSetGeometryMode(w1);
 }
 
 static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1)
 {
-   rdp.geom_mode &= (~w1);
-
-   if (w1 & G_ZBUFFER)  // Z-Buffer enable
-   {
-      if (rdp.flags & ZBUF_ENABLED)
-      {
-         rdp.flags ^= ZBUF_ENABLED;
-         rdp.update |= UPDATE_ZBUF_ENABLED;
-      }
-   }
-   //Added by Gonetz
-   if (w1 & G_FOG)      // Fog enable
-   {
-      if (rdp.flags & FOG_ENABLED)
-      {
-         rdp.flags ^= FOG_ENABLED;
-         rdp.update |= UPDATE_FOG_ENABLED;
-      }
-   }
-   //FRDP("uc0:cleargeometrymode %08lx\n", w1);
+   gSPClearGeometryMode(w1);
 }

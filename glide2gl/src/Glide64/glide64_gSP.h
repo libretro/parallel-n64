@@ -412,6 +412,20 @@ static void gSPSetGeometryMode(uint32_t mode)
          rdp.update |= UPDATE_ZBUF_ENABLED;
       }
    }
+
+   //Added by Gonetz
+   if (mode & G_FOG)      // Fog enable
+   {
+      if (!(rdp.flags & FOG_ENABLED))
+      {
+         rdp.flags |= FOG_ENABLED;
+         rdp.update |= UPDATE_FOG_ENABLED;
+      }
+   }
+   //FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", mode, rdp.geom_mode);
+   if (settings.ucode == 5)
+      return;
+
    if (mode & CULL_FRONT)  // Front culling
    {
       if (!(rdp.flags & CULL_FRONT))
@@ -428,17 +442,6 @@ static void gSPSetGeometryMode(uint32_t mode)
          rdp.update |= UPDATE_CULL_MODE;
       }
    }
-
-   //Added by Gonetz
-   if (mode & G_FOG)      // Fog enable
-   {
-      if (!(rdp.flags & FOG_ENABLED))
-      {
-         rdp.flags |= FOG_ENABLED;
-         rdp.update |= UPDATE_FOG_ENABLED;
-      }
-   }
-   //FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", mode, rdp.geom_mode);
 }
 
 /*
@@ -489,22 +492,6 @@ static void gSPClearGeometryMode(uint32_t mode)
          rdp.update |= UPDATE_ZBUF_ENABLED;
       }
    }
-   if (mode & CULL_FRONT)  // Front culling
-   {
-      if (rdp.flags & CULL_FRONT)
-      {
-         rdp.flags ^= CULL_FRONT;
-         rdp.update |= UPDATE_CULL_MODE;
-      }
-   }
-   if (mode & CULL_BACK)  // Back culling
-   {
-      if (rdp.flags & CULL_BACK)
-      {
-         rdp.flags ^= CULL_BACK;
-         rdp.update |= UPDATE_CULL_MODE;
-      }
-   }
 
    //Added by Gonetz
    if (mode & G_FOG)      // Fog enable
@@ -515,6 +502,28 @@ static void gSPClearGeometryMode(uint32_t mode)
          rdp.update |= UPDATE_FOG_ENABLED;
       }
    }
+
+   if (settings.ucode == 5)
+      return;
+
+   if (mode & CULL_FRONT)  // Front culling
+   {
+      if (rdp.flags & CULL_FRONT)
+      {
+         rdp.flags ^= CULL_FRONT;
+         rdp.update |= UPDATE_CULL_MODE;
+      }
+   }
+
+   if (mode & CULL_BACK)  // Back culling
+   {
+      if (rdp.flags & CULL_BACK)
+      {
+         rdp.flags ^= CULL_BACK;
+         rdp.update |= UPDATE_CULL_MODE;
+      }
+   }
+
    //FRDP("uc0:cleargeometrymode %08lx\n", mode);
 }
 
