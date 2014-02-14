@@ -834,9 +834,8 @@ static INLINE void gDPSetDepthSource( uint32_t source )
 */
 static void gDPSetRenderMode( uint32_t mode1, uint32_t mode2 )
 {
-   rdp.othermode_l &= 0x00000007;
-   rdp.othermode_l |= mode1;
-   rdp.othermode_l |= mode2;
+   (void)mode1;
+   (void)mode2;
    rdp.update |= UPDATE_FOG_ENABLED; //if blender has no fog bits, fog must be set off
    rdp.render_mode_changed |= rdp.rm ^ rdp.othermode_l;
    rdp.rm = rdp.othermode_l;
