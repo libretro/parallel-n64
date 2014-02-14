@@ -79,6 +79,7 @@ void flashram_command(uint32_t command)
         switch (flashram_info.mode)
         {
         case NOPES_MODE:
+        case READ_MODE:
             break;
         case ERASE_MODE:
         {
