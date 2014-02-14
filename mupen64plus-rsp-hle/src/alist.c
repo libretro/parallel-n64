@@ -56,7 +56,7 @@ static INLINE void swap(int16_t **a, int16_t **b)
    *a = tmp;
 }
 
-#define sample(pos) ((int16_t*)BufferSpace + (pos ^ S))
+#define sample(pos) ((int16_t*)BufferSpace + ((pos) ^ S))
 
 static INLINE void sample_mix(int16_t *dst, int16_t src, int16_t gain)
 {
