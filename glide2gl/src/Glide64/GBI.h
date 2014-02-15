@@ -327,7 +327,7 @@ extern "C" {
 #define Z_CMP                   1
 #define Z_UPD                   1
 #define IM_RD                   1
-#define CLR_ON_CVG              1
+#define CLR_ON_CVG              0x80
 #define CVG_DST_CLAMP           0
 #define CVG_DST_WRAP            1
 #define CVG_DST_FULL            2
@@ -337,7 +337,7 @@ extern "C" {
 #define ZMODE_XLU               2
 #define ZMODE_DEC               3
 #define CVG_X_ALPHA             1
-#define ALPHA_CVG_SEL           1
+#define ALPHA_CVG_SEL           0x2000
 #define TEX_EDGE                0 // not used
 
 #define G_SC_NON_INTERLACE      0

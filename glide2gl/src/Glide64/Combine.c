@@ -13900,7 +13900,7 @@ void CombineBlender(void)
       */
    else if (blendmode == BLEND_XLU) // Mia Soccer Lights
       A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-   else if ((settings.hacks&hack_Pilotwings) && (rdp.othermode_l & 0x80)) //CLR_ON_CVG without FORCE_BL
+   else if ((settings.hacks&hack_Pilotwings) && (rdp.othermode_l & CLR_ON_CVG)) //CLR_ON_CVG without FORCE_BL
       A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
    else
       A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
@@ -13908,7 +13908,7 @@ void CombineBlender(void)
    // ALPHA_CVG_SEL means full alpha
    // The reason it wasn't working before was because I wasn't handling rdp:setothermode
    //  if (rdp.othermode_l & 0x2000)
-   if ((rdp.othermode_l & 0x2000) && ((rdp.othermode_l & 0x7000) != 0x7000))
+   if ((rdp.othermode_l & ALPHA_CVG_SEL) && ((rdp.othermode_l & 0x7000) != 0x7000))
    {
       if ((settings.hacks&hack_PMario) && (blendmode == 0x5055))
       {
