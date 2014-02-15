@@ -71,7 +71,6 @@ typedef struct
 
 #define interp2p(a, b, r)  (a + (b - a) * r)
 #define interp3p(a, b, c, r1, r2) ((a)+(((b)+((c)-(b))*(r2))-(a))*(r1))
-#define real_to_char(x) ((uint8_t)(((int)glide64_floor(x + 0.5)) & 0xFF))
 #define EvaLine(li, x, y) ((li->x) * (x) + (li->y) * (y) + (li->d))
 
 //
@@ -275,10 +274,10 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
 
    w = 1.0/interp3p(v1->oow,v2->oow,v3->oow,s1,s2);
 
-   out->r = real_to_char(interp3p(v1->r*v1->oow,v2->r*v2->oow,v3->r*v3->oow,s1,s2)*w);
-   out->g = real_to_char(interp3p(v1->g*v1->oow,v2->g*v2->oow,v3->g*v3->oow,s1,s2)*w);
-   out->b = real_to_char(interp3p(v1->b*v1->oow,v2->b*v2->oow,v3->b*v3->oow,s1,s2)*w);
-   out->a = real_to_char(interp3p(v1->a*v1->oow,v2->a*v2->oow,v3->a*v3->oow,s1,s2)*w);
+   out->r = interp3p(v1->r*v1->oow,v2->r*v2->oow,v3->r*v3->oow,s1,s2)*w;
+   out->g = interp3p(v1->g*v1->oow,v2->g*v2->oow,v3->g*v3->oow,s1,s2)*w;
+   out->b = interp3p(v1->b*v1->oow,v2->b*v2->oow,v3->b*v3->oow,s1,s2)*w;
+   out->a = interp3p(v1->a*v1->oow,v2->a*v2->oow,v3->a*v3->oow,s1,s2)*w;
    out->f = (float)(interp3p(v1->f*v1->oow,v2->f*v2->oow,v3->f*v3->oow,s1,s2)*w);
    /*
       out->u0 = interp3p(v1->u0_w*v1->oow,v2->u0_w*v2->oow,v3->u0_w*v3->oow,s1,s2)/oow;
@@ -379,16 +378,16 @@ static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percen
    //   res->q = res->oow;
    ba = va->b * va->oow;
    bb = vb->b * vb->oow;
-   res->b = real_to_char(interp2p(ba, bb, percent) * w);
+   res->b = interp2p(ba, bb, percent) * w;
    ga = va->g * va->oow;
    gb = vb->g * vb->oow;
-   res->g = real_to_char(interp2p(ga, gb, percent) * w);
+   res->g = interp2p(ga, gb, percent) * w;
    ra = va->r * va->oow;
    rb = vb->r * vb->oow;
-   res->r = real_to_char(interp2p(ra, rb, percent) * w);
+   res->r = interp2p(ra, rb, percent) * w;
    aa = va->a * va->oow;
    ab = vb->a * vb->oow;
-   res->a = real_to_char(interp2p(aa, ab, percent) * w);
+   res->a = interp2p(aa, ab, percent) * w;
    fa = va->f * va->oow;
    fb = vb->f * vb->oow;
    res->f = interp2p(fa, fb, percent) * w;
