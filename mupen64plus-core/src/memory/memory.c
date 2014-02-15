@@ -2860,11 +2860,11 @@ void write_ai(void)
         if (freq)
             delay = (uint32_t) (((uint64_t)ai_register.ai_len*vi_register.vi_delay*ROM_PARAMS.vilimit)/(freq*4));
 
-        if (ai_register.ai_status & 0x40000000) // busy
+        if (ai_register.ai_status & AI_STATUS_DMA_BUSY) // busy
         {
             ai_register.next_delay = delay;
             ai_register.next_len = ai_register.ai_len;
-            ai_register.ai_status |= 0x80000000;
+            ai_register.ai_status |= AI_STATUS_FIFO_FULL;
         }
         else
         {
@@ -2872,7 +2872,7 @@ void write_ai(void)
             ai_register.current_len = ai_register.ai_len;
             update_count();
             add_interupt_event(AI_INT, delay);
-            ai_register.ai_status |= 0x40000000;
+            ai_register.ai_status |= AI_STATUS_DMA_BUSY;
         }
         return;
         break;
@@ -2918,11 +2918,11 @@ void write_aib(void)
                                     vi_register.vi_delay*ROM_PARAMS.vilimit)/ROM_PARAMS.aidacrate);
         //delay = 0;
 
-        if (ai_register.ai_status & 0x40000000) // busy
+        if (ai_register.ai_status & AI_STATUS_DMA_BUSY) // busy
         {
             ai_register.next_delay = delay;
             ai_register.next_len = ai_register.ai_len;
-            ai_register.ai_status |= 0x80000000;
+            ai_register.ai_status |= AI_STATUS_FIFO_FULL;
         }
         else
         {
@@ -2930,7 +2930,7 @@ void write_aib(void)
             ai_register.current_len = ai_register.ai_len;
             update_count();
             add_interupt_event(AI_INT, delay/2);
-            ai_register.ai_status |= 0x40000000;
+            ai_register.ai_status |= AI_STATUS_DMA_BUSY; 
         }
         return;
         break;
@@ -2977,11 +2977,11 @@ void write_aih(void)
         delay = (uint32_t) (((uint64_t)ai_register.ai_len*(ai_register.ai_dacrate+1)*
                                     vi_register.vi_delay*ROM_PARAMS.vilimit)/ROM_PARAMS.aidacrate);
 
-        if (ai_register.ai_status & 0x40000000) // busy
+        if (ai_register.ai_status & AI_STATUS_DMA_BUSY) // busy
         {
             ai_register.next_delay = delay;
             ai_register.next_len = ai_register.ai_len;
-            ai_register.ai_status |= 0x80000000;
+            ai_register.ai_status |= AI_STATUS_FIFO_FULL;
         }
         else
         {
@@ -2989,7 +2989,7 @@ void write_aih(void)
             ai_register.current_len = ai_register.ai_len;
             update_count();
             add_interupt_event(AI_INT, delay/2);
-            ai_register.ai_status |= 0x40000000;
+            ai_register.ai_status |= AI_STATUS_DMA_BUSY;
         }
         return;
         break;
@@ -3028,11 +3028,11 @@ void write_aid(void)
         delay = (uint32_t) (((uint64_t)ai_register.ai_len*(ai_register.ai_dacrate+1)*
                                     vi_register.vi_delay*ROM_PARAMS.vilimit)/ROM_PARAMS.aidacrate);
 
-        if (ai_register.ai_status & 0x40000000) // busy
+        if (ai_register.ai_status & AI_STATUS_DMA_BUSY) // busy
         {
             ai_register.next_delay = delay;
             ai_register.next_len = ai_register.ai_len;
-            ai_register.ai_status |= 0x80000000;
+            ai_register.ai_status |= AI_STATUS_FIFO_FULL;
         }
         else
         {
@@ -3040,7 +3040,7 @@ void write_aid(void)
             ai_register.current_len = ai_register.ai_len;
             update_count();
             add_interupt_event(AI_INT, delay/2);
-            ai_register.ai_status |= 0x40000000;
+            ai_register.ai_status |= AI_STATUS_DMA_BUSY;
         }
         return;
         break;
