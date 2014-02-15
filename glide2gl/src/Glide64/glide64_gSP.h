@@ -56,6 +56,11 @@ extern void glide64SPClipVertex(uint32_t i);
 static void uc6_draw_polygons (VERTEX v[4]);
 static void uc6_read_object_data (DRAWOBJECT *d);
 static void uc6_init_tile(const DRAWOBJECT *d);
+extern uint32_t dma_offset_mtx;
+extern int32_t cur_mtx;
+extern uint32_t dma_offset_mtx;
+extern uint32_t dma_offset_vtx;
+extern int32_t billboarding;
 
 int dzdx = 0;
 int deltaZ = 0;
@@ -2043,4 +2048,159 @@ static void gSPInsertMatrix(uint32_t w0, uint32_t w1)
    }
 
    //LRDP("matrix\n");
+}
+
+static void gSPDMATriangles(uint32_t tris, uint32_t n)
+{
+   int32_t i, start, v0, v1, v2, flags;
+   uint32_t addr = segoffset(tris) & BMASK;
+
+   for (i = 0; i < n; i++)
+   {
+      VERTEX *v[3];
+
+      start = i << 4;
+      v0 = gfx.RDRAM[addr+start];
+      v1 = gfx.RDRAM[addr+start+1];
+      v2 = gfx.RDRAM[addr+start+2];
+
+      v[0] = &rdp.vtx[v0];
+      v[1] = &rdp.vtx[v1];
+      v[2] = &rdp.vtx[v2];
+
+      flags = gfx.RDRAM[addr+start+3];
+
+      if (flags & 0x40)
+      { // no cull
+         rdp.flags &= ~CULLMASK;
+         grCullMode (GR_CULL_DISABLE);
+      }
+      else
+      {        // front cull
+         rdp.flags &= ~CULLMASK;
+         if (rdp.view_scale[0] < 0)
+         {
+            rdp.flags |= CULL_BACK;   // agh, backwards culling
+            grCullMode (GR_CULL_POSITIVE);
+         }
+         else
+         {
+            rdp.flags |= CULL_FRONT;
+            grCullMode (GR_CULL_NEGATIVE);
+         }
+      }
+      start += 4;
+
+      v[0]->ou = ((int16_t*)gfx.RDRAM)[((addr+start) >> 1) + 5] / 32.0f;
+      v[0]->ov = ((int16_t*)gfx.RDRAM)[((addr+start) >> 1) + 4] / 32.0f;
+      v[1]->ou = ((int16_t*)gfx.RDRAM)[((addr+start) >> 1) + 3] / 32.0f;
+      v[1]->ov = ((int16_t*)gfx.RDRAM)[((addr+start) >> 1) + 2] / 32.0f;
+      v[2]->ou = ((int16_t*)gfx.RDRAM)[((addr+start) >> 1) + 1] / 32.0f;
+      v[2]->ov = ((int16_t*)gfx.RDRAM)[((addr+start) >> 1) + 0] / 32.0f;
+
+      v[0]->uv_calculated = 0xFFFFFFFF;
+      v[1]->uv_calculated = 0xFFFFFFFF;
+      v[2]->uv_calculated = 0xFFFFFFFF;
+
+      gsSP1Triangle(v0, v1, v2, 0, true);
+   }
+}
+
+static void gSPDMAMatrix(uint32_t matrix, uint8_t index, uint8_t multiply)
+{
+   uint32_t addr = dma_offset_mtx + (segoffset(matrix) & BMASK);
+
+   if (multiply)
+   {
+      DECLAREALIGN16VAR(m[4][4]);
+      load_matrix(m, addr);
+      DECLAREALIGN16VAR(m_src[4][4]);
+      memcpy (m_src, rdp.dkrproj[0], 64);
+      MulMatrices(m, m_src, rdp.dkrproj[index]);
+   }
+   else
+      load_matrix(rdp.dkrproj[index], addr);
+
+   rdp.update |= UPDATE_MULT_MAT;
+}
+
+static void gSPDMAVertex(uint32_t v, uint32_t n, uint32_t v0)
+{
+   int32_t prj, start, i;
+   float x, y, z;
+   uint32_t addr = dma_offset_vtx + (segoffset(v) & BMASK);
+
+   prj = cur_mtx;
+   start = 0;
+
+   for (i = v0; i < v0 + n; i++)
+   {
+      start = (i-v0) * 10;
+      VERTEX *v = &rdp.vtx[i];
+      x   = ((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 0)^1];
+      y   = ((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 1)^1];
+      z   = ((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 2)^1];
+
+      v->x = x*rdp.dkrproj[prj][0][0] + y*rdp.dkrproj[prj][1][0] + z*rdp.dkrproj[prj][2][0] + rdp.dkrproj[prj][3][0];
+      v->y = x*rdp.dkrproj[prj][0][1] + y*rdp.dkrproj[prj][1][1] + z*rdp.dkrproj[prj][2][1] + rdp.dkrproj[prj][3][1];
+      v->z = x*rdp.dkrproj[prj][0][2] + y*rdp.dkrproj[prj][1][2] + z*rdp.dkrproj[prj][2][2] + rdp.dkrproj[prj][3][2];
+      v->w = x*rdp.dkrproj[prj][0][3] + y*rdp.dkrproj[prj][1][3] + z*rdp.dkrproj[prj][2][3] + rdp.dkrproj[prj][3][3];
+
+      if (billboarding)
+      {
+         v->x += rdp.vtx[0].x;
+         v->y += rdp.vtx[0].y;
+         v->z += rdp.vtx[0].z;
+         v->w += rdp.vtx[0].w;
+      }
+
+      if (fabs(v->w) < 0.001)
+         v->w = 0.001f;
+
+      v->oow = 1.0f / v->w;
+      v->x_w = v->x * v->oow;
+      v->y_w = v->y * v->oow;
+      v->z_w = v->z * v->oow;
+
+      v->uv_calculated = 0xFFFFFFFF;
+      v->screen_translated = 0;
+      v->shade_mod = 0;
+
+      v->scr_off = 0;
+      if (v->x < -v->w)
+         v->scr_off |= 1;
+      if (v->x > v->w)
+         v->scr_off |= 2;
+      if (v->y < -v->w)
+         v->scr_off |= 4;
+      if (v->y > v->w)
+         v->scr_off |= 8;
+      if (v->w < 0.1f)
+         v->scr_off |= 16;
+      if (fabs(v->z_w) > 1.0)
+         v->scr_off |= 32;
+
+      v->r = ((uint8_t*)gfx.RDRAM)[(addr+start + 6)^3];
+      v->g = ((uint8_t*)gfx.RDRAM)[(addr+start + 7)^3];
+      v->b = ((uint8_t*)gfx.RDRAM)[(addr+start + 8)^3];
+      v->a = ((uint8_t*)gfx.RDRAM)[(addr+start + 9)^3];
+      CalculateFog (v);
+
+      //FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i, v->x, v->y, v->z, v->w, v->z_w, v->r, v->g, v->b, v->a);
+   }
+}
+
+static INLINE void gSPSetDMAOffsets(uint32_t mtxoffset, uint32_t vtxoffset)
+{
+   dma_offset_mtx = mtxoffset;
+   dma_offset_vtx = vtxoffset;
+}
+
+static INLINE void gSPInterpolateVertex(VERTEX *dest, float percent, VERTEX *first, VERTEX *second)
+{
+   dest->r = first->r + percent * (second->r - first->r);
+   dest->g = first->g + percent * (second->g - first->g);
+   dest->b = first->b + percent * (second->b - first->b);
+   dest->a = first->a + percent * (second->a - first->a);
+   dest->f = first->f + percent * (second->f - first->f);
 }
