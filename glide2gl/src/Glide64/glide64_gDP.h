@@ -862,8 +862,6 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
 {
    int pd_multiplayer;
 
-   if (rdp.skip_drawing)
-      return;
 
    if ((ul_x > lr_x) || (ul_y > lr_y)) // Wrong coordinates, skip
       return;
@@ -909,6 +907,8 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
       return;
    }
 
+   if (rdp.skip_drawing)
+      return;
 
 #ifdef HAVE_HWFBE
    if (rdp.cur_image && (rdp.cur_image->format != G_IM_FMT_RGBA) && (rdp.cycle_mode == G_CYC_FILL) && (rdp.cur_image->width == lr_x - ul_x) && (rdp.cur_image->height == lr_y - ul_y))
