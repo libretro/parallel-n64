@@ -879,6 +879,7 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
       if (!(settings.hacks&hack_Hyperbike) || rdp.ci_width > 64) //do not clear main depth buffer for aux depth buffers
       {
          update_scissor ();
+         grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
          grDepthMask (FXTRUE);
          grColorMask (FXFALSE, FXFALSE);
          grBufferClear (0, 0, rdp.fill_color ? rdp.fill_color&0xFFFF : 0xFFFF);
