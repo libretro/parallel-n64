@@ -28,6 +28,7 @@
 #include <stdarg.h>
 
 #include "libretro.h"
+#include "SDL.h"
 void retro_audio_batch_cb(const int16_t *data, size_t frames, unsigned freq);
 
 #define M64P_PLUGIN_PROTOTYPES 1
@@ -62,6 +63,8 @@ EXPORT void CALL audioAiDacrateChanged( int SystemType )
 EXPORT void CALL audioAiLenChanged(void)
 {
 	uint32_t len = *AudioInfo.AI_LEN_REG;
+   //if (log_cb)
+      //log_cb(RETRO_LOG_INFO, "AI_LEN_REG: %d\n", len);
 	uint8_t* p = (uint8_t*)(AudioInfo.RDRAM + (*AudioInfo.AI_DRAM_ADDR_REG & 0xFFFFFF));
    retro_audio_batch_cb((const int16_t*)p, len / 4, GameFreq);
 }
