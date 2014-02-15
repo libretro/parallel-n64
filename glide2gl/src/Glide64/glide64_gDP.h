@@ -796,7 +796,6 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
 */
 static INLINE void gDPSetAlphaCompare( uint32_t mode )
 {
-   rdp.othermode_l |= 0x00000003;
    rdp.acmp = mode;
    rdp.update |= UPDATE_ALPHA_COMPARE;
    //FRDP ("alpha compare %s\n", ACmp[rdp.acmp]);
