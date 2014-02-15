@@ -785,7 +785,7 @@ static void cc_zero(void)
 
 static void cc_t0(void)
 {
-   if ((rdp.othermode_l & 0x4000) && (rdp.cycle_mode < G_CYC_COPY))
+   if ((rdp.othermode_l & FORCE_BL) && (rdp.cycle_mode < G_CYC_COPY))
    {
       uint32_t blend_mode = (rdp.othermode_l >> 16);
       if (blend_mode == 0xa500)
@@ -7285,7 +7285,7 @@ static void ac_one ()
 
 static void ac_t0 ()
 {
-   if ((rdp.othermode_l & 0x4000) && (rdp.cycle_mode < G_CYC_COPY))
+   if ((rdp.othermode_l & FORCE_BL) && (rdp.cycle_mode < G_CYC_COPY))
    {
       uint32_t blend_mode = (rdp.othermode_l >> 16);
       if (blend_mode == 0x0550)
@@ -13776,7 +13776,7 @@ void CombineBlender(void)
 {
    uint32_t blendmode = rdp.othermode_l >> 16;
    // Check force-blending
-   if ((rdp.othermode_l & 0x4000) && (rdp.cycle_mode < G_CYC_COPY))
+   if ((rdp.othermode_l & FORCE_BL) && (rdp.cycle_mode < G_CYC_COPY))
    {
       switch (blendmode)
       {
@@ -13907,7 +13907,7 @@ void CombineBlender(void)
 
    // ALPHA_CVG_SEL means full alpha
    // The reason it wasn't working before was because I wasn't handling rdp:setothermode
-   //  if (rdp.othermode_l & 0x2000)
+   //  if (rdp.othermode_l & ALPHA_CVG_SEL)
    if ((rdp.othermode_l & ALPHA_CVG_SEL) && ((rdp.othermode_l & 0x7000) != 0x7000))
    {
       if ((settings.hacks&hack_PMario) && (blendmode == 0x5055))

@@ -1202,7 +1202,7 @@ void update(void)
       rdp.update |= UPDATE_ZBUF_ENABLED;
 
       // Update?
-      if ((rdp.othermode_l & FORCE_BL))
+      if ((rdp.othermode_l & 0x00000020))
          rdp.flags |= ZBUF_UPDATE;
       else
          rdp.flags &= ~ZBUF_UPDATE;

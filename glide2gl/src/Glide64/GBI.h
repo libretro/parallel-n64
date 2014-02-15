@@ -337,6 +337,7 @@ extern "C" {
 #define ZMODE_XLU               2
 #define ZMODE_DEC               3
 #define CVG_X_ALPHA             1
+#define FORCE_BL                0x4000
 #define ALPHA_CVG_SEL           0x2000
 #define TEX_EDGE                0 // not used
 

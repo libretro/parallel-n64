@@ -1017,7 +1017,7 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
             for (k = 0; k < 4; k++)
                apply_shade_mods (&v[k]);
          }
-         if ((rdp.othermode_l & 0x4000) && ((rdp.othermode_l >> 16) == 0x0550)) //special blender mode for Bomberman64
+         if ((rdp.othermode_l & FORCE_BL) && ((rdp.othermode_l >> 16) == 0x0550)) //special blender mode for Bomberman64
          {
             grAlphaCombine (GR_COMBINE_FUNCTION_LOCAL,
                   GR_COMBINE_FACTOR_NONE,

@@ -70,7 +70,6 @@ extern uint32_t frame_count; // frame counter
 #define ZBUF_COMPARE  0x00000004
 #define ZBUF_UPDATE   0x00000008
 #define ALPHA_COMPARE 0x00000010
-#define FORCE_BL      0x00000020
 #define CULL_FRONT    0x00001000  // * must be here
 #define CULL_BACK     0x00002000  // * must be here
 #define FOG_ENABLED   0x00010000
