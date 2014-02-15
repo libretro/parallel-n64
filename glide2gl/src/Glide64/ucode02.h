@@ -436,37 +436,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
       //  be easily fixed, but only if i had something to test with.
 
       case G_MW_MATRIX:  // moveword matrix
-         {
-            // do matrix pre-mult so it's re-updated next time
-            if (rdp.update & UPDATE_MULT_MAT)
-               gSPCombineMatrices();
-
-            if (w0 & 0x20)  // fractional part
-            {
-               int index_x = (w0 & 0x1F) >> 1;
-               int index_y = index_x >> 2;
-               index_x &= 3;
-
-               float fpart = (w1 >> 16) / 65536.0f;
-               rdp.combined[index_y][index_x] = (float)(int)rdp.combined[index_y][index_x];
-               rdp.combined[index_y][index_x] += fpart;
-
-               fpart = (w1 & 0xFFFF) / 65536.0f;
-               rdp.combined[index_y][index_x+1] = (float)(int)rdp.combined[index_y][index_x+1];
-               rdp.combined[index_y][index_x+1] += fpart;
-            }
-            else
-            {
-               int index_x = (w0 & 0x1F) >> 1;
-               int index_y = index_x >> 2;
-               index_x &= 3;
-
-               rdp.combined[index_y][index_x] = (int16_t)(w1 >> 16);
-               rdp.combined[index_y][index_x+1] = (int16_t)(w1 & 0xFFFF);
-            }
-
-            LRDP("matrix\n");
-         }
+         gSPInsertMatrix(w0, w1);
          break;
 
       case G_MW_NUMLIGHT:
