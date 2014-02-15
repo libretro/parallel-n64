@@ -393,10 +393,23 @@ static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percen
    res->f = interp2p(fa, fb, percent) * w;
 }
 
+static void CalculateLODValues(VERTEX *v, int32_t i, int32_t j, float *lodFactor, float s_scale, float t_scale)
+{
+   float deltaS, deltaT, deltaTexels, deltaPixels, deltaX, deltaY;
+   deltaS = (v[j].u0/v[j].q - v[i].u0/v[i].q) * s_scale;
+   deltaT = (v[j].v0/v[j].q - v[i].v0/v[i].q) * t_scale;
+   deltaTexels = squareRoot( deltaS * deltaS + deltaT * deltaT );
+
+   deltaX = (v[j].x - v[i].x)/rdp.scale_x;
+   deltaY = (v[j].y - v[i].y)/rdp.scale_y;
+   deltaPixels = squareRoot( deltaX * deltaX + deltaY * deltaY );
+
+   *lodFactor += deltaTexels / deltaPixels;
+}
+
 static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
 {
-   float deltaS, deltaT, deltaX, deltaY, deltaTexels, deltaPixels, lodFactor, intptr, s_scale, t_scale,
-         lod_fraction, detailmax;
+   float lodFactor, intptr, s_scale, t_scale, lod_fraction, detailmax;
    int i, j, ilod, lod_tile;
    s_scale = rdp.tiles[rdp.cur_tile].width / 255.0f;
    t_scale = rdp.tiles[rdp.cur_tile].height / 255.0f;
@@ -406,32 +419,12 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
    {
       case G_TL_TILE:
          for (i = 0; i < n; i++)
-         {
-            j = (i < n-1) ? i + 1 : 0;
-
-            deltaS = (v[j].u0/v[j].q - v[i].u0/v[i].q) * s_scale;
-            deltaT = (v[j].v0/v[j].q - v[i].v0/v[i].q) * t_scale;
-            deltaTexels = squareRoot( deltaS * deltaS + deltaT * deltaT );
-
-            deltaX = (v[j].x - v[i].x)/rdp.scale_x;
-            deltaY = (v[j].y - v[i].y)/rdp.scale_y;
-            deltaPixels = squareRoot( deltaX * deltaX + deltaY * deltaY );
-
-            lodFactor += deltaTexels / deltaPixels;
-         }
+            CalculateLODValues(v, i, (i < n-1) ? i + 1 : 0, &lodFactor, s_scale, t_scale);
          // Divide by n (n edges) to find average
          lodFactor = lodFactor / n;
          break;
       case G_TL_LOD:
-         deltaS = (v[1].u0/v[1].q - v[0].u0/v[0].q) * s_scale;
-         deltaT = (v[1].v0/v[1].q - v[0].v0/v[0].q) * t_scale;
-         deltaTexels = squareRoot( deltaS * deltaS + deltaT * deltaT );
-
-         deltaX = (v[1].x - v[0].x)/rdp.scale_x;
-         deltaY = (v[1].y - v[0].y)/rdp.scale_y;
-         deltaPixels = squareRoot( deltaX * deltaX + deltaY * deltaY );
-
-         lodFactor = deltaTexels / deltaPixels;
+         CalculateLODValues(v, 0, 1, &lodFactor, s_scale, t_scale);
          break;
    }
 
