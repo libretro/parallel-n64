@@ -220,14 +220,6 @@ void apply_shade_mods (VERTEX *v)
    }
 }
 
-static void InterpolateColors(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
-{
-   res->b = (uint8_t)interp2p(va->b, vb->b, percent);
-   res->g = (uint8_t)interp2p(va->g, vb->g, percent);;
-   res->r = (uint8_t)interp2p(va->r, vb->r, percent);;
-   res->a = (uint8_t)interp2p(va->a, vb->a, percent);;
-   res->f = interp2p(va->f, vb->f, percent);;
-}
 
 static void Create1LineEq(LineEquationType *l, VERTEX *v1, VERTEX *v2, VERTEX *v3)
 {
@@ -336,7 +328,7 @@ static void clip_w (int interpolate_colors)
             rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
             rdp.vtxbuf[index].v1 = vtxbuf2_i->v1 + (vtxbuf2_j->v1 - vtxbuf2_i->v1) * percent;
             if (interpolate_colors)
-               InterpolateColors(vtxbuf2_i, vtxbuf2_j, &rdp.vtxbuf[index++], percent);
+               gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_i, vtxbuf2_j);
             else
                rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number;
          }
@@ -356,7 +348,7 @@ static void clip_w (int interpolate_colors)
             rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
             rdp.vtxbuf[index].v1 = vtxbuf2_j->v1 + (vtxbuf2_i->v1 - vtxbuf2_j->v1) * percent;
             if (interpolate_colors)
-               InterpolateColors(vtxbuf2_j, vtxbuf2_i, &rdp.vtxbuf[index++], percent);
+               gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_j, vtxbuf2_i);
             else
                rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number;
 
@@ -519,7 +511,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
                rdp.vtxbuf[index].v1 = vtxbuf2_i->v1 + (vtxbuf2_j->v1 - vtxbuf2_i->v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(vtxbuf2_i, vtxbuf2_j, &rdp.vtxbuf[index++], percent);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_i, vtxbuf2_j);
                else
                   rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 8;
             }
@@ -538,7 +530,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
                rdp.vtxbuf[index].v1 = vtxbuf2_j->v1 + (vtxbuf2_i->v1 - vtxbuf2_j->v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(vtxbuf2_j, vtxbuf2_i, &rdp.vtxbuf[index++], percent);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_j, vtxbuf2_i);
                else
                   rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 8;
 
@@ -587,7 +579,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
                rdp.vtxbuf[index].v1 = vtxbuf2_i->v1 + (vtxbuf2_j->v1 - vtxbuf2_i->v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(vtxbuf2_i, vtxbuf2_j, &rdp.vtxbuf[index++], percent);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_i, vtxbuf2_j);
                else
                   rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 8;
             }
@@ -606,7 +598,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
                rdp.vtxbuf[index].v1 = vtxbuf2_j->v1 + (vtxbuf2_i->v1 - vtxbuf2_j->v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(vtxbuf2_j, vtxbuf2_i, &rdp.vtxbuf[index++], percent);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_j, vtxbuf2_i);
                else
                   rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 8;
 
@@ -655,7 +647,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
                rdp.vtxbuf[index].v1 = vtxbuf2_i->v1 + (vtxbuf2_j->v1 - vtxbuf2_i->v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(vtxbuf2_i, vtxbuf2_j, &rdp.vtxbuf[index++], percent);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_i, vtxbuf2_j);
                else
                   rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 16;
             }
@@ -674,7 +666,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
                rdp.vtxbuf[index].v1 = vtxbuf2_j->v1 + (vtxbuf2_i->v1 - vtxbuf2_j->v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(vtxbuf2_j, vtxbuf2_i, &rdp.vtxbuf[index++], percent);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_j, vtxbuf2_i);
                else
                   rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 16;
 
@@ -723,7 +715,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
                rdp.vtxbuf[index].v1 = vtxbuf2_i->v1 + (vtxbuf2_j->v1 - vtxbuf2_i->v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(vtxbuf2_i, vtxbuf2_j, &rdp.vtxbuf[index++], percent);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_i, vtxbuf2_j);
                else
                   rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 16;
             }
@@ -742,7 +734,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
                rdp.vtxbuf[index].v1 = vtxbuf2_j->v1 + (vtxbuf2_i->v1 - vtxbuf2_j->v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(vtxbuf2_j, vtxbuf2_i, &rdp.vtxbuf[index++], percent);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_j, vtxbuf2_i);
                else
                   rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 16;
 
@@ -793,7 +785,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
                rdp.vtxbuf[index].v1 = vtxbuf2_i->v1 + (vtxbuf2_j->v1 - vtxbuf2_i->v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(vtxbuf2_i, vtxbuf2_j, &rdp.vtxbuf[index++], percent);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_i, vtxbuf2_j);
                else
                   rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number;
             }
@@ -812,7 +804,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
                rdp.vtxbuf[index].v1 = vtxbuf2_j->v1 + (vtxbuf2_i->v1 - vtxbuf2_j->v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(vtxbuf2_j, vtxbuf2_i, &rdp.vtxbuf[index++], percent);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_j, vtxbuf2_i);
                else
                   rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number;
 
@@ -858,7 +850,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = rdp.vtxbuf2[i].u1 + (rdp.vtxbuf2[j].u1 - rdp.vtxbuf2[i].u1) * percent;
                rdp.vtxbuf[index].v1 = rdp.vtxbuf2[i].v1 + (rdp.vtxbuf2[j].v1 - rdp.vtxbuf2[i].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf2[i], &rdp.vtxbuf2[j], &rdp.vtxbuf[index++], percent);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, &rdp.vtxbuf2[i], &rdp.vtxbuf2[j]);
                else
                   rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number;
             }
@@ -878,7 +870,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u1 = rdp.vtxbuf2[j].u1 + (rdp.vtxbuf2[i].u1 - rdp.vtxbuf2[j].u1) * percent;
                rdp.vtxbuf[index].v1 = rdp.vtxbuf2[j].v1 + (rdp.vtxbuf2[i].v1 - rdp.vtxbuf2[j].v1) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf2[j], &rdp.vtxbuf2[i], &rdp.vtxbuf[index++], percent);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, &rdp.vtxbuf2[j], &rdp.vtxbuf2[i]);
                else
                   rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number;
 
