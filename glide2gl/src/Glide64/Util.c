@@ -301,56 +301,56 @@ static void clip_w (int interpolate_colors)
    // Check the vertices for clipping
    for (i=0; i<n; i++)
    {
-      VERTEX *vtxbuf2_i, *vtxbuf2_j;
+      VERTEX *first, *second;
       j = i+1;
       if (j == 3)
          j = 0;
-      vtxbuf2_i = (VERTEX*)&rdp.vtxbuf2[i];
-      vtxbuf2_j = (VERTEX*)&rdp.vtxbuf2[j];
+      first = (VERTEX*)&rdp.vtxbuf2[i];
+      second = (VERTEX*)&rdp.vtxbuf2[j];
 
-      if (vtxbuf2_i->w >= 0.01f)
+      if (first->w >= 0.01f)
       {
-         if (vtxbuf2_j->w >= 0.01f)    // Both are in, save the last one
+         if (second->w >= 0.01f)    // Both are in, save the last one
          {
             rdp.vtxbuf[index] = rdp.vtxbuf2[j];
             rdp.vtxbuf[index++].not_zclipped = 1;
          }
          else      // First is in, second is out, save intersection
          {
-            percent = (-vtxbuf2_i->w) / (vtxbuf2_j->w - vtxbuf2_i->w);
+            percent = (-first->w) / (second->w - first->w);
             rdp.vtxbuf[index].not_zclipped = 0;
-            rdp.vtxbuf[index].x = vtxbuf2_i->x + (vtxbuf2_j->x - vtxbuf2_i->x) * percent;
-            rdp.vtxbuf[index].y = vtxbuf2_i->y + (vtxbuf2_j->y - vtxbuf2_i->y) * percent;
-            rdp.vtxbuf[index].z = vtxbuf2_i->z + (vtxbuf2_j->z - vtxbuf2_i->z) * percent;
+            rdp.vtxbuf[index].x = first->x + (second->x - first->x) * percent;
+            rdp.vtxbuf[index].y = first->y + (second->y - first->y) * percent;
+            rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
             rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
-            rdp.vtxbuf[index].u0 = vtxbuf2_i->u0 + (vtxbuf2_j->u0 - vtxbuf2_i->u0) * percent;
-            rdp.vtxbuf[index].v0 = vtxbuf2_i->v0 + (vtxbuf2_j->v0 - vtxbuf2_i->v0) * percent;
-            rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
-            rdp.vtxbuf[index].v1 = vtxbuf2_i->v1 + (vtxbuf2_j->v1 - vtxbuf2_i->v1) * percent;
+            rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
+            rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
+            rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
+            rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
             if (interpolate_colors)
-               gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_i, vtxbuf2_j);
+               gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, first, second);
             else
-               rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number;
+               rdp.vtxbuf[index++].number = first->number | second->number;
          }
       }
       else
       {
-         if (vtxbuf2_j->w >= 0.01f)  // First is out, second is in, save intersection & in point
+         if (second->w >= 0.01f)  // First is out, second is in, save intersection & in point
          {
-            percent = (-vtxbuf2_j->w) / (vtxbuf2_i->w - vtxbuf2_j->w);
+            percent = (-second->w) / (first->w - second->w);
             rdp.vtxbuf[index].not_zclipped = 0;
-            rdp.vtxbuf[index].x = vtxbuf2_j->x + (vtxbuf2_i->x - vtxbuf2_j->x) * percent;
-            rdp.vtxbuf[index].y = vtxbuf2_j->y + (vtxbuf2_i->y - vtxbuf2_j->y) * percent;
-            rdp.vtxbuf[index].z = vtxbuf2_j->z + (vtxbuf2_i->z - vtxbuf2_j->z) * percent;
+            rdp.vtxbuf[index].x = second->x + (first->x - second->x) * percent;
+            rdp.vtxbuf[index].y = second->y + (first->y - second->y) * percent;
+            rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
             rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
-            rdp.vtxbuf[index].u0 = vtxbuf2_j->u0 + (vtxbuf2_i->u0 - vtxbuf2_j->u0) * percent;
-            rdp.vtxbuf[index].v0 = vtxbuf2_j->v0 + (vtxbuf2_i->v0 - vtxbuf2_j->v0) * percent;
-            rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
-            rdp.vtxbuf[index].v1 = vtxbuf2_j->v1 + (vtxbuf2_i->v1 - vtxbuf2_j->v1) * percent;
+            rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
+            rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
+            rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
+            rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
             if (interpolate_colors)
-               gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_j, vtxbuf2_i);
+               gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, second, first);
             else
-               rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number;
+               rdp.vtxbuf[index++].number = first->number | second->number;
 
             // Save the in point
             rdp.vtxbuf[index] = rdp.vtxbuf2[j];
@@ -486,53 +486,53 @@ static void clip_tri(int interpolate_colors)
       // Check the vertices for clipping
       for (i=0; i<n; i++)
       {
-         VERTEX *vtxbuf2_i, *vtxbuf2_j;
+         VERTEX *first, *second;
          j = i+1;
          if (j == n)
             j = 0;
-         vtxbuf2_i = (VERTEX*)&rdp.vtxbuf2[i];
-         vtxbuf2_j = (VERTEX*)&rdp.vtxbuf2[j];
+         first = (VERTEX*)&rdp.vtxbuf2[i];
+         second = (VERTEX*)&rdp.vtxbuf2[j];
 
-         if (vtxbuf2_i->x <= rdp.clip_max_x)
+         if (first->x <= rdp.clip_max_x)
          {
-            if (vtxbuf2_j->x <= rdp.clip_max_x)   // Both are in, save the last one
+            if (second->x <= rdp.clip_max_x)   // Both are in, save the last one
             {
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (rdp.clip_max_x - vtxbuf2_i->x) / (vtxbuf2_j->x - vtxbuf2_i->x);
+               percent = (rdp.clip_max_x - first->x) / (second->x - first->x);
                rdp.vtxbuf[index].x = rdp.clip_max_x;
-               rdp.vtxbuf[index].y = vtxbuf2_i->y + (vtxbuf2_j->y - vtxbuf2_i->y) * percent;
-               rdp.vtxbuf[index].z = vtxbuf2_i->z + (vtxbuf2_j->z - vtxbuf2_i->z) * percent;
-               rdp.vtxbuf[index].q = vtxbuf2_i->q + (vtxbuf2_j->q - vtxbuf2_i->q) * percent;
-               rdp.vtxbuf[index].u0 = vtxbuf2_i->u0 + (vtxbuf2_j->u0 - vtxbuf2_i->u0) * percent;
-               rdp.vtxbuf[index].v0 = vtxbuf2_i->v0 + (vtxbuf2_j->v0 - vtxbuf2_i->v0) * percent;
-               rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
-               rdp.vtxbuf[index].v1 = vtxbuf2_i->v1 + (vtxbuf2_j->v1 - vtxbuf2_i->v1) * percent;
+               rdp.vtxbuf[index].y = first->y + (second->y - first->y) * percent;
+               rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
+               rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
+               rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
+               rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
+               rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
+               rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
                if (interpolate_colors)
-                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_i, vtxbuf2_j);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, first, second);
                else
-                  rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 8;
+                  rdp.vtxbuf[index++].number = first->number | second->number | 8;
             }
          }
          else
          {
-            if (vtxbuf2_j->x <= rdp.clip_max_x) // First is out, second is in, save intersection & in point
+            if (second->x <= rdp.clip_max_x) // First is out, second is in, save intersection & in point
             {
-               percent = (rdp.clip_max_x - vtxbuf2_j->x) / (vtxbuf2_i->x - vtxbuf2_j->x);
+               percent = (rdp.clip_max_x - second->x) / (first->x - second->x);
                rdp.vtxbuf[index].x = rdp.clip_max_x;
-               rdp.vtxbuf[index].y = vtxbuf2_j->y + (vtxbuf2_i->y - vtxbuf2_j->y) * percent;
-               rdp.vtxbuf[index].z = vtxbuf2_j->z + (vtxbuf2_i->z - vtxbuf2_j->z) * percent;
-               rdp.vtxbuf[index].q = vtxbuf2_j->q + (vtxbuf2_i->q - vtxbuf2_j->q) * percent;
-               rdp.vtxbuf[index].u0 = vtxbuf2_j->u0 + (vtxbuf2_i->u0 - vtxbuf2_j->u0) * percent;
-               rdp.vtxbuf[index].v0 = vtxbuf2_j->v0 + (vtxbuf2_i->v0 - vtxbuf2_j->v0) * percent;
-               rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
-               rdp.vtxbuf[index].v1 = vtxbuf2_j->v1 + (vtxbuf2_i->v1 - vtxbuf2_j->v1) * percent;
+               rdp.vtxbuf[index].y = second->y + (first->y - second->y) * percent;
+               rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
+               rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
+               rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
+               rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
+               rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
+               rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
                if (interpolate_colors)
-                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_j, vtxbuf2_i);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, second, first);
                else
-                  rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 8;
+                  rdp.vtxbuf[index++].number = first->number | second->number | 8;
 
                // Save the in point
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
@@ -554,53 +554,53 @@ static void clip_tri(int interpolate_colors)
       // Check the vertices for clipping
       for (i=0; i<n; i++)
       {
-         VERTEX *vtxbuf2_i, *vtxbuf2_j;
+         VERTEX *first, *second;
          j = i+1;
          if (j == n)
             j = 0;
-         vtxbuf2_i = (VERTEX*)&rdp.vtxbuf2[i];
-         vtxbuf2_j = (VERTEX*)&rdp.vtxbuf2[j];
+         first = (VERTEX*)&rdp.vtxbuf2[i];
+         second = (VERTEX*)&rdp.vtxbuf2[j];
 
-         if (vtxbuf2_i->x >= rdp.clip_min_x)
+         if (first->x >= rdp.clip_min_x)
          {
-            if (vtxbuf2_j->x >= rdp.clip_min_x)   // Both are in, save the last one
+            if (second->x >= rdp.clip_min_x)   // Both are in, save the last one
             {
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (rdp.clip_min_x - vtxbuf2_i->x) / (vtxbuf2_j->x - vtxbuf2_i->x);
+               percent = (rdp.clip_min_x - first->x) / (second->x - first->x);
                rdp.vtxbuf[index].x = rdp.clip_min_x;
-               rdp.vtxbuf[index].y = vtxbuf2_i->y + (vtxbuf2_j->y - vtxbuf2_i->y) * percent;
-               rdp.vtxbuf[index].z = vtxbuf2_i->z + (vtxbuf2_j->z - vtxbuf2_i->z) * percent;
-               rdp.vtxbuf[index].q = vtxbuf2_i->q + (vtxbuf2_j->q - vtxbuf2_i->q) * percent;
-               rdp.vtxbuf[index].u0 = vtxbuf2_i->u0 + (vtxbuf2_j->u0 - vtxbuf2_i->u0) * percent;
-               rdp.vtxbuf[index].v0 = vtxbuf2_i->v0 + (vtxbuf2_j->v0 - vtxbuf2_i->v0) * percent;
-               rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
-               rdp.vtxbuf[index].v1 = vtxbuf2_i->v1 + (vtxbuf2_j->v1 - vtxbuf2_i->v1) * percent;
+               rdp.vtxbuf[index].y = first->y + (second->y - first->y) * percent;
+               rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
+               rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
+               rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
+               rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
+               rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
+               rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
                if (interpolate_colors)
-                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_i, vtxbuf2_j);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, first, second);
                else
-                  rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 8;
+                  rdp.vtxbuf[index++].number = first->number | second->number | 8;
             }
          }
          else
          {
             if (rdp.vtxbuf2[j].x >= rdp.clip_min_x) // First is out, second is in, save intersection & in point
             {
-               percent = (rdp.clip_min_x - vtxbuf2_j->x) / (vtxbuf2_i->x - vtxbuf2_j->x);
+               percent = (rdp.clip_min_x - second->x) / (first->x - second->x);
                rdp.vtxbuf[index].x = rdp.clip_min_x;
-               rdp.vtxbuf[index].y = vtxbuf2_j->y + (vtxbuf2_i->y - vtxbuf2_j->y) * percent;
-               rdp.vtxbuf[index].z = vtxbuf2_j->z + (vtxbuf2_i->z - vtxbuf2_j->z) * percent;
-               rdp.vtxbuf[index].q = vtxbuf2_j->q + (vtxbuf2_i->q - vtxbuf2_j->q) * percent;
-               rdp.vtxbuf[index].u0 = vtxbuf2_j->u0 + (vtxbuf2_i->u0 - vtxbuf2_j->u0) * percent;
-               rdp.vtxbuf[index].v0 = vtxbuf2_j->v0 + (vtxbuf2_i->v0 - vtxbuf2_j->v0) * percent;
-               rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
-               rdp.vtxbuf[index].v1 = vtxbuf2_j->v1 + (vtxbuf2_i->v1 - vtxbuf2_j->v1) * percent;
+               rdp.vtxbuf[index].y = second->y + (first->y - second->y) * percent;
+               rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
+               rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
+               rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
+               rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
+               rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
+               rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
                if (interpolate_colors)
-                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_j, vtxbuf2_i);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, second, first);
                else
-                  rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 8;
+                  rdp.vtxbuf[index++].number = first->number | second->number | 8;
 
                // Save the in point
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
@@ -622,53 +622,53 @@ static void clip_tri(int interpolate_colors)
       // Check the vertices for clipping
       for (i=0; i<n; i++)
       {
-         VERTEX *vtxbuf2_i, *vtxbuf2_j;
+         VERTEX *first, *second;
          j = i+1;
          if (j == n)
             j = 0;
-         vtxbuf2_i = (VERTEX*)&rdp.vtxbuf2[i];
-         vtxbuf2_j = (VERTEX*)&rdp.vtxbuf2[j];
+         first = (VERTEX*)&rdp.vtxbuf2[i];
+         second = (VERTEX*)&rdp.vtxbuf2[j];
 
-         if (vtxbuf2_i->y <= rdp.clip_max_y)
+         if (first->y <= rdp.clip_max_y)
          {
-            if (vtxbuf2_j->y <= rdp.clip_max_y)   // Both are in, save the last one
+            if (second->y <= rdp.clip_max_y)   // Both are in, save the last one
             {
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (rdp.clip_max_y - vtxbuf2_i->y) / (vtxbuf2_j->y - vtxbuf2_i->y);
-               rdp.vtxbuf[index].x = vtxbuf2_i->x + (vtxbuf2_j->x - vtxbuf2_i->x) * percent;
+               percent = (rdp.clip_max_y - first->y) / (second->y - first->y);
+               rdp.vtxbuf[index].x = first->x + (second->x - first->x) * percent;
                rdp.vtxbuf[index].y = rdp.clip_max_y;
-               rdp.vtxbuf[index].z = vtxbuf2_i->z + (vtxbuf2_j->z - vtxbuf2_i->z) * percent;
-               rdp.vtxbuf[index].q = vtxbuf2_i->q + (vtxbuf2_j->q - vtxbuf2_i->q) * percent;
-               rdp.vtxbuf[index].u0 = vtxbuf2_i->u0 + (vtxbuf2_j->u0 - vtxbuf2_i->u0) * percent;
-               rdp.vtxbuf[index].v0 = vtxbuf2_i->v0 + (vtxbuf2_j->v0 - vtxbuf2_i->v0) * percent;
-               rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
-               rdp.vtxbuf[index].v1 = vtxbuf2_i->v1 + (vtxbuf2_j->v1 - vtxbuf2_i->v1) * percent;
+               rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
+               rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
+               rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
+               rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
+               rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
+               rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
                if (interpolate_colors)
-                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_i, vtxbuf2_j);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, first, second);
                else
-                  rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 16;
+                  rdp.vtxbuf[index++].number = first->number | second->number | 16;
             }
          }
          else
          {
-            if (vtxbuf2_j->y <= rdp.clip_max_y) // First is out, second is in, save intersection & in point
+            if (second->y <= rdp.clip_max_y) // First is out, second is in, save intersection & in point
             {
-               percent = (rdp.clip_max_y - vtxbuf2_j->y) / (vtxbuf2_i->y - vtxbuf2_j->y);
-               rdp.vtxbuf[index].x = rdp.vtxbuf2[j].x + (rdp.vtxbuf2[i].x - vtxbuf2_j->x) * percent;
+               percent = (rdp.clip_max_y - second->y) / (first->y - second->y);
+               rdp.vtxbuf[index].x = rdp.vtxbuf2[j].x + (rdp.vtxbuf2[i].x - second->x) * percent;
                rdp.vtxbuf[index].y = rdp.clip_max_y;
-               rdp.vtxbuf[index].z = vtxbuf2_j->z + (vtxbuf2_i->z - vtxbuf2_j->z) * percent;
-               rdp.vtxbuf[index].q = vtxbuf2_j->q + (vtxbuf2_i->q - vtxbuf2_j->q) * percent;
-               rdp.vtxbuf[index].u0 = vtxbuf2_j->u0 + (vtxbuf2_i->u0 - vtxbuf2_j->u0) * percent;
-               rdp.vtxbuf[index].v0 = vtxbuf2_j->v0 + (vtxbuf2_i->v0 - vtxbuf2_j->v0) * percent;
-               rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
-               rdp.vtxbuf[index].v1 = vtxbuf2_j->v1 + (vtxbuf2_i->v1 - vtxbuf2_j->v1) * percent;
+               rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
+               rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
+               rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
+               rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
+               rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
+               rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
                if (interpolate_colors)
-                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_j, vtxbuf2_i);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, second, first);
                else
-                  rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 16;
+                  rdp.vtxbuf[index++].number = first->number | second->number | 16;
 
                // Save the in point
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
@@ -690,53 +690,53 @@ static void clip_tri(int interpolate_colors)
       // Check the vertices for clipping
       for (i=0; i<n; i++)
       {
-         VERTEX *vtxbuf2_i, *vtxbuf2_j;
+         VERTEX *first, *second;
          j = i+1;
          if (j == n)
             j = 0;
-         vtxbuf2_i = (VERTEX*)&rdp.vtxbuf2[i];
-         vtxbuf2_j = (VERTEX*)&rdp.vtxbuf2[j];
+         first = (VERTEX*)&rdp.vtxbuf2[i];
+         second = (VERTEX*)&rdp.vtxbuf2[j];
 
-         if (vtxbuf2_i->y >= rdp.clip_min_y)
+         if (first->y >= rdp.clip_min_y)
          {
-            if (vtxbuf2_j->y >= rdp.clip_min_y)   // Both are in, save the last one
+            if (second->y >= rdp.clip_min_y)   // Both are in, save the last one
             {
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (rdp.clip_min_y - vtxbuf2_i->y) / (vtxbuf2_j->y - vtxbuf2_i->y);
-               rdp.vtxbuf[index].x = vtxbuf2_i->x + (vtxbuf2_j->x - vtxbuf2_i->x) * percent;
+               percent = (rdp.clip_min_y - first->y) / (second->y - first->y);
+               rdp.vtxbuf[index].x = first->x + (second->x - first->x) * percent;
                rdp.vtxbuf[index].y = rdp.clip_min_y;
-               rdp.vtxbuf[index].z = vtxbuf2_i->z + (vtxbuf2_j->z - vtxbuf2_i->z) * percent;
-               rdp.vtxbuf[index].q = vtxbuf2_i->q + (vtxbuf2_j->q - vtxbuf2_i->q) * percent;
-               rdp.vtxbuf[index].u0 = vtxbuf2_i->u0 + (vtxbuf2_j->u0 - vtxbuf2_i->u0) * percent;
-               rdp.vtxbuf[index].v0 = vtxbuf2_i->v0 + (vtxbuf2_j->v0 - vtxbuf2_i->v0) * percent;
-               rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
-               rdp.vtxbuf[index].v1 = vtxbuf2_i->v1 + (vtxbuf2_j->v1 - vtxbuf2_i->v1) * percent;
+               rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
+               rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
+               rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
+               rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
+               rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
+               rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
                if (interpolate_colors)
-                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_i, vtxbuf2_j);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, first, second);
                else
-                  rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 16;
+                  rdp.vtxbuf[index++].number = first->number | second->number | 16;
             }
          }
          else
          {
-            if (vtxbuf2_j->y >= rdp.clip_min_y) // First is out, second is in, save intersection & in point
+            if (second->y >= rdp.clip_min_y) // First is out, second is in, save intersection & in point
             {
-               percent = (rdp.clip_min_y - vtxbuf2_j->y) / (vtxbuf2_i->y - vtxbuf2_j->y);
-               rdp.vtxbuf[index].x = vtxbuf2_j->x + (vtxbuf2_i->x - vtxbuf2_j->x) * percent;
+               percent = (rdp.clip_min_y - second->y) / (first->y - second->y);
+               rdp.vtxbuf[index].x = second->x + (first->x - second->x) * percent;
                rdp.vtxbuf[index].y = rdp.clip_min_y;
-               rdp.vtxbuf[index].z = vtxbuf2_j->z + (vtxbuf2_i->z - vtxbuf2_j->z) * percent;
-               rdp.vtxbuf[index].q = vtxbuf2_j->q + (vtxbuf2_i->q - vtxbuf2_j->q) * percent;
-               rdp.vtxbuf[index].u0 = vtxbuf2_j->u0 + (vtxbuf2_i->u0 - vtxbuf2_j->u0) * percent;
-               rdp.vtxbuf[index].v0 = vtxbuf2_j->v0 + (vtxbuf2_i->v0 - vtxbuf2_j->v0) * percent;
-               rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
-               rdp.vtxbuf[index].v1 = vtxbuf2_j->v1 + (vtxbuf2_i->v1 - vtxbuf2_j->v1) * percent;
+               rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
+               rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
+               rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
+               rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
+               rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
+               rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
                if (interpolate_colors)
-                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_j, vtxbuf2_i);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, second, first);
                else
-                  rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number | 16;
+                  rdp.vtxbuf[index++].number = first->number | second->number | 16;
 
                // Save the in point
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
@@ -760,53 +760,53 @@ static void clip_tri(int interpolate_colors)
       // Check the vertices for clipping
       for (i=0; i<n; i++)
       {
-         VERTEX *vtxbuf2_i, *vtxbuf2_j;
+         VERTEX *first, *second;
          j = i+1;
          if (j == n)
             j = 0;
-         vtxbuf2_i = (VERTEX*)&rdp.vtxbuf2[i];
-         vtxbuf2_j = (VERTEX*)&rdp.vtxbuf2[j];
+         first = (VERTEX*)&rdp.vtxbuf2[i];
+         second = (VERTEX*)&rdp.vtxbuf2[j];
 
-         if (vtxbuf2_i->z < maxZ)
+         if (first->z < maxZ)
          {
-            if (vtxbuf2_j->z < maxZ)   // Both are in, save the last one
+            if (second->z < maxZ)   // Both are in, save the last one
             {
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (maxZ - vtxbuf2_i->z) / (vtxbuf2_j->z - vtxbuf2_i->z);
-               rdp.vtxbuf[index].x = vtxbuf2_i->x + (vtxbuf2_j->x - vtxbuf2_i->x) * percent;
-               rdp.vtxbuf[index].y = vtxbuf2_i->y + (vtxbuf2_j->y - vtxbuf2_i->y) * percent;
+               percent = (maxZ - first->z) / (second->z - first->z);
+               rdp.vtxbuf[index].x = first->x + (second->x - first->x) * percent;
+               rdp.vtxbuf[index].y = first->y + (second->y - first->y) * percent;
                rdp.vtxbuf[index].z = maxZ - 0.001f;
-               rdp.vtxbuf[index].q = vtxbuf2_i->q + (vtxbuf2_j->q - vtxbuf2_i->q) * percent;
-               rdp.vtxbuf[index].u0 = vtxbuf2_i->u0 + (vtxbuf2_j->u0 - vtxbuf2_i->u0) * percent;
-               rdp.vtxbuf[index].v0 = vtxbuf2_i->v0 + (vtxbuf2_j->v0 - vtxbuf2_i->v0) * percent;
-               rdp.vtxbuf[index].u1 = vtxbuf2_i->u1 + (vtxbuf2_j->u1 - vtxbuf2_i->u1) * percent;
-               rdp.vtxbuf[index].v1 = vtxbuf2_i->v1 + (vtxbuf2_j->v1 - vtxbuf2_i->v1) * percent;
+               rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
+               rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
+               rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
+               rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
+               rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
                if (interpolate_colors)
-                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_i, vtxbuf2_j);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, first, second);
                else
-                  rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number;
+                  rdp.vtxbuf[index++].number = first->number | second->number;
             }
          }
          else
          {
-            if (vtxbuf2_j->z < maxZ) // First is out, second is in, save intersection & in point
+            if (second->z < maxZ) // First is out, second is in, save intersection & in point
             {
-               percent = (maxZ - vtxbuf2_j->z) / (vtxbuf2_i->z - vtxbuf2_j->z);
-               rdp.vtxbuf[index].x = vtxbuf2_j->x + (vtxbuf2_i->x - vtxbuf2_j->x) * percent;
-               rdp.vtxbuf[index].y = vtxbuf2_j->y + (vtxbuf2_i->y - vtxbuf2_j->y) * percent;
+               percent = (maxZ - second->z) / (first->z - second->z);
+               rdp.vtxbuf[index].x = second->x + (first->x - second->x) * percent;
+               rdp.vtxbuf[index].y = second->y + (first->y - second->y) * percent;
                rdp.vtxbuf[index].z = maxZ - 0.001f;;
-               rdp.vtxbuf[index].q = vtxbuf2_j->q + (vtxbuf2_i->q - vtxbuf2_j->q) * percent;
-               rdp.vtxbuf[index].u0 = vtxbuf2_j->u0 + (vtxbuf2_i->u0 - vtxbuf2_j->u0) * percent;
-               rdp.vtxbuf[index].v0 = vtxbuf2_j->v0 + (vtxbuf2_i->v0 - vtxbuf2_j->v0) * percent;
-               rdp.vtxbuf[index].u1 = vtxbuf2_j->u1 + (vtxbuf2_i->u1 - vtxbuf2_j->u1) * percent;
-               rdp.vtxbuf[index].v1 = vtxbuf2_j->v1 + (vtxbuf2_i->v1 - vtxbuf2_j->v1) * percent;
+               rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
+               rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
+               rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
+               rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
+               rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
                if (interpolate_colors)
-                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, vtxbuf2_j, vtxbuf2_i);
+                  gSPInterpolateVertex(&rdp.vtxbuf[index++], percent, second, first);
                else
-                  rdp.vtxbuf[index++].number = vtxbuf2_i->number | vtxbuf2_j->number;
+                  rdp.vtxbuf[index++].number = first->number | second->number;
 
                // Save the in point
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
