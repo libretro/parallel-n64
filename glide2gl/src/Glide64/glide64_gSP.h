@@ -260,20 +260,20 @@ static void gSPTexture(int32_t sc, int32_t tc, int32_t level,
  * l - pointer to Light structure.
  * n - the light number that is replaced (1 to 8).
  */
-static void gSPLight(uint32_t l, unsigned n)
+static void gSPLight(void *ptr, uint32_t l, unsigned n)
 {
    uint32_t address = RSP_SegmentToPhysical(l);
 
    // Get the data
-   rdp.light[n].col[0] = (((uint8_t*)gfx.RDRAM)[(address+0)^3]) * 0.0039215689f;
-   rdp.light[n].col[1] = (((uint8_t*)gfx.RDRAM)[(address+1)^3]) * 0.0039215689f;
-   rdp.light[n].col[2] = (((uint8_t*)gfx.RDRAM)[(address+2)^3]) * 0.0039215689f;
+   rdp.light[n].col[0] = (((uint8_t*)ptr)[(address+0)^3]) * 0.0039215689f;
+   rdp.light[n].col[1] = (((uint8_t*)ptr)[(address+1)^3]) * 0.0039215689f;
+   rdp.light[n].col[2] = (((uint8_t*)ptr)[(address+2)^3]) * 0.0039215689f;
    rdp.light[n].col[3] = 1.0f;
    // ** Thanks to Icepir8 for pointing this out **
    // Lighting must be signed byte instead of byte
-   rdp.light[n].dir[0] = (float)(((int8_t*)gfx.RDRAM)[(address+8)^3]) / 127.0f;
-   rdp.light[n].dir[1] = (float)(((int8_t*)gfx.RDRAM)[(address+9)^3]) / 127.0f;
-   rdp.light[n].dir[2] = (float)(((int8_t*)gfx.RDRAM)[(address+10)^3]) / 127.0f;
+   rdp.light[n].dir[0] = (float)(((int8_t*)ptr)[(address+8)^3]) / 127.0f;
+   rdp.light[n].dir[1] = (float)(((int8_t*)ptr)[(address+9)^3]) / 127.0f;
+   rdp.light[n].dir[2] = (float)(((int8_t*)ptr)[(address+10)^3]) / 127.0f;
    // **
 
    //rdp.update |= UPDATE_LIGHTS;

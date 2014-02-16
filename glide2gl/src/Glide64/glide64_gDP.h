@@ -946,10 +946,14 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
    int32_t s_ul_y = (uint32_t)min(max(ul_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
    int32_t s_lr_y = (uint32_t)min(max(lr_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
 
-   if (s_lr_x < 0) s_lr_x = 0;
-   if (s_lr_y < 0) s_lr_y = 0;
-   if ((uint32_t)s_ul_x > settings.res_x) s_ul_x = settings.res_x;
-   if ((uint32_t)s_ul_y > settings.res_y) s_ul_y = settings.res_y;
+   if (s_lr_x < 0)
+      s_lr_x = 0;
+   if (s_lr_y < 0)
+      s_lr_y = 0;
+   if ((uint32_t)s_ul_x > settings.res_x)
+      s_ul_x = settings.res_x;
+   if ((uint32_t)s_ul_y > settings.res_y)
+      s_ul_y = settings.res_y;
 
    //FRDP (" - %d, %d, %d, %d\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 

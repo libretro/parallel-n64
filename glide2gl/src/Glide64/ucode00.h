@@ -237,7 +237,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
       case G_MV_L7:
          // Get the light #
          i = (((w0 >> 16) & 0xff) - G_MV_L0) >> 1;
-         gSPLight(w1, i);
+         gSPLight(gfx.RDRAM, w1, i);
          break;
 
 
