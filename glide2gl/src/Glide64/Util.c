@@ -1120,7 +1120,7 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
       if (rdp.zsrc == 1)
          rdp.vtxbuf[i].z = rdp.prim_depth;
 
-      glide64SPClipVertex(i);
+      gSPClipVertex(i);
       // Don't remove clipping, or it will freeze
       if (rdp.vtxbuf[i].z > maxZ)           rdp.clip |= CLIP_ZMAX;
       if (rdp.vtxbuf[i].z < 0.0f)           rdp.clip |= CLIP_ZMIN;
@@ -1144,7 +1144,7 @@ void do_triangle_stuff_2 (uint16_t linew)
    rdp.clip = 0;
 
    for (i = 0; i < rdp.n_global; i++)
-      glide64SPClipVertex(i);
+      gSPClipVertex(i);
 
    render_tri (linew, true);
 }

@@ -52,7 +52,6 @@ struct MAT2D {
 		}
 
 //forward decls
-extern void glide64SPClipVertex(uint32_t i);
 static void uc6_draw_polygons (VERTEX v[4]);
 static void uc6_read_object_data (DRAWOBJECT *d);
 static void uc6_init_tile(const DRAWOBJECT *d);
@@ -805,12 +804,16 @@ static void gSPModifyVertex(uint32_t vtx, uint32_t where,  uint32_t val)
    //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, val);
 }
 
-void glide64SPClipVertex(uint32_t i)
+static void gSPClipVertex(uint32_t i)
 {
-   if (rdp.vtxbuf[i].x > rdp.clip_max_x) rdp.clip |= CLIP_XMAX;
-   if (rdp.vtxbuf[i].x < rdp.clip_min_x) rdp.clip |= CLIP_XMIN;
-   if (rdp.vtxbuf[i].y > rdp.clip_max_y) rdp.clip |= CLIP_YMAX;
-   if (rdp.vtxbuf[i].y < rdp.clip_min_y) rdp.clip |= CLIP_YMIN;
+   if (rdp.vtxbuf[i].x > rdp.clip_max_x)
+      rdp.clip |= CLIP_XMAX;
+   if (rdp.vtxbuf[i].x < rdp.clip_min_x)
+      rdp.clip |= CLIP_XMIN;
+   if (rdp.vtxbuf[i].y > rdp.clip_max_y)
+      rdp.clip |= CLIP_YMAX;
+   if (rdp.vtxbuf[i].y < rdp.clip_min_y)
+      rdp.clip |= CLIP_YMIN;
 }
 
 /*
