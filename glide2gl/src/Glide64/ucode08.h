@@ -342,19 +342,11 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
                return;
             }
             n -= 2;
-            uint8_t col = gfx.RDRAM[(addr+0)^3];
-            rdp.light[n].col[0] = (float)col / 255.0f;
-            rdp.light[n].nonblack = col;
-            col = gfx.RDRAM[(addr+1)^3];
-            rdp.light[n].col[1] = (float)col / 255.0f;
-            rdp.light[n].nonblack += col;
-            col = gfx.RDRAM[(addr+2)^3];
-            rdp.light[n].col[2] = (float)col / 255.0f;
-            rdp.light[n].nonblack += col;
-            rdp.light[n].col[3] = 1.0f;
-            rdp.light[n].dir[0] = (float)(((int8_t*)gfx.RDRAM)[(addr+8)^3]) / 127.0f;
-            rdp.light[n].dir[1] = (float)(((int8_t*)gfx.RDRAM)[(addr+9)^3]) / 127.0f;
-            rdp.light[n].dir[2] = (float)(((int8_t*)gfx.RDRAM)[(addr+10)^3]) / 127.0f;
+            rdp.light[n].nonblack = gfx.RDRAM[(addr+0)^3];
+            rdp.light[n].nonblack += gfx.RDRAM[(addr+1)^3];
+            rdp.light[n].nonblack += gfx.RDRAM[(addr+2)^3];
+
+            gSPLight(gfx.RDRAM, w1, n);
             // **
             uint32_t a = addr >> 1;
             rdp.light[n].x = (float)(((int16_t*)gfx.RDRAM)[(a+16)^1]);
