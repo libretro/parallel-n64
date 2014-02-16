@@ -213,9 +213,9 @@ static void gSPViewport(uint32_t v, bool correct_viewport)
  * from the Vtx structure after they have been shifted by the "shift" parameter set in the texture
  * tile attributes.
  *
- * sc    - scaling value for the texture's s coordinate (16-bit precision, .16)
- * tc    - scaling value for the texture's t coordinate (16-bit precision, .16)
- * level - one less than the maximum number of MIP-map levels (max - 1)
+ * sc    - scaling value for the texture's s coordinate (16-bit unsigned precision, .16)
+ * tc    - scaling value for the texture's t coordinate (16-bit unsigned precision, .16)
+ * level - (maximum number of MIP-map levels) - 1
  * tile  - tile descriptor index (3-bit precision, 0~7)
  * on    - texture flag - G_ON (texture on) | G_OFF (texture off)
  */
@@ -1093,8 +1093,8 @@ static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, 
  * For other features of this macro, see GSPLine3D. This macro works
  * only when line microcode (L3DEX, L3DEX2) is loaded.
  *
- * v0   - vertex buffer index (0-31).
- * v1   - vertex buffer index (0-31).
+ * v0   - vertex buffer index of the first coordinate (0-31).
+ * v1   - vertex buffer index of the second coordinate (0-31).
  * wd   - Line width (0~255, in half-pixel units).
  * flag - The line flat-shading index (0~1):
  *        0 - Draws line using the v0 color.
@@ -1128,10 +1128,11 @@ static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
  * identifies which of the three vertices contains the normal or the color for the
  * face (for flat shading).
  *
- * v0   - vertex buffer index (variable ranges per microcode).
- * v1   - vertex buffer index (variable ranges per microcode).
- * v2   - vertex buffer index (variable ranges per microcode).
- * flag - Triangle face flag 0~2
+ * v0   - vertex buffer index of the first coordinate (variable ranges per microcode).
+ * v1   - vertex buffer index of the second coordinate (variable ranges per microcode).
+ * v2   - vertex buffer index of the third coordinate (variable ranges per microcode).
+ * flag - used for flat shading; ordinal ID of the vertex parameter to use for 
+ *        shading - triangle face flag 0~2
  *
  * FIXME: not spec-conformant (do_update)
  */
@@ -1502,9 +1503,9 @@ static void pre_update(void)
  * Loads into the RSP vertex buffer the vertices that will be used by the 
  * gSP1Triangle commands to generate polygons.
  *
- * v  - Segment address of the vertex list.
+ * v  - Segment address of the vertex list  pointer to a list of vertices.
  * n  - Number of vertices (1 - 32).
- * v0 - Starting index in vertex buffer where vertices are to be loaded.
+ * v0 - Starting index in vertex buffer where vertices are to be loaded into.
  */
 static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
 {
