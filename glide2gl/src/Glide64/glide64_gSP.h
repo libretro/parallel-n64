@@ -132,6 +132,9 @@ static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
  * param - the flag field identifying the matrix stack to pop
  *       - G_MTX_MODELVIEW  - modelview matrix stack
  *       - G_MTX_PROJECTION - projection matrix stack (not implemented)
+ *
+ * GBI compatibility -
+ * S2DEX GBI - not supported
  */
 static void gSPPopMatrix(uint32_t param)
 {
@@ -168,6 +171,9 @@ static void gSPPopMatrixN(uint32_t num)
  * vscale - scale applied to the normalized homogeneous coordinates
  *          after 4x4 projection transformation.
  * vtrans - the offset added to the scaled value.
+ *
+ * GBI compatibility -
+ * S2DEX GBI - not supported
  *
  * FIXME: Not spec-conformant.
  */
@@ -292,6 +298,9 @@ static void gSPLight(void *ptr, uint32_t l, unsigned n)
  * stacks, and the tops of the stack are not modified.
  *
  * mptr - The pointer to the matrix to load.
+ *
+ * GBI compatibility -
+ * S2DEX GBI - not supported
  */
 static void gSPForceMatrix(uint32_t mptr)
 {
@@ -352,6 +361,9 @@ static void gSPFogFactor(int16_t fm, int16_t fo)
  *   - FRUSTRATIO_4 (4:1)
  *   - FRUSTRATIO_5 (5:1)
  *   - FRUSTRATIO_6 (6:1)
+ *
+ * GBI compatibility -
+ * S2DEX GBI - not supported
  *
  * FIXME - not consistent with glN64
  */
@@ -542,6 +554,10 @@ static void gSPClearGeometryMode(uint32_t mode)
  * steps for gSPf3DEX.fifo.o and gSPF3DEX.NoN.fifo.o).
  *
  * d - Segment address of the child display list.
+ *
+ * GBI compatibility -
+ * F3DEX GBI - supported
+ * S2DEX GBI - supported
  */
 static void gSPDisplayList(uint32_t dl)
 {
@@ -565,6 +581,10 @@ static void gSPDisplayList(uint32_t dl)
  * macro.
  *
  * dl - pointer to the child display list.
+ *
+ * GBI compatibility -
+ * F3DEX GBI - supported
+ * S2DEX GBI - supported
  */
 static void gSPBranchList(uint32_t dl)
 {
@@ -583,6 +603,10 @@ static void gSPBranchList(uint32_t dl)
  *
  * When this macro is executed, the RSP pops the display list stack and,
  * if the display list stack is empty, ends the graphics process.
+ *
+ * GBI compatibility -
+ * F3DEX GBI - supported
+ * S2DEX GBI - supported
  */
 static void gSPEndDisplayList(void)
 {
@@ -652,6 +676,10 @@ static void gSPCullDisplayList(uint32_t v0, uint32_t vn)
  *
  * seg  - Segment ID (0-15)
  * base - Base physical address
+ *
+ * GBI compatibility -
+ * F3DEX GBI - supported
+ * S2DEX GBI - supported
  */
 static INLINE void gSPSegment( int32_t seg, int32_t base )
 {
@@ -1938,6 +1966,10 @@ static void gSPObjSubMatrix(uint32_t mtx)
  * sft - Shift value to create the mask with.
  * len - Length of field (mask)
  * data - Data to set or clear (TODO - stub for now)
+ *
+ * GBI compatibility -
+ * F3DEX GBI - supported
+ * S2DEX GBI - supported
  */
 static void gSPSetOtherMode(int32_t cmd, int32_t sft, int32_t len, uint32_t data)
 {
@@ -2027,6 +2059,9 @@ static void gSPSetOtherMode(int32_t cmd, int32_t sft, int32_t len, uint32_t data
 
 /*
  * Update the matrix element without using multiplication.
+ *
+ * GBI compatibility -
+ * S2DEX GBI - not supported
  */
 static void gSPInsertMatrix(uint32_t w0, uint32_t w1)
 {
