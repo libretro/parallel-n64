@@ -790,11 +790,13 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
    }
    else
    {
+#ifdef HAVE_HWFBE
       if (rdp.motionblur && fb_hwfbe_enabled)
       {
          return;
       }
       else
+#endif
       {
          float scale_x = (settings.scr_res_x - rdp.offset_x*2.0f)  / max(width, rdp.vi_width);
          float scale_y = (settings.scr_res_y - rdp.offset_y*2.0f) / max(height, rdp.vi_height);
