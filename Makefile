@@ -309,9 +309,6 @@ all: $(TARGET)
 $(COREDIR)/src/r4300/new_dynarec/linkage_arm.o: $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
 	$(CC_AS) $(CFLAGS) -c $^ -o $@
 
-$(COREDIR)/src/r4300/new_dynarec/new_dynarec.o: $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c
-	$(CC) -c -o $@ $< $(CPPFLAGS) $(CFLAGS)
-
 %.o: %.S
 	$(CC_AS) $(CFLAGS) -c $^ -o $@
 

@@ -7567,6 +7567,21 @@ static void disassemble_inst(int i)
 }
 #endif
 
+// Fix crash with Apple LLVM version 5.0 (clang-500.2.79) (based on LLVM 3.3svn) and ARM
+// Do not make this static
+#ifdef __clang__
+__attribute__ ((noinline)) void new_dynarec_init_mem_map(u_int rdrami)
+{
+  int n;
+  for(n=0;n<524288;n++) // 0 .. 0x7FFFFFFF
+    memory_map[n]=-1;
+  for(n=524288;n<526336;n++) // 0x80000000 .. 0x807FFFFF
+    memory_map[n]=(rdrami-0x80000000)>>2;
+  for(n=526336;n<1048576;n++) // 0x80800000 .. 0xFFFFFFFF
+    memory_map[n]=-1;
+}
+#endif
+
 void new_dynarec_init()
 {
   DebugMessage(M64MSG_INFO, "Init new dynarec");
@@ -7606,12 +7621,16 @@ void new_dynarec_init()
   stop_after_jal=0;
   // TLB
   using_tlb=0;
+#ifndef __clang__
   for(n=0;n<524288;n++) // 0 .. 0x7FFFFFFF
     memory_map[n]=-1;
   for(n=524288;n<526336;n++) // 0x80000000 .. 0x807FFFFF
     memory_map[n]=((u_int)rdram-0x80000000)>>2;
   for(n=526336;n<1048576;n++) // 0x80800000 .. 0xFFFFFFFF
     memory_map[n]=-1;
+#else
+  new_dynarec_init_mem_map((u_int)rdram);
+#endif
   for(n=0;n<0x8000;n++) { // 0 .. 0x7FFFFFFF
     writemem[n] = write_nomem_new;
     writememb[n] = write_nomemb_new;
