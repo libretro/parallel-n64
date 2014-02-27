@@ -126,6 +126,9 @@ typedef struct {
     int16_t subframe_740_last4[4];
 } musyx_t;
 
+typedef void (*mix_sfx_with_main_subframes_t)(musyx_t *musyx, const int16_t *subframe,
+      const uint16_t* gains);
+
 /* helper functions prototypes */
 static void load_base_vol(int32_t *base_vol, uint32_t address);
 static void save_base_vol(const int32_t *base_vol, uint32_t address);
@@ -159,8 +162,12 @@ static void mix_voice_samples(musyx_t *musyx, uint32_t voice_ptr,
                               const int16_t *samples, unsigned segbase,
                               unsigned offset, uint32_t last_sample_ptr);
 
-static void sfx_stage_v1(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx);
-static void sfx_stage_v2(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx);
+static void sfx_stage(mix_sfx_with_main_subframes_t mix_sfx_with_main_subframes,
+      musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx);
+static void mix_sfx_with_main_subframes_v1(musyx_t *musyx, const int16_t *subframe,
+      const uint16_t* gains);
+static void mix_sfx_with_main_subframes_v2(musyx_t *musyx, const int16_t *subframe,
+      const uint16_t* gains);
 
 static void mix_samples(int16_t *y, int16_t x, int16_t hgain);
 static void mix_subframes(int16_t *y, const int16_t *x, int16_t hgain);
@@ -222,7 +229,8 @@ void musyx_v1_task(void)
         output_ptr = voice_stage(&musyx, voice_ptr, last_sample_ptr);
 
         /* apply delay-based effects (optional) */
-        sfx_stage_v1(&musyx, sfx_ptr, sfx_index);
+        sfx_stage(mix_sfx_with_main_subframes_v1,
+              &musyx, sfx_ptr, sfx_index);
 
         /* emit interleaved L,R subframes */
         interleave_stage_v1(&musyx, output_ptr);
@@ -294,7 +302,8 @@ void musyx_v2_task(void)
         output_ptr = voice_stage(&musyx, voice_ptr, last_sample_ptr);
 
         /* apply delay-based effects (optional) */
-        sfx_stage_v2(&musyx, sfx_ptr, sfx_index);
+        sfx_stage(mix_sfx_with_main_subframes_v2,
+              &musyx, sfx_ptr, sfx_index);
 
         dram_store_u16((uint16_t*)musyx.left,  output_ptr                  , SUBFRAME_SIZE);
         dram_store_u16((uint16_t*)musyx.right, output_ptr + 2*SUBFRAME_SIZE, SUBFRAME_SIZE);
@@ -732,7 +741,8 @@ static void mix_voice_samples(musyx_t *musyx, uint32_t voice_ptr,
 }
 
 
-static void sfx_stage_v1(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
+static void sfx_stage(mix_sfx_with_main_subframes_t mix_sfx_with_main_subframes,
+      musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
 {
     unsigned int i;
 
@@ -752,6 +762,7 @@ static void sfx_stage_v1(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
     uint32_t cbuffer_length;
     uint16_t tap_count;
     int16_t fir4_hgain;
+    uint16_t sfx_gains[2];
 
     DebugMessage(M64MSG_VERBOSE, "SFX: %08x, idx=%d", sfx_ptr, idx);
 
@@ -770,6 +781,9 @@ static void sfx_stage_v1(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
     fir4_hgain     = *dram_u16(sfx_ptr + SFX_FIR4_HGAIN);
     dram_load_u16((uint16_t *)fir4_hcoeffs, sfx_ptr + SFX_FIR4_HCOEFFS, 4);
 
+    sfx_gains[0] = *dram_u16(sfx_ptr + SFX_U16_3C);
+    sfx_gains[1] = *dram_u16(sfx_ptr + SFX_U16_3E);
+
     DebugMessage(M64MSG_VERBOSE, "cbuffer: ptr=%08x length=%x", cbuffer_ptr,
                  cbuffer_length);
 
@@ -786,6 +800,8 @@ static void sfx_stage_v1(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
                  tap_delays[4], tap_delays[5], tap_delays[6], tap_delays[7],
                  tap_gains[0], tap_gains[1], tap_gains[2], tap_gains[3],
                  tap_gains[4], tap_gains[5], tap_gains[6], tap_gains[7]);
+
+    DebugMessage(M64MSG_VERBOSE, "sfx_gains=%04x %04x", sfx_gains[0], sfx_gains[1]);
 
     /* mix up to 8 delayed subframes */
     memset(subframe, 0, SUBFRAME_SIZE * sizeof(subframe[0]));
@@ -806,12 +822,8 @@ static void sfx_stage_v1(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
         mix_subframes(subframe, delayed, tap_gains[i]);
     }
 
-    /* add resulting subframe to L/R subframes */
-    for (i = 0; i < SUBFRAME_SIZE; ++i) {
-        int16_t v = subframe[i];
-        musyx->left[i]  = clamp_s16(musyx->left[i]  + v);
-        musyx->right[i] = clamp_s16(musyx->right[i] + v);
-    }
+    /* add resulting subframe to main subframes */
+    mix_sfx_with_main_subframes(musyx, subframe, sfx_gains);
 
     /* apply FIR4 filter and writeback filtered result */
     memcpy(buffer, musyx->subframe_740_last4, 4 * sizeof(int16_t));
@@ -820,105 +832,33 @@ static void sfx_stage_v1(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
     dram_store_u16((uint16_t *)musyx->e50, cbuffer_ptr + pos * 2, SUBFRAME_SIZE);
 }
 
-static void sfx_stage_v2(musyx_t *musyx, uint32_t sfx_ptr, uint16_t idx)
+static void mix_sfx_with_main_subframes_v1(musyx_t *musyx, const int16_t *subframe,
+                                           const uint16_t* gains)
 {
-    unsigned int i;
+   unsigned i;
 
-    int16_t buffer[SUBFRAME_SIZE + 4];
-    int16_t *subframe = buffer + 4;
-
-    uint32_t tap_delays[8];
-    int16_t tap_gains[8];
-    int16_t fir4_hcoeffs[4];
-
-    int16_t delayed[SUBFRAME_SIZE];
-    int dpos, dlength;
-
-    const uint32_t pos = idx * SUBFRAME_SIZE;
-
-    uint32_t cbuffer_ptr;
-    uint32_t cbuffer_length;
-    uint16_t tap_count;
-    int16_t fir4_hgain;
-    uint16_t sfx_3c, sfx_3e;
-
-
-    DebugMessage(M64MSG_VERBOSE, "SFX: %08x, idx=%d", sfx_ptr, idx);
-
-    if (sfx_ptr == 0)
-        return;
-
-    /* load sfx  parameters */
-    cbuffer_ptr    = *dram_u32(sfx_ptr + SFX_CBUFFER_PTR);
-    cbuffer_length = *dram_u32(sfx_ptr + SFX_CBUFFER_LENGTH);
-
-    tap_count      = *dram_u16(sfx_ptr + SFX_TAP_COUNT);
-
-    dram_load_u32(tap_delays, sfx_ptr + SFX_TAP_DELAYS, 8);
-    dram_load_u16((uint16_t *)tap_gains,  sfx_ptr + SFX_TAP_GAINS,  8);
-
-    fir4_hgain     = *dram_u16(sfx_ptr + SFX_FIR4_HGAIN);
-    dram_load_u16((uint16_t *)fir4_hcoeffs, sfx_ptr + SFX_FIR4_HCOEFFS, 4);
-
-    sfx_3c         = *dram_u16(sfx_ptr + SFX_U16_3C);
-    sfx_3e         = *dram_u16(sfx_ptr + SFX_U16_3E);
-
-    DebugMessage(M64MSG_VERBOSE, "cbuffer: ptr=%08x length=%x", cbuffer_ptr,
-                 cbuffer_length);
-
-    DebugMessage(M64MSG_VERBOSE, "fir4: hgain=%04x hcoeff=%04x %04x %04x %04x",
-                 fir4_hgain, fir4_hcoeffs[0], fir4_hcoeffs[1], fir4_hcoeffs[2],
-                 fir4_hcoeffs[3]);
-
-    DebugMessage(M64MSG_VERBOSE,
-                 "tap count=%d\n"
-                 "delays: %08x %08x %08x %08x %08x %08x %08x %08x\n"
-                 "gains:  %04x %04x %04x %04x %04x %04x %04x %04x",
-                 tap_count,
-                 tap_delays[0], tap_delays[1], tap_delays[2], tap_delays[3],
-                 tap_delays[4], tap_delays[5], tap_delays[6], tap_delays[7],
-                 tap_gains[0], tap_gains[1], tap_gains[2], tap_gains[3],
-                 tap_gains[4], tap_gains[5], tap_gains[6], tap_gains[7]);
-
-    DebugMessage(M64MSG_VERBOSE, "sfx_3c=%04x sfx_3e=%04x", sfx_3c, sfx_3e);
-
-    /* mix up to 8 delayed subframes */
-    memset(subframe, 0, SUBFRAME_SIZE * sizeof(subframe[0]));
-    for (i = 0; i < tap_count; ++i) {
-
-        dpos = pos - tap_delays[i];
-        if (dpos <= 0)
-            dpos += cbuffer_length;
-        dlength = SUBFRAME_SIZE;
-
-        if (dpos + SUBFRAME_SIZE > cbuffer_length) {
-            dlength = cbuffer_length - dpos;
-            dram_load_u16((uint16_t *)delayed + dlength, cbuffer_ptr, SUBFRAME_SIZE - dlength);
-        }
-
-        dram_load_u16((uint16_t *)delayed, cbuffer_ptr + dpos * 2, dlength);
-
-        mix_subframes(subframe, delayed, tap_gains[i]);
-    }
-
-    /* add resulting subframe to L/R/C subframes */
-    for (i = 0; i < SUBFRAME_SIZE; ++i) {
-        int16_t v = subframe[i];
-        int16_t v1 = (int32_t)(v * sfx_3c) >> 16;
-        int16_t v2 = (int32_t)(v * sfx_3e) >> 16;
-
-        musyx->left[i]  = clamp_s16(musyx->left[i]  + v1);
-        musyx->right[i] = clamp_s16(musyx->right[i] + v1);
-        musyx->cc0[i]   = clamp_s16(musyx->cc0[i]   + v2);
-    }
-
-    /* apply FIR4 filter and writeback filtered result */
-    memcpy(buffer, musyx->subframe_740_last4, 4 * sizeof(int16_t));
-    memcpy(musyx->subframe_740_last4, subframe + SUBFRAME_SIZE - 4, 4 * sizeof(int16_t));
-    mix_fir4(musyx->e50, buffer + 1, fir4_hgain, fir4_hcoeffs);
-    dram_store_u16((uint16_t *)musyx->e50, cbuffer_ptr + pos * 2, SUBFRAME_SIZE);
+   for (i = 0; i < SUBFRAME_SIZE; ++i) {
+      int16_t v = subframe[i];
+      musyx->left[i] = clamp_s16(musyx->left[i] + v);
+      musyx->right[i] = clamp_s16(musyx->right[i] + v);
+   }
 }
 
+static void mix_sfx_with_main_subframes_v2(musyx_t *musyx, const int16_t *subframe,
+                                           const uint16_t* gains)
+{
+   unsigned i;
+
+   for (i = 0; i < SUBFRAME_SIZE; ++i) {
+      int16_t v = subframe[i];
+      int16_t v1 = (int32_t)(v * gains[0]) >> 16;
+      int16_t v2 = (int32_t)(v * gains[1]) >> 16;
+
+      musyx->left[i] = clamp_s16(musyx->left[i] + v1);
+      musyx->right[i] = clamp_s16(musyx->right[i] + v1);
+      musyx->cc0[i] = clamp_s16(musyx->cc0[i] + v2);
+   }
+}
 
 static void mix_samples(int16_t *y, int16_t x, int16_t hgain)
 {
