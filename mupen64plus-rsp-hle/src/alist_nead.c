@@ -124,7 +124,7 @@ static void LOADBUFF(uint32_t w1, uint32_t w2)
    uint16_t dmem = (w1 & 0xfff);
    uint32_t address = (w2 & 0xffffff);
 
-   alist_load(dmem & ~3, address & ~3, (count + 3) & ~3);
+   alist_load(dmem, address, count);
 }
 
 static void SAVEBUFF(uint32_t w1, uint32_t w2)
@@ -133,7 +133,7 @@ static void SAVEBUFF(uint32_t w1, uint32_t w2)
    uint16_t dmem = (w1 & 0xfff);
    uint32_t address = (w2 & 0xffffff);
 
-   alist_save(dmem & ~3, address & ~3, (count + 3) & ~3);
+   alist_save(dmem, address, count);
 }
 
 static void MIXER(uint32_t w1, uint32_t w2)

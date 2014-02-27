@@ -245,7 +245,7 @@ static void LOADBUFF (uint32_t w1, uint32_t w2)
    if (l_alist.count == 0)
       return;
 
-   alist_load(l_alist.in & ~3, address & ~3, (l_alist.count + 3) & ~3);
+   alist_load(l_alist.in, address, l_alist.count);
 }
 
 static void SAVEBUFF (uint32_t w1, uint32_t w2)
@@ -255,7 +255,7 @@ static void SAVEBUFF (uint32_t w1, uint32_t w2)
    if (l_alist.count == 0)
       return;
 
-   alist_save(l_alist.out & ~3, address & ~3, (l_alist.count + 3) & ~3);
+   alist_save(l_alist.out, address, l_alist.count);
 }
 
 static void SETBUFF (uint32_t w1, uint32_t w2)

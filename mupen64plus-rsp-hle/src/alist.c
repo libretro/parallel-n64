@@ -154,11 +154,19 @@ void alist_clear(uint16_t dmem, uint16_t count)
 
 void alist_load(uint16_t dmem, uint32_t address, uint16_t count)
 {
+   /* enforce DMA alignment constraints */
+   dmem    &= ~3;
+   address &= ~7;
+   count = align(count, 8);
    memcpy(BufferSpace + dmem, q_RspInfo.RDRAM + address, count);
 }
 
 void alist_save(uint16_t dmem, uint32_t address, uint16_t count)
 {
+   /* enforce DMA alignment constraints */
+   dmem    &= ~3;
+   address &= ~7;
+   count = align(count, 8);
    memcpy(q_RspInfo.RDRAM + address, BufferSpace + dmem, count);
 }
 
