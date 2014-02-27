@@ -64,6 +64,7 @@ LOCAL_SRC_FILES += \
     $(RSPDIR)/src/musyx.c \
     $(RSPDIR)/src/main.c \
     $(RSPDIR)/src/hle_audio.c \
+    $(RSPDIR)/src/hle_memory.c \
     $(RSPDIR)/src/hle_plugin.c
 
 LOCAL_SRC_FILES += \

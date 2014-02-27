@@ -23,7 +23,8 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "hle.h"
+#include "hle_memory.h"
+#include "hle_plugin.h"
 #include "alist_internal.h"
 
 static const uint16_t DeWindowLUT [0x420] = {

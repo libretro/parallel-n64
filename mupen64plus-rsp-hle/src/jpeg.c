@@ -29,6 +29,7 @@
 #include "m64p_types.h"
 #include "m64p_plugin.h"
 #include "hle.h"
+#include "hle_memory.h"
 
 #define SUBBLOCK_SIZE 64
 

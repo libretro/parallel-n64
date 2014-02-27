@@ -27,6 +27,7 @@
 #include "m64p_plugin.h"
 #include "m64p_types.h"
 #include "hle.h"
+#include "hle_memory.h"
 #include "musyx.h"
 #include "hle_audio.h"
 

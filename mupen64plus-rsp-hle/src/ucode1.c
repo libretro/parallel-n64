@@ -21,11 +21,11 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 
-#include "hle.h"
 #include "alist_internal.h"
+#include "hle_memory.h"
 
 /* alist state */
 

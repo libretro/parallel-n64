@@ -27,6 +27,8 @@
 #include "hle.h"
 #include "alist_internal.h"
 #include "hle_audio.h"
+#include "hle_memory.h"
+#include "hle_plugin.h"
 
 struct ramp_t
 {
