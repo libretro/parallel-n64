@@ -372,7 +372,7 @@ static void RESAMPLE_ZOH(uint32_t w1, uint32_t w2)
          pitch_accu);
 }
 
-void alist_process_mk(void)
+void alist_process_nead_mk(void)
 {
     static const acmd_callback_t ABI[0x20] = {
         SPNOOP, ADPCM, CLEARBUFF, SPNOOP,
@@ -388,7 +388,7 @@ void alist_process_mk(void)
     alist_process(ABI, 0x20);
 }
 
-void alist_process_sf(void)
+void alist_process_nead_sf(void)
 {
     static const acmd_callback_t ABI[0x20] = {
         SPNOOP, ADPCM, CLEARBUFF, SPNOOP,
@@ -404,7 +404,7 @@ void alist_process_sf(void)
     alist_process(ABI, 0x20);
 }
 
-void alist_process_sfj(void)
+void alist_process_nead_sfj(void)
 {
     static const acmd_callback_t ABI[0x20] = {
         SPNOOP, ADPCM, CLEARBUFF, SPNOOP,
@@ -421,7 +421,7 @@ void alist_process_sfj(void)
 }
 
 /* F-Zero X */
-void alist_process_fz(void)
+void alist_process_nead_fz(void)
 {
     static const acmd_callback_t ABI[0x20] = {
         UNKNOWN, ADPCM, CLEARBUFF, SPNOOP,
@@ -437,7 +437,7 @@ void alist_process_fz(void)
     alist_process(ABI, 0x20);
 }
 
-void alist_process_wrjb(void)
+void alist_process_nead_wrjb(void)
 {
     static const acmd_callback_t ABI[0x20] = {
         SPNOOP, ADPCM, CLEARBUFF, UNKNOWN,
@@ -453,7 +453,7 @@ void alist_process_wrjb(void)
     alist_process(ABI, 0x20);
 }
 
-void alist_process_ys(void)
+void alist_process_nead_ys(void)
 {
     static const acmd_callback_t ABI[0x18] = {
         UNKNOWN, ADPCM, CLEARBUFF, UNKNOWN,
@@ -468,7 +468,7 @@ void alist_process_ys(void)
 }
 
 /* 1080 Snowboarding */
-void alist_process_1080(void)
+void alist_process_nead_1080(void)
 {
     static const acmd_callback_t ABI[0x18] = {
         UNKNOWN, ADPCM, CLEARBUFF, UNKNOWN,
@@ -483,7 +483,7 @@ void alist_process_1080(void)
 }
 
 /* Legend of Zelda: Ocarina of Time */
-void alist_process_oot(void)
+void alist_process_nead_oot(void)
 {
     static const acmd_callback_t ABI[0x18] = {
         UNKNOWN, ADPCM, CLEARBUFF, UNKNOWN,
@@ -497,7 +497,7 @@ void alist_process_oot(void)
     alist_process(ABI, 0x18);
 }
 
-void alist_process_mm(void)
+void alist_process_nead_mm(void)
 {
     static const acmd_callback_t ABI[0x18] = {
         UNKNOWN, ADPCM, CLEARBUFF, SPNOOP,
@@ -511,7 +511,7 @@ void alist_process_mm(void)
     alist_process(ABI, 0x18);
 }
 
-void alist_process_mmb(void)
+void alist_process_nead_mmb(void)
 {
     static const acmd_callback_t ABI[0x18] = {
         SPNOOP, ADPCM, CLEARBUFF, SPNOOP,
@@ -525,7 +525,7 @@ void alist_process_mmb(void)
     alist_process(ABI, 0x18);
 }
 
-void alist_process_ac(void)
+void alist_process_nead_ac(void)
 {
     static const acmd_callback_t ABI[0x18] = {
         UNKNOWN, ADPCM, CLEARBUFF, SPNOOP,

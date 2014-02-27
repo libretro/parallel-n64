@@ -176,27 +176,27 @@ static bool try_fast_audio_dispatching(void)
           switch(v)
           {
              case 0x11181350: /* MarioKart, WaveRace (E) */
-                alist_process_mk(); return true;
+                alist_process_nead_mk(); return true;
              case 0x111812e0: /* StarFox (J) */
-                alist_process_sfj(); return true;
+                alist_process_nead_sfj(); return true;
              case 0x110412ac: /* WaveRace (J RevB) */
-                alist_process_wrjb(); return true;
+                alist_process_nead_wrjb(); return true;
              case 0x110412cc: /* StarFox/LylatWars (except J) */
-                alist_process_sf(); return true;
+                alist_process_nead_sf(); return true;
              case 0x1cd01250: /* FZeroX */
-                alist_process_fz(); return true;
+                alist_process_nead_fz(); return true;
              case 0x1f08122c: /* YoshisStory */
-                alist_process_ys(); return true;
+                alist_process_nead_ys(); return true;
              case 0x1f38122c: /* 1080° Snowboarding */
-                alist_process_1080(); return true;
+                alist_process_nead_1080(); return true;
              case 0x1f681230: /* Zelda OoT / Zelda MM (J, J RevA) */
-                alist_process_oot(); return true;
+                alist_process_nead_oot(); return true;
              case 0x1f801250: /* Zelda MM (except J, J RevA, E Beta), PokemonStadium 2 */
-                alist_process_mm(); return true;
+                alist_process_nead_mm(); return true;
              case 0x109411f8: /* Zelda MM (E Beta) */
-                alist_process_mmb(); return true;
+                alist_process_nead_mmb(); return true;
              case 0x1eac11b8: /* AnimalCrossing */
-                alist_process_ac(); return true;
+                alist_process_nead_ac(); return true;
              case 0x00010010: /* MusyX v2 (IndianaJones, BattleForNaboo) */
                 musyx_v2_task(); return true;
 
