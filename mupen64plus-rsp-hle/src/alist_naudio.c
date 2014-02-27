@@ -192,7 +192,7 @@ static void SAVEBUFF(uint32_t w1, uint32_t w2)
 
 static void LOADADPCM(uint32_t w1, uint32_t w2)
 {
-   uint16_t count = (w1 & 0xffff);
+   uint16_t count = w1;
    uint32_t address = (w2 & 0xffffff);
 
    dram_load_u16((uint16_t*)l_alist.table, address, count >> 1);
