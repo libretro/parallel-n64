@@ -186,9 +186,10 @@ static void RESAMPLE (uint32_t w1, uint32_t w2)
 
    alist_resample(
          flags & 0x1,
+         flags & 0x2,
          l_alist.out,
          l_alist.in,
-         (l_alist.count + 0xf) & ~0xf,
+         align(l_alist.count, 16),
          pitch << 1,
          address);
 }

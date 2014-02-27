@@ -241,6 +241,7 @@ static void RESAMPLE(uint32_t w1, uint32_t w2)
 
    alist_resample(
          flags & 0x1,
+         false,   /* TODO: check which ABI supports it */
          dmemo,
          dmemi,
          NAUDIO_COUNT,

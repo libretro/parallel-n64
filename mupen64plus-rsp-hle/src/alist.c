@@ -551,6 +551,7 @@ static void alist_resample_save(uint32_t address, uint16_t pos, uint32_t pitch_a
 
 void alist_resample(
         bool init,
+        bool flag2,
         uint16_t dmemo,
         uint16_t dmemi,
         uint16_t count,
@@ -563,6 +564,11 @@ void alist_resample(
    uint16_t opos = dmemo >> 1;
    count >>= 1;
    ipos -= 4;
+
+#if 0
+   if (flag2)
+      DebugMessage(M64MSG_WARNING, "alist_resample: flag2 is not implemented");
+#endif
 
    if (init)
       alist_resample_reset(ipos, &pitch_accu);

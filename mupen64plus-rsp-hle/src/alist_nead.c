@@ -155,6 +155,7 @@ static void RESAMPLE(uint32_t w1, uint32_t w2)
 
    alist_resample(
          flags & 0x1,
+         false,         /* TODO: check which ABI supports it */
          l_alist.out,
          l_alist.in,
          (l_alist.count + 0xf) & ~0xf,
