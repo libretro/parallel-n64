@@ -305,7 +305,7 @@ static void INTERLEAVE (uint32_t w1, uint32_t w2)
    if (l_alist.count == 0)
       return;
 
-   alist_interleave(l_alist.out, left, right, l_alist.count);
+   alist_interleave(l_alist.out, left, right, align(l_alist.count, 16));
 }
 
 
