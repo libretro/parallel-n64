@@ -68,10 +68,10 @@ LOCAL_SRC_FILES += \
     $(RSPDIR)/src/hle_plugin.c
 
 LOCAL_SRC_FILES += \
-    $(RSPDIR)/src/ucode1.c \
-    $(RSPDIR)/src/ucode2.c \
-    $(RSPDIR)/src/ucode3.c \
-    $(RSPDIR)/src/ucode3mp3.c
+    $(RSPDIR)/src/alist_audio.c \
+    $(RSPDIR)/src/alist_nead.c \
+    $(RSPDIR)/src/alist_naudio.c \
+    $(RSPDIR)/src/mp3.c
 
 # Video Plugins
 LOCAL_SRC_FILES += $(VIDEODIR_RICE)/Blender.cpp \
