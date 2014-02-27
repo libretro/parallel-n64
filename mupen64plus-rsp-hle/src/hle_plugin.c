@@ -29,11 +29,10 @@
 #include "m64p_types.h"
 #include "m64p_common.h"
 #include "m64p_plugin.h"
+#include "main.h"
 
 #define RSP_HLE_VERSION        0x020000
 #define RSP_PLUGIN_API_VERSION 0x020000
-
-void hle_execute(void);
 
 /* global variables */
 RSP_INFO q_RspInfo;
