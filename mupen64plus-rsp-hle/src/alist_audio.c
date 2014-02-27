@@ -285,7 +285,7 @@ static void DMEMMOVE (uint32_t w1, uint32_t w2)
    if (count == 0)
       return;
 
-   alist_move(dmemo, dmemi, (count + 3) & ~3);
+   alist_move(dmemo, dmemi, align(count, 16));
 }
 
 static void LOADADPCM (uint32_t w1, uint32_t w2)
