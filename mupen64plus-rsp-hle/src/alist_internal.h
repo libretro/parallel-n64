@@ -23,7 +23,7 @@
 #define ALIST_INTERNAL_H
 
 #include <stdbool.h>
-#include "hle.h"
+#include <stdint.h>
 
 typedef void (*acmd_callback_t)(uint32_t w1, uint32_t w2);
 

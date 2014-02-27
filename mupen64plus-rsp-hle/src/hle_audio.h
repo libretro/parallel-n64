@@ -24,7 +24,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "hle.h"
 
 extern const int16_t RESAMPLE_LUT[64 * 4];
 

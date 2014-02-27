@@ -22,7 +22,8 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "hle_audio.h"
+
+#include "arithmetics.h"
 
 const int16_t RESAMPLE_LUT[64 * 4] = {
     0x0c39, 0x66ad, 0x0d46, 0xffdf, 0x0b39, 0x6696, 0x0e5f, 0xffd8,

@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "hle.h"
+#include "arithmetics.h"
 #include "alist_internal.h"
 #include "hle_audio.h"
 #include "hle_memory.h"

@@ -23,6 +23,7 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "arithmetics.h"
 #include "hle_memory.h"
 #include "hle_plugin.h"
 #include "alist_internal.h"
