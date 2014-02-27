@@ -36,7 +36,7 @@
 void hle_execute(void);
 
 /* global variables */
-RSP_INFO rspInfo;
+RSP_INFO q_RspInfo;
 
 /* local variables */
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
@@ -104,11 +104,11 @@ EXPORT unsigned int CALL hleDoRspCycles(unsigned int Cycles)
 
 EXPORT void CALL InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
 {
-    rspInfo = Rsp_Info;
+    q_RspInfo = Rsp_Info;
 }
 
 EXPORT void CALL RomClosed(void)
 {
-    memset(rspInfo.DMEM, 0, 0x1000);
-    memset(rspInfo.IMEM, 0, 0x1000);
+    memset(q_RspInfo.DMEM, 0, 0x1000);
+    memset(q_RspInfo.IMEM, 0, 0x1000);
 }

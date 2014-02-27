@@ -37,11 +37,11 @@ void cicx105_ucode(void)
 {
     // memcpy is okay to use because access constrains are met (alignment, size)
     uint32_t i;
-    uint8_t* dst = (uint8_t*)(rspInfo.RDRAM + 0x2fb1f0);
-    uint8_t* src = (uint8_t*)(rspInfo.IMEM + 0x120);
+    uint8_t* dst = (uint8_t*)(q_RspInfo.RDRAM + 0x2fb1f0);
+    uint8_t* src = (uint8_t*)(q_RspInfo.IMEM + 0x120);
 
     /* dma_read(0x1120, 0x1e8, 0x1e8) */
-    memcpy(rspInfo.IMEM + 0x120, rspInfo.RDRAM + 0x1e8, 0x1f0);
+    memcpy(q_RspInfo.IMEM + 0x120, q_RspInfo.RDRAM + 0x1e8, 0x1f0);
 
     /* dma_write(0x1120, 0x2fb1f0, 0xfe817000) */
     for (i = 0; i < 24; ++i)

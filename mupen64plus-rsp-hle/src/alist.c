@@ -123,12 +123,12 @@ void alist_clear(uint16_t dmem, uint16_t count)
 
 void alist_load(uint16_t dmem, uint32_t address, uint16_t count)
 {
-   memcpy(BufferSpace + dmem, rspInfo.RDRAM + address, count);
+   memcpy(BufferSpace + dmem, q_RspInfo.RDRAM + address, count);
 }
 
 void alist_save(uint16_t dmem, uint32_t address, uint16_t count)
 {
-   memcpy(rspInfo.RDRAM + address, BufferSpace + dmem, count);
+   memcpy(q_RspInfo.RDRAM + address, BufferSpace + dmem, count);
 }
 
 void alist_move(uint16_t dmemo, uint16_t dmemi, uint16_t count)
@@ -241,7 +241,7 @@ void alist_envmix_exp(
 
    uint32_t ptr = 0;
    int x, y;
-   int16_t *save_buffer = (int16_t*)(rspInfo.RDRAM + address);
+   int16_t *save_buffer = (int16_t*)(q_RspInfo.RDRAM + address);
 
    if (init) {
       ramps[0].value = (vol[0] << 16);
@@ -330,7 +330,7 @@ void alist_envmix_lin(
 {
    size_t k;
    struct ramp_t ramps[2];
-   int16_t *save_buffer = (int16_t*)(rspInfo.RDRAM + address);
+   int16_t *save_buffer = (int16_t*)(q_RspInfo.RDRAM + address);
 
    const int16_t * const in = (int16_t*)(BufferSpace + dmemi);
    int16_t* const dl = (int16_t*)(BufferSpace + dmem_dl);
@@ -668,10 +668,10 @@ void alist_filter(uint16_t dmem, uint16_t count, uint32_t address, const uint32_
    int16_t outbuff[0x3c0];
    int16_t *outp = outbuff;
 
-   int16_t* const lutt6 = (int16_t*)(rspInfo.RDRAM + lut_address[0]);
-   int16_t* const lutt5 = (int16_t*)(rspInfo.RDRAM + lut_address[1]);
+   int16_t* const lutt6 = (int16_t*)(q_RspInfo.RDRAM + lut_address[0]);
+   int16_t* const lutt5 = (int16_t*)(q_RspInfo.RDRAM + lut_address[1]);
 
-   int16_t* in1 = (int16_t*)(rspInfo.RDRAM + address);
+   int16_t* in1 = (int16_t*)(q_RspInfo.RDRAM + address);
    int16_t* in2 = (int16_t*)(BufferSpace + dmem);
 
 
@@ -768,7 +768,7 @@ void alist_filter(uint16_t dmem, uint16_t count, uint32_t address, const uint32_
       outp += 8;
    }
 
-   memcpy(rspInfo.RDRAM + address, in2 - 8, 16);
+   memcpy(q_RspInfo.RDRAM + address, in2 - 8, 16);
    memcpy(BufferSpace + dmem, outbuff, count);
 }
 

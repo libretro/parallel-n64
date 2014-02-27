@@ -25,7 +25,7 @@
 #include "m64p_types.h"
 #include "m64p_plugin.h"
 
-extern RSP_INFO rspInfo;
+extern RSP_INFO q_RspInfo;
 
 void DebugMessage(int level, const char *message, ...);
 
