@@ -129,11 +129,9 @@ typedef struct {
 /* helper functions prototypes */
 static void load_base_vol(int32_t *base_vol, uint32_t address);
 static void save_base_vol(const int32_t *base_vol, uint32_t address);
-static void update_base_vol_v1(int32_t *base_vol,
-                               uint32_t voice_mask, uint32_t last_sample_ptr);
-static void update_base_vol_v2(int32_t *base_vol,
-                               uint32_t voice_mask, uint32_t last_sample_ptr,
-                               uint8_t mask_15, uint32_t ptr_24);
+static void update_base_vol(int32_t *base_vol,
+                            uint32_t voice_mask, uint32_t last_sample_ptr,
+                            uint8_t mask_15, uint32_t ptr_24);
 
 static void init_subframes_v1(musyx_t *musyx);
 static void init_subframes_v2(musyx_t *musyx);
@@ -217,7 +215,7 @@ void musyx_v1_task(void)
         uint32_t output_ptr;
 
         /* initialize internal subframes using updated base volumes */
-        update_base_vol_v1(musyx.base_vol, voice_mask, last_sample_ptr);
+        update_base_vol(musyx.base_vol, voice_mask, last_sample_ptr, 0, 0);
         init_subframes_v1(&musyx);
 
         /* active voices get mixed into L,R,cc0,e50 subframes (optional) */
@@ -283,7 +281,7 @@ void musyx_v2_task(void)
                 state_ptr + STATE_740_LAST4_V2, 4);
 
         /* initialize internal subframes using updated base volumes */
-        update_base_vol_v2(musyx.base_vol, voice_mask, last_sample_ptr, mask_15, ptr_24);
+        update_base_vol(musyx.base_vol, voice_mask, last_sample_ptr, mask_15, ptr_24);
         init_subframes_v2(&musyx);
 
         if (ptr_10) {
@@ -345,37 +343,7 @@ static void save_base_vol(const int32_t *base_vol, uint32_t address)
     }
 }
 
-static void update_base_vol_v1(int32_t *base_vol,
-                               uint32_t voice_mask, uint32_t last_sample_ptr)
-{
-    unsigned i, k;
-    uint32_t mask;
-
-    DebugMessage(M64MSG_VERBOSE, "base_vol voice_mask = %08x", voice_mask);
-    DebugMessage(M64MSG_VERBOSE, "BEFORE: base_vol = %08x %08x %08x %08x",
-                 base_vol[0], base_vol[1], base_vol[2], base_vol[3]);
-
-    /* optim: skip voices contributions entirely if voice_mask is empty */
-    if (voice_mask != 0) {
-        for (i = 0, mask = 1; i < MAX_VOICES;
-             ++i, mask <<= 1, last_sample_ptr += 8) {
-            if ((voice_mask & mask) == 0)
-                continue;
-
-            for (k = 0; k < 4; ++k)
-                base_vol[k] += (int16_t)*dram_u16(last_sample_ptr + k * 2);
-        }
-    }
-
-    /* apply 3% decay */
-    for (k = 0; k < 4; ++k)
-        base_vol[k] = (base_vol[k] * 0x0000f850) >> 16;
-
-    DebugMessage(M64MSG_VERBOSE, "AFTER: base_vol = %08x %08x %08x %08x",
-                 base_vol[0], base_vol[1], base_vol[2], base_vol[3]);
-}
-
-static void update_base_vol_v2(int32_t *base_vol,
+static void update_base_vol(int32_t *base_vol,
                                uint32_t voice_mask, uint32_t last_sample_ptr,
                                uint8_t mask_15, uint32_t ptr_24)
 {
