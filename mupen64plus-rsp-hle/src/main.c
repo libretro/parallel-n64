@@ -24,6 +24,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef ENABLE_TASK_DUMP
+#include <stdio.h>
+#endif
+
 #include "hle_memory.h"
 #include "hle_plugin.h"
 
@@ -58,12 +62,14 @@ static void normal_task_dispatching(void);
 static void non_task_dispatching(void);
 
 static uint32_t sum_bytes(const uint8_t *bytes, uint32_t size);
+#ifdef ENABLE_TASK_DUMP
 static void dump_binary(const int8_t * const filename, const uint8_t* const bytes,
                         uint32_t size);
 static void dump_task(const char * const filename);
 
-static void handle_unknown_task(uint32_t sum);
-static void handle_unknown_non_task(uint32_t sum);
+static void dump_unknown_task(uint32_t sum);
+static void dump_unknown_non_task(uint32_t sum);
+#endif
 
 /* local variables */
 static const bool FORWARD_AUDIO = false, FORWARD_GFX = true;
@@ -83,7 +89,16 @@ void hle_execute(void)
 }
 
 /* local functions */
+static uint32_t sum_bytes(const uint8_t *bytes, uint32_t size)
+{
+    uint32_t sum = 0;
+    const uint8_t * const bytes_end = bytes + size;
 
+    while (bytes != bytes_end)
+        sum += *bytes++;
+
+    return sum;
+}
 
 /**
  * Try to figure if the RSP was launched using osSpTask* functions
@@ -275,7 +290,9 @@ static void normal_task_dispatching(void)
                       jpeg_decode_OB(); return;
     }
 
-    handle_unknown_task(sum);
+#ifdef ENABLE_TASK_DUMP
+    dump_unknown_task(sum);
+#endif
 }
 
 static void non_task_dispatching(void)
@@ -290,12 +307,29 @@ static void non_task_dispatching(void)
             cicx105_ucode(); return;
     }
 
-    handle_unknown_non_task(sum);
+#ifdef ENABLE_TASK_DUMP
+    dump_unknown_non_task(sum);
+#endif
 }
 
-static void handle_unknown_task(uint32_t sum)
+
+/* DLL-exported functions */
+
+
+EXPORT void CALL hleInitiateRSP(RSP_INFO Rsp_Info, uint32_t *CycleCount)
 {
-#if 0
+    q_RspInfo = Rsp_Info;
+}
+
+EXPORT void CALL hleRomClosed(void)
+{
+    memset(q_RspInfo.DMEM, 0, 0x1000);
+    memset(q_RspInfo.IMEM, 0, 0x1000);
+}
+
+#ifdef ENABLE_TASK_DUMP
+static void dump_unknown_task(uint32_t sum)
+{
     char filename[256];
     uint32_t ucode = *dmem_u32(TASK_UCODE);
     uint32_t ucode_data = *dmem_u32(TASK_UCODE_DATA);
@@ -330,12 +364,10 @@ static void handle_unknown_task(uint32_t sum)
         sprintf(&filename[0], "data_%x.bin", sum);
         dump_binary(filename, (void*)dram_u32(data_ptr), *dmem_u32(TASK_DATA_SIZE));
     }
-#endif
 }
 
-static void handle_unknown_non_task(uint32_t sum)
+static void dump_unknown_non_task(uint32_t sum)
 {
-#if 0
     char filename[256];
 
     RSP_DEBUG_MESSAGE(M64MSG_WARNING, "unknown RSP code: sum: %x PC:%x", sum, *q_RspInfo.SP_PC_REG);
@@ -346,42 +378,11 @@ static void handle_unknown_non_task(uint32_t sum)
 
     sprintf(&filename[0], "dmem_%x.bin", sum);
     dump_binary(filename, q_RspInfo.DMEM, 0x1000);
-#endif
 }
-
-
-/* DLL-exported functions */
-
-
-EXPORT void CALL hleInitiateRSP(RSP_INFO Rsp_Info, uint32_t *CycleCount)
-{
-    q_RspInfo = Rsp_Info;
-}
-
-EXPORT void CALL hleRomClosed(void)
-{
-    memset(q_RspInfo.DMEM, 0, 0x1000);
-    memset(q_RspInfo.IMEM, 0, 0x1000);
-}
-
-
-/* local helper functions */
-static uint32_t sum_bytes(const uint8_t *bytes, uint32_t size)
-{
-    uint32_t sum = 0;
-    const uint8_t * const bytes_end = bytes + size;
-
-    while (bytes != bytes_end)
-        sum += *bytes++;
-
-    return sum;
-}
-
 
 static void dump_binary(const int8_t * const filename, const uint8_t * const bytes,
                         uint32_t size)
 {
-#if 0
     FILE *f;
 
     // if file already exists, do nothing
@@ -408,12 +409,10 @@ static void dump_binary(const int8_t * const filename, const uint8_t * const byt
     {
         fclose(f);
     }
-#endif
 }
 
 static void dump_task(const char * const filename)
 {
-#if 0
     FILE *f;
 
     f = fopen(filename, "r");
@@ -445,5 +444,5 @@ static void dump_task(const char * const filename)
     {
         fclose(f);
     }
-#endif
 }
+#endif
