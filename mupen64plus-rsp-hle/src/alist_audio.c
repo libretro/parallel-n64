@@ -152,7 +152,10 @@ static void CLEARBUFF (uint32_t w1, uint32_t w2)
    uint16_t dmem  = w1 + DMEM_BASE;
    uint16_t count = w2;
 
-   alist_clear(dmem & ~3, (count + 3) & ~3);
+   if (count == 0)
+      return;
+
+   alist_clear(dmem, align(count, 16));
 }
 
 //FILE *dfile = fopen ("d:\\envmix.txt", "wt");

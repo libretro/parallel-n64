@@ -146,7 +146,10 @@ void alist_set_address(uint32_t so, uint32_t *segments, size_t n)
 
 void alist_clear(uint16_t dmem, uint16_t count)
 {
-   memset(BufferSpace + dmem, 0, count);
+   while(count != 0) {
+      BufferSpace[(dmem++)^S8] = 0;
+      --count;
+   }
 }
 
 void alist_load(uint16_t dmem, uint32_t address, uint16_t count)
