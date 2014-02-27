@@ -21,15 +21,10 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
 
-#define M64P_PLUGIN_PROTOTYPES 1
-#include "m64p_types.h"
-#include "m64p_common.h"
-#include "m64p_plugin.h"
 #include "hle.h"
 #include "alist.h"
 #include "cicx105.h"
@@ -52,6 +47,16 @@
 
 
 /* helper functions prototypes */
+static int is_task(void);
+static void rsp_break(unsigned int setbits);
+static void forward_gfx_task(void);
+static void forward_audio_task(void);
+static void show_cfb(void);
+static int try_fast_audio_dispatching(void);
+static int try_fast_task_dispatching(void);
+static void normal_task_dispatching(void);
+static void non_task_dispatching(void);
+
 static uint32_t sum_bytes(const uint8_t *bytes, uint32_t size);
 static void dump_binary(const int8_t * const filename, const uint8_t* const bytes,
                         uint32_t size);
@@ -60,14 +65,22 @@ static void dump_task(const char * const filename);
 static void handle_unknown_task(uint32_t sum);
 static void handle_unknown_non_task(uint32_t sum);
 
-/* global variables */
-RSP_INFO rspInfo;
-
 /* local variables */
 static const int FORWARD_AUDIO = 0, FORWARD_GFX = 1;
-static void (*l_DebugCallback)(void *, int, const int8_t *) = NULL;
-static void *l_DebugCallContext = NULL;
-static int l_PluginInit = 0;
+
+/* Global functions */
+
+void hle_execute(void)
+{
+   if (is_task()) {
+      if (!try_fast_task_dispatching())
+         normal_task_dispatching();
+      rsp_break(RSP_STATUS_TASKDONE);
+   } else {
+      non_task_dispatching();
+      rsp_break(0);
+   }
+}
 
 /* local functions */
 
@@ -338,74 +351,7 @@ static void handle_unknown_non_task(uint32_t sum)
 
 
 /* DLL-exported functions */
-EXPORT m64p_error CALL rspPluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
-                                   void (*DebugCallback)(void *, int, const char *))
-{
-    if (l_PluginInit)
-        return M64ERR_ALREADY_INIT;
 
-    /* first thing is to set the callback function for debug info */
-    l_DebugCallback = DebugCallback;
-    l_DebugCallContext = Context;
-
-    /* this plugin doesn't use any Core library functions (ex for Configuration), so no need to keep the CoreLibHandle */
-
-    l_PluginInit = 1;
-    return M64ERR_SUCCESS;
-}
-
-EXPORT m64p_error CALL rspPluginShutdown(void)
-{
-    if (!l_PluginInit)
-        return M64ERR_NOT_INIT;
-
-    /* reset some local variable */
-    l_DebugCallback = NULL;
-    l_DebugCallContext = NULL;
-
-    l_PluginInit = 0;
-    return M64ERR_SUCCESS;
-}
-
-EXPORT m64p_error CALL hlePluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
-{
-    /* set version info */
-    if (PluginType != NULL)
-        *PluginType = M64PLUGIN_RSP;
-
-    if (PluginVersion != NULL)
-        *PluginVersion = RSP_HLE_VERSION;
-
-    if (APIVersion != NULL)
-        *APIVersion = RSP_PLUGIN_API_VERSION;
-    
-    if (PluginNamePtr != NULL)
-        *PluginNamePtr = "Hacktarux/Azimer High-Level Emulation RSP Plugin";
-
-    if (Capabilities != NULL)
-    {
-        *Capabilities = 0;
-    }
-                    
-    return M64ERR_SUCCESS;
-}
-
-EXPORT unsigned int CALL hleDoRspCycles(uint32_t Cycles)
-{
-   if (is_task())
-   {
-      if (!try_fast_task_dispatching())
-         normal_task_dispatching();
-      rsp_break(RSP_STATUS_TASKDONE);
-   }
-   else
-   {
-      non_task_dispatching();
-      rsp_break(0);
-   }
-
-   return Cycles;
-}
 
 EXPORT void CALL hleInitiateRSP(RSP_INFO Rsp_Info, uint32_t *CycleCount)
 {

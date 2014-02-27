@@ -63,7 +63,8 @@ LOCAL_SRC_FILES += \
     $(RSPDIR)/src/jpeg.c \
     $(RSPDIR)/src/musyx.c \
     $(RSPDIR)/src/main.c \
-    $(RSPDIR)/src/hle_audio.c
+    $(RSPDIR)/src/hle_audio.c \
+    $(RSPDIR)/src/hle_plugin.c
 
 LOCAL_SRC_FILES += \
     $(RSPDIR)/src/ucode1.c \
