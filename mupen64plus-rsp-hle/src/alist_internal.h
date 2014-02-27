@@ -24,10 +24,13 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 typedef void (*acmd_callback_t)(uint32_t w1, uint32_t w2);
 
 void alist_process(const acmd_callback_t abi[], unsigned int abi_size);
+uint32_t alist_get_address(uint32_t so, const uint32_t *segments, size_t n);
+void alist_set_address(uint32_t so, uint32_t *segments, size_t n);
 void alist_clear(uint16_t dmem, uint16_t count);
 void alist_load(uint16_t dmem, uint32_t address, uint16_t count);
 void alist_save(uint16_t dmem, uint32_t address, uint16_t count);

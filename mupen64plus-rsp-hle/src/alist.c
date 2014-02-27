@@ -118,6 +118,32 @@ void alist_process(const acmd_callback_t abi[], unsigned int abi_size)
     }
 }
 
+uint32_t alist_get_address(uint32_t so, const uint32_t *segments, size_t n)
+{
+   uint8_t segment = (so >> 24);
+   uint32_t offset = (so & 0xffffff);
+
+   if (segment >= n) {
+      DebugMessage(M64MSG_WARNING, "Invalid segment %u", segment);
+      return offset;
+   }
+
+   return segments[segment] + offset;
+}
+
+void alist_set_address(uint32_t so, uint32_t *segments, size_t n)
+{
+   uint8_t segment = (so >> 24);
+   uint32_t offset = (so & 0xffffff);
+
+   if (segment >= n) {
+      DebugMessage(M64MSG_WARNING, "Invalid segment %u", segment);
+      return;
+   }
+
+   segments[segment] = offset;
+}
+
 void alist_clear(uint16_t dmem, uint16_t count)
 {
    memset(BufferSpace + dmem, 0, count);

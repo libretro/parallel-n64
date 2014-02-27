@@ -22,40 +22,45 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "alist_internal.h"
 #include "hle_memory.h"
 
 enum { DMEM_BASE = 0x5c0 };
+enum { N_SEGMENTS = 16 };
 
 /* alist audio state */
 
 static struct {
-    /* main buffers */
-    uint16_t in;
-    uint16_t out;
-    uint16_t count;
+   /* segments */
+   uint32_t segments[N_SEGMENTS];
 
-    /* auxiliary buffers */
-    uint16_t dry_right;
-    uint16_t wet_left;
-    uint16_t wet_right;
+   /* main buffers */
+   uint16_t in;
+   uint16_t out;
+   uint16_t count;
 
-    /* gains */
-    int16_t dry;
-    int16_t wet;
+   /* auxiliary buffers */
+   uint16_t dry_right;
+   uint16_t wet_left;
+   uint16_t wet_right;
 
-    /* envelopes (0:left, 1:right) */
-    int16_t vol[2];
-    int16_t target[2];
-    int32_t rate[2];
+   /* gains */
+   int16_t dry;
+   int16_t wet;
 
-    /* ADPCM loop point address */
-    uint32_t loop;
+   /* envelopes (0:left, 1:right) */
+   int16_t vol[2];
+   int16_t target[2];
+   int32_t rate[2];
 
-    /* storage for ADPCM table and polef coefficients */
-    int16_t table[16 * 8];
+   /* ADPCM loop point address */
+   uint32_t loop;
+
+   /* storage for ADPCM table and polef coefficients */
+   int16_t table[16 * 8];
 } l_alist;
 
 //#include "rsp.h"
@@ -120,6 +125,23 @@ Address/Range       Description
 0xF80..0xFFF        <Unknown>
 ***************************************************/
 
+/* helper functions */
+
+static uint32_t get_address(uint32_t so)
+{
+   return alist_get_address(so, l_alist.segments, N_SEGMENTS);
+}
+
+static void set_address(uint32_t so)
+{
+   alist_set_address(so, l_alist.segments, N_SEGMENTS);
+}
+
+static void clear_segments()
+{
+   memset(l_alist.segments, 0, N_SEGMENTS*sizeof(l_alist.segments[0]));
+}
+
 /* audio commands definition */
 static void SPNOOP (uint32_t w1, uint32_t w2)
 {
@@ -138,7 +160,7 @@ static void CLEARBUFF (uint32_t w1, uint32_t w2)
 static void ENVMIXER (uint32_t w1, uint32_t w2)
 {
    uint8_t flags = (w1 >> 16);
-   uint32_t address = (w2 & 0xffffff);
+   uint32_t address = get_address(w2);
 
    alist_envmix_exp(
          flags & A_INIT,
@@ -157,7 +179,7 @@ static void RESAMPLE (uint32_t w1, uint32_t w2)
 {
    uint8_t  flags   = (w1 >> 16);
    uint16_t pitch   = w1;
-   uint32_t address = (w2 & 0xffffff);
+   uint32_t address = get_address(w2);
 
    alist_resample(
          flags & 0x1,
@@ -192,15 +214,13 @@ static void SETVOL (uint32_t w1, uint32_t w2)
 
 static void SETLOOP (uint32_t w1, uint32_t w2)
 {
-    l_alist.loop = (w2 & 0xffffff);// + SEGMENTS[(w2>>24)&0xf];
-    //l_alist.target[0]  = (int16_t)(l_alist.loop >> 16);        // m_LeftVol
-    //l_alist.rate[0] = (int16_t)(l_alist.loop);    // m_LeftVolTarget
+    l_alist.loop = get_address(w2);
 }
 
 static void ADPCM (uint32_t w1, uint32_t w2)
 {
    uint8_t flags = (w1 >> 16);
-   uint32_t address = (w2 & 0xffffff);
+   uint32_t address = get_address(w2);
 
    alist_adpcm(
          flags & 0x1,
@@ -216,17 +236,17 @@ static void ADPCM (uint32_t w1, uint32_t w2)
 
 static void LOADBUFF (uint32_t w1, uint32_t w2)
 {
-       uint32_t address = (w2 & 0xffffff);
+   uint32_t address = get_address(w2);
 
-    if (l_alist.count == 0)
-        return;
+   if (l_alist.count == 0)
+      return;
 
-    alist_load(l_alist.in & ~3, address & ~3, (l_alist.count + 3) & ~3);
+   alist_load(l_alist.in & ~3, address & ~3, (l_alist.count + 3) & ~3);
 }
 
 static void SAVEBUFF (uint32_t w1, uint32_t w2)
 {
-   uint32_t address = (w2 & 0xffffff);
+   uint32_t address = get_address(w2);
 
    if (l_alist.count == 0)
       return;
@@ -267,7 +287,7 @@ static void DMEMMOVE (uint32_t w1, uint32_t w2)
 static void LOADADPCM (uint32_t w1, uint32_t w2)
 {
    uint16_t count   = (w1 & 0xffff);
-   uint32_t address = (w2 & 0xffffff);
+   uint32_t address = get_address(w2);
 
    dram_load_u16((uint16_t*)l_alist.table, address, count >> 1);
 }
@@ -311,7 +331,7 @@ static void MIXER (uint32_t w1, uint32_t w2)
 
 static void SEGMENT(uint32_t w1, uint32_t w2)
 {
-   /* TODO */
+   set_address(w2);
 }
 
 static void POLEF(uint32_t w1, uint32_t w2)
@@ -319,7 +339,7 @@ static void POLEF(uint32_t w1, uint32_t w2)
    uint8_t  flags   = (w1 >> 16);
    uint16_t gain    = w1;
 
-   uint32_t address = (w2 & 0xffffff);
+   uint32_t address = get_address(w2);
 
    if (l_alist.count == 0)
       return;
@@ -344,6 +364,7 @@ void alist_process_audio(void)
       SETBUFF,    SETVOL,     DMEMMOVE,   LOADADPCM,
       MIXER,      INTERLEAVE, POLEF,      SETLOOP
    };
+   clear_segments();
    alist_process(ABI, 0x10);
 }
 
@@ -357,6 +378,7 @@ void alist_process_audio_ge(void)
         SETBUFF,        SETVOL,         DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     POLEF,          SETLOOP
     };
+   clear_segments();
     alist_process(ABI, 0x10);
 }
 
@@ -370,5 +392,6 @@ void alist_process_audio_bc(void)
       SETBUFF,        SETVOL,         DMEMMOVE,       LOADADPCM,
       MIXER,          INTERLEAVE,     POLEF,          SETLOOP
    };
+   clear_segments();
    alist_process(ABI, 0x10);
 }
