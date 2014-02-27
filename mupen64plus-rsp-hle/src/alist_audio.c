@@ -232,7 +232,7 @@ static void ADPCM (uint32_t w1, uint32_t w2)
          false, /* unsupported in this ucode */
          l_alist.out,
          l_alist.in,
-         (l_alist.count + 0x1f) & ~0x1f,
+         align(l_alist.count, 32),
          l_alist.table,
          l_alist.loop,
          address);
