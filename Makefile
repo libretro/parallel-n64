@@ -47,7 +47,7 @@ else ifneq (,$(findstring rpi,$(platform)))
 
 else ifneq (,$(findstring osx,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dylib
-   LDFLAGS += -dynamiclib -mmacosx-version-min=10.6
+   LDFLAGS += -dynamiclib -mmacosx-version-min=10.6 -stdlib=libc++
    fpic = -fPIC
 
    CPPFLAGS += -D__MACOSX__
