@@ -355,7 +355,6 @@ void gDPSetCombine( s32 muxs0, s32 muxs1 )
 
 void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 {
-   int i;
    if (config.updateMode == SCREEN_UPDATE_AT_CI_CHANGE)
       OGL_SwapBuffers();
 

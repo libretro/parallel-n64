@@ -790,7 +790,7 @@ void gSPDMAVertex( u32 v, u32 n, u32 v0 )
       for (; i < n + v0; i++)
       {
          u32 v = i;
-         v = i;
+
          OGL.triangles.vertices[v].x = *(s16*)&RDRAM[address ^ 2];
          OGL.triangles.vertices[v].y = *(s16*)&RDRAM[(address + 2) ^ 2];
          OGL.triangles.vertices[v].z = *(s16*)&RDRAM[(address + 4) ^ 2];

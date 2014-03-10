@@ -561,7 +561,7 @@ void TextureCache_Destroy(void)
 
 void TextureCache_LoadBackground( CachedTexture *texInfo )
 {
-   u32 *dest, *scaledDest;
+   u32 *dest;
    u8 *swapped, *src;
    u32 numBytes, bpl;
    u32 x, y, j, tx, ty;
@@ -622,7 +622,7 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
 
    if (!dest || !swapped)
    {
-      LOG(LOG_ERROR, "Malloc failed!\n");
+      LOG(LOG_ERROR, "TextureCache_LoadBackground - malloc failed!\n");
       return;
    }
 
@@ -660,7 +660,7 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
 
 void TextureCache_Load( CachedTexture *texInfo )
 {
-   u32 *dest, *scaledDest;
+   u32 *dest;
 
    void *src;
    u16 x, y, i, j, tx, ty, line;
@@ -719,7 +719,7 @@ void TextureCache_Load( CachedTexture *texInfo )
 
    if (!dest)
    {
-      LOG(LOG_ERROR, "Malloc failed!\n");
+      LOG(LOG_ERROR, "TextureCache_Load - malloc failed!\n");
       return;
    }
 

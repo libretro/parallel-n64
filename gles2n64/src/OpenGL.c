@@ -68,8 +68,6 @@ extern void _glcompiler_error(GLint shader);
 
 void OGL_InitStates(void)
 {
-   GLint   success;
-
    glEnable( GL_CULL_FACE );
    glEnableVertexAttribArray( SC_POSITION );
    glEnable( GL_DEPTH_TEST );
