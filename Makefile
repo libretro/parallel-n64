@@ -72,7 +72,7 @@ else ifneq (,$(findstring ios,$(platform)))
    CC = clang -arch armv7 -isysroot $(IOSSDK) -miphoneos-version-min=5.0
    CC_AS = perl ./tools/gas-preprocessor.pl $(CC) -miphoneos-version-min=5.0
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK) -miphoneos-version-min=5.0
-   CPPFLAGS += -DNO_ASM -DIOS -DNOSSE -DHAVE_POSIX_MEMALIGN
+   CPPFLAGS += -DNO_ASM -DIOS -DNOSSE -DHAVE_POSIX_MEMALIGN -DDISABLE_3POINT
    CPPFLAGS += -DARM -miphoneos-version-min=5.0
    PLATFORM_EXT := unix
    WITH_DYNAREC=arm
