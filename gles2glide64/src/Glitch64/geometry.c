@@ -25,6 +25,7 @@
 #endif // _WIN32
 #include "glide.h"
 #include "main.h"
+#include "../Glide64/rdp.h"
 
 #define Z_MAX (65536.0f)
 #define VERTEX_SIZE sizeof(VERTEX) //Size of vertex struct
@@ -350,7 +351,7 @@ grDepthBiasLevel( FxI32 level )
    LOG("grDepthBiasLevel(%d)\r\n", level);
    if (level)
    {
-      glPolygonOffset(polygonOffsetFactor, polygonOffsetUnits);
+      glPolygonOffset(0, (float)level * settings.depth_bias * 0.01 );
       glEnable(GL_POLYGON_OFFSET_FILL);
    }
    else

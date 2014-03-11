@@ -66,6 +66,7 @@ else ifneq (,$(findstring ios,$(platform)))
    fpic = -fPIC
    GLES = 1
    GL_LIB := -framework OpenGLES
+	GLIDE2GL=0
 
    OBJECTS += libretro/libco/armeabi_asm.o
 
@@ -264,6 +265,7 @@ ifeq ($(GLIDE2GL), 1)
 VIDEODIR_GLIDE = glide2gl/src
 else
 VIDEODIR_GLIDE = gles2glide64/src
+CFILES += $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c
 endif
 CPPFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
 CFILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.c \
