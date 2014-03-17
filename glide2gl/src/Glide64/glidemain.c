@@ -1901,6 +1901,13 @@ void ReadSpecialSettings (const char * name)
       settings.filtering = 1;
       //depthmode = 1
    }
+   else if (strstr(name, (const char *)"SM64 Star Road"))
+   {
+      settings.depth_bias = 1;
+      settings.lodmode = 1;
+      settings.filtering = 1;
+      //depthmode = 1
+   }
    else if (strstr(name, (const char *)"SUPERMAN"))
    {
       cpu_write_hack = 1;
