@@ -298,9 +298,15 @@ void cheat_apply_cheats(int entry)
          } else if (sl(ROM_HEADER.CRC1) == 0xB2055FBD && sl(ROM_HEADER.CRC2) == 0x0BAB4E0C) {
             // Legend of Zelda, The - Ocarina of Time (E) (V1.1)
             execute_cheat(0x801D864B, 0x0002, NULL);
-         } else {
-            // Legend of Zelda, The - Ocarina of Time Master Quest
+         } else if (sl(ROM_HEADER.CRC1) == 0xF034001A && sl(ROM_HEADER.CRC2) == 0xAE47ED06) {
+            // Legend of Zelda, The - Ocarina of Time - Master Quest (U) (GC)
+            execute_cheat(0x801DB74B, 0x0002, NULL);
+         } else if (sl(ROM_HEADER.CRC1) == 0x1D4136F3 && sl(ROM_HEADER.CRC2) == 0xAF63EEA9) {
+            // Legend of Zelda, The - Ocarina of Time - Master Quest (E) (GC)
             execute_cheat(0x801D8F4B, 0x0002, NULL);
+         } else if (sl(ROM_HEADER.CRC1) == 0x917D18F6 && sl(ROM_HEADER.CRC2) == 0x69BC5453) {
+            // Legend of Zelda, The - Ocarina of Time - Master Quest (U) (Debug Version)
+            execute_cheat(0x8022414B, 0x0002, NULL);
          }
       }
    }
