@@ -57,21 +57,18 @@ LOCAL_SRC_FILES += $(LIBRETRODIR)/libretro.c $(LIBRETRODIR)/adler32.c $(LIBRETRO
           $(LIBRETRODIR)/audio_plugin.c $(LIBRETRODIR)/input_plugin.c $(LIBRETRODIR)/resampler.c $(LIBRETRODIR)/sinc.c $(LIBRETRODIR)/utils.c
 
 # RSP Plugin
-LOCAL_SRC_FILES += \
-    $(RSPDIR)/src/alist.c \
-    $(RSPDIR)/src/cicx105.c \
-    $(RSPDIR)/src/jpeg.c \
-    $(RSPDIR)/src/musyx.c \
-    $(RSPDIR)/src/main.c \
-    $(RSPDIR)/src/hle_audio.c \
-    $(RSPDIR)/src/hle_memory.c \
-    $(RSPDIR)/src/hle_plugin.c
-
-LOCAL_SRC_FILES += \
+LOCAL_SRC_FILES += $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/alist_audio.c \
-    $(RSPDIR)/src/alist_nead.c \
     $(RSPDIR)/src/alist_naudio.c \
-    $(RSPDIR)/src/mp3.c
+    $(RSPDIR)/src/alist_nead.c \
+    $(RSPDIR)/src/audio.c \
+    $(RSPDIR)/src/cicx105.c \
+    $(RSPDIR)/src/hle.c \
+    $(RSPDIR)/src/jpeg.c \
+    $(RSPDIR)/src/hle_memory.c \
+    $(RSPDIR)/src/mp3.c \
+    $(RSPDIR)/src/musyx.c \
+    $(RSPDIR)/src/hle_plugin.c
 
 # Video Plugins
 LOCAL_SRC_FILES += $(VIDEODIR_RICE)/Blender.cpp \
