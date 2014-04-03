@@ -43,6 +43,92 @@
   #include <fenv.h>
 #endif
 
+#ifndef FE_TONEAREST
+#define FE_TONEAREST 0x0
+#endif
+
+#ifndef FE_TOWARDZERO
+#define FE_TOWARDZERO 0x1
+#endif
+
+#ifndef FE_UPWARD
+#define FE_UPWARD 0x2
+#endif
+
+#ifndef FE_DOWNWARD
+#define FE_DOWNWARD 0x3
+#endif
+
+#ifndef _FPSCR_RMODE_SHIFT
+#define _FPSCR_RMODE_SHIFT 22
+#endif
+
+#ifdef ANDROID
+typedef __uint32_t fenv_t;
+typedef __uint32_t fexcept_t;
+
+static __inline int32_t fegetenv(fenv_t* __envp)
+{
+   fenv_t _fpscr;
+#if !defined(__SOFTFP__)
+#if !defined(__thumb__) || defined(__thumb2__)
+   __asm__ __volatile__("vmrs %0,fpscr" : "=r" (_fpscr));
+#else
+   /* Switching from thumb1 to arm, do vmrs, then switch back */
+   __asm__ __volatile__(
+         ".balign 4 \n\t"
+         "mov ip, pc \n\t"
+         "bx ip \n\t"
+         ".arm \n\t"
+         "vmrs %0, fpscr \n\t"
+         "add ip, pc, #1 \n\t"
+         "bx ip \n\t"
+         ".thumb \n\t"
+         : "=r" (_fpscr) : : "ip");
+#endif
+#else
+   _fpscr = 0;
+#endif
+   *__envp = _fpscr;
+   return 0;
+}
+
+static __inline int32_t fesetenv(const fenv_t* __envp)
+{
+   fenv_t _fpscr = *__envp;
+#if !defined(__SOFTFP__)
+#if !defined(__thumb__) || defined(__thumb2__)
+   __asm__ __volatile__("vmsr fpscr,%0" : :"ri" (_fpscr));
+#else
+   /* Switching from thumb1 to arm, do vmsr, then switch back */
+   __asm__ __volatile__(
+         ".balign 4 \n\t"
+         "mov ip, pc \n\t"
+         "bx ip \n\t"
+         ".arm \n\t"
+         "vmsr fpscr, %0 \n\t"
+         "add ip, pc, #1 \n\t"
+         "bx ip \n\t"
+         ".thumb \n\t"
+         : : "ri" (_fpscr) : "ip");
+#endif
+#else
+   _fpscr = _fpscr;
+#endif
+   return 0;
+}
+
+static __inline int32_t fesetround(int32_t __round)
+{
+   uint32_t _fpscr;
+   fegetenv(&_fpscr);
+   _fpscr &= ~(0x3 << _FPSCR_RMODE_SHIFT);
+   _fpscr |= (__round << _FPSCR_RMODE_SHIFT);
+   fesetenv(&_fpscr);
+   return 0;
+}
+#endif
+
 
 M64P_FPU_INLINE void set_rounding(void)
 {
