@@ -384,8 +384,8 @@ void alist_envmix_ge(
         ramps[1].value  = (vol[1] << 16);
         ramps[0].target = (target[0] << 16);
         ramps[1].target = (target[1] << 16);
-        ramps[0].step   = rate[0];
-        ramps[1].step   = rate[1];
+        ramps[0].step   = rate[0] / 8;
+        ramps[1].step   = rate[1] / 8;
     } else {
         memcpy((uint8_t *)save_buffer, (hle->dram + address), 80);
         wet             = *(int16_t *)(save_buffer +  0);   /* 0-1 */
