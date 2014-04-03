@@ -24,32 +24,13 @@
 
 #include <stdint.h>
 
-#include "hle_plugin.h"
-
-
-#if 0
 static inline int16_t clamp_s16(int_fast32_t x)
 {
-   if ((int16_t)x != x)
-      x = (x >> 31) ^ 0x7FFF;
+    x = (x < INT16_MIN) ? INT16_MIN: x;
+    x = (x > INT16_MAX) ? INT16_MAX: x;
 
-   return x;
+    return x;
 }
-#else
-static inline int16_t clamp_s16(int_fast32_t x)
-{
-   x = (x < INT16_MIN) ? INT16_MIN: x;
-   x = (x > INT16_MAX) ? INT16_MAX: x;
-
-   return x;
-}
-#endif
-
-#ifdef LOG_RSP_DEBUG_MESSAGE
-#define RSP_DEBUG_MESSAGE(level, format, ...) fprintf(stderr, format, __VA_ARGS__)
-#else
-#define RSP_DEBUG_MESSAGE(level, format, ...) (void)0
-#endif
 
 #endif
 

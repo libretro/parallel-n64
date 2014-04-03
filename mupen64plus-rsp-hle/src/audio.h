@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus-rsp-hle - plugin.h                                        *
+ *   Mupen64plus-rsp-hle - audio.h                                         *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
@@ -19,14 +19,25 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef PLUGIN_H
-#define PLUGIN_H
+#ifndef AUDIO_H
+#define AUDIO_H
 
-#include "m64p_types.h"
-#include "m64p_plugin.h"
+#include <stddef.h>
+#include <stdint.h>
 
-extern RSP_INFO q_RspInfo;
+extern const int16_t RESAMPLE_LUT[64 * 4];
 
-void DebugMessage(int level, const char *message, ...);
+int32_t rdot(size_t n, const int16_t *x, const int16_t *y);
+
+static inline int16_t adpcm_predict_sample(uint8_t byte, uint8_t mask,
+        unsigned lshift, unsigned rshift)
+{
+    int16_t sample = (uint16_t)(byte & mask) << lshift;
+    sample >>= rshift; /* signed */
+    return sample;
+}
+
+void adpcm_compute_residuals(int16_t* dst, const int16_t* src,
+        const int16_t* cb_entry, const int16_t* last_samples, size_t count);
 
 #endif

@@ -119,7 +119,6 @@ endif
 OPTFLAGS ?= -O3 -flto
 WARNFLAGS ?= -Wall
 CFLAGS += $(OPTFLAGS) $(WARNFLAGS) -ffast-math -fno-strict-aliasing -fvisibility=hidden -I../../src
-CXXFLAGS += -fvisibility-inlines-hidden
 LDFLAGS += $(SHARED)
 
 # Since we are building a shared library, we must compile with -fPIC on some architectures
@@ -149,23 +148,15 @@ ifeq ($(OS), LINUX)
   LDFLAGS += -Wl,-version-script,$(SRCDIR)/rsp_api_export.ver
 endif
 ifeq ($(OS), OSX)
-  # Select the proper SDK
-  # Also, SDKs are stored in a different location since XCode 4.3
-  OSX_SDK ?= $(shell sw_vers -productVersion | cut -f1 -f2 -d .)
-  OSX_XCODEMAJ = $(shell xcodebuild -version | grep '[0-9]*\.[0-9]*' | cut -f2 -d ' ' | cut -f1 -d .)
-  OSX_XCODEMIN = $(shell xcodebuild -version | grep '[0-9]*\.[0-9]*' | cut -f2 -d ' ' | cut -f2 -d .)
-  OSX_XCODEGE43 = $(shell echo "`expr $(OSX_XCODEMAJ) \>= 4``expr $(OSX_XCODEMIN) \>= 3`")
-  ifeq ($(OSX_XCODEGE43), 11)
-    OSX_SYSROOT := /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
-  else
-    OSX_SYSROOT := /Developer/SDKs
-  endif
+  #xcode-select has been around since XCode 3.0, i.e. OS X 10.5
+  OSX_SDK_ROOT = $(shell xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs
+  OSX_SDK_PATH = $(OSX_SDK_ROOT)/$(shell ls $(OSX_SDK_ROOT) | tail -1)
 
   ifeq ($(CPU), X86)
     ifeq ($(ARCH_DETECTED), 64BITS)
-      CFLAGS += -pipe -arch x86_64 -mmacosx-version-min=$(OSX_SDK) -isysroot $(OSX_SYSROOT)/MacOSX$(OSX_SDK).sdk
+      CFLAGS += -pipe -arch x86_64 -mmacosx-version-min=10.5 -isysroot $(OSX_SDK_PATH)
     else
-      CFLAGS += -pipe -mmmx -msse -fomit-frame-pointer -arch i686 -mmacosx-version-min=$(OSX_SDK) -isysroot $(OSX_SYSROOT)/MacOSX$(OSX_SDK).sdk
+      CFLAGS += -pipe -mmmx -msse -fomit-frame-pointer -arch i686 -mmacosx-version-min=10.5 -isysroot $(OSX_SDK_PATH)
       LDFLAGS += -read_only_relocs suppress
     endif
   endif
@@ -197,20 +188,17 @@ endif
 ifneq ($(findstring $(MAKEFLAGS),s),s)
 ifndef V
 	Q_CC  = @echo '    CC  '$@;
-	Q_CXX = @echo '    CXX '$@;
 	Q_LD  = @echo '    LD  '$@;
 endif
 endif
 
 # set base program pointers and flags
 CC        = $(CROSS_COMPILE)gcc
-CXX       = $(CROSS_COMPILE)g++
 RM       ?= rm -f
 INSTALL  ?= install
 MKDIR ?= mkdir -p
 COMPILE.c = $(Q_CC)$(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
-COMPILE.cc = $(Q_CXX)$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
-LINK.o = $(Q_LD)$(CXX) $(CXXFLAGS) $(LDFLAGS) $(TARGET_ARCH)
+LINK.o = $(Q_LD)$(CC) $(CFLAGS) $(LDFLAGS) $(TARGET_ARCH)
 
 # set special flags for given Makefile parameters
 ifeq ($(DEBUG),1)
@@ -233,23 +221,32 @@ ifeq ($(PLUGINDIR),)
   PLUGINDIR := $(LIBDIR)/mupen64plus
 endif
 
+# enable/disable task dumping support
+ifeq ($(DUMP), 1)
+	CFLAGS += -DENABLE_TASK_DUMP
+endif
+
+
 SRCDIR = ../../src
 OBJDIR = _obj$(POSTFIX)
 
 # list of source files to compile
 SOURCE = \
-	$(SRCDIR)/main.c \
 	$(SRCDIR)/alist.c \
+	$(SRCDIR)/alist_audio.c \
+	$(SRCDIR)/alist_naudio.c \
+	$(SRCDIR)/alist_nead.c \
+	$(SRCDIR)/audio.c \
 	$(SRCDIR)/cicx105.c \
+	$(SRCDIR)/hle.c \
 	$(SRCDIR)/jpeg.c \
-	$(SRCDIR)/ucode3.cpp \
-	$(SRCDIR)/ucode2.cpp \
-	$(SRCDIR)/ucode1.cpp \
-	$(SRCDIR)/ucode3mp3.cpp
+	$(SRCDIR)/memory.c \
+	$(SRCDIR)/mp3.c \
+	$(SRCDIR)/musyx.c \
+	$(SRCDIR)/plugin.c
 
 # generate a list of object files build, make a temporary directory for them
 OBJECTS := $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(filter %.c, $(SOURCE)))
-OBJECTS += $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(filter %.cpp, $(SOURCE)))
 OBJDIRS = $(dir $(OBJECTS))
 $(shell $(MKDIR) $(OBJDIRS))
 
@@ -271,6 +268,7 @@ targets:
 	@echo "    WARNFLAGS=flag == compiler warning levels (default: -Wall)"
 	@echo "    PIC=(1|0)     == Force enable/disable of position independent code"
 	@echo "    POSTFIX=name  == String added to the name of the the build (default: '')"
+	@echo "    DUMP=(1|0)    == Enable/Disable unknown task dumping (default: 0)"
 	@echo "  Install Options:"
 	@echo "    PREFIX=path   == install/uninstall prefix (default: /usr/local)"
 	@echo "    LIBDIR=path   == library prefix (default: PREFIX/lib)"
@@ -295,17 +293,12 @@ clean:
 rebuild: clean all
 
 # build dependency files
-CFLAGS += -MD
+CFLAGS += -MD -MP
 -include $(OBJECTS:.o=.d)
-
-CXXFLAGS += $(CFLAGS)
 
 # standard build rules
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	$(COMPILE.c) -o $@ $<
-
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
-	$(COMPILE.cc) -o $@ $<
 
 $(TARGET): $(OBJECTS)
 	$(LINK.o) $^ $(LOADLIBES) $(LDLIBS) -o $@
