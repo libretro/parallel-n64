@@ -354,6 +354,85 @@ void alist_envmix_exp(
     memcpy(hle->dram + address, (uint8_t *)save_buffer, 80);
 }
 
+void alist_envmix_ge(
+        struct hle_t* hle,
+        bool init,
+        bool aux,
+        uint16_t dmem_dl, uint16_t dmem_dr,
+        uint16_t dmem_wl, uint16_t dmem_wr,
+        uint16_t dmemi, uint16_t count,
+        int16_t dry, int16_t wet,
+        const int16_t *vol,
+        const int16_t *target,
+        const int32_t *rate,
+        uint32_t address)
+{
+    unsigned k;
+    size_t n = (aux) ? 4 : 2;
+
+    const int16_t* const in = (int16_t*)(hle->alist_buffer + dmemi);
+    int16_t* const dl = (int16_t*)(hle->alist_buffer + dmem_dl);
+    int16_t* const dr = (int16_t*)(hle->alist_buffer + dmem_dr);
+    int16_t* const wl = (int16_t*)(hle->alist_buffer + dmem_wl);
+    int16_t* const wr = (int16_t*)(hle->alist_buffer + dmem_wr);
+
+    struct ramp_t ramps[2];
+    short save_buffer[40];
+
+    if (init) {
+        ramps[0].value  = (vol[0] << 16);
+        ramps[1].value  = (vol[1] << 16);
+        ramps[0].target = (target[0] << 16);
+        ramps[1].target = (target[1] << 16);
+        ramps[0].step   = rate[0];
+        ramps[1].step   = rate[1];
+    } else {
+        memcpy((uint8_t *)save_buffer, (hle->dram + address), 80);
+        wet             = *(int16_t *)(save_buffer +  0);   /* 0-1 */
+        dry             = *(int16_t *)(save_buffer +  2);   /* 2-3 */
+        ramps[0].target = *(int32_t *)(save_buffer +  4);   /* 4-5 */
+        ramps[1].target = *(int32_t *)(save_buffer +  6);   /* 6-7 */
+        ramps[0].step   = *(int32_t *)(save_buffer +  8);   /* 8-9 (save_buffer is a 16bit pointer) */
+        ramps[1].step   = *(int32_t *)(save_buffer + 10);   /* 10-11 */
+        /*                *(int32_t *)(save_buffer + 12);*/ /* 12-13 */
+        /*                *(int32_t *)(save_buffer + 14);*/ /* 14-15 */
+        ramps[0].value  = *(int32_t *)(save_buffer + 16);   /* 12-13 */
+        ramps[1].value  = *(int32_t *)(save_buffer + 18);   /* 14-15 */
+    }
+
+    count >>= 1;
+    for (k = 0; k < count; ++k) {
+        int16_t  gains[4];
+        int16_t* buffers[4];
+        int16_t l_vol = ramp_step(&ramps[0]);
+        int16_t r_vol = ramp_step(&ramps[1]);
+
+        buffers[0] = dl + (k^S);
+        buffers[1] = dr + (k^S);
+        buffers[2] = wl + (k^S);
+        buffers[3] = wr + (k^S);
+
+        gains[0] = clamp_s16((l_vol * dry + 0x4000) >> 15);
+        gains[1] = clamp_s16((r_vol * dry + 0x4000) >> 15);
+        gains[2] = clamp_s16((l_vol * wet + 0x4000) >> 15);
+        gains[3] = clamp_s16((r_vol * wet + 0x4000) >> 15);
+
+        alist_envmix_mix(n, buffers, gains, in[k^S]);
+    }
+
+    *(int16_t *)(save_buffer +  0) = wet;               /* 0-1 */
+    *(int16_t *)(save_buffer +  2) = dry;               /* 2-3 */
+    *(int32_t *)(save_buffer +  4) = ramps[0].target;   /* 4-5 */
+    *(int32_t *)(save_buffer +  6) = ramps[1].target;   /* 6-7 */
+    *(int32_t *)(save_buffer +  8) = ramps[0].step;     /* 8-9 (save_buffer is a 16bit pointer) */
+    *(int32_t *)(save_buffer + 10) = ramps[1].step;     /* 10-11 */
+    /**(int32_t *)(save_buffer + 12);*/                 /* 12-13 */
+    /**(int32_t *)(save_buffer + 14);*/                 /* 14-15 */
+    *(int32_t *)(save_buffer + 16) = ramps[0].value;    /* 12-13 */
+    *(int32_t *)(save_buffer + 18) = ramps[1].value;    /* 14-15 */
+    memcpy(hle->dram + address, (uint8_t *)save_buffer, 80);
+}
+
 void alist_envmix_lin(
         struct hle_t* hle,
         bool init,
