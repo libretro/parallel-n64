@@ -26,7 +26,7 @@
 #include "api/m64p_common.h"
 #include "api/m64p_plugin.h"
 
-enum gfx_plugin_type { GFX_GLIDE64, GFX_RICE, GFX_GLN64 };
+enum gfx_plugin_type { GFX_GLIDE64, GFX_RICE, GFX_GLN64, GFX_ANGRYLION };
 enum rsp_plugin_type { RSP_HLE, RSP_CXD4 };
 extern void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type);
 
