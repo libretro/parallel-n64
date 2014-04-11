@@ -15,6 +15,23 @@
 
 extern GFX_INFO gfx;
 
+int rdp_init();
+int rdp_close();
+int rdp_update();
+void rdp_process_list(void);
+
+#if !defined (_MSC_VER) || (_MSC_VER >= 1600)
+#include <stdint.h>
+typedef uint64_t UINT64;
+typedef int64_t INT64;
+typedef uint32_t UINT32;
+typedef int32_t INT32;
+typedef uint16_t UINT16;
+typedef int16_t INT16;
+typedef uint8_t UINT8;
+typedef int8_t INT8;
+#endif
+
 #define SP_INTERRUPT	0x1
 #define SI_INTERRUPT	0x2
 #define AI_INTERRUPT	0x4
