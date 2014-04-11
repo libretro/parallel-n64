@@ -289,6 +289,12 @@ CPPFLAGS += $(HWFBE_FLAGS)
 CXXFILES += $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c
 endif
 
+### Angrylion's renderer ###
+VIDEODIR_ANGRYLION = gles2angrylion
+CFILES += $(wildcard $(VIDEODIR_ANGRYLION)/*.c)
+CXXFILES += $(wildcard $(VIDEODIR_ANGRYLION)/*.cpp)
+
+
 ### Finalize ###
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
 CPPFLAGS   += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro

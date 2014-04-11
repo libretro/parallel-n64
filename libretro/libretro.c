@@ -113,6 +113,8 @@ static void core_settings_set_defaults(void)
           gfx_plugin = GFX_RICE;
        if(gfx_var.value && strcmp(gfx_var.value, "glide64") == 0)
           gfx_plugin = GFX_GLIDE64;
+	   if(gfx_var.value && strcmp(gfx_var.value, "angrylion") == 0)
+          gfx_plugin = GFX_ANGRYLION;
     }
 
    gfx_var.key = "mupen64-gfxplugin-accuracy";
@@ -199,7 +201,7 @@ static void setup_variables(void)
          "GFX Accuracy (restart); high|medium|low" },
 #endif
       { "mupen64-gfxplugin",
-         "GFX Plugin; auto|glide64|gln64|rice" },
+         "GFX Plugin; auto|glide64|gln64|rice|angrylion" },
       { "mupen64-rspplugin",
          "RSP Plugin; auto|hle|cxd4" },
       { "mupen64-screensize",

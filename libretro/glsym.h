@@ -87,6 +87,10 @@
 #define glDeleteRenderbuffers pglDeleteRenderbuffers
 #define glFramebufferRenderbuffer pglFramebufferRenderbuffer
 
+#define glGenVertexArrays pglGenVertexArrays 
+#define glBindVertexArray pglBindVertexArray
+#define glDeleteVertexArrays pglDeleteVertexArrays
+
 extern PFNGLCREATEPROGRAMPROC pglCreateProgram;
 extern PFNGLCREATESHADERPROC pglCreateShader;
 extern PFNGLCREATESHADERPROC pglCompileShader;
@@ -136,6 +140,10 @@ extern PFNGLFRAMEBUFFERRENDERBUFFERPROC pglFramebufferRenderbuffer;
 extern PFNGLVERTEXATTRIB4FPROC pglVertexAttrib4f;
 extern PFNGLBLENDFUNCSEPARATEPROC pglBlendFuncSeparate;
 extern PFNGLVERTEXATTRIB4FVPROC pglVertexAttrib4fv;
+
+extern PFNGLGENVERTEXARRAYSPROC pglGenVertexArrays;
+extern PFNGLBINDVERTEXARRAYPROC pglBindVertexArray;
+extern PFNGLDELETEVERTEXARRAYSPROC pglDeleteVertexArrays;
 
 #endif
 

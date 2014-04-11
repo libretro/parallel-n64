@@ -56,6 +56,10 @@ PFNGLVERTEXATTRIB4FPROC pglVertexAttrib4f;
 PFNGLBLENDFUNCSEPARATEPROC pglBlendFuncSeparate;
 PFNGLVERTEXATTRIB4FVPROC pglVertexAttrib4fv;
 
+PFNGLGENVERTEXARRAYSPROC pglGenVertexArrays;
+PFNGLBINDVERTEXARRAYPROC pglBindVertexArray;
+PFNGLDELETEVERTEXARRAYSPROC pglDeleteVertexArrays;
+
 struct gl_proc_map
 {
    void *proc;
@@ -114,6 +118,11 @@ static const struct gl_proc_map proc_map[] = {
    PROC_BIND(VertexAttrib4f),
    PROC_BIND(BlendFuncSeparate),
    PROC_BIND(VertexAttrib4fv),
+   
+   PROC_BIND(GenVertexArrays),
+   PROC_BIND(BindVertexArray),
+   PROC_BIND(DeleteVertexArrays),
+   
 };
 
 void glsym_init_procs(retro_hw_get_proc_address_t cb)
