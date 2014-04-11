@@ -7,7 +7,8 @@
 
 
 #define VIDEO_TAG(X) angrylion##X
-
+#define PluginStartup VIDEO_TAG(PluginStartup)
+#define PluginShutdown VIDEO_TAG(PluginShutdown)
 #define PluginGetVersion VIDEO_TAG(PluginGetVersion)
 #define ChangeWindow VIDEO_TAG(ChangeWindow)
 #define InitiateGFX VIDEO_TAG(InitiateGFX)
@@ -199,6 +200,18 @@ void WriteLog(m64p_msg_level level, const char *msg, ...)
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
+        void *Context, void (*DebugCallback)(void *, int, const char *))
+{
+   return M64ERR_SUCCESS;
+}
+
+EXPORT m64p_error CALL PluginShutdown(void)
+{
+VLOG("CALL PluginShutDown ()\n");
+   return M64ERR_SUCCESS; // __LIBRETRO__: Fix warning
+}
 
 EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {

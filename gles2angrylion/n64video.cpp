@@ -3,8 +3,6 @@
 #include "tctables.h"
 #include <stdarg.h>
 
-extern GFX_INFO gfx;
-
 
 #define SIGN16(x)	((INT16)(x))
 #define SIGN8(x)	((INT8)(x))
