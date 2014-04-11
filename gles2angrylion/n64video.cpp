@@ -35,7 +35,6 @@ INLINE void fatalerror(const char * err, ...)
 	printf(VsprintfBuffer);
 #endif
 	va_end(arg);
-	exit(0);
 }
 
 INLINE void popmessage(const char* err, ...)
@@ -10023,7 +10022,6 @@ void dump_buffer(char* Name, void* Buff,UINT32 Bytes)
 void dump_tmem_and_exit(char* Name)
 {
 	dump_buffer4kb(Name,TMEM);
-	exit(0);
 }
 
 void col_decode16(UINT16* addr, COLOR* col)

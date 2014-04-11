@@ -90,7 +90,9 @@ typedef int8_t INT8;
 #endif
 #define DWORD_XOR_DWORD_SWAP 1
 
+#ifndef __LIBRETRO__
 #define INLINE
+#endif
 #ifdef _MSC_VER
 #define STRICTINLINE	__forceinline
 #else

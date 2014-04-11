@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <stdarg.h>
 
 
 #define VIDEO_TAG(X) angrylion##X
