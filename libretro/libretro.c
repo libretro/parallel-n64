@@ -685,12 +685,18 @@ void retro_run (void)
     poll_cb();
 
 run_again:
-    sglEnter();
+    if (gfx_plugin != GFX_ANGRYLION)
+       sglEnter();
     co_switch(emulator_thread);
-    sglExit();
+    if (gfx_plugin != GFX_ANGRYLION)
+       sglExit();
 
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
        update_variables();
+
+    if (gfx_plugin == GFX_ANGRYLION)
+    {
+    }
 
     if (flip_only)
     {
