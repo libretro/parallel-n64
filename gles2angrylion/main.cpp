@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <stdarg.h>
-
+#include <stdlib.h>
 
 #define VIDEO_TAG(X) angrylion##X
 #define PluginStartup VIDEO_TAG(PluginStartup)

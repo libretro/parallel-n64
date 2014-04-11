@@ -1073,12 +1073,12 @@ int i, j;
 		onetimewarnings.ntscnolerp = 1;
 	}
 		
-#ifdef WIN32
 	int slowbright = 0;
+#ifdef WIN32
 	if (GetAsyncKeyState(0x91))
 		brightness = (brightness + 1) & 15;
-	slowbright = brightness >> 1;
 #endif
+	slowbright = brightness >> 1;
 
 	INT32 v_start = (vi_v_start >> 16) & 0x3ff;
 	INT32 h_start = ((vi_h_start >> 16) & 0x3ff) - (ispal ? 128 : 108);
