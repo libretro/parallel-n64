@@ -133,7 +133,7 @@ EXPORT int CALL RomOpen (void)
 {
     VLOG ("RomOpen ()\n");
 //	context_reset();
-	blitter_buf = (INT32*)calloc(PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(INT32));
+	blitter_buf = (int32_t*)calloc(PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(int32_t));
 	pitchindwords = PRESCALE_WIDTH * 4;
     rdp_init();
     return 1;

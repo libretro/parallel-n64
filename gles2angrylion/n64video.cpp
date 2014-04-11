@@ -1189,7 +1189,7 @@ int i, j;
 	{
 		memset(tvfadeoutstate, 0, PRESCALE_HEIGHT * sizeof(UINT32));
 		for (i = 0; i < PRESCALE_HEIGHT; i++)
-			memset(blitter_buf[i * pitchindwords], 0, PRESCALE_WIDTH * sizeof(INT32)); 
+			memset(&blitter_buf[i * pitchindwords], 0, PRESCALE_WIDTH * sizeof(INT32)); 
 		prevwasblank = 1;
 	}
 	else
@@ -1200,19 +1200,19 @@ int i, j;
 		if (h_start > 0 && h_start < PRESCALE_WIDTH)
 		{
 			for (i = 0; i < vactivelines; i++)
-				memset(blitter_buf[i * pitchindwords], 0, h_start * sizeof(UINT32));
+				memset(&blitter_buf[i * pitchindwords], 0, h_start * sizeof(UINT32));
 		}
 		if (h_end >= 0 && h_end < PRESCALE_WIDTH)
 		{
 			for (i = 0; i < vactivelines; i++)
-				memset(blitter_buf[i * pitchindwords + h_end], 0, hrightblank * sizeof(UINT32));
+				memset(&blitter_buf[i * pitchindwords + h_end], 0, hrightblank * sizeof(UINT32));
 		}
 		for (i = 0; i < ((v_start << twolines) + (lowerfield ? 1 : 0)); i++)
 		{
 			if (tvfadeoutstate[i])
 				tvfadeoutstate[i]--;
 			if (!tvfadeoutstate[i] && validh)
-				memset(blitter_buf[i * pitchindwords + h_start], 0, hres * sizeof(UINT32));
+				memset(&blitter_buf[i * pitchindwords + h_start], 0, hres * sizeof(UINT32));
 		}
 		if (!serration_pulses)
 		{
@@ -1230,7 +1230,7 @@ int i, j;
 				if (tvfadeoutstate[i + 1])
 					tvfadeoutstate[i + 1]--;
 				if (!tvfadeoutstate[i + 1] && validh)
-					memset(blitter_buf[(i + 1) * pitchindwords + h_start], 0, hres * sizeof(UINT32));
+					memset(&blitter_buf[(i + 1) * pitchindwords + h_start], 0, hres * sizeof(UINT32));
 				i += 2;
 			}
 		}
@@ -1239,7 +1239,7 @@ int i, j;
 			if (tvfadeoutstate[i])
 				tvfadeoutstate[i]--;
 			if (!tvfadeoutstate[i] && validh)
-				memset(blitter_buf[i * pitchindwords + h_start], 0, hres * sizeof(UINT32));
+				memset(&blitter_buf[i * pitchindwords + h_start], 0, hres * sizeof(UINT32));
 		}
  	}
 
@@ -1300,7 +1300,7 @@ int i, j;
 							divot_cache_marker = divot_cache_next_marker = cache_marker_init; 
 					}
 
-					d = blitter_buf[prescale_ptr];
+					d = &blitter_buf[prescale_ptr];
 					prescale_ptr += linecount;
 
 					prevy = y_start >> 10;

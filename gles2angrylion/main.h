@@ -35,7 +35,7 @@ typedef int8_t INT8;
 
 #define PRESCALE_WIDTH 640
 #define PRESCALE_HEIGHT 625
-static INT32 *blitter_buf;
+static int32_t *blitter_buf;
 static INT32 pitchindwords;
 
 #define SP_INTERRUPT	0x1
