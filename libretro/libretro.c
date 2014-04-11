@@ -53,11 +53,14 @@ void (*audio_convert_float_to_s16_arm)(int16_t *out,
 static uint8_t* game_data;
 static uint32_t game_size;
 
+extern uint32_t *blitter_buf;
+
 static enum gfx_plugin_type gfx_plugin;
 uint32_t gfx_plugin_accuracy = 2;
 static enum rsp_plugin_type rsp_plugin;
 uint32_t screen_width;
 uint32_t screen_height;
+uint32_t screen_pitch;
 
 extern unsigned int VI_REFRESH;
 
@@ -385,6 +388,7 @@ void retro_init(void)
 {
    struct retro_log_callback log;
    unsigned colorMode = RETRO_PIXEL_FORMAT_XRGB8888;
+   screen_pitch = 0;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log))
       log_cb = log.log;
@@ -694,19 +698,18 @@ run_again:
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
        update_variables();
 
-    if (gfx_plugin == GFX_ANGRYLION)
-    {
-    }
-
     if (flip_only)
     {
-        video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
-        pushed_frame = true;
-        goto run_again;
+       if (gfx_plugin == GFX_ANGRYLION)
+          video_cb(blitter_buf, screen_width, screen_height, screen_pitch); 
+       else
+          video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+       pushed_frame = true;
+       goto run_again;
     }
 
     if (!pushed_frame && frame_dupe) // Dupe. Not duping violates libretro API, consider it a speedhack.
-        video_cb(NULL, screen_width, screen_height, 0);
+        video_cb(NULL, screen_width, screen_height, screen_pitch);
 }
 
 void retro_reset (void)

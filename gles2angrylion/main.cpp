@@ -129,12 +129,17 @@ EXPORT void CALL RomClosed (void)
 	rdp_close();
 }
 
+int32_t *blitter_buf;
+INT32 pitchindwords;
+
 EXPORT int CALL RomOpen (void)
 {
     VLOG ("RomOpen ()\n");
-//	context_reset();
-	blitter_buf = (int32_t*)calloc(PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(int32_t));
-	pitchindwords = PRESCALE_WIDTH * 4;
+   screen_width = 640;  // prescale width
+   screen_height = 625; // prescale height
+	blitter_buf = (int32_t*)calloc(screen_width * screen_width, sizeof(int32_t));
+	pitchindwords = screen_width * 4;
+   screen_pitch = pitchindwords;
     rdp_init();
     return 1;
 }

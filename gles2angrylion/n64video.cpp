@@ -3,6 +3,12 @@
 #include "tctables.h"
 #include <stdarg.h>
 
+extern uint32_t *blitter_buf;
+extern uint32_t pitchindwords;
+
+#define PRESCALE_WIDTH (screen_width)
+#define PRESCALE_HEIGHT (screen_height)
+
 
 #define SIGN16(x)	((INT16)(x))
 #define SIGN8(x)	((INT8)(x))
@@ -1300,7 +1306,7 @@ int i, j;
 							divot_cache_marker = divot_cache_next_marker = cache_marker_init; 
 					}
 
-					d = &blitter_buf[prescale_ptr];
+					d = (INT32*)&blitter_buf[prescale_ptr];
 					prescale_ptr += linecount;
 
 					prevy = y_start >> 10;

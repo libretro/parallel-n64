@@ -32,11 +32,9 @@ typedef uint8_t UINT8;
 typedef int8_t INT8;
 #endif
 
-
-#define PRESCALE_WIDTH 640
-#define PRESCALE_HEIGHT 625
-static int32_t *blitter_buf;
-static INT32 pitchindwords;
+extern uint32_t screen_width;
+extern uint32_t screen_height;
+extern uint32_t screen_pitch;
 
 #define SP_INTERRUPT	0x1
 #define SI_INTERRUPT	0x2
