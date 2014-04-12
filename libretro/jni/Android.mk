@@ -8,7 +8,7 @@ LOCAL_MODULE := retro_mupen64plus
 M64P_ROOT_DIR := ../..
 LIBRETRODIR = ../
 VIDEODIR_GLIDE = $(M64P_ROOT_DIR)/glide2gl/src
-VIDEODIR_ANGRYLION = $(M64P_ROOT_DIR)/gles2angrylion
+VIDEODIR_ANGRYLION = $(M64P_ROOT_DIR)/angrylionrdp
 VIDEODIR_RICE = $(M64P_ROOT_DIR)/gles2rice/src
 RSPDIR = $(M64P_ROOT_DIR)/mupen64plus-rsp-hle
 COREDIR = $(M64P_ROOT_DIR)/mupen64plus-core
@@ -149,8 +149,8 @@ LOCAL_SRC_FILES   += $(VIDEODIR_GLIDE)/Glitch64/combiner.c \
             $(VIDEODIR_GLIDE)/Glitch64/textures.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_crc.c
 
-LOCAL_SRC_FILES +=  $(VIDEODIR_ANGRYLION)/n64video_main.cpp \
-						  $(VIDEODIR_ANGRYLION)/n64video.cpp
+LOCAL_SRC_FILES +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
+						  $(VIDEODIR_ANGRYLION)/n64video.c
 
 ifeq ($(HAVE_HWFBE), 1)
 COMMON_FLAGS += -DHAVE_HWFBE

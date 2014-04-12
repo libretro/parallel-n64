@@ -290,7 +290,7 @@ CXXFILES += $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c
 endif
 
 ### Angrylion's renderer ###
-VIDEODIR_ANGRYLION = gles2angrylion
+VIDEODIR_ANGRYLION = angrylionrdp
 CFILES += $(wildcard $(VIDEODIR_ANGRYLION)/*.c)
 CXXFILES += $(wildcard $(VIDEODIR_ANGRYLION)/*.cpp)
 

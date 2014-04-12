@@ -1,7 +1,5 @@
 #include "main.h"
 
-#include <string>
-#include <vector>
 #include <stdarg.h>
 #include <stdlib.h>
 
@@ -32,12 +30,13 @@ GFX_INFO gfx_al;
 int ProcessDListShown = 0;
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#define VLOG(...) WriteLog(M64MSG_VERBOSE, __VA_ARGS__)
+#define VLOG(...) angrylion_WriteLog(M64MSG_VERBOSE, __VA_ARGS__)
 
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
 
-void WriteLog(m64p_msg_level level, const char *msg, ...)
+
+void angrylion_WriteLog(m64p_msg_level level, const char *msg, ...)
 {
    char buf[1024];
    va_list args;
@@ -52,8 +51,6 @@ void WriteLog(m64p_msg_level level, const char *msg, ...)
    else
       fprintf(stdout, buf);
 }
-
-
 
 #ifdef __cplusplus
 extern "C" {
