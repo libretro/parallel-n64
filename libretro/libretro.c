@@ -228,6 +228,8 @@ static void EmuThreadFunction(void)
     if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0) && log_cb)
         log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to initialize core\n");
 
+    log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
+
     if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
     {
        if (log_cb)
@@ -237,6 +239,8 @@ static void EmuThreadFunction(void)
 
     free(game_data);
     game_data = 0;
+
+    log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
 
     if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
     {
@@ -251,7 +255,11 @@ static void EmuThreadFunction(void)
 
     plugin_connect_all(gfx_plugin, rsp_plugin);
 
+    log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE. \n");
+
     CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
+
+    log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread. \n");
 
     co_switch(main_thread);
 

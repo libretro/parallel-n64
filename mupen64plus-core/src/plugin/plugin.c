@@ -123,7 +123,12 @@ static m64p_error plugin_start_gfx(void)
 
     /* call the audio plugin */
     if (!gfx.initiateGFX(gfx_info))
-        return M64ERR_PLUGIN_FAIL;
+    {
+       printf("plugin_start_gfx fail.\n");
+       return M64ERR_PLUGIN_FAIL;
+    }
+
+    printf("plugin_start_gfx success.\n");
 
     return M64ERR_SUCCESS;
 }
