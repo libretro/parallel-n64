@@ -167,8 +167,7 @@ CFILES += $(wildcard $(RSPDIR)/src/*.c)
 CXXFILES += $(wildcard $(RSPDIR)/src/*.cpp)
 
 CXB4DIR = mupen64plus-rsp-cxd4
-CFILES += $(wildcard $(CXB4DIR)/*.c)
-CXXFILES += $(wildcard $(CXB4DIR)/*.cpp)
+CFILES += $(CXB4DIR)/rsp.c
 
 # Core
 COREDIR = mupen64plus-core

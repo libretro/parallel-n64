@@ -1,8 +1,16 @@
 /******************************************************************************\
 * Project:  Simple Vector Unit Benchmark                                       *
 * Authors:  Iconoclast                                                         *
-* Release:  2013.11.26                                                         *
-* License:  none (public domain)                                               *
+* Release:  2013.12.12                                                         *
+* License:  CC0 Public Domain Dedication                                       *
+*                                                                              *
+* To the extent possible under law, the author(s) have dedicated all copyright *
+* and related and neighboring rights to this software to the public domain     *
+* worldwide. This software is distributed without any warranty.                *
+*                                                                              *
+* You should have received a copy of the CC0 Public Domain Dedication along    *
+* with this software.                                                          *
+* If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.             *
 \******************************************************************************/
 #ifndef _BENCH_H
 #define _BENCH_H
@@ -38,7 +46,7 @@ static void (*bench_tests[NUMBER_OF_VU_OPCODES])(int, int, int, int) = {
     VADDC, VSUBC,
     VSAW,
 
-    VLT, VEQ, VNE, VGE, /* normal select compares */
+    VEQ, VNE, VLT, VGE, /* normal select compares */
     VCH, VCL, /* double-precision clip select */
     VCR, /* single-precision, one's complement */
     VMRG,
@@ -53,32 +61,99 @@ static void (*bench_tests[NUMBER_OF_VU_OPCODES])(int, int, int, int) = {
     VMOV, VNOP
 };
 
-const char test_names[NUMBER_OF_VU_OPCODES][8] = {
-    "VMULF  ","VMACF  ",
-    "VMULU  ","VMACU  ",
+enum {
+    SP_VMULF =  000,
+    SP_VMULU =  001,
+    SP_VRNDP =  002,
+    SP_VMULQ =  003,
+    SP_VMUDL =  004,
+    SP_VMUDM =  005,
+    SP_VMUDN =  006,
+    SP_VMUDH =  007,
+    SP_VMACF =  010,
+    SP_VMACU =  011,
+    SP_VRNDN =  012,
+    SP_VMACQ =  013,
+    SP_VMADL =  014,
+    SP_VMADM =  015,
+    SP_VMADN =  016,
+    SP_VMADH =  017,
+    SP_VADD  =  020,
+    SP_VSUB  =  021,
+    SP_VSUT  =  022,
+    SP_VABS  =  023,
+    SP_VADDC =  024,
+    SP_VSUBC =  025,
+    SP_VADDB =  026,
+    SP_VSUBB =  027,
+    SP_VACCB =  030,
+    SP_VSUCB =  031,
+    SP_VSAD  =  032,
+    SP_VSAC  =  033,
+    SP_VSUM  =  034,
+    SP_VSAW  =  035,
 
-    "VMUDL  ","VMADL  ",
-    "VMUDM  ","VMADM  ",
-    "VMUDN  ","VMADN  ",
-    "VMUDH  ","VMADH  ",
 
-    "VADD   ","VSUB   ","VABS   ",
-    "VADDC  ","VSUBC  ",
-    "VSAW   ",
+    SP_VLT   =  040,
+    SP_VEQ   =  041,
+    SP_VNE   =  042,
+    SP_VGE   =  043,
+    SP_VCL   =  044,
+    SP_VCH   =  045,
+    SP_VCR   =  046,
+    SP_VMRG  =  047,
+    SP_VAND  =  050,
+    SP_VNAND =  051,
+    SP_VOR   =  052,
+    SP_VNOR  =  053,
+    SP_VXOR  =  054,
+    SP_VNXOR =  055,
 
-    "VLT    ","VEQ    ","VNE    ","VGE    ",
-    "VCH    ","VCL    ",
-    "VCR    ",
-    "VMRG   ",
 
-    "VAND   ","VNAND  ",
-    "VOR    ","VNOR   ",
-    "VXOR   ","VNXOR  ",
+    SP_VRCP  =  060,
+    SP_VRCPL =  061,
+    SP_VRCPH =  062,
+    SP_VMOV  =  063,
+    SP_VRSQ  =  064,
+    SP_VRSQL =  065,
+    SP_VRSQH =  066,
+    SP_VNOP  =  067,
+    SP_VEXTT =  070,
+    SP_VEXTQ =  071,
+    SP_VEXTN =  072,
 
-    "VRCPL  ","VRSQL  ",
-    "VRCPH  ","VRSQH  ",
+    SP_VINST =  074,
+    SP_VINSQ =  075,
+    SP_VINSN =  076,
+    SP_VNULLOP= 077
+};
+const char* test_names[NUMBER_OF_VU_OPCODES] = {
+    mnemonics_C2[SP_VMULF], mnemonics_C2[SP_VMACF],
+    mnemonics_C2[SP_VMULU], mnemonics_C2[SP_VMACU],
 
-    "VMOV   ","VNOP   "
+    mnemonics_C2[SP_VMUDL], mnemonics_C2[SP_VMADL],
+    mnemonics_C2[SP_VMUDM], mnemonics_C2[SP_VMADM],
+    mnemonics_C2[SP_VMUDN], mnemonics_C2[SP_VMADN],
+    mnemonics_C2[SP_VMUDH], mnemonics_C2[SP_VMADH],
+
+    mnemonics_C2[SP_VADD], mnemonics_C2[SP_VSUB], mnemonics_C2[SP_VABS],
+    mnemonics_C2[SP_VADDC], mnemonics_C2[SP_VSUBC],
+    mnemonics_C2[SP_VSAW],
+
+    mnemonics_C2[SP_VEQ], mnemonics_C2[SP_VNE],
+    mnemonics_C2[SP_VLT], mnemonics_C2[SP_VGE],
+    mnemonics_C2[SP_VCH], mnemonics_C2[SP_VCL],
+    mnemonics_C2[SP_VCR],
+    mnemonics_C2[SP_VMRG],
+
+    mnemonics_C2[SP_VAND], mnemonics_C2[SP_VNAND],
+    mnemonics_C2[SP_VOR] , mnemonics_C2[SP_VNOR] ,
+    mnemonics_C2[SP_VXOR], mnemonics_C2[SP_VNXOR],
+
+    mnemonics_C2[SP_VRCPL], mnemonics_C2[SP_VRSQL],
+    mnemonics_C2[SP_VRCPH], mnemonics_C2[SP_VRSQH],
+
+    mnemonics_C2[SP_VMOV], mnemonics_C2[SP_VNOP],
 };
 
 const char* notice_starting =
@@ -87,9 +162,7 @@ const char* notice_starting =
 const char* notice_finished =
     "Finished writing benchmark results.\n"\
     "Check working emulator directory for \"sp_bench.txt\".";
-
-unsigned char t_DMEM[0xFFF + 1], t_IMEM[0xFFF + 1];
-
+#if !defined(M64P_PLUGIN_API)
 EXPORT void CALL DllTest(HWND hParent)
 {
     FILE* log;
@@ -102,8 +175,6 @@ EXPORT void CALL DllTest(HWND hParent)
         message("Cannot run RSP tests while playing!", 3);
         return;
     }
-    inst.W = 0x00000000;
-    inst.R.rs = 0x8; /* just to shut up VSAW illegal element warnings */
 
     message(notice_starting, 1);
     log = fopen("sp_bench.txt", "w");
@@ -125,4 +196,5 @@ EXPORT void CALL DllTest(HWND hParent)
     message(notice_finished, 1);
     return;
 }
+#endif
 #endif

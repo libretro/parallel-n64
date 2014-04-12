@@ -1,3 +1,16 @@
+/******************************************************************************\
+* Authors:  Iconoclast                                                         *
+* Release:  2013.12.04                                                         *
+* License:  CC0 Public Domain Dedication                                       *
+*                                                                              *
+* To the extent possible under law, the author(s) have dedicated all copyright *
+* and related and neighboring rights to this software to the public domain     *
+* worldwide. This software is distributed without any warranty.                *
+*                                                                              *
+* You should have received a copy of the CC0 Public Domain Dedication along    *
+* with this software.                                                          *
+* If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.             *
+\******************************************************************************/
 #ifndef _CF_H
 #define _CF_H
 
@@ -138,7 +151,7 @@ unsigned char get_VCE(void)
     register unsigned char VCE;
 
     hi = _mm_setzero_si128();
-    lo = _mm_load_si128((__m128i *)comp);
+    lo = _mm_load_si128((__m128i *)vce);
 
     lo = _mm_slli_epi16(lo, 15); /* Rotate Boolean storage from LSB to MSB. */
 

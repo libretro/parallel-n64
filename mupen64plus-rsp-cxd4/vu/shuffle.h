@@ -1,3 +1,16 @@
+/******************************************************************************\
+* Authors:  Iconoclast                                                         *
+* Release:  2013.12.04                                                         *
+* License:  CC0 Public Domain Dedication                                       *
+*                                                                              *
+* To the extent possible under law, the author(s) have dedicated all copyright *
+* and related and neighboring rights to this software to the public domain     *
+* worldwide. This software is distributed without any warranty.                *
+*                                                                              *
+* You should have received a copy of the CC0 Public Domain Dedication along    *
+* with this software.                                                          *
+* If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.             *
+\******************************************************************************/
 #ifndef _SHUFFLE_H
 #define _SHUFFLE_H
 
@@ -94,7 +107,7 @@ INLINE static void SHUFFLE_VECTOR(short* VD, short* VT, const int e)
     __m128i key;
 
     xmm = _mm_load_si128((__m128i *)VT);
-    key = _mm_load_si128((__m128i *)smask[e & 0xF]);
+    key = _mm_load_si128((__m128i *)(smask[e]));
     xmm = _mm_shuffle_epi8(xmm, key);
     _mm_store_si128((__m128i *)VD, xmm);
     return;

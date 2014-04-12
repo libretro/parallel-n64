@@ -2,7 +2,15 @@
 * Project:  MSP Emulation Table for Scalar Unit Operations                     *
 * Authors:  Iconoclast                                                         *
 * Release:  2013.12.10                                                         *
-* License:  none (public domain)                                               *
+* License:  CC0 Public Domain Dedication                                       *
+*                                                                              *
+* To the extent possible under law, the author(s) have dedicated all copyright *
+* and related and neighboring rights to this software to the public domain     *
+* worldwide. This software is distributed without any warranty.                *
+*                                                                              *
+* You should have received a copy of the CC0 Public Domain Dedication along    *
+* with this software.                                                          *
+* If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.             *
 \******************************************************************************/
 #ifndef _SU_H
 #define _SU_H
@@ -19,56 +27,18 @@
  * abandon their designated purposes on the master CPU host (the VR4300),
  * hence most of the MIPS names "k0, k1, t0, t1, v0, v1 ..." no longer apply.
  */
-static int32_t SR[32];
+static int SR[32];
+
+#include "rsp.h"
 
 NOINLINE static void res_S(void)
 {
-    message("RESERVED", 3);
+    export_SP_memory();
+    trace_RSP_registers();
+    message("RESERVED\nSee SP_STATE.TXT.", 3);
     return;
 }
 
-union {
-    struct {
-        unsigned int func:  6;
-        unsigned int sa:  5;
-        unsigned int rd:  5;
-        unsigned int rt:  5;
-        unsigned int rs:  5;
-        unsigned int op:  6;
-    } R;
-    struct {
-        unsigned int imm:  16;
-        unsigned int rt:  5;
-        unsigned int rs:  5;
-        unsigned int op:  6;
-    } I;
-    struct {
-        unsigned int target:  26;
-        unsigned int op:  6;
-    } J;
-    unsigned W:  32;
-    signed SW:  32;
-} inst;
-
-/*** Scalar, Special Operations ***/
-static void BREAK(void) /* 000000 ----- ----- ----- ----- 001101 */
-{
-    if (inst.W & 0x00000020)
-    { /* converged matrix extract */
-        res_S();
-        return;
-    }
-    *RSP.SP_STATUS_REG |= 0x00000003; /* SP_STATUS_BROKE | SP_STATUS_HALT */
-    if (*RSP.SP_STATUS_REG & 0x00000040) /* SP_STATUS_INTR_BREAK */
-    {
-        *RSP.MI_INTR_REG |= 0x00000001;
-        RSP.CheckInterrupts();
-        return;
-    }
-    return;
-}
-
-/*** Scalar, Jump and Branch Operations ***/
 #ifdef EMULATE_STATIC_PC
 #define BASE_OFF    0x000
 #else
@@ -79,350 +49,34 @@ static void BREAK(void) /* 000000 ----- ----- ----- ----- 001101 */
 #define LINK_OFF    (BASE_OFF + 0x004)
 void set_PC(int address)
 {
-#ifdef EMULATE_STATIC_PC
-    *RSP.SP_PC_REG = 0x04001000 + (address & 0xFFC);
-#else
-    temp_PC        = 0x04001000 | (address & 0xFFC);
-#endif
+    temp_PC = 0x04001000 + (address & 0xFFC);
+#ifndef EMULATE_STATIC_PC
     stage = 1;
-    return;
-}
-static void J(void) /* 000010 iiiiiiiiiiiiiiiiiiiiiiiiii */
-{
-    set_PC(4*inst.J.target);
-    return;
-}
-static void JAL(void) /* 000011 iiiiiiiiiiiiiiiiiiiiiiiiii */
-{
-    SR[31] = (*RSP.SP_PC_REG + LINK_OFF) & 0x00000FFC;
-    J();
-    return;
-}
-static void JR(void) /* 000000 sssss ----- ----- ----- 001000 */
-{
-    if (inst.W & 0x00000020)
-    { /* converged matrix extract */
-        res_S();
-        return;
-    }
-    set_PC(SR[inst.R.rs]);
-    return;
-}
-static void JALR(void) /* 000000 sssss ----- ddddd ----- 001001 */
-{
-    if (inst.W & 0x00000020)
-    { /* converged matrix extract */
-        res_S();
-        return;
-    }
-    SR[inst.R.rd] = (*RSP.SP_PC_REG + LINK_OFF) & 0x00000FFC;
-    SR[0] = 0x00000000;
-    JR();
-    return;
-}
-static void BEQ(void) /* 000100 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    const int BC = (SR[inst.I.rs] == SR[inst.I.rt]);
-    const int offset = (signed short)(inst.I.imm);
-
-    if (BC == 0)
-        return;
-    set_PC(*RSP.SP_PC_REG + 4*offset + SLOT_OFF);
-    return;
-}
-static void BNE(void) /* 000101 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    const int BC = (SR[inst.I.rs] != SR[inst.I.rt]);
-    const int offset = (signed short)(inst.I.imm);
-
-    if (BC == 0)
-        return;
-    set_PC(*RSP.SP_PC_REG + 4*offset + SLOT_OFF);
-    return;
-}
-static void BLEZ(void) /* 000110 sssss 00000 iiiiiiiiiiiiiiii */
-{
-    const int BC = ((signed)(SR[inst.I.rs]) <= 0);
-    const int offset = (signed short)(inst.I.imm);
-
-    if (BC == 0)
-        return;
-    set_PC(*RSP.SP_PC_REG + 4*offset + SLOT_OFF);
-    return;
-}
-static void BGTZ(void) /* 000111 sssss 00000 iiiiiiiiiiiiiiii */
-{
-    const int BC = ((signed)(SR[inst.I.rs])  > 0);
-    const int offset = (signed short)(inst.I.imm);
-
-    if (BC == 0)
-        return;
-    set_PC(*RSP.SP_PC_REG + 4*offset + SLOT_OFF);
-    return;
-}
-static void BLTZ(void) /* 000001 sssss 00000 iiiiiiiiiiiiiiii */
-{
-    const int BC = ((signed)(SR[inst.I.rs])  < 0);
-    const int offset = (signed short)(inst.I.imm);
-
-    if (BC == 0)
-        return;
-    set_PC(*RSP.SP_PC_REG + 4*offset + SLOT_OFF);
-    return;
-}
-static void BGEZ(void) /* 000001 sssss 00001 iiiiiiiiiiiiiiii */
-{
-    const int BC = ((signed)(SR[inst.I.rs]) >= 0);
-    const int offset = (signed short)(inst.I.imm);
-
-    if (BC == 0)
-        return;
-    set_PC(*RSP.SP_PC_REG + 4*offset + SLOT_OFF);
-    return;
-}
-static void BLTZAL(void) /* 000001 sssss 10000 iiiiiiiiiiiiiiii */
-{
-    SR[31] = (*RSP.SP_PC_REG + LINK_OFF) & 0x00000FFC;
-    BLTZ();
-    return;
-}
-static void BGEZAL(void) /* 000001 sssss 10001 iiiiiiiiiiiiiiii */
-{
-    SR[31] = (*RSP.SP_PC_REG + LINK_OFF) & 0x00000FFC;
-    BGEZ();
+#endif
     return;
 }
 
-/*** Scalar, Shift Operations ***/
-#if (1)
-#define MASK_SA(sa) (sa & 31) /* Force masking in software. */
+#if (0)
+#define MASK_SA(sa) (sa & 31)
+/* Force masking in software. */
 #else
-#define MASK_SA(sa) (sa) /* Let hardware architecture do the mask for us. */
+#define MASK_SA(sa) (sa)
+/* Let hardware architecture do the mask for us. */
 #endif
-static void SLL(void) /* 000000 ----- ttttt ddddd aaaaa 000000 */
-{
-    SR[inst.R.rd] = SR[inst.R.rt] << MASK_SA(inst.W >> 6);
-    SR[0] = 0x00000000;
-    return;
-}
-static void SRL(void) /* 000000 ----- ttttt ddddd aaaaa 000010 */
-{
-    SR[inst.R.rd] = (unsigned)(SR[inst.R.rt]) >> MASK_SA(inst.W >> 6);
-    SR[0] = 0x00000000;
-    return;
-}
-static void SRA(void) /* 000000 ----- ttttt ddddd aaaaa 000011 */
-{
-    SR[inst.R.rd] = (signed)(SR[inst.R.rt]) >> MASK_SA(inst.W >> 6);
-    SR[0] = 0x00000000;
-    return;
-}
-static void SLLV(void) /* 000000 sssss ttttt ddddd ----- 000100 */
-{
-    SR[inst.R.rd] = SR[inst.R.rt] << MASK_SA(SR[inst.W >> 21]);
-    SR[0] = 0x00000000;
-    return;
-}
-static void SRLV(void) /* 000000 sssss ttttt ddddd ----- 000110 */
-{
-    SR[inst.R.rd] = (unsigned)(SR[inst.R.rt]) >> MASK_SA(SR[inst.W >> 21]);
-    SR[0] = 0x00000000;
-    return;
-}
-static void SRAV(void) /* 000000 sssss ttttt ddddd ----- 000111 */
-{
-    SR[inst.R.rd] = (signed)(SR[inst.R.rt]) >> MASK_SA(SR[inst.W >> 21]);
-    SR[0] = 0x00000000;
-    return;
-}
 
-/*** Scalar, Arithmetic and Logical Operations ***/
-static void ADD(void) /* 000000 sssss ttttt ddddd ----- 100000 */
-{
-    if (inst.R.rd == 0)
-        return; /* NOP */
-    if ((inst.W & 0x00000020) == 0x00000000)
-    { /* converged matrix extract */
-        SLL();
-        return;
-    }
-    SR[inst.R.rd] = SR[inst.W >> 21] + SR[inst.R.rt];
-    return;
-}
-static void ADDIU(void);
-static void ADDI(void) /* 001000 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    ADDIU();
-    return;
-}
-static void ADDIU(void) /* 001001 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    SR[inst.I.rt] = SR[inst.I.rs] + (signed short)(inst.I.imm);
-    SR[0] = 0x00000000;
-    return;
-}
-static void ADDU(void) /* 000000 sssss ttttt ddddd ----- 100001 */
-{
-    if ((inst.W & 0x00000020) == 0x00000000)
-    { /* converged matrix extract */
-        res_S();
-        return;
-    }
-    SR[inst.R.rd] = SR[inst.W >> 21] + SR[inst.R.rt];
-    SR[0] = 0x00000000;
-    return;
-}
-static void SUB(void) /* 000000 sssss ttttt ddddd ----- 100010 */
-{
-    if ((inst.W & 0x00000020) == 0x00000000)
-    { /* converged matrix extract */
-        SRL();
-        return;
-    }
-    SR[inst.R.rd] = SR[inst.W >> 21] - SR[inst.R.rt];
-    SR[0] = 0x00000000;
-    return;
-}
-static void SUBU(void) /* 000000 sssss ttttt ddddd ----- 100011 */
-{
-    if ((inst.W & 0x00000020) == 0x00000000)
-    { /* converged matrix extract */
-        SRA();
-        return;
-    }
-    SR[inst.R.rd] = SR[inst.W >> 21] - SR[inst.R.rt];
-    SR[0] = 0x00000000;
-    return;
-}
-static void SLT(void) /* 000000 sssss ttttt ddddd ----- 101010 */
-{
-    if ((inst.W & 0x00000020) == 0x00000000)
-    { /* converged matrix extract */
-        res_S();
-        return;
-    }
-    SR[inst.R.rd] = ((signed)(SR[inst.W >> 21]) < (signed)(SR[inst.R.rt]));
-    SR[0] = 0x00000000;
-    return;
-}
-static void SLTI(void) /* 001010 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    SR[inst.I.rt] = ((signed)(SR[inst.I.rs]) < (signed short)(inst.I.imm));
-#if (0)
-    SR[0] = 0x00000000; /* if (rt == 0), then NOP is called, not SLTI. */
-#endif
-    return;
-}
-static void SLTIU(void) /* 001011 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    SR[inst.I.rt] = ((unsigned)(SR[inst.I.rs]) < inst.I.imm);
-#if (0)
-    SR[0] = 0x00000000; /* if (rt == 0), then NOP is called, not SLTIU. */
-#endif
-    return;
-}
-static void SLTU(void) /* 000000 sssss ttttt ddddd ----- 101011 */
-{
-    if ((inst.W & 0x00000020) == 0x00000000)
-    { /* converged matrix extract */
-        res_S();
-        return;
-    }
-    SR[inst.R.rd] = ((unsigned)(SR[inst.W >> 21]) < (unsigned)(SR[inst.R.rt]));
-    SR[0] = 0x00000000;
-    return;
-}
-static void AND(void) /* 000000 sssss ttttt ddddd ----- 100100 */
-{
-    if ((inst.W & 0x00000020) == 0x00000000)
-    { /* converged matrix extract */
-        SLLV();
-        return;
-    }
-    SR[inst.R.rd] = SR[inst.W >> 21] & SR[inst.R.rt];
-    SR[0] = 0x00000000;
-    return;
-}
-static void OR(void) /* 000000 sssss ttttt ddddd ----- 100101 */
-{
-    if ((inst.W & 0x00000020) == 0x00000000)
-    { /* converged matrix extract */
-        res_S();
-        return;
-    }
-    SR[inst.R.rd] = SR[inst.W >> 21] | SR[inst.R.rt];
-    SR[0] = 0x00000000;
-    return;
-}
-static void XOR(void) /* 000000 sssss ttttt ddddd ----- 100110 */
-{
-    if ((inst.W & 0x00000020) == 0x00000000)
-    { /* converged matrix extract */
-        SRLV();
-        return;
-    }
-    SR[inst.R.rd] = SR[inst.W >> 21] ^ SR[inst.R.rt];
-    SR[0] = 0x00000000;
-    return;
-}
-static void NOR(void) /* 000000 sssss ttttt ddddd ----- 100111 */
-{
-    if ((inst.W & 0x00000020) == 0x00000000)
-    { /* converged matrix extract */
-        SRAV();
-        return;
-    }
-    SR[inst.R.rd] = ~(SR[inst.W >> 21] | SR[inst.R.rt]);
-    SR[0] = 0x00000000;
-    return;
-}
-static void ANDI(void) /* 001100 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    SR[inst.I.rt] = SR[inst.I.rs] & inst.I.imm;
-#if (0)
-    SR[0] = 0x00000000; /* if (rt == 0), then NOP is called, not ANDI. */
-#endif
-    return;
-}
-static void ORI(void) /* 001101 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    SR[inst.I.rt] = SR[inst.I.rs] | inst.I.imm;
-#if (0)
-    SR[0] = 0x00000000; /* if (rt == 0), then NOP is called, not ORI. */
-#endif
-    return;
-}
-static void XORI(void) /* 001110 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    SR[inst.I.rt] = SR[inst.I.rs] ^ inst.I.imm;
-#if (0)
-    SR[0] = 0x00000000; /* if (rt == 0), then NOP is called, not XORI. */
-#endif
-    return;
-}
-static void LUI(void) /* 001111 ----- ttttt iiiiiiiiiiiiiiii */
-{
-    SR[inst.I.rt] = inst.I.imm << 16;
-#if (0)
-    SR[0] = 0x00000000; /* if (rt == 0), then NOP is called, not LUI. */
-#endif
-    return;
-}
-
-/*** Scalar, Load and Store Operations ***/
 #if (0)
 #define ENDIAN   0
 #else
 #define ENDIAN  ~0
 #endif
-#define BES(address) ((address) ^ ((ENDIAN) & 03))
-#define HES(address) ((address) ^ ((ENDIAN) & 02))
-#define MES(address) ((address) ^ ((ENDIAN) & 01))
-#define WES(address) ((address) ^ ((ENDIAN) & 00))
-#define SR_B(s, i) (*(unsigned char *)(((unsigned char *)(SR + s)) + BES(i)))
-#define SR_S(s, i) (*(short *)(((unsigned char *)(SR + s)) + HES(i)))
-#define SE(x, b)    (-(x & (1 << b)) | (x & ~(~0 << b)))
-#define ZE(x, b)    (+(x & (1 << b)) | (x & ~(~0 << b)))
+#define BES(address)    ((address) ^ ((ENDIAN) & 03))
+#define HES(address)    ((address) ^ ((ENDIAN) & 02))
+#define MES(address)    ((address) ^ ((ENDIAN) & 01))
+#define WES(address)    ((address) ^ ((ENDIAN) & 00))
+#define SR_B(s, i)      (*(byte *)(((byte *)(SR + s)) + BES(i)))
+#define SR_S(s, i)      (*(short *)(((byte *)(SR + s)) + HES(i)))
+#define SE(x, b)        (-(x & (1 << b)) | (x & ~(~0 << b)))
+#define ZE(x, b)        (+(x & (1 << b)) | (x & ~(~0 << b)))
 
 static union {
     unsigned char B[4];
@@ -432,125 +86,8 @@ static union {
     unsigned W:  32;
 } SR_temp;
 
-static void LB(void) /* 100000 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    register int32_t addr;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = BES(SR[inst.I.rs] + offset) & 0x00000FFF;
-    SR[inst.I.rt] = (signed char)(RSP.DMEM[addr]);
-    SR[0] = 0x00000000;
-    return;
-}
-static void LH(void) /* 100001 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    register int32_t addr;
-    const int rt = inst.I.rt;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = (SR[inst.I.rs] + offset) & 0x00000FFF;
-    if (addr%4 == 0x003)
-    {
-        SR_B(rt, 2) = RSP.DMEM[addr - BES(0x000)];
-        addr = (addr + 0x001) & 0xFFF;
-        SR_B(rt, 3) = RSP.DMEM[addr + BES(0x000)];
-    }
-    else
-    {
-        short *s = (short *)(RSP.DMEM + addr - HES(0x000)*(addr%4 - 1));
-        SR[rt] = *(short *)(s);
-    }
-    SR[rt] = (signed short)(SR[rt]);
-    SR[0] = 0x00000000;
-    return;
-}
 extern void ULW(int rd, uint32_t addr);
-static void LW(void) /* 100011 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    register int32_t addr;
-    const int rt = inst.I.rt;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = (SR[inst.I.rs] + offset) & 0x00000FFF;
-    if (addr & 0x00000003)
-    {
-        ULW(rt, addr); /* Address Error exception:  RSP bypass MIPS pseudo-op */
-        return;
-    }
-    SR[rt] = *(int32_t*)(RSP.DMEM + addr);
-    SR[0] = 0x00000000;
-    return;
-}
-static void LBU(void) /* 100100 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    register int32_t addr;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = BES(SR[inst.I.rs] + offset) & 0x00000FFF;
-    SR[inst.I.rt] = (unsigned char)(RSP.DMEM[addr]);
-    SR[0] = 0x00000000;
-    return;
-}
-static void LHU(void) /* 100101 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    register int32_t addr;
-    const int rt = inst.I.rt;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = (SR[inst.I.rs] + offset) & 0x00000FFF;
-    if (addr%4 == 0x003)
-    {
-        SR[rt]  = RSP.DMEM[addr - BES(0x000)] << 8;
-        addr = (addr + 0x001) & 0xFFF;
-        SR[rt] |= RSP.DMEM[addr + BES(0x000)];
-        return;
-    }
-    SR[rt] = *(unsigned short *)(RSP.DMEM + addr - HES(0x000)*(addr%4 - 1));
-    SR[0] = 0x00000000;
-    return;
-}
-static void SB(void) /* 101000 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    register int32_t addr;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = BES(SR[inst.I.rs] + offset) & 0x00000FFF;
-    RSP.DMEM[addr] = (unsigned char)(SR[inst.I.rt]);
-    return;
-}
-static void SH(void) /* 101001 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    register int32_t addr;
-    const int rt = inst.I.rt;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = (SR[inst.I.rs] + offset) & 0x00000FFF;
-    if (addr%4 == 0x003)
-    {
-        RSP.DMEM[addr - BES(0x000)] = SR_B(rt, 2);
-        addr = (addr + 0x001) & 0xFFF;
-        RSP.DMEM[addr + BES(0x000)] = SR_B(rt, 3);
-        return;
-    }
-    *(short *)(RSP.DMEM + addr - HES(0x000)*(addr%4 - 1)) = (short)(SR[rt]);
-    return;
-}
 extern void USW(int rs, uint32_t addr);
-static void SW(void) /* 101011 sssss ttttt iiiiiiiiiiiiiiii */
-{
-    register int32_t addr;
-    const int rt = inst.I.rt;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = (SR[inst.I.rs] + offset) & 0x00000FFF;
-    if (addr & 0x00000003)
-    {
-        USW(rt, addr); /* Address Error exception:  RSP bypass MIPS pseudo-op */
-        return;
-    }
-    *(int32_t*)(RSP.DMEM + addr) = SR[rt];
-    return;
-}
 
 /*
  * All other behaviors defined below this point in the file are specific to
@@ -558,189 +95,151 @@ static void SW(void) /* 101011 sssss ttttt iiiiiiiiiiiiiiii */
  */
 
 /*** Scalar, Coprocessor Operations (system control) ***/
+extern RCPREG* CR[16];
 extern void SP_DMA_READ(void);
 extern void SP_DMA_WRITE(void);
-static void MFC0(void)
-{
-    const int rt = inst.R.rt;
 
-    if (rt == 0)
+static void MFC0(int rt, int rd)
+{
+    SR[rt] = *(CR[rd]);
+    SR[0] = 0x00000000;
+    if (rd == 0x7) /* SP_SEMAPHORE_REG */
+    {
+        if (CFG_MEND_SEMAPHORE_LOCK == 0)
+            return;
+        *RSP.SP_SEMAPHORE_REG = 0x00000001;
+        *RSP.SP_STATUS_REG |= 0x00000001; /* temporary bit to break CPU */
         return;
-    switch (inst.R.rd & 0xF)
-    {
-        case 0x0:
-            SR[rt] = *RSP.SP_MEM_ADDR_REG;
-            return;
-        case 0x1:
-            SR[rt] = *RSP.SP_DRAM_ADDR_REG;
-            return;
-        case 0x2: /* have not verified / been able to test yet ? */
-            message("MFC0\nDMA_READ_LENGTH", 2);
-            SR[rt] = *RSP.SP_RD_LEN_REG;
-            return;
-        case 0x3:
-            message("MFC0\nDMA_WRITE_LENGTH", 3);
-            return; /* dunno what to do, so error */
-        case 0x4:
-            SR[rt] = *RSP.SP_STATUS_REG;
-#ifdef WAIT_FOR_CPU_HOST
-            if (CFG_WAIT_FOR_CPU_HOST == 0)
-                return;
-            ++MFC0_count[rt];
-            if (MFC0_count[rt] > 07)
-                *RSP.SP_STATUS_REG |= 0x00000001; /* Let OS restart the task. */
-#endif
-            return;
-        case 0x5: /* SR[rt] = !!(SP_STATUS_REG & SP_STATUS_DMAFULL) */
-            SR[rt] = *RSP.SP_DMA_FULL_REG;
-            return;
-        case 0x6: /* SR[rt] = !!(SP_STATUS_REG & SP_STATUS_DMABUSY) */
-            SR[rt] = *RSP.SP_DMA_BUSY_REG;
-            return;
-        case 0x7:
-            SR[rt] = *RSP.SP_SEMAPHORE_REG;
-#ifdef SEMAPHORE_LOCK_CORRECTIONS
-            if (CFG_MEND_SEMAPHORE_LOCK == 0)
-                return;
-            *RSP.SP_SEMAPHORE_REG = 0x00000001;
-            *RSP.SP_STATUS_REG |= 0x00000001; /* temporary bit to break CPU */
-#endif
-            return;
-        case 0x8:
-            SR[rt] = *RSP.DPC_START_REG;
-            return;
-        case 0x9:
-            SR[rt] = *RSP.DPC_END_REG;
-            return;
-        case 0xA:
-            SR[rt] = *RSP.DPC_CURRENT_REG;
-            return;
-        case 0xB:
-            if (*RSP.DPC_STATUS_REG & 0x00000600) /* end/start valid ? */
-                message("MFC0\nCMD_STATUS", 0); /* This is just CA-related. */
-            SR[rt] = *RSP.DPC_STATUS_REG;
-            return;
-        case 0xC:
-            SR[rt] = *RSP.DPC_CLOCK_REG;
-            return;
-        case 0xD:
-            SR[rt] = *RSP.DPC_BUFBUSY_REG;
-            return;
-        case 0xE:
-            SR[rt] = *RSP.DPC_PIPEBUSY_REG;
-            return;
-        case 0xF:
-            SR[rt] = *RSP.DPC_TMEM_REG;
-            return;
     }
+    if (rd == 0x4) /* SP_STATUS_REG */
+    {
+        if (CFG_WAIT_FOR_CPU_HOST == 0)
+            return;
+        ++MFC0_count[rt];
+        if (MFC0_count[rt] > 07)
+            *RSP.SP_STATUS_REG |= 0x00000001; /* Let OS restart the task. */
+    }
+    return;
 }
-static void MTC0(void)
-{
-    const int rt = inst.R.rt;
 
-    switch (inst.R.rd & 0xF)
-    {
-        case 0x0:
-            *RSP.SP_MEM_ADDR_REG = SR[rt] & 0xFFFFFFF8;
-            return; /* Reserved upper bits are filtered out on DMA R/W. */
-        case 0x1: /* 24-bit RDRAM pointer */
-            *RSP.SP_DRAM_ADDR_REG = SR[rt] & 0xFFFFFFF8;
-            return; /* Again, we don't *yet* care about the reserved bits. */
-        case 0x2:
-            *RSP.SP_RD_LEN_REG = SR[rt] | 07;
-            SP_DMA_READ();
-            return;
-        case 0x3:
-            *RSP.SP_WR_LEN_REG = SR[rt] | 07;
-            SP_DMA_WRITE();
-            return;
-        case 0x4:
-            if (SR[rt] & 0xFE000040)
-                message("MTC0\nSP_STATUS", 2);
-            *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000001) <<  0);
-            *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00000002) <<  0);
-            *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000004) <<  1);
-            *RSP.MI_INTR_REG &= ~((SR[rt] & 0x00000008) >> 3); /* SP_CLR_INTR */
-            *RSP.MI_INTR_REG |=  ((SR[rt] & 0x00000010) >> 4); /* SP_SET_INTR */
-            *RSP.SP_STATUS_REG |= (SR[rt] & 0x00000010) >> 4; /* int set halt */
-            *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000020) <<  5);
-         /* *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00000040) <<  5); */
-            *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000080) <<  6);
-            *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00000100) <<  6);
-            *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000200) <<  7);
-            *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00000400) <<  7);
-            *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000800) <<  8);
-            *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00001000) <<  8);
-            *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00002000) <<  9);
-            *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00004000) <<  9);
-            *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00008000) << 10);
-            *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00010000) << 10);
-            *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00020000) << 11);
-            *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00040000) << 11);
-            *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00080000) << 12);
-            *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00100000) << 12);
-            *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00200000) << 13);
-            *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00400000) << 13);
-            *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00800000) << 14);
-            *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x01000000) << 14);
-            return;
-        case 0x5: /* read-only register, cannot directly write using MTC0 */
-            message("MTC0\nDMA_FULL", 1);
-            return;
-        case 0x6: /* read-only register, cannot directly write using MTC0 */
-            message("MTC0\nDMA_BUSY", 1);
-            return;
-        case 0x7:
-            *RSP.SP_SEMAPHORE_REG = 0x00000000; /* Forced (zilmar + dox). */
-            return;
-        case 0x8:
-            if (*RSP.DPC_BUFBUSY_REG) /* lock hazards not implemented */
-                message("MTC0\nCMD_START", 0);
-            *RSP.DPC_START_REG   = SR[rt] & ~07; /* Funnelcube demo--marshall */
-            *RSP.DPC_CURRENT_REG = *RSP.DPC_START_REG;
-            *RSP.DPC_END_REG     = *RSP.DPC_START_REG;
-            return;
-        case 0x9:
-            if (*RSP.DPC_BUFBUSY_REG)
-                message("MTC0\nCMD_END", 0); /* This is just CA-related. */
-            *RSP.DPC_END_REG = SR[rt] & 0xFFFFFFF8;
-            if (RSP.ProcessRdpList == NULL) /* zilmar GFX #1.2 */
-                return;
-            RSP.ProcessRdpList();
-            return;
-        case 0xA: /* read-only register, cannot directly write using MTC0 */
-            message("MTC0\nCMD_CURRENT", 1);
-            return;
-        case 0xB:
-            if (SR[rt] & 0xFFFFFD80) /* unsupported or reserved bits */
-                message("MTC0\nCMD_STATUS", 2);
-            *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000001) << 0);
-            *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000002) << 0);
-            *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000004) << 1);
-            *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000008) << 1);
-            *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000010) << 2);
-            *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000020) << 2);
-/* Some NUS-CIC-6105 SP tasks try to clear some zeroed DPC registers. */
-            *RSP.DPC_TMEM_REG     &= !(SR[rt] & 0x00000040) * -1;
-         /* *RSP.DPC_PIPEBUSY_REG &= !(SR[rt] & 0x00000080) * -1; */
-         /* *RSP.DPC_BUFBUSY_REG  &= !(SR[rt] & 0x00000100) * -1; */
-            *RSP.DPC_CLOCK_REG    &= !(SR[rt] & 0x00000200) * -1;
-            return;
-        case 0xC:
-            message("MTC0\nCMD_CLOCK", 1);
-            *RSP.DPC_CLOCK_REG = SR[rt];
-            return; /* Doc appendix says this is RW; elsewhere it says R. */
-        case 0xD: /* read-only register, cannot directly write using MTC0 */
-            message("MTC0\nCMD_BUSY", 2);
-            return;
-        case 0xE: /* read-only register, cannot directly write using MTC0 */
-            message("MTC0\nCMD_PIPE_BUSY", 2);
-            return;
-        case 0xF: /* read-only register, cannot directly write using MTC0 */
-            message("MTC0\nCMD_TMEM_BUSY", 2);
-            return;
-    }
+static void MT_DMA_CACHE(int rt)
+{
+    *RSP.SP_MEM_ADDR_REG = SR[rt] & 0xFFFFFFF8; /* & 0x00001FF8 */
+    return; /* Reserved upper bits are ignored during DMA R/W. */
 }
+static void MT_DMA_DRAM(int rt)
+{
+    *RSP.SP_DRAM_ADDR_REG = SR[rt] & 0xFFFFFFF8; /* & 0x00FFFFF8 */
+    return; /* Let the reserved bits get sent, but the pointer is 24-bit. */
+}
+static void MT_DMA_READ_LENGTH(int rt)
+{
+    *RSP.SP_RD_LEN_REG = SR[rt] | 07;
+    SP_DMA_READ();
+    return;
+}
+static void MT_DMA_WRITE_LENGTH(int rt)
+{
+    *RSP.SP_WR_LEN_REG = SR[rt] | 07;
+    SP_DMA_WRITE();
+    return;
+}
+static void MT_SP_STATUS(int rt)
+{
+    if (SR[rt] & 0xFE000040)
+        message("MTC0\nSP_STATUS", 2);
+    *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000001) <<  0);
+    *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00000002) <<  0);
+    *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000004) <<  1);
+    *RSP.MI_INTR_REG &= ~((SR[rt] & 0x00000008) >> 3); /* SP_CLR_INTR */
+    *RSP.MI_INTR_REG |=  ((SR[rt] & 0x00000010) >> 4); /* SP_SET_INTR */
+    *RSP.SP_STATUS_REG |= (SR[rt] & 0x00000010) >> 4; /* int set halt */
+    *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000020) <<  5);
+ /* *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00000040) <<  5); */
+    *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000080) <<  6);
+    *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00000100) <<  6);
+    *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000200) <<  7);
+    *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00000400) <<  7);
+    *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00000800) <<  8);
+    *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00001000) <<  8);
+    *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00002000) <<  9);
+    *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00004000) <<  9);
+    *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00008000) << 10);
+    *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00010000) << 10);
+    *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00020000) << 11);
+    *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00040000) << 11);
+    *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00080000) << 12);
+    *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00100000) << 12);
+    *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00200000) << 13);
+    *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x00400000) << 13);
+    *RSP.SP_STATUS_REG &= ~(!!(SR[rt] & 0x00800000) << 14);
+    *RSP.SP_STATUS_REG |=  (!!(SR[rt] & 0x01000000) << 14);
+    return;
+}
+static void MT_SP_RESERVED(int rt)
+{
+    const uint32_t source = SR[rt] & 0x00000000; /* forced (zilmar, dox) */
+
+    *RSP.SP_SEMAPHORE_REG = source;
+    return;
+}
+static void MT_CMD_START(int rt)
+{
+    const uint32_t source = SR[rt] & 0xFFFFFFF8; /* Funnelcube demo */
+
+    if (*RSP.DPC_BUFBUSY_REG) /* lock hazards not implemented */
+        message("MTC0\nCMD_START", 0);
+    *RSP.DPC_END_REG = *RSP.DPC_CURRENT_REG = *RSP.DPC_START_REG = source;
+    return;
+}
+static void MT_CMD_END(int rt)
+{
+    if (*RSP.DPC_BUFBUSY_REG)
+        message("MTC0\nCMD_END", 0); /* This is just CA-related. */
+    *RSP.DPC_END_REG = SR[rt] & 0xFFFFFFF8;
+    if (RSP.ProcessRdpList == NULL) /* zilmar GFX #1.2 */
+        return;
+    RSP.ProcessRdpList();
+    return;
+}
+static void MT_CMD_STATUS(int rt)
+{
+    if (SR[rt] & 0xFFFFFD80) /* unsupported or reserved bits */
+        message("MTC0\nCMD_STATUS", 2);
+    *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000001) << 0);
+    *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000002) << 0);
+    *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000004) << 1);
+    *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000008) << 1);
+    *RSP.DPC_STATUS_REG &= ~(!!(SR[rt] & 0x00000010) << 2);
+    *RSP.DPC_STATUS_REG |=  (!!(SR[rt] & 0x00000020) << 2);
+/* Some NUS-CIC-6105 SP tasks try to clear some zeroed DPC registers. */
+    *RSP.DPC_TMEM_REG     &= !(SR[rt] & 0x00000040) * -1;
+ /* *RSP.DPC_PIPEBUSY_REG &= !(SR[rt] & 0x00000080) * -1; */
+ /* *RSP.DPC_BUFBUSY_REG  &= !(SR[rt] & 0x00000100) * -1; */
+    *RSP.DPC_CLOCK_REG    &= !(SR[rt] & 0x00000200) * -1;
+    return;
+}
+static void MT_CMD_CLOCK(int rt)
+{
+    message("MTC0\nCMD_CLOCK", 1); /* read-only?? */
+    *RSP.DPC_CLOCK_REG = SR[rt];
+    return; /* Appendix says this is RW; elsewhere it says R. */
+}
+static void MT_READ_ONLY(int rt)
+{
+    char text[64];
+
+    sprintf(text, "MTC0\nInvalid write attempt.\nSR[%i] = 0x%08X", rt, SR[rt]);
+    message(text, 2);
+    return;
+}
+
+static void (*MTC0[16])(int) = {
+MT_DMA_CACHE       ,MT_DMA_DRAM        ,MT_DMA_READ_LENGTH ,MT_DMA_WRITE_LENGTH,
+MT_SP_STATUS       ,MT_READ_ONLY       ,MT_READ_ONLY       ,MT_SP_RESERVED,
+MT_CMD_START       ,MT_CMD_END         ,MT_READ_ONLY       ,MT_CMD_STATUS,
+MT_CMD_CLOCK       ,MT_READ_ONLY       ,MT_READ_ONLY       ,MT_READ_ONLY
+}; 
 void SP_DMA_READ(void)
 {
     register unsigned int length;
@@ -806,7 +305,6 @@ void SP_DMA_WRITE(void)
 
 extern ALIGNED short VR[32][8];
 
-typedef unsigned char byte;
 /*
  * Since RSP vectors are stored 100% accurately as big-endian arrays for the
  * proper vector operation math to be done, LWC2 and SWC2 emulation code will
@@ -841,39 +339,22 @@ extern unsigned char get_VCE(void);
 extern void set_VCO(unsigned short VCO);
 extern void set_VCC(unsigned short VCC);
 extern void set_VCE(unsigned char VCE);
+extern short vce[8];
+
 unsigned short rwR_VCE(void)
 { /* never saw a game try to read VCE out to a scalar GPR yet */
-#if (0)
     register unsigned short ret_slot;
 
     ret_slot = 0x00 | (unsigned short)get_VCE();
     return (ret_slot);
-#else
-    char* debug = "CFC2\nrd = 0o00";
-
- /* *(debug +  1) = (inst.R.rs & 4) ? 'T' : 'F'; */
-    *(debug + 12) |= inst.R.rd >> 3;
-    *(debug + 13) |= inst.R.rd & 07;
-    message(debug, 3);
-    return 0x00FF;
-#endif
 }
 void rwW_VCE(unsigned short VCE)
 { /* never saw a game try to write VCE using a scalar GPR yet */
-#if (0)
     register int i;
 
     VCE = 0x00 | (VCE & 0xFF);
     for (i = 0; i < 8; i++)
         vce[i] = (VCE >> i) & 1;
-#else
-    char *debug = "CTC2\nrd = 0o00";
-
- /* *(debug +  1) = (inst.R.rs & 4) ? 'T' : 'F'; */
-    *(debug + 12) |= inst.R.rd >> 3;
-    *(debug + 13) |= inst.R.rd & 07;
-    message(debug, 3);
-#endif
     return;
 }
 
@@ -899,117 +380,79 @@ static void (*W_VCF[32])(unsigned short) = {
     set_VCO,set_VCC,rwW_VCE,rwW_VCE,
     set_VCO,set_VCC,rwW_VCE,rwW_VCE
 };
-static void MFC2(void)
+static void MFC2(int rt, int vs, int e)
 {
-    register int element;
-    const int rt = inst.R.rt;
-    const int vs = inst.R.rd;
-
-    element = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    SR_B(rt, 2) = VR_B(vs, element);
-    element = (element + 0x1) & 0xF;
-    SR_B(rt, 3) = VR_B(vs, element);
+    SR_B(rt, 2) = VR_B(vs, e);
+    e = (e + 0x1) & 0xF;
+    SR_B(rt, 3) = VR_B(vs, e);
     SR[rt] = (signed short)(SR[rt]);
     SR[0] = 0x00000000;
     return;
 }
-static void MTC2(void)
+static void MTC2(int rt, int vd, int e)
 {
-    register int element;
-    const int rt = inst.R.rt;
-    const int vd = inst.R.rd;
-
-    element = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    VR_B(vd, element+0x0) = SR_B(rt, 2);
-    VR_B(vd, element+0x1) = SR_B(rt, 3);
+    VR_B(vd, e+0x0) = SR_B(rt, 2);
+    VR_B(vd, e+0x1) = SR_B(rt, 3);
     return; /* If element == 0xF, it does not matter; loads do not wrap over. */
 }
-static void CFC2(void)
+static void CFC2(int rt, int rd)
 {
-    SR[inst.R.rt] = (signed short)R_VCF[inst.R.rd]();
+    SR[rt] = (signed short)R_VCF[rd]();
     SR[0] = 0x00000000;
     return;
 }
-static void CTC2(void)
+static void CTC2(int rt, int rd)
 {
-    W_VCF[inst.R.rd](SR[inst.R.rt] & 0x0000FFFF);
-    return;
-}
-static void C2(void)
-{
-    message("SU leaked to VU!", 3);
+    W_VCF[rd](SR[rt] & 0x0000FFFF);
     return;
 }
 
 /*** Scalar, Coprocessor Operations (vector unit, scalar cache transfers) ***/
-void LS_Group_I(int direction, int length)
-{ /* Group I vector loads and stores, as defined in SGI's patent. */
-    register int32_t addr;
-    register int i;
-    register int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const signed int offset = SE(inst.SW, 6);
+INLINE static void LBV(int vt, int element, int offset, int base)
+{
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + length*offset);
-    if (direction == 0) /* "Load %s to Vector Unit" */
-        for (i = 0; i < length; i++)
-            VR_B(inst.R.rt, (e + i) | 0x0) = RSP.DMEM[BES(addr + i) & 0xFFF];
-    else /* "Store %s from Vector Unit" */
-        for (i = 0; i < length; i++)
-            RSP.DMEM[BES(addr + i) & 0xFFF] = VR_B(inst.R.rt, (e + i) & 0xF);
+    addr = (SR[base] + 1*offset) & 0x00000FFF;
+    VR_B(vt, e) = RSP.DMEM[BES(addr)];
     return;
 }
-static void LBV(void)
+INLINE static void LSV(int vt, int element, int offset, int base)
 {
-    LS_Group_I(0, sizeof(unsigned char));
-    return;
-}
-static void LSV(void)
-{
-#if (0)
-    LS_Group_I(0, sizeof(short) > 2 ? 2 : sizeof(short));
-    return;
-#else
-    register int32_t addr;
-    const int vt   = inst.R.rt;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const signed int offset = SE(inst.SW, 6);
+    int correction;
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 2*offset) & 0x00000FFF;
     if (e & 0x1)
     {
         message("LSV\nIllegal element.", 3);
         return;
     }
-    if (addr%0x004 == 0x003)
-    { /* possibly not actually need this branch */
+    addr = (SR[base] + 2*offset) & 0x00000FFF;
+    correction = addr % 0x004;
+    if (correction == 0x003)
+    {
         message("LSV\nWeird addr.", 3);
         return;
     }
-    VR_S(vt, e) = *(short *)(RSP.DMEM + addr - HES(0x000)*(addr%0x004 - 1));
+    VR_S(vt, e) = *(short *)(RSP.DMEM + addr - HES(0x000)*(correction - 1));
     return;
-#endif
 }
-static void LLV(void)
+INLINE static void LLV(int vt, int element, int offset, int base)
 {
-#if (0)
-    LS_Group_I(0, sizeof(int32_t) > 4 ? 4 : sizeof(int32_t));
-    return;
-#else
     int correction;
-    register int32_t addr;
-    const int vt = inst.R.rt;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const signed int offset = SE(inst.SW, 6);
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 4*offset) & 0x00000FFF;
     if (e & 0x1)
     {
         message("LLV\nOdd element.", 3);
         return;
     } /* Illegal (but still even) elements are used by Boss Game Studios. */
-    if (addr%0x004 == 0x003)
+    addr = (SR[base] + 4*offset) & 0x00000FFF;
+    if (addr & 0x00000001)
     {
-        message("LLV\nWeird addr.", 3);
+        message("LLV\nOdd addr.", 3);
         return;
     }
     correction = HES(0x000)*(addr%0x004 - 1);
@@ -1017,25 +460,18 @@ static void LLV(void)
     addr = (addr + 0x00000002) & 0x00000FFF; /* F3DLX 1.23:  addr%4 is 0x002. */
     VR_S(vt, e+0x2) = *(short *)(RSP.DMEM + addr + correction);
     return;
-#endif
 }
-static void LDV(void)
+INLINE static void LDV(int vt, int element, int offset, int base)
 {
-#if (0)
-    LS_Group_I(0, 8);
-    return;
-#else
-    register int32_t addr;
-    const int vt = inst.R.rt;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const signed int offset = SE(inst.SW, 6);
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 8*offset) & 0x00000FFF;
     if (e & 0x1)
     {
         message("LDV\nOdd element.", 3);
         return;
     } /* Illegal (but still even) elements are used by Boss Game Studios. */
+    addr = (SR[base] + 8*offset) & 0x00000FFF;
     switch (addr & 07)
     {
         case 00:
@@ -1109,60 +545,42 @@ static void LDV(void)
             VR_S(vt, e+0x6) = *(short *)(RSP.DMEM + addr + 0x005);
             return;
     }
-#endif
 }
-static void SBV(void)
+INLINE static void SBV(int vt, int element, int offset, int base)
 {
-    LS_Group_I(1, sizeof(unsigned char));
-    return;
-}
-static void SSV(void)
-{
-#if (1)
-    LS_Group_I(1, sizeof(short) > 2 ? 2 : sizeof(short));
-    return;
-#else
-    register int32_t addr;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const int vt = inst.R.rt;
-    const signed int offset = SE(inst.SW, 6);
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 2*offset) & 0x00000FFF;
-    if (e & 0x1)
-    {
-        message("SSV\nIllegal element.", 3);
-        return;
-    }
-    if (addr%0x004 == 0x003)
-    {
-        message("SSV\nWeird addr.", 3);
-        return;
-    }
-    *(short *)(RSP.DMEM + addr - HES(0x000)*(addr%0x004 - 1)) = VR_S(vt, e);
+    addr = (SR[base] + 1*offset) & 0x00000FFF;
+    RSP.DMEM[BES(addr)] = VR_B(vt, e);
     return;
-#endif
 }
-static void SLV(void)
+INLINE static void SSV(int vt, int element, int offset, int base)
 {
-#if (0)
-    LS_Group_I(1, sizeof(int32_t) > 4 ? 4 : sizeof(int32_t));
+    register uint32_t addr;
+    const int e = element;
+
+    addr = (SR[base] + 2*offset) & 0x00000FFF;
+    RSP.DMEM[BES(addr)] = VR_B(vt, (e + 0x0));
+    addr = (addr + 0x00000001) & 0x00000FFF;
+    RSP.DMEM[BES(addr)] = VR_B(vt, (e + 0x1) & 0xF);
     return;
-#else
+}
+INLINE static void SLV(int vt, int element, int offset, int base)
+{
     int correction;
-    register int32_t addr;
-    const int vt = inst.R.rt;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const signed int offset = SE(inst.SW, 6);
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 4*offset) & 0x00000FFF;
-    if ((e & 0x1) || e > 0xC) /* must support illegal, odd elements in F3DEX2 */
+    if ((e & 0x1) || e > 0xC) /* must support illegal even elements in F3DEX2 */
     {
         message("SLV\nIllegal element.", 3);
         return;
     }
-    if (addr%0x004 == 0x003)
+    addr = (SR[base] + 4*offset) & 0x00000FFF;
+    if (addr & 0x00000001)
     {
-        message("SLV\nWeird addr.", 3);
+        message("SLV\nOdd addr.", 3);
         return;
     }
     correction = HES(0x000)*(addr%0x004 - 1);
@@ -1170,23 +588,19 @@ static void SLV(void)
     addr = (addr + 0x00000002) & 0x00000FFF; /* F3DLX 0.95:  "Mario Kart 64" */
     *(short *)(RSP.DMEM + addr + correction) = VR_S(vt, e+0x2);
     return;
-#endif
 }
-static void SDV(void)
+INLINE static void SDV(int vt, int element, int offset, int base)
 {
-#if (0)
-    LS_Group_I(1, 8);
-    return;
-#else
-    register int32_t addr;
-    const int vt = inst.R.rt;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const signed int offset = SE(inst.SW, 6);
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 8*offset) & 0x00000FFF;
-    if ((e & 0x1) || e > 0x8)
+    addr = (SR[base] + 8*offset) & 0x00000FFF;
+    if (e > 0x8 || (e & 0x1))
     { /* Illegal elements with Boss Game Studios publications. */
-        LS_Group_I(1, 8);
+        register int i;
+
+        for (i = 0; i < 8; i++)
+            RSP.DMEM[BES(addr &= 0x00000FFF)] = VR_B(vt, (e+i)&0xF);
         return;
     }
     switch (addr & 07)
@@ -1258,31 +672,28 @@ static void SDV(void)
             *(short *)(RSP.DMEM + addr + 0x005) = VR_S(vt, e+0x6);
             return;
     }
-#endif
 }
 
 /*
  * Group II vector loads and stores:
  * PV and UV (As of RCP implementation, XV and ZV are reserved opcodes.)
  */
-static void LPV(void)
+INLINE static void LPV(int vt, int element, int offset, int base)
 {
-    register int32_t addr;
+    register uint32_t addr;
     register int b;
-    const int vt = inst.R.rt;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 8*offset) & 0x00000FFF;
     if (e != 0x0)
     {
         message("LPV\nIllegal element.", 3);
         return;
     }
+    addr = (SR[base] + 8*offset) & 0x00000FFF;
     b = addr & 07;
     addr &= ~07;
     switch (b)
-    { /** to-do:  vectorize shifts ??? **/
+    {
         case 00:
             VR[vt][07] = RSP.DMEM[addr + BES(0x007)] << 8;
             VR[vt][06] = RSP.DMEM[addr + BES(0x006)] << 8;
@@ -1379,26 +790,23 @@ static void LPV(void)
             return;
     }
 }
-static void LUV(void)
+INLINE static void LUV(int vt, int element, int offset, int base)
 {
-    register int32_t addr;
+    register uint32_t addr;
     register int b;
-    const int vt = inst.R.rt;
-    int e = (inst.W & 0x000007FF) >> (6 + 1); /* fixme ? */ /* inst.R.sa >> 1 */
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    int e = element;
 
-    addr = (SR[inst.R.rs] + 8*offset) & 0x00000FFF;
+    addr = (SR[base] + 8*offset) & 0x00000FFF;
     if (e != 0x0)
     { /* "Mia Hamm Soccer 64" SP exception override (zilmar) */
         addr += -e & 0xF;
         for (b = 0; b < 8; b++)
         {
-            addr &= 0x00000FFF;
-            VR[vt][b] = RSP.DMEM[BES(addr)] << 7;
+            VR[vt][b] = RSP.DMEM[BES(addr &= 0x00000FFF)] << 7;
             --e;
             addr -= 16 * (e == 0x0);
             ++addr;
-        } /* to-do:  this shit can't be straightforward, like SQV ? */
+        }
         return;
     }
     b = addr & 07;
@@ -1501,22 +909,20 @@ static void LUV(void)
             return;
     }
 }
-static void SPV(void)
+INLINE static void SPV(int vt, int element, int offset, int base)
 {
     register int b;
-    register int32_t addr;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const int vt = inst.R.rt;
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 8*offset) & 0x00000FFF;
-    b = addr & 07;
-    addr &= ~07;
     if (e != 0x0)
     {
         message("SPV\nIllegal element.", 3);
         return;
     }
+    addr = (SR[base] + 8*offset) & 0x00000FFF;
+    b = addr & 07;
+    addr &= ~07;
     switch (b)
     {
         case 00:
@@ -1615,22 +1021,20 @@ static void SPV(void)
             return;
     }
 }
-static void SUV(void)
+INLINE static void SUV(int vt, int element, int offset, int base)
 {
     register int b;
-    register int32_t addr;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const int vt = inst.R.rt;
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 8*offset) & 0x00000FFF;
-    b = addr & 07;
-    addr &= ~07;
     if (e != 0x0)
     {
         message("SUV\nIllegal element.", 3);
         return;
     }
+    addr = (SR[base] + 8*offset) & 0x00000FFF;
+    b = addr & 07;
+    addr &= ~07;
     switch (b)
     {
         case 00:
@@ -1665,19 +1069,17 @@ static void SUV(void)
  * Group III vector loads and stores:
  * HV, FV, and AV (As of RCP implementation, AV opcodes are reserved.)
  */
-static void LHV(void)
+static void LHV(int vt, int element, int offset, int base)
 {
-    register int32_t addr;
-    const int vt = inst.R.rt;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 16*offset) & 0x00000FFF;
     if (e != 0x0)
     {
         message("LHV\nIllegal element.", 3);
         return;
     }
+    addr = (SR[base] + 16*offset) & 0x00000FFF;
     if (addr & 0x0000000E)
     {
         message("LHV\nIllegal addr.", 3);
@@ -1694,41 +1096,29 @@ static void LHV(void)
     VR[vt][00] = RSP.DMEM[addr + HES(0x000)] << 7;
     return;
 }
-static void LFV(void)
+NOINLINE static void LFV(int vt, int element, int offset, int base)
 { /* Dummy implementation only:  Do any games execute this? */
-    char debugger[24] = "LFV\t$v00[X], 0x000($00)";
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
-    const char digits[16] = {
-        '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'
-    };
+    char debugger[32];
 
-    debugger[006] |= inst.R.rt / 10;
-    debugger[007] |= inst.R.rt % 10;
-    debugger[011]  = digits[(inst.W & 0x000007FF) >> (6 + 1)];
-    debugger[017]  = digits[(offset >> 8) & 0xF];
-    debugger[020]  = digits[(offset >> 4) & 0xF];
-    debugger[021]  = digits[(offset >> 0) & 0xF];
-    debugger[024] |= inst.R.rs / 10;
-    debugger[025] |= inst.R.rs % 10;
+    sprintf(debugger, "%s     $v%i[0x%X], 0x%03X($%i)", "LFV",
+        vt, element, offset & 0xFFF, base);
     message(debugger, 3);
     return;
 }
-static void SHV(void)
+static void SHV(int vt, int element, int offset, int base)
 {
-    register int32_t addr;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const int vt = inst.R.rt;
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 16*offset) & 0x00000FFF;
-    if (addr & 0x0000000E)
-    {
-        message("LHV\nIllegal addr.", 3);
-        return;
-    }
     if (e != 0x0)
     {
-        message("LHV\nIllegal element.", 3);
+        message("SHV\nIllegal element.", 3);
+        return;
+    }
+    addr = (SR[base] + 16*offset) & 0x00000FFF;
+    if (addr & 0x0000000E)
+    {
+        message("SHV\nIllegal addr.", 3);
         return;
     }
     addr ^= MES(00);
@@ -1742,14 +1132,12 @@ static void SHV(void)
     RSP.DMEM[addr + HES(0x000)] = (unsigned char)(VR[vt][00] >> 7);
     return;
 }
-static void SFV(void)
+static void SFV(int vt, int element, int offset, int base)
 {
-    register int32_t addr;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const int vt = inst.R.rt;
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 16*offset) & 0x00000FFF;
+    addr = (SR[base] + 16*offset) & 0x00000FFF;
     addr &= 0x00000FF3;
     addr ^= BES(00);
     switch (e)
@@ -1776,23 +1164,21 @@ static void SFV(void)
  * Group IV vector loads and stores:
  * QV and RV
  */
-static void LQV(void)
+INLINE static void LQV(int vt, int element, int offset, int base)
 {
-    register int32_t addr;
+    register uint32_t addr;
     register int b;
-    const int vt = inst.R.rt;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* Boss Game Studios trap */
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    const int e = element; /* Boss Game Studios illegal elements */
 
-    addr = (SR[inst.R.rs] + 16*offset) & 0x00000FFF;
-    if (addr & 0x001)
-    {
-        message("LQV\nOdd addr.", 3);
-        return;
-    }
     if (e & 0x1)
     {
         message("LQV\nOdd element.", 3);
+        return;
+    }
+    addr = (SR[base] + 16*offset) & 0x00000FFF;
+    if (addr & 0x00000001)
+    {
+        message("LQV\nOdd addr.", 3);
         return;
     }
     b = addr & 0x0000000F;
@@ -1853,21 +1239,19 @@ static void LQV(void)
             return;
     }
 }
-static void LRV(void)
+static void LRV(int vt, int element, int offset, int base)
 {
-    register int32_t addr;
+    register uint32_t addr;
     register int b;
-    const int vt = inst.R.rt;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* Boss Game Studios trap */
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 16*offset) & 0x00000FFF;
     if (e != 0x0)
     {
         message("LRV\nIllegal element.", 3);
         return;
     }
-    if (addr & 0x001)
+    addr = (SR[base] + 16*offset) & 0x00000FFF;
+    if (addr & 0x00000001)
     {
         message("LRV\nOdd addr.", 3);
         return;
@@ -1922,21 +1306,19 @@ static void LRV(void)
             return;
     }
 }
-static void SQV(void)
+INLINE static void SQV(int vt, int element, int offset, int base)
 {
-    register int32_t addr;
+    register uint32_t addr;
     register int b;
-    const int vt = inst.R.rt;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 16*offset) & 0x00000FFF;
+    addr = (SR[base] + 16*offset) & 0x00000FFF;
     if (e != 0x0)
     { /* happens with "Mia Hamm Soccer 64" */
         register int i;
 
         for (i = 0; i < 16 - addr%16; i++)
-            RSP.DMEM[BES((addr + i) & 0xFFF)] = VR_B(inst.R.rt, (e + i) & 0xF);
+            RSP.DMEM[BES((addr + i) & 0xFFF)] = VR_B(vt, (e + i) & 0xF);
         return;
     }
     b = addr & 0x0000000F;
@@ -1982,27 +1364,25 @@ static void SQV(void)
             return;
     }
 }
-static void SRV(void)
+static void SRV(int vt, int element, int offset, int base)
 {
-    register int32_t addr;
+    register uint32_t addr;
     register int b;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const int vt = inst.R.rt;
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 16*offset) & 0x00000FFF;
     if (e != 0x0)
     {
         message("SRV\nIllegal element.", 3);
         return;
     }
-    b = addr & 0x0000000F;
-    addr &= ~0x0000000F;
-    if (addr & 0x001)
+    addr = (SR[base] + 16*offset) & 0x00000FFF;
+    if (addr & 0x00000001)
     {
         message("SRV\nOdd addr.", 3);
         return;
     }
+    b = addr & 0x0000000F;
+    addr &= ~0x0000000F;
     switch (b/2)
     {
         case 0xE/2:
@@ -2056,18 +1436,15 @@ static void SRV(void)
  * Group V vector loads and stores
  * TV and SWV (As of RCP implementation, LTWV opcode was undesired.)
  */
-static void LTV(void)
+INLINE static void LTV(int vt, int element, int offset, int base)
 {
     register int i;
-    register int32_t addr;
-    const int vt = inst.R.rt;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 16*offset) & 0x00000FFF;
-    if (addr & 0x00F)
+    if (e & 1)
     {
-        message("LTV\nIllegal addr.", 3);
+        message("LTV\nIllegal element.", 3);
         return;
     }
     if (vt & 07)
@@ -2075,45 +1452,34 @@ static void LTV(void)
         message("LTV\nUncertain case!", 3);
         return; /* For LTV I am not sure; for STV I have an idea. */
     }
-    if (e & 1)
+    addr = (SR[base] + 16*offset) & 0x00000FFF;
+    if (addr & 0x0000000F)
     {
-        message("LTV\nIllegal element.", 3);
+        message("LTV\nIllegal addr.", 3);
         return;
     }
     for (i = 0; i < 8; i++) /* SGI screwed LTV up on N64.  See STV instead. */
         VR[vt+i][(-e/2 + i) & 07] = *(short *)(RSP.DMEM + addr + HES(2*i));
     return;
 }
-static void SWV(void)
+NOINLINE static void SWV(int vt, int element, int offset, int base)
 { /* Dummy implementation only:  Do any games execute this? */
-    char debugger[24] = "SWV\t$v00[X], 0x000($00)";
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
-    const char digits[16] = {
-        '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'
-    };
-    debugger[006] |= inst.R.rt / 10;
-    debugger[007] |= inst.R.rt % 10;
-    debugger[011]  = digits[(inst.W & 0x000007FF) >> (6 + 1)];
-    debugger[017]  = digits[(offset >> 8) & 0xF];
-    debugger[020]  = digits[(offset >> 4) & 0xF];
-    debugger[021]  = digits[(offset >> 0) & 0xF];
-    debugger[024] |= inst.R.rs / 10;
-    debugger[025] |= inst.R.rs % 10;
+    char debugger[32];
+
+    sprintf(debugger, "%s     $v%i[0x%X], 0x%03X($%i)", "SWV",
+        vt, element, offset & 0xFFF, base);
     message(debugger, 3);
     return;
 }
-static void STV(void)
+INLINE static void STV(int vt, int element, int offset, int base)
 {
     register int i;
-    register int32_t addr;
-    const int e = (inst.W & 0x000007FF) >> (6 + 1); /* inst.R.sa >> 1 */
-    const int vt = inst.R.rt;
-    const signed int offset = -(inst.SW & 0x00000040) | inst.R.func;
+    register uint32_t addr;
+    const int e = element;
 
-    addr = (SR[inst.R.rs] + 16*offset) & 0x00000FFF;
-    if (addr & 0x00F)
+    if (e & 1)
     {
-        message("STV\nIllegal addr.", 3);
+        message("STV\nIllegal element.", 3);
         return;
     }
     if (vt & 07)
@@ -2121,9 +1487,10 @@ static void STV(void)
         message("STV\nUncertain case!", 2);
         return; /* vt &= 030; */
     }
-    if (e & 1)
+    addr = (SR[base] + 16*offset) & 0x00000FFF;
+    if (addr & 0x0000000F)
     {
-        message("STV\nIllegal element.", 3);
+        message("STV\nIllegal addr.", 3);
         return;
     }
     for (i = 0; i < 8; i++)
@@ -2132,52 +1499,6 @@ static void STV(void)
 }
 
 /*** Modern pseudo-operations (not real instructions, but nice shortcuts) ***/
-/*
- * cannot implement the following pseudo-instructions due to 2-D table limit:
- *
- * BAL     `BGEZAL  $zero, offset`         "Branch and Link"
- * NOT     `NOR     rd, rs, $zero`         "Not"
- * LA      [like LI but with label token]  "Load Address"
- * LI      `ORI     rd, $at, imm_lo`       "Load Immediate" (LUI $at, imm_hi)
- * MOVE    `ADD     rd, src, $zero`        "Move"
- * NEGU    `SUB     rd, $zero, src`        "Negate without Overflow"
- * CLEAR   `AND     rd, $zero, $zero`      "Clear"
- */
-static void NOP(void)
-{ /* "No Operation" */
-    SR[0] = SR[0] << 0;
-    return;
-}
-static void B(void)
-{ /* "Unconditional Branch" */
-    const int BC = (SR[0] == SR[0]);
-    const int offset = (signed short)(inst.I.imm);
-
-    if (BC == 0) /* impossible */
-        return;
-    set_PC(*RSP.SP_PC_REG + 4*offset + SLOT_OFF);
-    return;
-}
-static void BEQZ(void)
-{ /* "Branch on Equal to Zero" */
-    const int BC = (SR[inst.I.rs] == 0);
-    const int offset = (signed short)(inst.I.imm);
-
-    if (BC == 0)
-        return;
-    set_PC(*RSP.SP_PC_REG + 4*offset + SLOT_OFF);
-    return;
-}
-static void BNEZ(void)
-{ /* "Branch on Not Equal to Zero" */
-    const int BC = (SR[inst.I.rs] != 0);
-    const int offset = (signed short)(inst.I.imm);
-
-    if (BC == 0)
-        return;
-    set_PC(*RSP.SP_PC_REG + 4*offset + SLOT_OFF);
-    return;
-}
 void ULW(int rd, uint32_t addr)
 { /* "Unaligned Load Word" */
     if (addr & 0x00000001)
@@ -2222,598 +1543,4 @@ void USW(int rs, uint32_t addr)
     return;
 }
 
-/*
- * All below pseudo-op-codes are unofficial and were invented by me.
- */
-static void LXI(void)
-{ /* "Load Sign-Extended Lower Immediate" (unofficial, created by me) */
-    SR[inst.I.rt] = (signed short)(inst.I.imm);
-    SR[0] = 0x00000000;
-    return;
-} /* should translate to `ADDI[U] rt, $zero, imm` */
-static void LBA(void)
-{ /* "Load Byte from Absolute Address" (unofficial, created by me) */
-    register int32_t addr;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = BES(0x00000000 + offset) & 0x00000FFF;
-    SR[inst.I.rt] = (signed char)(RSP.DMEM[addr]);
-    SR[0] = 0x00000000;
-    return;
-}
-static void LHA(void)
-{ /* "Load Halfword from Absolute Address" (unofficial, created by me) */
-    register int32_t addr;
-    const int rt = inst.I.rt;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = (0x00000000 + offset) & 0x00000FFF;
-    if (addr%4 == 0x003)
-    {
-        SR_B(rt, 2) = RSP.DMEM[addr - BES(0x000)];
-        addr = (addr + 0x001) & 0xFFF;
-        SR_B(rt, 3) = RSP.DMEM[addr + BES(0x000)];
-    }
-    else
-        SR[rt] = *(short *)(RSP.DMEM + addr - HES(0x000)*(addr%4 - 1));
-    SR[rt] = (signed short)(SR[rt]);
-    SR[0] = 0x00000000;
-    return;
-}
-static void LWA(void)
-{ /* "Load Word from Absolute Address" (unofficial, created by me) */
-    register int32_t addr;
-    const int rt = inst.I.rt;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = (0x00000000 + offset) & 0x00000FFF;
-    if (addr & 0x00000003)
-    {
-        ULW(rt, addr); /* Address Error exception:  RSP bypass MIPS pseudo-op */
-        return;
-    }
-    SR[rt] = *(int32_t*)(RSP.DMEM + addr);
-    SR[0] = 0x00000000;
-    return;
-}
-static void LBUA(void)
-{ /* "Load Byte Unsigned from Absolute Address" (unofficial, created by me) */
-    register int32_t addr;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = BES(0x00000000 + offset) & 0x00000FFF;
-    SR[inst.I.rt] = (unsigned char)(RSP.DMEM[addr]);
-    SR[0] = 0x00000000;
-    return;
-}
-static void LHUA(void)
-{ /* "Load Halfword Unsigned from Absolute Address" (unofficial...) */
-    register int32_t addr;
-    const int rt = inst.I.rt;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = (0x00000000 + offset) & 0x00000FFF;
-    if (addr%4 == 0x003)
-    {
-        SR[rt]  = RSP.DMEM[addr - BES(0x000)] << 8;
-        addr = (addr + 0x001) & 0xFFF;
-        SR[rt] |= RSP.DMEM[addr + BES(0x000)];
-        return;
-    }
-    SR[rt] = *(unsigned short *)(RSP.DMEM + addr - HES(0x000)*(addr%4 - 1));
-    SR[0] = 0x00000000;
-    return;
-}
-static void SBA(void)
-{ /* "Store Byte from Absolute Address" (unofficial, created by me) */
-    register int32_t addr;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = BES(0x00000000 + offset) & 0x00000FFF;
-    RSP.DMEM[addr] = (unsigned char)(SR[inst.I.rt]);
-    return;
-}
-static void SHA(void)
-{ /* "Store Halfword from Absolute Address" (unofficial, created by me) */
-    register int32_t addr;
-    const int rt = inst.I.rt;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = (0x00000000 + offset) & 0x00000FFF;
-    if (addr%4 == 0x003)
-    {
-        RSP.DMEM[addr - BES(0x000)] = SR_B(rt, 2);
-        addr = (addr + 0x001) & 0xFFF;
-        RSP.DMEM[addr + BES(0x000)] = SR_B(rt, 3);
-        return;
-    }
-    *(int16_t*)(RSP.DMEM + addr - HES(0x000)*(addr%4 - 1)) = (short)(SR[rt]);
-    return;
-}
-static void SWA(void)
-{ /* "Store Word from Absolute Address" (unofficial, created by me) */
-    register int32_t addr;
-    const int rt = inst.I.rt;
-    const signed int offset = (signed short)(inst.I.imm);
-
-    addr = (0x00000000 + offset) & 0x00000FFF;
-    if (addr & 0x00000003)
-    {
-        USW(rt, addr); /* Address Error exception:  RSP bypass MIPS pseudo-op */
-        return;
-    }
-    *(int32_t*)(RSP.DMEM + addr) = SR[rt];
-    return;
-}
-
-/*
-        SLL    ,res_S  ,SRL    ,SRA    ,SLLV   ,res_S  ,SRLV   ,SRAV   ,
-        JR     ,JALR   ,res_S  ,res_S  ,res_S  ,BREAK  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        ADD    ,ADDU   ,SUB    ,SUBU   ,AND    ,OR     ,XOR    ,NOR    ,
-        res_S  ,res_S  ,SLT    ,SLTU   ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-*/
-static void (*EX_SCALAR[64][32])(void) = {
-    { /* SPECIAL (custom convergence of both halves to fit table) */
-        ADD    ,ADDU   ,SUB    ,SUBU   ,AND    ,OR     ,XOR    ,NOR    ,
-        JR     ,JALR   ,SLT    ,SLTU   ,res_S  ,BREAK  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* REGIMM */
-        BLTZ   ,BGEZ   ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        BLTZAL ,BGEZAL ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* Jump */
-        J      ,J      ,J      ,J      ,J      ,J      ,J      ,J      ,
-        J      ,J      ,J      ,J      ,J      ,J      ,J      ,J      ,
-        J      ,J      ,J      ,J      ,J      ,J      ,J      ,J      ,
-        J      ,J      ,J      ,J      ,J      ,J      ,J      ,J      ,
-    },
-    { /* Jump and Link */
-        JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,
-        JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,
-        JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,
-        JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,JAL    ,
-    },
-    { /* Branch on Equal */
-        BEQZ   ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,
-        BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,
-        BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,
-        BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,BEQ    ,
-    },
-    { /* Branch on Not Equal */
-        BNEZ   ,BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,
-        BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,
-        BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,
-        BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,BNE    ,
-    },
-    { /* Branch on Less Than or Equal to Zero */
-        B      ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,
-        BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,
-        BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,
-        BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,BLEZ   ,
-    },
-    { /* Branch on Greater Than Zero */
-        NOP    ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,
-        BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,
-        BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,
-        BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,BGTZ   ,
-    },
-    { /* Add Immediate Word */
-        LXI    ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,
-        ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,
-        ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,
-        ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,ADDI   ,
-    },
-    { /* Add Immediate Unsigned Word */
-        LXI    ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,
-        ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,
-        ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,
-        ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,ADDIU  ,
-    }, /* Note:  Because the RSP is free of exception-handling, ADDI = ADDIU. */
-    { /* Set on Less Than Immediate */
-        NOP    ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,
-        SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,
-        SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,
-        SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,SLTI   ,
-    },
-    { /* Set on Less Than Immediate Unsigned */
-        NOP    ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,
-        SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,
-        SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,
-        SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,SLTIU  ,
-    },
-    { /* And Immediate */
-        NOP    ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,
-        ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,
-        ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,
-        ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,ANDI   ,
-    },
-    { /* Or Immediate */
-        NOP    ,ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,
-        ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,
-        ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,
-        ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,ORI    ,
-    },
-    { /* Exclusive Or Immediate */
-        NOP    ,XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,
-        XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,
-        XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,
-        XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,XORI   ,
-    },
-    { /* Load Upper Immediate */
-        NOP    ,LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,
-        LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,
-        LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,
-        LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,LUI    ,
-    },
-    { /* COP0 */
-        MFC0   ,res_S  ,res_S  ,res_S  ,MTC0   ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* COP2 */
-        MFC2   ,res_S  ,CFC2   ,res_S  ,MTC2   ,res_S  ,CTC2   ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        C2     ,C2     ,C2     ,C2     ,C2     ,C2     ,C2     ,C2     ,
-        C2     ,C2     ,C2     ,C2     ,C2     ,C2     ,C2     ,C2     ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* Load Byte */
-        LBA    ,LB     ,LB     ,LB     ,LB     ,LB     ,LB     ,LB     ,
-        LB     ,LB     ,LB     ,LB     ,LB     ,LB     ,LB     ,LB     ,
-        LB     ,LB     ,LB     ,LB     ,LB     ,LB     ,LB     ,LB     ,
-        LB     ,LB     ,LB     ,LB     ,LB     ,LB     ,LB     ,LB     ,
-    },
-    { /* Load Halfword */
-        LHA    ,LH     ,LH     ,LH     ,LH     ,LH     ,LH     ,LH     ,
-        LH     ,LH     ,LH     ,LH     ,LH     ,LH     ,LH     ,LH     ,
-        LH     ,LH     ,LH     ,LH     ,LH     ,LH     ,LH     ,LH     ,
-        LH     ,LH     ,LH     ,LH     ,LH     ,LH     ,LH     ,LH     ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* Load Word */
-        LWA    ,LW     ,LW     ,LW     ,LW     ,LW     ,LW     ,LW     ,
-        LW     ,LW     ,LW     ,LW     ,LW     ,LW     ,LW     ,LW     ,
-        LW     ,LW     ,LW     ,LW     ,LW     ,LW     ,LW     ,LW     ,
-        LW     ,LW     ,LW     ,LW     ,LW     ,LW     ,LW     ,LW     ,
-    },
-    { /* Load Byte Unsigned */
-        LBUA   ,LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,
-        LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,
-        LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,
-        LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,LBU    ,
-    },
-    { /* Load Halfword Unsigned */
-        LHUA   ,LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,
-        LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,
-        LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,
-        LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,LHU    ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* Store Byte */
-        SBA    ,SB     ,SB     ,SB     ,SB     ,SB     ,SB     ,SB     ,
-        SB     ,SB     ,SB     ,SB     ,SB     ,SB     ,SB     ,SB     ,
-        SB     ,SB     ,SB     ,SB     ,SB     ,SB     ,SB     ,SB     ,
-        SB     ,SB     ,SB     ,SB     ,SB     ,SB     ,SB     ,SB     ,
-    },
-    { /* Store Halfword */
-        SHA    ,SH     ,SH     ,SH     ,SH     ,SH     ,SH     ,SH     ,
-        SH     ,SH     ,SH     ,SH     ,SH     ,SH     ,SH     ,SH     ,
-        SH     ,SH     ,SH     ,SH     ,SH     ,SH     ,SH     ,SH     ,
-        SH     ,SH     ,SH     ,SH     ,SH     ,SH     ,SH     ,SH     ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* Store Word */
-        SWA    ,SW     ,SW     ,SW     ,SW     ,SW     ,SW     ,SW     ,
-        SW     ,SW     ,SW     ,SW     ,SW     ,SW     ,SW     ,SW     ,
-        SW     ,SW     ,SW     ,SW     ,SW     ,SW     ,SW     ,SW     ,
-        SW     ,SW     ,SW     ,SW     ,SW     ,SW     ,SW     ,SW     ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* LWC2 */
-        LBV    ,LSV    ,LLV    ,LDV    ,LQV    ,LRV    ,LPV    ,LUV    ,
-        LHV    ,LFV    ,res_S  ,LTV    ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* SWC2 */
-        SBV    ,SSV    ,SLV    ,SDV    ,SQV    ,SRV    ,SPV    ,SUV    ,
-        SHV    ,SFV    ,SWV    ,STV    ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    },
-    { /* illegal */
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-        res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,res_S  ,
-    }
-};
-
-#define OFF_FUNCTION     0
-#define OFF_SA           6
-#define OFF_E            7
-#define OFF_RD          11
-#define OFF_RT          16
-#define OFF_RS          21
-#define OFF_OPCODE      26
-const int sub_op_table[64] = {
-    OFF_FUNCTION, /* SPECIAL */
-    OFF_RT, /* REGIMM */
-    OFF_OPCODE, /* J */
-    OFF_OPCODE, /* JAL */
-    OFF_RT, /* BEQ (if rt is 0, treat as pseudo-operation BEQZ) */
-    OFF_RT, /* BNE (if rt is 0, treat as pseudo-operation BNEZ) */
-    OFF_RS, /* BLEZ (if rs is 0, then 0 <= 0 is B) */
-    OFF_RS, /* BGTZ (if rs is 0, then 0 > 0 is NOP) */
-    OFF_RS, /* ADDI (if rs is 0, then load sign-extended lower imm) */
-    OFF_RS, /* ADDIU (if rs is 0, then load sign-extended lower imm) */
-    OFF_RT, /* SLTI */
-    OFF_RT, /* SLTIU */
-    OFF_RT, /* ANDI */
-    OFF_RT, /* ORI */
-    OFF_RT, /* XORI */
-    OFF_RT, /* LUI */
-    OFF_RS, /* COP0 */
-    OFF_RS,
-    OFF_RS, /* COP2 */
-    OFF_RS,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_RS, /* LB */
-    OFF_RS, /* LH */
-    OFF_OPCODE,
-    OFF_RS, /* LW */
-    OFF_RS, /* LBU */
-    OFF_RS, /* LHU */
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_RS, /* SB */
-    OFF_RS, /* SH */
-    OFF_OPCODE,
-    OFF_RS, /* SW */
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_RD, /* LWC2 */
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_RD, /* SWC2 */
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE,
-    OFF_OPCODE
-};
 #endif
