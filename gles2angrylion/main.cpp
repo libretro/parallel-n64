@@ -29,6 +29,8 @@
 
 GFX_INFO gfx;
 
+int ProcessDListShown = 0;
+
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define VLOG(...) WriteLog(M64MSG_VERBOSE, __VA_ARGS__)
 
@@ -114,7 +116,11 @@ EXPORT void CALL MoveScreen (int xpos, int ypos)
 
 EXPORT void CALL ProcessDList(void)
 {
-VLOG ("processdlist ()\n");
+   if (!ProcessDListShown)
+   {
+      VLOG ("processdlist ()\n");
+      ProcessDListShown = 1;
+   }
 }
 
  EXPORT void CALL ProcessRDPList(void)
