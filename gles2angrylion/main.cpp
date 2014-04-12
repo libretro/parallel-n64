@@ -102,7 +102,7 @@ VLOG ("changewindow ()\n");
 
 EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 {
-VLOG ("InitGRAPHICS ()\n");
+   VLOG ("InitGRAPHICS ()\n");
 	gfx = Gfx_Info;
 	VLOG ("InitGRAPHICS (2)\n");
 	
@@ -129,14 +129,17 @@ EXPORT void CALL ProcessDList(void)
 	rdp_process_list();	
 }
 
-EXPORT void CALL RomClosed (void)
-{
-	 VLOG ("RomClosed ()\n");
-	rdp_close();
-}
-
 int32_t *blitter_buf;
 INT32 pitchindwords;
+
+EXPORT void CALL RomClosed (void)
+{
+   VLOG ("RomClosed ()\n");
+   rdp_close();
+
+   if (blitter_buf)
+      free(blitter_buf);
+}
 
 EXPORT int CALL RomOpen (void)
 {
