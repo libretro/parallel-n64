@@ -134,29 +134,31 @@ INT32 pitchindwords;
 
 EXPORT int CALL RomOpen (void)
 {
-    VLOG ("RomOpen ()\n");
+   VLOG ("RomOpen ()\n");
    screen_width = 640;  // prescale width
    screen_height = 625; // prescale height
-	blitter_buf = (int32_t*)calloc(screen_width * screen_width, sizeof(int32_t));
-	pitchindwords = screen_width * 4;
+   blitter_buf = (int32_t*)calloc(screen_width * screen_width, sizeof(int32_t));
+   pitchindwords = screen_width * 4;
    screen_pitch = pitchindwords;
-    rdp_init();
-    return 1;
+   rdp_init();
+
+   return true;
 }
+
+extern int retro_return(bool just_flipping);
 
 EXPORT void CALL ShowCFB (void)
 {
 	VLOG ("draw2()\n");
-	//draw_texture();
 	rdp_update();
+   retro_return(true);
 }
 
 EXPORT void CALL UpdateScreen (void)
 {
    VLOG ("draw1 ()\n");
-   //draw_texture();
    rdp_update();
-
+   retro_return(true);
 }
 
 EXPORT void CALL ViStatusChanged (void)

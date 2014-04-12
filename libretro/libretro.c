@@ -221,7 +221,7 @@ static void setup_variables(void)
    environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
 }
 
-static void EmuThreadFunction()
+static void EmuThreadFunction(void)
 {
     emu_thread_has_run = true;
 
@@ -602,23 +602,26 @@ bool retro_load_game(const struct retro_game_info *game)
    update_variables();
    initial_boot = false;
 
-   memset(&render_iface, 0, sizeof(render_iface));
+   if (gfx_plugin != GFX_ANGRYLION)
+   {
+      memset(&render_iface, 0, sizeof(render_iface));
 #ifndef GLES
-    render_iface.context_type = RETRO_HW_CONTEXT_OPENGL;
+      render_iface.context_type = RETRO_HW_CONTEXT_OPENGL;
 #else
-    render_iface.context_type = RETRO_HW_CONTEXT_OPENGLES2;
+      render_iface.context_type = RETRO_HW_CONTEXT_OPENGLES2;
 #endif
-    render_iface.context_reset = core_gl_context_reset;
-    render_iface.depth = true;
-    render_iface.bottom_left_origin = true;
-    render_iface.cache_context = true;
-    
-    if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &render_iface))
-    {
-       if (log_cb)
-          log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
-       return false;
-    }
+      render_iface.context_reset = core_gl_context_reset;
+      render_iface.depth = true;
+      render_iface.bottom_left_origin = true;
+      render_iface.cache_context = true;
+
+      if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &render_iface))
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
+         return false;
+      }
+   }
 
     game_data = malloc(game->size);
     memcpy(game_data, game->data, game->size);
@@ -689,10 +692,10 @@ void retro_run (void)
     poll_cb();
 
 run_again:
-    if (gfx_plugin != GFX_ANGRYLION)
+    if (gfx_plugin != GFX_ANGRYLION && !stop)
        sglEnter();
     co_switch(emulator_thread);
-    if (gfx_plugin != GFX_ANGRYLION)
+    if (gfx_plugin != GFX_ANGRYLION && !stop)
        sglExit();
 
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)

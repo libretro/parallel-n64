@@ -387,9 +387,6 @@ void sglEnter(void)
 {
    int i;
 
-   if (stop)
-      return;
-
     for (i = 0; i < MAX_ATTRIB; i ++)
     {
         if (VertexAttribPointer_enabled[i])
@@ -444,8 +441,6 @@ void sglEnter(void)
 void sglExit(void)
 {
    int i;
-   if (stop)
-      return;
 
     for (i = 0; i < SGL_CAP_MAX; i ++)
         glDisable(CapTranslate[i]);
