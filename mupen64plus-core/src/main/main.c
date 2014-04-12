@@ -248,17 +248,29 @@ m64p_error main_run(void)
     }
 
     // Attach rom to plugins
+    printf("Gfx RomOpen.\n");
     if (!gfx.romOpen())
     {
-        free_memory(); return M64ERR_PLUGIN_FAIL;
+       printf("Gfx RomOpen failed.\n");
+       free_memory();
+       return M64ERR_PLUGIN_FAIL;
     }
+    printf("Audio RomOpen.\n");
     if (!audio.romOpen())
     {
-        gfx.romClosed(); free_memory(); return M64ERR_PLUGIN_FAIL;
+       printf("Audio RomOpen failed.\n");
+       gfx.romClosed();
+       free_memory();
+       return M64ERR_PLUGIN_FAIL;
     }
+    printf("Input RomOpen.\n");
     if (!input.romOpen())
     {
-        audio.romClosed(); gfx.romClosed(); free_memory(); return M64ERR_PLUGIN_FAIL;
+       printf("Input RomOpen failed.\n");
+       audio.romClosed();
+       gfx.romClosed();
+       free_memory();
+       return M64ERR_PLUGIN_FAIL;
     }
 
 #ifdef DBG
