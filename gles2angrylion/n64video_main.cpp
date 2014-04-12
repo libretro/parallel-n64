@@ -27,7 +27,7 @@
 #define FBWrite VIDEO_TAG(FBWrite)
 #define FBGetFrameBufferInfo VIDEO_TAG(FBGetFrameBufferInfo)
 
-extern GFX_INFO gfx;
+GFX_INFO gfx_al;
 
 int ProcessDListShown = 0;
 
@@ -103,7 +103,7 @@ VLOG ("changewindow ()\n");
 EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 {
    VLOG ("InitGRAPHICS ()\n");
-	gfx = Gfx_Info;
+	gfx_al = Gfx_Info;
 	VLOG ("InitGRAPHICS (2)\n");
 	
     return 1;

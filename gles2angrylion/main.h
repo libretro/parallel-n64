@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 
-extern GFX_INFO gfx;
+extern GFX_INFO gfx_al;
 
 int rdp_init();
 int rdp_close();
@@ -103,30 +103,30 @@ extern uint32_t screen_pitch;
 #define STRICTINLINE	inline
 #endif
 
-#define rdram ((uint32_t*)gfx.RDRAM)
-#define rsp_imem ((uint32_t*)gfx.IMEM)
-#define rsp_dmem ((uint32_t*)gfx.DMEM)
+#define rdram ((uint32_t*)gfx_al.RDRAM)
+#define rsp_imem ((uint32_t*)gfx_al.IMEM)
+#define rsp_dmem ((uint32_t*)gfx_al.DMEM)
 
-#define rdram16 ((UINT16*)gfx.RDRAM)
-#define rdram8 (gfx.RDRAM)
+#define rdram16 ((UINT16*)gfx_al.RDRAM)
+#define rdram8 (gfx_al.RDRAM)
 
-#define vi_origin (*(uint32_t*)gfx.VI_ORIGIN_REG)
-#define vi_width (*(uint32_t*)gfx.VI_WIDTH_REG)
-#define vi_control (*(uint32_t*)gfx.VI_STATUS_REG)
-#define vi_v_sync (*(uint32_t*)gfx.VI_V_SYNC_REG)
-#define vi_h_sync (*(uint32_t*)gfx.VI_H_SYNC_REG)
-#define vi_h_start (*(uint32_t*)gfx.VI_H_START_REG)
-#define vi_v_start (*(uint32_t*)gfx.VI_V_START_REG)
-#define vi_v_intr (*(uint32_t*)gfx.VI_INTR_REG)
-#define vi_x_scale (*(uint32_t*)gfx.VI_X_SCALE_REG)
-#define vi_y_scale (*(uint32_t*)gfx.VI_Y_SCALE_REG)
-#define vi_timing (*(uint32_t*)gfx.VI_TIMING_REG)
-#define vi_v_current_line (*(uint32_t*)gfx.VI_V_CURRENT_LINE_REG)
+#define vi_origin (*(uint32_t*)gfx_al.VI_ORIGIN_REG)
+#define vi_width (*(uint32_t*)gfx_al.VI_WIDTH_REG)
+#define vi_control (*(uint32_t*)gfx_al.VI_STATUS_REG)
+#define vi_v_sync (*(uint32_t*)gfx_al.VI_V_SYNC_REG)
+#define vi_h_sync (*(uint32_t*)gfx_al.VI_H_SYNC_REG)
+#define vi_h_start (*(uint32_t*)gfx_al.VI_H_START_REG)
+#define vi_v_start (*(uint32_t*)gfx_al.VI_V_START_REG)
+#define vi_v_intr (*(uint32_t*)gfx_al.VI_INTR_REG)
+#define vi_x_scale (*(uint32_t*)gfx_al.VI_X_SCALE_REG)
+#define vi_y_scale (*(uint32_t*)gfx_al.VI_Y_SCALE_REG)
+#define vi_timing (*(uint32_t*)gfx_al.VI_TIMING_REG)
+#define vi_v_current_line (*(uint32_t*)gfx_al.VI_V_CURRENT_LINE_REG)
 
-#define dp_start (*(uint32_t*)gfx.DPC_START_REG)
-#define dp_end (*(uint32_t*)gfx.DPC_END_REG)
-#define dp_current (*(uint32_t*)gfx.DPC_CURRENT_REG)
-#define dp_status (*(uint32_t*)gfx.DPC_STATUS_REG)
+#define dp_start (*(uint32_t*)gfx_al.DPC_START_REG)
+#define dp_end (*(uint32_t*)gfx_al.DPC_END_REG)
+#define dp_current (*(uint32_t*)gfx_al.DPC_CURRENT_REG)
+#define dp_status (*(uint32_t*)gfx_al.DPC_STATUS_REG)
 
 
 #endif
