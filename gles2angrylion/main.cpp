@@ -146,7 +146,7 @@ EXPORT int CALL RomOpen (void)
    VLOG ("RomOpen ()\n");
    screen_width = 640;  // prescale width
    screen_height = 625; // prescale height
-   blitter_buf = (int32_t*)calloc(screen_width * screen_width, sizeof(int32_t));
+   blitter_buf = (int32_t*)calloc(screen_width * screen_height, sizeof(int32_t));
    pitchindwords = screen_width * 4;
    screen_pitch = pitchindwords;
    rdp_init();
