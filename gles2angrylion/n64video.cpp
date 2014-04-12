@@ -7386,8 +7386,8 @@ static void rdp_sync_full(UINT32 w1, UINT32 w2)
 
 	z64gl_command = 0;
 
-	*gfx.MI_INTR_REG |= DP_INTERRUPT;
-	gfx.CheckInterrupts();
+	*gfx_al.MI_INTR_REG |= DP_INTERRUPT;
+	gfx_al.CheckInterrupts();
 }
 
 static void rdp_set_key_gb(UINT32 w1, UINT32 w2)
