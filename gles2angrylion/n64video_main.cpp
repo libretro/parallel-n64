@@ -27,7 +27,7 @@
 #define FBWrite VIDEO_TAG(FBWrite)
 #define FBGetFrameBufferInfo VIDEO_TAG(FBGetFrameBufferInfo)
 
-GFX_INFO gfx;
+extern GFX_INFO gfx;
 
 int ProcessDListShown = 0;
 
