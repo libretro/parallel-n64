@@ -32,6 +32,13 @@
 #define CONFIG_API_VERSION       0x020100
 #define CONFIG_PARAM_VERSION     1.00
 
+#ifdef __LIBRETRO__
+#define GFX_GLIDE64     0
+#define GFX_RICE        1 
+#define GFX_GLN64       2
+#define GFX_ANGRYLION   3
+#endif
+
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
 static int l_PluginInit = 0;
@@ -55,11 +62,13 @@ NOINLINE void update_conf(const char* source)
     memset(conf, 0, sizeof(conf));
 
 #ifdef __LIBRETRO__
-    CFG_HLE_GFX = 0;
+    extern unsigned libretro_get_gfx_plugin(void);
+    CFG_HLE_GFX = 1;
+    if (libretro_get_gfx_plugin == GFX_ANGRYLION)
+       CFG_HLE_GFX = 0;
     CFG_HLE_AUD = 0;
 #else
     CFG_HLE_GFX = ConfigGetParamBool(l_ConfigRsp, "DisplayListToGraphicsPlugin");
-    CFG_HLE_AUD = ConfigGetParamBool(l_ConfigRsp, "AudioListToAudioPlugin");
 #endif
     CFG_WAIT_FOR_CPU_HOST = ConfigGetParamBool(l_ConfigRsp, "WaitForCPUHost");
     CFG_MEND_SEMAPHORE_LOCK = ConfigGetParamBool(l_ConfigRsp, "SupportCPUSemaphoreLock");
@@ -279,8 +288,10 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
     { /* Simulation barrier to redirect processing externally. */
 #ifdef EXTERN_COMMAND_LIST_GBI
         case 0x00000001:
+#if 0
             if (CFG_HLE_GFX == 0)
                 break;
+#endif
             if (*(unsigned int *)(RSP.DMEM + 0xFF0) == 0x00000000)
                 break; /* Resident Evil 2 */
             if (RSP.ProcessDlistList == NULL) {/*branch next*/} else

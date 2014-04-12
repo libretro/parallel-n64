@@ -97,6 +97,11 @@ static void core_settings_autoselect_gfx_plugin(void)
    gfx_plugin = GFX_GLIDE64;
 }
 
+unsigned libretro_get_gfx_plugin(void)
+{
+   return gfx_plugin;
+}
+
 static void core_settings_autoselect_rsp_plugin(void);
 
 static void core_settings_set_defaults(void)
