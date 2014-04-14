@@ -1,6 +1,7 @@
 
 #include "main.h"
 #include "tctables.h"
+#include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
 
