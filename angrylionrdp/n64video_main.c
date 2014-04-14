@@ -48,8 +48,10 @@ void angrylion_WriteLog(m64p_msg_level level, const char *msg, ...)
    {
       l_DebugCallback(l_DebugCallContext, level, buf);
    }
+#if 0
    else
       fprintf(stdout, buf);
+#endif
 }
 
 #ifdef __cplusplus

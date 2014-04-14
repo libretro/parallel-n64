@@ -284,10 +284,12 @@ NOINLINE void trace_RSP_registers(void)
  * Whether or not you find these names agreeable is mostly a matter of seeing
  * them from the RCP's point of view or the CPU host's mapped point of view.
  */
+#if 0
     for (i = 0; i < 8; i++)
         fprintf(out, "%s:  %08"PRIX32"    %s:  %08"PRIX32"\n",
             CR_names[i+0], *(CR[i+0]), CR_names[i+8], *(CR[i+8]));
     fprintf(out, "\n");
+#endif
 /*
  * There is no memory map for remaining registers not shared by the CPU.
  * The scalar register (SR) file is straightforward and based on the

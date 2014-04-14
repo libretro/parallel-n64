@@ -2,6 +2,7 @@
 #include "main.h"
 #include "tctables.h"
 #include <stdarg.h>
+#include <string.h>
 
 extern uint32_t *blitter_buf;
 extern uint32_t pitchindwords;
@@ -59,14 +60,12 @@ STRICTINLINE void popmessage(const char* err, ...)
 #define LOG_RDP_EXECUTION 0
 #define	DETAILED_LOGGING 0
 
-FILE *rdp_exec;
+//FILE *rdp_exec;
 
 UINT32 rdp_cmd_data[0x10000];
 UINT32 rdp_cmd_ptr = 0;
 UINT32 rdp_cmd_cur = 0;
 UINT32 ptr_onstart = 0;
-
-extern FILE* zeldainfo;
 
 UINT32 old_vi_origin = 0;
 INT32 oldvstart = 1337;
@@ -960,8 +959,10 @@ int rdp_init()
 {
    int i;
 
+#if 0
 	if (LOG_RDP_EXECUTION)
 		rdp_exec = fopen("rdp_execute.txt", "wt");
+#endif
 
    fbread1_ptr = fbread_func[0];
    fbread2_ptr = fbread2_func[0];
@@ -7934,6 +7935,7 @@ void rdp_process_list(void)
 			return;
 		}
 		
+#if 0
 		if (LOG_RDP_EXECUTION)
 		{
 			char string[4000];
@@ -7947,11 +7949,7 @@ void rdp_process_list(void)
 			}
 			command_counter++;
 		}
-
-		
-		
-		
-
+#endif
 		
 		rdp_command_table[cmd](rdp_cmd_data[rdp_cmd_cur+0], rdp_cmd_data[rdp_cmd_cur + 1]);
 		
@@ -10508,16 +10506,20 @@ STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, INT32 lod, UINT32* l_til
 
 void dump_buffer4kb(char* Name, void* Buff)
 {
+#if 0
 	FILE* Cur = fopen(Name,"wb");
 	fwrite(Buff,1,4096,Cur);
 	fclose(Cur);
+#endif
 }
 
 void dump_buffer(char* Name, void* Buff,UINT32 Bytes)
 {
+#if 0
 	FILE* Cur = fopen(Name,"wb");
 	fwrite(Buff,1,Bytes,Cur);
 	fclose(Cur);
+#endif
 }
 
 void dump_tmem_and_exit(char* Name)
