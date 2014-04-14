@@ -28,7 +28,7 @@ extern uint32_t pitchindwords;
 #define GET_MED_RGBA16_TMEM(x)	(replicated_rgba[((x) >> 6) & 0x1f])
 #define GET_HI_RGBA16_TMEM(x)	(replicated_rgba[(x) >> 11])
 
-INLINE void fatalerror(const char * err, ...)
+STRICTINLINE void fatalerror(const char * err, ...)
 {
 	char VsprintfBuffer[200];
 	va_list arg;
@@ -43,7 +43,7 @@ INLINE void fatalerror(const char * err, ...)
 	va_end(arg);
 }
 
-INLINE void popmessage(const char* err, ...)
+STRICTINLINE void popmessage(const char* err, ...)
 {
 	char VsprintfBuffer[200];
 	va_list arg;
@@ -396,10 +396,10 @@ typedef struct{
 
 
 static void rdp_set_other_modes(UINT32 w1, UINT32 w2);
-INLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum);
-INLINE void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum);
-INLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum);
-INLINE void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum);
+STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum);
+STRICTINLINE void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum);
+STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum);
+STRICTINLINE void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum);
 void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2);
 void loading_pipeline(int start, int end, int tilenum, int coord_quad, int ltlut);
 void get_tmem_idx(int s, int t, UINT32 tilenum, UINT32* idx0, UINT32* idx1, UINT32* idx2, UINT32* idx3, UINT32* bit3flipped, UINT32* hibit);
@@ -430,7 +430,7 @@ STRICTINLINE void tcclamp_cycle(INT32* S, INT32* T, INT32* SFRAC, INT32* TFRAC, 
 STRICTINLINE void tcclamp_cycle_light(INT32* S, INT32* T, INT32 maxs, INT32 maxt, INT32 num);
 STRICTINLINE void tcshift_cycle(INT32* S, INT32* T, INT32* maxs, INT32* maxt, UINT32 num);
 STRICTINLINE void tcshift_copy(INT32* S, INT32* T, UINT32 num);
-INLINE void precalculate_everything(void);
+STRICTINLINE void precalculate_everything(void);
 STRICTINLINE int alpha_compare(INT32 comb_alpha);
 STRICTINLINE INT32 color_combiner_equation(INT32 a, INT32 b, INT32 c, INT32 d);
 STRICTINLINE INT32 alpha_combiner_equation(INT32 a, INT32 b, INT32 c, INT32 d);
@@ -441,27 +441,27 @@ STRICTINLINE UINT32 rightcvghex(UINT32 x, UINT32 fmask);
 STRICTINLINE UINT32 leftcvghex(UINT32 x, UINT32 fmask);
 STRICTINLINE void compute_cvg_noflip(INT32 scanline);
 STRICTINLINE void compute_cvg_flip(INT32 scanline);
-INLINE void fbwrite_4(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-INLINE void fbwrite_8(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-INLINE void fbwrite_16(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-INLINE void fbwrite_32(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-INLINE void fbfill_4(UINT32 curpixel);
-INLINE void fbfill_8(UINT32 curpixel);
-INLINE void fbfill_16(UINT32 curpixel);
-INLINE void fbfill_32(UINT32 curpixel);
-INLINE void fbread_4(UINT32 num, UINT32* curpixel_memcvg);
-INLINE void fbread_8(UINT32 num, UINT32* curpixel_memcvg);
-INLINE void fbread_16(UINT32 num, UINT32* curpixel_memcvg);
-INLINE void fbread_32(UINT32 num, UINT32* curpixel_memcvg);
-INLINE void fbread2_4(UINT32 num, UINT32* curpixel_memcvg);
-INLINE void fbread2_8(UINT32 num, UINT32* curpixel_memcvg);
-INLINE void fbread2_16(UINT32 num, UINT32* curpixel_memcvg);
-INLINE void fbread2_32(UINT32 num, UINT32* curpixel_memcvg);
+STRICTINLINE void fbwrite_4(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
+STRICTINLINE void fbwrite_8(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
+STRICTINLINE void fbwrite_16(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
+STRICTINLINE void fbwrite_32(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
+STRICTINLINE void fbfill_4(UINT32 curpixel);
+STRICTINLINE void fbfill_8(UINT32 curpixel);
+STRICTINLINE void fbfill_16(UINT32 curpixel);
+STRICTINLINE void fbfill_32(UINT32 curpixel);
+STRICTINLINE void fbread_4(UINT32 num, UINT32* curpixel_memcvg);
+STRICTINLINE void fbread_8(UINT32 num, UINT32* curpixel_memcvg);
+STRICTINLINE void fbread_16(UINT32 num, UINT32* curpixel_memcvg);
+STRICTINLINE void fbread_32(UINT32 num, UINT32* curpixel_memcvg);
+STRICTINLINE void fbread2_4(UINT32 num, UINT32* curpixel_memcvg);
+STRICTINLINE void fbread2_8(UINT32 num, UINT32* curpixel_memcvg);
+STRICTINLINE void fbread2_16(UINT32 num, UINT32* curpixel_memcvg);
+STRICTINLINE void fbread2_32(UINT32 num, UINT32* curpixel_memcvg);
 STRICTINLINE UINT32 z_decompress(UINT32 rawz);
 STRICTINLINE UINT32 dz_decompress(UINT32 compresseddz);
 STRICTINLINE UINT32 dz_compress(UINT32 value);
-INLINE void z_build_com_table(void);
-INLINE void precalc_cvmask_derivatives(void);
+STRICTINLINE void z_build_com_table(void);
+STRICTINLINE void precalc_cvmask_derivatives(void);
 STRICTINLINE UINT16 decompress_cvmask_frombyte(UINT8 byte);
 STRICTINLINE void lookup_cvmask_derivatives(UINT32 mask, UINT8* offx, UINT8* offy, UINT32* curpixel_cvg, UINT32* curpixel_cvbit);
 STRICTINLINE void z_store(UINT32 zcurpixel, UINT32 z, int dzpixenc);
@@ -476,10 +476,10 @@ STRICTINLINE void restore_filter16(int* r, int* g, int* b, UINT32 fboffset, UINT
 STRICTINLINE void restore_filter32(int* r, int* g, int* b, UINT32 fboffset, UINT32 num, UINT32 hres);
 STRICTINLINE void gamma_filters(int* r, int* g, int* b, int gamma_and_dither);
 STRICTINLINE void adjust_brightness(int* r, int* g, int* b, int brightcoeff);
-INLINE void clearscreen(UINT32 x0,UINT32 y0, UINT32 x1, UINT32 y1, UINT32 white);
-INLINE void clearfb16(UINT16* fb, UINT32 width,UINT32 height);
-INLINE void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst);
-INLINE void tcdiv_nopersp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst);
+STRICTINLINE void clearscreen(UINT32 x0,UINT32 y0, UINT32 x1, UINT32 y1, UINT32 white);
+STRICTINLINE void clearfb16(UINT16* fb, UINT32 width,UINT32 height);
+STRICTINLINE void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst);
+STRICTINLINE void tcdiv_nopersp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst);
 STRICTINLINE void tclod_4x17_to_15(INT32 scurr, INT32 snext, INT32 tcurr, INT32 tnext, INT32 previous, INT32* lod);
 STRICTINLINE void tclod_tcclamp(INT32* sss, INT32* sst);
 STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, INT32 lod, UINT32* l_tile, UINT32* magnify, UINT32* distant);
@@ -494,13 +494,13 @@ STRICTINLINE void tclod_copy(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, 
 STRICTINLINE void get_texel1_1cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 scanline, SPANSIGS* sigs);
 STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc);
 STRICTINLINE void video_max_optimized(UINT32* Pixels, UINT32* pen);
-INLINE void calculate_clamp_diffs(UINT32 tile);
-INLINE void calculate_tile_derivs(UINT32 tile);
-INLINE void rgb_dither_complete(int* r, int* g, int* b, int dith);
-INLINE void rgb_dither_nothing(int* r, int* g, int* b, int dith);
-INLINE void get_dither_noise_complete(int x, int y, int* cdith, int* adith);
-INLINE void get_dither_only(int x, int y, int* cdith, int* adith);
-INLINE void get_dither_nothing(int x, int y, int* cdith, int* adith);
+STRICTINLINE void calculate_clamp_diffs(UINT32 tile);
+STRICTINLINE void calculate_tile_derivs(UINT32 tile);
+STRICTINLINE void rgb_dither_complete(int* r, int* g, int* b, int dith);
+STRICTINLINE void rgb_dither_nothing(int* r, int* g, int* b, int dith);
+STRICTINLINE void get_dither_noise_complete(int x, int y, int* cdith, int* adith);
+STRICTINLINE void get_dither_only(int x, int y, int* cdith, int* adith);
+STRICTINLINE void get_dither_nothing(int x, int y, int* cdith, int* adith);
 STRICTINLINE void vi_vl_lerp(CCVG* up, CCVG down, UINT32 frac);
 STRICTINLINE void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, int* z, UINT32 curpixel_cvg);
 STRICTINLINE void vi_fetch_filter16(CCVG* res, UINT32 fboffset, UINT32 cur_x, UINT32 fsaa, UINT32 dither_filter, UINT32 vres);
@@ -1611,7 +1611,7 @@ STRICTINLINE void vi_fetch_filter32(CCVG* res, UINT32 fboffset, UINT32 cur_x, UI
 
 
 
-INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+STRICTINLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
 {
 	switch (code & 0xf)
 	{
@@ -1630,7 +1630,7 @@ INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
 	}
 }
 
-INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+STRICTINLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
 {
 	switch (code & 0xf)
 	{
@@ -1649,7 +1649,7 @@ INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
 	}
 }
 
-INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+STRICTINLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
 {
 	switch (code & 0x1f)
 	{
@@ -1677,7 +1677,7 @@ INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
 	}
 }
 
-INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+STRICTINLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
 {
 	switch (code & 0x7)
 	{
@@ -1692,7 +1692,7 @@ INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
 	}
 }
 
-INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
+STRICTINLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
 {
 	switch (code & 0x7)
 	{
@@ -1707,7 +1707,7 @@ INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
 	}
 }
 
-INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code)
+STRICTINLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code)
 {
 	switch (code & 0x7)
 	{
@@ -1930,7 +1930,7 @@ STRICTINLINE void combiner_2cycle(int adseed, UINT32* curpixel_cvg)
 		shade_color.a = 0xff;
 }
 
-INLINE void precalculate_everything(void)
+STRICTINLINE void precalculate_everything(void)
 {
 	int i = 0, k = 0, j = 0;
 
@@ -2096,7 +2096,7 @@ INLINE void precalculate_everything(void)
 	}
 }
 
-INLINE void SET_BLENDER_INPUT(int cycle, int which, INT32 **input_r, INT32 **input_g, INT32 **input_b, INT32 **input_a, int a, int b)
+STRICTINLINE void SET_BLENDER_INPUT(int cycle, int which, INT32 **input_r, INT32 **input_g, INT32 **input_b, INT32 **input_a, int a, int b)
 {
 
 	switch (a & 0x3)
@@ -2296,7 +2296,7 @@ STRICTINLINE int blender_2cycle(UINT32* fr, UINT32* fg, UINT32* fb, int dith, UI
 
 
 
-INLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
+STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 {
 	UINT32 tbase = tile[tilenum].line * t + tile[tilenum].tmem;
 	
@@ -2628,7 +2628,7 @@ INLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 	}
 }
 
-INLINE void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
+STRICTINLINE void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
 {
 	UINT32 tbase = tile[tilenum].line * t + tile[tilenum].tmem;
 	UINT32 tpal	= tile[tilenum].palette << 4;
@@ -2730,7 +2730,7 @@ INLINE void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
 
 
 
-INLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum)
+STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum)
 {
 
 	UINT32 tbase0 = tile[tilenum].line * t0 + tile[tilenum].tmem;
@@ -3606,7 +3606,7 @@ INLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
 	}
 }
 
-INLINE void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum)
+STRICTINLINE void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum)
 {
 	UINT32 tbase0 = tile[tilenum].line * t0 + tile[tilenum].tmem;
 	UINT32 tbase2 = tile[tilenum].line * t1 + tile[tilenum].tmem;
@@ -8224,19 +8224,19 @@ int rdp_close()
 	return 0;
 }
 
-INLINE void fbwrite_4(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
+STRICTINLINE void fbwrite_4(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
 	UINT32 fb = fb_address + curpixel;
 	RWRITEADDR8(fb, 0);
 }
 
-INLINE void fbwrite_8(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
+STRICTINLINE void fbwrite_8(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
 	UINT32 fb = fb_address + curpixel;
 	PAIRWRITE8(fb, r & 0xff, (r & 1) ? 3 : 0);
 }
 
-INLINE void fbwrite_16(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
+STRICTINLINE void fbwrite_16(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
 #undef CVG_DRAW
 #ifdef CVG_DRAW
@@ -8268,7 +8268,7 @@ INLINE void fbwrite_16(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 ble
 	PAIRWRITE16(fb, rval, hval);
 }
 
-INLINE void fbwrite_32(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
+STRICTINLINE void fbwrite_32(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
 	UINT32 fb = (fb_address >> 2) + curpixel;
 
@@ -8281,12 +8281,12 @@ INLINE void fbwrite_32(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 ble
 	PAIRWRITE32(fb, finalcolor, (g & 1) ? 3 : 0, 0);
 }
 
-INLINE void fbfill_4(UINT32 curpixel)
+STRICTINLINE void fbfill_4(UINT32 curpixel)
 {
 	rdp_pipeline_crashed = 1;
 }
 
-INLINE void fbfill_8(UINT32 curpixel)
+STRICTINLINE void fbfill_8(UINT32 curpixel)
 {
 	UINT32 fb = fb_address + curpixel;
 	UINT32 val = (fill_color >> (((fb & 3) ^ 3) << 3)) & 0xff;
@@ -8294,7 +8294,7 @@ INLINE void fbfill_8(UINT32 curpixel)
 	PAIRWRITE8(fb, val, hval);
 }
 
-INLINE void fbfill_16(UINT32 curpixel)
+STRICTINLINE void fbfill_16(UINT32 curpixel)
 {
 	UINT16 val;
 	UINT8 hval;
@@ -8307,13 +8307,13 @@ INLINE void fbfill_16(UINT32 curpixel)
 	PAIRWRITE16(fb, val, hval);
 }
 
-INLINE void fbfill_32(UINT32 curpixel)
+STRICTINLINE void fbfill_32(UINT32 curpixel)
 {
 	UINT32 fb = (fb_address >> 2) + curpixel;
 	PAIRWRITE32(fb, fill_color, (fill_color & 0x10000) ? 3 : 0, (fill_color & 0x1) ? 3 : 0);
 }
 
-INLINE void fbread_4(UINT32 curpixel, UINT32* curpixel_memcvg)
+STRICTINLINE void fbread_4(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
 	memory_color.r = memory_color.g = memory_color.b = 0;
 	
@@ -8321,14 +8321,14 @@ INLINE void fbread_4(UINT32 curpixel, UINT32* curpixel_memcvg)
 	memory_color.a = 0xe0;
 }
 
-INLINE void fbread2_4(UINT32 curpixel, UINT32* curpixel_memcvg)
+STRICTINLINE void fbread2_4(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
 	pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = 0;
 	pre_memory_color.a = 0xe0;
 	*curpixel_memcvg = 7;
 }
 
-INLINE void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
+STRICTINLINE void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
 	UINT8 mem = RREADADDR8(fb_address + curpixel);
 	memory_color.r = memory_color.g = memory_color.b = mem;
@@ -8336,7 +8336,7 @@ INLINE void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 	memory_color.a = 0xe0;
 }
 
-INLINE void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
+STRICTINLINE void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
 	UINT8 mem = RREADADDR8(fb_address + curpixel);
 	pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = mem;
@@ -8344,7 +8344,7 @@ INLINE void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 	*curpixel_memcvg = 7;
 }
 
-INLINE void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
+STRICTINLINE void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
 	UINT16 fword;
 	UINT8 hbyte;
@@ -8377,7 +8377,7 @@ INLINE void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 	}
 }
 
-INLINE void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
+STRICTINLINE void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
 	UINT16 fword;
 	UINT8 hbyte;
@@ -8411,7 +8411,7 @@ INLINE void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 	
 }
 
-INLINE void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
+STRICTINLINE void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
 	UINT32 mem = RREADIDX32((fb_address >> 2) + curpixel);
 	memory_color.r = (mem >> 24) & 0xff;
@@ -8429,7 +8429,7 @@ INLINE void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
 	}
 }
 
-INLINE void fbread2_32(UINT32 curpixel, UINT32* curpixel_memcvg)
+STRICTINLINE void fbread2_32(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
 	UINT32 mem = RREADIDX32((fb_address >> 2) + curpixel);
 	pre_memory_color.r = (mem >> 24) & 0xff;
@@ -8452,7 +8452,7 @@ STRICTINLINE UINT32 z_decompress(UINT32 zb)
 	return z_complete_dec_table[(zb >> 2) & 0x3fff];
 }
 
-INLINE void z_build_com_table(void)
+STRICTINLINE void z_build_com_table(void)
 {
    int z;
 	UINT16 altmem = 0;
@@ -8614,7 +8614,7 @@ INLINE void z_build_com_table(void)
    }
 }
 
-INLINE void precalc_cvmask_derivatives(void)
+STRICTINLINE void precalc_cvmask_derivatives(void)
 {
 	int i = 0, k = 0;
 	UINT16 mask = 0, maskx = 0, masky = 0;
@@ -9301,14 +9301,14 @@ STRICTINLINE void video_max_optimized(UINT32* Pixels, UINT32* pen)
 }
 
 
-INLINE void calculate_clamp_diffs(UINT32 i)
+STRICTINLINE void calculate_clamp_diffs(UINT32 i)
 {
 	tile[i].f.clampdiffs = ((tile[i].sh >> 2) - (tile[i].sl >> 2)) & 0x3ff;
 	tile[i].f.clampdifft = ((tile[i].th >> 2) - (tile[i].tl >> 2)) & 0x3ff;
 }
 
 
-INLINE void calculate_tile_derivs(UINT32 i)
+STRICTINLINE void calculate_tile_derivs(UINT32 i)
 {
 	tile[i].f.clampens = tile[i].cs || !tile[i].mask_s;
 	tile[i].f.clampent = tile[i].ct || !tile[i].mask_t;
@@ -9318,7 +9318,7 @@ INLINE void calculate_tile_derivs(UINT32 i)
 	tile[i].f.tlutswitch = (tile[i].size << 2) | ((tile[i].format + 2) & 3);
 }
 
-INLINE void rgb_dither_complete(int* r, int* g, int* b, int dith)
+STRICTINLINE void rgb_dither_complete(int* r, int* g, int* b, int dith)
 {
 	if ((*r & 7) > dith)
 	{
@@ -9363,12 +9363,12 @@ INLINE void rgb_dither_complete(int* r, int* g, int* b, int dith)
 	}
 }
 
-INLINE void rgb_dither_nothing(int* r, int* g, int* b, int dith)
+STRICTINLINE void rgb_dither_nothing(int* r, int* g, int* b, int dith)
 {
 }
 
 
-INLINE void get_dither_noise_complete(int x, int y, int* cdith, int* adith)
+STRICTINLINE void get_dither_noise_complete(int x, int y, int* cdith, int* adith)
 {
 
 	
@@ -9456,7 +9456,7 @@ INLINE void get_dither_noise_complete(int x, int y, int* cdith, int* adith)
 }
 
 
-INLINE void get_dither_only(int x, int y, int* cdith, int* adith)
+STRICTINLINE void get_dither_only(int x, int y, int* cdith, int* adith)
 {
 	int dithindex; 
 	switch(other_modes.f.rgb_alpha_dither)
@@ -9538,7 +9538,7 @@ INLINE void get_dither_only(int x, int y, int* cdith, int* adith)
 	}
 }
 
-INLINE void get_dither_nothing(int x, int y, int* cdith, int* adith)
+STRICTINLINE void get_dither_nothing(int x, int y, int* cdith, int* adith)
 {
 }
 
@@ -9656,12 +9656,12 @@ UINT32 vi_integer_sqrt(UINT32 a)
     return res;
 }
 
-INLINE void clearscreen(UINT32 x0, UINT32 y0, UINT32 x1, UINT32 y1, UINT32 white)
+STRICTINLINE void clearscreen(UINT32 x0, UINT32 y0, UINT32 x1, UINT32 y1, UINT32 white)
 {
 
 }
 
-INLINE void clearfb16(UINT16* fb, UINT32 width,UINT32 height)
+STRICTINLINE void clearfb16(UINT16* fb, UINT32 width,UINT32 height)
 {
 	UINT16* d;
 	UINT32 j;
@@ -9674,7 +9674,7 @@ INLINE void clearfb16(UINT16* fb, UINT32 width,UINT32 height)
 }
 
 
-INLINE void tcdiv_nopersp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
+STRICTINLINE void tcdiv_nopersp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
 {
 
 
@@ -9683,7 +9683,7 @@ INLINE void tcdiv_nopersp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
 	*sst = (SIGN16(st)) & 0x1ffff;
 }
 
-INLINE void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
+STRICTINLINE void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
 {
 
 

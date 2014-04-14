@@ -100,7 +100,7 @@ extern uint32_t screen_pitch;
 #ifdef _MSC_VER
 #define STRICTINLINE	__forceinline
 #else
-#define STRICTINLINE	inline
+#define STRICTINLINE	static inline
 #endif
 
 #define rdram ((uint32_t*)gfx_al.RDRAM)
