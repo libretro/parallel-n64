@@ -210,8 +210,8 @@ static INLINE u16 swapword( u16 value )
 
 static INLINE u32 RGBA5551_RGBA8888( u16 color )
 {
-   color = swapword( color );
    u8 r, g, b, a;
+   color = swapword( color );
    r = Five2Eight[color >> 11];
    g = Five2Eight[(color >> 6) & 0x001f];
    b = Five2Eight[(color >> 1) & 0x001f];
