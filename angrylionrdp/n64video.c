@@ -4444,23 +4444,20 @@ STRICTINLINE void tc_pipeline_load(INT32* sss, INT32* sst, int tilenum, int coor
 
 void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
 {
-	int zb = zb_address >> 1;
-	int zbcur;
 	UINT8 offx, offy;
 	SPANSIGS sigs;
 	UINT32 blend_en;
 	UINT32 prewrap;
 	UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+	int curpixel, x, length, scdiff, dzpixenc, cdith, adith, r, g, b, a, z, s, t, w, sr, sg, sb, sa, sz, ss, st, sw, xstart, xend, xendsc, sss, sst;
+	INT32 prelodfrac;
+	UINT32 fir, fig, fib;
 
-	int prim_tile = tilenum;
-	int tile1 = tilenum;
-	int newtile = tilenum; 
-	int news, newt;
-
-	int i, j;
-	
-	int drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc;
-	int xinc;
+	int zb, zbcur, prim_tile, tile1, newtile, news, newt, i, j, dzpix, drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc, xinc;
+    zb = zb_address >> 1;
+	prim_tile = tilenum;
+	tile1 = tilenum;
+	newtile = tilenum; 
 
 	if (flip)
 	{
@@ -4487,7 +4484,6 @@ void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
 		xinc = -1;
 	}
 
-	int dzpix;
 	if (!other_modes.z_source_sel)
 		dzpix = spans_dzpix;
 	else
@@ -4495,17 +4491,14 @@ void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
 		dzpix = primitive_delta_z;
 		dzinc = spans_cdz = spans_dzdy = 0;
 	}
-	int dzpixenc = dz_compress(dzpix);
 
-	int cdith = 7, adith = 0;
-	int r, g, b, a, z, s, t, w;
-	int sr, sg, sb, sa, sz, ss, st, sw;
-	int xstart, xend, xendsc;
-	int sss = 0, sst = 0;
-	INT32 prelodfrac;
-	int curpixel = 0;
-	int x, length, scdiff;
-	UINT32 fir, fig, fib;
+	dzpixenc = dz_compress(dzpix);
+
+	cdith = 7;
+	adith = 0;
+	sss = 0;
+	sst = 0;
+	curpixel = 0;
 					
 	for (i = start; i <= end; i++)
 	{
@@ -4650,21 +4643,21 @@ void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
 
 void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
 {
-	int zb = zb_address >> 1;
-	int zbcur;
+	int zb, zbcur, prim_tile, tile1, i, j, drinc, dginc, dbinc,
+		dainc, dzinc, dsinc, dtinc, dwinc, xinc;
 	UINT8 offx, offy;
 	SPANSIGS sigs;
 	UINT32 blend_en;
 	UINT32 prewrap;
 	UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+	int dzpix, dzpixenc, cdith, adith, r, g, b, a, z, s, t, w, sr, sg, sb, sa, sz, ss, st, sw, 
+		xstart, xend, xendsc, sss, sst, curpixel, x, length, scdiff;
+	UINT32 fir, fig, fib;
 
-	int prim_tile = tilenum;
-	int tile1 = tilenum;
+	zb = zb_address >> 1;
+	prim_tile = tilenum;
+	tile1 = tilenum;
 
-	int i, j;
-
-	int drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc;
-	int xinc;
 	if (flip)
 	{
 		drinc = spans_dr;
@@ -4690,7 +4683,6 @@ void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
 		xinc = -1;
 	}
 
-	int dzpix;
 	if (!other_modes.z_source_sel)
 		dzpix = spans_dzpix;
 	else
@@ -4698,16 +4690,13 @@ void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
 		dzpix = primitive_delta_z;
 		dzinc = spans_cdz = spans_dzdy = 0;
 	}
-	int dzpixenc = dz_compress(dzpix);
 
-	int cdith = 7, adith = 0;
-	int r, g, b, a, z, s, t, w;
-	int sr, sg, sb, sa, sz, ss, st, sw;
-	int xstart, xend, xendsc;
-	int sss = 0, sst = 0;
-	int curpixel = 0;
-	int x, length, scdiff;
-	UINT32 fir, fig, fib;
+	dzpixenc = dz_compress(dzpix);
+	cdith = 7;
+	adith = 0;
+	sss = 0;
+	sst = 0;
+	curpixel = 0;
 					
 	for (i = start; i <= end; i++)
 	{
@@ -4816,8 +4805,7 @@ void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
 
 void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 {
-	int zb = zb_address >> 1;
-	int zbcur;
+	int zb, zbcur;
 	UINT8 offx, offy;
 	UINT32 blend_en;
 	UINT32 prewrap;
@@ -4825,8 +4813,13 @@ void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
 	int i, j;
 
-	int drinc, dginc, dbinc, dainc, dzinc;
+	int drinc, dginc, dbinc, dainc, dzinc, dzpix;
 	int xinc;
+	int dzpixenc, cdith, adith, r, g, b, a, z, sr, sg, sb, sa, sz,
+		xstart, xend, xendsc, curpixel, x, length, scdiff;
+	UINT32 fir, fig, fib;
+
+	zb = zb_address >> 1;
 
 	if (flip)
 	{
@@ -4847,7 +4840,6 @@ void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 		xinc = -1;
 	}
 	
-	int dzpix;
 	if (!other_modes.z_source_sel)
 		dzpix = spans_dzpix;
 	else
@@ -4855,15 +4847,12 @@ void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 		dzpix = primitive_delta_z;
 		dzinc = spans_cdz = spans_dzdy = 0;
 	}
-	int dzpixenc = dz_compress(dzpix);
 
-	int cdith = 7, adith = 0;
-	int r, g, b, a, z;
-	int sr, sg, sb, sa, sz;
-	int xstart, xend, xendsc;
-	int curpixel = 0;
-	int x, length, scdiff;
-	UINT32 fir, fig, fib;
+	dzpixenc = dz_compress(dzpix);
+	cdith = 7;
+	adith = 0;
+	curpixel = 0;
+
 					
 	for (i = start; i <= end; i++)
 	{
@@ -4946,8 +4935,7 @@ void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
 void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
 {
-	int zb = zb_address >> 1;
-	int zbcur;
+	int zb, zbcur;
 	UINT8 offx, offy;
 	SPANSIGS sigs;
 	INT32 prelodfrac;
@@ -4955,21 +4943,20 @@ void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
 	UINT32 blend_en;
 	UINT32 prewrap;
 	UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-
-	
-	
-	int tile2 = (tilenum + 1) & 7;
-	int tile1 = tilenum;
-	int prim_tile = tilenum;
-
-	int newtile1 = tile1;
-	int newtile2 = tile2;
-	int news, newt;
-
-	int i, j;
-
-	int drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc;
+	int tile2, tile1, prim_tile, newtile1, newtile2, news, newt, dzpix, i, j, drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc;
 	int xinc;
+	int dzpixenc, cdith, adith, r, g, b, a, z, s, t, w, sr, sg, sb, sa, sz, ss, st,
+		sw, xstart, xend, xendsc, sss, sst, curpixel, x, length, scdiff;
+	UINT32 fir, fig, fib;
+
+	zb = zb_address >> 1;
+
+	tile2 = (tilenum + 1) & 7;
+	tile1 = tilenum;
+
+	newtile1 = tile1;
+	newtile2 = tile2;
+
 	if (flip)
 	{
 		drinc = spans_dr;
@@ -4995,7 +4982,6 @@ void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
 		xinc = -1;
 	}
 
-	int dzpix;
 	if (!other_modes.z_source_sel)
 		dzpix = spans_dzpix;
 	else
@@ -5003,17 +4989,13 @@ void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
 		dzpix = primitive_delta_z;
 		dzinc = spans_cdz = spans_dzdy = 0;
 	}
-	int dzpixenc = dz_compress(dzpix);
+	dzpixenc = dz_compress(dzpix);
 
-	int cdith = 7, adith = 0;
-	int r, g, b, a, z, s, t, w;
-	int sr, sg, sb, sa, sz, ss, st, sw;
-	int xstart, xend, xendsc;
-	int sss = 0, sst = 0;
-	int curpixel = 0;
-	
-	int x, length, scdiff;
-	UINT32 fir, fig, fib;
+	cdith = 7;
+	adith = 0;
+	curpixel = 0;
+	sss = 0;
+	sst = 0;
 				
 	for (i = start; i <= end; i++)
 	{
@@ -5169,21 +5151,26 @@ void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
 
 void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
 {
-	int zb = zb_address >> 1;
-	int zbcur;
+	int zb, zbcur, tile2, tile1, prim_tile, i, j;
+	int drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc;
+	int xinc, dzpix;
+	
 	UINT8 offx, offy;
 	UINT32 blend_en;
 	UINT32 prewrap;
 	UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+	int dzpixenc, cdith, adith;
+	int r, g, b, a, z, s, t, w;
+	int sr, sg, sb, sa, sz, ss, st, sw;
+	int xstart, xend, xendsc;
+	int sss, sst, curpixel, x, length, scdiff;
+	UINT32 fir, fig, fib;
 
-	int tile2 = (tilenum + 1) & 7;
-	int tile1 = tilenum;
-	int prim_tile = tilenum;
+	zb = zb_address >> 1;
+	tile2 = (tilenum + 1) & 7;
+	tile1 = tilenum;
+	prim_tile = tilenum;
 
-	int i, j;
-
-	int drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc;
-	int xinc;
 	if (flip)
 	{
 		drinc = spans_dr;
@@ -5209,7 +5196,6 @@ void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
 		xinc = -1;
 	}
 
-	int dzpix;
 	if (!other_modes.z_source_sel)
 		dzpix = spans_dzpix;
 	else
@@ -5217,17 +5203,15 @@ void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
 		dzpix = primitive_delta_z;
 		dzinc = spans_cdz = spans_dzdy = 0;
 	}
-	int dzpixenc = dz_compress(dzpix);
 
-	int cdith = 7, adith = 0;
-	int r, g, b, a, z, s, t, w;
-	int sr, sg, sb, sa, sz, ss, st, sw;
-	int xstart, xend, xendsc;
-	int sss = 0, sst = 0;
-	int curpixel = 0;
+	dzpixenc = dz_compress(dzpix);
+    cdith = 7;
+	adith = 0;
+
+	sss = 0;
+	sst = 0;
+	curpixel = 0;
 	
-	int x, length, scdiff;
-	UINT32 fir, fig, fib;
 				
 	for (i = start; i <= end; i++)
 	{
