@@ -1052,14 +1052,23 @@ int rdp_update()
 {
     int i, j, dither_filter, fsaa, divot, gamma, gamma_dither, lerp_en, extralines,
 	vitype, serration_pulses, gamma_and_dither, ispal, slowbright, linecount, lineshifter,
-	twolines, lowerfield, vactivelines;
+	twolines, lowerfield, vactivelines, cache_marker_init, validh;
 	UINT32 final;
+	INT32 v_end, v_sync;
 
 	CCVG *viaa_cache, *viaa_cache_next, *divot_cache, *divot_cache_next;
 	CCVG viaa_array[2048];
 	CCVG divot_array[2048];
+	UINT8 cur_cvg;
+	UINT32 frame_buffer, pixels, nextpixels, y_start, y_add, pix, prescale_ptr, prevy;
+	CCVG color, nextcolor, scancolor, scannextcolor, *tempccvgptr;
+	int r, g, b, xfrac, yfrac, vi_width_low, line_x, next_line_x, prev_line_x, far_line_x,
+		cache_marker, cache_next_marker, divot_cache_marker, divot_cache_next_marker,
+		prev_scan_x, scan_x, next_scan_x, far_scan_x, prev_x, cur_x, next_x, far_x,
+		lerping;
+	INT32 *d;
 
-	INT32 hres, vres, v_start, h_start, x_start, x_add;
+	INT32 hres, vres, v_start, h_start, x_start, x_add, h_end, hrightblank;
 	void (*vi_fetch_filter_ptr)(CCVG*, UINT32, UINT32, UINT32, UINT32, UINT32) = vi_fetch_filter_func[vitype & 1];
 
 	final = 0;
@@ -1112,12 +1121,12 @@ int rdp_update()
 		h_start = 0;
 	}
 
-	int cache_marker_init = (x_start >> 10) - 2;
+	cache_marker_init = (x_start >> 10) - 2;
 	if (cache_marker_init < -1)
 		cache_marker_init = -1;
 
-	INT32 v_end = vi_v_start & 0x3ff;
-	INT32 v_sync = vi_v_sync & 0x3ff;
+	v_end = vi_v_start & 0x3ff;
+	v_sync = vi_v_sync & 0x3ff;
 
 	
 	lowerfield = serration_pulses && (ispal ? v_start < oldvstart : v_start > oldvstart);
@@ -1154,8 +1163,8 @@ int rdp_update()
 		popmessage("vres = %d v_start = %d v_video_start = %d", vres, v_start, (vi_v_start >> 16) & 0x3ff);
 	}
 
-	INT32 h_end = hres + h_start;
-	INT32 hrightblank = PRESCALE_WIDTH - h_end;
+	h_end = hres + h_start;
+	hrightblank = PRESCALE_WIDTH - h_end;
 
 	vactivelines = (vi_v_sync & 0x3ff) - (ispal ? 47 : 37);
 	if (vactivelines > PRESCALE_HEIGHT)
@@ -1164,37 +1173,51 @@ int rdp_update()
 		return 0;
 	vactivelines >>= lineshifter;
 
-	int validh = (hres >=0 && h_start >=0 && h_start < PRESCALE_WIDTH);
+	validh = (hres >=0 && h_start >=0 && h_start < PRESCALE_WIDTH);
 
-	UINT32 frame_buffer = vi_origin & 0xffffff;
+	frame_buffer = vi_origin & 0xffffff;
 	
-	UINT32 pixels = 0, nextpixels = 0;
-	CCVG color, nextcolor, scancolor, scannextcolor;
-	int r = 0, g = 0, b = 0;
-	int xfrac = 0, yfrac = 0; 
-	UINT32 y_start = (vi_y_scale >> 16) & 0xfff;
-	UINT32 y_add = vi_y_scale & 0xfff;
-	int vi_width_low = vi_width & 0xfff;
-	int line_x = 0, next_line_x = 0, prev_line_x = 0, far_line_x = 0;
-	int cache_marker = 0, cache_next_marker = 0, divot_cache_marker = 0, divot_cache_next_marker = 0;
-	int prev_scan_x = 0, scan_x = 0, next_scan_x = 0, far_scan_x = 0;
-	int prev_x = 0, cur_x = 0, next_x = 0, far_x = 0;
+	pixels = 0;
+	nextpixels = 0;
+	r = 0;
+	g = 0;
+	b = 0;
+	xfrac = 0;
+	yfrac = 0; 
+	y_start = (vi_y_scale >> 16) & 0xfff;
+	y_add = vi_y_scale & 0xfff;
+	vi_width_low = vi_width & 0xfff;
+	line_x = 0;
+	next_line_x = 0;
+	prev_line_x = 0;
+	far_line_x = 0;
+	cache_marker = 0;
+	cache_next_marker = 0;
+	divot_cache_marker = 0;
+	divot_cache_next_marker = 0;
+	prev_scan_x = 0;
+	scan_x = 0;
+	next_scan_x = 0;
+	far_scan_x = 0;
+	prev_x = 0;
+	cur_x = 0;
+	next_x = 0;
+	far_x = 0;
 
 	
-	UINT32 pix = 0;
-	UINT8 cur_cvg = 0;
+	pix = 0;
+	cur_cvg = 0;
 
-	int lerping = 0;
-	UINT32 prevy = 0;
-	CCVG* tempccvgptr;
+	lerping = 0;
+	prevy = 0;
 	viaa_cache = &viaa_array[0];
 	viaa_cache_next = &viaa_array[1024];
 	divot_cache = &divot_array[0];
 	divot_cache_next = &divot_array[1024];
 
-	INT32 *d = 0;
+	d = 0;
 
-	UINT32 prescale_ptr = v_start * linecount + h_start + (lowerfield ? pitchindwords : 0);
+	prescale_ptr = v_start * linecount + h_start + (lowerfield ? pitchindwords : 0);
 	
 
 	if (hres <= 0 || vres <= 0 || (!(vitype & 2) && prevwasblank))
@@ -1549,10 +1572,9 @@ int rdp_update()
 STRICTINLINE void vi_fetch_filter16(CCVG* res, UINT32 fboffset, UINT32 cur_x, UINT32 fsaa, UINT32 dither_filter, UINT32 vres)
 {
 	int r, g, b;
-	UINT32 idx = (fboffset >> 1) + cur_x;
-	UINT32 pix, hval;
+	UINT32 idx, cur_cvg, pix, hval, fbw;
+    idx = (fboffset >> 1) + cur_x;
 	PAIRREAD16(pix, hval, idx); 
-	UINT32 cur_cvg;
 	if (fsaa)
 		cur_cvg = ((pix & 1) << 2) | hval;
 	else
@@ -1561,7 +1583,7 @@ STRICTINLINE void vi_fetch_filter16(CCVG* res, UINT32 fboffset, UINT32 cur_x, UI
 	g = GET_MED(pix);
 	b = GET_LOW(pix);
 
-	UINT32 fbw = vi_width & 0xfff;
+	fbw = vi_width & 0xfff;
 
 	if (cur_cvg == 7)
 	{
@@ -1583,8 +1605,9 @@ STRICTINLINE void vi_fetch_filter16(CCVG* res, UINT32 fboffset, UINT32 cur_x, UI
 STRICTINLINE void vi_fetch_filter32(CCVG* res, UINT32 fboffset, UINT32 cur_x, UINT32 fsaa, UINT32 dither_filter, UINT32 vres)
 {
 	int r, g, b;
-	UINT32 pix = RREADIDX32((fboffset >> 2) + cur_x);
-	UINT32 cur_cvg;
+	UINT32 pix, cur_cvg, fbw;
+    pix = RREADIDX32((fboffset >> 2) + cur_x);
+
 	if (fsaa)
 		cur_cvg = (pix >> 5) & 7;
 	else
@@ -1593,7 +1616,7 @@ STRICTINLINE void vi_fetch_filter32(CCVG* res, UINT32 fboffset, UINT32 cur_x, UI
 	g = (pix >> 16) & 0xff;
 	b = (pix >> 8) & 0xff;
 
-	UINT32 fbw = vi_width & 0xfff;
+	fbw = vi_width & 0xfff;
 	
 	if (cur_cvg == 7)
 	{
@@ -1934,9 +1957,11 @@ STRICTINLINE void combiner_2cycle(int adseed, UINT32* curpixel_cvg)
 
 STRICTINLINE void precalculate_everything(void)
 {
-	int i = 0, k = 0, j = 0;
-
-	
+	UINT32 exponent, mantissa;
+	int temppoint, tempslope, normout, wnorm, shift, tlu_rcp, i, k, j,
+		d, n, temp, res, invd, nbit, ps[9];
+	k = 0;
+	j = 0;
 	
 	for (i = 0; i < 256; i++)
 	{
@@ -1948,30 +1973,18 @@ STRICTINLINE void precalculate_everything(void)
 		gamma_dither_table[i] = vi_integer_sqrt(i);
 		gamma_dither_table[i] <<= 1;
 	}
-
-	
-	
-	
 	
 	z_build_com_table();
 
-	
-	
-	UINT32 exponent;
-	UINT32 mantissa;
 	for (i = 0; i < 0x4000; i++)
 	{
 		exponent = (i >> 11) & 7;
 		mantissa = i & 0x7ff;
 		z_complete_dec_table[i] = ((mantissa << z_dec_table[exponent].shift) + z_dec_table[exponent].add) & 0x3ffff;
 	}
-
-	
 	
 	precalc_cvmask_derivatives();
 
-	
-	
 	i = 0;
 	log2table[0] = log2table[1] = 0;
 	for (i = 2; i < 256; i++)
@@ -1985,9 +1998,6 @@ STRICTINLINE void precalculate_everything(void)
 			}
 		}
 	}
-
-	
-	
 	
 	for (i = 0; i < 0x400; i++)
 	{
@@ -1998,13 +2008,9 @@ STRICTINLINE void precalculate_everything(void)
 		else
 			vi_restore_table[i] = 0;
 	}
-
-	
 	
 	for (i = 0; i < 32; i++)
 		replicated_rgba[i] = (i << 3) | ((i >> 2) & 7); 
-
-	
 	
 	maskbits_table[0] = 0x3ff;
 	for (i = 1; i < 16; i++)
@@ -2037,17 +2043,6 @@ STRICTINLINE void precalculate_everything(void)
 		special_9bit_exttable[i] = ((i & 0x180) == 0x180) ? (i | ~0x1ff) : (i & 0x1ff);
 	}
 
-	
-	
-	
-	
-	
-	
-	int temppoint, tempslope; 
-	int normout;
-	int wnorm;
-	int shift, tlu_rcp;
-
 	for (i = 0; i < 0x8000; i++)
 	{
 		for (k = 1; k <= 14 && !((i << k) & 0x8000); k++) 
@@ -2070,8 +2065,12 @@ STRICTINLINE void precalculate_everything(void)
 	}
 
 	
-	int d = 0, n = 0, temp = 0, res = 0, invd = 0, nbit = 0;
-	int ps[9];
+	d = 0;
+	n = 0;
+	temp = 0;
+	res = 0;
+	invd = 0;
+	nbit = 0;
 
 	for (i = 0; i < 0x8000; i++)
 	{
@@ -2323,9 +2322,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 	{
 	case TEXEL_RGBA4:
 		{
+			UINT8 byteval, c;
 			taddr = ((tbase << 4) + s) >> 1;
-			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-			UINT8 byteval, c; 
+			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR); 
 
 			byteval = TMEM[taddr & 0xfff];
 			c = ((s & 1)) ? (byteval & 0xf) : (byteval >> 4);
@@ -2338,10 +2337,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_RGBA8:
 		{
+			UINT8 p;
 			taddr = (tbase << 3) + s;
 			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-			
-			UINT8 p;
 
 			p = TMEM[taddr & 0xfff];
 			color->r = p;
@@ -2352,11 +2350,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_RGBA16:
 		{
+			UINT16 c;
 			taddr = (tbase << 2) + s;
 			taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-			
-								
-			UINT16 c;
 					
 			c = tc16[taddr & 0x7ff];
 			color->r = GET_HI_RGBA16_TMEM(c);
@@ -2367,14 +2363,10 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_RGBA32:
 		{
-			
-			
+			UINT16 c;
 			
 			taddr = (tbase << 2) + s;
 			taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-					
-			UINT16 c;
-					
 			
 			taddr &= 0x3ff;
 			c = tc16[taddr];
@@ -2388,17 +2380,19 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 	case TEXEL_YUV4:
 	case TEXEL_YUV8:
 		{
+			UINT16 c;
+			INT32 u, save;
+			int taddrlow;
+
 			taddr = (tbase << 3) + s;
-			int taddrlow = taddr >> 1;
+			taddrlow = taddr >> 1;
 
 			taddrlow ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
 
 			taddrlow &= 0x3ff;
 					
-			UINT16 c = tc16[taddrlow];
+			c = tc16[taddrlow];
 					
-			INT32 u, save;
-			
 			save = u = c >> 8;
 			
 			u ^= 0x80;
@@ -2414,8 +2408,12 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 	case TEXEL_YUV16:
 	case TEXEL_YUV32:
 		{
+			int taddrlow;
+			UINT16 c;
+			INT32 y, u, v;
+
 			taddr = (tbase << 3) + s;
-			int taddrlow = taddr >> 1;
+			taddrlow = taddr >> 1;
 
 			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
 			taddrlow ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
@@ -2423,9 +2421,8 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 			taddr &= 0x7ff;
 			taddrlow &= 0x3ff;
 					
-			UINT16 c = tc16[taddrlow];
+			c = tc16[taddrlow];
 					
-			INT32 y, u, v;
 			y = TMEM[taddr | 0x800];
 			u = c >> 8;
 			v = c & 0xff;
@@ -2446,12 +2443,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_CI4:
 		{
+			UINT8 p;
 			taddr = ((tbase << 4) + s) >> 1;
 			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-			
-			UINT8 p;
-
-			
 			
 			p = TMEM[taddr & 0xfff];
 			p = (s & 1) ? (p & 0xf) : (p >> 4);
@@ -2461,11 +2455,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_CI8:
 		{
+			UINT8 p;
 			taddr = (tbase << 3) + s;
 			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-			
-			UINT8 p;
-
 			
 			p = TMEM[taddr & 0xfff];
 			color->r = p;
@@ -2476,11 +2468,11 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_CI16:
 		{
+			UINT16 c;
+
 			taddr = (tbase << 2) + s;
 			taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-								
-			UINT16 c;
-					
+										
 			c = tc16[taddr & 0x7ff];
 			color->r = c >> 8;
 			color->g = c & 0xff;
@@ -2490,10 +2482,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_CI32:
 		{
+			UINT16 c;
 			taddr = (tbase << 2) + s;
 			taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-					
-			UINT16 c;
 					
 			c = tc16[taddr & 0x7ff];
 			color->r = c >> 8;
@@ -2505,11 +2496,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
         break;
 	case TEXEL_IA4:
 		{
+			UINT8 p, i;
 			taddr = ((tbase << 4) + s) >> 1;
-			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-			
-			UINT8 p, i; 
-					
+			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR); 
 			
 			p = TMEM[taddr & 0xfff];
 			p = (s & 1) ? (p & 0xf) : (p >> 4);
@@ -2523,11 +2512,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_IA8:
 		{
+			UINT8 p, i;
 			taddr = (tbase << 3) + s;
 			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-			
-			UINT8 p, i;
-
 			
 			p = TMEM[taddr & 0xfff];
 			i = p & 0xf0;
@@ -2540,12 +2527,10 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_IA16:
 		{
-		
+			UINT16 c;
 		
 			taddr = (tbase << 2) + s;
-			taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-			
-			UINT16 c; 
+			taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR); 
 										
 			c = tc16[taddr & 0x7ff];
 			color->r = color->g = color->b = (c >> 8);
@@ -2554,10 +2539,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_IA32:
 		{
+			UINT16 c;
 			taddr = (tbase << 2) + s;
 			taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-					
-			UINT16 c;
 					
 			c = tc16[taddr & 0x7ff];
 			color->r = c >> 8;
@@ -2568,10 +2552,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_I4:
 		{
+			UINT8 byteval, c;
 			taddr = ((tbase << 4) + s) >> 1;
-			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-			
-			UINT8 byteval, c; 
+			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR); 
 													
 			byteval = TMEM[taddr & 0xfff];
 			c = (s & 1) ? (byteval & 0xf) : (byteval >> 4);
@@ -2584,10 +2567,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_I8:
 		{
+			UINT8 c;
 			taddr = (tbase << 3) + s;
-			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-			
-			UINT8 c; 
+			taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR); 
 
 			c = TMEM[taddr & 0xfff];
 			color->r = c;
@@ -2598,10 +2580,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_I16:
 		{
+			UINT16 c;
 			taddr = (tbase << 2) + s;
 			taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-								
-			UINT16 c;
 					
 			c = tc16[taddr & 0x7ff];
 			color->r = c >> 8;
@@ -2612,10 +2593,9 @@ STRICTINLINE void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 		break;
 	case TEXEL_I32:
 		{
+			UINT16 c;
 			taddr = (tbase << 2) + s;
 			taddr ^= ((t & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR);
-					
-			UINT16 c;
 					
 			c = tc16[taddr & 0x7ff];
 			color->r = c >> 8;
@@ -2751,6 +2731,8 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 	{
 	case TEXEL_RGBA4:
 		{
+			UINT32 byteval, c;
+
 			taddr0 = ((tbase0 << 4) + s0) >> 1;
 			taddr1 = ((tbase0 << 4) + s1) >> 1;
 			taddr2 = ((tbase2 << 4) + s0) >> 1;
@@ -2760,9 +2742,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			taddr1 ^= xort;
 			xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
 			taddr2 ^= xort;
-			taddr3 ^= xort;
-			
-			UINT32 byteval, c; 
+			taddr3 ^= xort; 
 													
 			taddr0 &= 0xfff;
 			taddr1 &= 0xfff;
@@ -2803,6 +2783,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_RGBA8:
 		{
+			UINT32 p;
 			taddr0 = ((tbase0 << 3) + s0);
 			taddr1 = ((tbase0 << 3) + s1);
 			taddr2 = ((tbase2 << 3) + s0);
@@ -2812,9 +2793,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			taddr1 ^= xort;
 			xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
 			taddr2 ^= xort;
-			taddr3 ^= xort;
-			
-			UINT32 p; 
+			taddr3 ^= xort; 
 			
 			taddr0 &= 0xfff;
 			taddr1 &= 0xfff;
@@ -2844,6 +2823,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_RGBA16:
 		{
+			UINT32 c0, c1, c2, c3;
 			taddr0 = ((tbase0 << 2) + s0);
 			taddr1 = ((tbase0 << 2) + s1);
 			taddr2 = ((tbase2 << 2) + s0);
@@ -2854,8 +2834,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-					
-			UINT32 c0, c1, c2, c3;
 					
 			taddr0 &= 0x7ff;
 			taddr1 &= 0x7ff;
@@ -2885,6 +2863,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_RGBA32:
 		{
+			UINT16 c0, c1, c2, c3;
 			taddr0 = ((tbase0 << 2) + s0);
 			taddr1 = ((tbase0 << 2) + s1);
 			taddr2 = ((tbase2 << 2) + s0);
@@ -2895,8 +2874,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-					
-			UINT16 c0, c1, c2, c3;
 
 			taddr0 &= 0x3ff;
 			taddr1 &= 0x3ff;
@@ -2931,6 +2908,9 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 	case TEXEL_YUV4:
 	case TEXEL_YUV8:
 		{
+			UINT16 c0, c1, c2, c3;
+			INT32 u0, u1, u2, u3, save0, save1, save2, save3;
+
 			taddr0 = ((tbase0 << 3) + s0);
 			taddr1 = ((tbase0 << 3) + s1);
 			taddr2 = ((tbase2 << 3) + s0);
@@ -2951,9 +2931,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			taddrlow1 &= 0x3ff;
 			taddrlow2 &= 0x3ff;
 			taddrlow3 &= 0x3ff;
-
-			UINT16 c0, c1, c2, c3;
-			INT32 u0, u1, u2, u3, save0, save1, save2, save3;
 
 			c0 = tc16[taddrlow0];
 			c1 = tc16[taddrlow1];
@@ -2998,6 +2975,9 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 	case TEXEL_YUV16:
 	case TEXEL_YUV32:
 		{
+			UINT16 c0, c1, c2, c3;
+			INT32 y0, y1, y2, y3, u0, u1, u2, u3, v0, v1, v2, v3;
+
 			taddr0 = ((tbase0 << 3) + s0);
 			taddr1 = ((tbase0 << 3) + s1);
 			taddr2 = ((tbase2 << 3) + s0);
@@ -3028,9 +3008,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			taddrlow1 &= 0x3ff;
 			taddrlow2 &= 0x3ff;
 			taddrlow3 &= 0x3ff;
-
-			UINT16 c0, c1, c2, c3;
-			INT32 y0, y1, y2, y3, u0, u1, u2, u3, v0, v1, v2, v3;
 
 			c0 = tc16[taddrlow0];
 			c1 = tc16[taddrlow1];
@@ -3091,6 +3068,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_CI4:
 		{
+			UINT32 p;
 			taddr0 = ((tbase0 << 4) + s0) >> 1;
 			taddr1 = ((tbase0 << 4) + s1) >> 1;
 			taddr2 = ((tbase2 << 4) + s0) >> 1;
@@ -3101,8 +3079,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-			
-			UINT32 p;
 															
 			taddr0 &= 0xfff;
 			taddr1 &= 0xfff;
@@ -3131,6 +3107,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_CI8:
 		{
+			UINT32 p;
 			taddr0 = ((tbase0 << 3) + s0);
 			taddr1 = ((tbase0 << 3) + s1);
 			taddr2 = ((tbase2 << 3) + s0);
@@ -3141,8 +3118,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-			
-			UINT32 p;
 
 			taddr0 &= 0xfff;
 			taddr1 &= 0xfff;
@@ -3172,6 +3147,8 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_CI16:
 		{
+			UINT16 c0, c1, c2, c3;
+
 			taddr0 = ((tbase0 << 2) + s0);
 			taddr1 = ((tbase0 << 2) + s1);
 			taddr2 = ((tbase2 << 2) + s0);
@@ -3182,8 +3159,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-								
-			UINT16 c0, c1, c2, c3;
 					
 			taddr0 &= 0x7ff;
 			taddr1 &= 0x7ff;
@@ -3214,6 +3189,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_CI32:
 		{
+			UINT16 c0, c1, c2, c3;
 			taddr0 = ((tbase0 << 2) + s0);
 			taddr1 = ((tbase0 << 2) + s1);
 			taddr2 = ((tbase2 << 2) + s0);
@@ -3224,8 +3200,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-								
-			UINT16 c0, c1, c2, c3;
 					
 			taddr0 &= 0x7ff;
 			taddr1 &= 0x7ff;
@@ -3256,6 +3230,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
         break;
 	case TEXEL_IA4:
 		{
+			UINT32 p, i;
 			taddr0 = ((tbase0 << 4) + s0) >> 1;
 			taddr1 = ((tbase0 << 4) + s1) >> 1;
 			taddr2 = ((tbase2 << 4) + s0) >> 1;
@@ -3266,8 +3241,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-			
-			UINT32 p, i; 
 					
 			taddr0 &= 0xfff;
 			taddr1 &= 0xfff;
@@ -3313,6 +3286,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_IA8:
 		{
+			UINT32 p, i;
 			taddr0 = ((tbase0 << 3) + s0);
 			taddr1 = ((tbase0 << 3) + s1);
 			taddr2 = ((tbase2 << 3) + s0);
@@ -3324,8 +3298,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			taddr2 ^= xort;
 			taddr3 ^= xort;
 			
-			UINT32 p, i;
-
 			taddr0 &= 0xfff;
 			taddr1 &= 0xfff;
 			taddr2 &= 0xfff;
@@ -3364,6 +3336,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_IA16:
 		{
+			UINT16 c0, c1, c2, c3;
 			taddr0 = ((tbase0 << 2) + s0);
 			taddr1 = ((tbase0 << 2) + s1);
 			taddr2 = ((tbase2 << 2) + s0);
@@ -3374,8 +3347,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-								
-			UINT16 c0, c1, c2, c3;
 										
 			taddr0 &= 0x7ff;
 			taddr1 &= 0x7ff;
@@ -3398,6 +3369,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_IA32:
 		{
+			UINT16 c0, c1, c2, c3;
 			taddr0 = ((tbase0 << 2) + s0);
 			taddr1 = ((tbase0 << 2) + s1);
 			taddr2 = ((tbase2 << 2) + s0);
@@ -3408,8 +3380,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-								
-			UINT16 c0, c1, c2, c3;
 					
 			taddr0 &= 0x7ff;
 			taddr1 &= 0x7ff;
@@ -3440,6 +3410,8 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_I4:
 		{
+			UINT32 p, c0, c1, c2, c3; 
+			
 			taddr0 = ((tbase0 << 4) + s0) >> 1;
 			taddr1 = ((tbase0 << 4) + s1) >> 1;
 			taddr2 = ((tbase2 << 4) + s0) >> 1;
@@ -3450,9 +3422,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-			
-			UINT32 p, c0, c1, c2, c3; 
-			
+
 			taddr0 &= 0xfff;
 			taddr1 &= 0xfff;
 			taddr2 &= 0xfff;
@@ -3481,6 +3451,8 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_I8:
 		{
+			UINT32 p;
+
 			taddr0 = ((tbase0 << 3) + s0);
 			taddr1 = ((tbase0 << 3) + s1);
 			taddr2 = ((tbase2 << 3) + s0);
@@ -3491,8 +3463,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-			
-			UINT32 p;
 
 			taddr0 &= 0xfff;
 			taddr1 &= 0xfff;
@@ -3522,6 +3492,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_I16:
 		{
+			UINT16 c0, c1, c2, c3;
 			taddr0 = ((tbase0 << 2) + s0);
 			taddr1 = ((tbase0 << 2) + s1);
 			taddr2 = ((tbase2 << 2) + s0);
@@ -3532,8 +3503,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-								
-			UINT16 c0, c1, c2, c3;
 					
 			taddr0 &= 0x7ff;
 			taddr1 &= 0x7ff;
@@ -3563,6 +3532,7 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 		break;
 	case TEXEL_I32:
 		{
+			UINT16 c0, c1, c2, c3;
 			taddr0 = ((tbase0 << 2) + s0);
 			taddr1 = ((tbase0 << 2) + s1);
 			taddr2 = ((tbase2 << 2) + s0);
@@ -3573,8 +3543,6 @@ STRICTINLINE void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2
 			xort = (t1 & 1) ? WORD_XOR_DWORD_SWAP : WORD_ADDR_XOR;
 			taddr2 ^= xort;
 			taddr3 ^= xort;
-								
-			UINT16 c0, c1, c2, c3;
 					
 			taddr0 &= 0x7ff;
 			taddr1 &= 0x7ff;
@@ -3847,11 +3815,14 @@ STRICTINLINE void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR 
 
 void get_tmem_idx(int s, int t, UINT32 tilenum, UINT32* idx0, UINT32* idx1, UINT32* idx2, UINT32* idx3, UINT32* bit3flipped, UINT32* hibit)
 {
-	UINT32 tbase = (tile[tilenum].line * t) & 0x1ff;
+	UINT32 tbase, tsize, tformat, sshorts;
+	int tidx_a, tidx_b, tidx_c, tidx_d;
+
+	tbase = (tile[tilenum].line * t) & 0x1ff;
 	tbase += tile[tilenum].tmem;
-	UINT32 tsize = tile[tilenum].size;
-	UINT32 tformat = tile[tilenum].format;
-	UINT32 sshorts = 0;
+	tsize = tile[tilenum].size;
+	tformat = tile[tilenum].format;
+	sshorts = 0;
 
 	
 	if (tsize == PIXEL_SIZE_8BIT || tformat == FORMAT_YUV)
@@ -3863,11 +3834,11 @@ void get_tmem_idx(int s, int t, UINT32 tilenum, UINT32* idx0, UINT32* idx1, UINT
 	sshorts &= 0x7ff;
 
 	*bit3flipped = ((sshorts & 2) ? 1 : 0) ^ (t & 1);
-		
-	int tidx_a = ((tbase << 2) + sshorts) & 0x7fd;
-	int tidx_b = (tidx_a + 1) & 0x7ff;
-	int tidx_c = (tidx_a + 2) & 0x7ff;
-	int tidx_d = (tidx_a + 3) & 0x7ff;
+
+	tidx_a = ((tbase << 2) + sshorts) & 0x7fd;
+	tidx_b = (tidx_a + 1) & 0x7ff;
+	tidx_c = (tidx_a + 2) & 0x7ff;
+	tidx_d = (tidx_a + 3) & 0x7ff;
 
 	*hibit = (tidx_a & 0x400) ? 1 : 0;
 
@@ -3894,14 +3865,20 @@ void get_tmem_idx(int s, int t, UINT32 tilenum, UINT32* idx0, UINT32* idx1, UINT
 
 void read_tmem_copy(int s, int s1, int s2, int s3, int t, UINT32 tilenum, UINT32* sortshort, int* hibits, int* lowbits)
 {
-	UINT32 tbase = (tile[tilenum].line * t) & 0x1ff;
+	UINT32 tbase, tsize, tformat, shbytes, shbytes1, shbytes2, shbytes3, sortidx[8];
+	INT32 delta;
+	UINT16 *tmem16;
+	UINT32 short0, short1, short2, short3;
+	int tidx_a, tidx_blow, tidx_bhi, tidx_c, tidx_dlow, tidx_dhi;
+	tbase = (tile[tilenum].line * t) & 0x1ff;
 	tbase += tile[tilenum].tmem;
-	UINT32 tsize = tile[tilenum].size;
-	UINT32 tformat = tile[tilenum].format;
-	UINT32 shbytes = 0, shbytes1 = 0, shbytes2 = 0, shbytes3 = 0;
-	INT32 delta = 0;
-	UINT32 sortidx[8];
-
+	tsize = tile[tilenum].size;
+	tformat = tile[tilenum].format;
+	shbytes = 0;
+	shbytes1 = 0;
+	shbytes2 = 0;
+	shbytes3 = 0;
+	delta = 0;
 	
 	if (tsize == PIXEL_SIZE_8BIT || tformat == FORMAT_YUV)
 	{
@@ -3929,8 +3906,6 @@ void read_tmem_copy(int s, int s1, int s2, int s3, int t, UINT32 tilenum, UINT32
 	shbytes1 &= 0x1fff;
 	shbytes2 &= 0x1fff;
 	shbytes3 &= 0x1fff;
-
-	int tidx_a, tidx_blow, tidx_bhi, tidx_c, tidx_dlow, tidx_dhi;
 
 	tbase <<= 4;
 	tidx_a = (tbase + shbytes) & 0x1fff;
@@ -3973,8 +3948,7 @@ void read_tmem_copy(int s, int s1, int s2, int s3, int t, UINT32 tilenum, UINT32
 	lowbits[4] = tidx_dlow & 0xf;
 	lowbits[5] = tidx_dhi & 0xf;
 
-	UINT16* tmem16 = (UINT16*)TMEM;
-	UINT32 short0, short1, short2, short3;
+	tmem16 = (UINT16*)TMEM;
 
 	
 	tidx_a >>= 2;
@@ -4467,8 +4441,6 @@ STRICTINLINE void tc_pipeline_load(INT32* sss, INT32* sst, int tilenum, int coor
 	*sss = sss1;
 	*sst = sst1;
 }
-
-
 
 void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
 {
