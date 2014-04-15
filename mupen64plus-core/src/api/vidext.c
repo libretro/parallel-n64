@@ -31,7 +31,6 @@
 #include "m64p_vidext.h"
 #include "vidext.h"
 #include "callbacks.h"
-#include "../osd/osd.h"
 
 /* local variables */
 static m64p_video_extension_functions l_ExternalVideoFuncTable = {10, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};

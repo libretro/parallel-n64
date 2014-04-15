@@ -56,12 +56,15 @@ ptr_ConfigSetDefaultBool   ConfigSetDefaultBool = NULL;
 ptr_ConfigGetParamBool     ConfigGetParamBool = NULL;
 #endif
 
+#ifdef __LIBRETRO__
+extern unsigned libretro_get_gfx_plugin(void);
+#endif
+
 NOINLINE void update_conf(const char* source)
 {
     memset(conf, 0, sizeof(conf));
 
 #ifdef __LIBRETRO__
-    extern unsigned libretro_get_gfx_plugin(void);
     CFG_HLE_GFX = 1;
     if (libretro_get_gfx_plugin == GFX_ANGRYLION)
        CFG_HLE_GFX = 0;

@@ -1449,9 +1449,9 @@ extern const char* retro_get_system_directory();
 
 EXPORT const char * CALL ConfigGetSharedDataFilepath(const char *filename)
 {
+  static char configpath[PATH_MAX];
   if (filename == NULL) return NULL;
 
-  static char configpath[PATH_MAX];
   snprintf(configpath, PATH_MAX, "%s/%s", retro_get_system_directory(), filename);
 
   /* TODO: Return NULL if file does not exist */

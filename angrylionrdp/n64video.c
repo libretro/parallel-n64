@@ -1049,38 +1049,41 @@ int rdp_init()
 
 int rdp_update()
 {
-int i, j;
-	UINT32 final = 0;
+    int i, j, dither_filter, fsaa, divot, gamma, gamma_dither, lerp_en, extralines,
+	vitype, serration_pulses, gamma_and_dither, ispal, slowbright, linecount, lineshifter,
+	twolines, lowerfield, vactivelines;
+	UINT32 final;
 
 	CCVG *viaa_cache, *viaa_cache_next, *divot_cache, *divot_cache_next;
 	CCVG viaa_array[2048];
 	CCVG divot_array[2048];
 
-	INT32 hres, vres;
+	INT32 hres, vres, v_start, h_start, x_start, x_add;
+	void (*vi_fetch_filter_ptr)(CCVG*, UINT32, UINT32, UINT32, UINT32, UINT32) = vi_fetch_filter_func[vitype & 1];
+
+	final = 0;
 	hres = (vi_h_start & 0x3ff) - ((vi_h_start >> 16) & 0x3ff);
 		
 	vres = (vi_v_start & 0x3ff) - ((vi_v_start >> 16) & 0x3ff);
 	vres >>= 1;
 
 
-	int dither_filter = (vi_control >> 16) & 1;
-	int fsaa = !((vi_control >> 9) & 1);
-	int divot = (vi_control >> 4) & 1;
-	int gamma = (vi_control >> 3) & 1;
-	int gamma_dither = (vi_control >> 2) & 1;
-	int lerp_en = (((vi_control >> 8) & 3) != 3);
-	int extralines = !((vi_control >> 8) & 1);
+	dither_filter = (vi_control >> 16) & 1;
+	fsaa = !((vi_control >> 9) & 1);
+	divot = (vi_control >> 4) & 1;
+	gamma = (vi_control >> 3) & 1;
+	gamma_dither = (vi_control >> 2) & 1;
+	lerp_en = (((vi_control >> 8) & 3) != 3);
+	extralines = !((vi_control >> 8) & 1);
 	
-	int vitype = vi_control & 3;
-	int serration_pulses = (vi_control >> 6) & 1;
-	int gamma_and_dither = (gamma << 1) | gamma_dither;
+	vitype = vi_control & 3;
+	serration_pulses = (vi_control >> 6) & 1;
+	gamma_and_dither = (gamma << 1) | gamma_dither;
 	if ((vi_control >> 5) & 1)
 		popmessage("rdp_update: vbus_clock_enable bit set in VI_CONTROL_REG register. Never run this code on your N64! It's rumored that turning this bit on\
 					will result in permanent damage to the hardware! Emulation will now continue.\n");
 
-	void (*vi_fetch_filter_ptr)(CCVG*, UINT32, UINT32, UINT32, UINT32, UINT32) = vi_fetch_filter_func[vitype & 1];
-
-	int ispal = (vi_v_sync & 0x3ff) > 550;
+	ispal = (vi_v_sync & 0x3ff) > 550;
 
 	if (!ispal && !lerp_en && vitype == 2 && !onetimewarnings.ntscnolerp)
 	{
@@ -1089,18 +1092,18 @@ int i, j;
 		onetimewarnings.ntscnolerp = 1;
 	}
 		
-	int slowbright = 0;
+	slowbright = 0;
 #ifdef WIN32
 	if (GetAsyncKeyState(0x91))
 		brightness = (brightness + 1) & 15;
 #endif
 	slowbright = brightness >> 1;
 
-	INT32 v_start = (vi_v_start >> 16) & 0x3ff;
-	INT32 h_start = ((vi_h_start >> 16) & 0x3ff) - (ispal ? 128 : 108);
+	v_start = (vi_v_start >> 16) & 0x3ff;
+	h_start = ((vi_h_start >> 16) & 0x3ff) - (ispal ? 128 : 108);
 
-	UINT32 x_start = (vi_x_scale >> 16) & 0xfff;
-	UINT32 x_add = vi_x_scale & 0xfff;
+	x_start = (vi_x_scale >> 16) & 0xfff;
+	x_add = vi_x_scale & 0xfff;
 
 	if (h_start < 0)
 	{
@@ -1116,16 +1119,16 @@ int i, j;
 	INT32 v_sync = vi_v_sync & 0x3ff;
 
 	
-	int lowerfield = serration_pulses && (ispal ? v_start < oldvstart : v_start > oldvstart);
+	lowerfield = serration_pulses && (ispal ? v_start < oldvstart : v_start > oldvstart);
 	
 	if (serration_pulses && v_start == oldvstart)
 	{
 		serration_pulses = lowerfield = 0;
 	}
 
-	int linecount = serration_pulses ? (pitchindwords << 1) : pitchindwords;
-	int lineshifter = serration_pulses ? 0 : 1;
-	int twolines = serration_pulses ? 1 : 0;
+	linecount = serration_pulses ? (pitchindwords << 1) : pitchindwords;
+	lineshifter = serration_pulses ? 0 : 1;
+	twolines = serration_pulses ? 1 : 0;
 
 	oldvstart = v_start;
 
@@ -1153,7 +1156,7 @@ int i, j;
 	INT32 h_end = hres + h_start;
 	INT32 hrightblank = PRESCALE_WIDTH - h_end;
 
-	int vactivelines = (vi_v_sync & 0x3ff) - (ispal ? 47 : 37);
+	vactivelines = (vi_v_sync & 0x3ff) - (ispal ? 47 : 37);
 	if (vactivelines > PRESCALE_HEIGHT)
 		fatalerror("VI_V_SYNC_REG too big");
 	if (vactivelines < 0)

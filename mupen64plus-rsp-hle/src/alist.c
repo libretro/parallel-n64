@@ -78,9 +78,10 @@ static void alist_envmix_mix(size_t n, int16_t** dst, const int16_t* gains, int1
 
 static int16_t ramp_step(struct ramp_t* ramp)
 {
+	bool target_reached;
     ramp->value += ramp->step;
 
-    bool target_reached = (ramp->step <= 0)
+    target_reached = (ramp->step <= 0)
         ? (ramp->value <= ramp->target)
         : (ramp->value >= ramp->target);
 

@@ -3723,10 +3723,6 @@ uint32_t *fast_mem_access(uint32_t address)
 
 void format_saved_memory(void)
 {
-    memset(saved_memory.sram, 0, sizeof(saved_memory.sram));
-    memset(saved_memory.eeprom, 0, sizeof(saved_memory.eeprom));
-    memset(saved_memory.flashram, 0xFF, sizeof(saved_memory.flashram));
-
     uint8_t init[] =
     {
         0x81,0x01,0x02,0x03, 0x04,0x05,0x06,0x07, 0x08,0x09,0x0a,0x0b, 0x0c,0x0d,0x0e,0x0f,
@@ -3748,6 +3744,11 @@ void format_saved_memory(void)
         0x00,0x71,0x00,0x03, 0x00,0x03,0x00,0x03, 0x00,0x03,0x00,0x03, 0x00,0x03,0x00,0x03
     };
     int i,j;
+
+    memset(saved_memory.sram, 0, sizeof(saved_memory.sram));
+    memset(saved_memory.eeprom, 0, sizeof(saved_memory.eeprom));
+    memset(saved_memory.flashram, 0xFF, sizeof(saved_memory.flashram));
+
     for (i=0; i<4; i++)
     {
         for (j=0; j<0x8000; j+=2)
