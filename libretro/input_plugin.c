@@ -39,7 +39,7 @@ extern uint16_t button_orientation;
 #include "m64p_common.h"
 #include "m64p_config.h"
 
-#include "../src/main/rom.h"
+#include "../mupen64plus-core/src/main/rom.h"
 extern m64p_rom_header ROM_HEADER;
 
 // Some stuff from n-rage plugin
@@ -562,7 +562,6 @@ static void inputGetKeys_WWF(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_RR64( int Control, BUTTONS *Keys )
 {
-   bool hold_cstick;
    int16_t analogX, analogY;
 
    Keys->Value = 0;

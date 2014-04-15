@@ -5,11 +5,7 @@
 #include "m64p_plugin.h"
 #include "m64p_config.h"
 #include "m64p_vidext.h"
-#include "../../libretro/libretro.h"
-
-#define GL_GLEXT_PROTOTYPES
-#include <SDL_opengles2.h>
-#include "../../libretro/SDL.h"
+#include "../libretro/libretro.h"
 
 #include <stdint.h>
 

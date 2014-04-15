@@ -28,14 +28,13 @@
 #include <stdarg.h>
 
 #include "libretro.h"
-#include "SDL.h"
 void retro_audio_batch_cb(const int16_t *data, size_t frames, unsigned freq);
 
 #define M64P_PLUGIN_PROTOTYPES 1
-#include "api/m64p_types.h"
-#include "api/m64p_plugin.h"
-#include "api/m64p_common.h"
-#include "api/m64p_config.h"
+#include "m64p_types.h"
+#include "m64p_plugin.h"
+#include "m64p_common.h"
+#include "m64p_config.h"
 
 /* Read header for type definition */
 static AUDIO_INFO AudioInfo;

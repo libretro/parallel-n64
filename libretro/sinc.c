@@ -114,7 +114,7 @@ typedef struct rarch_sinc_resampler
    float *main_buffer;
 } rarch_sinc_resampler_t;
 
-static inline double sinc(double val)
+static INLINE double sinc(double val)
 {
    if (fabs(val) < 0.00001)
       return 1.0;
@@ -123,14 +123,14 @@ static inline double sinc(double val)
 }
 
 #if defined(SINC_WINDOW_LANCZOS)
-static inline double window_function(double index)
+static INLINE double window_function(double index)
 {
    return sinc(M_PI * index);
 }
 #elif defined(SINC_WINDOW_KAISER)
 // Modified Bessel function of first order.
 // Check Wiki for mathematical definition ...
-static inline double besseli0(double x)
+static INLINE double besseli0(double x)
 {
    unsigned i;
    double sum = 0.0;
@@ -156,7 +156,7 @@ static inline double besseli0(double x)
    return sum;
 }
 
-static inline double window_function(double index)
+static INLINE double window_function(double index)
 {
    return besseli0(SINC_WINDOW_KAISER_BETA * sqrt(1 - index * index));
 }
@@ -176,18 +176,21 @@ static void init_sinc_table(rarch_sinc_resampler_t *resamp, double cutoff,
    {
       for (j = 0; j < taps; j++)
       {
+		  float val;
+		  double window_phase, sinc_phase;
          int n = j * phases + i;
-         double window_phase = (double)n / (phases * taps); // [0, 1).
+         window_phase = (double)n / (phases * taps); // [0, 1).
          window_phase = 2.0 * window_phase - 1.0; // [-1, 1)
-         double sinc_phase = sidelobes * window_phase;
+         sinc_phase = sidelobes * window_phase;
 
-         float val = cutoff * sinc(M_PI * sinc_phase * cutoff) * window_function(window_phase) / window_mod;
+         val = cutoff * sinc(M_PI * sinc_phase * cutoff) * window_function(window_phase) / window_mod;
          phase_table[i * stride * taps + j] = val;
       }
    }
 
    if (calculate_delta)
    {
+	  int phase;
       for (p = 0; p < phases - 1; p++)
       {
          for (j = 0; j < taps; j++)
@@ -197,16 +200,19 @@ static void init_sinc_table(rarch_sinc_resampler_t *resamp, double cutoff,
          }
       }
 
-      int phase = phases - 1;
+      phase = phases - 1;
       for (j = 0; j < taps; j++)
       {
-         int n = j * phases + (phase + 1);
-         double window_phase = (double)n / (phases * taps); // (0, 1].
+		  int n;
+		  float val, delta;
+		  double window_phase, sinc_phase;
+         n = j * phases + (phase + 1);
+         window_phase = (double)n / (phases * taps); // (0, 1].
          window_phase = 2.0 * window_phase - 1.0; // (-1, 1]
-         double sinc_phase = sidelobes * window_phase;
+         sinc_phase = sidelobes * window_phase;
 
-         float val = cutoff * sinc(M_PI * sinc_phase * cutoff) * window_function(window_phase) / window_mod;
-         float delta = (val - phase_table[phase * stride * taps + j]);
+         val = cutoff * sinc(M_PI * sinc_phase * cutoff) * window_function(window_phase) / window_mod;
+         delta = (val - phase_table[phase * stride * taps + j]);
          phase_table[(phase * stride + 1) * taps + j] = delta;
       }
    }
@@ -215,12 +221,14 @@ static void init_sinc_table(rarch_sinc_resampler_t *resamp, double cutoff,
 // No memalign() for us on Win32 ...
 static void *aligned_alloc__(size_t boundary, size_t size)
 {
-   void *ptr = malloc(boundary + size + sizeof(uintptr_t));
+   uintptr_t addr;
+   void *ptr, **place;
+   ptr = (void*)malloc(boundary + size + sizeof(uintptr_t));
    if (!ptr)
       return NULL;
 
-   uintptr_t addr = ((uintptr_t)ptr + sizeof(uintptr_t) + boundary) & ~(boundary - 1);
-   void **place   = (void**)addr;
+   addr = ((uintptr_t)ptr + sizeof(uintptr_t) + boundary) & ~(boundary - 1);
+   place   = (void**)addr;
    place[-1]      = ptr;
 
    return (void*)addr;
@@ -232,7 +240,7 @@ static void aligned_free__(void *ptr)
    free(p[-1]);
 }
 
-static inline void process_sinc_C(rarch_sinc_resampler_t *resamp, float *out_buffer)
+static INLINE void process_sinc_C(rarch_sinc_resampler_t *resamp, float *out_buffer)
 {
    unsigned i;
    float sum_l = 0.0f;
@@ -448,6 +456,8 @@ static void resampler_sinc_free(void *re)
 
 static void *resampler_sinc_new(double bandwidth_mod)
 {
+   double cutoff;
+   size_t phase_elems, elems;
    rarch_sinc_resampler_t *re = (rarch_sinc_resampler_t*)calloc(1, sizeof(*re));
    if (!re)
       return NULL;
@@ -455,7 +465,7 @@ static void *resampler_sinc_new(double bandwidth_mod)
    memset(re, 0, sizeof(*re));
 
    re->taps = TAPS;
-   double cutoff = CUTOFF;
+   cutoff = CUTOFF;
 
    // Downsampling, must lower cutoff, and extend number of taps accordingly to keep same stopband attenuation.
    if (bandwidth_mod < 1.0)
@@ -471,11 +481,11 @@ static void *resampler_sinc_new(double bandwidth_mod)
    re->taps = (re->taps + 3) & ~3;
 #endif
 
-   size_t phase_elems = (1 << PHASE_BITS) * re->taps;
+   phase_elems = (1 << PHASE_BITS) * re->taps;
 #if SINC_COEFF_LERP
    phase_elems *= 2;
 #endif
-   size_t elems = phase_elems + 4 * re->taps;
+   elems = phase_elems + 4 * re->taps;
 
    re->main_buffer = (float*)aligned_alloc__(128, sizeof(float) * elems);
    if (!re->main_buffer)

@@ -34,9 +34,6 @@ STRICTINLINE void fatalerror(const char * err, ...)
 	va_list arg;
 	va_start(arg, err);
 	vsprintf(VsprintfBuffer, err, arg);
-#ifdef WIN32
-	MessageBoxA(0,VsprintfBuffer,"RDP: fatal error",MB_OK);
-#endif
 #ifndef WIN32
 	printf(VsprintfBuffer);
 #endif
