@@ -24,6 +24,12 @@
 
 #include <SDL_config.h>
 
+#if defined(_MSC_VER) && !defined(_XBOX)
+#include <windows.h>
+#elif defined(_XBOX)
+#include <xtl.h>
+#endif
+
 #if defined(__LIBRETRO__) && !defined(GLES)
 #define glClearDepthf glClearDepth
 #define glDepthRangef glDepthRange

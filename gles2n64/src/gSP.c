@@ -316,15 +316,16 @@ static void gSPTransformVertex_default(float vtx[4], float mtx[4][4])
 static void gSPLightVertex_default(u32 v)
 {
    int i;
+   f32 r, g, b, intensity;
+
    TransformVectorNormalize( &OGL.triangles.vertices[v].nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
 
-   f32 r, g, b;
    r = gSP.lights[gSP.numLights].r;
    g = gSP.lights[gSP.numLights].g;
    b = gSP.lights[gSP.numLights].b;
    for (i = 0; i < gSP.numLights; i++)
    {
-      f32 intensity = DotProduct( &OGL.triangles.vertices[v].nx, &gSP.lights[i].x );
+      intensity = DotProduct( &OGL.triangles.vertices[v].nx, &gSP.lights[i].x );
       if (intensity < 0.0f) intensity = 0.0f;
       r += gSP.lights[i].r * intensity;
       g += gSP.lights[i].g * intensity;
@@ -414,6 +415,7 @@ void gSPProcessVertex( u32 v )
 
 void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 {
+   MicrocodeInfo *ucode;
    RSP.PCi = 0;
    gSP.matrix.modelViewi = 0;
    gSP.changed |= CHANGED_MATRIX;
@@ -422,7 +424,7 @@ void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
    if ((((uc_start & 0x1FFFFFFF) + 4096) > RDRAMSize) || (((uc_dstart & 0x1FFFFFFF) + uc_dsize) > RDRAMSize))
       return;
 
-   MicrocodeInfo *ucode = GBI_DetectMicrocode( uc_start, uc_dstart, uc_dsize );
+   ucode = (MicrocodeInfo*)GBI_DetectMicrocode( uc_start, uc_dstart, uc_dsize );
 
    if (ucode->type != 0xFFFFFFFF)
       last_good_ucode = ucode->type;
@@ -548,16 +550,18 @@ void gSPForceMatrix( u32 mptr )
 
 void gSPLight( u32 l, s32 n )
 {
+   u8 *addr;
+   u32 address;
    n--;
    if (n >= 8)
       return;
 
-   u32 address = RSP_SegmentToPhysical( l );
+   address = RSP_SegmentToPhysical( l );
 
    if ((address + sizeof( Light )) > RDRAMSize)
       return;
 
-   u8 *addr = &RDRAM[address];
+   addr = (u8*)&RDRAM[address];
 
    if (config.hackZelda && (addr[0] == 0x08) && (addr[4] == 0xFF))
    {
@@ -589,6 +593,7 @@ void gSPLookAt( u32 l )
 void gSPVertex( u32 v, u32 n, u32 v0 )
 {
    int i, j;
+   Vertex *vertex;
    //flush batched triangles:
 
    u32 address = RSP_SegmentToPhysical( v );
@@ -596,7 +601,7 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
    if ((address + sizeof( Vertex ) * n) > RDRAMSize)
       return;
 
-   Vertex *vertex = (Vertex*)&RDRAM[address];
+   vertex = (Vertex*)&RDRAM[address];
 
    if ((n + v0) <= INDEXMAP_SIZE)
    {
@@ -668,13 +673,14 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
 void gSPCIVertex( u32 v, u32 n, u32 v0 )
 {
    int i, j;
+   PDVertex *vertex;
 
    u32 address = RSP_SegmentToPhysical( v );
 
    if ((address + sizeof( PDVertex ) * n) > RDRAMSize)
       return;
 
-   PDVertex *vertex = (PDVertex*)&RDRAM[address];
+   vertex = (PDVertex*)&RDRAM[address];
 
    if ((n + v0) <= INDEXMAP_SIZE)
    {
@@ -713,13 +719,14 @@ void gSPCIVertex( u32 v, u32 n, u32 v0 )
 #endif
       for(; i < n + v0; i++)
       {
+		 u8 *color;
          u32 v = i;
          OGL.triangles.vertices[v].x = vertex->x;
          OGL.triangles.vertices[v].y = vertex->y;
          OGL.triangles.vertices[v].z = vertex->z;
          OGL.triangles.vertices[v].s = _FIXED2FLOAT( vertex->s, 5 );
          OGL.triangles.vertices[v].t = _FIXED2FLOAT( vertex->t, 5 );
-         u8 *color = &RDRAM[gSP.vertexColorBase + (vertex->ci & 0xff)];
+         color = (u8*)&RDRAM[gSP.vertexColorBase + (vertex->ci & 0xff)];
 
          if (gSP.geometryMode & G_LIGHTING)
          {
@@ -842,10 +849,11 @@ void gSPDisplayList( u32 dl )
 
 void gSPDMADisplayList( u32 dl, u32 n )
 {
+   u32 curDL, w0, w1;
    if ((dl + (n << 3)) > RDRAMSize)
       return;
 
-   u32 curDL = RSP.PC[RSP.PCi];
+   curDL = RSP.PC[RSP.PCi];
 
    RSP.PC[RSP.PCi] = RSP_SegmentToPhysical( dl );
 
@@ -854,8 +862,8 @@ void gSPDMADisplayList( u32 dl, u32 n )
       if ((RSP.PC[RSP.PCi] + 8) > RDRAMSize)
          break;
 
-      u32 w0 = *(u32*)&RDRAM[RSP.PC[RSP.PCi]];
-      u32 w1 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
+      w0 = *(u32*)&RDRAM[RSP.PC[RSP.PCi]];
+      w1 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
 
       RSP.PC[RSP.PCi] += 8;
       RSP.nextCmd = _SHIFTR( *(u32*)&RDRAM[RSP.PC[RSP.PCi]], 24, 8 );
@@ -934,12 +942,14 @@ void gSPInterpolateVertex( SPVertex *dest, f32 percent, SPVertex *first, SPVerte
 void gSPDMATriangles( u32 tris, u32 n )
 {
    int i, j;
+   s32 v0, v1, v2;
+   DKRTriangle *triangles;
    u32 address = RSP_SegmentToPhysical( tris );
 
    if (address + sizeof( DKRTriangle ) * n > RDRAMSize)
       return;
 
-   DKRTriangle *triangles = (DKRTriangle*)&RDRAM[address];
+   triangles = (DKRTriangle*)&RDRAM[address];
 
    for (i = 0; i < n; i++)
    {
@@ -960,9 +970,9 @@ void gSPDMATriangles( u32 tris, u32 n )
       }
 
 
-      s32 v0 = triangles->v0;
-      s32 v1 = triangles->v1;
-      s32 v2 = triangles->v2;
+      v0 = triangles->v0;
+      v1 = triangles->v1;
+      v2 = triangles->v2;
       OGL.triangles.vertices[v0].s = _FIXED2FLOAT( triangles->s0, 5 );
       OGL.triangles.vertices[v0].t = _FIXED2FLOAT( triangles->t0, 5 );
       OGL.triangles.vertices[v1].s = _FIXED2FLOAT( triangles->s1, 5 );
@@ -986,12 +996,15 @@ void gSP1Quadrangle( s32 v0, s32 v1, s32 v2, s32 v3)
 bool gSPCullVertices( u32 v0, u32 vn )
 {
    int i, j;
+   s32 v;
+   u32 clip;
+
    if (!config.enableClipping)
       return FALSE;
 
-   s32 v = v0;
+   v = v0;
 
-   u32 clip = OGL.triangles.vertices[v].clip;
+   clip = OGL.triangles.vertices[v].clip;
    if (clip == 0)
       return FALSE;
 
@@ -1205,18 +1218,20 @@ void gSPLineW3D( s32 v0, s32 v1, s32 wd, s32 flag )
 void gSPBgRect1Cyc( u32 bg )
 {
 #if 1
+   u32 addr;
+   f32 imageX, imageY, imageW, imageH, frameX, frameY, frameW, frameH, scaleW, scaleH,
+	   frameX0, frameX1, frameY0, frameY1, frameS0, frameT0;
+   addr = RSP_SegmentToPhysical(bg) >> 1;
 
-   u32 addr = RSP_SegmentToPhysical(bg) >> 1;
+   imageX	= (((u16*)RDRAM)[(addr+0)^1] >> 5);	// 0
+   imageY	= (((u16*)RDRAM)[(addr+4)^1] >> 5);	// 4
+   imageW	= (((u16*)RDRAM)[(addr+1)^1] >> 2);	// 1
+   imageH	= (((u16*)RDRAM)[(addr+5)^1] >> 2);	// 5
 
-   f32 imageX	= (((u16*)RDRAM)[(addr+0)^1] >> 5);	// 0
-   f32 imageY	= (((u16*)RDRAM)[(addr+4)^1] >> 5);	// 4
-   f32 imageW	= (((u16*)RDRAM)[(addr+1)^1] >> 2);	// 1
-   f32 imageH	= (((u16*)RDRAM)[(addr+5)^1] >> 2);	// 5
-
-   f32 frameX	= ((s16*)RDRAM)[(addr+2)^1] / 4.0f;	// 2
-   f32 frameY	= ((s16*)RDRAM)[(addr+6)^1] / 4.0f;	// 6
-   f32 frameW	= ((u16*)RDRAM)[(addr+3)^1] >> 2;		// 3
-   f32 frameH	= ((u16*)RDRAM)[(addr+7)^1] >> 2;		// 7
+   frameX	= ((s16*)RDRAM)[(addr+2)^1] / 4.0f;	// 2
+   frameY	= ((s16*)RDRAM)[(addr+6)^1] / 4.0f;	// 6
+   frameW	= ((u16*)RDRAM)[(addr+3)^1] >> 2;		// 3
+   frameH	= ((u16*)RDRAM)[(addr+7)^1] >> 2;		// 7
 
 
    //wxUint16 imageFlip = ((u16*)gfx.RDRAM)[(addr+13)^1];	// 13;
@@ -1229,8 +1244,8 @@ void gSPBgRect1Cyc( u32 bg )
    gSP.bgImage.size = ((u8*)RDRAM)[(((addr+11)<<1)+1)^3];
    gSP.bgImage.palette = ((u16*)RDRAM)[(addr+12)^1];
 
-   f32 scaleW	= ((s16*)RDRAM)[(addr+14)^1] / 1024.0f;	// 14
-   f32 scaleH	= ((s16*)RDRAM)[(addr+15)^1] / 1024.0f;	// 15
+   scaleW	= ((s16*)RDRAM)[(addr+14)^1] / 1024.0f;	// 14
+   scaleH	= ((s16*)RDRAM)[(addr+15)^1] / 1024.0f;	// 15
    gDP.textureMode = TEXTUREMODE_BGIMAGE;
 
 #else
@@ -1258,13 +1273,13 @@ void gSPBgRect1Cyc( u32 bg )
    f32 scaleH = _FIXED2FLOAT( objScaleBg->scaleH, 10 );
 #endif
 
-   f32 frameX0 = frameX;
-   f32 frameY0 = frameY;
-   f32 frameS0 = imageX;
-   f32 frameT0 = imageY;
+   frameX0 = frameX;
+   frameY0 = frameY;
+   frameS0 = imageX;
+   frameT0 = imageY;
 
-   f32 frameX1 = frameX + min( (imageW - imageX) / scaleW, frameW );
-   f32 frameY1 = frameY + min( (imageH - imageY) / scaleH, frameH );
+   frameX1 = frameX + min( (imageW - imageX) / scaleW, frameW );
+   frameY1 = frameY + min( (imageH - imageY) / scaleH, frameH );
    //f32 frameS1 = imageX + min( (imageW - imageX) * scaleW, frameW * scaleW );
    //f32 frameT1 = imageY + min( (imageH - imageY) * scaleH, frameH * scaleH );
 
@@ -1290,6 +1305,8 @@ void gSPBgRect1Cyc( u32 bg )
 
 void gSPBgRectCopy( u32 bg )
 {
+   u16 imageX, imageY, frameW, frameH;
+   s16 frameX, frameY;
    u32 address = RSP_SegmentToPhysical( bg );
    uObjBg *objBg = (uObjBg*)&RDRAM[address];
 
@@ -1301,13 +1318,13 @@ void gSPBgRectCopy( u32 bg )
    gSP.bgImage.palette = objBg->imagePal;
    gDP.textureMode = TEXTUREMODE_BGIMAGE;
 
-   u16 imageX = objBg->imageX >> 5;
-   u16 imageY = objBg->imageY >> 5;
+   imageX = objBg->imageX >> 5;
+   imageY = objBg->imageY >> 5;
 
-   s16 frameX = objBg->frameX / 4;
-   s16 frameY = objBg->frameY / 4;
-   u16 frameW = objBg->frameW >> 2;
-   u16 frameH = objBg->frameH >> 2;
+   frameX = objBg->frameX / 4;
+   frameY = objBg->frameY / 4;
+   frameW = objBg->frameW >> 2;
+   frameH = objBg->frameH >> 2;
 
    gSPTexture( 1.0f, 1.0f, 0, 0, TRUE );
 

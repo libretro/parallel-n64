@@ -22,9 +22,10 @@ u32 normal_address = 0;
 
 void F3DCBFD_Vtx(u32 w0, u32 w1)
 {
+   Vertex *vertex;
    s32 i;
    s32 v0, n;
-   u32 address;
+   u32 address, v;
    n = (w0 >> 12)&0xFF;
    v0 = ((w0 >> 1)&0x7F) - n;
    address = RSP_SegmentToPhysical(w1);
@@ -36,11 +37,11 @@ void F3DCBFD_Vtx(u32 w0, u32 w1)
 
    gSPFlushTriangles();
 
-   Vertex* vertex = (Vertex*)&RDRAM[address];
-   u32 v;
+   vertex = (Vertex*)&RDRAM[address];
 
    for (i = 0; i < n; i++)
    {
+	   u32 nonblack;
 #ifdef __TRIBUFFER_OPT
       v = __indexmap_getnew(v0 + i, 1);
 #else
@@ -64,7 +65,7 @@ void F3DCBFD_Vtx(u32 w0, u32 w1)
 
       gSPProcessVertex(v);
 
-      u32 nonblack = 0;
+      nonblack = 0;
       nonblack += OGL.triangles.vertices[v].r;
       nonblack += OGL.triangles.vertices[v].g;
       nonblack += OGL.triangles.vertices[v].b;

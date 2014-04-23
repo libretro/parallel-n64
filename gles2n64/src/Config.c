@@ -22,7 +22,11 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#ifdef _MSC_VER
+#include <direct.h>
+#else
 #include <unistd.h>
+#endif
 
 #include "Config.h"
 #include "gles2N64.h"
@@ -103,9 +107,10 @@ const int configOptionsSize = sizeof(configOptions) / sizeof(Option);
 
 void Config_WriteConfig(const char *filename)
 {
+   FILE *f;
    int i;
    config.version = CONFIG_VERSION;
-   FILE* f = fopen(filename, "w");
+   f = (FILE*)fopen(filename, "w");
    if (!f && log_cb)
       log_cb(RETRO_LOG_ERROR, "Could Not Open %s for writing\n", filename);
 
@@ -154,6 +159,7 @@ void Config_LoadRomConfig(unsigned char* header)
 {
    char line[4096];
    int i;
+   FILE *f;
 
    // get the name of the ROM
    for (i = 0; i < 20; i++)
@@ -194,19 +200,18 @@ void Config_LoadRomConfig(unsigned char* header)
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "Rom is %s\n", config.romPAL ? "PAL" : "NTSC");
 
-   const char *filename = ConfigGetSharedDataFilepath("gles2n64rom.conf");
-   FILE *f = fopen(filename,"r");
+   f = (FILE*)fopen(ConfigGetSharedDataFilepath("gles2n64rom.conf"),"r");
    if (!f)
    {
       if (log_cb)
-         log_cb(RETRO_LOG_INFO, "Could not find %s Rom settings file, using global.\n", filename);
+         log_cb(RETRO_LOG_INFO, "Could not find Rom settings file, using global.\n");
       return;
    }
    else
    {
-      if (log_cb)
-         log_cb(RETRO_LOG_INFO, "[gles2N64]: Searching %s Database for \"%s\" ROM\n", filename, config.romName);
       bool isRom = false;
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "[gles2N64]: Searching Database for \"%s\" ROM\n", config.romName);
       while (!feof(f))
       {
          fgets(line, 4096, f);
@@ -246,6 +251,7 @@ void Config_LoadConfig(void)
 {
    FILE *f;
    char line[4096];
+   const char *filename = ConfigGetSharedDataFilepath("gles2n64.conf");
 
    // default configuration
    Config_SetDefault();
@@ -256,8 +262,7 @@ void Config_LoadConfig(void)
 
 
    // read configuration
-   const char *filename = ConfigGetSharedDataFilepath("gles2n64.conf");
-   f = fopen(filename, "r");
+   f = (FILE*)fopen(filename, "r");
    if (!f)
    {
       if (log_cb)

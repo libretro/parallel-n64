@@ -15,4 +15,8 @@ extern retro_perf_register_t perf_register_cb;
 
 #define SDL_GetTicks() FAKE_SDL_TICKS
 
+#ifdef _MSC_VER
+#define strcasecmp stricmp
+#endif
+
 #endif

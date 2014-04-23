@@ -13,6 +13,7 @@
 
 void F3DDKR_DMA_Mtx( u32 w0, u32 w1 )
 {
+   u32 index, multiply;
    if (_SHIFTR( w0, 0, 16 ) != 64)
    {
       //      GBI_DetectUCode(); // Something's wrong
@@ -22,8 +23,7 @@ void F3DDKR_DMA_Mtx( u32 w0, u32 w1 )
       return;
    }
 
-   u32 index = _SHIFTR( w0, 16, 4 );
-   u32 multiply;
+   index = _SHIFTR( w0, 16, 4 );
 
    if (index == 0) // DKR
    {
@@ -40,6 +40,7 @@ void F3DDKR_DMA_Mtx( u32 w0, u32 w1 )
 
 void F3DDKR_DMA_Vtx( u32 w0, u32 w1 )
 {
+   u32 n;
    if ((w0 & F3DDKR_VTX_APPEND))
    {
       if (gSP.matrix.billboard)
@@ -48,7 +49,7 @@ void F3DDKR_DMA_Vtx( u32 w0, u32 w1 )
    else
       gSP.vertexi = 0;
 
-   u32 n = _SHIFTR( w0, 19, 5 ) + 1;
+   n = _SHIFTR( w0, 19, 5 ) + 1;
 
    gSPDMAVertex( w1, n, gSP.vertexi + _SHIFTR( w0, 9, 5 ) );
 

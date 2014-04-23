@@ -355,13 +355,15 @@ void gDPSetCombine( s32 muxs0, s32 muxs1 )
 
 void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 {
+   u32 addr;
+
    if (config.updateMode == SCREEN_UPDATE_AT_CI_CHANGE)
       OGL_SwapBuffers();
 
    if (config.updateMode == SCREEN_UPDATE_AT_1ST_CI_CHANGE && OGL.screenUpdate)
       OGL_SwapBuffers();
 
-   u32 addr = RSP_SegmentToPhysical( address );
+   addr = RSP_SegmentToPhysical( address );
 
    if (gDP.colorImage.address != addr)
    {
@@ -391,6 +393,7 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
       }
       else if (size == G_IM_SIZ_16b && format == G_IM_FMT_RGBA)
       {
+		  u32 start, end;
          int s = 0;
          switch(size)
          {
@@ -399,8 +402,8 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
             case G_IM_SIZ_16b:  s = (gDP.colorImage.width * gDP.colorImage.height) * 2; break;
             case G_IM_SIZ_32b:  s = (gDP.colorImage.width * gDP.colorImage.height) * 4; break;
          }
-         u32 start = addr & 0x00FFFFFF;
-         u32 end = min(start + s, RDRAMSize);
+         start = addr & 0x00FFFFFF;
+         end = min(start + s, RDRAMSize);
          for(i = 0; i < VI.displayNum; i++)
          {
             if (VI.display[i].start <= end && VI.display[i].start >= start) break;
@@ -662,12 +665,14 @@ void gDPLoadTile( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 
 void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt )
 {
+   u64 *src, *dest;
+   u32 bytes, address;
    int y;
    gDPSetTileSize( tile, uls, ult, lrs, dxt );
    gDP.loadTile = &gDP.tiles[tile];
 
-   u32 bytes = (lrs + 1) << gDP.loadTile->size >> 1;
-   u32 address = gDP.textureImage.address + ult * gDP.textureImage.bpl + (uls << gDP.textureImage.size >> 1);
+   bytes = (lrs + 1) << gDP.loadTile->size >> 1;
+   address = gDP.textureImage.address + ult * gDP.textureImage.bpl + (uls << gDP.textureImage.size >> 1);
 
    if ((bytes == 0) ||
          ((address + bytes) > RDRAMSize) ||
@@ -682,8 +687,8 @@ void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt )
       return;
    }
 
-   u64* src = (u64*)&RDRAM[address];
-   u64* dest = &TMEM[gDP.loadTile->tmem];
+   src = (u64*)&RDRAM[address];
+   dest = (u64*)&TMEM[gDP.loadTile->tmem];
 
    if (dxt > 0)
    {
@@ -729,18 +734,20 @@ void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt )
 
 void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 {
-   u16 j;
+   u16 j, count, *dest, *src, pal;
+   u32 address;
+   int i;
    gDPSetTileSize( tile, uls, ult, lrs, lrt );
 
-   u16 count = (gDP.tiles[tile].lrs - gDP.tiles[tile].uls + 1) * (gDP.tiles[tile].lrt - gDP.tiles[tile].ult + 1);
-   u32 address = gDP.textureImage.address + gDP.tiles[tile].ult * gDP.textureImage.bpl + (gDP.tiles[tile].uls << gDP.textureImage.size >> 1);
+   count = (gDP.tiles[tile].lrs - gDP.tiles[tile].uls + 1) * (gDP.tiles[tile].lrt - gDP.tiles[tile].ult + 1);
+   address = gDP.textureImage.address + gDP.tiles[tile].ult * gDP.textureImage.bpl + (gDP.tiles[tile].uls << gDP.textureImage.size >> 1);
 
-   u16 *dest = (u16*)&TMEM[gDP.tiles[tile].tmem];
-   u16 *src = (u16*)&RDRAM[address];
+   dest = (u16*)&TMEM[gDP.tiles[tile].tmem];
+   src = (u16*)&RDRAM[address];
 
-   u16 pal = (gDP.tiles[tile].tmem - 256) >> 4;
+   pal = (gDP.tiles[tile].tmem - 256) >> 4;
 
-   int i = 0;
+   i = 0;
    while (i < count)
    {
       for (j = 0; (j < 16) && (i < count); j++, i++)
@@ -860,6 +867,8 @@ void gDPSetKeyGB(u32 cG, u32 sG, u32 wG, u32 cB, u32 sB, u32 wB )
 
 void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f32 t, f32 dsdx, f32 dtdy )
 {
+   f32 lrs, lrt;
+
    if (gDP.colorImage.address == gDP.depthImageAddress)
       return;
 
@@ -873,9 +882,6 @@ void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f
    gSP.textureTile[0] = &gDP.tiles[tile];
    gSP.textureTile[1] = &gDP.tiles[(tile < 7) ? (tile + 1) : tile];
 
-
-   f32 lrs;
-   f32 lrt;
    if (RSP.cmd == G_TEXRECTFLIP)
    {
       lrs = s + (lry - uly - 1) * dtdy;

@@ -1,5 +1,9 @@
 #include <stdio.h>
+#ifdef _MSC_VER
+#include <direct.h>
+#else
 #include <unistd.h>
+#endif
 #include <stdlib.h>
 #include "gles2N64.h"
 #include "GBI.h"
@@ -19,7 +23,6 @@
 #include "F3DCBFD.h"
 #include "Types.h"
 # include <string.h>
-# include <unistd.h>
 # include <stdlib.h>
 # include "convert.h"
 #include "Common.h"
@@ -209,6 +212,8 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
       if ((uc_data[i] == 'R') && (uc_data[i+1] == 'S') && (uc_data[i+2] == 'P'))
       {
          u32 j = 0;
+         int type = NONE;
+
          while (uc_data[i+j] > 0x0A)
          {
             uc_str[j] = uc_data[i+j];
@@ -216,8 +221,6 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
          }
 
          uc_str[j] = 0x00;
-
-         int type = NONE;
 
          if (strncmp( &uc_str[4], "SW", 2 ) == 0)
          {

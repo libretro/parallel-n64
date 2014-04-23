@@ -246,9 +246,6 @@
     <ClCompile Include="..\..\..\gles2n64\src\3DMath.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\3DMathNeon.c">
-      <Filter>Source Files\gles2n64\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2n64\src\Config.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>

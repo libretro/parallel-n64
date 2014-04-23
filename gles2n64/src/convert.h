@@ -105,7 +105,7 @@ static const volatile unsigned char One2Eight[2] =
 
 static INLINE void UnswapCopy( void *src, void *dest, u32 numBytes )
 {
-   int i;
+   int i, numDWords, trailingBytes;
    // copy leading bytes
    int leadingBytes = ((intptr_t)src) & 3;
    if (leadingBytes != 0)
@@ -126,7 +126,7 @@ static INLINE void UnswapCopy( void *src, void *dest, u32 numBytes )
    }
 
    // copy dwords
-   int numDWords = numBytes >> 2;
+   numDWords = numBytes >> 2;
    while (numDWords--)
    {
       u32 dword = *(u32 *)src;
@@ -142,7 +142,7 @@ static INLINE void UnswapCopy( void *src, void *dest, u32 numBytes )
    }
 
    // copy trailing bytes
-   int trailingBytes = numBytes & 3;
+   trailingBytes = numBytes & 3;
    if (trailingBytes)
    {
       src = (void *)((intptr_t)src ^ 3);
