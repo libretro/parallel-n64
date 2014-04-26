@@ -48,10 +48,9 @@ else ifneq (,$(findstring rpi,$(platform)))
 else ifneq (,$(findstring osx,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dylib
    LDFLAGS += -dynamiclib
-   OSXVER = `sw_vers -productVersion | cut -c 1-4`
-ifneq ($(OSXVER),10.9)
-   echo "OSX version is not Mavericks, applying -mmacosx-version-min=10.5"
-   LDFLAGS += -mmacosx-version-min=10.7
+   OSXVER = `sw_vers -productVersion | cut -c 4`
+ifneq ($(OSXVER),9)
+   LDFLAGS += -mmacosx-version-min=10.5
 endif
    fpic = -fPIC
 
@@ -78,15 +77,15 @@ else ifneq (,$(findstring ios,$(platform)))
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
-   OSXVER = `sw_vers -productVersion | cut -c 1-4`
-ifneq ($(OSXVER),10.9)
-   echo "OSX version is not Mavericks, applying -miphoneos-version-min=5.0"
+   OSXVER = `sw_vers -productVersion | cut -c 4`
+ifneq ($(OSXVER),9)
    CC += -miphoneos-version-min=5.0
    CC_AS += -miphoneos-version-min=5.0
    CXX += -miphoneos-version-min=5.0
+   CPPFLAGS += -miphoneos-version-min=5.0
 endif
    CPPFLAGS += -DNO_ASM -DIOS -DNOSSE -DHAVE_POSIX_MEMALIGN -DDISABLE_3POINT
-   CPPFLAGS += -DARM -miphoneos-version-min=5.0
+   CPPFLAGS += -DARM
    PLATFORM_EXT := unix
    WITH_DYNAREC=arm
 else ifneq (,$(findstring android,$(platform)))
