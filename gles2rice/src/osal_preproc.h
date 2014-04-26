@@ -31,8 +31,12 @@
     #define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)));
   #else
     #define ALIGN(BYTES,DATA) __declspec(align(BYTES)) DATA;
+#ifndef strncasecmp
     #define strncasecmp _strnicmp
+#endif
+#ifndef strcasecmp
     #define strcasecmp _stricmp
+#endif
   #endif
 #else
 
