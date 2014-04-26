@@ -4,7 +4,11 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#ifdef _WIN32
+#include <direct.h>
+#else
 #include <unistd.h>
+#endif
 
 #include "Common.h"
 #include "gles2N64.h"
@@ -94,6 +98,7 @@ int retro_return(bool just_flipping);
 
 bool OGL_Start(void)
 {
+   float f;
    OGL_InitStates();
 
 #ifdef USE_SDL
@@ -122,7 +127,7 @@ bool OGL_Start(void)
       config.texture.maxAnisotropy = 0;
    }
 
-   float f = 0;
+   f = 0;
    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &f);
    if (config.texture.maxAnisotropy > ((int)f))
    {
@@ -596,6 +601,7 @@ void OGL_DrawTriangles(void)
 
 void OGL_DrawLine(int v0, int v1, float width )
 {
+   unsigned short elem[2];
    if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
 
    if ((config.updateMode == SCREEN_UPDATE_AT_1ST_PRIMITIVE) && OGL.screenUpdate)
@@ -618,7 +624,6 @@ void OGL_DrawLine(int v0, int v1, float width )
       OGL.renderState = RS_LINE;
    }
 
-   unsigned short elem[2];
    elem[0] = v0;
    elem[1] = v1;
    glLineWidth( width * OGL.scaleX );
@@ -817,13 +822,14 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
 
 void OGL_ClearDepthBuffer(void)
 {
+   float depth;
    if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
 
    if ((config.updateMode == SCREEN_UPDATE_AT_1ST_PRIMITIVE) && OGL.screenUpdate)
       OGL_SwapBuffers();
 
    //float depth = 1.0 - (gDP.fillColor.z / ((float)0x3FFF)); // broken on OMAP3
-   float depth = gDP.fillColor.z ;
+   depth = gDP.fillColor.z ;
 
    /////// paulscode, graphics bug-fixes
    glDisable( GL_SCISSOR_TEST );

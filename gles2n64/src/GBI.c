@@ -165,7 +165,8 @@ void GBI_Destroy(void)
 
 MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 {
-   int i;
+   unsigned i;
+   char uc_data[2048];
    MicrocodeInfo *current;
 
    for (i = 0; i < GBI.numMicrocodes; i++)
@@ -203,7 +204,6 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
    }
 
    // See if we can identify it by text
-   char uc_data[2048];
    UnswapCopy( &RDRAM[uc_dstart & 0x1FFFFFFF], uc_data, 2048 );
    strcpy( uc_str, "Not Found" );
 

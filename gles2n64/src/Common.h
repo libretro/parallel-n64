@@ -1,6 +1,8 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+#include <stdlib.h>
+
 #define LOG_NONE	0
 #define LOG_ERROR   1
 #define LOG_MINIMAL	2

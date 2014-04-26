@@ -36,6 +36,8 @@ void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
 void RSP_ProcessDList(void)
 {
    int i, j;
+   u32 uc_start, uc_dstart, uc_dsize;
+
    VI_UpdateSize();
    OGL_UpdateScale();
    TextureCache_ActivateNoise(2);
@@ -60,9 +62,9 @@ void RSP_ProcessDList(void)
    gSP.matrix.modelView[0][2][2] = 1.0f;
    gSP.matrix.modelView[0][3][3] = 1.0f;
 
-   u32 uc_start = *(u32*)&DMEM[0x0FD0];
-   u32 uc_dstart = *(u32*)&DMEM[0x0FD8];
-   u32 uc_dsize = *(u32*)&DMEM[0x0FDC];
+   uc_start = *(u32*)&DMEM[0x0FD0];
+   uc_dstart = *(u32*)&DMEM[0x0FD8];
+   uc_dsize = *(u32*)&DMEM[0x0FDC];
 
    if ((uc_start != RSP.uc_start) || (uc_dstart != RSP.uc_dstart))
       gSPLoadUcodeEx( uc_start, uc_dstart, uc_dsize );
@@ -84,7 +86,8 @@ void RSP_ProcessDList(void)
 
    while (!RSP.halt)
    {
-      u32 pc = RSP.PC[RSP.PCi];
+	  u32 w0, w1, pc;
+      pc = RSP.PC[RSP.PCi];
 
       if ((pc + 8) > RDRAMSize)
       {
@@ -95,8 +98,8 @@ void RSP_ProcessDList(void)
       }
 
 
-      u32 w0 = *(u32*)&RDRAM[pc];
-      u32 w1 = *(u32*)&RDRAM[pc+4];
+      w0 = *(u32*)&RDRAM[pc];
+      w1 = *(u32*)&RDRAM[pc+4];
       RSP.nextCmd = _SHIFTR( *(u32*)&RDRAM[pc+8], 24, 8 );
       RSP.cmd = _SHIFTR( w0, 24, 8 );
       RSP.PC[RSP.PCi] += 8;

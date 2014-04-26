@@ -180,7 +180,7 @@ typedef struct
                           bswap on a dword (32 bits) boundry */
 } PLUGIN_INFO;
 
-static inline float squareRoot(float x)
+static INLINE float squareRoot(float x)
 {
   uint32_t i = ((((*(uint32_t*) &x)) + (127 << 23)) >> 1);
   return *(float*) &i;

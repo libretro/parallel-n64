@@ -264,6 +264,8 @@ void check_link(GLuint program)
 
 void init_combiner()
 {
+   int texture0_location, texture1_location, log_length;
+   char *fragment_shader, s[128];
    int texture[4] = {0, 0, 0, 0};
 
    glActiveTexture(GL_TEXTURE0);
@@ -279,15 +281,9 @@ void init_combiner()
    glBindTexture(GL_TEXTURE_2D, default_texture);
    glEnable(GL_TEXTURE_2D);
 
-   int texture0_location;
-   int texture1_location;
-   char *fragment_shader;
-   int log_length;
-
    // depth shader
    fragment_depth_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
 
-   char s[128];
    // ZIGGY convert a 565 texture into depth component
    sprintf(s, "gl_FragDepth = dot(texture2D(texture0, vec2(gl_TexCoord[0])), vec4(31*64*32, 63*32, 31, 0))*%g + %g; \n", zscale/2/65535.0, 1-zscale/2);
    fragment_shader = (char*)malloc(strlen(fragment_shader_header)+
@@ -776,11 +772,11 @@ grColorCombine(
                GrCombineLocal_t local, GrCombineOther_t other,
                FxBool invert )
 {
-   LOG("grColorCombine(%d,%d,%d,%d,%d)\r\n", function, factor, local, other, invert);
    static int last_function = 0;
    static int last_factor = 0;
    static int last_local = 0;
    static int last_other = 0;
+   LOG("grColorCombine(%d,%d,%d,%d,%d)\r\n", function, factor, local, other, invert);
 
    if(last_function == function && last_factor == factor &&
          last_local == local && last_other == other && first_color == 0 && !c_combiner_ext)
@@ -950,11 +946,11 @@ grAlphaCombine(
                FxBool invert
                )
 {
-   LOG("grAlphaCombine(%d,%d,%d,%d,%d)\r\n", function, factor, local, other, invert);
    static int last_function = 0;
    static int last_factor = 0;
    static int last_local = 0;
    static int last_other = 0;
+   LOG("grAlphaCombine(%d,%d,%d,%d,%d)\r\n", function, factor, local, other, invert);
 
    if(last_function == function && last_factor == factor &&
          last_local == local && last_other == other && first_alpha == 0 && !a_combiner_ext) return;
@@ -1188,8 +1184,8 @@ grTexCombine(
              FxBool alpha_invert
              )
 {
-   LOG("grTexCombine(%d,%d,%d,%d,%d,%d,%d)\r\n", tmu, rgb_function, rgb_factor, alpha_function, alpha_factor, rgb_invert, alpha_invert);
    int num_tex;
+   LOG("grTexCombine(%d,%d,%d,%d,%d,%d,%d)\r\n", tmu, rgb_function, rgb_factor, alpha_function, alpha_factor, rgb_invert, alpha_invert);
 
    if (tmu == GR_TMU0)
       num_tex = 1;
@@ -1651,8 +1647,8 @@ grChromakeyMode( GrChromakeyMode_t mode )
 FX_ENTRY void FX_CALL 
 grChromakeyValue( GrColor_t value )
 {
-   LOG("grChromakeyValue(%x)\r\n", value);
    int chroma_color_location;
+   LOG("grChromakeyValue(%x)\r\n", value);
 
    switch(lfb_color_fmt)
    {

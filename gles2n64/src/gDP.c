@@ -381,7 +381,7 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 
    if (config.ignoreOffscreenRendering)
    {
-      int i;
+      unsigned i;
 
       //colorimage byte size:
       //color image height is not the best thing to base this on, its normally set
@@ -667,7 +667,7 @@ void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt )
 {
    u64 *src, *dest;
    u32 bytes, address;
-   int y;
+   unsigned y;
    gDPSetTileSize( tile, uls, ult, lrs, dxt );
    gDP.loadTile = &gDP.tiles[tile];
 
@@ -797,7 +797,8 @@ void gDPSetScissor( u32 mode, f32 ulx, f32 uly, f32 lrx, f32 lry )
 
 void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 {
-   DepthBuffer *buffer = DepthBuffer_FindBuffer( gDP.colorImage.address );
+   float black[4];
+   DepthBuffer *buffer = (DepthBuffer*)DepthBuffer_FindBuffer( gDP.colorImage.address );
 
    if (buffer)
       buffer->cleared = TRUE;
@@ -824,7 +825,10 @@ void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
    //OGL_DrawRect( ulx, uly, lrx, lry, (gDP.otherMode.cycleType == G_CYC_FILL) ? &gDP.fillColor.r : &gDP.blendColor.r );
    //OGL_DrawRect( ulx, uly, lrx, lry, (gDP.otherMode.cycleType == G_CYC_FILL) ? &gDP.fillColor.r : &gDP.primColor.r);
 
-   float black[] = {0,0,0,0};
+   black[0] = 0;
+   black[1] = 0;
+   black[2] = 0;
+   black[3] = 0;
    OGL_DrawRect( ulx, uly, lrx, lry, (gDP.otherMode.cycleType == G_CYC_FILL) ? &gDP.fillColor.r : black);
 
    if (depthBuffer.current) depthBuffer.current->cleared = FALSE;
@@ -868,6 +872,7 @@ void gDPSetKeyGB(u32 cG, u32 sG, u32 wG, u32 cB, u32 sB, u32 wB )
 void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f32 t, f32 dsdx, f32 dtdy )
 {
    f32 lrs, lrt;
+   float tmp;
 
    if (gDP.colorImage.address == gDP.depthImageAddress)
       return;
@@ -899,7 +904,6 @@ void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f
    gDP.texRect.width = (unsigned int)(max( lrs, s ) + dsdx);
    gDP.texRect.height = (unsigned int)(max( lrt, t ) + dtdy);
 
-   float tmp;
    if (lrs < s)
    {
       tmp = ulx; ulx = lrx; lrx = tmp;

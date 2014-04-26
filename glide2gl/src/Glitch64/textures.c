@@ -274,9 +274,11 @@ int grTexFormatSize(int fmt)
 #ifndef GLES
 static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt)
 {
-   int i, j, factor;
+   unsigned size_tex;
+   int factor;
    factor = -1;
-   unsigned size_tex = width * height;
+   size_tex = width * height;
+
    switch(fmt)
    {
       case GR_TEXFMT_ALPHA_8:

@@ -352,8 +352,7 @@ void gSPCombineMatrices(void)
 
 void gSPProcessVertex( u32 v )
 {
-   f32 intensity;
-   f32 r, g, b;
+   f32 intensity, r, g, b;
 
    if (gSP.changed & CHANGED_MATRIX)
       gSPCombineMatrices();

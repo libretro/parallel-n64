@@ -90,9 +90,10 @@ grSstOrigin(GrOriginLocation_t  origin)
 FX_ENTRY void FX_CALL
 grClipWindow( FxU32 minx, FxU32 miny, FxU32 maxx, FxU32 maxy )
 {
+   GLint y;
    LOG("grClipWindow(%d,%d,%d,%d)\r\n", minx, miny, maxx, maxy);
 
-   GLint y =  height - maxy;
+   y =  height - maxy;
 
    if (render_to_texture)
    {
@@ -161,6 +162,7 @@ grSstWinOpen(
              int                  nColBuffers,
              int                  nAuxBuffers)
 {
+   bool ret;
    uint32_t screen_width, screen_height, screen_width_min, screen_height_min;
    struct retro_variable var = { "mupen64-screensize", 0 };
 
@@ -168,7 +170,8 @@ grSstWinOpen(
 
    width = screen_width_min = 640;
    height = screen_height_min = 480;
-   bool ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+   ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
    if (ret && var.value)
    {
       if (sscanf(var.value ? var.value : "640x480", "%dx%d", &width, &height) != 2)
@@ -675,10 +678,10 @@ static void render_rectangle(int texture_number,
                              int src_width, int src_height,
                              int tex_width, int tex_height, int invert)
 {
-   LOGINFO("render_rectangle(%d,%d,%d,%d,%d,%d,%d,%d)",texture_number,dst_x,dst_y,src_width,src_height,tex_width,tex_height,invert);
-   int vertexOffset_location;
-   int textureSizes_location;
+   int vertexOffset_location, textureSizes_location;
    static float data[16];
+
+   LOGINFO("render_rectangle(%d,%d,%d,%d,%d,%d,%d,%d)",texture_number,dst_x,dst_y,src_width,src_height,tex_width,tex_height,invert);
    data[0]   =     ((int)dst_x);                             //X 0
    data[1]   =     invert*-((int)dst_y);                     //Y 0 
    data[2]   =     0.0f;                                     //U 0 
@@ -872,6 +875,7 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
           GrOriginLocation_t origin, FxBool pixelPipeline,
           GrLfbInfo_t *info )
 {
+   unsigned i,j;
    LOG("grLfbLock(%d,%d,%d,%d,%d)\r\n", type, buffer, writeMode, origin, pixelPipeline);
 
 #ifndef NDEBUG
@@ -879,8 +883,6 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
    if (type == GR_LFB_WRITE_ONLY)
       return FXTRUE;
 #endif
-
-   int i,j;
 
    switch(buffer)
    {
@@ -921,9 +923,9 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
          info->origin = origin;
          glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 
-         for (j=0; j<height; j++)
+         for (j=0; j < height; j++)
          {
-            for (i=0; i<width; i++)
+            for (i=0; i < width; i++)
             {
                frameBuffer[(height-j-1)*width+i] =
                   ((buf[j*width*4+i*4+0] >> 3) << 11) |
@@ -1033,10 +1035,9 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
    }
    else
    {
+      const unsigned int half_stride = src_stride / 2;
       texture_number = GL_TEXTURE0;
       glActiveTexture(texture_number);
-
-      const unsigned int half_stride = src_stride / 2;
 
       /* src_format is GR_LFBWRITEMODE_555 */
       for (j=0; j<src_height; j++)
