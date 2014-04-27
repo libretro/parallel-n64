@@ -46,7 +46,7 @@ typedef GLclampf GLclampd;
 #include <OpenGL/glext.h>
 #else
 #include <GL/gl.h>
-#ifndef _WIN32
+#ifndef _MSC_VER //mingw needs this
 #include <GL/glext.h>
 #endif
 #endif
