@@ -345,6 +345,7 @@ int isTexCacheInit = 0;
 void TextureCache_Init(void)
 {
    int x, y, i;
+   u8 noise[64*64*2];
    u32 dummyTexture[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
    isTexCacheInit = 1;
@@ -363,7 +364,6 @@ void TextureCache_Init(void)
    glGenTextures( 32, cache.glNoiseNames );
 
    srand(time(NULL));
-   u8 noise[64*64*2];
    for (i = 0; i < 32; i++)
    {
       glBindTexture( GL_TEXTURE_2D, cache.glNoiseNames[i] );
@@ -497,6 +497,7 @@ void TextureCache_Remove( CachedTexture *texture )
 
 CachedTexture *TextureCache_AddTop(void)
 {
+   CachedTexture *newtop;
    while (cache.cachedBytes > TEXTURECACHE_MAX)
    {
       if (cache.bottom != cache.dummy)
@@ -505,7 +506,7 @@ CachedTexture *TextureCache_AddTop(void)
          TextureCache_Remove( cache.dummy->higher );
    }
 
-   CachedTexture *newtop = (CachedTexture*)malloc( sizeof( CachedTexture ) );
+   newtop = (CachedTexture*)malloc( sizeof( CachedTexture ) );
 
    glGenTextures( 1, &newtop->glName );
 
@@ -801,6 +802,7 @@ u32 TextureCache_CalculateCRC( u32 t, u32 width, u32 height )
 {
    u32 crc;
    u32 y, /*i,*/ bpl, lineBytes, line;
+   unsigned n;
    void *src;
 
    bpl = width << gSP.textureTile[t]->size >> 1;
@@ -815,7 +817,7 @@ u32 TextureCache_CalculateCRC( u32 t, u32 width, u32 height )
 #ifdef __CRC_OPT
    unsigned n = (config.texture.fastCRC) ? MAX(1, height / 8) : 1;
 #else
-   unsigned n = 1;
+   n = 1;
 #endif
 
    for (y = 0; y < height; y += n)
@@ -889,6 +891,7 @@ int _background_compare(CachedTexture *current, u32 crc)
 void TextureCache_UpdateBackground(void)
 {
    u32 numBytes, crc;
+   CachedTexture *current;
 
    numBytes = gSP.bgImage.width * gSP.bgImage.height << gSP.bgImage.size >> 1;
    crc = CRC_Calculate( 0xFFFFFFFF, &RDRAM[gSP.bgImage.address], numBytes );
@@ -905,7 +908,7 @@ void TextureCache_UpdateBackground(void)
    if (_background_compare(cache.current[0], crc))
       return;
 
-   CachedTexture *current = cache.top;
+   current = (CachedTexture*)cache.top;
    while (current)
    {
       if (_background_compare(current, crc))
@@ -980,6 +983,7 @@ int _texture_compare(u32 t, CachedTexture *current, u32 crc,  u32 width, u32 hei
 void TextureCache_Update( u32 t )
 {
    CachedTexture *current;
+   TextureFormat texFormat;
 
    u32 crc, maxTexels;
    u32 tileWidth, maskWidth, loadWidth, lineWidth, clampWidth, height;
@@ -991,7 +995,6 @@ void TextureCache_Update( u32 t )
       return;
    }
 
-   TextureFormat texFormat;
    __texture_format(gSP.textureTile[t]->size, gSP.textureTile[t]->format, &texFormat);
 
    maxTexels = texFormat.maxTexels;
