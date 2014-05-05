@@ -68,6 +68,7 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
    uint32_t l, addr;
    uint32_t v0, i, n;
    float x, y, z;
+   vtx_uc7 *vertex;
 
    pre_update();
 
@@ -78,11 +79,14 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
 
    FRDP ("uc7:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
 
-   vtx_uc7 *vertex = (vtx_uc7 *)&gfx.RDRAM[addr];
+   vertex = (vtx_uc7*)&gfx.RDRAM[addr];
 
    for (i = 0; i < n; i++)
    {
-      VERTEX *v = &rdp.vtx[v0 + i];
+      VERTEX *v;
+	  uint8_t *color;
+
+      v = (VERTEX*)&rdp.vtx[v0 + i];
       x   = (float)vertex->x;
       y   = (float)vertex->y;
       z   = (float)vertex->z;
@@ -115,7 +119,7 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
       if (v->y > v->w) v->scr_off |= 8;
       if (v->w < 0.1f) v->scr_off |= 16;
 
-      uint8_t *color = &gfx.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
+      color = (uint8_t*)&gfx.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
 
       v->a = color[0];
       CalculateFog (v);

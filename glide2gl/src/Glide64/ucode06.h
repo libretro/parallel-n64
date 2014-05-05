@@ -2037,6 +2037,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          float Z, ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
          uint16_t line;
          VERTEX v[4];
+		 TILE *tile;
          
          line = d.imageW;
          if (line & 7)
@@ -2070,7 +2071,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
                );
 
          // SetTile ()
-         TILE *tile = &rdp.tiles[0];
+         tile = (TILE*)&rdp.tiles[0];
          tile->format = d.imageFmt;
          tile->size = d.imageSiz;
          tile->line = line;//(d.imageW>>3);

@@ -732,13 +732,14 @@ static void DrawPartFrameBufferToScreen(void)
 
 static void CopyFrameBuffer (GrBuffer_t buffer)
 {
-   FRDP ("CopyFrameBuffer: %08lx... ", rdp.cimg);
-
    // don't bother to write the stuff in asm... the slow part is the read from video card,
    //   not the copy.
 
-   uint32_t width = rdp.ci_width;//*gfx.VI_WIDTH_REG;
-   uint32_t height;
+   uint32_t width, height;
+   width = rdp.ci_width;//*gfx.VI_WIDTH_REG;
+
+   FRDP ("CopyFrameBuffer: %08lx... ", rdp.cimg);
+
    if (fb_emulation_enabled && !(settings.hacks&hack_PPL))
    {
       int ind = (rdp.ci_count > 0)?rdp.ci_count-1:0;
@@ -801,11 +802,11 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
       else
 #endif
       {
+         GrLfbInfo_t info;
          float scale_x = (settings.scr_res_x - rdp.offset_x*2.0f)  / max(width, rdp.vi_width);
          float scale_y = (settings.scr_res_y - rdp.offset_y*2.0f) / max(height, rdp.vi_height);
 
          FRDP("width: %d, height: %d, ul_y: %d, lr_y: %d, scale_x: %f, scale_y: %f, ci_width: %d, ci_height: %d\n",width, height, rdp.ci_upper_bound, rdp.ci_lower_bound, scale_x, scale_y, rdp.ci_width, rdp.ci_height);
-         GrLfbInfo_t info;
          info.size = sizeof(GrLfbInfo_t);
 
          if (grLfbLock (GR_LFB_READ_ONLY,
@@ -815,17 +816,20 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
                   FXFALSE,
                   &info))
          {
+            int y, x, x_start, y_start, x_end, y_end, read_alpha;
+            uint16_t c;
             uint16_t *ptr_src = (uint16_t*)info.lfbPtr;
             uint16_t *ptr_dst = (uint16_t*)(gfx.RDRAM+rdp.cimg);
             uint32_t *ptr_dst32 = (uint32_t*)(gfx.RDRAM+rdp.cimg);
-            uint16_t c;
             uint32_t stride = info.strideInBytes>>1;
-            int y, x;
 
-            int read_alpha = settings.frame_buffer & fb_read_alpha;
+            read_alpha = settings.frame_buffer & fb_read_alpha;
             if ((settings.hacks&hack_PMario) && rdp.frame_buffers[rdp.ci_count-1].status != CI_AUX)
                read_alpha = false;
-            int x_start = 0, y_start = 0, x_end = width, y_end = height;
+            x_start = 0;
+			y_start = 0;
+			x_end = width;
+			y_end = height;
 
             if (settings.hacks&hack_BAR)
                x_start = 80, y_start = 24, x_end = 240, y_end = 86;
@@ -880,6 +884,8 @@ int depth_buffer_fog;
 
 EXPORT void CALL ProcessDList(void)
 {
+  uint32_t dlist_start, dlist_length, a;
+
   no_dlist = false;
   update_screen_count = 0;
   ChangeSize ();
@@ -976,8 +982,8 @@ EXPORT void CALL ProcessDList(void)
   //* End of set states *//
 
   // Get the start of the display list and the length of it
-  uint32_t dlist_start = *(uint32_t*)(gfx.DMEM+0xFF0);
-  uint32_t dlist_length = *(uint32_t*)(gfx.DMEM+0xFF4);
+  dlist_start = *(uint32_t*)(gfx.DMEM+0xFF0);
+  dlist_length = *(uint32_t*)(gfx.DMEM+0xFF4);
   FRDP("--- NEW DLIST --- crc: %08lx, ucode: %d, fbuf: %08lx, fbuf_width: %d, dlist start: %08lx, dlist_length: %d, x_scale: %f, y_scale: %f\n", uc_crc, settings.ucode, *gfx.VI_ORIGIN_REG, *gfx.VI_WIDTH_REG, dlist_start, dlist_length, (*gfx.VI_X_SCALE_REG & 0xFFF)/1024.0f, (*gfx.VI_Y_SCALE_REG & 0xFFF)/1024.0f);
   FRDP_E("--- NEW DLIST --- crc: %08lx, ucode: %d, fbuf: %08lx\n", uc_crc, settings.ucode, *gfx.VI_ORIGIN_REG);
 
@@ -999,7 +1005,6 @@ EXPORT void CALL ProcessDList(void)
   rdp.pc[rdp.pc_i] = dlist_start;
   rdp.dl_count = -1;
   rdp.halt = 0;
-  uint32_t a;
 
   if (settings.ucode == ucode_Turbo3d)
      Turbo3D();
@@ -1088,17 +1093,22 @@ static void rdp_noop(uint32_t w0, uint32_t w1)
 
 static void ys_memrect(uint32_t w0, uint32_t w1)
 {
-  uint32_t tile = (uint16_t)((w1 & 0x07000000) >> 24);
+  uint32_t off_x, off_y, tile, lr_x, lr_y, ul_x, ul_y;
+  uint32_t y, width, tex_width;
+  uint8_t *texaddr, *fbaddr;
 
-  uint32_t lr_x = (uint16_t)((w0 & 0x00FFF000) >> 14);
-  uint32_t lr_y = (uint16_t)((w0 & 0x00000FFF) >> 2);
-  uint32_t ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
-  uint32_t ul_y = (uint16_t)((w1 & 0x00000FFF) >> 2);
+  tile = (uint16_t)((w1 & 0x07000000) >> 24);
+
+  lr_x = (uint16_t)((w0 & 0x00FFF000) >> 14);
+  lr_y = (uint16_t)((w0 & 0x00000FFF) >> 2);
+  ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
+  ul_y = (uint16_t)((w1 & 0x00000FFF) >> 2);
 
   if (lr_y > rdp.scissor_o.lr_y)
     lr_y = rdp.scissor_o.lr_y;
-  uint32_t off_x = ((rdp.cmd2 & 0xFFFF0000) >> 16) >> 5;
-  uint32_t off_y = (rdp.cmd2 & 0x0000FFFF) >> 5;
+
+  off_x = ((rdp.cmd2 & 0xFFFF0000) >> 16) >> 5;
+  off_y = (rdp.cmd2 & 0x0000FFFF) >> 5;
 
 #ifndef NDEBUG
   FRDP ("memrect (%d, %d, %d, %d), ci_width: %d", ul_x, ul_y, lr_x, lr_y, rdp.ci_width);
@@ -1109,14 +1119,15 @@ static void ys_memrect(uint32_t w0, uint32_t w1)
   LRDP("\n");
 #endif
 
-  uint32_t y, width = lr_x - ul_x;
-  uint32_t tex_width = rdp.tiles[tile].line << 3;
-  uint8_t * texaddr = gfx.RDRAM + rdp.addr[rdp.tiles[tile].t_mem] + tex_width*off_y + off_x;
-  uint8_t * fbaddr = gfx.RDRAM + rdp.cimg + ul_x;
+  width = lr_x - ul_x;
+  tex_width = rdp.tiles[tile].line << 3;
+  texaddr = (uint8_t*)(gfx.RDRAM + rdp.addr[rdp.tiles[tile].t_mem] + tex_width*off_y + off_x);
+  fbaddr = (uint8_t*)(gfx.RDRAM + rdp.cimg + ul_x);
 
   for (y = ul_y; y < lr_y; y++) {
-    uint8_t *src = texaddr + (y - ul_y) * tex_width;
-    uint8_t *dst = fbaddr + y * rdp.ci_width;
+    uint8_t *src, *dst;
+    src = (uint8_t*)(texaddr + (y - ul_y) * tex_width);
+    dst = (uint8_t*)(fbaddr + y * rdp.ci_width);
     memcpy (dst, src, width);
   }
 }
@@ -1164,10 +1175,10 @@ static void pd_zcopy(uint32_t w0, uint32_t w1)
 
 static void DrawDepthBufferFog(void)
 {
+  FB_TO_SCREEN_INFO fb_info;
   if (rdp.zi_width < 200)
     return;
 
-  FB_TO_SCREEN_INFO fb_info;
   fb_info.addr   = rdp.zimg;
   fb_info.size   = 2;
   fb_info.width  = rdp.zi_width;
@@ -1186,6 +1197,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    float ul_x, ul_y, lr_x, lr_y;
    uint32_t a;
    uint8_t cmdHalf1, cmdHalf2;
+
    if (!rdp.LLE)
    {
       a = rdp.pc[rdp.pc_i];
@@ -1774,6 +1786,7 @@ output:   none
 
 EXPORT void CALL FBRead(uint32_t addr)
 {
+  uint32_t a;
   if (cpu_fb_ignore)
     return;
   if (cpu_fb_write_called)
@@ -1783,7 +1796,7 @@ EXPORT void CALL FBRead(uint32_t addr)
     return;
   }
   cpu_fb_read_called = true;
-  uint32_t a = segoffset(addr);
+  a = segoffset(addr);
 
 #ifdef EXTREME_LOGGING
   FRDP("FBRead. addr: %08lx\n", a);
@@ -1807,9 +1820,10 @@ EXPORT void CALL FBRead(uint32_t addr)
       rdp.cimg = rdp.maincimg[1].addr;
       if (fb_emulation_enabled)
       {
+        uint32_t h;
         rdp.ci_width = rdp.maincimg[1].width;
         rdp.ci_count = 0;
-        uint32_t h = rdp.frame_buffers[0].height;
+        h = rdp.frame_buffers[0].height;
         rdp.frame_buffers[0].height = rdp.maincimg[1].height;
         CopyFrameBuffer(GR_BUFFER_FRONTBUFFER);
         rdp.frame_buffers[0].height = h;
@@ -1836,6 +1850,7 @@ output:   none
 *******************************************************************/
 EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
 {
+  uint32_t a, shift_l, shift_r;
   if (cpu_fb_ignore)
     return;
   if (cpu_fb_read_called)
@@ -1845,7 +1860,7 @@ EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
     return;
   }
   cpu_fb_write_called = true;
-  uint32_t a = segoffset(addr);
+  a = segoffset(addr);
 
 #ifdef EXTREME_LOGGING
   FRDP("FBWrite. addr: %08lx\n", a);
@@ -1854,8 +1869,8 @@ EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
   if (a < rdp.cimg || a > rdp.ci_end)
     return;
   cpu_fb_write = true;
-  uint32_t shift_l = (a-rdp.cimg) >> 1;
-  uint32_t shift_r = shift_l+2;
+  shift_l = (a-rdp.cimg) >> 1;
+  shift_r = shift_l+2;
 
   d_ul_x = min(d_ul_x, shift_l%rdp.ci_width);
   d_ul_y = min(d_ul_y, shift_l/rdp.ci_width);
@@ -1900,14 +1915,15 @@ EXPORT void CALL FBGetFrameBufferInfo(void *p)
    //*
    if (fb_emulation_enabled)
    {
+      int info_index;
       pinfo[0].addr   = rdp.maincimg[1].addr;
       pinfo[0].size   = rdp.maincimg[1].size;
       pinfo[0].width  = rdp.maincimg[1].width;
       pinfo[0].height = rdp.maincimg[1].height;
-      int info_index = 1;
+      info_index = 1;
       for (i = 0; i < rdp.num_of_ci && info_index < 6; i++)
       {
-         COLOR_IMAGE *cur_fb = &rdp.frame_buffers[i];
+         COLOR_IMAGE *cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[i];
          if (cur_fb->status == CI_MAIN || cur_fb->status == CI_COPY_SELF ||
                cur_fb->status == CI_OLD_COPY)
          {
@@ -1937,11 +1953,12 @@ EXPORT void CALL FBGetFrameBufferInfo(void *p)
 
 void DetectFrameBufferUsage(void)
 {
-   int i;
+   uint32_t dlist_start, a, ci, zi, ci_height;
+   int i, previous_ci_was_read, all_zimg;
+
    LRDP("DetectFrameBufferUsage\n");
 
-   uint32_t dlist_start = *(uint32_t*)(gfx.DMEM+0xFF0);
-   uint32_t a;
+   dlist_start = *(uint32_t*)(gfx.DMEM+0xFF0);
 
    // Do nothing if dlist is empty
    if (dlist_start == 0)
@@ -1953,15 +1970,17 @@ void DetectFrameBufferUsage(void)
       tidal = true;
 #endif
 
-   uint32_t ci = rdp.cimg, zi = rdp.zimg;
-   uint32_t ci_height = rdp.frame_buffers[(rdp.ci_count > 0)?rdp.ci_count-1:0].height;
+
+   ci = rdp.cimg;
+   zi = rdp.zimg;
+   ci_height = rdp.frame_buffers[(rdp.ci_count > 0)?rdp.ci_count-1:0].height;
    rdp.main_ci = rdp.main_ci_end = rdp.main_ci_bg = rdp.ci_count = 0;
    rdp.main_ci_index = rdp.copy_ci_index = rdp.copy_zi_index = 0;
    rdp.zimg_end = 0;
    rdp.tmpzimg = 0;
    rdp.motionblur = false;
    rdp.main_ci_last_tex_addr = 0;
-   int previous_ci_was_read = rdp.read_previous_ci;
+   previous_ci_was_read = rdp.read_previous_ci;
    rdp.read_previous_ci = false;
    rdp.read_whole_frame = false;
    rdp.swap_ci_index = rdp.black_ci_index = -1;
@@ -2044,7 +2063,7 @@ void DetectFrameBufferUsage(void)
       rdp.main_ci_index = rdp.ci_count-1;
    }
 
-   int all_zimg = true;
+   all_zimg = true;
    for (i = 0; i < rdp.ci_count; i++)
    {
       if (rdp.frame_buffers[i].status != CI_ZIMG)
@@ -2116,10 +2135,11 @@ void DetectFrameBufferUsage(void)
          {
             if (rdp.maincimg[0].height > 65) //for 1080
             {
+               uint32_t h;
                rdp.cimg = rdp.maincimg[0].addr;
                rdp.ci_width = rdp.maincimg[0].width;
                rdp.ci_count = 0;
-               uint32_t h = rdp.frame_buffers[0].height;
+               h = rdp.frame_buffers[0].height;
                rdp.frame_buffers[0].height = rdp.maincimg[0].height;
                CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
                rdp.frame_buffers[0].height = h;
@@ -2188,22 +2208,36 @@ static uint32_t rdp_cmd_data[0x1000];
 static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer,
                   uint32_t * rdp_cmd)
 {
+  int j, xleft, xright, xleft_inc, xright_inc, r, g, b, a, z, s, t, w, flip;
+  int drdx, dgdx, dbdx, dadx, dzdx, dsdx, dtdx, dwdx, drde, dgde, dbde, dade, dzde, dsde, dtde, dwde;
+  int32_t yl, ym, yh, xl, xm, xh, dxldy, dxhdy, dxmdy;
+  uint32_t w3, w4, w5, w6, w7, w8, *shade_base, *texture_base, *zbuffer_base;
+  int nbVtxs;
+  VERTEX vtxbuf[12], *vtx;
+
+  drdx = 0;
+  dgdx = 0;
+  dbdx = 0;
+  dadx = 0;
+  dzdx = 0;
+  dsdx = 0;
+  dtdx = 0;
+  dwdx = 0;
+  drde = 0;
+  dgde = 0;
+  dbde = 0;
+  dade = 0;
+  dzde = 0;
+  dsde = 0;
+  dtde = 0;
+  dwde = 0;
+  flip = (w1 & 0x800000) ? 1 : 0;
+
   rdp.cur_tile = (w1 >> 16) & 0x7;
-  int j;
-  int xleft, xright, xleft_inc, xright_inc;
-  int r, g, b, a, z, s, t, w;
-  int drdx = 0, dgdx = 0, dbdx = 0, dadx = 0, dzdx = 0, dsdx = 0, dtdx = 0, dwdx = 0;
-  int drde = 0, dgde = 0, dbde = 0, dade = 0, dzde = 0, dsde = 0, dtde = 0, dwde = 0;
-  int flip = (w1 & 0x800000) ? 1 : 0;
 
-  int32_t yl, ym, yh;
-  int32_t xl, xm, xh;
-  int32_t dxldy, dxhdy, dxmdy;
-  uint32_t w3, w4, w5, w6, w7, w8;
-
-  uint32_t * shade_base = rdp_cmd + 8;
-  uint32_t * texture_base = rdp_cmd + 8;
-  uint32_t * zbuffer_base = rdp_cmd + 8;
+  shade_base = (uint32_t*)(rdp_cmd + 8);
+  texture_base = (uint32_t*)(rdp_cmd + 8);
+  zbuffer_base = (uint32_t*)(rdp_cmd + 8);
 
   if (shade)
   {
@@ -2283,10 +2317,8 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
   dzdx >>= 2;  dzde >>= 2;
   dwdx >>= 2;  dwde >>= 2;
 
-
-  int nbVtxs = 0;
-  VERTEX vtxbuf[12];
-  VERTEX * vtx = &vtxbuf[nbVtxs++];
+  nbVtxs = 0;
+  vtx = (VERTEX*)&vtxbuf[nbVtxs++];
 
   xleft = xm;
   xright = xh;
@@ -2714,10 +2746,10 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
    uint32_t cmd = rdp.cmd1 >> 24;
    if (cmd >= G_TRI_FILL && cmd <= G_TRI_SHADE_TXTR_ZBUFF) //triangle command
    {
+      uint32_t a;
       LRDP("rdphalf_1 - lle triangle\n");
       rdp_cmd_ptr = 0;
       rdp_cmd_cur = 0;
-      uint32_t a;
 
       do
       {

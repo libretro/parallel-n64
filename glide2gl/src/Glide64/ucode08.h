@@ -112,7 +112,10 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
 
       if ((rdp.geom_mode & G_LIGHTING))
       {
-         uint32_t shift = v0 << 1;
+         uint32_t shift, l;
+		 float light_intensity, color[3];
+
+         shift = v0 << 1;
          v->vec[0] = ((int8_t*)gfx.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 0)^3];
          v->vec[1] = ((int8_t*)gfx.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 1)^3];
          v->vec[2] = (int8_t)(v->flags&0xff);
@@ -121,12 +124,14 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
             calc_linear (v);
          else if (rdp.geom_mode & G_TEXTURE_GEN)
             calc_sphere (v);
-         //     FRDP("calc light. r: 0x%02lx, g: 0x%02lx, b: 0x%02lx, nx: %.3f, ny: %.3f, nz: %.3f\n", v->r, v->g, v->b, v->vec[0], v->vec[1], v->vec[2]);
+
          FRDP("v[%d] calc light. r: 0x%02lx, g: 0x%02lx, b: 0x%02lx\n", i>>4, v->r, v->g, v->b);
-         float color[3] = {rdp.light[rdp.num_lights].col[0], rdp.light[rdp.num_lights].col[1], rdp.light[rdp.num_lights].col[2]};
+         color[0] = rdp.light[rdp.num_lights].col[0];
+		 color[1] = rdp.light[rdp.num_lights].col[1];
+		 color[2] = rdp.light[rdp.num_lights].col[2];
+
          FRDP("ambient light. r: %f, g: %f, b: %f\n", color[0], color[1], color[2]);
-         float light_intensity = 0.0f;
-         uint32_t l;
+         light_intensity = 0.0f;
          if (rdp.geom_mode & 0x00400000)
          {
             NormalizeVector (v->vec);
@@ -245,13 +250,15 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
 
       case G_MV_COORDMOD:  // moveword coord mod
          {
-            uint8_t n = offset >> 2;
+            uint32_t idx, pos;
+            uint8_t n;
+			n = offset >> 2;
 
             FRDP ("coord mod:%d, %08lx\n", n, w1);
             if (w0 & 8)
                return;
-            uint32_t idx = (w0 >> 1)&3;
-            uint32_t pos = w0 & 0x30;
+            idx = (w0 >> 1)&3;
+            pos = w0 & 0x30;
             if (pos == 0)
             {
                uc8_coord_mod[0+idx] = (int16_t)(w1 >> 16);
@@ -323,14 +330,18 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
 
       case F3DCBFD_MV_LIGHT:  // LIGHT
          {
-            int n = (ofs / 48);
+            int n;
+			uint32_t a;
+
+			n = (ofs / 48);
             if (n < 2)
             {
-               int8_t dir_x = ((int8_t*)gfx.RDRAM)[(addr+8)^3];
+               int8_t dir_x, dir_y, dir_z;
+               dir_x = ((int8_t*)gfx.RDRAM)[(addr+8)^3];
                rdp.lookat[n][0] = (float)(dir_x) / 127.0f;
-               int8_t dir_y = ((int8_t*)gfx.RDRAM)[(addr+9)^3];
+               dir_y = ((int8_t*)gfx.RDRAM)[(addr+9)^3];
                rdp.lookat[n][1] = (float)(dir_y) / 127.0f;
-               int8_t dir_z = ((int8_t*)gfx.RDRAM)[(addr+10)^3];
+               dir_z = ((int8_t*)gfx.RDRAM)[(addr+10)^3];
                rdp.lookat[n][2] = (float)(dir_z) / 127.0f;
                rdp.use_lookat = true;
                if (n == 1)
@@ -348,7 +359,7 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
 
             gSPLight(gfx.RDRAM, w1, n);
             // **
-            uint32_t a = addr >> 1;
+            a = addr >> 1;
             rdp.light[n].x = (float)(((int16_t*)gfx.RDRAM)[(a+16)^1]);
             rdp.light[n].y = (float)(((int16_t*)gfx.RDRAM)[(a+17)^1]);
             rdp.light[n].z = (float)(((int16_t*)gfx.RDRAM)[(a+18)^1]);

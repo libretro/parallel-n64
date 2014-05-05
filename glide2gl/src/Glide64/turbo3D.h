@@ -93,10 +93,11 @@ static void t3dProcessRDP(uint32_t a)
       rdp.cmd1 = ((uint32_t*)gfx.RDRAM)[a++];
       while (rdp.cmd0 + rdp.cmd1)
       {
+         uint32_t cmd;
          gfx_instruction[0][rdp.cmd0>>24](rdp.cmd0, rdp.cmd1);
          rdp.cmd0 = ((uint32_t*)gfx.RDRAM)[a++];
          rdp.cmd1 = ((uint32_t*)gfx.RDRAM)[a++];
-         uint32_t cmd = rdp.cmd0>>24;
+         cmd = rdp.cmd0>>24;
          if (cmd == G_TEXRECT || cmd == G_TEXRECTFLIP)
          {
             rdp.cmd2 = ((uint32_t*)gfx.RDRAM)[a++];
@@ -110,7 +111,9 @@ static void t3dProcessRDP(uint32_t a)
 static void t3dLoadGlobState(uint32_t pgstate)
 {
    int s;
+   int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
    struct t3dGlobState *gstate = (struct t3dGlobState*)&gfx.RDRAM[segoffset(pgstate)];
+
    FRDP ("Global state. pad0: %04lx, perspNorm: %04lx, flag: %08lx\n", gstate->pad0, gstate->perspNorm, gstate->flag);
    rdp.cmd0 = gstate->othermode0;
    rdp.cmd1 = gstate->othermode1;
@@ -119,12 +122,12 @@ static void t3dLoadGlobState(uint32_t pgstate)
    for (s = 0; s < 16; s++)
       gSPSegment(s, gstate->segBases[s]);
 
-   int16_t scale_x = gstate->vsacle0 / 4;
-   int16_t scale_y = gstate->vsacle1 / 4;;
-   int16_t scale_z = gstate->vsacle2;
-   int16_t trans_x = gstate->vtrans0 / 4;
-   int16_t trans_y = gstate->vtrans1 / 4;
-   int16_t trans_z = gstate->vtrans2;
+   scale_x = gstate->vsacle0 / 4;
+   scale_y = gstate->vsacle1 / 4;;
+   scale_z = gstate->vsacle2;
+   trans_x = gstate->vtrans0 / 4;
+   trans_y = gstate->vtrans1 / 4;
+   trans_z = gstate->vtrans2;
    rdp.view_scale[0] = scale_x * rdp.scale_x;
    rdp.view_scale[1] = -scale_y * rdp.scale_y;
    rdp.view_scale[2] = 32.0f * scale_z;
@@ -196,9 +199,10 @@ static void t3d_vertex(uint32_t addr, uint32_t v0, uint32_t n)
 static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 {
    int t;
-   LRDP("Loading Turbo3D object\n");
    struct t3dState *ostate = (struct t3dState*)&gfx.RDRAM[segoffset(pstate)];
    rdp.cur_tile = (ostate->textureState)&7;
+
+   LRDP("Loading Turbo3D object\n");
    FRDP("tile: %d\n", rdp.cur_tile);
 
    if (rdp.tiles[rdp.cur_tile].s_scale < 0.001f)
@@ -239,8 +243,9 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 
    if (ptri)
    {
+      uint32_t a;
       update();
-      uint32_t a = segoffset(ptri);
+      a = segoffset(ptri);
       for (t = 0; t < ostate->triCount; t++)
       {
          struct t3dTriN *tri = (struct t3dTriN*)&gfx.RDRAM[a];
@@ -252,9 +257,14 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 
 static void Turbo3D(void)
 {
+   uint32_t a, pgstate, pstate, pvtx, ptri;
    LRDP("Start Turbo3D microcode\n");
    settings.ucode = ucode_Fast3D;
-   uint32_t a = 0, pgstate = 0, pstate = 0, pvtx = 0, ptri = 0;
+   a = 0;
+   pgstate = 0;
+   pstate = 0;
+   pvtx = 0;
+   ptri = 0;
 
    do
    {

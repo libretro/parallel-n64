@@ -109,6 +109,8 @@ static int Calc_invw (int w)
 static void uc9_draw_object (uint8_t * addr, uint32_t type)
 {
    uint32_t i, textured, vnum, vsize;
+   VERTEX vtx[4], *pV[4];
+
    switch (type)
    {
       case 0: //null
@@ -135,11 +137,10 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
          vsize = 16;
          break;
    }
-   VERTEX vtx[4];
 
    for (i = 0; i < vnum; i++)
    {
-      VERTEX *v = &vtx[i];
+      VERTEX *v = (VERTEX*)&vtx[i];
       v->sx = zSortRdp.scale_x * ((int16_t*)addr)[0^1];
       v->sy = zSortRdp.scale_y * ((int16_t*)addr)[1^1];
       v->sz = 1.0f;
@@ -169,7 +170,6 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
       addr += vsize;
    }
    //*
-   VERTEX *pV[4];
    pV[0] = &vtx[0];
    pV[1] = &vtx[1];
    pV[2] = &vtx[2];
@@ -266,13 +266,15 @@ static void uc9_mix(uint32_t w0, uint32_t w1)
 
 static void uc9_fmlight(uint32_t w0, uint32_t w1)
 {
-   uint32_t i;
-   int mid = w0 & 0xFF;
+   uint32_t i, a;
+   int mid;
+   M44 *m;
+
+   mid = w0 & 0xFF;
    rdp.num_lights = 1 + ((w1 >> 12) & 0xFF);
-   uint32_t a = -1024 + (w1 & 0xFFF);
+   a = -1024 + (w1 & 0xFFF);
    FRDP ("uc9:fmlight matrix: %d, num: %d, dmem: %04lx\n", mid, rdp.num_lights, a);
 
-   M44 *m;
    switch (mid)
    {
       case 4:
@@ -329,6 +331,7 @@ static void uc9_fmlight(uint32_t w0, uint32_t w1)
 
 static void uc9_light(uint32_t w0, uint32_t w1)
 {
+   VERTEX v;
    uint32_t i;
    uint32_t csrs = -1024 + ((w0 >> 12) & 0xFFF);
    uint32_t nsrs = -1024 + (w0 & 0xFFF);
@@ -338,7 +341,6 @@ static void uc9_light(uint32_t w0, uint32_t w1)
    int use_material = (csrs != 0x0ff0);
    tdest >>= 1;
    FRDP ("uc9:light n: %d, colsrs: %04lx, normales: %04lx, coldst: %04lx, texdst: %04lx\n", num, csrs, nsrs, cdest, tdest);
-   VERTEX v;
 
    for (i = 0; i < num; i++)
    {
@@ -401,12 +403,13 @@ static void uc9_mtxtrnsp(uint32_t w0, uint32_t w1)
 
 static void uc9_mtxcat(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc9:mtxcat ");
    M44 *s;
    M44 *t;
+   DECLAREALIGN16VAR(m[4][4]);
    uint32_t S = w0 & 0xF;
    uint32_t T = (w1 >> 16) & 0xF;
    uint32_t D = w1 & 0xF;
+   LRDP("uc9:mtxcat ");
 
    switch (S)
    {
@@ -439,7 +442,6 @@ static void uc9_mtxcat(uint32_t w0, uint32_t w1)
          t = (M44*)rdp.combined;
          break;
    }
-   DECLAREALIGN16VAR(m[4][4]);
    MulMatrices(*s, *t, m);
 
    switch (D)
@@ -488,16 +490,16 @@ typedef struct
 
 static void uc9_mult_mpmtx(uint32_t w0, uint32_t w1)
 {
-   int i;
-   //int id = w0 & 0xFF;
-   int num = 1+ ((w1 >> 24) & 0xFF);
-   int src = -1024 + ((w1 >> 12) & 0xFFF);
-   int dst = -1024 + (w1 & 0xFFF);
+   int i, idx, num, src, dst;
+   int16_t *saddr;
+   zSortVDest v, *daddr;
+   num = 1+ ((w1 >> 24) & 0xFF);
+   src = -1024 + ((w1 >> 12) & 0xFFF);
+   dst = -1024 + (w1 & 0xFFF);
    FRDP ("uc9:mult_mpmtx from: %04lx  to: %04lx n: %d\n", src, dst, num);
-   int16_t * saddr = (int16_t*)(gfx.DMEM+src);
-   zSortVDest * daddr = (zSortVDest*)(gfx.DMEM+dst);
-   int idx = 0;
-   zSortVDest v;
+   saddr = (int16_t*)(gfx.DMEM+src);
+   daddr = (zSortVDest*)(gfx.DMEM+dst);
+   idx = 0;
    memset(&v, 0, sizeof(zSortVDest));
    //float scale_x = 4.0f/rdp.scale_x;
    //float scale_y = 4.0f/rdp.scale_y;
@@ -564,13 +566,13 @@ static void uc9_send_signal(uint32_t w0, uint32_t w1)
 
 static void uc9_movemem(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc9:movemem\n");
    int idx = w0 & 0x0E;
    int ofs = ((w0 >> 6) & 0x1ff)<<3;
    int len = (1 + ((w0 >> 15) & 0x1ff))<<3;
-   FRDP ("uc9:movemem ofs: %d, len: %d. ", ofs, len);
    int flag = w0 & 0x01;
    uint32_t addr = segoffset(w1);
+   LRDP("uc9:movemem\n");
+   FRDP ("uc9:movemem ofs: %d, len: %d. ", ofs, len);
 
    switch (idx)
    {
@@ -634,14 +636,18 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
 
       case 12:   // VIEWPORT
          {
-            uint32_t a = addr >> 1;
-            int16_t scale_x = ((int16_t*)gfx.RDRAM)[(a+0)^1] >> 2;
-            int16_t scale_y = ((int16_t*)gfx.RDRAM)[(a+1)^1] >> 2;
-            int16_t scale_z = ((int16_t*)gfx.RDRAM)[(a+2)^1];
+            int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
+			uint32_t a;
+			TILE *tmp_tile;
+
+            a = addr >> 1;
+            scale_x = ((int16_t*)gfx.RDRAM)[(a+0)^1] >> 2;
+            scale_y = ((int16_t*)gfx.RDRAM)[(a+1)^1] >> 2;
+            scale_z = ((int16_t*)gfx.RDRAM)[(a+2)^1];
             rdp.fog_multiplier = ((int16_t*)gfx.RDRAM)[(a+3)^1];
-            int16_t trans_x = ((int16_t*)gfx.RDRAM)[(a+4)^1] >> 2;
-            int16_t trans_y = ((int16_t*)gfx.RDRAM)[(a+5)^1] >> 2;
-            int16_t trans_z = ((int16_t*)gfx.RDRAM)[(a+6)^1];
+            trans_x = ((int16_t*)gfx.RDRAM)[(a+4)^1] >> 2;
+            trans_y = ((int16_t*)gfx.RDRAM)[(a+5)^1] >> 2;
+            trans_z = ((int16_t*)gfx.RDRAM)[(a+6)^1];
             rdp.fog_offset = ((int16_t*)gfx.RDRAM)[(a+7)^1];
             rdp.view_scale[0] = scale_x * rdp.scale_x;
             rdp.view_scale[1] = scale_y * rdp.scale_y;
@@ -660,7 +666,8 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
 
             rdp.mipmap_level = 0;
             rdp.cur_tile = 0;
-            TILE *tmp_tile = &rdp.tiles[0];
+
+            tmp_tile = (TILE*)&rdp.tiles[0];
             tmp_tile->on = 1;
             tmp_tile->org_s_scale = 0xFFFF;
             tmp_tile->org_t_scale = 0xFFFF;
@@ -686,6 +693,7 @@ static void uc9_setscissor(uint32_t w0, uint32_t w1)
 
    if ((rdp.scissor_o.lr_x - rdp.scissor_o.ul_x) > (zSortRdp.view_scale[0] - zSortRdp.view_trans[0]))
    {
+      TILE *tmp_tile;
       float w = (rdp.scissor_o.lr_x - rdp.scissor_o.ul_x) / 2.0f;
       float h = (rdp.scissor_o.lr_y - rdp.scissor_o.ul_y) / 2.0f;
       rdp.view_scale[0] = w * rdp.scale_x;
@@ -702,7 +710,8 @@ static void uc9_setscissor(uint32_t w0, uint32_t w1)
 
       rdp.mipmap_level = 0;
       rdp.cur_tile = 0;
-      TILE *tmp_tile = &rdp.tiles[0];
+
+      tmp_tile = (TILE*)&rdp.tiles[0];
       tmp_tile->on = 1;
       tmp_tile->org_s_scale = 0xFFFF;
       tmp_tile->org_t_scale = 0xFFFF;

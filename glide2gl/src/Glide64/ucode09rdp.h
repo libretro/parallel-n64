@@ -49,8 +49,9 @@ void uc9_rpdcmd(uint32_t w0, uint32_t w1)
 
    if (a)
    {
+      uint32_t cmd;
       rdp.LLE = 1;
-      uint32_t cmd = 0;
+      cmd = 0;
 
       do
       {

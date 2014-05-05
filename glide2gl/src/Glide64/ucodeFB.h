@@ -55,16 +55,19 @@ static void fb_uc2_moveword(uint32_t w0, uint32_t w1)
 
 static void fb_bg_copy(uint32_t w0, uint32_t w1)
 {
+   CI_STATUS status;
+   uint32_t addr, imagePtr;
+   uint8_t imageFmt, imageSiz;
    if (rdp.main_ci == 0)
       return;
-   CI_STATUS status = rdp.frame_buffers[rdp.ci_count-1].status;
+   status = rdp.frame_buffers[rdp.ci_count-1].status;
    if ( (status == CI_COPY) )
       return;
 
-   uint32_t addr = segoffset(w1) >> 1;
-   uint8_t imageFmt	= ((uint8_t *)gfx.RDRAM)[(((addr+11)<<1)+0)^3];
-   uint8_t imageSiz	= ((uint8_t *)gfx.RDRAM)[(((addr+11)<<1)+1)^3];
-   uint32_t imagePtr	= segoffset(((uint32_t*)gfx.RDRAM)[(addr+8)>>1]);
+   addr = segoffset(w1) >> 1;
+   imageFmt	= ((uint8_t *)gfx.RDRAM)[(((addr+11)<<1)+0)^3];
+   imageSiz	= ((uint8_t *)gfx.RDRAM)[(((addr+11)<<1)+1)^3];
+   imagePtr	= segoffset(((uint32_t*)gfx.RDRAM)[(addr+8)>>1]);
    FRDP ("fb_bg_copy. fmt: %d, size: %d, imagePtr %08lx, main_ci: %08lx, cur_ci: %08lx \n", imageFmt, imageSiz, imagePtr, rdp.main_ci, rdp.frame_buffers[rdp.ci_count-1].addr);
 
    if (status == CI_MAIN)
@@ -111,9 +114,10 @@ static void fb_setscissor(uint32_t w0, uint32_t w1)
    rdp.scissor_o.lr_y = (uint32_t)(((w1 & 0x00000FFF) >> 2));
    if (rdp.ci_count)
    {
+      COLOR_IMAGE *cur_fb;
       rdp.scissor_o.ul_x = (uint32_t)(((w0 & 0x00FFF000) >> 14));
       rdp.scissor_o.lr_x = (uint32_t)(((w1 & 0x00FFF000) >> 14));
-      COLOR_IMAGE *cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count-1];
+      cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count-1];
       if (rdp.scissor_o.lr_x - rdp.scissor_o.ul_x > (uint32_t)(cur_fb->width >> 1))
       {
          if (cur_fb->height == 0 || (cur_fb->width >= rdp.scissor_o.lr_x-1 && cur_fb->width <= rdp.scissor_o.lr_x+1))
@@ -144,12 +148,13 @@ static void fb_uc2_movemem(uint32_t w0, uint32_t w1)
 
 static void fb_rect(uint32_t w0, uint32_t w1)
 {
+   int ul_x, lr_x, width, diff;
    if (rdp.frame_buffers[rdp.ci_count-1].width == 32)
       return;
-   int ul_x = ((w1 & 0x00FFF000) >> 14);
-   int lr_x = ((w0 & 0x00FFF000) >> 14);
-   int width = lr_x-ul_x;
-   int diff = abs((int)rdp.frame_buffers[rdp.ci_count-1].width - width);
+   ul_x = ((w1 & 0x00FFF000) >> 14);
+   lr_x = ((w0 & 0x00FFF000) >> 14);
+   width = lr_x-ul_x;
+   diff = abs((int)rdp.frame_buffers[rdp.ci_count-1].width - width);
    if (diff < 4)
    {
       uint32_t lr_y = min(rdp.scissor_o.lr_y, (w0 & 0xFFF) >> 2);
@@ -168,9 +173,10 @@ static void fb_rdphalf_1(uint32_t w0, uint32_t w1)
 
 static void fb_settextureimage(uint32_t w0, uint32_t w1)
 {
+   COLOR_IMAGE *cur_fb;
    if (rdp.main_ci == 0)
       return;
-   COLOR_IMAGE *cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count-1];
+   cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count-1];
    if ( cur_fb->status >= CI_COPY)
       return;
    if (((w0 >> 19) & 0x03) >= 2)  //check that texture is 16/32bit
@@ -335,9 +341,11 @@ static void fb_setdepthimage(uint32_t w0, uint32_t w1)
 
 static void fb_setcolorimage(uint32_t w0, uint32_t w1)
 {
+   COLOR_IMAGE *cur_fb;
    rdp.ocimg = rdp.cimg;
    rdp.cimg = segoffset(w1) & BMASK;
-   COLOR_IMAGE *cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count];
+
+   cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count];
    cur_fb->width = (w0 & 0xFFF) + 1;
    if (cur_fb->width == 32 )
       cur_fb->height = 32;
