@@ -117,7 +117,8 @@ static float set_sprite_combine_mode(void)
   return Z;
 }
 
-typedef struct DRAWIMAGE_t {
+typedef struct DRAWIMAGE_t
+{
   float frameX;
   float frameY;
   uint16_t frameW;
@@ -139,17 +140,22 @@ typedef struct DRAWIMAGE_t {
 #ifdef HAVE_HWFBE
 static void DrawHiresDepthImage (const DRAWIMAGE *d)
 {
-   int w, h;
-   uint16_t * src = (uint16_t*)(gfx.RDRAM + d->imagePtr);
-   uint16_t image[512*512];
-   uint16_t *dst = image;
+   int i, w, h;
+   uint16_t *src, *dst, image[512 * 512];
+   float lr_x, lr_y, lr_u, lr_v;
+   VERTEX v[4];
+   GrTexInfo t_info;
+      
+   src = (uint16_t*)(gfx.RDRAM + d->imagePtr);
+   dst = (uint16_t*)image;
+
    for (h = 0; h < d->imageH; h++)
    {
       for (w = 0; w < d->imageW; w++)
          *(dst++) = src[(w + h * d->imageW) ^ 1];
       dst += (512 - d->imageW);
    }
-   GrTexInfo t_info;
+
    t_info.format = GR_TEXFMT_RGB_565;
    t_info.data = image;
    t_info.smallLodLog2 = GR_LOD_LOG2_512;
@@ -199,11 +205,10 @@ static void DrawHiresDepthImage (const DRAWIMAGE *d)
    if (settings.scr_res_x > 1024)
       LOD = GR_LOD_LOG2_2048;
 
-   float lr_x = (float)d->imageW * rdp.scale_x;
-   float lr_y = (float)d->imageH * rdp.scale_y;
-   float lr_u = (float)d->imageW * 0.5f;// - 0.5f;
-   float lr_v = (float)d->imageH * 0.5f;// - 0.5f;
-   int i;
+   lr_x = (float)d->imageW * rdp.scale_x;
+   lr_y = (float)d->imageH * rdp.scale_y;
+   lr_u = (float)d->imageW * 0.5f;// - 0.5f;
+   lr_v = (float)d->imageH * 0.5f;// - 0.5f;
    VERTEX v[4] = {
       { 0, 0, 1.0f, 1.0f, 0, 0, 0, 0 },
       { lr_x, 0, 1.0f, 1.0f, lr_u, 0, lr_u, 0 },
@@ -281,16 +286,11 @@ static void DrawDepthImage (const DRAWIMAGE *d)
 
 static void DrawImage (DRAWIMAGE *d)
 {
-   int x_size, y_size, x_shift, y_shift, line;
-   int ul_u, ul_v, lr_u, lr_v;
-   float ul_x, ul_y, lr_x, lr_y;
-   float nul_x, nul_y, nlr_x, nlr_y;
-   int nul_u, nul_v, nlr_u, nlr_v;
-   float ful_u, ful_v, flr_u, flr_v;
-   float ful_x, ful_y, flr_x, flr_y, mx, bx, my, by;
-   int cur_wrap_u, cur_wrap_v, cur_u, cur_v;
-   int cb_u, cb_v;       // coordinate-base
-   int tb_u, tb_v;       // texture-base
+   // cb - coordinate base
+   // tb - texture base
+   int x_size, y_size, x_shift, y_shift, line, ul_u, ul_v, lr_u, lr_v, nul_u, nul_v, nlr_u, nlr_v, cur_wrap_u, cur_wrap_v, cur_u, cur_v, cb_u, cb_v, tb_u, tb_v;
+   int min_wrap_u, min_wrap_v, min_256_u, min_256_v;
+   float ul_x, ul_y, lr_x, lr_y, nul_x, nul_y, nlr_x, nlr_y, ful_u, ful_v, flr_u, flr_v, ful_x, ful_y, flr_x, flr_y, mx, bx, my, by, Z;
 
    if (d->imageW == 0 || d->imageH == 0 || d->frameH == 0)
       return;
@@ -405,14 +405,10 @@ static void DrawImage (DRAWIMAGE *d)
       lr_y = d->frameY + d->frameH;
    }
 
-   int min_wrap_u = ul_u / d->imageW;
-   //int max_wrap_u = lr_u / d->wrapW;
-   int min_wrap_v = ul_v / d->imageH;
-   //int max_wrap_v = lr_v / d->wrapH;
-   int min_256_u = ul_u >> x_shift;
-   //int max_256_u = (lr_u-1) >> x_shift;
-   int min_256_v = ul_v >> y_shift;
-   //int max_256_v = (lr_v-1) >> y_shift;
+   min_wrap_u = ul_u / d->imageW;
+   min_wrap_v = ul_v / d->imageH;
+   min_256_u = ul_u >> x_shift;
+   min_256_v = ul_v >> y_shift;
 
    gDPSetTextureImage(
          d->imageFmt,                                 /* format - RGBA */
@@ -445,7 +441,7 @@ static void DrawImage (DRAWIMAGE *d)
    rdp.tiles[0].lr_s = x_size-1;
    rdp.tiles[0].lr_t = y_size-1;
 
-   const float Z = set_sprite_combine_mode ();
+   Z = set_sprite_combine_mode ();
    if (rdp.cycle_mode == G_CYC_COPY)
       rdp.allow_combine = 0;
 
@@ -537,24 +533,192 @@ static void DrawImage (DRAWIMAGE *d)
          ful_y = nul_y * rdp.scale_y + rdp.offset_y;
          flr_y = nlr_y * rdp.scale_y + rdp.offset_y;
 
-         // Make the vertices
-
          if ((flr_x <= rdp.scissor.lr_x) || (ful_x < rdp.scissor.lr_x))
          {
             //not clipped
+            VERTEX v[4];
             int s;
-            VERTEX v[4] = {
-               { ful_x, ful_y, Z, 1.0f, ful_u, ful_v },
-               { flr_x, ful_y, Z, 1.0f, flr_u, ful_v },
-               { ful_x, flr_y, Z, 1.0f, ful_u, flr_v },
-               { flr_x, flr_y, Z, 1.0f, flr_u, flr_v } };
+
+            //Make the vertices
+            v[0].x  = ful_x;
+            v[0].y  = ful_y;
+            v[0].z  = Z;
+            v[0].q  = 1;
+            v[0].u0 = ful_u;
+            v[0].v0 = ful_v;
+            v[0].u1 = 0.0f;
+            v[0].v1 = 0.0f;
+            v[0].coord[0] = 0.0f;
+            v[0].coord[1] = 0.0f;
+            v[0].coord[2] = 0.0f;
+            v[0].coord[3] = 0.0f;
+            v[0].r  = 0;
+            v[0].g  = 0;
+            v[0].b  = 0;
+            v[0].a  = 0;
+            v[0].f  = 0.0f;
+            v[0].vec[0] = 0.0f;
+            v[0].vec[1] = 0.0f;
+            v[0].vec[2] = 0.0f;
+            v[0].vec[3] = 0.0f;
+            v[0].sx = 0.0f;
+            v[0].sy = 0.0f;
+            v[0].sz = 0.0f;
+            v[0].x_w = 0.0f;
+            v[0].y_w = 0.0f;
+            v[0].z_w = 0.0f;
+            v[0].u0_w = 0.0f;
+            v[0].v0_w = 0.0f;
+            v[0].u1_w = 0.0f;
+            v[0].v1_w = 0.0f;
+            v[0].oow = 0.0f;
+            v[0].not_zclipped = 0;
+            v[0].screen_translated = 0;
+            v[0].uv_scaled = 0;
+            v[0].uv_calculated = 0;
+            v[0].shade_mod = 0;
+            v[0].color_backup = 0;
+            v[0].ou = 0.0f;
+            v[0].ov = 0.0f;
+            v[0].number = 0;
+            v[0].scr_off = 0;
+            v[0].z_off = 0.0f;
+
+            v[1].x  = flr_x;
+            v[1].y  = ful_y;
+            v[1].z  = Z;
+            v[1].q  = 1;
+            v[1].u0 = flr_u;
+            v[1].v0 = ful_v;
+            v[1].u1 = 0.0f;
+            v[1].v1 = 0.0f;
+            v[1].coord[0] = 0.0f;
+            v[1].coord[1] = 0.0f;
+            v[1].coord[2] = 0.0f;
+            v[1].coord[3] = 0.0f;
+            v[1].r  = 0;
+            v[1].g  = 0;
+            v[1].b  = 0;
+            v[1].a  = 0;
+            v[1].f  = 0.0f;
+            v[1].vec[0] = 0.0f;
+            v[1].vec[1] = 0.0f;
+            v[1].vec[2] = 0.0f;
+            v[1].sx = 0.0f;
+            v[1].sy = 0.0f;
+            v[1].sz = 0.0f;
+            v[1].x_w = 0.0f;
+            v[1].y_w = 0.0f;
+            v[1].z_w = 0.0f;
+            v[1].u0_w = 0.0f;
+            v[1].v0_w = 0.0f;
+            v[1].u1_w = 0.0f;
+            v[1].v1_w = 0.0f;
+            v[1].oow = 0.0f;
+            v[1].not_zclipped = 0;
+            v[1].screen_translated = 0;
+            v[1].uv_scaled = 0;
+            v[1].uv_calculated = 0;
+            v[1].shade_mod = 0;
+            v[1].color_backup = 0;
+            v[1].ou = 0.0f;
+            v[1].ov = 0.0f;
+            v[1].number = 0;
+            v[1].scr_off = 0;
+            v[1].z_off = 0.0f;
+
+            v[2].x  = ful_x;
+            v[2].y  = flr_y;
+            v[2].z  = Z;
+            v[2].q  = 1;
+            v[2].u0 = ful_u;
+            v[2].v0 = flr_v;
+            v[2].u1 = 0.0f;
+            v[2].v1 = 0.0f;
+            v[2].coord[0] = 0.0f;
+            v[2].coord[1] = 0.0f;
+            v[2].coord[2] = 0.0f; 
+            v[2].coord[3] = 0.0f;
+            v[2].r  = 0;
+            v[2].g  = 0;
+            v[2].b  = 0;
+            v[2].a  = 0;
+            v[2].f  = 0.0f;
+            v[2].vec[0] = 0.0f;
+            v[2].vec[1] = 0.0f;
+            v[2].vec[2] = 0.0f;
+            v[2].sx = 0.0f;
+            v[2].sy = 0.0f;
+            v[2].sz = 0.0f;
+            v[2].x_w = 0.0f;
+            v[2].y_w = 0.0f;
+            v[2].z_w = 0.0f;
+            v[2].u0_w = 0.0f;
+            v[2].v0_w = 0.0f;
+            v[2].u1_w = 0.0f;
+            v[2].v1_w = 0.0f;
+            v[2].oow = 0.0f;
+            v[2].not_zclipped = 0;
+            v[2].screen_translated = 0;
+            v[2].uv_scaled = 0;
+            v[2].uv_calculated = 0;
+            v[2].shade_mod = 0;
+            v[2].color_backup = 0;
+            v[2].ou = 0.0f;
+            v[2].ov = 0.0f;
+            v[2].number = 0;
+            v[2].scr_off = 0;
+            v[2].z_off = 0.0f;
+
+            v[3].x  = flr_x;
+            v[3].y  = flr_y;
+            v[3].z  = Z;
+            v[3].q  = 1;
+            v[3].u0 = flr_u;
+            v[3].v0 = flr_v; 
+            v[3].u1 = 0.0;
+            v[3].v1 = 0.0;
+            v[3].coord[0] = 0.0;
+            v[3].coord[1] = 0.0;
+            v[3].coord[2] = 0.0; 
+            v[3].coord[3] = 0.0;
+            v[3].r  = 0;
+            v[3].g  = 0;
+            v[3].b  = 0;
+            v[3].a  = 0;
+            v[3].f  = 0.0f;
+            v[3].vec[0] = 0.0f;
+            v[3].vec[1] = 0.0f;
+            v[3].vec[2] = 0.0f;
+            v[3].sx = 0.0f;
+            v[3].sy = 0.0f;
+            v[3].sz = 0.0f;
+            v[3].x_w = 0.0f;
+            v[3].y_w = 0.0f;
+            v[3].z_w = 0.0f;
+            v[3].u0_w = 0.0f;
+            v[3].v0_w = 0.0f;
+            v[3].u1_w = 0.0f;
+            v[3].v1_w = 0.0f;
+            v[3].oow = 0.0f;
+            v[3].not_zclipped = 0;
+            v[3].screen_translated = 0;
+            v[3].uv_scaled = 0;
+            v[3].uv_calculated = 0;
+            v[3].shade_mod = 0;
+            v[3].color_backup = 0;
+            v[3].ou = 0.0f;
+            v[3].ov = 0.0f;
+            v[3].number = 0;
+            v[3].scr_off = 0;
+            v[3].z_off = 0.0f;
+
             AllowShadeMods (v, 4);
             for (s = 0; s < 4; s++)
                apply_shade_mods (&(v[s]));
             ConvertCoordsConvert (v, 4);
 
             grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v, sizeof(VERTEX));
-
          }
          rdp.tri_n += 2;
 
@@ -590,7 +754,11 @@ static void DrawImage (DRAWIMAGE *d)
 #ifdef HAVE_HWFBE
 void DrawHiresImage(DRAWIMAGE *d, int screensize)
 {
-   TBUFF_COLOR_IMAGE *tbuff_tex = (TBUFF_COLOR_IMAGE*)rdp.tbuff_tex;
+   TBUFF_COLOR_IMAGE *tbuff_tex;
+   int s;
+   float Z, ul_x, ul_y, ul_u, ul_v, lr_x, lr_y, lr_u, lr_v;
+
+   tbuff_tex = (TBUFF_COLOR_IMAGE*)rdp.tbuff_tex;
    if (rdp.motionblur)
       rdp.tbuff_tex = &(rdp.texbufs[rdp.cur_tex_buf^1].images[0]);
    else if (rdp.tbuff_tex == 0)
@@ -599,7 +767,7 @@ void DrawHiresImage(DRAWIMAGE *d, int screensize)
 
    setTBufTex(rdp.tbuff_tex->t_mem, rdp.tbuff_tex->width << rdp.tbuff_tex->size >> 1);
 
-   const float Z = set_sprite_combine_mode();
+   Z = set_sprite_combine_mode();
    grClipWindow (0, 0, settings.res_x, settings.res_y);
 
    if (d->imageW%2 == 1) d->imageW -= 1;
@@ -614,8 +782,6 @@ void DrawHiresImage(DRAWIMAGE *d, int screensize)
          d->frameH -= (uint16_t)(2.0f*d->frameY);
    }
 
-   int s;
-   float ul_x, ul_y, ul_u, ul_v, lr_x, lr_y, lr_u, lr_v;
    if (screensize)
    {
       ul_x = 0.0f;
@@ -652,12 +818,180 @@ void DrawHiresImage(DRAWIMAGE *d, int screensize)
       if (lr_x > rdp.scissor.lr_x) lr_x = (float)rdp.scissor.lr_x;
       if (lr_y > rdp.scissor.lr_y) lr_y = (float)rdp.scissor.lr_y;
    }
-   // Make the vertices
-   VERTEX v[4] = {
-      { ul_x, ul_y, Z, 1.0f, ul_u, ul_v, ul_u, ul_v },
-      { lr_x, ul_y, Z, 1.0f, lr_u, ul_v, lr_u, ul_v },
-      { ul_x, lr_y, Z, 1.0f, ul_u, lr_v, ul_u, lr_v },
-      { lr_x, lr_y, Z, 1.0f, lr_u, lr_v, lr_u, lr_v } };
+   //Make the vertices
+   v[0].x  = ful_x;
+   v[0].y  = ful_y;
+   v[0].z  = Z;
+   v[0].q  = 1;
+   v[0].u0 = ul_u;
+   v[0].v0 = ul_v;
+   v[0].u1 = ul_u;
+   v[0].v1 = ul_v;
+   v[0].coord[0] = 0.0f;
+   v[0].coord[1] = 0.0f;
+   v[0].coord[2] = 0.0f;
+   v[0].coord[3] = 0.0f;
+   v[0].r  = 0;
+   v[0].g  = 0;
+   v[0].b  = 0;
+   v[0].a  = 0;
+   v[0].f  = 0.0f;
+   v[0].vec[0] = 0.0f;
+   v[0].vec[1] = 0.0f;
+   v[0].vec[2] = 0.0f;
+   v[0].vec[3] = 0.0f;
+   v[0].sx = 0.0f;
+   v[0].sy = 0.0f;
+   v[0].sz = 0.0f;
+   v[0].x_w = 0.0f;
+   v[0].y_w = 0.0f;
+   v[0].z_w = 0.0f;
+   v[0].u0_w = 0.0f;
+   v[0].v0_w = 0.0f;
+   v[0].u1_w = 0.0f;
+   v[0].v1_w = 0.0f;
+   v[0].oow = 0.0f;
+   v[0].not_zclipped = 0;
+   v[0].screen_translated = 0;
+   v[0].uv_scaled = 0;
+   v[0].uv_calculated = 0;
+   v[0].shade_mod = 0;
+   v[0].color_backup = 0;
+   v[0].ou = 0.0f;
+   v[0].ov = 0.0f;
+   v[0].number = 0;
+   v[0].scr_off = 0;
+   v[0].z_off = 0.0f;
+
+   v[1].x  = lr_x;
+   v[1].y  = ul_y;
+   v[1].z  = Z;
+   v[1].q  = 1;
+   v[1].u0 = lr_u;
+   v[1].v0 = ul_v;
+   v[1].u1 = lr_u;
+   v[1].v1 = ul_v;
+   v[1].coord[0] = 0;
+   v[1].coord[1] = 0;
+   v[1].coord[2] = 0;
+   v[1].coord[3] = 0;
+   v[1].r  = 0;
+   v[1].g  = 0;
+   v[1].b  = 0;
+   v[1].a  = 0;
+   v[1].f  = 0.0f;
+   v[1].vec[0] = 0.0f;
+   v[1].vec[1] = 0.0f;
+   v[1].vec[2] = 0.0f;
+   v[1].sx = 0.0f;
+   v[1].sy = 0.0f;
+   v[1].sz = 0.0f;
+   v[1].x_w = 0.0f;
+   v[1].y_w = 0.0f;
+   v[1].z_w = 0.0f;
+   v[1].u0_w = 0.0f;
+   v[1].v0_w = 0.0f;
+   v[1].u1_w = 0.0f;
+   v[1].v1_w = 0.0f;
+   v[1].oow = 0.0f;
+   v[1].not_zclipped = 0;
+   v[1].screen_translated = 0;
+   v[1].uv_scaled = 0;
+   v[1].uv_calculated = 0;
+   v[1].shade_mod = 0;
+   v[1].color_backup = 0;
+   v[1].ou = 0.0f;
+   v[1].ov = 0.0f;
+   v[1].number = 0;
+   v[1].scr_off = 0;
+   v[1].z_off = 0.0f;
+
+   v[2].x  = ul_x;
+   v[2].y  = lr_y;
+   v[2].z  = Z;
+   v[2].q  = 1;
+   v[2].u0 = ul_u;
+   v[2].v0 = lr_v;
+   v[2].u1 = ul_u;
+   v[2].v1 = lr_v;
+   v[2].coord[0] = 0; 
+   v[2].coord[1] = 0;
+   v[2].coord[2] = 0; 
+   v[2].coord[3] = 0;
+   v[2].r  = 0;
+   v[2].g  = 0;
+   v[2].b  = 0;
+   v[2].a  = 0;
+   v[2].f  = 0.0f;
+   v[2].vec[0] = 0.0f;
+   v[2].vec[1] = 0.0f;
+   v[2].vec[2] = 0.0f;
+   v[2].sx = 0.0f;
+   v[2].sy = 0.0f;
+   v[2].sz = 0.0f;
+   v[2].x_w = 0.0f;
+   v[2].y_w = 0.0f;
+   v[2].z_w = 0.0f;
+   v[2].u0_w = 0.0f;
+   v[2].v0_w = 0.0f;
+   v[2].u1_w = 0.0f;
+   v[2].v1_w = 0.0f;
+   v[2].oow = 0.0f;
+   v[2].not_zclipped = 0;
+   v[2].screen_translated = 0;
+   v[2].uv_scaled = 0;
+   v[2].uv_calculated = 0;
+   v[2].shade_mod = 0;
+   v[2].color_backup = 0;
+   v[2].ou = 0.0f;
+   v[2].ov = 0.0f;
+   v[2].number = 0;
+   v[2].scr_off = 0;
+   v[2].z_off = 0.0f;
+
+   v[3].x  = lr_x;
+   v[3].y  = lr_y;
+   v[3].z  = Z;
+   v[3].q  = 1;
+   v[3].u0 = lr_u;
+   v[3].v0 = lr_v; 
+   v[3].u1 = lr_u;
+   v[3].v1 = lr_v;
+   v[3].coord[0] = 0;
+   v[3].coord[1] = 0;
+   v[3].coord[2] = 0; 
+   v[3].coord[3] = 0;
+   v[3].r  = 0;
+   v[3].g  = 0;
+   v[3].b  = 0;
+   v[3].a  = 0;
+   v[3].f  = 0.0f;
+   v[3].vec[0] = 0.0f;
+   v[3].vec[1] = 0.0f;
+   v[3].vec[2] = 0.0f;
+   v[3].sx = 0.0f;
+   v[3].sy = 0.0f;
+   v[3].sz = 0.0f;
+   v[3].x_w = 0.0f;
+   v[3].y_w = 0.0f;
+   v[3].z_w = 0.0f;
+   v[3].u0_w = 0.0f;
+   v[3].v0_w = 0.0f;
+   v[3].u1_w = 0.0f;
+   v[3].v1_w = 0.0f;
+   v[3].oow = 0.0f;
+   v[3].not_zclipped = 0;
+   v[3].screen_translated = 0;
+   v[3].uv_scaled = 0;
+   v[3].uv_calculated = 0;
+   v[3].shade_mod = 0;
+   v[3].color_backup = 0;
+   v[3].ou = 0.0f;
+   v[3].ov = 0.0f;
+   v[3].number = 0;
+   v[3].scr_off = 0;
+   v[3].z_off = 0.0f;
+
    ConvertCoordsConvert (v, 4);
    AllowShadeMods (v, 4);
    AddOffset(v, 4);
@@ -675,6 +1009,8 @@ void DrawHiresImage(DRAWIMAGE *d, int screensize)
 
 static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
 {
+   int imageYorig;
+   uint16_t imageFlip;
    uint32_t addr = segoffset(rdp.cmd1) >> 1;
 
    d->imageX      = (((uint16_t *)gfx.RDRAM)[(addr+0)^1] >> 5);   // 0
@@ -691,7 +1027,7 @@ static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
    d->imageFmt    = ((uint8_t *)gfx.RDRAM)[(((addr+11)<<1)+0)^3]; // 11
    d->imageSiz    = ((uint8_t *)gfx.RDRAM)[(((addr+11)<<1)+1)^3]; // |
    d->imagePal    = ((uint16_t *)gfx.RDRAM)[(addr+12)^1]; // 12
-   uint16_t imageFlip = ((uint16_t *)gfx.RDRAM)[(addr+13)^1];    // 13;
+   imageFlip      = ((uint16_t *)gfx.RDRAM)[(addr+13)^1];    // 13;
    d->flipX       = (uint8_t)imageFlip & G_BG_FLAG_FLIPS;
 
    if (bReadScale)
@@ -703,7 +1039,7 @@ static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
       d->scaleX = d->scaleY = 1.0f;
 
    d->flipY       = 0;
-   int imageYorig= ((int *)gfx.RDRAM)[(addr+16)>>1] >> 5;
+   imageYorig= ((int *)gfx.RDRAM)[(addr+16)>>1] >> 5;
    rdp.last_bg = d->imagePtr;
 
    FRDP ("imagePtr: %08lx\n", d->imagePtr);
@@ -717,6 +1053,7 @@ static void uc6_bg (bool bg_1cyc)
 {
    DRAWIMAGE d;
    bool draw_from_fb;
+
    if (rdp.skip_drawing)
       return;
 
@@ -750,10 +1087,10 @@ static void uc6_bg_copy(uint32_t w0, uint32_t w1)
 
 static void draw_split_triangle(VERTEX **vtx)
 {
-  vtx[0]->not_zclipped = vtx[1]->not_zclipped = vtx[2]->not_zclipped = 1;
-
   int index,i,j, min_256,max_256, cur_256,left_256,right_256;
   float percent;
+
+  vtx[0]->not_zclipped = vtx[1]->not_zclipped = vtx[2]->not_zclipped = 1;
 
   min_256 = min((int)vtx[0]->u0,(int)vtx[1]->u0); // bah, don't put two mins on one line
   min_256 = min(min_256,(int)vtx[2]->u0) >> 8;  // or it will be calculated twice
@@ -776,59 +1113,60 @@ static void draw_split_triangle(VERTEX **vtx)
     // ** Left plane **
     for (i=0; i<3; i++)
     {
-      j = i+1;
-      if (j == 3) j = 0;
+       VERTEX *v1, *v2;
+       j = i+1;
+       if (j == 3) j = 0;
 
-      VERTEX *v1 = vtx[i];
-      VERTEX *v2 = vtx[j];
+       v1 = (VERTEX*)vtx[i];
+       v2 = (VERTEX*)vtx[j];
 
-      if (v1->u0 >= left_256)
-      {
-        if (v2->u0 >= left_256)   // Both are in, save the last one
-        {
-          rdp.vtxbuf[index] = *v2;
-          rdp.vtxbuf[index].u0 -= left_256;
-          rdp.vtxbuf[index++].v0 += rdp.cur_cache[0]->c_scl_y * (cur_256 * rdp.cur_cache[0]->splitheight);
-        }
-        else      // First is in, second is out, save intersection
-        {
-          percent = (left_256 - v1->u0) / (v2->u0 - v1->u0);
-          rdp.vtxbuf[index].x = v1->x + (v2->x - v1->x) * percent;
-          rdp.vtxbuf[index].y = v1->y + (v2->y - v1->y) * percent;
-          rdp.vtxbuf[index].z = 1;
-          rdp.vtxbuf[index].q = 1;
-          rdp.vtxbuf[index].u0 = 0.5f;
-          rdp.vtxbuf[index].v0 = v1->v0 + (v2->v0 - v1->v0) * percent +
-            rdp.cur_cache[0]->c_scl_y * cur_256 * rdp.cur_cache[0]->splitheight;
-          rdp.vtxbuf[index].b = (uint8_t)(v1->b + (v2->b - v1->b) * percent);
-          rdp.vtxbuf[index].g = (uint8_t)(v1->g + (v2->g - v1->g) * percent);
-          rdp.vtxbuf[index].r = (uint8_t)(v1->r + (v2->r - v1->r) * percent);
-          rdp.vtxbuf[index++].a = (uint8_t)(v1->a + (v2->a - v1->a) * percent);
-        }
-      }
-      else
-      {
-        if (v2->u0 >= left_256) // First is out, second is in, save intersection & in point
-        {
-          percent = (left_256 - v2->u0) / (v1->u0 - v2->u0);
-          rdp.vtxbuf[index].x = v2->x + (v1->x - v2->x) * percent;
-          rdp.vtxbuf[index].y = v2->y + (v1->y - v2->y) * percent;
-          rdp.vtxbuf[index].z = 1;
-          rdp.vtxbuf[index].q = 1;
-          rdp.vtxbuf[index].u0 = 0.5f;
-          rdp.vtxbuf[index].v0 = v2->v0 + (v1->v0 - v2->v0) * percent +
-            rdp.cur_cache[0]->c_scl_y * cur_256 * rdp.cur_cache[0]->splitheight;
-          rdp.vtxbuf[index].b = (uint8_t)(v2->b + (v1->b - v2->b) * percent);
-          rdp.vtxbuf[index].g = (uint8_t)(v2->g + (v1->g - v2->g) * percent);
-          rdp.vtxbuf[index].r = (uint8_t)(v2->r + (v1->r - v2->r) * percent);
-          rdp.vtxbuf[index++].a = (uint8_t)(v2->a + (v1->a - v2->a) * percent);
+       if (v1->u0 >= left_256)
+       {
+          if (v2->u0 >= left_256)   // Both are in, save the last one
+          {
+             rdp.vtxbuf[index] = *v2;
+             rdp.vtxbuf[index].u0 -= left_256;
+             rdp.vtxbuf[index++].v0 += rdp.cur_cache[0]->c_scl_y * (cur_256 * rdp.cur_cache[0]->splitheight);
+          }
+          else      // First is in, second is out, save intersection
+          {
+             percent = (left_256 - v1->u0) / (v2->u0 - v1->u0);
+             rdp.vtxbuf[index].x = v1->x + (v2->x - v1->x) * percent;
+             rdp.vtxbuf[index].y = v1->y + (v2->y - v1->y) * percent;
+             rdp.vtxbuf[index].z = 1;
+             rdp.vtxbuf[index].q = 1;
+             rdp.vtxbuf[index].u0 = 0.5f;
+             rdp.vtxbuf[index].v0 = v1->v0 + (v2->v0 - v1->v0) * percent +
+                rdp.cur_cache[0]->c_scl_y * cur_256 * rdp.cur_cache[0]->splitheight;
+             rdp.vtxbuf[index].b = (uint8_t)(v1->b + (v2->b - v1->b) * percent);
+             rdp.vtxbuf[index].g = (uint8_t)(v1->g + (v2->g - v1->g) * percent);
+             rdp.vtxbuf[index].r = (uint8_t)(v1->r + (v2->r - v1->r) * percent);
+             rdp.vtxbuf[index++].a = (uint8_t)(v1->a + (v2->a - v1->a) * percent);
+          }
+       }
+       else
+       {
+          if (v2->u0 >= left_256) // First is out, second is in, save intersection & in point
+          {
+             percent = (left_256 - v2->u0) / (v1->u0 - v2->u0);
+             rdp.vtxbuf[index].x = v2->x + (v1->x - v2->x) * percent;
+             rdp.vtxbuf[index].y = v2->y + (v1->y - v2->y) * percent;
+             rdp.vtxbuf[index].z = 1;
+             rdp.vtxbuf[index].q = 1;
+             rdp.vtxbuf[index].u0 = 0.5f;
+             rdp.vtxbuf[index].v0 = v2->v0 + (v1->v0 - v2->v0) * percent +
+                rdp.cur_cache[0]->c_scl_y * cur_256 * rdp.cur_cache[0]->splitheight;
+             rdp.vtxbuf[index].b = (uint8_t)(v2->b + (v1->b - v2->b) * percent);
+             rdp.vtxbuf[index].g = (uint8_t)(v2->g + (v1->g - v2->g) * percent);
+             rdp.vtxbuf[index].r = (uint8_t)(v2->r + (v1->r - v2->r) * percent);
+             rdp.vtxbuf[index++].a = (uint8_t)(v2->a + (v1->a - v2->a) * percent);
 
-          // Save the in point
-          rdp.vtxbuf[index] = *v2;
-          rdp.vtxbuf[index].u0 -= left_256;
-          rdp.vtxbuf[index++].v0 += rdp.cur_cache[0]->c_scl_y * (cur_256 * rdp.cur_cache[0]->splitheight);
-        }
-      }
+             // Save the in point
+             rdp.vtxbuf[index] = *v2;
+             rdp.vtxbuf[index].u0 -= left_256;
+             rdp.vtxbuf[index++].v0 += rdp.cur_cache[0]->c_scl_y * (cur_256 * rdp.cur_cache[0]->splitheight);
+          }
+       }
     }
     rdp.n_global = index;
 
@@ -839,54 +1177,55 @@ static void draw_split_triangle(VERTEX **vtx)
 
     for (i=0; i<rdp.n_global; i++)
     {
-      j = i+1;
-      if (j == rdp.n_global) j = 0;
+       VERTEX *v1, *v2;
+       j = i+1;
+       if (j == rdp.n_global) j = 0;
 
-      VERTEX *v1 = &rdp.vtxbuf2[i];
-      VERTEX *v2 = &rdp.vtxbuf2[j];
+       v1 = (VERTEX*)&rdp.vtxbuf2[i];
+       v2 = (VERTEX*)&rdp.vtxbuf2[j];
 
-      // ** Right plane **
-      if (v1->u0 <= 256.0f)
-      {
-        if (v2->u0 <= 256.0f)   // Both are in, save the last one
-        {
-          rdp.vtxbuf[index++] = *v2;
-        }
-        else      // First is in, second is out, save intersection
-        {
-          percent = (right_256 - v1->u0) / (v2->u0 - v1->u0);
-          rdp.vtxbuf[index].x = v1->x + (v2->x - v1->x) * percent;
-          rdp.vtxbuf[index].y = v1->y + (v2->y - v1->y) * percent;
-          rdp.vtxbuf[index].z = 1;
-          rdp.vtxbuf[index].q = 1;
-          rdp.vtxbuf[index].u0 = 255.5f;
-          rdp.vtxbuf[index].v0 = v1->v0 + (v2->v0 - v1->v0) * percent;
-          rdp.vtxbuf[index].b = (uint8_t)(v1->b + (v2->b - v1->b) * percent);
-          rdp.vtxbuf[index].g = (uint8_t)(v1->g + (v2->g - v1->g) * percent);
-          rdp.vtxbuf[index].r = (uint8_t)(v1->r + (v2->r - v1->r) * percent);
-          rdp.vtxbuf[index++].a = (uint8_t)(v1->a + (v2->a - v1->a) * percent);
-        }
-      }
-      else
-      {
-        if (v2->u0 <= 256.0f) // First is out, second is in, save intersection & in point
-        {
-          percent = (right_256 - v2->u0) / (v1->u0 - v2->u0);
-          rdp.vtxbuf[index].x = v2->x + (v1->x - v2->x) * percent;
-          rdp.vtxbuf[index].y = v2->y + (v1->y - v2->y) * percent;
-          rdp.vtxbuf[index].z = 1;
-          rdp.vtxbuf[index].q = 1;
-          rdp.vtxbuf[index].u0 = 255.5f;
-          rdp.vtxbuf[index].v0 = v2->v0 + (v1->v0 - v2->v0) * percent;
-          rdp.vtxbuf[index].b = (uint8_t)(v2->b + (v1->b - v2->b) * percent);
-          rdp.vtxbuf[index].g = (uint8_t)(v2->g + (v1->g - v2->g) * percent);
-          rdp.vtxbuf[index].r = (uint8_t)(v2->r + (v1->r - v2->r) * percent);
-          rdp.vtxbuf[index++].a = (uint8_t)(v2->a + (v1->a - v2->a) * percent);
+       // ** Right plane **
+       if (v1->u0 <= 256.0f)
+       {
+          if (v2->u0 <= 256.0f)   // Both are in, save the last one
+          {
+             rdp.vtxbuf[index++] = *v2;
+          }
+          else      // First is in, second is out, save intersection
+          {
+             percent = (right_256 - v1->u0) / (v2->u0 - v1->u0);
+             rdp.vtxbuf[index].x = v1->x + (v2->x - v1->x) * percent;
+             rdp.vtxbuf[index].y = v1->y + (v2->y - v1->y) * percent;
+             rdp.vtxbuf[index].z = 1;
+             rdp.vtxbuf[index].q = 1;
+             rdp.vtxbuf[index].u0 = 255.5f;
+             rdp.vtxbuf[index].v0 = v1->v0 + (v2->v0 - v1->v0) * percent;
+             rdp.vtxbuf[index].b = (uint8_t)(v1->b + (v2->b - v1->b) * percent);
+             rdp.vtxbuf[index].g = (uint8_t)(v1->g + (v2->g - v1->g) * percent);
+             rdp.vtxbuf[index].r = (uint8_t)(v1->r + (v2->r - v1->r) * percent);
+             rdp.vtxbuf[index++].a = (uint8_t)(v1->a + (v2->a - v1->a) * percent);
+          }
+       }
+       else
+       {
+          if (v2->u0 <= 256.0f) // First is out, second is in, save intersection & in point
+          {
+             percent = (right_256 - v2->u0) / (v1->u0 - v2->u0);
+             rdp.vtxbuf[index].x = v2->x + (v1->x - v2->x) * percent;
+             rdp.vtxbuf[index].y = v2->y + (v1->y - v2->y) * percent;
+             rdp.vtxbuf[index].z = 1;
+             rdp.vtxbuf[index].q = 1;
+             rdp.vtxbuf[index].u0 = 255.5f;
+             rdp.vtxbuf[index].v0 = v2->v0 + (v1->v0 - v2->v0) * percent;
+             rdp.vtxbuf[index].b = (uint8_t)(v2->b + (v1->b - v2->b) * percent);
+             rdp.vtxbuf[index].g = (uint8_t)(v2->g + (v1->g - v2->g) * percent);
+             rdp.vtxbuf[index].r = (uint8_t)(v2->r + (v1->r - v2->r) * percent);
+             rdp.vtxbuf[index++].a = (uint8_t)(v2->a + (v1->a - v2->a) * percent);
 
-          // Save the in point
-          rdp.vtxbuf[index++] = *v2;
-        }
-      }
+             // Save the in point
+             rdp.vtxbuf[index++] = *v2;
+          }
+       }
     }
     rdp.n_global = index;
 
@@ -985,63 +1324,232 @@ static void uc6_init_tile(const DRAWOBJECT *d)
 static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
 {
    int i;
-  LRDP ("uc6:obj_rectangle ");
-  DRAWOBJECT d;
-  uc6_read_object_data(&d);
+   float Z, ul_x, lr_x, ul_y, lr_y, ul_u, ul_v, lr_u, lr_v;
+   DRAWOBJECT d;
+   VERTEX v[4];
 
-  if (d.imageAdrs > 4096)
-  {
-    FRDP("tmem: %08lx is out of bounds! return\n", d.imageAdrs);
-    return;
-  }
-  if (!rdp.s2dex_tex_loaded)
-  {
-    LRDP("Texture was not loaded! return\n");
-    return;
-  }
+   LRDP ("uc6:obj_rectangle ");
+   uc6_read_object_data(&d);
 
-  uc6_init_tile(&d);
+   if (d.imageAdrs > 4096)
+   {
+      FRDP("tmem: %08lx is out of bounds! return\n", d.imageAdrs);
+      return;
+   }
+   if (!rdp.s2dex_tex_loaded)
+   {
+      LRDP("Texture was not loaded! return\n");
+      return;
+   }
 
-  float Z = set_sprite_combine_mode();
+   uc6_init_tile(&d);
 
-  float ul_x = d.objX;
-  float lr_x = d.objX + d.imageW / d.scaleW;
-  float ul_y = d.objY;
-  float lr_y = d.objY + d.imageH / d.scaleH;
-  float ul_u, ul_v;
-  float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
-  float lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
+   Z = set_sprite_combine_mode();
 
-  if (d.imageFlags & G_BG_FLAG_FLIPS) /* flipS */
-  {
-    ul_u = lr_u;
-    lr_u = 0.5f;
-  }
-  else
-    ul_u = 0.5f;
-  if (d.imageFlags & G_BG_FLAG_FLIPT) //flipT
-  {
-    ul_v = lr_v;
-    lr_v = 0.5f;
-  }
-  else
-    ul_v = 0.5f;
+   ul_x = d.objX;
+   lr_x = d.objX + d.imageW / d.scaleW;
+   ul_y = d.objY;
+   lr_y = d.objY + d.imageH / d.scaleH;
+   ul_u, ul_v;
+   lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
+   lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
 
-  // Make the vertices
-  VERTEX v[4] = {
-    { ul_x, ul_y, Z, 1, ul_u, ul_v },
-    { lr_x, ul_y, Z, 1, lr_u, ul_v },
-    { ul_x, lr_y, Z, 1, ul_u, lr_v },
-    { lr_x, lr_y, Z, 1, lr_u, lr_v }
-  };
+   if (d.imageFlags & G_BG_FLAG_FLIPS) /* flipS */
+   {
+      ul_u = lr_u;
+      lr_u = 0.5f;
+   }
+   else
+      ul_u = 0.5f;
+   if (d.imageFlags & G_BG_FLAG_FLIPT) //flipT
+   {
+      ul_v = lr_v;
+      lr_v = 0.5f;
+   }
+   else
+      ul_v = 0.5f;
 
-  for (i = 0; i < 4; i++)
-  {
-    v[i].x *= rdp.scale_x;
-    v[i].y *= rdp.scale_y;
-  }
+   //Make the vertices
+   v[0].x  = ul_x;
+   v[0].y  = ul_y;
+   v[0].z  = Z;
+   v[0].q  = 1;
+   v[0].u0 = ul_u;
+   v[0].v0 = ul_v;
+   v[0].u1 = 0.0f;
+   v[0].v1 = 0.0f;
+   v[0].coord[0] = 0.0f;
+   v[0].coord[1] = 0.0f;
+   v[0].coord[2] = 0.0f;
+   v[0].coord[3] = 0.0f;
+   v[0].r  = 0;
+   v[0].g  = 0;
+   v[0].b  = 0;
+   v[0].a  = 0;
+   v[0].f  = 0.0f;
+   v[0].vec[0] = 0.0f;
+   v[0].vec[1] = 0.0f;
+   v[0].vec[2] = 0.0f;
+   v[0].vec[3] = 0.0f;
+   v[0].sx = 0.0f;
+   v[0].sy = 0.0f;
+   v[0].sz = 0.0f;
+   v[0].x_w = 0.0f;
+   v[0].y_w = 0.0f;
+   v[0].z_w = 0.0f;
+   v[0].u0_w = 0.0f;
+   v[0].v0_w = 0.0f;
+   v[0].u1_w = 0.0f;
+   v[0].v1_w = 0.0f;
+   v[0].oow = 0.0f;
+   v[0].not_zclipped = 0;
+   v[0].screen_translated = 0;
+   v[0].uv_scaled = 0;
+   v[0].uv_calculated = 0;
+   v[0].shade_mod = 0;
+   v[0].color_backup = 0;
+   v[0].ou = 0.0f;
+   v[0].ov = 0.0f;
+   v[0].number = 0;
+   v[0].scr_off = 0;
+   v[0].z_off = 0.0f;
 
-  uc6_draw_polygons (v);
+   v[1].x  = lr_x;
+   v[1].y  = ul_y;
+   v[1].z  = Z;
+   v[1].q  = 1;
+   v[1].u0 = lr_u;
+   v[1].v0 = ul_v;
+   v[1].u1 = 0.0f;
+   v[1].v1 = 0.0f;
+   v[1].coord[0] = 0.0f;
+   v[1].coord[1] = 0.0f;
+   v[1].coord[2] = 0.0f;
+   v[1].coord[3] = 0.0f;
+   v[1].r  = 0;
+   v[1].g  = 0;
+   v[1].b  = 0;
+   v[1].a  = 0;
+   v[1].f  = 0.0f;
+   v[1].vec[0] = 0.0f;
+   v[1].vec[1] = 0.0f;
+   v[1].vec[2] = 0.0f;
+   v[1].sx = 0.0f;
+   v[1].sy = 0.0f;
+   v[1].sz = 0.0f;
+   v[1].x_w = 0.0f;
+   v[1].y_w = 0.0f;
+   v[1].z_w = 0.0f;
+   v[1].u0_w = 0.0f;
+   v[1].v0_w = 0.0f;
+   v[1].u1_w = 0.0f;
+   v[1].v1_w = 0.0f;
+   v[1].oow = 0.0f;
+   v[1].not_zclipped = 0;
+   v[1].screen_translated = 0;
+   v[1].uv_scaled = 0;
+   v[1].uv_calculated = 0;
+   v[1].shade_mod = 0;
+   v[1].color_backup = 0;
+   v[1].ou = 0.0f;
+   v[1].ov = 0.0f;
+   v[1].number = 0;
+   v[1].scr_off = 0;
+   v[1].z_off = 0.0f;
+
+   v[2].x  = ul_x;
+   v[2].y  = lr_y;
+   v[2].z  = Z;
+   v[2].q  = 1;
+   v[2].u0 = ul_u;
+   v[2].v0 = lr_v;
+   v[2].u1 = 0.0f;
+   v[2].v1 = 0.0f;
+   v[2].coord[0] = 0.0f;
+   v[2].coord[1] = 0.0f;
+   v[2].coord[2] = 0.0f; 
+   v[2].coord[3] = 0.0f;
+   v[2].r  = 0;
+   v[2].g  = 0;
+   v[2].b  = 0;
+   v[2].a  = 0;
+   v[2].f  = 0.0f;
+   v[2].vec[0] = 0.0f;
+   v[2].vec[1] = 0.0f;
+   v[2].vec[2] = 0.0f;
+   v[2].sx = 0.0f;
+   v[2].sy = 0.0f;
+   v[2].sz = 0.0f;
+   v[2].x_w = 0.0f;
+   v[2].y_w = 0.0f;
+   v[2].z_w = 0.0f;
+   v[2].u0_w = 0.0f;
+   v[2].v0_w = 0.0f;
+   v[2].u1_w = 0.0f;
+   v[2].v1_w = 0.0f;
+   v[2].oow = 0.0f;
+   v[2].not_zclipped = 0;
+   v[2].screen_translated = 0;
+   v[2].uv_scaled = 0;
+   v[2].uv_calculated = 0;
+   v[2].shade_mod = 0;
+   v[2].color_backup = 0;
+   v[2].ou = 0.0f;
+   v[2].ov = 0.0f;
+   v[2].number = 0;
+   v[2].scr_off = 0;
+   v[2].z_off = 0.0f;
+
+   v[3].x  = lr_x;
+   v[3].y  = lr_y;
+   v[3].z  = Z;
+   v[3].q  = 1;
+   v[3].u0 = lr_u;
+   v[3].v0 = lr_v; 
+   v[3].u1 = 0.0;
+   v[3].v1 = 0.0;
+   v[3].coord[0] = 0.0;
+   v[3].coord[1] = 0.0;
+   v[3].coord[2] = 0.0; 
+   v[3].coord[3] = 0.0;
+   v[3].r  = 0;
+   v[3].g  = 0;
+   v[3].b  = 0;
+   v[3].a  = 0;
+   v[3].f  = 0.0f;
+   v[3].vec[0] = 0.0f;
+   v[3].vec[1] = 0.0f;
+   v[3].vec[2] = 0.0f;
+   v[3].sx = 0.0f;
+   v[3].sy = 0.0f;
+   v[3].sz = 0.0f;
+   v[3].x_w = 0.0f;
+   v[3].y_w = 0.0f;
+   v[3].z_w = 0.0f;
+   v[3].u0_w = 0.0f;
+   v[3].v0_w = 0.0f;
+   v[3].u1_w = 0.0f;
+   v[3].v1_w = 0.0f;
+   v[3].oow = 0.0f;
+   v[3].not_zclipped = 0;
+   v[3].screen_translated = 0;
+   v[3].uv_scaled = 0;
+   v[3].uv_calculated = 0;
+   v[3].shade_mod = 0;
+   v[3].color_backup = 0;
+   v[3].ou = 0.0f;
+   v[3].ov = 0.0f;
+   v[3].number = 0;
+   v[3].scr_off = 0;
+   v[3].z_off = 0.0f;
+
+   for (i = 0; i < 4; i++)
+   {
+      v[i].x *= rdp.scale_x;
+      v[i].y *= rdp.scale_y;
+   }
+
+   uc6_draw_polygons (v);
 }
 
 static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
@@ -1072,77 +1580,89 @@ static void uc6_obj_rendermode(uint32_t w0, uint32_t w1)
 
 static uint16_t uc6_yuv_to_rgba(uint8_t y, uint8_t u, uint8_t v)
 {
-  float r = y + (1.370705f * (v-128));
-  float g = y - (0.698001f * (v-128)) - (0.337633f * (u-128));
-  float b = y + (1.732446f * (u-128));
-  r *= 0.125f;
-  g *= 0.125f;
-  b *= 0.125f;
-  //clipping the result
-  if (r > 32) r = 32;
-  if (g > 32) g = 32;
-  if (b > 32) b = 32;
-  if (r < 0) r = 0;
-  if (g < 0) g = 0;
-  if (b < 0) b = 0;
+   float r, g, b;
+   uint16_t c;
 
-  uint16_t c = (uint16_t)(((uint16_t)(r) << 11) |
-    ((uint16_t)(g) << 6) |
-    ((uint16_t)(b) << 1) | 1);
-  return c;
+   r = y + (1.370705f * (v-128));
+   g = y - (0.698001f * (v-128)) - (0.337633f * (u-128));
+   b = y + (1.732446f * (u-128));
+   r *= 0.125f;
+   g *= 0.125f;
+   b *= 0.125f;
+   //clipping the result
+   if (r > 32) r = 32;
+   if (g > 32) g = 32;
+   if (b > 32) b = 32;
+   if (r < 0) r = 0;
+   if (g < 0) g = 0;
+   if (b < 0) b = 0;
+
+   c = (uint16_t)(((uint16_t)(r) << 11) | ((uint16_t)(g) << 6) | ((uint16_t)(b) << 1) | 1);
+   return c;
 }
 
 static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t lr_x, uint16_t lr_y)
 {
-   uint16_t h, w;
-  FRDP ("uc6:DrawYUVImageToFrameBuffer ul_x%d, ul_y%d, lr_x%d, lr_y%d\n", ul_x, ul_y, lr_x, lr_y);
-  uint32_t ci_width = rdp.ci_width;
-  uint32_t ci_height = rdp.ci_lower_bound;
-  if (ul_x >= ci_width)
-    return;
-  if (ul_y >= ci_height)
-    return;
-  uint32_t width = 16, height = 16;
-  if (lr_x > ci_width)
-    width = ci_width - ul_x;
-  if (lr_y > ci_height)
-    height = ci_height - ul_y;
-  uint32_t * mb = (uint32_t*)(gfx.RDRAM+rdp.timg.addr); //pointer to the first macro block
-  uint16_t * dst = (uint16_t*)(gfx.RDRAM+rdp.cimg);
-  dst += ul_x + ul_y * ci_width;
-  //yuv macro block contains 16x16 texture. we need to put it in the proper place inside cimg
-  for (h = 0; h < 16; h++)
-  {
-    for (w = 0; w < 16; w+=2)
-    {
-      uint32_t t = *(mb++); //each uint32_t contains 2 pixels
-      if ((h < height) && (w < width)) //clipping. texture image may be larger than color image
+   uint16_t h, w, *dst;
+   uint32_t ci_width, ci_height, width, height, *mb;
+
+   ci_width = rdp.ci_width;
+   ci_height = rdp.ci_lower_bound;
+
+   FRDP ("uc6:DrawYUVImageToFrameBuffer ul_x%d, ul_y%d, lr_x%d, lr_y%d\n", ul_x, ul_y, lr_x, lr_y);
+   if (ul_x >= ci_width)
+      return;
+   if (ul_y >= ci_height)
+      return;
+
+   width = 16;
+   height = 16;
+
+   if (lr_x > ci_width)
+      width = ci_width - ul_x;
+   if (lr_y > ci_height)
+      height = ci_height - ul_y;
+
+   mb = (uint32_t*)(gfx.RDRAM+rdp.timg.addr); //pointer to the first macro block
+   dst = (uint16_t*)(gfx.RDRAM+rdp.cimg);
+   dst += ul_x + ul_y * ci_width;
+   //yuv macro block contains 16x16 texture. we need to put it in the proper place inside cimg
+   for (h = 0; h < 16; h++)
+   {
+      for (w = 0; w < 16; w+=2)
       {
-        uint8_t y0 = (uint8_t)t&0xFF;
-        uint8_t v  = (uint8_t)(t>>8)&0xFF;
-        uint8_t y1 = (uint8_t)(t>>16)&0xFF;
-        uint8_t u  = (uint8_t)(t>>24)&0xFF;
-        *(dst++) = uc6_yuv_to_rgba(y0, u, v);
-        *(dst++) = uc6_yuv_to_rgba(y1, u, v);
+         uint32_t t = *(mb++); //each uint32_t contains 2 pixels
+         if ((h < height) && (w < width)) //clipping. texture image may be larger than color image
+         {
+            uint8_t y0, v, y1, u;
+            y0 = (uint8_t)t&0xFF;
+            v  = (uint8_t)(t>>8)&0xFF;
+            y1 = (uint8_t)(t>>16)&0xFF;
+            u  = (uint8_t)(t>>24)&0xFF;
+            *(dst++) = uc6_yuv_to_rgba(y0, u, v);
+            *(dst++) = uc6_yuv_to_rgba(y1, u, v);
+         }
       }
-    }
-    dst += rdp.ci_width - 16;
-  }
+      dst += rdp.ci_width - 16;
+   }
 }
 
 static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 {
    int i;
-   LRDP ("uc6:obj_rectangle_r ");
+   float Z, ul_x, lr_x, ul_y, lr_y, ul_u, ul_v, lr_u, lr_v;
+   VERTEX v[4];
    DRAWOBJECT d;
+
+   LRDP ("uc6:obj_rectangle_r ");
    uc6_read_object_data(&d);
 
    if (d.imageFmt == 1 && (settings.hacks&hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
    {
-      float ul_x = d.objX/mat_2d.BaseScaleX + mat_2d.X;
-      float lr_x = (d.objX + d.imageW / d.scaleW) / mat_2d.BaseScaleX + mat_2d.X;
-      float ul_y = d.objY / mat_2d.BaseScaleY + mat_2d.Y;
-      float lr_y = (d.objY + d.imageH / d.scaleH) / mat_2d.BaseScaleY + mat_2d.Y;
+      ul_x = d.objX/mat_2d.BaseScaleX + mat_2d.X;
+      lr_x = (d.objX + d.imageW / d.scaleW) / mat_2d.BaseScaleX + mat_2d.X;
+      ul_y = d.objY / mat_2d.BaseScaleY + mat_2d.Y;
+      lr_y = (d.objY + d.imageH / d.scaleH) / mat_2d.BaseScaleY + mat_2d.Y;
       uc6_DrawYUVImageToFrameBuffer((uint16_t)ul_x, (uint16_t)ul_y, (uint16_t)lr_x, (uint16_t)lr_y);
       rdp.tri_n += 2;
       return;
@@ -1150,15 +1670,14 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
    uc6_init_tile(&d);
 
-   float Z = set_sprite_combine_mode();
+   Z = set_sprite_combine_mode();
 
-   float ul_x = d.objX / mat_2d.BaseScaleX;
-   float lr_x = (d.objX + d.imageW / d.scaleW) / mat_2d.BaseScaleX;
-   float ul_y = d.objY / mat_2d.BaseScaleY;
-   float lr_y = (d.objY + d.imageH / d.scaleH) / mat_2d.BaseScaleY;
-   float ul_u, ul_v;
-   float lr_u = 255.0f * rdp.cur_cache[0]->scale_x;
-   float lr_v = 255.0f * rdp.cur_cache[0]->scale_y;
+   ul_x = d.objX / mat_2d.BaseScaleX;
+   lr_x = (d.objX + d.imageW / d.scaleW) / mat_2d.BaseScaleX;
+   ul_y = d.objY / mat_2d.BaseScaleY;
+   lr_y = (d.objY + d.imageH / d.scaleH) / mat_2d.BaseScaleY;
+   lr_u = 255.0f * rdp.cur_cache[0]->scale_x;
+   lr_v = 255.0f * rdp.cur_cache[0]->scale_y;
 
    if (d.imageFlags & G_BG_FLAG_FLIPS) //flipS
    {
@@ -1176,17 +1695,184 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
       ul_v = 0.5f;
 
    // Make the vertices
-   VERTEX v[4] = {
-      { ul_x, ul_y, Z, 1, ul_u, ul_v },
-      { lr_x, ul_y, Z, 1, lr_u, ul_v },
-      { ul_x, lr_y, Z, 1, ul_u, lr_v },
-      { lr_x, lr_y, Z, 1, lr_u, lr_v }
-   };
+   v[0].x  = ul_x;
+   v[0].y  = ul_y;
+   v[0].z  = Z;
+   v[0].q  = 1;
+   v[0].u0 = ul_u;
+   v[0].v0 = ul_v;
+   v[0].u1 = 0.0f;
+   v[0].v1 = 0.0f;
+   v[0].coord[0] = 0.0f;
+   v[0].coord[1] = 0.0f;
+   v[0].coord[2] = 0.0f;
+   v[0].coord[3] = 0.0f;
+   v[0].r  = 0;
+   v[0].g  = 0;
+   v[0].b  = 0;
+   v[0].a  = 0;
+   v[0].f  = 0.0f;
+   v[0].vec[0] = 0.0f;
+   v[0].vec[1] = 0.0f;
+   v[0].vec[2] = 0.0f;
+   v[0].vec[3] = 0.0f;
+   v[0].sx = 0.0f;
+   v[0].sy = 0.0f;
+   v[0].sz = 0.0f;
+   v[0].x_w = 0.0f;
+   v[0].y_w = 0.0f;
+   v[0].z_w = 0.0f;
+   v[0].u0_w = 0.0f;
+   v[0].v0_w = 0.0f;
+   v[0].u1_w = 0.0f;
+   v[0].v1_w = 0.0f;
+   v[0].oow = 0.0f;
+   v[0].not_zclipped = 0;
+   v[0].screen_translated = 0;
+   v[0].uv_scaled = 0;
+   v[0].uv_calculated = 0;
+   v[0].shade_mod = 0;
+   v[0].color_backup = 0;
+   v[0].ou = 0.0f;
+   v[0].ov = 0.0f;
+   v[0].number = 0;
+   v[0].scr_off = 0;
+   v[0].z_off = 0.0f;
+
+   v[1].x  = lr_x;
+   v[1].y  = ul_y;
+   v[1].z  = Z;
+   v[1].q  = 1;
+   v[1].u0 = lr_u;
+   v[1].v0 = ul_v;
+   v[1].u1 = 0.0f;
+   v[1].v1 = 0.0f;
+   v[1].coord[0] = 0.0f;
+   v[1].coord[1] = 0.0f;
+   v[1].coord[2] = 0.0f;
+   v[1].coord[3] = 0.0f;
+   v[1].r  = 0;
+   v[1].g  = 0;
+   v[1].b  = 0;
+   v[1].a  = 0;
+   v[1].f  = 0.0f;
+   v[1].vec[0] = 0.0f;
+   v[1].vec[1] = 0.0f;
+   v[1].vec[2] = 0.0f;
+   v[1].sx = 0.0f;
+   v[1].sy = 0.0f;
+   v[1].sz = 0.0f;
+   v[1].x_w = 0.0f;
+   v[1].y_w = 0.0f;
+   v[1].z_w = 0.0f;
+   v[1].u0_w = 0.0f;
+   v[1].v0_w = 0.0f;
+   v[1].u1_w = 0.0f;
+   v[1].v1_w = 0.0f;
+   v[1].oow = 0.0f;
+   v[1].not_zclipped = 0;
+   v[1].screen_translated = 0;
+   v[1].uv_scaled = 0;
+   v[1].uv_calculated = 0;
+   v[1].shade_mod = 0;
+   v[1].color_backup = 0;
+   v[1].ou = 0.0f;
+   v[1].ov = 0.0f;
+   v[1].number = 0;
+   v[1].scr_off = 0;
+   v[1].z_off = 0.0f;
+
+   v[2].x  = ul_x;
+   v[2].y  = lr_y;
+   v[2].z  = Z;
+   v[2].q  = 1;
+   v[2].u0 = ul_u;
+   v[2].v0 = lr_v;
+   v[2].u1 = 0.0f;
+   v[2].v1 = 0.0f;
+   v[2].coord[0] = 0.0f;
+   v[2].coord[1] = 0.0f;
+   v[2].coord[2] = 0.0f; 
+   v[2].coord[3] = 0.0f;
+   v[2].r  = 0;
+   v[2].g  = 0;
+   v[2].b  = 0;
+   v[2].a  = 0;
+   v[2].f  = 0.0f;
+   v[2].vec[0] = 0.0f;
+   v[2].vec[1] = 0.0f;
+   v[2].vec[2] = 0.0f;
+   v[2].sx = 0.0f;
+   v[2].sy = 0.0f;
+   v[2].sz = 0.0f;
+   v[2].x_w = 0.0f;
+   v[2].y_w = 0.0f;
+   v[2].z_w = 0.0f;
+   v[2].u0_w = 0.0f;
+   v[2].v0_w = 0.0f;
+   v[2].u1_w = 0.0f;
+   v[2].v1_w = 0.0f;
+   v[2].oow = 0.0f;
+   v[2].not_zclipped = 0;
+   v[2].screen_translated = 0;
+   v[2].uv_scaled = 0;
+   v[2].uv_calculated = 0;
+   v[2].shade_mod = 0;
+   v[2].color_backup = 0;
+   v[2].ou = 0.0f;
+   v[2].ov = 0.0f;
+   v[2].number = 0;
+   v[2].scr_off = 0;
+   v[2].z_off = 0.0f;
+
+   v[3].x  = lr_x;
+   v[3].y  = lr_y;
+   v[3].z  = Z;
+   v[3].q  = 1;
+   v[3].u0 = lr_u;
+   v[3].v0 = lr_v; 
+   v[3].u1 = 0.0;
+   v[3].v1 = 0.0;
+   v[3].coord[0] = 0.0;
+   v[3].coord[1] = 0.0;
+   v[3].coord[2] = 0.0; 
+   v[3].coord[3] = 0.0;
+   v[3].r  = 0;
+   v[3].g  = 0;
+   v[3].b  = 0;
+   v[3].a  = 0;
+   v[3].f  = 0.0f;
+   v[3].vec[0] = 0.0f;
+   v[3].vec[1] = 0.0f;
+   v[3].vec[2] = 0.0f;
+   v[3].sx = 0.0f;
+   v[3].sy = 0.0f;
+   v[3].sz = 0.0f;
+   v[3].x_w = 0.0f;
+   v[3].y_w = 0.0f;
+   v[3].z_w = 0.0f;
+   v[3].u0_w = 0.0f;
+   v[3].v0_w = 0.0f;
+   v[3].u1_w = 0.0f;
+   v[3].v1_w = 0.0f;
+   v[3].oow = 0.0f;
+   v[3].not_zclipped = 0;
+   v[3].screen_translated = 0;
+   v[3].uv_scaled = 0;
+   v[3].uv_calculated = 0;
+   v[3].shade_mod = 0;
+   v[3].color_backup = 0;
+   v[3].ou = 0.0f;
+   v[3].ov = 0.0f;
+   v[3].number = 0;
+   v[3].scr_off = 0;
+   v[3].z_off = 0.0f;
 
    for (i = 0; i < 4; i++)
    {
-      float x = v[i].x;
-      float y = v[i].y;
+      float x, y;
+      x = v[i].x;
+      y = v[i].y;
       v[i].x = (x + mat_2d.X) * rdp.scale_x;
       v[i].y = (y + mat_2d.Y) * rdp.scale_y;
    }
@@ -1206,9 +1892,9 @@ static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1)
 
 static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1)
 {
+   uint32_t addr = rdp.cmd1;
    LRDP("uc6:obj_ldtx_rect\n");
 
-   uint32_t addr = rdp.cmd1;
    gSPObjLoadTxtr(w1);
    rdp.cmd1 = addr + 24;
    uc6_obj_rectangle(w0, w1);
@@ -1216,9 +1902,9 @@ static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1)
 
 static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
 {
+   uint32_t addr = rdp.cmd1;
    LRDP("uc6:ldtx_rect_r\n");
 
-   uint32_t addr = rdp.cmd1;
    gSPObjLoadTxtr(w1);
    rdp.cmd1 = addr + 24;
    uc6_obj_rectangle_r(w0, w1);
@@ -1226,12 +1912,13 @@ static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
 
 static void uc6_loaducode(uint32_t w0, uint32_t w1)
 {
+   uint32_t addr, size;
    LRDP("uc6:load_ucode\n");
    RDP_E ("uc6:load_ucode\n");
 
    // copy the microcode data
-   uint32_t addr = segoffset(rdp.cmd1);
-   uint32_t size = (rdp.cmd0 & 0xFFFF) + 1;
+   addr = segoffset(rdp.cmd1);
+   size = (rdp.cmd0 & 0xFFFF) + 1;
    memcpy (microcode, gfx.RDRAM+addr, size);
 
    microcheck ();
@@ -1287,6 +1974,8 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
    cmd0 = ((uint32_t*)gfx.RDRAM)[a>>2]; //check next command
    do
    {
+      uint32_t texsize, maxTexSize;
+
       if ( (cmd0>>24) == 0xBE )
       {
          uint32_t cmd1 = ((uint32_t*)gfx.RDRAM)[(a>>2)+1];
@@ -1332,8 +2021,8 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
       else
          return;
 
-      const uint32_t texsize = (d.imageW * d.imageH) << d.imageSiz >> 1;
-      const uint32_t maxTexSize = rdp.tlut_mode < 2 ? 4096 : 2048;
+      texsize = (d.imageW * d.imageH) << d.imageSiz >> 1;
+      maxTexSize = rdp.tlut_mode < 2 ? 4096 : 2048;
 
       if (texsize > maxTexSize)
       {
@@ -1345,7 +2034,11 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
       }
       else
       {
-         uint16_t line = d.imageW;
+         float Z, ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
+         uint16_t line;
+         VERTEX v[4];
+         
+         line = d.imageW;
          if (line & 7)
             line += 8;  // round up
          line >>= 3;
@@ -1398,9 +2091,8 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          rdp.tiles[0].lr_s = d.imageX + d.imageW-1;
          rdp.tiles[0].lr_t = d.imageY + d.imageH-1;
 
-         float Z = set_sprite_combine_mode ();
+         Z = set_sprite_combine_mode ();
 
-         float ul_x, ul_y, lr_x, lr_y;
          if (d.flipX)
          {
             ul_x = d.frameX + d.frameW;
@@ -1422,16 +2114,182 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
             lr_y = d.frameY + d.frameH;
          }
 
-         float lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
-         float lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
+         lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
+         lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
 
          // Make the vertices
-         VERTEX v[4] = {
-            {ul_x, ul_y, Z, 1, 0.5f, 0.5f },
-            {lr_x, ul_y, Z, 1, lr_u, 0.5f },
-            {ul_x, lr_y, Z, 1, 0.5f, lr_v },
-            {lr_x, lr_y, Z, 1, lr_u, lr_v }
-         };
+         v[0].x  = ul_x;
+         v[0].y  = ul_y;
+         v[0].z  = Z;
+         v[0].q  = 1;
+         v[0].u0 = 0.5f;
+         v[0].v0 = 0.5f;
+         v[0].u1 = 0.0f;
+         v[0].v1 = 0.0f;
+         v[0].coord[0] = 0.0f;
+         v[0].coord[1] = 0.0f;
+         v[0].coord[2] = 0.0f;
+         v[0].coord[3] = 0.0f;
+         v[0].r  = 0;
+         v[0].g  = 0;
+         v[0].b  = 0;
+         v[0].a  = 0;
+         v[0].f  = 0.0f;
+         v[0].vec[0] = 0.0f;
+         v[0].vec[1] = 0.0f;
+         v[0].vec[2] = 0.0f;
+         v[0].vec[3] = 0.0f;
+         v[0].sx = 0.0f;
+         v[0].sy = 0.0f;
+         v[0].sz = 0.0f;
+         v[0].x_w = 0.0f;
+         v[0].y_w = 0.0f;
+         v[0].z_w = 0.0f;
+         v[0].u0_w = 0.0f;
+         v[0].v0_w = 0.0f;
+         v[0].u1_w = 0.0f;
+         v[0].v1_w = 0.0f;
+         v[0].oow = 0.0f;
+         v[0].not_zclipped = 0;
+         v[0].screen_translated = 0;
+         v[0].uv_scaled = 0;
+         v[0].uv_calculated = 0;
+         v[0].shade_mod = 0;
+         v[0].color_backup = 0;
+         v[0].ou = 0.0f;
+         v[0].ov = 0.0f;
+         v[0].number = 0;
+         v[0].scr_off = 0;
+         v[0].z_off = 0.0f;
+
+         v[1].x  = lr_x;
+         v[1].y  = ul_y;
+         v[1].z  = Z;
+         v[1].q  = 1;
+         v[1].u0 = lr_u;
+         v[1].v0 = 0.5f;
+         v[1].u1 = 0.0f;
+         v[1].v1 = 0.0f;
+         v[1].coord[0] = 0.0f;
+         v[1].coord[1] = 0.0f;
+         v[1].coord[2] = 0.0f;
+         v[1].coord[3] = 0.0f;
+         v[1].r  = 0;
+         v[1].g  = 0;
+         v[1].b  = 0;
+         v[1].a  = 0;
+         v[1].f  = 0.0f;
+         v[1].vec[0] = 0.0f;
+         v[1].vec[1] = 0.0f;
+         v[1].vec[2] = 0.0f;
+         v[1].sx = 0.0f;
+         v[1].sy = 0.0f;
+         v[1].sz = 0.0f;
+         v[1].x_w = 0.0f;
+         v[1].y_w = 0.0f;
+         v[1].z_w = 0.0f;
+         v[1].u0_w = 0.0f;
+         v[1].v0_w = 0.0f;
+         v[1].u1_w = 0.0f;
+         v[1].v1_w = 0.0f;
+         v[1].oow = 0.0f;
+         v[1].not_zclipped = 0;
+         v[1].screen_translated = 0;
+         v[1].uv_scaled = 0;
+         v[1].uv_calculated = 0;
+         v[1].shade_mod = 0;
+         v[1].color_backup = 0;
+         v[1].ou = 0.0f;
+         v[1].ov = 0.0f;
+         v[1].number = 0;
+         v[1].scr_off = 0;
+         v[1].z_off = 0.0f;
+
+         v[2].x  = ul_x;
+         v[2].y  = lr_y;
+         v[2].z  = Z;
+         v[2].q  = 1;
+         v[2].u0 = 0.5f;
+         v[2].v0 = lr_v;
+         v[2].u1 = 0.0f;
+         v[2].v1 = 0.0f;
+         v[2].coord[0] = 0.0f;
+         v[2].coord[1] = 0.0f;
+         v[2].coord[2] = 0.0f; 
+         v[2].coord[3] = 0.0f;
+         v[2].r  = 0;
+         v[2].g  = 0;
+         v[2].b  = 0;
+         v[2].a  = 0;
+         v[2].f  = 0.0f;
+         v[2].vec[0] = 0.0f;
+         v[2].vec[1] = 0.0f;
+         v[2].vec[2] = 0.0f;
+         v[2].sx = 0.0f;
+         v[2].sy = 0.0f;
+         v[2].sz = 0.0f;
+         v[2].x_w = 0.0f;
+         v[2].y_w = 0.0f;
+         v[2].z_w = 0.0f;
+         v[2].u0_w = 0.0f;
+         v[2].v0_w = 0.0f;
+         v[2].u1_w = 0.0f;
+         v[2].v1_w = 0.0f;
+         v[2].oow = 0.0f;
+         v[2].not_zclipped = 0;
+         v[2].screen_translated = 0;
+         v[2].uv_scaled = 0;
+         v[2].uv_calculated = 0;
+         v[2].shade_mod = 0;
+         v[2].color_backup = 0;
+         v[2].ou = 0.0f;
+         v[2].ov = 0.0f;
+         v[2].number = 0;
+         v[2].scr_off = 0;
+         v[2].z_off = 0.0f;
+
+         v[3].x  = lr_x;
+         v[3].y  = lr_y;
+         v[3].z  = Z;
+         v[3].q  = 1;
+         v[3].u0 = lr_u;
+         v[3].v0 = lr_v; 
+         v[3].u1 = 0.0;
+         v[3].v1 = 0.0;
+         v[3].coord[0] = 0.0;
+         v[3].coord[1] = 0.0;
+         v[3].coord[2] = 0.0; 
+         v[3].coord[3] = 0.0;
+         v[3].r  = 0;
+         v[3].g  = 0;
+         v[3].b  = 0;
+         v[3].a  = 0;
+         v[3].f  = 0.0f;
+         v[3].vec[0] = 0.0f;
+         v[3].vec[1] = 0.0f;
+         v[3].vec[2] = 0.0f;
+         v[3].sx = 0.0f;
+         v[3].sy = 0.0f;
+         v[3].sz = 0.0f;
+         v[3].x_w = 0.0f;
+         v[3].y_w = 0.0f;
+         v[3].z_w = 0.0f;
+         v[3].u0_w = 0.0f;
+         v[3].v0_w = 0.0f;
+         v[3].u1_w = 0.0f;
+         v[3].v1_w = 0.0f;
+         v[3].oow = 0.0f;
+         v[3].not_zclipped = 0;
+         v[3].screen_translated = 0;
+         v[3].uv_scaled = 0;
+         v[3].uv_calculated = 0;
+         v[3].shade_mod = 0;
+         v[3].color_backup = 0;
+         v[3].ou = 0.0f;
+         v[3].ov = 0.0f;
+         v[3].number = 0;
+         v[3].scr_off = 0;
+         v[3].z_off = 0.0f;
 
          for (i = 0; i < 4; i++)
          {
