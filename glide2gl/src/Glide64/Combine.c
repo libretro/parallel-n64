@@ -1007,12 +1007,13 @@ static void cc_t0a_mul_prim ()
 //Added by Gonetz
 static void cc__t1_inter_t0_using_enva__mul_prim ()
 {
+   uint8_t factor;
    CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER,
          GR_COMBINE_FACTOR_LOCAL,
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_TEXTURE);
    CC_PRIM ();
-   uint8_t factor = (uint8_t)(rdp.env_color&0xFF);
+   factor = (uint8_t)(rdp.env_color&0xFF);
    T1_INTER_T0_USING_FACTOR (factor);
 }
 
@@ -1294,11 +1295,12 @@ static void cc__t1_inter_t0_using_t1__mul_shade ()
 //Added by Gonetz
 static void cc__t1_inter_t0_using_enva__mul_shade ()
 {
+    uint8_t factor;
    CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER,
          GR_COMBINE_FACTOR_LOCAL,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   uint8_t factor = (uint8_t)(rdp.env_color&0xFF);
+   factor = (uint8_t)(rdp.env_color&0xFF);
    T1_INTER_T0_USING_FACTOR (factor);
 }
 
@@ -1827,12 +1829,13 @@ static void cc_shade_add_shade () //Aded by Gonetz
 // ** A-B **
 static void cc__t0_inter_t1_using_enva__sub_env () //Aded by Gonetz
 {
+   uint8_t factor;
    CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL,
          GR_COMBINE_FACTOR_ONE,
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_TEXTURE);
    CC_ENV ();
-   uint8_t factor = (uint8_t)(rdp.env_color&0xFF);
+   factor = (uint8_t)(rdp.env_color&0xFF);
    T0_INTER_T1_USING_FACTOR (factor);
 }
 
@@ -2251,12 +2254,13 @@ static void cc__t0_inter_t1_using_enva__mul_shade_add_prim ()
 
 static void cc__t0_inter_t1_using_enva__mul_shade_add_env ()
 {
+   uint8_t factor;
    CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL,
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
    CC_ENV ();
-   uint8_t factor = (uint8_t)(rdp.env_color&0xFF);
+   factor = (uint8_t)(rdp.env_color&0xFF);
    T0_INTER_T1_USING_FACTOR (factor);
 }
 
@@ -3418,12 +3422,13 @@ static void cc__t1_inter_t0_using_primlod__sub_shade_mul_prim ()
 
 static void cc__t0_inter_t1_using_enva__sub_shade_mul_prim ()
 {
+    uint8_t factor;
    CCMBEXT(GR_CMBX_TEXTURE_RGB, GR_FUNC_MODE_X,
          GR_CMBX_ITRGB, GR_FUNC_MODE_NEGATIVE_X,
          GR_CMBX_CONSTANT_COLOR, 0,
          GR_CMBX_ZERO, 0);
    CC_PRIM ();
-   uint8_t factor = (uint8_t)(rdp.env_color&0xFF);
+   factor = (uint8_t)(rdp.env_color&0xFF);
    T0_INTER_T1_USING_FACTOR (factor);
 }
 
@@ -3818,6 +3823,7 @@ static void cc__t0_mul_t1__sub_prim_mul__t0t1a__add_prim ()  //Aded by Gonetz
 
 static void cc__t1_inter_t0_using_enva__sub_prim_mul_prima_add_prim ()  //Aded by Gonetz
 {
+	uint8_t factor;
    // * not guaranteed to work if another iterated alpha is set
    CCMB (GR_COMBINE_FUNCTION_BLEND,
          GR_COMBINE_FACTOR_LOCAL_ALPHA,
@@ -3825,7 +3831,7 @@ static void cc__t1_inter_t0_using_enva__sub_prim_mul_prima_add_prim ()  //Aded b
          GR_COMBINE_OTHER_TEXTURE);
    CC_PRIM ();
    CA_PRIM ();
-   uint8_t factor = (uint8_t)(rdp.env_color&0xFF);
+   factor = (uint8_t)(rdp.env_color&0xFF);
    T1_INTER_T0_USING_FACTOR (factor);
 }
 
@@ -4207,12 +4213,13 @@ static void cc_one_sub_t0_mul_prima_add_t0 ()  //Aded by Gonetz
 
 static void cc_one_sub__t0_inter_t1_using_enva__mul_prim_add__t0_inter_t1_using_enva ()  //Aded by Gonetz
 {
+   uint8_t factor;
    CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL,
          GR_COMBINE_FACTOR_ONE_MINUS_LOCAL,
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_TEXTURE);
    CC_PRIM ();
-   uint8_t factor = (uint8_t)(rdp.env_color&0xFF);
+   factor = (uint8_t)(rdp.env_color&0xFF);
    T0_INTER_T1_USING_FACTOR (factor);
    //(1-t)*prim+t == (1-prim)*t+prim
 }
@@ -4442,13 +4449,14 @@ static void cc_one_sub_prim_mul__t0_mul_t1__add__prim_mul_shade ()
 //Added by Gonetz
 static void cc_one_sub_prim_mul__t0_inter_t1_using_enva__add_prim ()
 {
+	uint8_t factor;
    CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL,
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
    CC_1SUBPRIM ();
    SETSHADE_PRIM ();
-   uint8_t factor = (uint8_t)(rdp.env_color&0xFF);
+   factor = (uint8_t)(rdp.env_color&0xFF);
    T0_INTER_T1_USING_FACTOR (factor);
 }
 
@@ -4930,16 +4938,18 @@ static void cc_prim_sub_env_mul__t1_sub_prim_mul_prima_add_t0__add_env ()
 
 static void cc__prim_sub_env_mul_t0_add_env__mul_primlod ()
 {
+   float factor;
+    uint8_t r,g,b;
    CCMB (GR_COMBINE_FUNCTION_BLEND,
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
-   float factor = rdp.prim_lodfrac / 255.0f;
-   uint8_t r = (uint8_t)((rdp.prim_color >> 24) & 0xFF);
+   factor = rdp.prim_lodfrac / 255.0f;
+   r = (uint8_t)((rdp.prim_color >> 24) & 0xFF);
    r = (uint8_t)(r * factor);
-   uint8_t g = (uint8_t)((rdp.prim_color >> 16) & 0xFF);
+   g = (uint8_t)((rdp.prim_color >> 16) & 0xFF);
    g = (uint8_t)(g * factor);
-   uint8_t b = (uint8_t)((rdp.prim_color >>  8) & 0xFF);
+   b = (uint8_t)((rdp.prim_color >>  8) & 0xFF);
    b = (uint8_t)(b * factor);
    CC ((r<<24) | (g<<16) | (b<<8));
    SETSHADE_ENV ();
@@ -4949,16 +4959,18 @@ static void cc__prim_sub_env_mul_t0_add_env__mul_primlod ()
 
 static void cc__prim_sub_env_mul_t0_add_env__mul_k5 ()
 {
+	 float factor;
+	 uint8_t r,g,b;
    CCMB (GR_COMBINE_FUNCTION_BLEND,
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
-   float factor = rdp.K5 / 255.0f;
-   uint8_t r = (uint8_t)((rdp.prim_color >> 24) & 0xFF);
+   factor = rdp.K5 / 255.0f;
+   r = (uint8_t)((rdp.prim_color >> 24) & 0xFF);
    r = (uint8_t)(r * factor);
-   uint8_t g = (uint8_t)((rdp.prim_color >> 16) & 0xFF);
+   g = (uint8_t)((rdp.prim_color >> 16) & 0xFF);
    g = (uint8_t)(g * factor);
-   uint8_t b = (uint8_t)((rdp.prim_color >>  8) & 0xFF);
+   b = (uint8_t)((rdp.prim_color >>  8) & 0xFF);
    b = (uint8_t)(b * factor);
    CC ((r<<24) | (g<<16) | (b<<8));
    SETSHADE_ENV ();
@@ -5306,37 +5318,40 @@ static void cc_prim_sub_env_mul__t0_inter_t1_using_prima__add_env ()
 //Added by Gonetz
 static void cc_prim_sub_env_mul__t1_inter_t0_using_prima__add_env ()
 {
+   uint8_t factor;
    CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL_ADD_LOCAL,
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
    CC_ENV ();
    SETSHADE_PRIM ();
-   uint8_t factor = (uint8_t)(rdp.prim_color&0xFF);
+   factor = (uint8_t)(rdp.prim_color&0xFF);
    T1_INTER_T0_USING_FACTOR (factor);
 }
 
 static void cc_prim_sub_env_mul__t0_inter_t1_using_enva__add_env ()
 {
+   uint8_t factor;
    CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL_ADD_LOCAL,
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
    CC_ENV ();
    SETSHADE_PRIM ();
-   uint8_t factor = (uint8_t)(rdp.env_color&0xFF);
+   factor = (uint8_t)(rdp.env_color&0xFF);
    T0_INTER_T1_USING_FACTOR (factor);
 }
 
 static void cc_prim_sub_center_mul__t0_inter_t1_using_enva__add_env ()
 {
+   uint8_t factor;
    CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL,
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
    CC_C1SUBC2 (rdp.prim_color, rdp.CENTER);
    SETSHADE_ENV ();
-   uint8_t factor = (uint8_t)(rdp.env_color&0xFF);
+   factor = (uint8_t)(rdp.env_color&0xFF);
    T0_INTER_T1_USING_FACTOR (factor);
 }
 
