@@ -770,7 +770,7 @@ static void gSPLightColor( uint32_t n, uint32_t packedColor)
  */
 static void gSPModifyVertex(uint32_t vtx, uint32_t where,  uint32_t val)
 {
-   VERTEX *v = &rdp.vtx[vtx];
+   VERTEX *v = (VERTEX*)&rdp.vtx[vtx];
 
    switch (where)
    {
@@ -915,7 +915,7 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
 
    for (i = 0; i < 3; i++)
    {
-      VERTEX *v = vtx[i];
+      VERTEX *v = (VERTEX*)vtx[i];
 
       if (v->uv_calculated != rdp.tex_ctr)
       {
@@ -1286,7 +1286,7 @@ static void gSPTextureRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uin
       uint32_t tile, int32_t off_x_i, int32_t off_y_i, int32_t _dsdx, int32_t _dtdy,
       uint32_t flip)
 {
-   VERTEX *vptr;
+   VERTEX *vptr, v[4];
    uint32_t prev_tile;
    float Z, dsdx, dtdy, s_ul_x, s_lr_x, s_ul_y, s_lr_y, off_size_x, off_size_y;
    int i, n_vertices;
@@ -1459,27 +1459,194 @@ static void gSPTextureRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uin
 
    FRDP ("  draw at: (%f, %f) -> (%f, %f)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 
-   VERTEX vstd[4] = {
-      { s_ul_x, s_ul_y, Z, 1.0f, texUV[0].ul_u, texUV[0].ul_v, texUV[1].ul_u, texUV[1].ul_v, {0, 0, 0, 0}, 255 },
-      { s_lr_x, s_ul_y, Z, 1.0f, texUV[0].lr_u, texUV[0].ul_v, texUV[1].lr_u, texUV[1].ul_v, {0, 0, 0, 0}, 255 },
-      { s_ul_x, s_lr_y, Z, 1.0f, texUV[0].ul_u, texUV[0].lr_v, texUV[1].ul_u, texUV[1].lr_v, {0, 0, 0, 0}, 255 },
-      { s_lr_x, s_lr_y, Z, 1.0f, texUV[0].lr_u, texUV[0].lr_v, texUV[1].lr_u, texUV[1].lr_v, {0, 0, 0, 0}, 255 } };
+   v[0].x  = s_ul_x;
+   v[0].y  = s_ul_y;
+   v[0].z  = Z;
+   v[0].q  = 1;
+   v[0].u0 = texUV[0].ul_u;
+   v[0].v0 = texUV[0].ul_v;
+   v[0].u1 = texUV[1].ul_u;
+   v[0].v1 = texUV[1].ul_v;
+   v[0].coord[0] = 0.0f;
+   v[0].coord[1] = 0.0f;
+   v[0].coord[2] = 0.0f;
+   v[0].coord[3] = 0.0f;
+   v[0].r  = 255;
+   v[0].g  = 0;
+   v[0].b  = 0;
+   v[0].a  = 0;
+   v[0].f  = 0.0f;
+   v[0].vec[0] = 0.0f;
+   v[0].vec[1] = 0.0f;
+   v[0].vec[2] = 0.0f;
+   v[0].vec[3] = 0.0f;
+   v[0].sx = 0.0f;
+   v[0].sy = 0.0f;
+   v[0].sz = 0.0f;
+   v[0].x_w = 0.0f;
+   v[0].y_w = 0.0f;
+   v[0].z_w = 0.0f;
+   v[0].u0_w = 0.0f;
+   v[0].v0_w = 0.0f;
+   v[0].u1_w = 0.0f;
+   v[0].v1_w = 0.0f;
+   v[0].oow = 0.0f;
+   v[0].not_zclipped = 0;
+   v[0].screen_translated = 0;
+   v[0].uv_scaled = 0;
+   v[0].uv_calculated = 0;
+   v[0].shade_mod = 0;
+   v[0].color_backup = 0;
+   v[0].ou = 0.0f;
+   v[0].ov = 0.0f;
+   v[0].number = 0;
+   v[0].scr_off = 0;
+   v[0].z_off = 0.0f;
+
+   v[1].x  = s_lr_x;
+   v[1].y  = s_ul_y;
+   v[1].z  = Z;
+   v[1].q  = 1;
+   v[1].u0 = texUV[0].lr_u;
+   v[1].v0 = texUV[0].ul_v;
+   v[1].u1 = texUV[1].lr_u;
+   v[1].v1 = texUV[1].ul_v;
+   v[1].coord[0] = 0.0f;
+   v[1].coord[1] = 0.0f;
+   v[1].coord[2] = 0.0f;
+   v[1].coord[3] = 0.0f;
+   v[1].r  = 255;
+   v[1].g  = 0;
+   v[1].b  = 0;
+   v[1].a  = 0;
+   v[1].f  = 0.0f;
+   v[1].vec[0] = 0.0f;
+   v[1].vec[1] = 0.0f;
+   v[1].vec[2] = 0.0f;
+   v[1].sx = 0.0f;
+   v[1].sy = 0.0f;
+   v[1].sz = 0.0f;
+   v[1].x_w = 0.0f;
+   v[1].y_w = 0.0f;
+   v[1].z_w = 0.0f;
+   v[1].u0_w = 0.0f;
+   v[1].v0_w = 0.0f;
+   v[1].u1_w = 0.0f;
+   v[1].v1_w = 0.0f;
+   v[1].oow = 0.0f;
+   v[1].not_zclipped = 0;
+   v[1].screen_translated = 0;
+   v[1].uv_scaled = 0;
+   v[1].uv_calculated = 0;
+   v[1].shade_mod = 0;
+   v[1].color_backup = 0;
+   v[1].ou = 0.0f;
+   v[1].ov = 0.0f;
+   v[1].number = 0;
+   v[1].scr_off = 0;
+   v[1].z_off = 0.0f;
+
+   v[2].x  = s_ul_x;
+   v[2].y  = s_lr_y;
+   v[2].z  = Z;
+   v[2].q  = 1;
+   v[2].u0 = texUV[0].ul_u;
+   v[2].v0 = texUV[0].lr_v;
+   v[2].u1 = texUV[1].ul_u;
+   v[2].v1 = texUV[1].lr_v;
+   v[2].coord[0] = 0.0f;
+   v[2].coord[1] = 0.0f;
+   v[2].coord[2] = 0.0f; 
+   v[2].coord[3] = 0.0f;
+   v[2].r  = 255;
+   v[2].g  = 0;
+   v[2].b  = 0;
+   v[2].a  = 0;
+   v[2].f  = 0.0f;
+   v[2].vec[0] = 0.0f;
+   v[2].vec[1] = 0.0f;
+   v[2].vec[2] = 0.0f;
+   v[2].sx = 0.0f;
+   v[2].sy = 0.0f;
+   v[2].sz = 0.0f;
+   v[2].x_w = 0.0f;
+   v[2].y_w = 0.0f;
+   v[2].z_w = 0.0f;
+   v[2].u0_w = 0.0f;
+   v[2].v0_w = 0.0f;
+   v[2].u1_w = 0.0f;
+   v[2].v1_w = 0.0f;
+   v[2].oow = 0.0f;
+   v[2].not_zclipped = 0;
+   v[2].screen_translated = 0;
+   v[2].uv_scaled = 0;
+   v[2].uv_calculated = 0;
+   v[2].shade_mod = 0;
+   v[2].color_backup = 0;
+   v[2].ou = 0.0f;
+   v[2].ov = 0.0f;
+   v[2].number = 0;
+   v[2].scr_off = 0;
+   v[2].z_off = 0.0f;
+
+   v[3].x  = s_lr_x;
+   v[3].y  = s_lr_y;
+   v[3].z  = Z;
+   v[3].q  = 1;
+   v[3].u0 = texUV[0].lr_u;
+   v[3].v0 = texUV[0].lr_v; 
+   v[3].u1 = texUV[1].lr_u;
+   v[3].v1 = texUV[1].lr_v;
+   v[3].coord[0] = 0.0;
+   v[3].coord[1] = 0.0;
+   v[3].coord[2] = 0.0; 
+   v[3].coord[3] = 0.0;
+   v[3].r  = 255;
+   v[3].g  = 0;
+   v[3].b  = 0;
+   v[3].a  = 0;
+   v[3].f  = 0.0f;
+   v[3].vec[0] = 0.0f;
+   v[3].vec[1] = 0.0f;
+   v[3].vec[2] = 0.0f;
+   v[3].sx = 0.0f;
+   v[3].sy = 0.0f;
+   v[3].sz = 0.0f;
+   v[3].x_w = 0.0f;
+   v[3].y_w = 0.0f;
+   v[3].z_w = 0.0f;
+   v[3].u0_w = 0.0f;
+   v[3].v0_w = 0.0f;
+   v[3].u1_w = 0.0f;
+   v[3].v1_w = 0.0f;
+   v[3].oow = 0.0f;
+   v[3].not_zclipped = 0;
+   v[3].screen_translated = 0;
+   v[3].uv_scaled = 0;
+   v[3].uv_calculated = 0;
+   v[3].shade_mod = 0;
+   v[3].color_backup = 0;
+   v[3].ou = 0.0f;
+   v[3].ov = 0.0f;
+   v[3].number = 0;
+   v[3].scr_off = 0;
+   v[3].z_off = 0.0f;
 
    if ( flip == 0xE5 )
    {
       //texrectflip
-      vstd[1].u0 = texUV[0].ul_u;
-      vstd[1].v0 = texUV[0].lr_v;
-      vstd[1].u1 = texUV[1].ul_u;
-      vstd[1].v1 = texUV[1].lr_v;
+      v[1].u0 = texUV[0].ul_u;
+      v[1].v0 = texUV[0].lr_v;
+      v[1].u1 = texUV[1].ul_u;
+      v[1].v1 = texUV[1].lr_v;
 
-      vstd[2].u0 = texUV[0].lr_u;
-      vstd[2].v0 = texUV[0].ul_v;
-      vstd[2].u1 = texUV[1].lr_u;
-      vstd[2].v1 = texUV[1].ul_v;
+      v[2].u0 = texUV[0].lr_u;
+      v[2].v0 = texUV[0].ul_v;
+      v[2].u1 = texUV[1].lr_u;
+      v[2].v1 = texUV[1].ul_v;
    }
 
-   vptr = (VERTEX*)vstd;
+   vptr = (VERTEX*)v;
    n_vertices = 4;
 
    AllowShadeMods (vptr, n_vertices);
@@ -1852,6 +2019,7 @@ static void gSPObjSprite(void)
    int i;
    float Z, ul_x, lr_x, ul_y, lr_y, ul_u, ul_v, lr_u, lr_v;
    DRAWOBJECT d;
+   VERTEX v[4];
 
    //LRDP ("uc6:obj_sprite ");
 
@@ -1882,13 +2050,178 @@ static void gSPObjSprite(void)
 
    // Make the vertices
    //    FRDP("scale_x: %f, scale_y: %f\n", rdp.cur_cache[0]->scale_x, rdp.cur_cache[0]->scale_y);
+   v[0].x  = ul_x;
+   v[0].y  = ul_y;
+   v[0].z  = Z;
+   v[0].q  = 1;
+   v[0].u0 = ul_u;
+   v[0].v0 = ul_v;
+   v[0].u1 = 0.0f;
+   v[0].v1 = 0.0f;
+   v[0].coord[0] = 0.0f;
+   v[0].coord[1] = 0.0f;
+   v[0].coord[2] = 0.0f;
+   v[0].coord[3] = 0.0f;
+   v[0].r  = 0;
+   v[0].g  = 0;
+   v[0].b  = 0;
+   v[0].a  = 0;
+   v[0].f  = 0.0f;
+   v[0].vec[0] = 0.0f;
+   v[0].vec[1] = 0.0f;
+   v[0].vec[2] = 0.0f;
+   v[0].vec[3] = 0.0f;
+   v[0].sx = 0.0f;
+   v[0].sy = 0.0f;
+   v[0].sz = 0.0f;
+   v[0].x_w = 0.0f;
+   v[0].y_w = 0.0f;
+   v[0].z_w = 0.0f;
+   v[0].u0_w = 0.0f;
+   v[0].v0_w = 0.0f;
+   v[0].u1_w = 0.0f;
+   v[0].v1_w = 0.0f;
+   v[0].oow = 0.0f;
+   v[0].not_zclipped = 0;
+   v[0].screen_translated = 0;
+   v[0].uv_scaled = 0;
+   v[0].uv_calculated = 0;
+   v[0].shade_mod = 0;
+   v[0].color_backup = 0;
+   v[0].ou = 0.0f;
+   v[0].ov = 0.0f;
+   v[0].number = 0;
+   v[0].scr_off = 0;
+   v[0].z_off = 0.0f;
 
-   VERTEX v[4] = {
-      { ul_x, ul_y, Z, 1, ul_u, ul_v },
-      { lr_x, ul_y, Z, 1, lr_u, ul_v },
-      { ul_x, lr_y, Z, 1, ul_u, lr_v },
-      { lr_x, lr_y, Z, 1, lr_u, lr_v }
-   };
+   v[1].x  = lr_x;
+   v[1].y  = ul_y;
+   v[1].z  = Z;
+   v[1].q  = 1;
+   v[1].u0 = lr_u;
+   v[1].v0 = ul_v;
+   v[1].u1 = 0.0f;
+   v[1].v1 = 0.0f;
+   v[1].coord[0] = 0.0f;
+   v[1].coord[1] = 0.0f;
+   v[1].coord[2] = 0.0f;
+   v[1].coord[3] = 0.0f;
+   v[1].r  = 0;
+   v[1].g  = 0;
+   v[1].b  = 0;
+   v[1].a  = 0;
+   v[1].f  = 0.0f;
+   v[1].vec[0] = 0.0f;
+   v[1].vec[1] = 0.0f;
+   v[1].vec[2] = 0.0f;
+   v[1].sx = 0.0f;
+   v[1].sy = 0.0f;
+   v[1].sz = 0.0f;
+   v[1].x_w = 0.0f;
+   v[1].y_w = 0.0f;
+   v[1].z_w = 0.0f;
+   v[1].u0_w = 0.0f;
+   v[1].v0_w = 0.0f;
+   v[1].u1_w = 0.0f;
+   v[1].v1_w = 0.0f;
+   v[1].oow = 0.0f;
+   v[1].not_zclipped = 0;
+   v[1].screen_translated = 0;
+   v[1].uv_scaled = 0;
+   v[1].uv_calculated = 0;
+   v[1].shade_mod = 0;
+   v[1].color_backup = 0;
+   v[1].ou = 0.0f;
+   v[1].ov = 0.0f;
+   v[1].number = 0;
+   v[1].scr_off = 0;
+   v[1].z_off = 0.0f;
+
+   v[2].x  = ul_x;
+   v[2].y  = lr_y;
+   v[2].z  = Z;
+   v[2].q  = 1;
+   v[2].u0 = ul_u;
+   v[2].v0 = lr_v;
+   v[2].u1 = 0.0f;
+   v[2].v1 = 0.0f;
+   v[2].coord[0] = 0.0f;
+   v[2].coord[1] = 0.0f;
+   v[2].coord[2] = 0.0f; 
+   v[2].coord[3] = 0.0f;
+   v[2].r  = 0;
+   v[2].g  = 0;
+   v[2].b  = 0;
+   v[2].a  = 0;
+   v[2].f  = 0.0f;
+   v[2].vec[0] = 0.0f;
+   v[2].vec[1] = 0.0f;
+   v[2].vec[2] = 0.0f;
+   v[2].sx = 0.0f;
+   v[2].sy = 0.0f;
+   v[2].sz = 0.0f;
+   v[2].x_w = 0.0f;
+   v[2].y_w = 0.0f;
+   v[2].z_w = 0.0f;
+   v[2].u0_w = 0.0f;
+   v[2].v0_w = 0.0f;
+   v[2].u1_w = 0.0f;
+   v[2].v1_w = 0.0f;
+   v[2].oow = 0.0f;
+   v[2].not_zclipped = 0;
+   v[2].screen_translated = 0;
+   v[2].uv_scaled = 0;
+   v[2].uv_calculated = 0;
+   v[2].shade_mod = 0;
+   v[2].color_backup = 0;
+   v[2].ou = 0.0f;
+   v[2].ov = 0.0f;
+   v[2].number = 0;
+   v[2].scr_off = 0;
+   v[2].z_off = 0.0f;
+
+   v[3].x  = lr_x;
+   v[3].y  = lr_y;
+   v[3].z  = Z;
+   v[3].q  = 1;
+   v[3].u0 = lr_u;
+   v[3].v0 = lr_v; 
+   v[3].u1 = 0.0;
+   v[3].v1 = 0.0;
+   v[3].coord[0] = 0.0;
+   v[3].coord[1] = 0.0;
+   v[3].coord[2] = 0.0; 
+   v[3].coord[3] = 0.0;
+   v[3].r  = 0;
+   v[3].g  = 0;
+   v[3].b  = 0;
+   v[3].a  = 0;
+   v[3].f  = 0.0f;
+   v[3].vec[0] = 0.0f;
+   v[3].vec[1] = 0.0f;
+   v[3].vec[2] = 0.0f;
+   v[3].sx = 0.0f;
+   v[3].sy = 0.0f;
+   v[3].sz = 0.0f;
+   v[3].x_w = 0.0f;
+   v[3].y_w = 0.0f;
+   v[3].z_w = 0.0f;
+   v[3].u0_w = 0.0f;
+   v[3].v0_w = 0.0f;
+   v[3].u1_w = 0.0f;
+   v[3].v1_w = 0.0f;
+   v[3].oow = 0.0f;
+   v[3].not_zclipped = 0;
+   v[3].screen_translated = 0;
+   v[3].uv_scaled = 0;
+   v[3].uv_calculated = 0;
+   v[3].shade_mod = 0;
+   v[3].color_backup = 0;
+   v[3].ou = 0.0f;
+   v[3].ov = 0.0f;
+   v[3].number = 0;
+   v[3].scr_off = 0;
+   v[3].z_off = 0.0f;
 
    for (i = 0; i < 4; i++)
    {
@@ -2184,6 +2517,7 @@ static void gSPDMAVertex(uint32_t v, uint32_t n, uint32_t v0)
    for (i = v0; i < v0 + n; i++)
    {
       VERTEX *v;
+
       start = (i-v0) * 10;
       v = (VERTEX*)&rdp.vtx[i];
       x   = ((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 0)^1];
