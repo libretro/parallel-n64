@@ -124,35 +124,36 @@ static void *l_DebugCallContext = NULL;
 
 void _ChangeSize(void)
 {
-   rdp.scale_1024 = settings.scr_res_x / 1024.0f;
-   rdp.scale_768 = settings.scr_res_y / 768.0f;
 
-   //  float res_scl_x = (float)settings.res_x / 320.0f;
    float res_scl_y = (float)settings.res_y / 240.0f;
-
-   uint32_t scale_x = *gfx.VI_X_SCALE_REG & 0xFFF;
-   if (!scale_x) return;
-   uint32_t scale_y = *gfx.VI_Y_SCALE_REG & 0xFFF;
-   if (!scale_y) return;
-
-   float fscale_x = (float)scale_x / 1024.0f;
-   float fscale_y = (float)scale_y / 2048.0f;
-
+   uint32_t scale_x = 0;
+   uint32_t scale_y = 0;
    uint32_t dwHStartReg = *gfx.VI_H_START_REG;
    uint32_t dwVStartReg = *gfx.VI_V_START_REG;
-
+   float fscale_x = 0.0;
+    float fscale_y = 0.0;
+	float aspect = 0.0;
    uint32_t hstart = dwHStartReg >> 16;
    uint32_t hend = dwHStartReg & 0xFFFF;
+   uint32_t vstart = dwVStartReg >> 16;
+   uint32_t vend = dwVStartReg & 0xFFFF;
+   rdp.scale_1024 = settings.scr_res_x / 1024.0f;
+   rdp.scale_768 = settings.scr_res_y / 768.0f;
+   scale_x = *gfx.VI_X_SCALE_REG & 0xFFF;
+   if (!scale_x) return;
+   scale_y = *gfx.VI_Y_SCALE_REG & 0xFFF;
+   if (!scale_y) return;
+   fscale_x = (float)scale_x / 1024.0f;
+   fscale_y = (float)scale_y / 2048.0f;
 
+   //  float res_scl_x = (float)settings.res_x / 320.0f;
+  
    // dunno... but sometimes this happens
    if (hend == hstart) hend = (int)(*gfx.VI_WIDTH_REG / fscale_x);
 
-   uint32_t vstart = dwVStartReg >> 16;
-   uint32_t vend = dwVStartReg & 0xFFFF;
-
    rdp.vi_width = (hend - hstart) * fscale_x;
    rdp.vi_height = (vend - vstart) * fscale_y * 1.0126582f;
-   float aspect = (settings.adjust_aspect && (fscale_y > fscale_x) && (rdp.vi_width > rdp.vi_height)) ? fscale_x/fscale_y : 1.0f;
+   aspect = (settings.adjust_aspect && (fscale_y > fscale_x) && (rdp.vi_width > rdp.vi_height)) ? fscale_x/fscale_y : 1.0f;
 
 #ifdef LOGGING
    sprintf (out_buf, "hstart: %d, hend: %d, vstart: %d, vend: %d\n", hstart, hend, vstart, vend);

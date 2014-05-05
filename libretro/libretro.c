@@ -5,7 +5,7 @@
 #include "libretro.h"
 #include "resampler.h"
 #include "utils.h"
-#include "libco.h"
+#include "libco/libco.h"
 
 #include "api/m64p_frontend.h"
 #include "plugin/plugin.h"
@@ -108,7 +108,10 @@ static void core_settings_set_defaults(void)
 {
     /* Load GFX plugin core option */
     struct retro_variable gfx_var = { "mupen64-gfxplugin", 0 };
+	struct retro_variable rsp_var = { "mupen64-rspplugin", 0 };
     environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
+	
+	environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
     gfx_plugin = GFX_GLIDE64;
     if (gfx_var.value)
@@ -139,8 +142,7 @@ static void core_settings_set_defaults(void)
    }
 
     /* Load RSP plugin core option */
-    struct retro_variable rsp_var = { "mupen64-rspplugin", 0 };
-    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
+   
 
     rsp_plugin = RSP_HLE;
     if (rsp_var.value)
@@ -293,10 +295,12 @@ const char* retro_get_system_directory(void)
 
 static void core_gl_context_reset(void)
 {
+	extern int InitGfx ();
+	extern void gles2n64_reset();
+
    glsym_init_procs(render_iface.get_proc_address);
 
-   extern int InitGfx ();
-   extern void gles2n64_reset();
+  
 
    if (gfx_plugin == GFX_GLIDE64 && emu_thread_has_run)
       InitGfx();
@@ -656,13 +660,22 @@ void retro_unload_game(void)
 
 void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
 {
+	const int16_t *out = NULL;
+	double ratio = 44100.0 / freq;
+	size_t max_frames = freq > 44100 ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
+
+   size_t remain_frames = 0;
+   struct resampler_data data = {0};
+   data.data_in = audio_in_buffer_float;
+   data.data_out = audio_out_buffer_float;
+   data.input_frames = frames;
+   data.ratio = ratio;
+   
    if (no_audio)
       return;
 
-   double ratio = 44100.0 / freq;
-   size_t max_frames = freq > 44100 ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
-
-   size_t remain_frames = 0;
+  
+   
    if (frames > max_frames)
    {
       remain_frames = frames - max_frames;
@@ -671,17 +684,12 @@ void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
 
    audio_convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
 
-   struct resampler_data data = {0};
-   data.data_in = audio_in_buffer_float;
-   data.data_out = audio_out_buffer_float;
-   data.input_frames = frames;
-   data.ratio = ratio;
+   
 
    resampler->process(resampler_data, &data);
 
    audio_convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
-
-   const int16_t *out = audio_out_buffer_s16;
+   out = audio_out_buffer_s16;
    while (data.output_frames)
    {
       size_t ret = audio_batch_cb(out, data.output_frames);

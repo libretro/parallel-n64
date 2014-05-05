@@ -191,9 +191,10 @@ grVertexLayout(FxU32 param, FxI32 offset, FxU32 mode)
 FX_ENTRY void FX_CALL
 grCullMode( GrCullMode_t mode )
 {
+	static int oldmode = -1, oldinv = -1;
+	culling_mode = mode;
    LOG("grCullMode(%d)\r\n", mode);
-   static int oldmode = -1, oldinv = -1;
-   culling_mode = mode;
+   
    if (inverted_culling == oldinv && oldmode == mode)
       return;
    oldmode = mode;
@@ -291,11 +292,12 @@ float polygonOffsetFactor;
 float polygonOffsetUnits;
 void FindBestDepthBias(void)
 {
+	const char *renderer = NULL;
 #if defined(__LIBRETRO__) // TODO: How to calculate this?
    if (biasFound)
       return;
 
-   const char *renderer = (const char*)glGetString(GL_RENDERER);
+   renderer = (const char*)glGetString(GL_RENDERER);
 
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "GL_RENDERER: %s\n", renderer);
