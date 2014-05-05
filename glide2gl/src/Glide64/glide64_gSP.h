@@ -1128,11 +1128,13 @@ static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, 
 static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
 {
    VERTEX *v[3];
+   uint32_t cull_mode;
+
    v[0] = &rdp.vtx[v1];
    v[1] = &rdp.vtx[v0];
    v[2] = &rdp.vtx[v0];
 
-   uint32_t cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
+   cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
    rdp.flags |= CULLMASK;
    rdp.update |= UPDATE_CULL_MODE;
 
@@ -1163,10 +1165,9 @@ static void gSPLineW3D(int32_t v0, int32_t v1, int32_t wd, int32_t flag)
  */
 static void gsSP1Triangle(int32_t v0, int32_t v1, int32_t v2, int32_t flag, bool do_update)
 {
+   VERTEX *v[3];
    if (rdp.skip_drawing)
       return;
-
-   VERTEX *v[3];
 
    v[0] = &rdp.vtx[v0]; 
    v[1] = &rdp.vtx[v1];
