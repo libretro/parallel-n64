@@ -622,6 +622,9 @@ void ShaderCombiner_Destroy(void)
 
 void ShaderCombiner_Set(u64 mux, int flags)
 {
+   DecodedMux *dmux;
+   ShaderProgram *root, *prog;
+
    //banjo tooie hack
    if ((gDP.otherMode.cycleType == G_CYC_1CYCLE) && (mux == 0x00ffe7ffffcf9fcfLL))
       mux = EncodeCombineMode( 0, 0, 0, 0, TEXEL0, 0, PRIMITIVE, 0,
@@ -653,10 +656,8 @@ void ShaderCombiner_Set(u64 mux, int flags)
          flags |= SC_2CYCLE;
    }
 
-
-   DecodedMux *dmux;
-   dmux = mux_new(mux, flags&SC_2CYCLE);
-   mux_hack(mux);
+   dmux = (DecodedMux*)mux_new(mux, flags&SC_2CYCLE);
+   mux_hack((DecodedMux*)mux);
 
    //if already bound:
    if (scProgramCurrent)
@@ -670,8 +671,9 @@ void ShaderCombiner_Set(u64 mux, int flags)
 
    //traverse binary tree for cached programs
    scProgramChanged = 1;
-   ShaderProgram *root = scProgramRoot;
-   ShaderProgram *prog = root;
+
+   root = (ShaderProgram*)scProgramRoot;
+   prog = (ShaderProgram*)root;
    while(!_program_compare(prog, dmux, flags))
    {
       root = prog;
@@ -707,10 +709,12 @@ void ShaderCombiner_Set(u64 mux, int flags)
 ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
 {
    int i, j;
-   GLint success;
-   char frag[4096];
-   char *buffer = frag;
-   ShaderProgram *prog = (ShaderProgram*) malloc(sizeof(ShaderProgram));
+   GLint success, len[1];
+   char frag[4096], *src[1], *buffer;
+   ShaderProgram *prog;
+
+   buffer = (char*)frag;
+   prog = (ShaderProgram*) malloc(sizeof(ShaderProgram));
 
    prog->left = prog->right = NULL;
    prog->usesT0 = prog->usesT1 = prog->usesCol = prog->usesNoise = 0;
@@ -785,9 +789,8 @@ ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
    prog->program = glCreateProgram();
 
    //Compile:
-   char *src[1];
+
    src[0] = frag;
-   GLint len[1];
    len[0] = min(4096, strlen(frag));
    prog->fragment = glCreateShader(GL_FRAGMENT_SHADER);
 
