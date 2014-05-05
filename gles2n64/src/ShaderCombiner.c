@@ -622,6 +622,9 @@ void ShaderCombiner_Destroy(void)
 
 void ShaderCombiner_Set(u64 mux, int flags)
 {
+	  DecodedMux *dmux;
+	  ShaderProgram *root;
+	  ShaderProgram *prog;
    //banjo tooie hack
    if ((gDP.otherMode.cycleType == G_CYC_1CYCLE) && (mux == 0x00ffe7ffffcf9fcfLL))
       mux = EncodeCombineMode( 0, 0, 0, 0, TEXEL0, 0, PRIMITIVE, 0,
@@ -654,7 +657,7 @@ void ShaderCombiner_Set(u64 mux, int flags)
    }
 
 
-   DecodedMux *dmux;
+ 
    dmux = mux_new(mux, flags&SC_2CYCLE);
    mux_hack(mux);
 
@@ -670,8 +673,8 @@ void ShaderCombiner_Set(u64 mux, int flags)
 
    //traverse binary tree for cached programs
    scProgramChanged = 1;
-   ShaderProgram *root = scProgramRoot;
-   ShaderProgram *prog = root;
+   root = scProgramRoot;
+   prog = root;
    while(!_program_compare(prog, dmux, flags))
    {
       root = prog;
@@ -709,7 +712,10 @@ ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
    int i, j;
    GLint success;
    char frag[4096];
+   char *src[1];
+   GLint len[1];
    char *buffer = frag;
+
    ShaderProgram *prog = (ShaderProgram*) malloc(sizeof(ShaderProgram));
 
    prog->left = prog->right = NULL;
@@ -785,9 +791,9 @@ ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
    prog->program = glCreateProgram();
 
    //Compile:
-   char *src[1];
+  
    src[0] = frag;
-   GLint len[1];
+  
    len[0] = min(4096, strlen(frag));
    prog->fragment = glCreateShader(GL_FRAGMENT_SHADER);
 
