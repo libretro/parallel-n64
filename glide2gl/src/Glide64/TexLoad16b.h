@@ -92,8 +92,8 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
 
 static INLINE void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-   uint32_t *v6, *v7, v10, *v11, *v12, v14;
-   int32_t v8, v9, v13, v15, v16;
+   uint32_t *v6, *v7, *v11, *v12, v14;
+   int32_t v8, v9, v15, v16;
 
    v6 = (uint32_t *)src;
    v7 = (uint32_t *)dst;

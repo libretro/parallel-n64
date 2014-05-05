@@ -224,21 +224,8 @@ static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
 
 static INLINE void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-   uint32_t *v6;
-   uint32_t *v7;
-   int v8;
-   int v9;
-   uint32_t v10;
-   uint32_t v11;
-   uint32_t *v13;
-   uint32_t v14;
-   uint32_t v15;
-   uint32_t *v16;
-   uint32_t *v17;
-   int v18;
-   uint32_t v20;
-   int v21;
-   int v22;
+   uint32_t *v6, *v7, *v16, *v17, v20;
+   int v8, v9, v18, v21, v22;
 
    v6 = (uint32_t *)src;
    v7 = (uint32_t *)dst;
@@ -278,21 +265,8 @@ static INLINE void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height,
 
 static INLINE void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-   uint32_t *v6;
-   uint32_t *v7;
-   int v8;
-   int v9;
-   uint32_t v10;
-   uint32_t *v11;
-   uint32_t *v12;
-   uint32_t v13;
-   uint32_t *v14;
-   uint32_t *v15;
-   int v16;
-   uint32_t *v17;
-   uint32_t v18;
-   int v19;
-   int v20;
+   uint32_t *v6, *v7, *v14, *v15;
+   int v8, v9, v16, v19, v20;
 
    v6 = (uint32_t *)src;
    v7 = (uint32_t *)dst;
@@ -332,12 +306,14 @@ static INLINE void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
 
 uint32_t Load8bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
+   int ext;
+   uint16_t *pal;
    if (wid_64 < 1)
       wid_64 = 1;
    if (height < 1)
       height = 1;
-   int ext = (real_width - (wid_64 << 3));
-   uint16_t* pal = rdp.pal_8;
+   ext = (real_width - (wid_64 << 3));
+   pal = (uint16_t*)rdp.pal_8;
 
    switch (rdp.tlut_mode)
    {
@@ -364,6 +340,7 @@ uint32_t Load8bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
 
 uint32_t Load8bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
+   int ext;
    if (rdp.tlut_mode != 0)
       return Load8bCI (dst, src, wid_64, height, line, real_width, tile);
 
@@ -371,7 +348,7 @@ uint32_t Load8bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
       wid_64 = 1;
    if (height < 1)
       height = 1;
-   int ext = (real_width - (wid_64 << 3));
+   ext = (real_width - (wid_64 << 3));
    load8bIA4 ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
    return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;
 } 
@@ -383,6 +360,7 @@ uint32_t Load8bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
 
 uint32_t Load8bI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
+   int ext;
    if (rdp.tlut_mode != 0)
       return Load8bCI (dst, src, wid_64, height, line, real_width, tile);
 
@@ -390,7 +368,7 @@ uint32_t Load8bI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line
       wid_64 = 1;
    if (height < 1)
       height = 1;
-   int ext = (real_width - (wid_64 << 3));
+   ext = (real_width - (wid_64 << 3));
    load8bI ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
    return /*(0 << 16) | */GR_TEXFMT_ALPHA_8;
 }

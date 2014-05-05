@@ -49,7 +49,7 @@
 
 static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
 {
-   int tmu;
+   int tmu, filter;
 
    if (voodoo.tmem_ptr[GR_TMU0]+texture_size < voodoo.tex_max_addr)
    {
@@ -89,7 +89,8 @@ static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
             FXFALSE,
             FXFALSE );
    }
-   int filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_3POINT_LINEAR;
+   filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_3POINT_LINEAR;
+
    grTexFilterMode (tmu, filter, filter);
    grTexClampMode (tmu,
          GR_TEXTURECLAMP_CLAMP,
@@ -150,17 +151,21 @@ static void DrawRE2Video(FB_TO_SCREEN_INFO *fb_info, float scale)
 
 static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
 {
-   uint32_t h, w;
-   FRDP("DrawRE2Video256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
-   uint32_t * src = (uint32_t*)(gfx.RDRAM+fb_info->addr);
+   uint32_t h, w, *src, col;
+   uint16_t *tex, *dst;
+   uint8_t r, g, b;
+   int tmu;
    GrTexInfo t_info;
+
+   FRDP("DrawRE2Video256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
+   src = (uint32_t*)(gfx.RDRAM+fb_info->addr);
    t_info.smallLodLog2 = GR_LOD_LOG2_256;
    t_info.largeLodLog2 = GR_LOD_LOG2_256;
    t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
-   uint16_t * tex = (uint16_t*)texture_buffer;
-   uint16_t * dst = tex;
-   uint32_t col;
-   uint8_t r, g, b;
+
+   tex = (uint16_t*)texture_buffer;
+   dst = (uint16_t*)tex;
+
    fb_info->height = min(256, fb_info->height);
    for (h = 0; h < fb_info->height; h++)
    {
@@ -176,7 +181,7 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
    }
    t_info.format = GR_TEXFMT_RGB_565;
    t_info.data = tex;
-   int tmu = SetupFBtoScreenCombiner(grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &t_info), fb_info->opaque);
+   tmu = SetupFBtoScreenCombiner(grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &t_info), fb_info->opaque);
    grTexDownloadMipMap (tmu,
          voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,
@@ -190,44 +195,47 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
 
 static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
 {
-   uint32_t w, h, x, y;
-  FRDP("DrawFrameBufferToScreen256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
-  uint32_t width = fb_info->lr_x - fb_info->ul_x + 1;
-  uint32_t height = fb_info->lr_y - fb_info->ul_y + 1;
+  uint32_t w, h, x, y, width, height, width256, height256, tex_size, *src32;
+  uint32_t cur_width, cur_height, cur_tail, tex_adr, w_tail, h_tail, bound, c32, idx;
+  uint8_t r, g, b, a, *image;
+  uint16_t *tex, *src, c;
+  float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
+  int tmu;
   GrTexInfo t_info;
-  uint8_t * image = gfx.RDRAM+fb_info->addr;
-  uint32_t width256 = ((width-1) >> 8) + 1;
-  uint32_t height256 = ((height-1) >> 8) + 1;
+
+  FRDP("DrawFrameBufferToScreen256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
+  width = fb_info->lr_x - fb_info->ul_x + 1;
+  height = fb_info->lr_y - fb_info->ul_y + 1;
+  image = (uint8_t*)gfx.RDRAM+fb_info->addr;
+  width256 = ((width-1) >> 8) + 1;
+  height256 = ((height-1) >> 8) + 1;
   t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
   t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
   t_info.format = GR_TEXFMT_ARGB_1555;
-  uint16_t * tex = (uint16_t*)texture_buffer;
+
+  tex = (uint16_t*)texture_buffer;
   t_info.data = tex;
-  uint32_t tex_size = grTexTextureMemRequired (GR_MIPMAPLEVELMASK_BOTH, &t_info);
-  int tmu = SetupFBtoScreenCombiner(tex_size*width256*height256, fb_info->opaque);
-  uint16_t * src = (uint16_t*)image;
+  tex_size = grTexTextureMemRequired (GR_MIPMAPLEVELMASK_BOTH, &t_info);
+  tmu = SetupFBtoScreenCombiner(tex_size*width256*height256, fb_info->opaque);
+  src = (uint16_t*)image;
   src += fb_info->ul_x + fb_info->ul_y * fb_info->width;
-  uint32_t * src32 = (uint32_t*)image;
+  src32 = (uint32_t*)image;
   src32 += fb_info->ul_x + fb_info->ul_y * fb_info->width;
-  uint32_t w_tail = width%256;
-  uint32_t h_tail = height%256;
-  uint16_t c;
-  uint32_t c32;
-  uint32_t idx;
-  uint32_t bound = BMASK+1-fb_info->addr;
+  w_tail = width%256;
+  h_tail = height%256;
+  bound = BMASK+1-fb_info->addr;
   bound = fb_info->size == 2 ? bound >> 1 : bound >> 2;
-  uint8_t r, g, b, a;
-  uint32_t cur_width, cur_height, cur_tail;
-  uint32_t tex_adr = voodoo.tmem_ptr[tmu];
+  tex_adr = voodoo.tmem_ptr[tmu];
 
   for (h = 0; h < height256; h++)
   {
     for (w = 0; w < width256; w++)
     {
+      uint16_t *dst;
       cur_width = (256*(w+1) < width) ? 256 : w_tail;
       cur_height = (256*(h+1) < height) ? 256 : h_tail;
       cur_tail = 256 - cur_width;
-      uint16_t * dst = tex;
+      dst = (uint16_t*)tex;
       if (fb_info->size == 2)
       {
         for (y=0; y < cur_height; y++)
@@ -265,10 +273,11 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
       grTexDownloadMipMap (tmu, tex_adr, GR_MIPMAPLEVELMASK_BOTH, &t_info);
       grTexSource (tmu, tex_adr, GR_MIPMAPLEVELMASK_BOTH, &t_info);
       tex_adr += tex_size;
-      float ul_x = (float)(fb_info->ul_x + 256*w);
-      float ul_y = (float)(fb_info->ul_y + 256*h);
-      float lr_x = (ul_x + (float)(cur_width)) * rdp.scale_x;
-      float lr_y = (ul_y + (float)(cur_height)) * rdp.scale_y;
+
+      ul_x = (float)(fb_info->ul_x + 256*w);
+      ul_y = (float)(fb_info->ul_y + 256*h);
+      lr_x = (ul_x + (float)(cur_width)) * rdp.scale_x;
+      lr_y = (ul_y + (float)(cur_height)) * rdp.scale_y;
       ul_x *= rdp.scale_x;
       ul_y *= rdp.scale_y;
       ul_x += rdp.offset_x;
@@ -276,8 +285,8 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
       lr_x += rdp.offset_x;
       lr_y += rdp.offset_y;
 
-      float lr_u = (float)(cur_width-1);
-      float lr_v = (float)(cur_height-1);
+      lr_u = (float)(cur_width-1);
+      lr_v = (float)(cur_height-1);
       // Make the vertices
       VERTEX v[4] = {
       { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} },
@@ -293,11 +302,16 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
 
 bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 {
-   uint32_t x, y;
+   uint32_t x, y, width, height, texwidth;
+   uint8_t *image;
+   int tmu;
+   float scale;
+   GrTexInfo t_info;
+
    if (fb_info->width < 200 || fb_info->size < 2)
       return false;
-   uint32_t width = fb_info->lr_x - fb_info->ul_x + 1;
-   uint32_t height = fb_info->lr_y - fb_info->ul_y + 1;
+   width = fb_info->lr_x - fb_info->ul_x + 1;
+   height = fb_info->lr_y - fb_info->ul_y + 1;
    if (width > 512 || height > 512)
    {
       if (settings.hacks&hack_RE2)
@@ -307,10 +321,9 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       return true;
    }
    FRDP("DrawFrameBufferToScreen. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
-   GrTexInfo t_info;
-   uint8_t * image = gfx.RDRAM+fb_info->addr;
-   uint32_t texwidth;
-   float scale;
+
+   image = (uint8_t*)gfx.RDRAM+fb_info->addr;
+
    if (width <= 256)
    {
       texwidth = 256;
@@ -331,14 +344,17 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 
    if (fb_info->size == 2)
    {
-      uint16_t * tex = (uint16_t*)texture_buffer;
-      uint16_t * dst = tex;
-      uint16_t * src = (uint16_t*)image;
+      uint16_t *tex, *dst, *src, c;
+	  uint32_t idx, bound;
+	  bool empty;
+
+      tex = (uint16_t*)texture_buffer;
+      dst = (uint16_t*)tex;
+      src = (uint16_t*)image;
       src += fb_info->ul_x + fb_info->ul_y * fb_info->width;
-      uint16_t c;
-      uint32_t idx;
-      const uint32_t bound = (BMASK+1-fb_info->addr) >> 1;
-      bool empty = true;
+
+      bound = (BMASK+1-fb_info->addr) >> 1;
+      empty = true;
       for (y = 0; y < height; y++)
       {
          for (x = 0; x < width; x++)
@@ -359,13 +375,13 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    }
    else
    {
-      uint32_t * tex = (uint32_t*)texture_buffer;
-      uint32_t * dst = tex;
-      uint32_t * src = (uint32_t*)image;
+      uint32_t *tex, *dst, *src, col, idx, bound;
+
+      tex = (uint32_t*)texture_buffer;
+      dst = (uint32_t*)tex;
+      src = (uint32_t*)image;
       src += fb_info->ul_x + fb_info->ul_y * fb_info->width;
-      uint32_t col;
-      uint32_t idx;
-      const uint32_t bound = (BMASK+1-fb_info->addr) >> 2;
+      bound = (BMASK+1-fb_info->addr) >> 2;
       for (y = 0; y < height; y++)
       {
          for (x = 0; x < width; x++)
@@ -382,7 +398,7 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       t_info.data = tex;
    }
 
-   int tmu = SetupFBtoScreenCombiner(grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &t_info), fb_info->opaque);
+   tmu = SetupFBtoScreenCombiner(grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &t_info), fb_info->opaque);
    grTexDownloadMipMap (tmu,
          voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,
@@ -396,12 +412,13 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       DrawRE2Video(fb_info, scale);
    else
    {
-      float ul_x = fb_info->ul_x * rdp.scale_x + rdp.offset_x;
-      float ul_y = fb_info->ul_y * rdp.scale_y + rdp.offset_y;
-      float lr_x = fb_info->lr_x * rdp.scale_x + rdp.offset_x;
-      float lr_y = fb_info->lr_y * rdp.scale_y + rdp.offset_y;
-      float lr_u = (width-1)*scale;
-      float lr_v = (height-1)*scale;
+      float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
+      ul_x = fb_info->ul_x * rdp.scale_x + rdp.offset_x;
+      ul_y = fb_info->ul_y * rdp.scale_y + rdp.offset_y;
+      lr_x = fb_info->lr_x * rdp.scale_x + rdp.offset_x;
+      lr_y = fb_info->lr_y * rdp.scale_y + rdp.offset_y;
+      lr_u = (width-1)*scale;
+      lr_v = (height-1)*scale;
       // Make the vertices
       VERTEX v[4] = {
       { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} },
@@ -417,42 +434,48 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 
 static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
 {
-   uint32_t h, w, x, y;
-   FRDP("DrawDepthBufferToScreen256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
-   uint32_t width = fb_info->lr_x - fb_info->ul_x + 1;
-   uint32_t height = fb_info->lr_y - fb_info->ul_y + 1;
+   uint32_t h, w, x, y, width, height, width256, height256, tex_size;
+   uint32_t cur_width, cur_height, cur_tail, w_tail, h_tail, tex_adr;
+   uint16_t *tex, *src;
+   uint8_t *image;
+   int tmu;
    GrTexInfo t_info;
-   uint8_t * image = gfx.RDRAM+fb_info->addr;
-   uint32_t width256 = ((width-1) >> 8) + 1;
-   uint32_t height256 = ((height-1) >> 8) + 1;
+
+   FRDP("DrawDepthBufferToScreen256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
+   width = fb_info->lr_x - fb_info->ul_x + 1;
+   height = fb_info->lr_y - fb_info->ul_y + 1;
+   image = (uint8_t*)gfx.RDRAM+fb_info->addr;
+   width256 = ((width-1) >> 8) + 1;
+   height256 = ((height-1) >> 8) + 1;
    t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
    t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
    t_info.format = GR_TEXFMT_ALPHA_INTENSITY_88;
-   uint16_t * tex = (uint16_t*)texture_buffer;
+   tex = (uint16_t*)texture_buffer;
    t_info.data = tex;
-   uint32_t tex_size = grTexTextureMemRequired (GR_MIPMAPLEVELMASK_BOTH, &t_info);
-   int tmu = SetupFBtoScreenCombiner(tex_size*width256*height256, fb_info->opaque);
+   tex_size = grTexTextureMemRequired (GR_MIPMAPLEVELMASK_BOTH, &t_info);
+   tmu = SetupFBtoScreenCombiner(tex_size*width256*height256, fb_info->opaque);
    grConstantColorValue (rdp.fog_color);
    grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
          GR_COMBINE_FACTOR_ONE,
          GR_COMBINE_LOCAL_NONE,
          GR_COMBINE_OTHER_CONSTANT,
          FXFALSE);
-   uint16_t * src = (uint16_t*)image;
+   src = (uint16_t*)image;
    src += fb_info->ul_x + fb_info->ul_y * fb_info->width;
-   uint32_t w_tail = width%256;
-   uint32_t h_tail = height%256;
-   uint32_t cur_width, cur_height, cur_tail;
-   uint32_t tex_adr = voodoo.tmem_ptr[tmu];
+   w_tail = width%256;
+   h_tail = height%256;
+   tex_adr = voodoo.tmem_ptr[tmu];
 
    for (h = 0; h < height256; h++)
    {
       for (w = 0; w < width256; w++)
       {
+	     uint16_t *dst;
+		 float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
          cur_width = (256*(w+1) < width) ? 256 : w_tail;
          cur_height = (256*(h+1) < height) ? 256 : h_tail;
          cur_tail = 256 - cur_width;
-         uint16_t * dst = tex;
+         dst = (uint16_t*)tex;
          for (y=0; y < cur_height; y++)
          {
             for (x=0; x < cur_width; x++)
@@ -462,14 +485,14 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
          grTexDownloadMipMap (tmu, tex_adr, GR_MIPMAPLEVELMASK_BOTH, &t_info);
          grTexSource (tmu, tex_adr, GR_MIPMAPLEVELMASK_BOTH, &t_info);
          tex_adr += tex_size;
-         float ul_x = (float)(fb_info->ul_x + 256*w);
-         float ul_y = (float)(fb_info->ul_y + 256*h);
-         float lr_x = (ul_x + (float)(cur_width)) * rdp.scale_x + rdp.offset_x;
-         float lr_y = (ul_y + (float)(cur_height)) * rdp.scale_y + rdp.offset_y;
+         ul_x = (float)(fb_info->ul_x + 256*w);
+         ul_y = (float)(fb_info->ul_y + 256*h);
+         lr_x = (ul_x + (float)(cur_width)) * rdp.scale_x + rdp.offset_x;
+         lr_y = (ul_y + (float)(cur_height)) * rdp.scale_y + rdp.offset_y;
          ul_x = ul_x * rdp.scale_x + rdp.offset_x;
          ul_y = ul_y * rdp.scale_y + rdp.offset_y;
-         float lr_u = (float)(cur_width-1);
-         float lr_v = (float)(cur_height-1);
+         lr_u = (float)(cur_width-1);
+         lr_v = (float)(cur_height-1);
          // Make the vertices
          VERTEX v[4] = {
          { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} },
@@ -556,8 +579,15 @@ static void DrawHiresDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 
 void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 {
-   uint32_t width = fb_info->lr_x - fb_info->ul_x + 1;
-   uint32_t height = fb_info->lr_y - fb_info->ul_y + 1;
+   uint32_t width, height, texwidth, x, y;
+   uint8_t *image;
+   int tmu;
+   uint16_t *tex, *dst, *src;
+   float scale, ul_x, ul_y, lr_x, lr_y, lr_u, lr_v, zero;
+   GrTexInfo t_info;
+
+   width = fb_info->lr_x - fb_info->ul_x + 1;
+   height = fb_info->lr_y - fb_info->ul_y + 1;
    if (width > 512)
    {
       DrawDepthBufferToScreen256(fb_info);
@@ -571,10 +601,9 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    }
 #endif
    FRDP("DrawDepthBufferToScreen. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
-   GrTexInfo t_info;
-   uint8_t * image = gfx.RDRAM+fb_info->addr;
-   uint32_t texwidth;
-   float scale;
+
+   image = (uint8_t*)gfx.RDRAM+fb_info->addr;
+
    if (width <= 256)
    {
       texwidth = 256;
@@ -597,10 +626,9 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
    }
 
-   uint32_t y, x;
-   uint16_t * tex = (uint16_t*)texture_buffer;
-   uint16_t * dst = tex;
-   uint16_t * src = (uint16_t*)image;
+   tex = (uint16_t*)texture_buffer;
+   dst = (uint16_t*)tex;
+   src = (uint16_t*)image;
    src += fb_info->ul_x + fb_info->ul_y * fb_info->width;
    for (y=0; y < height; y++)
    {
@@ -611,7 +639,7 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    t_info.format = GR_TEXFMT_ALPHA_INTENSITY_88;
    t_info.data = tex;
 
-   int tmu = SetupFBtoScreenCombiner(grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &t_info), fb_info->opaque);
+   tmu = SetupFBtoScreenCombiner(grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &t_info), fb_info->opaque);
    grConstantColorValue (rdp.fog_color);
    grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
          GR_COMBINE_FACTOR_ONE,
@@ -626,13 +654,13 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
          voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,
          &t_info);
-   float ul_x = fb_info->ul_x * rdp.scale_x + rdp.offset_x;
-   float ul_y = fb_info->ul_y * rdp.scale_y + rdp.offset_y;
-   float lr_x = fb_info->lr_x * rdp.scale_x + rdp.offset_x;
-   float lr_y = fb_info->lr_y * rdp.scale_y + rdp.offset_y;
-   float lr_u = (width-1)*scale;
-   float lr_v = (height-1)*scale;
-   float zero = scale*0.5f;
+   ul_x = fb_info->ul_x * rdp.scale_x + rdp.offset_x;
+   ul_y = fb_info->ul_y * rdp.scale_y + rdp.offset_y;
+   lr_x = fb_info->lr_x * rdp.scale_x + rdp.offset_x;
+   lr_y = fb_info->lr_y * rdp.scale_y + rdp.offset_y;
+   lr_u = (width-1)*scale;
+   lr_v = (height-1)*scale;
+   zero = scale*0.5f;
    // Make the vertices
    VERTEX v[4] = {
    { ul_x, ul_y, 1, 1, zero, zero, zero, zero, {zero, zero, zero, zero} },

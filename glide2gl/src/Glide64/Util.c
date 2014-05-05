@@ -407,6 +407,8 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
    t_scale = rdp.tiles[rdp.cur_tile].height / 255.0f;
    lodFactor = 0;
 
+   (void)j;
+
    switch (lodmode)
    {
       case G_TL_TILE:
@@ -750,12 +752,14 @@ static void clip_tri(int interpolate_colors)
    {
       // Swap vertex buffers
       VERTEX *tmp;
-      tmp = rdp.vtxbuf2;
+	  float maxZ;
+
+      tmp = (VERTEX*)rdp.vtxbuf2;
       rdp.vtxbuf2 = rdp.vtxbuf;
       rdp.vtxbuf = tmp;
       rdp.vtx_buffer ^= 1;
       index = 0;
-      float maxZ = rdp.view_trans[2] + rdp.view_scale[2];
+      maxZ = rdp.view_trans[2] + rdp.view_scale[2];
 
       // Check the vertices for clipping
       for (i=0; i<n; i++)
@@ -889,6 +893,10 @@ static void clip_tri(int interpolate_colors)
 static void render_tri (uint16_t linew, int old_interpolate)
 {
    int i, j, n;
+   float fog;
+
+   (void)j;
+
    if (rdp.clip)
       clip_tri(old_interpolate);
    n = rdp.n_global;
@@ -972,8 +980,6 @@ static void render_tri (uint16_t linew, int old_interpolate)
 
    ConvertCoordsConvert (rdp.vtxbuf, n);
 
-   float fog;
-
    switch (rdp.fog_mode)
    {
       case FOG_MODE_ENABLED:
@@ -1015,18 +1021,21 @@ static void render_tri (uint16_t linew, int old_interpolate)
 
       if (linew > 0)
       {
-         VERTEX *V0 = &rdp.vtxbuf[0];
-         VERTEX *V1 = &rdp.vtxbuf[1];
+         VERTEX *V0, *V1, v[4];
+		 float width;
+
+         V0 = (VERTEX*)&rdp.vtxbuf[0];
+         V1 = (VERTEX*)&rdp.vtxbuf[1];
          if (fabs(V0->x - V1->x) < 0.01 && fabs(V0->y - V1->y) < 0.01)
             V1 = &rdp.vtxbuf[2];
          V0->z = ScaleZ(V0->z);
          V1->z = ScaleZ(V1->z);
-         VERTEX v[4];
          v[0] = *V0;
          v[1] = *V0;
          v[2] = *V1;
          v[3] = *V1;
-         float width = linew * 0.25f;
+         width = linew * 0.25f;
+
          if (fabs(V0->y - V1->y) < 0.0001)
          {
             v[0].x = v[1].x = V0->x;
@@ -1047,11 +1056,12 @@ static void render_tri (uint16_t linew, int old_interpolate)
          }
          else
          {
-            float dx = V1->x - V0->x;
-            float dy = V1->y - V0->y;
-            float len = squareRoot(dx*dx + dy*dy);
-            float wx = dy * width * rdp.scale_x / len;
-            float wy = dx * width * rdp.scale_y / len;
+            float dx, dy, len, wx, wy;
+            dx = V1->x - V0->x;
+            dy = V1->y - V0->y;
+            len = squareRoot(dx*dx + dy*dy);
+            wx = dy * width * rdp.scale_x / len;
+            wy = dx * width * rdp.scale_y / len;
             v[0].x = V0->x + wx;
             v[0].y = V0->y - wy;
             v[1].x = V0->x - wx;
@@ -1077,13 +1087,15 @@ static void render_tri (uint16_t linew, int old_interpolate)
 void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do the triangle stuff :P (to keep from writing code twice)
 {
    int i;
+   uint8_t no_clip;
+   float maxZ;
 
    if (rdp.clip & CLIP_WMIN)
       clip_w (old_interpolate);
 
-   float maxZ = (rdp.zsrc != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : rdp.prim_depth;
+   maxZ = (rdp.zsrc != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : rdp.prim_depth;
 
-   uint8_t no_clip = 2;
+   no_clip = 2;
    for (i=0; i<rdp.n_global; i++)
    {
       if (rdp.vtxbuf[i].not_zclipped)// && rdp.zsrc != 1)
@@ -1389,8 +1401,9 @@ void update(void)
       // Cull mode (leave this in for z-clipped triangles)
       if (rdp.update & UPDATE_CULL_MODE)
       {
+         uint32_t mode;
          rdp.update ^= UPDATE_CULL_MODE;
-         uint32_t mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
+         mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
          FRDP (" |- cull_mode - mode: %s\n", str_cull[mode]);
          switch (mode)
          {
@@ -1412,9 +1425,10 @@ void update(void)
       //Added by Gonetz.
       if (settings.fog && (rdp.update & UPDATE_FOG_ENABLED))
       {
+         uint16_t blender;
          rdp.update ^= UPDATE_FOG_ENABLED;
 
-         uint16_t blender = (uint16_t)(rdp.othermode_l >> 16);
+         blender = (uint16_t)(rdp.othermode_l >> 16);
          if (rdp.flags & FOG_ENABLED)
          {
             rdp_blender_setting *bl = (rdp_blender_setting*)(&blender);

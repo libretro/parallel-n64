@@ -63,15 +63,16 @@ void ZLUT_init(void)
 
    for(i = 0; i< ZLUT_SIZE; i++)
    {
-      uint32_t exponent = 0;
-      uint32_t testbit = 1 << 17;
+      uint32_t exponent, testbit, mantissa;
+      exponent = 0;
+      testbit = 1 << 17;
       while((i & testbit) && (exponent < 7))
       {
          exponent++;
          testbit = 1 << (17 - exponent);
       }
 
-      uint32_t mantissa = (i >> (6 - (6 < exponent ? 6 : exponent))) & 0x7ff;
+      mantissa = (i >> (6 - (6 < exponent ? 6 : exponent))) & 0x7ff;
       zLUT[i] = (uint16_t)(((exponent << 11) | mantissa) << 2);
    }
 }
@@ -103,8 +104,8 @@ static int left_z, left_dzdy;
 
 static void RightSection(void)
 {
+   int prestep;
    // Walk backwards trough the vertex array
-
    struct vertexi *v2, *v1 = right_vtx;
    if(right_vtx > start_vtx)
       v2 = right_vtx-1;     
@@ -142,14 +143,14 @@ static void RightSection(void)
 
    // Prestep initial values
 
-   int prestep = (iceil(v1->y) << 16) - v1->y;
+   prestep = (iceil(v1->y) << 16) - v1->y;
    right_x = v1->x + imul16(prestep, right_dxdy);
 }
 
 static void LeftSection(void)
 {
-   // Walk forward trough the vertex array
-
+   int prestep;
+   // Walk forward through the vertex array
    struct vertexi *v2, *v1 = left_vtx;
    if(left_vtx < end_vtx)
       v2 = left_vtx+1;
@@ -191,7 +192,7 @@ static void LeftSection(void)
 
    // Prestep initial values
 
-   int prestep = (iceil(v1->y) << 16) - v1->y;
+   prestep = (iceil(v1->y) << 16) - v1->y;
    left_x = v1->x + imul16(prestep, left_dxdy);
    left_z = v1->z + imul16(prestep, left_dzdy);
 }
@@ -199,17 +200,19 @@ static void LeftSection(void)
 
 void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
 {
-   int n;
+   int n, min_y, max_y, y1, shift;
+   uint16_t *destptr;
+   struct vertexi *min_vtx;
    start_vtx = vtx;        // First vertex in array
 
    // Search trough the vtx array to find min y, max y
    // and the location of these structures.
 
-   struct vertexi *min_vtx = vtx;
+   min_vtx = (struct vertexi*)vtx;
    max_vtx = vtx;
 
-   int min_y = vtx->y;
-   int max_y = vtx->y;
+   min_y = vtx->y;
+   max_y = vtx->y;
 
    vtx++;
 
@@ -251,33 +254,31 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
       LeftSection();
    } while(left_height <= 0);
 
-   uint16_t * destptr = (uint16_t*)(gfx.RDRAM+rdp.zimg);
-   int y1 = iceil(min_y);
+   destptr = (uint16_t*)(gfx.RDRAM+rdp.zimg);
+   y1 = iceil(min_y);
    if (y1 >= (int)rdp.scissor_o.lr_y) return;
-   int shift;
 
    for(;;)
    {
-      int x1 = iceil(left_x);
+      int x1, width;
+      x1 = iceil(left_x);
       if (x1 < (int)rdp.scissor_o.ul_x)
          x1 = rdp.scissor_o.ul_x;
-      int width = iceil(right_x) - x1;
+      width = iceil(right_x) - x1;
       if (x1+width >= (int)rdp.scissor_o.lr_x)
          width = rdp.scissor_o.lr_x - x1 - 1;
 
       if(width > 0 && y1 >= (int)rdp.scissor_o.ul_y)
       {
-         int x;
+         int x, prestep, z, trueZ, idx;
+         uint16_t encodedZ;
          // Prestep initial z
 
-         int prestep = (x1 << 16) - left_x;
-         int z = left_z + imul16(prestep, dzdx);
+         prestep = (x1 << 16) - left_x;
+         z = left_z + imul16(prestep, dzdx);
 
          shift = x1 + y1*rdp.zi_width;
          //draw to depth buffer
-         int trueZ;
-         int idx;
-         uint16_t encodedZ;
          for (x = 0; x < width; x++)
          {
             trueZ = z/8192;

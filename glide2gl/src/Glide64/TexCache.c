@@ -159,7 +159,13 @@ static uint32_t textureCRC(uint8_t *addr, int width, int height, int line)
 // Gets information for either t0 or t1, checks if in cache & fills tex_found
 static void GetTexInfo (int id, int tile)
 {
-   int t;
+   int t, tile_width, tile_height, mask_width, mask_height, width, height, wid_64, line, bpl;
+   int real_image_width, real_image_height, crc_height;
+   uint32_t crc, flags, mod, modcolor, modcolor1, modcolor2, modfactor, mod_mask;
+   NODE *node;
+   CACHE_LUT *cache;
+   TEXINFO *info;
+
    FRDP (" | |-+ GetTexInfo (id: %d, tile: %d)\n", id, tile);
 
    // this is the NEW cache searching, searches only textures with similar crc's
@@ -176,12 +182,7 @@ static void GetTexInfo (int id, int tile)
       return;
 #endif
 
-   TEXINFO *info = &texinfo[id];
-
-   int tile_width, tile_height;
-   int mask_width, mask_height;
-   int width, height;
-   int wid_64, line, bpl;
+   info = (TEXINFO*)&texinfo[id];
 
    // Get width and height
    tile_width = rdp.tiles[tile].lr_s - rdp.tiles[tile].ul_s + 1;
@@ -268,9 +269,9 @@ static void GetTexInfo (int id, int tile)
    }
 
    // without any large texture fixing-up; for alignment
-   int real_image_width = rdp.tiles[tile].width;
-   int real_image_height = rdp.tiles[tile].height;
-   int crc_height = height;
+   real_image_width = rdp.tiles[tile].width;
+   real_image_height = rdp.tiles[tile].height;
+   crc_height = height;
    if (rdp.timg.set_by == 1)
       crc_height = tile_height;
 
@@ -305,16 +306,16 @@ static void GetTexInfo (int id, int tile)
    // Texture too big for tmem & needs to wrap? (trees in mm)
    if (rdp.tiles[tile].t_mem + min(height, tile_height) * (rdp.tiles[tile].line<<3) > 4096)
    {
+      int y, shift;
       LRDP("TEXTURE WRAPS TMEM!!! ");
 
       // calculate the y value that intersects at 4096 bytes
-      int y = (4096 - rdp.tiles[tile].t_mem) / (rdp.tiles[tile].line<<3);
+      y = (4096 - rdp.tiles[tile].t_mem) / (rdp.tiles[tile].line<<3);
 
       rdp.tiles[tile].clamp_t = 0;
       rdp.tiles[tile].lr_t = rdp.tiles[tile].ul_t + y - 1;
 
       // calc mask
-      int shift;
       for (shift=0; (1<<shift)<y; shift++);
       rdp.tiles[tile].mask_t = shift;
 
@@ -327,20 +328,22 @@ static void GetTexInfo (int id, int tile)
    line = rdp.tiles[tile].line;
    if (rdp.tiles[tile].size == G_IM_SIZ_32b)
       line <<= 1;
-   uint32_t crc = 0;
+   crc = 0;
    {
+      uint8_t *addr;
       line = (line - wid_64) << 3;
       if (wid_64 < 1)
          wid_64 = 1;
-      uint8_t * addr = (((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3));
+      addr = (uint8_t*)((((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3)));
       if (crc_height > 0) // Check the CRC
       {
          if (rdp.tiles[tile].size < 3)
             crc = textureCRC(addr, wid_64, crc_height, line);
          else //32b texture
          {
-            int line_2 = line >> 1;
-            int wid_64_2 = max(1, wid_64 >> 1);
+            int line_2, wid_64_2;
+            line_2 = line >> 1;
+            wid_64_2 = max(1, wid_64 >> 1);
             crc = textureCRC(addr, wid_64_2, crc_height, line_2);
             crc += textureCRC(addr+0x800, wid_64_2, crc_height, line_2);
          }
@@ -356,7 +359,7 @@ static void GetTexInfo (int id, int tile)
 
    FRDP ("Done.  CRC is: %08lx.\n", crc);
 
-   uint32_t flags = (rdp.tiles[tile].clamp_s << 23) | (rdp.tiles[tile].mirror_s << 22) |
+   flags = (rdp.tiles[tile].clamp_s << 23) | (rdp.tiles[tile].mirror_s << 22) |
       (rdp.tiles[tile].mask_s << 18) | (rdp.tiles[tile].clamp_t << 17) |
       (rdp.tiles[tile].mirror_t << 16) | (rdp.tiles[tile].mask_t << 12);
 
@@ -376,12 +379,9 @@ static void GetTexInfo (int id, int tile)
    // Search the texture cache for this texture
    LRDP(" | | |-+ Checking cache...\n");
 
-   CACHE_LUT *cache;
-
    if (rdp.noise == NOISE_MODE_TEXTURE)
       return;
 
-   uint32_t mod, modcolor, modcolor1, modcolor2, modfactor;
    if (id == 0)
    {
       mod = cmb.mod_0;
@@ -399,8 +399,8 @@ static void GetTexInfo (int id, int tile)
       modfactor = cmb.modfactor_1;
    }
 
-   NODE *node = cachelut[crc>>16];
-   uint32_t mod_mask = (rdp.tiles[tile].format == G_IM_FMT_CI) ? 0xFFFFFFFF : 0xF0F0F0F0;
+   node = (NODE*)cachelut[crc>>16];
+   mod_mask = (rdp.tiles[tile].format == G_IM_FMT_CI) ? 0xFFFFFFFF : 0xF0F0F0F0;
    while (node)
    {
       if (node->crc == crc)
@@ -451,7 +451,7 @@ int SwapTextureBuffer(void); //forward decl
 // Does texture loading after combiner is set
 void TexCache(void)
 {
-   int i;
+   int i, tmu_0_mode, tmu_1_mode, tmu_0, tmu_1;
    LRDP(" |-+ TexCache called\n");
 
    if (rdp.tex & 1)
@@ -467,8 +467,8 @@ void TexCache(void)
       aTBuff[rdp.aTBuffTex[1]->tile] = rdp.aTBuffTex[1];
 #endif
 
-   int tmu_0, tmu_1;
-   int tmu_0_mode=0, tmu_1_mode=0;
+   tmu_0_mode = 0;
+   tmu_1_mode = 0;
 
    // Select the best TMUs to use (removed 3 tmu support, unnecessary)
    if (rdp.tex == 3)	// T0 and T1
@@ -715,8 +715,9 @@ void TexCache(void)
 #endif
          if (tex_found[0][tmu_0] != -1)
       {
+         CACHE_LUT *cache;
          LRDP(" | |- T0 found in cache.\n");
-         CACHE_LUT *cache = &rdp.cache[0][tex_found[0][0]];
+         cache = (CACHE_LUT*)&rdp.cache[0][tex_found[0][0]];
          rdp.cur_cache_n[0] = tex_found[0][tmu_0];
          rdp.cur_cache[0] = cache;
          rdp.cur_cache[0]->last_used = frame_count;
@@ -743,8 +744,9 @@ void TexCache(void)
 #endif
          if (tex_found[1][tmu_1] != -1)
       {
+         CACHE_LUT *cache;
          LRDP(" | |- T1 found in cache.\n");
-         CACHE_LUT *cache = &rdp.cache[0][tex_found[1][0]];
+         cache = (CACHE_LUT*)&rdp.cache[0][tex_found[1][0]];
          rdp.cur_cache_n[1] = tex_found[1][tmu_1];
          rdp.cur_cache[1] = cache;
          rdp.cur_cache[1]->last_used = frame_count;
@@ -840,12 +842,14 @@ void TexCache(void)
 // Does the actual texture loading after everything is prepared
 static void LoadTex(int id, int tmu)
 {
-   int t;
+   int td, lod, aspect, shift, size_max, wid, hei, modifyPalette;
+   uint32_t size_x, size_y, real_x, real_y, result;
+   uint32_t mod, modcolor, modcolor1, modcolor2, modfactor;
+   uint16_t tmp_pal[256];
+   CACHE_LUT *cache;
    FRDP (" | |-+ LoadTex (id: %d, tmu: %d)\n", id, tmu);
 
-   int td = rdp.cur_tile + id;
-   int lod, aspect;
-   CACHE_LUT *cache;
+   td = rdp.cur_tile + id;
 
    if (texinfo[id].width < 0 || texinfo[id].height < 0)
       return;
@@ -891,18 +895,18 @@ static void LoadTex(int id, int tmu)
    cache->t_info.format = GR_TEXFMT_ARGB_1555;
 
    // Calculate lod and aspect
-   uint32_t size_x = rdp.tiles[td].width;
-   uint32_t size_y = rdp.tiles[td].height;
+   size_x = rdp.tiles[td].width;
+   size_y = rdp.tiles[td].height;
 
-   int shift;
    for (shift=0; (1<<shift) < (int)size_x; shift++);
    size_x = 1 << shift;
    for (shift=0; (1<<shift) < (int)size_y; shift++);
    size_y = 1 << shift;
 
    // Calculate the maximum size
-   int size_max = max (size_x, size_y);
-   uint32_t real_x=size_max, real_y=size_max;
+   size_max = max (size_x, size_y);
+   real_x = size_max;
+   real_y = size_max;
    switch (size_max)
    {
       case 1:
@@ -1019,8 +1023,8 @@ static void LoadTex(int id, int tmu)
       cache->splitheight = texinfo[id].splitheight;
 
    // ** Calculate alignment values
-   int wid = cache->width;
-   int hei = cache->height;
+   wid = cache->width;
+   hei = cache->height;
 
    cache->c_off = cache->scale * 0.5f;
    if (wid != 1) cache->c_scl_x = cache->scale;
@@ -1029,7 +1033,6 @@ static void LoadTex(int id, int tmu)
    else cache->c_scl_y = 0.0f;
    // **
 
-   uint32_t mod, modcolor, modcolor1, modcolor2, modfactor;
    if (id == 0)
    {
       mod = cmb.mod_0;
@@ -1047,8 +1050,7 @@ static void LoadTex(int id, int tmu)
       modfactor = cmb.modfactor_1;
    }
 
-   uint16_t tmp_pal[256];
-   int modifyPalette = (mod && (cache->format == G_IM_FMT_CI) && (rdp.tlut_mode == 2));
+   modifyPalette = (mod && (cache->format == G_IM_FMT_CI) && (rdp.tlut_mode == 2));
 
    if (modifyPalette)
    {
@@ -1073,18 +1075,20 @@ static void LoadTex(int id, int tmu)
    }
 #endif
 
-   uint32_t result = 0;	// keep =0 so it doesn't mess up on the first split
+   result = 0;	// keep =0 so it doesn't mess up on the first split
 
    texture = tex1;
 
    {
+      uint32_t size;
+	  int min_x, min_y;
+
       result = load_table[rdp.tiles[td].size][rdp.tiles[td].format]
          ((uintptr_t)(texture), (uintptr_t)(rdp.tmem)+(rdp.tiles[td].t_mem<<3),
           texinfo[id].wid_64, texinfo[id].height, texinfo[id].line, real_x, td);
 
-      uint32_t size = HIWORD(result);
+      size = HIWORD(result);
 
-      int min_x, min_y;
       if (rdp.tiles[td].mask_s != 0)
          min_x = min((int)real_x, 1<<rdp.tiles[td].mask_s);
       else
@@ -1177,6 +1181,7 @@ static void LoadTex(int id, int tmu)
 
    if (mod && !modifyPalette)
    {
+	   int size;
       // Convert the texture to ARGB 4444
       if (LOWORD(result) == GR_TEXFMT_ARGB_1555)
       {
@@ -1209,7 +1214,7 @@ static void LoadTex(int id, int tmu)
       modcolor2 = ((modcolor2 & 0xF0000000) >> 16) | ((modcolor2 & 0x00F00000) >> 12) |
          ((modcolor2 & 0x0000F000) >> 8) | ((modcolor2 & 0x000000F0) >> 4);
 
-      int size = (real_x * real_y) << 1;
+      size = (real_x * real_y) << 1;
 
       switch (mod)
       {
@@ -1290,15 +1295,16 @@ static void LoadTex(int id, int tmu)
    cache->aspect = aspect;
 
    {
-
+	   uint32_t texture_size, tex_addr;
+	   GrTexInfo *t_info;
       // Load the texture into texture memory
-      GrTexInfo *t_info = &cache->t_info;
+      t_info = (GrTexInfo*)&cache->t_info;
       t_info->data = texture;
       t_info->smallLodLog2 = lod;
       t_info->largeLodLog2 = lod;
       t_info->aspectRatioLog2 = aspect;
 
-      uint32_t texture_size = grTexTextureMemRequired (GR_MIPMAPLEVELMASK_BOTH, t_info);
+      texture_size = grTexTextureMemRequired (GR_MIPMAPLEVELMASK_BOTH, t_info);
 
       // Check for end of memory (too many textures to fit, clear cache)
       if (voodoo.tmem_ptr[tmu]+texture_size >= voodoo.tex_max_addr)
@@ -1314,7 +1320,7 @@ static void LoadTex(int id, int tmu)
          // DON'T CONTINUE (already done)
       }
 
-      uint32_t tex_addr = GetTexAddrUMA(tmu, texture_size);
+      tex_addr = GetTexAddrUMA(tmu, texture_size);
       grTexDownloadMipMap (tmu,
             tex_addr,
             GR_MIPMAPLEVELMASK_BOTH,

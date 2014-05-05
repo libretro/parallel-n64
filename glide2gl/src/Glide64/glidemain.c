@@ -190,6 +190,8 @@ void _ChangeSize(void)
 
 void ChangeSize(void)
 {
+   float offset_y;
+
    switch (settings.aspectmode)
    {
       case 0: //4:3
@@ -222,7 +224,7 @@ void ChangeSize(void)
    }
    _ChangeSize ();
    rdp.offset_x = (settings.scr_res_x - settings.res_x) / 2.0f;
-   float offset_y = (settings.scr_res_y - settings.res_y) / 2.0f;
+   offset_y = (settings.scr_res_y - settings.res_y) / 2.0f;
    settings.res_x += (uint32_t)rdp.offset_x;
    settings.res_y += (uint32_t)offset_y;
    rdp.offset_y += offset_y;
@@ -304,14 +306,20 @@ extern uint8_t microcode[4096];
 extern bool no_audio;
 extern uint32_t gfx_plugin_accuracy;
 
+extern void update_variables(void);
+
 void ReadSpecialSettings (const char * name)
 {
    int smart_read, hires, get_fbinfo, read_always, depth_render, fb_crc_mode,
        read_back_to_screen, cpu_write_hack, optimize_texrect, hires_buf_clear,
        read_alpha, ignore_aux_copy, useless_is_useless;
+   uint32_t i, uc_crc;
+   bool updated;
+   struct retro_variable var;
+
    fprintf(stderr, "ReadSpecialSettings: %s\n", name);
 
-   bool updated = false;
+   updated = false;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       update_variables();
    
@@ -361,7 +369,6 @@ void ReadSpecialSettings (const char * name)
 
    // We might want to detect some games by ucode crc, so set
    // up uc_crc here
-   uint32_t i, uc_crc;
    uc_crc = 0;
 
    for (i = 0; i < 3072 >> 2; i++)
@@ -2114,7 +2121,9 @@ void ReadSpecialSettings (const char * name)
 
    settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
 
-   struct retro_variable var = { "mupen64-filtering", 0 };
+   var.key = "mupen64-filtering";
+   var.value = NULL;
+
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
 	  if (strcmp(var.value, "N64 3-point") == 0)
@@ -2132,7 +2141,9 @@ void ReadSpecialSettings (const char * name)
 
 int GetTexAddrUMA(int tmu, int texsize)
 {
-   int addr = voodoo.tmem_ptr[0];
+   int addr;
+
+   addr = voodoo.tmem_ptr[0];
    voodoo.tmem_ptr[0] += texsize;
    voodoo.tmem_ptr[1] = voodoo.tmem_ptr[0];
    return addr;
@@ -2472,6 +2483,8 @@ that there is a waiting interrupt.
 
 EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 {
+   char name[21] = "DEFAULT";
+
    VLOG ("InitiateGFX (*)\n");
    rdp_new();
 
@@ -2481,7 +2494,6 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 
    memset (&settings, 0, sizeof(SETTINGS));
    ReadSettings ();
-   char name[21] = "DEFAULT";
    ReadSpecialSettings (name);
    settings.res_data_org = settings.res_data;
 
@@ -2555,6 +2567,9 @@ output:   none
 EXPORT int CALL RomOpen (void)
 {
    int i;
+   uint16_t code;
+   char name[21] = "DEFAULT";
+
    VLOG ("RomOpen ()\n");
    no_dlist = true;
    romopen = true;
@@ -2562,7 +2577,7 @@ EXPORT int CALL RomOpen (void)
    rdp_reset ();
 
    // Get the country code & translate to NTSC(0) or PAL(1)
-   uint16_t code = ((uint16_t*)gfx.HEADER)[0x1F^1];
+   code = ((uint16_t*)gfx.HEADER)[0x1F^1];
 
    if (code == 0x4400) region = 1; // Germany (PAL)
    if (code == 0x4500) region = 0; // USA (NTSC)
@@ -2570,7 +2585,6 @@ EXPORT int CALL RomOpen (void)
    if (code == 0x5000) region = 1; // Europe (PAL)
    if (code == 0x5500) region = 0; // Australia (NTSC)
 
-   char name[21] = "DEFAULT";
    ReadSpecialSettings (name);
 
    // get the name of the ROM
@@ -2625,13 +2639,16 @@ EXPORT void CALL SetRenderingCallback(void (*callback)(int))
 
 void drawViRegBG(void)
 {
+   bool drawn;
+   uint32_t VIwidth;
+   FB_TO_SCREEN_INFO fb_info;
+
    LRDP("drawViRegBG\n");
    if (rdp.vi_height == 0)
       return;
 
-   const uint32_t VIwidth = *gfx.VI_WIDTH_REG;
+   VIwidth = *gfx.VI_WIDTH_REG;
 
-   FB_TO_SCREEN_INFO fb_info;;
    fb_info.width  = VIwidth;
    fb_info.height = (uint32_t)rdp.vi_height;
    fb_info.ul_x = 0;
@@ -2644,7 +2661,7 @@ void drawViRegBG(void)
 
    rdp.last_bg = fb_info.addr;
 
-   bool drawn = DrawFrameBufferToScreen(&fb_info);
+   drawn = DrawFrameBufferToScreen(&fb_info);
    if (settings.hacks&hack_Lego && drawn)
    {
       rdp.updatescreen = 1;
@@ -2673,6 +2690,7 @@ uint32_t update_screen_count = 0;
 
 EXPORT void CALL UpdateScreen (void)
 {
+   uint32_t width, limit;
 #ifdef VISUAL_LOGGING
    char out_buf[128];
    sprintf (out_buf, "UpdateScreen (). Origin: %08x, Old origin: %08x, width: %d\n", *gfx.VI_ORIGIN_REG, rdp.vi_org_reg, *gfx.VI_WIDTH_REG);
@@ -2680,10 +2698,11 @@ EXPORT void CALL UpdateScreen (void)
    LRDP(out_buf);
 #endif
 
-   uint32_t width = (*gfx.VI_WIDTH_REG) << 1;
+   width = (*gfx.VI_WIDTH_REG) << 1;
    if (*gfx.VI_ORIGIN_REG  > width)
       update_screen_count++;
-   uint32_t limit = (settings.hacks&hack_Lego) ? 15 : 30;
+   limit = (settings.hacks&hack_Lego) ? 15 : 30;
+
    if ((settings.frame_buffer&fb_cpu_write_hack) && (update_screen_count > limit) && (rdp.last_bg == 0))
    {
       LRDP("DirectCPUWrite hack!\n");
@@ -2715,7 +2734,9 @@ EXPORT void CALL UpdateScreen (void)
 
 static void DrawWholeFrameBufferToScreen(void)
 {
+  FB_TO_SCREEN_INFO fb_info;
   static uint32_t toScreenCI = 0;
+
   if (rdp.ci_width < 200)
     return;
   if (rdp.cimg == toScreenCI)
@@ -2724,7 +2745,6 @@ static void DrawWholeFrameBufferToScreen(void)
      return;
   toScreenCI = rdp.cimg;
 
-  FB_TO_SCREEN_INFO fb_info;
   fb_info.addr   = rdp.cimg;
   fb_info.size   = rdp.ci_size;
   fb_info.width  = rdp.ci_width;

@@ -368,12 +368,13 @@ static void mod_tex_inter_col_using_texa_CI (uint32_t color)
 {
    int i;
    uint8_t a, r, g, b;
+   uint16_t col16;
 
    r = (uint8_t)(((color >> 24) & 0xFF) / 255.0f * 31.0f);
    g = (uint8_t)(((color >> 16) & 0xFF) / 255.0f * 31.0f);
    b = (uint8_t)(((color >> 8)  & 0xFF) / 255.0f * 31.0f);
    a = (color&0xFF) ? 1 : 0;
-   uint16_t col16 = (uint16_t)((r<<11)|(g<<6)|(b<<1)|a);
+   col16 = (uint16_t)((r<<11)|(g<<6)|(b<<1)|a);
 
    for (i = 0; i < 256; i++)
    {
