@@ -50,7 +50,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;_ENDUSER_RELEASE;_DEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -66,7 +66,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;_ENDUSER_RELEASE;NDEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -500,6 +500,23 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
     </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\adler32.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\compress.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\crc32.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\deflate.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\gzclose.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\gzlib.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\gzread.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\gzwrite.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\infback.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\inffast.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\inflate.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\inftrees.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\ioapi.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\trees.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\uncompr.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\unzip.c" />
+    <ClCompile Include="..\..\..\tools\rzlib\zutil.c" />
     <ClCompile Include="..\..\adler32.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>

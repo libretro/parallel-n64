@@ -82,6 +82,9 @@
     <Filter Include="Source Files\mupen64plus-core\src\r4300\x86_64">
       <UniqueIdentifier>{2f954036-39e2-416b-8ad8-57de5c20979c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\rzlib">
+      <UniqueIdentifier>{043b04b0-a1d8-4553-a42f-beee591167ff}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\angrylionrdp\n64video.c">
@@ -503,6 +506,57 @@
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\memory\pif.c">
       <Filter>Source Files\mupen64plus-core\src\memory</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\adler32.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\compress.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\crc32.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\deflate.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\gzclose.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\gzlib.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\gzread.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\gzwrite.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\infback.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\inffast.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\inflate.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\inftrees.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\ioapi.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\trees.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\uncompr.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\unzip.c">
+      <Filter>Source Files\rzlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tools\rzlib\zutil.c">
+      <Filter>Source Files\rzlib</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
