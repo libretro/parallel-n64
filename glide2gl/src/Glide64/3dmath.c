@@ -116,6 +116,112 @@ NORMALIZEVECTOR NormalizeVector = NormalizeVectorC;
 
 void MulMatricesSSE(float m1[4][4],float m2[4][4],float r[4][4])
 {
+#ifdef _MSC_VER
+   __asm
+   {
+      mov eax, dword ptr [r]
+         mov ecx, dword ptr [m1]
+         mov edx, dword ptr [m2]
+
+         movaps xmm0,[edx]
+         movaps xmm1,[edx+16]
+         movaps xmm2,[edx+32]
+         movaps xmm3,[edx+48]
+
+         // r[0][0],r[0][1],r[0][2],r[0][3]
+
+         movaps xmm4,xmmword ptr[ecx]
+         movaps xmm5,xmm4
+         movaps xmm6,xmm4
+         movaps xmm7,xmm4
+
+         shufps xmm4,xmm4,00000000b
+         shufps xmm5,xmm5,01010101b
+         shufps xmm6,xmm6,10101010b
+         shufps xmm7,xmm7,11111111b
+
+         mulps xmm4,xmm0
+         mulps xmm5,xmm1
+         mulps xmm6,xmm2
+         mulps xmm7,xmm3
+
+         addps xmm4,xmm5
+         addps xmm4,xmm6
+         addps xmm4,xmm7
+
+         movaps xmmword ptr[eax],xmm4
+
+         // r[1][0],r[1][1],r[1][2],r[1][3]
+
+         movaps xmm4,xmmword ptr[ecx+16]
+         movaps xmm5,xmm4
+         movaps xmm6,xmm4
+         movaps xmm7,xmm4
+
+         shufps xmm4,xmm4,00000000b
+         shufps xmm5,xmm5,01010101b
+         shufps xmm6,xmm6,10101010b
+         shufps xmm7,xmm7,11111111b
+
+         mulps xmm4,xmm0
+         mulps xmm5,xmm1
+         mulps xmm6,xmm2
+         mulps xmm7,xmm3
+
+         addps xmm4,xmm5
+         addps xmm4,xmm6
+         addps xmm4,xmm7
+
+         movaps xmmword ptr[eax+16],xmm4
+
+
+         // r[2][0],r[2][1],r[2][2],r[2][3]
+
+         movaps xmm4,xmmword ptr[ecx+32]
+         movaps xmm5,xmm4
+         movaps xmm6,xmm4
+         movaps xmm7,xmm4
+
+         shufps xmm4,xmm4,00000000b
+         shufps xmm5,xmm5,01010101b
+         shufps xmm6,xmm6,10101010b
+         shufps xmm7,xmm7,11111111b
+
+         mulps xmm4,xmm0
+         mulps xmm5,xmm1
+         mulps xmm6,xmm2
+         mulps xmm7,xmm3
+
+         addps xmm4,xmm5
+         addps xmm4,xmm6
+         addps xmm4,xmm7
+
+         movaps xmmword ptr[eax+32],xmm4
+
+         // r[3][0],r[3][1],r[3][2],r[3][3]
+
+         movaps xmm4,xmmword ptr[ecx+48]
+         movaps xmm5,xmm4
+         movaps xmm6,xmm4
+         movaps xmm7,xmm4
+
+         shufps xmm4,xmm4,00000000b
+         shufps xmm5,xmm5,01010101b
+         shufps xmm6,xmm6,10101010b
+         shufps xmm7,xmm7,11111111b
+
+         mulps xmm4,xmm0
+         mulps xmm5,xmm1
+         mulps xmm6,xmm2
+         mulps xmm7,xmm3
+
+         addps xmm4,xmm5
+         addps xmm4,xmm6
+         addps xmm4,xmm7
+
+         movaps xmmword ptr[eax+48],xmm4
+   }
+#else
    /* [row][col]*/
    int i;
    typedef float v4sf __attribute__ ((vector_size (16)));
@@ -138,6 +244,7 @@ void MulMatricesSSE(float m1[4][4],float m2[4][4],float r[4][4])
 
       _mm_storeu_ps(r[i], destrow);
    }
+#endif
 }
 #elif defined(HAVE_NEON)
 static void NormalizeVectorNeon(float *v)
