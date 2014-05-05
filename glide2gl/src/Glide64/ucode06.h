@@ -41,12 +41,14 @@
 
 static float set_sprite_combine_mode(void)
 {
+  float Z;
   if (rdp.cycle_mode == G_CYC_COPY)
   {
+    GrCombineFunction_t color_source;
     rdp.tex = 1;
     rdp.allow_combine = 0;
     // Now actually combine !
-    GrCombineFunction_t color_source = GR_COMBINE_FUNCTION_LOCAL;
+    color_source = GR_COMBINE_FUNCTION_LOCAL;
 #ifdef HAVE_HWFBE
     if (rdp.tbuff_tex && rdp.tbuff_tex->info.format == GR_TEXFMT_ALPHA_INTENSITY_88)
 		color_source = GR_COMBINE_FUNCTION_LOCAL_ALPHA;
@@ -65,7 +67,7 @@ static float set_sprite_combine_mode(void)
   rdp.allow_combine = 1;
 
   // set z buffer mode
-  float Z = 0.0f;
+  Z = 0.0f;
   if ((rdp.othermode_l & 0x00000030) && rdp.cycle_mode < G_CYC_COPY)
   {
     if (rdp.zsrc == 1)
@@ -279,10 +281,20 @@ static void DrawDepthImage (const DRAWIMAGE *d)
 
 static void DrawImage (DRAWIMAGE *d)
 {
+   int x_size, y_size, x_shift, y_shift, line;
+   int ul_u, ul_v, lr_u, lr_v;
+   float ul_x, ul_y, lr_x, lr_y;
+   float nul_x, nul_y, nlr_x, nlr_y;
+   int nul_u, nul_v, nlr_u, nlr_v;
+   float ful_u, ful_v, flr_u, flr_v;
+   float ful_x, ful_y, flr_x, flr_y, mx, bx, my, by;
+   int cur_wrap_u, cur_wrap_v, cur_u, cur_v;
+   int cb_u, cb_v;       // coordinate-base
+   int tb_u, tb_v;       // texture-base
+
    if (d->imageW == 0 || d->imageH == 0 || d->frameH == 0)
       return;
 
-   int x_size, y_size, x_shift, y_shift, line;
    // choose optimum size for the format/size
    switch (d->imageSiz)
    {
@@ -367,12 +379,11 @@ static void DrawImage (DRAWIMAGE *d)
          d->frameH -= (uint16_t)(2.0f*d->frameY);
    }
 
-   int ul_u = (int)d->imageX;
-   int ul_v = (int)d->imageY;
-   int lr_u = (int)d->imageX + (int)(d->frameW * d->scaleX);
-   int lr_v = (int)d->imageY + (int)(d->frameH * d->scaleY);
+   ul_u = (int)d->imageX;
+   ul_v = (int)d->imageY;
+   lr_u = (int)d->imageX + (int)(d->frameW * d->scaleX);
+   lr_v = (int)d->imageY + (int)(d->frameH * d->scaleY);
 
-   float ul_x, ul_y, lr_x, lr_y;
    if (d->flipX)
    {
       ul_x = d->frameX + d->frameW;
@@ -451,20 +462,11 @@ static void DrawImage (DRAWIMAGE *d)
    // Texture ()
    rdp.cur_tile = 0;
 
-   float nul_x, nul_y, nlr_x, nlr_y;
-   int nul_u, nul_v, nlr_u, nlr_v;
-   float ful_u, ful_v, flr_u, flr_v;
-   float ful_x, ful_y, flr_x, flr_y;
+   mx = (float)(lr_x - ul_x) / (float)(lr_u - ul_u);
+   bx = ul_x - mx * ul_u;
 
-   float mx = (float)(lr_x - ul_x) / (float)(lr_u - ul_u);
-   float bx = ul_x - mx * ul_u;
-
-   float my = (float)(lr_y - ul_y) / (float)(lr_v - ul_v);
-   float by = ul_y - my * ul_v;
-
-   int cur_wrap_u, cur_wrap_v, cur_u, cur_v;
-   int cb_u, cb_v;       // coordinate-base
-   int tb_u, tb_v;       // texture-base
+   my = (float)(lr_y - ul_y) / (float)(lr_v - ul_v);
+   by = ul_y - my * ul_v;
 
    nul_v = ul_v;
    nul_y = ul_y;

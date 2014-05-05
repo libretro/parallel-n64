@@ -101,8 +101,9 @@ static void load_matrix (float m[4][4], uint32_t addr)
 {
    //FRDP ("matrix - addr: %08lx\n", addr);
    int x,y;  // matrix index
+   uint16_t *src;
    addr >>= 1;
-   uint16_t * src = (uint16_t*)gfx.RDRAM;
+   src = (uint16_t*)gfx.RDRAM;
 
    // Adding 4 instead of one, just to remove mult. later
    for (x = 0; x < 16; x += 4)
@@ -118,12 +119,11 @@ static void load_matrix (float m[4][4], uint32_t addr)
 static void uc0_matrix(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:matrix ");
-
+   DECLAREALIGN16VAR(m[4][4]);
    // Use segment offset to get the address
    uint32_t addr = RSP_SegmentToPhysical(w1);
    uint8_t command = (uint8_t)((w0 >> 16) & 0xFF);
 
-   DECLAREALIGN16VAR(m[4][4]);
    load_matrix(m, addr);
 
    switch (command)

@@ -220,17 +220,18 @@ void calc_light (VERTEX *v)
 
 void calc_linear (VERTEX *v)
 {
+   DECLAREALIGN16VAR(vec[3]);
+   float x, y;
+
    if (settings.force_calc_sphere)
    {
       calc_sphere(v);
       return;
    }
-   DECLAREALIGN16VAR(vec[3]);
 
    TransformVector (v->vec, vec, rdp.model);
    //    TransformVector (v->vec, vec, rdp.combined);
    NormalizeVector (vec);
-   float x, y;
    if (!rdp.use_lookat)
    {
       x = vec[0];
@@ -267,7 +268,9 @@ void calc_sphere (VERTEX *v)
 {
    //  LRDP("calc_sphere\n");
    DECLAREALIGN16VAR(vec[3]);
+   float x, y;
    int s_scale, t_scale;
+
    if (settings.hacks&hack_Chopper)
    {
       s_scale = min(rdp.tiles[rdp.cur_tile].org_s_scale >> 6, rdp.tiles[rdp.cur_tile].lr_s);
@@ -280,7 +283,7 @@ void calc_sphere (VERTEX *v)
    }
    TransformVector (v->vec, vec, rdp.model);
    NormalizeVector (vec);
-   float x, y;
+
    if (!rdp.use_lookat)
    {
       x = vec[0];

@@ -108,7 +108,7 @@ extern uint32_t frame_count; // frame counter
 #define uc(x) coord[x<<1]
 #define vc(x) coord[(x<<1)+1]
 
-#if defined __MSC_VER
+#if defined _MSC_VER
 #define DECLAREALIGN16VAR(var) __declspec(align(16)) float (var)
 #else
 #define DECLAREALIGN16VAR(var) float (var) __attribute__ ((aligned(16)))

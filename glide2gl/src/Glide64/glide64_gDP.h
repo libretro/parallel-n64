@@ -522,6 +522,9 @@ void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, u
 
 static void gDPLoadTile( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt )
 {
+   uint32_t width, height, offs;
+   int line_n;
+
    if (rdp.skip_drawing)
       return;
 
@@ -562,11 +565,11 @@ static void gDPLoadTile( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs
       rdp.tiles[0].lr_t = lrt;
    }
 
-   uint32_t height = lrt - ult + 1;   // get height
-   uint32_t width = lrs - uls + 1;
+   height = lrt - ult + 1;   // get height
+   width = lrs - uls + 1;
 
-   int line_n = rdp.timg.width << rdp.tiles[tile].size >> 1;
-   uint32_t offs = ult * line_n;
+   line_n = rdp.timg.width << rdp.tiles[tile].size >> 1;
+   offs = ult * line_n;
    offs += uls << rdp.tiles[tile].size >> 1;
    offs += rdp.timg.addr;
    if (offs >= BMASK)
@@ -576,15 +579,17 @@ static void gDPLoadTile( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs
       LoadTile32b(tile, uls, ult, width, height);
    else
    {
+      uint32_t wid_64;
+      uint8_t *dst, *end;
       // check if points to bad location
       if (offs + line_n*height > BMASK)
          height = (BMASK - offs) / line_n;
       if (height == 0)
          return;
 
-      uint32_t wid_64 = rdp.tiles[tile].line;
-      uint8_t *dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
-      uint8_t *end = ((uint8_t*)rdp.tmem) + 4096 - (wid_64<<3);
+      wid_64 = rdp.tiles[tile].line;
+      dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
+      end = ((uint8_t*)rdp.tmem) + 4096 - (wid_64<<3);
       loadTile((uint32_t *)gfx.RDRAM, (uint32_t *)dst, wid_64, height, line_n, offs, (uint32_t *)end);
    }
 
@@ -715,6 +720,9 @@ static void gDPSetDepthImage( uint32_t address )
 */
 static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt )
 {
+  uint32_t _dxt, addr, off, cnt;
+  uint8_t *dst;
+
   if (rdp.skip_drawing)
     return;
 
@@ -738,9 +746,8 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
        uint32_t _dxt = (uint32_t)fdxt;*/
 
    // 0x00000800 -> 0x80000000 (so we can check the sign bit instead of the 11th bit)
-   uint32_t _dxt = dxt << 20;
-
-   uint32_t addr = segoffset(rdp.timg.addr) & BMASK;
+   _dxt = dxt << 20;
+   addr = segoffset(rdp.timg.addr) & BMASK;
 
    rdp.tiles[tile].ul_s = ul_s;
    rdp.tiles[tile].ul_t = ul_t;
@@ -762,9 +769,9 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
 
    //angrylion's advice to use ul_s in texture image offset and cnt calculations.
    //Helps to fix Vigilante 8 jpeg backgrounds and logos
-   uint32_t off = rdp.timg.addr + (ul_s << rdp.tiles[tile].size >> 1);
-   uint8_t *dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
-   uint32_t cnt = lr_s-ul_s+1;
+   off = rdp.timg.addr + (ul_s << rdp.tiles[tile].size >> 1);
+   dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
+   cnt = lr_s-ul_s+1;
    if (rdp.tiles[tile].size == 3)
       cnt <<= 1;
 
@@ -860,7 +867,7 @@ static void gDPSetRenderMode( uint32_t mode1, uint32_t mode2 )
 static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t lr_y )
 {
    int pd_multiplayer;
-
+   int32_t s_ul_x, s_lr_x, s_ul_y, s_lr_y;
 
    if ((ul_x > lr_x) || (ul_y > lr_y)) // Wrong coordinates, skip
       return;
@@ -940,10 +947,10 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
    //FRDP("scissor (%d,%d) -> (%d,%d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
 
    // KILL the floating point error with 0.01f
-   int32_t s_ul_x = (uint32_t)min(max(ul_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
-   int32_t s_lr_x = (uint32_t)min(max(lr_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
-   int32_t s_ul_y = (uint32_t)min(max(ul_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
-   int32_t s_lr_y = (uint32_t)min(max(lr_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
+   s_ul_x = (uint32_t)min(max(ul_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
+   s_lr_x = (uint32_t)min(max(lr_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
+   s_ul_y = (uint32_t)min(max(ul_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
+   s_lr_y = (uint32_t)min(max(lr_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
 
    if (s_lr_x < 0)
       s_lr_x = 0;
@@ -957,9 +964,10 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
    //FRDP (" - %d, %d, %d, %d\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 
    {
+      float Z;
       grFogMode(GR_FOG_DISABLE);
 
-      const float Z = (rdp.cycle_mode == G_CYC_FILL) ? 0.0f : set_sprite_combine_mode();
+      Z = (rdp.cycle_mode == G_CYC_FILL) ? 0.0f : set_sprite_combine_mode();
 
       // Draw the rectangle
       VERTEX v[4] = {
@@ -1471,10 +1479,11 @@ static void gDPSetColorImage(int32_t fmt, int32_t siz, int32_t width, int32_t im
    CI_SET = true;
    if (settings.swapmode > 0)
    {
+      int viSwapOK;
       if (rdp.zimg == rdp.cimg)
          rdp.updatescreen = 1;
 
-      int viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *gfx.VI_ORIGIN_REG)) ? false : true;
+      viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *gfx.VI_ORIGIN_REG)) ? false : true;
       if ((rdp.zimg != rdp.cimg) && (rdp.ocimg != rdp.cimg) && SwapOK && viSwapOK
 #ifdef HAVE_HWFBE
             && !rdp.cur_image

@@ -51,17 +51,17 @@ static void calc_point_light (VERTEX *v, float * vpos)
    {
       if (rdp.light[l].nonblack)
       {
-         float lvec[3];
+         float lvec[3], light_len2, light_len, at;
          lvec[0] = rdp.light[l].x - vpos[0];
          lvec[1] = rdp.light[l].y - vpos[1];
          lvec[2] = rdp.light[l].z - vpos[2];
 
-         float light_len2 = lvec[0]*lvec[0] + lvec[1]*lvec[1] + lvec[2]*lvec[2];
-         float light_len = squareRoot(light_len2);
+         light_len2 = lvec[0] * lvec[0] + lvec[1] * lvec[1] + lvec[2] * lvec[2];
+         light_len = squareRoot(light_len2);
 #ifdef EXTREME_LOGGING
          FRDP ("calc_point_light: len: %f, len2: %f\n", light_len, light_len2);
 #endif
-         float at = rdp.light[l].ca + light_len/65535.0f*rdp.light[l].la + light_len2/65535.0f*rdp.light[l].qa;
+         at = rdp.light[l].ca + light_len/65535.0f*rdp.light[l].la + light_len2/65535.0f*rdp.light[l].qa;
 
          if (at > 0.0f)
             light_intensity = 1/at;//DotProduct (lvec, nvec) / (light_len * normal_len * at);
@@ -93,7 +93,7 @@ static void calc_point_light (VERTEX *v, float * vpos)
 
 static void uc2_vertex(uint32_t w0, uint32_t w1)
 {
-   uint32_t i, l, addr;
+   uint32_t i, l, addr, geom_mode;
    int v0, n;
    float x, y, z;
    
@@ -115,7 +115,7 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
    if (v0 < 0)
       return;
 
-   uint32_t geom_mode = rdp.geom_mode;
+   geom_mode = rdp.geom_mode;
    if ((settings.hacks&hack_Fzero) && (rdp.geom_mode & G_TEXTURE_GEN))
    {
       if (((int16_t*)gfx.RDRAM)[(((addr) >> 1) + 4)^1] || ((int16_t*)gfx.RDRAM)[(((addr) >> 1) + 5)^1])
@@ -357,6 +357,9 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
 
 static void uc2_matrix(uint32_t w0, uint32_t w1)
 {
+   DECLAREALIGN16VAR(m[4][4]);
+   uint8_t command;
+
    if (!(w0 & 0x00FFFFFF))
    {
       uc6_obj_rectangle_r(w0, w1);
@@ -364,10 +367,9 @@ static void uc2_matrix(uint32_t w0, uint32_t w1)
    }
    LRDP("uc2:matrix\n");
 
-   DECLAREALIGN16VAR(m[4][4]);
    load_matrix(m, segoffset(w1));
 
-   uint8_t command = (uint8_t)((w0 ^ 1) & 0xFF);
+   command = (uint8_t)((w0 ^ 1) & 0xFF);
    switch (command)
    {
       case 0: // modelview mul nopush
@@ -499,6 +501,8 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             uint8_t *rdram_u8;
             int8_t *rdram_s8;
             int n;
+			uint32_t a;
+
             rdram_s8 = (int8_t*)gfx.RDRAM;
             rdram_u8 = (uint8_t*)gfx.RDRAM;
             n = ofs / 24;
@@ -530,7 +534,7 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             rdp.light[n].nonblack += rdram_u8[(addr+2)^3];
             gSPLight(gfx.RDRAM, w1, n);
 
-            uint32_t a = addr >> 1;
+            a = addr >> 1;
             rdp.light[n].x = (float)(((int16_t*)gfx.RDRAM)[(a+4)^1]);
             rdp.light[n].y = (float)(((int16_t*)gfx.RDRAM)[(a+5)^1]);
             rdp.light[n].z = (float)(((int16_t*)gfx.RDRAM)[(a+6)^1]);

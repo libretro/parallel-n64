@@ -74,8 +74,9 @@ static void uc5_matrix(uint32_t w0, uint32_t w1)
    if (multiply)
    {
       DECLAREALIGN16VAR(m[4][4]);
-      load_matrix(m, addr);
       DECLAREALIGN16VAR(m_src[4][4]);
+
+      load_matrix(m, addr);
       memcpy (m_src, rdp.dkrproj[0], 64);
       MulMatrices(m, m_src, rdp.dkrproj[n]);
    }
@@ -104,8 +105,11 @@ static void uc5_matrix(uint32_t w0, uint32_t w1)
 
 static void uc5_vertex(uint32_t w0, uint32_t w1)
 {
-   int i;
-   uint32_t addr = dma_offset_vtx + (segoffset(w1) & BMASK);
+   int i, n, first, prj, start;
+   float x, y, z;
+   uint32_t addr;
+   
+   addr = dma_offset_vtx + (segoffset(w1) & BMASK);
 
    // | cccc cccc 1111 1??? 0000 0002 2222 2222 | cmd1 = address |
    // c = vtx command
@@ -114,7 +118,7 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
    // ? = unknown, but used
    // 0 = unused
 
-   int n = ((w0 >> 19) & 0x1F);// + 1;
+   n = ((w0 >> 19) & 0x1F);// + 1;
    if (settings.hacks&hack_Diddy)
       n++;
 
@@ -126,17 +130,18 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
    else
       vtx_last = 0;
 
-   int first = ((w0 >> 9) & 0x1F) + vtx_last;
+   first = ((w0 >> 9) & 0x1F) + vtx_last;
    FRDP ("uc5:vertex - addr: %08lx, first: %d, count: %d, matrix: %08lx\n", addr, first, n, cur_mtx);
 
-   int prj = cur_mtx;
+   prj = cur_mtx;
 
-   int start = 0;
-   float x, y, z;
+   start = 0;
+
    for (i = first; i < first + n; i++)
    {
+      VERTEX *v;
       start = (i-first) * 10;
-      VERTEX *v = &rdp.vtx[i];
+      v = (VERTEX*)&rdp.vtx[i];
       x   = (float)((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 0)^1];
       y   = (float)((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 1)^1];
       z   = (float)((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 2)^1];
@@ -196,6 +201,8 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
 
 static void uc5_tridma(uint32_t w0, uint32_t w1)
 {
+   uint32_t addr;
+   int num, i, start, v0, v1, v2, flags;
    vtx_last = 0;    // we've drawn something, so the vertex index needs resetting
 
    // | cccc cccc 2222 0000 1111 1111 1111 0000 | cmd1 = address |
@@ -204,15 +211,14 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
    // 2 = method #2 of getting count
    // 0 = unused
 
-   uint32_t addr = segoffset(w1) & BMASK;
-   int num = (w0 & 0xFFF0) >> 4;
+   addr = segoffset(w1) & BMASK;
+   num = (w0 & 0xFFF0) >> 4;
    //int num = ((w0 & 0x00F00000) >> 20) + 1;  // same thing!
    FRDP("uc5:tridma #%d - addr: %08lx, count: %d\n", rdp.tri_n, addr, num);
 
-   int i, start, v0, v1, v2, flags;
-
    for (i = 0; i < num; i++)
    {
+      VERTEX *v[3];
       start = i << 4;
       v0 = gfx.RDRAM[addr+start];
       v1 = gfx.RDRAM[addr+start+1];
@@ -220,7 +226,6 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
 
       FRDP("tri #%d - %d, %d, %d\n", rdp.tri_n, v0, v1, v2);
 
-      VERTEX *v[3];
       v[0] = &rdp.vtx[v0];
       v[1] = &rdp.vtx[v1];
       v[2] = &rdp.vtx[v2];

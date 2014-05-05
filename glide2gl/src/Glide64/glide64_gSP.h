@@ -1285,9 +1285,13 @@ static void gSPTextureRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uin
       uint32_t tile, int32_t off_x_i, int32_t off_y_i, int32_t _dsdx, int32_t _dtdy,
       uint32_t flip)
 {
+   VERTEX *vptr;
    uint32_t prev_tile;
    float Z, dsdx, dtdy, s_ul_x, s_lr_x, s_ul_y, s_lr_y, off_size_x, off_size_y;
-   int i;
+   int i, n_vertices;
+   struct {
+      float ul_u, ul_v, lr_u, lr_v;
+   } texUV[2]; //struct for texture coordinates
 
    rdp.texrecting = 1;
 
@@ -1342,18 +1346,21 @@ static void gSPTextureRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uin
       off_size_y = (lr_y - ul_y - 1) * dtdy;
    }
 
-   struct {
-      float ul_u, ul_v, lr_u, lr_v;
-   } texUV[2]; //struct for texture coordinates
-
    //calculate texture coordinates
    for (i = 0; i < 2; i++)
    {
       if (rdp.cur_cache[i] && (rdp.tex & (i+1)))
       {
-         float sx = 1, sy = 1;
-         int x_i = off_x_i, y_i = off_y_i;
-         TILE *tile = &rdp.tiles[rdp.cur_tile + i];
+         float sx, sy;
+		 int x_i, y_i;
+		 TILE *tile;
+
+         sx = 1;
+		 sy = 1;
+         x_i = off_x_i;
+		 y_i = off_y_i;
+         tile = (TILE*)&rdp.tiles[rdp.cur_tile + i];
+
          //shifting
          if (tile->shift_s)
          {
@@ -1471,8 +1478,8 @@ static void gSPTextureRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uin
       vstd[2].v1 = texUV[1].ul_v;
    }
 
-   VERTEX *vptr = vstd;
-   int n_vertices = 4;
+   vptr = (VERTEX*)vstd;
+   n_vertices = 4;
 
    AllowShadeMods (vptr, n_vertices);
    for (i=0; i<n_vertices; i++)
@@ -1884,8 +1891,9 @@ static void gSPObjSprite(void)
 
    for (i = 0; i < 4; i++)
    {
-      float x = v[i].x;
-      float y = v[i].y;
+      float x, y;
+      x = v[i].x;
+      y = v[i].y;
       v[i].x = (x * mat_2d.A + y * mat_2d.B + mat_2d.X) * rdp.scale_x;
       v[i].y = (x * mat_2d.C + y * mat_2d.D + mat_2d.Y) * rdp.scale_y;
    }
@@ -1970,9 +1978,11 @@ static void gSPObjSubMatrix(uint32_t mtx)
  */
 static void gSPSetOtherMode(int32_t cmd, int32_t sft, int32_t len, uint32_t data)
 {
-   uint32_t mask = 0;
-   int i = len;
-   for (; i; i--)
+   uint32_t mask;
+   int i;
+   
+   mask = 0;
+   for (i = len; i; i--)
       mask = (mask << 1) | 1;
    mask <<= sft;
 
@@ -2149,8 +2159,9 @@ static void gSPDMAMatrix(uint32_t matrix, uint8_t index, uint8_t multiply)
    if (multiply)
    {
       DECLAREALIGN16VAR(m[4][4]);
-      load_matrix(m, addr);
       DECLAREALIGN16VAR(m_src[4][4]);
+
+      load_matrix(m, addr);
       memcpy (m_src, rdp.dkrproj[0], 64);
       MulMatrices(m, m_src, rdp.dkrproj[index]);
    }
@@ -2171,8 +2182,9 @@ static void gSPDMAVertex(uint32_t v, uint32_t n, uint32_t v0)
 
    for (i = v0; i < v0 + n; i++)
    {
+      VERTEX *v;
       start = (i-v0) * 10;
-      VERTEX *v = &rdp.vtx[i];
+      v = (VERTEX*)&rdp.vtx[i];
       x   = ((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 0)^1];
       y   = ((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 1)^1];
       z   = ((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 2)^1];
