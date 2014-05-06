@@ -155,7 +155,9 @@ void passe2(precomp_instr *dest, int start, int end, precomp_block *block)
       {
         DebugMessage(M64MSG_ERROR, "assembler pass2 error: offset too big for relative jump from %p to %p",
                      (block->code + jmp_offset_loc + 4), addr_dest);
+#if !defined(_MSC_VER)
         asm(" int $3; ");
+#endif
       }
     }
   }
@@ -172,7 +174,9 @@ void passe2(precomp_instr *dest, int start, int end, precomp_block *block)
     {
       DebugMessage(M64MSG_ERROR, "assembler pass2 error: offset too big between mem target: %p and code position: %p",
                    riprel_table[i].global_dst, rel_offset_ptr);
+#if !defined(_MSC_VER)
       asm(" int $3; ");
+#endif
     }
     *((int *) rel_offset_ptr) = (int) rip_rel_offset;
   }
@@ -200,7 +204,9 @@ void jump_end_rel8(void)
   if (jump_vec > 127 || jump_vec < -128)
   {
     DebugMessage(M64MSG_ERROR, "Error: 8-bit relative jump too long! From %x to %x", g_jump_start8, jump_end);
+#if !defined(_MSC_VER)
     asm(" int $3; ");
+#endif
   }
 
   code_length = g_jump_start8 - 1;

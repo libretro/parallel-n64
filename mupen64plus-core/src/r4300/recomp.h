@@ -22,6 +22,10 @@
 #ifndef RECOMP_H
 #define RECOMP_H
 
+#if defined(__LIBRETRO_WIN64__)
+#define __x86_64__
+#endif
+
 #include <stddef.h>
 #if defined(__x86_64__)
   #include "x86_64/assemble_struct.h"
