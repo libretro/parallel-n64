@@ -220,9 +220,7 @@ ifdef WITH_DYNAREC
    ifeq ($(WITH_DYNAREC), arm)
       CPPFLAGS += -DNEW_DYNAREC=3
 
-      CFILES += \
-         $(COREDIR)/src/r4300/empty_dynarec.c \
-         $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c
+      CFILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c
 
       OBJECTS += \
          $(COREDIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).o
