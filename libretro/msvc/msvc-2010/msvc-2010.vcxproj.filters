@@ -423,9 +423,6 @@
     <ClCompile Include="..\..\..\gles2rice\src\Video.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\empty_dynarec.c">
-      <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\exception.c">
       <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
     </ClCompile>
