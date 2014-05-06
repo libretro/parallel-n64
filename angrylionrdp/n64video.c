@@ -6108,6 +6108,10 @@ static void edgewalker_for_prims(INT32* ewdata)
 	INT32 yl = 0, ym = 0, yh = 0;
 	INT32 xl = 0, xm = 0, xh = 0;
 	INT32 dxldy = 0, dxhdy = 0, dxmdy = 0;
+	INT32 maxxmx, minxmx, maxxhx, minxhx, xrsc, xlsc, stickybit, yllimit, yhlimit;
+	int spix, ycur, ldflag, invaly, length, ylfar;
+	int yhclose, allover, allunder, curover, curunder, allinval;
+	INT32 clipxlshift, clipxhshift, curcross;
 
 	if (other_modes.f.stalederivs)
 	{
@@ -6321,15 +6325,16 @@ static void edgewalker_for_prims(INT32* ewdata)
 			z += dzde; \
 }
 
-	INT32 maxxmx, minxmx, maxxhx, minxhx;
-
-	int spix = 0;
-	int ycur =	yh & ~3;
-	int ldflag = (sign_dxhdy ^ flip) ? 0 : 3;
-	int invaly = 1;
-	int length = 0;
-	INT32 xrsc = 0, xlsc = 0, stickybit = 0;
-	INT32 yllimit = 0, yhlimit = 0;
+	spix = 0;
+	ycur =	yh & ~3;
+	ldflag = (sign_dxhdy ^ flip) ? 0 : 3;
+	invaly = 1;
+	length = 0;
+	xrsc = 0;
+	xlsc = 0;
+    stickybit = 0;
+	yllimit = 0;
+	yhlimit = 0;
 	if (yl & 0x2000)
 		yllimit = 1;
 	else if (yl & 0x1000)
@@ -6338,7 +6343,7 @@ static void edgewalker_for_prims(INT32* ewdata)
 		yllimit = (yl & 0xfff) < clip.yl;
 	yllimit = yllimit ? yl : clip.yl;
 
-	int ylfar = yllimit | 3;
+	ylfar = yllimit | 3;
 	if ((yl >> 2) > (ylfar >> 2))
 		ylfar += 4;
 	else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
@@ -6353,13 +6358,15 @@ static void edgewalker_for_prims(INT32* ewdata)
 		yhlimit = (yh >= clip.yh);
 	yhlimit = yhlimit ? yh : clip.yh;
 
-	int yhclose = yhlimit & ~3;
-
-	INT32 clipxlshift = clip.xl << 1;
-	INT32 clipxhshift = clip.xh << 1;
-	int allover = 1, allunder = 1, curover = 0, curunder = 0;
-	int allinval = 1;
-	INT32 curcross = 0;
+	yhclose = yhlimit & ~3;
+	clipxlshift = clip.xl << 1;
+	clipxhshift = clip.xh << 1;
+	allover = 1;
+	allunder = 1;
+	curover = 0;
+	curunder = 0;
+	allinval = 1;
+	curcross = 0;
 
 	xfrac = ((xright >> 8) & 0xff);
 
@@ -6557,21 +6564,44 @@ static void edgewalker_for_prims(INT32* ewdata)
 
 static void edgewalker_for_loads(INT32* lewdata)
 {
-	int j = 0;
-	int xleft = 0, xright = 0;
-	int xstart = 0, xend = 0;
-	int s = 0, t = 0, w = 0;
-	int dsdx = 0, dtdx = 0;
-	int dsdy = 0, dtdy = 0;
-	int dsde = 0, dtde = 0;
-	int tilenum = 0, flip = 0;
-	INT32 yl = 0, ym = 0, yh = 0;
-	INT32 xl = 0, xm = 0, xh = 0;
-	INT32 dxldy = 0, dxhdy = 0, dxmdy = 0;
+	int k, sign_dxhdy, do_offset, xfrac, j, xleft, xright, xstart, xend;
+	int s, t, w, dsdx, dtdx, dsdy, dtdy, dsde, dtde, tilenum, flip;
+	int commandcode, ltlut, coord_quad;
+	INT32 yl, ym, yh, xl, xm, xh, dxldy, dxhdy, dxmdy;
+	INT32 maxxmx, minxhx;
+	int spix, ycur, ylfar, valid_y, length;
+	INT32 xrsc, xlsc, stickybit, yllimit, yhlimit;
 
-	int commandcode = (lewdata[0] >> 24) & 0x3f;
-	int ltlut = (commandcode == 0x30);
-	int coord_quad = ltlut || (commandcode == 0x33);
+	j = 0;
+	xleft = 0;
+	xright = 0;
+	xstart = 0;
+	xend = 0;
+	s = 0;
+	t = 0;
+	w = 0;
+	dsdx = 0;
+	dtdx = 0;
+	dsdy = 0;
+	dtdy = 0;
+	dsde = 0;
+	dtde = 0;
+	tilenum = 0;
+	flip = 0;
+
+	yl = 0;
+	ym = 0;
+	yh = 0;
+	xl = 0;
+	xm = 0;
+	xh = 0;
+	dxldy = 0;
+	dxhdy = 0;
+	dxmdy = 0;
+
+	commandcode = (lewdata[0] >> 24) & 0x3f;
+	ltlut = (commandcode == 0x30);
+	coord_quad = ltlut || (commandcode == 0x33);
 	flip = 1;
 	max_level = 0;
 	tilenum = (lewdata[0] >> 16) & 7;
@@ -6612,14 +6642,11 @@ static void edgewalker_for_loads(INT32* lewdata)
 	
 	xright = xh & ~0x1;
 	xleft = xm & ~0x1;
-		
-	int k = 0;
 
-	int sign_dxhdy = 0;
-
-	int do_offset = 0;
-
-	int xfrac = 0;
+	k = 0;
+    sign_dxhdy = 0;
+    do_offset = 0;
+    xfrac = 0;
 
 
 
@@ -6637,17 +6664,17 @@ static void edgewalker_for_loads(INT32* lewdata)
 			t += dtde;		\
 }
 
-	INT32 maxxmx, minxhx;
-
-	int spix = 0;
-	int ycur =	yh & ~3;
-	int ylfar = yl | 3;
+	spix = 0;
+	ycur =	yh & ~3;
+	ylfar = yl | 3;
 	
-	int valid_y = 1;
-	int length = 0;
-	INT32 xrsc = 0, xlsc = 0, stickybit = 0;
-	INT32 yllimit = yl;
-	INT32 yhlimit = yh;
+	valid_y = 1;
+	length = 0;
+	xrsc = 0;
+	xlsc = 0;
+	stickybit = 0;
+	yllimit = yl;
+	yhlimit = yh;
 
 	xfrac = 0;
 	xend = xright >> 16;
@@ -7200,6 +7227,8 @@ static void rdp_tri_texshade_z(UINT32 w1, UINT32 w2)
 
 static void rdp_tex_rect(UINT32 w1, UINT32 w2)
 {
+	UINT32 xlint, xhint;
+	INT32 ewdata[44];
 	UINT32 w3 = rdp_cmd_data[rdp_cmd_cur + 2];
 	UINT32 w4 = rdp_cmd_data[rdp_cmd_cur + 3];
 
@@ -7221,10 +7250,10 @@ static void rdp_tex_rect(UINT32 w1, UINT32 w2)
 	if (other_modes.cycle_type == CYCLE_TYPE_FILL || other_modes.cycle_type == CYCLE_TYPE_COPY)
 		yl |= 3;
 
-	UINT32 xlint = (xl >> 2) & 0x3ff;
-	UINT32 xhint = (xh >> 2) & 0x3ff;
 
-	INT32 ewdata[44];
+	xlint = (xl >> 2) & 0x3ff;
+	xhint = (xh >> 2) & 0x3ff;
+
 	ewdata[0] = (0x24 << 24) | ((0x80 | tilenum) << 16) | yl;
 	ewdata[1] = (yl << 16) | yh;
 	ewdata[2] = (xlint << 16) | ((xl & 3) << 14);
@@ -7260,6 +7289,8 @@ static void rdp_tex_rect(UINT32 w1, UINT32 w2)
 
 static void rdp_tex_rect_flip(UINT32 w1, UINT32 w2)
 {
+	UINT32 xlint, xhint;
+	INT32 ewdata[44];
 	UINT32 w3 = rdp_cmd_data[rdp_cmd_cur+2];
 	UINT32 w4 = rdp_cmd_data[rdp_cmd_cur+3];
 	
@@ -7281,10 +7312,8 @@ static void rdp_tex_rect_flip(UINT32 w1, UINT32 w2)
 	if (other_modes.cycle_type == CYCLE_TYPE_FILL || other_modes.cycle_type == CYCLE_TYPE_COPY)
 		yl |= 3;
 
-	UINT32 xlint = (xl >> 2) & 0x3ff;
-	UINT32 xhint = (xh >> 2) & 0x3ff;
-
-	INT32 ewdata[44];
+	xlint = (xl >> 2) & 0x3ff;
+	xhint = (xh >> 2) & 0x3ff;
 	ewdata[0] = (0x25 << 24) | ((0x80 | tilenum) << 16) | yl;
 	ewdata[1] = (yl << 16) | yh;
 	ewdata[2] = (xlint << 16) | ((xl & 3) << 14);
@@ -7463,7 +7492,10 @@ static void rdp_set_other_modes(UINT32 w1, UINT32 w2)
 
 void deduce_derivatives()
 {
-	
+	int texel1_used_in_cc1, texel0_used_in_cc1, texel0_used_in_cc0, texel1_used_in_cc0;
+	int texels_in_cc0, texels_in_cc1;
+	int lod_frac_used_in_cc1, lod_frac_used_in_cc0, lodfracused;
+
 	other_modes.f.partialreject_1cycle = (blender2b_a[0] == &inv_pixel_color.a && blender1b_a[0] == &pixel_color.a);
 	other_modes.f.partialreject_2cycle = (blender2b_a[1] == &inv_pixel_color.a && blender1b_a[1] == &pixel_color.a);
 
@@ -7480,9 +7512,14 @@ void deduce_derivatives()
 	tcdiv_ptr = tcdiv_func[other_modes.persp_tex_en];
 
 	
-	int texel1_used_in_cc1 = 0, texel0_used_in_cc1 = 0, texel0_used_in_cc0 = 0, texel1_used_in_cc0 = 0;
-	int texels_in_cc0 = 0, texels_in_cc1 = 0;
-	int lod_frac_used_in_cc1 = 0, lod_frac_used_in_cc0 = 0;
+	texel1_used_in_cc1 = 0;
+	texel0_used_in_cc1 = 0;
+	texel0_used_in_cc0 = 0;
+	texel1_used_in_cc0 = 0;
+	texels_in_cc0 = 0;
+	texels_in_cc1 = 0;
+	lod_frac_used_in_cc1 = 0;
+	lod_frac_used_in_cc0 = 0;
 
 	if ((combiner_rgbmul_r[1] == &lod_frac) || (combiner_alphamul[1] == &lod_frac))
 		lod_frac_used_in_cc1 = 1;
@@ -7526,7 +7563,7 @@ void deduce_derivatives()
 		render_spans_2cycle_ptr = render_spans_2cycle_func[0];
 
 	
-	int lodfracused = 0;
+	lodfracused = 0;
 
 	if ((other_modes.cycle_type == CYCLE_TYPE_2 && (lod_frac_used_in_cc0 || lod_frac_used_in_cc1)) || \
 		(other_modes.cycle_type == CYCLE_TYPE_1 && lod_frac_used_in_cc1))
@@ -7564,9 +7601,11 @@ static void rdp_set_tile_size(UINT32 w1, UINT32 w2)
 	
 static void rdp_load_block(UINT32 w1, UINT32 w2)
 {
-	int tilenum = (w2 >> 24) & 0x7;
-	int sl, sh, tl, dxt;
-						
+	
+	int sl, sh, tl, dxt, tilenum, tlclamped;
+	INT32 lewdata[10];
+			
+    tilenum = (w2 >> 24) & 0x7;
 	
 	tile[tilenum].sl = sl = ((w1 >> 12) & 0xfff);
 	tile[tilenum].tl = tl = ((w1 >>  0) & 0xfff);
@@ -7575,9 +7614,7 @@ static void rdp_load_block(UINT32 w1, UINT32 w2)
 
 	calculate_clamp_diffs(tilenum);
 
-	int tlclamped = tl & 0x3ff;
-
-	INT32 lewdata[10];
+	tlclamped = tl & 0x3ff;
 	
 	lewdata[0] = (w1 & 0xff000000) | (0x10 << 19) | (tilenum << 16) | ((tlclamped << 2) | 3);
 	lewdata[1] = (((tlclamped << 2) | 3) << 16) | (tlclamped << 2);
@@ -7608,9 +7645,9 @@ static void rdp_load_tile(UINT32 w1, UINT32 w2)
 
 void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2)
 {
-	int tilenum = (w2 >> 24) & 0x7;
-	int sl, tl, sh, th;
-
+	INT32 lewdata[10];
+	int sl, tl, sh, th, tilenum;
+	tilenum = (w2 >> 24) & 0x7;
 	
 	tile[tilenum].sl = sl = ((w1 >> 12) & 0xfff);
 	tile[tilenum].tl = tl = ((w1 >>  0) & 0xfff);
@@ -7618,9 +7655,6 @@ void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2)
 	tile[tilenum].th = th = ((w2 >>  0) & 0xfff);
 
 	calculate_clamp_diffs(tilenum);
-
-	
-	INT32 lewdata[10];
 
 	lewdata[0] = (w1 & 0xff000000) | (0x10 << 19) | (tilenum << 16) | (th | 3);
 	lewdata[1] = ((th | 3) << 16) | (tl);
@@ -7659,18 +7693,21 @@ static void rdp_set_tile(UINT32 w1, UINT32 w2)
 
 static void rdp_fill_rect(UINT32 w1, UINT32 w2)
 {
-	UINT32 xl = (w1 >> 12) & 0xfff;
-	UINT32 yl = (w1 >>  0) & 0xfff;
-	UINT32 xh = (w2 >> 12) & 0xfff;
-	UINT32 yh = (w2 >>  0) & 0xfff;
+    UINT32 xl, yl, xh, yh, xlint, xhint;
+	INT32 ewdata[44];
+
+	xl = (w1 >> 12) & 0xfff;
+	yl = (w1 >>  0) & 0xfff;
+	xh = (w2 >> 12) & 0xfff;
+	yh = (w2 >>  0) & 0xfff;
 
 	if (other_modes.cycle_type == CYCLE_TYPE_FILL || other_modes.cycle_type == CYCLE_TYPE_COPY)
 		yl |= 3;
 
-	UINT32 xlint = (xl >> 2) & 0x3ff;
-	UINT32 xhint = (xh >> 2) & 0x3ff;
+	xlint = (xl >> 2) & 0x3ff;
+	xhint = (xh >> 2) & 0x3ff;
 
-	INT32 ewdata[44];
+
 	ewdata[0] = (0x3680 << 16) | yl;
 	ewdata[1] = (yl << 16) | yh;
 	ewdata[2] = (xlint << 16) | ((xl & 3) << 14);
@@ -7973,14 +8010,9 @@ STRICTINLINE INT32 alpha_combiner_equation(INT32 a, INT32 b, INT32 c, INT32 d)
 
 STRICTINLINE void blender_equation_cycle0(int* r, int* g, int* b)
 {
-	int blend1a, blend2a;
-	int blr, blg, blb, sum;
+	int blend1a, blend2a, blr, blg, blb, sum, mulb;
 	blend1a = *blender1b_a[0] >> 3;
 	blend2a = *blender2b_a[0] >> 3;
-
-	int mulb;
-    
-	
 	
 	if (other_modes.f.special_bsel0)
 	{
@@ -8037,12 +8069,11 @@ STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b)
 
 STRICTINLINE void blender_equation_cycle1(int* r, int* g, int* b)
 {
-	int blend1a, blend2a;
+	int blend1a, blend2a, mulb;
 	int blr, blg, blb, sum;
 	blend1a = *blender1b_a[1] >> 3;
 	blend2a = *blender2b_a[1] >> 3;
 
-	int mulb;
 	if (other_modes.f.special_bsel1)
 	{
 		blend1a = (blend1a >> blshifta) & 0x3C;
@@ -8204,12 +8235,14 @@ STRICTINLINE void fbwrite_16(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT
 #endif
 
 	UINT32 fb;
+	INT16 finalcolor; 
+	INT32 finalcvg;
 	UINT16 rval;
 	UINT8 hval;
+
 	fb = (fb_address >> 1) + curpixel;	
 
-	INT32 finalcvg = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
-	INT16 finalcolor; 
+	finalcvg = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
 
 	if (fb_format == FORMAT_RGBA)
 	{
@@ -8229,10 +8262,12 @@ STRICTINLINE void fbwrite_16(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT
 
 STRICTINLINE void fbwrite_32(UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en, UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
-	UINT32 fb = (fb_address >> 2) + curpixel;
+	UINT32 fb;
+	INT32 finalcolor, finalcvg;
 
-	INT32 finalcolor;
-	INT32 finalcvg = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
+    fb = (fb_address >> 2) + curpixel;
+
+	finalcvg = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
 		
 	finalcolor = (r << 24) | (g << 16) | (b << 8);
 	finalcolor |= (finalcvg << 5);
@@ -8306,10 +8341,9 @@ STRICTINLINE void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 STRICTINLINE void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
 	UINT16 fword;
-	UINT8 hbyte;
+	UINT8 hbyte, lowbits;
 	UINT32 addr = (fb_address >> 1) + curpixel;
 	PAIRREAD16(fword, hbyte, addr);
-	UINT8 lowbits;
 
 	if (fb_format == FORMAT_RGBA)
 	{
@@ -8339,10 +8373,9 @@ STRICTINLINE void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 STRICTINLINE void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
 	UINT16 fword;
-	UINT8 hbyte;
+	UINT8 hbyte, lowbits;
 	UINT32 addr = (fb_address >> 1) + curpixel;
 	PAIRREAD16(fword, hbyte, addr);
-	UINT8 lowbits;
 
 	if (fb_format == FORMAT_RGBA)
 	{
@@ -8651,16 +8684,18 @@ STRICTINLINE UINT32 dz_compress(UINT32 value)
 
 STRICTINLINE UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc, UINT32* blend_en, UINT32* prewrap, UINT32* curpixel_cvg, UINT32 curpixel_memcvg)
 {
-
-
+	UINT32 oz, dzmem, zval, hval;
+	INT32 rawdzmem;
+		UINT32 dznew, dznotshift, farther, dzenc, nearer, max, infront;
+		INT32 diff;
+		int overflow, cvgcoeff;
 	int force_coplanar = 0;
 	sz &= 0x3ffff;
 
-	UINT32 oz, dzmem, zval, hval;
-	INT32 rawdzmem;
-
 	if (other_modes.z_compare_en)
 	{
+	    UINT32 dzmemmodifier;
+		int precision_factor;
 		PAIRREAD16(zval, hval, zcurpixel);
 		oz = z_decompress(zval);		
 		rawdzmem = ((zval & 3) << 2) | hval;
@@ -8670,10 +8705,10 @@ STRICTINLINE UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzp
 		blshifta = CLIP(dzpixenc - rawdzmem, 0, 4);
 		blshiftb = CLIP(rawdzmem - dzpixenc, 0, 4);
 
-		int precision_factor = (zval >> 13) & 0xf;
+		precision_factor = (zval >> 13) & 0xf;
 
 		
-		UINT32 dzmemmodifier; 
+		 
 		if (precision_factor < 3)
 		{
 			if (dzmem != 0x8000)
@@ -8693,25 +8728,22 @@ STRICTINLINE UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzp
 		if (dzmem > 0x8000)
 			dzmem = 0xffff;
 
-		UINT32 dznew = (dzmem > dzpix) ? dzmem : (UINT32)dzpix;
-		UINT32 dznotshift = dznew;
+		dznew = (dzmem > dzpix) ? dzmem : (UINT32)dzpix;
+		dznotshift = dznew;
 		dznew <<= 3;
 		
 
-		UINT32 farther = force_coplanar || ((sz + dznew) >= oz);
+		farther = force_coplanar || ((sz + dznew) >= oz);
 		
-		int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
+		overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
 		*blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en && farther);
 		
 		*prewrap = overflow;
 
 		
 		
-		int cvgcoeff = 0;
-		UINT32 dzenc = 0;
-	
-		INT32 diff;
-		UINT32 nearer, max, infront;
+		cvgcoeff = 0;
+		dzenc = 0;
 
 		switch(other_modes.z_mode)
 		{
@@ -8755,12 +8787,13 @@ STRICTINLINE UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzp
 	}
 	else
 	{
+		int overflow;
 		
 
 		blshifta = CLIP(dzpixenc - 0xf, 0, 4);
 		blshiftb = CLIP(0xf - dzpixenc, 0, 4);
 
-		int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
+		overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
 		*blend_en = other_modes.force_blend || (!overflow && other_modes.antialias_en);
 		*prewrap = overflow;
 
@@ -8840,8 +8873,8 @@ STRICTINLINE void video_filter16(int* endr, int* endg, int* endb, UINT32 fboffse
 
 
 
-
-
+		UINT32 colr, colg, colb, coeff;
+    UINT32 idx, leftup, rightup, toleft, toright, leftdown, rightdown;
 	UINT32 penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
 	UINT16 pix;
 	UINT32 numoffull = 1;
@@ -8860,18 +8893,14 @@ STRICTINLINE void video_filter16(int* endr, int* endg, int* endb, UINT32 fboffse
 	invr[0] = (~r) & 0xff;
 	invg[0] = (~g) & 0xff;
 	invb[0] = (~b) & 0xff;
-
 	
-	
-
-	
-	UINT32 idx = (fboffset >> 1) + num;
-	UINT32 leftup = idx - hres - 1;
-	UINT32 rightup = idx - hres + 1;
-	UINT32 toleft = idx - 2;
-	UINT32 toright = idx + 2;
-	UINT32 leftdown = idx + hres - 1;
-	UINT32 rightdown = idx + hres + 1;
+	idx = (fboffset >> 1) + num;
+	leftup = idx - hres - 1;
+	rightup = idx - hres + 1;
+	toleft = idx - 2;
+	toright = idx + 2;
+	leftdown = idx + hres - 1;
+	rightdown = idx + hres + 1;
 
 
 #define VI_ANDER(x) {													\
@@ -8901,8 +8930,6 @@ STRICTINLINE void video_filter16(int* endr, int* endg, int* endb, UINT32 fboffse
 	VI_ANDER(leftdown);
 	VI_ANDER(rightdown);
 
-	UINT32 colr, colg, colb;
-
 	video_max_optimized(&backr[0], &penumaxr);
 	video_max_optimized(&backg[0], &penumaxg);
 	video_max_optimized(&backb[0], &penumaxb);
@@ -8916,7 +8943,7 @@ STRICTINLINE void video_filter16(int* endr, int* endg, int* endb, UINT32 fboffse
 
 	
 	
-	UINT32 coeff = 7 - centercvg;
+	coeff = 7 - centercvg;
 	colr = penuminr + penumaxr - (r << 1);
 	colg = penuming + penumaxg - (g << 1);
 	colb = penuminb + penumaxb - (b << 1);
@@ -8935,13 +8962,14 @@ STRICTINLINE void video_filter16(int* endr, int* endg, int* endb, UINT32 fboffse
 
 STRICTINLINE void video_filter32(int* endr, int* endg, int* endb, UINT32 fboffset, UINT32 num, UINT32 hres, UINT32 centercvg)
 {
-
+	UINT32 colr, colg, colb, coeff;
 	UINT32 penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
 	UINT32 numoffull = 1;
 	UINT32 pix = 0, pixcvg = 0;
 	UINT32 r, g, b; 
 	UINT32 backr[7], backg[7], backb[7];
 	UINT32 invr[7], invg[7], invb[7];
+	UINT32 idx, leftup, rightup, toleft, toright, leftdown, rightdown;
 
 	r = *endr;
 	g = *endg;
@@ -8954,13 +8982,13 @@ STRICTINLINE void video_filter32(int* endr, int* endg, int* endb, UINT32 fboffse
 	invg[0] = (~g) & 0xff;
 	invb[0] = (~b) & 0xff;
 
-	UINT32 idx = (fboffset >> 2) + num;
-	UINT32 leftup = idx - hres - 1;
-	UINT32 rightup = idx - hres + 1;
-	UINT32 toleft = idx - 2;
-	UINT32 toright = idx + 2;
-	UINT32 leftdown = idx + hres - 1;
-	UINT32 rightdown = idx + hres + 1;
+	idx = (fboffset >> 2) + num;
+	leftup = idx - hres - 1;
+	rightup = idx - hres + 1;
+	toleft = idx - 2;
+	toright = idx + 2;
+	leftdown = idx + hres - 1;
+	rightdown = idx + hres + 1;
 
 #define VI_ANDER32(x) {													\
 			pix = RREADIDX32(x);										\
@@ -8990,8 +9018,6 @@ STRICTINLINE void video_filter32(int* endr, int* endg, int* endb, UINT32 fboffse
 	VI_ANDER32(leftdown);
 	VI_ANDER32(rightdown);
 
-	UINT32 colr, colg, colb;
-
 	video_max_optimized(&backr[0], &penumaxr);
 	video_max_optimized(&backg[0], &penumaxg);
 	video_max_optimized(&backb[0], &penumaxb);
@@ -9003,7 +9029,7 @@ STRICTINLINE void video_filter32(int* endr, int* endg, int* endb, UINT32 fboffse
 	penuming = (~penuming) & 0xff;
 	penuminb = (~penuminb) & 0xff;
 
-	UINT32 coeff = 7 - centercvg;
+	coeff = 7 - centercvg;
 	colr = penuminr + penumaxr - (r << 1);
 	colg = penuming + penumaxg - (g << 1);
 	colb = penuminb + penumaxb - (b << 1);
@@ -9329,12 +9355,10 @@ STRICTINLINE void rgb_dither_nothing(int* r, int* g, int* b, int dith)
 
 STRICTINLINE void get_dither_noise_complete(int x, int y, int* cdith, int* adith)
 {
-
+	int dithindex;
 	
 	noise = ((irand() & 7) << 6) | 0x20;
-	
-	
-	int dithindex; 
+	 
 	switch(other_modes.f.rgb_alpha_dither)
 	{
 	case 0:
@@ -10357,13 +10381,14 @@ STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, 
 
 STRICTINLINE void tclod_4x17_to_15(INT32 scurr, INT32 snext, INT32 tcurr, INT32 tnext, INT32 previous, INT32* lod)
 {
+    int dels, delt;
 
 
 
-	int dels = SIGN(snext, 17) - SIGN(scurr, 17);
+	dels = SIGN(snext, 17) - SIGN(scurr, 17);
 	if (dels & 0x20000)
 		dels = ~dels & 0x1ffff;
-	int delt = SIGN(tnext, 17) - SIGN(tcurr, 17);
+	delt = SIGN(tnext, 17) - SIGN(tcurr, 17);
 	if(delt & 0x20000)
 		delt = ~delt & 0x1ffff;
 	
@@ -10501,6 +10526,7 @@ void col_decode16(UINT16* addr, COLOR* col)
 
 void show_combiner_equation(void)
 {
+UINT32 LocalDebugMode;
 const char *saRGBText[] =
 {
   "PREV",			"TEXEL0",			"TEXEL1",			"PRIM", 
@@ -10577,7 +10603,7 @@ if (other_modes.cycle_type == CYCLE_TYPE_2)
 	saRGBText[combine.sub_a_rgb1],sbRGBText[combine.sub_b_rgb1],mRGBText[combine.mul_rgb1],
 	aRGBText[combine.add_rgb1],saAText[combine.sub_a_a1],sbAText[combine.sub_b_a1],
 	mAText[combine.mul_a1],aAText[combine.add_a1]);
-UINT32 LocalDebugMode=0;
+LocalDebugMode=0;
 if (LocalDebugMode)
 	popmessage("%d %d %d %d %d %d %d %d",combine.sub_a_rgb0,combine.sub_b_rgb0,combine.mul_rgb0,combine.add_rgb0,
 	combine.sub_a_a0,combine.sub_b_a0,combine.mul_a0,combine.add_a0);
