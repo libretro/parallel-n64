@@ -555,5 +555,8 @@
     <ClCompile Include="..\..\..\tools\rzlib\zutil.c">
       <Filter>Source Files\rzlib</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\cc_resampler.c">
+      <Filter>Source Files\libretro</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

@@ -162,18 +162,18 @@ typedef struct rarch_CC_resampler
    void (*process)(void *re, struct resampler_data *data);
 } rarch_CC_resampler_t;
 
-static inline float cc_int(float x, float b)
+static INLINE float cc_int(float x, float b)
 {
    float val = x * b * M_PI + sinf(x * b * M_PI);
    return (val > M_PI) ? M_PI : (val < -M_PI) ? -M_PI : val;
 }
 
-static inline float cc_kernel(float x, float b)
+static INLINE float cc_kernel(float x, float b)
 {
    return (cc_int(x + 0.5, b) - cc_int(x - 0.5, b)) / (2.0 * M_PI);
 }
 
-static inline void add_to(const audio_frame_float_t *source, audio_frame_float_t *target, float ratio)
+static INLINE void add_to(const audio_frame_float_t *source, audio_frame_float_t *target, float ratio)
 {
    target->l += source->l * ratio;
    target->r += source->r * ratio;
