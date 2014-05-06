@@ -5319,20 +5319,18 @@ void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
 
 void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
 {
-	int zb = zb_address >> 1;
-	int zbcur;
+	int tile1, prim_tile, i, j, drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc, dzpix,
+		xinc, zb, zbcur;
 	UINT8 offx, offy;
-	UINT32 blend_en;
-	UINT32 prewrap;
-	UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+	UINT32 blend_en, prewrap, curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
+	int dzpixenc, cdith, adith, r, g, b, a, z, s, t, w, sr, sg, sb, sa, sz, ss, st, sw, xstart, xend, xendsc, sss, sst,
+		curpixel, x, length, scdiff;
+	UINT32 fir, fig, fib;
 
-	int tile1 = tilenum;
-	int prim_tile = tilenum;
+	zb = zb_address >> 1;
+	tile1 = tilenum;
+	prim_tile = tilenum;
 
-	int i, j;
-
-	int drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc;
-	int xinc;
 	if (flip)
 	{
 		drinc = spans_dr;
@@ -5358,7 +5356,6 @@ void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
 		xinc = -1;
 	}
 
-	int dzpix;
 	if (!other_modes.z_source_sel)
 		dzpix = spans_dzpix;
 	else
@@ -5366,17 +5363,13 @@ void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
 		dzpix = primitive_delta_z;
 		dzinc = spans_cdz = spans_dzdy = 0;
 	}
-	int dzpixenc = dz_compress(dzpix);
+	dzpixenc = dz_compress(dzpix);
+	cdith = 7;
+	adith = 0;
 
-	int cdith = 7, adith = 0;
-	int r, g, b, a, z, s, t, w;
-	int sr, sg, sb, sa, sz, ss, st, sw;
-	int xstart, xend, xendsc;
-	int sss = 0, sst = 0;
-	int curpixel = 0;
-	
-	int x, length, scdiff;
-	UINT32 fir, fig, fib;
+	sss = 0;
+	sst = 0;
+	curpixel = 0;
 				
 	for (i = start; i <= end; i++)
 	{
@@ -5483,17 +5476,21 @@ void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
 
 
 void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
-{
-	int zb = zb_address >> 1;
-	int zbcur;
+{	
+	int zbcur, dzpix;
 	UINT8 offx, offy;
-	int i, j;
+	int i, j, zb;
 	UINT32 blend_en;
 	UINT32 prewrap;
 	UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-
+	int dzpixenc, cdith, adith, r, g, b, a, z, sr, sg, sb, sa, sz, xstart, xend, xendsc, curpixel,
+		x, length, scdiff;
+	UINT32 fir, fig, fib;
 	int drinc, dginc, dbinc, dainc, dzinc;
 	int xinc;
+
+	zb = zb_address >> 1;
+
 	if (flip)
 	{
 		drinc = spans_dr;
@@ -5513,7 +5510,6 @@ void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 		xinc = -1;
 	}
 
-	int dzpix;
 	if (!other_modes.z_source_sel)
 		dzpix = spans_dzpix;
 	else
@@ -5521,16 +5517,11 @@ void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 		dzpix = primitive_delta_z;
 		dzinc = spans_cdz = spans_dzdy = 0;
 	}
-	int dzpixenc = dz_compress(dzpix);
 
-	int cdith = 7, adith = 0;
-	int r, g, b, a, z;
-	int sr, sg, sb, sa, sz;
-	int xstart, xend, xendsc;
-	int curpixel = 0;
-	
-	int x, length, scdiff;
-	UINT32 fir, fig, fib;
+	dzpixenc = dz_compress(dzpix);
+    cdith = 7;
+	adith = 0;
+	curpixel = 0;	
 				
 	for (i = start; i <= end; i++)
 	{
@@ -5618,23 +5609,20 @@ void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
 void render_spans_fill(int start, int end, int flip)
 {
+	int i, j, fastkillbits, slowkillbits, xinc, xstart, xendsc, prevxstart, curpixel, x, length;
 	if (fb_size == PIXEL_SIZE_4BIT)
 	{
 		rdp_pipeline_crashed = 1;
 		return;
 	}
-
-	int i, j;
 	
-	int fastkillbits = other_modes.image_read_en || other_modes.z_compare_en;
-	int slowkillbits = other_modes.z_update_en && !other_modes.z_source_sel && !fastkillbits;
+	fastkillbits = other_modes.image_read_en || other_modes.z_compare_en;
+	slowkillbits = other_modes.z_update_en && !other_modes.z_source_sel && !fastkillbits;
 
-	int xinc = flip ? 1 : -1;
+	xinc = flip ? 1 : -1;
 
-	int xstart = 0, xendsc;
-	int prevxstart;
-	int curpixel = 0;
-	int x, length;
+	xstart = 0;
+	curpixel = 0;
 				
 	for (i = start; i <= end; i++)
 	{
@@ -5684,7 +5672,12 @@ void render_spans_fill(int start, int end, int flip)
 
 void render_spans_copy(int start, int end, int tilenum, int flip)
 {
-	int i, j, k;
+	int i, j, k, tile1, prim_tile, dsinc, dtinc, dwinc, xinc;
+	int s, t, w, ss, st, sw, sss, sst, ssw, diff, fb_index, length, xstart, xendsc;
+	int fbadvance, fbptr_advance, copywmask, bytesperpixel, alphamask;
+	UINT32 hidword, hidword1, lowdword, lowdword1, fbptr, tempdword, tempbyte, fbendptr;
+	INT32 threshold, currthreshold;
+	UINT64 copyqword;
 
 	if (fb_size == PIXEL_SIZE_32BIT)
 	{
@@ -5692,11 +5685,8 @@ void render_spans_copy(int start, int end, int tilenum, int flip)
 		return;
 	}
 	
-	int tile1 = tilenum;
-	int prim_tile = tilenum;
-
-	int dsinc, dtinc, dwinc;
-	int xinc;
+	tile1 = tilenum;
+	prim_tile = tilenum;
 	if (flip)
 	{
 		dsinc = spans_ds;
@@ -5712,22 +5702,32 @@ void render_spans_copy(int start, int end, int tilenum, int flip)
 		xinc = -1;
 	}
 
-	int xstart = 0, xendsc;
-	int s = 0, t = 0, w = 0, ss = 0, st = 0, sw = 0, sss = 0, sst = 0, ssw = 0;
-	int fb_index, length;
-	int diff = 0;
+	xstart = 0;
+	s = 0;
+	t = 0;
+	w = 0;
+	ss = 0;
+	st = 0;
+	sw = 0;
+	sss = 0;
+	sst = 0;
+	ssw = 0;
+	diff = 0;
 
-	UINT32 hidword = 0, lowdword = 0;
-	UINT32 hidword1 = 0, lowdword1 = 0;
-	int fbadvance = (fb_size == PIXEL_SIZE_4BIT) ? 8 : 16 >> fb_size;
-	UINT32 fbptr = 0;
-	int fbptr_advance = flip ? 8 : -8;
-	UINT64 copyqword = 0;
-	UINT32 tempdword = 0, tempbyte = 0;
-	int copywmask = 0, alphamask = 0;
-	int bytesperpixel = (fb_size == PIXEL_SIZE_4BIT) ? 1 : (1 << (fb_size - 1));
-	UINT32 fbendptr = 0;
-	INT32 threshold, currthreshold;
+	hidword = 0;
+	lowdword = 0;
+	hidword1 = 0;
+	lowdword1 = 0;
+	fbadvance = (fb_size == PIXEL_SIZE_4BIT) ? 8 : 16 >> fb_size;
+	fbptr = 0;
+	fbptr_advance = flip ? 8 : -8;
+	copyqword = 0;
+	tempdword = 0;
+	tempbyte = 0;
+	copywmask = 0;
+	alphamask = 0;
+	bytesperpixel = (fb_size == PIXEL_SIZE_4BIT) ? 1 : (1 << (fb_size - 1));
+	fbendptr = 0;
 
 #define PIXELS_TO_BYTES_SPECIAL4(pix, siz) ((siz) ? PIXELS_TO_BYTES(pix, siz) : (pix))
 				
@@ -5839,30 +5839,32 @@ void render_spans_copy(int start, int end, int tilenum, int flip)
 
 void loading_pipeline(int start, int end, int tilenum, int coord_quad, int ltlut)
 {
+	int localdebugmode, cnt, i, j, dsinc, dtinc, dswap;
+	int s, t, ss, st, xstart, xend, xendsc, sss, sst, ti_index, length;
+	int tiadvance, spanadvance, tiptr, tmem_formatting;
+	UINT32 tmemidx0, tmemidx1, tmemidx2, tmemidx3;
+	UINT32 readval0, readval1, readval2, readval3;
+	UINT32 readidx32, bit3fl, hibit;
+	UINT64 loadqword;
+	UINT16 *tmem16, tempshort;
 
-
-	int localdebugmode = 0, cnt = 0;
-	int i, j;
-
-	int dsinc, dtinc;
+	localdebugmode = 0;
+	cnt = 0;
 	dsinc = spans_ds;
 	dtinc = spans_dt;
 
-	int s, t;
-	int ss, st;
-	int xstart, xend, xendsc;
-	int sss = 0, sst = 0;
-	int ti_index, length;
+	sss = 0;
+	sst = 0;
 
-	UINT32 tmemidx0 = 0, tmemidx1 = 0, tmemidx2 = 0, tmemidx3 = 0;
-	int dswap = 0;
-	UINT16* tmem16 = (UINT16*)TMEM;
-	UINT32 readval0, readval1, readval2, readval3;
-	UINT32 readidx32;
-	UINT64 loadqword;
-	UINT16 tempshort;
-	int tmem_formatting = 0;
-	UINT32 bit3fl = 0, hibit = 0;
+	tmemidx0 = 0;
+	tmemidx1 = 0;
+	tmemidx2 = 0;
+	tmemidx3 = 0;
+	dswap = 0;
+	tmem16 = (UINT16*)TMEM;
+	tmem_formatting = 0;
+	bit3fl = 0;
+	hibit = 0;
 
 	if (end > start && ltlut)
 	{
@@ -5877,8 +5879,9 @@ void loading_pipeline(int start, int end, int tilenum, int coord_quad, int ltlut
 	else
 		tmem_formatting = 2;
 
-	int tiadvance = 0, spanadvance = 0;
-	int tiptr = 0;
+	tiadvance = 0;
+	spanadvance = 0;
+	tiptr = 0;
 	switch (ti_size)
 	{
 	case PIXEL_SIZE_4BIT:
@@ -6089,6 +6092,11 @@ void loading_pipeline(int start, int end, int tilenum, int coord_quad, int ltlut
 
 static void edgewalker_for_prims(INT32* ewdata)
 {
+	int xfrac, dsdxh, dtdxh, dwdxh, drdxh, dgdxh, dbdxh, dadxh, dzdxh;
+	int dsdiff, dtdiff, dwdiff, drdiff, dgdiff, dbdiff, dadiff, dzdiff;
+	int dsdeh, dtdeh, dwdeh, drdeh, dgdeh, dbdeh, dadeh, dzdeh, dsdyh, dtdyh, dwdyh, drdyh, dgdyh, dbdyh, dadyh, dzdyh; 
+	int sign_dxhdy, do_offset, k;
+    int dzdy_dz, dzdx_dz;
 	int j = 0;
 	int xleft = 0, xright = 0, xleft_inc = 0, xright_inc = 0;
 	int r = 0, g = 0, b = 0, a = 0, z = 0, s = 0, t = 0, w = 0;
@@ -6206,8 +6214,8 @@ static void edgewalker_for_prims(INT32* ewdata)
 	spans_dwdy = dwdy & ~0x7fff;
 
 	
-	int dzdy_dz = (dzdy >> 16) & 0xffff;
-	int dzdx_dz = (dzdx >> 16) & 0xffff;
+	dzdy_dz = (dzdy >> 16) & 0xffff;
+	dzdx_dz = (dzdx >> 16) & 0xffff;
 	
 	spans_dzpix = ((dzdy_dz & 0x8000) ? ((~dzdy_dz) & 0x7fff) : dzdy_dz) + ((dzdx_dz & 0x8000) ? ((~dzdx_dz) & 0x7fff) : dzdx_dz);
 	spans_dzpix = normalize_dzpix(spans_dzpix & 0xffff) & 0xffff;
@@ -6222,13 +6230,10 @@ static void edgewalker_for_prims(INT32* ewdata)
 	xright = xh & ~0x1;
 	xleft = xm & ~0x1;
 		
-	int k = 0;
+	k = 0;
 
-	int dsdiff, dtdiff, dwdiff, drdiff, dgdiff, dbdiff, dadiff, dzdiff;
-	int sign_dxhdy = (dxhdy & 0x80000000) ? 1 : 0;
-	
-	int dsdeh, dtdeh, dwdeh, drdeh, dgdeh, dbdeh, dadeh, dzdeh, dsdyh, dtdyh, dwdyh, drdyh, dgdyh, dbdyh, dadyh, dzdyh; 
-	int do_offset = !(sign_dxhdy ^ flip);
+	sign_dxhdy = (dxhdy & 0x80000000) ? 1 : 0;
+	do_offset = !(sign_dxhdy ^ flip);
 
 	if (do_offset)
 	{
@@ -6272,9 +6277,8 @@ static void edgewalker_for_prims(INT32* ewdata)
 	else
 		dsdiff = dtdiff = dwdiff = drdiff = dgdiff = dbdiff = dadiff = dzdiff = 0;
 
-	int xfrac = 0;
+	xfrac = 0;
 
-	int dsdxh, dtdxh, dwdxh, drdxh, dgdxh, dbdxh, dadxh, dzdxh;
 	if (other_modes.cycle_type != CYCLE_TYPE_COPY)
 	{
 		dsdxh = (dsdx >> 8) & ~1;
