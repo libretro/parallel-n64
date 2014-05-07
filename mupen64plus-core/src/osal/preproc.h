@@ -26,17 +26,17 @@
 
 #if defined(WIN32) && !defined(__MINGW32__)
 
-  // macros
+  /* macros */
   #define OSAL_BREAKPOINT_INTERRUPT __asm{ int 3 };
   #define ALIGN(BYTES,DATA) __declspec(align(BYTES)) DATA;
   #define osal_inline __inline
 
-  // string functions
+  /* string functions */
   #define osal_insensitive_strcmp(x, y) _stricmp(x, y)
   #define snprintf _snprintf
   #define strdup _strdup
 
-  // for isnan()
+  /* for isnan() */
   #include <float.h>
   #define isnan _isnan
 
