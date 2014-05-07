@@ -75,7 +75,7 @@ LOCAL_SRC_FILES += $(RSPDIR)/src/alist.c \
 LOCAL_SRC_FILES += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/CombinerTable.cpp \
-            $(VIDEODIR_RICE)/Config.cpp \
+            $(VIDEODIR_RICE)/RiceConfig.cpp \
             $(VIDEODIR_RICE)/ConvertImage16.cpp \
             $(VIDEODIR_RICE)/ConvertImage.cpp \
             $(VIDEODIR_RICE)/Debugger.cpp \
@@ -107,7 +107,7 @@ LOCAL_SRC_FILES += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/Video.cpp
 
 LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/3DMath.c \
-            $(VIDEODIR_GLN64)/Config.c \
+            $(VIDEODIR_GLN64)/glN64Config.c \
             $(VIDEODIR_GLN64)/CRC.c \
             $(VIDEODIR_GLN64)/DepthBuffer.c \
             $(VIDEODIR_GLN64)/F3DCBFD.c \
