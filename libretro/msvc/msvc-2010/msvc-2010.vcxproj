@@ -88,10 +88,6 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\Config.c">
-      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
-      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2n64\src\CRC.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
@@ -137,6 +133,10 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\..\gles2n64\src\gles2N64.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gles2n64\src\glN64Config.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
     </ClCompile>
@@ -195,7 +195,6 @@
     <ClCompile Include="..\..\..\gles2rice\src\Blender.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\Combiner.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\CombinerTable.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\Config.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage16.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\Debugger.cpp" />
@@ -222,6 +221,7 @@
     <ClCompile Include="..\..\..\gles2rice\src\RenderBase.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RenderExt.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RenderTexture.cpp" />
+    <ClCompile Include="..\..\..\gles2rice\src\RiceConfig.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RSP_Parser.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RSP_S2DEX.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\Texture.cpp" />

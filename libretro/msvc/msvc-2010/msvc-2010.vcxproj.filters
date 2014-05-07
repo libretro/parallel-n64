@@ -246,9 +246,6 @@
     <ClCompile Include="..\..\..\gles2n64\src\3DMath.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\Config.c">
-      <Filter>Source Files\gles2n64\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2n64\src\CRC.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
@@ -334,9 +331,6 @@
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\CombinerTable.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\Config.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.cpp">
@@ -557,6 +551,12 @@
     </ClCompile>
     <ClCompile Include="..\..\cc_resampler.c">
       <Filter>Source Files\libretro</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gles2n64\src\glN64Config.c">
+      <Filter>Source Files\gles2n64\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gles2rice\src\RiceConfig.cpp">
+      <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
