@@ -65,8 +65,8 @@ typedef struct
 
 extern Config config;
 
-void Config_LoadConfig();
-void Config_LoadRomConfig(unsigned char* header);
+void Config_gln64_LoadConfig(void);
+void Config_gln64_LoadRomConfig(unsigned char* header);
 
 #ifdef __cplusplus
 }

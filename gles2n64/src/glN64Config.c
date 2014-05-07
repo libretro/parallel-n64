@@ -51,7 +51,7 @@ typedef struct
 
 #define CONFIG_VERSION 2
 
-Option configOptions[] =
+static Option configOptions[] =
 {
    {"#gles2n64 Graphics Plugin for N64", NULL, 0},
    {"#by Orkin / glN64 developers and Adventus.", NULL, 0},
@@ -103,9 +103,9 @@ Option configOptions[] =
 
 };
 
-const int configOptionsSize = sizeof(configOptions) / sizeof(Option);
+static const int configOptionsSize = sizeof(configOptions) / sizeof(Option);
 
-void Config_WriteConfig(const char *filename)
+static void Config_WriteConfig(const char *filename)
 {
    FILE *f;
    int i;
@@ -125,7 +125,7 @@ void Config_WriteConfig(const char *filename)
    fclose(f);
 }
 
-void Config_SetDefault(void)
+static void Config_SetDefault(void)
 {
    int i;
    for(i = 0; i < configOptionsSize; i++)
@@ -135,7 +135,7 @@ void Config_SetDefault(void)
    }
 }
 
-void Config_SetOption(char* line, char* val)
+static void Config_SetOption(char* line, char* val)
 {
    int i;
    for(i = 0; i < configOptionsSize; i++)
@@ -155,7 +155,7 @@ void Config_SetOption(char* line, char* val)
    }
 }
 
-void Config_LoadRomConfig(unsigned char* header)
+void Config_gln64_LoadRomConfig(unsigned char* header)
 {
    char line[4096];
    int i;
@@ -247,7 +247,7 @@ void Config_LoadRomConfig(unsigned char* header)
 extern uint32_t screen_width;
 extern uint32_t screen_height;
 
-void Config_LoadConfig(void)
+void Config_gln64_LoadConfig(void)
 {
    FILE *f;
    char line[4096];

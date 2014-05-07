@@ -146,8 +146,8 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 
     CheckInterrupts = Gfx_Info.CheckInterrupts;
 
-    Config_LoadConfig();
-    Config_LoadRomConfig(Gfx_Info.HEADER);
+    Config_gln64_LoadConfig();
+    Config_gln64_LoadRomConfig(Gfx_Info.HEADER);
 
     OGL_Start();
 
