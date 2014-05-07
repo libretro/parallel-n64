@@ -36,6 +36,7 @@ typedef unsigned int u_int;
 #include "../macros.h"
 #include "../r4300.h"
 #include "../ops.h"
+#include "../tlb.h"
 #include "../interupt.h"
 #include "new_dynarec.h"
 

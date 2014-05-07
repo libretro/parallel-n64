@@ -23,7 +23,6 @@
 #define R4300_H
 
 #include "recomp.h"
-#include "memory/tlb.h"
 
 extern precomp_instr *PC;
 
@@ -37,7 +36,6 @@ extern double *reg_cop1_double[32];
 extern float *reg_cop1_simple[32];
 extern int64_t reg_cop1_fgr_64[32];
 extern int FCR0, FCR31;
-extern tlb tlb_e[32];
 extern unsigned int delay_slot, skip_jump, dyna_interp, op;
 extern unsigned int r4300emu;
 extern unsigned int next_interupt, CIC_Chip;

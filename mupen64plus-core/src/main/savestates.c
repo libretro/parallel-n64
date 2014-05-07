@@ -38,9 +38,9 @@
 
 #include "memory/memory.h"
 #include "memory/flashram.h"
-#include "memory/tlb.h"
 #include "r4300/macros.h"
 #include "r4300/r4300.h"
+#include "r4300/tlb.h"
 #include "r4300/interupt.h"
 #include "r4300/new_dynarec/new_dynarec.h"
 #include "osal/preproc.h"

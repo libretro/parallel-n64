@@ -175,7 +175,6 @@ LOCAL_SRC_FILES += \
     $(COREDIR)/src/memory/memory.c \
     $(COREDIR)/src/memory/n64_cic_nus_6105.c \
     $(COREDIR)/src/memory/pif.c \
-    $(COREDIR)/src/memory/tlb.c \
     $(COREDIR)/src/plugin/plugin.c \
     $(COREDIR)/src/r4300/profile.c \
     $(COREDIR)/src/r4300/recomp.c \
@@ -183,6 +182,7 @@ LOCAL_SRC_FILES += \
     $(COREDIR)/src/r4300/pure_interp.c \
     $(COREDIR)/src/r4300/reset.c \
     $(COREDIR)/src/r4300/interupt.c \
+    $(COREDIR)/src/r4300/tlb.c \
     $(COREDIR)/src/r4300/r4300.c
 
 LOCAL_SRC_FILES += $(CXD4DIR)/rsp.c

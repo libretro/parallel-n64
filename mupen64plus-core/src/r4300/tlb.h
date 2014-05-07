@@ -49,6 +49,7 @@ typedef struct _tlb
    uint32_t phys_odd;
 } tlb;
 
+extern tlb tlb_e[32];
 extern uint32_t tlb_LUT_r[0x100000];
 extern uint32_t tlb_LUT_w[0x100000];
 void tlb_unmap(tlb *entry);

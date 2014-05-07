@@ -483,7 +483,7 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\memory\dma.c">
       <Filter>Source Files\mupen64plus-core\src\memory</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\memory\tlb.c">
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\tlb.c">
       <Filter>Source Files\mupen64plus-core\src\memory</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\memory\flashram.c">

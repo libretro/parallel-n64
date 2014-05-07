@@ -31,6 +31,7 @@
 #include "memory/memory.h"
 #include "r4300/r4300.h"
 #include "r4300/ops.h"
+#include "r4300/tlb.h"
 #include "main/rom.h"
  
 /* Following are the breakpoint functions for memory access calls.  See debugger/memory.h
