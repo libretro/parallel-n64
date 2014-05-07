@@ -34,6 +34,7 @@ typedef unsigned int u_int;
 #include "../recomp.h"
 #include "../recomph.h" //include for function prototypes
 #include "../cp0.h"
+#include "../cp1.h"
 #include "../r4300.h"
 #include "../ops.h"
 #include "../tlb.h"
