@@ -168,27 +168,25 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
 {
     switch (param)
     {
-        case M64CORE_EMU_STATE:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            if (val == M64EMU_STOPPED)
-            {        
-                /* this stop function is asynchronous.  The emulator may not terminate until later */
-                main_stop();
-                return M64ERR_SUCCESS;
-            }
-            else if (val == M64EMU_RUNNING)
-            {
-                return M64ERR_SUCCESS;
-            }
-            return M64ERR_INPUT_INVALID;
-	case M64CORE_INPUT_GAMESHARK:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-	    event_set_gameshark(val);
-	    return M64ERR_SUCCESS;
-        default:
-            return M64ERR_INPUT_INVALID;
+       case M64CORE_EMU_STATE:
+          if (!g_EmulatorRunning)
+             return M64ERR_INVALID_STATE;
+          if (val == M64EMU_STOPPED)
+          {        
+             /* this stop function is asynchronous.  The emulator may not terminate until later */
+             main_stop();
+             return M64ERR_SUCCESS;
+          }
+          else if (val == M64EMU_RUNNING)
+             return M64ERR_SUCCESS;
+          return M64ERR_INPUT_INVALID;
+       case M64CORE_INPUT_GAMESHARK:
+          if (!g_EmulatorRunning)
+             return M64ERR_INVALID_STATE;
+          event_set_gameshark(val);
+          return M64ERR_SUCCESS;
+       default:
+          return M64ERR_INPUT_INVALID;
     }
 }
 
@@ -214,11 +212,8 @@ m64p_error main_reset(int do_hard_reset)
 
 void new_frame(void)
 {
-    if (g_FrameCallback != NULL)
-        (*g_FrameCallback)(l_CurrentFrame);
-
-    /* advance the current frame */
-    l_CurrentFrame++;
+   if (g_FrameCallback)
+      (*g_FrameCallback)(l_CurrentFrame++);
 }
 
 /*********************************************************************************************************
@@ -307,17 +302,15 @@ m64p_error main_run(void)
 
 void main_stop(void)
 {
-    /* note: this operation is asynchronous.  It may be called from a thread other than the
-       main emulator thread, and may return before the emulator is completely stopped */
-    if (!g_EmulatorRunning)
-        return;
+   /* note: this operation is asynchronous.  It may be called from a thread other than the
+      main emulator thread, and may return before the emulator is completely stopped */
+   if (!g_EmulatorRunning)
+      return;
 
-    DebugMessage(M64MSG_STATUS, "Stopping emulation.");
-    stop = 1;
+   DebugMessage(M64MSG_STATUS, "Stopping emulation.");
+   stop = 1;
 #ifdef DBG
-    if(g_DebuggerActive)
-    {
-        debugger_step();
-    }
+   if(g_DebuggerActive)
+      debugger_step();
 #endif        
 }
