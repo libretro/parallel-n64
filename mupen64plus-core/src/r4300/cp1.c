@@ -21,9 +21,9 @@
 
 #include "new_dynarec/new_dynarec.h"
 
-#if NEW_DYNAREC != NEW_DYNAREC_ARM
 float *reg_cop1_simple[32];
 double *reg_cop1_double[32];
+#if NEW_DYNAREC != NEW_DYNAREC_ARM
 int FCR0, FCR31;
 #endif
 long long int reg_cop1_fgr_64[32];
