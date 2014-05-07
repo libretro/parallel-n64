@@ -35,7 +35,7 @@ extern double *reg_cop1_double[32];
 extern float *reg_cop1_simple[32];
 extern int64_t reg_cop1_fgr_64[32];
 extern int FCR0, FCR31;
-extern unsigned int delay_slot, skip_jump, dyna_interp, op;
+extern unsigned int delay_slot, skip_jump, dyna_interp;
 extern unsigned int r4300emu;
 extern unsigned int next_interupt, CIC_Chip;
 extern int rounding_mode, trunc_mode, round_mode, ceil_mode, floor_mode;
@@ -47,7 +47,6 @@ extern cpu_instruction_table current_instruction_table;
 void r4300_reset_hard(void);
 void r4300_reset_soft(void);
 void r4300_execute(void);
-void pure_interpreter(void);
 void shuffle_fpr_data(int oldStatus, int newStatus);
 void set_fpr_pointers(int newStatus);
 

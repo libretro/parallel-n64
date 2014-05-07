@@ -35,6 +35,7 @@
 #include "ops.h"
 #include "interupt.h"
 #include "macros.h"
+#include "pure_interp.h"
 #include "recomp.h"
 #include "recomph.h"
 #include "tlb.h"
