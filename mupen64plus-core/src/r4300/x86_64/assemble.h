@@ -23,6 +23,7 @@
 #ifndef __ASSEMBLE_H__
 #define __ASSEMBLE_H__
 
+#include "osal/preproc.h"
 #include "r4300/recomph.h"
 #include "api/callbacks.h"
 
@@ -116,9 +117,7 @@ static INLINE int rel_r15_offset(void *dest, const char *op_name)
     if (llabs(rel_offset) > 0x7fffffff)
     {
         DebugMessage(M64MSG_ERROR, "Error: destination %p more than 2GB away from r15 base %p in %s()", dest, reg, op_name);
-#if !defined(_MSC_VER)
-        asm(" int $3; ");
-#endif
+        OSAL_BREAKPOINT_INTERRUPT;
     }
 
     return (int) rel_offset;
