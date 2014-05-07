@@ -19,8 +19,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef R4300_H
-#define R4300_H
+#ifndef M64P_R4300_R4300_H
+#define M64P_R4300_R4300_H
 
 #include "ops.h"
 #include "recomp.h"
@@ -77,5 +77,4 @@ void generic_jump_to(unsigned int address);
   #define refresh_stat()
 #endif
 
-#endif /* R4300_H */
-
+#endif /* M64P_R4300_R4300_H */
