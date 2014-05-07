@@ -224,7 +224,8 @@ ifdef WITH_DYNAREC
       CPPFLAGS += -DNEW_DYNAREC=3
 
       CFILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c \
-					 $(COREDIR)/src/r4300/instr_counters.c
+		$(COREDIR)/src/r4300/empty_dynarec.c \
+		$(COREDIR)/src/r4300/instr_counters.c
 
       OBJECTS += \
          $(COREDIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).o
@@ -232,8 +233,6 @@ ifdef WITH_DYNAREC
    else
       CFILES += $(wildcard $(COREDIR)/src/r4300/$(WITH_DYNAREC)/*.c)
    endif
-else
-   CFILES += $(COREDIR)/src/r4300/empty_dynarec.c
 endif
 
 ### VIDEO PLUGINS ###
