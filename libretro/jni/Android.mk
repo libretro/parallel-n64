@@ -19,7 +19,7 @@ ifeq ($(TARGET_ARCH),arm)
 COMMON_FLAGS += -DANDROID_ARM -DDYNAREC -DNEW_DYNAREC=3 -DARM_ASM -DNO_ASM -DNOSSE
 LOCAL_ARM_MODE := arm
 LOCAL_CFLAGS += -marm
-LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c $(COREDIR)/src/r4300/empty_dynarec.c
+LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c $(COREDIR)/src/r4300/empty_dynarec.c $(CORE_DIR)/src/r4300/instr_counters.c
 LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
 LOCAL_SRC_FILES += $(LIBRETRODIR)/libco/armeabi_asm.S
 ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
