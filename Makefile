@@ -207,6 +207,7 @@ CFILES += \
     $(COREDIR)/src/r4300/reset.c \
     $(COREDIR)/src/r4300/interupt.c \
     $(COREDIR)/src/r4300/tlb.c \
+    $(COREDIR)/src/r4300/cp0.c \
     $(COREDIR)/src/r4300/r4300.c
 
 

@@ -38,7 +38,7 @@
 
 #include "memory/memory.h"
 #include "memory/flashram.h"
-#include "r4300/macros.h"
+#include "r4300/cp0.h"
 #include "r4300/r4300.h"
 #include "r4300/tlb.h"
 #include "r4300/interupt.h"

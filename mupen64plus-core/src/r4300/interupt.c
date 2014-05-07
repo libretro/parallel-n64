@@ -37,7 +37,7 @@
 
 #include "interupt.h"
 #include "r4300.h"
-#include "macros.h"
+#include "cp0.h"
 #include "exception.h"
 #include "reset.h"
 #include "new_dynarec/new_dynarec.h"
