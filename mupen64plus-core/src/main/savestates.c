@@ -296,10 +296,8 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
     if (r4300emu == CORE_DYNAREC)
         last_addr = pcaddr;
     else
-        last_addr = PC->addr;
-#else
-    last_addr = PC->addr;
 #endif
+       last_addr = PC->addr;
 
     // deliver callback to indicate completion of state loading operation
     StateChanged(M64CORE_STATE_LOADCOMPLETE, 1);
@@ -309,13 +307,14 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 
 int savestates_save_m64p(unsigned char *data, size_t size)
 {
-    unsigned char outbuf[4];
-    int i;
-
+    unsigned char outbuf[4], *curr;
+    int i, queuelength;
     char queue[1024];
-    int queuelength;
 
-    unsigned char *curr = data;
+    curr = (unsigned char*)data;
+
+    if (!curr)
+       return 0;
 
     queuelength = save_eventqueue_infos(queue);
 
@@ -528,10 +527,11 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     if (r4300emu == CORE_DYNAREC)
         PUTDATA(curr, unsigned int, pcaddr);
     else
-        PUTDATA(curr, unsigned int, PC->addr);
-#else
-    PUTDATA(curr, unsigned int, PC->addr);
 #endif
+    if (PC)
+        PUTDATA(curr, unsigned int, PC->addr);
+    else
+       return 0;
 
     PUTDATA(curr, unsigned int, next_interupt);
     PUTDATA(curr, unsigned int, next_vi);
@@ -545,4 +545,3 @@ int savestates_save_m64p(unsigned char *data, size_t size)
 
     return 1;
 }
-
