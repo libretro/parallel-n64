@@ -34,7 +34,6 @@
 
 #include "memory/memory.h"
 
-extern unsigned int op;
 
 static precomp_instr fake_instr;
 #ifdef COMPARE_CORE
@@ -322,6 +321,8 @@ void genlink_subblock(void)
 }
 
 #ifdef COMPARE_CORE
+extern unsigned int op; /* api/debugger.c */
+
 void gendebug(void)
 {
    free_all_registers();

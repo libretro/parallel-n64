@@ -74,7 +74,6 @@ char instr_typename[][20] = { "Load", "Store", "Data move/convert", "32-bit math
                               "Jump", "Branch", "Exceptions", "Reserved", "Other" };
 #endif
 
-extern unsigned int op;
 
 static precomp_instr fake_instr;
 #ifdef COMPARE_CORE
@@ -307,6 +306,8 @@ void genlink_subblock(void)
 }
 
 #ifdef COMPARE_CORE
+extern unsigned int op; /* api/debugger.c */
+
 void gendebug(void)
 {
    free_all_registers();

@@ -41,7 +41,6 @@
 #endif
 
 static precomp_instr interp_PC;
-unsigned int op;
 
 static void prefetch(void);
 
