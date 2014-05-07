@@ -22,7 +22,9 @@
 #ifndef R4300_H
 #define R4300_H
 
+#include "ops.h"
 #include "recomp.h"
+#include "tlb.h"
 
 extern precomp_instr *PC;
 
@@ -45,6 +47,8 @@ extern char invalid_code[0x100000];
 extern unsigned int jump_to_address;
 extern int no_compiled_jump;
 extern unsigned int count_per_op;
+extern const cpu_instruction_table cached_interpreter_table;
+extern cpu_instruction_table current_instruction_table;
 
 void init_blocks(void);
 void free_blocks(void);
