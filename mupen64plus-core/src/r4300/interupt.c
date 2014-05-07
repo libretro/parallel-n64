@@ -37,6 +37,7 @@
 
 #include "interupt.h"
 #include "r4300.h"
+#include "cached_interp.h"
 #include "cp0.h"
 #include "exception.h"
 #include "reset.h"

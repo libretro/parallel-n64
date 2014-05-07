@@ -38,6 +38,7 @@ typedef unsigned int u_int;
 #include "../ops.h"
 #include "../tlb.h"
 #include "../interupt.h"
+#include "../cached_interp.h"
 #include "new_dynarec.h"
 
 #include "../../memory/memory.h"

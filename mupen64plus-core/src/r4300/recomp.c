@@ -33,6 +33,7 @@
 #include "api/callbacks.h"
 #include "memory/memory.h"
 
+#include "cached_interp.h"
 #include "recomp.h"
 #include "recomph.h" //include for function prototypes
 #include "cp0.h"

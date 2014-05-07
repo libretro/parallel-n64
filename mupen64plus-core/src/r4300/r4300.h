@@ -28,8 +28,6 @@
 
 extern precomp_instr *PC;
 
-extern precomp_block *blocks[0x100000], *actual;
-
 extern int stop, llbit, rompause;
 extern int64_t reg[32], hi, lo;
 extern int64_t local_rs;
@@ -42,25 +40,16 @@ extern unsigned int r4300emu;
 extern unsigned int next_interupt, CIC_Chip;
 extern int rounding_mode, trunc_mode, round_mode, ceil_mode, floor_mode;
 extern unsigned int last_addr;
-extern char invalid_code[0x100000];
-extern unsigned int jump_to_address;
 extern int no_compiled_jump;
 extern unsigned int count_per_op;
-extern const cpu_instruction_table cached_interpreter_table;
 extern cpu_instruction_table current_instruction_table;
 
-void init_blocks(void);
-void free_blocks(void);
 void r4300_reset_hard(void);
 void r4300_reset_soft(void);
 void r4300_execute(void);
 void pure_interpreter(void);
-void jump_to_func(void);
 void shuffle_fpr_data(int oldStatus, int newStatus);
 void set_fpr_pointers(int newStatus);
-
-/* Jumps to the given address. This is for the cached interpreter / dynarec. */
-#define jump_to(a) { jump_to_address = a; jump_to_func(); }
 
 /* Jump to the given address. This works for all r4300 emulator, but is slower.
  * Use this for common code which can be executed from any r4300 emulator. */ 

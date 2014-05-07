@@ -203,6 +203,7 @@ CFILES += \
     $(COREDIR)/src/r4300/profile.c \
     $(COREDIR)/src/r4300/recomp.c \
     $(COREDIR)/src/r4300/exception.c \
+    $(COREDIR)/src/r4300/cached_interp.c \
     $(COREDIR)/src/r4300/pure_interp.c \
     $(COREDIR)/src/r4300/reset.c \
     $(COREDIR)/src/r4300/interupt.c \
