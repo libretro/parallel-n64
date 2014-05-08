@@ -5,12 +5,15 @@
 extern "C" {
 #endif
 
-void sglEnter();
-void sglExit();
-
 enum
 {
-    SGL_TEXTURE_2D, SGL_DEPTH_TEST, SGL_BLEND, SGL_POLYGON_OFFSET_FILL, SGL_CULL_FACE, SGL_SCISSOR_TEST, SGL_CAP_MAX
+   SGL_TEXTURE_2D,
+   SGL_DEPTH_TEST,
+   SGL_BLEND,
+   SGL_POLYGON_OFFSET_FILL,
+   SGL_CULL_FACE,
+   SGL_SCISSOR_TEST,
+   SGL_CAP_MAX
 };
 
 void sglEnable(GLenum cap);
@@ -51,13 +54,11 @@ GLuint sglAddTextureMap(unsigned address);
 #define glEnable(T) sglEnable(S##T)
 #define glDisable(T) sglDisable(S##T)
 #define glIsEnabled(T) sglIsEnabled(S##T)
-
 #define glEnableVertexAttribArray sglEnableVertexAttribArray
 #define glDisableVertexAttribArray sglDisableVertexAttribArray
 #define glVertexAttribPointer sglVertexAttribPointer
 #define glVertexAttrib4f sglVertexAttrib4f
 #define glVertexAttrib4fv sglVertexAttrib4fv
-
 #define glBindFramebuffer sglBindFramebuffer
 #define glBlendFunc sglBlendFunc
 #define glBlendFuncSeparate sglBlendFuncSeparate
@@ -73,12 +74,12 @@ GLuint sglAddTextureMap(unsigned address);
 #define glScissor sglScissor
 #define glUseProgram sglUseProgram
 #define glViewport sglViewport
-
 #define glActiveTexture sglActiveTexture
-
 #define glBindTexture sglBindTexture
-
 #endif
+
+void sglEnter(void);
+void sglExit(void);
 
 #ifdef __cplusplus
 }

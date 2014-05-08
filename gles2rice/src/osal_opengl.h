@@ -30,14 +30,14 @@
 #include <xtl.h>
 #endif
 
-#if defined(__LIBRETRO__) && !defined(GLES)
+#if defined(__LIBRETRO__) && !defined(HAVE_OPENGLES2)
 #define glClearDepthf glClearDepth
 #define glDepthRangef glDepthRange
 #endif
 
 #include <SDL_opengles2.h>
 
-#if !defined(__LIBRETRO__) || defined(GLES) // Desktop GL fix
+#if !defined(__LIBRETRO__) || defined(HAVE_OPENGLES2) // Desktop GL fix
 #define GLSL_VERSION "100"
 #else
 #define GLSL_VERSION "120"
@@ -55,7 +55,7 @@
 #define VS_FOG                              4
 
 // Constant substitutions
-#ifdef GLES
+#ifdef HAVE_OPENGLES2
 #define GL_CLAMP                            GL_CLAMP_TO_EDGE
 #define GL_MAX_TEXTURE_UNITS_ARB            GL_MAX_TEXTURE_IMAGE_UNITS
 #define GL_MIRRORED_REPEAT_ARB              GL_MIRRORED_REPEAT

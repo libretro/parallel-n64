@@ -271,7 +271,7 @@ int grTexFormatSize(int fmt)
    return factor;
 }
 
-#ifndef GLES
+#ifndef HAVE_OPENGLES2
 static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt)
 {
    unsigned size_tex;
@@ -371,7 +371,7 @@ grTexDownloadMipMap( GrChipID_t tmu,
    }
 
 
-#ifndef GLES
+#ifndef HAVE_OPENGLES2
    if (packed_pixels_support)
       factor = grTexFormat2GLPackedFmt(info, info->format, &gltexfmt, &glpixfmt, &glpackfmt);
    else
@@ -486,7 +486,7 @@ grTexDownloadMipMap( GrChipID_t tmu,
             info->data = texture;
             break;
          case GR_TEXFMT_ARGB_8888:
-#ifdef GLES
+#ifdef HAVE_OPENGLES2
             if (bgra8888_support)
             {
                factor = 4;

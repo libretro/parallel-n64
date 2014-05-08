@@ -23,7 +23,7 @@
 #include "RSP.h"
 #include "Config.h"
 
-#if defined(__LIBRETRO__) && !defined(GLES) // Desktop GL fix
+#if defined(__LIBRETRO__) && !defined(HAVE_OPENGLES2) // Desktop GL fix
 #define glDepthRangef glDepthRange
 #define glClearDepthf glClearDepth
 #endif
@@ -79,7 +79,7 @@ void OGL_InitStates(void)
    glDepthMask( GL_FALSE );
    glEnable( GL_SCISSOR_TEST );
 
-#ifdef GLES
+#ifdef HAVE_OPENGLES2
    glDepthRangef(0.0f, 1.0f);
    glPolygonOffset(0.2f, 0.2f);
 #else

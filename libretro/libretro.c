@@ -205,7 +205,7 @@ static void setup_variables(void)
       { "mupen64-disableexpmem",
          "Disable Expansion RAM; no|yes" },
       { "mupen64-gfxplugin-accuracy",
-#ifdef GLES
+#ifdef HAVE_OPENGLES2
          "GFX Accuracy (restart); medium|high|low" },
 #else
          "GFX Accuracy (restart); high|medium|low" },
@@ -622,7 +622,7 @@ bool retro_load_game(const struct retro_game_info *game)
    if (gfx_plugin != GFX_ANGRYLION)
    {
       memset(&render_iface, 0, sizeof(render_iface));
-#ifndef GLES
+#ifndef HAVE_OPENGLES2
       render_iface.context_type = RETRO_HW_CONTEXT_OPENGL;
 #else
       render_iface.context_type = RETRO_HW_CONTEXT_OPENGLES2;

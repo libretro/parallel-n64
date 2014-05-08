@@ -2,28 +2,9 @@
 #define GLSYM_H__
 
 #include "libretro.h"
+#include "rglgen_headers.h"
 
-#define GL_GLEXT_PROTOTYPES
-#if defined(GLES)
-#ifdef IOS
-#include <OpenGLES/ES2/gl.h>
-#else
-#include <GLES2/gl2.h>
-#endif
-#elif defined(__APPLE__)
-#include <OpenGL/gl.h>
-#include <OpenGL/glext.h>
-#else
-
-#ifdef _MSC_VER
-#include <windows.h>
-#endif
-
-#include <GL/gl.h>
-#include <GL/glext.h>
-#endif
-
-#if !defined(GLES) && !defined(__APPLE__)
+#if !defined(HAVE_OPENGLES2) && !defined(__APPLE__)
 // Overridden by SGL.
 #ifndef glVertexAttribPointer
 #define glVertexAttribPointer pglVertexAttribPointer
@@ -155,4 +136,3 @@ extern PFNGLDELETEVERTEXARRAYSPROC pglDeleteVertexArrays;
 void glsym_init_procs(retro_hw_get_proc_address_t cb);
 
 #endif
-

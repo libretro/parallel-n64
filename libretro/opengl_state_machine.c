@@ -4,16 +4,15 @@
 #define NO_TRANSLATE
 #include "SDL_opengles2.h"
 
-#ifdef GLES
+#ifdef HAVE_OPENGLES2
 #define glClearDepth glClearDepthf
 #define glDepthRange glDepthRangef
 #endif
 
-// mupen64plus HACK: Fix potential crash at shutdown
 extern int stop;
 
-// Glitch64 hacks ... :D
-void vbo_draw();
+//forward declarations
+extern void vbo_draw(void);
 
 //glEnable, glDisable
 static int CapState[SGL_CAP_MAX];

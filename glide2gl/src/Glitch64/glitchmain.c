@@ -232,7 +232,7 @@ grSstWinOpen(
 
    // we can assume that non-GLES has GL_EXT_packed_pixels
    // support -it's included since OpenGL 1.2
-#ifdef GLES
+#ifdef HAVE_OPENGLES2
    if (isExtensionSupported("GL_EXT_packed_pixels") != 0)
 #endif
       packed_pixels_support = 1;
@@ -265,7 +265,7 @@ grSstWinOpen(
          isExtensionSupported("GL_ARB_vertex_shader"))
    {}
 
-#ifdef GLES
+#ifdef HAVE_OPENGLES2
    if (isExtensionSupported("GL_EXT_texture_format_BGRA8888"))
    {
       printf("GL_EXT_texture_format_BGRA8888 supported.\n");

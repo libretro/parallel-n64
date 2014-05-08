@@ -26,35 +26,11 @@
 #ifndef _SDL_OPENGLES2_LIBRETRO_H
 #define _SDL_OPENGLES2_LIBRETRO_H
 
-#ifdef GLES
+#include "rglgen_headers.h"
 
-#ifdef IOS
-#include <OpenGLES/ES2/gl.h>
-#include <OpenGLES/ES2/glext.h>
-#else
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-#endif
-
+#ifdef HAVE_OPENGLES2
 typedef GLfloat GLdouble;
 typedef GLclampf GLclampd;
-
-#else
-
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#include <OpenGL/glext.h>
-#else
-
-#ifdef _MSC_VER
-#include <windows.h>
-#endif
-#include <GL/gl.h>
-#ifndef _MSC_VER //mingw needs this
-#include <GL/glext.h>
-#endif
-#endif
-
 #endif
 
 #include "opengl_state_machine.h"

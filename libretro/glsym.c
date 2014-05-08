@@ -5,7 +5,7 @@
 
 extern retro_log_printf_t log_cb;
 
-#if !defined(GLES) && !defined(__APPLE__)
+#if !defined(HAVE_OPENGLES2) && !defined(__APPLE__)
 PFNGLCREATEPROGRAMPROC pglCreateProgram;
 PFNGLCREATESHADERPROC pglCreateShader;
 PFNGLCREATESHADERPROC pglCompileShader;
