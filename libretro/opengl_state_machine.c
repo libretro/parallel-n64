@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,7 +25,6 @@ static const int CapTranslate[SGL_CAP_MAX] =
 void sglEnable(GLenum cap)
 {
     vbo_draw();
-    assert(cap < SGL_CAP_MAX);
 
     glEnable(CapTranslate[cap]);
     CapState[cap] = 1;
@@ -35,7 +33,6 @@ void sglEnable(GLenum cap)
 void sglDisable(GLenum cap)
 {
     vbo_draw();
-    assert(cap < SGL_CAP_MAX);
 
     glDisable(CapTranslate[cap]);
     CapState[cap] = 0;
@@ -43,7 +40,6 @@ void sglDisable(GLenum cap)
 
 GLboolean sglIsEnabled(GLenum cap)
 {
-    assert(cap < SGL_CAP_MAX);
     return CapState[cap] ? GL_TRUE : GL_FALSE;
 }
 
@@ -63,7 +59,6 @@ static GLfloat VertexAttribPointer_4f[MAX_ATTRIB][4];
 void sglEnableVertexAttribArray(GLuint index)
 {
     vbo_draw();
-    assert(index < MAX_ATTRIB);
 
     VertexAttribPointer_enabled[index] = 1;
     glEnableVertexAttribArray(index);
@@ -72,7 +67,6 @@ void sglEnableVertexAttribArray(GLuint index)
 void sglDisableVertexAttribArray(GLuint index)
 {
     vbo_draw();
-    assert(index < MAX_ATTRIB);
 
     VertexAttribPointer_enabled[index] = 0;
     glDisableVertexAttribArray(index);
@@ -80,8 +74,6 @@ void sglDisableVertexAttribArray(GLuint index)
 
 void sglVertexAttribPointer(GLuint name, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* pointer)
 {
-    assert(name < MAX_ATTRIB);
-
     VertexAttribPointer_is4f[name] = 0;
     VertexAttribPointer_size[name] = size;
     VertexAttribPointer_type[name] = type;
@@ -93,8 +85,6 @@ void sglVertexAttribPointer(GLuint name, GLint size, GLenum type, GLboolean norm
 
 void sglVertexAttrib4f(GLuint name, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 {
-    assert(name < MAX_ATTRIB);
-
     VertexAttribPointer_is4f[name] = 1;
     VertexAttribPointer_4f[name][0] = x;
     VertexAttribPointer_4f[name][1] = y;
@@ -105,8 +95,6 @@ void sglVertexAttrib4f(GLuint name, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 
 void sglVertexAttrib4fv(GLuint name, GLfloat* v)
 {
-    assert(name < MAX_ATTRIB);
-
     VertexAttribPointer_is4f[name] = 1;
     memcpy(VertexAttribPointer_4f[name], v, sizeof(GLfloat) * 4);
     glVertexAttrib4fv(name, v);
@@ -118,11 +106,10 @@ extern GLuint retro_get_fbo_id();
 static GLuint Framebuffer_framebuffer = 0;
 void sglBindFramebuffer(GLenum target, GLuint framebuffer)
 {
-   if (stop)
-      return;
-
    vbo_draw();
-   glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
+
+   if (!stop)
+      glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
 }
 
 //BLEND FUNC
@@ -150,9 +137,6 @@ void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum 
 static GLclampf ClearColor_red = 0.0f, ClearColor_green = 0.0f, ClearColor_blue = 0.0f, ClearColor_alpha = 0.0f;
 void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
-   if (!(red != ClearColor_red || green != ClearColor_green || blue != ClearColor_blue || alpha != ClearColor_alpha))
-      return;
-
    vbo_draw();
    glClearColor(red, green, blue, alpha);
    ClearColor_red = red;
@@ -164,9 +148,6 @@ void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 static GLdouble ClearDepth_value = 1.0;
 void sglClearDepth(GLdouble depth)
 {
-   if (depth == ClearDepth_value)
-      return;
-
    vbo_draw();
    glClearDepth(depth);
    ClearDepth_value = depth;
@@ -179,11 +160,6 @@ static GLboolean ColorMask_alpha = GL_TRUE;
 
 void sglColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha)
 {
-   bool do_check = (red != ColorMask_red || green != ColorMask_green || blue != ColorMask_blue || alpha != ColorMask_alpha);
-
-   if (!do_check)
-      return;
-
    vbo_draw();
    glColorMask(red, green, blue, alpha);
    ColorMask_red = red;
@@ -197,9 +173,6 @@ static GLenum CullFace_mode = GL_BACK;
 
 void sglCullFace(GLenum mode)
 {
-   if (mode == CullFace_mode)
-      return;
-
    vbo_draw();
    glCullFace(mode);
    CullFace_mode = mode;
@@ -209,9 +182,6 @@ void sglCullFace(GLenum mode)
 static GLenum DepthFunc_func = GL_LESS;
 void sglDepthFunc(GLenum func)
 {
-  if (func == DepthFunc_func)
-     return;
-
   vbo_draw();
   glDepthFunc(func);
   DepthFunc_func = func;
@@ -221,9 +191,6 @@ void sglDepthFunc(GLenum func)
 static GLboolean DepthMask_flag = GL_TRUE;
 void sglDepthMask(GLboolean flag)
 {
-  if (flag == DepthMask_flag)
-     return;
-
   vbo_draw();
   glDepthMask(flag);
   DepthMask_flag = flag;
@@ -234,9 +201,6 @@ static GLclampd DepthRange_zNear = 0.0, DepthRange_zFar = 1.0;
 
 void sglDepthRange(GLclampd zNear, GLclampd zFar)
 {
-   if (!(zNear != DepthRange_zNear || zFar != DepthRange_zFar))
-      return;
-
    vbo_draw();
    glDepthRange(zNear, zFar);
    DepthRange_zNear = zNear;
@@ -247,9 +211,6 @@ void sglDepthRange(GLclampd zNear, GLclampd zFar)
 static GLenum FrontFace_mode = GL_CCW;
 void sglFrontFace(GLenum mode)
 {
-   if (mode == FrontFace_mode)
-      return;
-
    vbo_draw();
    glFrontFace(mode);
    FrontFace_mode = mode;
@@ -259,9 +220,6 @@ void sglFrontFace(GLenum mode)
 static GLfloat PolygonOffset_factor = 0.0f, PolygonOffset_units = 0.0f;
 void sglPolygonOffset(GLfloat factor, GLfloat units)
 {
-  if (!(factor != PolygonOffset_factor || units != PolygonOffset_units))
-     return;
-
   vbo_draw();
   glPolygonOffset(factor, units);
   PolygonOffset_factor = factor;
@@ -273,11 +231,6 @@ static GLint Scissor_x = 0, Scissor_y = 0;
 static GLsizei Scissor_width = 640, Scissor_height = 480;
 void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 {
-  bool do_check = (x != Scissor_x || y != Scissor_y || width != Scissor_width || height != Scissor_height);
-
-  if (!do_check)
-     return;
-
   vbo_draw();
   glScissor(x, y, width, height);
   Scissor_x = x;
@@ -290,9 +243,6 @@ void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 static GLuint UseProgram_program = 0;
 void sglUseProgram(GLuint program)
 {
-   if (program == UseProgram_program)
-      return;
-
    vbo_draw();
    glUseProgram(program);
    UseProgram_program = program;
@@ -303,11 +253,6 @@ static GLint Viewport_x = 0, Viewport_y = 0;
 static GLsizei Viewport_width = 640, Viewport_height = 480;
 void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
-   bool do_check = (x != Viewport_x || y != Viewport_y || width != Viewport_width || height != Viewport_height);
-
-   if (!do_check)
-      return;
-
    vbo_draw();
    glViewport(x, y, width, height);
    Viewport_x = x;
@@ -321,9 +266,6 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 static GLenum ActiveTexture_texture = 0;
 void sglActiveTexture(GLenum texture)
 {
-   if (texture == ActiveTexture_texture)
-      return;
-
    vbo_draw();
    glActiveTexture(texture);
    ActiveTexture_texture = texture - GL_TEXTURE0;
@@ -332,9 +274,6 @@ void sglActiveTexture(GLenum texture)
 static GLuint BindTexture_ids[MAX_TEXTURE];
 void sglBindTexture(GLenum target, GLuint texture)
 {
-   if (BindTexture_ids[ActiveTexture_texture] == texture)
-      return;
-
    vbo_draw();
    glBindTexture(target, texture);
    BindTexture_ids[ActiveTexture_texture] = texture;
