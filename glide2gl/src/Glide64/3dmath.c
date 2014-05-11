@@ -395,3 +395,113 @@ float glide64_pow(float a, float b)
 {
    return glide64_pow2(b * glide64_log2(a));
 }
+
+void calc_light (VERTEX *v)
+{
+   uint32_t l;
+   float light_intensity, color[3];
+
+   light_intensity = 0.0f;
+   color[0] = rdp.light[rdp.num_lights].col[0];
+   color[1] = rdp.light[rdp.num_lights].col[1];
+   color[2] = rdp.light[rdp.num_lights].col[2];
+
+   for (l = 0; l < rdp.num_lights; l++)
+   {
+      light_intensity = DotProduct (rdp.light_vector[l], v->vec);
+
+      if (light_intensity > 0.0f) 
+      {
+         color[0] += rdp.light[l].col[0] * light_intensity;
+         color[1] += rdp.light[l].col[1] * light_intensity;
+         color[2] += rdp.light[l].col[2] * light_intensity;
+      }
+   }
+
+   if (color[0] > 1.0f)
+      color[0] = 1.0f;
+   if (color[1] > 1.0f)
+      color[1] = 1.0f;
+   if (color[2] > 1.0f)
+      color[2] = 1.0f;
+
+   v->r = (uint8_t)(color[0] * 255.0f);
+   v->g = (uint8_t)(color[1] * 255.0f);
+   v->b = (uint8_t)(color[2] * 255.0f);
+}
+
+void calc_linear (VERTEX *v)
+{
+   DECLAREALIGN16VAR(vec[3]);
+   float x, y;
+
+   if (settings.force_calc_sphere)
+   {
+      calc_sphere(v);
+      return;
+   }
+
+   TransformVector (v->vec, vec, rdp.model);
+   //    TransformVector (v->vec, vec, rdp.combined);
+   NormalizeVector (vec);
+   x = vec[0];
+   y = vec[1];
+   if (rdp.use_lookat)
+   {
+      x = DotProduct (rdp.lookat[0], vec);
+      y = DotProduct (rdp.lookat[1], vec);
+   }
+
+   if (x > 1.0f)
+      x = 1.0f;
+   else if (x < -1.0f)
+      x = -1.0f;
+   if (y > 1.0f)
+      y = 1.0f;
+   else if (y < -1.0f)
+      y = -1.0f;
+
+   if (rdp.cur_cache[0])
+   {
+      // scale >> 6 is size to map to
+      v->ou = (glide64_acos(x)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_s_scale >> 6);
+      v->ov = (glide64_acos(y)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_t_scale >> 6);
+   }
+   v->uv_scaled = 1;
+#ifdef EXTREME_LOGGING
+   FRDP ("calc linear u: %f, v: %f\n", v->ou, v->ov);
+#endif
+}
+
+void calc_sphere (VERTEX *v)
+{
+   //  LRDP("calc_sphere\n");
+   DECLAREALIGN16VAR(vec[3]);
+   float x, y;
+   int s_scale, t_scale;
+
+   s_scale = rdp.tiles[rdp.cur_tile].org_s_scale >> 6;
+   t_scale = rdp.tiles[rdp.cur_tile].org_t_scale >> 6;
+
+   if (settings.hacks&hack_Chopper)
+   {
+      s_scale = min(rdp.tiles[rdp.cur_tile].org_s_scale >> 6, rdp.tiles[rdp.cur_tile].lr_s);
+      t_scale = min(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, rdp.tiles[rdp.cur_tile].lr_t);
+   }
+
+   TransformVector (v->vec, vec, rdp.model);
+   NormalizeVector (vec);
+   x = vec[0];
+   y = vec[1];
+   if (rdp.use_lookat)
+   {
+      x = DotProduct (rdp.lookat[0], vec);
+      y = DotProduct (rdp.lookat[1], vec);
+   }
+   v->ou = (x * 0.5f + 0.5f) * s_scale;
+   v->ov = (y * 0.5f + 0.5f) * t_scale;
+   v->uv_scaled = 1;
+#ifdef EXTREME_LOGGING
+   FRDP ("calc sphere u: %f, v: %f\n", v->ou, v->ov);
+#endif
+}
