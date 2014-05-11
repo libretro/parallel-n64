@@ -82,6 +82,9 @@
 #define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
 #endif
 
+//angrylion's macro, helps to cut overflowed values.
+#define SIGN16(x) (((x) & 0x8000) ? ((x) | ~0xffff) : ((x) & 0xffff))
+
 #ifdef __GNUC__
 #define align(x) __attribute__ ((aligned(x)))
 #else
@@ -1086,8 +1089,17 @@ static void DrawDepthBufferFog(void)
 static void rdp_texrect(uint32_t w0, uint32_t w1)
 {
    float ul_x, ul_y, lr_x, lr_y;
+   int n_vertices;
    uint32_t a;
    uint8_t cmdHalf1, cmdHalf2;
+   int i;
+   int32_t off_x_i, off_y_i;
+   uint32_t tile, prev_tile;
+   float Z, dsdx, dtdy, s_ul_x, s_lr_x, s_ul_y, s_lr_y, off_size_x, off_size_y;
+   struct {
+      float ul_u, ul_v, lr_u, lr_v;
+   } texUV[2]; //struct for texture coordinates
+   VERTEX *vptr, *vnew, v[4];
 
    if (!rdp.LLE)
    {
@@ -1095,6 +1107,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       cmdHalf1 = gfx.RDRAM[a+3];
       cmdHalf2 = gfx.RDRAM[a+11];
       a >>= 2;
+
       if ((cmdHalf1 == 0xE1 && cmdHalf2 == 0xF1) || (cmdHalf1 == 0xB4 && cmdHalf2 == 0xB3) || (cmdHalf1 == 0xB3 && cmdHalf2 == 0xB2))
       {
          //gSPTextureRectangle
@@ -1113,7 +1126,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          rdp.pc[rdp.pc_i] += 8;
       }
    }
-
    if ((settings.hacks&hack_Yoshi) && settings.ucode == ucode_S2DEX)
    {
       ys_memrect(w0, w1);
@@ -1123,7 +1135,9 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing || (!fb_emulation_enabled && (rdp.cimg == rdp.zimg)))
    {
       if ((settings.hacks&hack_PMario) && rdp.ci_status == CI_USELESS)
+      {
          pm_palette_mod ();
+      }
       return;
    }
 
@@ -1131,7 +1145,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if ((settings.ucode == ucode_CBFD) && rdp.cur_image && rdp.cur_image->format)
    {
       //FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.timg.addr, rdp.maincimg[1].addr, rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size);
-      //LRDP("Shadow texrect is skipped.\n");
+      LRDP("Shadow texrect is skipped.\n");
       rdp.tri_n += 2;
       return;
    }
@@ -1139,8 +1153,8 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    if ((settings.ucode == ucode_PerfectDark) && (rdp.frame_buffers[rdp.ci_count-1].status == CI_ZCOPY))
    {
-      // Copy depth buffer */
       pd_zcopy(w0, w1);
+      LRDP("Depth buffer copied.\n");
       rdp.tri_n += 2;
       return;
    }
@@ -1155,43 +1169,44 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   //  FRDP ("rdp.cycle1 %08lx, rdp.cycle2 %08lx\n", rdp.cycle1, rdp.cycle2);
+   // FRDP ("rdp.cycle1 %08lx, rdp.cycle2 %08lx\n", rdp.cycle1, rdp.cycle2);
 
-   if (rdp.cycle_mode == G_CYC_COPY)
+   if (rdp.cycle_mode == 2)
    {
-      ul_x = max(0.0f, (int16_t)((w1 & 0x00FFF000) >> 14));
-      ul_y = max(0.0f, (int16_t)((w1 & 0x00000FFF) >> 2));
-      lr_x = max(0.0f, (int16_t)((w0 & 0x00FFF000) >> 14));
-      lr_y = max(0.0f, (int16_t)((w0 & 0x00000FFF) >> 2));
+      ul_x = max(0.0f, (short)((rdp.cmd1 & 0x00FFF000) >> 14));
+      ul_y = max(0.0f, (short)((rdp.cmd1 & 0x00000FFF) >> 2));
+      lr_x = max(0.0f, (short)((rdp.cmd0 & 0x00FFF000) >> 14));
+      lr_y = max(0.0f, (short)((rdp.cmd0 & 0x00000FFF) >> 2));
    }
    else
    {
-      ul_x = max(0.0f, ((int16_t)((w1 & 0x00FFF000) >> 12)) / 4.0f);
-      ul_y = max(0.0f, ((int16_t)(w1 & 0x00000FFF)) / 4.0f);
-      lr_x = max(0.0f, ((int16_t)((w0 & 0x00FFF000) >> 12)) / 4.0f);
-      lr_y = max(0.0f, ((int16_t)(w0 & 0x00000FFF)) / 4.0f);
+      ul_x = max(0.0f, ((short)((rdp.cmd1 & 0x00FFF000) >> 12)) / 4.0f);
+      ul_y = max(0.0f, ((short)(rdp.cmd1 & 0x00000FFF)) / 4.0f);
+      lr_x = max(0.0f, ((short)((rdp.cmd0 & 0x00FFF000) >> 12)) / 4.0f);
+      lr_y = max(0.0f, ((short)(rdp.cmd0 & 0x00000FFF)) / 4.0f);
    }
 
-   if (ul_x >= lr_x) // Wrong texrect
+   if (ul_x >= lr_x)
+   {
+      FRDP("Wrong Texrect: ul_x: %f, lr_x: %f\n", ul_x, lr_x);
       return;
+   }
 
-   if (rdp.cycle_mode > G_CYC_2CYCLE)
+   if (rdp.cycle_mode > 1)
    {
       lr_x += 1.0f;
       lr_y += 1.0f;
-   }
-   else if (lr_y - ul_y < 1.0f)
+   } else if (lr_y - ul_y < 1.0f)
       lr_y = ceil(lr_y);
 
    if (settings.increase_texrect_edge)
    {
-      if (glide64_floor(lr_x) != lr_x)
+      if (floor(lr_x) != lr_x)
          lr_x = ceil(lr_x);
-      if (glide64_floor(lr_y) != lr_y)
+      if (floor(lr_y) != lr_y)
          lr_y = ceil(lr_y);
    }
 
-   //*
 #ifdef HAVE_HWFBE
    if (rdp.tbuff_tex && (settings.frame_buffer & fb_optimize_texrect))
    {
@@ -1199,24 +1214,25 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       if (!rdp.tbuff_tex->drawn)
       {
          DRAWIMAGE d;
-         d.imageX  = 0;
-         d.imageW  = (uint16_t)rdp.tbuff_tex->width;
-         d.frameX  = (uint16_t)ul_x;
-         d.frameW  = (uint16_t)(rdp.tbuff_tex->width);
+         d.imageX = 0;
+         d.imageW = (uint16_t)rdp.tbuff_tex->width;
+         d.frameX = (uint16_t)ul_x;
+         d.frameW = (uint16_t)(rdp.tbuff_tex->width);
 
-         d.imageY  = 0;
-         d.imageH  = (uint16_t)rdp.tbuff_tex->height;
-         d.frameY  = (uint16_t)ul_y;
-         d.frameH  = (uint16_t)(rdp.tbuff_tex->height);
+         d.imageY = 0;
+         d.imageH = (uint16_t)rdp.tbuff_tex->height;
+         d.frameY = (uint16_t)ul_y;
+         d.frameH = (uint16_t)(rdp.tbuff_tex->height);
          FRDP("texrect. ul_x: %d, ul_y: %d, lr_x: %d, lr_y: %d, width: %d, height: %d\n", ul_x, ul_y, lr_x, lr_y, rdp.tbuff_tex->width, rdp.tbuff_tex->height);
-         d.scaleX  = 1.0f;
-         d.scaleY  = 1.0f;
-         DrawHiresImage(&d, rdp.tbuff_tex->width == rdp.ci_width);
+         d.scaleX = 1.0f;
+         d.scaleY = 1.0f;
+         DrawHiresImage(d, rdp.tbuff_tex->width == rdp.ci_width);
          rdp.tbuff_tex->drawn = true;
       }
       return;
    }
 #endif
+   //*/
    // framebuffer workaround for Zelda: MM LOT
    if ((rdp.othermode_l & 0xFFFF0000) == 0x0f5a0000)
       return;
@@ -1231,11 +1247,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    }
    //*
    //hack for Banjo2. it removes black texrects under Banjo
-   if (
-#ifdef HAVE_HWFBE
-         !fb_hwfbe_enabled &&
-#endif
-         ((rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF)) == 0xFFFFFFFF && (rdp.othermode_l & 0xFFFF0000) == 0x00500000)
+   if (!fb_hwfbe_enabled && ((rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF)) == 0xFFFFFFFF && (rdp.othermode_l & 0xFFFF0000) == 0x00500000)
    {
       rdp.tri_n += 2;
       return;
@@ -1254,19 +1266,532 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
             return;
          }
    }
+   //*/
 
-   gSPTextureRectangle(
-         ul_x,                             /* ul_x */
-         ul_y,                             /* ul_y */
-         lr_x,                             /* lr_x */
-         lr_y,                             /* lr_y */
-         (w1 & 0x07000000) >> 24,          /* tile */
-         (rdp.cmd2 >> 16) & 0xFFFF,        /* s - FIXME - not sure if correct to pass here */
-         rdp.cmd2 & 0xFFFF,                /* t - FIXME - not sure if correct to pass here */
-         ((rdp.cmd3 & 0xFFFF0000) >> 16),  /* dsdx */
-         (rdp.cmd3 & 0x0000FFFF),          /* dtdy */
-         ((w0 >> 24)&0xFF)                 /* flip - FIXME - not spec conformant */
-         );
+
+   tile = (uint16_t)((w1 & 0x07000000) >> 24);
+
+   rdp.texrecting = 1;
+
+   prev_tile = rdp.cur_tile;
+   rdp.cur_tile = tile;
+
+   Z = set_sprite_combine_mode ();
+
+   rdp.texrecting = 0;
+
+   if (!rdp.cur_cache[0])
+   {
+      rdp.cur_tile = prev_tile;
+      rdp.tri_n += 2;
+      return;
+   }
+   // ****
+   // ** Texrect offset by Gugaman **
+   //
+   //integer representation of texture coordinate.
+   //needed to detect and avoid overflow after shifting
+   off_x_i = (rdp.cmd2 >> 16) & 0xFFFF;
+   off_y_i = rdp.cmd2 & 0xFFFF;
+   dsdx = (float)((int16_t)((rdp.cmd3 & 0xFFFF0000) >> 16)) / 1024.0f;
+   dtdy = (float)((int16_t)(rdp.cmd3 & 0x0000FFFF)) / 1024.0f;
+   if (off_x_i & 0x8000) //check for sign bit
+      off_x_i |= ~0xffff; //make it negative
+   //the same as for off_x_i
+   if (off_y_i & 0x8000)
+      off_y_i |= ~0xffff;
+
+   if (rdp.cycle_mode == 2)
+      dsdx /= 4.0f;
+
+   s_ul_x = ul_x * rdp.scale_x + rdp.offset_x;
+   s_lr_x = lr_x * rdp.scale_x + rdp.offset_x;
+   s_ul_y = ul_y * rdp.scale_y + rdp.offset_y;
+   s_lr_y = lr_y * rdp.scale_y + rdp.offset_y;
+
+   FRDP("texrect (%.2f, %.2f, %.2f, %.2f), tile: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, tile, rdp.tri_n, rdp.tri_n+1);
+   FRDP ("(%f, %f) -> (%f, %f), s: (%d, %d) -> (%d, %d)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y, rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
+   FRDP("\toff_x: %f, off_y: %f, dsdx: %f, dtdy: %f\n", off_x_i/32.0f, off_y_i/32.0f, dsdx, dtdy);
+
+   if ( ((rdp.cmd0>>24)&0xFF) == 0xE5 ) //texrectflip
+   {
+      off_size_x = (lr_y - ul_y - 1) * dsdx;
+      off_size_y = (lr_x - ul_x - 1) * dtdy;
+#ifdef TEXTURE_FILTER
+      if (rdp.cur_cache[0]->is_hires_tex)
+      {
+         off_size_x = (float)((lr_y - ul_y) * dsdx);
+         off_size_y = (float)((lr_x - ul_x) * dtdy);
+      }
+#endif
+   }
+   else
+   {
+      off_size_x = (lr_x - ul_x - 1) * dsdx;
+      off_size_y = (lr_y - ul_y - 1) * dtdy;
+#ifdef TEXTURE_FILTER
+      if (rdp.cur_cache[0]->is_hires_tex)
+      {
+         off_size_x = (float)((lr_x - ul_x) * dsdx);
+         off_size_y = (float)((lr_y - ul_y) * dtdy);
+      }
+#endif
+   }
+
+   //calculate texture coordinates
+   for (i = 0; i < 2; i++)
+   {
+      if (rdp.cur_cache[i] && (rdp.tex & (i+1)))
+      {
+         int x_i, y_i;
+         TILE *tile;
+         float sx, sy;
+
+         sx = 1;
+         sy = 1;
+         x_i = off_x_i;
+         y_i = off_y_i;
+         tile = (TILE*)&rdp.tiles[rdp.cur_tile + i];
+
+         //shifting
+         if (tile->shift_s)
+         {
+            if (tile->shift_s > 10)
+            {
+               uint8_t iShift = (16 - tile->shift_s);
+               x_i <<= iShift;
+               sx = (float)(1 << iShift);
+            }
+            else
+            {
+               uint8_t iShift = tile->shift_s;
+               x_i >>= iShift;
+               sx = 1.0f/(float)(1 << iShift);
+            }
+         }
+         if (tile->shift_t)
+         {
+            if (tile->shift_t > 10)
+            {
+               uint8_t iShift = (16 - tile->shift_t);
+               y_i <<= iShift;
+               sy = (float)(1 << iShift);
+            }
+            else
+            {
+               uint8_t iShift = tile->shift_t;
+               y_i >>= iShift;
+               sy = 1.0f/(float)(1 << iShift);
+            }
+         }
+
+#ifdef HAVE_HWFBE
+         if (rdp.aTBuffTex[i]) //hwfbe texture
+         {
+            float t0_off_x;
+            float t0_off_y;
+            if (off_x_i + off_y_i == 0)
+            {
+               t0_off_x = tile->ul_s;
+               t0_off_y = tile->ul_t;
+            }
+            else
+            {
+               t0_off_x = off_x_i/32.0f;
+               t0_off_y = off_y_i/32.0f;
+            }
+            t0_off_x += rdp.aTBuffTex[i]->u_shift;// + tile->ul_s; //commented for Paper Mario motion blur
+            t0_off_y += rdp.aTBuffTex[i]->v_shift;// + tile->ul_t;
+            texUV[i].ul_u = t0_off_x * sx;
+            texUV[i].ul_v = t0_off_y * sy;
+
+            texUV[i].lr_u = texUV[i].ul_u + off_size_x * sx;
+            texUV[i].lr_v = texUV[i].ul_v + off_size_y * sy;
+
+            texUV[i].ul_u *= rdp.aTBuffTex[i]->u_scale;
+            texUV[i].ul_v *= rdp.aTBuffTex[i]->v_scale;
+            texUV[i].lr_u *= rdp.aTBuffTex[i]->u_scale;
+            texUV[i].lr_v *= rdp.aTBuffTex[i]->v_scale;
+            FRDP("tbuff_tex[%d] ul_u: %f, ul_v: %f, lr_u: %f, lr_v: %f\n",
+                  i, texUV[i].ul_u, texUV[i].ul_v, texUV[i].lr_u, texUV[i].lr_v);
+         }
+         else //common case
+#endif
+         {
+            //kill 10.5 format overflow by SIGN16 macro
+            texUV[i].ul_u = SIGN16(x_i) / 32.0f;
+            texUV[i].ul_v = SIGN16(y_i) / 32.0f;
+
+            texUV[i].ul_u -= tile->f_ul_s;
+            texUV[i].ul_v -= tile->f_ul_t;
+
+            texUV[i].lr_u = texUV[i].ul_u + off_size_x * sx;
+            texUV[i].lr_v = texUV[i].ul_v + off_size_y * sy;
+
+            texUV[i].ul_u = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_x * texUV[i].ul_u;
+            texUV[i].lr_u = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_x * texUV[i].lr_u;
+            texUV[i].ul_v = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_y * texUV[i].ul_v;
+            texUV[i].lr_v = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_y * texUV[i].lr_v;
+         }
+      }
+      else
+      {
+         texUV[i].ul_u = texUV[i].ul_v = texUV[i].lr_u = texUV[i].lr_v = 0;
+      }
+   }
+   rdp.cur_tile = prev_tile;
+
+   // ****
+
+   FRDP (" scissor: (%d, %d) -> (%d, %d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
+
+   CCLIP2 (s_ul_x, s_lr_x, texUV[0].ul_u, texUV[0].lr_u, texUV[1].ul_u, texUV[1].lr_u, (float)rdp.scissor.ul_x, (float)rdp.scissor.lr_x);
+   CCLIP2 (s_ul_y, s_lr_y, texUV[0].ul_v, texUV[0].lr_v, texUV[1].ul_v, texUV[1].lr_v, (float)rdp.scissor.ul_y, (float)rdp.scissor.lr_y);
+
+   FRDP (" draw at: (%f, %f) -> (%f, %f)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
+
+   v[0].x  = s_ul_x;
+   v[0].y  = s_ul_y;
+   v[0].z  = Z;
+   v[0].q  = 1;
+   v[0].u0 = texUV[0].ul_u;
+   v[0].v0 = texUV[0].ul_v;
+   v[0].u1 = texUV[1].ul_u;
+   v[0].v1 = texUV[1].ul_v;
+   v[0].coord[0] = 0.0f;
+   v[0].coord[1] = 0.0f;
+   v[0].coord[2] = 0.0f;
+   v[0].coord[3] = 0.0f;
+   v[0].r  = 0; 
+   v[0].g  = 0;
+   v[0].b  = 0;
+   v[0].a  = 0;
+   v[0].f  = 0.0f;
+   v[0].vec[0] = 0.0f;
+   v[0].vec[1] = 0.0f;
+   v[0].vec[2] = 0.0f;
+   v[0].vec[3] = 0.0f;
+   v[0].sx = 0.0f;
+   v[0].sy = 0.0f;
+   v[0].sz = 0.0f;
+   v[0].x_w = 0.0f;
+   v[0].y_w = 0.0f;
+   v[0].z_w = 0.0f;
+   v[0].u0_w = 0.0f;
+   v[0].v0_w = 0.0f;
+   v[0].u1_w = 0.0f;
+   v[0].v1_w = 0.0f;
+   v[0].oow = 0.0f;
+   v[0].not_zclipped = 0;
+   v[0].screen_translated = 0;
+   v[0].uv_scaled = 0;
+   v[0].uv_calculated = 0;
+   v[0].shade_mod = 0;
+   v[0].color_backup = 0;
+   v[0].ou = 0.0f;
+   v[0].ov = 0.0f;
+   v[0].number = 0;
+   v[0].scr_off = 0;
+   v[0].z_off = 0.0f;
+
+   v[1].x  = s_lr_x;
+   v[1].y  = s_ul_y;
+   v[1].z  = Z;
+   v[1].q  = 1;
+   v[1].u0 = texUV[0].lr_u;
+   v[1].v0 = texUV[0].ul_v;
+   v[1].u1 = texUV[1].lr_u;
+   v[1].v1 = texUV[1].ul_v;
+   v[1].coord[0] = 0.0f;
+   v[1].coord[1] = 0.0f;
+   v[1].coord[2] = 0.0f;
+   v[1].coord[3] = 0.0f;
+   v[1].r  = 0;
+   v[1].g  = 0;
+   v[1].b  = 0;
+   v[1].a  = 0;
+   v[1].f  = 0.0f;
+   v[1].vec[0] = 0.0f;
+   v[1].vec[1] = 0.0f;
+   v[1].vec[2] = 0.0f;
+   v[1].sx = 0.0f;
+   v[1].sy = 0.0f;
+   v[1].sz = 0.0f;
+   v[1].x_w = 0.0f;
+   v[1].y_w = 0.0f;
+   v[1].z_w = 0.0f;
+   v[1].u0_w = 0.0f;
+   v[1].v0_w = 0.0f;
+   v[1].u1_w = 0.0f;
+   v[1].v1_w = 0.0f;
+   v[1].oow = 0.0f;
+   v[1].not_zclipped = 0;
+   v[1].screen_translated = 0;
+   v[1].uv_scaled = 0;
+   v[1].uv_calculated = 0;
+   v[1].shade_mod = 0;
+   v[1].color_backup = 0;
+   v[1].ou = 0.0f;
+   v[1].ov = 0.0f;
+   v[1].number = 0;
+   v[1].scr_off = 0;
+   v[1].z_off = 0.0f;
+
+   v[2].x  = s_ul_x;
+   v[2].y  = s_lr_y;
+   v[2].z  = Z;
+   v[2].q  = 1;
+   v[2].u0 = texUV[0].ul_u;
+   v[2].v0 = texUV[0].lr_v;
+   v[2].u1 = texUV[1].ul_u;
+   v[2].v1 = texUV[1].lr_v;
+   v[2].coord[0] = 0.0f;
+   v[2].coord[1] = 0.0f;
+   v[2].coord[2] = 0.0f; 
+   v[2].coord[3] = 0.0f;
+   v[2].r  = 0;
+   v[2].g  = 0;
+   v[2].b  = 0;
+   v[2].a  = 0;
+   v[2].f  = 0.0f;
+   v[2].vec[0] = 0.0f;
+   v[2].vec[1] = 0.0f;
+   v[2].vec[2] = 0.0f;
+   v[2].sx = 0.0f;
+   v[2].sy = 0.0f;
+   v[2].sz = 0.0f;
+   v[2].x_w = 0.0f;
+   v[2].y_w = 0.0f;
+   v[2].z_w = 0.0f;
+   v[2].u0_w = 0.0f;
+   v[2].v0_w = 0.0f;
+   v[2].u1_w = 0.0f;
+   v[2].v1_w = 0.0f;
+   v[2].oow = 0.0f;
+   v[2].not_zclipped = 0;
+   v[2].screen_translated = 0;
+   v[2].uv_scaled = 0;
+   v[2].uv_calculated = 0;
+   v[2].shade_mod = 0;
+   v[2].color_backup = 0;
+   v[2].ou = 0.0f;
+   v[2].ov = 0.0f;
+   v[2].number = 0;
+   v[2].scr_off = 0;
+   v[2].z_off = 0.0f;
+
+   v[3].x  = s_lr_x;
+   v[3].y  = s_lr_y;
+   v[3].z  = Z;
+   v[3].q  = 1;
+   v[3].u0 = texUV[0].lr_u;
+   v[3].v0 = texUV[0].lr_v; 
+   v[3].u1 = texUV[1].lr_u;
+   v[3].v1 = texUV[1].lr_v;
+   v[3].coord[0] = 0.0;
+   v[3].coord[1] = 0.0;
+   v[3].coord[2] = 0.0; 
+   v[3].coord[3] = 0.0;
+   v[3].r  = 0; 
+   v[3].g  = 0;
+   v[3].b  = 0;
+   v[3].a  = 0;
+   v[3].f  = 0.0f;
+   v[3].vec[0] = 0.0f;
+   v[3].vec[1] = 0.0f;
+   v[3].vec[2] = 0.0f;
+   v[3].sx = 0.0f;
+   v[3].sy = 0.0f;
+   v[3].sz = 0.0f;
+   v[3].x_w = 0.0f;
+   v[3].y_w = 0.0f;
+   v[3].z_w = 0.0f;
+   v[3].u0_w = 0.0f;
+   v[3].v0_w = 0.0f;
+   v[3].u1_w = 0.0f;
+   v[3].v1_w = 0.0f;
+   v[3].oow = 0.0f;
+   v[3].not_zclipped = 0;
+   v[3].screen_translated = 0;
+   v[3].uv_scaled = 0;
+   v[3].uv_calculated = 0;
+   v[3].shade_mod = 0;
+   v[3].color_backup = 0;
+   v[3].ou = 0.0f;
+   v[3].ov = 0.0f;
+   v[3].number = 0;
+   v[3].scr_off = 0;
+   v[3].z_off = 0.0f;
+
+   if ( ((rdp.cmd0>>24)&0xFF) == 0xE5 ) //texrectflip
+   {
+      v[1].u0 = texUV[0].ul_u;
+      v[1].v0 = texUV[0].lr_v;
+      v[1].u1 = texUV[1].ul_u;
+      v[1].v1 = texUV[1].lr_v;
+
+      v[2].u0 = texUV[0].lr_u;
+      v[2].v0 = texUV[0].ul_v;
+      v[2].u1 = texUV[1].lr_u;
+      v[2].v1 = texUV[1].ul_v;
+   }
+
+
+   vptr = (VERTEX*)v;
+   n_vertices = 4;
+
+   // for (int j =0; j < 4; j++)
+   // FRDP("v[%d] u0: %f, v0: %f, u1: %f, v1: %f\n", j, v[j].u0, v[j].v0, v[j].u1, v[j].v1);
+
+
+#if 0
+   if (
+#ifdef HAVE_HWFBE
+         !rdp.aTBuffTex[0] &&
+#endif
+         rdp.cur_cache[0]->splits != 1)
+   {
+      // ** LARGE TEXTURE HANDLING **
+      // *VERY* simple algebra for texrects
+      float min_u, min_x, max_u, max_x;
+      int start_u_256, end_u_256, splitheight, num_verts_line;
+      float m, b;
+
+      if (v[0].u0 < v[1].u0)
+      {
+         min_u = v[0].u0;
+         min_x = v[0].x;
+         max_u = v[1].u0;
+         max_x = v[1].x;
+      }
+      else
+      {
+         min_u = v[1].u0;
+         min_x = v[1].x;
+         max_u = v[0].u0;
+         max_x = v[0].x;
+      }
+
+      start_u_256 = (int)min_u >> 8;
+      end_u_256 = (int)max_u >> 8;
+      //FRDP(" min_u: %f, max_u: %f start: %d, end: %d\n", min_u, max_u, start_u_256, end_u_256);
+
+      splitheight = rdp.cur_cache[0]->splitheight;
+
+      num_verts_line = 2 + ((end_u_256-start_u_256)<<1);
+      n_vertices = num_verts_line << 1;
+      vnew = malloc(n_vertices * sizeof(VERTEX));
+      vptr = (VERTEX*)vnew;
+
+      vnew[0] = v[0];
+      vnew[0].u0 -= 256.0f * start_u_256;
+      vnew[0].v0 += splitheight * start_u_256;
+      vnew[0].u1 -= 256.0f * start_u_256;
+      vnew[0].v1 += splitheight * start_u_256;
+      vnew[1] = v[2];
+      vnew[1].u0 -= 256.0f * start_u_256;
+      vnew[1].v0 += splitheight * start_u_256;
+      vnew[1].u1 -= 256.0f * start_u_256;
+      vnew[1].v1 += splitheight * start_u_256;
+      vnew[n_vertices-2] = v[1];
+      vnew[n_vertices-2].u0 -= 256.0f * end_u_256;
+      vnew[n_vertices-2].v0 += splitheight * end_u_256;
+      vnew[n_vertices-2].u1 -= 256.0f * end_u_256;
+      vnew[n_vertices-2].v1 += splitheight * end_u_256;
+      vnew[n_vertices-1] = v[3];
+      vnew[n_vertices-1].u0 -= 256.0f * end_u_256;
+      vnew[n_vertices-1].v0 += splitheight * end_u_256;
+      vnew[n_vertices-1].u1 -= 256.0f * end_u_256;
+      vnew[n_vertices-1].v1 += splitheight * end_u_256;
+
+      // find the equation of the line of u,x
+      m = (max_x - min_x) / (max_u - min_u); // m = delta x / delta u
+      b = min_x - m * min_u; // b = y - m * x
+
+      for (i=start_u_256; i<end_u_256; i++)
+      {
+         int vn;
+         // Find where x = current 256 multiple
+         float x = m * ((i<<8)+256) + b;
+
+         vn = 2 + ((i-start_u_256)<<2);
+         vnew[vn] = v[0];
+         vnew[vn].x = x;
+         vnew[vn].u0 = 255.5f;
+         vnew[vn].v0 += (float)splitheight * i;
+         vnew[vn].u1 = 255.5f;
+         vnew[vn].v1 += (float)splitheight * i;
+
+         vn ++;
+         vnew[vn] = v[2];
+         vnew[vn].x = x;
+         vnew[vn].u0 = 255.5f;
+         vnew[vn].v0 += (float)splitheight * i;
+         vnew[vn].u1 = 255.5f;
+         vnew[vn].v1 += (float)splitheight * i;
+
+         vn ++;
+         vnew[vn] = vnew[vn-2];
+         vnew[vn].u0 = 0.5f;
+         vnew[vn].v0 += (float)splitheight;
+         vnew[vn].u1 = 0.5f;
+         vnew[vn].v1 += (float)splitheight;
+
+         vn ++;
+         vnew[vn] = vnew[vn-2];
+         vnew[vn].u0 = 0.5f;
+         vnew[vn].v0 += (float)splitheight;
+         vnew[vn].u1 = 0.5f;
+         vnew[vn].v1 += (float)splitheight;
+      }
+      //*
+      if (n_vertices > 12)
+      {
+         int k;
+         float texbound = (float)(splitheight << 1);
+         for (k = 0; k < n_vertices; k ++)
+         {
+            if (vnew[k].v0 > texbound)
+               vnew[k].v0 = (float)fmod(vnew[k].v0, texbound);
+         }
+      }
+      //*/
+   }
+#endif
+
+   AllowShadeMods (vptr, n_vertices);
+   for (i=0; i<n_vertices; i++)
+   {
+      apply_shade_mods (&vptr[i]);
+   }
+
+#if 0
+   if (fullscreen)
+#endif
+   {
+      if (rdp.fog_mode >= FOG_MODE_BLEND)
+      {
+         float fog;
+         if (rdp.fog_mode == FOG_MODE_BLEND)
+            fog = 1.0f/max(1, rdp.fog_color&0xFF);
+         else
+            fog = 1.0f/max(1, (~rdp.fog_color)&0xFF);
+         for (i = 0; i < n_vertices; i++)
+         {
+            vptr[i].f = fog;
+         }
+         grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
+      }
+
+      ConvertCoordsConvert (vptr, n_vertices);
+
+      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, n_vertices, vptr, sizeof(VERTEX));
+
+      rdp.tri_n += 2;
+   }
+
+   if (vnew)
+      free(vnew);
 }
 
 static void rdp_loadsync(uint32_t w0, uint32_t w1)
@@ -1875,7 +2400,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 #ifdef HAVE_HWFBE
                      if (CopyTextureBuffer(prev_fb, cur_fb))
                      {
-                        // if (CloseTextureBuffer(TRUE))
+                        // if (CloseTextureBuffer(true))
                         //*
                         if ((settings.hacks&hack_Zelda) && (rdp.frame_buffers[rdp.ci_count+2].status == CI_AUX) && !rdp.fb_drawn) //hack for photo camera in Zelda MM
                         {
