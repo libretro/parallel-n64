@@ -1662,22 +1662,65 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
 
 static void rdp_settile(uint32_t w0, uint32_t w1)
 {
-   gDPSetTile(
-         ((w0 >> 21) & 0x07),       /* format */
-         ((w0 >> 19) & 0x03),       /* size   */
-         ((w0 >> 9) & 0x01FF),      /* line   */
-         (w0 & 0x1FF),              /* tmem   */
-         ((w1 >> 24) & 0x07),       /* tile index no */
-         ((w1 >> 20) & 0x0F),       /* palette */
-         ((w1 >> 19) & 0x01),       /* clamp_t */
-         ((w1 >> 9) & 0x01),        /* clamp_s */
-         ((w1 >> 14) & 0x0F),       /* mask_t */
-         ((w1 >> 4) & 0x0F),        /* mask_s */
-         ((w1 >> 10) & 0x0F),       /* shift_t */
-         (w1 & 0x0F),               /* shift_s */
-         ((w1 >> 18) & 0x01),       /* mirror_t */
-         ((w1 >> 8) & 0x01)         /* mirror_s */
-         );
+   TILE *tile;
+   tile_set = 1; // used to check if we only load the first settilesize
+
+   rdp.first = 0;
+
+   rdp.last_tile = (uint32_t)((w1 >> 24) & 0x07);
+   tile = (TILE*)&rdp.tiles[rdp.last_tile];
+
+   tile->format    = (uint8_t)((w0 >> 21) & 0x07);
+   tile->size      = (uint8_t)((w0 >> 19) & 0x03);
+   tile->line      = (uint16_t)((w0 >> 9) & 0x01FF);
+   tile->t_mem     = (uint16_t)(w0 & 0x1FF);
+   tile->palette   = (uint8_t)((w1 >> 20) & 0x0F);
+   tile->clamp_t   = (uint8_t)((w1 >> 19) & 0x01);
+   tile->mirror_t  = (uint8_t)((w1 >> 18) & 0x01);
+   tile->mask_t    = (uint8_t)((w1 >> 14) & 0x0F);
+   tile->shift_t   = (uint8_t)((w1 >> 10) & 0x0F);
+   tile->clamp_s   = (uint8_t)((w1 >> 9) & 0x01);
+   tile->mirror_s  = (uint8_t)((w1 >> 8) & 0x01);
+   tile->mask_s    = (uint8_t)((w1 >> 4) & 0x0F);
+   tile->shift_s   = (uint8_t)(w1 & 0x0F);
+
+   rdp.update |= UPDATE_TEXTURE;
+
+#if 0
+   FRDP ("settile: tile: %d, format: %s, size: %s, line: %d, "
+         "t_mem: %08lx, palette: %d, clamp_t/mirror_t: %s, mask_t: %d, "
+         "shift_t: %d, clamp_s/mirror_s: %s, mask_s: %d, shift_s: %d\n",
+         rdp.last_tile, str_format[tile->format], str_size[tile->size], tile->line,
+         tile->t_mem, tile->palette, str_cm[(tile->clamp_t<<1)|tile->mirror_t], tile->mask_t,
+         tile->shift_t, str_cm[(tile->clamp_s<<1)|tile->mirror_s], tile->mask_s, tile->shift_s);
+#endif
+
+#ifdef HAVE_HWFBE
+   if (fb_hwfbe_enabled && rdp.last_tile < rdp.cur_tile + 2)
+   {
+      int i;
+      for (i = 0; i < 2; i++)
+      {
+         if (rdp.aTBuffTex[i])
+         {
+            if (rdp.aTBuffTex[i]->t_mem == tile->t_mem)
+            {
+               if (rdp.aTBuffTex[i]->size == tile->size)
+               {
+                  rdp.aTBuffTex[i]->tile = rdp.last_tile;
+                  rdp.aTBuffTex[i]->info.format = tile->format == 0 ? GR_TEXFMT_RGB_565 : GR_TEXFMT_ALPHA_INTENSITY_88;
+                  FRDP("rdp.aTBuffTex[%d] tile=%d, format=%s\n", i, rdp.last_tile, tile->format == 0 ? "RGB565" : "Alpha88");
+               }
+               else
+                  rdp.aTBuffTex[i] = 0;
+               break;
+            }
+            else if (rdp.aTBuffTex[i]->tile == rdp.last_tile) //wrong! t_mem must be the same
+               rdp.aTBuffTex[i] = 0;
+         }
+      }
+   }
+#endif
 }
 
 static void rdp_fillrect(uint32_t w0, uint32_t w1)
