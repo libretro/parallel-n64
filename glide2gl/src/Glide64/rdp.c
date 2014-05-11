@@ -3202,8 +3202,28 @@ EXPORT void CALL ProcessRDPList(void)
             SETOTHERMODE(0xBA, 0, 32, w0 & 0x00FFFFFF);       // SETOTHERMODE_H
             break;
          case 0x30:
-            //0x30, Load_TLUT
-            rdp_loadtlut(w0, w1);
+            {
+               //0x30, Load_TLUT
+               //rdp_loadtlut(w0, w1);
+               
+               int32_t i, j;
+               uint32_t tile;
+               uint16_t start, count;
+
+               tile = (w1 >> 24) & 0x07;
+               start = rdp.tiles[tile].t_mem - 256; // starting location in the palettes
+               count = ((uint16_t)(w1 >> 14) & 0x3FF) + 1;    // number to copy
+
+               if (rdp.timg.addr + (count<<1) > BMASK)
+                  count = (uint16_t)((BMASK - rdp.timg.addr) >> 1);
+
+               if (start+count > 256)
+                  count = 256-start;
+
+               load_palette (rdp.timg.addr, start, count);
+
+               rdp.timg.addr += count << 1;
+            }
             break;
          case 0x32:
             rdp_settilesize(w0, w1);
