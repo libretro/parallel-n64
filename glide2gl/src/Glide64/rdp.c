@@ -1387,52 +1387,66 @@ static void rdp_fullsync(uint32_t w0, uint32_t w1)
    gDPFullSync();
 }
 
+#define SG(w1) ((w1 >> 16) & 0xFF)
+#define SB(w1) ((w1 & 0xFF))
+#define CB(w1) ((w1 >> 8) & 0xFF)
+#define SG(w1) ((w1 >> 16) & 0xFF)
+#define CG(w1) ((w1 >> 24) & 0xFF)
+
+#define SR(w1) (w1 & 0xFF)
+#define CR(w1) ((w1 >> 8) & 0xFF)
+
 static void rdp_setkeygb(uint32_t w0, uint32_t w1)
 {
-   gDPSetKeyGB(
-         (w1 >> 24) & 0xFF,    /* cG */
-         (w1 >> 16) & 0xFF,    /* sG */
-         (w0 >> 12) & 0xFFF,   /* wG */
-         (w1 >> 8) & 0xFF,     /* cB */
-         w1 & 0xFF,            /* sB */
-         w0 & 0xFFF            /* wB */
-         );
+   rdp.SCALE = (rdp.SCALE&0xFF0000FF) | (SG(w1) << 16)   | (SB(w1) << 8);
+   rdp.CENTER = (rdp.CENTER&0xFF0000FF) | (CG(w1) << 16) | (CB(w1) << 8);
+   //FRDP("setkeygb. cG=%02lx, sG=%02lx, cB=%02lx, sB=%02lx\n", cG, sG, cB, sB);
 }
 
 static void rdp_setkeyr(uint32_t w0, uint32_t w1)
 {
-   gDPSetKeyR(
-         (w1 >> 8) & 0xFF,    /* cR */
-         w1 & 0xFF,           /* sR */
-         (w1 >> 16) & 0xFFF   /* wR */
-         );
+   rdp.SCALE  = (rdp.SCALE & 0x00FFFFFF)  | (SR(w1) << 24);
+   rdp.CENTER = (rdp.CENTER & 0x00FFFFFF) | (CR(w1) << 24);
+   //FRDP("setkeyr. cR=%02lx, sR=%02lx\n", cR, sR);
 }
 
 static void rdp_setconvert(uint32_t w0, uint32_t w1)
 {
-   gDPSetConvert(
-         (w0 >> 13) & 0x1ff,                       /* k0 */
-         (w0 >> 4) & 0x1ff,                        /* k1 */
-         ((w0 & 0xf) << 5) | ((w1 >> 27) & 0x1f),  /* k2 */
-         (w1 >> 18) & 0x1ff,                       /* k3 */
-         (w1 >> 9) & 0x1FF,                        /* k4 */
-         (w1 & 0x1FF)                              /* k5 */
-         );
+   rdp.K4 = (uint8_t)(w1 >> 9) & 0x1FF;
+   rdp.K5 = (uint8_t)(w1 & 0x1FF);
+   //FRDP("setconvert. K4=%02lx K5=%02lx\n", rdp.K4, rdp.K5);
 }
 
 static void rdp_setscissor(uint32_t w0, uint32_t w1)
 {
-   gDPSetScissor(0,
-         (((w0 & 0x00FFF000) >> 14)),
-         (((w0 & 0x00000FFF) >> 2)),
-         (((w1 & 0x00FFF000) >> 14)),
-         (((w1 & 0x00000FFF) >> 2))
-         );
+   // clipper resolution is 320x240, scale based on computer resolution
+   rdp.scissor_o.ul_x = /*min(*/(uint32_t)(((w0 & 0x00FFF000) >> 14))/*, 320)*/;
+   rdp.scissor_o.ul_y = /*min(*/(uint32_t)(((w0 & 0x00000FFF) >> 2))/*, 240)*/;
+   rdp.scissor_o.lr_x = /*min(*/(uint32_t)(((w1 & 0x00FFF000) >> 14))/*, 320)*/;
+   rdp.scissor_o.lr_y = /*min(*/(uint32_t)(((w1 & 0x00000FFF) >> 2))/*, 240)*/;
+
+   rdp.ci_upper_bound = rdp.scissor_o.ul_y;
+   rdp.ci_lower_bound = rdp.scissor_o.lr_y;
+   rdp.scissor_set = true;
+
+   //FRDP("setscissor: (%d,%d) -> (%d,%d)\n", rdp.scissor_o.ul_x, rdp.scissor_o.ul_y, rdp.scissor_o.lr_x, rdp.scissor_o.lr_y);
+
+   rdp.update |= UPDATE_SCISSOR;
+
+   if (rdp.view_scale[0] == 0) //viewport is not set?
+   {
+      rdp.view_scale[0] = (rdp.scissor_o.lr_x>>1) * rdp.scale_x;
+      rdp.view_scale[1] = (rdp.scissor_o.lr_y>>1) * -rdp.scale_y;
+      rdp.view_trans[0] = rdp.view_scale[0];
+      rdp.view_trans[1] = -rdp.view_scale[1];
+      rdp.update |= UPDATE_VIEWPORT;
+   }
 }
 
 static void rdp_setprimdepth(uint32_t w0, uint32_t w1)
 {
-   gDPSetPrimDepth((w1 >> 16) & 0x7FFF, w1 & 0x7FFF);
+   rdp.prim_depth = (uint16_t)((w1 >> 16) & 0x7FFF);
+   rdp.prim_dz = (uint16_t)(w1 & 0x7FFF);
 }
 
 #define F3DEX2_SETOTHERMODE(cmd,sft,len,data) { \
