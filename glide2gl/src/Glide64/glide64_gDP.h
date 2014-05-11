@@ -241,115 +241,6 @@ static void gDPTileSync(void)
 }
 
 /*
- * Will stall the pipeline until the last command that reads or writes
- * from the frame buffer finishes. This is useful for ensuring an entire
- * scene is fully drawn before swapping frame buffers or reusing a frame
- * buffer as a texture image.
- *
- */
-static void gDPFullSync(void)
-{
-   // Set an interrupt to allow the game to continue
-   *gfx.MI_INTR_REG |= 0x20;
-   gfx.CheckInterrupts();
-
-#ifdef EXTREME_LOGGING
-   LRDP("gDPFullSync\n");
-#endif
-}
-
-/*
-* Selects the color for chroma key operations. Conceptually,
-* the equation used for keying is:
-*
-* key = clamp(0.0, -abs((X - center) * scale) + width, 1.0)
-*
-* The alpha key is the minimum of KeyR, KeyG, or KeyB.
-*
-* cR - color center defines the intensity at which key is active (0-255).
-* sR - color scale is (1.0/(size of soft edge))*255. The scale is in the
-* range 0-255. For hard-edge keying, set scale to 255.
-* wR - color width is (Size of half the key window including the soft edge
-* )* scale. The width is expressed in a 12-bit 4.8 format. If the width
-* is greater than 1.0, keying is disabled for that channel.
-*/
-static void gDPSetKeyR(uint32_t cR, uint32_t sR, uint32_t wR)
-{
-   rdp.SCALE = (rdp.SCALE & 0x00FFFFFF) | (sR << 24);
-   rdp.CENTER = (rdp.CENTER & 0x00FFFFFF) | (cR << 24);
-
-#ifdef EXTREME_LOGGING
-   FRDP("setkeyr. cR=%02lx, sR=%02lx\n", cR, sR);
-#endif
-}
-
-static void gDPSetKeyGB(uint32_t cG, uint32_t sG, uint32_t wG, uint32_t cB, uint32_t sB, uint32_t wB )
-{
-   rdp.SCALE = (rdp.SCALE & 0xFF0000FF) | (sG << 16) | (sB << 8);
-   rdp.CENTER = (rdp.CENTER & 0xFF0000FF) | (cG << 16) | (cB << 8);
-
-   //FRDP("setkeygb. cG=%02lx, sG=%02lx, cB=%02lx, sB=%02lx\n", cG, sG, cB, sB);
-}
-
-/* Tells the RDP to rasterize geometry falling inside the scissor
- * box. Coordinates are given with respect to screen space.
- *
- * ulx - X coordinate of the top left corner of the scissor box. 
- *
- * uly - Y coordinate of the top left corner of the scissor box
- *
- * lrx - X coordinate of the bottom right corner of the scissor box.
- *
- * lry - Y coordinate of the bottom right corner of the scissor box.
- */
-static void gDPSetScissor( uint32_t mode, float ulx, float uly, float lrx, float lry )
-{
-   (void)mode;
-   // clipper resolution is 320x240, scale based on computer resolution
-   rdp.scissor_o.ul_x = ulx;
-   rdp.scissor_o.ul_y = uly;
-   rdp.scissor_o.lr_x = lrx;
-   rdp.scissor_o.lr_y = lry;
-
-   rdp.ci_upper_bound = rdp.scissor_o.ul_y;
-   rdp.ci_lower_bound = rdp.scissor_o.lr_y;
-   rdp.scissor_set = true;
-
-#ifdef EXTREME_LOGGING
-   FRDP("setscissor: (%d,%d) -> (%d,%d)\n", rdp.scissor_o.ul_x, rdp.scissor_o.ul_y,
-         rdp.scissor_o.lr_x, rdp.scissor_o.lr_y);
-#endif
-
-   rdp.update |= UPDATE_SCISSOR;
-
-   if (rdp.view_scale[0] != 0) //viewport is set?
-      return;
-
-   rdp.view_scale[0] = (rdp.scissor_o.lr_x>>1)*rdp.scale_x;
-   rdp.view_scale[1] = (rdp.scissor_o.lr_y>>1)*-rdp.scale_y;
-   rdp.view_trans[0] = rdp.view_scale[0];
-   rdp.view_trans[1] = -rdp.view_scale[1];
-   rdp.update |= UPDATE_VIEWPORT;
-}
-
-/*
-* Sets the primitive depth (Z) in the RDP.
-* Sets the Z-value (as well as the deltaZ value) to be used for the
-* entire primitive RDP. The Z format used in the blender (B) is
-* 15.3 fixed point. The primitive Z is a 16-bit register.
-*
-* z  - Z-value (16-bit precision, s15).
-* dz - deltaZ value (16-bit precision, s15).
-*/
-static void gDPSetPrimDepth( uint16_t z, uint16_t dz )
-{
-   rdp.prim_depth = z;
-   rdp.prim_dz = dz;
-
-   //FRDP("setprimdepth: %d\n", rdp.prim_depth);
-}
-
-/*
 * Sets the tile descriptor parameters.
 * Sets the paramaters of a tile descriptor defining the origin and range of a texture tile.
 *
@@ -602,113 +493,6 @@ static void gDPLoadTile( uint32_t tile, uint32_t uls, uint32_t ult, uint32_t lrs
 }
 
 /*
- * Tells the RDP what color to use when rasterizing a Fill Rectangle
- * command. For 32 bit color mode, this is the RGBA value to set each
- * pixel to.
- *
- * For 16bit color mode, this is two 16 bit colors packed into one 32bit field.
- *
- * c - Color to fill non-textured rectangles with.
- */
-static void gDPSetFillColor(uint32_t c)
-{
-   rdp.fill_color = c;
-   rdp.update |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
-
-   //FRDP("setfillcolor: %08lx\n", c);
-}
-
-/*
-* Sets the RDP's fog color. The fog color is a general-use color register
-* in the blender (BL).
-*
-* r - red component of RGBA color (8-bit precision, 0~255).
-* g - green component of RGBA color (8-bit precision, 0~255).
-* b - blue component of RGBA color (8-bit precision, 0~255).
-* a - alpha component of RGBA color (8-bit precision, 0~255).
-*/
-static void gDPSetFogColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a)
-{
-   uint32_t w1 = rdp.cmd1;
-   rdp.fog_color = w1;
-   rdp.update |= UPDATE_COMBINE | UPDATE_FOG_ENABLED;
-
-   //FRDP("setfogcolor - %08lx\n", w1);
-}
-
-/*
-* Sets the RDP's blend color. The blend color register is a general-use
-* color register in the blender (BL). This blend color register can, for
-* example, set he alpah component to give a constant transparency to an
-* object when fog is being used.
-*
-* r - red component of RGBA color (8-bit precision, 0~255).
-* g - green component of RGBA color (8-bit precision, 0~255).
-* b - blue component of RGBA color (8-bit precision, 0~255).
-* a - alpha component of RGBA color (8-bit precision, 0~255).
-*/
-static void gDPSetBlendColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a )
-{
-   uint32_t w1 = rdp.cmd1;
-   rdp.blend_color = w1;
-   rdp.update |= UPDATE_COMBINE;
-
-   //FRDP("setblendcolor: %08lx\n", w1);
-}
-
-/*
-* Sets the RDP's primitive color, which is used as an input
-* sourcxe by the color combiner (CC). The primitive color
-* register set by this macro becomes a general-purpose color
-* of the CC, expressing the constant flat-shaded surface color
-* applied by the primitive.
-*
-* It is also used for rendering specular highlights. The contents
-* of the primitive color register determine the highlight color.
-*
-* In 2-cycle mode, they indicate the color of the first specular
-* highlight (Hilite1). Furthermore, 'm' and 'l' are used for
-* trilinear interpolation in the MIP-mapping process.
-*
-*
-* m - minimum value when LOD is less than 1.0 (.8, 0~255 texel/pixel ratios).
-* l - LOD factor for interpolation of third axis (.8, 0~255).
-* r - red component of RGBA color (8-bit precision, 0~255).
-* g - green component of RGBA color (8-bit precision, 0~255).
-* b - blue component of RGBA color (8-bit precision, 0~255).
-* a - alpha component of RGBA color (8-bit precision, 0~255).
-*/
-static void gDPSetPrimColor( uint32_t m, uint32_t l, uint32_t r, uint32_t g, uint32_t b, uint32_t a )
-{
-   uint32_t w0 = rdp.cmd0;
-   uint32_t w1 = rdp.cmd1;
-   rdp.prim_color = w1;
-   rdp.prim_lodmin = (w0 >> 8) & 0xFF;
-   rdp.prim_lodfrac = max(w0 & 0xFF, rdp.prim_lodmin);
-   rdp.update |= UPDATE_COMBINE;
-
-   //FRDP("setprimcolor: %08lx, lodmin: %d, lodfrac: %d\n", w1, rdp.prim_lodmin, rdp.prim_lodfrac);
-}
-
-/*
-* Sets the framebuffer area to be used as the Z-buffer.
-*
-* This macro must be used if Z buffering is enabled. Image width
-* (width) and pixel size (siz) do not need to be set when the
-* Z buffer area is secured, because the value set by gDPSetColorImage
-* is used for 'width' and the 'siz' is always G_IM_SIZ_16b (16 bits per cycle).
-*
-* address - address of the image (64-byte alignment)
-*/
-static void gDPSetDepthImage( uint32_t address )
-{
-   rdp.zimg = address;
-   rdp.zi_width = rdp.ci_width;
-
-   //FRDP("setdepthimage - %08lx\n", rdp.zimg);
-}
-
-/*
 * Loads a texture from DRAM into texture memory (TMEM).
 * The texture image is loaded into memory in a single transfer.
 *
@@ -801,11 +585,10 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
 * - G_AC_THRESHOLD - Compare with the blend color alpha value
 * - G_AC_DITHER - Compare with a random dither value
 */
-static INLINE void gDPSetAlphaCompare( uint32_t mode )
-{
-   rdp.acmp = mode;
-   rdp.update |= UPDATE_ALPHA_COMPARE;
-   //FRDP ("alpha compare %s\n", ACmp[rdp.acmp]);
+#define gDPSetAlphaCompare(mode) \
+{ \
+   rdp.acmp = mode; \
+   rdp.update |= UPDATE_ALPHA_COMPARE; \
 }
 
 /*
@@ -816,12 +599,10 @@ static INLINE void gDPSetAlphaCompare( uint32_t mode )
 * - G_ZS_PIXEL (Use the Z-value and 'deltaZ' value repeated for each pixel)
 * - G_ZS_PRIM (Use the primitive depth register's Z value and 'delta Z' value)
 */
-static INLINE void gDPSetDepthSource( uint32_t source )
-{
-   rdp.zsrc = source;
-   rdp.update |= UPDATE_ZBUF_ENABLED;
-   //FRDP ("z-src sel: %s\n", str_zs[rdp.zsrc]);
-   //FRDP ("z-src sel: %08lx\n", rdp.zsrc);
+#define gDPSetDepthSource(source) \
+{ \
+   rdp.zsrc = source; \
+   rdp.update |= UPDATE_ZBUF_ENABLED; \
 }
 
 /*
@@ -1217,30 +998,6 @@ static void gDPFillRectangle( int32_t ul_x, int32_t ul_y, int32_t lr_x, int32_t 
 
       rdp.tri_n += 2;
    }
-}
-
-/*
-* Sets the RDP's environment color, which is used as an input source for
-* linaer interpolation by the color combiner (CC). The environment color
-* register set by this macro becomes a general-purpose color register of the
-* CC, expressing the environment of the scene.
-*
-* It is also used for rendering a second specular highlight (Hilite2). The
-* value in this environment color register determines the highlight color
-* for Hilite2.
-*
-* r - red component of RGBA color (8-bit precision, 0~255)
-* g - red component of RGBA color (8-bit precision, 0~255)
-* b - red component of RGBA color (8-bit precision, 0~255)
-* a - red component of RGBA color (8-bit precision, 0~255)
-*/
-static void gDPSetEnvColor( uint32_t r, uint32_t g, uint32_t b, uint32_t a )
-{
-   uint32_t w1 = rdp.cmd1;
-   rdp.env_color = w1;
-   rdp.update |= UPDATE_COMBINE;
-
-   //FRDP("setenvcolor: %08lx\n", w1);
 }
 
 /*
@@ -1763,83 +1520,4 @@ static void gDPSetTextureImage( uint32_t format, uint32_t size, uint32_t width, 
 #endif
 
    //FRDP("settextureimage: format: %s, size: %s, width: %d, addr: %08lx\n", format[rdp.timg.format], size[rdp.timg.size], rdp.timg.width, rdp.timg.addr);
-}
-
-/* Sets the matrix coefficients used to convert YUV pixels into RGB. Conceptually, the equations are
-* shown below:
-*
-* R = C0 * (Y-16) + C1 * V
-* G = C0 * (Y-16) + C2 * U - C3 * V
-* B = C0 * (Y-16) + C4 * U
-*
-* k0 - K0 term of the YUV-RGB conversion matrix (9-bit precision, -256~255).
-* k1 - K1 term of the YUV-RGB conversion matrix (9-bit precision, -256~255).
-* k2 - K2 term of the YUV-RGB conversion matrix (9-bit precision, -256~255).
-* k3 - K3 term of the YUV-RGB conversion matrix (9-bit precision, -256~255).
-* k4 - K4 term of the YUV-RGB conversion matrix (9-bit precision, -256~255).
-* k5 - K5 term of the YUV-RGB conversion matrix (9-bit precision, -256~255).
-*/
-static void gDPSetConvert(int32_t k0, int32_t k1, int32_t k2, int32_t k3, int32_t k4, int32_t k5)
-{
-   /*
-      rdp.YUV_C0 = 1.1647f  ;
-      rdp.YUV_C1 = 0.79931f ;
-      rdp.YUV_C2 = -0.1964f ;
-      rdp.YUV_C3 = -0.40651f;
-      rdp.YUV_C4 = 1.014f   ;
-      */
-   rdp.K4 = k4;
-   rdp.K5 = k5;
-   //FRDP("setconvert. K4=%02lx K5=%02lx\n", rdp.K4, rdp.K5);
-}
-
-/*
-* Sets the color combiner (CC) mode. Makes detailed
-* settings regarding the input sources to the CC.
-* Although the CC mainly combines colors, it also
-* performs post-color space conversion processing and
-* sets chroma keying (currently unsupported) an LOD
-* processes. These combinations and setup processes
-* are accomplished inside the CC by linearly interpolating
-* various input sources.
-*
-* In 1-cycle mode, mode1 and mode2 must be set to the
-* same mode.
-*
-* In 2-cycle mode, although the CC can execute linear
-* interpolation calculations twice, texture and shading
-* color modulation processes are usually executed in the
-* second cycle.
-*
-* mode1 - CC mode for the first cycle.
-* mode2 - CC mode for the second cycle.
-*/
-static void gDP_SetCombine(uint32_t w0, uint32_t w1)
-{
-   rdp.c_a0  = (uint8_t)((w0 >> 20) & 0xF);
-   rdp.c_b0  = (uint8_t)((w1 >> 28) & 0xF);
-   rdp.c_c0  = (uint8_t)((w0 >> 15) & 0x1F);
-   rdp.c_d0  = (uint8_t)((w1 >> 15) & 0x7);
-   rdp.c_Aa0 = (uint8_t)((w0 >> 12) & 0x7);
-   rdp.c_Ab0 = (uint8_t)((w1 >> 12) & 0x7);
-   rdp.c_Ac0 = (uint8_t)((w0 >> 9)  & 0x7);
-   rdp.c_Ad0 = (uint8_t)((w1 >> 9)  & 0x7);
-
-   rdp.c_a1  = (uint8_t)((w0 >> 5)  & 0xF);
-   rdp.c_b1  = (uint8_t)((w1 >> 24) & 0xF);
-   rdp.c_c1  = (uint8_t)((w0 >> 0)  & 0x1F);
-   rdp.c_d1  = (uint8_t)((w1 >> 6)  & 0x7);
-   rdp.c_Aa1 = (uint8_t)((w1 >> 21) & 0x7);
-   rdp.c_Ab1 = (uint8_t)((w1 >> 3)  & 0x7);
-   rdp.c_Ac1 = (uint8_t)((w1 >> 18) & 0x7);
-   rdp.c_Ad1 = (uint8_t)((w1 >> 0)  & 0x7);
-
-   rdp.cycle1 = (rdp.c_a0<<0)  | (rdp.c_b0<<4)  | (rdp.c_c0<<8)  | (rdp.c_d0<<13)|
-      (rdp.c_Aa0<<16)| (rdp.c_Ab0<<19)| (rdp.c_Ac0<<22)| (rdp.c_Ad0<<25);
-   rdp.cycle2 = (rdp.c_a1<<0)  | (rdp.c_b1<<4)  | (rdp.c_c1<<8)  | (rdp.c_d1<<13)|
-      (rdp.c_Aa1<<16)| (rdp.c_Ab1<<19)| (rdp.c_Ac1<<22)| (rdp.c_Ad1<<25);
-
-   rdp.update |= UPDATE_COMBINE;
-
-   //FRDP("setcombine\na0=%s b0=%s c0=%s d0=%s\nAa0=%s Ab0=%s Ac0=%s Ad0=%s\na1=%s b1=%s c1=%s d1=%s\nAa1=%s Ab1=%s Ac1=%s Ad1=%s\n", Mode0[rdp.c_a0], Mode1[rdp.c_b0], Mode2[rdp.c_c0], Mode3[rdp.c_d0], Alpha0[rdp.c_Aa0], Alpha1[rdp.c_Ab0], Alpha2[rdp.c_Ac0], Alpha3[rdp.c_Ad0], Mode0[rdp.c_a1], Mode1[rdp.c_b1], Mode2[rdp.c_c1], Mode3[rdp.c_d1], Alpha0[rdp.c_Aa1], Alpha1[rdp.c_Ab1], Alpha2[rdp.c_Ac1], Alpha3[rdp.c_Ad1]);
 }

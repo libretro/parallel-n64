@@ -2573,12 +2573,6 @@ static void gSPDMAVertex(uint32_t v, uint32_t n, uint32_t v0)
    }
 }
 
-static INLINE void gSPSetDMAOffsets(uint32_t mtxoffset, uint32_t vtxoffset)
-{
-   dma_offset_mtx = mtxoffset;
-   dma_offset_vtx = vtxoffset;
-}
-
 static INLINE void gSPInterpolateVertex(VERTEX *dest, float percent, VERTEX *first, VERTEX *second)
 {
    dest->r = first->r + percent * (second->r - first->r);
