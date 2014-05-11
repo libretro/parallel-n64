@@ -1530,17 +1530,17 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 static void rdp_settilesize(uint32_t w0, uint32_t w1)
 {
    int ul_s, ul_t, lr_s, lr_t;
-   uint32_t tile = (rdp.cmd1 >> 24) & 0x07;
+   uint32_t tile = (w1 >> 24) & 0x07;
 
    rdp.last_tile_size = tile;
 
-   rdp.tiles[tile].f_ul_s = (float)((rdp.cmd0 >> 12) & 0xFFF) / 4.0f;
-   rdp.tiles[tile].f_ul_t = (float)(rdp.cmd0 & 0xFFF) / 4.0f;
+   rdp.tiles[tile].f_ul_s = (float)((w0 >> 12) & 0xFFF) / 4.0f;
+   rdp.tiles[tile].f_ul_t = (float)(w0 & 0xFFF) / 4.0f;
 
-   ul_s = (((uint16_t)(rdp.cmd0 >> 14)) & 0x03ff);
-   ul_t = (((uint16_t)(rdp.cmd0 >> 2 )) & 0x03ff);
-   lr_s = (((uint16_t)(rdp.cmd1 >> 14)) & 0x03ff);
-   lr_t = (((uint16_t)(rdp.cmd1 >> 2 )) & 0x03ff);
+   ul_s = (((uint16_t)(w0 >> 14)) & 0x03ff);
+   ul_t = (((uint16_t)(w0 >> 2 )) & 0x03ff);
+   lr_s = (((uint16_t)(w1 >> 14)) & 0x03ff);
+   lr_t = (((uint16_t)(w1 >> 2 )) & 0x03ff);
 
    if (lr_s == 0 && ul_s == 0) //pokemon puzzle league set such tile size
       wrong_tile = tile;
@@ -1678,47 +1678,38 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 
 static void rdp_setfillcolor(uint32_t w0, uint32_t w1)
 {
-   gDPSetFillColor(w1);
+   rdp.fill_color = w1;
+   rdp.update |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
 }
 
 static void rdp_setfogcolor(uint32_t w0, uint32_t w1)
 {
-   gDPSetFogColor(
-         (w1 >> 24) & 0xFF,      /* r */
-         (w1 >> 16) & 0xFF,      /* g */
-         (w1 >>  8) & 0xFF,      /* b */
-         (w1 >>  0) & 0xFF       /* a */
-         );
+   rdp.fog_color = w1;
+   rdp.update |= UPDATE_COMBINE | UPDATE_FOG_ENABLED;
 }
 
 static void rdp_setblendcolor(uint32_t w0, uint32_t w1)
 {
-   gDPSetBlendColor(
-         (w1 >> 24) & 0xFF,      /* r */
-         (w1 >> 16) & 0xFF,      /* g */
-         (w1 >>  8) & 0xFF,      /* b */
-         (w1 >>  0) & 0xFF       /* a */
-         );
+   rdp.blend_color = w1;
+   rdp.update |= UPDATE_COMBINE;
 }
 
 static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 {
-   gDPSetPrimColor(
-         (w0 >> 8) & 0x1f,    /* m */
-         w0 & 0xff,           /* l */
-         (w1 >> 24) & 0xff,   /* r */
-         (w1 >> 16) & 0xff,   /* g */
-         (w1 >>  8) & 0xff,   /* b */
-         (w1 >>  0) & 0xff    /* a */
-         );
+   rdp.prim_color = w1;
+   rdp.prim_lodmin = (w0 >> 8) & 0xFF;
+   rdp.prim_lodfrac = max(w0 & 0xFF, rdp.prim_lodmin);
+   rdp.update |= UPDATE_COMBINE;
+
+   //FRDP("setprimcolor: %08lx, lodmin: %d, lodfrac: %d\n", rdp.cmd1, rdp.prim_lodmin, rdp.prim_lodfrac);
 }
 
 static void rdp_setenvcolor(uint32_t w0, uint32_t w1)
 {
-   gDPSetEnvColor( _SHIFTR( w1, 24, 8 ),       // r
-         _SHIFTR( w1, 16, 8 ),       // g
-         _SHIFTR( w1,  8, 8 ),       // b
-         _SHIFTR( w1,  0, 8 ) );     // a
+   rdp.env_color = w1;
+   rdp.update |= UPDATE_COMBINE;
+
+   //FRDP("setenvcolor: %08lx\n", rdp.cmd1);
 }
 
 static void rdp_setcombine(uint32_t w0, uint32_t w1)
@@ -1738,7 +1729,9 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 
 static void rdp_setdepthimage(uint32_t w0, uint32_t w1)
 {
-   gDPSetDepthImage(segoffset(w1) & BMASK);
+   rdp.zimg = segoffset(w1) & BMASK;
+   rdp.zi_width = rdp.ci_width;
+   //FRDP("setdepthimage - %08lx\n", rdp.zimg);
 }
 
 int SwapOK = true;
