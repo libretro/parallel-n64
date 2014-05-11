@@ -71,7 +71,8 @@ VERTEX **org_vtx;
 
 static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
 {
-   int i, draw;
+   int i, draw, iarea;
+   unsigned int mode;
    float x1, y1, x2, y2, area;
 
    if (v[0]->scr_off & v[1]->scr_off & v[2]->scr_off)
@@ -105,19 +106,21 @@ static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
    x2 = v[2]->sx - v[1]->sx;
    y2 = v[2]->sy - v[1]->sy;
    area = y1 * x2 - x1 * y2;
+   iarea = *(int*)&area;
 
+   mode = (rdp.u_cull_mode << 19UL);
    rdp.u_cull_mode >>= CULLSHIFT;
 
-   switch (rdp.u_cull_mode)
+   if ((iarea & 0x7FFFFFFF) == 0)
    {
-      case 1: // cull front
-         if (area < 0.0f) //counter-clockwise, positive
-            return true;
-         break;
-      case 2: // cull back
-         if (area >= 0.0f) //clockwise, negative
-            return true;
-         break;
+      //LRDP (" zero area triangles\n");
+      return true;
+   }
+
+   if ((rdp.flags & CULLMASK) && ((int)(iarea ^ mode)) >= 0)
+   {
+      //LRDP (" culled\n");
+      return true;
    }
 
    return false;
