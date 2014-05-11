@@ -2379,8 +2379,7 @@ static uint32_t rdp_cmd_data[0x1000];
 #define SSCALE(s, _w) (rdp.Persp_en? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
 #define TSCALE(s, w) (rdp.Persp_en? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
 
-static void lle_triangle(const int32_t *ewdata, int shade, int texture, int zbuffer,
-                  uint32_t * rdp_cmd)
+static void lle_triangle(const int32_t *ewdata, int shade, int texture, int zbuffer)
 {
   int j, xleft, xright, xleft_inc, xright_inc, r, g, b, a, z, s, t, w, flip;
   int drdx, dgdx, dbdx, dadx, dzdx, dsdx, dtdx, dwdx, drde, dgde, dbde, dade, dzde, dsde, dtde, dwde;
@@ -2409,9 +2408,9 @@ static void lle_triangle(const int32_t *ewdata, int shade, int texture, int zbuf
   max_level = (ewdata[0] >> 19) & 7;
   rdp.cur_tile = (ewdata[0] >> 16) & 7;
 
-  shade_base = (uint32_t*)(rdp_cmd + 8);
-  texture_base = (uint32_t*)(rdp_cmd + 8);
-  zbuffer_base = (uint32_t*)(rdp_cmd + 8);
+  shade_base = (uint32_t*)(ewdata + 8);
+  texture_base = (uint32_t*)(ewdata + 8);
+  zbuffer_base = (uint32_t*)(ewdata + 8);
 
   if (shade)
   {
@@ -2736,7 +2735,7 @@ static void rdp_trifill(uint32_t w0, uint32_t w1)
 {
    memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 8 * sizeof(int32_t));
    memset(&ewdata[8], 0, 36 * sizeof(int32_t));
-   lle_triangle(ewdata, 0, 0, 0, rdp_cmd_data + rdp_cmd_cur);
+   lle_triangle(ewdata, 0, 0, 0);
 #ifdef EXTREME_LOGGING
   LRDP("trifill\n");
 #endif
@@ -2746,7 +2745,7 @@ static void rdp_trishade(uint32_t w0, uint32_t w1)
 {
    memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 24 * sizeof(int32_t));
    memset(&ewdata[24], 0, 20 * sizeof(int32_t));
-   lle_triangle(ewdata, 1, 0, 0, rdp_cmd_data + rdp_cmd_cur);
+   lle_triangle(ewdata, 1, 0, 0);
 #ifdef EXTREME_LOGGING
   LRDP("trishade\n");
 #endif
@@ -2758,7 +2757,7 @@ static void rdp_tritxtr(uint32_t w0, uint32_t w1)
    memset(&ewdata[8], 0, 16 * sizeof(int32_t));
    memcpy(&ewdata[24], &rdp_cmd_data[rdp_cmd_cur + 8], 16 * sizeof(int32_t));
    memset(&ewdata[40], 0, 4 * sizeof(int32_t));
-   lle_triangle(ewdata, 0, 1, 0, rdp_cmd_data + rdp_cmd_cur);
+   lle_triangle(ewdata, 0, 1, 0);
 #ifdef EXTREME_LOGGING
   LRDP("tritxtr\n");
 #endif
@@ -2768,7 +2767,7 @@ static void rdp_trishadetxtr(uint32_t w0, uint32_t w1)
 {
    memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 40 * sizeof(int32_t));
    memset(&ewdata[40], 0, 4 * sizeof(int32_t));
-   lle_triangle(ewdata, 1, 1, 0, rdp_cmd_data + rdp_cmd_cur);
+   lle_triangle(ewdata, 1, 1, 0);
 #ifdef EXTREME_LOGGING
   LRDP("trishadetxtr\n");
 #endif
@@ -2779,7 +2778,7 @@ static void rdp_trifillz(uint32_t w0, uint32_t w1)
    memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 8 * sizeof(int32_t));
    memset(&ewdata[8], 0, 32 * sizeof(int32_t));
    memcpy(&ewdata[40], &rdp_cmd_data[rdp_cmd_cur + 8], 4 * sizeof(int32_t));
-   lle_triangle(ewdata, 0, 0, 1, rdp_cmd_data + rdp_cmd_cur);
+   lle_triangle(ewdata, 0, 0, 1);
 #ifdef EXTREME_LOGGING
   LRDP("trifillz\n");
 #endif
@@ -2790,7 +2789,7 @@ static void rdp_trishadez(uint32_t w0, uint32_t w1)
    memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 24 * sizeof(int32_t));
    memset(&ewdata[24], 0, 16 * sizeof(int32_t));
    memcpy(&ewdata[40], &rdp_cmd_data[rdp_cmd_cur + 24], 4 * sizeof(int32_t));
-   lle_triangle(ewdata, 1, 0, 1, rdp_cmd_data + rdp_cmd_cur);
+   lle_triangle(ewdata, 1, 0, 1);
 #ifdef EXTREME_LOGGING
   LRDP("trishadez\n");
 #endif
@@ -2802,7 +2801,7 @@ static void rdp_tritxtrz(uint32_t w0, uint32_t w1)
    memset(&ewdata[8], 0, 16 * sizeof(int32_t));
    memcpy(&ewdata[24], &rdp_cmd_data[rdp_cmd_cur + 8], 16 * sizeof(int32_t));
    memcpy(&ewdata[40], &rdp_cmd_data[rdp_cmd_cur + 24], 4 * sizeof(int32_t));
-   lle_triangle(ewdata, 0, 1, 1, rdp_cmd_data + rdp_cmd_cur);
+   lle_triangle(ewdata, 0, 1, 1);
 #ifdef EXTREME_LOGGING
    LRDP("tritxtrz\n");
 #endif
@@ -2811,7 +2810,7 @@ static void rdp_tritxtrz(uint32_t w0, uint32_t w1)
 static void rdp_trishadetxtrz(uint32_t w0, uint32_t w1)
 {
    memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 44 * sizeof(int32_t));
-   lle_triangle(ewdata, 1, 1, 1, rdp_cmd_data + rdp_cmd_cur);
+   lle_triangle(ewdata, 1, 1, 1);
 #ifdef EXTREME_LOGGING
    LRDP("trishadetxtrz\n");
 #endif
@@ -3061,7 +3060,7 @@ EXPORT void CALL ProcessRDPList(void)
             //rdp_trifill(w0, w1);
             memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 8 * sizeof(int32_t));
             memset(&ewdata[8], 0, 36 * sizeof(int32_t));
-            lle_triangle(ewdata, 0, 0, 0, rdp_cmd_data + rdp_cmd_cur);
+            lle_triangle(ewdata, 0, 0, 0);
             break;
          case 0x09:
             //0x09, Non-Shaded, Z-Buffered Triangle
@@ -3069,7 +3068,7 @@ EXPORT void CALL ProcessRDPList(void)
             memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 8 * sizeof(int32_t));
             memset(&ewdata[8], 0, 32 * sizeof(int32_t));
             memcpy(&ewdata[40], &rdp_cmd_data[rdp_cmd_cur + 8], 4 * sizeof(int32_t));
-            lle_triangle(ewdata, 0, 0, 1, rdp_cmd_data + rdp_cmd_cur);
+            lle_triangle(ewdata, 0, 0, 1);
             break;
          case 0x0a:
             //0x0a, Textured Triangle
@@ -3078,7 +3077,7 @@ EXPORT void CALL ProcessRDPList(void)
             memset(&ewdata[8], 0, 16 * sizeof(int32_t));
             memcpy(&ewdata[24], &rdp_cmd_data[rdp_cmd_cur + 8], 16 * sizeof(int32_t));
             memset(&ewdata[40], 0, 4 * sizeof(int32_t));
-            lle_triangle(ewdata, 0, 1, 0, rdp_cmd_data + rdp_cmd_cur);
+            lle_triangle(ewdata, 0, 1, 0);
             break;
          case 0x0b:
             //0x0b, Textured, Z-Buffered Triangle
@@ -3087,14 +3086,14 @@ EXPORT void CALL ProcessRDPList(void)
             memset(&ewdata[8], 0, 16 * sizeof(int32_t));
             memcpy(&ewdata[24], &rdp_cmd_data[rdp_cmd_cur + 8], 16 * sizeof(int32_t));
             memcpy(&ewdata[40], &rdp_cmd_data[rdp_cmd_cur + 24], 4 * sizeof(int32_t));
-            lle_triangle(ewdata, 0, 1, 1, rdp_cmd_data + rdp_cmd_cur);
+            lle_triangle(ewdata, 0, 1, 1);
             break;
          case 0x0c:
             // 0x0c, Shaded Triangle
             //rdp_trishade(w0, w1);
             memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 24 * sizeof(int32_t));
             memset(&ewdata[24], 0, 20 * sizeof(int32_t));
-            lle_triangle(ewdata, 1, 0, 0, rdp_cmd_data + rdp_cmd_cur);
+            lle_triangle(ewdata, 1, 0, 0);
             break;
          case 0x0d:
             // 0x0d, Shaded, Z-Buffered Triangle
@@ -3102,20 +3101,20 @@ EXPORT void CALL ProcessRDPList(void)
             memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 24 * sizeof(int32_t));
             memset(&ewdata[24], 0, 16 * sizeof(int32_t));
             memcpy(&ewdata[40], &rdp_cmd_data[rdp_cmd_cur + 24], 4 * sizeof(int32_t));
-            lle_triangle(ewdata, 1, 0, 1, rdp_cmd_data + rdp_cmd_cur);
+            lle_triangle(ewdata, 1, 0, 1);
             break;
          case 0x0e:
             // 0x0e, Shaded+Textured Triangle
             //rdp_trishadetxtr(w0, w1);
             memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 40 * sizeof(int32_t));
             memset(&ewdata[40], 0, 4 * sizeof(int32_t));
-            lle_triangle(ewdata, 1, 1, 0, rdp_cmd_data + rdp_cmd_cur);
+            lle_triangle(ewdata, 1, 1, 0);
             break;
          case 0x0f:
             // 0x0f, Shaded+Textured, Z-Buffered Triangle
             //rdp_trishadetxtrz(w0, w1);
             memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 44 * sizeof(int32_t));
-            lle_triangle(ewdata, 1, 1, 1, rdp_cmd_data + rdp_cmd_cur);
+            lle_triangle(ewdata, 1, 1, 1);
             break;
          case 0x24:
             //0x24, Texture_Rectangle
