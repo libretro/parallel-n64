@@ -188,8 +188,9 @@ static void CopyFrameBuffer (GrBuffer_t buffer);
 void calc_light (VERTEX *v)
 {
    uint32_t l;
-   float light_intensity = 0.0f;
-   float color[3];
+   float light_intensity, color[3];
+
+   light_intensity = 0.0f;
    color[0] = rdp.light[rdp.num_lights].col[0];
    color[1] = rdp.light[rdp.num_lights].col[1];
    color[2] = rdp.light[rdp.num_lights].col[2];
@@ -213,9 +214,9 @@ void calc_light (VERTEX *v)
    if (color[2] > 1.0f)
       color[2] = 1.0f;
 
-   v->r = (uint8_t)(color[0]*255.0f);
-   v->g = (uint8_t)(color[1]*255.0f);
-   v->b = (uint8_t)(color[2]*255.0f);
+   v->r = (uint8_t)(color[0] * 255.0f);
+   v->g = (uint8_t)(color[1] * 255.0f);
+   v->b = (uint8_t)(color[2] * 255.0f);
 }
 
 void calc_linear (VERTEX *v)
@@ -232,12 +233,9 @@ void calc_linear (VERTEX *v)
    TransformVector (v->vec, vec, rdp.model);
    //    TransformVector (v->vec, vec, rdp.combined);
    NormalizeVector (vec);
-   if (!rdp.use_lookat)
-   {
-      x = vec[0];
-      y = vec[1];
-   }
-   else
+   x = vec[0];
+   y = vec[1];
+   if (rdp.use_lookat)
    {
       x = DotProduct (rdp.lookat[0], vec);
       y = DotProduct (rdp.lookat[1], vec);
@@ -271,25 +269,20 @@ void calc_sphere (VERTEX *v)
    float x, y;
    int s_scale, t_scale;
 
+   s_scale = rdp.tiles[rdp.cur_tile].org_s_scale >> 6;
+   t_scale = rdp.tiles[rdp.cur_tile].org_t_scale >> 6;
+
    if (settings.hacks&hack_Chopper)
    {
       s_scale = min(rdp.tiles[rdp.cur_tile].org_s_scale >> 6, rdp.tiles[rdp.cur_tile].lr_s);
       t_scale = min(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, rdp.tiles[rdp.cur_tile].lr_t);
    }
-   else
-   {
-      s_scale = rdp.tiles[rdp.cur_tile].org_s_scale >> 6;
-      t_scale = rdp.tiles[rdp.cur_tile].org_t_scale >> 6;
-   }
+
    TransformVector (v->vec, vec, rdp.model);
    NormalizeVector (vec);
-
-   if (!rdp.use_lookat)
-   {
-      x = vec[0];
-      y = vec[1];
-   }
-   else
+   x = vec[0];
+   y = vec[1];
+   if (rdp.use_lookat)
    {
       x = DotProduct (rdp.lookat[0], vec);
       y = DotProduct (rdp.lookat[1], vec);
