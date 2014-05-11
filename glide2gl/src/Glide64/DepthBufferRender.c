@@ -92,25 +92,49 @@ static int right_height, left_height;
 static int right_x, right_dxdy, left_x, left_dxdy;
 static int left_z, left_dzdy;
 
-// ( x * y) >> 16
-#define imul16(x, y) ((((int64_t)x) * ((int64_t)y)) >> 16)
+// (x * y) >> 16
+#define imul16(x, y) ((((long long)x) * ((long long)y)) >> 16)
 
 // (x * y) >> 14
-#define imul14(x, y) ((((int64_t)x) * ((int64_t)y)) >> 14)
+#define imul14(x, y) ((((long long)x) * ((long long)y)) >> 14)
 
-#define idiv16(x, y) ((((int64_t)x) << 16) / ((int64_t)y))
+static INLINE int idiv16(int x, int y) // (x << 16) / y
+{
+#if !defined(__GNUC__) && !defined(NO_ASM)
+  __asm {
+        mov eax, x
+        mov ebx, y
+        mov edx,eax
+        sar edx,16
+        shl eax,16
+        idiv ebx
+        mov x, eax
+    }
+#elif !defined(NO_ASM)
+    int reminder;
+    asm ("idivl %[divisor]"
+          : "=a" (x), "=d" (reminder)
+          : [divisor] "g" (y), "d" (x >> 16), "a" (x << 16));
+#else
+x = (((long long)x) << 16) / ((long long)y);
+#endif
+    return x;
+}
 
-#define iceil(x) (((x + 0xffff) >> 16))
+#define iceil(x) ((x + 0xffff) >> 16)
 
 static void RightSection(void)
 {
    int prestep;
    // Walk backwards trough the vertex array
-   struct vertexi *v2, *v1 = right_vtx;
+   struct vertexi *v2, *v1;
+
+   v1 = (struct vertexi*)right_vtx;
+   v2 = end_vtx;         // Wrap to end of array
+
    if(right_vtx > start_vtx)
       v2 = right_vtx-1;     
-   else
-      v2 = end_vtx;         // Wrap to end of array
+
    right_vtx = v2;
 
    // v1 = top vertex
@@ -119,7 +143,8 @@ static void RightSection(void)
    // Calculate number of scanlines in this section
 
    right_height = iceil(v2->y) - iceil(v1->y);
-   if(right_height <= 0) return;
+   if(right_height <= 0)
+      return;
 
    // Guard against possible div overflows
 
@@ -151,11 +176,13 @@ static void LeftSection(void)
 {
    int prestep;
    // Walk forward through the vertex array
-   struct vertexi *v2, *v1 = left_vtx;
+   struct vertexi *v2, *v1;
+
+   v1 = (struct vertexi*)left_vtx;
+   v2 = start_vtx;      // Wrap to start of array
+
    if(left_vtx < end_vtx)
       v2 = left_vtx+1;
-   else
-      v2 = start_vtx;      // Wrap to start of array
    left_vtx = v2;
 
    // v1 = top vertex
@@ -277,12 +304,13 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
          prestep = (x1 << 16) - left_x;
          z = left_z + imul16(prestep, dzdx);
 
-         shift = x1 + y1*rdp.zi_width;
+         shift = x1 + y1 * rdp.zi_width;
          //draw to depth buffer
          for (x = 0; x < width; x++)
          {
             trueZ = z/8192;
-            if (trueZ < 0) trueZ = 0;
+            if (trueZ < 0)
+               trueZ = 0;
             else if (trueZ > 0x3FFFF) trueZ = 0x3FFFF;
             encodedZ = zLUT[trueZ];
             idx = (shift+x)^1;
