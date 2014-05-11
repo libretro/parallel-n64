@@ -1529,12 +1529,60 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 
 static void rdp_settilesize(uint32_t w0, uint32_t w1)
 {
-   gDPSetTileSize((w1 >> 24) & 0x07,
-         (((w0 >> 14)) & 0x03ff),
-         (((w0 >> 2 )) & 0x03ff),
-         (((w1 >> 14)) & 0x03ff),
-         (((w1 >> 2 )) & 0x03ff)
-         );
+   int ul_s, ul_t, lr_s, lr_t;
+   uint32_t tile = (rdp.cmd1 >> 24) & 0x07;
+
+   rdp.last_tile_size = tile;
+
+   rdp.tiles[tile].f_ul_s = (float)((rdp.cmd0 >> 12) & 0xFFF) / 4.0f;
+   rdp.tiles[tile].f_ul_t = (float)(rdp.cmd0 & 0xFFF) / 4.0f;
+
+   ul_s = (((uint16_t)(rdp.cmd0 >> 14)) & 0x03ff);
+   ul_t = (((uint16_t)(rdp.cmd0 >> 2 )) & 0x03ff);
+   lr_s = (((uint16_t)(rdp.cmd1 >> 14)) & 0x03ff);
+   lr_t = (((uint16_t)(rdp.cmd1 >> 2 )) & 0x03ff);
+
+   if (lr_s == 0 && ul_s == 0) //pokemon puzzle league set such tile size
+      wrong_tile = tile;
+   else if (wrong_tile == (int)tile)
+      wrong_tile = -1;
+
+#if 0
+   if (settings.use_sts1_only)
+   {
+      // ** USE FIRST SETTILESIZE ONLY **
+      // This option helps certain textures while using the 'Alternate texture size method',
+      // but may break others. (should help more than break)
+
+      if (tile_set)
+      {
+         // coords in 10.2 format
+         rdp.tiles[tile].ul_s = ul_s;
+         rdp.tiles[tile].ul_t = ul_t;
+         rdp.tiles[tile].lr_s = lr_s;
+         rdp.tiles[tile].lr_t = lr_t;
+         tile_set = 0;
+      }
+   }
+   else
+#endif
+   {
+      // coords in 10.2 format
+      rdp.tiles[tile].ul_s = ul_s;
+      rdp.tiles[tile].ul_t = ul_t;
+      rdp.tiles[tile].lr_s = lr_s;
+      rdp.tiles[tile].lr_t = lr_t;
+   }
+
+   // handle wrapping
+   if (rdp.tiles[tile].lr_s < rdp.tiles[tile].ul_s) rdp.tiles[tile].lr_s += 0x400;
+   if (rdp.tiles[tile].lr_t < rdp.tiles[tile].ul_t) rdp.tiles[tile].lr_t += 0x400;
+
+   rdp.update |= UPDATE_TEXTURE;
+
+   rdp.first = 1;
+
+   //FRDP ("settilesize: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d, f_ul_s: %f, f_ul_t: %f\n", tile, ul_s, ul_t, lr_s, lr_t, rdp.tiles[tile].f_ul_s, rdp.tiles[tile].f_ul_t);
 }
 
 #ifdef HAVE_HWFBE
