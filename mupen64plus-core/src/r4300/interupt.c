@@ -67,19 +67,21 @@ static interupt_queue *qbase = NULL;
 
 static interupt_queue* queue_malloc(size_t Bytes)
 {
-       if (qstackindex >= QUEUE_SIZE - 1) // should never happen
+#ifdef DBG_CORE
+       if (qstackindex >= QUEUE_SIZE) // should never happen
        {
                static int bNotified = 0;
 
                if (!bNotified)
                {
-                       DebugMessage(M64MSG_VERBOSE, "core interrupt queue too small");
+                       DebugMessage(M64MSG_ERROR, "core interrupt queue too small");
                        bNotified = 1;
                }
 
                return malloc(Bytes);
        }
-       interupt_queue* newQueue = qstack[qstackindex];
+#endif
+       interupt_queue* newQueue = (interupt_queue*)qstack[qstackindex];
        qstackindex ++;
 
        return newQueue;
@@ -106,14 +108,10 @@ static void queue_free(interupt_queue *qToFree)
 static void clear_queue(void)
 {
    int i;
-   while(q != NULL)
-   {
-      interupt_queue *aux = q->next;
-      queue_free(q);
-      q = aux;
-   }
+   q = NULL;
    for (i = 0; i < QUEUE_SIZE; i++)
       qstack[i] = &qbase[i];
+   qstackindex = NULL;
 }
 
 /*static void print_queue(void)
