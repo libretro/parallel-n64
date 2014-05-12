@@ -1003,84 +1003,67 @@ static void render_tri (uint16_t linew, int old_interpolate)
 
    cmb.cmb_ext_use = cmb.tex_cmb_ext_use = 0;
 
-   /*
-      if (rdp.tbuff_tex)
-      {
-      for (int k = 0; k < 3; k++)
-      {
-      FRDP("v%d %f->%f, width: %d. height: %d, tex_width: %d, tex_height: %d, lr_u: %f, lr_v: %f\n", k, vv0[k], pv[k]->v1, rdp.tbuff_tex->width, rdp.tbuff_tex->height, rdp.tbuff_tex->tex_width, rdp.tbuff_tex->tex_height, rdp.tbuff_tex->lr_u, rdp.tbuff_tex->lr_v);
-      }
-      }
-      */
+   if (linew > 0)
    {
+      VERTEX *V0, *V1, v[4];
+      float width;
 
-      //      VERTEX ** pv = rdp.vtx_buffer? &rdp.vtx2 : &rdp.vtx1;
-      //      for (int k = 0; k < n; k ++)
-      //			FRDP ("DRAW[%d]: v.x = %f, v.y = %f, v.z = %f, v.u = %f, v.v = %f\n", k, pv[k]->x, pv[k]->y, pv[k]->z, pv[k]->coord[rdp.t0<<1], pv[k]->coord[(rdp.t0<<1)+1]);
-      //        pv[k]->y = settings.res_y - pv[k]->y;
+      V0 = (VERTEX*)&rdp.vtxbuf[0];
+      V1 = (VERTEX*)&rdp.vtxbuf[1];
+      if (fabs(V0->x - V1->x) < 0.01 && fabs(V0->y - V1->y) < 0.01)
+         V1 = &rdp.vtxbuf[2];
+      V0->z = ScaleZ(V0->z);
+      V1->z = ScaleZ(V1->z);
+      v[0] = *V0;
+      v[1] = *V0;
+      v[2] = *V1;
+      v[3] = *V1;
+      width = linew * 0.25f;
 
-      if (linew > 0)
+      if (fabs(V0->y - V1->y) < 0.0001)
       {
-         VERTEX *V0, *V1, v[4];
-		 float width;
+         v[0].x = v[1].x = V0->x;
+         v[2].x = v[3].x = V1->x;
 
-         V0 = (VERTEX*)&rdp.vtxbuf[0];
-         V1 = (VERTEX*)&rdp.vtxbuf[1];
-         if (fabs(V0->x - V1->x) < 0.01 && fabs(V0->y - V1->y) < 0.01)
-            V1 = &rdp.vtxbuf[2];
-         V0->z = ScaleZ(V0->z);
-         V1->z = ScaleZ(V1->z);
-         v[0] = *V0;
-         v[1] = *V0;
-         v[2] = *V1;
-         v[3] = *V1;
-         width = linew * 0.25f;
+         width *= rdp.scale_y;
+         v[0].y = v[2].y = V0->y - width;
+         v[1].y = v[3].y = V0->y + width;
+      }
+      else if (fabs(V0->x - V1->x) < 0.0001)
+      {
+         v[0].y = v[1].y = V0->y;
+         v[2].y = v[3].y = V1->y;
 
-         if (fabs(V0->y - V1->y) < 0.0001)
-         {
-            v[0].x = v[1].x = V0->x;
-            v[2].x = v[3].x = V1->x;
-
-            width *= rdp.scale_y;
-            v[0].y = v[2].y = V0->y - width;
-            v[1].y = v[3].y = V0->y + width;
-         }
-         else if (fabs(V0->x - V1->x) < 0.0001)
-         {
-            v[0].y = v[1].y = V0->y;
-            v[2].y = v[3].y = V1->y;
-
-            width *= rdp.scale_x;
-            v[0].x = v[2].x = V0->x - width;
-            v[1].x = v[3].x = V0->x + width;
-         }
-         else
-         {
-            float dx, dy, len, wx, wy;
-            dx = V1->x - V0->x;
-            dy = V1->y - V0->y;
-            len = squareRoot(dx*dx + dy*dy);
-            wx = dy * width * rdp.scale_x / len;
-            wy = dx * width * rdp.scale_y / len;
-            v[0].x = V0->x + wx;
-            v[0].y = V0->y - wy;
-            v[1].x = V0->x - wx;
-            v[1].y = V0->y + wy;
-            v[2].x = V1->x + wx;
-            v[2].y = V1->y - wy;
-            v[3].x = V1->x - wx;
-            v[3].y = V1->y + wy;
-         }
-         grDrawTriangle(&v[0], &v[1], &v[2]);
-         grDrawTriangle(&v[1], &v[2], &v[3]);
+         width *= rdp.scale_x;
+         v[0].x = v[2].x = V0->x - width;
+         v[1].x = v[3].x = V0->x + width;
       }
       else
       {
-         DepthBuffer(rdp.vtxbuf, n);
-         if ((rdp.rm & 0xC10) == 0xC10)
-            grDepthBiasLevel (-deltaZ);
-         grDrawVertexArray (GR_TRIANGLE_FAN, n, rdp.vtx_buffer? &rdp.vtx2 : &rdp.vtx1);
+         float dx, dy, len, wx, wy;
+         dx = V1->x - V0->x;
+         dy = V1->y - V0->y;
+         len = squareRoot(dx*dx + dy*dy);
+         wx = dy * width * rdp.scale_x / len;
+         wy = dx * width * rdp.scale_y / len;
+         v[0].x = V0->x + wx;
+         v[0].y = V0->y - wy;
+         v[1].x = V0->x - wx;
+         v[1].y = V0->y + wy;
+         v[2].x = V1->x + wx;
+         v[2].y = V1->y - wy;
+         v[3].x = V1->x - wx;
+         v[3].y = V1->y + wy;
       }
+      grDrawTriangle(&v[0], &v[1], &v[2]);
+      grDrawTriangle(&v[1], &v[2], &v[3]);
+   }
+   else
+   {
+      DepthBuffer(rdp.vtxbuf, n);
+      if ((rdp.rm & 0xC10) == 0xC10)
+         grDepthBiasLevel (-deltaZ);
+      grDrawVertexArray (GR_TRIANGLE_FAN, n, rdp.vtx_buffer? &rdp.vtx2 : &rdp.vtx1);
    }
 }
 
