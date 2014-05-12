@@ -409,44 +409,260 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 
 static void uc0_texture(uint32_t w0, uint32_t w1)
 {
-   gSPTexture(
-         (w1 >> 16) & 0xFFFF,          /* sc */
-         (w1 & 0xFFFF),                /* tc */
-         (w0 >> 11) & 0x07,            /* level */
-         (w0 >> 8) & 0x07,             /* tile */
-         (w0 & 0xFF)                   /* on */
-         );
+   int tile;
+   uint32_t on;
+   tile = (w0 >> 8) & 0x07;
+   if (tile == 7 && (settings.hacks&hack_Supercross))
+      tile = 0; //fix for supercross 2000
+   rdp.mipmap_level = (w0 >> 11) & 0x07;
+   on = (w0 & 0xFF);
+   rdp.cur_tile = tile;
+
+   if (on)
+   {
+      uint16_t s, t;
+      TILE *tmp_tile;
+
+      s = (uint16_t)((w1 >> 16) & 0xFFFF);
+      t = (uint16_t)(w1 & 0xFFFF);
+
+      tmp_tile = (TILE*)&rdp.tiles[tile];
+      tmp_tile->on = 1;
+      tmp_tile->org_s_scale = s;
+      tmp_tile->org_t_scale = t;
+      tmp_tile->s_scale = (float)(s+1)/65536.0f;
+      tmp_tile->t_scale = (float)(t+1)/65536.0f;
+      tmp_tile->s_scale /= 32.0f;
+      tmp_tile->t_scale /= 32.0f;
+
+      rdp.update |= UPDATE_TEXTURE;
+
+      //FRDP("uc0:texture: tile: %d, mipmap_lvl: %d, on: %d, s_scale: %f, t_scale: %f\n", tile, rdp.mipmap_level, on, tmp_tile->s_scale, tmp_tile->t_scale);
+      return;
+   }
+
+   //LRDP("uc0:texture skipped b/c of off\n");
+   rdp.tiles[tile].on = 0;
 }
 
 static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
 {
-   gSPSetOtherMode(
-         G_SETOTHERMODE_H, /* cmd */
-         (w0 >> 8) & 0xFF, /* sft */
-         (w0 & 0xFF),      /* len */
-         0                 /* data - stub */
-         );
+   int shift, len, i;
+   uint32_t mask, unk;
+   //LRDP("uc0:setothermode_h: ");
+
+   shift = (w0 >> 8) & 0xFF;
+   len = w0 & 0xFF;
+
+   if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
+   {
+      len = (w0 & 0xFF) + 1;
+      shift = 32 - ((w0 >> 8) & 0xFF) - len;
+   }
+
+   mask = 0;
+   i = len;
+   for (; i; i--)
+      mask = (mask << 1) | 1;
+   mask <<= shift;
+
+   rdp.cmd1 &= mask;
+   rdp.othermode_h &= ~mask;
+   rdp.othermode_h |= rdp.cmd1;
+
+   w1 = rdp.cmd1;
+
+   if (mask & 0x00000030) // alpha dither mode
+      rdp.alpha_dither_mode = (rdp.othermode_h >> 4) & 0x3;
+
+#if 0
+   if (mask & 0x000000C0) // rgb dither mode
+   {
+      uint32_t dither_mode = (rdp.othermode_h >> 6) & 0x3;
+      //FRDP ("rgb dither mode: %s\n", str_dither[dither_mode]);
+   }
+#endif
+
+   if (mask & 0x00003000) // filter mode
+   {
+      rdp.filter_mode = (int)((rdp.othermode_h & 0x00003000) >> 12);
+      rdp.update |= UPDATE_TEXTURE;
+      //FRDP ("filter mode: %s\n", str_filter[rdp.filter_mode]);
+   }
+
+   if (mask & 0x0000C000) // tlut mode
+   {
+      rdp.tlut_mode = (uint8_t)((rdp.othermode_h & 0x0000C000) >> 14);
+      //FRDP ("tlut mode: %s\n", str_tlut[rdp.tlut_mode]);
+   }
+
+   if (mask & 0x00300000) // cycle type
+   {
+      rdp.cycle_mode = (uint8_t)((rdp.othermode_h & 0x00300000) >> 20);
+      rdp.update |= UPDATE_ZBUF_ENABLED;
+      //FRDP ("cycletype: %d\n", rdp.cycle_mode);
+   }
+
+   if (mask & 0x00010000) // LOD enable
+   {
+      rdp.LOD_en = (rdp.othermode_h & 0x00010000) ? true : false;
+      //FRDP ("LOD_en: %d\n", rdp.LOD_en);
+   }
+
+   if (mask & 0x00080000) // Persp enable
+   {
+      if (rdp.persp_supported)
+         rdp.Persp_en = (rdp.othermode_h & 0x00080000) ? true : false;
+      //FRDP ("Persp_en: %d\n", rdp.Persp_en);
+   }
+
+   unk = mask & 0x0FFC60F0F;
+#if 0
+   if (unk) // unknown portions, LARGE
+   {
+      FRDP ("UNKNOWN PORTIONS: shift: %d, len: %d, unknowns: %08lx\n", shift, len, unk);
+   }
+#endif
 }
 
 static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
 {
-   gSPSetOtherMode(
-         G_SETOTHERMODE_L, /* cmd */
-         (w0 >> 8) & 0xFF, /* sft */
-         (w0 & 0xFF),      /* len */
-         0                 /* data - stub */
-         );
+   uint32_t mask;
+   int shift, len, i;
+   //LRDP("uc0:setothermode_l ");
+   
+   len = w0 & 0xFF;
+   shift = (w0 >> 8) & 0xFF;
+
+   if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
+   {
+      len += 1;
+      shift = 32 - ((w0 >> 8) & 0xFF) - len;
+      if (shift < 0)
+         shift = 0;
+   }
+
+   mask = 0;
+   i = len;
+   for (; i; i--)
+      mask = (mask << 1) | 1;
+   mask <<= shift;
+
+   rdp.cmd1 &= mask;
+   rdp.othermode_l &= ~mask;
+   rdp.othermode_l |= rdp.cmd1;
+   w1 = rdp.cmd1;
+
+   if (mask & 0x00000003) // alpha compare
+   {
+      rdp.acmp = rdp.othermode_l & 0x00000003;
+      rdp.update |= UPDATE_ALPHA_COMPARE;
+      //FRDP ("alpha compare %s\n", ACmp[rdp.acmp]);
+   }
+
+   if (mask & 0x00000004) // z-src selection
+   {
+      rdp.zsrc = (rdp.othermode_l & 0x00000004) >> 2;
+      rdp.update |= UPDATE_ZBUF_ENABLED;
+      //FRDP ("z-src sel: %s\n", str_zs[rdp.zsrc]);
+      //FRDP ("z-src sel: %08lx\n", rdp.zsrc);
+   }
+
+   if (mask & 0xFFFFFFF8) // rendermode / blender bits
+   {
+      rdp.update |= UPDATE_FOG_ENABLED; //if blender has no fog bits, fog must be set off
+      rdp.render_mode_changed |= rdp.rm ^ rdp.othermode_l;
+      rdp.rm = rdp.othermode_l;
+      if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
+         rdp.othermode_l |= /*0x00000020 |*/ 0x00000010;
+      //FRDP ("rendermode: %08lx\n", rdp.othermode_l); // just output whole othermode_l
+   }
+
+   // there is not one setothermode_l that's not handled :)
 }
 
 static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
 {
-   gSPSetGeometryMode(w1);
+   rdp.geom_mode |= w1;
+   //FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", w1, rdp.geom_mode);
+
+   if (w1 & 0x00000001) // Z-Buffer enable
+   {
+      if (!(rdp.flags & ZBUF_ENABLED))
+      {
+         rdp.flags |= ZBUF_ENABLED;
+         rdp.update |= UPDATE_ZBUF_ENABLED;
+      }
+   }
+   if (w1 & 0x00001000) // Front culling
+   {
+      if (!(rdp.flags & CULL_FRONT))
+      {
+         rdp.flags |= CULL_FRONT;
+         rdp.update |= UPDATE_CULL_MODE;
+      }
+   }
+   if (w1 & 0x00002000) // Back culling
+   {
+      if (!(rdp.flags & CULL_BACK))
+      {
+         rdp.flags |= CULL_BACK;
+         rdp.update |= UPDATE_CULL_MODE;
+      }
+   }
+
+   //Added by Gonetz
+   if (w1 & 0x00010000) // Fog enable
+   {
+      if (!(rdp.flags & FOG_ENABLED))
+      {
+         rdp.flags |= FOG_ENABLED;
+         rdp.update |= UPDATE_FOG_ENABLED;
+      }
+   }
 }
 
 
 static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 {
-   gSPClearGeometryMode(w1);
+   //FRDP("uc0:cleargeometrymode %08lx\n", w1);
+
+   rdp.geom_mode &= ~w1;
+
+   if (w1 & 0x00000001) // Z-Buffer enable
+   {
+      if (rdp.flags & ZBUF_ENABLED)
+      {
+         rdp.flags ^= ZBUF_ENABLED;
+         rdp.update |= UPDATE_ZBUF_ENABLED;
+      }
+   }
+   if (w1 & 0x00001000) // Front culling
+   {
+      if (rdp.flags & CULL_FRONT)
+      {
+         rdp.flags ^= CULL_FRONT;
+         rdp.update |= UPDATE_CULL_MODE;
+      }
+   }
+   if (w1 & 0x00002000) // Back culling
+   {
+      if (rdp.flags & CULL_BACK)
+      {
+         rdp.flags ^= CULL_BACK;
+         rdp.update |= UPDATE_CULL_MODE;
+      }
+   }
+
+   //Added by Gonetz
+   if (w1 & 0x00010000) // Fog enable
+   {
+      if (rdp.flags & FOG_ENABLED)
+      {
+         rdp.flags ^= FOG_ENABLED;
+         rdp.update |= UPDATE_FOG_ENABLED;
+      }
+   }
 }
 
 static void uc0_line3d(uint32_t w0, uint32_t w1)

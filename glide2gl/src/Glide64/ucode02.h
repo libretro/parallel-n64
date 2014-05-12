@@ -282,7 +282,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
 
    FRDP ("result:%08lx\n", rdp.geom_mode);
 
-   if (rdp.geom_mode & G_ZBUFFER) // Z-Buffer enable
+   if (rdp.geom_mode & 0x00000001) // Z-Buffer enable
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -299,7 +299,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_ZBUF_ENABLED;
       }
    }
-   if (rdp.geom_mode & CULL_FRONT) // Front culling
+   if (rdp.geom_mode & 0x00001000) // Front culling
    {
       if (!(rdp.flags & CULL_FRONT))
       {
@@ -315,7 +315,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_CULL_MODE;
       }
    }
-   if (rdp.geom_mode & CULL_BACK) // Back culling
+   if (rdp.geom_mode & 0x00002000) // Back culling
    {
       if (!(rdp.flags & CULL_BACK))
       {
@@ -333,7 +333,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
    }
 
    //Added by Gonetz
-   if (rdp.geom_mode & FOG_ENABLED)      // Fog enable
+   if (rdp.geom_mode & 0x00010000)      // Fog enable
    {
       if (!(rdp.flags & FOG_ENABLED))
       {
@@ -438,7 +438,9 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_NUMLIGHT:
-         gSPNumLights( w1 / 24 );
+         rdp.num_lights = w1 / 24;
+         rdp.update |= UPDATE_LIGHTS;
+         //FRDP ("numlights: %d\n", rdp.num_lights);
          break;
 
       case G_MW_CLIP:
