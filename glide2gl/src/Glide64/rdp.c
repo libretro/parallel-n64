@@ -1796,17 +1796,14 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
 static void rdp_loadsync(uint32_t w0, uint32_t w1)
 {
-   gDPLoadSync();
 }
 
 static void rdp_pipesync(uint32_t w0, uint32_t w1)
 {
-   gDPPipeSync();
 }
 
 static void rdp_tilesync(uint32_t w0, uint32_t w1)
 {
-   gDPTileSync();
 }
 
 static void rdp_fullsync(uint32_t w0, uint32_t w1)
@@ -4737,15 +4734,12 @@ EXPORT void CALL ProcessRDPList(void)
             break;
          case 0x26:
             //0x26, Sync_Load
-            break;
          case 0x27:
             // 0x27, Sync_Pipe
             //rdp_pipesync(w0, w1);
-            break;
          case 0x28:
             // 0x28, Sync_Tile
             //rdp_tilesync(w0, w1);
-            gDPTileSync();
             break;
          case 0x29:
             // 0x29, Sync_Full

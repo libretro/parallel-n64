@@ -9,56 +9,6 @@ extern int CI_SET;
 extern uint32_t swapped_addr;
 
 /*
- * Sync Load will stall any subsequent texture load commands
- * until all preceding geometry has been rasterized. This
- * should be placed before a load texture command that is
- * overwriting atexture or TLUT used by up to two 
- * preceding primitives.
- */
-
-static void gDPLoadSync(void)
-{
-   //LRDP("loadsync - ignored\n");
-}
-
-/*
- * Sync Pipe will stall the pipeline until any 
- * primitive on the pipeline is finished using
- * previously issud configuration commands. This
- * encompasses all stalls in Sync Load as well as
- * several other configuration commands. The Primitive
- * Color and Primitive Depth commands are exempt from
- * needing  Sync Pipe. 
- *
- * If one is careful to order RDP commands properly, this
- * can be left out. For example Set Texture Image does not affect
- * the rasterization of triangles or rectangles, so it can be
- * called immediately after a rectangle or triangle command
- * without the need of a Sync Pipe to separate.
- *
- * Note that calling this spuriously will cause rendering artifacts
- * such as the RDP rendering geometry to the wrong frame buffer. In
- * essence, do not call Sync Pipe when there is nothing that needs to be
- * waited on.
- */
-
-static void gDPPipeSync(void)
-{
-   //LRDP("pipesync - ignored\n");
-}
-
-/*
- * Sync Tile will stall any tile load operations until any
- * preceding command finishes reading from texture memory (TMEM).
- * It is unclear how this differs from Sync Load.
- *
- */
-static void gDPTileSync(void)
-{
-   //LRDP("tilesync - ignored\n");
-}
-
-/*
 * Sets the tile descriptor parameters.
 * Sets the paramaters of a tile descriptor defining the origin and range of a texture tile.
 *
