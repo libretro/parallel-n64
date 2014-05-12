@@ -1528,7 +1528,7 @@ static void gSPObjLoadTxtr(uint32_t tx )
             tsize = ((uint16_t *)gfx.RDRAM)[(addr + 5) ^ 1];      // 5
             tline = ((uint16_t *)gfx.RDRAM)[(addr + 6) ^ 1];      // 6
 
-            FRDP ("addr: %08lx, tmem: %08lx, size: %d\n", image, tmem, tsize);
+            //FRDP ("addr: %08lx, tmem: %08lx, size: %d\n", image, tmem, tsize);
             rdp.timg.addr = image;
             rdp.timg.width = 1;
             rdp.timg.size = 1;
@@ -1538,14 +1538,7 @@ static void gSPObjLoadTxtr(uint32_t tx )
             rdp.cmd0 = 0;
             rdp.cmd1 = 0x07000000 | (tsize << 14) | tline;
 
-            if (!rdp.skip_drawing)
-               gDPLoadBlock(
-                     ((rdp.cmd1 >> 24) & 0x07), 
-                     (rdp.cmd0 >> 14) & 0x3FF, /* ul_s */
-                     (rdp.cmd0 >>  2) & 0x3FF, /* ul_t */
-                     (rdp.cmd1 >> 14) & 0x3FF, /* lr_s */
-                     (rdp.cmd1 & 0x0FFF) /* dxt */
-                     );
+            rdp_loadblock(rdp.cmd0, rdp.cmd1);
          }
          break;
       case G_OBJLT_TXTRTILE:

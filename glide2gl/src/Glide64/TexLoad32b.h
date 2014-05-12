@@ -132,6 +132,7 @@ void LoadBlock32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, ui
 {
    uint32_t i, *src, tb, tiwindwords, slindwords, line, addr, width;
    uint16_t *tmem16;
+
    src = (uint32_t*)gfx.RDRAM;
    tb = rdp.tiles[tile].t_mem << 2;
    tiwindwords = rdp.timg.width;
