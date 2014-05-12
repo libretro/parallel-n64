@@ -53,6 +53,7 @@ void CRC_BuildTable(void)
 {
 }
 
+#if 0
 #undef get16bits
 #if (defined(__GNUC__) && defined(__i386__)) || defined(__WATCOMC__) \
   || defined(_MSC_VER) || defined (__BORLANDC__) || defined (__TURBOC__)
@@ -64,7 +65,6 @@ void CRC_BuildTable(void)
   +(uint32_t)(((const uint8_t *)(d))[0]) )
 #endif
 
-#if 0
 /* SuperFastHash */
 uint32_t CRC32(uint32_t hash, const char * data, int len)
 {
