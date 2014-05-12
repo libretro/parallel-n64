@@ -40,15 +40,17 @@
 static void calc_point_light (VERTEX *v, float * vpos)
 {
    uint32_t l;
-   float light_intensity = 0.0f;
-   float color[3];
+   float light_intensity, color[3];
 
+   light_intensity = 0.0f;
    color[0] = rdp.light[rdp.num_lights].col[0];
    color[1] = rdp.light[rdp.num_lights].col[1];
    color[2] = rdp.light[rdp.num_lights].col[2];
 
    for (l = 0; l < rdp.num_lights; l++)
    {
+      light_intensity = 0.0f;
+
       if (rdp.light[l].nonblack)
       {
          float lvec[3], light_len2, light_len, at;
@@ -58,18 +60,12 @@ static void calc_point_light (VERTEX *v, float * vpos)
 
          light_len2 = lvec[0] * lvec[0] + lvec[1] * lvec[1] + lvec[2] * lvec[2];
          light_len = squareRoot(light_len2);
-#ifdef EXTREME_LOGGING
-         FRDP ("calc_point_light: len: %f, len2: %f\n", light_len, light_len2);
-#endif
+         //FRDP ("calc_point_light: len: %f, len2: %f\n", light_len, light_len2);
          at = rdp.light[l].ca + light_len/65535.0f*rdp.light[l].la + light_len2/65535.0f*rdp.light[l].qa;
 
          if (at > 0.0f)
             light_intensity = 1/at;//DotProduct (lvec, nvec) / (light_len * normal_len * at);
-         else
-            light_intensity = 0.0f;
       }
-      else
-         light_intensity = 0.0f;
 
       if (light_intensity > 0.0f)
       {
