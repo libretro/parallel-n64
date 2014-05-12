@@ -2063,7 +2063,7 @@ static void setTBufTex(uint16_t t_mem, uint32_t cnt)
 }
 #endif
 
-static inline void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
+static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
 {
    uint32_t *v5, *v7, v8, v10, *v11, v12, v13, v14, *v17, v19, v20, nbits;
    int v6, v9, v15, v16, v18, i;
@@ -2173,6 +2173,114 @@ end_dxt_test:
    }
 }
 
+static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height, int line, int off, uint32_t *end)
+{
+   uint32_t *v7, *v9, *v13, v16, *v17, v18, v20, v22, *v24, *v27, *v31, nbits;
+   int v8, v10, v11, v12, v14, v15, v19, v21, v23, v25, v26, v28, v29, v30;
+   nbits = sizeof(uint32_t) * 8;
+
+   v7 = dst;
+   v8 = width;
+   v9 = src;
+   v10 = off;
+   v11 = 0;
+   v12 = height;
+   do
+   {
+      if ( end < v7 )
+         break;
+      v31 = v7;
+      v30 = v8;
+      v29 = v12;
+      v28 = v11;
+      v27 = v9;
+      v26 = v10;
+      if ( v8 )
+      {
+         v25 = v8;
+         v24 = v9;
+         v23 = v10;
+         v13 = (uint32_t *)((char *)v9 + (v10 & 0xFFFFFFFC));
+         v14 = v10 & 3;
+         if ( !(v10 & 3) )
+            goto LABEL_20;
+         v15 = 4 - v14;
+         v16 = *v13;
+         v17 = v13 + 1;
+         do
+         {
+            v16 = __ROL__(v16, 8, nbits);
+            --v14;
+         }
+         while ( v14 );
+         do
+         {
+            v16 = __ROL__(v16, 8, nbits);
+            *(uint8_t *)v7 = v16;
+            v7 = (uint32_t *)((char *)v7 + 1);
+            --v15;
+         }
+         while ( v15 );
+         v18 = *v17;
+         v13 = v17 + 1;
+         *v7 = bswap32(v18);
+         ++v7;
+         --v8;
+         if ( v8 )
+         {
+LABEL_20:
+            do
+            {
+               *v7 = bswap32(*v13);
+               v7[1] = bswap32(v13[1]);
+               v13 += 2;
+               v7 += 2;
+               --v8;
+            }
+            while ( v8 );
+         }
+         v19 = v23 & 3;
+         if ( v23 & 3 )
+         {
+            v20 = *(uint32_t *)((char *)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
+            do
+            {
+               v20 = __ROL__(v20, 8, nbits);
+               *(uint8_t *)v7 = v20;
+               v7 = (uint32_t *)((char *)v7 + 1);
+               --v19;
+            }
+            while ( v19 );
+         }
+      }
+      v9 = v27;
+      v21 = v29;
+      v8 = v30;
+      v11 = v28 ^ 1;
+      if ( v28 == 1 )
+      {
+         v7 = v31;
+         if ( v30 )
+         {
+            do
+            {
+               v22 = *v7;
+               *v7 = v7[1];
+               v7[1] = v22;
+               v7 += 2;
+               --v8;
+            }
+            while ( v8 );
+         }
+         v21 = v29;
+         v8 = v30;
+      }
+      v10 = line + v26;
+      v12 = v21 - 1;
+   }
+   while ( v12 );
+}
+
 static void rdp_loadblock(uint32_t w0, uint32_t w1)
 {
    uint32_t tile, dxt, addr, off, cnt, _dxt;
@@ -2277,15 +2385,114 @@ static void rdp_loadblock(uint32_t w0, uint32_t w1)
 #endif
 }
 
+void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
+
 static void rdp_loadtile(uint32_t w0, uint32_t w1)
 {
-   gDPLoadTile(
-         ((w1 >> 24) & 0x07), /* tile */
-         ((w0 >> 14) & 0x03FF), /* ul_s */
-         ((w0 >> 2 ) & 0x03FF), /*ul_t */
-         ((w1 >> 14) & 0x03FF), /* lr_s */
-         ((w1 >> 2 ) & 0x03FF) /* lr_t */
-         );
+   uint32_t tile, offs, height, width;
+   uint16_t ul_s, ul_t, lr_s, lr_t;
+   int line_n;
+   
+   if (rdp.skip_drawing)
+      return;
+
+   rdp.timg.set_by = 1; // load tile
+
+   tile = (uint32_t)((w1 >> 24) & 0x07);
+
+   rdp.addr[rdp.tiles[tile].t_mem] = rdp.timg.addr;
+
+   ul_s = (uint16_t)((w0 >> 14) & 0x03FF);
+   ul_t = (uint16_t)((w0 >> 2 ) & 0x03FF);
+   lr_s = (uint16_t)((w1 >> 14) & 0x03FF);
+   lr_t = (uint16_t)((w1 >> 2 ) & 0x03FF);
+
+   if (lr_s < ul_s || lr_t < ul_t)
+      return;
+
+   if (wrong_tile >= 0) //there was a tile with zero length
+   {
+      rdp.tiles[wrong_tile].lr_s = lr_s;
+
+      if (rdp.tiles[tile].size > rdp.tiles[wrong_tile].size)
+         rdp.tiles[wrong_tile].lr_s <<= (rdp.tiles[tile].size - rdp.tiles[wrong_tile].size);
+      else if (rdp.tiles[tile].size < rdp.tiles[wrong_tile].size)
+         rdp.tiles[wrong_tile].lr_s >>= (rdp.tiles[wrong_tile].size - rdp.tiles[tile].size);
+      rdp.tiles[wrong_tile].lr_t = lr_t;
+      rdp.tiles[wrong_tile].mask_s = rdp.tiles[wrong_tile].mask_t = 0;
+      // wrong_tile = -1;
+   }
+
+#ifdef HAVE_HWFBE
+   if (rdp.tbuff_tex)// && (rdp.tiles[tile].format == 0))
+   {
+      FRDP("loadtile: tbuff_tex ul_s: %d, ul_t:%d\n", ul_s, ul_t);
+      rdp.tbuff_tex->tile_uls = ul_s;
+      rdp.tbuff_tex->tile_ult = ul_t;
+   }
+#endif
+
+   if ((settings.hacks&hack_Tonic) && tile == 7)
+   {
+      rdp.tiles[0].ul_s = ul_s;
+      rdp.tiles[0].ul_t = ul_t;
+      rdp.tiles[0].lr_s = lr_s;
+      rdp.tiles[0].lr_t = lr_t;
+   }
+
+   height = lr_t - ul_t + 1; // get height
+   width = lr_s - ul_s + 1;
+
+#ifdef TEXTURE_FILTER
+   LOAD_TILE_INFO &info = rdp.load_info[rdp.tiles[tile].t_mem];
+   info.tile_ul_s = ul_s;
+   info.tile_ul_t = ul_t;
+   info.tile_width = (rdp.tiles[tile].mask_s ? min((uint16_t)width, 1<<rdp.tiles[tile].mask_s) : (uint16_t)width);
+   info.tile_height = (rdp.tiles[tile].mask_t ? min((uint16_t)height, 1<<rdp.tiles[tile].mask_t) : (uint16_t)height);
+   if (settings.hacks&hack_MK64) {
+      if (info.tile_width%2)
+         info.tile_width--;
+      if (info.tile_height%2)
+         info.tile_height--;
+   }
+   info.tex_width = rdp.timg.width;
+   info.tex_size = rdp.timg.size;
+#endif
+
+
+   line_n = rdp.timg.width << rdp.tiles[tile].size >> 1;
+   offs = ul_t * line_n;
+   offs += ul_s << rdp.tiles[tile].size >> 1;
+   offs += rdp.timg.addr;
+   if (offs >= BMASK)
+      return;
+
+   if (rdp.timg.size == 3)
+   {
+      LoadTile32b(tile, ul_s, ul_t, width, height);
+   }
+   else
+   {
+      uint8_t *dst, *end;
+      uint32_t wid_64;
+
+      // check if points to bad location
+      if (offs + line_n*height > BMASK)
+         height = (BMASK - offs) / line_n;
+      if (height == 0)
+         return;
+
+      wid_64 = rdp.tiles[tile].line;
+      dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
+      end = ((uint8_t*)rdp.tmem) + 4096 - (wid_64<<3);
+      loadTile((uint32_t *)gfx.RDRAM, (uint32_t *)dst, wid_64, height, line_n, offs, (uint32_t *)end);
+   }
+   //FRDP("loadtile: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d\n", tile, ul_s, ul_t, lr_s, lr_t);
+
+#ifdef HAVE_HWFBE
+   if (fb_hwfbe_enabled)
+      setTBufTex(rdp.tiles[tile].t_mem, rdp.tiles[tile].line*height);
+#endif
 }
 
 static void rdp_settile(uint32_t w0, uint32_t w1)
