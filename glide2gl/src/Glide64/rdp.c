@@ -2182,9 +2182,9 @@ static void rdp_loadblock(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing)
       return;
 
-   tile = (uint32_t)((rdp.cmd1 >> 24) & 0x07);
-   dxt = (uint32_t)(rdp.cmd1 & 0x0FFF);
-   lr_s = (uint16_t)(rdp.cmd1 >> 14) & 0x3FF;
+   tile = (uint32_t)((w1 >> 24) & 0x07);
+   dxt = (uint32_t)(w1 & 0x0FFF);
+   lr_s = (uint16_t)(w1 >> 14) & 0x3FF;
 
    if (ucode5_texshiftaddr)
    {
@@ -2864,8 +2864,8 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
    }
 
    rdp.ocimg = rdp.cimg;
-   rdp.cimg = segoffset(rdp.cmd1) & BMASK;
-   rdp.ci_width = (rdp.cmd0 & 0xFFF) + 1;
+   rdp.cimg = segoffset(w1) & BMASK;
+   rdp.ci_width = (w0 & 0xFFF) + 1;
    if (fb_emulation_enabled)
       rdp.ci_height = rdp.frame_buffers[rdp.ci_count-1].height;
    else if (rdp.ci_width == 32)
@@ -2878,10 +2878,10 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
       // int zi_height = min((int)rdp.zi_width*3/4, (int)rdp.vi_height);
       // rdp.zi_words = rdp.zi_width * zi_height;
    }
-   format = (rdp.cmd0 >> 21) & 0x7;
-   rdp.ci_size = (rdp.cmd0 >> 19) & 0x3;
+   format = (w0 >> 21) & 0x7;
+   rdp.ci_size = (w0 >> 19) & 0x3;
    rdp.ci_end = rdp.cimg + ((rdp.ci_width*rdp.ci_height)<<(rdp.ci_size-1));
-   //FRDP("setcolorimage - %08lx, width: %d, height: %d, format: %d, size: %d\n", rdp.cmd1, rdp.ci_width, rdp.ci_height, format, rdp.ci_size);
+   //FRDP("setcolorimage - %08lx, width: %d, height: %d, format: %d, size: %d\n", w1, rdp.ci_width, rdp.ci_height, format, rdp.ci_size);
    //FRDP("cimg: %08lx, ocimg: %08lx, SwapOK: %d\n", rdp.cimg, rdp.ocimg, SwapOK);
 
    if (format != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
