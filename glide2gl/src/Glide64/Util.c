@@ -81,24 +81,6 @@ void util_init(void)
 {
 }
 
-float ScaleZ(float z)
-{
-   if (settings.n64_z_scale)
-   {
-      int iz = (int)(z*8.0f+0.5f);
-      if (iz < 0)
-         iz = 0;
-      else if (iz >= ZLUT_SIZE)
-         iz = ZLUT_SIZE - 1;
-      return (float)zLUT[iz];
-   }
-   if (z  < 0.0f)
-      return 0.0f;
-   z *= 1.9f;
-   if (z > 65535.0f)
-      return 65535.0f;
-   return z;
-}
 
 void apply_shade_mods (VERTEX *v)
 {
@@ -437,6 +419,25 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
    grTexDetailControl (GR_TMU0, cmb.dc0_lodbias, cmb.dc0_detailscale, detailmax);
    grTexDetailControl (GR_TMU1, cmb.dc1_lodbias, cmb.dc1_detailscale, detailmax);
    //FRDP("CalculateLOD factor: %f, tile: %d, lod_fraction: %f\n", (float)lodFactor, lod_tile, lod_fraction);
+}
+
+float ScaleZ(float z)
+{
+   if (settings.n64_z_scale)
+   {
+      int iz = (int)(z*8.0f+0.5f);
+      if (iz < 0)
+         iz = 0;
+      else if (iz >= ZLUT_SIZE)
+         iz = ZLUT_SIZE - 1;
+      return (float)zLUT[iz];
+   }
+   if (z  < 0.0f)
+      return 0.0f;
+   z *= 1.9f;
+   if (z > 65535.0f)
+      return 65535.0f;
+   return z;
 }
 
 static void DepthBuffer(VERTEX * vtx, int n)
