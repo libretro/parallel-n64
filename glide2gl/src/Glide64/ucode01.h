@@ -43,12 +43,10 @@
 
 static void uc1_vertex(uint32_t w0, uint32_t w1)
 {
-   pre_update();
-   gSPVertex(
-         RSP_SegmentToPhysical(w1),        /* v - Current vertex */
-         ((w0 >> 10) & 0x3F),              /* n - Number of vertices to copy */
-         (w0 >> 17) & 0x7F                 /* v0 */
-         );
+   int v0, n;
+   v0 = (w0 >> 17) & 0x7F; // Current vertex
+   n = (w0 >> 10) & 0x3F; // Number to copy
+   rsp_vertex(v0, n);
 }
 
 //
@@ -57,51 +55,90 @@ static void uc1_vertex(uint32_t w0, uint32_t w1)
 
 static void uc1_tri1(uint32_t w0, uint32_t w1)
 {
-   gsSP1Triangle(
-         (w1 >> 17) & 0x7F,   /* v0 */
-         (w1 >> 9) & 0x7F,    /* v1 */
-         (w1 >> 1) & 0x7F,    /* v2 */
-         0,
-         true
-         );
+   VERTEX *v[3];
+   if (rdp.skip_drawing)
+      return;
+
+#if 0
+   FRDP("uc1:tri1 #%d - %d, %d, %d - %08lx - %08lx\n", rdp.tri_n,
+         ((w1 >> 17) & 0x7F),
+         ((w1 >> 9) & 0x7F),
+         ((w1 >> 1) & 0x7F), w0, w1);
+#endif
+
+   v[0] = &rdp.vtx[(w1 >> 17) & 0x7F];
+   v[1] = &rdp.vtx[(w1 >> 9) & 0x7F];
+   v[2] = &rdp.vtx[(w1 >> 1) & 0x7F];
+
+   rsp_tri1(v, 0);
 }
 
 static void uc1_tri2(uint32_t w0, uint32_t w1)
 {
-   gsSP2Triangles(
-         (w0 >> 17) & 0x7F,      /* v00 */
-         (w0 >> 9)  & 0x7F,      /* v01 */
-         (w0 >> 1)  & 0x7F,      /* v02 */
-         0,                      /* flag0 */
-         (w1 >> 17) & 0x7F,      /* v10 */
-         (w1 >> 9)  & 0x7F,      /* v11 */
-         (w1 >> 1)  & 0x7F,      /* v12 */
-         0                       /* flag1 */
-         );
+   VERTEX *v[6];
+   if (rdp.skip_drawing)
+      return;
+#if 0
+   LRDP("uc1:tri2");
+
+   FRDP(" #%d, #%d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1,
+         ((w0 >> 17) & 0x7F),
+         ((w0 >> 9) & 0x7F),
+         ((w0 >> 1) & 0x7F),
+         ((w1 >> 17) & 0x7F),
+         ((w1 >> 9) & 0x7F),
+         ((w1 >> 1) & 0x7F));
+#endif
+
+   v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
+   v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
+   v[2] = &rdp.vtx[(w0 >> 1) & 0x7F];
+   v[3] = &rdp.vtx[(w1 >> 17) & 0x7F];
+   v[4] = &rdp.vtx[(w1 >> 9) & 0x7F];
+   v[5] = &rdp.vtx[(w1 >> 1) & 0x7F];
+
+   rsp_tri2(v);
 }
 
 static void uc1_line3d(uint32_t w0, uint32_t w1)
 {
-   bool force_quad3d = !settings.force_quad3d && ((w1 & 0xFF000000) == 0) && ((w0 & 0x00FFFFFF) == 0);
+   if (!settings.force_quad3d && ((w1 & 0xFF000000) == 0) && ((w0 & 0x00FFFFFF) == 0))
+   {
+      uint32_t cull_mode;
+      VERTEX *v[3];
+      uint16_t width = (uint16_t)(w1 & 0xFF) + 3;
 
-   if (!force_quad3d)
-      gsSP2Triangles(
-            (w1 >> 25) & 0x7F,     /* v00 */
-            (w1 >> 17) & 0x7F,     /* v01 */
-            (w1 >> 9)  & 0x7F,     /* v02 */
-            0,                     /* flag0 */
-            (w1 >> 1)  & 0x7F,     /* v10 */
-            (w1 >> 25) & 0x7F,     /* v11 */
-            (w1 >> 9)  & 0x7F,     /* v12 */
-            0                      /* flag1 */
-            );
+#if 0
+      FRDP("uc1:line3d width: %d #%d, #%d - %d, %d\n", width, rdp.tri_n, rdp.tri_n+1,
+            (w1 >> 17) & 0x7F,
+            (w1 >> 9) & 0x7F);
+#endif
+
+      v[0] = &rdp.vtx[(w1 >> 17) & 0x7F];
+      v[1] = &rdp.vtx[(w1 >> 9) & 0x7F];
+      v[2] = &rdp.vtx[(w1 >> 9) & 0x7F];
+      cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
+      rdp.flags |= CULLMASK;
+      rdp.update |= UPDATE_CULL_MODE;
+      rsp_tri1(v, width);
+      rdp.flags ^= CULLMASK;
+      rdp.flags |= cull_mode << CULLSHIFT;
+      rdp.update |= UPDATE_CULL_MODE;
+   }
    else
-      gSPLineW3D(
-            (w1 >> 9)  & 0x7F /* v1 */,
-            (w1 >> 17) & 0x7F /* v0 */,
-            (w1 & 0xFF) + 3   /* wd */,
-            0                 /* flag (stub) */
-            );
+   {
+      VERTEX *v[6];
+      //FRDP("uc1:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
+
+      v[0] = &rdp.vtx[(w1 >> 25) & 0x7F];
+      v[1] = &rdp.vtx[(w1 >> 17) & 0x7F];
+      v[2] = &rdp.vtx[(w1 >> 9) & 0x7F];
+      v[3] = &rdp.vtx[(w1 >> 1) & 0x7F];
+      v[4] = &rdp.vtx[(w1 >> 25) & 0x7F];
+      v[5] = &rdp.vtx[(w1 >> 9) & 0x7F];
+
+      rsp_tri2(v);
+   }
 }
 
 uint32_t branch_dl = 0;

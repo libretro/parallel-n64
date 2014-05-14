@@ -99,14 +99,31 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
       return;
    }
 
-   pre_update();
+   // This is special, not handled in update(), but here
+   // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
+   if (rdp.update & UPDATE_MULT_MAT)
+   {
+      rdp.update ^= UPDATE_MULT_MAT;
+      MulMatrices(rdp.model, rdp.proj, rdp.combined);
+   }
+   if (rdp.update & UPDATE_LIGHTS)
+   {
+      rdp.update ^= UPDATE_LIGHTS;
+
+      // Calculate light vectors
+      for (l = 0; l < rdp.num_lights; l++)
+      {
+         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
+         NormalizeVector (rdp.light_vector[l]);
+      }
+   }
 
    addr = segoffset(w1);
 
    n = (w0 >> 12) & 0xFF;
    v0 = ((w0 >> 1) & 0x7F) - n;
 
-   FRDP ("uc2:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
+   //FRDP ("uc2:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
 
    if (v0 < 0)
       return;
@@ -117,24 +134,100 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
       if (((int16_t*)gfx.RDRAM)[(((addr) >> 1) + 4)^1] || ((int16_t*)gfx.RDRAM)[(((addr) >> 1) + 5)^1])
          rdp.geom_mode ^= G_TEXTURE_GEN;
    }
+   for (i=0; i < (n<<4); i+=16)
+   {
+      VERTEX *v = &rdp.vtx[v0 + (i>>4)];
+      x = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 0)^1];
+      y = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 1)^1];
+      z = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 2)^1];
+      v->flags = ((uint16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 3)^1];
+      v->ou = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 4)^1];
+      v->ov = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 5)^1];
+      v->uv_scaled = 0;
+      v->a = ((uint8_t*)gfx.RDRAM)[(addr+i + 15)^3];
 
-   _gSPVertex(
-         addr,          /* v - Current vertex */
-         n,             /* n */
-         v0             /* v0 */
-         );
+      v->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
+      v->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
+      v->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
+      v->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
+
+      if (fabs(v->w) < 0.001) v->w = 0.001f;
+      v->oow = 1.0f / v->w;
+      v->x_w = v->x * v->oow;
+      v->y_w = v->y * v->oow;
+      v->z_w = v->z * v->oow;
+      CalculateFog (v);
+
+      v->uv_calculated = 0xFFFFFFFF;
+      v->screen_translated = 0;
+      v->shade_mod = 0;
+
+      v->scr_off = 0;
+      if (v->x < -v->w) v->scr_off |= 1;
+      if (v->x > v->w) v->scr_off |= 2;
+      if (v->y < -v->w) v->scr_off |= 4;
+      if (v->y > v->w) v->scr_off |= 8;
+      if (v->w < 0.1f) v->scr_off |= 16;
+      // if (v->z_w > 1.0f) v->scr_off |= 32;
+
+      if (rdp.geom_mode & 0x00020000)
+      {
+         v->vec[0] = ((int8_t*)gfx.RDRAM)[(addr+i + 12)^3];
+         v->vec[1] = ((int8_t*)gfx.RDRAM)[(addr+i + 13)^3];
+         v->vec[2] = ((int8_t*)gfx.RDRAM)[(addr+i + 14)^3];
+         // FRDP("Calc light. x: %f, y: %f z: %f\n", v->vec[0], v->vec[1], v->vec[2]);
+         // if (!(rdp.geom_mode & 0x800000))
+         {
+            if (rdp.geom_mode & 0x40000)
+            {
+               if (rdp.geom_mode & 0x80000)
+               {
+                  calc_linear (v);
+#ifdef EXTREME_LOGGING
+                  FRDP ("calc linear: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
+#endif
+               }
+               else
+               {
+                  calc_sphere (v);
+#ifdef EXTREME_LOGGING
+                  FRDP ("calc sphere: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
+#endif
+               }
+            }
+         }
+         if (rdp.geom_mode & 0x00400000)
+         {
+            float tmpvec[3] = {x, y, z};
+            calc_point_light (v, tmpvec);
+         }
+         else
+         {
+            NormalizeVector (v->vec);
+            calc_light (v);
+         }
+      }
+      else
+      {
+         v->r = ((uint8_t*)gfx.RDRAM)[(addr+i + 12)^3];
+         v->g = ((uint8_t*)gfx.RDRAM)[(addr+i + 13)^3];
+         v->b = ((uint8_t*)gfx.RDRAM)[(addr+i + 14)^3];
+      }
+#ifdef EXTREME_LOGGING
+      FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
+#endif
+   }
 
    rdp.geom_mode = geom_mode;
 }
 
 static void uc2_modifyvtx(uint32_t w0, uint32_t w1)
 {
-   gSPModifyVertex(
-         (w0 >> 1) & 0xFFFF,  /* vtx */
-         (w0 >> 16) & 0xFF,   /* where */
-         w1                   /* val */
-         );
+   uint8_t where = (uint8_t)((w0 >> 16) & 0xFF);
+   uint16_t vtx = (uint16_t)((w0 >> 1) & 0xFFFF);
+
    //FRDP ("uc2:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
+   uc0_modifyvtx(where, vtx, w1);
 }
 
 static void uc2_culldl(uint32_t w0, uint32_t w1)
@@ -186,23 +279,33 @@ static void uc2_culldl(uint32_t w0, uint32_t w1)
 
 static void uc2_tri1(uint32_t w0, uint32_t w1)
 {
+   VERTEX *v[3];
    if ((w0 & 0x00FFFFFF) == 0x17)
    {
       uc6_obj_loadtxtr(w0, w1);
       return;
    }
 
-   gsSP1Triangle(
-         (w0 >> 17) & 0x7F,      /* v0 */
-         (w0 >> 9)  & 0x7F,      /* v1 */
-         (w0 >> 1)  & 0x7F,      /* v2 */
-         0,
-         true
-         );
+   if (rdp.skip_drawing)
+      return;
+
+#if 0
+   FRDP("uc2:tri1 #%d - %d, %d, %d\n", rdp.tri_n,
+         ((rdp.cmd0 >> 17) & 0x7F),
+         ((rdp.cmd0 >> 9) & 0x7F),
+         ((rdp.cmd0 >> 1) & 0x7F));
+#endif
+
+   v[0] = &rdp.vtx[(rdp.cmd0 >> 17) & 0x7F];
+   v[1] = &rdp.vtx[(rdp.cmd0 >> 9) & 0x7F];
+   v[2] = &rdp.vtx[(rdp.cmd0 >> 1) & 0x7F];
+
+   rsp_tri1(v, 0);
 }
 
 static void uc2_quad(uint32_t w0, uint32_t w1)
 {
+   VERTEX *v[6];
    if ((w0 & 0x00FFFFFF) == 0x2F)
    {
       uint32_t command = w0 >> 24;
@@ -218,29 +321,58 @@ static void uc2_quad(uint32_t w0, uint32_t w1)
       }
    }
 
-   gsSP2Triangles(
-         (w0 >> 17) & 0x7F,      /* v00 */
-         (w0 >> 9)  & 0x7F,      /* v01 */
-         (w0 >> 1)  & 0x7F,      /* v02 */
-         0,                      /* flag0 */
-         (w1 >> 17) & 0x7F,      /* v10 */
-         (w1 >> 9)  & 0x7F,      /* v11 */
-         (w1 >> 1)  & 0x7F,      /* v12 */
-         0                       /* flag1 */
-         );
+   if (rdp.skip_drawing)
+      return;
+
+#if 0
+   LRDP("uc2:quad");
+
+   FRDP(" #%d, #%d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1,
+         ((w0 >> 17) & 0x7F),
+         ((w0 >> 9) & 0x7F),
+         ((w0 >> 1) & 0x7F),
+         ((w1 >> 17) & 0x7F),
+         ((w1 >> 9) & 0x7F),
+         ((w1 >> 1) & 0x7F));
+#endif
+
+   v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
+   v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
+   v[2] = &rdp.vtx[(w0 >> 1) & 0x7F];
+   v[3] = &rdp.vtx[(w1 >> 17) & 0x7F];
+   v[4] = &rdp.vtx[(w1 >> 9) & 0x7F];
+   v[5] = &rdp.vtx[(w1 >> 1) & 0x7F];
+
+   rsp_tri2(v);
 }
 
 static void uc2_line3d(uint32_t w0, uint32_t w1)
 {
-   if ((w0 & 0xFF) == 0x2F)
+   if ( (w0 & 0xFF) == 0x2F )
       uc6_ldtx_rect_r(w0, w1);
    else
-      gSPLineW3D(
-            (w0 >> 9) & 0x7F,    /* v0 */
-            (w0 >> 17) & 0x7F,   /* v1 */
-            (w0 + 3) & 0xFF,     /* wd */
-            0                    /* flags (stub) */
-            );
+   {
+      VERTEX *v[3];
+      uint32_t cull_mode;
+      uint16_t width;
+#if 0
+      FRDP("uc2:line3d #%d, #%d - %d, %d\n", rdp.tri_n, rdp.tri_n+1,
+            (w0 >> 17) & 0x7F,
+            (w0 >> 9) & 0x7F);
+#endif
+
+      v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
+      v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
+      v[2] = &rdp.vtx[(w0 >> 9) & 0x7F];
+      width = (uint16_t)(w0 + 3)&0xFF;
+      cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
+      rdp.flags |= CULLMASK;
+      rdp.update |= UPDATE_CULL_MODE;
+      rsp_tri1(v, width);
+      rdp.flags ^= CULLMASK;
+      rdp.flags |= cull_mode << CULLSHIFT;
+      rdp.update |= UPDATE_CULL_MODE;
+   }
 }
 
 static void uc2_special3(uint32_t w0, uint32_t w1)
