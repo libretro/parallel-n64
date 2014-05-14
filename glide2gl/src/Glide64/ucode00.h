@@ -180,12 +180,9 @@ static void rsp_tri2 (VERTEX **v)
 //
 static void uc0_vertex(uint32_t w0, uint32_t w1)
 {
-   pre_update();
-   gSPVertex(
-         RSP_SegmentToPhysical(w1),       /* v - Current vertex */
-         ((w0 >> 20) & 0xF) + 1,          /* n - Number of vertices to copy */
-         (w0 >> 16) & 0xF                 /* v0 */
-         );
+   int v0 = (w0 >> 16) & 0xF; // Current vertex
+   int n = ((w0 >> 20) & 0xF) + 1; // Number of vertices to copy
+   rsp_vertex(v0, n);
 }
 
 // ** Definitions **
@@ -208,6 +205,17 @@ static void modelview_push(void)
       return;
 
    CopyMatrix(rdp.model_stack[rdp.model_i++], rdp.model, 64);
+}
+
+void modelview_pop (int num)
+{
+   if (rdp.model_i > num - 1)
+      rdp.model_i -= num;
+   else
+      return;
+
+   memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
+   rdp.update |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
 }
 
 static void modelview_load_push (float m[4][4])
@@ -330,10 +338,36 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
    // Check the command
    switch ((w0 >> 16) & 0xFF)
    {
-      case F3D_MV_VIEWPORT:
-         gSPViewport(w1, settings.correct_viewport);
+      case 0x80: /* F3D_MV_VIEWPORT */
+         {
+            a = (segoffset(w1) & 0xFFFFFF) >> 1;
+
+            int16_t scale_x = ((int16_t*)gfx.RDRAM)[(a+0)^1] / 4;
+            int16_t scale_y = ((int16_t*)gfx.RDRAM)[(a+1)^1] / 4;
+            int16_t scale_z = ((int16_t*)gfx.RDRAM)[(a+2)^1];
+            int16_t trans_x = ((int16_t*)gfx.RDRAM)[(a+4)^1] / 4;
+            int16_t trans_y = ((int16_t*)gfx.RDRAM)[(a+5)^1] / 4;
+            int16_t trans_z = ((int16_t*)gfx.RDRAM)[(a+6)^1];
+            if (settings.correct_viewport)
+            {
+               scale_x = abs(scale_x);
+               scale_y = abs(scale_y);
+            }
+            rdp.view_scale[0] = scale_x * rdp.scale_x;
+            rdp.view_scale[1] = -scale_y * rdp.scale_y;
+            rdp.view_scale[2] = 32.0f * scale_z;
+            rdp.view_trans[0] = trans_x * rdp.scale_x;
+            rdp.view_trans[1] = trans_y * rdp.scale_y;
+            rdp.view_trans[2] = 32.0f * trans_z;
+
+            // there are other values than x and y, but I don't know what they do
+
+            rdp.update |= UPDATE_VIEWPORT;
+
+            //FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, w1);
+         }
          break;
-      case G_MV_LOOKATY:
+      case 0x82: /* G_MV_LOOKATY */
          {
             int8_t dir_x, dir_y, dir_z, *rdram;
             a = RSP_SegmentToPhysical(w1);
@@ -373,14 +407,50 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
       case G_MV_L6:
       case G_MV_L7:
          // Get the light #
-         i = (((w0 >> 16) & 0xff) - G_MV_L0) >> 1;
-         gSPLight(gfx.RDRAM, w1, i);
+         i = (((w0 >> 16) & 0xff) - 0x86) >> 1;
+         a = segoffset(w1) & 0x00ffffff;
+
+         // Get the data
+         rdp.light[i].col[0] = (float)(((uint8_t*)gfx.RDRAM)[(a+0)^3]) / 255.0f;
+         rdp.light[i].col[1] = (float)(((uint8_t*)gfx.RDRAM)[(a+1)^3]) / 255.0f;
+         rdp.light[i].col[2] = (float)(((uint8_t*)gfx.RDRAM)[(a+2)^3]) / 255.0f;
+         rdp.light[i].col[3] = 1.0f;
+         // ** Thanks to Icepir8 for pointing this out **
+         // Lighting must be signed byte instead of byte
+         rdp.light[i].dir[0] = (float)(((int8_t*)gfx.RDRAM)[(a+8)^3]) / 127.0f;
+         rdp.light[i].dir[1] = (float)(((int8_t*)gfx.RDRAM)[(a+9)^3]) / 127.0f;
+         rdp.light[i].dir[2] = (float)(((int8_t*)gfx.RDRAM)[(a+10)^3]) / 127.0f;
+         // **
+
+         //rdp.update |= UPDATE_LIGHTS;
+
+#if 0
+         FRDP ("light: n: %d, r: %.3f, g: %.3f, b: %.3f, x: %.3f, y: %.3f, z: %.3f\n",
+               i, rdp.light[i].r, rdp.light[i].g, rdp.light[i].b,
+               rdp.light_vector[i][0], rdp.light_vector[i][1], rdp.light_vector[i][2]);
+#endif
          break;
 
 
       case G_MV_MATRIX_1:
-         gSPForceMatrix(w1);
-         rdp.pc[rdp.pc_i] = ((rdp.pc[rdp.pc_i] & BMASK) + 24) & BMASK; //skip next 3 command, b/c they all are part of gSPForceMatrix
+         {
+            uint32_t addr;
+            // do not update the combined matrix!
+            rdp.update &= ~UPDATE_MULT_MAT;
+
+            addr = segoffset(w1) & 0x00FFFFFF;
+            load_matrix(rdp.combined, addr);
+
+            addr = rdp.pc[rdp.pc_i] & BMASK;
+            rdp.pc[rdp.pc_i] = (addr+24) & BMASK; //skip next 3 command, b/c they all are part of gSPForceMatrix
+
+#ifdef EXTREME_LOGGING
+            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
+            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
+            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
+            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
+#endif
+         }
          break;
          //next 3 command should never appear since they will be skipped in previous command
       case G_MV_MATRIX_2:
@@ -408,16 +478,45 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 //
 // uc0:displaylist - makes a call to another section of code
 //
+
 static void uc0_displaylist(uint32_t w0, uint32_t w1)
 {
-   switch (_SHIFTR( w0, 16, 8 ))
+   uint32_t addr, push;
+   addr = segoffset(w1) & 0x00FFFFFF;
+
+   // This fixes partially Gauntlet: Legends
+   if (addr == rdp.pc[rdp.pc_i] - 8)
    {
-      case G_DL_PUSH: // push
-         gSPDisplayList(w1);
+      //LRDP("display list not executed!\n");
+      return;
+   }
+
+   push = (w0 >> 16) & 0xFF; // push the old location?
+
+   //FRDP("uc0:displaylist: %08lx, push:%s", addr, push?"no":"yes");
+   //FRDP(" (seg %d, offset %08lx)\n", (w1>>24)&0x0F, w1&0x00FFFFFF);
+
+   switch (push)
+   {
+      case 0: // push
+         if (rdp.pc_i >= 9)
+         {
+            //RDP_E ("** DL stack overflow **");
+            //LRDP("** DL stack overflow **\n");
+            return;
+         }
+         rdp.pc_i ++; // go to the next PC in the stack
+         rdp.pc[rdp.pc_i] = addr; // jump to the address
          break;
-      case G_DL_NOPUSH: // no push
-         gSPBranchList(w1);
+
+      case 1: // no push
+         rdp.pc[rdp.pc_i] = addr; // just jump to the address
          break;
+#if 0
+      default:
+         RDP_E("Unknown displaylist operation\n");
+         LRDP("Unknown displaylist operation\n");
+#endif
    }
 }
 
@@ -426,12 +525,20 @@ static void uc0_displaylist(uint32_t w0, uint32_t w1)
 //
 static void uc0_tri1(uint32_t w0, uint32_t w1)
 {
-   gsSP1Triangle(
-         ((w1 >> 16) & 0xFF) / 10,     /* v0 */
-         ((w1 >> 8) & 0xFF) / 10,      /* v1 */
-         (w1 & 0xFF) / 10,             /* v2 */
-         0,
-         true);
+   VERTEX *v[3];
+   int i;
+#if 0
+   FRDP("uc0:tri1 #%d - %d, %d, %d\n", rdp.tri_n,
+         ((w1>>16) & 0xFF) / 10,
+         ((w1>>8) & 0xFF) / 10,
+         (w1 & 0xFF) / 10);
+#endif
+
+   v[0] = &rdp.vtx[((w1 >> 16) & 0xFF) / 10];
+   v[1] = &rdp.vtx[((w1 >> 8) & 0xFF) / 10];
+   v[2] = &rdp.vtx[(w1 & 0xFF) / 10];
+
+   rsp_tri1(v, 0);
 }
 
 static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
@@ -455,13 +562,7 @@ static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
       }
    }
 
-   gsSP1Triangle(
-         ((w1 >> 16) & 0xFF) / 10,  /* v0 */
-         ((w1 >> 8) & 0xFF) / 10,   /* v1 */
-         (w1 & 0xFF) / 10,          /* v2 */
-         0,
-         true
-         );
+   rsp_tri1(v, 0);
 }
 
 //
@@ -469,22 +570,78 @@ static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
 //
 static void uc0_enddl(uint32_t w0, uint32_t w1)
 {
-   gSPEndDisplayList();
+   //LRDP("uc0:enddl\n");
+
+   if (rdp.pc_i == 0)
+   {
+      //LRDP("RDP end\n");
+
+      // Halt execution here
+      rdp.halt = 1;
+   }
+
+   rdp.pc_i --;
 }
 
 static void uc0_culldl(uint32_t w0, uint32_t w1)
 {
-   gSPCullDisplayList(
-         ((w0 & 0x00FFFFFF) / 40) & 0xF,     /* v0 */
-         (w1 / 40) & 0x0F                    /* vn */
-         );
+   VERTEX *v;
+   uint8_t vStart, vEnd;
+   uint32_t cond;
+   uint16_t i;
+
+   vStart = (uint8_t)((w0 & 0x00FFFFFF) / 40) & 0xF;
+   vEnd = (uint8_t)(w1 / 40) & 0x0F;
+   cond = 0;
 
    //FRDP("uc0:culldl start: %d, end: %d\n", vStart, vEnd);
+
+   if (vEnd < vStart)
+      return;
+   for (i = vStart; i<=vEnd; i++)
+   {
+      v = &rdp.vtx[i];
+      // Check if completely off the screen (quick frustrum clipping for 90 FOV)
+      if (v->x >= -v->w)
+         cond |= 0x01;
+      if (v->x <= v->w)
+         cond |= 0x02;
+      if (v->y >= -v->w)
+         cond |= 0x04;
+      if (v->y <= v->w)
+         cond |= 0x08;
+      if (v->w >= 0.1f)
+         cond |= 0x10;
+
+      if (cond == 0x1F)
+         return;
+   }
+
+   //LRDP(" - "); // specify that the enddl is not a real command
+   uc0_enddl(w0, w1);
 }
 
 static void uc0_popmatrix(uint32_t w0, uint32_t w1)
 {
-   gSPPopMatrix(w1);
+   //LRDP("uc0:popmatrix\n");
+
+#if 0
+   switch (w1)
+   {
+      case 0: // modelview
+         modelview_pop(1);
+         break;
+      case 1: // projection, can't
+         break;
+
+      default:
+         FRDP_E ("Unknown uc0:popmatrix command: 0x%08lx\n", w1);
+         FRDP ("Unknown uc0:popmatrix command: 0x%08lx\n", w1);
+   }
+#else
+   if (w1 == 0)
+      modelview_pop(1);
+#endif
 }
 
 static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
@@ -569,51 +726,76 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:moveword ");
 
-   // Find which command this is (lowest byte of w0)
+   // Find which command this is (lowest byte of cmd0)
    switch (w0 & 0xFF)
    {
-      case G_MW_MATRIX:
-         //RDP_E ("uc0:moveword matrix - IGNORED\n");
-         //LRDP("matrix - IGNORED\n");
+      case 0x00:
+         RDP_E ("uc0:moveword matrix - IGNORED\n");
+         LRDP("matrix - IGNORED\n");
          break;
 
-      case G_MW_NUMLIGHT:
-         gSPNumLights( ((w1 - 0x80000000) >> 5) - 1 );
-         break;
-      case G_MW_CLIP:
-         gSPClipRatio(w0, w1);
+      case 0x02:
+         rdp.num_lights = ((w1 - 0x80000000) >> 5) - 1; // inverse of equation
+         if (rdp.num_lights > 8) rdp.num_lights = 0;
+
+         rdp.update |= UPDATE_LIGHTS;
+         //FRDP ("numlights: %d\n", rdp.num_lights);
          break;
 
-      case G_MW_SEGMENT:
-         if ((w1 & BMASK) < BMASK)
-            gSPSegment((w0 >> 10) & 0x0F, w1);
-         break;
-
-      case G_MW_FOG:
-         gSPFogFactor((int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ));
-         break;
-
-      case G_MW_LIGHTCOL:  // moveword LIGHTCOL
-         gSPLightColor((w0 & 0xE000) >> 13, w1);
-         break;
-
-      case G_MW_POINTS:
+      case 0x04:
+         if (((w0 >> 8)&0xFFFF) == 0x04)
          {
-            uint32_t where = ((w0 >> 8) & 0xFFFF) % 40;
-            if (where == 0)
-               uc6_obj_sprite(w0, w1);
-            else
-               gSPModifyVertex((((w0 >> 8) & 0xFFFF) / 40), where, w1);
+            rdp.clip_ratio = sqrt((float)w1);
+            rdp.update |= UPDATE_VIEWPORT;
+         }
+         //FRDP ("clip %08lx, %08lx\n", w0, w1);
+         break;
+
+      case 0x06: // segment
+         //FRDP ("segment: %08lx -> seg%d\n", w1, (w0 >> 10) & 0x0F);
+         if ((w1 & BMASK)<BMASK)
+            rdp.segment[(w0 >> 10) & 0x0F] = w1;
+         break;
+
+      case 0x08:
+         {
+            rdp.fog_multiplier = (int16_t)(w1 >> 16);
+            rdp.fog_offset = (int16_t)(w1 & 0x0000FFFF);
+            //FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
          }
          break;
 
-      case G_MW_PERSPNORM:
-         //LRDP("perspnorm - IGNORED\n");
+      case 0x0a: // moveword LIGHTCOL
+         {
+            int n = (w0 & 0xE000) >> 13;
+            //FRDP ("lightcol light:%d, %08lx\n", n, w1);
+
+            rdp.light[n].col[0] = (float)((w1 >> 24) & 0xFF) / 255.0f;
+            rdp.light[n].col[1] = (float)((w1 >> 16) & 0xFF) / 255.0f;
+            rdp.light[n].col[2] = (float)((w1 >> 8) & 0xFF) / 255.0f;
+            rdp.light[n].col[3] = 255;
+         }
+         break;
+
+      case 0x0c:
+         {
+            uint16_t val, vtx;
+            uint8_t where;
+
+            val = (uint16_t)((w0 >> 8) & 0xFFFF);
+            vtx = val / 40;
+            where = val % 40;
+            uc0_modifyvtx(where, vtx, w1);
+            //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
+         }
          break;
 #if 0
+      case 0x0e:
+         LRDP("perspnorm - IGNORED\n");
+         break;
       default:
-         FRDP_E ("uc0:moveword unknown (index: 0x%08lx)\n", w0 & 0xFF);
-         FRDP ("unknown (index: 0x%08lx)\n", w0 & 0xFF);
+         FRDP_E ("uc0:moveword unknown (index: 0x%08lx)\n", rdp.cmd0 & 0xFF);
+         FRDP ("unknown (index: 0x%08lx)\n", rdp.cmd0 & 0xFF);
 #endif
    }
 }
@@ -879,12 +1061,25 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 
 static void uc0_line3d(uint32_t w0, uint32_t w1)
 {
-   gSPLineW3D(
-         ((w1 >>  8) & 0xff) / 10,     /* v0 */
-         ((w1 >> 16) & 0xff) / 10,     /* v1 */
-         (w1 & 0xFF) + 3,              /* wd */
-         0                             /* flag (stub) */
-         );
+   uint32_t v0, v1, cull_mode;
+   uint16_t width;
+   VERTEX *v[3];
+
+   v0 = ((w1 >> 16) & 0xff) / 10;
+   v1 = ((w1 >> 8) & 0xff) / 10;
+   width = (uint16_t)(w1 & 0xFF) + 3;
+
+  v[0] = &rdp.vtx[v1];
+  v[1] = &rdp.vtx[v0];
+  v[2] = &rdp.vtx[v0];
+
+  cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
+  rdp.flags |= CULLMASK;
+  rdp.update |= UPDATE_CULL_MODE;
+  rsp_tri1(v, width);
+  rdp.flags ^= CULLMASK;
+  rdp.flags |= cull_mode << CULLSHIFT;
+  rdp.update |= UPDATE_CULL_MODE;
 }
 
 static void uc0_tri4(uint32_t w0, uint32_t w1)

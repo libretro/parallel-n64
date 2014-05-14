@@ -152,5 +152,10 @@ static void uc1_rdphalf_1(uint32_t w0, uint32_t w1)
 
 static void uc1_branch_z(uint32_t w0, uint32_t w1)
 {
-   gSPBranchLessZ( branch_dl, _SHIFTR( w0, 1, 11 ), (int32_t)w1 );
+   uint32_t addr, vtx;
+   addr = segoffset(branch_dl);
+   //FRDP ("uc1:branch_less_z, addr: %08lx\n", addr);
+   vtx = (w0 & 0xFFF) >> 1;
+   if( fabs(rdp.vtx[vtx].z) <= (w1/*&0xFFFF*/) )
+      rdp.pc[rdp.pc_i] = addr;
 }
