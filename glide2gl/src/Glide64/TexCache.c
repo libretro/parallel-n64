@@ -197,33 +197,24 @@ static void GetTexInfo (int id, int tile)
       // Helps speed in some games that loaded weird-sized textures, but could break other
       //  textures.
 
+      // wrap all the way
+      width = min(mask_width, tile_width);	// changed from mask_width only
+      rdp.tiles[tile].width = width;
+
       // Get the width/height to load
       if ((rdp.tiles[tile].clamp_s && tile_width <= 256) || (mask_width > 256))
       {
-         // loading width
-         width = min(mask_width, tile_width);
          // actual width
          rdp.tiles[tile].width = tile_width;
       }
-      else
-      {
-         // wrap all the way
-         width = min(mask_width, tile_width);	// changed from mask_width only
-         rdp.tiles[tile].width = width;
-      }
+
+      height = min(mask_height, tile_height);
+      rdp.tiles[tile].height = height;
 
       if ((rdp.tiles[tile].clamp_t && tile_height <= 256) || (mask_height > 256))
       {
-         // loading height
-         height = min(mask_height, tile_height);
          // actual height
          rdp.tiles[tile].height = tile_height;
-      }
-      else
-      {
-         // wrap all the way
-         height = min(mask_height, tile_height);
-         rdp.tiles[tile].height = height;
       }
    }
    else
@@ -238,6 +229,8 @@ static void GetTexInfo (int id, int tile)
          mask_height = tile_height;
       }
 
+      width = mask_width;
+      rdp.tiles[tile].width = mask_width;
       // Get the width/height to load
       if ((rdp.tiles[tile].clamp_s && tile_width <= 256) )//|| (mask_width > 256))
       {
@@ -246,12 +239,9 @@ static void GetTexInfo (int id, int tile)
          // actual width
          rdp.tiles[tile].width = tile_width;
       }
-      else
-      {
-         // wrap all the way
-         width = mask_width;
-         rdp.tiles[tile].width = mask_width;
-      }
+
+      height = mask_height;
+      rdp.tiles[tile].height = mask_height;
 
       if ((rdp.tiles[tile].clamp_t && tile_height <= 256) || (mask_height > 256))
       {
@@ -259,12 +249,6 @@ static void GetTexInfo (int id, int tile)
          height = min(mask_height, tile_height);
          // actual height
          rdp.tiles[tile].height = tile_height;
-      }
-      else
-      {
-         // wrap all the way
-         height = mask_height;
-         rdp.tiles[tile].height = mask_height;
       }
    }
 
