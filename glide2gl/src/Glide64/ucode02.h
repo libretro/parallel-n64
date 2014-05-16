@@ -684,7 +684,26 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          break;
 
       case 8:   // VIEWPORT
-         gSPViewport(w1, false);
+         {
+            int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
+            uint32_t a = addr >> 1;
+            scale_x = ((int16_t*)gfx.RDRAM)[(a+0)^1] >> 2;
+            scale_y = ((int16_t*)gfx.RDRAM)[(a+1)^1] >> 2;
+            scale_z = ((int16_t*)gfx.RDRAM)[(a+2)^1];
+            trans_x = ((int16_t*)gfx.RDRAM)[(a+4)^1] >> 2;
+            trans_y = ((int16_t*)gfx.RDRAM)[(a+5)^1] >> 2;
+            trans_z = ((int16_t*)gfx.RDRAM)[(a+6)^1];
+            rdp.view_scale[0] = scale_x * rdp.scale_x;
+            rdp.view_scale[1] = -scale_y * rdp.scale_y;
+            rdp.view_scale[2] = 32.0f * scale_z;
+            rdp.view_trans[0] = trans_x * rdp.scale_x;
+            rdp.view_trans[1] = trans_y * rdp.scale_y;
+            rdp.view_trans[2] = 32.0f * trans_z;
+
+            rdp.update |= UPDATE_VIEWPORT;
+
+            //FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, a);
+         }
          break;
       case 10:  // LIGHT
          {
