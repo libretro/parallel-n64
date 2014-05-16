@@ -43,14 +43,14 @@
 
 static void fb_uc0_moveword(uint32_t w0, uint32_t w1)
 {
-   if ((w0 & 0xFF) == G_MW_SEGMENT)
-      gSPSegment((w0 >> 10) & 0x0F, w1);
+   if ((w0 & 0xFF) == 0x06) // segment
+      rdp.segment[(w0 >> 10) & 0x0F] = w1;
 }
 
 static void fb_uc2_moveword(uint32_t w0, uint32_t w1)
 {
-  if (((w0 >> 16) & 0xFF) == G_MW_SEGMENT)
-     gSPSegment(((w0 & 0xFFFF) >> 2) & 0xF, w1);
+   if (((w0 >> 16) & 0xFF) == 0x06) // segment
+      rdp.segment[((w0 & 0xFFFF) >> 2)&0xF] = w1;
 }
 
 static void fb_bg_copy(uint32_t w0, uint32_t w1)
@@ -364,19 +364,19 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
       if (rdp.frame_buffers[0].addr == rdp.cimg)
       rdp.frame_buffers[0].height = rdp.scissor_o.lr_y;
       */
-   FRDP ("fb_setcolorimage. width: %d,  height: %d,  fmt: %d, size: %d, addr %08lx\n", cur_fb->width, cur_fb->height, cur_fb->format, cur_fb->size, cur_fb->addr);
+   //FRDP ("fb_setcolorimage. width: %d,  height: %d,  fmt: %d, size: %d, addr %08lx\n", cur_fb->width, cur_fb->height, cur_fb->format, cur_fb->size, cur_fb->addr);
    if (rdp.cimg == rdp.zimg)
    {
       cur_fb->status = CI_ZIMG;
       rdp.zimg_end = rdp.zimg + cur_fb->width*rdp.scissor_o.lr_y*2;
-      FRDP("rdp.frame_buffers[%d].status = CI_ZIMG\n", rdp.ci_count);
+      //FRDP("rdp.frame_buffers[%d].status = CI_ZIMG\n", rdp.ci_count);
    }
    else if (rdp.cimg == rdp.tmpzimg)
    {
       cur_fb->status = CI_ZCOPY;
       if (!rdp.copy_zi_index)
          rdp.copy_zi_index = rdp.ci_count-1;
-      FRDP("rdp.frame_buffers[%d].status = CI_ZCOPY\n", rdp.ci_count);
+      //FRDP("rdp.frame_buffers[%d].status = CI_ZCOPY\n", rdp.ci_count);
    }
    else if (rdp.main_ci != 0)
    {
@@ -386,7 +386,7 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
          rdp.main_ci_index = rdp.ci_count;
          rdp.main_ci_end = rdp.cimg + ((cur_fb->width * cur_fb->height) << cur_fb->size >> 1);
          cur_fb->status = CI_MAIN;
-         FRDP("rdp.frame_buffers[%d].status = CI_MAIN\n", rdp.ci_count);
+         //FRDP("rdp.frame_buffers[%d].status = CI_MAIN\n", rdp.ci_count);
       }
       else // status is not known yet
          cur_fb->status = CI_UNKNOWN;
@@ -399,7 +399,7 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
          rdp.main_ci_end = rdp.cimg + ((cur_fb->width * cur_fb->height) << cur_fb->size >> 1);
          rdp.main_ci_index = rdp.ci_count;
          cur_fb->status = CI_MAIN;
-         FRDP("rdp.frame_buffers[%d].status = CI_MAIN\n", rdp.ci_count);
+         //FRDP("rdp.frame_buffers[%d].status = CI_MAIN\n", rdp.ci_count);
       }
       else
          cur_fb->status = CI_UNKNOWN;
@@ -427,7 +427,7 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
             }
             }
          //*/
-         FRDP("rdp.frame_buffers[%d].status = %s\n", rdp.ci_count-1, CIStatus[rdp.frame_buffers[rdp.ci_count-1].status]);
+         //FRDP("rdp.frame_buffers[%d].status = %s\n", rdp.ci_count-1, CIStatus[rdp.frame_buffers[rdp.ci_count-1].status]);
       }
    }
    if (cur_fb->status == CI_MAIN)
