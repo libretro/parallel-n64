@@ -37,57 +37,77 @@
 //
 //****************************************************************
 
+#define NBITS32_16B (sizeof(uint32_t) * 8)
+#define NBITS16_16B (sizeof(uint16_t) * 8)
+
 static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-   uint32_t *v6, *v7, v10, v11, *v12, *v13, v15, v16, nbits, nbits16;
-   int32_t v8, v9, v14, v17, v18;
+  uint32_t *v6;
+  uint32_t *v7;
+  int v8;
+  int v9;
+  uint32_t v10;
+  uint32_t v11;
+  uint32_t *v12;
+  uint32_t *v13;
+  int v14;
+  uint32_t v15;
+  uint32_t v16;
+  int v17;
+  int v18;
 
-   nbits = sizeof(uint32_t) * 8;
-   nbits16 = sizeof(uint16_t) * 8;
-   v6 = (uint32_t *)src;
-   v7 = (uint32_t *)dst;
-   v8 = height;
-   do
-   {
-      v17 = v8;
-      v9 = wid_64;
-      do
-      {
-         v10 = bswap32(*v6++);
-         v11 = bswap32(*v6++);
-         ALOWORD(v10) = __ROR16((uint16_t)v10, 1, nbits16);
-         ALOWORD(v11) = __ROR16((uint16_t)v11, 1, nbits16);
-         v10 = __ROR32(v10, 16, nbits);
-         v11 = __ROR32(v11, 16, nbits); 
-         ALOWORD(v10) = __ROR16((uint16_t)v10, 1, nbits16);
-         ALOWORD(v11) = __ROR16((uint16_t)v11, 1, nbits16);
-         *v7++ = v10;
-         *v7++ = v11;
-      }while (--v9);
-      if ( v17 == 1 )
-         break;
-      v18 = v17 - 1;
-      v12 = (uint32_t *)&src[(line + (uintptr_t)v6 - (uintptr_t)src) & 0xFFF];
-      v13 = (uint32_t *)((int8_t *)v7 + ext);
-      v14 = wid_64;
-      do
-      {
-         v16 = bswap32(*v12++);
-         v15 = bswap32(*v12++);
-         ALOWORD(v15) = __ROR16((uint16_t)v15, 1, nbits16);
-         ALOWORD(v16) = __ROR16((uint16_t)v16, 1, nbits16);
-         v15 = __ROR32(v15, 16, nbits);
-         v16 = __ROR32(v16, 16, nbits);
-         ALOWORD(v15) = __ROR16((uint16_t)v15, 1, nbits16);
-         ALOWORD(v16) = __ROR16((uint16_t)v16, 1, nbits16);
-         *v13++ = v15;
-         *v13++ = v16;
-      }
-      while (--v14);
-      v6 = (uint32_t *)&src[(line + (uintptr_t)v12 - (uintptr_t)src) & 0xFFF];
-      v7 = (uint32_t *)((int8_t *)v13 + ext);
-      v8 = v18 - 1;
-   }while ( v18 != 1 );
+  v6 = (uint32_t *)src;
+  v7 = (uint32_t *)dst;
+  v8 = height;
+  do
+  {
+    v17 = v8;
+    v9 = wid_64;
+    do
+    {
+      v10 = bswap32(*v6);
+      v11 = bswap32(v6[1]);
+      ALOWORD(v10) = __ROR16((uint16_t)v10, 1, NBITS16_16B);
+      ALOWORD(v11) = __ROR16((uint16_t)v11, 1, NBITS16_16B);
+      v10 = __ROR32(v10, 16, NBITS32_16B);
+      v11 = __ROR32(v11, 16, NBITS32_16B);
+      ALOWORD(v10) = __ROR16((uint16_t)v10, 1, NBITS16_16B);
+      ALOWORD(v11) = __ROR16((uint16_t)v11, 1, NBITS16_16B);
+      *v7 = v10;
+      v7[1] = v11;
+      v6 += 2;
+      v7 += 2;
+      --v9;
+    }
+    while ( v9 );
+    if ( v17 == 1 )
+      break;
+    v18 = v17 - 1;
+    v12 = (uint32_t *)&src[(line + (uintptr_t)v6 - (uintptr_t)src) & 0xFFF];
+    v13 = (uint32_t *)((char *)v7 + ext);
+    v14 = wid_64;
+    do
+    {
+      v15 = bswap32(v12[1]);
+      v16 = bswap32(*v12);
+      ALOWORD(v15) = __ROR16((uint16_t)v15, 1, NBITS16_16B);
+      ALOWORD(v16) = __ROR16((uint16_t)v16, 1, NBITS16_16B);
+      v15 = __ROR32(v15, 16, NBITS32_16B);
+      v16 = __ROR32(v16, 16, NBITS32_16B);
+      ALOWORD(v15) = __ROR16((uint16_t)v15, 1, NBITS16_16B);
+      ALOWORD(v16) = __ROR16((uint16_t)v16, 1, NBITS16_16B);
+      *v13 = v15;
+      v13[1] = v16;
+      v12 += 2;
+      v13 += 2;
+      --v14;
+    }
+    while ( v14 );
+    v6 = (uint32_t *)&src[(line + (uintptr_t)v12 - (uintptr_t)src) & 0xFFF];
+    v7 = (uint32_t *)((char *)v13 + ext);
+    v8 = v18 - 1;
+  }
+  while ( v18 != 1 );
 }
 
 static INLINE void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
@@ -126,23 +146,20 @@ static INLINE void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height,
    }while ( v16 != 1 );
 }
 
-
 //****************************************************************
 // Size: 2, Format: 0
 //
 
 uint32_t Load16bRGBA (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
-   int32_t ext;
-   if (wid_64 < 1)
-      wid_64 = 1;
-   if (height < 1)
-      height = 1;
-   ext = (real_width - (wid_64 << 2)) << 1;
+   int ext;
+  if (wid_64 < 1) wid_64 = 1;
+  if (height < 1) height = 1;
+  ext = (real_width - (wid_64 << 2)) << 1;
 
-   load16bRGBA((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
+  load16bRGBA((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
 
-   return (1 << 16) | GR_TEXFMT_ARGB_1555;
+  return (1 << 16) | GR_TEXFMT_ARGB_1555;
 }
 
 //****************************************************************
@@ -152,11 +169,9 @@ uint32_t Load16bRGBA (uintptr_t dst, uintptr_t src, int wid_64, int height, int 
 
 uint32_t Load16bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
-   int32_t ext;
-   if (wid_64 < 1)
-      wid_64 = 1;
-   if (height < 1)
-      height = 1;
+   int ext;
+   if (wid_64 < 1) wid_64 = 1;
+   if (height < 1) height = 1;
    ext = (real_width - (wid_64 << 2)) << 1;
 
    load16bIA((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
@@ -170,17 +185,38 @@ uint32_t Load16bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int li
 
 uint16_t yuv_to_rgb565(uint8_t y, uint8_t u, uint8_t v)
 {
-   uint32_t c, d, e, r, g, b;
+   float r, g, b;
+   r = y + (1.370705f * (v-128));
+   g = y - (0.698001f * (v-128)) - (0.337633f * (u-128));
+   b = y + (1.732446f * (u-128));
+   r *= 0.125f;
+   g *= 0.25f;
+   b *= 0.125f;
+   //clipping the result
+   if (r > 31) r = 31;
+   if (g > 63) g = 63;
+   if (b > 31) b = 31;
+   if (r < 0) r = 0;
+   if (g < 0) g = 0;
+   if (b < 0) b = 0;
+   uint16_t c = (uint16_t)(((uint16_t)(r) << 11) |
+         ((uint16_t)(g) << 5) |
+         (uint16_t)(b) );
+   return c;
+   //*/
+   /*
+      const uint32_t c = y - 16;
+      const uint32_t d = u - 128;
+      const uint32_t e = v - 128;
 
-   c = y - 16;
-   d = u - 128;
-   e = v - 128;
+      uint32_t r =  (298 * c           + 409 * e + 128) & 0xf800;
+      uint32_t g = ((298 * c - 100 * d - 208 * e + 128) >> 5) & 0x7e0;
+      uint32_t b = ((298 * c + 516 * d           + 128) >> 11) & 0x1f;
 
-   r =  (298 * c           + 409 * e + 128) & 0xf800;
-   g = ((298 * c - 100 * d - 208 * e + 128) >> 5) & 0x7e0;
-   b = ((298 * c + 516 * d           + 128) >> 11) & 0x1f;
+      WORD texel = (WORD)(r | g | b);
 
-   return (uint16_t)(r | g | b);
+      return texel;
+      */
 }
 
 //****************************************************************
@@ -189,17 +225,15 @@ uint16_t yuv_to_rgb565(uint8_t y, uint8_t u, uint8_t v)
 
 uint32_t Load16bYUV (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
-   uint32_t *mb;
-   uint16_t *tex, i;
-
-   mb = (uint32_t*)(gfx.RDRAM+rdp.addr[rdp.tiles[tile].t_mem]); //pointer to the macro block
-   tex = (uint16_t*)dst;
-
+   uint32_t * mb = (uint32_t*)(gfx.RDRAM+rdp.addr[rdp.tiles[tile].t_mem]); //pointer to the macro block
+   uint16_t * tex = (uint16_t*)dst;
+   uint16_t i;
    for (i = 0; i < 128; i++)
    {
       uint32_t t;
       uint16_t c;
       uint8_t y1, v, y0, u;
+
       t = mb[i]; //each uint32_t contains 2 pixels
       y1 = (uint8_t)t&0xFF;
       v  = (uint8_t)(t>>8)&0xFF;

@@ -46,52 +46,52 @@
 //
 uint32_t Load32bRGBA (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
-   uint16_t *tmem16;
-   int32_t ext, id;
-   uint32_t tbase, width, s, t, *tex, mod;
-
-   if (height < 1)
-      height = 1;
-
-   tmem16 = (uint16_t*)rdp.tmem;
-   tbase = (src - (uintptr_t)rdp.tmem) >> 1;
-   width = max(1, wid_64 << 1);
-   ext = real_width - width;
-   line = width + (line>>2);
-   tex = (uint32_t*)dst;
-   for (t = 0; t < (uint32_t)height; t++)
-   {
-      uint32_t tline, xorval;
-      tline = tbase + line * t;
-      xorval = (t & 1) ? 3 : 1;
-      for (s = 0; s < width; s++)
-      {
-         uint32_t taddr = ((tline + s) ^ xorval) & 0x3ff;
-         *tex++ = ((tmem16[taddr|0x400] & 0xFF)<<24) | (tmem16[taddr] << 8) | (tmem16[taddr|0x400] >> 8);
-      }
-      tex += ext;
-   }
-
-   id = tile - rdp.cur_tile;
-   mod = (id == 0) ? cmb.mod_0 : cmb.mod_1;
-
-   if (mod)
-   {
-      uint32_t tex_size, c;
-      uint16_t *tex16;
-
-      //convert to ARGB_4444
-      tex_size = real_width * height;
-      tex = (uint32_t *)dst;
-      tex16 = (uint16_t*)dst;
-      do
-      {
-         c = *tex++;
-         *tex16++ = (((c >> 28) & 0xF) <<12) | (((c >> 20) & 0xF) << 8) | (((c >> 12) & 0xF) << 4) | ((c >> 4)  & 0xF);
-      }while(--tex_size);
-      return (1 << 16) | GR_TEXFMT_ARGB_4444;
-   }
-   return (2 << 16) | GR_TEXFMT_ARGB_8888;
+  uint32_t s, t, c, *tex;
+  uint16_t rg, ba;
+  int id;
+  uint32_t mod;
+  const uint16_t *tmem16 = (uint16_t*)rdp.tmem;
+  const uint32_t tbase = (src - (uintptr_t)rdp.tmem) >> 1;
+  const uint32_t width = max(1, wid_64 << 1);
+  const int ext = real_width - width;
+  line = width + (line>>2);
+  tex = (uint32_t*)dst;
+  if (height < 1) height = 1;
+  for (t = 0; t < (uint32_t)height; t++)
+  {
+    uint32_t tline = tbase + line * t;
+    uint32_t xorval = (t & 1) ? 3 : 1;
+    for (s = 0; s < width; s++)
+    {
+      uint32_t taddr = ((tline + s) ^ xorval) & 0x3ff;
+      rg = tmem16[taddr];
+      ba = tmem16[taddr|0x400];
+      c = ((ba&0xFF)<<24) | (rg << 8) | (ba>>8);
+      *tex++ = c;
+    }
+    tex += ext;
+  }
+  id = tile - rdp.cur_tile;
+  mod = (id == 0) ? cmb.mod_0 : cmb.mod_1;
+  if (mod /*|| !voodoo.sup_32bit_tex*/)
+  {
+     uint32_t i;
+     uint16_t *tex16, a, r, g, b;
+    //convert to ARGB_4444
+    const uint32_t tex_size = real_width * height;
+    tex = (uint32_t *)dst;
+    tex16 = (uint16_t*)dst;
+    for (i = 0; i < tex_size; i++) {
+      c = tex[i];
+      a = (c >> 28) & 0xF;
+      r = (c >> 20) & 0xF;
+      g = (c >> 12) & 0xF;
+      b = (c >> 4)  & 0xF;
+      tex16[i] = (a <<12) | (r << 8) | (g << 4) | b;
+    }
+    return (1 << 16) | GR_TEXFMT_ARGB_4444;
+  }
+  return (2 << 16) | GR_TEXFMT_ARGB_8888;
 }
 
 //****************************************************************
@@ -100,28 +100,27 @@ uint32_t Load32bRGBA (uintptr_t dst, uintptr_t src, int wid_64, int height, int 
 //
 void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height)
 {
-   uint32_t j, i, line, tbase, addr, *src, c, ptr, tline, s, xorval;
-   uint16_t *tmem16;
+  const uint32_t line = rdp.tiles[tile].line << 2;
+  const uint32_t tbase = rdp.tiles[tile].t_mem << 2;
+  const uint32_t addr = rdp.timg.addr >> 2;
+  const uint32_t* src = (const uint32_t*)gfx.RDRAM;
+  uint16_t *tmem16 = (uint16_t*)rdp.tmem;
+  uint32_t c, ptr, tline, s, xorval;
+  uint32_t i, j;
 
-   line = rdp.tiles[tile].line << 2;
-   tbase = rdp.tiles[tile].t_mem << 2;
-   addr = rdp.timg.addr >> 2;
-   src = (uint32_t*)gfx.RDRAM;
-   tmem16 = (uint16_t*)rdp.tmem;
-
-   for (j = 0; j < height; j++)
-   {
-      tline = tbase + line * j;
-      s = ((j + ul_t) * rdp.timg.width) + ul_s;
-      xorval = (j & 1) ? 3 : 1;				
-      for (i = 0; i < width; i++)
-      {
-         c = src[addr + s + i];
-         ptr = ((tline + i) ^ xorval) & 0x3ff;
-         tmem16[ptr] = c >> 16;
-         tmem16[ptr|0x400] = c & 0xffff;
-      }
-   }
+  for (j = 0; j < height; j++)
+  {
+    tline = tbase + line * j;
+    s = ((j + ul_t) * rdp.timg.width) + ul_s;
+    xorval = (j & 1) ? 3 : 1;				
+    for (i = 0; i < width; i++)
+    {
+      c = src[addr + s + i];
+      ptr = ((tline + i) ^ xorval) & 0x3ff;
+      tmem16[ptr] = c >> 16;
+      tmem16[ptr|0x400] = c & 0xffff;
+    }
+  }
 }
 
 //****************************************************************
@@ -130,59 +129,55 @@ void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, u
 //
 void LoadBlock32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt)
 {
-   uint32_t i, *src, tb, tiwindwords, slindwords, line, addr, width;
-   uint16_t *tmem16;
+  const uint32_t * src = (const uint32_t*)gfx.RDRAM;
+  const uint32_t tb = rdp.tiles[tile].t_mem << 2;
+  const uint32_t tiwindwords = rdp.timg.width;
+  const uint32_t slindwords = ul_s;
+  const uint32_t line = rdp.tiles[tile].line << 2;
 
-   src = (uint32_t*)gfx.RDRAM;
-   tb = rdp.tiles[tile].t_mem << 2;
-   tiwindwords = rdp.timg.width;
-   slindwords = ul_s;
-   line = rdp.tiles[tile].line << 2;
+  uint16_t *tmem16 = (uint16_t*)rdp.tmem;
+  uint32_t addr = rdp.timg.addr >> 2;
+  uint32_t width = (lr_s - ul_s + 1) << 2;
+  if (width & 7)
+    width = (width & (~7)) + 8;
 
-   tmem16 = (uint16_t*)rdp.tmem;
-   addr = rdp.timg.addr >> 2;
-   width = (lr_s - ul_s + 1) << 2;
+  if (dxt != 0)
+  {
+     uint32_t c, i;
+    uint32_t j= 0;
+    uint32_t t = 0;
+    uint32_t oldt = 0;
+    uint32_t ptr;
 
-   if (width & 7)
-      width = (width & (~7)) + 8;
-
-   if (dxt != 0)
-   {
-      uint32_t j, t, oldt, ptr;
-      j= 0;
-      t = 0;
-      oldt = 0;
-
-      addr += (ul_t * tiwindwords) + slindwords;
-      for (i = 0; i < width; i += 2)
-      {
-         uint32_t c;
-         oldt = t;
-         t = ((j >> 11) & 1) ? 3 : 1;
-         if (t != oldt)
-            i += line;
-         ptr = ((tb + i) ^ t) & 0x3ff;
-         c = src[addr + i];
-         tmem16[ptr] = c >> 16;
-         tmem16[ptr|0x400] = c & 0xffff;
-         ptr = ((tb+ i + 1) ^ t) & 0x3ff;
-         c = src[addr + i + 1];
-         tmem16[ptr] = c >> 16;
-         tmem16[ptr|0x400] = c & 0xffff;
-         j += dxt;
-      }
-   }
-   else
-   {
-      uint32_t ptr;
-      addr += (ul_t * tiwindwords) + slindwords;
-      for (i = 0; i < width; i ++)
-      {
-         uint32_t c;
-         ptr = ((tb + i) ^ 1) & 0x3ff;
-         c = src[addr + i];
-         tmem16[ptr] = c >> 16;
-         tmem16[ptr|0x400] = c & 0xffff;
-      }
-   }
+    addr += (ul_t * tiwindwords) + slindwords;
+    c = 0;
+    for (i = 0; i < width; i += 2)
+    {
+      oldt = t;
+      t = ((j >> 11) & 1) ? 3 : 1;
+      if (t != oldt)
+        i += line;
+      ptr = ((tb + i) ^ t) & 0x3ff;
+      c = src[addr + i];
+      tmem16[ptr] = c >> 16;
+      tmem16[ptr|0x400] = c & 0xffff;
+      ptr = ((tb+ i + 1) ^ t) & 0x3ff;
+      c = src[addr + i + 1];
+      tmem16[ptr] = c >> 16;
+      tmem16[ptr|0x400] = c & 0xffff;
+      j += dxt;
+    }
+  }
+  else
+  {
+    uint32_t c, ptr, i;
+    addr += (ul_t * tiwindwords) + slindwords;
+    for (i = 0; i < width; i ++)
+    {
+      ptr = ((tb + i) ^ 1) & 0x3ff;
+      c = src[addr + i];
+      tmem16[ptr] = c >> 16;
+      tmem16[ptr|0x400] = c & 0xffff;
+    }
+  }
 }
