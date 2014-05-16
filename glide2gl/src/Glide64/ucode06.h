@@ -68,7 +68,7 @@ static float set_sprite_combine_mode(void)
 
   // set z buffer mode
   Z = 0.0f;
-  if ((rdp.othermode_l & 0x00000030) && rdp.cycle_mode < G_CYC_COPY)
+  if ((rdp.othermode_l & 0x00000030) && rdp.cycle_mode < 2)
   {
     if (rdp.zsrc == 1)
     {
@@ -80,10 +80,12 @@ static float set_sprite_combine_mode(void)
     if (rdp.othermode_l & 0x00000400)
       grDepthBiasLevel(rdp.prim_dz);
   }
+#if 0
   else
   {
     LRDP("z compare not used, using 0\n");
   }
+#endif
 
   grCullMode (GR_CULL_DISABLE);
   grFogMode (GR_FOG_DISABLE);
@@ -307,30 +309,24 @@ static void DrawImage (DRAWIMAGE *d)
    switch (d->imageSiz)
    {
       case 0:
+         y_size = 32;
+         y_shift = 5;
          if (rdp.tlut_mode < 2)
          {
             y_size = 64;
             y_shift = 6;
-         }
-         else
-         {
-            y_size = 32;
-            y_shift = 5;
          }
          x_size = 128;
          x_shift = 7;
          line = 8;
          break;
       case 1:
+         y_size = 32;
+         y_shift = 5;
          if (rdp.tlut_mode < 2)
          {
             y_size = 64;
             y_shift = 6;
-         }
-         else
-         {
-            y_size = 32;
-            y_shift = 5;
          }
          x_size = 64;
          x_shift = 6;
@@ -2097,12 +2093,12 @@ static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
 static void uc6_loaducode(uint32_t w0, uint32_t w1)
 {
    uint32_t addr, size;
-   LRDP("uc6:load_ucode\n");
-   RDP_E ("uc6:load_ucode\n");
+   //LRDP("uc6:load_ucode\n");
+   //RDP_E ("uc6:load_ucode\n");
 
    // copy the microcode data
    addr = segoffset(rdp.cmd1);
-   size = (rdp.cmd0 & 0xFFFF) + 1;
+   size = (w0 & 0xFFFF) + 1;
    memcpy (microcode, gfx.RDRAM+addr, size);
 
    microcheck ();
