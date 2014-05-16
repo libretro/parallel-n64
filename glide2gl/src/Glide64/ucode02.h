@@ -238,7 +238,7 @@ static void uc2_culldl(uint32_t w0, uint32_t w1)
    vStart = (uint16_t)(w0 & 0xFFFF) >> 1;
    vEnd = (uint16_t)(w1 & 0xFFFF) >> 1;
    cond = 0;
-   FRDP ("uc2:culldl start: %d, end: %d\n", vStart, vEnd);
+   //FRDP ("uc2:culldl start: %d, end: %d\n", vStart, vEnd);
 
    if (vEnd < vStart)
       return;
@@ -273,8 +273,8 @@ static void uc2_culldl(uint32_t w0, uint32_t w1)
          return;
    }
 
-   LRDP(" - ");  // specify that the enddl is not a real command
-   gSPEndDisplayList();
+   //LRDP(" - ");  // specify that the enddl is not a real command
+   uc0_enddl(w0, w1);
 }
 
 static void uc2_tri1(uint32_t w0, uint32_t w1)
@@ -291,14 +291,14 @@ static void uc2_tri1(uint32_t w0, uint32_t w1)
 
 #if 0
    FRDP("uc2:tri1 #%d - %d, %d, %d\n", rdp.tri_n,
-         ((rdp.cmd0 >> 17) & 0x7F),
-         ((rdp.cmd0 >> 9) & 0x7F),
-         ((rdp.cmd0 >> 1) & 0x7F));
+         ((w0 >> 17) & 0x7F),
+         ((w0 >> 9) & 0x7F),
+         ((w0 >> 1) & 0x7F));
 #endif
 
-   v[0] = &rdp.vtx[(rdp.cmd0 >> 17) & 0x7F];
-   v[1] = &rdp.vtx[(rdp.cmd0 >> 9) & 0x7F];
-   v[2] = &rdp.vtx[(rdp.cmd0 >> 1) & 0x7F];
+   v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
+   v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
+   v[2] = &rdp.vtx[(w0 >> 1) & 0x7F];
 
    rsp_tri1(v, 0);
 }
@@ -393,7 +393,8 @@ static void uc2_dma_io(uint32_t w0, uint32_t w1)
 static void uc2_pop_matrix(uint32_t w0, uint32_t w1)
 {
    // Just pop the modelview matrix
-   gSPPopMatrixN(w1 >> 6);
+   //   // Just pop the modelview matrix
+   modelview_pop (w1 >> 6);
    //FRDP ("uc2:pop_matrix %08lx, %08lx\n", w0, w1);
 }
 
@@ -557,48 +558,107 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
 {
    uint8_t index = (uint8_t)((w0 >> 16) & 0xFF);
    uint16_t offset = (uint16_t)(w0 & 0xFFFF);
+   uint32_t data = w1;
 
    FRDP ("uc2:moveword ");
 
    switch (index)
    {
-      // NOTE: right now it's assuming that it sets the integer part first.  This could
-      //  be easily fixed, but only if i had something to test with.
+      // NOTE: right now it's assuming that it sets the integer part first. This could
+      // be easily fixed, but only if i had something to test with.
 
-      case G_MW_MATRIX:  // moveword matrix
-         gSPInsertMatrix(w0, w1);
+      case 0x00: // moveword matrix
+         {
+            // do matrix pre-mult so it's re-updated next time
+            if (rdp.update & UPDATE_MULT_MAT)
+            {
+               rdp.update ^= UPDATE_MULT_MAT;
+               MulMatrices(rdp.model, rdp.proj, rdp.combined);
+            }
+
+            if (w0 & 0x20) // fractional part
+            {
+               int index_x = (w0 & 0x1F) >> 1;
+               int index_y = index_x >> 2;
+               index_x &= 3;
+
+               float fpart = (w1>>16)/65536.0f;
+               rdp.combined[index_y][index_x] = (float)(int)rdp.combined[index_y][index_x];
+               rdp.combined[index_y][index_x] += fpart;
+
+               fpart = (w1&0xFFFF)/65536.0f;
+               rdp.combined[index_y][index_x+1] = (float)(int)rdp.combined[index_y][index_x+1];
+               rdp.combined[index_y][index_x+1] += fpart;
+            }
+            else
+            {
+               int index_x = (w0 & 0x1F) >> 1;
+               int index_y = index_x >> 2;
+               index_x &= 3;
+
+               rdp.combined[index_y][index_x] = (short)(w1>>16);
+               rdp.combined[index_y][index_x+1] = (short)(w1&0xFFFF);
+            }
+
+            LRDP("matrix\n");
+         }
          break;
 
-      case G_MW_NUMLIGHT:
-         rdp.num_lights = w1 / 24;
+      case 0x02:
+         rdp.num_lights = data / 24;
          rdp.update |= UPDATE_LIGHTS;
-         //FRDP ("numlights: %d\n", rdp.num_lights);
+         FRDP ("numlights: %d\n", rdp.num_lights);
          break;
 
-      case G_MW_CLIP:
-         gSPClipRatio(w0, w1);
-         break;
-      case G_MW_SEGMENT:
-         if ((w1 & BMASK) < BMASK)
-            gSPSegment((offset >> 2) & 0xF, w1);
-         break;
-      case G_MW_FOG:
-         gSPFogFactor((int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ));
-
-         //offset must be 0 for move_fog, but it can be non zero in Nushi Zuri 64 - Shiokaze ni Notte
-         //low-level display list has setothermode commands in this place, so this is obviously not move_fog.
+      case 0x04:
          if (offset == 0x04)
-            rdp.tlut_mode = (w1 == 0xffffffff) ? 0 : 2; 
+         {
+            rdp.clip_ratio = sqrt((float)w1);
+            rdp.update |= UPDATE_VIEWPORT;
+         }
+         //FRDP ("mw_clip %08lx, %08lx\n", w0, w1);
          break;
-      case G_MW_LIGHTCOL:
-         gSPLightColor(offset / 24, w1);
+
+      case 0x06: // moveword SEGMENT
+         {
+            FRDP ("SEGMENT %08lx -> seg%d\n", data, offset >> 2);
+            if ((data&BMASK)<BMASK)
+               rdp.segment[(offset >> 2) & 0xF] = data;
+         }
          break;
-      case G_MW_FORCEMTX:
+
+
+      case 0x08:
+         {
+            rdp.fog_multiplier = (short)(w1 >> 16);
+            rdp.fog_offset = (short)(w1 & 0x0000FFFF);
+            //FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
+
+            //offset must be 0 for move_fog, but it can be non zero in Nushi Zuri 64 - Shiokaze ni Notte
+            //low-level display list has setothermode commands in this place, so this is obviously not move_fog.
+            if (offset == 0x04)
+               rdp.tlut_mode = (data == 0xffffffff) ? 0 : 2;
+         }
+         break;
+
+      case 0x0a: // moveword LIGHTCOL
+         {
+            int n = offset / 24;
+            FRDP ("lightcol light:%d, %08lx\n", n, data);
+
+            rdp.light[n].col[0] = (float)((data >> 24) & 0xFF) / 255.0f;
+            rdp.light[n].col[1] = (float)((data >> 16) & 0xFF) / 255.0f;
+            rdp.light[n].col[2] = (float)((data >> 8) & 0xFF) / 255.0f;
+            rdp.light[n].col[3] = 255;
+         }
+         break;
+
+      case 0x0c:
          RDP_E ("uc2:moveword forcemtx - IGNORED\n");
          LRDP("forcemtx - IGNORED\n");
          break;
 
-      case G_MW_PERSPNORM:
+      case 0x0e:
          LRDP("perspnorm - IGNORED\n");
          break;
 
@@ -623,15 +683,15 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          uc6_obj_movemem(w0, w1);
          break;
 
-      case F3DEX2_MV_VIEWPORT:   // VIEWPORT
+      case 8:   // VIEWPORT
          gSPViewport(w1, false);
          break;
-      case G_MV_LIGHT:  // LIGHT
+      case 10:  // LIGHT
          {
             uint8_t *rdram_u8;
             int8_t *rdram_s8;
             int n;
-			uint32_t a;
+            uint32_t a;
 
             rdram_s8 = (int8_t*)gfx.RDRAM;
             rdram_u8 = (uint8_t*)gfx.RDRAM;
@@ -681,8 +741,19 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          }
          break;
 
-      case G_MV_MATRIX:
-         gSPForceMatrix(w1);
+      case 14: // matrix
+         {
+            // do not update the combined matrix!
+            rdp.update &= ~UPDATE_MULT_MAT;
+            load_matrix(rdp.combined, segoffset(w1));
+
+#ifdef EXTREME_LOGGING
+            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
+            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
+            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
+            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
+#endif
+         }
          break;
       default:
          FRDP ("uc2:matrix unknown (%d)\n", idx);
@@ -712,30 +783,4 @@ static void uc2_dlist_cnt(uint32_t w0, uint32_t w1)
    rdp.pc[rdp.pc_i] = addr;  // jump to the address
    rdp.dl_count = count + 1;
    FRDP ("dl_count - addr: %08lx, count: %d\n", addr, count);
-}
-
-static void uc2_setothermode_l(uint32_t w0, uint32_t w1)
-{
-   int32_t sft, len;
-   len = (w0 & 0xFF) + 1;
-   sft = 32 - ((w0 >> 8) & 0xFF) - len;
-   if (sft < 0)
-      sft = 0;
-   gSPSetOtherMode(
-         G_SETOTHERMODE_L, /* cmd */
-         sft,              /* sft */
-         len,              /* len */
-         0                 /* data - stub */
-         );
-}
-
-static void uc2_setothermode_h(uint32_t w0, uint32_t w1)
-{
-   int32_t len = (w0 & 0xFF) + 1;
-   gSPSetOtherMode(
-         G_SETOTHERMODE_H,              /* cmd */
-         32 - ((w0 >> 8) & 0xFF) - len, /* sft */
-         len,                           /* len */
-         0                              /* data - stub */
-         );
 }

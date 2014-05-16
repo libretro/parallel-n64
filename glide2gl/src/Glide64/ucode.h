@@ -180,8 +180,6 @@ static void uc2_movemem(uint32_t w0, uint32_t w1);
 static void uc2_load_ucode(uint32_t w0, uint32_t w1);
 static void uc2_rdphalf_2(uint32_t w0, uint32_t w1);
 static void uc2_dlist_cnt(uint32_t w0, uint32_t w1);
-static void uc2_setothermode_l(uint32_t w0, uint32_t w1);
-static void uc2_setothermode_h(uint32_t w0, uint32_t w1);
 
 //ucode03
 static void uc3_vertex(uint32_t w0, uint32_t w1);
@@ -452,7 +450,7 @@ static rdp_instr gfx_instruction[10][256] =
       uc2_special2,           uc2_dlist_cnt,          uc2_dma_io,             uc0_texture,
       uc2_pop_matrix,         uc2_geom_mode,          uc2_matrix,             uc2_moveword,
       uc2_movemem,            uc2_load_ucode,         uc0_displaylist,        uc0_enddl,
-      spnoop,                 uc1_rdphalf_1,          uc2_setothermode_l,     uc2_setothermode_h,
+      spnoop,                 uc1_rdphalf_1,          uc0_setothermode_l,     uc0_setothermode_h,
       rdp_texrect,            rdp_texrect,            rdp_loadsync,           rdp_pipesync,
       rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
       rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_uc2_setothermode,
