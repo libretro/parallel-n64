@@ -2022,7 +2022,7 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
       rdp.tiles[7].size = 1;
       rdp.cmd0 = 0;
       rdp.cmd1 = 0x07000000 | (tsize << 14) | tline;
-      rdp_loadblock(w0, w1);
+      rdp_loadblock(rdp.cmd0, rdp.cmd1);
    }
    else if (type == 0x00fc1034)
    {
@@ -2063,9 +2063,9 @@ static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1)
    LRDP("uc6:obj_ldtx_sprite\n");
 
    addr = w1;
-   uc6_obj_loadtxtr(w0, w1);
+   uc6_obj_loadtxtr(rdp.cmd0, rdp.cmd1);
    rdp.cmd1 = addr + 24;
-   uc6_obj_sprite(w0, w1);
+   uc6_obj_sprite(rdp.cmd0, rdp.cmd1);
 }
 
 static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1)
@@ -2074,9 +2074,9 @@ static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1)
    //LRDP("uc6:obj_ldtx_rect\n");
 
    addr = w1;
-   uc6_obj_loadtxtr(w0, w1);
+   uc6_obj_loadtxtr(rdp.cmd0, rdp.cmd1);
    rdp.cmd1 = addr + 24;
-   uc6_obj_rectangle(w0, w1);
+   uc6_obj_rectangle(rdp.cmd0, rdp.cmd1);
 }
 
 static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
@@ -2085,9 +2085,9 @@ static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
    LRDP("uc6:ldtx_rect_r\n");
 
    addr = w1;
-   uc6_obj_loadtxtr(w0, w1);
+   uc6_obj_loadtxtr(rdp.cmd0, rdp.cmd1);
    rdp.cmd1 = addr + 24;
-   uc6_obj_rectangle_r(w0, w1);
+   uc6_obj_rectangle_r(rdp.cmd0, rdp.cmd1);
 }
 
 static void uc6_loaducode(uint32_t w0, uint32_t w1)
