@@ -217,7 +217,7 @@ static void setup_variables(void)
       { "mupen64-screensize",
          "Resolution (restart); 640x360|640x480|720x576|800x600|960x540|960x640|1024x576|1024x768|1280x720|1280x768|1280x960|1280x1024|1600x1200|1920x1080|1920x1200|1920x1600|2048x1152|2048x1536|2048x2048|320x240" },
       { "mupen64-filtering",
-		 "Texture filtering; automatic|N64 3-point|bilinear|nearest" },
+		 "Glide texture filtering; automatic|N64 3-point|bilinear|nearest" },
       { "mupen64-virefresh",
          "VI Refresh (Overclock); 1500|2200" },
       { "mupen64-framerate",
@@ -449,6 +449,7 @@ void retro_deinit(void)
 unsigned int retro_filtering = 0;
 unsigned int frame_dupe = false;
 unsigned int initial_boot = true;
+unsigned int updated = false;
 
 extern void glide_set_filtering(unsigned value);
 
@@ -486,7 +487,10 @@ void update_variables(void)
 	  else if (strcmp(var.value, "bilinear") == 0)
 		  retro_filtering = 3;
 	  if (gfx_plugin == GFX_GLIDE64)
+      {
+          log_cb(RETRO_LOG_DEBUG, "set glide filtering mode\n");
 		  glide_set_filtering(retro_filtering);
+      }
    }
 
    var.key = "mupen64-button-orientation-ab";
@@ -705,14 +709,15 @@ unsigned int FAKE_SDL_TICKS;
 static bool pushed_frame;
 void retro_run (void)
 {
-   bool updated = false;
-
     FAKE_SDL_TICKS += 16;
     pushed_frame = false;
 
     poll_cb();
 
 run_again:
+
+    if(!updated)
+	   update_variables();
     if (gfx_plugin != GFX_ANGRYLION && !stop)
        sglEnter();
     co_switch(emulator_thread);
@@ -734,6 +739,8 @@ run_again:
 
     if (!pushed_frame && frame_dupe) // Dupe. Not duping violates libretro API, consider it a speedhack.
         video_cb(NULL, screen_width, screen_height, screen_pitch);
+    
+	updated = true;
 }
 
 void retro_reset (void)
