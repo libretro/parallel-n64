@@ -61,10 +61,24 @@ EXPORT void CALL audioAiDacrateChanged( int SystemType )
 
 EXPORT void CALL audioAiLenChanged(void)
 {
-	uint32_t len = *AudioInfo.AI_LEN_REG;
+   uint8_t *p;
+	uint32_t i, len;
+
+   len = *AudioInfo.AI_LEN_REG;
    //if (log_cb)
       //log_cb(RETRO_LOG_INFO, "AI_LEN_REG: %d\n", len);
-	uint8_t* p = (uint8_t*)(AudioInfo.RDRAM + (*AudioInfo.AI_DRAM_ADDR_REG & 0xFFFFFF));
+	p = (uint8_t*)(AudioInfo.RDRAM + (*AudioInfo.AI_DRAM_ADDR_REG & 0xFFFFFF));
+
+   for (i = 0; i < len; i += 4)
+   {
+      p[i    ] ^= p[i + 2];
+      p[i + 2] ^= p[i    ];
+      p[i    ] ^= p[i + 2];
+
+      p[i + 1] ^= p[i + 3];
+      p[i + 3] ^= p[i + 1];
+      p[i + 1] ^= p[i + 3];
+   }
    retro_audio_batch_cb((const int16_t*)p, len / 4, GameFreq);
 }
 
