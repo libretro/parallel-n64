@@ -716,16 +716,14 @@ void retro_run (void)
 
 run_again:
 
-    if(!updated)
-	   update_variables();
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+       update_variables();
     if (gfx_plugin != GFX_ANGRYLION && !stop)
        sglEnter();
     co_switch(emulator_thread);
     if (gfx_plugin != GFX_ANGRYLION && !stop)
        sglExit();
 
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
-       update_variables();
 
     if (flip_only)
     {
