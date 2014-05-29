@@ -194,7 +194,7 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
 
 // System analog stick range -0x8000 to 0x8000
 #define ASTICK_MAX 0x8000
-#define ASTICK_DEADZONE 0x2000
+#define ASTICK_DEADZONE 0x1000
 #define CSTICK_DEADZONE 0x4000
 
 #define CSTICK_RIGHT 0x200
