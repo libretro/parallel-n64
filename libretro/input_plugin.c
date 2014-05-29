@@ -192,6 +192,8 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
   output:   none
 *******************************************************************/
 
+// System analog stick range -0x8000 to 0x8000
+#define ASTICK_MAX 0x8000
 #define ASTICK_DEADZONE 0x2000
 #define CSTICK_DEADZONE 0x4000
 
@@ -219,7 +221,7 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
       // Rescale the analog stick range to negate the deadzone (makes slow movements possible)
       float val = ((analogX - sign * ASTICK_DEADZONE)*(ASTICK_MAX/(ASTICK_MAX - ASTICK_DEADZONE)));
       // Scale the analog stick value down to N64 range
-      val *= 80.0f / 32768.0f;
+      val *= 80.0f / ASTICK_MAX;
       Keys->X_AXIS = (int32_t)val;
    }
    else
@@ -229,7 +231,7 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
    {
       int sign = (analogY > 0) - (analogY < 0);
       float val = ((analogY - sign * ASTICK_DEADZONE)*(ASTICK_MAX/(ASTICK_MAX - ASTICK_DEADZONE)));
-      val *= 80.0f / 32768.0f;
+      val *= 80.0f / ASTICK_MAX;
       Keys->Y_AXIS = -(int32_t)val;
    }
    else
