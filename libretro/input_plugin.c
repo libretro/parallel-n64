@@ -192,7 +192,9 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
   output:   none
 *******************************************************************/
 
-#define ASTICK_DEADZONE 0x2000
+// System analog stick range -0x8000 to 0x8000
+#define ASTICK_MAX 0x8000
+#define ASTICK_DEADZONE 0x1000
 #define CSTICK_DEADZONE 0x4000
 
 #define CSTICK_RIGHT 0x200
@@ -215,16 +217,22 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
 
    if (abs(analogX) > ASTICK_DEADZONE)
    {
-      float val = 161.0f * ((analogX + 32768) / 65536.0f);
-      Keys->X_AXIS = ((int32_t)val) - 80;
+      int sign = (analogX > 0) - (analogX < 0);
+      // Rescale the analog stick range to negate the deadzone (makes slow movements possible)
+      float val = ((analogX - sign * ASTICK_DEADZONE)*(ASTICK_MAX/(ASTICK_MAX - ASTICK_DEADZONE)));
+      // Scale the analog stick value down to N64 range
+      val *= 80.0f / ASTICK_MAX;
+      Keys->X_AXIS = (int32_t)val;
    }
    else
       Keys->X_AXIS = 0;
 
    if (abs(analogY) > ASTICK_DEADZONE)
    {
-      float val = 161.0f * ((analogY + 32768) / 65536.0f);
-      Keys->Y_AXIS = 0 - (((int32_t)val) - 80);
+      int sign = (analogY > 0) - (analogY < 0);
+      float val = ((analogY - sign * ASTICK_DEADZONE)*(ASTICK_MAX/(ASTICK_MAX - ASTICK_DEADZONE)));
+      val *= 80.0f / ASTICK_MAX;
+      Keys->Y_AXIS = -(int32_t)val;
    }
    else
       Keys->Y_AXIS = 0;
