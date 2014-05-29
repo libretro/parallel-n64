@@ -35,6 +35,7 @@ static cothread_t emulator_thread;
 static bool emu_thread_has_run = false; // < This is used to ensure the core_gl_context_reset
                                         //   function doesn't try to reinit graphics before needed
 uint16_t button_orientation = 0;
+int astick_deadzone;
 static bool flip_only;
 bool no_audio;
 static savestates_job state_job_done;
@@ -106,27 +107,26 @@ static void core_settings_autoselect_rsp_plugin(void);
 
 static void core_settings_set_defaults(void)
 {
-    /* Load GFX plugin core option */
-    struct retro_variable gfx_var = { "mupen64-gfxplugin", 0 };
-	struct retro_variable rsp_var = { "mupen64-rspplugin", 0 };
-    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
-	
-	environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
+   /* Load GFX plugin core option */
+   struct retro_variable gfx_var = { "mupen64-gfxplugin", 0 };
+   struct retro_variable rsp_var = { "mupen64-rspplugin", 0 };
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
-    gfx_plugin = GFX_GLIDE64;
-    if (gfx_var.value)
-    {
-       if (gfx_var.value && strcmp(gfx_var.value, "auto") == 0)
-          core_settings_autoselect_gfx_plugin();
-       if (gfx_var.value && strcmp(gfx_var.value, "gln64") == 0)
-          gfx_plugin = GFX_GLN64;
-       if (gfx_var.value && strcmp(gfx_var.value, "rice") == 0)
-          gfx_plugin = GFX_RICE;
-       if(gfx_var.value && strcmp(gfx_var.value, "glide64") == 0)
-          gfx_plugin = GFX_GLIDE64;
-	   if(gfx_var.value && strcmp(gfx_var.value, "angrylion") == 0)
-          gfx_plugin = GFX_ANGRYLION;
-    }
+   gfx_plugin = GFX_GLIDE64;
+   if (gfx_var.value)
+   {
+      if (gfx_var.value && strcmp(gfx_var.value, "auto") == 0)
+         core_settings_autoselect_gfx_plugin();
+      if (gfx_var.value && strcmp(gfx_var.value, "gln64") == 0)
+         gfx_plugin = GFX_GLN64;
+      if (gfx_var.value && strcmp(gfx_var.value, "rice") == 0)
+         gfx_plugin = GFX_RICE;
+      if(gfx_var.value && strcmp(gfx_var.value, "glide64") == 0)
+         gfx_plugin = GFX_GLIDE64;
+	  if(gfx_var.value && strcmp(gfx_var.value, "angrylion") == 0)
+         gfx_plugin = GFX_ANGRYLION;
+   }
 
    gfx_var.key = "mupen64-gfxplugin-accuracy";
    gfx_var.value = NULL;
@@ -141,19 +141,17 @@ static void core_settings_set_defaults(void)
           gfx_plugin_accuracy = 0;
    }
 
-    /* Load RSP plugin core option */
-   
-
-    rsp_plugin = RSP_HLE;
-    if (rsp_var.value)
-    {
-       if (rsp_var.value && strcmp(rsp_var.value, "auto") == 0)
-          core_settings_autoselect_rsp_plugin();
-       if (rsp_var.value && strcmp(rsp_var.value, "hle") == 0)
-          rsp_plugin = RSP_HLE;
-       if (rsp_var.value && strcmp(rsp_var.value, "cxd4") == 0)
-          rsp_plugin = RSP_CXD4;
-    }
+   /* Load RSP plugin core option */
+   rsp_plugin = RSP_HLE;
+   if (rsp_var.value)
+   {
+      if (rsp_var.value && strcmp(rsp_var.value, "auto") == 0)
+         core_settings_autoselect_rsp_plugin();
+      if (rsp_var.value && strcmp(rsp_var.value, "hle") == 0)
+         rsp_plugin = RSP_HLE;
+      if (rsp_var.value && strcmp(rsp_var.value, "cxd4") == 0)
+         rsp_plugin = RSP_CXD4;
+   }
 }
 
 
@@ -194,6 +192,8 @@ static void setup_variables(void)
 #endif
       {"mupen64-button-orientation-ab",
         "Buttons B and A; BA|YB"},
+      {"mupen64-astick-deadzone",
+        "Analog Deadzone (percent); 15|20|25|30|0|5|10"},
       {"mupen64-pak1",
         "Player 1 Pak; none|memory|rumble"},
       {"mupen64-pak2",
@@ -503,6 +503,12 @@ void update_variables(void)
       else if (!strcmp(var.value, "YB"))
          button_orientation = 1;
    }
+
+   var.key = "mupen64-astick-deadzone";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      astick_deadzone = (int)(atoi(var.value) * 0.01f * 0x8000);
 
    var.key = "mupen64-gfxplugin-accuracy";
    var.value = NULL;

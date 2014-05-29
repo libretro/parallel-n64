@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "libretro.h"
 
@@ -32,6 +33,7 @@ extern retro_input_state_t input_cb;
 extern struct retro_rumble_interface rumble;
 extern int pad_pak_types[4];
 extern uint16_t button_orientation;
+extern int astick_deadzone;
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_types.h"
@@ -194,7 +196,7 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
 
 // System analog stick range -0x8000 to 0x8000
 #define ASTICK_MAX 0x8000
-#define ASTICK_DEADZONE 0x1000
+//#define ASTICK_DEADZONE 0x1000
 #define CSTICK_DEADZONE 0x4000
 
 #define CSTICK_RIGHT 0x200
@@ -206,33 +208,35 @@ int timeout = 0;
 
 extern void inputInitiateCallback(const char *headername);
 
+
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
 {
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
    
-   // Analog stick range is from -80 to 80
+   // N64 Analog stick range is from -80 to 80
    analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
    analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
 
-   if (abs(analogX) > ASTICK_DEADZONE)
+   if (abs(analogX) > astick_deadzone)
    {
-      int sign = (analogX > 0) - (analogX < 0);
+      float sign = (analogX > 0) - (analogX < 0);
       // Rescale the analog stick range to negate the deadzone (makes slow movements possible)
-      float val = ((analogX - sign * ASTICK_DEADZONE)*(ASTICK_MAX/(ASTICK_MAX - ASTICK_DEADZONE)));
+      float val = (analogX - sign * astick_deadzone)*((float)ASTICK_MAX/(ASTICK_MAX - astick_deadzone));
       // Scale the analog stick value down to N64 range
-      val *= 80.0f / ASTICK_MAX;
-      Keys->X_AXIS = (int32_t)val;
+      val *= (80.0f / ASTICK_MAX);
+      // Set the axis value
+      Keys->X_AXIS = (int32_t)round(val);
    }
    else
       Keys->X_AXIS = 0;
 
-   if (abs(analogY) > ASTICK_DEADZONE)
+   if (abs(analogY) > astick_deadzone)
    {
       int sign = (analogY > 0) - (analogY < 0);
-      float val = ((analogY - sign * ASTICK_DEADZONE)*(ASTICK_MAX/(ASTICK_MAX - ASTICK_DEADZONE)));
-      val *= 80.0f / ASTICK_MAX;
-      Keys->Y_AXIS = -(int32_t)val;
+      float val = ((analogY - sign * astick_deadzone)*((float)ASTICK_MAX/(ASTICK_MAX - astick_deadzone)));
+      val *= (80.0f / ASTICK_MAX);
+      Keys->Y_AXIS = -(int32_t)round(val);
    }
    else
       Keys->Y_AXIS = 0;
