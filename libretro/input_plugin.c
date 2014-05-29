@@ -215,16 +215,22 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
 
    if (abs(analogX) > ASTICK_DEADZONE)
    {
-      float val = 161.0f * ((analogX + 32768) / 65536.0f);
-      Keys->X_AXIS = ((int32_t)val) - 80;
+      int sign = (analogX > 0) - (analogX < 0);
+      // Rescale the analog stick range to negate the deadzone (makes slow movements possible)
+      float val = ((analogX - sign * ASTICK_DEADZONE)*(ASTICK_MAX/(ASTICK_MAX - ASTICK_DEADZONE)));
+      // Scale the analog stick value down to N64 range
+      val *= 80.0f / 32768.0f;
+      Keys->X_AXIS = (int32_t)val;
    }
    else
       Keys->X_AXIS = 0;
 
    if (abs(analogY) > ASTICK_DEADZONE)
    {
-      float val = 161.0f * ((analogY + 32768) / 65536.0f);
-      Keys->Y_AXIS = 0 - (((int32_t)val) - 80);
+      int sign = (analogY > 0) - (analogY < 0);
+      float val = ((analogY - sign * ASTICK_DEADZONE)*(ASTICK_MAX/(ASTICK_MAX - ASTICK_DEADZONE)));
+      val *= 80.0f / 32768.0f;
+      Keys->Y_AXIS = -(int32_t)val;
    }
    else
       Keys->Y_AXIS = 0;
