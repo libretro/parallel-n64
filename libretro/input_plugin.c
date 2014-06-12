@@ -194,7 +194,7 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
   output:   none
 *******************************************************************/
 
-// System analog stick range -0x8000 to 0x8000
+// System analog stick range is -0x8000 to 0x8000
 #define ASTICK_MAX 0x8000
 #define CSTICK_DEADZONE 0x4000
 
@@ -212,33 +212,29 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
 {
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
-   
-   // N64 Analog stick range is from -80 to 80
+
    analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
    analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
 
-   if (abs(analogX) > astick_deadzone)
-   {
-      int sign = (analogX > 0) - (analogX < 0);
-      // Rescale the analog stick range to negate the deadzone (makes slow movements possible)
-      float val = (analogX - sign * astick_deadzone)*((float)ASTICK_MAX/(ASTICK_MAX - astick_deadzone));
-      // Scale the analog stick value down to N64 range
-      val *= (80.0f / ASTICK_MAX);
-      // Set the axis value
-      Keys->X_AXIS = (int32_t)round(val);
-   }
-   else
-      Keys->X_AXIS = 0;
+   // Convert cartesian coordinate analog stick to polar coordinates
+   double radius = sqrt(analogX * analogX + analogY * analogY);
+   double angle = atan2(analogY, analogX);
 
-   if (abs(analogY) > astick_deadzone)
+   if (radius > astick_deadzone)
    {
-      int sign = (analogY > 0) - (analogY < 0);
-      float val = ((analogY - sign * astick_deadzone)*((float)ASTICK_MAX/(ASTICK_MAX - astick_deadzone)));
-      val *= (80.0f / ASTICK_MAX);
-      Keys->Y_AXIS = -(int32_t)round(val);
+      // Re-scale analog stick range to negate deadzone (makes slow movements possible)
+      radius = (radius - astick_deadzone)*((float)ASTICK_MAX/(ASTICK_MAX - astick_deadzone));
+      // N64 Analog stick range is from -80 to 80
+      radius *= 80.0 / ASTICK_MAX;
+      // Convert back to cartesian coordinates
+      Keys->X_AXIS = (int32_t)round(radius * cos(angle));
+      Keys->Y_AXIS = -(int32_t)round(radius * sin(angle));
    }
    else
+   {
+      Keys->X_AXIS = 0;
       Keys->Y_AXIS = 0;
+   }
 
    if (input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) && --timeout <= 0)
       inputInitiateCallback(ROM_HEADER.Name);
