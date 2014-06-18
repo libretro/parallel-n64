@@ -49,8 +49,7 @@ int tex0_exactWidth,tex0_exactHeight,tex1_exactWidth,tex1_exactHeight;
 int three_point_filter0,three_point_filter1;
 float lambda;
 
-static int min_filter0, mag_filter0, wrap_s0, wrap_t0;
-static int min_filter1, mag_filter1, wrap_s1, wrap_t1;
+static int min_filter[2], mag_filter[2], wrap_s[2], wrap_t[2];
 
 unsigned char *filter(unsigned char *source, int width, int height, int *width2, int *height2);
 
@@ -216,10 +215,10 @@ grTexSource( GrChipID_t tmu,
       }
 
       glBindTexture(GL_TEXTURE_2D, startAddress+1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter0);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter0);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s0);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t0);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[0]);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[0]);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[0]);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[0]);
       tex0_exactWidth = info->width;
       tex0_exactHeight = info->height;
    }
@@ -239,10 +238,10 @@ grTexSource( GrChipID_t tmu,
       }
 
       glBindTexture(GL_TEXTURE_2D, startAddress+1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t1);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[1]);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[1]);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[1]);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[1]);
       tex1_exactWidth = info->width;
       tex1_exactHeight = info->height;
    }
@@ -604,18 +603,18 @@ grTexFilterMode(
    if (tmu == GR_TMU1)
    {
 	  if (minfilter_mode == GR_TEXTUREFILTER_BILINEAR)
-		 min_filter0 = GL_LINEAR;
+		 min_filter[0] = GL_LINEAR;
 	  else
-		 min_filter0 = GL_NEAREST;
+		 min_filter[0] = GL_NEAREST;
 
 	  if (magfilter_mode == GR_TEXTUREFILTER_BILINEAR)
-		 mag_filter0 = GL_LINEAR;
+		 mag_filter[0] = GL_LINEAR;
 	  else
-		 mag_filter0 = GL_NEAREST;
+		 mag_filter[0] = GL_NEAREST;
 
 	  glActiveTexture(GL_TEXTURE0);
-	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter0);
-	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter0);
+	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[0]);
+	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[0]);
 #ifdef DISABLE_3POINT
      three_point_filter0=false;
 #else
@@ -624,15 +623,16 @@ grTexFilterMode(
    }
    else
    {
-	  if (minfilter_mode == GR_TEXTUREFILTER_BILINEAR) min_filter1 = GL_LINEAR;
-	  else min_filter1 = GL_NEAREST;
+	  if (minfilter_mode == GR_TEXTUREFILTER_BILINEAR) min_filter[1] = GL_LINEAR;
+	  else min_filter[1] = GL_NEAREST;
 
-	  if (magfilter_mode == GR_TEXTUREFILTER_BILINEAR) mag_filter1 = GL_LINEAR;
-	  else mag_filter1 = GL_NEAREST;
+	  if (magfilter_mode == GR_TEXTUREFILTER_BILINEAR) mag_filter[1] = GL_LINEAR;
+	  else
+        mag_filter[1] = GL_NEAREST;
 
 	  glActiveTexture(GL_TEXTURE1);
-	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter1);
-	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter1);
+	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[1]);
+	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[1]);
 #ifdef DISABLE_3POINT
 	  three_point_filter1= false;
 #else
@@ -655,13 +655,13 @@ grTexClampMode(
       switch(s_clampmode)
       {
          case GR_TEXTURECLAMP_WRAP:
-            wrap_s0 = GL_REPEAT;
+            wrap_s[0] = GL_REPEAT;
             break;
          case GR_TEXTURECLAMP_CLAMP:
-            wrap_s0 = GL_CLAMP_TO_EDGE;
+            wrap_s[0] = GL_CLAMP_TO_EDGE;
             break;
          case GR_TEXTURECLAMP_MIRROR_EXT:
-            wrap_s0 = GL_MIRRORED_REPEAT;
+            wrap_s[0] = GL_MIRRORED_REPEAT;
             break;
          default:
             DISPLAY_WARNING("grTexClampMode : unknown s_clampmode : %x", s_clampmode);
@@ -669,33 +669,33 @@ grTexClampMode(
       switch(t_clampmode)
       {
          case GR_TEXTURECLAMP_WRAP:
-            wrap_t0 = GL_REPEAT;
+            wrap_t[0] = GL_REPEAT;
             break;
          case GR_TEXTURECLAMP_CLAMP:
-            wrap_t0 = GL_CLAMP_TO_EDGE;
+            wrap_t[0] = GL_CLAMP_TO_EDGE;
             break;
          case GR_TEXTURECLAMP_MIRROR_EXT:
-            wrap_t0 = GL_MIRRORED_REPEAT;
+            wrap_t[0] = GL_MIRRORED_REPEAT;
             break;
          default:
             DISPLAY_WARNING("grTexClampMode : unknown t_clampmode : %x", t_clampmode);
       }
       glActiveTexture(GL_TEXTURE0);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s0);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t0);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[0]);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[0]);
    }
    else
    {
       switch(s_clampmode)
       {
          case GR_TEXTURECLAMP_WRAP:
-            wrap_s1 = GL_REPEAT;
+            wrap_s[1] = GL_REPEAT;
             break;
          case GR_TEXTURECLAMP_CLAMP:
-            wrap_s1 = GL_CLAMP_TO_EDGE;
+            wrap_s[1] = GL_CLAMP_TO_EDGE;
             break;
          case GR_TEXTURECLAMP_MIRROR_EXT:
-            wrap_s1 = GL_MIRRORED_REPEAT;
+            wrap_s[1] = GL_MIRRORED_REPEAT;
             break;
          default:
             DISPLAY_WARNING("grTexClampMode : unknown s_clampmode : %x", s_clampmode);
@@ -703,19 +703,19 @@ grTexClampMode(
       switch(t_clampmode)
       {
          case GR_TEXTURECLAMP_WRAP:
-            wrap_t1 = GL_REPEAT;
+            wrap_t[1] = GL_REPEAT;
             break;
          case GR_TEXTURECLAMP_CLAMP:
-            wrap_t1 = GL_CLAMP_TO_EDGE;
+            wrap_t[1] = GL_CLAMP_TO_EDGE;
             break;
          case GR_TEXTURECLAMP_MIRROR_EXT:
-            wrap_t1 = GL_MIRRORED_REPEAT;
+            wrap_t[1] = GL_MIRRORED_REPEAT;
             break;
          default:
             DISPLAY_WARNING("grTexClampMode : unknown t_clampmode : %x", t_clampmode);
       }
       glActiveTexture(GL_TEXTURE1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t1);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[1]);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[1]);
    }
 }
