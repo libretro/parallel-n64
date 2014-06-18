@@ -581,15 +581,8 @@ grTexFilterMode(
 {
    unsigned index = (tmu == GR_TMU1) ? 0 : 1;
 
-   if (minfilter_mode == GR_TEXTUREFILTER_BILINEAR)
-      min_filter[index] = GL_LINEAR;
-   else
-      min_filter[index] = GL_NEAREST;
-
-   if (magfilter_mode == GR_TEXTUREFILTER_BILINEAR)
-      mag_filter[index] = GL_LINEAR;
-   else
-      mag_filter[index] = GL_NEAREST;
+   min_filter[index] = (minfilter_mode == GR_TEXTUREFILTER_BILINEAR) ? GL_LINEAR : GL_NEAREST;
+   mag_filter[index] = (magfilter_mode == GR_TEXTUREFILTER_BILINEAR) ? GL_LINEAR : GL_NEAREST;
 
    glActiveTexture((tmu == GR_TMU1) ? GL_TEXTURE0 : GL_TEXTURE1);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[index]);
