@@ -852,6 +852,14 @@ static void LoadTex(int id, int tmu)
    rdp.cur_cache[id] = cache;
    rdp.cur_cache_n[id] = rdp.n_cached[tmu];
 
+   //!Hackalert
+   //GoldenEye water texture. It has CI format in fact, but the game set it to RGBA
+   if ((settings.hacks&hack_GoldenEye) && rdp.tiles[td].format == G_IM_FMT_RGBA && rdp.tlut_mode == 2 && rdp.tiles[td].size == G_IM_SIZ_16b)
+   {
+      rdp.tiles[td].format = G_IM_FMT_CI;
+      rdp.tiles[td].size = G_IM_SIZ_8b;
+   }
+
    // Set the data
    cache->line = rdp.tiles[td].line;
    cache->addr = rdp.addr[rdp.tiles[td].t_mem];
