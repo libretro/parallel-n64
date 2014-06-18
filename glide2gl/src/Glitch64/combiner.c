@@ -519,8 +519,8 @@ void compile_shader(void)
             prog.dither_enabled == dither_enabled &&
             prog.blackandwhite0 == blackandwhite0 &&
 			prog.blackandwhite1 == blackandwhite1 &&
-			prog.three_point_filter0 == three_point_filter0 &&
-			prog.three_point_filter1 == three_point_filter1)
+			prog.three_point_filter0 == three_point_filter[0] &&
+			prog.three_point_filter1 == three_point_filter[1])
       {
          program_object = shader_programs[i].program_object;
          glUseProgram(program_object);
@@ -546,8 +546,8 @@ void compile_shader(void)
    shader_programs[number_of_programs].dither_enabled = dither_enabled;
    shader_programs[number_of_programs].blackandwhite0 = blackandwhite0;
    shader_programs[number_of_programs].blackandwhite1 = blackandwhite1;
-   shader_programs[number_of_programs].three_point_filter0 = three_point_filter0;
-   shader_programs[number_of_programs].three_point_filter1 = three_point_filter1;
+   shader_programs[number_of_programs].three_point_filter0 = three_point_filter[0];
+   shader_programs[number_of_programs].three_point_filter1 = three_point_filter[1];
 
    if(chroma_enabled)
    {
@@ -562,12 +562,12 @@ void compile_shader(void)
    switch (blackandwhite0) {
       case 1: strcat(fragment_shader, fragment_shader_readtex0bw); break;
       case 2: strcat(fragment_shader, fragment_shader_readtex0bw_2); break;
-	  default: strcat(fragment_shader, three_point_filter0?fragment_shader_readtex0color_3point:fragment_shader_readtex0color);
+	  default: strcat(fragment_shader, three_point_filter[0] ? fragment_shader_readtex0color_3point:fragment_shader_readtex0color);
    }
    switch (blackandwhite1) {
       case 1: strcat(fragment_shader, fragment_shader_readtex1bw); break;
       case 2: strcat(fragment_shader, fragment_shader_readtex1bw_2); break;
-	  default: strcat(fragment_shader,  three_point_filter1?fragment_shader_readtex1color_3point:fragment_shader_readtex1color);
+	  default: strcat(fragment_shader,  three_point_filter[1] ? fragment_shader_readtex1color_3point:fragment_shader_readtex1color);
    }
    strcat(fragment_shader, fragment_shader_texture0);
    strcat(fragment_shader, fragment_shader_texture1);

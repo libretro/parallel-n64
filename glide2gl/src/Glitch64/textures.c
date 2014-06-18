@@ -46,7 +46,7 @@ extern unsigned screen_height;
 
 int tex_width[2], tex_height[2];
 int tex_exactWidth[2],tex_exactHeight[2];
-int three_point_filter0,three_point_filter1;
+int three_point_filter[2];
 float lambda;
 
 static int min_filter[2], mag_filter[2], wrap_s[2], wrap_t[2];
@@ -579,48 +579,30 @@ grTexFilterMode(
                 GrTextureFilterMode_t magfilter_mode
                 )
 {
-//	printf("\n mag : %i , min :  %i , tmu : %i ",magfilter_mode,minfilter_mode, tmu);
-   LOG("grTexFilterMode(%d,%d,%d)\r\n", tmu, minfilter_mode, magfilter_mode);
-   if (tmu == GR_TMU1)
-   {
-	  if (minfilter_mode == GR_TEXTUREFILTER_BILINEAR)
-		 min_filter[0] = GL_LINEAR;
-	  else
-		 min_filter[0] = GL_NEAREST;
+   unsigned index = (tmu == GR_TMU1) ? 0 : 1;
 
-	  if (magfilter_mode == GR_TEXTUREFILTER_BILINEAR)
-		 mag_filter[0] = GL_LINEAR;
-	  else
-		 mag_filter[0] = GL_NEAREST;
-
-	  glActiveTexture(GL_TEXTURE0);
-	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[0]);
-	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[0]);
-#ifdef DISABLE_3POINT
-     three_point_filter0=false;
-#else
-	  three_point_filter0=(magfilter_mode == GR_TEXTUREFILTER_3POINT_LINEAR);
-#endif
-   }
+   if (minfilter_mode == GR_TEXTUREFILTER_BILINEAR)
+      min_filter[index] = GL_LINEAR;
    else
-   {
-	  if (minfilter_mode == GR_TEXTUREFILTER_BILINEAR) min_filter[1] = GL_LINEAR;
-	  else min_filter[1] = GL_NEAREST;
+      min_filter[index] = GL_NEAREST;
 
-	  if (magfilter_mode == GR_TEXTUREFILTER_BILINEAR) mag_filter[1] = GL_LINEAR;
-	  else
-        mag_filter[1] = GL_NEAREST;
+   if (magfilter_mode == GR_TEXTUREFILTER_BILINEAR)
+      mag_filter[index] = GL_LINEAR;
+   else
+      mag_filter[index] = GL_NEAREST;
 
-	  glActiveTexture(GL_TEXTURE1);
-	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[1]);
-	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[1]);
+   glActiveTexture((tmu == GR_TMU1) ? GL_TEXTURE0 : GL_TEXTURE1);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[index]);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[index]);
+
 #ifdef DISABLE_3POINT
-	  three_point_filter1= false;
+   three_point_filter[index] =false;
 #else
-	  three_point_filter1=(magfilter_mode == GR_TEXTUREFILTER_3POINT_LINEAR);
+   three_point_filter[index] = (magfilter_mode == GR_TEXTUREFILTER_3POINT_LINEAR);
 #endif
-   }
+
    need_to_compile = 1;
+   LOG("grTexFilterMode(%d,%d,%d)\r\n", tmu, minfilter_mode, magfilter_mode);
 }
 
 FX_ENTRY void FX_CALL

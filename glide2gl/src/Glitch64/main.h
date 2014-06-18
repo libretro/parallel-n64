@@ -122,7 +122,7 @@ extern int lfb_color_fmt;
 extern int need_to_compile;
 extern int blackandwhite0;
 extern int blackandwhite1;
-extern int three_point_filter0,three_point_filter1;
+extern int three_point_filter[2];
 
 extern int blend_func_separate_support;
 extern int fog_coord_support;
