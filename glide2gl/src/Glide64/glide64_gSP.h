@@ -161,57 +161,6 @@ static void gSPPopMatrixN(uint32_t num)
 }
 
 /*
- * Sets the viewport area. The viewport sructure elements have a 
- * 2-bit fraction required for scaling to sub-pixel positions.
- * This can be used to handle the fraction values in the viewport.
- *
- * vscale, vtrans are the screen coordinates. The aray indices
- * 0, 1, 2 correspond to x, y, z while array index 3 is used for
- * alignment.
- *
- * The viewport is the area the image occupies on the screen.
- *
- * v      - segment address to the viewport structure "Vp".
- * vscale - scale applied to the normalized homogeneous coordinates
- *          after 4x4 projection transformation.
- * vtrans - the offset added to the scaled value.
- *
- * GBI compatibility -
- * S2DEX GBI - not supported
- *
- * FIXME: Not spec-conformant.
- */
-static void gSPViewport(uint32_t v, bool correct_viewport)
-{
-   int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, *rdram;
-   uint32_t address = (segoffset(v) & 0xFFFFFF) >> 1;
-   rdram = (int16_t*)gfx.RDRAM;
-
-   scale_x = rdram[(address + 0)^1] / 4;
-   scale_y = rdram[(address + 1)^1] / 4;
-   scale_z = rdram[(address + 2)^1];
-   trans_x = rdram[(address + 4)^1] / 4;
-   trans_y = rdram[(address + 5)^1] / 4;
-   trans_z = rdram[(address + 6)^1];
-   if (correct_viewport)
-   {
-      scale_x = abs(scale_x);
-      scale_y = abs(scale_y);
-   }
-   rdp.view_scale[0] = scale_x * rdp.scale_x;
-   rdp.view_scale[1] = -scale_y * rdp.scale_y;
-   rdp.view_scale[2] = 32.0f * scale_z;
-   rdp.view_trans[0] = trans_x * rdp.scale_x;
-   rdp.view_trans[1] = trans_y * rdp.scale_y;
-   rdp.view_trans[2] = 32.0f * trans_z;
-
-   // there are other values than x and y, but I don't know what they do
-
-   rdp.update |= UPDATE_VIEWPORT;
-   //FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, a);
-}
-
-/*
  * Loads one Light structure into the RSP.
  *
  * Loads one Light structure at the specified position in the light buffer.
@@ -242,36 +191,6 @@ static void gSPLight(void *ptr, uint32_t l, unsigned n)
    //rdp.update |= UPDATE_LIGHTS;
 
    //FRDP ("light: n: %d, r: %.3f, g: %.3f, b: %.3f, x: %.3f, y: %.3f, z: %.3f\n", i, rdp.light[i].r, rdp.light[i].g, rdp.light[i].b, rdp.light_vector[i][0], rdp.light_vector[i][1], rdp.light_vector[i][2]);
-}
-
-/*
- * Loads new matrix without performing multiplication.
- *
- * Loads a new matrix (indicated by mptr) on to the top of the RSP's matrix stack.
- * Without undergoing matrix multiplication, this new matrix replaces the single
- * matrix (the concatenated matrix of the modelview and projection matrices) used
- * for the entire transformation.
- *
- * There is no matrix pushing or popping on the model view and projection matrix
- * stacks, and the tops of the stack are not modified.
- *
- * mptr - The pointer to the matrix to load.
- *
- * GBI compatibility -
- * S2DEX GBI - not supported
- */
-static void gSPForceMatrix(uint32_t mptr)
-{
-   uint32_t address = RSP_SegmentToPhysical(mptr);
-   load_matrix(rdp.combined, address);
-
-   // do not update the combined matrix!
-   rdp.update &= ~UPDATE_MULT_MAT;
-
-   //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
-   //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
-   //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
-   //FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
 }
 
 /*
@@ -620,97 +539,6 @@ static void gSPLightColor( uint32_t n, uint32_t packedColor)
    rdp.light[n].col[2] = _SHIFTR( packedColor, 8, 8 )  * 0.0039215689f;
    rdp.light[n].col[3] = 255;
    //FRDP ("lightcol light:%d, %08lx\n", n, w1);
-}
-
-/*
- * Modifies part of the vertex data after the data has been sent to the RSP by
- * gSPVertex. The new value that is to be assigned to the part described by
- * 'where' is specified as follows in 'val':
- *
- * Color (G_MW0_POINT_RGBA):
- *   R, G, B and alpha (4 bytes each) from high-order byte to low-order byte.
- * Texture coordinate s, t values (G_MW0_POINT_ST):
- *   High-order 16 bits are the s coordinate value. Low-order 16 bits are the
- *   t coordinate value (s13.2)
- * Screen coordinate x, y values (G_MW0_POINT_XYSCREEN):
- *   High-order 16 bits are the s coordinate value. Low-order 16 bits are the
- *   y coordinate value (s13.2)
- *   * The upper-left corner of the screen is (0,0). Positive x values increase
- *   to the right, and positive y value increase downward.
- * Screen coordinate z value (G_MW0_POINT_ZSCREEN):
- *   All 32 bits are the z-coordinate value (16.6, 0x00000000~0x03ff0000) 
- *
- * vtx   - specifies which RSP vertex to modify
- * where - specifies which part of vertex data to modify:
- *         G_MW0_POINT_RGBA (Color)
- *         G_MW0_POINT_ST (Texture coordinate s, t values)
- *         G_MW0_POINT_XYSCREEN (Screen coordinate x, y values)
- *         G_MW0_POINT_ZSCREEN (Screen coordinate z value)
- * val   - new value (32-bit integer) for the data part specified by where.
- */
-static void gSPModifyVertex(uint32_t vtx, uint32_t where,  uint32_t val)
-{
-   VERTEX *v = (VERTEX*)&rdp.vtx[vtx];
-
-   switch (where)
-   {
-      case G_MWO_POINT_RGBA:    // RGBA
-         v->r = (uint8_t)(val >> 24);
-         v->g = (uint8_t)((val >> 16) & 0xFF);
-         v->b = (uint8_t)((val >> 8) & 0xFF);
-         v->a = (uint8_t)(val & 0xFF);
-         v->shade_mod = 0;
-
-         //FRDP ("RGBA: %d, %d, %d, %d\n", v->r, v->g, v->b, v->a);
-         break;
-
-      case G_MWO_POINT_ST:    // ST
-         {
-            float scale = rdp.Persp_en ? 0.03125f : 0.015625f;
-            v->ou = (float)((int16_t)(val>>16)) * scale;
-            v->ov = (float)((int16_t)(val&0xFFFF)) * scale;
-            v->uv_calculated = 0xFFFFFFFF;
-            v->uv_scaled = 1;
-         }
-         //FRDP ("u/v: (%04lx, %04lx), (%f, %f)\n", (int16_t)(val>>16), (int16_t)(val&0xFFFF), v->ou, v->ov);
-         break;
-
-      case G_MWO_POINT_XYSCREEN:    // XY screen
-         {
-            float scr_x = (float)((int16_t)(val>>16)) / 4.0f;
-            float scr_y = (float)((int16_t)(val&0xFFFF)) / 4.0f;
-            v->screen_translated = 2;
-            v->sx = scr_x * rdp.scale_x + rdp.offset_x;
-            v->sy = scr_y * rdp.scale_y + rdp.offset_y;
-            if (v->w < 0.01f)
-            {
-               v->w = 1.0f;
-               v->oow = 1.0f;
-               v->z_w = 1.0f;
-            }
-            v->sz = rdp.view_trans[2] + v->z_w * rdp.view_scale[2];
-
-            v->scr_off = 0;
-            if (scr_x < 0) v->scr_off |= 1;
-            if (scr_x > rdp.vi_width) v->scr_off |= 2;
-            if (scr_y < 0) v->scr_off |= 4;
-            if (scr_y > rdp.vi_height) v->scr_off |= 8;
-            if (v->w < 0.1f) v->scr_off |= 16;
-
-            //FRDP ("x/y: (%f, %f)\n", scr_x, scr_y);
-         }
-         break;
-
-      case G_MWO_POINT_ZSCREEN:    // Z screen
-         {
-            float scr_z = (float)((int16_t)(val>>16));
-            v->z_w = (scr_z - rdp.view_trans[2]) / rdp.view_scale[2];
-            v->z = v->z_w * v->w;
-            //FRDP ("z: %f\n", scr_z);
-         }
-         break;
-   }
-   //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, val);
 }
 
 void glide64SPClipVertex(uint32_t i)
