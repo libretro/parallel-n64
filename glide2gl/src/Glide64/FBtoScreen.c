@@ -188,7 +188,7 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
    }
    t_info.format = GR_TEXFMT_RGB_565;
    t_info.data = tex;
-   tmu = SetupFBtoScreenCombiner(grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &t_info), fb_info->opaque);
+   tmu = SetupFBtoScreenCombiner(grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
    grTexDownloadMipMap (tmu,
          voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,
@@ -222,7 +222,7 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
 
   tex = (uint16_t*)texture_buffer;
   t_info.data = tex;
-  tex_size = grTexTextureMemRequired (GR_MIPMAPLEVELMASK_BOTH, &t_info);
+  tex_size = grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format);
   tmu = SetupFBtoScreenCombiner(tex_size * width256 * height256, fb_info->opaque);
   src =   (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
   src32 = (uint32_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
@@ -397,7 +397,7 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       t_info.data = tex;
    }
 
-   tmu = SetupFBtoScreenCombiner(grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &t_info), fb_info->opaque);
+   tmu = SetupFBtoScreenCombiner(grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
    grTexDownloadMipMap (tmu,
          voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,
@@ -454,7 +454,7 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
    t_info.format = GR_TEXFMT_ALPHA_INTENSITY_88;
    tex = (uint16_t*)texture_buffer;
    t_info.data = tex;
-   tex_size = grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &t_info);
+   tex_size = grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format);
    tmu = SetupFBtoScreenCombiner(tex_size*width256*height256, fb_info->opaque);
    grConstantColorValue (rdp.fog_color);
    grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
@@ -640,7 +640,7 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    t_info.format = GR_TEXFMT_ALPHA_INTENSITY_88;
    t_info.data = tex;
 
-   tmu = SetupFBtoScreenCombiner(grTexTextureMemRequired(GR_MIPMAPLEVELMASK_BOTH, &t_info), fb_info->opaque);
+   tmu = SetupFBtoScreenCombiner(grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
    grConstantColorValue (rdp.fog_color);
    grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
          GR_COMBINE_FACTOR_ONE,

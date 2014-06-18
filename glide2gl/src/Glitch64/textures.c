@@ -154,56 +154,10 @@ grTexMaxAddress( GrChipID_t tmu )
 }
 
 FX_ENTRY FxU32 FX_CALL
-grTexTextureMemRequired( FxU32     evenOdd,
-                        GrTexInfo *info   )
-{
-   int width, height;
-   LOG("grTextureMemRequired(%d)\r\n", evenOdd);
-#ifndef NDEBUG
-   if (info->largeLodLog2 != info->smallLodLog2) DISPLAY_WARNING("grTexTextureMemRequired : loading more than one LOD");
-#endif
-
-   if (info->aspectRatioLog2 < 0)
-   {
-      height = 1 << info->largeLodLog2;
-      width = height >> -info->aspectRatioLog2;
-   }
-   else
-   {
-      width = 1 << info->largeLodLog2;
-      height = width >> info->aspectRatioLog2;
-   }
-
-   switch(info->format)
-   {
-      case GR_TEXFMT_ALPHA_8:
-      case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
-      case GR_TEXFMT_ALPHA_INTENSITY_44:
-         return width*height;
-         break;
-      case GR_TEXFMT_ARGB_1555:
-      case GR_TEXFMT_ARGB_4444:
-      case GR_TEXFMT_ALPHA_INTENSITY_88:
-      case GR_TEXFMT_RGB_565:
-         return (width*height)<<1;
-         break;
-      case GR_TEXFMT_ARGB_8888:
-         return (width*height)<<2;
-         break;
-      default:
-         DISPLAY_WARNING("grTexTextureMemRequired : unknown texture format: %x", info->format);
-   }
-   return 0;
-}
-
-FX_ENTRY FxU32 FX_CALL
-grTexCalcMemRequired(
-                     GrLOD_t lodmin, GrLOD_t lodmax,
+grTexCalcMemRequired(GrLOD_t lodmax,
                      GrAspectRatio_t aspect, GrTextureFormat_t fmt)
 {
    int width, height;
-   LOG("grTexCalcMemRequired(%d, %d, %d, %d)\r\n", lodmin, lodmax, aspect, fmt);
-   if (lodmax != lodmin) DISPLAY_WARNING("grTexCalcMemRequired : loading more than one LOD");
 
    if (aspect < 0)
    {
@@ -233,9 +187,87 @@ grTexCalcMemRequired(
          return (width*height)<<2;
          break;
       default:
-         DISPLAY_WARNING("grTexTextureMemRequired : unknown texture format: %x", fmt);
+         DISPLAY_WARNING("grTexCalcMemRequired : unknown texture format: %x", fmt);
    }
    return 0;
+}
+
+FX_ENTRY void FX_CALL
+grTexSource( GrChipID_t tmu,
+            FxU32      startAddress,
+            FxU32      evenOdd,
+            GrTexInfo  *info )
+{
+   LOG("grTexSource(%d,%d,%d)\r\n", tmu, startAddress, evenOdd);
+
+   if (tmu == GR_TMU1)
+   {
+      glActiveTexture(GL_TEXTURE0);
+
+      if (info->aspectRatioLog2 < 0)
+      {
+         tex0_height = 256;
+         tex0_width = tex0_height >> -info->aspectRatioLog2;
+      }
+      else
+      {
+         tex0_width = 256;
+         tex0_height = tex0_width >> info->aspectRatioLog2;
+      }
+
+      glBindTexture(GL_TEXTURE_2D, startAddress+1);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter0);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter0);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s0);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t0);
+      tex0_exactWidth = info->width;
+      tex0_exactHeight = info->height;
+   }
+   else
+   {
+      glActiveTexture(GL_TEXTURE1);
+
+      if (info->aspectRatioLog2 < 0)
+      {
+         tex1_height = 256;
+         tex1_width = tex1_height >> -info->aspectRatioLog2;
+      }
+      else
+      {
+         tex1_width = 256;
+         tex1_height = tex1_width >> info->aspectRatioLog2;
+      }
+
+      glBindTexture(GL_TEXTURE_2D, startAddress+1);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter1);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter1);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s1);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t1);
+      tex1_exactWidth = info->width;
+      tex1_exactHeight = info->height;
+   }
+   if(!CheckTextureBufferFormat(tmu, startAddress+1, info))
+   {
+      if(tmu == 0 && blackandwhite1 != 0)
+      {
+         blackandwhite1 = 0;
+         need_to_compile = 1;
+      }
+      if(tmu == 1 && blackandwhite0 != 0)
+      {
+         blackandwhite0 = 0;
+         need_to_compile = 1;
+      }
+   }
+
+#if 0
+   extern int auxbuffer;
+   static int oldbuffer;
+   FX_ENTRY void FX_CALL grAuxBufferExt( GrBuffer_t buffer );
+   if (auxbuffer == GR_BUFFER_AUXBUFFER && auxbuffer != oldbuffer)
+      grAuxBufferExt(auxbuffer);
+   oldbuffer = auxbuffer;
+#endif
 }
 
 int grTexFormatSize(int fmt)
@@ -529,83 +561,6 @@ grTexDownloadMipMap( GrChipID_t tmu,
    glBindTexture(GL_TEXTURE_2D, default_texture);
 }
 
-FX_ENTRY void FX_CALL
-grTexSource( GrChipID_t tmu,
-            FxU32      startAddress,
-            FxU32      evenOdd,
-            GrTexInfo  *info )
-{
-   LOG("grTexSource(%d,%d,%d)\r\n", tmu, startAddress, evenOdd);
-
-   if (tmu == GR_TMU1)
-   {
-      glActiveTexture(GL_TEXTURE0);
-
-      if (info->aspectRatioLog2 < 0)
-      {
-         tex0_height = 256;
-         tex0_width = tex0_height >> -info->aspectRatioLog2;
-      }
-      else
-      {
-         tex0_width = 256;
-         tex0_height = tex0_width >> info->aspectRatioLog2;
-      }
-
-      glBindTexture(GL_TEXTURE_2D, startAddress+1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter0);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter0);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s0);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t0);
-      tex0_exactWidth = info->width;
-      tex0_exactHeight = info->height;
-   }
-   else
-   {
-      glActiveTexture(GL_TEXTURE1);
-
-      if (info->aspectRatioLog2 < 0)
-      {
-         tex1_height = 256;
-         tex1_width = tex1_height >> -info->aspectRatioLog2;
-      }
-      else
-      {
-         tex1_width = 256;
-         tex1_height = tex1_width >> info->aspectRatioLog2;
-      }
-
-      glBindTexture(GL_TEXTURE_2D, startAddress+1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t1);
-      tex1_exactWidth = info->width;
-      tex1_exactHeight = info->height;
-   }
-   if(!CheckTextureBufferFormat(tmu, startAddress+1, info))
-   {
-      if(tmu == 0 && blackandwhite1 != 0)
-      {
-         blackandwhite1 = 0;
-         need_to_compile = 1;
-      }
-      if(tmu == 1 && blackandwhite0 != 0)
-      {
-         blackandwhite0 = 0;
-         need_to_compile = 1;
-      }
-   }
-
-#if 0
-   extern int auxbuffer;
-   static int oldbuffer;
-   FX_ENTRY void FX_CALL grAuxBufferExt( GrBuffer_t buffer );
-   if (auxbuffer == GR_BUFFER_AUXBUFFER && auxbuffer != oldbuffer)
-      grAuxBufferExt(auxbuffer);
-   oldbuffer = auxbuffer;
-#endif
-}
 
 FX_ENTRY void FX_CALL
 grTexDetailControl(

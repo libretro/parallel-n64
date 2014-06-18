@@ -747,12 +747,8 @@ grViewport( FxI32 x, FxI32 y, FxI32 width, FxI32 height );
 */
 FX_ENTRY FxU32 FX_CALL 
 grTexCalcMemRequired(
-                     GrLOD_t lodmin, GrLOD_t lodmax,
+                    GrLOD_t lodmax,
                      GrAspectRatio_t aspect, GrTextureFormat_t fmt);
-
-FX_ENTRY FxU32 FX_CALL 
-grTexTextureMemRequired( FxU32     evenOdd,
-                                 GrTexInfo *info   );
 
 FX_ENTRY FxU32 FX_CALL 
 grTexMaxAddress( GrChipID_t tmu );

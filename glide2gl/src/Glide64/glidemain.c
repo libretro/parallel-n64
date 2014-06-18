@@ -2157,7 +2157,7 @@ void guLoadTextures(void)
    {
       grTextureBufferExt(  GR_TMU0, 0, GR_LOD_LOG2_1024, GR_LOD_LOG2_1024,
             GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
-      tbuf_size = grTexCalcMemRequired(GR_LOD_LOG2_1024, GR_LOD_LOG2_1024,
+      tbuf_size = grTexCalcMemRequired(GR_LOD_LOG2_1024,
             GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
       grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
       grBufferClear (0, 0, 0xFFFF);
@@ -2167,7 +2167,7 @@ void guLoadTextures(void)
    {
       grTextureBufferExt(  GR_TMU0, 0, GR_LOD_LOG2_2048, GR_LOD_LOG2_2048,
             GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
-      tbuf_size = grTexCalcMemRequired(GR_LOD_LOG2_2048, GR_LOD_LOG2_2048,
+      tbuf_size = grTexCalcMemRequired(GR_LOD_LOG2_2048,
             GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
       grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
       grBufferClear (0, 0, 0xFFFF);
