@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define NO_TRANSLATE
-#include "SDL_opengles2.h"
+#define NO_TRANSLATE 1
+
+#include "glsym/glsym.h"
+#include "opengl_state_machine.h"
 
 #ifdef HAVE_OPENGLES2
 #define glClearDepth glClearDepthf
@@ -20,6 +22,104 @@ static const int CapTranslate[SGL_CAP_MAX] =
 {
     GL_TEXTURE_2D, GL_DEPTH_TEST, GL_BLEND, GL_POLYGON_OFFSET_FILL, GL_CULL_FACE, GL_SCISSOR_TEST
 };
+
+void sglGenerateMipmap(GLenum target)
+{
+   /* TODO - buffer target */
+   
+   glGenerateMipmap(target);
+}
+
+/* TODO */
+void sglUniform1f(GLint location, GLfloat v0)
+{
+   glUniform1f(location, v0);
+}
+
+void sglUniform1i(GLint location, GLint v0)
+{
+   glUniform1i(location, v0);
+}
+
+void sglUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3)
+{
+   glUniform4f(location, v0, v1, v2, v3);
+}
+
+void sglUniform4fv(GLint location, GLsizei count, const GLfloat *value)
+{
+   glUniform4fv(location, count, value);
+}
+
+void sglDeleteShader(GLuint shader)
+{
+   glDeleteShader(shader);
+}
+
+void sglDeleteProgram(GLuint program)
+{
+   glDeleteProgram(program);
+}
+
+GLuint sglCreateShader(GLenum shaderType)
+{
+   return glCreateShader(shaderType);
+}
+
+GLuint sglCreateProgram(void)
+{
+   return glCreateProgram();
+}
+
+void sglCompileShader(GLuint shader)
+{
+   glCompileShader(shader);
+}
+
+void sglLinkProgram(GLuint program)
+{
+   glLinkProgram(program);
+}
+
+void sglAttachShader(GLuint program, GLuint shader)
+{
+   glAttachShader(program, shader);
+}
+
+void sglGetShaderiv(GLuint shader, GLenum pname, GLint *params)
+{
+   glGetShaderiv(shader, pname, params);
+}
+
+void sglGetProgramiv(GLuint shader, GLenum pname, GLint *params)
+{
+   glGetProgramiv(shader, pname, params);
+}
+
+void sglShaderSource(GLuint shader, GLsizei count, const GLchar **string, const GLint *length)
+{
+   return glShaderSource(shader, count, string, length);
+}
+
+void sglBindAttribLocation(GLuint program, GLuint index, const GLchar *name)
+{
+   glBindAttribLocation(program, index, name);
+}
+
+void sglGetShaderInfoLog(GLuint shader, GLsizei maxLength, GLsizei *length, GLchar *infoLog)
+{
+   glGetShaderInfoLog(shader, maxLength, length, infoLog);
+}
+
+void sglGetProgramInfoLog(GLuint shader, GLsizei maxLength, GLsizei *length, GLchar *infoLog)
+{
+   glGetProgramInfoLog(shader, maxLength, length, infoLog);
+}
+
+GLint sglGetUniformLocation(GLuint program, const GLchar *name)
+{
+   return glGetUniformLocation(program, name);
+}
 
 void sglEnable(GLenum cap)
 {
@@ -167,7 +267,6 @@ void sglColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alph
    ColorMask_alpha = alpha;
 }
 
-//CULL FACE
 static GLenum CullFace_mode = GL_BACK;
 
 void sglCullFace(GLenum mode)
@@ -177,7 +276,6 @@ void sglCullFace(GLenum mode)
    CullFace_mode = mode;
 }
 
-//DEPTH FUNC
 static GLenum DepthFunc_func = GL_LESS;
 void sglDepthFunc(GLenum func)
 {
@@ -186,7 +284,6 @@ void sglDepthFunc(GLenum func)
   DepthFunc_func = func;
 }
 
-//DEPTH MASK
 static GLboolean DepthMask_flag = GL_TRUE;
 void sglDepthMask(GLboolean flag)
 {
@@ -195,7 +292,6 @@ void sglDepthMask(GLboolean flag)
   DepthMask_flag = flag;
 }
 
-//DEPTH RANGE
 static GLclampd DepthRange_zNear = 0.0, DepthRange_zFar = 1.0;
 
 void sglDepthRange(GLclampd zNear, GLclampd zFar)
@@ -372,7 +468,6 @@ void sglEnter(void)
     }
 
     glActiveTexture(GL_TEXTURE0 + ActiveTexture_texture);
-
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 

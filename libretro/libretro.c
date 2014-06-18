@@ -298,9 +298,7 @@ static void core_gl_context_reset(void)
 	extern int InitGfx ();
 	extern void gles2n64_reset();
 
-   glsym_init_procs(render_iface.get_proc_address);
-
-  
+   rglgen_resolve_symbols(render_iface.get_proc_address);
 
    if (gfx_plugin == GFX_GLIDE64 && emu_thread_has_run)
       InitGfx();

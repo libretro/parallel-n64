@@ -1,5 +1,9 @@
-#ifndef RGLGEN_HEADERS_H__
-#define RGLGEN_HEADERS_H__
+#ifndef RGLGEN_H__
+#define RGLGEN_H__
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #ifdef HAVE_EGL
 #include <EGL/egl.h>
@@ -14,6 +18,7 @@
 #include <OpenGL/glext.h>
 #elif defined(HAVE_PSGL)
 #include <PSGL/psgl.h>
+#include <PSGL/psglu.h>
 #include <GLES/glext.h>
 #elif defined(HAVE_OPENGL_MODERN)
 #include <GL3/gl3.h>
@@ -36,4 +41,21 @@
 #include <GL/glext.h>
 #endif
 
+#ifdef __cplusplus
+extern "C" {
 #endif
+
+struct rglgen_sym_map;
+
+typedef void (*rglgen_func_t)(void);
+typedef rglgen_func_t (*rglgen_proc_address_t)(const char*);
+void rglgen_resolve_symbols(rglgen_proc_address_t proc);
+void rglgen_resolve_symbols_custom(rglgen_proc_address_t proc,
+      const struct rglgen_sym_map *map);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+

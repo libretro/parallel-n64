@@ -1,8 +1,15 @@
 #ifndef OPENGL_STATE_MACHINE_H__
 #define OPENGL_STATE_MACHINE_H__
 
+#include "glsym/rglgen.h"
+
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef HAVE_OPENGLES2
+typedef GLfloat GLdouble;
+typedef GLclampf GLclampd;
 #endif
 
 enum
@@ -25,6 +32,15 @@ void sglDisableVertexAttribArray(GLuint index);
 void sglVertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean normalize, GLsizei stride, const GLvoid* pointer);
 void sglVertexAttrib4f(GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
 void sglVertexAttrib4fv(GLuint index, GLfloat* v);
+void sglGenerateMipmap(GLenum target);
+
+void sglUniform1f(GLint location, GLfloat v0);
+void sglUniform1i(GLint location, GLint v0);
+void sglUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
+void sglUniform4fv(GLint location, GLsizei count, const GLfloat *value);
+int sglGetUniformLocation(GLuint program, const GLchar *name);
+void sglGetShaderInfoLog(GLuint shader, GLsizei maxLength, GLsizei *length, GLchar *infoLog);
+void sglGetProgramInfoLog(GLuint shader, GLsizei maxLength, GLsizei *length, GLchar *infoLog);
 
 void sglBindFramebuffer(GLenum target, GLuint framebuffer);
 void sglBlendFunc(GLenum sfactor, GLenum dfactor);
@@ -45,10 +61,23 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 void sglActiveTexture(GLenum texture);
 void sglBindTexture(GLenum target, GLuint texture);
 
+void sglDeleteShader(GLuint shader);
+void sglDeleteProgram(GLuint program);
+GLuint sglCreateShader(GLenum shaderType);
+GLuint sglCreateProgram(void);
+void sglShaderSource(GLuint shader, GLsizei count, const GLchar **string, const GLint *length);
+
+void sglCompileShader(GLuint shader);
+void sglGetShaderiv(GLuint shader, GLenum pname, GLint *params);
+void sglGetProgramiv(GLuint program, GLenum pname, GLint *params);
+void sglAttachShader(GLuint program, GLuint shader);
+
 // For gles2glide64
 void sglBindTextureGlide(GLenum target, GLuint texture);
 void sglDeleteTexturesGlide(GLuint n, const GLuint* ids);
 GLuint sglAddTextureMap(unsigned address);
+void sglLinkProgram(GLuint program);
+void sglBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
 
 #ifndef NO_TRANSLATE
 #define glEnable(T) sglEnable(S##T)
@@ -76,6 +105,25 @@ GLuint sglAddTextureMap(unsigned address);
 #define glViewport sglViewport
 #define glActiveTexture sglActiveTexture
 #define glBindTexture sglBindTexture
+#define glGenerateMipmap sglGenerateMipmap
+#define glUniform1i sglUniform1i
+#define glGetUniformLocation sglGetUniformLocation
+#define glUniform1f sglUniform1f
+#define glUniform4f sglUniform4f
+#define glUniform4fv sglUniform4fv
+#define glGetShaderInfoLog sglGetShaderInfoLog
+#define glGetProgramInfoLog sglGetProgramInfoLog
+#define glDeleteProgram sglDeleteProgram
+#define glDeleteShader sglDeleteShader
+#define glCreateShader sglCreateShader
+#define glCreateProgram sglCreateProgram
+#define glShaderSource sglShaderSource
+#define glCompileShader sglCompileShader
+#define glGetShaderiv sglGetShaderiv
+#define glGetProgramiv sglGetProgramiv
+#define glAttachShader sglAttachShader
+#define glLinkProgram sglLinkProgram
+#define glBindAttribLocation sglBindAttribLocation
 #endif
 
 void sglEnter(void);

@@ -26,14 +26,7 @@
 #ifndef _SDL_OPENGLES2_LIBRETRO_H
 #define _SDL_OPENGLES2_LIBRETRO_H
 
-#include "rglgen_headers.h"
-
-#ifdef HAVE_OPENGLES2
-typedef GLfloat GLdouble;
-typedef GLclampf GLclampd;
-#endif
-
 #include "opengl_state_machine.h"
-#include "glsym.h"
+#include "glsym/rglgen.h"
 
 #endif

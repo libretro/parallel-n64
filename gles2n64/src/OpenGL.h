@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include "boolean.h"
 #include <SDL_opengles2.h>
 #include "gSP.h"
 

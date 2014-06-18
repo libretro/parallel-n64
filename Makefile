@@ -305,6 +305,15 @@ VIDEODIR_ANGRYLION = angrylionrdp
 CFILES += $(wildcard $(VIDEODIR_ANGRYLION)/*.c)
 CXXFILES += $(wildcard $(VIDEODIR_ANGRYLION)/*.cpp)
 
+ifeq ($(GLES), 1)
+CPPFLAGS += -DHAVE_OPENGLES2 -DDISABLE_3POINT
+CFILES += libretro/glsym/glsym_es2.c
+else
+CPPFLAGS += -DHAVE_OPENGL
+CFILES += libretro/glsym/glsym_gl.c
+endif
+
+CFILES += libretro/glsym/rglgen.c
 
 ### Finalize ###
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
@@ -312,11 +321,6 @@ CPPFLAGS   += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -I$(COREDIR)/sr
 CPPFLAGS   += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE $(fpic)
 LDFLAGS    += -lm $(fpic)
 
-ifeq ($(GLES), 1)
-CPPFLAGS += -DHAVE_OPENGLES2 -DDISABLE_3POINT
-else
-CPPFLAGS += -DHAVE_OPENGL
-endif
 
 ifeq ($(DEBUG), 1)
    CPPFLAGS += -O0 -g
