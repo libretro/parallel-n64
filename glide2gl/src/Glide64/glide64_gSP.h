@@ -1210,12 +1210,3 @@ static void gSPSetOtherMode(int32_t cmd, int32_t sft, int32_t len, uint32_t data
          break;
    }
 }
-
-static INLINE void gSPInterpolateVertex(VERTEX *dest, float percent, VERTEX *first, VERTEX *second)
-{
-   dest->r = first->r + percent * (second->r - first->r);
-   dest->g = first->g + percent * (second->g - first->g);
-   dest->b = first->b + percent * (second->b - first->b);
-   dest->a = first->a + percent * (second->a - first->a);
-   dest->f = first->f + percent * (second->f - first->f);
-}
