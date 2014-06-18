@@ -855,16 +855,18 @@ static void uc0_texture(uint32_t w0, uint32_t w1)
 static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
 {
    int shift, len, i;
-   uint32_t mask, unk;
-   //LRDP("uc0:setothermode_h: ");
+   uint32_t mask;
 
-   shift = (w0 >> 8) & 0xFF;
-   len = w0 & 0xFF;
-
+   LRDP("uc0:setothermode_h: ");
    if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
    {
       len = (w0 & 0xFF) + 1;
       shift = 32 - ((w0 >> 8) & 0xFF) - len;
+   }
+   else
+   {
+      shift = (w0 >> 8) & 0xFF;
+      len = w0 & 0xFF;
    }
 
    mask = 0;
@@ -877,54 +879,53 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
    rdp.othermode_h &= ~mask;
    rdp.othermode_h |= rdp.cmd1;
 
-   w1 = rdp.cmd1;
-
    if (mask & 0x00000030) // alpha dither mode
+   {
       rdp.alpha_dither_mode = (rdp.othermode_h >> 4) & 0x3;
+      FRDP ("alpha dither mode: %s\n", str_dither[rdp.alpha_dither_mode]);
+   }
 
-#if 0
    if (mask & 0x000000C0) // rgb dither mode
    {
       uint32_t dither_mode = (rdp.othermode_h >> 6) & 0x3;
-      //FRDP ("rgb dither mode: %s\n", str_dither[dither_mode]);
+      FRDP ("rgb dither mode: %s\n", str_dither[dither_mode]);
    }
-#endif
 
    if (mask & 0x00003000) // filter mode
    {
       rdp.filter_mode = (int)((rdp.othermode_h & 0x00003000) >> 12);
       rdp.update |= UPDATE_TEXTURE;
-      //FRDP ("filter mode: %s\n", str_filter[rdp.filter_mode]);
+      FRDP ("filter mode: %s\n", str_filter[rdp.filter_mode]);
    }
 
    if (mask & 0x0000C000) // tlut mode
    {
       rdp.tlut_mode = (uint8_t)((rdp.othermode_h & 0x0000C000) >> 14);
-      //FRDP ("tlut mode: %s\n", str_tlut[rdp.tlut_mode]);
+      FRDP ("tlut mode: %s\n", str_tlut[rdp.tlut_mode]);
    }
 
    if (mask & 0x00300000) // cycle type
    {
       rdp.cycle_mode = (uint8_t)((rdp.othermode_h & 0x00300000) >> 20);
       rdp.update |= UPDATE_ZBUF_ENABLED;
-      //FRDP ("cycletype: %d\n", rdp.cycle_mode);
+      FRDP ("cycletype: %d\n", rdp.cycle_mode);
    }
 
    if (mask & 0x00010000) // LOD enable
    {
       rdp.LOD_en = (rdp.othermode_h & 0x00010000) ? true : false;
-      //FRDP ("LOD_en: %d\n", rdp.LOD_en);
+      FRDP ("LOD_en: %d\n", rdp.LOD_en);
    }
 
    if (mask & 0x00080000) // Persp enable
    {
       if (rdp.persp_supported)
          rdp.Persp_en = (rdp.othermode_h & 0x00080000) ? true : false;
-      //FRDP ("Persp_en: %d\n", rdp.Persp_en);
+      FRDP ("Persp_en: %d\n", rdp.Persp_en);
    }
 
-   unk = mask & 0x0FFC60F0F;
 #if 0
+   uint32_t unk = mask & 0x0FFC60F0F;
    if (unk) // unknown portions, LARGE
    {
       FRDP ("UNKNOWN PORTIONS: shift: %d, len: %d, unknowns: %08lx\n", shift, len, unk);
@@ -934,19 +935,21 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
 
 static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
 {
-   uint32_t mask;
    int shift, len, i;
-   //LRDP("uc0:setothermode_l ");
-   
-   len = w0 & 0xFF;
-   shift = (w0 >> 8) & 0xFF;
+   uint32_t mask;
+
+   LRDP("uc0:setothermode_l ");
 
    if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
    {
-      len += 1;
+      len = (w0 & 0xFF) + 1;
       shift = 32 - ((w0 >> 8) & 0xFF) - len;
-      if (shift < 0)
-         shift = 0;
+      if (shift < 0) shift = 0;
+   }
+   else
+   {
+      len = w0 & 0xFF;
+      shift = (w0 >> 8) & 0xFF;
    }
 
    mask = 0;
@@ -958,21 +961,20 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
    rdp.cmd1 &= mask;
    rdp.othermode_l &= ~mask;
    rdp.othermode_l |= rdp.cmd1;
-   w1 = rdp.cmd1;
 
    if (mask & 0x00000003) // alpha compare
    {
       rdp.acmp = rdp.othermode_l & 0x00000003;
+      FRDP ("alpha compare %s\n", ACmp[rdp.acmp]);
       rdp.update |= UPDATE_ALPHA_COMPARE;
-      //FRDP ("alpha compare %s\n", ACmp[rdp.acmp]);
    }
 
    if (mask & 0x00000004) // z-src selection
    {
       rdp.zsrc = (rdp.othermode_l & 0x00000004) >> 2;
+      FRDP ("z-src sel: %s\n", str_zs[rdp.zsrc]);
+      FRDP ("z-src sel: %08lx\n", rdp.zsrc);
       rdp.update |= UPDATE_ZBUF_ENABLED;
-      //FRDP ("z-src sel: %s\n", str_zs[rdp.zsrc]);
-      //FRDP ("z-src sel: %08lx\n", rdp.zsrc);
    }
 
    if (mask & 0xFFFFFFF8) // rendermode / blender bits
@@ -982,7 +984,7 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
       rdp.rm = rdp.othermode_l;
       if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
          rdp.othermode_l |= /*0x00000020 |*/ 0x00000010;
-      //FRDP ("rendermode: %08lx\n", rdp.othermode_l); // just output whole othermode_l
+      FRDP ("rendermode: %08lx\n", rdp.othermode_l); // just output whole othermode_l
    }
 
    // there is not one setothermode_l that's not handled :)

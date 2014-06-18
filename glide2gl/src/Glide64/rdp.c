@@ -1708,30 +1708,33 @@ static void rdp_setprimdepth(uint32_t w0, uint32_t w1)
 }
 
 #define F3DEX2_SETOTHERMODE(cmd,sft,len,data) { \
-  rdp.cmd0 = (cmd<<24) | ((32-(sft)-(len))<<8) | (((len)-1)); \
-  rdp.cmd1 = data; \
-  gfx_instruction[settings.ucode][cmd](rdp.cmd0, rdp.cmd1); \
+   rdp.cmd0 = (cmd<<24) | ((32-(sft)-(len))<<8) | (((len)-1)); \
+   rdp.cmd1 = data; \
+   gfx_instruction[settings.ucode][cmd](rdp.cmd0, rdp.cmd1); \
 }
 #define SETOTHERMODE(cmd,sft,len,data) { \
-  rdp.cmd0 = (cmd<<24) | ((sft)<<8) | (len); \
-  rdp.cmd1 = data; \
-  gfx_instruction[settings.ucode][cmd](rdp.cmd0, rdp.cmd1); \
+   rdp.cmd0 = (cmd<<24) | ((sft)<<8) | (len); \
+   rdp.cmd1 = data; \
+   gfx_instruction[settings.ucode][cmd](rdp.cmd0, rdp.cmd1); \
 }
 
 static void rdp_setothermode(uint32_t w0, uint32_t w1)
 {
-  SETOTHERMODE(0xB9, 0, 32, w1);            // SETOTHERMODE_L
-  SETOTHERMODE(0xBA, 0, 32, w0 & 0x00FFFFFF);       // SETOTHERMODE_H
 
-  //LRDP("rdp_setothermode\n");
-}
+   LRDP("rdp_setothermode\n");
 
-static void rdp_uc2_setothermode(uint32_t w0, uint32_t w1)
-{
-   F3DEX2_SETOTHERMODE(0xE2, 0, 32, w1);         // SETOTHERMODE_L
-   F3DEX2_SETOTHERMODE(0xE3, 0, 32, w0 & 0x00FFFFFF);    // SETOTHERMODE_H
-
-  //LRDP("rdp_uc2_setothermode\n");
+   if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
+   {
+      int cmd0 = rdp.cmd0;
+      F3DEX2_SETOTHERMODE(0xE2, 0, 32, rdp.cmd1); // SETOTHERMODE_L
+      F3DEX2_SETOTHERMODE(0xE3, 0, 32, cmd0 & 0x00FFFFFF); // SETOTHERMODE_H
+   }
+   else
+   {
+      int cmd0 = rdp.cmd0;
+      SETOTHERMODE(0xB9, 0, 32, rdp.cmd1); // SETOTHERMODE_L
+      SETOTHERMODE(0xBA, 0, 32, cmd0 & 0x00FFFFFF); // SETOTHERMODE_H
+   }
 }
 
 void load_palette (uint32_t addr, uint16_t start, uint16_t count)

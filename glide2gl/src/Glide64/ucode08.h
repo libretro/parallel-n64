@@ -427,30 +427,3 @@ static void uc8_tri4(uint32_t w0, uint32_t w1) //by Gugaman Apr 19 2002
          0                      /* flag3 */
          );
 }
-
-static void uc8_setothermode_l(uint32_t w0, uint32_t w1)
-{
-   int32_t sft, len;
-   len = (w0 & 0xFF) + 1;
-   sft = 32 - ((w0 >> 8) & 0xFF) - len;
-   if (sft < 0)
-      sft = 0;
-
-   gSPSetOtherMode(
-         G_SETOTHERMODE_L, /* cmd */
-         sft,              /* sft */
-         len,              /* len */
-         0                 /* data - stub */
-         );
-}
-
-static void uc8_setothermode_h(uint32_t w0, uint32_t w1)
-{
-   int32_t len = (w0 & 0xFF) + 1;
-   gSPSetOtherMode(
-         G_SETOTHERMODE_H,              /* cmd */
-         32 - ((w0 >> 8) & 0xFF) - len, /* sft */
-         len,                           /* len */
-         0                              /* data - stub */
-         );
-}

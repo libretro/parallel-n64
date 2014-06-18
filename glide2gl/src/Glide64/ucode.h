@@ -70,7 +70,6 @@ static void rdp_setconvert(uint32_t w0, uint32_t w1);
 static void rdp_setscissor(uint32_t w0, uint32_t w1);
 static void rdp_setprimdepth(uint32_t w0, uint32_t w1);
 static void rdp_setothermode(uint32_t w0, uint32_t w1);
-static void rdp_uc2_setothermode(uint32_t w0, uint32_t w1);
 static void rdp_loadtlut(uint32_t w0, uint32_t w1);
 static void rdp_settilesize(uint32_t w0, uint32_t w1);
 static void rdp_loadblock(uint32_t w0, uint32_t w1);
@@ -211,8 +210,6 @@ static void uc8_vertex(uint32_t w0, uint32_t w1);
 static void uc8_moveword(uint32_t w0, uint32_t w1);
 static void uc8_movemem(uint32_t w0, uint32_t w1);
 static void uc8_tri4(uint32_t w0, uint32_t w1);
-static void uc8_setothermode_l(uint32_t w0, uint32_t w1);
-static void uc8_setothermode_h(uint32_t w0, uint32_t w1);
 
 //ucode09
 static void uc9_rpdcmd(uint32_t w0, uint32_t w1);
@@ -453,7 +450,7 @@ static rdp_instr gfx_instruction[10][256] =
       spnoop,                 uc1_rdphalf_1,          uc0_setothermode_l,     uc0_setothermode_h,
       rdp_texrect,            rdp_texrect,            rdp_loadsync,           rdp_pipesync,
       rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_uc2_setothermode,
+      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_setothermode,
       rdp_loadtlut,           uc2_rdphalf_2,          rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,
       rdp_setfogcolor,        rdp_setblendcolor,      rdp_setprimcolor,       rdp_setenvcolor,
@@ -899,10 +896,10 @@ static rdp_instr gfx_instruction[10][256] =
       uc2_special2,                   uc2_dlist_cnt,                  uc2_dma_io,                             uc0_texture,
       uc2_pop_matrix,                 uc2_geom_mode,                  uc2_matrix,                             uc8_moveword,
       uc8_movemem,                    uc2_load_ucode,                 uc0_displaylist,                uc0_enddl,
-      spnoop,                                 rdphalf_1,                      uc8_setothermode_l,             uc8_setothermode_h,
+      spnoop,                                 rdphalf_1,                      uc0_setothermode_l,             uc0_setothermode_h,
       rdp_texrect,            rdp_texrect,            rdp_loadsync,           rdp_pipesync,
       rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_uc2_setothermode,
+      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_setothermode,
       rdp_loadtlut,           uc2_rdphalf_2,          rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,
       rdp_setfogcolor,        rdp_setblendcolor,      rdp_setprimcolor,       rdp_setenvcolor,

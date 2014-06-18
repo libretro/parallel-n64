@@ -24,20 +24,6 @@ extern uint32_t swapped_addr;
 }
 
 /*
-* Sets which depth source value to use for comparisons with
-* the Z-buffer.
-*
-* source - depth source value.
-* - G_ZS_PIXEL (Use the Z-value and 'deltaZ' value repeated for each pixel)
-* - G_ZS_PRIM (Use the primitive depth register's Z value and 'delta Z' value)
-*/
-#define gDPSetDepthSource(source) \
-{ \
-   rdp.zsrc = source; \
-   rdp.update |= UPDATE_ZBUF_ENABLED; \
-}
-
-/*
 * Sets the rendering mode of the blender (BL). The BL can
 * render a variety of Z-buffered, anti-aliased primitives.
 *
