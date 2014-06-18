@@ -11,7 +11,6 @@ extern int stop;
 //forward declarations
 extern void vbo_draw(void);
 
-//glEnable, glDisable
 static int CapState[SGL_CAP_MAX];
 static const int CapTranslate[SGL_CAP_MAX] = 
 {
@@ -20,12 +19,9 @@ static const int CapTranslate[SGL_CAP_MAX] =
 
 void sglGenerateMipmap(GLenum target)
 {
-   /* TODO - buffer target */
-   
    glGenerateMipmap(target);
 }
 
-/* TODO */
 void sglUniform1f(GLint location, GLfloat v0)
 {
    glUniform1f(location, v0);
@@ -137,7 +133,6 @@ GLboolean sglIsEnabled(GLenum cap)
     return CapState[cap] ? GL_TRUE : GL_FALSE;
 }
 
-//VERTEX ATTRIB ARRAY
 #define MAX_ATTRIB 8
 #define ATTRIB_INITER(X) { X, X, X, X, X, X, X, X }
 
@@ -195,7 +190,6 @@ void sglVertexAttrib4fv(GLuint name, GLfloat* v)
 }
 
 
-// BIND FRAME BUFFER
 extern GLuint retro_get_fbo_id();
 static GLuint Framebuffer_framebuffer = 0;
 void sglBindFramebuffer(GLenum target, GLuint framebuffer)
@@ -206,7 +200,6 @@ void sglBindFramebuffer(GLenum target, GLuint framebuffer)
       glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
 }
 
-//BLEND FUNC
 static GLenum BlendFunc_srcRGB = GL_ONE,  BlendFunc_srcAlpha = GL_ONE;
 static GLenum BlendFunc_dstRGB = GL_ZERO, BlendFunc_dstAlpha = GL_ZERO;
 void sglBlendFunc(GLenum sfactor, GLenum dfactor)
@@ -297,7 +290,6 @@ void sglDepthRange(GLclampd zNear, GLclampd zFar)
    DepthRange_zFar = zFar;
 }
 
-//FRONTFACE
 static GLenum FrontFace_mode = GL_CCW;
 void sglFrontFace(GLenum mode)
 {
@@ -306,7 +298,6 @@ void sglFrontFace(GLenum mode)
    FrontFace_mode = mode;
 }
 
-//POLYGON OFFSET
 static GLfloat PolygonOffset_factor = 0.0f, PolygonOffset_units = 0.0f;
 void sglPolygonOffset(GLfloat factor, GLfloat units)
 {
@@ -316,7 +307,6 @@ void sglPolygonOffset(GLfloat factor, GLfloat units)
   PolygonOffset_units = units;
 }
 
-//SCISSOR
 static GLint Scissor_x = 0, Scissor_y = 0;
 static GLsizei Scissor_width = 640, Scissor_height = 480;
 void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
@@ -329,7 +319,6 @@ void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
   Scissor_height = height;
 }
 
-//USE PROGRAM
 static GLuint UseProgram_program = 0;
 void sglUseProgram(GLuint program)
 {
@@ -338,7 +327,6 @@ void sglUseProgram(GLuint program)
    UseProgram_program = program;
 }
 
-//VIEWPORT
 static GLint Viewport_x = 0, Viewport_y = 0;
 static GLsizei Viewport_width = 640, Viewport_height = 480;
 void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
@@ -351,7 +339,6 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
    Viewport_height = height;
 }
 
-//ACTIVE TEXTURE
 #define MAX_TEXTURE 4
 static GLenum ActiveTexture_texture = 0;
 void sglActiveTexture(GLenum texture)
