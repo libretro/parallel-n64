@@ -44,8 +44,8 @@ extern unsigned screen_height;
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE
 #endif
 
-int tex0_width, tex0_height, tex1_width, tex1_height;
-int tex0_exactWidth,tex0_exactHeight,tex1_exactWidth,tex1_exactHeight;
+int tex_width[2], tex_height[2];
+int tex_exactWidth[2],tex_exactHeight[2];
 int three_point_filter0,three_point_filter1;
 float lambda;
 
@@ -128,7 +128,12 @@ addtex_log:
 
 void init_textures(void)
 {
-  tex0_width = tex0_height = tex1_width = tex1_height = 2;
+   int i = 0;
+   for (i = 0; i < 2; i++)
+   {
+      tex_width[i] = 2;
+      tex_height[i] = 2;
+   }
 
   list = NULL;
   nbTex = 0;
@@ -198,53 +203,29 @@ grTexSource( GrChipID_t tmu,
             GrTexInfo  *info )
 {
    LOG("grTexSource(%d,%d,%d)\r\n", tmu, startAddress, evenOdd);
+   unsigned index = (tmu == GR_TMU1) ? 0 : 1;
 
-   if (tmu == GR_TMU1)
+   glActiveTexture((tmu == GR_TMU1) ? GL_TEXTURE0 : GL_TEXTURE1);
+
+   if (info->aspectRatioLog2 < 0)
    {
-      glActiveTexture(GL_TEXTURE0);
-
-      if (info->aspectRatioLog2 < 0)
-      {
-         tex0_height = 256;
-         tex0_width = tex0_height >> -info->aspectRatioLog2;
-      }
-      else
-      {
-         tex0_width = 256;
-         tex0_height = tex0_width >> info->aspectRatioLog2;
-      }
-
-      glBindTexture(GL_TEXTURE_2D, startAddress+1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[0]);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[0]);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[0]);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[0]);
-      tex0_exactWidth = info->width;
-      tex0_exactHeight = info->height;
+      tex_height[index] = 256;
+      tex_width[index] = tex_height[index] >> -info->aspectRatioLog2;
    }
    else
    {
-      glActiveTexture(GL_TEXTURE1);
-
-      if (info->aspectRatioLog2 < 0)
-      {
-         tex1_height = 256;
-         tex1_width = tex1_height >> -info->aspectRatioLog2;
-      }
-      else
-      {
-         tex1_width = 256;
-         tex1_height = tex1_width >> info->aspectRatioLog2;
-      }
-
-      glBindTexture(GL_TEXTURE_2D, startAddress+1);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[1]);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[1]);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[1]);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[1]);
-      tex1_exactWidth = info->width;
-      tex1_exactHeight = info->height;
+      tex_width[index] = 256;
+      tex_height[index] = tex_width[index] >> info->aspectRatioLog2;
    }
+
+   glBindTexture(GL_TEXTURE_2D, startAddress+1);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[index]);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[index]);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[index]);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[index]);
+   tex_exactWidth[index] = info->width;
+   tex_exactHeight[index] = info->height;
+
    if(!CheckTextureBufferFormat(tmu, startAddress+1, info))
    {
       if(tmu == 0 && blackandwhite1 != 0)

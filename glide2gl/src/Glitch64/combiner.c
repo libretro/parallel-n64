@@ -458,8 +458,8 @@ void update_uniforms(shader_program_key prog)
    GL_CHECK(glUniform1i(prog.texture1_location, 1));
 
    GL_CHECK(glUniform3f(prog.vertexOffset_location,widtho,heighto,inverted_culling ? -1.0f : 1.0f));
-   GL_CHECK(glUniform4f(prog.textureSizes_location,tex0_width,tex0_height,tex1_width,tex1_height));
-   GL_CHECK(glUniform4f(prog.exactSizes_location,tex0_exactWidth,tex0_exactHeight,tex1_exactWidth,tex1_exactHeight));
+   GL_CHECK(glUniform4f(prog.textureSizes_location,tex_width[0], tex_height[0] , tex_width[1], tex_height[1]));
+   GL_CHECK(glUniform4f(prog.exactSizes_location,tex_exactWidth[0], tex_exactHeight[0], tex_exactWidth[1], tex_exactHeight[1]));
 
    GL_CHECK(glUniform3f(prog.fogModeEndScale_location,
          fog_enabled != 2 ? 0.0f : 1.0f,
