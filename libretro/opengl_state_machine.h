@@ -79,7 +79,29 @@ GLuint sglAddTextureMap(unsigned address);
 void sglLinkProgram(GLuint program);
 void sglBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
 
-#ifndef NO_TRANSLATE
+#ifdef NO_TRANSLATE
+
+#ifdef HAVE_OPENGLES2
+#ifndef glClearDepth
+#define glClearDepth glClearDepthf
+#endif
+
+#ifndef glDepthRange
+#define glDepthRange glDepthRangef
+#endif
+
+#else
+#ifndef glClearDepthf
+#define glClearDepthf glClearDepth
+#endif
+
+#ifndef glDepthRangef
+#define glDepthRangef glDepthRange
+#endif
+
+#endif
+
+#else
 #define glEnable(T) sglEnable(S##T)
 #define glDisable(T) sglDisable(S##T)
 #define glIsEnabled(T) sglIsEnabled(S##T)
@@ -98,6 +120,7 @@ void sglBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
 #define glDepthFunc sglDepthFunc
 #define glDepthMask sglDepthMask
 #define glDepthRange sglDepthRange
+#define glDepthRangef sglDepthRange
 #define glFrontFace sglFrontFace
 #define glPolygonOffset sglPolygonOffset
 #define glScissor sglScissor

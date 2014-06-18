@@ -23,11 +23,6 @@
 #include "RSP.h"
 #include "Config.h"
 
-#if defined(__LIBRETRO__) && !defined(HAVE_OPENGLES2) // Desktop GL fix
-#define glDepthRangef glDepthRange
-#define glClearDepthf glClearDepth
-#endif
-
 void OGL_UpdateDepthUpdate(void);
 
 GLInfo OGL;

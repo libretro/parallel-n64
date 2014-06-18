@@ -6,11 +6,6 @@
 #include "glsym/glsym.h"
 #include "opengl_state_machine.h"
 
-#ifdef HAVE_OPENGLES2
-#define glClearDepth glClearDepthf
-#define glDepthRange glDepthRangef
-#endif
-
 extern int stop;
 
 //forward declarations

@@ -30,11 +30,6 @@
 #include <xtl.h>
 #endif
 
-#if defined(__LIBRETRO__) && !defined(HAVE_OPENGLES2)
-#define glClearDepthf glClearDepth
-#define glDepthRangef glDepthRange
-#endif
-
 #include <SDL_opengles2.h>
 
 #if !defined(__LIBRETRO__) || defined(HAVE_OPENGLES2) // Desktop GL fix
