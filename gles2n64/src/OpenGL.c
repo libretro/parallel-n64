@@ -75,7 +75,7 @@ void OGL_InitStates(void)
    glEnable( GL_SCISSOR_TEST );
 
 #ifdef HAVE_OPENGLES2
-   glDepthRangef(0.0f, 1.0f);
+   glDepthRange(0.0f, 1.0f);
    glPolygonOffset(0.2f, 0.2f);
 #else
    glPolygonOffset(-3.0f, -3.0f);
@@ -101,8 +101,7 @@ bool OGL_Start(void)
    float depth = gDP.fillColor.z ;
    glDisable( GL_SCISSOR_TEST );
    glDepthMask( GL_TRUE );  // fixes side-bar graphics glitches
-   //    glClearDepthf( depth );  // broken on Qualcomm Adreno
-   glClearDepthf( 1.0f );  // fixes missing graphics on Qualcomm Adreno
+   glClearDepth( 1.0f );  // fixes missing graphics on Qualcomm Adreno
    glClearColor( 0, 0, 0, 1 );
    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
    glFinish();
@@ -829,8 +828,7 @@ void OGL_ClearDepthBuffer(void)
    /////// paulscode, graphics bug-fixes
    glDisable( GL_SCISSOR_TEST );
    glDepthMask( GL_TRUE );  // fixes side-bar graphics glitches
-   //    glClearDepthf( depth );  // broken on Qualcomm Adreno
-   glClearDepthf( 1.0f );  // fixes missing graphics on Qualcomm Adreno
+   glClearDepth( 1.0f );  // fixes missing graphics on Qualcomm Adreno
    glClearColor( 0, 0, 0, 1 );
    glClear( GL_DEPTH_BUFFER_BIT );
    OGL_UpdateDepthUpdate();
@@ -890,8 +888,7 @@ void OGL_SwapBuffers(void)
       float depth = gDP.fillColor.z ;
       glDisable( GL_SCISSOR_TEST );
       glDepthMask( GL_TRUE );  // fixes side-bar graphics glitches
-      //    glClearDepthf( depth );  // broken on Qualcomm Adreno
-      glClearDepthf( 1.0f );  // fixes missing graphics on Qualcomm Adreno
+      glClearDepth( 1.0f );  // fixes missing graphics on Qualcomm Adreno
       glClearColor( 0, 0, 0, 1 );
       glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT );
       OGL_UpdateDepthUpdate();

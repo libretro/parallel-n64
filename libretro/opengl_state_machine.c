@@ -32,6 +32,12 @@ void sglUniform1i(GLint location, GLint v0)
    glUniform1i(location, v0);
 }
 
+void sglUniform2f(GLint location, GLfloat v0, GLfloat v1)
+{
+   glUniform2f(location, v0, v1);
+}
+
+
 void sglUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3)
 {
    glUniform4f(location, v0, v1, v2, v3);
@@ -236,7 +242,11 @@ static GLdouble ClearDepth_value = 1.0;
 void sglClearDepth(GLdouble depth)
 {
    vbo_draw();
+#ifdef HAVE_OPENGLES2
+   glClearDepthf(depth);
+#else
    glClearDepth(depth);
+#endif
    ClearDepth_value = depth;
 }
 
@@ -285,7 +295,11 @@ static GLclampd DepthRange_zNear = 0.0, DepthRange_zFar = 1.0;
 void sglDepthRange(GLclampd zNear, GLclampd zFar)
 {
    vbo_draw();
+#ifdef HAVE_OPENGLES2
+   glDepthRangef(zNear, zFar);
+#else
    glDepthRange(zNear, zFar);
+#endif
    DepthRange_zNear = zNear;
    DepthRange_zFar = zFar;
 }
@@ -422,12 +436,12 @@ void sglEnter(void)
 
     glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
     glClearColor(ClearColor_red, ClearColor_green, ClearColor_blue, ClearColor_alpha);
-    glClearDepth(ClearDepth_value);
+    sglClearDepth(ClearDepth_value);
     glColorMask(ColorMask_red, ColorMask_green, ColorMask_blue, ColorMask_alpha);
     glCullFace(CullFace_mode);
     glDepthFunc(DepthFunc_func);
     glDepthMask(DepthMask_flag);
-    glDepthRange(DepthRange_zNear, DepthRange_zFar);
+    sglDepthRange(DepthRange_zNear, DepthRange_zFar);
     glFrontFace(FrontFace_mode);
     glPolygonOffset(PolygonOffset_factor, PolygonOffset_units);
     glScissor(Scissor_x, Scissor_y, Scissor_width, Scissor_height);
@@ -464,7 +478,7 @@ void sglExit(void)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glCullFace(GL_BACK);
     glDepthMask(GL_TRUE);
-    glDepthRange(0, 1);
+    sglDepthRange(0, 1);
     glFrontFace(GL_CCW);
     glPolygonOffset(0, 0);
     glUseProgram(0);

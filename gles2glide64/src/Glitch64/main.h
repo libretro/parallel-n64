@@ -136,11 +136,6 @@ int getFullScreenHeight(void);
 #define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS 18283
 #endif
 
-#ifndef HAVE_OPENGLES2
-#define glClearDepthf glClearDepth
-#endif
-
-
 #define CHECK_FRAMEBUFFER_STATUS() \
 {\
  GLenum status; \

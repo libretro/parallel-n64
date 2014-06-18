@@ -845,7 +845,7 @@ grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth )
    vbo_draw();
    LOG("grBufferClear(%d,%d,%d)\r\n", color, alpha, depth);
    glClearColor(0, 0, 0, 0);
-   glClearDepthf(depth / 65535.0f);
+   glClearDepth(depth / 65535.0f);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
    // ZIGGY TODO check that color mask is on

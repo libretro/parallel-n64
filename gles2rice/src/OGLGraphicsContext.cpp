@@ -153,7 +153,7 @@ void COGLGraphicsContext::InitState(void)
 
     glEnable(GL_BLEND);
     OPENGL_CHECK_ERRORS;
-    glDepthRangef(-1.0f, 1.0f);
+    glDepthRange(-1.0f, 1.0f);
     OPENGL_CHECK_ERRORS;
 }
 
