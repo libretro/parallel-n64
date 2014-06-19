@@ -88,9 +88,6 @@ void set_lambda(void);
 int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info );
 void init_geometry(void);
 
-void vbo_draw(void);
-void vbo_disable(void);
-
 void init_combiner(void);
 void updateCombiner(int i);
 void updateCombinera(int i);

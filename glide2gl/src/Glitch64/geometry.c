@@ -48,74 +48,28 @@ static int fog_ext_en;
 int inverted_culling;
 int culling_mode;
 
-void *previous_pointers;
 
-#define VERTEX_BUFFER_SIZE 1500 //Max amount of vertices to buffer, this seems large enough.
-static VERTEX vertex_buffer[VERTEX_BUFFER_SIZE];
-static int vertex_buffer_count = 0;
-static GLenum vertex_draw_mode;
-static bool vertex_buffer_enabled = false;
-
-void vbo_init(void) { }
-
-void vbo_draw(void)
+static void vbo_draw(GLenum mode,GLint first,GLsizei count, VERTEX *v)
 {
-   if(!vertex_buffer_count)
-      return;
+   glEnableVertexAttribArray(POSITION_ATTR);
+   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, &v->x); //Position
 
-   glDrawArrays(vertex_draw_mode,0,vertex_buffer_count);
-   vertex_buffer_count = 0;
-}
+   glEnableVertexAttribArray(COLOUR_ATTR);
+   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, &v->b); //Colour
 
-//Buffer vertices instead of glDrawArrays(...)
-static void vbo_buffer(GLenum mode,GLint first,GLsizei count,void* pointers)
-{
-   if(!vertex_buffer_enabled && previous_pointers != pointers)
-   {
-      VERTEX *v = (VERTEX*)&vertex_buffer[0];
-      // enable vertex buffer if not already enabled
+   glEnableVertexAttribArray(TEXCOORD_0_ATTR);
+   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &v->coord[2]); //Tex0
 
-      vertex_buffer_enabled = true;
-      glEnableVertexAttribArray(POSITION_ATTR);
-      glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, &v->x); //Position
+   glEnableVertexAttribArray(TEXCOORD_1_ATTR);
+   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &v->coord[0]); //Tex1
 
-      glEnableVertexAttribArray(COLOUR_ATTR);
-      glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, &v->b); //Colour
+   glEnableVertexAttribArray(FOG_ATTR);
+   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, &v->f); //Fog
 
-      glEnableVertexAttribArray(TEXCOORD_0_ATTR);
-      glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &v->coord[2]); //Tex0
-
-      glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-      glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &v->coord[0]); //Tex1
-
-      glEnableVertexAttribArray(FOG_ATTR);
-      glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, &v->f); //Fog
-      
-      previous_pointers = pointers;
-   }
-
-   if((count != 3 && mode != GL_TRIANGLES) || vertex_buffer_count + count > VERTEX_BUFFER_SIZE)
-      vbo_draw();
-
-   memcpy(&vertex_buffer[vertex_buffer_count],pointers,count * VERTEX_SIZE);
-   vertex_buffer_count += count;
-
-   if(count == 3 || mode == GL_TRIANGLES)
-      vertex_draw_mode = GL_TRIANGLES;
-   else
-   {
-      vertex_draw_mode = mode;
-      vbo_draw(); //Triangle fans and strips can't be joined as easily, just draw them straight away.
-   }
+   glDrawArrays(mode,first,count);
 }
 
 #define ZCALC(z, q) ((z_en) ? ((z) / Z_MAX) / (q) : 1.0f)
-
-void vbo_disable(void)
-{
-   vbo_draw();
-   vertex_buffer_enabled = false;
-}
 
 static INLINE float ytex(int tmu, float y)
 {
@@ -132,8 +86,6 @@ void init_geometry(void)
 
    glDisable(GL_CULL_FACE);
    glDisable(GL_DEPTH_TEST);
-
-   vbo_init();
 }
 
 FX_ENTRY void FX_CALL
@@ -368,19 +320,17 @@ grDepthBiasLevel( FxI32 level )
 FX_ENTRY void FX_CALL
 grDrawTriangle( const void *a, const void *b, const void *c )
 {
+   VERTEX vertex_buffer[4]
    LOG("grDrawTriangle()\r\n\t");
 
    if(need_to_compile)
       compile_shader();
 
-   if(vertex_buffer_count + 3 > VERTEX_BUFFER_SIZE)
-      vbo_draw();
+   memcpy(&vertex_buffer[0],a,VERTEX_SIZE);
+   memcpy(&vertex_buffer[1],b,VERTEX_SIZE);
+   memcpy(&vertex_buffer[2],c,VERTEX_SIZE);
 
-   vertex_draw_mode = GL_TRIANGLES;
-   memcpy(&vertex_buffer[vertex_buffer_count],a,VERTEX_SIZE);
-   memcpy(&vertex_buffer[vertex_buffer_count+1],b,VERTEX_SIZE);
-   memcpy(&vertex_buffer[vertex_buffer_count+2],c,VERTEX_SIZE);
-   vertex_buffer_count += 3;
+   vbo_draw(GL_TRIANGLES,0,3,&vertex_buffer[0]);
 }
 
 FX_ENTRY void FX_CALL
@@ -392,7 +342,7 @@ grDrawVertexArray(FxU32 mode, FxU32 Count, void *pointers2)
    if(need_to_compile)
       compile_shader();
 
-   vbo_buffer(GL_TRIANGLE_FAN,0,Count,pointers[0]);
+   vbo_draw(GL_TRIANGLE_FAN,0,Count,pointers[0]);
 }
 
 FX_ENTRY void FX_CALL
@@ -406,6 +356,5 @@ grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers, FxU32 strid
    if(need_to_compile)
       compile_shader();
 
-   //only calls ever made are for GR_TRIANGLE_STRIP from Glide64 - so optimize for that
-   vbo_buffer(GL_TRIANGLE_STRIP,0,Count,pointers);
+   vbo_draw(GL_TRIANGLE_STRIP,0,Count,pointers);
 }

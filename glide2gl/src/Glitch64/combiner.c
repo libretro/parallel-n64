@@ -676,8 +676,6 @@ grConstantColorValue( GrColor_t value )
          DISPLAY_WARNING("grConstantColorValue: unknown color format : %x", lfb_color_fmt);
    }
 
-   vbo_draw();
-
    constant_color_location = glGetUniformLocation(program_object, "constant_color");
    glUniform4f(constant_color_location, texture_env_color[0], texture_env_color[1], 
          texture_env_color[2], texture_env_color[3]);
@@ -1665,7 +1663,6 @@ grChromakeyValue( GrColor_t value )
       default:
          DISPLAY_WARNING("grChromakeyValue: unknown color format : %x", lfb_color_fmt);
    }
-   vbo_draw();
    chroma_color_location = glGetUniformLocation(program_object, "chroma_color");
    glUniform4f(chroma_color_location, chroma_color[0], chroma_color[1],
          chroma_color[2], chroma_color[3]);
@@ -2732,7 +2729,6 @@ grConstantColorValueExt(GrChipID_t    tmu,
          DISPLAY_WARNING("grConstantColorValue: unknown color format : %x", lfb_color_fmt);
    }
 
-   vbo_draw();
    if(num_tex == 0)
    {
       ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
@@ -2766,8 +2762,6 @@ grConstantColorValueExtZero(GrChipID_t    tmu,
       ccolor0[2] = 0;
       ccolor0[3] = 0;
    }
-
-   vbo_draw();
 
    if (tmu == GR_TMU0)
    {

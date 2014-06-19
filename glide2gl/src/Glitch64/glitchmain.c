@@ -699,7 +699,6 @@ static void render_rectangle(int texture_number,
    data[14]  =     0.0f;
    data[15]  =     0.0f;
 
-   vbo_disable();
    glDisableVertexAttribArray(COLOUR_ATTR);
    glDisableVertexAttribArray(TEXCOORD_1_ATTR);
    glDisableVertexAttribArray(FOG_ATTR);
@@ -842,7 +841,6 @@ grAuxBufferExt( GrBuffer_t buffer )
 FX_ENTRY void FX_CALL
 grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth )
 {
-   vbo_draw();
    LOG("grBufferClear(%d,%d,%d)\r\n", color, alpha, depth);
    glClearColor(0, 0, 0, 0);
    glClearDepth(depth / 65535.0f);
