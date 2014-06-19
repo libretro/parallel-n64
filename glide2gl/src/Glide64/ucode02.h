@@ -741,7 +741,17 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             rdp.light[n].nonblack = rdram_u8[(addr+0)^3];
             rdp.light[n].nonblack += rdram_u8[(addr+1)^3];
             rdp.light[n].nonblack += rdram_u8[(addr+2)^3];
-            gSPLight(gfx.RDRAM, w1, n);
+
+            rdp.light[n].col[0] = rdram_u8[(addr+0)^3] / 255.0f;
+            rdp.light[n].col[1] = rdram_u8[(addr+1)^3] / 255.0f;
+            rdp.light[n].col[2] = rdram_u8[(addr+2)^3] / 255.0f;
+            rdp.light[n].col[3] = 1.0f;
+
+            // ** Thanks to Icepir8 for pointing this out **
+            // Lighting must be signed byte instead of byte
+            rdp.light[n].dir[0] = (float)(((int8_t*)gfx.RDRAM)[(addr+8)^3]) / 127.0f;
+            rdp.light[n].dir[1] = (float)(((int8_t*)gfx.RDRAM)[(addr+9)^3]) / 127.0f;
+            rdp.light[n].dir[2] = (float)(((int8_t*)gfx.RDRAM)[(addr+10)^3]) / 127.0f;
 
             a = addr >> 1;
             rdp.light[n].x = (float)(((int16_t*)gfx.RDRAM)[(a+4)^1]);

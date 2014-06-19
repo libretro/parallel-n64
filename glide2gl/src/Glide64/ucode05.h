@@ -295,14 +295,20 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_CLIP:
-         gSPClipRatio(w0, w1);
+         if (((rdp.cmd0>>8)&0xFFFF) == 0x04)
+         {
+            rdp.clip_ratio = sqrt((float)w1);
+            rdp.update |= UPDATE_VIEWPORT;
+         }
          break;
 
       case G_MW_SEGMENT:
-         gSPSegment((w0 >> 10) & 0x0F, w1);
+         //FRDP ("segment: %08lx -> seg%d\n", w1, (w0 >> 10) & 0x0F);
+         rdp.segment[(w0 >> 10) & 0x0F] = w1;
          break;
       case G_MW_FOG:
-         gSPFogFactor((int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ));
+         rdp.fog_multiplier = (int16_t)(w1 >> 16);
+         rdp.fog_offset = (int16_t)(w1 & 0x0000FFFF);
          break;
 
       case 0x0a:  // moveword matrix select

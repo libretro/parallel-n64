@@ -161,39 +161,6 @@ static void gSPPopMatrixN(uint32_t num)
 }
 
 /*
- * Loads one Light structure into the RSP.
- *
- * Loads one Light structure at the specified position in the light buffer.
- * Use gSPNumLights to specify the number of lights to use in the lighting
- * calculation. When gSPNuLights specifies N number of lights, the 1st to
- * Nth lights are used as directional lights (color and direction), and N+1
- * light is used as the ambient light (color only).
- *
- * l - pointer to Light structure.
- * n - the light number that is replaced (1 to 8).
- */
-static void gSPLight(void *ptr, uint32_t l, unsigned n)
-{
-   uint32_t address = RSP_SegmentToPhysical(l);
-
-   // Get the data
-   rdp.light[n].col[0] = (((uint8_t*)ptr)[(address+0)^3]) * 0.0039215689f;
-   rdp.light[n].col[1] = (((uint8_t*)ptr)[(address+1)^3]) * 0.0039215689f;
-   rdp.light[n].col[2] = (((uint8_t*)ptr)[(address+2)^3]) * 0.0039215689f;
-   rdp.light[n].col[3] = 1.0f;
-   // ** Thanks to Icepir8 for pointing this out **
-   // Lighting must be signed byte instead of byte
-   rdp.light[n].dir[0] = (float)(((int8_t*)ptr)[(address+8)^3]) / 127.0f;
-   rdp.light[n].dir[1] = (float)(((int8_t*)ptr)[(address+9)^3]) / 127.0f;
-   rdp.light[n].dir[2] = (float)(((int8_t*)ptr)[(address+10)^3]) / 127.0f;
-   // **
-
-   //rdp.update |= UPDATE_LIGHTS;
-
-   //FRDP ("light: n: %d, r: %.3f, g: %.3f, b: %.3f, x: %.3f, y: %.3f, z: %.3f\n", i, rdp.light[i].r, rdp.light[i].g, rdp.light[i].b, rdp.light_vector[i][0], rdp.light_vector[i][1], rdp.light_vector[i][2]);
-}
-
-/*
  * Fog formula: alpha(fog) = (eyespace z) * fm  + fo  CLAMPED 0 to 255
  *
  * NOTE: (eyespace z) ranges from -1 to 1
@@ -491,54 +458,6 @@ static void gSPEndDisplayList(void)
       rdp.pc_i --;
    else
       rdp.halt = 1; // Halt execution here
-}
-
-/*
- * Sets the segment register and the base address.
- *
- * All pointers in the display list in the Reality Co-Processor (RCP)
- * are segment addresses composed of a segment base and offset address.
- * The actual addresses are calculated by the Reality Signal Processor (RSP)
- * using the following translation:
- *
- * Physical address = Base address [Segment ID] + Offset
- *
- * seg  - Segment ID (0-15)
- * base - Base physical address
- *
- * GBI compatibility -
- * F3DEX GBI - supported
- * S2DEX GBI - supported
- */
-static INLINE void gSPSegment( int32_t seg, int32_t base )
-{
-    rdp.segment[seg] = base;
-    //FRDP ("segment: %08lx -> seg%d\n", seg, base);
-}
-
-/*
- * Changes the color of the specified light without using DMA
- * (as a result, no extra memory is required).
- *
- * n           - the light number whose color is being modified
- *             - LIGHT_1 - First light
- *             - LIGHT_2 - Second light
- *             - LIGHT_3 - Third light
- *             - LIGHT_4 - Fourth light
- *             - LIGHT_5 - Fifth light
- *             - LIGHT_6 - Sixth light
- *             - LIGHT_7 - Seventh light
- *             - LIGHT_8 - Eight light
- * packedColor - the new light color (32-bit value 0xRRGGBB??)
- *               (?? is ignored)
- */
-static void gSPLightColor( uint32_t n, uint32_t packedColor)
-{
-   rdp.light[n].col[0] = _SHIFTR( packedColor, 24, 8 ) * 0.0039215689f;
-   rdp.light[n].col[1] = _SHIFTR( packedColor, 16, 8 ) * 0.0039215689f;
-   rdp.light[n].col[2] = _SHIFTR( packedColor, 8, 8 )  * 0.0039215689f;
-   rdp.light[n].col[3] = 255;
-   //FRDP ("lightcol light:%d, %08lx\n", n, w1);
 }
 
 void glide64SPClipVertex(uint32_t i)

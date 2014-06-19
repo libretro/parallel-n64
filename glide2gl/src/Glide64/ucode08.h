@@ -228,15 +228,21 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_CLIP:
-         gSPClipRatio(w0, w1);
+         if (offset == 0x04)
+         {
+            rdp.clip_ratio = sqrt((float)w1);
+            rdp.update |= UPDATE_VIEWPORT;
+         }
          break;
 
       case G_MW_SEGMENT:
-         gSPSegment((offset >> 2) & 0xF, w1);
+         //FRDP ("SEGMENT %08lx -> seg%d\n", w1, offset >> 2);
+         rdp.segment[(offset >> 2) & 0xF] = w1;
          break;
 
       case G_MW_FOG:
-         gSPFogFactor((int16_t)_SHIFTR( w1, 16, 16 ), (int16_t)_SHIFTR( w1, 0, 16 ));
+         rdp.fog_multiplier = (short)(w1 >> 16);
+         rdp.fog_offset = (short)(w1 & 0x0000FFFF);
          break;
 
       case 0x0c:
@@ -357,7 +363,16 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
             rdp.light[n].nonblack += gfx.RDRAM[(addr+1)^3];
             rdp.light[n].nonblack += gfx.RDRAM[(addr+2)^3];
 
-            gSPLight(gfx.RDRAM, w1, n);
+            rdp.light[n].col[0] = (((uint8_t*)gfx.RDRAM)[(addr+0)^3]) / 255.0f;
+            rdp.light[n].col[1] = (((uint8_t*)gfx.RDRAM)[(addr+1)^3]) / 255.0f;
+            rdp.light[n].col[2] = (((uint8_t*)gfx.RDRAM)[(addr+2)^3]) / 255.0f;
+            rdp.light[n].col[3] = 1.0f;
+
+            // ** Thanks to Icepir8 for pointing this out **
+            // Lighting must be signed byte instead of byte
+            rdp.light[n].dir[0] = (float)(((int8_t*)gfx.RDRAM)[(addr+8)^3]) / 127.0f;
+            rdp.light[n].dir[1] = (float)(((int8_t*)gfx.RDRAM)[(addr+9)^3]) / 127.0f;
+            rdp.light[n].dir[2] = (float)(((int8_t*)gfx.RDRAM)[(addr+10)^3]) / 127.0f;
             // **
             a = addr >> 1;
             rdp.light[n].x = (float)(((int16_t*)gfx.RDRAM)[(a+16)^1]);
