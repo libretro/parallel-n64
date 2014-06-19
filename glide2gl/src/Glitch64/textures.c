@@ -257,20 +257,12 @@ int grTexFormatSize(int fmt)
    {
       case GR_TEXFMT_ALPHA_8:
       case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
-         factor = 1;
-         break;
       case GR_TEXFMT_ALPHA_INTENSITY_44:
          factor = 1;
          break;
       case GR_TEXFMT_RGB_565:
-         factor = 2;
-         break;
       case GR_TEXFMT_ARGB_1555:
-         factor = 2;
-         break;
       case GR_TEXFMT_ALPHA_INTENSITY_88:
-         factor = 2;
-         break;
       case GR_TEXFMT_ARGB_4444:
          factor = 2;
          break;
