@@ -444,7 +444,6 @@ void retro_deinit(void)
 unsigned int retro_filtering = 0;
 unsigned int frame_dupe = false;
 unsigned int initial_boot = true;
-unsigned int updated = false;
 
 extern void glide_set_filtering(unsigned value);
 
@@ -710,6 +709,7 @@ unsigned int FAKE_SDL_TICKS;
 static bool pushed_frame;
 void retro_run (void)
 {
+   static bool updated = false;
     FAKE_SDL_TICKS += 16;
     pushed_frame = false;
 
@@ -738,8 +738,6 @@ run_again:
 
     if (!pushed_frame && frame_dupe) // Dupe. Not duping violates libretro API, consider it a speedhack.
         video_cb(NULL, screen_width, screen_height, screen_pitch);
-    
-	updated = true;
 }
 
 void retro_reset (void)
