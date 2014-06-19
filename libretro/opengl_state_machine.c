@@ -374,6 +374,52 @@ void sglBindTexture(GLenum target, GLuint texture)
    BindTexture_ids[ActiveTexture_texture] = texture;
 }
 
+void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers)
+{
+   glDeleteRenderbuffers(n, renderbuffers);
+}
+
+void sglGenFramebuffers(GLsizei n, GLuint *ids)
+{
+   glGenFramebuffers(n, ids);
+}
+
+void sglGenRenderbuffers(GLsizei n, GLuint *renderbuffers)
+{
+   glGenRenderbuffers(n, renderbuffers);
+}
+
+void sglBindRenderbuffer(GLenum target, GLuint renderbuffer)
+{
+   glBindRenderbuffer(target, renderbuffer);
+}
+
+void sglRenderbufferStorage(GLenum target, GLenum internalFormat, GLsizei width, GLsizei height)
+{
+   glRenderbufferStorage(target, internalFormat, width, height);
+}
+
+void sglFramebufferRenderbuffer(GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer)
+{
+   glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
+}
+
+GLenum sglCheckFramebufferStatus(GLenum target)
+{
+   return glCheckFramebufferStatus(target);
+}
+
+void sglDeleteFramebuffers(GLsizei n, GLuint *framebuffers)
+{
+   glDeleteFramebuffers(n, framebuffers);
+}
+
+void sglFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level)
+{
+   glFramebufferTexture2D(target, attachment, textarget, texture, level);
+}
+
+
 #if 0
 struct tex_map
 {

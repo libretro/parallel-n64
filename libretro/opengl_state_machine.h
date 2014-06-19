@@ -126,6 +126,17 @@ void sglBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
 #define glAttachShader sglAttachShader
 #define glLinkProgram sglLinkProgram
 #define glBindAttribLocation sglBindAttribLocation
+#define glDeleteRenderbuffers sglDeleteRenderbuffers
+#define glDeleteFramebuffers sglDeleteFramebuffers
+#define glGenFramebuffers sglGenFramebuffers
+#define glGenRenderbuffers sglGenRenderbuffers
+#define glBindRenderbuffer sglBindRenderbuffer
+#define glRenderbufferStorage sglRenderbufferStorage
+#define glFramebufferRenderbuffer sglFramebufferRenderbuffer
+#define glCheckFramebufferStatus sglCheckFramebufferStatus
+#define glDeleteFramebuffers sglDeleteFramebuffers
+#define glBindRenderbuffer sglBindRenderbuffer
+#define glFramebufferTexture2D sglFramebufferTexture2D
 #endif
 
 void sglEnter(void);
