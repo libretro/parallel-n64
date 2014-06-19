@@ -36,6 +36,7 @@ void sglGenerateMipmap(GLenum target);
 
 void sglUniform1f(GLint location, GLfloat v0);
 void sglUniform1i(GLint location, GLint v0);
+void sglUniform3f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
 void sglUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
 void sglUniform4fv(GLint location, GLsizei count, const GLfloat *value);
 int sglGetUniformLocation(GLuint program, const GLchar *name);
@@ -110,6 +111,7 @@ void sglBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
 #define glGetUniformLocation sglGetUniformLocation
 #define glUniform1f sglUniform1f
 #define glUniform2f sglUniform2f
+#define glUniform3f sglUniform3f
 #define glUniform4f sglUniform4f
 #define glUniform4fv sglUniform4fv
 #define glGetShaderInfoLog sglGetShaderInfoLog

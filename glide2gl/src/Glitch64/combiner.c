@@ -454,18 +454,18 @@ static int texture1_combinera_key;
 
 void update_uniforms(shader_program_key prog)
 {
+   GLfloat v0, v1, v2;
    glUniform1i(prog.texture0_location, 0);
    glUniform1i(prog.texture1_location, 1);
 
-   glUniform3f(prog.vertexOffset_location,widtho,heighto,inverted_culling ? -1.0f : 1.0f);
+   v2 = inverted_culling ? -1.0f : 1.0f;
+   glUniform3f(prog.vertexOffset_location,widtho,heighto,v2);
    glUniform4f(prog.textureSizes_location,tex_width[0], tex_height[0] , tex_width[1], tex_height[1]);
    glUniform4f(prog.exactSizes_location,tex_exactWidth[0], tex_exactHeight[0], tex_exactWidth[1], tex_exactHeight[1]);
 
-   glUniform3f(prog.fogModeEndScale_location,
-         fog_enabled != 2 ? 0.0f : 1.0f,
-         fogEnd,
-         1.0f / (fogEnd - fogStart)
-         );
+   v0 = fog_enabled != 2 ? 0.0f : 1.0f;
+   v2 = 1.0f / (fogEnd - fogStart);
+   glUniform3f(prog.fogModeEndScale_location, v0, fogEnd,  v2);
 
    if(prog.fogColor_location != -1)
       glUniform3f(prog.fogColor_location,fogColor[0],fogColor[1],fogColor[2]);
