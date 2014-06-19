@@ -336,8 +336,8 @@ void init_combiner()
 
    texture0_location = glGetUniformLocation(program_object, "texture0");
    texture1_location = glGetUniformLocation(program_object, "texture1");
-   GL_CHECK(glUniform1i(texture0_location, 0));
-   GL_CHECK(glUniform1i(texture1_location, 1));
+   glUniform1i(texture0_location, 0);
+   glUniform1i(texture1_location, 1);
 
    // default program
    program_object = glCreateProgram();
@@ -357,8 +357,8 @@ void init_combiner()
 
    texture0_location = glGetUniformLocation(program_object, "texture0");
    texture1_location = glGetUniformLocation(program_object, "texture1");
-   GL_CHECK(glUniform1i(texture0_location, 0));
-   GL_CHECK(glUniform1i(texture1_location, 1));
+   glUniform1i(texture0_location, 0);
+   glUniform1i(texture1_location, 1);
 
    strcpy(fragment_shader_color_combiner, "");
    strcpy(fragment_shader_alpha_combiner, "");
@@ -454,38 +454,36 @@ static int texture1_combinera_key;
 
 void update_uniforms(shader_program_key prog)
 {
-   GL_CHECK(glUniform1i(prog.texture0_location, 0));
-   GL_CHECK(glUniform1i(prog.texture1_location, 1));
+   glUniform1i(prog.texture0_location, 0);
+   glUniform1i(prog.texture1_location, 1);
 
-   GL_CHECK(glUniform3f(prog.vertexOffset_location,widtho,heighto,inverted_culling ? -1.0f : 1.0f));
-   GL_CHECK(glUniform4f(prog.textureSizes_location,tex_width[0], tex_height[0] , tex_width[1], tex_height[1]));
-   GL_CHECK(glUniform4f(prog.exactSizes_location,tex_exactWidth[0], tex_exactHeight[0], tex_exactWidth[1], tex_exactHeight[1]));
+   glUniform3f(prog.vertexOffset_location,widtho,heighto,inverted_culling ? -1.0f : 1.0f);
+   glUniform4f(prog.textureSizes_location,tex_width[0], tex_height[0] , tex_width[1], tex_height[1]);
+   glUniform4f(prog.exactSizes_location,tex_exactWidth[0], tex_exactHeight[0], tex_exactWidth[1], tex_exactHeight[1]);
 
-   GL_CHECK(glUniform3f(prog.fogModeEndScale_location,
+   glUniform3f(prog.fogModeEndScale_location,
          fog_enabled != 2 ? 0.0f : 1.0f,
          fogEnd,
          1.0f / (fogEnd - fogStart)
-         ));
+         );
 
    if(prog.fogColor_location != -1)
-   {
-      GL_CHECK(glUniform3f(prog.fogColor_location,fogColor[0],fogColor[1],fogColor[2]));
-   }
+      glUniform3f(prog.fogColor_location,fogColor[0],fogColor[1],fogColor[2]);
 
-   GL_CHECK(glUniform1f(prog.alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f));
+   glUniform1f(prog.alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f);
 
    constant_color_location = glGetUniformLocation(program_object, "constant_color");
-   GL_CHECK(glUniform4f(constant_color_location, texture_env_color[0], texture_env_color[1],
-         texture_env_color[2], texture_env_color[3]));
+   glUniform4f(constant_color_location, texture_env_color[0], texture_env_color[1],
+         texture_env_color[2], texture_env_color[3]);
 
    ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
-   GL_CHECK(glUniform4f(ccolor0_location, ccolor0[0], ccolor0[1], ccolor0[2], ccolor0[3]));
+   glUniform4f(ccolor0_location, ccolor0[0], ccolor0[1], ccolor0[2], ccolor0[3]);
 
    ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
-   GL_CHECK(glUniform4f(ccolor1_location, ccolor1[0], ccolor1[1], ccolor1[2], ccolor1[3]));
+   glUniform4f(ccolor1_location, ccolor1[0], ccolor1[1], ccolor1[2], ccolor1[3]);
 
-   GL_CHECK(glUniform4f(prog.chroma_color_location, chroma_color[0], chroma_color[1],
-         chroma_color[2], chroma_color[3]));
+   glUniform4f(prog.chroma_color_location, chroma_color[0], chroma_color[1],
+         chroma_color[2], chroma_color[3]);
 
    set_lambda();
 }
@@ -493,7 +491,7 @@ void update_uniforms(shader_program_key prog)
 void disable_textureSizes(void) 
 {
    int textureSizes_location = glGetUniformLocation(program_object_default,"textureSizes");
-   GL_CHECK(glUniform4f(textureSizes_location,1,1,1,1));
+   glUniform4f(textureSizes_location,1,1,1,1);
 }
 
 void compile_shader(void)
@@ -629,11 +627,11 @@ void set_copy_shader(void)
 
    glUseProgram(program_object_default);
    texture0_location = glGetUniformLocation(program_object_default, "texture0");
-   GL_CHECK(glUniform1i(texture0_location, 0));
+   glUniform1i(texture0_location, 0);
 
    alphaRef_location = glGetUniformLocation(program_object_default, "alphaRef");
    if(alphaRef_location != -1)
-      GL_CHECK(glUniform1f(alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f));
+      glUniform1f(alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f);
 }
 
 void set_depth_shader(void)
@@ -643,17 +641,17 @@ void set_depth_shader(void)
 
    glUseProgram(program_object_depth);
    texture0_location = glGetUniformLocation(program_object_depth, "texture0");
-   GL_CHECK(glUniform1i(texture0_location, 0));
+   glUniform1i(texture0_location, 0);
 
    alphaRef_location = glGetUniformLocation(program_object_depth, "alphaRef");
    if(alphaRef_location != -1)
-      GL_CHECK(glUniform1f(alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f));
+      glUniform1f(alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f);
 }
 
 void set_lambda(void)
 {
    int lambda_location = glGetUniformLocation(program_object, "lambda");
-   GL_CHECK(glUniform1f(lambda_location, lambda));
+   glUniform1f(lambda_location, lambda);
 }
 
 FX_ENTRY void FX_CALL 
@@ -681,8 +679,8 @@ grConstantColorValue( GrColor_t value )
    vbo_draw();
 
    constant_color_location = glGetUniformLocation(program_object, "constant_color");
-   GL_CHECK(glUniform4f(constant_color_location, texture_env_color[0], texture_env_color[1], 
-         texture_env_color[2], texture_env_color[3]));
+   glUniform4f(constant_color_location, texture_env_color[0], texture_env_color[1], 
+         texture_env_color[2], texture_env_color[3]);
 }
 
 void writeGLSLColorOther(int other)
@@ -1669,8 +1667,8 @@ grChromakeyValue( GrColor_t value )
    }
    vbo_draw();
    chroma_color_location = glGetUniformLocation(program_object, "chroma_color");
-   GL_CHECK(glUniform4f(chroma_color_location, chroma_color[0], chroma_color[1],
-         chroma_color[2], chroma_color[3]));
+   glUniform4f(chroma_color_location, chroma_color[0], chroma_color[1],
+         chroma_color[2], chroma_color[3]);
 }
 
 FX_ENTRY void FX_CALL
@@ -2738,12 +2736,12 @@ grConstantColorValueExt(GrChipID_t    tmu,
    if(num_tex == 0)
    {
       ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
-      GL_CHECK(glUniform4f(ccolor0_location, ccolor0[0], ccolor0[1], ccolor0[2], ccolor0[3]));
+      glUniform4f(ccolor0_location, ccolor0[0], ccolor0[1], ccolor0[2], ccolor0[3]);
    }
    else
    {
       ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
-      GL_CHECK(glUniform4f(ccolor1_location, ccolor1[0], ccolor1[1], ccolor1[2], ccolor1[3]));
+      glUniform4f(ccolor1_location, ccolor1[0], ccolor1[1], ccolor1[2], ccolor1[3]);
    }
 }
 
@@ -2774,11 +2772,11 @@ grConstantColorValueExtZero(GrChipID_t    tmu,
    if (tmu == GR_TMU0)
    {
       ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
-      GL_CHECK(glUniform4f(ccolor1_location, ccolor1[0], ccolor1[1], ccolor1[2], ccolor1[3]));
+      glUniform4f(ccolor1_location, ccolor1[0], ccolor1[1], ccolor1[2], ccolor1[3]);
    }
    else
    {
       ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
-      GL_CHECK(glUniform4f(ccolor0_location, ccolor0[0], ccolor0[1], ccolor0[2], ccolor0[3]));
+      glUniform4f(ccolor0_location, ccolor0[0], ccolor0[1], ccolor0[2], ccolor0[3]);
    }
 }

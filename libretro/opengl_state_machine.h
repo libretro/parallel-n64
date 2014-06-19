@@ -110,7 +110,6 @@ void sglBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
 #define glGetUniformLocation sglGetUniformLocation
 #define glUniform1f sglUniform1f
 #define glUniform2f sglUniform2f
-#define glUniform3f sglUniform3f
 #define glUniform4f sglUniform4f
 #define glUniform4fv sglUniform4fv
 #define glGetShaderInfoLog sglGetShaderInfoLog

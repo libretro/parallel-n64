@@ -185,16 +185,6 @@ extern void check_gl_error(const char *stmt, const char *fname, int line);
 
 //#define LOG_GL_CALLS
 
-#ifdef LOG_GL_CALLS
-#define GL_CHECK(func) \
-   do { \
-   func; \
-   check_gl_error(#func, __FILE__, __LINE__); \
-} while(0)
-#else
-#define GL_CHECK(func) func
-#endif
-
 int retro_return(bool just_flipping);
 
 #endif
