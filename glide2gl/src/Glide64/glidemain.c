@@ -2226,14 +2226,6 @@ int InitGfx(void)
 
    InitCombine();
 
-   grCoordinateSpace (GR_WINDOW_COORDS);
-   grVertexLayout (GR_PARAM_XY, offsetof(VERTEX,x), GR_PARAM_ENABLE);
-   grVertexLayout (GR_PARAM_Q, offsetof(VERTEX,q), GR_PARAM_ENABLE);
-   grVertexLayout (GR_PARAM_Z, offsetof(VERTEX,z), GR_PARAM_ENABLE);
-   grVertexLayout (GR_PARAM_ST0, offsetof(VERTEX,coord[0]), GR_PARAM_ENABLE);
-   grVertexLayout (GR_PARAM_ST1, offsetof(VERTEX,coord[2]), GR_PARAM_ENABLE);
-   grVertexLayout (GR_PARAM_PARGB, offsetof(VERTEX,b), GR_PARAM_ENABLE);
-
    grCullMode(GR_CULL_NEGATIVE);
 
    if (settings.fog) //"FOGCOORD" extension
@@ -2249,7 +2241,6 @@ int InitGfx(void)
       }
       fog_t[0] = 0;
       grFogTable (fog_t);
-      grVertexLayout (GR_PARAM_FOG_EXT, offsetof(VERTEX,f), GR_PARAM_ENABLE);
    }
    else //not supported
       settings.fog = false;
