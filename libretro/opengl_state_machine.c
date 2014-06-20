@@ -9,12 +9,51 @@
 extern int stop;
 
 //forward declarations
-
+//
 static int CapState[SGL_CAP_MAX];
 static const int CapTranslate[SGL_CAP_MAX] = 
 {
     GL_TEXTURE_2D, GL_DEPTH_TEST, GL_BLEND, GL_POLYGON_OFFSET_FILL, GL_CULL_FACE, GL_SCISSOR_TEST
 };
+
+#ifndef HAVE_SHARED_CONTEXT
+#define MAX_ATTRIB 8
+#define MAX_TEXTURE 4
+#define ATTRIB_INITER(X) { X, X, X, X, X, X, X, X }
+
+static GLint VertexAttribPointer_enabled[MAX_ATTRIB] = ATTRIB_INITER(0);
+static GLint VertexAttribPointer_is4f[MAX_ATTRIB] = ATTRIB_INITER(0);
+static GLint VertexAttribPointer_size[MAX_ATTRIB] = ATTRIB_INITER(4);
+static GLenum VertexAttribPointer_type[MAX_ATTRIB] = ATTRIB_INITER(GL_FLOAT);
+static GLboolean VertexAttribPointer_normalized[MAX_ATTRIB] = ATTRIB_INITER(GL_TRUE);
+static GLsizei VertexAttribPointer_stride[MAX_ATTRIB] = ATTRIB_INITER(0);
+static const GLvoid* VertexAttribPointer_pointer[MAX_ATTRIB] = ATTRIB_INITER(0);
+static GLfloat VertexAttribPointer_4f[MAX_ATTRIB][4];
+
+static GLuint Framebuffer_framebuffer = 0;
+static GLenum BlendFunc_srcRGB = GL_ONE,  BlendFunc_srcAlpha = GL_ONE;
+static GLenum BlendFunc_dstRGB = GL_ZERO, BlendFunc_dstAlpha = GL_ZERO;
+static GLclampf ClearColor_red = 0.0f, ClearColor_green = 0.0f, ClearColor_blue = 0.0f, ClearColor_alpha = 0.0f;
+static GLdouble ClearDepth_value = 1.0;
+static GLboolean ColorMask_red = GL_TRUE;
+static GLboolean ColorMask_green = GL_TRUE;
+static GLboolean ColorMask_blue = GL_TRUE;
+static GLboolean ColorMask_alpha = GL_TRUE;
+static GLenum CullFace_mode = GL_BACK;
+static GLenum DepthFunc_func = GL_LESS;
+static GLboolean DepthMask_flag = GL_TRUE;
+static GLclampd DepthRange_zNear = 0.0, DepthRange_zFar = 1.0;
+static GLenum FrontFace_mode = GL_CCW;
+static GLfloat PolygonOffset_factor = 0.0f, PolygonOffset_units = 0.0f;
+static GLint Scissor_x = 0, Scissor_y = 0;
+static GLsizei Scissor_width = 640, Scissor_height = 480;
+
+static GLuint UseProgram_program = 0;
+static GLint Viewport_x = 0, Viewport_y = 0;
+static GLsizei Viewport_width = 640, Viewport_height = 480;
+static GLenum ActiveTexture_texture = 0;
+static GLuint BindTexture_ids[MAX_TEXTURE];
+#endif
 
 void sglGenerateMipmap(GLenum target)
 {
@@ -138,97 +177,98 @@ GLboolean sglIsEnabled(GLenum cap)
     return CapState[cap] ? GL_TRUE : GL_FALSE;
 }
 
-#define MAX_ATTRIB 8
-#define ATTRIB_INITER(X) { X, X, X, X, X, X, X, X }
 
-static GLint VertexAttribPointer_enabled[MAX_ATTRIB] = ATTRIB_INITER(0);
-static GLint VertexAttribPointer_is4f[MAX_ATTRIB] = ATTRIB_INITER(0);
-static GLint VertexAttribPointer_size[MAX_ATTRIB] = ATTRIB_INITER(4);
-static GLenum VertexAttribPointer_type[MAX_ATTRIB] = ATTRIB_INITER(GL_FLOAT);
-static GLboolean VertexAttribPointer_normalized[MAX_ATTRIB] = ATTRIB_INITER(GL_TRUE);
-static GLsizei VertexAttribPointer_stride[MAX_ATTRIB] = ATTRIB_INITER(0);
-static const GLvoid* VertexAttribPointer_pointer[MAX_ATTRIB] = ATTRIB_INITER(0);
-static GLfloat VertexAttribPointer_4f[MAX_ATTRIB][4];
 
 void sglEnableVertexAttribArray(GLuint index)
 {
+#ifndef HAVE_SHARED_CONTEXT
     VertexAttribPointer_enabled[index] = 1;
+#endif
     glEnableVertexAttribArray(index);
 }
 
 void sglDisableVertexAttribArray(GLuint index)
 {
+#ifndef HAVE_SHARED_CONTEXT
     VertexAttribPointer_enabled[index] = 0;
+#endif
     glDisableVertexAttribArray(index);
 }
 
 void sglVertexAttribPointer(GLuint name, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* pointer)
 {
+#ifndef HAVE_SHARED_CONTEXT
     VertexAttribPointer_is4f[name] = 0;
     VertexAttribPointer_size[name] = size;
     VertexAttribPointer_type[name] = type;
     VertexAttribPointer_normalized[name] = normalized;
     VertexAttribPointer_stride[name] = stride;
     VertexAttribPointer_pointer[name] = pointer;
+#endif
     glVertexAttribPointer(name, size, type, normalized, stride, pointer);
 }
 
 void sglVertexAttrib4f(GLuint name, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 {
+#ifndef HAVE_SHARED_CONTEXT
     VertexAttribPointer_is4f[name] = 1;
     VertexAttribPointer_4f[name][0] = x;
     VertexAttribPointer_4f[name][1] = y;
     VertexAttribPointer_4f[name][2] = z;
     VertexAttribPointer_4f[name][3] = w;
+#endif
     glVertexAttrib4f(name, x, y, z, w);
 }
 
 void sglVertexAttrib4fv(GLuint name, GLfloat* v)
 {
+#ifndef HAVE_SHARED_CONTEXT
     VertexAttribPointer_is4f[name] = 1;
     memcpy(VertexAttribPointer_4f[name], v, sizeof(GLfloat) * 4);
+#endif
     glVertexAttrib4fv(name, v);
 }
 
 
 extern GLuint retro_get_fbo_id();
-static GLuint Framebuffer_framebuffer = 0;
 void sglBindFramebuffer(GLenum target, GLuint framebuffer)
 {
    if (!stop)
       glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
 }
 
-static GLenum BlendFunc_srcRGB = GL_ONE,  BlendFunc_srcAlpha = GL_ONE;
-static GLenum BlendFunc_dstRGB = GL_ZERO, BlendFunc_dstAlpha = GL_ZERO;
 void sglBlendFunc(GLenum sfactor, GLenum dfactor)
 {
+#ifndef HAVE_SHARED_CONTEXT
     BlendFunc_srcRGB = BlendFunc_srcAlpha = sfactor;
     BlendFunc_dstRGB = BlendFunc_dstAlpha = dfactor;
-    glBlendFunc(BlendFunc_srcRGB, BlendFunc_dstRGB);
+#endif
+    glBlendFunc(sfactor, dfactor);
 }
 
 void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha)
 {
+#ifndef HAVE_SHARED_CONTEXT
     BlendFunc_srcRGB = srcRGB;
     BlendFunc_dstRGB = dstRGB;
     BlendFunc_srcAlpha = srcAlpha;
     BlendFunc_dstAlpha = dstAlpha;
-    glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
+#endif
+    glBlendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha);
 }
 
-
-static GLclampf ClearColor_red = 0.0f, ClearColor_green = 0.0f, ClearColor_blue = 0.0f, ClearColor_alpha = 0.0f;
 void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
    glClearColor(red, green, blue, alpha);
+#ifndef HAVE_SHARED_CONTEXT
    ClearColor_red = red;
    ClearColor_green = green;
    ClearColor_blue = blue;
    ClearColor_alpha = alpha;
+#endif
 }
 
-static GLdouble ClearDepth_value = 1.0;
+
 void sglClearDepth(GLdouble depth)
 {
 #ifdef HAVE_OPENGLES2
@@ -236,46 +276,47 @@ void sglClearDepth(GLdouble depth)
 #else
    glClearDepth(depth);
 #endif
+#ifndef HAVE_SHARED_CONTEXT
    ClearDepth_value = depth;
+#endif
 }
-
-static GLboolean ColorMask_red = GL_TRUE;
-static GLboolean ColorMask_green = GL_TRUE;
-static GLboolean ColorMask_blue = GL_TRUE;
-static GLboolean ColorMask_alpha = GL_TRUE;
 
 void sglColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha)
 {
    glColorMask(red, green, blue, alpha);
+#ifndef HAVE_SHARED_CONTEXT
    ColorMask_red = red;
    ColorMask_green = green;
    ColorMask_blue = blue;
    ColorMask_alpha = alpha;
+#endif
 }
 
-static GLenum CullFace_mode = GL_BACK;
 
 void sglCullFace(GLenum mode)
 {
    glCullFace(mode);
+#ifndef HAVE_SHARED_CONTEXT
    CullFace_mode = mode;
+#endif
 }
 
-static GLenum DepthFunc_func = GL_LESS;
 void sglDepthFunc(GLenum func)
 {
   glDepthFunc(func);
+#ifndef HAVE_SHARED_CONTEXT
   DepthFunc_func = func;
+#endif
 }
 
-static GLboolean DepthMask_flag = GL_TRUE;
 void sglDepthMask(GLboolean flag)
 {
   glDepthMask(flag);
+#ifndef HAVE_SHARED_CONTEXT
   DepthMask_flag = flag;
+#endif
 }
 
-static GLclampd DepthRange_zNear = 0.0, DepthRange_zFar = 1.0;
 
 void sglDepthRange(GLclampd zNear, GLclampd zFar)
 {
@@ -284,67 +325,74 @@ void sglDepthRange(GLclampd zNear, GLclampd zFar)
 #else
    glDepthRange(zNear, zFar);
 #endif
+#ifndef HAVE_SHARED_CONTEXT
    DepthRange_zNear = zNear;
    DepthRange_zFar = zFar;
+#endif
 }
 
-static GLenum FrontFace_mode = GL_CCW;
 void sglFrontFace(GLenum mode)
 {
    glFrontFace(mode);
+#ifndef HAVE_SHARED_CONTEXT
    FrontFace_mode = mode;
+#endif
 }
 
-static GLfloat PolygonOffset_factor = 0.0f, PolygonOffset_units = 0.0f;
 void sglPolygonOffset(GLfloat factor, GLfloat units)
 {
   glPolygonOffset(factor, units);
+#ifndef HAVE_SHARED_CONTEXT
   PolygonOffset_factor = factor;
   PolygonOffset_units = units;
+#endif
 }
 
-static GLint Scissor_x = 0, Scissor_y = 0;
-static GLsizei Scissor_width = 640, Scissor_height = 480;
 void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 {
   glScissor(x, y, width, height);
+#ifndef HAVE_SHARED_CONTEXT
   Scissor_x = x;
   Scissor_y = y;
   Scissor_width = width;
   Scissor_height = height;
+#endif
 }
 
-static GLuint UseProgram_program = 0;
 void sglUseProgram(GLuint program)
 {
    glUseProgram(program);
+#ifndef HAVE_SHARED_CONTEXT
    UseProgram_program = program;
+#endif
 }
 
-static GLint Viewport_x = 0, Viewport_y = 0;
-static GLsizei Viewport_width = 640, Viewport_height = 480;
 void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
    glViewport(x, y, width, height);
+#ifndef HAVE_SHARED_CONTEXT
    Viewport_x = x;
    Viewport_y = y;
    Viewport_width = width;
    Viewport_height = height;
+#endif
 }
 
-#define MAX_TEXTURE 4
-static GLenum ActiveTexture_texture = 0;
+
 void sglActiveTexture(GLenum texture)
 {
    glActiveTexture(texture);
+#ifndef HAVE_SHARED_CONTEXT
    ActiveTexture_texture = texture - GL_TEXTURE0;
+#endif
 }
 
-static GLuint BindTexture_ids[MAX_TEXTURE];
 void sglBindTexture(GLenum target, GLuint texture)
 {
    glBindTexture(target, texture);
+#ifndef HAVE_SHARED_CONTEXT
    BindTexture_ids[ActiveTexture_texture] = texture;
+#endif
 }
 
 void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers)
@@ -436,6 +484,7 @@ static void delete_tex_from_address(unsigned address)
 
 //ENTER/EXIT
 
+#ifndef HAVE_SHARED_CONTEXT
 void sglEnter(void)
 {
    int i;
@@ -520,3 +569,4 @@ void sglExit(void)
 
     glBindFramebuffer(GL_FRAMEBUFFER, retro_get_fbo_id());
 }
+#endif
