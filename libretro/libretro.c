@@ -304,6 +304,10 @@ static void core_gl_context_reset(void)
       InitGfx();
    else if (gfx_plugin == GFX_GLN64 && emu_thread_has_run)
       gles2n64_reset();
+
+#ifdef HAVE_SHARED_CONTEXT
+   sglBindFramebuffer(GL_FRAMEBUFFER, 0); // < sgl is intentional
+#endif
 }
 
 GLuint retro_get_fbo_id(void)
@@ -719,11 +723,15 @@ run_again:
 
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
        update_variables();
+#ifndef HAVE_SHARED_CONTEXT
     if (gfx_plugin != GFX_ANGRYLION && !stop)
        sglEnter();
+#endif
     co_switch(emulator_thread);
+#ifndef HAVE_SHARED_CONTEXT
     if (gfx_plugin != GFX_ANGRYLION && !stop)
        sglExit();
+#endif
 
 
     if (flip_only)
