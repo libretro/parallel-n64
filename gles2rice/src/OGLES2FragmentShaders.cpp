@@ -23,11 +23,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLGraphicsContext.h"
 #include "OGLTexture.h"
 
-#define ENABLE 1
-#define DISABLE 0
-
 #define ALPHA_TEST "    if(gl_FragColor.a < AlphaRef) discard;                        \n"
 //#define ALPHA_TEST
+#define ENABLE true
+#define DISABLE false
 
 
 GLuint vertexProgram = 9999;
@@ -46,10 +45,11 @@ const char *vertexShader =
 "                                                           \n"\
 "uniform vec2 FogMinMax;                                    \n"\
 "                                                           \n"\
-"varying lowp float vFog;                                   \n"\
+"varying lowp float vFactor;                                \n"\
 "varying lowp vec4  vShadeColor;                            \n"\
 "varying mediump vec2 vTexCoord0;                           \n"\
 "varying lowp vec2    vTexCoord1;                           \n"\
+"varying lowp float   vFog;                                 \n"\
 "                                                           \n"\
 "void main()                                                \n"\
 "{                                                          \n"\
@@ -85,10 +85,10 @@ const char *fragmentHeader =
 "uniform float AlphaRef;                                    \n"\
 "uniform vec4 FogColor;                                     \n"\
 "                                                           \n"\
-"varying lowp float vFog;                                   \n"\
 "varying lowp vec4  vShadeColor;                            \n"\
 "varying mediump vec2  vTexCoord0;                          \n"\
 "varying lowp vec2  vTexCoord1;                             \n"\
+"varying lowp float vFog;                                   \n"\
 "                                                           \n"\
 "void main()                                                \n"\
 "{                                                          \n"\
@@ -214,10 +214,10 @@ COGL_FragmentProgramCombiner::COGL_FragmentProgramCombiner(CRender *pRender)
     m_pDecodedMux = new DecodedMuxForPixelShader;
     m_bFragmentProgramIsSupported = true;
     m_AlphaRef = 0.0f;
-    bAlphaTestState = DISABLE;
-    bAlphaTestPreviousState = DISABLE;
-    bFogState = DISABLE;
-    bFogPreviousState = DISABLE;
+    bAlphaTestState = false;
+    bAlphaTestPreviousState = false;
+    bFogState = false;
+    bFogPreviousState = false;
 
     //Create shaders for fill and copy
     GLint success;
@@ -715,13 +715,16 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
         OPENGL_CHECK_ERRORS;
     }
 
-    if(prog.FogColorLocation != -1 && prog.FogMinMaxLocation != -1)
+    if(prog.FogColorLocation != -1)
     {
-        //Pass fog colour and distance, use 0 alpha if fog disabled
         glUniform4f(prog.FogColorLocation, gRDP.fvFogColor[0],gRDP.fvFogColor[1],gRDP.fvFogColor[2],gRDP.fvFogColor[3]);
-    //        gRSP.bFogEnabled ? gRDP.fvFogColor[0] : 0.0f);
-    //    glUniform2f(prog.FogMinMaxLocation,gRSPfFogMin,gRSPfFogMax);
         OPENGL_CHECK_ERRORS;
+    }
+
+    if(prog.FogMinMaxLocation != -1)	
+    {
+       glUniform2f(prog.FogMinMaxLocation,gRSPfFogMin,gRSPfFogMax);
+       OPENGL_CHECK_ERRORS;
     }
 
     if(prog.AlphaRefLocation != -1)
@@ -776,7 +779,8 @@ void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
 
     bool combinerIsChanged = false;
 
-    if( m_pDecodedMux->m_dwMux0 != m_dwLastMux0 || m_pDecodedMux->m_dwMux1 != m_dwLastMux1 ||  bAlphaTestState != bAlphaTestPreviousState || bFogState != bFogPreviousState || m_lastIndex < 0 )
+    if( m_pDecodedMux->m_dwMux0 != m_dwLastMux0 || m_pDecodedMux->m_dwMux1 != m_dwLastMux1
+          ||  bAlphaTestState != bAlphaTestPreviousState || bFogState != bFogPreviousState || m_lastIndex < 0 )
     {
         combinerIsChanged = true;
         m_lastIndex = FindCompiledMux();

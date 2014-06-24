@@ -36,6 +36,7 @@ void sglGenerateMipmap(GLenum target);
 
 void sglUniform1f(GLint location, GLfloat v0);
 void sglUniform1i(GLint location, GLint v0);
+void sglUniform2f(GLint location, GLfloat v0, GLfloat v1);
 void sglUniform3f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
 void sglUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
 void sglUniform4fv(GLint location, GLsizei count, const GLfloat *value);
