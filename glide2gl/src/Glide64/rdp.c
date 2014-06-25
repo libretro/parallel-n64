@@ -1101,6 +1101,9 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    } texUV[2]; //struct for texture coordinates
    VERTEX *vptr, *vnew;
 
+   vptr = NULL;
+   vnew = NULL;
+
    if (!rdp.LLE)
    {
       a = rdp.pc[rdp.pc_i];
