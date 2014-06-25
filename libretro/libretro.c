@@ -41,7 +41,7 @@ bool no_audio;
 static savestates_job state_job_done;
 
 static const rarch_resampler_t *resampler;
-static void *resampler_data;
+static void *resampler_audio_data;
 static float *audio_in_buffer_float;
 static float *audio_out_buffer_float;
 static int16_t *audio_out_buffer_s16;
@@ -418,7 +418,7 @@ void retro_init(void)
 
    environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
 
-   rarch_resampler_realloc(&resampler_data, &resampler, NULL, 1.0);
+   rarch_resampler_realloc(&resampler_audio_data, &resampler, NULL, 1.0);
    audio_in_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
    audio_out_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
    audio_out_buffer_s16 = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
@@ -434,11 +434,11 @@ void retro_deinit(void)
 
     CoreShutdown();
 
-    if (resampler && resampler_data)
+    if (resampler && resampler_audio_data)
     {
-       resampler->free(resampler_data);
+       resampler->free(resampler_audio_data);
        resampler = NULL;
-       resampler_data = NULL;
+       resampler_audio_data = NULL;
        free(audio_in_buffer_float);
        free(audio_out_buffer_float);
        free(audio_out_buffer_s16);
@@ -681,8 +681,6 @@ void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
    
    if (no_audio)
       return;
-
-  
    
    if (frames > max_frames)
    {
@@ -692,9 +690,7 @@ void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
 
    audio_convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
 
-   
-
-   resampler->process(resampler_data, &data);
+   resampler->process(resampler_audio_data, &data);
 
    audio_convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
    out = audio_out_buffer_s16;
