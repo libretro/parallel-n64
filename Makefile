@@ -255,10 +255,13 @@ VIDEODIR_GLN64 = gles2n64/src
 
 libretrosrc += $(wildcard libretro/*.c)
 
+CFLAGS += -DSINC_LOWER_QUALITY
+CPPFLAGS += -DSINC_LOWER_QUALITY
+
 ifeq ($(HAVE_NEON), 1)
 CFILES += $(wildcard $(VIDEODIR_GLN64)/*.c)
-CFLAGS += -DHAVE_NEON -DSINC_LOWER_QUALITY
-CPPFLAGS += -DHAVE_NEON -DSINC_LOWER_QUALITY
+CFLAGS += -DHAVE_NEON
+CPPFLAGS += -DHAVE_NEON
 OBJECTS += libretro/utils_neon.o libretro/sinc_neon.o
 else
 gln64videoblack = $(VIDEODIR_GLN64)/3DMathNeon.c $(VIDEODIR_GLN64)/gSPNeon.c
