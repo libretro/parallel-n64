@@ -1207,35 +1207,115 @@ static void LoadTex(int id, int tmu)
          ((modcolor2 & 0x0000F000) >> 8) | ((modcolor2 & 0x000000F0) >> 4);
 
       size = (real_x * real_y) << 1;
+      uint16_t *dst = (uint16_t*)texture;
+      uint32_t cr0 = (modcolor >> 12) & 0xF;
+      uint32_t cg0 = (modcolor >> 8) & 0xF;
+      uint32_t cb0 = (modcolor >> 4) & 0xF;
+      uint32_t cr1 = (modcolor1 >> 12) & 0xF;
+      uint32_t cg1 = (modcolor1 >> 8) & 0xF;
+      uint32_t cb1 = (modcolor1 >> 4) & 0xF;
 
       switch (mod)
       {
          case TMOD_TEX_INTER_COLOR_USING_FACTOR:
-            mod_tex_inter_color_using_factor ((uint16_t*)texture, size, modcolor, modfactor);
+            {
+               float percent = modfactor / 255.0f;
+
+               do
+               {
+                  uint8_t r = ((1 - percent) * (((*dst) >> 8) & 0xF) + percent * cr0);
+                  uint8_t g = ((1 - percent) * (((*dst) >> 4) & 0xF) + percent * cg0);
+                  uint8_t b = ((1 - percent) * ((*dst) & 0xF) + percent * cb0);
+                  *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+               }while(--size);
+            }
             break;
          case TMOD_TEX_INTER_COL_USING_COL1:
             mod_tex_inter_col_using_col1 ((uint16_t*)texture, size, modcolor, modcolor1);
             break;
          case TMOD_FULL_COLOR_SUB_TEX:
-            mod_full_color_sub_tex ((uint16_t*)texture, size, modcolor);
+            {
+               do
+               {
+                  uint8_t a = ((modcolor & 0xF) - (((*dst) >> 12) & 0xF));
+                  uint8_t r = (cr0 - (((*dst) >> 8) & 0xF));
+                  uint8_t g = (cg0 - (((*dst) >> 4) & 0xF));
+                  uint8_t b = (cb0 - (*dst & 0xF));
+                  *(dst++) = (a << 12) | (r << 8) | (g << 4) | b;
+               }while(--size);
+            }
             break;
          case TMOD_COL_INTER_COL1_USING_TEX:
             mod_col_inter_col1_using_tex ((uint16_t*)texture, size, modcolor, modcolor1);
             break;
          case TMOD_COL_INTER_COL1_USING_TEXA:
-            mod_col_inter_col1_using_texa ((uint16_t*)texture, size, modcolor, modcolor1);
-            break;
          case TMOD_COL_INTER_COL1_USING_TEXA__MUL_TEX:
-            mod_col_inter_col1_using_texa__mul_tex ((uint16_t*)texture, size, modcolor, modcolor1);
+            {
+
+               if (mod == TMOD_COL_INTER_COL1_USING_TEXA__MUL_TEX)
+               {
+                  do
+                  {
+                     float percent = ((*dst & 0xF000) >> 12) / 15.0f;
+                     uint8_t r = ((((1 - percent) * cr0 + percent * cr1) / 15.0f) * ((((*dst) & 0x0F00) >> 8) / 15.0f) * 15.0f);
+                     uint8_t g = ((((1 - percent) * cg0 + percent * cg1) / 15.0f) * ((((*dst) & 0x00F0) >> 4) / 15.0f) * 15.0f);
+                     uint8_t b = ((((1 - percent) * cb0 + percent * cb1) / 15.0f) * (((*dst) & 0x000F) / 15.0f) * 15.0f);
+                     *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                  }while(--size);
+               }
+               else
+               {
+                  do
+                  {
+                     float percent = ((*dst & 0xF000) >> 12) / 15.0f;
+                     uint8_t r = ((1 - percent) * cr0 + percent * cr1);
+                     uint8_t g = ((1 - percent) * cg0 + percent * cg1);
+                     uint8_t b = ((1 - percent) * cb0 + percent * cb1);
+                     *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                  }while(--size);
+               }
+            }
             break;
+         case TMOD_COL_INTER_TEX_USING_TEX:
          case TMOD_COL_INTER_TEX_USING_TEXA:
-            mod_col_inter_tex_using_texa ((uint16_t*)texture, size, modcolor);
+            {
+               if (mod == TMOD_COL_INTER_TEX_USING_TEX)
+               {
+                  do
+                  {
+                     float percent_r = (((*dst) >> 8) & 0xF) / 15.0f;
+                     float percent_g = (((*dst) >> 4) & 0xF) / 15.0f;
+                     float percent_b = ((*dst) & 0xF) / 15.0f;
+                     uint8_t r = ((1.0f-percent_r) * cr0 + percent_r * (((*dst) & 0x0F00) >> 8));
+                     uint8_t g = ((1.0f-percent_g) * cg0 + percent_g * (((*dst) & 0x00F0) >> 4));
+                     uint8_t b = ((1.0f-percent_b) * cb0 + percent_b * ((*dst) & 0x000F));       
+                     *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                  }while(--size);
+               }
+               else
+               {
+                  do
+                  {
+                     float percent = ((*dst & 0xF000) >> 12) / 15.0f;
+                     uint8_t r = ((1 - percent) * cr0 + percent * ((*dst & 0x0F00) >> 8));
+                     uint8_t g = ((1 - percent) * cg0 + percent * ((*dst & 0x00F0) >> 4));
+                     uint8_t b = ((1 - percent) * cb0 + percent * (*dst & 0x000F));
+                     *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
+                  }while(--size);
+               }
+            }
             break;
          case TMOD_COL2_INTER__COL_INTER_COL1_USING_TEX__USING_TEXA:
             mod_col2_inter__col_inter_col1_using_tex__using_texa ((uint16_t*)texture, size, modcolor, modcolor1, modcolor2);
             break;
          case TMOD_TEX_SCALE_FAC_ADD_FAC:
-            mod_tex_scale_fac_add_fac ((uint16_t*)texture, size, modfactor);
+            {
+               float base_a_plus_percent = ((1.0f - (modfactor / 255.0f)) * 15.0f) + (modfactor / 255.0f);
+
+               {
+                  *(dst++) = ((uint16_t)(base_a_plus_percent * ((*dst) >> 12)) << 12) | ((*dst) & 0x0FFF);
+               }while(--size);
+            }
             break;
          case TMOD_TEX_SUB_COL_MUL_FAC_ADD_TEX:
             mod_tex_sub_col_mul_fac_add_tex ((uint16_t*)texture, size, modcolor, modfactor);
@@ -1247,7 +1327,15 @@ static void LoadTex(int id, int tmu)
             mod_tex_add_col ((uint16_t*)texture, size, modcolor);
             break;
          case TMOD_TEX_SUB_COL:
-            mod_tex_sub_col ((uint16_t*)texture, size, modcolor);
+            {
+               do
+               {
+                  uint8_t r = max(((((*dst) >> 8) & 0xF) - cr0), 0);
+                  uint8_t g = max(((((*dst) >> 4) & 0xF) - cg0), 0);
+                  uint8_t b = max((((*dst) & 0xF) - cb0), 0);
+                  *(dst++) = (((*dst) & 0xF000) << 12) | (r << 8) | (g << 4) | b;
+               }while(--size);
+            }
             break;
          case TMOD_TEX_SUB_COL_MUL_FAC:
             mod_tex_sub_col_mul_fac ((uint16_t*)texture, size, modcolor, modfactor);
@@ -1257,9 +1345,6 @@ static void LoadTex(int id, int tmu)
             break;
          case TMOD_COL_MUL_TEXA_ADD_TEX:
             mod_col_mul_texa_add_tex((uint16_t*)texture, size, modcolor);
-            break;
-         case TMOD_COL_INTER_TEX_USING_TEX:
-            mod_col_inter_tex_using_tex ((uint16_t*)texture, size, modcolor);
             break;
          case TMOD_TEX_INTER_NOISE_USING_COL:
             mod_tex_inter_noise_using_col ((uint16_t*)texture, size, modcolor);
