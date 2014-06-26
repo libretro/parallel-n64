@@ -668,13 +668,20 @@ void retro_unload_game(void)
 
 void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
 {
-   if (no_audio)
-      return;
-
-   double ratio = 44100.0 / freq;
-   size_t max_frames = freq > 44100 ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
+	const int16_t *out = NULL;
+	double ratio = 44100.0 / freq;
+	size_t max_frames = freq > 44100 ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
 
    size_t remain_frames = 0;
+   struct resampler_data data = {0};
+   data.data_in = audio_in_buffer_float;
+   data.data_out = audio_out_buffer_float;
+   data.input_frames = frames;
+   data.ratio = ratio;
+   
+   if (no_audio)
+      return;
+   
    if (frames > max_frames)
    {
       remain_frames = frames - max_frames;
@@ -683,17 +690,10 @@ void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
 
    audio_convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
 
-   struct resampler_data data = {0};
-   data.data_in = audio_in_buffer_float;
-   data.data_out = audio_out_buffer_float;
-   data.input_frames = frames;
-   data.ratio = ratio;
-
    resampler->process(resampler_audio_data, &data);
 
    audio_convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
-
-   const int16_t *out = audio_out_buffer_s16;
+   out = audio_out_buffer_s16;
    while (data.output_frames)
    {
       size_t ret = audio_batch_cb(out, data.output_frames);
