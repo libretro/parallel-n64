@@ -55,8 +55,6 @@ uint8_t *texture_buffer = tex1;
 #include "MiClWr16b.h"	// Mirror/Clamp/Wrap functions, ONLY INCLUDE IN THIS FILE!!!
 #include "MiClWr8b.h"	// Mirror/Clamp/Wrap functions, ONLY INCLUDE IN THIS FILE!!!
 #include "TexConv.h"	// texture conversions, ONLY INCLUDE IN THIS FILE!!!
-#include "TexMod.h"
-#include "TexModCI.h"
 #include "CRC.h"
 
 typedef struct TEXINFO_t
@@ -829,7 +827,6 @@ static void LoadTex(int id, int tmu)
    int td, lod, aspect, shift, size_max, wid, hei, modifyPalette;
    uint32_t size_x, size_y, real_x, real_y, result;
    uint32_t mod, modcolor, modcolor1, modcolor2, modfactor;
-   uint16_t tmp_pal[256];
    CACHE_LUT *cache;
    FRDP (" | |-+ LoadTex (id: %d, tmu: %d)\n", id, tmu);
 
@@ -1046,8 +1043,240 @@ static void LoadTex(int id, int tmu)
 
    if (modifyPalette)
    {
+      uint16_t tmp_pal[256];
       memcpy(tmp_pal, rdp.pal_8, 512);
-      ModifyPalette(mod, modcolor, modcolor1, modfactor);
+
+      uint8_t cr0 = ((modcolor >> 24) & 0xFF);
+      uint8_t cg0 = ((modcolor >> 16) & 0xFF);
+      uint8_t cb0 = ((modcolor >> 8) & 0xFF);
+      uint8_t ca0 = (modcolor & 0xFF);
+      uint8_t cr1 = ((modcolor1 >> 24) & 0xFF);
+      uint8_t cg1 = ((modcolor1 >> 16) & 0xFF);
+      uint8_t cb1 = ((modcolor1 >> 8)  & 0xFF);
+      int size = 256;
+      uint16_t *col = &rdp.pal_8[0];
+      float percent_r = ((modcolor1 >> 24) & 0xFF) / 255.0f;
+      float percent_g = ((modcolor1 >> 16) & 0xFF) / 255.0f;
+      float percent_b = ((modcolor1 >> 8)  & 0xFF) / 255.0f;
+
+
+      switch (mod)
+      {
+         case TMOD_TEX_INTER_COLOR_USING_FACTOR:
+            percent_r = percent_g = percent_b = modfactor / 255.0f;
+         case TMOD_TEX_INTER_COL_USING_COL1:
+            do
+            {
+               uint8_t a = (*col & 0x0001);;
+               uint8_t r = (((*col & 0xF800) >> 11));
+               uint8_t g = (((*col & 0x07C0) >> 6));
+               uint8_t b = (((*col & 0x003E) >> 1));
+               r = (min(255, (1-percent_r) * r + percent_r * cr0));
+               g = (min(255, (1-percent_g) * g + percent_g * cg0));
+               b = (min(255, (1-percent_b) * b + percent_b * cb0));
+               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
+                     ((uint16_t)(g >> 3) << 6) |
+                     ((uint16_t)(b >> 3) << 1) |
+                     ((uint16_t)(a ) << 0));
+            }while(--size);
+            break;
+         case TMOD_FULL_COLOR_SUB_TEX:
+            do
+            {
+               uint8_t a = (*col & 0x0001);;
+               uint8_t r = (((*col & 0xF800) >> 11));
+               uint8_t g = (((*col & 0x07C0) >> 6));
+               uint8_t b = (((*col & 0x003E) >> 1));
+               a = max(0, ca0 - a);
+               r = max(0, cr0 - r);
+               g = max(0, cg0 - g);
+               b = max(0, cb0 - b);
+               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
+                     ((uint16_t)(g >> 3) << 6) |
+                     ((uint16_t)(b >> 3) << 1) |
+                     ((uint16_t)(a ) << 0));
+            }while(--size);
+            break;
+         case TMOD_TEX_SUB_COL:
+            do
+            {
+               uint8_t a = (*col & 0x0001);;
+               uint8_t r = (((*col & 0xF800) >> 11));
+               uint8_t g = (((*col & 0x07C0) >> 6));
+               uint8_t b = (((*col & 0x003E) >> 1));
+               r = max(r - cr0, 0);
+               g = max(g - cg0, 0);
+               b = max(b - cb0, 0);
+               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
+                     ((uint16_t)(g >> 3) << 6) |
+                     ((uint16_t)(b >> 3) << 1) |
+                     ((uint16_t)(a ) << 0));
+            }while(--size);
+            break;
+         case TMOD_COL_INTER_COL1_USING_TEX:
+            do
+            {
+               float percent_r = ((*col & 0xF800) >> 11) / 31.0f;
+               float percent_g = ((*col & 0x07C0) >> 6) / 31.0f;
+               float percent_b = ((*col & 0x003E) >> 1) / 31.0f;
+               uint8_t a = (*col & 0x0001);
+               uint8_t r = (min((1.0f-percent_r) * cr0 + percent_r * cr1, 255));
+               uint8_t g = (min((1.0f-percent_g) * cg0 + percent_g * cg1, 255));
+               uint8_t b = (min((1.0f-percent_b) * cb0 + percent_b * cb1, 255));
+               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
+                     ((uint16_t)(g >> 3) << 6) |
+                     ((uint16_t)(b >> 3) << 1) |
+                     ((uint16_t)(a ) << 0));
+            }while(--size);
+            break;
+         case TMOD_TEX_SUB_COL_MUL_FAC_ADD_TEX:
+            {
+               float percent = modfactor / 255.0f;
+
+               do
+               {
+                  uint8_t a = (*col & 0x0001);;
+                  float r = (uint8_t)((float)((*col & 0xF800) >> 11));
+                  float g = (uint8_t)((float)((*col & 0x07C0) >> 6));
+                  float b = (uint8_t)((float)((*col & 0x003E) >> 1));
+                  r = (r - cr0) * percent + r;
+                  if (r > 255.0f)
+                     r = 255.0f;
+                  if (r < 0.0f)
+                     r = 0.0f;
+                  g = (g - cg0) * percent + g;
+                  if (g > 255.0f)
+                     g = 255.0f;
+                  if (g < 0.0f)
+                     g = 0.0f;
+                  b = (b - cb0) * percent + b;
+                  if (b > 255.0f)
+                     g = 255.0f;
+                  if (b < 0.0f)
+                     b = 0.0f;
+                  *col++ = (uint16_t)(((uint16_t)((uint8_t)(r) >> 3) << 11) |
+                        ((uint16_t)((uint8_t)(g) >> 3) << 6) |
+                        ((uint16_t)((uint8_t)(b) >> 3) << 1) |
+                        (uint16_t)(a) );
+               }while(--size);
+            }
+            break;
+         case TMOD_TEX_SUB_COL_MUL_FAC:
+            {
+               float percent = modfactor / 255.0f;
+
+               do
+               {
+                  uint8_t a = (*col & 0x0001);
+                  float r = (float)((*col & 0xF800) >> 11);
+                  float g = (float)((*col & 0x07C0) >> 6);
+                  float b = (float)((*col & 0x003E) >> 1);
+                  r = (r - cr0) * percent;
+                  if (r > 255.0f)
+                     r = 255.0f;
+                  if (r < 0.0f)
+                     r = 0.0f;
+                  g = (g - cg0) * percent;
+                  if (g > 255.0f)
+                     g = 255.0f;
+                  if (g < 0.0f)
+                     g = 0.0f;
+                  b = (b - cb0) * percent;
+                  if (b > 255.0f)
+                     g = 255.0f;
+                  if (b < 0.0f)
+                     b = 0.0f;
+
+                  *col++ = (uint16_t)(((uint16_t)((uint8_t)(r) >> 3) << 11) |
+                        ((uint16_t)((uint8_t)(g) >> 3) << 6) |
+                        ((uint16_t)((uint8_t)(b) >> 3) << 1) |
+                        (uint16_t)(a) );
+               }while(--size);
+            }
+         case TMOD_TEX_SCALE_COL_ADD_COL:
+            percent_r = ((modcolor1 >> 24) & 0xFF) / 255.0f;
+            percent_g = ((modcolor1 >> 16) & 0xFF) / 255.0f;
+            percent_b = ((modcolor1 >> 8)  & 0xFF) / 255.0f;
+
+            do
+            {
+               uint8_t a = (*col & 0x0001);;
+               uint8_t r = (((*col & 0xF800) >> 11));
+               uint8_t g = (((*col & 0x07C0) >> 6));
+               uint8_t b = (((*col & 0x003E) >> 1));
+               r = (uint8_t)(min(255, percent_r * r + cr0));
+               g = (uint8_t)(min(255, percent_g * g + cg0));
+               b = (uint8_t)(min(255, percent_b * b + cb0));
+               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
+                     ((uint16_t)(g >> 3) << 6) |
+                     ((uint16_t)(b >> 3) << 1) |
+                     ((uint16_t)(a ) << 0));
+            }while(--size);
+            break;
+         case TMOD_TEX_ADD_COL:
+            do
+            {
+               uint8_t a = (*col & 0x0001);;
+               uint8_t r = (((*col & 0xF800) >> 11));
+               uint8_t g = (((*col & 0x07C0) >> 6));
+               uint8_t b = (((*col & 0x003E) >> 1));
+               r = min(cr0 + r, 255);
+               g = min(cg0 + g, 255);
+               b = min(cb0 + b, 255);
+               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
+                     ((uint16_t)(g >> 3) << 6) |
+                     ((uint16_t)(b >> 3) << 1) |
+                     ((uint16_t)(a ) << 0));
+            }while(--size);
+            break;
+            break;
+         case TMOD_COL_INTER_TEX_USING_COL1:
+            do
+            {
+               uint8_t a = (*col & 0x0001);;
+               uint8_t r = (((*col & 0xF800) >> 11));
+               uint8_t g = (((*col & 0x07C0) >> 6));
+               uint8_t b = (((*col & 0x003E) >> 1));
+               r = (min(255, percent_r * r + (1-percent_r) * cr0));
+               g = (min(255, percent_g * g + (1-percent_g) * cg0));
+               b = (min(255, percent_b * b + (1-percent_b) * cb0));
+               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
+                     ((uint16_t)(g >> 3) << 6) |
+                     ((uint16_t)(b >> 3) << 1) |
+                     ((uint16_t)(a ) << 0));
+            }while(--size);
+            break;
+         case TMOD_TEX_INTER_COL_USING_TEXA:
+            {
+               uint8_t r = (((modcolor >> 24) & 0xFF) / 255.0f * 31.0f);
+               uint8_t g = (((modcolor >> 16) & 0xFF) / 255.0f * 31.0f);
+               uint8_t b = (((modcolor >> 8)  & 0xFF) / 255.0f * 31.0f);
+               uint8_t a = (modcolor & 0xFF) ? 1 : 0;
+               uint16_t col16 = ((r << 11)|(g << 6)|(b << 1) | a);
+
+               do
+               {
+                  *col = (*col & 1) ? col16 : *col;
+                  *col++;
+               }while(--size);
+            }
+            break;
+         case TMOD_TEX_MUL_COL:
+            do
+            {
+               uint8_t a = (*col & 0x0001);;
+               uint8_t r = (((*col & 0xF800) >> 11) * cr0);
+               uint8_t g = (((*col & 0x07C0) >> 6) * cg0);
+               uint8_t b = (((*col & 0x003E) >> 1) * cb0);
+               *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
+                     ((uint16_t)(g >> 3) << 6) |
+                     ((uint16_t)(b >> 3) << 1) |
+                     ((uint16_t)(a ) << 0));
+            }while(--size);
+            break;
+      }
+
+      memcpy(rdp.pal_8, tmp_pal, 512);
    }
 
    cache->mod = mod;
@@ -1168,8 +1397,6 @@ static void LoadTex(int id, int tmu)
       }
    }
 
-   if (modifyPalette)
-      memcpy(rdp.pal_8, tmp_pal, 512);
 
    if (mod && !modifyPalette)
    {
