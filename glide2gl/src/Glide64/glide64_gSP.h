@@ -292,35 +292,6 @@ static void gSPClearGeometryMode(uint32_t mode)
    //FRDP("uc0:cleargeometrymode %08lx\n", mode);
 }
 
-/*
- * Calls a child display list from the current display list.
- *
- * This kind of display list hierarchy can be used to make
- * re-use of display lists or to structure the display list
- * data in a way that reflects the actual rendering model.
- *
- * The display list hierarchy can have up to 10 steps (18 
- * steps for gSPf3DEX.fifo.o and gSPF3DEX.NoN.fifo.o).
- *
- * d - Segment address of the child display list.
- *
- * GBI compatibility -
- * F3DEX GBI - supported
- * S2DEX GBI - supported
- */
-static void gSPDisplayList(uint32_t dl)
-{
-   uint32_t address = RSP_SegmentToPhysical(dl);
-
-   // Don't execute display list
-   // This fixes partially Gauntlet: Legends (first condition)
-   if (address == rdp.pc[rdp.pc_i] - 8 || rdp.pc_i >= 9)
-      return;
-
-   rdp.pc_i ++;  // go to the next PC in the stack
-   rdp.pc[rdp.pc_i] = address;  // jump to the address
-}
-
 void glide64SPClipVertex(uint32_t i)
 {
    if (rdp.vtxbuf[i].x > rdp.clip_max_x) rdp.clip |= CLIP_XMAX;
