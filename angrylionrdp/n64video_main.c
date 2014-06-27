@@ -149,8 +149,7 @@ EXPORT void CALL angrylionRomOpen (void)
 {
 #ifndef HAVE_DIRECTDRAW
     blitter_buf = (int32_t*)calloc(screen_width * screen_height, sizeof(int32_t));
-    pitchindwords = screen_width;
-    screen_pitch = screen_width * 4;
+    pitchindwords = screen_width * 4;
 #else
     DDPIXELFORMAT ftpixel;
     LPDIRECTDRAWCLIPPER lpddcl;
