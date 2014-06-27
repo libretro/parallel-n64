@@ -1141,21 +1141,9 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing || (!fb_emulation_enabled && (rdp.cimg == rdp.zimg)))
    {
       if ((settings.hacks&hack_PMario) && rdp.ci_status == CI_USELESS)
-      {
          pm_palette_mod ();
-      }
       return;
    }
-
-#ifdef HAVE_HWFBE
-   if ((settings.ucode == ucode_CBFD) && rdp.cur_image && rdp.cur_image->format)
-   {
-      //FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.timg.addr, rdp.maincimg[1].addr, rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size);
-      LRDP("Shadow texrect is skipped.\n");
-      rdp.tri_n += 2;
-      return;
-   }
-#endif
 
    if ((settings.ucode == ucode_PerfectDark) && (rdp.frame_buffers[rdp.ci_count-1].status == CI_ZCOPY))
    {
@@ -1213,31 +1201,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          lr_y = ceil(lr_y);
    }
 
-#ifdef HAVE_HWFBE
-   if (rdp.tbuff_tex && (settings.frame_buffer & fb_optimize_texrect))
-   {
-      LRDP("Attempt to optimize texrect\n");
-      if (!rdp.tbuff_tex->drawn)
-      {
-         DRAWIMAGE d;
-         d.imageX = 0;
-         d.imageW = (uint16_t)rdp.tbuff_tex->width;
-         d.frameX = (uint16_t)ul_x;
-         d.frameW = (uint16_t)(rdp.tbuff_tex->width);
-
-         d.imageY = 0;
-         d.imageH = (uint16_t)rdp.tbuff_tex->height;
-         d.frameY = (uint16_t)ul_y;
-         d.frameH = (uint16_t)(rdp.tbuff_tex->height);
-         FRDP("texrect. ul_x: %d, ul_y: %d, lr_x: %d, lr_y: %d, width: %d, height: %d\n", ul_x, ul_y, lr_x, lr_y, rdp.tbuff_tex->width, rdp.tbuff_tex->height);
-         d.scaleX = 1.0f;
-         d.scaleY = 1.0f;
-         DrawHiresImage(d, rdp.tbuff_tex->width == rdp.ci_width);
-         rdp.tbuff_tex->drawn = true;
-      }
-      return;
-   }
-#endif
    //*/
    // framebuffer workaround for Zelda: MM LOT
    if ((rdp.othermode_l & 0xFFFF0000) == 0x0f5a0000)
@@ -1323,25 +1286,11 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    {
       off_size_x = (lr_y - ul_y - 1) * dsdx;
       off_size_y = (lr_x - ul_x - 1) * dtdy;
-#ifdef TEXTURE_FILTER
-      if (rdp.cur_cache[0]->is_hires_tex)
-      {
-         off_size_x = (float)((lr_y - ul_y) * dsdx);
-         off_size_y = (float)((lr_x - ul_x) * dtdy);
-      }
-#endif
    }
    else
    {
       off_size_x = (lr_x - ul_x - 1) * dsdx;
       off_size_y = (lr_y - ul_y - 1) * dtdy;
-#ifdef TEXTURE_FILTER
-      if (rdp.cur_cache[0]->is_hires_tex)
-      {
-         off_size_x = (float)((lr_x - ul_x) * dsdx);
-         off_size_y = (float)((lr_y - ul_y) * dtdy);
-      }
-#endif
    }
 
    //calculate texture coordinates
@@ -1391,38 +1340,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
             }
          }
 
-#ifdef HAVE_HWFBE
-         if (rdp.aTBuffTex[i]) //hwfbe texture
-         {
-            float t0_off_x;
-            float t0_off_y;
-            if (off_x_i + off_y_i == 0)
-            {
-               t0_off_x = tile->ul_s;
-               t0_off_y = tile->ul_t;
-            }
-            else
-            {
-               t0_off_x = off_x_i/32.0f;
-               t0_off_y = off_y_i/32.0f;
-            }
-            t0_off_x += rdp.aTBuffTex[i]->u_shift;// + tile->ul_s; //commented for Paper Mario motion blur
-            t0_off_y += rdp.aTBuffTex[i]->v_shift;// + tile->ul_t;
-            texUV[i].ul_u = t0_off_x * sx;
-            texUV[i].ul_v = t0_off_y * sy;
-
-            texUV[i].lr_u = texUV[i].ul_u + off_size_x * sx;
-            texUV[i].lr_v = texUV[i].ul_v + off_size_y * sy;
-
-            texUV[i].ul_u *= rdp.aTBuffTex[i]->u_scale;
-            texUV[i].ul_v *= rdp.aTBuffTex[i]->v_scale;
-            texUV[i].lr_u *= rdp.aTBuffTex[i]->u_scale;
-            texUV[i].lr_v *= rdp.aTBuffTex[i]->v_scale;
-            FRDP("tbuff_tex[%d] ul_u: %f, ul_v: %f, lr_u: %f, lr_v: %f\n",
-                  i, texUV[i].ul_u, texUV[i].ul_v, texUV[i].lr_u, texUV[i].lr_v);
-         }
-         else //common case
-#endif
          {
             //kill 10.5 format overflow by SIGN16 macro
             texUV[i].ul_u = SIGN16(x_i) / 32.0f;
@@ -1481,122 +1398,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    // for (int j =0; j < 4; j++)
    // FRDP("v[%d] u0: %f, v0: %f, u1: %f, v1: %f\n", j, v[j].u0, v[j].v0, v[j].u1, v[j].v1);
-
-
-#if 0
-   if (
-#ifdef HAVE_HWFBE
-         !rdp.aTBuffTex[0] &&
-#endif
-         rdp.cur_cache[0]->splits != 1)
-   {
-      // ** LARGE TEXTURE HANDLING **
-      // *VERY* simple algebra for texrects
-      float min_u, min_x, max_u, max_x;
-      int start_u_256, end_u_256, splitheight, num_verts_line;
-      float m, b;
-
-      if (v[0].u0 < v[1].u0)
-      {
-         min_u = v[0].u0;
-         min_x = v[0].x;
-         max_u = v[1].u0;
-         max_x = v[1].x;
-      }
-      else
-      {
-         min_u = v[1].u0;
-         min_x = v[1].x;
-         max_u = v[0].u0;
-         max_x = v[0].x;
-      }
-
-      start_u_256 = (int)min_u >> 8;
-      end_u_256 = (int)max_u >> 8;
-      //FRDP(" min_u: %f, max_u: %f start: %d, end: %d\n", min_u, max_u, start_u_256, end_u_256);
-
-      splitheight = rdp.cur_cache[0]->splitheight;
-
-      num_verts_line = 2 + ((end_u_256-start_u_256)<<1);
-      n_vertices = num_verts_line << 1;
-      vnew = malloc(n_vertices * sizeof(VERTEX));
-      vptr = (VERTEX*)vnew;
-
-      vnew[0] = v[0];
-      vnew[0].u0 -= 256.0f * start_u_256;
-      vnew[0].v0 += splitheight * start_u_256;
-      vnew[0].u1 -= 256.0f * start_u_256;
-      vnew[0].v1 += splitheight * start_u_256;
-      vnew[1] = v[2];
-      vnew[1].u0 -= 256.0f * start_u_256;
-      vnew[1].v0 += splitheight * start_u_256;
-      vnew[1].u1 -= 256.0f * start_u_256;
-      vnew[1].v1 += splitheight * start_u_256;
-      vnew[n_vertices-2] = v[1];
-      vnew[n_vertices-2].u0 -= 256.0f * end_u_256;
-      vnew[n_vertices-2].v0 += splitheight * end_u_256;
-      vnew[n_vertices-2].u1 -= 256.0f * end_u_256;
-      vnew[n_vertices-2].v1 += splitheight * end_u_256;
-      vnew[n_vertices-1] = v[3];
-      vnew[n_vertices-1].u0 -= 256.0f * end_u_256;
-      vnew[n_vertices-1].v0 += splitheight * end_u_256;
-      vnew[n_vertices-1].u1 -= 256.0f * end_u_256;
-      vnew[n_vertices-1].v1 += splitheight * end_u_256;
-
-      // find the equation of the line of u,x
-      m = (max_x - min_x) / (max_u - min_u); // m = delta x / delta u
-      b = min_x - m * min_u; // b = y - m * x
-
-      for (i=start_u_256; i<end_u_256; i++)
-      {
-         int vn;
-         // Find where x = current 256 multiple
-         float x = m * ((i<<8)+256) + b;
-
-         vn = 2 + ((i-start_u_256)<<2);
-         vnew[vn] = v[0];
-         vnew[vn].x = x;
-         vnew[vn].u0 = 255.5f;
-         vnew[vn].v0 += (float)splitheight * i;
-         vnew[vn].u1 = 255.5f;
-         vnew[vn].v1 += (float)splitheight * i;
-
-         vn ++;
-         vnew[vn] = v[2];
-         vnew[vn].x = x;
-         vnew[vn].u0 = 255.5f;
-         vnew[vn].v0 += (float)splitheight * i;
-         vnew[vn].u1 = 255.5f;
-         vnew[vn].v1 += (float)splitheight * i;
-
-         vn ++;
-         vnew[vn] = vnew[vn-2];
-         vnew[vn].u0 = 0.5f;
-         vnew[vn].v0 += (float)splitheight;
-         vnew[vn].u1 = 0.5f;
-         vnew[vn].v1 += (float)splitheight;
-
-         vn ++;
-         vnew[vn] = vnew[vn-2];
-         vnew[vn].u0 = 0.5f;
-         vnew[vn].v0 += (float)splitheight;
-         vnew[vn].u1 = 0.5f;
-         vnew[vn].v1 += (float)splitheight;
-      }
-      //*
-      if (n_vertices > 12)
-      {
-         int k;
-         float texbound = (float)(splitheight << 1);
-         for (k = 0; k < n_vertices; k ++)
-         {
-            if (vnew[k].v0 > texbound)
-               vnew[k].v0 = (float)fmod(vnew[k].v0, texbound);
-         }
-      }
-      //*/
-   }
-#endif
 
    AllowShadeMods (vptr, n_vertices);
    for (i=0; i<n_vertices; i++)
