@@ -322,6 +322,10 @@ int retro_return(bool just_flipping)
       state_job_done = savestates_job_nothing;
       flip_only = just_flipping;
 
+#ifndef HAVE_SHARED_CONTEXT
+    if (gfx_plugin != GFX_ANGRYLION && !stop)
+       sglExit();
+#endif
       co_switch(main_thread);
 
       return state_job_done;
@@ -724,10 +728,6 @@ run_again:
        sglEnter();
 #endif
     co_switch(emulator_thread);
-#ifndef HAVE_SHARED_CONTEXT
-    if (gfx_plugin != GFX_ANGRYLION && !stop)
-       sglExit();
-#endif
 
 
     if (flip_only)
