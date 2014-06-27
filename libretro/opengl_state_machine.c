@@ -5,8 +5,15 @@
 
 #include "glsym/glsym.h"
 #include "opengl_state_machine.h"
+#include "plugin/plugin.h"
+
+// mupen64 defines
+#ifndef GFX_ANGRYLION
+#define GFX_ANGRYLION 3
+#endif
 
 extern int stop;
+extern enum gfx_plugin_type gfx_plugin;
 
 //forward declarations
 //
@@ -489,6 +496,9 @@ void sglEnter(void)
 {
    int i;
 
+   if (gfx_plugin == GFX_ANGRYLION || stop)
+      return;
+
     for (i = 0; i < MAX_ATTRIB; i ++)
     {
         if (VertexAttribPointer_enabled[i])
@@ -542,6 +552,9 @@ void sglEnter(void)
 void sglExit(void)
 {
    int i;
+
+   if (gfx_plugin == GFX_ANGRYLION || stop)
+      return;
 
     for (i = 0; i < SGL_CAP_MAX; i ++)
         glDisable(CapTranslate[i]);
