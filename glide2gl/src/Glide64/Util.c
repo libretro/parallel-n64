@@ -1334,9 +1334,7 @@ void update(void)
       {
          rdp.update ^= UPDATE_ALPHA_COMPARE;
 
-         //	  if (rdp.acmp == 1 && !(rdp.othermode_l & CULL_BACK) && !force_full_alpha)
-         //      if (rdp.acmp == 1 && !(rdp.othermode_l & CULL_BACK) && (rdp.blend_color&0xFF))
-         if (rdp.acmp == 1 && !(rdp.othermode_l & CULL_BACK) && (!(rdp.othermode_l & G_CULL_BACK) || (rdp.blend_color&0xFF)))
+         if (rdp.acmp == 1 && !(rdp.othermode_l & 0x00002000) && (!(rdp.othermode_l & 0x00004000) || (rdp.blend_color&0xFF)))
          {
             uint8_t reference = (uint8_t)(rdp.blend_color&0xFF);
             grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER);
