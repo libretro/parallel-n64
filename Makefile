@@ -71,7 +71,6 @@ else ifneq (,$(findstring ios,$(platform)))
    fpic = -fPIC
    GLES = 1
    GL_LIB := -framework OpenGLES
-	GLIDE2GL=0
 
    OBJECTS += libretro/libco/armeabi_asm.o
 
