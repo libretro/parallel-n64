@@ -164,32 +164,3 @@ void Clamp32bS (uint8_t *tex, uint32_t width, uint32_t clamp_to, uint32_t real_w
 	line = width << 2;
 	clamp32bS (dest, constant, real_height, line, line_full, count);
 }
-
-//****************************************************************
-// 32-bit Vertical Mirror
-
-void Mirror32bT (uint8_t *tex, uint32_t mask, uint32_t max_height, uint32_t real_width)
-{
-   int32_t line_full;
-   uint8_t *dst;
-   uint32_t mask_height, mask_mask, y;
-   if (mask == 0)
-      return;
-
-   mask_height = (1 << mask);
-   mask_mask = mask_height-1;
-   if (max_height <= mask_height) return;
-   line_full = real_width << 2;
-
-   dst = (uint8_t*)(tex + mask_height * line_full);
-
-   for (y = mask_height; y < max_height; y++)
-   {
-      if (y & mask_height) // mirrored
-         memcpy ((void*)dst, (void*)(tex + (mask_mask - (y & mask_mask)) * line_full), line_full);
-      else                 // not mirrored
-         memcpy ((void*)dst, (void*)(tex + (y & mask_mask) * line_full), line_full);
-
-      dst += line_full;
-   }
-}
