@@ -28,7 +28,7 @@
 #include <stdarg.h>
 
 #include "libretro.h"
-void retro_audio_batch_cb(const int16_t *data, size_t frames, unsigned freq);
+extern retro_audio_sample_batch_t audio_batch_cb;
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_types.h"
@@ -36,9 +36,27 @@ void retro_audio_batch_cb(const int16_t *data, size_t frames, unsigned freq);
 #include "m64p_common.h"
 #include "m64p_config.h"
 
+#include "resampler.h"
+#include "utils.h"
+
+#ifndef MAX_AUDIO_FRAMES
+#define MAX_AUDIO_FRAMES 2048
+#endif
+
 /* Read header for type definition */
 static AUDIO_INFO AudioInfo;
 static int GameFreq = 33600;
+
+static const rarch_resampler_t *resampler;
+static void *resampler_audio_data;
+static float *audio_in_buffer_float;
+static float *audio_out_buffer_float;
+static int16_t *audio_out_buffer_s16;
+
+void (*audio_convert_s16_to_float_arm)(float *out,
+      const int16_t *in, size_t samples, float gain);
+void (*audio_convert_float_to_s16_arm)(int16_t *out,
+      const float *in, size_t samples);
 
 /* Mupen64Plus plugin functions */
 EXPORT m64p_error CALL audioPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
@@ -58,11 +76,16 @@ EXPORT void CALL audioAiDacrateChanged( int SystemType )
     }
 }
 
+bool no_audio;
 
 EXPORT void CALL audioAiLenChanged(void)
 {
    uint8_t *p;
+   int16_t *raw_data, *out;
+   size_t frames, max_frames, remain_frames;
 	uint32_t i, len;
+   double ratio;
+   struct resampler_data data = {0};
 
    len = *AudioInfo.AI_LEN_REG;
    //if (log_cb)
@@ -79,12 +102,83 @@ EXPORT void CALL audioAiLenChanged(void)
       p[i + 3] ^= p[i + 1];
       p[i + 1] ^= p[i + 3];
    }
-   retro_audio_batch_cb((const int16_t*)p, len / 4, GameFreq);
+
+   raw_data = (int16_t*)p;
+   frames = len / 4;
+
+audio_batch:
+   out = NULL;
+	ratio = 44100.0 / GameFreq;
+	max_frames = GameFreq > 44100 ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
+   remain_frames = 0;
+   
+   if (no_audio)
+      return;
+   
+   if (frames > max_frames)
+   {
+      remain_frames = frames - max_frames;
+      frames = max_frames;
+   }
+
+   data.data_in = audio_in_buffer_float;
+   data.data_out = audio_out_buffer_float;
+   data.input_frames = frames;
+   data.ratio = ratio;
+
+   audio_convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
+
+   resampler->process(resampler_audio_data, &data);
+
+   audio_convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
+   out = audio_out_buffer_s16;
+   while (data.output_frames)
+   {
+      size_t ret = audio_batch_cb(out, data.output_frames);
+      data.output_frames -= ret;
+      out += ret * 2;
+   }
+
+   if (remain_frames)
+   {
+      raw_data = raw_data + frames * 2;
+      frames = remain_frames;
+      goto audio_batch;
+   }
 }
 
-EXPORT m64p_error CALL audioPluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context, void (*DebugCallback)(void *, int, const char *)){return M64ERR_SUCCESS;}
-EXPORT m64p_error CALL audioPluginShutdown(void){return M64ERR_SUCCESS;}
-EXPORT int CALL audioInitiateAudio(AUDIO_INFO Audio_Info){ AudioInfo = Audio_Info; return 1;}
+
+EXPORT m64p_error CALL audioPluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context, void (*DebugCallback)(void *, int, const char *))
+{
+   return M64ERR_SUCCESS;
+}
+
+EXPORT m64p_error CALL audioPluginShutdown(void)
+{
+    if (resampler && resampler_audio_data)
+    {
+       resampler->free(resampler_audio_data);
+       resampler = NULL;
+       resampler_audio_data = NULL;
+       free(audio_in_buffer_float);
+       free(audio_out_buffer_float);
+       free(audio_out_buffer_s16);
+    }
+   return M64ERR_SUCCESS;
+}
+
+EXPORT int CALL audioInitiateAudio(AUDIO_INFO Audio_Info)
+{
+   AudioInfo = Audio_Info;
+
+   rarch_resampler_realloc(&resampler_audio_data, &resampler, NULL, 1.0);
+   audio_in_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
+   audio_out_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
+   audio_out_buffer_s16 = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
+   audio_convert_init_simd();
+   return 1;
+}
+
 EXPORT int CALL audioRomOpen(void){return 1;}
 EXPORT void CALL audioRomClosed(void){}
 EXPORT void CALL audioProcessAList(void){}

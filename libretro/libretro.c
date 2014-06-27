@@ -3,8 +3,6 @@
 #include <string.h>
 
 #include "libretro.h"
-#include "resampler.h"
-#include "utils.h"
 #include "libco/libco.h"
 
 #include "api/m64p_frontend.h"
@@ -14,8 +12,6 @@
 #include "memory/memory.h"
 #include "main/version.h"
 #include "main/savestates.h"
-
-#define MAX_AUDIO_FRAMES 2048
 
 struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
@@ -37,19 +33,8 @@ static bool emu_thread_has_run = false; // < This is used to ensure the core_gl_
 uint16_t button_orientation = 0;
 int astick_deadzone;
 static bool flip_only;
-bool no_audio;
 static savestates_job state_job_done;
 
-static const rarch_resampler_t *resampler;
-static void *resampler_audio_data;
-static float *audio_in_buffer_float;
-static float *audio_out_buffer_float;
-static int16_t *audio_out_buffer_s16;
-
-void (*audio_convert_s16_to_float_arm)(float *out,
-      const int16_t *in, size_t samples, float gain);
-void (*audio_convert_float_to_s16_arm)(int16_t *out,
-      const float *in, size_t samples);
 
 static uint8_t* game_data;
 static uint32_t game_size;
@@ -425,11 +410,6 @@ void retro_init(void)
 
    environ_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &colorMode);
 
-   rarch_resampler_realloc(&resampler_audio_data, &resampler, NULL, 1.0);
-   audio_in_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
-   audio_out_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
-   audio_out_buffer_s16 = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
-   audio_convert_init_simd();
 
    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
    
@@ -444,16 +424,6 @@ void retro_deinit(void)
       perf_cb.perf_log();
 
     CoreShutdown();
-
-    if (resampler && resampler_audio_data)
-    {
-       resampler->free(resampler_audio_data);
-       resampler = NULL;
-       resampler_audio_data = NULL;
-       free(audio_in_buffer_float);
-       free(audio_out_buffer_float);
-       free(audio_out_buffer_s16);
-    }
 }
 
 unsigned int retro_filtering = 0;
@@ -694,45 +664,6 @@ void retro_unload_game(void)
     co_switch(emulator_thread);
 
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
-}
-
-void retro_audio_batch_cb(const int16_t *raw_data, size_t frames, unsigned freq)
-{
-	const int16_t *out = NULL;
-	double ratio = 44100.0 / freq;
-	size_t max_frames = freq > 44100 ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
-   size_t remain_frames = 0;
-   struct resampler_data data = {0};
-   
-   if (no_audio)
-      return;
-   
-   if (frames > max_frames)
-   {
-      remain_frames = frames - max_frames;
-      frames = max_frames;
-   }
-
-   data.data_in = audio_in_buffer_float;
-   data.data_out = audio_out_buffer_float;
-   data.input_frames = frames;
-   data.ratio = ratio;
-
-   audio_convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
-
-   resampler->process(resampler_audio_data, &data);
-
-   audio_convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
-   out = audio_out_buffer_s16;
-   while (data.output_frames)
-   {
-      size_t ret = audio_batch_cb(out, data.output_frames);
-      data.output_frames -= ret;
-      out += ret * 2;
-   }
-
-   if (remain_frames)
-      retro_audio_batch_cb(raw_data + frames * 2, remain_frames, freq);
 }
 
 unsigned int FAKE_SDL_TICKS;
