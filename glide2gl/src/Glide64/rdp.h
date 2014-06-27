@@ -279,6 +279,68 @@ extern uint32_t frame_count; // frame counter
 #define UCODE_OFF_ROAD_CHALLENGE             0xa346a5cc
 #define UCODE_ODT_PROTO                      0x9551177b
 #define UCODE_LAST_LEGION_UX                 0xff372492
+
+#ifdef _MSC_VER
+typedef __int8              i8;
+typedef __int16             i16;
+typedef __int32             i32;
+typedef __int64             i64;
+typedef signed __int8       s8;
+typedef signed __int16      s16;
+typedef signed __int32      s32;
+typedef signed __int64      s64;
+typedef unsigned __int8     u8;
+typedef unsigned __int16    u16;
+typedef unsigned __int32    u32;
+typedef unsigned __int64    u64;
+#else
+typedef char                    i8;
+typedef short                   i16;
+typedef int                     i32;
+typedef long long               i64;
+typedef signed char             s8;
+typedef signed short            s16;
+typedef signed int              s32;
+typedef signed long long        s64;
+typedef unsigned char           u8;
+typedef unsigned short          u16;
+typedef unsigned int            u32;
+typedef unsigned long long      u64;
+#endif
+
+#if defined(_AMD64_) || defined(_IA64_) || defined(__x86_64__)
+#define BUFFERFIFO(word, base, offset) { \
+    *(i64 *)&cmd_data[word] = *(i64 *)((base) + 8*(offset)); \
+}
+#elif defined(USE_MMX_DECODES)
+#define BUFFERFIFO(word, base, offset) { \
+    *(__m64 *)&cmd_data[word] = *(__m64 *)((base) + 8*(offset)); \
+}
+#else
+/*
+ * compatibility fallback to prevent unspecified behavior from the ANSI C
+ * specifications (reading unions per 32 bits when 64 bits were just written)
+ */
+#define BUFFERFIFO(word, base, offset) { \
+    cmd_data[word].W32[0] = *(i32 *)((base) + 8*(offset) + 0); \
+    cmd_data[word].W32[1] = *(i32 *)((base) + 8*(offset) + 4); \
+}
+#endif
+
+
+typedef union {
+    i64 W;
+    s64 SW;
+    u64 UW;
+    i32 W32[2];
+    s32 SW32[2];
+    u32 UW32[2];
+    i16 W16[4];
+    s16 SW16[4];
+    u16 UW16[4];
+    uint8_t B[8];
+    int8_t SB[8];
+} DP_FIFO;
 // Clipping (scissors)
 typedef struct
 {
