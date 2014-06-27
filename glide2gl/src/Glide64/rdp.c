@@ -179,8 +179,6 @@ const char *CIStatus[]   = { "ci_main", "ci_zimg", "ci_unknown",  "ci_useless",
                             "ci_old_copy", "ci_copy", "ci_copy_self",
                             "ci_zcopy", "ci_aux", "ci_aux_copy" };
 
-static int32_t ewdata[44] align(16);
-
 //static variables
 
 char out_buf[2048];
@@ -3665,363 +3663,357 @@ static uint32_t rdp_cmd_data[0x1000];
 #define SSCALE(s, _w) (rdp.Persp_en? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
 #define TSCALE(s, w) (rdp.Persp_en? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
 
-static void lle_triangle(const int32_t *ewdata, int shade, int texture, int zbuffer)
+static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer, uint32_t *rdp_cmd)
 {
-  int j, xleft, xright, xleft_inc, xright_inc, r, g, b, a, z, s, t, w, flip;
-  int drdx, dgdx, dbdx, dadx, dzdx, dsdx, dtdx, dwdx, drde, dgde, dbde, dade, dzde, dsde, dtde, dwde;
-  int32_t yl, ym, yh, xl, xm, xh, dxldy, dxhdy, dxmdy;
-  uint32_t *shade_base, *texture_base, *zbuffer_base, max_level;
-  int nbVtxs;
-  VERTEX vtxbuf[12], *vtx;
+   rdp.cur_tile = (w1 >> 16) & 0x7;
+   int j;
+   int xleft, xright, xleft_inc, xright_inc;
+   int r, g, b, a, z, s, t, w;
+   VERTEX vtxbuf[12], *vtx;
 
-  drdx = 0;
-  dgdx = 0;
-  dbdx = 0;
-  dadx = 0;
-  dzdx = 0;
-  dsdx = 0;
-  dtdx = 0;
-  dwdx = 0;
-  drde = 0;
-  dgde = 0;
-  dbde = 0;
-  dade = 0;
-  dzde = 0;
-  dsde = 0;
-  dtde = 0;
-  dwde = 0;
-  flip = (ewdata[0] & 0x800000) ? 1 : 0;
-  max_level = (ewdata[0] >> 19) & 7;
-  rdp.cur_tile = (ewdata[0] >> 16) & 7;
+   int32_t yl, ym, yh;
+   int32_t xl, xm, xh;
+   int32_t dxldy, dxhdy, dxmdy;
+   uint32_t w3, w4, w5, w6, w7, w8;
+   int32_t nbVtxs;
 
-  shade_base = (uint32_t*)(ewdata + 8);
-  texture_base = (uint32_t*)(ewdata + 8);
-  zbuffer_base = (uint32_t*)(ewdata + 8);
+   int drdx = 0, dgdx = 0, dbdx = 0, dadx = 0, dzdx = 0, dsdx = 0, dtdx = 0, dwdx = 0;
+   int drde = 0, dgde = 0, dbde = 0, dade = 0, dzde = 0, dsde = 0, dtde = 0, dwde = 0;
+   int flip = (w1 & 0x800000) ? 1 : 0;
+   uint32_t * shade_base = rdp_cmd + 8;
+   uint32_t * texture_base = rdp_cmd + 8;
+   uint32_t * zbuffer_base = rdp_cmd + 8;
 
-  if (shade)
-  {
-    texture_base += 16;
-    zbuffer_base += 16;
-  }
-  if (texture)
-  {
-    zbuffer_base += 16;
-  }
+   if (shade)
+   {
+      texture_base += 16;
+      zbuffer_base += 16;
+   }
+   if (texture)
+   {
+      zbuffer_base += 16;
+   }
 
-  yl = (ewdata[0] & 0x3fff);
-  ym = ((ewdata[1] >> 16) & 0x3fff);
-  yh = ((ewdata[1] >>  0) & 0x3fff);
-  xl = (int32_t)(ewdata[2]);
-  xh = (int32_t)(ewdata[4]);
-  xm = (int32_t)(ewdata[6]);
-  dxldy = (int32_t)ewdata[3];
-  dxhdy = (int32_t)ewdata[5];
-  dxmdy = (int32_t)ewdata[7];
+   w3 = rdp_cmd[2];
+   w4 = rdp_cmd[3];
+   w5 = rdp_cmd[4];
+   w6 = rdp_cmd[5];
+   w7 = rdp_cmd[6];
+   w8 = rdp_cmd[7];
 
-  //TODO: negative overflows - commenting them out seems to cause no regressions
-  //if experiencing any regressions to do with triangles, check back here
-  //if (yl & (0x800<<2)) yl |= 0xfffff000<<2;
-  //if (ym & (0x800<<2)) ym |= 0xfffff000<<2;
-  //if (yh & (0x800<<2)) yh |= 0xfffff000<<2;
+   yl = (w1 & 0x3fff);
+   ym = ((w2 >> 16) & 0x3fff);
+   yh = ((w2 >> 0) & 0x3fff);
+   xl = (int32_t)(w3);
+   xh = (int32_t)(w5);
+   xm = (int32_t)(w7);
+   dxldy = (int32_t)(w4);
+   dxhdy = (int32_t)(w6);
+   dxmdy = (int32_t)(w8);
 
-  yh &= ~3;
+   if (yl & (0x800<<2)) yl |= 0xfffff000<<2;
+   if (ym & (0x800<<2)) ym |= 0xfffff000<<2;
+   if (yh & (0x800<<2)) yh |= 0xfffff000<<2;
 
-  r = 0xff; g = 0xff; b = 0xff; a = 0xff; z = 0xffff0000; s = 0;  t = 0;  w = 0x30000;
+   yh &= ~3;
 
-  if (shade)
-  {
-    r    = (shade_base[0] & 0xffff0000) | ((shade_base[+4 ] >> 16) & 0x0000ffff);
-    g    = ((shade_base[0 ] << 16) & 0xffff0000) | (shade_base[4 ] & 0x0000ffff);
-    b    = (shade_base[1 ] & 0xffff0000) | ((shade_base[5 ] >> 16) & 0x0000ffff);
-    a    = ((shade_base[1 ] << 16) & 0xffff0000) | (shade_base[5 ] & 0x0000ffff);
-    drdx = (shade_base[2 ] & 0xffff0000) | ((shade_base[6 ] >> 16) & 0x0000ffff);
-    dgdx = ((shade_base[2 ] << 16) & 0xffff0000) | (shade_base[6 ] & 0x0000ffff);
-    dbdx = (shade_base[3 ] & 0xffff0000) | ((shade_base[7 ] >> 16) & 0x0000ffff);
-    dadx = ((shade_base[3 ] << 16) & 0xffff0000) | (shade_base[7 ] & 0x0000ffff);
-    drde = (shade_base[8 ] & 0xffff0000) | ((shade_base[12] >> 16) & 0x0000ffff);
-    dgde = ((shade_base[8 ] << 16) & 0xffff0000) | (shade_base[12] & 0x0000ffff);
-    dbde = (shade_base[9 ] & 0xffff0000) | ((shade_base[13] >> 16) & 0x0000ffff);
-    dade = ((shade_base[9 ] << 16) & 0xffff0000) | (shade_base[13] & 0x0000ffff);
-  }
-  if (texture)
-  {
-    s    = (texture_base[0 ] & 0xffff0000) | ((texture_base[4 ] >> 16) & 0x0000ffff);
-    t    = ((texture_base[0 ] << 16) & 0xffff0000)      | (texture_base[4 ] & 0x0000ffff);
-    w    = (texture_base[1 ] & 0xffff0000) | ((texture_base[5 ] >> 16) & 0x0000ffff);
-    //    w = abs(w);
-    dsdx = (texture_base[2 ] & 0xffff0000) | ((texture_base[6 ] >> 16) & 0x0000ffff);
-    dtdx = ((texture_base[2 ] << 16) & 0xffff0000)      | (texture_base[6 ] & 0x0000ffff);
-    dwdx = (texture_base[3 ] & 0xffff0000) | ((texture_base[7 ] >> 16) & 0x0000ffff);
-    dsde = (texture_base[8 ] & 0xffff0000) | ((texture_base[12] >> 16) & 0x0000ffff);
-    dtde = ((texture_base[8 ] << 16) & 0xffff0000)      | (texture_base[12] & 0x0000ffff);
-    dwde = (texture_base[9 ] & 0xffff0000) | ((texture_base[13] >> 16) & 0x0000ffff);
-  }
-  if (zbuffer)
-  {
-    z    = zbuffer_base[0];
-    dzdx = zbuffer_base[1];
-    dzde = zbuffer_base[2];
-  }
+   r = 0xff; g = 0xff; b = 0xff; a = 0xff; z = 0xffff0000; s = 0; t = 0; w = 0x30000;
 
-  xh <<= 2;  xm <<= 2;  xl <<= 2;
-  r <<= 2;  g <<= 2;  b <<= 2;  a <<= 2;
-  dsde >>= 2;  dtde >>= 2;  dsdx >>= 2;  dtdx >>= 2;
-  dzdx >>= 2;  dzde >>= 2;
-  dwdx >>= 2;  dwde >>= 2;
+   if (shade)
+   {
+      r = (shade_base[0] & 0xffff0000) | ((shade_base[+4 ] >> 16) & 0x0000ffff);
+      g = ((shade_base[0 ] << 16) & 0xffff0000) | (shade_base[4 ] & 0x0000ffff);
+      b = (shade_base[1 ] & 0xffff0000) | ((shade_base[5 ] >> 16) & 0x0000ffff);
+      a = ((shade_base[1 ] << 16) & 0xffff0000) | (shade_base[5 ] & 0x0000ffff);
+      drdx = (shade_base[2 ] & 0xffff0000) | ((shade_base[6 ] >> 16) & 0x0000ffff);
+      dgdx = ((shade_base[2 ] << 16) & 0xffff0000) | (shade_base[6 ] & 0x0000ffff);
+      dbdx = (shade_base[3 ] & 0xffff0000) | ((shade_base[7 ] >> 16) & 0x0000ffff);
+      dadx = ((shade_base[3 ] << 16) & 0xffff0000) | (shade_base[7 ] & 0x0000ffff);
+      drde = (shade_base[8 ] & 0xffff0000) | ((shade_base[12] >> 16) & 0x0000ffff);
+      dgde = ((shade_base[8 ] << 16) & 0xffff0000) | (shade_base[12] & 0x0000ffff);
+      dbde = (shade_base[9 ] & 0xffff0000) | ((shade_base[13] >> 16) & 0x0000ffff);
+      dade = ((shade_base[9 ] << 16) & 0xffff0000) | (shade_base[13] & 0x0000ffff);
+   }
+   if (texture)
+   {
+      s = (texture_base[0 ] & 0xffff0000) | ((texture_base[4 ] >> 16) & 0x0000ffff);
+      t = ((texture_base[0 ] << 16) & 0xffff0000) | (texture_base[4 ] & 0x0000ffff);
+      w = (texture_base[1 ] & 0xffff0000) | ((texture_base[5 ] >> 16) & 0x0000ffff);
+      // w = abs(w);
+      dsdx = (texture_base[2 ] & 0xffff0000) | ((texture_base[6 ] >> 16) & 0x0000ffff);
+      dtdx = ((texture_base[2 ] << 16) & 0xffff0000) | (texture_base[6 ] & 0x0000ffff);
+      dwdx = (texture_base[3 ] & 0xffff0000) | ((texture_base[7 ] >> 16) & 0x0000ffff);
+      dsde = (texture_base[8 ] & 0xffff0000) | ((texture_base[12] >> 16) & 0x0000ffff);
+      dtde = ((texture_base[8 ] << 16) & 0xffff0000) | (texture_base[12] & 0x0000ffff);
+      dwde = (texture_base[9 ] & 0xffff0000) | ((texture_base[13] >> 16) & 0x0000ffff);
+   }
+   if (zbuffer)
+   {
+      z = zbuffer_base[0];
+      dzdx = zbuffer_base[1];
+      dzde = zbuffer_base[2];
+   }
 
-  nbVtxs = 0;
-  vtx = (VERTEX*)&vtxbuf[nbVtxs++];
+   xh <<= 2; xm <<= 2; xl <<= 2;
+   r <<= 2; g <<= 2; b <<= 2; a <<= 2;
+   dsde >>= 2; dtde >>= 2; dsdx >>= 2; dtdx >>= 2;
+   dzdx >>= 2; dzde >>= 2;
+   dwdx >>= 2; dwde >>= 2;
 
-  xleft = xm;
-  xright = xh;
-  xleft_inc = dxmdy;
-  xright_inc = dxhdy;
+   nbVtxs = 0;
+   vtx = (VERTEX*)&vtxbuf[nbVtxs++];
 
-  while (yh<ym &&
-    !((!flip && xleft < xright+0x10000) ||
-    (flip && xleft > xright-0x10000))) {
+   xleft = xm;
+   xright = xh;
+   xleft_inc = dxmdy;
+   xright_inc = dxhdy;
+
+   while (yh<ym &&
+         !((!flip && xleft < xright+0x10000) ||
+            (flip && xleft > xright-0x10000))) {
       xleft += xleft_inc;
       xright += xright_inc;
-      s += dsde;    t += dtde;    w += dwde;
-      r += drde;    g += dgde;    b += dbde;    a += dade;
+      s += dsde; t += dtde; w += dwde;
+      r += drde; g += dgde; b += dbde; a += dade;
       z += dzde;
       yh++;
-  }
+   }
 
-  j = ym-yh;
-  if (j > 0)
-  {
-    int dx = (xleft-xright)>>16;
-    if ((!flip && xleft < xright) ||
-      (flip/* && xleft > xright*/))
-    {
-      if (shade) {
-        vtx->r = CSCALE(r+drdx*dx);
-        vtx->g = CSCALE(g+dgdx*dx);
-        vtx->b = CSCALE(b+dbdx*dx);
-        vtx->a = CSCALE(a+dadx*dx);
+   j = ym-yh;
+   if (j > 0)
+   {
+      int dx = (xleft-xright)>>16;
+      if ((!flip && xleft < xright) ||
+            (flip/* && xleft > xright*/))
+      {
+         if (shade) {
+            vtx->r = CSCALE(r+drdx*dx);
+            vtx->g = CSCALE(g+dgdx*dx);
+            vtx->b = CSCALE(b+dbdx*dx);
+            vtx->a = CSCALE(a+dadx*dx);
+         }
+         if (texture) {
+            vtx->ou = SSCALE(s+dsdx*dx, w+dwdx*dx);
+            vtx->ov = TSCALE(t+dtdx*dx, w+dwdx*dx);
+         }
+         vtx->x = XSCALE(xleft);
+         vtx->y = YSCALE(yh);
+         vtx->z = ZSCALE(z+dzdx*dx);
+         vtx->w = WSCALE(w+dwdx*dx);
+         vtx = &vtxbuf[nbVtxs++];
       }
-      if (texture) {
-        vtx->ou = SSCALE(s+dsdx*dx, w+dwdx*dx);
-        vtx->ov = TSCALE(t+dtdx*dx, w+dwdx*dx);
+      if ((!flip/* && xleft < xright*/) ||
+            (flip && xleft > xright))
+      {
+         if (shade) {
+            vtx->r = CSCALE(r);
+            vtx->g = CSCALE(g);
+            vtx->b = CSCALE(b);
+            vtx->a = CSCALE(a);
+         }
+         if (texture) {
+            vtx->ou = SSCALE(s, w);
+            vtx->ov = TSCALE(t, w);
+         }
+         vtx->x = XSCALE(xright);
+         vtx->y = YSCALE(yh);
+         vtx->z = ZSCALE(z);
+         vtx->w = WSCALE(w);
+         vtx = &vtxbuf[nbVtxs++];
       }
-      vtx->x = XSCALE(xleft);
-      vtx->y = YSCALE(yh);
-      vtx->z = ZSCALE(z+dzdx*dx);
-      vtx->w = WSCALE(w+dwdx*dx);
-      vtx = &vtxbuf[nbVtxs++];
-    }
-    if ((!flip/* && xleft < xright*/) ||
-      (flip && xleft > xright))
-    {
-      if (shade) {
-        vtx->r = CSCALE(r);
-        vtx->g = CSCALE(g);
-        vtx->b = CSCALE(b);
-        vtx->a = CSCALE(a);
-      }
-      if (texture) {
-        vtx->ou = SSCALE(s, w);
-        vtx->ov = TSCALE(t, w);
-      }
-      vtx->x = XSCALE(xright);
-      vtx->y = YSCALE(yh);
-      vtx->z = ZSCALE(z);
-      vtx->w = WSCALE(w);
-      vtx = &vtxbuf[nbVtxs++];
-    }
-    xleft += xleft_inc*j;  xright += xright_inc*j;
-    s += dsde*j;  t += dtde*j;
-    if (w + dwde*j) w += dwde*j;
-    else w += dwde*(j-1);
-    r += drde*j;  g += dgde*j;  b += dbde*j;  a += dade*j;
-    z += dzde*j;
-    // render ...
-  }
+      xleft += xleft_inc*j; xright += xright_inc*j;
+      s += dsde*j; t += dtde*j;
+      if (w + dwde*j) w += dwde*j;
+      else w += dwde*(j-1);
+      r += drde*j; g += dgde*j; b += dbde*j; a += dade*j;
+      z += dzde*j;
+      // render ...
+   }
 
-  if (xl != xh)
-    xleft = xl;
+   if (xl != xh)
+      xleft = xl;
 
-  //if (yl-ym > 0)
-  {
-    int dx = (xleft-xright)>>16;
-    if ((!flip && xleft <= xright) ||
-      (flip/* && xleft >= xright*/))
-    {
-      if (shade) {
-        vtx->r = CSCALE(r+drdx*dx);
-        vtx->g = CSCALE(g+dgdx*dx);
-        vtx->b = CSCALE(b+dbdx*dx);
-        vtx->a = CSCALE(a+dadx*dx);
+   //if (yl-ym > 0)
+   {
+      int dx = (xleft-xright)>>16;
+      if ((!flip && xleft <= xright) ||
+            (flip/* && xleft >= xright*/))
+      {
+         if (shade) {
+            vtx->r = CSCALE(r+drdx*dx);
+            vtx->g = CSCALE(g+dgdx*dx);
+            vtx->b = CSCALE(b+dbdx*dx);
+            vtx->a = CSCALE(a+dadx*dx);
+         }
+         if (texture) {
+            vtx->ou = SSCALE(s+dsdx*dx, w+dwdx*dx);
+            vtx->ov = TSCALE(t+dtdx*dx, w+dwdx*dx);
+         }
+         vtx->x = XSCALE(xleft);
+         vtx->y = YSCALE(ym);
+         vtx->z = ZSCALE(z+dzdx*dx);
+         vtx->w = WSCALE(w+dwdx*dx);
+         vtx = &vtxbuf[nbVtxs++];
       }
-      if (texture) {
-        vtx->ou = SSCALE(s+dsdx*dx, w+dwdx*dx);
-        vtx->ov = TSCALE(t+dtdx*dx, w+dwdx*dx);
+      if ((!flip/* && xleft <= xright*/) ||
+            (flip && xleft >= xright))
+      {
+         if (shade) {
+            vtx->r = CSCALE(r);
+            vtx->g = CSCALE(g);
+            vtx->b = CSCALE(b);
+            vtx->a = CSCALE(a);
+         }
+         if (texture) {
+            vtx->ou = SSCALE(s, w);
+            vtx->ov = TSCALE(t, w);
+         }
+         vtx->x = XSCALE(xright);
+         vtx->y = YSCALE(ym);
+         vtx->z = ZSCALE(z);
+         vtx->w = WSCALE(w);
+         vtx = &vtxbuf[nbVtxs++];
       }
-      vtx->x = XSCALE(xleft);
-      vtx->y = YSCALE(ym);
-      vtx->z = ZSCALE(z+dzdx*dx);
-      vtx->w = WSCALE(w+dwdx*dx);
-      vtx = &vtxbuf[nbVtxs++];
-    }
-    if ((!flip/* && xleft <= xright*/) ||
-      (flip && xleft >= xright))
-    {
-      if (shade) {
-        vtx->r = CSCALE(r);
-        vtx->g = CSCALE(g);
-        vtx->b = CSCALE(b);
-        vtx->a = CSCALE(a);
-      }
-      if (texture) {
-        vtx->ou = SSCALE(s, w);
-        vtx->ov = TSCALE(t, w);
-      }
-      vtx->x = XSCALE(xright);
-      vtx->y = YSCALE(ym);
-      vtx->z = ZSCALE(z);
-      vtx->w = WSCALE(w);
-      vtx = &vtxbuf[nbVtxs++];
-    }
-  }
-  xleft_inc = dxldy;
-  xright_inc = dxhdy;
+   }
+   xleft_inc = dxldy;
+   xright_inc = dxhdy;
 
-  j = yl-ym;
-  //j--; // ?
-  xleft += xleft_inc*j;  xright += xright_inc*j;
-  s += dsde*j;  t += dtde*j;  w += dwde*j;
-  r += drde*j;  g += dgde*j;  b += dbde*j;  a += dade*j;
-  z += dzde*j;
+   j = yl-ym;
+   //j--; // ?
+   xleft += xleft_inc*j; xright += xright_inc*j;
+   s += dsde*j; t += dtde*j; w += dwde*j;
+   r += drde*j; g += dgde*j; b += dbde*j; a += dade*j;
+   z += dzde*j;
 
-  while (yl>ym &&
-    !((!flip && xleft < xright+0x10000) ||
-    (flip && xleft > xright-0x10000))) {
-      xleft -= xleft_inc;    xright -= xright_inc;
-      s -= dsde;    t -= dtde;    w -= dwde;
-      r -= drde;    g -= dgde;    b -= dbde;    a -= dade;
+   while (yl>ym &&
+         !((!flip && xleft < xright+0x10000) ||
+            (flip && xleft > xright-0x10000))) {
+      xleft -= xleft_inc; xright -= xright_inc;
+      s -= dsde; t -= dtde; w -= dwde;
+      r -= drde; g -= dgde; b -= dbde; a -= dade;
       z -= dzde;
       j--;
       yl--;
-  }
+   }
 
-  // render ...
-  if (j >= 0) {
-    int dx = (xleft-xright)>>16;
-    if ((!flip && xleft <= xright) ||
-      (flip/* && xleft >= xright*/))
-    {
-      if (shade) {
-        vtx->r = CSCALE(r+drdx*dx);
-        vtx->g = CSCALE(g+dgdx*dx);
-        vtx->b = CSCALE(b+dbdx*dx);
-        vtx->a = CSCALE(a+dadx*dx);
-      }
-      if (texture) {
-        vtx->ou = SSCALE(s+dsdx*dx, w+dwdx*dx);
-        vtx->ov = TSCALE(t+dtdx*dx, w+dwdx*dx);
-      }
-      vtx->x = XSCALE(xleft);
-      vtx->y = YSCALE(yl);
-      vtx->z = ZSCALE(z+dzdx*dx);
-      vtx->w = WSCALE(w+dwdx*dx);
-      vtx = &vtxbuf[nbVtxs++];
-    }
-    if ((!flip/* && xleft <= xright*/) ||
-      (flip && xleft >= xright))
-    {
-      if (shade) {
-        vtx->r = CSCALE(r);
-        vtx->g = CSCALE(g);
-        vtx->b = CSCALE(b);
-        vtx->a = CSCALE(a);
-      }
-      if (texture) {
-        vtx->ou = SSCALE(s, w);
-        vtx->ov = TSCALE(t, w);
-      }
-      vtx->x = XSCALE(xright);
-      vtx->y = YSCALE(yl);
-      vtx->z = ZSCALE(z);
-      vtx->w = WSCALE(w);
-      vtx = &vtxbuf[nbVtxs++];
-    }
-  }
-
-  {
-     int k;
-    update ();
-    for (k = 0; k < nbVtxs-1; k++)
-    {
-      VERTEX * v = &vtxbuf[k];
-      v->x = v->x * rdp.scale_x + rdp.offset_x;
-      v->y = v->y * rdp.scale_y + rdp.offset_y;
-      //    v->z = 1.0f;///v->w;
-      v->q = 1.0f/v->w;
-      v->u1 = v->u0 = v->ou;
-      v->v1 = v->v0 = v->ov;
-      if (rdp.tex >= 1 && rdp.cur_cache[0])
+   // render ...
+   if (j >= 0) {
+      int dx = (xleft-xright)>>16;
+      if ((!flip && xleft <= xright) ||
+            (flip/* && xleft >= xright*/))
       {
-        if (rdp.tiles[rdp.cur_tile].shift_s)
-        {
-          if (rdp.tiles[rdp.cur_tile].shift_s > 10)
-            v->u0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_s));
-          else
-            v->u0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_s);
-        }
-        if (rdp.tiles[rdp.cur_tile].shift_t)
-        {
-          if (rdp.tiles[rdp.cur_tile].shift_t > 10)
-            v->v0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_t));
-          else
-            v->v0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
-        }
-
-        v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
-        v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t;
-        v->u0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_x * v->u0;
-        v->v0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_y * v->v0;
-        v->u0 /= v->w;
-        v->v0 /= v->w;
+         if (shade) {
+            vtx->r = CSCALE(r+drdx*dx);
+            vtx->g = CSCALE(g+dgdx*dx);
+            vtx->b = CSCALE(b+dbdx*dx);
+            vtx->a = CSCALE(a+dadx*dx);
+         }
+         if (texture) {
+            vtx->ou = SSCALE(s+dsdx*dx, w+dwdx*dx);
+            vtx->ov = TSCALE(t+dtdx*dx, w+dwdx*dx);
+         }
+         vtx->x = XSCALE(xleft);
+         vtx->y = YSCALE(yl);
+         vtx->z = ZSCALE(z+dzdx*dx);
+         vtx->w = WSCALE(w+dwdx*dx);
+         vtx = &vtxbuf[nbVtxs++];
       }
-
-      if (rdp.tex >= 2 && rdp.cur_cache[1])
+      if ((!flip/* && xleft <= xright*/) ||
+            (flip && xleft >= xright))
       {
-        if (rdp.tiles[rdp.cur_tile+1].shift_s)
-        {
-          if (rdp.tiles[rdp.cur_tile+1].shift_s > 10)
-            v->u1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_s));
-          else
-            v->u1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_s);
-        }
-        if (rdp.tiles[rdp.cur_tile+1].shift_t)
-        {
-          if (rdp.tiles[rdp.cur_tile+1].shift_t > 10)
-            v->v1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_t));
-          else
-            v->v1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
-        }
-
-        v->u1 -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
-        v->v1 -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
-        v->u1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_x * v->u1;
-        v->v1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_y * v->v1;
-        v->u1 /= v->w;
-        v->v1 /= v->w;
+         if (shade) {
+            vtx->r = CSCALE(r);
+            vtx->g = CSCALE(g);
+            vtx->b = CSCALE(b);
+            vtx->a = CSCALE(a);
+         }
+         if (texture) {
+            vtx->ou = SSCALE(s, w);
+            vtx->ov = TSCALE(t, w);
+         }
+         vtx->x = XSCALE(xright);
+         vtx->y = YSCALE(yl);
+         vtx->z = ZSCALE(z);
+         vtx->w = WSCALE(w);
+         vtx = &vtxbuf[nbVtxs++];
       }
-      apply_shade_mods (v);
-    }
-    ConvertCoordsConvert (vtxbuf, nbVtxs);
-    grCullMode (GR_CULL_DISABLE);
-    grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, nbVtxs-1, vtxbuf, sizeof(VERTEX));
-  }
+   }
+
+   //if (fullscreen)
+   {
+      int k;
+      update ();
+      for (k = 0; k < nbVtxs-1; k++)
+      {
+         VERTEX * v = (VERTEX*)&vtxbuf[k];
+         v->x = v->x * rdp.scale_x + rdp.offset_x;
+         v->y = v->y * rdp.scale_y + rdp.offset_y;
+         // v->z = 1.0f;///v->w;
+         v->q = 1.0f/v->w;
+         v->u1 = v->u0 = v->ou;
+         v->v1 = v->v0 = v->ov;
+         if (rdp.tex >= 1 && rdp.cur_cache[0])
+         {
+            if (rdp.tiles[rdp.cur_tile].shift_s)
+            {
+               if (rdp.tiles[rdp.cur_tile].shift_s > 10)
+                  v->u0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_s));
+               else
+                  v->u0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_s);
+            }
+            if (rdp.tiles[rdp.cur_tile].shift_t)
+            {
+               if (rdp.tiles[rdp.cur_tile].shift_t > 10)
+                  v->v0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_t));
+               else
+                  v->v0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
+            }
+
+            v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
+            v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t;
+            v->u0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_x * v->u0;
+            v->v0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_y * v->v0;
+            v->u0 /= v->w;
+            v->v0 /= v->w;
+         }
+
+         if (rdp.tex >= 2 && rdp.cur_cache[1])
+         {
+            if (rdp.tiles[rdp.cur_tile+1].shift_s)
+            {
+               if (rdp.tiles[rdp.cur_tile+1].shift_s > 10)
+                  v->u1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_s));
+               else
+                  v->u1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_s);
+            }
+            if (rdp.tiles[rdp.cur_tile+1].shift_t)
+            {
+               if (rdp.tiles[rdp.cur_tile+1].shift_t > 10)
+                  v->v1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_t));
+               else
+                  v->v1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
+            }
+
+            v->u1 -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
+            v->v1 -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
+            v->u1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_x * v->u1;
+            v->v1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_y * v->v1;
+            v->u1 /= v->w;
+            v->v1 /= v->w;
+         }
+         apply_shade_mods (v);
+      }
+      ConvertCoordsConvert (vtxbuf, nbVtxs);
+      grCullMode (GR_CULL_DISABLE);
+      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, nbVtxs-1, vtxbuf, sizeof(VERTEX));
+   }
 }
+
+#define rdp_triangle(w0, w1, shade, texture, zbuffer, wptr) lle_triangle(w0, w1, shade, texture, zbuffer, (wptr))
 
 static void rdp_trifill(uint32_t w0, uint32_t w1)
 {
-   memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 8 * sizeof(int32_t));
-   memset(&ewdata[8], 0, 36 * sizeof(int32_t));
-   lle_triangle(ewdata, 0, 0, 0);
+   rdp_triangle(w0, w1, 0, 0, 0, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
   LRDP("trifill\n");
 #endif
@@ -4029,9 +4021,7 @@ static void rdp_trifill(uint32_t w0, uint32_t w1)
 
 static void rdp_trishade(uint32_t w0, uint32_t w1)
 {
-   memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 24 * sizeof(int32_t));
-   memset(&ewdata[24], 0, 20 * sizeof(int32_t));
-   lle_triangle(ewdata, 1, 0, 0);
+   rdp_triangle(w0, w1, 1, 0, 0, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
   LRDP("trishade\n");
 #endif
@@ -4039,11 +4029,7 @@ static void rdp_trishade(uint32_t w0, uint32_t w1)
 
 static void rdp_tritxtr(uint32_t w0, uint32_t w1)
 {
-   memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 8 * sizeof(int32_t));
-   memset(&ewdata[8], 0, 16 * sizeof(int32_t));
-   memcpy(&ewdata[24], &rdp_cmd_data[rdp_cmd_cur + 8], 16 * sizeof(int32_t));
-   memset(&ewdata[40], 0, 4 * sizeof(int32_t));
-   lle_triangle(ewdata, 0, 1, 0);
+   rdp_triangle(w0, w1, 0, 1, 0, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
   LRDP("tritxtr\n");
 #endif
@@ -4051,9 +4037,7 @@ static void rdp_tritxtr(uint32_t w0, uint32_t w1)
 
 static void rdp_trishadetxtr(uint32_t w0, uint32_t w1)
 {
-   memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 40 * sizeof(int32_t));
-   memset(&ewdata[40], 0, 4 * sizeof(int32_t));
-   lle_triangle(ewdata, 1, 1, 0);
+   rdp_triangle(w0, w1, 1, 1, 0, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
   LRDP("trishadetxtr\n");
 #endif
@@ -4061,10 +4045,7 @@ static void rdp_trishadetxtr(uint32_t w0, uint32_t w1)
 
 static void rdp_trifillz(uint32_t w0, uint32_t w1)
 {
-   memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 8 * sizeof(int32_t));
-   memset(&ewdata[8], 0, 32 * sizeof(int32_t));
-   memcpy(&ewdata[40], &rdp_cmd_data[rdp_cmd_cur + 8], 4 * sizeof(int32_t));
-   lle_triangle(ewdata, 0, 0, 1);
+   rdp_triangle(w0, w1, 0, 0, 1, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
   LRDP("trifillz\n");
 #endif
@@ -4072,10 +4053,7 @@ static void rdp_trifillz(uint32_t w0, uint32_t w1)
 
 static void rdp_trishadez(uint32_t w0, uint32_t w1)
 {
-   memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 24 * sizeof(int32_t));
-   memset(&ewdata[24], 0, 16 * sizeof(int32_t));
-   memcpy(&ewdata[40], &rdp_cmd_data[rdp_cmd_cur + 24], 4 * sizeof(int32_t));
-   lle_triangle(ewdata, 1, 0, 1);
+   rdp_triangle(w0, w1, 1, 0, 1, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
   LRDP("trishadez\n");
 #endif
@@ -4083,11 +4061,7 @@ static void rdp_trishadez(uint32_t w0, uint32_t w1)
 
 static void rdp_tritxtrz(uint32_t w0, uint32_t w1)
 {
-   memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 8 * sizeof(int32_t));
-   memset(&ewdata[8], 0, 16 * sizeof(int32_t));
-   memcpy(&ewdata[24], &rdp_cmd_data[rdp_cmd_cur + 8], 16 * sizeof(int32_t));
-   memcpy(&ewdata[40], &rdp_cmd_data[rdp_cmd_cur + 24], 4 * sizeof(int32_t));
-   lle_triangle(ewdata, 0, 1, 1);
+   rdp_triangle(w0, w1, 0, 1, 1, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
    LRDP("tritxtrz\n");
 #endif
@@ -4095,8 +4069,7 @@ static void rdp_tritxtrz(uint32_t w0, uint32_t w1)
 
 static void rdp_trishadetxtrz(uint32_t w0, uint32_t w1)
 {
-   memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 44 * sizeof(int32_t));
-   lle_triangle(ewdata, 1, 1, 1);
+   rdp_triangle(w0, w1, 1, 1, 1, rdp_cmd_data + rdp_cmd_cur);
 #ifdef EXTREME_LOGGING
    LRDP("trishadetxtrz\n");
 #endif
@@ -4343,64 +4316,35 @@ EXPORT void CALL ProcessRDPList(void)
             break;
          case 0x08:
             //0x08, Non-Shaded Triangle
-            //rdp_trifill(w0, w1);
-            memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 8 * sizeof(int32_t));
-            memset(&ewdata[8], 0, 36 * sizeof(int32_t));
-            lle_triangle(ewdata, 0, 0, 0);
+            rdp_triangle(w0, w1, 0, 0, 0, rdp_cmd_data + rdp_cmd_cur);
             break;
          case 0x09:
             //0x09, Non-Shaded, Z-Buffered Triangle
-            //rdp_trifillz(w0, w1);
-            memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 8 * sizeof(int32_t));
-            memset(&ewdata[8], 0, 32 * sizeof(int32_t));
-            memcpy(&ewdata[40], &rdp_cmd_data[rdp_cmd_cur + 8], 4 * sizeof(int32_t));
-            lle_triangle(ewdata, 0, 0, 1);
+            rdp_triangle(w0, w1, 0, 0, 1, rdp_cmd_data + rdp_cmd_cur);
             break;
          case 0x0a:
             //0x0a, Textured Triangle
-            //rdp_tritxtr(w0, w1);
-            memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 8 * sizeof(int32_t));
-            memset(&ewdata[8], 0, 16 * sizeof(int32_t));
-            memcpy(&ewdata[24], &rdp_cmd_data[rdp_cmd_cur + 8], 16 * sizeof(int32_t));
-            memset(&ewdata[40], 0, 4 * sizeof(int32_t));
-            lle_triangle(ewdata, 0, 1, 0);
+            rdp_triangle(w0, w1, 0, 1, 0, rdp_cmd_data + rdp_cmd_cur);
             break;
          case 0x0b:
             //0x0b, Textured, Z-Buffered Triangle
-            //rdp_tritxtrz(w0, w1);
-            memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 8 * sizeof(int32_t));
-            memset(&ewdata[8], 0, 16 * sizeof(int32_t));
-            memcpy(&ewdata[24], &rdp_cmd_data[rdp_cmd_cur + 8], 16 * sizeof(int32_t));
-            memcpy(&ewdata[40], &rdp_cmd_data[rdp_cmd_cur + 24], 4 * sizeof(int32_t));
-            lle_triangle(ewdata, 0, 1, 1);
+            rdp_triangle(w0, w1, 0, 1, 1, rdp_cmd_data + rdp_cmd_cur);
             break;
          case 0x0c:
             // 0x0c, Shaded Triangle
-            //rdp_trishade(w0, w1);
-            memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 24 * sizeof(int32_t));
-            memset(&ewdata[24], 0, 20 * sizeof(int32_t));
-            lle_triangle(ewdata, 1, 0, 0);
+            rdp_triangle(w0, w1, 1, 0, 0, rdp_cmd_data + rdp_cmd_cur);
             break;
          case 0x0d:
             // 0x0d, Shaded, Z-Buffered Triangle
-            //rdp_trishadez(w0, w1);
-            memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 24 * sizeof(int32_t));
-            memset(&ewdata[24], 0, 16 * sizeof(int32_t));
-            memcpy(&ewdata[40], &rdp_cmd_data[rdp_cmd_cur + 24], 4 * sizeof(int32_t));
-            lle_triangle(ewdata, 1, 0, 1);
+            rdp_triangle(w0, w1, 1, 0, 1, rdp_cmd_data + rdp_cmd_cur);
             break;
          case 0x0e:
             // 0x0e, Shaded+Textured Triangle
-            //rdp_trishadetxtr(w0, w1);
-            memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 40 * sizeof(int32_t));
-            memset(&ewdata[40], 0, 4 * sizeof(int32_t));
-            lle_triangle(ewdata, 1, 1, 0);
+            rdp_triangle(w0, w1, 1, 1, 0, rdp_cmd_data + rdp_cmd_cur);
             break;
          case 0x0f:
             // 0x0f, Shaded+Textured, Z-Buffered Triangle
-            //rdp_trishadetxtrz(w0, w1);
-            memcpy(&ewdata[0], &rdp_cmd_data[rdp_cmd_cur], 44 * sizeof(int32_t));
-            lle_triangle(ewdata, 1, 1, 1);
+            rdp_triangle(w0, w1, 1, 1, 1, rdp_cmd_data + rdp_cmd_cur);
             break;
          case 0x24:
             //0x24, Texture_Rectangle
