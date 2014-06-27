@@ -219,10 +219,10 @@ static void setup_variables(void)
       { "mupen64-filtering",
 		 "Texture Filtering; automatic|N64 3-point|bilinear|nearest" },
       { "mupen64-polyoffset-factor",
-       "Glide Polygon Offset Factor; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0"
+       "Glide Polygon Offset Factor; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
       { "mupen64-polyoffset-units",
-       "Glide Polygon Offset Units; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0"
+       "Glide Polygon Offset Units; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0|-3.5|-4.0|-4.5|-5.0"
       },
       { "mupen64-virefresh",
          "VI Refresh (Overclock); 1500|2200" },
