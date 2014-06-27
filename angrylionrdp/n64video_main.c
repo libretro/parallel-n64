@@ -16,7 +16,7 @@ LPDIRECTDRAWSURFACE7 lpddsprimary;
 LPDIRECTDRAWSURFACE7 lpddsback;
 DDSURFACEDESC2 ddsd;
 #else
-int32_t *blitter_buf;
+uint32_t *blitter_buf;
 #endif
 int res;
 RECT dst, src;
@@ -148,7 +148,7 @@ EXPORT void CALL angrylionRomClosed (void)
 EXPORT void CALL angrylionRomOpen (void)
 {
 #ifndef HAVE_DIRECTDRAW
-    blitter_buf = (int32_t*)calloc(screen_width * screen_height, sizeof(int32_t));
+    blitter_buf = (uint32_t*)calloc(screen_width * screen_height, sizeof(uint32_t));
     pitchindwords = screen_width * 4;
 #else
     DDPIXELFORMAT ftpixel;

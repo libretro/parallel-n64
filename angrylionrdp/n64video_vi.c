@@ -160,6 +160,9 @@ void rdp_update(void)
         return;
     }
     PreScale = (UINT32 *)(ddsd.lpSurface);
+#else
+    extern uint32_t *blitter_buf;
+    PreScale = (UINT32 *)blitter_buf;
 #endif
 
     if (vitype >> 1 == 0)
