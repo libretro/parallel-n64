@@ -1102,10 +1102,9 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    struct {
       float ul_u, ul_v, lr_u, lr_v;
    } texUV[2]; //struct for texture coordinates
-   VERTEX *vptr, *vnew;
+   VERTEX *vptr;
 
    vptr = NULL;
-   vnew = NULL;
 
    if (!rdp.LLE)
    {
@@ -1429,9 +1428,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
       rdp.tri_n += 2;
    }
-
-   if (vnew)
-      free(vnew);
 }
 
 static void rdp_loadsync(uint32_t w0, uint32_t w1)
