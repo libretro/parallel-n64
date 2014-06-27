@@ -204,23 +204,3 @@ void Wrap16bT (uint8_t *tex, uint32_t mask, uint32_t max_height, uint32_t real_w
       dst += line_full;
    }
 }
-
-//****************************************************************
-// 16-bit Vertical Clamp
-
-void Clamp16bT (uint8_t *tex, uint32_t height, uint32_t real_width, uint32_t clamp_to)
-{
-   uint32_t y;
-   int32_t line_full;
-   uint8_t *dst, *const_line;
-
-   line_full = real_width << 1;
-   dst = (uint8_t*)(tex + height * line_full);
-   const_line = (uint8_t*)(dst - line_full);
-
-   for (y = height; y < clamp_to; y++)
-   {
-      memcpy ((void*)dst, (void*)const_line, line_full);
-      dst += line_full;
-   }
-}

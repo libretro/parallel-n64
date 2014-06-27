@@ -202,23 +202,3 @@ void Wrap8bT (uint8_t *tex, uint32_t mask, uint32_t max_height, uint32_t real_wi
       dst += line_full;
    }
 }
-
-//****************************************************************
-// 8-bit Vertical Clamp
-
-void Clamp8bT (uint8_t *tex, uint32_t height, uint32_t real_width, uint32_t clamp_to)
-{
-   uint8_t *dst, *const_line;
-   uint32_t y;
-   int32_t line_full;
-
-   line_full = real_width;
-   dst = tex + height * line_full;
-   const_line = dst - line_full;
-
-   for (y = height; y < clamp_to; y++)
-   {
-      memcpy ((void*)dst, (void*)const_line, line_full);
-      dst += line_full;
-   }
-}

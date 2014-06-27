@@ -1362,12 +1362,17 @@ static void LoadTex(int id, int tmu)
 
       if (min_y > texinfo[id].height)
       {
-         if (size == 1)
-            Clamp16bT ((texture), texinfo[id].height, real_x, min_y);
-         else if (size == 2)
-            Clamp32bT ((texture), texinfo[id].height, real_x, min_y);
-         else
-            Clamp8bT ((texture), texinfo[id].height, real_x, min_y);
+         // Vertical Clamp
+         int32_t line_full = real_x << size;
+         uint8_t *dst = (uint8_t*)(texture + texinfo[id].height * line_full);
+         uint8_t *const_line = (uint8_t*)(dst - line_full);
+         uint32_t y = texinfo[id].height;
+
+         for (; y < min_y; y++)
+         {
+            memcpy ((void*)dst, (void*)const_line, line_full);
+            dst += line_full;
+         }
       }
 
       if (texinfo[id].height < (int)real_y)
