@@ -186,9 +186,6 @@ void FindBestDepthBias(void)
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "GL_RENDERER: %s\n", renderer);
 
-   polygonOffsetFactor = -3.0f;
-   polygonOffsetUnits  = -3.0f;
-
    biasFound = true;
 #else
 #if 0

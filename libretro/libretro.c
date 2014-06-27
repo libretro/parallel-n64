@@ -217,7 +217,13 @@ static void setup_variables(void)
       { "mupen64-screensize",
          "Resolution (restart); 640x360|640x480|720x576|800x600|960x540|960x640|1024x576|1024x768|1280x720|1280x768|1280x960|1280x1024|1600x1200|1920x1080|1920x1200|1920x1600|2048x1152|2048x1536|2048x2048|320x240" },
       { "mupen64-filtering",
-		 "Glide texture filtering; automatic|N64 3-point|bilinear|nearest" },
+		 "Texture Filtering; automatic|N64 3-point|bilinear|nearest" },
+      { "mupen64-polyoffset-factor",
+       "Glide Polygon Offset Factor; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0"
+      },
+      { "mupen64-polyoffset-units",
+       "Glide Polygon Offset Units; -3.0|-2.5|-2.0|-1.5|-1.0|-0.5|0.0|0.5|1.0|1.5|2.0|2.5|3.0|3.5|4.0|4.5|5.0"
+      },
       { "mupen64-virefresh",
          "VI Refresh (Overclock); 1500|2200" },
       { "mupen64-framerate",
@@ -398,6 +404,9 @@ unsigned retro_get_region (void)
    return ((region == SYSTEM_PAL) ? RETRO_REGION_PAL : RETRO_REGION_NTSC);
 }
 
+extern float polygonOffsetUnits;
+extern float polygonOffsetFactor;
+
 void retro_init(void)
 {
    struct retro_log_callback log;
@@ -423,6 +432,10 @@ void retro_init(void)
    audio_convert_init_simd();
 
    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
+   
+   //hacky stuff for Glide64
+   polygonOffsetUnits = -3.0f;
+   polygonOffsetFactor =  -3.0f;
 }
 
 void retro_deinit(void)
@@ -488,6 +501,25 @@ void update_variables(void)
 		  glide_set_filtering(retro_filtering);
       }
    }
+
+   var.key = "mupen64-polyoffset-factor";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      float new_val = (float)atoi(var.value);
+      polygonOffsetFactor = new_val;
+   }
+
+   var.key = "mupen64-polyoffset-units";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      float new_val = (float)atoi(var.value);
+      polygonOffsetUnits = new_val;
+   }
+
 
    var.key = "mupen64-button-orientation-ab";
    var.value = NULL;
