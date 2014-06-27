@@ -1389,17 +1389,25 @@ static void LoadTex(int id, int tmu)
                Mirror8bT ((texture), rdp.tiles[td].mask_t,
                      real_y, real_x);
          }
-         else
+         else if (rdp.tiles[td].mask_t != 0 && real_y > (1 << rdp.tiles[td].mask_t))
          {
-            if (size == 1)
-               Wrap16bT ((texture), rdp.tiles[td].mask_t,
-                     real_y, real_x);
-            else if (size == 2)
-               Wrap32bT ((texture), rdp.tiles[td].mask_t,
-                     real_y, real_x);
-            else
-               Wrap8bT ((texture), rdp.tiles[td].mask_t,
-                     real_y, real_x);
+            // Vertical Wrap
+            uint32_t wrap_size = size;
+            uint32_t mask_height = (1 << rdp.tiles[td].mask_t);
+            uint32_t y = mask_height;
+            uint32_t mask_mask = mask_height-1;
+            int32_t line_full = real_x << wrap_size;
+            uint8_t *dst = (uint8_t*)(texture + mask_height * line_full);
+
+            if (wrap_size == 1)
+               wrap_size = 0;
+
+            for ( ;y < real_y; y++)
+            {
+               // not mirrored
+               memcpy ((void*)dst, (void*)(texture + (y & mask_mask) * (line_full >> wrap_size)), (line_full >> wrap_size));
+               dst += line_full;
+            }
          }
       }
    }

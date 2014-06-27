@@ -193,32 +193,3 @@ void Mirror32bT (uint8_t *tex, uint32_t mask, uint32_t max_height, uint32_t real
       dst += line_full;
    }
 }
-
-//****************************************************************
-// 32-bit Vertical Wrap
-
-void Wrap32bT (uint8_t *tex, uint32_t mask, uint32_t max_height, uint32_t real_width)
-{
-   uint32_t y, mask_height, mask_mask;
-   uint8_t *dst;
-   int line_full;
-
-   if (mask == 0)
-      return;
-
-   mask_height = (1 << mask);
-   mask_mask = mask_height-1;
-
-   if (max_height <= mask_height)
-      return;
-
-   line_full = real_width << 2;
-   dst = (uint8_t*)(tex + mask_height * line_full);
-
-   for (y = mask_height; y < max_height; y++)
-   {
-      // not mirrored
-      memcpy ((void*)dst, (void*)(tex + (y & mask_mask) * (line_full>>2)), (line_full>>2));
-      dst += line_full;
-   }
-}
