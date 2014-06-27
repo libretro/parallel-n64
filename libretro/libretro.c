@@ -29,7 +29,7 @@ retro_environment_t environ_cb = NULL;
 
 struct retro_rumble_interface rumble;
 
-static struct retro_hw_render_callback render_iface;
+struct retro_hw_render_callback render_iface;
 static cothread_t main_thread;
 static cothread_t emulator_thread;
 static bool emu_thread_has_run = false; // < This is used to ensure the core_gl_context_reset
@@ -308,11 +308,6 @@ static void core_gl_context_reset(void)
 #ifdef HAVE_SHARED_CONTEXT
    sglBindFramebuffer(GL_FRAMEBUFFER, 0); // < sgl is intentional
 #endif
-}
-
-GLuint retro_get_fbo_id(void)
-{
-    return render_iface.get_current_framebuffer();
 }
 
 int retro_return(bool just_flipping)

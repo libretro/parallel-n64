@@ -6,6 +6,7 @@
 #include "glsym/glsym.h"
 #include "opengl_state_machine.h"
 #include "plugin/plugin.h"
+#include "libretro.h"
 
 // mupen64 defines
 #ifndef GFX_ANGRYLION
@@ -236,12 +237,12 @@ void sglVertexAttrib4fv(GLuint name, GLfloat* v)
     glVertexAttrib4fv(name, v);
 }
 
+extern struct retro_hw_render_callback render_iface;
 
-extern GLuint retro_get_fbo_id();
 void sglBindFramebuffer(GLenum target, GLuint framebuffer)
 {
    if (!stop)
-      glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : retro_get_fbo_id());
+      glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : render_iface.get_current_framebuffer());
 }
 
 void sglBlendFunc(GLenum sfactor, GLenum dfactor)
@@ -580,6 +581,6 @@ void sglExit(void)
     for (i = 0; i < MAX_ATTRIB; i ++)
         glDisableVertexAttribArray(i);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, retro_get_fbo_id());
+    glBindFramebuffer(GL_FRAMEBUFFER, render_iface.get_current_framebuffer());
 }
 #endif
