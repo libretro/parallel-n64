@@ -1,78 +1,327 @@
-#include "main.h"
-
-#include <stdarg.h>
+#include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include "z64.h"
+#include "Gfx #1.3.h"
+#include "vi.h"
+#include "rdp.h"
+#include "m64p_types.h"
 
-#define VIDEO_TAG(X) angrylion##X
-#define PluginStartup VIDEO_TAG(PluginStartup)
-#define PluginShutdown VIDEO_TAG(PluginShutdown)
-#define PluginGetVersion VIDEO_TAG(PluginGetVersion)
-#define ChangeWindow VIDEO_TAG(ChangeWindow)
-#define InitiateGFX VIDEO_TAG(InitiateGFX)
-#define MoveScreen VIDEO_TAG(MoveScreen)
-#define ProcessDList VIDEO_TAG(ProcessDList)
-#define ProcessRDPList VIDEO_TAG(ProcessRDPList)
-#define RomClosed VIDEO_TAG(RomClosed)
-#define RomOpen VIDEO_TAG(RomOpen)
-#define ShowCFB VIDEO_TAG(ShowCFB)
-#define UpdateScreen VIDEO_TAG(UpdateScreen)
-#define ViStatusChanged VIDEO_TAG(ViStatusChanged)
-#define ViWidthChanged VIDEO_TAG(ViWidthChanged)
-#define ReadScreen2 VIDEO_TAG(ReadScreen2)
-#define SetRenderingCallback VIDEO_TAG(SetRenderingCallback)
-#define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
-#define FBRead VIDEO_TAG(FBRead)
-#define FBWrite VIDEO_TAG(FBWrite)
-#define FBGetFrameBufferInfo VIDEO_TAG(FBGetFrameBufferInfo)
+static const int screen_width = SCREEN_WIDTH, screen_height = SCREEN_HEIGHT;
+uint32_t screen_pitch;
 
-GFX_INFO gfx_al;
+#ifdef HAVE_DIRECTDRAW
+LPDIRECTDRAW7 lpdd = 0;
+LPDIRECTDRAWSURFACE7 lpddsprimary; 
+LPDIRECTDRAWSURFACE7 lpddsback;
+DDSURFACEDESC2 ddsd;
+#else
+int32_t *blitter_buf;
+#endif
+int res;
+RECT dst, src;
+INT32 pitchindwords;
 
+FILE* zeldainfo = 0;
 int ProcessDListShown = 0;
+extern int SaveLoaded;
+extern UINT32 command_counter;
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#define VLOG(...) angrylion_WriteLog(M64MSG_VERBOSE, __VA_ARGS__)
+GFX_INFO gfx;
 
-static void (*l_DebugCallback)(void *, int, const char *) = NULL;
-static void *l_DebugCallContext = NULL;
-
-
-void angrylion_WriteLog(m64p_msg_level level, const char *msg, ...)
+EXPORT void CALL CaptureScreen ( char * Directory )
 {
-   char buf[1024];
-   va_list args;
-   va_start(args, msg);
-   vsnprintf(buf, 1023, msg, args);
-   buf[1023]='\0';
-   va_end(args);
-   if (l_DebugCallback)
-   {
-      l_DebugCallback(l_DebugCallContext, level, buf);
-   }
+    return;
+}
+
+EXPORT void CALL angrylionChangeWindow (void)
+{
+}
+
+EXPORT void CALL CloseDLL (void)
+{
+    return;
+}
+
+EXPORT void CALL angrylionReadScreen(void **dest, int *width, int *height)
+{
+}
+
+EXPORT void CALL angrylionReadScreen2(void **dest, int *width, int *height)
+{
+}
+
+ 
+EXPORT void CALL angrylionDrawScreen (void)
+{
+}
+
 #if 0
-   else
-      fprintf(stdout, buf);
+EXPORT void CALL GetDllInfo(PLUGIN_INFO* PluginInfo)
+{
+    PluginInfo -> Version = 0x0103;
+    PluginInfo -> Type  = PLUGIN_TYPE_GFX;
+    strcpy(
+#if (SCREEN_WIDTH == 320 && SCREEN_HEIGHT == 240)
+    PluginInfo -> Name, "angrylion's RDP (320x240)"
+#else
+    PluginInfo -> Name, "angrylion's RDP"
+#endif
+    );
+    PluginInfo -> NormalMemory = true;
+    PluginInfo -> MemoryBswaped = true;
+    return;
+}
+#endif
+
+EXPORT void CALL angrylionSetRenderingCallback(void (*callback)(int))
+{
+}
+
+EXPORT int CALL angrylionInitiateGFX (GFX_INFO Gfx_Info)
+{
+  gfx = Gfx_Info;
+  
+  return true;
+}
+
+ 
+EXPORT void CALL angrylionMoveScreen (int xpos, int ypos)
+{
+    RECT statusrect;
+    POINT p;
+    p.x = p.y = 0;
+#ifdef HAVE_DIRECTDRAW
+    GetClientRect(gfx.hWnd, &dst);
+    ClientToScreen(gfx.hWnd, &p);
+    OffsetRect(&dst, p.x, p.y);
+    GetClientRect(gfx.hStatusBar, &statusrect);
+    dst.bottom -= statusrect.bottom;
 #endif
 }
 
-#ifdef __cplusplus
-extern "C" {
+ 
+EXPORT void CALL angrylionProcessDList(void)
+{
+    if (!ProcessDListShown)
+    {
+        DisplayError("ProcessDList");
+        ProcessDListShown = 1;
+    }
+}
+
+EXPORT void CALL angrylionProcessRDPList(void)
+{
+    process_RDP_list();
+    return;
+}
+
+EXPORT void CALL angrylionRomClosed (void)
+{
+    rdp_close();
+#ifdef HAVE_DIRECTDRAW
+    if (lpddsback)
+    {
+        IDirectDrawSurface_Release(lpddsback);
+        lpddsback = 0;
+    }
+    if (lpddsprimary)
+    {
+        IDirectDrawSurface_Release(lpddsprimary);
+        lpddsprimary = 0;
+    }
+    if (lpdd)
+    {
+        IDirectDraw_Release(lpdd);
+        lpdd = 0;
+    }
+#else
+    if (blitter_buf)
+       free(blitter_buf);
 #endif
 
-EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
-        void *Context, void (*DebugCallback)(void *, int, const char *))
-{
-   return M64ERR_SUCCESS;
+    SaveLoaded = 1;
+    command_counter = 0;
 }
 
-EXPORT m64p_error CALL PluginShutdown(void)
+ 
+EXPORT void CALL angrylionRomOpen (void)
 {
-VLOG("CALL PluginShutDown ()\n");
-   return M64ERR_SUCCESS; // __LIBRETRO__: Fix warning
+#ifndef HAVE_DIRECTDRAW
+    blitter_buf = (int32_t*)calloc(screen_width * screen_height, sizeof(int32_t));
+    pitchindwords = screen_width;
+    screen_pitch = screen_width * 4;
+#else
+    DDPIXELFORMAT ftpixel;
+    LPDIRECTDRAWCLIPPER lpddcl;
+    RECT bigrect, smallrect, statusrect;
+    POINT p;
+    int rightdiff;
+    int bottomdiff;
+    GetWindowRect(gfx.hWnd,&bigrect);
+    GetClientRect(gfx.hWnd,&smallrect);
+    rightdiff = screen_width - smallrect.right;
+    bottomdiff = screen_height - smallrect.bottom;
+
+    if (gfx.hStatusBar)
+    {
+        GetClientRect(gfx.hStatusBar, &statusrect);
+        bottomdiff += statusrect.bottom;
+    }
+    MoveWindow(gfx.hWnd, bigrect.left, bigrect.top, bigrect.right - bigrect.left + rightdiff, bigrect.bottom - bigrect.top + bottomdiff, true);
+
+    res = DirectDrawCreateEx(0, (LPVOID*)&lpdd, &IID_IDirectDraw7, 0);
+    if (res != DD_OK)
+    {
+        DisplayError("Couldn't create a DirectDraw object.");
+        return; /* to-do:  move to InitiateGFX? */
+    }
+    res = IDirectDraw_SetCooperativeLevel(lpdd, gfx.hWnd, DDSCL_NORMAL);
+    if (res != DD_OK)
+    {
+        DisplayError("Couldn't set a cooperative level.");
+        return; /* to-do:  move to InitiateGFX? */
+    }
+
+    zerobuf(&ddsd, sizeof(ddsd));
+    ddsd.dwSize = sizeof(ddsd);
+    ddsd.dwFlags = DDSD_CAPS;
+    ddsd.ddsCaps.dwCaps = DDSCAPS_PRIMARYSURFACE;
+    res = IDirectDraw_CreateSurface(lpdd, &ddsd, &lpddsprimary, 0);
+    if (res != DD_OK)
+    {
+        DisplayError("CreateSurface for a primary surface failed.");
+        return; /* to-do:  move to InitiateGFX? */
+    }
+
+    ddsd.dwFlags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT;
+    ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN;
+    ddsd.dwWidth = PRESCALE_WIDTH;
+    ddsd.dwHeight = PRESCALE_HEIGHT;
+    zerobuf(&ftpixel, sizeof(ftpixel));
+    ftpixel.dwSize = sizeof(ftpixel);
+    ftpixel.dwFlags = DDPF_RGB;
+    ftpixel.dwRGBBitCount = 32;
+    ftpixel.dwRBitMask = 0xff0000;
+    ftpixel.dwGBitMask = 0xff00;
+    ftpixel.dwBBitMask = 0xff;
+    ddsd.ddpfPixelFormat = ftpixel;
+    res = IDirectDraw_CreateSurface(lpdd, &ddsd, &lpddsback, 0);
+    if (res == DDERR_INVALIDPIXELFORMAT)
+    {
+        DisplayError(
+            "ARGB8888 is not supported. You can try changing desktop color "\
+            "depth to 32-bit, but most likely that won't help.");
+        return; /* InitiateGFX fails. */
+    }
+    else if (res != DD_OK)
+    {
+        DisplayError("CreateSurface for a secondary surface failed.");
+        return; /* InitiateGFX should fail. */
+    }
+
+    res = IDirectDrawSurface_GetSurfaceDesc(lpddsback, &ddsd);
+    if (res != DD_OK)
+    {
+        DisplayError("GetSurfaceDesc failed.");
+        return; /* InitiateGFX should fail. */
+    }
+    if ((ddsd.lPitch & 3) || ddsd.lPitch < (PRESCALE_WIDTH << 2))
+    {
+        DisplayError(
+            "Pitch of a secondary surface is either not 32 bit aligned or "\
+            "too small.");
+        return; /* InitiateGFX should fail. */
+    }
+    pitchindwords = ddsd.lPitch >> 2;
+
+    res = IDirectDraw_CreateClipper(lpdd, 0, &lpddcl, 0);
+    if (res != DD_OK)
+    {
+        DisplayError("Couldn't create a clipper.");
+        return; /* InitiateGFX should fail. */
+    }
+    res = IDirectDrawClipper_SetHWnd(lpddcl, 0, gfx.hWnd);
+    if (res != DD_OK)
+    {
+        DisplayError("Couldn't register a windows handle as a clipper.");
+        return; /* InitiateGFX should fail. */
+    }
+    res = IDirectDrawSurface_SetClipper(lpddsprimary, lpddcl);
+    if (res != DD_OK)
+    {
+        DisplayError("Couldn't attach a clipper to a surface.");
+        return; /* InitiateGFX should fail. */
+    }
+
+    src.top = src.left = 0; 
+    src.bottom = 0;
+#if SCREEN_WIDTH < PRESCALE_WIDTH
+    src.right = PRESCALE_WIDTH - 1; /* fix for undefined video card behavior */
+#else
+    src.right = PRESCALE_WIDTH;
+#endif
+    p.x = p.y = 0;
+    GetClientRect(gfx.hWnd, &dst);
+    ClientToScreen(gfx.hWnd, &p);
+    OffsetRect(&dst, p.x, p.y);
+    GetClientRect(gfx.hStatusBar, &statusrect);
+    dst.bottom -= statusrect.bottom;
+#endif
+
+    rdp_init();
+ /* overlay = 1; */
+    return;
 }
 
-EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+EXPORT void CALL angrylionUpdateScreen(void)
 {
-VLOG("CALL PluginGetVersion ()\n");
+    static int counter;
+
+#ifdef HAVE_FRAMESKIP
+    if (counter++ < skip)
+        return;
+    counter = 0;
+#endif
+    rdp_update();
+#if 0
+    if (step != 0)
+        MessageBox(NULL, "Updated screen.\nPaused.", "Frame Step", MB_OK);
+#endif
+    return;
+}
+
+EXPORT void CALL angrylionShowCFB (void)
+{
+    //MessageBox(NULL, "ShowCFB", NULL, MB_ICONWARNING);
+    angrylionUpdateScreen();
+    return;
+}
+
+
+EXPORT void CALL angrylionViStatusChanged (void)
+{
+}
+
+EXPORT void CALL angrylionViWidthChanged (void)
+{
+}
+
+EXPORT void CALL angrylionFBWrite(uint16_t addr, uint16_t size)
+{
+    return;
+}
+
+EXPORT void CALL angrylionFBRead(uint16_t addr)
+{
+}
+
+EXPORT void CALL angrylionFBGetFrameBufferInfo(void *pinfo)
+{
+}
+
+EXPORT m64p_error CALL angrylionPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+{
    /* set version info */
    if (PluginType != NULL)
       *PluginType = M64PLUGIN_GFX;
@@ -84,136 +333,10 @@ VLOG("CALL PluginGetVersion ()\n");
       *APIVersion = 0x020100;
 
    if (PluginNamePtr != NULL)
-      *PluginNamePtr = "MAME video Plugin";
+      *PluginNamePtr = "MAME/Angrylion/HatCat video Plugin";
 
    if (Capabilities != NULL)
       *Capabilities = 0;
 
    return M64ERR_SUCCESS;
 }
-
-
-
-EXPORT void CALL ChangeWindow (void)
-{
-VLOG ("changewindow ()\n");
-}
-
-EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
-{
-   VLOG ("InitGRAPHICS ()\n");
-	gfx_al = Gfx_Info;
-	VLOG ("InitGRAPHICS (2)\n");
-	
-    return 1;
-}
-
-EXPORT void CALL MoveScreen (int xpos, int ypos)
-{
- VLOG ("movescreen\n");
-}
-
-EXPORT void CALL ProcessDList(void)
-{
-   if (!ProcessDListShown)
-   {
-      VLOG ("processdlist ()\n");
-      ProcessDListShown = 1;
-   }
-}
-
- EXPORT void CALL ProcessRDPList(void)
-{
-	 VLOG ("processrdplist ()\n");
-	rdp_process_list();	
-}
-
-int32_t *blitter_buf;
-INT32 pitchindwords;
-
-EXPORT void CALL RomClosed (void)
-{
-   VLOG ("RomClosed ()\n");
-   rdp_close();
-
-   if (blitter_buf)
-      free(blitter_buf);
-}
-
-EXPORT int CALL RomOpen (void)
-{
-   VLOG ("RomOpen ()\n");
-   screen_width = 640;  // prescale width
-   screen_height = 625; // prescale height
-   blitter_buf = (int32_t*)calloc(screen_width * screen_height, sizeof(int32_t));
-   pitchindwords = screen_width;
-   screen_pitch = screen_width * 4;
-   rdp_init();
-
-   return true;
-}
-
-extern int retro_return(bool just_flipping);
-
-EXPORT void CALL ShowCFB (void)
-{
-	VLOG ("draw2()\n");
-	rdp_update();
-   retro_return(true);
-}
-
-EXPORT void CALL UpdateScreen (void)
-{
-   VLOG ("draw1 ()\n");
-   rdp_update();
-   retro_return(true);
-}
-
-EXPORT void CALL ViStatusChanged (void)
-{
- VLOG ("height\n");
-
-}
-
-EXPORT void CALL ViWidthChanged (void)
-{
- VLOG ("width\n");
-}
-
-EXPORT void CALL ReadScreen2 (void *dest, int *width, int *height, int front)
-{
- VLOG ("read screen\n");
-}
-
-EXPORT void CALL SetRenderingCallback(void (*callback)(int))
-{
- VLOG ("render callback\n");
-
-}
-
-EXPORT void CALL FBRead(unsigned int addr)
-{
- VLOG ("fbread\n");
-}
-
-EXPORT void CALL FBWrite(unsigned int addr, unsigned int size)
-{
- VLOG ("fbwrite\n");
-}
-
-EXPORT void CALL FBGetFrameBufferInfo(void *p)
-{
- VLOG ("fbget\n");
-}
-
-EXPORT void CALL ResizeVideoOutput(int width, int height)
-{
- VLOG ("resize video\n");
-}
-
-#ifdef __cplusplus
-}
-#endif
-
-
-

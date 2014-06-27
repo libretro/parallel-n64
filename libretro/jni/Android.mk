@@ -151,6 +151,8 @@ LOCAL_SRC_FILES   += $(VIDEODIR_GLIDE)/Glitch64/combiner.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_crc.c
 
 LOCAL_SRC_FILES +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
+						  $(VIDEODIR_ANGRYLION)/n64video_vi.c \
+						  $(VIDEODIR_ANGRYLION)/n64video_rdp.c \
 						  $(VIDEODIR_ANGRYLION)/n64video.c
 
 ifeq ($(HAVE_HWFBE), 1)
