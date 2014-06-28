@@ -76,8 +76,6 @@ EXPORT void CALL angrylionSetRenderingCallback(void (*callback)(int))
 
 EXPORT int CALL angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
-  gfx = Gfx_Info;
-  
   return true;
 }
 
