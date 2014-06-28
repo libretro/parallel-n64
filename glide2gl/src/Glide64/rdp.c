@@ -1166,17 +1166,17 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    if (rdp.cycle_mode == 2)
    {
-      ul_x = max(0.0f, (short)((rdp.cmd1 & 0x00FFF000) >> 14));
-      ul_y = max(0.0f, (short)((rdp.cmd1 & 0x00000FFF) >> 2));
-      lr_x = max(0.0f, (short)((rdp.cmd0 & 0x00FFF000) >> 14));
-      lr_y = max(0.0f, (short)((rdp.cmd0 & 0x00000FFF) >> 2));
+      ul_x = (short)((rdp.cmd1 & 0x00FFF000) >> 14);
+      ul_y = (short)((rdp.cmd1 & 0x00000FFF) >> 2);
+      lr_x = (short)((rdp.cmd0 & 0x00FFF000) >> 14);
+      lr_y = (short)((rdp.cmd0 & 0x00000FFF) >> 2);
    }
    else
    {
-      ul_x = max(0.0f, ((short)((rdp.cmd1 & 0x00FFF000) >> 12)) / 4.0f);
-      ul_y = max(0.0f, ((short)(rdp.cmd1 & 0x00000FFF)) / 4.0f);
-      lr_x = max(0.0f, ((short)((rdp.cmd0 & 0x00FFF000) >> 12)) / 4.0f);
-      lr_y = max(0.0f, ((short)(rdp.cmd0 & 0x00000FFF)) / 4.0f);
+      ul_x = ((short)((rdp.cmd1 & 0x00FFF000) >> 12)) / 4.0f;
+      ul_y = ((short)(rdp.cmd1 & 0x00000FFF)) / 4.0f;
+      lr_x = ((short)((rdp.cmd0 & 0x00FFF000) >> 12)) / 4.0f;
+      lr_y = ((short)(rdp.cmd0 & 0x00000FFF)) / 4.0f;
    }
 
    if (ul_x >= lr_x)
@@ -1410,11 +1410,10 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    {
       if (rdp.fog_mode >= FOG_MODE_BLEND)
       {
-         float fog;
-         if (rdp.fog_mode == FOG_MODE_BLEND)
-            fog = 1.0f/max(1, rdp.fog_color&0xFF);
-         else
-            fog = 1.0f/max(1, (~rdp.fog_color)&0xFF);
+         float fog = 1.0f/(rdp.fog_color&0xFF);
+         if (rdp.fog_mode != FOG_MODE_BLEND)
+            fog = 1.0f / ((~rdp.fog_color)&0xFF);
+
          for (i = 0; i < n_vertices; i++)
          {
             vptr[i].f = fog;
@@ -1481,10 +1480,10 @@ static void rdp_setconvert(uint32_t w0, uint32_t w1)
 static void rdp_setscissor(uint32_t w0, uint32_t w1)
 {
    // clipper resolution is 320x240, scale based on computer resolution
-   rdp.scissor_o.ul_x = /*min(*/(uint32_t)(((w0 & 0x00FFF000) >> 14))/*, 320)*/;
-   rdp.scissor_o.ul_y = /*min(*/(uint32_t)(((w0 & 0x00000FFF) >> 2))/*, 240)*/;
-   rdp.scissor_o.lr_x = /*min(*/(uint32_t)(((w1 & 0x00FFF000) >> 14))/*, 320)*/;
-   rdp.scissor_o.lr_y = /*min(*/(uint32_t)(((w1 & 0x00000FFF) >> 2))/*, 240)*/;
+   rdp.scissor_o.ul_x = (uint32_t)(((w0 & 0x00FFF000) >> 14));
+   rdp.scissor_o.ul_y = (uint32_t)(((w0 & 0x00000FFF) >> 2));
+   rdp.scissor_o.lr_x = (uint32_t)(((w1 & 0x00FFF000) >> 14));
+   rdp.scissor_o.lr_y = (uint32_t)(((w1 & 0x00000FFF) >> 2));
 
    rdp.ci_upper_bound = rdp.scissor_o.ul_y;
    rdp.ci_lower_bound = rdp.scissor_o.lr_y;
