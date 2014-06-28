@@ -41,6 +41,9 @@ static void EmptyFunc(void)
 {
 }
 
+static m64p_error EmptyGetVersionFunc(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+{
+}
 /* local data structures and functions */
 #define DEFINE_GFX(X) \
     EXPORT m64p_error CALL X##PluginGetVersion(m64p_plugin_type *, int *, int *, const char **, int *); \
@@ -150,7 +153,7 @@ extern void audioVolumeMute(void);
 extern const char * audioVolumeGetString(void);
 
 audio_plugin_functions audio = {
-    EmptyFunc,
+    EmptyGetVersionFunc,
     audioAiDacrateChanged,
     audioAiLenChanged,
     audioInitiateAudio,

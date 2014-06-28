@@ -1935,7 +1935,7 @@ void ReadSpecialSettings (const char * name)
    {
       settings.depth_bias = 30;
       settings.stipple_mode = 1;
-      settings.stipple_pattern = (uint32_t)4286595040;
+      settings.stipple_pattern = (uint32_t)4286595040UL;
       //depthmode = 1
 #ifndef HAVE_HWFBE
       read_always = 1;
