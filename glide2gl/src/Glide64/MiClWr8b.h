@@ -70,23 +70,12 @@ void Mirror8bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_w
 
 void Wrap8bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
 {
-   int32_t count, line_full, line;
-   uint32_t mask_width, mask_mask, *start;
-   if (mask == 0)
-      return;
-
-   mask_width = (1 << mask);
-   mask_mask = (mask_width-1) >> 2;
-   if (mask_width >= max_width)
-      return;
-   count = (max_width - mask_width) >> 2;
-   if (count <= 0) return;
-   line_full = real_width;
-   line = line_full - (count << 2);
-   if (line < 0)
-      return;
-
-   start = (uint32_t *)(uint8_t*)(tex + mask_width);
+   uint32_t mask_width = (1 << mask);
+   uint32_t mask_mask = (mask_width-1) >> 2;
+   int32_t count = (max_width - mask_width) >> 2;
+   int32_t line_full = real_width;
+   int32_t line = line_full - (count << 2);
+   uint32_t *start = (uint32_t *)(uint8_t*)(tex + mask_width);
 
    do
    {
@@ -106,17 +95,11 @@ void Wrap8bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_wid
 
 void Clamp8bS (uint8_t *tex, uint32_t width, uint32_t clamp_to, uint32_t real_width, uint32_t real_height)
 {
-   uint8_t *dest, *constant;
-   int32_t count, line_full, line;
-
-   if (real_width <= width)
-      return;
-
-   dest = tex + (width);
-   constant = dest-1;
-   count = clamp_to - width;
-   line_full = real_width;
-   line = width;
+   uint8_t *dest = tex + (width);
+   uint8_t *constant = dest-1;
+   int32_t count = clamp_to - width;
+   int32_t line_full = real_width;
+   int32_t line = width;
 
    do
    {

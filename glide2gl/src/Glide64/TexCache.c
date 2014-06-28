@@ -1322,7 +1322,8 @@ static void LoadTex(int id, int tmu)
          min_y = real_y;
 
       // Load using mirroring/clamping
-      if (min_x > texinfo[id].width)
+      if (min_x > texinfo[id].width &&
+            real_x > texinfo[id].width)
       {
          if (size == 1)
             Clamp16bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
@@ -1334,8 +1335,9 @@ static void LoadTex(int id, int tmu)
 
       if (texinfo[id].width < (int)real_x)
       {
-         if (rdp.tiles[td].mirror_s && rdp.tiles[td].mask_s != 0
-               && (real_x > (1 << rdp.tiles[td].mask_s)))
+         bool cond_true = rdp.tiles[td].mask_s != 0
+               && (real_x > (1 << rdp.tiles[td].mask_s));
+         if (rdp.tiles[td].mirror_s && cond_true)
          {
             if (size == 1)
                Mirror16bS ((texture), rdp.tiles[td].mask_s,
@@ -1347,7 +1349,7 @@ static void LoadTex(int id, int tmu)
                Mirror8bS ((texture), rdp.tiles[td].mask_s,
                      real_x, real_x, texinfo[id].height);
          }
-         else
+         else if (cond_true)
          {
             if (size == 1)
                Wrap16bS ((texture), rdp.tiles[td].mask_s,
