@@ -66,7 +66,7 @@ NOINLINE void update_conf(const char* source)
 
 #ifdef __LIBRETRO__
     CFG_HLE_GFX = 1;
-    if (libretro_get_gfx_plugin == GFX_ANGRYLION)
+    if (libretro_get_gfx_plugin() == GFX_ANGRYLION)
        CFG_HLE_GFX = 0;
     CFG_HLE_AUD = 0;
 #else
