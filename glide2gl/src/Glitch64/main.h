@@ -78,7 +78,6 @@ extern int buffer_cleared; // mark that the buffer has been cleared, used to che
 #include <SDL_opengles2.h>
 #include "../glide_funcs.h"
 
-void add_tex(unsigned int id);
 void init_textures(void);
 void free_textures(void);
 void remove_tex(unsigned int idmin, unsigned int idmax);

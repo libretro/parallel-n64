@@ -346,7 +346,6 @@ grSstWinClose( GrContext_t context )
    nb_fb = 0;
 
    free_textures();
-   remove_tex(0, 0xfffffff);
 
    return FXTRUE;
 }
@@ -433,7 +432,6 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
          }
       }
 
-      remove_tex(pBufferAddress, pBufferAddress + width*height*2/*grTexFormatSize(fmt)*/);
       //create new FBO
       glGenFramebuffers( 1, &(fbs[nb_fb].fbid) );
       glGenRenderbuffers( 1, &(fbs[nb_fb].zbid) );
@@ -445,7 +443,6 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
       fbs[nb_fb].height = height;
       fbs[nb_fb].texid = pBufferAddress;
       fbs[nb_fb].buff_clear = 0;
-      add_tex(fbs[nb_fb].texid);
       glBindTexture(GL_TEXTURE_2D, fbs[nb_fb].texid);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
             GL_RGBA, GL_UNSIGNED_BYTE, NULL);

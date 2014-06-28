@@ -62,7 +62,7 @@ typedef struct _texlist
 static int nbTex = 0;
 static texlist *list = NULL;
 
-void remove_tex(unsigned int idmin, unsigned int idmax)
+static void remove_tex(unsigned int idmin, unsigned int idmax)
 {
    unsigned int *t;
    int n = 0;
@@ -101,7 +101,7 @@ void remove_tex(unsigned int idmin, unsigned int idmax)
 }
 
 
-void add_tex(unsigned int id)
+static void add_tex(unsigned int id)
 {
   texlist *aux = list;
   texlist *aux2;
