@@ -465,8 +465,6 @@ static void delete_tex_from_address(unsigned address)
 #endif
 
 
-//ENTER/EXIT
-
 #ifndef HAVE_SHARED_CONTEXT
 void sglEnter(void)
 {
@@ -475,16 +473,16 @@ void sglEnter(void)
    if (gfx_plugin == GFX_ANGRYLION || stop)
       return;
 
-    sglBindFramebuffer(GL_FRAMEBUFFER, Framebuffer_framebuffer); // < sgl is intentional
+    glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer_framebuffer ? Framebuffer_framebuffer : render_iface.get_current_framebuffer());
 
     glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
     glClearColor(ClearColor_red, ClearColor_green, ClearColor_blue, ClearColor_alpha);
-    sglClearDepth(ClearDepth_value);
+    glClearDepth(ClearDepth_value);
     glColorMask(ColorMask_red, ColorMask_green, ColorMask_blue, ColorMask_alpha);
     glCullFace(CullFace_mode);
     glDepthFunc(DepthFunc_func);
     glDepthMask(DepthMask_flag);
-    sglDepthRange(DepthRange_zNear, DepthRange_zFar);
+    glDepthRange(DepthRange_zNear, DepthRange_zFar);
     glFrontFace(FrontFace_mode);
     glPolygonOffset(PolygonOffset_factor, PolygonOffset_units);
     glScissor(Scissor_x, Scissor_y, Scissor_width, Scissor_height);
@@ -524,7 +522,7 @@ void sglExit(void)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glCullFace(GL_BACK);
     glDepthMask(GL_TRUE);
-    sglDepthRange(0, 1);
+    glDepthRange(0, 1);
     glFrontFace(GL_CCW);
     glPolygonOffset(0, 0);
     glUseProgram(0);
