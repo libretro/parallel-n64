@@ -144,10 +144,7 @@ void alist_set_address(struct hle_t* hle, uint32_t so, uint32_t *segments, size_
 
 void alist_clear(struct hle_t* hle, uint16_t dmem, uint16_t count)
 {
-    while(count != 0) {
-        *alist_u8(hle, dmem++) = 0;
-        --count;
-    }
+   memset(hle->alist_buffer + dmem, 0, count);
 }
 
 void alist_load(struct hle_t* hle, uint16_t dmem, uint32_t address, uint16_t count)
