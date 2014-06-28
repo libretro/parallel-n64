@@ -613,7 +613,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
       case 0x04:
          if (offset == 0x04)
          {
-            rdp.clip_ratio = sqrt((float)w1);
+            rdp.clip_ratio = vi_integer_sqrt(w1);
             rdp.update |= UPDATE_VIEWPORT;
          }
          //FRDP ("mw_clip %08lx, %08lx\n", w0, w1);

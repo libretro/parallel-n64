@@ -956,6 +956,26 @@ static INLINE void glideSetVertexPrimShading(VERTEX *v, uint32_t prim_color)
    //FRDP(" * Prim shaded %08lx\n", rdp.prim_color);
 }
 
+static INLINE uint32_t vi_integer_sqrt(uint32_t a)
+{
+   unsigned long op = a, res = 0, one = 1 << 30;
+
+   while (one > op) 
+      one >>= 2;
+
+   while (one != 0) 
+   {
+      if (op >= res + one) 
+      {
+         op -= res + one;
+         res += one << 1;
+      }
+      res >>= 1;
+      one >>= 2;
+   }
+   return res;
+}
+
 void newSwapBuffers(void);
 extern void rdp_setfuncs(void);
 extern int SwapOK;
