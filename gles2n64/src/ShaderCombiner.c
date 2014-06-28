@@ -657,7 +657,7 @@ void ShaderCombiner_Set(u64 mux, int flags)
    }
 
    dmux = (DecodedMux*)mux_new(mux, flags&SC_2CYCLE);
-   mux_hack((DecodedMux*)mux);
+   mux_hack(dmux);
 
    //if already bound:
    if (scProgramCurrent)
