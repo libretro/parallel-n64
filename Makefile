@@ -335,7 +335,7 @@ ifeq ($(DEBUG), 1)
    CPPFLAGS += -O0 -g
    CPPFLAGS += -DOPENGL_DEBUG
 else
-   CPPFLAGS += -O3 -DNDEBUG -Werror
+   CPPFLAGS += -O3 -DNDEBUG
 endif
 
 all: $(TARGET)
