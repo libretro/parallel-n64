@@ -2290,11 +2290,10 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
          rdp.scissor.lr_y);
 #endif
 
-   // KILL the floating point error with 0.01f
-   s_ul_x = (uint32_t)min(max(ul_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
-   s_lr_x = (uint32_t)min(max(lr_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
-   s_ul_y = (uint32_t)min(max(ul_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
-   s_lr_y = (uint32_t)min(max(lr_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
+   s_ul_x = (uint32_t)(ul_x * rdp.scale_x + rdp.offset_x);
+   s_lr_x = (uint32_t)(lr_x * rdp.scale_x + rdp.offset_x);
+   s_ul_y = (uint32_t)(ul_y * rdp.scale_y + rdp.offset_y);
+   s_lr_y = (uint32_t)(lr_y * rdp.scale_y + rdp.offset_y);
 
    if (s_lr_x < 0)
       s_lr_x = 0;
