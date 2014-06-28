@@ -1124,34 +1124,5 @@ NOINLINE void DisplayError(char * error)
 
 NOINLINE void zerobuf(void * memory, size_t length)
 {
-    size_t count;
-    unsigned char* bytes;
-    unsigned char address_low;
-
-    bytes = (unsigned char *)(memory);
-    address_low = (unsigned char)(memory);
-
-    if (address_low & 1)
-    {
-        for (count = 0; count < length; count++)
-            bytes[count] = 0x00;
-        return;
-    }
-
-/*
- * Allocate a certain interval of `memset' based on length alignment.
- *
- * partly for faster zeroing, partly to prevent Microsoft from interpreting
- * this function as a call to their own `memset' in Windows CRT libraries
- */
-    if (length & 1)
-    {
-        for (count = 0; count < length; count++)
-            bytes[count] = 0x00;
-        return;
-    }
-    length >>= 1;
-    for (count = 0; count < length; count++)
-        *(short *)(bytes + 2*count) = 0x0000;
-    return;
+    memset(memory, 0, length);
 }
