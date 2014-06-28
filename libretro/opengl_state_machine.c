@@ -7,12 +7,15 @@
 #include "opengl_state_machine.h"
 #include "plugin/plugin.h"
 #include "libretro.h"
+#include "libco/libco.h"
 
 // mupen64 defines
 #ifndef GFX_ANGRYLION
 #define GFX_ANGRYLION 3
 #endif
 
+extern cothread_t main_thread;
+extern bool flip_only;
 extern int stop;
 extern enum gfx_plugin_type gfx_plugin;
 
@@ -539,3 +542,17 @@ void sglExit(void)
     glBindFramebuffer(GL_FRAMEBUFFER, render_iface.get_current_framebuffer());
 }
 #endif
+
+int retro_return(bool just_flipping)
+{
+   if (stop)
+      return 0;
+
+   flip_only = just_flipping;
+#ifndef HAVE_SHARED_CONTEXT
+   sglExit();
+#endif
+   co_switch(main_thread);
+
+   return 0;
+}

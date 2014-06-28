@@ -26,15 +26,13 @@ retro_environment_t environ_cb = NULL;
 struct retro_rumble_interface rumble;
 
 struct retro_hw_render_callback render_iface;
-static cothread_t main_thread;
-static cothread_t emulator_thread;
+cothread_t main_thread;
+cothread_t emulator_thread;
 static bool emu_thread_has_run = false; // < This is used to ensure the core_gl_context_reset
                                         //   function doesn't try to reinit graphics before needed
 uint16_t button_orientation = 0;
 int astick_deadzone;
-static bool flip_only;
-static savestates_job state_job_done;
-
+bool flip_only;
 
 static uint8_t* game_data;
 static uint32_t game_size;
@@ -300,26 +298,6 @@ static void core_gl_context_reset(void)
    sglBindFramebuffer(GL_FRAMEBUFFER, 0); // < sgl is intentional
 #endif
 }
-
-int retro_return(bool just_flipping)
-{
-   if (!stop)
-   {
-      state_job_done = savestates_job_nothing;
-      flip_only = just_flipping;
-
-#ifndef HAVE_SHARED_CONTEXT
-      sglExit();
-#endif
-      co_switch(main_thread);
-
-      return state_job_done;
-   }
-
-   return 0;
-}
-
-//
 
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
 void retro_set_audio_sample(retro_audio_sample_t cb)   { }
@@ -725,10 +703,7 @@ size_t retro_serialize_size (void)
 bool retro_serialize(void *data, size_t size)
 {
     if (savestates_save_m64p(data, size))
-    {
-        state_job_done = savestates_job_save;
         return true;
-    }
 
     return false;
 }
@@ -736,10 +711,7 @@ bool retro_serialize(void *data, size_t size)
 bool retro_unserialize(const void * data, size_t size)
 {
     if (savestates_load_m64p(data, size))
-    {
-        state_job_done = savestates_job_load;
         return true;
-    }
 
     return false;
 }
