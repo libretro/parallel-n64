@@ -97,7 +97,10 @@ static void remove_tex(unsigned int idmin, unsigned int idmax)
    }
    glDeleteTextures(n, t);
    free(t);
-   TEXLOG("RMVTEX nbtex is now %d (%06x - %06x)\n", nbTex, idmin, idmax);
+#if 0
+   if (log_cb)
+      log_cb(RETRO_LOG_DEBUG, "RMVTEX nbtex is now %d (%06x - %06x)\n", nbTex, idmin, idmax);
+#endif
 }
 
 
@@ -123,7 +126,10 @@ static void add_tex(unsigned int id)
   aux->next->id = id;
   aux->next->next = aux2;
 addtex_log:
-  TEXLOG("ADDTEX nbtex is now %d (%06x)\n", nbTex, id);
+#if 0
+  if (log_cb)
+     log_cb(RETRO_LOG_DEBUG, "ADDTEX nbtex is now %d (%06x)\n", nbTex, id);
+#endif
 }
 
 void init_textures(void)
