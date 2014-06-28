@@ -32,12 +32,14 @@ typedef struct {
     UINT8 yoff;
 } CVtcmaskDERIVATIVE;
 
+#ifndef _WIN32
 typedef struct _RECT {
    int32_t left;
    int32_t top;
    int32_t right;
    int32_t bottom;
 } RECT, *PRECT;
+#endif
 
 typedef struct {   // Declare an unnamed structure and give it the
                    // typedef name POINT.
