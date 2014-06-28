@@ -418,6 +418,11 @@ void sglGenRenderbuffers(GLsizei n, GLuint *renderbuffers)
    glGenRenderbuffers(n, renderbuffers);
 }
 
+void sglGenTextures(GLsizei n, GLuint *textures)
+{
+   glGenTextures(n, textures);
+}
+
 void sglBindRenderbuffer(GLenum target, GLuint renderbuffer)
 {
    glBindRenderbuffer(target, renderbuffer);
@@ -441,6 +446,11 @@ GLenum sglCheckFramebufferStatus(GLenum target)
 void sglDeleteFramebuffers(GLsizei n, GLuint *framebuffers)
 {
    glDeleteFramebuffers(n, framebuffers);
+}
+
+void sglDeleteTextures(GLsizei n, const GLuint *textures)
+{
+   glDeleteTextures(n, textures);
 }
 
 void sglFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level)

@@ -34,6 +34,8 @@ void sglVertexAttrib4f(GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 void sglVertexAttrib4fv(GLuint index, GLfloat* v);
 void sglGenerateMipmap(GLenum target);
 
+void sglGenTextures(GLsizei n, GLuint *textures);
+
 void sglUniform1f(GLint location, GLfloat v0);
 void sglUniform1i(GLint location, GLint v0);
 void sglUniform2f(GLint location, GLfloat v0, GLfloat v1);
@@ -63,6 +65,7 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 void sglActiveTexture(GLenum texture);
 void sglBindTexture(GLenum target, GLuint texture);
 
+void sglDeleteTextures(GLsizei n, const GLuint *textures);
 void sglDeleteShader(GLuint shader);
 void sglDeleteProgram(GLuint program);
 GLuint sglCreateShader(GLenum shaderType);
@@ -76,7 +79,6 @@ void sglAttachShader(GLuint program, GLuint shader);
 
 // For gles2glide64
 void sglBindTextureGlide(GLenum target, GLuint texture);
-void sglDeleteTexturesGlide(GLuint n, const GLuint* ids);
 GLuint sglAddTextureMap(unsigned address);
 void sglLinkProgram(GLuint program);
 void sglBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
@@ -132,11 +134,13 @@ void sglBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
 #define glDeleteFramebuffers sglDeleteFramebuffers
 #define glGenFramebuffers sglGenFramebuffers
 #define glGenRenderbuffers sglGenRenderbuffers
+#define glGenTextures sglGenTextures
 #define glBindRenderbuffer sglBindRenderbuffer
 #define glRenderbufferStorage sglRenderbufferStorage
 #define glFramebufferRenderbuffer sglFramebufferRenderbuffer
 #define glCheckFramebufferStatus sglCheckFramebufferStatus
 #define glDeleteFramebuffers sglDeleteFramebuffers
+#define glDeleteTextures sglDeleteTextures
 #define glBindRenderbuffer sglBindRenderbuffer
 #define glFramebufferTexture2D sglFramebufferTexture2D
 #endif
