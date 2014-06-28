@@ -2375,7 +2375,6 @@ void recompile_block(int *source, precomp_block *block, unsigned int func)
    length = (block->end-block->start)/4;
    dst_block = block;
    
-   //for (i=0; i<16; i++) block->md5[i] = 0;
    block->adler32 = 0;
    
    if (r4300emu == CORE_DYNAREC)
