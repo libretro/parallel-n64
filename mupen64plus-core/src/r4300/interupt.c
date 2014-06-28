@@ -111,7 +111,7 @@ static void clear_queue(void)
    q = NULL;
    for (i = 0; i < QUEUE_SIZE; i++)
       qstack[i] = &qbase[i];
-   qstackindex = NULL;
+   qstackindex = 0;
 }
 
 /*static void print_queue(void)
