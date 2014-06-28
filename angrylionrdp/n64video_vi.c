@@ -1,6 +1,7 @@
 #include "z64.h"
 #include "vi.h"
 #include "../libretro.h"
+#include <string.h>
 
 extern retro_log_printf_t log_cb;
 
