@@ -48,8 +48,8 @@ extern retro_log_printf_t log_cb;
 
 static void LoadTex (int id, int tmu);
 
-uint8_t tex1[256*256*4];		// temporary texture
-uint8_t tex2[256*256*4];
+uint8_t tex1[512*512*4];		// temporary texture
+uint8_t tex2[512*512*4];
 uint8_t *texture;
 uint8_t *texture_buffer = tex1;
 
