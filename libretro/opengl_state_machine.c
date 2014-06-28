@@ -539,7 +539,7 @@ void sglExit(void)
     }
     glActiveTexture(GL_TEXTURE0);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, render_iface.get_current_framebuffer());
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 #endif
 
