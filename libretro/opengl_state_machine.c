@@ -25,18 +25,8 @@ static const int CapTranslate[SGL_CAP_MAX] =
 };
 
 #ifndef HAVE_SHARED_CONTEXT
-#define MAX_ATTRIB 8
 #define MAX_TEXTURE 4
 #define ATTRIB_INITER(X) { X, X, X, X, X, X, X, X }
-
-static GLint VertexAttribPointer_enabled[MAX_ATTRIB] = ATTRIB_INITER(0);
-static GLint VertexAttribPointer_is4f[MAX_ATTRIB] = ATTRIB_INITER(0);
-static GLint VertexAttribPointer_size[MAX_ATTRIB] = ATTRIB_INITER(4);
-static GLenum VertexAttribPointer_type[MAX_ATTRIB] = ATTRIB_INITER(GL_FLOAT);
-static GLboolean VertexAttribPointer_normalized[MAX_ATTRIB] = ATTRIB_INITER(GL_TRUE);
-static GLsizei VertexAttribPointer_stride[MAX_ATTRIB] = ATTRIB_INITER(0);
-static const GLvoid* VertexAttribPointer_pointer[MAX_ATTRIB] = ATTRIB_INITER(0);
-static GLfloat VertexAttribPointer_4f[MAX_ATTRIB][4];
 
 static GLuint Framebuffer_framebuffer = 0;
 static GLenum BlendFunc_srcRGB = GL_ONE,  BlendFunc_srcAlpha = GL_ONE;
@@ -189,51 +179,26 @@ GLboolean sglIsEnabled(GLenum cap)
 
 void sglEnableVertexAttribArray(GLuint index)
 {
-#ifndef HAVE_SHARED_CONTEXT
-    VertexAttribPointer_enabled[index] = 1;
-#endif
     glEnableVertexAttribArray(index);
 }
 
 void sglDisableVertexAttribArray(GLuint index)
 {
-#ifndef HAVE_SHARED_CONTEXT
-    VertexAttribPointer_enabled[index] = 0;
-#endif
     glDisableVertexAttribArray(index);
 }
 
 void sglVertexAttribPointer(GLuint name, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* pointer)
 {
-#ifndef HAVE_SHARED_CONTEXT
-    VertexAttribPointer_is4f[name] = 0;
-    VertexAttribPointer_size[name] = size;
-    VertexAttribPointer_type[name] = type;
-    VertexAttribPointer_normalized[name] = normalized;
-    VertexAttribPointer_stride[name] = stride;
-    VertexAttribPointer_pointer[name] = pointer;
-#endif
     glVertexAttribPointer(name, size, type, normalized, stride, pointer);
 }
 
 void sglVertexAttrib4f(GLuint name, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 {
-#ifndef HAVE_SHARED_CONTEXT
-    VertexAttribPointer_is4f[name] = 1;
-    VertexAttribPointer_4f[name][0] = x;
-    VertexAttribPointer_4f[name][1] = y;
-    VertexAttribPointer_4f[name][2] = z;
-    VertexAttribPointer_4f[name][3] = w;
-#endif
     glVertexAttrib4f(name, x, y, z, w);
 }
 
 void sglVertexAttrib4fv(GLuint name, GLfloat* v)
 {
-#ifndef HAVE_SHARED_CONTEXT
-    VertexAttribPointer_is4f[name] = 1;
-    memcpy(VertexAttribPointer_4f[name], v, sizeof(GLfloat) * 4);
-#endif
     glVertexAttrib4fv(name, v);
 }
 
@@ -510,21 +475,6 @@ void sglEnter(void)
    if (gfx_plugin == GFX_ANGRYLION || stop)
       return;
 
-    for (i = 0; i < MAX_ATTRIB; i ++)
-    {
-        if (VertexAttribPointer_enabled[i])
-           glEnableVertexAttribArray(i);
-        else
-           glDisableVertexAttribArray(i);
-
-        if (!VertexAttribPointer_is4f[i])
-            glVertexAttribPointer(i, VertexAttribPointer_size[i], VertexAttribPointer_type[i],
-                  VertexAttribPointer_normalized[i], VertexAttribPointer_stride[i], VertexAttribPointer_pointer[i]);
-        else
-            glVertexAttrib4f(i, VertexAttribPointer_4f[i][0], VertexAttribPointer_4f[i][1],
-                  VertexAttribPointer_4f[i][2], VertexAttribPointer_4f[i][3]);
-    }
-
     sglBindFramebuffer(GL_FRAMEBUFFER, Framebuffer_framebuffer); // < sgl is intentional
 
     glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
@@ -587,9 +537,6 @@ void sglExit(void)
         glDisable(GL_TEXTURE_2D);
     }
     glActiveTexture(GL_TEXTURE0);
-
-    for (i = 0; i < MAX_ATTRIB; i ++)
-        glDisableVertexAttribArray(i);
 
     glBindFramebuffer(GL_FRAMEBUFFER, render_iface.get_current_framebuffer());
 }
