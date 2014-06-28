@@ -62,6 +62,8 @@ typedef struct _texlist
 static int nbTex = 0;
 static texlist *list = NULL;
 
+//#define LOG_TEXTUREMEM 1
+
 static void remove_tex(unsigned int idmin, unsigned int idmax)
 {
    unsigned int *t;
@@ -97,7 +99,7 @@ static void remove_tex(unsigned int idmin, unsigned int idmax)
    }
    glDeleteTextures(n, t);
    free(t);
-#if 0
+#ifdef LOG_TEXTUREMEM
    if (log_cb)
       log_cb(RETRO_LOG_DEBUG, "RMVTEX nbtex is now %d (%06x - %06x)\n", nbTex, idmin, idmax);
 #endif
@@ -114,7 +116,11 @@ static void add_tex(unsigned int id)
     list = (texlist*)malloc(sizeof(texlist));
     list->next = aux;
     list->id = id;
+#ifdef LOG_TEXTUREMEM
     goto addtex_log;
+#else
+    return;
+#endif
   }
   while (aux->next && aux->next->id < id) aux = aux->next;
   // ZIGGY added this test so that add_tex now accept re-adding an existing texture
@@ -125,8 +131,8 @@ static void add_tex(unsigned int id)
   aux->next = (texlist*)malloc(sizeof(texlist));
   aux->next->id = id;
   aux->next->next = aux2;
+#ifdef LOG_TEXTUREMEM
 addtex_log:
-#if 0
   if (log_cb)
      log_cb(RETRO_LOG_DEBUG, "ADDTEX nbtex is now %d (%06x)\n", nbTex, id);
 #endif
@@ -536,7 +542,6 @@ grTexDownloadMipMap( GrChipID_t tmu,
    glTexImage2D(GL_TEXTURE_2D, 0, gltexfmt, width, height, 0, glpixfmt, glpackfmt, info->data);
    info->width = width;
    info->height = height;
-   glBindTexture(GL_TEXTURE_2D, default_texture);
 }
 
 
