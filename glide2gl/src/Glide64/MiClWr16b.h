@@ -44,25 +44,12 @@
 
 void Mirror16bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
 {
-   int32_t count, line_full, line;
-   uint16_t *v8;
-   uint32_t mask_width, mask_mask;
-
-   if (mask == 0)
-      return;
-
-   mask_width = (1 << mask);
-   mask_mask = (mask_width-1) << 1;
-   if (mask_width >= max_width)
-      return;
-   count = max_width - mask_width;
-   if (count <= 0)
-      return;
-   line_full = real_width << 1;
-   line = line_full - (count << 1);
-   if (line < 0)
-      return;
-   v8 = (uint16_t *)(uint8_t*)(tex + (mask_width << 1));
+   uint32_t mask_width = (1 << mask);
+   uint32_t mask_mask = (mask_width-1) << 1;
+   int32_t count = max_width - mask_width;
+   int32_t line_full = real_width << 1;
+   int32_t line = line_full - (count << 1);
+   uint16_t *v8 = (uint16_t *)(uint8_t*)(tex + (mask_width << 1));
    do
    {
       int v10 = 0;

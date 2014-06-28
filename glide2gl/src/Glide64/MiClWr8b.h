@@ -42,25 +42,12 @@
 
 void Mirror8bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
 {
-   uint32_t mask_width, mask_mask;
-   int32_t count, line_full, line;
-   uint8_t *start;
-
-   if (mask == 0)
-      return;
-
-   mask_width = (1 << mask);
-   mask_mask = (mask_width-1);
-   if (mask_width >= max_width)
-      return;
-   count = max_width - mask_width;
-   if (count <= 0)
-      return;
-   line_full = real_width;
-   line = line_full - (count);
-   if (line < 0)
-      return;
-   start = (uint8_t*)(tex + (mask_width));
+   uint32_t mask_width = (1 << mask);
+   uint32_t mask_mask = (mask_width-1);
+   int32_t count = max_width - mask_width;
+   int32_t line_full = real_width;
+   int32_t line = line_full - (count);
+   uint8_t *start = (uint8_t*)(tex + (mask_width));
 
    do
    {

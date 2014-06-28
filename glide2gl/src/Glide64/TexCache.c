@@ -1334,7 +1334,8 @@ static void LoadTex(int id, int tmu)
 
       if (texinfo[id].width < (int)real_x)
       {
-         if (rdp.tiles[td].mirror_s)
+         if (rdp.tiles[td].mirror_s && rdp.tiles[td].mask_s != 0
+               && (real_x > (1 << rdp.tiles[td].mask_s)))
          {
             if (size == 1)
                Mirror16bS ((texture), rdp.tiles[td].mask_s,

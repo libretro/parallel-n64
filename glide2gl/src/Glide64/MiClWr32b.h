@@ -80,25 +80,13 @@ static INLINE void clamp32bS(uint8_t *tex, uint8_t *constant, int height, int li
 // 32-bit Horizontal Mirror
 void Mirror32bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
 {
-   int32_t count, line_full, line;
-   uint8_t *start;
-   uint32_t mask_width, mask_mask, *v8;
-   if (mask == 0)
-      return;
-
-   mask_width = (1 << mask);
-   mask_mask = (mask_width-1) << 2;
-   if (mask_width >= max_width)
-      return;
-   count = max_width - mask_width;
-   if (count <= 0)
-      return;
-   line_full = real_width << 2;
-   line = line_full - (count << 2);
-   if (line < 0)
-      return;
-   start = (uint8_t*)(tex + (mask_width << 2));
-   v8 = (uint32_t *)start;
+   uint32_t mask_width = (1 << mask);
+   uint32_t mask_mask = (mask_width-1) << 2;
+   int32_t count = max_width - mask_width;
+   int32_t line_full = real_width << 2;
+   int32_t line = line_full - (count << 2);
+   uint8_t *start = (uint8_t*)(tex + (mask_width << 2));
+   uint32_t *v8 = (uint32_t *)start;
 
    do
    {
