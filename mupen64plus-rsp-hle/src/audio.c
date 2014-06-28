@@ -96,12 +96,8 @@ int32_t rdot(size_t n, const int16_t *x, const int16_t *y)
 {
     int32_t accu = 0;
 
-    y += n;
-
-    while (n != 0) {
-        accu += *(x++) * *(--y);
-        --n;
-    }
+    while (n-- != 0)
+       accu += *(x++) * *(--y);
 
     return accu;
 }
@@ -121,7 +117,7 @@ void adpcm_compute_residuals(int16_t* dst, const int16_t* src,
 
     for(i = 0; i < count; ++i) {
         int32_t accu = (int32_t)src[i] << 11;
-        accu += book1[i]*l1 + book2[i]*l2 + rdot(i, book2, src);
+        accu += book1[i]*l1 + book2[i]*l2 + rdot(i, book2, src + i);
         dst[i] = clamp_s16(accu >> 11);
    }
 }

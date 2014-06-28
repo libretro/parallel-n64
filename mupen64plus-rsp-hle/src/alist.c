@@ -945,7 +945,7 @@ void alist_polef(
 
         for(i = 0; i < 8; ++i) {
             int32_t accu = frame[i] * gain;
-            accu += h1[i]*l1 + h2_before[i]*l2 + rdot(i, h2, frame);
+            accu += h1[i]*l1 + h2_before[i]*l2 + rdot(i, h2, frame + i);
             dst[i^S] = clamp_s16(accu >> 14);
         }
 
