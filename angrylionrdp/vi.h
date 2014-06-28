@@ -44,8 +44,8 @@ typedef struct _RECT {
 
 typedef struct {   // Declare an unnamed structure and give it the
                    // typedef name POINT.
-   unsigned x;
-   unsigned y;
+   int32_t x;
+   int32_t y;
 } POINT;
 #endif
 
