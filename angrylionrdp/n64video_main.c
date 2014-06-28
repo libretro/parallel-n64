@@ -43,11 +43,7 @@ EXPORT void CALL CloseDLL (void)
     return;
 }
 
-EXPORT void CALL angrylionReadScreen(void **dest, int *width, int *height)
-{
-}
-
-EXPORT void CALL angrylionReadScreen2(void **dest, int *width, int *height)
+EXPORT void CALL angrylionReadScreen2(void *dest, int *width, int *height, int front)
 {
 }
 
@@ -145,7 +141,7 @@ EXPORT void CALL angrylionRomClosed (void)
 }
 
  
-EXPORT void CALL angrylionRomOpen (void)
+EXPORT int CALL angrylionRomOpen (void)
 {
 #ifndef HAVE_DIRECTDRAW
     blitter_buf = (uint32_t*)calloc(screen_width * screen_height, sizeof(uint32_t));
@@ -270,7 +266,7 @@ EXPORT void CALL angrylionRomOpen (void)
 
     rdp_init();
  /* overlay = 1; */
-    return;
+    return 0;
 }
 
 EXPORT void CALL angrylionUpdateScreen(void)
@@ -306,12 +302,11 @@ EXPORT void CALL angrylionViWidthChanged (void)
 {
 }
 
-EXPORT void CALL angrylionFBWrite(uint16_t addr, uint16_t size)
+EXPORT void CALL angrylionFBWrite(unsigned int addr, unsigned int size)
 {
-    return;
 }
 
-EXPORT void CALL angrylionFBRead(uint16_t addr)
+EXPORT void CALL angrylionFBRead(unsigned int addr)
 {
 }
 
