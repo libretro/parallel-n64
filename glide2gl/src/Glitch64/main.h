@@ -80,7 +80,6 @@ extern int buffer_cleared; // mark that the buffer has been cleared, used to che
 
 void init_textures(void);
 void free_textures(void);
-void remove_tex(unsigned int idmin, unsigned int idmax);
 
 void set_lambda(void);
 
