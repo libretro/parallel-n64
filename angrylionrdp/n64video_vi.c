@@ -1,5 +1,8 @@
 #include "z64.h"
 #include "vi.h"
+#include "../libretro.h"
+
+extern retro_log_printf_t log_cb;
 
 onetime onetimewarnings;
 
@@ -91,6 +94,9 @@ void rdp_update(void)
     const int delta_y = y2 - y1;
     const int vitype = *GET_GFX_INFO(VI_STATUS_REG) & 0x00000003;
     const int pixel_size = sizeof(INT32);
+
+    if (log_cb)
+        log_cb(RETRO_LOG_INFO, "start of rdp_update.\n");
 
 /*
  * initial value (angrylion)

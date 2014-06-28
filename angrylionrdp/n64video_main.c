@@ -264,7 +264,7 @@ EXPORT int CALL angrylionRomOpen (void)
 
     rdp_init();
  /* overlay = 1; */
-    return 0;
+    return 1;
 }
 
 EXPORT void CALL angrylionUpdateScreen(void)
