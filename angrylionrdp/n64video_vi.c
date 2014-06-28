@@ -320,7 +320,7 @@ static void do_frame_buffer_proper(
     cache_marker_init |= -(cache_marker_init < 0);
 
     slowbright = 0;
-#ifdef WIN32
+#if 0
     if (GetAsyncKeyState(0x91))
         brightness = ++brightness & 0xF;
     slowbright = brightness >> 1;

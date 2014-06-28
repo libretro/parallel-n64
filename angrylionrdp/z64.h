@@ -3,13 +3,6 @@
 
 #include <stdio.h>
 
-#if 0
-#ifdef WIN32
-#include <windows.h>
-#include <ddraw.h>
-#endif
-#endif
-
 #if defined (_MSC_VER) && (_MSC_VER >= 1300)
 #include <basetsd.h>
 #endif

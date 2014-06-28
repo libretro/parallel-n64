@@ -673,24 +673,9 @@ void rdp_init(void)
 
 
 
-#ifdef WIN32
-    if (IsBadPtrW32(&rdram[0x7f0000 >> 2],16))
-    {
-        plim = 0x3fffff;
-        idxlim16 = 0x1fffff;
-        idxlim32 = 0xfffff;
-    }
-    else
-    {
-        plim = 0x7fffff;
-        idxlim16 = 0x3fffff;
-        idxlim32 = 0x1fffff;
-    }
-#else
     plim = 0x3fffff;
     idxlim16 = 0x1fffff;
     idxlim32 = 0xfffff;
-#endif
 
     rdram_8 = (UINT8*)rdram;
     rdram_16 = (UINT16*)rdram;
@@ -6533,24 +6518,6 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, i
 
 int IsBadPtrW32(void *ptr, UINT32 bytes)
 {
-#ifdef WIN32
-    SIZE_T dwSize;
-    MEMORY_BASIC_INFORMATION meminfo;
-    if (!ptr)
-        return 1;
-    zerobuf(&meminfo, sizeof(meminfo));
-    dwSize = VirtualQuery(ptr, &meminfo, sizeof(meminfo));
-    if (!dwSize)
-        return 1;
-    if (MEM_COMMIT != meminfo.State)
-        return 1;
-    if (!(meminfo.Protect & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)))
-        return 1;
-    if (bytes > meminfo.RegionSize)
-        return 1;
-    if ((UINT64)((char*)ptr - (char*)meminfo.BaseAddress) > (UINT64)(meminfo.RegionSize - bytes))
-        return 1;
-#endif
     return 0;
 }
 
