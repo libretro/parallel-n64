@@ -32,20 +32,22 @@ typedef struct {
     UINT8 yoff;
 } CVtcmaskDERIVATIVE;
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <windows.h>
+#else
 typedef struct _RECT {
    int32_t left;
    int32_t top;
    int32_t right;
    int32_t bottom;
 } RECT, *PRECT;
-#endif
 
 typedef struct {   // Declare an unnamed structure and give it the
                    // typedef name POINT.
    unsigned x;
    unsigned y;
 } POINT;
+#endif
 
 //extern LPDIRECTDRAW7 lpdd;
 //extern LPDIRECTDRAWSURFACE7 lpddsprimary;
