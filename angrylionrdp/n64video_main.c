@@ -7,7 +7,7 @@
 #include "rdp.h"
 #include "m64p_types.h"
 
-static const int screen_width = SCREEN_WIDTH, screen_height = SCREEN_HEIGHT;
+extern int screen_width, screen_height;
 uint32_t screen_pitch;
 
 #ifdef HAVE_DIRECTDRAW
@@ -144,8 +144,11 @@ EXPORT void CALL angrylionRomClosed (void)
 EXPORT int CALL angrylionRomOpen (void)
 {
 #ifndef HAVE_DIRECTDRAW
-    blitter_buf = (uint32_t*)calloc(screen_width * screen_height, sizeof(uint32_t));
-    pitchindwords = screen_width * 4;
+   screen_width = SCREEN_WIDTH;
+   screen_height = SCREEN_HEIGHT;
+   blitter_buf = (uint32_t*)calloc(screen_width * screen_height, sizeof(uint32_t));
+   pitchindwords = screen_width * 4;
+   screen_pitch = PRESCALE_WIDTH << 2;
 #else
     DDPIXELFORMAT ftpixel;
     LPDIRECTDRAWCLIPPER lpddcl;
@@ -265,7 +268,7 @@ EXPORT int CALL angrylionRomOpen (void)
 #endif
 
     rdp_init();
- /* overlay = 1; */
+    overlay = 0;
     return 1;
 }
 
