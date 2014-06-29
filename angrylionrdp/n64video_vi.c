@@ -88,6 +88,8 @@ void rdp_update(void)
     register int i, j;
     const int x_add = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
     const int v_sync = *GET_GFX_INFO(VI_V_SYNC_REG) & 0x000003FF;
+    if (log_cb)
+       log_cb(RETRO_LOG_INFO, "VI_V_SYNC_REG is: %d\n", v_sync);
     const int ispal  = (v_sync > 550);
     const int x1 = (*GET_GFX_INFO(VI_H_START_REG) >> 16) & 0x03FF;
     const int y1 = (*GET_GFX_INFO(VI_V_START_REG) >> 16) & 0x03FF;
