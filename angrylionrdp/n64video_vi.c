@@ -139,11 +139,16 @@ void rdp_update(void)
     vactivelines = v_sync - (ispal ? 47 : 37);
     if (vactivelines > PRESCALE_HEIGHT)
     {
-        DisplayError("VI_V_SYNC_REG too big");
+       if (log_cb)
+          log_cb(RETRO_LOG_WARN, "VI_V_SYNC_REG too big\n");
         return;
     }
     if (vactivelines < 0)
+    {
+       if (log_cb)
+          log_cb(RETRO_LOG_WARN, "vactivelines lesser than 0\n");
         return;
+    }
     vactivelines >>= line_shifter;
     validh = (hres >= 0 && h_start >= 0 && h_start < PRESCALE_WIDTH);
     pix = 0;
