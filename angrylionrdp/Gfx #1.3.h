@@ -76,47 +76,52 @@ typedef struct {
 #define gfx angryliongfxInfo
 
 typedef struct {
-    int hWnd;          /* Render window */
-    int hStatusBar;    /* if render window does not have a status bar then this is NULL */
 
-    int MemoryBswaped;    // If this is set to TRUE, then the memory has been pre
-                           //   bswap on a dword (32 bits) boundry 
-                           //   eg. the first 8 bytes are stored like this:
-                           //        4 3 2 1   8 7 6 5
-
-    uint8_t * HEADER;  // This is the rom header (first 40h bytes of the rom
+    unsigned char * HEADER;  // This is the rom header (first 40h bytes of the rom
                     // This will be in the same memory format as the rest of the memory.
-    uint8_t * RDRAM;
-    uint8_t * DMEM;
-    uint8_t * IMEM;
+    unsigned char * RDRAM;
+    unsigned char * DMEM;
+    unsigned char * IMEM;
 
-    uint16_t * MI_INTR_REG;
+    unsigned int * MI_INTR_REG;
 
-    uint16_t * DPC_START_REG;
-    uint16_t * DPC_END_REG;
-    uint16_t * DPC_CURRENT_REG;
-    uint16_t * DPC_STATUS_REG;
-    uint16_t * DPC_CLOCK_REG;
-    uint16_t * DPC_BUFBUSY_REG;
-    uint16_t * DPC_PIPEBUSY_REG;
-    uint16_t * DPC_TMEM_REG;
+    unsigned int * DPC_START_REG;
+    unsigned int * DPC_END_REG;
+    unsigned int * DPC_CURRENT_REG;
+    unsigned int * DPC_STATUS_REG;
+    unsigned int * DPC_CLOCK_REG;
+    unsigned int * DPC_BUFBUSY_REG;
+    unsigned int * DPC_PIPEBUSY_REG;
+    unsigned int * DPC_TMEM_REG;
 
-    uint16_t * VI_STATUS_REG;
-    uint16_t * VI_ORIGIN_REG;
-    uint16_t * VI_WIDTH_REG;
-    uint16_t * VI_INTR_REG;
-    uint16_t * VI_V_CURRENT_LINE_REG;
-    uint16_t * VI_TIMING_REG;
-    uint16_t * VI_V_SYNC_REG;
-    uint16_t * VI_H_SYNC_REG;
-    uint16_t * VI_LEAP_REG;
-    uint16_t * VI_H_START_REG;
-    uint16_t * VI_V_START_REG;
-    uint16_t * VI_V_BURST_REG;
-    uint16_t * VI_X_SCALE_REG;
-    uint16_t * VI_Y_SCALE_REG;
+    unsigned int * VI_STATUS_REG;
+    unsigned int * VI_ORIGIN_REG;
+    unsigned int * VI_WIDTH_REG;
+    unsigned int * VI_INTR_REG;
+    unsigned int * VI_V_CURRENT_LINE_REG;
+    unsigned int * VI_TIMING_REG;
+    unsigned int * VI_V_SYNC_REG;
+    unsigned int * VI_H_SYNC_REG;
+    unsigned int * VI_LEAP_REG;
+    unsigned int * VI_H_START_REG;
+    unsigned int * VI_V_START_REG;
+    unsigned int * VI_V_BURST_REG;
+    unsigned int * VI_X_SCALE_REG;
+    unsigned int * VI_Y_SCALE_REG;
 
     void (*CheckInterrupts)( void );
+
+#ifdef HAVE_DIRECTDRAW
+    int hWnd;          /* Render window */
+    int hStatusBar;    /* if render window does not have a status bar then this is NULL */
+#endif
+#if 0
+    int MemoryBswaped;    // If this is set to TRUE, then the memory has been pre
+                           //   bswap on a dword (32 bits) boundry
+                           //   eg. the first 8 bytes are stored like this:
+                           //        4 3 2 1   8 7 6 5
+#endif
+
 } GFX_INFO;
 
 extern GFX_INFO gfxInfo;
