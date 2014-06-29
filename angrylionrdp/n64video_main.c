@@ -52,8 +52,7 @@ EXPORT void CALL angrylionDrawScreen (void)
 {
 }
 
-#if 0
-EXPORT void CALL GetDllInfo(PLUGIN_INFO* PluginInfo)
+EXPORT void CALL angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
 {
     PluginInfo -> Version = 0x0103;
     PluginInfo -> Type  = PLUGIN_TYPE_GFX;
@@ -66,9 +65,7 @@ EXPORT void CALL GetDllInfo(PLUGIN_INFO* PluginInfo)
     );
     PluginInfo -> NormalMemory = true;
     PluginInfo -> MemoryBswaped = true;
-    return;
 }
-#endif
 
 EXPORT void CALL angrylionSetRenderingCallback(void (*callback)(int))
 {
