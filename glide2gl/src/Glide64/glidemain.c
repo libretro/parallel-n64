@@ -2226,8 +2226,6 @@ int InitGfx(void)
 
    InitCombine();
 
-   grCullMode(GR_CULL_NEGATIVE);
-
    if (settings.fog) //"FOGCOORD" extension
    {
       int i;
@@ -2255,28 +2253,6 @@ int InitGfx(void)
 
    guLoadTextures ();
    ClearCache ();
-
-   grCullMode (GR_CULL_DISABLE);
-   grDepthBufferMode (GR_DEPTHBUFFER_ZBUFFER);
-   grDepthBufferFunction (GR_CMP_ALWAYS);
-   grRenderBuffer(GR_BUFFER_BACKBUFFER);
-   grColorMask (FXTRUE, FXTRUE);
-   grDepthMask (FXTRUE);
-   grBufferClear (0, 0, 0xFFFF);
-   grBufferSwap (0);
-   grBufferClear (0, 0, 0xFFFF);
-   grDepthMask (FXFALSE);
-#ifdef DISABLE_3POINT
-   grTexFilterMode (0, GR_TEXTUREFILTER_BILINEAR, GR_TEXTUREFILTER_BILINEAR);
-   grTexFilterMode (1, GR_TEXTUREFILTER_BILINEAR, GR_TEXTUREFILTER_BILINEAR);
-#else
-   grTexFilterMode (0, GR_TEXTUREFILTER_3POINT_LINEAR, GR_TEXTUREFILTER_3POINT_LINEAR);
-   grTexFilterMode (1, GR_TEXTUREFILTER_3POINT_LINEAR, GR_TEXTUREFILTER_3POINT_LINEAR);
-#endif
-   grTexClampMode (0, GR_TEXTURECLAMP_CLAMP, GR_TEXTURECLAMP_CLAMP);
-   grTexClampMode (1, GR_TEXTURECLAMP_CLAMP, GR_TEXTURECLAMP_CLAMP);
-   grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
-   rdp.update |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
 
    return true;
 }
