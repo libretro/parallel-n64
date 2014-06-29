@@ -27,7 +27,7 @@ int ProcessDListShown = 0;
 extern int SaveLoaded;
 extern UINT32 command_counter;
 
-GFX_INFO gfxInfo;
+GFX_INFO angryliongfxInfo;
 
 EXPORT void CALL CaptureScreen ( char * Directory )
 {
@@ -76,7 +76,7 @@ EXPORT void CALL angrylionSetRenderingCallback(void (*callback)(int))
 
 EXPORT int CALL angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
-   gfxInfo = Gfx_Info;
+   angryliongfxInfo = Gfx_Info;
 
    return true;
 }

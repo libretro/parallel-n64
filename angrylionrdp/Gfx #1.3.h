@@ -73,7 +73,7 @@ typedef struct {
                               bswap on a dword (32 bits) boundry */
 } PLUGIN_INFO;
 
-#define gfx gfxInfo
+#define gfx angryliongfxInfo
 
 typedef struct {
     int hWnd;          /* Render window */
