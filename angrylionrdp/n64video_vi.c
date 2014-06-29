@@ -150,25 +150,7 @@ void rdp_update(void)
         return;
 
 #ifdef HAVE_DIRECTDRAW
-    res = IDirectDrawSurface_Lock(
-        lpddsback, 0, &ddsd, DDLOCK_SURFACEMEMORYPTR | DDLOCK_NOSYSLOCK, 0);
-    while (res == DDERR_SURFACELOST)
-    {
-        res = IDirectDrawSurface_Restore(lpddsback);
-        if (res != DD_OK)
-        {
-            DisplayError("Restore failed with DirectDraw error");
-            return;
-        }
-        res = IDirectDrawSurface_Lock(
-            lpddsback, 0, &ddsd, DDLOCK_SURFACEMEMORYPTR | DDLOCK_NOSYSLOCK, 0);
-    }
-    if (res != DD_OK)
-    {
-        DisplayError("Lock failed with DirectDraw error");
-        return;
-    }
-    PreScale = (UINT32 *)(ddsd.lpSurface);
+    // direct draw surface lock
 #else
     extern uint32_t *blitter_buf;
     PreScale = (UINT32 *)blitter_buf;
@@ -239,12 +221,7 @@ void rdp_update(void)
         prescale_ptr, hres, vres, x_start, vitype, line_count);
 no_frame_buffer:
 #ifdef HAVE_DIRECTDRAW
-    res = IDirectDrawSurface_Unlock(lpddsback, 0);
-    if (res != DD_OK && res != DDERR_GENERIC && res != DDERR_SURFACELOST)
-    {
-        DisplayError("Couldn't unlock the offscreen surface");
-        return;
-    }
+    // direct draw surface unlock
 #endif
 
     src.bottom = (ispal ? 576 : 480) >> line_shifter; /* visible lines */
