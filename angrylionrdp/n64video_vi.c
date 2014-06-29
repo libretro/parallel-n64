@@ -23,6 +23,8 @@ INT32 vi_restore_table[0x400];
 INT32 oldvstart = 1337;
 INT32* PreScale;
 
+int overlay = 0;
+
 static UINT32 tvfadeoutstate[625];
 static UINT32 brightness = 0;
 static UINT32 prevwasblank = 0;
@@ -233,11 +235,8 @@ void rdp_update(void)
 
     prescale_ptr =
         (v_start * line_count) + h_start + (lowerfield ? pitchindwords : 0);
-#if 0
-    //FIXME - where is overlay and what is it?
     do_frame_buffer[overlay](
         prescale_ptr, hres, vres, x_start, vitype, line_count);
-#endif
 no_frame_buffer:
 #ifdef HAVE_DIRECTDRAW
     res = IDirectDrawSurface_Unlock(lpddsback, 0);
