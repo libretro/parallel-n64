@@ -128,6 +128,10 @@ void _ChangeSize(void)
    uint32_t scale_x = 0;
    uint32_t scale_y = 0;
    uint32_t dwHStartReg = *gfx.VI_H_START_REG;
+#if 0
+   if (log_cb)
+      log_cb(RETRO_LOG_INFO, "VI_H_START_REG: %d\n", dwHStartReg);
+#endif
    uint32_t dwVStartReg = *gfx.VI_V_START_REG;
    float fscale_x = 0.0;
     float fscale_y = 0.0;
