@@ -73,6 +73,8 @@ typedef struct {
                               bswap on a dword (32 bits) boundry */
 } PLUGIN_INFO;
 
+#define gfx gfxInfo
+
 typedef struct {
     int hWnd;          /* Render window */
     int hStatusBar;    /* if render window does not have a status bar then this is NULL */
@@ -116,6 +118,8 @@ typedef struct {
 
     void (*CheckInterrupts)( void );
 } GFX_INFO;
+
+extern GFX_INFO gfxInfo;
 
 /******************************************************************
   Function: ChangeWindow
