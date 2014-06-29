@@ -791,13 +791,6 @@ struct RDP
    uint32_t ci_upper_bound, ci_lower_bound;
    int  motionblur, fb_drawn, fb_drawn_front, read_previous_ci, read_whole_frame;
    CI_STATUS ci_status;
-#ifdef HAVE_HWFBE
-   TBUFF_COLOR_IMAGE * cur_image;  //image currently being drawn
-   TBUFF_COLOR_IMAGE * tbuff_tex;  //image, which corresponds to currently selected texture
-   TBUFF_COLOR_IMAGE * aTBuffTex[2]; 
-   uint8_t  cur_tex_buf;
-   uint8_t  acc_tex_buf;
-#endif
    int skip_drawing; //rendering is not required. used for frame buffer emulation
 
    //fog related slots. Added by Gonetz
@@ -821,7 +814,6 @@ struct RDP
    VERTEX *vtx; //[MAX_VTX]
 
    COLOR_IMAGE *frame_buffers; //[NUMTEXBUF+2]
-   TEXTURE_BUFFER texbufs[2];
 
    char RomName[21];
 };
@@ -833,7 +825,6 @@ extern SETTINGS settings;
 extern VOODOO voodoo;
 
 extern uint32_t   offset_textures;
-extern uint32_t   offset_texbuf1;
 
 extern int	ucode_error_report;
 
@@ -982,8 +973,5 @@ extern int SwapOK;
 
 // ** utility functions
 void load_palette (uint32_t addr, uint16_t start, uint16_t count);
-#ifdef HAVE_HWFBE
-void setTBufTex(uint16_t t_mem, uint32_t cnt);
-#endif
 
 #endif  // ifndef RDP_H

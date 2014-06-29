@@ -49,10 +49,6 @@ static float set_sprite_combine_mode(void)
     rdp.allow_combine = 0;
     // Now actually combine !
     color_source = GR_COMBINE_FUNCTION_LOCAL;
-#ifdef HAVE_HWFBE
-    if (rdp.tbuff_tex && rdp.tbuff_tex->info.format == GR_TEXFMT_ALPHA_INTENSITY_88)
-		color_source = GR_COMBINE_FUNCTION_LOCAL_ALPHA;
-#endif
     cmb.tmu1_func = cmb.tmu0_func = color_source;
     cmb.tmu1_fac = cmb.tmu0_fac = GR_COMBINE_FACTOR_NONE;
     cmb.tmu1_a_func = cmb.tmu0_a_func = GR_COMBINE_FUNCTION_LOCAL;
@@ -139,106 +135,6 @@ typedef struct DRAWIMAGE_t
   float scaleY;
 } DRAWIMAGE;
 
-#ifdef HAVE_HWFBE
-static void DrawHiresDepthImage (const DRAWIMAGE *d)
-{
-   int i, w, h;
-   uint16_t *src, *dst, image[512 * 512];
-   float lr_x, lr_y, lr_u, lr_v;
-   VERTEX v[4];
-   GrTexInfo t_info;
-      
-   src = (uint16_t*)(gfx.RDRAM + d->imagePtr);
-   dst = (uint16_t*)image;
-
-   for (h = 0; h < d->imageH; h++)
-   {
-      for (w = 0; w < d->imageW; w++)
-         *(dst++) = src[(w + h * d->imageW) ^ 1];
-      dst += (512 - d->imageW);
-   }
-
-   t_info.format = GR_TEXFMT_RGB_565;
-   t_info.data = image;
-   t_info.smallLodLog2 = GR_LOD_LOG2_512;
-   t_info.largeLodLog2 = GR_LOD_LOG2_512;
-   t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
-
-   grTexDownloadMipMap (rdp.texbufs[1].tmu,
-         rdp.texbufs[1].begin,
-         GR_MIPMAPLEVELMASK_BOTH,
-         &t_info);
-   grTexSource (rdp.texbufs[1].tmu,
-         rdp.texbufs[1].begin,
-         GR_MIPMAPLEVELMASK_BOTH,
-         &t_info);
-   grTexCombine( GR_TMU1,
-         GR_COMBINE_FUNCTION_LOCAL,
-         GR_COMBINE_FACTOR_NONE,
-         GR_COMBINE_FUNCTION_LOCAL,
-         GR_COMBINE_FACTOR_NONE,
-         FXFALSE,
-         FXFALSE );
-   grTexCombine( GR_TMU0,
-         GR_COMBINE_FUNCTION_SCALE_OTHER,
-         GR_COMBINE_FACTOR_ONE,
-         GR_COMBINE_FUNCTION_SCALE_OTHER,
-         GR_COMBINE_FACTOR_ONE,
-         FXFALSE,
-         FXFALSE );
-   grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-         GR_COMBINE_FACTOR_ONE,
-         GR_COMBINE_LOCAL_NONE,
-         GR_COMBINE_OTHER_TEXTURE,
-         FXFALSE);
-   grAlphaCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-         GR_COMBINE_FACTOR_ONE,
-         GR_COMBINE_LOCAL_NONE,
-         GR_COMBINE_OTHER_TEXTURE,
-         FXFALSE);
-   grAlphaBlendFunction (GR_BLEND_ONE,
-         GR_BLEND_ZERO,
-         GR_BLEND_ONE,
-         GR_BLEND_ZERO);
-   grDepthBufferFunction (GR_CMP_ALWAYS);
-   grDepthMask (FXFALSE);
-
-   GrLOD_t LOD = GR_LOD_LOG2_1024;
-   if (settings.scr_res_x > 1024)
-      LOD = GR_LOD_LOG2_2048;
-
-   lr_x = (float)d->imageW * rdp.scale_x;
-   lr_y = (float)d->imageH * rdp.scale_y;
-   lr_u = (float)d->imageW * 0.5f;// - 0.5f;
-   lr_v = (float)d->imageH * 0.5f;// - 0.5f;
-   VERTEX v[4] = {
-      { 0, 0, 1.0f, 1.0f, 0, 0, 0, 0 },
-      { lr_x, 0, 1.0f, 1.0f, lr_u, 0, lr_u, 0 },
-      { 0, lr_y, 1.0f, 1.0f, 0, lr_v, 0, lr_v },
-      { lr_x, lr_y, 1.0f, 1.0f, lr_u, lr_v, lr_u, lr_v }
-   };
-   AddOffset(v, 4);
-   for (i = 0; i < 4; i++)
-   {
-      v[i].uc(0) = v[i].uc(1) = v[i].u0;
-      v[i].vc(0) = v[i].vc(1) = v[i].v0;
-   }
-   grTextureBufferExt( rdp.texbufs[0].tmu, rdp.texbufs[0].begin, LOD, LOD,
-         GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
-   grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
-   grAuxBufferExt( GR_BUFFER_AUXBUFFER );
-   grSstOrigin(GR_ORIGIN_UPPER_LEFT);
-   grBufferClear (0, 0, 0xFFFF);
-   grDrawTriangle(&v[0], &v[2], &v[1]);
-   grDrawTriangle(&v[2], &v[3], &v[1]);
-   grRenderBuffer( GR_BUFFER_BACKBUFFER );
-   grTextureAuxBufferExt( rdp.texbufs[0].tmu, rdp.texbufs[0].begin, LOD, LOD,
-         GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
-   grAuxBufferExt( GR_BUFFER_TEXTUREAUXBUFFER_EXT );
-   grDepthMask (FXTRUE);
-}
-#endif
-
 static void DrawDepthImage (const DRAWIMAGE *d)
 {
    float scale_x_src, scale_y_src, scale_x_dst, scale_y_dst;
@@ -247,14 +143,6 @@ static void DrawDepthImage (const DRAWIMAGE *d)
 
    if (!fb_depth_render_enabled || d->imageH > d->imageW)
       return;
-
-#ifdef HAVE_HWFBE
-   if (fb_hwfbe_enabled)
-   {
-      DrawHiresDepthImage(d);
-      return;
-   }
-#endif
 
    scale_x_dst = rdp.scale_x;
    scale_y_dst = rdp.scale_y;
@@ -576,93 +464,6 @@ static void DrawImage (DRAWIMAGE *d)
    rdp.bg_image_height = 0xFFFF;
 }
 
-#ifdef HAVE_HWFBE
-void DrawHiresImage(DRAWIMAGE *d, int screensize)
-{
-   TBUFF_COLOR_IMAGE *tbuff_tex;
-   int s;
-   float Z, ul_x, ul_y, ul_u, ul_v, lr_x, lr_y, lr_u, lr_v;
-
-   tbuff_tex = (TBUFF_COLOR_IMAGE*)rdp.tbuff_tex;
-   if (rdp.motionblur)
-      rdp.tbuff_tex = &(rdp.texbufs[rdp.cur_tex_buf^1].images[0]);
-   else if (rdp.tbuff_tex == 0)
-      return;
-   //FRDP("DrawHiresImage. fb format=%d\n", rdp.tbuff_tex->info.format);
-
-   setTBufTex(rdp.tbuff_tex->t_mem, rdp.tbuff_tex->width << rdp.tbuff_tex->size >> 1);
-
-   Z = set_sprite_combine_mode();
-   grClipWindow (0, 0, settings.res_x, settings.res_y);
-
-   if (d->imageW%2 == 1) d->imageW -= 1;
-   if (d->imageH%2 == 1) d->imageH -= 1;
-   if (d->imageY > d->imageH) d->imageY = (d->imageY%d->imageH);
-
-   if (!(settings.hacks&hack_PPL))
-   {
-      if ( (d->frameX > 0) && (d->frameW == rdp.ci_width) )
-         d->frameW -= (uint16_t)(2.0f*d->frameX);
-      if ( (d->frameY > 0) && (d->frameH == rdp.ci_height) )
-         d->frameH -= (uint16_t)(2.0f*d->frameY);
-   }
-
-   if (screensize)
-   {
-      ul_x = 0.0f;
-      ul_y = 0.0f;
-      ul_u = 0.15f;
-      ul_v = 0.15f;
-      lr_x = rdp.tbuff_tex->scr_width;
-      lr_y = rdp.tbuff_tex->scr_height;
-      lr_u = rdp.tbuff_tex->lr_u;
-      lr_v = rdp.tbuff_tex->lr_v;
-   }
-   else
-   {
-      ul_u = d->imageX;
-      ul_v = d->imageY;
-      lr_u = d->imageX + (d->frameW * d->scaleX) ;
-      lr_v = d->imageY + (d->frameH * d->scaleY) ;
-
-      ul_x = d->frameX;
-      ul_y = d->frameY;
-
-      lr_x = d->frameX + d->frameW;
-      lr_y = d->frameY + d->frameH;
-      ul_x *= rdp.scale_x;
-      lr_x *= rdp.scale_x;
-      ul_y *= rdp.scale_y;
-      lr_y *= rdp.scale_y;
-      ul_u *= rdp.tbuff_tex->u_scale;
-      lr_u *= rdp.tbuff_tex->u_scale;
-      ul_v *= rdp.tbuff_tex->v_scale;
-      lr_v *= rdp.tbuff_tex->v_scale;
-      ul_u = max(0.15f, ul_u);
-      ul_v = max(0.15f, ul_v);
-      if (lr_x > rdp.scissor.lr_x) lr_x = (float)rdp.scissor.lr_x;
-      if (lr_y > rdp.scissor.lr_y) lr_y = (float)rdp.scissor.lr_y;
-   }
-   // Make the vertices
-   VERTEX v[4] = {
-    { ul_x, ul_y, Z, 1.0f, ul_u, ul_v, ul_u, ul_v },
-    { lr_x, ul_y, Z, 1.0f, lr_u, ul_v, lr_u, ul_v },
-    { ul_x, lr_y, Z, 1.0f, ul_u, lr_v, ul_u, lr_v },
-    { lr_x, lr_y, Z, 1.0f, lr_u, lr_v, lr_u, lr_v } };
-
-   ConvertCoordsConvert (v, 4);
-   AllowShadeMods (v, 4);
-   AddOffset(v, 4);
-   for (s = 0; s < 4; s++)
-      apply_shade_mods (&(v[s]));
-   grDrawTriangle(&v[0], &v[2], &v[1]);
-   grDrawTriangle(&v[2], &v[3], &v[1]);
-   rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE | UPDATE_TEXTURE | UPDATE_ALPHA_COMPARE | UPDATE_SCISSOR;
-   rdp.tri_n += 2;
-   rdp.tbuff_tex = tbuff_tex;
-}
-#endif
-
 //****************************************************************
 
 static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
@@ -720,14 +521,6 @@ static void uc6_bg (bool bg_1cyc)
    //FRDP ("%s #%d, #%d\n", strFuncName, rdp.tri_n, rdp.tri_n+1);
 
    uc6_read_background_data(&d, bg_1cyc);
-
-#ifdef HAVE_HWFBE
-   if (fb_hwfbe_enabled && FindTextureBuffer(d.imagePtr, d.imageW))
-   {
-      DrawHiresImage(d);
-      return;
-   }
-#endif
 
    if (settings.ucode == ucode_F3DEX2 || (settings.hacks&hack_PPL))
    {
@@ -910,24 +703,6 @@ static void uc6_draw_polygons (VERTEX v[4])
       apply_shade_mods (&(v[s]));
    AddOffset(v, 4);
 
-#ifdef HAVE_HWFBE
-   // Set vertex buffers
-   if (rdp.cur_cache[0] && rdp.cur_cache[0]->splits > 1)
-   {
-      VERTEX *vptr[3];
-      int i;
-      for (i = 0; i < 3; i++)
-         vptr[i] = &v[i];
-      draw_split_triangle(vptr);
-
-      rdp.tri_n ++;
-      for (i = 0; i < 3; i++)
-         vptr[i] = &v[i+1];
-      draw_split_triangle(vptr);
-      rdp.tri_n ++;
-   }
-   else
-#endif
    {
       rdp.vtxbuf = rdp.vtx1; // copy from v to rdp.vtx1
       rdp.vtxbuf2 = rdp.vtx2;

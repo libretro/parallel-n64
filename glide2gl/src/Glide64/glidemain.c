@@ -109,7 +109,6 @@ SETTINGS settings = { false, 640, 480, GR_RESOLUTION_640x480, 0 };
 VOODOO voodoo = {0, 0};
 
 uint32_t   offset_textures = 0;
-uint32_t   offset_texbuf1 = 0;
 
 int    capture_screen = 0;
 char    capture_path[256];
@@ -2174,18 +2173,6 @@ void guLoadTextures(void)
       grRenderBuffer( GR_BUFFER_BACKBUFFER );
    }
 
-   rdp.texbufs[0].tmu = GR_TMU0;
-   rdp.texbufs[0].begin = 0;
-   rdp.texbufs[0].end = rdp.texbufs[0].begin+tbuf_size;
-   rdp.texbufs[0].count = 0;
-   rdp.texbufs[0].clear_allowed = true;
-   {
-      rdp.texbufs[1].tmu = GR_TMU1;
-      rdp.texbufs[1].begin = rdp.texbufs[0].end;
-      rdp.texbufs[1].end = rdp.texbufs[1].begin+tbuf_size;
-      rdp.texbufs[1].count = 0;
-      rdp.texbufs[1].clear_allowed = true;
-   }
    offset_textures = tbuf_size + 16;
 }
 

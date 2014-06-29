@@ -1580,26 +1580,6 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 
    rdp.timg.addr += count << 1;
 
-#ifdef HAVE_HWFBE
-   if (!rdp.tbuff_tex) //paranoid check.
-      return;
-
-   //the buffer is definitely wrong, as there must be no CI frame buffers
-   //find and remove it
-   for (i = 0; i < NUM_TMU; i++)
-   {
-      for (j = 0; j < rdp.texbufs[i].count; j++)
-      {
-         if (&(rdp.texbufs[i].images[j]) == rdp.tbuff_tex)
-         {
-            rdp.texbufs[i].count--;
-            if (j < rdp.texbufs[i].count)
-               memcpy(&(rdp.texbufs[i].images[j]), &(rdp.texbufs[i].images[j+1]), sizeof(TBUFF_COLOR_IMAGE)*(rdp.texbufs[i].count-j));
-            return;
-         }
-      }
-   }
-#endif
    //FRDP("loadtlut: tile: %d, start: %d, count: %d, from: %08lx\n", tile, start, count, rdp.timg.addr);
 }
 
@@ -2595,34 +2575,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
                         rdp.scale_y = 1.0f;
                      }
                   }
-#ifdef HAVE_HWFBE
-                  else if (rdp.copy_ci_index && (settings.hacks&hack_PMario)) //tidal wave
-                     OpenTextureBuffer(rdp.frame_buffers[rdp.main_ci_index]);
-#endif
                }
-#ifdef HAVE_HWFBE
-               else if (!rdp.motionblur && fb_hwfbe_enabled && !SwapOK && (rdp.ci_count <= rdp.copy_ci_index))
-               {
-                  if (next_fb->status == CI_AUX_COPY)
-                     OpenTextureBuffer(rdp.frame_buffers[rdp.main_ci_index]);
-                  else
-                     OpenTextureBuffer(rdp.frame_buffers[rdp.copy_ci_index]);
-               }
-               else if (fb_hwfbe_enabled && prev_fb->status == CI_AUX)
-               {
-                  if (rdp.motionblur)
-                  {
-                     rdp.cur_image = &(rdp.texbufs[rdp.cur_tex_buf].images[0]);
-                     grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
-                     grTextureBufferExt( rdp.cur_image->tmu, rdp.cur_image->tex_addr, rdp.cur_image->info.smallLodLog2, rdp.cur_image->info.largeLodLog2,
-                           rdp.cur_image->info.aspectRatioLog2, rdp.cur_image->info.format, GR_MIPMAPLEVELMASK_BOTH );
-                  }
-                  else if (rdp.read_whole_frame)
-                  {
-                     OpenTextureBuffer(rdp.frame_buffers[rdp.main_ci_index]);
-                  }
-               }
-#endif
                //else if (rdp.ci_status == CI_AUX && !rdp.copy_ci_index)
                // CloseTextureBuffer();
 
@@ -2755,21 +2708,6 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
             }
             break;
          case CI_ZIMG:
-#ifdef HAVE_HWFBE
-            if (settings.ucode != ucode_PerfectDark)
-            {
-               if (fb_hwfbe_enabled && !rdp.copy_ci_index && (rdp.copy_zi_index || (settings.hacks&hack_BAR)))
-               {
-                  GrLOD_t LOD = GR_LOD_LOG2_1024;
-                  if (settings.scr_res_x > 1024)
-                     LOD = GR_LOD_LOG2_2048;
-                  grTextureAuxBufferExt( rdp.texbufs[0].tmu, rdp.texbufs[0].begin, LOD, LOD,
-                        GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
-                  grAuxBufferExt( GR_BUFFER_TEXTUREAUXBUFFER_EXT );
-                  LRDP("rdp_setcolorimage - set texture depth buffer to TMU0\n");
-               }
-            }
-#endif
             rdp.skip_drawing = true;
             break;
          case CI_ZCOPY:
@@ -3357,25 +3295,6 @@ void DetectFrameBufferUsage(void)
       rdp.read_whole_frame = true;
    if (rdp.read_whole_frame)
    {
-#ifdef HAVE_HWFBE
-      if (fb_hwfbe_enabled)
-      {
-         if (rdp.read_previous_ci && !previous_ci_was_read && (settings.swapmode != 2) && (settings.ucode != ucode_PerfectDark))
-         {
-            int ind = (rdp.ci_count > 0)?rdp.ci_count-1:0;
-            uint32_t height = rdp.frame_buffers[ind].height;
-            rdp.frame_buffers[ind].height = ci_height;
-            CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
-            rdp.frame_buffers[ind].height = height;
-         }
-         if (rdp.swap_ci_index < 0)
-         {
-            rdp.texbufs[0].clear_allowed = rdp.texbufs[1].clear_allowed = true;
-            OpenTextureBuffer(&rdp.frame_buffers[rdp.main_ci_index]);
-         }
-      }
-      else
-#endif
       {
          if (rdp.motionblur)
          {
@@ -3405,29 +3324,6 @@ void DetectFrameBufferUsage(void)
       }
    }
 
-#ifdef HAVE_HWFBE
-   if (fb_hwfbe_enabled)
-   {
-      for (i = 0; i < NUM_TMU; i++)
-      {
-         int j;
-         rdp.texbufs[i].clear_allowed = true;
-         for (j = 0; j < 256; j++)
-         {
-            rdp.texbufs[i].images[j].drawn = false;
-            rdp.texbufs[i].images[j].clear = true;
-         }
-      }
-      if (tidal)
-      {
-         //LRDP("Tidal wave!\n");
-         rdp.copy_ci_index = rdp.main_ci_index;
-      }
-   }
-
-   if (settings.hacks&hack_Banjo2)
-      rdp.cur_tex_buf = 0;
-#endif
    rdp.ci_count = 0;
    rdp.maincimg[0] = rdp.frame_buffers[rdp.main_ci_index];
    //rdp.scale_x = rdp.scale_x_bak;
