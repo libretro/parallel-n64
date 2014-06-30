@@ -42,7 +42,6 @@ typedef struct
 } N64Regs;
 
 extern N64Regs REG;
-extern u8 *RDRAM;
 extern u64 TMEM[512];
 extern u32 RDRAMSize;
 

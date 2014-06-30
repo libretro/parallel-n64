@@ -191,7 +191,7 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
    current->type = NONE;
 
    // See if we can identify it by CRC
-   uc_crc = CRC_Calculate( 0xFFFFFFFF, &RDRAM[uc_start & 0x1FFFFFFF], 4096);
+   uc_crc = CRC_Calculate( 0xFFFFFFFF, &gfx_info.RDRAM[uc_start & 0x1FFFFFFF], 4096);
    LOG(LOG_MINIMAL, "UCODE CRC=0x%x\n", uc_crc);
 
    for (i = 0; i < sizeof( specialMicrocodes ) / sizeof( SpecialMicrocodeInfo ); i++)
@@ -204,7 +204,7 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
    }
 
    // See if we can identify it by text
-   UnswapCopy( &RDRAM[uc_dstart & 0x1FFFFFFF], uc_data, 2048 );
+   UnswapCopy( &gfx_info.RDRAM[uc_dstart & 0x1FFFFFFF], uc_data, 2048 );
    strcpy( uc_str, "Not Found" );
 
    for (i = 0; i < 2048; i++)

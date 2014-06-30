@@ -26,7 +26,7 @@ void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
    {
       s16 integer[4][4];
       u16 fraction[4][4];
-   } *n64Mat = (struct _N64Matrix *)&RDRAM[address];
+   } *n64Mat = (struct _N64Matrix *)&gfx_info.RDRAM[address];
 
    for (i = 0; i < 4; i++)
       for (j = 0; j < 4; j++)
@@ -98,9 +98,9 @@ void RSP_ProcessDList(void)
       }
 
 
-      w0 = *(u32*)&RDRAM[pc];
-      w1 = *(u32*)&RDRAM[pc+4];
-      RSP.nextCmd = _SHIFTR( *(u32*)&RDRAM[pc+8], 24, 8 );
+      w0 = *(u32*)&gfx_info.RDRAM[pc];
+      w1 = *(u32*)&gfx_info.RDRAM[pc+4];
+      RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[pc+8], 24, 8 );
       RSP.cmd = _SHIFTR( w0, 24, 8 );
       RSP.PC[RSP.PCi] += 8;
 

@@ -627,7 +627,7 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
       return;
    }
 
-   UnswapCopy(&RDRAM[gSP.bgImage.address], swapped, numBytes);
+   UnswapCopy(&gfx_info.RDRAM[gSP.bgImage.address], swapped, numBytes);
 
    clampSClamp = texInfo->width - 1;
    clampTClamp = texInfo->height - 1;
@@ -894,7 +894,7 @@ void TextureCache_UpdateBackground(void)
    CachedTexture *current;
 
    numBytes = gSP.bgImage.width * gSP.bgImage.height << gSP.bgImage.size >> 1;
-   crc = CRC_Calculate( 0xFFFFFFFF, &RDRAM[gSP.bgImage.address], numBytes );
+   crc = CRC_Calculate( 0xFFFFFFFF, &gfx_info.RDRAM[gSP.bgImage.address], numBytes );
 
    if (gSP.bgImage.format == G_IM_FMT_CI)
    {

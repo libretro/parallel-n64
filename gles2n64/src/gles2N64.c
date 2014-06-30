@@ -115,8 +115,6 @@ EXPORT void CALL MoveScreen (int xpos, int ypos)
 
 EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 {
-    RDRAM = Gfx_Info.RDRAM;
-
     REG.MI_INTR = (u32*) Gfx_Info.MI_INTR_REG;
     REG.DPC_START = (u32*) Gfx_Info.DPC_START_REG;
     REG.DPC_END = (u32*) Gfx_Info.DPC_END_REG;

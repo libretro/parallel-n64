@@ -516,14 +516,14 @@ void gSPViewport( u32 v )
       return;
    }
 
-   gSP.viewport.vscale[0] = _FIXED2FLOAT( *(s16*)&RDRAM[address +  2], 2 );
-   gSP.viewport.vscale[1] = _FIXED2FLOAT( *(s16*)&RDRAM[address     ], 2 );
-   gSP.viewport.vscale[2] = _FIXED2FLOAT( *(s16*)&RDRAM[address +  6], 10 );// * 0.00097847357f;
-   gSP.viewport.vscale[3] = *(s16*)&RDRAM[address +  4];
-   gSP.viewport.vtrans[0] = _FIXED2FLOAT( *(s16*)&RDRAM[address + 10], 2 );
-   gSP.viewport.vtrans[1] = _FIXED2FLOAT( *(s16*)&RDRAM[address +  8], 2 );
-   gSP.viewport.vtrans[2] = _FIXED2FLOAT( *(s16*)&RDRAM[address + 14], 10 );// * 0.00097847357f;
-   gSP.viewport.vtrans[3] = *(s16*)&RDRAM[address + 12];
+   gSP.viewport.vscale[0] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address +  2], 2 );
+   gSP.viewport.vscale[1] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address     ], 2 );
+   gSP.viewport.vscale[2] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address +  6], 10 );// * 0.00097847357f;
+   gSP.viewport.vscale[3] = *(s16*)&gfx_info.RDRAM[address +  4];
+   gSP.viewport.vtrans[0] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address + 10], 2 );
+   gSP.viewport.vtrans[1] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address +  8], 2 );
+   gSP.viewport.vtrans[2] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address + 14], 10 );// * 0.00097847357f;
+   gSP.viewport.vtrans[3] = *(s16*)&gfx_info.RDRAM[address + 12];
 
    gSP.viewport.x      = gSP.viewport.vtrans[0] - gSP.viewport.vscale[0];
    gSP.viewport.y      = gSP.viewport.vtrans[1] - gSP.viewport.vscale[1];
@@ -560,7 +560,7 @@ void gSPLight( u32 l, s32 n )
    if ((address + sizeof( Light )) > RDRAMSize)
       return;
 
-   addr = (u8*)&RDRAM[address];
+   addr = (u8*)&gfx_info.RDRAM[address];
 
    if (config.hackZelda && (addr[0] == 0x08) && (addr[4] == 0xFF))
    {
@@ -600,7 +600,7 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
    if ((address + sizeof( Vertex ) * n) > RDRAMSize)
       return;
 
-   vertex = (Vertex*)&RDRAM[address];
+   vertex = (Vertex*)&gfx_info.RDRAM[address];
 
    if ((n + v0) <= INDEXMAP_SIZE)
    {
@@ -679,7 +679,7 @@ void gSPCIVertex( u32 v, u32 n, u32 v0 )
    if ((address + sizeof( PDVertex ) * n) > RDRAMSize)
       return;
 
-   vertex = (PDVertex*)&RDRAM[address];
+   vertex = (PDVertex*)&gfx_info.RDRAM[address];
 
    if ((n + v0) <= INDEXMAP_SIZE)
    {
@@ -695,7 +695,7 @@ void gSPCIVertex( u32 v, u32 n, u32 v0 )
             OGL.triangles.vertices[v+j].z = vertex->z;
             OGL.triangles.vertices[v+j].s = _FIXED2FLOAT( vertex->s, 5 );
             OGL.triangles.vertices[v+j].t = _FIXED2FLOAT( vertex->t, 5 );
-            u8 *color = &RDRAM[gSP.vertexColorBase + (vertex->ci & 0xff)];
+            u8 *color = &gfx_info.RDRAM[gSP.vertexColorBase + (vertex->ci & 0xff)];
 
             if (gSP.geometryMode & G_LIGHTING)
             {
@@ -725,7 +725,7 @@ void gSPCIVertex( u32 v, u32 n, u32 v0 )
          OGL.triangles.vertices[v].z = vertex->z;
          OGL.triangles.vertices[v].s = _FIXED2FLOAT( vertex->s, 5 );
          OGL.triangles.vertices[v].t = _FIXED2FLOAT( vertex->t, 5 );
-         color = (u8*)&RDRAM[gSP.vertexColorBase + (vertex->ci & 0xff)];
+         color = (u8*)&gfx_info.RDRAM[gSP.vertexColorBase + (vertex->ci & 0xff)];
 
          if (gSP.geometryMode & G_LIGHTING)
          {
@@ -770,23 +770,23 @@ void gSPDMAVertex( u32 v, u32 n, u32 v0 )
          u32 v = i;
          for(j = 0; j < 4; j++)
          {
-            OGL.triangles.vertices[v+j].x = *(s16*)&RDRAM[address ^ 2];
-            OGL.triangles.vertices[v+j].y = *(s16*)&RDRAM[(address + 2) ^ 2];
-            OGL.triangles.vertices[v+j].z = *(s16*)&RDRAM[(address + 4) ^ 2];
+            OGL.triangles.vertices[v+j].x = *(s16*)&gfx_info.RDRAM[address ^ 2];
+            OGL.triangles.vertices[v+j].y = *(s16*)&gfx_info.RDRAM[(address + 2) ^ 2];
+            OGL.triangles.vertices[v+j].z = *(s16*)&gfx_info.RDRAM[(address + 4) ^ 2];
 
             if (gSP.geometryMode & G_LIGHTING)
             {
-               OGL.triangles.vertices[v+j].nx = *(s8*)&RDRAM[(address + 6) ^ 3];
-               OGL.triangles.vertices[v+j].ny = *(s8*)&RDRAM[(address + 7) ^ 3];
-               OGL.triangles.vertices[v+j].nz = *(s8*)&RDRAM[(address + 8) ^ 3];
-               OGL.triangles.vertices[v+j].a = *(u8*)&RDRAM[(address + 9) ^ 3] * 0.0039215689f;
+               OGL.triangles.vertices[v+j].nx = *(s8*)&gfx_info.RDRAM[(address + 6) ^ 3];
+               OGL.triangles.vertices[v+j].ny = *(s8*)&gfx_info.RDRAM[(address + 7) ^ 3];
+               OGL.triangles.vertices[v+j].nz = *(s8*)&gfx_info.RDRAM[(address + 8) ^ 3];
+               OGL.triangles.vertices[v+j].a = *(u8*)&gfx_info.RDRAM[(address + 9) ^ 3] * 0.0039215689f;
             }
             else
             {
-               OGL.triangles.vertices[v+j].r = *(u8*)&RDRAM[(address + 6) ^ 3] * 0.0039215689f;
-               OGL.triangles.vertices[v+j].g = *(u8*)&RDRAM[(address + 7) ^ 3] * 0.0039215689f;
-               OGL.triangles.vertices[v+j].b = *(u8*)&RDRAM[(address + 8) ^ 3] * 0.0039215689f;
-               OGL.triangles.vertices[v+j].a = *(u8*)&RDRAM[(address + 9) ^ 3] * 0.0039215689f;
+               OGL.triangles.vertices[v+j].r = *(u8*)&gfx_info.RDRAM[(address + 6) ^ 3] * 0.0039215689f;
+               OGL.triangles.vertices[v+j].g = *(u8*)&gfx_info.RDRAM[(address + 7) ^ 3] * 0.0039215689f;
+               OGL.triangles.vertices[v+j].b = *(u8*)&gfx_info.RDRAM[(address + 8) ^ 3] * 0.0039215689f;
+               OGL.triangles.vertices[v+j].a = *(u8*)&gfx_info.RDRAM[(address + 9) ^ 3] * 0.0039215689f;
             }
             address += 10;
          }
@@ -797,23 +797,23 @@ void gSPDMAVertex( u32 v, u32 n, u32 v0 )
       {
          u32 v = i;
 
-         OGL.triangles.vertices[v].x = *(s16*)&RDRAM[address ^ 2];
-         OGL.triangles.vertices[v].y = *(s16*)&RDRAM[(address + 2) ^ 2];
-         OGL.triangles.vertices[v].z = *(s16*)&RDRAM[(address + 4) ^ 2];
+         OGL.triangles.vertices[v].x = *(s16*)&gfx_info.RDRAM[address ^ 2];
+         OGL.triangles.vertices[v].y = *(s16*)&gfx_info.RDRAM[(address + 2) ^ 2];
+         OGL.triangles.vertices[v].z = *(s16*)&gfx_info.RDRAM[(address + 4) ^ 2];
 
          if (gSP.geometryMode & G_LIGHTING)
          {
-            OGL.triangles.vertices[v].nx = *(s8*)&RDRAM[(address + 6) ^ 3];
-            OGL.triangles.vertices[v].ny = *(s8*)&RDRAM[(address + 7) ^ 3];
-            OGL.triangles.vertices[v].nz = *(s8*)&RDRAM[(address + 8) ^ 3];
-            OGL.triangles.vertices[v].a = *(u8*)&RDRAM[(address + 9) ^ 3] * 0.0039215689f;
+            OGL.triangles.vertices[v].nx = *(s8*)&gfx_info.RDRAM[(address + 6) ^ 3];
+            OGL.triangles.vertices[v].ny = *(s8*)&gfx_info.RDRAM[(address + 7) ^ 3];
+            OGL.triangles.vertices[v].nz = *(s8*)&gfx_info.RDRAM[(address + 8) ^ 3];
+            OGL.triangles.vertices[v].a = *(u8*)&gfx_info.RDRAM[(address + 9) ^ 3] * 0.0039215689f;
          }
          else
          {
-            OGL.triangles.vertices[v].r = *(u8*)&RDRAM[(address + 6) ^ 3] * 0.0039215689f;
-            OGL.triangles.vertices[v].g = *(u8*)&RDRAM[(address + 7) ^ 3] * 0.0039215689f;
-            OGL.triangles.vertices[v].b = *(u8*)&RDRAM[(address + 8) ^ 3] * 0.0039215689f;
-            OGL.triangles.vertices[v].a = *(u8*)&RDRAM[(address + 9) ^ 3] * 0.0039215689f;
+            OGL.triangles.vertices[v].r = *(u8*)&gfx_info.RDRAM[(address + 6) ^ 3] * 0.0039215689f;
+            OGL.triangles.vertices[v].g = *(u8*)&gfx_info.RDRAM[(address + 7) ^ 3] * 0.0039215689f;
+            OGL.triangles.vertices[v].b = *(u8*)&gfx_info.RDRAM[(address + 8) ^ 3] * 0.0039215689f;
+            OGL.triangles.vertices[v].a = *(u8*)&gfx_info.RDRAM[(address + 9) ^ 3] * 0.0039215689f;
          }
 
          gSPProcessVertex(v);
@@ -842,7 +842,7 @@ void gSPDisplayList( u32 dl )
 #endif
       RSP.PCi++;
       RSP.PC[RSP.PCi] = address;
-      RSP.nextCmd = _SHIFTR( *(u32*)&RDRAM[address], 24, 8 );
+      RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
    }
 }
 
@@ -861,11 +861,11 @@ void gSPDMADisplayList( u32 dl, u32 n )
       if ((RSP.PC[RSP.PCi] + 8) > RDRAMSize)
          break;
 
-      w0 = *(u32*)&RDRAM[RSP.PC[RSP.PCi]];
-      w1 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
+      w0 = *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi]];
+      w1 = *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi] + 4];
 
       RSP.PC[RSP.PCi] += 8;
-      RSP.nextCmd = _SHIFTR( *(u32*)&RDRAM[RSP.PC[RSP.PCi]], 24, 8 );
+      RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi]], 24, 8 );
 
       GBI.cmd[_SHIFTR( w0, 24, 8 )]( w0, w1 );
    }
@@ -881,7 +881,7 @@ void gSPBranchList( u32 dl )
       return;
 
    RSP.PC[RSP.PCi] = address;
-   RSP.nextCmd = _SHIFTR( *(u32*)&RDRAM[address], 24, 8 );
+   RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
 }
 
 void gSPBranchLessZ( u32 branchdl, u32 vtx, f32 zval )
@@ -948,7 +948,7 @@ void gSPDMATriangles( u32 tris, u32 n )
    if (address + sizeof( DKRTriangle ) * n > RDRAMSize)
       return;
 
-   triangles = (DKRTriangle*)&RDRAM[address];
+   triangles = (DKRTriangle*)&gfx_info.RDRAM[address];
 
    for (i = 0; i < n; i++)
    {
@@ -1222,34 +1222,34 @@ void gSPBgRect1Cyc( u32 bg )
 	   frameX0, frameX1, frameY0, frameY1, frameS0, frameT0;
    addr = RSP_SegmentToPhysical(bg) >> 1;
 
-   imageX	= (((u16*)RDRAM)[(addr+0)^1] >> 5);	// 0
-   imageY	= (((u16*)RDRAM)[(addr+4)^1] >> 5);	// 4
-   imageW	= (((u16*)RDRAM)[(addr+1)^1] >> 2);	// 1
-   imageH	= (((u16*)RDRAM)[(addr+5)^1] >> 2);	// 5
+   imageX	= (((u16*)gfx_info.RDRAM)[(addr+0)^1] >> 5);	// 0
+   imageY	= (((u16*)gfx_info.RDRAM)[(addr+4)^1] >> 5);	// 4
+   imageW	= (((u16*)gfx_info.RDRAM)[(addr+1)^1] >> 2);	// 1
+   imageH	= (((u16*)gfx_info.RDRAM)[(addr+5)^1] >> 2);	// 5
 
-   frameX	= ((s16*)RDRAM)[(addr+2)^1] / 4.0f;	// 2
-   frameY	= ((s16*)RDRAM)[(addr+6)^1] / 4.0f;	// 6
-   frameW	= ((u16*)RDRAM)[(addr+3)^1] >> 2;		// 3
-   frameH	= ((u16*)RDRAM)[(addr+7)^1] >> 2;		// 7
+   frameX	= ((s16*)gfx_info.RDRAM)[(addr+2)^1] / 4.0f;	// 2
+   frameY	= ((s16*)gfx_info.RDRAM)[(addr+6)^1] / 4.0f;	// 6
+   frameW	= ((u16*)gfx_info.RDRAM)[(addr+3)^1] >> 2;		// 3
+   frameH	= ((u16*)gfx_info.RDRAM)[(addr+7)^1] >> 2;		// 7
 
 
-   //wxUint16 imageFlip = ((u16*)gfx.RDRAM)[(addr+13)^1];	// 13;
-   //d.flipX 	= (u8)imageFlip&0x01;
+   uint16_t imageFlip = ((uint16_t*)gfx_info.RDRAM)[(addr+13)^1];	// 13;
+   //d.flipX 	= (uint8_t)imageFlip&0x01;
 
-   gSP.bgImage.address	= RSP_SegmentToPhysical(((u32*)RDRAM)[(addr+8)>>1]);	// 8,9
+   gSP.bgImage.address	= RSP_SegmentToPhysical(((u32*)gfx_info.RDRAM)[(addr+8)>>1]);	// 8,9
    gSP.bgImage.width = imageW;
    gSP.bgImage.height = imageH;
-   gSP.bgImage.format = ((u8*)RDRAM)[(((addr+11)<<1)+0)^3];
-   gSP.bgImage.size = ((u8*)RDRAM)[(((addr+11)<<1)+1)^3];
-   gSP.bgImage.palette = ((u16*)RDRAM)[(addr+12)^1];
+   gSP.bgImage.format = ((u8*)gfx_info.RDRAM)[(((addr+11)<<1)+0)^3];
+   gSP.bgImage.size = ((u8*)gfx_info.RDRAM)[(((addr+11)<<1)+1)^3];
+   gSP.bgImage.palette = ((u16*)gfx_info.RDRAM)[(addr+12)^1];
 
-   scaleW	= ((s16*)RDRAM)[(addr+14)^1] / 1024.0f;	// 14
-   scaleH	= ((s16*)RDRAM)[(addr+15)^1] / 1024.0f;	// 15
+   scaleW	= ((s16*)gfx_info.RDRAM)[(addr+14)^1] / 1024.0f;	// 14
+   scaleH	= ((s16*)gfx_info.RDRAM)[(addr+15)^1] / 1024.0f;	// 15
    gDP.textureMode = TEXTUREMODE_BGIMAGE;
 
 #else
    u32 address = RSP_SegmentToPhysical( bg );
-   uObjScaleBg *objScaleBg = (uObjScaleBg*)&RDRAM[address];
+   uObjScaleBg *objScaleBg = (uObjScaleBg*)&gfx_info.RDRAM[address];
 
    gSP.bgImage.address = RSP_SegmentToPhysical( objScaleBg->imagePtr );
    gSP.bgImage.width = objScaleBg->imageW >> 2;
@@ -1307,7 +1307,7 @@ void gSPBgRectCopy( u32 bg )
    u16 imageX, imageY, frameW, frameH;
    s16 frameX, frameY;
    u32 address = RSP_SegmentToPhysical( bg );
-   uObjBg *objBg = (uObjBg*)&RDRAM[address];
+   uObjBg *objBg = (uObjBg*)&gfx_info.RDRAM[address];
 
    gSP.bgImage.address = RSP_SegmentToPhysical( objBg->imagePtr );
    gSP.bgImage.width = objBg->imageW >> 2;
@@ -1333,7 +1333,7 @@ void gSPBgRectCopy( u32 bg )
 void gSPObjRectangle( u32 sp )
 {
    u32 address = RSP_SegmentToPhysical( sp );
-   uObjSprite *objSprite = (uObjSprite*)&RDRAM[address];
+   uObjSprite *objSprite = (uObjSprite*)&gfx_info.RDRAM[address];
 
    f32 scaleW = _FIXED2FLOAT( objSprite->scaleW, 10 );
    f32 scaleH = _FIXED2FLOAT( objSprite->scaleH, 10 );
@@ -1348,7 +1348,7 @@ void gSPObjRectangle( u32 sp )
 void gSPObjLoadTxtr( u32 tx )
 {
    u32 address = RSP_SegmentToPhysical( tx );
-   uObjTxtr *objTxtr = (uObjTxtr*)&RDRAM[address];
+   uObjTxtr *objTxtr = (uObjTxtr*)&gfx_info.RDRAM[address];
 
    if ((gSP.status[objTxtr->block.sid >> 2] & objTxtr->block.mask) != objTxtr->block.flag)
    {
@@ -1377,7 +1377,7 @@ void gSPObjLoadTxtr( u32 tx )
 void gSPObjSprite( u32 sp )
 {
    u32 address = RSP_SegmentToPhysical( sp );
-   uObjSprite *objSprite = (uObjSprite*)&RDRAM[address];
+   uObjSprite *objSprite = (uObjSprite*)&gfx_info.RDRAM[address];
 
    f32 scaleW = _FIXED2FLOAT( objSprite->scaleW, 10 );
    f32 scaleH = _FIXED2FLOAT( objSprite->scaleH, 10 );
@@ -1465,7 +1465,7 @@ void gSPObjLoadTxRectR( u32 txsp )
 void gSPObjMatrix( u32 mtx )
 {
    u32 address = RSP_SegmentToPhysical( mtx );
-   uObjMtx *objMtx = (uObjMtx*)&RDRAM[address];
+   uObjMtx *objMtx = (uObjMtx*)&gfx_info.RDRAM[address];
 
    gSP.objMatrix.A = _FIXED2FLOAT( objMtx->A, 16 );
    gSP.objMatrix.B = _FIXED2FLOAT( objMtx->B, 16 );

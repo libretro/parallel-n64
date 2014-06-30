@@ -32,8 +32,8 @@ bool _IsRenderTexture()
 
     for(i = 0; i < 10; i++)
     {
-        unsigned int w0 = *(unsigned int *)(RDRAM + dwPC + i*8);
-        unsigned int w1 = *(unsigned int *)(RDRAM + dwPC + 4 + i*8);
+        unsigned int w0 = *(unsigned int *)(gfx_info.RDRAM + dwPC + i*8);
+        unsigned int w1 = *(unsigned int *)(gfx_info.RDRAM + dwPC + 4 + i*8);
 
         if ((w0>>24) == G_SETSCISSOR)
         {
@@ -618,7 +618,7 @@ void gDPLoadTile( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
    dest = &TMEM[gDP.loadTile->tmem];
    bpl = (gDP.loadTile->lrs - gDP.loadTile->uls + 1) << gDP.loadTile->size >> 1;
    height = gDP.loadTile->lrt - gDP.loadTile->ult + 1;
-   src = &RDRAM[address];
+   src = &gfx_info.RDRAM[address];
 
    if (((address + height * bpl) > RDRAMSize) ||
          (((gDP.loadTile->tmem << 3) + bpl * height) > 4096)) // Stay within TMEM
@@ -687,7 +687,7 @@ void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt )
       return;
    }
 
-   src = (u64*)&RDRAM[address];
+   src = (u64*)&gfx_info.RDRAM[address];
    dest = (u64*)&TMEM[gDP.loadTile->tmem];
 
    if (dxt > 0)
@@ -743,7 +743,7 @@ void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
    address = gDP.textureImage.address + gDP.tiles[tile].ult * gDP.textureImage.bpl + (gDP.tiles[tile].uls << gDP.textureImage.size >> 1);
 
    dest = (u16*)&TMEM[gDP.tiles[tile].tmem];
-   src = (u16*)&RDRAM[address];
+   src = (u16*)&gfx_info.RDRAM[address];
 
    pal = (gDP.tiles[tile].tmem - 256) >> 4;
 
