@@ -53,7 +53,7 @@ EXPORT void CALL angrylionDrawScreen (void)
 EXPORT void CALL angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
 {
     PluginInfo -> Version = 0x0103;
-    PluginInfo -> Type  = PLUGIN_TYPE_GFX;
+    PluginInfo -> Type  = 2;
     strcpy(
 #if (SCREEN_WIDTH == 320 && SCREEN_HEIGHT == 240)
     PluginInfo -> Name, "angrylion's RDP (320x240)"
