@@ -737,8 +737,8 @@ static void sync_tile(void)
 static void sync_full(void)
 {
     z64gl_command = 0; /* wtf is this for */
-    *GET_GFX_INFO(MI_INTR_REG) |= DP_INTERRUPT;
-    GET_GFX_INFO(CheckInterrupts)();
+    *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
+    gfx_info.CheckInterrupts();
     return;
 }
 
