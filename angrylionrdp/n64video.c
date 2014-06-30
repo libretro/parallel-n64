@@ -5,8 +5,6 @@
 #include "rdp.h"
 #include <stdarg.h>
 
-extern GFX_INFO gfx;
-
 int scfield;
 int sckeepodd;
 

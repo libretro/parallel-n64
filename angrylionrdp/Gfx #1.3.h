@@ -73,8 +73,6 @@ typedef struct {
                               bswap on a dword (32 bits) boundry */
 } PLUGIN_INFO;
 
-#define gfx angryliongfxInfo
-
 typedef struct {
 
     unsigned char * HEADER;  // This is the rom header (first 40h bytes of the rom
@@ -124,7 +122,7 @@ typedef struct {
 
 } GFX_INFO;
 
-extern GFX_INFO gfxInfo;
+extern GFX_INFO gfx_info;
 
 /******************************************************************
   Function: ChangeWindow

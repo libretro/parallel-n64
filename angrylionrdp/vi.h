@@ -57,7 +57,6 @@ extern RECT src, dst;
 extern int res;
 extern int32_t pitchindwords;
 
-extern GFX_INFO gfx;
 extern UINT8* rdram_8;
 extern UINT16* rdram_16;
 extern UINT32 plim;
