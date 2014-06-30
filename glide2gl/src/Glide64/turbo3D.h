@@ -89,19 +89,19 @@ static void t3dProcessRDP(uint32_t a)
    if (a)
    {
       rdp.LLE = 1;
-      rdp.cmd0 = ((uint32_t*)gfx.RDRAM)[a++];
-      rdp.cmd1 = ((uint32_t*)gfx.RDRAM)[a++];
+      rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a++];
+      rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[a++];
       while (rdp.cmd0 + rdp.cmd1)
       {
          uint32_t cmd;
          gfx_instruction[0][rdp.cmd0>>24](rdp.cmd0, rdp.cmd1);
-         rdp.cmd0 = ((uint32_t*)gfx.RDRAM)[a++];
-         rdp.cmd1 = ((uint32_t*)gfx.RDRAM)[a++];
+         rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a++];
+         rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[a++];
          cmd = rdp.cmd0>>24;
          if (cmd == G_TEXRECT || cmd == G_TEXRECTFLIP)
          {
-            rdp.cmd2 = ((uint32_t*)gfx.RDRAM)[a++];
-            rdp.cmd3 = ((uint32_t*)gfx.RDRAM)[a++];
+            rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[a++];
+            rdp.cmd3 = ((uint32_t*)gfx_info.RDRAM)[a++];
          }
       }
       rdp.LLE = 0;
@@ -112,7 +112,7 @@ static void t3dLoadGlobState(uint32_t pgstate)
 {
    int s;
    int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
-   struct t3dGlobState *gstate = (struct t3dGlobState*)&gfx.RDRAM[segoffset(pgstate)];
+   struct t3dGlobState *gstate = (struct t3dGlobState*)&gfx_info.RDRAM[segoffset(pgstate)];
 
    FRDP ("Global state. pad0: %04lx, perspNorm: %04lx, flag: %08lx\n", gstate->pad0, gstate->perspNorm, gstate->flag);
    rdp.cmd0 = gstate->othermode0;
@@ -151,17 +151,17 @@ static void t3d_vertex(uint32_t addr, uint32_t v0, uint32_t n)
    for (i = 0; i < n; i+=16)
    {
       VERTEX *v = &rdp.vtx[v0 + (i>>4)];
-      x   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 0)^1];
-      y   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 1)^1];
-      z   = (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 2)^1];
-      v->flags  = ((uint16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 3)^1];
-      v->ou   = 2.0f * (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 4)^1];
-      v->ov   = 2.0f * (float)((int16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 5)^1];
+      x   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 0)^1];
+      y   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 1)^1];
+      z   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 2)^1];
+      v->flags  = ((uint16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 3)^1];
+      v->ou   = 2.0f * (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 4)^1];
+      v->ov   = 2.0f * (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 5)^1];
       v->uv_scaled = 0;
-      v->r = ((uint8_t*)gfx.RDRAM)[(addr+i + 12)^3];
-      v->g = ((uint8_t*)gfx.RDRAM)[(addr+i + 13)^3];
-      v->b = ((uint8_t*)gfx.RDRAM)[(addr+i + 14)^3];
-      v->a    = ((uint8_t*)gfx.RDRAM)[(addr+i + 15)^3];
+      v->r = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 12)^3];
+      v->g = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 13)^3];
+      v->b = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 14)^3];
+      v->a    = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 15)^3];
 
       v->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
       v->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
@@ -199,7 +199,7 @@ static void t3d_vertex(uint32_t addr, uint32_t v0, uint32_t n)
 static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 {
    int t;
-   struct t3dState *ostate = (struct t3dState*)&gfx.RDRAM[segoffset(pstate)];
+   struct t3dState *ostate = (struct t3dState*)&gfx_info.RDRAM[segoffset(pstate)];
    rdp.cur_tile = (ostate->textureState)&7;
 
    LRDP("Loading Turbo3D object\n");
@@ -248,7 +248,7 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
       a = segoffset(ptri);
       for (t = 0; t < ostate->triCount; t++)
       {
-         struct t3dTriN *tri = (struct t3dTriN*)&gfx.RDRAM[a];
+         struct t3dTriN *tri = (struct t3dTriN*)&gfx_info.RDRAM[a];
          gsSP1Triangle(tri->v0, tri->v1, tri->v2, 0, false);
          a += 4;
       }
@@ -269,10 +269,10 @@ static void Turbo3D(void)
    do
    {
       a = rdp.pc[rdp.pc_i] & BMASK;
-      pgstate = ((uint32_t*)gfx.RDRAM)[a>>2];
-      pstate = ((uint32_t*)gfx.RDRAM)[(a>>2)+1];
-      pvtx = ((uint32_t*)gfx.RDRAM)[(a>>2)+2];
-      ptri = ((uint32_t*)gfx.RDRAM)[(a>>2)+3];
+      pgstate = ((uint32_t*)gfx_info.RDRAM)[a>>2];
+      pstate = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+1];
+      pvtx = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+2];
+      ptri = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+3];
       FRDP("GlobalState: %08lx, Object: %08lx, Vertices: %08lx, Triangles: %08lx\n", pgstate, pstate, pvtx, ptri);
       if (!pstate)
       {

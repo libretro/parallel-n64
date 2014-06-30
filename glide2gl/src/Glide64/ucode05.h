@@ -142,9 +142,9 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
       VERTEX *v;
       start = (i-first) * 10;
       v = (VERTEX*)&rdp.vtx[i];
-      x   = (float)((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 0)^1];
-      y   = (float)((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 1)^1];
-      z   = (float)((int16_t*)gfx.RDRAM)[(((addr+start) >> 1) + 2)^1];
+      x   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+start) >> 1) + 0)^1];
+      y   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+start) >> 1) + 1)^1];
+      z   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+start) >> 1) + 2)^1];
 
       v->x = x*rdp.dkrproj[prj][0][0] + y*rdp.dkrproj[prj][1][0] + z*rdp.dkrproj[prj][2][0] + rdp.dkrproj[prj][3][0];
       v->y = x*rdp.dkrproj[prj][0][1] + y*rdp.dkrproj[prj][1][1] + z*rdp.dkrproj[prj][2][1] + rdp.dkrproj[prj][3][1];
@@ -185,10 +185,10 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
       if (fabs(v->z_w) > 1.0)
          v->scr_off |= 32;
 
-      v->r = ((uint8_t*)gfx.RDRAM)[(addr+start + 6)^3];
-      v->g = ((uint8_t*)gfx.RDRAM)[(addr+start + 7)^3];
-      v->b = ((uint8_t*)gfx.RDRAM)[(addr+start + 8)^3];
-      v->a = ((uint8_t*)gfx.RDRAM)[(addr+start + 9)^3];
+      v->r = ((uint8_t*)gfx_info.RDRAM)[(addr+start + 6)^3];
+      v->g = ((uint8_t*)gfx_info.RDRAM)[(addr+start + 7)^3];
+      v->b = ((uint8_t*)gfx_info.RDRAM)[(addr+start + 8)^3];
+      v->a = ((uint8_t*)gfx_info.RDRAM)[(addr+start + 9)^3];
       CalculateFog (v);
 
 #ifdef EXTREME_LOGGING
@@ -220,9 +220,9 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
    {
       VERTEX *v[3];
       start = i << 4;
-      v0 = gfx.RDRAM[addr+start];
-      v1 = gfx.RDRAM[addr+start+1];
-      v2 = gfx.RDRAM[addr+start+2];
+      v0 = gfx_info.RDRAM[addr+start];
+      v1 = gfx_info.RDRAM[addr+start+1];
+      v2 = gfx_info.RDRAM[addr+start+2];
 
       FRDP("tri #%d - %d, %d, %d\n", rdp.tri_n, v0, v1, v2);
 
@@ -230,7 +230,7 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
       v[1] = &rdp.vtx[v1];
       v[2] = &rdp.vtx[v2];
 
-      flags = gfx.RDRAM[addr+start+3];
+      flags = gfx_info.RDRAM[addr+start+3];
 
       if (flags & 0x40)
       { // no cull
@@ -253,12 +253,12 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
       }
       start += 4;
 
-      v[0]->ou = (float)((int16_t*)gfx.RDRAM)[((addr+start) >> 1) + 5] / 32.0f;
-      v[0]->ov = (float)((int16_t*)gfx.RDRAM)[((addr+start) >> 1) + 4] / 32.0f;
-      v[1]->ou = (float)((int16_t*)gfx.RDRAM)[((addr+start) >> 1) + 3] / 32.0f;
-      v[1]->ov = (float)((int16_t*)gfx.RDRAM)[((addr+start) >> 1) + 2] / 32.0f;
-      v[2]->ou = (float)((int16_t*)gfx.RDRAM)[((addr+start) >> 1) + 1] / 32.0f;
-      v[2]->ov = (float)((int16_t*)gfx.RDRAM)[((addr+start) >> 1) + 0] / 32.0f;
+      v[0]->ou = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 5] / 32.0f;
+      v[0]->ov = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 4] / 32.0f;
+      v[1]->ou = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 3] / 32.0f;
+      v[1]->ov = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 2] / 32.0f;
+      v[2]->ou = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 1] / 32.0f;
+      v[2]->ov = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 0] / 32.0f;
 
       v[0]->uv_calculated = 0xFFFFFFFF;
       v[1]->uv_calculated = 0xFFFFFFFF;

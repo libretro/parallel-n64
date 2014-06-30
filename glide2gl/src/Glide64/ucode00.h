@@ -44,7 +44,7 @@ static void rsp_vertex(int v0, int n)
    int i;
    float x, y, z;
    int16_t *rdram_s16;
-   void *rdram = (void*)gfx.RDRAM;
+   void *rdram = (void*)gfx_info.RDRAM;
    rdram_s16 = (int16_t*)rdram;
 
    addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
@@ -253,7 +253,7 @@ static void load_matrix (float m[4][4], uint32_t addr)
    int x,y;  // matrix index
    uint16_t *src;
    addr >>= 1;
-   src = (uint16_t*)gfx.RDRAM;
+   src = (uint16_t*)gfx_info.RDRAM;
 
    // Adding 4 instead of one, just to remove mult. later
    for (x = 0; x < 16; x += 4)
@@ -339,7 +339,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
    //LRDP("uc0:movemem ");
 
    uint32_t i,a;
-   void *rdram = (void*)gfx.RDRAM;
+   void *rdram = (void*)gfx_info.RDRAM;
 
    // Check the command
    switch ((w0 >> 16) & 0xFF)

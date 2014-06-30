@@ -153,9 +153,11 @@ extern int romopen;
 extern int debugging;
 
 extern int exception;
+extern GFX_INFO gfx_info;
 
 int InitGfx(void);
 void ReleaseGfx(void);
+
 
 // The highest 8 bits are the segment # (1-16), and the lower 24 bits are the offset to
 // add to it.
@@ -189,9 +191,6 @@ static INLINE float squareRoot(float x)
 #define glide64_floor(x) (((x) < 0) ? ((int32_t)(x) == (x)) ? ((int32_t)(x)) : ((int32_t)(x) -1) : ((int32_t)(x)))
 extern float glide64_pow(float a, float b);
 
-#define gfx gfxInfo
-
-extern GFX_INFO gfx;
 extern bool no_dlist;
 
 #ifndef GR_STIPPLE_DISABLE

@@ -162,7 +162,7 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
    GrTexInfo t_info;
 
    FRDP("DrawRE2Video256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
-   src = (uint32_t*)(gfx.RDRAM + fb_info->addr);
+   src = (uint32_t*)(gfx_info.RDRAM + fb_info->addr);
    t_info.smallLodLog2 = GR_LOD_LOG2_256;
    t_info.largeLodLog2 = GR_LOD_LOG2_256;
    t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
@@ -213,7 +213,7 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
   FRDP("DrawFrameBufferToScreen256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
   width = fb_info->lr_x - fb_info->ul_x + 1;
   height = fb_info->lr_y - fb_info->ul_y + 1;
-  image = (uint8_t*)(gfx.RDRAM + fb_info->addr);
+  image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
   width256 = ((width - 1) >> 8) + 1;
   height256 = ((height - 1) >> 8) + 1;
   t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
@@ -325,7 +325,7 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    }
    FRDP("DrawFrameBufferToScreen. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
 
-   image = (uint8_t*)(gfx.RDRAM + fb_info->addr);
+   image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
 
    texwidth = 512;
    scale = 0.5f;
@@ -446,7 +446,7 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
    FRDP("DrawDepthBufferToScreen256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
    width = fb_info->lr_x - fb_info->ul_x + 1;
    height = fb_info->lr_y - fb_info->ul_y + 1;
-   image = (uint8_t*)(gfx.RDRAM + fb_info->addr);
+   image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
    width256 = ((width-1) >> 8) + 1;
    height256 = ((height-1) >> 8) + 1;
    t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
@@ -611,7 +611,7 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 #endif
    FRDP("DrawDepthBufferToScreen. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
 
-   image = (uint8_t*)(gfx.RDRAM + fb_info->addr);
+   image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
    texwidth = 512;
    scale = 0.5f;
    t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_512;

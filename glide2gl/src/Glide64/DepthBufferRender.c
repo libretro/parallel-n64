@@ -281,7 +281,7 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
       LeftSection();
    } while(left_height <= 0);
 
-   destptr = (uint16_t*)(gfx.RDRAM+rdp.zimg);
+   destptr = (uint16_t*)(gfx_info.RDRAM+rdp.zimg);
    y1 = iceil(min_y);
    if (y1 >= (int)rdp.scissor_o.lr_y) return;
 

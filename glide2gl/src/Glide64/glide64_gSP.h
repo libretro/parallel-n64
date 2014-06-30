@@ -677,15 +677,15 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
    for (i=0; i < (n<<4); i+=16)
    {
       VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i>>4)];
-      int16_t *rdram = (int16_t*)gfx.RDRAM;
+      int16_t *rdram = (int16_t*)gfx_info.RDRAM;
       x   = (float)rdram[(((addr+i) >> 1) + 0)^1];
       y   = (float)rdram[(((addr+i) >> 1) + 1)^1];
       z   = (float)rdram[(((addr+i) >> 1) + 2)^1];
-      vert->flags  = ((uint16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 3)^1];
+      vert->flags  = ((uint16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 3)^1];
       vert->ou = (float)rdram[(((addr+i) >> 1) + 4)^1];
       vert->ov = (float)rdram[(((addr+i) >> 1) + 5)^1];
       vert->uv_scaled = 0;
-      vert->a    = ((uint8_t*)gfx.RDRAM)[(addr+i + 15)^3];
+      vert->a    = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 15)^3];
 
       vert->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
       vert->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
@@ -722,7 +722,7 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
 
       if (rdp.geom_mode & G_LIGHTING)
       {
-         int8_t *rdram = (int8_t*)gfx.RDRAM;
+         int8_t *rdram = (int8_t*)gfx_info.RDRAM;
          vert->vec[0] = rdram[(addr+i + 12)^3];
          vert->vec[1] = rdram[(addr+i + 13)^3];
          vert->vec[2] = rdram[(addr+i + 14)^3];
@@ -747,7 +747,7 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
       }
       else
       {
-         uint8_t *rdram = (uint8_t*)gfx.RDRAM;
+         uint8_t *rdram = (uint8_t*)gfx_info.RDRAM;
          vert->r = rdram[(addr+i + 12)^3];
          vert->g = rdram[(addr+i + 13)^3];
          vert->b = rdram[(addr+i + 14)^3];
@@ -775,15 +775,15 @@ static void gSPVertexNEON(uint32_t addr, uint32_t n, uint32_t v0)
    for (i=0; i < (n<<4); i+=16)
    {
       VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i>>4)];
-      int16_t *rdram = (int16_t*)gfx.RDRAM;
+      int16_t *rdram = (int16_t*)gfx_info.RDRAM;
       x   = (float)rdram[(((addr+i) >> 1) + 0)^1];
       y   = (float)rdram[(((addr+i) >> 1) + 1)^1];
       z   = (float)rdram[(((addr+i) >> 1) + 2)^1];
-      vert->flags  = ((uint16_t*)gfx.RDRAM)[(((addr+i) >> 1) + 3)^1];
+      vert->flags  = ((uint16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 3)^1];
       vert->ou = (float)rdram[(((addr+i) >> 1) + 4)^1];
       vert->ov = (float)rdram[(((addr+i) >> 1) + 5)^1];
       vert->uv_scaled = 0;
-      vert->a    = ((uint8_t*)gfx.RDRAM)[(addr+i + 15)^3];
+      vert->a    = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 15)^3];
 
       v_xyzw  = vmulq_n_f32(comb0,x)+vmulq_n_f32(comb1,y)+vmulq_n_f32(comb2,z)+comb3;
       vert->x = vgetq_lane_f32(v_xyzw,0);
@@ -822,7 +822,7 @@ static void gSPVertexNEON(uint32_t addr, uint32_t n, uint32_t v0)
 
       if (rdp.geom_mode & G_LIGHTING)
       {
-         int8_t *rdram = (int8_t*)gfx.RDRAM;
+         int8_t *rdram = (int8_t*)gfx_info.RDRAM;
          vert->vec[0] = rdram[(addr+i + 12)^3];
          vert->vec[1] = rdram[(addr+i + 13)^3];
          vert->vec[2] = rdram[(addr+i + 14)^3];
@@ -847,7 +847,7 @@ static void gSPVertexNEON(uint32_t addr, uint32_t n, uint32_t v0)
       }
       else
       {
-         uint8_t *rdram = (uint8_t*)gfx.RDRAM;
+         uint8_t *rdram = (uint8_t*)gfx_info.RDRAM;
          vert->r = rdram[(addr+i + 12)^3];
          vert->g = rdram[(addr+i + 13)^3];
          vert->b = rdram[(addr+i + 14)^3];

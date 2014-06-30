@@ -103,7 +103,7 @@ void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, u
   const uint32_t line = rdp.tiles[tile].line << 2;
   const uint32_t tbase = rdp.tiles[tile].t_mem << 2;
   const uint32_t addr = rdp.timg.addr >> 2;
-  const uint32_t* src = (const uint32_t*)gfx.RDRAM;
+  const uint32_t* src = (const uint32_t*)gfx_info.RDRAM;
   uint16_t *tmem16 = (uint16_t*)rdp.tmem;
   uint32_t c, ptr, tline, s, xorval;
   uint32_t i, j;
@@ -129,7 +129,7 @@ void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, u
 //
 void LoadBlock32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt)
 {
-  const uint32_t * src = (const uint32_t*)gfx.RDRAM;
+  const uint32_t * src = (const uint32_t*)gfx_info.RDRAM;
   const uint32_t tb = rdp.tiles[tile].t_mem << 2;
   const uint32_t tiwindwords = rdp.timg.width;
   const uint32_t slindwords = ul_s;

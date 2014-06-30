@@ -30,6 +30,8 @@ enum gfx_plugin_type { GFX_GLIDE64, GFX_RICE, GFX_GLN64, GFX_ANGRYLION };
 enum rsp_plugin_type { RSP_HLE, RSP_CXD4 };
 extern void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type);
 
+extern GFX_INFO gfx_info;
+
 extern CONTROL Controls[4];
 
 /*** Version requirement information ***/

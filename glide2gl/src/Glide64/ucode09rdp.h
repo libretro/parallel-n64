@@ -55,18 +55,18 @@ void uc9_rpdcmd(uint32_t w0, uint32_t w1)
 
       do
       {
-         rdp.cmd0 = ((uint32_t*)gfx.RDRAM)[a++];   
+         rdp.cmd0 = ((uint32_t*)gfx_info.RDRAM)[a++];   
          cmd = rdp.cmd0>>24; 
          if (cmd == F3DEX2_ENDDL)
             break;
-         rdp.cmd1 = ((uint32_t*)gfx.RDRAM)[a++]; 
+         rdp.cmd1 = ((uint32_t*)gfx_info.RDRAM)[a++]; 
 
          if (cmd == G_TEXRECT || cmd == G_TEXRECTFLIP)
          {
             a++;
-            rdp.cmd2 = ((uint32_t*)gfx.RDRAM)[a++]; 
+            rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[a++]; 
             a++;
-            rdp.cmd3 = ((uint32_t*)gfx.RDRAM)[a++];
+            rdp.cmd3 = ((uint32_t*)gfx_info.RDRAM)[a++];
          }
          gfx_instruction[ucode_zSort][cmd](w0, w1);
       }while(1);

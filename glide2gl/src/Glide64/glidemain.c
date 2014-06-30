@@ -89,8 +89,6 @@
 #define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
 #endif
 
-GFX_INFO gfx;
-
 int romopen = false;
 GrContext_t gfx_context = 0;
 int exception = false;
@@ -128,12 +126,12 @@ void _ChangeSize(void)
    float res_scl_y = (float)settings.res_y / 240.0f;
    uint32_t scale_x = 0;
    uint32_t scale_y = 0;
-   uint32_t dwHStartReg = *gfx.VI_H_START_REG;
+   uint32_t dwHStartReg = *gfx_info.VI_H_START_REG;
 #if 0
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "VI_H_START_REG: %d\n", dwHStartReg);
 #endif
-   uint32_t dwVStartReg = *gfx.VI_V_START_REG;
+   uint32_t dwVStartReg = *gfx_info.VI_V_START_REG;
    float fscale_x = 0.0;
     float fscale_y = 0.0;
 	float aspect = 0.0;
@@ -143,9 +141,9 @@ void _ChangeSize(void)
    uint32_t vend = dwVStartReg & 0xFFFF;
    rdp.scale_1024 = settings.scr_res_x / 1024.0f;
    rdp.scale_768 = settings.scr_res_y / 768.0f;
-   scale_x = *gfx.VI_X_SCALE_REG & 0xFFF;
+   scale_x = *gfx_info.VI_X_SCALE_REG & 0xFFF;
    if (!scale_x) return;
-   scale_y = *gfx.VI_Y_SCALE_REG & 0xFFF;
+   scale_y = *gfx_info.VI_Y_SCALE_REG & 0xFFF;
    if (!scale_y) return;
    fscale_x = (float)scale_x / 1024.0f;
    fscale_y = (float)scale_y / 2048.0f;
@@ -153,7 +151,7 @@ void _ChangeSize(void)
    //  float res_scl_x = (float)settings.res_x / 320.0f;
   
    // dunno... but sometimes this happens
-   if (hend == hstart) hend = (int)(*gfx.VI_WIDTH_REG / fscale_x);
+   if (hend == hstart) hend = (int)(*gfx_info.VI_WIDTH_REG / fscale_x);
 
    rdp.vi_width = (hend - hstart) * fscale_x;
    rdp.vi_height = (vend - vstart) * fscale_y * 1.0126582f;
@@ -181,7 +179,7 @@ void _ChangeSize(void)
    //rdp.offset_x = 0;
    //  rdp.offset_y = 0;
    rdp.offset_y = ((float)settings.res_y - rdp.vi_height * rdp.scale_y) * 0.5f;
-   if (((uint32_t)rdp.vi_width <= (*gfx.VI_WIDTH_REG)/2) && (rdp.vi_width > rdp.vi_height))
+   if (((uint32_t)rdp.vi_width <= (*gfx_info.VI_WIDTH_REG)/2) && (rdp.vi_width > rdp.vi_height))
       rdp.scale_y *= 0.5f;
 
    rdp.scissor_o.ul_x = 0;
@@ -2468,8 +2466,6 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
    ReadSpecialSettings (name);
    settings.res_data_org = settings.res_data;
 
-   gfx = Gfx_Info;
-
    util_init ();
    math_init ();
    TexCacheInit ();
@@ -2518,7 +2514,7 @@ EXPORT void CALL RomClosed (void)
 
 static void CheckDRAMSize()
 {
-   uint32_t test = gfx.RDRAM[0x007FFFFF] + 1;
+   uint32_t test = gfx_info.RDRAM[0x007FFFFF] + 1;
    if (test)
       BMASK = 0x7FFFFF;
    else
@@ -2548,7 +2544,7 @@ EXPORT int CALL RomOpen (void)
    rdp_reset ();
 
    // Get the country code & translate to NTSC(0) or PAL(1)
-   code = ((uint16_t*)gfx.HEADER)[0x1F^1];
+   code = ((uint16_t*)gfx_info.HEADER)[0x1F^1];
 
    if (code == 0x4400) region = 1; // Germany (PAL)
    if (code == 0x4500) region = 0; // USA (NTSC)
@@ -2560,7 +2556,7 @@ EXPORT int CALL RomOpen (void)
 
    // get the name of the ROM
    for (i = 0; i < 20; i++)
-      name[i] = gfx.HEADER[(32+i)^3];
+      name[i] = gfx_info.HEADER[(32+i)^3];
    name[20] = 0;
 
    // remove all trailing spaces
@@ -2618,7 +2614,7 @@ void drawViRegBG(void)
    if (rdp.vi_height == 0)
       return;
 
-   VIwidth = *gfx.VI_WIDTH_REG;
+   VIwidth = *gfx_info.VI_WIDTH_REG;
 
    fb_info.width  = VIwidth;
    fb_info.height = (uint32_t)rdp.vi_height;
@@ -2627,8 +2623,8 @@ void drawViRegBG(void)
    fb_info.ul_y = 0;
    fb_info.lr_y = fb_info.height - 1;
    fb_info.opaque = 1;
-   fb_info.addr = *gfx.VI_ORIGIN_REG;
-   fb_info.size = *gfx.VI_STATUS_REG & 3;
+   fb_info.addr = *gfx_info.VI_ORIGIN_REG;
+   fb_info.size = *gfx_info.VI_STATUS_REG & 3;
 
    rdp.last_bg = fb_info.addr;
 
@@ -2664,13 +2660,13 @@ EXPORT void CALL UpdateScreen (void)
    uint32_t width, limit;
 #ifdef VISUAL_LOGGING
    char out_buf[128];
-   sprintf (out_buf, "UpdateScreen (). Origin: %08x, Old origin: %08x, width: %d\n", *gfx.VI_ORIGIN_REG, rdp.vi_org_reg, *gfx.VI_WIDTH_REG);
+   sprintf (out_buf, "UpdateScreen (). Origin: %08x, Old origin: %08x, width: %d\n", *gfx_info.VI_ORIGIN_REG, rdp.vi_org_reg, *gfx_info.VI_WIDTH_REG);
    VLOG (out_buf);
    LRDP(out_buf);
 #endif
 
-   width = (*gfx.VI_WIDTH_REG) << 1;
-   if (*gfx.VI_ORIGIN_REG  > width)
+   width = (*gfx_info.VI_WIDTH_REG) << 1;
+   if (*gfx_info.VI_ORIGIN_REG  > width)
       update_screen_count++;
    limit = (settings.hacks&hack_Lego) ? 15 : 30;
 
@@ -2687,7 +2683,7 @@ EXPORT void CALL UpdateScreen (void)
    //*
    if( no_dlist )
    {
-      if( *gfx.VI_ORIGIN_REG  > width )
+      if( *gfx_info.VI_ORIGIN_REG  > width )
       {
          ChangeSize ();
          LRDP("ChangeSize done\n");
@@ -2727,7 +2723,7 @@ static void DrawWholeFrameBufferToScreen(void)
   fb_info.opaque = 0;
   DrawFrameBufferToScreen(&fb_info);
   if (!(settings.frame_buffer & fb_ref))
-    memset(gfx.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
+    memset(gfx_info.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
 }
 
 uint32_t curframe = 0;

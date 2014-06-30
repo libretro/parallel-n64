@@ -91,7 +91,7 @@ DEFINE_GFX(gln64);
 DEFINE_GFX(glide64);
 
 gfx_plugin_functions gfx;
-static GFX_INFO gfx_info;
+GFX_INFO gfx_info;
 
 static m64p_error plugin_start_gfx(void)
 {
