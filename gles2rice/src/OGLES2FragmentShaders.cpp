@@ -20,7 +20,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLDebug.h"
 #include "OGLES2FragmentShaders.h"
 #include "OGLRender.h"
-#include "OGLGraphicsContext.h"
 #include "OGLTexture.h"
 
 #define ALPHA_TEST "    if(gl_FragColor.a < AlphaRef) discard;                        \n"
@@ -167,11 +166,7 @@ bool COGLFragmentShaderCombiner::Initialize(void)
     if( !COGLColorCombiner::Initialize() )
         return false;
 
-    COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext);
-//    if( pcontext->IsExtensionSupported("GL_fragment_shader") )
-//    {
-        m_bShaderIsSupported = true;
-//    }
+    m_bShaderIsSupported = true;
 
     return true;
 }
@@ -315,11 +310,7 @@ bool COGL_FragmentProgramCombiner::Initialize(void)
     if( !COGLColorCombiner4::Initialize() )
         return false;
 
-    COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext);
-//    if( pcontext->IsExtensionSupported("GL_fragment_program") )
-//    {
-        m_bFragmentProgramIsSupported = true;
-//    }
+    m_bFragmentProgramIsSupported = true;
 
     return true;
 }
