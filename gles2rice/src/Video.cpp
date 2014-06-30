@@ -166,13 +166,13 @@ static void UpdateScreenStep2 (void)
     if( status.bHandleN64RenderTexture )
         g_pFrameBufferManager->CloseRenderTexture(true);
     
-    g_pFrameBufferManager->SetAddrBeDisplayed(*g_GraphicsInfo.VI_ORIGIN_REG);
+    g_pFrameBufferManager->SetAddrBeDisplayed(*gfx_info.VI_ORIGIN_REG);
 
     if( status.gDlistCount == 0 )
     {
         // CPU frame buffer update
-        uint32_t width = *g_GraphicsInfo.VI_WIDTH_REG;
-        if( (*g_GraphicsInfo.VI_ORIGIN_REG & (g_dwRamSize-1) ) > width*2 && *g_GraphicsInfo.VI_H_START_REG != 0 && width != 0 )
+        uint32_t width = *gfx_info.VI_WIDTH_REG;
+        if( (*gfx_info.VI_ORIGIN_REG & (g_dwRamSize-1) ) > width*2 && *gfx_info.VI_H_START_REG != 0 && width != 0 )
         {
             SetVIScales();
             CRender::GetRender()->DrawFrameBuffer(true, 0, 0, 0, 0);
@@ -181,30 +181,30 @@ static void UpdateScreenStep2 (void)
         return;
     }
 
-    TXTRBUF_DETAIL_DUMP(TRACE1("VI ORIG is updated to %08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+    TXTRBUF_DETAIL_DUMP(TRACE1("VI ORIG is updated to %08X", *gfx_info.VI_ORIGIN_REG));
 
     if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE )
     {
         CGraphicsContext::Get()->UpdateFrame(false);
 
-        DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+        DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
         DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
         DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
         return;
     }
 
-    TXTRBUF_DETAIL_DUMP(TRACE1("VI ORIG is updated to %08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+    TXTRBUF_DETAIL_DUMP(TRACE1("VI ORIG is updated to %08X", *gfx_info.VI_ORIGIN_REG));
 
     if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE_AND_DRAWN )
     {
         if( status.bScreenIsDrawn )
         {
             CGraphicsContext::Get()->UpdateFrame(false);
-            DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+            DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
         }
         else
         {
-            DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Skip Screen Update: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+            DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Skip Screen Update: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
         }
 
         DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
@@ -215,29 +215,29 @@ static void UpdateScreenStep2 (void)
     if( currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_VI_CHANGE )
     {
 
-        if( *g_GraphicsInfo.VI_ORIGIN_REG != status.curVIOriginReg )
+        if( *gfx_info.VI_ORIGIN_REG != status.curVIOriginReg )
         {
-            if( *g_GraphicsInfo.VI_ORIGIN_REG < status.curDisplayBuffer || *g_GraphicsInfo.VI_ORIGIN_REG > status.curDisplayBuffer+0x2000  )
+            if( *gfx_info.VI_ORIGIN_REG < status.curDisplayBuffer || *gfx_info.VI_ORIGIN_REG > status.curDisplayBuffer+0x2000  )
             {
-                status.curDisplayBuffer = *g_GraphicsInfo.VI_ORIGIN_REG;
+                status.curDisplayBuffer = *gfx_info.VI_ORIGIN_REG;
                 status.curVIOriginReg = status.curDisplayBuffer;
                 //status.curRenderBuffer = NULL;
 
                 CGraphicsContext::Get()->UpdateFrame(false);
-                DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+                DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("Update Screen: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
                 DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
                 DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
             }
             else
             {
-                status.curDisplayBuffer = *g_GraphicsInfo.VI_ORIGIN_REG;
+                status.curDisplayBuffer = *gfx_info.VI_ORIGIN_REG;
                 status.curVIOriginReg = status.curDisplayBuffer;
-                DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("Skip Screen Update, closed to the display buffer, VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG);});
+                DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("Skip Screen Update, closed to the display buffer, VIORIG=%08X", *gfx_info.VI_ORIGIN_REG);});
             }
         }
         else
         {
-            DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("Skip Screen Update, the same VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG);});
+            DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("Skip Screen Update, the same VIORIG=%08X", *gfx_info.VI_ORIGIN_REG);});
         }
 
         return;
@@ -246,11 +246,11 @@ static void UpdateScreenStep2 (void)
     if( currentRomOptions.screenUpdateSetting >= SCREEN_UPDATE_AT_1ST_CI_CHANGE )
     {
         status.bVIOriginIsUpdated=true;
-        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("VI ORIG is updated to %08X", *g_GraphicsInfo.VI_ORIGIN_REG);});
+        DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(NEXT_FRAME, {DebuggerAppendMsg("VI ORIG is updated to %08X", *gfx_info.VI_ORIGIN_REG);});
         return;
     }
 
-    DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("VI is updated, No screen update: VIORIG=%08X", *g_GraphicsInfo.VI_ORIGIN_REG));
+    DEBUGGER_IF_DUMP( pauseAtNext, TRACE1("VI is updated, No screen update: VIORIG=%08X", *gfx_info.VI_ORIGIN_REG));
     DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_FRAME);
     DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(NEXT_SET_CIMG);
 }
@@ -263,7 +263,7 @@ static void ProcessDListStep2(void)
         status.toShowCFB = false;
     }
 
-    DLParser_Process((OSTask *)(g_GraphicsInfo.DMEM + 0x0FC0));
+    DLParser_Process((OSTask *)(gfx_info.DMEM + 0x0FC0));
 }   
 
 static bool StartVideo(void)
@@ -356,11 +356,11 @@ void SetVIScales()
     else
     {
         float xscale, yscale;
-        uint32_t val = *g_GraphicsInfo.VI_X_SCALE_REG & 0xFFF;
+        uint32_t val = *gfx_info.VI_X_SCALE_REG & 0xFFF;
         xscale = (float)val / (1<<10);
-        uint32_t start = *g_GraphicsInfo.VI_H_START_REG >> 16;
-        uint32_t end = *g_GraphicsInfo.VI_H_START_REG&0xFFFF;
-        uint32_t width = *g_GraphicsInfo.VI_WIDTH_REG;
+        uint32_t start = *gfx_info.VI_H_START_REG >> 16;
+        uint32_t end = *gfx_info.VI_H_START_REG&0xFFFF;
+        uint32_t width = *gfx_info.VI_WIDTH_REG;
         windowSetting.fViWidth = (end-start)*xscale;
         if( abs((int)(windowSetting.fViWidth - width) ) < 8 ) 
         {
@@ -371,11 +371,11 @@ void SetVIScales()
             DebuggerAppendMsg("fViWidth = %f, Width Reg=%d", windowSetting.fViWidth, width);
         }
 
-        val = (*g_GraphicsInfo.VI_Y_SCALE_REG & 0xFFF);// - ((*g_GraphicsInfo.VI_Y_SCALE_REG>>16) & 0xFFF);
+        val = (*gfx_info.VI_Y_SCALE_REG & 0xFFF);// - ((*gfx_info.VI_Y_SCALE_REG>>16) & 0xFFF);
         if( val == 0x3FF )  val = 0x400;
         yscale = (float)val / (1<<10);
-        start = *g_GraphicsInfo.VI_V_START_REG >> 16;
-        end = *g_GraphicsInfo.VI_V_START_REG&0xFFFF;
+        start = *gfx_info.VI_V_START_REG >> 16;
+        end = *gfx_info.VI_V_START_REG&0xFFFF;
         windowSetting.fViHeight = (end-start)/2*yscale;
 
         if( yscale == 0 )
@@ -384,10 +384,10 @@ void SetVIScales()
         }
         else
         {
-            if( *g_GraphicsInfo.VI_WIDTH_REG > 0x300 ) 
+            if( *gfx_info.VI_WIDTH_REG > 0x300 ) 
                 windowSetting.fViHeight *= 2;
 
-            if( windowSetting.fViWidth*status.fRatio > windowSetting.fViHeight && (*g_GraphicsInfo.VI_X_SCALE_REG & 0xFF) != 0 )
+            if( windowSetting.fViWidth*status.fRatio > windowSetting.fViHeight && (*gfx_info.VI_X_SCALE_REG & 0xFF) != 0 )
             {
                 if( abs(int(windowSetting.fViWidth*status.fRatio - windowSetting.fViHeight)) < 8 )
                 {
@@ -400,7 +400,7 @@ void SetVIScales()
                     {
                         if( status.fRatio > 0.8 )
                             windowSetting.fViHeight = windowSetting.fViWidth*3/4;
-                        //windowSetting.fViHeight = (*g_GraphicsInfo.VI_V_SYNC_REG - 0x2C)/2;
+                        //windowSetting.fViHeight = (*gfx_info.VI_V_SYNC_REG - 0x2C)/2;
                     }
                 }
                 */
@@ -409,7 +409,7 @@ void SetVIScales()
             if( windowSetting.fViHeight<100 || windowSetting.fViWidth<100 )
             {
                 //At sometime, value in VI_H_START_REG or VI_V_START_REG are 0
-                windowSetting.fViWidth = (float)*g_GraphicsInfo.VI_WIDTH_REG;
+                windowSetting.fViWidth = (float)*gfx_info.VI_WIDTH_REG;
                 windowSetting.fViHeight = windowSetting.fViWidth*status.fRatio;
             }
         }
@@ -436,7 +436,7 @@ void SetVIScales()
 
         if( gRDP.scissor.left == 0 && gRDP.scissor.top == 0 && gRDP.scissor.right != 0 )
         {
-            if( (*g_GraphicsInfo.VI_X_SCALE_REG & 0xFF) != 0x0 && gRDP.scissor.right == windowSetting.uViWidth )
+            if( (*gfx_info.VI_X_SCALE_REG & 0xFF) != 0x0 && gRDP.scissor.right == windowSetting.uViWidth )
             {
                 // Mario Tennis
                 if( abs(int( windowSetting.fViHeight - gRDP.scissor.bottom )) < 8 )
@@ -476,14 +476,14 @@ void SetVIScales()
 
 void TriggerDPInterrupt(void)
 {
-    *(g_GraphicsInfo.MI_INTR_REG) |= MI_INTR_DP;
-    g_GraphicsInfo.CheckInterrupts();
+    *(gfx_info.MI_INTR_REG) |= MI_INTR_DP;
+    gfx_info.CheckInterrupts();
 }
 
 void TriggerSPInterrupt(void)
 {
-    *(g_GraphicsInfo.MI_INTR_REG) |= MI_INTR_SP;
-    g_GraphicsInfo.CheckInterrupts();
+    *(gfx_info.MI_INTR_REG) |= MI_INTR_SP;
+    gfx_info.CheckInterrupts();
 }
 
 void _VIDEO_DisplayTemporaryMessage(const char *Message)

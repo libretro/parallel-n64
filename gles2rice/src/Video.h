@@ -155,6 +155,7 @@ typedef struct {
 
 extern PluginStatus status;
 extern GFX_INFO g_GraphicsInfo;
+extern GFX_INFO gfx_info;
 extern WindowSettingStruct windowSetting;
 
 extern uint32_t   g_dwRamSize;

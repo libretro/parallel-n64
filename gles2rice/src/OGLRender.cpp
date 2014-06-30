@@ -869,10 +869,10 @@ void OGLRender::TexCoord(TLITVERTEX &vtxInfo)
 
 void OGLRender::UpdateScissor()
 {
-    if( options.bEnableHacks && g_CI.dwWidth == 0x200 && gRDP.scissor.right == 0x200 && g_CI.dwWidth>(*g_GraphicsInfo.VI_WIDTH_REG & 0xFFF) )
+    if( options.bEnableHacks && g_CI.dwWidth == 0x200 && gRDP.scissor.right == 0x200 && g_CI.dwWidth>(*gfx_info.VI_WIDTH_REG & 0xFFF) )
     {
         // Hack for RE2
-        uint32_t width = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
+        uint32_t width = *gfx_info.VI_WIDTH_REG & 0xFFF;
         uint32_t height = (gRDP.scissor.right*gRDP.scissor.bottom)/width;
         glEnable(GL_SCISSOR_TEST);
         OPENGL_CHECK_ERRORS;
@@ -891,10 +891,10 @@ void OGLRender::ApplyRDPScissor(bool force)
     if( !force && status.curScissor == RDP_SCISSOR )
         return;
 
-    if( options.bEnableHacks && g_CI.dwWidth == 0x200 && gRDP.scissor.right == 0x200 && g_CI.dwWidth>(*g_GraphicsInfo.VI_WIDTH_REG & 0xFFF) )
+    if( options.bEnableHacks && g_CI.dwWidth == 0x200 && gRDP.scissor.right == 0x200 && g_CI.dwWidth>(*gfx_info.VI_WIDTH_REG & 0xFFF) )
     {
         // Hack for RE2
-        uint32_t width = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
+        uint32_t width = *gfx_info.VI_WIDTH_REG & 0xFFF;
         uint32_t height = (gRDP.scissor.right*gRDP.scissor.bottom)/width;
         glEnable(GL_SCISSOR_TEST);
         OPENGL_CHECK_ERRORS;

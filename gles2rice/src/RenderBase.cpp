@@ -1704,7 +1704,7 @@ void ModifyVertexInfo(uint32_t where, uint32_t vertex, uint32_t val)
             x -= windowSetting.uViWidth/2;
             y = windowSetting.uViHeight/2-y;
 
-            if( options.bEnableHacks && ((*g_GraphicsInfo.VI_X_SCALE_REG)&0xF) != 0 )
+            if( options.bEnableHacks && ((*gfx_info.VI_X_SCALE_REG)&0xF) != 0 )
             {
                 // Tarzan
                 // I don't know why Tarzan is different

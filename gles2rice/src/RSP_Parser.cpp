@@ -1155,7 +1155,7 @@ void DLParser_SetScissor(Gfx *gfx)
     {
         if( g_CI.dwWidth == 0x200 && tempScissor.right == 0x200 )
         {
-            uint32_t width = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
+            uint32_t width = *gfx_info.VI_WIDTH_REG & 0xFFF;
 
             if( width != 0x200 )
             {
@@ -1639,8 +1639,8 @@ void RDP_DLParser_Process(void)
 
     status.gDlistCount++;
 
-    uint32_t start = *(g_GraphicsInfo.DPC_START_REG);
-    uint32_t end = *(g_GraphicsInfo.DPC_END_REG);
+    uint32_t start = *(gfx_info.DPC_START_REG);
+    uint32_t end = *(gfx_info.DPC_END_REG);
 
     gDlistStackPointer=0;
     gDlistStack[gDlistStackPointer].pc = start;

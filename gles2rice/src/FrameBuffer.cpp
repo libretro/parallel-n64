@@ -169,7 +169,7 @@ void FrameBufferManager::UpdateRecentCIAddr(SetImgInfo &ciinfo)
 /************************************************************************/
 void FrameBufferManager::SetAddrBeDisplayed(uint32_t addr)
 {
-    uint32_t viwidth = *g_GraphicsInfo.VI_WIDTH_REG;
+    uint32_t viwidth = *gfx_info.VI_WIDTH_REG;
     addr &= (g_dwRamSize-1);
 
     for (int i=0; i<numOfRecentCIInfos; i++)
@@ -2051,7 +2051,7 @@ void FrameBufferManager::SaveBackBuffer(int ciInfoIdx, RECT* pSrcRect, bool forc
         uint32_t width = ciInfo.dwWidth;
         uint32_t height = ciInfo.dwHeight;
 
-        if (ciInfo.dwWidth == *g_GraphicsInfo.VI_WIDTH_REG && ciInfo.dwWidth != windowSetting.uViWidth)
+        if (ciInfo.dwWidth == *gfx_info.VI_WIDTH_REG && ciInfo.dwWidth != windowSetting.uViWidth)
         {
             width = windowSetting.uViWidth;
             height = windowSetting.uViHeight;
