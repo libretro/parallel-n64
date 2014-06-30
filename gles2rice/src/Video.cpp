@@ -53,7 +53,6 @@ static int l_PluginInit = 0;
 // global variables
 
 PluginStatus  status;
-GFX_INFO      g_GraphicsInfo;
 
 unsigned int   g_dwRamSize = 0x400000;
 unsigned int  *g_pRDRAMu32 = NULL;
@@ -271,7 +270,7 @@ static bool StartVideo(void)
     windowSetting.dps = windowSetting.fps = -1;
     windowSetting.lastSecDlistCount = windowSetting.lastSecFrameCount = 0xFFFFFFFF;
 
-    memcpy(&g_curRomInfo.romheader, g_GraphicsInfo.HEADER, sizeof(ROMHeader));
+    memcpy(&g_curRomInfo.romheader, gfx_info.HEADER, sizeof(ROMHeader));
     unsigned char *puc = (unsigned char *) &g_curRomInfo.romheader;
     unsigned int i;
     unsigned char temp;
@@ -668,7 +667,6 @@ EXPORT void CALL ViWidthChanged(void)
 EXPORT int CALL InitiateGFX(GFX_INFO Gfx_Info)
 {
     memset(&status, 0, sizeof(status));
-    memcpy(&g_GraphicsInfo, &Gfx_Info, sizeof(GFX_INFO));
 
     g_pRDRAMu8          = Gfx_Info.RDRAM;
     g_pRDRAMu32         = (uint32_t*)Gfx_Info.RDRAM;

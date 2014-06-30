@@ -178,9 +178,9 @@ void DumpVIRegisters(void)
     DebuggerAppendMsg("----VI Registers----\nSTATUS:\t%08X\nORIGIN:\t%08X\nWIDTH:\t%08X\n\
 V_SYNC:\t%08X\nH_SYNC:\t%08X\nX_SCALE:\t%08X\nY_SCALE:\t%08X\n\
 H_START:\t%08X\nV_START:\t%08X\nVI Width=%f(x %f), VI Height=%f(x %f)\n\n",
-        *g_GraphicsInfo.VI_STATUS_REG, *g_GraphicsInfo.VI_ORIGIN_REG, *g_GraphicsInfo.VI_WIDTH_REG, *g_GraphicsInfo.VI_V_SYNC_REG,
-        *g_GraphicsInfo.VI_H_SYNC_REG, *g_GraphicsInfo.VI_X_SCALE_REG, *g_GraphicsInfo.VI_Y_SCALE_REG,
-        *g_GraphicsInfo.VI_H_START_REG, *g_GraphicsInfo.VI_V_START_REG, windowSetting.fViWidth,windowSetting.fMultX,
+        *gfx_info.VI_STATUS_REG, *gfx_info.VI_ORIGIN_REG, *gfx_info.VI_WIDTH_REG, *gfx_info.VI_V_SYNC_REG,
+        *gfx_info.VI_H_SYNC_REG, *gfx_info.VI_X_SCALE_REG, *gfx_info.VI_Y_SCALE_REG,
+        *gfx_info.VI_H_START_REG, *gfx_info.VI_V_START_REG, windowSetting.fViWidth,windowSetting.fMultX,
         windowSetting.fViHeight,windowSetting.fMultY);
     DebuggerAppendMsg("Scissor: x0=%d y0=%d x1=%d y1=%d mode=%d",
         gRDP.scissor.left, gRDP.scissor.top,

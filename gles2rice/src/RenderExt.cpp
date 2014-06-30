@@ -29,7 +29,7 @@ extern Matrix g_MtxReal;
 
 void CRender::LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height)
 {
-    uint32_t VIwidth = *g_GraphicsInfo.VI_WIDTH_REG;
+    uint32_t VIwidth = *gfx_info.VI_WIDTH_REG;
 
     TxtrInfo gti;
 
@@ -39,12 +39,12 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
     gti.bSwapped    = FALSE;
     gti.Palette = 0;
 
-    if( useVIreg && *g_GraphicsInfo.VI_ORIGIN_REG > VIwidth*2 )
+    if( useVIreg && *gfx_info.VI_ORIGIN_REG > VIwidth*2 )
     {
         gti.Format  = 0;
         gti.Size    = 2;
 
-        gti.Address = (*g_GraphicsInfo.VI_ORIGIN_REG & (g_dwRamSize-1) ) - VIwidth*2;
+        gti.Address = (*gfx_info.VI_ORIGIN_REG & (g_dwRamSize-1) ) - VIwidth*2;
         gti.LeftToLoad  = 0;
         gti.TopToLoad   = 0;
 
@@ -188,7 +188,7 @@ void CRender::LoadObjBGCopy(uObjBg &info)
             gti.WidthToCreate == 0x200 )
         {
             // Hack for RE2
-            uint32_t w = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
+            uint32_t w = *gfx_info.VI_WIDTH_REG & 0xFFF;
             gti.HeightToCreate = (gti.WidthToCreate*gti.HeightToCreate)/w;
             gti.WidthToCreate = w;
         }
@@ -534,7 +534,7 @@ void CRender::DrawObjBGCopy(uObjBg &info)
             frameW == 0x800 )
         {
             // Hack for RE2
-            uint32_t width = *g_GraphicsInfo.VI_WIDTH_REG & 0xFFF;
+            uint32_t width = *gfx_info.VI_WIDTH_REG & 0xFFF;
             imageH = frameH = (frameW/4*frameH/4)/width*4;
             imageW = frameW = width*4;
         }

@@ -154,7 +154,6 @@ typedef struct {
 #define MI_INTR_SP          0x00000001  
 
 extern PluginStatus status;
-extern GFX_INFO g_GraphicsInfo;
 extern GFX_INFO gfx_info;
 extern WindowSettingStruct windowSetting;
 
