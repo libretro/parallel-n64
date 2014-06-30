@@ -480,12 +480,20 @@ void sglEnter(void)
 
     glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
     glClearColor(ClearColor_red, ClearColor_green, ClearColor_blue, ClearColor_alpha);
+#ifdef HAVE_OPENGLES2
+    glClearDepthf(ClearDepth_value);
+#else
     glClearDepth(ClearDepth_value);
+#endif
     glColorMask(ColorMask_red, ColorMask_green, ColorMask_blue, ColorMask_alpha);
     glCullFace(CullFace_mode);
     glDepthFunc(DepthFunc_func);
     glDepthMask(DepthMask_flag);
+#ifdef HAVE_OPENGLES2
+    glDepthRangef(DepthRange_zNear, DepthRange_zFar);
+#else
     glDepthRange(DepthRange_zNear, DepthRange_zFar);
+#endif
     glFrontFace(FrontFace_mode);
     glPolygonOffset(PolygonOffset_factor, PolygonOffset_units);
     glScissor(Scissor_x, Scissor_y, Scissor_width, Scissor_height);
@@ -525,7 +533,11 @@ void sglExit(void)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glCullFace(GL_BACK);
     glDepthMask(GL_TRUE);
+#ifdef HAVE_OPENGLES2
+    glDepthRangef(0, 1);
+#else
     glDepthRange(0, 1);
+#endif
     glFrontFace(GL_CCW);
     glPolygonOffset(0, 0);
     glUseProgram(0);
