@@ -53,7 +53,6 @@
 #endif
 
 u32         last_good_ucode = (u32) -1;
-void        (*CheckInterrupts)( void );
 void        (*renderCallback)() = NULL;
 
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
@@ -115,8 +114,6 @@ EXPORT void CALL MoveScreen (int xpos, int ypos)
 
 EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 {
-    CheckInterrupts = Gfx_Info.CheckInterrupts;
-
     Config_gln64_LoadConfig();
     Config_gln64_LoadRomConfig(Gfx_Info.HEADER);
 

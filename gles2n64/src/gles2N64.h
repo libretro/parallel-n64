@@ -18,7 +18,6 @@ extern "C" {
 #define renderCallback gln64RenderCallback
 #endif
 
-extern void (*CheckInterrupts)( void );
 extern void (*renderCallback)();
 
 #ifdef __cplusplus

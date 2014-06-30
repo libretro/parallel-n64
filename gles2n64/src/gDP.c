@@ -945,7 +945,8 @@ void gDPFullSync(void)
 {
    *gfx_info.MI_INTR_REG |= MI_INTR_DP;
 
-   CheckInterrupts();
+   if (gfx_info.CheckInterrupts)
+      gfx_info.CheckInterrupts();
 
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPFullSync();\n" );
