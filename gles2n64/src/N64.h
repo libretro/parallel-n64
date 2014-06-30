@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include "Types.h"
+#include "m64p_plugin.h"
 
 
 #define MI_INTR_SP      0x1        // Bit 1: SP intr
@@ -41,11 +42,11 @@ typedef struct
 } N64Regs;
 
 extern N64Regs REG;
-extern u8 *DMEM;
-extern u8 *IMEM;
 extern u8 *RDRAM;
 extern u64 TMEM[512];
 extern u32 RDRAMSize;
+
+extern GFX_INFO gfx_info;
 
 #ifdef __cplusplus
 }

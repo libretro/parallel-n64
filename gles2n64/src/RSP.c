@@ -42,14 +42,14 @@ void RSP_ProcessDList(void)
    OGL_UpdateScale();
    TextureCache_ActivateNoise(2);
 
-   RSP.PC[0] = *(u32*)&DMEM[0x0FF0];
+   RSP.PC[0] = *(u32*)&gfx_info.DMEM[0x0FF0];
    RSP.PCi = 0;
    RSP.count = 0;
 
    RSP.halt = FALSE;
    RSP.busy = TRUE;
 
-   gSP.matrix.stackSize = min( 32, *(u32*)&DMEM[0x0FE4] >> 6 );
+   gSP.matrix.stackSize = min( 32, *(u32*)&gfx_info.DMEM[0x0FE4] >> 6 );
    gSP.matrix.modelViewi = 0;
    gSP.changed |= CHANGED_MATRIX;
 
@@ -62,9 +62,9 @@ void RSP_ProcessDList(void)
    gSP.matrix.modelView[0][2][2] = 1.0f;
    gSP.matrix.modelView[0][3][3] = 1.0f;
 
-   uc_start = *(u32*)&DMEM[0x0FD0];
-   uc_dstart = *(u32*)&DMEM[0x0FD8];
-   uc_dsize = *(u32*)&DMEM[0x0FDC];
+   uc_start = *(u32*)&gfx_info.DMEM[0x0FD0];
+   uc_dstart = *(u32*)&gfx_info.DMEM[0x0FD8];
+   uc_dsize = *(u32*)&gfx_info.DMEM[0x0FDC];
 
    if ((uc_start != RSP.uc_start) || (uc_dstart != RSP.uc_dstart))
       gSPLoadUcodeEx( uc_start, uc_dstart, uc_dsize );
