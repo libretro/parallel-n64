@@ -42,7 +42,6 @@ else ifneq (,$(findstring rpi,$(platform)))
    GLES = 1
    GL_LIB := -lGLESv2
    CPPFLAGS = -DNOSSE -I/opt/vc/include -DARMv5_ONLY -DNO_ASM
-   OBJECTS += libretro/libco/armeabi_asm.o
    PLATFORM_EXT := unix
    WITH_DYNAREC=arm
 
@@ -72,8 +71,6 @@ else ifneq (,$(findstring ios,$(platform)))
    GLES = 1
    GL_LIB := -framework OpenGLES
 
-   OBJECTS += libretro/libco/armeabi_asm.o
-
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
@@ -94,8 +91,6 @@ else ifneq (,$(findstring android,$(platform)))
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined -Wl,--warn-common
    GL_LIB := -lGLESv2
 
-   OBJECTS += libretro/libco/armeabi_asm.o
-
    CC = arm-linux-androideabi-gcc
    CXX = arm-linux-androideabi-g++
 	WITH_DYNAREC=arm
@@ -113,8 +108,6 @@ else ifeq ($(platform), qnx)
    TARGET := $(TARGET_NAME)_libretro_qnx.so
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined -Wl,--warn-common
    GL_LIB := -lGLESv2
-
-   OBJECTS += libretro/libco/armeabi_asm.o
 
    CC = qcc -Vgcc_ntoarmv7le
    CC_AS = qcc -Vgcc_ntoarmv7le

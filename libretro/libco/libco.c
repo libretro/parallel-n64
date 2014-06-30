@@ -8,14 +8,10 @@
   #include "x86.c"
 #elif defined(__GNUC__) && defined(__amd64__)
   #include "amd64.c"
-#elif defined(_MSC_VER) && defined(_WIN64)
-  #include "amd64_msvc.c"
-#elif defined(_MSC_VER) && defined(_WIN32)
-  #include "x86_msvc.c"
-#elif (defined(__GNUC__) && defined(__ARM_EABI__)) || (defined(__APPLE__) && __ARM_ARCH)
-  #include "armeabi.c"
-#elif defined(__GNUC__) && (defined(__powerpc__) || defined(__POWERPC__) || defined(__ppc__)) /* Seems to run fine on PPC G5 OSX even when no __ELF__ is defined. */
+#elif defined(__GNUC__) && defined(_ARCH_PPC)
   #include "ppc.c"
+#elif defined(__GNUC__) && (defined(__ARM_EABI__) || defined(__arm__))
+  #include "armeabi.c"
 #elif defined(__GNUC__)
   #include "sjlj.c"
 #elif defined(_MSC_VER) && defined(_M_IX86)
