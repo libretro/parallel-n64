@@ -12,36 +12,6 @@ extern "C" {
 #define MI_INTR_SP      0x1        // Bit 1: SP intr
 #define MI_INTR_DP      0x20        // Bit 5: DP intr 
 
-typedef struct
-{
-    u32 *MI_INTR;
-
-    u32 *DPC_START;
-    u32 *DPC_END;
-    u32 *DPC_CURRENT;
-    u32 *DPC_STATUS;
-    u32 *DPC_CLOCK;
-    u32 *DPC_BUFBUSY;
-    u32 *DPC_PIPEBUSY;
-    u32 *DPC_TMEM;
-
-    u32 *VI_STATUS;
-    u32 *VI_ORIGIN;
-    u32 *VI_WIDTH;
-    u32 *VI_INTR;
-    u32 *VI_V_CURRENT_LINE;
-    u32 *VI_TIMING;
-    u32 *VI_V_SYNC;
-    u32 *VI_H_SYNC;
-    u32 *VI_LEAP;
-    u32 *VI_H_START;
-    u32 *VI_V_START;
-    u32 *VI_V_BURST;
-    u32 *VI_X_SCALE;
-    u32 *VI_Y_SCALE;
-} N64Regs;
-
-extern N64Regs REG;
 extern u64 TMEM[512];
 extern u32 RDRAMSize;
 

@@ -16,21 +16,21 @@ void VI_UpdateSize(void)
 {
    if (!config.video.force)
    {
-      f32 xScale = _FIXED2FLOAT( _SHIFTR( *REG.VI_X_SCALE, 0, 12 ), 10 );
-      f32 xOffset = _FIXED2FLOAT( _SHIFTR( *REG.VI_X_SCALE, 16, 12 ), 10 );
+      f32 xScale = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE_REG, 0, 12 ), 10 );
+      f32 xOffset = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE_REG, 16, 12 ), 10 );
 
-      f32 yScale = _FIXED2FLOAT( _SHIFTR( *REG.VI_Y_SCALE, 0, 12 ), 10 );
-      f32 yOffset = _FIXED2FLOAT( _SHIFTR( *REG.VI_Y_SCALE, 16, 12 ), 10 );
+      f32 yScale = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_Y_SCALE_REG, 0, 12 ), 10 );
+      f32 yOffset = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_Y_SCALE_REG, 16, 12 ), 10 );
 
-      u32 hEnd = _SHIFTR( *REG.VI_H_START, 0, 10 );
-      u32 hStart = _SHIFTR( *REG.VI_H_START, 16, 10 );
+      u32 hEnd = _SHIFTR( *gfx_info.VI_H_START_REG, 0, 10 );
+      u32 hStart = _SHIFTR( *gfx_info.VI_H_START_REG, 16, 10 );
 
       // These are in half-lines, so shift an extra bit
-      u32 vEnd = _SHIFTR( *REG.VI_V_START, 1, 9 );
-      u32 vStart = _SHIFTR( *REG.VI_V_START, 17, 9 );
+      u32 vEnd = _SHIFTR( *gfx_info.VI_V_START_REG, 1, 9 );
+      u32 vStart = _SHIFTR( *gfx_info.VI_V_START_REG, 17, 9 );
 
       //Glide does this:
-      if (hEnd == hStart) hEnd = (u32)(*REG.VI_WIDTH / xScale);
+      if (hEnd == hStart) hEnd = (u32)(*gfx_info.VI_WIDTH_REG / xScale);
 
 
       VI.width = (hEnd - hStart) * xScale;
@@ -53,7 +53,7 @@ void VI_UpdateSize(void)
    {
       int i;
       //int start = *REG.VI_ORIGIN;
-      u32 start = RSP_SegmentToPhysical(*REG.VI_ORIGIN) & 0x00FFFFFF;
+      u32 start = RSP_SegmentToPhysical(*gfx_info.VI_ORIGIN_REG) & 0x00FFFFFF;
       u32 end = min(start + VI.width * VI.height * 4, RDRAMSize);
       for(i = 0; i < VI.displayNum; i++)
       {
@@ -77,12 +77,12 @@ void VI_UpdateScreen(void)
    {
 
       case SCREEN_UPDATE_AT_VI_CHANGE:
-         if (*REG.VI_ORIGIN != VI.lastOrigin)
+         if (*gfx_info.VI_ORIGIN_REG != VI.lastOrigin)
          {
-            if (*REG.VI_ORIGIN < VI.lastOrigin || *REG.VI_ORIGIN > VI.lastOrigin+0x2000  )
+            if (*gfx_info.VI_ORIGIN_REG < VI.lastOrigin || *gfx_info.VI_ORIGIN_REG > VI.lastOrigin+0x2000  )
                OGL_SwapBuffers();
 
-            VI.lastOrigin = *REG.VI_ORIGIN;
+            VI.lastOrigin = *gfx_info.VI_ORIGIN_REG;
          }
          break;
 

@@ -943,7 +943,7 @@ void gDPTextureRectangleFlip( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 
 
 void gDPFullSync(void)
 {
-   *REG.MI_INTR |= MI_INTR_DP;
+   *gfx_info.MI_INTR_REG |= MI_INTR_DP;
 
    CheckInterrupts();
 
