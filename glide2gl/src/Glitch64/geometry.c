@@ -28,7 +28,6 @@
 #include "../Glide64/rdp.h"
 
 #define Z_MAX (65536.0f)
-#define VERTEX_SIZE sizeof(VERTEX) //Size of vertex struct
 
 int inverted_culling;
 int culling_mode;
@@ -37,19 +36,19 @@ int culling_mode;
 static void vbo_draw(GLenum mode,GLint first,GLsizei count, VERTEX *v)
 {
    glEnableVertexAttribArray(POSITION_ATTR);
-   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, &v->x); //Position
+   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(VERTEX), &v->x); //Position
 
    glEnableVertexAttribArray(COLOUR_ATTR);
-   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, &v->b); //Colour
+   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(VERTEX), &v->b); //Colour
 
    glEnableVertexAttribArray(TEXCOORD_0_ATTR);
-   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &v->coord[2]); //Tex0
+   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), &v->coord[2]); //Tex0
 
    glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &v->coord[0]); //Tex1
+   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), &v->coord[0]); //Tex1
 
    glEnableVertexAttribArray(FOG_ATTR);
-   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, &v->f); //Fog
+   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(VERTEX), &v->f); //Fog
 
    glDrawArrays(mode,first,count);
 }
@@ -247,17 +246,12 @@ grDepthBiasLevel( FxI32 level )
 // draw
 
 FX_ENTRY void FX_CALL
-grDrawTriangle( const void *a, const void *b, const void *c )
+grDrawTriangleNew( VERTEX a, VERTEX b, VERTEX c )
 {
-   VERTEX vertex_buffer[4]
-   LOG("grDrawTriangle()\r\n\t");
+   VERTEX vertex_buffer[4] = { a, b, c};
 
    if(need_to_compile)
       compile_shader();
-
-   memcpy(&vertex_buffer[0],a,VERTEX_SIZE);
-   memcpy(&vertex_buffer[1],b,VERTEX_SIZE);
-   memcpy(&vertex_buffer[2],c,VERTEX_SIZE);
 
    vbo_draw(GL_TRIANGLES,0,3,&vertex_buffer[0]);
 }

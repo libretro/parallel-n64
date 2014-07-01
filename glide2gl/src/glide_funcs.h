@@ -164,6 +164,9 @@ grTextureAuxBufferExt( GrChipID_t tmu,
 FX_ENTRY void FX_CALL grAuxBufferExt( GrBuffer_t buffer );
 #endif
 
+FX_ENTRY void FX_CALL
+grDrawTriangleNew( VERTEX a, VERTEX b, VERTEX c );
+
 //#define DISPLAY_WARNING_DEBUG
 
 #ifdef DISPLAY_WARNING_DEBUG

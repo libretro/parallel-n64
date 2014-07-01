@@ -2390,8 +2390,8 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       }
 
       {
-         grDrawTriangle (&v[0], &v[2], &v[1]);
-         grDrawTriangle (&v[2], &v[3], &v[1]);
+         grDrawTriangleNew(v[0], v[2], v[1]);
+         grDrawTriangleNew(v[2], v[3], v[1]);
       }
 
       rdp.tri_n += 2;
