@@ -257,27 +257,10 @@ grDrawTriangleNew( VERTEX a, VERTEX b, VERTEX c )
 }
 
 FX_ENTRY void FX_CALL
-grDrawVertexArray(FxU32 mode, FxU32 Count, void *pointers2)
+grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers)
 {
-   void **pointers = (void**)pointers2;
-   LOG("grDrawVertexArray(%d,%d)\r\n", mode, Count);
-
    if(need_to_compile)
       compile_shader();
 
-   vbo_draw(GL_TRIANGLE_FAN,0,Count,pointers[0]);
-}
-
-FX_ENTRY void FX_CALL
-grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers, FxU32 stride)
-{
-   LOG("grDrawVertexArrayContiguous(%d,%d,%d)\r\n", mode, Count, stride);
-
-   if(stride != 156)
-      LOGINFO("Incompatible stride\n");
-
-   if(need_to_compile)
-      compile_shader();
-
-   vbo_draw(GL_TRIANGLE_STRIP,0,Count,pointers);
+   vbo_draw(mode,0,Count,pointers);
 }

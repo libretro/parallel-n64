@@ -543,7 +543,7 @@ static void DrawImage (DRAWIMAGE *d)
                apply_shade_mods (&(v[s]));
             ConvertCoordsConvert (v, 4);
 
-            grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v, sizeof(VERTEX));
+            grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v);
          }
          rdp.tri_n += 2;
 

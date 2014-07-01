@@ -1070,10 +1070,13 @@ static void render_tri (uint16_t linew, int old_interpolate)
    }
    else
    {
+      void *pointers, **pointers2;
       DepthBuffer(rdp.vtxbuf, n);
       if ((rdp.rm & 0xC10) == 0xC10)
          grDepthBiasLevel (-deltaZ);
-      grDrawVertexArray (GR_TRIANGLE_FAN, n, rdp.vtx_buffer? &rdp.vtx2 : &rdp.vtx1);
+      pointers = rdp.vtx_buffer? (void*)&rdp.vtx2 : (void*)&rdp.vtx1;
+      pointers2 = (void**)pointers;
+      grDrawVertexArrayContiguous(GR_TRIANGLE_FAN, n, pointers2[0]);
    }
 }
 

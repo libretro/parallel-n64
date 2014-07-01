@@ -42,6 +42,8 @@
 #include <3dfx.h>
 #include <glidesys.h>
 #include <sst1vid.h>
+#define GL_GLEXT_PROTOTYPES
+#include <SDL_opengles2.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -437,9 +439,9 @@ typedef FxU32 GrCoordinateSpaceMode_t;
 #define GR_LINE_STRIP                    1
 #define GR_LINES                         2
 #define GR_POLYGON                       3
-#define GR_TRIANGLE_STRIP                4
-#define GR_TRIANGLE_FAN                  5
-#define GR_TRIANGLES                     6
+#define GR_TRIANGLE_STRIP                GL_TRIANGLE_STRIP
+#define GR_TRIANGLE_FAN                  GL_TRIANGLE_FAN
+#define GR_TRIANGLES                     GL_TRIANGLES
 #define GR_TRIANGLE_STRIP_CONTINUE       7
 #define GR_TRIANGLE_FAN_CONTINUE         8
 
@@ -574,10 +576,7 @@ FX_ENTRY void FX_CALL
 grVertexLayout(FxU32 param, FxI32 offset, FxU32 mode);
 
 FX_ENTRY void FX_CALL 
-grDrawVertexArray(FxU32 mode, FxU32 Count, void *pointers);
-
-FX_ENTRY void FX_CALL 
-grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers, FxU32 stride);
+grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers);
 
 /*
 **  Antialiasing Functions
