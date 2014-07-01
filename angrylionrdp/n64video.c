@@ -675,8 +675,8 @@ void rdp_init(void)
     idxlim16 = 0x1fffff;
     idxlim32 = 0xfffff;
 
-    rdram_8 = (UINT8*)rdram;
-    rdram_16 = (UINT16*)rdram;
+    rdram_8 = (UINT8*)gfx_info.RDRAM;
+    rdram_16 = (UINT16*)gfx_info.RDRAM;
     return;
 }
 
