@@ -66,31 +66,6 @@ void Mirror16bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_
 }
 
 //****************************************************************
-// 16-bit Horizontal Wrap (like mirror)
-
-void Wrap16bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
-{
-   uint32_t mask_width = (1 << mask);
-   uint32_t mask_mask = (mask_width-1) >> 1;
-   int32_t count = (max_width - mask_width) >> 1;
-   int32_t line_full = real_width << 1;
-   int32_t line = line_full - (count << 2);
-   uint8_t *start = (uint8_t*)(tex + (mask_width << 1));
-   uint32_t *v7 = (uint32_t *)start;
-
-   do
-   {
-      int v9 = 0;
-      do
-      {
-         *v7++ = *(uint32_t *)&tex[4 * (mask_mask & v9)];
-      }while ( ++v9 != count );
-      v7 = (uint32_t *)((int8_t*)v7 + line);
-      tex += line_full;
-   }while(--height);
-}
-
-//****************************************************************
 // 16-bit Horizontal Clamp
 
 void Clamp16bS (uint8_t *tex, uint32_t width, uint32_t clamp_to, uint32_t real_width, uint32_t real_height)

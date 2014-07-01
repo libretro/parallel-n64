@@ -1308,15 +1308,28 @@ static void LoadTex(int id, int tmu)
          }
          else if (cond_true)
          {
-            if (size == 1)
-               Wrap16bS ((texture), rdp.tiles[td].mask_s,
-                     real_x, real_x, texinfo[id].height);
-            else if (size == 2)
-               Wrap32bS ((texture), rdp.tiles[td].mask_s,
-                     real_x, real_x, texinfo[id].height);
-            else
-               Wrap8bS ((texture), rdp.tiles[td].mask_s,
-                     real_x, real_x, texinfo[id].height);
+            // Horizontal Wrap (like mirror) ** UNTESTED **
+            uint8_t *tex = (uint8_t*)texture;
+            uint32_t max_height = texinfo[id].height;
+            uint8_t shift_a = (size == 0) ? 2 : (size == 1) ? 1 : 0;
+            uint32_t mask_width = (1 << rdp.tiles[td].mask_s);
+            uint32_t mask_mask = (mask_width-1) >> shift_a;
+            int32_t count = (real_x - mask_width) >> shift_a;
+            int32_t line_full = real_x << size;
+            int32_t line = line_full - (count << 2);
+            uint8_t *start = (uint8_t*)(tex + (mask_width << size));
+            uint32_t *v7 = (uint32_t *)start;
+
+            do
+            {
+               int v9 = 0;
+               do
+               {
+                  *v7++ = *(uint32_t *)&tex[4 * (mask_mask & v9++)];
+               }while ( v9 != count );
+               v7 = (uint32_t *)((int8_t*)v7 + line);
+               tex += line_full;
+            }while (--max_height);
          }
       }
 

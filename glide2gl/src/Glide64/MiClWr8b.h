@@ -65,31 +65,6 @@ void Mirror8bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_w
 }
 
 //****************************************************************
-// 8-bit Horizontal Wrap (like mirror) ** UNTESTED **
-
-
-void Wrap8bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
-{
-   uint32_t mask_width = (1 << mask);
-   uint32_t mask_mask = (mask_width-1) >> 2;
-   int32_t count = (max_width - mask_width) >> 2;
-   int32_t line_full = real_width;
-   int32_t line = line_full - (count << 2);
-   uint32_t *start = (uint32_t *)(uint8_t*)(tex + mask_width);
-
-   do
-   {
-      int v9 = 0;
-      do
-      {
-         *start++ = *(uint32_t *)&tex[4 * (mask_mask & v9++)];
-      }while ( v9 != count );
-      start = (uint32_t *)((int8_t*)start + line);
-      tex += line_full;
-   }while (--height);
-}
-
-//****************************************************************
 // 8-bit Horizontal Clamp
 
 
