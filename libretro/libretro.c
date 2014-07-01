@@ -27,7 +27,7 @@ struct retro_rumble_interface rumble;
 
 struct retro_hw_render_callback render_iface;
 cothread_t main_thread;
-cothread_t emulator_thread;
+static cothread_t cpu_thread;
 static bool emu_thread_has_run = false; // < This is used to ensure the core_gl_context_reset
                                         //   function doesn't try to reinit graphics before needed
 uint16_t button_orientation = 0;
@@ -394,7 +394,10 @@ void retro_init(void)
    //hacky stuff for Glide64
    polygonOffsetUnits = -3.0f;
    polygonOffsetFactor =  -3.0f;
-}
+
+   main_thread = co_active();
+   cpu_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
+} 
 
 void retro_deinit(void)
 {
@@ -402,6 +405,8 @@ void retro_deinit(void)
       perf_cb.perf_log();
 
     CoreShutdown();
+
+    co_delete(cpu_thread);
 }
 
 unsigned int retro_filtering = 0;
@@ -630,8 +635,6 @@ bool retro_load_game(const struct retro_game_info *game)
     memcpy(game_data, game->data, game->size);
     game_size = game->size;
 
-    main_thread = co_active();
-    emulator_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
 
     return true;
 }
@@ -639,7 +642,8 @@ bool retro_load_game(const struct retro_game_info *game)
 void retro_unload_game(void)
 {
     stop = 1;
-    co_switch(emulator_thread);
+
+    co_switch(cpu_thread);
 
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
 }
@@ -649,33 +653,34 @@ static bool pushed_frame;
 void retro_run (void)
 {
    static bool updated = false;
-    FAKE_SDL_TICKS += 16;
-    pushed_frame = false;
 
-    poll_cb();
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
+      update_variables();
+
+   FAKE_SDL_TICKS += 16;
+   pushed_frame = false;
+
+   poll_cb();
 
 run_again:
 
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
-       update_variables();
 #ifndef HAVE_SHARED_CONTEXT
-    sglEnter();
+   sglEnter();
 #endif
-    co_switch(emulator_thread);
+   co_switch(cpu_thread);
 
+   if (flip_only)
+   {
+      if (gfx_plugin == GFX_ANGRYLION)
+         video_cb(blitter_buf, screen_width, screen_height, screen_pitch); 
+      else
+         video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+      pushed_frame = true;
+      goto run_again;
+   }
 
-    if (flip_only)
-    {
-       if (gfx_plugin == GFX_ANGRYLION)
-          video_cb(blitter_buf, screen_width, screen_height, screen_pitch); 
-       else
-          video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
-       pushed_frame = true;
-       goto run_again;
-    }
-
-    if (!pushed_frame && frame_dupe) // Dupe. Not duping violates libretro API, consider it a speedhack.
-        video_cb(NULL, screen_width, screen_height, screen_pitch);
+   if (!pushed_frame && frame_dupe) // Dupe. Not duping violates libretro API, consider it a speedhack.
+      video_cb(NULL, screen_width, screen_height, screen_pitch);
 }
 
 void retro_reset (void)
