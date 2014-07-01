@@ -36,8 +36,7 @@ static int alpha_ref, alpha_func;
 bool alpha_test = 0;
 
 float texture_env_color[4];
-float ccolor0[4];
-float ccolor1[4];
+float ccolor[2][4];
 static float chroma_color[4];
 int fog_enabled;
 static int chroma_enabled;
@@ -477,10 +476,10 @@ void update_uniforms(shader_program_key prog)
          texture_env_color[2], texture_env_color[3]);
 
    ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
-   glUniform4f(ccolor0_location, ccolor0[0], ccolor0[1], ccolor0[2], ccolor0[3]);
+   glUniform4f(ccolor0_location, ccolor[0][0], ccolor[0][1], ccolor[0][2], ccolor[0][3]);
 
    ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
-   glUniform4f(ccolor1_location, ccolor1[0], ccolor1[1], ccolor1[2], ccolor1[3]);
+   glUniform4f(ccolor1_location, ccolor[1][0], ccolor[1][1], ccolor[1][2], ccolor[1][3]);
 
    glUniform4f(prog.chroma_color_location, chroma_color[0], chroma_color[1],
          chroma_color[2], chroma_color[3]);
@@ -2615,36 +2614,16 @@ grConstantColorValueExt(GrChipID_t    tmu,
    switch(lfb_color_fmt)
    {
       case GR_COLORFORMAT_ARGB:
-         if(num_tex == 0)
-         {
-            ccolor0[3] = ((value >> 24) & 0xFF) / 255.0f;
-            ccolor0[0] = ((value >> 16) & 0xFF) / 255.0f;
-            ccolor0[1] = ((value >>  8) & 0xFF) / 255.0f;
-            ccolor0[2] = (value & 0xFF) / 255.0f;
-         }
-         else
-         {
-            ccolor1[3] = ((value >> 24) & 0xFF) / 255.0f;
-            ccolor1[0] = ((value >> 16) & 0xFF) / 255.0f;
-            ccolor1[1] = ((value >>  8) & 0xFF) / 255.0f;
-            ccolor1[2] = (value & 0xFF) / 255.0f;
-         }
+         ccolor[num_tex][3] = ((value >> 24) & 0xFF) / 255.0f;
+         ccolor[num_tex][0] = ((value >> 16) & 0xFF) / 255.0f;
+         ccolor[num_tex][1] = ((value >>  8) & 0xFF) / 255.0f;
+         ccolor[num_tex][2] = (value & 0xFF) / 255.0f;
          break;
       case GR_COLORFORMAT_RGBA:
-         if(num_tex == 0)
-         {
-            ccolor0[0] = ((value >> 24) & 0xFF) / 255.0f;
-            ccolor0[1] = ((value >> 16) & 0xFF) / 255.0f;
-            ccolor0[2] = ((value >>  8) & 0xFF) / 255.0f;
-            ccolor0[3] = (value & 0xFF) / 255.0f;
-         }
-         else
-         {
-            ccolor1[0] = ((value >> 24) & 0xFF) / 255.0f;
-            ccolor1[1] = ((value >> 16) & 0xFF) / 255.0f;
-            ccolor1[2] = ((value >>  8) & 0xFF) / 255.0f;
-            ccolor1[3] = (value & 0xFF) / 255.0f;
-         }
+         ccolor[num_tex][0] = ((value >> 24) & 0xFF) / 255.0f;
+         ccolor[num_tex][1] = ((value >> 16) & 0xFF) / 255.0f;
+         ccolor[num_tex][2] = ((value >>  8) & 0xFF) / 255.0f;
+         ccolor[num_tex][3] = (value & 0xFF) / 255.0f;
          break;
       default:
          DISPLAY_WARNING("grConstantColorValue: unknown color format : %x", lfb_color_fmt);
@@ -2653,12 +2632,12 @@ grConstantColorValueExt(GrChipID_t    tmu,
    if(num_tex == 0)
    {
       ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
-      glUniform4f(ccolor0_location, ccolor0[0], ccolor0[1], ccolor0[2], ccolor0[3]);
+      glUniform4f(ccolor0_location, ccolor[0][0], ccolor[0][1], ccolor[0][2], ccolor[0][3]);
    }
    else
    {
       ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
-      glUniform4f(ccolor1_location, ccolor1[0], ccolor1[1], ccolor1[2], ccolor1[3]);
+      glUniform4f(ccolor1_location, ccolor[1][0], ccolor[1][1], ccolor[1][2], ccolor[1][3]);
    }
 }
 
@@ -2669,29 +2648,19 @@ grConstantColorValueExtZero(GrChipID_t    tmu,
    LOG("grConstantColorValueExtZero(%d,%d)\r\n", tmu, value);
 
 
-   if (tmu == GR_TMU0)
-   {
-      ccolor1[0] = 0;
-      ccolor1[1] = 0;
-      ccolor1[2] = 0;
-      ccolor1[3] = 0;
-   }
-   else
-   {
-      ccolor0[0] = 0;
-      ccolor0[1] = 0;
-      ccolor0[2] = 0;
-      ccolor0[3] = 0;
-   }
+   ccolor[tmu][0] = 0;
+   ccolor[tmu][1] = 0;
+   ccolor[tmu][2] = 0;
+   ccolor[tmu][3] = 0;
 
    if (tmu == GR_TMU0)
    {
       ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
-      glUniform4f(ccolor1_location, ccolor1[0], ccolor1[1], ccolor1[2], ccolor1[3]);
+      glUniform4f(ccolor1_location, ccolor[1][0], ccolor[1][1], ccolor[1][2], ccolor[1][3]);
    }
    else
    {
       ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
-      glUniform4f(ccolor0_location, ccolor0[0], ccolor0[1], ccolor0[2], ccolor0[3]);
+      glUniform4f(ccolor0_location, ccolor[0][0], ccolor[0][1], ccolor[0][2], ccolor[0][3]);
    }
 }
