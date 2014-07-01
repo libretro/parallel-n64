@@ -781,37 +781,20 @@ void TexCache(void)
                   rdp.tiles[tile].lr_t-rdp.tiles[tile].ul_t < 256;
             }
 
-            if (rdp.cur_cache[i]->f_mirror_s)
-               mode_s = GR_TEXTURECLAMP_MIRROR_EXT;
-            else if (rdp.cur_cache[i]->f_wrap_s)
-               mode_s = GR_TEXTURECLAMP_WRAP;
-            else if (clamp_s)
+            mode_s = GR_TEXTURECLAMP_WRAP;
+            mode_t = GR_TEXTURECLAMP_WRAP;
+
+            if (clamp_s)
                mode_s = GR_TEXTURECLAMP_CLAMP;
-            else
-            {
-               if (rdp.tiles[tile].mirror_s)
-                  mode_s = GR_TEXTURECLAMP_MIRROR_EXT;
-               else
-                  mode_s = GR_TEXTURECLAMP_WRAP;
-            }
+            else if (rdp.tiles[tile].mirror_s)
+               mode_s = GR_TEXTURECLAMP_MIRROR_EXT;
 
-            if (rdp.cur_cache[i]->f_mirror_t)
-               mode_t = GR_TEXTURECLAMP_MIRROR_EXT;
-            else if (rdp.cur_cache[i]->f_wrap_t)
-               mode_t = GR_TEXTURECLAMP_WRAP;
-            else if (clamp_t)
+            if (clamp_t)
                mode_t = GR_TEXTURECLAMP_CLAMP;
-            else
-            {
-               if (rdp.tiles[tile].mirror_t)
-                  mode_t = GR_TEXTURECLAMP_MIRROR_EXT;
-               else
-                  mode_t = GR_TEXTURECLAMP_WRAP;
-            }
+            else if (rdp.tiles[tile].mirror_t)
+               mode_t = GR_TEXTURECLAMP_MIRROR_EXT;
 
-            grTexClampMode (tmu,
-                  mode_s,
-                  mode_t);
+            grTexClampMode (tmu, mode_s, mode_t);
          }
 #ifdef HAVE_HWFBE
          if (aTBuff[i] && (rdp.tex&(i+1)))
@@ -874,10 +857,6 @@ static void LoadTex(int id, int tmu)
    cache->last_used = frame_count;
    cache->uses = rdp.debug_n;
    cache->flags = texinfo[id].flags;
-   cache->f_mirror_s = false;
-   cache->f_mirror_t = false;
-   cache->f_wrap_s = false;
-   cache->f_wrap_t = false;
 
    // Add this cache to the list
    AddToList (&cachelut[cache->crc>>16], cache->crc, (uintptr_t)(cache), tmu, rdp.n_cached[tmu]);

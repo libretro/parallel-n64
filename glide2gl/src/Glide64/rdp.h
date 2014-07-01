@@ -517,11 +517,6 @@ typedef struct {
   uint8_t set_by;
   uint8_t texrecting;
 
-  int f_mirror_s;
-  int f_mirror_t;
-  int f_wrap_s;
-  int f_wrap_t;
-
   float scale_x;        // texture scaling
   float scale_y;
   float scale;          // general scale to 256
