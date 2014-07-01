@@ -570,23 +570,10 @@ FX_ENTRY void FX_CALL
 grDrawLine( const void *v1, const void *v2 );
 
 FX_ENTRY void FX_CALL
-grDrawTriangle( const void *a, const void *b, const void *c );
-
-FX_ENTRY void FX_CALL
 grVertexLayout(FxU32 param, FxI32 offset, FxU32 mode);
 
 FX_ENTRY void FX_CALL 
 grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers);
-
-/*
-**  Antialiasing Functions
-*/
-
-FX_ENTRY void FX_CALL
-grAADrawTriangle(
-                 const void *a, const void *b, const void *c,
-                 FxBool ab_antialias, FxBool bc_antialias, FxBool ca_antialias
-                 );
 
 /*
 ** buffer management

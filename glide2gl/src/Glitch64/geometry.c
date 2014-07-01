@@ -33,25 +33,6 @@ int inverted_culling;
 int culling_mode;
 
 
-static void vbo_draw(GLenum mode,GLint first,GLsizei count, VERTEX *v)
-{
-   glEnableVertexAttribArray(POSITION_ATTR);
-   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(VERTEX), &v->x); //Position
-
-   glEnableVertexAttribArray(COLOUR_ATTR);
-   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(VERTEX), &v->b); //Colour
-
-   glEnableVertexAttribArray(TEXCOORD_0_ATTR);
-   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), &v->coord[2]); //Tex0
-
-   glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), &v->coord[0]); //Tex1
-
-   glEnableVertexAttribArray(FOG_ATTR);
-   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(VERTEX), &v->f); //Fog
-
-   glDrawArrays(mode,first,count);
-}
 
 #define ZCALC(z, q) ((z_en) ? ((z) / Z_MAX) / (q) : 1.0f)
 
@@ -243,24 +224,27 @@ grDepthBiasLevel( FxI32 level )
    }
 }
 
-// draw
-
 FX_ENTRY void FX_CALL
-grDrawTriangleNew( VERTEX a, VERTEX b, VERTEX c )
+grDrawVertexArrayContiguous(FxU32 mode, FxU32 count, void *pointers)
 {
-   VERTEX vertex_buffer[4] = { a, b, c};
-
+   VERTEX *v = (VERTEX*)pointers;
    if(need_to_compile)
       compile_shader();
 
-   vbo_draw(GL_TRIANGLES,0,3,&vertex_buffer[0]);
-}
+   glEnableVertexAttribArray(POSITION_ATTR);
+   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(VERTEX), &v->x); //Position
 
-FX_ENTRY void FX_CALL
-grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers)
-{
-   if(need_to_compile)
-      compile_shader();
+   glEnableVertexAttribArray(COLOUR_ATTR);
+   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(VERTEX), &v->b); //Colour
 
-   vbo_draw(mode,0,Count,pointers);
+   glEnableVertexAttribArray(TEXCOORD_0_ATTR);
+   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), &v->coord[2]); //Tex0
+
+   glEnableVertexAttribArray(TEXCOORD_1_ATTR);
+   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), &v->coord[0]); //Tex1
+
+   glEnableVertexAttribArray(FOG_ATTR);
+   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(VERTEX), &v->f); //Fog
+
+   glDrawArrays(mode, 0, count);
 }

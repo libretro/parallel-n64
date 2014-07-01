@@ -2390,8 +2390,10 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       }
 
       {
-         grDrawTriangleNew(v[0], v[2], v[1]);
-         grDrawTriangleNew(v[2], v[3], v[1]);
+         VERTEX vout[4] = { v[0], v[2], v[1]};
+         VERTEX vout2[4] = { v[2], v[3], v[1]};
+         grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout[0]);
+         grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout2[0]);
       }
 
       rdp.tri_n += 2;
