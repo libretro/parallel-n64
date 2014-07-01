@@ -159,13 +159,13 @@ typedef FxI32 GrColorCombineFnc_t;
 #define GR_COLORCOMBINE_ONE 0x10
 
 typedef FxI32 GrAlphaBlendFnc_t;
-#define GR_BLEND_ZERO 0x0
-#define GR_BLEND_SRC_ALPHA 0x1
+#define GR_BLEND_ZERO GL_ZERO
+#define GR_BLEND_SRC_ALPHA GL_SRC_ALPHA
 #define GR_BLEND_SRC_COLOR 0x2
 #define GR_BLEND_DST_COLOR GR_BLEND_SRC_COLOR
 #define GR_BLEND_DST_ALPHA 0x3 
-#define GR_BLEND_ONE 0x4
-#define GR_BLEND_ONE_MINUS_SRC_ALPHA 0x5
+#define GR_BLEND_ONE GL_ONE
+#define GR_BLEND_ONE_MINUS_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
 #define GR_BLEND_ONE_MINUS_SRC_COLOR 0x6
 #define GR_BLEND_ONE_MINUS_DST_COLOR GR_BLEND_ONE_MINUS_SRC_COLOR 
 #define GR_BLEND_ONE_MINUS_DST_ALPHA 0x7
@@ -625,11 +625,7 @@ grSstSelect( int which_sst );
 /*
 ** Glide configuration and special effect maintenance functions
 */
-FX_ENTRY void FX_CALL
-grAlphaBlendFunction(
-                     GrAlphaBlendFnc_t rgb_sf,   GrAlphaBlendFnc_t rgb_df,
-                     GrAlphaBlendFnc_t alpha_sf, GrAlphaBlendFnc_t alpha_df
-                     );
+#define grAlphaBlendFunction(rgb_sf, rgb_df, alpha_sf, alpha_df) glEnable(GL_BLEND); glBlendFuncSeparate(rgb_sf, rgb_df, alpha_sf, alpha_df)
 
 FX_ENTRY void FX_CALL
 grAlphaCombine(

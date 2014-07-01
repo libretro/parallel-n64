@@ -1427,87 +1427,8 @@ grTexCombine(
 }
 
 FX_ENTRY void FX_CALL
-grAlphaBlendFunction(
-                     GrAlphaBlendFnc_t rgb_sf,   GrAlphaBlendFnc_t rgb_df,
-                     GrAlphaBlendFnc_t alpha_sf, GrAlphaBlendFnc_t alpha_df
-                     )
-{
-   int sfactorRGB = 0, dfactorRGB = 0, sfactorAlpha = 0, dfactorAlpha = 0;
-   LOG("grAlphaBlendFunction(%d,%d,%d,%d)\r\n", rgb_sf, rgb_df, alpha_sf, alpha_df);
-
-   switch(rgb_sf)
-   {
-      case GR_BLEND_ZERO:
-         sfactorRGB = GL_ZERO;
-         break;
-      case GR_BLEND_SRC_ALPHA:
-         sfactorRGB = GL_SRC_ALPHA;
-         break;
-      case GR_BLEND_ONE:
-         sfactorRGB = GL_ONE;
-         break;
-      case GR_BLEND_ONE_MINUS_SRC_ALPHA:
-         sfactorRGB = GL_ONE_MINUS_SRC_ALPHA;
-         break;
-      default:
-         DISPLAY_WARNING("grAlphaBlendFunction : rgb_sf = %x", rgb_sf);
-   }
-
-   switch(rgb_df)
-   {
-      case GR_BLEND_ZERO:
-         dfactorRGB = GL_ZERO;
-         break;
-      case GR_BLEND_SRC_ALPHA:
-         dfactorRGB = GL_SRC_ALPHA;
-         break;
-      case GR_BLEND_ONE:
-         dfactorRGB = GL_ONE;
-         break;
-      case GR_BLEND_ONE_MINUS_SRC_ALPHA:
-         dfactorRGB = GL_ONE_MINUS_SRC_ALPHA;
-         break;
-      default:
-         DISPLAY_WARNING("grAlphaBlendFunction : rgb_df = %x", rgb_df);
-   }
-
-   switch(alpha_sf)
-   {
-      case GR_BLEND_ZERO:
-         sfactorAlpha = GL_ZERO;
-         break;
-      case GR_BLEND_ONE:
-         sfactorAlpha = GL_ONE;
-         break;
-      default:
-         DISPLAY_WARNING("grAlphaBlendFunction : alpha_sf = %x", alpha_sf);
-   }
-
-   switch(alpha_df)
-   {
-      case GR_BLEND_ZERO:
-         dfactorAlpha = GL_ZERO;
-         break;
-      case GR_BLEND_ONE:
-         dfactorAlpha = GL_ONE;
-         break;
-      default:
-         DISPLAY_WARNING("grAlphaBlendFunction : alpha_df = %x", alpha_df);
-   }
-   glEnable(GL_BLEND);
-   glBlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
-   /*
-      if (blend_func_separate_support)
-      glBlendFuncSeparateEXT(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
-      else
-      glBlendFunc(sfactorRGB, dfactorRGB);
-      */
-}
-
-FX_ENTRY void FX_CALL
 grAlphaTestReferenceValue( GrAlpha_t value )
 {
-   LOG("grAlphaTestReferenceValue(%d)\r\n", value);
    alpha_ref = value;
    grAlphaTestFunction(alpha_func);
 }
