@@ -102,7 +102,7 @@ void rdp_update(void)
     {
        log_cb(RETRO_LOG_INFO, "start of rdp_update.\n");
        log_cb(RETRO_LOG_INFO, "VI_V_SYNC_REG is: %d\n", v_sync);
-       log_cb(RETRO_LOG_INFO, "VI_H_START_REG is: %d\n", *GET_GFX_INFO(VI_H_START_REG));
+       log_cb(RETRO_LOG_INFO, "x1 : %d y1: %d x2: %d y2: %d\n", x1, y1, x2, y2);
     }
 
 /*
@@ -156,7 +156,11 @@ void rdp_update(void)
     pix = 0;
     cur_cvg = 0;
     if (hres <= 0 || vres <= 0 || (!(vitype & 2) && prevwasblank))
+    {
+       if (log_cb)
+          log_cb(RETRO_LOG_WARN, "early return.\n");
         return;
+    }
 
 #ifdef HAVE_DIRECTDRAW
     // direct draw surface lock
