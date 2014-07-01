@@ -107,49 +107,6 @@ grDepthBufferMode( GrDepthBufferMode_t mode )
    }
 }
 
-FX_ENTRY void FX_CALL
-grDepthBufferFunction( GrCmpFnc_t function )
-{
-   LOG("grDepthBufferFunction(%d)\r\n", function);
-   switch(function)
-   {
-      case GR_CMP_GEQUAL:
-         glDepthFunc(GL_GEQUAL);
-         break;
-      case GR_CMP_LEQUAL:
-         glDepthFunc(GL_LEQUAL);
-         break;
-      case GR_CMP_LESS:
-         glDepthFunc(GL_LESS);
-         break;
-      case GR_CMP_ALWAYS:
-         glDepthFunc(GL_ALWAYS);
-         break;
-      case GR_CMP_EQUAL:
-         glDepthFunc(GL_EQUAL);
-         break;
-      case GR_CMP_GREATER:
-         glDepthFunc(GL_GREATER);
-         break;
-      case GR_CMP_NEVER:
-         glDepthFunc(GL_NEVER);
-         break;
-      case GR_CMP_NOTEQUAL:
-         glDepthFunc(GL_NOTEQUAL);
-         break;
-
-      default:
-         DISPLAY_WARNING("unknown depth buffer function : %x", function);
-   }
-}
-
-FX_ENTRY void FX_CALL
-grDepthMask( FxBool mask )
-{
-   LOG("grDepthMask(%d)\r\n", mask);
-   glDepthMask(mask);
-}
-
 extern retro_log_printf_t log_cb;
 bool biasFound = false;
 float polygonOffsetFactor;

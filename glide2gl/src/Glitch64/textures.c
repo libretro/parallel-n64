@@ -610,31 +610,8 @@ grTexClampMode(
 {
    unsigned index = tmu == GR_TMU1 ? 0 : 1;
 
-   switch(s_clampmode)
-   {
-      case GR_TEXTURECLAMP_WRAP:
-         wrap_s[index] = GL_REPEAT;
-         break;
-      case GR_TEXTURECLAMP_CLAMP:
-         wrap_s[index] = GL_CLAMP_TO_EDGE;
-         break;
-      case GR_TEXTURECLAMP_MIRROR_EXT:
-         wrap_s[index] = GL_MIRRORED_REPEAT;
-         break;
-   }
-   switch(t_clampmode)
-   {
-      case GR_TEXTURECLAMP_WRAP:
-         wrap_t[index] = GL_REPEAT;
-         break;
-      case GR_TEXTURECLAMP_CLAMP:
-         wrap_t[index] = GL_CLAMP_TO_EDGE;
-         break;
-      case GR_TEXTURECLAMP_MIRROR_EXT:
-         wrap_t[index] = GL_MIRRORED_REPEAT;
-         break;
-   }
-
+   wrap_s[index] = s_clampmode;
+   wrap_t[index] = t_clampmode;
    glActiveTexture((tmu == GR_TMU1) ? GL_TEXTURE0 : GL_TEXTURE1);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[index]);

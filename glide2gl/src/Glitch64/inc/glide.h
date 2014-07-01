@@ -213,14 +213,14 @@ typedef FxI32 GrTexChromakeyMode_t;
 #define GR_TEXCHROMARANGE_RGB_ALL_EXT  0x0
 
 typedef FxI32 GrCmpFnc_t;
-#define GR_CMP_NEVER    0x0
-#define GR_CMP_LESS     0x1
-#define GR_CMP_EQUAL    0x2
-#define GR_CMP_LEQUAL   0x3
-#define GR_CMP_GREATER  0x4
-#define GR_CMP_NOTEQUAL 0x5
-#define GR_CMP_GEQUAL   0x6
-#define GR_CMP_ALWAYS   0x7
+#define GR_CMP_NEVER    GL_NEVER
+#define GR_CMP_LESS     GL_LESS
+#define GR_CMP_EQUAL    GL_EQUAL
+#define GR_CMP_LEQUAL   GL_LEQUAL
+#define GR_CMP_GREATER  GL_GREATER
+#define GR_CMP_NOTEQUAL GL_NOTEQUAL
+#define GR_CMP_GEQUAL   GL_EQUAL
+#define GR_CMP_ALWAYS   GL_ALWAYS
 
 typedef FxI32 GrColorFormat_t;
 #define GR_COLORFORMAT_ARGB     0x0
@@ -327,9 +327,9 @@ typedef FxI32 GrSmoothingMode_t;
 #define GR_SMOOTHING_ENABLE     0x1
 
 typedef FxI32 GrTextureClampMode_t;
-#define GR_TEXTURECLAMP_WRAP        0x0
-#define GR_TEXTURECLAMP_CLAMP       0x1
-#define GR_TEXTURECLAMP_MIRROR_EXT  0x2
+#define GR_TEXTURECLAMP_WRAP        GL_REPEAT
+#define GR_TEXTURECLAMP_CLAMP       GL_CLAMP_TO_EDGE
+#define GR_TEXTURECLAMP_MIRROR_EXT  GL_MIRRORED_REPEAT
 
 typedef FxI32 GrTextureCombineFnc_t;
 #define GR_TEXTURECOMBINE_ZERO          0x0 /* texout = 0 */
@@ -662,8 +662,7 @@ grColorCombine(
                GrCombineLocal_t local, GrCombineOther_t other,
                FxBool invert );
 
-FX_ENTRY void FX_CALL
-grColorMask( FxBool rgb, FxBool a );
+#define grColorMask(rgb, a) glColorMask(rgb, rgb, rgb, a)
 
 FX_ENTRY void FX_CALL 
 grCullMode( GrCullMode_t mode );
@@ -674,14 +673,12 @@ grConstantColorValue( GrColor_t value );
 FX_ENTRY void FX_CALL 
 grDepthBiasLevel( FxI32 level );
 
-FX_ENTRY void FX_CALL 
-grDepthBufferFunction( GrCmpFnc_t function );
+#define grDepthBufferFunction(function) glDepthFunc(function)
 
 FX_ENTRY void FX_CALL 
 grDepthBufferMode( GrDepthBufferMode_t mode );
 
-FX_ENTRY void FX_CALL 
-grDepthMask( FxBool mask );
+#define grDepthMask(mask) glDepthMask(mask)
 
 FX_ENTRY void FX_CALL 
 grDisableAllEffects( void );

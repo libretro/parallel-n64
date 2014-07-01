@@ -109,13 +109,6 @@ grClipWindow( FxU32 minx, FxU32 miny, FxU32 maxx, FxU32 maxy )
 }
 
 FX_ENTRY void FX_CALL
-grColorMask( FxBool rgb, FxBool a )
-{
-   LOG("grColorMask(%d, %d)\r\n", rgb, a);
-   glColorMask(rgb, rgb, rgb, a);
-}
-
-FX_ENTRY void FX_CALL
 grGlideInit( void )
 {
    LOG("grGlideInit()\r\n");
