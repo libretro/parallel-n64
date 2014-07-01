@@ -305,9 +305,10 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
       case GR_TEXFMT_ALPHA_INTENSITY_44:
          {
             uint16_t *texture_ptr = &((uint16_t*)info->data)[size_tex];
+            uint8_t *texture_ptr8 = &((uint8_t*)info->data)[size_tex];
             //FIXME - still CPU software color conversion
             do{
-               uint16_t texel = (uint16_t)((uint8_t*)info->data)[size_tex];
+               uint16_t texel = (uint16_t)*texture_ptr8--;
                // Replicate glide's ALPHA_INTENSITY_44 to match gl's LUMINANCE_ALPHA
                texel = (texel & 0x00F0) << 4 | (texel & 0x000F);
                *texture_ptr-- = (texel << 4) | texel;
@@ -419,9 +420,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
          case GR_TEXFMT_ALPHA_INTENSITY_44:
             {
                uint16_t *texture_ptr = &((uint16_t*)info->data)[size_tex];
+               uint8_t *texture_ptr8 = &((uint8_t*)info->data)[size_tex];
                //FIXME - still CPU software color conversion
                do{
-                  uint16_t texel = (uint16_t)((uint8_t*)info->data)[size_tex];
+                  uint16_t texel = (uint16_t)*texture_ptr8--;
                   // Replicate glide's ALPHA_INTENSITY_44 to match gl's LUMINANCE_ALPHA
                   texel = (texel & 0x00F0) << 4 | (texel & 0x000F);
                   *texture_ptr-- = (texel << 4) | texel;
