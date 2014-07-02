@@ -216,6 +216,25 @@ void new_frame(void)
       (*g_FrameCallback)(l_CurrentFrame++);
 }
 
+void main_exit(void)
+{
+   /* now begin to shut down */
+#ifdef DBG
+   if (g_DebuggerActive)
+      destroy_debugger();
+#endif
+
+   rsp.romClosed();
+   input.romClosed();
+   audio.romClosed();
+   gfx.romClosed();
+   free_memory();
+
+   // clean up
+   g_EmulatorRunning = 0;
+   StateChanged(M64CORE_EMU_STATE, M64EMU_STOPPED);
+}
+
 /*********************************************************************************************************
 * emulation thread - runs the core
 */
@@ -280,22 +299,6 @@ m64p_error main_run(void)
     r4300_reset_hard();
     r4300_reset_soft();
     r4300_execute();
-
-    /* now begin to shut down */
-#ifdef DBG
-    if (g_DebuggerActive)
-        destroy_debugger();
-#endif
-
-    rsp.romClosed();
-    input.romClosed();
-    audio.romClosed();
-    gfx.romClosed();
-    free_memory();
-
-    // clean up
-    g_EmulatorRunning = 0;
-    StateChanged(M64CORE_EMU_STATE, M64EMU_STOPPED);
 
     return M64ERR_SUCCESS;
 }

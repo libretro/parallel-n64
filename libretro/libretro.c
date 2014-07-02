@@ -401,12 +401,13 @@ void retro_init(void)
 
 void retro_deinit(void)
 {
+   CoreShutdown();
+   main_exit();
+
+   co_delete(cpu_thread);
+
    if (perf_cb.perf_log)
       perf_cb.perf_log();
-
-    CoreShutdown();
-
-    co_delete(cpu_thread);
 }
 
 unsigned int retro_filtering = 0;
