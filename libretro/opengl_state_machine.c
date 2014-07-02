@@ -555,6 +555,20 @@ void sglExit(void)
 }
 #endif
 
+#ifdef SINGLE_THREAD
+extern retro_video_refresh_t video_cb;
+extern uint32_t screen_width;
+extern uint32_t screen_height;
+
+int retro_return(bool just_flipping)
+{
+   stop = 1;
+   flip_only = just_flipping;
+   if (flip_only)
+      video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+   return 0;
+}
+#else
 int retro_return(bool just_flipping)
 {
    if (stop)
@@ -565,3 +579,4 @@ int retro_return(bool just_flipping)
 
    return 0;
 }
+#endif

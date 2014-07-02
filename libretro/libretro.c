@@ -3,7 +3,9 @@
 #include <string.h>
 
 #include "libretro.h"
+#ifndef SINGLE_THREAD
 #include "libco/libco.h"
+#endif
 
 #include "api/m64p_frontend.h"
 #include "plugin/plugin.h"
@@ -17,7 +19,7 @@ struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 
 retro_log_printf_t log_cb = NULL;
-static retro_video_refresh_t video_cb = NULL;
+retro_video_refresh_t video_cb = NULL;
 static retro_input_poll_t poll_cb = NULL;
 retro_input_state_t input_cb = NULL;
 retro_audio_sample_batch_t audio_batch_cb = NULL;
@@ -26,8 +28,15 @@ retro_environment_t environ_cb = NULL;
 struct retro_rumble_interface rumble;
 
 struct retro_hw_render_callback render_iface;
+
+#ifdef SINGLE_THREAD
+void dyna_start(void *code);
+void dyna_jump(void);
+#else
 cothread_t main_thread;
 static cothread_t cpu_thread;
+#endif
+
 static bool emu_thread_has_run = false; // < This is used to ensure the core_gl_context_reset
                                         //   function doesn't try to reinit graphics before needed
 uint16_t button_orientation = 0;
@@ -256,14 +265,19 @@ static void EmuThreadFunction(void)
     CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
     main_run();
 
+#ifdef SINGLE_THREAD
+    return;
+#else
     log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread. \n");
 
     co_switch(main_thread);
+#endif
 
 load_fail:
     free(game_data);
     game_data = 0;
 
+#ifndef SINGLE_THREAD
     //NEVER RETURN! That's how libco rolls
     while(1)
     {
@@ -271,6 +285,7 @@ load_fail:
           log_cb(RETRO_LOG_ERROR, "Running Dead N64 Emulator");
        co_switch(main_thread);
     }
+#endif
 }
 
 //
@@ -396,8 +411,10 @@ void retro_init(void)
    polygonOffsetUnits = -3.0f;
    polygonOffsetFactor =  -3.0f;
 
+#ifndef SINGLE_THREAD
    main_thread = co_active();
    cpu_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
+#endif
 } 
 
 void retro_deinit(void)
@@ -405,7 +422,9 @@ void retro_deinit(void)
    main_stop();
    main_exit();
 
+#ifndef SINGLE_THREAD
    co_delete(cpu_thread);
+#endif
 
    if (perf_cb.perf_log)
       perf_cb.perf_log();
@@ -645,7 +664,9 @@ void retro_unload_game(void)
 {
     stop = 1;
 
+#ifndef SINGLE_THREAD
     co_switch(cpu_thread);
+#endif
 
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
 }
@@ -655,6 +676,9 @@ static bool pushed_frame;
 void retro_run (void)
 {
    static bool updated = false;
+#ifdef SINGLE_THREAD
+   static bool first_run = true;
+#endif
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       update_variables();
@@ -669,7 +693,23 @@ run_again:
 #ifndef HAVE_SHARED_CONTEXT
    sglEnter();
 #endif
+
+#ifdef SINGLE_THREAD
+   if (first_run)
+   {
+      first_run = false;
+      EmuThreadFunction();
+   }
+   else
+   {
+      stop = 0;
+      dyna_start(dyna_jump);
+   }
+#else
    co_switch(cpu_thread);
+#endif
+
+
 #ifndef HAVE_SHARED_CONTEXT
    sglExit();
 #endif
@@ -678,8 +718,10 @@ run_again:
    {
       if (gfx_plugin == GFX_ANGRYLION)
          video_cb(blitter_buf, screen_width, screen_height, screen_pitch); 
+#ifndef HAVE_SHARED_CONTEXT
       else
          video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+#endif
       pushed_frame = true;
       goto run_again;
    }
