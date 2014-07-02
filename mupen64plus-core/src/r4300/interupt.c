@@ -372,7 +372,9 @@ void gen_interupt(void)
 {
     if (stop == 1)
     {
+#ifndef SINGLE_THREAD
         vi_counter = 0; // debug
+#endif
         dyna_stop();
     }
 

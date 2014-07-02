@@ -557,6 +557,11 @@ void sglExit(void)
 
 int retro_return(bool just_flipping)
 {
+#ifdef SINGLE_THREAD
+   stop = 1;
+   flip_only = just_flipping;
+   return 0;
+#else
    if (stop)
       return 0;
 
@@ -564,4 +569,5 @@ int retro_return(bool just_flipping)
    co_switch(main_thread);
 
    return 0;
+#endif
 }
