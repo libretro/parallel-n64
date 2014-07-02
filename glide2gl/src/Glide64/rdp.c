@@ -186,7 +186,6 @@ char out_buf[2048];
 uint32_t frame_count;  // frame counter
 
 int ucode_error_report = true;
-int wrong_tile = -1;
 
 uint8_t microcode[4096];
 uint32_t uc_crc;
@@ -1605,60 +1604,33 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 
 static void rdp_settilesize(uint32_t w0, uint32_t w1)
 {
-   int ul_s, ul_t, lr_s, lr_t;
-   uint32_t tile = (w1 >> 24) & 0x07;
+   int ul_s, ul_t, lr_s, lr_t, tilenum;
 
-   rdp.last_tile_size = tile;
+   ul_s    = (((uint16_t)(w0 >> 14)) & 0x03ff);
+   ul_t    = (((uint16_t)(w0 >> 2 )) & 0x03ff);
+   tilenum = (w1 >> 24) & 0x07;
+   lr_s    = (((uint16_t)(w1 >> 14)) & 0x03ff);
+   lr_t    = (((uint16_t)(w1 >> 2 )) & 0x03ff);
 
-   rdp.tiles[tile].f_ul_s = (float)((w0 >> 12) & 0xFFF) / 4.0f;
-   rdp.tiles[tile].f_ul_t = (float)(w0 & 0xFFF) / 4.0f;
+   rdp.last_tile_size = tilenum;
 
-   ul_s = (((uint16_t)(w0 >> 14)) & 0x03ff);
-   ul_t = (((uint16_t)(w0 >> 2 )) & 0x03ff);
-   lr_s = (((uint16_t)(w1 >> 14)) & 0x03ff);
-   lr_t = (((uint16_t)(w1 >> 2 )) & 0x03ff);
+   rdp.tiles[tilenum].f_ul_s = (float)((w0 >> 12) & 0xFFF) / 4.0f;
+   rdp.tiles[tilenum].f_ul_t = (float)(w0 & 0xFFF) / 4.0f;
 
-   if (lr_s == 0 && ul_s == 0) //pokemon puzzle league set such tile size
-      wrong_tile = tile;
-   else if (wrong_tile == (int)tile)
-      wrong_tile = -1;
-
-#if 0
-   if (settings.use_sts1_only)
-   {
-      // ** USE FIRST SETTILESIZE ONLY **
-      // This option helps certain textures while using the 'Alternate texture size method',
-      // but may break others. (should help more than break)
-
-      if (tile_set)
-      {
-         // coords in 10.2 format
-         rdp.tiles[tile].ul_s = ul_s;
-         rdp.tiles[tile].ul_t = ul_t;
-         rdp.tiles[tile].lr_s = lr_s;
-         rdp.tiles[tile].lr_t = lr_t;
-         tile_set = 0;
-      }
-   }
-   else
-#endif
-   {
-      // coords in 10.2 format
-      rdp.tiles[tile].ul_s = ul_s;
-      rdp.tiles[tile].ul_t = ul_t;
-      rdp.tiles[tile].lr_s = lr_s;
-      rdp.tiles[tile].lr_t = lr_t;
-   }
+   rdp.tiles[tilenum].ul_s = ul_s;
+   rdp.tiles[tilenum].ul_t = ul_t;
+   rdp.tiles[tilenum].lr_s = lr_s;
+   rdp.tiles[tilenum].lr_t = lr_t;
 
    // handle wrapping
-   if (rdp.tiles[tile].lr_s < rdp.tiles[tile].ul_s) rdp.tiles[tile].lr_s += 0x400;
-   if (rdp.tiles[tile].lr_t < rdp.tiles[tile].ul_t) rdp.tiles[tile].lr_t += 0x400;
+   if (rdp.tiles[tilenum].lr_s < rdp.tiles[tilenum].ul_s)
+      rdp.tiles[tilenum].lr_s += 0x400;
+   if (rdp.tiles[tilenum].lr_t < rdp.tiles[tilenum].ul_t)
+      rdp.tiles[tilenum].lr_t += 0x400;
 
    rdp.update |= UPDATE_TEXTURE;
 
    rdp.first = 1;
-
-   //FRDP ("settilesize: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d, f_ul_s: %f, f_ul_t: %f\n", tile, ul_s, ul_t, lr_s, lr_t, rdp.tiles[tile].f_ul_s, rdp.tiles[tile].f_ul_t);
 }
 
 #ifdef HAVE_HWFBE
@@ -2044,19 +2016,6 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
 
    if (lr_s < ul_s || lr_t < ul_t)
       return;
-
-   if (wrong_tile >= 0) //there was a tile with zero length
-   {
-      rdp.tiles[wrong_tile].lr_s = lr_s;
-
-      if (rdp.tiles[tile].size > rdp.tiles[wrong_tile].size)
-         rdp.tiles[wrong_tile].lr_s <<= (rdp.tiles[tile].size - rdp.tiles[wrong_tile].size);
-      else if (rdp.tiles[tile].size < rdp.tiles[wrong_tile].size)
-         rdp.tiles[wrong_tile].lr_s >>= (rdp.tiles[wrong_tile].size - rdp.tiles[tile].size);
-      rdp.tiles[wrong_tile].lr_t = lr_t;
-      rdp.tiles[wrong_tile].mask_s = rdp.tiles[wrong_tile].mask_t = 0;
-      // wrong_tile = -1;
-   }
 
 #ifdef HAVE_HWFBE
    if (rdp.tbuff_tex)// && (rdp.tiles[tile].format == 0))
