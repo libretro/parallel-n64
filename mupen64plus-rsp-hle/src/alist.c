@@ -275,7 +275,7 @@ void alist_envmix_exp(
 
     uint32_t ptr = 0;
     int x, y;
-    short save_buffer[40];
+    short *save_buffer = (short*)((uint8_t*)hle->dram + address);
 
     if (init) {
         ramps[0].value  = (vol[0] << 16);
@@ -287,7 +287,6 @@ void alist_envmix_exp(
         exp_seq[0]      = (vol[0] * rate[0]);
         exp_seq[1]      = (vol[1] * rate[1]);
     } else {
-        memcpy((uint8_t *)save_buffer, (hle->dram + address), 80);
         wet             = *(int16_t *)(save_buffer +  0); /* 0-1 */
         dry             = *(int16_t *)(save_buffer +  2); /* 2-3 */
         ramps[0].target = *(int32_t *)(save_buffer +  4); /* 4-5 */
@@ -349,7 +348,6 @@ void alist_envmix_exp(
     *(int32_t *)(save_buffer + 14) = exp_seq[1];        /* 14-15 */
     *(int32_t *)(save_buffer + 16) = ramps[0].value;    /* 12-13 */
     *(int32_t *)(save_buffer + 18) = ramps[1].value;    /* 14-15 */
-    memcpy(hle->dram + address, (uint8_t *)save_buffer, 80);
 }
 
 void alist_envmix_ge(
