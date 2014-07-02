@@ -58,7 +58,6 @@ void dyna_start(void *code)
   /* then call the code(), which should theoretically never return.  */
   /* When dyna_stop() sets the *return_address to the saved RIP, the emulator thread will come back here. */
   /* It will jump to label 2, restore the base and stack pointers, and exit this function */
-  DebugMessage(M64MSG_INFO, "R4300: starting 64-bit dynamic recompiler at: %p", code);
 #if defined(__GNUC__) && defined(__x86_64__)
   asm volatile
     (" push %%rbx              \n"  /* we must push an even # of registers to keep stack 16-byte aligned */
