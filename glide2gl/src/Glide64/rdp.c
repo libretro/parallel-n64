@@ -3468,9 +3468,9 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
    int r, g, b, a, z, s, t, w;
    VERTEX vtxbuf[12], *vtx;
 
-   int32_t yl, ym, yh;
-   int32_t xl, xm, xh;
-   int32_t dxldy, dxhdy, dxmdy;
+   int32_t yl, ym, yh; /* triangle edge y-coordinates */
+   int32_t xl, xm, xh; /* triangle edge x-coordinates */
+   int32_t dxldy, dxhdy, dxmdy; /* triangle edge inverse-slopes */
    uint32_t w3, w4, w5, w6, w7, w8;
    int32_t nbVtxs;
 
@@ -3501,11 +3501,12 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
    yl = (w1 & 0x3fff);
    ym = ((w2 >> 16) & 0x3fff);
    yh = ((w2 >> 0) & 0x3fff);
+
    xl = (int32_t)(w3);
-   xh = (int32_t)(w5);
-   xm = (int32_t)(w7);
    dxldy = (int32_t)(w4);
+   xh = (int32_t)(w5);
    dxhdy = (int32_t)(w6);
+   xm = (int32_t)(w7);
    dxmdy = (int32_t)(w8);
 
    if (yl & (0x800<<2)) yl |= 0xfffff000<<2;
