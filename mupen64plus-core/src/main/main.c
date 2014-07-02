@@ -298,6 +298,7 @@ m64p_error main_init(void)
     /* call r4300 CPU core and run the game */
     r4300_reset_hard();
     r4300_reset_soft();
+    r4300_init();
 }
 
 m64p_error main_run(void)
@@ -320,4 +321,6 @@ void main_stop(void)
    if(g_DebuggerActive)
       debugger_step();
 #endif        
+
+   r4300_deinit();
 }

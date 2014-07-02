@@ -308,12 +308,8 @@ static void dynarec_setup_code(void)
 }
 #endif
 
-void r4300_execute(void)
+void r4300_init(void)
 {
-#if (defined(DYNAREC) && defined(PROFILE_R4300))
-    unsigned int i;
-#endif
-
     current_instruction_table = cached_interpreter_table;
 
     delay_slot=0;
@@ -333,7 +329,6 @@ void r4300_execute(void)
     {
         DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Pure Interpreter");
         r4300emu = CORE_PURE_INTERPRETER;
-        pure_interpreter();
     }
 #if defined(DYNAREC)
     else if (r4300emu >= 2)
@@ -344,31 +339,6 @@ void r4300_execute(void)
 
 #ifdef NEW_DYNAREC
         new_dynarec_init();
-        new_dyna_start();
-        new_dynarec_cleanup();
-#else
-        dyna_start(dynarec_setup_code);
-        PC++;
-#endif
-#if defined(PROFILE_R4300)
-        pfProfile = fopen("instructionaddrs.dat", "ab");
-        for (i=0; i<0x100000; i++)
-            if (invalid_code[i] == 0 && blocks[i] != NULL && blocks[i]->code != NULL && blocks[i]->block != NULL)
-            {
-                unsigned char *x86addr;
-                int mipsop;
-                // store final code length for this block
-                mipsop = -1; /* -1 == end of x86 code block */
-                x86addr = blocks[i]->code + blocks[i]->code_length;
-                if (fwrite(&mipsop, 1, 4, pfProfile) != 4 ||
-                    fwrite(&x86addr, 1, sizeof(char *), pfProfile) != sizeof(char *))
-                    DebugMessage(M64MSG_ERROR, "Error writing R4300 instruction address profiling data");
-            }
-        fclose(pfProfile);
-        pfProfile = NULL;
-#endif
-#if defined(__LIBRETRO__) && defined(NEW_DYNAREC) // Hack to prevent crashes on exit
-        free_blocks();
 #endif
     }
 #endif
@@ -384,23 +354,31 @@ void r4300_execute(void)
             return;
 
         last_addr = PC->addr;
-        while (!stop)
-        {
-#ifdef COMPARE_CORE
-            if (PC->ops == cached_interpreter_table.FIN_BLOCK && (PC->addr < 0x80000000 || PC->addr >= 0xc0000000))
-                virtual_to_physical_address(PC->addr, 2);
-            CoreCompareCallback();
-#endif
-#ifdef DBG
-            if (g_DebuggerActive) update_debugger(PC->addr);
-#endif
-            PC->ops();
-        }
+    }
+}
 
+void r4300_deinit(void)
+{
+    DebugMessage(M64MSG_INFO, "R4300 emulator finished.");
+
+    if (r4300emu == CORE_PURE_INTERPRETER)
+    {
+    }
+#if defined(DYNAREC)
+    else if (r4300emu >= 2)
+    {
+#ifdef NEW_DYNAREC
+       new_dynarec_cleanup();
+       free_blocks();
+#else
+       PC++;
+#endif
+    }
+#endif
+    else /* if (r4300emu == CORE_INTERPRETER) */
+    {
         free_blocks();
     }
-
-    DebugMessage(M64MSG_INFO, "R4300 emulator finished.");
 
     /* print instruction counts */
 #if defined(COUNT_INSTR)
@@ -430,4 +408,37 @@ void r4300_execute(void)
         }
     }
 #endif
+}
+
+void r4300_execute(void)
+{
+    if (r4300emu == CORE_PURE_INTERPRETER)
+    {
+        pure_interpreter();
+    }
+#if defined(DYNAREC)
+    else if (r4300emu >= 2)
+    {
+#ifdef NEW_DYNAREC
+        new_dyna_start();
+#else
+        dyna_start(dynarec_setup_code);
+#endif
+    }
+#endif
+    else /* if (r4300emu == CORE_INTERPRETER) */
+    {
+        while (!stop)
+        {
+#ifdef COMPARE_CORE
+            if (PC->ops == cached_interpreter_table.FIN_BLOCK && (PC->addr < 0x80000000 || PC->addr >= 0xc0000000))
+                virtual_to_physical_address(PC->addr, 2);
+            CoreCompareCallback();
+#endif
+#ifdef DBG
+            if (g_DebuggerActive) update_debugger(PC->addr);
+#endif
+            PC->ops();
+        }
+    }
 }

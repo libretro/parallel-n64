@@ -402,7 +402,7 @@ void retro_init(void)
 
 void retro_deinit(void)
 {
-   CoreShutdown();
+   main_stop();
    main_exit();
 
    co_delete(cpu_thread);
