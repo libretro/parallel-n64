@@ -718,7 +718,7 @@ run_again:
    {
       if (gfx_plugin == GFX_ANGRYLION)
          video_cb(blitter_buf, screen_width, screen_height, screen_pitch); 
-#ifndef HAVE_SHARED_CONTEXT
+#ifndef SINGLE_THREAD
       else
          video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
 #endif
