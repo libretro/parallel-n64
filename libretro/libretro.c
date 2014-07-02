@@ -254,6 +254,7 @@ static void EmuThreadFunction(void)
     log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE. \n");
 
     CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
+    main_run();
 
     log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread. \n");
 

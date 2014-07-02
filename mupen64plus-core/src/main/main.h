@@ -40,6 +40,7 @@ void new_frame(void);
 int  main_set_core_defaults(void);
 void main_message(m64p_msg_level level, unsigned int osd_corner, const char *format, ...);
 
+m64p_error main_init(void);
 m64p_error main_run(void);
 void main_exit(void);
 void main_stop(void);

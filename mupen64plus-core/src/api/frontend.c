@@ -156,8 +156,7 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             if (g_EmulatorRunning || !l_ROMOpen)
                 return M64ERR_INVALID_STATE;
             /* the main_run() function will not return until the player has quit the game */
-            rval = main_run();
-            return rval;
+            return main_init();
         case M64CMD_STOP:
             if (!g_EmulatorRunning)
                 return M64ERR_INVALID_STATE;
