@@ -670,6 +670,9 @@ run_again:
    sglEnter();
 #endif
    co_switch(cpu_thread);
+#ifndef HAVE_SHARED_CONTEXT
+   sglExit();
+#endif
 
    if (flip_only)
    {

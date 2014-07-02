@@ -561,9 +561,6 @@ int retro_return(bool just_flipping)
       return 0;
 
    flip_only = just_flipping;
-#ifndef HAVE_SHARED_CONTEXT
-   sglExit();
-#endif
    co_switch(main_thread);
 
    return 0;
