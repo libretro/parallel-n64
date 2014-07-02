@@ -69,17 +69,11 @@ grCullMode( GrCullMode_t mode )
          glDisable(GL_CULL_FACE);
          break;
       case GR_CULL_NEGATIVE:
-         if (!inverted_culling)
-            glCullFace(GL_FRONT);
-         else
-            glCullFace(GL_BACK);
+         glCullFace(!inverted_culling ? GL_FRONT : GL_BACK);
          glEnable(GL_CULL_FACE);
          break;
       case GR_CULL_POSITIVE:
-         if (!inverted_culling)
-            glCullFace(GL_BACK);
-         else
-            glCullFace(GL_FRONT);
+         glCullFace(!inverted_culling ? GL_BACK : GL_FRONT);
          glEnable(GL_CULL_FACE);
          break;
       default:
