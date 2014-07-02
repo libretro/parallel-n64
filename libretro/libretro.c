@@ -263,11 +263,11 @@ static void EmuThreadFunction(void)
     log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE. \n");
 
     CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
-    main_run();
 
 #ifdef SINGLE_THREAD
     return;
 #else
+    main_run();
     log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread. \n");
 
     co_switch(main_thread);
@@ -703,7 +703,7 @@ run_again:
    else
    {
       stop = 0;
-      dyna_start(dyna_jump);
+      main_run();
    }
 #else
    co_switch(cpu_thread);

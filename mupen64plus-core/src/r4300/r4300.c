@@ -340,6 +340,8 @@ void r4300_init(void)
 
 #ifdef NEW_DYNAREC
         new_dynarec_init();
+#else
+        dyna_start(dynarec_setup_code);
 #endif
     }
 #endif
@@ -424,7 +426,7 @@ void r4300_execute(void)
 #ifdef NEW_DYNAREC
         new_dyna_start();
 #else
-        dyna_start(dynarec_setup_code);
+        dyna_start(dyna_jump);
 #endif
     }
 #endif
