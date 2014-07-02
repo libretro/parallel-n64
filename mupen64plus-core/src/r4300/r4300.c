@@ -329,6 +329,7 @@ void r4300_init(void)
     {
         DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Pure Interpreter");
         r4300emu = CORE_PURE_INTERPRETER;
+        pure_interpreter_init();
     }
 #if defined(DYNAREC)
     else if (r4300emu >= 2)
@@ -414,7 +415,8 @@ void r4300_execute(void)
 {
     if (r4300emu == CORE_PURE_INTERPRETER)
     {
-        pure_interpreter();
+       while (!stop)
+          pure_interpreter();
     }
 #if defined(DYNAREC)
     else if (r4300emu >= 2)

@@ -400,7 +400,7 @@ static void prefetch(void)
    }
 }
 
-void pure_interpreter(void)
+void pure_interpreter_init(void)
 {
    stop=0;
    PC = &interp_PC;
@@ -412,16 +412,16 @@ void pure_interpreter(void)
 #endif*/
 
    current_instruction_table = pure_interpreter_table;
+}
 
-   while (!stop)
-   {
-     prefetch();
+void pure_interpreter(void)
+{
+   prefetch();
 #ifdef COMPARE_CORE
-     CoreCompareCallback();
+   CoreCompareCallback();
 #endif
 #ifdef DBG
-     if (g_DebuggerActive) update_debugger(PC->addr);
+   if (g_DebuggerActive) update_debugger(PC->addr);
 #endif
-     PC->ops();
-   }
+   PC->ops();
 }
