@@ -448,6 +448,7 @@ grTexSource( GrChipID_t tmu,
    int gltexfmt, glpixfmt, glpackfmt;
    unsigned index = (tmu == GR_TMU1) ? 0 : 1;
 
+   glActiveTexture((tmu == GR_TMU1) ? GL_TEXTURE0 : GL_TEXTURE1);
    if (!do_download)
       goto grtexsource;
 
@@ -460,7 +461,6 @@ grTexSource( GrChipID_t tmu,
 
    factor = grTexFormat2GLPackedFmt(info, info->format, &gltexfmt, &glpixfmt, &glpackfmt);
 
-   glActiveTexture(GL_TEXTURE2);
    remove_tex(startAddress+1, startAddress+1+(width * height * factor));
 
    add_tex(startAddress+1);
@@ -471,8 +471,6 @@ grTexSource( GrChipID_t tmu,
    info->height = height;
 
 grtexsource:
-   glActiveTexture((tmu == GR_TMU1) ? GL_TEXTURE0 : GL_TEXTURE1);
-
    tex_height[index] = 256;
    tex_width[index] = 256;
    if (info->aspectRatioLog2 < 0)
@@ -480,7 +478,8 @@ grtexsource:
    else
       tex_height[index] = tex_width[index] >> info->aspectRatioLog2;
 
-   glBindTexture(GL_TEXTURE_2D, startAddress+1);
+   if (!do_download)
+      glBindTexture(GL_TEXTURE_2D, startAddress+1);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[index]);
