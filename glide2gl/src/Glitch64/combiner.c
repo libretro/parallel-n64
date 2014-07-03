@@ -1390,13 +1390,8 @@ FX_ENTRY void FX_CALL
 grAlphaTestFunction( GrCmpFnc_t function, GrAlpha_t value, int set_alpha_ref)
 {
    alpha_func = function;
-   alpha_test = true;
-
-   if (set_alpha_ref)
-      alpha_ref = value;
-
-   if (function == GR_CMP_ALWAYS)
-      alpha_test = false;
+   alpha_test = (function == GR_CMP_ALWAYS) ? false : true;
+   alpha_ref = (set_alpha_ref) ? value : alpha_ref;
 }
 
 FX_ENTRY void FX_CALL 
