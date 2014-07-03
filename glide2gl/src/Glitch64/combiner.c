@@ -2506,19 +2506,16 @@ grConstantColorValueExtZero(GrChipID_t    tmu,
    LOG("grConstantColorValueExtZero(%d,%d)\r\n", tmu, value);
 
 
-   ccolor[tmu][0] = 0;
-   ccolor[tmu][1] = 0;
-   ccolor[tmu][2] = 0;
-   ccolor[tmu][3] = 0;
+   ccolor[tmu][0] = ccolor[tmu][1] = ccolor[tmu][2] = ccolor[tmu][3] = 0;
 
    if (tmu == GR_TMU0)
    {
       ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
-      glUniform4f(ccolor1_location, ccolor[1][0], ccolor[1][1], ccolor[1][2], ccolor[1][3]);
+      glUniform4f(ccolor1_location, 0, 0, 0, 0);
    }
    else
    {
       ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
-      glUniform4f(ccolor0_location, ccolor[0][0], ccolor[0][1], ccolor[0][2], ccolor[0][3]);
+      glUniform4f(ccolor0_location, 0, 0, 0, 0);
    }
 }
