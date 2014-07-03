@@ -618,8 +618,7 @@ void TexCache(void)
             grTexAlphaCombineExt(tmu_1, cmb.t1a_ext_a, cmb.t1a_ext_a_mode,
                   cmb.t1a_ext_b, cmb.t1a_ext_b_mode,
                   cmb.t1a_ext_c, cmb.t1a_ext_c_invert,
-                  cmb.t1a_ext_d, cmb.t1a_ext_d_invert, 0, 0);
-            grConstantColorValueExt(tmu_1, cmb.tex_ccolor);
+                  cmb.t1a_ext_d, cmb.t1a_ext_d_invert, 0, 0, cmb.tex_ccolor);
          }
          else
          {
@@ -644,8 +643,7 @@ void TexCache(void)
             grTexAlphaCombineExt(tmu_0, cmb.t0a_ext_a, cmb.t0a_ext_a_mode,
                   cmb.t0a_ext_b, cmb.t0a_ext_b_mode,
                   cmb.t0a_ext_c, cmb.t0a_ext_c_invert,
-                  cmb.t0a_ext_d, cmb.t0a_ext_d_invert, 0, 0);
-            grConstantColorValueExt(tmu_0, cmb.tex_ccolor);
+                  cmb.t0a_ext_d, cmb.t0a_ext_d_invert, 0, 0, cmb.tex_ccolor);
          }
          else
          {

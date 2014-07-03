@@ -111,11 +111,8 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
                      GrTACUColor_t b, GrCombineMode_t b_mode,
                      GrTACUColor_t c, FxBool c_invert,
                      GrTACUColor_t d, FxBool d_invert,
-                     FxU32 shift, FxBool invert);
-
-FX_ENTRY void FX_CALL
-grConstantColorValueExt(GrChipID_t    tmu,
-                        GrColor_t     value);
+                     FxU32 shift, FxBool invert,
+                     GrColor_t ccolor_value);
 
 FX_ENTRY void FX_CALL
 grConstantColorValueExtZero(GrChipID_t    tmu,

@@ -2246,7 +2246,8 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
                      GrTACUColor_t b, GrCombineMode_t b_mode,
                      GrTACUColor_t c, FxBool c_invert,
                      GrTACUColor_t d, FxBool d_invert,
-                     FxU32 shift, FxBool invert)
+                     FxU32 shift, FxBool invert,
+                        GrColor_t     ccolor_value)
 {
    int num_tex;
    LOG("grTexAlphaCombineExt(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)\r\n", tmu, a, a_mode, b, b_mode, c, c_invert, d, d_invert, shift, invert);
@@ -2521,23 +2522,10 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
    else
       strcat(fragment_shader_texture1, "ctexture1.a = (ctex1_a.a + ctex1_b.a) * ctex1_c.a + ctex1_d.a; \n");
 
-   need_to_compile = 1;
-}
-
-FX_ENTRY void FX_CALL
-grConstantColorValueExt(GrChipID_t    tmu,
-                        GrColor_t     value)
-{
-   int num_tex;
-   LOG("grConstantColorValueExt(%d,%d)\r\n", tmu, value);
-
-   if (tmu == GR_TMU0) num_tex = 1;
-   else num_tex = 0;
-
-   ccolor[num_tex][0] = ((value >> 24) & 0xFF) / 255.0f;
-   ccolor[num_tex][1] = ((value >> 16) & 0xFF) / 255.0f;
-   ccolor[num_tex][2] = ((value >>  8) & 0xFF) / 255.0f;
-   ccolor[num_tex][3] = (value & 0xFF) / 255.0f;
+   ccolor[num_tex][0] = ((ccolor_value >> 24) & 0xFF) / 255.0f;
+   ccolor[num_tex][1] = ((ccolor_value >> 16) & 0xFF) / 255.0f;
+   ccolor[num_tex][2] = ((ccolor_value >>  8) & 0xFF) / 255.0f;
+   ccolor[num_tex][3] = (ccolor_value & 0xFF) / 255.0f;
 
    if(num_tex == 0)
    {
@@ -2549,6 +2537,8 @@ grConstantColorValueExt(GrChipID_t    tmu,
       ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
       glUniform4f(ccolor1_location, ccolor[1][0], ccolor[1][1], ccolor[1][2], ccolor[1][3]);
    }
+
+   need_to_compile = 1;
 }
 
 FX_ENTRY void FX_CALL
