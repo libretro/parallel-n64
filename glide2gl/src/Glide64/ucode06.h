@@ -84,7 +84,7 @@ static float set_sprite_combine_mode(void)
 #endif
 
   grCullMode (GR_CULL_DISABLE);
-  grFogMode (GR_FOG_DISABLE);
+  grFogMode (GR_FOG_DISABLE, rdp.fog_color);
   rdp.update |= UPDATE_CULL_MODE | UPDATE_FOG_ENABLED;
 
   if (rdp.cycle_mode == G_CYC_COPY)
@@ -743,7 +743,7 @@ static void uc6_draw_polygons (VERTEX v[4])
    rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
    if (settings.fog && (rdp.flags & FOG_ENABLED))
-      grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
+      grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
 }
 
 static void uc6_read_object_data (DRAWOBJECT *d)
@@ -1480,7 +1480,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
          if (settings.fog && (rdp.flags & FOG_ENABLED))
-            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
+            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
 
       }
       a = rdp.pc[rdp.pc_i] & BMASK;

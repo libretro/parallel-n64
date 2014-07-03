@@ -253,13 +253,8 @@ typedef FxI32 GrStippleMode_t;
 
 typedef FxI32 GrFogMode_t;
 #define GR_FOG_DISABLE                     0x0
-#define GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT  0x1
-#define GR_FOG_WITH_TABLE_ON_Q             0x2
-#define GR_FOG_WITH_TABLE_ON_W             GR_FOG_WITH_TABLE_ON_Q
-#define GR_FOG_WITH_ITERATED_Z             0x3
-#define GR_FOG_WITH_ITERATED_ALPHA_EXT     0x4
-#define GR_FOG_MULT2                       0x100
-#define GR_FOG_ADD2                        0x200
+#define GR_FOG_WITH_TABLE_ON_Q             0x1
+#define GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT  0x2
 
 typedef FxU32 GrLock_t;
 #define GR_LFB_READ_ONLY  0x00
@@ -669,13 +664,7 @@ FX_ENTRY void FX_CALL
 grDisableAllEffects( void );
 
 FX_ENTRY void FX_CALL 
-grFogColorValue( GrColor_t fogcolor );
-
-FX_ENTRY void FX_CALL 
-grFogMode( GrFogMode_t mode );
-
-FX_ENTRY void FX_CALL 
-grFogTable( const GrFog_t ft[] );
+grFogMode( GrFogMode_t mode, GrColor_t fogcolor );
 
 FX_ENTRY void FX_CALL 
 grLoadGammaTable( FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue);

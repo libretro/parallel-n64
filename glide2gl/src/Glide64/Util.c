@@ -1435,8 +1435,7 @@ void update(void)
             rdp_blender_setting *bl = (rdp_blender_setting*)(&blender);
             if((rdp.fog_multiplier > 0) && (bl->c1_m1a==3 || bl->c1_m2a == 3 || bl->c2_m1a == 3 || bl->c2_m2a == 3))
             {
-               grFogColorValue(rdp.fog_color);
-               grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
+               grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
                rdp.fog_mode = FOG_MODE_ENABLED;
                LRDP("fog enabled \n");
             }
@@ -1444,20 +1443,18 @@ void update(void)
             {
                LRDP("fog disabled in blender\n");
                rdp.fog_mode = FOG_MODE_DISABLED;
-               grFogMode (GR_FOG_DISABLE);
+               grFogMode (GR_FOG_DISABLE, rdp.fog_color);
             }
          }
          else if (blender == 0xc410 || blender == 0xc411 || blender == 0xf500)
          {
-            grFogColorValue(rdp.fog_color);
-            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
+            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
             rdp.fog_mode = FOG_MODE_BLEND;
             LRDP("fog blend \n");
          }
          else if (blender == 0x04d1)
          {
-            grFogColorValue(rdp.fog_color);
-            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
+            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
             rdp.fog_mode = FOG_MODE_BLEND_INVERSE;
             LRDP("fog blend \n");
          }
@@ -1465,7 +1462,7 @@ void update(void)
          {
             LRDP("fog disabled\n");
             rdp.fog_mode = FOG_MODE_DISABLED;
-            grFogMode (GR_FOG_DISABLE);
+            grFogMode (GR_FOG_DISABLE, rdp.fog_color);
          }
       }
    }

@@ -1393,10 +1393,8 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
             fog = 1.0f / ((~rdp.fog_color)&0xFF);
 
          for (i = 0; i < n_vertices; i++)
-         {
             vptr[i].f = fog;
-         }
-         grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
+         grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
       }
 
       ConvertCoordsConvert (vptr, n_vertices);
@@ -2149,7 +2147,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    {
       float Z;
 
-      grFogMode (GR_FOG_DISABLE);
+      grFogMode (GR_FOG_DISABLE, rdp.fog_color);
 
       Z = (rdp.cycle_mode == 3) ? 0.0f : set_sprite_combine_mode();
 
@@ -2198,7 +2196,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
          grStippleMode(GR_STIPPLE_DISABLE);
 
          grCullMode(GR_CULL_DISABLE);
-         grFogMode (GR_FOG_DISABLE);
+         grFogMode (GR_FOG_DISABLE, rdp.fog_color);
          grDepthBufferFunction (GR_CMP_ALWAYS);
          grDepthMask (FXFALSE);
 

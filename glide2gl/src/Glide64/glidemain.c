@@ -2214,7 +2214,6 @@ int InitGfx(void)
             fog_t[i-1] = fog_t[i] - 63;
       }
       fog_t[0] = 0;
-      grFogTable (fog_t);
    }
    else //not supported
       settings.fog = false;

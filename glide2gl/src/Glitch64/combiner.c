@@ -1413,31 +1413,16 @@ grAlphaTestFunction( GrCmpFnc_t function )
    alpha_test = true;
 }
 
-// fog
-
 FX_ENTRY void FX_CALL 
-grFogMode( GrFogMode_t mode )
+grFogMode( GrFogMode_t mode, GrColor_t fogcolor)
 {
-   LOG("grFogMode(%d)\r\n", mode);
-   switch(mode)
-   {
-      case GR_FOG_DISABLE:
-         //glDisable(GL_FOG);
-         fog_enabled = 0;
-         break;
-      case GR_FOG_WITH_TABLE_ON_Q:
-         //glEnable(GL_FOG);
-         //glFogi(GL_FOG_COORDINATE_SOURCE_EXT, GL_FOG_COORDINATE_EXT);
-         fog_enabled = 1;
-         break;
-      case GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT:
-         //glEnable(GL_FOG);
-         //glFogi(GL_FOG_COORDINATE_SOURCE_EXT, GL_FOG_COORDINATE_EXT);
-         fog_enabled = 2;
-         break;
-      default:
-         DISPLAY_WARNING("grFogMode : unknown mode : %x", mode);
-   }
+   fog_enabled = mode;
+
+   fogColor[0] = ((fogcolor >> 24) & 0xFF) / 255.0f;
+   fogColor[1] = ((fogcolor >> 16) & 0xFF) / 255.0f;
+   fogColor[2] = ((fogcolor >>  8) & 0xFF) / 255.0f;
+   fogColor[3] = (fogcolor & 0xFF) / 255.0f;
+
    need_to_compile = 1;
 }
 
@@ -1453,28 +1438,8 @@ guFogGenerateLinear(GrFog_t *fogtable,
                     float nearZ, float farZ )
 {
    LOG("guFogGenerateLinear(%f,%f)\r\n", nearZ, farZ);
-   /*
-      glFogi(GL_FOG_MODE, GL_LINEAR);
-      glFogi(GL_FOG_COORDINATE_SOURCE_EXT, GL_FOG_COORDINATE_EXT);
-      glFogf(GL_FOG_START, nearZ / 255.0f);
-      glFogf(GL_FOG_END, farZ / 255.0f);
-      */
    fogStart = nearZ / 255.0f;
    fogEnd = farZ / 255.0f;
-}
-
-FX_ENTRY void FX_CALL 
-grFogTable( const GrFog_t ft[] )
-{
-}
-
-FX_ENTRY void FX_CALL 
-grFogColorValue( GrColor_t fogcolor )
-{
-   fogColor[0] = ((fogcolor >> 24) & 0xFF) / 255.0f;
-   fogColor[1] = ((fogcolor >> 16) & 0xFF) / 255.0f;
-   fogColor[2] = ((fogcolor >>  8) & 0xFF) / 255.0f;
-   fogColor[3] = (fogcolor & 0xFF) / 255.0f;
 }
 
 // chroma
