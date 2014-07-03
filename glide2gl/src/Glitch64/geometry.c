@@ -32,18 +32,6 @@
 int inverted_culling;
 int culling_mode;
 
-
-
-#define ZCALC(z, q) ((z_en) ? ((z) / Z_MAX) / (q) : 1.0f)
-
-static INLINE float ytex(int tmu, float y)
-{
-   if (invtex[tmu])
-      return invtex[tmu] - y;
-   else
-      return y;
-}
-
 FX_ENTRY void FX_CALL
 grCullMode( GrCullMode_t mode )
 {
@@ -93,7 +81,6 @@ grDepthBufferMode( GrDepthBufferMode_t mode )
    }
 }
 
-extern retro_log_printf_t log_cb;
 bool biasFound = false;
 float polygonOffsetFactor;
 float polygonOffsetUnits;
