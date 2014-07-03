@@ -152,7 +152,6 @@ void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers);
 #define glCheckFramebufferStatus sglCheckFramebufferStatus
 #define glDeleteFramebuffers sglDeleteFramebuffers
 #define glDeleteTextures sglDeleteTextures
-#define glBindRenderbuffer sglBindRenderbuffer
 #define glFramebufferTexture2D sglFramebufferTexture2D
 #endif
 
