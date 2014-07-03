@@ -33,15 +33,6 @@
 
 extern retro_environment_t environ_cb;
 
-typedef struct
-{
-  unsigned int address;
-  int width;
-  int height;
-  unsigned int zbid;
-  int buff_clear;
-} fb;
-
 int nbAuxBuffers, current_buffer;
 int width, widtho, heighto, height;
 int saved_width, saved_height;
