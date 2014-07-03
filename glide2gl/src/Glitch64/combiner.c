@@ -805,7 +805,7 @@ grColorCombine(
          strcpy(fragment_shader_color_combiner, fragment_shader_default);
          DISPLAY_WARNING("grColorCombine : unknown function : %x", function);
    }
-   //compile_shader();
+
    need_to_compile = 1;
 }
 
@@ -977,7 +977,6 @@ grAlphaCombine(
          DISPLAY_WARNING("grAlphaCombine : unknown function : %x", function);
    }
 
-   //compile_shader();
    need_to_compile = 1;
 }
 
