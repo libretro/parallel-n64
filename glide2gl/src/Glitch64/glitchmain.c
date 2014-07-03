@@ -34,7 +34,6 @@
 extern retro_environment_t environ_cb;
 
 int width, height;
-int blend_func_separate_support;
 int bgra8888_support;
 int npot_support;
 int fog_coord_support;
@@ -115,20 +114,8 @@ grSstWinOpen(
    if (isExtensionSupported("GL_ARB_texture_mirrored_repeat") == 0)
       DISPLAY_WARNING("Your video card doesn't support GL_ARB_texture_mirrored_repeat extension");
 
-   blend_func_separate_support = 1;
    packed_pixels_support = 0;
    
-   if (isExtensionSupported("GL_EXT_blend_func_separate") == 0)
-   {
-      DISPLAY_WARNING("GL_EXT_blend_func_separate not supported.\n");
-      blend_func_separate_support = 0;
-   }
-   else
-   {
-      printf("GL_EXT_blend_func_separate supported.\n");
-      blend_func_separate_support = 1;
-   }
-
    // we can assume that non-GLES has GL_EXT_packed_pixels
    // support -it's included since OpenGL 1.2
 #ifdef HAVE_OPENGLES2
