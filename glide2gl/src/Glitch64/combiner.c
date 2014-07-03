@@ -985,138 +985,156 @@ grAlphaCombine(
    need_to_compile = 1;
 }
 
-void writeGLSLTextureColorFactor(int num_tex, int factor)
+static void writeGLSLTextureColorFactorTMU0(int num_tex, int factor)
 {
    switch(factor)
    {
       case GR_COMBINE_FACTOR_ZERO:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(0.0); \n");
-         else
-            strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(0.0); \n");
+         strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(0.0); \n");
          break;
       case GR_COMBINE_FACTOR_LOCAL:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "vec4 texture0_color_factor = readtex0; \n");
-         else
-            strcat(fragment_shader_texture1, "vec4 texture1_color_factor = readtex1; \n");
+         strcat(fragment_shader_texture0, "vec4 texture0_color_factor = readtex0; \n");
          break;
       case GR_COMBINE_FACTOR_OTHER_ALPHA:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(0.0); \n");
-         else
-            strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(ctexture0.a); \n");
+         strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(0.0); \n");
          break;
       case GR_COMBINE_FACTOR_LOCAL_ALPHA:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(readtex0.a); \n");
-         else
-            strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(readtex1.a); \n");
+         strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(readtex0.a); \n");
          break;
       case GR_COMBINE_FACTOR_DETAIL_FACTOR:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(lambda); \n");
-         else
-            strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(lambda); \n");
+         strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(lambda); \n");
          break;
       case GR_COMBINE_FACTOR_ONE:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(1.0); \n");
-         else
-            strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(1.0); \n");
+         strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(1.0); \n");
          break;
       case GR_COMBINE_FACTOR_ONE_MINUS_LOCAL:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(1.0) - readtex0; \n");
-         else
-            strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(1.0) - readtex1; \n");
+         strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(1.0) - readtex0; \n");
          break;
       case GR_COMBINE_FACTOR_ONE_MINUS_OTHER_ALPHA:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(1.0) - vec4(0.0); \n");
-         else
-            strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(1.0) - vec4(ctexture0.a); \n");
+         strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(1.0) - vec4(0.0); \n");
          break;
       case GR_COMBINE_FACTOR_ONE_MINUS_LOCAL_ALPHA:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(1.0) - vec4(readtex0.a); \n");
-         else
-            strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(1.0) - vec4(readtex1.a); \n");
+         strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(1.0) - vec4(readtex0.a); \n");
          break;
       case GR_COMBINE_FACTOR_ONE_MINUS_DETAIL_FACTOR:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(1.0) - vec4(lambda); \n");
-         else
-            strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(1.0) - vec4(lambda); \n");
+         strcat(fragment_shader_texture0, "vec4 texture0_color_factor = vec4(1.0) - vec4(lambda); \n");
          break;
       default:
          DISPLAY_WARNING("unknown writeGLSLTextureColorFactor : %x", factor);
    }
 }
 
-void writeGLSLTextureAlphaFactor(int num_tex, int factor)
+static void writeGLSLTextureColorFactorTMU1(int num_tex, int factor)
 {
    switch(factor)
    {
       case GR_COMBINE_FACTOR_ZERO:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "float texture0_alpha_factor = 0.0; \n");
-         else
-            strcat(fragment_shader_texture1, "float texture1_alpha_factor = 0.0; \n");
+         strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(0.0); \n");
          break;
       case GR_COMBINE_FACTOR_LOCAL:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "float texture0_alpha_factor = readtex0.a; \n");
-         else
-            strcat(fragment_shader_texture1, "float texture1_alpha_factor = readtex1.a; \n");
+         strcat(fragment_shader_texture1, "vec4 texture1_color_factor = readtex1; \n");
          break;
       case GR_COMBINE_FACTOR_OTHER_ALPHA:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "float texture0_alpha_factor = 0.0; \n");
-         else
-            strcat(fragment_shader_texture1, "float texture1_alpha_factor = ctexture0.a; \n");
+         strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(ctexture0.a); \n");
          break;
       case GR_COMBINE_FACTOR_LOCAL_ALPHA:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "float texture0_alpha_factor = readtex0.a; \n");
-         else
-            strcat(fragment_shader_texture1, "float texture1_alpha_factor = readtex1.a; \n");
+         strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(readtex1.a); \n");
          break;
       case GR_COMBINE_FACTOR_DETAIL_FACTOR:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "float texture0_alpha_factor = lambda; \n");
-         else
-            strcat(fragment_shader_texture1, "float texture1_alpha_factor = lambda; \n");
+         strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(lambda); \n");
          break;
       case GR_COMBINE_FACTOR_ONE:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "float texture0_alpha_factor = 1.0; \n");
-         else
-            strcat(fragment_shader_texture1, "float texture1_alpha_factor = 1.0; \n");
+         strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(1.0); \n");
          break;
       case GR_COMBINE_FACTOR_ONE_MINUS_LOCAL:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "float texture0_alpha_factor = 1.0 - readtex0.a; \n");
-         else
-            strcat(fragment_shader_texture1, "float texture1_alpha_factor = 1.0 - readtex1.a; \n");
+         strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(1.0) - readtex1; \n");
          break;
       case GR_COMBINE_FACTOR_ONE_MINUS_OTHER_ALPHA:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "float texture0_alpha_factor = 1.0 - 0.0; \n");
-         else
-            strcat(fragment_shader_texture1, "float texture1_alpha_factor = 1.0 - ctexture0.a; \n");
+         strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(1.0) - vec4(ctexture0.a); \n");
          break;
       case GR_COMBINE_FACTOR_ONE_MINUS_LOCAL_ALPHA:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "float texture0_alpha_factor = 1.0 - readtex0.a; \n");
-         else
-            strcat(fragment_shader_texture1, "float texture1_alpha_factor = 1.0 - readtex1.a; \n");
+         strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(1.0) - vec4(readtex1.a); \n");
          break;
       case GR_COMBINE_FACTOR_ONE_MINUS_DETAIL_FACTOR:
-         if(num_tex == 0)
-            strcat(fragment_shader_texture0, "float texture0_alpha_factor = 1.0 - lambda; \n");
-         else
-            strcat(fragment_shader_texture1, "float texture1_alpha_factor = 1.0 - lambda; \n");
+         strcat(fragment_shader_texture1, "vec4 texture1_color_factor = vec4(1.0) - vec4(lambda); \n");
+         break;
+      default:
+         DISPLAY_WARNING("unknown writeGLSLTextureColorFactor : %x", factor);
+   }
+}
+
+static void writeGLSLTextureAlphaFactorTMU0(int num_tex, int factor)
+{
+   switch(factor)
+   {
+      case GR_COMBINE_FACTOR_ZERO:
+         strcat(fragment_shader_texture0, "float texture0_alpha_factor = 0.0; \n");
+         break;
+      case GR_COMBINE_FACTOR_LOCAL:
+         strcat(fragment_shader_texture0, "float texture0_alpha_factor = readtex0.a; \n");
+         break;
+      case GR_COMBINE_FACTOR_OTHER_ALPHA:
+         strcat(fragment_shader_texture0, "float texture0_alpha_factor = 0.0; \n");
+         break;
+      case GR_COMBINE_FACTOR_LOCAL_ALPHA:
+         strcat(fragment_shader_texture0, "float texture0_alpha_factor = readtex0.a; \n");
+         break;
+      case GR_COMBINE_FACTOR_DETAIL_FACTOR:
+         strcat(fragment_shader_texture0, "float texture0_alpha_factor = lambda; \n");
+         break;
+      case GR_COMBINE_FACTOR_ONE:
+         strcat(fragment_shader_texture0, "float texture0_alpha_factor = 1.0; \n");
+         break;
+      case GR_COMBINE_FACTOR_ONE_MINUS_LOCAL:
+         strcat(fragment_shader_texture0, "float texture0_alpha_factor = 1.0 - readtex0.a; \n");
+         break;
+      case GR_COMBINE_FACTOR_ONE_MINUS_OTHER_ALPHA:
+         strcat(fragment_shader_texture0, "float texture0_alpha_factor = 1.0 - 0.0; \n");
+         break;
+      case GR_COMBINE_FACTOR_ONE_MINUS_LOCAL_ALPHA:
+         strcat(fragment_shader_texture0, "float texture0_alpha_factor = 1.0 - readtex0.a; \n");
+         break;
+      case GR_COMBINE_FACTOR_ONE_MINUS_DETAIL_FACTOR:
+         strcat(fragment_shader_texture0, "float texture0_alpha_factor = 1.0 - lambda; \n");
+         break;
+      default:
+         DISPLAY_WARNING("unknown writeGLSLTextureAlphaFactor : %x", factor);
+   }
+}
+
+static void writeGLSLTextureAlphaFactorTMU1(int num_tex, int factor)
+{
+   switch(factor)
+   {
+      case GR_COMBINE_FACTOR_ZERO:
+         strcat(fragment_shader_texture1, "float texture1_alpha_factor = 0.0; \n");
+         break;
+      case GR_COMBINE_FACTOR_LOCAL:
+         strcat(fragment_shader_texture1, "float texture1_alpha_factor = readtex1.a; \n");
+         break;
+      case GR_COMBINE_FACTOR_OTHER_ALPHA:
+         strcat(fragment_shader_texture1, "float texture1_alpha_factor = ctexture0.a; \n");
+         break;
+      case GR_COMBINE_FACTOR_LOCAL_ALPHA:
+         strcat(fragment_shader_texture1, "float texture1_alpha_factor = readtex1.a; \n");
+         break;
+      case GR_COMBINE_FACTOR_DETAIL_FACTOR:
+         strcat(fragment_shader_texture1, "float texture1_alpha_factor = lambda; \n");
+         break;
+      case GR_COMBINE_FACTOR_ONE:
+         strcat(fragment_shader_texture1, "float texture1_alpha_factor = 1.0; \n");
+         break;
+      case GR_COMBINE_FACTOR_ONE_MINUS_LOCAL:
+         strcat(fragment_shader_texture1, "float texture1_alpha_factor = 1.0 - readtex1.a; \n");
+         break;
+      case GR_COMBINE_FACTOR_ONE_MINUS_OTHER_ALPHA:
+         strcat(fragment_shader_texture1, "float texture1_alpha_factor = 1.0 - ctexture0.a; \n");
+         break;
+      case GR_COMBINE_FACTOR_ONE_MINUS_LOCAL_ALPHA:
+         strcat(fragment_shader_texture1, "float texture1_alpha_factor = 1.0 - readtex1.a; \n");
+         break;
+      case GR_COMBINE_FACTOR_ONE_MINUS_DETAIL_FACTOR:
+         strcat(fragment_shader_texture1, "float texture1_alpha_factor = 1.0 - lambda; \n");
          break;
       default:
          DISPLAY_WARNING("unknown writeGLSLTextureAlphaFactor : %x", factor);
@@ -1178,35 +1196,35 @@ grTexCombine(
             strcat(fragment_shader_texture0, "vec4 ctexture0 = vec4(readtex0.a); \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU0(num_tex, rgb_factor);
             strcat(fragment_shader_texture0, "vec4 ctexture0 = texture0_color_factor * vec4(0.0); \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU0(num_tex, rgb_factor);
             strcat(fragment_shader_texture0, "vec4 ctexture0 = texture0_color_factor * vec4(0.0) + readtex0; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL_ALPHA:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU0(num_tex, rgb_factor);
             strcat(fragment_shader_texture0, "vec4 ctexture0 = texture0_color_factor * vec4(0.0) + vec4(readtex0.a); \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU0(num_tex, rgb_factor);
             strcat(fragment_shader_texture0, "vec4 ctexture0 = texture0_color_factor * (vec4(0.0) - readtex0); \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL_ADD_LOCAL:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU0(num_tex, rgb_factor);
             strcat(fragment_shader_texture0, "vec4 ctexture0 = texture0_color_factor * (vec4(0.0) - readtex0) + readtex0; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL_ADD_LOCAL_ALPHA:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU0(num_tex, rgb_factor);
             strcat(fragment_shader_texture0, "vec4 ctexture0 = texture0_color_factor * (vec4(0.0) - readtex0) + vec4(readtex0.a); \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_MINUS_LOCAL_ADD_LOCAL:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU0(num_tex, rgb_factor);
             strcat(fragment_shader_texture0, "vec4 ctexture0 = texture0_color_factor * (-readtex0) + readtex0; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_MINUS_LOCAL_ADD_LOCAL_ALPHA:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU0(num_tex, rgb_factor);
             strcat(fragment_shader_texture0, "vec4 ctexture0 = texture0_color_factor * (-readtex0) + vec4(readtex0.a); \n");
             break;
          default:
@@ -1229,35 +1247,35 @@ grTexCombine(
             strcat(fragment_shader_texture0, "ctexture0.a = readtex0.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU0(num_tex, alpha_factor);
             strcat(fragment_shader_texture0, "ctexture0.a = texture0_alpha_factor * 0.0; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU0(num_tex, alpha_factor);
             strcat(fragment_shader_texture0, "ctexture0.a = texture0_alpha_factor * 0.0 + readtex0.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL_ALPHA:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU0(num_tex, alpha_factor);
             strcat(fragment_shader_texture0, "ctexture0.a = texture0_alpha_factor * 0.0 + readtex0.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU0(num_tex, alpha_factor);
             strcat(fragment_shader_texture0, "ctexture0.a = texture0_alpha_factor * (0.0 - readtex0.a); \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL_ADD_LOCAL:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU0(num_tex, alpha_factor);
             strcat(fragment_shader_texture0, "ctexture0.a = texture0_alpha_factor * (0.0 - readtex0.a) + readtex0.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL_ADD_LOCAL_ALPHA:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU0(num_tex, alpha_factor);
             strcat(fragment_shader_texture0, "ctexture0.a = texture0_alpha_factor * (0.0 - readtex0.a) + readtex0.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_MINUS_LOCAL_ADD_LOCAL:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU0(num_tex, alpha_factor);
             strcat(fragment_shader_texture0, "ctexture0.a = texture0_alpha_factor * (-readtex0.a) + readtex0.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_MINUS_LOCAL_ADD_LOCAL_ALPHA:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU0(num_tex, alpha_factor);
             strcat(fragment_shader_texture0, "ctexture0.a = texture0_alpha_factor * (-readtex0.a) + readtex0.a; \n");
             break;
          default:
@@ -1309,35 +1327,35 @@ grTexCombine(
             strcat(fragment_shader_texture1, "vec4 ctexture1 = vec4(readtex1.a); \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU1(num_tex, rgb_factor);
             strcat(fragment_shader_texture1, "vec4 ctexture1 = texture1_color_factor * ctexture0; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU1(num_tex, rgb_factor);
             strcat(fragment_shader_texture1, "vec4 ctexture1 = texture1_color_factor * ctexture0 + readtex1; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL_ALPHA:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU1(num_tex, rgb_factor);
             strcat(fragment_shader_texture1, "vec4 ctexture1 = texture1_color_factor * ctexture0 + vec4(readtex1.a); \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU1(num_tex, rgb_factor);
             strcat(fragment_shader_texture1, "vec4 ctexture1 = texture1_color_factor * (ctexture0 - readtex1); \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL_ADD_LOCAL:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU1(num_tex, rgb_factor);
             strcat(fragment_shader_texture1, "vec4 ctexture1 = texture1_color_factor * (ctexture0 - readtex1) + readtex1; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL_ADD_LOCAL_ALPHA:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU1(num_tex, rgb_factor);
             strcat(fragment_shader_texture1, "vec4 ctexture1 = texture1_color_factor * (ctexture0 - readtex1) + vec4(readtex1.a); \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_MINUS_LOCAL_ADD_LOCAL:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU1(num_tex, rgb_factor);
             strcat(fragment_shader_texture1, "vec4 ctexture1 = texture1_color_factor * (-readtex1) + readtex1; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_MINUS_LOCAL_ADD_LOCAL_ALPHA:
-            writeGLSLTextureColorFactor(num_tex, rgb_factor);
+            writeGLSLTextureColorFactorTMU1(num_tex, rgb_factor);
             strcat(fragment_shader_texture1, "vec4 ctexture1 = texture1_color_factor * (-readtex1) + vec4(readtex1.a); \n");
             break;
          default:
@@ -1360,35 +1378,35 @@ grTexCombine(
             strcat(fragment_shader_texture1, "ctexture1.a = readtex1.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU1(num_tex, alpha_factor);
             strcat(fragment_shader_texture1, "ctexture1.a = texture1_alpha_factor * ctexture0.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU1(num_tex, alpha_factor);
             strcat(fragment_shader_texture1, "ctexture1.a = texture1_alpha_factor * ctexture0.a + readtex1.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL_ALPHA:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU1(num_tex, alpha_factor);
             strcat(fragment_shader_texture1, "ctexture1.a = texture1_alpha_factor * ctexture0.a + readtex1.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU1(num_tex, alpha_factor);
             strcat(fragment_shader_texture1, "ctexture1.a = texture1_alpha_factor * (ctexture0.a - readtex1.a); \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL_ADD_LOCAL:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU1(num_tex, alpha_factor);
             strcat(fragment_shader_texture1, "ctexture1.a = texture1_alpha_factor * (ctexture0.a - readtex1.a) + readtex1.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_OTHER_MINUS_LOCAL_ADD_LOCAL_ALPHA:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU1(num_tex, alpha_factor);
             strcat(fragment_shader_texture1, "ctexture1.a = texture1_alpha_factor * (ctexture0.a - readtex1.a) + readtex1.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_MINUS_LOCAL_ADD_LOCAL:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU1(num_tex, alpha_factor);
             strcat(fragment_shader_texture1, "ctexture1.a = texture1_alpha_factor * (-readtex1.a) + readtex1.a; \n");
             break;
          case GR_COMBINE_FUNCTION_SCALE_MINUS_LOCAL_ADD_LOCAL_ALPHA:
-            writeGLSLTextureAlphaFactor(num_tex, alpha_factor);
+            writeGLSLTextureAlphaFactorTMU1(num_tex, alpha_factor);
             strcat(fragment_shader_texture1, "ctexture1.a = texture1_alpha_factor * (-readtex1.a) + readtex1.a; \n");
             break;
          default:
