@@ -143,27 +143,6 @@ extern void grChromaRangeModeExt(GrChromakeyMode_t mode);
 extern void grTexChromaRangeExt(GrChipID_t tmu, GrColor_t color0, GrColor_t color1, GrTexChromakeyMode_t mode);
 extern void grTexChromaModeExt(GrChipID_t tmu, GrChromakeyMode_t mode);
 
-FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
-                                         FxU32 				startAddress,
-                                         GrLOD_t 			lodmin,
-                                         GrLOD_t 			lodmax,
-                                         GrAspectRatio_t 	aspect,
-                                         GrTextureFormat_t 	fmt,
-                                         FxU32 				evenOdd);
-
-FX_ENTRY void FX_CALL
-grTextureAuxBufferExt( GrChipID_t tmu,
-                      FxU32      startAddress,
-                      GrLOD_t    thisLOD,
-                      GrLOD_t    largeLOD,
-                      GrAspectRatio_t aspectRatio,
-                      GrTextureFormat_t format,
-                      FxU32      odd_even_mask );
-
-#ifdef HAVE_HWFBE
-FX_ENTRY void FX_CALL grAuxBufferExt( GrBuffer_t buffer );
-#endif
-
 //#define DISPLAY_WARNING_DEBUG
 
 #ifdef DISPLAY_WARNING_DEBUG

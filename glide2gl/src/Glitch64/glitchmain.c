@@ -266,34 +266,9 @@ grSstWinClose( GrContext_t context )
    buf = NULL;
 
    free_combiners();
-   glBindFramebuffer( GL_FRAMEBUFFER, 0 );
-
    free_textures();
 
    return FXTRUE;
-}
-
-FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
-                                         FxU32 				startAddress,
-                                         GrLOD_t 			lodmin,
-                                         GrLOD_t 			lodmax,
-                                         GrAspectRatio_t 	aspect,
-                                         GrTextureFormat_t 	fmt,
-                                         FxU32 				evenOdd)
-{
-}
-
-FX_ENTRY void FX_CALL
-grTextureAuxBufferExt( GrChipID_t tmu,
-                      FxU32      startAddress,
-                      GrLOD_t    thisLOD,
-                      GrLOD_t    largeLOD,
-                      GrAspectRatio_t aspectRatio,
-                      GrTextureFormat_t format,
-                      FxU32      odd_even_mask )
-{
-   LOG("grTextureAuxBufferExt(%d, %d, %d, %d %d, %d, %d)\r\n", tmu, startAddress, thisLOD, largeLOD, aspectRatio, format, odd_even_mask);
-   //DISPLAY_WARNING("grTextureAuxBufferExt");
 }
 
 FX_ENTRY FxU32 FX_CALL
