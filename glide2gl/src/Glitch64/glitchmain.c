@@ -63,20 +63,6 @@ static int isExtensionSupported(const char *extension)
 
 #define GrPixelFormat_t int
 
-FX_ENTRY GrContext_t FX_CALL
-grSstWinOpenExt(
-                GrScreenResolution_t screen_resolution,
-                GrScreenRefresh_t    refresh_rate,
-                GrColorFormat_t      color_format,
-                GrOriginLocation_t   origin_location,
-                GrPixelFormat_t      pixelformat,
-                int                  nColBuffers,
-                int                  nAuxBuffers)
-{
-   LOG("grSstWinOpenExt(%d, %d, %d, %d, %d %d)\r\n", screen_resolution, refresh_rate, color_format, origin_location, nColBuffers, nAuxBuffers);
-   return grSstWinOpen(screen_resolution, refresh_rate, color_format, origin_location, nColBuffers, nAuxBuffers);
-}
-
 void FindBestDepthBias();
 
 FX_ENTRY GrContext_t FX_CALL
@@ -120,10 +106,6 @@ grSstWinOpen(
    depthBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
    buf = (uint8_t*)malloc(width * height * 4 * sizeof(uint8_t));
    glViewport(0, 0, width, height);
-
-   if (origin_location != GR_ORIGIN_UPPER_LEFT) DISPLAY_WARNING("origin must be in upper left corner");
-   if (nColBuffers != 2) DISPLAY_WARNING("number of color buffer is not 2");
-   if (nAuxBuffers != 1) DISPLAY_WARNING("number of auxiliary buffer is not 1");
 
    if (isExtensionSupported("GL_ARB_texture_env_combine") == 0 &&
          isExtensionSupported("GL_EXT_texture_env_combine") == 0)
