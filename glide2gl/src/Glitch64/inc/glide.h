@@ -699,8 +699,9 @@ grTexCalcMemRequired(
                     GrLOD_t lodmax,
                      GrAspectRatio_t aspect, GrTextureFormat_t fmt);
 
-FX_ENTRY FxU32 FX_CALL 
-grTexMaxAddress( GrChipID_t tmu );
+#define TMU_SIZE (8 * 2048 * 2048)
+
+#define grTexMaxAddress(tmu) ((TMU_SIZE * 2) - 1)
 
 FX_ENTRY void FX_CALL 
 grTexNCCTable( GrNCCTable_t table );

@@ -34,7 +34,6 @@
 #define GR_TEXFMT_AYUV_444                0x15
 #define GR_TEXTFMT_RGB_888                0xFF
 
-#define TMU_SIZE (8 * 2048 * 2048)
 int packed_pixels_support = -1;
 extern unsigned screen_width;
 extern unsigned screen_height;
@@ -149,28 +148,16 @@ void free_textures(void)
 }
 
 FX_ENTRY FxU32 FX_CALL
-grTexMaxAddress( GrChipID_t tmu )
-{
-  LOG("grTexMaxAddress(%d)\r\n", tmu);
-  return (TMU_SIZE * 2) - 1;
-}
-
-FX_ENTRY FxU32 FX_CALL
 grTexCalcMemRequired(GrLOD_t lodmax,
                      GrAspectRatio_t aspect, GrTextureFormat_t fmt)
 {
-   int width, height;
+   int width  = 1 << lodmax;
+   int height = 1 << lodmax;
 
    if (aspect < 0)
-   {
-      height = 1 << lodmax;
       width = height >> -aspect;
-   }
    else
-   {
-      width = 1 << lodmax;
       height = width >> aspect;
-   }
 
    switch(fmt)
    {
