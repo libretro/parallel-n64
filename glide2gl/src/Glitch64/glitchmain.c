@@ -29,14 +29,11 @@
 #include "main.h"
 #include "../../libretro/SDL.h"
 
-#define TEXTURE_UNITS 4
-
 extern retro_environment_t environ_cb;
 
 int width, height;
 int bgra8888_support;
 int npot_support;
-int texture_unit;
 // ZIGGY
 // to allocate a new static texture name, take the value (free_texture++)
 int free_texture;
@@ -151,10 +148,6 @@ grSstWinOpen(
       bgra8888_support = 0;
    }
 #endif
-
-   glViewport(0, 0, width, height);
-
-   texture_unit = GL_TEXTURE0;
 
    FindBestDepthBias();
 
