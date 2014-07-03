@@ -54,16 +54,7 @@ uint16_t *frameBuffer;
 uint16_t *depthBuffer;
 uint8_t  *buf;
 
-FX_ENTRY void FX_CALL
-grClipWindow( FxU32 minx, FxU32 miny, FxU32 maxx, FxU32 maxy )
-{
-   LOG("grClipWindow(%d,%d,%d,%d)\r\n", minx, miny, maxx, maxy);
-   GLint y = height - maxy;
-   glScissor(minx, y, maxx - minx, maxy - miny);
-   glEnable(GL_SCISSOR_TEST);
-}
-
-int isExtensionSupported(const char *extension)
+static int isExtensionSupported(const char *extension)
 {
    const char *str = (const char*)glGetString(GL_EXTENSIONS);
    if (str && strstr(str, extension))

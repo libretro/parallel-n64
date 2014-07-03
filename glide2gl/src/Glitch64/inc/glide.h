@@ -639,8 +639,7 @@ grChromakeyMode( GrChromakeyMode_t mode );
 FX_ENTRY void FX_CALL 
 grChromakeyValue( GrColor_t value );
 
-FX_ENTRY void FX_CALL 
-grClipWindow( FxU32 minx, FxU32 miny, FxU32 maxx, FxU32 maxy );
+#define grClipWindow(minx, miny, maxx, maxy) glScissor(minx, height - maxy, maxx - minx, maxy - miny); glEnable(GL_SCISSOR_TEST)
 
 FX_ENTRY void FX_CALL 
 grColorCombine(

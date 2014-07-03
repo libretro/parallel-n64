@@ -336,12 +336,29 @@ static void DrawImage (DRAWIMAGE *d)
       rdp.allow_combine = 0;
 
    {
+      uint32_t minx = 0;
+      uint32_t miny = 0;
+      uint32_t maxx, maxy;
       if (rdp.ci_width == 512 && !no_dlist)
-         grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
+      {
+         maxx = settings.scr_res_x;
+         maxy = settings.scr_res_y;
+      }
       else if (d->scaleX == 1.0f && d->scaleY == 1.0f)
-         grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
+      {
+         minx = rdp.scissor.ul_x;
+         miny = rdp.scissor.ul_y;
+         maxx = rdp.scissor.lr_x;
+         maxy = rdp.scissor.lr_y;
+      }
       else
-         grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, min(rdp.scissor.lr_x, (uint32_t)((d->frameX+d->imageW/d->scaleX+0.5f)*rdp.scale_x)), min(rdp.scissor.lr_y, (uint32_t)((d->frameY+d->imageH/d->scaleY+0.5f)*rdp.scale_y)));
+      {
+         minx = rdp.scissor.ul_x;
+         miny = rdp.scissor.ul_y;
+         maxx = min(rdp.scissor.lr_x, (uint32_t)((d->frameX+d->imageW/d->scaleX+0.5f)*rdp.scale_x));
+         maxy = min(rdp.scissor.lr_y, (uint32_t)((d->frameY+d->imageH/d->scaleY+0.5f)*rdp.scale_y));
+      }
+      grClipWindow(minx, miny, maxx, maxy);
       rdp.update |= UPDATE_SCISSOR;
    }
 
