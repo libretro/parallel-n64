@@ -381,13 +381,6 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
 
          if (rdp.tex >= 1 && rdp.cur_cache[0])
          {
-#ifdef HAVE_HWFBE
-            if (rdp.aTBuffTex[0])
-            {
-               v->u0 += rdp.aTBuffTex[0]->u_shift + rdp.aTBuffTex[0]->tile_uls;
-               v->v0 += rdp.aTBuffTex[0]->v_shift + rdp.aTBuffTex[0]->tile_ult;
-            }
-#endif
 
             if (rdp.tiles[rdp.cur_tile].shift_s)
             {
@@ -404,21 +397,6 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
                   v->v0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
             }
 
-#ifdef HAVE_HWFBE
-            if (rdp.aTBuffTex[0])
-            {
-               if (rdp.aTBuffTex[0]->tile_uls != (int)rdp.tiles[rdp.cur_tile].f_ul_s)
-                  v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
-               if (rdp.aTBuffTex[0]->tile_ult != (int)rdp.tiles[rdp.cur_tile].f_ul_t || (settings.hacks&hack_Megaman))
-                  v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t; //required for megaman (boss special attack)
-               v->u0 *= rdp.aTBuffTex[0]->u_scale;
-               v->v0 *= rdp.aTBuffTex[0]->v_scale;
-#ifdef EXTREME_LOGGING
-               FRDP("tbuff_tex t0: (%f, %f)->(%f, %f)\n", v->ou, v->ov, v->u0, v->v0);
-#endif
-            }
-            else
-#endif
             {
                v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
                v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t;
@@ -431,13 +409,6 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
 
          if (rdp.tex >= 2 && rdp.cur_cache[1])
          {
-#ifdef HAVE_HWFBE
-            if (rdp.aTBuffTex[1])
-            {
-               v->u1 += rdp.aTBuffTex[1]->u_shift + rdp.aTBuffTex[1]->tile_uls;
-               v->v1 += rdp.aTBuffTex[1]->v_shift + rdp.aTBuffTex[1]->tile_ult;
-            }
-#endif
             if (rdp.tiles[rdp.cur_tile+1].shift_s)
             {
                if (rdp.tiles[rdp.cur_tile+1].shift_s > 10)
@@ -453,19 +424,6 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
                   v->v1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
             }
 
-#ifdef HAVE_HWFBE
-            if (rdp.aTBuffTex[1])
-            {
-               if (rdp.aTBuffTex[1]->tile_uls != (int)rdp.tiles[rdp.cur_tile].f_ul_s)
-                  v->u1 -= rdp.tiles[rdp.cur_tile].f_ul_s;
-               v->u1 *= rdp.aTBuffTex[1]->u_scale;
-               v->v1 *= rdp.aTBuffTex[1]->v_scale;
-#ifdef EXTREME_LOGGING
-               FRDP("tbuff_tex t1: (%f, %f)->(%f, %f)\n", v->ou, v->ov, v->u1, v->v1);
-#endif
-            }
-            else
-#endif
             {
                v->u1 -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
                v->v1 -= rdp.tiles[rdp.cur_tile+1].f_ul_t;

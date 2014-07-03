@@ -927,20 +927,6 @@ static void cc_shade ()
 
 static void cc_one_mul_shade ()
 {
-#ifdef HAVE_HWFBE
-   if ((settings.hacks&hack_Knockout)&& (
-            rdp.aTBuffTex[0] || rdp.aTBuffTex[1] ||
-            rdp.cur_image)) //hack for boxer shadow
-   {
-      CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER,
-            GR_COMBINE_FACTOR_LOCAL,
-            GR_COMBINE_LOCAL_CONSTANT,
-            GR_COMBINE_OTHER_TEXTURE);
-      CC (0x20202000);
-      USE_T0 ();
-   }
-   else
-#endif
    {
       CCMB (GR_COMBINE_FUNCTION_LOCAL,
             GR_COMBINE_FACTOR_NONE,
@@ -6108,14 +6094,6 @@ static void cc_shade_sub_env_mul__t0_mul_t1__add__t0_mul_t1 ()
 //Added by Gonetz
 static void cc_shade_sub_env_mul_t0_add_prim ()
 {
-#ifdef HAVE_HWFBE
-   if (rdp.cur_image && (rdp.cur_image->format != 0))
-   {
-      cc_prim ();
-      return;
-   }
-#endif
-
    CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL,
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_CONSTANT,
@@ -8693,14 +8671,6 @@ static void ac_t1_mul_prim_mul_shade ()
 
 static void ac_t0_mul_env_mul_shade ()
 {
-#ifdef HAVE_HWFBE
-   if (rdp.cur_image && (rdp.cur_image->format != 0))
-   {
-      ac_shade ();
-      return;
-   }
-#endif
-
    ACMB (GR_COMBINE_FUNCTION_SCALE_OTHER,
          GR_COMBINE_FACTOR_LOCAL,
          GR_COMBINE_LOCAL_ITERATED,
@@ -8913,17 +8883,6 @@ static void ac_one_sub_t0_mul_prim ()  //Aded by Gonetz
 
 static void ac_one_sub_t0_mul_shade ()  //Aded by Gonetz
 {
-#ifdef HAVE_HWFBE
-   if (rdp.aTBuffTex[0] || rdp.aTBuffTex[1])
-   {
-      ACMB (GR_COMBINE_FUNCTION_BLEND_LOCAL,
-            GR_COMBINE_FACTOR_TEXTURE_ALPHA,
-            GR_COMBINE_LOCAL_ITERATED,
-            GR_COMBINE_OTHER_NONE);
-      A_USE_T0 ();
-   }
-   else
-#endif
    {
       ac_zero();
    }
@@ -14249,59 +14208,6 @@ void Combine(void)
    rdp.tex = cmb.tex;
 
    {
-#ifdef HAVE_HWFBE
-      TBUFF_COLOR_IMAGE * aTBuff[2] = {0, 0};
-      if (rdp.aTBuffTex[0])
-         aTBuff[rdp.aTBuffTex[0]->tile] = rdp.aTBuffTex[0];
-      if (rdp.aTBuffTex[1])
-         aTBuff[rdp.aTBuffTex[1]->tile] = rdp.aTBuffTex[1];
-      if (cmb.tex && (aTBuff[0] || aTBuff[1]))
-      {
-         if (aTBuff[0] && (settings.frame_buffer&fb_read_alpha))
-         {
-            if ((settings.hacks&hack_PMario) && aTBuff[0]->width == rdp.ci_width)
-               ;
-            else
-            {
-               grChromakeyValue(0);
-               grChromakeyMode(GR_CHROMAKEY_ENABLE);
-            }
-         }
-         else
-            grChromakeyMode(GR_CHROMAKEY_DISABLE);
-
-         if (aTBuff[0] && aTBuff[0]->info.format == GR_TEXFMT_ALPHA_INTENSITY_88)
-         {
-            if (cmb.tex_cmb_ext_use & TEX_COMBINE_EXT_COLOR)
-            {
-               if (cmb.t0c_ext_a == GR_CMBX_LOCAL_TEXTURE_RGB)
-                  cmb.t0c_ext_a = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-               if (cmb.t0c_ext_b == GR_CMBX_LOCAL_TEXTURE_RGB)
-                  cmb.t0c_ext_b = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-               if (cmb.t0c_ext_c == GR_CMBX_LOCAL_TEXTURE_RGB)
-                  cmb.t0c_ext_c = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-            }
-            else
-               cmb.tmu0_func = GR_COMBINE_FUNCTION_LOCAL_ALPHA;
-         }
-
-         if (aTBuff[1] && aTBuff[1]->info.format == GR_TEXFMT_ALPHA_INTENSITY_88)
-         {
-            if (cmb.tex_cmb_ext_use & TEX_COMBINE_EXT_COLOR)
-            {
-               if (cmb.t1c_ext_a == GR_CMBX_LOCAL_TEXTURE_RGB)
-                  cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-               if (cmb.t1c_ext_b == GR_CMBX_LOCAL_TEXTURE_RGB)
-                  cmb.t1c_ext_b = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-               if (cmb.t1c_ext_c == GR_CMBX_LOCAL_TEXTURE_RGB)
-                  cmb.t1c_ext_c = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-            }
-            else
-               cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL_ALPHA;
-         }
-      }
-      else
-#endif
          grChromakeyMode(GR_CHROMAKEY_DISABLE);
    }
    cmb.shade_mod_hash = (rdp.cmb_flags + rdp.cmb_flags_2) * (rdp.prim_color + rdp.env_color + rdp.K5);

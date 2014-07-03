@@ -1263,15 +1263,6 @@ void update(void)
    // Combine MUST go before texture
    if ((rdp.update & UPDATE_COMBINE) && rdp.allow_combine)
    {
-#ifdef HAVE_HWFBE
-      TBUFF_COLOR_IMAGE * aTBuff[2] = {0, 0};
-      if (rdp.aTBuffTex[0])
-         aTBuff[rdp.aTBuffTex[0]->tile] = rdp.aTBuffTex[0];
-      if (rdp.aTBuffTex[1])
-         aTBuff[rdp.aTBuffTex[1]->tile] = rdp.aTBuffTex[1];
-      rdp.aTBuffTex[0] = aTBuff[0];
-      rdp.aTBuffTex[1] = aTBuff[1];
-#endif
 
       LRDP (" |-+ update_combine\n");
       Combine ();
