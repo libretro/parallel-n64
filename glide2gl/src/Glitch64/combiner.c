@@ -438,7 +438,7 @@ void update_uniforms(shader_program_key prog)
    glUniform1i(prog.texture1_location, 1);
 
    v2 = inverted_culling ? -1.0f : 1.0f;
-   glUniform3f(prog.vertexOffset_location,widtho,heighto,v2);
+   glUniform3f(prog.vertexOffset_location,(width/2),(height/2),v2);
    glUniform4f(prog.textureSizes_location,tex_width[0], tex_height[0] , tex_width[1], tex_height[1]);
    glUniform4f(prog.exactSizes_location,tex_exactWidth[0], tex_exactHeight[0], tex_exactWidth[1], tex_exactHeight[1]);
 

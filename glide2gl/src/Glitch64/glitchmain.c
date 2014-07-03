@@ -33,14 +33,11 @@
 
 extern retro_environment_t environ_cb;
 
-int nbAuxBuffers, current_buffer;
-int width, widtho, heighto, height;
-int saved_width, saved_height;
+int width, height;
 int blend_func_separate_support;
 int bgra8888_support;
 int npot_support;
 int fog_coord_support;
-int render_to_texture = 0;
 int texture_unit;
 int buffer_cleared;
 // ZIGGY
@@ -50,13 +47,9 @@ int default_texture;
 int current_texture;
 int depth_texture, color_texture;
 int glsl_support = 1;
-int viewport_width, viewport_height;
 int lfb_color_fmt;
 float invtex[2];
 //Gonetz
-
-static int savedWidtho, savedHeighto;
-static int savedWidth, savedHeight;
 
 uint16_t *frameBuffer;
 uint16_t *depthBuffer;
@@ -73,20 +66,8 @@ grSstOrigin(GrOriginLocation_t  origin)
 FX_ENTRY void FX_CALL
 grClipWindow( FxU32 minx, FxU32 miny, FxU32 maxx, FxU32 maxy )
 {
-   GLint y;
    LOG("grClipWindow(%d,%d,%d,%d)\r\n", minx, miny, maxx, maxy);
-
-   y =  height - maxy;
-
-   if (render_to_texture)
-   {
-      if ((int)(minx) < 0) minx = 0;
-      if ((int)(miny) < 0) miny = 0;
-      if (maxx < minx) maxx = minx;
-      if (maxy < miny) maxy = miny;
-      y = miny;
-   }
-
+   GLint y = height - maxy;
    glScissor(minx, y, maxx - minx, maxy - miny);
    glEnable(GL_SCISSOR_TEST);
 }
@@ -139,13 +120,10 @@ grSstWinOpen(
              int                  nAuxBuffers)
 {
    bool ret;
-   uint32_t screen_width, screen_height, screen_width_min, screen_height_min;
    struct retro_variable var = { "mupen64-screensize", 0 };
 
    LOG("grSstWinOpen(%d, %d, %d, %d, %d %d)\r\n", screen_resolution&~0x80000000, refresh_rate, color_format, origin_location, nColBuffers, nAuxBuffers);
 
-   width = screen_width_min = 640;
-   height = screen_height_min = 480;
    ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
    if (ret && var.value)
@@ -156,22 +134,22 @@ grSstWinOpen(
          height = 480;
       }
    }
-
-   if (width > screen_width_min)
-      screen_width_min = width;
-   if (height > screen_height_min)
-      screen_height_min = height;
+   else
+   {
+      width = 640;
+      height =480;
+   }
 
    // ZIGGY
    // allocate static texture names
    // the initial value should be big enough to support the maximal resolution
-   free_texture = 32 * screen_width_min * screen_height_min;
+   free_texture = 32 * width * height;
    default_texture = free_texture++;
    color_texture = free_texture++;
    depth_texture = free_texture++;
-   frameBuffer = (uint16_t*)malloc(screen_width_min * screen_height_min * sizeof(uint16_t));
-   depthBuffer = (uint16_t*)malloc(screen_width_min * screen_height_min * sizeof(uint16_t));
-   buf = (uint8_t*)malloc(screen_width_min * screen_height_min * 4 * sizeof(uint8_t));
+   frameBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
+   depthBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
+   buf = (uint8_t*)malloc(width * height * 4 * sizeof(uint8_t));
    glViewport(0, 0, width, height);
 
    lfb_color_fmt = color_format;
@@ -186,11 +164,6 @@ grSstWinOpen(
       DISPLAY_WARNING("Your video card doesn't support GL_ARB_multitexture extension");
    if (isExtensionSupported("GL_ARB_texture_mirrored_repeat") == 0)
       DISPLAY_WARNING("Your video card doesn't support GL_ARB_texture_mirrored_repeat extension");
-
-   nbAuxBuffers = 4;
-   //glGetIntegerv(GL_AUX_BUFFERS, &nbAuxBuffers);
-   if (nbAuxBuffers > 0)
-      printf("Congratulations, you have %d auxilliary buffers, we'll use them wisely !\n", nbAuxBuffers);
 
    blend_func_separate_support = 1;
    packed_pixels_support = 0;
@@ -255,19 +228,6 @@ grSstWinOpen(
 #endif
 
    glViewport(0, 0, width, height);
-   viewport_width = width;
-   viewport_height = height;
-
-   // VP try to resolve z precision issues
-   //  glMatrixMode(GL_MODELVIEW);
-   //  glLoadIdentity();
-   //  glTranslatef(0, 0, 1-zscale);
-   //  glScalef(1, 1, zscale);
-
-   widtho = width/2;
-   heighto = height/2;
-
-   current_buffer = GL_BACK;
 
    texture_unit = GL_TEXTURE0;
 
@@ -525,97 +485,10 @@ static void render_rectangle(int texture_number,
 
    glDrawArrays(GL_TRIANGLE_STRIP,0,4);
 
-   /*
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      glBegin(GL_QUADS);
-      glMultiTexCoord2fARB(texture_number, 0.0f, 0.0f);
-      glVertex2f(((int)dst_x - widtho) / (float)(width/2),
-      invert*-((int)dst_y - heighto) / (float)(height/2));
-      glMultiTexCoord2fARB(texture_number, 0.0f, (float)src_height / (float)tex_height);
-      glVertex2f(((int)dst_x - widtho) / (float)(width/2),
-      invert*-((int)dst_y + (int)src_height - heighto) / (float)(height/2));
-      glMultiTexCoord2fARB(texture_number, (float)src_width / (float)tex_width, (float)src_height / (float)tex_height);
-      glVertex2f(((int)dst_x + (int)src_width - widtho) / (float)(width/2),
-      invert*-((int)dst_y + (int)src_height - heighto) / (float)(height/2));
-      glMultiTexCoord2fARB(texture_number, (float)src_width / (float)tex_width, 0.0f);
-      glVertex2f(((int)dst_x + (int)src_width - widtho) / (float)(width/2),
-      invert*-((int)dst_y - heighto) / (float)(height/2));
-      glMultiTexCoord2fARB(texture_number, 0.0f, 0.0f);
-      glVertex2f(((int)dst_x - widtho) / (float)(width/2),
-      invert*-((int)dst_y - heighto) / (float)(height/2));
-      glEnd();
-      */
-
    compile_shader();
 
    glEnable(GL_DEPTH_TEST);
    glEnable(GL_BLEND);
-}
-
-FX_ENTRY void FX_CALL
-grRenderBuffer( GrBuffer_t buffer )
-{
-   LOG("grRenderBuffer(%d)\r\n", buffer);
-
-   switch(buffer)
-   {
-      case GR_BUFFER_BACKBUFFER:
-         if(render_to_texture)
-         {
-            // VP z fix
-            //glMatrixMode(GL_MODELVIEW);
-            //glLoadIdentity();
-            //glTranslatef(0, 0, 1-zscale);
-            //glScalef(1, 1, zscale);
-            inverted_culling = 0;
-            grCullMode(culling_mode);
-
-            width = savedWidth;
-            height = savedHeight;
-            widtho = savedWidtho;
-            heighto = savedHeighto;
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glBindRenderbuffer( GL_RENDERBUFFER, 0 );
-
-            glViewport(0, 0, width, viewport_height);
-            glScissor(0, 0, width, height);
-
-            render_to_texture = 0;
-         }
-         //glDrawBuffer(GL_BACK);
-         break;
-      case GR_BUFFER_TEXTUREBUFFER_EXT: // RENDER TO TEXTURE
-         if(!render_to_texture)
-         {
-            savedWidth = width;
-            savedHeight = height;
-            savedWidtho = widtho;
-            savedHeighto = heighto;
-         }
-
-         {
-            /*
-               float m[4*4] = {1.0f, 0.0f, 0.0f, 0.0f,
-               0.0f,-1.0f, 0.0f, 0.0f,
-               0.0f, 0.0f, 1.0f, 0.0f,
-               0.0f, 0.0f, 0.0f, 1.0f};
-               glMatrixMode(GL_MODELVIEW);
-               glLoadMatrixf(m);
-            // VP z fix
-            glTranslatef(0, 0, 1-zscale);
-            glScalef(1, 1*1, zscale);
-            */
-            inverted_culling = 1;
-            grCullMode(culling_mode);
-         }
-         render_to_texture = 1;
-         break;
-      default:
-         DISPLAY_WARNING("grRenderBuffer : unknown buffer : %x", buffer);
-   }
 }
 
 FX_ENTRY void FX_CALL
@@ -633,13 +506,6 @@ grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth )
 FX_ENTRY void FX_CALL
 grBufferSwap( FxU32 swap_interval )
 {
-   int i;
-   LOG("grBufferSwap(%d)\r\n", swap_interval);
-
-   // don't swap while rendering to texture
-   if (render_to_texture)
-      return;
-
    retro_return(true);
 }
 
@@ -742,14 +608,9 @@ grLfbReadRegion( GrBuffer_t src_buffer,
    switch(src_buffer)
    {
       case GR_BUFFER_FRONTBUFFER:
-         //glReadBuffer(GL_FRONT);
          break;
       case GR_BUFFER_BACKBUFFER:
-         //glReadBuffer(GL_BACK);
          break;
-         /*case GR_BUFFER_AUXBUFFER:
-           glReadBuffer(current_buffer);
-           break;*/
       default:
          DISPLAY_WARNING("grReadRegion : unknown buffer : %x", src_buffer);
    }

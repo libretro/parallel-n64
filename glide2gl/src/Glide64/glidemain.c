@@ -2161,9 +2161,6 @@ void guLoadTextures(void)
          GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
    tbuf_size = grTexCalcMemRequired(log2_2048 ? GR_LOD_LOG2_2048 : GR_LOD_LOG2_1024,
          GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
-   grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
-   grBufferClear (0, 0, 0xFFFF);
-   grRenderBuffer( GR_BUFFER_BACKBUFFER );
 
    rdp.texbufs[0].tmu = GR_TMU0;
    rdp.texbufs[0].begin = 0;

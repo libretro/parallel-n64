@@ -584,9 +584,6 @@ grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth );
 FX_ENTRY void FX_CALL
 grBufferSwap( FxU32 swap_interval );
 
-FX_ENTRY void FX_CALL
-grRenderBuffer( GrBuffer_t buffer );
-
 /*
 ** error management
 */
