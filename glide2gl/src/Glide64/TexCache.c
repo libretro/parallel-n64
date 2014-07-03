@@ -709,11 +709,6 @@ void TexCache(void)
 
          tile = rdp.cur_tile + i;
 
-         if (settings.filtering == 0)
-            filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_3POINT_LINEAR;
-         else
-            filter = (settings.filtering==1)?GR_TEXTUREFILTER_3POINT_LINEAR:(settings.filtering==2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_BILINEAR;
-         grTexFilterMode (tmu, filter, filter);
 
          if (rdp.cur_cache[i])
          {
@@ -745,7 +740,11 @@ void TexCache(void)
             else if (rdp.tiles[tile].mirror_t)
                mode_t = GR_TEXTURECLAMP_MIRROR_EXT;
 
-            grTexClampMode (tmu, mode_s, mode_t);
+            if (settings.filtering == 0)
+               filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_3POINT_LINEAR;
+            else
+               filter = (settings.filtering==1)?GR_TEXTUREFILTER_3POINT_LINEAR:(settings.filtering==2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_BILINEAR;
+            grTexFilterClampMode (tmu, mode_s, mode_t, filter, filter);
          }
       }
    }

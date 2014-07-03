@@ -725,10 +725,12 @@ grTexSource( GrChipID_t tmu,
              GrTexInfo  *info );
 
 FX_ENTRY void FX_CALL 
-grTexClampMode(
+grTexFilterClampMode(
                GrChipID_t tmu,
                GrTextureClampMode_t s_clampmode,
-               GrTextureClampMode_t t_clampmode
+               GrTextureClampMode_t t_clampmode,
+               GrTextureFilterMode_t minfilter_mode,
+               GrTextureFilterMode_t magfilter_mode
                );
 
 FX_ENTRY void FX_CALL 
@@ -749,14 +751,6 @@ grTexDetailControl(
                    FxU8 detail_scale,
                    float detail_max
                    );
-
-FX_ENTRY void FX_CALL 
-grTexFilterMode(
-                GrChipID_t tmu,
-                GrTextureFilterMode_t minfilter_mode,
-                GrTextureFilterMode_t magfilter_mode
-                );
-
 
 FX_ENTRY void FX_CALL 
 grTexDownloadMipMap( GrChipID_t tmu,

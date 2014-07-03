@@ -542,18 +542,25 @@ grTexDetailControl(
 }
 
 FX_ENTRY void FX_CALL
-grTexFilterMode(
-                GrChipID_t tmu,
-                GrTextureFilterMode_t minfilter_mode,
-                GrTextureFilterMode_t magfilter_mode
-                )
+grTexFilterClampMode(
+               GrChipID_t tmu,
+               GrTextureClampMode_t s_clampmode,
+               GrTextureClampMode_t t_clampmode,
+               GrTextureFilterMode_t minfilter_mode,
+               GrTextureFilterMode_t magfilter_mode
+               )
 {
-   unsigned index = (tmu == GR_TMU1) ? 0 : 1;
+   unsigned index = tmu == GR_TMU1 ? 0 : 1;
 
+   glActiveTexture((tmu == GR_TMU1) ? GL_TEXTURE0 : GL_TEXTURE1);
+
+   wrap_s[index] = s_clampmode;
+   wrap_t[index] = t_clampmode;
    min_filter[index] = (minfilter_mode == GR_TEXTUREFILTER_BILINEAR) ? GL_LINEAR : GL_NEAREST;
    mag_filter[index] = (magfilter_mode == GR_TEXTUREFILTER_BILINEAR) ? GL_LINEAR : GL_NEAREST;
 
-   glActiveTexture((tmu == GR_TMU1) ? GL_TEXTURE0 : GL_TEXTURE1);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[index]);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[index]);
 
@@ -564,23 +571,4 @@ grTexFilterMode(
 #endif
 
    need_to_compile = 1;
-   LOG("grTexFilterMode(%d,%d,%d)\r\n", tmu, minfilter_mode, magfilter_mode);
-}
-
-FX_ENTRY void FX_CALL
-grTexClampMode(
-               GrChipID_t tmu,
-               GrTextureClampMode_t s_clampmode,
-               GrTextureClampMode_t t_clampmode
-               )
-{
-   unsigned index = tmu == GR_TMU1 ? 0 : 1;
-
-   wrap_s[index] = s_clampmode;
-   wrap_t[index] = t_clampmode;
-   glActiveTexture((tmu == GR_TMU1) ? GL_TEXTURE0 : GL_TEXTURE1);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[index]);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[index]);
-
-   LOG("grTexClampMode(%d, %d, %d)\r\n", tmu, s_clampmode, t_clampmode);
 }
