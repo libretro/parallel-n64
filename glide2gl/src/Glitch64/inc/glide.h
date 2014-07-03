@@ -809,6 +809,12 @@ grGlideGetVertexLayout( void *layout );
 FX_ENTRY void FX_CALL
 grGlideSetVertexLayout( const void *layout );
 
+#define guFogGenerateLinear(nearZ, farZ) \
+{ \
+   fogStart = (nearZ) / 255.0f; \
+   fogEnd = (farZ) / 255.0f; \
+}
+
 #endif /* FX_GLIDE_NO_FUNC_PROTO */
 
 #ifdef __cplusplus

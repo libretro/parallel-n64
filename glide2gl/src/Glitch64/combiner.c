@@ -358,7 +358,7 @@ void init_combiner(void)
    dither_enabled = 0;
 }
 
-void compile_chroma_shader()
+void compile_chroma_shader(void)
 {
    strcpy(fragment_shader_chroma, "\nvoid test_chroma(vec4 ctexture1)\n{\n");
 
@@ -1445,22 +1445,6 @@ grFogMode( GrFogMode_t mode, GrColor_t fogcolor)
    fogColor[3] = (fogcolor & 0xFF) / 255.0f;
 
    need_to_compile = 1;
-}
-
-FX_ENTRY float FX_CALL
-guFogTableIndexToW( int i )
-{
-   LOG("guFogTableIndexToW(%d)\r\n", i);
-   return (float)(glide64_pow(2.0, 3.0 + (float)(i>>2)) / (8-(i&3)));
-}
-
-FX_ENTRY void FX_CALL
-guFogGenerateLinear(GrFog_t *fogtable,
-                    float nearZ, float farZ )
-{
-   LOG("guFogGenerateLinear(%f,%f)\r\n", nearZ, farZ);
-   fogStart = nearZ / 255.0f;
-   fogEnd = farZ / 255.0f;
 }
 
 // chroma

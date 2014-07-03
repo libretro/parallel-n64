@@ -134,6 +134,7 @@ extern void grTexChromaRangeExt(GrChipID_t tmu, GrColor_t color0, GrColor_t colo
 extern void grTexChromaModeExt(GrChipID_t tmu, GrChromakeyMode_t mode);
 
 extern int width, height;
+extern float fogStart, fogEnd;
 
 //#define DISPLAY_WARNING_DEBUG
 

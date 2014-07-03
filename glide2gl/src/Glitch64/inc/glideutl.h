@@ -120,22 +120,6 @@ FX_ENTRY void FX_CALL
 guGammaCorrectionRGB( FxFloat red, FxFloat green, FxFloat blue );
 
 /*
-** fog stuff
-*/
-FX_ENTRY float FX_CALL
-guFogTableIndexToW( int i );
-
-FX_ENTRY void FX_CALL
-guFogGenerateExp( GrFog_t *fogtable, float density );
-
-FX_ENTRY void FX_CALL
-guFogGenerateExp2( GrFog_t *fogtable, float density );
-
-FX_ENTRY void FX_CALL
-guFogGenerateLinear(GrFog_t *fogtable,
-                    float nearZ, float farZ );
-
-/*
 ** hi-level texture manipulation tools.
 */
 FX_ENTRY FxBool FX_CALL

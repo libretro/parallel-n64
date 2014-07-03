@@ -2204,16 +2204,7 @@ int InitGfx(void)
 
    if (settings.fog) //"FOGCOORD" extension
    {
-      int i;
-      GrFog_t fog_t[64];
-      guFogGenerateLinear (fog_t, 0.0f, 255.0f);//(float)rdp.fog_multiplier + (float)rdp.fog_offset);//256.0f);
-
-      for (i = 63; i > 0; i--)
-      {
-         if (fog_t[i] - fog_t[i-1] > 63)
-            fog_t[i-1] = fog_t[i] - 63;
-      }
-      fog_t[0] = 0;
+      guFogGenerateLinear (0.0f, 255.0f);//(float)rdp.fog_multiplier + (float)rdp.fog_offset);//256.0f);
    }
    else //not supported
       settings.fog = false;
