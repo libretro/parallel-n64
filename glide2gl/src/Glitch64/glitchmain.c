@@ -159,9 +159,6 @@ grSstWinOpen(
 FX_ENTRY FxBool FX_CALL
 grSstWinClose( GrContext_t context )
 {
-   int i;
-   LOG("grSstWinClose(%d)\r\n", context);
-
    if (frameBuffer)
       free(frameBuffer);
    if (depthBuffer)
