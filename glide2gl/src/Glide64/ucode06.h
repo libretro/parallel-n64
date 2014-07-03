@@ -103,13 +103,7 @@ static float set_sprite_combine_mode(void)
       GR_BLEND_ZERO,
       GR_BLEND_ZERO,
       GR_BLEND_ZERO);
-    if (rdp.othermode_l & 1)
-    {
-      grAlphaTestFunction (GR_CMP_GEQUAL);
-      grAlphaTestReferenceValue (0x80);
-    }
-    else
-      grAlphaTestFunction (GR_CMP_ALWAYS);
+    grAlphaTestFunction ((rdp.othermode_l & 1) ? GR_CMP_GEQUAL : GR_CMP_ALWAYS, 0x80, (rdp.othermode_l & 1) ? 1 : 0);
     rdp.update |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
   }
   return Z;

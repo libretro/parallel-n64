@@ -1381,36 +1381,22 @@ grTexCombine(
 }
 
 FX_ENTRY void FX_CALL
-grAlphaTestReferenceValue( GrAlpha_t value )
+grAlphaTestReferenceValue(GrAlpha_t value)
 {
    alpha_ref = value;
-   grAlphaTestFunction(alpha_func);
 }
 
 FX_ENTRY void FX_CALL
-grAlphaTestFunction( GrCmpFnc_t function )
+grAlphaTestFunction( GrCmpFnc_t function, GrAlpha_t value, int set_alpha_ref)
 {
-   LOG("grAlphaTestFunction(%d)\r\n", function);
    alpha_func = function;
-   switch(function)
-   {
-      case GR_CMP_GREATER:
-         //glAlphaFunc(GL_GREATER, alpha_ref/255.0f);
-         break;
-      case GR_CMP_GEQUAL:
-         //glAlphaFunc(GL_GEQUAL, alpha_ref/255.0f);
-         break;
-      case GR_CMP_ALWAYS:
-         //glAlphaFunc(GL_ALWAYS, alpha_ref/255.0f);
-         //glDisable(GL_ALPHA_TEST);
-         alpha_test = false;
-         return;
-         break;
-      default:
-         DISPLAY_WARNING("grAlphaTestFunction : unknown function : %x", function);
-   }
-   //glEnable(GL_ALPHA_TEST);
    alpha_test = true;
+
+   if (set_alpha_ref)
+      alpha_ref = value;
+
+   if (function == GR_CMP_ALWAYS)
+      alpha_test = false;
 }
 
 FX_ENTRY void FX_CALL 

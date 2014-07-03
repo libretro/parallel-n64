@@ -2192,7 +2192,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 
          grAlphaBlendFunction (GR_BLEND_ONE, GR_BLEND_ZERO, GR_BLEND_ONE, GR_BLEND_ZERO);
 
-         grAlphaTestFunction (GR_CMP_ALWAYS);
+         grAlphaTestFunction (GR_CMP_ALWAYS, 0x00, 0);
          grStippleMode(GR_STIPPLE_DISABLE);
 
          grCullMode(GR_CULL_DISABLE);

@@ -109,7 +109,7 @@ static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
          FXFALSE);
    if (opaque)
    {
-      grAlphaTestFunction (GR_CMP_ALWAYS);
+      grAlphaTestFunction (GR_CMP_ALWAYS, 0x00, 0);
       grAlphaBlendFunction( GR_BLEND_ONE,
             GR_BLEND_ZERO,
             GR_BLEND_ONE,

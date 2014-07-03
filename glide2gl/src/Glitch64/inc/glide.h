@@ -620,10 +620,7 @@ grAlphaCombine(
                );
 
 FX_ENTRY void FX_CALL
-grAlphaControlsITRGBLighting( FxBool enable );
-
-FX_ENTRY void FX_CALL
-grAlphaTestFunction( GrCmpFnc_t function );
+grAlphaTestFunction( GrCmpFnc_t function, GrAlpha_t value, int set_alpha_ref);
 
 FX_ENTRY void FX_CALL
 grAlphaTestReferenceValue( GrAlpha_t value );

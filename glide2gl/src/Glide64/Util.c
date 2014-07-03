@@ -1347,38 +1347,21 @@ void update(void)
          if (rdp.acmp == 1 && !(rdp.othermode_l & 0x00002000) && (!(rdp.othermode_l & 0x00004000) || (rdp.blend_color&0xFF)))
          {
             uint8_t reference = (uint8_t)(rdp.blend_color&0xFF);
-            grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER);
-            grAlphaTestReferenceValue (reference);
+            grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER, reference, 1);
             FRDP (" |- alpha compare: blend: %02lx\n", reference);
          }
          else
          {
             if (rdp.flags & ALPHA_COMPARE)
             {
-               if ((rdp.othermode_l & 0x5000) != 0x5000)
-               {
-                  grAlphaTestFunction (GR_CMP_GEQUAL);
-                  grAlphaTestReferenceValue (0x20);//0xA0);
-                  LRDP (" |- alpha compare: 0x20\n");
-               }
-               else
-               {
-                  grAlphaTestFunction (GR_CMP_GREATER);
-                  if (rdp.acmp == 3)
-                  {
-                     grAlphaTestReferenceValue ((uint8_t)(rdp.blend_color&0xFF));
-                     FRDP (" |- alpha compare: blend: %02lx\n", rdp.blend_color&0xFF);
-                  }
-                  else
-                  {
-                     grAlphaTestReferenceValue (0x00);
-                     LRDP (" |- alpha compare: 0x00\n");
-                  }
-               }
+               bool cond_set = (rdp.othermode_l & 0x5000) == 0x5000;
+               grAlphaTestFunction (!cond_set ? GR_CMP_GEQUAL : GR_CMP_GREATER, 0x20, !cond_set ? 1 : 0);
+               if (cond_set)
+                  grAlphaTestReferenceValue ((rdp.acmp == 3) ? (uint8_t)(rdp.blend_color&0xFF) : 0x00);
             }
             else
             {
-               grAlphaTestFunction (GR_CMP_ALWAYS);
+               grAlphaTestFunction (GR_CMP_ALWAYS, 0x00, 0);
                LRDP (" |- alpha compare: none\n");
             }
          }
