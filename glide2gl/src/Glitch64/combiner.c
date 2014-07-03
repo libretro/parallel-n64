@@ -1134,13 +1134,10 @@ grTexCombine(
              FxBool alpha_invert
              )
 {
-   int num_tex;
-   LOG("grTexCombine(%d,%d,%d,%d,%d,%d,%d)\r\n", tmu, rgb_function, rgb_factor, alpha_function, alpha_factor, rgb_invert, alpha_invert);
+   int num_tex = 0;
 
    if (tmu == GR_TMU0)
       num_tex = 1;
-   else
-      num_tex = 0;
 
    ccolor[tmu][0] = ccolor[tmu][1] = ccolor[tmu][2] = ccolor[tmu][3] = 0;
 
@@ -1840,18 +1837,10 @@ grTexColorCombineExt(GrChipID_t       tmu,
                      GrTCCUColor_t d, FxBool d_invert,
                      FxU32 shift, FxBool invert)
 {
-   int num_tex;
-   LOG("grTexColorCombineExt(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)\r\n", tmu, a, a_mode, b, b_mode, c, c_invert, d, d_invert, shift, invert);
-
-   if (invert)
-      DISPLAY_WARNING("grTexColorCombineExt : inverted result");
-   if (shift)
-      DISPLAY_WARNING("grTexColorCombineExt : shift = %d", shift);
+   int num_tex = 0;
 
    if (tmu == GR_TMU0)
       num_tex = 1;
-   else
-      num_tex = 0;
 
    if(num_tex == 0)
    {
@@ -2210,12 +2199,10 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
                      FxU32 shift, FxBool invert,
                         GrColor_t     ccolor_value)
 {
-   int num_tex;
-   LOG("grTexAlphaCombineExt(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)\r\n", tmu, a, a_mode, b, b_mode, c, c_invert, d, d_invert, shift, invert);
+   int num_tex = 0;
 
    if (tmu == GR_TMU0)
       num_tex = 1;
-   else num_tex = 0;
 
    ccolor[num_tex][0] = ((ccolor_value >> 24) & 0xFF) / 255.0f;
    ccolor[num_tex][1] = ((ccolor_value >> 16) & 0xFF) / 255.0f;
