@@ -226,15 +226,6 @@ static void render_rectangle(int texture_number,
    glEnable(GL_BLEND);
 }
 
-FX_ENTRY void FX_CALL
-grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth )
-{
-   LOG("grBufferClear(%d,%d,%d)\r\n", color, alpha, depth);
-   glClearColor(0, 0, 0, 0);
-   glClearDepth(depth / 65535.0f);
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-}
-
 // frame buffer
 
 FX_ENTRY FxBool FX_CALL

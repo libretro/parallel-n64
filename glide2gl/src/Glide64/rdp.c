@@ -2092,26 +2092,6 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-#if 0
-   if (rdp.cur_image && (rdp.cur_image->format != 0) && (rdp.cycle_mode == 3) && (rdp.cur_image->width == lr_x - ul_x) && (rdp.cur_image->height == lr_y - ul_y))
-   {
-      uint32_t color = rdp.fill_color;
-      if (rdp.ci_size < 3)
-      {
-         color = ((color&1)?0xFF:0) |
-            ((uint32_t)((float)((color&0xF800) >> 11) / 31.0f * 255.0f) << 24) |
-            ((uint32_t)((float)((color&0x07C0) >> 6) / 31.0f * 255.0f) << 16) |
-            ((uint32_t)((float)((color&0x003E) >> 1) / 31.0f * 255.0f) << 8);
-      }
-      grDepthMask (FXFALSE);
-      grBufferClear (color, 0, 0xFFFF);
-      grDepthMask (FXTRUE);
-      rdp.update |= UPDATE_ZBUF_ENABLED;
-      //LRDP("Fillrect - cleared the texture buffer\n");
-      return;
-   }
-#endif
-
    // Update scissor
    //if (fullscreen)
    update_scissor(false);

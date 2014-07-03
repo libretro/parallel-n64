@@ -570,11 +570,12 @@ grVertexLayout(FxU32 param, FxI32 offset, FxU32 mode);
 FX_ENTRY void FX_CALL 
 grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers);
 
-/*
-** buffer management
-*/
-FX_ENTRY void FX_CALL
-grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth );
+#define grBufferClear(color, alpha, depth) \
+{ \
+   glClearColor(0, 0, 0, 0); \
+   glClearDepth(depth / 65535.0f); \
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); \
+}
 
 #define grBufferSwap(interval) retro_return(true)
 
