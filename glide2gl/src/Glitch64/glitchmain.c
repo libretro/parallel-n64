@@ -38,7 +38,6 @@ typedef struct
   unsigned int address;
   int width;
   int height;
-  unsigned int fbid;
   unsigned int zbid;
   int buff_clear;
 } fb;
@@ -329,7 +328,6 @@ grSstWinClose( GrContext_t context )
    {
       for (i=0; i<nb_fb; i++)
       {
-         glDeleteFramebuffers( 1, &(fbs[i].fbid) );
          glDeleteRenderbuffers( 1, &(fbs[i].zbid) );
       }
    }
@@ -393,7 +391,6 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
             if (fbs[i].width == width && fbs[i].height == height) //select already allocated FBO
             {
                glBindFramebuffer( GL_FRAMEBUFFER, 0);
-               glBindFramebuffer( GL_FRAMEBUFFER, fbs[i].fbid );
                glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0 );
                glBindRenderbuffer( GL_RENDERBUFFER, fbs[i].zbid );
                glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbs[i].zbid );
@@ -411,7 +408,6 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
             }
             else //create new FBO at the same address, delete old one
             {
-               glDeleteFramebuffers( 1, &(fbs[i].fbid) );
                glDeleteRenderbuffers( 1, &(fbs[i].zbid) );
                if (nb_fb > 1)
                   memmove(&(fbs[i]), &(fbs[i+1]), sizeof(fb)*(nb_fb-i));
@@ -422,7 +418,6 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
       }
 
       //create new FBO
-      glGenFramebuffers( 1, &(fbs[nb_fb].fbid) );
       glGenRenderbuffers( 1, &(fbs[nb_fb].zbid) );
       glBindRenderbuffer( GL_RENDERBUFFER, fbs[nb_fb].zbid );
       glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
@@ -437,7 +432,7 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
 	  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
       glBindTexture(GL_TEXTURE_2D, 0);
 
-      glBindFramebuffer( GL_FRAMEBUFFER, fbs[nb_fb].fbid);
+      glBindFramebuffer( GL_FRAMEBUFFER, 0);
       glFramebufferTexture2D(GL_FRAMEBUFFER,
             GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, retro_get_fbo_id(), 0);
       glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbs[nb_fb].zbid );
