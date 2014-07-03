@@ -135,9 +135,6 @@ grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
                   GrACUColor_t d, FxBool d_invert,
                   FxU32 shift, FxBool invert);
 
-// config functions
-FX_ENTRY void FX_CALL grGetGammaTableExt(FxU32, FxU32*, FxU32*, FxU32*);
-
 extern void grChromaRangeExt(GrColor_t color0, GrColor_t color1, FxU32 mode);
 extern void grChromaRangeModeExt(GrChromakeyMode_t mode);
 extern void grTexChromaRangeExt(GrChipID_t tmu, GrColor_t color0, GrColor_t color1, GrTexChromakeyMode_t mode);

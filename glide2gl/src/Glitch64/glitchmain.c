@@ -39,7 +39,6 @@ int bgra8888_support;
 int npot_support;
 int fog_coord_support;
 int texture_unit;
-int buffer_cleared;
 // ZIGGY
 // to allocate a new static texture name, take the value (free_texture++)
 int free_texture;
@@ -56,32 +55,12 @@ uint16_t *depthBuffer;
 uint8_t  *buf;
 
 FX_ENTRY void FX_CALL
-grSstOrigin(GrOriginLocation_t  origin)
-{
-   LOG("grSstOrigin(%d)\r\n", origin);
-   if (origin != GR_ORIGIN_UPPER_LEFT)
-      DISPLAY_WARNING("grSstOrigin : %x", origin);
-}
-
-FX_ENTRY void FX_CALL
 grClipWindow( FxU32 minx, FxU32 miny, FxU32 maxx, FxU32 maxy )
 {
    LOG("grClipWindow(%d,%d,%d,%d)\r\n", minx, miny, maxx, maxy);
    GLint y = height - maxy;
    glScissor(minx, y, maxx - minx, maxy - miny);
    glEnable(GL_SCISSOR_TEST);
-}
-
-FX_ENTRY void FX_CALL
-grGlideInit( void )
-{
-   LOG("grGlideInit()\r\n");
-}
-
-FX_ENTRY void FX_CALL
-grSstSelect( int which_sst )
-{
-   LOG("grSstSelect(%d)\r\n", which_sst);
 }
 
 int isExtensionSupported(const char *extension)
@@ -240,12 +219,6 @@ grSstWinOpen(
    return 1;
 }
 
-FX_ENTRY void FX_CALL
-grGlideShutdown( void )
-{
-   LOG("grGlideShutdown\r\n");
-}
-
 FX_ENTRY FxBool FX_CALL
 grSstWinClose( GrContext_t context )
 {
@@ -269,153 +242,6 @@ grSstWinClose( GrContext_t context )
    free_textures();
 
    return FXTRUE;
-}
-
-FX_ENTRY FxU32 FX_CALL
-grGet( FxU32 pname, FxU32 plength, FxI32 *params )
-{
-   LOG("grGet(%d,%d)\r\n", pname, plength);
-   switch(pname)
-   {
-      case GR_MAX_TEXTURE_SIZE:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = 2048;
-         return 4;
-         break;
-      case GR_NUM_TMU:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = 2;
-         return 4;
-         break;
-      case GR_NUM_BOARDS:
-      case GR_NUM_FB:
-      case GR_REVISION_FB:
-      case GR_REVISION_TMU:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = 1;
-         return 4;
-         break;
-      case GR_MEMORY_FB:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = 16*1024*1024;
-         return 4;
-         break;
-      case GR_MEMORY_TMU:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = 16*1024*1024;
-         return 4;
-         break;
-      case GR_MEMORY_UMA:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = 16*1024*1024 * TEXTURE_UNITS;
-         return 4;
-         break;
-      case GR_BITS_RGBA:
-         if (plength < 16 || params == NULL) return 0;
-         params[0] = 8;
-         params[1] = 8;
-         params[2] = 8;
-         params[3] = 8;
-         return 16;
-         break;
-      case GR_BITS_DEPTH:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = 16;
-         return 4;
-         break;
-      case GR_BITS_GAMMA:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = 8;
-         return 4;
-         break;
-      case GR_GAMMA_TABLE_ENTRIES:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = 256;
-         return 4;
-         break;
-      case GR_FOG_TABLE_ENTRIES:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = 64;
-         return 4;
-         break;
-      case GR_WDEPTH_MIN_MAX:
-         if (plength < 8 || params == NULL) return 0;
-         params[0] = 0;
-         params[1] = 65528;
-         return 8;
-         break;
-      case GR_ZDEPTH_MIN_MAX:
-         if (plength < 8 || params == NULL) return 0;
-         params[0] = 0;
-         params[1] = 65535;
-         return 8;
-         break;
-      case GR_LFB_PIXEL_PIPE:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = FXFALSE;
-         return 4;
-         break;
-      case GR_MAX_TEXTURE_ASPECT_RATIO:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = 3;
-         return 4;
-         break;
-      case GR_NON_POWER_OF_TWO_TEXTURES:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = FXFALSE;
-         return 4;
-         break;
-      case GR_TEXTURE_ALIGN:
-         if (plength < 4 || params == NULL) return 0;
-         params[0] = 0;
-         return 4;
-         break;
-      default:
-         DISPLAY_WARNING("unknown pname in grGet : %x", pname);
-   }
-   return 0;
-}
-
-FX_ENTRY const char * FX_CALL
-grGetString( FxU32 pname )
-{
-   LOG("grGetString(%d)\r\n", pname);
-   switch(pname)
-   {
-      case GR_EXTENSION:
-         {
-            static char extension[] = "CHROMARANGE TEXCHROMA TEXMIRROR PALETTE6666 FOGCOORD EVOODOO TEXTUREBUFFER TEXUMA TEXFMT COMBINE GETGAMMA";
-            return extension;
-         }
-         break;
-      case GR_HARDWARE:
-         {
-            static char hardware[] = "Voodoo5 (tm)";
-            return hardware;
-         }
-         break;
-      case GR_VENDOR:
-         {
-            static char vendor[] = "3Dfx Interactive";
-            return vendor;
-         }
-         break;
-      case GR_RENDERER:
-         {
-            static char renderer[] = "Glide";
-            return renderer;
-         }
-         break;
-      case GR_VERSION:
-         {
-            static char version[] = "3.0";
-            return version;
-         }
-         break;
-      default:
-         DISPLAY_WARNING("unknown grGetString selector : %x", pname);
-   }
-   return NULL;
 }
 
 static void render_rectangle(int texture_number,
@@ -473,15 +299,6 @@ grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth )
    glClearColor(0, 0, 0, 0);
    glClearDepth(depth / 65535.0f);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-   // ZIGGY TODO check that color mask is on
-   buffer_cleared = 1;
-}
-
-FX_ENTRY void FX_CALL
-grBufferSwap( FxU32 swap_interval )
-{
-   retro_return(true);
 }
 
 // frame buffer
@@ -515,12 +332,6 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
       }
    }
 
-   return FXTRUE;
-}
-
-FX_ENTRY FxBool FX_CALL
-grLfbUnlock( GrLock_t type, GrBuffer_t buffer )
-{
    return FXTRUE;
 }
 

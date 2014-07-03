@@ -581,8 +581,7 @@ grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers);
 FX_ENTRY void FX_CALL
 grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth );
 
-FX_ENTRY void FX_CALL
-grBufferSwap( FxU32 swap_interval );
+#define grBufferSwap(interval) retro_return(true)
 
 /*
 ** error management
@@ -612,12 +611,6 @@ grSetNumPendingBuffers(FxI32 NumPendingBuffers);
 
 FX_ENTRY FxBool FX_CALL
 grSelectContext( GrContext_t context );
-
-FX_ENTRY void FX_CALL
-grSstOrigin(GrOriginLocation_t  origin);
-
-FX_ENTRY void FX_CALL 
-grSstSelect( int which_sst );
 
 /*
 ** Glide configuration and special effect maintenance functions
@@ -690,12 +683,6 @@ grLoadGammaTable( FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue);
 
 FX_ENTRY void FX_CALL
 grSplash(float x, float y, float width, float height, FxU32 frame);
-
-FX_ENTRY FxU32 FX_CALL 
-grGet( FxU32 pname, FxU32 plength, FxI32 *params );
-
-FX_ENTRY const char * FX_CALL 
-grGetString( FxU32 pname );
 
 FX_ENTRY void FX_CALL 
 grEnable( GrEnableMode_t mode );
@@ -838,8 +825,7 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
            GrOriginLocation_t origin, FxBool pixelPipeline, 
            GrLfbInfo_t *info );
 
-FX_ENTRY FxBool FX_CALL
-grLfbUnlock( GrLock_t type, GrBuffer_t buffer );
+#define grLfbUnlock(type, buffer) (true)
 
 FX_ENTRY void FX_CALL 
 grLfbConstantAlpha( GrAlpha_t alpha );
@@ -870,12 +856,6 @@ grLfbReadRegion( GrBuffer_t src_buffer,
 /*
 ** glide management functions
 */
-FX_ENTRY void FX_CALL
-grGlideInit( void );
-
-FX_ENTRY void FX_CALL
-grGlideShutdown( void );
-
 FX_ENTRY void FX_CALL
 grGlideGetState( void *state );
 

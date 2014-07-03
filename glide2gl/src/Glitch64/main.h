@@ -69,9 +69,7 @@ extern int packed_pixels_support;
 extern int default_texture; // the infamous "32*1024*1024" is now configurable
 extern int depth_texture;
 void set_depth_shader(void);
-void set_bw_shader(void);
 extern float invtex[2];
-extern int buffer_cleared; // mark that the buffer has been cleared, used to check if we need to reload the texture buffer content
 
 #include <stdio.h>
 #define GL_GLEXT_PROTOTYPES
@@ -83,7 +81,6 @@ void free_textures(void);
 
 void set_lambda(void);
 
-int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info );
 void init_geometry(void);
 
 void init_combiner(void);
@@ -102,7 +99,7 @@ void set_copy_shader(void);
 #define TEXCOORD_1_ATTR 3
 #define FOG_ATTR 4
 
-extern int width, height, widtho, heighto;
+extern int width, height;
 extern int tex_width[2], tex_height[2];
 extern int tex_exactWidth[2], tex_exactHeight[2];
 extern float texture_env_color[4];
@@ -112,25 +109,16 @@ extern int need_lambda[2];
 extern float lambda_color[2][4];
 extern int inverted_culling;
 extern int culling_mode;
-extern int render_to_texture;
 extern int lfb_color_fmt;
 extern int need_to_compile;
-extern int blackandwhite0;
-extern int blackandwhite1;
 extern int three_point_filter[2];
 
 extern int blend_func_separate_support;
 extern int fog_coord_support;
 extern int bgra8888_support;
-//extern int pbuffer_support;
 extern int glsl_support;
-extern unsigned int pBufferAddress;
-extern int viewport_width, viewport_height;
 
 void disable_textureSizes(void);
-
-int getFullScreenWidth(void);
-int getFullScreenHeight(void);
 
 #ifndef GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS // TODO: Not present
 #define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS 18283

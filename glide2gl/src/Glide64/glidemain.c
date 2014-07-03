@@ -2181,12 +2181,6 @@ int InitGfx(void)
 
    rdp_reset ();
 
-   // Initialize Glide
-   grGlideInit ();
-
-   // Select the Glide device
-   grSstSelect (settings.card_id);
-
    gfx_context = grSstWinOpen (
          0,
          GR_REFRESH_60Hz,
@@ -2198,8 +2192,6 @@ int InitGfx(void)
    if (!gfx_context)
    {
       ERRLOG("Error setting display mode");
-      //    grSstWinClose (gfx_context);
-      grGlideShutdown ();
       return false;
    }
 
@@ -2247,9 +2239,6 @@ void ReleaseGfx(void)
 
    // Release graphics
    grSstWinClose (gfx_context);
-
-   // Shutdown glide
-   grGlideShutdown();
 
    rdp_free();
 }
@@ -2456,10 +2445,6 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
    if (fb_depth_render_enabled)
       ZLUT_init();
 
-   grGlideInit ();
-   grSstSelect (0);
-   grGlideShutdown ();
-
    return true;
 }
 
@@ -2554,10 +2539,6 @@ EXPORT int CALL RomOpen (void)
    OPEN_RDP_LOG ();
    OPEN_RDP_E_LOG ();
 
-
-   // ** EVOODOO EXTENSIONS **
-   grGlideInit ();
-   grSstSelect (0);
 
    InitGfx ();
    rdp_setfuncs();
