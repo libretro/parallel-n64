@@ -253,12 +253,15 @@ static void DrawImage (DRAWIMAGE *d)
       }
    }
 
+#if 0
    if ((settings.hacks&hack_PPL) > 0)
    {
       if (d->imageY > d->imageH)
          d->imageY = (d->imageY % d->imageH);
    }
-   else if ((settings.hacks&hack_Starcraft) > 0)
+   else
+#endif
+   if ((settings.hacks&hack_Starcraft) > 0)
    {
       if (d->imageH%2 == 1)
          d->imageH -= 1;
@@ -522,7 +525,7 @@ static void uc6_bg (bool bg_1cyc)
 
    uc6_read_background_data(&d, bg_1cyc);
 
-   if (settings.ucode == ucode_F3DEX2 || (settings.hacks&hack_PPL))
+   if (settings.ucode == ucode_F3DEX2/* || (settings.hacks&hack_PPL)*/)
    {
       if ( (d.imagePtr != rdp.cimg) && (d.imagePtr != rdp.ocimg) && d.imagePtr) //can't draw from framebuffer
          DrawImage(&d);

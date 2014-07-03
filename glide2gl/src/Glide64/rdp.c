@@ -635,7 +635,7 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
 
    FRDP ("CopyFrameBuffer: %08lx... ", rdp.cimg);
 
-   if (fb_emulation_enabled && !(settings.hacks&hack_PPL))
+   if (fb_emulation_enabled)
    {
       int ind = (rdp.ci_count > 0)?rdp.ci_count-1:0;
       height = rdp.frame_buffers[ind].height;
@@ -643,8 +643,6 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
    else
    {
       height = rdp.ci_lower_bound;
-      if (settings.hacks&hack_PPL)
-         height -= rdp.ci_upper_bound;
    }
    FRDP ("width: %d, height: %d...  ", width, height);
 
@@ -2551,51 +2549,6 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
          if (!rdp.motionblur && (rdp.num_of_ci > rdp.ci_count+1) && (next_fb->status != CI_AUX))
          {
             RestoreScale();
-         }
-      }
-      if (cur_fb->status == CI_AUX
-            )
-      {
-         if (cur_fb->format == 0)
-         {
-            if ((settings.hacks&hack_PPL) && (rdp.scale_x < 1.1f)) //need to put current image back to frame buffer
-            {
-               int y, x, width, height;
-               uint16_t *ptr_dst, *ptr_src, c;
-
-               width = cur_fb->width;
-               height = cur_fb->height;
-               ptr_dst = (uint16_t*)malloc(width * height * sizeof(uint16_t));
-               ptr_src = (uint16_t*)(gfx_info.RDRAM + cur_fb->addr);
-
-               for (y = 0; y<height; y++)
-               {
-                  for (x=0; x<width; x++)
-                  {
-                     c = ((ptr_src[(x + y * width)^1]) >> 1) | 0x8000;
-                     ptr_dst[x + y * width] = c;
-                  }
-               }
-               grLfbWriteRegion(GR_BUFFER_BACKBUFFER,
-                     (uint32_t)rdp.offset_x,
-                     (uint32_t)rdp.offset_y,
-                     GR_LFB_SRC_FMT_555,
-                     width,
-                     height,
-                     FXFALSE,
-                     width<<1,
-                     ptr_dst);
-
-               free(ptr_dst);
-            }
-            /*
-               else //just clear buffer
-               {
-
-               grColorMask(FXTRUE, FXTRUE);
-               grBufferClear (0, 0, 0xFFFF);
-               }
-               */
          }
       }
 

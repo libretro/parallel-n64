@@ -2025,8 +2025,8 @@ void ReadSpecialSettings (const char * name)
       settings.hacks |= hack_Makers;
    else if (strstr(name, (const char *)"GOLDENEYE"))
       settings.hacks |= hack_GoldenEye;
-   else if (strstr(name, (const char *)"PUZZLE LEAGUE"))
-      settings.hacks |= hack_PPL;
+   //else if (strstr(name, (const char *)"PUZZLE LEAGUE"))
+      //settings.hacks |= hack_PPL;
 
    switch (gfx_plugin_accuracy)
    {
@@ -2739,7 +2739,7 @@ void newSwapBuffers(void)
    {
       grBufferSwap (settings.vsync);
 
-      if  (settings.buff_clear || (settings.hacks&hack_PPL && settings.ucode == 6))
+      if  (settings.buff_clear)
       {
          grDepthMask (FXTRUE);
          grBufferClear (0, 0, 0xFFFF);
