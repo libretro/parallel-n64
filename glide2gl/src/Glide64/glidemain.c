@@ -2151,43 +2151,30 @@ int GetTexAddrUMA(int tmu, int texsize)
    return addr;
 }
 
-// guLoadTextures
 void guLoadTextures(void)
 {
    int tbuf_size = 0;
-   if (settings.scr_res_x <= 1024)
-   {
-      grTextureBufferExt(  GR_TMU0, 0, GR_LOD_LOG2_1024, GR_LOD_LOG2_1024,
-            GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
-      tbuf_size = grTexCalcMemRequired(GR_LOD_LOG2_1024,
-            GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
-      grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
-      grBufferClear (0, 0, 0xFFFF);
-      grRenderBuffer( GR_BUFFER_BACKBUFFER );
-   }
-   else
-   {
-      grTextureBufferExt(  GR_TMU0, 0, GR_LOD_LOG2_2048, GR_LOD_LOG2_2048,
-            GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
-      tbuf_size = grTexCalcMemRequired(GR_LOD_LOG2_2048,
-            GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
-      grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
-      grBufferClear (0, 0, 0xFFFF);
-      grRenderBuffer( GR_BUFFER_BACKBUFFER );
-   }
+
+   bool log2_2048 = (settings.scr_res_x > 1024) ? true : false;
+
+   grTextureBufferExt(  GR_TMU0, 0, log2_2048 ? GR_LOD_LOG2_2048 : GR_LOD_LOG2_1024, log2_2048 ? GR_LOD_LOG2_2048 : GR_LOD_LOG2_1024,
+         GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565, GR_MIPMAPLEVELMASK_BOTH );
+   tbuf_size = grTexCalcMemRequired(log2_2048 ? GR_LOD_LOG2_2048 : GR_LOD_LOG2_1024,
+         GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
+   grRenderBuffer( GR_BUFFER_TEXTUREBUFFER_EXT );
+   grBufferClear (0, 0, 0xFFFF);
+   grRenderBuffer( GR_BUFFER_BACKBUFFER );
 
    rdp.texbufs[0].tmu = GR_TMU0;
    rdp.texbufs[0].begin = 0;
    rdp.texbufs[0].end = rdp.texbufs[0].begin+tbuf_size;
    rdp.texbufs[0].count = 0;
    rdp.texbufs[0].clear_allowed = true;
-   {
-      rdp.texbufs[1].tmu = GR_TMU1;
-      rdp.texbufs[1].begin = rdp.texbufs[0].end;
-      rdp.texbufs[1].end = rdp.texbufs[1].begin+tbuf_size;
-      rdp.texbufs[1].count = 0;
-      rdp.texbufs[1].clear_allowed = true;
-   }
+   rdp.texbufs[1].tmu = GR_TMU1;
+   rdp.texbufs[1].begin = rdp.texbufs[0].end;
+   rdp.texbufs[1].end = rdp.texbufs[1].begin+tbuf_size;
+   rdp.texbufs[1].count = 0;
+   rdp.texbufs[1].clear_allowed = true;
    offset_textures = tbuf_size + 16;
 }
 

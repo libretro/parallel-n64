@@ -799,35 +799,6 @@ grRenderBuffer( GrBuffer_t buffer )
    }
 }
 
-#ifdef HAVE_HWFBE
-FX_ENTRY void FX_CALL
-grAuxBufferExt( GrBuffer_t buffer )
-{
-   LOG("grAuxBufferExt(%d)\r\n", buffer);
-   //DISPLAY_WARNING("grAuxBufferExt");
-
-   if (buffer == GR_BUFFER_AUXBUFFER)
-   {
-      invtex[0] = 0;
-      invtex[1] = 0;
-      need_to_compile = 0;
-      set_depth_shader();
-      glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-      glEnable(GL_DEPTH_TEST);
-      glDepthFunc(GL_ALWAYS);
-      glDisable(GL_CULL_FACE);
-      //glDisable(GL_ALPHA_TEST);
-      glDepthMask(GL_TRUE);
-      grTexFilterMode(GR_TMU1, GR_TEXTUREFILTER_POINT_SAMPLED, GR_TEXTUREFILTER_POINT_SAMPLED);
-   }
-   else
-   {
-      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-      need_to_compile = 1;
-   }
-}
-#endif
-
 FX_ENTRY void FX_CALL
 grBufferClear( GrColor_t color, GrAlpha_t alpha, FxU32 depth )
 {
