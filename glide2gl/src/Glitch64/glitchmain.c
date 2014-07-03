@@ -46,7 +46,6 @@ int default_texture;
 int current_texture;
 int depth_texture, color_texture;
 int glsl_support = 1;
-int lfb_color_fmt;
 float invtex[2];
 //Gonetz
 
@@ -122,7 +121,6 @@ grSstWinOpen(
    buf = (uint8_t*)malloc(width * height * 4 * sizeof(uint8_t));
    glViewport(0, 0, width, height);
 
-   lfb_color_fmt = color_format;
    if (origin_location != GR_ORIGIN_UPPER_LEFT) DISPLAY_WARNING("origin must be in upper left corner");
    if (nColBuffers != 2) DISPLAY_WARNING("number of color buffer is not 2");
    if (nAuxBuffers != 1) DISPLAY_WARNING("number of auxiliary buffer is not 1");

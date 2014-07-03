@@ -109,7 +109,6 @@ extern int need_lambda[2];
 extern float lambda_color[2][4];
 extern int inverted_culling;
 extern int culling_mode;
-extern int lfb_color_fmt;
 extern int need_to_compile;
 extern int three_point_filter[2];
 

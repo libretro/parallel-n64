@@ -625,23 +625,10 @@ FX_ENTRY void FX_CALL
 grConstantColorValue( GrColor_t value )
 {
    LOG("grConstantColorValue(%d)\r\n", value);
-   switch(lfb_color_fmt)
-   {
-      case GR_COLORFORMAT_ARGB:
-         texture_env_color[3] = ((value >> 24) & 0xFF) / 255.0f;
-         texture_env_color[0] = ((value >> 16) & 0xFF) / 255.0f;
-         texture_env_color[1] = ((value >>  8) & 0xFF) / 255.0f;
-         texture_env_color[2] = (value & 0xFF) / 255.0f;
-         break;
-      case GR_COLORFORMAT_RGBA:
-         texture_env_color[0] = ((value >> 24) & 0xFF) / 255.0f;
-         texture_env_color[1] = ((value >> 16) & 0xFF) / 255.0f;
-         texture_env_color[2] = ((value >>  8) & 0xFF) / 255.0f;
-         texture_env_color[3] = (value & 0xFF) / 255.0f;
-         break;
-      default:
-         DISPLAY_WARNING("grConstantColorValue: unknown color format : %x", lfb_color_fmt);
-   }
+   texture_env_color[0] = ((value >> 24) & 0xFF) / 255.0f;
+   texture_env_color[1] = ((value >> 16) & 0xFF) / 255.0f;
+   texture_env_color[2] = ((value >>  8) & 0xFF) / 255.0f;
+   texture_env_color[3] = (value & 0xFF) / 255.0f;
 
    constant_color_location = glGetUniformLocation(program_object, "constant_color");
    glUniform4f(constant_color_location, texture_env_color[0], texture_env_color[1], 
@@ -1479,33 +1466,15 @@ guFogGenerateLinear(GrFog_t *fogtable,
 FX_ENTRY void FX_CALL 
 grFogTable( const GrFog_t ft[] )
 {
-   LOG("grFogTable()\r\n");
 }
 
 FX_ENTRY void FX_CALL 
 grFogColorValue( GrColor_t fogcolor )
 {
-   LOG("grFogColorValue(%x)\r\n", fogcolor);
-
-   switch(lfb_color_fmt)
-   {
-      case GR_COLORFORMAT_ARGB:
-         fogColor[3] = ((fogcolor >> 24) & 0xFF) / 255.0f;
-         fogColor[0] = ((fogcolor >> 16) & 0xFF) / 255.0f;
-         fogColor[1] = ((fogcolor >>  8) & 0xFF) / 255.0f;
-         fogColor[2] = (fogcolor & 0xFF) / 255.0f;
-         break;
-      case GR_COLORFORMAT_RGBA:
-         fogColor[0] = ((fogcolor >> 24) & 0xFF) / 255.0f;
-         fogColor[1] = ((fogcolor >> 16) & 0xFF) / 255.0f;
-         fogColor[2] = ((fogcolor >>  8) & 0xFF) / 255.0f;
-         fogColor[3] = (fogcolor & 0xFF) / 255.0f;
-         break;
-      default:
-         DISPLAY_WARNING("grFogColorValue: unknown color format : %x", lfb_color_fmt);
-   }
-
-   //glFogfv(GL_FOG_COLOR, color); 
+   fogColor[0] = ((fogcolor >> 24) & 0xFF) / 255.0f;
+   fogColor[1] = ((fogcolor >> 16) & 0xFF) / 255.0f;
+   fogColor[2] = ((fogcolor >>  8) & 0xFF) / 255.0f;
+   fogColor[3] = (fogcolor & 0xFF) / 255.0f;
 }
 
 // chroma
@@ -1531,27 +1500,13 @@ grChromakeyMode( GrChromakeyMode_t mode )
 FX_ENTRY void FX_CALL 
 grChromakeyValue( GrColor_t value )
 {
-   int chroma_color_location;
-   LOG("grChromakeyValue(%x)\r\n", value);
+   int chroma_color_location = glGetUniformLocation(program_object, "chroma_color");
 
-   switch(lfb_color_fmt)
-   {
-      case GR_COLORFORMAT_ARGB:
-         chroma_color[3] = 1.0;//((value >> 24) & 0xFF) / 255.0f;
-         chroma_color[0] = ((value >> 16) & 0xFF) / 255.0f;
-         chroma_color[1] = ((value >>  8) & 0xFF) / 255.0f;
-         chroma_color[2] = (value & 0xFF) / 255.0f;
-         break;
-      case GR_COLORFORMAT_RGBA:
-         chroma_color[0] = ((value >> 24) & 0xFF) / 255.0f;
-         chroma_color[1] = ((value >> 16) & 0xFF) / 255.0f;
-         chroma_color[2] = ((value >>  8) & 0xFF) / 255.0f;
-         chroma_color[3] = 1.0;//(value & 0xFF) / 255.0f;
-         break;
-      default:
-         DISPLAY_WARNING("grChromakeyValue: unknown color format : %x", lfb_color_fmt);
-   }
-   chroma_color_location = glGetUniformLocation(program_object, "chroma_color");
+   chroma_color[0] = ((value >> 24) & 0xFF) / 255.0f;
+   chroma_color[1] = ((value >> 16) & 0xFF) / 255.0f;
+   chroma_color[2] = ((value >>  8) & 0xFF) / 255.0f;
+   chroma_color[3] = 1.0;//(value & 0xFF) / 255.0f;
+
    glUniform4f(chroma_color_location, chroma_color[0], chroma_color[1],
          chroma_color[2], chroma_color[3]);
 }
@@ -2579,23 +2534,10 @@ grConstantColorValueExt(GrChipID_t    tmu,
    if (tmu == GR_TMU0) num_tex = 1;
    else num_tex = 0;
 
-   switch(lfb_color_fmt)
-   {
-      case GR_COLORFORMAT_ARGB:
-         ccolor[num_tex][3] = ((value >> 24) & 0xFF) / 255.0f;
-         ccolor[num_tex][0] = ((value >> 16) & 0xFF) / 255.0f;
-         ccolor[num_tex][1] = ((value >>  8) & 0xFF) / 255.0f;
-         ccolor[num_tex][2] = (value & 0xFF) / 255.0f;
-         break;
-      case GR_COLORFORMAT_RGBA:
-         ccolor[num_tex][0] = ((value >> 24) & 0xFF) / 255.0f;
-         ccolor[num_tex][1] = ((value >> 16) & 0xFF) / 255.0f;
-         ccolor[num_tex][2] = ((value >>  8) & 0xFF) / 255.0f;
-         ccolor[num_tex][3] = (value & 0xFF) / 255.0f;
-         break;
-      default:
-         DISPLAY_WARNING("grConstantColorValue: unknown color format : %x", lfb_color_fmt);
-   }
+   ccolor[num_tex][0] = ((value >> 24) & 0xFF) / 255.0f;
+   ccolor[num_tex][1] = ((value >> 16) & 0xFF) / 255.0f;
+   ccolor[num_tex][2] = ((value >>  8) & 0xFF) / 255.0f;
+   ccolor[num_tex][3] = (value & 0xFF) / 255.0f;
 
    if(num_tex == 0)
    {
