@@ -623,6 +623,8 @@ static void DrawPartFrameBufferToScreen(void)
   ((uint32_t)(((color & 0x07C0) >> 6)) << 16) | \
   ((uint32_t)(((color & 0x003E) >> 1)) << 8)
 
+extern uint16_t *frameBuffer;
+
 static void CopyFrameBuffer (GrBuffer_t buffer)
 {
    // don't bother to write the stuff in asm... the slow part is the read from video card,
@@ -648,7 +650,7 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
 
    if (rdp.scale_x < 1.1f)
    {
-      uint16_t * ptr_src = (uint16_t*)malloc(width * height * sizeof(uint16_t));
+      uint16_t * ptr_src = (uint16_t*)frameBuffer;
       if (grLfbReadRegion(buffer,
                (uint32_t)rdp.offset_x,
                (uint32_t)rdp.offset_y,//rdp.ci_upper_bound,
@@ -682,8 +684,6 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
       {
          LRDP("Framebuffer copy failed.\n");
       }
-      if (ptr_src)
-         free(ptr_src);
    }
    else
    {

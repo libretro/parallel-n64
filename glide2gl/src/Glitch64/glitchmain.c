@@ -531,7 +531,6 @@ grLfbReadRegion( GrBuffer_t src_buffer,
                 FxU32 dst_stride, void *dst_data )
 {
    unsigned int i,j;
-   uint16_t *frameBuffer = (uint16_t*)dst_data;
    uint16_t *depthBuffer = (uint16_t*)dst_data;
    LOG("grLfbReadRegion(%d,%d,%d,%d,%d,%d)\r\n", src_buffer, src_x, src_y, src_width, src_height, dst_stride);
 
