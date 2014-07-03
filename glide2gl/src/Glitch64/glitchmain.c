@@ -66,12 +66,6 @@ float invtex[2];
 
 static int savedWidtho, savedHeighto;
 static int savedWidth, savedHeight;
-unsigned int pBufferAddress;
-static int pBufferFmt;
-static int pBufferWidth, pBufferHeight;
-static fb fbs[100];
-static int nb_fb = 0;
-static unsigned int curBufferAddr = 0;
 
 uint16_t *frameBuffer;
 uint16_t *depthBuffer;
@@ -282,8 +276,6 @@ grSstWinOpen(
    widtho = width/2;
    heighto = height/2;
 
-   pBufferWidth = pBufferHeight = -1;
-
    current_buffer = GL_BACK;
 
    texture_unit = GL_TEXTURE0;
@@ -325,14 +317,6 @@ grSstWinClose( GrContext_t context )
    free_combiners();
    glBindFramebuffer( GL_FRAMEBUFFER, 0 );
 
-   {
-      for (i=0; i<nb_fb; i++)
-      {
-         glDeleteRenderbuffers( 1, &(fbs[i].zbid) );
-      }
-   }
-   nb_fb = 0;
-
    free_textures();
 
    return FXTRUE;
@@ -346,150 +330,6 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
                                          GrTextureFormat_t 	fmt,
                                          FxU32 				evenOdd)
 {
-   int i;
-   static int fbs_init = 0;
-
-   //printf("grTextureBufferExt(%d, %d, %d, %d, %d, %d, %d)\r\n", tmu, startAddress, lodmin, lodmax, aspect, fmt, evenOdd);
-   LOG("grTextureBufferExt(%d, %d, %d, %d %d, %d, %d)\r\n", tmu, startAddress, lodmin, lodmax, aspect, fmt, evenOdd);
-   if (lodmin != lodmax)DISPLAY_WARNING("grTextureBufferExt : loading more than one LOD");
-   {
-      if (!render_to_texture) //initialization
-      {
-         if(!fbs_init)
-         {
-            for(i=0; i<100; i++) fbs[i].address = 0;
-            fbs_init = 1;
-            nb_fb = 0;
-         }
-         return; //no need to allocate FBO if render buffer is not texture buffer
-      }
-
-      render_to_texture = 2;
-
-      if (aspect < 0)
-      {
-         pBufferHeight = 1 << lodmin;
-         pBufferWidth = pBufferHeight >> -aspect;
-      }
-      else
-      {
-         pBufferWidth = 1 << lodmin;
-         pBufferHeight = pBufferWidth >> aspect;
-      }
-      pBufferAddress = startAddress+1;
-
-      width = pBufferWidth;
-      height = pBufferHeight;
-
-      widtho = width/2;
-      heighto = height/2;
-
-      for (i=0; i<nb_fb; i++)
-      {
-         if (fbs[i].address == pBufferAddress)
-         {
-            if (fbs[i].width == width && fbs[i].height == height) //select already allocated FBO
-            {
-               glBindFramebuffer( GL_FRAMEBUFFER, 0);
-               glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0 );
-               glBindRenderbuffer( GL_RENDERBUFFER, fbs[i].zbid );
-               glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbs[i].zbid );
-               glViewport( 0, 0, width, height);
-               glScissor( 0, 0, width, height);
-               if (fbs[i].buff_clear)
-               {
-                  glDepthMask(1);
-                  glClear( GL_DEPTH_BUFFER_BIT ); //clear z-buffer only. we may need content, stored in the frame buffer
-                  fbs[i].buff_clear = 0;
-               }
-               CHECK_FRAMEBUFFER_STATUS();
-               curBufferAddr = pBufferAddress;
-               return;
-            }
-            else //create new FBO at the same address, delete old one
-            {
-               glDeleteRenderbuffers( 1, &(fbs[i].zbid) );
-               if (nb_fb > 1)
-                  memmove(&(fbs[i]), &(fbs[i+1]), sizeof(fb)*(nb_fb-i));
-               nb_fb--;
-               break;
-            }
-         }
-      }
-
-      //create new FBO
-      glGenRenderbuffers( 1, &(fbs[nb_fb].zbid) );
-      glBindRenderbuffer( GL_RENDERBUFFER, fbs[nb_fb].zbid );
-      glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
-      fbs[nb_fb].address = pBufferAddress;
-      fbs[nb_fb].width = width;
-      fbs[nb_fb].height = height;
-      fbs[nb_fb].buff_clear = 0;
-      glBindTexture(GL_TEXTURE_2D, retro_get_fbo_id());
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
-            GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-	  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-      glBindTexture(GL_TEXTURE_2D, 0);
-
-      glBindFramebuffer( GL_FRAMEBUFFER, 0);
-      glFramebufferTexture2D(GL_FRAMEBUFFER,
-            GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, retro_get_fbo_id(), 0);
-      glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbs[nb_fb].zbid );
-      glViewport(0,0,width,height);
-      glScissor(0,0,width,height);
-      glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
-      glDepthMask(1);
-      glClear( GL_DEPTH_BUFFER_BIT );
-      CHECK_FRAMEBUFFER_STATUS();
-      curBufferAddr = pBufferAddress;
-      nb_fb++;
-   }
-}
-
-int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info )
-{
-   int found, i;
-   {
-      found = i = 0;
-      while (i < nb_fb)
-      {
-         unsigned int end = fbs[i].address + fbs[i].width*fbs[i].height*2;
-         if (startAddress >= fbs[i].address &&  startAddress < end)
-         {
-            found = 1;
-            break;
-         }
-         i++;
-      }
-   }
-
-   invtex[tmu] = 0;
-
-   if (info->format == GR_TEXFMT_ALPHA_INTENSITY_88 )
-   {
-      if (!found)
-         return 0;
-      if(tmu == 0)
-      {
-         if(blackandwhite1 != found)
-         {
-            blackandwhite1 = found;
-            need_to_compile = 1;
-         }
-      }
-      else
-      {
-         if(blackandwhite0 != found)
-         {
-            blackandwhite0 = found;
-            need_to_compile = 1;
-         }
-      }
-      return 1;
-   }
-   return 0;
-
 }
 
 FX_ENTRY void FX_CALL
@@ -748,7 +588,6 @@ grRenderBuffer( GrBuffer_t buffer )
             heighto = savedHeighto;
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glBindRenderbuffer( GL_RENDERBUFFER, 0 );
-            curBufferAddr = 0;
 
             glViewport(0, 0, width, viewport_height);
             glScissor(0, 0, width, height);
@@ -811,9 +650,6 @@ grBufferSwap( FxU32 swap_interval )
       return;
 
    retro_return(true);
-
-   for (i = 0; i < nb_fb; i++)
-      fbs[i].buff_clear = 1;
 }
 
 // frame buffer

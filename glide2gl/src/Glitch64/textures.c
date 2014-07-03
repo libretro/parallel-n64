@@ -231,20 +231,6 @@ grTexSource( GrChipID_t tmu,
    tex_exactWidth[index] = info->width;
    tex_exactHeight[index] = info->height;
 
-   if(!CheckTextureBufferFormat(tmu, startAddress+1, info))
-   {
-      if(tmu == 0 && blackandwhite1 != 0)
-      {
-         blackandwhite1 = 0;
-         need_to_compile = 1;
-      }
-      if(tmu == 1 && blackandwhite0 != 0)
-      {
-         blackandwhite0 = 0;
-         need_to_compile = 1;
-      }
-   }
-
 #if 0
    extern int auxbuffer;
    static int oldbuffer;

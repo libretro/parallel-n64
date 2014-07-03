@@ -45,8 +45,6 @@ static int chroma_enabled;
 static int chroma_other_color;
 static int chroma_other_alpha;
 static int dither_enabled;
-int blackandwhite0;
-int blackandwhite1;
 
 float fogStart,fogEnd;
 float fogColor[4];
@@ -146,14 +144,6 @@ static const char* fragment_shader_readtex0color_3point =
 "  vec4 readtex0 =c0+abs(offset.x)*(c1-c0)+abs(offset.y)*(c2-c0); \n"
 ;
 
-static const char* fragment_shader_readtex0bw =
-"  vec4 readtex0 = TEX0; \n"
-"  readtex0 = vec4(vec3(readtex0.b), readtex0.r + readtex0.g * 8.0 / 256.0); \n"
-;
-static const char* fragment_shader_readtex0bw_2 =
-"  vec4 readtex0 = vec4(dot(TEX0, vec4(1.0/3, 1.0/3, 1.0/3, 0))); \n"
-;
-
 static const char* fragment_shader_readtex1color =
 "  vec4 readtex1 = TEX1; \n"
 ;
@@ -165,14 +155,6 @@ static const char* fragment_shader_readtex1color_3point =
 "  c1=TEX1_OFFSET(vec2(offset.x-sign(offset.x),offset.y)); \n"
 "  c2=TEX1_OFFSET(vec2(offset.x,offset.y-sign(offset.y))); \n"
 "  vec4 readtex1 =c0+abs(offset.x)*(c1-c0)+abs(offset.y)*(c2-c0); \n";
-
-static const char* fragment_shader_readtex1bw =
-"  vec4 readtex1 = TEX1; \n"
-"  readtex1 = vec4(vec3(readtex1.b), readtex1.r + readtex1.g * 8.0 / 256.0); \n"
-;
-static const char* fragment_shader_readtex1bw_2 =
-"  vec4 readtex1 = vec4(dot(TEX1, vec4(1.0/3, 1.0/3, 1.0/3, 0))); \n"
-;
 
 static const char* fragment_shader_fog =
 "  float fog;  \n"
@@ -374,8 +356,6 @@ void init_combiner()
    fog_enabled = 0;
    chroma_enabled = 0;
    dither_enabled = 0;
-   blackandwhite0 = 0;
-   blackandwhite1 = 0;
 }
 
 void compile_chroma_shader()
@@ -427,8 +407,6 @@ typedef struct _shader_program_key
    int fog_enabled;
    int chroma_enabled;
    int dither_enabled;
-   int blackandwhite0;
-   int blackandwhite1;
    int three_point_filter0;
    int three_point_filter1;
    GLuint fragment_shader_object;
@@ -516,8 +494,6 @@ void compile_shader(void)
             prog.fog_enabled == fog_enabled &&
             prog.chroma_enabled == chroma_enabled &&
             prog.dither_enabled == dither_enabled &&
-            prog.blackandwhite0 == blackandwhite0 &&
-			prog.blackandwhite1 == blackandwhite1 &&
 			prog.three_point_filter0 == three_point_filter[0] &&
 			prog.three_point_filter1 == three_point_filter[1])
       {
@@ -543,8 +519,6 @@ void compile_shader(void)
    shader_programs[number_of_programs].fog_enabled = fog_enabled;
    shader_programs[number_of_programs].chroma_enabled = chroma_enabled;
    shader_programs[number_of_programs].dither_enabled = dither_enabled;
-   shader_programs[number_of_programs].blackandwhite0 = blackandwhite0;
-   shader_programs[number_of_programs].blackandwhite1 = blackandwhite1;
    shader_programs[number_of_programs].three_point_filter0 = three_point_filter[0];
    shader_programs[number_of_programs].three_point_filter1 = three_point_filter[1];
 
@@ -558,16 +532,8 @@ void compile_shader(void)
 
    strcpy(fragment_shader, fragment_shader_header);
    if(dither_enabled) strcat(fragment_shader, fragment_shader_dither);
-   switch (blackandwhite0) {
-      case 1: strcat(fragment_shader, fragment_shader_readtex0bw); break;
-      case 2: strcat(fragment_shader, fragment_shader_readtex0bw_2); break;
-	  default: strcat(fragment_shader, three_point_filter[0] ? fragment_shader_readtex0color_3point:fragment_shader_readtex0color);
-   }
-   switch (blackandwhite1) {
-      case 1: strcat(fragment_shader, fragment_shader_readtex1bw); break;
-      case 2: strcat(fragment_shader, fragment_shader_readtex1bw_2); break;
-	  default: strcat(fragment_shader,  three_point_filter[1] ? fragment_shader_readtex1color_3point:fragment_shader_readtex1color);
-   }
+   strcat(fragment_shader, three_point_filter[0] ? fragment_shader_readtex0color_3point:fragment_shader_readtex0color);
+   strcat(fragment_shader,  three_point_filter[1] ? fragment_shader_readtex1color_3point:fragment_shader_readtex1color);
    strcat(fragment_shader, fragment_shader_texture0);
    strcat(fragment_shader, fragment_shader_texture1);
    strcat(fragment_shader, fragment_shader_color_combiner);
