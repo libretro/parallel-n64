@@ -739,8 +739,6 @@ grColorCombine(
    last_local = local;
    last_other = other;
 
-   if (invert) DISPLAY_WARNING("grColorCombine : inverted result");
-
    color_combiner_key = function | (factor << 4) | (local << 8) | (other << 10);
    chroma_other_color = other;
 
@@ -911,8 +909,6 @@ grAlphaCombine(
    last_factor = factor;
    last_local = local;
    last_other = other;
-
-   if (invert) DISPLAY_WARNING("grAlphaCombine : inverted result");
 
    alpha_combiner_key = function | (factor << 4) | (local << 8) | (other << 10);
    chroma_other_alpha = other;
@@ -1534,10 +1530,6 @@ grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
                   GrCCUColor_t d, FxBool d_invert,
                   FxU32 shift, FxBool invert)
 {
-   LOG("grColorCombineExt(%d, %d, %d, %d, %d, %d, %d, %d, %d, %d)\r\n", a, a_mode, b, b_mode, c, c_invert, d, d_invert, shift, invert);
-   if (invert) DISPLAY_WARNING("grColorCombineExt : inverted result");
-   if (shift) DISPLAY_WARNING("grColorCombineExt : shift = %d", shift);
-
    color_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
       ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
       ((c & 0x1F) << 14) | ((c_invert & 1) << 19) |
@@ -1716,10 +1708,6 @@ grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
                   GrACUColor_t d, FxBool d_invert,
                   FxU32 shift, FxBool invert)
 {
-   LOG("grAlphaCombineExt(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)\r\n", a, a_mode, b, b_mode, c, c_invert, d, d_invert, shift, invert);
-   if (invert) DISPLAY_WARNING("grAlphaCombineExt : inverted result");
-   if (shift) DISPLAY_WARNING("grAlphaCombineExt : shift = %d", shift);
-
    alpha_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
       ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
       ((c & 0x1F) << 14) | ((c_invert & 1) << 19) |
