@@ -534,27 +534,16 @@ grLfbReadRegion( GrBuffer_t src_buffer,
    uint16_t *depthBuffer = (uint16_t*)dst_data;
    LOG("grLfbReadRegion(%d,%d,%d,%d,%d,%d)\r\n", src_buffer, src_x, src_y, src_width, src_height, dst_stride);
 
-   if(src_buffer == GR_BUFFER_AUXBUFFER)
-   {
-      glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, depthBuffer);
+   glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 
-      for (j = 0;j < src_height; j++)
-         for (i = 0; i < src_width; i++)
-            depthBuffer[j*(dst_stride/2)+i] = ((uint16_t*)buf)[(src_height-j-1)*src_width*4+i*4];
-   }
-   else
+   for (j=0; j<src_height; j++)
    {
-      glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
-
-      for (j=0; j<src_height; j++)
+      for (i=0; i<src_width; i++)
       {
-         for (i=0; i<src_width; i++)
-         {
-            frameBuffer[j*(dst_stride/2)+i] =
-               ((buf[(src_height-j-1)*src_width*4+i*4+0] >> 3) << 11) |
-               ((buf[(src_height-j-1)*src_width*4+i*4+1] >> 2) <<  5) |
-               (buf[(src_height-j-1)*src_width*4+i*4+2] >> 3);
-         }
+         frameBuffer[j*(dst_stride/2)+i] =
+            ((buf[(src_height-j-1)*src_width*4+i*4+0] >> 3) << 11) |
+            ((buf[(src_height-j-1)*src_width*4+i*4+1] >> 2) <<  5) |
+            (buf[(src_height-j-1)*src_width*4+i*4+2] >> 3);
       }
    }
 

@@ -678,11 +678,6 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
                   ptr_dst32[x + y * width] = RGBA16TO32(c);
             }
          }
-         LRDP("ReadRegion.  Framebuffer copy complete.\n");
-      }
-      else
-      {
-         LRDP("Framebuffer copy failed.\n");
       }
    }
    else
