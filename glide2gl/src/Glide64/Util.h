@@ -51,7 +51,7 @@ void do_triangle_stuff_2(uint16_t linew);
 void apply_shade_mods(VERTEX *v);
 
 void update(void);
-void update_scissor(void);
+void update_scissor(bool set_scissor);
 
 float ScaleZ(float z);
 

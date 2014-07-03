@@ -2058,7 +2058,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       {
          if (!(settings.hacks&hack_Hyperbike) || rdp.ci_width > 64) //do not clear main depth buffer for aux depth buffers
          {
-            update_scissor ();
+            update_scissor(false);
             grDepthMask (FXTRUE);
             grColorMask (FXFALSE, FXFALSE);
             grBufferClear (0, 0, rdp.fill_color ? rdp.fill_color&0xFFFF : 0xFFFF);
@@ -2116,7 +2116,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 
    // Update scissor
    //if (fullscreen)
-      update_scissor ();
+   update_scissor(false);
 
    if (settings.decrease_fillrect_edge && rdp.cycle_mode == 0)
    {
@@ -2371,7 +2371,6 @@ void RestoreScale(void)
   FRDP("Return to original scale: x = %f, y = %f\n", rdp.scale_x_bak, rdp.scale_y_bak);
   rdp.scale_x = rdp.scale_x_bak;
   rdp.scale_y = rdp.scale_y_bak;
-  //    update_scissor();
   rdp.view_scale[0] *= rdp.scale_x;
   rdp.view_scale[1] *= rdp.scale_y;
   rdp.view_trans[0] *= rdp.scale_x;

@@ -1170,17 +1170,26 @@ void add_tri(VERTEX *v, int n, int type)
    //  v[1].x, v[1].y, v[1].w, v[2].x, v[2].y, v[2].w);
 }
 
-void update_scissor(void)
+void update_scissor(bool set_scissor)
 {
    if (!(rdp.update & UPDATE_SCISSOR))
       return;
 
-   rdp.scissor.ul_x = (uint32_t)(rdp.scissor_o.ul_x * rdp.scale_x + rdp.offset_x);
-   rdp.scissor.lr_x = (uint32_t)(rdp.scissor_o.lr_x * rdp.scale_x + rdp.offset_x);
-   rdp.scissor.ul_y = (uint32_t)(rdp.scissor_o.ul_y * rdp.scale_y + rdp.offset_y);
-   rdp.scissor.lr_y = (uint32_t)(rdp.scissor_o.lr_y * rdp.scale_y + rdp.offset_y);
-   //grClipWindow specifies the hardware clipping window. Any pixels outside the clipping window are rejected.
-   //Values are inclusive for minimum x and y values and exclusive for maximum x and y values.
+   if (set_scissor)
+   {
+      rdp.scissor.ul_x = (uint32_t)rdp.clip_min_x;
+      rdp.scissor.lr_x = (uint32_t)rdp.clip_max_x;
+      rdp.scissor.ul_y = (uint32_t)rdp.clip_min_y;
+      rdp.scissor.lr_y = (uint32_t)rdp.clip_max_y;
+   }
+   else
+   {
+      rdp.scissor.ul_x = (uint32_t)(rdp.scissor_o.ul_x * rdp.scale_x + rdp.offset_x);
+      rdp.scissor.lr_x = (uint32_t)(rdp.scissor_o.lr_x * rdp.scale_x + rdp.offset_x);
+      rdp.scissor.ul_y = (uint32_t)(rdp.scissor_o.ul_y * rdp.scale_y + rdp.offset_y);
+      rdp.scissor.lr_y = (uint32_t)(rdp.scissor_o.lr_y * rdp.scale_y + rdp.offset_y);
+   }
+
    grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
 
    rdp.update ^= UPDATE_SCISSOR;
@@ -1192,6 +1201,7 @@ void update_scissor(void)
 //
 void update(void)
 {
+   bool set_scissor = false;
    LRDP ("-+ update called\n");
 
    // Check for rendermode changes
@@ -1475,16 +1485,13 @@ void update(void)
          FRDP (" |- viewport - (%d, %d, %d, %d)\n", (uint32_t)rdp.clip_min_x, (uint32_t)rdp.clip_min_y, (uint32_t)rdp.clip_max_x, (uint32_t)rdp.clip_max_y);
          if (!rdp.scissor_set)
          {
-            rdp.scissor.ul_x = (uint32_t)rdp.clip_min_x;
-            rdp.scissor.lr_x = (uint32_t)rdp.clip_max_x;
-            rdp.scissor.ul_y = (uint32_t)rdp.clip_min_y;
-            rdp.scissor.lr_y = (uint32_t)rdp.clip_max_y;
-            grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
+            rdp.update |= UPDATE_SCISSOR;
+            set_scissor = true;
          }
       }
    }
 
-   update_scissor ();
+   update_scissor(set_scissor);
 
    LRDP (" + update end\n");
 }
