@@ -491,63 +491,26 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
           GrOriginLocation_t origin, FxBool pixelPipeline,
           GrLfbInfo_t *info )
 {
-   unsigned i,j;
    LOG("grLfbLock(%d,%d,%d,%d,%d)\r\n", type, buffer, writeMode, origin, pixelPipeline);
 
-#ifndef NDEBUG
-   // grLfblock is nop for GR_LBFB_WRITE_ONLY
-   if (type == GR_LFB_WRITE_ONLY)
-      return FXTRUE;
-#endif
+   info->origin = origin;
+   info->strideInBytes = width * ((writeMode == GR_LFBWRITEMODE_888) ? 4 : 2);
+   info->lfbPtr = frameBuffer;
+   info->writeMode = writeMode;
 
-   switch(buffer)
+   if (writeMode == GR_LFBWRITEMODE_565)
    {
-      case GR_BUFFER_FRONTBUFFER:
-         //glReadBuffer(GL_FRONT);
-         break;
-      case GR_BUFFER_BACKBUFFER:
-         //glReadBuffer(GL_BACK);
-         break;
-      default:
-         DISPLAY_WARNING("grLfbLock : unknown buffer : %x", buffer);
-   }
+      unsigned i,j;
+      glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 
-   if(buffer == GR_BUFFER_AUXBUFFER)
-   {
-      info->lfbPtr = depthBuffer;
-      info->strideInBytes = width*2;
-      info->writeMode = GR_LFBWRITEMODE_ZA16;
-      info->origin = origin;
-      glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, depthBuffer);
-   }
-   else
-   {
-      if (writeMode == GR_LFBWRITEMODE_888)
+      for (j=0; j < height; j++)
       {
-         //printf("LfbLock GR_LFBWRITEMODE_888\n");
-         info->lfbPtr = frameBuffer;
-         info->strideInBytes = width*4;
-         info->writeMode = GR_LFBWRITEMODE_888;
-         info->origin = origin;
-         //glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, frameBuffer);
-      }
-      else
-      {
-         info->lfbPtr = frameBuffer;
-         info->strideInBytes = width*2;
-         info->writeMode = GR_LFBWRITEMODE_565;
-         info->origin = origin;
-         glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
-
-         for (j=0; j < height; j++)
+         for (i=0; i < width; i++)
          {
-            for (i=0; i < width; i++)
-            {
-               frameBuffer[(height-j-1)*width+i] =
-                  ((buf[j*width*4+i*4+0] >> 3) << 11) |
-                  ((buf[j*width*4+i*4+1] >> 2) <<  5) |
-                  (buf[j*width*4+i*4+2] >> 3);
-            }
+            frameBuffer[(height-j-1)*width+i] =
+               ((buf[j*width*4+i*4+0] >> 3) << 11) |
+               ((buf[j*width*4+i*4+1] >> 2) <<  5) |
+               (buf[j*width*4+i*4+2] >> 3);
          }
       }
    }
@@ -558,14 +521,6 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
 FX_ENTRY FxBool FX_CALL
 grLfbUnlock( GrLock_t type, GrBuffer_t buffer )
 {
-   LOG("grLfbUnlock(%d,%d)\r\n", type, buffer);
-
-#ifndef NDEBUG
-   // grLbfUnlock - type not for GR_LFB_WRITE_ONLY
-   if (type == GR_LFB_WRITE_ONLY)
-      DISPLAY_WARNING("grLfbUnlock : write only");
-#endif
-
    return FXTRUE;
 }
 
@@ -579,16 +534,6 @@ grLfbReadRegion( GrBuffer_t src_buffer,
    uint16_t *frameBuffer = (uint16_t*)dst_data;
    uint16_t *depthBuffer = (uint16_t*)dst_data;
    LOG("grLfbReadRegion(%d,%d,%d,%d,%d,%d)\r\n", src_buffer, src_x, src_y, src_width, src_height, dst_stride);
-
-   switch(src_buffer)
-   {
-      case GR_BUFFER_FRONTBUFFER:
-         break;
-      case GR_BUFFER_BACKBUFFER:
-         break;
-      default:
-         DISPLAY_WARNING("grReadRegion : unknown buffer : %x", src_buffer);
-   }
 
    if(src_buffer == GR_BUFFER_AUXBUFFER)
    {
