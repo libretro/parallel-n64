@@ -1142,6 +1142,8 @@ grTexCombine(
    else
       num_tex = 0;
 
+   ccolor[tmu][0] = ccolor[tmu][1] = ccolor[tmu][2] = ccolor[tmu][3] = 0;
+
    if(num_tex == 0)
    {
       static int last_function = 0;
@@ -1377,6 +1379,19 @@ grTexCombine(
       else
          strcat(fragment_shader_texture1, "ctexture1.a = 1.0 - ctexture1.a; \n");
    }
+
+
+   if (tmu == GR_TMU0)
+   {
+      ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
+      glUniform4f(ccolor1_location, 0, 0, 0, 0);
+   }
+   else
+   {
+      ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
+      glUniform4f(ccolor0_location, 0, 0, 0, 0);
+   }
+
    need_to_compile = 1;
 }
 
@@ -2497,25 +2512,4 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
    }
 
    need_to_compile = 1;
-}
-
-FX_ENTRY void FX_CALL
-grConstantColorValueExtZero(GrChipID_t    tmu,
-                        GrColor_t     value)
-{
-   LOG("grConstantColorValueExtZero(%d,%d)\r\n", tmu, value);
-
-
-   ccolor[tmu][0] = ccolor[tmu][1] = ccolor[tmu][2] = ccolor[tmu][3] = 0;
-
-   if (tmu == GR_TMU0)
-   {
-      ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
-      glUniform4f(ccolor1_location, 0, 0, 0, 0);
-   }
-   else
-   {
-      ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
-      glUniform4f(ccolor0_location, 0, 0, 0, 0);
-   }
 }
