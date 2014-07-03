@@ -27,6 +27,8 @@ int ProcessDListShown = 0;
 extern int SaveLoaded;
 extern UINT32 command_counter;
 
+int retro_return(bool just_flipping);
+
 EXPORT void CALL CaptureScreen ( char * Directory )
 {
     return;

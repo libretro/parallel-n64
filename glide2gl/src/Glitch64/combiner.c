@@ -30,6 +30,8 @@
 #include "main.h"
 #include "../../libretro/SDL.h"
 
+float glide64_pow(float a, float b);
+
 static int fct[4], source0[4], operand0[4], source1[4], operand1[4], source2[4], operand2[4];
 static int fcta[4],sourcea0[4],operanda0[4],sourcea1[4],operanda1[4],sourcea2[4],operanda2[4];
 static int alpha_ref, alpha_func;

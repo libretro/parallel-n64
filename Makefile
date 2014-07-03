@@ -153,6 +153,19 @@ else ifneq (,$(findstring hardfloat,$(platform)))
    CPPFLAGS += -mfloat-abi=hard
 endif
    CPPFLAGS += -DARM
+else ifeq ($(platform), emscripten)
+   TARGET := $(TARGET_NAME)_libretro_emscripten.bc
+   GLES := 1
+   CPPFLAGS += -DNO_ASM -DNOSSE
+   CPPFLAGS += -DCC_resampler=mupen_CC_resampler -Dsinc_resampler=mupen_sinc_resampler \
+               -Drglgen_symbol_map=mupen_rglgen_symbol_map -Dmain_exit=mupen_main_exit \
+               -Dadler32=mupen_adler32 -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \
+               -Daudio_convert_s16_to_float_C=mupen_audio_convert_s16_to_float_C -Daudio_convert_float_to_s16_C=mupen_audio_convert_float_to_s16_C \
+               -Daudio_convert_init_simd=mupen_audio_convert_init_simd -Drglgen_resolve_symbols_custom=mupen_rglgen_resolve_symbols_custom \
+               -Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols
+   PLATFORM_EXT := unix
+   SINGLE_THREAD := 1
+   HAVE_SHARED_CONTEXT := 1
 else ifneq (,$(findstring win,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dll
    LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=libretro/link.T -lwinmm -lgdi32
@@ -332,6 +345,8 @@ LDFLAGS    += -lm $(fpic)
 ifeq ($(DEBUG), 1)
    CPPFLAGS += -O0 -g
    CPPFLAGS += -DOPENGL_DEBUG
+else ifeq ($(platform), emscripten)
+   CPPFLAGS += -O2 -DNDEBUG
 else
    CPPFLAGS += -O3 -DNDEBUG
 endif

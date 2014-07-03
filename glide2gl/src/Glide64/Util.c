@@ -50,6 +50,8 @@ extern int dzdx;
 extern int deltaZ;
 extern VERTEX **org_vtx;
 
+void glide64SPClipVertex(uint32_t i);
+
 typedef struct
 {
    float d;

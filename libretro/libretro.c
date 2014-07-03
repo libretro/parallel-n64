@@ -12,6 +12,7 @@
 #include "api/m64p_types.h"
 #include "r4300/r4300.h"
 #include "memory/memory.h"
+#include "main/main.h"
 #include "main/version.h"
 #include "main/savestates.h"
 

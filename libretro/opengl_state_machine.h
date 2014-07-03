@@ -83,6 +83,17 @@ GLuint sglAddTextureMap(unsigned address);
 void sglLinkProgram(GLuint program);
 void sglBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
 
+void sglGenRenderbuffers(GLsizei n, GLuint *renderbuffers);
+void sglRenderbufferStorage(GLenum target, GLenum internalFormat, GLsizei width, GLsizei height);
+void sglBindRenderbuffer(GLenum target, GLuint renderbuffer);
+void sglFramebufferRenderbuffer(GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
+GLenum sglCheckFramebufferStatus(GLenum target);
+void sglDeleteFramebuffers(GLsizei n, GLuint *framebuffers);
+void sglBindFramebuffer(GLenum target, GLuint framebuffer);
+void sglGenFramebuffers(GLsizei n, GLuint *ids);
+void sglFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers);
+
 #ifndef NO_TRANSLATE
 #define glEnable(T) sglEnable(S##T)
 #define glDisable(T) sglDisable(S##T)
@@ -141,7 +152,6 @@ void sglBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
 #define glCheckFramebufferStatus sglCheckFramebufferStatus
 #define glDeleteFramebuffers sglDeleteFramebuffers
 #define glDeleteTextures sglDeleteTextures
-#define glBindRenderbuffer sglBindRenderbuffer
 #define glFramebufferTexture2D sglFramebufferTexture2D
 #endif
 

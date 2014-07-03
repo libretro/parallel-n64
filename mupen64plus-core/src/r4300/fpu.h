@@ -26,6 +26,14 @@
 
 #include "r4300.h"
 
+#ifdef EMSCRIPTEN
+static __inline int32_t fesetround(int32_t __round)
+{
+	(void)__round;
+	return 0;
+}
+#endif
+
 #if defined(_MSC_VER)
   #define M64P_FPU_INLINE static __inline
   #include <float.h>
