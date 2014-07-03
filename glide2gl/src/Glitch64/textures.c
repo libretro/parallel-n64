@@ -242,6 +242,7 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
       *glpixfmt = GL_LUMINANCE_ALPHA;
       *glpackfmt = GL_UNSIGNED_BYTE;
    }
+#ifndef HAVE_OPENGLES2
    else if (packed_pixels_support)
    {
       switch(fmt)
@@ -292,6 +293,7 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
             DISPLAY_WARNING("grTexFormat2GLPackedFmt : unknown texture format: %x", fmt);
       }
    }
+#endif
    else
    {
       // VP fixed the texture conversions to be more accurate, also swapped
