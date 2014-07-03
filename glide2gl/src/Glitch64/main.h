@@ -110,8 +110,6 @@ extern int culling_mode;
 extern int need_to_compile;
 extern int three_point_filter[2];
 
-extern int blend_func_separate_support;
-extern int fog_coord_support;
 extern int bgra8888_support;
 extern int glsl_support;
 

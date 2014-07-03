@@ -36,7 +36,6 @@ extern retro_environment_t environ_cb;
 int width, height;
 int bgra8888_support;
 int npot_support;
-int fog_coord_support;
 int texture_unit;
 // ZIGGY
 // to allocate a new static texture name, take the value (free_texture++)
@@ -132,17 +131,6 @@ grSstWinOpen(
    {
       printf("GL_ARB_texture_non_power_of_two supported.\n");
       npot_support = 1;
-   }
-
-   if (isExtensionSupported("GL_EXT_fog_coord") == 0)
-   {
-      DISPLAY_WARNING("GL_EXT_fog_coord not supported.\n");
-      fog_coord_support = 0;
-   }
-   else
-   {
-      printf("GL_EXT_fog_coord supported.\n");
-      fog_coord_support = 1;
    }
 
    if (isExtensionSupported("GL_ARB_shading_language_100") &&
