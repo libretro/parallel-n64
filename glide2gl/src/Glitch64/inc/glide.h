@@ -759,9 +759,6 @@ grTexFilterMode(
 
 
 FX_ENTRY void FX_CALL 
-grTexLodBiasValue(GrChipID_t tmu, float bias );
-
-FX_ENTRY void FX_CALL 
 grTexDownloadMipMap( GrChipID_t tmu,
                      FxU32      startAddress,
                      FxU32      evenOdd,

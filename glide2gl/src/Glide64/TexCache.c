@@ -627,7 +627,6 @@ void TexCache(void)
             grConstantColorValueExtZero(tmu_1, 0);
          }
          grTexDetailControl (tmu_1, cmb.dc1_lodbias, cmb.dc1_detailscale, cmb.dc1_detailmax);
-         grTexLodBiasValue (tmu_1, cmb.lodbias1);
       }
       if (tmu_0 < NUM_TMU)
       {
@@ -654,7 +653,6 @@ void TexCache(void)
             grConstantColorValueExtZero(tmu_0, 0);
          }
          grTexDetailControl (tmu_0, cmb.dc0_lodbias, cmb.dc0_detailscale, cmb.dc0_detailmax);
-         grTexLodBiasValue (tmu_0, cmb.lodbias0);
       }
    }
 

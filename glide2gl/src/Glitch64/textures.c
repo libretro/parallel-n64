@@ -542,12 +542,6 @@ grTexDetailControl(
 }
 
 FX_ENTRY void FX_CALL
-grTexLodBiasValue(GrChipID_t tmu, float bias )
-{
-   LOG("grTexLodBiasValue(%d,%f)\r\n", tmu, bias);
-}
-
-FX_ENTRY void FX_CALL
 grTexFilterMode(
                 GrChipID_t tmu,
                 GrTextureFilterMode_t minfilter_mode,
