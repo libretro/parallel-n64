@@ -201,7 +201,6 @@ grSstWinOpen(
 
    FindBestDepthBias();
 
-   init_geometry();
    init_textures();
    init_combiner();
 

@@ -81,8 +81,6 @@ void free_textures(void);
 
 void set_lambda(void);
 
-void init_geometry(void);
-
 void init_combiner(void);
 void updateCombiner(int i);
 void updateCombinera(int i);

@@ -139,15 +139,8 @@ addtex_log:
 
 void init_textures(void)
 {
-   int i = 0;
-   for (i = 0; i < 2; i++)
-   {
-      tex_width[i] = 2;
-      tex_height[i] = 2;
-   }
-
-  list = NULL;
-  nbTex = 0;
+   list = NULL;
+   nbTex = 0;
 }
 
 void free_textures(void)

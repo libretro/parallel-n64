@@ -44,14 +44,6 @@ static INLINE float ytex(int tmu, float y)
       return y;
 }
 
-void init_geometry(void)
-{
-   inverted_culling = 0;
-
-   glDisable(GL_CULL_FACE);
-   glDisable(GL_DEPTH_TEST);
-}
-
 FX_ENTRY void FX_CALL
 grCullMode( GrCullMode_t mode )
 {

@@ -245,7 +245,7 @@ void check_link(GLuint program)
    }
 }
 
-void init_combiner()
+void init_combiner(void)
 {
    int texture0_location, texture1_location, log_length;
    char *fragment_shader, s[128];
