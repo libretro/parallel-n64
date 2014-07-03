@@ -670,7 +670,8 @@ void TexCache(void)
          grTexSource (tmu_0,
                cache->tmem_addr,
                GR_MIPMAPLEVELMASK_BOTH,
-               &cache->t_info);
+               &cache->t_info,
+               false);
       }
       else
          LoadTex (0, tmu_0);
@@ -689,7 +690,8 @@ void TexCache(void)
          grTexSource (tmu_1,
                cache->tmem_addr,
                GR_MIPMAPLEVELMASK_BOTH,
-               &cache->t_info);
+               &cache->t_info,
+               false);
       }
       else
          LoadTex (1, tmu_1);
@@ -1747,15 +1749,11 @@ static void LoadTex(int id, int tmu)
       }
 
       tex_addr = GetTexAddrUMA(tmu, texture_size);
-      grTexDownloadMipMap (tmu,
-            tex_addr,
-            GR_MIPMAPLEVELMASK_BOTH,
-            t_info);
-
       grTexSource (tmu,
             tex_addr,
             GR_MIPMAPLEVELMASK_BOTH,
-            t_info);
+            t_info,
+            true);
    }
 
    LRDP(" | | +- LoadTex end\n");

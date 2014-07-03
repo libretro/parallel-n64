@@ -201,46 +201,6 @@ grTexCalcMemRequired(GrLOD_t lodmax,
    return 0;
 }
 
-FX_ENTRY void FX_CALL
-grTexSource( GrChipID_t tmu,
-            FxU32      startAddress,
-            FxU32      evenOdd,
-            GrTexInfo  *info )
-{
-   LOG("grTexSource(%d,%d,%d)\r\n", tmu, startAddress, evenOdd);
-   unsigned index = (tmu == GR_TMU1) ? 0 : 1;
-
-   glActiveTexture((tmu == GR_TMU1) ? GL_TEXTURE0 : GL_TEXTURE1);
-
-   if (info->aspectRatioLog2 < 0)
-   {
-      tex_height[index] = 256;
-      tex_width[index] = tex_height[index] >> -info->aspectRatioLog2;
-   }
-   else
-   {
-      tex_width[index] = 256;
-      tex_height[index] = tex_width[index] >> info->aspectRatioLog2;
-   }
-
-   glBindTexture(GL_TEXTURE_2D, startAddress+1);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[index]);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[index]);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[index]);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[index]);
-   tex_exactWidth[index] = info->width;
-   tex_exactHeight[index] = info->height;
-
-#if 0
-   extern int auxbuffer;
-   static int oldbuffer;
-   FX_ENTRY void FX_CALL grAuxBufferExt( GrBuffer_t buffer );
-   if (auxbuffer == GR_BUFFER_AUXBUFFER && auxbuffer != oldbuffer)
-      grAuxBufferExt(auxbuffer);
-   oldbuffer = auxbuffer;
-#endif
-}
-
 int grTexFormatSize(int fmt)
 {
    int factor = -1;
@@ -266,7 +226,6 @@ int grTexFormatSize(int fmt)
    return factor;
 }
 
-#ifndef HAVE_OPENGLES2
 static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt)
 {
    unsigned size_tex;
@@ -274,103 +233,74 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
    factor = -1;
    size_tex = width * height;
 
-   switch(fmt)
+   if (packed_pixels_support)
    {
-      case GR_TEXFMT_ALPHA_8:
-         factor = 1;
-         *gltexfmt = GL_INTENSITY8;
-         *glpixfmt = GL_LUMINANCE;
-         *glpackfmt = GL_UNSIGNED_BYTE;
-         break;
-      case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
-         factor = 1;
-         *gltexfmt = GL_LUMINANCE8;
-         *glpixfmt = GL_LUMINANCE;
-         *glpackfmt = GL_UNSIGNED_BYTE;
-         break;
-      case GR_TEXFMT_ALPHA_INTENSITY_44:
-         {
-            uint16_t *texture_ptr = &((uint16_t*)info->data)[size_tex];
-            uint8_t *texture_ptr8 = &((uint8_t*)info->data)[size_tex];
-            //FIXME - still CPU software color conversion
-            do{
-               uint16_t texel = (uint16_t)*texture_ptr8--;
-               // Replicate glide's ALPHA_INTENSITY_44 to match gl's LUMINANCE_ALPHA
-               texel = (texel & 0x00F0) << 4 | (texel & 0x000F);
-               *texture_ptr-- = (texel << 4) | texel;
-            }while(size_tex--);
+      switch(fmt)
+      {
+         case GR_TEXFMT_ALPHA_8:
             factor = 1;
-            *gltexfmt = GL_LUMINANCE_ALPHA;
+            *gltexfmt = GL_INTENSITY8;
+            *glpixfmt = GL_LUMINANCE;
+            *glpackfmt = GL_UNSIGNED_BYTE;
+            break;
+         case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
+            factor = 1;
+            *gltexfmt = GL_LUMINANCE8;
+            *glpixfmt = GL_LUMINANCE;
+            *glpackfmt = GL_UNSIGNED_BYTE;
+            break;
+         case GR_TEXFMT_ALPHA_INTENSITY_44:
+            {
+               uint16_t *texture_ptr = &((uint16_t*)info->data)[size_tex];
+               uint8_t *texture_ptr8 = &((uint8_t*)info->data)[size_tex];
+               //FIXME - still CPU software color conversion
+               do{
+                  uint16_t texel = (uint16_t)*texture_ptr8--;
+                  // Replicate glide's ALPHA_INTENSITY_44 to match gl's LUMINANCE_ALPHA
+                  texel = (texel & 0x00F0) << 4 | (texel & 0x000F);
+                  *texture_ptr-- = (texel << 4) | texel;
+               }while(size_tex--);
+               factor = 1;
+               *gltexfmt = GL_LUMINANCE_ALPHA;
+               *glpixfmt = GL_LUMINANCE_ALPHA;
+               *glpackfmt = GL_UNSIGNED_BYTE;
+            }
+            break;
+         case GR_TEXFMT_RGB_565:
+            factor = 2;
+            *gltexfmt = GL_RGB;
+            *glpixfmt = GL_RGB;
+            *glpackfmt = GL_UNSIGNED_SHORT_5_6_5;
+            break;
+         case GR_TEXFMT_ARGB_1555:
+            factor = 2;
+            *gltexfmt = GL_RGB5_A1;
+            *glpixfmt = GL_BGRA;
+            *glpackfmt = GL_UNSIGNED_SHORT_1_5_5_5_REV;
+            break;
+         case GR_TEXFMT_ALPHA_INTENSITY_88:
+            factor = 2;
+            *gltexfmt = GL_LUMINANCE8_ALPHA8;
             *glpixfmt = GL_LUMINANCE_ALPHA;
             *glpackfmt = GL_UNSIGNED_BYTE;
-         }
-         break;
-      case GR_TEXFMT_RGB_565:
-         factor = 2;
-         *gltexfmt = GL_RGB;
-         *glpixfmt = GL_RGB;
-         *glpackfmt = GL_UNSIGNED_SHORT_5_6_5;
-         break;
-      case GR_TEXFMT_ARGB_1555:
-         factor = 2;
-         *gltexfmt = GL_RGB5_A1;
-         *glpixfmt = GL_BGRA;
-         *glpackfmt = GL_UNSIGNED_SHORT_1_5_5_5_REV;
-         break;
-      case GR_TEXFMT_ALPHA_INTENSITY_88:
-         factor = 2;
-         *gltexfmt = GL_LUMINANCE8_ALPHA8;
-         *glpixfmt = GL_LUMINANCE_ALPHA;
-         *glpackfmt = GL_UNSIGNED_BYTE;
-         break;
-      case GR_TEXFMT_ARGB_4444:
-         factor = 2;
-         *gltexfmt = GL_RGBA4;
-         *glpixfmt = GL_BGRA;
-         *glpackfmt = GL_UNSIGNED_SHORT_4_4_4_4_REV;
-         break;
-      case GR_TEXFMT_ARGB_8888:
-         factor = 4;
-         *gltexfmt = GL_RGBA8;
-         *glpixfmt = GL_BGRA;
-         *glpackfmt = GL_UNSIGNED_INT_8_8_8_8_REV;
-         break;
-      default:
-         DISPLAY_WARNING("grTexFormat2GLPackedFmt : unknown texture format: %x", fmt);
-   }
-   return factor;
-}
-#endif
-
-FX_ENTRY void FX_CALL
-grTexDownloadMipMap( GrChipID_t tmu,
-                    FxU32      startAddress,
-                    FxU32      evenOdd,
-                    GrTexInfo  *info )
-{
-   int width, height;
-   int factor;
-   int gltexfmt, glpixfmt, glpackfmt;
-   LOG("grTexDownloadMipMap(%d,%d,%d)\r\n", tmu, startAddress, evenOdd);
-   if (info->largeLodLog2 != info->smallLodLog2) DISPLAY_WARNING("grTexDownloadMipMap : loading more than one LOD");
-
-   if (info->aspectRatioLog2 < 0)
-   {
-      height = 1 << info->largeLodLog2;
-      width = height >> -info->aspectRatioLog2;
+            break;
+         case GR_TEXFMT_ARGB_4444:
+            factor = 2;
+            *gltexfmt = GL_RGBA4;
+            *glpixfmt = GL_BGRA;
+            *glpackfmt = GL_UNSIGNED_SHORT_4_4_4_4_REV;
+            break;
+         case GR_TEXFMT_ARGB_8888:
+            factor = 4;
+            *gltexfmt = GL_RGBA8;
+            *glpixfmt = GL_BGRA;
+            *glpackfmt = GL_UNSIGNED_INT_8_8_8_8_REV;
+            break;
+         default:
+            DISPLAY_WARNING("grTexFormat2GLPackedFmt : unknown texture format: %x", fmt);
+      }
    }
    else
-   {
-      width = 1 << info->largeLodLog2;
-      height = width >> info->aspectRatioLog2;
-   }
-
-
-#ifndef HAVE_OPENGLES2
-   if (packed_pixels_support)
-      factor = grTexFormat2GLPackedFmt(info, info->format, &gltexfmt, &glpixfmt, &glpackfmt);
-   else
-#endif
    {
       // VP fixed the texture conversions to be more accurate, also swapped
       // the for i/j loops so that is is less likely to break the memory cache
@@ -387,9 +317,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
                ((uint16_t*)info->data)[size_tex] = texel | (texel << 8);
             }while(size_tex--);
             factor = 1;
-            glpixfmt = GL_LUMINANCE_ALPHA;
-            gltexfmt = GL_LUMINANCE_ALPHA;
-            glpackfmt = GL_UNSIGNED_BYTE;
+            *glpixfmt = GL_LUMINANCE_ALPHA;
+            *gltexfmt = GL_LUMINANCE_ALPHA;
+            *glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
             do
@@ -399,9 +329,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
                ((unsigned int*)info->data)[size_tex] = texel;
             }while(size_tex--);
             factor = 1;
-            glpixfmt = GL_RGBA;
-            gltexfmt = GL_RGBA;
-            glpackfmt = GL_UNSIGNED_BYTE;
+            *glpixfmt = GL_RGBA;
+            *gltexfmt = GL_RGBA;
+            *glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_ALPHA_INTENSITY_44:
             {
@@ -415,9 +345,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
                   *texture_ptr-- = (texel << 4) | texel;
                }while(size_tex--);
                factor = 1;
-               glpixfmt = GL_LUMINANCE_ALPHA;
-               gltexfmt = GL_LUMINANCE_ALPHA;
-               glpackfmt = GL_UNSIGNED_BYTE;
+               *glpixfmt = GL_LUMINANCE_ALPHA;
+               *gltexfmt = GL_LUMINANCE_ALPHA;
+               *glpackfmt = GL_UNSIGNED_BYTE;
             }
             break;
          case GR_TEXFMT_RGB_565:
@@ -430,9 +360,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
                ((unsigned int*)info->data)[size_tex] = 0xFF000000 | (R << 19) | (G << 5) | (B >> 8);
             }while(size_tex--);
             factor = 2;
-            glpixfmt = GL_RGBA;
-            gltexfmt = GL_RGBA;
-            glpackfmt = GL_UNSIGNED_BYTE;
+            *glpixfmt = GL_RGBA;
+            *gltexfmt = GL_RGBA;
+            *glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_ARGB_1555:
             do
@@ -443,9 +373,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
                ((uint16_t*)info->data)[size_tex] = (texel << 1) | (texel >> 15);
             }while(size_tex--);
             factor = 2;
-            glpixfmt = GL_RGBA;
-            gltexfmt = GL_RGBA;
-            glpackfmt = GL_UNSIGNED_SHORT_5_5_5_1;
+            *glpixfmt = GL_RGBA;
+            *gltexfmt = GL_RGBA;
+            *glpackfmt = GL_UNSIGNED_SHORT_5_5_5_1;
             break;
          case GR_TEXFMT_ALPHA_INTENSITY_88:
             do
@@ -455,9 +385,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
                ((unsigned int*)info->data)[size_tex] = (AI << 16) | (I << 8) | I;
             }while(size_tex--);
             factor = 2;
-            glpixfmt = GL_RGBA;
-            gltexfmt = GL_RGBA;
-            glpackfmt = GL_UNSIGNED_BYTE;
+            *glpixfmt = GL_RGBA;
+            *gltexfmt = GL_RGBA;
+            *glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_ARGB_4444:
             do
@@ -470,18 +400,18 @@ grTexDownloadMipMap( GrChipID_t tmu,
                ((unsigned int*)info->data)[size_tex] = (A << 16) | (R << 20) | (G << 8) | (B >> 4);
             }while(size_tex--);
             factor = 2;
-            glpixfmt = GL_RGBA;
-            gltexfmt = GL_RGBA;
-            glpackfmt = GL_UNSIGNED_BYTE;
+            *glpixfmt = GL_RGBA;
+            *gltexfmt = GL_RGBA;
+            *glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_ARGB_8888:
 #ifdef HAVE_OPENGLES2
             if (bgra8888_support)
             {
                factor = 4;
-               gltexfmt = GL_BGRA_EXT;
-               glpixfmt = GL_BGRA_EXT;
-               glpackfmt = GL_UNSIGNED_BYTE;
+               *gltexfmt = GL_BGRA_EXT;
+               *glpixfmt = GL_BGRA_EXT;
+               *glpackfmt = GL_UNSIGNED_BYTE;
                break;
             }
 #endif
@@ -495,18 +425,43 @@ grTexDownloadMipMap( GrChipID_t tmu,
                ((unsigned int*)info->data)[size_tex] = A | (R << 16) | G | (B >> 16);
             }while(size_tex--);
             factor = 4;
-            glpixfmt = GL_RGBA;
-            gltexfmt = GL_RGBA;
-            glpackfmt = GL_UNSIGNED_BYTE;
+            *glpixfmt = GL_RGBA;
+            *gltexfmt = GL_RGBA;
+            *glpackfmt = GL_UNSIGNED_BYTE;
             break;
          default:
-            DISPLAY_WARNING("grTexDownloadMipMap : unknown texture format: %x", info->format);
             factor = 0;
       }
    }
+   return factor;
+}
+
+FX_ENTRY void FX_CALL
+grTexSource( GrChipID_t tmu,
+                    FxU32      startAddress,
+                    FxU32      evenOdd,
+                    GrTexInfo  *info,
+                    int do_download)
+{
+   int width, height;
+   int factor;
+   int gltexfmt, glpixfmt, glpackfmt;
+   unsigned index = (tmu == GR_TMU1) ? 0 : 1;
+
+   if (!do_download)
+      goto grtexsource;
+
+   height = 1 << info->largeLodLog2;
+   width = 1 << info->largeLodLog2;
+   if (info->aspectRatioLog2 < 0)
+      width = height >> -info->aspectRatioLog2;
+   else
+      height = width >> info->aspectRatioLog2;
+
+   factor = grTexFormat2GLPackedFmt(info, info->format, &gltexfmt, &glpixfmt, &glpackfmt);
 
    glActiveTexture(GL_TEXTURE2);
-   remove_tex(startAddress+1, startAddress+1+(width*height*factor));
+   remove_tex(startAddress+1, startAddress+1+(width * height * factor));
 
    add_tex(startAddress+1);
    glBindTexture(GL_TEXTURE_2D, startAddress+1);
@@ -514,6 +469,24 @@ grTexDownloadMipMap( GrChipID_t tmu,
    glTexImage2D(GL_TEXTURE_2D, 0, gltexfmt, width, height, 0, glpixfmt, glpackfmt, info->data);
    info->width = width;
    info->height = height;
+
+grtexsource:
+   glActiveTexture((tmu == GR_TMU1) ? GL_TEXTURE0 : GL_TEXTURE1);
+
+   tex_height[index] = 256;
+   tex_width[index] = 256;
+   if (info->aspectRatioLog2 < 0)
+      tex_width[index] = tex_height[index] >> -info->aspectRatioLog2;
+   else
+      tex_height[index] = tex_width[index] >> info->aspectRatioLog2;
+
+   glBindTexture(GL_TEXTURE_2D, startAddress+1);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[index]);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[index]);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[index]);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[index]);
+   tex_exactWidth[index] = info->width;
+   tex_exactHeight[index] = info->height;
 }
 
 

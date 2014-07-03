@@ -722,7 +722,8 @@ FX_ENTRY void FX_CALL
 grTexSource( GrChipID_t tmu,
              FxU32      startAddress,
              FxU32      evenOdd,
-             GrTexInfo  *info );
+             GrTexInfo  *info,
+             int do_download);
 
 FX_ENTRY void FX_CALL 
 grTexFilterClampMode(
@@ -751,44 +752,6 @@ grTexDetailControl(
                    FxU8 detail_scale,
                    float detail_max
                    );
-
-FX_ENTRY void FX_CALL 
-grTexDownloadMipMap( GrChipID_t tmu,
-                     FxU32      startAddress,
-                     FxU32      evenOdd,
-                     GrTexInfo  *info );
-
-FX_ENTRY void FX_CALL 
-grTexDownloadMipMapLevel( GrChipID_t        tmu,
-                          FxU32             startAddress,
-                          GrLOD_t           thisLod,
-                          GrLOD_t           largeLod,
-                          GrAspectRatio_t   aspectRatio,
-                          GrTextureFormat_t format,
-                          FxU32             evenOdd,
-                          void              *data );
-
-FX_ENTRY FxBool FX_CALL 
-grTexDownloadMipMapLevelPartial( GrChipID_t        tmu,
-                                 FxU32             startAddress,
-                                 GrLOD_t           thisLod,
-                                 GrLOD_t           largeLod,
-                                 GrAspectRatio_t   aspectRatio,
-                                 GrTextureFormat_t format,
-                                 FxU32             evenOdd,
-                                 void              *data,
-                                 int               start,
-                                 int               end );
-
-FX_ENTRY void FX_CALL
-grTexDownloadTable( GrTexTable_t type, 
-                    void         *data );
-
-FX_ENTRY void FX_CALL
-grTexDownloadTablePartial( GrTexTable_t type, 
-                           void         *data,
-                           int          start,
-                           int          end );
 
 FX_ENTRY void FX_CALL 
 grTexMipMapMode( GrChipID_t     tmu, 
