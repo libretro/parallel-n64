@@ -426,6 +426,11 @@ void sglFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget,
    glFramebufferTexture2D(target, attachment, textarget, texture, level);
 }
 
+GLuint retro_get_fbo_id(void)
+{
+   return render_iface.get_current_framebuffer();
+}
+
 
 #if 0
 struct tex_map

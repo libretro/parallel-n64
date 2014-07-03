@@ -40,7 +40,6 @@ typedef struct
   int height;
   unsigned int fbid;
   unsigned int zbid;
-  unsigned int texid;
   int buff_clear;
 } fb;
 
@@ -330,10 +329,8 @@ grSstWinClose( GrContext_t context )
    {
       for (i=0; i<nb_fb; i++)
       {
-         glDeleteTextures( 1, &(fbs[i].texid) );
          glDeleteFramebuffers( 1, &(fbs[i].fbid) );
          glDeleteRenderbuffers( 1, &(fbs[i].zbid) );
-         glDeleteTextures(1, &(fbs[i].texid));
       }
    }
    nb_fb = 0;
@@ -397,7 +394,7 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
             {
                glBindFramebuffer( GL_FRAMEBUFFER, 0);
                glBindFramebuffer( GL_FRAMEBUFFER, fbs[i].fbid );
-               glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbs[i].texid, 0 );
+               glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0 );
                glBindRenderbuffer( GL_RENDERBUFFER, fbs[i].zbid );
                glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbs[i].zbid );
                glViewport( 0, 0, width, height);
@@ -416,7 +413,6 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
             {
                glDeleteFramebuffers( 1, &(fbs[i].fbid) );
                glDeleteRenderbuffers( 1, &(fbs[i].zbid) );
-               glDeleteTextures(1, &(fbs[i].texid));
                if (nb_fb > 1)
                   memmove(&(fbs[i]), &(fbs[i+1]), sizeof(fb)*(nb_fb-i));
                nb_fb--;
@@ -428,15 +424,13 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
       //create new FBO
       glGenFramebuffers( 1, &(fbs[nb_fb].fbid) );
       glGenRenderbuffers( 1, &(fbs[nb_fb].zbid) );
-      glGenTextures(1, &(fbs[nb_fb].texid));
       glBindRenderbuffer( GL_RENDERBUFFER, fbs[nb_fb].zbid );
       glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
       fbs[nb_fb].address = pBufferAddress;
       fbs[nb_fb].width = width;
       fbs[nb_fb].height = height;
-      fbs[nb_fb].texid = pBufferAddress;
       fbs[nb_fb].buff_clear = 0;
-      glBindTexture(GL_TEXTURE_2D, fbs[nb_fb].texid);
+      glBindTexture(GL_TEXTURE_2D, retro_get_fbo_id());
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
             GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
@@ -445,7 +439,7 @@ FX_ENTRY void FX_CALL grTextureBufferExt( GrChipID_t  		tmu,
 
       glBindFramebuffer( GL_FRAMEBUFFER, fbs[nb_fb].fbid);
       glFramebufferTexture2D(GL_FRAMEBUFFER,
-            GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbs[nb_fb].texid, 0);
+            GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, retro_get_fbo_id(), 0);
       glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbs[nb_fb].zbid );
       glViewport(0,0,width,height);
       glScissor(0,0,width,height);
