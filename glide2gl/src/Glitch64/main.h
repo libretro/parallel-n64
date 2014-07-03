@@ -69,7 +69,6 @@ extern int packed_pixels_support;
 extern int default_texture; // the infamous "32*1024*1024" is now configurable
 extern int depth_texture;
 void set_depth_shader(void);
-extern float invtex[2];
 
 #include <stdio.h>
 #define GL_GLEXT_PROTOTYPES

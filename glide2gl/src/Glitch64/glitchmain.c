@@ -41,7 +41,6 @@ int default_texture;
 int current_texture;
 int depth_texture, color_texture;
 int glsl_support = 1;
-float invtex[2];
 //Gonetz
 
 uint16_t *frameBuffer;
@@ -162,9 +161,6 @@ grSstWinClose( GrContext_t context )
 {
    int i;
    LOG("grSstWinClose(%d)\r\n", context);
-
-   for (i=0; i<2; i++)
-      invtex[i] = 0;
 
    if (frameBuffer)
       free(frameBuffer);
