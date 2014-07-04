@@ -40,7 +40,6 @@ int glsl_support = 1;
 //Gonetz
 
 uint16_t *frameBuffer;
-uint16_t *depthBuffer;
 uint8_t  *buf;
 
 static int isExtensionSupported(const char *extension)
@@ -90,7 +89,6 @@ grSstWinOpen(
    // the initial value should be big enough to support the maximal resolution
    glGenTextures(1, &default_texture);
    frameBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
-   depthBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
    buf = (uint8_t*)malloc(width * height * 4 * sizeof(uint8_t));
    glViewport(0, 0, width, height);
 
@@ -154,13 +152,10 @@ grSstWinClose( GrContext_t context )
 {
    if (frameBuffer)
       free(frameBuffer);
-   if (depthBuffer)
-      free(depthBuffer);
    if (buf)
       free(buf);
    glDeleteTextures(1, &default_texture);
    frameBuffer = NULL;
-   depthBuffer = NULL;
    buf = NULL;
 
    free_combiners();
@@ -210,7 +205,6 @@ grLfbReadRegion( GrBuffer_t src_buffer,
                 FxU32 dst_stride, void *dst_data )
 {
    unsigned int i,j;
-   uint16_t *depthBuffer = (uint16_t*)dst_data;
    LOG("grLfbReadRegion(%d,%d,%d,%d,%d,%d)\r\n", src_buffer, src_x, src_y, src_width, src_height, dst_stride);
 
    glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
