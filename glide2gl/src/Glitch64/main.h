@@ -110,7 +110,7 @@ extern int three_point_filter[2];
 extern int bgra8888_support;
 extern int glsl_support;
 
-void disable_textureSizes(void);
+extern GLuint program_object_default;
 
 #ifndef GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS // TODO: Not present
 #define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS 18283

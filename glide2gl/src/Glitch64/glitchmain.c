@@ -315,7 +315,8 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
       glEnableVertexAttribArray(TEXCOORD_1_ATTR);
       glEnableVertexAttribArray(FOG_ATTR);
 
-      disable_textureSizes();
+      textureSizes_location = glGetUniformLocation(program_object_default,"textureSizes");
+      glUniform4f(textureSizes_location,1,1,1,1);
 
       glDrawArrays(GL_TRIANGLE_STRIP,0,4);
 

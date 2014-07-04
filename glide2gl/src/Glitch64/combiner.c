@@ -58,7 +58,7 @@ int need_to_compile;
 static GLuint fragment_shader_object;
 static GLuint fragment_depth_shader_object;
 static GLuint vertex_shader_object;
-static GLuint program_object_default;
+GLuint program_object_default;
 static GLuint program_object_depth;
 static GLuint program_object;
 static int constant_color_location;
@@ -451,12 +451,6 @@ void update_uniforms(shader_program_key prog)
          chroma_color[2], chroma_color[3]);
 
    set_lambda();
-}
-
-void disable_textureSizes(void) 
-{
-   int textureSizes_location = glGetUniformLocation(program_object_default,"textureSizes");
-   glUniform4f(textureSizes_location,1,1,1,1);
 }
 
 void compile_shader(void)
