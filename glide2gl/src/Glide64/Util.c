@@ -1293,6 +1293,9 @@ void update(void)
       // Z buffer
       if (rdp.update & UPDATE_ZBUF_ENABLED)
       {
+         int depthbias_level = 0;
+         int depthbuf_func = GR_CMP_ALWAYS;
+         int depthmask_val = FXFALSE;
          rdp.update ^= UPDATE_ZBUF_ENABLED;
 
          if (((rdp.flags & ZBUF_ENABLED) || rdp.zsrc == 1) && rdp.cycle_mode < G_CYC_COPY)
@@ -1302,41 +1305,32 @@ void update(void)
                switch ((rdp.rm & ZMODE_DECAL) >> 10)
                {
                   case 0:
-                     grDepthBiasLevel(0);
-                     grDepthBufferFunction (settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL);
+                     depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
                      break;
                   case 1:
-                     grDepthBiasLevel(-4);
-                     grDepthBufferFunction (settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL);
+                     depthbias_level = -4;
+                     depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
                      break;
                   case 2:
-                     grDepthBiasLevel(settings.ucode == 7 ? -4 : 0);
-                     grDepthBufferFunction (GR_CMP_LESS);
+                     if (settings.ucode == 7)
+                        depthbias_level = -4;
+                     depthbuf_func = GR_CMP_LESS;
                      break;
                   case 3:
                      // will be set dynamically per polygon
                      //grDepthBiasLevel(-deltaZ);
-                     grDepthBufferFunction (GR_CMP_LEQUAL);
+                     depthbuf_func = GR_CMP_LEQUAL;
                      break;
                }
             }
-            else
-            {
-               grDepthBiasLevel(0);
-               grDepthBufferFunction (GR_CMP_ALWAYS);
-            }
 
             if (rdp.flags & ZBUF_UPDATE)
-               grDepthMask (FXTRUE);
-            else
-               grDepthMask (FXFALSE);
+               depthmask_val = FXTRUE;
          }
-         else
-         {
-            grDepthBiasLevel(0);
-            grDepthBufferFunction (GR_CMP_ALWAYS);
-            grDepthMask (FXFALSE);
-         }
+
+         grDepthBiasLevel(depthbias_level);
+         grDepthBufferFunction (depthbuf_func);
+         grDepthMask(depthmask_val);
       }
 
       // Alpha compare
