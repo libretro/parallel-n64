@@ -2015,16 +2015,6 @@ static void rdp_settile(uint32_t w0, uint32_t w1)
    tile->shift_s   = (uint8_t)(w1 & 0x0F);
 
    rdp.update |= UPDATE_TEXTURE;
-
-#if 0
-   FRDP ("settile: tile: %d, format: %s, size: %s, line: %d, "
-         "t_mem: %08lx, palette: %d, clamp_t/mirror_t: %s, mask_t: %d, "
-         "shift_t: %d, clamp_s/mirror_s: %s, mask_s: %d, shift_s: %d\n",
-         rdp.last_tile, str_format[tile->format], str_size[tile->size], tile->line,
-         tile->t_mem, tile->palette, str_cm[(tile->clamp_t<<1)|tile->mirror_t], tile->mask_t,
-         tile->shift_t, str_cm[(tile->clamp_s<<1)|tile->mirror_s], tile->mask_s, tile->shift_s);
-#endif
-
 }
 
 static void rdp_fillrect(uint32_t w0, uint32_t w1)
