@@ -153,8 +153,8 @@ static void DrawRE2Video(FB_TO_SCREEN_INFO *fb_info, float scale)
    {
       VERTEX vout[4] = {v[0], v[2], v[1]};
       VERTEX vout2[4] = {v[2], v[3], v[1]};
-      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
+      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0], 0);
+      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0], 0);
    }
 }
 
@@ -302,8 +302,8 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
          };
          VERTEX vout[4] = {v[0], v[2], v[1]};
          VERTEX vout2[4] = {v[2], v[3], v[1]};
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
+         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0], 0);
+         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0], 0);
       }
     }
   }
@@ -431,8 +431,8 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 
          VERTEX vout[4] = {v[0], v[2], v[1]};
          VERTEX vout2[4] = {v[2], v[3], v[1]};
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
+         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0], 0);
+         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0], 0);
       }
    }
    return true;
@@ -509,8 +509,8 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
             };
             VERTEX vout[4] = {v[0], v[2], v[1]};
             VERTEX vout2[4] = {v[2], v[3], v[1]};
-            grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-            grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
+            grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0], 0);
+            grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0], 0);
          }
       }
    }
@@ -592,7 +592,7 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       };
       VERTEX vout[4] = {v[0], v[2], v[1]};
       VERTEX vout2[4] = {v[2], v[3], v[1]};
-      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
+      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0], 0);
+      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0], 0);
    }
 }

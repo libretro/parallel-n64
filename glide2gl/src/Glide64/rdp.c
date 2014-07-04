@@ -1395,8 +1395,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
       }
 
-      ConvertCoordsKeep (vptr, 4);
-      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, vptr);
+      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, vptr, 1);
 
       rdp.tri_n += 2;
    }
@@ -2193,8 +2192,8 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       {
          VERTEX vout[4] = { v[0], v[2], v[1]};
          VERTEX vout2[4] = { v[2], v[3], v[1]};
-         grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout[0]);
-         grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout2[0]);
+         grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout[0], 0);
+         grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout2[0], 0);
       }
 
       rdp.tri_n += 2;
@@ -3351,8 +3350,7 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
          apply_shade_mods (v);
       }
       grCullMode (GR_CULL_DISABLE);
-      ConvertCoordsKeep (vtxbuf, nbVtxs);
-      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, nbVtxs-1, vtxbuf);
+      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, nbVtxs-1, vtxbuf, 1);
    }
 }
 
