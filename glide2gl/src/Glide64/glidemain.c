@@ -113,7 +113,6 @@ char    capture_path[256];
 
 // SOME FUNCTION DEFINITIONS 
 
-static void DrawFrameBuffer(void);
 void glide_set_filtering(unsigned value);
 
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
@@ -2586,11 +2585,6 @@ void drawViRegBG(void)
    }
 }
 
-void DrawFrameBuffer(void)
-{
-   drawViRegBG();
-}
-
 /******************************************************************
 Function: UpdateScreen
 Purpose:  This function is called in response to a vsync of the
@@ -2603,6 +2597,7 @@ uint32_t update_screen_count = 0;
 
 EXPORT void CALL UpdateScreen (void)
 {
+   bool forced_update = false;
    uint32_t width, limit;
 #ifdef VISUAL_LOGGING
    char out_buf[128];
@@ -2633,15 +2628,15 @@ EXPORT void CALL UpdateScreen (void)
       {
          ChangeSize ();
          LRDP("ChangeSize done\n");
-         DrawFrameBuffer();
-         LRDP("DrawFrameBuffer done\n");
+         drawViRegBG();
          rdp.updatescreen = 1;
-         newSwapBuffers ();
+         forced_update = true;
       }
-      return;
+      else
+         return;
    }
    //*/
-   if (settings.swapmode == 0)
+   if (settings.swapmode == 0 || forced_update)
       newSwapBuffers ();
 }
 
@@ -2688,8 +2683,6 @@ void newSwapBuffers(void)
       return;
 
    rdp.updatescreen = 0;
-
-   LRDP("swapped\n");
 
    rdp.update |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
    grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
