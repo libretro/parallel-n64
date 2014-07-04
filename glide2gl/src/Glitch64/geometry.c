@@ -29,31 +29,20 @@
 
 #define Z_MAX (65536.0f)
 
-int inverted_culling;
-int culling_mode;
-
 FX_ENTRY void FX_CALL
 grCullMode( GrCullMode_t mode )
 {
-	static int oldmode = -1, oldinv = -1;
-	culling_mode = mode;
-   LOG("grCullMode(%d)\r\n", mode);
-   
-   if (inverted_culling == oldinv && oldmode == mode)
-      return;
-   oldmode = mode;
-   oldinv = inverted_culling;
    switch(mode)
    {
       case GR_CULL_DISABLE:
          glDisable(GL_CULL_FACE);
          break;
       case GR_CULL_NEGATIVE:
-         glCullFace(!inverted_culling ? GL_FRONT : GL_BACK);
+         glCullFace(GL_FRONT);
          glEnable(GL_CULL_FACE);
          break;
       case GR_CULL_POSITIVE:
-         glCullFace(!inverted_culling ? GL_BACK : GL_FRONT);
+         glCullFace(GL_BACK);
          glEnable(GL_CULL_FACE);
          break;
       default:
