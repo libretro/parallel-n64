@@ -90,7 +90,6 @@
 #endif
 
 int romopen = false;
-GrContext_t gfx_context = 0;
 int exception = false;
 
 uint32_t region = 0;
@@ -2181,15 +2180,13 @@ int InitGfx(void)
 
    rdp_reset ();
 
-   gfx_context = grSstWinOpen (
+   if (!grSstWinOpen (
          0,
          GR_REFRESH_60Hz,
          GR_COLORFORMAT_RGBA,
          GR_ORIGIN_UPPER_LEFT,
-         2,    // Double-buffering
-         1);   // 1 auxillary buffer
-
-   if (!gfx_context)
+         2,
+         1))
    {
       ERRLOG("Error setting display mode");
       return false;
@@ -2227,8 +2224,7 @@ void ReleaseGfx(void)
 {
    VLOG("ReleaseGfx ()\n");
 
-   // Release graphics
-   grSstWinClose (gfx_context);
+   grSstWinClose (0);
 
    rdp_free();
 }
