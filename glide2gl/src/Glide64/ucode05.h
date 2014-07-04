@@ -218,6 +218,7 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
 
    for (i = 0; i < num; i++)
    {
+      unsigned cull_mode = GR_CULL_NEGATIVE;
       VERTEX *v[3];
       start = i << 4;
       v0 = gfx_info.RDRAM[addr+start];
@@ -235,7 +236,7 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
       if (flags & 0x40)
       { // no cull
          rdp.flags &= ~CULLMASK;
-         grCullMode (GR_CULL_DISABLE);
+         cull_mode = GR_CULL_DISABLE;
       }
       else
       {        // front cull
@@ -243,14 +244,12 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
          if (rdp.view_scale[0] < 0)
          {
             rdp.flags |= CULL_BACK;   // agh, backwards culling
-            grCullMode (GR_CULL_POSITIVE);
+            cull_mode = GR_CULL_POSITIVE;
          }
          else
-         {
             rdp.flags |= CULL_FRONT;
-            grCullMode (GR_CULL_NEGATIVE);
-         }
       }
+      grCullMode(cull_mode);
       start += 4;
 
       v[0]->ou = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 5] / 32.0f;
