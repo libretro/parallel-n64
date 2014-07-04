@@ -88,7 +88,6 @@ the plugin
 //#define EXTREME_LOGGING		// lots of logging
 							//  note that some of these things are inserted/removed
 							//  from within the code & may not be changed by this define.
-//#define VISUAL_LOGGING
 //#define TLUT_LOGGING		// log every entry of the TLUT?
 
 #define LOGKEY		0x11 // this key (CONTROL)

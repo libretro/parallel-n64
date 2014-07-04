@@ -769,10 +769,6 @@ EXPORT void CALL ProcessDList(void)
   update_screen_count = 0;
   ChangeSize ();
 
-#ifdef VISUAL_LOGGING
-  VLOG ("ProcessDList ()\n");
-#endif
-
   if (reset)
   {
     reset = 0;

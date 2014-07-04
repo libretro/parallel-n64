@@ -2232,46 +2232,40 @@ void ReleaseGfx(void)
 
 EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
 {
-#ifdef VISUAL_LOGGING
-   VLOG("CALL ReadScreen2 ()\n");
-#endif
+   GrLfbInfo_t info;
+   uint8_t *line = (uint8_t*)dest;
+
    *width = settings.res_x;
    *height = settings.res_y;
 
-   if (dest)
+   if (!line)
+      return;
+
+   info.size = sizeof(GrLfbInfo_t);
+   if (grLfbLock (GR_LFB_READ_ONLY,
+            GR_BUFFER_FRONTBUFFER,
+            GR_LFBWRITEMODE_888,
+            GR_ORIGIN_UPPER_LEFT,
+            FXFALSE,
+            &info))
    {
-      uint8_t * line = (uint8_t*)dest;
-
-      GrLfbInfo_t info;
-      info.size = sizeof(GrLfbInfo_t);
-      if (grLfbLock (GR_LFB_READ_ONLY,
-               GR_BUFFER_FRONTBUFFER,
-               GR_LFBWRITEMODE_888,
-               GR_ORIGIN_UPPER_LEFT,
-               FXFALSE,
-               &info))
+      uint32_t y, x;
+      // Copy the screen, let's hope this works.
+      for (y = 0; y < settings.res_y; y++)
       {
-         uint32_t y, x;
-         // Copy the screen, let's hope this works.
-         for (y = 0; y < settings.res_y; y++)
+         uint8_t *ptr = (uint8_t*) info.lfbPtr + (info.strideInBytes * y);
+         for (x = 0; x < settings.res_x; x++)
          {
-            uint8_t *ptr = (uint8_t*) info.lfbPtr + (info.strideInBytes * y);
-            for (x = 0; x < settings.res_x; x++)
-            {
-               line[x*3]   = ptr[2];  // red
-               line[x*3+1] = ptr[1];  // green
-               line[x*3+2] = ptr[0];  // blue
-               ptr += 4;
-            }
-            line += settings.res_x * 3;
+            line[x*3]   = ptr[2];  // red
+            line[x*3+1] = ptr[1];  // green
+            line[x*3+2] = ptr[0];  // blue
+            ptr += 4;
          }
-
-         // Unlock the frontbuffer
-         grLfbUnlock (GR_LFB_READ_ONLY, GR_BUFFER_FRONTBUFFER);
+         line += settings.res_x * 3;
       }
-#ifdef VISUAL_LOGGING
-      VLOG ("ReadScreen. Success.\n");
-#endif
+
+      // Unlock the frontbuffer
+      grLfbUnlock (GR_LFB_READ_ONLY, GR_BUFFER_FRONTBUFFER);
    }
 }
 
@@ -2599,12 +2593,6 @@ EXPORT void CALL UpdateScreen (void)
 {
    bool forced_update = false;
    uint32_t width, limit;
-#ifdef VISUAL_LOGGING
-   char out_buf[128];
-   sprintf (out_buf, "UpdateScreen (). Origin: %08x, Old origin: %08x, width: %d\n", *gfx_info.VI_ORIGIN_REG, rdp.vi_org_reg, *gfx_info.VI_WIDTH_REG);
-   VLOG (out_buf);
-   LRDP(out_buf);
-#endif
 
    width = (*gfx_info.VI_WIDTH_REG) << 1;
    if (*gfx_info.VI_ORIGIN_REG  > width)
