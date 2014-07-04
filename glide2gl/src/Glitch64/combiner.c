@@ -249,20 +249,6 @@ void init_combiner(void)
 {
    int texture0_location, texture1_location, log_length;
    char *fragment_shader, s[128];
-   int texture[4] = {0, 0, 0, 0};
-
-   glActiveTexture(GL_TEXTURE0);
-   glEnable(GL_TEXTURE_2D);
-
-   // creating a fake texture
-   glBindTexture(GL_TEXTURE_2D, default_texture);
-   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-   glActiveTexture(GL_TEXTURE1);
-   glBindTexture(GL_TEXTURE_2D, default_texture);
-   glEnable(GL_TEXTURE_2D);
 
    // depth shader
    fragment_depth_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
