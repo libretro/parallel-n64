@@ -27,8 +27,6 @@
 #include "main.h"
 #include "../Glide64/rdp.h"
 
-#define Z_MAX (65536.0f)
-
 FX_ENTRY void FX_CALL
 grCullMode( GrCullMode_t mode )
 {
