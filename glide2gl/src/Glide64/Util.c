@@ -1390,11 +1390,9 @@ void update(void)
                grCullMode(GR_CULL_DISABLE);
                break;
             case 1: // cull front
-               //        grCullMode(GR_CULL_POSITIVE);
                grCullMode(GR_CULL_NEGATIVE);
                break;
             case 2: // cull back
-               //        grCullMode (GR_CULL_NEGATIVE);
                grCullMode (GR_CULL_POSITIVE);
                break;
          }

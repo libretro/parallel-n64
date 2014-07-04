@@ -2695,7 +2695,6 @@ void newSwapBuffers(void)
    grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
    grDepthBufferFunction (GR_CMP_ALWAYS);
    grDepthMask (FXFALSE);
-   grCullMode (GR_CULL_DISABLE);
 
    if (settings.frame_buffer & fb_read_back_to_screen)
       DrawWholeFrameBufferToScreen();
