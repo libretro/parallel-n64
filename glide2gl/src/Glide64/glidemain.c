@@ -2592,24 +2592,26 @@ uint32_t update_screen_count = 0;
 EXPORT void CALL UpdateScreen (void)
 {
    bool forced_update = false;
-   uint32_t width, limit;
+   uint32_t width = (*gfx_info.VI_WIDTH_REG) << 1;
 
-   width = (*gfx_info.VI_WIDTH_REG) << 1;
    if (*gfx_info.VI_ORIGIN_REG  > width)
       update_screen_count++;
-   limit = (settings.hacks&hack_Lego) ? 15 : 30;
 
-   if ((settings.frame_buffer&fb_cpu_write_hack) && (update_screen_count > limit) && (rdp.last_bg == 0))
+   if (
+         (settings.frame_buffer & fb_cpu_write_hack) &&
+         (update_screen_count > ((settings.hacks&hack_Lego) ? 15 : 30)) &&
+         (rdp.last_bg == 0)
+      )
    {
-      LRDP("DirectCPUWrite hack!\n");
+      //DirectCPUWrite hack
       update_screen_count = 0;
       no_dlist = true;
       ClearCache ();
-      UpdateScreen();
-      return;
+      width = (*gfx_info.VI_WIDTH_REG) << 1;
+      if (*gfx_info.VI_ORIGIN_REG  > width)
+         update_screen_count++;
    }
-   //*/
-   //*
+
    if( no_dlist )
    {
       if( *gfx_info.VI_ORIGIN_REG  > width )
