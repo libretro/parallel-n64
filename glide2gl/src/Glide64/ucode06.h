@@ -435,13 +435,14 @@ static void DrawImage (DRAWIMAGE *d)
          if ((flr_x <= rdp.scissor.lr_x) || (ful_x < rdp.scissor.lr_x))
          {
             VERTEX v[4] = {
-               { ful_x, ful_y, Z, 1.0f, ful_u, ful_v },
-               { flr_x, ful_y, Z, 1.0f, flr_u, ful_v },
-               { ful_x, flr_y, Z, 1.0f, ful_u, flr_v },
-               { flr_x, flr_y, Z, 1.0f, flr_u, flr_v } };
+               { ful_x, ful_y, Z, 1.0f, ful_u, ful_v, 0.0f, 0.0f, {ful_u, ful_v, 0.0f, 0.0f} },
+               { flr_x, ful_y, Z, 1.0f, flr_u, ful_v, 0.0f, 0.0f, {flr_u, ful_v, 0.0f, 0.0f} },
+               { ful_x, flr_y, Z, 1.0f, ful_u, flr_v, 0.0f, 0.0f, {ful_u, flr_v, 0.0f, 0.0f} },
+               { flr_x, flr_y, Z, 1.0f, flr_u, flr_v, 0.0f, 0.0f, {flr_u, flr_v, 0.0f, 0.0f} }
+            };
 
             apply_shading(v);
-            grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v, 1);
+            grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v, 0);
          }
          rdp.tri_n += 2;
 

@@ -1357,10 +1357,10 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    FRDP (" draw at: (%f, %f) -> (%f, %f)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 
      VERTEX vstd[4] = {
-    { s_ul_x, s_ul_y, Z, 1.0f, texUV[0].ul_u, texUV[0].ul_v, texUV[1].ul_u, texUV[1].ul_v, {0, 0, 0, 0}, 255 },
-    { s_lr_x, s_ul_y, Z, 1.0f, texUV[0].lr_u, texUV[0].ul_v, texUV[1].lr_u, texUV[1].ul_v, {0, 0, 0, 0}, 255 },
-    { s_ul_x, s_lr_y, Z, 1.0f, texUV[0].ul_u, texUV[0].lr_v, texUV[1].ul_u, texUV[1].lr_v, {0, 0, 0, 0}, 255 },
-    { s_lr_x, s_lr_y, Z, 1.0f, texUV[0].lr_u, texUV[0].lr_v, texUV[1].lr_u, texUV[1].lr_v, {0, 0, 0, 0}, 255 } };
+    { s_ul_x, s_ul_y, Z, 1.0f, texUV[0].ul_u, texUV[0].ul_v, texUV[1].ul_u, texUV[1].ul_v, {texUV[0].ul_u, texUV[0].ul_v, texUV[1].ul_u, texUV[1].ul_v}, 255 },
+    { s_lr_x, s_ul_y, Z, 1.0f, texUV[0].lr_u, texUV[0].ul_v, texUV[1].lr_u, texUV[1].ul_v, {texUV[0].lr_u, texUV[0].ul_v, texUV[1].lr_u, texUV[1].ul_v}, 255 },
+    { s_ul_x, s_lr_y, Z, 1.0f, texUV[0].ul_u, texUV[0].lr_v, texUV[1].ul_u, texUV[1].lr_v, {texUV[0].ul_u, texUV[0].lr_v, texUV[1].ul_u, texUV[1].lr_v}, 255 },
+    { s_lr_x, s_lr_y, Z, 1.0f, texUV[0].lr_u, texUV[0].lr_v, texUV[1].lr_u, texUV[1].lr_v, {texUV[0].lr_u, texUV[0].lr_v, texUV[1].lr_u, texUV[1].lr_v}, 255 } };
 
    if ( ((rdp.cmd0>>24)&0xFF) == 0xE5 ) //texrectflip
    {
@@ -1373,6 +1373,15 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       vstd[2].v0 = texUV[0].ul_v;
       vstd[2].u1 = texUV[1].lr_u;
       vstd[2].v1 = texUV[1].ul_v;
+
+      vstd[1].coord[0] = vstd[1].u0;
+      vstd[1].coord[1] = vstd[1].v0;
+      vstd[1].coord[2] = vstd[1].u1;
+      vstd[1].coord[3] = vstd[1].v1;
+      vstd[2].coord[0] = vstd[2].u0;
+      vstd[2].coord[1] = vstd[2].v0;
+      vstd[2].coord[2] = vstd[2].u1;
+      vstd[2].coord[3] = vstd[2].v1;
    }
 
 
@@ -1395,7 +1404,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
       }
 
-      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, vptr, 1);
+      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, vptr, 0);
 
       rdp.tri_n += 2;
    }
@@ -3348,9 +3357,13 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
             v->v1 /= v->w;
          }
          apply_shade_mods (v);
+         v->coord[0] = v->u0;
+         v->coord[1] = v->v0;
+         v->coord[2] = v->u1;
+         v->coord[3] = v->v1;
       }
       grCullMode (GR_CULL_DISABLE);
-      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, nbVtxs-1, vtxbuf, 1);
+      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, nbVtxs-1, vtxbuf, 0);
    }
 }
 
