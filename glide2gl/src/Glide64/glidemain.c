@@ -2546,13 +2546,10 @@ EXPORT void CALL SetRenderingCallback(void (*callback)(int))
 {
 }
 
-void drawViRegBG(void)
+static void drawViRegBG(void)
 {
    bool drawn;
    FB_TO_SCREEN_INFO fb_info;
-
-   if (rdp.vi_height == 0)
-      return;
 
    fb_info.width  = *gfx_info.VI_WIDTH_REG;
    fb_info.height = (uint32_t)rdp.vi_height;
@@ -2614,7 +2611,8 @@ EXPORT void CALL UpdateScreen (void)
       {
          ChangeSize ();
          LRDP("ChangeSize done\n");
-         drawViRegBG();
+         if (rdp.vi_height != 0)
+            drawViRegBG();
          rdp.updatescreen = 1;
          forced_update = true;
       }
