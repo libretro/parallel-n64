@@ -35,11 +35,7 @@ int width, height;
 int bgra8888_support;
 int npot_support;
 // ZIGGY
-// to allocate a new static texture name, take the value (free_texture++)
-int free_texture;
 int default_texture;
-int current_texture;
-int depth_texture, color_texture;
 int glsl_support = 1;
 //Gonetz
 
@@ -92,10 +88,7 @@ grSstWinOpen(
    // ZIGGY
    // allocate static texture names
    // the initial value should be big enough to support the maximal resolution
-   free_texture = 32 * width * height;
-   default_texture = free_texture++;
-   color_texture = free_texture++;
-   depth_texture = free_texture++;
+   default_texture = 32 * width * height;
    frameBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
    depthBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
    buf = (uint8_t*)malloc(width * height * 4 * sizeof(uint8_t));

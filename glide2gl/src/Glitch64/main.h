@@ -67,7 +67,6 @@ int grTexFormatSize(int fmt);
 extern int packed_pixels_support;
 
 extern int default_texture; // the infamous "32*1024*1024" is now configurable
-extern int depth_texture;
 void set_depth_shader(void);
 
 #include <stdio.h>
