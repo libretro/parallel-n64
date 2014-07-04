@@ -165,7 +165,7 @@ else ifeq ($(platform), emscripten)
                -Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols
    PLATFORM_EXT := unix
    SINGLE_THREAD := 1
-   HAVE_SHARED_CONTEXT := 1
+   #HAVE_SHARED_CONTEXT := 1
 else ifneq (,$(findstring win,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dll
    LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=libretro/link.T -lwinmm -lgdi32

@@ -132,6 +132,9 @@ SHADER_HEADER
 #else
 "#define highp                  \n"
 #endif
+#ifdef EMSCRIPTEN
+"#extension GL_EXT_frag_depth : enable\n"
+#endif
 "uniform sampler2D texture0;    \n"
 "uniform sampler2D texture1;    \n"
 "uniform vec4 exactSizes;     \n"  //textureSizes doesn't contain the correct sizes, use this one instead for offset calculations
@@ -293,7 +296,12 @@ void init_combiner(void)
    fragment_depth_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
 
    // ZIGGY convert a 565 texture into depth component
-   sprintf(s, "gl_FragDepth = dot(texture2D(texture0, vec2(gl_TexCoord[0])), vec4(31*64*32, 63*32, 31, 0))*%g + %g; \n", zscale/2/65535.0, 1-zscale/2);
+#ifdef EMSCRIPTEN
+#define FRAGDEPTH "gl_FragDepthEXT"
+#else
+#define FRAGDEPTH "gl_FragDepth"
+#endif
+   sprintf(s, FRAGDEPTH " = dot(texture2D(texture0, vec2(gl_TexCoord[0])), vec4(31*64*32, 63*32, 31, 0))*%g + %g; \n", zscale/2/65535.0, 1-zscale/2);
    strcpy(fragment_shader, fragment_shader_header);
    strcat(fragment_shader, s);
    strcat(fragment_shader, fragment_shader_end);
