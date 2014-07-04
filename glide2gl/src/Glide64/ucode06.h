@@ -709,7 +709,6 @@ static void draw_split_triangle(VERTEX **vtx)
 static void uc6_draw_polygons (VERTEX v[4])
 {
    apply_shading(v);
-   AddOffset(v, 4);
 
    {
       rdp.vtxbuf = rdp.vtx1; // copy from v to rdp.vtx1
@@ -849,8 +848,8 @@ static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
 
    for (i = 0; i < 4; i++)
    {
-      v[i].x *= rdp.scale_x;
-      v[i].y *= rdp.scale_y;
+      v[i].x = (v[i].x * rdp.scale_x) + rdp.offset_x;
+      v[i].y = (v[i].y * rdp.scale_y) + rdp.offset_y;
    }
 
    uc6_draw_polygons (v);
@@ -915,8 +914,8 @@ static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
    {
       float x = v[i].x;
       float y = v[i].y;
-      v[i].x = (x * mat_2d.A + y * mat_2d.B + mat_2d.X) * rdp.scale_x;
-      v[i].y = (x * mat_2d.C + y * mat_2d.D + mat_2d.Y) * rdp.scale_y;
+      v[i].x = ((x * mat_2d.A + y * mat_2d.B + mat_2d.X) * rdp.scale_x) + rdp.offset_x;
+      v[i].y = ((x * mat_2d.C + y * mat_2d.D + mat_2d.Y) * rdp.scale_y) + rdp.offset_y;
    }
 
    uc6_draw_polygons (v);
@@ -1092,11 +1091,8 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
    for (i = 0; i < 4; i++)
    {
-      float x, y;
-      x = v[i].x;
-      y = v[i].y;
-      v[i].x = (x + mat_2d.X) * rdp.scale_x;
-      v[i].y = (y + mat_2d.Y) * rdp.scale_y;
+      v[i].x = ((v[i].x + mat_2d.X) * rdp.scale_x) + rdp.offset_x;
+      v[i].y = ((v[i].y + mat_2d.Y) * rdp.scale_y) + rdp.offset_y;
    }
 
    uc6_draw_polygons (v);
@@ -1421,12 +1417,11 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
 
          for (i=0; i<4; i++)
          {
-            v[i].x *= rdp.scale_x;
-            v[i].y *= rdp.scale_y;
+            v[i].x = (v[i].x * rdp.scale_x) + rdp.offset_x;
+            v[i].y = (v[i].y * rdp.scale_y) + rdp.offset_y;
          }
 
          apply_shading(v);
-         AddOffset(v, 4);
 
 #if 0
          // Set vertex buffers

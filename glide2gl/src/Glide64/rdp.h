@@ -958,16 +958,6 @@ static INLINE void ConvertCoordsKeep (VERTEX *v, int n)
    }
 }
 
-static INLINE void AddOffset (VERTEX *v, int n)
-{
-   int i;
-   for (i = 0; i < n; i++)
-   {
-      v[i].x += rdp.offset_x;
-      v[i].y += rdp.offset_y;
-   }
-}
-
 static INLINE void CalculateFog (VERTEX *v)
 {
    if (rdp.flags & FOG_ENABLED)
