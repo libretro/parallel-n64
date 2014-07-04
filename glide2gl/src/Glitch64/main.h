@@ -60,10 +60,6 @@ void WriteLog(m64p_msg_level level, const char *msg, ...);
 
 #define zscale 1.0f
 
-// VP added this utility function
-// returns the bytes per pixel of a given GR texture format
-int grTexFormatSize(int fmt);
-
 extern int packed_pixels_support;
 
 void set_depth_shader(void);

@@ -179,31 +179,6 @@ grTexCalcMemRequired(GrLOD_t lodmax,
    return 0;
 }
 
-int grTexFormatSize(int fmt)
-{
-   int factor = -1;
-   switch(fmt)
-   {
-      case GR_TEXFMT_ALPHA_8:
-      case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
-      case GR_TEXFMT_ALPHA_INTENSITY_44:
-         factor = 1;
-         break;
-      case GR_TEXFMT_RGB_565:
-      case GR_TEXFMT_ARGB_1555:
-      case GR_TEXFMT_ALPHA_INTENSITY_88:
-      case GR_TEXFMT_ARGB_4444:
-         factor = 2;
-         break;
-      case GR_TEXFMT_ARGB_8888:
-         factor = 4;
-         break;
-      default:
-         DISPLAY_WARNING("grTexFormatSize : unknown texture format: %x", fmt);
-   }
-   return factor;
-}
-
 static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt)
 {
    unsigned size_tex;
