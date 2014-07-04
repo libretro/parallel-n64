@@ -655,8 +655,13 @@ grDepthBiasLevel( FxI32 level );
 
 #define grDepthBufferFunction(function) glDepthFunc(function)
 
-FX_ENTRY void FX_CALL 
-grDepthBufferMode( GrDepthBufferMode_t mode );
+#define grDepthBufferMode(mode) \
+{ \
+   if (mode == GR_DEPTHBUFFER_DISABLE) \
+      glDisable(GL_DEPTH_TEST); \
+   else \
+      glEnable(GL_DEPTH_TEST); \
+}
 
 #define grDepthMask(mask) glDepthMask(mask)
 

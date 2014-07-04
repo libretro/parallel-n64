@@ -43,30 +43,10 @@ grCullMode( GrCullMode_t mode )
          glCullFace(GL_BACK);
          glEnable(GL_CULL_FACE);
          break;
-      default:
-         DISPLAY_WARNING("unknown cull mode : %x", mode);
    }
 }
 
 // Depth buffer
-
-FX_ENTRY void FX_CALL
-grDepthBufferMode( GrDepthBufferMode_t mode )
-{
-   LOG("grDepthBufferMode(%d)\r\n", mode);
-   switch(mode)
-   {
-      case GR_DEPTHBUFFER_DISABLE:
-         glDisable(GL_DEPTH_TEST);
-         return;
-      case GR_DEPTHBUFFER_ZBUFFER:
-      case GR_DEPTHBUFFER_ZBUFFER_COMPARE_TO_BIAS:
-         glEnable(GL_DEPTH_TEST);
-         break;
-      default:
-         DISPLAY_WARNING("unknown depth buffer mode : %x", mode);
-   }
-}
 
 bool biasFound = false;
 float polygonOffsetFactor;
