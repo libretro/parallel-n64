@@ -465,8 +465,8 @@ grTexFilterClampMode(
 
    wrap_s[index] = s_clampmode;
    wrap_t[index] = t_clampmode;
-   min_filter[index] = (minfilter_mode == GR_TEXTUREFILTER_BILINEAR) ? GL_LINEAR : GL_NEAREST;
-   mag_filter[index] = (magfilter_mode == GR_TEXTUREFILTER_BILINEAR) ? GL_LINEAR : GL_NEAREST;
+   min_filter[index] = (minfilter_mode == GR_TEXTUREFILTER_POINT_SAMPLED) ? GL_NEAREST : GL_LINEAR;
+   mag_filter[index] = (magfilter_mode == GR_TEXTUREFILTER_POINT_SAMPLED) ? GL_NEAREST : GL_LINEAR;
 
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[index]);
