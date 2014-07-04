@@ -32,10 +32,45 @@
 
 float glide64_pow(float a, float b);
 
+typedef struct _shader_program_key
+{
+   int color_combiner;
+   int alpha_combiner;
+   int texture0_combiner;
+   int texture1_combiner;
+   int texture0_combinera;
+   int texture1_combinera;
+   int fog_enabled;
+   int chroma_enabled;
+   int dither_enabled;
+   int three_point_filter0;
+   int three_point_filter1;
+   GLuint fragment_shader_object;
+   GLuint program_object;
+   int texture0_location;
+   int texture1_location;
+   int vertexOffset_location;
+   int textureSizes_location;   
+   int exactSizes_location;
+   int fogModeEndScale_location;
+   int fogColor_location;
+   int alphaRef_location;
+   int chroma_color_location;
+} shader_program_key;
+
 static int fct[4], source0[4], operand0[4], source1[4], operand1[4], source2[4], operand2[4];
 static int fcta[4],sourcea0[4],operanda0[4],sourcea1[4],operanda1[4],sourcea2[4],operanda2[4];
 static int alpha_ref, alpha_func;
 bool alpha_test = 0;
+
+static shader_program_key* shader_programs;
+static int number_of_programs = 0;
+static int color_combiner_key;
+static int alpha_combiner_key;
+static int texture0_combiner_key;
+static int texture1_combiner_key;
+static int texture0_combinera_key;
+static int texture1_combinera_key;
 
 float texture_env_color[4];
 float ccolor[2][4];
@@ -250,6 +285,8 @@ void init_combiner(void)
    int texture0_location, texture1_location, log_length;
    char *fragment_shader, s[128];
 
+   shader_programs = (shader_program_key*)malloc(sizeof(shader_program_key));
+
    // depth shader
    fragment_depth_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
 
@@ -382,40 +419,6 @@ void compile_chroma_shader(void)
    strcat(fragment_shader_chroma, "}");
 }
 
-typedef struct _shader_program_key
-{
-   int color_combiner;
-   int alpha_combiner;
-   int texture0_combiner;
-   int texture1_combiner;
-   int texture0_combinera;
-   int texture1_combinera;
-   int fog_enabled;
-   int chroma_enabled;
-   int dither_enabled;
-   int three_point_filter0;
-   int three_point_filter1;
-   GLuint fragment_shader_object;
-   GLuint program_object;
-   int texture0_location;
-   int texture1_location;
-   int vertexOffset_location;
-   int textureSizes_location;   
-   int exactSizes_location;
-   int fogModeEndScale_location;
-   int fogColor_location;
-   int alphaRef_location;
-   int chroma_color_location;
-} shader_program_key;
-
-static shader_program_key* shader_programs = NULL;
-static int number_of_programs = 0;
-static int color_combiner_key;
-static int alpha_combiner_key;
-static int texture0_combiner_key;
-static int texture1_combiner_key;
-static int texture0_combinera_key;
-static int texture1_combinera_key;
 
 void update_uniforms(shader_program_key prog)
 {
@@ -484,11 +487,7 @@ void compile_shader(void)
       }
    }
 
-   if(shader_programs != NULL)
-      shader_programs = (shader_program_key*)realloc(shader_programs, (number_of_programs+1)*sizeof(shader_program_key));
-   else
-      shader_programs = (shader_program_key*)malloc(sizeof(shader_program_key));
-   //printf("number of shaders %d\n", number_of_programs);
+   shader_programs = (shader_program_key*)realloc(shader_programs, (number_of_programs+1)*sizeof(shader_program_key));
 
    shader_programs[number_of_programs].color_combiner = color_combiner_key;
    shader_programs[number_of_programs].alpha_combiner = alpha_combiner_key;
@@ -562,7 +561,8 @@ void compile_shader(void)
 
 void free_combiners(void)
 {
-   free(shader_programs);
+   if (shader_programs)
+      free(shader_programs);
    shader_programs = NULL;
    number_of_programs = 0;
 }
