@@ -1071,8 +1071,8 @@ static void render_tri (uint16_t linew, int old_interpolate)
       {
          VERTEX vout[4] = {v[0], v[1], v[2]};
          VERTEX vout2[4] = {v[1], v[2], v[3]};
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0], 0);
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0], 0);
+         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
+         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
       }
    }
    else
@@ -1083,7 +1083,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
          grDepthBiasLevel (-deltaZ);
       pointers = rdp.vtx_buffer? (void*)&rdp.vtx2 : (void*)&rdp.vtx1;
       pointers2 = (void**)pointers;
-      grDrawVertexArrayContiguous(GR_TRIANGLE_FAN, n, pointers2[0], 0);
+      grDrawVertexArrayContiguous(GR_TRIANGLE_FAN, n, pointers2[0]);
    }
 }
 

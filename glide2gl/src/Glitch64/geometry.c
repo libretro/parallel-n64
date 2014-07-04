@@ -122,21 +122,9 @@ grDepthBiasLevel( FxI32 level )
 }
 
 FX_ENTRY void FX_CALL
-grDrawVertexArrayContiguous(FxU32 mode, FxU32 count, void *pointers, int do_convert)
+grDrawVertexArrayContiguous(FxU32 mode, FxU32 count, void *pointers)
 {
-   int i = 0;
    VERTEX *v = (VERTEX*)pointers;
-
-   if (do_convert)
-   {
-      for (i = 0; i < count; i++)
-      {
-         v[i].coord[0] = v[i].u0;
-         v[i].coord[1] = v[i].v0;
-         v[i].coord[2] = v[i].u1;
-         v[i].coord[3] = v[i].v1;
-      }
-   }
 
    if(need_to_compile)
       compile_shader();
