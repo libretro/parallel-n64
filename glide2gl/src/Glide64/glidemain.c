@@ -2549,19 +2549,15 @@ EXPORT void CALL SetRenderingCallback(void (*callback)(int))
 void drawViRegBG(void)
 {
    bool drawn;
-   uint32_t VIwidth;
    FB_TO_SCREEN_INFO fb_info;
 
-   LRDP("drawViRegBG\n");
    if (rdp.vi_height == 0)
       return;
 
-   VIwidth = *gfx_info.VI_WIDTH_REG;
-
-   fb_info.width  = VIwidth;
+   fb_info.width  = *gfx_info.VI_WIDTH_REG;
    fb_info.height = (uint32_t)rdp.vi_height;
    fb_info.ul_x = 0;
-   fb_info.lr_x = VIwidth - 1;
+   fb_info.lr_x = fb_info.width - 1;
    fb_info.ul_y = 0;
    fb_info.lr_y = fb_info.height - 1;
    fb_info.opaque = 1;
@@ -2569,8 +2565,8 @@ void drawViRegBG(void)
    fb_info.size = *gfx_info.VI_STATUS_REG & 3;
 
    rdp.last_bg = fb_info.addr;
-
    drawn = DrawFrameBufferToScreen(&fb_info);
+
    if (settings.hacks&hack_Lego && drawn)
    {
       rdp.updatescreen = 1;
