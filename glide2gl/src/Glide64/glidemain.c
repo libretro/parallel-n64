@@ -2592,9 +2592,6 @@ void drawViRegBG(void)
 
 void DrawFrameBuffer(void)
 {
-   grDepthMask (FXTRUE);
-   grColorMask (FXTRUE, FXTRUE);
-   grBufferClear (0, 0, 0xFFFF);
    drawViRegBG();
 }
 

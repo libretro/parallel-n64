@@ -35,8 +35,6 @@
 #define GR_TEXTFMT_RGB_888                0xFF
 
 int packed_pixels_support = -1;
-extern unsigned screen_width;
-extern unsigned screen_height;
 
 #ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
 #define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE
