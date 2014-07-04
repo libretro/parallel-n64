@@ -2354,13 +2354,6 @@ void RestoreScale(void)
   rdp.view_trans[0] *= rdp.scale_x;
   rdp.view_trans[1] *= rdp.scale_y;
   rdp.update |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
-  //*
-  {
-    grDepthMask (FXFALSE);
-    grBufferClear (0, 0, 0xFFFF);
-    grDepthMask (FXTRUE);
-  }
-  //*/
 }
 
 
