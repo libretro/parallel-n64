@@ -434,15 +434,13 @@ static void DrawImage (DRAWIMAGE *d)
 
          if ((flr_x <= rdp.scissor.lr_x) || (ful_x < rdp.scissor.lr_x))
          {
-            int s;
             VERTEX v[4] = {
                { ful_x, ful_y, Z, 1.0f, ful_u, ful_v },
                { flr_x, ful_y, Z, 1.0f, flr_u, ful_v },
                { ful_x, flr_y, Z, 1.0f, ful_u, flr_v },
                { flr_x, flr_y, Z, 1.0f, flr_u, flr_v } };
-            AllowShadeMods (v, 4);
-            for (s = 0; s < 4; s++)
-               apply_shade_mods (&(v[s]));
+
+            apply_shading(v);
             ConvertCoordsConvert (v, 4);
 
             grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v);
@@ -711,10 +709,7 @@ static void draw_split_triangle(VERTEX **vtx)
 
 static void uc6_draw_polygons (VERTEX v[4])
 {
-   int s;
-   AllowShadeMods (v, 4);
-   for (s = 0; s < 4; s++)
-      apply_shade_mods (&(v[s]));
+   apply_shading(v);
    AddOffset(v, 4);
 
    {
@@ -1231,7 +1226,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
    uint16_t stride;
    uint32_t a, cmd0, addr, tlut;
    uint32_t texsize, maxTexSize;
-   int i, s;
+   int i;
    DRAWIMAGE d;
 
    a = rdp.pc[rdp.pc_i] & BMASK;
@@ -1431,10 +1426,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
             v[i].y *= rdp.scale_y;
          }
 
-         // ConvertCoordsConvert (v, 4);
-         AllowShadeMods (v, 4);
-         for (s = 0; s < 4; s++)
-            apply_shade_mods (&(v[s]));
+         apply_shading(v);
          AddOffset(v, 4);
 
 #if 0

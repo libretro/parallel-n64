@@ -974,13 +974,6 @@ static INLINE void ConvertCoordsConvert (VERTEX *v, int n)
    }
 }
 
-static INLINE void AllowShadeMods (VERTEX *v, int n)
-{
-   int i;
-   for (i = 0; i < n; i++)
-      v[i].shade_mod = 0;
-}
-
 static INLINE void AddOffset (VERTEX *v, int n)
 {
    int i;

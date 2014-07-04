@@ -194,6 +194,7 @@ int tile_set;
 
 //forward decls
 static void CopyFrameBuffer (GrBuffer_t buffer);
+static void apply_shading(VERTEX *vptr);
 
 // ** UCODE FUNCTIONS **
 #include "ucode.h"
@@ -1063,10 +1064,19 @@ static void DrawDepthBufferFog(void)
   DrawDepthBufferToScreen(&fb_info);
 }
 
+static void apply_shading(VERTEX *vptr)
+{
+   int i;
+   for (i = 0; i < 4; i++)
+   {
+      vptr[i].shade_mod = 0;
+      apply_shade_mods (&vptr[i]);
+   }
+}
+
 static void rdp_texrect(uint32_t w0, uint32_t w1)
 {
    float ul_x, ul_y, lr_x, lr_y;
-   int n_vertices;
    uint32_t a;
    uint8_t cmdHalf1, cmdHalf2;
    int i;
@@ -1367,16 +1377,8 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
 
    vptr = (VERTEX*)vstd;
-   n_vertices = 4;
 
-   // for (int j =0; j < 4; j++)
-   // FRDP("v[%d] u0: %f, v0: %f, u1: %f, v1: %f\n", j, v[j].u0, v[j].v0, v[j].u1, v[j].v1);
-
-   AllowShadeMods (vptr, n_vertices);
-   for (i=0; i<n_vertices; i++)
-   {
-      apply_shade_mods (&vptr[i]);
-   }
+   apply_shading(vptr);
 
 #if 0
    if (fullscreen)
@@ -1388,14 +1390,14 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          if (rdp.fog_mode != FOG_MODE_BLEND)
             fog = 1.0f / ((~rdp.fog_color)&0xFF);
 
-         for (i = 0; i < n_vertices; i++)
+         for (i = 0; i < 4; i++)
             vptr[i].f = fog;
          grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
       }
 
-      ConvertCoordsConvert (vptr, n_vertices);
+      ConvertCoordsConvert (vptr, 4);
 
-      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, n_vertices, vptr);
+      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, vptr);
 
       rdp.tri_n += 2;
    }
@@ -2175,12 +2177,8 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
          cmb_mode_a = (rdp.cycle1 & 0x0FFF0000) | ((rdp.cycle2 >> 16) & 0x00000FFF);
 
          if (cmb_mode_c == 0x9fff9fff || cmb_mode_a == 0x09ff09ff) //shade
-         {
-            int k;
-            AllowShadeMods (v, 4);
-            for (k = 0; k < 4; k++)
-               apply_shade_mods (&v[k]);
-         }
+            apply_shading(v);
+
          if ((rdp.othermode_l & 0x4000) && ((rdp.othermode_l >> 16) == 0x0550)) //special blender mode for Bomberman64
          {
             grAlphaCombine (GR_COMBINE_FUNCTION_LOCAL,
