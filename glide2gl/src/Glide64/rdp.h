@@ -105,9 +105,6 @@ extern uint32_t frame_count; // frame counter
 #define CMB_MULT_OWN_ALPHA  0x00000400
 #define CMB_COL_SUB_OWN  0x00000800
 
-#define uc(x) coord[x<<1]
-#define vc(x) coord[(x<<1)+1]
-
 #if defined _MSC_VER
 #define DECLAREALIGN16VAR(var) __declspec(align(16)) float (var)
 #else
@@ -954,10 +951,10 @@ static INLINE void ConvertCoordsKeep (VERTEX *v, int n)
    int i;
    for (i = 0; i < n; i++)
    {
-      v[i].uc(0) = v[i].u0;
-      v[i].vc(0) = v[i].v0;
-      v[i].uc(1) = v[i].u1;
-      v[i].vc(1) = v[i].v1;
+      v[i].coord[0] = v[i].u0;
+      v[i].coord[1] = v[i].v0;
+      v[i].coord[2] = v[i].u1;
+      v[i].coord[3] = v[i].v1;
    }
 }
 
@@ -967,10 +964,10 @@ static INLINE void ConvertCoordsConvert (VERTEX *v, int n)
    int i;
    for (i = 0; i < n; i++)
    {
-      v[i].uc(rdp.t0) = v[i].u0;
-      v[i].vc(rdp.t0) = v[i].v0;
-      v[i].uc(rdp.t1) = v[i].u1;
-      v[i].vc(rdp.t1) = v[i].v1;
+      v[i].coord[(rdp.t0 << 1)  ] = v[i].u0;
+      v[i].coord[(rdp.t0 << 1)+1] = v[i].v0;
+      v[i].coord[(rdp.t1 << 1)  ] = v[i].u1;
+      v[i].coord[(rdp.t1 << 1)+1] = v[i].v1;
    }
 }
 

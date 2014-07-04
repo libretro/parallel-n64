@@ -1396,7 +1396,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       }
 
       ConvertCoordsConvert (vptr, 4);
-
       grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, vptr);
 
       rdp.tri_n += 2;
@@ -3351,8 +3350,8 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
          }
          apply_shade_mods (v);
       }
-      ConvertCoordsConvert (vtxbuf, nbVtxs);
       grCullMode (GR_CULL_DISABLE);
+      ConvertCoordsConvert (vtxbuf, nbVtxs);
       grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, nbVtxs-1, vtxbuf);
    }
 }
