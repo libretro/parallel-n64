@@ -90,6 +90,7 @@ float lambda_color[2][4];
 // shaders variables
 int need_to_compile;
 
+static char *fragment_shader;
 static GLuint fragment_shader_object;
 static GLuint fragment_depth_shader_object;
 static GLuint vertex_shader_object;
@@ -283,23 +284,20 @@ void check_link(GLuint program)
 void init_combiner(void)
 {
    int texture0_location, texture1_location, log_length;
-   char *fragment_shader, s[128];
+   char s[128];
 
    shader_programs = (shader_program_key*)malloc(sizeof(shader_program_key));
+   fragment_shader = (char*)malloc(4096*2);
 
    // depth shader
    fragment_depth_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
 
    // ZIGGY convert a 565 texture into depth component
    sprintf(s, "gl_FragDepth = dot(texture2D(texture0, vec2(gl_TexCoord[0])), vec4(31*64*32, 63*32, 31, 0))*%g + %g; \n", zscale/2/65535.0, 1-zscale/2);
-   fragment_shader = (char*)malloc(strlen(fragment_shader_header)+
-         strlen(s)+
-         strlen(fragment_shader_end)+1);
    strcpy(fragment_shader, fragment_shader_header);
    strcat(fragment_shader, s);
    strcat(fragment_shader, fragment_shader_end);
    glShaderSource(fragment_depth_shader_object, 1, (const GLchar**)&fragment_shader, NULL);
-   free(fragment_shader);
 
    glCompileShader(fragment_depth_shader_object);
    check_compile(fragment_depth_shader_object);
@@ -307,14 +305,10 @@ void init_combiner(void)
    // default shader
    fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
 
-   fragment_shader = (char*)malloc(strlen(fragment_shader_header)+
-         strlen(fragment_shader_default)+
-         strlen(fragment_shader_end)+1);
    strcpy(fragment_shader, fragment_shader_header);
    strcat(fragment_shader, fragment_shader_default);
    strcat(fragment_shader, fragment_shader_end);
    glShaderSource(fragment_shader_object, 1, (const GLchar**)&fragment_shader, NULL);
-   free(fragment_shader);
 
    glCompileShader(fragment_shader_object);
    check_compile(fragment_shader_object);
@@ -460,8 +454,6 @@ void compile_shader(void)
 {
    int vertexOffset_location, textureSizes_location, texture0_location, texture1_location;
    int i, chroma_color_location, log_length;
-   char *fragment_shader;
-
 
    need_to_compile = 0;
 
@@ -501,13 +493,6 @@ void compile_shader(void)
    shader_programs[number_of_programs].three_point_filter0 = three_point_filter[0];
    shader_programs[number_of_programs].three_point_filter1 = three_point_filter[1];
 
-   if(chroma_enabled)
-   {
-      strcat(fragment_shader_texture1, "test_chroma(ctexture1); \n");
-      compile_chroma_shader();
-   }
-
-   fragment_shader = (char*)malloc(4096*2);
 
    strcpy(fragment_shader, fragment_shader_header);
    if(dither_enabled) strcat(fragment_shader, fragment_shader_dither);
@@ -518,8 +503,13 @@ void compile_shader(void)
    strcat(fragment_shader, fragment_shader_color_combiner);
    strcat(fragment_shader, fragment_shader_alpha_combiner);
    if(fog_enabled) strcat(fragment_shader, fragment_shader_fog);
+   if(chroma_enabled)
+   {
+      strcat(fragment_shader, fragment_shader_chroma);
+      strcat(fragment_shader_texture1, "test_chroma(ctexture1); \n");
+      compile_chroma_shader();
+   }
    strcat(fragment_shader, fragment_shader_end);
-   if(chroma_enabled) strcat(fragment_shader, fragment_shader_chroma);
 
    shader_programs[number_of_programs].fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
    glShaderSource(shader_programs[number_of_programs].fragment_shader_object, 1, (const GLchar**)&fragment_shader, NULL);
@@ -563,6 +553,8 @@ void free_combiners(void)
 {
    if (shader_programs)
       free(shader_programs);
+   if (fragment_shader)
+      free(fragment_shader);
    shader_programs = NULL;
    number_of_programs = 0;
 }
