@@ -35,7 +35,7 @@ int width, height;
 int bgra8888_support;
 int npot_support;
 // ZIGGY
-int default_texture;
+static GLuint default_texture;
 int glsl_support = 1;
 //Gonetz
 
@@ -88,7 +88,7 @@ grSstWinOpen(
    // ZIGGY
    // allocate static texture names
    // the initial value should be big enough to support the maximal resolution
-   default_texture = 32 * width * height;
+   glGenTextures(1, &default_texture);
    frameBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
    depthBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
    buf = (uint8_t*)malloc(width * height * 4 * sizeof(uint8_t));
@@ -158,6 +158,7 @@ grSstWinClose( GrContext_t context )
       free(depthBuffer);
    if (buf)
       free(buf);
+   glDeleteTextures(1, &default_texture);
    frameBuffer = NULL;
    depthBuffer = NULL;
    buf = NULL;
@@ -166,54 +167,6 @@ grSstWinClose( GrContext_t context )
    free_textures();
 
    return FXTRUE;
-}
-
-static void render_rectangle(int texture_number,
-                             int dst_x, int dst_y,
-                             int src_width, int src_height,
-                             int tex_width, int tex_height, int invert)
-{
-   int vertexOffset_location, textureSizes_location;
-   static float data[16];
-
-   LOGINFO("render_rectangle(%d,%d,%d,%d,%d,%d,%d,%d)",texture_number,dst_x,dst_y,src_width,src_height,tex_width,tex_height,invert);
-   data[0]   =     ((int)dst_x);                             //X 0
-   data[1]   =     invert*-((int)dst_y);                     //Y 0 
-   data[2]   =     0.0f;                                     //U 0 
-   data[3]   =     0.0f;                                     //V 0
-   data[4]   =     ((int)dst_x);                             //X 1
-   data[5]   =     invert*-((int)dst_y + (int)src_height);   //Y 1
-   data[6]   =     0.0f;                                     //U 1
-   data[7]   =     (float)src_height;                        //V 1
-   data[8]   =     ((int)dst_x + (int)src_width);
-   data[9]  =     invert*-((int)dst_y + (int)src_height);
-   data[10]  =     (float)src_width;
-   data[11]  =     (float)src_height;
-   data[12]  =     ((int)dst_x);
-   data[13]  =     invert*-((int)dst_y);
-   data[14]  =     0.0f;
-   data[15]  =     0.0f;
-
-   glDisableVertexAttribArray(COLOUR_ATTR);
-   glDisableVertexAttribArray(TEXCOORD_1_ATTR);
-   glDisableVertexAttribArray(FOG_ATTR);
-
-   glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,4 * sizeof(float),data); //Position
-   glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float),&data[2]); //Tex
-
-   glEnableVertexAttribArray(COLOUR_ATTR);
-   glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-   glEnableVertexAttribArray(FOG_ATTR);
-
-
-   disable_textureSizes();
-
-   glDrawArrays(GL_TRIANGLE_STRIP,0,4);
-
-   compile_shader();
-
-   glEnable(GL_DEPTH_TEST);
-   glEnable(GL_BLEND);
 }
 
 // frame buffer
@@ -286,7 +239,6 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
 {
    unsigned int i,j;
    uint16_t *frameBuffer = (uint16_t*)src_data;
-   int texture_number;
    LOG("grLfbWriteRegion(%d,%d,%d,%d,%d,%d,%d,%d)\r\n",dst_buffer, dst_x, dst_y, src_format, src_width, src_height, pixelPipeline, src_stride);
 
    if(dst_buffer == GR_BUFFER_AUXBUFFER)
@@ -305,9 +257,11 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
    }
    else
    {
+      int tex_width, tex_height, invert;
+      int vertexOffset_location, textureSizes_location;
+      static float data[16];
       const unsigned int half_stride = src_stride / 2;
-      texture_number = GL_TEXTURE0;
-      glActiveTexture(texture_number);
+      glActiveTexture(GL_TEXTURE0);
 
       /* src_format is GR_LFBWRITEMODE_555 */
       for (j=0; j<src_height; j++)
@@ -329,11 +283,46 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
 
       glDisable(GL_DEPTH_TEST);
       glDisable(GL_BLEND);
-      render_rectangle(texture_number,
-            dst_x, dst_y,
-            src_width,  src_height,
-            src_width,  src_height, +1);
+      tex_width  = src_width;
+      tex_height = src_height;
+      invert = 1;
 
+      data[0]   =     ((int)dst_x);                             //X 0
+      data[1]   =     invert*-((int)dst_y);                     //Y 0 
+      data[2]   =     0.0f;                                     //U 0 
+      data[3]   =     0.0f;                                     //V 0
+      data[4]   =     ((int)dst_x);                             //X 1
+      data[5]   =     invert*-((int)dst_y + (int)src_height);   //Y 1
+      data[6]   =     0.0f;                                     //U 1
+      data[7]   =     (float)src_height;                        //V 1
+      data[8]   =     ((int)dst_x + (int)src_width);
+      data[9]  =     invert*-((int)dst_y + (int)src_height);
+      data[10]  =     (float)src_width;
+      data[11]  =     (float)src_height;
+      data[12]  =     ((int)dst_x);
+      data[13]  =     invert*-((int)dst_y);
+      data[14]  =     0.0f;
+      data[15]  =     0.0f;
+
+      glDisableVertexAttribArray(COLOUR_ATTR);
+      glDisableVertexAttribArray(TEXCOORD_1_ATTR);
+      glDisableVertexAttribArray(FOG_ATTR);
+
+      glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,4 * sizeof(float),data); //Position
+      glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float),&data[2]); //Tex
+
+      glEnableVertexAttribArray(COLOUR_ATTR);
+      glEnableVertexAttribArray(TEXCOORD_1_ATTR);
+      glEnableVertexAttribArray(FOG_ATTR);
+
+      disable_textureSizes();
+
+      glDrawArrays(GL_TRIANGLE_STRIP,0,4);
+
+      compile_shader();
+
+      glEnable(GL_DEPTH_TEST);
+      glEnable(GL_BLEND);
    }
    return FXTRUE;
 }
