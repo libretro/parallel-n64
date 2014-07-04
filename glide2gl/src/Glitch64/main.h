@@ -146,20 +146,4 @@ extern GLuint program_object_default;
  }\
 }
 
-#ifdef LOGGING
-void OPEN_LOG();
-void CLOSE_LOG();
-//void LOG(const char *text, ...);
-#else // LOGGING
-#define OPEN_LOG()
-#define CLOSE_LOG()
-//#define LOG
-#endif // LOGGING
-
-extern void check_gl_error(const char *stmt, const char *fname, int line);
-
-//#define LOG_GL_CALLS
-
-int retro_return(bool just_flipping);
-
 #endif

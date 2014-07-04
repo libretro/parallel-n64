@@ -327,10 +327,3 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
    }
    return FXTRUE;
 }
-
-void check_gl_error(const char *stmt, const char *fname, int line)
-{
-   GLenum error = glGetError();
-   if (error != GL_NO_ERROR && log_cb)
-      log_cb(RETRO_LOG_INFO, "OpenGL error %08x, at %s:%i - for %s\n", error, fname, line, stmt);
-}
