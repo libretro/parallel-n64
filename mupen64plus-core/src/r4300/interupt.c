@@ -412,14 +412,6 @@ void gen_interupt(void)
           return;
           break;
        case VI_INT:
-#ifdef __LIBRETRO__
-          if (retro_return(false) != savestates_job_nothing)
-          {
-             gen_interupt();
-             return;
-          }
-#endif
-
           if (vi_counter < 60)
           {
              if (vi_counter == 0)
@@ -449,6 +441,9 @@ void gen_interupt(void)
              return;
           if ((Status & 7) != 1) return;
           if (!(Status & Cause & 0xFF00)) return;
+#ifdef __LIBRETRO__
+          retro_return(false);
+#endif
           break;
 
        case COMPARE_INT:
