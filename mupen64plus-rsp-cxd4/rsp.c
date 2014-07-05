@@ -20,6 +20,8 @@
 #include "Rsp_#1.1.h"
 #include "rsp.h"
 #include "bench.h"
+#include "m64p_plugin.h"
+
 
 #define RSP_CXD4_VERSION 0x0101
 
@@ -42,6 +44,7 @@ static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
 static int l_PluginInit = 0;
 static m64p_handle l_ConfigRsp;
+extern RSP_INFO rsp_info;
 
 #define VERSION_PRINTF_SPLIT(x) (((x) >> 16) & 0xffff), (((x) >> 8) & 0xff), ((x) & 0xff)
 
@@ -297,13 +300,13 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
 #endif
             if (*(unsigned int *)(RSP.DMEM + 0xFF0) == 0x00000000)
                 break; /* Resident Evil 2 */
-            if (RSP.ProcessDlistList == NULL) {/*branch next*/} else
-                RSP.ProcessDlistList();
+            if (rsp_info.ProcessDlistList == NULL) {/*branch next*/} else
+                rsp_info.ProcessDlistList();
             *RSP.SP_STATUS_REG |= 0x00000203;
             if (*RSP.SP_STATUS_REG & 0x00000040) /* SP_STATUS_INTR_BREAK */
             {
                 *RSP.MI_INTR_REG |= 0x00000001; /* VR4300 SP interrupt */
-                RSP.CheckInterrupts();
+                rsp_info.CheckInterrupts();
             }
             if (*RSP.DPC_STATUS_REG & 0x00000002) /* DPC_STATUS_FREEZE */
             {
@@ -316,13 +319,13 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
         case 0x00000002: /* OSTask.type == M_AUDTASK */
             if (CFG_HLE_AUD == 0)
                 break;
-            if (RSP.ProcessAlistList == 0) {} else
-                RSP.ProcessAlistList();
+            if (rsp_info.ProcessAlistList == 0) {} else
+                rsp_info.ProcessAlistList();
             *RSP.SP_STATUS_REG |= 0x00000203;
             if (*RSP.SP_STATUS_REG & 0x00000040) /* SP_STATUS_INTR_BREAK */
             {
                 *RSP.MI_INTR_REG |= 0x00000001; /* VR4300 SP interrupt */
-                RSP.CheckInterrupts();
+                rsp_info.CheckInterrupts();
             }
             return 0;
 #endif
