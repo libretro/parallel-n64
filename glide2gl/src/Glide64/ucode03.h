@@ -72,7 +72,7 @@ static void uc3_tri1(uint32_t w0, uint32_t w1)
 
    v[0] = &rdp.vtx[((w1 >> 16) & 0xFF) / 5];  /* v0 */
    v[1] = &rdp.vtx[((w1 >> 8)  & 0xFF) / 5];  /* v1 */
-   v[2] = &rdp.vtx[(w1 & 0xFF)];              /* v2 */
+   v[2] = &rdp.vtx[(w1 & 0xFF) / 5];          /* v2 */
 
    cull_trianglefaces(v, 1, true, true, 0);
 }
