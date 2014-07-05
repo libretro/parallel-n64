@@ -68,6 +68,7 @@ extern uint32_t frame_count; // frame counter
 #define ZBUF_ENABLED  0x00000001
 #define ZBUF_DECAL    0x00000002
 #define RDP_ALPHA_COMPARE 0x00000003
+#define RDP_Z_SOURCE_SEL  0x00000004
 #define ZBUF_COMPARE  0x00000004
 #define ZBUF_UPDATE   0x00000008
 #define ALPHA_COMPARE 0x00000010
@@ -769,7 +770,6 @@ struct RDP
    uint32_t cmb_flags, cmb_flags_2;
 
    // othermode_l flags
-   int zsrc; // 0 = pixel, 1 = prim
    uint8_t alpha_dither_mode;
 
    // Matrices

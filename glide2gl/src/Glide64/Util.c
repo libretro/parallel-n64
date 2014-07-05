@@ -1096,12 +1096,12 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
    if (rdp.clip & CLIP_WMIN)
       clip_w (old_interpolate);
 
-   maxZ = (rdp.zsrc != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : rdp.prim_depth;
+   maxZ = (((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2) != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : rdp.prim_depth;
 
    no_clip = 2;
    for (i=0; i<rdp.n_global; i++)
    {
-      if (rdp.vtxbuf[i].not_zclipped)// && rdp.zsrc != 1)
+      if (rdp.vtxbuf[i].not_zclipped)
       {
          //FRDP (" * NOT ZCLIPPPED: %d\n", rdp.vtxbuf[i].number);
          rdp.vtxbuf[i].x = rdp.vtxbuf[i].sx;
@@ -1132,7 +1132,7 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
          }
       }
 
-      if (rdp.zsrc == 1)
+      if ((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2)
          rdp.vtxbuf[i].z = rdp.prim_depth;
 
       glide64SPClipVertex(i);
@@ -1298,7 +1298,7 @@ void update(void)
          int depthmask_val = FXFALSE;
          rdp.update ^= UPDATE_ZBUF_ENABLED;
 
-         if (((rdp.flags & ZBUF_ENABLED) || rdp.zsrc == 1) && rdp.cycle_mode < G_CYC_COPY)
+         if (((rdp.flags & ZBUF_ENABLED) || ((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2)) && rdp.cycle_mode < G_CYC_COPY)
          {
             if (rdp.flags & ZBUF_COMPARE)
             {

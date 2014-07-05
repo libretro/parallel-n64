@@ -834,7 +834,6 @@ EXPORT void CALL ProcessDList(void)
   rdp.bg_image_height = 0xFFFF;
   fbreads_front = fbreads_back = 0;
   rdp.fog_multiplier = rdp.fog_offset = 0;
-  rdp.zsrc = 0;
   if (rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG)
     rdp.tlut_mode = 0; //is it correct?
   rdp.scissor_set = false;
@@ -2998,7 +2997,7 @@ static uint32_t rdp_cmd_data[0x1000];
 
 #define XSCALE(x) ((float)(x)/(1<<18))
 #define YSCALE(y) ((float)(y)/(1<<2))
-#define ZSCALE(z) ((rdp.zsrc == 1)? (float)(rdp.prim_depth) : (float)((uint32_t)(z))/0xffff0000)
+#define ZSCALE(z) ((((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2)) ? (float)(rdp.prim_depth) : (float)((uint32_t)(z))/0xffff0000)
   //#define WSCALE(w) (rdp.Persp_en? (float(uint32_t(w) + 0x10000)/0xffff0000) : 1.0f)
   //#define WSCALE(w) (rdp.Persp_en? 4294901760.0/(w + 65536) : 1.0f)
 #define WSCALE(w) (rdp.Persp_en? 65536.0f/ (float)((w+ 0xffff)>>16) : 1.0f)
