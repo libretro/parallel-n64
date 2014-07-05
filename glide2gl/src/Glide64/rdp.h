@@ -69,6 +69,7 @@ extern uint32_t frame_count; // frame counter
 #define ZBUF_DECAL    0x00000002
 #define RDP_ALPHA_COMPARE 0x00000003
 #define RDP_Z_SOURCE_SEL  0x00000004
+#define RDP_CYCLE_TYPE    0x00300000
 #define ZBUF_COMPARE  0x00000004
 #define ZBUF_UPDATE   0x00000008
 #define ALPHA_COMPARE 0x00000010
@@ -815,7 +816,7 @@ struct RDP
    int  use_lookat;
 
    // Combine modes
-   uint32_t cycle1, cycle2, cycle_mode;
+   uint32_t cycle1, cycle2;
    uint8_t c_a0, c_b0, c_c0, c_d0, c_Aa0, c_Ab0, c_Ac0, c_Ad0;
    uint8_t c_a1, c_b1, c_c1, c_d1, c_Aa1, c_Ab1, c_Ac1, c_Ad1;
 

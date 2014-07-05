@@ -786,7 +786,7 @@ static void cc_zero(void)
 
 static void cc_t0(void)
 {
-   if ((rdp.othermode_l & FORCE_BL) && (rdp.cycle_mode < G_CYC_COPY))
+   if ((rdp.othermode_l & FORCE_BL) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
    {
       uint32_t blend_mode = (rdp.othermode_l >> 16);
       if (blend_mode == 0xa500)
@@ -5044,7 +5044,7 @@ static void cc_prim_sub_env_mul_t1_add_env ()
          GR_COMBINE_OTHER_CONSTANT);
    CC_PRIM ();
    SETSHADE_ENV ();
-   if (rdp.cycle_mode == G_CYC_1CYCLE || ((settings.hacks&hack_KI) && (rdp.cycle2 & 0x0FFFFFFF) == 0x01FF1FFF))
+   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_1CYCLE || ((settings.hacks&hack_KI) && (rdp.cycle2 & 0x0FFFFFFF) == 0x01FF1FFF))
    {
       USE_T0 ();
    }
@@ -7369,7 +7369,7 @@ static void ac_one ()
 
 static void ac_t0 ()
 {
-   if ((rdp.othermode_l & FORCE_BL) && (rdp.cycle_mode < G_CYC_COPY))
+   if ((rdp.othermode_l & FORCE_BL) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
    {
       uint32_t blend_mode = (rdp.othermode_l >> 16);
       if (blend_mode == 0x0550)
@@ -7666,7 +7666,7 @@ static void ac_t1_mul_prim ()
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_TEXTURE);
    CA_PRIM ();
-   if (rdp.cycle_mode == G_CYC_1CYCLE)
+   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_1CYCLE)
       A_USE_T0 ();
    else
       A_USE_T1 ();
@@ -7929,7 +7929,7 @@ static void ac_t1_mul_env () //Added by Gonetz
          GR_COMBINE_OTHER_TEXTURE);
    CA_ENV ();
    //  if ((settings.hacks&hack_Powerpuff) && (rdp.last_tile == 0))
-   if (rdp.cycle_mode == G_CYC_1CYCLE)
+   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_1CYCLE)
       A_USE_T0 ();
    else
       A_USE_T1 ();
@@ -14219,7 +14219,7 @@ void CombineBlender(void)
 {
    uint32_t blendmode = rdp.othermode_l >> 16;
    // Check force-blending
-   if ((rdp.othermode_l & FORCE_BL) && (rdp.cycle_mode < G_CYC_COPY))
+   if ((rdp.othermode_l & FORCE_BL) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
    {
       switch (blendmode)
       {
@@ -14274,7 +14274,7 @@ void CombineBlender(void)
          case 0x0150: //spiderman
          case 0x0d18: //clr_in * a_fog + clr_mem * (1-a)
             A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-            if (rdp.cycle_mode == G_CYC_2CYCLE && rdp.cycle2 != 0x01ff1fff)
+            if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_2CYCLE && rdp.cycle2 != 0x01ff1fff)
             {
                uint32_t prim = rdp.prim_color;
                rdp.prim_color = rdp.fog_color;

@@ -1298,7 +1298,7 @@ void update(void)
          int depthmask_val = FXFALSE;
          rdp.update ^= UPDATE_ZBUF_ENABLED;
 
-         if (((rdp.flags & ZBUF_ENABLED) || ((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2)) && rdp.cycle_mode < G_CYC_COPY)
+         if (((rdp.flags & ZBUF_ENABLED) || ((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2)) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
          {
             if (rdp.flags & ZBUF_COMPARE)
             {
@@ -1359,7 +1359,7 @@ void update(void)
                LRDP (" |- alpha compare: none\n");
             }
          }
-         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3 && rdp.cycle_mode < G_CYC_COPY)
+         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3 && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
          {
             if (settings.old_style_adither || rdp.alpha_dither_mode != 3)
             {

@@ -905,11 +905,7 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
    }
 
    if (mask & 0x00300000) // cycle type
-   {
-      rdp.cycle_mode = (uint8_t)((rdp.othermode_h & 0x00300000) >> 20);
       rdp.update |= UPDATE_ZBUF_ENABLED;
-      FRDP ("cycletype: %d\n", rdp.cycle_mode);
-   }
 
    if (mask & 0x00010000) // LOD enable
    {

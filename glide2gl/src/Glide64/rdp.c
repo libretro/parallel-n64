@@ -304,7 +304,6 @@ void rdp_reset(void)
 
    rdp.lookat[0][0] = rdp.lookat[1][1] = 1.0f;
 
-   rdp.cycle_mode = G_CYC_COPY;
    rdp.allow_combine = 1;
    rdp.update = UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
    rdp.fog_mode = FOG_MODE_ENABLED;
@@ -1146,7 +1145,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    // FRDP ("rdp.cycle1 %08lx, rdp.cycle2 %08lx\n", rdp.cycle1, rdp.cycle2);
 
-   if (rdp.cycle_mode == 2)
+   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 2)
    {
       ul_x = (short)((rdp.cmd1 & 0x00FFF000) >> 14);
       ul_y = (short)((rdp.cmd1 & 0x00000FFF) >> 2);
@@ -1167,7 +1166,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   if (rdp.cycle_mode > 1)
+   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) > 1)
    {
       lr_x += 1.0f;
       lr_y += 1.0f;
@@ -1251,7 +1250,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if (off_y_i & 0x8000)
       off_y_i |= ~0xffff;
 
-   if (rdp.cycle_mode == 2)
+   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 2)
       dsdx /= 4.0f;
 
    s_ul_x = ul_x * rdp.scale_x + rdp.offset_x;
@@ -2033,7 +2032,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (rdp.cycle_mode == 3) && (rdp.fill_color == 0xFFFCFFFC);
+   pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3) && (rdp.fill_color == 0xFFFCFFFC);
    if ((rdp.cimg == rdp.zimg) || (fb_emulation_enabled && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) || pd_multiplayer)
    {
       //LRDP("Fillrect - cleared the depth buffer\n");
@@ -2081,12 +2080,12 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    //if (fullscreen)
    update_scissor(false);
 
-   if (settings.decrease_fillrect_edge && rdp.cycle_mode == 0)
+   if (settings.decrease_fillrect_edge && ((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 0)
    {
       lr_x--; lr_y--;
    }
 #if 0
-   FRDP("fillrect (%d,%d) -> (%d,%d), cycle mode: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, rdp.cycle_mode,
+   FRDP("fillrect (%d,%d) -> (%d,%d), cycle mode: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, ((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20),
          rdp.tri_n, rdp.tri_n+1);
 
    FRDP("scissor (%d,%d) -> (%d,%d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x,
@@ -2114,7 +2113,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 
       grFogMode (GR_FOG_DISABLE, rdp.fog_color);
 
-      Z = (rdp.cycle_mode == 3) ? 0.0f : set_sprite_combine_mode();
+      Z = (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3) ? 0.0f : set_sprite_combine_mode();
 
             // Draw the vertices
       VERTEX v[4] = {
@@ -2123,7 +2122,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       { (float)s_ul_x, (float)s_lr_y, Z, 1.0f, 0,0,0,0, {0,0,0,0}, 0,0, 0,0,0,0},
       { (float)s_lr_x, (float)s_lr_y, Z, 1.0f, 0,0,0,0, {0,0,0,0}, 0,0, 0,0,0,0} };
 
-      if (rdp.cycle_mode == 3)
+      if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3)
       {
          uint32_t color = rdp.fill_color;
 
