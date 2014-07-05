@@ -441,7 +441,7 @@ static void DrawImage (DRAWIMAGE *d)
                { flr_x, flr_y, Z, 1.0f, flr_u, flr_v } };
 
             apply_shading(v);
-            ConvertCoordsKeep (v, 4);
+            ConvertCoordsConvert (v, 4);
             grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v);
          }
          rdp.tri_n += 2;

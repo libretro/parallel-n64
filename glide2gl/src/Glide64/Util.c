@@ -990,7 +990,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
       }
    }
 
-   ConvertCoordsKeep(rdp.vtxbuf, n);
+   ConvertCoordsConvert (rdp.vtxbuf, n);
 
    switch (rdp.fog_mode)
    {
