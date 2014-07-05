@@ -306,6 +306,78 @@ static void gSPCombineMatrices(void)
    rdp.update ^= UPDATE_MULT_MAT;
 }
 
+/* clip_w - clips aint the z-axis */
+static void clip_w (void)
+{
+   int i, j, index, n;
+   float percent;
+   VERTEX *tmp;
+   
+   n = rdp.n_global;
+   // Swap vertex buffers
+   tmp = (VERTEX*)rdp.vtxbuf2;
+   rdp.vtxbuf2 = rdp.vtxbuf;
+   rdp.vtxbuf = tmp;
+   rdp.vtx_buffer ^= 1;
+   index = 0;
+
+   // Check the vertices for clipping
+   for (i=0; i < n; i++)
+   {
+      VERTEX *first, *second;
+      j = i+1;
+      if (j == 3)
+         j = 0;
+      first = (VERTEX*)&rdp.vtxbuf2[i];
+      second = (VERTEX*)&rdp.vtxbuf2[j];
+
+      if (first->w >= 0.01f)
+      {
+         if (second->w >= 0.01f)    // Both are in, save the last one
+         {
+            rdp.vtxbuf[index] = rdp.vtxbuf2[j];
+            rdp.vtxbuf[index++].not_zclipped = 1;
+         }
+         else      // First is in, second is out, save intersection
+         {
+            percent = (-first->w) / (second->w - first->w);
+            rdp.vtxbuf[index].not_zclipped = 0;
+            rdp.vtxbuf[index].x = first->x + (second->x - first->x) * percent;
+            rdp.vtxbuf[index].y = first->y + (second->y - first->y) * percent;
+            rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
+            rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
+            rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
+            rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
+            rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
+            rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
+            rdp.vtxbuf[index++].number = first->number | second->number;
+         }
+      }
+      else
+      {
+         if (second->w >= 0.01f)  // First is out, second is in, save intersection & in point
+         {
+            percent = (-second->w) / (first->w - second->w);
+            rdp.vtxbuf[index].not_zclipped = 0;
+            rdp.vtxbuf[index].x = second->x + (first->x - second->x) * percent;
+            rdp.vtxbuf[index].y = second->y + (first->y - second->y) * percent;
+            rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
+            rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
+            rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
+            rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
+            rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
+            rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
+            rdp.vtxbuf[index++].number = first->number | second->number;
+
+            // Save the in point
+            rdp.vtxbuf[index] = rdp.vtxbuf2[j];
+            rdp.vtxbuf[index++].not_zclipped = 1;
+         }
+      }
+   }
+   rdp.n_global = index;
+}
+
 static void draw_tri (VERTEX **vtx, uint16_t linew)
 {
    int i;
@@ -445,11 +517,6 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
 
    rdp.clip = 0;
 
-   if ((vtx[0]->scr_off & 16) ||
-         (vtx[1]->scr_off & 16) ||
-         (vtx[2]->scr_off & 16))
-      rdp.clip |= CLIP_WMIN;
-
    vtx[0]->not_zclipped = vtx[1]->not_zclipped = vtx[2]->not_zclipped = 1;
 
    // Set vertex buffers
@@ -458,12 +525,18 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
    rdp.vtx_buffer = 0;
    rdp.n_global = 3;
 
+
    rdp.vtxbuf[0] = *vtx[0];
    rdp.vtxbuf[0].number = 1;
    rdp.vtxbuf[1] = *vtx[1];
    rdp.vtxbuf[1].number = 2;
    rdp.vtxbuf[2] = *vtx[2];
    rdp.vtxbuf[2].number = 4;
+
+   if ((vtx[0]->scr_off & 16) ||
+         (vtx[1]->scr_off & 16) ||
+         (vtx[2]->scr_off & 16))
+      clip_w();
 
    do_triangle_stuff (linew, false);
 }

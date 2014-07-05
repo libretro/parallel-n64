@@ -272,89 +272,6 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
       */
 }
 
-//*/
-//
-// clip_w - clips aint the z-axis
-//
-//
-static void clip_w (int interpolate_colors)
-{
-   int i, j, index, n;
-   float percent;
-   VERTEX *tmp;
-   
-   n = rdp.n_global;
-   // Swap vertex buffers
-   tmp = (VERTEX*)rdp.vtxbuf2;
-   rdp.vtxbuf2 = rdp.vtxbuf;
-   rdp.vtxbuf = tmp;
-   rdp.vtx_buffer ^= 1;
-   index = 0;
-
-   // Check the vertices for clipping
-   for (i=0; i<n; i++)
-   {
-      VERTEX *first, *second;
-      j = i+1;
-      if (j == 3)
-         j = 0;
-      first = (VERTEX*)&rdp.vtxbuf2[i];
-      second = (VERTEX*)&rdp.vtxbuf2[j];
-
-      if (first->w >= 0.01f)
-      {
-         if (second->w >= 0.01f)    // Both are in, save the last one
-         {
-            rdp.vtxbuf[index] = rdp.vtxbuf2[j];
-            rdp.vtxbuf[index++].not_zclipped = 1;
-         }
-         else      // First is in, second is out, save intersection
-         {
-            percent = (-first->w) / (second->w - first->w);
-            rdp.vtxbuf[index].not_zclipped = 0;
-            rdp.vtxbuf[index].x = first->x + (second->x - first->x) * percent;
-            rdp.vtxbuf[index].y = first->y + (second->y - first->y) * percent;
-            rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
-            rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
-            rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
-            rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
-            rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
-            rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
-            if (interpolate_colors)
-               InterpolateColors(&rdp.vtxbuf[index++], percent, first, second);
-            else
-               rdp.vtxbuf[index++].number = first->number | second->number;
-         }
-      }
-      else
-      {
-         if (second->w >= 0.01f)  // First is out, second is in, save intersection & in point
-         {
-            percent = (-second->w) / (first->w - second->w);
-            rdp.vtxbuf[index].not_zclipped = 0;
-            rdp.vtxbuf[index].x = second->x + (first->x - second->x) * percent;
-            rdp.vtxbuf[index].y = second->y + (first->y - second->y) * percent;
-            rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
-            rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
-            rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
-            rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
-            rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
-            rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
-            if (interpolate_colors)
-               InterpolateColors(&rdp.vtxbuf[index++], percent, second, first);
-            else
-               rdp.vtxbuf[index++].number = first->number | second->number;
-
-            // Save the in point
-            rdp.vtxbuf[index] = rdp.vtxbuf2[j];
-            rdp.vtxbuf[index++].not_zclipped = 1;
-         }
-      }
-   }
-   rdp.n_global = index;
-}
-
-
 static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
 {
    float w, ba, bb, ga, gb, ra, rb, aa, ab, fa, fb;
@@ -1083,20 +1000,10 @@ static void render_tri (uint16_t linew, int old_interpolate)
 
 void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do the triangle stuff :P (to keep from writing code twice)
 {
-
    int i;
-   uint8_t no_clip;
-   float maxZ;
+   float maxZ = (((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2) != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : rdp.prim_depth;
+   uint8_t no_clip = 2;
 
-   if (rdp.n_global < 3)
-      return;
-
-   if (rdp.clip & CLIP_WMIN)
-      clip_w (old_interpolate);
-
-   maxZ = (((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2) != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : rdp.prim_depth;
-
-   no_clip = 2;
    for (i=0; i<rdp.n_global; i++)
    {
       if (rdp.vtxbuf[i].not_zclipped)
