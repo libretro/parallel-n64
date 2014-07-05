@@ -71,6 +71,8 @@ extern uint32_t frame_count; // frame counter
 #define RDP_TEX_LOD_ENABLE    0x00010000
 #define RDP_PERSP_TEX_ENABLE  0x00080000
 #define RDP_FORCE_BLEND       0x00004000
+#define RDP_COLOR_ON_CVG      0x00000080
+#define RDP_ALPHA_CVG_SELECT  0x00002000
 #define ZBUF_ENABLED  0x00000001
 #define ZBUF_DECAL    0x00000002
 #define ZBUF_COMPARE  0x00000004
