@@ -1338,7 +1338,7 @@ void update(void)
       {
          rdp.update ^= UPDATE_ALPHA_COMPARE;
 
-         if (rdp.acmp == 1 && !(rdp.othermode_l & 0x00002000) && (!(rdp.othermode_l & 0x00004000) || (rdp.blend_color&0xFF)))
+         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 1 && !(rdp.othermode_l & 0x00002000) && (!(rdp.othermode_l & 0x00004000) || (rdp.blend_color&0xFF)))
          {
             uint8_t reference = (uint8_t)(rdp.blend_color&0xFF);
             grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER, reference, 1);
@@ -1351,7 +1351,7 @@ void update(void)
                bool cond_set = (rdp.othermode_l & 0x5000) == 0x5000;
                grAlphaTestFunction (!cond_set ? GR_CMP_GEQUAL : GR_CMP_GREATER, 0x20, !cond_set ? 1 : 0);
                if (cond_set)
-                  grAlphaTestReferenceValue ((rdp.acmp == 3) ? (uint8_t)(rdp.blend_color&0xFF) : 0x00);
+                  grAlphaTestReferenceValue (((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3) ? (uint8_t)(rdp.blend_color&0xFF) : 0x00);
             }
             else
             {
@@ -1359,7 +1359,7 @@ void update(void)
                LRDP (" |- alpha compare: none\n");
             }
          }
-         if (rdp.acmp == 3 && rdp.cycle_mode < G_CYC_COPY)
+         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3 && rdp.cycle_mode < G_CYC_COPY)
          {
             if (settings.old_style_adither || rdp.alpha_dither_mode != 3)
             {

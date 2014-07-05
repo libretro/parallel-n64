@@ -962,12 +962,8 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
    rdp.othermode_l &= ~mask;
    rdp.othermode_l |= rdp.cmd1;
 
-   if (mask & 0x00000003) // alpha compare
-   {
-      rdp.acmp = rdp.othermode_l & 0x00000003;
-      FRDP ("alpha compare %s\n", ACmp[rdp.acmp]);
+   if (mask & RDP_ALPHA_COMPARE) // alpha compare
       rdp.update |= UPDATE_ALPHA_COMPARE;
-   }
 
    if (mask & 0x00000004) // z-src selection
    {

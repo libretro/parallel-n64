@@ -828,7 +828,6 @@ EXPORT void CALL ProcessDList(void)
   rdp.fb_drawn = rdp.fb_drawn_front = false;
   rdp.update = 0x7FFFFFFF;  // All but clear cache
   rdp.geom_mode = 0;
-  rdp.acmp = 0;
   rdp.maincimg[1] = rdp.maincimg[0];
   rdp.skip_drawing = false;
   rdp.s2dex_tex_loaded = false;
