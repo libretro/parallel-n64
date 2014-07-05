@@ -225,8 +225,6 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
       v1 = gfx_info.RDRAM[addr+start+1];
       v2 = gfx_info.RDRAM[addr+start+2];
 
-      FRDP("tri #%d - %d, %d, %d\n", rdp.tri_n, v0, v1, v2);
-
       v[0] = &rdp.vtx[v0];
       v[1] = &rdp.vtx[v1];
       v[2] = &rdp.vtx[v2];
@@ -263,7 +261,7 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
       v[1]->uv_calculated = 0xFFFFFFFF;
       v[2]->uv_calculated = 0xFFFFFFFF;
 
-      gsSP1Triangle(v0, v1, v2, 0, true);
+      cull_trianglefaces(v, 1, true, true, 0);
    }
 }
 

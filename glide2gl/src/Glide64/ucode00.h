@@ -1045,22 +1045,23 @@ static void uc0_tri4(uint32_t w0, uint32_t w1)
    // c0: 0000 0123, c1: 456789ab
    // becomes: 405 617 829 a3b
 
-   gsSP4Triangles(
-         (w1 >> 28) & 0xF,    /* v00 */
-         (w0 >> 12) & 0xF,    /* v01 */
-         (w1 >> 24) & 0xF,    /* v02 */
-         0,                   /* flag0 */
-         (w1 >> 20) & 0xF,    /* v10 */
-         (w0 >> 8)  & 0xF,    /* v11 */
-         (w1 >> 16) & 0xF,    /* v12 */
-         0,                   /* flag1 */
-         (w1 >> 12) & 0xF,    /* v20 */
-         (w0 >> 4) & 0xF,     /* v21 */
-         (w1 >> 8) & 0xF,     /* v22 */
-         0,                   /* flag2 */
-         (w1 >> 4) & 0xF,     /* v30 */
-         (w0 >> 0) & 0xF,     /* v31 */
-         (w1 >> 0) & 0xF,     /* v32 */
-         0                    /* flag3 */
-         );
+   VERTEX *v[12];
+
+   if (rdp.skip_drawing)
+      return;
+
+   v[0]  = &rdp.vtx[(w1 >> 28) & 0xF]; /* v00 */
+   v[1]  = &rdp.vtx[(w0 >> 12) & 0xF]; /* v01 */
+   v[2]  = &rdp.vtx[(w1 >> 24) & 0xF]; /* v02 */
+   v[3]  = &rdp.vtx[(w1 >> 20) & 0xF]; /* v10 */
+   v[4]  = &rdp.vtx[(w0 >> 8)  & 0xF]; /* v11 */
+   v[5]  = &rdp.vtx[(w1 >> 16) & 0xF]; /* v12 */
+   v[6]  = &rdp.vtx[(w1 >> 12) & 0xF]; /* v20 */
+   v[7]  = &rdp.vtx[(w0 >> 4) & 0xF];  /* v21 */
+   v[8]  = &rdp.vtx[(w1 >> 8) & 0xF];  /* v22 */
+   v[9]  = &rdp.vtx[(w1 >> 4) & 0xF];  /* v30 */
+   v[10] = &rdp.vtx[(w0 >> 0) & 0xF];  /* v31 */
+   v[11] = &rdp.vtx[(w1 >> 0) & 0xF];  /* v32 */
+
+   cull_trianglefaces(v, 4, true, true, 0);
 }

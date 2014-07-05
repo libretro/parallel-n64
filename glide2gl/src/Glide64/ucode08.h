@@ -423,22 +423,23 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
 
 static void uc8_tri4(uint32_t w0, uint32_t w1) //by Gugaman Apr 19 2002
 {
-   gsSP4Triangles(
-         (w0 >> 23) & 0x1F,     /* v00 */
-         (w0 >> 18) & 0x1F,     /* v01 */
-         ((((w0 >> 15) & 0x7) << 2) | ((w1 >> 30) &0x3)),   /* v02 */
-         0,                     /* flag0 */
-         (w0 >> 10) & 0x1F,     /* v10 */
-         (w0 >> 5) & 0x1F,      /* v11 */
-         (w0 >> 0) & 0x1F,      /* v12 */
-         0,                     /* flag1 */
-         (w1 >> 25) & 0x1F,     /* v20 */
-         (w1 >> 20) & 0x1F,     /* v21 */
-         (w1 >> 15) & 0x1F,     /* v22 */
-         0,                     /* flag2 */
-         (w1 >> 10) & 0x1F,     /* v30 */
-         (w1 >> 5) & 0x1F,      /* v31 */
-         (w1 >> 0) & 0x1F,      /* v32 */
-         0                      /* flag3 */
-         );
+   VERTEX *v[12];
+
+   if (rdp.skip_drawing)
+      return;
+
+   v[0]  = &rdp.vtx[(w0 >> 23) & 0x1F]; /* v00 */
+   v[1]  = &rdp.vtx[(w0 >> 18) & 0x1F]; /* v01 */
+   v[2]  = &rdp.vtx[((((w0 >> 15) & 0x7) << 2) | ((w1 >> 30) &0x3))]; /* v02 */
+   v[3]  = &rdp.vtx[(w0 >> 10) & 0x1F]; /* v10 */
+   v[4]  = &rdp.vtx[(w0 >> 5) & 0x1F];  /* v11 */
+   v[5]  = &rdp.vtx[(w0 >> 0) & 0x1F];  /* v12 */
+   v[6]  = &rdp.vtx[(w1 >> 25) & 0x1F]; /* v20 */
+   v[7]  = &rdp.vtx[(w1 >> 20) & 0x1F]; /* v21 */
+   v[8]  = &rdp.vtx[(w1 >> 15) & 0x1F]; /* v22 */
+   v[9]  = &rdp.vtx[(w1 >> 10) & 0x1F]; /* v30 */
+   v[10] = &rdp.vtx[(w1 >> 5) & 0x1F];  /* v31 */
+   v[11] = &rdp.vtx[(w1 >> 0) & 0x1F];  /* v32 */
+
+   cull_trianglefaces(v, 4, true, true, 0);
 }

@@ -248,8 +248,14 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
       a = segoffset(ptri);
       for (t = 0; t < ostate->triCount; t++)
       {
+         VERTEX *v[3];
          struct t3dTriN *tri = (struct t3dTriN*)&gfx_info.RDRAM[a];
-         gsSP1Triangle(tri->v0, tri->v1, tri->v2, 0, false);
+
+         v[0] = &rdp.vtx[tri->v0]; 
+         v[1] = &rdp.vtx[tri->v1];
+         v[2] = &rdp.vtx[tri->v2];
+
+         cull_trianglefaces(v, 1, false, true, 0);
          a += 4;
       }
    }
