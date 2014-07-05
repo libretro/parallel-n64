@@ -141,45 +141,6 @@ static void rsp_vertex(int v0, int n)
    }
 }
 
-static void rsp_tri1(VERTEX **v, uint16_t linew)
-{
-  if (cull_tri(v))
-    rdp.tri_n ++;
-  else
-  {
-    update ();
-    draw_tri (v, linew);
-    rdp.tri_n ++;
-  }
-}
-
-static void rsp_tri2 (VERTEX **v)
-{
-  int updated = 0;
-
-  if (cull_tri(v))
-    rdp.tri_n ++;
-  else
-  {
-    updated = 1;
-    update ();
-
-    draw_tri (v, 0);
-    rdp.tri_n ++;
-  }
-
-  if (cull_tri(v+3))
-    rdp.tri_n ++;
-  else
-  {
-    if (!updated)
-      update ();
-
-    draw_tri (v+3, 0);
-    rdp.tri_n ++;
-  }
-}
-
 //
 // uc0:vertex - loads vertices
 //
@@ -551,7 +512,7 @@ static void uc0_tri1(uint32_t w0, uint32_t w1)
    v[1] = &rdp.vtx[((w1 >> 8) & 0xFF) / 10];
    v[2] = &rdp.vtx[(w1 & 0xFF) / 10];
 
-   rsp_tri1(v, 0);
+   cull_trianglefaces(v, 1, true, true, 0);
 }
 
 static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
@@ -575,7 +536,7 @@ static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
       }
    }
 
-   rsp_tri1(v, 0);
+   cull_trianglefaces(v, 1, true, true, 0);
 }
 
 //
@@ -1034,7 +995,7 @@ static void uc0_line3d(uint32_t w0, uint32_t w1)
   cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
   rdp.flags |= CULLMASK;
   rdp.update |= UPDATE_CULL_MODE;
-  rsp_tri1(v, width);
+  cull_trianglefaces(v, 1, true, true, width);
   rdp.flags ^= CULLMASK;
   rdp.flags |= cull_mode << CULLSHIFT;
   rdp.update |= UPDATE_CULL_MODE;

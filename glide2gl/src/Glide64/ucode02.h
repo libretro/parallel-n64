@@ -300,7 +300,7 @@ static void uc2_tri1(uint32_t w0, uint32_t w1)
    v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
    v[2] = &rdp.vtx[(w0 >> 1) & 0x7F];
 
-   rsp_tri1(v, 0);
+   cull_trianglefaces(v, 1, true, true, 0);
 }
 
 static void uc2_quad(uint32_t w0, uint32_t w1)
@@ -343,7 +343,7 @@ static void uc2_quad(uint32_t w0, uint32_t w1)
    v[4] = &rdp.vtx[(w1 >> 9) & 0x7F];
    v[5] = &rdp.vtx[(w1 >> 1) & 0x7F];
 
-   rsp_tri2(v);
+   cull_trianglefaces(v, 2, true, true, 0);
 }
 
 static void uc2_line3d(uint32_t w0, uint32_t w1)
@@ -368,7 +368,7 @@ static void uc2_line3d(uint32_t w0, uint32_t w1)
       cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
       rdp.flags |= CULLMASK;
       rdp.update |= UPDATE_CULL_MODE;
-      rsp_tri1(v, width);
+      cull_trianglefaces(v, 1, true, true, width);
       rdp.flags ^= CULLMASK;
       rdp.flags |= cull_mode << CULLSHIFT;
       rdp.update |= UPDATE_CULL_MODE;
