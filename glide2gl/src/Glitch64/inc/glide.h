@@ -569,7 +569,7 @@ FX_ENTRY void FX_CALL
 grVertexLayout(FxU32 param, FxI32 offset, FxU32 mode);
 
 FX_ENTRY void FX_CALL 
-grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers, int do_convert);
+grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers);
 
 #define grBufferClear(color, alpha, depth) \
 { \
