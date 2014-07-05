@@ -355,7 +355,6 @@ void ReadSpecialSettings (const char * name)
       settings.decrease_fillrect_edge = 0;
       settings.stipple_mode = 2;
       settings.stipple_pattern = (uint32_t)1041204192;
-      settings.clip_zmax = 1;
       settings.clip_zmin = 0;
       settings.adjust_aspect = 1;
       settings.correct_viewport = 0;

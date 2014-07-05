@@ -1052,8 +1052,6 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
    {
       if (!settings.clip_zmin)
          rdp.clip &= ~CLIP_ZMIN;
-      if (!settings.clip_zmax)
-         rdp.clip &= ~CLIP_ZMAX;
    }
 
       render_tri (linew, old_interpolate);

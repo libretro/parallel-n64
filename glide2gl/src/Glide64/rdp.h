@@ -414,7 +414,6 @@ typedef struct
    int force_microcheck; //check microcode each frame, for mixed F3DEX-S2DEX games
    int force_quad3d; //force 0xb5 command to be quad, not line 3d
    int clip_zmin; //enable near z clipping
-   int clip_zmax; //enable far plane clipping;
    int adjust_aspect; //adjust screen aspect for wide screen mode
    int force_calc_sphere; //use spheric mapping only, Ridge Racer 64
    int pal230;    //set special scale for PAL games
