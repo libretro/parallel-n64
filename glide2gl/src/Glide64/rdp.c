@@ -3510,19 +3510,11 @@ static const uint32_t rdp_command_length[64] =
    8                       // 0x3f, Set_Color_Image
 };
 
-#define rdram ((uint32_t*)gfx_info.RDRAM)
-#define rsp_dmem ((uint32_t*)gfx_info.DMEM)
-
-#define dp_start (*(uint32_t*)gfx_info.DPC_START_REG)
-#define dp_end (*(uint32_t*)gfx_info.DPC_END_REG)
-#define dp_current (*(uint32_t*)gfx_info.DPC_CURRENT_REG)
-#define dp_status (*(uint32_t*)gfx_info.DPC_STATUS_REG)
-
 static INLINE uint32_t READ_RDP_DATA(uint32_t address)
 {
-   if (dp_status & 0x1) /* XBUS_DMEM_DMA enabled */
-      return rsp_dmem[(address & 0xfff) >> 2];
-   return rdram[address >> 2];
+   if ((*(uint32_t*)gfx_info.DPC_STATUS_REG) & 0x1) /* XBUS_DMEM_DMA enabled */
+      return ((uint32_t*)gfx_info.DMEM)[(address & 0xfff) >> 2];
+   return ((uint32_t*)gfx_info.RDRAM)[address >> 2];
 }
 
 static void rdphalf_1(uint32_t w0, uint32_t w1)
@@ -3605,22 +3597,22 @@ EXPORT void CALL ProcessRDPList(void)
 
    rdp_cmd_ptr = 0;
    rdp_cmd_cur = 0;
-   length = dp_end - dp_current;
+   length = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);
 
-   if (dp_end <= dp_current)
+   if ((*(uint32_t*)gfx_info.DPC_END_REG) <= (*(uint32_t*)gfx_info.DPC_CURRENT_REG))
       return;
 
    if (length < 0)
    {
-      dp_current = dp_end;
+      (*(uint32_t*)gfx_info.DPC_CURRENT_REG) = (*(uint32_t*)gfx_info.DPC_END_REG);
       return;
    }
 
    // load command data
    for (i=0; i < length; i += 4)
-      rdp_cmd_data[rdp_cmd_ptr++] = READ_RDP_DATA((dp_current & 0x1fffffff) + i);
+      rdp_cmd_data[rdp_cmd_ptr++] = READ_RDP_DATA(((*(uint32_t*)gfx_info.DPC_CURRENT_REG) & 0x1fffffff) + i);
 
-   dp_current = dp_end;
+   (*(uint32_t*)gfx_info.DPC_CURRENT_REG) = (*(uint32_t*)gfx_info.DPC_END_REG);
 
    cmd = (rdp_cmd_data[0] >> 24) & 0x3f;
    cmd_length = (rdp_cmd_ptr + 1) * 4;
@@ -3655,8 +3647,8 @@ EXPORT void CALL ProcessRDPList(void)
    }
 
    rdp.LLE = false;
-   dp_start = dp_end;
-   dp_status &= ~0x0002;
+   (*(uint32_t*)gfx_info.DPC_START_REG) = (*(uint32_t*)gfx_info.DPC_END_REG);
+   (*(uint32_t*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
    rdp_cmd_cur = 0;
    rdp_cmd_ptr = 0;
 }
