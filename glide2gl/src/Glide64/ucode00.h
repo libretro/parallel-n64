@@ -885,12 +885,6 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
       FRDP ("alpha dither mode: %s\n", str_dither[rdp.alpha_dither_mode]);
    }
 
-   if (mask & 0x000000C0) // rgb dither mode
-   {
-      uint32_t dither_mode = (rdp.othermode_h >> 6) & 0x3;
-      FRDP ("rgb dither mode: %s\n", str_dither[dither_mode]);
-   }
-
    if (mask & 0x00003000) // filter mode
    {
       rdp.filter_mode = (int)((rdp.othermode_h & 0x00003000) >> 12);
@@ -906,14 +900,6 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
 
    if (mask & 0x00300000) // cycle type
       rdp.update |= UPDATE_ZBUF_ENABLED;
-
-#if 0
-   uint32_t unk = mask & 0x0FFC60F0F;
-   if (unk) // unknown portions, LARGE
-   {
-      FRDP ("UNKNOWN PORTIONS: shift: %d, len: %d, unknowns: %08lx\n", shift, len, unk);
-   }
-#endif
 }
 
 static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
