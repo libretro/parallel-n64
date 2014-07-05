@@ -2236,23 +2236,23 @@ static void rdp_setenvcolor(uint32_t w0, uint32_t w1)
 
 static void rdp_setcombine(uint32_t w0, uint32_t w1)
 {
-   rdp.c_a0 = (uint8_t)((w0 >> 20) & 0xF);
-   rdp.c_b0 = (uint8_t)((w1 >> 28) & 0xF);
-   rdp.c_c0 = (uint8_t)((w0 >> 15) & 0x1F);
-   rdp.c_d0 = (uint8_t)((w1 >> 15) & 0x7);
-   rdp.c_Aa0 = (uint8_t)((w0 >> 12) & 0x7);
-   rdp.c_Ab0 = (uint8_t)((w1 >> 12) & 0x7);
-   rdp.c_Ac0 = (uint8_t)((w0 >> 9) & 0x7);
-   rdp.c_Ad0 = (uint8_t)((w1 >> 9) & 0x7);
+   rdp.c_a0 = (uint8_t)((w0 >> 20) & 0xF);   // sub_a_rgb0
+   rdp.c_c0 = (uint8_t)((w0 >> 15) & 0x1F);  // mul_rgb0
+   rdp.c_Aa0 = (uint8_t)((w0 >> 12) & 0x7);  // sub_a_a0
+   rdp.c_Ac0 = (uint8_t)((w0 >> 9) & 0x7);   // mul_a0
+   rdp.c_a1 = (uint8_t)((w0 >> 5) & 0xF);    // sub_a_rgb1
+   rdp.c_c1 = (uint8_t)((w0 >> 0) & 0x1F);   // mul_rgb1
 
-   rdp.c_a1 = (uint8_t)((w0 >> 5) & 0xF);
-   rdp.c_b1 = (uint8_t)((w1 >> 24) & 0xF);
-   rdp.c_c1 = (uint8_t)((w0 >> 0) & 0x1F);
-   rdp.c_d1 = (uint8_t)((w1 >> 6) & 0x7);
-   rdp.c_Aa1 = (uint8_t)((w1 >> 21) & 0x7);
-   rdp.c_Ab1 = (uint8_t)((w1 >> 3) & 0x7);
-   rdp.c_Ac1 = (uint8_t)((w1 >> 18) & 0x7);
-   rdp.c_Ad1 = (uint8_t)((w1 >> 0) & 0x7);
+   rdp.c_b0 = (uint8_t)((w1 >> 28) & 0xF);   // sub_b_rgb0
+   rdp.c_b1 = (uint8_t)((w1 >> 24) & 0xF);   // sub_b_rgb1
+   rdp.c_Aa1 = (uint8_t)((w1 >> 21) & 0x7);  // sub_a_a1
+   rdp.c_Ac1 = (uint8_t)((w1 >> 18) & 0x7);  // mul_a1
+   rdp.c_d0 = (uint8_t)((w1 >> 15) & 0x7);   // add_rgb0
+   rdp.c_Ab0 = (uint8_t)((w1 >> 12) & 0x7);  // sub_b_a0
+   rdp.c_Ad0 = (uint8_t)((w1 >> 9) & 0x7);   // add_a0
+   rdp.c_d1 = (uint8_t)((w1 >> 6) & 0x7);    // add_rgb1
+   rdp.c_Ab1 = (uint8_t)((w1 >> 3) & 0x7);   // sub_b_a1
+   rdp.c_Ad1 = (uint8_t)((w1 >> 0) & 0x7);   // add_a1
 
    rdp.cycle1 = (rdp.c_a0<<0) | (rdp.c_b0<<4) | (rdp.c_c0<<8) | (rdp.c_d0<<13)|
       (rdp.c_Aa0<<16)| (rdp.c_Ab0<<19)| (rdp.c_Ac0<<22)| (rdp.c_Ad0<<25);
