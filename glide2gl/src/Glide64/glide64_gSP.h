@@ -508,9 +508,6 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
          }
          //      FRDP(" * CALCULATING VERTEX U/V: %d  u0: %f, v0: %f, u1: %f, v1: %f\n", v->number, v->u0, v->v0, v->u1, v->v1);
       }
-#ifdef EXTREME_LOGGING
-      FRDP("draw_tri. v[%d] ou=%f, ov = %f\n", i, v->ou, v->ov);
-#endif
       if (v->shade_mod != cmb.shade_mod_hash)
          apply_shade_mods (v);
    } //for
