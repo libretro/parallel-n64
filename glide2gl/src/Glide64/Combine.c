@@ -786,7 +786,7 @@ static void cc_zero(void)
 
 static void cc_t0(void)
 {
-   if ((rdp.othermode_l & FORCE_BL) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+   if ((rdp.othermode_l & RDP_FORCE_BLEND) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
    {
       uint32_t blend_mode = (rdp.othermode_l >> 16);
       if (blend_mode == 0xa500)
@@ -7369,7 +7369,7 @@ static void ac_one ()
 
 static void ac_t0 ()
 {
-   if ((rdp.othermode_l & FORCE_BL) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+   if ((rdp.othermode_l & RDP_FORCE_BLEND) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
    {
       uint32_t blend_mode = (rdp.othermode_l >> 16);
       if (blend_mode == 0x0550)
@@ -14219,7 +14219,7 @@ void CombineBlender(void)
 {
    uint32_t blendmode = rdp.othermode_l >> 16;
    // Check force-blending
-   if ((rdp.othermode_l & FORCE_BL) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+   if ((rdp.othermode_l & RDP_FORCE_BLEND) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
    {
       switch (blendmode)
       {
@@ -14299,7 +14299,7 @@ void CombineBlender(void)
    }
    else if (blendmode == BLEND_XLU) // Mia Soccer Lights
       A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-   else if ((settings.hacks&hack_Pilotwings) && (rdp.othermode_l & CLR_ON_CVG)) //CLR_ON_CVG without FORCE_BL
+   else if ((settings.hacks&hack_Pilotwings) && (rdp.othermode_l & CLR_ON_CVG)) //CLR_ON_CVG without RDP_FORCE_BLEND
       A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
    else
       A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);

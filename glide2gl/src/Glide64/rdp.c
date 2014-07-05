@@ -2173,7 +2173,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
          if (cmb_mode_c == 0x9fff9fff || cmb_mode_a == 0x09ff09ff) //shade
             apply_shading(v);
 
-         if ((rdp.othermode_l & RDP_TLUT_TYPE) && ((rdp.othermode_l >> 16) == 0x0550)) //special blender mode for Bomberman64
+         if ((rdp.othermode_l & RDP_FORCE_BLEND) && ((rdp.othermode_l >> 16) == 0x0550)) //special blender mode for Bomberman64
          {
             grAlphaCombine (GR_COMBINE_FUNCTION_LOCAL,
                   GR_COMBINE_FACTOR_NONE,
