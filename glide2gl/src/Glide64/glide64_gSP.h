@@ -369,7 +369,7 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
             v->ou *= rdp.tiles[rdp.cur_tile].s_scale;
             v->ov *= rdp.tiles[rdp.cur_tile].t_scale;
             v->uv_scaled = 1;
-            if (!rdp.Persp_en)
+            if (!(rdp.othermode_h & RDP_PERSP_TEX_ENABLE))
             {
                //          v->oow = v->w = 1.0f;
                v->ou *= 0.5f;

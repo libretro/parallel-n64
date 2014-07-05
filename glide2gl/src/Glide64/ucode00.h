@@ -679,7 +679,7 @@ static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
 
       case 0x14: // ST
          {
-            float scale = rdp.Persp_en ? 0.03125f : 0.015625f;
+            float scale = (rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? 0.03125f : 0.015625f;
             v->ou = (float)((int16_t)(val>>16)) * scale;
             v->ov = (float)((int16_t)(val&0xFFFF)) * scale;
             v->uv_calculated = 0xFFFFFFFF;
@@ -906,13 +906,6 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
 
    if (mask & 0x00300000) // cycle type
       rdp.update |= UPDATE_ZBUF_ENABLED;
-
-   if (mask & 0x00080000) // Persp enable
-   {
-      if (rdp.persp_supported)
-         rdp.Persp_en = (rdp.othermode_h & 0x00080000) ? true : false;
-      FRDP ("Persp_en: %d\n", rdp.Persp_en);
-   }
 
 #if 0
    uint32_t unk = mask & 0x0FFC60F0F;

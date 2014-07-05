@@ -589,13 +589,12 @@ void microcheck(void)
 
       if (log_cb)
          log_cb(RETRO_LOG_INFO, "microcheck: old ucode: %d,  new ucode: %d\n", old_ucode, settings.ucode);
+#if 0
+      //FIXME/TODO - check if this is/was necessary at all - persp_supported would be set to false here but rdp.Persp_en would be forcibly set to 1
       if (uc_crc == 0x8d5735b2 || uc_crc == 0xb1821ed3 || uc_crc == 0x1118b3e0) //F3DLP.Rej ucode. perspective texture correction is not implemented
       {
-         rdp.Persp_en = 1;
-         rdp.persp_supported = false;
       }
-      else if (settings.texture_correction)
-         rdp.persp_supported = true;
+#endif
    }
 }
 
@@ -823,7 +822,6 @@ EXPORT void CALL ProcessDList(void)
   rdp.model_stack_size = min(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
   if (rdp.model_stack_size == 0)
     rdp.model_stack_size = 32;
-  rdp.Persp_en = true;
   rdp.fb_drawn = rdp.fb_drawn_front = false;
   rdp.update = 0x7FFFFFFF;  // All but clear cache
   rdp.geom_mode = 0;
@@ -2997,14 +2995,14 @@ static uint32_t rdp_cmd_data[0x1000];
 #define XSCALE(x) ((float)(x)/(1<<18))
 #define YSCALE(y) ((float)(y)/(1<<2))
 #define ZSCALE(z) ((((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2)) ? (float)(rdp.prim_depth) : (float)((uint32_t)(z))/0xffff0000)
-  //#define WSCALE(w) (rdp.Persp_en? (float(uint32_t(w) + 0x10000)/0xffff0000) : 1.0f)
-  //#define WSCALE(w) (rdp.Persp_en? 4294901760.0/(w + 65536) : 1.0f)
-#define WSCALE(w) (rdp.Persp_en? 65536.0f/ (float)((w+ 0xffff)>>16) : 1.0f)
+  //#define WSCALE(w) ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? (float(uint32_t(w) + 0x10000)/0xffff0000) : 1.0f)
+  //#define WSCALE(w) ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? 4294901760.0/(w + 65536) : 1.0f)
+#define WSCALE(w) ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? 65536.0f/ (float)((w+ 0xffff)>>16) : 1.0f)
 #define CSCALE(c) (((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18)
 #define _PERSP(w) ( w )
 #define PERSP(s, w) ( ((int64_t)(s) << 20) / (_PERSP(w)? _PERSP(w):1) )
-#define SSCALE(s, _w) (rdp.Persp_en? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
-#define TSCALE(s, w) (rdp.Persp_en? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
+#define SSCALE(s, _w) ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
+#define TSCALE(s, w)  ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
 
 static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer, uint32_t *rdp_cmd)
 {
