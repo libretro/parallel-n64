@@ -854,30 +854,21 @@ static void uc0_texture(uint32_t w0, uint32_t w1)
 
 static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
 {
-   int shift, len, i;
-   uint32_t mask;
+   int i;
+   int len = w0 & 0xFF;
+   int shift = (w0 >> 8) & 0xFF;
+   uint32_t mask = 0;
 
-   LRDP("uc0:setothermode_h: ");
    if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
-   {
-      len = (w0 & 0xFF) + 1;
-      shift = 32 - ((w0 >> 8) & 0xFF) - len;
-   }
-   else
-   {
-      shift = (w0 >> 8) & 0xFF;
-      len = w0 & 0xFF;
-   }
+      shift = 32 - shift - (++len);
 
-   mask = 0;
    i = len;
    for (; i; i--)
       mask = (mask << 1) | 1;
    mask <<= shift;
 
    rdp.cmd1 &= mask;
-   rdp.othermode_h &= ~mask;
-   rdp.othermode_h |= rdp.cmd1;
+   rdp.othermode_h = (rdp.othermode_h & ~mask) | rdp.cmd1;
 
    if (mask & 0x00000030) // alpha dither mode
    {
@@ -904,32 +895,24 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
 
 static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
 {
-   int shift, len, i;
-   uint32_t mask;
-
-   LRDP("uc0:setothermode_l ");
+   int i;
+   int len = w0 & 0xFF;
+   int shift = (w0 >> 8) & 0xFF;
+   uint32_t mask = 0;
 
    if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
    {
-      len = (w0 & 0xFF) + 1;
-      shift = 32 - ((w0 >> 8) & 0xFF) - len;
+      shift = 32 - shift - (++len);
       if (shift < 0) shift = 0;
    }
-   else
-   {
-      len = w0 & 0xFF;
-      shift = (w0 >> 8) & 0xFF;
-   }
 
-   mask = 0;
    i = len;
    for (; i; i--)
       mask = (mask << 1) | 1;
    mask <<= shift;
 
    rdp.cmd1 &= mask;
-   rdp.othermode_l &= ~mask;
-   rdp.othermode_l |= rdp.cmd1;
+   rdp.othermode_l = (rdp.othermode_l & ~mask) | rdp.cmd1;
 
    if (mask & RDP_ALPHA_COMPARE) // alpha compare
       rdp.update |= UPDATE_ALPHA_COMPARE;
@@ -943,7 +926,7 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
       rdp.render_mode_changed |= rdp.rm ^ rdp.othermode_l;
       rdp.rm = rdp.othermode_l;
       if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
-         rdp.othermode_l |= /*0x00000020 |*/ 0x00000010;
+         rdp.othermode_l |= 0x00000010;
       FRDP ("rendermode: %08lx\n", rdp.othermode_l); // just output whole othermode_l
    }
 
