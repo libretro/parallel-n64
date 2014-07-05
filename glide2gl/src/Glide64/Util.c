@@ -913,12 +913,6 @@ static void render_tri (uint16_t linew, int old_interpolate)
       clip_tri(old_interpolate);
    n = rdp.n_global;
 
-   if (n < 3)
-   {
-      FRDP (" * render_tri: n < 3\n");
-      return;
-   }
-
    //*
    if ((rdp.clip & CLIP_ZMIN) && (rdp.othermode_l & G_OBJLT_TLUT))
    {
@@ -1089,9 +1083,13 @@ static void render_tri (uint16_t linew, int old_interpolate)
 
 void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do the triangle stuff :P (to keep from writing code twice)
 {
+
    int i;
    uint8_t no_clip;
    float maxZ;
+
+   if (rdp.n_global < 3)
+      return;
 
    if (rdp.clip & CLIP_WMIN)
       clip_w (old_interpolate);
@@ -1150,13 +1148,17 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
       if (!settings.clip_zmax)
          rdp.clip &= ~CLIP_ZMAX;
    }
-   render_tri (linew, old_interpolate);
+
+      render_tri (linew, old_interpolate);
 }
 
 void do_triangle_stuff_2 (uint16_t linew)
 {
    int i;
    rdp.clip = 0;
+
+   if (rdp.n_global < 3)
+      return;
 
    for (i = 0; i < rdp.n_global; i++)
       glide64SPClipVertex(i);
