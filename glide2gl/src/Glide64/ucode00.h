@@ -907,12 +907,6 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
    if (mask & 0x00300000) // cycle type
       rdp.update |= UPDATE_ZBUF_ENABLED;
 
-   if (mask & 0x00010000) // LOD enable
-   {
-      rdp.LOD_en = (rdp.othermode_h & 0x00010000) ? true : false;
-      FRDP ("LOD_en: %d\n", rdp.LOD_en);
-   }
-
    if (mask & 0x00080000) // Persp enable
    {
       if (rdp.persp_supported)

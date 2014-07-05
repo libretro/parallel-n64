@@ -6872,7 +6872,7 @@ static void cc__t1_inter_t0_using_prim__mul_shade ()
 static void cc__t0_inter_t1_using_primlod__mul_shade ()
 {
    //*
-   if (rdp.LOD_en && (rdp.mipmap_level == 0) && !(settings.hacks&hack_Fifa98))
+   if ((rdp.othermode_h & RDP_TEX_LOD_ENABLE) && (rdp.mipmap_level == 0) && !(settings.hacks&hack_Fifa98))
    {
       cc_t0_mul_shade ();
       return;
@@ -14023,7 +14023,7 @@ void Combine(void)
          Alpha0[(rdp.cycle1>>16)&7], Alpha1[(rdp.cycle1>>19)&7], Alpha2[(rdp.cycle1>>22)&7], Alpha3[(rdp.cycle1>>25)&7],
          Alpha0[(rdp.cycle2>>16)&7], Alpha1[(rdp.cycle2>>19)&7], Alpha2[(rdp.cycle2>>22)&7], Alpha3[(rdp.cycle2>>25)&7]);
 #endif
-   if (!rdp.LOD_en || rdp.cur_tile == rdp.mipmap_level)
+   if (!(rdp.othermode_h & RDP_TEX_LOD_ENABLE) || rdp.cur_tile == rdp.mipmap_level)
       lod_frac = rdp.prim_lodfrac;
    else if (settings.lodmode == 0)
       lod_frac = 0;

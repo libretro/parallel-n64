@@ -70,6 +70,7 @@ extern uint32_t frame_count; // frame counter
 #define RDP_ALPHA_COMPARE 0x00000003
 #define RDP_Z_SOURCE_SEL  0x00000004
 #define RDP_CYCLE_TYPE    0x00300000
+#define RDP_TEX_LOD_ENABLE 0x00010000
 #define ZBUF_COMPARE  0x00000004
 #define ZBUF_UPDATE   0x00000008
 #define ALPHA_COMPARE 0x00000010
@@ -803,7 +804,6 @@ struct RDP
    uint32_t pal_8_crc[16];
    uint32_t pal_256_crc;
    uint8_t tlut_mode;
-   int LOD_en;
    int Persp_en;
    int persp_supported;
    int force_wrap;
