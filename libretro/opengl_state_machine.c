@@ -613,6 +613,9 @@ void sglExit(void)
 }
 #endif
 
+extern int vi_counter;
+extern bool frame_dupe;
+
 #ifdef SINGLE_THREAD
 extern retro_video_refresh_t video_cb;
 extern uint32_t screen_width;
@@ -621,9 +624,14 @@ extern uint32_t screen_height;
 int retro_return(bool just_flipping)
 {
    stop = 1;
-   flip_only = just_flipping;
-   if (flip_only)
+
+   flip_only = false;
+   if (just_flipping && vi_counter == 60)
+   {
+      flip_only = true;
       video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+   }
+
    return 0;
 }
 #else
@@ -632,7 +640,8 @@ int retro_return(bool just_flipping)
    if (stop)
       return 0;
 
-   flip_only = just_flipping;
+   flip_only = (just_flipping && vi_counter == 60) ? true : false;
+
    co_switch(main_thread);
 
    return 0;

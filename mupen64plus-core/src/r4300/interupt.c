@@ -47,7 +47,7 @@ extern int retro_return(bool just_flipping);
 
 unsigned int next_vi;
 int vi_field=0;
-static int vi_counter=0;
+int vi_counter=0;
 
 int interupt_unsafe_state = 0;
 
