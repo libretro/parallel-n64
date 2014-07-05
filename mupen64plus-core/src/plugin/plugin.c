@@ -255,7 +255,7 @@ DEFINE_RSP(hle);
 DEFINE_RSP(cxd4);
 
 rsp_plugin_functions rsp;
-static RSP_INFO rsp_info;
+RSP_INFO rsp_info;
 
 static m64p_error plugin_start_rsp(void)
 {

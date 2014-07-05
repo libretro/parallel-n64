@@ -31,6 +31,7 @@
 #include "hle_external.h"
 #include "hle_internal.h"
 #include "memory.h"
+#include "m64p_plugin.h"
 
 #include "ucodes.h"
 
@@ -66,6 +67,8 @@ static void dump_task(struct hle_t* hle, const char *const filename);
 static void dump_unknown_task(struct hle_t* hle, unsigned int sum);
 static void dump_unknown_non_task(struct hle_t* hle, unsigned int sum);
 #endif
+
+extern RSP_INFO rsp_info;
 
 /* local variables */
 static const bool FORWARD_AUDIO = false, FORWARD_GFX = true;
@@ -164,13 +167,15 @@ static void rsp_break(struct hle_t* hle, unsigned int setbits)
 
     if ((*hle->sp_status & SP_STATUS_INTR_ON_BREAK)) {
         *hle->mi_intr |= MI_INTR_SP;
-        HleCheckInterrupts(hle->user_defined);
+        if (rsp_info.CheckInterrupts)
+           rsp_info.CheckInterrupts();
     }
 }
 
 static void forward_gfx_task(struct hle_t* hle)
 {
-    HleProcessDlistList(hle->user_defined);
+   if (rsp_info.ProcessDlistList)
+      rsp_info.ProcessDlistList();
     *hle->dpc_status &= ~DP_STATUS_FREEZE;
 }
 
@@ -268,14 +273,16 @@ static bool try_fast_task_dispatching(struct hle_t* hle)
 
     case 2:
         if (FORWARD_AUDIO) {
-            HleProcessAlistList(hle->user_defined);
+           if (rsp_info.ProcessAlistList)
+              rsp_info.ProcessAlistList();
             return true;
         } else if (try_fast_audio_dispatching(hle))
             return true;
         break;
 
     case 7:
-        HleShowCFB(hle->user_defined);
+        if (rsp_info.ShowCFB)
+           rsp_info.ShowCFB();
         return true;
     }
 
