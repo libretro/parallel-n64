@@ -1164,12 +1164,6 @@ void do_triangle_stuff_2 (uint16_t linew)
    render_tri (linew, true);
 }
 
-void add_tri(VERTEX *v, int n, int type)
-{
-   //FRDP ("ENTER (%f, %f, %f), (%f, %f, %f), (%f, %f, %f)\n", v[0].x, v[0].y, v[0].w,
-   //  v[1].x, v[1].y, v[1].w, v[2].x, v[2].y, v[2].w);
-}
-
 void update_scissor(bool set_scissor)
 {
    if (!(rdp.update & UPDATE_SCISSOR))
