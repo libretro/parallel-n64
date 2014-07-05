@@ -225,8 +225,7 @@ static void internal_ReadController(int Control, uint8_t *Command)
         if (Controls[Control].Present)
         {
             if (Controls[Control].Plugin == PLUGIN_RAW)
-                if (input.readController)
-                    input.readController(Control, Command);
+               input.readController(Control, Command);
         }
         break;
     case 3: // write controller pack
@@ -236,8 +235,7 @@ static void internal_ReadController(int Control, uint8_t *Command)
         if (Controls[Control].Present)
         {
             if (Controls[Control].Plugin == PLUGIN_RAW)
-                if (input.readController)
-                    input.readController(Control, Command);
+               input.readController(Control, Command);
         }
         break;
     }
@@ -316,8 +314,7 @@ static void internal_ControllerCommand(int Control, uint8_t *Command)
 #ifdef DEBUG_PIF
                 DebugMessage(M64MSG_INFO, "internal_ControllerCommand() Channel %i Command 2 controllerCommand (in Input plugin)", Control);
 #endif
-                if (input.controllerCommand)
-                    input.controllerCommand(Control, Command);
+                input.controllerCommand(Control, Command);
                 break;
             default:
 #ifdef DEBUG_PIF
@@ -358,8 +355,7 @@ static void internal_ControllerCommand(int Control, uint8_t *Command)
 #ifdef DEBUG_PIF
                 DebugMessage(M64MSG_INFO, "internal_ControllerCommand() Channel %i Command 3 controllerCommand (in Input plugin)", Control);
 #endif
-                if (input.controllerCommand)
-                    input.controllerCommand(Control, Command);
+                input.controllerCommand(Control, Command);
                 break;
             default:
 #ifdef DEBUG_PIF
