@@ -849,11 +849,6 @@ void OGLRender::EnableTexUnit(int unitno, bool flag)
     if( m_texUnitEnabled[0] != flag )
     {
         m_texUnitEnabled[0] = flag;
-
-        if( flag )
-            glEnable(GL_TEXTURE_2D);
-        else
-            glDisable(GL_TEXTURE_2D);
     }
 }
 

@@ -24,7 +24,7 @@ extern enum gfx_plugin_type gfx_plugin;
 static int CapState[SGL_CAP_MAX];
 static const int CapTranslate[SGL_CAP_MAX] = 
 {
-    GL_TEXTURE_2D, GL_DEPTH_TEST, GL_BLEND, GL_POLYGON_OFFSET_FILL, GL_CULL_FACE, GL_SCISSOR_TEST
+    GL_DEPTH_TEST, GL_BLEND, GL_POLYGON_OFFSET_FILL, GL_CULL_FACE, GL_SCISSOR_TEST
 };
 
 #ifndef HAVE_SHARED_CONTEXT
@@ -567,7 +567,6 @@ void sglEnter(void)
     {
         glActiveTexture(GL_TEXTURE0 + i);
         glBindTexture(GL_TEXTURE_2D, BindTexture_ids[i]);
-        glEnable(GL_TEXTURE_2D);
     }
 
     glActiveTexture(GL_TEXTURE0 + ActiveTexture_texture);
@@ -602,7 +601,6 @@ void sglExit(void)
     {
         glActiveTexture(GL_TEXTURE0 + i);
         glBindTexture(GL_TEXTURE_2D, 0);
-        glDisable(GL_TEXTURE_2D);
     }
     glActiveTexture(GL_TEXTURE0);
 
