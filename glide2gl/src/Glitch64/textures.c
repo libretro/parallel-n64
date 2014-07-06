@@ -62,7 +62,7 @@ typedef struct _texlist
 
 static texlist *list = NULL;
 
-#define LOG_TEXTUREMEM 1
+//#define LOG_TEXTUREMEM 1
 
 static void remove_tex(unsigned int idmin, unsigned int idmax)
 {
