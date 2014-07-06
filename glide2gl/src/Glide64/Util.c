@@ -998,6 +998,18 @@ static void render_tri (uint16_t linew, int old_interpolate)
    }
 }
 
+void do_triangle_stuff_2 (uint16_t linew, uint8_t no_clip, int old_interpolate)
+{
+   int i;
+   if (no_clip)
+      rdp.clip = 0;
+
+   for (i = 0; i < rdp.n_global; i++)
+      glide64SPClipVertex(i);
+
+   render_tri (linew, old_interpolate);
+}
+
 void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do the triangle stuff :P (to keep from writing code twice)
 {
    int i;
@@ -1040,36 +1052,20 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
       if ((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2)
          rdp.vtxbuf[i].z = rdp.prim_depth;
 
-      glide64SPClipVertex(i);
       // Don't remove clipping, or it will freeze
       if (rdp.vtxbuf[i].z > maxZ)           rdp.clip |= CLIP_ZMAX;
       if (rdp.vtxbuf[i].z < 0.0f)           rdp.clip |= CLIP_ZMIN;
       no_clip &= rdp.vtxbuf[i].screen_translated;
    }
-   if (no_clip)
-      rdp.clip = 0;
-   else
+   if (!no_clip)
    {
       if (!settings.clip_zmin)
          rdp.clip &= ~CLIP_ZMIN;
    }
 
-      render_tri (linew, old_interpolate);
+   do_triangle_stuff_2(linew, no_clip, old_interpolate);
 }
 
-void do_triangle_stuff_2 (uint16_t linew)
-{
-   int i;
-   rdp.clip = 0;
-
-   if (rdp.n_global < 3)
-      return;
-
-   for (i = 0; i < rdp.n_global; i++)
-      glide64SPClipVertex(i);
-
-   render_tri (linew, true);
-}
 
 void update_scissor(bool set_scissor)
 {

@@ -700,7 +700,7 @@ static void draw_split_triangle(VERTEX **vtx)
     }
     rdp.n_global = index;
 
-    do_triangle_stuff_2 (0);
+    do_triangle_stuff_2 (0, 1, 1);
   }
 }
 
@@ -714,7 +714,7 @@ static void uc6_draw_polygons (VERTEX v[4])
       rdp.vtx_buffer = 0;
       rdp.n_global = 3;
       memcpy (rdp.vtxbuf, v, sizeof(VERTEX)*3);
-      do_triangle_stuff_2(0);
+      do_triangle_stuff_2 (0, 1, 1);
       rdp.tri_n ++;
 
       rdp.vtxbuf = rdp.vtx1; // copy from v to rdp.vtx1
@@ -722,7 +722,7 @@ static void uc6_draw_polygons (VERTEX v[4])
       rdp.vtx_buffer = 0;
       rdp.n_global = 3;
       memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
-      do_triangle_stuff_2(0);
+      do_triangle_stuff_2 (0, 1, 1);
       rdp.tri_n ++;
    }
    rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
@@ -1444,7 +1444,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
             rdp.vtx_buffer = 0;
             rdp.n_global = 3;
             memcpy (rdp.vtxbuf, v, sizeof(VERTEX)*3);
-            do_triangle_stuff_2(0);
+            do_triangle_stuff_2 (0, 1, 1);
             rdp.tri_n ++;
 
             rdp.vtxbuf = rdp.vtx1; // copy from v to rdp.vtx1
@@ -1452,7 +1452,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
             rdp.vtx_buffer = 0;
             rdp.n_global = 3;
             memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
-            do_triangle_stuff_2(0);
+            do_triangle_stuff_2 (0, 1, 1);
             rdp.tri_n ++;
          }
          rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
