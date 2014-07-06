@@ -49,6 +49,10 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
    uint32_t l;
    int32_t i;
    float x, y, z;
+#ifdef HAVE_NEON
+   float32x4_t comb0, comb1, comb2, comb3;
+   float32x4_t v_xyzw;
+#endif
    uint32_t addr = segoffset(w1);
    int32_t n = (w0 >> 12) & 0xFF;
    int32_t v0 = ((w0 >> 1) & 0x7F) - n;
@@ -59,6 +63,13 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
       return;
 
    pre_update();
+
+#ifdef HAVE_NEON
+   comb0 = vld1q_f32(rdp.combined[0]);
+   comb1 = vld1q_f32(rdp.combined[1]);
+   comb2 = vld1q_f32(rdp.combined[2]);
+   comb3 = vld1q_f32(rdp.combined[3]);
+#endif
 
    for (i=0; i < (n * iter); i+= iter)
    {
