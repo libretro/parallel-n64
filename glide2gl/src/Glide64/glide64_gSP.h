@@ -669,9 +669,7 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
          vert->g = rdram[(addr+i + 13)^3];
          vert->b = rdram[(addr+i + 14)^3];
       }
-      //FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
    }
-   //FRDP ("rsp:vertex v0:%d, n:%d, from: %08lx\n", v0, n, addr);
 }
 
 #ifdef HAVE_NEON

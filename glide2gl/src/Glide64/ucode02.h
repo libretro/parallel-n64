@@ -123,8 +123,6 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
    n = (w0 >> 12) & 0xFF;
    v0 = ((w0 >> 1) & 0x7F) - n;
 
-   //FRDP ("uc2:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
-
    if (v0 < 0)
       return;
 
@@ -134,89 +132,8 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
       if (((int16_t*)gfx_info.RDRAM)[(((addr) >> 1) + 4)^1] || ((int16_t*)gfx_info.RDRAM)[(((addr) >> 1) + 5)^1])
          rdp.geom_mode ^= G_TEXTURE_GEN;
    }
-   for (i=0; i < (n<<4); i+=16)
-   {
-      VERTEX *v = &rdp.vtx[v0 + (i>>4)];
-      x = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 0)^1];
-      y = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 1)^1];
-      z = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 2)^1];
-      v->flags = ((uint16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 3)^1];
-      v->ou = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 4)^1];
-      v->ov = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 5)^1];
-      v->uv_scaled = 0;
-      v->a = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 15)^3];
 
-      v->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
-      v->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
-      v->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
-      v->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
-
-      if (fabs(v->w) < 0.001) v->w = 0.001f;
-      v->oow = 1.0f / v->w;
-      v->x_w = v->x * v->oow;
-      v->y_w = v->y * v->oow;
-      v->z_w = v->z * v->oow;
-      CalculateFog (v);
-
-      v->uv_calculated = 0xFFFFFFFF;
-      v->screen_translated = 0;
-      v->shade_mod = 0;
-
-      v->scr_off = 0;
-      if (v->x < -v->w) v->scr_off |= 1;
-      if (v->x > v->w) v->scr_off |= 2;
-      if (v->y < -v->w) v->scr_off |= 4;
-      if (v->y > v->w) v->scr_off |= 8;
-      if (v->w < 0.1f) v->scr_off |= 16;
-      // if (v->z_w > 1.0f) v->scr_off |= 32;
-
-      if (rdp.geom_mode & 0x00020000)
-      {
-         v->vec[0] = ((int8_t*)gfx_info.RDRAM)[(addr+i + 12)^3];
-         v->vec[1] = ((int8_t*)gfx_info.RDRAM)[(addr+i + 13)^3];
-         v->vec[2] = ((int8_t*)gfx_info.RDRAM)[(addr+i + 14)^3];
-         // FRDP("Calc light. x: %f, y: %f z: %f\n", v->vec[0], v->vec[1], v->vec[2]);
-         // if (!(rdp.geom_mode & 0x800000))
-         {
-            if (rdp.geom_mode & 0x40000)
-            {
-               if (rdp.geom_mode & 0x80000)
-               {
-                  calc_linear (v);
-#ifdef EXTREME_LOGGING
-                  FRDP ("calc linear: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
-#endif
-               }
-               else
-               {
-                  calc_sphere (v);
-#ifdef EXTREME_LOGGING
-                  FRDP ("calc sphere: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
-#endif
-               }
-            }
-         }
-         if (rdp.geom_mode & 0x00400000)
-         {
-            float tmpvec[3] = {x, y, z};
-            calc_point_light (v, tmpvec);
-         }
-         else
-         {
-            NormalizeVector (v->vec);
-            calc_light (v);
-         }
-      }
-      else
-      {
-         v->r = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 12)^3];
-         v->g = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 13)^3];
-         v->b = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 14)^3];
-      }
-#ifdef EXTREME_LOGGING
-      FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
-#endif
-   }
+   gSPVertex(addr, n, v0);
 
    rdp.geom_mode = geom_mode;
 }
