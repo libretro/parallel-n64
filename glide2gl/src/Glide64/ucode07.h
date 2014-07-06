@@ -65,15 +65,20 @@ typedef struct
 
 static void uc7_vertex(uint32_t w0, uint32_t w1)
 {
-   uint32_t l, addr;
-   uint32_t v0, i, n;
+   int i;
    float x, y, z;
-   vtx_uc7 *vertex;
-
 #ifdef HAVE_NEON
    float32x4_t comb0, comb1, comb2, comb3;
    float32x4_t v_xyzw;
+#endif
+   uint32_t v0 = (w0 & 0x0F0000) >> 16;
+   uint32_t n = ((w0 & 0xF00000) >> 20) + 1;
+   uint32_t addr = segoffset(w1);
+   vtx_uc7 *vertex = (vtx_uc7*)&gfx_info.RDRAM[addr];
+   void   *membase_ptr  = (void*)gfx_info.RDRAM + addr;
+   uint32_t iter = 1;
 
+#ifdef HAVE_NEON
    comb0 = vld1q_f32(rdp.combined[0]);
    comb1 = vld1q_f32(rdp.combined[1]);
    comb2 = vld1q_f32(rdp.combined[2]);
@@ -82,19 +87,11 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
 
    pre_update();
 
-   addr = segoffset(w1);
 
-   v0 = (w0 & 0x0F0000) >> 16;
-   n = ((w0 & 0xF00000) >> 20) + 1;
-
-   FRDP ("uc7:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
-
-   vertex = (vtx_uc7*)&gfx_info.RDRAM[addr];
-
-   for (i = 0; i < n; i++)
+   for (i = 0; i < (n * iter); i += iter)
    {
-      VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + i];
-      int16_t *rdram = (int16_t*)gfx_info.RDRAM;
+      VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i / iter)];
+      int16_t *rdram    = (int16_t*)membase_ptr;
       uint8_t *color = (uint8_t*)&gfx_info.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
 
       x   = (float)vertex->x;
@@ -175,5 +172,6 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
          vert->b = color[1];
       }
       vertex++;
+      membase_ptr += iter;
    }
 }

@@ -594,22 +594,23 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
 {
    int i;
    float x, y, z;
-
 #ifdef HAVE_NEON
    float32x4_t comb0, comb1, comb2, comb3;
    float32x4_t v_xyzw;
+#endif
+   void   *membase_ptr  = (void*)gfx_info.RDRAM + addr;
+   uint32_t iter = 16;
 
+#ifdef HAVE_NEON
    comb0 = vld1q_f32(rdp.combined[0]);
    comb1 = vld1q_f32(rdp.combined[1]);
    comb2 = vld1q_f32(rdp.combined[2]);
    comb3 = vld1q_f32(rdp.combined[3]);
 #endif
 
-   void   *membase_ptr  = (void*)gfx_info.RDRAM + addr;
-
-   for (i=0; i < (n<<4); i+=16)
+   for (i=0; i < (n * iter); i+= iter)
    {
-      VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i>>4)];
+      VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i / iter)];
       int16_t *rdram    = (int16_t*)membase_ptr;
       int8_t  *rdram_s8 = (int8_t* )membase_ptr;
       uint8_t *rdram_u8 = (uint8_t*)membase_ptr;
@@ -700,7 +701,7 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
          vert->g = rdram_u8[14];
          vert->b = rdram_u8[13];
       }
-      membase_ptr += 16;
+      membase_ptr += iter;
    }
 }
 
