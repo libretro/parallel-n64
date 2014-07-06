@@ -82,15 +82,6 @@ static INLINE void InterpolateColors(VERTEX *dest, float percent, VERTEX *first,
    dest->f = first->f + percent * (second->f - first->f);
 }
 
-//
-// util_init - initialize data for the functions in this file
-//
-
-void util_init(void)
-{
-}
-
-
 void apply_shade_mods (VERTEX *v)
 {
    float col[4];

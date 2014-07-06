@@ -44,8 +44,6 @@
 #define NOT_TMU1	0x01
 #define NOT_TMU2	0x02
 
-void util_init(void);
-
 void do_triangle_stuff(uint16_t linew, int old_interpolate);
 void do_triangle_stuff_2(uint16_t linew, uint8_t no_clip, int old_interpolate);
 void apply_shade_mods(VERTEX *v);

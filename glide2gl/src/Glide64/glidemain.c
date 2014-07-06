@@ -2391,7 +2391,6 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
    ReadSettings ();
    ReadSpecialSettings (name);
 
-   util_init ();
    math_init ();
    TexCacheInit ();
    CRC_BuildTable();
