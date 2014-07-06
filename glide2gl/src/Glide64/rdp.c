@@ -239,7 +239,6 @@ void rdp_new(void)
    {
       rdp.cache[i] = (CACHE_LUT*)malloc(MAX_CACHE * sizeof(CACHE_LUT));
       rdp.cur_cache[i]   = 0;
-      rdp.cur_cache_n[i] = 0;
    }
 
    if (perf_get_cpu_features_cb)

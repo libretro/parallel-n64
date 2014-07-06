@@ -854,7 +854,6 @@ struct RDP
 
    CACHE_LUT *cache[MAX_TMU]; //[MAX_CACHE]
    CACHE_LUT *cur_cache[MAX_TMU];
-   uint32_t   cur_cache_n[MAX_TMU];
    int     n_cached[MAX_TMU];
 
    // Vertices

@@ -655,7 +655,6 @@ void TexCache(void)
          CACHE_LUT *cache;
          LRDP(" | |- T0 found in cache.\n");
          cache = (CACHE_LUT*)&rdp.cache[0][tex_found[0][0]];
-         rdp.cur_cache_n[0] = tex_found[0][tmu_0];
          rdp.cur_cache[0] = cache;
          rdp.cur_cache[0]->last_used = frame_count;
          rdp.cur_cache[0]->uses = 0;
@@ -675,7 +674,6 @@ void TexCache(void)
          CACHE_LUT *cache;
          LRDP(" | |- T1 found in cache.\n");
          cache = (CACHE_LUT*)&rdp.cache[0][tex_found[1][0]];
-         rdp.cur_cache_n[1] = tex_found[1][tmu_1];
          rdp.cur_cache[1] = cache;
          rdp.cur_cache[1]->last_used = frame_count;
          rdp.cur_cache[1]->uses = 0;
@@ -772,7 +770,6 @@ static void LoadTex(int id, int tmu)
    // Get this cache object
    cache = &rdp.cache[0][rdp.n_cached[0]];
    rdp.cur_cache[id] = cache;
-   rdp.cur_cache_n[id] = rdp.n_cached[tmu];
 
    //!Hackalert
    //GoldenEye water texture. It has CI format in fact, but the game set it to RGBA
