@@ -349,7 +349,6 @@ void ReadSpecialSettings (const char * name)
       settings.force_microcheck = 0;
       settings.force_quad3d = 0;
       settings.force_calc_sphere = 0;
-      settings.texture_correction = 1;
       settings.depth_bias = 20;
       settings.increase_texrect_edge = 0;
       settings.decrease_fillrect_edge = 0;
@@ -1721,7 +1720,6 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"Re-Volt"))
    {
-      settings.texture_correction = 0;
       //depthmode = 1
    }
    else if (strstr(name, (const char*)"RIDGE RACER 64"))
