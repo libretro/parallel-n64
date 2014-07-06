@@ -285,8 +285,6 @@ void ReadSettings(void)
    settings.ucode = 2;
    settings.fog = 1;
    settings.buff_clear = 1;
-   settings.logging = false;
-   settings.log_clear = false;
    settings.unk_as_red = false;
    settings.log_unk = false;
    settings.unk_clear = false;

@@ -379,8 +379,6 @@ typedef struct
    //Debug
    int autodetect_ucode;
    int ucode;
-   int logging;
-   int log_clear;
    int unk_as_red;
    int log_unk;
    int unk_clear;

@@ -543,18 +543,6 @@ COMBINE cmb;
   cmb.dc0_detailmax = cmb.dc1_detailmax = percent
 
 
-// UNIMP - writes to the unimplemented log, if it's enabled
-#ifdef UNIMP_LOG
-#define UNIMPMODE() { \
-  std::ofstream unimp; \
-  unimp.open("unimp.txt", std::ios::app); \
-  unimp << out_buf; \
-  unimp.close(); \
-}
-#else
-#define UNIMPMODE()
-#endif
-
 // Bright red, sets up a bright red combine
 #ifdef BRIGHT_RED
 // Bright red, sets up a bright red combine during the alpha stage
@@ -14100,7 +14088,6 @@ void Combine(void)
                actual_combine,
                Mode0[rdp.cycle1&0xF], Mode1[(rdp.cycle1>>4)&0xF], Mode2[(rdp.cycle1>>8)&0x1F], Mode3[(rdp.cycle1>>13)&7],
                Mode0[rdp.cycle2&0xF], Mode1[(rdp.cycle2>>4)&0xF], Mode2[(rdp.cycle2>>8)&0x1F], Mode3[(rdp.cycle2>>13)&7]);
-         UNIMPMODE();
       }
 #endif
       found = false;
@@ -14153,7 +14140,6 @@ void Combine(void)
                   actual_combine,
                   Alpha0[(rdp.cycle1>>16)&7], Alpha1[(rdp.cycle1>>19)&7], Alpha2[(rdp.cycle1>>22)&7], Alpha3[(rdp.cycle1>>25)&7],
                   Alpha0[(rdp.cycle2>>16)&7], Alpha1[(rdp.cycle2>>19)&7], Alpha2[(rdp.cycle2>>22)&7], Alpha3[(rdp.cycle2>>25)&7]);
-            UNIMPMODE();
          }
       }
 #endif

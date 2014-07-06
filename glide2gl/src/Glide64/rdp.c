@@ -785,24 +785,6 @@ EXPORT void CALL ProcessDList(void)
   if (exception)
     return;
 
-  // Clear out the RDP log
-#ifdef RDP_LOGGING
-  if (settings.logging && settings.log_clear)
-  {
-    CLOSE_RDP_LOG ();
-    OPEN_RDP_LOG ();
-  }
-#endif
-
-#ifdef UNIMP_LOG
-  if (settings.log_unk && settings.unk_clear)
-  {
-    std::ofstream unimp;
-    unimp.open("unimp.txt");
-    unimp.close();
-  }
-#endif
-
   //* Set states *//
   if (settings.swapmode > 0)
     SwapOK = true;
