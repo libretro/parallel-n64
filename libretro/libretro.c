@@ -696,6 +696,7 @@ run_again:
 #endif
 
 #ifdef SINGLE_THREAD
+   stop = 0;
    if (first_run)
    {
       first_run = false;
@@ -703,9 +704,9 @@ run_again:
    }
    else
    {
-      stop = 0;
       main_run();
    }
+   stop = 0;
 #else
    co_switch(cpu_thread);
 #endif
