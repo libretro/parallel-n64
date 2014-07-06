@@ -14090,10 +14090,10 @@ void Combine(void)
          break;  // found it!
    }
 
-#ifdef UNIMP_LOG
    // Check if we didn't find it
    if (actual_combine != current_combine)
    {
+#ifdef UNIMP_LOG
       if (settings.log_unk)
       {
          sprintf (out_buf, "COLOR combine not found: %08x, #1: (%s-%s)*%s+%s, #2: (%s-%s)*%s+%s\n",
@@ -14104,7 +14104,6 @@ void Combine(void)
       }
 #endif
       found = false;
-      //tex |= 3;
 
       // use t0 as default
       cc_t0 ();
@@ -14156,8 +14155,8 @@ void Combine(void)
                   Alpha0[(rdp.cycle2>>16)&7], Alpha1[(rdp.cycle2>>19)&7], Alpha2[(rdp.cycle2>>22)&7], Alpha3[(rdp.cycle2>>25)&7]);
             UNIMPMODE();
          }
-#endif
       }
+#endif
       if (settings.unk_as_red)
       {
          BrightRed ();
