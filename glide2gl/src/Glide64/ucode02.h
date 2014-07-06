@@ -578,14 +578,13 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
 
       case 8:   // VIEWPORT
          {
-            int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
-            uint32_t a = addr >> 1;
-            scale_x = ((int16_t*)gfx_info.RDRAM)[(a+0)^1] >> 2;
-            scale_y = ((int16_t*)gfx_info.RDRAM)[(a+1)^1] >> 2;
-            scale_z = ((int16_t*)gfx_info.RDRAM)[(a+2)^1];
-            trans_x = ((int16_t*)gfx_info.RDRAM)[(a+4)^1] >> 2;
-            trans_y = ((int16_t*)gfx_info.RDRAM)[(a+5)^1] >> 2;
-            trans_z = ((int16_t*)gfx_info.RDRAM)[(a+6)^1];
+            int16_t *rdram   = (int16_t*)(gfx_info.RDRAM + addr);
+            int16_t scale_y = rdram[0] >> 2;
+            int16_t scale_x = rdram[1] >> 2;
+            int16_t scale_z = rdram[3];
+            int16_t trans_y = rdram[4] >> 2;
+            int16_t trans_x = rdram[5] >> 2;
+            int16_t trans_z = rdram[7];
             rdp.view_scale[0] = scale_x * rdp.scale_x;
             rdp.view_scale[1] = -scale_y * rdp.scale_y;
             rdp.view_scale[2] = 32.0f * scale_z;
