@@ -611,7 +611,6 @@ void sglExit(void)
 }
 #endif
 
-extern int vi_counter;
 extern bool frame_dupe;
 
 #ifdef SINGLE_THREAD
@@ -623,7 +622,7 @@ int retro_return(bool just_flipping)
 {
 
    flip_only = false;
-   if (just_flipping && vi_counter == 60)
+   if (just_flipping)
    {
 #ifndef HAVE_SHARED_CONTEXT
       sglExit();
@@ -646,7 +645,7 @@ int retro_return(bool just_flipping)
    if (stop)
       return 0;
 
-   flip_only = (just_flipping && vi_counter == 60) ? true : false;
+   flip_only = just_flipping;
 
    co_switch(main_thread);
 
