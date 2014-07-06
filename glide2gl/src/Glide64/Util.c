@@ -50,8 +50,6 @@ extern int dzdx;
 extern int deltaZ;
 extern VERTEX **org_vtx;
 
-void glide64SPClipVertex(uint32_t i);
-
 typedef struct
 {
    float d;
@@ -1005,7 +1003,16 @@ void do_triangle_stuff_2 (uint16_t linew, uint8_t no_clip, int old_interpolate)
       rdp.clip = 0;
 
    for (i = 0; i < rdp.n_global; i++)
-      glide64SPClipVertex(i);
+   {
+      if (rdp.vtxbuf[i].x > rdp.clip_max_x)
+         rdp.clip |= CLIP_XMAX;
+      if (rdp.vtxbuf[i].x < rdp.clip_min_x)
+         rdp.clip |= CLIP_XMIN;
+      if (rdp.vtxbuf[i].y > rdp.clip_max_y)
+         rdp.clip |= CLIP_YMAX;
+      if (rdp.vtxbuf[i].y < rdp.clip_min_y)
+         rdp.clip |= CLIP_YMIN;
+   }
 
    render_tri (linew, old_interpolate);
 }
