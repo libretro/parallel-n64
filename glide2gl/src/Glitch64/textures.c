@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include "glide.h"
 #include "main.h"
+#include "uthash.h"
 
 /* Napalm extensions to GrTextureFormat_t */
 #define GR_TEXFMT_ARGB_8888               0x12
@@ -45,99 +46,89 @@ int tex_exactWidth[2],tex_exactHeight[2];
 int three_point_filter[2];
 float lambda;
 
-static int min_filter[2], mag_filter[2], wrap_s[2], wrap_t[2];
+static int min_filter[2] = { GL_NEAREST, GL_NEAREST },
+mag_filter[2] = { GL_NEAREST, GL_NEAREST },
+wrap_s[2] = { GL_REPEAT, GL_REPEAT },
+wrap_t[2] = { GL_REPEAT, GL_REPEAT };
 
 unsigned char *filter(unsigned char *source, int width, int height, int *width2, int *height2);
 
 typedef struct _texlist
 {
    unsigned int id;
-   struct _texlist *next;
+   GLuint tex_id;
+   UT_hash_handle hh;
 } texlist;
 
-static int nbTex = 0;
 static texlist *list = NULL;
 
-//#define LOG_TEXTUREMEM 1
+#define LOG_TEXTUREMEM 1
 
 static void remove_tex(unsigned int idmin, unsigned int idmax)
 {
-   unsigned int *t;
-   int n = 0;
-   texlist *aux = list;
-   int sz = nbTex;
-   if (aux == NULL)
-      return;
-   t = (unsigned int*)malloc(sz * sizeof(int));
-   while (aux && aux->id >= idmin && aux->id < idmax)
+   GLuint *t;
+   unsigned int n = 0;
+   texlist *current, *tmp;
+
+   t = (GLuint*)malloc(HASH_COUNT(list) * sizeof(GLuint));
+   HASH_ITER(hh, list, current, tmp)
    {
-      if (n >= sz)
-         t = (unsigned int *) realloc(t, ++sz*sizeof(int));
-      t[n++] = aux->id;
-      aux = aux->next;
-      free(list);
-      list = aux;
-      nbTex--;
-   }
-   while (aux && aux->next)
-   {
-      if (aux->next->id >= idmin && aux->next->id < idmax)
+      if (current->id >= idmin && current->id < idmax)
       {
-         texlist *aux2 = aux->next->next;
-         if (n >= sz)
-            t = (unsigned int *) realloc(t, ++sz*sizeof(int));
-         t[n++] = aux->next->id;
-         free(aux->next);
-         aux->next = aux2;
-         nbTex--;
+         t[n++] = current->tex_id;
+         HASH_DEL(list, current);
+         free(current);
       }
-      aux = aux->next;
    }
    glDeleteTextures(n, t);
    free(t);
 #ifdef LOG_TEXTUREMEM
    if (log_cb)
-      log_cb(RETRO_LOG_DEBUG, "RMVTEX nbtex is now %d (%06x - %06x)\n", nbTex, idmin, idmax);
+      log_cb(RETRO_LOG_DEBUG, "RMVTEX nbtex is now %d (%06x - %06x)\n", HASH_COUNT(list), idmin, idmax);
 #endif
 }
 
 
 static void add_tex(unsigned int id)
 {
-  texlist *aux = list;
-  texlist *aux2;
-  if (list == NULL || id < list->id)
-  {
-    nbTex++;
-    list = (texlist*)malloc(sizeof(texlist));
-    list->next = aux;
-    list->id = id;
-#ifdef LOG_TEXTUREMEM
-    goto addtex_log;
-#else
-    return;
-#endif
-  }
-  while (aux->next && aux->next->id < id) aux = aux->next;
-  // ZIGGY added this test so that add_tex now accept re-adding an existing texture
-  if (aux->next && aux->next->id == id)
-     return;
-  nbTex++;
-  aux2 = aux->next;
-  aux->next = (texlist*)malloc(sizeof(texlist));
-  aux->next->id = id;
-  aux->next->next = aux2;
+   texlist *entry;
+   
+   HASH_FIND_INT(list, &id, entry);
+
+   if (entry == NULL)
+   {
+      entry = malloc(sizeof(texlist));
+      entry->id = id;
+      glGenTextures(1, &entry->tex_id);
+      HASH_ADD_INT(list, id, entry);
+   }
 #ifdef LOG_TEXTUREMEM
 addtex_log:
   if (log_cb)
-     log_cb(RETRO_LOG_DEBUG, "ADDTEX nbtex is now %d (%06x)\n", nbTex, id);
+     log_cb(RETRO_LOG_DEBUG, "ADDTEX nbtex is now %d (%06x)\n", HASH_COUNT(list), id);
 #endif
+  return;
+}
+
+static GLuint get_tex_id(unsigned int id)
+{
+   texlist *entry;
+   
+   HASH_FIND_INT(list, &id, entry);
+
+   if (entry != NULL)
+      return entry->tex_id;
+   else
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "get_tex_id for %08x failed!\n", id);
+      return 0;
+   }
 }
 
 void init_textures(void)
 {
    list = NULL;
-   nbTex = 0;
 }
 
 void free_textures(void)
@@ -401,7 +392,7 @@ grTexSource( GrChipID_t tmu,
    remove_tex(startAddress+1, startAddress+1+(width * height * factor));
 
    add_tex(startAddress+1);
-   glBindTexture(GL_TEXTURE_2D, startAddress+1);
+   glBindTexture(GL_TEXTURE_2D, get_tex_id(startAddress+1));
 
    glTexImage2D(GL_TEXTURE_2D, 0, gltexfmt, width, height, 0, glpixfmt, glpackfmt, info->data);
    info->width = width;
@@ -416,7 +407,7 @@ grtexsource:
       tex_height[index] = tex_width[index] >> info->aspectRatioLog2;
 
    if (!do_download)
-      glBindTexture(GL_TEXTURE_2D, startAddress+1);
+      glBindTexture(GL_TEXTURE_2D, get_tex_id(startAddress+1));
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[index]);

@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <stddef.h>
 #ifdef _WIN32
 #include <windows.h>
 #endif // _WIN32
@@ -128,20 +129,23 @@ grDrawVertexArrayContiguous(FxU32 mode, FxU32 count, void *pointers)
    if(need_to_compile)
       compile_shader();
 
+   glBindBuffer(GL_ARRAY_BUFFER, glitch_vbo);
+   glBufferData(GL_ARRAY_BUFFER, sizeof(VERTEX) * count, pointers, GL_DYNAMIC_DRAW);
    glEnableVertexAttribArray(POSITION_ATTR);
-   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(VERTEX), &v->x); //Position
+   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(VERTEX), offsetof(VERTEX, x)); //Position
 
    glEnableVertexAttribArray(COLOUR_ATTR);
-   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(VERTEX), &v->b); //Colour
+   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(VERTEX), offsetof(VERTEX, b)); //Colour
 
    glEnableVertexAttribArray(TEXCOORD_0_ATTR);
-   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), &v->coord[2]); //Tex0
+   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), offsetof(VERTEX, coord[2])); //Tex0
 
    glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), &v->coord[0]); //Tex1
+   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), offsetof(VERTEX, coord[0])); //Tex1
 
    glEnableVertexAttribArray(FOG_ATTR);
-   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(VERTEX), &v->f); //Fog
+   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(VERTEX), offsetof(VERTEX, f)); //Fog
 
    glDrawArrays(mode, 0, count);
+   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
