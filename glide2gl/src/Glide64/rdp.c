@@ -809,9 +809,6 @@ EXPORT void CALL ProcessDList(void)
     SwapOK = true;
   rdp.updatescreen = 1;
 
-  rdp.tri_n = 0;  // 0 triangles so far this frame
-  rdp.debug_n = 0;
-
   rdp.model_i = 0; // 0 matrices so far in stack
   //stack_size can be less then 32! Important for Silicon Vally. Thanks Orkin!
   rdp.model_stack_size = min(32, (*(uint32_t*)(gfx_info.DMEM+0x0FE4))>>6);
@@ -1122,7 +1119,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    {
       pd_zcopy(w0, w1);
       LRDP("Depth buffer copied.\n");
-      rdp.tri_n += 2;
       return;
    }
 
@@ -1184,14 +1180,12 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if ((settings.hacks&hack_Zelda) && rdp.timg.addr >= rdp.cimg && rdp.timg.addr < rdp.ci_end)
    {
       FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.cur_cache[0]->addr, rdp.cimg, rdp.cimg+rdp.ci_width*rdp.ci_height*2);
-      rdp.tri_n += 2;
       return;
    }
    //*
    //hack for Banjo2. it removes black texrects under Banjo
    if (!fb_hwfbe_enabled && ((rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF)) == 0xFFFFFFFF && (rdp.othermode_l & 0xFFFF0000) == 0x00500000)
    {
-      rdp.tri_n += 2;
       return;
    }
    //*/
@@ -1204,7 +1198,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          {
             //FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.timg.addr, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width*rdp.ci_height*rdp.ci_size);
             LRDP("Wrong Texrect.\n");
-            rdp.tri_n += 2;
             return;
          }
    }
@@ -1225,7 +1218,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if (!rdp.cur_cache[0])
    {
       rdp.cur_tile = prev_tile;
-      rdp.tri_n += 2;
       return;
    }
    // ****
@@ -1250,10 +1242,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    s_lr_x = lr_x * rdp.scale_x + rdp.offset_x;
    s_ul_y = ul_y * rdp.scale_y + rdp.offset_y;
    s_lr_y = lr_y * rdp.scale_y + rdp.offset_y;
-
-   FRDP("texrect (%.2f, %.2f, %.2f, %.2f), tile: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, tile, rdp.tri_n, rdp.tri_n+1);
-   FRDP ("(%f, %f) -> (%f, %f), s: (%d, %d) -> (%d, %d)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y, rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
-   FRDP("\toff_x: %f, off_y: %f, dsdx: %f, dtdy: %f\n", off_x_i/32.0f, off_y_i/32.0f, dsdx, dtdy);
 
    if ( ((rdp.cmd0>>24)&0xFF) == 0xE5 ) //texrectflip
    {
@@ -1387,8 +1375,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
       ConvertCoordsConvert (vptr, 4);
       grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, vptr);
-
-      rdp.tri_n += 2;
    }
 }
 
@@ -2077,13 +2063,6 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    {
       lr_x--; lr_y--;
    }
-#if 0
-   FRDP("fillrect (%d,%d) -> (%d,%d), cycle mode: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, ((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20),
-         rdp.tri_n, rdp.tri_n+1);
-
-   FRDP("scissor (%d,%d) -> (%d,%d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x,
-         rdp.scissor.lr_y);
-#endif
 
    s_ul_x = (uint32_t)(ul_x * rdp.scale_x + rdp.offset_x);
    s_lr_x = (uint32_t)(lr_x * rdp.scale_x + rdp.offset_x);
@@ -2186,8 +2165,6 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
          grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout[0]);
          grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout2[0]);
       }
-
-      rdp.tri_n += 2;
    }
 }
 

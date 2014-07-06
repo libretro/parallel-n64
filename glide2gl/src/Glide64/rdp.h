@@ -726,9 +726,6 @@ struct RDP
 
    int updatescreen;
 
-   uint32_t tri_n;  // triangle counter
-   uint32_t debug_n;
-
    // Program counter
    uint32_t pc[10]; // Display List PC stack
    uint32_t pc_i;   // current PC index in the stack

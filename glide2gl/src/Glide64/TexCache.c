@@ -658,7 +658,7 @@ void TexCache(void)
          rdp.cur_cache_n[0] = tex_found[0][tmu_0];
          rdp.cur_cache[0] = cache;
          rdp.cur_cache[0]->last_used = frame_count;
-         rdp.cur_cache[0]->uses = rdp.debug_n;
+         rdp.cur_cache[0]->uses = 0;
          grTexSource (tmu_0,
                cache->tmem_addr,
                GR_MIPMAPLEVELMASK_BOTH,
@@ -678,7 +678,7 @@ void TexCache(void)
          rdp.cur_cache_n[1] = tex_found[1][tmu_1];
          rdp.cur_cache[1] = cache;
          rdp.cur_cache[1]->last_used = frame_count;
-         rdp.cur_cache[1]->uses = rdp.debug_n;
+         rdp.cur_cache[1]->uses = 0;
          grTexSource (tmu_1,
                cache->tmem_addr,
                GR_MIPMAPLEVELMASK_BOTH,
@@ -795,7 +795,7 @@ static void LoadTex(int id, int tmu)
    cache->set_by = rdp.timg.set_by;
    cache->texrecting = rdp.texrecting;
    cache->last_used = frame_count;
-   cache->uses = rdp.debug_n;
+   cache->uses = 0;
    cache->flags = texinfo[id].flags;
 
    // Add this cache to the list

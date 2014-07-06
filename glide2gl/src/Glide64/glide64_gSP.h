@@ -24,7 +24,7 @@ struct MAT2D {
 
 // positional and texel coordinate clipping
 #define CCLIP(ux,lx,ut,lt,uc,lc) \
-		if (ux > lx || lx < uc || ux > lc) { rdp.tri_n += 2; return; } \
+		if (ux > lx || lx < uc || ux > lc) return; \
 		if (ux < uc) { \
 			float p = (uc-ux)/(lx-ux); \
 			ut = p*(lt-ut)+ut; \
@@ -37,7 +37,7 @@ struct MAT2D {
 		}
 
 #define CCLIP2(ux,lx,ut,lt,un,ln,uc,lc) \
-		if (ux > lx || lx < uc || ux > lc) { rdp.tri_n += 2; return; } \
+		if (ux > lx || lx < uc || ux > lc) return; \
 		if (ux < uc) { \
 			float p = (uc-ux)/(lx-ux); \
 			ut = p*(lt-ut)+ut; \
@@ -548,7 +548,6 @@ static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, 
       }
       else if (!do_cull)
          draw_tri (v + vcount, wd);
-      rdp.tri_n ++;
       vcount += 3;
    }
 }
