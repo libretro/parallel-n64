@@ -188,10 +188,6 @@ uint8_t microcode[4096];
 uint32_t uc_crc;
 extern void microcheck(void);
 
-/* used to check if we only load the first settilesize
-FIXME: can this be used for speedhack purposes? It isn't used anywhere */
-int tile_set; 
-
 //forward decls
 static void CopyFrameBuffer (GrBuffer_t buffer);
 static void apply_shading(VERTEX *vptr);
@@ -1949,7 +1945,6 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
 static void rdp_settile(uint32_t w0, uint32_t w1)
 {
    TILE *tile;
-   tile_set = 1; // used to check if we only load the first settilesize
 
    rdp.last_tile = (uint32_t)((w1 >> 24) & 0x07);
    tile = (TILE*)&rdp.tiles[rdp.last_tile];
