@@ -623,15 +623,23 @@ extern uint32_t screen_height;
 
 int retro_return(bool just_flipping)
 {
-   stop = 1;
 
    flip_only = false;
    if (just_flipping && vi_counter == 60)
    {
+#ifndef HAVE_SHARED_CONTEXT
+      sglExit();
+#endif
+
       flip_only = true;
       video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+
+#ifndef HAVE_SHARED_CONTEXT
+      sglEnter();
+#endif
    }
 
+   stop = 1;
    return 0;
 }
 #else
