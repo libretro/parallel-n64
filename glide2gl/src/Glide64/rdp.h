@@ -803,8 +803,6 @@ struct RDP
    uint32_t update;
    uint32_t flags;
 
-   int first;
-
    uint32_t tex_ctr;    // incremented every time textures are updated
 
    int allow_combine; // allow combine updating?

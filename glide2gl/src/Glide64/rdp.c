@@ -1540,8 +1540,6 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
       rdp.tiles[tilenum].lr_t += 0x400;
 
    rdp.update |= UPDATE_TEXTURE;
-
-   rdp.first = 1;
 }
 
 
@@ -1952,8 +1950,6 @@ static void rdp_settile(uint32_t w0, uint32_t w1)
 {
    TILE *tile;
    tile_set = 1; // used to check if we only load the first settilesize
-
-   rdp.first = 0;
 
    rdp.last_tile = (uint32_t)((w1 >> 24) & 0x07);
    tile = (TILE*)&rdp.tiles[rdp.last_tile];
