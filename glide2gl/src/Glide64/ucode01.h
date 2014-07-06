@@ -59,13 +59,6 @@ static void uc1_tri1(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing)
       return;
 
-#if 0
-   FRDP("uc1:tri1 #%d - %d, %d, %d - %08lx - %08lx\n", rdp.tri_n,
-         ((w1 >> 17) & 0x7F),
-         ((w1 >> 9) & 0x7F),
-         ((w1 >> 1) & 0x7F), w0, w1);
-#endif
-
    v[0] = &rdp.vtx[(w1 >> 17) & 0x7F];
    v[1] = &rdp.vtx[(w1 >> 9) & 0x7F];
    v[2] = &rdp.vtx[(w1 >> 1) & 0x7F];
@@ -78,17 +71,6 @@ static void uc1_tri2(uint32_t w0, uint32_t w1)
    VERTEX *v[6];
    if (rdp.skip_drawing)
       return;
-#if 0
-   LRDP("uc1:tri2");
-
-   FRDP(" #%d, #%d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1,
-         ((w0 >> 17) & 0x7F),
-         ((w0 >> 9) & 0x7F),
-         ((w0 >> 1) & 0x7F),
-         ((w1 >> 17) & 0x7F),
-         ((w1 >> 9) & 0x7F),
-         ((w1 >> 1) & 0x7F));
-#endif
 
    v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
    v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
@@ -108,12 +90,6 @@ static void uc1_line3d(uint32_t w0, uint32_t w1)
       VERTEX *v[3];
       uint16_t width = (uint16_t)(w1 & 0xFF) + 3;
 
-#if 0
-      FRDP("uc1:line3d width: %d #%d, #%d - %d, %d\n", width, rdp.tri_n, rdp.tri_n+1,
-            (w1 >> 17) & 0x7F,
-            (w1 >> 9) & 0x7F);
-#endif
-
       v[0] = &rdp.vtx[(w1 >> 17) & 0x7F];
       v[1] = &rdp.vtx[(w1 >> 9) & 0x7F];
       v[2] = &rdp.vtx[(w1 >> 9) & 0x7F];
@@ -128,7 +104,6 @@ static void uc1_line3d(uint32_t w0, uint32_t w1)
    else
    {
       VERTEX *v[6];
-      //FRDP("uc1:quad3d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
 
       v[0] = &rdp.vtx[(w1 >> 25) & 0x7F];
       v[1] = &rdp.vtx[(w1 >> 17) & 0x7F];

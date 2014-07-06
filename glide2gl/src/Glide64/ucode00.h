@@ -500,13 +500,6 @@ static void uc0_displaylist(uint32_t w0, uint32_t w1)
 static void uc0_tri1(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[3];
-   int i;
-#if 0
-   FRDP("uc0:tri1 #%d - %d, %d, %d\n", rdp.tri_n,
-         ((w1>>16) & 0xFF) / 10,
-         ((w1>>8) & 0xFF) / 10,
-         (w1 & 0xFF) / 10);
-#endif
 
    v[0] = &rdp.vtx[((w1 >> 16) & 0xFF) / 10];
    v[1] = &rdp.vtx[((w1 >> 8) & 0xFF) / 10];
@@ -988,17 +981,17 @@ static void uc0_line3d(uint32_t w0, uint32_t w1)
    v1 = ((w1 >> 8) & 0xff) / 10;
    width = (uint16_t)(w1 & 0xFF) + 3;
 
-  v[0] = &rdp.vtx[v1];
-  v[1] = &rdp.vtx[v0];
-  v[2] = &rdp.vtx[v0];
+   v[0] = &rdp.vtx[v1];
+   v[1] = &rdp.vtx[v0];
+   v[2] = &rdp.vtx[v0];
 
-  cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
-  rdp.flags |= CULLMASK;
-  rdp.update |= UPDATE_CULL_MODE;
-  cull_trianglefaces(v, 1, true, true, width);
-  rdp.flags ^= CULLMASK;
-  rdp.flags |= cull_mode << CULLSHIFT;
-  rdp.update |= UPDATE_CULL_MODE;
+   cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
+   rdp.flags |= CULLMASK;
+   rdp.update |= UPDATE_CULL_MODE;
+   cull_trianglefaces(v, 1, true, true, width);
+   rdp.flags ^= CULLMASK;
+   rdp.flags |= cull_mode << CULLSHIFT;
+   rdp.update |= UPDATE_CULL_MODE;
 }
 
 static void uc0_tri4(uint32_t w0, uint32_t w1)

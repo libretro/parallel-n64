@@ -289,13 +289,6 @@ static void uc2_tri1(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing)
       return;
 
-#if 0
-   FRDP("uc2:tri1 #%d - %d, %d, %d\n", rdp.tri_n,
-         ((w0 >> 17) & 0x7F),
-         ((w0 >> 9) & 0x7F),
-         ((w0 >> 1) & 0x7F));
-#endif
-
    v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
    v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
    v[2] = &rdp.vtx[(w0 >> 1) & 0x7F];
@@ -324,18 +317,6 @@ static void uc2_quad(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing)
       return;
 
-#if 0
-   LRDP("uc2:quad");
-
-   FRDP(" #%d, #%d - %d, %d, %d - %d, %d, %d\n", rdp.tri_n, rdp.tri_n+1,
-         ((w0 >> 17) & 0x7F),
-         ((w0 >> 9) & 0x7F),
-         ((w0 >> 1) & 0x7F),
-         ((w1 >> 17) & 0x7F),
-         ((w1 >> 9) & 0x7F),
-         ((w1 >> 1) & 0x7F));
-#endif
-
    v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
    v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
    v[2] = &rdp.vtx[(w0 >> 1) & 0x7F];
@@ -355,11 +336,6 @@ static void uc2_line3d(uint32_t w0, uint32_t w1)
       VERTEX *v[3];
       uint32_t cull_mode;
       uint16_t width;
-#if 0
-      FRDP("uc2:line3d #%d, #%d - %d, %d\n", rdp.tri_n, rdp.tri_n+1,
-            (w0 >> 17) & 0x7F,
-            (w0 >> 9) & 0x7F);
-#endif
 
       v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
       v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
