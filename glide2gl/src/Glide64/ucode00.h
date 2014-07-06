@@ -553,19 +553,16 @@ static void uc0_enddl(uint32_t w0, uint32_t w1)
 static void uc0_culldl(uint32_t w0, uint32_t w1)
 {
    VERTEX *v;
-   uint8_t vStart, vEnd;
-   uint32_t cond;
    uint16_t i;
+   uint8_t v0 = (uint8_t)((w0 & 0x00FFFFFF) / 40) & 0xF;
+   uint8_t n = (uint8_t)(w1 / 40) & 0x0F;
+   uint32_t cond = 0;
 
-   vStart = (uint8_t)((w0 & 0x00FFFFFF) / 40) & 0xF;
-   vEnd = (uint8_t)(w1 / 40) & 0x0F;
-   cond = 0;
+   //FRDP("uc0:culldl start: %d, end: %d\n", v0, n);
 
-   //FRDP("uc0:culldl start: %d, end: %d\n", vStart, vEnd);
-
-   if (vEnd < vStart)
+   if (n < v0)
       return;
-   for (i = vStart; i<=vEnd; i++)
+   for (i = v0; i <= n; i++)
    {
       v = &rdp.vtx[i];
       // Check if completely off the screen (quick frustrum clipping for 90 FOV)
