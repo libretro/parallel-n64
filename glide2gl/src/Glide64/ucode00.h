@@ -225,24 +225,22 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:movemem ");
 
-   uint32_t i,a;
-   void *rdram = (void*)gfx_info.RDRAM;
+   uint32_t i;
+   int16_t *rdram_s16 = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
+   int8_t *rdram_s8   = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
+   uint8_t *rdram_u8  = (uint8_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
 
    // Check the command
    switch ((w0 >> 16) & 0xFF)
    {
       case 0x80: /* F3D_MV_VIEWPORT */
          {
-            int16_t *rdram_s16 = (int16_t*)rdram;
-
-            a = (segoffset(w1) & 0xFFFFFF) >> 1;
-
-            int16_t scale_x = (rdram_s16)[(a+0)^1] / 4;
-            int16_t scale_y = (rdram_s16)[(a+1)^1] / 4;
-            int16_t scale_z = (rdram_s16)[(a+2)^1];
-            int16_t trans_x = (rdram_s16)[(a+4)^1] / 4;
-            int16_t trans_y = (rdram_s16)[(a+5)^1] / 4;
-            int16_t trans_z = (rdram_s16)[(a+6)^1];
+            int16_t scale_y = rdram_s16[0] / 4;
+            int16_t scale_x = rdram_s16[1] / 4;
+            int16_t scale_z = rdram_s16[3];
+            int16_t trans_x = rdram_s16[5] / 4;
+            int16_t trans_y = rdram_s16[4] / 4;
+            int16_t trans_z = rdram_s16[7];
             if (settings.correct_viewport)
             {
                scale_x = abs(scale_x);
@@ -264,30 +262,24 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
          break;
       case 0x82: /* G_MV_LOOKATY */
          {
-            int8_t dir_x, dir_y, dir_z, *rdram_s8;
-            a = RSP_SegmentToPhysical(w1);
-            rdram_s8 = (int8_t*)rdram;
-            dir_x = rdram_s8[(a+8)^3];
-            dir_y = rdram_s8[(a+9)^3];
-            dir_z = rdram_s8[(a+10)^3];
+            int8_t dir_x = rdram_s8[11];
+            int8_t dir_y = rdram_s8[10];
+            int8_t dir_z = rdram_s8[9];
             rdp.lookat[1][0] = (float)(dir_x) / 127.0f;
             rdp.lookat[1][1] = (float)(dir_y) / 127.0f;
             rdp.lookat[1][2] = (float)(dir_z) / 127.0f;
+            rdp.use_lookat = true;
             if (!dir_x && !dir_y)
                rdp.use_lookat = false;
-            else
-               rdp.use_lookat = true;
             //FRDP("lookat_y (%f, %f, %f)\n", rdp.lookat[1][0], rdp.lookat[1][1], rdp.lookat[1][2]);
          }
          break;
 
       case G_MV_LOOKATX:
          {
-            int8_t *rdram_s8 = (int8_t*)rdram;
-            a = RSP_SegmentToPhysical(w1);
-            rdp.lookat[0][0] = (float)(rdram_s8[(a+8)^3]) / 127.0f;
-            rdp.lookat[0][1] = (float)(rdram_s8[(a+9)^3]) / 127.0f;
-            rdp.lookat[0][2] = (float)(rdram_s8[(a+10)^3]) / 127.0f;
+            rdp.lookat[0][0] = (float)rdram_s8[11] / 127.0f;
+            rdp.lookat[0][1] = (float)rdram_s8[10] / 127.0f;
+            rdp.lookat[0][2] = (float)rdram_s8[9] / 127.0f;
             rdp.use_lookat = true;
             //FRDP("lookat_x (%f, %f, %f)\n", rdp.lookat[1][0], rdp.lookat[1][1], rdp.lookat[1][2]);
          }
@@ -302,32 +294,23 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
       case G_MV_L6:
       case G_MV_L7:
          {
-            uint8_t *rdram_u8 = (uint8_t*)rdram;
-            int8_t  *rdram_s8 = (int8_t*)rdram;
 
             // Get the light #
             i = (((w0 >> 16) & 0xff) - 0x86) >> 1;
-            a = segoffset(w1) & 0x00ffffff;
 
             // Get the data
-            rdp.light[i].col[0] = (float)((rdram_u8)[(a+0)^3]) / 255.0f;
-            rdp.light[i].col[1] = (float)((rdram_u8)[(a+1)^3]) / 255.0f;
-            rdp.light[i].col[2] = (float)((rdram_u8)[(a+2)^3]) / 255.0f;
+            rdp.light[i].col[0] = (float)rdram_u8[3] / 255.0f;
+            rdp.light[i].col[1] = (float)rdram_u8[2] / 255.0f;
+            rdp.light[i].col[2] = (float)rdram_u8[1] / 255.0f;
             rdp.light[i].col[3] = 1.0f;
             // ** Thanks to Icepir8 for pointing this out **
             // Lighting must be signed byte instead of byte
-            rdp.light[i].dir[0] = (float)((rdram_s8)[(a+8)^3]) / 127.0f;
-            rdp.light[i].dir[1] = (float)((rdram_s8)[(a+9)^3]) / 127.0f;
-            rdp.light[i].dir[2] = (float)((rdram_s8)[(a+10)^3]) / 127.0f;
+            rdp.light[i].dir[0] = (float)rdram_s8[11] / 127.0f;
+            rdp.light[i].dir[1] = (float)rdram_s8[10] / 127.0f;
+            rdp.light[i].dir[2] = (float)rdram_s8[9] / 127.0f;
             // **
 
             //rdp.update |= UPDATE_LIGHTS;
-
-#if 0
-            FRDP ("light: n: %d, r: %.3f, g: %.3f, b: %.3f, x: %.3f, y: %.3f, z: %.3f\n",
-                  i, rdp.light[i].r, rdp.light[i].g, rdp.light[i].b,
-                  rdp.light_vector[i][0], rdp.light_vector[i][1], rdp.light_vector[i][2]);
-#endif
          }
          break;
 
@@ -343,13 +326,6 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 
             addr = rdp.pc[rdp.pc_i] & BMASK;
             rdp.pc[rdp.pc_i] = (addr+24) & BMASK; //skip next 3 command, b/c they all are part of gSPForceMatrix
-
-#ifdef EXTREME_LOGGING
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
-#endif
          }
          break;
          //next 3 command should never appear since they will be skipped in previous command
