@@ -532,21 +532,21 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
 static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, bool do_cull, int32_t wd)
 {
    int32_t i, vcount;
-   bool updated_once = false;
    vcount = 0;
+
+   if (do_update)
+      update();
 
    for (i = 0; i < iterations; i++)
    {
-      if (do_cull && !cull_tri(v + vcount))
+      bool do_draw_tri = true;
+      if (do_cull)
       {
-         if (do_update && !updated_once)
-         {
-            update();
-            updated_once = true;
-         }
-         draw_tri (v + vcount, wd);
+         if (cull_tri(v + vcount))
+            do_draw_tri = false;
       }
-      else if (!do_cull)
+
+      if (do_draw_tri)
          draw_tri (v + vcount, wd);
       vcount += 3;
    }
