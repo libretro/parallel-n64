@@ -369,40 +369,40 @@ static void clip_w (void)
    rdp.n_global = index;
 }
 
+static void draw_tri_depth(VERTEX **vtx)
+{
+   float X0 = vtx[0]->sx / rdp.scale_x;
+   float Y0 = vtx[0]->sy / rdp.scale_y;
+   float X1 = vtx[1]->sx / rdp.scale_x;
+   float Y1 = vtx[1]->sy / rdp.scale_y;
+   float X2 = vtx[2]->sx / rdp.scale_x;
+   float Y2 = vtx[2]->sy / rdp.scale_y;
+   float diffy_02 = Y0 - Y2;
+   float diffy_12 = Y1 - Y2;
+   float diffx_02 = X0 - X2;
+   float diffx_12 = X1 - X2;
+
+   float denom = (diffx_02 * diffy_12 - diffx_12 * diffy_02);
+   if(denom*denom > 0.0)
+   {
+      float diffz_02 = vtx[0]->sz - vtx[2]->sz;
+      float diffz_12 = vtx[1]->sz - vtx[2]->sz;
+      float fdzdx = (diffz_02 * diffy_12 - diffz_12 * diffy_02) / denom;
+      if ((rdp.rm & ZMODE_DECAL) == ZMODE_DECAL)
+      {
+         // Calculate deltaZ per polygon for Decal z-mode
+         float fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
+         float fdz = fabs(fdzdx) + fabs(fdzdy);
+         if ((settings.hacks & hack_Zelda) && (rdp.rm & 0x800))
+            fdz *= 4.0;  // Decal mode in Zelda sometimes needs mutiplied deltaZ to work correct, e.g. roads
+         deltaZ = max(8, (int)fdz);
+      }
+      dzdx = (int)(fdzdx * 65536.0); }
+}
+
 static void draw_tri (VERTEX **vtx, uint16_t linew)
 {
    int i;
-   deltaZ = dzdx = 0;
-   if (linew == 0 && (fb_depth_render_enabled || (rdp.rm & ZMODE_DECAL) == ZMODE_DECAL))
-   {
-      float X0 = vtx[0]->sx / rdp.scale_x;
-      float Y0 = vtx[0]->sy / rdp.scale_y;
-      float X1 = vtx[1]->sx / rdp.scale_x;
-      float Y1 = vtx[1]->sy / rdp.scale_y;
-      float X2 = vtx[2]->sx / rdp.scale_x;
-      float Y2 = vtx[2]->sy / rdp.scale_y;
-      float diffy_02 = Y0 - Y2;
-      float diffy_12 = Y1 - Y2;
-      float diffx_02 = X0 - X2;
-      float diffx_12 = X1 - X2;
-
-      float denom = (diffx_02 * diffy_12 - diffx_12 * diffy_02);
-      if(denom*denom > 0.0)
-      {
-         float diffz_02 = vtx[0]->sz - vtx[2]->sz;
-         float diffz_12 = vtx[1]->sz - vtx[2]->sz;
-         float fdzdx = (diffz_02 * diffy_12 - diffz_12 * diffy_02) / denom;
-         if ((rdp.rm & ZMODE_DECAL) == ZMODE_DECAL)
-         {
-            // Calculate deltaZ per polygon for Decal z-mode
-            float fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
-            float fdz = fabs(fdzdx) + fabs(fdzdy);
-            if ((settings.hacks & hack_Zelda) && (rdp.rm & 0x800))
-               fdz *= 4.0;  // Decal mode in Zelda sometimes needs mutiplied deltaZ to work correct, e.g. roads
-            deltaZ = max(8, (int)fdz);
-         }
-         dzdx = (int)(fdzdx * 65536.0); }
-   }
 
    org_vtx = vtx;
 
@@ -513,7 +513,6 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
    rdp.vtx_buffer = 0;
    rdp.n_global = 3;
 
-
    rdp.vtxbuf[0] = *vtx[0];
    rdp.vtxbuf[0].number = 1;
    rdp.vtxbuf[1] = *vtx[1];
@@ -547,7 +546,12 @@ static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, 
       }
 
       if (do_draw_tri)
+      {
+         deltaZ = dzdx = 0;
+         if (wd == 0 && (fb_depth_render_enabled || (rdp.rm & ZMODE_DECAL) == ZMODE_DECAL))
+            draw_tri_depth(v + vcount);
          draw_tri (v + vcount, wd);
+      }
       vcount += 3;
    }
 }
