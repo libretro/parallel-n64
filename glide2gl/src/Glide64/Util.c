@@ -1121,7 +1121,7 @@ void update(void)
       rdp.update |= UPDATE_ZBUF_ENABLED;
 
       // Update?
-      if ((rdp.othermode_l & 0x00000020))
+      if ((rdp.othermode_l & RDP_Z_UPDATE_ENABLE))
          rdp.flags |= ZBUF_UPDATE;
       else
          rdp.flags &= ~ZBUF_UPDATE;
@@ -1242,7 +1242,7 @@ void update(void)
       {
          rdp.update ^= UPDATE_ALPHA_COMPARE;
 
-         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 1 && !(rdp.othermode_l & 0x00002000) && (!(rdp.othermode_l & 0x00004000) || (rdp.blend_color&0xFF)))
+         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 1 && !(rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && (!(rdp.othermode_l & RDP_FORCE_BLEND) || (rdp.blend_color&0xFF)))
          {
             uint8_t reference = (uint8_t)(rdp.blend_color&0xFF);
             grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER, reference, 1);

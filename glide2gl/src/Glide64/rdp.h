@@ -67,6 +67,7 @@ extern uint32_t frame_count; // frame counter
 // Flags
 #define RDP_ALPHA_COMPARE     0x00000003
 #define RDP_Z_SOURCE_SEL      0x00000004
+#define RDP_Z_UPDATE_ENABLE   0x00000020
 #define RDP_CYCLE_TYPE        0x00300000
 #define RDP_TEX_LOD_ENABLE    0x00010000
 #define RDP_PERSP_TEX_ENABLE  0x00080000
