@@ -563,13 +563,12 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
 
 static void uc2_movemem(uint32_t w0, uint32_t w1)
 {
-   int idx = w0 & 0xFF;
-   uint32_t addr = segoffset(w1);
-   int ofs = (w0 >> 5) & 0x7F8;
+   int index = w0 & 0xFF;
+   int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
+   int8_t  *rdram_s8  = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
+   uint8_t *rdram_u8  = (uint8_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
 
-   FRDP ("uc2:movemem ofs:%d ", ofs);
-
-   switch (idx)
+   switch (index)
    {
       case 0:
       case 2:
@@ -578,7 +577,6 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
 
       case 8:   // VIEWPORT
          {
-            int16_t *rdram   = (int16_t*)(gfx_info.RDRAM + addr);
             int16_t scale_y = rdram[0] >> 2;
             int16_t scale_x = rdram[1] >> 2;
             int16_t scale_z = rdram[3];
@@ -593,16 +591,11 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             rdp.view_trans[2] = 32.0f * trans_z;
 
             rdp.update |= UPDATE_VIEWPORT;
-
-            //FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, a);
          }
          break;
       case 10:  // LIGHT
          {
-            int16_t *rdram   = (int16_t*)(gfx_info.RDRAM + addr);
-            int8_t  *rdram_s8 = (int8_t*)(gfx_info.RDRAM + addr);
-            uint8_t *rdram_u8 = (uint8_t*)(gfx_info.RDRAM + addr);
-            int n = ofs / 24;
+            int n = ((w0 >> 5) & 0x7F8) / 24;
 
             if (n < 2)
             {
@@ -652,18 +645,8 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             // do not update the combined matrix!
             rdp.update &= ~UPDATE_MULT_MAT;
             load_matrix(rdp.combined, segoffset(w1));
-
-#ifdef EXTREME_LOGGING
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
-#endif
          }
          break;
-      default:
-         FRDP ("uc2:matrix unknown (%d)\n", idx);
-         FRDP ("** UNKNOWN %d\n", idx);
    }
 }
 

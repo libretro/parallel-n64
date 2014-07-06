@@ -225,22 +225,22 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:movemem ");
 
-   uint32_t i;
-   int16_t *rdram_s16 = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
-   int8_t *rdram_s8   = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
+   uint32_t index = (w0 >> 16) & 0xFF;
+   int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
+   int8_t  *rdram_s8  = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
    uint8_t *rdram_u8  = (uint8_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
 
    // Check the command
-   switch ((w0 >> 16) & 0xFF)
+   switch (index)
    {
       case 0x80: /* F3D_MV_VIEWPORT */
          {
-            int16_t scale_y = rdram_s16[0] / 4;
-            int16_t scale_x = rdram_s16[1] / 4;
-            int16_t scale_z = rdram_s16[3];
-            int16_t trans_x = rdram_s16[5] / 4;
-            int16_t trans_y = rdram_s16[4] / 4;
-            int16_t trans_z = rdram_s16[7];
+            int16_t scale_y = rdram[0] / 4;
+            int16_t scale_x = rdram[1] / 4;
+            int16_t scale_z = rdram[3];
+            int16_t trans_x = rdram[5] / 4;
+            int16_t trans_y = rdram[4] / 4;
+            int16_t trans_z = rdram[7];
             if (settings.correct_viewport)
             {
                scale_x = abs(scale_x);
@@ -253,11 +253,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
             rdp.view_trans[1] = trans_y * rdp.scale_y;
             rdp.view_trans[2] = 32.0f * trans_z;
 
-            // there are other values than x and y, but I don't know what they do
-
             rdp.update |= UPDATE_VIEWPORT;
-
-            //FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, w1);
          }
          break;
       case 0x82: /* G_MV_LOOKATY */
@@ -294,20 +290,20 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
       case G_MV_L6:
       case G_MV_L7:
          {
-
             // Get the light #
-            i = (((w0 >> 16) & 0xff) - 0x86) >> 1;
+            uint32_t n = (index - 0x86) >> 1;
 
             // Get the data
-            rdp.light[i].col[0] = (float)rdram_u8[3] / 255.0f;
-            rdp.light[i].col[1] = (float)rdram_u8[2] / 255.0f;
-            rdp.light[i].col[2] = (float)rdram_u8[1] / 255.0f;
-            rdp.light[i].col[3] = 1.0f;
+            rdp.light[n].col[0] = (float)rdram_u8[3] / 255.0f;
+            rdp.light[n].col[1] = (float)rdram_u8[2] / 255.0f;
+            rdp.light[n].col[2] = (float)rdram_u8[1] / 255.0f;
+            rdp.light[n].col[3] = 1.0f;
+
             // ** Thanks to Icepir8 for pointing this out **
             // Lighting must be signed byte instead of byte
-            rdp.light[i].dir[0] = (float)rdram_s8[11] / 127.0f;
-            rdp.light[i].dir[1] = (float)rdram_s8[10] / 127.0f;
-            rdp.light[i].dir[2] = (float)rdram_s8[9] / 127.0f;
+            rdp.light[n].dir[0] = (float)rdram_s8[11] / 127.0f;
+            rdp.light[n].dir[1] = (float)rdram_s8[10] / 127.0f;
+            rdp.light[n].dir[2] = (float)rdram_s8[9] / 127.0f;
             // **
 
             //rdp.update |= UPDATE_LIGHTS;
@@ -317,11 +313,10 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 
       case G_MV_MATRIX_1:
          {
-            uint32_t addr;
+            uint32_t addr = segoffset(w1) & 0x00FFFFFF;
             // do not update the combined matrix!
             rdp.update &= ~UPDATE_MULT_MAT;
 
-            addr = segoffset(w1) & 0x00FFFFFF;
             load_matrix(rdp.combined, addr);
 
             addr = rdp.pc[rdp.pc_i] & BMASK;
@@ -343,11 +338,6 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
          //RDP_E ("uc0:movemem matrix 2 - ERROR!\n");
          //LRDP("matrix 2 - IGNORED\n");
          break;
-#if 0
-      default:
-         FRDP_E ("uc0:movemem unknown (index: 0x%08lx)\n", (w0 >> 16) & 0xFF);
-         FRDP ("unknown (index: 0x%08lx)\n", (w0 >> 16) & 0xFF);
-#endif
    }
 }
 
