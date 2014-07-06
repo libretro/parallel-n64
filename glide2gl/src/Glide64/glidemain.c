@@ -287,8 +287,6 @@ void ReadSettings(void)
    settings.buff_clear = 1;
    settings.logging = false;
    settings.log_clear = false;
-   settings.elogging = false;
-   settings.filter_cache = false;
    settings.unk_as_red = false;
    settings.log_unk = false;
    settings.unk_clear = false;
@@ -2404,7 +2402,6 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
    memset (&settings, 0, sizeof(SETTINGS));
    ReadSettings ();
    ReadSpecialSettings (name);
-   settings.res_data_org = settings.res_data;
 
    util_init ();
    math_init ();

@@ -363,9 +363,7 @@ typedef struct
 
    uint32_t res_x, scr_res_x;
    uint32_t res_y, scr_res_y;
-   uint32_t res_data, res_data_org;
 
-   int texenh_options;
    int vsync;
 
    int filtering;
@@ -382,14 +380,10 @@ typedef struct
    int autodetect_ucode;
    int ucode;
    int logging;
-   int elogging;
    int log_clear;
-   int run_in_window;
-   int filter_cache;
    int unk_as_red;
    int log_unk;
    int unk_clear;
-   int wfmode;
 
    // Special fixes
    int offset_x, offset_y;
