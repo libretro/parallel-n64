@@ -530,29 +530,22 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
 
 static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, bool do_cull, int32_t wd)
 {
-   int32_t i, vcount;
-   vcount = 0;
+   int32_t i;
+   int32_t vcount = 0;
 
    if (do_update)
       update();
 
-   for (i = 0; i < iterations; i++)
+   for (i = 0; i < iterations; i++, vcount += 3)
    {
-      bool do_draw_tri = true;
       if (do_cull)
-      {
          if (cull_tri(v + vcount))
-            do_draw_tri = false;
-      }
+            continue;
 
-      if (do_draw_tri)
-      {
-         deltaZ = dzdx = 0;
-         if (wd == 0 && (fb_depth_render_enabled || (rdp.rm & ZMODE_DECAL) == ZMODE_DECAL))
-            draw_tri_depth(v + vcount);
-         draw_tri (v + vcount, wd);
-      }
-      vcount += 3;
+      deltaZ = dzdx = 0;
+      if (wd == 0 && (fb_depth_render_enabled || (rdp.rm & ZMODE_DECAL) == ZMODE_DECAL))
+         draw_tri_depth(v + vcount);
+      draw_tri (v + vcount, wd);
    }
 }
 
