@@ -240,6 +240,8 @@ ifdef WITH_DYNAREC
    else
       CFILES += $(wildcard $(COREDIR)/src/r4300/$(WITH_DYNAREC)/*.c)
    endif
+else
+   CFILES += $(COREDIR)/src/r4300/empty_dynarec.c
 endif
 
 ### VIDEO PLUGINS ###
