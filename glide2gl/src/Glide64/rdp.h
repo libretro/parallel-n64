@@ -361,21 +361,12 @@ typedef struct
 {
    uint32_t depth_bias;
 
-   int card_id;
-   int lang_id;
-
    uint32_t res_x, scr_res_x;
    uint32_t res_y, scr_res_y;
    uint32_t res_data, res_data_org;
 
-   int advanced_options;
    int texenh_options;
-   int ssformat;
    int vsync;
-
-   int show_fps;
-   int clock;
-   int clock_24_hr;
 
    int filtering;
    int fog;
@@ -383,7 +374,6 @@ typedef struct
    int swapmode;
    int lodmode;
    int aspectmode;
-   int use_hotkeys;
 
    uint32_t frame_buffer;
    unsigned fb_crc_mode;
@@ -423,12 +413,6 @@ typedef struct
    int n64_z_scale; //scale vertex z value before writing to depth buffer, as N64 does.
 
    uint32_t hacks;
-
-   //wrapper settings
-   int wrpResolution;
-   int wrpVRAM;
-   int wrpFBO;
-   int wrpAnisotropic;
 } SETTINGS;
 
 typedef struct

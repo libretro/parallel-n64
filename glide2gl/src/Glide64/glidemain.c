@@ -263,7 +263,6 @@ void ReadSettings(void)
    struct retro_variable var = { "mupen64-screensize", 0 };
    unsigned screen_width = 640;
    unsigned screen_height = 480;
-   settings.card_id = 0;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -281,12 +280,6 @@ void ReadSettings(void)
 
 
    settings.vsync = 1;
-   settings.ssformat = 1;
-
-   settings.wrpResolution = 0;
-   settings.wrpVRAM = 0;
-   settings.wrpFBO = 0;
-   settings.wrpAnisotropic = 0;
 
    settings.autodetect_ucode = true;
    settings.ucode = 2;
