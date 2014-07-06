@@ -310,7 +310,7 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
       glDisableVertexAttribArray(FOG_ATTR);
 
       glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,4 * sizeof(float), 0); //Position
-      glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float), 2); //Tex
+      glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float), 8); //Tex
 
       glEnableVertexAttribArray(COLOUR_ATTR);
       glEnableVertexAttribArray(TEXCOORD_1_ATTR);

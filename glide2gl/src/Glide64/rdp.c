@@ -1352,10 +1352,10 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    FRDP (" draw at: (%f, %f) -> (%f, %f)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 
      VERTEX vstd[4] = {
-    { s_ul_x, s_ul_y, Z, 1.0f, texUV[0].ul_u, texUV[0].ul_v, texUV[1].ul_u, texUV[1].ul_v, {0, 0, 0, 0}, 255 },
-    { s_lr_x, s_ul_y, Z, 1.0f, texUV[0].lr_u, texUV[0].ul_v, texUV[1].lr_u, texUV[1].ul_v, {0, 0, 0, 0}, 255 },
-    { s_ul_x, s_lr_y, Z, 1.0f, texUV[0].ul_u, texUV[0].lr_v, texUV[1].ul_u, texUV[1].lr_v, {0, 0, 0, 0}, 255 },
-    { s_lr_x, s_lr_y, Z, 1.0f, texUV[0].lr_u, texUV[0].lr_v, texUV[1].lr_u, texUV[1].lr_v, {0, 0, 0, 0}, 255 } };
+    { .x = s_ul_x, .y = s_ul_y, .z = Z, .q = 1.0f, .u0 = texUV[0].ul_u, .v0 = texUV[0].ul_v, .u1 = texUV[1].ul_u, .v1 = texUV[1].ul_v, .coord = {0, 0, 0, 0}, 255 },
+    { .x = s_lr_x, .y = s_ul_y, .z = Z, .q = 1.0f, .u0 = texUV[0].lr_u, .v0 = texUV[0].ul_v, .u1 = texUV[1].lr_u, .v1 = texUV[1].ul_v, .coord = {0, 0, 0, 0}, 255 },
+    { .x = s_ul_x, .y = s_lr_y, .z = Z, .q = 1.0f, .u0 = texUV[0].ul_u, .v0 = texUV[0].lr_v, .u1 = texUV[1].ul_u, .v1 = texUV[1].lr_v, .coord = {0, 0, 0, 0}, 255 },
+    { .x = s_lr_x, .y = s_lr_y, .z = Z, .q = 1.0f, .u0 = texUV[0].lr_u, .v0 = texUV[0].lr_v, .u1 = texUV[1].lr_u, .v1 = texUV[1].lr_v, .coord = {0, 0, 0, 0}, 255 } };
 
    if ( ((rdp.cmd0>>24)&0xFF) == 0xE5 ) //texrectflip
    {
@@ -2115,10 +2115,10 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 
             // Draw the vertices
       VERTEX v[4] = {
-      { (float)s_ul_x, (float)s_ul_y, Z, 1.0f, 0,0,0,0, {0,0,0,0}, 0,0, 0,0,0,0},
-      { (float)s_lr_x, (float)s_ul_y, Z, 1.0f, 0,0,0,0, {0,0,0,0}, 0,0, 0,0,0,0},
-      { (float)s_ul_x, (float)s_lr_y, Z, 1.0f, 0,0,0,0, {0,0,0,0}, 0,0, 0,0,0,0},
-      { (float)s_lr_x, (float)s_lr_y, Z, 1.0f, 0,0,0,0, {0,0,0,0}, 0,0, 0,0,0,0} };
+      { .x = (float)s_ul_x, .y = (float)s_ul_y, .z = Z, .q = 1.0f },
+      { .x = (float)s_lr_x, .y = (float)s_ul_y, .z = Z, .q = 1.0f },
+      { .x = (float)s_ul_x, .y = (float)s_lr_y, .z = Z, .q = 1.0f },
+      { .x = (float)s_lr_x, .y = (float)s_lr_y, .z = Z, .q = 1.0f } };
 
       if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3)
       {
