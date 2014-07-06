@@ -861,7 +861,6 @@ struct RDP
    VERTEX *vtx; //[MAX_VTX]
 
    COLOR_IMAGE *frame_buffers; //[NUMTEXBUF+2]
-   TEXTURE_BUFFER texbufs[2];
 
    char RomName[21];
 };
