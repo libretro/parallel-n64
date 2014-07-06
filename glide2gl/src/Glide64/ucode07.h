@@ -70,6 +70,16 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
    float x, y, z;
    vtx_uc7 *vertex;
 
+#ifdef HAVE_NEON
+   float32x4_t comb0, comb1, comb2, comb3;
+   float32x4_t v_xyzw;
+
+   comb0 = vld1q_f32(rdp.combined[0]);
+   comb1 = vld1q_f32(rdp.combined[1]);
+   comb2 = vld1q_f32(rdp.combined[2]);
+   comb3 = vld1q_f32(rdp.combined[3]);
+#endif
+
    pre_update();
 
    addr = segoffset(w1);
@@ -83,69 +93,87 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
 
    for (i = 0; i < n; i++)
    {
-      VERTEX *v;
-	  uint8_t *color;
+      VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + i];
+      int16_t *rdram = (int16_t*)gfx_info.RDRAM;
+      uint8_t *color = (uint8_t*)&gfx_info.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
 
-      v = (VERTEX*)&rdp.vtx[v0 + i];
       x   = (float)vertex->x;
       y   = (float)vertex->y;
       z   = (float)vertex->z;
-      v->flags  = 0;
-      v->ou   = (float)vertex->s;
-      v->ov   = (float)vertex->t;
-      v->uv_scaled = 0;
+      vert->flags  = 0;
+      vert->ou   = (float)vertex->s;
+      vert->ov   = (float)vertex->t;
+      vert->uv_scaled = 0;
+      vert->a = color[0];
 
-      //    FRDP ("before: v%d - x: %f, y: %f, z: %f, flags: %04lx, ou: %f, ov: %f\n", i>>4, x, y, z, v->flags, v->ou, v->ov);
+#ifdef HAVE_NEON
+      v_xyzw  = vmulq_n_f32(comb0,x)+vmulq_n_f32(comb1,y)+vmulq_n_f32(comb2,z)+comb3;
+      vert->x = vgetq_lane_f32(v_xyzw,0);
+      vert->y = vgetq_lane_f32(v_xyzw,1);
+      vert->z = vgetq_lane_f32(v_xyzw,2);
+      vert->w = vgetq_lane_f32(v_xyzw,3);
+#else
+      vert->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
+      vert->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
+      vert->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
+      vert->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
+#endif
 
-      v->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
-      v->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
-      v->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
-      v->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
+      vert->uv_calculated = 0xFFFFFFFF;
+      vert->screen_translated = 0;
 
+      if (fabs(vert->w) < 0.001)
+         vert->w = 0.001f;
+      vert->oow = 1.0f / vert->w;
+#ifdef HAVE_NEON
+      v_xyzw = vmulq_n_f32(v_xyzw,vert->oow);
+      vert->x_w=vgetq_lane_f32(v_xyzw,0);
+      vert->y_w=vgetq_lane_f32(v_xyzw,1);
+      vert->z_w=vgetq_lane_f32(v_xyzw,2);
+#else
+      vert->x_w = vert->x * vert->oow;
+      vert->y_w = vert->y * vert->oow;
+      vert->z_w = vert->z * vert->oow;
+#endif
+      CalculateFog (vert);
 
-      if (fabs(v->w) < 0.001) v->w = 0.001f;
-      v->oow = 1.0f / v->w;
-      v->x_w = v->x * v->oow;
-      v->y_w = v->y * v->oow;
-      v->z_w = v->z * v->oow;
-
-      v->uv_calculated = 0xFFFFFFFF;
-      v->screen_translated = 0;
-
-      v->scr_off = 0;
-      if (v->x < -v->w) v->scr_off |= 1;
-      if (v->x > v->w) v->scr_off |= 2;
-      if (v->y < -v->w) v->scr_off |= 4;
-      if (v->y > v->w) v->scr_off |= 8;
-      if (v->w < 0.1f) v->scr_off |= 16;
-
-      color = (uint8_t*)&gfx_info.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
-
-      v->a = color[0];
-      CalculateFog (v);
+      vert->scr_off = 0;
+      if (vert->x < -vert->w)
+         vert->scr_off |= 1;
+      if (vert->x > vert->w)
+         vert->scr_off |= 2;
+      if (vert->y < -vert->w)
+         vert->scr_off |= 4;
+      if (vert->y > vert->w)
+         vert->scr_off |= 8;
+      if (vert->w < 0.1f)
+         vert->scr_off |= 16;
+#if 0
+      if (vert->z_w > 1.0f)
+         vert->scr_off |= 32;
+#endif
 
       if (rdp.geom_mode & G_LIGHTING)
       {
-         v->vec[0] = (int8_t)color[3];
-         v->vec[1] = (int8_t)color[2];
-         v->vec[2] = (int8_t)color[1];
+         vert->vec[0] = (int8_t)color[3];
+         vert->vec[1] = (int8_t)color[2];
+         vert->vec[2] = (int8_t)color[1];
 
          if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR) 
-            calc_linear(v);
+            calc_linear(vert);
          else if (rdp.geom_mode & G_TEXTURE_GEN) 
-            calc_sphere(v);
+            calc_sphere(vert);
 
-         NormalizeVector (v->vec);
+         NormalizeVector (vert->vec);
 
-         calc_light (v);
+         calc_light (vert);
       }
       else
       {
-         v->r = color[3];
-         v->g = color[2];
-         v->b = color[1];
+         vert->r = color[3];
+         vert->g = color[2];
+         vert->b = color[1];
       }
-      //FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f\n", i>>4, v->x, v->y, v->z, v->w, v->ou, v->ov);
       vertex++;
    }
 }
