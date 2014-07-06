@@ -605,18 +605,22 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
    comb3 = vld1q_f32(rdp.combined[3]);
 #endif
 
+   void   *membase_ptr  = (void*)gfx_info.RDRAM + addr;
+
    for (i=0; i < (n<<4); i+=16)
    {
       VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i>>4)];
-      int16_t *rdram = (int16_t*)gfx_info.RDRAM;
-      x   = (float)rdram[(((addr+i) >> 1) + 0)^1];
-      y   = (float)rdram[(((addr+i) >> 1) + 1)^1];
-      z   = (float)rdram[(((addr+i) >> 1) + 2)^1];
-      vert->flags  = ((uint16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 3)^1];
-      vert->ou = (float)rdram[(((addr+i) >> 1) + 4)^1];
-      vert->ov = (float)rdram[(((addr+i) >> 1) + 5)^1];
-      vert->uv_scaled = 0;
-      vert->a    = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 15)^3];
+      int16_t *rdram    = (int16_t*)membase_ptr;
+      int8_t  *rdram_s8 = (int8_t* )membase_ptr;
+      uint8_t *rdram_u8 = (uint8_t*)membase_ptr;
+      y                 = (float)rdram[0];
+      x                 = (float)rdram[1];
+      vert->flags       = (uint16_t)rdram[2];
+      z                 = (float)rdram[3];
+      vert->ov          = (float)rdram[4];
+      vert->ou          = (float)rdram[5];
+      vert->uv_scaled   = 0;
+      vert->a           = rdram_u8[12];
 
 #ifdef HAVE_NEON
       v_xyzw  = vmulq_n_f32(comb0,x)+vmulq_n_f32(comb1,y)+vmulq_n_f32(comb2,z)+comb3;
@@ -668,10 +672,9 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
 
       if (rdp.geom_mode & G_LIGHTING)
       {
-         int8_t *rdram = (int8_t*)gfx_info.RDRAM;
-         vert->vec[0] = rdram[(addr+i + 12)^3];
-         vert->vec[1] = rdram[(addr+i + 13)^3];
-         vert->vec[2] = rdram[(addr+i + 14)^3];
+         vert->vec[0] = rdram_s8[15];
+         vert->vec[1] = rdram_s8[14];
+         vert->vec[2] = rdram_s8[13];
          if (rdp.geom_mode & G_TEXTURE_GEN)
          {
             if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
@@ -693,11 +696,11 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
       }
       else
       {
-         uint8_t *rdram = (uint8_t*)gfx_info.RDRAM;
-         vert->r = rdram[(addr+i + 12)^3];
-         vert->g = rdram[(addr+i + 13)^3];
-         vert->b = rdram[(addr+i + 14)^3];
+         vert->r = rdram_u8[15];
+         vert->g = rdram_u8[14];
+         vert->b = rdram_u8[13];
       }
+      membase_ptr += 16;
    }
 }
 
