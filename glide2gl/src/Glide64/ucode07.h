@@ -92,6 +92,8 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
    {
       VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i / iter)];
       int16_t *rdram    = (int16_t*)membase_ptr;
+      int8_t  *rdram_s8 = (int8_t* )membase_ptr;
+      uint8_t *rdram_u8 = (uint8_t*)membase_ptr;
       uint8_t *color = (uint8_t*)&gfx_info.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
 
       x   = (float)vertex->x;

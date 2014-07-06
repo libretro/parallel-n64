@@ -614,6 +614,7 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
       int16_t *rdram    = (int16_t*)membase_ptr;
       int8_t  *rdram_s8 = (int8_t* )membase_ptr;
       uint8_t *rdram_u8 = (uint8_t*)membase_ptr;
+      uint8_t *color = (uint8_t*)(rdram_u8 + 12);
       y                 = (float)rdram[0];
       x                 = (float)rdram[1];
       vert->flags       = (uint16_t)rdram[2];
@@ -621,7 +622,7 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
       vert->ov          = (float)rdram[4];
       vert->ou          = (float)rdram[5];
       vert->uv_scaled   = 0;
-      vert->a           = rdram_u8[12];
+      vert->a           = color[0];
 
 #ifdef HAVE_NEON
       v_xyzw  = vmulq_n_f32(comb0,x)+vmulq_n_f32(comb1,y)+vmulq_n_f32(comb2,z)+comb3;
@@ -673,9 +674,10 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
 
       if (rdp.geom_mode & G_LIGHTING)
       {
-         vert->vec[0] = rdram_s8[15];
-         vert->vec[1] = rdram_s8[14];
-         vert->vec[2] = rdram_s8[13];
+         vert->vec[0] = (int8_t)color[3];
+         vert->vec[1] = (int8_t)color[2];
+         vert->vec[2] = (int8_t)color[1];
+
          if (rdp.geom_mode & G_TEXTURE_GEN)
          {
             if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
@@ -697,9 +699,9 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
       }
       else
       {
-         vert->r = rdram_u8[15];
-         vert->g = rdram_u8[14];
-         vert->b = rdram_u8[13];
+         vert->r = color[3];
+         vert->g = color[2];
+         vert->b = color[1];
       }
       membase_ptr += iter;
    }
