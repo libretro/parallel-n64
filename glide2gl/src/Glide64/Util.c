@@ -293,7 +293,7 @@ static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percen
    res->f = interp2p(fa, fb, percent) * w;
 }
 
-static void CalculateLODValues(VERTEX *v, int32_t i, int32_t j, float *lodFactor, float s_scale, float t_scale)
+static INLINE void CalculateLODValues(VERTEX *v, int32_t i, int32_t j, float *lodFactor, float s_scale, float t_scale)
 {
    float deltaS, deltaT, deltaTexels, deltaPixels, deltaX, deltaY;
    deltaS = (v[j].u0/v[j].q - v[i].u0/v[i].q) * s_scale;
@@ -315,36 +315,35 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
    t_scale = rdp.tiles[rdp.cur_tile].height / 255.0f;
    lodFactor = 0;
 
-   (void)j;
-
-   switch (lodmode)
+   if (lodmode == G_TL_LOD)
    {
-      case G_TL_TILE:
-         for (i = 0; i < n; i++)
-            CalculateLODValues(v, i, (i < n-1) ? i + 1 : 0, &lodFactor, s_scale, t_scale);
-         // Divide by n (n edges) to find average
-         lodFactor = lodFactor / n;
-         break;
-      case G_TL_LOD:
-         CalculateLODValues(v, 0, 1, &lodFactor, s_scale, t_scale);
-         break;
+      n = 1;
+      j = 1;
    }
+
+   for (i = 0; i < n; i++)
+   {
+      if (lodmode == G_TL_TILE)
+         j = (i < n-1) ? (i + 1) : 0;
+      CalculateLODValues(v, i, j, &lodFactor, s_scale, t_scale);
+   }
+
+   if (lodmode == G_TL_TILE)
+      lodFactor = lodFactor / n; // Divide by n (n edges) to find average
 
    ilod = (int)lodFactor;
    lod_tile = min((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + rdp.mipmap_level);
    lod_fraction = 1.0f;
+   detailmax = 1.0f - lod_fraction;
 
    if (lod_tile < rdp.cur_tile + rdp.mipmap_level)
       lod_fraction = max((float)modff(lodFactor / glide64_pow(2.,lod_tile),&intptr), rdp.prim_lodmin / 255.0f);
 
    if (cmb.dc0_detailmax < 0.5f)
       detailmax = lod_fraction;
-   else
-      detailmax = 1.0f - lod_fraction;
 
    grTexDetailControl (GR_TMU0, cmb.dc0_lodbias, cmb.dc0_detailscale, detailmax);
    grTexDetailControl (GR_TMU1, cmb.dc1_lodbias, cmb.dc1_detailscale, detailmax);
-   //FRDP("CalculateLOD factor: %f, tile: %d, lod_fraction: %f\n", (float)lodFactor, lod_tile, lod_fraction);
 }
 
 float ScaleZ(float z)
