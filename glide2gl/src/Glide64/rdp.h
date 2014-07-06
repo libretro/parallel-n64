@@ -799,8 +799,6 @@ struct RDP
    uint8_t fbl_a0, fbl_b0, fbl_c0, fbl_d0;
    uint8_t fbl_a1, fbl_b1, fbl_c1, fbl_d1;
 
-   uint8_t uncombined;  // which is uncombined: 0x01=color 0x02=alpha 0x03=both
-
    //  float YUV_C0, YUV_C1, YUV_C2, YUV_C3, YUV_C4; //YUV textures conversion coefficients
 
    // What needs updating

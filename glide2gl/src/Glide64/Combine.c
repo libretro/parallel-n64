@@ -14038,8 +14038,6 @@ void Combine(void)
       rdp.coladd[0] = rdp.coladd[1] = rdp.coladd[2] = rdp.coladd[3] = 1.0f;
    rdp.cmb_flags = rdp.cmb_flags_2 = 0;
 
-   rdp.uncombined = 0;
-
    cmb.tex = 0;
    cmb.tmu0_func = cmb.tmu1_func = cmb.tmu0_a_func = cmb.tmu1_a_func = GR_COMBINE_FUNCTION_ZERO;
    cmb.tmu0_fac = cmb.tmu1_fac = cmb.tmu0_a_fac = cmb.tmu1_a_fac = GR_COMBINE_FACTOR_NONE;
@@ -14092,11 +14090,10 @@ void Combine(void)
          break;  // found it!
    }
 
+#ifdef UNIMP_LOG
    // Check if we didn't find it
    if (actual_combine != current_combine)
    {
-      rdp.uncombined |= 1;
-#ifdef UNIMP_LOG
       if (settings.log_unk)
       {
          sprintf (out_buf, "COLOR combine not found: %08x, #1: (%s-%s)*%s+%s, #2: (%s-%s)*%s+%s\n",
@@ -14148,10 +14145,9 @@ void Combine(void)
    // Check if we didn't find it
    if (actual_combine != current_combine || !found)
    {
+#ifdef UNIMP_LOG
       if (actual_combine != current_combine)
       {
-         rdp.uncombined |= 2;
-#ifdef UNIMP_LOG
          if (settings.log_unk)
          {
             sprintf (out_buf, "ALPHA combine not found: %08x, #1: (%s-%s)*%s+%s, #2: (%s-%s)*%s+%s\n",
