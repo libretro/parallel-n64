@@ -347,42 +347,24 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 
 static void uc0_displaylist(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr, push;
-   addr = segoffset(w1) & 0x00FFFFFF;
+   uint32_t addr = segoffset(w1) & 0x00FFFFFF;
+   uint32_t push = (w0 >> 16) & 0xFF; // push the old location?
 
    // This fixes partially Gauntlet: Legends
    if (addr == rdp.pc[rdp.pc_i] - 8)
-   {
-      //LRDP("display list not executed!\n");
       return;
-   }
-
-   push = (w0 >> 16) & 0xFF; // push the old location?
-
-   //FRDP("uc0:displaylist: %08lx, push:%s", addr, push?"no":"yes");
-   //FRDP(" (seg %d, offset %08lx)\n", (w1>>24)&0x0F, w1&0x00FFFFFF);
 
    switch (push)
    {
       case 0: // push
          if (rdp.pc_i >= 9)
-         {
-            //RDP_E ("** DL stack overflow **");
-            //LRDP("** DL stack overflow **\n");
-            return;
-         }
-         rdp.pc_i ++; // go to the next PC in the stack
+            return; /* DL stack overflow */
+         rdp.pc_i++; // go to the next PC in the stack
          rdp.pc[rdp.pc_i] = addr; // jump to the address
          break;
-
       case 1: // no push
-         rdp.pc[rdp.pc_i] = addr; // just jump to the address
+         rdp.pc[rdp.pc_i] = addr; // jump to the address
          break;
-#if 0
-      default:
-         RDP_E("Unknown displaylist operation\n");
-         LRDP("Unknown displaylist operation\n");
-#endif
    }
 }
 
@@ -580,8 +562,6 @@ static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
 //
 static void uc0_moveword(uint32_t w0, uint32_t w1)
 {
-   //LRDP("uc0:moveword ");
-
    // Find which command this is (lowest byte of cmd0)
    switch (w0 & 0xFF)
    {
@@ -635,12 +615,9 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 
       case 0x0c:
          {
-            uint16_t val, vtx;
-            uint8_t where;
-
-            val = (uint16_t)((w0 >> 8) & 0xFFFF);
-            vtx = val / 40;
-            where = val % 40;
+            uint16_t val = (uint16_t)((w0 >> 8) & 0xFFFF);
+            uint16_t vtx = val / 40;
+            uint8_t where = val % 40;
             uc0_modifyvtx(where, vtx, w1);
             //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
          }
@@ -659,40 +636,26 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 
 static void uc0_texture(uint32_t w0, uint32_t w1)
 {
-   int tile;
-   uint32_t on;
-   tile = (w0 >> 8) & 0x07;
+   int tile = (w0 >> 8) & 0x07;
    if (tile == 7 && (settings.hacks&hack_Supercross))
       tile = 0; //fix for supercross 2000
    rdp.mipmap_level = (w0 >> 11) & 0x07;
-   on = (w0 & 0xFF);
    rdp.cur_tile = tile;
+   rdp.tiles[tile].on = 0;
 
-   if (on)
+   if ((w0 & 0xFF))
    {
-      uint16_t s, t;
-      TILE *tmp_tile;
+      uint16_t s = (uint16_t)((w1 >> 16) & 0xFFFF);
+      uint16_t t = (uint16_t)(w1 & 0xFFFF);
 
-      s = (uint16_t)((w1 >> 16) & 0xFFFF);
-      t = (uint16_t)(w1 & 0xFFFF);
-
-      tmp_tile = (TILE*)&rdp.tiles[tile];
-      tmp_tile->on = 1;
-      tmp_tile->org_s_scale = s;
-      tmp_tile->org_t_scale = t;
-      tmp_tile->s_scale = (float)(s+1)/65536.0f;
-      tmp_tile->t_scale = (float)(t+1)/65536.0f;
-      tmp_tile->s_scale /= 32.0f;
-      tmp_tile->t_scale /= 32.0f;
+      rdp.tiles[tile].on = 1;
+      rdp.tiles[tile].org_s_scale = s;
+      rdp.tiles[tile].org_t_scale = t;
+      rdp.tiles[tile].s_scale = (float)((s+1)/65536.0f) / 32.0f;
+      rdp.tiles[tile].t_scale = (float)((t+1)/65536.0f) / 32.0f;
 
       rdp.update |= UPDATE_TEXTURE;
-
-      //FRDP("uc0:texture: tile: %d, mipmap_lvl: %d, on: %d, s_scale: %f, t_scale: %f\n", tile, rdp.mipmap_level, on, tmp_tile->s_scale, tmp_tile->t_scale);
-      return;
    }
-
-   //LRDP("uc0:texture skipped b/c of off\n");
-   rdp.tiles[tile].on = 0;
 }
 
 static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
@@ -862,19 +825,16 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 
 static void uc0_line3d(uint32_t w0, uint32_t w1)
 {
-   uint32_t v0, v1, cull_mode;
-   uint16_t width;
    VERTEX *v[3];
-
-   v0 = ((w1 >> 16) & 0xff) / 10;
-   v1 = ((w1 >> 8) & 0xff) / 10;
-   width = (uint16_t)(w1 & 0xFF) + 3;
+   uint32_t v0 = ((w1 >> 16) & 0xff) / 10;
+   uint32_t v1 = ((w1 >> 8) & 0xff) / 10;
+   uint16_t width = (uint16_t)(w1 & 0xFF) + 3;
+   uint32_t cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
 
    v[0] = &rdp.vtx[v1];
    v[1] = &rdp.vtx[v0];
    v[2] = &rdp.vtx[v0];
 
-   cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
    rdp.flags |= CULLMASK;
    rdp.update |= UPDATE_CULL_MODE;
    cull_trianglefaces(v, 1, true, true, width);
