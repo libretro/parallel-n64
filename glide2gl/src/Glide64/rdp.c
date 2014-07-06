@@ -246,11 +246,6 @@ void rdp_new(void)
       cpu = perf_get_cpu_features_cb();
 
    _gSPVertex = gSPVertex;
-#if defined(HAVE_NEON)
-   if (cpu & RETRO_SIMD_NEON)
-      _gSPVertex = gSPVertexNEON;
-#endif
-
 }
 
 void rdp_setfuncs(void)
