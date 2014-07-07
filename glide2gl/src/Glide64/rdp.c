@@ -309,18 +309,6 @@ void microcheck(void)
 
    FRDP_E ("crc: %08lx\n", uc_crc);
 
-#ifdef LOG_UCODE
-   std::ofstream ucf;
-   ucf.open ("ucode.txt", std::ios::out | std::ios::binary);
-   int8_t d;
-   for (i=0; i<0x400000; i++)
-   {
-      d = ((int8_t*)gfx_info.RDRAM)[i^3];
-      ucf.write (&d, 1);
-   }
-   ucf.close ();
-#endif
-
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "Glide64 ucode = %08lx\n", uc_crc);
 

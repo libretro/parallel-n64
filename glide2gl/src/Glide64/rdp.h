@@ -379,7 +379,6 @@ typedef struct
    int autodetect_ucode;
    int ucode;
    int unk_as_red;
-   int log_unk;
    int unk_clear;
 
    // Special fixes

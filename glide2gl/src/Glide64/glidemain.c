@@ -279,7 +279,6 @@ void ReadSettings(void)
    settings.fog = 1;
    settings.buff_clear = 1;
    settings.unk_as_red = false;
-   settings.log_unk = false;
    settings.unk_clear = false;
 }
 

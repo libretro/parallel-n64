@@ -83,13 +83,6 @@ the plugin
 
 #define _ENDUSER_RELEASE_
 
-//#define LOG_UCODE
-//#define TLUT_LOGGING		// log every entry of the TLUT?
-
-#define LOGKEY		0x11 // this key (CONTROL)
-
-//#define LOG_COMMANDS		// log the whole 64-bit command as (0x........, 0x........)
-
 #ifndef _ENDUSER_RELEASE_
 #define BRIGHT_RED			// Keep enabled, option in dialog
 #endif
