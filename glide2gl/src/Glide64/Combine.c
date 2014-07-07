@@ -704,6 +704,11 @@ COMBINE cmb;
   rdp.col[3] *= (color & 0xFF) / 255.0f; \
   rdp.cmb_flags |= flag; \
 }
+
+#define XSHADE_A_NEW(color, flag) \
+  rdp.col[3] *= color; \
+  rdp.cmb_flags |= flag
+
 #define XSHADE1M_A(color, flag) { \
   rdp.col[3] *= 1.0f- color[3]; \
   rdp.cmb_flags |= flag; \
@@ -712,14 +717,14 @@ COMBINE cmb;
   rdp.col[3] *= color1[3] - color2[3]; \
   rdp.cmb_flags |= flag; \
 }
-#define MULSHADE_A_PRIM() XSHADE_A(rdp.prim_color, CMB_A_MULT)
+#define MULSHADE_A_PRIM() XSHADE_A_NEW(rdp.prim_color_sep[3], CMB_A_MULT)
 #define MULSHADE_A_1MPRIM() XSHADE1M_A(rdp.prim_color_sep, CMB_A_MULT)
-#define MULSHADE_A_ENV() XSHADE_A(rdp.env_color, CMB_A_MULT)
+#define MULSHADE_A_ENV() XSHADE_A_NEW(rdp.env_color_sep[3], CMB_A_MULT)
 #define MULSHADE_A_PRIMSUBENV() XSHADEC1MC2_A(rdp.prim_color_sep, rdp.env_color_sep, CMB_A_MULT)
 #define MULSHADE_A_ENVSUBPRIM() XSHADEC1MC2_A(rdp.env_color_sep, rdp.prim_color_sep, CMB_A_MULT)
 #define SETSHADE_A(color) XSHADE_A(color, CMB_A_SET)
-#define SETSHADE_A_PRIM() SETSHADE_A(rdp.prim_color)
-#define SETSHADE_A_ENV() SETSHADE_A(rdp.env_color)
+#define SETSHADE_A_PRIM() XSHADE_A_NEW(rdp.prim_color_sep[3], CMB_A_SET)
+#define SETSHADE_A_ENV() XSHADE_A_NEW(rdp.env_color_sep[3], CMB_A_SET)
 #define SETSHADE_A_PRIMSUBENV() XSHADEC1MC2_A(rdp.prim_color_sep, rdp.env_color_sep, CMB_A_SET)
 #define SETSHADE_A_INVENV() XSHADE1M_A(rdp.env_color_sep, CMB_A_SET)
 
