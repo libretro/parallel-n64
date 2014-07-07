@@ -1539,116 +1539,6 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
 }
 
 
-static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
-{
-   uint32_t *v5, *v7, v8, v10, *v11, v12, v13, v14, *v17, v19, v20, nbits;
-   int v6, v9, v15, v16, v18, i;
-
-   nbits = sizeof(uint32_t*) * 8;
-   v5 = dst;
-   v6 = cnt;
-   if ( cnt )
-   {
-      v7 = (uint32_t *)((char *)src + (off & 0xFFFFFFFC));
-      v8 = off & 3;
-      if ( !(off & 3) )
-         goto LABEL_23;
-      v9 = 4 - v8;
-      v10 = *v7;
-      v11 = v7 + 1;
-      do
-      {
-         v10 = __ROL__(v10, 8, nbits);
-         --v8;
-      }
-      while ( v8 );
-      do
-      {
-         v10 = __ROL__(v10, 8, nbits);
-         *(uint8_t *)v5 = v10;
-         v5 = (uint32_t *)((char *)v5 + 1);
-         --v9;
-      }
-      while ( v9 );
-      v12 = *v11;
-      v7 = v11 + 1;
-      *v5 = bswap32(v12);
-      ++v5;
-      v6 = cnt - 1;
-      if ( cnt != 1 )
-      {
-LABEL_23:
-         do
-         {
-            *v5 = bswap32(*v7);
-            v5[1] = bswap32(v7[1]);
-            v7 += 2;
-            v5 += 2;
-            --v6;
-         }
-         while ( v6 );
-      }
-      v13 = off & 3;
-      if ( off & 3 )
-      {
-         v14 = *(uint32_t *)((char *)src + ((8 * cnt + off) & 0xFFFFFFFC));
-         do
-         {
-            v14 = __ROL__(v14, 8, nbits);
-            *(uint8_t *)v5 = v14;
-            v5 = (uint32_t *)((char *)v5 + 1);
-            --v13;
-         }
-         while ( v13 );
-      }
-   }
-   v15 = cnt;
-   v16 = 0;
-   v17 = dst;
-   v18 = 0;
-dxt_test:
-   while ( 1 )
-   {
-      v17 += 2;
-      --v15;
-      if ( !v15 )
-         break;
-      v16 += dxt;
-      if ( v16 < 0 )
-      {
-         while ( 1 )
-         {
-            ++v18;
-            --v15;
-            if ( !v15 )
-               goto end_dxt_test;
-            v16 += dxt;
-            if ( v16 >= 0 )
-            {
-               for ( i = v15; v18; --v18 )
-               {
-                  v19 = *v17;
-                  *v17 = v17[1];
-                  v17[1] = v19;
-                  v17 += 2;
-               }
-               v15 = i;
-               goto dxt_test;
-            }
-         }
-      }
-   }
-end_dxt_test:
-   while ( v18 )
-   {
-      v20 = *v17;
-      *v17 = v17[1];
-      v17[1] = v20;
-      v17 += 2;
-      --v18;
-   }
-}
-
 static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height, int line, int off, uint32_t *end)
 {
    uint32_t *v7, *v9, *v13, v16, *v17, v18, v20, v22, *v24, *v27, *v31, nbits;
@@ -1759,102 +1649,15 @@ LABEL_20:
 
 static void rdp_loadblock(uint32_t w0, uint32_t w1)
 {
-   uint32_t tile, dxt, addr, off, cnt, _dxt;
-   uint16_t lr_s, ul_s, ul_t;
-   uint8_t *dst;
-
-   if (rdp.skip_drawing)
-      return;
-
-   tile = (uint32_t)((w1 >> 24) & 0x07);
-   dxt = (uint32_t)(w1 & 0x0FFF);
-   lr_s = (uint16_t)(w1 >> 14) & 0x3FF;
-
-   if (ucode5_texshiftaddr)
-   {
-      if (ucode5_texshift % ((lr_s+1)<<3))
-      {
-         rdp.timg.addr -= ucode5_texshift;
-         ucode5_texshiftaddr = 0;
-         ucode5_texshift = 0;
-         ucode5_texshiftcount = 0;
-      }
-      else
-         ucode5_texshiftcount++;
-   }
-
-   rdp.addr[rdp.tiles[tile].t_mem] = rdp.timg.addr;
-
-   // ** DXT is used for swapping every other line
-   /* double fdxt = (double)0x8000000F/(double)((uint32_t)(2047/(dxt-1))); // F for error
-      uint32_t _dxt = (uint32_t)fdxt;*/
-
-   // 0x00000800 -> 0x80000000 (so we can check the sign bit instead of the 11th bit)
-   _dxt = dxt << 20;
-
-   addr = segoffset(rdp.timg.addr) & BMASK;
-
    // lr_s specifies number of 64-bit words to copy
    // 10.2 format
-   ul_s = (uint16_t)(w0 >> 14) & 0x3FF;
-   ul_t = (uint16_t)(w0 >> 2) & 0x3FF;
-
-   rdp.tiles[tile].ul_s = ul_s;
-   rdp.tiles[tile].ul_t = ul_t;
-   rdp.tiles[tile].lr_s = lr_s;
-
-   rdp.timg.set_by = 0; // load block
-
-#ifdef TEXTURE_FILTER
-   LOAD_TILE_INFO &info = rdp.load_info[rdp.tiles[tile].t_mem];
-   info.tile_width = lr_s;
-   info.dxt = dxt;
-#endif
-
-   // do a quick boundary check before copying to eliminate the possibility for exception
-   if (ul_s >= 512)
-   {
-      lr_s = 1; // 1 so that it doesn't die on memcpy
-      ul_s = 511;
-   }
-
-   if (ul_s+lr_s > 512)
-      lr_s = 512-ul_s;
-
-   if (addr+(lr_s<<3) > BMASK+1)
-      lr_s = (uint16_t)((BMASK-addr)>>3);
-
-   //angrylion's advice to use ul_s in texture image offset and cnt calculations.
-   //Helps to fix Vigilante 8 jpeg backgrounds and logos
-   off = rdp.timg.addr + (ul_s << rdp.tiles[tile].size >> 1);
-   dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
-   cnt = lr_s-ul_s+1;
-   
-   if (rdp.tiles[tile].size == 3)
-      cnt <<= 1;
-
-   if (((rdp.tiles[tile].t_mem + cnt) << 3) > sizeof(rdp.tmem))
-   {
-      //WriteLog(M64MSG_INFO, "rdp_loadblock wanted to write %u bytes after the end of tmem", ((rdp.tiles[tile].t_mem + cnt) << 3) - sizeof(rdp.tmem));
-      cnt = (sizeof(rdp.tmem) >> 3) - (rdp.tiles[tile].t_mem);
-   }
-
-   if (rdp.timg.size == 3)
-      LoadBlock32b(tile, ul_s, ul_t, lr_s, dxt);
-   else
-      loadBlock((uint32_t *)gfx_info.RDRAM, (uint32_t *)dst, off, _dxt, cnt);
-
-   rdp.timg.addr += cnt << 3;
-   rdp.tiles[tile].lr_t = ul_t + ((dxt*cnt)>>11);
-
-   rdp.update |= UPDATE_TEXTURE;
-
-#if 0
-   FRDP ("loadblock: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, dxt: %08lx -> %08lx\n",
-         tile, ul_s, ul_t, lr_s,
-         dxt, _dxt);
-#endif
-
+   gDPLoadBlock(
+         ((w1 >> 24) & 0x07), 
+         (w0 >> 14) & 0x3FF, /* ul_s */
+         (w0 >>  2) & 0x3FF, /* ul_t */
+         (w1 >> 14) & 0x3FF, /* lr_s */
+         (w1 & 0x0FFF) /* dxt */
+         );
 }
 
 void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
