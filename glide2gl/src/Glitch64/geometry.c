@@ -125,22 +125,20 @@ FX_ENTRY void FX_CALL
 grDrawVertexArrayContiguous(FxU32 mode, FxU32 count, void *pointers)
 {
    VERTEX *v = (VERTEX*)pointers;
+
    if(need_to_compile)
       compile_shader();
 
    glEnableVertexAttribArray(POSITION_ATTR);
-   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(VERTEX), &v->x); //Position
-
    glEnableVertexAttribArray(COLOUR_ATTR);
-   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(VERTEX), &v->b); //Colour
-
    glEnableVertexAttribArray(TEXCOORD_0_ATTR);
-   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), &v->coord[2]); //Tex0
-
    glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), &v->coord[0]); //Tex1
-
    glEnableVertexAttribArray(FOG_ATTR);
+
+   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(VERTEX), &v->x); //Position
+   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(VERTEX), &v->b); //Colour
+   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), &v->coord[2]); //Tex0
+   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), &v->coord[0]); //Tex1
    glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(VERTEX), &v->f); //Fog
 
    glDrawArrays(mode, 0, count);
