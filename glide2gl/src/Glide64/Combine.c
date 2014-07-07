@@ -649,23 +649,23 @@ COMBINE cmb;
 }
 
 #define XSHADEADD(color, flag) { \
-  rdp.coladd[0] *= ((color & 0xFF000000) >> 24) / 255.0f; \
-  rdp.coladd[1] *= ((color & 0x00FF0000) >> 16) / 255.0f; \
-  rdp.coladd[2] *= ((color & 0x0000FF00) >> 8) / 255.0f; \
+  rdp.coladd[0] *= color[0]; \
+  rdp.coladd[1] *= color[1]; \
+  rdp.coladd[2] *= color[2]; \
   rdp.cmb_flags |= flag; \
 }
 #define XSHADEC1MC2ADD(color1, color2, flag) { \
-  rdp.coladd[0] *= ( (int)((color1 & 0xFF000000) >> 24) - (int)((color2 & 0xFF000000) >> 24) )/255.0f; \
-  rdp.coladd[1] *= ( (int)((color1 & 0x00FF0000) >> 16) - (int)((color2 & 0x00FF0000) >> 16) )/255.0f; \
-  rdp.coladd[2] *= ( (int)((color1 & 0x0000FF00) >> 8)  - (int)((color2 & 0x0000FF00) >> 8) )/255.0f; \
+  rdp.coladd[0] *= (color1[0] - color2[0]); \
+  rdp.coladd[1] *= (color1[1] - color2[1]); \
+  rdp.coladd[2] *= (color1[2] - color2[2]); \
   rdp.cmb_flags |= flag; \
 }
-#define SUBSHADE_PRIM() XSHADEADD(rdp.prim_color, CMB_SUB)
-#define SUBSHADE_ENV() XSHADEADD(rdp.env_color, CMB_SUB)
-#define SUBSHADE_PRIMSUBENV() XSHADEC1MC2ADD(rdp.prim_color, rdp.env_color, CMB_SUB)
-#define ADDSHADE_PRIM() XSHADEADD(rdp.prim_color, CMB_ADD)
-#define ADDSHADE_ENV() XSHADEADD(rdp.env_color, CMB_ADD)
-#define ADDSHADE_PRIMSUBENV() XSHADEC1MC2ADD(rdp.prim_color, rdp.env_color, CMB_ADD)
+#define SUBSHADE_PRIM() XSHADEADD(rdp.prim_color_sep, CMB_SUB)
+#define SUBSHADE_ENV() XSHADEADD(rdp.env_color_sep, CMB_SUB)
+#define SUBSHADE_PRIMSUBENV() XSHADEC1MC2ADD(rdp.prim_color_sep, rdp.env_color_sep, CMB_SUB)
+#define ADDSHADE_PRIM() XSHADEADD(rdp.prim_color_sep, CMB_ADD)
+#define ADDSHADE_ENV() XSHADEADD(rdp.env_color_sep, CMB_ADD)
+#define ADDSHADE_PRIMSUBENV() XSHADEC1MC2ADD(rdp.prim_color_sep, rdp.env_color_sep, CMB_ADD)
 #define SUBSHADE_PRIMMULENV() { \
   rdp.coladd[0] *= ( rdp.prim_color_sep[0] * rdp.env_color_sep[0] ); \
   rdp.coladd[1] *= ( rdp.prim_color_sep[1] * rdp.env_color_sep[1] ); \
@@ -725,13 +725,13 @@ COMBINE cmb;
 #define SETSHADE_A_INVENV() XSHADE1M_A(rdp.env_color, CMB_A_SET)
 
 #define XSHADEADD_A(color, flag) { \
-  rdp.coladd[3] *= (color & 0xFF) / 255.0f; \
+  rdp.coladd[3] *= color[3]; \
   rdp.cmb_flags |= flag; \
 }
-#define SUBSHADE_A_PRIM() XSHADEADD_A(rdp.prim_color, CMB_A_SUB)
-#define SUBSHADE_A_ENV() XSHADEADD_A(rdp.env_color, CMB_A_SUB)
-#define ADDSHADE_A_PRIM() XSHADEADD_A(rdp.prim_color, CMB_A_ADD)
-#define ADDSHADE_A_ENV() XSHADEADD_A(rdp.env_color, CMB_A_ADD)
+#define SUBSHADE_A_PRIM() XSHADEADD_A(rdp.prim_color_sep, CMB_A_SUB)
+#define SUBSHADE_A_ENV() XSHADEADD_A(rdp.env_color_sep, CMB_A_SUB)
+#define ADDSHADE_A_PRIM() XSHADEADD_A(rdp.prim_color_sep, CMB_A_ADD)
+#define ADDSHADE_A_ENV() XSHADEADD_A(rdp.env_color_sep, CMB_A_ADD)
 
 //****************************************************************
 // Combine Functions
