@@ -898,12 +898,12 @@ static void render_tri (uint16_t linew, int old_interpolate)
             rdp.vtxbuf[i].f = 1.0f/max(4.0f, rdp.vtxbuf[i].f);
          break;
       case FOG_MODE_BLEND:
-         fog = 1.0f/max(1, rdp.fog_color&0xFF);
+         fog = 1.0f/max(1, rdp.fog_color_sep[3]);
          for (i = 0; i < n; i++)
             rdp.vtxbuf[i].f = fog;
          break;
       case FOG_MODE_BLEND_INVERSE:
-         fog = 1.0f/max(1, (~rdp.fog_color)&0xFF);
+         fog = 1.0f/max(1, (~rdp.fog_color) & 0xFF);
          for (i = 0; i < n; i++)
             rdp.vtxbuf[i].f = fog;
          break;

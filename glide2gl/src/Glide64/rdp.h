@@ -727,6 +727,7 @@ struct RDP
 
    // Colors
    uint32_t fog_color;
+   int32_t  fog_color_sep[4];
    uint32_t fill_color;
    uint32_t prim_color;
    int32_t  prim_color_sep[4];

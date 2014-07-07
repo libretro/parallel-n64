@@ -777,17 +777,15 @@ static void cc_t0(void)
 
       if (blend_mode == 0xa500)
       {
-         float fog;
          uint32_t r, g, b, rgb;
 
          CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL,
                GR_COMBINE_FACTOR_ONE,
                GR_COMBINE_LOCAL_CONSTANT,
                GR_COMBINE_OTHER_TEXTURE);
-         fog = (rdp.fog_color&0xFF)/255.0f;
-         r = rdp.blend_color_sep[0] * fog;
-         g = rdp.blend_color_sep[1] * fog;
-         b = rdp.blend_color_sep[2] * fog;
+         r = rdp.blend_color_sep[0] * rdp.fog_color_sep[3];
+         g = rdp.blend_color_sep[1] * rdp.fog_color_sep[3];
+         b = rdp.blend_color_sep[2] * rdp.fog_color_sep[3];
          rgb = (r << 24) | (g << 16) | (b << 8);
          cmb.ccolor= (rgb) & 0xFFFFFF00;
          return;

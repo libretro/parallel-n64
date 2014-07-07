@@ -1341,7 +1341,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    {
       if (rdp.fog_mode >= FOG_MODE_BLEND)
       {
-         float fog = 1.0f/(rdp.fog_color&0xFF);
+         float fog = 1.0f/ rdp.fog_color_sep[3];
          if (rdp.fog_mode != FOG_MODE_BLEND)
             fog = 1.0f / ((~rdp.fog_color)&0xFF);
 
@@ -1929,7 +1929,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
                   GR_COMBINE_LOCAL_CONSTANT,
                   GR_COMBINE_OTHER_NONE,
                   FXFALSE);
-            grConstantColorValue((cmb.ccolor&0xFFFFFF00)|(rdp.fog_color&0xFF));
+            grConstantColorValue((cmb.ccolor & 0xFFFFFF00) | rdp.fog_color_sep[3]);
             rdp.update |= UPDATE_COMBINE;
          }
       }
@@ -1952,6 +1952,10 @@ static void rdp_setfillcolor(uint32_t w0, uint32_t w1)
 static void rdp_setfogcolor(uint32_t w0, uint32_t w1)
 {
    rdp.fog_color = w1;
+   rdp.fog_color_sep[0] = (w1 & 0xFF000000) >> 24;
+   rdp.fog_color_sep[1] = (w1 & 0x00FF0000) >> 16;
+   rdp.fog_color_sep[2] = (w1 & 0x0000FF00) >>  8;
+   rdp.fog_color_sep[3] = (w1 & 0x000000FF) >>  0;
    rdp.update |= UPDATE_COMBINE | UPDATE_FOG_ENABLED;
 }
 
