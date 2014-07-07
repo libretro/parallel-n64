@@ -736,6 +736,9 @@ struct RDP
    uint32_t env_color;
    int32_t  env_color_sep[4];
    uint32_t SCALE;
+   int32_t  key_scale[4];
+   int32_t  key_center[4];
+   int32_t  key_width[4];
    uint32_t CENTER;
    uint32_t prim_lodmin, prim_lodfrac;
    uint16_t prim_depth;
