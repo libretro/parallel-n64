@@ -14036,13 +14036,11 @@ void Combine(void)
    if (actual_combine != current_combine)
    {
 #ifdef UNIMP_LOG
-      if (settings.log_unk)
-      {
-         sprintf (out_buf, "COLOR combine not found: %08x, #1: (%s-%s)*%s+%s, #2: (%s-%s)*%s+%s\n",
+      if (log_cb)
+         log_cb(RETRO_LOG_INFO, "COLOR combine not found: %08x, #1: (%s-%s)*%s+%s, #2: (%s-%s)*%s+%s\n",
                actual_combine,
                Mode0[rdp.cycle1&0xF], Mode1[(rdp.cycle1>>4)&0xF], Mode2[(rdp.cycle1>>8)&0x1F], Mode3[(rdp.cycle1>>13)&7],
                Mode0[rdp.cycle2&0xF], Mode1[(rdp.cycle2>>4)&0xF], Mode2[(rdp.cycle2>>8)&0x1F], Mode3[(rdp.cycle2>>13)&7]);
-      }
 #endif
       found = false;
 
@@ -14088,13 +14086,11 @@ void Combine(void)
 #ifdef UNIMP_LOG
       if (actual_combine != current_combine)
       {
-         if (settings.log_unk)
-         {
-            sprintf (out_buf, "ALPHA combine not found: %08x, #1: (%s-%s)*%s+%s, #2: (%s-%s)*%s+%s\n",
+         if (log_cb)
+            log_cb(RETRO_LOG_INFO, "ALPHA combine not found: %08x, #1: (%s-%s)*%s+%s, #2: (%s-%s)*%s+%s\n",
                   actual_combine,
                   Alpha0[(rdp.cycle1>>16)&7], Alpha1[(rdp.cycle1>>19)&7], Alpha2[(rdp.cycle1>>22)&7], Alpha3[(rdp.cycle1>>25)&7],
                   Alpha0[(rdp.cycle2>>16)&7], Alpha1[(rdp.cycle2>>19)&7], Alpha2[(rdp.cycle2>>22)&7], Alpha3[(rdp.cycle2>>25)&7]);
-         }
       }
 #endif
       if (settings.unk_as_red)

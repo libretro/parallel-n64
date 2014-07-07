@@ -42,8 +42,6 @@
 
 #include "Gfx_1.3.h"
 
-extern char out_buf[2048];
-
 extern uint32_t frame_count; // frame counter
 extern uint32_t gfx_plugin_accuracy;
 

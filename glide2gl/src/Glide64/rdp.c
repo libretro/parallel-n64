@@ -178,8 +178,6 @@ const char *CIStatus[]   = { "ci_main", "ci_zimg", "ci_unknown",  "ci_useless",
 
 //static variables
 
-char out_buf[2048];
-
 uint32_t frame_count;  // frame counter
 
 int ucode_error_report = true;

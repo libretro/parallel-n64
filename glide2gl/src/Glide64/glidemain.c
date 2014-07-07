@@ -155,13 +155,6 @@ void _ChangeSize(void)
    rdp.vi_height = (vend - vstart) * fscale_y * 1.0126582f;
    aspect = (settings.adjust_aspect && (fscale_y > fscale_x) && (rdp.vi_width > rdp.vi_height)) ? fscale_x/fscale_y : 1.0f;
 
-#ifdef LOGGING
-   sprintf (out_buf, "hstart: %d, hend: %d, vstart: %d, vend: %d\n", hstart, hend, vstart, vend);
-   LOG (out_buf);
-   sprintf (out_buf, "size: %d x %d\n", (int)rdp.vi_width, (int)rdp.vi_height);
-   LOG (out_buf);
-#endif
-
    rdp.scale_x = (float)settings.res_x / rdp.vi_width;
    if (region > 0 && settings.pal230)
    {
