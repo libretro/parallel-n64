@@ -974,14 +974,14 @@ static void pm_palette_mod(void)
    uint16_t env16, prmr, prmg, prmb, prim16, *dst;
    int8_t i;
 
-   envr = (uint8_t)(((rdp.env_color >> 24)  & 0xFF) * 0.0039215689f * 31.0f);
-   envg = (uint8_t)(((rdp.env_color >> 16)  & 0xFF) * 0.0039215689f * 31.0f);
-   envb = (uint8_t)(((rdp.env_color >> 8 )  & 0xFF) * 0.0039215689f * 31.0f);
+   envr = (uint8_t)(rdp.env_color_sep[0] * 0.0039215689f * 31.0f);
+   envg = (uint8_t)(rdp.env_color_sep[1] * 0.0039215689f * 31.0f);
+   envb = (uint8_t)(rdp.env_color_sep[2] * 0.0039215689f * 31.0f);
    env16 = (uint16_t)((envr<<11)|(envg<<6)|(envb<<1)|1);
-   prmr = (uint8_t)(((rdp.prim_color >> 24) & 0xFF) * 0.0039215689f * 31.0f);
-   prmg = (uint8_t)(((rdp.prim_color >> 16) & 0xFF) * 0.0039215689f * 31.0f);
-   prmb = (uint8_t)(((rdp.prim_color >> 8 ) & 0xFF) * 0.0039215689f * 31.0f);
-   prim16 = (uint16_t)((prmr<<11)|(prmg<<6)|(prmb<<1)|1);
+   prmr = (uint8_t)(rdp.prim_color_sep[0] * 0.0039215689f * 31.0f);
+   prmg = (uint8_t)(rdp.prim_color_sep[1] * 0.0039215689f * 31.0f);
+   prmb = (uint8_t)(rdp.prim_color_sep[2] * 0.0039215689f * 31.0f);
+   prim16 = (uint16_t)((prmr << 11)|(prmg << 6)|(prmb << 1)|1);
    dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
 
    for (i = 0; i < 16; i++)
@@ -1964,6 +1964,10 @@ static void rdp_setblendcolor(uint32_t w0, uint32_t w1)
 static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 {
    rdp.prim_color = w1;
+   rdp.prim_color_sep[0] = (w1 & 0xFF000000) >> 24;
+   rdp.prim_color_sep[1] = (w1 & 0x00FF0000) >> 16;
+   rdp.prim_color_sep[2] = (w1 & 0x0000FF00) >> 8;
+   rdp.prim_color_sep[3] = (w1 & 0x000000FF);
    rdp.prim_lodmin = (w0 >> 8) & 0xFF;
    rdp.prim_lodfrac = max(w0 & 0xFF, rdp.prim_lodmin);
    rdp.update |= UPDATE_COMBINE;
@@ -1974,6 +1978,10 @@ static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 static void rdp_setenvcolor(uint32_t w0, uint32_t w1)
 {
    rdp.env_color = w1;
+   rdp.env_color_sep[0] = (w1 & 0xFF000000) >> 24;
+   rdp.env_color_sep[1] = (w1 & 0x00FF0000) >> 16;
+   rdp.env_color_sep[2] = (w1 & 0x0000FF00) >> 8;
+   rdp.env_color_sep[3] = (w1 & 0x000000FF);
    rdp.update |= UPDATE_COMBINE;
 
    //FRDP("setenvcolor: %08lx\n", rdp.cmd1);

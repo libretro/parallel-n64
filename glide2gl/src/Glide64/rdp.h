@@ -729,8 +729,10 @@ struct RDP
    uint32_t fog_color;
    uint32_t fill_color;
    uint32_t prim_color;
+   int32_t  prim_color_sep[4];
    uint32_t blend_color;
    uint32_t env_color;
+   int32_t  env_color_sep[4];
    uint32_t SCALE;
    uint32_t CENTER;
    uint32_t prim_lodmin, prim_lodfrac;
@@ -967,11 +969,10 @@ static INLINE void glideSetVertexFlatShading(VERTEX *v, VERTEX **vtx, uint32_t w
 
 static INLINE void glideSetVertexPrimShading(VERTEX *v, uint32_t prim_color)
 {
-   v->a = (uint8_t)(prim_color & 0xFF);
-   v->b = (uint8_t)((prim_color >> 8) & 0xFF);
-   v->g = (uint8_t)((prim_color >> 16) & 0xFF);
-   v->r = (uint8_t)((prim_color >> 24) & 0xFF);
-   //FRDP(" * Prim shaded %08lx\n", rdp.prim_color);
+   v->r = (uint8_t)rdp.prim_color_sep[0];
+   v->g = (uint8_t)rdp.prim_color_sep[1];
+   v->b = (uint8_t)rdp.prim_color_sep[2];
+   v->a = (uint8_t)rdp.prim_color_sep[3];
 }
 
 static INLINE uint32_t vi_integer_sqrt(uint32_t a)
