@@ -1958,6 +1958,10 @@ static void rdp_setfogcolor(uint32_t w0, uint32_t w1)
 static void rdp_setblendcolor(uint32_t w0, uint32_t w1)
 {
    rdp.blend_color = w1;
+   rdp.blend_color_sep[0] = (w1 & 0xFF000000) >> 24;
+   rdp.blend_color_sep[1] = (w1 & 0x00FF0000) >> 16;
+   rdp.blend_color_sep[2] = (w1 & 0x0000FF00) >>  8;
+   rdp.blend_color_sep[3] = (w1 & 0x000000FF) >>  0;
    rdp.update |= UPDATE_COMBINE;
 }
 

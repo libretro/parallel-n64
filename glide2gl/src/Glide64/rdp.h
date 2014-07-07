@@ -731,6 +731,7 @@ struct RDP
    uint32_t prim_color;
    int32_t  prim_color_sep[4];
    uint32_t blend_color;
+   int32_t  blend_color_sep[4];
    uint32_t env_color;
    int32_t  env_color_sep[4];
    uint32_t SCALE;

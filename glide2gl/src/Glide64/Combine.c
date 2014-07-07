@@ -787,10 +787,10 @@ static void cc_t0(void)
                GR_COMBINE_LOCAL_CONSTANT,
                GR_COMBINE_OTHER_TEXTURE);
          fog = (rdp.fog_color&0xFF)/255.0f;
-         R = (uint32_t)(((rdp.blend_color>>24)&0xFF)*fog);
-         G = (uint32_t)(((rdp.blend_color>>16)&0xFF)*fog);
-         B = (uint32_t)(((rdp.blend_color>> 8)&0xFF)*fog);
-         CC((R<<24)|(G<<16)|(B<<8));
+         R = (uint32_t)(rdp.blend_color_sep[0] * fog);
+         G = (uint32_t)(rdp.blend_color_sep[1] * fog);
+         B = (uint32_t)(rdp.blend_color_sep[2] * fog);
+         CC((R << 24)|(G << 16)|(B << 8));
          return;
       }
       else if (blend_mode == 0x55f0) //cmem*afog + cfog*1ma
