@@ -682,9 +682,9 @@ COMBINE cmb;
 }
 
 #define INTERSHADE_2(color,factor) { \
-  rdp.col_2[0] = (((color) >> 24) & 0xFF) / 255.0f; \
-  rdp.col_2[1] = (((color) >> 16) & 0xFF) / 255.0f; \
-  rdp.col_2[2] = (((color) >> 8) & 0xFF) / 255.0f; \
+  rdp.col_2[0] = color[0] / 255.0f; \
+  rdp.col_2[1] = color[1] / 255.0f; \
+  rdp.col_2[2] = color[2] / 255.0f; \
   rdp.shade_factor = (factor) / 255.0f; \
   rdp.cmb_flags_2 = CMB_INTER; \
 }
@@ -1273,7 +1273,7 @@ static void cc__t0_mul_prim__inter_env_using_enva ()
            GR_COMBINE_LOCAL_ITERATED,
            GR_COMBINE_OTHER_TEXTURE);
      SETSHADE_PRIM();
-     INTERSHADE_2 (rdp.env_color & 0xFFFFFF00, rdp.env_color & 0xFF);
+     INTERSHADE_2 (rdp.env_color_sep, rdp.env_color & 0xFF);
      USE_T0 ();
      MOD_0 (TMOD_TEX_INTER_COLOR_USING_FACTOR);
      MOD_0_COL (rdp.env_color & 0xFFFFFF00);
