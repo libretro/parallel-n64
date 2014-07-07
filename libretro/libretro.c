@@ -126,11 +126,13 @@ static void core_settings_set_defaults(void)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var) && gfx_var.value)
    {
-       if (gfx_var.value && strcmp(gfx_var.value, "high") == 0)
+       if (gfx_var.value && strcmp(gfx_var.value, "veryhigh") == 0)
+          gfx_plugin_accuracy = 3;
+       else if (gfx_var.value && strcmp(gfx_var.value, "high") == 0)
           gfx_plugin_accuracy = 2;
-       if (gfx_var.value && strcmp(gfx_var.value, "medium") == 0)
+       else if (gfx_var.value && strcmp(gfx_var.value, "medium") == 0)
           gfx_plugin_accuracy = 1;
-       if (gfx_var.value && strcmp(gfx_var.value, "low") == 0)
+       else if (gfx_var.value && strcmp(gfx_var.value, "low") == 0)
           gfx_plugin_accuracy = 0;
    }
 
@@ -199,9 +201,9 @@ static void setup_variables(void)
          "Disable Expansion RAM; no|yes" },
       { "mupen64-gfxplugin-accuracy",
 #ifdef HAVE_OPENGLES2
-         "GFX Accuracy (restart); medium|high|low" },
+         "GFX Accuracy (restart); medium|high|veryhigh|low" },
 #else
-         "GFX Accuracy (restart); high|medium|low" },
+         "GFX Accuracy (restart); high|veryhigh|medium|low" },
 #endif
       { "mupen64-gfxplugin",
          "GFX Plugin; auto|glide64|gln64|rice|angrylion" },
@@ -518,11 +520,13 @@ void update_variables(void)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-       if (var.value && strcmp(var.value, "high") == 0)
+       if (var.value && strcmp(var.value, "veryhigh") == 0)
+          gfx_plugin_accuracy = 3;
+       else if (var.value && strcmp(var.value, "high") == 0)
           gfx_plugin_accuracy = 2;
-       if (var.value && strcmp(var.value, "medium") == 0)
+       else if (var.value && strcmp(var.value, "medium") == 0)
           gfx_plugin_accuracy = 1;
-       if (var.value && strcmp(var.value, "low") == 0)
+       else if (var.value && strcmp(var.value, "low") == 0)
           gfx_plugin_accuracy = 0;
    }
 

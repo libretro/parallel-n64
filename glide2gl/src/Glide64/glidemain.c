@@ -1952,7 +1952,11 @@ void ReadSpecialSettings (const char * name)
 
    //detect games which require special hacks
    if (strstr(name, (const char *)"ZELDA") || strstr(name, (const char *)"MASK"))
+   {
       settings.hacks |= hack_Zelda;
+      settings.flame_corona = 1;
+      //settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
+   }
    else if (strstr(name, (const char *)"ROADSTERS TROPHY"))
       settings.hacks |= hack_Zelda;
    else if (strstr(name, (const char *)"Diddy Kong Racing"))
@@ -2105,7 +2109,6 @@ void ReadSpecialSettings (const char * name)
 
    settings.frame_buffer |= fb_motionblur;
 
-   settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
 
    var.key = "mupen64-filtering";
    var.value = NULL;

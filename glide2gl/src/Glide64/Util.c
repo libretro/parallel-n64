@@ -359,7 +359,7 @@ float ScaleZ(float z)
 static void DepthBuffer(VERTEX * vtx, int n)
 {
    int i;
-   if (fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE))
+   if (fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE) && gfx_plugin_accuracy > 2)
    {
       struct vertexi v[12];
       if (rdp.u_cull_mode == 1) //cull front
