@@ -136,6 +136,8 @@ extern void grTexChromaModeExt(GrChipID_t tmu, GrChromakeyMode_t mode);
 extern int width, height;
 extern float fogStart, fogEnd;
 
+#include "Glide64/rdp.h"
+
 //#define DISPLAY_WARNING_DEBUG
 
 #ifdef DISPLAY_WARNING_DEBUG
