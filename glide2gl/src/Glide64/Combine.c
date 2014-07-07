@@ -561,7 +561,7 @@ COMBINE cmb;
 #define BrightRed()
 #endif
 
-#define CC_BYTE(byte) { cmb.ccolor=(byte<<8)|(byte<<16)|(byte<<24); }
+#define CC_BYTE(byte) { cmb.ccolor= ((byte) << 8) | ((byte) << 16) | ((byte) << 24); }
 #define CC_C1MULC2(color1, color2) { \
   cmb.ccolor=(uint8_t)( ((color1 & 0xFF000000) >> 24) * (((color2 & 0xFF000000) >> 24) /255.0f) ) <<  24 | \
   (uint8_t)( ((color1 & 0x00FF0000) >> 16) * (((color2 & 0x00FF0000) >> 16) /255.0f) ) <<  16 | \
@@ -582,10 +582,10 @@ COMBINE cmb;
 #define CC_ENV() (cmb.ccolor = (rdp.env_color) & 0xFFFFFF00)
 #define CC_1SUBPRIM() (cmb.ccolor= (~rdp.prim_color) & 0xFFFFFF00)
 #define CC_1SUBENV() (cmb.ccolor= (~rdp.env_color) & 0xFFFFFF00)
-#define CC_PRIMA() CC_BYTE((rdp.prim_color&0xFF))
-#define CC_ENVA() CC_BYTE((rdp.env_color&0xFF))
-#define CC_1SUBPRIMA() CC_BYTE(((~rdp.prim_color)&0xFF))
-#define CC_1SUBENVA() CC_BYTE(((~rdp.env_color)&0xFF))
+#define CC_PRIMA() CC_BYTE((rdp.prim_color_sep[3]))
+#define CC_ENVA() CC_BYTE((rdp.env_color_sep[3]))
+#define CC_1SUBPRIMA() CC_BYTE(~rdp.prim_color_sep[3])
+#define CC_1SUBENVA() CC_BYTE(~rdp.env_color_sep[3])
 #define CC_PRIMLOD() CC_BYTE(rdp.prim_lodfrac)
 #define CC_K5() CC_BYTE(rdp.K5)
 #define CC_PRIMMULENV() CC_C1MULC2(rdp.prim_color, rdp.env_color)
