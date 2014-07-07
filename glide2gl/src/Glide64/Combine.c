@@ -668,23 +668,23 @@ COMBINE cmb;
 #define ADDSHADE_ENV() XSHADEADD(rdp.env_color, CMB_ADD)
 #define ADDSHADE_PRIMSUBENV() XSHADEC1MC2ADD(rdp.prim_color, rdp.env_color, CMB_ADD)
 #define SUBSHADE_PRIMMULENV() { \
-  rdp.coladd[0] *= ( rdp.prim_color_sep[0] * rdp.env_color_sep[0] )/255.0f/255.0f; \
-  rdp.coladd[1] *= ( rdp.prim_color_sep[1] * rdp.env_color_sep[1] )/255.0f/255.0f; \
-  rdp.coladd[2] *= ( rdp.prim_color_sep[2] * rdp.env_color_sep[2] )/255.0f/255.0f; \
+  rdp.coladd[0] *= ( rdp.prim_color_sep[0] * rdp.env_color_sep[0] ); \
+  rdp.coladd[1] *= ( rdp.prim_color_sep[1] * rdp.env_color_sep[1] ); \
+  rdp.coladd[2] *= ( rdp.prim_color_sep[2] * rdp.env_color_sep[2] ); \
   rdp.cmb_flags |= CMB_SUB; \
 }
 
 #define COLSUBSHADE_PRIM() { \
-  rdp.coladd[0] *= rdp.prim_color_sep[0] / 255.0f; \
-  rdp.coladd[1] *= rdp.prim_color_sep[1] / 255.0f; \
-  rdp.coladd[2] *= rdp.prim_color_sep[2] / 255.0f; \
+  rdp.coladd[0] *= rdp.prim_color_sep[0]; \
+  rdp.coladd[1] *= rdp.prim_color_sep[1]; \
+  rdp.coladd[2] *= rdp.prim_color_sep[2]; \
   rdp.cmb_flags |= CMB_COL_SUB_OWN; \
 }
 
 #define INTERSHADE_2(color,factor) { \
-  rdp.col_2[0] = color[0] / 255.0f; \
-  rdp.col_2[1] = color[1] / 255.0f; \
-  rdp.col_2[2] = color[2] / 255.0f; \
+  rdp.col_2[0] = color[0]; \
+  rdp.col_2[1] = color[1]; \
+  rdp.col_2[2] = color[2]; \
   rdp.shade_factor = (factor) / 255.0f; \
   rdp.cmb_flags_2 = CMB_INTER; \
 }
@@ -3281,9 +3281,9 @@ static void cc_t0_mul_prima_mul_shade_add_prim_mul_one_sub_prima ()  //Aded by G
    USE_T0 ();
    fac = 255 - (uint8_t)(rdp.prim_color&0xFF);
 
-   col[0] = (rdp.prim_color_sep[0] / 255.0f) * fac;
-   col[1] = (rdp.prim_color_sep[1] / 255.0f) * fac;
-   col[2] = (rdp.prim_color_sep[2] / 255.0f) * fac;
+   col[0] = rdp.prim_color_sep[0] * fac;
+   col[1] = rdp.prim_color_sep[1] * fac;
+   col[2] = rdp.prim_color_sep[2] * fac;
    CC ( ((uint8_t)(col[0]))<<24 | ((uint8_t)(col[1]))<<16 | ((uint8_t)(col[2]))<<8 | fac );
 }
 
