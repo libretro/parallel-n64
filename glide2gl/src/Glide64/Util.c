@@ -289,11 +289,11 @@ static INLINE void CalculateLODValues(VERTEX *v, int32_t i, int32_t j, float *lo
    float deltaS, deltaT, deltaTexels, deltaPixels, deltaX, deltaY;
    deltaS = (v[j].u0/v[j].q - v[i].u0/v[i].q) * s_scale;
    deltaT = (v[j].v0/v[j].q - v[i].v0/v[i].q) * t_scale;
-   deltaTexels = squareRoot( deltaS * deltaS + deltaT * deltaT );
+   deltaTexels = sqrt( deltaS * deltaS + deltaT * deltaT );
 
    deltaX = (v[j].x - v[i].x)/rdp.scale_x;
    deltaY = (v[j].y - v[i].y)/rdp.scale_y;
-   deltaPixels = squareRoot( deltaX * deltaX + deltaY * deltaY );
+   deltaPixels = sqrt( deltaX * deltaX + deltaY * deltaY );
 
    *lodFactor += deltaTexels / deltaPixels;
 }
@@ -328,7 +328,7 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
    detailmax = 1.0f - lod_fraction;
 
    if (lod_tile < rdp.cur_tile + rdp.mipmap_level)
-      lod_fraction = max((float)modff(lodFactor / glide64_pow(2.,lod_tile),&intptr), rdp.prim_lodmin / 255.0f);
+      lod_fraction = max((float)modff(lodFactor / pow(2.,lod_tile),&intptr), rdp.prim_lodmin / 255.0f);
 
    if (cmb.dc0_detailmax < 0.5f)
       detailmax = lod_fraction;
@@ -953,12 +953,11 @@ static void render_tri (uint16_t linew, int old_interpolate)
       }
       else
       {
-         float dx, dy, len, wx, wy;
-         dx = V1->x - V0->x;
-         dy = V1->y - V0->y;
-         len = squareRoot(dx*dx + dy*dy);
-         wx = dy * width * rdp.scale_x / len;
-         wy = dx * width * rdp.scale_y / len;
+         float dx = V1->x - V0->x;
+         float dy = V1->y - V0->y;
+         float len = sqrtf(dx*dx + dy*dy);
+         float wx = dy * width * rdp.scale_x / len;
+         float wy = dx * width * rdp.scale_y / len;
          v[0].x = V0->x + wx;
          v[0].y = V0->y - wy;
          v[1].x = V0->x - wx;

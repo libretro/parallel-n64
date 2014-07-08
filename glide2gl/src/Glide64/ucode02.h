@@ -59,7 +59,7 @@ static void calc_point_light (VERTEX *v, float * vpos)
          lvec[2] = rdp.light[l].z - vpos[2];
 
          light_len2 = lvec[0] * lvec[0] + lvec[1] * lvec[1] + lvec[2] * lvec[2];
-         light_len = squareRoot(light_len2);
+         light_len = sqrtf(light_len2);
          //FRDP ("calc_point_light: len: %f, len2: %f\n", light_len, light_len2);
          at = rdp.light[l].ca + light_len/65535.0f*rdp.light[l].la + light_len2/65535.0f*rdp.light[l].qa;
 
