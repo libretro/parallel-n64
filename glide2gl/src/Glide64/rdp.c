@@ -178,8 +178,6 @@ const char *CIStatus[]   = { "ci_main", "ci_zimg", "ci_unknown",  "ci_useless",
 
 //static variables
 
-char out_buf[2048];
-
 uint32_t frame_count;  // frame counter
 
 int ucode_error_report = true;
@@ -187,10 +185,6 @@ int ucode_error_report = true;
 uint8_t microcode[4096];
 uint32_t uc_crc;
 extern void microcheck(void);
-
-/* used to check if we only load the first settilesize
-FIXME: can this be used for speedhack purposes? It isn't used anywhere */
-int tile_set; 
 
 //forward decls
 static void CopyFrameBuffer (GrBuffer_t buffer);
@@ -239,18 +233,12 @@ void rdp_new(void)
    {
       rdp.cache[i] = (CACHE_LUT*)malloc(MAX_CACHE * sizeof(CACHE_LUT));
       rdp.cur_cache[i]   = 0;
-      rdp.cur_cache_n[i] = 0;
    }
 
    if (perf_get_cpu_features_cb)
       cpu = perf_get_cpu_features_cb();
 
    _gSPVertex = gSPVertex;
-#if defined(HAVE_NEON)
-   if (cpu & RETRO_SIMD_NEON)
-      _gSPVertex = gSPVertexNEON;
-#endif
-
 }
 
 void rdp_setfuncs(void)
@@ -320,18 +308,6 @@ void microcheck(void)
       uc_crc += ((uint32_t*)microcode)[i];
 
    FRDP_E ("crc: %08lx\n", uc_crc);
-
-#ifdef LOG_UCODE
-   std::ofstream ucf;
-   ucf.open ("ucode.txt", std::ios::out | std::ios::binary);
-   int8_t d;
-   for (i=0; i<0x400000; i++)
-   {
-      d = ((int8_t*)gfx_info.RDRAM)[i^3];
-      ucf.write (&d, 1);
-   }
-   ucf.close ();
-#endif
 
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "Glide64 ucode = %08lx\n", uc_crc);
@@ -791,31 +767,10 @@ EXPORT void CALL ProcessDList(void)
   if (exception)
     return;
 
-  // Clear out the RDP log
-#ifdef RDP_LOGGING
-  if (settings.logging && settings.log_clear)
-  {
-    CLOSE_RDP_LOG ();
-    OPEN_RDP_LOG ();
-  }
-#endif
-
-#ifdef UNIMP_LOG
-  if (settings.log_unk && settings.unk_clear)
-  {
-    std::ofstream unimp;
-    unimp.open("unimp.txt");
-    unimp.close();
-  }
-#endif
-
   //* Set states *//
   if (settings.swapmode > 0)
     SwapOK = true;
   rdp.updatescreen = 1;
-
-  rdp.tri_n = 0;  // 0 triangles so far this frame
-  rdp.debug_n = 0;
 
   rdp.model_i = 0; // 0 matrices so far in stack
   //stack_size can be less then 32! Important for Silicon Vally. Thanks Orkin!
@@ -1005,14 +960,14 @@ static void pm_palette_mod(void)
    uint16_t env16, prmr, prmg, prmb, prim16, *dst;
    int8_t i;
 
-   envr = (uint8_t)(((rdp.env_color >> 24)  & 0xFF) * 0.0039215689f * 31.0f);
-   envg = (uint8_t)(((rdp.env_color >> 16)  & 0xFF) * 0.0039215689f * 31.0f);
-   envb = (uint8_t)(((rdp.env_color >> 8 )  & 0xFF) * 0.0039215689f * 31.0f);
+   envr = (uint8_t)(rdp.env_color_sep[0] * 0.0039215689f * 31.0f);
+   envg = (uint8_t)(rdp.env_color_sep[1] * 0.0039215689f * 31.0f);
+   envb = (uint8_t)(rdp.env_color_sep[2] * 0.0039215689f * 31.0f);
    env16 = (uint16_t)((envr<<11)|(envg<<6)|(envb<<1)|1);
-   prmr = (uint8_t)(((rdp.prim_color >> 24) & 0xFF) * 0.0039215689f * 31.0f);
-   prmg = (uint8_t)(((rdp.prim_color >> 16) & 0xFF) * 0.0039215689f * 31.0f);
-   prmb = (uint8_t)(((rdp.prim_color >> 8 ) & 0xFF) * 0.0039215689f * 31.0f);
-   prim16 = (uint16_t)((prmr<<11)|(prmg<<6)|(prmb<<1)|1);
+   prmr = (uint8_t)(rdp.prim_color_sep[0] * 0.0039215689f * 31.0f);
+   prmg = (uint8_t)(rdp.prim_color_sep[1] * 0.0039215689f * 31.0f);
+   prmb = (uint8_t)(rdp.prim_color_sep[2] * 0.0039215689f * 31.0f);
+   prim16 = (uint16_t)((prmr << 11)|(prmg << 6)|(prmb << 1)|1);
    dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
 
    for (i = 0; i < 16; i++)
@@ -1127,7 +1082,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    {
       pd_zcopy(w0, w1);
       LRDP("Depth buffer copied.\n");
-      rdp.tri_n += 2;
       return;
    }
 
@@ -1189,14 +1143,12 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if ((settings.hacks&hack_Zelda) && rdp.timg.addr >= rdp.cimg && rdp.timg.addr < rdp.ci_end)
    {
       FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.cur_cache[0]->addr, rdp.cimg, rdp.cimg+rdp.ci_width*rdp.ci_height*2);
-      rdp.tri_n += 2;
       return;
    }
    //*
    //hack for Banjo2. it removes black texrects under Banjo
    if (!fb_hwfbe_enabled && ((rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF)) == 0xFFFFFFFF && (rdp.othermode_l & 0xFFFF0000) == 0x00500000)
    {
-      rdp.tri_n += 2;
       return;
    }
    //*/
@@ -1209,7 +1161,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          {
             //FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.timg.addr, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width*rdp.ci_height*rdp.ci_size);
             LRDP("Wrong Texrect.\n");
-            rdp.tri_n += 2;
             return;
          }
    }
@@ -1230,7 +1181,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if (!rdp.cur_cache[0])
    {
       rdp.cur_tile = prev_tile;
-      rdp.tri_n += 2;
       return;
    }
    // ****
@@ -1255,10 +1205,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    s_lr_x = lr_x * rdp.scale_x + rdp.offset_x;
    s_ul_y = ul_y * rdp.scale_y + rdp.offset_y;
    s_lr_y = lr_y * rdp.scale_y + rdp.offset_y;
-
-   FRDP("texrect (%.2f, %.2f, %.2f, %.2f), tile: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, tile, rdp.tri_n, rdp.tri_n+1);
-   FRDP ("(%f, %f) -> (%f, %f), s: (%d, %d) -> (%d, %d)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y, rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
-   FRDP("\toff_x: %f, off_y: %f, dsdx: %f, dtdy: %f\n", off_x_i/32.0f, off_y_i/32.0f, dsdx, dtdy);
 
    if ( ((rdp.cmd0>>24)&0xFF) == 0xE5 ) //texrectflip
    {
@@ -1381,7 +1327,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    {
       if (rdp.fog_mode >= FOG_MODE_BLEND)
       {
-         float fog = 1.0f/(rdp.fog_color&0xFF);
+         float fog = 1.0f/ rdp.fog_color_sep[3];
          if (rdp.fog_mode != FOG_MODE_BLEND)
             fog = 1.0f / ((~rdp.fog_color)&0xFF);
 
@@ -1392,8 +1338,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
       ConvertCoordsConvert (vptr, 4);
       grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, vptr);
-
-      rdp.tri_n += 2;
    }
 }
 
@@ -1415,27 +1359,25 @@ static void rdp_fullsync(uint32_t w0, uint32_t w1)
    gfx_info.CheckInterrupts();
 }
 
-#define SG(w1) ((w1 >> 16) & 0xFF)
-#define SB(w1) ((w1 & 0xFF))
-#define CB(w1) ((w1 >> 8) & 0xFF)
-#define SG(w1) ((w1 >> 16) & 0xFF)
-#define CG(w1) ((w1 >> 24) & 0xFF)
-
-#define SR(w1) (w1 & 0xFF)
-#define CR(w1) ((w1 >> 8) & 0xFF)
-
 static void rdp_setkeygb(uint32_t w0, uint32_t w1)
 {
-   rdp.SCALE = (rdp.SCALE&0xFF0000FF) | (SG(w1) << 16)   | (SB(w1) << 8);
-   rdp.CENTER = (rdp.CENTER&0xFF0000FF) | (CG(w1) << 16) | (CB(w1) << 8);
-   //FRDP("setkeygb. cG=%02lx, sG=%02lx, cB=%02lx, sB=%02lx\n", cG, sG, cB, sB);
+   rdp.SCALE = (rdp.SCALE & 0xFF0000FF) | (((w1 >> 16) & 0xFF) << 16)   | (((w1 & 0xFF)) << 8);
+   rdp.CENTER = (rdp.CENTER & 0xFF0000FF) | (((w1 >> 24) & 0xFF) << 16) | (((w1 >> 8) & 0xFF) << 8);
+   rdp.key_width[1]  = (w0 & 0x00FFF000) >> 12;
+   rdp.key_width[2]  = (w0 & 0x00000FFF) >>  0;
+   rdp.key_center[1] = (w1 & 0xFF000000) >> 24;
+   rdp.key_center[2] = (w1 & 0x0000FF00) >>  8;
+   rdp.key_scale[1]  = (w1 & 0x00FF0000) >> 16;
+   rdp.key_scale[2]  = (w1 & 0x000000FF) >>  0;
 }
 
 static void rdp_setkeyr(uint32_t w0, uint32_t w1)
 {
-   rdp.SCALE  = (rdp.SCALE & 0x00FFFFFF)  | (SR(w1) << 24);
-   rdp.CENTER = (rdp.CENTER & 0x00FFFFFF) | (CR(w1) << 24);
-   //FRDP("setkeyr. cR=%02lx, sR=%02lx\n", cR, sR);
+   rdp.SCALE  = (rdp.SCALE & 0x00FFFFFF)  | ((w1 & 0xFF) << 24);
+   rdp.CENTER = (rdp.CENTER & 0x00FFFFFF) | (((w1 >> 8) & 0xFF) << 24);
+   rdp.key_width[0]  = (w1 & 0x0FFF0000) >> 16;
+   rdp.key_center[0] = (w1 & 0x0000FF00) >>  8;
+   rdp.key_scale[0]  = (w1 & 0x000000FF) >>  0;
 }
 
 static void rdp_setconvert(uint32_t w0, uint32_t w1)
@@ -1578,120 +1520,8 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
       rdp.tiles[tilenum].lr_t += 0x400;
 
    rdp.update |= UPDATE_TEXTURE;
-
-   rdp.first = 1;
 }
 
-
-static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
-{
-   uint32_t *v5, *v7, v8, v10, *v11, v12, v13, v14, *v17, v19, v20, nbits;
-   int v6, v9, v15, v16, v18, i;
-
-   nbits = sizeof(uint32_t*) * 8;
-   v5 = dst;
-   v6 = cnt;
-   if ( cnt )
-   {
-      v7 = (uint32_t *)((char *)src + (off & 0xFFFFFFFC));
-      v8 = off & 3;
-      if ( !(off & 3) )
-         goto LABEL_23;
-      v9 = 4 - v8;
-      v10 = *v7;
-      v11 = v7 + 1;
-      do
-      {
-         v10 = __ROL__(v10, 8, nbits);
-         --v8;
-      }
-      while ( v8 );
-      do
-      {
-         v10 = __ROL__(v10, 8, nbits);
-         *(uint8_t *)v5 = v10;
-         v5 = (uint32_t *)((char *)v5 + 1);
-         --v9;
-      }
-      while ( v9 );
-      v12 = *v11;
-      v7 = v11 + 1;
-      *v5 = bswap32(v12);
-      ++v5;
-      v6 = cnt - 1;
-      if ( cnt != 1 )
-      {
-LABEL_23:
-         do
-         {
-            *v5 = bswap32(*v7);
-            v5[1] = bswap32(v7[1]);
-            v7 += 2;
-            v5 += 2;
-            --v6;
-         }
-         while ( v6 );
-      }
-      v13 = off & 3;
-      if ( off & 3 )
-      {
-         v14 = *(uint32_t *)((char *)src + ((8 * cnt + off) & 0xFFFFFFFC));
-         do
-         {
-            v14 = __ROL__(v14, 8, nbits);
-            *(uint8_t *)v5 = v14;
-            v5 = (uint32_t *)((char *)v5 + 1);
-            --v13;
-         }
-         while ( v13 );
-      }
-   }
-   v15 = cnt;
-   v16 = 0;
-   v17 = dst;
-   v18 = 0;
-dxt_test:
-   while ( 1 )
-   {
-      v17 += 2;
-      --v15;
-      if ( !v15 )
-         break;
-      v16 += dxt;
-      if ( v16 < 0 )
-      {
-         while ( 1 )
-         {
-            ++v18;
-            --v15;
-            if ( !v15 )
-               goto end_dxt_test;
-            v16 += dxt;
-            if ( v16 >= 0 )
-            {
-               for ( i = v15; v18; --v18 )
-               {
-                  v19 = *v17;
-                  *v17 = v17[1];
-                  v17[1] = v19;
-                  v17 += 2;
-               }
-               v15 = i;
-               goto dxt_test;
-            }
-         }
-      }
-   }
-end_dxt_test:
-   while ( v18 )
-   {
-      v20 = *v17;
-      *v17 = v17[1];
-      v17[1] = v20;
-      v17 += 2;
-      --v18;
-   }
-}
 
 static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height, int line, int off, uint32_t *end)
 {
@@ -1803,102 +1633,15 @@ LABEL_20:
 
 static void rdp_loadblock(uint32_t w0, uint32_t w1)
 {
-   uint32_t tile, dxt, addr, off, cnt, _dxt;
-   uint16_t lr_s, ul_s, ul_t;
-   uint8_t *dst;
-
-   if (rdp.skip_drawing)
-      return;
-
-   tile = (uint32_t)((w1 >> 24) & 0x07);
-   dxt = (uint32_t)(w1 & 0x0FFF);
-   lr_s = (uint16_t)(w1 >> 14) & 0x3FF;
-
-   if (ucode5_texshiftaddr)
-   {
-      if (ucode5_texshift % ((lr_s+1)<<3))
-      {
-         rdp.timg.addr -= ucode5_texshift;
-         ucode5_texshiftaddr = 0;
-         ucode5_texshift = 0;
-         ucode5_texshiftcount = 0;
-      }
-      else
-         ucode5_texshiftcount++;
-   }
-
-   rdp.addr[rdp.tiles[tile].t_mem] = rdp.timg.addr;
-
-   // ** DXT is used for swapping every other line
-   /* double fdxt = (double)0x8000000F/(double)((uint32_t)(2047/(dxt-1))); // F for error
-      uint32_t _dxt = (uint32_t)fdxt;*/
-
-   // 0x00000800 -> 0x80000000 (so we can check the sign bit instead of the 11th bit)
-   _dxt = dxt << 20;
-
-   addr = segoffset(rdp.timg.addr) & BMASK;
-
    // lr_s specifies number of 64-bit words to copy
    // 10.2 format
-   ul_s = (uint16_t)(w0 >> 14) & 0x3FF;
-   ul_t = (uint16_t)(w0 >> 2) & 0x3FF;
-
-   rdp.tiles[tile].ul_s = ul_s;
-   rdp.tiles[tile].ul_t = ul_t;
-   rdp.tiles[tile].lr_s = lr_s;
-
-   rdp.timg.set_by = 0; // load block
-
-#ifdef TEXTURE_FILTER
-   LOAD_TILE_INFO &info = rdp.load_info[rdp.tiles[tile].t_mem];
-   info.tile_width = lr_s;
-   info.dxt = dxt;
-#endif
-
-   // do a quick boundary check before copying to eliminate the possibility for exception
-   if (ul_s >= 512)
-   {
-      lr_s = 1; // 1 so that it doesn't die on memcpy
-      ul_s = 511;
-   }
-
-   if (ul_s+lr_s > 512)
-      lr_s = 512-ul_s;
-
-   if (addr+(lr_s<<3) > BMASK+1)
-      lr_s = (uint16_t)((BMASK-addr)>>3);
-
-   //angrylion's advice to use ul_s in texture image offset and cnt calculations.
-   //Helps to fix Vigilante 8 jpeg backgrounds and logos
-   off = rdp.timg.addr + (ul_s << rdp.tiles[tile].size >> 1);
-   dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
-   cnt = lr_s-ul_s+1;
-   
-   if (rdp.tiles[tile].size == 3)
-      cnt <<= 1;
-
-   if (((rdp.tiles[tile].t_mem + cnt) << 3) > sizeof(rdp.tmem))
-   {
-      //WriteLog(M64MSG_INFO, "rdp_loadblock wanted to write %u bytes after the end of tmem", ((rdp.tiles[tile].t_mem + cnt) << 3) - sizeof(rdp.tmem));
-      cnt = (sizeof(rdp.tmem) >> 3) - (rdp.tiles[tile].t_mem);
-   }
-
-   if (rdp.timg.size == 3)
-      LoadBlock32b(tile, ul_s, ul_t, lr_s, dxt);
-   else
-      loadBlock((uint32_t *)gfx_info.RDRAM, (uint32_t *)dst, off, _dxt, cnt);
-
-   rdp.timg.addr += cnt << 3;
-   rdp.tiles[tile].lr_t = ul_t + ((dxt*cnt)>>11);
-
-   rdp.update |= UPDATE_TEXTURE;
-
-#if 0
-   FRDP ("loadblock: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, dxt: %08lx -> %08lx\n",
-         tile, ul_s, ul_t, lr_s,
-         dxt, _dxt);
-#endif
-
+   gDPLoadBlock(
+         ((w1 >> 24) & 0x07), 
+         (w0 >> 14) & 0x3FF, /* ul_s */
+         (w0 >>  2) & 0x3FF, /* ul_t */
+         (w1 >> 14) & 0x3FF, /* lr_s */
+         (w1 & 0x0FFF) /* dxt */
+         );
 }
 
 void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
@@ -1989,9 +1732,6 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
 static void rdp_settile(uint32_t w0, uint32_t w1)
 {
    TILE *tile;
-   tile_set = 1; // used to check if we only load the first settilesize
-
-   rdp.first = 0;
 
    rdp.last_tile = (uint32_t)((w1 >> 24) & 0x07);
    tile = (TILE*)&rdp.tiles[rdp.last_tile];
@@ -2082,13 +1822,6 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    {
       lr_x--; lr_y--;
    }
-#if 0
-   FRDP("fillrect (%d,%d) -> (%d,%d), cycle mode: %d, #%d, #%d\n", ul_x, ul_y, lr_x, lr_y, ((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20),
-         rdp.tri_n, rdp.tri_n+1);
-
-   FRDP("scissor (%d,%d) -> (%d,%d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x,
-         rdp.scissor.lr_y);
-#endif
 
    s_ul_x = (uint32_t)(ul_x * rdp.scale_x + rdp.offset_x);
    s_lr_x = (uint32_t)(lr_x * rdp.scale_x + rdp.offset_x);
@@ -2180,7 +1913,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
                   GR_COMBINE_LOCAL_CONSTANT,
                   GR_COMBINE_OTHER_NONE,
                   FXFALSE);
-            grConstantColorValue((cmb.ccolor&0xFFFFFF00)|(rdp.fog_color&0xFF));
+            grConstantColorValue((cmb.ccolor & 0xFFFFFF00) | rdp.fog_color_sep[3]);
             rdp.update |= UPDATE_COMBINE;
          }
       }
@@ -2191,8 +1924,6 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
          grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout[0]);
          grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout2[0]);
       }
-
-      rdp.tri_n += 2;
    }
 }
 
@@ -2205,18 +1936,30 @@ static void rdp_setfillcolor(uint32_t w0, uint32_t w1)
 static void rdp_setfogcolor(uint32_t w0, uint32_t w1)
 {
    rdp.fog_color = w1;
+   rdp.fog_color_sep[0] = (w1 & 0xFF000000) >> 24;
+   rdp.fog_color_sep[1] = (w1 & 0x00FF0000) >> 16;
+   rdp.fog_color_sep[2] = (w1 & 0x0000FF00) >>  8;
+   rdp.fog_color_sep[3] = (w1 & 0x000000FF) >>  0;
    rdp.update |= UPDATE_COMBINE | UPDATE_FOG_ENABLED;
 }
 
 static void rdp_setblendcolor(uint32_t w0, uint32_t w1)
 {
    rdp.blend_color = w1;
+   rdp.blend_color_sep[0] = (w1 & 0xFF000000) >> 24;
+   rdp.blend_color_sep[1] = (w1 & 0x00FF0000) >> 16;
+   rdp.blend_color_sep[2] = (w1 & 0x0000FF00) >>  8;
+   rdp.blend_color_sep[3] = (w1 & 0x000000FF) >>  0;
    rdp.update |= UPDATE_COMBINE;
 }
 
 static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 {
    rdp.prim_color = w1;
+   rdp.prim_color_sep[0] = (w1 & 0xFF000000) >> 24;
+   rdp.prim_color_sep[1] = (w1 & 0x00FF0000) >> 16;
+   rdp.prim_color_sep[2] = (w1 & 0x0000FF00) >> 8;
+   rdp.prim_color_sep[3] = (w1 & 0x000000FF);
    rdp.prim_lodmin = (w0 >> 8) & 0xFF;
    rdp.prim_lodfrac = max(w0 & 0xFF, rdp.prim_lodmin);
    rdp.update |= UPDATE_COMBINE;
@@ -2227,6 +1970,10 @@ static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 static void rdp_setenvcolor(uint32_t w0, uint32_t w1)
 {
    rdp.env_color = w1;
+   rdp.env_color_sep[0] = (w1 & 0xFF000000) >> 24;
+   rdp.env_color_sep[1] = (w1 & 0x00FF0000) >> 16;
+   rdp.env_color_sep[2] = (w1 & 0x0000FF00) >> 8;
+   rdp.env_color_sep[3] = (w1 & 0x000000FF);
    rdp.update |= UPDATE_COMBINE;
 
    //FRDP("setenvcolor: %08lx\n", rdp.cmd1);

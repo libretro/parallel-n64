@@ -155,13 +155,6 @@ void _ChangeSize(void)
    rdp.vi_height = (vend - vstart) * fscale_y * 1.0126582f;
    aspect = (settings.adjust_aspect && (fscale_y > fscale_x) && (rdp.vi_width > rdp.vi_height)) ? fscale_x/fscale_y : 1.0f;
 
-#ifdef LOGGING
-   sprintf (out_buf, "hstart: %d, hend: %d, vstart: %d, vend: %d\n", hstart, hend, vstart, vend);
-   LOG (out_buf);
-   sprintf (out_buf, "size: %d x %d\n", (int)rdp.vi_width, (int)rdp.vi_height);
-   LOG (out_buf);
-#endif
-
    rdp.scale_x = (float)settings.res_x / rdp.vi_width;
    if (region > 0 && settings.pal230)
    {
@@ -263,7 +256,6 @@ void ReadSettings(void)
    struct retro_variable var = { "mupen64-screensize", 0 };
    unsigned screen_width = 640;
    unsigned screen_height = 480;
-   settings.card_id = 0;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -281,23 +273,12 @@ void ReadSettings(void)
 
 
    settings.vsync = 1;
-   settings.ssformat = 1;
-
-   settings.wrpResolution = 0;
-   settings.wrpVRAM = 0;
-   settings.wrpFBO = 0;
-   settings.wrpAnisotropic = 0;
 
    settings.autodetect_ucode = true;
    settings.ucode = 2;
    settings.fog = 1;
    settings.buff_clear = 1;
-   settings.logging = false;
-   settings.log_clear = false;
-   settings.elogging = false;
-   settings.filter_cache = false;
    settings.unk_as_red = false;
-   settings.log_unk = false;
    settings.unk_clear = false;
 }
 
@@ -349,7 +330,6 @@ void ReadSpecialSettings (const char * name)
       settings.force_microcheck = 0;
       settings.force_quad3d = 0;
       settings.force_calc_sphere = 0;
-      settings.texture_correction = 1;
       settings.depth_bias = 20;
       settings.increase_texrect_edge = 0;
       settings.decrease_fillrect_edge = 0;
@@ -1721,7 +1701,6 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"Re-Volt"))
    {
-      settings.texture_correction = 0;
       //depthmode = 1
    }
    else if (strstr(name, (const char*)"RIDGE RACER 64"))
@@ -1965,7 +1944,11 @@ void ReadSpecialSettings (const char * name)
 
    //detect games which require special hacks
    if (strstr(name, (const char *)"ZELDA") || strstr(name, (const char *)"MASK"))
+   {
       settings.hacks |= hack_Zelda;
+      settings.flame_corona = 1;
+      //settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
+   }
    else if (strstr(name, (const char *)"ROADSTERS TROPHY"))
       settings.hacks |= hack_Zelda;
    else if (strstr(name, (const char *)"Diddy Kong Racing"))
@@ -2118,7 +2101,6 @@ void ReadSpecialSettings (const char * name)
 
    settings.frame_buffer |= fb_motionblur;
 
-   settings.flame_corona = (settings.hacks & hack_Zelda) && !fb_depth_render_enabled;
 
    var.key = "mupen64-filtering";
    var.value = NULL;
@@ -2157,16 +2139,6 @@ void guLoadTextures(void)
    tbuf_size = grTexCalcMemRequired(log2_2048 ? GR_LOD_LOG2_2048 : GR_LOD_LOG2_1024,
          GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
 
-   rdp.texbufs[0].tmu = GR_TMU0;
-   rdp.texbufs[0].begin = 0;
-   rdp.texbufs[0].end = rdp.texbufs[0].begin+tbuf_size;
-   rdp.texbufs[0].count = 0;
-   rdp.texbufs[0].clear_allowed = true;
-   rdp.texbufs[1].tmu = GR_TMU1;
-   rdp.texbufs[1].begin = rdp.texbufs[0].end;
-   rdp.texbufs[1].end = rdp.texbufs[1].begin+tbuf_size;
-   rdp.texbufs[1].count = 0;
-   rdp.texbufs[1].clear_allowed = true;
    offset_textures = tbuf_size + 16;
 }
 
@@ -2413,9 +2385,7 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
    memset (&settings, 0, sizeof(SETTINGS));
    ReadSettings ();
    ReadSpecialSettings (name);
-   settings.res_data_org = settings.res_data;
 
-   util_init ();
    math_init ();
    TexCacheInit ();
    CRC_BuildTable();

@@ -84,32 +84,13 @@ static void uc5_matrix(uint32_t w0, uint32_t w1)
       load_matrix(rdp.dkrproj[n], addr);
 
    rdp.update |= UPDATE_MULT_MAT;
-
-#ifdef EXTREME_LOGGING
-   int i;
-   FRDP ("{%f,%f,%f,%f}\n", rdp.dkrproj[n][0][0], rdp.dkrproj[n][0][1], rdp.dkrproj[n][0][2], rdp.dkrproj[n][0][3]);
-   FRDP ("{%f,%f,%f,%f}\n", rdp.dkrproj[n][1][0], rdp.dkrproj[n][1][1], rdp.dkrproj[n][1][2], rdp.dkrproj[n][1][3]);
-   FRDP ("{%f,%f,%f,%f}\n", rdp.dkrproj[n][2][0], rdp.dkrproj[n][2][1], rdp.dkrproj[n][2][2], rdp.dkrproj[n][2][3]);
-   FRDP ("{%f,%f,%f,%f}\n", rdp.dkrproj[n][3][0], rdp.dkrproj[n][3][1], rdp.dkrproj[n][3][2], rdp.dkrproj[n][3][3]);
-
-   for ( i = 0; i < 3; i++)
-   {
-      FRDP ("proj %d\n", i);
-      FRDP ("{%f,%f,%f,%f}\n", rdp.dkrproj[i][0][0], rdp.dkrproj[i][0][1], rdp.dkrproj[i][0][2], rdp.dkrproj[i][0][3]);
-      FRDP ("{%f,%f,%f,%f}\n", rdp.dkrproj[i][1][0], rdp.dkrproj[i][1][1], rdp.dkrproj[i][1][2], rdp.dkrproj[i][1][3]);
-      FRDP ("{%f,%f,%f,%f}\n", rdp.dkrproj[i][2][0], rdp.dkrproj[i][2][1], rdp.dkrproj[i][2][2], rdp.dkrproj[i][2][3]);
-      FRDP ("{%f,%f,%f,%f}\n", rdp.dkrproj[i][3][0], rdp.dkrproj[i][3][1], rdp.dkrproj[i][3][2], rdp.dkrproj[i][3][3]);
-   }
-#endif
 }
 
 static void uc5_vertex(uint32_t w0, uint32_t w1)
 {
-   int i, n, first, prj, start;
+   int i, first, prj, start;
    float x, y, z;
-   uint32_t addr;
-   
-   addr = dma_offset_vtx + (segoffset(w1) & BMASK);
+   uint32_t addr = dma_offset_vtx + (segoffset(w1) & BMASK);
 
    // | cccc cccc 1111 1??? 0000 0002 2222 2222 | cmd1 = address |
    // c = vtx command
@@ -118,7 +99,7 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
    // ? = unknown, but used
    // 0 = unused
 
-   n = ((w0 >> 19) & 0x1F);// + 1;
+   int n = ((w0 >> 19) & 0x1F);// + 1;
    if (settings.hacks&hack_Diddy)
       n++;
 
@@ -131,7 +112,6 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
       vtx_last = 0;
 
    first = ((w0 >> 9) & 0x1F) + vtx_last;
-   FRDP ("uc5:vertex - addr: %08lx, first: %d, count: %d, matrix: %08lx\n", addr, first, n, cur_mtx);
 
    prj = cur_mtx;
 
@@ -139,9 +119,8 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
 
    for (i = first; i < first + n; i++)
    {
-      VERTEX *v;
+      VERTEX *v = (VERTEX*)&rdp.vtx[i];
       start = (i-first) * 10;
-      v = (VERTEX*)&rdp.vtx[i];
       x   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+start) >> 1) + 0)^1];
       y   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+start) >> 1) + 1)^1];
       z   = (float)((int16_t*)gfx_info.RDRAM)[(((addr+start) >> 1) + 2)^1];
@@ -190,10 +169,6 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
       v->b = ((uint8_t*)gfx_info.RDRAM)[(addr+start + 8)^3];
       v->a = ((uint8_t*)gfx_info.RDRAM)[(addr+start + 9)^3];
       CalculateFog (v);
-
-#ifdef EXTREME_LOGGING
-      FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i, v->x, v->y, v->z, v->w, v->z_w, v->r, v->g, v->b, v->a);
-#endif
    }
 
    vtx_last += n;
@@ -201,8 +176,10 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
 
 static void uc5_tridma(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr;
-   int num, i, start, v0, v1, v2, flags;
+   int i, start, v0, v1, v2, flags;
+   uint32_t addr = segoffset(w1) & BMASK;
+   int num = (w0 & 0xFFF0) >> 4;
+
    vtx_last = 0;    // we've drawn something, so the vertex index needs resetting
 
    // | cccc cccc 2222 0000 1111 1111 1111 0000 | cmd1 = address |
@@ -211,10 +188,6 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
    // 2 = method #2 of getting count
    // 0 = unused
 
-   addr = segoffset(w1) & BMASK;
-   num = (w0 & 0xFFF0) >> 4;
-   //int num = ((w0 & 0x00F00000) >> 20) + 1;  // same thing!
-   FRDP("uc5:tridma #%d - addr: %08lx, count: %d\n", rdp.tri_n, addr, num);
 
    for (i = 0; i < num; i++)
    {

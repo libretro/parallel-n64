@@ -40,14 +40,8 @@
 
 static void rsp_vertex(int v0, int n)
 {
-   uint32_t addr, l;
    int i;
-   float x, y, z;
-   int16_t *rdram_s16;
-   void *rdram = (void*)gfx_info.RDRAM;
-   rdram_s16 = (int16_t*)rdram;
-
-   addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
+   uint32_t addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
 
    // This is special, not handled in update(), but here
    // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
@@ -56,7 +50,6 @@ static void rsp_vertex(int v0, int n)
       rdp.update ^= UPDATE_MULT_MAT;
       MulMatrices(rdp.model, rdp.proj, rdp.combined);
    }
-   // *
 
    // This is special, not handled in update()
    if (rdp.update & UPDATE_LIGHTS)
@@ -64,81 +57,14 @@ static void rsp_vertex(int v0, int n)
       rdp.update ^= UPDATE_LIGHTS;
 
       // Calculate light vectors
-      for (l=0; l<rdp.num_lights; l++)
+      for (i = 0; i < rdp.num_lights; i++)
       {
-         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
-         NormalizeVector (rdp.light_vector[l]);
+         InverseTransformVector(&rdp.light[i].dir[0], rdp.light_vector[i], rdp.model);
+         NormalizeVector (rdp.light_vector[i]);
       }
    }
 
-   FRDP ("rsp:vertex v0:%d, n:%d, from: %08lx\n", v0, n, addr);
-
-
-   for (i=0; i < (n<<4); i+=16)
-   {
-      VERTEX *v = (VERTEX*)&rdp.vtx[v0 + (i>>4)];
-
-      x = (float)(rdram_s16)[(((addr+i) >> 1) + 0)^1];
-      y = (float)(rdram_s16)[(((addr+i) >> 1) + 1)^1];
-      z = (float)(rdram_s16)[(((addr+i) >> 1) + 2)^1];
-      v->flags = ((uint16_t*)rdram)[(((addr+i) >> 1) + 3)^1];
-      v->ou = (float)(rdram_s16)[(((addr+i) >> 1) + 4)^1];
-      v->ov = (float)(rdram_s16)[(((addr+i) >> 1) + 5)^1];
-      v->uv_scaled = 0;
-      v->a = ((uint8_t*)rdram)[(addr+i + 15)^3];
-
-      v->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
-      v->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
-      v->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
-      v->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
-
-
-      if (fabs(v->w) < 0.001) v->w = 0.001f;
-      v->oow = 1.0f / v->w;
-      v->x_w = v->x * v->oow;
-      v->y_w = v->y * v->oow;
-      v->z_w = v->z * v->oow;
-      CalculateFog (v);
-
-      v->uv_calculated = 0xFFFFFFFF;
-      v->screen_translated = 0;
-      v->shade_mod = 0;
-
-      v->scr_off = 0;
-      if (v->x < -v->w) v->scr_off |= 1;
-      if (v->x > v->w) v->scr_off |= 2;
-      if (v->y < -v->w) v->scr_off |= 4;
-      if (v->y > v->w) v->scr_off |= 8;
-      if (v->w < 0.1f) v->scr_off |= 16;
-      // if (v->z_w > 1.0f) v->scr_off |= 32;
-
-      if (rdp.geom_mode & 0x00020000)
-      {
-         v->vec[0] = ((int8_t*)rdram)[(addr+i + 12)^3];
-         v->vec[1] = ((int8_t*)rdram)[(addr+i + 13)^3];
-         v->vec[2] = ((int8_t*)rdram)[(addr+i + 14)^3];
-         if (rdp.geom_mode & 0x40000)
-         {
-            if (rdp.geom_mode & 0x80000)
-               calc_linear (v);
-            else
-               calc_sphere (v);
-         }
-         NormalizeVector (v->vec);
-
-         calc_light (v);
-      }
-      else
-      {
-         v->r = ((uint8_t*)rdram)[(addr+i + 12)^3];
-         v->g = ((uint8_t*)rdram)[(addr+i + 13)^3];
-         v->b = ((uint8_t*)rdram)[(addr+i + 14)^3];
-      }
-#ifdef EXTREME_LOGGING
-      FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
-#endif
-
-   }
+   gSPVertex(addr, n, v0);
 }
 
 //
@@ -299,24 +225,22 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 {
    //LRDP("uc0:movemem ");
 
-   uint32_t i,a;
-   void *rdram = (void*)gfx_info.RDRAM;
+   uint32_t index = (w0 >> 16) & 0xFF;
+   int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
+   int8_t  *rdram_s8  = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
+   uint8_t *rdram_u8  = (uint8_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
 
    // Check the command
-   switch ((w0 >> 16) & 0xFF)
+   switch (index)
    {
       case 0x80: /* F3D_MV_VIEWPORT */
          {
-            int16_t *rdram_s16 = (int16_t*)rdram;
-
-            a = (segoffset(w1) & 0xFFFFFF) >> 1;
-
-            int16_t scale_x = (rdram_s16)[(a+0)^1] / 4;
-            int16_t scale_y = (rdram_s16)[(a+1)^1] / 4;
-            int16_t scale_z = (rdram_s16)[(a+2)^1];
-            int16_t trans_x = (rdram_s16)[(a+4)^1] / 4;
-            int16_t trans_y = (rdram_s16)[(a+5)^1] / 4;
-            int16_t trans_z = (rdram_s16)[(a+6)^1];
+            int16_t scale_y = rdram[0] / 4;
+            int16_t scale_x = rdram[1] / 4;
+            int16_t scale_z = rdram[3];
+            int16_t trans_x = rdram[5] / 4;
+            int16_t trans_y = rdram[4] / 4;
+            int16_t trans_z = rdram[7];
             if (settings.correct_viewport)
             {
                scale_x = abs(scale_x);
@@ -329,39 +253,29 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
             rdp.view_trans[1] = trans_y * rdp.scale_y;
             rdp.view_trans[2] = 32.0f * trans_z;
 
-            // there are other values than x and y, but I don't know what they do
-
             rdp.update |= UPDATE_VIEWPORT;
-
-            //FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, w1);
          }
          break;
       case 0x82: /* G_MV_LOOKATY */
          {
-            int8_t dir_x, dir_y, dir_z, *rdram_s8;
-            a = RSP_SegmentToPhysical(w1);
-            rdram_s8 = (int8_t*)rdram;
-            dir_x = rdram_s8[(a+8)^3];
-            dir_y = rdram_s8[(a+9)^3];
-            dir_z = rdram_s8[(a+10)^3];
+            int8_t dir_x = rdram_s8[11];
+            int8_t dir_y = rdram_s8[10];
+            int8_t dir_z = rdram_s8[9];
             rdp.lookat[1][0] = (float)(dir_x) / 127.0f;
             rdp.lookat[1][1] = (float)(dir_y) / 127.0f;
             rdp.lookat[1][2] = (float)(dir_z) / 127.0f;
+            rdp.use_lookat = true;
             if (!dir_x && !dir_y)
                rdp.use_lookat = false;
-            else
-               rdp.use_lookat = true;
             //FRDP("lookat_y (%f, %f, %f)\n", rdp.lookat[1][0], rdp.lookat[1][1], rdp.lookat[1][2]);
          }
          break;
 
       case G_MV_LOOKATX:
          {
-            int8_t *rdram_s8 = (int8_t*)rdram;
-            a = RSP_SegmentToPhysical(w1);
-            rdp.lookat[0][0] = (float)(rdram_s8[(a+8)^3]) / 127.0f;
-            rdp.lookat[0][1] = (float)(rdram_s8[(a+9)^3]) / 127.0f;
-            rdp.lookat[0][2] = (float)(rdram_s8[(a+10)^3]) / 127.0f;
+            rdp.lookat[0][0] = (float)rdram_s8[11] / 127.0f;
+            rdp.lookat[0][1] = (float)rdram_s8[10] / 127.0f;
+            rdp.lookat[0][2] = (float)rdram_s8[9] / 127.0f;
             rdp.use_lookat = true;
             //FRDP("lookat_x (%f, %f, %f)\n", rdp.lookat[1][0], rdp.lookat[1][1], rdp.lookat[1][2]);
          }
@@ -376,54 +290,37 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
       case G_MV_L6:
       case G_MV_L7:
          {
-            uint8_t *rdram_u8 = (uint8_t*)rdram;
-            int8_t  *rdram_s8 = (int8_t*)rdram;
-
             // Get the light #
-            i = (((w0 >> 16) & 0xff) - 0x86) >> 1;
-            a = segoffset(w1) & 0x00ffffff;
+            uint32_t n = (index - 0x86) >> 1;
 
             // Get the data
-            rdp.light[i].col[0] = (float)((rdram_u8)[(a+0)^3]) / 255.0f;
-            rdp.light[i].col[1] = (float)((rdram_u8)[(a+1)^3]) / 255.0f;
-            rdp.light[i].col[2] = (float)((rdram_u8)[(a+2)^3]) / 255.0f;
-            rdp.light[i].col[3] = 1.0f;
+            rdp.light[n].col[0] = (float)rdram_u8[3] / 255.0f;
+            rdp.light[n].col[1] = (float)rdram_u8[2] / 255.0f;
+            rdp.light[n].col[2] = (float)rdram_u8[1] / 255.0f;
+            rdp.light[n].col[3] = 1.0f;
+
             // ** Thanks to Icepir8 for pointing this out **
             // Lighting must be signed byte instead of byte
-            rdp.light[i].dir[0] = (float)((rdram_s8)[(a+8)^3]) / 127.0f;
-            rdp.light[i].dir[1] = (float)((rdram_s8)[(a+9)^3]) / 127.0f;
-            rdp.light[i].dir[2] = (float)((rdram_s8)[(a+10)^3]) / 127.0f;
+            rdp.light[n].dir[0] = (float)rdram_s8[11] / 127.0f;
+            rdp.light[n].dir[1] = (float)rdram_s8[10] / 127.0f;
+            rdp.light[n].dir[2] = (float)rdram_s8[9] / 127.0f;
             // **
 
             //rdp.update |= UPDATE_LIGHTS;
-
-#if 0
-            FRDP ("light: n: %d, r: %.3f, g: %.3f, b: %.3f, x: %.3f, y: %.3f, z: %.3f\n",
-                  i, rdp.light[i].r, rdp.light[i].g, rdp.light[i].b,
-                  rdp.light_vector[i][0], rdp.light_vector[i][1], rdp.light_vector[i][2]);
-#endif
          }
          break;
 
 
       case G_MV_MATRIX_1:
          {
-            uint32_t addr;
+            uint32_t addr = segoffset(w1) & 0x00FFFFFF;
             // do not update the combined matrix!
             rdp.update &= ~UPDATE_MULT_MAT;
 
-            addr = segoffset(w1) & 0x00FFFFFF;
             load_matrix(rdp.combined, addr);
 
             addr = rdp.pc[rdp.pc_i] & BMASK;
             rdp.pc[rdp.pc_i] = (addr+24) & BMASK; //skip next 3 command, b/c they all are part of gSPForceMatrix
-
-#ifdef EXTREME_LOGGING
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
-#endif
          }
          break;
          //next 3 command should never appear since they will be skipped in previous command
@@ -441,11 +338,6 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
          //RDP_E ("uc0:movemem matrix 2 - ERROR!\n");
          //LRDP("matrix 2 - IGNORED\n");
          break;
-#if 0
-      default:
-         FRDP_E ("uc0:movemem unknown (index: 0x%08lx)\n", (w0 >> 16) & 0xFF);
-         FRDP ("unknown (index: 0x%08lx)\n", (w0 >> 16) & 0xFF);
-#endif
    }
 }
 
@@ -455,42 +347,24 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 
 static void uc0_displaylist(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr, push;
-   addr = segoffset(w1) & 0x00FFFFFF;
+   uint32_t addr = segoffset(w1) & 0x00FFFFFF;
+   uint32_t push = (w0 >> 16) & 0xFF; // push the old location?
 
    // This fixes partially Gauntlet: Legends
    if (addr == rdp.pc[rdp.pc_i] - 8)
-   {
-      //LRDP("display list not executed!\n");
       return;
-   }
-
-   push = (w0 >> 16) & 0xFF; // push the old location?
-
-   //FRDP("uc0:displaylist: %08lx, push:%s", addr, push?"no":"yes");
-   //FRDP(" (seg %d, offset %08lx)\n", (w1>>24)&0x0F, w1&0x00FFFFFF);
 
    switch (push)
    {
       case 0: // push
          if (rdp.pc_i >= 9)
-         {
-            //RDP_E ("** DL stack overflow **");
-            //LRDP("** DL stack overflow **\n");
-            return;
-         }
-         rdp.pc_i ++; // go to the next PC in the stack
+            return; /* DL stack overflow */
+         rdp.pc_i++; // go to the next PC in the stack
          rdp.pc[rdp.pc_i] = addr; // jump to the address
          break;
-
       case 1: // no push
-         rdp.pc[rdp.pc_i] = addr; // just jump to the address
+         rdp.pc[rdp.pc_i] = addr; // jump to the address
          break;
-#if 0
-      default:
-         RDP_E("Unknown displaylist operation\n");
-         LRDP("Unknown displaylist operation\n");
-#endif
    }
 }
 
@@ -688,8 +562,6 @@ static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
 //
 static void uc0_moveword(uint32_t w0, uint32_t w1)
 {
-   //LRDP("uc0:moveword ");
-
    // Find which command this is (lowest byte of cmd0)
    switch (w0 & 0xFF)
    {
@@ -743,12 +615,9 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 
       case 0x0c:
          {
-            uint16_t val, vtx;
-            uint8_t where;
-
-            val = (uint16_t)((w0 >> 8) & 0xFFFF);
-            vtx = val / 40;
-            where = val % 40;
+            uint16_t val = (uint16_t)((w0 >> 8) & 0xFFFF);
+            uint16_t vtx = val / 40;
+            uint8_t where = val % 40;
             uc0_modifyvtx(where, vtx, w1);
             //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
          }
@@ -767,40 +636,26 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 
 static void uc0_texture(uint32_t w0, uint32_t w1)
 {
-   int tile;
-   uint32_t on;
-   tile = (w0 >> 8) & 0x07;
+   int tile = (w0 >> 8) & 0x07;
    if (tile == 7 && (settings.hacks&hack_Supercross))
       tile = 0; //fix for supercross 2000
    rdp.mipmap_level = (w0 >> 11) & 0x07;
-   on = (w0 & 0xFF);
    rdp.cur_tile = tile;
+   rdp.tiles[tile].on = 0;
 
-   if (on)
+   if ((w0 & 0xFF))
    {
-      uint16_t s, t;
-      TILE *tmp_tile;
+      uint16_t s = (uint16_t)((w1 >> 16) & 0xFFFF);
+      uint16_t t = (uint16_t)(w1 & 0xFFFF);
 
-      s = (uint16_t)((w1 >> 16) & 0xFFFF);
-      t = (uint16_t)(w1 & 0xFFFF);
-
-      tmp_tile = (TILE*)&rdp.tiles[tile];
-      tmp_tile->on = 1;
-      tmp_tile->org_s_scale = s;
-      tmp_tile->org_t_scale = t;
-      tmp_tile->s_scale = (float)(s+1)/65536.0f;
-      tmp_tile->t_scale = (float)(t+1)/65536.0f;
-      tmp_tile->s_scale /= 32.0f;
-      tmp_tile->t_scale /= 32.0f;
+      rdp.tiles[tile].on = 1;
+      rdp.tiles[tile].org_s_scale = s;
+      rdp.tiles[tile].org_t_scale = t;
+      rdp.tiles[tile].s_scale = (float)((s+1)/65536.0f) / 32.0f;
+      rdp.tiles[tile].t_scale = (float)((t+1)/65536.0f) / 32.0f;
 
       rdp.update |= UPDATE_TEXTURE;
-
-      //FRDP("uc0:texture: tile: %d, mipmap_lvl: %d, on: %d, s_scale: %f, t_scale: %f\n", tile, rdp.mipmap_level, on, tmp_tile->s_scale, tmp_tile->t_scale);
-      return;
    }
-
-   //LRDP("uc0:texture skipped b/c of off\n");
-   rdp.tiles[tile].on = 0;
 }
 
 static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
@@ -970,19 +825,16 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 
 static void uc0_line3d(uint32_t w0, uint32_t w1)
 {
-   uint32_t v0, v1, cull_mode;
-   uint16_t width;
    VERTEX *v[3];
-
-   v0 = ((w1 >> 16) & 0xff) / 10;
-   v1 = ((w1 >> 8) & 0xff) / 10;
-   width = (uint16_t)(w1 & 0xFF) + 3;
+   uint32_t v0 = ((w1 >> 16) & 0xff) / 10;
+   uint32_t v1 = ((w1 >> 8) & 0xff) / 10;
+   uint16_t width = (uint16_t)(w1 & 0xFF) + 3;
+   uint32_t cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
 
    v[0] = &rdp.vtx[v1];
    v[1] = &rdp.vtx[v0];
    v[2] = &rdp.vtx[v0];
 
-   cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
    rdp.flags |= CULLMASK;
    rdp.update |= UPDATE_CULL_MODE;
    cull_trianglefaces(v, 1, true, true, width);

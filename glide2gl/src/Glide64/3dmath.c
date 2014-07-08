@@ -54,14 +54,13 @@ float DotProductC(float *v0, float *v1)
 
 void NormalizeVectorC(float *v)
 {
-   float len = squareRoot((float)(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]));
-
-   if (len == 0.0)
-      return;
-
-   v[0] /= (float)len;
-   v[1] /= (float)len;
-   v[2] /= (float)len;
+   float len = sqrtf(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+   if (len > 0.0f)
+   {
+      v[0] /= len;
+      v[1] /= len;
+      v[2] /= len;
+   }
 }
 
 
@@ -363,39 +362,6 @@ void math_init(void)
 #endif
 }
 
-float glide64_log2(float i)
-{
-   float LogBodge=0.346607f;
-   float x;
-   float y;
-   x=*(int *)&i;
-   x*= 1.0 / (1 << 23); //1/pow(2,23);
-   x=x-127;
-
-   y=x-glide64_floor(x);
-   y=(y-y*y)*LogBodge;
-   return x+y;
-}
-
-
-static float glide64_pow2(float i)
-{
-   float PowBodge=0.33971f;
-   float x;
-   float y=i-glide64_floor(i);
-   y=(y-y*y)*PowBodge;
-
-   x=i+127-y;
-   x*= (1 << 23);
-   *(int*)&x=(int)x;
-   return x;
-}
-
-float glide64_pow(float a, float b)
-{
-   return glide64_pow2(b * glide64_log2(a));
-}
-
 void calc_light (VERTEX *v)
 {
    uint32_t l;
@@ -464,8 +430,8 @@ void calc_linear (VERTEX *v)
    if (rdp.cur_cache[0])
    {
       // scale >> 6 is size to map to
-      v->ou = (glide64_acos(x)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_s_scale >> 6);
-      v->ov = (glide64_acos(y)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_t_scale >> 6);
+      v->ou = (acosf(x)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_s_scale >> 6);
+      v->ov = (acosf(y)/3.141592654f) * (rdp.tiles[rdp.cur_tile].org_t_scale >> 6);
    }
    v->uv_scaled = 1;
 #ifdef EXTREME_LOGGING

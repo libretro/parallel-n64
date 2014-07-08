@@ -42,9 +42,8 @@
 
 #include "Gfx_1.3.h"
 
-extern char out_buf[2048];
-
 extern uint32_t frame_count; // frame counter
+extern uint32_t gfx_plugin_accuracy;
 
 #define MAX_CACHE   1024*4
 #define MAX_TRI_CACHE 768 // this is actually # of vertices, not triangles
@@ -361,21 +360,10 @@ typedef struct
 {
    uint32_t depth_bias;
 
-   int card_id;
-   int lang_id;
-
    uint32_t res_x, scr_res_x;
    uint32_t res_y, scr_res_y;
-   uint32_t res_data, res_data_org;
 
-   int advanced_options;
-   int texenh_options;
-   int ssformat;
    int vsync;
-
-   int show_fps;
-   int clock;
-   int clock_24_hr;
 
    int filtering;
    int fog;
@@ -383,7 +371,6 @@ typedef struct
    int swapmode;
    int lodmode;
    int aspectmode;
-   int use_hotkeys;
 
    uint32_t frame_buffer;
    unsigned fb_crc_mode;
@@ -391,15 +378,8 @@ typedef struct
    //Debug
    int autodetect_ucode;
    int ucode;
-   int logging;
-   int elogging;
-   int log_clear;
-   int run_in_window;
-   int filter_cache;
    int unk_as_red;
-   int log_unk;
    int unk_clear;
-   int wfmode;
 
    // Special fixes
    int offset_x, offset_y;
@@ -409,7 +389,6 @@ typedef struct
    int flame_corona; //hack for zeldas flame's corona
    int increase_texrect_edge; // add 1 to lower right corner coordinates of texrect
    int decrease_fillrect_edge; // sub 1 from lower right corner coordinates of fillrect
-   int texture_correction; // enable perspective texture correction emulation. is on by default
    int stipple_mode;  //used for dithered alpha emulation
    uint32_t stipple_pattern; //used for dithered alpha emulation
    int force_microcheck; //check microcode each frame, for mixed F3DEX-S2DEX games
@@ -424,12 +403,6 @@ typedef struct
    int n64_z_scale; //scale vertex z value before writing to depth buffer, as N64 does.
 
    uint32_t hacks;
-
-   //wrapper settings
-   int wrpResolution;
-   int wrpVRAM;
-   int wrpFBO;
-   int wrpAnisotropic;
 } SETTINGS;
 
 typedef struct
@@ -726,9 +699,6 @@ struct RDP
 
    int updatescreen;
 
-   uint32_t tri_n;  // triangle counter
-   uint32_t debug_n;
-
    // Program counter
    uint32_t pc[10]; // Display List PC stack
    uint32_t pc_i;   // current PC index in the stack
@@ -754,11 +724,18 @@ struct RDP
 
    // Colors
    uint32_t fog_color;
+   int32_t  fog_color_sep[4];
    uint32_t fill_color;
    uint32_t prim_color;
+   int32_t  prim_color_sep[4];
    uint32_t blend_color;
+   int32_t  blend_color_sep[4];
    uint32_t env_color;
+   int32_t  env_color_sep[4];
    uint32_t SCALE;
+   int32_t  key_scale[4];
+   int32_t  key_center[4];
+   int32_t  key_width[4];
    uint32_t CENTER;
    uint32_t prim_lodmin, prim_lodfrac;
    uint16_t prim_depth;
@@ -825,15 +802,11 @@ struct RDP
    uint8_t fbl_a0, fbl_b0, fbl_c0, fbl_d0;
    uint8_t fbl_a1, fbl_b1, fbl_c1, fbl_d1;
 
-   uint8_t uncombined;  // which is uncombined: 0x01=color 0x02=alpha 0x03=both
-
    //  float YUV_C0, YUV_C1, YUV_C2, YUV_C3, YUV_C4; //YUV textures conversion coefficients
 
    // What needs updating
    uint32_t update;
    uint32_t flags;
-
-   int first;
 
    uint32_t tex_ctr;    // incremented every time textures are updated
 
@@ -882,14 +855,12 @@ struct RDP
 
    CACHE_LUT *cache[MAX_TMU]; //[MAX_CACHE]
    CACHE_LUT *cur_cache[MAX_TMU];
-   uint32_t   cur_cache_n[MAX_TMU];
    int     n_cached[MAX_TMU];
 
    // Vertices
    VERTEX *vtx; //[MAX_VTX]
 
    COLOR_IMAGE *frame_buffers; //[NUMTEXBUF+2]
-   TEXTURE_BUFFER texbufs[2];
 
    char RomName[21];
 };
@@ -1000,11 +971,10 @@ static INLINE void glideSetVertexFlatShading(VERTEX *v, VERTEX **vtx, uint32_t w
 
 static INLINE void glideSetVertexPrimShading(VERTEX *v, uint32_t prim_color)
 {
-   v->a = (uint8_t)(prim_color & 0xFF);
-   v->b = (uint8_t)((prim_color >> 8) & 0xFF);
-   v->g = (uint8_t)((prim_color >> 16) & 0xFF);
-   v->r = (uint8_t)((prim_color >> 24) & 0xFF);
-   //FRDP(" * Prim shaded %08lx\n", rdp.prim_color);
+   v->r = (uint8_t)rdp.prim_color_sep[0];
+   v->g = (uint8_t)rdp.prim_color_sep[1];
+   v->b = (uint8_t)rdp.prim_color_sep[2];
+   v->a = (uint8_t)rdp.prim_color_sep[3];
 }
 
 static INLINE uint32_t vi_integer_sqrt(uint32_t a)

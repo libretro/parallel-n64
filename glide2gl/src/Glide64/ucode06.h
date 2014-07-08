@@ -442,7 +442,6 @@ static void DrawImage (DRAWIMAGE *d)
             ConvertCoordsConvert (v, 4);
             grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v);
          }
-         rdp.tri_n += 2;
 
          // increment whatever caused this split
          tb_u += x_size - (x_size-(nlr_u-cb_u));
@@ -527,7 +526,6 @@ static void uc6_bg (bool bg_1cyc)
 
    if (rdp.skip_drawing)
       return;
-   //FRDP ("%s #%d, #%d\n", strFuncName, rdp.tri_n, rdp.tri_n+1);
 
    uc6_read_background_data(&d, bg_1cyc);
 
@@ -715,7 +713,6 @@ static void uc6_draw_polygons (VERTEX v[4])
       rdp.n_global = 3;
       memcpy (rdp.vtxbuf, v, sizeof(VERTEX)*3);
       do_triangle_stuff_2 (0, 1, 1);
-      rdp.tri_n ++;
 
       rdp.vtxbuf = rdp.vtx1; // copy from v to rdp.vtx1
       rdp.vtxbuf2 = rdp.vtx2;
@@ -723,7 +720,6 @@ static void uc6_draw_polygons (VERTEX v[4])
       rdp.n_global = 3;
       memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
       do_triangle_stuff_2 (0, 1, 1);
-      rdp.tri_n ++;
    }
    rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
@@ -753,14 +749,6 @@ static void uc6_read_object_data (DRAWOBJECT *d)
       d->imageW = (int16_t)rdp.scissor_o.lr_x - (int16_t)d->objX - d->imageW;
    if (d->imageH < 0)
       d->imageH = (int16_t)rdp.scissor_o.lr_y - (int16_t)d->objY - d->imageH;
-
-#if 0
-   FRDP ("#%d, #%d\n"
-         "objX: %f, scaleW: %f, imageW: %d\n"
-         "objY: %f, scaleH: %f, imageH: %d\n"
-         "size: %d, format: %d\n", rdp.tri_n, rdp.tri_n+1,
-         d->objX, d->scaleW, d->imageW, d->objY, d->scaleH, d->imageH, d->imageSiz, d->imageFmt);
-#endif
 }
 
 static void uc6_init_tile(const DRAWOBJECT *d)
@@ -1049,7 +1037,6 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
       ul_y = d.objY / mat_2d.BaseScaleY + mat_2d.Y;
       lr_y = (d.objY + d.imageH / d.scaleH) / mat_2d.BaseScaleY + mat_2d.Y;
       uc6_DrawYUVImageToFrameBuffer((uint16_t)ul_x, (uint16_t)ul_y, (uint16_t)lr_x, (uint16_t)lr_y);
-      rdp.tri_n += 2;
       return;
    }
 
@@ -1227,7 +1214,6 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
    if ( (cmd0>>24) != 0xBE )
       return;
 
-   //FRDP ("uc6:uc6_sprite2d #%d, #%d\n", rdp.tri_n, rdp.tri_n+1);
    addr = segoffset(w1) >> 1;
 
    d.imagePtr = segoffset(((uint32_t*)gfx_info.RDRAM)[(addr+0)>>1]); // 0,1
@@ -1430,11 +1416,9 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
                vptr[i] = &v[i];
             draw_split_triangle(vptr);
 
-            rdp.tri_n ++;
             for (i = 0; i < 3; i++)
                vptr[i] = &v[i+1];
             draw_split_triangle(vptr);
-            rdp.tri_n ++;
          }
          else
 #endif
@@ -1445,7 +1429,6 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
             rdp.n_global = 3;
             memcpy (rdp.vtxbuf, v, sizeof(VERTEX)*3);
             do_triangle_stuff_2 (0, 1, 1);
-            rdp.tri_n ++;
 
             rdp.vtxbuf = rdp.vtx1; // copy from v to rdp.vtx1
             rdp.vtxbuf2 = rdp.vtx2;
@@ -1453,7 +1436,6 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
             rdp.n_global = 3;
             memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
             do_triangle_stuff_2 (0, 1, 1);
-            rdp.tri_n ++;
          }
          rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 

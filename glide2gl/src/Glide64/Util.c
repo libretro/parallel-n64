@@ -82,15 +82,6 @@ static INLINE void InterpolateColors(VERTEX *dest, float percent, VERTEX *first,
    dest->f = first->f + percent * (second->f - first->f);
 }
 
-//
-// util_init - initialize data for the functions in this file
-//
-
-void util_init(void)
-{
-}
-
-
 void apply_shade_mods (VERTEX *v)
 {
    float col[4];
@@ -293,16 +284,16 @@ static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percen
    res->f = interp2p(fa, fb, percent) * w;
 }
 
-static void CalculateLODValues(VERTEX *v, int32_t i, int32_t j, float *lodFactor, float s_scale, float t_scale)
+static INLINE void CalculateLODValues(VERTEX *v, int32_t i, int32_t j, float *lodFactor, float s_scale, float t_scale)
 {
    float deltaS, deltaT, deltaTexels, deltaPixels, deltaX, deltaY;
    deltaS = (v[j].u0/v[j].q - v[i].u0/v[i].q) * s_scale;
    deltaT = (v[j].v0/v[j].q - v[i].v0/v[i].q) * t_scale;
-   deltaTexels = squareRoot( deltaS * deltaS + deltaT * deltaT );
+   deltaTexels = sqrt( deltaS * deltaS + deltaT * deltaT );
 
    deltaX = (v[j].x - v[i].x)/rdp.scale_x;
    deltaY = (v[j].y - v[i].y)/rdp.scale_y;
-   deltaPixels = squareRoot( deltaX * deltaX + deltaY * deltaY );
+   deltaPixels = sqrt( deltaX * deltaX + deltaY * deltaY );
 
    *lodFactor += deltaTexels / deltaPixels;
 }
@@ -315,36 +306,35 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
    t_scale = rdp.tiles[rdp.cur_tile].height / 255.0f;
    lodFactor = 0;
 
-   (void)j;
-
-   switch (lodmode)
+   if (lodmode == G_TL_LOD)
    {
-      case G_TL_TILE:
-         for (i = 0; i < n; i++)
-            CalculateLODValues(v, i, (i < n-1) ? i + 1 : 0, &lodFactor, s_scale, t_scale);
-         // Divide by n (n edges) to find average
-         lodFactor = lodFactor / n;
-         break;
-      case G_TL_LOD:
-         CalculateLODValues(v, 0, 1, &lodFactor, s_scale, t_scale);
-         break;
+      n = 1;
+      j = 1;
    }
+
+   for (i = 0; i < n; i++)
+   {
+      if (lodmode == G_TL_TILE)
+         j = (i < n-1) ? (i + 1) : 0;
+      CalculateLODValues(v, i, j, &lodFactor, s_scale, t_scale);
+   }
+
+   if (lodmode == G_TL_TILE)
+      lodFactor = lodFactor / n; // Divide by n (n edges) to find average
 
    ilod = (int)lodFactor;
    lod_tile = min((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + rdp.mipmap_level);
    lod_fraction = 1.0f;
+   detailmax = 1.0f - lod_fraction;
 
    if (lod_tile < rdp.cur_tile + rdp.mipmap_level)
-      lod_fraction = max((float)modff(lodFactor / glide64_pow(2.,lod_tile),&intptr), rdp.prim_lodmin / 255.0f);
+      lod_fraction = max((float)modff(lodFactor / pow(2.,lod_tile),&intptr), rdp.prim_lodmin / 255.0f);
 
    if (cmb.dc0_detailmax < 0.5f)
       detailmax = lod_fraction;
-   else
-      detailmax = 1.0f - lod_fraction;
 
    grTexDetailControl (GR_TMU0, cmb.dc0_lodbias, cmb.dc0_detailscale, detailmax);
    grTexDetailControl (GR_TMU1, cmb.dc1_lodbias, cmb.dc1_detailscale, detailmax);
-   //FRDP("CalculateLOD factor: %f, tile: %d, lod_fraction: %f\n", (float)lodFactor, lod_tile, lod_fraction);
 }
 
 float ScaleZ(float z)
@@ -369,29 +359,31 @@ float ScaleZ(float z)
 static void DepthBuffer(VERTEX * vtx, int n)
 {
    int i;
-   if (fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE))
+   struct vertexi v[12];
+   bool cond = fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE) && gfx_plugin_accuracy > 2;
+
+   if (!cond)
+      return;
+
+   if (rdp.u_cull_mode == 1) //cull front
    {
-      struct vertexi v[12];
-      if (rdp.u_cull_mode == 1) //cull front
+      for (i = 0; i < n; i++)
       {
-         for (i = 0; i < n; i++)
-         {
-            v[i].x = (int)((vtx[n-i-1].x-rdp.offset_x) / rdp.scale_x * 65536.0);
-            v[i].y = (int)((vtx[n-i-1].y-rdp.offset_y) / rdp.scale_y * 65536.0);
-            v[i].z = (int)(vtx[n-i-1].z * 65536.0);
-         }
+         v[i].x = (int)((vtx[n-i-1].x-rdp.offset_x) / rdp.scale_x * 65536.0);
+         v[i].y = (int)((vtx[n-i-1].y-rdp.offset_y) / rdp.scale_y * 65536.0);
+         v[i].z = (int)(vtx[n-i-1].z * 65536.0);
       }
-      else
-      {
-         for (i = 0; i < n; i++)
-         {
-            v[i].x = (int)((vtx[i].x-rdp.offset_x) / rdp.scale_x * 65536.0);
-            v[i].y = (int)((vtx[i].y-rdp.offset_y) / rdp.scale_y * 65536.0);
-            v[i].z = (int)(vtx[i].z * 65536.0);
-         }
-      }
-      Rasterize(v, n, dzdx);
    }
+   else
+   {
+      for (i = 0; i < n; i++)
+      {
+         v[i].x = (int)((vtx[i].x-rdp.offset_x) / rdp.scale_x * 65536.0);
+         v[i].y = (int)((vtx[i].y-rdp.offset_y) / rdp.scale_y * 65536.0);
+         v[i].z = (int)(vtx[i].z * 65536.0);
+      }
+   }
+   Rasterize(v, n, dzdx);
 
    for (i = 0; i < n; i++)
       vtx[i].z = ScaleZ(vtx[i].z);
@@ -908,12 +900,12 @@ static void render_tri (uint16_t linew, int old_interpolate)
             rdp.vtxbuf[i].f = 1.0f/max(4.0f, rdp.vtxbuf[i].f);
          break;
       case FOG_MODE_BLEND:
-         fog = 1.0f/max(1, rdp.fog_color&0xFF);
+         fog = 1.0f/max(1, rdp.fog_color_sep[3]);
          for (i = 0; i < n; i++)
             rdp.vtxbuf[i].f = fog;
          break;
       case FOG_MODE_BLEND_INVERSE:
-         fog = 1.0f/max(1, (~rdp.fog_color)&0xFF);
+         fog = 1.0f/max(1, (~rdp.fog_color) & 0xFF);
          for (i = 0; i < n; i++)
             rdp.vtxbuf[i].f = fog;
          break;
@@ -961,12 +953,11 @@ static void render_tri (uint16_t linew, int old_interpolate)
       }
       else
       {
-         float dx, dy, len, wx, wy;
-         dx = V1->x - V0->x;
-         dy = V1->y - V0->y;
-         len = squareRoot(dx*dx + dy*dy);
-         wx = dy * width * rdp.scale_x / len;
-         wy = dx * width * rdp.scale_y / len;
+         float dx = V1->x - V0->x;
+         float dy = V1->y - V0->y;
+         float len = sqrtf(dx*dx + dy*dy);
+         float wx = dy * width * rdp.scale_x / len;
+         float wy = dx * width * rdp.scale_y / len;
          v[0].x = V0->x + wx;
          v[0].y = V0->y - wy;
          v[1].x = V0->x - wx;
@@ -1242,9 +1233,9 @@ void update(void)
       {
          rdp.update ^= UPDATE_ALPHA_COMPARE;
 
-         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 1 && !(rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && (!(rdp.othermode_l & RDP_FORCE_BLEND) || (rdp.blend_color&0xFF)))
+         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 1 && !(rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && (!(rdp.othermode_l & RDP_FORCE_BLEND) || (rdp.blend_color_sep[3])))
          {
-            uint8_t reference = (uint8_t)(rdp.blend_color&0xFF);
+            uint8_t reference = (uint8_t)rdp.blend_color_sep[3];
             grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER, reference, 1);
             FRDP (" |- alpha compare: blend: %02lx\n", reference);
          }
@@ -1255,7 +1246,7 @@ void update(void)
                bool cond_set = (rdp.othermode_l & 0x5000) == 0x5000;
                grAlphaTestFunction (!cond_set ? GR_CMP_GEQUAL : GR_CMP_GREATER, 0x20, !cond_set ? 1 : 0);
                if (cond_set)
-                  grAlphaTestReferenceValue (((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3) ? (uint8_t)(rdp.blend_color&0xFF) : 0x00);
+                  grAlphaTestReferenceValue (((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3) ? (uint8_t)rdp.blend_color_sep[3] : 0x00);
             }
             else
             {

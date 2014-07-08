@@ -21,7 +21,10 @@
 #define GR_BUFFER_TEXTUREBUFFER_EXT       0x6
 #define GR_BUFFER_TEXTUREAUXBUFFER_EXT    0x7
 
+#ifndef GR_PIXFMT_RGB_565
 #define GR_PIXFMT_RGB_565                 0x03
+#endif
+
 #define GR_PIXFMT_ARGB_1555               0x0004
 #define GR_PIXFMT_ARGB_8888               0x0005
 

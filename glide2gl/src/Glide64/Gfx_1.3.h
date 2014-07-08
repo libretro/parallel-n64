@@ -83,22 +83,7 @@ the plugin
 
 #define _ENDUSER_RELEASE_
 
-//#define LOGGING			// log of spec functions called
-//#define LOG_UCODE
-//#define EXTREME_LOGGING		// lots of logging
-							//  note that some of these things are inserted/removed
-							//  from within the code & may not be changed by this define.
-//#define TLUT_LOGGING		// log every entry of the TLUT?
-
-#define LOGKEY		0x11 // this key (CONTROL)
-
-//#define LOG_COMMANDS		// log the whole 64-bit command as (0x........, 0x........)
-
 #ifndef _ENDUSER_RELEASE_
-#define RDP_LOGGING			// Allow logging (will not log unless checked, but allows the option)
-							//  Logging functions will not be compiled if this is not present.
-//#define RDP_ERROR_LOG
-#define UNIMP_LOG			// Keep enabled, option in dialog
 #define BRIGHT_RED			// Keep enabled, option in dialog
 #endif
 
@@ -129,13 +114,8 @@ extern uint32_t resolutions[0x18][2];
 #define CLOSE_RDP_LOG()
 #define LRDP(x)
 
-#ifdef RDP_LOGGING
-/* FIXME */
-#define LRDP(x)
-#else
 #define LRDP(x)
 #define FRDP(x, ...)
-#endif
 
 
 #ifdef RDP_ERROR_LOG
@@ -179,16 +159,6 @@ typedef struct
    int MemoryBswaped;      /* a normal uint8_t array where the memory has been pre
                           bswap on a dword (32 bits) boundry */
 } PLUGIN_INFO;
-
-static INLINE float squareRoot(float x)
-{
-  uint32_t i = ((((*(uint32_t*) &x)) + (127 << 23)) >> 1);
-  return *(float*) &i;
-}
-
-#define glide64_acos(x) ((-0.69813170079773212 * x * x - 0.87266462599716477) * x + 1.5707963267948966)
-#define glide64_floor(x) (((x) < 0) ? ((int32_t)(x) == (x)) ? ((int32_t)(x)) : ((int32_t)(x) -1) : ((int32_t)(x)))
-extern float glide64_pow(float a, float b);
 
 extern bool no_dlist;
 

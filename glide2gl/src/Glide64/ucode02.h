@@ -59,7 +59,7 @@ static void calc_point_light (VERTEX *v, float * vpos)
          lvec[2] = rdp.light[l].z - vpos[2];
 
          light_len2 = lvec[0] * lvec[0] + lvec[1] * lvec[1] + lvec[2] * lvec[2];
-         light_len = squareRoot(light_len2);
+         light_len = sqrtf(light_len2);
          //FRDP ("calc_point_light: len: %f, len2: %f\n", light_len, light_len2);
          at = rdp.light[l].ca + light_len/65535.0f*rdp.light[l].la + light_len2/65535.0f*rdp.light[l].qa;
 
@@ -123,8 +123,6 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
    n = (w0 >> 12) & 0xFF;
    v0 = ((w0 >> 1) & 0x7F) - n;
 
-   //FRDP ("uc2:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
-
    if (v0 < 0)
       return;
 
@@ -134,89 +132,8 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
       if (((int16_t*)gfx_info.RDRAM)[(((addr) >> 1) + 4)^1] || ((int16_t*)gfx_info.RDRAM)[(((addr) >> 1) + 5)^1])
          rdp.geom_mode ^= G_TEXTURE_GEN;
    }
-   for (i=0; i < (n<<4); i+=16)
-   {
-      VERTEX *v = &rdp.vtx[v0 + (i>>4)];
-      x = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 0)^1];
-      y = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 1)^1];
-      z = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 2)^1];
-      v->flags = ((uint16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 3)^1];
-      v->ou = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 4)^1];
-      v->ov = (float)((int16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 5)^1];
-      v->uv_scaled = 0;
-      v->a = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 15)^3];
 
-      v->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
-      v->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
-      v->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
-      v->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
-
-      if (fabs(v->w) < 0.001) v->w = 0.001f;
-      v->oow = 1.0f / v->w;
-      v->x_w = v->x * v->oow;
-      v->y_w = v->y * v->oow;
-      v->z_w = v->z * v->oow;
-      CalculateFog (v);
-
-      v->uv_calculated = 0xFFFFFFFF;
-      v->screen_translated = 0;
-      v->shade_mod = 0;
-
-      v->scr_off = 0;
-      if (v->x < -v->w) v->scr_off |= 1;
-      if (v->x > v->w) v->scr_off |= 2;
-      if (v->y < -v->w) v->scr_off |= 4;
-      if (v->y > v->w) v->scr_off |= 8;
-      if (v->w < 0.1f) v->scr_off |= 16;
-      // if (v->z_w > 1.0f) v->scr_off |= 32;
-
-      if (rdp.geom_mode & 0x00020000)
-      {
-         v->vec[0] = ((int8_t*)gfx_info.RDRAM)[(addr+i + 12)^3];
-         v->vec[1] = ((int8_t*)gfx_info.RDRAM)[(addr+i + 13)^3];
-         v->vec[2] = ((int8_t*)gfx_info.RDRAM)[(addr+i + 14)^3];
-         // FRDP("Calc light. x: %f, y: %f z: %f\n", v->vec[0], v->vec[1], v->vec[2]);
-         // if (!(rdp.geom_mode & 0x800000))
-         {
-            if (rdp.geom_mode & 0x40000)
-            {
-               if (rdp.geom_mode & 0x80000)
-               {
-                  calc_linear (v);
-#ifdef EXTREME_LOGGING
-                  FRDP ("calc linear: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
-#endif
-               }
-               else
-               {
-                  calc_sphere (v);
-#ifdef EXTREME_LOGGING
-                  FRDP ("calc sphere: v%d - u: %f, v: %f\n", i>>4, v->ou, v->ov);
-#endif
-               }
-            }
-         }
-         if (rdp.geom_mode & 0x00400000)
-         {
-            float tmpvec[3] = {x, y, z};
-            calc_point_light (v, tmpvec);
-         }
-         else
-         {
-            NormalizeVector (v->vec);
-            calc_light (v);
-         }
-      }
-      else
-      {
-         v->r = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 12)^3];
-         v->g = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 13)^3];
-         v->b = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 14)^3];
-      }
-#ifdef EXTREME_LOGGING
-      FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
-#endif
-   }
+   gSPVertex(addr, n, v0);
 
    rdp.geom_mode = geom_mode;
 }
@@ -646,13 +563,12 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
 
 static void uc2_movemem(uint32_t w0, uint32_t w1)
 {
-   int idx = w0 & 0xFF;
-   uint32_t addr = segoffset(w1);
-   int ofs = (w0 >> 5) & 0x7F8;
+   int index = w0 & 0xFF;
+   int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
+   int8_t  *rdram_s8  = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
+   uint8_t *rdram_u8  = (uint8_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
 
-   FRDP ("uc2:movemem ofs:%d ", ofs);
-
-   switch (idx)
+   switch (index)
    {
       case 0:
       case 2:
@@ -661,14 +577,12 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
 
       case 8:   // VIEWPORT
          {
-            int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
-            uint32_t a = addr >> 1;
-            scale_x = ((int16_t*)gfx_info.RDRAM)[(a+0)^1] >> 2;
-            scale_y = ((int16_t*)gfx_info.RDRAM)[(a+1)^1] >> 2;
-            scale_z = ((int16_t*)gfx_info.RDRAM)[(a+2)^1];
-            trans_x = ((int16_t*)gfx_info.RDRAM)[(a+4)^1] >> 2;
-            trans_y = ((int16_t*)gfx_info.RDRAM)[(a+5)^1] >> 2;
-            trans_z = ((int16_t*)gfx_info.RDRAM)[(a+6)^1];
+            int16_t scale_y = rdram[0] >> 2;
+            int16_t scale_x = rdram[1] >> 2;
+            int16_t scale_z = rdram[3];
+            int16_t trans_y = rdram[4] >> 2;
+            int16_t trans_x = rdram[5] >> 2;
+            int16_t trans_z = rdram[7];
             rdp.view_scale[0] = scale_x * rdp.scale_x;
             rdp.view_scale[1] = -scale_y * rdp.scale_y;
             rdp.view_scale[2] = 32.0f * scale_z;
@@ -677,33 +591,21 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             rdp.view_trans[2] = 32.0f * trans_z;
 
             rdp.update |= UPDATE_VIEWPORT;
-
-            //FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d), from:%08lx\n", scale_x, scale_y, scale_z, trans_x, trans_y, trans_z, a);
          }
          break;
       case 10:  // LIGHT
          {
-            uint8_t *rdram_u8;
-            int8_t *rdram_s8;
-            int n;
-            uint32_t a;
-
-            rdram_s8 = (int8_t*)gfx_info.RDRAM;
-            rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-            n = ofs / 24;
+            int n = ((w0 >> 5) & 0x7F8) / 24;
 
             if (n < 2)
             {
-               int8_t dir_x, dir_y;
-               dir_x = rdram_s8[(addr+8)^3];
-               dir_y = rdram_s8[(addr+9)^3];
-               rdp.lookat[n][0] = (float)dir_x / 127.0f;
-               rdp.lookat[n][1] = (float)dir_y / 127.0f;
-               rdp.lookat[n][2] = (float)(rdram_s8[(addr+10)^3]) / 127.0f;
+               rdp.lookat[n][0] = (float)rdram_s8[11] / 127.0f;
+               rdp.lookat[n][1] = (float)rdram_s8[10] / 127.0f;
+               rdp.lookat[n][2] = (float)rdram_s8[9] / 127.0f;
                rdp.use_lookat = true;
                if (n == 1)
                {
-                  if (!dir_x && !dir_y)
+                  if (!rdram_s8[11] && !rdram_s8[10])
                      rdp.use_lookat = false;
                }
                FRDP("lookat_%d (%f, %f, %f)\n", n, rdp.lookat[n][0], rdp.lookat[n][1], rdp.lookat[n][2]);
@@ -714,35 +616,27 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
                return;
 
             // Get the data
-            rdp.light[n].nonblack = rdram_u8[(addr+0)^3];
-            rdp.light[n].nonblack += rdram_u8[(addr+1)^3];
-            rdp.light[n].nonblack += rdram_u8[(addr+2)^3];
+            rdp.light[n].nonblack  = rdram_u8[3];
+            rdp.light[n].nonblack += rdram_u8[2];
+            rdp.light[n].nonblack += rdram_u8[1];
 
-            rdp.light[n].col[0] = rdram_u8[(addr+0)^3] / 255.0f;
-            rdp.light[n].col[1] = rdram_u8[(addr+1)^3] / 255.0f;
-            rdp.light[n].col[2] = rdram_u8[(addr+2)^3] / 255.0f;
-            rdp.light[n].col[3] = 1.0f;
+            rdp.light[n].col[0]    = rdram_u8[3] / 255.0f;
+            rdp.light[n].col[1]    = rdram_u8[2] / 255.0f;
+            rdp.light[n].col[2]    = rdram_u8[1] / 255.0f;
+            rdp.light[n].col[3]    = 1.0f;
 
             // ** Thanks to Icepir8 for pointing this out **
             // Lighting must be signed byte instead of byte
-            rdp.light[n].dir[0] = (float)(((int8_t*)gfx_info.RDRAM)[(addr+8)^3]) / 127.0f;
-            rdp.light[n].dir[1] = (float)(((int8_t*)gfx_info.RDRAM)[(addr+9)^3]) / 127.0f;
-            rdp.light[n].dir[2] = (float)(((int8_t*)gfx_info.RDRAM)[(addr+10)^3]) / 127.0f;
+            rdp.light[n].dir[0] = (float)rdram_s8[11] / 127.0f;
+            rdp.light[n].dir[1] = (float)rdram_s8[10] / 127.0f;
+            rdp.light[n].dir[2] = (float)rdram_s8[9] / 127.0f;
 
-            a = addr >> 1;
-            rdp.light[n].x = (float)(((int16_t*)gfx_info.RDRAM)[(a+4)^1]);
-            rdp.light[n].y = (float)(((int16_t*)gfx_info.RDRAM)[(a+5)^1]);
-            rdp.light[n].z = (float)(((int16_t*)gfx_info.RDRAM)[(a+6)^1]);
-            rdp.light[n].ca = (float)(gfx_info.RDRAM[(addr+3)^3]) / 16.0f;
-            rdp.light[n].la = (float)(gfx_info.RDRAM[(addr+7)^3]);
-            rdp.light[n].qa = (float)(gfx_info.RDRAM[(addr+14)^3]) / 8.0f;
-#ifdef EXTREME_LOGGING
-            FRDP ("light: n: %d, pos: x: %f, y: %f, z: %f, ca: %f, la:%f, qa: %f\n",
-                  n, rdp.light[n].x, rdp.light[n].y, rdp.light[n].z, rdp.light[n].ca, rdp.light[n].la, rdp.light[n].qa);
-#endif
-            FRDP ("light: n: %d, r: %.3f, g: %.3f, b: %.3f. dir: x: %.3f, y: %.3f, z: %.3f\n",
-                  n, rdp.light[n].r, rdp.light[n].g, rdp.light[n].b,
-                  rdp.light[n].dir_x, rdp.light[n].dir_y, rdp.light[n].dir_z);
+            rdp.light[n].x = (float)rdram[5];
+            rdp.light[n].y = (float)rdram[4];
+            rdp.light[n].z = (float)rdram[7];
+            rdp.light[n].ca = (float)rdram[0] / 16.0f;
+            rdp.light[n].la = (float)rdram[4];
+            rdp.light[n].qa = (float)rdram[13] / 8.0f;
          }
          break;
 
@@ -751,18 +645,8 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             // do not update the combined matrix!
             rdp.update &= ~UPDATE_MULT_MAT;
             load_matrix(rdp.combined, segoffset(w1));
-
-#ifdef EXTREME_LOGGING
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[1][0], rdp.combined[1][1], rdp.combined[1][2], rdp.combined[1][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[2][0], rdp.combined[2][1], rdp.combined[2][2], rdp.combined[2][3]);
-            FRDP ("{%f,%f,%f,%f}\n", rdp.combined[3][0], rdp.combined[3][1], rdp.combined[3][2], rdp.combined[3][3]);
-#endif
          }
          break;
-      default:
-         FRDP ("uc2:matrix unknown (%d)\n", idx);
-         FRDP ("** UNKNOWN %d\n", idx);
    }
 }
 

@@ -24,7 +24,7 @@ struct MAT2D {
 
 // positional and texel coordinate clipping
 #define CCLIP(ux,lx,ut,lt,uc,lc) \
-		if (ux > lx || lx < uc || ux > lc) { rdp.tri_n += 2; return; } \
+		if (ux > lx || lx < uc || ux > lc) return; \
 		if (ux < uc) { \
 			float p = (uc-ux)/(lx-ux); \
 			ut = p*(lt-ut)+ut; \
@@ -37,7 +37,7 @@ struct MAT2D {
 		}
 
 #define CCLIP2(ux,lx,ut,lt,un,ln,uc,lc) \
-		if (ux > lx || lx < uc || ux > lc) { rdp.tri_n += 2; return; } \
+		if (ux > lx || lx < uc || ux > lc) return; \
 		if (ux < uc) { \
 			float p = (uc-ux)/(lx-ux); \
 			ut = p*(lt-ut)+ut; \
@@ -369,40 +369,130 @@ static void clip_w (void)
    rdp.n_global = index;
 }
 
+static void draw_tri_depth(VERTEX **vtx)
+{
+   float X0 = vtx[0]->sx / rdp.scale_x;
+   float Y0 = vtx[0]->sy / rdp.scale_y;
+   float X1 = vtx[1]->sx / rdp.scale_x;
+   float Y1 = vtx[1]->sy / rdp.scale_y;
+   float X2 = vtx[2]->sx / rdp.scale_x;
+   float Y2 = vtx[2]->sy / rdp.scale_y;
+   float diffy_02 = Y0 - Y2;
+   float diffy_12 = Y1 - Y2;
+   float diffx_02 = X0 - X2;
+   float diffx_12 = X1 - X2;
+
+   float denom = (diffx_02 * diffy_12 - diffx_12 * diffy_02);
+   if(denom*denom > 0.0)
+   {
+      float diffz_02 = vtx[0]->sz - vtx[2]->sz;
+      float diffz_12 = vtx[1]->sz - vtx[2]->sz;
+      float fdzdx = (diffz_02 * diffy_12 - diffz_12 * diffy_02) / denom;
+      if ((rdp.rm & ZMODE_DECAL) == ZMODE_DECAL)
+      {
+         // Calculate deltaZ per polygon for Decal z-mode
+         float fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
+         float fdz = fabs(fdzdx) + fabs(fdzdy);
+         if ((settings.hacks & hack_Zelda) && (rdp.rm & 0x800))
+            fdz *= 4.0;  // Decal mode in Zelda sometimes needs mutiplied deltaZ to work correct, e.g. roads
+         deltaZ = max(8, (int)fdz);
+      }
+      dzdx = (int)(fdzdx * 65536.0); }
+}
+
+static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
+{
+   //FRDP(" * CALCULATING VERTEX U/V: %d\n", v->number);
+
+   if (!(rdp.geom_mode & G_LIGHTING))
+   {
+      if (!(rdp.geom_mode & UPDATE_SCISSOR))
+      {
+         if (rdp.geom_mode & G_SHADE)
+            glideSetVertexFlatShading(v, vtx, rdp.cmd1);
+         else
+            glideSetVertexPrimShading(v, rdp.prim_color);
+      }
+   }
+
+   // Fix texture coordinates
+   if (!v->uv_scaled)
+   {
+      v->ou *= rdp.tiles[rdp.cur_tile].s_scale;
+      v->ov *= rdp.tiles[rdp.cur_tile].t_scale;
+      v->uv_scaled = 1;
+      if (!(rdp.othermode_h & RDP_PERSP_TEX_ENABLE))
+      {
+         //          v->oow = v->w = 1.0f;
+         v->ou *= 0.5f;
+         v->ov *= 0.5f;
+      }
+   }
+   v->u1 = v->u0 = v->ou;
+   v->v1 = v->v0 = v->ov;
+
+   if (rdp.tex >= 1 && rdp.cur_cache[0])
+   {
+
+      if (rdp.tiles[rdp.cur_tile].shift_s)
+      {
+         if (rdp.tiles[rdp.cur_tile].shift_s > 10)
+            v->u0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_s));
+         else
+            v->u0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_s);
+      }
+      if (rdp.tiles[rdp.cur_tile].shift_t)
+      {
+         if (rdp.tiles[rdp.cur_tile].shift_t > 10)
+            v->v0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_t));
+         else
+            v->v0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
+      }
+
+      {
+         v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
+         v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t;
+         v->u0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_x * v->u0;
+         v->v0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_y * v->v0;
+      }
+      v->u0_w = v->u0 / v->w;
+      v->v0_w = v->v0 / v->w;
+   }
+
+   if (rdp.tex >= 2 && rdp.cur_cache[1])
+   {
+      if (rdp.tiles[rdp.cur_tile+1].shift_s)
+      {
+         if (rdp.tiles[rdp.cur_tile+1].shift_s > 10)
+            v->u1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_s));
+         else
+            v->u1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_s);
+      }
+      if (rdp.tiles[rdp.cur_tile+1].shift_t)
+      {
+         if (rdp.tiles[rdp.cur_tile+1].shift_t > 10)
+            v->v1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_t));
+         else
+            v->v1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
+      }
+
+      {
+         v->u1 -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
+         v->v1 -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
+         v->u1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_x * v->u1;
+         v->v1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_y * v->v1;
+      }
+
+      v->u1_w = v->u1 / v->w;
+      v->v1_w = v->v1 / v->w;
+   }
+   //      FRDP(" * CALCULATING VERTEX U/V: %d  u0: %f, v0: %f, u1: %f, v1: %f\n", v->number, v->u0, v->v0, v->u1, v->v1);
+   v->uv_calculated = rdp.tex_ctr;
+}
+
 static void draw_tri (VERTEX **vtx, uint16_t linew)
 {
    int i;
-   deltaZ = dzdx = 0;
-   if (linew == 0 && (fb_depth_render_enabled || (rdp.rm & ZMODE_DECAL) == ZMODE_DECAL))
-   {
-      float X0 = vtx[0]->sx / rdp.scale_x;
-      float Y0 = vtx[0]->sy / rdp.scale_y;
-      float X1 = vtx[1]->sx / rdp.scale_x;
-      float Y1 = vtx[1]->sy / rdp.scale_y;
-      float X2 = vtx[2]->sx / rdp.scale_x;
-      float Y2 = vtx[2]->sy / rdp.scale_y;
-      float diffy_02 = Y0 - Y2;
-      float diffy_12 = Y1 - Y2;
-      float diffx_02 = X0 - X2;
-      float diffx_12 = X1 - X2;
-
-      float denom = (diffx_02 * diffy_12 - diffx_12 * diffy_02);
-      if(denom*denom > 0.0)
-      {
-         float diffz_02 = vtx[0]->sz - vtx[2]->sz;
-         float diffz_12 = vtx[1]->sz - vtx[2]->sz;
-         float fdzdx = (diffz_02 * diffy_12 - diffz_12 * diffy_02) / denom;
-         if ((rdp.rm & ZMODE_DECAL) == ZMODE_DECAL)
-         {
-            // Calculate deltaZ per polygon for Decal z-mode
-            float fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
-            float fdz = fabs(fdzdx) + fabs(fdzdy);
-            if ((settings.hacks & hack_Zelda) && (rdp.rm & 0x800))
-               fdz *= 4.0;  // Decal mode in Zelda sometimes needs mutiplied deltaZ to work correct, e.g. roads
-            deltaZ = max(8, (int)fdz);
-         }
-         dzdx = (int)(fdzdx * 65536.0); }
-   }
 
    org_vtx = vtx;
 
@@ -411,97 +501,10 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
       VERTEX *v = (VERTEX*)vtx[i];
 
       if (v->uv_calculated != rdp.tex_ctr)
-      {
-         //FRDP(" * CALCULATING VERTEX U/V: %d\n", v->number);
-         v->uv_calculated = rdp.tex_ctr;
-
-         if (!(rdp.geom_mode & G_LIGHTING))
-         {
-            if (!(rdp.geom_mode & UPDATE_SCISSOR))
-            {
-               if (rdp.geom_mode & G_SHADE)
-                  glideSetVertexFlatShading(v, vtx, rdp.cmd1);
-               else
-                  glideSetVertexPrimShading(v, rdp.prim_color);
-            }
-         }
-
-         // Fix texture coordinates
-         if (!v->uv_scaled)
-         {
-            v->ou *= rdp.tiles[rdp.cur_tile].s_scale;
-            v->ov *= rdp.tiles[rdp.cur_tile].t_scale;
-            v->uv_scaled = 1;
-            if (!(rdp.othermode_h & RDP_PERSP_TEX_ENABLE))
-            {
-               //          v->oow = v->w = 1.0f;
-               v->ou *= 0.5f;
-               v->ov *= 0.5f;
-            }
-         }
-         v->u1 = v->u0 = v->ou;
-         v->v1 = v->v0 = v->ov;
-
-         if (rdp.tex >= 1 && rdp.cur_cache[0])
-         {
-
-            if (rdp.tiles[rdp.cur_tile].shift_s)
-            {
-               if (rdp.tiles[rdp.cur_tile].shift_s > 10)
-                  v->u0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_s));
-               else
-                  v->u0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_s);
-            }
-            if (rdp.tiles[rdp.cur_tile].shift_t)
-            {
-               if (rdp.tiles[rdp.cur_tile].shift_t > 10)
-                  v->v0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_t));
-               else
-                  v->v0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
-            }
-
-            {
-               v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
-               v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t;
-               v->u0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_x * v->u0;
-               v->v0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_y * v->v0;
-            }
-            v->u0_w = v->u0 / v->w;
-            v->v0_w = v->v0 / v->w;
-         }
-
-         if (rdp.tex >= 2 && rdp.cur_cache[1])
-         {
-            if (rdp.tiles[rdp.cur_tile+1].shift_s)
-            {
-               if (rdp.tiles[rdp.cur_tile+1].shift_s > 10)
-                  v->u1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_s));
-               else
-                  v->u1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_s);
-            }
-            if (rdp.tiles[rdp.cur_tile+1].shift_t)
-            {
-               if (rdp.tiles[rdp.cur_tile+1].shift_t > 10)
-                  v->v1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_t));
-               else
-                  v->v1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
-            }
-
-            {
-               v->u1 -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
-               v->v1 -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
-               v->u1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_x * v->u1;
-               v->v1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_y * v->v1;
-            }
-
-            v->u1_w = v->u1 / v->w;
-            v->v1_w = v->v1 / v->w;
-         }
-         //      FRDP(" * CALCULATING VERTEX U/V: %d  u0: %f, v0: %f, u1: %f, v1: %f\n", v->number, v->u0, v->v0, v->u1, v->v1);
-      }
+         draw_tri_uv_calculation(vtx, v);
       if (v->shade_mod != cmb.shade_mod_hash)
          apply_shade_mods (v);
-   } //for
+   }
 
    rdp.clip = 0;
 
@@ -512,7 +515,6 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
    rdp.vtxbuf2 = rdp.vtx2;
    rdp.vtx_buffer = 0;
    rdp.n_global = 3;
-
 
    rdp.vtxbuf[0] = *vtx[0];
    rdp.vtxbuf[0].number = 1;
@@ -531,25 +533,22 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
 
 static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, bool do_cull, int32_t wd)
 {
-   int32_t i, vcount;
-   bool updated_once = false;
-   vcount = 0;
+   int32_t i;
+   int32_t vcount = 0;
 
-   for (i = 0; i < iterations; i++)
+   if (do_update)
+      update();
+
+   for (i = 0; i < iterations; i++, vcount += 3)
    {
-      if (do_cull && !cull_tri(v + vcount))
-      {
-         if (do_update && !updated_once)
-         {
-            update();
-            updated_once = true;
-         }
-         draw_tri (v + vcount, wd);
-      }
-      else if (!do_cull)
-         draw_tri (v + vcount, wd);
-      rdp.tri_n ++;
-      vcount += 3;
+      if (do_cull)
+         if (cull_tri(v + vcount))
+            continue;
+
+      deltaZ = dzdx = 0;
+      if (wd == 0 && (fb_depth_render_enabled || (rdp.rm & ZMODE_DECAL) == ZMODE_DECAL))
+         draw_tri_depth(v + vcount);
+      draw_tri (v + vcount, wd);
    }
 }
 
@@ -578,6 +577,10 @@ static void pre_update(void)
    }
 }
 
+#ifdef HAVE_NEON
+#include <arm_neon.h>
+#endif
+
 /*
  * Loads into the RSP vertex buffer the vertices that will be used by the 
  * gSP1Triangle commands to generate polygons.
@@ -590,123 +593,48 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
 {
    int i;
    float x, y, z;
-
-   for (i=0; i < (n<<4); i+=16)
-   {
-      VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i>>4)];
-      int16_t *rdram = (int16_t*)gfx_info.RDRAM;
-      x   = (float)rdram[(((addr+i) >> 1) + 0)^1];
-      y   = (float)rdram[(((addr+i) >> 1) + 1)^1];
-      z   = (float)rdram[(((addr+i) >> 1) + 2)^1];
-      vert->flags  = ((uint16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 3)^1];
-      vert->ou = (float)rdram[(((addr+i) >> 1) + 4)^1];
-      vert->ov = (float)rdram[(((addr+i) >> 1) + 5)^1];
-      vert->uv_scaled = 0;
-      vert->a    = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 15)^3];
-
-      vert->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
-      vert->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
-      vert->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
-      vert->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
-
-      vert->uv_calculated = 0xFFFFFFFF;
-      vert->screen_translated = 0;
-      vert->shade_mod = 0;
-
-      if (fabs(vert->w) < 0.001)
-         vert->w = 0.001f;
-      vert->oow = 1.0f / vert->w;
-      vert->x_w = vert->x * vert->oow;
-      vert->y_w = vert->y * vert->oow;
-      vert->z_w = vert->z * vert->oow;
-      CalculateFog (vert);
-
-      vert->scr_off = 0;
-      if (vert->x < -vert->w)
-         vert->scr_off |= 1;
-      if (vert->x > vert->w)
-         vert->scr_off |= 2;
-      if (vert->y < -vert->w)
-         vert->scr_off |= 4;
-      if (vert->y > vert->w)
-         vert->scr_off |= 8;
-      if (vert->w < 0.1f)
-         vert->scr_off |= 16;
-#if 0
-      if (vert->z_w > 1.0f)
-         vert->scr_off |= 32;
-#endif
-
-      if (rdp.geom_mode & G_LIGHTING)
-      {
-         int8_t *rdram = (int8_t*)gfx_info.RDRAM;
-         vert->vec[0] = rdram[(addr+i + 12)^3];
-         vert->vec[1] = rdram[(addr+i + 13)^3];
-         vert->vec[2] = rdram[(addr+i + 14)^3];
-         if (rdp.geom_mode & G_TEXTURE_GEN)
-         {
-            if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
-               calc_linear (vert);
-            else
-               calc_sphere (vert);
-         }
-
-         if (settings.ucode == 2 && rdp.geom_mode & 0x00400000)
-         {
-            float tmpvec[3] = {x, y, z};
-            calc_point_light (vert, tmpvec);
-         }
-         else
-         {
-            NormalizeVector (vert->vec);
-            calc_light (vert);
-         }
-      }
-      else
-      {
-         uint8_t *rdram = (uint8_t*)gfx_info.RDRAM;
-         vert->r = rdram[(addr+i + 12)^3];
-         vert->g = rdram[(addr+i + 13)^3];
-         vert->b = rdram[(addr+i + 14)^3];
-      }
-      //FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
-   }
-   //FRDP ("rsp:vertex v0:%d, n:%d, from: %08lx\n", v0, n, addr);
-}
-
 #ifdef HAVE_NEON
-#include <arm_neon.h>
-
-static void gSPVertexNEON(uint32_t addr, uint32_t n, uint32_t v0)
-{
-   int i;
-   float x, y, z;
    float32x4_t comb0, comb1, comb2, comb3;
    float32x4_t v_xyzw;
+#endif
+   void   *membase_ptr  = (void*)gfx_info.RDRAM + addr;
+   uint32_t iter = 16;
 
+#ifdef HAVE_NEON
    comb0 = vld1q_f32(rdp.combined[0]);
    comb1 = vld1q_f32(rdp.combined[1]);
    comb2 = vld1q_f32(rdp.combined[2]);
    comb3 = vld1q_f32(rdp.combined[3]);
+#endif
 
-   for (i=0; i < (n<<4); i+=16)
+   for (i=0; i < (n * iter); i+= iter)
    {
-      VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i>>4)];
-      int16_t *rdram = (int16_t*)gfx_info.RDRAM;
-      x   = (float)rdram[(((addr+i) >> 1) + 0)^1];
-      y   = (float)rdram[(((addr+i) >> 1) + 1)^1];
-      z   = (float)rdram[(((addr+i) >> 1) + 2)^1];
-      vert->flags  = ((uint16_t*)gfx_info.RDRAM)[(((addr+i) >> 1) + 3)^1];
-      vert->ou = (float)rdram[(((addr+i) >> 1) + 4)^1];
-      vert->ov = (float)rdram[(((addr+i) >> 1) + 5)^1];
-      vert->uv_scaled = 0;
-      vert->a    = ((uint8_t*)gfx_info.RDRAM)[(addr+i + 15)^3];
+      VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i / iter)];
+      int16_t *rdram    = (int16_t*)membase_ptr;
+      int8_t  *rdram_s8 = (int8_t* )membase_ptr;
+      uint8_t *rdram_u8 = (uint8_t*)membase_ptr;
+      uint8_t *color = (uint8_t*)(rdram_u8 + 12);
+      y                 = (float)rdram[0];
+      x                 = (float)rdram[1];
+      vert->flags       = (uint16_t)rdram[2];
+      z                 = (float)rdram[3];
+      vert->ov          = (float)rdram[4];
+      vert->ou          = (float)rdram[5];
+      vert->uv_scaled   = 0;
+      vert->a           = color[0];
 
+#ifdef HAVE_NEON
       v_xyzw  = vmulq_n_f32(comb0,x)+vmulq_n_f32(comb1,y)+vmulq_n_f32(comb2,z)+comb3;
       vert->x = vgetq_lane_f32(v_xyzw,0);
       vert->y = vgetq_lane_f32(v_xyzw,1);
       vert->z = vgetq_lane_f32(v_xyzw,2);
       vert->w = vgetq_lane_f32(v_xyzw,3);
+#else
+      vert->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
+      vert->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
+      vert->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
+      vert->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
+#endif
 
       vert->uv_calculated = 0xFFFFFFFF;
       vert->screen_translated = 0;
@@ -715,10 +643,16 @@ static void gSPVertexNEON(uint32_t addr, uint32_t n, uint32_t v0)
       if (fabs(vert->w) < 0.001)
          vert->w = 0.001f;
       vert->oow = 1.0f / vert->w;
+#ifdef HAVE_NEON
       v_xyzw = vmulq_n_f32(v_xyzw,vert->oow);
       vert->x_w=vgetq_lane_f32(v_xyzw,0);
       vert->y_w=vgetq_lane_f32(v_xyzw,1);
       vert->z_w=vgetq_lane_f32(v_xyzw,2);
+#else
+      vert->x_w = vert->x * vert->oow;
+      vert->y_w = vert->y * vert->oow;
+      vert->z_w = vert->z * vert->oow;
+#endif
       CalculateFog (vert);
 
       vert->scr_off = 0;
@@ -739,10 +673,10 @@ static void gSPVertexNEON(uint32_t addr, uint32_t n, uint32_t v0)
 
       if (rdp.geom_mode & G_LIGHTING)
       {
-         int8_t *rdram = (int8_t*)gfx_info.RDRAM;
-         vert->vec[0] = rdram[(addr+i + 12)^3];
-         vert->vec[1] = rdram[(addr+i + 13)^3];
-         vert->vec[2] = rdram[(addr+i + 14)^3];
+         vert->vec[0] = (int8_t)color[3];
+         vert->vec[1] = (int8_t)color[2];
+         vert->vec[2] = (int8_t)color[1];
+
          if (rdp.geom_mode & G_TEXTURE_GEN)
          {
             if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
@@ -764,13 +698,182 @@ static void gSPVertexNEON(uint32_t addr, uint32_t n, uint32_t v0)
       }
       else
       {
-         uint8_t *rdram = (uint8_t*)gfx_info.RDRAM;
-         vert->r = rdram[(addr+i + 12)^3];
-         vert->g = rdram[(addr+i + 13)^3];
-         vert->b = rdram[(addr+i + 14)^3];
+         vert->r = color[3];
+         vert->g = color[2];
+         vert->b = color[1];
       }
-      //FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
+      membase_ptr += iter;
    }
-   //FRDP ("rsp:vertex v0:%d, n:%d, from: %08lx\n", v0, n, addr);
 }
+
+static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
+{
+   uint32_t *v5, *v7, v8, v10, v13, v14, nbits;
+   int32_t v6, v9, v16, v18;
+
+   nbits = sizeof(uint32_t) * 8;
+   v5 = dst;
+   v6 = cnt;
+   if ( cnt )
+   {
+      v7 = (uint32_t *)((int8_t*)src + (off & 0xFFFFFFFC));
+      v8 = off & 3;
+      if ( !(off & 3) )
+         goto LABEL_23;
+      v9 = 4 - v8;
+      v10 = *v7++;
+      do
+      {
+         v10 = __ROL__(v10, 8, nbits);
+      }while (--v8);
+      do
+      {
+         *v5++ = __ROL__(v10, 8, nbits);
+      }while (--v9);
+      *v5++ = bswap32(*v7++);
+      v6 = cnt - 1;
+      if ( cnt != 1 )
+      {
+LABEL_23:
+         do
+         {
+            *v5++ = bswap32(*v7++);
+            *v5++ = bswap32(*v7++);
+         }while (--v6 );
+      }
+      v13 = off & 3;
+      if ( off & 3 )
+      {
+         v14 = *(uint32_t *)((int8_t*)src + ((8 * cnt + off) & 0xFFFFFFFC));
+         do
+         {
+            *v5++ = __ROL__(v14, 8, nbits);
+         }while (--v13);
+      }
+   }
+   v6 = cnt;
+   v16 = 0;
+   v18 = 0;
+dxt_test:
+   do
+   {
+      dst += 2;
+      if ( !--v6 )
+         break;
+      v16 += dxt;
+      if ( v16 < 0 )
+      {
+         do
+         {
+            ++v18;
+            if ( !--v6 )
+               goto end_dxt_test;
+            v16 += dxt;
+            if ( v16 >= 0 )
+            {
+               do
+               {
+                  *dst ^= dst[1];
+                  dst[1] ^= *dst;
+                  *dst ^= dst[1];
+                  dst += 2;
+               }while(--v18);
+               goto dxt_test;
+            }
+         }while(1);
+      }
+   }while(1);
+end_dxt_test:
+   while ( v18 )
+   {
+      *dst ^= dst[1];
+      dst[1] ^= *dst;
+      *dst ^= dst[1];
+      dst += 2;
+      --v18;
+   }
+}
+
+/*
+* Loads a texture from DRAM into texture memory (TMEM).
+* The texture image is loaded into memory in a single transfer.
+*
+* tile - Tile descriptor index 93-bit precision, 0~7).
+* ul_s - texture tile's upper-left s coordinate (10.2, 0.0~1023.75)
+* ul_t - texture tile's upper-left t coordinate (10.2, 0.0~1023.75)
+* lr_s - texture tile's lower-right s coordinate (10.2, 0.0~1023.75)
+* dxt - amount of change in value of t per scan line (12-bit precision, 0~4095)
+*/
+static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt )
+{
+   uint32_t _dxt, addr, off, cnt;
+   uint8_t *dst;
+
+   if (rdp.skip_drawing)
+      return;
+
+   if (ucode5_texshiftaddr)
+   {
+      if (ucode5_texshift % ((lr_s+1)<<3))
+      {
+         rdp.timg.addr -= ucode5_texshift;
+         ucode5_texshiftaddr = 0;
+         ucode5_texshift = 0;
+         ucode5_texshiftcount = 0;
+      }
+      else
+         ucode5_texshiftcount++;
+   }
+
+   rdp.addr[rdp.tiles[tile].t_mem] = rdp.timg.addr;
+
+   // ** DXT is used for swapping every other line
+   /* double fdxt = (double)0x8000000F/(double)((uint32_t)(2047/(dxt-1))); // F for error
+      uint32_t _dxt = (uint32_t)fdxt;*/
+
+   // 0x00000800 -> 0x80000000 (so we can check the sign bit instead of the 11th bit)
+   _dxt = dxt << 20;
+   addr = segoffset(rdp.timg.addr) & BMASK;
+
+   rdp.tiles[tile].ul_s = ul_s;
+   rdp.tiles[tile].ul_t = ul_t;
+   rdp.tiles[tile].lr_s = lr_s;
+
+   rdp.timg.set_by = 0; // load block
+
+   // do a quick boundary check before copying to eliminate the possibility for exception
+   if (ul_s >= 512)
+   {
+      lr_s = 1; // 1 so that it doesn't die on memcpy
+      ul_s = 511;
+   }
+   if (ul_s+lr_s > 512)
+      lr_s = 512-ul_s;
+
+   if (addr+(lr_s<<3) > BMASK+1)
+      lr_s = (uint16_t)((BMASK-addr)>>3);
+
+   //angrylion's advice to use ul_s in texture image offset and cnt calculations.
+   //Helps to fix Vigilante 8 jpeg backgrounds and logos
+   off = rdp.timg.addr + (ul_s << rdp.tiles[tile].size >> 1);
+   dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
+   cnt = lr_s-ul_s+1;
+   if (rdp.tiles[tile].size == 3)
+      cnt <<= 1;
+
+   if (rdp.timg.size == 3)
+      LoadBlock32b(tile, ul_s, ul_t, lr_s, dxt);
+   else
+      loadBlock((uint32_t *)gfx_info.RDRAM, (uint32_t *)dst, off, _dxt, cnt);
+
+   rdp.timg.addr += cnt << 3;
+   rdp.tiles[tile].lr_t = ul_t + ((dxt*cnt)>>11);
+
+   rdp.update |= UPDATE_TEXTURE;
+
+#ifdef HAVE_HWFBE
+   if (fb_hwfbe_enabled)
+      setTBufTex(rdp.tiles[tile].t_mem, cnt);
 #endif
+   //FRDP ("loadblock: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, dxt: %08lx -> %08lx\n", tile, ul_s, ul_t, lr_s, dxt, _dxt);
+}
