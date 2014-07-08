@@ -345,10 +345,8 @@ LDFLAGS    += -lm $(fpic)
 ifeq ($(DEBUG), 1)
    CPPFLAGS += -O0 -g
    CPPFLAGS += -DOPENGL_DEBUG
-else ifeq ($(platform), emscripten)
-   CPPFLAGS += -O2 -DNDEBUG
 else
-   CPPFLAGS += -O3 -DNDEBUG
+   CPPFLAGS += -O2 -DNDEBUG
 endif
 
 all: $(TARGET)
