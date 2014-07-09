@@ -63,17 +63,12 @@ static int16_t* alist_s16(struct hle_t* hle, uint16_t dmem)
 }
 
 
-static void sample_mix(int16_t* dst, int16_t src, int16_t gain)
-{
-    *dst = clamp_s16(*dst + ((src * gain) >> 15));
-}
-
 static void alist_envmix_mix(size_t n, int16_t** dst, const int16_t* gains, int16_t src)
 {
     size_t i;
 
     for(i = 0; i < n; ++i)
-        sample_mix(dst[i], src, gains[i]);
+       *dst[i] = clamp_s16(*dst[i] + ((src * gains[i]) >> 15));
 }
 
 static int16_t ramp_step(struct ramp_t* ramp)
@@ -559,7 +554,7 @@ void alist_mix(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count
     count >>= 1;
 
     while(count != 0) {
-        sample_mix(dst, *src, gain);
+       *dst = clamp_s16(*dst + ((*src * gain) >> 15));
 
         ++dst;
         ++src;
