@@ -50,7 +50,7 @@ else ifneq (,$(findstring osx,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dylib
    LDFLAGS += -dynamiclib
    OSXVER = `sw_vers -productVersion | cut -c 4`
-ifneq ($(OSXVER),9)
+ifneq ($(shell sw_vers | grep -c 10.9),1)
    LDFLAGS += -mmacosx-version-min=10.5
 endif
    fpic = -fPIC
