@@ -196,13 +196,6 @@ public:
     
     virtual void SetFillMode(FillMode mode)=0;
 
-#ifdef DEBUGGER
-    virtual bool DrawTexture(int tex, TextureChannel channel);
-    virtual void SaveTextureToFile(int tex, TextureChannel channel, bool bShow);
-#endif
-
-    virtual void SaveTextureToFile(CTexture &texture, char *filename, TextureChannel channel, bool bShow, bool bWholeTexture, int width, int height);
-
     void LoadSprite2D(Sprite2DInfo &info, uint32_t ucode);
     void LoadObjBGCopy(uObjBg &info);
     void LoadObjBG1CYC(uObjScaleBg &info);

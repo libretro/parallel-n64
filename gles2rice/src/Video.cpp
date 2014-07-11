@@ -541,11 +541,13 @@ EXPORT m64p_error CALL PluginShutdown(void)
     {
         RomClosed();
     }
+#if 0
     if (bIniIsChanged)
     {
         WriteIniFile();
         TRACE0("Write back INI file");
     }
+#endif
 
     /* reset some local variables */
     l_DebugCallback = NULL;

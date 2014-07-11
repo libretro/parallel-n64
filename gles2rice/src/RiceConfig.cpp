@@ -41,7 +41,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 static m64p_handle l_ConfigVideoRice = NULL;
 static m64p_handle l_ConfigVideoGeneral = NULL;
 
-static int FindIniEntry(uint32_t dwCRC1, uint32_t dwCRC2, uint8_t nCountryID, char* szName, int PrintInfo); 
+//static int FindIniEntry(uint32_t dwCRC1, uint32_t dwCRC2, uint8_t nCountryID, char* szName, int PrintInfo); 
 
 const char *frameBufferSettings[] =
 {
@@ -129,9 +129,9 @@ GlobalOptions options;
 RomOptions defaultRomOptions;
 RomOptions currentRomOptions;
 FrameBufferOptions frameBufferOptions;
-std::vector<IniSection> IniSections;
-bool    bIniIsChanged = false;
-char    szIniFileName[300];
+//std::vector<IniSection> IniSections;
+//bool    bIniIsChanged = false;
+//char    szIniFileName[300];
 
 SettingInfo TextureQualitySettings[] =
 {
@@ -459,6 +459,7 @@ static void ReadConfiguration(void)
     
 BOOL LoadConfiguration(void)
 {
+#if 0
     IniSections.clear();
     bIniIsChanged = false;
     strcpy(szIniFileName, INI_FILE);
@@ -468,6 +469,7 @@ BOOL LoadConfiguration(void)
         DebugMessage(M64MSG_ERROR, "Unable to read ini file from disk");
         return FALSE;
     }
+#endif
 
     if (l_ConfigVideoGeneral == NULL || l_ConfigVideoRice == NULL)
     {
@@ -663,6 +665,7 @@ void GenerateCurrentRomOptions()
 
 void Ini_GetRomOptions(LPGAMESETTING pGameSetting)
 {
+#if 0
     int i;
 
     i = FindIniEntry(pGameSetting->romheader.dwCRC1,
@@ -699,10 +702,12 @@ void Ini_GetRomOptions(LPGAMESETTING pGameSetting)
     pGameSetting->dwFrameBufferOption   = IniSections[i].dwFrameBufferOption;
     pGameSetting->dwRenderToTextureOption   = IniSections[i].dwRenderToTextureOption;
     pGameSetting->dwScreenUpdateSetting = IniSections[i].dwScreenUpdateSetting;
+#endif
 }
 
 void Ini_StoreRomOptions(LPGAMESETTING pGameSetting)
 {
+#if 0
     int i;
 
     i = FindIniEntry(pGameSetting->romheader.dwCRC1,
@@ -857,10 +862,12 @@ void Ini_StoreRomOptions(LPGAMESETTING pGameSetting)
         WriteIniFile();
         TRACE0("Rom option is changed and saved");
     }
+#endif
 }
 
-std::ifstream& getline( std::ifstream &is, char *str );
+//std::ifstream& getline( std::ifstream &is, char *str );
 
+#if 0
 char * left(const char * src, int nchars)
 {
     static char dst[300];
@@ -958,11 +965,14 @@ BOOL ReadIniFile()
                 newsection.dwRenderToTextureOption = 0;
                 newsection.dwScreenUpdateSetting = 0;
 
+#if 0
                 IniSections.push_back(newsection);
+#endif
 
             }
             else
             {       
+#if 0
                 int sectionno = IniSections.size() - 1;
 
                 if (strcasecmp(left(readinfo,4), "Name")==0)
@@ -1048,10 +1058,11 @@ BOOL ReadIniFile()
 
                 if (strcasecmp(left(readinfo,19), "ScreenUpdateSetting")==0)
                     IniSections[sectionno].dwScreenUpdateSetting = strtol(right(readinfo,1),NULL,10);
+#endif
             }
         }
     }
-    inifile.close();
+    //inifile.close();
 
     return TRUE;
 }
@@ -1329,6 +1340,7 @@ static int FindIniEntry(uint32_t dwCRC1, uint32_t dwCRC2, uint8_t nCountryID, ch
     bIniIsChanged = true;               // Flag to indicate we should be updated
     return IniSections.size()-1;            // -1 takes into account increment
 }
+#endif
 
 GameSetting g_curRomInfo;
 
