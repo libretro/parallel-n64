@@ -209,8 +209,6 @@ typedef struct {
     BOOL    bFullTMEM;
     BOOL    bUseFullTMEM;
 
-    BOOL    bShowFPS;
-
     uint32_t  mipmapping;
     uint32_t  fogMethod;
     uint32_t  forceTextureFilter;

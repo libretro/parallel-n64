@@ -605,21 +605,6 @@ EXPORT int CALL RomOpen(void)
 //---------------------------------------------------------------------------------------
 EXPORT void CALL UpdateScreen(void)
 {
-    if(options.bShowFPS)
-    {
-        static unsigned int lastTick=0;
-        static int frames=0;
-        unsigned int nowTick = SDL_GetTicks();
-        frames++;
-        if(lastTick + 5000 <= nowTick)
-        {
-            char caption[200];
-            sprintf(caption, "%s v%i.%i.%i - %.3f VI/S", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION), frames/5.0);
-//            CoreVideo_SetCaption(caption);
-            frames = 0;
-            lastTick = nowTick;
-        }
-    }
     UpdateScreenStep2();
 }
 

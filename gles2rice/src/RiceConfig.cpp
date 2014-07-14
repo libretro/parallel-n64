@@ -414,7 +414,6 @@ static void ReadConfiguration(void)
     options.bLoadHiResTextures = ConfigGetParamBool(l_ConfigVideoRice, "LoadHiResTextures");
     options.bLoadHiResCRCOnly = ConfigGetParamBool(l_ConfigVideoRice, "LoadHiResCRCOnly");
     options.bDumpTexturesToFiles = ConfigGetParamBool(l_ConfigVideoRice, "DumpTexturesToFiles");
-    options.bShowFPS = ConfigGetParamBool(l_ConfigVideoRice, "ShowFPS");
 
     options.mipmapping = TEXTURE_NO_MIPMAP;
     //options.mipmapping = ConfigGetParamInt(l_ConfigVideoRice, "Mipmapping");
