@@ -31,12 +31,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 COGLGraphicsContext::COGLGraphicsContext() :
     m_bSupportSeparateSpecularColor(false),
     m_bSupportSecondColor(false),
-    m_bSupportRescaleNormal(false),
     m_bSupportLODBias(false),
     m_bSupportTextureLOD(false),
-    m_bSupportBlendColor(false),
-    m_bSupportBlendSubtract(false),
-    m_bSupportNVTextureEnvCombine4(false),
     m_pVendorStr(NULL),
     m_pRenderStr(NULL),
     m_pExtensionStr(NULL),

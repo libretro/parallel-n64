@@ -58,16 +58,12 @@ protected:
     bool    m_bSupportSecondColor;
 
     // Optional OGL extension features;
-    bool    m_bSupportRescaleNormal;
     bool    m_bSupportLODBias;
     bool    m_bSupportAnisotropicFiltering;
     int     m_maxAnisotropicFiltering;
 
     // Nvidia OGL only features
     bool    m_bSupportTextureLOD;
-    bool    m_bSupportBlendColor;
-    bool    m_bSupportBlendSubtract;
-    bool    m_bSupportNVTextureEnvCombine4;
     
     const unsigned char*    m_pVendorStr;
     const unsigned char*    m_pRenderStr;
