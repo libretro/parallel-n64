@@ -191,52 +191,6 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
 
     glFlush();
     OPENGL_CHECK_ERRORS;
-    //glFinish();
-    //wglSwapIntervalEXT(0);
-
-    /*
-    if (debuggerPauseCount == countToPause)
-    {
-        static int iShotNum = 0;
-        // get width, height, allocate buffer to store image
-        int width = windowSetting.uDisplayWidth;
-        int height = windowSetting.uDisplayHeight;
-        printf("Saving debug images: width=%i  height=%i\n", width, height);
-        short *buffer = (short *) malloc(((width+3)&~3)*(height+1)*4);
-        glReadBuffer( GL_FRONT );
-        // set up a BMGImage struct
-        struct BMGImageStruct img;
-        memset(&img, 0, sizeof(BMGImageStruct));
-        InitBMGImage(&img);
-        img.bits = (unsigned char *) buffer;
-        img.bits_per_pixel = 32;
-        img.height = height;
-        img.width = width;
-        img.scan_width = width * 4;
-        // store the RGB color image
-        char chFilename[64];
-        sprintf(chFilename, "dbg_rgb_%03i.png", iShotNum);
-        glReadPixels(0,0,width,height, GL_BGRA, GL_UNSIGNED_BYTE, buffer);
-        WritePNG(chFilename, img);
-        // store the Z buffer
-        sprintf(chFilename, "dbg_Z_%03i.png", iShotNum);
-        glReadPixels(0,0,width,height, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, buffer);
-        //img.bits_per_pixel = 16;
-        //img.scan_width = width * 2;
-        WritePNG(chFilename, img);
-        // dump a subset of the Z data
-        for (int y = 0; y < 480; y += 16)
-        {
-            for (int x = 0; x < 640; x+= 16)
-                printf("%4hx ", buffer[y*640 + x]);
-            printf("\n");
-        }
-        printf("\n");
-        // free memory and get out of here
-        free(buffer);
-        iShotNum++;
-    }
-    */
 
     // if emulator defined a render callback function, call it before buffer swap
     if (renderCallback)
@@ -244,22 +198,6 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
 
    retro_return(true);
    
-   /*if (options.bShowFPS)
-    {
-        static unsigned int lastTick=0;
-        static int frames=0;
-        unsigned int nowTick = SDL_GetTicks();
-        frames++;
-        if (lastTick + 5000 <= nowTick)
-        {
-            char caption[200];
-            sprintf(caption, "%s v%i.%i.%i - %.3f VI/S", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION), frames/5.0);
-            CoreVideo_SetCaption(caption);
-            frames = 0;
-            lastTick = nowTick;
-        }
-    }*/
-
     glDepthMask(GL_TRUE);
     OPENGL_CHECK_ERRORS;
     glClearDepth(1.0f);
