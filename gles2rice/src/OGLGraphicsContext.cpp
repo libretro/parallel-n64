@@ -43,10 +43,10 @@ COGLGraphicsContext::~COGLGraphicsContext()
 {
 }
 
-bool COGLGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed)
+bool COGLGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight)
 {
     DebugMessage(M64MSG_INFO, "Initializing OpenGL Device Context.");
-    CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed);
+    CGraphicsContext::Initialize(dwWidth, dwHeight);
 
     int depthBufferDepth = options.OpenglDepthBufferSetting;
     int colorBufferDepth = 32;
@@ -69,9 +69,9 @@ bool COGLGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight, bool b
     return true;
 }
 
-bool COGLGraphicsContext::ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed)
+bool COGLGraphicsContext::ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight)
 {
-    CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed);
+    CGraphicsContext::Initialize(dwWidth, dwHeight);
 
     int depthBufferDepth = options.OpenglDepthBufferSetting;
     int colorBufferDepth = 32;
@@ -275,20 +275,6 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
     }
 
     status.bScreenIsDrawn = false;
-}
-
-bool COGLGraphicsContext::SetFullscreenMode()
-{
-    return true;
-}
-
-bool COGLGraphicsContext::SetWindowMode()
-{
-    return true;
-}
-int COGLGraphicsContext::ToggleFullscreen()
-{
-    return 0;
 }
 
 // This is a static function, will be called when the plugin DLL is initialized

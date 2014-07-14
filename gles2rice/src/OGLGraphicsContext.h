@@ -29,13 +29,12 @@ class COGLGraphicsContext : public CGraphicsContext
 public:
     virtual ~COGLGraphicsContext();
 
-    bool Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
-    bool ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
+    bool Initialize(uint32_t dwWidth, uint32_t dwHeight);
+    bool ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight);
     void CleanUp();
     void Clear(ClearFlag dwFlags, uint32_t color, float depth);
 
     void UpdateFrame(bool swapOnly);
-    int ToggleFullscreen();     // return 0 as the result is windowed
 
     bool IsExtensionSupported(const char* pExtName);
     bool IsWglExtensionSupported(const char* pExtName);
@@ -46,8 +45,6 @@ protected:
     COGLGraphicsContext();
     void InitState(void);
     void InitOGLExtension(void);
-    bool SetFullscreenMode();
-    bool SetWindowMode();
 
     // Optional OGL extension features;
     bool    m_bSupportLODBias;

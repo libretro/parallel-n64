@@ -93,7 +93,6 @@ typedef struct {
     uint32_t  gFrameCount;
     uint32_t  gUcodeCount;
     uint32_t  gRDPTime;
-    BOOL    ToToggleFullScreen;
     bool    ToResize;
     uint32_t  gNewResizeWidth, gNewResizeHeight;
     bool    bDisableFPS;

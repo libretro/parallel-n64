@@ -50,13 +50,12 @@ class CGraphicsContext
     friend class CDeviceBuilder;
     
 public:
-    virtual bool Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
-    virtual bool ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
+    virtual bool Initialize(uint32_t dwWidth, uint32_t dwHeight);
+    virtual bool ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight);
     virtual void CleanUp();
 
     virtual void Clear(ClearFlag flags, uint32_t color, float depth) = 0;
     virtual void UpdateFrame(bool swapOnly) = 0;
-    virtual int ToggleFullscreen()=0;       // return 0 as the result is windowed
 
     static void InitWindowInfo();
     static void InitDeviceParameters();

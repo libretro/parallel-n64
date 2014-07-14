@@ -101,20 +101,6 @@ void (*renderCallback)(int) = NULL;
 extern "C" EXPORT void CALL RomClosed(void);
 
 //---------------------------------------------------------------------------------------
-// Static (local) functions
-static void ChangeWindowStep2()
-{
-    status.bDisableFPS = true;
-
-    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
-    CGraphicsContext::Get()->UpdateFrame(false);
-    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
-    CGraphicsContext::Get()->UpdateFrame(false);
-    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
-    CGraphicsContext::Get()->UpdateFrame(false);
-    status.bDisableFPS = false;
-    status.ToToggleFullScreen = FALSE;
-}
 
 static void ResizeStep2(void)
 {
@@ -130,7 +116,7 @@ static void ResizeStep2(void)
     //CoreVideo_ResizeWindow(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
 
     // re-initialize our OpenGL graphics context state
-    bool res = CGraphicsContext::Get()->ResizeInitialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, false);
+    bool res = CGraphicsContext::Get()->ResizeInitialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
     if (res)
     {
         // re-create the OpenGL renderer
@@ -146,11 +132,6 @@ static void UpdateScreenStep2 (void)
 {
     status.bVIOriginIsUpdated = false;
 
-    if( status.ToToggleFullScreen && status.gDlistCount > 0 )
-    {
-        ChangeWindowStep2();
-        return;
-    }
     if (status.ToResize && status.gDlistCount > 0)
     {
         ResizeStep2();
@@ -299,7 +280,7 @@ static bool StartVideo(void)
     CDeviceBuilder::GetBuilder()->CreateGraphicsContext();
     CGraphicsContext::InitWindowInfo();
 
-    bool res = CGraphicsContext::Get()->Initialize(640, 480, false);
+    bool res = CGraphicsContext::Get()->Initialize(640, 480);
     if (!res)
     {
        return false;
@@ -580,10 +561,6 @@ EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *Plugi
 
 EXPORT void CALL ChangeWindow (void)
 {
-    if( status.ToToggleFullScreen )
-        status.ToToggleFullScreen = FALSE;
-    else
-        status.ToToggleFullScreen = TRUE;
 }
 
 //---------------------------------------------------------------------------------------
@@ -667,7 +644,6 @@ EXPORT int CALL InitiateGFX(GFX_INFO Gfx_Info)
 
     windowSetting.fViWidth = 320;
     windowSetting.fViHeight = 240;
-    status.ToToggleFullScreen = FALSE;
     status.ToResize = false;
     status.bDisableFPS=false;
 
