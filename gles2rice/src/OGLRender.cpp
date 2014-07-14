@@ -40,7 +40,6 @@ UVFlagMap OGLXUVFlagMaps[] =
 OGLRender::OGLRender()
 {
     COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext);
-    m_bSupportFogCoordExt = pcontext->m_bSupportFogCoord;
     m_bMultiTexture = pcontext->m_bSupportMultiTexture;
     m_bSupportClampToEdge = false;
     for( int i=0; i<8; i++ )
@@ -100,11 +99,8 @@ void OGLRender::Initialize(void)
        OPENGL_CHECK_ERRORS;
     }
 
-    if (m_bSupportFogCoordExt)
-    {
-       glVertexAttribPointer(VS_FOG,1,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][4]));
-       OPENGL_CHECK_ERRORS;
-    }
+    glVertexAttribPointer(VS_FOG,1,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][4]));
+    OPENGL_CHECK_ERRORS;
 
     glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8_t)*4, &(g_oglVtxColors[0][0]) );
     OPENGL_CHECK_ERRORS;
@@ -548,19 +544,14 @@ bool OGLRender::RenderLine3D()
 
 extern FiddledVtx * g_pVtxBase;
 
-// This is so weired that I can not do vertex transform by myself. I have to use
+// This is so weird that I can not do vertex transform by myself. I have to use
 // OpenGL internal transform
 bool OGLRender::RenderFlushTris()
 {
-    if( !m_bSupportFogCoordExt )    
-        SetFogFlagForNegativeW();
-    else
-    {
-        if( !gRDP.bFogEnableInBlender && gRSP.bFogEnabled )
-        {
-            TurnFogOnOff(false);
-        }
-    }
+   if( !gRDP.bFogEnableInBlender && gRSP.bFogEnabled )
+   {
+      TurnFogOnOff(false);
+   }
 
     ApplyZBias(m_dwZBias);  // set the bias factors
 
@@ -604,14 +595,9 @@ bool OGLRender::RenderFlushTris()
     }
 */
 
-    if( !m_bSupportFogCoordExt )    
-        RestoreFogFlag();
-    else
+    if( !gRDP.bFogEnableInBlender && gRSP.bFogEnabled )
     {
-        if( !gRDP.bFogEnableInBlender && gRSP.bFogEnabled )
-        {
-            TurnFogOnOff(true);
-        }
+       TurnFogOnOff(true);
     }
     return true;
 }

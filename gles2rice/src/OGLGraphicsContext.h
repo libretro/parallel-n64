@@ -58,7 +58,6 @@ protected:
     bool    m_bSupportTextureEnvCombine;
     bool    m_bSupportSeparateSpecularColor;
     bool    m_bSupportSecondColor;
-    bool    m_bSupportFogCoord;
     bool    m_bSupportTextureObject;
 
     // Optional OGL extension features;

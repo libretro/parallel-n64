@@ -33,7 +33,6 @@ COGLGraphicsContext::COGLGraphicsContext() :
     m_bSupportTextureEnvCombine(false),
     m_bSupportSeparateSpecularColor(false),
     m_bSupportSecondColor(false),
-    m_bSupportFogCoord(false),
     m_bSupportTextureObject(false),
     m_bSupportRescaleNormal(false),
     m_bSupportLODBias(false),
@@ -160,7 +159,6 @@ void COGLGraphicsContext::InitState(void)
 void COGLGraphicsContext::InitOGLExtension(void)
 {
     m_bSupportMultiTexture = true;
-    m_bSupportFogCoord = false;
     m_bSupportAnisotropicFiltering = true;
 
     // Compute maxAnisotropicFiltering

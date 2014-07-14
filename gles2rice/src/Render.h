@@ -95,9 +95,6 @@ public:
     }
     virtual void SetFogMinMax(float fMin, float fMax) = 0;
     virtual void TurnFogOnOff(bool flag)=0;
-    bool m_bFogStateSave;
-    void SetFogFlagForNegativeW();
-    void RestoreFogFlag();
 
     virtual void SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a) 
     { 
