@@ -41,10 +41,6 @@ public:
     bool IsWglExtensionSupported(const char* pExtName);
     static void InitDeviceParameters();
 
-    //Get methods (TODO, remove all friend class and use get methods instead)
-    bool IsSupportAnisotropicFiltering();
-    int  getMaxAnisotropicFiltering();
-
 protected:
     friend class OGLDeviceBuilder;
     COGLGraphicsContext();
@@ -55,8 +51,6 @@ protected:
 
     // Optional OGL extension features;
     bool    m_bSupportLODBias;
-    bool    m_bSupportAnisotropicFiltering;
-    int     m_maxAnisotropicFiltering;
 
     // Nvidia OGL only features
     bool    m_bSupportTextureLOD;

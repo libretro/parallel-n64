@@ -145,31 +145,6 @@ void COGLGraphicsContext::InitState(void)
 
 void COGLGraphicsContext::InitOGLExtension(void)
 {
-    m_bSupportAnisotropicFiltering = true;
-
-    // Compute maxAnisotropicFiltering
-    m_maxAnisotropicFiltering = 0;
-
-    if (m_bSupportAnisotropicFiltering
-    && (options.anisotropicFiltering == 2
-        || options.anisotropicFiltering == 4
-        || options.anisotropicFiltering == 8
-        || options.anisotropicFiltering == 16))
-    {
-        //Get the max value of anisotropy that the graphic card support
-        glGetIntegerv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &m_maxAnisotropicFiltering);
-        OPENGL_CHECK_ERRORS;
-
-        // If the user wants more anisotropy than the hardware is capable of
-        if (options.anisotropicFiltering > (uint32_t) m_maxAnisotropicFiltering)
-        {
-            DebugMessage(M64MSG_INFO, "A value of '%i' is set for AnisotropicFiltering option but the hardware has a maximum value of '%i' so this will be used", options.anisotropicFiltering, m_maxAnisotropicFiltering);
-        }
-
-        // Check if the user wants less anisotropy than the hardware is capable of
-        if ((uint32_t) m_maxAnisotropicFiltering > options.anisotropicFiltering)
-            m_maxAnisotropicFiltering = options.anisotropicFiltering;
-    }
 }
 
 bool COGLGraphicsContext::IsExtensionSupported(const char* pExtName)
@@ -337,15 +312,4 @@ int COGLGraphicsContext::ToggleFullscreen()
 // This is a static function, will be called when the plugin DLL is initialized
 void COGLGraphicsContext::InitDeviceParameters()
 {
-}
-
-// Get methods
-bool COGLGraphicsContext::IsSupportAnisotropicFiltering()
-{
-    return m_bSupportAnisotropicFiltering;
-}
-
-int COGLGraphicsContext::getMaxAnisotropicFiltering()
-{
-    return m_maxAnisotropicFiltering;
 }

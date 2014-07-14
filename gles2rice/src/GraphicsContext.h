@@ -66,7 +66,6 @@ public:
 
 public:
     static  int          m_maxFSAA;
-    static  int          m_maxAnisotropy;
 
 protected:
     static  uint32_t      m_dwWindowStyle;       // Saved window style for mode switches
