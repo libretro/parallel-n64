@@ -39,7 +39,6 @@
 #endif
 
 // Extension names
-#define OSAL_GL_ARB_MULTITEXTURE            "GL_multitexture"
 #define OSAL_GL_ARB_TEXTURE_ENV_ADD         "GL_texture_env_add"
 
 // Vertex shader params
@@ -53,7 +52,6 @@
 #ifdef HAVE_OPENGLES2
 #define GL_CLAMP                            GL_CLAMP_TO_EDGE
 #define GL_MAX_TEXTURE_UNITS                GL_MAX_TEXTURE_IMAGE_UNITS
-#define GL_MIRRORED_REPEAT_ARB              GL_MIRRORED_REPEAT
 
 #define GL_ADD                              0x0104
 #define GL_MODULATE                         0x2100
