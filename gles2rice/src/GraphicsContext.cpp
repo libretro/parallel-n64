@@ -27,7 +27,6 @@
 #include "Video.h"
 
 CGraphicsContext* CGraphicsContext::g_pGraphicsContext = NULL;
-bool CGraphicsContext::m_deviceCapsIsInitialized = false;
 bool CGraphicsContext::needCleanScene = false;
 
 CGraphicsContext * CGraphicsContext::Get(void)
@@ -35,10 +34,7 @@ CGraphicsContext * CGraphicsContext::Get(void)
     return CGraphicsContext::g_pGraphicsContext;
 }
     
-CGraphicsContext::CGraphicsContext() :
-    m_bReady(false), 
-    m_bActive(false),
-    m_bWindowed(true)
+CGraphicsContext::CGraphicsContext()
 {
 }
 CGraphicsContext::~CGraphicsContext()
@@ -52,8 +48,6 @@ void CGraphicsContext::InitWindowInfo()
 
 bool CGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed)
 {
-    m_bWindowed = bWindowed;
-
     g_pFrameBufferManager->Initialize();
     return true;
 }
@@ -65,41 +59,6 @@ bool CGraphicsContext::ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight, boo
 
 void CGraphicsContext::CleanUp()
 {
-    m_bActive = false;
-    m_bReady  = false;
-}
-
-
-int __cdecl SortFrequenciesCallback( const void* arg1, const void* arg2 )
-{
-    unsigned int* p1 = (unsigned int*)arg1;
-    unsigned int* p2 = (unsigned int*)arg2;
-
-    if( *p1 < *p2 )   
-        return -1;
-    else if( *p1 > *p2 )   
-        return 1;
-    else 
-        return 0;
-}
-int __cdecl SortResolutionsCallback( const void* arg1, const void* arg2 )
-{
-    unsigned int* p1 = (unsigned int*)arg1;
-    unsigned int* p2 = (unsigned int*)arg2;
-
-    if( *p1 < *p2 )   
-        return -1;
-    else if( *p1 > *p2 )   
-        return 1;
-    else 
-    {
-        if( p1[1] < p2[1] )   
-            return -1;
-        else if( p1[1] > p2[1] )   
-            return 1;
-        else
-            return 0;
-    }
 }
 
 // This is a static function, will be called when the plugin DLL is initialized

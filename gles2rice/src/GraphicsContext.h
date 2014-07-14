@@ -50,9 +50,6 @@ class CGraphicsContext
     friend class CDeviceBuilder;
     
 public:
-    bool Ready() { return m_bReady; }
-    bool IsWindowed() {return m_bWindowed;}
-
     virtual bool Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
     virtual bool ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
     virtual void CleanUp();
@@ -66,14 +63,6 @@ public:
 
 public:
 protected:
-    static  bool        m_deviceCapsIsInitialized;
-
-    bool                m_bReady;
-    bool                m_bActive;
-    
-    bool                m_bWindowed;
-    RECT                m_rcWindowBounds;
-
     char                m_strDeviceStats[256];
 
     virtual ~CGraphicsContext();

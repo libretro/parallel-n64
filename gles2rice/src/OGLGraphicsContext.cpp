@@ -77,8 +77,6 @@ bool COGLGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight, bool b
     Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
     UpdateFrame(false);
     
-    m_bReady = true;
-
     return true;
 }
 
@@ -175,7 +173,6 @@ bool COGLGraphicsContext::IsWglExtensionSupported(const char* pExtName)
 
 void COGLGraphicsContext::CleanUp()
 {
-    m_bReady = false;
 }
 
 
@@ -306,7 +303,7 @@ bool COGLGraphicsContext::SetWindowMode()
 }
 int COGLGraphicsContext::ToggleFullscreen()
 {
-    return m_bWindowed?0:1;
+    return 0;
 }
 
 // This is a static function, will be called when the plugin DLL is initialized
