@@ -1270,7 +1270,7 @@ bool CRender::DrawTriangles()
 
         for( uint32_t i=0; i<gRSP.numVertices; i++ )
         {
-            float w = CDeviceBuilder::GetGeneralDeviceType() == OGL_DEVICE ? g_vtxProjected5[i][3] : g_vtxBuffer[i].rhw; 
+            float w = g_vtxProjected5[i][3]; 
             if( w < 0 || g_vtxBuffer[i].tcord[t].u > 1.0 || g_vtxBuffer[i].tcord[t].u < 0.0  )
             {
                 clampS = false;
@@ -1280,7 +1280,7 @@ bool CRender::DrawTriangles()
 
         for( uint32_t i=0; i<gRSP.numVertices; i++ )
         {
-            float w = CDeviceBuilder::GetGeneralDeviceType() == OGL_DEVICE ? g_vtxProjected5[i][3] : g_vtxBuffer[i].rhw; 
+            float w = g_vtxProjected5[i][3]; 
             if( w < 0 || g_vtxBuffer[i].tcord[t].v > 1.0 || g_vtxBuffer[i].tcord[t].v < 0.0  )
             {
                 clampT = false;

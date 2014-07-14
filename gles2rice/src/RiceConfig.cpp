@@ -213,14 +213,11 @@ const int numberOfOpenGLRenderEngineSettings = sizeof(OpenGLRenderSettings)/size
 
 void GenerateFrameBufferOptions(void)
 {
-    if( CDeviceBuilder::GetGeneralDeviceType() == OGL_DEVICE )
-    {
-        // OpenGL does not support much yet
-        if( currentRomOptions.N64FrameBufferEmuType != FRM_BUF_NONE )
-            currentRomOptions.N64FrameBufferEmuType = FRM_BUF_IGNORE;
-        if( currentRomOptions.N64RenderToTextureEmuType != TXT_BUF_NONE )
-            currentRomOptions.N64RenderToTextureEmuType = TXT_BUF_IGNORE;
-    }
+   // OpenGL does not support much yet
+   if( currentRomOptions.N64FrameBufferEmuType != FRM_BUF_NONE )
+      currentRomOptions.N64FrameBufferEmuType = FRM_BUF_IGNORE;
+   if( currentRomOptions.N64RenderToTextureEmuType != TXT_BUF_NONE )
+      currentRomOptions.N64RenderToTextureEmuType = TXT_BUF_IGNORE;
 
     frameBufferOptions.bUpdateCIInfo            = false;
 
