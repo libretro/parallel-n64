@@ -66,7 +66,6 @@ protected:
 
     // Nvidia OGL only features
     bool    m_bSupportTextureLOD;
-    bool    m_bSupportNVRegisterCombiner;
     bool    m_bSupportBlendColor;
     bool    m_bSupportBlendSubtract;
     bool    m_bSupportNVTextureEnvCombine4;

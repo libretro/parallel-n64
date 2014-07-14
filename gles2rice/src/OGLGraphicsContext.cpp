@@ -35,7 +35,6 @@ COGLGraphicsContext::COGLGraphicsContext() :
     m_bSupportRescaleNormal(false),
     m_bSupportLODBias(false),
     m_bSupportTextureLOD(false),
-    m_bSupportNVRegisterCombiner(false),
     m_bSupportBlendColor(false),
     m_bSupportBlendSubtract(false),
     m_bSupportNVTextureEnvCombine4(false),
