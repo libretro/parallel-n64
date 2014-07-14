@@ -759,7 +759,8 @@ void RDP_GFX_Force_Vertex_Z_Conker(uint32_t dwAddr)
 {
     VTX_DUMP( 
     {
-        s8 * pcBase = g_pRDRAMs8 + (dwAddr&(g_dwRamSize-1));
+    int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
+        s8 * pcBase = rdram_s8 + (dwAddr&(g_dwRamSize-1));
         uint32_t * pdwBase = (uint32_t *)pcBase;
 
         for (int i = 0; i < 4; i++)

@@ -277,7 +277,8 @@ void RSP_MoveMemLight(uint32_t dwLight, uint32_t dwAddr)
         return;
     }
 
-    int8_t * pcBase = g_pRDRAMs8 + dwAddr;
+    int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
+    int8_t * pcBase = rdram_s8 + dwAddr;
     uint32_t * pdwBase = (uint32_t *)pcBase;
 
 

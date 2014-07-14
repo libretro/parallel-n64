@@ -26,12 +26,13 @@ uint32_t g_SavedUcode=1;
  
 void RSP_GBI_Sprite2DBase(Gfx *gfx)
 {
+   int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     dwAddr &= (g_dwRamSize-1);
 
     //RSP_RDP_NOIMPL("RDP: Sprite2D (0x%08x 0x%08x)", (gfx->words.w0), (gfx->words.w1));
 
-    g_Sprite2DInfo.spritePtr = (SpriteStruct *)(g_pRDRAMs8+dwAddr);
+    g_Sprite2DInfo.spritePtr = (SpriteStruct *)(rdram_s8 + dwAddr);
 
     DEBUGGER_PAUSE_AND_DUMP_COUNT_N(NEXT_SPRITE_2D, {DebuggerAppendMsg("Pause after Sprite2DBase: Addr=%08X\n", dwAddr);});
 }
@@ -63,10 +64,11 @@ typedef struct{
 
 void RSP_GBI_Sprite2D_PuzzleMaster64(Gfx *gfx)
 {
+   int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     dwAddr &= (g_dwRamSize-1);
 
-    g_Sprite2DInfo.spritePtr = (SpriteStruct *)(g_pRDRAMs8+dwAddr);
+    g_Sprite2DInfo.spritePtr = (SpriteStruct *)(rdram_s8 + dwAddr);
 
     g_Sprite2DInfo.flipX = 0;
     g_Sprite2DInfo.flipY = 0;
