@@ -880,7 +880,7 @@ void OGLRender::SetFogEnable(bool bEnable)
 {
     DEBUGGER_IF_DUMP( (gRSP.bFogEnabled != (bEnable==TRUE) && logFog ), TRACE1("Set Fog %s", bEnable? "enable":"disable"));
 
-    gRSP.bFogEnabled = bEnable&&(options.fogMethod == 1);
+    gRSP.bFogEnabled = bEnable;
     
     // If force fog
     if(options.fogMethod == 2)
