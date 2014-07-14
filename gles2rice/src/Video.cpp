@@ -280,7 +280,7 @@ static bool StartVideo(void)
     CDeviceBuilder::GetBuilder()->CreateGraphicsContext();
     CGraphicsContext::InitWindowInfo();
 
-    bool res = CGraphicsContext::Get()->Initialize(640, 480);
+    bool res = CGraphicsContext::Get()->Initialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
     if (!res)
     {
        return false;
