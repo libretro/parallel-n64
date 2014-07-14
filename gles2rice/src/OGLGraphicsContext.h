@@ -65,7 +65,6 @@ protected:
     int     m_maxAnisotropicFiltering;
 
     // Nvidia OGL only features
-    bool    m_bSupportTextureMirrorRepeat;
     bool    m_bSupportTextureLOD;
     bool    m_bSupportNVRegisterCombiner;
     bool    m_bSupportBlendColor;

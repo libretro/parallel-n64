@@ -64,8 +64,6 @@ public:
     static void InitWindowInfo();
     static void InitDeviceParameters();
 
-    bool m_supportTextureMirror;
-
 public:
     static  int          m_maxFSAA;
     static  int          m_maxAnisotropy;

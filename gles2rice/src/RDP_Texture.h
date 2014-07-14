@@ -39,7 +39,6 @@ void SetTmemFlag(uint32_t tmemAddr, uint32_t size);
 bool IsTmemFlagValid(uint32_t tmemAddr);
 uint32_t GetValidTmemInfoIndex(uint32_t tmemAddr);
 
-void MirrorTexture(uint32_t tileno, TxtrCacheEntry *pEntry);
 void LoadHiresTexture( TxtrCacheEntry &entry );
 
 

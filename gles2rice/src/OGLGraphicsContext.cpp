@@ -34,7 +34,6 @@ COGLGraphicsContext::COGLGraphicsContext() :
     m_bSupportTextureObject(false),
     m_bSupportRescaleNormal(false),
     m_bSupportLODBias(false),
-    m_bSupportTextureMirrorRepeat(false),
     m_bSupportTextureLOD(false),
     m_bSupportNVRegisterCombiner(false),
     m_bSupportBlendColor(false),
@@ -55,7 +54,6 @@ COGLGraphicsContext::~COGLGraphicsContext()
 bool COGLGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed)
 {
     DebugMessage(M64MSG_INFO, "Initializing OpenGL Device Context.");
-    CGraphicsContext::Get()->m_supportTextureMirror = false;
     CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed);
 
     if (bWindowed)
@@ -181,8 +179,6 @@ void COGLGraphicsContext::InitOGLExtension(void)
         if ((uint32_t) m_maxAnisotropicFiltering > options.anisotropicFiltering)
             m_maxAnisotropicFiltering = options.anisotropicFiltering;
     }
-
-    m_supportTextureMirror = true;
 }
 
 bool COGLGraphicsContext::IsExtensionSupported(const char* pExtName)

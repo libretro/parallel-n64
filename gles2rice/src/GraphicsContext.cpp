@@ -38,7 +38,6 @@ CGraphicsContext * CGraphicsContext::Get(void)
 }
     
 CGraphicsContext::CGraphicsContext() :
-    m_supportTextureMirror(false),
     m_bReady(false), 
     m_bActive(false),
     m_bWindowed(true)
