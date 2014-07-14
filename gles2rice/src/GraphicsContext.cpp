@@ -46,10 +46,6 @@ CGraphicsContext::~CGraphicsContext()
     g_pFrameBufferManager->CloseUp();
 }
 
-uint32_t CGraphicsContext::m_dwWindowStyle=0;         // Saved window style for mode switches
-uint32_t CGraphicsContext::m_dwWindowExStyle=0;       // Saved window style for mode switches
-uint32_t CGraphicsContext::m_dwStatusWindowStyle=0;   // Saved window style for mode switches
-
 void CGraphicsContext::InitWindowInfo()
 {
 }
