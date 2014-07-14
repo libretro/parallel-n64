@@ -31,7 +31,6 @@ typedef struct {
     unsigned short        uViWidth, uViHeight;
     unsigned short        uDisplayWidth, uDisplayHeight;
     
-    BOOL    bDisplayFullscreen;
     BOOL    bVerticalSync;
 
     float   fMultX, fMultY;

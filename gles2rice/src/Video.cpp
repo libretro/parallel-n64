@@ -105,8 +105,6 @@ extern "C" EXPORT void CALL RomClosed(void);
 static void ChangeWindowStep2()
 {
     status.bDisableFPS = true;
-    windowSetting.bDisplayFullscreen = !windowSetting.bDisplayFullscreen;
-    windowSetting.bDisplayFullscreen = CGraphicsContext::Get()->ToggleFullscreen();
 
     CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
     CGraphicsContext::Get()->UpdateFrame(false);
@@ -132,7 +130,7 @@ static void ResizeStep2(void)
     //CoreVideo_ResizeWindow(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
 
     // re-initialize our OpenGL graphics context state
-    bool res = CGraphicsContext::Get()->ResizeInitialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, !windowSetting.bDisplayFullscreen);
+    bool res = CGraphicsContext::Get()->ResizeInitialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, false);
     if (res)
     {
         // re-create the OpenGL renderer
@@ -301,7 +299,7 @@ static bool StartVideo(void)
     CDeviceBuilder::GetBuilder()->CreateGraphicsContext();
     CGraphicsContext::InitWindowInfo();
 
-    bool res = CGraphicsContext::Get()->Initialize(640, 480, !windowSetting.bDisplayFullscreen);
+    bool res = CGraphicsContext::Get()->Initialize(640, 480, false);
     if (!res)
     {
        return false;
