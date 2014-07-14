@@ -185,33 +185,6 @@ private:
 };
 
 
-class COGLColorCombiner4v2 : public COGLColorCombiner4
-{
-    /************************************************************************
-     * Version 2 of OGL 1.4 combiner
-     * Will support up to 4 texture units
-     * Texture unit 0 and 1 are for N64 texture T0 and T1
-     * Texture unit 2 and 3 will be used to map constant colors
-     * Constant color mapping:
-     *    OGL constant factor:      MUX_PRIM
-     *    ARB_TEXTURE2:             MUX_ENV
-     *    ARB_TEXTURE3:             MUX_LODFRAC
-     ************************************************************************/
-protected:
-    friend class OGLDeviceBuilder;
-    virtual void GenerateCombinerSettingConstants(int index);
-    virtual int SaveParsedResult(OGLExtCombinerSaveType &result);
-
-    COGLColorCombiner4v2(CRender *pRender);
-    ~COGLColorCombiner4v2() {};
-
-    static GLint RGBArgsMap4v2[];
-
-private:
-    virtual GLint MapRGBArgs(uint8_t arg);
-    virtual GLint MapAlphaArgs(uint8_t arg);
-};
-
 //////////////////////////////////////////////////////////////////////////
 // OpenGL 1.2, 1.3 combiner which does not support Texture Crossbar feature
 class COGLColorCombiner2 : public COGLColorCombiner4, CGeneralCombiner

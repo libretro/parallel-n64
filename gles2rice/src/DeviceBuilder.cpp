@@ -57,7 +57,6 @@ void CDeviceBuilder::SelectDeviceType(SupportedDeviceType type)
     case OGL_1_2_DEVICE:
     case OGL_1_3_DEVICE:
     case OGL_1_4_DEVICE:
-    case OGL_1_4_V2_DEVICE:
     case OGL_TNT2_DEVICE:
     case NVIDIA_OGL_DEVICE:
     case OGL_FRAGMENT_PROGRAM:
@@ -89,7 +88,6 @@ CDeviceBuilder* CDeviceBuilder::CreateBuilder(SupportedDeviceType type)
         case    OGL_1_2_DEVICE:
         case    OGL_1_3_DEVICE:
         case    OGL_1_4_DEVICE:
-        case    OGL_1_4_V2_DEVICE:
         case    OGL_TNT2_DEVICE:
         case    NVIDIA_OGL_DEVICE:
         case OGL_FRAGMENT_PROGRAM:
