@@ -53,10 +53,6 @@ protected:
     bool SetFullscreenMode();
     bool SetWindowMode();
 
-    // Important OGL extension features
-    bool    m_bSupportSeparateSpecularColor;
-    bool    m_bSupportSecondColor;
-
     // Optional OGL extension features;
     bool    m_bSupportLODBias;
     bool    m_bSupportAnisotropicFiltering;
