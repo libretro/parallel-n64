@@ -70,10 +70,6 @@ protected:
     bool    m_bSupportBlendSubtract;
     bool    m_bSupportNVTextureEnvCombine4;
     
-    // Minimal requirements, I will even not check them at runtime
-    //bool  m_bSupportTextureEnvAdd;
-    //bool  m_bSupportVertexArray;
-
     const unsigned char*    m_pVendorStr;
     const unsigned char*    m_pRenderStr;
     const unsigned char*    m_pExtensionStr;
