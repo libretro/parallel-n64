@@ -29,7 +29,6 @@
 CGraphicsContext* CGraphicsContext::g_pGraphicsContext = NULL;
 bool CGraphicsContext::m_deviceCapsIsInitialized = false;
 bool CGraphicsContext::needCleanScene = false;
-int CGraphicsContext::m_maxFSAA = 16;
 
 CGraphicsContext * CGraphicsContext::Get(void)
 {   

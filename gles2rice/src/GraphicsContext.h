@@ -65,8 +65,6 @@ public:
     static void InitDeviceParameters();
 
 public:
-    static  int          m_maxFSAA;
-
 protected:
     static  uint32_t      m_dwWindowStyle;       // Saved window style for mode switches
     static  uint32_t      m_dwWindowExStyle;     // Saved window style for mode switches
