@@ -34,7 +34,6 @@ COGLColorCombiner4::COGLColorCombiner4(CRender *pRender)
         :COGLColorCombiner(pRender), m_maxTexUnits(0), m_lastIndex(-1),
         m_dwLastMux0(0), m_dwLastMux1(0)
 {
-    m_bOGLExtCombinerSupported=false;
     m_bSupportModAdd_ATI = false;
     m_bSupportModSub_ATI = false;
     delete m_pDecodedMux;
@@ -52,7 +51,6 @@ COGLColorCombiner2::COGLColorCombiner2(CRender *pRender)
 //////////////////////////////////////////////////////////////////////////
 bool COGLColorCombiner4::Initialize(void)
 {
-    m_bOGLExtCombinerSupported = false;
     m_bSupportModAdd_ATI = false;
     m_bSupportModSub_ATI = false;
     m_maxTexUnits = 1;
@@ -100,12 +98,6 @@ void COGLColorCombiner4::InitCombinerCycleFill(void)
 //////////////////////////////////////////////////////////////////////////
 void COGLColorCombiner4::InitCombinerCycle12(void)
 {
-    if( !m_bOGLExtCombinerSupported )   
-    {
-        COGLColorCombiner::InitCombinerCycle12();
-        return;
-    }
-
 #ifdef DEBUGGER
     if( debuggerDropCombiners )
     {
@@ -201,7 +193,7 @@ int COGLColorCombiner4::ParseDecodedMux2Units()
             comb.arg0 = m.a;
             comb.arg1 = m.b;
             comb.arg2 = m.c;
-            unit.ops[i%2] = GL_INTERPOLATE_ARB;
+            unit.ops[i%2] = GL_INTERPOLATE;
             break;
         }
     }
@@ -439,7 +431,7 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
         pglActiveTexture(GL_TEXTURE0 + i);
         OPENGL_CHECK_ERRORS;
         m_pOGLRender->EnableTexUnit(i, true);
-        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE_ARB);
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
         OPENGL_CHECK_ERRORS;
         ApplyFor1Unit(res.units[i]);
     }
@@ -635,7 +627,7 @@ void COGLColorCombiner2::GenerateCombinerSetting(int index)
         }
         */
 
-        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE_ARB);
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
         OPENGL_CHECK_ERRORS;
         ApplyFor1Unit(res.units[i]);
     }

@@ -54,7 +54,6 @@ protected:
     bool SetWindowMode();
 
     // Important OGL extension features
-    bool    m_bSupportTextureEnvCombine;
     bool    m_bSupportSeparateSpecularColor;
     bool    m_bSupportSecondColor;
     bool    m_bSupportTextureObject;

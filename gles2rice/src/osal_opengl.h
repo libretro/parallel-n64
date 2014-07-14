@@ -57,9 +57,9 @@
 
 #define GL_ADD                              0x0104
 #define GL_MODULATE                         0x2100
-#define GL_INTERPOLATE_ARB                  0x8575
-#define GL_CONSTANT_ARB                     0x8576
-#define GL_PREVIOUS_ARB                     0x8578
+#define GL_INTERPOLATE                      0x8575
+#define GL_CONSTANT                         0x8576
+#define GL_PREVIOUS                         0x8578
 #endif
 
 // Function substitutions

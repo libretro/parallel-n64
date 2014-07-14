@@ -29,7 +29,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "version.h"
 
 COGLGraphicsContext::COGLGraphicsContext() :
-    m_bSupportTextureEnvCombine(false),
     m_bSupportSeparateSpecularColor(false),
     m_bSupportSecondColor(false),
     m_bSupportTextureObject(false),

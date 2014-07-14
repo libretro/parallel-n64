@@ -156,7 +156,6 @@ protected:
     COGLColorCombiner4(CRender *pRender);
     ~COGLColorCombiner4() {};
 
-    bool m_bOGLExtCombinerSupported;        // Is this OGL extension combiner supported by the video card driver?
     bool m_bSupportModAdd_ATI;
     bool m_bSupportModSub_ATI;
     GLint m_maxTexUnits;
