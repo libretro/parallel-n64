@@ -57,7 +57,6 @@ PluginStatus  status;
 unsigned int   g_dwRamSize = 0x400000;
 unsigned int  *g_pRDRAMu32 = NULL;
 signed char   *g_pRDRAMs8 = NULL;
-unsigned char *g_pRDRAMu8 = NULL;
 
 RECT frameWriteByCPURect;
 std::vector<RECT> frameWriteByCPURects;
@@ -670,7 +669,6 @@ EXPORT int CALL InitiateGFX(GFX_INFO Gfx_Info)
 {
     memset(&status, 0, sizeof(status));
 
-    g_pRDRAMu8          = Gfx_Info.RDRAM;
     g_pRDRAMu32         = (uint32_t*)Gfx_Info.RDRAM;
     g_pRDRAMs8          = (signed char *)Gfx_Info.RDRAM;
 

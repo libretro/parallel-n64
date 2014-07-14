@@ -1299,7 +1299,8 @@ void ProcessVertexDataSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
     //          - g_dwVtxDifColor[i]            -> vertex color
     //          - g_fVtxTxtCoords[i]            -> vertex texture coordinates
 
-    FiddledVtx * pVtxBase = (FiddledVtx*)(g_pRDRAMu8 + dwAddr);
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+    FiddledVtx * pVtxBase = (FiddledVtx*)(rdram_u8 + dwAddr);
     g_pVtxBase = pVtxBase;
 
     for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
@@ -1408,7 +1409,8 @@ void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
     //          - g_dwVtxDifColor[i]            -> vertex color
     //          - g_fVtxTxtCoords[i]            -> vertex texture coordinates
 
-    FiddledVtx * pVtxBase = (FiddledVtx*)(g_pRDRAMu8 + dwAddr);
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+    FiddledVtx * pVtxBase = (FiddledVtx*)(rdram_u8 + dwAddr);
     g_pVtxBase = pVtxBase;
 
     for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
@@ -1713,7 +1715,8 @@ void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
     UpdateCombinedMatrix();
 
-    long long pVtxBase = (long long) (g_pRDRAMu8 + dwAddr);
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+    long long pVtxBase = (long long) (rdram_u8 + dwAddr);
     g_pVtxBase = (FiddledVtx*)pVtxBase;
 
     Matrix &matWorldProject = gRSP.DKRMatrixes[gRSP.DKRCMatrixIndex];
@@ -1830,7 +1833,8 @@ void ProcessVertexDataPD(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
     UpdateCombinedMatrix();
 
-    N64VtxPD * pVtxBase = (N64VtxPD*)(g_pRDRAMu8 + dwAddr);
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+    N64VtxPD * pVtxBase = (N64VtxPD*)(rdram_u8 + dwAddr);
     g_pVtxBase = (FiddledVtx*)pVtxBase; // Fix me
 
     for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
@@ -1860,7 +1864,7 @@ void ProcessVertexDataPD(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 
         RSP_Vtx_Clipping(i);
 
-        uint8_t *addr = g_pRDRAMu8+dwPDCIAddr+ (vert.cidx&0xFF);
+        uint8_t *addr = rdram_u8 + dwPDCIAddr + (vert.cidx&0xFF);
         uint32_t a = addr[0];
         uint32_t r = addr[3];
         uint32_t g = addr[2];
@@ -1939,9 +1943,9 @@ void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
     UpdateCombinedMatrix();
 
-    FiddledVtx * pVtxBase = (FiddledVtx*)(g_pRDRAMu8 + dwAddr);
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+    FiddledVtx * pVtxBase = (FiddledVtx*)(rdram_u8 + dwAddr);
     g_pVtxBase = pVtxBase;
-    //short *vertexColoraddr = (short*)(g_pRDRAMu8+dwConkerVtxZAddr);
 
     for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
     {
@@ -2038,9 +2042,9 @@ void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         // can't generate tex coord)
         if (gRSP.bTextureGen && gRSP.bLightingEnable )
         {
-                g_normal.x = (float)*(char*)(g_pRDRAMu8+ (((i<<1)+0)^3)+dwConkerVtxZAddr);
-                g_normal.y = (float)*(char*)(g_pRDRAMu8+ (((i<<1)+1)^3)+dwConkerVtxZAddr);
-                g_normal.z = (float)*(char*)(g_pRDRAMu8+ (((i<<1)+2)^3)+dwConkerVtxZAddr);
+                g_normal.x = (float)*(int8_t*)(rdram_u8 + (((i<<1)+0)^3)+dwConkerVtxZAddr);
+                g_normal.y = (float)*(int8_t*)(rdram_u8 + (((i<<1)+1)^3)+dwConkerVtxZAddr);
+                g_normal.z = (float)*(int8_t*)(rdram_u8 + (((i<<1)+2)^3)+dwConkerVtxZAddr);
                 Vec3TransformNormal(g_normal, gRSPmodelViewTop);
                 TexGen(g_fVtxTxtCoords[i].x, g_fVtxTxtCoords[i].y);
         }
@@ -2088,11 +2092,12 @@ void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, 
 {
     UpdateCombinedMatrix();
 
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     uint32_t dwV0 = 0;
     uint32_t dwNum = (dwXYZCmd&0xFF00)>>10;
 
-    RS_Vtx_XYZ * pVtxXYZBase = (RS_Vtx_XYZ*)(g_pRDRAMu8 + dwXYZAddr);
-    RS_Vtx_Color * pVtxColorBase = (RS_Vtx_Color*)(g_pRDRAMu8 + dwColorAddr);
+    RS_Vtx_XYZ * pVtxXYZBase = (RS_Vtx_XYZ*)(rdram_u8 + dwXYZAddr);
+    RS_Vtx_Color * pVtxColorBase = (RS_Vtx_Color*)(rdram_u8 + dwColorAddr);
 
     for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
     {

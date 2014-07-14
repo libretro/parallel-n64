@@ -302,8 +302,9 @@ bool FrameBufferManager::IsDIaRenderTexture()
 
     for (int i=0; i<10; i++)
     {
-        uint32_t w0 = *(uint32_t *)(g_pRDRAMu8 + dwPC + i*8);
-        uint32_t w1 = *(uint32_t *)(g_pRDRAMu8 + dwPC + 4 + i*8);
+       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+        uint32_t w0 = *(uint32_t *)(rdram_u8 + dwPC + i*8);
+        uint32_t w1 = *(uint32_t *)(rdram_u8 + dwPC + 4 + i*8);
 
         if ((w0>>24) == RDP_SETSCISSOR)
         {
@@ -474,8 +475,9 @@ void TexRectToFrameBuffer_8b(uint32_t dwXL, uint32_t dwYL, uint32_t dwXH, uint32
     float xScale = (t0u1-t0u0)/dwWidth;
     float yScale = (t0v1-t0v0)/dwHeight;
 
-    uint8_t* dwSrc = g_pRDRAMu8 + info.dwLoadAddress;
-    uint8_t* dwDst = g_pRDRAMu8 + g_pRenderTextureInfo->CI_Info.dwAddr;
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+    uint8_t* dwSrc = rdram_u8 + info.dwLoadAddress;
+    uint8_t* dwDst = rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr;
 
     uint32_t dwSrcPitch = gRDP.tiles[dwTile].dwPitch;
     uint32_t dwDstPitch = g_pRenderTextureInfo->CI_Info.dwWidth;
@@ -529,8 +531,9 @@ void TexRectToN64FrameBuffer_16b(uint32_t x0, uint32_t y0, uint32_t width, uint3
 
     for (uint32_t y = 0; y < height; y++)
     {
+       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
         uint32_t* pSrc = (uint32_t*)((uint8_t*)srcInfo.lpSurface + y * srcInfo.lPitch);
-        uint16_t* pN64Buffer = (uint16_t*)(g_pRDRAMu8+(n64CIaddr&(g_dwRamSize-1)))+(y+y0)*n64CIwidth;
+        uint16_t* pN64Buffer = (uint16_t*)(rdram_u8 + (n64CIaddr&(g_dwRamSize-1)))+(y+y0)*n64CIwidth;
 
         for (uint32_t x = 0; x < width; x++)
         {
@@ -819,8 +822,9 @@ unsigned char CalculateMaxCI(void *pPhysicalAddress, uint32_t left, uint32_t top
 
 bool FrameBufferManager::FrameBufferInRDRAMCheckCRC()
 {
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     RecentCIInfo &p = *(g_uRecentCIInfoPtrs[0]);
-    uint8_t *pFrameBufferBase = (uint8_t*)(g_pRDRAMu8+p.dwAddr);
+    uint8_t *pFrameBufferBase = (uint8_t*)(rdram_u8 + p.dwAddr);
     uint32_t pitch = (p.dwWidth << p.dwSize ) >> 1;
     uint32_t crc = CalculateRDRAMCRC(pFrameBufferBase, 0, 0, p.dwWidth, p.dwHeight, p.dwSize, pitch);
     if (crc != p.dwCRC)
@@ -1052,8 +1056,9 @@ uint32_t FrameBufferManager::ComputeCImgHeight(SetImgInfo &info, uint32_t &heigh
 
     for (int i=0; i<10; i++)
     {
-        uint32_t w0 = *(uint32_t *)(g_pRDRAMu8 + dwPC + i*8);
-        uint32_t w1 = *(uint32_t *)(g_pRDRAMu8 + dwPC + 4 + i*8);
+       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+        uint32_t w0 = *(uint32_t *)(rdram_u8 + dwPC + i*8);
+        uint32_t w1 = *(uint32_t *)(rdram_u8 + dwPC + 4 + i*8);
 
         if ((w0>>24) == RDP_SETSCISSOR)
         {
@@ -1407,8 +1412,9 @@ void FrameBufferManager::CloseRenderTexture(bool toSave)
 
 void FrameBufferManager::ClearN64FrameBufferToBlack(uint32_t left, uint32_t top, uint32_t width, uint32_t height)
 {
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     RecentCIInfo &p = *(g_uRecentCIInfoPtrs[0]);
-    uint16_t *frameBufferBase = (uint16_t*)(g_pRDRAMu8+p.dwAddr);
+    uint16_t *frameBufferBase = (uint16_t*)(rdram_u8 + p.dwAddr);
     uint32_t pitch = p.dwWidth;
 
     if (width == 0 || height == 0)
@@ -1579,9 +1585,10 @@ uint32_t FrameBufferManager::ComputeRenderTextureCRCInRDRAM(int infoIdx)
     if (infoIdx >= numOfTxtBufInfos || infoIdx < 0 || !gRenderTextureInfos[infoIdx].isUsed)
         return 0;
 
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     RenderTextureInfo &info = gRenderTextureInfos[infoIdx];
     uint32_t height = info.knownHeight ? info.N64Height : info.maxUsedHeight;
-    uint8_t *pAddr = (uint8_t*)(g_pRDRAMu8+info.CI_Info.dwAddr);
+    uint8_t *pAddr = (uint8_t*)(rdram_u8 + info.CI_Info.dwAddr);
     uint32_t pitch = (info.N64Width << info.CI_Info.dwSize ) >> 1;
 
     return CalculateRDRAMCRC(pAddr, 0, 0, info.N64Width, height, info.CI_Info.dwSize, pitch);
@@ -1905,7 +1912,8 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t
 
     if (siz == TXT_SIZE_16b)
     {
-        uint16_t *frameBufferBase = (uint16_t*)(g_pRDRAMu8+addr);
+       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+        uint16_t *frameBufferBase = (uint16_t*)(rdram_u8 + addr);
 
         if (bufFmt == TEXTURE_FMT_A8R8G8B8)
         {
@@ -1938,7 +1946,8 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t
     }
     else if (siz == TXT_SIZE_8b && fmt == TXT_FMT_CI)
     {
-        uint8_t *frameBufferBase = (uint8_t*)(g_pRDRAMu8+addr);
+       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+        uint8_t *frameBufferBase = (uint8_t*)(rdram_u8 + addr);
 
         if (bufFmt == TEXTURE_FMT_A8R8G8B8)
         {
@@ -1970,7 +1979,8 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t
     }
     else if (siz == TXT_SIZE_8b && fmt == TXT_FMT_I)
     {
-        uint8_t *frameBufferBase = (uint8_t*)(g_pRDRAMu8+addr);
+       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+        uint8_t *frameBufferBase = (uint8_t*)(rdram_u8 + addr);
 
         if (bufFmt == TEXTURE_FMT_A8R8G8B8)
         {

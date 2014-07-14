@@ -157,7 +157,6 @@ extern WindowSettingStruct windowSetting;
 extern uint32_t   g_dwRamSize;
 extern uint32_t  *g_pRDRAMu32;
 extern int8_t   *g_pRDRAMs8;
-extern uint8_t *g_pRDRAMu8;
 
 #ifdef __LIBRETRO__ // Prefix symbol
 #define renderCallback ricerenderCallback

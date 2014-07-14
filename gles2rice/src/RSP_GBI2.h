@@ -241,7 +241,6 @@ void RSP_GBI2_Tri1(Gfx *gfx)
 
         // While the next command pair is Tri1, add vertices
         uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
-        //uint32_t * pCmdBase = (uint32_t *)(g_pRDRAMu8 + dwPC);
 
         do
         {

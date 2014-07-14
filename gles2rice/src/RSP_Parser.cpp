@@ -710,11 +710,12 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
 
     //if ( strcmp( str, gLastMicrocodeString ) != 0 )
     {
+       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
         //uint32_t size = ucDSize;
         base = ucStart & 0x1fffffff;
 
-        uint32_t crc_size = ComputeCRC32( 0, &g_pRDRAMu8[ base ], 8);//size );
-        uint32_t crc_800 = ComputeCRC32( 0, &g_pRDRAMu8[ base ], 0x800 );
+        uint32_t crc_size = ComputeCRC32( 0, &rdram_u8[ base ], 8);//size );
+        uint32_t crc_800 = ComputeCRC32( 0, &rdram_u8[ base ], 0x800 );
         uint32_t ucode;
         ucode = DLParser_IdentifyUcode( crc_size, crc_800, (char*)str );
         if ( (int)ucode == ~0 )
@@ -1201,6 +1202,7 @@ void DLParser_SetScissor(Gfx *gfx)
 
 void DLParser_FillRect(Gfx *gfx)
 { 
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     DP_Timing(DLParser_FillRect);   // fix me
     status.primitiveType = PRIM_FILLRECT;
 
@@ -1212,14 +1214,14 @@ void DLParser_FillRect(Gfx *gfx)
     if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS )
     {
         uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
-        uint32_t w2 = *(uint32_t *)(g_pRDRAMu8 + dwPC);
+        uint32_t w2 = *(uint32_t *)(rdram_u8 + dwPC);
         if( (w2>>24) == RDP_FILLRECT )
         {
             // Mario Tennis, a lot of FillRect ucodes, skip all of them
             while( (w2>>24) == RDP_FILLRECT )
             {
                 dwPC += 8;
-                w2 = *(uint32_t *)(g_pRDRAMu8 + dwPC);
+                w2 = *(uint32_t *)(rdram_u8 + dwPC);
             }
 
             gDlistStack[gDlistStackPointer].pc = dwPC;
@@ -1296,7 +1298,7 @@ void DLParser_FillRect(Gfx *gfx)
             // Emulating Clear, by write the memory in RDRAM
             uint16_t color = (uint16_t)gRDP.originalFillColor;
             uint32_t pitch = g_CI.dwWidth<<1;
-            long long base = (long long) (g_pRDRAMu8 + g_CI.dwAddr);
+            long long base = (long long) (rdram_u8 + g_CI.dwAddr);
             for( uint32_t i =y0; i<y1; i++ )
             {
                 for( uint32_t j=x0; j<x1; j++ )
@@ -1330,7 +1332,7 @@ void DLParser_FillRect(Gfx *gfx)
             {
                 uint16_t color = (uint16_t)gRDP.originalFillColor;
                 uint32_t pitch = g_pRenderTextureInfo->N64Width<<1;
-                long long base = (long long) (g_pRDRAMu8 + g_pRenderTextureInfo->CI_Info.dwAddr);
+                long long base = (long long) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
                 for( uint32_t i =y0; i<y1; i++ )
                 {
                     for( uint32_t j=x0; j<x1; j++ )
@@ -1343,7 +1345,7 @@ void DLParser_FillRect(Gfx *gfx)
             {
                 uint8_t color = (uint8_t)gRDP.originalFillColor;
                 uint32_t pitch = g_pRenderTextureInfo->N64Width;
-                long long base = (long long) (g_pRDRAMu8 + g_pRenderTextureInfo->CI_Info.dwAddr);
+                long long base = (long long) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
                 for( uint32_t i=y0; i<y1; i++ )
                 {
                     for( uint32_t j=x0; j<x1; j++ )
@@ -1767,6 +1769,7 @@ unsigned int ComputeCRC32(unsigned int crc, const uint8_t *buf, unsigned int len
 Matrix matToLoad;
 void LoadMatrix(uint32_t addr)
 {
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     const float fRecip = 1.0f / 65536.0f;
     if (addr + 64 > g_dwRamSize)
     {
@@ -1778,8 +1781,8 @@ void LoadMatrix(uint32_t addr)
     {
         for (int j = 0; j < 4; j++) 
         {
-            int hi = *(short *)(g_pRDRAMu8 + ((addr+(i<<3)+(j<<1)     )^0x2));
-            int lo = *(unsigned short *)(g_pRDRAMu8 + ((addr+(i<<3)+(j<<1) + 32)^0x2));
+            int hi = *(short *)(rdram_u8 + ((addr+(i<<3)+(j<<1)     )^0x2));
+            int lo = *(unsigned short *)(rdram_u8 + ((addr+(i<<3)+(j<<1) + 32)^0x2));
             matToLoad.m[i][j] = (float)((hi<<16) | lo) * fRecip;
         }
     }

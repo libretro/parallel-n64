@@ -699,7 +699,6 @@ void RSP_GBI1_Tri1(Gfx *gfx)
 
     // While the next command pair is Tri1, add vertices
     uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
-    //uint32_t * pCmdBase = (uint32_t *)(g_pRDRAMu8 + dwPC);
     
     do
     {
@@ -747,6 +746,7 @@ void RSP_GBI1_Tri1(Gfx *gfx)
 
 void RSP_GBI0_Tri4(Gfx *gfx)
 {
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     uint32_t w0 = gfx->words.w0;
     uint32_t w1 = gfx->words.w1;
 
@@ -787,8 +787,8 @@ void RSP_GBI0_Tri4(Gfx *gfx)
             }
         }
         
-        w0  = *(uint32_t *)(g_pRDRAMu8 + dwPC+0);
-        w1  = *(uint32_t *)(g_pRDRAMu8 + dwPC+4);
+        w0  = *(uint32_t *)(rdram_u8 + dwPC+0);
+        w1  = *(uint32_t *)(rdram_u8 + dwPC+4);
         dwPC += 8;
 
 #ifdef DEBUGGER

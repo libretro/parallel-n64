@@ -161,6 +161,7 @@ extern XVECTOR4 g_vtxNonTransformed[MAX_VERTS];
 
 void RSP_GBI1_BranchZ(Gfx *gfx)
 {
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     SP_Timing(RSP_GBI1_BranchZ);
 
     uint32_t vtx = ((gfx->words.w0)&0xFFF)>>1;
@@ -173,7 +174,7 @@ void RSP_GBI1_BranchZ(Gfx *gfx)
 #endif
     {
         uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
-        uint32_t dwDL = *(uint32_t *)(g_pRDRAMu8 + dwPC-12);
+        uint32_t dwDL = *(uint32_t *)(rdram_u8 + dwPC-12);
         uint32_t dwAddr = RSPSegmentAddr(dwDL);
 
         LOG_UCODE("BranchZ to DisplayList 0x%08x", dwAddr);
@@ -196,13 +197,14 @@ void DumpUcodeInfo(UcodeInfo &info)
 
 void RSP_GBI1_LoadUCode(Gfx *gfx)
 {
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     SP_Timing(RSP_GBI1_LoadUCode);
 
     //TRACE0("Load ucode");
     uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
     uint32_t dwUcStart = RSPSegmentAddr((gfx->words.w1));
     uint32_t dwSize = ((gfx->words.w0)&0xFFFF)+1;
-    uint32_t dwUcDStart = RSPSegmentAddr(*(uint32_t *)(g_pRDRAMu8 + dwPC-12));
+    uint32_t dwUcDStart = RSPSegmentAddr(*(uint32_t *)(rdram_u8 + dwPC-12));
 
     uint32_t ucode = DLParser_CheckUcode(dwUcStart, dwUcDStart, dwSize, 8);
     RSP_SetUcode(ucode, dwUcStart, dwUcDStart, dwSize);
@@ -230,8 +232,9 @@ void RSP_GFX_Force_Matrix(uint32_t dwAddr)
 void DisplayVertexInfo(uint32_t dwAddr, uint32_t dwV0, uint32_t dwN)
 {
 #ifdef DEBUGGER
-        int8_t *pcSrc = (int8_t *)(g_pRDRAMu8 + dwAddr);
-        short *psSrc = (short *)(g_pRDRAMu8 + dwAddr);
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+        int8_t *pcSrc = (int8_t *)(rdram_u8 + dwAddr);
+        short *psSrc = (short *)(rdram_u8 + dwAddr);
 
         for (uint32_t dwV = dwV0; dwV < dwV0 + dwN; dwV++)
         {
@@ -332,6 +335,7 @@ void RSP_MoveMemLight(uint32_t dwLight, uint32_t dwAddr)
 
 void RSP_MoveMemViewport(uint32_t dwAddr)
 {
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     if( dwAddr+16 >= g_dwRamSize )
     {
         TRACE0("MoveMem Viewport, invalid memory");
@@ -342,15 +346,15 @@ void RSP_MoveMemViewport(uint32_t dwAddr)
     short trans[4];
 
     // dwAddr is offset into RD_RAM of 8 x 16bits of data...
-    scale[0] = *(short *)(g_pRDRAMu8 + ((dwAddr+(0*2))^0x2));
-    scale[1] = *(short *)(g_pRDRAMu8 + ((dwAddr+(1*2))^0x2));
-    scale[2] = *(short *)(g_pRDRAMu8 + ((dwAddr+(2*2))^0x2));
-    scale[3] = *(short *)(g_pRDRAMu8 + ((dwAddr+(3*2))^0x2));
+    scale[0] = *(short *)(rdram_u8 + ((dwAddr+(0*2))^0x2));
+    scale[1] = *(short *)(rdram_u8 + ((dwAddr+(1*2))^0x2));
+    scale[2] = *(short *)(rdram_u8 + ((dwAddr+(2*2))^0x2));
+    scale[3] = *(short *)(rdram_u8 + ((dwAddr+(3*2))^0x2));
 
-    trans[0] = *(short *)(g_pRDRAMu8 + ((dwAddr+(4*2))^0x2));
-    trans[1] = *(short *)(g_pRDRAMu8 + ((dwAddr+(5*2))^0x2));
-    trans[2] = *(short *)(g_pRDRAMu8 + ((dwAddr+(6*2))^0x2));
-    trans[3] = *(short *)(g_pRDRAMu8 + ((dwAddr+(7*2))^0x2));
+    trans[0] = *(short *)(rdram_u8 + ((dwAddr+(4*2))^0x2));
+    trans[1] = *(short *)(rdram_u8 + ((dwAddr+(5*2))^0x2));
+    trans[2] = *(short *)(rdram_u8 + ((dwAddr+(6*2))^0x2));
+    trans[3] = *(short *)(rdram_u8 + ((dwAddr+(7*2))^0x2));
 
 
     int nCenterX = trans[0]/4;

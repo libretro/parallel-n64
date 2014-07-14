@@ -307,6 +307,7 @@ void DumpDlistAt(uint32 dwPC)
 
 void DumpMatrixAt(uint32 dwPC)
 {
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     Matrix mat;
     const float fRecip = 1.0f / 65536.0f;
 
@@ -314,8 +315,8 @@ void DumpMatrixAt(uint32 dwPC)
     {
         for (uint32 dwJ = 0; dwJ < 4; dwJ++)
         {
-            int nDataHi = *(short  *)(g_pRDRAMu8 + ((dwPC+(dwI<<3)+(dwJ<<1)     )^0x2));
-            int nDataLo = *(uint16 *)(g_pRDRAMu8 + ((dwPC+(dwI<<3)+(dwJ<<1) + 32)^0x2));
+            int nDataHi = *(short  *)(rdram_u8 + ((dwPC+(dwI<<3)+(dwJ<<1)     )^0x2));
+            int nDataLo = *(uint16 *)(rdram_u8 + ((dwPC+(dwI<<3)+(dwJ<<1) + 32)^0x2));
             mat.m[dwI][dwJ] = (float)((nDataHi << 16) | nDataLo) * fRecip;
         }
     }
@@ -414,6 +415,7 @@ void DumpCachedTexture(uint32 index)
 extern uint32 gObjTlutAddr;
 void DumpInfo(int thingToDump)
 {
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     switch(thingToDump)
     {
     case DUMP_COLORS:
@@ -469,7 +471,7 @@ void DumpInfo(int thingToDump)
         DumpTlut(g_wRDPTlut);
         break;
     case DUMP_OBJ_TLUT:
-        DumpTlut((uint16*)(g_pRDRAMu8+gObjTlutAddr));
+        DumpTlut((uint16*)(rdram_u8 + gObjTlutAddr));
         break;
     case DUMP_TILE_AT:
         {
@@ -615,8 +617,9 @@ void __cdecl LOG_UCODE(const char* szFormat, ...)
 
 void DumpHex(uint32 rdramAddr, int count)
 {
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     rdramAddr &= 0xFFFFFFF0;
-    uint32 *ptr = (uint32 *)((rdramAddr&(g_dwRamSize-1))+g_pRDRAMu8);
+    uint32 *ptr = (uint32 *)((rdramAddr&(g_dwRamSize-1))+ rdram_u8);
 
     for( int i=0; i<(count+3)/4; i++)
     {

@@ -252,6 +252,7 @@ void CRender::LoadTxtrBufIntoTexture(void)
 
 void CRender::LoadSprite2D(Sprite2DInfo &info, uint32_t ucode)
 {
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     TxtrInfo gti;
 
     gti.Format  = info.spritePtr->SourceImageType;
@@ -259,7 +260,7 @@ void CRender::LoadSprite2D(Sprite2DInfo &info, uint32_t ucode)
 
     gti.Address = RSPSegmentAddr(info.spritePtr->SourceImagePointer);
     gti.Palette = 0;
-    gti.PalAddress = (uint8_t *) (g_pRDRAMu8 + RSPSegmentAddr(info.spritePtr->TlutPointer));
+    gti.PalAddress = (uint8_t *) (rdram_u8 + RSPSegmentAddr(info.spritePtr->TlutPointer));
 
     if( options.enableHackForGames == HACK_FOR_NITRO )
     {
@@ -821,8 +822,6 @@ void CRender::LoadObjBG1CYC(uObjScaleBg &bg)
     gti.Format = bg.imageFmt;
     gti.Size   = bg.imageSiz;
 
-    //uint8_t* img = (uint8_t*)(g_pRDRAMu8+RSPSegmentAddr(bg.imagePtr));
-    
     uint8_t *palAddr = (uint8_t *) &g_wRDPTlut[0];
     gti.Address = RSPSegmentAddr(bg.imagePtr);
 
