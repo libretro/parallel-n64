@@ -37,9 +37,6 @@ typedef struct {
     float   fMultX, fMultY;
     int     vpLeftW, vpTopW, vpRightW, vpBottomW, vpWidthW, vpHeightW;
 
-    int     statusBarHeight, statusBarHeightToUse, toolbarHeight, toolbarHeightToUse;
-    BOOL    screenSaverStatus;
-
     struct {
         uint32_t      left;
         uint32_t      top;

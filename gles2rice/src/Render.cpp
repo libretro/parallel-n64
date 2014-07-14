@@ -1483,7 +1483,7 @@ void CRender::UpdateClipRectangle()
         gRSP.vtxXMul = windowSetting.vpWidthW/2.0f;
         gRSP.vtxXAdd = gRSP.vtxXMul + windowSetting.vpLeftW;
         gRSP.vtxYMul = -windowSetting.vpHeightW/2.0f;
-        gRSP.vtxYAdd = windowSetting.vpHeightW/2.0f + windowSetting.vpTopW+windowSetting.toolbarHeightToUse;
+        gRSP.vtxYAdd = windowSetting.vpHeightW/2.0f + windowSetting.vpTopW;
 
         // Update clip rectangle by setting scissor
 
@@ -1509,7 +1509,7 @@ void CRender::UpdateClipRectangle()
         gRSP.vtxXMul = windowSetting.vpWidthW/2.0f;
         gRSP.vtxXAdd = gRSP.vtxXMul + windowSetting.vpLeftW;
         gRSP.vtxYMul = -windowSetting.vpHeightW/2.0f;
-        gRSP.vtxYAdd = windowSetting.vpHeightW/2.0f + windowSetting.vpTopW+windowSetting.toolbarHeightToUse;
+        gRSP.vtxYAdd = windowSetting.vpHeightW/2.0f + windowSetting.vpTopW;
 
         // Update clip rectangle by setting scissor
 

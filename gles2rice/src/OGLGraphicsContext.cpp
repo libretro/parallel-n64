@@ -48,17 +48,6 @@ bool COGLGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight, bool b
     DebugMessage(M64MSG_INFO, "Initializing OpenGL Device Context.");
     CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed);
 
-    if (bWindowed)
-    {
-        windowSetting.statusBarHeightToUse = windowSetting.statusBarHeight;
-        windowSetting.toolbarHeightToUse = windowSetting.toolbarHeight;
-    }
-    else
-    {
-        windowSetting.statusBarHeightToUse = 0;
-        windowSetting.toolbarHeightToUse = 0;
-    }
-
     int depthBufferDepth = options.OpenglDepthBufferSetting;
     int colorBufferDepth = 32;
     int bVerticalSync = windowSetting.bVerticalSync;
@@ -290,15 +279,11 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
 
 bool COGLGraphicsContext::SetFullscreenMode()
 {
-    windowSetting.statusBarHeightToUse = 0;
-    windowSetting.toolbarHeightToUse = 0;
     return true;
 }
 
 bool COGLGraphicsContext::SetWindowMode()
 {
-    windowSetting.statusBarHeightToUse = windowSetting.statusBarHeight;
-    windowSetting.toolbarHeightToUse = windowSetting.toolbarHeight;
     return true;
 }
 int COGLGraphicsContext::ToggleFullscreen()
