@@ -86,7 +86,6 @@ bool COGLGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight, bool b
     UpdateFrame(false);
     
     m_bReady = true;
-    status.isVertexShaderEnabled = false;
 
     return true;
 }
@@ -346,7 +345,6 @@ int COGLGraphicsContext::ToggleFullscreen()
 // This is a static function, will be called when the plugin DLL is initialized
 void COGLGraphicsContext::InitDeviceParameters()
 {
-    status.isVertexShaderEnabled = false;   // Disable it for now
 }
 
 // Get methods

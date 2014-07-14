@@ -337,7 +337,6 @@ BOOL InitConfiguration(void)
     ConfigSetDefaultBool(l_ConfigVideoRice, "FullTMEMEmulation", FALSE, "N64 Texture Memory Full Emulation (may fix some games, may break others)");
     ConfigSetDefaultBool(l_ConfigVideoRice, "OpenGLVertexClipper", FALSE, "Enable vertex clipper for fog operations");
     ConfigSetDefaultBool(l_ConfigVideoRice, "EnableSSE", TRUE, "Enable/Disable SSE optimizations for capable CPUs");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "EnableVertexShader", FALSE, "Use GPU vertex shader");
     ConfigSetDefaultBool(l_ConfigVideoRice, "SkipFrame", FALSE, "If this option is enabled, the plugin will skip every other frame");
     ConfigSetDefaultBool(l_ConfigVideoRice, "TexRectOnly", FALSE, "If enabled, texture enhancement will be done only for TxtRect ucode");
     ConfigSetDefaultBool(l_ConfigVideoRice, "SmallTextureOnly", FALSE, "If enabled, texture enhancement will be done only for textures width+height<=128");
@@ -411,7 +410,6 @@ static void ReadConfiguration(void)
     options.bFullTMEM = ConfigGetParamBool(l_ConfigVideoRice, "FullTMEMEmulation");
     options.bOGLVertexClipper = ConfigGetParamBool(l_ConfigVideoRice, "OpenGLVertexClipper");
     options.bEnableSSE = ConfigGetParamBool(l_ConfigVideoRice, "EnableSSE");
-    options.bEnableVertexShader = ConfigGetParamBool(l_ConfigVideoRice, "EnableVertexShader");
     options.bSkipFrame = ConfigGetParamBool(l_ConfigVideoRice, "SkipFrame");
     options.bTexRectOnly = ConfigGetParamBool(l_ConfigVideoRice, "TexRectOnly");
     options.bSmallTextureOnly = ConfigGetParamBool(l_ConfigVideoRice, "SmallTextureOnly");
@@ -437,7 +435,6 @@ static void ReadConfiguration(void)
 
     status.isMMXSupported = isMMXSupported();
     status.isSSESupported = isSSESupported();
-    status.isVertexShaderSupported = false;
 
     status.isSSEEnabled = status.isSSESupported && options.bEnableSSE;
 #if !defined(NO_ASM)
@@ -452,9 +449,6 @@ static void ReadConfiguration(void)
         ProcessVertexData = ProcessVertexDataNoSSE;
         DebugMessage(M64MSG_INFO, "Disabled SSE processing.");
     }
-
-    status.isVertexShaderEnabled = status.isVertexShaderSupported && options.bEnableVertexShader;
-    status.bUseHW_T_L = false;
 }
     
 BOOL LoadConfiguration(void)
