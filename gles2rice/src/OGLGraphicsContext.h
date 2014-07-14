@@ -56,7 +56,6 @@ protected:
     // Important OGL extension features
     bool    m_bSupportSeparateSpecularColor;
     bool    m_bSupportSecondColor;
-    bool    m_bSupportTextureObject;
 
     // Optional OGL extension features;
     bool    m_bSupportRescaleNormal;
