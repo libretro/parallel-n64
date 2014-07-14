@@ -30,6 +30,7 @@ extern Matrix g_MtxReal;
 void CRender::LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height)
 {
     uint32_t VIwidth = *gfx_info.VI_WIDTH_REG;
+    uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
     TxtrInfo gti;
 
@@ -115,7 +116,7 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;
 
-    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)rdram_u32) + gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
 
@@ -167,6 +168,7 @@ void CRender::LoadTextureFromMemory(void *buf, uint32_t left, uint32_t top, uint
 
 void CRender::LoadObjBGCopy(uObjBg &info)
 {
+   uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
     TxtrInfo gti;
     gti.Format      = info.imageFmt;
     gti.Size        = info.imageSiz;
@@ -205,7 +207,7 @@ void CRender::LoadObjBGCopy(uObjBg &info)
 
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;
-    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)rdram_u32)+gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
@@ -224,6 +226,7 @@ void CRender::LoadObjBGCopy(uObjBg &info)
 void CRender::LoadTxtrBufIntoTexture(void)
 {
     TxtrInfo gti;
+   uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
     gti.Format  = g_pRenderTextureInfo->CI_Info.dwFormat;
     gti.Size    = g_pRenderTextureInfo->CI_Info.dwSize;
@@ -244,7 +247,7 @@ void CRender::LoadTxtrBufIntoTexture(void)
 
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;
-    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)rdram_u32)+gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
@@ -252,8 +255,9 @@ void CRender::LoadTxtrBufIntoTexture(void)
 
 void CRender::LoadSprite2D(Sprite2DInfo &info, uint32_t ucode)
 {
-   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     TxtrInfo gti;
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+   uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
     gti.Format  = info.spritePtr->SourceImageType;
     gti.Size    = info.spritePtr->SourceImageBitSize;
@@ -292,7 +296,7 @@ void CRender::LoadSprite2D(Sprite2DInfo &info, uint32_t ucode)
     gti.TLutFmt     = TLUT_FMT_RGBA16;  //RGBA16
     gti.bSwapped    = FALSE;
 
-    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)rdram_u32) + gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
@@ -815,6 +819,7 @@ void CRender::DrawSprite(uObjTxSprite &sprite, bool rectR)  // Without Rotation
 
 void CRender::LoadObjBG1CYC(uObjScaleBg &bg)
 {
+   uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
     uint32_t imageWidth = bg.imageW/4;
     uint32_t imageHeight = bg.imageH/4;
 
@@ -851,7 +856,7 @@ void CRender::LoadObjBG1CYC(uObjScaleBg &bg)
 
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;
-    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)rdram_u32) + gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);
@@ -870,6 +875,8 @@ void CRender::LoadObjBG1CYC(uObjScaleBg &bg)
 void CRender::LoadObjSprite(uObjTxSprite &sprite, bool useTIAddr)
 {
     TxtrInfo gti;
+    uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
+
     gti.Format  = sprite.sprite.imageFmt;
     gti.Size    = sprite.sprite.imageSiz;
 
@@ -927,7 +934,7 @@ void CRender::LoadObjSprite(uObjTxSprite &sprite, bool useTIAddr)
 
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;
-    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)rdram_u32) + gti.Address;
     gti.tileNo = -1;
     TxtrCacheEntry *pEntry = gTextureManager.GetTexture(&gti, false, true, false);
     SetCurrentTexture(0,pEntry);

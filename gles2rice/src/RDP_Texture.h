@@ -1059,6 +1059,7 @@ TxtrCacheEntry* LoadTexture(uint32_t tileno)
 {
     //TxtrCacheEntry *pEntry = NULL;
     TxtrInfo gti;
+    uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
     Tile &tile = gRDP.tiles[tileno];
 
@@ -1093,7 +1094,7 @@ TxtrCacheEntry* LoadTexture(uint32_t tileno)
         gti.PalAddress += 16  * 2 * tile.dwPalette; 
 
     gti.Address = (info->dwLoadAddress+(tile.dwTMem-infoTmemAddr)*8) & (g_dwRamSize-1) ;
-    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)rdram_u32) + gti.Address;
     gti.tileNo = tileno;
 
     if( g_curRomInfo.bTxtSizeMethod2 )

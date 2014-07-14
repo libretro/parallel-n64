@@ -511,6 +511,7 @@ void RSP_MoveWord_DKR(Gfx *gfx)
 void RSP_DMA_Tri_DKR(Gfx *gfx)
 {
     bool bTrisAdded = false;
+    uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
     uint32_t flag = ((gfx->words.w0) & 0xFF0000) >> 16;
     if (flag&1) 
@@ -519,7 +520,7 @@ void RSP_DMA_Tri_DKR(Gfx *gfx)
         CRender::g_pRender->SetCullMode(false,false);
 
     uint32_t dwNum = (((gfx->words.w0) &  0xFFF0) >>4 );
-    uint32_t * pData = (uint32_t*)&g_pRDRAMu32[dwAddr/4];
+    uint32_t * pData = (uint32_t*)&rdram_u32[dwAddr/4];
 
     if( dwAddr+16*dwNum >= g_dwRamSize )
     {

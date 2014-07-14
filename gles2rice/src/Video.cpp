@@ -55,7 +55,6 @@ static int l_PluginInit = 0;
 PluginStatus  status;
 
 unsigned int   g_dwRamSize = 0x400000;
-unsigned int  *g_pRDRAMu32 = NULL;
 
 RECT frameWriteByCPURect;
 std::vector<RECT> frameWriteByCPURects;
@@ -667,8 +666,6 @@ EXPORT void CALL ViWidthChanged(void)
 EXPORT int CALL InitiateGFX(GFX_INFO Gfx_Info)
 {
     memset(&status, 0, sizeof(status));
-
-    g_pRDRAMu32         = (uint32_t*)Gfx_Info.RDRAM;
 
     windowSetting.fViWidth = 320;
     windowSetting.fViHeight = 240;

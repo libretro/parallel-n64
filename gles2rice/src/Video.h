@@ -155,7 +155,6 @@ extern GFX_INFO gfx_info;
 extern WindowSettingStruct windowSetting;
 
 extern uint32_t   g_dwRamSize;
-extern uint32_t  *g_pRDRAMu32;
 
 #ifdef __LIBRETRO__ // Prefix symbol
 #define renderCallback ricerenderCallback

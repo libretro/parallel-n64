@@ -785,6 +785,7 @@ extern bool bHalfTxtScale;
 void DLParser_Process(OSTask * pTask)
 {
     static int skipframe=0;
+    uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
     dlistMtxCount = 0;
     bHalfTxtScale = false;
@@ -882,7 +883,7 @@ void DLParser_Process(OSTask * pTask)
 
             status.gUcodeCount++;
 
-            Gfx *pgfx = (Gfx*)&g_pRDRAMu32[(gDlistStack[gDlistStackPointer].pc>>2)];
+            Gfx *pgfx = (Gfx*)&rdram_u32[(gDlistStack[gDlistStackPointer].pc>>2)];
 #ifdef DEBUGGER
             LOG_UCODE("0x%08x: %08x %08x %-10s", 
                 gDlistStack[gDlistStackPointer].pc, pgfx->words.w0, pgfx->words.w1, (gRSP.ucode!=5&&gRSP.ucode!=10)?ucodeNames_GBI1[(pgfx->words.w0>>24)]:ucodeNames_GBI2[(pgfx->words.w0>>24)]);
@@ -1644,6 +1645,7 @@ void RDP_DLParser_Process(void)
 
     uint32_t start = *(gfx_info.DPC_START_REG);
     uint32_t end = *(gfx_info.DPC_END_REG);
+    uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
     gDlistStackPointer=0;
     gDlistStack[gDlistStackPointer].pc = start;
@@ -1667,7 +1669,7 @@ void RDP_DLParser_Process(void)
 
     while( gDlistStack[gDlistStackPointer].pc < end )
     {
-        Gfx *pgfx = (Gfx*)&g_pRDRAMu32[(gDlistStack[gDlistStackPointer].pc>>2)];
+        Gfx *pgfx = (Gfx*)&rdram_u32[(gDlistStack[gDlistStackPointer].pc>>2)];
         gDlistStack[gDlistStackPointer].pc += 8;
         currentUcodeMap[pgfx->words.w0 >>24](pgfx);
     }

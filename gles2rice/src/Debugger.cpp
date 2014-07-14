@@ -279,30 +279,32 @@ extern char ucodeNames_GBI2[256];
 
 void DumpDlistAt(uint32 dwPC)
 {
-    uint32 word0, word1, opcode;
-    char *name;
-    switch( gRSP.ucode )
-    {
-    case 2:
-    case 10:
-    //case 8:
-        name=ucodeNames_GBI2;
-        break;
-    default:
-        name=ucodeNames_GBI1;
-    }
+   uint32 word0, word1, opcode;
+   char *name;
+   uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
-    DebuggerAppendMsg("\n\n");
-    //if( dwPC>100 ) dwPC -= 40;
-    for( uint32 i=0; i<20; i++)
-    {
-        word0 = g_pRDRAMu32[(dwPC>>2)+0];
-        word1 = g_pRDRAMu32[(dwPC>>2)+1];
-        opcode = word0>>24;
-        DebuggerAppendMsg("%08X: %08X, %08X - %s", dwPC, word0, word1, name[opcode] );
-        dwPC+=8;
-    }
-    DebuggerAppendMsg("\n\n");
+      switch( gRSP.ucode )
+      {
+         case 2:
+         case 10:
+            //case 8:
+            name=ucodeNames_GBI2;
+            break;
+         default:
+            name=ucodeNames_GBI1;
+      }
+
+   DebuggerAppendMsg("\n\n");
+
+   for( uint32 i=0; i<20; i++)
+   {
+      word0 = rdram_u32[(dwPC>>2)+0];
+      word1 = rdram_u32[(dwPC>>2)+1];
+      opcode = word0>>24;
+      DebuggerAppendMsg("%08X: %08X, %08X - %s", dwPC, word0, word1, name[opcode] );
+      dwPC+=8;
+   }
+   DebuggerAppendMsg("\n\n");
 }
 
 void DumpMatrixAt(uint32 dwPC)
