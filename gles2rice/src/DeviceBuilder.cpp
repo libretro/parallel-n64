@@ -189,17 +189,8 @@ CRender * OGLDeviceBuilder::CreateRender(void)
         }
 
         COGLGraphicsContext &context = *((COGLGraphicsContext*)CGraphicsContext::g_pGraphicsContext);
+        m_pRender = new COGLExtRender();
 
-        if( context.m_bSupportMultiTexture )
-        {
-            // OGL extension render
-            m_pRender = new COGLExtRender();
-        }
-        else
-        {
-            // Basic OGL Render
-            m_pRender = new OGLRender();
-        }
         CRender::g_pRender = m_pRender;
     }
 
