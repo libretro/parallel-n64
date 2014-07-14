@@ -234,7 +234,7 @@ extern ALIGN(16, RDP_Options gRDP)
 */
 void InitRenderBase();
 void SetFogMinMax(float fMin, float fMax, float fMul, float fOffset);
-void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture, bool openGL);
+void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture);
 void InitVertexTextureConstants();
 bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2);
 bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2);
