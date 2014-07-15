@@ -527,14 +527,6 @@ void sglEnter(void)
          glEnableVertexAttribArray(i);
       else
          glDisableVertexAttribArray(i);
-
-      // XXX: are these necessary? glide64 works without them
-      if (!VertexAttribPointer_is4f[i])
-         glVertexAttribPointer(i, VertexAttribPointer_size[i], VertexAttribPointer_type[i],
-               VertexAttribPointer_normalized[i], VertexAttribPointer_stride[i], VertexAttribPointer_pointer[i]);
-      else
-         glVertexAttrib4f(i, VertexAttribPointer_4f[i][0], VertexAttribPointer_4f[i][1],
-               VertexAttribPointer_4f[i][2], VertexAttribPointer_4f[i][3]);
    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer_framebuffer ? Framebuffer_framebuffer : render_iface.get_current_framebuffer());
