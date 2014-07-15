@@ -25,25 +25,4 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
     #define OPENGL_CHECK_ERRORS
 #endif
 
-/*  Dump client state (for informational purposes)
-        int rval = 0;
-        void *ptr;
-        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &rval);
-        printf("GL_ARRAY_BUFFER_BINDING: %i\n", rval);
-        glGetPointerv(GL_COLOR_ARRAY_POINTER, &ptr);
-        printf("GL_COLOR_ARRAY: %i (%lx)\n", (int) glIsEnabled(GL_COLOR_ARRAY), (int) ptr);
-        glGetPointerv(GL_FOG_COORD_ARRAY_POINTER, &ptr);
-        printf("GL_FOG_COORDINATE_ARRAY_EXT: %i (%lx)\n", (int) glIsEnabled(GL_FOG_COORDINATE_ARRAY_EXT), (int) ptr);
-        glGetPointerv(GL_INDEX_ARRAY_POINTER, &ptr);
-        printf("GL_INDEX_ARRAY: %i (%lx)\n", (int) glIsEnabled(GL_INDEX_ARRAY), (int) ptr);
-        glGetPointerv(GL_NORMAL_ARRAY_POINTER, &ptr);
-        printf("GL_NORMAL_ARRAY: %i (%lx)\n", (int) glIsEnabled(GL_NORMAL_ARRAY), (int) ptr);
-        glGetPointerv(GL_SECONDARY_COLOR_ARRAY_POINTER, &ptr);
-        printf("GL_SECONDARY_COLOR_ARRAY: %i (%lx)\n", (int) glIsEnabled(GL_SECONDARY_COLOR_ARRAY), (int) ptr);
-        glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &ptr);
-        printf("GL_TEXTURE_COORD_ARRAY: %i (%lx)\n", (int) glIsEnabled(GL_TEXTURE_COORD_ARRAY), (int) ptr);
-        glGetPointerv(GL_VERTEX_ARRAY_POINTER, &ptr);
-        printf("GL_VERTEX_ARRAY: %i (%lx)\n", (int) glIsEnabled(GL_VERTEX_ARRAY), (int) ptr);
-*/
-
 #endif /* OPENGL_DEBUG_H */

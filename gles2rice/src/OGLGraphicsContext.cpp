@@ -29,20 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "version.h"
 
 COGLGraphicsContext::COGLGraphicsContext() :
-    m_bSupportMultiTexture(false),
-    m_bSupportTextureEnvCombine(false),
-    m_bSupportSeparateSpecularColor(false),
-    m_bSupportSecondColor(false),
-    m_bSupportFogCoord(false),
-    m_bSupportTextureObject(false),
-    m_bSupportRescaleNormal(false),
     m_bSupportLODBias(false),
-    m_bSupportTextureMirrorRepeat(false),
     m_bSupportTextureLOD(false),
-    m_bSupportNVRegisterCombiner(false),
-    m_bSupportBlendColor(false),
-    m_bSupportBlendSubtract(false),
-    m_bSupportNVTextureEnvCombine4(false),
     m_pVendorStr(NULL),
     m_pRenderStr(NULL),
     m_pExtensionStr(NULL),
@@ -55,22 +43,10 @@ COGLGraphicsContext::~COGLGraphicsContext()
 {
 }
 
-bool COGLGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed)
+bool COGLGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight)
 {
     DebugMessage(M64MSG_INFO, "Initializing OpenGL Device Context.");
-    CGraphicsContext::Get()->m_supportTextureMirror = false;
-    CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed);
-
-    if (bWindowed)
-    {
-        windowSetting.statusBarHeightToUse = windowSetting.statusBarHeight;
-        windowSetting.toolbarHeightToUse = windowSetting.toolbarHeight;
-    }
-    else
-    {
-        windowSetting.statusBarHeightToUse = 0;
-        windowSetting.toolbarHeightToUse = 0;
-    }
+    CGraphicsContext::Initialize(dwWidth, dwHeight);
 
     int depthBufferDepth = options.OpenglDepthBufferSetting;
     int colorBufferDepth = 32;
@@ -90,15 +66,12 @@ bool COGLGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight, bool b
     Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
     UpdateFrame(false);
     
-    m_bReady = true;
-    status.isVertexShaderEnabled = false;
-
     return true;
 }
 
-bool COGLGraphicsContext::ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed)
+bool COGLGraphicsContext::ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight)
 {
-    CGraphicsContext::Initialize(dwWidth, dwHeight, bWindowed);
+    CGraphicsContext::Initialize(dwWidth, dwHeight);
 
     int depthBufferDepth = options.OpenglDepthBufferSetting;
     int colorBufferDepth = 32;
@@ -159,35 +132,6 @@ void COGLGraphicsContext::InitState(void)
 
 void COGLGraphicsContext::InitOGLExtension(void)
 {
-    m_bSupportMultiTexture = true;
-    m_bSupportFogCoord = false;
-    m_bSupportAnisotropicFiltering = true;
-
-    // Compute maxAnisotropicFiltering
-    m_maxAnisotropicFiltering = 0;
-
-    if (m_bSupportAnisotropicFiltering
-    && (options.anisotropicFiltering == 2
-        || options.anisotropicFiltering == 4
-        || options.anisotropicFiltering == 8
-        || options.anisotropicFiltering == 16))
-    {
-        //Get the max value of anisotropy that the graphic card support
-        glGetIntegerv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &m_maxAnisotropicFiltering);
-        OPENGL_CHECK_ERRORS;
-
-        // If the user wants more anisotropy than the hardware is capable of
-        if (options.anisotropicFiltering > (uint32_t) m_maxAnisotropicFiltering)
-        {
-            DebugMessage(M64MSG_INFO, "A value of '%i' is set for AnisotropicFiltering option but the hardware has a maximum value of '%i' so this will be used", options.anisotropicFiltering, m_maxAnisotropicFiltering);
-        }
-
-        // Check if the user wants less anisotropy than the hardware is capable of
-        if ((uint32_t) m_maxAnisotropicFiltering > options.anisotropicFiltering)
-            m_maxAnisotropicFiltering = options.anisotropicFiltering;
-    }
-
-    m_supportTextureMirror = true;
 }
 
 bool COGLGraphicsContext::IsExtensionSupported(const char* pExtName)
@@ -218,7 +162,6 @@ bool COGLGraphicsContext::IsWglExtensionSupported(const char* pExtName)
 
 void COGLGraphicsContext::CleanUp()
 {
-    m_bReady = false;
 }
 
 
@@ -248,52 +191,6 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
 
     glFlush();
     OPENGL_CHECK_ERRORS;
-    //glFinish();
-    //wglSwapIntervalEXT(0);
-
-    /*
-    if (debuggerPauseCount == countToPause)
-    {
-        static int iShotNum = 0;
-        // get width, height, allocate buffer to store image
-        int width = windowSetting.uDisplayWidth;
-        int height = windowSetting.uDisplayHeight;
-        printf("Saving debug images: width=%i  height=%i\n", width, height);
-        short *buffer = (short *) malloc(((width+3)&~3)*(height+1)*4);
-        glReadBuffer( GL_FRONT );
-        // set up a BMGImage struct
-        struct BMGImageStruct img;
-        memset(&img, 0, sizeof(BMGImageStruct));
-        InitBMGImage(&img);
-        img.bits = (unsigned char *) buffer;
-        img.bits_per_pixel = 32;
-        img.height = height;
-        img.width = width;
-        img.scan_width = width * 4;
-        // store the RGB color image
-        char chFilename[64];
-        sprintf(chFilename, "dbg_rgb_%03i.png", iShotNum);
-        glReadPixels(0,0,width,height, GL_BGRA, GL_UNSIGNED_BYTE, buffer);
-        WritePNG(chFilename, img);
-        // store the Z buffer
-        sprintf(chFilename, "dbg_Z_%03i.png", iShotNum);
-        glReadPixels(0,0,width,height, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, buffer);
-        //img.bits_per_pixel = 16;
-        //img.scan_width = width * 2;
-        WritePNG(chFilename, img);
-        // dump a subset of the Z data
-        for (int y = 0; y < 480; y += 16)
-        {
-            for (int x = 0; x < 640; x+= 16)
-                printf("%4hx ", buffer[y*640 + x]);
-            printf("\n");
-        }
-        printf("\n");
-        // free memory and get out of here
-        free(buffer);
-        iShotNum++;
-    }
-    */
 
     // if emulator defined a render callback function, call it before buffer swap
     if (renderCallback)
@@ -301,22 +198,6 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
 
    retro_return(true);
    
-   /*if (options.bShowFPS)
-    {
-        static unsigned int lastTick=0;
-        static int frames=0;
-        unsigned int nowTick = SDL_GetTicks();
-        frames++;
-        if (lastTick + 5000 <= nowTick)
-        {
-            char caption[200];
-            sprintf(caption, "%s v%i.%i.%i - %.3f VI/S", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION), frames/5.0);
-            CoreVideo_SetCaption(caption);
-            frames = 0;
-            lastTick = nowTick;
-        }
-    }*/
-
     glDepthMask(GL_TRUE);
     OPENGL_CHECK_ERRORS;
     glClearDepth(1.0f);
@@ -334,37 +215,7 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
     status.bScreenIsDrawn = false;
 }
 
-bool COGLGraphicsContext::SetFullscreenMode()
-{
-    windowSetting.statusBarHeightToUse = 0;
-    windowSetting.toolbarHeightToUse = 0;
-    return true;
-}
-
-bool COGLGraphicsContext::SetWindowMode()
-{
-    windowSetting.statusBarHeightToUse = windowSetting.statusBarHeight;
-    windowSetting.toolbarHeightToUse = windowSetting.toolbarHeight;
-    return true;
-}
-int COGLGraphicsContext::ToggleFullscreen()
-{
-    return m_bWindowed?0:1;
-}
-
 // This is a static function, will be called when the plugin DLL is initialized
 void COGLGraphicsContext::InitDeviceParameters()
 {
-    status.isVertexShaderEnabled = false;   // Disable it for now
-}
-
-// Get methods
-bool COGLGraphicsContext::IsSupportAnisotropicFiltering()
-{
-    return m_bSupportAnisotropicFiltering;
-}
-
-int COGLGraphicsContext::getMaxAnisotropicFiltering()
-{
-    return m_maxAnisotropicFiltering;
 }

@@ -1098,32 +1098,6 @@ void CRender::SetTextureEnableAndScale(int dwTile, bool bEnable, float fScaleX, 
     }
 }
 
-void CRender::SetFogFlagForNegativeW()
-{
-    if( !gRSP.bFogEnabled )
-        return;
-
-    m_bFogStateSave = gRSP.bFogEnabled;
-
-    bool flag=gRSP.bFogEnabled;
-    
-    for (uint32_t i = 0; i < gRSP.numVertices; i++) 
-    {
-        if( g_vtxBuffer[i].rhw < 0 )
-            flag = false;
-    }
-
-    TurnFogOnOff(flag);
-}
-
-void CRender::RestoreFogFlag()
-{
-    if( !gRSP.bFogEnabled )
-        return;
-
-    TurnFogOnOff(m_bFogStateSave);
-}
-
 void CRender::SetViewport(int nLeft, int nTop, int nRight, int nBottom, int maxZ)
 {
     if( status.bHandleN64RenderTexture )
@@ -1296,7 +1270,7 @@ bool CRender::DrawTriangles()
 
         for( uint32_t i=0; i<gRSP.numVertices; i++ )
         {
-            float w = CDeviceBuilder::GetGeneralDeviceType() == OGL_DEVICE ? g_vtxProjected5[i][3] : g_vtxBuffer[i].rhw; 
+            float w = g_vtxProjected5[i][3]; 
             if( w < 0 || g_vtxBuffer[i].tcord[t].u > 1.0 || g_vtxBuffer[i].tcord[t].u < 0.0  )
             {
                 clampS = false;
@@ -1306,7 +1280,7 @@ bool CRender::DrawTriangles()
 
         for( uint32_t i=0; i<gRSP.numVertices; i++ )
         {
-            float w = CDeviceBuilder::GetGeneralDeviceType() == OGL_DEVICE ? g_vtxProjected5[i][3] : g_vtxBuffer[i].rhw; 
+            float w = g_vtxProjected5[i][3]; 
             if( w < 0 || g_vtxBuffer[i].tcord[t].v > 1.0 || g_vtxBuffer[i].tcord[t].v < 0.0  )
             {
                 clampT = false;
@@ -1370,320 +1344,6 @@ inline int ReverseCITableLookup(uint32_t *pTable, int size, uint32_t val)
     TRACE0("Cannot find value in CI table");
     return 0;
 }
-
-bool SaveCITextureToFile(TxtrCacheEntry &entry, char *filename, bool bShow, bool bWholeTexture )
-{
-    if( !( (gRDP.otherMode.text_tlut>=2 || entry.ti.Format == TXT_FMT_CI || entry.ti.Format == TXT_FMT_RGBA) && entry.ti.Size <= TXT_SIZE_8b ) )
-    {
-        // No a CI texture
-        return false;
-    }
-    if ( entry.ti.TLutFmt != TLUT_FMT_RGBA16 && entry.ti.TLutFmt != TLUT_FMT_IA16 )
-    {
-        TRACE0("Invalid texture look-up table format");
-        return false;
-    }
-
-    if( !entry.pTexture )
-    {
-        TRACE0("Null texture");
-        return false;
-    }
-
-    uint32_t *pTable = NULL;
-    int tableSize;
-    uint16_t * pPal = (uint16_t *)entry.ti.PalAddress;
-
-    // Create the palette table
-    if( entry.ti.Size == TXT_SIZE_4b )
-    {
-        // 4-bit table
-        tableSize = 16;
-        pTable = new uint32_t[16];
-
-        for( int i=0; i<16; i++ )
-        {
-            pTable[i] = entry.ti.TLutFmt == TLUT_FMT_RGBA16 ? Convert555ToRGBA(pPal[i^1]) : ConvertIA16ToRGBA(pPal[i^1]);
-        }
-    }
-    else
-    {
-        // 8-bit table
-        tableSize = 256;
-        pTable = new uint32_t[256];
-
-        for( int i=0; i<256; i++ )
-        {
-            pTable[i] = entry.ti.TLutFmt == TLUT_FMT_RGBA16 ? Convert555ToRGBA(pPal[i^1]) : ConvertIA16ToRGBA(pPal[i^1]);
-        }
-    }
-
-    // Reversely convert current texture to indexed textures
-    CTexture &texture = *entry.pTexture;
-    //int width = bWholeTexture ? texture.m_dwCreatedTextureWidth : texture.m_dwWidth;
-    //int height = bWholeTexture ? texture.m_dwCreatedTextureHeight : texture.m_dwHeight;
-    int width = bWholeTexture ? texture.m_dwCreatedTextureWidth : entry.ti.WidthToLoad;
-    int height = bWholeTexture ? texture.m_dwCreatedTextureHeight : entry.ti.HeightToLoad;
-    int bufSizePerLine = (((((width << entry.ti.Size) + 1 ) >> 1)+3) >> 2)*4;   // pad to 32bit boundary
-    int bufSize = bufSizePerLine*height;
-    unsigned char *pbuf = new unsigned char[bufSize];
-
-    DrawInfo srcInfo;
-    if( texture.StartUpdate(&srcInfo) )
-    {
-        int idx = 0;
-        for( int i=height-1; i>=0; i--)
-        {
-            uint32_t *pSrc = (uint32_t*)((unsigned char*)srcInfo.lpSurface+srcInfo.lPitch * i);
-            for( int j=0; j<width; j++)
-            {
-                int val = ReverseCITableLookup(pTable, tableSize, *pSrc);
-                pSrc++;
-
-                if( entry.ti.Size == TXT_SIZE_4b )
-                {
-                    // 4 bits
-                    if( idx%2 )
-                    {
-                        // 1
-                        pbuf[idx>>1] = (pbuf[idx>>1]<<4) | val;
-                        idx++;
-                    }
-                    else
-                    {
-                        // 0
-                        pbuf[idx>>1] = (unsigned char)val;
-                        idx++;
-                    }
-                }
-                else
-                {
-                    // 8 bits
-                    pbuf[idx++] = (unsigned char)val;
-                }
-            }
-            if( entry.ti.Size == TXT_SIZE_4b )
-            {
-                if (idx % 8)
-                    idx = (idx/8+1)*8;
-            }
-            else
-            {
-                if (idx % 4)
-                    idx = (idx/4+1)*4;
-            }
-        }
-
-
-        texture.EndUpdate(&srcInfo);
-    }
-
-    // Create BMP color indexed file
-    if( strcasecmp(right(filename,4),".bmp") != 0 )
-        strcat(filename,".bmp");
-
-    BITMAPFILEHEADER fileHeader;
-    BITMAPINFOHEADER infoHeader;
-
-    infoHeader.biSize = sizeof( BITMAPINFOHEADER );
-    infoHeader.biWidth = width;
-    infoHeader.biHeight = height;
-    infoHeader.biPlanes = 1;
-    infoHeader.biBitCount = entry.ti.Size == TXT_SIZE_4b ? 4 : 8;
-    infoHeader.biCompression = BI_RGB;
-    infoHeader.biSizeImage = bufSize;
-    infoHeader.biXPelsPerMeter = 0;
-    infoHeader.biYPelsPerMeter = 0;
-    infoHeader.biClrUsed = 0;
-    infoHeader.biClrImportant = 0;
-
-    fileHeader.bfType = 19778;
-    fileHeader.bfSize = sizeof( BITMAPFILEHEADER ) + sizeof( BITMAPINFOHEADER ) + infoHeader.biSizeImage + tableSize*4;
-    fileHeader.bfReserved1 = fileHeader.bfReserved2 = 0;
-    fileHeader.bfOffBits = sizeof( BITMAPFILEHEADER ) + sizeof( BITMAPINFOHEADER ) + tableSize*4;
-
-
-    FILE *f = fopen(filename, "wb");
-    if(f != NULL)
-    {
-        if (fwrite(&fileHeader, sizeof(BITMAPFILEHEADER), 1, f) != 1 ||
-            fwrite(&infoHeader, sizeof(BITMAPINFOHEADER), 1, f) != 1 ||
-            fwrite(pTable, tableSize*4, 1, f) != 1 ||
-            fwrite(pbuf, infoHeader.biSizeImage, 1, f) != 1)
-            printf("failed to write out texture data to image file '%s'", filename);
-       
-        fclose(f);
-    }
-    else
-    {
-        // Do something
-        TRACE1("Fail to create file %s", filename);
-    }
-
-    // Clean up
-    delete [] pTable;
-    delete [] pbuf;
-
-    return true;
-}
-
-void CRender::SaveTextureToFile(CTexture &texture, char *filename, TextureChannel channel, bool bShow, bool bWholeTexture, int width, int height)
-{
-    if( width < 0 || height < 0 )
-    {
-        width = bWholeTexture ? texture.m_dwCreatedTextureWidth : texture.m_dwWidth;
-        height = bWholeTexture ? texture.m_dwCreatedTextureHeight : texture.m_dwHeight;
-    }
-
-    unsigned char *pbuf = new unsigned char[width*height* (channel == TXT_RGBA ? 4 : 3)];
-    if( pbuf )
-    {
-        DrawInfo srcInfo;   
-        if( texture.StartUpdate(&srcInfo) )
-        {
-            if( channel == TXT_RGBA )
-            {
-                uint32_t *pbuf2 = (uint32_t*)pbuf;
-                for( int i=height-1; i>=0; i--)
-                {
-                    uint32_t *pSrc = (uint32_t*)((unsigned char*)srcInfo.lpSurface+srcInfo.lPitch * i);
-                    for( int j=0; j<width; j++)
-                    {
-                        *pbuf2++ = *pSrc++;
-                    }
-                }
-
-                if (SaveRGBABufferToPNGFile(filename, (unsigned char*)pbuf, width, height, -1))
-                {
-                    // TODO: Implement?
-                }
-            }
-            else
-            {
-                unsigned char *pbuf2 = pbuf;
-                for( int i=height-1; i>=0; i--)
-                {
-                    unsigned char *pSrc = (unsigned char*)srcInfo.lpSurface+srcInfo.lPitch * i;
-                    for( int j=0; j<width; j++)
-                    {
-                        if( channel == TXT_ALPHA )
-                        {
-                            pbuf2[0] = pbuf2[1] = pbuf2[2] = pSrc[3];
-                        }
-                        else
-                        {
-                            pbuf2[0] = pSrc[0];
-                            pbuf2[1] = pSrc[1];
-                            pbuf2[2] = pSrc[2];
-                        }
-
-                        pbuf2 += 3;
-                        pSrc += 4;
-                    }
-                }
-
-                if (SaveRGBBufferToFile(filename, pbuf, width, height, -1))
-                {
-                    // TODO: Implement?
-                }
-            }
-            texture.EndUpdate(&srcInfo);
-        }
-        else
-        {
-            TRACE0("Cannot lock texture");
-        }
-        delete [] pbuf;
-    }
-    else
-    {
-        TRACE0("Out of memory");
-    }
-}
-
-
-#ifdef DEBUGGER
-bool CRender::DrawTexture(int tex, TextureChannel channel)
-{
-    if( g_textures[tex].m_pCTexture == NULL )
-    {
-        TRACE0("Can't draw null texture");
-        return false;
-    }
-
-    SaveTextureToFile(tex, channel, true);  // Save to file instead of draw to screen
-    DebuggerAppendMsg("Texture %d (CurTile:%d): W=%f, H=%f, Real W=%d, H=%d", tex, gRSP.curTile, 
-        g_textures[tex].m_fTexWidth, g_textures[tex].m_fTexHeight, g_textures[tex].m_dwTileWidth, g_textures[tex].m_dwTileHeight);
-    DebuggerAppendMsg("X scale: %f, Y scale: %f, %s", gRSP.fTexScaleX, gRSP.fTexScaleY, gRSP.bTextureEnabled?"Enabled":"Disabled");
-
-    return true;
-}
-
-void CRender::SaveTextureToFile(int tex, TextureChannel channel, bool bShow)
-{
-    TxtrCacheEntry &entry = *(g_textures[tex].pTextureEntry);
-
-    CTexture *pBaseTexture = entry.pTexture;
-    if( pBaseTexture == NULL )
-    {
-        TRACE0("Can't dump null texture");
-        return;
-    }
-    CTexture *pEnhancedTexture = entry.pEnhancedTexture ? entry.pEnhancedTexture : entry.pTexture;
-
-    bool bInWhole = false;
-    if( entry.ti.HeightToCreate == entry.ti.HeightToLoad && entry.ti.WidthToCreate == entry.ti.WidthToLoad 
-        && pEnhancedTexture == pBaseTexture )
-        bInWhole = true;
-
-    char filename[256];
-    if( (gRDP.otherMode.text_tlut>=2 || g_textures[tex].pTextureEntry->ti.Format == TXT_FMT_CI || g_textures[tex].pTextureEntry->ti.Format == TXT_FMT_RGBA) && g_textures[tex].pTextureEntry->ti.Size <= TXT_SIZE_8b )
-    {
-        sprintf(filename, "\\%s#%08X#%d#%d_ci", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
-            g_textures[tex].pTextureEntry->ti.Format, 
-            g_textures[tex].pTextureEntry->ti.Size);
-        SaveCITextureToFile(*(g_textures[tex].pTextureEntry), filename, bShow && bInWhole, false);
-
-        sprintf(filename, "\\%s#%08X#%d#%d#%08X_ci", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
-            g_textures[tex].pTextureEntry->ti.Format, 
-            g_textures[tex].pTextureEntry->ti.Size, g_textures[tex].pTextureEntry->dwPalCRC);
-        SaveCITextureToFile(*(g_textures[tex].pTextureEntry), filename, false, false);
-
-        sprintf(filename, "\\%s#%08X#%d#%d#%08X_ciByRGBA", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
-            g_textures[tex].pTextureEntry->ti.Format, 
-            g_textures[tex].pTextureEntry->ti.Size, g_textures[tex].pTextureEntry->dwPalCRC);
-        SaveTextureToFile(*pBaseTexture, filename, TXT_RGBA, false, false, g_textures[tex].pTextureEntry->ti.WidthToLoad, g_textures[tex].pTextureEntry->ti.HeightToLoad);
-
-        DebuggerAppendMsg("Base texture is stored at: %s", filename);
-
-        if( !bInWhole && bShow )
-        {
-            sprintf(filename, "\\%s#%08X#%d#%d_ci_%s_debugger", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
-                g_textures[tex].pTextureEntry->ti.Format, 
-                g_textures[tex].pTextureEntry->ti.Size, channel == TXT_ALPHA ? "a" : channel == TXT_RGBA ? "all" : "rgb");
-            SaveTextureToFile(*pEnhancedTexture, filename, channel, true, true, -1, -1);
-            DebuggerAppendMsg("Whole texture is stored at: %s", filename);
-        }
-    }
-    else
-    {
-        sprintf(filename, "\\%s#%08X#%d#%d_%s", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
-            g_textures[tex].pTextureEntry->ti.Format, 
-            g_textures[tex].pTextureEntry->ti.Size, channel == TXT_ALPHA ? "a" : channel == TXT_RGBA ? "all" : "rgb");
-        SaveTextureToFile(*pBaseTexture, filename, channel, bShow && bInWhole, false, g_textures[tex].pTextureEntry->ti.WidthToLoad, g_textures[tex].pTextureEntry->ti.HeightToLoad);
-        DebuggerAppendMsg("Base texture is stored at: %s", filename);
-
-        if( !bInWhole && bShow )
-        {
-            sprintf(filename, "\\%s#%08X#%d#%d_%s_debugger", g_curRomInfo.szGameName, g_textures[tex].pTextureEntry->dwCRC, 
-                g_textures[tex].pTextureEntry->ti.Format, 
-                g_textures[tex].pTextureEntry->ti.Size, channel == TXT_ALPHA ? "a" : channel == TXT_RGBA ? "all" : "rgb");
-            SaveTextureToFile(*pEnhancedTexture, filename, channel, true, true, -1, -1);
-            DebuggerAppendMsg("Whole texture is stored at: %s", filename);
-        }
-    }
-}
-#endif
 
 extern RenderTextureInfo gRenderTextureInfos[];
 void SetVertexTextureUVCoord(TexCord &dst, float s, float t, int tile, TxtrCacheEntry *pEntry)
@@ -1823,7 +1483,7 @@ void CRender::UpdateClipRectangle()
         gRSP.vtxXMul = windowSetting.vpWidthW/2.0f;
         gRSP.vtxXAdd = gRSP.vtxXMul + windowSetting.vpLeftW;
         gRSP.vtxYMul = -windowSetting.vpHeightW/2.0f;
-        gRSP.vtxYAdd = windowSetting.vpHeightW/2.0f + windowSetting.vpTopW+windowSetting.toolbarHeightToUse;
+        gRSP.vtxYAdd = windowSetting.vpHeightW/2.0f + windowSetting.vpTopW;
 
         // Update clip rectangle by setting scissor
 
@@ -1849,7 +1509,7 @@ void CRender::UpdateClipRectangle()
         gRSP.vtxXMul = windowSetting.vpWidthW/2.0f;
         gRSP.vtxXAdd = gRSP.vtxXMul + windowSetting.vpLeftW;
         gRSP.vtxYMul = -windowSetting.vpHeightW/2.0f;
-        gRSP.vtxYAdd = windowSetting.vpHeightW/2.0f + windowSetting.vpTopW+windowSetting.toolbarHeightToUse;
+        gRSP.vtxYAdd = windowSetting.vpHeightW/2.0f + windowSetting.vpTopW;
 
         // Update clip rectangle by setting scissor
 

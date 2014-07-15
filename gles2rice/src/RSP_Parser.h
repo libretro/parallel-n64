@@ -561,18 +561,18 @@ typedef struct
 
 // Mask down to 0x003FFFFF?
 #define RSPSegmentAddr(seg) ( gRSP.segments[((seg)>>24)&0x0F] + ((seg)&0x00FFFFFF) )
-#define RDRAM_UWORD(addr)   (*(uint32_t_t *)((addr)+g_pRDRAMu8))
-#define RDRAM_SWORD(addr)   (*(int32_t *)((addr)+g_pRDRAMu8))
-#define RDRAM_UHALF(addr)   (*(uint16_t *)(((addr)^2)+g_pRDRAMu8))
-#define RDRAM_SHALF(addr)   (*(int16_t *)(((addr)^2)+g_pRDRAMu8))
-#define RDRAM_UBYTE(addr)   (*(uint8_t *)(((addr)^3)+g_pRDRAMu8))
-#define RDRAM_SBYTE(addr)   (*(int8_t *)(((addr)^3)+g_pRDRAMu8))
-#define pRDRAM_UWORD(addr)  ((uint32_t_t *)((addr)+g_pRDRAMu8))
-#define pRDRAM_SWORD(addr)  ((int32_t *)((addr)+g_pRDRAMu8))
-#define pRDRAM_UHALF(addr)  ((uint16_t *)(((addr)^2)+g_pRDRAMu8))
-#define pRDRAM_SHALF(addr)  ((int16_t*)(((addr)^2)+g_pRDRAMu8))
-#define pRDRAM_UBYTE(addr)  ((uint8_t *)(((addr)^3)+g_pRDRAMu8))
-#define pRDRAM_SBYTE(addr)  ((int8_t *)(((addr)^3)+g_pRDRAMu8))
+#define RDRAM_UWORD(addr)   (*(uint32_t_t *)((addr)+ (uint8_t*)gfx_info.RDRAM))
+#define RDRAM_SWORD(addr)   (*(int32_t *)((addr)+ (uint8_t*)gfx_info.RDRAM))
+#define RDRAM_UHALF(addr)   (*(uint16_t *)(((addr)^2) + (uint8_t*)gfx_info.RDRAM))
+#define RDRAM_SHALF(addr)   (*(int16_t *)(((addr)^2)+ (uint8_t*)gfx_info.RDRAM))
+#define RDRAM_UBYTE(addr)   (*(uint8_t *)(((addr)^3)+ (uint8_t*)gfx_info.RDRAM))
+#define RDRAM_SBYTE(addr)   (*(int8_t *)(((addr)^3) + (uint8_t*)gfx_info.RDRAM))
+#define pRDRAM_UWORD(addr)  ((uint32_t_t *)((addr) + (uint8_t*)gfx_info.RDRAM))
+#define pRDRAM_SWORD(addr)  ((int32_t *)((addr)+ (uint8_t*)gfx_info.RDRAM))
+#define pRDRAM_UHALF(addr)  ((uint16_t *)(((addr)^2) + (uint8_t*)gfx_info.RDRAM))
+#define pRDRAM_SHALF(addr)  ((int16_t*)(((addr)^2)  + (uint8_t*)gfx_info.RDRAM))
+#define pRDRAM_UBYTE(addr)  ((uint8_t *)(((addr)^3) + (uint8_t*)gfx_info.RDRAM))
+#define pRDRAM_SBYTE(addr)  ((int8_t *)(((addr)^3)) + (uint8_t*)gfx_info.RDRAM)
 
 extern uint16_t g_wRDPTlut[];
 extern const char *textluttype[4];

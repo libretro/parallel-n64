@@ -27,7 +27,7 @@ void COGLExtRender::Initialize(void)
     OGLRender::Initialize();
 
     // Initialize multitexture
-    glGetIntegerv(GL_MAX_TEXTURE_UNITS_ARB,&m_maxTexUnits);
+    glGetIntegerv(GL_MAX_TEXTURE_UNITS,&m_maxTexUnits);
     OPENGL_CHECK_ERRORS;
 
     for( int i=0; i<8; i++ )
@@ -45,7 +45,7 @@ void COGLExtRender::BindTexture(GLuint texture, int unitno)
         {
             if( m_curBoundTex[unitno] != texture )
             {
-                pglActiveTexture(GL_TEXTURE0_ARB+unitno);
+                pglActiveTexture(GL_TEXTURE0 + unitno);
                 OPENGL_CHECK_ERRORS;
                 glBindTexture(GL_TEXTURE_2D,texture);
                 OPENGL_CHECK_ERRORS;
@@ -63,7 +63,7 @@ void COGLExtRender::DisBindTexture(GLuint texture, int unitno)
 {
     if( m_bEnableMultiTexture )
     {
-        pglActiveTexture(GL_TEXTURE0_ARB+unitno);
+        pglActiveTexture(GL_TEXTURE0 + unitno);
         OPENGL_CHECK_ERRORS;
         glBindTexture(GL_TEXTURE_2D, 0);    //Not to bind any texture
         OPENGL_CHECK_ERRORS;
@@ -138,7 +138,7 @@ void COGLExtRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32_t dwTile)
     {
         if( m_textureUnitMap[textureNo] == tex )
         {
-            pglActiveTexture(GL_TEXTURE0_ARB+textureNo);
+            pglActiveTexture(GL_TEXTURE0 + textureNo);
             OPENGL_CHECK_ERRORS;
             COGLTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCOGLTexture;
             if( pTexture ) 
@@ -197,7 +197,7 @@ void COGLExtRender::EnableTexUnit(int unitno, bool flag)
     if( m_texUnitEnabled[unitno] != flag )
     {
         m_texUnitEnabled[unitno] = flag;
-        pglActiveTexture(GL_TEXTURE0_ARB+unitno);
+        pglActiveTexture(GL_TEXTURE0 + unitno);
         OPENGL_CHECK_ERRORS;
     }
 }
@@ -253,7 +253,7 @@ void COGLExtRender::ApplyTextureFilter()
             if( mtex[i] != m_curBoundTex[i] )
             {
                 mtex[i] = m_curBoundTex[i];
-                pglActiveTexture(GL_TEXTURE0_ARB+i);
+                pglActiveTexture(GL_TEXTURE0 + i);
                 OPENGL_CHECK_ERRORS;
                 minflag[i] = m_dwMinFilter;
                 magflag[i] = m_dwMagFilter;
@@ -267,7 +267,7 @@ void COGLExtRender::ApplyTextureFilter()
                 if( minflag[i] != (unsigned int)m_dwMinFilter )
                 {
                     minflag[i] = m_dwMinFilter;
-                    pglActiveTexture(GL_TEXTURE0_ARB+i);
+                    pglActiveTexture(GL_TEXTURE0 + i);
                     OPENGL_CHECK_ERRORS;
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, iMinFilter);
                     OPENGL_CHECK_ERRORS;
@@ -275,7 +275,7 @@ void COGLExtRender::ApplyTextureFilter()
                 if( magflag[i] != (unsigned int)m_dwMagFilter )
                 {
                     magflag[i] = m_dwMagFilter;
-                    pglActiveTexture(GL_TEXTURE0_ARB+i);
+                    pglActiveTexture(GL_TEXTURE0 + i);
                     OPENGL_CHECK_ERRORS;
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, iMagFilter);
                     OPENGL_CHECK_ERRORS;

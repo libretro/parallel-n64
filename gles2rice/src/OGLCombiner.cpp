@@ -69,7 +69,6 @@ bool COGLColorCombiner::Initialize(void)
     m_bSupportAdd = false;
     m_bSupportSubtract = false;
     m_supportedStages = 1;
-    m_bSupportMultiTexture = false;
 
     COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext);
     if( pcontext->IsExtensionSupported(OSAL_GL_ARB_TEXTURE_ENV_ADD) || pcontext->IsExtensionSupported("GL_EXT_texture_env_add") )

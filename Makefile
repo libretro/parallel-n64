@@ -50,7 +50,7 @@ else ifneq (,$(findstring osx,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dylib
    LDFLAGS += -dynamiclib
    OSXVER = `sw_vers -productVersion | cut -c 4`
-ifneq ($(OSXVER),9)
+ifneq ($(shell sw_vers | grep -c 10.9),1)
    LDFLAGS += -mmacosx-version-min=10.5
 endif
    fpic = -fPIC
@@ -71,6 +71,7 @@ else ifneq (,$(findstring ios,$(platform)))
    fpic = -fPIC
    GLES = 1
    GL_LIB := -framework OpenGLES
+   GLIDE2GL=0
 
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
@@ -156,6 +157,7 @@ endif
 else ifeq ($(platform), emscripten)
    TARGET := $(TARGET_NAME)_libretro_emscripten.bc
    GLES := 1
+   GLIDE2GL=0
    CPPFLAGS += -DNO_ASM -DNOSSE
    CPPFLAGS += -DCC_resampler=mupen_CC_resampler -Dsinc_resampler=mupen_sinc_resampler \
                -Drglgen_symbol_map=mupen_rglgen_symbol_map -Dmain_exit=mupen_main_exit \

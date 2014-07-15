@@ -39,7 +39,6 @@ void SetTmemFlag(uint32_t tmemAddr, uint32_t size);
 bool IsTmemFlagValid(uint32_t tmemAddr);
 uint32_t GetValidTmemInfoIndex(uint32_t tmemAddr);
 
-void MirrorTexture(uint32_t tileno, TxtrCacheEntry *pEntry);
 void LoadHiresTexture( TxtrCacheEntry &entry );
 
 
@@ -1060,6 +1059,7 @@ TxtrCacheEntry* LoadTexture(uint32_t tileno)
 {
     //TxtrCacheEntry *pEntry = NULL;
     TxtrInfo gti;
+    uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
     Tile &tile = gRDP.tiles[tileno];
 
@@ -1094,7 +1094,7 @@ TxtrCacheEntry* LoadTexture(uint32_t tileno)
         gti.PalAddress += 16  * 2 * tile.dwPalette; 
 
     gti.Address = (info->dwLoadAddress+(tile.dwTMem-infoTmemAddr)*8) & (g_dwRamSize-1) ;
-    gti.pPhysicalAddress = ((uint8_t*)g_pRDRAMu32)+gti.Address;
+    gti.pPhysicalAddress = ((uint8_t*)rdram_u32) + gti.Address;
     gti.tileNo = tileno;
 
     if( g_curRomInfo.bTxtSizeMethod2 )
@@ -1189,6 +1189,7 @@ extern uint32_t g_TxtLoadBy;;
 
 void DLParser_LoadTLut(Gfx *gfx)
 {
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     gRDP.textureIsChanged = true;
 
     uint32_t tileno = gfx->loadtile.tile;
@@ -1230,7 +1231,7 @@ void DLParser_LoadTLut(Gfx *gfx)
     uint32_t dwPalAddress = g_TI.dwAddr + dwRDRAMOffset;
 
     //Copy PAL to the PAL memory
-    uint16_t *srcPal = (uint16_t*)(g_pRDRAMu8 + (dwPalAddress& (g_dwRamSize-1)) );
+    uint16_t *srcPal = (uint16_t*)(rdram_u8 + (dwPalAddress& (g_dwRamSize-1)) );
     for (uint32_t i=0; i<dwCount && i<0x100; i++)
         g_wRDPTlut[(i+dwTMEMOffset)^1] = srcPal[i^1];
 
@@ -1344,13 +1345,14 @@ void DLParser_LoadBlock(Gfx *gfx)
 
     if( options.bUseFullTMEM )
     {
+       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
         uint32_t bytes = (lrs + 1) << tile.dwSize >> 1;
         uint32_t address = g_TI.dwAddr + ult * g_TI.bpl + (uls << g_TI.dwSize >> 1);
         if ((bytes == 0) || ((address + bytes) > g_dwRamSize) || (((tile.dwTMem << 3) + bytes) > 4096))
         {
             return;
         }
-        uint64_t* src = (uint64_t*)(g_pRDRAMu8+address);
+        uint64_t* src = (uint64_t*)(rdram_u8 + address);
         uint64_t* dest = &g_Tmem.g_Tmem64bit[tile.dwTMem];
 
         if( dxt > 0)
@@ -1432,6 +1434,7 @@ void DLParser_LoadTile(Gfx *gfx)
 
     if( options.bUseFullTMEM )
     {
+       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
         void (*Interleave)( void *mem, uint32_t numDWords );
 
         if( g_TI.bpl == 0 )
@@ -1447,7 +1450,7 @@ void DLParser_LoadTile(Gfx *gfx)
         }
 
         uint32_t address = g_TI.dwAddr + tile.tl * g_TI.bpl + (tile.sl << g_TI.dwSize >> 1);
-        uint64_t* src = (uint64_t*)&g_pRDRAMu8[address];
+        uint64_t* src = (uint64_t*)&rdram_u8[address];
         uint8_t* dest = (uint8_t*)&g_Tmem.g_Tmem64bit[tile.dwTMem];
 
         if ((address + height * bpl) > g_dwRamSize) // check source ending point
@@ -1763,6 +1766,7 @@ void DLParser_SetTImg(Gfx *gfx)
 
 void DLParser_TexRect(Gfx *gfx)
 {
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     //Gtexrect *gtextrect = (Gtexrect *)gfx;
 
     if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
@@ -1772,10 +1776,10 @@ void DLParser_TexRect(Gfx *gfx)
     // This command used 128bits, and not 64 bits. This means that we have to look one 
     // Command ahead in the buffer, and update the PC.
     uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
-    uint32_t dwCmd2 = *(uint32_t *)(g_pRDRAMu8 + dwPC+4);
-    uint32_t dwCmd3 = *(uint32_t *)(g_pRDRAMu8 + dwPC+4+8);
-    uint32_t dwHalf1 = *(uint32_t *)(g_pRDRAMu8 + dwPC);
-    uint32_t dwHalf2 = *(uint32_t *)(g_pRDRAMu8 + dwPC+8);
+    uint32_t dwCmd2 = *(uint32_t *)(rdram_u8 + dwPC+4);
+    uint32_t dwCmd3 = *(uint32_t *)(rdram_u8 + dwPC+4+8);
+    uint32_t dwHalf1 = *(uint32_t *)(rdram_u8 + dwPC);
+    uint32_t dwHalf2 = *(uint32_t *)(rdram_u8 + dwPC+8);
 
     if( options.enableHackForGames == HACK_FOR_ALL_STAR_BASEBALL || options.enableHackForGames == HACK_FOR_MLB )
     {
@@ -1810,8 +1814,8 @@ void DLParser_TexRect(Gfx *gfx)
     }
 
 
-    LOG_UCODE("0x%08x: %08x %08x", dwPC, *(uint32_t *)(g_pRDRAMu8 + dwPC+0), *(uint32_t *)(g_pRDRAMu8 + dwPC+4));
-    LOG_UCODE("0x%08x: %08x %08x", dwPC+8, *(uint32_t *)(g_pRDRAMu8 + dwPC+8), *(uint32_t *)(g_pRDRAMu8 + dwPC+8+4));
+    LOG_UCODE("0x%08x: %08x %08x", dwPC, *(uint32_t *)(rdram_u8 + dwPC+0), *(uint32_t *)(rdram_u8 + dwPC+4));
+    LOG_UCODE("0x%08x: %08x %08x", dwPC+8, *(uint32_t *)(rdram_u8 + dwPC+8), *(uint32_t *)(rdram_u8 + dwPC+8+4));
 
     uint32_t dwXH     = (((gfx->words.w0)>>12)&0x0FFF)/4;
     uint32_t dwYH     = (((gfx->words.w0)    )&0x0FFF)/4;
@@ -1932,14 +1936,15 @@ void DLParser_TexRect(Gfx *gfx)
 
 void DLParser_TexRectFlip(Gfx *gfx)
 { 
+   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     status.bCIBufferIsRendered = true;
     status.primitiveType = PRIM_TEXTRECTFLIP;
 
     // This command used 128bits, and not 64 bits. This means that we have to look one 
     // Command ahead in the buffer, and update the PC.
     uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;       // This points to the next instruction
-    uint32_t dwCmd2 = *(uint32_t *)(g_pRDRAMu8 + dwPC+4);
-    uint32_t dwCmd3 = *(uint32_t *)(g_pRDRAMu8 + dwPC+4+8);
+    uint32_t dwCmd2 = *(uint32_t *)(rdram_u8 + dwPC+4);
+    uint32_t dwCmd3 = *(uint32_t *)(rdram_u8 + dwPC+4+8);
 
     // Increment PC so that it points to the right place
     gDlistStack[gDlistStackPointer].pc += 16;

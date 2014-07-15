@@ -38,10 +38,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define INI_FILE        "RiceVideoLinux.ini"
 
+extern uint32_t screen_width, screen_height;
+extern retro_environment_t environ_cb;
+
 static m64p_handle l_ConfigVideoRice = NULL;
 static m64p_handle l_ConfigVideoGeneral = NULL;
 
-static int FindIniEntry(uint32_t dwCRC1, uint32_t dwCRC2, uint8_t nCountryID, char* szName, int PrintInfo); 
+//static int FindIniEntry(uint32_t dwCRC1, uint32_t dwCRC2, uint8_t nCountryID, char* szName, int PrintInfo); 
 
 const char *frameBufferSettings[] =
 {
@@ -129,9 +132,9 @@ GlobalOptions options;
 RomOptions defaultRomOptions;
 RomOptions currentRomOptions;
 FrameBufferOptions frameBufferOptions;
-std::vector<IniSection> IniSections;
-bool    bIniIsChanged = false;
-char    szIniFileName[300];
+//std::vector<IniSection> IniSections;
+//bool    bIniIsChanged = false;
+//char    szIniFileName[300];
 
 SettingInfo TextureQualitySettings[] =
 {
@@ -210,14 +213,11 @@ const int numberOfOpenGLRenderEngineSettings = sizeof(OpenGLRenderSettings)/size
 
 void GenerateFrameBufferOptions(void)
 {
-    if( CDeviceBuilder::GetGeneralDeviceType() == OGL_DEVICE )
-    {
-        // OpenGL does not support much yet
-        if( currentRomOptions.N64FrameBufferEmuType != FRM_BUF_NONE )
-            currentRomOptions.N64FrameBufferEmuType = FRM_BUF_IGNORE;
-        if( currentRomOptions.N64RenderToTextureEmuType != TXT_BUF_NONE )
-            currentRomOptions.N64RenderToTextureEmuType = TXT_BUF_IGNORE;
-    }
+   // OpenGL does not support much yet
+   if( currentRomOptions.N64FrameBufferEmuType != FRM_BUF_NONE )
+      currentRomOptions.N64FrameBufferEmuType = FRM_BUF_IGNORE;
+   if( currentRomOptions.N64RenderToTextureEmuType != TXT_BUF_NONE )
+      currentRomOptions.N64RenderToTextureEmuType = TXT_BUF_IGNORE;
 
     frameBufferOptions.bUpdateCIInfo            = false;
 
@@ -337,7 +337,6 @@ BOOL InitConfiguration(void)
     ConfigSetDefaultBool(l_ConfigVideoRice, "FullTMEMEmulation", FALSE, "N64 Texture Memory Full Emulation (may fix some games, may break others)");
     ConfigSetDefaultBool(l_ConfigVideoRice, "OpenGLVertexClipper", FALSE, "Enable vertex clipper for fog operations");
     ConfigSetDefaultBool(l_ConfigVideoRice, "EnableSSE", TRUE, "Enable/Disable SSE optimizations for capable CPUs");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "EnableVertexShader", FALSE, "Use GPU vertex shader");
     ConfigSetDefaultBool(l_ConfigVideoRice, "SkipFrame", FALSE, "If this option is enabled, the plugin will skip every other frame");
     ConfigSetDefaultBool(l_ConfigVideoRice, "TexRectOnly", FALSE, "If enabled, texture enhancement will be done only for TxtRect ucode");
     ConfigSetDefaultBool(l_ConfigVideoRice, "SmallTextureOnly", FALSE, "If enabled, texture enhancement will be done only for textures width+height<=128");
@@ -356,7 +355,6 @@ BOOL InitConfiguration(void)
     ConfigSetDefaultInt(l_ConfigVideoRice, "MultiSampling", 0, "Enable/Disable MultiSampling (0=off, 2,4,8,16=quality)");
     ConfigSetDefaultInt(l_ConfigVideoRice, "ColorQuality", TEXTURE_FMT_A8R8G8B8, "Color bit depth for rendering window (0=32 bits, 1=16 bits)");
     ConfigSetDefaultInt(l_ConfigVideoRice, "OpenGLRenderSetting", OGL_DEVICE, "OpenGL level to support (0=auto, 1=OGL_1.1, 2=OGL_1.2, 3=OGL_1.3, 4=OGL_1.4, 5=OGL_1.4_V2, 6=OGL_TNT2, 7=NVIDIA_OGL, 8=OGL_FRAGMENT_PROGRAM)");
-    ConfigSetDefaultInt(l_ConfigVideoRice, "AnisotropicFiltering", 0, "Enable/Disable Anisotropic Filtering for Mipmapping (0=no filtering, 2-16=quality). This is uneffective if Mipmapping is 0. If the given value is to high to be supported by your graphic card, the value will be the highest value your graphic card can support. Better result with Trilinear filtering");
     return TRUE;
 }
 
@@ -388,77 +386,87 @@ bool isSSESupported()
 
 static void ReadConfiguration(void)
 {
-    windowSetting.bDisplayFullscreen = ConfigGetParamBool(l_ConfigVideoGeneral, "Fullscreen");
-    windowSetting.uDisplayWidth = ConfigGetParamInt(l_ConfigVideoGeneral, "ScreenWidth");
-    windowSetting.uDisplayHeight = ConfigGetParamInt(l_ConfigVideoGeneral, "ScreenHeight");
-    windowSetting.bVerticalSync = ConfigGetParamBool(l_ConfigVideoGeneral, "VerticalSync");
+   struct retro_variable var = { "mupen64-screensize", 0 };
+   bool ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
-    defaultRomOptions.N64FrameBufferEmuType = ConfigGetParamInt(l_ConfigVideoRice, "FrameBufferSetting");
-    defaultRomOptions.N64FrameBufferWriteBackControl = ConfigGetParamInt(l_ConfigVideoRice, "FrameBufferWriteBackControl");
-    defaultRomOptions.N64RenderToTextureEmuType = ConfigGetParamInt(l_ConfigVideoRice, "RenderToTexture");
-    defaultRomOptions.screenUpdateSetting = ConfigGetParamInt(l_ConfigVideoRice, "screenUpdateSetting");
+   if (ret && var.value)
+   {
+      if (sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
+      {
+         screen_width = 640;
+         screen_height = 480;
+      }
+   }
+   else
+   {
+      screen_width = 640;
+      screen_height =480;
+   }
 
-    defaultRomOptions.bNormalBlender = ConfigGetParamBool(l_ConfigVideoRice, "NormalAlphaBlender");
-    defaultRomOptions.bFastTexCRC = ConfigGetParamBool(l_ConfigVideoRice, "FastTextureLoading");
-    defaultRomOptions.bAccurateTextureMapping = ConfigGetParamBool(l_ConfigVideoRice, "AccurateTextureMapping");
-    defaultRomOptions.bInN64Resolution = ConfigGetParamBool(l_ConfigVideoRice, "InN64Resolution");
-    defaultRomOptions.bSaveVRAM = ConfigGetParamBool(l_ConfigVideoRice, "SaveVRAM");
-    defaultRomOptions.bDoubleSizeForSmallTxtrBuf = ConfigGetParamBool(l_ConfigVideoRice, "DoubleSizeForSmallTxtrBuf");
-    defaultRomOptions.bNormalCombiner = ConfigGetParamBool(l_ConfigVideoRice, "DefaultCombinerDisable");
+   windowSetting.uDisplayWidth = screen_width;
+   windowSetting.uDisplayHeight = screen_height;
+   windowSetting.bVerticalSync = ConfigGetParamBool(l_ConfigVideoGeneral, "VerticalSync");
 
-    options.bEnableHacks = ConfigGetParamBool(l_ConfigVideoRice, "EnableHacks");
-    options.bWinFrameMode = ConfigGetParamBool(l_ConfigVideoRice, "WinFrameMode");
-    options.bFullTMEM = ConfigGetParamBool(l_ConfigVideoRice, "FullTMEMEmulation");
-    options.bOGLVertexClipper = ConfigGetParamBool(l_ConfigVideoRice, "OpenGLVertexClipper");
-    options.bEnableSSE = ConfigGetParamBool(l_ConfigVideoRice, "EnableSSE");
-    options.bEnableVertexShader = ConfigGetParamBool(l_ConfigVideoRice, "EnableVertexShader");
-    options.bSkipFrame = ConfigGetParamBool(l_ConfigVideoRice, "SkipFrame");
-    options.bTexRectOnly = ConfigGetParamBool(l_ConfigVideoRice, "TexRectOnly");
-    options.bSmallTextureOnly = ConfigGetParamBool(l_ConfigVideoRice, "SmallTextureOnly");
-    options.bLoadHiResTextures = ConfigGetParamBool(l_ConfigVideoRice, "LoadHiResTextures");
-    options.bLoadHiResCRCOnly = ConfigGetParamBool(l_ConfigVideoRice, "LoadHiResCRCOnly");
-    options.bDumpTexturesToFiles = ConfigGetParamBool(l_ConfigVideoRice, "DumpTexturesToFiles");
-    options.bShowFPS = ConfigGetParamBool(l_ConfigVideoRice, "ShowFPS");
+   defaultRomOptions.N64FrameBufferEmuType = ConfigGetParamInt(l_ConfigVideoRice, "FrameBufferSetting");
+   defaultRomOptions.N64FrameBufferWriteBackControl = ConfigGetParamInt(l_ConfigVideoRice, "FrameBufferWriteBackControl");
+   defaultRomOptions.N64RenderToTextureEmuType = ConfigGetParamInt(l_ConfigVideoRice, "RenderToTexture");
+   defaultRomOptions.screenUpdateSetting = ConfigGetParamInt(l_ConfigVideoRice, "screenUpdateSetting");
 
-    options.mipmapping = TEXTURE_NO_MIPMAP;
-    //options.mipmapping = ConfigGetParamInt(l_ConfigVideoRice, "Mipmapping");
-    options.fogMethod = ConfigGetParamInt(l_ConfigVideoRice, "FogMethod");
-    options.forceTextureFilter = ConfigGetParamInt(l_ConfigVideoRice, "ForceTextureFilter");
-    options.textureEnhancement = ConfigGetParamInt(l_ConfigVideoRice, "TextureEnhancement");
-    options.textureEnhancementControl = ConfigGetParamInt(l_ConfigVideoRice, "TextureEnhancementControl");
-    options.textureQuality = ConfigGetParamInt(l_ConfigVideoRice, "TextureQuality");
-    options.OpenglDepthBufferSetting = ConfigGetParamInt(l_ConfigVideoRice, "OpenGLDepthBufferSetting");
-    options.multiSampling = ConfigGetParamInt(l_ConfigVideoRice, "MultiSampling");
-    options.colorQuality = ConfigGetParamInt(l_ConfigVideoRice, "ColorQuality");
-    options.OpenglRenderSetting = ConfigGetParamInt(l_ConfigVideoRice, "OpenGLRenderSetting");
-    options.anisotropicFiltering = ConfigGetParamInt(l_ConfigVideoRice, "AnisotropicFiltering");
+   defaultRomOptions.bNormalBlender = ConfigGetParamBool(l_ConfigVideoRice, "NormalAlphaBlender");
+   defaultRomOptions.bFastTexCRC = ConfigGetParamBool(l_ConfigVideoRice, "FastTextureLoading");
+   defaultRomOptions.bAccurateTextureMapping = ConfigGetParamBool(l_ConfigVideoRice, "AccurateTextureMapping");
+   defaultRomOptions.bInN64Resolution = ConfigGetParamBool(l_ConfigVideoRice, "InN64Resolution");
+   defaultRomOptions.bSaveVRAM = ConfigGetParamBool(l_ConfigVideoRice, "SaveVRAM");
+   defaultRomOptions.bDoubleSizeForSmallTxtrBuf = ConfigGetParamBool(l_ConfigVideoRice, "DoubleSizeForSmallTxtrBuf");
+   defaultRomOptions.bNormalCombiner = ConfigGetParamBool(l_ConfigVideoRice, "DefaultCombinerDisable");
 
-    CDeviceBuilder::SelectDeviceType((SupportedDeviceType)options.OpenglRenderSetting);
+   options.bEnableHacks = ConfigGetParamBool(l_ConfigVideoRice, "EnableHacks");
+   options.bWinFrameMode = ConfigGetParamBool(l_ConfigVideoRice, "WinFrameMode");
+   options.bFullTMEM = ConfigGetParamBool(l_ConfigVideoRice, "FullTMEMEmulation");
+   options.bOGLVertexClipper = ConfigGetParamBool(l_ConfigVideoRice, "OpenGLVertexClipper");
+   options.bEnableSSE = ConfigGetParamBool(l_ConfigVideoRice, "EnableSSE");
+   options.bSkipFrame = ConfigGetParamBool(l_ConfigVideoRice, "SkipFrame");
+   options.bTexRectOnly = ConfigGetParamBool(l_ConfigVideoRice, "TexRectOnly");
+   options.bSmallTextureOnly = ConfigGetParamBool(l_ConfigVideoRice, "SmallTextureOnly");
+   options.bLoadHiResTextures = ConfigGetParamBool(l_ConfigVideoRice, "LoadHiResTextures");
+   options.bLoadHiResCRCOnly = ConfigGetParamBool(l_ConfigVideoRice, "LoadHiResCRCOnly");
+   options.bDumpTexturesToFiles = ConfigGetParamBool(l_ConfigVideoRice, "DumpTexturesToFiles");
 
-    status.isMMXSupported = isMMXSupported();
-    status.isSSESupported = isSSESupported();
-    status.isVertexShaderSupported = false;
+   options.mipmapping = TEXTURE_NO_MIPMAP;
+   //options.mipmapping = ConfigGetParamInt(l_ConfigVideoRice, "Mipmapping");
+   options.fogMethod = ConfigGetParamInt(l_ConfigVideoRice, "FogMethod");
+   options.forceTextureFilter = ConfigGetParamInt(l_ConfigVideoRice, "ForceTextureFilter");
+   options.textureEnhancement = ConfigGetParamInt(l_ConfigVideoRice, "TextureEnhancement");
+   options.textureEnhancementControl = ConfigGetParamInt(l_ConfigVideoRice, "TextureEnhancementControl");
+   options.textureQuality = ConfigGetParamInt(l_ConfigVideoRice, "TextureQuality");
+   options.OpenglDepthBufferSetting = ConfigGetParamInt(l_ConfigVideoRice, "OpenGLDepthBufferSetting");
+   options.multiSampling = ConfigGetParamInt(l_ConfigVideoRice, "MultiSampling");
+   options.colorQuality = ConfigGetParamInt(l_ConfigVideoRice, "ColorQuality");
+   options.OpenglRenderSetting = ConfigGetParamInt(l_ConfigVideoRice, "OpenGLRenderSetting");
 
-    status.isSSEEnabled = status.isSSESupported && options.bEnableSSE;
+   CDeviceBuilder::SelectDeviceType((SupportedDeviceType)options.OpenglRenderSetting);
+
+   status.isMMXSupported = isMMXSupported();
+   status.isSSESupported = isSSESupported();
+
+   status.isSSEEnabled = status.isSSESupported && options.bEnableSSE;
 #if !defined(NO_ASM)
-    if( status.isSSEEnabled )
-    {
-        ProcessVertexData = ProcessVertexDataSSE;
-        DebugMessage(M64MSG_INFO, "SSE processing enabled.");
-    }
-    else
+   if( status.isSSEEnabled )
+   {
+      ProcessVertexData = ProcessVertexDataSSE;
+      DebugMessage(M64MSG_INFO, "SSE processing enabled.");
+   }
+   else
 #endif
-    {
-        ProcessVertexData = ProcessVertexDataNoSSE;
-        DebugMessage(M64MSG_INFO, "Disabled SSE processing.");
-    }
-
-    status.isVertexShaderEnabled = status.isVertexShaderSupported && options.bEnableVertexShader;
-    status.bUseHW_T_L = false;
+   {
+      ProcessVertexData = ProcessVertexDataNoSSE;
+      DebugMessage(M64MSG_INFO, "Disabled SSE processing.");
+   }
 }
     
 BOOL LoadConfiguration(void)
 {
+#if 0
     IniSections.clear();
     bIniIsChanged = false;
     strcpy(szIniFileName, INI_FILE);
@@ -468,6 +476,7 @@ BOOL LoadConfiguration(void)
         DebugMessage(M64MSG_ERROR, "Unable to read ini file from disk");
         return FALSE;
     }
+#endif
 
     if (l_ConfigVideoGeneral == NULL || l_ConfigVideoRice == NULL)
     {
@@ -663,6 +672,7 @@ void GenerateCurrentRomOptions()
 
 void Ini_GetRomOptions(LPGAMESETTING pGameSetting)
 {
+#if 0
     int i;
 
     i = FindIniEntry(pGameSetting->romheader.dwCRC1,
@@ -699,10 +709,12 @@ void Ini_GetRomOptions(LPGAMESETTING pGameSetting)
     pGameSetting->dwFrameBufferOption   = IniSections[i].dwFrameBufferOption;
     pGameSetting->dwRenderToTextureOption   = IniSections[i].dwRenderToTextureOption;
     pGameSetting->dwScreenUpdateSetting = IniSections[i].dwScreenUpdateSetting;
+#endif
 }
 
 void Ini_StoreRomOptions(LPGAMESETTING pGameSetting)
 {
+#if 0
     int i;
 
     i = FindIniEntry(pGameSetting->romheader.dwCRC1,
@@ -857,10 +869,12 @@ void Ini_StoreRomOptions(LPGAMESETTING pGameSetting)
         WriteIniFile();
         TRACE0("Rom option is changed and saved");
     }
+#endif
 }
 
-std::ifstream& getline( std::ifstream &is, char *str );
+//std::ifstream& getline( std::ifstream &is, char *str );
 
+#if 0
 char * left(const char * src, int nchars)
 {
     static char dst[300];
@@ -958,11 +972,14 @@ BOOL ReadIniFile()
                 newsection.dwRenderToTextureOption = 0;
                 newsection.dwScreenUpdateSetting = 0;
 
+#if 0
                 IniSections.push_back(newsection);
+#endif
 
             }
             else
             {       
+#if 0
                 int sectionno = IniSections.size() - 1;
 
                 if (strcasecmp(left(readinfo,4), "Name")==0)
@@ -1048,10 +1065,11 @@ BOOL ReadIniFile()
 
                 if (strcasecmp(left(readinfo,19), "ScreenUpdateSetting")==0)
                     IniSections[sectionno].dwScreenUpdateSetting = strtol(right(readinfo,1),NULL,10);
+#endif
             }
         }
     }
-    inifile.close();
+    //inifile.close();
 
     return TRUE;
 }
@@ -1329,6 +1347,7 @@ static int FindIniEntry(uint32_t dwCRC1, uint32_t dwCRC2, uint8_t nCountryID, ch
     bIniIsChanged = true;               // Flag to indicate we should be updated
     return IniSections.size()-1;            // -1 takes into account increment
 }
+#endif
 
 GameSetting g_curRomInfo;
 

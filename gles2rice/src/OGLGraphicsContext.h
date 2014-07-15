@@ -29,56 +29,29 @@ class COGLGraphicsContext : public CGraphicsContext
 public:
     virtual ~COGLGraphicsContext();
 
-    bool Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
-    bool ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
+    bool Initialize(uint32_t dwWidth, uint32_t dwHeight);
+    bool ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight);
     void CleanUp();
     void Clear(ClearFlag dwFlags, uint32_t color, float depth);
 
     void UpdateFrame(bool swapOnly);
-    int ToggleFullscreen();     // return 0 as the result is windowed
 
     bool IsExtensionSupported(const char* pExtName);
     bool IsWglExtensionSupported(const char* pExtName);
     static void InitDeviceParameters();
-
-    //Get methods (TODO, remove all friend class and use get methods instead)
-    bool IsSupportAnisotropicFiltering();
-    int  getMaxAnisotropicFiltering();
 
 protected:
     friend class OGLDeviceBuilder;
     COGLGraphicsContext();
     void InitState(void);
     void InitOGLExtension(void);
-    bool SetFullscreenMode();
-    bool SetWindowMode();
-
-    // Important OGL extension features
-    bool    m_bSupportMultiTexture;
-    bool    m_bSupportTextureEnvCombine;
-    bool    m_bSupportSeparateSpecularColor;
-    bool    m_bSupportSecondColor;
-    bool    m_bSupportFogCoord;
-    bool    m_bSupportTextureObject;
 
     // Optional OGL extension features;
-    bool    m_bSupportRescaleNormal;
     bool    m_bSupportLODBias;
-    bool    m_bSupportAnisotropicFiltering;
-    int     m_maxAnisotropicFiltering;
 
     // Nvidia OGL only features
-    bool    m_bSupportTextureMirrorRepeat;
     bool    m_bSupportTextureLOD;
-    bool    m_bSupportNVRegisterCombiner;
-    bool    m_bSupportBlendColor;
-    bool    m_bSupportBlendSubtract;
-    bool    m_bSupportNVTextureEnvCombine4;
     
-    // Minimal requirements, I will even not check them at runtime
-    //bool  m_bSupportTextureEnvAdd;
-    //bool  m_bSupportVertexArray;
-
     const unsigned char*    m_pVendorStr;
     const unsigned char*    m_pRenderStr;
     const unsigned char*    m_pExtensionStr;

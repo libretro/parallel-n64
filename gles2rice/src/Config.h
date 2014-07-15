@@ -205,12 +205,9 @@ typedef struct {
     BOOL    bWinFrameMode;
     BOOL    bOGLVertexClipper;
     BOOL    bEnableSSE;
-    BOOL    bEnableVertexShader;
     BOOL    bSkipFrame;
     BOOL    bFullTMEM;
     BOOL    bUseFullTMEM;
-
-    BOOL    bShowFPS;
 
     uint32_t  mipmapping;
     uint32_t  fogMethod;

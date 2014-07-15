@@ -91,13 +91,10 @@ public:
     virtual void SetFogEnable(bool bEnable) 
     { 
         DEBUGGER_IF_DUMP( (gRSP.bFogEnabled != bEnable && logFog ), TRACE1("Set Fog %s", bEnable? "enable":"disable"));
-        gRSP.bFogEnabled = bEnable&&(options.fogMethod > 0);
+        gRSP.bFogEnabled = bEnable;
     }
     virtual void SetFogMinMax(float fMin, float fMax) = 0;
     virtual void TurnFogOnOff(bool flag)=0;
-    bool m_bFogStateSave;
-    void SetFogFlagForNegativeW();
-    void RestoreFogFlag();
 
     virtual void SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a) 
     { 
@@ -195,13 +192,6 @@ public:
     virtual void CleanUp(void);
     
     virtual void SetFillMode(FillMode mode)=0;
-
-#ifdef DEBUGGER
-    virtual bool DrawTexture(int tex, TextureChannel channel);
-    virtual void SaveTextureToFile(int tex, TextureChannel channel, bool bShow);
-#endif
-
-    virtual void SaveTextureToFile(CTexture &texture, char *filename, TextureChannel channel, bool bShow, bool bWholeTexture, int width, int height);
 
     void LoadSprite2D(Sprite2DInfo &info, uint32_t ucode);
     void LoadObjBGCopy(uObjBg &info);

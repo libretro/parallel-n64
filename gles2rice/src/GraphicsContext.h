@@ -50,39 +50,18 @@ class CGraphicsContext
     friend class CDeviceBuilder;
     
 public:
-    bool Ready() { return m_bReady; }
-    bool IsWindowed() {return m_bWindowed;}
-
-    virtual bool Initialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
-    virtual bool ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight, bool bWindowed);
+    virtual bool Initialize(uint32_t dwWidth, uint32_t dwHeight);
+    virtual bool ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight);
     virtual void CleanUp();
 
     virtual void Clear(ClearFlag flags, uint32_t color, float depth) = 0;
     virtual void UpdateFrame(bool swapOnly) = 0;
-    virtual int ToggleFullscreen()=0;       // return 0 as the result is windowed
 
     static void InitWindowInfo();
     static void InitDeviceParameters();
 
-    bool m_supportTextureMirror;
-
 public:
-    static  int          m_maxFSAA;
-    static  int          m_maxAnisotropy;
-
 protected:
-    static  uint32_t      m_dwWindowStyle;       // Saved window style for mode switches
-    static  uint32_t      m_dwWindowExStyle;     // Saved window style for mode switches
-    static  uint32_t      m_dwStatusWindowStyle; // Saved window style for mode switches
-
-    static  bool        m_deviceCapsIsInitialized;
-
-    bool                m_bReady;
-    bool                m_bActive;
-    
-    bool                m_bWindowed;
-    RECT                m_rcWindowBounds;
-
     char                m_strDeviceStats[256];
 
     virtual ~CGraphicsContext();

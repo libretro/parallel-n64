@@ -55,9 +55,6 @@ static int l_PluginInit = 0;
 PluginStatus  status;
 
 unsigned int   g_dwRamSize = 0x400000;
-unsigned int  *g_pRDRAMu32 = NULL;
-signed char   *g_pRDRAMs8 = NULL;
-unsigned char *g_pRDRAMu8 = NULL;
 
 RECT frameWriteByCPURect;
 std::vector<RECT> frameWriteByCPURects;
@@ -104,22 +101,6 @@ void (*renderCallback)(int) = NULL;
 extern "C" EXPORT void CALL RomClosed(void);
 
 //---------------------------------------------------------------------------------------
-// Static (local) functions
-static void ChangeWindowStep2()
-{
-    status.bDisableFPS = true;
-    windowSetting.bDisplayFullscreen = !windowSetting.bDisplayFullscreen;
-    windowSetting.bDisplayFullscreen = CGraphicsContext::Get()->ToggleFullscreen();
-
-    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
-    CGraphicsContext::Get()->UpdateFrame(false);
-    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
-    CGraphicsContext::Get()->UpdateFrame(false);
-    CGraphicsContext::Get()->Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
-    CGraphicsContext::Get()->UpdateFrame(false);
-    status.bDisableFPS = false;
-    status.ToToggleFullScreen = FALSE;
-}
 
 static void ResizeStep2(void)
 {
@@ -135,7 +116,7 @@ static void ResizeStep2(void)
     //CoreVideo_ResizeWindow(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
 
     // re-initialize our OpenGL graphics context state
-    bool res = CGraphicsContext::Get()->ResizeInitialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, !windowSetting.bDisplayFullscreen);
+    bool res = CGraphicsContext::Get()->ResizeInitialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
     if (res)
     {
         // re-create the OpenGL renderer
@@ -151,11 +132,6 @@ static void UpdateScreenStep2 (void)
 {
     status.bVIOriginIsUpdated = false;
 
-    if( status.ToToggleFullScreen && status.gDlistCount > 0 )
-    {
-        ChangeWindowStep2();
-        return;
-    }
     if (status.ToResize && status.gDlistCount > 0)
     {
         ResizeStep2();
@@ -304,7 +280,7 @@ static bool StartVideo(void)
     CDeviceBuilder::GetBuilder()->CreateGraphicsContext();
     CGraphicsContext::InitWindowInfo();
 
-    bool res = CGraphicsContext::Get()->Initialize(640, 480, !windowSetting.bDisplayFullscreen);
+    bool res = CGraphicsContext::Get()->Initialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
     if (!res)
     {
        return false;
@@ -541,11 +517,13 @@ EXPORT m64p_error CALL PluginShutdown(void)
     {
         RomClosed();
     }
+#if 0
     if (bIniIsChanged)
     {
         WriteIniFile();
         TRACE0("Write back INI file");
     }
+#endif
 
     /* reset some local variables */
     l_DebugCallback = NULL;
@@ -583,10 +561,6 @@ EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *Plugi
 
 EXPORT void CALL ChangeWindow (void)
 {
-    if( status.ToToggleFullScreen )
-        status.ToToggleFullScreen = FALSE;
-    else
-        status.ToToggleFullScreen = TRUE;
 }
 
 //---------------------------------------------------------------------------------------
@@ -631,21 +605,6 @@ EXPORT int CALL RomOpen(void)
 //---------------------------------------------------------------------------------------
 EXPORT void CALL UpdateScreen(void)
 {
-    if(options.bShowFPS)
-    {
-        static unsigned int lastTick=0;
-        static int frames=0;
-        unsigned int nowTick = SDL_GetTicks();
-        frames++;
-        if(lastTick + 5000 <= nowTick)
-        {
-            char caption[200];
-            sprintf(caption, "%s v%i.%i.%i - %.3f VI/S", PLUGIN_NAME, VERSION_PRINTF_SPLIT(PLUGIN_VERSION), frames/5.0);
-//            CoreVideo_SetCaption(caption);
-            frames = 0;
-            lastTick = nowTick;
-        }
-    }
     UpdateScreenStep2();
 }
 
@@ -668,13 +627,8 @@ EXPORT int CALL InitiateGFX(GFX_INFO Gfx_Info)
 {
     memset(&status, 0, sizeof(status));
 
-    g_pRDRAMu8          = Gfx_Info.RDRAM;
-    g_pRDRAMu32         = (uint32_t*)Gfx_Info.RDRAM;
-    g_pRDRAMs8          = (signed char *)Gfx_Info.RDRAM;
-
     windowSetting.fViWidth = 320;
     windowSetting.fViHeight = 240;
-    status.ToToggleFullScreen = FALSE;
     status.ToResize = false;
     status.bDisableFPS=false;
 

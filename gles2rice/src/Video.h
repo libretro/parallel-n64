@@ -31,14 +31,10 @@ typedef struct {
     unsigned short        uViWidth, uViHeight;
     unsigned short        uDisplayWidth, uDisplayHeight;
     
-    BOOL    bDisplayFullscreen;
     BOOL    bVerticalSync;
 
     float   fMultX, fMultY;
     int     vpLeftW, vpTopW, vpRightW, vpBottomW, vpWidthW, vpHeightW;
-
-    int     statusBarHeight, statusBarHeightToUse, toolbarHeight, toolbarHeightToUse;
-    BOOL    screenSaverStatus;
 
     struct {
         uint32_t      left;
@@ -97,7 +93,6 @@ typedef struct {
     uint32_t  gFrameCount;
     uint32_t  gUcodeCount;
     uint32_t  gRDPTime;
-    BOOL    ToToggleFullScreen;
     bool    ToResize;
     uint32_t  gNewResizeWidth, gNewResizeHeight;
     bool    bDisableFPS;
@@ -124,12 +119,9 @@ typedef struct {
 
     bool    isMMXSupported;
     bool    isSSESupported;
-    bool    isVertexShaderSupported;
 
     bool    isMMXEnabled;
     bool    isSSEEnabled;
-    bool    isVertexShaderEnabled;
-    bool    bUseHW_T_L;                 // Use hardware T&L, for debug purpose only
 
     bool    toShowCFB;
 
@@ -158,9 +150,6 @@ extern GFX_INFO gfx_info;
 extern WindowSettingStruct windowSetting;
 
 extern uint32_t   g_dwRamSize;
-extern uint32_t  *g_pRDRAMu32;
-extern int8_t   *g_pRDRAMs8;
-extern uint8_t *g_pRDRAMu8;
 
 #ifdef __LIBRETRO__ // Prefix symbol
 #define renderCallback ricerenderCallback

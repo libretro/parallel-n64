@@ -24,7 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "osal_preproc.h"
 #include "float.h"
 #include "DeviceBuilder.h"
-#include "VertexShaderConstantDef.h"
 #include "Render.h"
 #include "Timing.h"
 
@@ -812,28 +811,19 @@ void TexGen(float &s, float &t)
     }
 }
 
-void ComputeLOD(bool openGL)
+void ComputeLOD(void)
 {
     TLITVERTEX &v0 = g_vtxBuffer[0];
     TLITVERTEX &v1 = g_vtxBuffer[1];
     RenderTexture &tex0 = g_textures[gRSP.curTile];
 
     float d,dt;
-    if (openGL)
-    {
-        float x = g_vtxProjected5[0][0] / g_vtxProjected5[0][4] - g_vtxProjected5[1][0] / g_vtxProjected5[1][4];
-        float y = g_vtxProjected5[0][1] / g_vtxProjected5[0][4] - g_vtxProjected5[1][1] / g_vtxProjected5[1][4];
+    float x = g_vtxProjected5[0][0] / g_vtxProjected5[0][4] - g_vtxProjected5[1][0] / g_vtxProjected5[1][4];
+    float y = g_vtxProjected5[0][1] / g_vtxProjected5[0][4] - g_vtxProjected5[1][1] / g_vtxProjected5[1][4];
 
-        x = windowSetting.vpWidthW*x/windowSetting.fMultX/2;
-        y = windowSetting.vpHeightW*y/windowSetting.fMultY/2;
-        d = sqrtf(x*x+y*y);
-    }
-    else
-    {
-        float x = (v0.x - v1.x)/ windowSetting.fMultX;
-        float y = (v0.y - v1.y)/ windowSetting.fMultY;
-        d = sqrtf(x*x+y*y);
-    }
+    x = windowSetting.vpWidthW*x/windowSetting.fMultX/2;
+    y = windowSetting.vpHeightW*y/windowSetting.fMultY/2;
+    d = sqrtf(x*x+y*y);
 
     float s0 = v0.tcord[0].u * tex0.m_fTexWidth;
     float t0 = v0.tcord[0].v * tex0.m_fTexHeight;
@@ -855,27 +845,21 @@ void ComputeLOD(bool openGL)
 bool bHalfTxtScale=false;
 extern uint32_t lastSetTile;
 
-void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture, bool openGL)
+void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture)
 {
     VTX_DUMP(TRACE2("Initialize vertex (%d) to vertex buffer[%d]:", dwV, vtxIndex));
 
     TLITVERTEX &v = g_vtxBuffer[vtxIndex];
     VTX_DUMP(TRACE4("  Trans: x=%f, y=%f, z=%f, w=%f",  g_vtxTransformed[dwV].x,g_vtxTransformed[dwV].y,g_vtxTransformed[dwV].z,g_vtxTransformed[dwV].w));
-    if (openGL)
-    {
-        g_vtxProjected5[vtxIndex][0] = g_vtxTransformed[dwV].x;
-        g_vtxProjected5[vtxIndex][1] = g_vtxTransformed[dwV].y;
-        g_vtxProjected5[vtxIndex][2] = g_vtxTransformed[dwV].z;
-        g_vtxProjected5[vtxIndex][3] = g_vtxTransformed[dwV].w;
-        g_vtxProjected5[vtxIndex][4] = g_vecProjected[dwV].z;
+    g_vtxProjected5[vtxIndex][0] = g_vtxTransformed[dwV].x;
+    g_vtxProjected5[vtxIndex][1] = g_vtxTransformed[dwV].y;
+    g_vtxProjected5[vtxIndex][2] = g_vtxTransformed[dwV].z;
+    g_vtxProjected5[vtxIndex][3] = g_vtxTransformed[dwV].w;
+    g_vtxProjected5[vtxIndex][4] = g_fFogCoord[dwV];
 
-        if( g_vtxTransformed[dwV].w < 0 )
-            g_vtxProjected5[vtxIndex][4] = 0;
+    g_vtxIndex[vtxIndex] = vtxIndex;
 
-        g_vtxIndex[vtxIndex] = vtxIndex;
-    }
-
-    if( !openGL || options.bOGLVertexClipper == TRUE )
+    if( options.bOGLVertexClipper == TRUE )
     {
         v.x = g_vecProjected[dwV].x*gRSP.vtxXMul+gRSP.vtxXAdd;
         v.y = g_vecProjected[dwV].y*gRSP.vtxYMul+gRSP.vtxYAdd;
@@ -922,13 +906,10 @@ void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture, bool openGL)
         v.dcDiffuse = g_dwVtxDifColor[dwV];
     }
 
-    if( openGL )
-    {
-        g_oglVtxColors[vtxIndex][0] = v.r;
-        g_oglVtxColors[vtxIndex][1] = v.g;
-        g_oglVtxColors[vtxIndex][2] = v.b;
-        g_oglVtxColors[vtxIndex][3] = v.a;
-    }
+    g_oglVtxColors[vtxIndex][0] = v.r;
+    g_oglVtxColors[vtxIndex][1] = v.g;
+    g_oglVtxColors[vtxIndex][2] = v.b;
+    g_oglVtxColors[vtxIndex][3] = v.a;
 
     if( bTexture )
     {
@@ -996,7 +977,7 @@ void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture, bool openGL)
     {
         if (CRender::g_pRender->IsTexel1Enable() && CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->IsUsed(MUX_LODFRAC, MUX_MASK))
         {
-            ComputeLOD(openGL);
+            ComputeLOD();
         }
         else
         {
@@ -1318,7 +1299,8 @@ void ProcessVertexDataSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
     //          - g_dwVtxDifColor[i]            -> vertex color
     //          - g_fVtxTxtCoords[i]            -> vertex texture coordinates
 
-    FiddledVtx * pVtxBase = (FiddledVtx*)(g_pRDRAMu8 + dwAddr);
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+    FiddledVtx * pVtxBase = (FiddledVtx*)(rdram_u8 + dwAddr);
     g_pVtxBase = pVtxBase;
 
     for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
@@ -1427,7 +1409,8 @@ void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
     //          - g_dwVtxDifColor[i]            -> vertex color
     //          - g_fVtxTxtCoords[i]            -> vertex texture coordinates
 
-    FiddledVtx * pVtxBase = (FiddledVtx*)(g_pRDRAMu8 + dwAddr);
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+    FiddledVtx * pVtxBase = (FiddledVtx*)(rdram_u8 + dwAddr);
     g_pVtxBase = pVtxBase;
 
     for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
@@ -1529,30 +1512,18 @@ void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 
 bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
 {
-    if( status.isVertexShaderEnabled || status.bUseHW_T_L )
-    {
-        g_vtxIndex[gRSP.numVertices++] = dwV0;
-        g_vtxIndex[gRSP.numVertices++] = dwV1;
-        g_vtxIndex[gRSP.numVertices++] = dwV2;
-        status.dwNumTrisRendered++;
-        gRSP.maxVertexID = max(gRSP.maxVertexID,max(dwV0,max(dwV1,dwV2)));
-    }
-    else
-    {
-        SP_Timing(SP_Each_Triangle);
+   SP_Timing(SP_Each_Triangle);
 
-        bool textureFlag = (CRender::g_pRender->IsTextureEnabled() || gRSP.ucode == 6 );
-        bool openGL = CDeviceBuilder::m_deviceGeneralType == OGL_DEVICE;
+   bool textureFlag = (CRender::g_pRender->IsTextureEnabled() || gRSP.ucode == 6 );
 
-        InitVertex(dwV0, gRSP.numVertices, textureFlag, openGL);
-        InitVertex(dwV1, gRSP.numVertices+1, textureFlag, openGL);
-        InitVertex(dwV2, gRSP.numVertices+2, textureFlag, openGL);
+   InitVertex(dwV0, gRSP.numVertices, textureFlag);
+   InitVertex(dwV1, gRSP.numVertices+1, textureFlag);
+   InitVertex(dwV2, gRSP.numVertices+2, textureFlag);
 
-        gRSP.numVertices += 3;
-        status.dwNumTrisRendered++;
-    }
+   gRSP.numVertices += 3;
+   status.dwNumTrisRendered++;
 
-    return true;
+   return true;
 }
 
 
@@ -1562,9 +1533,6 @@ bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
 bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
 {
     //return true;  //fix me
-
-    if( status.isVertexShaderEnabled || status.bUseHW_T_L ) // We won't have access to transformed vertex data
-        return true;
 
     DEBUGGER_ONLY_IF( (!debuggerEnableTestTris || !debuggerEnableCullFace), {return TRUE;});
     
@@ -1747,7 +1715,8 @@ void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
     UpdateCombinedMatrix();
 
-    long long pVtxBase = (long long) (g_pRDRAMu8 + dwAddr);
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+    long long pVtxBase = (long long) (rdram_u8 + dwAddr);
     g_pVtxBase = (FiddledVtx*)pVtxBase;
 
     Matrix &matWorldProject = gRSP.DKRMatrixes[gRSP.DKRCMatrixIndex];
@@ -1864,7 +1833,8 @@ void ProcessVertexDataPD(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
     UpdateCombinedMatrix();
 
-    N64VtxPD * pVtxBase = (N64VtxPD*)(g_pRDRAMu8 + dwAddr);
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+    N64VtxPD * pVtxBase = (N64VtxPD*)(rdram_u8 + dwAddr);
     g_pVtxBase = (FiddledVtx*)pVtxBase; // Fix me
 
     for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
@@ -1894,7 +1864,7 @@ void ProcessVertexDataPD(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 
         RSP_Vtx_Clipping(i);
 
-        uint8_t *addr = g_pRDRAMu8+dwPDCIAddr+ (vert.cidx&0xFF);
+        uint8_t *addr = rdram_u8 + dwPDCIAddr + (vert.cidx&0xFF);
         uint32_t a = addr[0];
         uint32_t r = addr[3];
         uint32_t g = addr[2];
@@ -1973,9 +1943,9 @@ void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
     UpdateCombinedMatrix();
 
-    FiddledVtx * pVtxBase = (FiddledVtx*)(g_pRDRAMu8 + dwAddr);
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+    FiddledVtx * pVtxBase = (FiddledVtx*)(rdram_u8 + dwAddr);
     g_pVtxBase = pVtxBase;
-    //short *vertexColoraddr = (short*)(g_pRDRAMu8+dwConkerVtxZAddr);
 
     for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
     {
@@ -2072,9 +2042,9 @@ void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         // can't generate tex coord)
         if (gRSP.bTextureGen && gRSP.bLightingEnable )
         {
-                g_normal.x = (float)*(char*)(g_pRDRAMu8+ (((i<<1)+0)^3)+dwConkerVtxZAddr);
-                g_normal.y = (float)*(char*)(g_pRDRAMu8+ (((i<<1)+1)^3)+dwConkerVtxZAddr);
-                g_normal.z = (float)*(char*)(g_pRDRAMu8+ (((i<<1)+2)^3)+dwConkerVtxZAddr);
+                g_normal.x = (float)*(int8_t*)(rdram_u8 + (((i<<1)+0)^3)+dwConkerVtxZAddr);
+                g_normal.y = (float)*(int8_t*)(rdram_u8 + (((i<<1)+1)^3)+dwConkerVtxZAddr);
+                g_normal.z = (float)*(int8_t*)(rdram_u8 + (((i<<1)+2)^3)+dwConkerVtxZAddr);
                 Vec3TransformNormal(g_normal, gRSPmodelViewTop);
                 TexGen(g_fVtxTxtCoords[i].x, g_fVtxTxtCoords[i].y);
         }
@@ -2122,11 +2092,12 @@ void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, 
 {
     UpdateCombinedMatrix();
 
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     uint32_t dwV0 = 0;
     uint32_t dwNum = (dwXYZCmd&0xFF00)>>10;
 
-    RS_Vtx_XYZ * pVtxXYZBase = (RS_Vtx_XYZ*)(g_pRDRAMu8 + dwXYZAddr);
-    RS_Vtx_Color * pVtxColorBase = (RS_Vtx_Color*)(g_pRDRAMu8 + dwColorAddr);
+    RS_Vtx_XYZ * pVtxXYZBase = (RS_Vtx_XYZ*)(rdram_u8 + dwXYZAddr);
+    RS_Vtx_Color * pVtxColorBase = (RS_Vtx_Color*)(rdram_u8 + dwColorAddr);
 
     for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
     {

@@ -255,26 +255,9 @@ void CTextureManager::RecycleTexture(TxtrCacheEntry *pEntry)
     if (g_bUseSetTextureMem)
         return;
 
-    if( CDeviceBuilder::GetGeneralDeviceType() == OGL_DEVICE )
-    {
-        // Fix me, why I can not reuse the texture in OpenGL,
-        // how can I unload texture from video card memory for OpenGL
-        delete pEntry;
-        return;
-    }
-
-    if (pEntry->pTexture == NULL)
-    {
-        // No point in saving!
-        delete pEntry;
-    }
-    else
-    {
-        // Add to the list
-        pEntry->pNext = m_pHead;
-        SAFE_DELETE(pEntry->pEnhancedTexture);
-        m_pHead = pEntry;
-    }
+    // Fix me, why I can not reuse the texture in OpenGL,
+    // how can I unload texture from video card memory for OpenGL
+    delete pEntry;
 }
 
 // Search for a texture of the specified dimensions to recycle

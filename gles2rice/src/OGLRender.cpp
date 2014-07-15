@@ -32,16 +32,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 UVFlagMap OGLXUVFlagMaps[] =
 {
     {TEXTURE_UV_FLAG_WRAP, GL_REPEAT},
-    {TEXTURE_UV_FLAG_MIRROR, GL_MIRRORED_REPEAT_ARB},
+    {TEXTURE_UV_FLAG_MIRROR, GL_MIRRORED_REPEAT},
     {TEXTURE_UV_FLAG_CLAMP, GL_CLAMP},
 };
 
 //===================================================================
 OGLRender::OGLRender()
 {
-    COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext);
-    m_bSupportFogCoordExt = pcontext->m_bSupportFogCoord;
-    m_bMultiTexture = pcontext->m_bSupportMultiTexture;
     m_bSupportClampToEdge = false;
     for( int i=0; i<8; i++ )
     {
@@ -76,7 +73,7 @@ void OGLRender::Initialize(void)
     glLoadIdentity();
     OPENGL_CHECK_ERRORS;
 
-    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
+    glViewportWrapper(0, 0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
     OPENGL_CHECK_ERRORS;
 
     OGLXUVFlagMaps[TEXTURE_UV_FLAG_MIRROR].realFlag = GL_MIRRORED_REPEAT;
@@ -87,24 +84,13 @@ void OGLRender::Initialize(void)
 
     OPENGL_CHECK_ERRORS;
 
-    if( m_bMultiTexture )
-    {
-       glVertexAttribPointer(VS_TEXCOORD0,2,GL_FLOAT,GL_FALSE, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[0].u));
-       OPENGL_CHECK_ERRORS;
-       glVertexAttribPointer(VS_TEXCOORD1,2,GL_FLOAT,GL_FALSE, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[1].u));
-       OPENGL_CHECK_ERRORS;
-    }
-    else
-    {
-       glVertexAttribPointer(VS_TEXCOORD0,2,GL_FLOAT,GL_FALSE, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[0].u));
-       OPENGL_CHECK_ERRORS;
-    }
+    glVertexAttribPointer(VS_TEXCOORD0,2,GL_FLOAT,GL_FALSE, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[0].u));
+    OPENGL_CHECK_ERRORS;
+    glVertexAttribPointer(VS_TEXCOORD1,2,GL_FLOAT,GL_FALSE, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[1].u));
+    OPENGL_CHECK_ERRORS;
 
-    if (m_bSupportFogCoordExt)
-    {
-       glVertexAttribPointer(VS_FOG,1,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][4]));
-       OPENGL_CHECK_ERRORS;
-    }
+    glVertexAttribPointer(VS_FOG,1,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][4]));
+    OPENGL_CHECK_ERRORS;
 
     glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8_t)*4, &(g_oglVtxColors[0][0]) );
     OPENGL_CHECK_ERRORS;
@@ -432,7 +418,7 @@ void OGLRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32_t dwTile)
 
 bool OGLRender::RenderTexRect()
 {
-    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
+    glViewportWrapper(0, 0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
     OPENGL_CHECK_ERRORS;
 
     GLboolean cullface = glIsEnabled(GL_CULL_FACE);
@@ -498,7 +484,7 @@ bool OGLRender::RenderFillRect(uint32_t dwColor, float depth)
     float r = ((dwColor>>16)&0xFF)/255.0f;
     float g = ((dwColor>>8)&0xFF)/255.0f;
     float b = (dwColor&0xFF)/255.0f;
-    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
+    glViewportWrapper(0, 0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
     OPENGL_CHECK_ERRORS;
 
     GLboolean cullface = glIsEnabled(GL_CULL_FACE);
@@ -548,23 +534,18 @@ bool OGLRender::RenderLine3D()
 
 extern FiddledVtx * g_pVtxBase;
 
-// This is so weired that I can not do vertex transform by myself. I have to use
+// This is so weird that I can not do vertex transform by myself. I have to use
 // OpenGL internal transform
 bool OGLRender::RenderFlushTris()
 {
-    if( !m_bSupportFogCoordExt )    
-        SetFogFlagForNegativeW();
-    else
-    {
-        if( !gRDP.bFogEnableInBlender && gRSP.bFogEnabled )
-        {
-            TurnFogOnOff(false);
-        }
-    }
+   if( !gRDP.bFogEnableInBlender && gRSP.bFogEnabled )
+   {
+      TurnFogOnOff(false);
+   }
 
     ApplyZBias(m_dwZBias);  // set the bias factors
 
-    glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight-windowSetting.vpTopW-windowSetting.vpHeightW+windowSetting.statusBarHeightToUse, windowSetting.vpWidthW, windowSetting.vpHeightW, false);
+    glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight - windowSetting.vpTopW - windowSetting.vpHeightW, windowSetting.vpWidthW, windowSetting.vpHeightW, false);
     OPENGL_CHECK_ERRORS;
 
     //if options.bOGLVertexClipper == FALSE )
@@ -572,46 +553,10 @@ bool OGLRender::RenderFlushTris()
         glDrawElements( GL_TRIANGLES, gRSP.numVertices, GL_UNSIGNED_SHORT, g_vtxIndex );
         OPENGL_CHECK_ERRORS;
     }
-/*  else
+
+    if( !gRDP.bFogEnableInBlender && gRSP.bFogEnabled )
     {
-        //ClipVertexesOpenGL();
-        // Redo the index
-        // Set the array
-        glVertexPointer( 4, GL_FLOAT, sizeof(float)*5, &(g_vtxProjected5Clipped[0][0]) );
-        glEnableClientState( GL_VERTEX_ARRAY );
-
-        pglClientActiveTextureARB( GL_TEXTURE0_ARB );
-        glTexCoordPointer( 2, GL_FLOAT, sizeof( TLITVERTEX ), &(g_clippedVtxBuffer[0].tcord[0].u) );
-        glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-
-        pglClientActiveTextureARB( GL_TEXTURE1_ARB );
-        glTexCoordPointer( 2, GL_FLOAT, sizeof( TLITVERTEX ), &(g_clippedVtxBuffer[0].tcord[1].u) );
-        glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-
-        glDrawElements( GL_TRIANGLES, gRSP.numVertices, GL_UNSIGNED_INT, g_vtxIndex );
-
-        // Reset the array
-        pglClientActiveTextureARB( GL_TEXTURE0_ARB );
-        glTexCoordPointer( 2, GL_FLOAT, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[0].u) );
-        glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-
-        pglClientActiveTextureARB( GL_TEXTURE1_ARB );
-        glTexCoordPointer( 2, GL_FLOAT, sizeof( TLITVERTEX ), &(g_vtxBuffer[0].tcord[1].u) );
-        glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-
-        glVertexPointer( 4, GL_FLOAT, sizeof(float)*5, &(g_vtxProjected5[0][0]) );
-        glEnableClientState( GL_VERTEX_ARRAY );
-    }
-*/
-
-    if( !m_bSupportFogCoordExt )    
-        RestoreFogFlag();
-    else
-    {
-        if( !gRDP.bFogEnableInBlender && gRSP.bFogEnabled )
-        {
-            TurnFogOnOff(true);
-        }
+       TurnFogOnOff(true);
     }
     return true;
 }
@@ -631,7 +576,7 @@ void OGLRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
     glDisable(GL_CULL_FACE);
     OPENGL_CHECK_ERRORS;
 
-    glViewportWrapper(0, windowSetting.statusBarHeightToUse, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
+    glViewportWrapper(0, 0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
     OPENGL_CHECK_ERRORS;
 
     float a = (g_texRectTVtx[0].dcDiffuse >>24)/255.0f;
@@ -784,7 +729,7 @@ COLOR OGLRender::PostProcessSpecularColor()
 
 void OGLRender::SetViewportRender()
 {
-    glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight-windowSetting.vpTopW-windowSetting.vpHeightW+windowSetting.statusBarHeightToUse, windowSetting.vpWidthW, windowSetting.vpHeightW, true);
+    glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight - windowSetting.vpTopW - windowSetting.vpHeightW, windowSetting.vpWidthW, windowSetting.vpHeightW, true);
     OPENGL_CHECK_ERRORS;
 }
 
@@ -871,7 +816,7 @@ void OGLRender::UpdateScissor()
         uint32_t height = (gRDP.scissor.right*gRDP.scissor.bottom)/width;
         glEnable(GL_SCISSOR_TEST);
         OPENGL_CHECK_ERRORS;
-        glScissor(0, int(height*windowSetting.fMultY+windowSetting.statusBarHeightToUse),
+        glScissor(0, int(height * windowSetting.fMultY),
             int(width*windowSetting.fMultX), int(height*windowSetting.fMultY) );
         OPENGL_CHECK_ERRORS;
     }
@@ -893,13 +838,13 @@ void OGLRender::ApplyRDPScissor(bool force)
         uint32_t height = (gRDP.scissor.right*gRDP.scissor.bottom)/width;
         glEnable(GL_SCISSOR_TEST);
         OPENGL_CHECK_ERRORS;
-        glScissor(0, int(height*windowSetting.fMultY+windowSetting.statusBarHeightToUse),
+        glScissor(0, int(height * windowSetting.fMultY),
             int(width*windowSetting.fMultX), int(height*windowSetting.fMultY) );
         OPENGL_CHECK_ERRORS;
     }
     else
     {
-        glScissor(int(gRDP.scissor.left*windowSetting.fMultX), int((windowSetting.uViHeight-gRDP.scissor.bottom)*windowSetting.fMultY+windowSetting.statusBarHeightToUse),
+        glScissor(int(gRDP.scissor.left*windowSetting.fMultX), int((windowSetting.uViHeight-gRDP.scissor.bottom)*windowSetting.fMultY),
             int((gRDP.scissor.right-gRDP.scissor.left)*windowSetting.fMultX), int((gRDP.scissor.bottom-gRDP.scissor.top)*windowSetting.fMultY ));
         OPENGL_CHECK_ERRORS;
     }
@@ -914,7 +859,7 @@ void OGLRender::ApplyScissorWithClipRatio(bool force)
 
     glEnable(GL_SCISSOR_TEST);
     OPENGL_CHECK_ERRORS;
-    glScissor(windowSetting.clipping.left, int((windowSetting.uViHeight-gRSP.real_clip_scissor_bottom)*windowSetting.fMultY)+windowSetting.statusBarHeightToUse,
+    glScissor(windowSetting.clipping.left, int((windowSetting.uViHeight-gRSP.real_clip_scissor_bottom)*windowSetting.fMultY),
         windowSetting.clipping.width, windowSetting.clipping.height);
     OPENGL_CHECK_ERRORS;
 
@@ -935,7 +880,7 @@ void OGLRender::SetFogEnable(bool bEnable)
 {
     DEBUGGER_IF_DUMP( (gRSP.bFogEnabled != (bEnable==TRUE) && logFog ), TRACE1("Set Fog %s", bEnable? "enable":"disable"));
 
-    gRSP.bFogEnabled = bEnable&&(options.fogMethod == 1);
+    gRSP.bFogEnabled = bEnable;
     
     // If force fog
     if(options.fogMethod == 2)
@@ -959,13 +904,13 @@ void OGLRender::SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
 
 void OGLRender::DisableMultiTexture()
 {
-    pglActiveTexture(GL_TEXTURE1_ARB);
+    pglActiveTexture(GL_TEXTURE1);
     OPENGL_CHECK_ERRORS;
     EnableTexUnit(1, false);
-    pglActiveTexture(GL_TEXTURE0_ARB);
+    pglActiveTexture(GL_TEXTURE0);
     OPENGL_CHECK_ERRORS;
     EnableTexUnit(0, false);
-    pglActiveTexture(GL_TEXTURE0_ARB);
+    pglActiveTexture(GL_TEXTURE0);
     OPENGL_CHECK_ERRORS;
     EnableTexUnit(0, true);
 }

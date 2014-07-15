@@ -39,7 +39,6 @@
 #endif
 
 // Extension names
-#define OSAL_GL_ARB_MULTITEXTURE            "GL_multitexture"
 #define OSAL_GL_ARB_TEXTURE_ENV_ADD         "GL_texture_env_add"
 
 // Vertex shader params
@@ -52,27 +51,17 @@
 // Constant substitutions
 #ifdef HAVE_OPENGLES2
 #define GL_CLAMP                            GL_CLAMP_TO_EDGE
-#define GL_MAX_TEXTURE_UNITS_ARB            GL_MAX_TEXTURE_IMAGE_UNITS
-#define GL_MIRRORED_REPEAT_ARB              GL_MIRRORED_REPEAT
-#define GL_TEXTURE0_ARB                     GL_TEXTURE0
-#define GL_TEXTURE1_ARB                     GL_TEXTURE1
-#define GL_TEXTURE2_ARB                     GL_TEXTURE2
-#define GL_TEXTURE3_ARB                     GL_TEXTURE3
-#define GL_TEXTURE4_ARB                     GL_TEXTURE4
-#define GL_TEXTURE5_ARB                     GL_TEXTURE5
-#define GL_TEXTURE6_ARB                     GL_TEXTURE6
-#define GL_TEXTURE7_ARB                     GL_TEXTURE7
+#define GL_MAX_TEXTURE_UNITS                GL_MAX_TEXTURE_IMAGE_UNITS
 
 #define GL_ADD                              0x0104
 #define GL_MODULATE                         0x2100
-#define GL_INTERPOLATE_ARB                  0x8575
-#define GL_CONSTANT_ARB                     0x8576
-#define GL_PREVIOUS_ARB                     0x8578
+#define GL_INTERPOLATE                      0x8575
+#define GL_CONSTANT                         0x8576
+#define GL_PREVIOUS                         0x8578
 #endif
 
 // Function substitutions
 #define pglActiveTexture                    glActiveTexture
-#define pglActiveTextureARB                 glActiveTexture
 
 // No-op substitutions (unavailable in GLES2)
 #define glLoadIdentity()

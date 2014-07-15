@@ -699,7 +699,6 @@ void RSP_GBI1_Tri1(Gfx *gfx)
 
     // While the next command pair is Tri1, add vertices
     uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
-    //uint32_t * pCmdBase = (uint32_t *)(g_pRDRAMu8 + dwPC);
     
     do
     {
@@ -747,6 +746,7 @@ void RSP_GBI1_Tri1(Gfx *gfx)
 
 void RSP_GBI0_Tri4(Gfx *gfx)
 {
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
     uint32_t w0 = gfx->words.w0;
     uint32_t w1 = gfx->words.w1;
 
@@ -787,8 +787,8 @@ void RSP_GBI0_Tri4(Gfx *gfx)
             }
         }
         
-        w0  = *(uint32_t *)(g_pRDRAMu8 + dwPC+0);
-        w1  = *(uint32_t *)(g_pRDRAMu8 + dwPC+4);
+        w0  = *(uint32_t *)(rdram_u8 + dwPC+0);
+        w1  = *(uint32_t *)(rdram_u8 + dwPC+4);
         dwPC += 8;
 
 #ifdef DEBUGGER
@@ -866,15 +866,26 @@ void RSP_RDP_InsertMatrix(Gfx *gfx)
     }
     else
     {
-        int x = ((gfx->words.w0) & 0x1F) >> 1;
-        int y = x >> 2;
-        x &= 3;
+       int x = ((gfx->words.w0) & 0x1F) >> 1;
+       int y = x >> 2;
+       x &= 3;
 
-        fraction = (float)fabs(gRSPworldProject.m[y][x] - (int)gRSPworldProject.m[y][x]);
-        gRSPworldProject.m[y][x] = (short)((gfx->words.w1)>>16) + fraction;
+       float integer = (float)(short)((gfx->words.w1)>>16);
+       fraction = (float)fabs(gRSPworldProject.m[y][x] - (int)gRSPworldProject.m[y][x]);
 
-        fraction = (float)fabs(gRSPworldProject.m[y][x+1] - (int)gRSPworldProject.m[y][x+1]);
-        gRSPworldProject.m[y][x+1] = (short)((gfx->words.w1)&0xFFFF) + fraction;
+       if(integer >= 0.0f)
+          gRSPworldProject.m[y][x] = integer + fraction;
+       else
+          gRSPworldProject.m[y][x] = integer - fraction;
+
+
+       integer = (float)(short)((gfx->words.w1)&0xFFFF);
+       fraction = (float)fabs(gRSPworldProject.m[y][x+1] - (int)gRSPworldProject.m[y][x+1]);
+
+       if(integer >= 0.0f)
+          gRSPworldProject.m[y][x+1] = integer + fraction;
+       else
+          gRSPworldProject.m[y][x+1] = integer - fraction;
     }
 
     gRSP.bMatrixIsUpdated = false;

@@ -241,7 +241,6 @@ void RSP_GBI2_Tri1(Gfx *gfx)
 
         // While the next command pair is Tri1, add vertices
         uint32_t dwPC = gDlistStack[gDlistStackPointer].pc;
-        //uint32_t * pCmdBase = (uint32_t *)(g_pRDRAMu8 + dwPC);
 
         do
         {
@@ -749,37 +748,38 @@ void RSP_GBI2_MoveMem(Gfx *gfx)
         break;
     case RSP_GBI2_MV_MEM__LIGHT:
         {
-            uint32_t dwOffset2 = ((gfx->words.w0) >> 5) & 0x3FFF;
-        switch (dwOffset2)
-        {
-        case 0x00:
-            {
-                int8_t * pcBase = g_pRDRAMs8 + addr;
-                LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATX %f %f %f",
-                    (float)pcBase[8 ^ 0x3],
-                    (float)pcBase[9 ^ 0x3],
-                    (float)pcBase[10 ^ 0x3]);
+           int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
+           uint32_t dwOffset2 = ((gfx->words.w0) >> 5) & 0x3FFF;
+           switch (dwOffset2)
+           {
+              case 0x00:
+                 {
+                    int8_t * pcBase = rdram_s8 + addr;
+                    LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATX %f %f %f",
+                          (float)pcBase[8 ^ 0x3],
+                          (float)pcBase[9 ^ 0x3],
+                          (float)pcBase[10 ^ 0x3]);
 
-            }
-            break;
-        case 0x18:
-            {
-                int8_t * pcBase = g_pRDRAMs8 + addr;
-                LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATY %f %f %f",
-                    (float)pcBase[8 ^ 0x3],
-                    (float)pcBase[9 ^ 0x3],
-                    (float)pcBase[10 ^ 0x3]);
-            }
-            break;
-        default:        //0x30/48/60
-            {
-                uint32_t dwLight = (dwOffset2 - 0x30)/0x18;
-                LOG_UCODE("    Light %d:", dwLight);
+                 }
+                 break;
+              case 0x18:
+                 {
+                    int8_t * pcBase = rdram_s8 + addr;
+                    LOG_UCODE("    RSP_GBI1_MV_MEM_LOOKATY %f %f %f",
+                          (float)pcBase[8 ^ 0x3],
+                          (float)pcBase[9 ^ 0x3],
+                          (float)pcBase[10 ^ 0x3]);
+                 }
+                 break;
+              default:        //0x30/48/60
+                 {
+                    uint32_t dwLight = (dwOffset2 - 0x30)/0x18;
+                    LOG_UCODE("    Light %d:", dwLight);
                     RSP_MoveMemLight(dwLight, addr);
-            }
-            break;
-        }
-        break;
+                 }
+                 break;
+           }
+           break;
 
         }
     case RSP_GBI2_MV_MEM__MATRIX:

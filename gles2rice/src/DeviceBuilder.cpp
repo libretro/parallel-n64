@@ -57,7 +57,6 @@ void CDeviceBuilder::SelectDeviceType(SupportedDeviceType type)
     case OGL_1_2_DEVICE:
     case OGL_1_3_DEVICE:
     case OGL_1_4_DEVICE:
-    case OGL_1_4_V2_DEVICE:
     case OGL_TNT2_DEVICE:
     case NVIDIA_OGL_DEVICE:
     case OGL_FRAGMENT_PROGRAM:
@@ -89,7 +88,6 @@ CDeviceBuilder* CDeviceBuilder::CreateBuilder(SupportedDeviceType type)
         case    OGL_1_2_DEVICE:
         case    OGL_1_3_DEVICE:
         case    OGL_1_4_DEVICE:
-        case    OGL_1_4_V2_DEVICE:
         case    OGL_TNT2_DEVICE:
         case    NVIDIA_OGL_DEVICE:
         case OGL_FRAGMENT_PROGRAM:
@@ -184,24 +182,9 @@ CRender * OGLDeviceBuilder::CreateRender(void)
 {
     if( m_pRender == NULL )
     {
-        if( CGraphicsContext::g_pGraphicsContext == NULL && CGraphicsContext::g_pGraphicsContext->Ready() )
-        {
-            DebugMessage(M64MSG_ERROR, "Can not create ColorCombiner before creating and initializing GraphicsContext");
-            m_pRender = NULL;
-        }
-
         COGLGraphicsContext &context = *((COGLGraphicsContext*)CGraphicsContext::g_pGraphicsContext);
+        m_pRender = new COGLExtRender();
 
-        if( context.m_bSupportMultiTexture )
-        {
-            // OGL extension render
-            m_pRender = new COGLExtRender();
-        }
-        else
-        {
-            // Basic OGL Render
-            m_pRender = new OGLRender();
-        }
         CRender::g_pRender = m_pRender;
     }
 
@@ -225,17 +208,10 @@ CColorCombiner * OGLDeviceBuilder::CreateColorCombiner(CRender *pRender)
 {
     if( m_pColorCombiner == NULL )
     {
-        if( CGraphicsContext::g_pGraphicsContext == NULL && CGraphicsContext::g_pGraphicsContext->Ready() )
-        {
-            DebugMessage(M64MSG_ERROR, "Can not create ColorCombiner before creating and initializing GraphicsContext");
-        }
-        else
-        {
-            m_deviceType = (SupportedDeviceType)options.OpenglRenderSetting;
+       m_deviceType = (SupportedDeviceType)options.OpenglRenderSetting;
 
-            m_pColorCombiner = new COGL_FragmentProgramCombiner(pRender);
-            DebugMessage(M64MSG_VERBOSE, "OpenGL Combiner: Fragment Program");
-        }
+       m_pColorCombiner = new COGL_FragmentProgramCombiner(pRender);
+       DebugMessage(M64MSG_VERBOSE, "OpenGL Combiner: Fragment Program");
     }
 
     return m_pColorCombiner;
