@@ -360,30 +360,31 @@ static void DepthBuffer(VERTEX * vtx, int n)
 {
    int i;
    struct vertexi v[12];
-   bool cond = fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE) && gfx_plugin_accuracy > 2;
+   if ( gfx_plugin_accuracy < 3)
+       return;
 
-   if (!cond)
-      return;
-
-   if (rdp.u_cull_mode == 1) //cull front
+   if (fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE) && gfx_plugin_accuracy > 2)
    {
-      for (i = 0; i < n; i++)
-      {
-         v[i].x = (int)((vtx[n-i-1].x-rdp.offset_x) / rdp.scale_x * 65536.0);
-         v[i].y = (int)((vtx[n-i-1].y-rdp.offset_y) / rdp.scale_y * 65536.0);
-         v[i].z = (int)(vtx[n-i-1].z * 65536.0);
-      }
+       if (rdp.u_cull_mode == 1) //cull front
+       {
+          for (i = 0; i < n; i++)
+          {
+             v[i].x = (int)((vtx[n-i-1].x-rdp.offset_x) / rdp.scale_x * 65536.0);
+             v[i].y = (int)((vtx[n-i-1].y-rdp.offset_y) / rdp.scale_y * 65536.0);
+             v[i].z = (int)(vtx[n-i-1].z * 65536.0);
+          }
+       }
+       else
+       {
+          for (i = 0; i < n; i++)
+          {
+             v[i].x = (int)((vtx[i].x-rdp.offset_x) / rdp.scale_x * 65536.0);
+             v[i].y = (int)((vtx[i].y-rdp.offset_y) / rdp.scale_y * 65536.0);
+             v[i].z = (int)(vtx[i].z * 65536.0);
+          }
+       }
+       Rasterize(v, n, dzdx);
    }
-   else
-   {
-      for (i = 0; i < n; i++)
-      {
-         v[i].x = (int)((vtx[i].x-rdp.offset_x) / rdp.scale_x * 65536.0);
-         v[i].y = (int)((vtx[i].y-rdp.offset_y) / rdp.scale_y * 65536.0);
-         v[i].z = (int)(vtx[i].z * 65536.0);
-      }
-   }
-   Rasterize(v, n, dzdx);
 
    for (i = 0; i < n; i++)
       vtx[i].z = ScaleZ(vtx[i].z);
