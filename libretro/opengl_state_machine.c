@@ -33,13 +33,6 @@ static const int CapTranslate[SGL_CAP_MAX] =
 #define ATTRIB_INITER(X) { X, X, X, X, X, X, X, X }
 
 static GLint VertexAttribPointer_enabled[MAX_ATTRIB] = ATTRIB_INITER(0);
-static GLint VertexAttribPointer_is4f[MAX_ATTRIB] = ATTRIB_INITER(0);
-static GLint VertexAttribPointer_size[MAX_ATTRIB] = ATTRIB_INITER(4);
-static GLenum VertexAttribPointer_type[MAX_ATTRIB] = ATTRIB_INITER(GL_FLOAT);
-static GLboolean VertexAttribPointer_normalized[MAX_ATTRIB] = ATTRIB_INITER(GL_TRUE);
-static GLsizei VertexAttribPointer_stride[MAX_ATTRIB] = ATTRIB_INITER(0);
-static const GLvoid* VertexAttribPointer_pointer[MAX_ATTRIB] = ATTRIB_INITER(0);
-static GLfloat VertexAttribPointer_4f[MAX_ATTRIB][4];
 
 static GLuint Framebuffer_framebuffer = 0;
 static GLenum BlendFunc_srcRGB = GL_ONE,  BlendFunc_srcAlpha = GL_ONE;
