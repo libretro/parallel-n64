@@ -28,6 +28,7 @@
 #include "main.h"
 #include "../Glide64/rdp.h"
 
+#ifdef EMSCRIPTEN
 struct draw_buffer {
   float x, y, z, q;
 
@@ -43,6 +44,7 @@ struct draw_buffer {
 
 static struct draw_buffer *gli_vbo;
 static unsigned gli_vbo_size;
+#endif
 
 FX_ENTRY void FX_CALL
 grCullMode( GrCullMode_t mode )
@@ -138,6 +140,14 @@ grDepthBiasLevel( FxI32 level )
    }
 }
 
+#ifdef EMSCRIPTEN
+#define buffer_struct struct draw_buffer
+#define gl_offset(x) offsetof(buffer_struct, x)
+#else
+#define buffer_struct VERTEX
+#define gl_offset(x) &v->x
+#endif
+
 FX_ENTRY void FX_CALL
 grDrawVertexArrayContiguous(FxU32 mode, FxU32 count, void *pointers)
 {
@@ -147,6 +157,7 @@ grDrawVertexArrayContiguous(FxU32 mode, FxU32 count, void *pointers)
    if(need_to_compile)
       compile_shader();
 
+#ifdef EMSCRIPTEN
    if (count > gli_vbo_size)
    {
       gli_vbo_size = count;
@@ -159,21 +170,25 @@ grDrawVertexArrayContiguous(FxU32 mode, FxU32 count, void *pointers)
    }
 
    glBindBuffer(GL_ARRAY_BUFFER, glitch_vbo);
-   glBufferData(GL_ARRAY_BUFFER, sizeof(struct draw_buffer) * count, gli_vbo, GL_DYNAMIC_DRAW);
+   glBufferData(GL_ARRAY_BUFFER, sizeof(buffer_struct) * count, gli_vbo, GL_DYNAMIC_DRAW);
+#else
+   glBindBuffer(GL_ARRAY_BUFFER, 0);
+#endif
+
    glEnableVertexAttribArray(POSITION_ATTR);
-   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(struct draw_buffer), offsetof(struct draw_buffer, x)); //Position
+   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(buffer_struct), gl_offset(x)); //Position
 
    glEnableVertexAttribArray(COLOUR_ATTR);
-   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(struct draw_buffer), offsetof(struct draw_buffer, b)); //Colour
+   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(buffer_struct), gl_offset(b)); //Colour
 
    glEnableVertexAttribArray(TEXCOORD_0_ATTR);
-   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(struct draw_buffer), offsetof(struct draw_buffer, coord[2])); //Tex0
+   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(buffer_struct), gl_offset(coord[2])); //Tex0
 
    glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(struct draw_buffer), offsetof(struct draw_buffer, coord[0])); //Tex1
+   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(buffer_struct), gl_offset(coord[0])); //Tex1
 
    glEnableVertexAttribArray(FOG_ATTR);
-   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(struct draw_buffer), offsetof(struct draw_buffer, f)); //Fog
+   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(buffer_struct), gl_offset(f)); //Fog
 
    glDrawArrays(mode, 0, count);
    glBindBuffer(GL_ARRAY_BUFFER, 0);

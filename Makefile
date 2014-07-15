@@ -157,7 +157,7 @@ endif
 else ifeq ($(platform), emscripten)
    TARGET := $(TARGET_NAME)_libretro_emscripten.bc
    GLES := 1
-   GLIDE2GL=0
+   #GLIDE2GL=0
    CPPFLAGS += -DNO_ASM -DNOSSE
    CPPFLAGS += -DCC_resampler=mupen_CC_resampler -Dsinc_resampler=mupen_sinc_resampler \
                -Drglgen_symbol_map=mupen_rglgen_symbol_map -Dmain_exit=mupen_main_exit \

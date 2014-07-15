@@ -42,7 +42,9 @@ int glsl_support = 1;
 uint16_t *frameBuffer;
 uint8_t  *buf;
 
+#ifdef EMSCRIPTEN
 GLuint glitch_vbo;
+#endif
 
 static int isExtensionSupported(const char *extension)
 {
@@ -92,7 +94,9 @@ grSstWinOpen(
    glGenTextures(1, &default_texture);
    frameBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
    buf = (uint8_t*)malloc(width * height * 4 * sizeof(uint8_t));
+#ifdef EMSCRIPTEN
    glGenBuffers(1, &glitch_vbo);
+#endif
    glViewport(0, 0, width, height);
 
    if (isExtensionSupported("GL_ARB_texture_env_combine") == 0 &&
@@ -158,7 +162,9 @@ grSstWinClose( GrContext_t context )
    if (buf)
       free(buf);
    glDeleteTextures(1, &default_texture);
+#ifdef EMSCRIPTEN
    glDeleteBuffers(1, &glitch_vbo);
+#endif
    frameBuffer = NULL;
    buf = NULL;
 
@@ -302,15 +308,24 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
       data[14]  =     0.0f;
       data[15]  =     0.0f;
 
+#ifdef EMSCRIPTEN
       glBindBuffer(GL_ARRAY_BUFFER, glitch_vbo);
       glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_DYNAMIC_DRAW);
+#else
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+#endif
 
       glDisableVertexAttribArray(COLOUR_ATTR);
       glDisableVertexAttribArray(TEXCOORD_1_ATTR);
       glDisableVertexAttribArray(FOG_ATTR);
 
+#ifdef EMSCRIPTEN
       glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,4 * sizeof(float), 0); //Position
-      glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float), 8); //Tex
+      glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float), 2); //Tex
+#else
+      glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,4 * sizeof(float), &data[0]); //Position
+      glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float), &data[2]); //Tex
+#endif
 
       glEnableVertexAttribArray(COLOUR_ATTR);
       glEnableVertexAttribArray(TEXCOORD_1_ATTR);
