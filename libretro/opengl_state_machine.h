@@ -61,6 +61,7 @@ void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height);
 void sglUseProgram(GLuint program);
 void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 
+void sglBindBuffer(GLenum target, GLuint buffer);
 void sglActiveTexture(GLenum texture);
 void sglBindTexture(GLenum target, GLuint texture);
 
@@ -145,6 +146,7 @@ void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers);
 #define glGenFramebuffers sglGenFramebuffers
 #define glGenRenderbuffers sglGenRenderbuffers
 #define glGenTextures sglGenTextures
+#define glBindBuffer sglBindBuffer
 #define glBindRenderbuffer sglBindRenderbuffer
 #define glRenderbufferStorage sglRenderbufferStorage
 #define glFramebufferRenderbuffer sglFramebufferRenderbuffer

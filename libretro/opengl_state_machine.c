@@ -466,6 +466,11 @@ GLuint retro_get_fbo_id(void)
    return render_iface.get_current_framebuffer();
 }
 
+void sglBindBuffer(GLenum target, GLuint buffer)
+{
+   glBindBuffer(target, buffer);
+}
+
 
 #if 0
 struct tex_map
