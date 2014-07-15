@@ -208,35 +208,16 @@ void sglDisableVertexAttribArray(GLuint index)
 
 void sglVertexAttribPointer(GLuint name, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* pointer)
 {
-#ifndef HAVE_SHARED_CONTEXT
-   VertexAttribPointer_is4f[name] = 0;
-   VertexAttribPointer_size[name] = size;
-   VertexAttribPointer_type[name] = type;
-   VertexAttribPointer_normalized[name] = normalized;
-   VertexAttribPointer_stride[name] = stride;
-   VertexAttribPointer_pointer[name] = pointer;
-#endif
     glVertexAttribPointer(name, size, type, normalized, stride, pointer);
 }
 
 void sglVertexAttrib4f(GLuint name, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 {
-#ifndef HAVE_SHARED_CONTEXT
-   VertexAttribPointer_is4f[name] = 1;
-   VertexAttribPointer_4f[name][0] = x;
-   VertexAttribPointer_4f[name][1] = y;
-   VertexAttribPointer_4f[name][2] = z;
-   VertexAttribPointer_4f[name][3] = w;
-#endif
     glVertexAttrib4f(name, x, y, z, w);
 }
 
 void sglVertexAttrib4fv(GLuint name, GLfloat* v)
 {
-#ifndef HAVE_SHARED_CONTEXT
-   VertexAttribPointer_is4f[name] = 1;
-   memcpy(VertexAttribPointer_4f[name], v, sizeof(GLfloat) * 4);
-#endif
     glVertexAttrib4fv(name, v);
 }
 
