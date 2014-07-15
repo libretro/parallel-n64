@@ -13,17 +13,19 @@ extern "C" {
 typedef struct
 {
   float x, y, z, q;
-  float u0, v0, u1, v1;
-  float coord[4];
-  float w;
-  uint16_t  flags;
 
   uint8_t  b;  // These values are arranged like this so that *(uint32_t*)(VERTEX+?) is
   uint8_t  g;  // ARGB format that glide can use.
   uint8_t  r;
   uint8_t  a;
 
+  float coord[4];
+
   float f; //fog
+
+  float u0, v0, u1, v1;
+  float w;
+  uint16_t  flags;
 
   float vec[3]; // normal vector
 

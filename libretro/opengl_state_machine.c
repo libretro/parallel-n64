@@ -523,6 +523,7 @@ void sglEnter(void)
       else
          glDisableVertexAttribArray(i);
 
+      // XXX: are these necessary? glide64 works without them
       if (!VertexAttribPointer_is4f[i])
          glVertexAttribPointer(i, VertexAttribPointer_size[i], VertexAttribPointer_type[i],
                VertexAttribPointer_normalized[i], VertexAttribPointer_stride[i], VertexAttribPointer_pointer[i]);

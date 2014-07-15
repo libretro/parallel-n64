@@ -433,10 +433,10 @@ static void DrawImage (DRAWIMAGE *d)
          if ((flr_x <= rdp.scissor.lr_x) || (ful_x < rdp.scissor.lr_x))
          {
             VERTEX v[4] = {
-               { ful_x, ful_y, Z, 1.0f, ful_u, ful_v },
-               { flr_x, ful_y, Z, 1.0f, flr_u, ful_v },
-               { ful_x, flr_y, Z, 1.0f, ful_u, flr_v },
-               { flr_x, flr_y, Z, 1.0f, flr_u, flr_v } };
+               { .x = ful_x, .y = ful_y, .z = Z, .q = 1.0f, .u0 = ful_u, .v0 = ful_v },
+               { .x = flr_x, .y = ful_y, .z = Z, .q = 1.0f, .u0 = flr_u, .v0 = ful_v },
+               { .x = ful_x, .y = flr_y, .z = Z, .q = 1.0f, .u0 = ful_u, .v0 = flr_v },
+               { .x = flr_x, .y = flr_y, .z = Z, .q = 1.0f, .u0 = flr_u, .v0 = flr_v } };
 
             apply_shading(v);
             ConvertCoordsConvert (v, 4);

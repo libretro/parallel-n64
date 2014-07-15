@@ -106,6 +106,7 @@ extern int bgra8888_support;
 extern int glsl_support;
 
 extern GLuint program_object_default;
+extern GLuint glitch_vbo;
 
 #ifndef GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS // TODO: Not present
 #define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS 18283
