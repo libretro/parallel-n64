@@ -1,6 +1,9 @@
 /* pj64tosrm
  * Combine Project64's save files (*.eep, *.mpk, *.fla, *.sra) into a
  * libretro-mupen64 save file (*.srm).
+ * 
+ * KNOWN BUGS:
+ *     - Some NRage Input Plugin saves may not work regardless of the type.
  */
 
 #include <stdio.h>
