@@ -360,10 +360,11 @@ static void DepthBuffer(VERTEX * vtx, int n)
 {
    int i;
    struct vertexi v[12];
+
    if ( gfx_plugin_accuracy < 3)
        return;
 
-   if (fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE) && gfx_plugin_accuracy > 2)
+   if (fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE))
    {
        if (rdp.u_cull_mode == 1) //cull front
        {
