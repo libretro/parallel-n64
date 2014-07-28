@@ -343,11 +343,11 @@ void init_interupt(void)
 void check_interupt(void)
 {
     if (MI_register.mi_intr_reg & MI_register.mi_intr_mask_reg)
-        Cause = (Cause | 0x400) & 0xFFFFFF83;
+        g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
     else
-        Cause &= ~0x400;
+        g_cp0_regs[CP0_CAUSE_REG] &= ~0x400;
     if ((Status & 7) != 1) return;
-    if (Status & Cause & 0xFF00)
+    if (Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)
     {
         if(q == NULL)
         {
@@ -436,11 +436,11 @@ void gen_interupt(void)
 
           MI_register.mi_intr_reg |= 0x08;
           if (MI_register.mi_intr_reg & MI_register.mi_intr_mask_reg)
-             Cause = (Cause | 0x400) & 0xFFFFFF83;
+             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
           else
              return;
           if ((Status & 7) != 1) return;
-          if (!(Status & Cause & 0xFF00)) return;
+          if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
 #ifdef __LIBRETRO__
           retro_return(false);
 #endif
@@ -452,9 +452,9 @@ void gen_interupt(void)
           add_interupt_event_count(COMPARE_INT, Compare);
           Count-=count_per_op;
 
-          Cause = (Cause | 0x8000) & 0xFFFFFF83;
+          g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x8000) & 0xFFFFFF83;
           if ((Status & 7) != 1) return;
-          if (!(Status & Cause & 0xFF00)) return;
+          if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           break;
 
        case CHECK_INT:
@@ -468,11 +468,11 @@ void gen_interupt(void)
           si_register.si_stat |= 0x1000;
           //si_register.si_stat &= ~0x1;
           if (MI_register.mi_intr_reg & MI_register.mi_intr_mask_reg)
-             Cause = (Cause | 0x400) & 0xFFFFFF83;
+             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
           else
              return;
           if ((Status & 7) != 1) return;
-          if (!(Status & Cause & 0xFF00)) return;
+          if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           break;
 
        case PI_INT:
@@ -480,11 +480,11 @@ void gen_interupt(void)
           MI_register.mi_intr_reg |= 0x10;
           pi_register.read_pi_status_reg &= ~3;
           if (MI_register.mi_intr_reg & MI_register.mi_intr_mask_reg)
-             Cause = (Cause | 0x400) & 0xFFFFFF83;
+             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
           else
              return;
           if ((Status & 7) != 1) return;
-          if (!(Status & Cause & 0xFF00)) return;
+          if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           break;
 
        case AI_INT:
@@ -499,11 +499,11 @@ void gen_interupt(void)
 
              MI_register.mi_intr_reg |= 0x04;
              if (MI_register.mi_intr_reg & MI_register.mi_intr_mask_reg)
-                Cause = (Cause | 0x400) & 0xFFFFFF83;
+                g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
              else
                 return;
              if ((Status & 7) != 1) return;
-             if (!(Status & Cause & 0xFF00)) return;
+             if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           }
           else
           {
@@ -513,11 +513,11 @@ void gen_interupt(void)
              //-------
              MI_register.mi_intr_reg |= 0x04;
              if (MI_register.mi_intr_reg & MI_register.mi_intr_mask_reg)
-                Cause = (Cause | 0x400) & 0xFFFFFF83;
+                g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
              else
                 return;
              if ((Status & 7) != 1) return;
-             if (!(Status & Cause & 0xFF00)) return;
+             if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           }
           break;
 
@@ -529,11 +529,11 @@ void gen_interupt(void)
           if (!(sp_register.sp_status_reg & 0x40)) return; // !intr_on_break
           MI_register.mi_intr_reg |= 0x01;
           if (MI_register.mi_intr_reg & MI_register.mi_intr_mask_reg)
-             Cause = (Cause | 0x400) & 0xFFFFFF83;
+             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
           else
              return;
           if ((Status & 7) != 1) return;
-          if (!(Status & Cause & 0xFF00)) return;
+          if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           break;
 
        case DP_INT:
@@ -542,11 +542,11 @@ void gen_interupt(void)
           dpc_register.dpc_status |= 0x81;
           MI_register.mi_intr_reg |= 0x20;
           if (MI_register.mi_intr_reg & MI_register.mi_intr_mask_reg)
-             Cause = (Cause | 0x400) & 0xFFFFFF83;
+             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
           else
              return;
           if ((Status & 7) != 1) return;
-          if (!(Status & Cause & 0xFF00)) return;
+          if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           break;
 
        case HW2_INT:
@@ -554,7 +554,7 @@ void gen_interupt(void)
           remove_interupt_event();
           // setup r4300 Status flags: reset TS, and SR, set IM2
           Status = (Status & ~0x00380000) | 0x1000;
-          Cause = (Cause | 0x1000) & 0xFFFFFF83;
+          g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x1000) & 0xFFFFFF83;
           /* the exception_general() call below will jump to the interrupt vector (0x80000180) and setup the
            * interpreter or dynarec
            */
@@ -565,7 +565,7 @@ void gen_interupt(void)
           remove_interupt_event();
           // setup r4300 Status flags: reset TS and SR, set BEV, ERL, and SR
           Status = (Status & ~0x00380000) | 0x00500004;
-          Cause  = 0x00000000;
+          g_cp0_regs[CP0_CAUSE_REG]  = 0x00000000;
           // simulate the soft reset code which would run from the PIF ROM
           r4300_reset_soft();
           // clear all interrupts, reset interrupt counters back to 0
@@ -606,7 +606,7 @@ void gen_interupt(void)
         EPC = pcaddr;
         pcaddr = 0x80000180;
         Status |= 2;
-        Cause &= 0x7FFFFFFF;
+        g_cp0_regs[CP0_CAUSE_REG] &= 0x7FFFFFFF;
         pending_exception=1;
     } else {
         exception_general();

@@ -44,7 +44,7 @@ int check_cop1_unusable(void)
 {
    if (!(Status & 0x20000000))
      {
-    Cause = (11 << 2) | 0x10000000;
+    g_cp0_regs[CP0_CAUSE_REG] = (11 << 2) | 0x10000000;
     exception_general();
     return 1;
      }

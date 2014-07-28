@@ -431,7 +431,7 @@ void *get_addr(u_int vaddr)
   if(r==0) return get_addr(vaddr);
   // Execute in unmapped page, generate pagefault execption
   Status|=2;
-  Cause=(vaddr<<31)|0x8;
+  g_cp0_regs[CP0_CAUSE_REG] =(vaddr<<31)|0x8;
   EPC=(vaddr&1)?vaddr-5:vaddr;
   BadVAddr=(vaddr&~1);
   Context=(Context&0xFF80000F)|((BadVAddr>>9)&0x007FFFF0);
@@ -525,7 +525,7 @@ void *get_addr_32(u_int vaddr,u_int flags)
   if(r==0) return get_addr(vaddr);
   // Execute in unmapped page, generate pagefault execption
   Status|=2;
-  Cause=(vaddr<<31)|0x8;
+  g_cp0_regs[CP0_CAUSE_REG] = (vaddr<<31)|0x8;
   EPC=(vaddr&1)?vaddr-5:vaddr;
   BadVAddr=(vaddr&~1);
   Context=(Context&0xFF80000F)|((BadVAddr>>9)&0x007FFFF0);

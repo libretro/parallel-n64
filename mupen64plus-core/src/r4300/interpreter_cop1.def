@@ -125,7 +125,7 @@ DECLARE_INSTRUCTION(DIV_D)
    {
       //FCR31 |= 0x8020;
       /*FCR31 |= 0x8000;
-      Cause = 15 << 2;
+      g_cp0_regs[CP0_CAUSE_REG] = 15 << 2;
       exception_general();*/
       DebugMessage(M64MSG_ERROR, "DIV_D by 0");
       //return;

@@ -34,16 +34,18 @@ void TLB_refill_exception(unsigned int address, int w)
    int usual_handler = 0, i;
 
    if (r4300emu != CORE_DYNAREC && w != 2) update_count();
-   if (w == 1) Cause = (3 << 2);
-   else Cause = (2 << 2);
+   if (w == 1)
+      g_cp0_regs[CP0_CAUSE_REG] = (3 << 2);
+   else
+      g_cp0_regs[CP0_CAUSE_REG] = (2 << 2);
    BadVAddr = address;
    Context = (Context & 0xFF80000F) | ((address >> 9) & 0x007FFFF0);
    EntryHi = address & 0xFFFFE000;
    if (Status & 0x2) // Test de EXL
      {
     generic_jump_to(0x80000180);
-    if(delay_slot==1 || delay_slot==3) Cause |= 0x80000000;
-    else Cause &= 0x7FFFFFFF;
+    if(delay_slot==1 || delay_slot==3) g_cp0_regs[CP0_CAUSE_REG] |= 0x80000000;
+    else g_cp0_regs[CP0_CAUSE_REG] &= 0x7FFFFFFF;
      }
    else
      {
@@ -56,7 +58,7 @@ void TLB_refill_exception(unsigned int address, int w)
       }
     else EPC = PC->addr;
          
-    Cause &= ~0x80000000;
+    g_cp0_regs[CP0_CAUSE_REG] &= ~0x80000000;
     Status |= 0x2; //EXL=1
     
     if (address >= 0x80000000 && address < 0xc0000000)
@@ -81,12 +83,12 @@ void TLB_refill_exception(unsigned int address, int w)
      }
    if(delay_slot==1 || delay_slot==3)
      {
-    Cause |= 0x80000000;
+    g_cp0_regs[CP0_CAUSE_REG] |= 0x80000000;
     EPC-=4;
      }
    else
      {
-    Cause &= 0x7FFFFFFF;
+    g_cp0_regs[CP0_CAUSE_REG] &= 0x7FFFFFFF;
      }
    if(w != 2) EPC-=4;
    
@@ -118,12 +120,12 @@ void exception_general(void)
    
    if(delay_slot==1 || delay_slot==3)
      {
-    Cause |= 0x80000000;
+    g_cp0_regs[CP0_CAUSE_REG] |= 0x80000000;
     EPC-=4;
      }
    else
      {
-    Cause &= 0x7FFFFFFF;
+    g_cp0_regs[CP0_CAUSE_REG] &= 0x7FFFFFFF;
      }
    generic_jump_to(0x80000180);
    last_addr = PC->addr;

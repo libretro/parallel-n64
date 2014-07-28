@@ -83,7 +83,7 @@ DECLARE_INSTRUCTION(MTC0)
       remove_event(COMPARE_INT);
       add_interupt_event_count(COMPARE_INT, (unsigned int)rrt);
       Compare = (unsigned int) rrt;
-      Cause = Cause & 0xFFFF7FFF; //Timer interupt is clear
+      g_cp0_regs[CP0_CAUSE_REG] = g_cp0_regs[CP0_CAUSE_REG] & 0xFFFF7FFF; //Timer interupt is clear
       break;
     case 12:   // Status
       if((rrt & 0x04000000) != (Status & 0x04000000))
@@ -100,13 +100,14 @@ DECLARE_INSTRUCTION(MTC0)
       interupt_unsafe_state = 0;
       ADD_TO_PC(-1);
       break;
-    case 13:   // Cause
+    case CP0_CAUSE_REG:
       if (rrt!=0)
       {
          DebugMessage(M64MSG_ERROR, "MTC0 instruction trying to write Cause register with non-0 value");
          stop = 1;
       }
-      else Cause = (unsigned int) rrt;
+      else
+      g_cp0_regs[CP0_CAUSE_REG] = (unsigned int) rrt;
       break;
     case 14:   // EPC
       EPC = (unsigned int) rrt;

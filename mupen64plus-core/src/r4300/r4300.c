@@ -131,7 +131,7 @@ void r4300_reset_hard(void)
     Config= 0x6e463;
     PRevID = 0xb00;
     Count = 0x5000;
-    Cause = 0x5C;
+    g_cp0_regs[CP0_CAUSE_REG] = 0x5C;
     Context = 0x7FFFF0;
     EPC = 0xFFFFFFFF;
     BadVAddr = 0xFFFFFFFF;
