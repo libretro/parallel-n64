@@ -724,7 +724,12 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
       rdp.update |= UPDATE_ALPHA_COMPARE;
 
    if (mask & RDP_Z_SOURCE_SEL) // z-src selection
+   {
+      rdp.zsrc = (rdp.othermode_l & 0x00000004) >> 2;
+      FRDP ("z-src sel: %s\n", str_zs[rdp.zsrc]);
+      FRDP ("z-src sel: %08lx\n", rdp.zsrc);
       rdp.update |= UPDATE_ZBUF_ENABLED;
+   }
 
    if (mask & 0xFFFFFFF8) // rendermode / blender bits
    {

@@ -1013,7 +1013,7 @@ void do_triangle_stuff_2 (uint16_t linew, uint8_t no_clip, int old_interpolate)
 void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do the triangle stuff :P (to keep from writing code twice)
 {
    int i;
-   float maxZ = (((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2) != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : rdp.prim_depth;
+   float maxZ = (rdp.zsrc != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : rdp.prim_depth;
    uint8_t no_clip = 2;
 
    for (i=0; i<rdp.n_global; i++)
@@ -1049,7 +1049,7 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
          }
       }
 
-      if ((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2)
+      if (rdp.zsrc == 1)
          rdp.vtxbuf[i].z = rdp.prim_depth;
 
       // Don't remove clipping, or it will freeze
@@ -1195,7 +1195,7 @@ void update(void)
          int depthmask_val = FXFALSE;
          rdp.update ^= UPDATE_ZBUF_ENABLED;
 
-         if (((rdp.flags & ZBUF_ENABLED) || ((rdp.othermode_l & RDP_Z_SOURCE_SEL) >> 2)) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+         if (((rdp.flags & ZBUF_ENABLED) || (rdp.zsrc == 1) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY)))
          {
             if (rdp.flags & ZBUF_COMPARE)
             {

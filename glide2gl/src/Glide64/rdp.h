@@ -753,6 +753,7 @@ struct RDP
    uint32_t cmb_flags, cmb_flags_2;
 
    // othermode_l flags
+   int zsrc; // 0 = pixel, 1 = prim
    uint8_t alpha_dither_mode;
 
    // Matrices
