@@ -634,21 +634,17 @@ COMBINE cmb;
   rdp.col[2] *= byte; \
   rdp.cmb_flags |= flag; \
 }
-#define MULSHADE(color) XSHADE_NEW(color, CMB_MULT)
-#define MULSHADE_PRIM() XSHADE_NEW(rdp.prim_color_sep, CMB_MULT)
-#define MULSHADE_ENV() XSHADE_NEW(rdp.env_color_sep, CMB_MULT)
-#define MULSHADE_1MPRIM() XSHADE1M_NEW(rdp.prim_color_sep, CMB_MULT)
-#define MULSHADE_1MENV() XSHADE1M_NEW(rdp.env_color_sep, CMB_MULT)
-#define MULSHADE_PRIMSUBENV() XSHADEC1MC2_NEW(rdp.prim_color_sep, rdp.env_color_sep, CMB_MULT)
-#define MULSHADE_ENVSUBPRIM() XSHADEC1MC2_NEW(rdp.env_color_sep, rdp.prim_color_sep, CMB_MULT)
-#define MULSHADE_BYTE(byte) XSHADE_BYTE(byte, CMB_MULT)
+#define MULSHADE_1MPRIM() XSHADE1M_NEW(rdp.prim_color_sep, CMB_MULT);
+#define MULSHADE_1MENV() XSHADE1M_NEW(rdp.env_color_sep, CMB_MULT);
+#define MULSHADE_PRIMSUBENV() XSHADEC1MC2_NEW(rdp.prim_color_sep, rdp.env_color_sep, CMB_MULT);
+#define MULSHADE_ENVSUBPRIM() XSHADEC1MC2_NEW(rdp.env_color_sep, rdp.prim_color_sep, CMB_MULT);
+#define MULSHADE_BYTE(byte) XSHADE_BYTE(byte, CMB_MULT);
 #define MULSHADE_PRIMA() MULSHADE_BYTE((rdp.prim_color_sep[3]))
 #define MULSHADE_ENVA() MULSHADE_BYTE((rdp.env_color_sep[3]))
 #define MULSHADE_1MENVA() MULSHADE_BYTE(((~rdp.env_color_sep[3])))
 #define MULSHADE_PRIMLOD() MULSHADE_BYTE((rdp.prim_lodfrac & 0xFF))
 #define MULSHADE_K5() MULSHADE_BYTE(rdp.K5)
 
-#define SETSHADE(color) XSHADE_NEW(color, CMB_SET)
 #define SETSHADE_PRIM() XSHADE_NEW(rdp.prim_color_sep, CMB_SET)
 #define SETSHADE_ENV() XSHADE_NEW(rdp.env_color_sep, CMB_SET)
 #define SETSHADE_BYTE(byte) XSHADE_BYTE(byte, CMB_SET)
@@ -1892,7 +1888,7 @@ static void cc_t0_sub__shade_mul_center(void)
          GR_COMBINE_FACTOR_ONE,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE(rdp.key_center);
+   XSHADE_NEW(rdp.key_center, CMB_MULT);
    USE_T0 ();
 }
 
@@ -1976,7 +1972,7 @@ static void cc_t0_add_shade_mul_env ()
          GR_COMBINE_FACTOR_ONE,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE_ENV ();
+   XSHADE_NEW(rdp.env_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -1986,7 +1982,7 @@ static void cc__t1_mul_t0_add_t0__add_prim_mul_shade () //Aded by Gonetz
          GR_COMBINE_FACTOR_ONE,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    cmb.tex |= 3;
    cmb.tmu1_func = GR_COMBINE_FUNCTION_LOCAL;
    cmb.tmu0_func = GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL;
@@ -2117,7 +2113,7 @@ static void cc_t0_mul_prim_mul_shade_add_prim_mul_shade ()
          GR_COMBINE_FACTOR_LOCAL,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -2186,7 +2182,7 @@ static void cc__t0_mul_t1__mul_prim_add_env ()
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
    CC_ENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    T0_MUL_T1 ();
 }
 
@@ -2329,7 +2325,7 @@ static void cc__t0_mul_primlod__add__prim_mul_shade(void)
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    CC_PRIMLOD ();
    USE_T0 ();
 }
@@ -2341,7 +2337,7 @@ static void cc_t0_mul_primlod_add_prim_mul_shade_add_env ()
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    ADDSHADE_ENV ();
    CC_PRIMLOD ();
    USE_T0 ();
@@ -2354,7 +2350,7 @@ static void cc_t1_mul_primlod_add_prim_mul_shade_add_env ()
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    ADDSHADE_ENV ();
    CC_PRIMLOD ();
    USE_T1 ();
@@ -2503,7 +2499,7 @@ static void cc_t0_mul_scale_add_prim ()
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
-   SETSHADE (rdp.key_scale);
+   XSHADE_NEW(rdp.key_scale, CMB_SET);
    CC_PRIM ();
    USE_T0 ();
 }
@@ -2730,7 +2726,7 @@ static void cc_prim_mul_shade_add_t0 ()
          GR_COMBINE_FACTOR_ONE,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -2741,7 +2737,7 @@ static void cc_prim_mul_shade_add_env ()
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
    CC_ENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
 }
 
 static void cc_env_mul_shade_add_env ()  //Added by Gonetz
@@ -2751,7 +2747,7 @@ static void cc_env_mul_shade_add_env ()  //Added by Gonetz
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
    CC_ENV ();
-   MULSHADE_ENV ();
+   XSHADE_NEW(rdp.env_color_sep, CMB_MULT);
 }
 
 // ** A*B+C*D **
@@ -2774,7 +2770,7 @@ static void cc_t0_mul_prim_add_shade_sub_env_mul_prim () //Added by Gonetz
          GR_COMBINE_OTHER_CONSTANT);
    CC_PRIM ();
    SUBSHADE_ENV ()
-      MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -2785,7 +2781,7 @@ static void cc_t0_mul_prim_add_shade_mul_shadea_mul_prim ()
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
    CC_PRIM ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    MULSHADE_SHADEA ();
    USE_T0 ();
 }
@@ -2796,7 +2792,7 @@ static void cc__t0_mul_t1__mul_prim_add_prim_mul_shade () //Added by Gonetz
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    CC_PRIM ();
    T0_MUL_T1 ();
 }
@@ -2807,7 +2803,7 @@ static void cc_t0_mul_env_add_prim_mul_shade () //Added by Gonetz
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    CC_ENV ();
    USE_T0 ();
 }
@@ -2818,7 +2814,7 @@ static void cc_t0_mul_enva_add_prim_mul_shade () //Added by Gonetz
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    CC_ENVA ();
    USE_T0 ();
 }
@@ -3009,7 +3005,7 @@ static void cc_t0_mul_prim_mul_shade ()
          GR_COMBINE_FACTOR_LOCAL,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -3061,7 +3057,7 @@ static void cc_t1_mul_prim_mul_shade ()
          GR_COMBINE_FACTOR_LOCAL,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T1 ();
 }
 
@@ -3082,7 +3078,7 @@ static void cc_t0_mul_env_mul_shade ()
          GR_COMBINE_FACTOR_LOCAL,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE_ENV ();
+   XSHADE_NEW(rdp.env_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -3092,7 +3088,7 @@ static void cc_t0_mul_scale_mul_shade ()
          GR_COMBINE_FACTOR_LOCAL,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE (rdp.key_scale);
+   XSHADE_NEW(rdp.key_scale, CMB_MULT);
    USE_T0 ();
 }
 
@@ -3113,7 +3109,7 @@ static void cc_prim_mul_env_mul_shade ()
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
    CC_ENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
 }
 
 static void cc_prim_mul_one_sub_env_mul_shade ()
@@ -3123,7 +3119,7 @@ static void cc_prim_mul_one_sub_env_mul_shade ()
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
    CC_1SUBENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
 }
 
 // ** A*B*C+D **
@@ -3134,7 +3130,7 @@ static void cc_t0_mul_prim_mul_shade_add_env ()
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
    CC_ENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -3223,7 +3219,7 @@ static void cc__t0_sub_t1__mul_prim_mul_shade_add_prim_mul_env ()
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
    CC_PRIMMULENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
 }
 
 static void cc__t0_mul_prim_mul_env__add__prim_mul_shade ()
@@ -3233,7 +3229,7 @@ static void cc__t0_mul_prim_mul_env__add__prim_mul_shade ()
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
    CC_PRIMMULENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -3244,7 +3240,7 @@ static void cc__t1_mul_prim_mul_env__add__prim_mul_shade ()
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
    CC_PRIMMULENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T1 ();
 }
 
@@ -3459,7 +3455,7 @@ static void cc__t0_mul_prima_add_t0__sub_center_mul_scale ()
          GR_CMBX_ITRGB, 0,
          GR_CMBX_ZERO, 0);
    cmb.ccolor= (rdp.CENTER) & 0xFFFFFF00;
-   SETSHADE(rdp.key_scale);
+   XSHADE_NEW(rdp.key_scale, CMB_SET);
 }
 
 static void cc__t1_inter_t0_using_primlod__sub_shade_mul_prim ()
@@ -3673,7 +3669,7 @@ static void cc_one_sub_t0_mul_prim_mul_shade () //Added by Gonetz
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_NONE);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -3704,7 +3700,7 @@ static void cc_t0_sub_t1_mul_prim_mul_shade_add_t1 ()  //Aded by Gonetz
          GR_CMBX_ITRGB, GR_FUNC_MODE_ZERO,
          GR_CMBX_ZERO, 1,
          GR_CMBX_ZERO, 0);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
 }
 
 static void cc_t0_sub_prim_mul_t0a_add_prim ()  //Aded by Gonetz
@@ -4040,7 +4036,7 @@ static void cc_t0_sub__prim_mul_shade__mul_enva_add__prim_mul_shade ()  //Aded b
          GR_COMBINE_FACTOR_LOCAL_ALPHA,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    SETSHADE_A_ENV ();
    USE_T0 ();
 }
@@ -4126,7 +4122,7 @@ static void cc__t0_sub_t1_mul_enva_add_shade__sub_env_mul_prim ()
          GR_CMBX_ITRGB, GR_FUNC_MODE_ZERO,
          GR_CMBX_ZERO, 1,
          GR_CMBX_TEXTURE_RGB, 0);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    CC_PRIMMULENV ();
 }
 
@@ -4320,7 +4316,7 @@ static void cc__one_sub_prim_mul_shade__mul_t0_add__prim_mul_shade () //Aded by 
          GR_COMBINE_FACTOR_ONE_MINUS_LOCAL,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -4492,7 +4488,7 @@ static void cc_one_sub_prim_mul__t0_mul_t1__add__prim_mul_shade ()
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
    CC_1SUBPRIM ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    T0_MUL_T1 ();
 }
 
@@ -5927,7 +5923,7 @@ static void cc_env_sub_primshade_mul_t0_add_primshade ()
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
    CC_ENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -5940,7 +5936,7 @@ static void cc_env_sub_primshade_mul_t1_add_primshade ()
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
    CC_ENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -6151,8 +6147,8 @@ static void cc_shade_sub_env_mul_t0_mul_prim_add_prim_mul_env ()
          GR_COMBINE_OTHER_ITERATED);
    CC_PRIMMULENV ();
    SUBSHADE_ENV ();
-   MULSHADE_PRIM()
-      USE_T0 ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
+   USE_T0 ();
 }
 
 //Added by Gonetz
@@ -6174,7 +6170,7 @@ static void cc_shade_sub_env_mul_prim_add_t0 ()
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
    SUBSHADE_ENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    USE_T0 ();
 }
 
@@ -6219,7 +6215,7 @@ static void cc_shade_sub_env_mul_prim_add_env ()
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
    SUBSHADE_ENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    CC_ENV ();
 }
 
@@ -7313,7 +7309,7 @@ static void cc__prim_mul_shade__inter_env_using_enva ()
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
    CC_ENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    SETSHADE_A_ENV ();
 }
 
@@ -7324,7 +7320,7 @@ static void cc__prim_mul_shade__inter_env_using__prim_mul_shade_alpha ()
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
    CC_ENV ();
-   MULSHADE_PRIM ();
+   XSHADE_NEW(rdp.prim_color_sep, CMB_MULT);
    MULSHADE_A_PRIM ();
 }
 
