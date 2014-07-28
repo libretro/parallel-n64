@@ -114,8 +114,8 @@ DECLARE_INSTRUCTION(MTC0)
       break;
     case CP0_PREVID_REG:
       break;
-    case 16:  // Config
-      Config = (unsigned int) rrt;
+    case CP0_CONFIG_REG:
+      g_cp0_regs[CP0_CONFIG_REG] = (unsigned int) rrt;
       break;
     case CP0_WATCHLO_REG:
       g_cp0_regs[CP0_WATCHLO_REG] = (unsigned int) rrt & 0xFFFFFFFF;

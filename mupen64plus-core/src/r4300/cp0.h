@@ -30,7 +30,6 @@
 #define Compare g_cp0_regs[11]
 #define Status g_cp0_regs[12]
 #define EPC g_cp0_regs[14]
-#define Config g_cp0_regs[16]
 
 enum {
    CP0_INDEX_REG,
