@@ -575,12 +575,6 @@ COMBINE cmb;
    (uint8_t)(color1[2] * (color2[1] /255.0f)) <<   8 ; \
 }
 
-#define CC_C1SUBC2(color1, color2) { \
-  cmb.ccolor=(uint8_t)( color1[0] - (int)((color2 & 0xFF000000) >> 24) ) << 24 | \
-  (uint8_t)( color1[1] - (int)((color2 & 0x00FF0000) >> 16) ) << 16 | \
-  (uint8_t)( color1[2] - (int)((color2 & 0x0000FF00) >>  8) ) <<  8 ; \
-}
-
 #define CC_C1SUBC2_NEW(color1, color2) { \
   cmb.ccolor = (uint8_t)(color1[0] - color2[0]) << 24 | \
   (uint8_t)(color1[1] - color2[1]) << 16 | \
@@ -617,13 +611,6 @@ COMBINE cmb;
   rdp.col[0] *= color[0] / 255.0f; \
   rdp.col[1] *= color[1] / 255.0f; \
   rdp.col[2] *= color[2] / 255.0f; \
-  rdp.cmb_flags |= flag; \
-}
-
-#define XSHADE1M(color, flag) { \
-  rdp.col[0] *= 1.0f-(((color & 0xFF000000) >> 24)/255.0f); \
-  rdp.col[1] *= 1.0f-(((color & 0x00FF0000) >> 16)/255.0f); \
-  rdp.col[2] *= 1.0f-(((color & 0x0000FF00) >> 8)/255.0f); \
   rdp.cmb_flags |= flag; \
 }
 
@@ -2541,7 +2528,7 @@ static void cc__t0_add__t1_mul_scale__mul_env_sub_center_add_prim ()
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
-   CC_C1SUBC2(rdp.env_color_sep, rdp.CENTER);
+   CC_C1SUBC2_NEW(rdp.env_color_sep, rdp.key_center);
    SETSHADE_PRIM ();
    MOD_1 (TMOD_TEX_MUL_COL);
    MOD_1_COL (rdp.SCALE & 0xFFFFFF00);
@@ -5409,7 +5396,7 @@ static void cc_prim_sub_center_mul__t0_inter_t1_using_enva__add_env ()
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_CONSTANT);
-   CC_C1SUBC2 (rdp.prim_color_sep, rdp.CENTER);
+   CC_C1SUBC2_NEW (rdp.prim_color_sep, rdp.key_center);
    SETSHADE_ENV ();
    T0_INTER_T1_USING_FACTOR (factor);
 }
