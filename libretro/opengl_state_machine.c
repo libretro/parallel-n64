@@ -503,7 +503,7 @@ void sglEnter(void)
          glDisableVertexAttribArray(i);
    }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer_framebuffer ? Framebuffer_framebuffer : render_iface.get_current_framebuffer());
+    sglBindFramebuffer(GL_FRAMEBUFFER, Framebuffer_framebuffer);
 
     glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
     glClearColor(ClearColor_red, ClearColor_green, ClearColor_blue, ClearColor_alpha);
