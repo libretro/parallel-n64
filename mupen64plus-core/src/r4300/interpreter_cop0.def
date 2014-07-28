@@ -117,11 +117,11 @@ DECLARE_INSTRUCTION(MTC0)
     case 16:  // Config
       Config = (unsigned int) rrt;
       break;
-    case 18:  // WatchLo
-      WatchLo = (unsigned int) rrt & 0xFFFFFFFF;
+    case CP0_WATCHLO_REG:
+      g_cp0_regs[CP0_WATCHLO_REG] = (unsigned int) rrt & 0xFFFFFFFF;
       break;
-    case 19:  // WatchHi
-      WatchHi = (unsigned int) rrt & 0xFFFFFFFF;
+    case CP0_WATCHHI_REG:
+      g_cp0_regs[CP0_WATCHHI_REG] = (unsigned int) rrt & 0xFFFFFFFF;
       break;
     case 27:  // CacheErr
       break;

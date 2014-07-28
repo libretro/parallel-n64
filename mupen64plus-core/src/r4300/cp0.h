@@ -35,8 +35,6 @@
 #define EPC g_cp0_regs[14]
 #define PRevID g_cp0_regs[15]
 #define Config g_cp0_regs[16]
-#define WatchLo g_cp0_regs[18]
-#define WatchHi g_cp0_regs[19]
 #define TagLo g_cp0_regs[28]
 #define TagHi g_cp0_regs[29]
 
