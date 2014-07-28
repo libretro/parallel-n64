@@ -125,11 +125,11 @@ DECLARE_INSTRUCTION(MTC0)
       break;
     case 27:  // CacheErr
       break;
-    case 28:  // TagLo
-      TagLo = (unsigned int) rrt & 0x0FFFFFC0;
+    case CP0_TAGLO_REG:
+      g_cp0_regs[CP0_TAGLO_REG] = (unsigned int) rrt & 0x0FFFFFC0;
       break;
-    case 29: // TagHi
-      TagHi =0;
+    case CP0_TAGHI_REG:
+      g_cp0_regs[CP0_TAGHI_REG] =0;
       break;
     default:
       DebugMessage(M64MSG_ERROR, "Unknown MTC0 write: %d", PC->f.r.nrd);
