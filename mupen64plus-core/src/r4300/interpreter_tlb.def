@@ -24,7 +24,7 @@
 DECLARE_INSTRUCTION(TLBR)
 {
    int index;
-   index = Index & 0x1F;
+   index = g_cp0_regs[CP0_INDEX_REG] & 0x1F;
    PageMask = tlb_e[index].mask << 13;
    EntryHi = ((tlb_e[index].vpn2 << 13) | tlb_e[index].asid);
    EntryLo0 = (tlb_e[index].pfn_even << 6) | (tlb_e[index].c_even << 3)
@@ -141,7 +141,7 @@ static void TLBWrite(unsigned int idx)
 
 DECLARE_INSTRUCTION(TLBWI)
 {
-   TLBWrite(Index&0x3F);
+   TLBWrite(g_cp0_regs[CP0_INDEX_REG] & 0x3F);
    ADD_TO_PC(1);
 }
 
@@ -156,7 +156,7 @@ DECLARE_INSTRUCTION(TLBWR)
 DECLARE_INSTRUCTION(TLBP)
 {
    int i;
-   Index |= 0x80000000;
+   g_cp0_regs[CP0_INDEX_REG] |= 0x80000000;
    for (i=0; i<32; i++)
    {
       if (((tlb_e[i].vpn2 & (~tlb_e[i].mask)) ==
@@ -164,7 +164,7 @@ DECLARE_INSTRUCTION(TLBP)
         ((tlb_e[i].g) ||
          (tlb_e[i].asid == (EntryHi & 0xFF))))
       {
-         Index = i;
+         g_cp0_regs[CP0_INDEX_REG] = i;
          break;
       }
    }

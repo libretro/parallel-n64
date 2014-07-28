@@ -39,9 +39,9 @@ DECLARE_INSTRUCTION(MTC0)
 {
   switch(PC->f.r.nrd)
   {
-    case 0:    // Index
-      Index = (unsigned int) rrt & 0x8000003F;
-      if ((Index & 0x3F) > 31) 
+    case CP0_INDEX_REG:
+      g_cp0_regs[CP0_INDEX_REG] = (unsigned int) rrt & 0x8000003F;
+      if ((g_cp0_regs[CP0_INDEX_REG] & 0x3F) > 31) 
       {
         DebugMessage(M64MSG_ERROR, "MTC0 instruction writing Index register with TLB index > 31");
         stop=1;

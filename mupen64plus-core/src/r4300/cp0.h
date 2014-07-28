@@ -23,7 +23,6 @@
 #define M64P_R4300_CP0_H
 
 /* registers macros */
-#define Index g_cp0_regs[0]
 #define Random g_cp0_regs[1]
 #define EntryLo0 g_cp0_regs[2]
 #define EntryLo1 g_cp0_regs[3]
@@ -44,6 +43,36 @@
 #define TagLo g_cp0_regs[28]
 #define TagHi g_cp0_regs[29]
 #define ErrorEPC g_cp0_regs[30]
+
+enum {
+   CP0_INDEX_REG,
+   CP0_RANDOM_REG,
+   CP0_ENTRYLO0_REG,
+   CP0_ENTRYLO1_REG,
+   CP0_CONTEXT_REG,
+   CP0_PAGEMASK_REG,
+   CP0_WIRED_REG,
+   /* 7 is unused */
+   CP0_BADVADDR_REG = 8,
+   CP0_COUNT_REG,
+   CP0_ENTRYHI_REG,
+   CP0_COMPARE_REG,
+   CP0_STATUS_REG,
+   CP0_CAUSE_REG,
+   CP0_EPC_REG,
+   CP0_PREVID_REG,
+   CP0_CONFIG_REG,
+   CP0_LLADDR_REG,
+   CP0_WATCHLO_REG,
+   CP0_WATCHHI_REG,
+   CP0_XCONTEXT_REG,
+   /* 21 - 27 are unused */
+   CP0_TAGLO_REG = 28,
+   CP0_TAGHI_REG,
+   CP0_ERROREPC_REG,
+   /* 31 is unused */
+   CP0_REGS_COUNT = 32
+};
 
 extern unsigned int g_cp0_regs[32];
 

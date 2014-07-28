@@ -10968,10 +10968,10 @@ void TLBWI_new(void)
 {
   unsigned int i;
   /* Remove old entries */
-  unsigned int old_start_even=tlb_e[Index&0x3F].start_even;
-  unsigned int old_end_even=tlb_e[Index&0x3F].end_even;
-  unsigned int old_start_odd=tlb_e[Index&0x3F].start_odd;
-  unsigned int old_end_odd=tlb_e[Index&0x3F].end_odd;
+  unsigned int old_start_even=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].start_even;
+  unsigned int old_end_even=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].end_even;
+  unsigned int old_start_odd=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].start_odd;
+  unsigned int old_end_odd=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].end_odd;
   for (i=old_start_even>>12; i<=old_end_even>>12; i++)
   {
     if(i<0x80000||i>0xBFFFF)
@@ -10989,12 +10989,12 @@ void TLBWI_new(void)
     }
   }
   cached_interpreter_table.TLBWI();
-  //DebugMessage(M64MSG_VERBOSE, "TLBWI: index=%d",Index);
-  //DebugMessage(M64MSG_VERBOSE, "TLBWI: start_even=%x end_even=%x phys_even=%x v=%d d=%d",tlb_e[Index&0x3F].start_even,tlb_e[Index&0x3F].end_even,tlb_e[Index&0x3F].phys_even,tlb_e[Index&0x3F].v_even,tlb_e[Index&0x3F].d_even);
-  //DebugMessage(M64MSG_VERBOSE, "TLBWI: start_odd=%x end_odd=%x phys_odd=%x v=%d d=%d",tlb_e[Index&0x3F].start_odd,tlb_e[Index&0x3F].end_odd,tlb_e[Index&0x3F].phys_odd,tlb_e[Index&0x3F].v_odd,tlb_e[Index&0x3F].d_odd);
+  //DebugMessage(M64MSG_VERBOSE, "TLBWI: index=%d",g_cp0_regs[CP0_INDEX_REG]);
+  //DebugMessage(M64MSG_VERBOSE, "TLBWI: start_even=%x end_even=%x phys_even=%x v=%d d=%d",tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].start_even,tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].end_even,tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].phys_even,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].v_even,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].d_even);
+  //DebugMessage(M64MSG_VERBOSE, "TLBWI: start_odd=%x end_odd=%x phys_odd=%x v=%d d=%d",tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].start_odd,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].end_odd,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].phys_odd,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].v_odd,tlb_e[g_cp0_regs[CP0_INDEX_REG]&0x3F].d_odd);
   /* Combine tlb_LUT_r, tlb_LUT_w, and invalid_code into a single table
      for fast look up. */
-  for (i=tlb_e[Index&0x3F].start_even>>12; i<=tlb_e[Index&0x3F].end_even>>12; i++)
+  for (i=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].start_even>>12; i<=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].end_even>>12; i++)
   {
     //DebugMessage(M64MSG_VERBOSE, "%x: r:%8x w:%8x",i,tlb_LUT_r[i],tlb_LUT_w[i]);
     if(i<0x80000||i>0xBFFFF)
@@ -11015,7 +11015,7 @@ void TLBWI_new(void)
     }
     //DebugMessage(M64MSG_VERBOSE, "memory_map[%x]: %8x (+%8x)",i,memory_map[i],memory_map[i]<<2);
   }
-  for (i=tlb_e[Index&0x3F].start_odd>>12; i<=tlb_e[Index&0x3F].end_odd>>12; i++)
+  for (i=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].start_odd>>12; i<=tlb_e[g_cp0_regs[CP0_INDEX_REG] & 0x3F].end_odd>>12; i++)
   {
     //DebugMessage(M64MSG_VERBOSE, "%x: r:%8x w:%8x",i,tlb_LUT_r[i],tlb_LUT_w[i]);
     if(i<0x80000||i>0xBFFFF)
