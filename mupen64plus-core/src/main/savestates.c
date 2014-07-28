@@ -225,8 +225,8 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 
     llbit = GETDATA(curr, unsigned int);
     COPYARRAY(reg, curr, long long int, 32);
-    COPYARRAY(reg_cop0, curr, unsigned int, 32);
-    set_fpr_pointers(Status);  // Status is reg_cop0[12]
+    COPYARRAY(g_cp0_regs, curr, unsigned int, 32);
+    set_fpr_pointers(Status);  // Status is g_cp0_regs[12]
     lo = GETDATA(curr, long long int);
     hi = GETDATA(curr, long long int);
     COPYARRAY(reg_cop1_fgr_64, curr, long long int, 32);
@@ -485,7 +485,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
 
     PUTDATA(curr, unsigned int, llbit);
     PUTARRAY(reg, curr, long long int, 32);
-    PUTARRAY(reg_cop0, curr, unsigned int, 32);
+    PUTARRAY(g_cp0_regs, curr, unsigned int, 32);
     PUTDATA(curr, long long int, lo);
     PUTDATA(curr, long long int, hi);
 

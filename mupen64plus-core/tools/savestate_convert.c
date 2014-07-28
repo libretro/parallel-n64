@@ -75,7 +75,7 @@ char *tlb_LUT_w;   /* 0x400000 bytes */
 
 char llbit[4];
 char reg[32][8];
-char reg_cop0[32][4];
+char g_cp0_regs[32][4];
 char lo[8];
 char hi[8];
 char reg_cop1_fgr_64[32][8];
@@ -288,7 +288,7 @@ int load_original_mupen64(const char *filename)
     gzread(f, reg, 32*8);
     for (i = 0; i < 32; i++)
     {
-        gzread(f, reg_cop0[i], 4);
+        gzread(f, g_cp0_regs[i], 4);
         gzread(f, buffer, 4); /* for compatibility with older versions. */
     }
     gzread(f, lo, 8);
@@ -375,7 +375,7 @@ int save_newest(const char *filename)
 
     gzwrite(f, llbit, 4);
     gzwrite(f, reg[0], 32*8);
-    gzwrite(f, reg_cop0[0], 32*4);
+    gzwrite(f, g_cp0_regs[0], 32*4);
     gzwrite(f, lo, 8);
     gzwrite(f, hi, 8);
     gzwrite(f, reg_cop1_fgr_64[0], 32*8);

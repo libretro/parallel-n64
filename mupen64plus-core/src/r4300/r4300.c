@@ -87,7 +87,7 @@ void r4300_reset_hard(void)
     for (i = 0; i < 32; i++)
     {
         reg[i]=0;
-        reg_cop0[i]=0;
+        g_cp0_regs[i]=0;
         reg_cop1_fgr_64[i]=0;
 
         // --------------tlb------------------------

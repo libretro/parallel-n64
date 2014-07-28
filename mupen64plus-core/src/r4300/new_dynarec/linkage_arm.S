@@ -109,7 +109,7 @@ dynarec_local:
 	DRC_VAR(reg, 256)
 	DRC_VAR(hi, 8)
 	DRC_VAR(lo, 8)
-	DRC_VAR(reg_cop0, 128)
+	DRC_VAR(g_cp0_regs, 128)
 	DRC_VAR(reg_cop1_simple, 128)
 	DRC_VAR(reg_cop1_double, 128)
 	DRC_VAR(rounding_modes, 16)
@@ -260,21 +260,21 @@ FUNCTION(exec_pagefault):
 	/* r0 = instruction pointer */
 	/* r1 = fault address */
 	/* r2 = cause */
-	ldr	r3, [fp, #LO_reg_cop0+48-LO_dynarec_local] /* Status */
+	ldr	r3, [fp, #LO_g_cp0_regs+48-LO_dynarec_local] /* Status */
 	mvn	r6, #0xF000000F
-	ldr	r4, [fp, #LO_reg_cop0+16-LO_dynarec_local] /* Context */
+	ldr	r4, [fp, #LO_g_cp0_regs+16-LO_dynarec_local] /* Context */
 	bic	r6, r6, #0x0F800000
-	str	r0, [fp, #LO_reg_cop0+56-LO_dynarec_local] /* EPC */
+	str	r0, [fp, #LO_g_cp0_regs+56-LO_dynarec_local] /* EPC */
 	orr	r3, r3, #2
-	str	r1, [fp, #LO_reg_cop0+32-LO_dynarec_local] /* BadVAddr */
+	str	r1, [fp, #LO_g_cp0_regs+32-LO_dynarec_local] /* BadVAddr */
 	bic	r4, r4, r6
-	str	r3, [fp, #LO_reg_cop0+48-LO_dynarec_local] /* Status */
+	str	r3, [fp, #LO_g_cp0_regs+48-LO_dynarec_local] /* Status */
 	and	r5, r6, r1, lsr #9
-	str	r2, [fp, #LO_reg_cop0+52-LO_dynarec_local] /* Cause */
+	str	r2, [fp, #LO_g_cp0_regs+52-LO_dynarec_local] /* Cause */
 	and	r1, r1, r6, lsl #9
-	str	r1, [fp, #LO_reg_cop0+40-LO_dynarec_local] /* EntryHi */
+	str	r1, [fp, #LO_g_cp0_regs+40-LO_dynarec_local] /* EntryHi */
 	orr	r4, r4, r5
-	str	r4, [fp, #LO_reg_cop0+16-LO_dynarec_local] /* Context */
+	str	r4, [fp, #LO_g_cp0_regs+16-LO_dynarec_local] /* Context */
 	mov	r0, #0x80000000
 	bl	get_addr_ht
 	mov	pc, r0
@@ -541,7 +541,7 @@ FUNCTION(cc_interrupt):
 	str	r1, [fp, #LO_pending_exception-LO_dynarec_local]
 	and	r2, r2, r10, lsr #17
 	add	r3, fp, #LO_restore_candidate-LO_dynarec_local
-	str	r10, [fp, #LO_reg_cop0+36-LO_dynarec_local] /* Count */
+	str	r10, [fp, #LO_g_cp0_regs+36-LO_dynarec_local] /* Count */
 	ldr	r4, [r2, r3]
 	mov	r10, lr
 	tst	r4, r4
@@ -549,7 +549,7 @@ FUNCTION(cc_interrupt):
 .E1:
 	bl	gen_interupt
 	mov	lr, r10
-	ldr	r10, [fp, #LO_reg_cop0+36-LO_dynarec_local] /* Count */
+	ldr	r10, [fp, #LO_g_cp0_regs+36-LO_dynarec_local] /* Count */
 	ldr	r0, [fp, #LO_next_interupt-LO_dynarec_local]
 	ldr	r1, [fp, #LO_pending_exception-LO_dynarec_local]
 	ldr	r2, [fp, #LO_stop-LO_dynarec_local]
@@ -583,7 +583,7 @@ FUNCTION(do_interrupt):
 	ldr	r0, [fp, #LO_pcaddr-LO_dynarec_local]
 	bl	get_addr_ht
 	ldr	r1, [fp, #LO_next_interupt-LO_dynarec_local]
-	ldr	r10, [fp, #LO_reg_cop0+36-LO_dynarec_local] /* Count */
+	ldr	r10, [fp, #LO_g_cp0_regs+36-LO_dynarec_local] /* Count */
 	str	r1, [fp, #LO_last_count-LO_dynarec_local]
 	sub	r10, r10, r1
 	add	r10, r10, #2
@@ -593,13 +593,13 @@ FUNCTION(do_interrupt):
 FUNCTION(fp_exception):
 	mov	r2, #0x10000000
 .E7:
-	ldr	r1, [fp, #LO_reg_cop0+48-LO_dynarec_local] /* Status */
+	ldr	r1, [fp, #LO_g_cp0_regs+48-LO_dynarec_local] /* Status */
 	mov	r3, #0x80000000
-	str	r0, [fp, #LO_reg_cop0+56-LO_dynarec_local] /* EPC */
+	str	r0, [fp, #LO_g_cp0_regs+56-LO_dynarec_local] /* EPC */
 	orr	r1, #2
 	add	r2, r2, #0x2c
-	str	r1, [fp, #LO_reg_cop0+48-LO_dynarec_local] /* Status */
-	str	r2, [fp, #LO_reg_cop0+52-LO_dynarec_local] /* Cause */
+	str	r1, [fp, #LO_g_cp0_regs+48-LO_dynarec_local] /* Status */
+	str	r2, [fp, #LO_g_cp0_regs+52-LO_dynarec_local] /* Cause */
 	add	r0, r3, #0x180
 	bl	get_addr_ht
 	mov	pc, r0
@@ -611,13 +611,13 @@ FUNCTION(fp_exception_ds):
 	.size	fp_exception_ds, .-fp_exception_ds
 
 FUNCTION(jump_syscall):
-	ldr	r1, [fp, #LO_reg_cop0+48-LO_dynarec_local] /* Status */
+	ldr	r1, [fp, #LO_g_cp0_regs+48-LO_dynarec_local] /* Status */
 	mov	r3, #0x80000000
-	str	r0, [fp, #LO_reg_cop0+56-LO_dynarec_local] /* EPC */
+	str	r0, [fp, #LO_g_cp0_regs+56-LO_dynarec_local] /* EPC */
 	orr	r1, #2
 	mov	r2, #0x20
-	str	r1, [fp, #LO_reg_cop0+48-LO_dynarec_local] /* Status */
-	str	r2, [fp, #LO_reg_cop0+52-LO_dynarec_local] /* Cause */
+	str	r1, [fp, #LO_g_cp0_regs+48-LO_dynarec_local] /* Status */
+	str	r2, [fp, #LO_g_cp0_regs+52-LO_dynarec_local] /* Cause */
 	add	r0, r3, #0x180
 	bl	get_addr_ht
 	mov	pc, r0
@@ -630,20 +630,20 @@ FUNCTION(indirect_jump_indexed):
 FUNCTION(indirect_jump):
 	ldr	r12, [fp, #LO_last_count-LO_dynarec_local]
 	add	r2, r2, r12 
-	str	r2, [fp, #LO_reg_cop0+36-LO_dynarec_local] /* Count */
+	str	r2, [fp, #LO_g_cp0_regs+36-LO_dynarec_local] /* Count */
 	mov	pc, r0
 	.size	indirect_jump, .-indirect_jump
 
 FUNCTION(jump_eret):
-	ldr	r1, [fp, #LO_reg_cop0+48-LO_dynarec_local] /* Status */
+	ldr	r1, [fp, #LO_g_cp0_regs+48-LO_dynarec_local] /* Status */
 	ldr	r0, [fp, #LO_last_count-LO_dynarec_local]
 	bic	r1, r1, #2
 	add	r10, r0, r10
-	str	r1, [fp, #LO_reg_cop0+48-LO_dynarec_local] /* Status */
-	str	r10, [fp, #LO_reg_cop0+36-LO_dynarec_local] /* Count */
+	str	r1, [fp, #LO_g_cp0_regs+48-LO_dynarec_local] /* Status */
+	str	r10, [fp, #LO_g_cp0_regs+36-LO_dynarec_local] /* Count */
 	bl	check_interupt
 	ldr	r1, [fp, #LO_next_interupt-LO_dynarec_local]
-	ldr	r0, [fp, #LO_reg_cop0+56-LO_dynarec_local] /* EPC */
+	ldr	r0, [fp, #LO_g_cp0_regs+56-LO_dynarec_local] /* EPC */
 	str	r1, [fp, #LO_last_count-LO_dynarec_local]
 	subs	r10, r10, r1
 	bpl	.E11
@@ -685,7 +685,7 @@ FUNCTION(new_dyna_start):
 	add	r0, r0, #0x40
 	bl	new_recompile_block
 	ldr	r0, [fp, #LO_next_interupt-LO_dynarec_local]
-	ldr	r10, [fp, #LO_reg_cop0+36-LO_dynarec_local] /* Count */
+	ldr	r10, [fp, #LO_g_cp0_regs+36-LO_dynarec_local] /* Count */
 	str	r0, [fp, #LO_last_count-LO_dynarec_local]
 	sub	r10, r10, r0
 	mov	pc, r4
@@ -960,23 +960,23 @@ FUNCTION(tlb_exception): // Not global?
 	/* r1 = cause */
 	/* r2 = address */
 	/* r3 = instr addr/flags */
-	ldr	r4, [fp, #LO_reg_cop0+48-LO_dynarec_local] /* Status */
+	ldr	r4, [fp, #LO_g_cp0_regs+48-LO_dynarec_local] /* Status */
 	add	r5, fp, #LO_memory_map-LO_dynarec_local
 	lsr	r6, r3, #12
 	orr	r1, r1, r3, lsl #31
 	orr	r4, r4, #2
 	ldr	r7, [r5, r6, lsl #2]
 	bic	r8, r3, #3
-	str	r4, [fp, #LO_reg_cop0+48-LO_dynarec_local] /* Status */
+	str	r4, [fp, #LO_g_cp0_regs+48-LO_dynarec_local] /* Status */
 	mov	r6, #0x6000000
-	str	r1, [fp, #LO_reg_cop0+52-LO_dynarec_local] /* Cause */
+	str	r1, [fp, #LO_g_cp0_regs+52-LO_dynarec_local] /* Cause */
 	orr	r6, r6, #0x22
 	ldr	r0, [r8, r7, lsl #2]
 	add	r4, r8, r1, asr #29
 	add	r5, fp, #LO_reg-LO_dynarec_local
-	str	r4, [fp, #LO_reg_cop0+56-LO_dynarec_local] /* EPC */
+	str	r4, [fp, #LO_g_cp0_regs+56-LO_dynarec_local] /* EPC */
 	mov	r7, #0xf8
-	ldr	r8, [fp, #LO_reg_cop0+16-LO_dynarec_local] /* Context */
+	ldr	r8, [fp, #LO_g_cp0_regs+16-LO_dynarec_local] /* Context */
 	lsl	r1, r0, #16
 	lsr	r4, r0,	#26
 	and	r7, r7, r0, lsr #18
@@ -992,15 +992,15 @@ FUNCTION(tlb_exception): // Not global?
 	add	r4, r2, r1, asr #16
 	add	r6, fp, #LO_reg+4-LO_dynarec_local
 	asr	r3, r2, #31
-	str	r4, [fp, #LO_reg_cop0+32-LO_dynarec_local] /* BadVAddr */
+	str	r4, [fp, #LO_g_cp0_regs+32-LO_dynarec_local] /* BadVAddr */
 	add	r0, r0, #0x180
 	and	r4, r9, r4, lsr #9
 	strne	r3, [r6, r7]
 	orr	r8, r8, r4
-	str	r8, [fp, #LO_reg_cop0+16-LO_dynarec_local] /* Context */
+	str	r8, [fp, #LO_g_cp0_regs+16-LO_dynarec_local] /* Context */
 	bl	get_addr_ht
 	ldr	r1, [fp, #LO_next_interupt-LO_dynarec_local]
-	ldr	r10, [fp, #LO_reg_cop0+36-LO_dynarec_local] /* Count */
+	ldr	r10, [fp, #LO_g_cp0_regs+36-LO_dynarec_local] /* Count */
 	str	r1, [fp, #LO_last_count-LO_dynarec_local]
 	sub	r10, r10, r1
 	mov	pc, r0	

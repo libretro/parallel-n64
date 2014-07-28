@@ -29,7 +29,7 @@ DECLARE_INSTRUCTION(MFC0)
       case 9:    // Count
         update_count();
       default:
-        rrt32 = reg_cop0[PC->f.r.nrd];
+        rrt32 = g_cp0_regs[PC->f.r.nrd];
         sign_extended(rrt);
    }
    ADD_TO_PC(1);

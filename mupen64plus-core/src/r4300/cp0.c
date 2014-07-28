@@ -36,7 +36,7 @@
 
 /* global variable */
 #if NEW_DYNAREC != NEW_DYNAREC_ARM
-unsigned int reg_cop0[32];
+unsigned int g_cp0_regs[32];
 #endif
 
 /* global functions */
