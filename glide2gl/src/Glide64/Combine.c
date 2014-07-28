@@ -613,13 +613,6 @@ COMBINE cmb;
 #define CC_PRIMMULENV() CC_C1MULC2_NEW(rdp.prim_color_sep, rdp.env_color_sep)
 #define CC_PRIMSUBENV() CC_C1SUBC2_NEW(rdp.prim_color_sep, rdp.env_color_sep)
 
-#define XSHADE(color, flag) { \
-  rdp.col[0] *= ((color & 0xFF000000) >> 24) / 255.0f; \
-  rdp.col[1] *= ((color & 0x00FF0000) >> 16) / 255.0f; \
-  rdp.col[2] *= ((color & 0x0000FF00) >> 8) / 255.0f; \
-  rdp.cmb_flags |= flag; \
-}
-
 #define XSHADE_NEW(color, flag) { \
   rdp.col[0] *= color[0] / 255.0f; \
   rdp.col[1] *= color[1] / 255.0f; \
@@ -654,7 +647,7 @@ COMBINE cmb;
   rdp.col[2] *= byte; \
   rdp.cmb_flags |= flag; \
 }
-#define MULSHADE(color) XSHADE(color, CMB_MULT)
+#define MULSHADE(color) XSHADE_NEW(color, CMB_MULT)
 #define MULSHADE_PRIM() XSHADE_NEW(rdp.prim_color_sep, CMB_MULT)
 #define MULSHADE_ENV() XSHADE_NEW(rdp.env_color_sep, CMB_MULT)
 #define MULSHADE_1MPRIM() XSHADE1M_NEW(rdp.prim_color_sep, CMB_MULT)
@@ -668,7 +661,7 @@ COMBINE cmb;
 #define MULSHADE_PRIMLOD() MULSHADE_BYTE((rdp.prim_lodfrac & 0xFF))
 #define MULSHADE_K5() MULSHADE_BYTE(rdp.K5)
 
-#define SETSHADE(color) XSHADE(color, CMB_SET)
+#define SETSHADE(color) XSHADE_NEW(color, CMB_SET)
 #define SETSHADE_PRIM() XSHADE_NEW(rdp.prim_color_sep, CMB_SET)
 #define SETSHADE_ENV() XSHADE_NEW(rdp.env_color_sep, CMB_SET)
 #define SETSHADE_BYTE(byte) XSHADE_BYTE(byte, CMB_SET)
@@ -1912,7 +1905,7 @@ static void cc_t0_sub__shade_mul_center(void)
          GR_COMBINE_FACTOR_ONE,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE(rdp.CENTER);
+   MULSHADE(rdp.key_center);
    USE_T0 ();
 }
 
@@ -2523,7 +2516,7 @@ static void cc_t0_mul_scale_add_prim ()
          GR_COMBINE_FACTOR_TEXTURE_RGB,
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
-   SETSHADE (rdp.SCALE);
+   SETSHADE (rdp.key_scale);
    CC_PRIM ();
    USE_T0 ();
 }
@@ -3112,7 +3105,7 @@ static void cc_t0_mul_scale_mul_shade ()
          GR_COMBINE_FACTOR_LOCAL,
          GR_COMBINE_LOCAL_ITERATED,
          GR_COMBINE_OTHER_TEXTURE);
-   MULSHADE (rdp.SCALE);
+   MULSHADE (rdp.key_scale);
    USE_T0 ();
 }
 
@@ -3479,7 +3472,7 @@ static void cc__t0_mul_prima_add_t0__sub_center_mul_scale ()
          GR_CMBX_ITRGB, 0,
          GR_CMBX_ZERO, 0);
    cmb.ccolor= (rdp.CENTER) & 0xFFFFFF00;
-   SETSHADE(rdp.SCALE);
+   SETSHADE(rdp.key_scale);
 }
 
 static void cc__t1_inter_t0_using_primlod__sub_shade_mul_prim ()
