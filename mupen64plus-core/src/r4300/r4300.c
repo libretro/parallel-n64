@@ -48,7 +48,6 @@
 #endif
 
 unsigned int r4300emu = 0;
-int no_compiled_jump = 0;
 unsigned int count_per_op = 2;
 int llbit, rompause;
 #if NEW_DYNAREC != NEW_DYNAREC_ARM

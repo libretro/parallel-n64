@@ -35,7 +35,6 @@ extern unsigned int delay_slot, skip_jump, dyna_interp;
 extern unsigned int r4300emu;
 extern unsigned int next_interupt, CIC_Chip;
 extern unsigned int last_addr;
-extern int no_compiled_jump;
 extern unsigned int count_per_op;
 extern cpu_instruction_table current_instruction_table;
 
