@@ -130,7 +130,7 @@ void r4300_reset_hard(void)
     set_fpr_pointers(Status);
     g_cp0_regs[CP0_CONFIG_REG] = 0x6e463;
     g_cp0_regs[CP0_PREVID_REG] = 0xb00;
-    Count = 0x5000;
+    g_cp0_regs[CP0_COUNT_REG] = 0x5000;
     g_cp0_regs[CP0_CAUSE_REG] = 0x5C;
     g_cp0_regs[CP0_CONTEXT_REG] = 0x7FFFF0;
     g_cp0_regs[CP0_EPC_REG] = 0xFFFFFFFF;

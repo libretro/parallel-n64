@@ -23,7 +23,6 @@
 #define M64P_R4300_CP0_H
 
 /* registers macros */
-#define Count g_cp0_regs[9]
 #define Status g_cp0_regs[12]
 
 enum {

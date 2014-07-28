@@ -90,7 +90,7 @@ unsigned int jump_to_address;
          update_count(); \
       } \
       last_addr = PC->addr; \
-      if (next_interupt <= Count) gen_interupt(); \
+      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt(); \
    } \
    static void name##_OUT(void) \
    { \
@@ -122,7 +122,7 @@ unsigned int jump_to_address;
          update_count(); \
       } \
       last_addr = PC->addr; \
-      if (next_interupt <= Count) gen_interupt(); \
+      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt(); \
    } \
    static void name##_IDLE(void) \
    { \
@@ -132,8 +132,8 @@ unsigned int jump_to_address;
       if (take_jump) \
       { \
          update_count(); \
-         skip = next_interupt - Count; \
-         if (skip > 3) Count += (skip & 0xFFFFFFFC); \
+         skip = next_interupt - g_cp0_regs[CP0_COUNT_REG]; \
+         if (skip > 3) g_cp0_regs[CP0_COUNT_REG] += (skip & 0xFFFFFFFC); \
          else name(); \
       } \
       else name(); \

@@ -117,12 +117,12 @@ static void clear_queue(void)
 /*static void print_queue(void)
 {
     interupt_queue *aux;
-    //if (Count < 0x7000000) return;
-    DebugMessage(M64MSG_INFO, "------------------ 0x%x", (unsigned int)Count);
+    //if (g_cp0_regs[CP0_COUNT_REG] < 0x7000000) return;
+    DebugMessage(M64MSG_INFO, "------------------ 0x%x", (unsigned int)g_cp0_regs[CP0_COUNT_REG]);
     aux = q;
     while (aux != NULL)
     {
-        DebugMessage(M64MSG_INFO, "Count:%x, %x", (unsigned int)aux->count, aux->type);
+        DebugMessage(M64MSG_INFO, "g_cp0_regs[CP0_COUNT_REG]:%x, %x", (unsigned int)aux->count, aux->type);
         aux = aux->next;
     }
 }*/
@@ -131,16 +131,16 @@ static int SPECIAL_done = 0;
 
 static int before_event(unsigned int evt1, unsigned int evt2, int type2)
 {
-    if(evt1 - Count < 0x80000000)
+    if(evt1 - g_cp0_regs[CP0_COUNT_REG] < 0x80000000)
     {
-        if(evt2 - Count < 0x80000000)
+        if(evt2 - g_cp0_regs[CP0_COUNT_REG] < 0x80000000)
         {
-            if((evt1 - Count) < (evt2 - Count)) return 1;
+            if((evt1 - g_cp0_regs[CP0_COUNT_REG]) < (evt2 - g_cp0_regs[CP0_COUNT_REG])) return 1;
             else return 0;
         }
         else
         {
-            if((Count - evt2) < 0x10000000)
+            if((g_cp0_regs[CP0_COUNT_REG] - evt2) < 0x10000000)
             {
                 switch(type2)
                 {
@@ -160,12 +160,12 @@ static int before_event(unsigned int evt1, unsigned int evt2, int type2)
 
 void add_interupt_event(int type, unsigned int delay)
 {
-    unsigned int count = Count + delay/**2*/;
+    unsigned int count = g_cp0_regs[CP0_COUNT_REG] + delay/**2*/;
     int special = 0;
     interupt_queue *aux = q;
    
     if(type == SPECIAL_INT /*|| type == COMPARE_INT*/) special = 1;
-    if(Count > 0x80000000) SPECIAL_done = 0;
+    if(g_cp0_regs[CP0_COUNT_REG] > 0x80000000) SPECIAL_done = 0;
    
     if (get_event(type)) {
         //DebugMessage(M64MSG_WARNING, "two events of type 0x%x in interrupt queue", type);
@@ -222,7 +222,7 @@ void add_interupt_event(int type, unsigned int delay)
 
 void add_interupt_event_count(int type, unsigned int count)
 {
-    add_interupt_event(type, (count - Count)/*/2*/);
+    add_interupt_event(type, (count - g_cp0_regs[CP0_COUNT_REG])/*/2*/);
 }
 
 static void remove_interupt_event(void)
@@ -231,7 +231,7 @@ static void remove_interupt_event(void)
     if(q->type == SPECIAL_INT) SPECIAL_done = 1;
     queue_free(q);
     q = aux;
-    if (q != NULL && (q->count > Count || (Count - q->count) < 0x80000000))
+    if (q != NULL && (q->count > g_cp0_regs[CP0_COUNT_REG] || (g_cp0_regs[CP0_COUNT_REG] - q->count) < 0x80000000))
         next_interupt = q->count;
     else
         next_interupt = 0;
@@ -285,7 +285,7 @@ void translate_event_queue(unsigned int base)
     aux=q;
     while (aux != NULL)
     {
-        aux->count = (aux->count - Count)+base;
+        aux->count = (aux->count - g_cp0_regs[CP0_COUNT_REG])+base;
         aux = aux->next;
     }
     add_interupt_event_count(COMPARE_INT, g_cp0_regs[CP0_COMPARE_REG]);
@@ -353,18 +353,18 @@ void check_interupt(void)
         {
             q = (interupt_queue *) queue_malloc(sizeof(interupt_queue));
             q->next = NULL;
-            q->count = Count;
+            q->count = g_cp0_regs[CP0_COUNT_REG];
             q->type = CHECK_INT;
         }
         else
         {
             interupt_queue* aux = (interupt_queue *) queue_malloc(sizeof(interupt_queue));
             aux->next = q;
-            aux->count = Count;
+            aux->count = g_cp0_regs[CP0_COUNT_REG];
             aux->type = CHECK_INT;
             q = aux;
         }
-        next_interupt = Count;
+        next_interupt = g_cp0_regs[CP0_COUNT_REG];
     }
 }
 
@@ -393,7 +393,7 @@ void gen_interupt(void)
         unsigned int dest = skip_jump;
         skip_jump = 0;
 
-        if (q->count > Count || (Count - q->count) < 0x80000000)
+        if (q->count > g_cp0_regs[CP0_COUNT_REG] || (g_cp0_regs[CP0_COUNT_REG] - q->count) < 0x80000000)
             next_interupt = q->count;
         else
             next_interupt = 0;
@@ -406,7 +406,7 @@ void gen_interupt(void)
     switch(q->type)
     {
        case SPECIAL_INT:
-          if (Count > 0x10000000) return;
+          if (g_cp0_regs[CP0_COUNT_REG] > 0x10000000) return;
           remove_interupt_event();
           add_interupt_event_count(SPECIAL_INT, 0);
           return;
@@ -448,9 +448,9 @@ void gen_interupt(void)
 
        case COMPARE_INT:
           remove_interupt_event();
-          Count+=count_per_op;
+          g_cp0_regs[CP0_COUNT_REG]+=count_per_op;
           add_interupt_event_count(COMPARE_INT, g_cp0_regs[CP0_COMPARE_REG]);
-          Count-=count_per_op;
+          g_cp0_regs[CP0_COUNT_REG]-=count_per_op;
 
           g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x8000) & 0xFFFFFF83;
           if ((Status & 7) != 1) return;
@@ -569,7 +569,7 @@ void gen_interupt(void)
           // simulate the soft reset code which would run from the PIF ROM
           r4300_reset_soft();
           // clear all interrupts, reset interrupt counters back to 0
-          Count = 0;
+          g_cp0_regs[CP0_COUNT_REG] = 0;
           vi_counter = 0;
           init_interupt();
           // clear the audio status register so that subsequent write_ai() calls will work properly

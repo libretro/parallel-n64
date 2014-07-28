@@ -57,7 +57,7 @@ void update_count(void)
     if (r4300emu != CORE_DYNAREC)
     {
 #endif
-        Count += ((PC->addr - last_addr) >> 2) * count_per_op;
+        g_cp0_regs[CP0_COUNT_REG] += ((PC->addr - last_addr) >> 2) * count_per_op;
         last_addr = PC->addr;
 #ifdef NEW_DYNAREC
     }

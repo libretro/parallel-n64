@@ -2485,7 +2485,7 @@ void write_mi(void)
 
         check_interupt();
         update_count();
-        if (next_interupt <= Count) gen_interupt();
+        if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt();
         break;
     }
 }
@@ -2512,7 +2512,7 @@ void write_mib(void)
 
         check_interupt();
         update_count();
-        if (next_interupt <= Count) gen_interupt();
+        if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt();
         break;
     }
 }
@@ -2535,7 +2535,7 @@ void write_mih(void)
 
         check_interupt();
         update_count();
-        if (next_interupt <= Count) gen_interupt();
+        if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt();
         break;
     }
 }
@@ -2554,7 +2554,7 @@ void write_mid(void)
 
         check_interupt();
         update_count();
-        if (next_interupt <= Count) gen_interupt();
+        if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt();
         break;
     }
 }
@@ -2565,7 +2565,7 @@ void read_vi(void)
     {
     case 0x10:
         update_count();
-        vi_register.vi_current = (vi_register.vi_delay-(next_vi-Count))/VI_REFRESH;
+        vi_register.vi_current = (vi_register.vi_delay-(next_vi-g_cp0_regs[CP0_COUNT_REG]))/VI_REFRESH;
         vi_register.vi_current = (vi_register.vi_current&(~1))|vi_field;
         break;
     }
@@ -2581,7 +2581,7 @@ void read_vib(void)
     case 0x12:
     case 0x13:
         update_count();
-        vi_register.vi_current = (vi_register.vi_delay-(next_vi-Count))/VI_REFRESH;
+        vi_register.vi_current = (vi_register.vi_delay-(next_vi-g_cp0_regs[CP0_COUNT_REG]))/VI_REFRESH;
         vi_register.vi_current = (vi_register.vi_current&(~1))|vi_field;
         break;
     }
@@ -2596,7 +2596,7 @@ void read_vih(void)
     case 0x10:
     case 0x12:
         update_count();
-        vi_register.vi_current = (vi_register.vi_delay-(next_vi-Count))/VI_REFRESH;
+        vi_register.vi_current = (vi_register.vi_delay-(next_vi-g_cp0_regs[CP0_COUNT_REG]))/VI_REFRESH;
         vi_register.vi_current = (vi_register.vi_current&(~1))|vi_field;
         break;
     }
@@ -2610,7 +2610,7 @@ void read_vid(void)
     {
     case 0x10:
         update_count();
-        vi_register.vi_current = (vi_register.vi_delay-(next_vi-Count))/VI_REFRESH;
+        vi_register.vi_current = (vi_register.vi_delay-(next_vi-g_cp0_regs[CP0_COUNT_REG]))/VI_REFRESH;
         vi_register.vi_current = (vi_register.vi_current&(~1))|vi_field;
         break;
     }
@@ -2776,8 +2776,8 @@ void read_ai(void)
     {
     case 0x4:
         update_count();
-        if (ai_register.current_delay != 0 && get_event(AI_INT) != 0 && (get_event(AI_INT)-Count) < 0x80000000)
-            *rdword = ((get_event(AI_INT)-Count)*(int64_t)ai_register.current_len)/
+        if (ai_register.current_delay != 0 && get_event(AI_INT) != 0 && (get_event(AI_INT)-g_cp0_regs[CP0_COUNT_REG]) < 0x80000000)
+            *rdword = ((get_event(AI_INT)-g_cp0_regs[CP0_COUNT_REG])*(int64_t)ai_register.current_len)/
                       ai_register.current_delay;
         else
             *rdword = 0;
@@ -2798,7 +2798,7 @@ void read_aib(void)
     case 0x7:
         update_count();
         if (ai_register.current_delay != 0 && get_event(AI_INT) != 0)
-            len = (uint32_t) (((get_event(AI_INT) - Count) * (int64_t)ai_register.current_len) / ai_register.current_delay);
+            len = (uint32_t) (((get_event(AI_INT) - g_cp0_regs[CP0_COUNT_REG]) * (int64_t)ai_register.current_len) / ai_register.current_delay);
         else
             len = 0;
         *rdword = *((uint8_t*)&len + ((*address_low&3)^S8) );
@@ -2818,7 +2818,7 @@ void read_aih(void)
     case 0x6:
         update_count();
         if (ai_register.current_delay != 0 && get_event(AI_INT) != 0)
-            len = (uint32_t) (((get_event(AI_INT)-Count) * (int64_t)ai_register.current_len) / ai_register.current_delay);
+            len = (uint32_t) (((get_event(AI_INT)-g_cp0_regs[CP0_COUNT_REG]) * (int64_t)ai_register.current_len) / ai_register.current_delay);
         else
             len = 0;
         *rdword = *((uint16_t*)((uint8_t*)&len
@@ -2837,7 +2837,7 @@ void read_aid(void)
     case 0x0:
         update_count();
         if (ai_register.current_delay != 0 && get_event(AI_INT) != 0)
-            *rdword = ((get_event(AI_INT)-Count)*(int64_t)ai_register.current_len)/
+            *rdword = ((get_event(AI_INT)-g_cp0_regs[CP0_COUNT_REG])*(int64_t)ai_register.current_len)/
                       ai_register.current_delay;
         else
             *rdword = 0;

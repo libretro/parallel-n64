@@ -148,7 +148,7 @@ DECLARE_INSTRUCTION(TLBWI)
 DECLARE_INSTRUCTION(TLBWR)
 {
    update_count();
-   g_cp0_regs[CP0_RANDOM_REG] = (Count/2 % (32 - g_cp0_regs[CP0_WIRED_REG])) + g_cp0_regs[CP0_WIRED_REG];
+   g_cp0_regs[CP0_RANDOM_REG] = (g_cp0_regs[CP0_COUNT_REG] /2 % (32 - g_cp0_regs[CP0_WIRED_REG])) + g_cp0_regs[CP0_WIRED_REG];
    TLBWrite(g_cp0_regs[CP0_RANDOM_REG]);
    ADD_TO_PC(1);
 }
@@ -187,5 +187,5 @@ DECLARE_INSTRUCTION(ERET)
    llbit = 0;
    check_interupt();
    last_addr = PCADDR;
-   if (next_interupt <= Count) gen_interupt();
+   if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt();
 }

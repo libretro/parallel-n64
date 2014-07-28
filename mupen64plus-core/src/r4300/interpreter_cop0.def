@@ -26,7 +26,7 @@ DECLARE_INSTRUCTION(MFC0)
       case 1:
         DebugMessage(M64MSG_ERROR, "MFC0 instruction reading un-implemented Random register");
         stop=1;
-      case 9:    // Count
+      case CP0_COUNT_REG:
         update_count();
       default:
         rrt32 = g_cp0_regs[PC->f.r.nrd];
@@ -67,13 +67,13 @@ DECLARE_INSTRUCTION(MTC0)
       break;
     case CP0_BADVADDR_REG:
       break;
-    case 9:    // Count
+    case CP0_COUNT_REG:
       update_count();
       interupt_unsafe_state = 1;
-      if (next_interupt <= Count) gen_interupt();
+      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt();
       interupt_unsafe_state = 0;
       translate_event_queue((unsigned int) rrt & 0xFFFFFFFF);
-      Count = (unsigned int) rrt & 0xFFFFFFFF;
+      g_cp0_regs[CP0_COUNT_REG] = (unsigned int) rrt & 0xFFFFFFFF;
       break;
     case CP0_ENTRYHI_REG:
       g_cp0_regs[CP0_ENTRYHI_REG] = (unsigned int) rrt & 0xFFFFE0FF;
@@ -96,7 +96,7 @@ DECLARE_INSTRUCTION(MTC0)
       ADD_TO_PC(1);
       check_interupt();
       interupt_unsafe_state = 1;
-      if (next_interupt <= Count) gen_interupt();
+      if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt();
       interupt_unsafe_state = 0;
       ADD_TO_PC(-1);
       break;
