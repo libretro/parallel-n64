@@ -567,11 +567,26 @@ COMBINE cmb;
   (uint8_t)( ((color1 & 0x00FF0000) >> 16) * (((color2 & 0x00FF0000) >> 16) /255.0f) ) <<  16 | \
   (uint8_t)( ((color1 & 0x0000FF00) >>  8) * (((color2 & 0x0000FF00) >>  8) /255.0f) ) <<   8 ; \
 }
+
+#define CC_C1MULC2_NEW(color1, color2) { \
+  cmb.ccolor= \
+   (uint8_t)(color1[0] * (color1[0] /255.0f)) <<  24 | \
+   (uint8_t)(color1[1] * (color2[1] /255.0f)) <<  16 | \
+   (uint8_t)(color1[2] * (color2[1] /255.0f)) <<   8 ; \
+}
+
 #define CC_C1SUBC2(color1, color2) { \
   cmb.ccolor=(uint8_t)( color1[0] - (int)((color2 & 0xFF000000) >> 24) ) << 24 | \
   (uint8_t)( color1[1] - (int)((color2 & 0x00FF0000) >> 16) ) << 16 | \
   (uint8_t)( color1[2] - (int)((color2 & 0x0000FF00) >>  8) ) <<  8 ; \
 }
+
+#define CC_C1SUBC2_NEW(color1, color2) { \
+  cmb.ccolor = (uint8_t)(color1[0] - color2[0]) << 24 | \
+  (uint8_t)(color1[1] - color2[1]) << 16 | \
+  (uint8_t)(color1[2] - color2[2]) <<  8 ; \
+}
+
 #define CC_COLMULBYTE(color, byte) { \
     float factor = byte/255.0f; \
     cmb.ccolor = (uint8_t)( ((color & 0xFF000000) >> 24) * factor ) <<  24 | \
@@ -588,8 +603,8 @@ COMBINE cmb;
 #define CC_1SUBENVA() CC_BYTE(~rdp.env_color_sep[3])
 #define CC_PRIMLOD() CC_BYTE(rdp.prim_lodfrac)
 #define CC_K5() CC_BYTE(rdp.K5)
-#define CC_PRIMMULENV() CC_C1MULC2(rdp.prim_color, rdp.env_color)
-#define CC_PRIMSUBENV() CC_C1SUBC2(rdp.prim_color_sep, rdp.env_color)
+#define CC_PRIMMULENV() CC_C1MULC2_NEW(rdp.prim_color_sep, rdp.env_color_sep)
+#define CC_PRIMSUBENV() CC_C1SUBC2_NEW(rdp.prim_color_sep, rdp.env_color_sep)
 
 #define XSHADE(color, flag) { \
   rdp.col[0] *= ((color & 0xFF000000) >> 24) / 255.0f; \
@@ -3560,7 +3575,7 @@ static void cc_shade_sub__prim_mul_prima () //Aded by Gonetz
          GR_COMBINE_FACTOR_ONE,
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_ITERATED);
-   CC_C1MULC2 (rdp.prim_color, (rdp.prim_color&0xFF));
+   CC_C1MULC2_NEW(rdp.prim_color_sep, (rdp.prim_color_sep));
 }
 
 static void cc_one_sub__t0_mul_t1__mul_shade () //Aded by Gonetz
