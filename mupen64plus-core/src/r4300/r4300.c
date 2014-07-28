@@ -135,7 +135,7 @@ void r4300_reset_hard(void)
     Context = 0x7FFFF0;
     EPC = 0xFFFFFFFF;
     BadVAddr = 0xFFFFFFFF;
-    ErrorEPC = 0xFFFFFFFF;
+    g_cp0_regs[CP0_ERROREPC_REG] = 0xFFFFFFFF;
    
     rounding_mode = 0x33F;
 }
