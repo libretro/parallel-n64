@@ -49,11 +49,11 @@ DECLARE_INSTRUCTION(MTC0)
       break;
     case CP0_RANDOM_REG:
       break;
-    case 2:    // EntryLo0
-      EntryLo0 = (unsigned int) rrt & 0x3FFFFFFF;
+    case CP0_ENTRYLO0_REG:
+      g_cp0_regs[CP0_ENTRYLO0_REG] = (unsigned int) rrt & 0x3FFFFFFF;
       break;
-    case 3:    // EntryLo1
-      EntryLo1 = (unsigned int) rrt & 0x3FFFFFFF;
+    case CP0_ENTRYLO1_REG:
+      g_cp0_regs[CP0_ENTRYLO1_REG] = (unsigned int) rrt & 0x3FFFFFFF;
       break;
     case 4:    // Context
       Context = ((unsigned int) rrt & 0xFF800000) | (Context & 0x007FFFF0);

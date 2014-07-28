@@ -23,8 +23,6 @@
 #define M64P_R4300_CP0_H
 
 /* registers macros */
-#define EntryLo0 g_cp0_regs[2]
-#define EntryLo1 g_cp0_regs[3]
 #define Context g_cp0_regs[4]
 #define PageMask g_cp0_regs[5]
 #define BadVAddr g_cp0_regs[8]
