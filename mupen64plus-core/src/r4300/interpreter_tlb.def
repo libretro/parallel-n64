@@ -148,8 +148,8 @@ DECLARE_INSTRUCTION(TLBWI)
 DECLARE_INSTRUCTION(TLBWR)
 {
    update_count();
-   Random = (Count/2 % (32 - g_cp0_regs[CP0_WIRED_REG])) + g_cp0_regs[CP0_WIRED_REG];
-   TLBWrite(Random);
+   g_cp0_regs[CP0_RANDOM_REG] = (Count/2 % (32 - g_cp0_regs[CP0_WIRED_REG])) + g_cp0_regs[CP0_WIRED_REG];
+   TLBWrite(g_cp0_regs[CP0_RANDOM_REG]);
    ADD_TO_PC(1);
 }
 

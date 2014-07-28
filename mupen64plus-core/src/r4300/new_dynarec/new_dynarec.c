@@ -11041,12 +11041,12 @@ void TLBWI_new(void)
 void TLBWR_new(void)
 {
   unsigned int i;
-  Random = (Count/2 % (32 - g_cp0_regs[CP0_WIRED_REG])) + g_cp0_regs[CP0_WIRED_REG];
+  g_cp0_regs[CP0_RANDOM_REG] = (Count/2 % (32 - g_cp0_regs[CP0_WIRED_REG])) + g_cp0_regs[CP0_WIRED_REG];
   /* Remove old entries */
-  unsigned int old_start_even=tlb_e[Random&0x3F].start_even;
-  unsigned int old_end_even=tlb_e[Random&0x3F].end_even;
-  unsigned int old_start_odd=tlb_e[Random&0x3F].start_odd;
-  unsigned int old_end_odd=tlb_e[Random&0x3F].end_odd;
+  unsigned int old_start_even=tlb_e[g_cp0_regs[CP0_RANDOM_REG]&0x3F].start_even;
+  unsigned int old_end_even=tlb_e[g_cp0_regs[CP0_RANDOM_REG]&0x3F].end_even;
+  unsigned int old_start_odd=tlb_e[g_cp0_regs[CP0_RANDOM_REG]&0x3F].start_odd;
+  unsigned int old_end_odd=tlb_e[g_cp0_regs[CP0_RANDOM_REG]&0x3F].end_odd;
   for (i=old_start_even>>12; i<=old_end_even>>12; i++)
   {
     if(i<0x80000||i>0xBFFFF)
@@ -11066,7 +11066,7 @@ void TLBWR_new(void)
   cached_interpreter_table.TLBWR();
   /* Combine tlb_LUT_r, tlb_LUT_w, and invalid_code into a single table
      for fast look up. */
-  for (i=tlb_e[Random&0x3F].start_even>>12; i<=tlb_e[Random&0x3F].end_even>>12; i++)
+  for (i=tlb_e[g_cp0_regs[CP0_RANDOM_REG]&0x3F].start_even>>12; i<=tlb_e[g_cp0_regs[CP0_RANDOM_REG]&0x3F].end_even>>12; i++)
   {
     //DebugMessage(M64MSG_VERBOSE, "%x: r:%8x w:%8x",i,tlb_LUT_r[i],tlb_LUT_w[i]);
     if(i<0x80000||i>0xBFFFF)
@@ -11087,7 +11087,7 @@ void TLBWR_new(void)
     }
     //DebugMessage(M64MSG_VERBOSE, "memory_map[%x]: %8x (+%8x)",i,memory_map[i],memory_map[i]<<2);
   }
-  for (i=tlb_e[Random&0x3F].start_odd>>12; i<=tlb_e[Random&0x3F].end_odd>>12; i++)
+  for (i= tlb_e[g_cp0_regs[CP0_RANDOM_REG] & 0x3F].start_odd >> 12; i<= tlb_e[g_cp0_regs[CP0_RANDOM_REG]&0x3F].end_odd>>12; i++)
   {
     //DebugMessage(M64MSG_VERBOSE, "%x: r:%8x w:%8x",i,tlb_LUT_r[i],tlb_LUT_w[i]);
     if(i<0x80000||i>0xBFFFF)
