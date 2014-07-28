@@ -28,6 +28,7 @@ ifneq (,$(findstring unix,$(platform)))
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined
    
    fpic = -fPIC
+   SINGLE_THREAD := 1
 ifneq (,$(findstring gles,$(platform)))
    GLES = 1
    GL_LIB := -lGLESv2
