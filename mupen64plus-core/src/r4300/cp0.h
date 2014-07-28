@@ -23,7 +23,6 @@
 #define M64P_R4300_CP0_H
 
 /* registers macros */
-#define PageMask g_cp0_regs[5]
 #define BadVAddr g_cp0_regs[8]
 #define Count g_cp0_regs[9]
 #define Compare g_cp0_regs[11]

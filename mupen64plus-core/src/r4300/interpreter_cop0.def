@@ -58,8 +58,8 @@ DECLARE_INSTRUCTION(MTC0)
     case CP0_CONTEXT_REG:
       g_cp0_regs[CP0_CONTEXT_REG] = ((unsigned int) rrt & 0xFF800000) | (g_cp0_regs[CP0_CONTEXT_REG] & 0x007FFFF0);
       break;
-    case 5:    // PageMask
-      PageMask = (unsigned int) rrt & 0x01FFE000;
+    case CP0_PAGEMASK_REG:
+      g_cp0_regs[CP0_PAGEMASK_REG] = (unsigned int) rrt & 0x01FFE000;
       break;
     case CP0_WIRED_REG:
       g_cp0_regs[CP0_WIRED_REG] = (unsigned int) rrt;
