@@ -430,7 +430,7 @@ void *get_addr(u_int vaddr)
   int r=new_recompile_block(vaddr);
   if(r==0) return get_addr(vaddr);
   // Execute in unmapped page, generate pagefault execption
-  Status|=2;
+  g_cp0_regs[CP0_STATUS_REG] |=2;
   g_cp0_regs[CP0_CAUSE_REG] =(vaddr<<31)|0x8;
   g_cp0_regs[CP0_EPC_REG] = (vaddr&1)?vaddr-5:vaddr;
   g_cp0_regs[CP0_BADVADDR_REG]=(vaddr&~1);
@@ -524,7 +524,7 @@ void *get_addr_32(u_int vaddr,u_int flags)
   int r=new_recompile_block(vaddr);
   if(r==0) return get_addr(vaddr);
   // Execute in unmapped page, generate pagefault execption
-  Status|=2;
+  g_cp0_regs[CP0_STATUS_REG] |= 2;
   g_cp0_regs[CP0_CAUSE_REG] = (vaddr<<31)|0x8;
   g_cp0_regs[CP0_EPC_REG] = (vaddr&1)?vaddr-5:vaddr;
   g_cp0_regs[CP0_BADVADDR_REG]=(vaddr&~1);
@@ -2077,7 +2077,7 @@ static void memdebug(int i)
   if((signed int)g_cp0_regs[CP0_COUNT_REG]>=-2084597794&&(signed int)g_cp0_regs[CP0_COUNT_REG]<0) {
   //if(0) {
     DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (checksum %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,mchecksum());
-    //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (checksum %x) Status=%x",g_cp0_regs[CP0_COUNT_REG],next_interupt,mchecksum(),Status);
+    //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (checksum %x) Status=%x",g_cp0_regs[CP0_COUNT_REG],next_interupt,mchecksum(),g_cp0_regs[CP0_STATUS_REG]);
     //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (checksum %x) hi=%8x%8x",g_cp0_regs[CP0_COUNT_REG],next_interupt,mchecksum(),(int)(reg[HIREG]>>32),(int)reg[HIREG]);
     rlist();
     #if NEW_DYNAREC == NEW_DYNAREC_X86
@@ -7696,7 +7696,7 @@ int new_recompile_block(int addr)
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (compile %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,addr);
   //if(debug) 
   //DebugMessage(M64MSG_VERBOSE, "TRACE: count=%d next=%d (checksum %x)",g_cp0_regs[CP0_COUNT_REG],next_interupt,mchecksum());
-  //DebugMessage(M64MSG_VERBOSE, "fpu mapping=%x enabled=%x",(Status & 0x04000000)>>26,(Status & 0x20000000)>>29);
+  //DebugMessage(M64MSG_VERBOSE, "fpu mapping=%x enabled=%x",(g_cp0_regs[CP0_STATUS_REG] & 0x04000000)>>26,(g_cp0_regs[CP0_STATUS_REG] & 0x20000000)>>29);
   /*if(g_cp0_regs[CP0_COUNT_REG]>=312978186) {
     rlist();
   }*/

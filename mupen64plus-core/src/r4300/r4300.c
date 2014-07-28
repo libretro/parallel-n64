@@ -126,8 +126,8 @@ void r4300_reset_hard(void)
 
     // set COP0 registers
     g_cp0_regs[CP0_RANDOM_REG] = 31;
-    Status= 0x34000000;
-    set_fpr_pointers(Status);
+    g_cp0_regs[CP0_STATUS_REG]= 0x34000000;
+    set_fpr_pointers(g_cp0_regs[CP0_STATUS_REG]);
     g_cp0_regs[CP0_CONFIG_REG] = 0x6e463;
     g_cp0_regs[CP0_PREVID_REG] = 0xb00;
     g_cp0_regs[CP0_COUNT_REG] = 0x5000;

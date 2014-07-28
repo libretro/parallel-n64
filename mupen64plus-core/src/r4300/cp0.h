@@ -22,9 +22,6 @@
 #ifndef M64P_R4300_CP0_H
 #define M64P_R4300_CP0_H
 
-/* registers macros */
-#define Status g_cp0_regs[12]
-
 enum {
    CP0_INDEX_REG,
    CP0_RANDOM_REG,

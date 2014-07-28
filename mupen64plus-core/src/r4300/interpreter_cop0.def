@@ -85,13 +85,13 @@ DECLARE_INSTRUCTION(MTC0)
       g_cp0_regs[CP0_COMPARE_REG] = (unsigned int) rrt;
       g_cp0_regs[CP0_CAUSE_REG] = g_cp0_regs[CP0_CAUSE_REG] & 0xFFFF7FFF; //Timer interupt is clear
       break;
-    case 12:   // Status
-      if((rrt & 0x04000000) != (Status & 0x04000000))
+    case CP0_STATUS_REG:
+      if((rrt & 0x04000000) != (g_cp0_regs[CP0_STATUS_REG] & 0x04000000))
       {
-          shuffle_fpr_data(Status, (unsigned int) rrt);
+          shuffle_fpr_data(g_cp0_regs[CP0_STATUS_REG], (unsigned int) rrt);
           set_fpr_pointers((unsigned int) rrt);
       }
-      Status = (unsigned int) rrt;
+      g_cp0_regs[CP0_STATUS_REG] = (unsigned int) rrt;
       update_count();
       ADD_TO_PC(1);
       check_interupt();

@@ -1875,7 +1875,7 @@ void gencheck_cop1_unusable(void)
 {
    free_registers_move_start();
 
-   test_m32rel_imm32((unsigned int*)&Status, 0x20000000);
+   test_m32rel_imm32((unsigned int*)&g_cp0_regs[CP0_STATUS_REG], 0x20000000);
    jne_rj(0);
    jump_start_rel8();
 

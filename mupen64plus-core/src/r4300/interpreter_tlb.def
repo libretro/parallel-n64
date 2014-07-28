@@ -174,14 +174,14 @@ DECLARE_INSTRUCTION(TLBP)
 DECLARE_INSTRUCTION(ERET)
 {
    update_count();
-   if (Status & 0x4)
+   if (g_cp0_regs[CP0_STATUS_REG] & 0x4)
    {
      DebugMessage(M64MSG_ERROR, "error in ERET");
      stop=1;
    }
    else
    {
-     Status &= ~0x2;
+     g_cp0_regs[CP0_STATUS_REG] &= ~0x2;
      generic_jump_to(g_cp0_regs[CP0_EPC_REG]);
    }
    llbit = 0;

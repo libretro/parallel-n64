@@ -41,7 +41,7 @@ void TLB_refill_exception(unsigned int address, int w)
    g_cp0_regs[CP0_BADVADDR_REG] = address;
    g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG] & 0xFF80000F) | ((address >> 9) & 0x007FFFF0);
    g_cp0_regs[CP0_ENTRYHI_REG] = address & 0xFFFFE000;
-   if (Status & 0x2) // Test de EXL
+   if (g_cp0_regs[CP0_STATUS_REG] & 0x2) // Test de EXL
      {
     generic_jump_to(0x80000180);
     if(delay_slot==1 || delay_slot==3) g_cp0_regs[CP0_CAUSE_REG] |= 0x80000000;
@@ -59,7 +59,7 @@ void TLB_refill_exception(unsigned int address, int w)
     else g_cp0_regs[CP0_EPC_REG] = PC->addr;
          
     g_cp0_regs[CP0_CAUSE_REG] &= ~0x80000000;
-    Status |= 0x2; //EXL=1
+    g_cp0_regs[CP0_STATUS_REG] |= 0x2; //EXL=1
     
     if (address >= 0x80000000 && address < 0xc0000000)
       usual_handler = 1;
@@ -114,7 +114,7 @@ void TLB_refill_exception(unsigned int address, int w)
 void exception_general(void)
 {
    update_count();
-   Status |= 2;
+   g_cp0_regs[CP0_STATUS_REG] |= 2;
    
    g_cp0_regs[CP0_EPC_REG] = PC->addr;
    

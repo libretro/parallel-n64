@@ -42,7 +42,7 @@ unsigned int g_cp0_regs[32];
 /* global functions */
 int check_cop1_unusable(void)
 {
-   if (!(Status & 0x20000000))
+   if (!(g_cp0_regs[CP0_STATUS_REG] & 0x20000000))
      {
     g_cp0_regs[CP0_CAUSE_REG] = (11 << 2) | 0x10000000;
     exception_general();

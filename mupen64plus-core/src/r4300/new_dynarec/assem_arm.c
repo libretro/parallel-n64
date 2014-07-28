@@ -1153,7 +1153,7 @@ static void emit_loadreg(int r, int hr)
     if((r&63)==HIREG) addr=(int)&hi+((r&64)>>4);
     if((r&63)==LOREG) addr=(int)&lo+((r&64)>>4);
     if(r==CCREG) addr=(int)&cycle_count;
-    if(r==CSREG) addr=(int)&Status;
+    if(r==CSREG) addr=(int)&g_cp0_regs[CP0_STATUS_REG];
     if(r==FSREG) addr=(int)&FCR31;
     if(r==INVCP) addr=(int)&invc_ptr;
     if(r==ROREG) addr=(int)&ram_offset;

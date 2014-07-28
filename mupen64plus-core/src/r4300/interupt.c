@@ -346,8 +346,8 @@ void check_interupt(void)
         g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
     else
         g_cp0_regs[CP0_CAUSE_REG] &= ~0x400;
-    if ((Status & 7) != 1) return;
-    if (Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)
+    if ((g_cp0_regs[CP0_STATUS_REG] & 7) != 1) return;
+    if (g_cp0_regs[CP0_STATUS_REG] & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)
     {
         if(q == NULL)
         {
@@ -439,8 +439,8 @@ void gen_interupt(void)
              g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
           else
              return;
-          if ((Status & 7) != 1) return;
-          if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
+          if ((g_cp0_regs[CP0_STATUS_REG] & 7) != 1) return;
+          if (!(g_cp0_regs[CP0_STATUS_REG] & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
 #ifdef __LIBRETRO__
           retro_return(false);
 #endif
@@ -453,8 +453,8 @@ void gen_interupt(void)
           g_cp0_regs[CP0_COUNT_REG]-=count_per_op;
 
           g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x8000) & 0xFFFFFF83;
-          if ((Status & 7) != 1) return;
-          if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
+          if ((g_cp0_regs[CP0_STATUS_REG] & 7) != 1) return;
+          if (!(g_cp0_regs[CP0_STATUS_REG] & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           break;
 
        case CHECK_INT:
@@ -471,8 +471,8 @@ void gen_interupt(void)
              g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
           else
              return;
-          if ((Status & 7) != 1) return;
-          if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
+          if ((g_cp0_regs[CP0_STATUS_REG] & 7) != 1) return;
+          if (!(g_cp0_regs[CP0_STATUS_REG] & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           break;
 
        case PI_INT:
@@ -483,8 +483,8 @@ void gen_interupt(void)
              g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
           else
              return;
-          if ((Status & 7) != 1) return;
-          if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
+          if ((g_cp0_regs[CP0_STATUS_REG] & 7) != 1) return;
+          if (!(g_cp0_regs[CP0_STATUS_REG] & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           break;
 
        case AI_INT:
@@ -502,8 +502,8 @@ void gen_interupt(void)
                 g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
              else
                 return;
-             if ((Status & 7) != 1) return;
-             if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
+             if ((g_cp0_regs[CP0_STATUS_REG] & 7) != 1) return;
+             if (!(g_cp0_regs[CP0_STATUS_REG] & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           }
           else
           {
@@ -516,8 +516,8 @@ void gen_interupt(void)
                 g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
              else
                 return;
-             if ((Status & 7) != 1) return;
-             if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
+             if ((g_cp0_regs[CP0_STATUS_REG] & 7) != 1) return;
+             if (!(g_cp0_regs[CP0_STATUS_REG] & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           }
           break;
 
@@ -532,8 +532,8 @@ void gen_interupt(void)
              g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
           else
              return;
-          if ((Status & 7) != 1) return;
-          if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
+          if ((g_cp0_regs[CP0_STATUS_REG] & 7) != 1) return;
+          if (!(g_cp0_regs[CP0_STATUS_REG] & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           break;
 
        case DP_INT:
@@ -545,15 +545,15 @@ void gen_interupt(void)
              g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
           else
              return;
-          if ((Status & 7) != 1) return;
-          if (!(Status & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
+          if ((g_cp0_regs[CP0_STATUS_REG] & 7) != 1) return;
+          if (!(g_cp0_regs[CP0_STATUS_REG] & g_cp0_regs[CP0_CAUSE_REG] & 0xFF00)) return;
           break;
 
        case HW2_INT:
           // Hardware Interrupt 2 -- remove interrupt event from queue
           remove_interupt_event();
-          // setup r4300 Status flags: reset TS, and SR, set IM2
-          Status = (Status & ~0x00380000) | 0x1000;
+          // setup r4300 g_cp0_regs[CP0_STATUS_REG] flags: reset TS, and SR, set IM2
+          g_cp0_regs[CP0_STATUS_REG] = (g_cp0_regs[CP0_STATUS_REG] & ~0x00380000) | 0x1000;
           g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x1000) & 0xFFFFFF83;
           /* the exception_general() call below will jump to the interrupt vector (0x80000180) and setup the
            * interpreter or dynarec
@@ -563,8 +563,8 @@ void gen_interupt(void)
        case NMI_INT:
           // Non Maskable Interrupt -- remove interrupt event from queue
           remove_interupt_event();
-          // setup r4300 Status flags: reset TS and SR, set BEV, ERL, and SR
-          Status = (Status & ~0x00380000) | 0x00500004;
+          // setup r4300 g_cp0_regs[CP0_STATUS_REG] flags: reset TS and SR, set BEV, ERL, and SR
+          g_cp0_regs[CP0_STATUS_REG] = (g_cp0_regs[CP0_STATUS_REG] & ~0x00380000) | 0x00500004;
           g_cp0_regs[CP0_CAUSE_REG]  = 0x00000000;
           // simulate the soft reset code which would run from the PIF ROM
           r4300_reset_soft();
@@ -605,7 +605,7 @@ void gen_interupt(void)
     if (r4300emu == CORE_DYNAREC) {
         g_cp0_regs[CP0_EPC_REG] = pcaddr;
         pcaddr = 0x80000180;
-        Status |= 2;
+        g_cp0_regs[CP0_STATUS_REG] |= 2;
         g_cp0_regs[CP0_CAUSE_REG] &= 0x7FFFFFFF;
         pending_exception=1;
     } else {
