@@ -132,7 +132,7 @@ void r4300_reset_hard(void)
     g_cp0_regs[CP0_PREVID_REG] = 0xb00;
     Count = 0x5000;
     g_cp0_regs[CP0_CAUSE_REG] = 0x5C;
-    Context = 0x7FFFF0;
+    g_cp0_regs[CP0_CONTEXT_REG] = 0x7FFFF0;
     EPC = 0xFFFFFFFF;
     BadVAddr = 0xFFFFFFFF;
     g_cp0_regs[CP0_ERROREPC_REG] = 0xFFFFFFFF;
