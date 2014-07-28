@@ -75,8 +75,8 @@ DECLARE_INSTRUCTION(MTC0)
       translate_event_queue((unsigned int) rrt & 0xFFFFFFFF);
       Count = (unsigned int) rrt & 0xFFFFFFFF;
       break;
-    case 10:   // EntryHi
-      EntryHi = (unsigned int) rrt & 0xFFFFE0FF;
+    case CP0_ENTRYHI_REG:
+      g_cp0_regs[CP0_ENTRYHI_REG] = (unsigned int) rrt & 0xFFFFE0FF;
       break;
     case 11:   // Compare
       update_count();

@@ -26,7 +26,7 @@ DECLARE_INSTRUCTION(TLBR)
    int index;
    index = g_cp0_regs[CP0_INDEX_REG] & 0x1F;
    PageMask = tlb_e[index].mask << 13;
-   EntryHi = ((tlb_e[index].vpn2 << 13) | tlb_e[index].asid);
+   g_cp0_regs[CP0_ENTRYHI_REG] = ((tlb_e[index].vpn2 << 13) | tlb_e[index].asid);
    g_cp0_regs[CP0_ENTRYLO0_REG] = (tlb_e[index].pfn_even << 6) | (tlb_e[index].c_even << 3)
      | (tlb_e[index].d_even << 2) | (tlb_e[index].v_even << 1)
        | tlb_e[index].g;
@@ -92,9 +92,9 @@ static void TLBWrite(unsigned int idx)
    tlb_e[idx].d_odd = (g_cp0_regs[CP0_ENTRYLO1_REG] & 0x4) >> 2;
    tlb_e[idx].v_even = (g_cp0_regs[CP0_ENTRYLO0_REG] & 0x2) >> 1;
    tlb_e[idx].v_odd = (g_cp0_regs[CP0_ENTRYLO1_REG] & 0x2) >> 1;
-   tlb_e[idx].asid = (EntryHi & 0xFF);
-   tlb_e[idx].vpn2 = (EntryHi & 0xFFFFE000) >> 13;
-   //tlb_e[idx].r = (EntryHi & 0xC000000000000000LL) >> 62;
+   tlb_e[idx].asid = (g_cp0_regs[CP0_ENTRYHI_REG] & 0xFF);
+   tlb_e[idx].vpn2 = (g_cp0_regs[CP0_ENTRYHI_REG] & 0xFFFFE000) >> 13;
+   //tlb_e[idx].r = (g_cp0_regs[CP0_ENTRYHI_REG] & 0xC000000000000000LL) >> 62;
    tlb_e[idx].mask = (PageMask & 0x1FFE000) >> 13;
    
    tlb_e[idx].start_even = tlb_e[idx].vpn2 << 13;
@@ -160,9 +160,9 @@ DECLARE_INSTRUCTION(TLBP)
    for (i=0; i<32; i++)
    {
       if (((tlb_e[i].vpn2 & (~tlb_e[i].mask)) ==
-         (((EntryHi & 0xFFFFE000) >> 13) & (~tlb_e[i].mask))) &&
+         (((g_cp0_regs[CP0_ENTRYHI_REG] & 0xFFFFE000) >> 13) & (~tlb_e[i].mask))) &&
         ((tlb_e[i].g) ||
-         (tlb_e[i].asid == (EntryHi & 0xFF))))
+         (tlb_e[i].asid == (g_cp0_regs[CP0_ENTRYHI_REG] & 0xFF))))
       {
          g_cp0_regs[CP0_INDEX_REG] = i;
          break;
