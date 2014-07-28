@@ -38,7 +38,7 @@ cothread_t main_thread;
 static cothread_t cpu_thread;
 #endif
 
-static bool emu_thread_has_run = false; // < This is used to ensure the core_gl_context_reset
+static bool emu_thread_has_run = false; // < This is used to ensure the context_reset
                                         //   function doesn't try to reinit graphics before needed
 uint16_t button_orientation = 0;
 int astick_deadzone;
@@ -301,7 +301,7 @@ const char* retro_get_system_directory(void)
     return dir ? dir : ".";
 }
 
-static void core_gl_context_reset(void)
+static void context_reset(void)
 {
 	extern int InitGfx ();
 	extern void gles2n64_reset();
@@ -644,7 +644,7 @@ bool retro_load_game(const struct retro_game_info *game)
 #else
       render_iface.context_type = RETRO_HW_CONTEXT_OPENGLES2;
 #endif
-      render_iface.context_reset = core_gl_context_reset;
+      render_iface.context_reset = context_reset;
       render_iface.depth = true;
       render_iface.bottom_left_origin = true;
       render_iface.cache_context = true;
