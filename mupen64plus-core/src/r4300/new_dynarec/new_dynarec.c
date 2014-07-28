@@ -433,9 +433,9 @@ void *get_addr(u_int vaddr)
   Status|=2;
   g_cp0_regs[CP0_CAUSE_REG] =(vaddr<<31)|0x8;
   EPC=(vaddr&1)?vaddr-5:vaddr;
-  BadVAddr=(vaddr&~1);
-  g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((BadVAddr>>9)&0x007FFFF0);
-  g_cp0_regs[CP0_ENTRYHI_REG] = BadVAddr&0xFFFFE000;
+  g_cp0_regs[CP0_BADVADDR_REG]=(vaddr&~1);
+  g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
+  g_cp0_regs[CP0_ENTRYHI_REG] = g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;
   return get_addr_ht(0x80000000);
 }
 // Look up address in hash table first
@@ -527,9 +527,9 @@ void *get_addr_32(u_int vaddr,u_int flags)
   Status|=2;
   g_cp0_regs[CP0_CAUSE_REG] = (vaddr<<31)|0x8;
   EPC=(vaddr&1)?vaddr-5:vaddr;
-  BadVAddr=(vaddr&~1);
-  g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((BadVAddr>>9)&0x007FFFF0);
-  g_cp0_regs[CP0_ENTRYHI_REG] = BadVAddr&0xFFFFE000;
+  g_cp0_regs[CP0_BADVADDR_REG]=(vaddr&~1);
+  g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
+  g_cp0_regs[CP0_ENTRYHI_REG] = g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;
   return get_addr_ht(0x80000000);
 }
 

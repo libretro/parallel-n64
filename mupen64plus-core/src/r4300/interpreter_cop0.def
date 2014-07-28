@@ -65,7 +65,7 @@ DECLARE_INSTRUCTION(MTC0)
       g_cp0_regs[CP0_WIRED_REG] = (unsigned int) rrt;
       g_cp0_regs[CP0_RANDOM_REG] = 31;
       break;
-    case 8:    // BadVAddr
+    case CP0_BADVADDR_REG:
       break;
     case 9:    // Count
       update_count();

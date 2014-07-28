@@ -38,7 +38,7 @@ void TLB_refill_exception(unsigned int address, int w)
       g_cp0_regs[CP0_CAUSE_REG] = (3 << 2);
    else
       g_cp0_regs[CP0_CAUSE_REG] = (2 << 2);
-   BadVAddr = address;
+   g_cp0_regs[CP0_BADVADDR_REG] = address;
    g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG] & 0xFF80000F) | ((address >> 9) & 0x007FFFF0);
    g_cp0_regs[CP0_ENTRYHI_REG] = address & 0xFFFFE000;
    if (Status & 0x2) // Test de EXL
