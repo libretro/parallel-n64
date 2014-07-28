@@ -625,12 +625,21 @@ COMBINE cmb;
   rdp.col[2] *= 1.0f-(((color & 0x0000FF00) >> 8)/255.0f); \
   rdp.cmb_flags |= flag; \
 }
-#define XSHADEC1MC2(color1, color2, flag) { \
-  rdp.col[0] *= ( (int)((color1 & 0xFF000000) >> 24) - (int)((color2 & 0xFF000000) >> 24) )/255.0f; \
-  rdp.col[1] *= ( (int)((color1 & 0x00FF0000) >> 16) - (int)((color2 & 0x00FF0000) >> 16) )/255.0f; \
-  rdp.col[2] *= ( (int)((color1 & 0x0000FF00) >> 8)  - (int)((color2 & 0x0000FF00) >> 8) )/255.0f; \
+
+#define XSHADE1M_NEW(color, flag) { \
+  rdp.col[0] *= 1.0f-(color[0] / 255.0f); \
+  rdp.col[1] *= 1.0f-(color[1] / 255.0f); \
+  rdp.col[2] *= 1.0f-(color[2] / 255.0f); \
   rdp.cmb_flags |= flag; \
 }
+
+#define XSHADEC1MC2_NEW(color1, color2, flag) { \
+  rdp.col[0] *= ( color1[0] - color2[0])/255.0f; \
+  rdp.col[1] *= ( color1[1] - color2[1])/255.0f; \
+  rdp.col[2] *= ( color1[2] - color2[2])/255.0f; \
+  rdp.cmb_flags |= flag; \
+}
+
 #define XSHADE_BYTE(byte, flag) { \
   rdp.col[0] *= byte; \
   rdp.col[1] *= byte; \
@@ -640,10 +649,10 @@ COMBINE cmb;
 #define MULSHADE(color) XSHADE(color, CMB_MULT)
 #define MULSHADE_PRIM() MULSHADE(rdp.prim_color)
 #define MULSHADE_ENV() MULSHADE(rdp.env_color)
-#define MULSHADE_1MPRIM() XSHADE1M(rdp.prim_color, CMB_MULT)
-#define MULSHADE_1MENV() XSHADE1M(rdp.env_color, CMB_MULT)
-#define MULSHADE_PRIMSUBENV() XSHADEC1MC2(rdp.prim_color, rdp.env_color, CMB_MULT)
-#define MULSHADE_ENVSUBPRIM() XSHADEC1MC2(rdp.env_color, rdp.prim_color, CMB_MULT)
+#define MULSHADE_1MPRIM() XSHADE1M_NEW(rdp.prim_color_sep, CMB_MULT)
+#define MULSHADE_1MENV() XSHADE1M_NEW(rdp.env_color_sep, CMB_MULT)
+#define MULSHADE_PRIMSUBENV() XSHADEC1MC2_NEW(rdp.prim_color_sep, rdp.env_color_sep, CMB_MULT)
+#define MULSHADE_ENVSUBPRIM() XSHADEC1MC2_NEW(rdp.env_color_sep, rdp.prim_color_sep, CMB_MULT)
 #define MULSHADE_BYTE(byte) XSHADE_BYTE(byte, CMB_MULT)
 #define MULSHADE_PRIMA() MULSHADE_BYTE((rdp.prim_color_sep[3]))
 #define MULSHADE_ENVA() MULSHADE_BYTE((rdp.env_color_sep[3]))
@@ -661,10 +670,10 @@ COMBINE cmb;
 #define SETSHADE_PRIMLOD() SETSHADE_BYTE((rdp.prim_lodfrac & 0xFF))
 #define SETSHADE_1MPRIMLOD() SETSHADE_BYTE(((~rdp.prim_lodfrac) & 0xFF))
 
-#define SETSHADE_1MPRIM() XSHADE1M(rdp.prim_color, CMB_SET)
-#define SETSHADE_1MENV() XSHADE1M(rdp.env_color, CMB_SET)
-#define SETSHADE_PRIMSUBENV() XSHADEC1MC2(rdp.prim_color, rdp.env_color, CMB_SET)
-#define SETSHADE_ENVSUBPRIM() XSHADEC1MC2(rdp.env_color, rdp.prim_color, CMB_SET)
+#define SETSHADE_1MPRIM() XSHADE1M_NEW(rdp.prim_color_sep, CMB_SET)
+#define SETSHADE_1MENV() XSHADE1M_NEW(rdp.env_color_sep, CMB_SET)
+#define SETSHADE_PRIMSUBENV() XSHADEC1MC2_NEW(rdp.prim_color_sep, rdp.env_color_sep, CMB_SET)
+#define SETSHADE_ENVSUBPRIM() XSHADEC1MC2_NEW(rdp.env_color_sep, rdp.prim_color_sep, CMB_SET)
 #define SETSHADE_SHADE_A() { \
   rdp.cmb_flags = CMB_SETSHADE_SHADEALPHA; \
 }
