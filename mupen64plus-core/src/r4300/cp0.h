@@ -28,7 +28,6 @@
 #define EntryLo1 g_cp0_regs[3]
 #define Context g_cp0_regs[4]
 #define PageMask g_cp0_regs[5]
-#define Wired g_cp0_regs[6]
 #define BadVAddr g_cp0_regs[8]
 #define Count g_cp0_regs[9]
 #define EntryHi g_cp0_regs[10]

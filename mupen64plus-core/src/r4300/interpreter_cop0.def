@@ -61,8 +61,8 @@ DECLARE_INSTRUCTION(MTC0)
     case 5:    // PageMask
       PageMask = (unsigned int) rrt & 0x01FFE000;
       break;
-    case 6:    // Wired
-      Wired = (unsigned int) rrt;
+    case CP0_WIRED_REG:
+      g_cp0_regs[CP0_WIRED_REG] = (unsigned int) rrt;
       Random = 31;
       break;
     case 8:    // BadVAddr

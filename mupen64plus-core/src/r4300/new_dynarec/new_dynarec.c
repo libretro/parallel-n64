@@ -11041,7 +11041,7 @@ void TLBWI_new(void)
 void TLBWR_new(void)
 {
   unsigned int i;
-  Random = (Count/2 % (32 - Wired)) + Wired;
+  Random = (Count/2 % (32 - g_cp0_regs[CP0_WIRED_REG])) + g_cp0_regs[CP0_WIRED_REG];
   /* Remove old entries */
   unsigned int old_start_even=tlb_e[Random&0x3F].start_even;
   unsigned int old_end_even=tlb_e[Random&0x3F].end_even;
