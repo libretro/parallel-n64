@@ -570,7 +570,7 @@ COMBINE cmb;
 
 #define CC_C1MULC2_NEW(color1, color2) { \
   cmb.ccolor= \
-   (uint8_t)(color1[0] * (color1[0] /255.0f)) <<  24 | \
+   (uint8_t)(color1[0] * (color2[0] /255.0f)) <<  24 | \
    (uint8_t)(color1[1] * (color2[1] /255.0f)) <<  16 | \
    (uint8_t)(color1[2] * (color2[1] /255.0f)) <<   8 ; \
 }
