@@ -133,7 +133,7 @@ void r4300_reset_hard(void)
     Count = 0x5000;
     g_cp0_regs[CP0_CAUSE_REG] = 0x5C;
     g_cp0_regs[CP0_CONTEXT_REG] = 0x7FFFF0;
-    EPC = 0xFFFFFFFF;
+    g_cp0_regs[CP0_EPC_REG] = 0xFFFFFFFF;
     g_cp0_regs[CP0_BADVADDR_REG] = 0xFFFFFFFF;
     g_cp0_regs[CP0_ERROREPC_REG] = 0xFFFFFFFF;
    

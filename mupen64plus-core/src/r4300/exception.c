@@ -52,11 +52,11 @@ void TLB_refill_exception(unsigned int address, int w)
     if (r4300emu != CORE_PURE_INTERPRETER) 
       {
          if (w!=2)
-           EPC = PC->addr;
+           g_cp0_regs[CP0_EPC_REG] = PC->addr;
          else
-           EPC = address;
+           g_cp0_regs[CP0_EPC_REG] = address;
       }
-    else EPC = PC->addr;
+    else g_cp0_regs[CP0_EPC_REG] = PC->addr;
          
     g_cp0_regs[CP0_CAUSE_REG] &= ~0x80000000;
     Status |= 0x2; //EXL=1
@@ -84,13 +84,13 @@ void TLB_refill_exception(unsigned int address, int w)
    if(delay_slot==1 || delay_slot==3)
      {
     g_cp0_regs[CP0_CAUSE_REG] |= 0x80000000;
-    EPC-=4;
+    g_cp0_regs[CP0_EPC_REG] -=4;
      }
    else
      {
     g_cp0_regs[CP0_CAUSE_REG] &= 0x7FFFFFFF;
      }
-   if(w != 2) EPC-=4;
+   if(w != 2) g_cp0_regs[CP0_EPC_REG] -= 4;
    
    last_addr = PC->addr;
    
@@ -116,12 +116,12 @@ void exception_general(void)
    update_count();
    Status |= 2;
    
-   EPC = PC->addr;
+   g_cp0_regs[CP0_EPC_REG] = PC->addr;
    
    if(delay_slot==1 || delay_slot==3)
      {
     g_cp0_regs[CP0_CAUSE_REG] |= 0x80000000;
-    EPC-=4;
+    g_cp0_regs[CP0_EPC_REG] -= 4;
      }
    else
      {

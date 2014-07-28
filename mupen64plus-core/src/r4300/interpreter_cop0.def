@@ -109,8 +109,8 @@ DECLARE_INSTRUCTION(MTC0)
       else
       g_cp0_regs[CP0_CAUSE_REG] = (unsigned int) rrt;
       break;
-    case 14:   // EPC
-      EPC = (unsigned int) rrt;
+    case CP0_EPC_REG:
+      g_cp0_regs[CP0_EPC_REG] = (unsigned int) rrt;
       break;
     case CP0_PREVID_REG:
       break;

@@ -182,7 +182,7 @@ DECLARE_INSTRUCTION(ERET)
    else
    {
      Status &= ~0x2;
-     generic_jump_to(EPC);
+     generic_jump_to(g_cp0_regs[CP0_EPC_REG]);
    }
    llbit = 0;
    check_interupt();

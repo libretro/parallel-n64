@@ -603,7 +603,7 @@ void gen_interupt(void)
 
 #ifdef NEW_DYNAREC
     if (r4300emu == CORE_DYNAREC) {
-        EPC = pcaddr;
+        g_cp0_regs[CP0_EPC_REG] = pcaddr;
         pcaddr = 0x80000180;
         Status |= 2;
         g_cp0_regs[CP0_CAUSE_REG] &= 0x7FFFFFFF;

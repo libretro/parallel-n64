@@ -432,7 +432,7 @@ void *get_addr(u_int vaddr)
   // Execute in unmapped page, generate pagefault execption
   Status|=2;
   g_cp0_regs[CP0_CAUSE_REG] =(vaddr<<31)|0x8;
-  EPC=(vaddr&1)?vaddr-5:vaddr;
+  g_cp0_regs[CP0_EPC_REG] = (vaddr&1)?vaddr-5:vaddr;
   g_cp0_regs[CP0_BADVADDR_REG]=(vaddr&~1);
   g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
   g_cp0_regs[CP0_ENTRYHI_REG] = g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;
@@ -526,7 +526,7 @@ void *get_addr_32(u_int vaddr,u_int flags)
   // Execute in unmapped page, generate pagefault execption
   Status|=2;
   g_cp0_regs[CP0_CAUSE_REG] = (vaddr<<31)|0x8;
-  EPC=(vaddr&1)?vaddr-5:vaddr;
+  g_cp0_regs[CP0_EPC_REG] = (vaddr&1)?vaddr-5:vaddr;
   g_cp0_regs[CP0_BADVADDR_REG]=(vaddr&~1);
   g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG]&0xFF80000F)|((g_cp0_regs[CP0_BADVADDR_REG]>>9)&0x007FFFF0);
   g_cp0_regs[CP0_ENTRYHI_REG] = g_cp0_regs[CP0_BADVADDR_REG]&0xFFFFE000;

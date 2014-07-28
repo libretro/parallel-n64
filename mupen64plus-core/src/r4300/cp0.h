@@ -25,7 +25,6 @@
 /* registers macros */
 #define Count g_cp0_regs[9]
 #define Status g_cp0_regs[12]
-#define EPC g_cp0_regs[14]
 
 enum {
    CP0_INDEX_REG,
