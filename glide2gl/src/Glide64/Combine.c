@@ -593,6 +593,13 @@ COMBINE cmb;
       (uint8_t)( ((color & 0x00FF0000) >> 16) * factor ) <<  16 | \
       (uint8_t)( ((color & 0x0000FF00) >>  8) * factor ) <<   8 ; \
 }
+
+#define CC_COLMULBYTE_NEW(color, byte) { \
+    float factor = byte/255.0f; \
+    cmb.ccolor = (uint8_t)(color[0] * factor ) <<  24 | \
+      (uint8_t)(color[1] * factor ) <<  16 | \
+      (uint8_t)(color[2] * factor ) <<   8 ; \
+}
 #define CC_PRIM() (cmb.ccolor = (rdp.prim_color) & 0xFFFFFF00)
 #define CC_ENV() (cmb.ccolor = (rdp.env_color) & 0xFFFFFF00)
 #define CC_1SUBPRIM() (cmb.ccolor= (~rdp.prim_color) & 0xFFFFFF00)
@@ -2879,7 +2886,7 @@ static void cc_t0_mul_primlod_mul_prim () //Added by Gonetz
          GR_COMBINE_FACTOR_LOCAL,
          GR_COMBINE_LOCAL_CONSTANT,
          GR_COMBINE_OTHER_TEXTURE);
-   CC_COLMULBYTE (rdp.prim_color, rdp.prim_lodfrac);
+   CC_COLMULBYTE_NEW(rdp.prim_color_sep, rdp.prim_lodfrac);
    USE_T0 ();
 }
 
@@ -4116,7 +4123,7 @@ static void cc__t0_sub_t1_mul_enva_add_shade__sub_env_mul_prim ()
          GR_CMBX_TMU_CCOLOR, 0,
          GR_CMBX_ITRGB, 0);
    cmb.tex |= 3;
-   CC_COLMULBYTE(rdp.prim_color, (rdp.env_color&0xFF));
+   CC_COLMULBYTE_NEW(rdp.prim_color_sep, (rdp.env_color&0xFF));
    cmb.tex_ccolor = cmb.ccolor;
    CCMBEXT(GR_CMBX_CONSTANT_COLOR, GR_FUNC_MODE_NEGATIVE_X,
          GR_CMBX_ITRGB, GR_FUNC_MODE_ZERO,
@@ -7273,7 +7280,7 @@ static void cc__t0_mul_shade__inter_env_using_enva ()
             GR_CMBX_ZERO, 1,
             GR_CMBX_ZERO, 0);
       MULSHADE_1MENVA ();
-      CC_COLMULBYTE(rdp.env_color, (rdp.env_color&0xFF));
+      CC_COLMULBYTE_NEW(rdp.env_color_sep, (rdp.env_color&0xFF));
       cmb.tex_ccolor = cmb.ccolor;
    }
 }
