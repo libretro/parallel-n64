@@ -78,11 +78,11 @@ DECLARE_INSTRUCTION(MTC0)
     case CP0_ENTRYHI_REG:
       g_cp0_regs[CP0_ENTRYHI_REG] = (unsigned int) rrt & 0xFFFFE0FF;
       break;
-    case 11:   // Compare
+    case CP0_COMPARE_REG:
       update_count();
       remove_event(COMPARE_INT);
       add_interupt_event_count(COMPARE_INT, (unsigned int)rrt);
-      Compare = (unsigned int) rrt;
+      g_cp0_regs[CP0_COMPARE_REG] = (unsigned int) rrt;
       g_cp0_regs[CP0_CAUSE_REG] = g_cp0_regs[CP0_CAUSE_REG] & 0xFFFF7FFF; //Timer interupt is clear
       break;
     case 12:   // Status

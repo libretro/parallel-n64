@@ -288,7 +288,7 @@ void translate_event_queue(unsigned int base)
         aux->count = (aux->count - Count)+base;
         aux = aux->next;
     }
-    add_interupt_event_count(COMPARE_INT, Compare);
+    add_interupt_event_count(COMPARE_INT, g_cp0_regs[CP0_COMPARE_REG]);
     add_interupt_event_count(SPECIAL_INT, 0);
 }
 
@@ -449,7 +449,7 @@ void gen_interupt(void)
        case COMPARE_INT:
           remove_interupt_event();
           Count+=count_per_op;
-          add_interupt_event_count(COMPARE_INT, Compare);
+          add_interupt_event_count(COMPARE_INT, g_cp0_regs[CP0_COMPARE_REG]);
           Count-=count_per_op;
 
           g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x8000) & 0xFFFFFF83;
