@@ -129,7 +129,7 @@ void r4300_reset_hard(void)
     Status= 0x34000000;
     set_fpr_pointers(Status);
     Config= 0x6e463;
-    PRevID = 0xb00;
+    g_cp0_regs[CP0_PREVID_REG] = 0xb00;
     Count = 0x5000;
     g_cp0_regs[CP0_CAUSE_REG] = 0x5C;
     Context = 0x7FFFF0;

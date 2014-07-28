@@ -112,7 +112,7 @@ DECLARE_INSTRUCTION(MTC0)
     case 14:   // EPC
       EPC = (unsigned int) rrt;
       break;
-    case 15:  // PRevID
+    case CP0_PREVID_REG:
       break;
     case 16:  // Config
       Config = (unsigned int) rrt;
