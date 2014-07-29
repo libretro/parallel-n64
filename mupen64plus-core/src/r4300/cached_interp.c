@@ -160,38 +160,40 @@ unsigned int jump_to_address;
 static void FIN_BLOCK(void)
 {
    if (!delay_slot)
-     {
-    jump_to((PC-1)->addr+4);
-/*#ifdef DBG
-            if (g_DebuggerActive) update_debugger(PC->addr);
+   {
+      jump_to((PC-1)->addr+4);
+#if 0
+#ifdef DBG
+      if (g_DebuggerActive) update_debugger(PC->addr);
 #endif
-Used by dynarec only, check should be unnecessary
-*/
-    PC->ops();
-    if (r4300emu == CORE_DYNAREC) dyna_jump();
-     }
+      // Used by dynarec only, check should be unnecessary
+#endif
+      PC->ops();
+      if (r4300emu == CORE_DYNAREC) dyna_jump();
+   }
    else
-     {
-    precomp_block *blk = actual;
-    precomp_instr *inst = PC;
-    jump_to((PC-1)->addr+4);
-    
-/*#ifdef DBG
-            if (g_DebuggerActive) update_debugger(PC->addr);
+   {
+      precomp_block *blk = actual;
+      precomp_instr *inst = PC;
+      jump_to((PC-1)->addr+4);
+
+#if 0
+#ifdef DBG
+      if (g_DebuggerActive) update_debugger(PC->addr);
 #endif
-Used by dynarec only, check should be unnecessary
-*/
-    if (!skip_jump)
+      // Used by dynarec only, check should be unnecessary
+#endif
+      if (!skip_jump)
       {
          PC->ops();
          actual = blk;
          PC = inst+1;
       }
-    else
-      PC->ops();
-    
-    if (r4300emu == CORE_DYNAREC) dyna_jump();
-     }
+      else
+         PC->ops();
+
+      if (r4300emu == CORE_DYNAREC) dyna_jump();
+   }
 }
 
 static void NOTCOMPILED(void)
@@ -206,15 +208,16 @@ static void NOTCOMPILED(void)
    else
       DebugMessage(M64MSG_ERROR, "not compiled exception");
 
-/*#ifdef DBG
-            if (g_DebuggerActive) update_debugger(PC->addr);
+#if 0
+#ifdef DBG
+   if (g_DebuggerActive) update_debugger(PC->addr);
 #endif
-The preceeding update_debugger SHOULD be unnecessary since it should have been
-called before NOTCOMPILED would have been executed
-*/
+   // The preceeding update_debugger SHOULD be unnecessary since it should have been
+   // called before NOTCOMPILED would have been executed
+#endif
    PC->ops();
    if (r4300emu == CORE_DYNAREC)
-     dyna_jump();
+      dyna_jump();
 }
 
 static void NOTCOMPILED2(void)
@@ -507,15 +510,15 @@ const cpu_instruction_table cached_interpreter_table = {
 static unsigned int update_invalid_addr(unsigned int addr)
 {
    if (addr >= 0x80000000 && addr < 0xc0000000)
-     {
-    if (invalid_code[addr>>12]) invalid_code[(addr^0x20000000)>>12] = 1;
-    if (invalid_code[(addr^0x20000000)>>12]) invalid_code[addr>>12] = 1;
-    return addr;
-     }
+   {
+      if (invalid_code[addr>>12]) invalid_code[(addr^0x20000000)>>12] = 1;
+      if (invalid_code[(addr^0x20000000)>>12]) invalid_code[addr>>12] = 1;
+      return addr;
+   }
    else
-     {
-    unsigned int paddr = virtual_to_physical_address(addr, 2);
-    if (paddr)
+   {
+      unsigned int paddr = virtual_to_physical_address(addr, 2);
+      if (paddr)
       {
          unsigned int beg_paddr = paddr - (addr - (addr&~0xFFF));
          update_invalid_addr(paddr);
@@ -524,8 +527,8 @@ static unsigned int update_invalid_addr(unsigned int addr)
          if (invalid_code[addr>>12]) invalid_code[(beg_paddr+0x000)>>12] = 1;
          if (invalid_code[addr>>12]) invalid_code[(beg_paddr+0xFFC)>>12] = 1;
       }
-    return paddr;
-     }
+      return paddr;
+   }
 }
 
 #define addr jump_to_address
@@ -537,8 +540,8 @@ void jump_to_func(void)
    if (!paddr) return;
    actual = blocks[addr>>12];
    if (invalid_code[addr>>12])
-     {
-    if (!blocks[addr>>12])
+   {
+      if (!blocks[addr>>12])
       {
          blocks[addr>>12] = (precomp_block *) malloc(sizeof(precomp_block));
          actual = blocks[addr>>12];
@@ -547,12 +550,12 @@ void jump_to_func(void)
          blocks[addr>>12]->jumps_table = NULL;
          blocks[addr>>12]->riprel_table = NULL;
       }
-    blocks[addr>>12]->start = addr & ~0xFFF;
-    blocks[addr>>12]->end = (addr & ~0xFFF) + 0x1000;
-    init_block(blocks[addr>>12]);
-     }
+      blocks[addr>>12]->start = addr & ~0xFFF;
+      blocks[addr>>12]->end = (addr & ~0xFFF) + 0x1000;
+      init_block(blocks[addr>>12]);
+   }
    PC=actual->block+((addr-actual->start)>>2);
-   
+
    if (r4300emu == CORE_DYNAREC) dyna_jump();
 }
 #undef addr
@@ -572,11 +575,11 @@ void free_blocks(void)
    int i;
    for (i=0; i<0x100000; i++)
    {
-        if (blocks[i])
-        {
-            free_block(blocks[i]);
-            free(blocks[i]);
-            blocks[i] = NULL;
-        }
-    }
+      if (blocks[i])
+      {
+         free_block(blocks[i]);
+         free(blocks[i]);
+         blocks[i] = NULL;
+      }
+   }
 }

@@ -43,32 +43,32 @@ unsigned int g_cp0_regs[32];
 int check_cop1_unusable(void)
 {
    if (!(g_cp0_regs[CP0_STATUS_REG] & 0x20000000))
-     {
-    g_cp0_regs[CP0_CAUSE_REG] = (11 << 2) | 0x10000000;
-    exception_general();
-    return 1;
-     }
+   {
+      g_cp0_regs[CP0_CAUSE_REG] = (11 << 2) | 0x10000000;
+      exception_general();
+      return 1;
+   }
    return 0;
 }
 
 void update_count(void)
 {
 #ifdef NEW_DYNAREC
-    if (r4300emu != CORE_DYNAREC)
-    {
+   if (r4300emu != CORE_DYNAREC)
+   {
 #endif
-        g_cp0_regs[CP0_COUNT_REG] += ((PC->addr - last_addr) >> 2) * count_per_op;
-        last_addr = PC->addr;
+      g_cp0_regs[CP0_COUNT_REG] += ((PC->addr - last_addr) >> 2) * count_per_op;
+      last_addr = PC->addr;
 #ifdef NEW_DYNAREC
-    }
+   }
 #endif
 
 #ifdef COMPARE_CORE
    if (delay_slot)
-     CoreCompareCallback();
+      CoreCompareCallback();
 #endif
-/*#ifdef DBG
-   if (g_DebuggerActive && !delay_slot) update_debugger(PC->addr);
+   /*#ifdef DBG
+     if (g_DebuggerActive && !delay_slot) update_debugger(PC->addr);
 #endif
 */
 }

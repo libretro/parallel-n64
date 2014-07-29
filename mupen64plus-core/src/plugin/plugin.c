@@ -95,46 +95,46 @@ GFX_INFO gfx_info;
 
 static m64p_error plugin_start_gfx(void)
 {
-    /* fill in the GFX_INFO data structure */
-    gfx_info.HEADER = (unsigned char *) rom;
-    gfx_info.RDRAM = (unsigned char *) rdram;
-    gfx_info.DMEM = (unsigned char *) SP_DMEM;
-    gfx_info.IMEM = (unsigned char *) SP_IMEM;
-    gfx_info.MI_INTR_REG = &(MI_register.mi_intr_reg);
-    gfx_info.DPC_START_REG = &(dpc_register.dpc_start);
-    gfx_info.DPC_END_REG = &(dpc_register.dpc_end);
-    gfx_info.DPC_CURRENT_REG = &(dpc_register.dpc_current);
-    gfx_info.DPC_STATUS_REG = &(dpc_register.dpc_status);
-    gfx_info.DPC_CLOCK_REG = &(dpc_register.dpc_clock);
-    gfx_info.DPC_BUFBUSY_REG = &(dpc_register.dpc_bufbusy);
-    gfx_info.DPC_PIPEBUSY_REG = &(dpc_register.dpc_pipebusy);
-    gfx_info.DPC_TMEM_REG = &(dpc_register.dpc_tmem);
-    gfx_info.VI_STATUS_REG = &(vi_register.vi_status);
-    gfx_info.VI_ORIGIN_REG = &(vi_register.vi_origin);
-    gfx_info.VI_WIDTH_REG = &(vi_register.vi_width);
-    gfx_info.VI_INTR_REG = &(vi_register.vi_v_intr);
-    gfx_info.VI_V_CURRENT_LINE_REG = &(vi_register.vi_current);
-    gfx_info.VI_TIMING_REG = &(vi_register.vi_burst);
-    gfx_info.VI_V_SYNC_REG = &(vi_register.vi_v_sync);
-    gfx_info.VI_H_SYNC_REG = &(vi_register.vi_h_sync);
-    gfx_info.VI_LEAP_REG = &(vi_register.vi_leap);
-    gfx_info.VI_H_START_REG = &(vi_register.vi_h_start);
-    gfx_info.VI_V_START_REG = &(vi_register.vi_v_start);
-    gfx_info.VI_V_BURST_REG = &(vi_register.vi_v_burst);
-    gfx_info.VI_X_SCALE_REG = &(vi_register.vi_x_scale);
-    gfx_info.VI_Y_SCALE_REG = &(vi_register.vi_y_scale);
-    gfx_info.CheckInterrupts = EmptyFunc;
+   /* fill in the GFX_INFO data structure */
+   gfx_info.HEADER = (unsigned char *) rom;
+   gfx_info.RDRAM = (unsigned char *) rdram;
+   gfx_info.DMEM = (unsigned char *) SP_DMEM;
+   gfx_info.IMEM = (unsigned char *) SP_IMEM;
+   gfx_info.MI_INTR_REG = &(MI_register.mi_intr_reg);
+   gfx_info.DPC_START_REG = &(dpc_register.dpc_start);
+   gfx_info.DPC_END_REG = &(dpc_register.dpc_end);
+   gfx_info.DPC_CURRENT_REG = &(dpc_register.dpc_current);
+   gfx_info.DPC_STATUS_REG = &(dpc_register.dpc_status);
+   gfx_info.DPC_CLOCK_REG = &(dpc_register.dpc_clock);
+   gfx_info.DPC_BUFBUSY_REG = &(dpc_register.dpc_bufbusy);
+   gfx_info.DPC_PIPEBUSY_REG = &(dpc_register.dpc_pipebusy);
+   gfx_info.DPC_TMEM_REG = &(dpc_register.dpc_tmem);
+   gfx_info.VI_STATUS_REG = &(vi_register.vi_status);
+   gfx_info.VI_ORIGIN_REG = &(vi_register.vi_origin);
+   gfx_info.VI_WIDTH_REG = &(vi_register.vi_width);
+   gfx_info.VI_INTR_REG = &(vi_register.vi_v_intr);
+   gfx_info.VI_V_CURRENT_LINE_REG = &(vi_register.vi_current);
+   gfx_info.VI_TIMING_REG = &(vi_register.vi_burst);
+   gfx_info.VI_V_SYNC_REG = &(vi_register.vi_v_sync);
+   gfx_info.VI_H_SYNC_REG = &(vi_register.vi_h_sync);
+   gfx_info.VI_LEAP_REG = &(vi_register.vi_leap);
+   gfx_info.VI_H_START_REG = &(vi_register.vi_h_start);
+   gfx_info.VI_V_START_REG = &(vi_register.vi_v_start);
+   gfx_info.VI_V_BURST_REG = &(vi_register.vi_v_burst);
+   gfx_info.VI_X_SCALE_REG = &(vi_register.vi_x_scale);
+   gfx_info.VI_Y_SCALE_REG = &(vi_register.vi_y_scale);
+   gfx_info.CheckInterrupts = EmptyFunc;
 
-    /* call the audio plugin */
-    if (!gfx.initiateGFX(gfx_info))
-    {
-       printf("plugin_start_gfx fail.\n");
-       return M64ERR_PLUGIN_FAIL;
-    }
+   /* call the audio plugin */
+   if (!gfx.initiateGFX(gfx_info))
+   {
+      printf("plugin_start_gfx fail.\n");
+      return M64ERR_PLUGIN_FAIL;
+   }
 
-    printf("plugin_start_gfx success.\n");
+   printf("plugin_start_gfx success.\n");
 
-    return M64ERR_SUCCESS;
+   return M64ERR_SUCCESS;
 }
 
 /* AUDIO */
@@ -173,24 +173,24 @@ static AUDIO_INFO audio_info;
 
 static m64p_error plugin_start_audio(void)
 {
-    /* fill in the AUDIO_INFO data structure */
-    audio_info.RDRAM = (unsigned char *) rdram;
-    audio_info.DMEM = (unsigned char *) SP_DMEM;
-    audio_info.IMEM = (unsigned char *) SP_IMEM;
-    audio_info.MI_INTR_REG = &(MI_register.mi_intr_reg);
-    audio_info.AI_DRAM_ADDR_REG = &(ai_register.ai_dram_addr);
-    audio_info.AI_LEN_REG = &(ai_register.ai_len);
-    audio_info.AI_CONTROL_REG = &(ai_register.ai_control);
-    audio_info.AI_STATUS_REG = &dummy;
-    audio_info.AI_DACRATE_REG = &(ai_register.ai_dacrate);
-    audio_info.AI_BITRATE_REG = &(ai_register.ai_bitrate);
-    audio_info.CheckInterrupts = EmptyFunc;
+   /* fill in the AUDIO_INFO data structure */
+   audio_info.RDRAM = (unsigned char *) rdram;
+   audio_info.DMEM = (unsigned char *) SP_DMEM;
+   audio_info.IMEM = (unsigned char *) SP_IMEM;
+   audio_info.MI_INTR_REG = &(MI_register.mi_intr_reg);
+   audio_info.AI_DRAM_ADDR_REG = &(ai_register.ai_dram_addr);
+   audio_info.AI_LEN_REG = &(ai_register.ai_len);
+   audio_info.AI_CONTROL_REG = &(ai_register.ai_control);
+   audio_info.AI_STATUS_REG = &dummy;
+   audio_info.AI_DACRATE_REG = &(ai_register.ai_dacrate);
+   audio_info.AI_BITRATE_REG = &(ai_register.ai_bitrate);
+   audio_info.CheckInterrupts = EmptyFunc;
 
-    /* call the audio plugin */
-    if (!audio.initiateAudio(audio_info))
-        return M64ERR_PLUGIN_FAIL;
+   /* call the audio plugin */
+   if (!audio.initiateAudio(audio_info))
+      return M64ERR_PLUGIN_FAIL;
 
-    return M64ERR_SUCCESS;
+   return M64ERR_SUCCESS;
 }
 
 /* INPUT */
@@ -220,21 +220,21 @@ CONTROL Controls[4];
 
 static m64p_error plugin_start_input(void)
 {
-    int i;
+   int i;
 
-    /* fill in the CONTROL_INFO data structure */
-    control_info.Controls = Controls;
-    for (i=0; i<4; i++)
-      {
-         Controls[i].Present = 0;
-         Controls[i].RawData = 0;
-         Controls[i].Plugin = PLUGIN_NONE;
-      }
+   /* fill in the CONTROL_INFO data structure */
+   control_info.Controls = Controls;
+   for (i=0; i<4; i++)
+   {
+      Controls[i].Present = 0;
+      Controls[i].RawData = 0;
+      Controls[i].Plugin = PLUGIN_NONE;
+   }
 
-    /* call the input plugin */
-    input.initiateControllers(control_info);
+   /* call the input plugin */
+   input.initiateControllers(control_info);
 
-    return M64ERR_SUCCESS;
+   return M64ERR_SUCCESS;
 }
 
 /* RSP */
@@ -259,59 +259,59 @@ RSP_INFO rsp_info;
 
 static m64p_error plugin_start_rsp(void)
 {
-    /* fill in the RSP_INFO data structure */
-    rsp_info.RDRAM = (unsigned char *) rdram;
-    rsp_info.DMEM = (unsigned char *) SP_DMEM;
-    rsp_info.IMEM = (unsigned char *) SP_IMEM;
-    rsp_info.MI_INTR_REG = &MI_register.mi_intr_reg;
-    rsp_info.SP_MEM_ADDR_REG = &sp_register.sp_mem_addr_reg;
-    rsp_info.SP_DRAM_ADDR_REG = &sp_register.sp_dram_addr_reg;
-    rsp_info.SP_RD_LEN_REG = &sp_register.sp_rd_len_reg;
-    rsp_info.SP_WR_LEN_REG = &sp_register.sp_wr_len_reg;
-    rsp_info.SP_STATUS_REG = &sp_register.sp_status_reg;
-    rsp_info.SP_DMA_FULL_REG = &sp_register.sp_dma_full_reg;
-    rsp_info.SP_DMA_BUSY_REG = &sp_register.sp_dma_busy_reg;
-    rsp_info.SP_PC_REG = &rsp_register.rsp_pc;
-    rsp_info.SP_SEMAPHORE_REG = &sp_register.sp_semaphore_reg;
-    rsp_info.DPC_START_REG = &dpc_register.dpc_start;
-    rsp_info.DPC_END_REG = &dpc_register.dpc_end;
-    rsp_info.DPC_CURRENT_REG = &dpc_register.dpc_current;
-    rsp_info.DPC_STATUS_REG = &dpc_register.dpc_status;
-    rsp_info.DPC_CLOCK_REG = &dpc_register.dpc_clock;
-    rsp_info.DPC_BUFBUSY_REG = &dpc_register.dpc_bufbusy;
-    rsp_info.DPC_PIPEBUSY_REG = &dpc_register.dpc_pipebusy;
-    rsp_info.DPC_TMEM_REG = &dpc_register.dpc_tmem;
-    rsp_info.CheckInterrupts = EmptyFunc;
-    rsp_info.ProcessDlistList = gfx.processDList;
-    rsp_info.ProcessAlistList = audio.processAList;
-    rsp_info.ProcessRdpList = gfx.processRDPList;
-    rsp_info.ShowCFB = gfx.showCFB;
+   /* fill in the RSP_INFO data structure */
+   rsp_info.RDRAM = (unsigned char *) rdram;
+   rsp_info.DMEM = (unsigned char *) SP_DMEM;
+   rsp_info.IMEM = (unsigned char *) SP_IMEM;
+   rsp_info.MI_INTR_REG = &MI_register.mi_intr_reg;
+   rsp_info.SP_MEM_ADDR_REG = &sp_register.sp_mem_addr_reg;
+   rsp_info.SP_DRAM_ADDR_REG = &sp_register.sp_dram_addr_reg;
+   rsp_info.SP_RD_LEN_REG = &sp_register.sp_rd_len_reg;
+   rsp_info.SP_WR_LEN_REG = &sp_register.sp_wr_len_reg;
+   rsp_info.SP_STATUS_REG = &sp_register.sp_status_reg;
+   rsp_info.SP_DMA_FULL_REG = &sp_register.sp_dma_full_reg;
+   rsp_info.SP_DMA_BUSY_REG = &sp_register.sp_dma_busy_reg;
+   rsp_info.SP_PC_REG = &rsp_register.rsp_pc;
+   rsp_info.SP_SEMAPHORE_REG = &sp_register.sp_semaphore_reg;
+   rsp_info.DPC_START_REG = &dpc_register.dpc_start;
+   rsp_info.DPC_END_REG = &dpc_register.dpc_end;
+   rsp_info.DPC_CURRENT_REG = &dpc_register.dpc_current;
+   rsp_info.DPC_STATUS_REG = &dpc_register.dpc_status;
+   rsp_info.DPC_CLOCK_REG = &dpc_register.dpc_clock;
+   rsp_info.DPC_BUFBUSY_REG = &dpc_register.dpc_bufbusy;
+   rsp_info.DPC_PIPEBUSY_REG = &dpc_register.dpc_pipebusy;
+   rsp_info.DPC_TMEM_REG = &dpc_register.dpc_tmem;
+   rsp_info.CheckInterrupts = EmptyFunc;
+   rsp_info.ProcessDlistList = gfx.processDList;
+   rsp_info.ProcessAlistList = audio.processAList;
+   rsp_info.ProcessRdpList = gfx.processRDPList;
+   rsp_info.ShowCFB = gfx.showCFB;
 
-    /* call the RSP plugin  */
-    rsp.initiateRSP(rsp_info, NULL);
+   /* call the RSP plugin  */
+   rsp.initiateRSP(rsp_info, NULL);
 
-    return M64ERR_SUCCESS;
+   return M64ERR_SUCCESS;
 }
 
 /* global functions */
 void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rsp_plugin)
 {
-    switch (gfx_plugin)
-    {
-       case GFX_ANGRYLION:  gfx = gfx_angrylion; break;
-       case GFX_RICE:  gfx = gfx_rice; break;
-       case GFX_GLN64: gfx = gfx_gln64; break;
-       default:        gfx = gfx_glide64; break;
-    }
+   switch (gfx_plugin)
+   {
+      case GFX_ANGRYLION:  gfx = gfx_angrylion; break;
+      case GFX_RICE:  gfx = gfx_rice; break;
+      case GFX_GLN64: gfx = gfx_gln64; break;
+      default:        gfx = gfx_glide64; break;
+   }
 
-    switch (rsp_plugin)
-    {
-        case RSP_CXD4: rsp = rsp_cxd4; break;
-        default:       rsp = rsp_hle; break;
-    }
+   switch (rsp_plugin)
+   {
+      case RSP_CXD4: rsp = rsp_cxd4; break;
+      default:       rsp = rsp_hle; break;
+   }
 
-    plugin_start_gfx();
-    plugin_start_audio();
-    plugin_start_input();
-    plugin_start_rsp();
+   plugin_start_gfx();
+   plugin_start_audio();
+   plugin_start_input();
+   plugin_start_rsp();
 }

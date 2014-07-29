@@ -406,9 +406,9 @@ void pure_interpreter_init(void)
    PC = &interp_PC;
    PC->addr = last_addr = 0xa4000040;
 
-/*#ifdef DBG
-         if (g_DebuggerActive)
-           update_debugger(PC->addr);
+   /*#ifdef DBG
+     if (g_DebuggerActive)
+     update_debugger(PC->addr);
 #endif*/
 
    current_instruction_table = pure_interpreter_table;

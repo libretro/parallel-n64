@@ -48,116 +48,115 @@ typedef enum flashram_mode
 
 void init_flashram(void)
 {
-    flashram_info.mode = NOPES_MODE;
-    flashram_info.status = 0;
+   flashram_info.mode = NOPES_MODE;
+   flashram_info.status = 0;
 }
 
 uint32_t flashram_status(void)
 {
-    return (uint32_t) (flashram_info.status >> 32);
+   return (uint32_t) (flashram_info.status >> 32);
 }
 
 void flashram_command(uint32_t command)
 {
-    switch (command & 0xff000000)
-    {
-    case 0x4b000000:
-        flashram_info.erase_offset = (command & 0xffff) * 128;
-        break;
-    case 0x78000000:
-        flashram_info.mode = ERASE_MODE;
-        flashram_info.status = 0x1111800800c20000LL;
-        break;
-    case 0xa5000000:
-        flashram_info.erase_offset = (command & 0xffff) * 128;
-        flashram_info.status = 0x1111800400c20000LL;
-        break;
-    case 0xb4000000:
-        flashram_info.mode = WRITE_MODE;
-        break;
-    case 0xd2000000:  // execute
-        switch (flashram_info.mode)
-        {
-        case NOPES_MODE:
-        case READ_MODE:
-            break;
-        case ERASE_MODE:
-        {
-            uint32_t i;
-            for (i=flashram_info.erase_offset; i<(flashram_info.erase_offset+128); i++)
-            {
-                saved_memory.flashram[i^S8] = 0xff;
-            }
-        }
-        break;
-        case WRITE_MODE:
-        {
-            int i;
-            for (i=0; i<128; i++)
-            {
-                saved_memory.flashram[(flashram_info.erase_offset+i)^S8]=
-                    ((uint8_t*)rdram)[(flashram_info.write_pointer+i)^S8];
-            }
-        }
-        break;
-        case STATUS_MODE:
-            break;
-        default:
-            DebugMessage(M64MSG_WARNING, "unknown flashram command with mode:%x", (int)flashram_info.mode);
-            stop=1;
-            break;
-        }
-        flashram_info.mode = NOPES_MODE;
-        break;
-    case 0xe1000000:
-        flashram_info.mode = STATUS_MODE;
-        flashram_info.status = 0x1111800100c20000LL;
-        break;
-    case 0xf0000000:
-        flashram_info.mode = READ_MODE;
-        flashram_info.status = 0x11118004f0000000LL;
-        break;
-    default:
-        DebugMessage(M64MSG_WARNING, "unknown flashram command: %x", (int)command);
-        break;
-    }
+   switch (command & 0xff000000)
+   {
+      case 0x4b000000:
+         flashram_info.erase_offset = (command & 0xffff) * 128;
+         break;
+      case 0x78000000:
+         flashram_info.mode = ERASE_MODE;
+         flashram_info.status = 0x1111800800c20000LL;
+         break;
+      case 0xa5000000:
+         flashram_info.erase_offset = (command & 0xffff) * 128;
+         flashram_info.status = 0x1111800400c20000LL;
+         break;
+      case 0xb4000000:
+         flashram_info.mode = WRITE_MODE;
+         break;
+      case 0xd2000000:  // execute
+         switch (flashram_info.mode)
+         {
+            case NOPES_MODE:
+            case READ_MODE:
+               break;
+            case ERASE_MODE:
+               {
+                  uint32_t i;
+                  for (i=flashram_info.erase_offset; i<(flashram_info.erase_offset+128); i++)
+                  {
+                     saved_memory.flashram[i^S8] = 0xff;
+                  }
+               }
+               break;
+            case WRITE_MODE:
+               {
+                  int i;
+                  for (i=0; i<128; i++)
+                  {
+                     saved_memory.flashram[(flashram_info.erase_offset+i)^S8]=
+                        ((uint8_t*)rdram)[(flashram_info.write_pointer+i)^S8];
+                  }
+               }
+               break;
+            case STATUS_MODE:
+               break;
+            default:
+               DebugMessage(M64MSG_WARNING, "unknown flashram command with mode:%x", (int)flashram_info.mode);
+               stop=1;
+               break;
+         }
+         flashram_info.mode = NOPES_MODE;
+         break;
+      case 0xe1000000:
+         flashram_info.mode = STATUS_MODE;
+         flashram_info.status = 0x1111800100c20000LL;
+         break;
+      case 0xf0000000:
+         flashram_info.mode = READ_MODE;
+         flashram_info.status = 0x11118004f0000000LL;
+         break;
+      default:
+         DebugMessage(M64MSG_WARNING, "unknown flashram command: %x", (int)command);
+         break;
+   }
 }
 
 void dma_read_flashram(void)
 {
-    uint32_t i;
+   uint32_t i;
 
-    switch (flashram_info.mode)
-    {
-    case STATUS_MODE:
-        rdram[pi_register.pi_dram_addr_reg/4] = (uint32_t)(flashram_info.status >> 32);
-        rdram[pi_register.pi_dram_addr_reg/4+1] = (uint32_t)(flashram_info.status);
-        break;
-    case READ_MODE:
-        for (i=0; i<(pi_register.pi_wr_len_reg & 0x0FFFFFF)+1; i++)
-        {
+   switch (flashram_info.mode)
+   {
+      case STATUS_MODE:
+         rdram[pi_register.pi_dram_addr_reg/4] = (uint32_t)(flashram_info.status >> 32);
+         rdram[pi_register.pi_dram_addr_reg/4+1] = (uint32_t)(flashram_info.status);
+         break;
+      case READ_MODE:
+         for (i=0; i<(pi_register.pi_wr_len_reg & 0x0FFFFFF)+1; i++)
+         {
             ((uint8_t*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
-                saved_memory.flashram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFF)*2+i)^S8];
-        }
-        break;
-    default:
-        DebugMessage(M64MSG_WARNING, "unknown dma_read_flashram: %x", flashram_info.mode);
-        stop=1;
-        break;
-    }
+               saved_memory.flashram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFF)*2+i)^S8];
+         }
+         break;
+      default:
+         DebugMessage(M64MSG_WARNING, "unknown dma_read_flashram: %x", flashram_info.mode);
+         stop=1;
+         break;
+   }
 }
 
 void dma_write_flashram(void)
 {
-    switch (flashram_info.mode)
-    {
-    case WRITE_MODE:
-        flashram_info.write_pointer = pi_register.pi_dram_addr_reg;
-        break;
-    default:
-        DebugMessage(M64MSG_ERROR, "unknown dma_write_flashram: %x", flashram_info.mode);
-        stop=1;
-        break;
-    }
+   switch (flashram_info.mode)
+   {
+      case WRITE_MODE:
+         flashram_info.write_pointer = pi_register.pi_dram_addr_reg;
+         break;
+      default:
+         DebugMessage(M64MSG_ERROR, "unknown dma_write_flashram: %x", flashram_info.mode);
+         stop=1;
+         break;
+   }
 }
-
