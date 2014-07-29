@@ -75,7 +75,6 @@ LOCAL_SRC_FILES += $(RSPDIR)/src/alist.c \
 # Video Plugins
 LOCAL_SRC_FILES += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/Combiner.cpp \
-            $(VIDEODIR_RICE)/CombinerTable.cpp \
             $(VIDEODIR_RICE)/RiceConfig.cpp \
             $(VIDEODIR_RICE)/ConvertImage16.cpp \
             $(VIDEODIR_RICE)/ConvertImage.cpp \
@@ -84,7 +83,6 @@ LOCAL_SRC_FILES += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/DeviceBuilder.cpp \
             $(VIDEODIR_RICE)/DirectXDecodedMux.cpp \
             $(VIDEODIR_RICE)/FrameBuffer.cpp \
-            $(VIDEODIR_RICE)/GeneralCombiner.cpp \
             $(VIDEODIR_RICE)/GraphicsContext.cpp \
             $(VIDEODIR_RICE)/OGLCombiner.cpp \
             $(VIDEODIR_RICE)/OGLDecodedMux.cpp \
