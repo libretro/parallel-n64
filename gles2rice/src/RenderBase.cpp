@@ -760,11 +760,6 @@ void SetFogMinMax(float fMin, float fMax, float fMul, float fOffset)
     CRender::g_pRender->SetFogMinMax(fMin, fMax);
 }
 
-void InitVertexColors()
-{
-    // TODO: Implement?
-}
-
 void InitVertexTextureConstants()
 {
     RenderTexture &tex0 = g_textures[gRSP.curTile];
