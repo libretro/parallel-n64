@@ -40,14 +40,6 @@ COGLColorCombiner4::COGLColorCombiner4(CRender *pRender)
     m_pDecodedMux = new COGLExtDecodedMux;
 }
 
-COGLColorCombiner2::COGLColorCombiner2(CRender *pRender)
-        :COGLColorCombiner4(pRender)
-{
-    delete m_pDecodedMux;
-    m_pDecodedMux = new CDirectXDecodedMux;     // Use Mux for DirectX because we support only 1 texture for each stage
-    m_ppGeneralDecodedMux = &m_pDecodedMux;
-}
-
 //////////////////////////////////////////////////////////////////////////
 bool COGLColorCombiner4::Initialize(void)
 {
@@ -58,32 +50,6 @@ bool COGLColorCombiner4::Initialize(void)
     return true;
 }
 
-bool COGLColorCombiner2::Initialize(void)
-{
-    TRACE0("Starting OpenGL 1.2/1.3 multitexture combiner" );
-    if( COGLColorCombiner4::Initialize() )
-    {
-        // For general combiner flags
-        m_dwGeneralMaxStages = m_supportedStages;
-
-        m_bTxtOpAdd = m_bSupportAdd;
-        m_bTxtOpSub = m_bSupportSubtract;
-        m_bTxtOpLerp = true;
-
-        m_bTxtOpAddSmooth = true;
-        m_bTxtOpBlendCurAlpha = true;
-        m_bTxtOpBlendDifAlpha = true;
-        m_bTxtOpBlendFacAlpha = true;
-        m_bTxtOpBlendTxtAlpha = true;
-        m_bTxtOpMulAdd = m_bSupportModAdd_ATI;
-
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
 //========================================================================
 void COGLColorCombiner4::InitCombinerCycleFill(void)
 {
@@ -285,29 +251,6 @@ void COGLColorCombiner4::DisplaySimpleMuxString(void)
     }
     TRACE0("\n\n");
 }
-void COGLColorCombiner2::DisplaySimpleMuxString(void)
-{
-    char buf0[30], buf1[30], buf2[30];
-    OGLExtCombinerSaveType &result = m_vCompiledSettings[m_lastIndex];
-
-    COGLColorCombiner::DisplaySimpleMuxString();
-    int generalCombinerIndex = CGeneralCombiner::FindCompiledMux();
-    if( generalCombinerIndex < 0 )      // Can not found
-    {
-        generalCombinerIndex = CGeneralCombiner::ParseDecodedMux();
-    }
-    DebuggerAppendMsg("Generated general combiners:");
-    GeneralCombinerInfo &generalRes = m_vCompiledCombinerStages[generalCombinerIndex];
-    General_DisplayBlendingStageInfo(generalRes);
-
-    DebuggerAppendMsg("OpenGL 1.2: %d Stages", result.numOfUnits);      
-    for( int i=0; i<result.numOfUnits; i++ )
-    {
-        DebuggerAppendMsg("//aRGB%d:\t%s: %s, %s, %s\n", i,GetOpStr(result.units[i].rgbOp), DecodedMux::FormatStr(result.units[i].rgbArg0,buf0), DecodedMux::FormatStr(result.units[i].rgbArg1,buf1), DecodedMux::FormatStr(result.units[i].rgbArg2,buf2));     
-        DebuggerAppendMsg("//aAlpha%d:\t%s: %s, %s, %s\n", i,GetOpStr(result.units[i].alphaOp), DecodedMux::FormatStr(result.units[i].alphaArg0,buf0), DecodedMux::FormatStr(result.units[i].alphaArg1,buf1), DecodedMux::FormatStr(result.units[i].alphaArg2,buf2));       
-    }
-    TRACE0("\n\n");
-}
 #endif
 
 
@@ -339,21 +282,11 @@ GLint COGLColorCombiner4::RGBArgsMap4[] =
     GL_TEXTURE0,                //MUX_T0_ALPHA,
 };
 
-GLint COGLColorCombiner2::RGBArgsMap2[] =
-{
-    GL_TEXTURE0,                //MUX_TEXEL0,
-};
-
 //========================================================================
 
 GLint COGLColorCombiner4::MapRGBArgs(uint8_t arg)
 {
     return RGBArgsMap4[arg&MUX_MASK];
-}
-
-GLint COGLColorCombiner2::MapRGBArgs(uint8_t arg)
-{
-    return RGBArgsMap2[arg&MUX_MASK];
 }
 
 GLint COGLColorCombiner4::MapRGBArgFlags(uint8_t arg)
@@ -377,11 +310,6 @@ GLint COGLColorCombiner4::MapRGBArgFlags(uint8_t arg)
 GLint COGLColorCombiner4::MapAlphaArgs(uint8_t arg)
 {
     return RGBArgsMap4[arg&MUX_MASK];
-}
-
-GLint COGLColorCombiner2::MapAlphaArgs(uint8_t arg)
-{
-    return RGBArgsMap2[arg&MUX_MASK];
 }
 
 GLint COGLColorCombiner4::MapAlphaArgFlags(uint8_t arg)
@@ -495,152 +423,3 @@ GLenum GeneralToGLMaps[]=
     GL_REPLACE,             //CM_REPLACE,
     GL_MODULATE_ADD_ATI,    //CM_MULTIPLYADD,       
 };
-
-
-//////////////////////////////////////////////////////////////////////////
-int COGLColorCombiner2::ParseDecodedMux()
-{
-    //return COGLColorCombiner4::ParseDecodedMux();
-
-    int generalCombinerIndex = CGeneralCombiner::FindCompiledMux();
-    if( generalCombinerIndex < 0 )  // Can not found
-    {
-        generalCombinerIndex = CGeneralCombiner::ParseDecodedMux();
-    }
-
-    GeneralCombinerInfo &generalRes = m_vCompiledCombinerStages[generalCombinerIndex];
-    OGLExtCombinerSaveType res;
-
-    // Convert generalRes to OGLExtCombinerSaveType
-    for( int unitNo=0; unitNo<generalRes.nStages; unitNo++ )
-    {
-        OGLExtCombinerType &unit = res.units[unitNo];
-        //OGLExt1CombType &colorComb = unit.Combs[0];
-        //OGLExt1CombType &alphaComb = unit.Combs[1];
-
-        unit.rgbArg0 = (uint8_t)generalRes.stages[unitNo].colorOp.Arg1;
-        unit.rgbArg1 = (uint8_t)generalRes.stages[unitNo].colorOp.Arg2;
-        unit.rgbArg2 = (uint8_t)generalRes.stages[unitNo].colorOp.Arg0;
-        unit.alphaArg0 = (uint8_t)generalRes.stages[unitNo].alphaOp.Arg1;
-        unit.alphaArg1 = (uint8_t)generalRes.stages[unitNo].alphaOp.Arg2;
-        unit.alphaArg2 = (uint8_t)generalRes.stages[unitNo].alphaOp.Arg0;
-
-        unit.rgbOp = GeneralToGLMaps[generalRes.stages[unitNo].colorOp.op];
-        if( unit.rgbOp == GL_MODULATE_ADD_ATI && !m_bTxtOpMulAdd )
-        {
-            if( (unit.rgbArg0&MUX_MASK) == (unit.rgbArg2&MUX_MASK) && (unit.rgbArg0&MUX_COMPLEMENT) )
-            {
-                unit.rgbOp = GL_ADD;
-                unit.rgbArg0 &= ~MUX_COMPLEMENT;
-            }
-            else
-            {
-                unit.rgbOp = GL_MODULATE;
-            }
-        }
-        unit.alphaOp = GeneralToGLMaps[generalRes.stages[unitNo].alphaOp.op];
-        if( unit.alphaOp == GL_MODULATE_ADD_ATI && !m_bTxtOpMulAdd )    
-        {
-            if( (unit.alphaArg0&MUX_MASK) == (unit.alphaArg2&MUX_MASK) && (unit.alphaArg0&MUX_COMPLEMENT) )
-            {
-                unit.alphaOp = GL_ADD;
-                unit.alphaArg0 &= ~MUX_COMPLEMENT;
-            }
-            else
-            {
-                unit.alphaOp = GL_MODULATE;
-            }
-        }
-
-        unit.tex = generalRes.stages[unitNo].dwTexture;
-        unit.textureIsUsed = generalRes.stages[unitNo].bTextureUsed;
-    }
-
-    res.numOfUnits = generalRes.nStages;
-    res.constantColor = generalRes.TFactor;
-    return SaveParsedResult(res);
-}
-
-
-void COGLColorCombiner2::GenerateCombinerSettingConstants(int index)
-{
-    OGLExtCombinerSaveType &res = m_vCompiledSettings[index];
-
-    bool isUsed = true;
-
-    float *fv;
-    float tempf[4];
-
-    if( res.primIsUsed )
-    {
-        fv = GetPrimitiveColorfv(); // CONSTANT COLOR
-    }
-    else if( res.envIsUsed )
-    {
-        fv = GetEnvColorfv();   // CONSTANT COLOR
-    }
-    else if( res.lodFracIsUsed )
-    {
-        float frac = gRDP.LODFrac / 255.0f;
-        tempf[0] = tempf[1] = tempf[2] = tempf[3] = frac;
-        fv = &tempf[0];
-    }
-    else
-    {
-        isUsed = false;
-    }
-
-    if( isUsed )
-    {
-        for( int i=0; i<res.numOfUnits; i++ )
-        {
-            pglActiveTexture(GL_TEXTURE0 + i);
-            OPENGL_CHECK_ERRORS;
-            glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR,fv);
-            OPENGL_CHECK_ERRORS;
-        }
-    }
-}
-void COGLColorCombiner2::GenerateCombinerSetting(int index)
-{
-    OGLExtCombinerSaveType &res = m_vCompiledSettings[index];
-    COGLExtRender *prender = (COGLExtRender *)m_pRender;
-
-    for( int i=0; i<res.numOfUnits; i++ )
-    {
-        pglActiveTexture(GL_TEXTURE0 + i);
-        OPENGL_CHECK_ERRORS;
-        //if(res.units[i].textureIsUsed)
-        {
-            prender->SetTextureToTextureUnitMap(res.units[i].tex,i);
-            m_pOGLRender->EnableTexUnit(i, true);
-            COGLTexture* pTexture = g_textures[(gRSP.curTile+res.units[i].tex)&7].m_pCOGLTexture;
-            if( pTexture )  m_pOGLRender->BindTexture(pTexture->m_dwTextureName, i);
-        }
-        /*
-        else
-        {
-            m_pOGLRender->EnableTexUnit(i, true);
-            prender->SetTextureToTextureUnitMap(-1,i);
-            //m_pOGLRender->EnableTexUnit(i, false);
-            //m_pOGLRender->DisBindTexture(0, i);
-        }
-        */
-
-        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
-        OPENGL_CHECK_ERRORS;
-        ApplyFor1Unit(res.units[i]);
-    }
-
-    if( res.numOfUnits < m_maxTexUnits )
-    {
-        for( int i=res.numOfUnits; i<m_maxTexUnits; i++ )
-        {
-            pglActiveTexture(GL_TEXTURE0 + i);
-            OPENGL_CHECK_ERRORS;
-            m_pOGLRender->EnableTexUnit(i, false);
-            prender->SetTextureToTextureUnitMap(-1,i);
-        }
-    }
-}
-

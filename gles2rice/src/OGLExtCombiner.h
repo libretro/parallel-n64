@@ -183,34 +183,5 @@ private:
     virtual GLint MapAlphaArgs(uint8_t arg);
 };
 
-
-//////////////////////////////////////////////////////////////////////////
-// OpenGL 1.2, 1.3 combiner which does not support Texture Crossbar feature
-class COGLColorCombiner2 : public COGLColorCombiner4, CGeneralCombiner
-{
-public:
-    bool Initialize(void);
-
-#ifdef DEBUGGER
-    void DisplaySimpleMuxString(void);
-#endif
-
-protected:
-    friend class OGLDeviceBuilder;
-
-    COGLColorCombiner2(CRender *pRender);
-    ~COGLColorCombiner2() {};
-
-private:
-    virtual int ParseDecodedMux();
-    virtual void GenerateCombinerSetting(int index);
-    virtual void GenerateCombinerSettingConstants(int index);
-
-    virtual GLint MapRGBArgs(uint8_t arg);
-    virtual GLint MapAlphaArgs(uint8_t arg);
-    static GLint RGBArgsMap2[];
-};
-
-
 #endif
 
