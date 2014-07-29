@@ -254,7 +254,7 @@ void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 
 void sglClearDepthf(GLdouble depth)
 {
-#ifdef HAVE_OPENGLES2
+#ifdef GLES
    glClearDepthf(depth);
 #else
    glClearDepth(depth);
@@ -307,7 +307,7 @@ void sglDepthMask(GLboolean flag)
 
 void sglDepthRangef(GLclampd zNear, GLclampd zFar)
 {
-#ifdef HAVE_OPENGLES2
+#ifdef GLES
    glDepthRangef(zNear, zFar);
 #else
    glDepthRange(zNear, zFar);
