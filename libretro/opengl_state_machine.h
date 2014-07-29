@@ -156,9 +156,10 @@ void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers);
 #define glFramebufferTexture2D sglFramebufferTexture2D
 #endif
 
-GLuint retro_get_fbo_id(void);
 void sglEnter(void);
 void sglExit(void);
+
+void *retro_gl_init(void);
 
 #ifdef __cplusplus
 }

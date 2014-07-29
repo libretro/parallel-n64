@@ -28,8 +28,6 @@ retro_environment_t environ_cb = NULL;
 
 struct retro_rumble_interface rumble;
 
-struct retro_hw_render_callback render_iface;
-
 #ifdef SINGLE_THREAD
 void dyna_start(void *code);
 void dyna_jump(void);
@@ -229,6 +227,14 @@ static void setup_variables(void)
    environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
 }
 
+void reinit_gfx_plugin(void)
+{
+   if (gfx_plugin == GFX_GLIDE64 && emu_thread_has_run)
+      InitGfx();
+   else if (gfx_plugin == GFX_GLN64 && emu_thread_has_run)
+      gles2n64_reset();
+}
+
 static void EmuThreadFunction(void)
 {
     emu_thread_has_run = true;
@@ -301,22 +307,6 @@ const char* retro_get_system_directory(void)
     return dir ? dir : ".";
 }
 
-static void context_reset(void)
-{
-	extern int InitGfx ();
-	extern void gles2n64_reset();
-
-   rglgen_resolve_symbols(render_iface.get_proc_address);
-
-   if (gfx_plugin == GFX_GLIDE64 && emu_thread_has_run)
-      InitGfx();
-   else if (gfx_plugin == GFX_GLN64 && emu_thread_has_run)
-      gles2n64_reset();
-
-#ifdef HAVE_SHARED_CONTEXT
-   sglBindFramebuffer(GL_FRAMEBUFFER, 0); // < sgl is intentional
-#endif
-}
 
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
 void retro_set_audio_sample(retro_audio_sample_t cb)   { }
@@ -631,25 +621,15 @@ void update_variables(void)
 
 bool retro_load_game(const struct retro_game_info *game)
 {
+   struct retro_hw_render_callback *render = NULL;
    format_saved_memory(); // < defined in mupen64plus-core/src/memory/memory.c
 
    update_variables();
    initial_boot = false;
 
-   if (gfx_plugin != GFX_ANGRYLION)
+   if (render = (struct retro_hw_render_callback*)retro_gl_init())
    {
-      memset(&render_iface, 0, sizeof(render_iface));
-#ifndef HAVE_OPENGLES2
-      render_iface.context_type = RETRO_HW_CONTEXT_OPENGL;
-#else
-      render_iface.context_type = RETRO_HW_CONTEXT_OPENGLES2;
-#endif
-      render_iface.context_reset = context_reset;
-      render_iface.depth = true;
-      render_iface.bottom_left_origin = true;
-      render_iface.cache_context = true;
-
-      if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &render_iface))
+      if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, render))
       {
          if (log_cb)
             log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
@@ -657,12 +637,11 @@ bool retro_load_game(const struct retro_game_info *game)
       }
    }
 
-    game_data = malloc(game->size);
-    memcpy(game_data, game->data, game->size);
-    game_size = game->size;
+   game_data = malloc(game->size);
+   memcpy(game_data, game->data, game->size);
+   game_size = game->size;
 
-
-    return true;
+   return true;
 }
 
 void retro_unload_game(void)

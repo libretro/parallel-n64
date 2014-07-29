@@ -18,6 +18,7 @@ extern cothread_t main_thread;
 extern bool flip_only;
 extern int stop;
 extern enum gfx_plugin_type gfx_plugin;
+static struct retro_hw_render_callback hw_render;
 
 //forward declarations
 //
@@ -214,12 +215,10 @@ void sglVertexAttrib4fv(GLuint name, GLfloat* v)
     glVertexAttrib4fv(name, v);
 }
 
-extern struct retro_hw_render_callback render_iface;
-
 void sglBindFramebuffer(GLenum target, GLuint framebuffer)
 {
    if (!stop)
-      glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : render_iface.get_current_framebuffer());
+      glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : hw_render.get_current_framebuffer());
 }
 
 void sglBlendFunc(GLenum sfactor, GLenum dfactor)
@@ -435,11 +434,6 @@ void sglFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget,
    glFramebufferTexture2D(target, attachment, textarget, texture, level);
 }
 
-GLuint retro_get_fbo_id(void)
-{
-   return render_iface.get_current_framebuffer();
-}
-
 void sglBindBuffer(GLenum target, GLuint buffer)
 {
    glBindBuffer(target, buffer);
@@ -486,6 +480,53 @@ static void delete_tex_from_address(unsigned address)
 }
 #endif
 
+extern int InitGfx(void);
+extern void gles2n64_reset(void);
+extern void reinit_gfx_plugin(void);
+
+static void context_reset(void)
+{
+
+   rglgen_resolve_symbols(hw_render.get_proc_address);
+
+   reinit_gfx_plugin();
+
+#ifdef HAVE_SHARED_CONTEXT
+   sglBindFramebuffer(GL_FRAMEBUFFER, 0); // < sgl is intentional
+#endif
+}
+
+void *retro_gl_init(void)
+{
+   if (gfx_plugin == GFX_ANGRYLION)
+      return NULL;
+
+#ifdef GLES
+#if defined(GLES31)
+   hw_render.context_type = RETRO_HW_CONTEXT_OPENGLES_VERSION;
+   hw_render.version_major = 3;
+   hw_render.version_minor = 1;
+#elif defined(GLES3)
+   hw_render.context_type = RETRO_HW_CONTEXT_OPENGLES3;
+#else
+   hw_render.context_type = RETRO_HW_CONTEXT_OPENGLES2;
+#endif
+#else
+#ifdef CORE
+   hw_render.context_type = RETRO_HW_CONTEXT_OPENGL_CORE;
+   hw_render.version_major = 3;
+   hw_render.version_minor = 1;
+#else
+   hw_render.context_type = RETRO_HW_CONTEXT_OPENGL;
+#endif
+#endif
+   hw_render.context_reset = context_reset;
+   hw_render.depth = true;
+   hw_render.bottom_left_origin = true;
+   hw_render.cache_context = true;
+
+   return &hw_render;
+}
 
 #ifndef HAVE_SHARED_CONTEXT
 void sglEnter(void)
