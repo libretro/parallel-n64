@@ -253,7 +253,7 @@ void MulMatricesSSE(float m1[4][4],float m2[4][4],float r[4][4])
       _mm_storeu_ps(r[i], destrow);
    }
 }
-#elif defined(HAVE_NEON)
+#elif defined(__ARM_NEON__)
 static void NormalizeVectorNeon(float *v)
 {
    asm volatile (
@@ -358,7 +358,7 @@ void math_init(void)
       if (log_cb)
          log_cb(RETRO_LOG_INFO, "SSE detected, using (some) optimized math functions.\n");
    }
-#elif defined(HAVE_NEON)
+#elif defined(__ARM_NEON__)
    if (cpu & RETRO_SIMD_NEON)
    {
       NormalizeVector = NormalizeVectorNeon;

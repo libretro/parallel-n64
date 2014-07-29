@@ -379,7 +379,7 @@ static void process_sinc(rarch_sinc_resampler_t *resamp, float *out_buffer)
    // movehl { X, R, X, L } == { X, R, X, R }
    _mm_store_ss(out_buffer + 1, _mm_movehl_ps(sum, sum));
 }
-#elif defined(HAVE_NEON)
+#elif defined(__ARM_NEON__)
 
 #if SINC_COEFF_LERP
 #error "NEON asm does not support SINC lerp."
@@ -475,7 +475,7 @@ static void *resampler_sinc_new(double bandwidth_mod)
    }
 
    // Be SIMD-friendly.
-#if (defined(__AVX__) && ENABLE_AVX) || defined(HAVE_NEON)
+#if (defined(__AVX__) && ENABLE_AVX) || defined(__ARM_NEON__)
    re->taps = (re->taps + 7) & ~7;
 #else
    re->taps = (re->taps + 3) & ~3;
@@ -503,7 +503,7 @@ static void *resampler_sinc_new(double bandwidth_mod)
 #elif defined(__SSE__)
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "Sinc resampler [SSE]\n");
-#elif defined(HAVE_NEON)
+#elif defined(__ARM_NEON__)
    process_sinc_func = process_sinc_neon;
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "Sinc resampler [%s]\n", "NEON");

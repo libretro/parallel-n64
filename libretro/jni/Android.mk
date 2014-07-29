@@ -18,13 +18,12 @@ VIDEODIR_GLN64 = $(M64P_ROOT_DIR)/gles2n64/src
 CXD4DIR = ../../mupen64plus-rsp-cxd4
 
 ifeq ($(TARGET_ARCH),arm)
-COMMON_FLAGS += -DANDROID_ARM -DDYNAREC -DNEW_DYNAREC=3 -DARM_ASM -DNO_ASM -DNOSSE
 LOCAL_ARM_MODE := arm
 LOCAL_CFLAGS += -marm
 LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c $(COREDIR)/src/r4300/empty_dynarec.c $(COREDIR)/src/r4300/instr_counters.c
 LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
 ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
-COMMON_FLAGS += -DHAVE_NEON -D__NEON_OPT
+COMMON_FLAGS := -DANDROID_ARM -DDYNAREC -DNEW_DYNAREC=3 -DNO_ASM -DNOSSE
 LOCAL_ARM_NEON := true
 LOCAL_SRC_FILES += $(LIBRETRODIR)/sinc_neon.S $(LIBRETRODIR)/utils_neon.S
 LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/3DMathNeon.c
@@ -33,21 +32,9 @@ endif
 endif
 
 ifeq ($(TARGET_ARCH),x86)
-COMMON_FLAGS += -DANDROID_X86 -DDYNAREC -D__SSE2__ -D__SSE__
-LOCAL_SRC_FILES += $(COREDIR)/src/r4300/x86/assemble.c \
-          $(COREDIR)/src/r4300/x86/gbc.c \
-          $(COREDIR)/src/r4300/x86/gcop0.c \
-          $(COREDIR)/src/r4300/x86/gcop1.c \
-          $(COREDIR)/src/r4300/x86/gcop1_d.c \
-          $(COREDIR)/src/r4300/x86/gcop1_l.c \
-          $(COREDIR)/src/r4300/x86/gcop1_s.c \
-          $(COREDIR)/src/r4300/x86/gcop1_w.c \
-          $(COREDIR)/src/r4300/x86/gr4300.c \
-          $(COREDIR)/src/r4300/x86/gregimm.c \
-          $(COREDIR)/src/r4300/x86/gspecial.c \
-          $(COREDIR)/src/r4300/x86/gtlb.c \
-          $(COREDIR)/src/r4300/x86/regcache.c \
-          $(COREDIR)/src/r4300/x86/rjump.c
+COMMON_FLAGS := -DANDROID_X86 -DDYNAREC -DNEW_DYNAREC=1 -D__SSE2__ -D__SSE__ -D__SOFTFP__
+LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c $(COREDIR)/src/r4300/empty_dynarec.c $(COREDIR)/src/r4300/instr_counters.c
+LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/linkage_x86.S
 endif
 
 ifeq ($(TARGET_ARCH),mips)

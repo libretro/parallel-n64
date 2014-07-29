@@ -577,7 +577,7 @@ static void pre_update(void)
    }
 }
 
-#ifdef HAVE_NEON
+#ifdef __ARM_NEON__
 #include <arm_neon.h>
 #endif
 
@@ -593,14 +593,14 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
 {
    int i;
    float x, y, z;
-#ifdef HAVE_NEON
+#ifdef __ARM_NEON__
    float32x4_t comb0, comb1, comb2, comb3;
    float32x4_t v_xyzw;
 #endif
    void   *membase_ptr  = (void*)gfx_info.RDRAM + addr;
    uint32_t iter = 16;
 
-#ifdef HAVE_NEON
+#ifdef __ARM_NEON__
    comb0 = vld1q_f32(rdp.combined[0]);
    comb1 = vld1q_f32(rdp.combined[1]);
    comb2 = vld1q_f32(rdp.combined[2]);
@@ -623,7 +623,7 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
       vert->uv_scaled   = 0;
       vert->a           = color[0];
 
-#ifdef HAVE_NEON
+#ifdef __ARM_NEON__
       v_xyzw  = vmulq_n_f32(comb0,x)+vmulq_n_f32(comb1,y)+vmulq_n_f32(comb2,z)+comb3;
       vert->x = vgetq_lane_f32(v_xyzw,0);
       vert->y = vgetq_lane_f32(v_xyzw,1);
@@ -643,7 +643,7 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
       if (fabs(vert->w) < 0.001)
          vert->w = 0.001f;
       vert->oow = 1.0f / vert->w;
-#ifdef HAVE_NEON
+#ifdef __ARM_NEON__
       v_xyzw = vmulq_n_f32(v_xyzw,vert->oow);
       vert->x_w=vgetq_lane_f32(v_xyzw,0);
       vert->y_w=vgetq_lane_f32(v_xyzw,1);

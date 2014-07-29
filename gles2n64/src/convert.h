@@ -130,12 +130,7 @@ static INLINE void UnswapCopy( void *src, void *dest, u32 numBytes )
    while (numDWords--)
    {
       u32 dword = *(u32 *)src;
-#if defined(ARM_ASM) && !defined(__QNX__)
-      /* TODO/FIXME - expected string literal before ')' token with QNX */
-      __asm("rev %0, %0" : "+r"(dword)::);
-#else
       dword = ((dword<<24)|((dword<<8)&0x00FF0000)|((dword>>8)&0x0000FF00)|(dword>>24));
-#endif
       *(u32 *)dest = dword;
       dest = (void *)((intptr_t)dest+4);
       src  = (void *)((intptr_t)src +4);
@@ -185,25 +180,15 @@ static INLINE void QWordInterleave( void *mem, u32 numDWords )
 
 static INLINE u32 swapdword( u32 value )
 {
-#if defined(ARM_ASM) && !defined(__QNX__)
-   __asm("rev %0, %0" : "+r"(value)::);
-   return value;
-#else
    return ((value & 0xff000000) >> 24) |
       ((value & 0x00ff0000) >>  8) |
       ((value & 0x0000ff00) <<  8) |
       ((value & 0x000000ff) << 24);
-#endif
 }
 
 static INLINE u16 swapword( u16 value )
 {
-#if defined(ARM_ASM) && !defined(__QNX__)
-   __asm("rev16 %0, %0" : "+r"(value)::);
-   return value;
-#else
    return (value << 8) | (value >> 8);
-#endif
 }
 
 #define RGBA8888_RGBA4444(color) (((color & 0x000000f0) <<  8) | ((color & 0x0000f000) >>  4) | ((color & 0x00f00000) >> 16) | ((color & 0xf0000000) >> 28))

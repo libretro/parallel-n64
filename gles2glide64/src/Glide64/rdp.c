@@ -276,7 +276,7 @@ void rdp_new(void)
    if (perf_get_cpu_features_cb)
       cpu = perf_get_cpu_features_cb();
 
-#if defined(HAVE_NEON)
+#if defined(__ARM_NEON__)
    if (cpu & RETRO_SIMD_NEON)
       gfx_instruction[2][1] = uc2_vertex_neon;
 #endif

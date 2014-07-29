@@ -93,7 +93,7 @@ static void calc_point_light (VERTEX *v, float * vpos)
 
 static void uc6_obj_rectangle(void);
 
-#ifdef HAVE_NEON
+#ifdef __ARM_NEON__
 #include <arm_neon.h>
 
 static void uc2_vertex_neon(void)
