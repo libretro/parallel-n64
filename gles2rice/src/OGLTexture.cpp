@@ -64,6 +64,9 @@ COGLTexture::COGLTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage
         break;
     };
     LOG_TEXTURE(TRACE2("New texture: (%d, %d)", dwWidth, dwHeight));
+
+    glBindTexture(GL_TEXTURE_2D, m_dwTextureName);
+    glTexImage2D(GL_TEXTURE_2D, 0, m_glFmt, m_dwCreatedTextureWidth, m_dwCreatedTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_pTexture);
 }
 
 COGLTexture::~COGLTexture()
@@ -121,7 +124,7 @@ void COGLTexture::EndUpdate(DrawInfo *di)
 
     // Copy the image data from main memory to video card texture memory
     //GL_BGRA_IMG works on Adreno but not inside profiler.
-    glTexImage2D(GL_TEXTURE_2D, 0, m_glFmt, m_dwCreatedTextureWidth, m_dwCreatedTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_pTexture);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_dwCreatedTextureWidth, m_dwCreatedTextureHeight, GL_RGBA, GL_UNSIGNED_BYTE, m_pTexture);
     OPENGL_CHECK_ERRORS;
 }
 
