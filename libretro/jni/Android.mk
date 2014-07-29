@@ -81,7 +81,6 @@ LOCAL_SRC_FILES += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/Debugger.cpp \
             $(VIDEODIR_RICE)/DecodedMux.cpp \
             $(VIDEODIR_RICE)/DeviceBuilder.cpp \
-            $(VIDEODIR_RICE)/DirectXDecodedMux.cpp \
             $(VIDEODIR_RICE)/FrameBuffer.cpp \
             $(VIDEODIR_RICE)/GraphicsContext.cpp \
             $(VIDEODIR_RICE)/OGLCombiner.cpp \

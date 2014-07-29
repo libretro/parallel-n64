@@ -24,7 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "OGLExtRender.h"
 #include "OGLDecodedMux.h"
 #include "OGLTexture.h"
-#include "DirectXDecodedMux.h"
 
 #define GL_MODULATE_ADD_ATI        0x8744
 #define GL_MODULATE_SUBTRACT_ATI   0x8746
