@@ -307,9 +307,6 @@ COGL_FragmentProgramCombiner::~COGL_FragmentProgramCombiner()
 
 bool COGL_FragmentProgramCombiner::Initialize(void)
 {
-    if( !COGLColorCombiner4::Initialize() )
-        return false;
-
     m_bFragmentProgramIsSupported = true;
 
     return true;
@@ -319,9 +316,6 @@ bool COGL_FragmentProgramCombiner::Initialize(void)
 
 void COGL_FragmentProgramCombiner::DisableCombiner(void)
 {
-    //glDisable(GL_FRAGMENT_PROGRAM);
-    //OPENGL_CHECK_ERRORS;
-    COGLColorCombiner4::DisableCombiner();
 }
 
 void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
@@ -512,9 +506,6 @@ void COGL_FragmentProgramCombiner::GenerateProgramStr()
 
 int COGL_FragmentProgramCombiner::ParseDecodedMux()
 {
-    if( !m_bFragmentProgramIsSupported )
-        return COGLColorCombiner4::ParseDecodedMux();
-
     OGLShaderCombinerSaveType res;
     GLint success;
 
@@ -750,12 +741,6 @@ int COGL_FragmentProgramCombiner::FindCompiledMux()
 //////////////////////////////////////////////////////////////////////////
 void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
 {
-    if( !m_bFragmentProgramIsSupported )    
-    {
-        COGLColorCombiner4::InitCombinerCycle12();
-        return;
-    }
-
 #ifdef DEBUGGER
     if( debuggerDropCombiners )
     {
