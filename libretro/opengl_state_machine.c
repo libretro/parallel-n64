@@ -252,14 +252,18 @@ void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 #endif
 }
 
-
-void sglClearDepth(GLdouble depth)
+void sglClearDepthf(GLdouble depth)
 {
 #ifdef HAVE_OPENGLES2
    glClearDepthf(depth);
 #else
    glClearDepth(depth);
 #endif
+}
+
+void sglClearDepth(GLdouble depth)
+{
+   sglClearDepthf(depth);
 #ifndef HAVE_SHARED_CONTEXT
    ClearDepth_value = depth;
 #endif
@@ -301,14 +305,18 @@ void sglDepthMask(GLboolean flag)
 #endif
 }
 
-
-void sglDepthRange(GLclampd zNear, GLclampd zFar)
+void sglDepthRangef(GLclampd zNear, GLclampd zFar)
 {
 #ifdef HAVE_OPENGLES2
    glDepthRangef(zNear, zFar);
 #else
    glDepthRange(zNear, zFar);
 #endif
+}
+
+void sglDepthRange(GLclampd zNear, GLclampd zFar)
+{
+   sglDepthRangef(zNear, zFar);
 #ifndef HAVE_SHARED_CONTEXT
    DepthRange_zNear = zNear;
    DepthRange_zFar = zFar;
@@ -492,7 +500,7 @@ static void context_reset(void)
    reinit_gfx_plugin();
 
 #ifdef HAVE_SHARED_CONTEXT
-   sglBindFramebuffer(GL_FRAMEBUFFER, 0); // < sgl is intentional
+   sglBindFramebuffer(GL_FRAMEBUFFER, 0);
 #endif
 }
 
@@ -548,20 +556,12 @@ void sglEnter(void)
 
     glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
     glClearColor(ClearColor_red, ClearColor_green, ClearColor_blue, ClearColor_alpha);
-#ifdef HAVE_OPENGLES2
-    glClearDepthf(ClearDepth_value);
-#else
-    glClearDepth(ClearDepth_value);
-#endif
+    sglClearDepthf(ClearDepth_value);
     glColorMask(ColorMask_red, ColorMask_green, ColorMask_blue, ColorMask_alpha);
     glCullFace(CullFace_mode);
     glDepthFunc(DepthFunc_func);
     glDepthMask(DepthMask_flag);
-#ifdef HAVE_OPENGLES2
-    glDepthRangef(DepthRange_zNear, DepthRange_zFar);
-#else
-    glDepthRange(DepthRange_zNear, DepthRange_zFar);
-#endif
+    sglDepthRangef(DepthRange_zNear, DepthRange_zFar);
     glFrontFace(FrontFace_mode);
     glPolygonOffset(PolygonOffset_factor, PolygonOffset_units);
     glScissor(Scissor_x, Scissor_y, Scissor_width, Scissor_height);
@@ -600,11 +600,7 @@ void sglExit(void)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glCullFace(GL_BACK);
     glDepthMask(GL_TRUE);
-#ifdef HAVE_OPENGLES2
-    glDepthRangef(0, 1);
-#else
-    glDepthRange(0, 1);
-#endif
+    sglDepthRangef(0, 1);
     glFrontFace(GL_CCW);
     glPolygonOffset(0, 0);
     glUseProgram(0);
