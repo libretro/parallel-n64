@@ -18,15 +18,9 @@
 RSP_INFO RSP;
 
 #ifdef _MSC_VER
-#ifndef INLINE
-#define INLINE      __inline
-#endif
 #define NOINLINE    __declspec(noinline)
 #define ALIGNED     _declspec(align(16))
 #else
-#ifndef INLINE
-#define INLINE      inline
-#endif
 #define NOINLINE    __attribute__((noinline))
 #define ALIGNED     __attribute__((aligned(16)))
 #endif

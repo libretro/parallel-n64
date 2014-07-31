@@ -15,14 +15,6 @@
 #define _CLAMP_H
 
 /*
- * for ANSI compliance (null INLINE attribute if not already set to `inline`)
- * Include "rsp.h" for active, non-ANSI inline definition.
- */
-#ifndef INLINE
-#define INLINE
-#endif
-
-/*
  * dependency for 48-bit accumulator access
  */
 #include "vu.h"

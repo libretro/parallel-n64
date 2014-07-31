@@ -85,12 +85,10 @@ typedef int8_t INT8;
 
 #ifdef _MSC_VER
 #define NOINLINE        __declspec(noinline)
-#define INLINE          __inline
 #define STRICTINLINE    __forceinline
 #define ALIGNED         __declspec(align(16))
 #else
 #define NOINLINE        __attribute__((noinline))
-#define INLINE          inline
 #define STRICTINLINE    INLINE
 #define ALIGNED         __attribute__((aligned(16)))
 #endif
