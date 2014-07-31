@@ -1121,7 +1121,7 @@ void update(void)
          int depthmask_val = FXFALSE;
          rdp.update ^= UPDATE_ZBUF_ENABLED;
 
-         if (((rdp.flags & ZBUF_ENABLED) || (rdp.zsrc == 1) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY)))
+         if (((rdp.flags & ZBUF_ENABLED) || ((rdp.zsrc == 1) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
          {
             if (rdp.flags & ZBUF_COMPARE)
             {

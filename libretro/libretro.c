@@ -107,15 +107,15 @@ static void core_settings_set_defaults(void)
    gfx_plugin = GFX_GLIDE64;
    if (gfx_var.value)
    {
-      if (gfx_var.value && strcmp(gfx_var.value, "auto") == 0)
+      if (gfx_var.value && !strcmp(gfx_var.value, "auto"))
          core_settings_autoselect_gfx_plugin();
-      if (gfx_var.value && strcmp(gfx_var.value, "gln64") == 0)
+      if (gfx_var.value && !strcmp(gfx_var.value, "gln64"))
          gfx_plugin = GFX_GLN64;
-      if (gfx_var.value && strcmp(gfx_var.value, "rice") == 0)
+      if (gfx_var.value && !strcmp(gfx_var.value, "rice"))
          gfx_plugin = GFX_RICE;
-      if(gfx_var.value && strcmp(gfx_var.value, "glide64") == 0)
+      if(gfx_var.value && !strcmp(gfx_var.value, "glide64"))
          gfx_plugin = GFX_GLIDE64;
-	  if(gfx_var.value && strcmp(gfx_var.value, "angrylion") == 0)
+	  if(gfx_var.value && !strcmp(gfx_var.value, "angrylion"))
          gfx_plugin = GFX_ANGRYLION;
    }
 
@@ -124,13 +124,13 @@ static void core_settings_set_defaults(void)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var) && gfx_var.value)
    {
-       if (gfx_var.value && strcmp(gfx_var.value, "veryhigh") == 0)
+       if (gfx_var.value && !strcmp(gfx_var.value, "veryhigh"))
           gfx_plugin_accuracy = 3;
-       else if (gfx_var.value && strcmp(gfx_var.value, "high") == 0)
+       else if (gfx_var.value && !strcmp(gfx_var.value, "high"))
           gfx_plugin_accuracy = 2;
-       else if (gfx_var.value && strcmp(gfx_var.value, "medium") == 0)
+       else if (gfx_var.value && !strcmp(gfx_var.value, "medium"))
           gfx_plugin_accuracy = 1;
-       else if (gfx_var.value && strcmp(gfx_var.value, "low") == 0)
+       else if (gfx_var.value && !strcmp(gfx_var.value, "low"))
           gfx_plugin_accuracy = 0;
    }
 
@@ -138,11 +138,11 @@ static void core_settings_set_defaults(void)
    rsp_plugin = RSP_HLE;
    if (rsp_var.value)
    {
-      if (rsp_var.value && strcmp(rsp_var.value, "auto") == 0)
+      if (rsp_var.value && !strcmp(rsp_var.value, "auto"))
          core_settings_autoselect_rsp_plugin();
-      if (rsp_var.value && strcmp(rsp_var.value, "hle") == 0)
+      if (rsp_var.value && !strcmp(rsp_var.value, "hle"))
          rsp_plugin = RSP_HLE;
-      if (rsp_var.value && strcmp(rsp_var.value, "cxd4") == 0)
+      if (rsp_var.value && !strcmp(rsp_var.value, "cxd4"))
          rsp_plugin = RSP_CXD4;
    }
 }
@@ -164,13 +164,13 @@ static void core_settings_autoselect_rsp_plugin(void)
           (sl(ROM_HEADER.CRC1) == 0x7EAE2488   && sl(ROM_HEADER.CRC2) == 0x9D40A35A) /* Biohazard 2 (J) [!] */
           || (sl(ROM_HEADER.CRC1) == 0x9B500E8E   && sl(ROM_HEADER.CRC2) == 0xE90550B3) /* Resident Evil 2 (E) (M2) [!] */
           || (sl(ROM_HEADER.CRC1) == 0xAA18B1A5   && sl(ROM_HEADER.CRC2) == 0x7DB6AEB)  /* Resident Evil 2 (U) [!] */
-          || (strcmp(ROM_HEADER.Name, (const char*)"GAUNTLET LEGENDS") == 0)
+          || (!strcmp(ROM_HEADER.Name, "GAUNTLET LEGENDS"))
       )
    {
       rsp_plugin = RSP_CXD4;
    }
 
-   if (strcmp(ROM_HEADER.Name, (const char*)"CONKER BFD") == 0)
+   if (!strcmp(ROM_HEADER.Name, "CONKER BFD"))
       rsp_plugin = RSP_HLE;
 }
 
@@ -450,17 +450,17 @@ void update_variables(void)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-	  if (strcmp(var.value, "automatic") == 0)
+	  if (!strcmp(var.value, "automatic"))
 		  retro_filtering = 0;
-	  else if (strcmp(var.value, "N64 3-point") == 0)
+	  else if (!strcmp(var.value, "N64 3-point"))
 #ifdef DISABLE_3POINT
 		  retro_filtering = 3;
 #else
 		  retro_filtering = 1;
 #endif
-	  else if (strcmp(var.value, "nearest") == 0)
+	  else if (!strcmp(var.value, "nearest"))
 		  retro_filtering = 2;
-	  else if (strcmp(var.value, "bilinear") == 0)
+	  else if (!strcmp(var.value, "bilinear"))
 		  retro_filtering = 3;
 	  if (gfx_plugin == GFX_GLIDE64)
       {
@@ -510,13 +510,13 @@ void update_variables(void)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-       if (var.value && strcmp(var.value, "veryhigh") == 0)
+       if (var.value && !strcmp(var.value, "veryhigh"))
           gfx_plugin_accuracy = 3;
-       else if (var.value && strcmp(var.value, "high") == 0)
+       else if (var.value && !strcmp(var.value, "high"))
           gfx_plugin_accuracy = 2;
-       else if (var.value && strcmp(var.value, "medium") == 0)
+       else if (var.value && !strcmp(var.value, "medium"))
           gfx_plugin_accuracy = 1;
-       else if (var.value && strcmp(var.value, "low") == 0)
+       else if (var.value && !strcmp(var.value, "low"))
           gfx_plugin_accuracy = 0;
    }
 

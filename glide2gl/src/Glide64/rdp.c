@@ -2101,7 +2101,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 
                if (rdp.ci_count == 0)
                {
-                  if ((rdp.ci_status == CI_AUX)) //for PPL
+                  if (rdp.ci_status == CI_AUX) //for PPL
                   {
                      float sx, sy;
                      sx = rdp.scale_x;

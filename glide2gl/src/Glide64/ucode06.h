@@ -805,24 +805,22 @@ static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
    lr_x = d.objX + d.imageW / d.scaleW;
    ul_y = d.objY;
    lr_y = d.objY + d.imageH / d.scaleH;
-   ul_u, ul_v;
    lr_u = 255.0f*rdp.cur_cache[0]->scale_x;
    lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
+   ul_u = 0.5f;
+   ul_v = 0.5f;
 
    if (d.imageFlags & G_BG_FLAG_FLIPS) /* flipS */
    {
       ul_u = lr_u;
       lr_u = 0.5f;
    }
-   else
-      ul_u = 0.5f;
+
    if (d.imageFlags & G_BG_FLAG_FLIPT) //flipT
    {
       ul_v = lr_v;
       lr_v = 0.5f;
    }
-   else
-      ul_v = 0.5f;
 
    // Make the vertices
    VERTEX v[4] = {
