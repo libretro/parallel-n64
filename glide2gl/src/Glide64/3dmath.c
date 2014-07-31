@@ -364,36 +364,29 @@ void math_init(void)
 
 void calc_light (VERTEX *v)
 {
-   uint32_t l;
-   float light_intensity, color[3];
+   uint32_t i;
+   float color[3];
+   float light_intensity = 0.0f;
 
-   light_intensity = 0.0f;
    color[0] = rdp.light[rdp.num_lights].col[0];
    color[1] = rdp.light[rdp.num_lights].col[1];
    color[2] = rdp.light[rdp.num_lights].col[2];
 
-   for (l = 0; l < rdp.num_lights; l++)
+   for (i = 0; i < rdp.num_lights; i++)
    {
-      light_intensity = DotProduct (rdp.light_vector[l], v->vec);
+      light_intensity = DotProduct (rdp.light_vector[i], v->vec);
 
       if (light_intensity > 0.0f) 
       {
-         color[0] += rdp.light[l].col[0] * light_intensity;
-         color[1] += rdp.light[l].col[1] * light_intensity;
-         color[2] += rdp.light[l].col[2] * light_intensity;
+         color[0] += rdp.light[i].col[0] * light_intensity;
+         color[1] += rdp.light[i].col[1] * light_intensity;
+         color[2] += rdp.light[i].col[2] * light_intensity;
       }
    }
 
-   if (color[0] > 1.0f)
-      color[0] = 1.0f;
-   if (color[1] > 1.0f)
-      color[1] = 1.0f;
-   if (color[2] > 1.0f)
-      color[2] = 1.0f;
-
-   v->r = (uint8_t)(color[0] * 255.0f);
-   v->g = (uint8_t)(color[1] * 255.0f);
-   v->b = (uint8_t)(color[2] * 255.0f);
+   v->r = (uint8_t)(255.0f * get_float_color_clamped(color[0]));
+   v->g = (uint8_t)(255.0f * get_float_color_clamped(color[1]));
+   v->b = (uint8_t)(255.0f * get_float_color_clamped(color[2]));
 }
 
 void calc_linear (VERTEX *v)

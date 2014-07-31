@@ -82,15 +82,6 @@ static INLINE void InterpolateColors(VERTEX *dest, float percent, VERTEX *first,
    dest->f = first->f + percent * (second->f - first->f);
 }
 
-static INLINE float get_float_color_clamped(float col)
-{
-   if (col > 1.0f)
-      col = 1.0f;
-   if (col < 0.0f)
-      col = 0.0f;
-   return col;
-}
-
 void apply_shade_mods (VERTEX *v)
 {
    if (rdp.cmb_flags)
