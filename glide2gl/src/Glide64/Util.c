@@ -397,6 +397,12 @@ static void DepthBuffer(VERTEX * vtx, int n)
    rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent; \
    rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent
 
+#define clip_tri_interp_colors(first, second, index, percent, val, interpolate_colors) \
+   if (interpolate_colors) \
+      InterpolateColors(&rdp.vtxbuf[index++], percent, first, second); \
+   else \
+      rdp.vtxbuf[index++].number = first->number | second->number | val
+
 static void clip_tri(int interpolate_colors)
 {
    int i,j,index,n=rdp.n_global;
@@ -436,10 +442,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
                rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
                clip_tri_uv(first, second, index, percent);
-               if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf[index++], percent, first, second);
-               else
-                  rdp.vtxbuf[index++].number = first->number | second->number | 8;
+               clip_tri_interp_colors(first, second, index, percent, 8, interpolate_colors);
             }
          }
          else
@@ -452,10 +455,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
                rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
                clip_tri_uv(second, first, index, percent);
-               if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf[index++], percent, second, first);
-               else
-                  rdp.vtxbuf[index++].number = first->number | second->number | 8;
+               clip_tri_interp_colors(second, first, index, percent, 8, interpolate_colors);
 
                // Save the in point
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
@@ -498,10 +498,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
                rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
                clip_tri_uv(first, second, index, percent);
-               if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf[index++], percent, first, second);
-               else
-                  rdp.vtxbuf[index++].number = first->number | second->number | 8;
+               clip_tri_interp_colors(first, second, index, percent, 8, interpolate_colors);
             }
          }
          else
@@ -514,10 +511,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
                rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
                clip_tri_uv(second, first, index, percent);
-               if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf[index++], percent, second, first);
-               else
-                  rdp.vtxbuf[index++].number = first->number | second->number | 8;
+               clip_tri_interp_colors(second, first, index, percent, 8, interpolate_colors);
 
                // Save the in point
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
@@ -560,10 +554,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
                rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
                clip_tri_uv(first, second, index, percent);
-               if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf[index++], percent, first, second);
-               else
-                  rdp.vtxbuf[index++].number = first->number | second->number | 16;
+               clip_tri_interp_colors(first, second, index, percent, 16, interpolate_colors);
             }
          }
          else
@@ -576,10 +567,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
                rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
                clip_tri_uv(second, first, index, percent);
-               if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf[index++], percent, second, first);
-               else
-                  rdp.vtxbuf[index++].number = first->number | second->number | 16;
+               clip_tri_interp_colors(second, first, index, percent, 16, interpolate_colors);
 
                // Save the in point
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
@@ -622,10 +610,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
                rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
                clip_tri_uv(first, second, index, percent);
-               if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf[index++], percent, first, second);
-               else
-                  rdp.vtxbuf[index++].number = first->number | second->number | 16;
+               clip_tri_interp_colors(first, second, index, percent, 16, interpolate_colors);
             }
          }
          else
@@ -638,10 +623,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
                rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
                clip_tri_uv(second, first, index, percent);
-               if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf[index++], percent, second, first);
-               else
-                  rdp.vtxbuf[index++].number = first->number | second->number | 16;
+               clip_tri_interp_colors(second, first, index, percent, 16, interpolate_colors);
 
                // Save the in point
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
@@ -688,10 +670,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].z = maxZ - 0.001f;
                rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
                clip_tri_uv(first, second, index, percent);
-               if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf[index++], percent, first, second);
-               else
-                  rdp.vtxbuf[index++].number = first->number | second->number;
+               clip_tri_interp_colors(first, second, index, percent, 0, interpolate_colors);
             }
          }
          else
@@ -704,10 +683,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].z = maxZ - 0.001f;;
                rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
                clip_tri_uv(second, first, index, percent);
-               if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf[index++], percent, second, first);
-               else
-                  rdp.vtxbuf[index++].number = first->number | second->number;
+               clip_tri_interp_colors(second, first, index, percent, 0, interpolate_colors);
 
                // Save the in point
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
