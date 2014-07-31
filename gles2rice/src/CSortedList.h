@@ -74,8 +74,8 @@ public:
 
             keys = new Key[maxSize];
             elements = new Element[maxSize];
-            std::memcpy(keys,oldkeys,oldmaxsize*sizeof(Key));
-            std::memcpy(elements,oldelements,oldmaxsize*sizeof(Element));
+            memcpy(keys,oldkeys,oldmaxsize*sizeof(Key));
+            memcpy(elements,oldelements,oldmaxsize*sizeof(Element));
         }
 
         for( i=0; i<curSize; i++ )
