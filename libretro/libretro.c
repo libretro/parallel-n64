@@ -627,7 +627,7 @@ bool retro_load_game(const struct retro_game_info *game)
    update_variables();
    initial_boot = false;
 
-   if (render = (struct retro_hw_render_callback*)retro_gl_init())
+   if ((render = (struct retro_hw_render_callback*)retro_gl_init()))
    {
       if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, render))
       {
