@@ -82,67 +82,55 @@ static INLINE void InterpolateColors(VERTEX *dest, float percent, VERTEX *first,
    dest->f = first->f + percent * (second->f - first->f);
 }
 
+static INLINE float get_float_color_clamped(float col)
+{
+   if (col > 1.0f)
+      col = 1.0f;
+   if (col < 0.0f)
+      col = 0.0f;
+   return col;
+}
+
 void apply_shade_mods (VERTEX *v)
 {
-   float col[4];
-   uint32_t mod;
-   memcpy (col, rdp.col, 16);
-
    if (rdp.cmb_flags)
    {
       if (v->shade_mod == 0)
          v->color_backup = *(uint32_t*)(&(v->b));
       else
          *(uint32_t*)(&(v->b)) = v->color_backup;
-      mod = rdp.cmb_flags;
-      if (mod & CMB_SET)
+
+      if (rdp.cmb_flags & CMB_SET)
       {
-         if (col[0] > 1.0f) col[0] = 1.0f;
-         if (col[1] > 1.0f) col[1] = 1.0f;
-         if (col[2] > 1.0f) col[2] = 1.0f;
-         if (col[0] < 0.0f) col[0] = 0.0f;
-         if (col[1] < 0.0f) col[1] = 0.0f;
-         if (col[2] < 0.0f) col[2] = 0.0f;
-         v->r = (uint8_t)(255.0f * col[0]);
-         v->g = (uint8_t)(255.0f * col[1]);
-         v->b = (uint8_t)(255.0f * col[2]);
+         v->r = (uint8_t)(255.0f * get_float_color_clamped(rdp.col[0]));
+         v->g = (uint8_t)(255.0f * get_float_color_clamped(rdp.col[1]));
+         v->b = (uint8_t)(255.0f * get_float_color_clamped(rdp.col[2]));
       }
-      if (mod & CMB_A_SET)
-      {
-         if (col[3] > 1.0f) col[3] = 1.0f;
-         if (col[3] < 0.0f) col[3] = 0.0f;
-         v->a = (uint8_t)(255.0f * col[3]);
-      }
-      if (mod & CMB_SETSHADE_SHADEALPHA)
-      {
+
+      if (rdp.cmb_flags & CMB_A_SET)
+         v->a = (uint8_t)(255.0f * get_float_color_clamped(rdp.col[3]));
+
+      if (rdp.cmb_flags & CMB_SETSHADE_SHADEALPHA)
          v->r = v->g = v->b = v->a;
-      }
-      if (mod & CMB_MULT_OWN_ALPHA)
+
+      if (rdp.cmb_flags & CMB_MULT_OWN_ALPHA)
       {
          float percent = v->a / 255.0f;
          v->r = (uint8_t)(v->r * percent);
          v->g = (uint8_t)(v->g * percent);
          v->b = (uint8_t)(v->b * percent);
       }
-      if (mod & CMB_MULT)
+
+      if (rdp.cmb_flags & CMB_MULT)
       {
-         if (col[0] > 1.0f) col[0] = 1.0f;
-         if (col[1] > 1.0f) col[1] = 1.0f;
-         if (col[2] > 1.0f) col[2] = 1.0f;
-         if (col[0] < 0.0f) col[0] = 0.0f;
-         if (col[1] < 0.0f) col[1] = 0.0f;
-         if (col[2] < 0.0f) col[2] = 0.0f;
-         v->r = (uint8_t)(v->r * col[0]);
-         v->g = (uint8_t)(v->g * col[1]);
-         v->b = (uint8_t)(v->b * col[2]);
+         v->r = (uint8_t)(v->r * get_float_color_clamped(rdp.col[0]));
+         v->g = (uint8_t)(v->g * get_float_color_clamped(rdp.col[1]));
+         v->b = (uint8_t)(v->b * get_float_color_clamped(rdp.col[2]));
       }
-      if (mod & CMB_A_MULT)
-      {
-         if (col[3] > 1.0f) col[3] = 1.0f;
-         if (col[3] < 0.0f) col[3] = 0.0f;
-         v->a = (uint8_t)(v->a * col[3]);
-      }
-      if (mod & CMB_SUB)
+
+      if (rdp.cmb_flags & CMB_A_MULT)
+         v->a = (uint8_t)(v->a * get_float_color_clamped(rdp.col[3]));
+      if (rdp.cmb_flags & CMB_SUB)
       {
          int r = v->r - (int)(255.0f * rdp.coladd[0]);
          int g = v->g - (int)(255.0f * rdp.coladd[1]);
@@ -154,13 +142,13 @@ void apply_shade_mods (VERTEX *v)
          v->g = (uint8_t)g;
          v->b = (uint8_t)b;
       }
-      if (mod & CMB_A_SUB)
+      if (rdp.cmb_flags & CMB_A_SUB)
       {
          int a = v->a - (int)(255.0f * rdp.coladd[3]);
          if (a < 0) a = 0;
          v->a = (uint8_t)a;
       }
-      if (mod & CMB_ADD)
+      if (rdp.cmb_flags & CMB_ADD)
       {
          int r = v->r + (int)(255.0f * rdp.coladd[0]);
          int g = v->g + (int)(255.0f * rdp.coladd[1]);
@@ -172,13 +160,13 @@ void apply_shade_mods (VERTEX *v)
          v->g = (uint8_t)g;
          v->b = (uint8_t)b;
       }
-      if (mod & CMB_A_ADD)
+      if (rdp.cmb_flags & CMB_A_ADD)
       {
          int a = v->a + (int)(255.0f * rdp.coladd[3]);
          if (a > 255) a = 255;
          v->a = (uint8_t)a;
       }
-      if (mod & CMB_COL_SUB_OWN)
+      if (rdp.cmb_flags & CMB_COL_SUB_OWN)
       {
          int r = (uint8_t)(255.0f * rdp.coladd[0]) - v->r;
          int g = (uint8_t)(255.0f * rdp.coladd[1]) - v->g;
@@ -203,15 +191,16 @@ void apply_shade_mods (VERTEX *v)
 }
 
 
-static void Create1LineEq(LineEquationType *l, VERTEX *v1, VERTEX *v2, VERTEX *v3)
+static void Create1LineEquation(LineEquationType *l, VERTEX *v1, VERTEX *v2, VERTEX *v3)
 {
-   float x, y;
+   float x = v3->sx;
+   float y = v3->sy;
+
    // Line between (x1,y1) to (x2,y2)
    l->x = v2->sy-v1->sy;
    l->y = v1->sx-v2->sx;
    l->d = -(l->x * v2->sx+ (l->y) * v2->sy);
-   x = v3->sx;
-   y = v3->sy;
+
    if (EvaLine(l,x,y) * v3->oow < 0)
    {
       l->x = -l->x;
@@ -224,7 +213,7 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
 {
    LineEquationType line;
    float aDot, bDot, scale1, tx, ty, s1, s2, den, w;
-   Create1LineEq(&line, v2, v3, v1);
+   Create1LineEquation(&line, v2, v3, v1);
 
    aDot = (out->x * line.x + out->y * line.y);
    bDot = (v1->sx * line.x + v1->sy * line.y);
@@ -253,12 +242,6 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
    out->b = interp3p(v1->b*v1->oow,v2->b*v2->oow,v3->b*v3->oow,s1,s2)*w;
    out->a = interp3p(v1->a*v1->oow,v2->a*v2->oow,v3->a*v3->oow,s1,s2)*w;
    out->f = (float)(interp3p(v1->f*v1->oow,v2->f*v2->oow,v3->f*v3->oow,s1,s2)*w);
-   /*
-      out->u0 = interp3p(v1->u0_w*v1->oow,v2->u0_w*v2->oow,v3->u0_w*v3->oow,s1,s2)/oow;
-      out->v0 = interp3p(v1->v0_w*v1->oow,v2->v0_w*v2->oow,v3->v0_w*v3->oow,s1,s2)/oow;
-      out->u1 = interp3p(v1->u1_w*v1->oow,v2->u1_w*v2->oow,v3->u1_w*v3->oow,s1,s2)/oow;
-      out->v1 = interp3p(v1->v1_w*v1->oow,v2->v1_w*v2->oow,v3->v1_w*v3->oow,s1,s2)/oow;
-      */
 }
 
 static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
