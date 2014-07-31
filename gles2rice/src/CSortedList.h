@@ -74,8 +74,8 @@ public:
 
             keys = new Key[maxSize];
             elements = new Element[maxSize];
-            memcpy(keys,oldkeys,oldmaxsize*sizeof(Key));
-            memcpy(elements,oldelements,oldmaxsize*sizeof(Element));
+            memcpy((void*)keys,(void*)oldkeys,oldmaxsize*sizeof(Key));
+            memcpy((void*)elements,(void*)oldelements,oldmaxsize*sizeof(Element));
         }
 
         for( i=0; i<curSize; i++ )
