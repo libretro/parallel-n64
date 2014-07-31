@@ -299,6 +299,8 @@ m64p_error main_init(void)
     r4300_reset_hard();
     r4300_reset_soft();
     r4300_init();
+
+    return M64ERR_SUCCESS;
 }
 
 m64p_error main_run(void)

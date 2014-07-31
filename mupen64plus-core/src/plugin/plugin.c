@@ -43,6 +43,7 @@ static void EmptyFunc(void)
 
 static m64p_error EmptyGetVersionFunc(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
+   return M64ERR_SUCCESS;
 }
 /* local data structures and functions */
 #define DEFINE_GFX(X) \

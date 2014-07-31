@@ -237,7 +237,7 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
    }
 
    if (input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) && --timeout <= 0)
-      inputInitiateCallback(ROM_HEADER.Name);
+      inputInitiateCallback((const char*)ROM_HEADER.Name);
 }
 
 
@@ -670,49 +670,49 @@ void inputInitiateCallback(const char *headername)
    }
 
     if (
-             (strcmp(headername, "KILLER INSTINCT GOLD") == 0) ||
-          (strcmp(headername, "Killer Instinct Gold") == 0) ||
-          (strcmp(headername, "CLAYFIGHTER 63") == 0) ||
-          (strcmp(headername, "Clayfighter SC") == 0) ||
-          (strcmp(headername, "RAKUGAKIDS") == 0))
+             (!strcmp(headername, "KILLER INSTINCT GOLD")) ||
+          (!strcmp(headername, "Killer Instinct Gold")) ||
+          (!strcmp(headername, "CLAYFIGHTER 63")) ||
+          (!strcmp(headername, "Clayfighter SC")) ||
+          (!strcmp(headername, "RAKUGAKIDS")))
        getKeys = inputGetKeys_6ButtonFighters;
-    else if (strcmp(headername, "BIOFREAKS") == 0)
+    else if (!strcmp(headername, "BIOFREAKS"))
        getKeys = inputGetKeys_Biofreaks;
-    else if (strcmp(headername, "DARK RIFT") == 0)
+    else if (!strcmp(headername, "DARK RIFT"))
        getKeys = inputGetKeys_DarkRift;
-    else if (strcmp(headername, "XENAWARRIORPRINCESS") == 0)
+    else if (!strcmp(headername, "XENAWARRIORPRINCESS"))
        getKeys = inputGetKeys_XENA;
-    else if (strcmp(headername, "RIDGE RACER 64") == 0)
+    else if (!strcmp(headername, "RIDGE RACER 64"))
        getKeys = inputGetKeys_RR64;
-   else if ((strcmp(headername, "I S S 64") == 0) ||
-         (strcmp(headername, "J WORLD SOCCER3") == 0) ||
-         (strcmp(headername, "J.WORLD CUP 98") == 0) ||
-         (strcmp(headername, "I.S.S.98") == 0) ||
-         (strcmp(headername, "PERFECT STRIKER2") == 0) ||
-         (strcmp(headername, "I.S.S.2000") == 0))
+   else if ((!strcmp(headername, "I S S 64")) ||
+         (!strcmp(headername, "J WORLD SOCCER3")) ||
+         (!strcmp(headername, "J.WORLD CUP 98")) ||
+         (!strcmp(headername, "I.S.S.98")) ||
+         (!strcmp(headername, "PERFECT STRIKER2")) ||
+         (!strcmp(headername, "I.S.S.2000")))
       getKeys = inputGetKeys_ISS;
-    else if (strcmp(headername, "MACE") == 0)
+    else if (!strcmp(headername, "MACE"))
        getKeys = inputGetKeys_Mace;
-    else if ((strcmp(headername, "MISCHIEF MAKERS") == 0) ||
-          (strcmp(headername, "TROUBLE MAKERS") == 0))
+    else if ((!strcmp(headername, "MISCHIEF MAKERS")) ||
+          (!strcmp(headername, "TROUBLE MAKERS")))
        getKeys = inputGetKeys_MischiefMakers;
-   else if ((strcmp(headername, "MortalKombatTrilogy") == 0) ||
-         (strcmp(headername, "WAR GODS") == 0))
+   else if ((!strcmp(headername, "MortalKombatTrilogy")) ||
+         (!strcmp(headername, "WAR GODS")))
        getKeys = inputGetKeys_MKTrilogy;
-   else if (strcmp(headername, "MORTAL KOMBAT 4") == 0)
+   else if (!strcmp(headername, "MORTAL KOMBAT 4"))
        getKeys = inputGetKeys_MK4;
-   else if (strcmp(headername, "MK_MYTHOLOGIES") == 0)
+   else if (!strcmp(headername, "MK_MYTHOLOGIES"))
        getKeys = inputGetKeys_MKMythologies;
-   else if ((strcmp(headername, "RAMPAGE") == 0) ||
-         (strcmp(headername, "RAMPAGE2") == 0))
+   else if ((!strcmp(headername, "RAMPAGE")) ||
+         (!strcmp(headername, "RAMPAGE2")))
        getKeys = inputGetKeys_Rampage;
-   else if ((strcmp(headername, "READY 2 RUMBLE") == 0) ||
-         (strcmp(headername, "Ready to Rumble") == 0))
+   else if ((!strcmp(headername, "READY 2 RUMBLE")) ||
+         (!strcmp(headername, "Ready to Rumble")))
        getKeys = inputGetKeys_Ready2Rumble;
-   else if (strcmp(headername, "Wipeout 64") == 0)
+   else if (!strcmp(headername, "Wipeout 64"))
        getKeys = inputGetKeys_Wipeout64;
-   else if ((strcmp(headername, "WRESTLEMANIA 2000") == 0) ||
-         (strcmp(headername, "WWF No Mercy") == 0))
+   else if ((!strcmp(headername, "WRESTLEMANIA 2000")) ||
+         (!strcmp(headername, "WWF No Mercy")))
        getKeys = inputGetKeys_WWF;
 
    if (getKeys == &inputGetKeys_default)
