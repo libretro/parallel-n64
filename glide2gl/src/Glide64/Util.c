@@ -391,6 +391,12 @@ static void DepthBuffer(VERTEX * vtx, int n)
       vtx[i].z = ScaleZ(vtx[i].z);
 }
 
+#define clip_tri_uv(first, second, index, percent) \
+   rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent; \
+   rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent; \
+   rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent; \
+   rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent
+
 static void clip_tri(int interpolate_colors)
 {
    int i,j,index,n=rdp.n_global;
@@ -429,10 +435,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].y = first->y + (second->y - first->y) * percent;
                rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
                rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
-               rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
-               rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
-               rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
-               rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
+               clip_tri_uv(first, second, index, percent);
                if (interpolate_colors)
                   InterpolateColors(&rdp.vtxbuf[index++], percent, first, second);
                else
@@ -448,10 +451,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].y = second->y + (first->y - second->y) * percent;
                rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
                rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
-               rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
-               rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
-               rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
-               rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
+               clip_tri_uv(second, first, index, percent);
                if (interpolate_colors)
                   InterpolateColors(&rdp.vtxbuf[index++], percent, second, first);
                else
@@ -497,10 +497,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].y = first->y + (second->y - first->y) * percent;
                rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
                rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
-               rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
-               rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
-               rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
-               rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
+               clip_tri_uv(first, second, index, percent);
                if (interpolate_colors)
                   InterpolateColors(&rdp.vtxbuf[index++], percent, first, second);
                else
@@ -516,10 +513,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].y = second->y + (first->y - second->y) * percent;
                rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
                rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
-               rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
-               rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
-               rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
-               rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
+               clip_tri_uv(second, first, index, percent);
                if (interpolate_colors)
                   InterpolateColors(&rdp.vtxbuf[index++], percent, second, first);
                else
@@ -565,10 +559,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].y = rdp.clip_max_y;
                rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
                rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
-               rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
-               rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
-               rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
-               rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
+               clip_tri_uv(first, second, index, percent);
                if (interpolate_colors)
                   InterpolateColors(&rdp.vtxbuf[index++], percent, first, second);
                else
@@ -584,10 +575,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].y = rdp.clip_max_y;
                rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
                rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
-               rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
-               rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
-               rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
-               rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
+               clip_tri_uv(second, first, index, percent);
                if (interpolate_colors)
                   InterpolateColors(&rdp.vtxbuf[index++], percent, second, first);
                else
@@ -633,10 +621,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].y = rdp.clip_min_y;
                rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
                rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
-               rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
-               rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
-               rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
-               rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
+               clip_tri_uv(first, second, index, percent);
                if (interpolate_colors)
                   InterpolateColors(&rdp.vtxbuf[index++], percent, first, second);
                else
@@ -652,10 +637,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].y = rdp.clip_min_y;
                rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
                rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
-               rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
-               rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
-               rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
-               rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
+               clip_tri_uv(second, first, index, percent);
                if (interpolate_colors)
                   InterpolateColors(&rdp.vtxbuf[index++], percent, second, first);
                else
@@ -705,10 +687,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].y = first->y + (second->y - first->y) * percent;
                rdp.vtxbuf[index].z = maxZ - 0.001f;
                rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
-               rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
-               rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
-               rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
-               rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
+               clip_tri_uv(first, second, index, percent);
                if (interpolate_colors)
                   InterpolateColors(&rdp.vtxbuf[index++], percent, first, second);
                else
@@ -724,10 +703,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].y = second->y + (first->y - second->y) * percent;
                rdp.vtxbuf[index].z = maxZ - 0.001f;;
                rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
-               rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
-               rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
-               rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
-               rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
+               clip_tri_uv(second, first, index, percent);
                if (interpolate_colors)
                   InterpolateColors(&rdp.vtxbuf[index++], percent, second, first);
                else
