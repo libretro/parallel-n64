@@ -28,7 +28,6 @@ ifneq (,$(findstring unix,$(platform)))
    LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined
    
    fpic = -fPIC
-   SINGLE_THREAD := 1
 ifneq (,$(findstring gles,$(platform)))
    GLES = 1
    GL_LIB := -lGLESv2
@@ -51,7 +50,6 @@ else ifneq (,$(findstring osx,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dylib
    LDFLAGS += -dynamiclib
    OSXVER = `sw_vers -productVersion | cut -c 4`
-   SINGLE_THREAD := 1
 ifneq ($(shell sw_vers | grep -c 10.9),1)
    LDFLAGS += -mmacosx-version-min=10.5
 endif
@@ -168,7 +166,6 @@ else ifeq ($(platform), emscripten)
                -Daudio_convert_init_simd=mupen_audio_convert_init_simd -Drglgen_resolve_symbols_custom=mupen_rglgen_resolve_symbols_custom \
                -Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols
    PLATFORM_EXT := unix
-   SINGLE_THREAD := 1
    #HAVE_SHARED_CONTEXT := 1
 else ifneq (,$(findstring win,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dll
