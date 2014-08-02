@@ -753,14 +753,25 @@ bool retro_unserialize(const void * data, size_t size)
     return false;
 }
 
-
+void retro_set_controller_port_device(unsigned in_port, unsigned device) {
+    if (in_port < 4){
+        switch(device)
+        {
+            case RETRO_DEVICE_NONE:
+                controller[in_port].control->Present = 0;
+                break;
+            case RETRO_DEVICE_JOYPAD:
+            default:
+                controller[in_port].control->Present = 1;
+                break;
+        }
+    }
+}
 
 // Stubs
 unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info) { return false; }
-
-void retro_set_controller_port_device(unsigned in_port, unsigned device) { }
 
 void retro_cheat_reset(void) { }
 void retro_cheat_set(unsigned unused, bool unused1, const char* unused2) { }
