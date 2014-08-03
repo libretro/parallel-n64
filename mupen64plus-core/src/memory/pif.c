@@ -126,7 +126,18 @@ static void EepromCommand(uint8_t *Command)
 #ifdef DEBUG_PIF
             DebugMessage(M64MSG_INFO, "EepromCommand() read 8-byte block %i", Command[3]);
 #endif
-            memcpy(&Command[4], saved_memory.eeprom + Command[3]*8, 8);
+            uint8_t addr = Command[3]*8;
+
+            if (addr + 8 < 0x200)
+               memcpy(&Command[4], saved_memory.eeprom + addr, 8);
+            else if (addr >= 0x200)
+               memcpy(&Command[4], saved_memory.eeprom2 + addr - 0x200, 8);
+            else
+            {
+               uint8_t len = 0x200 - addr;
+               memcpy(&Command[4], saved_memory.eeprom + addr, len);
+               memcpy(&Command[4] + len, saved_memory.eeprom2 + addr + len - 0x200, 8 - len);
+            }
          }
          break;
       case 5: // write
@@ -134,7 +145,18 @@ static void EepromCommand(uint8_t *Command)
 #ifdef DEBUG_PIF
             DebugMessage(M64MSG_INFO, "EepromCommand() write 8-byte block %i", Command[3]);
 #endif
-            memcpy(saved_memory.eeprom + Command[3]*8, &Command[4], 8);
+            uint8_t addr = Command[3]*8;
+
+            if (addr + 8 < 0x200)
+               memcpy(saved_memory.eeprom + addr, &Command[4], 8);
+            else if (addr >= 0x200)
+               memcpy(saved_memory.eeprom2 + addr - 0x200, &Command[4], 8);
+            else
+            {
+               uint8_t len = 0x200 - addr;
+               memcpy(saved_memory.eeprom + addr, &Command[4], len);
+               memcpy(saved_memory.eeprom2 + addr + len - 0x200, &Command[4] + len, 8 - len);
+            }
          }
          break;
       case 6:

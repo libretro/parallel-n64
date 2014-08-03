@@ -3749,6 +3749,7 @@ void format_saved_memory(void)
 
    memset(saved_memory.sram, 0, sizeof(saved_memory.sram));
    memset(saved_memory.eeprom, 0, sizeof(saved_memory.eeprom));
+   memset(saved_memory.eeprom2, 0, sizeof(saved_memory.eeprom2));
    memset(saved_memory.flashram, 0xFF, sizeof(saved_memory.flashram));
 
    for (i=0; i<4; i++)
