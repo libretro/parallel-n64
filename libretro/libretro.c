@@ -66,6 +66,7 @@ extern struct
 // ...but it won't be at least the first time we're called, in that case set
 // these instead for input_plugin to read.
 int pad_pak_types[4];
+int pad_present[4] = {1, 1, 1, 1};
 
 static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
 {
@@ -753,17 +754,30 @@ bool retro_unserialize(const void * data, size_t size)
     return false;
 }
 
+//Needed to be able to detach controllers for Lylat Wars multiplayer
+//Only sets if controller struct is initialised as addon paks do.
 void retro_set_controller_port_device(unsigned in_port, unsigned device) {
     if (in_port < 4){
         switch(device)
         {
             case RETRO_DEVICE_NONE:
-                controller[in_port].control->Present = 0;
-                break;
+                if (controller[in_port].control){
+                    controller[in_port].control->Present = 0;
+                    break;
+                } else {
+                    pad_present[in_port] = 0;
+                    break;
+                }
+                
             case RETRO_DEVICE_JOYPAD:
             default:
-                controller[in_port].control->Present = 1;
-                break;
+                if (controller[in_port].control){
+                    controller[in_port].control->Present = 1;
+                    break;
+                } else {
+                    pad_present[in_port] = 1;
+                    break;
+                }
         }
     }
 }
