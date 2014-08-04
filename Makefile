@@ -259,9 +259,8 @@ endif
 CPPFLAGS += -DSDL_VIDEO_OPENGL_ES2=1
 
 CXXFILES += $(wildcard $(VIDEODIR_RICE)/*.cpp)
-CFILES += $(VIDEODIR_RICE)/osal_files_$(PLATFORM_EXT).c
 
-libretrosrc += $(wildcard libretro/*.c)
+LIBRETRO_SRC += $(wildcard libretro/*.c)
 
 CFLAGS += -DSINC_LOWER_QUALITY
 CPPFLAGS += -DSINC_LOWER_QUALITY
@@ -289,7 +288,7 @@ CFLAGS += -DSINGLE_THREAD
 CPPFLAGS += -DSINGLE_THREAD
 endif
 
-CFILES += $(libretrosrc)
+CFILES += $(LIBRETRO_SRC)
 
 # Glide64
 ifeq ($(GLIDE2GL), 1)
