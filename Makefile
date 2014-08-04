@@ -20,6 +20,13 @@ else ifneq ($(findstring win,$(UNAME)),)
 endif
 endif
 
+ifeq ($(firstword $(filter x86_64,$(UNAME))),x86_64)
+	WITH_DYNAREC=x86
+endif
+ifeq ($(firstword $(filter amd64,$(UNAME))),amd64)
+	WITH_DYNAREC=x86_64
+endif
+
 TARGET_NAME := mupen64plus
 CC_AS ?= $(CC)
 
@@ -58,12 +65,6 @@ endif
    CPPFLAGS += -D__MACOSX__
    GL_LIB := -framework OpenGL
    PLATFORM_EXT := unix
-ifeq ($(firstword $(filter x86_64,$(UNAME))),x86_64)
-	WITH_DYNAREC=x86
-endif
-ifeq ($(firstword $(filter amd64,$(UNAME))),amd64)
-	WITH_DYNAREC=x86_64
-endif
 else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    CPPFLAGS += -DIOS -marm -mllvm -arm-reserve-r9
@@ -191,6 +192,12 @@ VIDEODIR_GLIDE = glide2gl/src
 else
 VIDEODIR_GLIDE = gles2glide64/src
 endif
+
+INCDIRS := \
+	-I$(COREDIR)/src \
+	-I$(COREDIR)/src/api \
+	-Ilibretro/libco \
+	-Ilibretro
 
 CFILES += $(wildcard $(RSPDIR)/src/*.c)
 CXXFILES += $(wildcard $(RSPDIR)/src/*.cpp)
@@ -334,7 +341,7 @@ CFILES += libretro/glsym/rglgen.c
 
 ### Finalize ###
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
-CPPFLAGS   += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -I$(COREDIR)/src -I$(COREDIR)/src/api -Ilibretro/libco -Ilibretro
+CPPFLAGS   += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API $(INCDIRS)
 CPPFLAGS   += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE $(fpic)
 LDFLAGS    += -lm $(fpic)
 
