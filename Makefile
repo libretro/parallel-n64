@@ -180,16 +180,24 @@ endif
 # libco
 CFILES += libretro/libco/libco.c
 
-# RSP Plugins
+# Dirs
 RSPDIR = mupen64plus-rsp-hle
+CXD4DIR = mupen64plus-rsp-cxd4
+COREDIR = mupen64plus-core
+VIDEODIR_RICE=gles2rice/src
+VIDEODIR_GLN64 = gles2n64/src
+ifeq ($(GLIDE2GL), 1)
+VIDEODIR_GLIDE = glide2gl/src
+else
+VIDEODIR_GLIDE = gles2glide64/src
+endif
+
 CFILES += $(wildcard $(RSPDIR)/src/*.c)
 CXXFILES += $(wildcard $(RSPDIR)/src/*.cpp)
 
-CXB4DIR = mupen64plus-rsp-cxd4
-CFILES += $(CXB4DIR)/rsp.c
+CFILES += $(CXD4DIR)/rsp.c
 
 # Core
-COREDIR = mupen64plus-core
 CFILES += \
     $(COREDIR)/src/api/callbacks.c \
     $(COREDIR)/src/api/common.c \
@@ -248,19 +256,10 @@ endif
 ### VIDEO PLUGINS ###
 
 # Rice
-VIDEODIR_RICE=gles2rice/src
 CPPFLAGS += -DSDL_VIDEO_OPENGL_ES2=1
-#LDFLAGS += -lpng
 
 CXXFILES += $(wildcard $(VIDEODIR_RICE)/*.cpp)
-
-CFILES += \
-   $(VIDEODIR_RICE)/osal_files_$(PLATFORM_EXT).c
-
-# gln64
-VIDEODIR_GLN64 = gles2n64/src
-
-# TODO: Use neon versions when possible
+CFILES += $(VIDEODIR_RICE)/osal_files_$(PLATFORM_EXT).c
 
 libretrosrc += $(wildcard libretro/*.c)
 
@@ -271,8 +270,8 @@ ifeq ($(HAVE_NEON), 1)
 CFILES += $(wildcard $(VIDEODIR_GLN64)/*.c)
 OBJECTS += libretro/utils_neon.o libretro/sinc_neon.o
 else
-gln64videoblack = $(VIDEODIR_GLN64)/3DMathNeon.c $(VIDEODIR_GLN64)/gSPNeon.c
-CFILES += $(filter-out $(gln64videoblack), $(wildcard $(VIDEODIR_GLN64)/*.c))
+GLN64VIDEO_BLACKLIST = $(VIDEODIR_GLN64)/3DMathNeon.c $(VIDEODIR_GLN64)/gSPNeon.c
+CFILES += $(filter-out $(GLN64VIDEO_BLACKLIST), $(wildcard $(VIDEODIR_GLN64)/*.c))
 endif
 
 ifeq ($(PERF_TEST), 1)
@@ -294,9 +293,7 @@ CFILES += $(libretrosrc)
 
 # Glide64
 ifeq ($(GLIDE2GL), 1)
-VIDEODIR_GLIDE = glide2gl/src
 else
-VIDEODIR_GLIDE = gles2glide64/src
 CFILES += $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c
 endif
 CPPFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
