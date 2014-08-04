@@ -4,6 +4,10 @@ PERF_TEST=0
 HAVE_SHARED_CONTEXT=0
 SINGLE_THREAD=0
 
+DYNAFLAGS :=
+INCFLAGS  :=
+COREFLAGS :=
+
 UNAME=$(shell uname -a)
 
 ifeq ($(platform),)
@@ -21,11 +25,11 @@ endif
 
 ifeq ($(firstword $(filter x86_64,$(UNAME))),x86_64)
 	WITH_DYNAREC=x86_64
-   CPPFLAGS += -msse -msse2
+   CPUFLAGS := -msse -msse2
 endif
 ifeq ($(firstword $(filter amd64,$(UNAME))),amd64)
 	WITH_DYNAREC=x86_64
-   CPPFLAGS += -msse -msse2
+   CPUFLAGS := -msse -msse2
 endif
 
 TARGET_NAME := mupen64plus
@@ -49,7 +53,8 @@ else ifneq (,$(findstring rpi,$(platform)))
    fpic = -fPIC
    GLES = 1
    GL_LIB := -lGLESv2
-   CPPFLAGS += -DNOSSE -I/opt/vc/include -DARMv5_ONLY -DNO_ASM
+   INCFLAGS += -I/opt/vc/include
+	CPUFLAGS += -DARMv5_ONLY -DNO_ASM -DNOSSE
    PLATFORM_EXT := unix
    WITH_DYNAREC=arm
 
@@ -84,8 +89,8 @@ ifneq ($(OSXVER),9)
    CXX += -miphoneos-version-min=5.0
    PLATCFLAGS += -miphoneos-version-min=5.0
 endif
-   CPPFLAGS += -DNO_ASM -DIOS -DNOSSE -DHAVE_POSIX_MEMALIGN -DDISABLE_3POINT
-   CPPFLAGS += -DARM
+   PLATCFLAGS += -DIOS -DHAVE_POSIX_MEMALIGN
+	CPUFLAGS += -DARMv5_ONLY -DNO_ASM -DNOSSE -DARM
    PLATFORM_EXT := unix
    WITH_DYNAREC=arm
 else ifneq (,$(findstring android,$(platform)))
@@ -98,12 +103,11 @@ else ifneq (,$(findstring android,$(platform)))
    CXX = arm-linux-androideabi-g++
 	WITH_DYNAREC=arm
    GLES = 1
-   PLATCFLAGS += -DNO_ASM -DNOSSE -DANDROID
+	PLATCFLAGS += -DANDROID
+   CPUCFLAGS  += -DNO_ASM -DNOSSE
    HAVE_NEON = 1
-	CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -D__arm__
-   PLATCFLAGS += $(CPUFLAGS)
-	CFLAGS += $(CPUFLAGS) -DANDROID
-	PLATCFLAGS += -DARM_ASM -D__NEON_OPT
+	CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -D__arm__ -DARM_ASM -D__NEON_OPT
+	CFLAGS += -DANDROID
    
    PLATFORM_EXT := unix
 else ifeq ($(platform), qnx)
@@ -120,10 +124,8 @@ else ifeq ($(platform), qnx)
    GLES = 1
    PLATCFLAGS += -DNO_ASM -DNOSSE -D__BLACKBERRY_QNX__
    HAVE_NEON = 1
-	CPUFLAGS += -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=softfp -D__arm__
-   PLATCFLAGS += $(CPUFLAGS)
-	CFLAGS += $(CPUFLAGS) -D__QNX__
-	PLATCFLAGS += -DARM_ASM -D__NEON_OPT
+	CPUFLAGS += -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=softfp -D__arm__ -DARM_ASM -D__NEON_OPT
+	CFLAGS += -D__QNX__
    
    PLATFORM_EXT := unix
 else ifneq (,$(findstring armv,$(platform)))
@@ -132,7 +134,7 @@ else ifneq (,$(findstring armv,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined
-   PLATCFLAGS += -I.
+   INCFLAGS += -I.
 	WITH_DYNAREC=arm
 ifneq (,$(findstring gles,$(platform)))
    GLES := 1
@@ -140,26 +142,26 @@ else
    GL_LIB := -lGL
 endif
 ifneq (,$(findstring cortexa8,$(platform)))
-   PLATCFLAGS += -marm -mcpu=cortex-a8
+   CPUFLAGS += -marm -mcpu=cortex-a8
 else ifneq (,$(findstring cortexa9,$(platform)))
-   PLATCFLAGS += -marm -mcpu=cortex-a9
+   CPUFLAGS += -marm -mcpu=cortex-a9
 endif
-   PLATCFLAGS += -marm
+   CPUFLAGS += -marm
 ifneq (,$(findstring neon,$(platform)))
-   PLATCFLAGS += -mfpu=neon
+   CPUFLAGS += -mfpu=neon
    HAVE_NEON = 1
 endif
 ifneq (,$(findstring softfloat,$(platform)))
-   PLATCFLAGS += -mfloat-abi=softfp
+   CPUFLAGS += -mfloat-abi=softfp
 else ifneq (,$(findstring hardfloat,$(platform)))
-   PLATCFLAGS += -mfloat-abi=hard
+   CPUFLAGS += -mfloat-abi=hard
 endif
    PLATCFLAGS += -DARM
 else ifeq ($(platform), emscripten)
    TARGET := $(TARGET_NAME)_libretro_emscripten.bc
    GLES := 1
    #GLIDE2GL=0
-   PLATCFLAGS += -DNO_ASM -DNOSSE
+   CPUFLAGS += -DNO_ASM -DNOSSE
    PLATCFLAGS += -DCC_resampler=mupen_CC_resampler -Dsinc_resampler=mupen_sinc_resampler \
                -Drglgen_symbol_map=mupen_rglgen_symbol_map -Dmain_exit=mupen_main_exit \
                -Dadler32=mupen_adler32 -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \
@@ -195,6 +197,7 @@ endif
 INCFLAGS := \
 	-I$(COREDIR)/src \
 	-I$(COREDIR)/src/api \
+	-I$(VIDEODIR_GLIDE)/Glitch64/inc \
 	-Ilibretro/libco \
 	-Ilibretro
 
@@ -241,9 +244,9 @@ CFILES += \
 
 ### DYNAREC ###
 ifdef WITH_DYNAREC
-   CPPFLAGS += -DDYNAREC
+   DYNAFLAGS += -DDYNAREC
    ifeq ($(WITH_DYNAREC), arm)
-      CPPFLAGS += -DNEW_DYNAREC=3
+      DYNAFLAGS += -DNEW_DYNAREC=3
 
       CFILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c \
 		$(COREDIR)/src/r4300/empty_dynarec.c \
@@ -262,14 +265,11 @@ endif
 ### VIDEO PLUGINS ###
 
 # Rice
-CPPFLAGS += -DSDL_VIDEO_OPENGL_ES2=1
 
 CXXFILES += $(wildcard $(VIDEODIR_RICE)/*.cpp)
 
 LIBRETRO_SRC += $(wildcard libretro/*.c)
 
-CFLAGS += -DSINC_LOWER_QUALITY
-CPPFLAGS += -DSINC_LOWER_QUALITY
 
 ifeq ($(HAVE_NEON), 1)
 CFILES += $(wildcard $(VIDEODIR_GLN64)/*.c)
@@ -280,28 +280,21 @@ CFILES += $(filter-out $(GLN64VIDEO_BLACKLIST), $(wildcard $(VIDEODIR_GLN64)/*.c
 endif
 
 ifeq ($(PERF_TEST), 1)
-CFLAGS += -DPERF_TEST
-CPPFLAGS += -DPERF_TEST
+COREFLAGS += -DPERF_TEST
 endif
 
 ifeq ($(HAVE_SHARED_CONTEXT), 1)
-CFLAGS += -DHAVE_SHARED_CONTEXT
-CPPFLAGS += -DHAVE_SHARED_CONTEXT
+COREFLAGS += -DHAVE_SHARED_CONTEXT
 endif
 
 ifeq ($(SINGLE_THREAD), 1)
-CFLAGS += -DSINGLE_THREAD
-CPPFLAGS += -DSINGLE_THREAD
+COREFLAGS += -DSINGLE_THREAD
 endif
 
 CFILES += $(LIBRETRO_SRC)
 
 # Glide64
 ifeq ($(GLIDE2GL), 1)
-else
-CFILES += $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c
-endif
-CPPFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
 CFILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.c \
 			 $(VIDEODIR_GLIDE)/Glide64/Combine.c \
 			 $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.c \
@@ -311,10 +304,11 @@ CFILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.c \
 			 $(VIDEODIR_GLIDE)/Glide64/rdp.c \
 			 $(VIDEODIR_GLIDE)/Glide64/TexCache.c \
 			 $(VIDEODIR_GLIDE)/Glide64/Util.c
-CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp)
-
 CFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.c)
-CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
+else
+CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) \
+				$(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
+endif
 
 ### Angrylion's renderer ###
 VIDEODIR_ANGRYLION = angrylionrdp
@@ -322,31 +316,31 @@ CFILES += $(wildcard $(VIDEODIR_ANGRYLION)/*.c)
 CXXFILES += $(wildcard $(VIDEODIR_ANGRYLION)/*.cpp)
 
 ifeq ($(GLES), 1)
-CPPFLAGS += -DGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT
+GLFLAGS += -DGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT
 CFILES += libretro/glsym/glsym_es2.c
 else
-CPPFLAGS += -DHAVE_OPENGL
+GLFLAGS += -DHAVE_OPENGL
 CFILES += libretro/glsym/glsym_gl.c
 endif
 
 CFILES += libretro/glsym/rglgen.c
 
-COREFLAGS += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE
+COREFLAGS += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES \
+				 -D_ENDUSER_RELEASE -DSDL_VIDEO_OPENGL_ES2=1 -DSINC_LOWER_QUALITY \
+
+ifeq ($(DEBUG), 1)
+   CPUOPTS += -O0 -g
+   CPUOPTS += -DOPENGL_DEBUG
+else
+   CPUOPTS += -O2 -DNDEBUG
+endif
 
 ### Finalize ###
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
-CPPFLAGS   +=  $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS)
-CFLAGS   +=  $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS)
+CXXFLAGS   +=  $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
+CFLAGS     +=  $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 
 LDFLAGS    += -lm $(fpic)
-
-
-ifeq ($(DEBUG), 1)
-   CPPFLAGS += -O0 -g
-   CPPFLAGS += -DOPENGL_DEBUG
-else
-   CPPFLAGS += -O2 -DNDEBUG
-endif
 
 all: $(TARGET)
 
@@ -355,6 +349,12 @@ $(COREDIR)/src/r4300/new_dynarec/linkage_arm.o: $(COREDIR)/src/r4300/new_dynarec
 
 %.o: %.S
 	$(CC_AS) $(CFLAGS) -c $^ -o $@
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $^ -o $@
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
 $(TARGET): $(OBJECTS)
 	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)
