@@ -7,6 +7,7 @@ SINGLE_THREAD=0
 DYNAFLAGS :=
 INCFLAGS  :=
 COREFLAGS :=
+CPUFLAGS  :=
 
 UNAME=$(shell uname -a)
 
@@ -25,11 +26,9 @@ endif
 
 ifeq ($(firstword $(filter x86_64,$(UNAME))),x86_64)
 	WITH_DYNAREC=x86_64
-   CPUFLAGS := -msse -msse2
 endif
 ifeq ($(firstword $(filter amd64,$(UNAME))),amd64)
 	WITH_DYNAREC=x86_64
-   CPUFLAGS := -msse -msse2
 endif
 
 TARGET_NAME := mupen64plus
@@ -256,6 +255,7 @@ ifdef WITH_DYNAREC
          $(COREDIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).o
 
    else
+	   CPUFLAGS := -msse -msse2
       CFILES += $(wildcard $(COREDIR)/src/r4300/$(WITH_DYNAREC)/*.c)
    endif
 else
