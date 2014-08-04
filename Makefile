@@ -1,6 +1,5 @@
 DEBUG=0
 GLIDE2GL=1
-HAVE_HWFBE=0
 PERF_TEST=0
 HAVE_SHARED_CONTEXT=0
 SINGLE_THREAD=0
@@ -21,10 +20,12 @@ endif
 endif
 
 ifeq ($(firstword $(filter x86_64,$(UNAME))),x86_64)
-	WITH_DYNAREC=x86
+	WITH_DYNAREC=x86_64
+   CPPFLAGS += -msse -msse2
 endif
 ifeq ($(firstword $(filter amd64,$(UNAME))),amd64)
 	WITH_DYNAREC=x86_64
+   CPPFLAGS += -msse -msse2
 endif
 
 TARGET_NAME := mupen64plus
@@ -41,7 +42,6 @@ ifneq (,$(findstring gles,$(platform)))
 else
    GL_LIB := -lGL
 endif
-   CPPFLAGS += -msse -msse2
    PLATFORM_EXT := unix
 else ifneq (,$(findstring rpi,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
@@ -49,7 +49,7 @@ else ifneq (,$(findstring rpi,$(platform)))
    fpic = -fPIC
    GLES = 1
    GL_LIB := -lGLESv2
-   CPPFLAGS = -DNOSSE -I/opt/vc/include -DARMv5_ONLY -DNO_ASM
+   CPPFLAGS += -DNOSSE -I/opt/vc/include -DARMv5_ONLY -DNO_ASM
    PLATFORM_EXT := unix
    WITH_DYNAREC=arm
 
@@ -172,7 +172,6 @@ else ifneq (,$(findstring win,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dll
    LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=libretro/link.T -lwinmm -lgdi32
    GL_LIB := -lopengl32
-   CPPFLAGS += -msse -msse2
    PLATFORM_EXT := win32
    CC = gcc
    CXX = g++
@@ -316,13 +315,6 @@ CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp)
 
 CFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.c)
 CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
-
-ifeq ($(HAVE_HWFBE), 1)
-HWFBE_FLAGS := -DHAVE_HWFBE
-CFLAGS += $(HWFBE_FLAGS)
-CPPFLAGS += $(HWFBE_FLAGS)
-CXXFILES += $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c
-endif
 
 ### Angrylion's renderer ###
 VIDEODIR_ANGRYLION = angrylionrdp
