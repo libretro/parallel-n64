@@ -62,12 +62,12 @@ ifneq ($(shell sw_vers | grep -c 10.9),1)
 endif
    fpic = -fPIC
 
-   CPPFLAGS += -D__MACOSX__
+   PLATCFLAGS += -D__MACOSX__
    GL_LIB := -framework OpenGL
    PLATFORM_EXT := unix
 else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
-   CPPFLAGS += -DIOS -marm -mllvm -arm-reserve-r9
+   PLATCFLAGS += -DIOS -marm -mllvm -arm-reserve-r9
    LDFLAGS += -dynamiclib -marm
    fpic = -fPIC
    GLES = 1
@@ -82,7 +82,7 @@ ifneq ($(OSXVER),9)
    CC += -miphoneos-version-min=5.0
    CC_AS += -miphoneos-version-min=5.0
    CXX += -miphoneos-version-min=5.0
-   CPPFLAGS += -miphoneos-version-min=5.0
+   PLATCFLAGS += -miphoneos-version-min=5.0
 endif
    CPPFLAGS += -DNO_ASM -DIOS -DNOSSE -DHAVE_POSIX_MEMALIGN -DDISABLE_3POINT
    CPPFLAGS += -DARM
@@ -98,12 +98,12 @@ else ifneq (,$(findstring android,$(platform)))
    CXX = arm-linux-androideabi-g++
 	WITH_DYNAREC=arm
    GLES = 1
-   CPPFLAGS += -DNO_ASM -DNOSSE -DANDROID
+   PLATCFLAGS += -DNO_ASM -DNOSSE -DANDROID
    HAVE_NEON = 1
 	CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -D__arm__
-   CPPFLAGS += $(CPUFLAGS)
+   PLATCFLAGS += $(CPUFLAGS)
 	CFLAGS += $(CPUFLAGS) -DANDROID
-	CPPFLAGS += -DARM_ASM -D__NEON_OPT
+	PLATCFLAGS += -DARM_ASM -D__NEON_OPT
    
    PLATFORM_EXT := unix
 else ifeq ($(platform), qnx)
@@ -118,12 +118,12 @@ else ifeq ($(platform), qnx)
    AR = QCC -Vgcc_ntoarmv7le
 	WITH_DYNAREC=arm
    GLES = 1
-   CPPFLAGS += -DNO_ASM -DNOSSE -D__BLACKBERRY_QNX__
+   PLATCFLAGS += -DNO_ASM -DNOSSE -D__BLACKBERRY_QNX__
    HAVE_NEON = 1
 	CPUFLAGS += -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=softfp -D__arm__
-   CPPFLAGS += $(CPUFLAGS)
+   PLATCFLAGS += $(CPUFLAGS)
 	CFLAGS += $(CPUFLAGS) -D__QNX__
-	CPPFLAGS += -DARM_ASM -D__NEON_OPT
+	PLATCFLAGS += -DARM_ASM -D__NEON_OPT
    
    PLATFORM_EXT := unix
 else ifneq (,$(findstring armv,$(platform)))
@@ -132,7 +132,7 @@ else ifneq (,$(findstring armv,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined
-   CPPFLAGS += -I.
+   PLATCFLAGS += -I.
 	WITH_DYNAREC=arm
 ifneq (,$(findstring gles,$(platform)))
    GLES := 1
@@ -140,27 +140,27 @@ else
    GL_LIB := -lGL
 endif
 ifneq (,$(findstring cortexa8,$(platform)))
-   CPPFLAGS += -marm -mcpu=cortex-a8
+   PLATCFLAGS += -marm -mcpu=cortex-a8
 else ifneq (,$(findstring cortexa9,$(platform)))
-   CPPFLAGS += -marm -mcpu=cortex-a9
+   PLATCFLAGS += -marm -mcpu=cortex-a9
 endif
-   CPPFLAGS += -marm
+   PLATCFLAGS += -marm
 ifneq (,$(findstring neon,$(platform)))
-   CPPFLAGS += -mfpu=neon
+   PLATCFLAGS += -mfpu=neon
    HAVE_NEON = 1
 endif
 ifneq (,$(findstring softfloat,$(platform)))
-   CPPFLAGS += -mfloat-abi=softfp
+   PLATCFLAGS += -mfloat-abi=softfp
 else ifneq (,$(findstring hardfloat,$(platform)))
-   CPPFLAGS += -mfloat-abi=hard
+   PLATCFLAGS += -mfloat-abi=hard
 endif
-   CPPFLAGS += -DARM
+   PLATCFLAGS += -DARM
 else ifeq ($(platform), emscripten)
    TARGET := $(TARGET_NAME)_libretro_emscripten.bc
    GLES := 1
    #GLIDE2GL=0
-   CPPFLAGS += -DNO_ASM -DNOSSE
-   CPPFLAGS += -DCC_resampler=mupen_CC_resampler -Dsinc_resampler=mupen_sinc_resampler \
+   PLATCFLAGS += -DNO_ASM -DNOSSE
+   PLATCFLAGS += -DCC_resampler=mupen_CC_resampler -Dsinc_resampler=mupen_sinc_resampler \
                -Drglgen_symbol_map=mupen_rglgen_symbol_map -Dmain_exit=mupen_main_exit \
                -Dadler32=mupen_adler32 -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \
                -Daudio_convert_s16_to_float_C=mupen_audio_convert_s16_to_float_C -Daudio_convert_float_to_s16_C=mupen_audio_convert_float_to_s16_C \
@@ -331,10 +331,13 @@ endif
 
 CFILES += libretro/glsym/rglgen.c
 
+COREFLAGS += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE
+
 ### Finalize ###
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
-CPPFLAGS   += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API $(INCDIRS)
-CPPFLAGS   += -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE $(fpic)
+CPPFLAGS   +=  $(COREFLAGS) $(INCDIRS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS)
+CFLAGS   +=  $(COREFLAGS) $(INCDIRS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS)
+
 LDFLAGS    += -lm $(fpic)
 
 
