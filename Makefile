@@ -192,7 +192,7 @@ else
 VIDEODIR_GLIDE = gles2glide64/src
 endif
 
-INCDIRS := \
+INCFLAGS := \
 	-I$(COREDIR)/src \
 	-I$(COREDIR)/src/api \
 	-Ilibretro/libco \
@@ -335,8 +335,8 @@ COREFLAGS += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -DM64P_CORE_PROT
 
 ### Finalize ###
 OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
-CPPFLAGS   +=  $(COREFLAGS) $(INCDIRS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS)
-CFLAGS   +=  $(COREFLAGS) $(INCDIRS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS)
+CPPFLAGS   +=  $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS)
+CFLAGS   +=  $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS)
 
 LDFLAGS    += -lm $(fpic)
 
