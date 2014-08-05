@@ -182,6 +182,15 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
        DebugMessage(M64MSG_INFO, "Banjo Tooie INI patches applied.");
     }
     else if(
+          (sl(ROM_HEADER.CRC1) == 0x373F5889 && sl(ROM_HEADER.CRC2) == 0x9A6CA80A) /* Conker's Bad Fur Day (E) [!] */
+          || (sl(ROM_HEADER.CRC1) == 0x30C7AC50 && sl(ROM_HEADER.CRC2) == 0x7704072D) /* Conker's Bad Fur Day (U) [!] */
+      )
+    {
+       strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+       ROM_SETTINGS.savetype = EEPROM_16KB;
+       DebugMessage(M64MSG_INFO, "Conker's Bad Fur Day INI patches applied.");
+    }
+    else if(
           (sl(ROM_HEADER.CRC1) == 0x11936D8C   && sl(ROM_HEADER.CRC2) == 0x6F2C4B43) /* Donkey Kong 64 (E) */
           || (sl(ROM_HEADER.CRC1) == 0x1F95CAAA  && sl(ROM_HEADER.CRC2) == 0x47FC22A) /* Donkey Kong 64 (E) [f1] (Boot&Save) */
           || (sl(ROM_HEADER.CRC1) == 0x53C89A7  && sl(ROM_HEADER.CRC2) == 0xA5064302) /* Donkey Kong 64 (J) */
