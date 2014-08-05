@@ -56,7 +56,16 @@ else ifneq (,$(findstring rpi,$(platform)))
 	CPUFLAGS += -DARMv5_ONLY -DNO_ASM -DNOSSE
    PLATFORM_EXT := unix
    WITH_DYNAREC=arm
-
+else ifneq (,$(findstring imx6,$(platform)))
+   TARGET := $(TARGET_NAME)_libretro.so
+   LDFLAGS += -shared -Wl,--version-script=libretro/link.T
+   fpic = -fPIC
+   GLES = 1
+   GL_LIB := -lGLESv2
+   CPUFLAGS += -DNO_ASM -DNOSSE
+   PLATFORM_EXT := unix
+   WITH_DYNAREC=arm
+   HAVE_NEON=1
 else ifneq (,$(findstring osx,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dylib
    LDFLAGS += -dynamiclib
