@@ -188,6 +188,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     {
        strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
        ROM_SETTINGS.savetype = EEPROM_16KB;
+       ROM_SETTINGS.players = 4;
        DebugMessage(M64MSG_INFO, "Conker's Bad Fur Day INI patches applied.");
     }
     else if(
