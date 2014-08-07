@@ -111,6 +111,19 @@ static const uint64_t lut_cpop[][2] = {
    { 0xB58988E9B1FC4BE8ULL, 1 }, /* Hydro Thunder (E) [!] */
    { 0x29A045CEABA9060EULL, 1 }, /* Hydro Thunder (F) [!] */
    { 0xC8DC65EB3D8C8904ULL, 1 }, /* Hydro Thunder (U) [!] */
+#ifndef GLES
+   { 0x979B263EF8470004ULL, 1 }, /* Killer Instinct Gold (E) [!] */
+   { 0x9E8FE2BA8B270770ULL, 1 }, /* Killer Instinct Gold (U) (V1.0) [!] */
+   { 0xCB06B744633194DBULL, 1 }, /* Killer Instinct Gold (U) (V1.0) [b1][t1] */
+   { 0x06CB44B73163DB94ULL, 1 }, /* Killer Instinct Gold (U) (V1.0) [b2] */
+   { 0x9E8FE2BA8B270770ULL, 1 }, /* Killer Instinct Gold (U) (V1.0) [o1] */
+   { 0x06CB44B73163DB94ULL, 1 }, /* Killer Instinct Gold (U) (V1.0) [t1] */
+   { 0xCB06B744633194DBULL, 1 }, /* Killer Instinct Gold (U) (V1.0) [t2] */
+   { 0x9E8FCDFA49F5652BULL, 1 }, /* Killer Instinct Gold (U) (V1.1) [!] */
+   { 0xF908CA4C36464327ULL, 1 }, /* Killer Instinct Gold (U) (V1.2) [!] */
+   { 0x06CB44B73163DB94ULL, 1 }, /* Killer Instinct Gold (U) (V1.2) [b1] */
+   { 0xF908CA4C36464327ULL, 1 }, /* Killer Instinct Gold (U) (V1.2) [o1] */
+#endif
    { 0x8C138BE095700E46ULL, 1 }, /* In-Fisherman Bass Hunter 64 (U) [!] */
    { 0xE2D37CF0F57E4EAEULL, 1 }, /* International Superstar Soccer 64 (E) [!] */
    { 0x5F2763C462412AE5ULL, 1 }, /* International Superstar Soccer 64 (U) [!] */

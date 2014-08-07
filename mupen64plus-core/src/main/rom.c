@@ -212,26 +212,6 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
        }
     }
 
-#ifndef GLES // Less powerful hardware to play with -count_per_op = 1 would be slow
-    if (
-             lut_id == 0x979B263EF8470004ULL /* Killer Instinct Gold (E) [!] */
-          || lut_id == 0x9E8FE2BA8B270770ULL /* Killer Instinct Gold (U) (V1.0) [!] */
-          || lut_id == 0xCB06B744633194DBULL /* Killer Instinct Gold (U) (V1.0) [b1][t1] */
-          || lut_id == 0x06CB44B73163DB94ULL /* Killer Instinct Gold (U) (V1.0) [b2] */
-          || lut_id == 0x9E8FE2BA8B270770ULL /* Killer Instinct Gold (U) (V1.0) [o1] */
-          || lut_id == 0x06CB44B73163DB94ULL /* Killer Instinct Gold (U) (V1.0) [t1] */
-          || lut_id == 0xCB06B744633194DBULL /* Killer Instinct Gold (U) (V1.0) [t2] */
-          || lut_id == 0x9E8FCDFA49F5652BULL /* Killer Instinct Gold (U) (V1.1) [!] */
-          || lut_id == 0xF908CA4C36464327ULL /* Killer Instinct Gold (U) (V1.2) [!] */
-          || lut_id == 0x06CB44B73163DB94ULL /* Killer Instinct Gold (U) (V1.2) [b1] */
-          || lut_id == 0xF908CA4C36464327ULL /* Killer Instinct Gold (U) (V1.2) [o1] */
-       )
-    {
-        count_per_op = 1;
-        DebugMessage(M64MSG_INFO, "CountPerOp set to %u.", count_per_op);
-    }
-    else
-#endif
     for (i = 0; i < sizeof(lut_cpop)/sizeof(lut_cpop[0]); ++i)
     {
         if (lut_cpop[i][0] == lut_id)
