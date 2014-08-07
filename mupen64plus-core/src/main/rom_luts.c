@@ -45,6 +45,14 @@ static const uint64_t lut_ee16k[] = {
    0xD3F97D496924135BULL, /* Yoshi's Story (E) (M3) [!] */
    0x2337D8E86B8E7CECULL  /* Yoshi's Story (U) (M2) [!] */
 };
+
+/* (Delay SI) */
+static const uint64_t lut_delaysi[][2] = {
+   { 0xC2E9AA9A475D70AAULL, 0 }, 
+   { 0xC9176D39EA4779D1ULL, 0 },
+   { 0x155B7CDFF0DA7325ULL, 0 },
+};
+
 /* Cycles per emulated instruction (aka CountPerOp) */
 static const uint64_t lut_cpop[][2] = {
    { 0xB98BA4565B2B76AFULL, 1 }, /* 64 de Hakken!! Tamagotchi Minna de Tamagotchi World (J) [!] */
