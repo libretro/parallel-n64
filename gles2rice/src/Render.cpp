@@ -1346,10 +1346,12 @@ inline int ReverseCITableLookup(uint32_t *pTable, int size, uint32_t val)
 }
 
 extern RenderTextureInfo gRenderTextureInfos[];
-void SetVertexTextureUVCoord(TexCord &dst, float s, float t, int tile, TxtrCacheEntry *pEntry)
+void SetVertexTextureUVCoord(TexCord &dst, const TexCord &src, int tile, TxtrCacheEntry *pEntry)
 {
     RenderTexture &txtr = g_textures[tile];
     RenderTextureInfo &info = gRenderTextureInfos[pEntry->txtrBufIdx-1];
+    float s = src.u;
+    float t = src.v;
 
     uint32_t addrOffset = g_TI.dwAddr-info.CI_Info.dwAddr;
     uint32_t extraTop = (addrOffset>>(info.CI_Info.dwSize-1)) /info.CI_Info.dwWidth;
@@ -1369,21 +1371,30 @@ void SetVertexTextureUVCoord(TexCord &dst, float s, float t, int tile, TxtrCache
     dst.v = t;
 }
 
-void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T)
+void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0)
 {
     RenderTexture &txtr = g_textures[0];
     if( txtr.pTextureEntry && txtr.pTextureEntry->txtrBufIdx > 0 )
     {
-        ::SetVertexTextureUVCoord(v.tcord[0], fTex0S, fTex0T, 0, txtr.pTextureEntry);
+        ::SetVertexTextureUVCoord(v.tcord[0], fTex0, 0, txtr.pTextureEntry);
     }
     else
     {
-        v.tcord[0].u = fTex0S;
-        v.tcord[0].v = fTex0T;
+        v.tcord[0] = fTex0;
     }
 }
-void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T, float fTex1S, float fTex1T)
+
+void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T)
 {
+    TexCord t = { fTex0S, fTex0T };
+    SetVertexTextureUVCoord(v, t);
+}
+
+void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0_, const TexCord &fTex1_)
+{
+    TexCord fTex0 = fTex0_;
+    TexCord fTex1 = fTex1_;
+
     if( (options.enableHackForGames == HACK_FOR_ZELDA||options.enableHackForGames == HACK_FOR_ZELDA_MM) && m_Mux == 0x00262a60150c937fLL && gRSP.curTile == 0 )
     {
         // Hack for Zelda Sun
@@ -1393,34 +1404,39 @@ void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T,
             t1.dwFormat == TXT_FMT_I && t1.dwSize == TXT_SIZE_8b && t1.dwWidth == 64 &&
             t0.dwHeight == t1.dwHeight )
         {
-            fTex0S /= 2;
-            fTex0T /= 2;
-            fTex1S /= 2;
-            fTex1T /= 2;
+            fTex0.u /= 2;
+            fTex0.v /= 2;
+            fTex1.u /= 2;
+            fTex1.v /= 2;
         }
     }
 
     RenderTexture &txtr0 = g_textures[0];
     if( txtr0.pTextureEntry && txtr0.pTextureEntry->txtrBufIdx > 0 )
     {
-        ::SetVertexTextureUVCoord(v.tcord[0], fTex0S, fTex0T, 0, txtr0.pTextureEntry);
+        ::SetVertexTextureUVCoord(v.tcord[0], fTex0, 0, txtr0.pTextureEntry);
     }
     else
     {
-        v.tcord[0].u = fTex0S;
-        v.tcord[0].v = fTex0T;
+        v.tcord[0] = fTex0;
     }
 
     RenderTexture &txtr1 = g_textures[1];
     if( txtr1.pTextureEntry && txtr1.pTextureEntry->txtrBufIdx > 0 )
     {
-        ::SetVertexTextureUVCoord(v.tcord[1], fTex1S, fTex1T, 1, txtr1.pTextureEntry);
+        ::SetVertexTextureUVCoord(v.tcord[1], fTex1, 1, txtr1.pTextureEntry);
     }
     else
     {
-        v.tcord[1].u = fTex1S;
-        v.tcord[1].v = fTex1T;
+        v.tcord[1] = fTex1;
     }
+}
+
+void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T, float fTex1S, float fTex1T)
+{
+    TexCord t0 = { fTex0S, fTex0T };
+    TexCord t1 = { fTex1S, fTex1T };
+    SetVertexTextureUVCoord(v, t0, t1);
 }
 
 void CRender::SetClipRatio(uint32_t type, uint32_t w1)

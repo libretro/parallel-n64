@@ -87,6 +87,8 @@ void COGLExtRender::SetTexWrapS(int unitno,GLuint flag)
     static GLuint mtex[8];
     if( m_curBoundTex[unitno] != mtex[unitno] || mflag[unitno] != flag )
     {
+        pglActiveTexture(GL_TEXTURE0+unitno);
+        OPENGL_CHECK_ERRORS;
         mtex[unitno] = m_curBoundTex[0];
         mflag[unitno] = flag;
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, flag);
@@ -138,8 +140,6 @@ void COGLExtRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32_t dwTile)
     {
         if( m_textureUnitMap[textureNo] == tex )
         {
-            pglActiveTexture(GL_TEXTURE0 + textureNo);
-            OPENGL_CHECK_ERRORS;
             COGLTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCOGLTexture;
             if( pTexture ) 
             {

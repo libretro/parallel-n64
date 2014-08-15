@@ -277,6 +277,10 @@ endif
 
 CXXFILES += $(wildcard $(VIDEODIR_RICE)/*.cpp)
 
+ifeq ($(HAVE_NEON), 1)
+OBJECTS += $(VIDEODIR_RICE)/RenderBase_neon.o
+endif
+
 LIBRETRO_SRC += $(wildcard libretro/*.c)
 
 
@@ -355,6 +359,9 @@ all: $(TARGET)
 
 $(COREDIR)/src/r4300/new_dynarec/linkage_arm.o: $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
 	$(CC_AS) $(CFLAGS) -c $^ -o $@
+
+$(VIDEODIR_RICE)/RenderBase_neon.o: $(VIDEODIR_RICE)/RenderBase_neon.S
+        $(CC_AS) $(CFLAGS) -c $^ -o $@
 
 %.o: %.S
 	$(CC_AS) $(CFLAGS) -c $^ -o $@

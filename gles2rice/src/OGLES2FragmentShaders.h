@@ -45,6 +45,14 @@ typedef struct
     GLint FogColorLocation;
     GLint FogMinMaxLocation;
 
+    float PrimColors[4];
+    float EnvColors[4];
+    float PrimLODFrac;
+    float EnvLODFrac;
+    float AlphaRef;
+    float FogColors[4];
+    float FogMin;
+    float FogMax;
 } OGLShaderCombinerSaveType;
 
 
@@ -88,6 +96,9 @@ private:
     bool bAlphaTestPreviousState;
     bool bFogState;
     bool bFogPreviousState;
+
+    void UseProgram(GLuint program);
+    GLuint currentProgram;
 
 #ifdef DEBUGGER
     void DisplaySimpleMuxString(void);
