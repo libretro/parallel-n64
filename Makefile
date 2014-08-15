@@ -361,7 +361,7 @@ $(COREDIR)/src/r4300/new_dynarec/linkage_arm.o: $(COREDIR)/src/r4300/new_dynarec
 	$(CC_AS) $(CFLAGS) -c $^ -o $@
 
 $(VIDEODIR_RICE)/RenderBase_neon.o: $(VIDEODIR_RICE)/RenderBase_neon.S
-        $(CC_AS) $(CFLAGS) -c $^ -o $@
+	$(CC_AS) $(CFLAGS) -c $^ -o $@
 
 %.o: %.S
 	$(CC_AS) $(CFLAGS) -c $^ -o $@
