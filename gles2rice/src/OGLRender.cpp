@@ -225,8 +225,13 @@ void OGLRender::SetZUpdate(BOOL bZUpdate)
 
 void OGLRender::ApplyZBias(int bias)
 {
+    static int old_bias;
     float f1 = bias > 0 ? -3.0f : 0.0f;  // z offset = -3.0 * max(abs(dz/dx),abs(dz/dy)) per pixel delta z slope
     float f2 = bias > 0 ? -3.0f : 0.0f;  // z offset += -3.0 * 1 bit
+
+    if (bias == old_bias)
+        return;
+    old_bias = bias;
 
     if (bias > 0)
     {
@@ -691,6 +696,7 @@ void OGLRender::DrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwCo
     OPENGL_CHECK_ERRORS;
 }
 
+#if 0
 void OGLRender::InitCombinerBlenderForSimpleRectDraw(uint32_t tile)
 {
     //glEnable(GL_CULL_FACE);
@@ -702,6 +708,7 @@ void OGLRender::InitCombinerBlenderForSimpleRectDraw(uint32_t tile)
     OPENGL_CHECK_ERRORS;
     //glEnable(GL_ALPHA_TEST);
 }
+#endif
 
 COLOR OGLRender::PostProcessDiffuseColor(COLOR curDiffuseColor)
 {

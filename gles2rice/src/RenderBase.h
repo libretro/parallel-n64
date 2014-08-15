@@ -243,6 +243,7 @@ extern void (*ProcessVertexData)(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 void ProcessVertexDataSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
 #endif
 void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
+void ProcessVertexDataNEON(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
 void ProcessVertexDataExternal(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
 void SetPrimitiveColor(uint32_t dwCol, uint32_t LODMin, uint32_t LODFrac);
 void SetPrimitiveDepth(uint32_t z, uint32_t dwDZ);

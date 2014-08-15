@@ -643,6 +643,12 @@ void InitRenderBase()
         ProcessVertexData = ProcessVertexDataSSE;
     }
     else
+#elif defined(__ARM_NEON__)
+    if( !g_curRomInfo.bPrimaryDepthHack && options.enableHackForGames != HACK_FOR_NASCAR && options.enableHackForGames != HACK_FOR_ZELDA_MM && !options.bWinFrameMode)
+    {
+        ProcessVertexData = ProcessVertexDataNEON;
+    }
+    else
 #endif
     {
         ProcessVertexData = ProcessVertexDataNoSSE;
@@ -840,10 +846,88 @@ void ComputeLOD(void)
 bool bHalfTxtScale=false;
 extern uint32_t lastSetTile;
 
+#define noinline __attribute__((noinline))
+
+static noinline void InitVertex_scale_hack_check(uint32_t dwV)
+{
+    // Check for txt scale hack
+    if( gRDP.tiles[lastSetTile].dwSize == TXT_SIZE_32b || gRDP.tiles[lastSetTile].dwSize == TXT_SIZE_4b )
+    {
+        int width = ((gRDP.tiles[lastSetTile].sh-gRDP.tiles[lastSetTile].sl+1)<<1);
+        int height = ((gRDP.tiles[lastSetTile].th-gRDP.tiles[lastSetTile].tl+1)<<1);
+        if( g_fVtxTxtCoords[dwV].x*gRSP.fTexScaleX == width || g_fVtxTxtCoords[dwV].y*gRSP.fTexScaleY == height )
+        {
+            bHalfTxtScale=true;
+        }
+    }
+}
+
+static noinline void InitVertex_notopengl_or_clipper_adjust(TLITVERTEX &v, uint32_t dwV)
+{
+    v.x = g_vecProjected[dwV].x*gRSP.vtxXMul+gRSP.vtxXAdd;
+    v.y = g_vecProjected[dwV].y*gRSP.vtxYMul+gRSP.vtxYAdd;
+    v.z = (g_vecProjected[dwV].z + 1.0f) * 0.5f;    // DirectX minZ=0, maxZ=1
+    //v.z = g_vecProjected[dwV].z;  // DirectX minZ=0, maxZ=1
+    v.rhw = g_vecProjected[dwV].w;
+    VTX_DUMP(TRACE4("  Proj : x=%f, y=%f, z=%f, rhw=%f",  v.x,v.y,v.z,v.rhw));
+
+    if( gRSP.bProcessSpecularColor )
+    {
+        v.dcSpecular = CRender::g_pRender->PostProcessSpecularColor();
+        if( gRSP.bFogEnabled )
+        {
+            v.dcSpecular &= 0x00FFFFFF;
+            uint32_t  fogFct = 0xFF-(uint8_t)((g_fFogCoord[dwV]-gRSPfFogMin)*gRSPfFogDivider);
+            v.dcSpecular |= (fogFct<<24);
+        }
+    }
+    else if( gRSP.bFogEnabled )
+    {
+        uint32_t  fogFct = 0xFF-(uint8_t)((g_fFogCoord[dwV]-gRSPfFogMin)*gRSPfFogDivider);
+        v.dcSpecular = (fogFct<<24);
+    }
+}
+
+static noinline void InitVertex_texgen_correct(TLITVERTEX &v, uint32_t dwV)
+{
+    // Correction for texGen result
+    float u0,u1,v0,v1;
+    RenderTexture &tex0 = g_textures[gRSP.curTile];
+    u0 = g_fVtxTxtCoords[dwV].x * 32 * 1024 * gRSP.fTexScaleX / tex0.m_fTexWidth;
+    v0 = g_fVtxTxtCoords[dwV].y * 32 * 1024 * gRSP.fTexScaleY / tex0.m_fTexHeight;
+    u0 *= (gRDP.tiles[gRSP.curTile].fShiftScaleS);
+    v0 *= (gRDP.tiles[gRSP.curTile].fShiftScaleT);
+
+    if( CRender::g_pRender->IsTexel1Enable() )
+    {
+        RenderTexture &tex1 = g_textures[(gRSP.curTile+1)&7];
+        u1 = g_fVtxTxtCoords[dwV].x * 32 * 1024 * gRSP.fTexScaleX / tex1.m_fTexWidth;
+        v1 = g_fVtxTxtCoords[dwV].y * 32 * 1024 * gRSP.fTexScaleY / tex1.m_fTexHeight;
+        u1 *= gRDP.tiles[(gRSP.curTile+1)&7].fShiftScaleS;
+        v1 *= gRDP.tiles[(gRSP.curTile+1)&7].fShiftScaleT;
+        CRender::g_pRender->SetVertexTextureUVCoord(v, u0, v0, u1, v1);
+    }
+    else
+    {
+        CRender::g_pRender->SetVertexTextureUVCoord(v, u0, v0);
+    }
+}
+
+#include "RenderBase_neon.h"
+#ifndef __ARM_NEON__
+static void multiply_subtract2(float *d, const float *m1, const float *m2, const float *s)
+{
+    int i;
+    for (i = 0; i < 2; i++)
+        d[i] = m1[i] * m2[i] - s[i];
+}
+#else
+extern "C" void multiply_subtract2(float *d, const float *m1, const float *m2, const float *s);
+#endif
+
 void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture)
 {
     VTX_DUMP(TRACE2("Initialize vertex (%d) to vertex buffer[%d]:", dwV, vtxIndex));
-
     TLITVERTEX &v = g_vtxBuffer[vtxIndex];
     VTX_DUMP(TRACE4("  Trans: x=%f, y=%f, z=%f, w=%f",  g_vtxTransformed[dwV].x,g_vtxTransformed[dwV].y,g_vtxTransformed[dwV].z,g_vtxTransformed[dwV].w));
     g_vtxProjected5[vtxIndex][0] = g_vtxTransformed[dwV].x;
@@ -856,28 +940,7 @@ void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture)
 
     if( options.bOGLVertexClipper == TRUE )
     {
-        v.x = g_vecProjected[dwV].x*gRSP.vtxXMul+gRSP.vtxXAdd;
-        v.y = g_vecProjected[dwV].y*gRSP.vtxYMul+gRSP.vtxYAdd;
-        v.z = (g_vecProjected[dwV].z + 1.0f) * 0.5f;    // DirectX minZ=0, maxZ=1
-        //v.z = g_vecProjected[dwV].z;  // DirectX minZ=0, maxZ=1
-        v.rhw = g_vecProjected[dwV].w;
-        VTX_DUMP(TRACE4("Projected vertex : x=%f, y=%f, z=%f, rhw=%f",  v.x, v.y, v.z, v.rhw));
-
-        if( gRSP.bProcessSpecularColor )
-        {
-            v.dcSpecular = CRender::g_pRender->PostProcessSpecularColor();
-            if( gRSP.bFogEnabled )
-            {
-                v.dcSpecular &= 0x00FFFFFF;
-                uint32_t  fogFct = 0xFF-(uint8_t)((g_fFogCoord[dwV]-gRSPfFogMin)*gRSPfFogDivider);
-                v.dcSpecular |= (fogFct<<24);
-            }
-        }
-        else if( gRSP.bFogEnabled )
-        {
-            uint32_t  fogFct = 0xFF-(uint8_t)((g_fFogCoord[dwV]-gRSPfFogMin)*gRSPfFogDivider);
-            v.dcSpecular = (fogFct<<24);
-        }
+        InitVertex_notopengl_or_clipper_adjust(v, dwV);
     }
     VTX_DUMP(TRACE2("  (U,V): %f, %f",  g_fVtxTxtCoords[dwV].x,g_fVtxTxtCoords[dwV].y));
 
@@ -912,72 +975,31 @@ void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture)
         // Only scale if not generated automatically
         if (gRSP.bTextureGen && gRSP.bLightingEnable)
         {
-            // Correction for texGen result
-            float u0,u1,v0,v1;
-            RenderTexture &tex0 = g_textures[gRSP.curTile];
-            u0 = g_fVtxTxtCoords[dwV].x * 32 * 1024 * gRSP.fTexScaleX / tex0.m_fTexWidth;
-            v0 = g_fVtxTxtCoords[dwV].y * 32 * 1024 * gRSP.fTexScaleY / tex0.m_fTexHeight;
-            u0 *= (gRDP.tiles[gRSP.curTile].fShiftScaleS);
-            v0 *= (gRDP.tiles[gRSP.curTile].fShiftScaleT);
-
-            if( CRender::g_pRender->IsTexel1Enable() )
-            {
-                RenderTexture &tex1 = g_textures[(gRSP.curTile+1)&7];
-                u1 = g_fVtxTxtCoords[dwV].x * 32 * 1024 * gRSP.fTexScaleX / tex1.m_fTexWidth;
-                v1 = g_fVtxTxtCoords[dwV].y * 32 * 1024 * gRSP.fTexScaleY / tex1.m_fTexHeight;
-                u1 *= gRDP.tiles[(gRSP.curTile+1)&7].fShiftScaleS;
-                v1 *= gRDP.tiles[(gRSP.curTile+1)&7].fShiftScaleT;
-                CRender::g_pRender->SetVertexTextureUVCoord(v, u0, v0, u1, v1);
-            }
-            else
-            {
-                CRender::g_pRender->SetVertexTextureUVCoord(v, u0, v0);
-            }
+            InitVertex_texgen_correct(v, dwV);
         }
         else
         {
-            float tex0u = g_fVtxTxtCoords[dwV].x *gRSP.tex0scaleX - gRSP.tex0OffsetX ;
-            float tex0v = g_fVtxTxtCoords[dwV].y *gRSP.tex0scaleY - gRSP.tex0OffsetY ;
+            TexCord tex0;
+            multiply_subtract2(&tex0.u, &g_fVtxTxtCoords[dwV].x, &gRSP.tex0scaleX, &gRSP.tex0OffsetX);
 
             if( CRender::g_pRender->IsTexel1Enable() )
             {
-                float tex1u = g_fVtxTxtCoords[dwV].x *gRSP.tex1scaleX - gRSP.tex1OffsetX ;
-                float tex1v = g_fVtxTxtCoords[dwV].y *gRSP.tex1scaleY - gRSP.tex1OffsetY ;
+                TexCord tex1;
+                multiply_subtract2(&tex1.u, &g_fVtxTxtCoords[dwV].x, &gRSP.tex1scaleX, &gRSP.tex1OffsetX);
 
-                CRender::g_pRender->SetVertexTextureUVCoord(v, tex0u, tex0v, tex1u, tex1v);
-                VTX_DUMP(TRACE2("  (tex0): %f, %f",  tex0u,tex0v));
-                VTX_DUMP(TRACE2("  (tex1): %f, %f",  tex1u,tex1v));
+                CRender::g_pRender->SetVertexTextureUVCoord(v, tex0, tex1);
+                VTX_DUMP(TRACE2("  (tex0): %f, %f",  tex0.u,tex0.v));
+                VTX_DUMP(TRACE2("  (tex1): %f, %f",  tex1.u,tex1.v));
             }
             else
             {
-                CRender::g_pRender->SetVertexTextureUVCoord(v, tex0u, tex0v);
-                VTX_DUMP(TRACE2("  (tex0): %f, %f",  tex0u,tex0v));
+                CRender::g_pRender->SetVertexTextureUVCoord(v, tex0);
+                VTX_DUMP(TRACE2("  (tex0): %f, %f",  tex0.u,tex0.v));
             }
         }
 
-        // Check for txt scale hack
-        if( !bHalfTxtScale && g_curRomInfo.bTextureScaleHack &&
-            (gRDP.tiles[lastSetTile].dwSize == TXT_SIZE_32b || gRDP.tiles[lastSetTile].dwSize == TXT_SIZE_4b ) )
-        {
-            int width = ((gRDP.tiles[lastSetTile].sh-gRDP.tiles[lastSetTile].sl+1)<<1);
-            int height = ((gRDP.tiles[lastSetTile].th-gRDP.tiles[lastSetTile].tl+1)<<1);
-            if( g_fVtxTxtCoords[dwV].x*gRSP.fTexScaleX == width || g_fVtxTxtCoords[dwV].y*gRSP.fTexScaleY == height )
-            {
-                bHalfTxtScale=true;
-            }
-        }
-    }
-
-    if( g_curRomInfo.bEnableTxtLOD && vtxIndex == 1 && gRDP.otherMode.text_lod )
-    {
-        if (CRender::g_pRender->IsTexel1Enable() && CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->IsUsed(MUX_LODFRAC, MUX_MASK))
-        {
-            ComputeLOD();
-        }
-        else
-        {
-            gRDP.LODFrac = 0;
-        }
+        if(g_curRomInfo.bTextureScaleHack && !bHalfTxtScale)
+            InitVertex_scale_hack_check(dwV);
     }
 
     VTX_DUMP(TRACE2("  DIF(%08X), SPE(%08X)",   v.dcDiffuse, v.dcSpecular));
@@ -1505,6 +1527,170 @@ void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
     DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
 }
 
+/* NEON code */
+
+#include "RenderBase_neon.h"
+
+extern "C" void pv_neon(XVECTOR4 *g_vtxTransformed, XVECTOR4 *g_vecProjected,
+    uint32_t *g_dwVtxDifColor, VECTOR2 *g_fVtxTxtCoords,
+    float *g_fFogCoord, uint32_t *g_clipFlag2,
+    uint32_t dwNum, int neon_state,
+    const FiddledVtx *vtx,
+    const Light *gRSPlights, const float *fRSPAmbientLightRGBA,
+    const XMATRIX *gRSPworldProject, const XMATRIX *gRSPmodelViewTop,
+    uint32_t gRSPnumLights, float gRSPfFogMin,
+    uint32_t primitiveColor, uint32_t primitiveColor_);
+
+extern "C" int tv_direction(const XVECTOR4 *v0, const XVECTOR4 *v1, const XVECTOR4 *v2);
+
+void ProcessVertexDataNEON(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
+{
+    if (gRSP.bTextureGen && gRSP.bLightingEnable) {
+        ProcessVertexDataNoSSE(dwAddr, dwV0,dwNum);
+        return;
+    }
+
+    // assumtions:
+    // - g_clipFlag is not used at all
+    // - g_fFogCoord is not used at all
+    // - g_vtxNonTransformed is not used after ProcessVertexData*() returns
+    // - g_normal - same
+
+    int neon_state = 0;
+    if ( gRSP.bLightingEnable )
+        neon_state |= PV_NEON_ENABLE_LIGHT;
+    if ( (gRDP.geometryMode & G_SHADE) || gRSP.ucode >= 5 )
+        neon_state |= PV_NEON_ENABLE_SHADE;
+    if ( gRSP.bFogEnabled )
+        neon_state |= PV_NEON_ENABLE_FOG;
+    if ( gRDP.geometryMode & G_FOG )
+        neon_state |= PV_NEON_FOG_ALPHA;
+
+    uint32_t i;
+
+    UpdateCombinedMatrix();
+
+    // This function is called upon SPvertex
+    // - do vertex matrix transform
+    // - do vertex lighting
+    // - do texture cooridinate transform if needed
+    // - calculate normal vector
+
+    // Output:  - g_vecProjected[i]             -> transformed vertex x,y,z
+    //          - g_vecProjected[i].w           -> saved vertex 1/w
+    //          - g_vtxTransformed[i]
+    //          - g_dwVtxDifColor[i]            -> vertex color
+    //          - g_fVtxTxtCoords[i]            -> vertex texture cooridinates
+    //          - g_fFogCoord[i]                -> unused
+    //          - g_clipFlag2[i]
+
+    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+    const FiddledVtx * pVtxBase = (const FiddledVtx*)(rdram_u8 + dwAddr);
+    g_pVtxBase = (FiddledVtx *)pVtxBase;
+    gRSPmodelViewTop._14 = gRSPmodelViewTop._24 =
+    gRSPmodelViewTop._34 = 0;
+
+    // SP_Timing(RSP_GBI0_Vtx);
+    status.SPCycleCount += Timing_RSP_GBI0_Vtx * dwNum;
+
+#if 1
+    i = dwV0;
+    pv_neon(&g_vtxTransformed[i], &g_vecProjected[i],
+            &g_dwVtxDifColor[i], &g_fVtxTxtCoords[i],
+            &g_fFogCoord[i], &g_clipFlag2[i],
+            dwNum, neon_state, &pVtxBase[i - dwV0],
+            gRSPlights, gRSP.fAmbientColors,
+            &gRSPworldProject, &gRSPmodelViewTop,
+            gRSPnumLights, gRSPfFogMin,
+            gRDP.primitiveColor, gRDP.primitiveColor);
+#else
+    for (i = dwV0; i < dwV0 + dwNum; i++)
+    {
+        const FiddledVtx & vert = pVtxBase[i - dwV0];
+        XVECTOR3 vtx_raw; // was g_vtxNonTransformed
+
+        vtx_raw.x = (float)vert.x;
+        vtx_raw.y = (float)vert.y;
+        vtx_raw.z = (float)vert.z;
+
+        Vec3Transform(&g_vtxTransformed[i], &vtx_raw, &gRSPworldProject); // Convert to w=1
+
+        g_vecProjected[i].w = 1.0f / g_vtxTransformed[i].w;
+        g_vecProjected[i].x = g_vtxTransformed[i].x * g_vecProjected[i].w;
+        g_vecProjected[i].y = g_vtxTransformed[i].y * g_vecProjected[i].w;
+        g_vecProjected[i].z = g_vtxTransformed[i].z * g_vecProjected[i].w;
+
+        // RSP_Vtx_Clipping(i);
+        g_clipFlag2[i] = 0;
+        if( g_vecProjected[i].w > 0 )
+        {
+            if( g_vecProjected[i].x > 1 )   g_clipFlag2[i] |= X_CLIP_MAX;
+            if( g_vecProjected[i].x < -1 )  g_clipFlag2[i] |= X_CLIP_MIN;
+            if( g_vecProjected[i].y > 1 )   g_clipFlag2[i] |= Y_CLIP_MAX;
+            if( g_vecProjected[i].y < -1 )  g_clipFlag2[i] |= Y_CLIP_MIN;
+        }
+
+        if( neon_state & PV_NEON_ENABLE_LIGHT )
+        {
+            XVECTOR3 normal; // was g_normal
+            float r, g, b;
+
+            normal.x = (float)vert.norma.nx;
+            normal.y = (float)vert.norma.ny;
+            normal.z = (float)vert.norma.nz;
+
+            Vec3TransformNormal(normal, gRSPmodelViewTop);
+
+            r = gRSP.fAmbientLightR;
+            g = gRSP.fAmbientLightG;
+            b = gRSP.fAmbientLightB;
+
+            for (unsigned int l=0; l < gRSPnumLights; l++)
+            {
+                float fCosT = normal.x * gRSPlights[l].x + normal.y * gRSPlights[l].y + normal.z * gRSPlights[l].z; 
+
+                if (fCosT > 0 )
+                {
+                    r += gRSPlights[l].fr * fCosT;
+                    g += gRSPlights[l].fg * fCosT;
+                    b += gRSPlights[l].fb * fCosT;
+                }
+            }
+            if (r > 255) r = 255;
+            if (g > 255) g = 255;
+            if (b > 255) b = 255;
+            g_dwVtxDifColor[i] = ((vert.rgba.a<<24)|(((uint32_t)r)<<16)|(((uint32_t)g)<<8)|((uint32_t)b));
+        }
+        else if( neon_state & PV_NEON_ENABLE_SHADE )
+        {
+            IColor &color = *(IColor*)&g_dwVtxDifColor[i];
+            color.b = vert.rgba.r;
+            color.g = vert.rgba.g;
+            color.r = vert.rgba.b;
+            color.a = vert.rgba.a;
+        }
+        else
+            g_dwVtxDifColor[i] = gRDP.primitiveColor; // FLAT shade
+
+        // ReplaceAlphaWithFogFactor(i);
+        if( neon_state & PV_NEON_FOG_ALPHA )
+        {
+            // Use fog factor to replace vertex alpha
+            if( g_vecProjected[i].z > 1 )
+                *(((uint8*)&(g_dwVtxDifColor[i]))+3) = 0xFF;
+            // missing 'else' in original code??
+            else if( g_vecProjected[i].z < 0 )
+                *(((uint8*)&(g_dwVtxDifColor[i]))+3) = 0;
+            else
+                *(((uint8*)&(g_dwVtxDifColor[i]))+3) = (uint8)(g_vecProjected[i].z*255);
+        }
+
+        g_fVtxTxtCoords[i].x = (float)vert.tu;
+        g_fVtxTxtCoords[i].y = (float)vert.tv;
+    }
+#endif
+}
+
 bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
 {
    SP_Timing(SP_Each_Triangle);
@@ -1514,6 +1700,18 @@ bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
    InitVertex(dwV0, gRSP.numVertices, textureFlag);
    InitVertex(dwV1, gRSP.numVertices+1, textureFlag);
    InitVertex(dwV2, gRSP.numVertices+2, textureFlag);
+
+        if(gRSP.numVertices == 0 && g_curRomInfo.bEnableTxtLOD && gRDP.otherMode.text_lod)
+        {
+            if( CRender::g_pRender->IsTexel1Enable() && CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->IsUsed(MUX_LODFRAC, MUX_MASK) )
+            {
+                ComputeLOD();
+            }
+            else
+            {
+                gRDP.LODFrac = 0;
+            }
+        }
 
    gRSP.numVertices += 3;
    status.dwNumTrisRendered++;
@@ -1551,16 +1749,20 @@ bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
         // method doesn't work well when the z value is outside of screenspace
         //if (v0.z < 1 && v1.z < 1 && v2.z < 1)
         {
+#ifndef __ARM_NEON__
             float V1 = v2.x - v0.x;
             float V2 = v2.y - v0.y;
-            
+
             float W1 = v2.x - v1.x;
             float W2 = v2.y - v1.y;
 
             float fDirection = (V1 * W2) - (V2 * W1);
             fDirection = fDirection * v1.w * v2.w * v0.w;
             //float fDirection = v0.x*v1.y-v1.x*v0.y+v1.x*v2.y-v2.x*v1.y+v2.x*v0.y-v0.x*v2.y;
-
+#else
+            // really returns float, but we only need sign
+            int fDirection = tv_direction(&v0, &v1, &v2);
+#endif
             if (fDirection < 0 && gRSP.bCullBack)
             {
                 status.dwNumTrisClipped++;

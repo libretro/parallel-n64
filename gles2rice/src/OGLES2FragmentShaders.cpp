@@ -312,6 +312,13 @@ bool COGL_FragmentProgramCombiner::Initialize(void)
     return true;
 }
 
+void COGL_FragmentProgramCombiner::UseProgram(GLuint program)
+{
+    if (program != currentProgram) {
+        glUseProgram(program);
+        currentProgram = program;
+    }
+}
 
 
 void COGL_FragmentProgramCombiner::DisableCombiner(void)
@@ -322,7 +329,7 @@ void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
 {
     m_pOGLRender->DisableMultiTexture();
     m_pOGLRender->EnableTexUnit(0, true);
-    glUseProgram(copyProgram);
+    UseProgram(copyProgram);
     glUniform1f(copyAlphaLocation,m_AlphaRef);
     OPENGL_CHECK_ERRORS;
     glEnableVertexAttribArray(VS_POSITION);
@@ -345,7 +352,7 @@ void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
 
 void COGL_FragmentProgramCombiner::InitCombinerCycleFill(void)
 {
-    glUseProgram(fillProgram);
+    UseProgram(fillProgram);
     glUniform4f(fillColorLocation,((gRDP.fillColor>>16)&0xFF)/255.0f,((gRDP.fillColor>>8)&0xFF)/255.0f,((gRDP.fillColor)&0xFF)/255.0f,((gRDP.fillColor>>24)&0xFF)/255.0f);
     OPENGL_CHECK_ERRORS;
 }
@@ -591,7 +598,7 @@ int COGL_FragmentProgramCombiner::ParseDecodedMux()
              printf("%s\n",Log);
           }
 
-          glUseProgram(res.programID);
+          UseProgram(res.programID);
           OPENGL_CHECK_ERRORS;
 
           //Bind texture samplers
@@ -634,7 +641,7 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSetting(int index)
 {
     GLuint ID = m_vCompiledShaders[index].programID;
 
-    glUseProgram(ID);
+    UseProgram(ID);
     glEnableVertexAttribArray(VS_POSITION);
     OPENGL_CHECK_ERRORS;
     glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][0]));
@@ -663,55 +670,81 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSetting(int index)
 
 void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
 {
-    OGLShaderCombinerSaveType prog = m_vCompiledShaders[index];
+    OGLShaderCombinerSaveType &prog = m_vCompiledShaders[index];
 
-    glUseProgram(prog.programID);
+    UseProgram(prog.programID);
     float *pf;
     if(prog.EnvColorLocation != -1)
     {
         pf = GetEnvColorfv();
-        glUniform4fv(prog.EnvColorLocation,1, pf);
-        OPENGL_CHECK_ERRORS;
+        if (memcmp(pf, prog.EnvColors, sizeof(prog.EnvColors))) {
+            memcpy(prog.EnvColors, pf, sizeof(prog.EnvColors));
+            glUniform4fv(prog.EnvColorLocation, 1, pf);
+            OPENGL_CHECK_ERRORS;
+        }
     }
 
     if(prog.PrimColorLocation != -1)
     {
         pf = GetPrimitiveColorfv();
-        glUniform4fv(prog.PrimColorLocation,1, pf);
-        OPENGL_CHECK_ERRORS;
+        if (memcmp(pf, prog.PrimColors, sizeof(prog.PrimColors))) {
+            memcpy(prog.PrimColors, pf, sizeof(prog.PrimColors));
+            glUniform4fv(prog.PrimColorLocation, 1, pf);
+            OPENGL_CHECK_ERRORS;
+        }
     }
 
     if(prog.EnvFracLocation != -1)
     {
-        float frac = gRDP.LODFrac / 255.0f;
-        float tempf[4] = {frac,frac,frac,frac};
-        glUniform4fv(prog.EnvFracLocation,1, tempf);
-        OPENGL_CHECK_ERRORS;
+        // avoid slow float compare..
+        if( *(int *)&gRDP.LODFrac != *(int *)&prog.EnvLODFrac ) {
+            prog.EnvLODFrac = gRDP.LODFrac;
+            float frac = gRDP.LODFrac / 255.0f;
+            float tempf[4] = {frac,frac,frac,frac};
+            glUniform4fv(prog.EnvFracLocation, 1, tempf);
+            OPENGL_CHECK_ERRORS;
+        }
     }
 
     if(prog.PrimFracLocation != -1)
     {
-        float frac2 = gRDP.primLODFrac / 255.0f;
-        float tempf2[4] = {frac2,frac2,frac2,frac2};
-        glUniform4fv(prog.PrimFracLocation,1, tempf2);
-        OPENGL_CHECK_ERRORS;
+        if( *(int *)&gRDP.primLODFrac != *(int *)&prog.PrimLODFrac ) {
+            prog.PrimLODFrac = gRDP.primLODFrac;
+            float frac2 = gRDP.primLODFrac / 255.0f;
+            float tempf2[4] = {frac2,frac2,frac2,frac2};
+            glUniform4fv(prog.PrimFracLocation, 1, tempf2);
+            OPENGL_CHECK_ERRORS;
+        }
     }
 
     if(prog.FogColorLocation != -1)
     {
-        glUniform4f(prog.FogColorLocation, gRDP.fvFogColor[0],gRDP.fvFogColor[1],gRDP.fvFogColor[2],gRDP.fvFogColor[3]);
-        OPENGL_CHECK_ERRORS;
+        pf = &gRDP.fvFogColor[0];
+        if (memcmp(pf, prog.FogColors, sizeof(prog.FogColors))) {
+            memcpy(prog.FogColors, pf, sizeof(prog.FogColors));
+            glUniform4fv(prog.FogColorLocation, 1, pf);
+            OPENGL_CHECK_ERRORS;
+        }
     }
 
-    if(prog.FogMinMaxLocation != -1)	
+    if(prog.FogMinMaxLocation != -1)
     {
-       glUniform2f(prog.FogMinMaxLocation,gRSPfFogMin,gRSPfFogMax);
-       OPENGL_CHECK_ERRORS;
+        if( gRSPfFogMin != prog.FogMin || gRSPfFogMax != prog.FogMax ) {
+            prog.FogMin = gRSPfFogMin;
+            prog.FogMax = gRSPfFogMax;
+            glUniform2f(prog.FogMinMaxLocation,gRSPfFogMin,gRSPfFogMax);
+            OPENGL_CHECK_ERRORS;
+        }
     }
 
     if(prog.AlphaRefLocation != -1)
-        glUniform1f(prog.AlphaRefLocation,m_AlphaRef);
-    OPENGL_CHECK_ERRORS;
+    {
+        if( m_AlphaRef != prog.AlphaRef ) {
+            prog.AlphaRef = m_AlphaRef;
+            glUniform1f(prog.AlphaRefLocation, m_AlphaRef);
+            OPENGL_CHECK_ERRORS;
+        }
+    }
 }
 
 int COGL_FragmentProgramCombiner::FindCompiledMux()
