@@ -25,22 +25,7 @@
 #if !defined(OSAL_PREPROC_H)
 #define OSAL_PREPROC_H
 
-#if defined(WIN32)
-  #include <windows.h>
-  #if defined(__MINGW32__)
-    #define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)));
-  #else
-    #define ALIGN(BYTES,DATA) __declspec(align(BYTES)) DATA;
-#ifndef strncasecmp
-    #define strncasecmp _strnicmp
-#endif
-#ifndef strcasecmp
-    #define strcasecmp _stricmp
-#endif
-  #endif
-#else
-
-  #define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)));
+#define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)));
 
 typedef unsigned int BOOL;
 typedef void* HBITMAP;
@@ -63,38 +48,6 @@ typedef struct
 #define TRUE 1
 #endif
 
-typedef struct tagBITMAPINFOHEADER
-{
-   unsigned int biSize;
-   int biWidth;
-   int biHeight;
-   unsigned short biPlanes;
-   unsigned short biBitCount;
-   unsigned int biCompression;
-   unsigned int biSizeImage;
-   int biXPelsPerMeter;
-   int biYPelsPerMeter;
-   unsigned int biClrUsed;
-   unsigned int biClrImportant;
-}  __attribute__ ((packed)) BITMAPINFOHEADER;
-
-typedef struct tagBITMAPINFO
-{
-   BITMAPINFOHEADER bmiHeader;
-   unsigned int unused;
-} BITMAPINFO;
-
-typedef struct tagBITMAPFILEHEADER
-{
-   unsigned short    bfType; 
-   unsigned int   bfSize; 
-   unsigned short    bfReserved1; 
-   unsigned short    bfReserved2; 
-   unsigned int   bfOffBits; 
-} __attribute__ ((packed)) BITMAPFILEHEADER;
-
 #define BI_RGB 0
-
-#endif // WIN32
 
 #endif // OSAL_PREPROC_H
