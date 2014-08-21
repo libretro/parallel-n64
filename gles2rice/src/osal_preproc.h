@@ -27,8 +27,7 @@
 
 #define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)));
 
-typedef unsigned int BOOL;
-typedef void* HBITMAP;
+#ifdef _WIN32
 
 typedef struct
 {
@@ -37,6 +36,8 @@ typedef struct
    int right;
    int left;
 } RECT;
+
+#endif
 
 #define __cdecl
 
