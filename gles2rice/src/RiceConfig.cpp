@@ -298,7 +298,7 @@ void GenerateFrameBufferOptions(void)
     }
 }
 
-BOOL InitConfiguration(void)
+bool InitConfiguration(void)
 {
     if (ConfigOpenSection("Video-General", &l_ConfigVideoGeneral) != M64ERR_SUCCESS)
     {
@@ -464,7 +464,7 @@ static void ReadConfiguration(void)
    }
 }
     
-BOOL LoadConfiguration(void)
+bool LoadConfiguration(void)
 {
 #if 0
     IniSections.clear();
@@ -651,6 +651,7 @@ void GenerateCurrentRomOptions()
     if( currentRomOptions.N64RenderToTextureEmuType == 0 )  currentRomOptions.N64RenderToTextureEmuType = defaultRomOptions.N64RenderToTextureEmuType;
     else currentRomOptions.N64RenderToTextureEmuType--;
     if( currentRomOptions.screenUpdateSetting == 0 )        currentRomOptions.screenUpdateSetting = defaultRomOptions.screenUpdateSetting;
+#if 0
     if( currentRomOptions.bNormalCombiner == 0 )            currentRomOptions.bNormalCombiner = defaultRomOptions.bNormalCombiner;
     else currentRomOptions.bNormalCombiner--;
     if( currentRomOptions.bNormalBlender == 0 )             currentRomOptions.bNormalBlender = defaultRomOptions.bNormalBlender;
@@ -659,6 +660,7 @@ void GenerateCurrentRomOptions()
     else currentRomOptions.bFastTexCRC--;
     if( currentRomOptions.bAccurateTextureMapping == 0 )    currentRomOptions.bAccurateTextureMapping = defaultRomOptions.bAccurateTextureMapping;
     else currentRomOptions.bAccurateTextureMapping--;
+#endif
 
     options.bUseFullTMEM = ((options.bFullTMEM && (g_curRomInfo.dwFullTMEM == 0)) || g_curRomInfo.dwFullTMEM == 2);
 
@@ -913,7 +915,7 @@ char * tidy(char * s)
 
 }
 
-BOOL ReadIniFile()
+bool ReadIniFile()
 {
     std::ifstream inifile;
     char readinfo[100];

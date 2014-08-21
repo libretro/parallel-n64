@@ -31,7 +31,7 @@ typedef struct {
     unsigned short        uViWidth, uViHeight;
     unsigned short        uDisplayWidth, uDisplayHeight;
     
-    BOOL    bVerticalSync;
+    bool    bVerticalSync;
 
     float   fMultX, fMultY;
     int     vpLeftW, vpTopW, vpRightW, vpBottomW, vpWidthW, vpHeightW;
@@ -77,8 +77,8 @@ typedef struct {
     uint32_t  dwTvSystem;
     float   fRatio;
 
-    BOOL    frameReadByCPU;
-    BOOL    frameWriteByCPU;
+    bool    frameReadByCPU;
+    bool    frameWriteByCPU;
 
     uint32_t  SPCycleCount;       // Count how many CPU cycles SP used in this DLIST
     uint32_t  DPCycleCount;       // Count how many CPU cycles DP used in this DLIST

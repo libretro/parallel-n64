@@ -123,7 +123,7 @@ typedef struct
     bool    bLightingEnable;
     bool    bTextureGen;
     bool    bFogEnabled;
-    BOOL    bZBufferEnabled;
+    bool    bZBufferEnabled;
 
     uint32_t  ambientLightColor;
     uint32_t  ambientLightIndex;

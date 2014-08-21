@@ -1086,8 +1086,8 @@ void DLParser_RDPSetOtherMode(Gfx *gfx)
 
         gRDP.otherModeL = (gfx->words.w1);
 
-        BOOL bZCompare      = (gRDP.otherModeL & Z_COMPARE) ? TRUE : FALSE;
-        BOOL bZUpdate       = (gRDP.otherModeL & Z_UPDATE)  ? TRUE : FALSE;
+        bool bZCompare      = (gRDP.otherModeL & Z_COMPARE) ? TRUE : FALSE;
+        bool bZUpdate       = (gRDP.otherModeL & Z_UPDATE)  ? TRUE : FALSE;
 
         CRender::g_pRender->SetZCompare( bZCompare );
         CRender::g_pRender->SetZUpdate( bZUpdate );

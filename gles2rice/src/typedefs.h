@@ -427,12 +427,12 @@ typedef union {
 typedef struct {
     uint32_t dwFormat;
     uint32_t dwSize;
-    BOOL  bSetBy;
+    bool  bSetBy;
 
     uint32_t dwLoadAddress;
     uint32_t dwTotalWords;
     uint32_t dxt;
-    BOOL  bSwapped;
+    bool  bSwapped;
 
     uint32_t dwWidth;
     uint32_t dwLine;

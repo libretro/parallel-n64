@@ -41,11 +41,11 @@ public:
     void ApplyTextureFilter();
 
     void SetShadeMode(RenderShadeMode mode);
-    void ZBufferEnable(BOOL bZBuffer);
+    void ZBufferEnable(bool bZBuffer);
     void ClearBuffer(bool cbuffer, bool zbuffer);
     void ClearZBuffer(float depth);
-    void SetZCompare(BOOL bZCompare);
-    void SetZUpdate(BOOL bZUpdate);
+    void SetZCompare(bool bZCompare);
+    void SetZUpdate(bool bZUpdate);
     void SetZBias(int bias);
     void ApplyZBias(int bias);
     void SetAlphaRef(uint32_t dwAlpha);
@@ -54,7 +54,7 @@ public:
     void SetViewportRender();
     void RenderReset();
     void SetCullMode(bool bCullFront, bool bCullBack);
-    void SetAlphaTestEnable(BOOL bAlphaTestEnable);
+    void SetAlphaTestEnable(bool bAlphaTestEnable);
     void UpdateScissor();
     void ApplyRDPScissor(bool force);
     void ApplyScissorWithClipRatio(bool force);
@@ -104,7 +104,7 @@ protected:
     bool m_bSupportClampToEdge;
 
     GLuint  m_curBoundTex[8];
-    BOOL    m_texUnitEnabled[8];
+    bool    m_texUnitEnabled[8];
 
     bool m_bEnableMultiTexture;
 };

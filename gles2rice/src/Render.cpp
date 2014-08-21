@@ -379,7 +379,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
     else
     */
     {
-        //BOOL m_savedZBufferFlag = gRSP.bZBufferEnabled;   // Save ZBuffer state
+        //bool m_savedZBufferFlag = gRSP.bZBufferEnabled;   // Save ZBuffer state
         ZBufferEnable( FALSE );
 
         m_fillRectVtx[0].x = ViewPortTranslatei_x(nX0);
@@ -643,7 +643,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
         ZBufferEnable(FALSE);
     }
 
-    BOOL accurate = currentRomOptions.bAccurateTextureMapping;
+    bool accurate = currentRomOptions.bAccurateTextureMapping;
 
     RenderTexture &tex0 = g_textures[gRSP.curTile];
     Tile &tile0 = gRDP.tiles[gRSP.curTile];

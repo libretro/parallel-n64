@@ -141,7 +141,7 @@ void OGLRender::SetShadeMode(RenderShadeMode mode)
 {
 }
 
-void OGLRender::ZBufferEnable(BOOL bZBuffer)
+void OGLRender::ZBufferEnable(bool bZBuffer)
 {
     gRSP.bZBufferEnabled = bZBuffer;
     if( g_curRomInfo.bForceDepthBuffer )
@@ -185,7 +185,7 @@ void OGLRender::ClearZBuffer(float depth)
     OPENGL_CHECK_ERRORS;
 }
 
-void OGLRender::SetZCompare(BOOL bZCompare)
+void OGLRender::SetZCompare(bool bZCompare)
 {
     if( g_curRomInfo.bForceDepthBuffer )
         bZCompare = TRUE;
@@ -205,7 +205,7 @@ void OGLRender::SetZCompare(BOOL bZCompare)
     }
 }
 
-void OGLRender::SetZUpdate(BOOL bZUpdate)
+void OGLRender::SetZUpdate(bool bZUpdate)
 {
     if( g_curRomInfo.bForceDepthBuffer )
         bZUpdate = TRUE;
@@ -758,7 +758,7 @@ void OGLRender::RenderReset()
     OPENGL_CHECK_ERRORS;
 }
 
-void OGLRender::SetAlphaTestEnable(BOOL bAlphaTestEnable)
+void OGLRender::SetAlphaTestEnable(bool bAlphaTestEnable)
 {
 #ifdef DEBUGGER
     if( bAlphaTestEnable && debuggerEnableAlphaTest )

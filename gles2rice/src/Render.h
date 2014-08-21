@@ -50,10 +50,10 @@ public:
 
 
     uint32_t  m_dwTexturePerspective;
-    BOOL    m_bAlphaTestEnable;
+    bool    m_bAlphaTestEnable;
 
-    BOOL    m_bZUpdate;
-    BOOL    m_bZCompare;
+    bool    m_bZUpdate;
+    bool    m_bZCompare;
     uint32_t  m_dwZBias;
 
     TextureFilter   m_dwMinFilter;
@@ -62,7 +62,7 @@ public:
     uint32_t  m_dwAlpha;
 
     uint64_t      m_Mux;
-    BOOL    m_bBlendModeValid;
+    bool    m_bBlendModeValid;
 
     CColorCombiner *m_pColorCombiner;
     CBlender *m_pAlphaBlender;
@@ -146,11 +146,11 @@ public:
     {
         ClearBuffer(cbuffer, zbuffer);
     }
-    virtual void ZBufferEnable(BOOL bZBuffer)=0;
-    virtual void SetZCompare(BOOL bZCompare)=0;
-    virtual void SetZUpdate(BOOL bZUpdate)=0;
+    virtual void ZBufferEnable(bool bZBuffer)=0;
+    virtual void SetZCompare(bool bZCompare)=0;
+    virtual void SetZUpdate(bool bZUpdate)=0;
     virtual void SetZBias(int bias)=0;
-    virtual void SetAlphaTestEnable(BOOL bAlphaTestEnable)=0;
+    virtual void SetAlphaTestEnable(bool bAlphaTestEnable)=0;
 
     void SetTextureFilter(uint32_t dwFilter);
     virtual void ApplyTextureFilter() {}
@@ -218,7 +218,7 @@ public:
 
 
 protected:
-    BOOL            m_savedZBufferFlag;
+    bool            m_savedZBufferFlag;
     uint32_t          m_savedMinFilter;
     uint32_t          m_savedMagFilter;
 

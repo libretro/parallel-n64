@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define _RICE_CONFIG_H_
 
 #include <stdio.h>
+#include "../../libretro/boolean.h"
 
 #include "typedefs.h"
 
@@ -201,13 +202,13 @@ enum {
 };
 
 typedef struct {
-    BOOL    bEnableHacks;
-    BOOL    bWinFrameMode;
-    BOOL    bOGLVertexClipper;
-    BOOL    bEnableSSE;
-    BOOL    bSkipFrame;
-    BOOL    bFullTMEM;
-    BOOL    bUseFullTMEM;
+    bool    bEnableHacks;
+    bool    bWinFrameMode;
+    bool    bOGLVertexClipper;
+    bool    bEnableSSE;
+    bool    bSkipFrame;
+    bool    bFullTMEM;
+    bool    bUseFullTMEM;
 
     uint32_t  mipmapping;
     uint32_t  fogMethod;
@@ -217,11 +218,11 @@ typedef struct {
     uint32_t  textureQuality;
     uint32_t  anisotropicFiltering;
     uint32_t  multiSampling;
-    BOOL    bTexRectOnly;
-    BOOL    bSmallTextureOnly;
-    BOOL    bDumpTexturesToFiles;
-    BOOL    bLoadHiResTextures;
-    BOOL    bLoadHiResCRCOnly;
+    bool    bTexRectOnly;
+    bool    bSmallTextureOnly;
+    bool    bDumpTexturesToFiles;
+    bool    bLoadHiResTextures;
+    bool    bLoadHiResCRCOnly;
 
     int     OpenglDepthBufferSetting;
     int     OpenglRenderSetting;
@@ -258,13 +259,13 @@ typedef struct {
     uint32_t  N64FrameBufferWriteBackControl;
     uint32_t  N64RenderToTextureEmuType;
     uint32_t  screenUpdateSetting;
-    BOOL    bNormalCombiner;
-    BOOL    bNormalBlender;
-    BOOL    bFastTexCRC;
-    BOOL    bAccurateTextureMapping;
-    BOOL    bInN64Resolution;
-    BOOL    bDoubleSizeForSmallTxtrBuf;
-    BOOL    bSaveVRAM;
+    bool    bNormalCombiner;
+    bool    bNormalBlender;
+    bool    bFastTexCRC;
+    bool    bAccurateTextureMapping;
+    bool    bInN64Resolution;
+    bool    bDoubleSizeForSmallTxtrBuf;
+    bool    bSaveVRAM;
 } RomOptions;
 
 typedef struct IniSection
@@ -283,30 +284,30 @@ typedef struct IniSection
     uint32_t  dwScreenUpdateSetting;
 
     // Options with FALSE as default values
-    BOOL    bDisableBlender;
-    BOOL    bForceScreenClear;
-    BOOL    bEmulateClear;
-    BOOL    bForceDepthBuffer;
+    bool    bDisableBlender;
+    bool    bForceScreenClear;
+    bool    bEmulateClear;
+    bool    bForceDepthBuffer;
 
     // Less useful options
-    BOOL    bDisableObjBG;
-    BOOL    bDisableTextureCRC;
-    BOOL    bIncTexRectEdge;
-    BOOL    bZHack;
-    BOOL    bTextureScaleHack;
-    BOOL    bFastLoadTile;
-    BOOL    bUseSmallerTexture;
-    BOOL    bPrimaryDepthHack;
-    BOOL    bTexture1Hack;
-    BOOL    bDisableCulling;
+    bool    bDisableObjBG;
+    bool    bDisableTextureCRC;
+    bool    bIncTexRectEdge;
+    bool    bZHack;
+    bool    bTextureScaleHack;
+    bool    bFastLoadTile;
+    bool    bUseSmallerTexture;
+    bool    bPrimaryDepthHack;
+    bool    bTexture1Hack;
+    bool    bDisableCulling;
 
     int     VIWidth;
     int     VIHeight;
     uint32_t  UseCIWidthAndRatio;
 
     uint32_t  dwFullTMEM;
-    BOOL    bTxtSizeMethod2;
-    BOOL    bEnableTxtLOD;
+    bool    bTxtSizeMethod2;
+    bool    bEnableTxtLOD;
 } section;
 
 struct ROMHeader
@@ -347,29 +348,29 @@ typedef struct
     uint32_t  dwScreenUpdateSetting;
 
     // With FALSE as its default values
-    BOOL    bForceScreenClear;
-    BOOL    bEmulateClear;
-    BOOL    bForceDepthBuffer;
-    BOOL    bDisableBlender;
+    bool    bForceScreenClear;
+    bool    bEmulateClear;
+    bool    bForceDepthBuffer;
+    bool    bDisableBlender;
 
     // Less useful options
-    BOOL    bDisableObjBG;
-    BOOL    bDisableTextureCRC;
-    BOOL    bIncTexRectEdge;
-    BOOL    bZHack;
-    BOOL    bTextureScaleHack;
-    BOOL    bFastLoadTile;
-    BOOL    bUseSmallerTexture;
-    BOOL    bPrimaryDepthHack;
-    BOOL    bTexture1Hack;
-    BOOL    bDisableCulling;
+    bool    bDisableObjBG;
+    bool    bDisableTextureCRC;
+    bool    bIncTexRectEdge;
+    bool    bZHack;
+    bool    bTextureScaleHack;
+    bool    bFastLoadTile;
+    bool    bUseSmallerTexture;
+    bool    bPrimaryDepthHack;
+    bool    bTexture1Hack;
+    bool    bDisableCulling;
     int     VIWidth;
     int     VIHeight;
     uint32_t  UseCIWidthAndRatio;
 
     uint32_t  dwFullTMEM;
-    BOOL    bTxtSizeMethod2;
-    BOOL    bEnableTxtLOD;
+    bool    bTxtSizeMethod2;
+    bool    bEnableTxtLOD;
 } GameSetting, *LPGAMESETTING;
 
 typedef struct
@@ -391,10 +392,10 @@ extern GameSetting         g_curRomInfo;
 extern bool                bIniIsChanged;
 extern char                szIniFileName[300];
 
-extern BOOL InitConfiguration(void);
-extern BOOL LoadConfiguration(void);
+extern bool InitConfiguration(void);
+extern bool LoadConfiguration(void);
 extern void WriteIniFile();
-extern BOOL ReadIniFile();
+extern bool ReadIniFile();
 extern void OutputSectionDetails(uint32_t i, FILE * fh);
 extern void GenerateCurrentRomOptions();
 extern void Ini_GetRomOptions(LPGAMESETTING pGameSetting);

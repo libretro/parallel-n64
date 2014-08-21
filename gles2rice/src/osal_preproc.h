@@ -27,7 +27,7 @@
 
 #define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)));
 
-#ifdef _WIN32
+#ifndef _WIN32
 
 typedef struct
 {
