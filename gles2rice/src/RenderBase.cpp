@@ -261,370 +261,8 @@ __asm l3:                               \
 #endif
 
 
-#if !defined(__GNUC__) && !defined(NO_ASM)
-__declspec( naked ) void  __fastcall SSEVec3Transform(int i)
-{
-    __asm
-    {
-        shl     ecx,4;      // ecx = i
-
-        movaps  xmm1,   DWORD PTR g_vtxNonTransformed [ecx];        // xmm1 as original vector
-
-        movaps  xmm4,   DWORD PTR gRSPworldProjectTransported;          // row1
-        movaps  xmm5,   DWORD PTR gRSPworldProjectTransported[0x10];    // row2
-        movaps  xmm6,   DWORD PTR gRSPworldProjectTransported[0x20];    // row3
-        movaps  xmm7,   DWORD PTR gRSPworldProjectTransported[0x30];    // row4
-
-        mulps   xmm4, xmm1;     // row 1
-        mulps   xmm5, xmm1;     // row 2
-        mulps   xmm6, xmm1;     // row 3
-        mulps   xmm7, xmm1;     // row 4
-
-        movhlps xmm0, xmm4;     // xmm4 high to xmm0 low
-        movlhps xmm0, xmm5;     // xmm5 low to xmm0 high
-
-        addps   xmm4, xmm0;     // result of add are in xmm4 low
-        addps   xmm5, xmm0;     // result of add are in xmm5 high
-
-        shufps  xmm0, xmm4, 0x44;   // move xmm4 low DWORDs to xmm0 high
-        shufps  xmm4, xmm5, 0xe4;   // move xmm5 high DWORS to xmm4
-        movhlps xmm5, xmm0;         // xmm4, xmm5 are mirrored
-
-        shufps  xmm4, xmm4, 0x08;   // move xmm4's 3rd uint32_t to its 2nd uint32_t
-        shufps  xmm5, xmm5, 0x0d;   // move xmm5's 4th uint32_t to its 2nd uint32_t, 
-                                    // and move its 2nd uint32_t to its 1st uint32_t
-        
-        addps   xmm4, xmm5;     // results are in 1st and 2nd uint32_t
-
-
-        movhlps xmm0, xmm6;     // xmm6 high to xmm0 low
-        movlhps xmm0, xmm7;     // xmm7 low to xmm0 high
-
-        addps   xmm6, xmm0;     // result of add are in xmm6 low
-        addps   xmm7, xmm0;     // result of add are in xmm7 high
-
-        shufps  xmm0, xmm6, 0x44;   // move xmm6 low DWORDs to xmm0 high
-        shufps  xmm6, xmm7, 0xe4;   // move xmm7 high DWORS to xmm6
-        movhlps xmm7, xmm0;         // xmm6, xmm7 are mirrored
-
-        shufps  xmm6, xmm6, 0x08;   // move xmm6's 3rd uint32_t to its 2nd uint32_t
-        shufps  xmm7, xmm7, 0x0d;   // move xmm7's 4th uint32_t to its 2nd uint32_t, 
-                                    // and move its 2nd uint32_t to its 1st uint32_t
-        
-        addps   xmm6, xmm7;     // results are in 1st and 2nd uint32_t
-        
-        movlhps xmm4, xmm6;     // final result is in xmm4
-        movaps  DWORD PTR g_vtxTransformed [ecx], xmm4;
-
-        movaps  xmm0,xmm4;
-        shufps  xmm0,xmm0,0xff;
-        divps   xmm4,xmm0;
-        rcpps   xmm0,xmm0;
-        movhlps xmm0,xmm4;
-        shufps  xmm0,xmm0,0xe8;
-        movlhps xmm4,xmm0;
-
-        movaps  DWORD PTR g_vecProjected [ecx], xmm4;
-
-        emms;
-        ret;
-    }
-}
-
-// Only used by DKR
-__declspec( naked ) void  __fastcall SSEVec3TransformDKR(XVECTOR4 &pOut, const XVECTOR4 &pV)
-{
-    __asm
-    {
-        movaps  xmm1,   DWORD PTR [edx];        // xmm1 as original vector
-
-        movaps  xmm4,   DWORD PTR dkrMatrixTransposed;  // row1
-        movaps  xmm5,   DWORD PTR dkrMatrixTransposed[0x10];    // row2
-        movaps  xmm6,   DWORD PTR dkrMatrixTransposed[0x20];    // row3
-        movaps  xmm7,   DWORD PTR dkrMatrixTransposed[0x30];    // row4
-
-        mulps   xmm4, xmm1;     // row 1
-        mulps   xmm5, xmm1;     // row 2
-        mulps   xmm6, xmm1;     // row 3
-        mulps   xmm7, xmm1;     // row 4
-
-        movhlps xmm0, xmm4;     // xmm4 high to xmm0 low
-        movlhps xmm0, xmm5;     // xmm5 low to xmm0 high
-
-        addps   xmm4, xmm0;     // result of add are in xmm4 low
-        addps   xmm5, xmm0;     // result of add are in xmm5 high
-
-        shufps  xmm0, xmm4, 0x44;   // move xmm4 low DWORDs to xmm0 high
-        shufps  xmm4, xmm5, 0xe4;   // move xmm5 high DWORS to xmm4
-        movhlps xmm5, xmm0;         // xmm4, xmm5 are mirrored
-
-        shufps  xmm4, xmm4, 0x08;   // move xmm4's 3rd uint32_t to its 2nd uint32_t
-        shufps  xmm5, xmm5, 0x0d;   // move xmm5's 4th uint32_t to its 2nd uint32_t, 
-        // and move its 2nd uint32_t to its 1st uint32_t
-
-        addps   xmm4, xmm5;     // results are in 1st and 2nd uint32_t
-
-
-        movhlps xmm0, xmm6;     // xmm6 high to xmm0 low
-        movlhps xmm0, xmm7;     // xmm7 low to xmm0 high
-
-        addps   xmm6, xmm0;     // result of add are in xmm6 low
-        addps   xmm7, xmm0;     // result of add are in xmm7 high
-
-        shufps  xmm0, xmm6, 0x44;   // move xmm6 low DWORDs to xmm0 high
-        shufps  xmm6, xmm7, 0xe4;   // move xmm7 high DWORS to xmm6
-        movhlps xmm7, xmm0;         // xmm6, xmm7 are mirrored
-
-        shufps  xmm6, xmm6, 0x08;   // move xmm6's 3rd uint32_t to its 2nd uint32_t
-        shufps  xmm7, xmm7, 0x0d;   // move xmm7's 4th uint32_t to its 2nd uint32_t, 
-        // and move its 2nd uint32_t to its 1st uint32_t
-
-        addps   xmm6, xmm7;     // results are in 1st and 2nd uint32_t
-
-        movlhps xmm4, xmm6;     // final result is in xmm4
-        movaps  DWORD PTR [ecx], xmm4;
-
-        emms;
-        ret;
-    }
-}
-#elif defined(__GNUC__) && defined(__x86_64__) && !defined(NO_ASM)
-void SSEVec3Transform(int i)
-{
-  asm volatile(" shl               $4,      %0   \n"
-               " movslq           %k0,     %q0   \n"
-               " movaps      (%1,%q0),  %%xmm1   \n"
-               " movaps         0(%2),  %%xmm4   \n"
-               " movaps        16(%2),  %%xmm5   \n"
-               " movaps        32(%2),  %%xmm6   \n"
-               " movaps        48(%2),  %%xmm7   \n"
-               " mulps         %%xmm1,  %%xmm4   \n"
-               " mulps         %%xmm1,  %%xmm5   \n"
-               " mulps         %%xmm1,  %%xmm6   \n"
-               " mulps         %%xmm1,  %%xmm7   \n"
-               " movhlps       %%xmm4,  %%xmm0   \n"
-               " movlhps       %%xmm5,  %%xmm0   \n"
-               " addps         %%xmm0,  %%xmm4   \n"
-               " addps         %%xmm0,  %%xmm5   \n"
-               " shufps $0x44, %%xmm4,  %%xmm0   \n"
-               " shufps $0xe4, %%xmm5,  %%xmm4   \n"
-               " movhlps       %%xmm0,  %%xmm5   \n"
-               " shufps $0x08, %%xmm4,  %%xmm4   \n"
-               " shufps $0x0d, %%xmm5,  %%xmm5   \n"
-               " addps         %%xmm5,  %%xmm4   \n"
-               " movhlps       %%xmm6,  %%xmm0   \n"
-               " movlhps       %%xmm7,  %%xmm0   \n"
-               " addps         %%xmm0,  %%xmm6   \n"
-               " addps         %%xmm0,  %%xmm7   \n"
-               " shufps $0x44, %%xmm6,  %%xmm0   \n"
-               " shufps $0xe4, %%xmm7,  %%xmm6   \n"
-               " movhlps       %%xmm0,  %%xmm7   \n"
-               " shufps $0x08, %%xmm6,  %%xmm6   \n"
-               " shufps $0x0d, %%xmm7,  %%xmm7   \n"
-               " addps         %%xmm7,  %%xmm6   \n"
-               " movlhps       %%xmm6,  %%xmm4   \n"
-               " movaps        %%xmm4, (%3,%q0)  \n"
-               " movaps        %%xmm4,  %%xmm0   \n"
-               " shufps $0xff, %%xmm0,  %%xmm0   \n"
-               " divps         %%xmm0,  %%xmm4   \n"
-               " rcpps         %%xmm0,  %%xmm0   \n"
-               " movhlps       %%xmm4,  %%xmm0   \n"
-               " shufps $0xe8, %%xmm0,  %%xmm0   \n"
-               " movlhps       %%xmm0,  %%xmm4   \n"
-               " movaps        %%xmm4, (%4,%q0)  \n"
-               : "+r"(i)
-               : "r"(g_vtxNonTransformed), "r"(&gRSPworldProjectTransported.m[0][0]), "r"(g_vtxTransformed), "r"(g_vecProjected)
-               : "memory", "%xmm0", "%xmm1", "%xmm4", "%xmm5", "%xmm6", "%xmm7"
-               );
-}
-#elif !defined(NO_ASM) // 32-bit GCC assumed
-void SSEVec3Transform(int i)
-{
-  asm volatile(" shl               $4,      %0   \n"
-               " movaps       (%1,%0),  %%xmm1   \n"
-               " movaps         0(%2),  %%xmm4   \n"
-               " movaps        16(%2),  %%xmm5   \n"
-               " movaps        32(%2),  %%xmm6   \n"
-               " movaps        48(%2),  %%xmm7   \n"
-               " mulps         %%xmm1,  %%xmm4   \n"
-               " mulps         %%xmm1,  %%xmm5   \n"
-               " mulps         %%xmm1,  %%xmm6   \n"
-               " mulps         %%xmm1,  %%xmm7   \n"
-               " movhlps       %%xmm4,  %%xmm0   \n"
-               " movlhps       %%xmm5,  %%xmm0   \n"
-               " addps         %%xmm0,  %%xmm4   \n"
-               " addps         %%xmm0,  %%xmm5   \n"
-               " shufps $0x44, %%xmm4,  %%xmm0   \n"
-               " shufps $0xe4, %%xmm5,  %%xmm4   \n"
-               " movhlps       %%xmm0,  %%xmm5   \n"
-               " shufps $0x08, %%xmm4,  %%xmm4   \n"
-               " shufps $0x0d, %%xmm5,  %%xmm5   \n"
-               " addps         %%xmm5,  %%xmm4   \n"
-               " movhlps       %%xmm6,  %%xmm0   \n"
-               " movlhps       %%xmm7,  %%xmm0   \n"
-               " addps         %%xmm0,  %%xmm6   \n"
-               " addps         %%xmm0,  %%xmm7   \n"
-               " shufps $0x44, %%xmm6,  %%xmm0   \n"
-               " shufps $0xe4, %%xmm7,  %%xmm6   \n"
-               " movhlps       %%xmm0,  %%xmm7   \n"
-               " shufps $0x08, %%xmm6,  %%xmm6   \n"
-               " shufps $0x0d, %%xmm7,  %%xmm7   \n"
-               " addps         %%xmm7,  %%xmm6   \n"
-               " movlhps       %%xmm6,  %%xmm4   \n"
-               " movaps        %%xmm4,  (%3,%0)  \n"
-               " movaps        %%xmm4,  %%xmm0   \n"
-               " shufps $0xff, %%xmm0,  %%xmm0   \n"
-               " divps         %%xmm0,  %%xmm4   \n"
-               " rcpps         %%xmm0,  %%xmm0   \n"
-               " movhlps       %%xmm4,  %%xmm0   \n"
-               " shufps $0xe8, %%xmm0,  %%xmm0   \n"
-               " movlhps       %%xmm0,  %%xmm4   \n"
-               " movaps        %%xmm4,  (%4,%0)  \n"
-               : "+r"(i)
-               : "r"(g_vtxNonTransformed), "r"(&gRSPworldProjectTransported.m[0][0]), "r"(g_vtxTransformed), "r"(g_vecProjected)
-               : "memory", "%xmm0", "%xmm1", "%xmm4", "%xmm5", "%xmm6", "%xmm7"
-               );
-}
-#endif
 float real255 = 255.0f;
 float real128 = 128.0f;
-
-#if !defined(__GNUC__) && !defined(NO_ASM)
-__declspec( naked ) void  __fastcall SSEVec3TransformNormal()
-{
-    __asm
-    {
-        mov     DWORD PTR [g_normal][12], 0;
-
-        movaps  xmm4,   DWORD PTR gRSPmodelViewTopTranspose;    // row1
-        movaps  xmm5,   DWORD PTR gRSPmodelViewTopTranspose[0x10];  // row2
-        movaps  xmm1,   DWORD PTR [g_normal];       // xmm1 as the normal vector
-        movaps  xmm6,   DWORD PTR gRSPmodelViewTopTranspose[0x20];  // row3
-
-        mulps   xmm4, xmm1;     // row 1
-        mulps   xmm5, xmm1;     // row 2
-        mulps   xmm6, xmm1;     // row 3
-
-        movhlps xmm0, xmm4;     // xmm4 high to xmm0 low
-        movlhps xmm0, xmm5;     // xmm5 low to xmm0 high
-
-        addps   xmm4, xmm0;     // result of add are in xmm4 low
-        addps   xmm5, xmm0;     // result of add are in xmm5 high
-
-        shufps  xmm0, xmm4, 0x44;   // move xmm4 low DWORDs to xmm0 high
-        shufps  xmm4, xmm5, 0xe4;   // move xmm5 high DWORS to xmm4
-        movhlps xmm5, xmm0;         // xmm4, xmm5 are mirrored
-
-        shufps  xmm4, xmm4, 0x08;   // move xmm4's 3rd uint32_t to its 2nd uint32_t
-        shufps  xmm5, xmm5, 0x0d;   // move xmm5's 4th uint32_t to its 2nd uint32_t, 
-
-        addps   xmm4, xmm5;     // results are in 1st and 2nd uint32_t
-
-        movaps  xmm1,xmm4;
-        mulps   xmm1,xmm1;  //square
-        movlhps xmm7, xmm1;
-        shufps  xmm7, xmm7,0x03;
-        addss   xmm7, xmm1;
-
-        movhlps xmm0, xmm6;     // xmm6 high to xmm0 low
-        addps   xmm6, xmm0;     // result of add are in xmm6 low
-
-        movlhps xmm0, xmm6;
-        shufps  xmm0, xmm0, 0x03;
-        addss   xmm0, xmm6;     // result of add is at xmm0's 1st uint32_t
-
-        movlhps xmm4, xmm0;
-
-        mulss   xmm0,xmm0;
-        addss   xmm7,xmm0;      // xmm7 1st uint32_t is the sum of squares
-
-#ifdef DEBUGGER
-        movaps  DWORD PTR [g_normal], xmm4;
-        movss  DWORD PTR [g_normal][12], xmm7;
-#endif
-        xorps   xmm0,xmm0;
-        ucomiss xmm0,xmm7;
-        jz      l2
-
-        rsqrtss xmm7,xmm7;
-        shufps  xmm7,xmm7,0;
-#ifdef DEBUGGER
-        movss  DWORD PTR [g_normal][12], xmm7;
-#endif
-        mulps   xmm4,xmm7;
-
-        movaps  DWORD PTR [g_normal], xmm4;     // Normalized
-        mov     DWORD PTR [g_normal][12], 0;
-
-        emms;
-        ret;
-l2:
-        movss   DWORD PTR [g_normal], xmm0;
-        movss   DWORD PTR [g_normal][12], xmm0;
-        emms;
-        ret;
-    }
-}
-#elif defined(__GNUC__) && !defined(NO_ASM)  // this code should compile for both 64-bit and 32-bit architectures
-void SSEVec3TransformNormal(void)
-{
-  asm volatile(" movl              $0,  12(%0)    \n"
-           " movaps          (%1),  %%xmm4    \n"
-           " movaps        16(%1),  %%xmm5    \n"
-           " movaps          (%0),  %%xmm1    \n"
-           " movaps        32(%1),  %%xmm6    \n"
-           " mulps         %%xmm1,  %%xmm4    \n"
-           " mulps         %%xmm1,  %%xmm5    \n"
-           " mulps         %%xmm1,  %%xmm6    \n"
-           " movhlps       %%xmm4,  %%xmm0    \n"
-           " movlhps       %%xmm5,  %%xmm0    \n"
-           " addps         %%xmm0,  %%xmm4    \n"
-           " addps         %%xmm0,  %%xmm5    \n"
-           " shufps $0x44, %%xmm4,  %%xmm0    \n"
-           " shufps $0xe4, %%xmm5,  %%xmm4    \n"
-           " movhlps       %%xmm0,  %%xmm5    \n"
-           " shufps $0x08, %%xmm4,  %%xmm4    \n"
-           " shufps $0x0d, %%xmm5,  %%xmm5    \n"
-           " addps         %%xmm5,  %%xmm4    \n"
-           " movaps        %%xmm4,  %%xmm1    \n"
-           " mulps         %%xmm1,  %%xmm1    \n"
-           " movlhps       %%xmm1,  %%xmm7    \n"
-           " shufps $0x03, %%xmm7,  %%xmm7    \n"
-           " addss         %%xmm1,  %%xmm7    \n"
-           " movhlps       %%xmm6,  %%xmm0    \n"
-           " addps         %%xmm0,  %%xmm6    \n"
-           " movlhps       %%xmm6,  %%xmm0    \n"
-           " shufps $0x03, %%xmm0,  %%xmm0    \n"
-           " addss         %%xmm6,  %%xmm0    \n"
-           " movlhps       %%xmm0,  %%xmm4    \n"
-           " mulss         %%xmm0,  %%xmm0    \n"
-           " addss         %%xmm0,  %%xmm7    \n"
-#ifdef DEBUGGER
-           " movaps        %%xmm4,    (%0)    \n"
-           " movss         %%xmm7,  12(%0)    \n"
-#endif
-           " xorps         %%xmm0,  %%xmm0    \n"
-           " ucomiss       %%xmm7,  %%xmm0    \n"
-           " jz                0f             \n"
-           " rsqrtss       %%xmm7,  %%xmm7    \n"
-           " shufps $0x00, %%xmm7,  %%xmm7    \n"
-#ifdef DEBUGGER
-           " movss         %%xmm7,  12(%0)    \n"
-#endif
-           " mulps         %%xmm7,  %%xmm4    \n"
-           " movaps        %%xmm4,    (%0)    \n"
-           " movl              $0,  12(%0)    \n"
-           " jmp               1f             \n"
-           "0:                                \n"
-           " movss         %%xmm0,    (%0)    \n"
-           " movss         %%xmm0,  12(%0)    \n"
-           "1:                                \n"
-           :
-           : "r"(&g_normal.x), "r"(&gRSPmodelViewTopTranspose.m[0][0])
-           : "memory", "cc", "%xmm0", "%xmm1", "%xmm4", "%xmm5", "%xmm6", "%xmm7"
-           );
-}
-#endif
 
 void NormalizeNormalVec()
 {
@@ -637,13 +275,7 @@ void NormalizeNormalVec()
 
 void InitRenderBase()
 {
-#if !defined(NO_ASM)
-    if( status.isSSEEnabled && !g_curRomInfo.bPrimaryDepthHack && options.enableHackForGames != HACK_FOR_NASCAR)
-    {
-        ProcessVertexData = ProcessVertexDataSSE;
-    }
-    else
-#elif defined(__ARM_NEON__)
+#if defined(__ARM_NEON__)
     if( !g_curRomInfo.bPrimaryDepthHack && options.enableHackForGames != HACK_FOR_NASCAR && options.enableHackForGames != HACK_FOR_ZELDA_MM && !options.bWinFrameMode)
     {
         ProcessVertexData = ProcessVertexDataNEON;
@@ -1118,159 +750,6 @@ float zero = 0.0f;
 float onef = 1.0f;
 float fcosT;
 
-#if !defined(__GNUC__) && !defined(NO_ASM)
-__declspec( naked ) uint32_t  __fastcall SSELightVert()
-{
-    __asm
-    {
-        movaps      xmm3, DWORD PTR gRSP;   // loading Ambient colors, xmm3 is the result color
-        movaps      xmm4, DWORD PTR [g_normal]; // xmm4 is the normal
-
-        mov         ecx, 0;
-loopback:
-        cmp         ecx, DWORD PTR gRSPnumLights;
-        jae         breakout;
-        mov         eax,ecx;
-        imul        eax,0x44;
-        movups      xmm5, DWORD PTR gRSPlights[eax];        // Light Dir
-        movups      xmm1, DWORD PTR gRSPlights[0x14][eax];  // Light color
-        mulps       xmm5, xmm4;                             // Light Dir * normals
-
-        movhlps     xmm0,xmm5;
-        addps       xmm0,xmm5;
-        shufps      xmm5,xmm0,0x01;
-        addps       xmm0,xmm5;
-
-        comiss      xmm0,zero;
-        jc          endloop
-
-        shufps      xmm0,xmm0,0;                    // fcosT
-        mulps       xmm1,xmm0; 
-        addps       xmm3,xmm1; 
-endloop:
-        inc         ecx;
-        jmp         loopback;
-breakout:
-
-        movss       xmm0,DWORD PTR real255;
-        shufps      xmm0,xmm0,0;
-        minps       xmm0,xmm3;
-
-        // Without using a memory
-        cvtss2si    eax,xmm0;       // move the 1st uint32_t to eax
-        shl         eax,10h;
-        or          eax,0FF000000h;
-        shufps      xmm0,xmm0,0E5h; // move the 2nd uint32_t to the 1st uint32_t
-        cvtss2si    ecx,xmm0;       // move the 1st uint32_t to ecx
-        shl         ecx,8;
-        or          eax,ecx;
-        shufps      xmm0,xmm0,0E6h; // Move the 3rd uint32_t to the 1st uint32_t
-        cvtss2si    ecx,xmm0;
-        or          eax,ecx;
-
-        ret;
-    }
-}
-#elif defined(__GNUC__) && defined(__x86_64__) && !defined(NO_ASM)
-uint32_t SSELightVert(void)
-{
-  uint32_t rval;
-  float f255 = 255.0, fZero = 0.0;
-  
-  asm volatile(" movaps        %1,  %%xmm3    \n" // xmm3 == gRSP.fAmbientLight{RGBA}
-           " movaps            %2,  %%xmm4    \n" // xmm4 == g_normal.{xyz}
-           " xor            %%rcx,   %%rcx    \n"
-           "0:                                \n"
-           " cmpl              %3,   %%ecx    \n"
-           " jae               2f             \n"
-           " mov            %%rcx,   %%rax    \n"
-           " imul    $0x44, %%rax,   %%rax    \n"
-           " movups   (%4,%%rax,),  %%xmm5    \n"  // xmm5 == gRSPlights[l].{xyzr}
-           " movups 20(%4,%%rax,),  %%xmm1    \n"  // xmm1 == gRSPlights[l].{frfgfbfa}
-           " mulps         %%xmm4,  %%xmm5    \n"
-           " movhlps       %%xmm5,  %%xmm0    \n"
-           " addps         %%xmm5,  %%xmm0    \n"
-           " shufps $0x01, %%xmm0,  %%xmm5    \n"
-           " addps         %%xmm5,  %%xmm0    \n"
-           " comiss            %6,  %%xmm0    \n"
-           " jc                1f             \n"
-           " shufps $0x00, %%xmm0,  %%xmm0    \n"
-           " mulps         %%xmm0,  %%xmm1    \n"
-           " addps         %%xmm1,  %%xmm3    \n"
-           "1:                                \n"
-           " inc            %%rcx             \n"
-           " jmp               0b             \n"
-           "2:                                \n"
-           " movss             %5,  %%xmm0    \n"
-           " shufps $0x00, %%xmm0,  %%xmm0    \n"
-           " minps         %%xmm3,  %%xmm0    \n"
-           " cvtss2si      %%xmm0,   %%eax    \n"
-           " shll           $0x10,   %%eax    \n"
-           " orl      $0xff000000,   %%eax    \n"
-           " shufps $0xe5, %%xmm0,  %%xmm0    \n"
-           " cvtss2si      %%xmm0,   %%ecx    \n"
-           " shll              $8,   %%ecx    \n"
-           " orl            %%ecx,   %%eax    \n"
-           " shufps $0xe6, %%xmm0,  %%xmm0    \n"
-           " cvtss2si      %%xmm0,   %%ecx    \n"
-           " orl            %%ecx,   %%eax    \n"
-           : "=&a"(rval)
-           : "m"(gRSP), "m"(g_normal), "m"(gRSPnumLights), "r"(gRSPlights), "m"(f255), "m"(fZero)
-           : "%rcx", "memory", "cc", "%xmm0", "%xmm1", "%xmm3", "%xmm4", "%xmm5"
-           );
-  return rval;
-}
-#elif !defined(NO_ASM) // 32-bit GCC assumed
-uint32_t SSELightVert(void)
-{
-  uint32_t rval;
-  float f255 = 255.0, fZero = 0.0;
-
-  asm volatile(" movaps            %1,  %%xmm3    \n"
-               " movaps            %2,  %%xmm4    \n"
-               " xor            %%ecx,   %%ecx    \n"
-               "0:                                \n"
-               " cmpl              %3,   %%ecx    \n"
-               " jae               2f             \n"
-               " mov            %%ecx,   %%eax    \n"
-               " imul    $0x44, %%eax,   %%eax    \n"
-               " movups   (%4,%%eax,),  %%xmm5    \n"
-               " movups 20(%4,%%eax,),  %%xmm1    \n"
-               " mulps         %%xmm4,  %%xmm5    \n"
-               " movhlps       %%xmm5,  %%xmm0    \n"
-               " addps         %%xmm5,  %%xmm0    \n"
-               " shufps $0x01, %%xmm0,  %%xmm5    \n"
-               " addps         %%xmm5,  %%xmm0    \n"
-               " comiss            %6,  %%xmm0    \n"
-               " jc                1f             \n"
-               " shufps $0x00, %%xmm0,  %%xmm0    \n"
-               " mulps         %%xmm0,  %%xmm1    \n"
-               " addps         %%xmm1,  %%xmm3    \n"
-               "1:                                \n"
-               " inc            %%ecx             \n"
-               " jmp               0b             \n"
-               "2:                                \n"
-               " movss             %5,  %%xmm0    \n"
-               " shufps $0x00, %%xmm0,  %%xmm0    \n"
-               " minps         %%xmm3,  %%xmm0    \n"
-               " cvtss2si      %%xmm0,   %%eax    \n"
-               " shll           $0x10,   %%eax    \n"
-               " orl      $0xff000000,   %%eax    \n"
-               " shufps $0xe5, %%xmm0,  %%xmm0    \n"
-               " cvtss2si      %%xmm0,   %%ecx    \n"
-               " shll              $8,   %%ecx    \n"
-               " orl            %%ecx,   %%eax    \n"
-               " shufps $0xe6, %%xmm0,  %%xmm0    \n"
-               " cvtss2si      %%xmm0,   %%ecx    \n"
-               " orl            %%ecx,   %%eax    \n"
-               : "=&a"(rval)
-               : "m"(gRSP), "m"(g_normal), "m"(gRSPnumLights), "r"(gRSPlights), "m"(f255), "m"(fZero)
-               : "%rcx", "memory", "cc", "%xmm0", "%xmm1", "%xmm3", "%xmm4", "%xmm5"
-               );
-  return rval;
-}
-#endif
-
 inline void ReplaceAlphaWithFogFactor(int i)
 {
     if( gRDP.geometryMode & G_FOG )
@@ -1298,116 +777,6 @@ inline void ReplaceAlphaWithFogFactor(int i)
 
 // Assumes dwAddr has already been checked! 
 // Don't inline - it's too big with the transform macros
-
-#if !defined(NO_ASM)
-void ProcessVertexDataSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
-{
-    UpdateCombinedMatrix();
-
-    // This function is called upon SPvertex
-    // - do vertex matrix transform
-    // - do vertex lighting
-    // - do texture coordinate transform if needed
-    // - calculate normal vector
-
-    // Output:  - g_vecProjected[i]             -> transformed vertex x,y,z
-    //          - g_vecProjected[i].w           -> saved vertex 1/w
-    //          - g_dwVtxFlags[i]               -> flags
-    //          - g_dwVtxDifColor[i]            -> vertex color
-    //          - g_fVtxTxtCoords[i]            -> vertex texture coordinates
-
-    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    FiddledVtx * pVtxBase = (FiddledVtx*)(rdram_u8 + dwAddr);
-    g_pVtxBase = pVtxBase;
-
-    for (uint32_t i = dwV0; i < dwV0 + dwNum; i++)
-    {
-        SP_Timing(RSP_GBI0_Vtx);
-
-        FiddledVtx & vert = pVtxBase[i - dwV0];
-
-        g_vtxNonTransformed[i].x = (float)vert.x;
-        g_vtxNonTransformed[i].y = (float)vert.y;
-        g_vtxNonTransformed[i].z = (float)vert.z;
-
-        SSEVec3Transform(i);
-
-        if( gRSP.bFogEnabled )
-        {
-            g_fFogCoord[i] = g_vecProjected[i].z;
-            if( g_vecProjected[i].w < 0 || g_vecProjected[i].z < 0 || g_fFogCoord[i] < gRSPfFogMin )
-                g_fFogCoord[i] = gRSPfFogMin;
-        }
-
-        ReplaceAlphaWithFogFactor(i);
-
-
-        VTX_DUMP( 
-        {
-            uint32_t *dat = (uint32_t*)(&vert);
-            DebuggerAppendMsg("Vertex %d: %08X %08X %08X %08X", i, dat[0],dat[1],dat[2],dat[3]); 
-            DebuggerAppendMsg("      : %f, %f, %f, %f", 
-                g_vtxTransformed[i].x,g_vtxTransformed[i].y,g_vtxTransformed[i].z,g_vtxTransformed[i].w);
-            DebuggerAppendMsg("      : %f, %f, %f, %f", 
-                g_vecProjected[i].x,g_vecProjected[i].y,g_vecProjected[i].z,g_vecProjected[i].w);
-        });
-
-        RSP_Vtx_Clipping(i);
-
-        if( gRSP.bLightingEnable )
-        {
-            g_normal.x = (float)vert.norma.nx;
-            g_normal.y = (float)vert.norma.ny;
-            g_normal.z = (float)vert.norma.nz;
-
-            SSEVec3TransformNormal();
-            if( options.enableHackForGames != HACK_FOR_ZELDA_MM )
-                g_dwVtxDifColor[i] = SSELightVert();
-            else
-                g_dwVtxDifColor[i] = LightVert(g_normal, i);
-            *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = vert.rgba.a; // still use alpha from the vertex
-        }
-        else
-        {
-            if( (gRDP.geometryMode & G_SHADE) == 0 && gRSP.ucode < 5 )  //Shade is disabled
-            {
-                //FLAT shade
-                g_dwVtxDifColor[i] = gRDP.primitiveColor;
-            }
-            else
-            {
-                register IColor &color = *(IColor*)&g_dwVtxDifColor[i];
-                color.b = vert.rgba.r;
-                color.g = vert.rgba.g;
-                color.r = vert.rgba.b;
-                color.a = vert.rgba.a;
-            }
-        }
-
-        if( options.bWinFrameMode )
-        {
-            g_dwVtxDifColor[i] = COLOR_RGBA(vert.rgba.r, vert.rgba.g, vert.rgba.b, vert.rgba.a);
-        }
-
-        // Update texture coords n.b. need to divide tu/tv by bogus scale on addition to buffer
-
-        // If the vertex is already lit, then there is no normal (and hence we
-        // can't generate tex coord)
-        if (gRSP.bTextureGen && gRSP.bLightingEnable )
-        {
-            TexGen(g_fVtxTxtCoords[i].x, g_fVtxTxtCoords[i].y);
-        }
-        else
-        {
-            g_fVtxTxtCoords[i].x = (float)vert.tu;
-            g_fVtxTxtCoords[i].y = (float)vert.tv; 
-        }
-    }
-
-    VTX_DUMP(TRACE2("Setting Vertexes: %d - %d\n", dwV0, dwV0+dwNum-1));
-    DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
-}
-#endif
 
 void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
 {
@@ -1944,10 +1313,7 @@ void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         g_vtxNonTransformed[i].y = (float)*(short*)((pVtxBase+nOff + 2) ^ 2);
         g_vtxNonTransformed[i].z = (float)*(short*)((pVtxBase+nOff + 4) ^ 2);
 
-        //if( status.isSSEEnabled )
-        //  SSEVec3TransformDKR(g_vtxTransformed[i], g_vtxNonTransformed[i]);
-        //else
-            Vec3Transform(&g_vtxTransformed[i], (XVECTOR3*)&g_vtxNonTransformed[i], &matWorldProject);  // Convert to w=1
+        Vec3Transform(&g_vtxTransformed[i], (XVECTOR3*)&g_vtxNonTransformed[i], &matWorldProject);  // Convert to w=1
 
         if( gRSP.DKRVtxCount == 0 && dwNum==1 )
         {
@@ -1998,11 +1364,6 @@ void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
             g_normal.z = (char)b; //norma.nz;
 
             Vec3TransformNormal(g_normal, matWorldProject)
-#if !defined(NO_ASM)
-            if( status.isSSEEnabled )
-                g_dwVtxDifColor[i] = SSELightVert();
-            else
-#endif
                 g_dwVtxDifColor[i] = LightVert(g_normal, i);
         }
         else
@@ -2044,11 +1405,6 @@ void ProcessVertexDataPD(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         g_vtxNonTransformed[i].y = (float)vert.y;
         g_vtxNonTransformed[i].z = (float)vert.z;
 
-#if !defined(NO_ASM)
-        if( status.isSSEEnabled )
-            SSEVec3Transform(i);
-        else
-#endif
         {
             Vec3Transform(&g_vtxTransformed[i], (XVECTOR3*)&g_vtxNonTransformed[i], &gRSPworldProject); // Convert to w=1
             g_vecProjected[i].w = 1.0f / g_vtxTransformed[i].w;
@@ -2074,14 +1430,6 @@ void ProcessVertexDataPD(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
             g_normal.x = (char)r;
             g_normal.y = (char)g;
             g_normal.z = (char)b;
-#if !defined(NO_ASM)
-            if( status.isSSEEnabled )
-            {
-                SSEVec3TransformNormal();
-                g_dwVtxDifColor[i] = SSELightVert();
-            }
-            else
-#endif
             {
                 Vec3TransformNormal(g_normal, gRSPmodelViewTop);
                 g_dwVtxDifColor[i] = LightVert(g_normal, i);
@@ -2156,11 +1504,6 @@ void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         g_vtxNonTransformed[i].y = (float)vert.y;
         g_vtxNonTransformed[i].z = (float)vert.z;
 
-#if !defined(NO_ASM)
-        if( status.isSSEEnabled )
-            SSEVec3Transform(i);
-        else
-#endif
         {
             Vec3Transform(&g_vtxTransformed[i], (XVECTOR3*)&g_vtxNonTransformed[i], &gRSPworldProject); // Convert to w=1
             g_vecProjected[i].w = 1.0f / g_vtxTransformed[i].w;
@@ -2307,11 +1650,6 @@ void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, 
         g_vtxNonTransformed[i].y = (float)vertxyz.y;
         g_vtxNonTransformed[i].z = (float)vertxyz.z;
 
-#if !defined(NO_ASM)
-        if( status.isSSEEnabled )
-            SSEVec3Transform(i);
-        else
-#endif
         {
             Vec3Transform(&g_vtxTransformed[i], (XVECTOR3*)&g_vtxNonTransformed[i], &gRSPworldProject); // Convert to w=1
             g_vecProjected[i].w = 1.0f / g_vtxTransformed[i].w;
@@ -2340,14 +1678,6 @@ void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, 
             g_normal.y = (float)vertcolors.ny;
             g_normal.z = (float)vertcolors.nz;
 
-#if !defined(NO_ASM)
-            if( status.isSSEEnabled )
-            {
-                SSEVec3TransformNormal();
-                g_dwVtxDifColor[i] = SSELightVert();
-            }
-            else
-#endif
             {
                 Vec3TransformNormal(g_normal, gRSPmodelViewTop);
                 g_dwVtxDifColor[i] = LightVert(g_normal, i);
@@ -2561,12 +1891,6 @@ void UpdateCombinedMatrix()
         {
             gRSPworldProject = gRSPworldProject * reverseY;
         }
-#if !defined(NO_ASM)
-        if( status.isSSEEnabled )
-        {
-            MatrixTranspose(&gRSPworldProjectTransported, &gRSPworldProject);
-        }
-#endif
         gRSP.bCombinedMatrixIsUpdated = false;
     }
 

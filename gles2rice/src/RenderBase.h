@@ -239,9 +239,6 @@ void InitVertexTextureConstants();
 bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2);
 bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2);
 extern void (*ProcessVertexData)(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
-#if !defined(NO_ASM)
-void ProcessVertexDataSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
-#endif
 void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
 void ProcessVertexDataNEON(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
 void ProcessVertexDataExternal(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);

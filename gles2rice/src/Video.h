@@ -118,10 +118,8 @@ typedef struct {
     int     leftRendered,topRendered,rightRendered,bottomRendered;
 
     bool    isMMXSupported;
-    bool    isSSESupported;
 
     bool    isMMXEnabled;
-    bool    isSSEEnabled;
 
     bool    toShowCFB;
 

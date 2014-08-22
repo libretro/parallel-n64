@@ -336,7 +336,6 @@ bool InitConfiguration(void)
     ConfigSetDefaultBool(l_ConfigVideoRice, "WinFrameMode", FALSE, "If enabled, graphics will be drawn in WinFrame mode instead of solid and texture mode");
     ConfigSetDefaultBool(l_ConfigVideoRice, "FullTMEMEmulation", FALSE, "N64 Texture Memory Full Emulation (may fix some games, may break others)");
     ConfigSetDefaultBool(l_ConfigVideoRice, "OpenGLVertexClipper", FALSE, "Enable vertex clipper for fog operations");
-    ConfigSetDefaultBool(l_ConfigVideoRice, "EnableSSE", TRUE, "Enable/Disable SSE optimizations for capable CPUs");
     ConfigSetDefaultBool(l_ConfigVideoRice, "SkipFrame", FALSE, "If this option is enabled, the plugin will skip every other frame");
     ConfigSetDefaultBool(l_ConfigVideoRice, "TexRectOnly", FALSE, "If enabled, texture enhancement will be done only for TxtRect ucode");
     ConfigSetDefaultBool(l_ConfigVideoRice, "SmallTextureOnly", FALSE, "If enabled, texture enhancement will be done only for textures width+height<=128");
@@ -368,19 +367,6 @@ bool isMMXSupported()
    if (cpu & RETRO_SIMD_MMX)
       return true;
    
-   return false; 
-}
-
-bool isSSESupported() 
-{
-   unsigned cpu = 0;
-
-   if (perf_get_cpu_features_cb)
-      cpu = perf_get_cpu_features_cb();
-
-   if (cpu & RETRO_SIMD_SSE2)
-      return true;
-
    return false; 
 }
 
@@ -424,7 +410,6 @@ static void ReadConfiguration(void)
    options.bWinFrameMode = ConfigGetParamBool(l_ConfigVideoRice, "WinFrameMode");
    options.bFullTMEM = ConfigGetParamBool(l_ConfigVideoRice, "FullTMEMEmulation");
    options.bOGLVertexClipper = ConfigGetParamBool(l_ConfigVideoRice, "OpenGLVertexClipper");
-   options.bEnableSSE = ConfigGetParamBool(l_ConfigVideoRice, "EnableSSE");
    options.bSkipFrame = ConfigGetParamBool(l_ConfigVideoRice, "SkipFrame");
    options.bTexRectOnly = ConfigGetParamBool(l_ConfigVideoRice, "TexRectOnly");
    options.bSmallTextureOnly = ConfigGetParamBool(l_ConfigVideoRice, "SmallTextureOnly");
@@ -447,21 +432,7 @@ static void ReadConfiguration(void)
    CDeviceBuilder::SelectDeviceType((SupportedDeviceType)options.OpenglRenderSetting);
 
    status.isMMXSupported = isMMXSupported();
-   status.isSSESupported = isSSESupported();
-
-   status.isSSEEnabled = status.isSSESupported && options.bEnableSSE;
-#if !defined(NO_ASM)
-   if( status.isSSEEnabled )
-   {
-      ProcessVertexData = ProcessVertexDataSSE;
-      DebugMessage(M64MSG_INFO, "SSE processing enabled.");
-   }
-   else
-#endif
-   {
-      ProcessVertexData = ProcessVertexDataNoSSE;
-      DebugMessage(M64MSG_INFO, "Disabled SSE processing.");
-   }
+   ProcessVertexData = ProcessVertexDataNoSSE;
 }
     
 bool LoadConfiguration(void)
