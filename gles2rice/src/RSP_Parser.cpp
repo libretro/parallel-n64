@@ -784,7 +784,6 @@ extern bool bHalfTxtScale;
 
 void DLParser_Process(OSTask * pTask)
 {
-    static int skipframe=0;
     uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
     dlistMtxCount = 0;
@@ -798,16 +797,6 @@ void DLParser_Process(OSTask * pTask)
     }
 
     status.bScreenIsDrawn = true;
-    if( options.bSkipFrame )
-    {
-        skipframe++;
-        if(skipframe%2)
-        {
-            TriggerDPInterrupt();
-            TriggerSPInterrupt();
-            return;
-        }
-    }
 
     if( currentRomOptions.N64RenderToTextureEmuType != TXT_BUF_NONE && defaultRomOptions.bSaveVRAM )
     {
