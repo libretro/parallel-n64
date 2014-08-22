@@ -850,9 +850,9 @@ void FrameBufferManager::FrameBufferWriteByCPU(uint32_t addr, uint32_t size)
     frameWriteRecord.push_back(addr&(g_dwRamSize-1));
 }
 
-extern RECT frameWriteByCPURect;
-extern std::vector<RECT> frameWriteByCPURects;
-extern RECT frameWriteByCPURectArray[20][20];
+extern M64P_RECT frameWriteByCPURect;
+extern std::vector<M64P_RECT> frameWriteByCPURects;
+extern M64P_RECT frameWriteByCPURectArray[20][20];
 extern bool frameWriteByCPURectFlag[20][20];
 #define FRAMEBUFFER_IN_BLOCK
 bool FrameBufferManager::ProcessFrameWriteRecord()
@@ -893,7 +893,7 @@ bool FrameBufferManager::ProcessFrameWriteRecord()
                 int xidx=x/32;
                 int yidx=y/24;
 
-                RECT &rect = frameWriteByCPURectArray[xidx][yidx];
+                M64P_RECT &rect = frameWriteByCPURectArray[xidx][yidx];
 
                 if (!frameWriteByCPURectFlag[xidx][yidx])
                 {
@@ -974,9 +974,9 @@ void FrameBufferManager::FrameBufferReadByCPU( uint32_t addr )
 
 
 
-extern RECT frameWriteByCPURect;
-extern std::vector<RECT> frameWriteByCPURects;
-extern RECT frameWriteByCPURectArray[20][20];
+extern M64P_RECT frameWriteByCPURect;
+extern std::vector<M64P_RECT> frameWriteByCPURects;
+extern M64P_RECT frameWriteByCPURectArray[20][20];
 extern bool frameWriteByCPURectFlag[20][20];
 #define FRAMEBUFFER_IN_BLOCK
 
@@ -1722,7 +1722,7 @@ void FrameBufferManager::Set_CI_addr(SetImgInfo &newCI)
             g_pFrameBufferManager->UpdateRecentCIAddr(g_CI);
             if (status.leftRendered != -1 && status.topRendered != -1 && status.rightRendered != -1 && status.bottomRendered != -1)
             {
-                RECT rect={status.leftRendered,status.topRendered,status.rightRendered,status.bottomRendered};
+                M64P_RECT rect={status.leftRendered,status.topRendered,status.rightRendered,status.bottomRendered};
                 g_pFrameBufferManager->SaveBackBuffer(0, &rect, false);
             }
             else
@@ -2047,7 +2047,7 @@ void FrameBufferManager::DisplayRenderTexture(int infoIdx)
 // this is the core to the current framebuffer code
 // We need to save backbuffer when changed by framebuffer
 // so that we can use it for framebuffer effects
-void FrameBufferManager::SaveBackBuffer(int ciInfoIdx, RECT* pSrcRect, bool forceToSaveToRDRAM)
+void FrameBufferManager::SaveBackBuffer(int ciInfoIdx, M64P_RECT* pSrcRect, bool forceToSaveToRDRAM)
 {
     RecentCIInfo &ciInfo = *g_uRecentCIInfoPtrs[ciInfoIdx];
 

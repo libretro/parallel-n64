@@ -75,7 +75,7 @@ public:
     void InitCombinerBlenderForSimpleRectDraw(uint32_t tile);
     void DrawSpriteR_Render();
     void DrawObjBGCopy(uObjBg &info);
-    void DrawText(const char* str, RECT *rect);
+    void DrawText(const char* str, M64P_RECT *rect);
 
     void SetFogMinMax(float fMin, float fMax);
     void SetFogEnable(bool bEnable);

@@ -25,9 +25,8 @@ extern uObjMtxReal gObjMtxReal;
 
 //========================================================================
 
-void OGLRender::DrawText(const char* str, RECT *rect)
+void OGLRender::DrawText(const char* str, M64P_RECT *rect)
 {
-    return;
 }
 
 void OGLRender::DrawSpriteR_Render()    // With Rotation

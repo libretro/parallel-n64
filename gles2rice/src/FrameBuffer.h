@@ -77,8 +77,8 @@ public:
     virtual bool IsRenderingToTexture() {return m_isRenderingToTexture;}
 
     // Device dependent functions
-    virtual void SaveBackBuffer(int ciInfoIdx, RECT* pRect, bool forceToSaveToRDRAM);         // Copy the current back buffer to temp buffer
-    virtual void CopyBackBufferToRenderTexture(int idx, RecentCIInfo &ciInfo, RECT* pRect) {} // Copy the current back buffer to temp buffer
+    virtual void SaveBackBuffer(int ciInfoIdx, M64P_RECT* pRect, bool forceToSaveToRDRAM);         // Copy the current back buffer to temp buffer
+    virtual void CopyBackBufferToRenderTexture(int idx, RecentCIInfo &ciInfo, M64P_RECT* pRect) {} // Copy the current back buffer to temp buffer
     virtual void CopyBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t siz, uint32_t width, 
         uint32_t height, uint32_t bufWidth, uint32_t bufHeight, uint32_t startaddr, 
         uint32_t memsize, uint32_t pitch, TextureFmt bufFmt, void *surf, uint32_t bufPitch);
@@ -104,7 +104,7 @@ class DXFrameBufferManager : public FrameBufferManager
 
 public:
     // Device dependent functions
-    virtual void CopyBackBufferToRenderTexture(int idx, RecentCIInfo &ciInfo, RECT* pRect);    // Copy the current back buffer to temp buffer
+    virtual void CopyBackBufferToRenderTexture(int idx, RecentCIInfo &ciInfo, M64P_RECT* pRect);    // Copy the current back buffer to temp buffer
     virtual void StoreBackBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t siz, uint32_t width, 
         uint32_t height, uint32_t bufWidth, uint32_t bufHeight, uint32_t startaddr, 
         uint32_t memsize, uint32_t pitch, SURFFORMAT surf_fmt);
@@ -119,7 +119,7 @@ class OGLFrameBufferManager : public FrameBufferManager
 
 public:
     // Device dependent functions
-    virtual void CopyBackBufferToRenderTexture(int idx, RecentCIInfo &ciInfo, RECT* pRect);    // Copy the current back buffer to temp buffer
+    virtual void CopyBackBufferToRenderTexture(int idx, RecentCIInfo &ciInfo, M64P_RECT* pRect);    // Copy the current back buffer to temp buffer
     virtual void StoreBackBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t siz, uint32_t width, 
         uint32_t height, uint32_t bufWidth, uint32_t bufHeight, uint32_t startaddr, 
         uint32_t memsize, uint32_t pitch, SURFFORMAT surf_fmt);

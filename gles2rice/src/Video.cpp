@@ -56,9 +56,9 @@ PluginStatus  status;
 
 unsigned int   g_dwRamSize = 0x400000;
 
-RECT frameWriteByCPURect;
-std::vector<RECT> frameWriteByCPURects;
-RECT frameWriteByCPURectArray[20][20];
+M64P_RECT frameWriteByCPURect;
+std::vector<M64P_RECT> frameWriteByCPURects;
+M64P_RECT frameWriteByCPURectArray[20][20];
 bool frameWriteByCPURectFlag[20][20];
 std::vector<uint32_t> frameWriteRecord;
 

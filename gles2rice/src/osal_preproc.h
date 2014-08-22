@@ -27,17 +27,13 @@
 
 #define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)));
 
-#ifndef _WIN32
-
 typedef struct
 {
    int top;
    int bottom;
    int right;
    int left;
-} RECT;
-
-#endif
+} M64P_RECT;
 
 #define __cdecl
 
