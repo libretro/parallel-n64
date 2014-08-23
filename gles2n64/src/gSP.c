@@ -415,7 +415,7 @@ void gSPProcessVertex( u32 v )
 void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 {
    MicrocodeInfo *ucode;
-   RSP.PCi = 0;
+   __RSP.PCi = 0;
    gSP.matrix.modelViewi = 0;
    gSP.changed |= CHANGED_MATRIX;
    gSP.status[0] = gSP.status[1] = gSP.status[2] = gSP.status[3] = 0;
@@ -833,16 +833,16 @@ void gSPDisplayList( u32 dl )
    if ((address + 8) > RDRAMSize)
       return;
 
-   if (RSP.PCi < (GBI.PCStackSize - 1))
+   if (__RSP.PCi < (GBI.PCStackSize - 1))
    {
 #ifdef DEBUG
       DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "\n" );
       DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDisplayList( 0x%08X );\n",
             dl );
 #endif
-      RSP.PCi++;
-      RSP.PC[RSP.PCi] = address;
-      RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
+      __RSP.PCi++;
+      __RSP.PC[__RSP.PCi] = address;
+      __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
    }
 }
 
@@ -852,25 +852,25 @@ void gSPDMADisplayList( u32 dl, u32 n )
    if ((dl + (n << 3)) > RDRAMSize)
       return;
 
-   curDL = RSP.PC[RSP.PCi];
+   curDL = __RSP.PC[__RSP.PCi];
 
-   RSP.PC[RSP.PCi] = RSP_SegmentToPhysical( dl );
+   __RSP.PC[__RSP.PCi] = RSP_SegmentToPhysical( dl );
 
-   while ((RSP.PC[RSP.PCi] - dl) < (n << 3))
+   while ((__RSP.PC[__RSP.PCi] - dl) < (n << 3))
    {
-      if ((RSP.PC[RSP.PCi] + 8) > RDRAMSize)
+      if ((__RSP.PC[__RSP.PCi] + 8) > RDRAMSize)
          break;
 
-      w0 = *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi]];
-      w1 = *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi] + 4];
+      w0 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
+      w1 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
 
-      RSP.PC[RSP.PCi] += 8;
-      RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi]], 24, 8 );
+      __RSP.PC[__RSP.PCi] += 8;
+      __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]], 24, 8 );
 
       GBI.cmd[_SHIFTR( w0, 24, 8 )]( w0, w1 );
    }
 
-   RSP.PC[RSP.PCi] = curDL;
+   __RSP.PC[__RSP.PCi] = curDL;
 }
 
 void gSPBranchList( u32 dl )
@@ -880,8 +880,8 @@ void gSPBranchList( u32 dl )
    if ((address + 8) > RDRAMSize)
       return;
 
-   RSP.PC[RSP.PCi] = address;
-   RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
+   __RSP.PC[__RSP.PCi] = address;
+   __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
 }
 
 void gSPBranchLessZ( u32 branchdl, u32 vtx, f32 zval )
@@ -892,7 +892,7 @@ void gSPBranchLessZ( u32 branchdl, u32 vtx, f32 zval )
       return;
 
    if (OGL.triangles.vertices[vtx].z <= zval)
-      RSP.PC[RSP.PCi] = address;
+      __RSP.PC[__RSP.PCi] = address;
 }
 
 void gSPSetDMAOffsets( u32 mtxoffset, u32 vtxoffset )
@@ -1019,10 +1019,10 @@ void gSPCullDisplayList( u32 v0, u32 vn )
 {
    if (gSPCullVertices( v0, vn ))
    {
-      if (RSP.PCi > 0)
-         RSP.PCi--;
+      if (__RSP.PCi > 0)
+         __RSP.PCi--;
       else
-         RSP.halt = TRUE;
+         __RSP.halt = TRUE;
    }
 }
 
@@ -1180,10 +1180,10 @@ void gSPTexture( f32 sc, f32 tc, s32 level, s32 tile, s32 on )
 
 void gSPEndDisplayList(void)
 {
-   if (RSP.PCi > 0)
-      RSP.PCi--;
+   if (__RSP.PCi > 0)
+      __RSP.PCi--;
    else
-      RSP.halt = TRUE;
+      __RSP.halt = TRUE;
 }
 
 void gSPGeometryMode( u32 clear, u32 set )

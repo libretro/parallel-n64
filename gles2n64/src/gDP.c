@@ -28,7 +28,7 @@ bool _IsRenderTexture()
     bool foundTxtRect=false;
     int height;
     unsigned int newFillColor = 0;
-    unsigned int dwPC = RSP.PC[RSP.PCi];       // This points to the next instruction
+    unsigned int dwPC = __RSP.PC[__RSP.PCi];       // This points to the next instruction
 
     for(i = 0; i < 10; i++)
     {
@@ -887,7 +887,7 @@ void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f
    gSP.textureTile[0] = &gDP.tiles[tile];
    gSP.textureTile[1] = &gDP.tiles[(tile < 7) ? (tile + 1) : tile];
 
-   if (RSP.cmd == G_TEXRECTFLIP)
+   if (__RSP.cmd == G_TEXRECTFLIP)
    {
       lrs = s + (lry - uly - 1) * dtdy;
       lrt = t + (lrx - ulx - 1) * dsdx;
@@ -915,7 +915,7 @@ void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f
       tmp = t; t = lrt; lrt = tmp;
    }
 
-   OGL_DrawTexturedRect( ulx, uly, lrx, lry, s, t, lrs, lrt, (RSP.cmd == G_TEXRECTFLIP));
+   OGL_DrawTexturedRect( ulx, uly, lrx, lry, s, t, lrs, lrt, (__RSP.cmd == G_TEXRECTFLIP));
 
    gSP.textureTile[0] = &gDP.tiles[gSP.texture.tile];
    gSP.textureTile[1] = &gDP.tiles[(gSP.texture.tile < 7) ? (gSP.texture.tile + 1) : gSP.texture.tile];

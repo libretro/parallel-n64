@@ -21,10 +21,10 @@
 
 #include "new_dynarec/new_dynarec.h"
 
-float *reg_cop1_simple[32];
-double *reg_cop1_double[32];
 #if NEW_DYNAREC != NEW_DYNAREC_ARM
 int FCR0, FCR31;
+float *reg_cop1_simple[32];
+double *reg_cop1_double[32];
 #else
 extern float *reg_cop1_simple[32];
 extern double *reg_cop1_double[32];

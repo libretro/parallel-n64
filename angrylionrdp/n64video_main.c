@@ -8,7 +8,7 @@
 #include "m64p_types.h"
 
 extern int screen_width, screen_height;
-uint32_t screen_pitch;
+extern uint32_t screen_pitch;
 
 #ifdef HAVE_DIRECTDRAW
 LPDIRECTDRAW7 lpdd = 0;
@@ -19,7 +19,7 @@ DDSURFACEDESC2 ddsd;
 uint32_t *blitter_buf;
 #endif
 int res;
-RECT dst, src;
+RECT __dst, __src;
 INT32 pitchindwords;
 
 FILE* zeldainfo = 0;
@@ -83,11 +83,11 @@ EXPORT void CALL angrylionMoveScreen (int xpos, int ypos)
     POINT p;
     p.x = p.y = 0;
 #ifdef HAVE_DIRECTDRAW
-    GetClientRect(gfx.hWnd, &dst);
+    GetClientRect(gfx.hWnd, &__dst);
     ClientToScreen(gfx.hWnd, &p);
-    OffsetRect(&dst, p.x, p.y);
+    OffsetRect(&__dst, p.x, p.y);
     GetClientRect(gfx.hStatusBar, &statusrect);
-    dst.bottom -= statusrect.bottom;
+    __dst.bottom -= statusrect.bottom;
 #endif
 }
 
@@ -247,19 +247,19 @@ EXPORT int CALL angrylionRomOpen (void)
         return; /* InitiateGFX should fail. */
     }
 
-    src.top = src.left = 0; 
-    src.bottom = 0;
+    __src.top = __src.left = 0; 
+    __src.bottom = 0;
 #if SCREEN_WIDTH < PRESCALE_WIDTH
-    src.right = PRESCALE_WIDTH - 1; /* fix for undefined video card behavior */
+    __src.right = PRESCALE_WIDTH - 1; /* fix for undefined video card behavior */
 #else
-    src.right = PRESCALE_WIDTH;
+    __src.right = PRESCALE_WIDTH;
 #endif
     p.x = p.y = 0;
-    GetClientRect(gfx.hWnd, &dst);
+    GetClientRect(gfx.hWnd, &__dst);
     ClientToScreen(gfx.hWnd, &p);
-    OffsetRect(&dst, p.x, p.y);
+    OffsetRect(&__dst, p.x, p.y);
     GetClientRect(gfx.hStatusBar, &statusrect);
-    dst.bottom -= statusrect.bottom;
+    __dst.bottom -= statusrect.bottom;
 #endif
 
     rdp_init();

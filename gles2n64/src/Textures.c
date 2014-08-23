@@ -862,7 +862,7 @@ void TextureCache_ActivateTexture( u32 t, CachedTexture *texture )
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, config.texture.maxAnisotropy);
    }
 
-   texture->lastDList = RSP.DList;
+   texture->lastDList = __RSP.DList;
    TextureCache_MoveToTop( texture );
    cache.current[t] = texture;
 }
@@ -942,7 +942,7 @@ void TextureCache_UpdateBackground(void)
    cache.current[0]->clampT = 1;
    cache.current[0]->line = 0;
    cache.current[0]->tMem = 0;
-   cache.current[0]->lastDList = RSP.DList;
+   cache.current[0]->lastDList = __RSP.DList;
 
    cache.current[0]->realWidth = (config.texture.pow2) ? pow2(gSP.bgImage.width ) : gSP.bgImage.width;
    cache.current[0]->realHeight = (config.texture.pow2) ? pow2(gSP.bgImage.height) : gSP.bgImage.height;
@@ -1147,7 +1147,7 @@ void TextureCache_Update( u32 t )
    cache.current[t]->clampT = gSP.textureTile[t]->clampt;
    cache.current[t]->line = gSP.textureTile[t]->line;
    cache.current[t]->tMem = gSP.textureTile[t]->tmem;
-   cache.current[t]->lastDList = RSP.DList;
+   cache.current[t]->lastDList = __RSP.DList;
 
 
    if (cache.current[t]->clampS)
@@ -1204,7 +1204,7 @@ void TextureCache_Update( u32 t )
 void TextureCache_ActivateNoise(u32 t)
 {
    glActiveTexture(GL_TEXTURE0 + t);
-   glBindTexture(GL_TEXTURE_2D, cache.glNoiseNames[RSP.DList & 0x1F]);
+   glBindTexture(GL_TEXTURE_2D, cache.glNoiseNames[__RSP.DList & 0x1F]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
 }

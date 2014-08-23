@@ -22,7 +22,7 @@ typedef struct
     u32 PC[18], PCi, busy, halt, close, DList, uc_start, uc_dstart, cmd, nextCmd, count;
 } RSPInfo;
 
-extern RSPInfo RSP;
+extern RSPInfo __RSP;
 
 #define RSP_SegmentToPhysical( segaddr ) ((gSP.segment[(segaddr >> 24) & 0x0F] + (segaddr & 0x00FFFFFF)) & 0x00FFFFFF)
 

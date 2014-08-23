@@ -15,7 +15,7 @@
 #include "gSP.h"
 #include "Textures.h"
 
-RSPInfo     RSP;
+RSPInfo     __RSP;
 
 void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
 {
@@ -42,12 +42,12 @@ void RSP_ProcessDList(void)
    OGL_UpdateScale();
    TextureCache_ActivateNoise(2);
 
-   RSP.PC[0] = *(u32*)&gfx_info.DMEM[0x0FF0];
-   RSP.PCi = 0;
-   RSP.count = 0;
+   __RSP.PC[0] = *(u32*)&gfx_info.DMEM[0x0FF0];
+   __RSP.PCi = 0;
+   __RSP.count = 0;
 
-   RSP.halt = FALSE;
-   RSP.busy = TRUE;
+   __RSP.halt = FALSE;
+   __RSP.busy = TRUE;
 
    gSP.matrix.stackSize = min( 32, *(u32*)&gfx_info.DMEM[0x0FE4] >> 6 );
    gSP.matrix.modelViewi = 0;
@@ -66,7 +66,7 @@ void RSP_ProcessDList(void)
    uc_dstart = *(u32*)&gfx_info.DMEM[0x0FD8];
    uc_dsize = *(u32*)&gfx_info.DMEM[0x0FDC];
 
-   if ((uc_start != RSP.uc_start) || (uc_dstart != RSP.uc_dstart))
+   if ((uc_start != __RSP.uc_start) || (uc_dstart != __RSP.uc_dstart))
       gSPLoadUcodeEx( uc_start, uc_dstart, uc_dsize );
 
    gDPSetAlphaCompare(G_AC_NONE);
@@ -84,10 +84,10 @@ void RSP_ProcessDList(void)
    gDPSetCycleType(G_CYC_1CYCLE);
    gDPPipelineMode(G_PM_NPRIMITIVE);
 
-   while (!RSP.halt)
+   while (!__RSP.halt)
    {
 	  u32 w0, w1, pc;
-      pc = RSP.PC[RSP.PCi];
+      pc = __RSP.PC[__RSP.PCi];
 
       if ((pc + 8) > RDRAMSize)
       {
@@ -100,24 +100,24 @@ void RSP_ProcessDList(void)
 
       w0 = *(u32*)&gfx_info.RDRAM[pc];
       w1 = *(u32*)&gfx_info.RDRAM[pc+4];
-      RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[pc+8], 24, 8 );
-      RSP.cmd = _SHIFTR( w0, 24, 8 );
-      RSP.PC[RSP.PCi] += 8;
+      __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[pc+8], 24, 8 );
+      __RSP.cmd = _SHIFTR( w0, 24, 8 );
+      __RSP.PC[__RSP.PCi] += 8;
 
-      GBI.cmd[RSP.cmd]( w0, w1 );
+      GBI.cmd[__RSP.cmd]( w0, w1 );
 
    }
 
-   RSP.busy = FALSE;
-   RSP.DList++;
+   __RSP.busy = FALSE;
+   __RSP.DList++;
    gSP.changed |= CHANGED_COLORBUFFER;
 }
 
 void RSP_Init(void)
 {
    RDRAMSize = 1024 * 1024 * 8;
-   RSP.DList = 0;
-   RSP.uc_start = RSP.uc_dstart = 0;
+   __RSP.DList = 0;
+   __RSP.uc_start = __RSP.uc_dstart = 0;
    gDP.loadTile = &gDP.tiles[7];
    gSP.textureTile[0] = &gDP.tiles[0];
    gSP.textureTile[1] = &gDP.tiles[1];

@@ -31,7 +31,7 @@ void F3DEX2_MoveMem( u32 w0, u32 w1 )
 
       case G_MV_MATRIX:
          gSPForceMatrix( w1 );
-         RSP.PC[RSP.PCi] += 8;             // force matrix takes two commands
+         __RSP.PC[__RSP.PCi] += 8;             // force matrix takes two commands
          break;
 
       case G_MV_LIGHT:

@@ -465,7 +465,7 @@ extern INT32 *blender2b_a[2];
 
 extern INT32 k0, k1, k2, k3, k4, k5;
 
-extern RECTANGLE clip;
+extern RECTANGLE __clip;
 extern TILE tile[8];
 
 extern OTHER_MODES other_modes;

@@ -89,6 +89,8 @@
 #define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
 #endif
 
+void (*_gSPVertex)(uint32_t addr, uint32_t n, uint32_t v0);
+
 int romopen = false;
 int exception = false;
 

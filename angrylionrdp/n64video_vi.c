@@ -237,12 +237,12 @@ no_frame_buffer:
     // direct draw surface unlock
 #endif
 
-    src.bottom = (ispal ? 576 : 480) >> line_shifter; /* visible lines */
-    if (dst.left < dst.right && dst.top < dst.bottom)
+    __src.bottom = (ispal ? 576 : 480) >> line_shifter; /* visible lines */
+    if (__dst.left < __dst.right && __dst.top < __dst.bottom)
     {
 #ifdef HAVE_DIRECTDRAW
         res = IDirectDrawSurface_Blt(
-            lpddsprimary, &dst, lpddsback, &src, DDBLT_WAIT, 0);
+            lpddsprimary, &__dst, lpddsback, &__src, DDBLT_WAIT, 0);
         while (res == DDERR_SURFACELOST)
         {
             res = IDirectDraw4_RestoreAllSurfaces(lpdd);
@@ -252,7 +252,7 @@ no_frame_buffer:
                 return;
             }
             res = IDirectDrawSurface_Blt(
-                lpddsprimary, &dst, lpddsback, &src, DDBLT_WAIT, 0);
+                lpddsprimary, &__dst, lpddsback, &__src, DDBLT_WAIT, 0);
             if (res != DDERR_SURFACELOST)
                 break;
         }

@@ -51,7 +51,7 @@ void F3D_MoveMem( u32 w0, u32 w1 )
       case G_MV_MATRIX_1:
          gSPForceMatrix( w1 );
          // force matrix takes four commands
-         RSP.PC[RSP.PCi] += 24;
+         __RSP.PC[__RSP.PCi] += 24;
          break;
       case G_MV_L0:
          gSPLight( w1, LIGHT_1 );
@@ -122,7 +122,7 @@ void F3D_Reserved3( u32 w0, u32 w1 )
 void F3D_Sprite2D_Base( u32 w0, u32 w1 )
 {
    //gSPSprite2DBase( w1 );
-   RSP.PC[RSP.PCi] += 8;
+   __RSP.PC[__RSP.PCi] += 8;
 }
 
 

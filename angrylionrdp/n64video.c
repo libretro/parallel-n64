@@ -74,7 +74,7 @@ int rdp_pipeline_crashed;
 
 UINT32 z64gl_command;
 
-RECTANGLE clip = {
+RECTANGLE __clip = {
     0, 0, 0x2000, 0x2000
 };
 
@@ -158,9 +158,9 @@ COLOR pre_memory_color;
 
 int oldscyl = 0;
 
-UINT8 TMEM[0x1000]; 
+UINT8 __TMEM[0x1000]; 
 
-#define tlut ((UINT16*)(&TMEM[0x800]))
+#define tlut ((UINT16*)(&__TMEM[0x800]))
 
 #define PIXELS_TO_BYTES(pix, siz) (((pix) << (siz)) >> 1)
 
@@ -646,7 +646,7 @@ void rdp_init(void)
     SET_BLENDER_INPUT(1, 1, &blender2a_r[1], &blender2a_g[1], &blender2a_b[1],
                       &blender2b_a[1], 0, 0);
     other_modes.f.stalederivs = 1;
-    zerobuf(TMEM, 0x1000);
+    zerobuf(__TMEM, 0x1000);
 
     for (i = 0; i < sizeof(hidden_bits); i++)
         hidden_bits[i] = 0x03;
@@ -1336,7 +1336,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
     
     
     
-    UINT16 *tc16 = (UINT16*)TMEM;
+    UINT16 *tc16 = (UINT16*)__TMEM;
     UINT32 taddr = 0;
 
     
@@ -1351,7 +1351,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
 
-            byteval = TMEM[taddr & 0xfff];
+            byteval = __TMEM[taddr & 0xfff];
             c = ((s & 1)) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color->r = c;
@@ -1367,7 +1367,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
 
-            p = TMEM[taddr & 0xfff];
+            p = __TMEM[taddr & 0xfff];
             color->r = p;
             color->g = p;
             color->b = p;
@@ -1442,7 +1442,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr &= 0x7ff;
             taddrlow &= 0x3ff;
             c = tc16[taddrlow];
-            y = TMEM[taddr | 0x800];
+            y = __TMEM[taddr | 0x800];
             u = c >> 8;
             v = c & 0xff;
 
@@ -1464,7 +1464,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
 
-            p = TMEM[taddr & 0xfff];
+            p = __TMEM[taddr & 0xfff];
             p = (s & 1) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color->r = color->g = color->b = color->a = p;
@@ -1477,7 +1477,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
 
-            p = TMEM[taddr & 0xfff];
+            p = __TMEM[taddr & 0xfff];
             color->r = p;
             color->g = p;
             color->b = p;
@@ -1517,7 +1517,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            p = TMEM[taddr & 0xfff];
+            p = __TMEM[taddr & 0xfff];
             p = (s & 1) ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -1533,7 +1533,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            p = TMEM[taddr & 0xfff];
+            p = __TMEM[taddr & 0xfff];
             i = p & 0xf0;
             i |= (i >> 4);
             color->r = i;
@@ -1572,7 +1572,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            byteval = TMEM[taddr & 0xfff];
+            byteval = __TMEM[taddr & 0xfff];
             c = (s & 1) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color->r = c;
@@ -1587,7 +1587,7 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            c = TMEM[taddr & 0xfff];
+            c = __TMEM[taddr & 0xfff];
             color->r = c;
             color->g = c;
             color->b = c;
@@ -1627,7 +1627,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
 {
     UINT32 tbase = tile[tilenum].line * t + tile[tilenum].tmem;
     UINT32 tpal    = tile[tilenum].palette << 4;
-    UINT16 *tc16 = (UINT16*)TMEM;
+    UINT16 *tc16 = (UINT16*)__TMEM;
     UINT32 taddr = 0;
     UINT32 c;
 
@@ -1641,7 +1641,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
         {
             taddr = ((tbase << 4) + s) >> 1;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            c = TMEM[taddr & 0x7ff];
+            c = __TMEM[taddr & 0x7ff];
             c = (s & 1) ? (c & 0xf) : (c >> 4);
             c = tlut[((tpal | c) << 2) ^ WORD_ADDR_XOR];
         }
@@ -1650,7 +1650,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
         {
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            c = TMEM[taddr & 0x7ff];
+            c = __TMEM[taddr & 0x7ff];
             c = (s & 1) ? (c & 0xf) : (c >> 4);
             c = tlut[((tpal | c) << 2) ^ WORD_ADDR_XOR];
         }
@@ -1662,7 +1662,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
         {
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            c = TMEM[taddr & 0x7ff];
+            c = __TMEM[taddr & 0x7ff];
             c = tlut[(c << 2) ^ WORD_ADDR_XOR];
         }
         break;
@@ -1681,7 +1681,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
         {
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            c = TMEM[taddr & 0x7ff];
+            c = __TMEM[taddr & 0x7ff];
             c = tlut[(c << 2) ^ WORD_ADDR_XOR];
         }
         break;
@@ -1699,7 +1699,7 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
         {
             taddr = (tbase << 3) + s;
             taddr ^= ((t & 1) ? BYTE_XOR_DWORD_SWAP : BYTE_ADDR_XOR);
-            c = TMEM[taddr & 0x7ff];
+            c = __TMEM[taddr & 0x7ff];
             c = tlut[(c << 2) ^ WORD_ADDR_XOR];
         }
         break;
@@ -1733,7 +1733,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
     
     
 
-    UINT16 *tc16 = (UINT16*)TMEM;
+    UINT16 *tc16 = (UINT16*)__TMEM;
     UINT32 taddr0 = 0, taddr1 = 0, taddr2 = 0, taddr3 = 0;
     UINT32 taddrlow0 = 0, taddrlow1 = 0, taddrlow2 = 0, taddrlow3 = 0;
 
@@ -1758,14 +1758,14 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             ands = s0 & 1;
-            byteval = TMEM[taddr0];
+            byteval = __TMEM[taddr0];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color0->r = c;
             color0->g = c;
             color0->b = c;
             color0->a = c;
-            byteval = TMEM[taddr2];
+            byteval = __TMEM[taddr2];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color2->r = c;
@@ -1774,14 +1774,14 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             color2->a = c;
 
             ands = s1 & 1;
-            byteval = TMEM[taddr1];
+            byteval = __TMEM[taddr1];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color1->r = c;
             color1->g = c;
             color1->b = c;
             color1->a = c;
-            byteval = TMEM[taddr3];
+            byteval = __TMEM[taddr3];
             c = (ands) ? (byteval & 0xf) : (byteval >> 4);
             c |= (c << 4);
             color3->r = c;
@@ -1808,22 +1808,22 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr1 &= 0xfff;
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
-            p = TMEM[taddr0];
+            p = __TMEM[taddr0];
             color0->r = p;
             color0->g = p;
             color0->b = p;
             color0->a = p;
-            p = TMEM[taddr2];
+            p = __TMEM[taddr2];
             color2->r = p;
             color2->g = p;
             color2->b = p;
             color2->a = p;
-            p = TMEM[taddr1];
+            p = __TMEM[taddr1];
             color1->r = p;
             color1->g = p;
             color1->b = p;
             color1->a = p;
-            p = TMEM[taddr3];
+            p = __TMEM[taddr3];
             color3->r = p;
             color3->g = p;
             color3->b = p;
@@ -2023,16 +2023,16 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             c2 = tc16[taddrlow2];
             c3 = tc16[taddrlow3];                    
             
-            y0 = TMEM[taddr0 | 0x800];
+            y0 = __TMEM[taddr0 | 0x800];
             u0 = c0 >> 8;
             v0 = c0 & 0xff;
-            y1 = TMEM[taddr1 | 0x800];
+            y1 = __TMEM[taddr1 | 0x800];
             u1 = c1 >> 8;
             v1 = c1 & 0xff;
-            y2 = TMEM[taddr2 | 0x800];
+            y2 = __TMEM[taddr2 | 0x800];
             u2 = c2 >> 8;
             v2 = c2 & 0xff;
-            y3 = TMEM[taddr3 | 0x800];
+            y3 = __TMEM[taddr3 | 0x800];
             u3 = c3 >> 8;
             v3 = c3 & 0xff;
 
@@ -2094,21 +2094,21 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             ands = s0 & 1;
-            p = TMEM[taddr0];
+            p = __TMEM[taddr0];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color0->r = color0->g = color0->b = color0->a = p;
-            p = TMEM[taddr2];
+            p = __TMEM[taddr2];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color2->r = color2->g = color2->b = color2->a = p;
 
             ands = s1 & 1;
-            p = TMEM[taddr1];
+            p = __TMEM[taddr1];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color1->r = color1->g = color1->b = color1->a = p;
-            p = TMEM[taddr3];
+            p = __TMEM[taddr3];
             p = (ands) ? (p & 0xf) : (p >> 4);
             p = (tpal << 4) | p;
             color3->r = color3->g = color3->b = color3->a = p;
@@ -2133,22 +2133,22 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr1 &= 0xfff;
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
-            p = TMEM[taddr0];
+            p = __TMEM[taddr0];
             color0->r = p;
             color0->g = p;
             color0->b = p;
             color0->a = p;
-            p = TMEM[taddr2];
+            p = __TMEM[taddr2];
             color2->r = p;
             color2->g = p;
             color2->b = p;
             color2->a = p;
-            p = TMEM[taddr1];
+            p = __TMEM[taddr1];
             color1->r = p;
             color1->g = p;
             color1->b = p;
             color1->a = p;
-            p = TMEM[taddr3];
+            p = __TMEM[taddr3];
             color3->r = p;
             color3->g = p;
             color3->b = p;
@@ -2254,7 +2254,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             ands = s0 & 1;
-            p = TMEM[taddr0];
+            p = __TMEM[taddr0];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -2262,7 +2262,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             color0->g = i;
             color0->b = i;
             color0->a = (p & 0x1) ? 0xff : 0;
-            p = TMEM[taddr2];
+            p = __TMEM[taddr2];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -2272,7 +2272,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             color2->a = (p & 0x1) ? 0xff : 0;
 
             ands = s1 & 1;
-            p = TMEM[taddr1];
+            p = __TMEM[taddr1];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -2280,7 +2280,7 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             color1->g = i;
             color1->b = i;
             color1->a = (p & 0x1) ? 0xff : 0;
-            p = TMEM[taddr3];
+            p = __TMEM[taddr3];
             p = ands ? (p & 0xf) : (p >> 4);
             i = p & 0xe;
             i = (i << 4) | (i << 1) | (i >> 2);
@@ -2309,28 +2309,28 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr1 &= 0xfff;
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
-            p = TMEM[taddr0];
+            p = __TMEM[taddr0];
             i = p & 0xf0;
             i |= (i >> 4);
             color0->r = i;
             color0->g = i;
             color0->b = i;
             color0->a = ((p & 0xf) << 4) | (p & 0xf);
-            p = TMEM[taddr1];
+            p = __TMEM[taddr1];
             i = p & 0xf0;
             i |= (i >> 4);
             color1->r = i;
             color1->g = i;
             color1->b = i;
             color1->a = ((p & 0xf) << 4) | (p & 0xf);
-            p = TMEM[taddr2];
+            p = __TMEM[taddr2];
             i = p & 0xf0;
             i |= (i >> 4);
             color2->r = i;
             color2->g = i;
             color2->b = i;
             color2->a = ((p & 0xf) << 4) | (p & 0xf);
-            p = TMEM[taddr3];
+            p = __TMEM[taddr3];
             i = p & 0xf0;
             i |= (i >> 4);
             color3->r = i;
@@ -2430,21 +2430,21 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
             ands = s0 & 1;
-            p = TMEM[taddr0];
+            p = __TMEM[taddr0];
             c0 = ands ? (p & 0xf) : (p >> 4);
             c0 |= (c0 << 4);
             color0->r = color0->g = color0->b = color0->a = c0;
-            p = TMEM[taddr2];
+            p = __TMEM[taddr2];
             c2 = ands ? (p & 0xf) : (p >> 4);
             c2 |= (c2 << 4);
             color2->r = color2->g = color2->b = color2->a = c2;
 
             ands = s1 & 1;
-            p = TMEM[taddr1];
+            p = __TMEM[taddr1];
             c1 = ands ? (p & 0xf) : (p >> 4);
             c1 |= (c1 << 4);
             color1->r = color1->g = color1->b = color1->a = c1;
-            p = TMEM[taddr3];
+            p = __TMEM[taddr3];
             c3 = ands ? (p & 0xf) : (p >> 4);
             c3 |= (c3 << 4);
             color3->r = color3->g = color3->b = color3->a = c3;
@@ -2469,22 +2469,22 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
             taddr1 &= 0xfff;
             taddr2 &= 0xfff;
             taddr3 &= 0xfff;
-            p = TMEM[taddr0];
+            p = __TMEM[taddr0];
             color0->r = p;
             color0->g = p;
             color0->b = p;
             color0->a = p;
-            p = TMEM[taddr1];
+            p = __TMEM[taddr1];
             color1->r = p;
             color1->g = p;
             color1->b = p;
             color1->a = p;
-            p = TMEM[taddr2];
+            p = __TMEM[taddr2];
             color2->r = p;
             color2->g = p;
             color2->b = p;
             color2->a = p;
-            p = TMEM[taddr3];
+            p = __TMEM[taddr3];
             color3->r = p;
             color3->g = p;
             color3->b = p;
@@ -2581,7 +2581,7 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
     UINT32 tpal    = tile[tilenum].palette << 4;
     UINT32 xort = 0, ands = 0;
 
-    UINT16 *tc16 = (UINT16*)TMEM;
+    UINT16 *tc16 = (UINT16*)__TMEM;
     UINT32 taddr0 = 0, taddr1 = 0, taddr2 = 0, taddr3 = 0;
     UINT16 c0, c1, c2, c3;
 
@@ -2605,18 +2605,18 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             taddr3 ^= xort;
                                                             
             ands = s0 & 1;
-            c0 = TMEM[taddr0 & 0x7ff];
+            c0 = __TMEM[taddr0 & 0x7ff];
             c0 = (ands) ? (c0 & 0xf) : (c0 >> 4);
             c0 = tlut[((tpal | c0) << 2) ^ WORD_ADDR_XOR];
-            c2 = TMEM[taddr2 & 0x7ff];
+            c2 = __TMEM[taddr2 & 0x7ff];
             c2 = (ands) ? (c2 & 0xf) : (c2 >> 4);
             c2 = tlut[((tpal | c2) << 2) ^ WORD_ADDR_XOR];
 
             ands = s1 & 1;
-            c1 = TMEM[taddr1 & 0x7ff];
+            c1 = __TMEM[taddr1 & 0x7ff];
             c1 = (ands) ? (c1 & 0xf) : (c1 >> 4);
             c1 = tlut[((tpal | c1) << 2) ^ WORD_ADDR_XOR];
-            c3 = TMEM[taddr3 & 0x7ff];
+            c3 = __TMEM[taddr3 & 0x7ff];
             c3 = (ands) ? (c3 & 0xf) : (c3 >> 4);
             c3 = tlut[((tpal | c3) << 2) ^ WORD_ADDR_XOR];
         }
@@ -2635,18 +2635,18 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             taddr3 ^= xort;
                                                             
             ands = s0 & 1;
-            c0 = TMEM[taddr0 & 0x7ff];
+            c0 = __TMEM[taddr0 & 0x7ff];
             c0 = (ands) ? (c0 & 0xf) : (c0 >> 4);
             c0 = tlut[((tpal | c0) << 2) ^ WORD_ADDR_XOR];
-            c2 = TMEM[taddr2 & 0x7ff];
+            c2 = __TMEM[taddr2 & 0x7ff];
             c2 = (ands) ? (c2 & 0xf) : (c2 >> 4);
             c2 = tlut[((tpal | c2) << 2) ^ WORD_ADDR_XOR];
 
             ands = s1 & 1;
-            c1 = TMEM[taddr1 & 0x7ff];
+            c1 = __TMEM[taddr1 & 0x7ff];
             c1 = (ands) ? (c1 & 0xf) : (c1 >> 4);
             c1 = tlut[((tpal | c1) << 2) ^ WORD_ADDR_XOR];
-            c3 = TMEM[taddr3 & 0x7ff];
+            c3 = __TMEM[taddr3 & 0x7ff];
             c3 = (ands) ? (c3 & 0xf) : (c3 >> 4);
             c3 = tlut[((tpal | c3) << 2) ^ WORD_ADDR_XOR];
         }
@@ -2667,13 +2667,13 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             taddr2 ^= xort;
             taddr3 ^= xort;
             
-            c0 = TMEM[taddr0 & 0x7ff];
+            c0 = __TMEM[taddr0 & 0x7ff];
             c0 = tlut[(c0 << 2) ^ WORD_ADDR_XOR];
-            c2 = TMEM[taddr2 & 0x7ff];
+            c2 = __TMEM[taddr2 & 0x7ff];
             c2 = tlut[(c2 << 2) ^ WORD_ADDR_XOR];
-            c1 = TMEM[taddr1 & 0x7ff];
+            c1 = __TMEM[taddr1 & 0x7ff];
             c1 = tlut[(c1 << 2) ^ WORD_ADDR_XOR];
-            c3 = TMEM[taddr3 & 0x7ff];
+            c3 = __TMEM[taddr3 & 0x7ff];
             c3 = tlut[(c3 << 2) ^ WORD_ADDR_XOR];
         }
         break;
@@ -2715,13 +2715,13 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             taddr2 ^= xort;
             taddr3 ^= xort;
             
-            c0 = TMEM[taddr0 & 0x7ff];
+            c0 = __TMEM[taddr0 & 0x7ff];
             c0 = tlut[(c0 << 2) ^ WORD_ADDR_XOR];
-            c2 = TMEM[taddr2 & 0x7ff];
+            c2 = __TMEM[taddr2 & 0x7ff];
             c2 = tlut[(c2 << 2) ^ WORD_ADDR_XOR];
-            c1 = TMEM[taddr1 & 0x7ff];
+            c1 = __TMEM[taddr1 & 0x7ff];
             c1 = tlut[(c1 << 2) ^ WORD_ADDR_XOR];
-            c3 = TMEM[taddr3 & 0x7ff];
+            c3 = __TMEM[taddr3 & 0x7ff];
             c3 = tlut[(c3 << 2) ^ WORD_ADDR_XOR];
         }
         break;
@@ -2763,13 +2763,13 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color
             taddr2 ^= xort;
             taddr3 ^= xort;
             
-            c0 = TMEM[taddr0 & 0x7ff];
+            c0 = __TMEM[taddr0 & 0x7ff];
             c0 = tlut[(c0 << 2) ^ WORD_ADDR_XOR];
-            c2 = TMEM[taddr2 & 0x7ff];
+            c2 = __TMEM[taddr2 & 0x7ff];
             c2 = tlut[(c2 << 2) ^ WORD_ADDR_XOR];
-            c1 = TMEM[taddr1 & 0x7ff];
+            c1 = __TMEM[taddr1 & 0x7ff];
             c1 = tlut[(c1 << 2) ^ WORD_ADDR_XOR];
-            c3 = TMEM[taddr3 & 0x7ff];
+            c3 = __TMEM[taddr3 & 0x7ff];
             c3 = tlut[(c3 << 2) ^ WORD_ADDR_XOR];
         }
         break;
@@ -2939,7 +2939,7 @@ void read_tmem_copy(int s, int s1, int s2, int s3, int t, UINT32 tilenum, UINT32
     lowbits[4] = tidx_dlow & 0xf;
     lowbits[5] = tidx_dhi & 0xf;
 
-    tmem16 = (UINT16 *)TMEM;
+    tmem16 = (UINT16 *)__TMEM;
 
     tidx_a >>= 2;
     tidx_blow >>= 2;
@@ -4824,7 +4824,7 @@ NOINLINE void loading_pipeline(
 
     UINT32 tmemidx0 = 0, tmemidx1 = 0, tmemidx2 = 0, tmemidx3 = 0;
     int dswap = 0;
-    UINT16* tmem16 = (UINT16*)TMEM;
+    UINT16* tmem16 = (UINT16*)__TMEM;
     UINT32 readval0, readval1, readval2, readval3;
     UINT32 readidx32;
     UINT64 loadqword;

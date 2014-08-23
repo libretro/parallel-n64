@@ -346,8 +346,8 @@ static void tex_rect(void)
     i32 d_stwz_dxh[4];
     i32 xleft, xright;
     u8 xfrac;
-    const i32 clipxlshift = clip.xl << 1;
-    const i32 clipxhshift = clip.xh << 1;
+    const i32 clipxlshift = __clip.xl << 1;
+    const i32 clipxhshift = __clip.xh << 1;
 
     xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
     yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
@@ -407,7 +407,7 @@ static void tex_rect(void)
         d_stwz_dxh[0] = (d_stwz_dx[0] >> 8) & ~0x00000001;
 
     invaly = 1;
-    yllimit = (yl < clip.yl) ? yl : clip.yl;
+    yllimit = (yl < __clip.yl) ? yl : __clip.yl;
 
     ycur = yh & ~3;
     ylfar = yllimit | 3;
@@ -416,7 +416,7 @@ static void tex_rect(void)
     else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
         span[(yllimit >> 2) + 1].validline = 0;
 
-    yhlimit = (yh >= clip.yh) ? yh : clip.yh;
+    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
 
     xleft = xl & ~0x00000001;
     xright = xh & ~0x00000001;
@@ -540,8 +540,8 @@ static void tex_rect_flip(void)
     i32 d_stwz_dxh[4];
     i32 xleft, xright;
     u8 xfrac;
-    const i32 clipxlshift = clip.xl << 1;
-    const i32 clipxhshift = clip.xh << 1;
+    const i32 clipxlshift = __clip.xl << 1;
+    const i32 clipxhshift = __clip.xh << 1;
 
     xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
     yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
@@ -608,7 +608,7 @@ static void tex_rect_flip(void)
         d_stwz_dxh[0] = (d_stwz_dx[0] >> 8) & ~0x00000001;
 
     invaly = 1;
-    yllimit = (yl < clip.yl) ? yl : clip.yl;
+    yllimit = (yl < __clip.yl) ? yl : __clip.yl;
 
     ycur = yh & ~3;
     ylfar = yllimit | 3;
@@ -617,7 +617,7 @@ static void tex_rect_flip(void)
     else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
         span[(yllimit >> 2) + 1].validline = 0;
 
-    yhlimit = (yh >= clip.yh) ? yh : clip.yh;
+    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
 
     xleft = xl & ~0x00000001;
     xright = xh & ~0x00000001;
@@ -775,12 +775,12 @@ static void set_convert(void)
 
 static void set_scissor(void)
 {
-    clip.xh   = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> (44 - 32);
-    clip.yh   = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >> (32 - 32);
+    __clip.xh   = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> (44 - 32);
+    __clip.yh   = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >> (32 - 32);
     scfield   = (cmd_data[cmd_cur + 0].UW32[1] & 0x02000000) >> (25 -  0);
     sckeepodd = (cmd_data[cmd_cur + 0].UW32[1] & 0x01000000) >> (24 -  0);
-    clip.xl   = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> (12 -  0);
-    clip.yl   = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >> ( 0 -  0);
+    __clip.xl   = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> (12 -  0);
+    __clip.yl   = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >> ( 0 -  0);
     return;
 }
 
@@ -959,8 +959,8 @@ static void fill_rect(void)
     int allover, allunder, curover, curunder;
     int allinval;
     register int j, k;
-    const i32 clipxlshift = clip.xl << 1;
-    const i32 clipxhshift = clip.xh << 1;
+    const i32 clipxlshift = __clip.xl << 1;
+    const i32 clipxhshift = __clip.xh << 1;
 
     xl = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> (44 - 32);
     yl = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >> (32 - 32);
@@ -990,7 +990,7 @@ static void fill_rect(void)
     spans_dzpix = normalize_dzpix(0);
 
     invaly = 1;
-    yllimit = (yl < clip.yl) ? yl : clip.yl;
+    yllimit = (yl < __clip.yl) ? yl : __clip.yl;
 
     ycur = yh & ~3;
     ylfar = yllimit | 3;
@@ -998,7 +998,7 @@ static void fill_rect(void)
         ylfar += 4;
     else if (yllimit >> 2 >= 0 && yllimit>>2 < 1023)
         span[(yllimit >> 2) + 1].validline = 0;
-    yhlimit = (yh >= clip.yh) ? yh : clip.yh;
+    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
 
     allover = 1;
     allunder = 1;
@@ -1261,8 +1261,8 @@ static NOINLINE void draw_triangle(int shade, int texture, int zbuffer)
     int allover, allunder, curover, curunder;
     int allinval;
     register int j, k;
-    const i32 clipxlshift = clip.xl << 1;
-    const i32 clipxhshift = clip.xh << 1;
+    const i32 clipxlshift = __clip.xl << 1;
+    const i32 clipxhshift = __clip.xh << 1;
 
     base = cmd_cur + 0;
     setzero_si64(rgba_int);
@@ -1628,7 +1628,7 @@ no_read_zbuffer_coefficients:
 
     ldflag = (sign_dxhdy ^ flip) ? 0 : 3;
     invaly = 1;
-    yllimit = (yl - clip.yl < 0) ? yl : clip.yl; /* clip.yl always &= 0xFFF */
+    yllimit = (yl - __clip.yl < 0) ? yl : __clip.yl; /* clip.yl always &= 0xFFF */
 
     ycur = yh & ~3;
     ylfar = yllimit | 3;
@@ -1637,7 +1637,7 @@ no_read_zbuffer_coefficients:
     else if (yllimit >> 2 >= 0 && yllimit >> 2 < 1023)
         span[(yllimit >> 2) + 1].validline = 0;
 
-    yhlimit = (yh - clip.yh >= 0) ? yh : clip.yh; /* clip.yh always &= 0xFFF */
+    yhlimit = (yh - __clip.yh >= 0) ? yh : __clip.yh; /* clip.yh always &= 0xFFF */
 
     xlr_inc[0] = (DxMDy >> 2) & ~0x00000001;
     xlr_inc[1] = (DxHDy >> 2) & ~0x00000001;

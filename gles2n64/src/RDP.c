@@ -215,11 +215,11 @@ void RDP_LoadSync( u32 w0, u32 w1 )
 void RDP_TexRectFlip( u32 w0, u32 w1 )
 {
 	u32 w2, w3;
-    w2 = *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi] + 4];
-    RSP.PC[RSP.PCi] += 8;
+    w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+    __RSP.PC[__RSP.PCi] += 8;
 
-    w3 = *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi] + 4];
-    RSP.PC[RSP.PCi] += 8;
+    w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+    __RSP.PC[__RSP.PCi] += 8;
 
     gDPTextureRectangleFlip( _FIXED2FLOAT( _SHIFTR( w1, 12, 12 ), 2 ),          // ulx
                              _FIXED2FLOAT( _SHIFTR( w1,  0, 12 ), 2 ),          // uly
@@ -235,11 +235,11 @@ void RDP_TexRectFlip( u32 w0, u32 w1 )
 void RDP_TexRect( u32 w0, u32 w1 )
 {
 	u32 w2, w3;
-    w2 = *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi] + 4];
-    RSP.PC[RSP.PCi] += 8;
+    w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+    __RSP.PC[__RSP.PCi] += 8;
 
-    w3 = *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi] + 4];
-    RSP.PC[RSP.PCi] += 8;
+    w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+    __RSP.PC[__RSP.PCi] += 8;
 
     gDPTextureRectangle( _FIXED2FLOAT( _SHIFTR( w1, 12, 12 ), 2 ),          // ulx
                          _FIXED2FLOAT( _SHIFTR( w1,  0, 12 ), 2 ),          // uly
