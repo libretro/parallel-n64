@@ -22,7 +22,7 @@
 
 /* this header file is for system-dependent #defines, #includes, and typedefs */
 
-#if !defined(OSAL_PREPROC_H)
+#ifndef OSAL_PREPROC_H
 #define OSAL_PREPROC_H
 
 #define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)));
@@ -34,8 +34,6 @@ typedef struct
    int right;
    int left;
 } M64P_RECT;
-
-#define __cdecl
 
 #ifndef FALSE
 #define FALSE 0

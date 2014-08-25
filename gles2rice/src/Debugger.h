@@ -93,7 +93,7 @@ enum {
 };
 
 void DebuggerPause();
-void __cdecl DebuggerAppendMsg(const char * Message, ...);
+void DebuggerAppendMsg(const char * Message, ...);
 void DumpHex(uint32 rdramAddr, int count);
 
 void DumpMatrix(const Matrix &mtx, const char* prompt);
@@ -165,7 +165,7 @@ void RDP_NOIMPL_Real(const char* op,uint32,uint32) ;
 #define DEBUGGER_PAUSE_COUNT_N_WITHOUT_UPDATE(op)
 #define DEBUGGER_PAUSE_AND_DUMP_NO_UPDATE(op,dumpfuc)
 #define RSP_RDP_NOIMPL(a,b,c)
-void __cdecl DebuggerAppendMsg(const char * Message, ...);
+void DebuggerAppendMsg(const char * Message, ...);
 #define DumpHex(rdramAddr, count)   
 #define DEBUGGER_IF_DUMP(cond, dumpfunc)
 #define TXTRBUF_DUMP(dumpfunc)

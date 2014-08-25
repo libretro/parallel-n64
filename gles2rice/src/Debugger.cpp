@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "typedefs.h"
 
 #ifndef DEBUGGER
-void __cdecl DebuggerAppendMsg(const char * Message, ...) {}
+void DebuggerAppendMsg(const char * Message, ...) {}
 
 #else
 
@@ -564,7 +564,7 @@ void SetLogToFile(bool log)
 }
 
 
-void __cdecl DebuggerAppendMsg(const char * Message, ...)
+void DebuggerAppendMsg(const char * Message, ...)
 {
     if( !logToScreen && !logToFile )
         return;
@@ -604,7 +604,7 @@ void DebuggerPause()
     }
 }
 
-void __cdecl LOG_UCODE(const char* szFormat, ...)
+void LOG_UCODE(const char* szFormat, ...)
 {
     if( logUcodes)
     {
