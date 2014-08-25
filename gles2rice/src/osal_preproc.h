@@ -43,6 +43,4 @@ typedef struct
 #define TRUE 1
 #endif
 
-#define BI_RGB 0
-
 #endif // OSAL_PREPROC_H
