@@ -29,6 +29,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #endif
 
 #include <string.h>
+#ifndef _MSC_VER
+#include <strings.h>
+#endif
 
 #include "typedefs.h"
 #include "Texture.h"

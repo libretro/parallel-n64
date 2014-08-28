@@ -353,7 +353,11 @@ OBJECTS    += $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
 CXXFLAGS   +=  $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 CFLAGS     +=  $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 
-LDFLAGS    += -lm $(fpic)
+ifeq ($(findstring Haiku,$(UNAME)),)
+   LDFLAGS += -lm
+endif
+
+LDFLAGS    += $(fpic)
 
 all: $(TARGET)
 
