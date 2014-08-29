@@ -46,7 +46,7 @@
 #ifndef GLIDE64_CRC32_H
 #define GLIDE64_CRC32_H
 
-void CRC_BuildTable(void);
+void CRC_Glide64_BuildTable(void);
 unsigned int CRC32( unsigned int crc, void *buffer, unsigned int count );
 
 #endif

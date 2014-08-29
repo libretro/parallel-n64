@@ -1,20 +1,11 @@
 #include "Types.h"
-
-#include "CRC.h" // __LIBRETRO__: Allow it to rename symbols
-
-#define CRC32_POLYNOMIAL     0x04C11DB7
-
-#ifdef __CRC_OPT
-unsigned int CRCTable[ 256 * 4];
-#else
+#define CRC32_POLYNOMIAL 0x04C11DB7
 unsigned int CRCTable[ 256 ];
-#endif
 
-u32 Reflect( u32 ref, char ch )
+uint32_t Reflect(uint32_t ref, char ch )
 {
    int i;
-   u32 value = 0;
-
+   uint32_t value = 0;
    // Swap bit 0 for bit 7
    // bit 1 for bit 6, etc.
    for (i = 1; i < (ch + 1); i++)
@@ -26,71 +17,59 @@ u32 Reflect( u32 ref, char ch )
    return value;
 }
 
-void CRC_BuildTable()
+void CRC_BuildTable(void)
 {
-   u32 crc;
    int i, j;
+   uint32_t crc;
 
    for (i = 0; i < 256; i++)
    {
       crc = Reflect( i, 8 ) << 24;
       for (j = 0; j < 8; j++)
          crc = (crc << 1) ^ (crc & (1 << 31) ? CRC32_POLYNOMIAL : 0);
-
       CRCTable[i] = Reflect( crc, 32 );
    }
-
-#ifdef __CRC_OPT
-   for (i = 0; i < 256; i++)
-   {
-      for(j = 0; j < 3; j++)
-      {
-         CRCTable[256*(j+1) + i] = (CRCTable[256*j + i]>>8) ^ CRCTable[CRCTable[256*j + i]&0xFF];
-      }
-   }
-#endif
-
 }
 
-u32 CRC_Calculate( u32 crc, void *buffer, u32 count )
+uint32_t CRC_Calculate(void *buffer, uint32_t count)
 {
-   u8 *p;
-   u32 orig = crc;
-
-   p = (u8*) buffer;
-
-#ifdef __CRC_OPT
-   while(count > 3)
-   {
-      crc ^= *(unsigned int*) p; p += 4;
-      crc = CRCTable[3*256 + (crc&0xFF)]
-         ^ CRCTable[2*256 + ((crc>>8)&0xFF)]
-         ^ CRCTable[1*256 + ((crc>>16)&0xFF)]
-         ^ CRCTable[0*256 + ((crc>>24))];
-
-      count -= 4;
-   }
-#endif
-
+   uint8_t *p;
+   uint32_t crc = 0xffffffff;
+   p = (uint8_t*) buffer;
    while (count--)
       crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
-
-   return crc ^ orig;
+   return ~crc;
 }
 
-u32 CRC_CalculatePalette( u32 crc, void *buffer, u32 count )
+uint32_t Hash_CalculatePalette(void *buffer, uint32_t count)
 {
-   u8 *p;
-   u32 orig = crc;
-
-   p = (u8*) buffer;
-   while (count--)
-   {
-      crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
-      crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
-
-      p += 6;
+   unsigned int i;
+   uint16_t *data = (uint16_t *) buffer;
+   uint32_t hash = 0xffffffff;
+   count /= 4;
+   for(i = 0; i < count; ++i) {
+      hash += data[i << 2];
+      hash += (hash << 10);
+      hash ^= (hash >> 6);
    }
+   hash += (hash << 3);
+   hash ^= (hash >> 11);
+   hash += (hash << 15);
+   return hash;
+}
 
-   return crc ^ orig;
+uint32_t Hash_Calculate(uint32_t hash, void *buffer, uint32_t count)
+{
+   unsigned int i;
+   uint32_t *data = (uint32_t *) buffer;
+   count /= 4;
+   for(i = 0; i < count; ++i) {
+      hash += data[i];
+      hash += (hash << 10);
+      hash ^= (hash >> 6);
+   }
+   hash += (hash << 3);
+   hash ^= (hash >> 11);
+   hash += (hash << 15);
+   return hash;
 }

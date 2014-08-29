@@ -49,7 +49,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-void CRC_BuildTable(void)
+void CRC_Glide64_BuildTable(void)
 {
 }
 

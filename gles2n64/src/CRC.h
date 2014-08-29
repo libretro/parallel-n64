@@ -4,16 +4,11 @@
 extern "C" {
 #endif
 
-#ifdef __LIBRETRO__ // Prefix symbols
-#define Reflect gln64Reflect
-#define CRC_BuildTable gln64CRCBuildTable
-#define CRCTable gln64CRCTable
-#endif
-
 void CRC_BuildTable(void);
 
-u32 CRC_Calculate( u32 crc, void *buffer, u32 count );
-u32 CRC_CalculatePalette( u32 crc, void *buffer, u32 count );
+uint32_t CRC_Calculate(void *buffer, uint32_t count);
+uint32_t Hash_CalculatePalette(void *buffer, uint32_t count);
+uint32_t Hash_Calculate(uint32_t hash, void *buffer, uint32_t count);
 
 #ifdef __cplusplus
 }
