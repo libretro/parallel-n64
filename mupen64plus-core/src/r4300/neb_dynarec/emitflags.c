@@ -60,8 +60,7 @@
 #if defined(ARCH_HAS_LOAD32_REG_FROM_MEM_IMMADDR) \
  || (defined(ARCH_HAS_SET_REG_IMMADDR) \
   && (defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG) \
-   || defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG_OFF16S) \
-   || defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG_OFF32S)))
+   || defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG_OFF16S)))
 #  define CAN_LOAD32 true
 #else
 #  define CAN_LOAD32 false
