@@ -100,6 +100,11 @@ bool arch_emit_code(uint8_t* start, uint32_t avail,
 				end = output_mov_imm64_to_r64(end, &avail, insn->operands[1].value.addr, v2n_int(insn->operands[0].value.reg));
 				break;
 
+			case ARCH_OP_SIGN_EXTEND_REG32_TO_SELF64:
+				FAIL_IF(avail < 3);
+				end = output_movsx_r32_to_r64(end, &avail, insn->operands[0].value.reg, v2n_int(insn->operands[0].value.reg));
+				break;
+
 			case ARCH_OP_LOAD32_REG_FROM_MEM_REG:
 				FAIL_IF(avail < 4);
 				end = output_mov_mem_at_r64_to_r32(end, &avail, v2n_int(insn->operands[1].value.reg), v2n_int(insn->operands[0].value.reg));

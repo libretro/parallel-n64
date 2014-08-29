@@ -140,6 +140,22 @@ static osal_inline uint8_t* output_mov_imm64_to_r64(uint8_t* dst, uint32_t* avai
 	return output_qword(dst, avail, imm);
 }
 
+// register64 = (int64_t) (int32_t) register32
+// use E* and R*D register names for 'src_reg'
+// and R* register names for 'dst_reg' for easier identification
+/* EMITS: 3 bytes */
+static osal_inline uint8_t* output_movsx_r32_to_r64(uint8_t* dst, uint32_t* avail, uint_fast8_t src_reg, uint_fast8_t dst_reg)
+{
+	CHECK_REG(src_reg);
+	CHECK_REG(dst_reg);
+	// the prefix is either 0x48, 0x49, 0x4C or 0x4D;
+	// +1 is for the source register being among the 8 upper ones;
+	// +4 is for the destination register being among the 8 upper ones
+	dst = output_byte(dst, avail, 0x48 | ((dst_reg & 0x8) >> 3) | ((src_reg & 0x8) >> 1));
+	dst = output_byte(dst, avail, 0x63);
+	return output_byte(dst, avail, 0xC0 | ((src_reg & 0x7) << 3) | (dst_reg & 0x7));
+}
+
 // *(uint64_t*) dst_ptr_reg = src_reg
 // use R* register names for easier identification
 /* EMITS: 3..4 bytes */
