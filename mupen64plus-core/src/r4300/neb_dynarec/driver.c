@@ -1254,6 +1254,9 @@ static uint32_t get_range_end(const uint32_t* source, const uint32_t start, prec
 
 	insns[start].runtime = &page->block[start];
 	parse_n64_insn(source[start], page->start + start * 4, &insns[start]);
+	simplify_n64_insn(&insns[start]);
+	post_parse_n64_insns(&insns[start], 1, page->start, page->end);
+	fill_emit_flags(&insns[start]);
 	// It is not possible to create a block starting at the first instruction
 	// of a memory page, because that first instruction may be the delay slot
 	// of a branch ending the previous page. Making a block of multiple
@@ -1263,14 +1266,23 @@ static uint32_t get_range_end(const uint32_t* source, const uint32_t start, prec
 	// or jump ending the previous page, so we go ahead in that case.
 	if (start == 0 && !(insns[start].branch_flags & BRANCH_N64))
 	{
-#  ifdef ND_SHOW_INTERPRETATION
-		printf("Cannot compile the following block, at the start of a page\n");
+		if (insns[start].emit_flags & INSTRUCTION_HAS_EMITTERS)
+		{
+#  ifdef ND_SHOW_COMPILATION
+			printf("Compiling one instruction at the start of a page\n");
 #  endif
-		return start;
+			return start + 1;
+		}
+		else
+		{
+#  ifdef ND_SHOW_INTERPRETATION
+			printf("Cannot compile the following block at the start of a page\n");
+#  endif
+			return start;
+		}
 	}
 	else if (start > 0)
 	{
-		simplify_n64_insn(&insns[start]);
 		// If the instruction preceding the requested start of the block is a
 		// branch or a jump with a delay slot, we are compiling a block for
 		// this delay slot right now. The interpreter function for that branch
