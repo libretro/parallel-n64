@@ -28,6 +28,7 @@ LOCAL_ARM_NEON := true
 LOCAL_SRC_FILES += $(LIBRETRODIR)/sinc_neon.S $(LIBRETRODIR)/utils_neon.S
 LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/3DMathNeon.c
 LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/gSPNeon.c
+LOCAL_SRC_FILES += $(VIDEODIR_RICE)/RenderBase_neon.S
 endif
 endif
 
@@ -79,7 +80,6 @@ LOCAL_SRC_FILES += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/OGLRender.cpp \
             $(VIDEODIR_RICE)/OGLRenderExt.cpp \
             $(VIDEODIR_RICE)/OGLTexture.cpp \
-            $(VIDEODIR_RICE)/osal_files_unix.c \
             $(VIDEODIR_RICE)/RenderBase.cpp \
             $(VIDEODIR_RICE)/Render.cpp \
             $(VIDEODIR_RICE)/RenderExt.cpp \
@@ -161,6 +161,7 @@ LOCAL_SRC_FILES += \
     $(COREDIR)/src/main/eventloop.c \
     $(COREDIR)/src/main/cheat.c \
     $(COREDIR)/src/main/main.c \
+    $(COREDIR)/src/main/profile.c \
     $(COREDIR)/src/main/md5.c \
     $(COREDIR)/src/main/rom.c \
     $(COREDIR)/src/main/savestates.c \

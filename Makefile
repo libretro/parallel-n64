@@ -223,6 +223,7 @@ CFILES += \
     $(COREDIR)/src/main/cheat.c \
     $(COREDIR)/src/main/eventloop.c \
     $(COREDIR)/src/main/main.c \
+    $(COREDIR)/src/main/profile.c \
     $(COREDIR)/src/main/md5.c \
     $(COREDIR)/src/main/rom.c \
     $(COREDIR)/src/main/savestates.c \
@@ -250,6 +251,8 @@ CFILES += \
 #   $(COREDIR)/src/main/ini_reader.c \
 #   
 
+CPUFLAGS :=
+
 ### DYNAREC ###
 ifdef WITH_DYNAREC
    DYNAFLAGS += -DDYNAREC
@@ -264,11 +267,26 @@ ifdef WITH_DYNAREC
          $(COREDIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).o
 
    else
-	   CPUFLAGS := -msse -msse2
+	   CPUFLAGS += -msse -msse2
+		NEB_DYNAREC := 1
       CFILES += $(wildcard $(COREDIR)/src/r4300/$(WITH_DYNAREC)/*.c)
    endif
 else
    CFILES += $(COREDIR)/src/r4300/empty_dynarec.c
+endif
+
+ifeq ($(NEB_DYNAREC),1)
+NEB_DYNADIR := $(COREDIR)/src/r4300/neb_dynarec
+CFILES += $(NEB_DYNADIR)/driver.c \
+			 $(NEB_DYNADIR)/emitflags.c \
+			 $(NEB_DYNADIR)/n64ops.c
+
+ifeq ($(WITH_DYNAREC), x86_64)
+CPUFLAGS += -DNEB_DYNAREC=10
+NEB_X64_DIR := $(NEB_DYNADIR)/amd64
+CFILES += $(NEB_X64_DIR)/functions.c
+endif
+
 endif
 
 ### VIDEO PLUGINS ###

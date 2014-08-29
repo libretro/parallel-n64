@@ -29,6 +29,48 @@
 #include "recomph.h"
 #include "tlb.h"
 
+static void exception_common(void)
+{
+   if(delay_slot==1 || delay_slot==3)
+   {
+      g_cp0_regs[CP0_CAUSE_REG] |= 0x80000000;
+      g_cp0_regs[CP0_EPC_REG] -= 4;
+   }
+   else
+   {
+      g_cp0_regs[CP0_CAUSE_REG] &= 0x7FFFFFFF;
+   }
+   last_addr = PC->addr;
+   if (r4300emu == CORE_DYNAREC)
+   {
+      dyna_jump();
+      if (!dyna_interp) delay_slot = 0;
+   }
+   if (r4300emu != CORE_DYNAREC || dyna_interp)
+   {
+      dyna_interp = 0;
+      if (delay_slot)
+      {
+         skip_jump = PC->addr;
+#ifdef NEB_DYNAREC
+         if (r4300emu == CORE_NEB_DYNAREC)
+         {
+            // The Neb Dynarec does not require a pseudo-interrupt to
+            // enter the exception handler. But it does need this:
+            delay_slot = 0;
+         }
+         else
+         {
+#endif
+            // The interpreters and the Old Dynarec need this.
+            next_interupt = 0;
+#ifdef NEB_DYNAREC
+         }
+#endif
+      }
+   }
+}
+
 void TLB_refill_exception(unsigned int address, int w)
 {
    int usual_handler = 0, i;
@@ -81,34 +123,9 @@ void TLB_refill_exception(unsigned int address, int w)
          generic_jump_to(0x80000000);
       }
    }
-   if(delay_slot==1 || delay_slot==3)
-   {
-      g_cp0_regs[CP0_CAUSE_REG] |= 0x80000000;
-      g_cp0_regs[CP0_EPC_REG] -=4;
-   }
-   else
-   {
-      g_cp0_regs[CP0_CAUSE_REG] &= 0x7FFFFFFF;
-   }
    if(w != 2) g_cp0_regs[CP0_EPC_REG] -= 4;
 
-   last_addr = PC->addr;
-
-   if (r4300emu == CORE_DYNAREC) 
-   {
-      dyna_jump();
-      if (!dyna_interp) delay_slot = 0;
-   }
-
-   if (r4300emu != CORE_DYNAREC || dyna_interp)
-   {
-      dyna_interp = 0;
-      if (delay_slot)
-      {
-         skip_jump = PC->addr;
-         next_interupt = 0;
-      }
-   }
+   exception_common();
 }
 
 void exception_general(void)
@@ -118,30 +135,8 @@ void exception_general(void)
 
    g_cp0_regs[CP0_EPC_REG] = PC->addr;
 
-   if(delay_slot==1 || delay_slot==3)
-   {
-      g_cp0_regs[CP0_CAUSE_REG] |= 0x80000000;
-      g_cp0_regs[CP0_EPC_REG] -= 4;
-   }
-   else
-   {
-      g_cp0_regs[CP0_CAUSE_REG] &= 0x7FFFFFFF;
-   }
    generic_jump_to(0x80000180);
-   last_addr = PC->addr;
-   if (r4300emu == CORE_DYNAREC)
-   {
-      dyna_jump();
-      if (!dyna_interp) delay_slot = 0;
-   }
-   if (r4300emu != CORE_DYNAREC || dyna_interp)
-   {
-      dyna_interp = 0;
-      if (delay_slot)
-      {
-         skip_jump = PC->addr;
-         next_interupt = 0;
-      }
-   }
+
+   exception_common();
 }
 

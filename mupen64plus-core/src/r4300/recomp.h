@@ -33,6 +33,15 @@
   #include "x86/assemble_struct.h"
 #endif
 
+#if 0
+#ifdef NEB_DYNAREC
+typedef struct
+{
+   unsigned char need_map;
+} neb_reg_cache_struct;
+#endif
+#endif
+
 typedef struct _precomp_instr
 {
    void (*ops)(void);
