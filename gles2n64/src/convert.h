@@ -1,6 +1,8 @@
 #ifndef CONVERT_H
 #define CONVERT_H
 
+#include <byteswap.h>
+
 #include "Types.h"
 
 static const volatile unsigned char Five2Eight[32] =
@@ -108,6 +110,13 @@ static INLINE void UnswapCopy( void *src, void *dest, u32 numBytes )
    int i, numDWords, trailingBytes;
    // copy leading bytes
    int leadingBytes = ((intptr_t)src) & 3;
+
+   if (numBytes == 1)
+   {
+      *(u8 *)(dest) = *(u8 *)(src);
+      return;
+   }
+
    if (leadingBytes != 0)
    {
       leadingBytes = 4-leadingBytes;
@@ -129,9 +138,7 @@ static INLINE void UnswapCopy( void *src, void *dest, u32 numBytes )
    numDWords = numBytes >> 2;
    while (numDWords--)
    {
-      u32 dword = *(u32 *)src;
-      dword = ((dword<<24)|((dword<<8)&0x00FF0000)|((dword>>8)&0x0000FF00)|(dword>>24));
-      *(u32 *)dest = dword;
+      *(u32 *)dest = bswap_32( *(u32 *)src ); 
       dest = (void *)((intptr_t)dest+4);
       src  = (void *)((intptr_t)src +4);
    }

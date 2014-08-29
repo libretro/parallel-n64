@@ -22,6 +22,16 @@
 #define FORMAT_RGBA5551 4
 #define FORMAT_RGBA8888 5
 
+#ifdef __GNUC__
+# define likely(x) __builtin_expect((x),1)
+# define unlikely(x) __builtin_expect((x),0)
+# define prefetch(x, y) __builtin_prefetch((x),(y))
+#else
+# define likely(x) (x)
+# define unlikely(x) (x)
+# define prefetch(x, y)
+#endif
+
 TextureCache    cache;
 
 typedef u32 (*GetTexelFunc)( void *src, u16 x, u16 i, u8 palette );
@@ -956,7 +966,7 @@ void TextureCache_UpdateBackground(void)
 
 int _texture_compare(u32 t, CachedTexture *current, u32 crc,  u32 width, u32 height, u32 clampWidth, u32 clampHeight)
 {
-   if  ((current != NULL) &&
+   return  ((current != NULL) &&
          (current->crc == crc) &&
          (current->width == width) &&
          (current->height == height) &&
@@ -969,59 +979,51 @@ int _texture_compare(u32 t, CachedTexture *current, u32 crc,  u32 width, u32 hei
          (current->clampS == gSP.textureTile[t]->clamps) &&
          (current->clampT == gSP.textureTile[t]->clampt) &&
          (current->format == gSP.textureTile[t]->format) &&
-         (current->size == gSP.textureTile[t]->size))
-      return 1;
-   else
-      return 0;
+         (current->size == gSP.textureTile[t]->size));
 }
-
 
 void TextureCache_Update( u32 t )
 {
    CachedTexture *current;
-   TextureFormat texFormat;
-
    u32 crc, maxTexels;
    u32 tileWidth, maskWidth, loadWidth, lineWidth, clampWidth, height;
    u32 tileHeight, maskHeight, loadHeight, lineHeight, clampHeight, width;
-
+   u32 maskSize;
    if (gDP.textureMode == TEXTUREMODE_BGIMAGE)
    {
       TextureCache_UpdateBackground();
       return;
    }
 
+   TextureFormat texFormat;
    __texture_format(gSP.textureTile[t]->size, gSP.textureTile[t]->format, &texFormat);
-
    maxTexels = texFormat.maxTexels;
-
    // Here comes a bunch of code that just calculates the texture size...I wish there was an easier way...
    tileWidth = gSP.textureTile[t]->lrs - gSP.textureTile[t]->uls + 1;
    tileHeight = gSP.textureTile[t]->lrt - gSP.textureTile[t]->ult + 1;
-
    maskWidth = 1 << gSP.textureTile[t]->masks;
    maskHeight = 1 << gSP.textureTile[t]->maskt;
-
+   maskSize = 1 << (gSP.textureTile[t]->masks + gSP.textureTile[t]->maskt);
    loadWidth = gDP.loadTile->lrs - gDP.loadTile->uls + 1;
    loadHeight = gDP.loadTile->lrt - gDP.loadTile->ult + 1;
-
    lineWidth = gSP.textureTile[t]->line << texFormat.lineShift;
-
    if (lineWidth) // Don't allow division by zero
       lineHeight = min( maxTexels / lineWidth, tileHeight );
    else
       lineHeight = 0;
-
-   if (gDP.textureMode == TEXTUREMODE_TEXRECT)
-   {
+   if (likely(gSP.textureTile[t]->masks && (maskSize <= maxTexels))) {
+      width = maskWidth;
+   } else if (likely((tileWidth * tileHeight) <= maxTexels)) {
+      width = tileWidth;
+   } else if (likely(gDP.textureMode != TEXTUREMODE_TEXRECT)) {
+      if (gDP.loadType == LOADTYPE_TILE)
+         width = loadWidth;
+      else
+         width = lineWidth;
+   } else {
       u32 texRectWidth = gDP.texRect.width - gSP.textureTile[t]->uls;
       u32 texRectHeight = gDP.texRect.height - gSP.textureTile[t]->ult;
-
-      if (gSP.textureTile[t]->masks && ((maskWidth * maskHeight) <= maxTexels))
-         width = maskWidth;
-      else if ((tileWidth * tileHeight) <= maxTexels)
-         width = tileWidth;
-      else if ((tileWidth * texRectHeight) <= maxTexels)
+      if ((tileWidth * texRectHeight) <= maxTexels)
          width = tileWidth;
       else if ((texRectWidth * tileHeight) <= maxTexels)
          width = gDP.texRect.width;
@@ -1031,12 +1033,20 @@ void TextureCache_Update( u32 t )
          width = loadWidth;
       else
          width = lineWidth;
-
-      if (gSP.textureTile[t]->maskt && ((maskWidth * maskHeight) <= maxTexels))
-         height = maskHeight;
-      else if ((tileWidth * tileHeight) <= maxTexels)
-         height = tileHeight;
-      else if ((tileWidth * texRectHeight) <= maxTexels)
+   }
+   if (likely(gSP.textureTile[t]->maskt && (maskSize <= maxTexels))) {
+      height = maskHeight;
+   } else if (likely((tileWidth * tileHeight) <= maxTexels)) {
+      height = tileHeight;
+   } else if (likely(gDP.textureMode != TEXTUREMODE_TEXRECT)) {
+      if (gDP.loadType == LOADTYPE_TILE)
+         height = loadHeight;
+      else
+         height = lineHeight;
+   } else {
+      u32 texRectWidth = gDP.texRect.width - gSP.textureTile[t]->uls;
+      u32 texRectHeight = gDP.texRect.height - gSP.textureTile[t]->ult;
+      if ((tileWidth * texRectHeight) <= maxTexels)
          height = gDP.texRect.height;
       else if ((texRectWidth * tileHeight) <= maxTexels)
          height = tileHeight;
@@ -1047,89 +1057,65 @@ void TextureCache_Update( u32 t )
       else
          height = lineHeight;
    }
-   else
-   {
-      if (gSP.textureTile[t]->masks && ((maskWidth * maskHeight) <= maxTexels))
-         width = maskWidth;
-      else if ((tileWidth * tileHeight) <= maxTexels)
-         width = tileWidth;
-      else if (gDP.loadType == LOADTYPE_TILE)
-         width = loadWidth;
-      else
-         width = lineWidth;
-
-      if (gSP.textureTile[t]->maskt && ((maskWidth * maskHeight) <= maxTexels))
-         height = maskHeight;
-      else if ((tileWidth * tileHeight) <= maxTexels)
-         height = tileHeight;
-      else if (gDP.loadType == LOADTYPE_TILE)
-         height = loadHeight;
-      else
-         height = lineHeight;
-   }
-
    clampWidth = gSP.textureTile[t]->clamps ? tileWidth : width;
    clampHeight = gSP.textureTile[t]->clampt ? tileHeight : height;
-
    if (clampWidth > 256)
       gSP.textureTile[t]->clamps = 0;
    if (clampHeight > 256)
       gSP.textureTile[t]->clampt = 0;
-
    // Make sure masking is valid
    if (maskWidth > width)
    {
       gSP.textureTile[t]->masks = powof( width );
       maskWidth = 1 << gSP.textureTile[t]->masks;
    }
-
    if (maskHeight > height)
    {
       gSP.textureTile[t]->maskt = powof( height );
       maskHeight = 1 << gSP.textureTile[t]->maskt;
    }
-
    crc = TextureCache_CalculateCRC( t, width, height );
-
    //before we traverse cache, check to see if texture is already bound:
    if (_texture_compare(t, cache.current[t], crc, width, height, clampWidth, clampHeight))
    {
       cache.hits++;
       return;
    }
-
+#ifdef __HASHMAP_OPT
+   CachedTexture *tex = cache.hash.find(crc);
+   if (tex)
+   {
+      if (_texture_compare(t, tex, crc, width, height, clampWidth, clampHeight))
+      {
+         TextureCache_ActivateTexture( t, tex);
+         cache.hits++;
+         return;
+      }
+   }
+#endif
    current = cache.top;
    while (current)
    {
-      if  (_texture_compare(t, current, crc, width, height, clampWidth, clampHeight))
+      if (_texture_compare(t, current, crc, width, height, clampWidth, clampHeight))
       {
          TextureCache_ActivateTexture( t, current );
          cache.hits++;
          return;
       }
-
       current = current->lower;
    }
-
    cache.misses++;
-
    glActiveTexture( GL_TEXTURE0 + t);
-
    cache.current[t] = TextureCache_AddTop();
-
    if (cache.current[t] == NULL)
    {
       LOG(LOG_ERROR, "Texture Cache Failure\n");
    }
-
    glBindTexture( GL_TEXTURE_2D, cache.current[t]->glName );
-
    cache.current[t]->address = gDP.textureImage.address;
    cache.current[t]->crc = crc;
-
    cache.current[t]->format = gSP.textureTile[t]->format;
    cache.current[t]->size = gSP.textureTile[t]->size;
-
    cache.current[t]->width = width;
    cache.current[t]->height = height;
    cache.current[t]->clampWidth = clampWidth;
@@ -1144,26 +1130,20 @@ void TextureCache_Update( u32 t )
    cache.current[t]->line = gSP.textureTile[t]->line;
    cache.current[t]->tMem = gSP.textureTile[t]->tmem;
    cache.current[t]->lastDList = __RSP.DList;
-
-
    if (cache.current[t]->clampS)
       cache.current[t]->realWidth = (config.texture.pow2) ? pow2(clampWidth) : clampWidth;
    else if (cache.current[t]->mirrorS)
       cache.current[t]->realWidth = maskWidth << 1;
    else
       cache.current[t]->realWidth = (config.texture.pow2) ? pow2(width) : width;
-
    if (cache.current[t]->clampT)
       cache.current[t]->realHeight = (config.texture.pow2) ? pow2(clampHeight) : clampHeight;
    else if (cache.current[t]->mirrorT)
       cache.current[t]->realHeight = maskHeight << 1;
    else
       cache.current[t]->realHeight = (config.texture.pow2) ? pow2(height) : height;
-
-
    cache.current[t]->scaleS = 1.0f / (f32)(cache.current[t]->realWidth);
    cache.current[t]->scaleT = 1.0f / (f32)(cache.current[t]->realHeight);
-
    // Hack for Zelda Sun
    if ((config.hackZelda) && (gDP.combine.mux == 0x00262a60150c937fLL))
    {
@@ -1174,26 +1154,20 @@ void TextureCache_Update( u32 t )
          cache.current[t]->scaleT *= 0.5f;
       }
    }
-
    cache.current[t]->shiftScaleS = 1.0f;
    cache.current[t]->shiftScaleT = 1.0f;
-
-   cache.current[t]->offsetS = 0.5f;
-   cache.current[t]->offsetT = 0.5f;
-
+   cache.current[t]->offsetS = config.texture.sai2x ? 0.25f : 0.5f;
+   cache.current[t]->offsetT = config.texture.sai2x ? 0.25f : 0.5f;
    if (gSP.textureTile[t]->shifts > 10)
       cache.current[t]->shiftScaleS = (f32)(1 << (16 - gSP.textureTile[t]->shifts));
    else if (gSP.textureTile[t]->shifts > 0)
       cache.current[t]->shiftScaleS /= (f32)(1 << gSP.textureTile[t]->shifts);
-
    if (gSP.textureTile[t]->shiftt > 10)
       cache.current[t]->shiftScaleT = (f32)(1 << (16 - gSP.textureTile[t]->shiftt));
    else if (gSP.textureTile[t]->shiftt > 0)
       cache.current[t]->shiftScaleT /= (f32)(1 << gSP.textureTile[t]->shiftt);
-
    TextureCache_Load( cache.current[t] );
    TextureCache_ActivateTexture( t, cache.current[t] );
-
    cache.cachedBytes += cache.current[t]->textureBytes;
 }
 
