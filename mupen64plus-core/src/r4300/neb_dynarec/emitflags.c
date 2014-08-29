@@ -59,6 +59,90 @@
 
 #define CAN_EMIT_FUNCTIONS (CAN_ENTER_FRAME && CAN_EXIT_FRAME && CAN_SET_PC && CAN_RETURN)
 
+#if defined(ARCH_HAS_LOAD32_REG_FROM_MEM_IMMADDR) \
+ || (defined(ARCH_HAS_SET_REG_IMMADDR) \
+  && (defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG) \
+   || defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG_OFF16S) \
+   || defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG_OFF32S)))
+#  define CAN_LOAD32 true
+#else
+#  define CAN_LOAD32 false
+#endif
+
+#if defined(ARCH_HAS_SET_REG_IMM32U)
+#  define CAN_SET_IMM32 true
+#else
+#  define CAN_SET_IMM32 false
+#endif
+
+#if defined(ARCH_HAS_SET_REG_IMM64U)
+#  define CAN_SET_IMM64 true
+#else
+#  define CAN_SET_IMM64 false
+#endif
+
+#if defined(ARCH_HAS_LOAD64_REG_FROM_MEM_IMMADDR) \
+ || (defined(ARCH_HAS_SET_REG_IMMADDR) \
+  && (defined(ARCH_HAS_LOAD64_REG_FROM_MEM_REG) \
+   || defined(ARCH_HAS_LOAD64_REG_FROM_MEM_REG_OFF16S)))
+#  define CAN_LOAD64 true
+#else
+#  define CAN_LOAD64 false
+#endif
+
+#if defined(ARCH_HAS_STORE32_REG_AT_MEM_IMMADDR) \
+ || (defined(ARCH_HAS_SET_REG_IMMADDR) \
+  && (defined(ARCH_HAS_STORE32_REG_AT_MEM_REG) \
+   || defined(ARCH_HAS_STORE32_REG_AT_MEM_REG_OFF16S)))
+#  define CAN_STORE32 true
+#else
+#  define CAN_STORE32 false
+#endif
+
+#if defined(ARCH_HAS_STORE64_REG_AT_MEM_IMMADDR) \
+ || (defined(ARCH_HAS_SET_REG_IMMADDR) \
+  && (defined(ARCH_HAS_STORE64_REG_AT_MEM_REG) \
+   || defined(ARCH_HAS_STORE64_REG_AT_MEM_REG_OFF16S)))
+#  define CAN_STORE64 true
+#else
+#  define CAN_STORE64 false
+#endif
+
+#if (defined(ARCH_HAS_64BIT_REGS) \
+  && (defined(ARCH_HAS_SIGN_EXTEND_REG32_TO_SELF64) \
+   || ((defined(ARCH_HAS_SLL64_IMM8U_TO_REG) \
+     || defined(ARCH_HAS_SLL64_REG_IMM8U_TO_REG)) \
+    && (defined(ARCH_HAS_SRA64_IMM8U_TO_REG) \
+     || defined(ARCH_HAS_SRA64_REG_IMM8U_TO_REG))))) \
+ || (!defined(ARCH_HAS_64BIT_REGS) \
+  && (defined(ARCH_HAS_SRA32_IMM8U_TO_REG) \
+   || defined(ARCH_HAS_SRA32_REG_IMM8U_TO_REG)))
+#  define CAN_SIGN_EXTEND true
+#else
+#  define CAN_SIGN_EXTEND false
+#endif
+
+#if defined(ARCH_HAS_SLL32_IMM8U_TO_REG) \
+ || defined(ARCH_HAS_SLL32_REG_IMM8U_TO_REG)
+#  define CAN_SLL32 true
+#else
+#  define CAN_SLL32 false
+#endif
+
+#if defined(ARCH_HAS_SRL32_IMM8U_TO_REG) \
+ || defined(ARCH_HAS_SRL32_REG_IMM8U_TO_REG)
+#  define CAN_SRL32 true
+#else
+#  define CAN_SRL32 false
+#endif
+
+#if defined(ARCH_HAS_SRA32_IMM8U_TO_REG) \
+ || defined(ARCH_HAS_SRA32_REG_IMM8U_TO_REG)
+#  define CAN_SRA32 true
+#else
+#  define CAN_SRA32 false
+#endif
+
 void fill_emit_flags(n64_insn_t* insn)
 {
 	insn->emit_flags = 0;
@@ -74,8 +158,35 @@ void fill_emit_flags(n64_insn_t* insn)
 		case N64_OP_UNIMPLEMENTED:
 			break;
 		case N64_OP_SLL:
+			insn->emit_flags = INSTRUCTION_IGNORES_DELAY_SLOT;
+#if defined(ARCH_HAS_64BIT_REGS)
+			if (CAN_EMIT_FUNCTIONS && CAN_LOAD32 && CAN_SLL32 && CAN_SIGN_EXTEND && CAN_STORE64)
+				insn->emit_flags |= INSTRUCTION_HAS_EMITTERS;
+#else
+			if (CAN_EMIT_FUNCTIONS && CAN_LOAD32 && CAN_SLL32 && CAN_SIGN_EXTEND && CAN_STORE32)
+				insn->emit_flags |= INSTRUCTION_HAS_EMITTERS;
+#endif
+			break;
 		case N64_OP_SRL:
+			insn->emit_flags = INSTRUCTION_IGNORES_DELAY_SLOT;
+#if defined(ARCH_HAS_64BIT_REGS)
+			if (CAN_EMIT_FUNCTIONS && CAN_LOAD32 && CAN_SRL32 && CAN_SIGN_EXTEND && CAN_STORE64)
+				insn->emit_flags |= INSTRUCTION_HAS_EMITTERS;
+#else
+			if (CAN_EMIT_FUNCTIONS && CAN_LOAD32 && CAN_SRL32 && CAN_SIGN_EXTEND && CAN_STORE32)
+				insn->emit_flags |= INSTRUCTION_HAS_EMITTERS;
+#endif
+			break;
 		case N64_OP_SRA:
+			insn->emit_flags = INSTRUCTION_IGNORES_DELAY_SLOT;
+#if defined(ARCH_HAS_64BIT_REGS)
+			if (CAN_EMIT_FUNCTIONS && CAN_LOAD32 && CAN_SRA32 && CAN_SIGN_EXTEND && CAN_STORE64)
+				insn->emit_flags |= INSTRUCTION_HAS_EMITTERS;
+#else
+			if (CAN_EMIT_FUNCTIONS && CAN_LOAD32 && CAN_SRA32 && CAN_SIGN_EXTEND && CAN_STORE32)
+				insn->emit_flags |= INSTRUCTION_HAS_EMITTERS;
+#endif
+			break;
 		case N64_OP_DSLL:
 		case N64_OP_DSRL:
 		case N64_OP_DSRA:

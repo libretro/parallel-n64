@@ -44,6 +44,25 @@ enum il_opcode {
 	IL_OP_SET_PC,
 	/* Represents a return from a function to its caller. */
 	IL_OP_RETURN,
+
+	/* Represents a left shift of a 64-bit register's lower 32 bits.
+	 * Input value 1: The value that is to be shifted.
+	 * Output value 1: Th destination of the operation.
+	 * Argument: The number of bits to shift the input value. */
+	IL_OP_SLL32,
+	/* Represents a right logical shift of a 64-bit register's lower 32 bits.
+	 * (Upper bits are filled with 0.)
+	 * Input value 1: The value that is to be shifted.
+	 * Output value 1: Th destination of the operation.
+	 * Argument: The number of bits to shift the input value. */
+	IL_OP_SRL32,
+	/* Represents a right arithmetic shift of a 64-bit register's lower 32
+	 * bits.
+	 * (Upper bits are filled with copies of the original value's bit 31.)
+	 * Input value 1: The value that is to be shifted.
+	 * Output value 1: Th destination of the operation.
+	 * Argument: The number of bits to shift the input value. */
+	IL_OP_SRA32,
 };
 
 typedef enum il_opcode il_opcode_t;
@@ -97,7 +116,7 @@ struct il_insn {
 	size_t output_count; // Number of output values for this opcode.
 	size_t output_capacity; // Number of allocated entries in 'outputs' below.
 	il_value_number_t* outputs; // Value numbers in malloc'd space.
-	int64_t argument; // Argument to Set PC opcode.
+	int64_t argument; // Argument to Set PC and shift opcodes.
 	ssize_t target; // How many instructions away a jump goes to (0 = self).
 };
 
@@ -110,7 +129,7 @@ struct il_value {
 		int64_t _64;
 		struct {
 			uintptr_t base;
-			int32_t offset;
+			int16_t offset;
 		} addr;
 	} value; // If it's a constant, its value will be here.
 };
@@ -176,8 +195,20 @@ void il_insn_free(il_insn_t* insn);
 
 il_value_number_t il_value_add_const_int32(il_block_t* block, int32_t constant);
 il_value_number_t il_value_add_const_int64(il_block_t* block, int64_t constant);
+il_value_number_t il_value_add_read_int_lo32(il_block_t* block, void* addr, int16_t offset);
+il_value_number_t il_value_add_read_int_64(il_block_t* block, void* addr, int16_t offset);
+il_value_number_t il_value_add_read_int_32(il_block_t* block, void* addr, int16_t offset);
+il_value_number_t il_value_add_write_int_lo32(il_block_t* block, void* addr, int16_t offset);
+il_value_number_t il_value_add_write_int_64(il_block_t* block, void* addr, int16_t offset);
+il_value_number_t il_value_add_write_int_32(il_block_t* block, void* addr, int16_t offset);
 void il_value_set_const_int32(il_value_t* value, int32_t constant);
 void il_value_set_const_int64(il_value_t* value, int64_t constant);
+void il_value_set_read_int_lo32(il_value_t* value, void* addr, int16_t offset);
+void il_value_set_read_int_64(il_value_t* value, void* addr, int16_t offset);
+void il_value_set_read_int_32(il_value_t* value, void* addr, int16_t offset);
+void il_value_set_write_int_lo32(il_value_t* value, void* addr, int16_t offset);
+void il_value_set_write_int_64(il_value_t* value, void* addr, int16_t offset);
+void il_value_set_write_int_32(il_value_t* value, void* addr, int16_t offset);
 void il_value_delete(il_value_t* value);
 
 #endif /* !__NEB_DYNAREC_ILOPS_H__ */

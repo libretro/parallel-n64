@@ -144,15 +144,45 @@ bool arch_emit_code(uint8_t* start, uint32_t avail,
 				end = output_load_imm32(end, &avail, v2n_int(insn->operands[0].value.reg), insn->operands[1].value.addr);
 				break;
 
+			case ARCH_OP_LOAD32_REG_FROM_MEM_REG:
+				FAIL_IF(avail < 4);
+				end = output_lw(end, &avail, v2n_int(insn->operands[1].value.reg), 0, v2n_int(insn->operands[0].value.reg));
+				break;
+
+			case ARCH_OP_LOAD32_REG_FROM_MEM_REG_OFF16S:
+				FAIL_IF(avail < 4);
+				end = output_lw(end, &avail, v2n_int(insn->operands[1].value.reg), insn->operands[2].value._16s, v2n_int(insn->operands[0].value.reg));
+				break;
+
 			case ARCH_OP_STORE32_REG_AT_MEM_REG:
 				FAIL_IF(avail < 4);
 				end = output_sw(end, &avail, v2n_int(insn->operands[1].value.reg), 0, v2n_int(insn->operands[0].value.reg));
+				break;
+
+			case ARCH_OP_STORE32_REG_AT_MEM_REG_OFF16S:
+				FAIL_IF(avail < 4);
+				end = output_sw(end, &avail, v2n_int(insn->operands[1].value.reg), insn->operands[2].value._16s, v2n_int(insn->operands[0].value.reg));
 				break;
 
 			case ARCH_OP_RETURN:
 				FAIL_IF(avail < 8);
 				end = output_jr(end, &avail, 31);
 				end = output_nop(end, &avail);
+				break;
+
+			case ARCH_OP_SLL32_REG_IMM8U_TO_REG:
+				FAIL_IF(avail < 4);
+				end = output_sll(end, &avail, v2n_int(insn->operands[0].value.reg), insn->operands[1].value._8u, v2n_int(insn->operands[2].value.reg));
+				break;
+
+			case ARCH_OP_SRL32_REG_IMM8U_TO_REG:
+				FAIL_IF(avail < 4);
+				end = output_srl(end, &avail, v2n_int(insn->operands[0].value.reg), insn->operands[1].value._8u, v2n_int(insn->operands[2].value.reg));
+				break;
+
+			case ARCH_OP_SRA32_REG_IMM8U_TO_REG:
+				FAIL_IF(avail < 4);
+				end = output_sra(end, &avail, v2n_int(insn->operands[0].value.reg), insn->operands[1].value._8u, v2n_int(insn->operands[2].value.reg));
 				break;
 		}
 	}

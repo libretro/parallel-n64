@@ -19,6 +19,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -27,6 +28,20 @@
 #include "il-ops.h"
 
 #include "../r4300.h"
+
+/* Adding these offsets to the address of a block of memory that contains
+ * a 64-bit value, or an offset from such an address, allows constructing the
+ * address that starts the 32-bit block that contains the least-significant
+ * word (LSW) or the most-significant word (MSW). */
+#if defined(ARCH_IS_LITTLE_ENDIAN)
+#  define LSW_OFFSET 0
+#  define MSW_OFFSET 4
+#elif defined(ARCH_IS_BIG_ENDIAN)
+#  define LSW_OFFSET 4
+#  define MSW_OFFSET 0
+#else
+#  error The active Neb Dynarec architecture does not declare its endianness
+#endif
 
 arch_block_t* arch_block_init(arch_block_t* block)
 {
@@ -134,6 +149,270 @@ static void immaddr(arch_insn_t* insn, size_t operand, uintptr_t addr)
 	insn->operands[operand].value.addr = addr;
 }
 
+/* Helper functions */
+
+/* TODO Proper register allocation */
+/* Emits architecture instructions to load a register with a base address for
+ * further base+offset loads and stores in native memory.
+ * 
+ * Does not emit any instructions if the architecture can load from immediate
+ * addresses, or if the architecture does not support base+offset addressing.
+ * 
+ * In:
+ *   virt_reg: The virtual register to place the base in.
+ *   addr: The base address to place in the virtual register.
+ * Out:
+ *   arch: The block of architecture instructions to add to.
+ * Returns:
+ *   false if instructions were required and memory allocation failed for
+ *   the required instruction(s); true otherwise.
+ */
+static bool set_base(arch_block_t* arch, virt_reg_t virt_reg, uintptr_t addr)
+{
+#if defined(ARCH_HAS_LOAD32_REG_FROM_MEM_IMMADDR) \
+ || defined(ARCH_HAS_LOAD64_REG_FROM_MEM_IMMADDR) \
+ || defined(ARCH_HAS_STORE32_REG_AT_MEM_IMMADDR) \
+ || defined(ARCH_HAS_STORE64_REG_AT_MEM_IMMADDR)
+	return true;
+#elif defined(ARCH_HAS_SET_REG_IMMADDR)
+#  if defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG_OFF16S) \
+   || defined(ARCH_HAS_LOAD64_REG_FROM_MEM_REG_OFF16S) \
+   || defined(ARCH_HAS_STORE32_REG_AT_MEM_REG_OFF16S) \
+   || defined(ARCH_HAS_STORE64_REG_AT_MEM_REG_OFF16S)
+	if (!arch_block_reserve_insns(arch, 1)) return false;
+	arch_insn_t* insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SET_REG_IMMADDR);
+	vreg(insn, 0, virt_reg);
+	immaddr(insn, 1, addr);
+	return true;
+#  elif defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG) \
+   || defined(ARCH_HAS_LOAD64_REG_FROM_MEM_REG) \
+   || defined(ARCH_HAS_STORE32_REG_AT_MEM_REG) \
+   || defined(ARCH_HAS_STORE64_REG_AT_MEM_REG)
+	return true;
+#  else
+	assert(false); /* insufficient emitters, but this was called */
+#  endif
+#else
+	assert(false); /* insufficient emitters, but this was called */
+#endif
+}
+
+/* Emits architecture instructions to load a register with a complete address
+ * for further direct loads and stores in native memory.
+ * 
+ * Does not emit any instructions if the architecture can load from immediate
+ * addresses, or if the architecture supports base+offset addressing (in which
+ * case set_base will have done something).
+ * 
+ * In:
+ *   virt_reg: The virtual register to place the address in.
+ *   addr: The address to place in the virtual register.
+ * Out:
+ *   arch: The block of architecture instructions to add to.
+ * Returns:
+ *   false if instructions were required and memory allocation failed for
+ *   the required instruction(s); true otherwise.
+ */
+static bool set_address(arch_block_t* arch, virt_reg_t virt_reg, uintptr_t addr)
+{
+#if defined(ARCH_HAS_LOAD32_REG_FROM_MEM_IMMADDR) \
+ || defined(ARCH_HAS_LOAD64_REG_FROM_MEM_IMMADDR) \
+ || defined(ARCH_HAS_STORE32_REG_AT_MEM_IMMADDR) \
+ || defined(ARCH_HAS_STORE64_REG_AT_MEM_IMMADDR)
+	return true;
+#elif defined(ARCH_HAS_SET_REG_IMMADDR)
+#  if defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG_OFF16S) \
+   || defined(ARCH_HAS_LOAD64_REG_FROM_MEM_REG_OFF16S) \
+   || defined(ARCH_HAS_STORE32_REG_AT_MEM_REG_OFF16S) \
+   || defined(ARCH_HAS_STORE64_REG_AT_MEM_REG_OFF16S)
+	return true;
+#  elif defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG) \
+   || defined(ARCH_HAS_LOAD64_REG_FROM_MEM_REG) \
+   || defined(ARCH_HAS_STORE32_REG_AT_MEM_REG) \
+   || defined(ARCH_HAS_STORE64_REG_AT_MEM_REG)
+	if (!arch_block_reserve_insns(arch, 1)) return false;
+	arch_insn_t* insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SET_REG_IMMADDR);
+	vreg(insn, 0, virt_reg);
+	immaddr(insn, 1, addr);
+	return true;
+#  else
+	assert(false); /* insufficient emitters, but this was called */
+#  endif
+#else
+	assert(false); /* insufficient emitters, but this was called */
+#endif
+}
+
+/*
+ * Emits architecture instructions to load a register with a 32-bit value from
+ * memory.
+ * 
+ * Depending on the architecture's instructions, the following is done:
+ * - If immediate addresses are supported, the addr_base and addr_offset
+ *   parameters are combined to form the address to be used;
+ * - Failing that, if loading via a single indirection is supported, but
+ *   displacements are not, addr_reg is used;
+ * - If loading via a single indirection with displacement is supported,
+ *   addr_reg and addr_offset are used.
+ * 
+ * In:
+ *   addr_reg: The virtual register that the base or complete address may be
+ *     in.
+ *   dest_reg: The virtual register to be loaded into.
+ *   addr_base: The base address to be used if virt_reg does not contain it.
+ *   addr_offset: The offset to apply to addr_base or to the address contained
+ *     in virt_reg.
+ * Out:
+ *   arch: The block of architecture instructions to add to.
+ * Returns:
+ *   true if memory allocation succeeded for the instruction; false if not.
+ */
+static bool load32(arch_block_t* arch, virt_reg_t addr_reg, virt_reg_t dest_reg, uintptr_t addr_base, int16_t addr_offset)
+{
+#if defined(ARCH_HAS_LOAD32_REG_FROM_MEM_IMMADDR)
+	if (!arch_block_reserve_insns(arch, 1)) return false;
+	arch_insn_t* insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_LOAD32_REG_FROM_MEM_IMMADDR);
+	vreg(insn, 0, dest_reg);
+	immaddr(insn, 1, addr_base, addr_offset);
+	return true;
+#elif defined(ARCH_HAS_SET_REG_IMMADDR)
+#  if defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG_OFF16S)
+	if (!arch_block_reserve_insns(arch, 1)) return false;
+	arch_insn_t* insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_LOAD32_REG_FROM_MEM_REG_OFF16S);
+	vreg(insn, 0, dest_reg);
+	vreg(insn, 1, addr_reg);
+	imm16s(insn, 2, addr_offset);
+	return true;
+#  elif defined(ARCH_HAS_LOAD32_REG_FROM_MEM_REG)
+	if (!arch_block_reserve_insns(arch, 1)) return false;
+	arch_insn_t* insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_LOAD32_REG_FROM_MEM_REG);
+	vreg(insn, 0, dest_reg);
+	vreg(insn, 1, addr_reg);
+	return true;
+#  else
+#    warning Insufficient emitters to load 32-bit registers from memory addresses
+	assert(false); /* insufficient emitters, but this was called */
+#  endif
+#else
+#  warning Insufficient emitters to load 32-bit registers from memory addresses
+	assert(false); /* insufficient emitters, but this was called */
+#endif
+}
+
+/*
+ * Emits architecture instructions to store a 32-bit value into memory from a
+ * register.
+ * 
+ * Depending on the architecture's instructions, the following is done:
+ * - If immediate addresses are supported, the addr_base and addr_offset
+ *   parameters are combined to form the address to be used;
+ * - Failing that, if loading via a single indirection is supported, but
+ *   displacements are not, addr_reg is used;
+ * - If loading via a single indirection with displacement is supported,
+ *   addr_reg and addr_offset are used.
+ * 
+ * In:
+ *   addr_reg: The virtual register that the base or complete address may be
+ *     in.
+ *   src_reg: The virtual register containing the value to be stored.
+ *   addr_base: The base address to be used if virt_reg does not contain it.
+ *   addr_offset: The offset to apply to addr_base or to the address contained
+ *     in virt_reg.
+ * Out:
+ *   arch: The block of architecture instructions to add to.
+ * Returns:
+ *   true if memory allocation succeeded for the instruction; false if not.
+ */
+static bool store32(arch_block_t* arch, virt_reg_t addr_reg, virt_reg_t src_reg, uintptr_t addr_base, int16_t addr_offset)
+{
+#if defined(ARCH_HAS_STORE32_REG_AT_MEM_IMMADDR)
+	if (!arch_block_reserve_insns(arch, 1)) return false;
+	arch_insn_t* insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_STORE32_REG_AT_MEM_IMMADDR);
+	vreg(insn, 0, src_reg);
+	immaddr(insn, 1, addr_base, addr_offset);
+	return true;
+#elif defined(ARCH_HAS_SET_REG_IMMADDR)
+#  if defined(ARCH_HAS_STORE32_REG_AT_MEM_REG_OFF16S)
+	if (!arch_block_reserve_insns(arch, 1)) return false;
+	arch_insn_t* insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_STORE32_REG_AT_MEM_REG_OFF16S);
+	vreg(insn, 0, src_reg);
+	vreg(insn, 1, addr_reg);
+	imm16s(insn, 2, addr_offset);
+	return true;
+#  elif defined(ARCH_HAS_STORE32_REG_AT_MEM_REG)
+	if (!arch_block_reserve_insns(arch, 1)) return false;
+	arch_insn_t* insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_STORE32_REG_AT_MEM_REG);
+	vreg(insn, 0, src_reg);
+	vreg(insn, 1, addr_reg);
+	return true;
+#  else
+#    warning Insufficient emitters to store 32-bit registers to memory
+	assert(false); /* insufficient emitters, but this was called */
+#  endif
+#else
+#  warning Insufficient emitters to store 32-bit registers to memory
+	assert(false); /* insufficient emitters, but this was called */
+#endif
+}
+
+#if defined(ARCH_HAS_64BIT_REGS)
+/*
+ * Emits architecture instructions to store a 64-bit value into memory from a
+ * register.
+ * 
+ * Depending on the architecture's instructions, the following is done:
+ * - If immediate addresses are supported, the addr_base and addr_offset
+ *   parameters are combined to form the address to be used;
+ * - Failing that, if loading via a single indirection is supported, but
+ *   displacements are not, addr_reg is used;
+ * - If loading via a single indirection with displacement is supported,
+ *   addr_reg and addr_offset are used.
+ * 
+ * In:
+ *   addr_reg: The virtual register that the base or complete address may be
+ *     in.
+ *   src_reg: The virtual register containing the value to be stored.
+ *   addr_base: The base address to be used if virt_reg does not contain it.
+ *   addr_offset: The offset to apply to addr_base or to the address contained
+ *     in virt_reg.
+ * Out:
+ *   arch: The block of architecture instructions to add to.
+ * Returns:
+ *   true if memory allocation succeeded for the instruction; false if not.
+ */
+static bool store64(arch_block_t* arch, virt_reg_t addr_reg, virt_reg_t src_reg, uintptr_t addr_base, int16_t addr_offset)
+{
+#if defined(ARCH_HAS_STORE64_REG_AT_MEM_IMMADDR)
+	if (!arch_block_reserve_insns(arch, 1)) return false;
+	arch_insn_t* insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_STORE64_REG_AT_MEM_IMMADDR);
+	vreg(insn, 0, src_reg);
+	immaddr(insn, 1, addr_base, addr_offset);
+	return true;
+#elif defined(ARCH_HAS_SET_REG_IMMADDR)
+#  if defined(ARCH_HAS_STORE64_REG_AT_MEM_REG_OFF16S)
+	if (!arch_block_reserve_insns(arch, 1)) return false;
+	arch_insn_t* insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_STORE64_REG_AT_MEM_REG_OFF16S);
+	vreg(insn, 0, src_reg);
+	vreg(insn, 1, addr_reg);
+	imm16s(insn, 2, addr_offset);
+	return true;
+#  elif defined(ARCH_HAS_STORE64_REG_AT_MEM_REG)
+	if (!arch_block_reserve_insns(arch, 1)) return false;
+	arch_insn_t* insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_STORE64_REG_AT_MEM_REG);
+	vreg(insn, 0, src_reg);
+	vreg(insn, 1, addr_reg);
+	return true;
+#  else
+#    warning Insufficient emitters to store 64-bit registers to memory
+	assert(false); /* insufficient emitters, but this was called */
+#  endif
+#else
+#  warning Insufficient emitters to store 64-bit registers to memory
+	assert(false); /* insufficient emitters, but this was called */
+#endif
+}
+#endif /* ARCH_HAS_64BIT_REGS */
+
 #define FAIL_IF(expr, cleanup) do { if (expr) { cleanup; return false; } } while (0)
 
 bool arch_emit_from_il(const il_block_t* il, arch_block_t* arch)
@@ -155,6 +434,7 @@ bool arch_emit_from_il(const il_block_t* il, arch_block_t* arch)
 				arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_ENTER_FRAME);
 #else
 #  warning Insufficient emitters for IL operation ENTER_FRAME
+				assert(false); /* insufficient emitters, but this IL was added */
 #endif
 				break;
 
@@ -164,6 +444,7 @@ bool arch_emit_from_il(const il_block_t* il, arch_block_t* arch)
 				arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_EXIT_FRAME);
 #else
 #  warning Insufficient emitters for IL operation EXIT_FRAME
+				assert(false); /* insufficient emitters, but this IL was added */
 #endif
 				break;
 
@@ -197,6 +478,7 @@ bool arch_emit_from_il(const il_block_t* il, arch_block_t* arch)
 				vreg(insn, 1, 1);
 #else
 #  warning Insufficient emitters for IL operation SET_PC
+				assert(false); /* insufficient emitters, but this IL was added */
 #endif
 				break;
 
@@ -206,8 +488,159 @@ bool arch_emit_from_il(const il_block_t* il, arch_block_t* arch)
 				arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_RETURN);
 #else
 #  warning Insufficient emitters for IL operation RETURN
+				assert(false); /* insufficient emitters, but this IL was added */
 #endif
 				break;
+
+			case IL_OP_SLL32:
+			case IL_OP_SRL32:
+			case IL_OP_SRA32:
+			{
+				uintptr_t base = il->values[il_insn->inputs[0]].value.addr.base;
+				int16_t offset = il->values[il_insn->inputs[0]].value.addr.offset;
+				// TODO More proper register allocation.
+				FAIL_IF(!set_base(arch, 0, base), arch_block_free(arch));
+				// TODO In the below code, don't add LSW_OFFSET if performing
+				//      a 32-bit op on a 32-bit source value.
+				FAIL_IF(!set_address(arch, 0, base + offset + LSW_OFFSET), arch_block_free(arch));
+				FAIL_IF(!load32(arch, 0, 1, base, offset + LSW_OFFSET), arch_block_free(arch));
+				switch (il->insns[i].opcode) {
+					case IL_OP_SLL32:
+						FAIL_IF(!arch_block_reserve_insns(arch, 1), arch_block_free(arch));
+#if defined(ARCH_HAS_SLL32_REG_IMM8U_TO_REG)
+						insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SLL32_REG_IMM8U_TO_REG);
+						vreg(insn, 0, 1);
+						imm8u(insn, 1, il_insn->argument);
+						vreg(insn, 2, 1);
+#elif defined(ARCH_HAS_SLL32_IMM8U_TO_REG)
+						insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SLL32_IMM8U_TO_REG);
+						imm8u(insn, 0, il_insn->argument);
+						vreg(insn, 1, 1);
+#else
+#  warning Insufficient emitters for IL operation SLL32
+						assert(false); /* insufficient emitters, but this IL was added */
+#endif
+						break;
+
+					case IL_OP_SRL32:
+						FAIL_IF(!arch_block_reserve_insns(arch, 1), arch_block_free(arch));
+#if defined(ARCH_HAS_SRL32_REG_IMM8U_TO_REG)
+						insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SRL32_REG_IMM8U_TO_REG);
+						vreg(insn, 0, 1);
+						imm8u(insn, 1, il_insn->argument);
+						vreg(insn, 2, 1);
+#elif defined(ARCH_HAS_SRL32_IMM8U_TO_REG)
+						insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SRL32_IMM8U_TO_REG);
+						imm8u(insn, 0, il_insn->argument);
+						vreg(insn, 1, 1);
+#else
+#  warning Insufficient emitters for IL operation SRL32
+						assert(false); /* insufficient emitters, but this IL was added */
+#endif
+						break;
+
+					case IL_OP_SRA32:
+						FAIL_IF(!arch_block_reserve_insns(arch, 1), arch_block_free(arch));
+#if defined(ARCH_HAS_SRA32_REG_IMM8U_TO_REG)
+						insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SRA32_REG_IMM8U_TO_REG);
+						vreg(insn, 0, 1);
+						imm8u(insn, 1, il_insn->argument);
+						vreg(insn, 2, 1);
+#elif defined(ARCH_HAS_SRA32_IMM8U_TO_REG)
+						insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SRA32_IMM8U_TO_REG);
+						imm8u(insn, 0, il_insn->argument);
+						vreg(insn, 1, 1);
+#else
+#  warning Insufficient emitters for IL operation SRA32
+						assert(false); /* insufficient emitters, but this IL was added */
+#endif
+						break;
+
+					default:
+						break;
+				}
+
+				/* Now it's time to sign-extend and store the result.
+				 * The base might be different, in which case emit code to
+				 * reload it. */
+				if (base != il->values[il_insn->outputs[0]].value.addr.base) {
+					base = il->values[il_insn->outputs[0]].value.addr.base;
+					FAIL_IF(!set_base(arch, 0, base), arch_block_free(arch));
+				}
+#if defined(ARCH_HAS_64BIT_REGS)
+				/* The offset is probably also different. */
+				offset = il->values[il_insn->outputs[0]].value.addr.offset;
+				FAIL_IF(!set_address(arch, 0, base + offset), arch_block_free(arch));
+#  if defined(ARCH_HAS_SIGN_EXTEND_REG32_TO_SELF64)
+				/* Sign-extend. Store later. */
+				FAIL_IF(!arch_block_reserve_insns(arch, 1), arch_block_free(arch));
+				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SIGN_EXTEND_REG32_TO_SELF64);
+				vreg(insn, 0, 1);
+#  elif (defined(ARCH_HAS_SLL64_IMM8U_TO_REG) \
+      || defined(ARCH_HAS_SLL64_REG_IMM8U_TO_REG)) \
+     && (defined(ARCH_HAS_SRA64_IMM8U_TO_REG) \
+      || defined(ARCH_HAS_SRA64_REG_IMM8U_TO_REG))
+				/* Sign-extend via SLL of 32 and SRA of 32. Store later. */
+				FAIL_IF(!arch_block_reserve_insns(arch, 2), arch_block_free(arch));
+#    if defined(ARCH_HAS_SLL64_REG_IMM8U_TO_REG)
+				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SLL64_REG_IMM8U_TO_REG);
+				vreg(insn, 0, 1);
+				imm8u(insn, 1, 32);
+				vreg(insn, 2, 1);
+#    elif defined(ARCH_HAS_SLL64_IMM8U_TO_REG)
+				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SLL64_IMM8U_TO_REG);
+				imm8u(insn, 0, 32);
+				vreg(insn, 1, 1);
+#    endif
+#    if defined(ARCH_HAS_SRA64_REG_IMM8U_TO_REG)
+				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SRA64_REG_IMM8U_TO_REG);
+				vreg(insn, 0, 1);
+				imm8u(insn, 1, 32);
+				vreg(insn, 2, 1);
+#    elif defined(ARCH_HAS_SRA64_IMM8U_TO_REG)
+				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SRA64_IMM8U_TO_REG);
+				imm8u(insn, 0, 32);
+				vreg(insn, 1, 1);
+#    endif
+#  else
+#    warning Insufficient emitters to sign-extend 32-bit values to 64-bit
+				assert(false); /* insufficient emitters, but this IL was added */
+#  endif
+				/* Now that the value is sign-extended, store it. */
+				// TODO Support writes to 32-bit locations.
+				FAIL_IF(!store64(arch, 0, 1, base, offset), arch_block_free(arch));
+#else /* !ARCH_HAS_64BIT_REGS */
+#  if (defined(ARCH_HAS_SRA32_IMM8U_TO_REG) \
+    || defined(ARCH_HAS_SRA32_REG_IMM8U_TO_REG))
+				/* The offset is probably also different. */
+				offset = il->values[il_insn->outputs[0]].value.addr.offset;
+				FAIL_IF(!set_address(arch, 0, base + offset + LSW_OFFSET), arch_block_free(arch));
+				/* Store the lower half back. */
+				FAIL_IF(!store32(arch, 0, 1, base, offset + LSW_OFFSET), arch_block_free(arch));
+				/* Sign-extend via SRA of 31, killing the original value.
+				 * Store later. */
+				FAIL_IF(!arch_block_reserve_insns(arch, 1), arch_block_free(arch));
+#    if defined(ARCH_HAS_SRA32_REG_IMM8U_TO_REG)
+				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SRA32_REG_IMM8U_TO_REG);
+				vreg(insn, 0, 1);
+				imm8u(insn, 1, 31);
+				vreg(insn, 2, 1);
+#    elif defined(ARCH_HAS_SRA32_IMM8U_TO_REG)
+				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SRA32_IMM8U_TO_REG);
+				imm8u(insn, 0, 31);
+				vreg(insn, 1, 1);
+#    endif
+#  else
+#    warning Insufficient emitters to sign-extend 32-bit values to 64-bit
+				assert(false); /* insufficient emitters, but this IL was added */
+#  endif
+				/* Now that the high half is available, store it. */
+				// TODO Support writes to 32-bit locations.
+				FAIL_IF(!set_address(arch, 0, base + offset + MSW_OFFSET), arch_block_free(arch));
+				FAIL_IF(!store32(arch, 0, 1, base, offset + MSW_OFFSET), arch_block_free(arch));
+#endif /* [!]ARCH_HAS_64BIT_REGS */
+				break;
+			}
 
 			case IL_OP_DELETED:
 				break;

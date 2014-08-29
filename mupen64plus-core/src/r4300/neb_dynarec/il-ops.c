@@ -28,6 +28,8 @@
 #include "il-ops.h"
 #include "n64ops.h"
 
+#include "../r4300.h"
+
 il_block_t* il_block_init(il_block_t* block)
 {
 	block->insn_count = block->insn_capacity = 0;
@@ -139,6 +141,55 @@ il_value_number_t il_value_add_const_int64(il_block_t* block, int64_t constant)
 	return block->value_count++;
 }
 
+il_value_number_t il_value_add_read_int_lo32(il_block_t* block, void* addr, int16_t offset)
+{
+	block->values[block->value_count].type = IL_VT_READ_INT_LO32;
+	block->values[block->value_count].value.addr.base = (uintptr_t) addr;
+	block->values[block->value_count].value.addr.offset = offset;
+	return block->value_count++;
+}
+
+il_value_number_t il_value_add_read_int_64(il_block_t* block, void* addr, int16_t offset)
+{
+	block->values[block->value_count].type = IL_VT_READ_INT_64;
+	block->values[block->value_count].value.addr.base = (uintptr_t) addr;
+	block->values[block->value_count].value.addr.offset = offset;
+	return block->value_count++;
+}
+
+il_value_number_t il_value_add_read_int_32(il_block_t* block, void* addr, int16_t offset)
+{
+	block->values[block->value_count].type = IL_VT_READ_INT_32;
+	block->values[block->value_count].value.addr.base = (uintptr_t) addr;
+	block->values[block->value_count].value.addr.offset = offset;
+	return block->value_count++;
+}
+
+il_value_number_t il_value_add_write_int_lo32(il_block_t* block, void* addr, int16_t offset)
+{
+	block->values[block->value_count].type = IL_VT_WRITE_INT_LO32;
+	block->values[block->value_count].value.addr.base = (uintptr_t) addr;
+	block->values[block->value_count].value.addr.offset = offset;
+	return block->value_count++;
+}
+
+il_value_number_t il_value_add_write_int_64(il_block_t* block, void* addr, int16_t offset)
+{
+	block->values[block->value_count].type = IL_VT_WRITE_INT_64;
+	block->values[block->value_count].value.addr.base = (uintptr_t) addr;
+	block->values[block->value_count].value.addr.offset = offset;
+	return block->value_count++;
+}
+
+il_value_number_t il_value_add_write_int_32(il_block_t* block, void* addr, int16_t offset)
+{
+	block->values[block->value_count].type = IL_VT_WRITE_INT_32;
+	block->values[block->value_count].value.addr.base = (uintptr_t) addr;
+	block->values[block->value_count].value.addr.offset = offset;
+	return block->value_count++;
+}
+
+
 void il_value_set_const_int32(il_value_t* value, int32_t constant)
 {
 	value->type = IL_VT_CONST_INT32;
@@ -149,6 +200,48 @@ void il_value_set_const_int64(il_value_t* value, int64_t constant)
 {
 	value->type = IL_VT_CONST_INT64;
 	value->value._64 = constant;
+}
+
+void il_value_set_read_int_lo32(il_value_t* value, void* addr, int16_t offset)
+{
+	value->type = IL_VT_READ_INT_LO32;
+	value->value.addr.base = (uintptr_t) addr;
+	value->value.addr.offset = offset;
+}
+
+void il_value_set_read_int_64(il_value_t* value, void* addr, int16_t offset)
+{
+	value->type = IL_VT_READ_INT_64;
+	value->value.addr.base = (uintptr_t) addr;
+	value->value.addr.offset = offset;
+}
+
+void il_value_set_read_int_32(il_value_t* value, void* addr, int16_t offset)
+{
+	value->type = IL_VT_READ_INT_32;
+	value->value.addr.base = (uintptr_t) addr;
+	value->value.addr.offset = offset;
+}
+
+void il_value_set_write_int_lo32(il_value_t* value, void* addr, int16_t offset)
+{
+	value->type = IL_VT_WRITE_INT_LO32;
+	value->value.addr.base = (uintptr_t) addr;
+	value->value.addr.offset = offset;
+}
+
+void il_value_set_write_int_64(il_value_t* value, void* addr, int16_t offset)
+{
+	value->type = IL_VT_WRITE_INT_64;
+	value->value.addr.base = (uintptr_t) addr;
+	value->value.addr.offset = offset;
+}
+
+void il_value_set_write_int_32(il_value_t* value, void* addr, int16_t offset)
+{
+	value->type = IL_VT_WRITE_INT_32;
+	value->value.addr.base = (uintptr_t) addr;
+	value->value.addr.offset = offset;
 }
 
 void il_value_delete(il_value_t* value)
@@ -191,6 +284,7 @@ static bool out2(il_insn_t* insn, il_value_number_t out1, il_value_number_t out2
 bool il_emit_from_n64(const n64_insn_t* n64, uint32_t n64_count, il_block_t* il)
 {
 	il_insn_t* insn;
+	il_value_number_t val_in1, val_out1;
 	const n64_insn_t* n64_insn = n64;
 	const n64_insn_t* const n64_end = n64 + n64_count;
 
@@ -202,10 +296,40 @@ bool il_emit_from_n64(const n64_insn_t* n64, uint32_t n64_count, il_block_t* il)
 
 	il_insn_init_as(il_block_next_insn(il), IL_OP_ENTER_FRAME);
 
-	while (n64_insn < n64_end
-	    && (n64_insn->opcode == N64_OP_NOP
-	     || n64_insn->opcode == N64_OP_CACHE
-	     || n64_insn->opcode == N64_OP_SYNC)) {
+	while (n64_insn < n64_end) {
+		switch (n64_insn->opcode) {
+			case N64_OP_NOP:
+			case N64_OP_CACHE:
+			case N64_OP_SYNC:
+				break;
+
+			case N64_OP_SLL:
+			case N64_OP_SRL:
+			case N64_OP_SRA:
+				FAIL_IF(!il_block_reserve_insns(il, 1)
+				     || !il_block_reserve_values(il, 2), il_block_free(il));
+				switch (n64_insn->opcode) {
+					case N64_OP_SLL:
+						insn = il_insn_init_as(il_block_next_insn(il), IL_OP_SLL32);
+						break;
+					case N64_OP_SRL:
+						insn = il_insn_init_as(il_block_next_insn(il), IL_OP_SRL32);
+						break;
+					case N64_OP_SRA:
+						insn = il_insn_init_as(il_block_next_insn(il), IL_OP_SRA32);
+						break;
+					default:
+						break;
+				}
+				val_in1 = il_value_add_read_int_lo32(il, reg, n64_insn->rt * sizeof(uint64_t));
+				val_out1 = il_value_add_write_int_lo32(il, reg, n64_insn->rd * sizeof(uint64_t));
+				insn->argument = n64_insn->imm;
+				FAIL_IF(!in1(insn, val_in1) || !out1(insn, val_out1), il_block_free(il));
+				break;
+
+			default:
+				break;
+		}
 		n64_insn++;
 	}
 
