@@ -52,6 +52,7 @@
 #include "../tlb.h"
 #include "driver.h"
 #include "n64ops.h"
+#include "il-ops.h"
 #include "emitflags.h"
 #include "branches.h"
 
@@ -567,7 +568,7 @@ void nd_init()
 	{
 		DebugMessage(M64MSG_ERROR, "Memory error: Couldn't allocate memory for the dynamic recompiler's code cache.");
 	}
-	next_code = code_cache;
+	next_code = arch_align_code(code_cache);
 #ifdef ARCH_NEED_INIT
 	nd_arch_init();
 #endif
@@ -1025,7 +1026,7 @@ void nd_free_page(precomp_block* page)
 	}
 }
 
-void nd_invalidate_code(enum nd_invalidate_reason reason)
+void nd_invalidate_code(nd_invalidate_reason_t reason)
 {
 	switch (reason)
 	{
@@ -1059,7 +1060,7 @@ void nd_invalidate_code(enum nd_invalidate_reason reason)
 		}
 	}
 
-	next_code = code_cache;
+	next_code = arch_align_code(code_cache);
 }
 
 static bool can_continue_page(const uint32_t offset, const precomp_block* page)
@@ -1234,7 +1235,8 @@ static void fill_interpreter_ops(const uint32_t* source, const uint32_t start, p
 	for (i = start; i < end; i++)
 	{
 		fill_emit_flags(&insns[i]);
-		if (insns[i].emit_flags & INSTRUCTION_HAS_EMITTERS)
+		if ((insns[i].emit_flags & INSTRUCTION_HAS_EMITTERS)
+		 && i > start)
 			break;
 #ifdef ND_SHOW_INTERPRETATION
 		printf(" %s", get_n64_op_name(insns[i].opcode));
@@ -1374,9 +1376,9 @@ static void nd_recompile(const uint32_t* source, const uint32_t start, precomp_b
 {
 	timed_section_start(TIMED_SECTION_COMPILER);
 
-	n64_insn_t insns[PAGE_INSNS + 1 + (PAGE_INSNS >> 2)];
+	n64_insn_t n64_insns[PAGE_INSNS + 1 + (PAGE_INSNS >> 2)];
 
-	uint32_t end = get_range_end(source, start, page, insns);
+	uint32_t end = get_range_end(source, start, page, n64_insns);
 
 	if (end == start)
 	{
@@ -1384,28 +1386,76 @@ static void nd_recompile(const uint32_t* source, const uint32_t start, precomp_b
 		goto end;
 	}
 
-	// TODO: Recompile code.
-	fill_interpreter_ops(source, start, page);
-	goto end;
+	// Here, we can make a function out of at least one opcode. Do that.
+	{
+#ifdef ND_SHOW_OPS_PER_FUNCTION
+		ops_per_func[end - start]++;
+#endif
 
-#  ifdef ND_SHOW_OPS_PER_FUNCTION
-	ops_per_func[end - start]++;
+		uint32_t i;
+#  ifdef ND_SHOW_COMPILATION
+		printf("  %08" PRIX32 " JIT: ", page->start + start * 4);
+		for (i = start; i < end; i++)
+		{
+			printf(" %s", get_n64_op_name(n64_insns[i].opcode));
+		}
+		printf("\n");
 #  endif
 
-	if (next_code - code_cache >= CODE_CACHE_SIZE - 131072)
-		nd_invalidate_code(INVALIDATE_FULL_CACHE);
-
-	// Now act as a dynamic recompiler for the block.
-	// A single function will act as the sequence of opcodes starting at
-	// source[start] and ending at the first unconditional jump. Any
-	// branch inside the block will set the PC and return if it succeeds, to
-	// allow the interpreter loop to consider the PC a new block and call back
-	// here. Failing branches will continue in the same block.
-	page->block[start].ops = (void (*) (void)) next_code;
+		il_block_t il;
+		il_emit_from_n64(&n64_insns[start], end - start, &il);
 
 #  ifdef ND_SHOW_COMPILATION
-	printf("  %08" PRIX32 " JIT: ", page->start + start * 4);
+		printf("The following IL was emitted for the block above:\n");
+		for (i = 0; i < il.insn_count; i++)
+		{
+			printf("  %4" PRIu32 " [", (uint32_t) il.insns[i].opcode);
+			size_t j;
+			for (j = 0; j < il.insns[i].input_count; j++)
+			{
+				printf(" %4" PRIu32, (uint32_t) il.insns[i].inputs[j]);
+			}
+			printf("] -> [");
+			for (j = 0; j < il.insns[i].output_count; j++)
+			{
+				printf(" %4" PRIu32, (uint32_t) il.insns[i].outputs[j]);
+			}
+			printf("] arg=%" PRIi64 " target=%zd\n", il.insns[i].argument, il.insns[i].target);
+		}
 #  endif
+
+		/* Take the IL and make architecture instructions out of it. */
+		arch_block_t arch;
+		arch_emit_from_il(&il, &arch);
+		/* The IL is not needed anymore. Free it. */
+		il_block_free(&il);
+
+		/* Take the architecture instructions and make a function out of
+		 * them. */
+		uint8_t* following_code = next_code;
+		if (!arch_emit_code(next_code, code_cache + CODE_CACHE_SIZE - next_code, &following_code, &arch))
+		{
+			/* Failed... Code cache is full. */
+			nd_invalidate_code(INVALIDATE_FULL_CACHE);
+			if (!arch_emit_code(next_code, code_cache + CODE_CACHE_SIZE - next_code, &following_code, &arch))
+			{
+				DebugMessage(M64MSG_WARNING, "Architecture-specific failure occurred in arch_emit_code");
+				fill_interpreter_ops(source, start, page);
+			}
+			else
+			{
+				page->block[start].ops = (void (*) (void)) next_code;
+				next_code = following_code;
+			}
+		}
+		else
+		{
+			page->block[start].ops = (void (*) (void)) next_code;
+			next_code = following_code;
+		}
+
+		arch_block_free(&arch);
+	}
 
 end:
 	timed_section_end(TIMED_SECTION_COMPILER);

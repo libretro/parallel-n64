@@ -24,10 +24,40 @@
  * Neb Dynarec's driver in its decisions for code generation.
  */
 
+#include <stdbool.h>
+
+#include "arch-config.h"
 #include "n64ops.h"
 #include "emitflags.h"
 
 #include "../r4300.h"
+
+#if defined(ARCH_HAS_ENTER_FRAME)
+#  define CAN_ENTER_FRAME true
+#else
+#  define CAN_ENTER_FRAME false
+#endif
+#if defined(ARCH_HAS_EXIT_FRAME)
+#  define CAN_EXIT_FRAME true
+#else
+#  define CAN_EXIT_FRAME false
+#endif
+#if defined(ARCH_HAS_STORE32_IMM32U_AT_MEM_IMMADDR) \
+ || (defined(ARCH_HAS_SET_REG_IMM32U) \
+  && (defined(ARCH_HAS_STORE32_REG_AT_MEM_IMMADDR) \
+   || (defined(ARCH_HAS_SET_REG_IMMADDR) \
+    && defined(ARCH_HAS_STORE32_REG_AT_MEM_REG))))
+#  define CAN_SET_PC true
+#else
+#  define CAN_SET_PC false
+#endif
+#if defined(ARCH_HAS_RETURN)
+#  define CAN_RETURN true
+#else
+#  define CAN_RETURN false
+#endif
+
+#define CAN_EMIT_FUNCTIONS (CAN_ENTER_FRAME && CAN_EXIT_FRAME && CAN_SET_PC && CAN_RETURN)
 
 void fill_emit_flags(n64_insn_t* insn)
 {
@@ -37,7 +67,8 @@ void fill_emit_flags(n64_insn_t* insn)
 	{
 		case N64_OP_NOP:
 			insn->emit_flags = INSTRUCTION_IGNORES_DELAY_SLOT;
-			/* Needs no further emitters */
+			if (CAN_EMIT_FUNCTIONS)
+				insn->emit_flags |= INSTRUCTION_HAS_EMITTERS;
 			break;
 		case N64_OP_RESERVED:
 		case N64_OP_UNIMPLEMENTED:
@@ -209,15 +240,13 @@ void fill_emit_flags(n64_insn_t* insn)
 		case N64_OP_BNEL_IDLE:
 			break;
 		case N64_OP_SYNC:
-			insn->emit_flags = INSTRUCTION_IGNORES_DELAY_SLOT;
-			/* Needs no further emitters */
-			break;
 		case N64_OP_CACHE:
 			/* CACHE can raise TLB Refill, TLB Invalid, Coprocessor Unusable,
 			 * Address Error, Cache Error and Bus Error exceptions on real
 			 * hardware. We don't. */
 			insn->emit_flags = INSTRUCTION_IGNORES_DELAY_SLOT;
-			/* Needs no further emitters */
+			if (CAN_EMIT_FUNCTIONS)
+				insn->emit_flags |= INSTRUCTION_HAS_EMITTERS;
 			break;
 		case N64_OP_MFC0:
 		case N64_OP_MTC0:

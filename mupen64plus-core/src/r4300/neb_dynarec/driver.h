@@ -26,28 +26,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "arch-config.h"
+#include "arch-ops.h"
 #include "../recomp.h"
 #include "../ops.h" /* for cpu_instruction_table */
-
-#define NEB_DYNAREC_MIPSEL32 1
-#define NEB_DYNAREC_MIPSEB32 2
-#define NEB_DYNAREC_MIPSEL64 3
-#define NEB_DYNAREC_MIPSEB64 4
-#define NEB_DYNAREC_ARMEL32  5
-#define NEB_DYNAREC_ARMEB32  6
-#define NEB_DYNAREC_ARMEL64  7
-#define NEB_DYNAREC_ARMEB64  8
-
-#define NEB_DYNAREC_I386     9
-#define NEB_DYNAREC_AMD64    10
-
-#if NEB_DYNAREC == NEB_DYNAREC_MIPSEL32
-#  include "mipsel32/config.h"
-#elif NEB_DYNAREC == NEB_DYNAREC_AMD64
-#  include "amd64/config.h"
-#elif defined(NEB_DYNAREC)
-#  error "No architecture configuration file is present for this Neb Dynarec"
-#endif
 
 extern const cpu_instruction_table neb_fallback_table;
 
@@ -137,5 +119,53 @@ void nd_arch_init(void);
 #ifdef ARCH_NEED_FINI
 void nd_arch_exit(void);
 #endif
+
+/*
+ * Requests emission of a block of architecture instructions.
+ * 
+ * This function must be defined in [arch]/functions.c.
+ * Its simplest implementation is 'return false;'.
+ * 
+ * In:
+ *   code_start: Pointer to the first byte that is to be filled with the
+ *     emitted code.
+ *   bytes_available: Number of bytes that can be filled with the emitted
+ *     code.
+ *   block: The block of architecture instructions to be emitted.
+ * Out:
+ *   next_block: A variable to be updated with a pointer to the first byte
+ *     that can be filled by the next block's code, after any alignment
+ *     required or advised by the architecture.
+ * Returns:
+ *   true if the block was emitted successfully; false if not enough bytes
+ *   were available or an architecture-specific failure occurred.
+ * Output assertions / Advice to callers:
+ *   If true was returned, then code was emitted at code_start,
+ *   bytes_available was enough for the block, and next_block is updated.
+ *   If false was returned, retries shall be made with more bytes_available
+ *   using the same block and code_start; if a retry has made more
+ *   bytes_available than is reasonable for the block and further calls still
+ *   return false, then emission shall be aborted.
+ */
+bool arch_emit_code(uint8_t* code_start, uint32_t bytes_available,
+	uint8_t** next_block, const arch_block_t* block);
+
+/*
+ * Requests alignment of the first block to be emitted in a code cache.
+ * 
+ * The following call to arch_emit_code shall use the value returned by this
+ * function. arch_emit_code will then be responsible for advising the caller
+ * of any alignment required or advised by the architecture by adjusting the
+ * code end pointer in next_block, and so on until the code cache is full.
+ * 
+ * This function must be defined in [arch]/functions.c.
+ * Its simplest implementation is 'return code_start;'.
+ * 
+ * In:
+ *   code_start: Pointer to the first byte of a code cache.
+ * Returns:
+  *  Pointer to the first properly aligned byte of the code cache.
+ */
+uint8_t* arch_align_code(uint8_t* code_start);
 
 #endif /* !__NEB_DYNAREC_DRIVER_H__ */

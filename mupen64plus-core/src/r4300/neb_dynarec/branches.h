@@ -22,8 +22,6 @@
 #ifndef __NEB_DYNAREC_BRANCHES_H__
 #define __NEB_DYNAREC_BRANCHES_H__
 
-#include <stdint.h>
-
 /* A branch is specified to target a Nintendo 64 instruction, i.e. the first
  * native instruction that implements the Nintendo 64 instructions. */
 #define BRANCH_N64            0x4000

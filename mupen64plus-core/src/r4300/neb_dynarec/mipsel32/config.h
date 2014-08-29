@@ -41,4 +41,21 @@
 #define ARCH_FP_SAVED_REGISTERS   0
 #define ARCH_SPECIAL_REGISTERS    4 /* $0, HI, LO, Coprocessor 1 condition */
 
+/* - - - ARCHITECTURE INSTRUCTIONS - - - */
+/*
+ * Declaring the presence of an instruction on an architecture signifies that
+ * no (additional) temporary register visible to the JIT is required to
+ * perform its function. Its absence will trigger fallbacks that use registers
+ * that the JIT can track.
+ * If the instruction requires multiple opcodes to perform but it can be
+ * performed while adhering to the above constraint, it can be added here.
+ */
+
+#define ARCH_HAS_ENTER_FRAME
+#define ARCH_HAS_EXIT_FRAME
+#define ARCH_HAS_SET_REG_IMM32U
+#define ARCH_HAS_SET_REG_IMMADDR
+#define ARCH_HAS_STORE32_REG_AT_MEM_REG
+#define ARCH_HAS_RETURN
+
 #endif /* !__NEB_DYNAREC_MIPSEL_CONFIG_H__ */

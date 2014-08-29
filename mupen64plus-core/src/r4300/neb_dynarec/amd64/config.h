@@ -33,4 +33,29 @@
 // #define ARCH_NEED_INIT
 // #define ARCH_NEED_EXIT
 
+#define ARCH_HAS_64BIT_REGS
+
+#define ARCH_INT_TEMP_REGISTERS   9 /* RAX, RCX, RDX, RSI, RDI, R8..R11 */
+#define ARCH_INT_SAVED_REGISTERS  5 /* RBX, R12..R15 */
+#define ARCH_FP_TEMP_REGISTERS   16 /* XMM0..XMM15 */
+#define ARCH_FP_SAVED_REGISTERS   0
+#define ARCH_SPECIAL_REGISTERS    0
+
+/* - - - ARCHITECTURE INSTRUCTIONS - - - */
+/*
+ * Declaring the presence of an instruction on an architecture signifies that
+ * no (additional) temporary register visible to the JIT is required to
+ * perform its function. Its absence will trigger fallbacks that use registers
+ * that the JIT can track.
+ * If the instruction requires multiple opcodes to perform but it can be
+ * performed while adhering to the above constraint, it can be added here.
+ */
+
+#define ARCH_HAS_ENTER_FRAME
+#define ARCH_HAS_EXIT_FRAME
+#define ARCH_HAS_SET_REG_IMM32U
+#define ARCH_HAS_SET_REG_IMMADDR
+#define ARCH_HAS_STORE32_REG_AT_MEM_REG
+#define ARCH_HAS_RETURN
+
 #endif /* !__NEB_DYNAREC_AMD64_CONFIG_H__ */

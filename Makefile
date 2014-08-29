@@ -279,6 +279,8 @@ ifeq ($(NEB_DYNAREC),1)
 NEB_DYNADIR := $(COREDIR)/src/r4300/neb_dynarec
 CFILES += $(NEB_DYNADIR)/driver.c \
 			 $(NEB_DYNADIR)/emitflags.c \
+			 $(NEB_DYNADIR)/arch-ops.c \
+			 $(NEB_DYNADIR)/il-ops.c \
 			 $(NEB_DYNADIR)/n64ops.c
 
 ifeq ($(WITH_DYNAREC), x86_64)
