@@ -1288,13 +1288,22 @@ static uint32_t get_range_end(const uint32_t* source, const uint32_t start, prec
 			post_parse_n64_insns(&insns[start - 1], 2, page->start, page->end);
 			for (i = start - 1; i < start + 1; i++)
 				fill_emit_flags(&insns[i]);
-			if (!(insns[start - 1].emit_flags & INSTRUCTION_HAS_EMITTERS)
-			 || !(insns[start].emit_flags & INSTRUCTION_HAS_EMITTERS))
+			if (!(insns[start - 1].emit_flags & INSTRUCTION_HAS_EMITTERS))
 			{
-#  ifdef ND_SHOW_INTERPRETATION
-				printf("Cannot compile the following block as the delay slot of an interpreted branch\n");
+				if (insns[start].emit_flags & INSTRUCTION_HAS_EMITTERS)
+				{
+#  ifdef ND_SHOW_COMPILATION
+					printf("Compiling one instruction as the delay slot of an interpreted branch\n");
 #  endif
-				return start;
+					return start + 1;
+				}
+				else
+				{
+#  ifdef ND_SHOW_INTERPRETATION
+					printf("Cannot compile the following block as the delay slot of an interpreted branch\n");
+#  endif
+					return start;
+				}
 			}
 		}
 	}
