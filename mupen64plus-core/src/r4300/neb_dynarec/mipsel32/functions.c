@@ -28,8 +28,8 @@
 
 #include "osal/preproc.h"
 
-#include "../../api/m64p_types.h"
-#include "../../api/callbacks.h"
+#include "../../../api/m64p_types.h"
+#include "../../../api/callbacks.h"
 
 #include "assemble.h"
 
@@ -155,6 +155,7 @@ bool arch_emit_code(uint8_t* start, uint32_t avail,
 				break;
 
 			case ARCH_OP_STORE32_REG_AT_MEM_REG:
+			case ARCH_OP_STOREADDR_REG_AT_MEM_REG:
 				FAIL_IF(avail < 4);
 				end = output_sw(end, &avail, v2n_int(insn->operands[1].value.reg), 0, v2n_int(insn->operands[0].value.reg));
 				break;

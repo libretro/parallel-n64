@@ -42,11 +42,9 @@
 #else
 #  define CAN_EXIT_FRAME false
 #endif
-#if defined(ARCH_HAS_STORE32_IMM32U_AT_MEM_IMMADDR) \
- || (defined(ARCH_HAS_SET_REG_IMM32U) \
-  && (defined(ARCH_HAS_STORE32_REG_AT_MEM_IMMADDR) \
-   || (defined(ARCH_HAS_SET_REG_IMMADDR) \
-    && defined(ARCH_HAS_STORE32_REG_AT_MEM_REG))))
+#if defined(ARCH_HAS_STORE_IMMADDR_AT_MEM_IMMADDR) \
+ || (defined(ARCH_HAS_SET_REG_IMMADDR) \
+  && defined(ARCH_HAS_STOREADDR_REG_AT_MEM_REG))
 #  define CAN_SET_PC true
 #else
 #  define CAN_SET_PC false

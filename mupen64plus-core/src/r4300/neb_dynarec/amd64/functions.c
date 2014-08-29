@@ -109,8 +109,9 @@ bool arch_emit_code(uint8_t* start, uint32_t avail,
 				FAIL_IF(avail < 4);
 				end = output_mov_r32_to_mem_at_r64(end, &avail, v2n_int(insn->operands[0].value.reg), v2n_int(insn->operands[1].value.reg));
 				break;
-				
+
 			case ARCH_OP_STORE64_REG_AT_MEM_REG:
+			case ARCH_OP_STOREADDR_REG_AT_MEM_REG:
 				FAIL_IF(avail < 4);
 				end = output_mov_r64_to_mem_at_r64(end, &avail, v2n_int(insn->operands[0].value.reg), v2n_int(insn->operands[1].value.reg));
 				break;

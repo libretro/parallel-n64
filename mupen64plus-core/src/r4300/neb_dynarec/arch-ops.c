@@ -449,31 +449,21 @@ bool arch_emit_from_il(const il_block_t* il, arch_block_t* arch)
 				break;
 
 			case IL_OP_SET_PC:
-#if defined(ARCH_HAS_STORE32_IMM32U_AT_MEM_IMMADDR)
+#if defined(ARCH_HAS_STORE_IMMADDR_AT_MEM_IMMADDR)
 				FAIL_IF(!arch_block_reserve_insns(arch, 1), arch_block_free(arch));
-				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_STORE32_IMM32U_AT_MEM_IMMADDR);
-				imm32u(insn, 0, (uint32_t) il_insn->argument);
+				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_STORE_IMMADDR_AT_MEM_IMMADDR);
+				imm32u(insn, 0, (uintptr_t) il_insn->argument);
 				immaddr(insn, 1, (uintptr_t) &PC);
-#elif defined(ARCH_HAS_SET_REG_IMM32U) \
-   && defined(ARCH_HAS_STORE32_REG_AT_MEM_IMMADDR)
-				FAIL_IF(!arch_block_reserve_insns(arch, 2), arch_block_free(arch));
-				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SET_REG_IMM32U);
-				vreg(insn, 0, 0);
-				imm32u(insn, 1, (uint32_t) il_insn->argument);
-				insn = arch_insn_init_as(arch_block_next_insn(arch), STORE32_REG_AT_MEM_IMMADDR);
-				vreg(insn, 0, 0);
-				immaddr(insn, 1, (uintptr_t) &PC);
-#elif defined(ARCH_HAS_SET_REG_IMM32U) \
-   && defined(ARCH_HAS_SET_REG_IMMADDR) \
-   && defined(ARCH_HAS_STORE32_REG_AT_MEM_REG)
+#elif defined(ARCH_HAS_SET_REG_IMMADDR) \
+   && defined(ARCH_HAS_STOREADDR_REG_AT_MEM_REG)
 				FAIL_IF(!arch_block_reserve_insns(arch, 3), arch_block_free(arch));
-				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SET_REG_IMM32U);
+				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SET_REG_IMMADDR);
 				vreg(insn, 0, 0);
-				imm32u(insn, 1, (uint32_t) il_insn->argument);
+				immaddr(insn, 1, (uintptr_t) il_insn->argument);
 				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_SET_REG_IMMADDR);
 				vreg(insn, 0, 1);
 				immaddr(insn, 1, (uintptr_t) &PC);
-				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_STORE32_REG_AT_MEM_REG);
+				insn = arch_insn_init_as(arch_block_next_insn(arch), ARCH_OP_STOREADDR_REG_AT_MEM_REG);
 				vreg(insn, 0, 0);
 				vreg(insn, 1, 1);
 #else
