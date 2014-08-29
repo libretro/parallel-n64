@@ -28,6 +28,18 @@ static void MultMatrix_default( float m0[4][4], float m1[4][4],
    dest[3][3] = m0[3][3]*m1[3][3] + m0[2][3]*m1[3][2] + m0[1][3]*m1[3][1] + m0[0][3]*m1[3][0];
 }
 
+static void Normalize_default(float v[3])
+{
+   float len = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+   if (len != 0.0f)
+   {
+      len = sqrtf( len );
+      v[0] /= len;
+      v[1] /= len;
+      v[2] /= len;
+   }
+}
+
 static void TransformVectorNormalize_default(float vec[3], float mtx[4][4])
 {
    float len;
@@ -44,35 +56,12 @@ static void TransformVectorNormalize_default(float vec[3], float mtx[4][4])
    vec[2] = mtx[0][2] * x
       + mtx[1][2] * y
       + mtx[2][2] * z;
-   len = vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2];
-   if (len != 0.0)
-   {
-      len = sqrtf(len);
-      vec[0] /= len;
-      vec[1] /= len;
-      vec[2] /= len;
-   }
-}
-
-static void Normalize_default(float v[3])
-{
-   float len;
-
-   len = (float)(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-   if (len != 0.0)
-   {
-      len = (float)sqrt( len );
-      v[0] /= (float)len;
-      v[1] /= (float)len;
-      v[2] /= (float)len;
-   }
+   Normalize_default(vec);
 }
 
 static float DotProduct_default( float v0[3], float v1[3] )
 {
-   float dot;
-   dot = v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2];
-   return dot;
+   return v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2];
 }
 
 
