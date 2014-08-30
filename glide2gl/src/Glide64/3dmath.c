@@ -54,9 +54,10 @@ float DotProductC(float *v0, float *v1)
 
 void NormalizeVectorC(float *v)
 {
-   float len = sqrtf(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-   if (len > 0.0f)
+   float len = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+   if (len != 0.0f)
    {
+      len = sqrtf( len );
       v[0] /= len;
       v[1] /= len;
       v[2] /= len;
