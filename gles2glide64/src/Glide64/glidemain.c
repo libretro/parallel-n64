@@ -2482,7 +2482,7 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
    util_init ();
    math_init ();
    TexCacheInit ();
-   CRC_BuildTable();
+   glide64CRC_BuildTable();
    CountCombine();
    if (fb_depth_render_enabled)
       ZLUT_init();
