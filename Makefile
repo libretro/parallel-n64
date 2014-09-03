@@ -196,6 +196,7 @@ CXD4DIR = mupen64plus-rsp-cxd4
 COREDIR = mupen64plus-core
 VIDEODIR_RICE=gles2rice/src
 VIDEODIR_GLN64 = gles2n64/src
+
 ifeq ($(GLIDE2GL), 1)
 VIDEODIR_GLIDE = glide2gl/src
 else
@@ -329,21 +330,7 @@ endif
 CFILES += $(LIBRETRO_SRC)
 
 # Glide64
-ifeq ($(GLIDE2GL), 1)
-CFILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.c \
-			 $(VIDEODIR_GLIDE)/Glide64/Combine.c \
-			 $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.c \
-			 $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.c \
-			 $(VIDEODIR_GLIDE)/Glide64/glide64_crc.c \
-			 $(VIDEODIR_GLIDE)/Glide64/glidemain.c \
-			 $(VIDEODIR_GLIDE)/Glide64/rdp.c \
-			 $(VIDEODIR_GLIDE)/Glide64/TexCache.c \
-			 $(VIDEODIR_GLIDE)/Glide64/Util.c
-CFILES += $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.c)
-else
-CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) \
-				$(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
-endif
+CFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.c) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.c)
 
 ### Angrylion's renderer ###
 VIDEODIR_ANGRYLION = angrylionrdp
