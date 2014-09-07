@@ -36,6 +36,9 @@ cothread_t main_thread;
 static cothread_t cpu_thread;
 #endif
 
+float polygonOffsetFactor;
+float polygonOffsetUnits;
+
 static bool emu_thread_has_run = false; // < This is used to ensure the context_reset
                                         //   function doesn't try to reinit graphics before needed
 uint16_t button_orientation = 0;
@@ -380,9 +383,6 @@ unsigned retro_get_region (void)
    m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.Country_code);
    return ((region == SYSTEM_PAL) ? RETRO_REGION_PAL : RETRO_REGION_NTSC);
 }
-
-extern float polygonOffsetUnits;
-extern float polygonOffsetFactor;
 
 void retro_init(void)
 {

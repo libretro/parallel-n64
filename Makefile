@@ -1,5 +1,6 @@
 DEBUG=0
 GLIDE2GL=1
+GLES2GLIDE64_NEW=0
 PERF_TEST=0
 HAVE_SHARED_CONTEXT=0
 SINGLE_THREAD=0
@@ -168,7 +169,6 @@ endif
 else ifeq ($(platform), emscripten)
    TARGET := $(TARGET_NAME)_libretro_emscripten.bc
    GLES := 1
-   #GLIDE2GL=0
    CPUFLAGS += -DNO_ASM -DNOSSE
    PLATCFLAGS += -DCC_resampler=mupen_CC_resampler -Dsinc_resampler=mupen_sinc_resampler \
                -Drglgen_symbol_map=mupen_rglgen_symbol_map -Dmain_exit=mupen_main_exit \
@@ -201,6 +201,10 @@ ifeq ($(GLIDE2GL), 1)
 VIDEODIR_GLIDE = glide2gl/src
 else
 VIDEODIR_GLIDE = gles2glide64/src
+endif
+
+ifeq ($(GLES2GLIDE64_NEW), 1)
+VIDEODIR_GLIDE = gles2glide64_new/src
 endif
 
 INCFLAGS := \
@@ -330,7 +334,11 @@ endif
 CFILES += $(LIBRETRO_SRC)
 
 # Glide64
+ifeq ($(GLES2GLIDE64_NEW), 1)
+CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
+else
 CFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.c) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.c)
+endif
 
 ### Angrylion's renderer ###
 VIDEODIR_ANGRYLION = angrylionrdp

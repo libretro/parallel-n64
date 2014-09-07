@@ -286,8 +286,9 @@ grDepthMask( FxBool mask )
 }
 
 bool biasFound = false;
-float polygonOffsetFactor;
-float polygonOffsetUnits;
+extern float polygonOffsetFactor;
+extern float polygonOffsetUnits;
+
 void FindBestDepthBias(void)
 {
 #if defined(__LIBRETRO__) // TODO: How to calculate this?

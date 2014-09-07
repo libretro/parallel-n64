@@ -68,8 +68,9 @@ grCullMode( GrCullMode_t mode )
 // Depth buffer
 
 bool biasFound = false;
-float polygonOffsetFactor;
-float polygonOffsetUnits;
+extern float polygonOffsetFactor;
+extern float polygonOffsetUnits;
+
 void FindBestDepthBias(void)
 {
 	const char *renderer = NULL;
