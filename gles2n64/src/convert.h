@@ -1,7 +1,14 @@
 #ifndef CONVERT_H
 #define CONVERT_H
 
-#include <byteswap.h>
+#ifdef __GNUC__
+#define bswap_32 __builtin_bswap32
+#else
+#define bswap_32(x) (((x) << 24) & 0xff000000) \
+   | (((x) << 8) & 0xff0000) \
+   | (((x) >> 8) & 0xff00) \
+   | (((x) >> 24) & 0xff )
+#endif
 
 #include "Types.h"
 
