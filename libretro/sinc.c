@@ -521,7 +521,7 @@ error:
    return NULL;
 }
 
-const rarch_resampler_t sinc_resampler = {
+rarch_resampler_t sinc_resampler = {
    resampler_sinc_new,
    resampler_sinc_process,
    resampler_sinc_free,

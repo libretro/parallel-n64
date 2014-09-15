@@ -25,7 +25,7 @@ bool rarch_resampler_realloc(void **re, const rarch_resampler_t **backend, const
    if (*re && *backend)
       (*backend)->free(*re);
 
-   *backend = &sinc_resampler;
+   *backend = &nearest_resampler;
    *re = (*backend)->init(bw_ratio);
 
    if (!*re)
