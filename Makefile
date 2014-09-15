@@ -273,9 +273,6 @@ ifdef WITH_DYNAREC
 
    else
 	   CPUFLAGS += -msse -msse2
-	   ifeq ($(WITH_DYNAREC), x86_64)
-		NEB_DYNAREC := 1
-	   endif
       CFILES += $(wildcard $(COREDIR)/src/r4300/$(WITH_DYNAREC)/*.c)
    endif
 else
