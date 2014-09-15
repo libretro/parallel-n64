@@ -144,26 +144,70 @@ static void DrawRE2Video(FB_TO_SCREEN_INFO *fb_info, float scale)
    lr_v = (fb_info->height - 1) * scale;
 
    {
-      VERTEX v[4] = {
-         { .x = ul_x, .y = ul_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = 0.5f, .u1 = 0.5f, .v1 = 0.5f, .coord = {0.5f, 0.5f, 0.5f, 0.5f} },
-         { .x = lr_x, .y = ul_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = 0.5f, .u1 = lr_u, .v1 = 0.5f, .coord = {lr_u, 0.5f, lr_u, 0.5f} },
-         { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = lr_v, .u1 = 0.5f, .v1 = lr_v, .coord = {0.5f, lr_v, 0.5f, lr_v} },
-         { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
-      };
+      VERTEX v[4], vout[4], vout2[4];
 
-      {
-         VERTEX vout[4], vout2[4];
-         vout[0] = v[0];
-         vout[1] = v[2];
-         vout[2] = v[1];
+      v[0].x = ul_x;
+      v[0].y = ul_y;
+      v[0].z = 1;
+      v[0].q = 1;
+      v[0].u0 = 0.5f;
+      v[0].v0 = 0.5f;
+      v[0].u1 = 0.5f;
+      v[0].v1 = 0.5f;
+      v[0].coord[0] = 0.5f;
+      v[0].coord[1] = 0.5f;
+      v[0].coord[2] = 0.5f;
+      v[0].coord[3] = 0.5f;
 
-         vout2[0] = v[2];
-         vout2[1] = v[3];
-         vout2[2] = v[1];
+      v[1].x = lr_x;
+      v[1].y = ul_y;
+      v[1].z = 1;
+      v[1].q = 1;
+      v[1].u0 = lr_u;
+      v[1].v0 = 0.5f;
+      v[1].u1 = lr_u;
+      v[1].v1 = 0.5f;
+      v[1].coord[0] = lr_u;
+      v[1].coord[1] = 0.5f;
+      v[1].coord[2] = lr_u;
+      v[1].coord[3] = 0.5f;
 
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
-      }
+      v[2].x = ul_x;
+      v[2].y = lr_y;
+      v[2].z = 1;
+      v[2].q = 1;
+      v[2].u0 = 0.5f;
+      v[2].v0 = lr_v;
+      v[2].u1 = 0.5f;
+      v[2].v1 = lr_v;
+      v[2].coord[0] = 0.5f;
+      v[2].coord[1] = lr_v;
+      v[2].coord[2] = 0.5f;
+      v[2].coord[3] = lr_v;
+
+      v[3].x = lr_x;
+      v[3].y = lr_y;
+      v[3].z = 1;
+      v[3].q = 1;
+      v[3].u0 = lr_u;
+      v[3].v0 = lr_v;
+      v[3].u1 = lr_u;
+      v[3].v1 = lr_v;
+      v[3].coord[0] = lr_u;
+      v[3].coord[1] = lr_v;
+      v[3].coord[2] = lr_u;
+      v[3].coord[3] = lr_v;
+
+      vout[0] = v[0];
+      vout[1] = v[2];
+      vout[2] = v[1];
+
+      vout2[0] = v[2];
+      vout2[1] = v[3];
+      vout2[2] = v[1];
+
+      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
+      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
    }
 }
 
