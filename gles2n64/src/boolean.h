@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -19,6 +19,7 @@
 #ifndef __cplusplus
 
 #if defined(_MSC_VER) && !defined(SN_TARGET_PS3)
+/* Hack applied for MSVC when compiling in C89 mode as it isn't C99 compliant. */
 #define bool unsigned char
 #define true 1
 #define false 0
