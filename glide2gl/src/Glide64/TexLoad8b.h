@@ -40,7 +40,7 @@
 
 #define NBITS_8B (sizeof(uint16_t) * 8)
 
-static inline void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
+static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
 {
   uint8_t *v7;
   uint32_t *v8;
@@ -142,7 +142,7 @@ static inline void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
   while ( v26 != 1 );
 }
 
-static inline void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
+static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
 {
   uint32_t *v7;
   uint32_t *v8;
@@ -244,7 +244,7 @@ static inline void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
   while ( v26 != 1 );
 }
 
-static inline void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
+static INLINE void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
   uint32_t *v6;
   uint32_t *v7;
@@ -310,7 +310,7 @@ static inline void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height,
   while ( v22 != 1 );
 }
 
-static inline void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
+static INLINE void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
   uint32_t *v6;
   uint32_t *v7;

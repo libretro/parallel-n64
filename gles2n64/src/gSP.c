@@ -1217,23 +1217,24 @@ void gSPLineW3D( s32 v0, s32 v1, s32 wd, s32 flag )
 void gSPBgRect1Cyc( u32 bg )
 {
 #if 1
+   uint16_t imageFlip;
    u32 addr;
    f32 imageX, imageY, imageW, imageH, frameX, frameY, frameW, frameH, scaleW, scaleH,
 	   frameX0, frameX1, frameY0, frameY1, frameS0, frameT0;
    addr = RSP_SegmentToPhysical(bg) >> 1;
 
-   imageX	= (((u16*)gfx_info.RDRAM)[(addr+0)^1] >> 5);	// 0
-   imageY	= (((u16*)gfx_info.RDRAM)[(addr+4)^1] >> 5);	// 4
-   imageW	= (((u16*)gfx_info.RDRAM)[(addr+1)^1] >> 2);	// 1
-   imageH	= (((u16*)gfx_info.RDRAM)[(addr+5)^1] >> 2);	// 5
+   imageX	= (((uint16_t*)gfx_info.RDRAM)[(addr+0)^1] >> 5);	// 0
+   imageY	= (((uint16_t*)gfx_info.RDRAM)[(addr+4)^1] >> 5);	// 4
+   imageW	= (((uint16_t*)gfx_info.RDRAM)[(addr+1)^1] >> 2);	// 1
+   imageH	= (((uint16_t*)gfx_info.RDRAM)[(addr+5)^1] >> 2);	// 5
 
-   frameX	= ((s16*)gfx_info.RDRAM)[(addr+2)^1] / 4.0f;	// 2
-   frameY	= ((s16*)gfx_info.RDRAM)[(addr+6)^1] / 4.0f;	// 6
-   frameW	= ((u16*)gfx_info.RDRAM)[(addr+3)^1] >> 2;		// 3
-   frameH	= ((u16*)gfx_info.RDRAM)[(addr+7)^1] >> 2;		// 7
+   frameX	= ((int16_t*)gfx_info.RDRAM)[(addr+2)^1] / 4.0f;	// 2
+   frameY	= ((int16_t*)gfx_info.RDRAM)[(addr+6)^1] / 4.0f;	// 6
+   frameW	= ((uint16_t*)gfx_info.RDRAM)[(addr+3)^1] >> 2;		// 3
+   frameH	= ((uint16_t*)gfx_info.RDRAM)[(addr+7)^1] >> 2;		// 7
 
 
-   uint16_t imageFlip = ((uint16_t*)gfx_info.RDRAM)[(addr+13)^1];	// 13;
+   imageFlip = ((uint16_t*)gfx_info.RDRAM)[(addr+13)^1];	// 13;
    //d.flipX 	= (uint8_t)imageFlip&0x01;
 
    gSP.bgImage.address	= RSP_SegmentToPhysical(((u32*)gfx_info.RDRAM)[(addr+8)>>1]);	// 8,9

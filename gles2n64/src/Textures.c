@@ -989,13 +989,14 @@ void TextureCache_Update( u32 t )
    u32 tileWidth, maskWidth, loadWidth, lineWidth, clampWidth, height;
    u32 tileHeight, maskHeight, loadHeight, lineHeight, clampHeight, width;
    u32 maskSize;
+   TextureFormat texFormat;
+
    if (gDP.textureMode == TEXTUREMODE_BGIMAGE)
    {
       TextureCache_UpdateBackground();
       return;
    }
 
-   TextureFormat texFormat;
    __texture_format(gSP.textureTile[t]->size, gSP.textureTile[t]->format, &texFormat);
    maxTexels = texFormat.maxTexels;
    // Here comes a bunch of code that just calculates the texture size...I wish there was an easier way...

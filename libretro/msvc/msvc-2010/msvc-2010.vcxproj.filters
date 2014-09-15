@@ -321,9 +321,6 @@
     <ClCompile Include="..\..\..\gles2n64\src\VI.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\osal_files_win32.c">
-      <Filter>Source Files\gles2rice\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\Blender.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>

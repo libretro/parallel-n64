@@ -213,10 +213,6 @@
     <ClCompile Include="..\..\..\gles2rice\src\OGLRender.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\OGLRenderExt.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\OGLTexture.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\osal_files_win32.c">
-      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
-      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\Render.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RenderBase.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RenderExt.cpp" />

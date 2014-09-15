@@ -143,6 +143,7 @@ static void DrawRE2Video(FB_TO_SCREEN_INFO *fb_info, float scale)
    lr_u = (fb_info->width - 1) * scale;
    lr_v = (fb_info->height - 1) * scale;
 
+   {
    VERTEX v[4] = {
       { .x = ul_x, .y = ul_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = 0.5f, .u1 = 0.5f, .v1 = 0.5f, .coord = {0.5f, 0.5f, 0.5f, 0.5f} },
       { .x = lr_x, .y = ul_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = 0.5f, .u1 = lr_u, .v1 = 0.5f, .coord = {lr_u, 0.5f, lr_u, 0.5f} },
@@ -155,6 +156,7 @@ static void DrawRE2Video(FB_TO_SCREEN_INFO *fb_info, float scale)
       VERTEX vout2[4] = {v[2], v[3], v[1]};
       grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
       grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
+   }
    }
 }
 

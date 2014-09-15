@@ -596,9 +596,10 @@ static INLINE void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
 
 uint32_t Load4bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
+  int ext;
   if (wid_64 < 1) wid_64 = 1;
   if (height < 1) height = 1;
-  int ext = (real_width - (wid_64 << 4)) << 1;
+  ext = (real_width - (wid_64 << 4)) << 1;
 
   if (rdp.tlut_mode == 0)
   {
