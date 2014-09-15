@@ -378,12 +378,15 @@ static INLINE void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
 
 uint32_t Load8bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
+  int ext;
+  unsigned short *pal;
   if (wid_64 < 1) wid_64 = 1;
   if (height < 1) height = 1;
-  int ext = (real_width - (wid_64 << 3));
-  unsigned short * pal = rdp.pal_8;
+  ext = (real_width - (wid_64 << 3));
+  pal = (unsigned short*)rdp.pal_8;
 
-  switch (rdp.tlut_mode) {
+  switch (rdp.tlut_mode)
+  {
     case 0: //palette is not used
       //in tlut DISABLE mode load CI texture as plain intensity texture instead of palette dereference.
       //Thanks to angrylion for the advice
@@ -407,12 +410,13 @@ uint32_t Load8bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
 
 uint32_t Load8bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
+  int ext;
   if (rdp.tlut_mode != 0)
     return Load8bCI (dst, src, wid_64, height, line, real_width, tile);
 
   if (wid_64 < 1) wid_64 = 1;
   if (height < 1) height = 1;
-  int ext = (real_width - (wid_64 << 3));
+  ext = (real_width - (wid_64 << 3));
   load8bIA4 ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
   return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;
 } 
@@ -424,12 +428,13 @@ uint32_t Load8bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
 
 uint32_t Load8bI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
+  int ext;
   if (rdp.tlut_mode != 0)
     return Load8bCI (dst, src, wid_64, height, line, real_width, tile);
 
   if (wid_64 < 1) wid_64 = 1;
   if (height < 1) height = 1;
-  int ext = (real_width - (wid_64 << 3));
+  ext = (real_width - (wid_64 << 3));
   load8bI ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
   return /*(0 << 16) | */GR_TEXFMT_ALPHA_8;
 }

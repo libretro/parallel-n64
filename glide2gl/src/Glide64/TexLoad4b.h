@@ -646,12 +646,13 @@ uint32_t Load4bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
 
 uint32_t Load4bI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
+  int ext;
   if (rdp.tlut_mode != 0)
     return Load4bCI (dst, src, wid_64, height, line, real_width, tile);
 
   if (wid_64 < 1) wid_64 = 1;
   if (height < 1) height = 1;
-  int ext = (real_width - (wid_64 << 4));
+  ext = (real_width - (wid_64 << 4));
   load4bI ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
   
   return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;

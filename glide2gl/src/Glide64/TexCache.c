@@ -961,22 +961,24 @@ static void LoadTex(int id, int tmu)
 
    if (modifyPalette)
    {
-      uint16_t tmp_pal[256];
+      int size;
+      uint16_t tmp_pal[256], *col;
+	  uint8_t cr0, cg0, cb0, ca0, cr1, cg1, cb1;
+	  float percent_r, percent_g, percent_b;
       memcpy(tmp_pal, rdp.pal_8, 512);
 
-      uint8_t cr0 = ((modcolor >> 24) & 0xFF);
-      uint8_t cg0 = ((modcolor >> 16) & 0xFF);
-      uint8_t cb0 = ((modcolor >> 8) & 0xFF);
-      uint8_t ca0 = (modcolor & 0xFF);
-      uint8_t cr1 = ((modcolor1 >> 24) & 0xFF);
-      uint8_t cg1 = ((modcolor1 >> 16) & 0xFF);
-      uint8_t cb1 = ((modcolor1 >> 8)  & 0xFF);
-      int size = 256;
-      uint16_t *col = &rdp.pal_8[0];
-      float percent_r = ((modcolor1 >> 24) & 0xFF) / 255.0f;
-      float percent_g = ((modcolor1 >> 16) & 0xFF) / 255.0f;
-      float percent_b = ((modcolor1 >> 8)  & 0xFF) / 255.0f;
-
+      cr0 = ((modcolor >> 24) & 0xFF);
+      cg0 = ((modcolor >> 16) & 0xFF);
+      cb0 = ((modcolor >> 8) & 0xFF);
+      ca0 = (modcolor & 0xFF);
+      cr1 = ((modcolor1 >> 24) & 0xFF);
+      cg1 = ((modcolor1 >> 16) & 0xFF);
+      cb1 = ((modcolor1 >> 8)  & 0xFF);
+      size = 256;
+      col = (uint16_t*)&rdp.pal_8[0];
+      percent_r = ((modcolor1 >> 24) & 0xFF) / 255.0f;
+      percent_g = ((modcolor1 >> 16) & 0xFF) / 255.0f;
+      percent_b = ((modcolor1 >> 8)  & 0xFF) / 255.0f;
 
       switch (mod)
       {
@@ -985,7 +987,7 @@ static void LoadTex(int id, int tmu)
          case TMOD_TEX_INTER_COL_USING_COL1:
             do
             {
-               uint8_t a = (*col & 0x0001);;
+               uint8_t a = (*col & 0x0001);
                uint8_t r = (1-percent_r) * (((*col & 0xF800) >> 11)) + percent_r * cr0;
                uint8_t g = (1-percent_g) * (((*col & 0x07C0) >> 6)) + percent_g * cg0;
                uint8_t b = (1-percent_b) * (((*col & 0x003E) >> 1)) + percent_b * cb0;
@@ -998,7 +1000,7 @@ static void LoadTex(int id, int tmu)
          case TMOD_FULL_COLOR_SUB_TEX:
             do
             {
-               uint8_t a = ca0 - (*col & 0x0001);;
+               uint8_t a = ca0 - (*col & 0x0001);
                uint8_t r = cr0 - (((*col & 0xF800) >> 11));
                uint8_t g = cg0 - (((*col & 0x07C0) >> 6));
                uint8_t b = cb0 - (((*col & 0x003E) >> 1));
@@ -1043,7 +1045,7 @@ static void LoadTex(int id, int tmu)
 
                do
                {
-                  uint8_t a = (*col & 0x0001);;
+                  uint8_t a = (*col & 0x0001);
                   float r = (uint8_t)((float)((*col & 0xF800) >> 11));
                   float g = (uint8_t)((float)((*col & 0x07C0) >> 6));
                   float b = (uint8_t)((float)((*col & 0x003E) >> 1));
@@ -1105,7 +1107,7 @@ static void LoadTex(int id, int tmu)
 
             do
             {
-               uint8_t a = (*col & 0x0001);;
+               uint8_t a = (*col & 0x0001);
                uint8_t r = percent_r * (((*col & 0xF800) >> 11)) + cr0;
                uint8_t g = percent_g * (((*col & 0x07C0) >> 6)) + cg0;
                uint8_t b = percent_b * (((*col & 0x003E) >> 1)) + cb0;
@@ -1118,7 +1120,7 @@ static void LoadTex(int id, int tmu)
          case TMOD_TEX_ADD_COL:
             do
             {
-               uint8_t a = (*col & 0x0001);;
+               uint8_t a = (*col & 0x0001);
                uint8_t r = cr0 + (((*col & 0xF800) >> 11));
                uint8_t g = cg0 + (((*col & 0x07C0) >> 6));
                uint8_t b = cb0 + (((*col & 0x003E) >> 1));
@@ -1132,7 +1134,7 @@ static void LoadTex(int id, int tmu)
          case TMOD_COL_INTER_TEX_USING_COL1:
             do
             {
-               uint8_t a = (*col & 0x0001);;
+               uint8_t a = (*col & 0x0001);
                uint8_t r = percent_r * (((*col & 0xF800) >> 11)) + (1-percent_r) * cr0;
                uint8_t g = percent_g * (((*col & 0x07C0) >> 6)) + (1-percent_g) * cg0;
                uint8_t b = percent_b * (((*col & 0x003E) >> 1)) + (1-percent_b) * cb0;
@@ -1160,7 +1162,7 @@ static void LoadTex(int id, int tmu)
          case TMOD_TEX_MUL_COL:
             do
             {
-               uint8_t a = (*col & 0x0001);;
+               uint8_t a = (*col & 0x0001);
                uint8_t r = (((*col & 0xF800) >> 11) * cr0);
                uint8_t g = (((*col & 0x07C0) >> 6) * cg0);
                uint8_t b = (((*col & 0x003E) >> 1) * cb0);
@@ -1403,17 +1405,19 @@ static void LoadTex(int id, int tmu)
          ((modcolor2 & 0x0000F000) >> 8) | ((modcolor2 & 0x000000F0) >> 4);
 
       {
+         uint16_t *dst;
+		 uint32_t cr0, cg0, cb0, cr1, cg1, cb1, cr2, cg2, cb2;
          size = (real_x * real_y) << 1;
-         uint16_t *dst = (uint16_t*)texture;
-         uint32_t cr0 = (modcolor >> 12) & 0xF;
-         uint32_t cg0 = (modcolor >> 8) & 0xF;
-         uint32_t cb0 = (modcolor >> 4) & 0xF;
-         uint32_t cr1 = (modcolor1 >> 12) & 0xF;
-         uint32_t cg1 = (modcolor1 >> 8) & 0xF;
-         uint32_t cb1 = (modcolor1 >> 4) & 0xF;
-         uint32_t cr2 = (modcolor2 >> 12) & 0xF;
-         uint32_t cg2 = (modcolor2 >> 8) & 0xF;
-         uint32_t cb2 = (modcolor2 >> 4) & 0xF;
+         dst = (uint16_t*)texture;
+         cr0 = (modcolor >> 12) & 0xF;
+         cg0 = (modcolor >> 8) & 0xF;
+         cb0 = (modcolor >> 4) & 0xF;
+         cr1 = (modcolor1 >> 12) & 0xF;
+         cg1 = (modcolor1 >> 8) & 0xF;
+         cb1 = (modcolor1 >> 4) & 0xF;
+         cr2 = (modcolor2 >> 12) & 0xF;
+         cg2 = (modcolor2 >> 8) & 0xF;
+         cb2 = (modcolor2 >> 4) & 0xF;
 
          switch (mod)
          {

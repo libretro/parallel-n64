@@ -186,6 +186,7 @@ uint32_t Load16bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int li
 uint16_t yuv_to_rgb565(uint8_t y, uint8_t u, uint8_t v)
 {
    float r, g, b;
+
    r = y + (1.370705f * (v-128));
    g = y - (0.698001f * (v-128)) - (0.337633f * (u-128));
    b = y + (1.732446f * (u-128));
@@ -199,10 +200,9 @@ uint16_t yuv_to_rgb565(uint8_t y, uint8_t u, uint8_t v)
    if (r < 0) r = 0;
    if (g < 0) g = 0;
    if (b < 0) b = 0;
-   uint16_t c = (uint16_t)(((uint16_t)(r) << 11) |
+   return (uint16_t)(((uint16_t)(r) << 11) |
          ((uint16_t)(g) << 5) |
          (uint16_t)(b) );
-   return c;
    //*/
    /*
       const uint32_t c = y - 16;
