@@ -211,6 +211,7 @@ extern void inputInitiateCallback(const char *headername);
 
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
 {
+   double radius, angle;
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
 
@@ -218,8 +219,8 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
    analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
 
    // Convert cartesian coordinate analog stick to polar coordinates
-   double radius = sqrt(analogX * analogX + analogY * analogY);
-   double angle = atan2(analogY, analogX);
+   radius = sqrt(analogX * analogX + analogY * analogY);
+   angle = atan2(analogY, analogX);
 
    if (radius > astick_deadzone)
    {

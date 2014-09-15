@@ -99,9 +99,6 @@
     <ClCompile Include="..\..\audio_plugin.c">
       <Filter>Source Files\libretro</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\glsym.c">
-      <Filter>Source Files\libretro</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\input_plugin.c">
       <Filter>Source Files\libretro</Filter>
     </ClCompile>
