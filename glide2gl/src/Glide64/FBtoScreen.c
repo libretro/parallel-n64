@@ -144,19 +144,26 @@ static void DrawRE2Video(FB_TO_SCREEN_INFO *fb_info, float scale)
    lr_v = (fb_info->height - 1) * scale;
 
    {
-   VERTEX v[4] = {
-      { .x = ul_x, .y = ul_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = 0.5f, .u1 = 0.5f, .v1 = 0.5f, .coord = {0.5f, 0.5f, 0.5f, 0.5f} },
-      { .x = lr_x, .y = ul_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = 0.5f, .u1 = lr_u, .v1 = 0.5f, .coord = {lr_u, 0.5f, lr_u, 0.5f} },
-      { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = lr_v, .u1 = 0.5f, .v1 = lr_v, .coord = {0.5f, lr_v, 0.5f, lr_v} },
-      { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
-   };
-   
-   {
-      VERTEX vout[4] = {v[0], v[2], v[1]};
-      VERTEX vout2[4] = {v[2], v[3], v[1]};
-      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
-   }
+      VERTEX v[4] = {
+         { .x = ul_x, .y = ul_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = 0.5f, .u1 = 0.5f, .v1 = 0.5f, .coord = {0.5f, 0.5f, 0.5f, 0.5f} },
+         { .x = lr_x, .y = ul_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = 0.5f, .u1 = lr_u, .v1 = 0.5f, .coord = {lr_u, 0.5f, lr_u, 0.5f} },
+         { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = lr_v, .u1 = 0.5f, .v1 = lr_v, .coord = {0.5f, lr_v, 0.5f, lr_v} },
+         { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
+      };
+
+      {
+         VERTEX vout[4], vout2[4];
+         vout[0] = v[0];
+         vout[1] = v[2];
+         vout[2] = v[1];
+
+         vout2[0] = v[2];
+         vout2[1] = v[3];
+         vout2[2] = v[1];
+
+         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
+         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
+      }
    }
 }
 
@@ -302,8 +309,15 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
             { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = lr_v, .u1 = 0.5f, .v1 = lr_v, .coord = {0.5f, lr_v, 0.5f, lr_v} },
             { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
          };
-         VERTEX vout[4] = {v[0], v[2], v[1]};
-         VERTEX vout2[4] = {v[2], v[3], v[1]};
+         VERTEX vout[4], vout2[4];
+
+         vout[0] = v[0];
+         vout[1] = v[2];
+         vout[2] = v[1];
+         vout2[0] = v[2];
+         vout2[1] = v[3];
+         vout2[2] = v[1];
+
          grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
          grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
       }
@@ -430,9 +444,15 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
             { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = lr_v, .u1 = 0.5f, .v1 = lr_v, .coord = {0.5f, lr_v, 0.5f, lr_v} },
             { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
          };
+         VERTEX vout[4], vout2[4];
 
-         VERTEX vout[4] = {v[0], v[2], v[1]};
-         VERTEX vout2[4] = {v[2], v[3], v[1]};
+         vout[0] = v[0];
+         vout[1] = v[2];
+         vout[2] = v[1];
+         vout2[0] = v[2];
+         vout2[1] = v[3];
+         vout2[2] = v[1];
+
          grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
          grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
       }
@@ -509,8 +529,14 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
                { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = lr_v, .u1 = 0.5f, .v1 = lr_v, .coord = {0.5f, lr_v, 0.5f, lr_v} },
                { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
             };
-            VERTEX vout[4] = {v[0], v[2], v[1]};
-            VERTEX vout2[4] = {v[2], v[3], v[1]};
+            VERTEX vout[4], vout2[4];
+            vout[0] = v[0];
+            vout[1] = v[2];
+            vout[2] = v[1];
+            vout2[0]  = v[2];
+            vout2[1] = v[3];
+            vout2[2] = v[1];
+
             grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
             grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
          }
@@ -592,8 +618,15 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
          { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = zero, .v0 = lr_v, .u1 = zero, .v1 = lr_v, .coord = {zero, lr_v, zero, lr_v} },
          { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
       };
-      VERTEX vout[4] = {v[0], v[2], v[1]};
-      VERTEX vout2[4] = {v[2], v[3], v[1]};
+      VERTEX vout[4], vout2[4];
+      vout[0] = v[0];
+      vout[1] = v[2];
+      vout[2] = v[1];
+
+      vout2[0] = v[2];
+      vout2[1] = v[3];
+      vout2[2] = v[1];
+
       grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
       grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
    }
