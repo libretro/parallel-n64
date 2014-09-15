@@ -471,11 +471,12 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
 
             if (w0 & 0x20) // fractional part
             {
+               float fpart;
                int index_x = (w0 & 0x1F) >> 1;
                int index_y = index_x >> 2;
                index_x &= 3;
 
-               float fpart = (w1>>16)/65536.0f;
+               fpart = (w1>>16)/65536.0f;
                rdp.combined[index_y][index_x] = (float)(int)rdp.combined[index_y][index_x];
                rdp.combined[index_y][index_x] += fpart;
 

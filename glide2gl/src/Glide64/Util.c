@@ -897,8 +897,14 @@ static void render_tri (uint16_t linew, int old_interpolate)
       }
 
       {
-         VERTEX vout[4] = {v[0], v[1], v[2]};
-         VERTEX vout2[4] = {v[1], v[2], v[3]};
+         VERTEX vout[4], vout2[4];
+		 vout[0] = v[0];
+		 vout[1] = v[1];
+		 vout[2] = v[2];
+		 vout2[0] = v[1];
+		 vout2[1] = v[2];
+		 vout2[2] = v[3];
+
          grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
          grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
       }

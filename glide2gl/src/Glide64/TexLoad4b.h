@@ -597,6 +597,8 @@ static INLINE void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
 uint32_t Load4bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
   int ext;
+  uintptr_t pal;
+
   if (wid_64 < 1) wid_64 = 1;
   if (height < 1) height = 1;
   ext = (real_width - (wid_64 << 4)) << 1;
@@ -609,7 +611,7 @@ uint32_t Load4bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
     return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;
   }
 
-  uintptr_t pal = (uintptr_t)(rdp.pal_8 + (rdp.tiles[tile].palette << 4));
+  pal = (uintptr_t)(rdp.pal_8 + (rdp.tiles[tile].palette << 4));
   if (rdp.tlut_mode == 2)
   {
     load4bCI ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext, (uint16_t *)pal);
@@ -628,12 +630,13 @@ uint32_t Load4bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
 
 uint32_t Load4bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
+  int ext;
   if (rdp.tlut_mode != 0)
     return Load4bCI (dst, src, wid_64, height, line, real_width, tile);
 
   if (wid_64 < 1) wid_64 = 1;
   if (height < 1) height = 1;
-  int ext = (real_width - (wid_64 << 4));
+  ext = (real_width - (wid_64 << 4));
   load4bIA ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
   return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;
 }

@@ -597,7 +597,7 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
    float32x4_t comb0, comb1, comb2, comb3;
    float32x4_t v_xyzw;
 #endif
-   void   *membase_ptr  = (void*)gfx_info.RDRAM + addr;
+   void   *membase_ptr  = (void*)(gfx_info.RDRAM + addr);
    uint32_t iter = 16;
 
 #ifdef __ARM_NEON__
