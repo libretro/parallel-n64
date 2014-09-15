@@ -552,5 +552,8 @@
     <ClCompile Include="..\..\..\gles2rice\src\RiceConfig.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\nearest.c">
+      <Filter>Source Files\libretro</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

@@ -17,23 +17,18 @@ typedef struct rarch_nearest_resampler
 {
    float fraction;
 }rarch_nearest_resampler_t;
- 
+
+typedef struct audio_frame_float
+{
+      float l;
+      float r;
+} audio_frame_float_t;
  
 static void resampler_nearest_process(void *re_,
       struct resampler_data *data)
 {
-   (void)re_;
    float ratio;
-   
-   rarch_nearest_resampler_t *re = (rarch_nearest_resampler_t*)re_;
-   
-   typedef struct audio_frame_float
-   {
-      float l;
-      float r;
-   }audio_frame_float_t;
- 
- 
+   rarch_nearest_resampler_t *re= (rarch_nearest_resampler_t*)re_;
    audio_frame_float_t *inp = (audio_frame_float_t*)data->data_in;
    audio_frame_float_t *inp_max = inp + data->input_frames;
    audio_frame_float_t *outp = (audio_frame_float_t*)data->data_out;
