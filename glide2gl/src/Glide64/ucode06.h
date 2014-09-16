@@ -428,15 +428,39 @@ static void DrawImage (DRAWIMAGE *d)
          ful_y = nul_y * rdp.scale_y + rdp.offset_y;
          flr_y = nlr_y * rdp.scale_y + rdp.offset_y;
 
-         // Make the vertices
+         /* Make the vertices */
 
          if ((flr_x <= rdp.scissor.lr_x) || (ful_x < rdp.scissor.lr_x))
          {
-            VERTEX v[4] = {
-               { .x = ful_x, .y = ful_y, .z = Z, .q = 1.0f, .u0 = ful_u, .v0 = ful_v },
-               { .x = flr_x, .y = ful_y, .z = Z, .q = 1.0f, .u0 = flr_u, .v0 = ful_v },
-               { .x = ful_x, .y = flr_y, .z = Z, .q = 1.0f, .u0 = ful_u, .v0 = flr_v },
-               { .x = flr_x, .y = flr_y, .z = Z, .q = 1.0f, .u0 = flr_u, .v0 = flr_v } };
+            VERTEX v[4];
+
+            v[0].x = ful_x;
+            v[0].y = ful_y;
+            v[0].z = Z;
+            v[0].q = 1.0f;
+            v[0].u0 = ful_u;
+            v[0].v0 = ful_v;
+
+            v[1].x = flr_x;
+            v[1].y = ful_y;
+            v[1].z = Z;
+            v[1].q = 1.0f;
+            v[1].u0 = flr_u;
+            v[1].v0 = ful_v;
+
+            v[2].x = ful_x;
+            v[2].y = flr_y;
+            v[2].z = Z;
+            v[2].q = 1.0f;
+            v[2].u0 = ful_u;
+            v[2].v0 = flr_v;
+
+            v[3].x = flr_x;
+            v[3].y = flr_y;
+            v[3].z = Z;
+            v[3].q = 1.0f;
+            v[3].u0 = flr_u;
+            v[3].v0 = flr_v;
 
             apply_shading(v);
             ConvertCoordsConvert (v, 4);
@@ -582,11 +606,13 @@ static void draw_split_triangle(VERTEX **vtx)
     // ** Left plane **
     for (i=0; i<3; i++)
     {
-       VERTEX *v1, *v2;
-       j = i+1;
-       if (j == 3) j = 0;
+       VERTEX *v2 = NULL;
+       VERTEX *v1 = (VERTEX*)vtx[i];
 
-       v1 = (VERTEX*)vtx[i];
+       j = i+1;
+       if (j == 3)
+          j = 0;
+
        v2 = (VERTEX*)vtx[j];
 
        if (v1->u0 >= left_256)
@@ -646,11 +672,13 @@ static void draw_split_triangle(VERTEX **vtx)
 
     for (i=0; i<rdp.n_global; i++)
     {
-       VERTEX *v1, *v2;
-       j = i+1;
-       if (j == rdp.n_global) j = 0;
+       VERTEX *v1 = (VERTEX*)&rdp.vtxbuf2[i];
+       VERTEX *v2 = NULL;
 
-       v1 = (VERTEX*)&rdp.vtxbuf2[i];
+       j = i+1;
+       if (j == rdp.n_global)
+          j = 0;
+
        v2 = (VERTEX*)&rdp.vtxbuf2[j];
 
        // ** Right plane **
@@ -781,6 +809,7 @@ static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
 {
    int i;
    float Z, ul_x, lr_x, ul_y, lr_y, ul_u, ul_v, lr_u, lr_v;
+   VERTEX v[4];
    DRAWOBJECT d;
 
    LRDP ("uc6:obj_rectangle ");
@@ -822,13 +851,35 @@ static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
       lr_v = 0.5f;
    }
 
-   // Make the vertices
-   VERTEX v[4] = {
-      { .x = ul_x, .y = ul_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = ul_v },
-      { .x = lr_x, .y = ul_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = ul_v },
-      { .x = ul_x, .y = lr_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = lr_v },
-      { .x = lr_x, .y = lr_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = lr_v }
-   };
+   /* Make the vertices */
+
+   v[0].x = ul_x;
+   v[0].y = ul_y;
+   v[0].z = Z;
+   v[0].q = 1.0f;
+   v[0].u0 = ul_u;
+   v[0].v0 = ul_v;
+
+   v[1].x = lr_x;
+   v[1].y = ul_y;
+   v[1].z = Z;
+   v[1].q = 1.0f;
+   v[1].u0 = lr_u;
+   v[1].v0 = ul_v;
+
+   v[2].x = ul_x;
+   v[2].y = lr_y;
+   v[2].z = Z;
+   v[2].q = 1.0f;
+   v[2].u0 = ul_u;
+   v[2].v0 = lr_v;
+
+   v[3].x = lr_x;
+   v[3].y = lr_y;
+   v[3].z = Z;
+   v[3].q = 1.0f;
+   v[3].u0 = lr_u;
+   v[3].v0 = lr_v;
 
    for (i = 0; i < 4; i++)
    {
@@ -843,6 +894,7 @@ static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
 {
    LRDP ("uc6:obj_sprite ");
    DRAWOBJECT d;
+   VERTEX v[4];
    int i;
    float Z, ul_x, lr_x, ul_y, lr_y, ul_u, lr_u, ul_v, lr_v;
 
@@ -884,15 +936,36 @@ static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
    else
       ul_v = 0.5f;
 
-   // Make the vertices
+   /* Make the vertices */
    // FRDP("scale_x: %f, scale_y: %f\n", rdp.cur_cache[0]->scale_x, rdp.cur_cache[0]->scale_y);
 
-   VERTEX v[4] = {
-      { .x = ul_x, .y = ul_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = ul_v },
-      { .x = lr_x, .y = ul_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = ul_v },
-      { .x = ul_x, .y = lr_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = lr_v },
-      { .x = lr_x, .y = lr_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = lr_v }
-   };
+   v[0].x = ul_x;
+   v[0].y = ul_y;
+   v[0].z = Z;
+   v[0].q = 1.0f;
+   v[0].u0 = ul_u;
+   v[0].v0 = ul_v;
+
+   v[1].x = lr_x;
+   v[1].y = ul_y;
+   v[1].z = Z;
+   v[1].q = 1.0f;
+   v[1].u0 = lr_u;
+   v[1].v0 = ul_v;
+
+   v[2].x = ul_x;
+   v[2].y = lr_y;
+   v[2].z = Z;
+   v[2].q = 1.0f;
+   v[2].u0 = ul_u;
+   v[2].v0 = lr_v;
+
+   v[3].x = lr_x;
+   v[3].y = lr_y;
+   v[3].z = Z;
+   v[3].q = 1.0f;
+   v[3].u0 = lr_u;
+   v[3].v0 = lr_v;
   
    for (i = 0; i < 4; i++)
    {
@@ -1023,6 +1096,7 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 {
    int i;
    float Z, ul_x, lr_x, ul_y, lr_y, ul_u, ul_v, lr_u, lr_v;
+   VERTEX v[4];
    DRAWOBJECT d;
 
    LRDP ("uc6:obj_rectangle_r ");
@@ -1064,13 +1138,35 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
    else
       ul_v = 0.5f;
 
-   // Make the vertices
-   VERTEX v[4] = {
-      { .x = ul_x, .y = ul_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = ul_v },
-      { .x = lr_x, .y = ul_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = ul_v },
-      { .x = ul_x, .y = lr_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = lr_v },
-      { .x = lr_x, .y = lr_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = lr_v }
-   };
+   /* Make the vertices */
+
+   v[0].x = ul_x;
+   v[0].y = ul_y;
+   v[0].z = Z;
+   v[0].q = 1.0f;
+   v[0].u0 = ul_u;
+   v[0].v0 = ul_v;
+
+   v[1].x = lr_x;
+   v[1].y = ul_y;
+   v[1].z = Z;
+   v[1].q = 1.0f;
+   v[1].u0 = lr_u;
+   v[1].v0 = ul_v;
+
+   v[2].x = ul_x;
+   v[2].y = lr_y;
+   v[2].z = Z;
+   v[2].q = 1.0f;
+   v[2].u0 = ul_u;
+   v[2].v0 = lr_v;
+
+   v[3].x = lr_x;
+   v[3].y = lr_y;
+   v[3].z = Z;
+   v[3].q = 1.0f;
+   v[3].u0 = lr_u;
+   v[3].v0 = lr_v;
 
    for (i = 0; i < 4; i++)
    {
@@ -1306,6 +1402,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
       {
          float Z, ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
          TILE *tile;
+         VERTEX v[4];
          uint16_t line = d.imageW;
 
          if (line & 7) line += 8; // round up
@@ -1390,12 +1487,35 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
             lr_v = 255.0f*rdp.cur_cache[0]->scale_y;
          }
 
-         // Make the vertices
-         VERTEX v[4] = {
-            { .x = ul_x, .y = ul_y, .z = Z, .q = 1, .u0 = 0.5f, .v0 = 0.5f },
-            { .x = lr_x, .y = ul_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = 0.5f },
-            { .x = ul_x, .y = lr_y, .z = Z, .q = 1, .u0 = 0.5f, .v0 = lr_v },
-            { .x = lr_x, .y = lr_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = lr_v } };
+         /* Make the vertices */
+
+         v[0].x = ul_x;
+         v[0].y = ul_y;
+         v[0].z = Z;
+         v[0].q = 1.0f;
+         v[0].u0 = 0.5f;
+         v[0].v0 = 0.5f;
+
+         v[1].x = lr_x;
+         v[1].y = ul_y;
+         v[1].z = Z;
+         v[1].q = 1.0f;
+         v[1].u0 = lr_u;
+         v[1].v0 = 0.5f;
+
+         v[2].x = ul_x;
+         v[2].y = lr_y;
+         v[2].z = Z;
+         v[2].q = 1.0f;
+         v[2].u0 = 0.5f;
+         v[2].v0 = lr_v;
+
+         v[3].x = lr_x;
+         v[3].y = lr_y;
+         v[3].z = Z;
+         v[3].q = 1.0f;
+         v[3].u0 = lr_u;
+         v[3].v0 = lr_v;
 
          for (i=0; i<4; i++)
          {
