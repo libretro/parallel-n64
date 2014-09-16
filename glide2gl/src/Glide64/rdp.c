@@ -1805,13 +1805,12 @@ static void rdp_settile(uint32_t w0, uint32_t w1)
 static void rdp_fillrect(uint32_t w0, uint32_t w1)
 {
    int32_t s_ul_x, s_lr_x, s_ul_y, s_lr_y;
-   uint32_t ul_x, ul_y, lr_x, lr_y;
    int pd_multiplayer;
 
-   ul_x = ((w1 & 0x00FFF000) >> 14);
-   ul_y = (w1 & 0x00000FFF) >> 2;
-   lr_x = ((w0 & 0x00FFF000) >> 14) + 1;
-   lr_y = ((w0 & 0x00000FFF) >> 2) + 1;
+   uint32_t ul_x = ((w1 & 0x00FFF000) >> 14);
+   uint32_t ul_y = (w1 & 0x00000FFF) >> 2;
+   uint32_t lr_x = ((w0 & 0x00FFF000) >> 14) + 1;
+   uint32_t lr_y = ((w0 & 0x00000FFF) >> 2) + 1;
 
    if ((ul_x > lr_x) || (ul_y > lr_y))
    {
@@ -2817,17 +2816,20 @@ static uint32_t rdp_cmd_data[0x1000];
 
 static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer, uint32_t *rdp_cmd)
 {
-   rdp.cur_tile = (w1 >> 16) & 0x7;
    int j;
    int xleft, xright, xleft_inc, xright_inc;
-   int r, g, b, a, z, s, t, w;
    VERTEX vtxbuf[12], *vtx;
 
-   int32_t yl, ym, yh; /* triangle edge y-coordinates */
-   int32_t xl, xm, xh; /* triangle edge x-coordinates */
-   int32_t dxldy, dxhdy, dxmdy; /* triangle edge inverse-slopes */
-   uint32_t w3, w4, w5, w6, w7, w8;
    int32_t nbVtxs;
+
+   int r = 0xff;
+   int g = 0xff;
+   int b = 0xff;
+   int a = 0xff;
+   int z = 0xffff0000;
+   int s = 0;
+   int t = 0;
+   int w = 0x30000;
 
    int drdx = 0, dgdx = 0, dbdx = 0, dadx = 0, dzdx = 0, dsdx = 0, dtdx = 0, dwdx = 0;
    int drde = 0, dgde = 0, dbde = 0, dade = 0, dzde = 0, dsde = 0, dtde = 0, dwde = 0;
@@ -2835,6 +2837,30 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
    uint32_t * shade_base = rdp_cmd + 8;
    uint32_t * texture_base = rdp_cmd + 8;
    uint32_t * zbuffer_base = rdp_cmd + 8;
+
+   uint32_t w3 = rdp_cmd[2];
+   uint32_t w4 = rdp_cmd[3];
+   uint32_t w5 = rdp_cmd[4];
+   uint32_t w6 = rdp_cmd[5];
+   uint32_t w7 = rdp_cmd[6];
+   uint32_t w8 = rdp_cmd[7];
+
+   /* triangle edge y-coordinates */
+   int32_t yl = (w1 & 0x3fff);
+   int32_t ym = ((w2 >> 16) & 0x3fff);
+   int32_t yh = ((w2 >> 0) & 0x3fff);
+
+   /* triangle edge x-coordinates */
+   int32_t xl = (int32_t)(w3);
+   int32_t xh = (int32_t)(w5);
+   int32_t xm = (int32_t)(w7);
+
+   /* triangle edge inverse-slopes */
+   int32_t dxldy = (int32_t)(w4);
+   int32_t dxhdy = (int32_t)(w6);
+   int32_t dxmdy = (int32_t)(w8);
+
+   rdp.cur_tile = (w1 >> 16) & 0x7;
 
    if (shade)
    {
@@ -2846,31 +2872,12 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
       zbuffer_base += 16;
    }
 
-   w3 = rdp_cmd[2];
-   w4 = rdp_cmd[3];
-   w5 = rdp_cmd[4];
-   w6 = rdp_cmd[5];
-   w7 = rdp_cmd[6];
-   w8 = rdp_cmd[7];
-
-   yl = (w1 & 0x3fff);
-   ym = ((w2 >> 16) & 0x3fff);
-   yh = ((w2 >> 0) & 0x3fff);
-
-   xl = (int32_t)(w3);
-   dxldy = (int32_t)(w4);
-   xh = (int32_t)(w5);
-   dxhdy = (int32_t)(w6);
-   xm = (int32_t)(w7);
-   dxmdy = (int32_t)(w8);
-
    if (yl & (0x800<<2)) yl |= 0xfffff000<<2;
    if (ym & (0x800<<2)) ym |= 0xfffff000<<2;
    if (yh & (0x800<<2)) yh |= 0xfffff000<<2;
 
    yh &= ~3;
 
-   r = 0xff; g = 0xff; b = 0xff; a = 0xff; z = 0xffff0000; s = 0; t = 0; w = 0x30000;
 
    if (shade)
    {
