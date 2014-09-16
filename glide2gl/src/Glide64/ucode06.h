@@ -824,10 +824,10 @@ static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
 
    // Make the vertices
    VERTEX v[4] = {
-      { ul_x, ul_y, Z, 1, ul_u, ul_v },
-      { lr_x, ul_y, Z, 1, lr_u, ul_v },
-      { ul_x, lr_y, Z, 1, ul_u, lr_v },
-      { lr_x, lr_y, Z, 1, lr_u, lr_v }
+      { .x = ul_x, .y = ul_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = ul_v },
+      { .x = lr_x, .y = ul_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = ul_v },
+      { .x = ul_x, .y = lr_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = lr_v },
+      { .x = lr_x, .y = lr_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = lr_v }
    };
 
    for (i = 0; i < 4; i++)
@@ -888,10 +888,10 @@ static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
    // FRDP("scale_x: %f, scale_y: %f\n", rdp.cur_cache[0]->scale_x, rdp.cur_cache[0]->scale_y);
 
    VERTEX v[4] = {
-      { ul_x, ul_y, Z, 1, ul_u, ul_v },
-      { lr_x, ul_y, Z, 1, lr_u, ul_v },
-      { ul_x, lr_y, Z, 1, ul_u, lr_v },
-      { lr_x, lr_y, Z, 1, lr_u, lr_v }
+      { .x = ul_x, .y = ul_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = ul_v },
+      { .x = lr_x, .y = ul_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = ul_v },
+      { .x = ul_x, .y = lr_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = lr_v },
+      { .x = lr_x, .y = lr_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = lr_v }
    };
   
    for (i = 0; i < 4; i++)
@@ -1066,10 +1066,10 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
 
    // Make the vertices
    VERTEX v[4] = {
-      { ul_x, ul_y, Z, 1, ul_u, ul_v },
-      { lr_x, ul_y, Z, 1, lr_u, ul_v },
-      { ul_x, lr_y, Z, 1, ul_u, lr_v },
-      { lr_x, lr_y, Z, 1, lr_u, lr_v }
+      { .x = ul_x, .y = ul_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = ul_v },
+      { .x = lr_x, .y = ul_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = ul_v },
+      { .x = ul_x, .y = lr_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = lr_v },
+      { .x = lr_x, .y = lr_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = lr_v }
    };
 
    for (i = 0; i < 4; i++)
@@ -1392,10 +1392,10 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
 
          // Make the vertices
          VERTEX v[4] = {
-            { ul_x, ul_y, Z, 1, 0.5f, 0.5f },
-            { lr_x, ul_y, Z, 1, lr_u, 0.5f },
-            { ul_x, lr_y, Z, 1, 0.5f, lr_v },
-            { lr_x, lr_y, Z, 1, lr_u, lr_v } };
+            { .x = ul_x, .y = ul_y, .z = Z, .q = 1, .u0 = 0.5f, .v0 = 0.5f },
+            { .x = lr_x, .y = ul_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = 0.5f },
+            { .x = ul_x, .y = lr_y, .z = Z, .q = 1, .u0 = 0.5f, .v0 = lr_v },
+            { .x = lr_x, .y = lr_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = lr_v } };
 
          for (i=0; i<4; i++)
          {
