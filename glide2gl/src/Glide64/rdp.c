@@ -1889,18 +1889,30 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    FRDP (" - %d, %d, %d, %d\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 
    {
+      VERTEX v[4], vout[4], vout2[4];
       float Z;
 
       grFogMode (GR_FOG_DISABLE, rdp.fog_color);
 
       Z = (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3) ? 0.0f : set_sprite_combine_mode();
 
-            // Draw the vertices
-      VERTEX v[4] = {
-      { .x = (float)s_ul_x, .y = (float)s_ul_y, .z = Z, .q = 1.0f },
-      { .x = (float)s_lr_x, .y = (float)s_ul_y, .z = Z, .q = 1.0f },
-      { .x = (float)s_ul_x, .y = (float)s_lr_y, .z = Z, .q = 1.0f },
-      { .x = (float)s_lr_x, .y = (float)s_lr_y, .z = Z, .q = 1.0f } };
+      // Draw the vertices
+      v[0].x = (float)s_ul_x;
+      v[0].y = (float)s_ul_y;
+      v[0].z = Z;
+      v[0].q = 1.0f;
+      v[1].x = (float)s_lr_x;
+      v[1].y = (float)s_ul_y;
+      v[1].z = Z;
+      v[1].q = 1.0f;
+      v[2].x = (float)s_ul_x;
+      v[2].y = (float)s_lr_y;
+      v[2].z = Z;
+      v[2].q = 1.0f;
+      v[3].x = (float)s_lr_x;
+      v[3].y = (float)s_lr_y;
+      v[3].z = Z;
+      v[3].q = 1.0f;
 
       if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3)
       {
@@ -1967,12 +1979,15 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
          }
       }
 
-      {
-         VERTEX vout[4] = { v[0], v[2], v[1]};
-         VERTEX vout2[4] = { v[2], v[3], v[1]};
-         grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout[0]);
-         grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout2[0]);
-      }
+      vout[0]  = v[0];
+      vout[1]  = v[2];
+      vout[2]  = v[1];
+      vout2[0] = v[2];
+      vout2[1] = v[3];
+      vout2[2] = v[1];
+
+      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout[0]);
+      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout2[0]);
    }
 }
 
