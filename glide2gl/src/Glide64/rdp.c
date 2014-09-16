@@ -1308,7 +1308,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[0].coord[1] = 0;
    vstd[0].coord[2] = 0;
    vstd[0].coord[3] = 0;
-   vstd[0].f = 255.0f;
+   vstd[0].w = 255.0f;
 
    vstd[1].x = s_lr_x;
    vstd[1].y = s_ul_y;
@@ -1322,7 +1322,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[1].coord[1] = 0;
    vstd[1].coord[2] = 0;
    vstd[1].coord[3] = 0;
-   vstd[1].f = 255.0f;
+   vstd[1].w = 255.0f;
 
    vstd[2].x = s_ul_x;
    vstd[2].y = s_lr_y;
@@ -1336,7 +1336,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[2].coord[1] = 0;
    vstd[2].coord[2] = 0;
    vstd[2].coord[3] = 0;
-   vstd[2].f = 255.0f;
+   vstd[2].w = 255.0f;
 
    vstd[3].x = s_lr_x;
    vstd[3].y = s_lr_y;
@@ -1350,7 +1350,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[3].coord[1] = 0;
    vstd[3].coord[2] = 0;
    vstd[3].coord[3] = 0;
-   vstd[3].f = 255.0f;
+   vstd[3].w = 255.0f;
 
    if ( ((rdp.cmd0>>24)&0xFF) == 0xE5 ) //texrectflip
    {
