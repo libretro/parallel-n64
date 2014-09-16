@@ -1037,9 +1037,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    struct {
       float ul_u, ul_v, lr_u, lr_v;
    } texUV[2]; //struct for texture coordinates
-   VERTEX *vptr;
-
-   vptr = NULL;
+   VERTEX *vptr = NULL, vstd[4];
 
    if (!rdp.LLE)
    {
@@ -1298,11 +1296,61 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    FRDP (" draw at: (%f, %f) -> (%f, %f)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 
-     VERTEX vstd[4] = {
-    { .x = s_ul_x, .y = s_ul_y, .z = Z, .q = 1.0f, .u0 = texUV[0].ul_u, .v0 = texUV[0].ul_v, .u1 = texUV[1].ul_u, .v1 = texUV[1].ul_v, .coord = {0, 0, 0, 0}, 255 },
-    { .x = s_lr_x, .y = s_ul_y, .z = Z, .q = 1.0f, .u0 = texUV[0].lr_u, .v0 = texUV[0].ul_v, .u1 = texUV[1].lr_u, .v1 = texUV[1].ul_v, .coord = {0, 0, 0, 0}, 255 },
-    { .x = s_ul_x, .y = s_lr_y, .z = Z, .q = 1.0f, .u0 = texUV[0].ul_u, .v0 = texUV[0].lr_v, .u1 = texUV[1].ul_u, .v1 = texUV[1].lr_v, .coord = {0, 0, 0, 0}, 255 },
-    { .x = s_lr_x, .y = s_lr_y, .z = Z, .q = 1.0f, .u0 = texUV[0].lr_u, .v0 = texUV[0].lr_v, .u1 = texUV[1].lr_u, .v1 = texUV[1].lr_v, .coord = {0, 0, 0, 0}, 255 } };
+   vstd[0].x = s_ul_x;
+   vstd[0].y = s_ul_y;
+   vstd[0].z = Z;
+   vstd[0].q = 1.0f;
+   vstd[0].u0 = texUV[0].ul_u;
+   vstd[0].v0 = texUV[0].ul_v;
+   vstd[0].u1 = texUV[1].ul_u;
+   vstd[0].v1 = texUV[1].ul_v;
+   vstd[0].coord[0] = 0;
+   vstd[0].coord[1] = 0;
+   vstd[0].coord[2] = 0;
+   vstd[0].coord[3] = 0;
+   vstd[0].f = 255.0f;
+
+   vstd[1].x = s_lr_x;
+   vstd[1].y = s_ul_y;
+   vstd[1].z = Z;
+   vstd[1].q = 1.0f;
+   vstd[1].u0 = texUV[0].lr_u;
+   vstd[1].v0 = texUV[0].ul_v;
+   vstd[1].u1 = texUV[1].lr_u;
+   vstd[1].v1 = texUV[1].ul_v;
+   vstd[1].coord[0] = 0;
+   vstd[1].coord[1] = 0;
+   vstd[1].coord[2] = 0;
+   vstd[1].coord[3] = 0;
+   vstd[1].f = 255.0f;
+
+   vstd[2].x = s_ul_x;
+   vstd[2].y = s_lr_y;
+   vstd[2].z = Z;
+   vstd[2].q = 1.0f;
+   vstd[2].u0 = texUV[0].ul_u;
+   vstd[2].v0 = texUV[0].lr_v;
+   vstd[2].u1 = texUV[1].ul_u;
+   vstd[2].v1 = texUV[1].lr_v;
+   vstd[2].coord[0] = 0;
+   vstd[2].coord[1] = 0;
+   vstd[2].coord[2] = 0;
+   vstd[2].coord[3] = 0;
+   vstd[2].f = 255.0f;
+
+   vstd[3].x = s_lr_x;
+   vstd[3].y = s_lr_y;
+   vstd[3].z = Z;
+   vstd[3].q = 1.0f;
+   vstd[3].u0 = texUV[0].lr_u;
+   vstd[3].v0 = texUV[0].lr_v;
+   vstd[3].u1 = texUV[1].lr_u;
+   vstd[3].v1 = texUV[1].lr_v;
+   vstd[3].coord[0] = 0;
+   vstd[3].coord[1] = 0;
+   vstd[3].coord[2] = 0;
+   vstd[3].coord[3] = 0;
+   vstd[3].f = 255.0f;
 
    if ( ((rdp.cmd0>>24)&0xFF) == 0xE5 ) //texrectflip
    {
