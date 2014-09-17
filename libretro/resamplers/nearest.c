@@ -10,6 +10,8 @@
 #else
 #define RARCH_LOG(...) fprintf(stderr, __VA_ARGS__)
 #endif
+
+extern retro_log_printf_t log_cb;
  
 typedef struct rarch_nearest_resampler
 {

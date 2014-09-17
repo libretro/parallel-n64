@@ -310,6 +310,7 @@ endif
 LIBRETRO_SRC += $(wildcard $(LIBRETRO_DIR)/*.c)
 LIBRETRO_SRC += $(wildcard $(LIBRETRO_DIR)/resamplers/*.c)
 
+CFILES += $(LIBRETRO_SRC)
 
 ifeq ($(HAVE_NEON), 1)
 CFILES += $(wildcard $(VIDEODIR_GLN64)/*.c)

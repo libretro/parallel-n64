@@ -20,7 +20,13 @@
 #include "../../config.h"
 #endif
 
+#ifdef RARCH_INTERNAL
 #include "../../general.h"
+#endif
+
+#include "../libretro.h"
+
+extern retro_log_printf_t log_cb;
 
 static const rarch_resampler_t *resampler_drivers[] = {
    &sinc_resampler,
@@ -50,19 +56,14 @@ static const rarch_resampler_t *find_resampler_driver(const char *ident)
       return resampler_drivers[i];
    else
    {
-      unsigned d;
-      RARCH_ERR("Couldn't find any resampler driver named \"%s\"\n", ident);
-      RARCH_LOG_OUTPUT("Available resampler drivers are:\n");
-      for (d = 0; resampler_drivers[d]; d++)
-         RARCH_LOG_OUTPUT("\t%s\n", resampler_drivers[d]->ident);
-
-      RARCH_WARN("Going to default to first resampler driver ...\n");
+      if (log_cb)
+         log_cb(RETRO_LOG_WARN, "Going to default to first resampler driver ...\n");
 
       return resampler_drivers[0];
    }
 }
 
-#ifndef RESAMPLER_TEST
+#if !defined(RESAMPLER_TEST) && defined(RARCH_INTERNAL)
 void find_prev_resampler_driver(void)
 {
    int i = find_resampler_driver_index(g_settings.audio.resampler);
