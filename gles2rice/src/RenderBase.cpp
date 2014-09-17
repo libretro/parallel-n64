@@ -478,7 +478,11 @@ void ComputeLOD(void)
 bool bHalfTxtScale=false;
 extern uint32_t lastSetTile;
 
+#ifdef _MSC_VER
+#define noinline __declspec(noinline)
+#else
 #define noinline __attribute__((noinline))
+#endif
 
 static noinline void InitVertex_scale_hack_check(uint32_t dwV)
 {
