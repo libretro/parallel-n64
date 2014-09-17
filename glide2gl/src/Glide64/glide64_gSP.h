@@ -702,7 +702,7 @@ static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
          vert->g = color[2];
          vert->b = color[1];
       }
-      membase_ptr += iter;
+      membase_ptr = (char*)membase_ptr + iter;
    }
 }
 

@@ -75,7 +75,7 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
    uint32_t n = ((w0 & 0xF00000) >> 20) + 1;
    uint32_t addr = segoffset(w1);
    vtx_uc7 *vertex = (vtx_uc7*)&gfx_info.RDRAM[addr];
-   void   *membase_ptr  = (void*)gfx_info.RDRAM + addr;
+   void   *membase_ptr  = (void*)(gfx_info.RDRAM + addr);
    uint32_t iter = 1;
 
 #ifdef __ARM_NEON__
@@ -174,6 +174,6 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
          vert->b = color[1];
       }
       vertex++;
-      membase_ptr += iter;
+      membase_ptr = (char*)membase_ptr + iter;
    }
 }

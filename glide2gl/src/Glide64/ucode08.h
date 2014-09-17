@@ -56,7 +56,7 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
    uint32_t addr = segoffset(w1);
    int32_t n = (w0 >> 12) & 0xFF;
    int32_t v0 = ((w0 >> 1) & 0x7F) - n;
-   void   *membase_ptr  = (void*)gfx_info.RDRAM + addr;
+   void   *membase_ptr  = (void*)(gfx_info.RDRAM + addr);
    uint32_t iter = 16;
 
    if (v0 < 0)
@@ -216,7 +216,7 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
          vert->g = (uint8_t)(((float)vert->g)*color[1]);
          vert->b = (uint8_t)(((float)vert->b)*color[2]);
       }
-      membase_ptr += iter;
+      membase_ptr = (char*)membase_ptr + iter;
    }
 }
 
