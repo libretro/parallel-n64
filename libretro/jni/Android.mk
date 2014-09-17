@@ -128,7 +128,7 @@ LOCAL_SRC_FILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/Combine.c \
             $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.c \
             $(VIDEODIR_GLIDE)/Glide64/TexCache.c
-LOCAL_SRC_FILES   += $(VIDEODIR_GLIDE)/Glitch64/combiner.c \
+LOCAL_SRC_FILES   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \
             $(VIDEODIR_GLIDE)/Glitch64/geometry.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c \
