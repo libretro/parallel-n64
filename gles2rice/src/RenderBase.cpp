@@ -117,15 +117,15 @@ inline void RSP_Vtx_Clipping(int i) {}
 /*
  *  Global variables
  */
-ALIGN(16,RSP_Options gRSP)
-ALIGN(16,RDP_Options gRDP)
+ALIGN(16,RSP_Options gRSP);
+ALIGN(16,RDP_Options gRDP);
 
-static ALIGN(16,XVECTOR4 g_normal)
+static ALIGN(16,XVECTOR4 g_normal);
 //static int norms[3];
 
-ALIGN(16,XVECTOR4 g_vtxNonTransformed[MAX_VERTS])
-ALIGN(16,XVECTOR4 g_vecProjected[MAX_VERTS])
-ALIGN(16,XVECTOR4 g_vtxTransformed[MAX_VERTS])
+ALIGN(16,XVECTOR4 g_vtxNonTransformed[MAX_VERTS]);
+ALIGN(16,XVECTOR4 g_vecProjected[MAX_VERTS]);
+ALIGN(16,XVECTOR4 g_vtxTransformed[MAX_VERTS]);
 
 float       g_vtxProjected5[1000][5];
 float       g_vtxProjected5Clipped[2000][5];
@@ -155,11 +155,11 @@ float               gRSPfFogDivider;
 uint32_t          gRSPnumLights;
 Light   gRSPlights[16];
 
-ALIGN(16,Matrix  gRSPworldProjectTransported)
-ALIGN(16,Matrix  gRSPworldProject)
-ALIGN(16,Matrix  gRSPmodelViewTop)
-ALIGN(16,Matrix  gRSPmodelViewTopTranspose)
-ALIGN(16,Matrix  dkrMatrixTransposed)
+ALIGN(16,Matrix  gRSPworldProjectTransported);
+ALIGN(16,Matrix  gRSPworldProject);
+ALIGN(16,Matrix  gRSPmodelViewTop);
+ALIGN(16,Matrix  gRSPmodelViewTopTranspose);
+ALIGN(16,Matrix  dkrMatrixTransposed);
 
 N64Light        gRSPn64lights[16];
 
