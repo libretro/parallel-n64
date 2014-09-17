@@ -1,5 +1,5 @@
 #include "resampler.h"
-#include "libretro.h"
+#include "../libretro.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -10,30 +10,21 @@
 #else
 #define RARCH_LOG(...) fprintf(stderr, __VA_ARGS__)
 #endif
-
-extern retro_log_printf_t log_cb;
  
 typedef struct rarch_nearest_resampler
 {
    float fraction;
-}rarch_nearest_resampler_t;
-
-typedef struct audio_frame_float
-{
-      float l;
-      float r;
-} audio_frame_float_t;
+} rarch_nearest_resampler_t;
  
 static void resampler_nearest_process(void *re_,
       struct resampler_data *data)
 {
-   float ratio;
-   rarch_nearest_resampler_t *re= (rarch_nearest_resampler_t*)re_;
+   rarch_nearest_resampler_t *re = (rarch_nearest_resampler_t*)re_;
+ 
    audio_frame_float_t *inp = (audio_frame_float_t*)data->data_in;
    audio_frame_float_t *inp_max = inp + data->input_frames;
    audio_frame_float_t *outp = (audio_frame_float_t*)data->data_out;
- 
-   ratio = 1.0/data->ratio;
+   float ratio = ratio = 1.0/data->ratio;
  
    while(inp != inp_max)
    {
@@ -66,7 +57,7 @@ static void *resampler_nearest_init(double bandwidth_mod)
    re->fraction = 0;
    
    if (log_cb)
-      log_cb(RETRO_LOG_INFO, "Nearest resampler\n");
+   log_cb(RETRO_LOG_INFO, "\nNearest resampler : \n");
  
    return re;
 }

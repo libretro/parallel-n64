@@ -25,7 +25,7 @@ LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
 ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
 COMMON_FLAGS := -DANDROID_ARM -DDYNAREC -DNEW_DYNAREC=3 -DNO_ASM -DNOSSE
 LOCAL_ARM_NEON := true
-LOCAL_SRC_FILES += $(LIBRETRODIR)/sinc_neon.S $(LIBRETRODIR)/utils_neon.S
+LOCAL_SRC_FILES += $(LIBRETRODIR)/resamplers/sinc_neon.S $(LIBRETRODIR)/utils_neon.S
 LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/3DMathNeon.c
 LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/gSPNeon.c
 LOCAL_SRC_FILES += $(VIDEODIR_RICE)/RenderBase_neon.S
@@ -44,7 +44,7 @@ endif
 
 # libretro
 LOCAL_SRC_FILES += $(LIBRETRODIR)/libretro.c $(LIBRETRODIR)/adler32.c $(LIBRETRODIR)/glsym/glsym_es2.c $(LIBRETRODIR)/glsym/rglgen.c $(LIBRETRODIR)/libco/libco.c $(LIBRETRODIR)/opengl_state_machine.c \
-          $(LIBRETRODIR)/audio_plugin.c $(LIBRETRODIR)/input_plugin.c $(LIBRETRODIR)/resampler.c $(LIBRETRODIR)/sinc.c $(LIBRETRODIR)/nearest.c $(LIBRETRODIR)/cc_resampler.c $(LIBRETRODIR)/utils.c
+          $(LIBRETRODIR)/audio_plugin.c $(LIBRETRODIR)/input_plugin.c $(LIBRETRODIR)/resamplers/resampler.c $(LIBRETRODIR)/resamplers/sinc.c $(LIBRETRODIR)/resamplers/nearest.c $(LIBRETRODIR)/resamplers/cc_resampler.c $(LIBRETRODIR)/utils.c
 
 # RSP Plugin
 LOCAL_SRC_FILES += $(RSPDIR)/src/alist.c \

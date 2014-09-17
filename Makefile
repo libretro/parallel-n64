@@ -12,6 +12,8 @@ CPUFLAGS  :=
 
 UNAME=$(shell uname -a)
 
+LIBRETRO_DIR := libretro
+
 ifeq ($(platform),)
 platform = unix
 ifeq ($(UNAME),)
@@ -37,7 +39,7 @@ CC_AS ?= $(CC)
 
 ifneq (,$(findstring unix,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
-   LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined
+   LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined
    
    fpic = -fPIC
 ifneq (,$(findstring gles,$(platform)))
@@ -49,7 +51,7 @@ endif
    PLATFORM_EXT := unix
 else ifneq (,$(findstring rpi,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
-   LDFLAGS += -shared -Wl,--version-script=libretro/link.T
+   LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T
    fpic = -fPIC
    GLES = 1
    GL_LIB := -lGLESv2
@@ -59,7 +61,7 @@ else ifneq (,$(findstring rpi,$(platform)))
    WITH_DYNAREC=arm
 else ifneq (,$(findstring imx6,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
-   LDFLAGS += -shared -Wl,--version-script=libretro/link.T
+   LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T
    fpic = -fPIC
    GLES = 1
    GL_LIB := -lGLESv2
@@ -105,7 +107,7 @@ endif
 else ifneq (,$(findstring android,$(platform)))
    fpic = -fPIC
    TARGET := $(TARGET_NAME)_libretro_android.so
-   LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined -Wl,--warn-common
+   LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined -Wl,--warn-common
    GL_LIB := -lGLESv2
 
    CC = arm-linux-androideabi-gcc
@@ -122,7 +124,7 @@ else ifneq (,$(findstring android,$(platform)))
 else ifeq ($(platform), qnx)
    fpic = -fPIC
    TARGET := $(TARGET_NAME)_libretro_qnx.so
-   LDFLAGS += -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined -Wl,--warn-common
+   LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined -Wl,--warn-common
    GL_LIB := -lGLESv2
 
    CC = qcc -Vgcc_ntoarmv7le
@@ -142,7 +144,7 @@ else ifneq (,$(findstring armv,$(platform)))
    CXX = g++
    TARGET := $(TARGET_NAME)_libretro.so
    fpic := -fPIC
-   SHARED := -shared -Wl,--version-script=libretro/link.T -Wl,--no-undefined
+   SHARED := -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined
    INCFLAGS += -I.
 	WITH_DYNAREC=arm
 ifneq (,$(findstring gles,$(platform)))
@@ -180,7 +182,7 @@ else ifeq ($(platform), emscripten)
    #HAVE_SHARED_CONTEXT := 1
 else ifneq (,$(findstring win,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dll
-   LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=libretro/link.T -lwinmm -lgdi32
+   LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=$(LIBRETRO_DIR)/link.T -lwinmm -lgdi32
    GL_LIB := -lopengl32
    PLATFORM_EXT := win32
    CC = gcc
@@ -188,7 +190,7 @@ else ifneq (,$(findstring win,$(platform)))
 endif
 
 # libco
-CFILES += libretro/libco/libco.c
+CFILES += $(LIBRETRO_DIR)/libco/libco.c
 
 # Dirs
 RSPDIR = mupen64plus-rsp-hle
@@ -211,8 +213,8 @@ INCFLAGS := \
 	-I$(COREDIR)/src \
 	-I$(COREDIR)/src/api \
 	-I$(VIDEODIR_GLIDE)/Glitch64/inc \
-	-Ilibretro/libco \
-	-Ilibretro
+	-I$(LIBRETRO_DIR)/libco \
+	-I$(LIBRETRO_DIR)
 
 CFILES += $(wildcard $(RSPDIR)/src/*.c)
 CXXFILES += $(wildcard $(RSPDIR)/src/*.cpp)
@@ -305,12 +307,13 @@ ifeq ($(HAVE_NEON), 1)
 OBJECTS += $(VIDEODIR_RICE)/RenderBase_neon.o
 endif
 
-LIBRETRO_SRC += $(wildcard libretro/*.c)
+LIBRETRO_SRC += $(wildcard $(LIBRETRO_DIR)/*.c)
+LIBRETRO_SRC += $(wildcard $(LIBRETRO_DIR)/resamplers/*.c)
 
 
 ifeq ($(HAVE_NEON), 1)
 CFILES += $(wildcard $(VIDEODIR_GLN64)/*.c)
-OBJECTS += libretro/utils_neon.o libretro/sinc_neon.o
+OBJECTS += $(LIBRETRO_DIR)/utils_neon.o $(LIBRETRO_DIR)/resamplers/sinc_neon.o
 else
 GLN64VIDEO_BLACKLIST = $(VIDEODIR_GLN64)/3DMathNeon.c $(VIDEODIR_GLN64)/gSPNeon.c
 CFILES += $(filter-out $(GLN64VIDEO_BLACKLIST), $(wildcard $(VIDEODIR_GLN64)/*.c))
@@ -328,8 +331,6 @@ ifeq ($(SINGLE_THREAD), 1)
 COREFLAGS += -DSINGLE_THREAD
 endif
 
-CFILES += $(LIBRETRO_SRC)
-
 # Glide64
 ifeq ($(GLES2GLIDE64_NEW), 1)
 CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
@@ -344,13 +345,13 @@ CXXFILES += $(wildcard $(VIDEODIR_ANGRYLION)/*.cpp)
 
 ifeq ($(GLES), 1)
 GLFLAGS += -DGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT
-CFILES += libretro/glsym/glsym_es2.c
+CFILES += $(LIBRETRO_DIR)/glsym/glsym_es2.c
 else
 GLFLAGS += -DHAVE_OPENGL
-CFILES += libretro/glsym/glsym_gl.c
+CFILES += $(LIBRETRO_DIR)/glsym/glsym_gl.c
 endif
 
-CFILES += libretro/glsym/rglgen.c
+CFILES += $(LIBRETRO_DIR)/glsym/rglgen.c
 
 COREFLAGS += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES \
 				 -D_ENDUSER_RELEASE -DSDL_VIDEO_OPENGL_ES2=1 -DSINC_LOWER_QUALITY \
