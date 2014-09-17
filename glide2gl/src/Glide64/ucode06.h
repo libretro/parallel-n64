@@ -892,11 +892,12 @@ static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
 
 static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
 {
-   LRDP ("uc6:obj_sprite ");
    DRAWOBJECT d;
    VERTEX v[4];
    int i;
    float Z, ul_x, lr_x, ul_y, lr_y, ul_u, lr_u, ul_v, lr_v;
+
+   LRDP ("uc6:obj_sprite ");
 
    uc6_read_object_data(&d);
    uc6_init_tile(&d);
@@ -1217,14 +1218,16 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
    }
    else if (type == 0x00fc1034)
    {
+      int line;
+
       image = segoffset(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
       tmem = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1]; // 4
       twidth = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1]; // 5
       theight = ((uint16_t *)gfx_info.RDRAM)[(addr + 6) ^ 1]; // 6
-
-      //FRDP ("tile addr: %08lx, tmem: %08lx, twidth: %d, theight: %d\n", image, tmem, twidth, theight);
-
-      int line = (twidth + 1) >> 2;
+#if 0
+      FRDP ("tile addr: %08lx, tmem: %08lx, twidth: %d, theight: %d\n", image, tmem, twidth, theight);
+#endif
+      line = (twidth + 1) >> 2;
 
       rdp.timg.addr = image;
       rdp.timg.width = line << 3;

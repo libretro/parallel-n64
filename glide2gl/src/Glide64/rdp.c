@@ -2371,10 +2371,12 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
    CI_SET = true;
    if (settings.swapmode > 0)
    {
+      int viSwapOK;
+
       if (rdp.zimg == rdp.cimg)
          rdp.updatescreen = 1;
 
-      int viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *gfx_info.VI_ORIGIN_REG)) ? false : true;
+      viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *gfx_info.VI_ORIGIN_REG)) ? false : true;
       if ((rdp.zimg != rdp.cimg) && (rdp.ocimg != rdp.cimg) && SwapOK && viSwapOK
             )
       {
