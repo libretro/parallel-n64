@@ -36,6 +36,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "TextureManager.h"
 #include "Video.h"
 
+#ifdef _MSC_VER
+#define strncasecmp _strnicmp
+#endif
+
+
 #define INI_FILE        "RiceVideoLinux.ini"
 
 extern uint32_t screen_width, screen_height;
