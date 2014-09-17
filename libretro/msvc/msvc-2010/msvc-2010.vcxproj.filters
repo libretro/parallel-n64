@@ -204,7 +204,7 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\plugin.c">
       <Filter>Source Files\mupen64plus-core\src\plugin</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\3dmath.c">
+    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_3dmath.c">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\Combine.c">

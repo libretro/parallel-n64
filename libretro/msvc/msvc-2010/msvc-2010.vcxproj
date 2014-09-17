@@ -229,7 +229,7 @@
     <ClCompile Include="..\..\..\gles2rice\src\TextureManager.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\VectorMath.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\Video.cpp" />
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\3dmath.c">
+    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_3dmath.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
     </ClCompile>
