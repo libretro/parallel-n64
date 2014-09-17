@@ -85,6 +85,9 @@
     <Filter Include="Source Files\rzlib">
       <UniqueIdentifier>{043b04b0-a1d8-4553-a42f-beee591167ff}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\libretro\glsym">
+      <UniqueIdentifier>{f36ec05b-e8c8-485f-92f6-7b3159b4fee2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\angrylionrdp\n64video.c">
@@ -324,9 +327,6 @@
     <ClCompile Include="..\..\..\gles2rice\src\Combiner.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\CombinerTable.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
@@ -342,13 +342,7 @@
     <ClCompile Include="..\..\..\gles2rice\src\DeviceBuilder.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\DirectXDecodedMux.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\FrameBuffer.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\GeneralCombiner.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\GraphicsContext.cpp">
@@ -554,6 +548,30 @@
     </ClCompile>
     <ClCompile Include="..\..\nearest.c">
       <Filter>Source Files\libretro</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\glsym\glsym_gl.c">
+      <Filter>Source Files\libretro\glsym</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\glsym\rglgen.c">
+      <Filter>Source Files\libretro\glsym</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\cached_interp.c">
+      <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\cp0.c">
+      <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\cp1.c">
+      <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\instr_counters.c">
+      <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\angrylionrdp\n64video_rdp.c">
+      <Filter>Source Files\angrylionrdp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\angrylionrdp\n64video_vi.c">
+      <Filter>Source Files\angrylionrdp</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -84,6 +84,14 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
     </ClCompile>
+    <ClCompile Include="..\..\..\angrylionrdp\n64video_rdp.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
+    </ClCompile>
+    <ClCompile Include="..\..\..\angrylionrdp\n64video_vi.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
+    </ClCompile>
     <ClCompile Include="..\..\..\gles2n64\src\3DMath.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
@@ -194,15 +202,12 @@
     </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\Blender.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\Combiner.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\CombinerTable.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage16.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\Debugger.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\DecodedMux.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\DeviceBuilder.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\DirectXDecodedMux.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\FrameBuffer.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\GeneralCombiner.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\GraphicsContext.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\OGLCombiner.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\OGLDecodedMux.cpp" />
@@ -345,6 +350,22 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\memory\pif.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\cached_interp.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\cp0.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\cp1.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\instr_counters.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
     </ClCompile>
@@ -518,6 +539,14 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\cc_resampler.c" />
+    <ClCompile Include="..\..\glsym\glsym_gl.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
+    </ClCompile>
+    <ClCompile Include="..\..\glsym\rglgen.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
+    </ClCompile>
     <ClCompile Include="..\..\input_plugin.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>

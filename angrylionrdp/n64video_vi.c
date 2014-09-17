@@ -86,6 +86,7 @@ void rdp_update(void)
     int serration_pulses;
     int lowerfield;
     register int i, j;
+    extern uint32_t *blitter_buf;
     const int x_add = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
     const int v_sync = *GET_GFX_INFO(VI_V_SYNC_REG) & 0x000003FF;
     const int ispal  = (v_sync > 550);
@@ -97,6 +98,7 @@ void rdp_update(void)
     const int delta_y = y2 - y1;
     const int vitype = *GET_GFX_INFO(VI_STATUS_REG) & 0x00000003;
     const int pixel_size = sizeof(INT32);
+
 
     if (log_cb)
     {
@@ -165,8 +167,7 @@ void rdp_update(void)
 #ifdef HAVE_DIRECTDRAW
     // direct draw surface lock
 #else
-    extern uint32_t *blitter_buf;
-    PreScale = (UINT32 *)blitter_buf;
+    PreScale = (UINT32*)blitter_buf;
 #endif
 
     if (vitype >> 1 == 0)
