@@ -303,9 +303,6 @@
     <ClCompile Include="..\..\..\gles2n64\src\RDP.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\RSP.c">
-      <Filter>Source Files\gles2n64\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2n64\src\S2DEX.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
@@ -572,6 +569,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\angrylionrdp\n64video_vi.c">
       <Filter>Source Files\angrylionrdp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gles2n64\src\gles2n64_rsp.c">
+      <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
