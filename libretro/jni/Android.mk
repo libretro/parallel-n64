@@ -112,7 +112,7 @@ LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/N64.c \
             $(VIDEODIR_GLN64)/OpenGL.c \
             $(VIDEODIR_GLN64)/RDP.c \
-            $(VIDEODIR_GLN64)/RSP.c \
+            $(VIDEODIR_GLN64)/gles2n64_rsp.c \
             $(VIDEODIR_GLN64)/S2DEX2.c \
             $(VIDEODIR_GLN64)/S2DEX.c \
             $(VIDEODIR_GLN64)/ShaderCombiner.c \
