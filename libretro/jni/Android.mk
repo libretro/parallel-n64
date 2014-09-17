@@ -131,7 +131,7 @@ LOCAL_SRC_FILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.c \
 LOCAL_SRC_FILES   += $(VIDEODIR_GLIDE)/Glitch64/combiner.c \
             $(VIDEODIR_GLIDE)/Glitch64/geometry.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c \
-            $(VIDEODIR_GLIDE)/Glitch64/textures.c \
+            $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_crc.c
 
 LOCAL_SRC_FILES +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
