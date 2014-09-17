@@ -124,7 +124,7 @@ LOCAL_SRC_FILES += $(VIDEODIR_GLIDE)/Glide64/3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.c \
             $(VIDEODIR_GLIDE)/Glide64/glidemain.c \
             $(VIDEODIR_GLIDE)/Glide64/Util.c \
-            $(VIDEODIR_GLIDE)/Glide64/rdp.c \
+            $(VIDEODIR_GLIDE)/Glide64/glide64_rdp.c \
             $(VIDEODIR_GLIDE)/Glide64/Combine.c \
             $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.c \
             $(VIDEODIR_GLIDE)/Glide64/TexCache.c
