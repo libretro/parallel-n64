@@ -66,7 +66,7 @@ void RDP_GFX_DLInMem(Gfx *gfx)
     LOG_UCODE("#############################################");
 }
 
-extern Matrix ALIGN(16, dkrMatrixTransposed)
+extern Matrix ALIGN(16, dkrMatrixTransposed);
 void RSP_Mtx_DKR(Gfx *gfx)
 {   
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));

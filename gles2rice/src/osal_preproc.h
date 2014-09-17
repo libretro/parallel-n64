@@ -25,7 +25,11 @@
 #ifndef OSAL_PREPROC_H
 #define OSAL_PREPROC_H
 
-#define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)));
+#ifdef _MSC_VER
+#define ALIGN(BYTES,DATA) __declspec(align(BYTES)) DATA
+#else
+#define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)))
+#endif
 
 typedef struct
 {
