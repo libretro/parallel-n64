@@ -314,7 +314,8 @@ CFILES += $(LIBRETRO_SRC)
 
 ifeq ($(HAVE_NEON), 1)
 CFILES += $(wildcard $(VIDEODIR_GLN64)/*.c)
-OBJECTS += $(LIBRETRO_DIR)/utils_neon.o $(LIBRETRO_DIR)/resamplers/sinc_neon.o
+OBJECTS += $(LIBRETRO_DIR)/utils_neon.o $(LIBRETRO_DIR)/resamplers/sinc_neon.o \
+			  $(LIBRETRO_DIR)/resamplers/cc_resampler_neon.o
 else
 GLN64VIDEO_BLACKLIST = $(VIDEODIR_GLN64)/3DMathNeon.c $(VIDEODIR_GLN64)/gSPNeon.c
 CFILES += $(filter-out $(GLN64VIDEO_BLACKLIST), $(wildcard $(VIDEODIR_GLN64)/*.c))
@@ -355,7 +356,7 @@ endif
 CFILES += $(LIBRETRO_DIR)/glsym/rglgen.c
 
 COREFLAGS += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES \
-				 -D_ENDUSER_RELEASE -DSDL_VIDEO_OPENGL_ES2=1 -DSINC_LOWER_QUALITY \
+				 -D_ENDUSER_RELEASE -DSDL_VIDEO_OPENGL_ES2=1 -DSINC_LOWER_QUALITY 
 
 ifeq ($(DEBUG), 1)
    CPUOPTS += -O0 -g

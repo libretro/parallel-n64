@@ -1,5 +1,8 @@
 #include "resampler.h"
-#include "../libretro.h"
+#ifdef RARCH_INTERNAL
+#include "../../libretro.h"
+#include "../../performance.h"
+#endif
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -8,10 +11,9 @@
 #if !defined(RESAMPLER_TEST) && defined(RARCH_INTERNAL)
 #include "../../general.h"
 #else
+/* FIXME - variadic macros not supported for MSVC 2003 */
 #define RARCH_LOG(...) fprintf(stderr, __VA_ARGS__)
 #endif
-
-extern retro_log_printf_t log_cb;
  
 typedef struct rarch_nearest_resampler
 {
@@ -58,8 +60,7 @@ static void *resampler_nearest_init(double bandwidth_mod)
    
    re->fraction = 0;
    
-   if (log_cb)
-   log_cb(RETRO_LOG_INFO, "\nNearest resampler : \n");
+   RARCH_LOG("\nNearest resampler : \n");
  
    return re;
 }

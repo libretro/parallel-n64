@@ -25,7 +25,7 @@ LOCAL_SRC_FILES += $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
 ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
 COMMON_FLAGS := -DANDROID_ARM -DDYNAREC -DNEW_DYNAREC=3 -DNO_ASM -DNOSSE
 LOCAL_ARM_NEON := true
-LOCAL_SRC_FILES += $(LIBRETRODIR)/resamplers/sinc_neon.S $(LIBRETRODIR)/utils_neon.S
+LOCAL_SRC_FILES += $(LIBRETRODIR)/resamplers/sinc_neon.S $(LIBRETRODIR)/resamplers/cc_resampler_neon.S $(LIBRETRODIR)/utils_neon.S
 LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/3DMathNeon.c
 LOCAL_SRC_FILES += $(VIDEODIR_GLN64)/gSPNeon.c
 LOCAL_SRC_FILES += $(VIDEODIR_RICE)/RenderBase_neon.S

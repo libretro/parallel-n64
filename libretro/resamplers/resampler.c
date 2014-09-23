@@ -20,19 +20,13 @@
 #include "../../config.h"
 #endif
 
-#ifdef RARCH_INTERNAL
+#if !defined(RESAMPLER_TEST) && defined(RARCH_INTERNAL)
 #include "../../general.h"
 #endif
 
-#include "../libretro.h"
-
-extern retro_log_printf_t log_cb;
-
 static const rarch_resampler_t *resampler_drivers[] = {
    &sinc_resampler,
-#ifdef HAVE_CC_RESAMPLER
    &CC_resampler,
-#endif
    &nearest_resampler,
    NULL,
 };
@@ -56,8 +50,15 @@ static const rarch_resampler_t *find_resampler_driver(const char *ident)
       return resampler_drivers[i];
    else
    {
-      if (log_cb)
-         log_cb(RETRO_LOG_WARN, "Going to default to first resampler driver ...\n");
+#ifdef RARCH_INTERNAL
+      unsigned d;
+      RARCH_ERR("Couldn't find any resampler driver named \"%s\"\n", ident);
+      RARCH_LOG_OUTPUT("Available resampler drivers are:\n");
+      for (d = 0; resampler_drivers[d]; d++)
+         RARCH_LOG_OUTPUT("\t%s\n", resampler_drivers[d]->ident);
+
+      RARCH_WARN("Going to default to first resampler driver ...\n");
+#endif
 
       return resampler_drivers[0];
    }
@@ -94,12 +95,7 @@ bool rarch_resampler_realloc(void **re, const rarch_resampler_t **backend,
       (*backend)->free(*re);
 
    *re      = NULL;
-   /* TODO - make optional */
-#if 1
-   *backend = find_resampler_driver("nearest");
-#else
-   *backend = find_resampler_driver(ident);
-#endif
+   *backend = find_resampler_driver("CC");
 
    if (!*backend)
       return false;
