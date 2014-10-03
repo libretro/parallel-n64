@@ -68,13 +68,15 @@ typedef struct rarch_CC_resampler
 
 static void *memalign_alloc__(size_t boundary, size_t size)
 {
+   uintptr_t addr;
+   void **place;
    void *ptr = malloc(boundary + size + sizeof(uintptr_t));
    if (!ptr)
       return NULL;
 
-   uintptr_t addr = ((uintptr_t)ptr +
+   addr = ((uintptr_t)ptr +
          sizeof(uintptr_t) + boundary) & ~(boundary - 1);
-   void **place   = (void**)addr;
+   place   = (void**)addr;
    place[-1]      = ptr;
 
    return (void*)addr;
@@ -420,7 +422,7 @@ static inline float cc_kernel(float x, float b)
    return (cc_int(x + 0.5, b) - cc_int(x - 0.5, b)) / (2.0 * M_PI);
 }
 #else
-static inline float cc_int(float x, float b)
+static INLINE float cc_int(float x, float b)
 {
    float val = x * b;
 #if (CC_RESAMPLER_PRECISION > 0)
@@ -429,13 +431,13 @@ static inline float cc_int(float x, float b)
    return (val > 0.5) ? 0.5 : (val < -0.5) ? -0.5 : val;
 }
 
-static inline float cc_kernel(float x, float b)
+static INLINE float cc_kernel(float x, float b)
 {
    return (cc_int(x + 0.5, b) - cc_int(x - 0.5, b));
 }
 #endif
 
-static inline void add_to(const audio_frame_float_t *source,
+static INLINE void add_to(const audio_frame_float_t *source,
       audio_frame_float_t *target, float ratio)
 {
    target->l += source->l * ratio;
