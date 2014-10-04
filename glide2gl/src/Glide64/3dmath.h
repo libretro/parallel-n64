@@ -43,14 +43,37 @@ void calc_sphere (VERTEX *v);
 
 #define CopyMatrix(m0, m1, size) memcpy(m0, m1, size)
 
-void math_init();
+void math_init(void);
 
-typedef void (*MULMATRIX)(float m1[4][4],float m2[4][4],float r[4][4]); 
-extern MULMATRIX MulMatrices;
-typedef void (*TRANSFORMVECTOR)(float *src,float *dst,float mat[4][4]); 
-extern TRANSFORMVECTOR TransformVector;
-extern TRANSFORMVECTOR InverseTransformVector;
-typedef float (*DOTPRODUCT)(register float *v1, register float *v2);
-extern DOTPRODUCT DotProduct;
-typedef void (*NORMALIZEVECTOR)(float *v);
-extern NORMALIZEVECTOR NormalizeVector;
+typedef void (*GLIDE64MULMATRIX)(float m1[4][4],float m2[4][4],float r[4][4]); 
+extern GLIDE64MULMATRIX glide64MulMatrices;
+
+typedef void (*GLIDE64TRANSFORMVECTOR)(float *src,float *dst,float mat[4][4]); 
+extern GLIDE64TRANSFORMVECTOR glide64TransformVector;
+extern GLIDE64TRANSFORMVECTOR glide64InverseTransformVector;
+
+typedef float (*GLIDE64DOTPRODUCT)(register float *v1, register float *v2);
+extern GLIDE64DOTPRODUCT glide64DotProduct;
+
+typedef void (*GLIDE64NORMALIZEVECTOR)(float *v);
+extern GLIDE64NORMALIZEVECTOR glide64NormalizeVector;
+
+#ifndef MulMatrices
+#define MulMatrices glide64MulMatrices
+#endif
+
+#ifndef TransformVector
+#define TransformVector glide64TransformVector
+#endif
+
+#ifndef InverseTransformVector
+#define InverseTransformVector glide64InverseTransformVector
+#endif
+
+#ifndef DotProduct
+#define DotProduct glide64DotProduct
+#endif
+
+#ifndef NormalizeVector
+#define NormalizeVector glide64NormalizeVector
+#endif

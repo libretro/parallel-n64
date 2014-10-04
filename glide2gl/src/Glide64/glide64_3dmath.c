@@ -104,11 +104,11 @@ void MulMatricesC(float m1[4][4],float m2[4][4],float r[4][4])
 
 // 2011-01-03 Balrog - removed because is in NASM format and not 64-bit compatible
 // This will need fixing.
-MULMATRIX MulMatrices = MulMatricesC;
-TRANSFORMVECTOR TransformVector = TransformVectorC;
-TRANSFORMVECTOR InverseTransformVector = InverseTransformVectorC;
-DOTPRODUCT DotProduct = DotProductC;
-NORMALIZEVECTOR NormalizeVector = NormalizeVectorC;
+GLIDE64MULMATRIX glide64MulMatrices = MulMatricesC;
+GLIDE64TRANSFORMVECTOR glide64TransformVector = TransformVectorC;
+GLIDE64TRANSFORMVECTOR glide64InverseTransformVector = InverseTransformVectorC;
+GLIDE64DOTPRODUCT glide64DotProduct = DotProductC;
+GLIDE64NORMALIZEVECTOR glide64NormalizeVector = NormalizeVectorC;
 
 #if !defined(NOSSE)
 // 2008.03.29 H.Morii - added SSE 3DNOW! 3x3 1x3 matrix multiplication
@@ -347,16 +347,16 @@ void math_init(void)
 #if !defined(NOSSE)
    if (cpu & RETRO_SIMD_SSE2)
    {
-      MulMatrices = MulMatricesSSE;
+      glide64MulMatrices = MulMatricesSSE;
       if (log_cb)
          log_cb(RETRO_LOG_INFO, "SSE detected, using (some) optimized math functions.\n");
    }
 #elif defined(__ARM_NEON__)
    if (cpu & RETRO_SIMD_NEON)
    {
-      NormalizeVector = NormalizeVectorNeon;
-      MulMatrices = MulMatricesNeon;
-      DotProduct = DotProductNeon;
+      glide64NormalizeVector = NormalizeVectorNeon;
+      glide64MulMatrices = MulMatricesNeon;
+      glide64DotProduct = DotProductNeon;
       if (log_cb)
          log_cb(RETRO_LOG_INFO, "NEON detected, using (some) optimized math functions.\n");
    }
