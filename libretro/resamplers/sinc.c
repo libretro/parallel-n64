@@ -16,9 +16,8 @@
 /* Bog-standard windowed SINC implementation. */
 
 #include "resampler.h"
-#ifdef RARCH_INTERNAL
-#include "../../libretro.h"
-#include "../../performance.h"
+#ifndef RARCH_INTERNAL
+#include "../libretro.h"
 #endif
 #include <math.h>
 #include <stdint.h>
@@ -28,6 +27,8 @@
 #ifdef _WIN32
 #include "../msvc_compat.h"
 #endif
+
+extern retro_get_cpu_features_t perf_get_cpu_features_cb;
 
 #if !defined(RESAMPLER_TEST) && defined(RARCH_INTERNAL)
 #include "../../general.h"
@@ -536,7 +537,9 @@ static void *resampler_sinc_new(double bandwidth_mod)
 #elif defined(__SSE__)
    RARCH_LOG("Sinc resampler [SSE]\n");
 #elif defined(__ARM_NEON__)
-   unsigned cpu = rarch_get_cpu_features();
+   unsigned cpu = 0;
+   if (perf_get_cpu_features_cb)
+      cpu = perf_get_cpu_features_cb();
    process_sinc_func = cpu & RETRO_SIMD_NEON 
       ? process_sinc_neon : process_sinc_C;
    RARCH_LOG("Sinc resampler [%s]\n",
