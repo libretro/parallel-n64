@@ -333,14 +333,13 @@ static void normal_task_dispatching(struct hle_t* hle)
 
 static void non_task_dispatching(struct hle_t* hle)
 {
-    const unsigned int sum = sum_bytes(hle->imem, 0x1000 >> 1);
+    const unsigned int sum = sum_bytes(hle->imem, 44);
 
-    switch (sum) {
-    /* CIC x105 ucode (used during boot of CIC x105 games) */
-    case 0x9e2: /* CIC 6105 */
-    case 0x9f2: /* CIC 7105 */
-        cicx105_ucode(hle);
-        return;
+    if (sum == 0x9e2)
+    {
+       /* CIC x105 ucode (used during boot of CIC x105 games) */
+       cicx105_ucode(hle);
+       return;
     }
 
     HleWarnMessage(hle->user_defined, "unknown RSP code: sum: %x PC:%x", sum, *hle->sp_pc);
