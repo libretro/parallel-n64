@@ -33,7 +33,7 @@ extern int64_t reg[32], hi, lo;
 extern int64_t local_rs;
 extern unsigned int delay_slot, skip_jump, dyna_interp;
 extern unsigned int r4300emu;
-extern unsigned int next_interupt, CIC_Chip;
+extern unsigned int next_interupt;
 extern unsigned int last_addr;
 extern unsigned int count_per_op;
 extern cpu_instruction_table current_instruction_table;
