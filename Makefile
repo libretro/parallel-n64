@@ -83,7 +83,7 @@ endif
    PLATFORM_EXT := unix
 else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
-   PLATCFLAGS += -DIOS -marm -mllvm -arm-reserve-r9
+   PLATCFLAGS += -DIOS -marm -mllvm
    LDFLAGS += -dynamiclib -marm
    fpic = -fPIC
    GLES = 1
