@@ -89,7 +89,7 @@ ifeq ($(IOSSDK),)
    IOSSDK := $(shell xcrun -sdk iphoneos -show-sdk-path)
 endif
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
-   PLATCFLAGS += -DHAVE_POSIX_MEMALIGN
+   PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
    CPUFLAGS += -DARMv5_ONLY -DNO_ASM -DNOSSE -DARM
    PLATCFLAGS += -DIOS -marm
    LDFLAGS += -dynamiclib -marm
