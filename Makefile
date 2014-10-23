@@ -90,9 +90,9 @@ ifeq ($(IOSSDK),)
 endif
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM -DNOSSE
-   CPUFLAGS += -DARMv5_ONLY -DNO_ASM -DNOSSE -DARM -DNOSSE
+   CPUFLAGS += -DNO_ASM -DNOSSE -DARM
    PLATCFLAGS += -DIOS -marm
-   LDFLAGS += -dynamiclib -marm
+   LDFLAGS += -dynamiclib
    fpic = -fPIC
    GLES = 1
    GL_LIB := -framework OpenGLES
