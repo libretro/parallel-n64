@@ -156,6 +156,7 @@ else ifneq (,$(findstring armv,$(platform)))
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined
    INCFLAGS += -I.
+	CPUCFLAGS  += -DNO_ASM -DNOSSE
 	WITH_DYNAREC=arm
 ifneq (,$(findstring gles,$(platform)))
    GLES := 1
