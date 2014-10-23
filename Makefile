@@ -84,6 +84,10 @@ endif
    GL_LIB := -framework OpenGL
    PLATFORM_EXT := unix
 else ifneq (,$(findstring ios,$(platform)))
+
+ifeq ($(IOSSDK),)
+   IOSSDK := $(shell xcrun -sdk iphoneos -show-sdk-path)
+endif
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
    PLATCFLAGS += -DHAVE_POSIX_MEMALIGN
    CPUFLAGS += -DARMv5_ONLY -DNO_ASM -DNOSSE -DARM
