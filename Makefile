@@ -97,6 +97,8 @@ endif
    GLES = 1
    GL_LIB := -framework OpenGLES
    GLIDE2GL=0
+   HAVE_NEON=1
+   CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -D__arm__ -DARM_ASM -D__NEON_OPT
 
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
