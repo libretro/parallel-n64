@@ -72,10 +72,12 @@ else ifneq (,$(findstring imx6,$(platform)))
 else ifneq (,$(findstring osx,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.dylib
    LDFLAGS += -dynamiclib
-   OSXVER = `sw_vers -productVersion | cut -c 4`
-ifneq ($(shell sw_vers | grep -c 10.9),1)
+   OSXVER = `sw_vers -productVersion | cut -d. -f 2`
+   OSX_LT_MAVERICKS = `(( $(OSXVER) <= 9)) && echo "YES"`
+ifeq ($(OSX_LT_MAVERICKS),"YES")
    LDFLAGS += -mmacosx-version-min=10.5
 endif
+   LDFLAGS += -stdlib=libc++
    fpic = -fPIC
 
    PLATCFLAGS += -D__MACOSX__
@@ -83,7 +85,9 @@ endif
    PLATFORM_EXT := unix
 else ifneq (,$(findstring ios,$(platform)))
    TARGET := $(TARGET_NAME)_libretro_ios.dylib
-   PLATCFLAGS += -DIOS -marm -mllvm
+   PLATCFLAGS += -DHAVE_POSIX_MEMALIGN
+   CPUFLAGS += -DARMv5_ONLY -DNO_ASM -DNOSSE -DARM
+   PLATCFLAGS += -DIOS -marm
    LDFLAGS += -dynamiclib -marm
    fpic = -fPIC
    GLES = 1
@@ -93,15 +97,15 @@ else ifneq (,$(findstring ios,$(platform)))
    CC = clang -arch armv7 -isysroot $(IOSSDK)
    CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
    CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
-   OSXVER = `sw_vers -productVersion | cut -c 4`
-ifneq ($(OSXVER),9)
+   OSXVER = `sw_vers -productVersion | cut -d. -f 2`
+   OSX_LT_MAVERICKS = `(( $(OSXVER) <= 9)) && echo "YES"`
+ifeq ($(OSX_LT_MAVERICKS),"YES")
    CC += -miphoneos-version-min=5.0
    CC_AS += -miphoneos-version-min=5.0
    CXX += -miphoneos-version-min=5.0
    PLATCFLAGS += -miphoneos-version-min=5.0
 endif
-   PLATCFLAGS += -DIOS -DHAVE_POSIX_MEMALIGN
-	CPUFLAGS += -DARMv5_ONLY -DNO_ASM -DNOSSE -DARM
+   LDFLAGS += -stdlib=libc++
    PLATFORM_EXT := unix
    WITH_DYNAREC=arm
 else ifneq (,$(findstring android,$(platform)))
