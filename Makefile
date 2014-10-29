@@ -170,7 +170,7 @@ else ifneq (,$(findstring armv,$(platform)))
 	CXX = g++
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
-	SHARED := -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined
+	LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined
 	INCFLAGS += -I.
 	CPUFLAGS += -DNO_ASM -DNOSSE
 	WITH_DYNAREC=arm
