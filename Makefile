@@ -176,6 +176,7 @@ else ifneq (,$(findstring armv,$(platform)))
 	WITH_DYNAREC=arm
 	ifneq (,$(findstring gles,$(platform)))
 		GLES := 1
+		GL_LIB := -lGLESv2
 	else
 		GL_LIB := -lGL
 	endif
