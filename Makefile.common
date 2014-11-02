@@ -195,7 +195,7 @@ SOURCES_C	+= $(SOURCES_GLN64VIDEO)
 
 ifeq ($(HAVE_NEON), 1)
 	SOURCES_C   += $(VIDEODIR_GLN64)/3DMathNeon.c \
-						$(VIDEODIR_GLn64)/gSPNeon.c
+						$(VIDEODIR_GLN64)/gSPNeon.c
 
 	SOURCES_ASM	+= $(LIBRETRO_DIR)/utils_neon.S \
 						$(LIBRETRO_DIR)/resamplers/sinc_neon.S \
