@@ -77,8 +77,8 @@ ifdef WITH_DYNAREC
 		$(CORE_DIR)/src/r4300/empty_dynarec.c \
 		$(CORE_DIR)/src/r4300/instr_counters.c
 
-		OBJECTS += \
-			$(CORE_DIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).o
+		SOURCES_ASM += \
+			$(CORE_DIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).S
 
 	else
 		CPUFLAGS += -msse -msse2
@@ -110,7 +110,7 @@ endif
 SOURCES_CXX += $(wildcard $(VIDEODIR_RICE)/*.cpp)
 
 ifeq ($(HAVE_NEON), 1)
-	OBJECTS += $(VIDEODIR_RICE)/RenderBase_neon.o
+	SOURCES_ASM += $(VIDEODIR_RICE)/RenderBase_neon.S
 endif
 
 LIBRETRO_SRC += $(wildcard $(LIBRETRO_DIR)/*.c)
@@ -120,8 +120,8 @@ SOURCES_C += $(LIBRETRO_SRC)
 
 ifeq ($(HAVE_NEON), 1)
 	SOURCES_C	+= $(wildcard $(VIDEODIR_GLN64)/*.c)
-	OBJECTS	+= $(LIBRETRO_DIR)/utils_neon.o $(LIBRETRO_DIR)/resamplers/sinc_neon.o \
-				$(LIBRETRO_DIR)/resamplers/cc_resampler_neon.o
+	SOURCES_ASM	+= $(LIBRETRO_DIR)/utils_neon.S $(LIBRETRO_DIR)/resamplers/sinc_neon.S \
+				$(LIBRETRO_DIR)/resamplers/cc_resampler_neon.S
 else
 	GLN64VIDEO_BLACKLIST = $(VIDEODIR_GLN64)/3DMathNeon.c $(VIDEODIR_GLN64)/gSPNeon.c
 	SOURCES_C	+= $(filter-out $(GLN64VIDEO_BLACKLIST), $(wildcard $(VIDEODIR_GLN64)/*.c))
