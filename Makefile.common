@@ -25,8 +25,18 @@ INCFLAGS += \
 # libco
 SOURCES_C += $(LIBRETRO_DIR)/libco/libco.c
 
-SOURCES_C += $(wildcard $(RSPDIR)/src/*.c)
-SOURCES_CXX += $(wildcard $(RSPDIR)/src/*.cpp)
+SOURCES_C += $(RSPDIR)/src/alist.c \
+    $(RSPDIR)/src/alist_audio.c \
+    $(RSPDIR)/src/alist_naudio.c \
+    $(RSPDIR)/src/alist_nead.c \
+    $(RSPDIR)/src/audio.c \
+    $(RSPDIR)/src/cicx105.c \
+    $(RSPDIR)/src/hle.c \
+    $(RSPDIR)/src/jpeg.c \
+    $(RSPDIR)/src/hle_memory.c \
+    $(RSPDIR)/src/mp3.c \
+    $(RSPDIR)/src/musyx.c \
+    $(RSPDIR)/src/hle_plugin.c
 
 SOURCES_C += $(CXD4DIR)/rsp.c
 
@@ -62,10 +72,8 @@ SOURCES_C += \
 	$(CORE_DIR)/src/r4300/cp1.c \
 	$(CORE_DIR)/src/r4300/r4300.c
 
-
 #	$(CORE_DIR)/src/api/debugger.c \
 #	$(CORE_DIR)/src/main/ini_reader.c \
-
 
 ### DYNAREC ###
 ifdef WITH_DYNAREC
@@ -107,36 +115,118 @@ endif
 
 # Rice
 
-SOURCES_CXX += $(wildcard $(VIDEODIR_RICE)/*.cpp)
+SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
+            $(VIDEODIR_RICE)/Combiner.cpp \
+            $(VIDEODIR_RICE)/RiceConfig.cpp \
+            $(VIDEODIR_RICE)/ConvertImage16.cpp \
+            $(VIDEODIR_RICE)/ConvertImage.cpp \
+            $(VIDEODIR_RICE)/Debugger.cpp \
+            $(VIDEODIR_RICE)/DecodedMux.cpp \
+            $(VIDEODIR_RICE)/DeviceBuilder.cpp \
+            $(VIDEODIR_RICE)/FrameBuffer.cpp \
+            $(VIDEODIR_RICE)/GraphicsContext.cpp \
+            $(VIDEODIR_RICE)/OGLCombiner.cpp \
+            $(VIDEODIR_RICE)/OGLDecodedMux.cpp \
+            $(VIDEODIR_RICE)/OGLES2FragmentShaders.cpp \
+            $(VIDEODIR_RICE)/OGLExtCombiner.cpp \
+            $(VIDEODIR_RICE)/OGLExtRender.cpp \
+            $(VIDEODIR_RICE)/OGLGraphicsContext.cpp \
+            $(VIDEODIR_RICE)/OGLRender.cpp \
+            $(VIDEODIR_RICE)/OGLRenderExt.cpp \
+            $(VIDEODIR_RICE)/OGLTexture.cpp \
+            $(VIDEODIR_RICE)/RenderBase.cpp \
+            $(VIDEODIR_RICE)/Render.cpp \
+            $(VIDEODIR_RICE)/RenderExt.cpp \
+            $(VIDEODIR_RICE)/RenderTexture.cpp \
+            $(VIDEODIR_RICE)/RSP_Parser.cpp \
+            $(VIDEODIR_RICE)/RSP_S2DEX.cpp \
+            $(VIDEODIR_RICE)/Texture.cpp \
+            $(VIDEODIR_RICE)/TextureManager.cpp \
+            $(VIDEODIR_RICE)/VectorMath.cpp \
+            $(VIDEODIR_RICE)/Video.cpp
 
 ifeq ($(HAVE_NEON), 1)
 	SOURCES_ASM += $(VIDEODIR_RICE)/RenderBase_neon.S
 endif
 
-LIBRETRO_SRC += $(wildcard $(LIBRETRO_DIR)/*.c)
-LIBRETRO_SRC += $(wildcard $(LIBRETRO_DIR)/resamplers/*.c)
+# Libretro
 
-SOURCES_C += $(LIBRETRO_SRC)
+SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
+					 $(LIBRETRO_DIR)/adler32.c \
+					 $(LIBRETRO_DIR)/opengl_state_machine.c \
+					 $(LIBRETRO_DIR)/audio_plugin.c \
+					 $(LIBRETRO_DIR)/input_plugin.c \
+					 $(LIBRETRO_DIR)/resamplers/resampler.c \
+					 $(LIBRETRO_DIR)/resamplers/sinc.c \
+					 $(LIBRETRO_DIR)/resamplers/nearest.c \
+					 $(LIBRETRO_DIR)/resamplers/cc_resampler.c \
+					 $(LIBRETRO_DIR)/utils.c
+
+SOURCES_GLN64VIDEO := $(VIDEODIR_GLN64)/3DMath.c \
+            $(VIDEODIR_GLN64)/glN64Config.c \
+            $(VIDEODIR_GLN64)/CRC.c \
+            $(VIDEODIR_GLN64)/DepthBuffer.c \
+            $(VIDEODIR_GLN64)/F3DCBFD.c \
+            $(VIDEODIR_GLN64)/F3D.c \
+            $(VIDEODIR_GLN64)/F3DDKR.c \
+            $(VIDEODIR_GLN64)/F3DEX2.c \
+            $(VIDEODIR_GLN64)/F3DEX.c \
+            $(VIDEODIR_GLN64)/F3DPD.c \
+            $(VIDEODIR_GLN64)/F3DWRUS.c \
+            $(VIDEODIR_GLN64)/GBI.c \
+            $(VIDEODIR_GLN64)/gDP.c \
+            $(VIDEODIR_GLN64)/gles2N64.c \
+            $(VIDEODIR_GLN64)/gSP.c \
+            $(VIDEODIR_GLN64)/L3D.c \
+            $(VIDEODIR_GLN64)/L3DEX2.c \
+            $(VIDEODIR_GLN64)/L3DEX.c \
+            $(VIDEODIR_GLN64)/N64.c \
+            $(VIDEODIR_GLN64)/OpenGL.c \
+            $(VIDEODIR_GLN64)/RDP.c \
+            $(VIDEODIR_GLN64)/gles2n64_rsp.c \
+            $(VIDEODIR_GLN64)/S2DEX2.c \
+            $(VIDEODIR_GLN64)/S2DEX.c \
+            $(VIDEODIR_GLN64)/ShaderCombiner.c \
+            $(VIDEODIR_GLN64)/Textures.c \
+            $(VIDEODIR_GLN64)/VI.c
 
 ifeq ($(HAVE_NEON), 1)
-	SOURCES_C	+= $(wildcard $(VIDEODIR_GLN64)/*.c)
+	SOURCES_C	+= $(SOURCES_GLN64VIDEO)
+
 	SOURCES_ASM	+= $(LIBRETRO_DIR)/utils_neon.S $(LIBRETRO_DIR)/resamplers/sinc_neon.S \
 				$(LIBRETRO_DIR)/resamplers/cc_resampler_neon.S
 else
 	GLN64VIDEO_BLACKLIST = $(VIDEODIR_GLN64)/3DMathNeon.c $(VIDEODIR_GLN64)/gSPNeon.c
-	SOURCES_C	+= $(filter-out $(GLN64VIDEO_BLACKLIST), $(wildcard $(VIDEODIR_GLN64)/*.c))
+	SOURCES_C	+= $(filter-out $(GLN64VIDEO_BLACKLIST), $(SOURCES_GLN64VIDEO))
 endif
 
 # Glide64
 ifeq ($(GLES2GLIDE64_NEW), 1)
-	SOURCES_CXX += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
+SOURCES_CXX += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
 else
-	SOURCES_C += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.c) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.c)
+#Glide 64
+SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
+            $(VIDEODIR_GLIDE)/Glide64/FBtoScreen.c \
+            $(VIDEODIR_GLIDE)/Glide64/glidemain.c \
+            $(VIDEODIR_GLIDE)/Glide64/glide64_util.c \
+            $(VIDEODIR_GLIDE)/Glide64/glide64_rdp.c \
+            $(VIDEODIR_GLIDE)/Glide64/Combine.c \
+            $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.c \
+            $(VIDEODIR_GLIDE)/Glide64/TexCache.c \
+            $(VIDEODIR_GLIDE)/Glide64/glide64_crc.c
+
+# Glitch64
+SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \
+            $(VIDEODIR_GLIDE)/Glitch64/geometry.c \
+            $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c \
+            $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c
 endif
 
 ### Angrylion's renderer ###
-SOURCES_C += $(wildcard $(VIDEODIR_ANGRYLION)/*.c)
-SOURCES_CXX += $(wildcard $(VIDEODIR_ANGRYLION)/*.cpp)
+SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
+						  $(VIDEODIR_ANGRYLION)/n64video_vi.c \
+						  $(VIDEODIR_ANGRYLION)/n64video_rdp.c \
+						  $(VIDEODIR_ANGRYLION)/n64video.c
 
 ifeq ($(GLES), 1)
 	GLFLAGS += -DGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT

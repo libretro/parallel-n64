@@ -26,24 +26,16 @@
 
 #include "r4300.h"
 
-#ifdef EMSCRIPTEN
-static __inline int32_t fesetround(int32_t __round)
-{
-   (void)__round;
-   return 0;
-}
+#if defined(EMSCRIPTEN)
+#define CUSTOM_FESETROUND
 #endif
 
 #if defined(_MSC_VER)
+#define CUSTOM_FESETROUND
 #define M64P_FPU_INLINE static __inline
 #include <float.h>
 typedef enum { FE_TONEAREST = 0, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD } eRoundType;
-static void fesetround(eRoundType RoundType)
-{
-   static const uint32_t msRound[4] = { _RC_NEAR, _RC_CHOP, _RC_UP, _RC_DOWN };
-   uint32_t oldX87, oldSSE2;
-   __control87_2(msRound[RoundType], _MCW_RC, &oldX87, &oldSSE2);
-}
+
 static __inline double round(double x) { return floor(x + 0.5); }
 static __inline float roundf(float x) { return (float) floor(x + 0.5); }
 static __inline double trunc(double x) { return (double) (int32_t) x; }
@@ -74,11 +66,18 @@ static __inline float truncf(float x) { return (float) (int32_t) x; }
 #define _FPSCR_RMODE_SHIFT 22
 #endif
 
-#ifdef ANDROID
+#ifdef ANDROID_OLD_GCC
 typedef __uint32_t fenv_t;
 typedef __uint32_t fexcept_t;
+#define CUSTOM_FEGETENV
+#define CUSTOM_FESETENV
+#define CUSTOM_FESETROUND
+#endif
 
-static __inline int32_t fegetenv(fenv_t* __envp)
+#ifdef CUSTOM_FEGETENV
+
+#ifdef ANDROID
+static INLINE int32_t m64p_fegetenv(fenv_t* __envp)
 {
    fenv_t _fpscr;
 #if !defined(__SOFTFP__)
@@ -104,7 +103,15 @@ static __inline int32_t fegetenv(fenv_t* __envp)
    return 0;
 }
 
-static __inline int32_t fesetenv(const fenv_t* __envp)
+#endif
+#else
+#define m64p_fegetenv fegetenv
+#endif
+
+#ifdef CUSTOM_FESETENV
+
+#ifdef ANDROID
+static INLINE int32_t m64p_fesetenv(const fenv_t* __envp)
 {
    fenv_t _fpscr = *__envp;
 #if !defined(__SOFTFP__)
@@ -128,34 +135,58 @@ static __inline int32_t fesetenv(const fenv_t* __envp)
 #endif
    return 0;
 }
+#endif
 
-static __inline int32_t fesetround(int32_t __round)
+#else
+#define m64p_fesetenv fesetenv
+#endif
+
+#ifdef CUSTOM_FESETROUND
+
+#if defined(ANDROID)
+static INLINE int32_t m64p_fesetround(int32_t __round)
 {
    uint32_t _fpscr;
-   fegetenv(&_fpscr);
+   m64p_fegetenv(&_fpscr);
    _fpscr &= ~(0x3 << _FPSCR_RMODE_SHIFT);
    _fpscr |= (__round << _FPSCR_RMODE_SHIFT);
-   fesetenv(&_fpscr);
+   m64p_fesetenv(&_fpscr);
    return 0;
+}
+#elif defined(EMSCRIPTEN)
+static INLINE int32_t m64p_fesetround(int32_t __round)
+{
+   (void)__round;
+   return 0;
+}
+#elif defined(_MSC_VER)
+static INLINE void m64p_fesetround(eRoundType RoundType)
+{
+   static const uint32_t msRound[4] = { _RC_NEAR, _RC_CHOP, _RC_UP, _RC_DOWN };
+   uint32_t oldX87, oldSSE2;
+   __control87_2(msRound[RoundType], _MCW_RC, &oldX87, &oldSSE2);
 }
 #endif
 
+#else
+#define m64p_fesetround fesetround
+#endif
 
 M64P_FPU_INLINE void set_rounding(void)
 {
    switch(rounding_mode)
    {
       case 0x33F:
-         fesetround(FE_TONEAREST);
+         m64p_fesetround(FE_TONEAREST);
          break;
       case 0xF3F:
-         fesetround(FE_TOWARDZERO);
+         m64p_fesetround(FE_TOWARDZERO);
          break;
       case 0xB3F:
-         fesetround(FE_UPWARD);
+         m64p_fesetround(FE_UPWARD);
          break;
       case 0x73F:
-         fesetround(FE_DOWNWARD);
+         m64p_fesetround(FE_DOWNWARD);
          break;
    }
 }
