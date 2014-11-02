@@ -9,6 +9,7 @@ ifeq ($(GLIDE2GL), 1)
 VIDEODIR_GLIDE = $(ROOT_DIR)/glide2gl/src
 else
 VIDEODIR_GLIDE = $(ROOT_DIR)/gles2glide64/src
+SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c
 endif
 
 ifeq ($(GLES2GLIDE64_NEW), 1)
