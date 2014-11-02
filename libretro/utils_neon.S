@@ -13,7 +13,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if defined(__ARCH_ARM) || defined(__ARM_EABI__)
+#if defined(__ARCH_ARM) || defined(__ARM_EABI__) || defined(HAVE_NEON)
 
 .arm
 

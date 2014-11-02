@@ -226,6 +226,10 @@ endif
 
 include Makefile.common
 
+ifeq ($(HAVE_NEON), 1)
+	COREFLAGS += -DHAVE_NEON
+endif
+
 ifeq ($(PERF_TEST), 1)
 	COREFLAGS += -DPERF_TEST
 endif
