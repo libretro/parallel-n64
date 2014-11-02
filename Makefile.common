@@ -17,7 +17,7 @@ VIDEODIR_GLIDE = $(ROOT_DIR)/gles2glide64_new/src
 endif
 
 ifeq ($(GLIDE64MK2), 1)
-VIDEODIR_GLIDE = $(ROOT_DIR)/mupen64plus-video-glide64mk2
+VIDEODIR_GLIDE = $(ROOT_DIR)/mupen64plus-video-glide64mk2/src
 endif
 
 INCFLAGS += \
