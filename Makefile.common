@@ -191,14 +191,15 @@ SOURCES_GLN64VIDEO := $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/Textures.c \
             $(VIDEODIR_GLN64)/VI.c
 
-ifeq ($(HAVE_NEON), 1)
-	SOURCES_C	+= $(SOURCES_GLN64VIDEO)
+SOURCES_C	+= $(SOURCES_GLN64VIDEO)
 
-	SOURCES_ASM	+= $(LIBRETRO_DIR)/utils_neon.S $(LIBRETRO_DIR)/resamplers/sinc_neon.S \
-				$(LIBRETRO_DIR)/resamplers/cc_resampler_neon.S
-else
-	GLN64VIDEO_BLACKLIST = $(VIDEODIR_GLN64)/3DMathNeon.c $(VIDEODIR_GLN64)/gSPNeon.c
-	SOURCES_C	+= $(filter-out $(GLN64VIDEO_BLACKLIST), $(SOURCES_GLN64VIDEO))
+ifeq ($(HAVE_NEON), 1)
+	SOURCES_C   += $(VIDEODIR_GLN64)/3DMathNeon.c \
+						$(VIDEODIR_GLn64)/gSPNeon.c
+
+	SOURCES_ASM	+= $(LIBRETRO_DIR)/utils_neon.S \
+						$(LIBRETRO_DIR)/resamplers/sinc_neon.S \
+						$(LIBRETRO_DIR)/resamplers/cc_resampler_neon.S
 endif
 
 # Glide64
