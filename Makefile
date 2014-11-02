@@ -12,7 +12,9 @@ CPUFLAGS  :=
 
 UNAME=$(shell uname -a)
 
-LIBRETRO_DIR := libretro
+# Dirs
+ROOT_DIR := .
+LIBRETRO_DIR := $(ROOT_DIR)/libretro
 
 ifeq ($(platform),)
 	platform = unix
@@ -222,134 +224,7 @@ else ifneq (,$(findstring win,$(platform)))
 	
 endif
 
-# libco
-CFILES += $(LIBRETRO_DIR)/libco/libco.c
-
-# Dirs
-RSPDIR = mupen64plus-rsp-hle
-CXD4DIR = mupen64plus-rsp-cxd4
-COREDIR = mupen64plus-core
-VIDEODIR_RICE = gles2rice/src
-VIDEODIR_GLN64 = gles2n64/src
-
-ifeq ($(GLIDE2GL), 1)
-	VIDEODIR_GLIDE = glide2gl/src
-else
-	VIDEODIR_GLIDE = gles2glide64/src
-endif
-
-ifeq ($(GLES2GLIDE64_NEW), 1)
-	VIDEODIR_GLIDE = gles2glide64_new/src
-endif
-
-INCFLAGS += \
-	-I$(COREDIR)/src \
-	-I$(COREDIR)/src/api \
-	-I$(VIDEODIR_GLIDE)/Glitch64/inc \
-	-I$(LIBRETRO_DIR)/libco \
-	-I$(LIBRETRO_DIR)
-
-CFILES += $(wildcard $(RSPDIR)/src/*.c)
-CXXFILES += $(wildcard $(RSPDIR)/src/*.cpp)
-
-CFILES += $(CXD4DIR)/rsp.c
-
-# Core
-CFILES += \
-	$(COREDIR)/src/api/callbacks.c \
-	$(COREDIR)/src/api/common.c \
-	$(COREDIR)/src/api/config.c \
-	$(COREDIR)/src/api/frontend.c \
-	$(COREDIR)/src/main/cheat.c \
-	$(COREDIR)/src/main/eventloop.c \
-	$(COREDIR)/src/main/main.c \
-	$(COREDIR)/src/main/profile.c \
-	$(COREDIR)/src/main/md5.c \
-	$(COREDIR)/src/main/rom.c \
-	$(COREDIR)/src/main/savestates.c \
-	$(COREDIR)/src/main/util.c \
-	$(COREDIR)/src/memory/dma.c \
-	$(COREDIR)/src/memory/flashram.c \
-	$(COREDIR)/src/memory/memory.c \
-	$(COREDIR)/src/memory/n64_cic_nus_6105.c \
-	$(COREDIR)/src/memory/pif.c \
-	$(COREDIR)/src/plugin/plugin.c \
-	$(COREDIR)/src/r4300/profile.c \
-	$(COREDIR)/src/r4300/recomp.c \
-	$(COREDIR)/src/r4300/exception.c \
-	$(COREDIR)/src/r4300/cached_interp.c \
-	$(COREDIR)/src/r4300/pure_interp.c \
-	$(COREDIR)/src/r4300/reset.c \
-	$(COREDIR)/src/r4300/interupt.c \
-	$(COREDIR)/src/r4300/tlb.c \
-	$(COREDIR)/src/r4300/cp0.c \
-	$(COREDIR)/src/r4300/cp1.c \
-	$(COREDIR)/src/r4300/r4300.c
-
-
-#	$(COREDIR)/src/api/debugger.c \
-#	$(COREDIR)/src/main/ini_reader.c \
-
-
-### DYNAREC ###
-ifdef WITH_DYNAREC
-	DYNAFLAGS += -DDYNAREC
-	ifeq ($(WITH_DYNAREC), arm)
-		DYNAFLAGS += -DNEW_DYNAREC=3
-
-		CFILES += $(COREDIR)/src/r4300/new_dynarec/new_dynarec.c \
-		$(COREDIR)/src/r4300/empty_dynarec.c \
-		$(COREDIR)/src/r4300/instr_counters.c
-
-		OBJECTS += \
-			$(COREDIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).o
-
-	else
-		CPUFLAGS += -msse -msse2
-		CFILES += $(wildcard $(COREDIR)/src/r4300/$(WITH_DYNAREC)/*.c)
-	endif
-else
-	CFILES += $(COREDIR)/src/r4300/empty_dynarec.c
-endif
-
-ifeq ($(NEB_DYNAREC),1)
-	NEB_DYNADIR := $(COREDIR)/src/r4300/neb_dynarec
-	CFILES += $(NEB_DYNADIR)/driver.c \
-				$(NEB_DYNADIR)/emitflags.c \
-				$(NEB_DYNADIR)/arch-ops.c \
-				$(NEB_DYNADIR)/il-ops.c \
-				$(NEB_DYNADIR)/n64ops.c
-
-	ifeq ($(WITH_DYNAREC), x86_64)
-		CPUFLAGS += -DNEB_DYNAREC=10
-		NEB_X64_DIR := $(NEB_DYNADIR)/amd64
-		CFILES += $(NEB_X64_DIR)/functions.c
-	endif
-endif
-
-### VIDEO PLUGINS ###
-
-# Rice
-
-CXXFILES += $(wildcard $(VIDEODIR_RICE)/*.cpp)
-
-ifeq ($(HAVE_NEON), 1)
-	OBJECTS += $(VIDEODIR_RICE)/RenderBase_neon.o
-endif
-
-LIBRETRO_SRC += $(wildcard $(LIBRETRO_DIR)/*.c)
-LIBRETRO_SRC += $(wildcard $(LIBRETRO_DIR)/resamplers/*.c)
-
-CFILES += $(LIBRETRO_SRC)
-
-ifeq ($(HAVE_NEON), 1)
-	CFILES	+= $(wildcard $(VIDEODIR_GLN64)/*.c)
-	OBJECTS	+= $(LIBRETRO_DIR)/utils_neon.o $(LIBRETRO_DIR)/resamplers/sinc_neon.o \
-				$(LIBRETRO_DIR)/resamplers/cc_resampler_neon.o
-else
-	GLN64VIDEO_BLACKLIST = $(VIDEODIR_GLN64)/3DMathNeon.c $(VIDEODIR_GLN64)/gSPNeon.c
-	CFILES	+= $(filter-out $(GLN64VIDEO_BLACKLIST), $(wildcard $(VIDEODIR_GLN64)/*.c))
-endif
+include Makefile.common
 
 ifeq ($(PERF_TEST), 1)
 	COREFLAGS += -DPERF_TEST
@@ -363,28 +238,6 @@ ifeq ($(SINGLE_THREAD), 1)
 	COREFLAGS += -DSINGLE_THREAD
 endif
 
-# Glide64
-ifeq ($(GLES2GLIDE64_NEW), 1)
-	CXXFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
-else
-	CFILES += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.c) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.c)
-endif
-
-### Angrylion's renderer ###
-VIDEODIR_ANGRYLION = angrylionrdp
-CFILES += $(wildcard $(VIDEODIR_ANGRYLION)/*.c)
-CXXFILES += $(wildcard $(VIDEODIR_ANGRYLION)/*.cpp)
-
-ifeq ($(GLES), 1)
-	GLFLAGS += -DGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT
-	CFILES += $(LIBRETRO_DIR)/glsym/glsym_es2.c
-else
-	GLFLAGS += -DHAVE_OPENGL
-	CFILES += $(LIBRETRO_DIR)/glsym/glsym_gl.c
-endif
-
-CFILES += $(LIBRETRO_DIR)/glsym/rglgen.c
-
 COREFLAGS += -D__LIBRETRO__ -DINLINE="inline" -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES \
 			-D_ENDUSER_RELEASE -DSDL_VIDEO_OPENGL_ES2=1 -DSINC_LOWER_QUALITY 
 
@@ -396,7 +249,7 @@ else
 endif
 
 ### Finalize ###
-OBJECTS		+= $(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
+OBJECTS		+= $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o)
 CXXFLAGS	+= $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 CFLAGS		+= $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 
@@ -408,7 +261,7 @@ LDFLAGS	 += $(fpic)
 
 all: $(TARGET)
 
-$(COREDIR)/src/r4300/new_dynarec/linkage_arm.o: $(COREDIR)/src/r4300/new_dynarec/linkage_arm.S
+$(CORE_DIR)/src/r4300/new_dynarec/linkage_arm.o: $(CORE_DIR)/src/r4300/new_dynarec/linkage_arm.S
 	$(CC_AS) $(CFLAGS) -c $^ -o $@
 
 $(VIDEODIR_RICE)/RenderBase_neon.o: $(VIDEODIR_RICE)/RenderBase_neon.S

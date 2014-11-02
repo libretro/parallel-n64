@@ -1,0 +1,149 @@
+RSPDIR             = $(ROOT_DIR)/mupen64plus-rsp-hle
+CXD4DIR            = $(ROOT_DIR)/mupen64plus-rsp-cxd4
+CORE_DIR           = $(ROOT_DIR)/mupen64plus-core
+VIDEODIR_RICE      = $(ROOT_DIR)/gles2rice/src
+VIDEODIR_GLN64     = $(ROOT_DIR)/gles2n64/src
+VIDEODIR_ANGRYLION = $(ROOT_DIR)/angrylionrdp
+
+ifeq ($(GLIDE2GL), 1)
+VIDEODIR_GLIDE = $(ROOT_DIR)/glide2gl/src
+else
+VIDEODIR_GLIDE = $(ROOT_DIR)/gles2glide64/src
+endif
+
+ifeq ($(GLES2GLIDE64_NEW), 1)
+VIDEODIR_GLIDE = $(ROOT_DIR)/gles2glide64_new/src
+endif
+
+INCFLAGS += \
+	-I$(CORE_DIR)/src \
+	-I$(CORE_DIR)/src/api \
+	-I$(VIDEODIR_GLIDE)/Glitch64/inc \
+	-I$(LIBRETRO_DIR)/libco \
+	-I$(LIBRETRO_DIR)
+
+# libco
+SOURCES_C += $(LIBRETRO_DIR)/libco/libco.c
+
+SOURCES_C += $(wildcard $(RSPDIR)/src/*.c)
+SOURCES_CXX += $(wildcard $(RSPDIR)/src/*.cpp)
+
+SOURCES_C += $(CXD4DIR)/rsp.c
+
+# Core
+SOURCES_C += \
+	$(CORE_DIR)/src/api/callbacks.c \
+	$(CORE_DIR)/src/api/common.c \
+	$(CORE_DIR)/src/api/config.c \
+	$(CORE_DIR)/src/api/frontend.c \
+	$(CORE_DIR)/src/main/cheat.c \
+	$(CORE_DIR)/src/main/eventloop.c \
+	$(CORE_DIR)/src/main/main.c \
+	$(CORE_DIR)/src/main/profile.c \
+	$(CORE_DIR)/src/main/md5.c \
+	$(CORE_DIR)/src/main/rom.c \
+	$(CORE_DIR)/src/main/savestates.c \
+	$(CORE_DIR)/src/main/util.c \
+	$(CORE_DIR)/src/memory/dma.c \
+	$(CORE_DIR)/src/memory/flashram.c \
+	$(CORE_DIR)/src/memory/memory.c \
+	$(CORE_DIR)/src/memory/n64_cic_nus_6105.c \
+	$(CORE_DIR)/src/memory/pif.c \
+	$(CORE_DIR)/src/plugin/plugin.c \
+	$(CORE_DIR)/src/r4300/profile.c \
+	$(CORE_DIR)/src/r4300/recomp.c \
+	$(CORE_DIR)/src/r4300/exception.c \
+	$(CORE_DIR)/src/r4300/cached_interp.c \
+	$(CORE_DIR)/src/r4300/pure_interp.c \
+	$(CORE_DIR)/src/r4300/reset.c \
+	$(CORE_DIR)/src/r4300/interupt.c \
+	$(CORE_DIR)/src/r4300/tlb.c \
+	$(CORE_DIR)/src/r4300/cp0.c \
+	$(CORE_DIR)/src/r4300/cp1.c \
+	$(CORE_DIR)/src/r4300/r4300.c
+
+
+#	$(CORE_DIR)/src/api/debugger.c \
+#	$(CORE_DIR)/src/main/ini_reader.c \
+
+
+### DYNAREC ###
+ifdef WITH_DYNAREC
+	DYNAFLAGS += -DDYNAREC
+	ifeq ($(WITH_DYNAREC), arm)
+		DYNAFLAGS += -DNEW_DYNAREC=3
+
+		SOURCES_C += $(CORE_DIR)/src/r4300/new_dynarec/new_dynarec.c \
+		$(CORE_DIR)/src/r4300/empty_dynarec.c \
+		$(CORE_DIR)/src/r4300/instr_counters.c
+
+		OBJECTS += \
+			$(CORE_DIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).o
+
+	else
+		CPUFLAGS += -msse -msse2
+		SOURCES_C += $(wildcard $(CORE_DIR)/src/r4300/$(WITH_DYNAREC)/*.c)
+	endif
+else
+	SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
+endif
+
+ifeq ($(NEB_DYNAREC),1)
+	NEB_DYNADIR := $(CORE_DIR)/src/r4300/neb_dynarec
+	SOURCES_C += $(NEB_DYNADIR)/driver.c \
+				$(NEB_DYNADIR)/emitflags.c \
+				$(NEB_DYNADIR)/arch-ops.c \
+				$(NEB_DYNADIR)/il-ops.c \
+				$(NEB_DYNADIR)/n64ops.c
+
+	ifeq ($(WITH_DYNAREC), x86_64)
+		CPUFLAGS += -DNEB_DYNAREC=10
+		NEB_X64_DIR := $(NEB_DYNADIR)/amd64
+		SOURCES_C += $(NEB_X64_DIR)/functions.c
+	endif
+endif
+
+### VIDEO PLUGINS ###
+
+# Rice
+
+SOURCES_CXX += $(wildcard $(VIDEODIR_RICE)/*.cpp)
+
+ifeq ($(HAVE_NEON), 1)
+	OBJECTS += $(VIDEODIR_RICE)/RenderBase_neon.o
+endif
+
+LIBRETRO_SRC += $(wildcard $(LIBRETRO_DIR)/*.c)
+LIBRETRO_SRC += $(wildcard $(LIBRETRO_DIR)/resamplers/*.c)
+
+SOURCES_C += $(LIBRETRO_SRC)
+
+ifeq ($(HAVE_NEON), 1)
+	SOURCES_C	+= $(wildcard $(VIDEODIR_GLN64)/*.c)
+	OBJECTS	+= $(LIBRETRO_DIR)/utils_neon.o $(LIBRETRO_DIR)/resamplers/sinc_neon.o \
+				$(LIBRETRO_DIR)/resamplers/cc_resampler_neon.o
+else
+	GLN64VIDEO_BLACKLIST = $(VIDEODIR_GLN64)/3DMathNeon.c $(VIDEODIR_GLN64)/gSPNeon.c
+	SOURCES_C	+= $(filter-out $(GLN64VIDEO_BLACKLIST), $(wildcard $(VIDEODIR_GLN64)/*.c))
+endif
+
+# Glide64
+ifeq ($(GLES2GLIDE64_NEW), 1)
+	SOURCES_CXX += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
+else
+	SOURCES_C += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.c) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.c)
+endif
+
+### Angrylion's renderer ###
+SOURCES_C += $(wildcard $(VIDEODIR_ANGRYLION)/*.c)
+SOURCES_CXX += $(wildcard $(VIDEODIR_ANGRYLION)/*.cpp)
+
+ifeq ($(GLES), 1)
+	GLFLAGS += -DGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT
+	SOURCES_C += $(LIBRETRO_DIR)/glsym/glsym_es2.c
+else
+	GLFLAGS += -DHAVE_OPENGL
+	SOURCES_C += $(LIBRETRO_DIR)/glsym/glsym_gl.c
+endif
+
+SOURCES_C += $(LIBRETRO_DIR)/glsym/rglgen.c
