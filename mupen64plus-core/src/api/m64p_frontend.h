@@ -23,7 +23,7 @@
  * designed for use by the front-end user interface.
  */
 
-#if !defined(M64P_FRONTEND_H)
+#ifndef M64P_FRONTEND_H
 #define M64P_FRONTEND_H
 
 #include "m64p_types.h"

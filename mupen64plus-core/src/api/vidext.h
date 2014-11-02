@@ -23,7 +23,7 @@
  * will be called from other Core modules.
  */
 
-#if !defined(API_VIDEXT_H)
+#ifndef API_VIDEXT_H
 #define API_VIDEXT_H
 
 #include "m64p_types.h"

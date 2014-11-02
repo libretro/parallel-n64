@@ -23,7 +23,7 @@
  * configuration handling functions.
  */
 
-#if !defined(M64P_CONFIG_H)
+#ifndef M64P_CONFIG_H
 #define M64P_CONFIG_H
 
 #include "m64p_types.h"

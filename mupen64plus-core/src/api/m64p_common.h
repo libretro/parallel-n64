@@ -24,7 +24,7 @@
  * to the dynamic libraries.
  */
 
-#if !defined(M64P_COMMON_H)
+#ifndef M64P_COMMON_H
 #define M64P_COMMON_H
 
 #include "m64p_types.h"

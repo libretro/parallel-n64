@@ -23,7 +23,7 @@
  * called from the other Core modules
  */
 
-#if !defined(API_DEBUGGER_H)
+#ifndef API_DEBUGGER_H
 #define API_DEBUGGER_H
 
 #include "m64p_types.h"

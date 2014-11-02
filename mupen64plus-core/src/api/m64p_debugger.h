@@ -23,7 +23,7 @@
  * functions.
  */
 
-#if !defined(M64P_DEBUGGER_H)
+#ifndef M64P_DEBUGGER_H
 #define M64P_DEBUGGER_H
 
 #include "m64p_types.h"
