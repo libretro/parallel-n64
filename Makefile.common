@@ -16,6 +16,10 @@ ifeq ($(GLES2GLIDE64_NEW), 1)
 VIDEODIR_GLIDE = $(ROOT_DIR)/gles2glide64_new/src
 endif
 
+ifeq ($(GLIDE64MK2), 1)
+VIDEODIR_GLIDE = $(ROOT_DIR)/mupen64plus-video-glide64mk2
+endif
+
 INCFLAGS += \
 	-I$(CORE_DIR)/src \
 	-I$(CORE_DIR)/src/api \
@@ -204,6 +208,10 @@ endif
 
 # Glide64
 ifeq ($(GLES2GLIDE64_NEW), 1)
+SOURCES_CXX += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
+endif
+
+ifeq ($(GLIDE64MK2), 1)
 SOURCES_CXX += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
 else
 #Glide 64
