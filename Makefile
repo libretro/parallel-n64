@@ -59,7 +59,7 @@ else ifneq (,$(findstring rpi,$(platform)))
 	LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T
 	fpic = -fPIC
 	GLES = 1
-	GL_LIB := -lGLESv2
+	GL_LIB := -L/opt/vc/lib -lGLESv2
 	INCFLAGS += -I/opt/vc/include
 	CPUFLAGS += -DARMv5_ONLY -DNO_ASM -DNOSSE
 	PLATFORM_EXT := unix
