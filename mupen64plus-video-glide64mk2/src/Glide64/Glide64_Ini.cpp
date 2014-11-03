@@ -45,10 +45,15 @@ void ReadSettings(void)
       }
    }
 
-   settings.scr_res_x = screen_width;
-   settings.scr_res_y = screen_height;
-   settings.res_x = 320;
-   settings.res_y = 240;
+   printf("screen width: %d, height: %d\n", screen_width, screen_height);
+
+	PackedScreenResolution tmpRes;
+   tmpRes.width      = screen_width;
+   tmpRes.height     = screen_height;
+   tmpRes.fullscreen = true;
+	settings.res_data = tmpRes.resolution;
+   settings.scr_res_x = settings.res_x = screen_width;
+   settings.scr_res_y = settings.res_y = screen_height;
 
 
    settings.vsync = 1;
@@ -59,6 +64,7 @@ void ReadSettings(void)
    settings.buff_clear = 1;
    settings.unk_as_red = false;
    settings.unk_clear = false;
+   settings.run_in_window = false;
 }
 
 void ReadSpecialSettings (const char * name)
