@@ -215,9 +215,7 @@ endif
 # Glide64
 ifeq ($(GLES2GLIDE64_NEW), 1)
 SOURCES_CXX += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
-endif
-
-ifeq ($(GLIDE64MK2), 1)
+else ifeq ($(GLIDE64MK2), 1)
 SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/Combine.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/Config.cpp \
