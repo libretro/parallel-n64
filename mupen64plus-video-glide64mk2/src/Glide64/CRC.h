@@ -43,6 +43,14 @@
 //
 //****************************************************************
 
+#ifdef __LIBRETRO__ && defined(__cplusplus)
+extern "C" {
+#endif
+
 void CRC_BuildTable();
 
 unsigned int CRC32( unsigned int crc, void *buffer, unsigned int count );
+
+#ifdef __LIBRETRO__ && defined(__cplusplus)
+}
+#endif
