@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "Glide64_Ini.h"
+#include "Glide64_UCode.h"
 #include "rdp.h"
 
 extern bool no_audio;

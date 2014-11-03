@@ -251,6 +251,7 @@ SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/Glide64_Ini.c \
             $(VIDEODIR_GLIDE)/Glide64/glidemain.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_util.c \
+				$(VIDEODIR_GLIDE)/Glide64/Glide64_UCode.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_rdp.c \
             $(VIDEODIR_GLIDE)/Glide64/Combine.c \
             $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.c \
