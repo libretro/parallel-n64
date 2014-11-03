@@ -80,7 +80,11 @@ static int tex1_combiner_ext = 0;
 static int c_combiner_ext = 0;
 static int a_combiner_ext = 0;
 
+#if !defined(__LIBRETRO__) || defined(GLES) // Desktop GL fix
 #define GLSL_VERSION "100"
+#else
+#define GLSL_VERSION "120"
+#endif
 
 #define SHADER_HEADER \
 "#version " GLSL_VERSION "          \n" \
@@ -94,7 +98,11 @@ static int a_combiner_ext = 0;
 
 static const char* fragment_shader_header =
 SHADER_HEADER
+#if !defined(__LIBRETRO__) || defined(GLES) // Desktop GL fix
 "precision lowp float;             \n"
+#else
+"#define highp                     \n"
+#endif
 "uniform sampler2D texture0;       \n"
 "uniform sampler2D texture1;       \n"
 "uniform sampler2D ditherTex;      \n"
@@ -167,6 +175,9 @@ static const char* fragment_shader_end =
 
 static const char* vertex_shader =
 SHADER_HEADER
+#if defined(__LIBRETRO__) && !defined(GLES) // Desktop GL fix
+"#define highp                                                  \n"
+#endif
 "#define Z_MAX 65536.0                                          \n"
 "attribute highp vec4 aVertex;                                  \n"
 "attribute highp vec4 aColor;                                   \n"
