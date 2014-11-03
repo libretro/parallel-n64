@@ -238,17 +238,17 @@ SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/Glide64_Ini.cpp \
 #SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/Glide64_Ini_Default.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/Glide64_UCode_Default.cpp \
 
-ifeq ($(GLES), 1)
+#ifeq ($(GLES), 1)
 SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLEScombiner.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLESgeometry.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLESglitchmain.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLEStextures.cpp
-else
-SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLcombiner.cpp \
+#else
+#SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLcombiner.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLgeometry.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLglitchmain.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLtextures.cpp
-endif
+#endif
 
 else
 #Glide 64
