@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include "Gfx_1.3.h"
+#include "winlnxdefs.h"
 #include "Glide64_UCode.h"
 #include "rdp.h"
 #include "../../libretro/libretro.h"

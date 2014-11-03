@@ -380,6 +380,7 @@ typedef struct {
   int wrpAnisotropic;
   int wrpAntiAliasing;
 
+  wxUint32 depth_bias;
 } SETTINGS;
 
 typedef struct

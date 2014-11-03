@@ -1,6 +1,8 @@
 #include <stdint.h>
+#include "Gfx_1.3.h"
 #include "Glide64_Ini.h"
 #include "Glide64_UCode.h"
+#include "DepthBufferRender.h"
 #include "rdp.h"
 
 #include "../../libretro/libretro.h"
@@ -13,7 +15,20 @@ extern SETTINGS settings;
 
 extern retro_environment_t environ_cb;
 
-extern void update_variables(void);
+#ifdef __LIBRETRO__
+extern "C" {
+
+void update_variables(void);
+
+void glide_set_filtering(unsigned value)
+{
+	if(settings.filtering != value){
+		settings.filtering = value;
+	}
+}
+
+}
+#endif
 
 void ReadSettings(void)
 {
@@ -1816,7 +1831,7 @@ void ReadSpecialSettings (const char * name)
       settings.frame_buffer &= ~fb_useless_is_useless;
 
    if (fb_crc_mode >= 0)
-      settings.fb_crc_mode = fb_crc_mode;
+      settings.fb_crc_mode = (SETTINGS::FBCRCMODE)fb_crc_mode;
 
    if (smart_read > 0)
       settings.frame_buffer |= fb_emulation;
