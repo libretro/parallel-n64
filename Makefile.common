@@ -157,6 +157,7 @@ endif
 # Libretro
 
 SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
+				 	 $(LIBRETRO_DIR)/glide64_crc.c \
 					 $(LIBRETRO_DIR)/adler32.c \
 					 $(LIBRETRO_DIR)/opengl_state_machine.c \
 					 $(LIBRETRO_DIR)/audio_plugin.c \
@@ -169,7 +170,7 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 
 SOURCES_GLN64VIDEO := $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/glN64Config.c \
-            $(VIDEODIR_GLN64)/CRC.c \
+            $(VIDEODIR_GLN64)/Hash.c \
             $(VIDEODIR_GLN64)/DepthBuffer.c \
             $(VIDEODIR_GLN64)/F3DCBFD.c \
             $(VIDEODIR_GLN64)/F3D.c \
@@ -215,7 +216,6 @@ ifeq ($(GLIDE64MK2), 1)
 SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/Combine.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/Config.cpp \
-					$(VIDEODIR_GLIDE)/Glide64/CRC.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/Debugger.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/FBtoScreen.cpp \
@@ -248,8 +248,7 @@ SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_rdp.c \
             $(VIDEODIR_GLIDE)/Glide64/Combine.c \
             $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.c \
-            $(VIDEODIR_GLIDE)/Glide64/TexCache.c \
-            $(VIDEODIR_GLIDE)/Glide64/glide64_crc.c
+            $(VIDEODIR_GLIDE)/Glide64/TexCache.c
 
 # Glitch64
 SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \

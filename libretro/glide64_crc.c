@@ -49,7 +49,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-void CRC_Glide64_BuildTable(void)
+void CRC_BuildTable(void)
 {
 }
 
@@ -372,24 +372,46 @@ forceinline uint32_t XXH32_endian_align(const void* input, int len, uint32_t see
 }
 
 
-uint32_t CRC32(uint32_t seed, const void* input, int len)
+uint32_t CRC_Calculate(void *buffer, uint32_t count)
+{
+   uint32_t seed = 0xffffffff;
+
+   XXH_endianess endian_detected = (XXH_endianess)XXH_CPU_LITTLE_ENDIAN;
+
+#  if !defined(XXH_USE_UNALIGNED_ACCESS)
+   if ((((size_t)buffer) & 3))   // Input is aligned, let's leverage the speed advantage
+   {
+      if ((endian_detected==XXH_littleEndian) || XXH_FORCE_NATIVE_FORMAT)
+         return XXH32_endian_align(buffer, count, seed, XXH_littleEndian, XXH_aligned);
+      else
+         return XXH32_endian_align(buffer, count, seed, XXH_bigEndian, XXH_aligned);
+   }
+#  endif
+
+   if ((endian_detected==XXH_littleEndian) || XXH_FORCE_NATIVE_FORMAT)
+      return XXH32_endian_align(buffer, count, seed, XXH_littleEndian, XXH_unaligned);
+   else
+      return XXH32_endian_align(buffer, count, seed, XXH_bigEndian, XXH_unaligned);
+}
+
+uint32_t CRC32(uint32_t seed, const void*buffer, int count)
 {
     XXH_endianess endian_detected = (XXH_endianess)XXH_CPU_LITTLE_ENDIAN;
 
 #  if !defined(XXH_USE_UNALIGNED_ACCESS)
-    if ((((size_t)input) & 3))   // Input is aligned, let's leverage the speed advantage
+    if ((((size_t)buffer) & 3))   // Input is aligned, let's leverage the speed advantage
     {
         if ((endian_detected==XXH_littleEndian) || XXH_FORCE_NATIVE_FORMAT)
-            return XXH32_endian_align(input, len, seed, XXH_littleEndian, XXH_aligned);
+            return XXH32_endian_align(buffer, count, seed, XXH_littleEndian, XXH_aligned);
         else
-            return XXH32_endian_align(input, len, seed, XXH_bigEndian, XXH_aligned);
+            return XXH32_endian_align(buffer, count, seed, XXH_bigEndian, XXH_aligned);
     }
 #  endif
 
     if ((endian_detected==XXH_littleEndian) || XXH_FORCE_NATIVE_FORMAT)
-        return XXH32_endian_align(input, len, seed, XXH_littleEndian, XXH_unaligned);
+        return XXH32_endian_align(buffer, count, seed, XXH_littleEndian, XXH_unaligned);
     else
-        return XXH32_endian_align(input, len, seed, XXH_bigEndian, XXH_unaligned);
+        return XXH32_endian_align(buffer, count, seed, XXH_bigEndian, XXH_unaligned);
 }
 #endif
 
