@@ -111,6 +111,7 @@ void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers);
 #define glBlendFuncSeparate sglBlendFuncSeparate
 #define glClearColor sglClearColor
 #define glClearDepth sglClearDepth
+#define glClearDepthf sglClearDepth
 #define glColorMask sglColorMask
 #define glCullFace sglCullFace
 #define glDepthFunc sglDepthFunc
