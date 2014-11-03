@@ -157,7 +157,6 @@ endif
 # Libretro
 
 SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
-				 	 $(LIBRETRO_DIR)/glide64_crc.c \
 					 $(LIBRETRO_DIR)/adler32.c \
 					 $(LIBRETRO_DIR)/opengl_state_machine.c \
 					 $(LIBRETRO_DIR)/audio_plugin.c \
@@ -167,6 +166,12 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 					 $(LIBRETRO_DIR)/resamplers/nearest.c \
 					 $(LIBRETRO_DIR)/resamplers/cc_resampler.c \
 					 $(LIBRETRO_DIR)/utils.c
+
+ifeq ($(HAVE_CUSTOMCRC), 1)
+SOURCES_C += $(LIBRETRO_DIR)/glide64_crc.c
+else
+SOURCES_C += $(LIBRETRO_DIR)/libretro_crc.c
+endif
 
 SOURCES_GLN64VIDEO := $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/glN64Config.c \
