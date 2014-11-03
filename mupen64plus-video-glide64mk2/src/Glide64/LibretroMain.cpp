@@ -214,9 +214,6 @@ wxUint32   offset_cursor = 0;
 wxUint32   offset_textures = 0;
 wxUint32   offset_texbuf1 = 0;
 
-int    capture_screen = 0;
-char    capture_path[256];
-
 SDL_sem *mutexProcessDList = SDL_CreateSemaphore(1);
 
 // SOME FUNCTION DEFINITIONS 
@@ -335,28 +332,6 @@ void ChangeSize ()
   //	settings.res_y = settings.scr_res_y;
 }
 
-/*
-static wxConfigBase * OpenIni()
-{
-  wxConfigBase * ini = wxConfigBase::Get(false);
-  if (!ini)
-  {
-    if (iniName.IsEmpty())
-      iniName = pluginPath + wxT("/Glide64mk2.ini");
-    if (wxFileExists(iniName))
-    {
-      wxFileInputStream is(iniName);
-      wxFileConfig * fcfg = new wxFileConfig(is, wxConvISO8859_1);
-      wxConfigBase::Set(fcfg);
-      ini = fcfg;
-    }
-  }
-  if (!ini)
-    wxMessageBox(_T("Can not find ini file! Plugin will not run properly."), _T("File not found"), wxOK|wxICON_EXCLAMATION);
-  return ini;
-}
-*/
-
 void WriteLog(m64p_msg_level level, const char *msg, ...)
 {
   char buf[1024];
@@ -374,98 +349,6 @@ void WriteLog(m64p_msg_level level, const char *msg, ...)
 //TODO-PORT: more ini stuff
 void WriteSettings (bool saveEmulationSettings)
 {
-/*
-  wxConfigBase * ini = OpenIni();
-  if (!ini || !ini->HasGroup(_T("/SETTINGS")))
-    return;
-  ini->SetPath(_T("/SETTINGS"));
-
-  ini->Write(_T("card_id"), settings.card_id);
-  ini->Write(_T("lang_id"), settings.lang_id);
-  ini->Write(_T("resolution"), (int)settings.res_data);
-  ini->Write(_T("ssformat"), settings.ssformat);
-  ini->Write(_T("vsync"), settings.vsync);
-  ini->Write(_T("show_fps"), settings.show_fps);
-  ini->Write(_T("clock"), settings.clock);
-  ini->Write(_T("clock_24_hr"), settings.clock_24_hr);
-  ini->Write(_T("advanced_options"), settings.advanced_options);
-  ini->Write(_T("texenh_options"), settings.texenh_options);
-
-  ini->Write(_T("wrpResolution"), settings.wrpResolution);
-  ini->Write(_T("wrpVRAM"), settings.wrpVRAM);
-  ini->Write(_T("wrpFBO"), settings.wrpFBO);
-  ini->Write(_T("wrpAnisotropic"), settings.wrpAnisotropic);
-
-#ifndef _ENDUSER_RELEASE_
-  ini->Write(_T("autodetect_ucode"), settings.autodetect_ucode);
-  ini->Write(_T("ucode"), (int)settings.ucode);
-  ini->Write(_T("wireframe"), settings.wireframe);
-  ini->Write(_T("wfmode"), settings.wfmode);
-  ini->Write(_T("logging"), settings.logging);
-  ini->Write(_T("log_clear"), settings.log_clear);
-  ini->Write(_T("run_in_window"), settings.run_in_window);
-  ini->Write(_T("elogging"), settings.elogging);
-  ini->Write(_T("filter_cache"), settings.filter_cache);
-  ini->Write(_T("unk_as_red"), settings.unk_as_red);
-  ini->Write(_T("log_unk"), settings.log_unk);
-  ini->Write(_T("unk_clear"), settings.unk_clear);
-#endif //_ENDUSER_RELEASE_
-
-#ifdef TEXTURE_FILTER
-  ini->Write(_T("ghq_fltr"), settings.ghq_fltr);
-  ini->Write(_T("ghq_cmpr"), settings.ghq_cmpr);
-  ini->Write(_T("ghq_enht"), settings.ghq_enht);
-  ini->Write(_T("ghq_hirs"), settings.ghq_hirs);
-  ini->Write(_T("ghq_enht_cmpr"), settings.ghq_enht_cmpr);
-  ini->Write(_T("ghq_enht_tile"), settings.ghq_enht_tile);
-  ini->Write(_T("ghq_enht_f16bpp"), settings.ghq_enht_f16bpp);
-  ini->Write(_T("ghq_enht_gz"), settings.ghq_enht_gz);
-  ini->Write(_T("ghq_enht_nobg"), settings.ghq_enht_nobg);
-  ini->Write(_T("ghq_hirs_cmpr"), settings.ghq_hirs_cmpr);
-  ini->Write(_T("ghq_hirs_tile"), settings.ghq_hirs_tile);
-  ini->Write(_T("ghq_hirs_f16bpp"), settings.ghq_hirs_f16bpp);
-  ini->Write(_T("ghq_hirs_gz"), settings.ghq_hirs_gz);
-  ini->Write(_T("ghq_hirs_altcrc"), settings.ghq_hirs_altcrc);
-  ini->Write(_T("ghq_cache_save"), settings.ghq_cache_save);
-  ini->Write(_T("ghq_cache_size"), settings.ghq_cache_size);
-  ini->Write(_T("ghq_hirs_let_texartists_fly"), settings.ghq_hirs_let_texartists_fly);
-  ini->Write(_T("ghq_hirs_dump"), settings.ghq_hirs_dump);
-#endif
-
-  if (saveEmulationSettings)
-  {
-    if (romopen)
-    {
-      wxString S = _T("/");
-      ini->SetPath(S+rdp.RomName);
-    }
-    else
-      ini->SetPath(_T("/DEFAULT"));
-    ini->Write(_T("filtering"), settings.filtering);
-    ini->Write(_T("fog"), settings.fog);
-    ini->Write(_T("buff_clear"), settings.buff_clear);
-    ini->Write(_T("swapmode"), settings.swapmode);
-    ini->Write(_T("lodmode"), settings.lodmode);
-    ini->Write(_T("aspect"), settings.aspectmode);
-
-    ini->Write(_T("fb_read_always"), settings.frame_buffer&fb_ref ? 1 : 0l);
-    ini->Write(_T("fb_smart"), settings.frame_buffer & fb_emulation ? 1 : 0l);
-    //    ini->Write("motionblur", settings.frame_buffer & fb_motionblur ? 1 : 0);
-    ini->Write(_T("fb_hires"), settings.frame_buffer & fb_hwfbe ? 1 : 0l);
-    ini->Write(_T("fb_get_info"), settings.frame_buffer & fb_get_info ? 1 : 0l);
-    ini->Write(_T("fb_render"), settings.frame_buffer & fb_depth_render ? 1 : 0l);
-    ini->Write(_T("detect_cpu_write"), settings.frame_buffer & fb_cpu_write_hack ? 1 : 0l);
-    if (settings.frame_buffer & fb_read_back_to_screen)
-      ini->Write(_T("read_back_to_screen"), 1);
-    else if (settings.frame_buffer & fb_read_back_to_screen2)
-      ini->Write(_T("read_back_to_screen"), 2);
-    else
-      ini->Write(_T("read_back_to_screen"), 0l);
-  }
-
-  wxFileOutputStream os(iniName);
-  ((wxFileConfig*)ini)->Save(os);
-*/
 }
 
 GRTEXBUFFEREXT   grTextureBufferExt = NULL;
@@ -1063,95 +946,6 @@ EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
   }
 }
 
-#ifndef HAVE_NO_DYNAMIC
-EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
-                                   void (*DebugCallback)(void *, int, const char *))
-{
-  VLOG("CALL PluginStartup ()\n");
-    l_DebugCallback = DebugCallback;
-    l_DebugCallContext = Context;
-
-    /* attach and call the CoreGetAPIVersions function, check Config and Video Extension API versions for compatibility */
-    ptr_CoreGetAPIVersions CoreAPIVersionFunc;
-    CoreAPIVersionFunc = (ptr_CoreGetAPIVersions) osal_dynlib_getproc(CoreLibHandle, "CoreGetAPIVersions");
-    if (CoreAPIVersionFunc == NULL)
-    {
-        ERRLOG("Core emulator broken; no CoreAPIVersionFunc() function found.");
-        return M64ERR_INCOMPATIBLE;
-    }
-    int ConfigAPIVersion, DebugAPIVersion, VidextAPIVersion;
-    (*CoreAPIVersionFunc)(&ConfigAPIVersion, &DebugAPIVersion, &VidextAPIVersion, NULL);
-    if ((ConfigAPIVersion & 0xffff0000) != (CONFIG_API_VERSION & 0xffff0000))
-    {
-        ERRLOG("Emulator core Config API incompatible with this plugin");
-        return M64ERR_INCOMPATIBLE;
-    }
-    if ((VidextAPIVersion & 0xffff0000) != (VIDEXT_API_VERSION & 0xffff0000))
-    {
-        ERRLOG("Emulator core Video Extension API incompatible with this plugin");
-        return M64ERR_INCOMPATIBLE;
-    }
-
-    ConfigOpenSection = (ptr_ConfigOpenSection) osal_dynlib_getproc(CoreLibHandle, "ConfigOpenSection");
-    ConfigSetParameter = (ptr_ConfigSetParameter) osal_dynlib_getproc(CoreLibHandle, "ConfigSetParameter");
-    ConfigGetParameter = (ptr_ConfigGetParameter) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParameter");
-    ConfigSetDefaultInt = (ptr_ConfigSetDefaultInt) osal_dynlib_getproc(CoreLibHandle, "ConfigSetDefaultInt");
-    ConfigSetDefaultFloat = (ptr_ConfigSetDefaultFloat) osal_dynlib_getproc(CoreLibHandle, "ConfigSetDefaultFloat");
-    ConfigSetDefaultBool = (ptr_ConfigSetDefaultBool) osal_dynlib_getproc(CoreLibHandle, "ConfigSetDefaultBool");
-    ConfigSetDefaultString = (ptr_ConfigSetDefaultString) osal_dynlib_getproc(CoreLibHandle, "ConfigSetDefaultString");
-    ConfigGetParamInt = (ptr_ConfigGetParamInt) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParamInt");
-    ConfigGetParamFloat = (ptr_ConfigGetParamFloat) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParamFloat");
-    ConfigGetParamBool = (ptr_ConfigGetParamBool) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParamBool");
-    ConfigGetParamString = (ptr_ConfigGetParamString) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParamString");
-
-    ConfigGetSharedDataFilepath = (ptr_ConfigGetSharedDataFilepath) osal_dynlib_getproc(CoreLibHandle, "ConfigGetSharedDataFilepath");
-    ConfigGetUserConfigPath = (ptr_ConfigGetUserConfigPath) osal_dynlib_getproc(CoreLibHandle, "ConfigGetUserConfigPath");
-    ConfigGetUserDataPath = (ptr_ConfigGetUserDataPath) osal_dynlib_getproc(CoreLibHandle, "ConfigGetUserDataPath");
-    ConfigGetUserCachePath = (ptr_ConfigGetUserCachePath) osal_dynlib_getproc(CoreLibHandle, "ConfigGetUserCachePath");
-
-    if (!ConfigOpenSection   || !ConfigSetParameter    || !ConfigGetParameter ||
-        !ConfigSetDefaultInt || !ConfigSetDefaultFloat || !ConfigSetDefaultBool || !ConfigSetDefaultString ||
-        !ConfigGetParamInt   || !ConfigGetParamFloat   || !ConfigGetParamBool   || !ConfigGetParamString ||
-        !ConfigGetSharedDataFilepath || !ConfigGetUserConfigPath || !ConfigGetUserDataPath || !ConfigGetUserCachePath)
-    {
-        ERRLOG("Couldn't connect to Core configuration functions");
-        return M64ERR_INCOMPATIBLE;
-    }
-
-    /* Get the core Video Extension function pointers from the library handle */
-    CoreVideo_Init = (ptr_VidExt_Init) osal_dynlib_getproc(CoreLibHandle, "VidExt_Init");
-    CoreVideo_Quit = (ptr_VidExt_Quit) osal_dynlib_getproc(CoreLibHandle, "VidExt_Quit");
-    CoreVideo_ListFullscreenModes = (ptr_VidExt_ListFullscreenModes) osal_dynlib_getproc(CoreLibHandle, "VidExt_ListFullscreenModes");
-    CoreVideo_SetVideoMode = (ptr_VidExt_SetVideoMode) osal_dynlib_getproc(CoreLibHandle, "VidExt_SetVideoMode");
-    CoreVideo_SetCaption = (ptr_VidExt_SetCaption) osal_dynlib_getproc(CoreLibHandle, "VidExt_SetCaption");
-    CoreVideo_ToggleFullScreen = (ptr_VidExt_ToggleFullScreen) osal_dynlib_getproc(CoreLibHandle, "VidExt_ToggleFullScreen");
-    CoreVideo_ResizeWindow = (ptr_VidExt_ResizeWindow) osal_dynlib_getproc(CoreLibHandle, "VidExt_ResizeWindow");
-    CoreVideo_GL_GetProcAddress = (ptr_VidExt_GL_GetProcAddress) osal_dynlib_getproc(CoreLibHandle, "VidExt_GL_GetProcAddress");
-    CoreVideo_GL_SetAttribute = (ptr_VidExt_GL_SetAttribute) osal_dynlib_getproc(CoreLibHandle, "VidExt_GL_SetAttribute");
-    CoreVideo_GL_SwapBuffers = (ptr_VidExt_GL_SwapBuffers) osal_dynlib_getproc(CoreLibHandle, "VidExt_GL_SwapBuffers");
-
-    if (!CoreVideo_Init || !CoreVideo_Quit || !CoreVideo_ListFullscreenModes || !CoreVideo_SetVideoMode ||
-        !CoreVideo_SetCaption || !CoreVideo_ToggleFullScreen || !CoreVideo_ResizeWindow || !CoreVideo_GL_GetProcAddress ||
-        !CoreVideo_GL_SetAttribute || !CoreVideo_GL_SwapBuffers)
-    {
-        ERRLOG("Couldn't connect to Core video functions");
-        return M64ERR_INCOMPATIBLE;
-    }
-
-    const char *configDir = ConfigGetSharedDataFilepath("Glide64mk2.ini");
-    if (configDir)
-    {
-        SetConfigDir(configDir);
-        ReadSettings();
-		return M64ERR_SUCCESS;
-    }
-    else
-    {
-        ERRLOG("Couldn't find Glide64mk2.ini");
-        return M64ERR_FILES;
-    }
-}
-#else
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
                                    void (*DebugCallback)(void *, int, const char *))
 {
@@ -1159,7 +953,6 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
    l_DebugCallContext = Context;
    return M64ERR_SUCCESS;
 }
-#endif
 
 EXPORT m64p_error CALL PluginShutdown(void)
 {
@@ -1199,8 +992,6 @@ output:   none
 *******************************************************************/
 EXPORT void CALL CaptureScreen ( char * Directory )
 {
-  capture_screen = 1;
-  strcpy (capture_path, Directory);
 }
 
 /******************************************************************
