@@ -46,6 +46,9 @@
 #include "FBtoScreen.h"
 #include "DepthBufferRender.h"
 #include "Glide64_Ini.h"
+#include "../../libretro/libretro.h"
+
+extern retro_log_printf_t log_cb;
 
 #if defined(__GNUC__)
 #include <sys/time.h>

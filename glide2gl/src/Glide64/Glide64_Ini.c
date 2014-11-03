@@ -3,6 +3,9 @@
 #include "Glide64_UCode.h"
 #include "rdp.h"
 
+#include "../../libretro/libretro.h"
+#include "../../libretro/SDL.h"
+
 extern bool no_audio;
 extern uint8_t microcode[4096];
 extern uint32_t gfx_plugin_accuracy;
