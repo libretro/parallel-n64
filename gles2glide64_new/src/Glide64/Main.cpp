@@ -1379,7 +1379,9 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
   VLOG("CALL PluginStartup ()\n");
     l_DebugCallback = DebugCallback;
     l_DebugCallContext = Context;
-#ifndef __LIBRETRO__ // Core is linked in
+#ifdef __LIBRETRO__ // Core is linked in
+    return M64ERR_SUCCESS;
+#else
     ConfigOpenSection = (ptr_ConfigOpenSection) osal_dynlib_getproc(CoreLibHandle, "ConfigOpenSection");
     ConfigSetParameter = (ptr_ConfigSetParameter) osal_dynlib_getproc(CoreLibHandle, "ConfigSetParameter");
     ConfigGetParameter = (ptr_ConfigGetParameter) osal_dynlib_getproc(CoreLibHandle, "ConfigGetParameter");
@@ -1424,7 +1426,6 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
         ERRLOG("Couldn't connect to Core video functions");
         return M64ERR_INCOMPATIBLE;
     }
-#endif
 
     const char *configDir = ConfigGetSharedDataFilepath("Glide64mk2.ini");
     if (configDir)
@@ -1439,6 +1440,8 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
         ERRLOG("Couldn't find Glide64mk2.ini");
         return M64ERR_FILES;
     }
+#endif
+
 }
 
 EXPORT m64p_error CALL PluginShutdown(void)
