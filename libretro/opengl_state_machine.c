@@ -25,7 +25,7 @@ static struct retro_hw_render_callback hw_render;
 static int CapState[SGL_CAP_MAX];
 static const int CapTranslate[SGL_CAP_MAX] = 
 {
-    GL_DEPTH_TEST, GL_BLEND, GL_POLYGON_OFFSET_FILL, GL_CULL_FACE, GL_SCISSOR_TEST
+    GL_TEXTURE_2D, GL_DEPTH_TEST, GL_BLEND, GL_POLYGON_OFFSET_FILL, GL_FOG, GL_CULL_FACE, GL_ALPHA_TEST, GL_SCISSOR_TEST
 };
 
 #ifndef HAVE_SHARED_CONTEXT

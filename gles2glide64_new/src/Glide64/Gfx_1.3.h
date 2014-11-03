@@ -296,7 +296,7 @@ extern int exception;
 // extern wxMutex *mutexProcessDList;
 
 #ifdef __LIBRETRO__ // Export InitGfx for C
-extern "C" { int InitGfx(); }
+extern "C" { int glide64InitGfx(); }
 #else
 int InitGfx (int);
 #endif

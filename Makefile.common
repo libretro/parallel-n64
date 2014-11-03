@@ -9,11 +9,11 @@ ifeq ($(GLIDE2GL), 1)
 VIDEODIR_GLIDE = $(ROOT_DIR)/glide2gl/src
 else
 VIDEODIR_GLIDE = $(ROOT_DIR)/gles2glide64/src
-SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c
 endif
 
 ifeq ($(GLES2GLIDE64_NEW), 1)
 VIDEODIR_GLIDE = $(ROOT_DIR)/gles2glide64_new/src
+SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c
 endif
 
 ifeq ($(GLIDE64MK2), 1)
@@ -212,7 +212,33 @@ SOURCES_CXX += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR
 endif
 
 ifeq ($(GLIDE64MK2), 1)
-SOURCES_CXX += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
+SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/Combine.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/Config.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/CRC.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/Debugger.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/FBtoScreen.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/Ini.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/Keys.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/Main.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/rdp.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/TexBuffer.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/TexCache.cpp \
+					$(VIDEODIR_GLIDE)/Glide64/Util.cpp
+
+ifeq ($(GLES), 1)
+SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLEScombiner.cpp \
+					$(VIDEODIR_GLIDE)/Glitch64/OGLESgeometry.cpp \
+					$(VIDEODIR_GLIDE)/Glitch64/OGLESglitchmain.cpp \
+					$(VIDEODIR_GLIDE)/Glitch64/OGLEStextures.cpp
+else
+SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLcombiner.cpp \
+					$(VIDEODIR_GLIDE)/Glitch64/OGLgeometry.cpp \
+					$(VIDEODIR_GLIDE)/Glitch64/OGLglitchmain.cpp \
+					$(VIDEODIR_GLIDE)/Glitch64/OGLtextures.cpp
+endif
+
 else
 #Glide 64
 SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \

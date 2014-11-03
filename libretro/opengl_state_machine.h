@@ -14,10 +14,13 @@ typedef GLclampf GLclampd;
 
 enum
 {
+   SGL_TEXTURE_2D,
    SGL_DEPTH_TEST,
    SGL_BLEND,
    SGL_POLYGON_OFFSET_FILL,
+   SGL_FOG,
    SGL_CULL_FACE,
+   SGL_ALPHA_TEST,
    SGL_SCISSOR_TEST,
    SGL_CAP_MAX
 };

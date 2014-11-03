@@ -238,7 +238,7 @@ static void setup_variables(void)
 void reinit_gfx_plugin(void)
 {
    if (gfx_plugin == GFX_GLIDE64 && emu_thread_has_run)
-      InitGfx();
+      glide64InitGfx();
    else if (gfx_plugin == GFX_GLN64 && emu_thread_has_run)
       gles2n64_reset();
 }

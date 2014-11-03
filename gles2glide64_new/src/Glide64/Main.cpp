@@ -149,6 +149,7 @@ ptr_VidExt_GL_SwapBuffers        CoreVideo_GL_SwapBuffers = NULL;
 #define ProcessDList VIDEO_TAG(ProcessDList)
 #define ProcessRDPList VIDEO_TAG(ProcessRDPList)
 #define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
+#define InitGfx VIDEO_TAG(InitGfx)
 #endif
 
 GFX_INFO gfx;

@@ -59,6 +59,7 @@ union PackedScreenResolution
 };
 
 
+#ifndef __LIBRETRO__
 /* definitions of pointers to Core config functions */
 extern ptr_ConfigOpenSection      ConfigOpenSection;
 extern ptr_ConfigSetParameter     ConfigSetParameter;
@@ -89,5 +90,6 @@ extern ptr_VidExt_ResizeWindow          CoreVideo_ResizeWindow;
 extern ptr_VidExt_GL_GetProcAddress     CoreVideo_GL_GetProcAddress;
 extern ptr_VidExt_GL_SetAttribute       CoreVideo_GL_SetAttribute;
 extern ptr_VidExt_GL_SwapBuffers        CoreVideo_GL_SwapBuffers;
+#endif
 
 #endif

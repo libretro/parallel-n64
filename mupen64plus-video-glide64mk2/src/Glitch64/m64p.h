@@ -26,6 +26,9 @@
 #include "m64p_config.h"
 #include "m64p_vidext.h"
 
+#ifdef __LIBRETRO__
+#include "m64p_libretro.h"
+#else
 extern ptr_ConfigOpenSection      ConfigOpenSection;
 extern ptr_ConfigGetParamInt      ConfigGetParamInt;
 extern ptr_ConfigGetParamBool     ConfigGetParamBool;
@@ -39,5 +42,7 @@ extern ptr_VidExt_ToggleFullScreen      CoreVideo_ToggleFullScreen;
 extern ptr_VidExt_GL_GetProcAddress     CoreVideo_GL_GetProcAddress;
 extern ptr_VidExt_GL_SetAttribute       CoreVideo_GL_SetAttribute;
 extern ptr_VidExt_GL_SwapBuffers        CoreVideo_GL_SwapBuffers;
+
+#endif
 
 #endif

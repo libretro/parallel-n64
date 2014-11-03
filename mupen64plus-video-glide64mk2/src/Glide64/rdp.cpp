@@ -51,6 +51,20 @@
 #include "FBtoScreen.h"
 #include "CRC.h"
 
+#ifdef __LIBRETRO__
+#define HAVE_NO_DYNAMIC
+#endif
+
+#ifdef HAVE_NO_DYNAMIC
+#define VIDEO_TAG(X) glide64##X
+
+#define ProcessDList VIDEO_TAG(ProcessDList)
+#define ProcessRDPList VIDEO_TAG(ProcessRDPList)
+#define FBRead VIDEO_TAG(FBRead)
+#define FBWrite VIDEO_TAG(FBWrite)
+#define FBGetFrameBufferInfo VIDEO_TAG(FBGetFrameBufferInfo)
+#endif
+
 /*
 const int NumOfFormats = 3;
 SCREEN_SHOT_FORMAT ScreenShotFormats[NumOfFormats] = { {wxT("BMP"), wxT("bmp"), wxBITMAP_TYPE_BMP}, {wxT("PNG"), wxT("png"), wxBITMAP_TYPE_PNG}, {wxT("JPEG"), wxT("jpeg"), wxBITMAP_TYPE_JPEG} };

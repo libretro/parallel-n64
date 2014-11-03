@@ -87,6 +87,7 @@
 #define ProcessDList VIDEO_TAG(ProcessDList)
 #define ProcessRDPList VIDEO_TAG(ProcessRDPList)
 #define ResizeVideoOutput VIDEO_TAG(ResizeVideoOutput)
+#define InitGfx VIDEO_TAG(InitGfx)
 #endif
 
 void (*_gSPVertex)(uint32_t addr, uint32_t n, uint32_t v0);

@@ -134,7 +134,7 @@ extern int debugging;
 extern int exception;
 extern GFX_INFO gfx_info;
 
-int InitGfx(void);
+int glide64InitGfx(void);
 void ReleaseGfx(void);
 
 
