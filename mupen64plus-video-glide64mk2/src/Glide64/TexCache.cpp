@@ -1291,7 +1291,7 @@ void LoadTex (int id, int tmu)
   if (settings.ghq_use)
   {
     int bpl;
-    wxUint8* addr = (wxUint8*)(gfx.RDRAM+rdp.addr[rdp.tiles[td].t_mem]);
+    wxUint8* addr = (wxUint8*)(GFX_PTR.RDRAM+rdp.addr[rdp.tiles[td].t_mem]);
     int tile_width  = texinfo[id].width;
     int tile_height = texinfo[id].height;
     LOAD_TILE_INFO &info = rdp.load_info[rdp.tiles[td].t_mem];
@@ -1323,7 +1323,7 @@ void LoadTex (int id, int tmu)
       }
     }
 
-    //    wxUint8* addr = (wxUint8*)(gfx.RDRAM+rdp.addr[rdp.tiles[td].t_mem] + (rdp.tiles[td].ul_t * bpl) + (((rdp.tiles[td].ul_s<<rdp.tiles[td].size)+1)>>1));
+    //    wxUint8* addr = (wxUint8*)(GFX_PTR.RDRAM+rdp.addr[rdp.tiles[td].t_mem] + (rdp.tiles[td].ul_t * bpl) + (((rdp.tiles[td].ul_s<<rdp.tiles[td].size)+1)>>1));
     wxUint8 * paladdr = 0;
     wxUint16 * palette = 0;
     if ((rdp.tiles[td].size < 2) && (rdp.tlut_mode || rdp.tiles[td].format == 2))

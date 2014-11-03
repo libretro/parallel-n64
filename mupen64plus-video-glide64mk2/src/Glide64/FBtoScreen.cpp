@@ -150,7 +150,7 @@ static void DrawRE2Video(FB_TO_SCREEN_INFO & fb_info, float scale)
 static void DrawRE2Video256(FB_TO_SCREEN_INFO & fb_info)
 {
   FRDP("DrawRE2Video256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info.ul_x, fb_info.ul_y, fb_info.lr_x, fb_info.lr_y, fb_info.size, fb_info.addr);
-  wxUint32 * src = (wxUint32*)(gfx.RDRAM+fb_info.addr);
+  wxUint32 * src = (wxUint32*)(GFX_PTR.RDRAM+fb_info.addr);
   GrTexInfo t_info;
   t_info.smallLodLog2 = GR_LOD_LOG2_256;
   t_info.largeLodLog2 = GR_LOD_LOG2_256;
@@ -200,7 +200,7 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO & fb_info)
   wxUint32 width = fb_info.lr_x - fb_info.ul_x + 1;
   wxUint32 height = fb_info.lr_y - fb_info.ul_y + 1;
   GrTexInfo t_info;
-  wxUint8 * image = gfx.RDRAM+fb_info.addr;
+  wxUint8 * image = GFX_PTR.RDRAM+fb_info.addr;
   wxUint32 width256 = ((width-1) >> 8) + 1;
   wxUint32 height256 = ((height-1) >> 8) + 1;
   t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
@@ -316,7 +316,7 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO & fb_info)
   }
   FRDP("DrawFrameBufferToScreen. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info.ul_x, fb_info.ul_y, fb_info.lr_x, fb_info.lr_y, fb_info.size, fb_info.addr);
   GrTexInfo t_info;
-  wxUint8 * image = gfx.RDRAM+fb_info.addr;
+  wxUint8 * image = GFX_PTR.RDRAM+fb_info.addr;
   wxUint32 texwidth;
   float scale;
   if (width <= 256)
@@ -434,7 +434,7 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO & fb_info)
   wxUint32 width = fb_info.lr_x - fb_info.ul_x + 1;
   wxUint32 height = fb_info.lr_y - fb_info.ul_y + 1;
   GrTexInfo t_info;
-  wxUint8 * image = gfx.RDRAM+fb_info.addr;
+  wxUint8 * image = GFX_PTR.RDRAM+fb_info.addr;
   wxUint32 width256 = ((width-1) >> 8) + 1;
   wxUint32 height256 = ((height-1) >> 8) + 1;
   t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
@@ -585,7 +585,7 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO & fb_info)
   }
   FRDP("DrawDepthBufferToScreen. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info.ul_x, fb_info.ul_y, fb_info.lr_x, fb_info.lr_y, fb_info.size, fb_info.addr);
   GrTexInfo t_info;
-  wxUint8 * image = gfx.RDRAM+fb_info.addr;
+  wxUint8 * image = GFX_PTR.RDRAM+fb_info.addr;
   wxUint32 texwidth;
   float scale;
   if (width <= 256)

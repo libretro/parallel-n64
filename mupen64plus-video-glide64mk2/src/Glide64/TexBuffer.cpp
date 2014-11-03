@@ -334,7 +334,7 @@ int OpenTextureBuffer(COLOR_IMAGE & cimage)
     grDepthMask (FXTRUE);
   }
   //*/
-  //  memset(gfx.RDRAM+cimage.addr, 0, cimage.width*cimage.height*cimage.size);
+  //  memset(GFX_PTR.RDRAM+cimage.addr, 0, cimage.width*cimage.height*cimage.size);
   FRDP("  texaddr: %08lx, tex_width: %d, tex_height: %d, cur_tex_buf: %d, texformat: %d, motionblur: %d\n", rdp.cur_image->tex_addr, rdp.cur_image->tex_width, rdp.cur_image->tex_height, rdp.cur_tex_buf, rdp.cur_image->info.format, rdp.motionblur);
   if (!rdp.offset_x_bak)
   {
@@ -674,10 +674,10 @@ static wxUint32 CalcCRC(TBUFF_COLOR_IMAGE * pTCI)
   if ((settings.frame_buffer&fb_ref) > 0)
     pTCI->crc = 0; //Since fb content changes each frame, crc check is meaningless.
   else if (settings.fb_crc_mode == SETTINGS::fbcrcFast)
-    result = *((wxUint32*)(gfx.RDRAM + pTCI->addr + (pTCI->end_addr-pTCI->addr)/2));
+    result = *((wxUint32*)(GFX_PTR.RDRAM + pTCI->addr + (pTCI->end_addr-pTCI->addr)/2));
   else if (settings.fb_crc_mode == SETTINGS::fbcrcSafe)
   {
-    wxUint8 * pSrc = gfx.RDRAM + pTCI->addr;
+    wxUint8 * pSrc = GFX_PTR.RDRAM + pTCI->addr;
     const wxUint32 nSize = pTCI->end_addr-pTCI->addr;
     result = CRC32(0xFFFFFFFF, pSrc, 32);
     result = CRC32(result, pSrc + (nSize>>1), 32);

@@ -138,9 +138,9 @@ static void uc5_vertex ()
   {
     start = (i-first) * 10;
     VERTEX *v = &rdp.vtx[i];
-    x   = (float)((short*)gfx.RDRAM)[(((addr+start) >> 1) + 0)^1];
-    y   = (float)((short*)gfx.RDRAM)[(((addr+start) >> 1) + 1)^1];
-    z   = (float)((short*)gfx.RDRAM)[(((addr+start) >> 1) + 2)^1];
+    x   = (float)((short*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 0)^1];
+    y   = (float)((short*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 1)^1];
+    z   = (float)((short*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 2)^1];
 
     v->x = x*rdp.dkrproj[prj][0][0] + y*rdp.dkrproj[prj][1][0] + z*rdp.dkrproj[prj][2][0] + rdp.dkrproj[prj][3][0];
     v->y = x*rdp.dkrproj[prj][0][1] + y*rdp.dkrproj[prj][1][1] + z*rdp.dkrproj[prj][2][1] + rdp.dkrproj[prj][3][1];
@@ -173,10 +173,10 @@ static void uc5_vertex ()
     if (v->w < 0.1f) v->scr_off |= 16;
     if (fabs(v->z_w) > 1.0) v->scr_off |= 32;
 
-    v->r = ((wxUint8*)gfx.RDRAM)[(addr+start + 6)^3];
-    v->g = ((wxUint8*)gfx.RDRAM)[(addr+start + 7)^3];
-    v->b = ((wxUint8*)gfx.RDRAM)[(addr+start + 8)^3];
-    v->a = ((wxUint8*)gfx.RDRAM)[(addr+start + 9)^3];
+    v->r = ((wxUint8*)GFX_PTR.RDRAM)[(addr+start + 6)^3];
+    v->g = ((wxUint8*)GFX_PTR.RDRAM)[(addr+start + 7)^3];
+    v->b = ((wxUint8*)GFX_PTR.RDRAM)[(addr+start + 8)^3];
+    v->a = ((wxUint8*)GFX_PTR.RDRAM)[(addr+start + 9)^3];
     CalculateFog (v);
 
 #ifdef EXTREME_LOGGING
@@ -208,9 +208,9 @@ static void uc5_tridma ()
   for (int i=0; i<num; i++)
   {
     start = i << 4;
-    v0 = gfx.RDRAM[addr+start];
-    v1 = gfx.RDRAM[addr+start+1];
-    v2 = gfx.RDRAM[addr+start+2];
+    v0 = GFX_PTR.RDRAM[addr+start];
+    v1 = GFX_PTR.RDRAM[addr+start+1];
+    v2 = GFX_PTR.RDRAM[addr+start+2];
 
     FRDP("tri #%d - %d, %d, %d\n", rdp.tri_n, v0, v1, v2);
 
@@ -220,7 +220,7 @@ static void uc5_tridma ()
         &rdp.vtx[v2]
     };
 
-    flags = gfx.RDRAM[addr+start+3];
+    flags = GFX_PTR.RDRAM[addr+start+3];
 
     if (flags & 0x40) { // no cull
       rdp.flags &= ~CULLMASK;
@@ -239,12 +239,12 @@ static void uc5_tridma ()
     }
     start += 4;
 
-    v[0]->ou = (float)((short*)gfx.RDRAM)[((addr+start) >> 1) + 5] / 32.0f;
-    v[0]->ov = (float)((short*)gfx.RDRAM)[((addr+start) >> 1) + 4] / 32.0f;
-    v[1]->ou = (float)((short*)gfx.RDRAM)[((addr+start) >> 1) + 3] / 32.0f;
-    v[1]->ov = (float)((short*)gfx.RDRAM)[((addr+start) >> 1) + 2] / 32.0f;
-    v[2]->ou = (float)((short*)gfx.RDRAM)[((addr+start) >> 1) + 1] / 32.0f;
-    v[2]->ov = (float)((short*)gfx.RDRAM)[((addr+start) >> 1) + 0] / 32.0f;
+    v[0]->ou = (float)((short*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 5] / 32.0f;
+    v[0]->ov = (float)((short*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 4] / 32.0f;
+    v[1]->ou = (float)((short*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 3] / 32.0f;
+    v[1]->ov = (float)((short*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 2] / 32.0f;
+    v[2]->ou = (float)((short*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 1] / 32.0f;
+    v[2]->ov = (float)((short*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 0] / 32.0f;
 
     v[0]->uv_calculated = 0xFFFFFFFF;
     v[1]->uv_calculated = 0xFFFFFFFF;

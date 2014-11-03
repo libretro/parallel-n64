@@ -239,7 +239,7 @@ wxUint16 yuv_to_rgb565(wxUint8 y, wxUint8 u, wxUint8 v)
 
 wxUint32 Load16bYUV (wxUIntPtr dst, wxUIntPtr src, int wid_64, int height, int line, int real_width, int tile)
 {
-  wxUint32 * mb = (wxUint32*)(gfx.RDRAM+rdp.addr[rdp.tiles[tile].t_mem]); //pointer to the macro block
+  wxUint32 * mb = (wxUint32*)(GFX_PTR.RDRAM+rdp.addr[rdp.tiles[tile].t_mem]); //pointer to the macro block
   wxUint16 * tex = (wxUint16*)dst;
   wxUint16 i;
   for (i = 0; i < 128; i++)

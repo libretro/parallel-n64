@@ -246,7 +246,7 @@ void RDP::Reset()
   scissor_o.lr_x = 320;
   scissor_o.lr_y = 240;
 
-  vi_org_reg = *gfx.VI_ORIGIN_REG;
+  vi_org_reg = *GFX_PTR.VI_ORIGIN_REG;
   view_scale[2] = 32.0f * 511.0f;
   view_trans[2] = 32.0f * 511.0f;
   clip_ratio = 1.0f;
@@ -327,7 +327,7 @@ static void DrawPartFrameBufferToScreen()
   fb_info.lr_y = d_lr_y;
   fb_info.opaque = 0;
   DrawFrameBufferToScreen(fb_info);
-  memset(gfx.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
+  memset(GFX_PTR.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
 }
 
 #define RGBA16TO32(color) \
@@ -345,7 +345,7 @@ static void CopyFrameBuffer (GrBuffer_t buffer = GR_BUFFER_BACKBUFFER)
   // don't bother to write the stuff in asm... the slow part is the read from video card,
   //   not the copy.
 
-  wxUint32 width = rdp.ci_width;//*gfx.VI_WIDTH_REG;
+  wxUint32 width = rdp.ci_width;//*GFX_PTR.VI_WIDTH_REG;
   wxUint32 height;
   if (fb_emulation_enabled && !(settings.hacks&hack_PPL))
   {
@@ -371,8 +371,8 @@ static void CopyFrameBuffer (GrBuffer_t buffer = GR_BUFFER_BACKBUFFER)
       width<<1,
       ptr_src))
     {
-      wxUint16 *ptr_dst = (wxUint16*)(gfx.RDRAM+rdp.cimg);
-      wxUint32 *ptr_dst32 = (wxUint32*)(gfx.RDRAM+rdp.cimg);
+      wxUint16 *ptr_dst = (wxUint16*)(GFX_PTR.RDRAM+rdp.cimg);
+      wxUint32 *ptr_dst32 = (wxUint32*)(GFX_PTR.RDRAM+rdp.cimg);
       wxUint16 c;
 
       for (wxUint32 y=0; y<height; y++)
@@ -426,8 +426,8 @@ static void CopyFrameBuffer (GrBuffer_t buffer = GR_BUFFER_BACKBUFFER)
         &info))
       {
         wxUint16 *ptr_src = (wxUint16*)info.lfbPtr;
-        wxUint16 *ptr_dst = (wxUint16*)(gfx.RDRAM+rdp.cimg);
-        wxUint32 *ptr_dst32 = (wxUint32*)(gfx.RDRAM+rdp.cimg);
+        wxUint16 *ptr_dst = (wxUint16*)(GFX_PTR.RDRAM+rdp.cimg);
+        wxUint32 *ptr_dst32 = (wxUint32*)(GFX_PTR.RDRAM+rdp.cimg);
         wxUint16 c;
         wxUint32 stride = info.strideInBytes>>1;
 
@@ -530,8 +530,8 @@ EXPORT void CALL ProcessDList(void)
     if (!fullscreen)
       drawNoFullscreenMessage();
     // Set an interrupt to allow the game to continue
-    *gfx.MI_INTR_REG |= 0x20;
-    gfx.CheckInterrupts();
+    *GFX_PTR.MI_INTR_REG |= 0x20;
+    GFX_PTR.CheckInterrupts();
     return;
   }
 
@@ -553,8 +553,8 @@ EXPORT void CALL ProcessDList(void)
   {
     drawNoFullscreenMessage();
     // Set an interrupt to allow the game to continue
-    *gfx.MI_INTR_REG |= 0x20;
-    gfx.CheckInterrupts();
+    *GFX_PTR.MI_INTR_REG |= 0x20;
+    GFX_PTR.CheckInterrupts();
   }
 
   if (reset)
@@ -563,8 +563,8 @@ EXPORT void CALL ProcessDList(void)
     if (settings.autodetect_ucode)
     {
       // Thanks to ZeZu for ucode autodetection!!!
-      wxUint32 startUcode = *(wxUint32*)(gfx.DMEM+0xFD0);
-      memcpy (microcode, gfx.RDRAM+startUcode, 4096);
+      wxUint32 startUcode = *(wxUint32*)(GFX_PTR.DMEM+0xFD0);
+      memcpy (microcode, GFX_PTR.RDRAM+startUcode, 4096);
       microcheck ();
     }
     else
@@ -572,8 +572,8 @@ EXPORT void CALL ProcessDList(void)
   }
   else if ( ((old_ucode == ucode_S2DEX) && (settings.ucode == ucode_F3DEX)) || settings.force_microcheck)
   {
-    wxUint32 startUcode = *(wxUint32*)(gfx.DMEM+0xFD0);
-    memcpy (microcode, gfx.RDRAM+startUcode, 4096);
+    wxUint32 startUcode = *(wxUint32*)(GFX_PTR.DMEM+0xFD0);
+    memcpy (microcode, GFX_PTR.RDRAM+startUcode, 4096);
     microcheck ();
   }
 
@@ -615,7 +615,7 @@ EXPORT void CALL ProcessDList(void)
 
   rdp.model_i = 0; // 0 matrices so far in stack
   //stack_size can be less then 32! Important for Silicon Vally. Thanks Orkin!
-  rdp.model_stack_size = min(32, (*(wxUint32*)(gfx.DMEM+0x0FE4))>>6);
+  rdp.model_stack_size = min(32, (*(wxUint32*)(GFX_PTR.DMEM+0x0FE4))>>6);
   if (rdp.model_stack_size == 0)
     rdp.model_stack_size = 32;
   rdp.Persp_en = TRUE;
@@ -630,7 +630,7 @@ EXPORT void CALL ProcessDList(void)
   fbreads_front = fbreads_back = 0;
   rdp.fog_multiplier = rdp.fog_offset = 0;
   rdp.zsrc = 0;
-  if (rdp.vi_org_reg != *gfx.VI_ORIGIN_REG)
+  if (rdp.vi_org_reg != *GFX_PTR.VI_ORIGIN_REG)
     rdp.tlut_mode = 0; //is it correct?
   rdp.scissor_set = FALSE;
   ucode5_texshiftaddr = ucode5_texshiftcount = 0;
@@ -652,10 +652,10 @@ EXPORT void CALL ProcessDList(void)
   //* End of set states *//
 
   // Get the start of the display list and the length of it
-  wxUint32 dlist_start = *(wxUint32*)(gfx.DMEM+0xFF0);
-  wxUint32 dlist_length = *(wxUint32*)(gfx.DMEM+0xFF4);
-  FRDP("--- NEW DLIST --- crc: %08lx, ucode: %d, fbuf: %08lx, fbuf_width: %d, dlist start: %08lx, dlist_length: %d, x_scale: %f, y_scale: %f\n", uc_crc, settings.ucode, *gfx.VI_ORIGIN_REG, *gfx.VI_WIDTH_REG, dlist_start, dlist_length, (*gfx.VI_X_SCALE_REG & 0xFFF)/1024.0f, (*gfx.VI_Y_SCALE_REG & 0xFFF)/1024.0f);
-  FRDP_E("--- NEW DLIST --- crc: %08lx, ucode: %d, fbuf: %08lx\n", uc_crc, settings.ucode, *gfx.VI_ORIGIN_REG);
+  wxUint32 dlist_start = *(wxUint32*)(GFX_PTR.DMEM+0xFF0);
+  wxUint32 dlist_length = *(wxUint32*)(GFX_PTR.DMEM+0xFF4);
+  FRDP("--- NEW DLIST --- crc: %08lx, ucode: %d, fbuf: %08lx, fbuf_width: %d, dlist start: %08lx, dlist_length: %d, x_scale: %f, y_scale: %f\n", uc_crc, settings.ucode, *GFX_PTR.VI_ORIGIN_REG, *GFX_PTR.VI_WIDTH_REG, dlist_start, dlist_length, (*GFX_PTR.VI_X_SCALE_REG & 0xFFF)/1024.0f, (*GFX_PTR.VI_Y_SCALE_REG & 0xFFF)/1024.0f);
+  FRDP_E("--- NEW DLIST --- crc: %08lx, ucode: %d, fbuf: %08lx\n", uc_crc, settings.ucode, *GFX_PTR.VI_ORIGIN_REG);
 
   // Do nothing if dlist is empty
   if (dlist_start == 0)
@@ -694,8 +694,8 @@ EXPORT void CALL ProcessDList(void)
         a = rdp.pc[rdp.pc_i] & BMASK;
 
         // Load the next command and its input
-        rdp.cmd0 = ((wxUint32*)gfx.RDRAM)[a>>2];   // \ Current command, 64 bit
-        rdp.cmd1 = ((wxUint32*)gfx.RDRAM)[(a>>2)+1]; // /
+        rdp.cmd0 = ((wxUint32*)GFX_PTR.RDRAM)[a>>2];   // \ Current command, 64 bit
+        rdp.cmd1 = ((wxUint32*)GFX_PTR.RDRAM)[(a>>2)+1]; // /
         // cmd2 and cmd3 are filled only when needed, by the function that needs them
 
         // Output the address before the command
@@ -766,7 +766,7 @@ EXPORT void CALL ProcessDList(void)
   if (rdp.cur_image)
     CloseTextureBuffer(rdp.read_whole_frame && ((settings.hacks&hack_PMario) || rdp.swap_ci_index >= 0));
 
-  if ((settings.hacks&hack_TGR2) && rdp.vi_org_reg != *gfx.VI_ORIGIN_REG && CI_SET)
+  if ((settings.hacks&hack_TGR2) && rdp.vi_org_reg != *GFX_PTR.VI_ORIGIN_REG && CI_SET)
   {
     newSwapBuffers ();
     CI_SET = FALSE;
@@ -784,8 +784,8 @@ static void undef()
   FRDP_E("** undefined ** (%08lx)\n", rdp.cmd0);
   FRDP("** undefined ** (%08lx) - IGNORED\n", rdp.cmd0);
 #ifdef _ENDUSER_RELEASE_
-  *gfx.MI_INTR_REG |= 0x20;
-  gfx.CheckInterrupts();
+  *GFX_PTR.MI_INTR_REG |= 0x20;
+  GFX_PTR.CheckInterrupts();
   rdp.halt = 1;
 #endif
 }
@@ -825,8 +825,8 @@ static void ys_memrect ()
 
   wxUint32 y, width = lr_x - ul_x;
   wxUint32 tex_width = rdp.tiles[tile].line << 3;
-  wxUint8 * texaddr = gfx.RDRAM + rdp.addr[rdp.tiles[tile].t_mem] + tex_width*off_y + off_x;
-  wxUint8 * fbaddr = gfx.RDRAM + rdp.cimg + ul_x;
+  wxUint8 * texaddr = GFX_PTR.RDRAM + rdp.addr[rdp.tiles[tile].t_mem] + tex_width*off_y + off_x;
+  wxUint8 * fbaddr = GFX_PTR.RDRAM + rdp.cimg + ul_x;
 
   for (y = ul_y; y < lr_y; y++) {
     wxUint8 *src = texaddr + (y - ul_y) * tex_width;
@@ -845,7 +845,7 @@ static void pm_palette_mod ()
   wxUint8 prmg = (wxUint8)((float)((rdp.prim_color >> 16)&0xFF)/255.0f*31.0f);
   wxUint8 prmb = (wxUint8)((float)((rdp.prim_color >> 8)&0xFF)/255.0f*31.0f);
   wxUint16 prim16 = (wxUint16)((prmr<<11)|(prmg<<6)|(prmb<<1)|1);
-  wxUint16 * dst = (wxUint16*)(gfx.RDRAM+rdp.cimg);
+  wxUint16 * dst = (wxUint16*)(GFX_PTR.RDRAM+rdp.cimg);
   for (int i = 0; i < 16; i++)
   {
     dst[i^1] = (rdp.pal_8[i]&1) ? prim16 : env16;
@@ -858,7 +858,7 @@ static void pd_zcopy ()
   wxUint16 ul_x = (wxUint16)((rdp.cmd1 & 0x00FFF000) >> 14);
   wxUint16 lr_x = (wxUint16)((rdp.cmd0 & 0x00FFF000) >> 14) + 1;
   wxUint16 ul_u = (wxUint16)((rdp.cmd2 & 0xFFFF0000) >> 21) + 1;
-  wxUint16 *ptr_dst = (wxUint16*)(gfx.RDRAM+rdp.cimg);
+  wxUint16 *ptr_dst = (wxUint16*)(GFX_PTR.RDRAM+rdp.cimg);
   wxUint16 width = lr_x - ul_x;
   wxUint16 * ptr_src = ((wxUint16*)rdp.tmem)+ul_u;
   wxUint16 c;
@@ -893,14 +893,14 @@ static void rdp_texrect()
   if (!rdp.LLE)
   {
     wxUint32 a = rdp.pc[rdp.pc_i];
-    wxUint8 cmdHalf1 = gfx.RDRAM[a+3];
-    wxUint8 cmdHalf2 = gfx.RDRAM[a+11];
+    wxUint8 cmdHalf1 = GFX_PTR.RDRAM[a+3];
+    wxUint8 cmdHalf2 = GFX_PTR.RDRAM[a+11];
     a >>= 2;
     if ((cmdHalf1 == 0xE1 && cmdHalf2 == 0xF1) || (cmdHalf1 == 0xB4 && cmdHalf2 == 0xB3) || (cmdHalf1 == 0xB3 && cmdHalf2 == 0xB2))
     {
       //gSPTextureRectangle
-      rdp.cmd2 = ((wxUint32*)gfx.RDRAM)[a+1];
-      rdp.cmd3 = ((wxUint32*)gfx.RDRAM)[a+3];
+      rdp.cmd2 = ((wxUint32*)GFX_PTR.RDRAM)[a+1];
+      rdp.cmd3 = ((wxUint32*)GFX_PTR.RDRAM)[a+3];
       rdp.pc[rdp.pc_i] += 16;
     }
     else
@@ -909,8 +909,8 @@ static void rdp_texrect()
       if (settings.hacks&hack_ASB)
         rdp.cmd2 = 0;
       else
-        rdp.cmd2 = ((wxUint32*)gfx.RDRAM)[a+0];
-      rdp.cmd3 = ((wxUint32*)gfx.RDRAM)[a+1];
+        rdp.cmd2 = ((wxUint32*)GFX_PTR.RDRAM)[a+0];
+      rdp.cmd3 = ((wxUint32*)GFX_PTR.RDRAM)[a+1];
       rdp.pc[rdp.pc_i] += 8;
     }
   }
@@ -1460,8 +1460,8 @@ static void rdp_tilesync()
 static void rdp_fullsync()
 {
   // Set an interrupt to allow the game to continue
-  *gfx.MI_INTR_REG |= 0x20;
-  gfx.CheckInterrupts();
+  *GFX_PTR.MI_INTR_REG |= 0x20;
+  GFX_PTR.CheckInterrupts();
   LRDP("fullsync\n");
 }
 
@@ -1574,16 +1574,16 @@ void load_palette (wxUint32 addr, wxUint16 start, wxUint16 count)
   wxUint16 *dpal = rdp.pal_8 + start;
   wxUint16 end = start+count;
 #ifdef TEXTURE_FILTER
-  wxUint16 *spal = (wxUint16*)(gfx.RDRAM + (addr & BMASK));
+  wxUint16 *spal = (wxUint16*)(GFX_PTR.RDRAM + (addr & BMASK));
 #endif
 
   for (wxUint16 i=start; i<end; i++)
   {
-    *(dpal++) = *(wxUint16 *)(gfx.RDRAM + (addr^2));
+    *(dpal++) = *(wxUint16 *)(GFX_PTR.RDRAM + (addr^2));
     addr += 2;
 
 #ifdef TLUT_LOGGING
-    FRDP ("%d: %08lx\n", i, *(wxUint16 *)(gfx.RDRAM + (addr^2)));
+    FRDP ("%d: %08lx\n", i, *(wxUint16 *)(GFX_PTR.RDRAM + (addr^2)));
 #endif
   }
 #ifdef TEXTURE_FILTER
@@ -1930,7 +1930,7 @@ static void rdp_loadblock()
   if (rdp.timg.size == 3)
     LoadBlock32b(tile, ul_s, ul_t, lr_s, dxt);
   else
-    loadBlock((uint32_t *)gfx.RDRAM, (uint32_t *)dst, off, _dxt, cnt);
+    loadBlock((uint32_t *)GFX_PTR.RDRAM, (uint32_t *)dst, off, _dxt, cnt);
 
   rdp.timg.addr += cnt << 3;
   rdp.tiles[tile].lr_t = ul_t + ((dxt*cnt)>>11);
@@ -2166,7 +2166,7 @@ static void rdp_loadtile()
     wxUint32 wid_64 = rdp.tiles[tile].line;
     unsigned char *dst = ((unsigned char *)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
     unsigned char *end = ((unsigned char *)rdp.tmem) + 4096 - (wid_64<<3);
-    loadTile((uint32_t *)gfx.RDRAM, (uint32_t *)dst, wid_64, height, line_n, offs, (uint32_t *)end);
+    loadTile((uint32_t *)GFX_PTR.RDRAM, (uint32_t *)dst, wid_64, height, line_n, offs, (uint32_t *)end);
   }
   FRDP("loadtile: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d\n", tile,
     ul_s, ul_t, lr_s, lr_t);
@@ -2271,7 +2271,7 @@ static void rdp_fillrect()
         wxUint32 zi_width_in_dwords = rdp.ci_width >> 1;
         ul_x >>= 1;
         lr_x >>= 1;
-        wxUint32 * dst = (wxUint32*)(gfx.RDRAM+rdp.cimg);
+        wxUint32 * dst = (wxUint32*)(GFX_PTR.RDRAM+rdp.cimg);
         dst += ul_y * zi_width_in_dwords;
         for (wxUint32 y = ul_y; y < lr_y; y++)
         {
@@ -2553,7 +2553,7 @@ static void rdp_settextureimage()
   {
     if (rdp.timg.format == 0)
     {
-      wxUint16 * t = (wxUint16*)(gfx.RDRAM+ucode5_texshiftaddr);
+      wxUint16 * t = (wxUint16*)(GFX_PTR.RDRAM+ucode5_texshiftaddr);
       ucode5_texshift = t[ucode5_texshiftcount^1];
       rdp.timg.addr += ucode5_texshift;
     }
@@ -2696,7 +2696,7 @@ static void rdp_setcolorimage()
               {
                 CopyFrameBuffer (GR_BUFFER_TEXTUREBUFFER_EXT);
                 rdp.fb_drawn = TRUE;
-                memcpy(gfx.RDRAM+cur_fb.addr,gfx.RDRAM+rdp.cimg, (cur_fb.width*cur_fb.height)<<cur_fb.size>>1);
+                memcpy(GFX_PTR.RDRAM+cur_fb.addr,GFX_PTR.RDRAM+rdp.cimg, (cur_fb.width*cur_fb.height)<<cur_fb.size>>1);
               }
               //*/
             }
@@ -2707,7 +2707,7 @@ static void rdp_setcolorimage()
                 CopyFrameBuffer ();
                 rdp.fb_drawn = TRUE;
               }
-              memcpy(gfx.RDRAM+cur_fb.addr,gfx.RDRAM+rdp.cimg, (cur_fb.width*cur_fb.height)<<cur_fb.size>>1);
+              memcpy(GFX_PTR.RDRAM+cur_fb.addr,GFX_PTR.RDRAM+rdp.cimg, (cur_fb.width*cur_fb.height)<<cur_fb.size>>1);
             }
           }
           else
@@ -2717,7 +2717,7 @@ static void rdp_setcolorimage()
         }
         else
         {
-          memset(gfx.RDRAM+cur_fb.addr, 0, cur_fb.width*cur_fb.height*rdp.ci_size);
+          memset(GFX_PTR.RDRAM+cur_fb.addr, 0, cur_fb.width*cur_fb.height*rdp.ci_size);
         }
         rdp.skip_drawing = TRUE;
       }
@@ -2742,13 +2742,13 @@ static void rdp_setcolorimage()
         {
           if (cur_fb.width == rdp.ci_width)
           {
-            memcpy(gfx.RDRAM+cur_fb.addr,gfx.RDRAM+rdp.maincimg[1].addr, (cur_fb.width*cur_fb.height)<<cur_fb.size>>1);
+            memcpy(GFX_PTR.RDRAM+cur_fb.addr,GFX_PTR.RDRAM+rdp.maincimg[1].addr, (cur_fb.width*cur_fb.height)<<cur_fb.size>>1);
           }
           //rdp.skip_drawing = TRUE;
         }
         else
         {
-          memset(gfx.RDRAM+cur_fb.addr, 0, (cur_fb.width*cur_fb.height)<<rdp.ci_size>>1);
+          memset(GFX_PTR.RDRAM+cur_fb.addr, 0, (cur_fb.width*cur_fb.height)<<rdp.ci_size>>1);
         }
       }
       break;
@@ -2851,7 +2851,7 @@ static void rdp_setcolorimage()
           int width = cur_fb.width;
           int height = cur_fb.height;
           wxUint16 *ptr_dst = new wxUint16[width*height];
-          wxUint16 *ptr_src = (wxUint16*)(gfx.RDRAM+cur_fb.addr);
+          wxUint16 *ptr_src = (wxUint16*)(GFX_PTR.RDRAM+cur_fb.addr);
           wxUint16 c;
 
           for (int y=0; y<height; y++)
@@ -2955,7 +2955,7 @@ static void rdp_setcolorimage()
     if (rdp.zimg == rdp.cimg)
       rdp.updatescreen = 1;
 
-    int viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *gfx.VI_ORIGIN_REG)) ? FALSE : TRUE;
+    int viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *GFX_PTR.VI_ORIGIN_REG)) ? FALSE : TRUE;
     if ((rdp.zimg != rdp.cimg) && (rdp.ocimg != rdp.cimg) && SwapOK && viSwapOK && !rdp.cur_image)
     {
       if (fb_emulation_enabled)
@@ -2965,7 +2965,7 @@ static void rdp_setcolorimage()
       rdp.last_drawn_ci_addr = (settings.swapmode == 2) ? swapped_addr : rdp.maincimg[0].addr;
       swapped_addr = rdp.cimg;
       newSwapBuffers();
-      rdp.vi_org_reg = *gfx.VI_ORIGIN_REG;
+      rdp.vi_org_reg = *GFX_PTR.VI_ORIGIN_REG;
       SwapOK = FALSE;
       if (fb_hwfbe_enabled)
       {
@@ -3294,7 +3294,7 @@ void DetectFrameBufferUsage ()
 {
   LRDP("DetectFrameBufferUsage\n");
 
-  wxUint32 dlist_start = *(wxUint32*)(gfx.DMEM+0xFF0);
+  wxUint32 dlist_start = *(wxUint32*)(GFX_PTR.DMEM+0xFF0);
   wxUint32 a;
 
   // Do nothing if dlist is empty
@@ -3333,8 +3333,8 @@ void DetectFrameBufferUsage ()
     a = rdp.pc[rdp.pc_i] & BMASK;
 
     // Load the next command and its input
-    rdp.cmd0 = ((wxUint32*)gfx.RDRAM)[a>>2];   // \ Current command, 64 bit
-    rdp.cmd1 = ((wxUint32*)gfx.RDRAM)[(a>>2)+1]; // /
+    rdp.cmd0 = ((wxUint32*)GFX_PTR.RDRAM)[a>>2];   // \ Current command, 64 bit
+    rdp.cmd1 = ((wxUint32*)GFX_PTR.RDRAM)[(a>>2)+1]; // /
 
     // Output the address before the command
 
@@ -3458,7 +3458,7 @@ void DetectFrameBufferUsage ()
         if (settings.frame_buffer&fb_motionblur)
           CopyFrameBuffer();
         else
-          memset(gfx.RDRAM+rdp.cimg, 0, rdp.ci_width*rdp.ci_height*rdp.ci_size);
+          memset(GFX_PTR.RDRAM+rdp.cimg, 0, rdp.ci_width*rdp.ci_height*rdp.ci_size);
       }
       else //if (ci_width == rdp.frame_buffers[rdp.main_ci_index].width)
       {
@@ -4036,13 +4036,13 @@ static const wxUint32 rdp_command_length[64] =
   8                       // 0x3f, Set_Color_Image
 };
 
-#define rdram ((wxUint32*)gfx.RDRAM)
-#define rsp_dmem ((wxUint32*)gfx.DMEM)
+#define rdram ((wxUint32*)GFX_PTR.RDRAM)
+#define rsp_dmem ((wxUint32*)GFX_PTR.DMEM)
 
-#define dp_start (*(wxUint32*)gfx.DPC_START_REG)
-#define dp_end (*(wxUint32*)gfx.DPC_END_REG)
-#define dp_current (*(wxUint32*)gfx.DPC_CURRENT_REG)
-#define dp_status (*(wxUint32*)gfx.DPC_STATUS_REG)
+#define dp_start (*(wxUint32*)GFX_PTR.DPC_START_REG)
+#define dp_end (*(wxUint32*)GFX_PTR.DPC_END_REG)
+#define dp_current (*(wxUint32*)GFX_PTR.DPC_CURRENT_REG)
+#define dp_status (*(wxUint32*)GFX_PTR.DPC_STATUS_REG)
 
 inline wxUint32 READ_RDP_DATA(wxUint32 address)
 {
@@ -4082,8 +4082,8 @@ static void rdphalf_1()
       a = rdp.pc[rdp.pc_i] & BMASK;
 
       // Load the next command and its input
-      rdp.cmd0 = ((wxUint32*)gfx.RDRAM)[a>>2];   // \ Current command, 64 bit
-      rdp.cmd1 = ((wxUint32*)gfx.RDRAM)[(a>>2)+1]; // /
+      rdp.cmd0 = ((wxUint32*)GFX_PTR.RDRAM)[a>>2];   // \ Current command, 64 bit
+      rdp.cmd1 = ((wxUint32*)GFX_PTR.RDRAM)[(a>>2)+1]; // /
 
       // Go to the next instruction
       rdp.pc[rdp.pc_i] = (a+8) & BMASK;
@@ -4094,7 +4094,7 @@ static void rdphalf_1()
     rdp.cmd0 = rdp_cmd_data[rdp_cmd_cur+0];
     rdp.cmd1 = rdp_cmd_data[rdp_cmd_cur+1];
     /*
-    wxUint32 cmd3 = ((wxUint32*)gfx.RDRAM)[(a>>2)+2];
+    wxUint32 cmd3 = ((wxUint32*)GFX_PTR.RDRAM)[(a>>2)+2];
     if ((cmd3>>24) == 0xb4)
     rglSingleTriangle = TRUE;
     else
@@ -4141,8 +4141,8 @@ EXPORT void CALL ProcessRDPList(void)
     if (!fullscreen)
       drawNoFullscreenMessage();
     // Set an interrupt to allow the game to continue
-    *gfx.MI_INTR_REG |= 0x20;
-    gfx.CheckInterrupts();
+    *GFX_PTR.MI_INTR_REG |= 0x20;
+    GFX_PTR.CheckInterrupts();
     return;
   }
 

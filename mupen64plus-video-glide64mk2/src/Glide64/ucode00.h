@@ -85,14 +85,14 @@ static void rsp_vertex(int v0, int n)
   for (i=0; i < (n<<4); i+=16)
   {
     VERTEX *v = &rdp.vtx[v0 + (i>>4)];
-    x   = (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 0)^1];
-    y   = (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 1)^1];
-    z   = (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 2)^1];
-    v->flags  = ((wxUint16*)gfx.RDRAM)[(((addr+i) >> 1) + 3)^1];
-    v->ou = (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 4)^1];
-    v->ov = (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 5)^1];
+    x   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 0)^1];
+    y   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 1)^1];
+    z   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 2)^1];
+    v->flags  = ((wxUint16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 3)^1];
+    v->ou = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 4)^1];
+    v->ov = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 5)^1];
     v->uv_scaled = 0;
-    v->a    = ((wxUint8*)gfx.RDRAM)[(addr+i + 15)^3];
+    v->a    = ((wxUint8*)GFX_PTR.RDRAM)[(addr+i + 15)^3];
 
     v->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
     v->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
@@ -121,9 +121,9 @@ static void rsp_vertex(int v0, int n)
 
     if (rdp.geom_mode & 0x00020000)
     {
-      v->vec[0] = ((char*)gfx.RDRAM)[(addr+i + 12)^3];
-      v->vec[1] = ((char*)gfx.RDRAM)[(addr+i + 13)^3];
-      v->vec[2] = ((char*)gfx.RDRAM)[(addr+i + 14)^3];
+      v->vec[0] = ((char*)GFX_PTR.RDRAM)[(addr+i + 12)^3];
+      v->vec[1] = ((char*)GFX_PTR.RDRAM)[(addr+i + 13)^3];
+      v->vec[2] = ((char*)GFX_PTR.RDRAM)[(addr+i + 14)^3];
       if (rdp.geom_mode & 0x40000)
       {
         if (rdp.geom_mode & 0x80000)
@@ -137,9 +137,9 @@ static void rsp_vertex(int v0, int n)
     }
     else
     {
-      v->r = ((wxUint8*)gfx.RDRAM)[(addr+i + 12)^3];
-      v->g = ((wxUint8*)gfx.RDRAM)[(addr+i + 13)^3];
-      v->b = ((wxUint8*)gfx.RDRAM)[(addr+i + 14)^3];
+      v->r = ((wxUint8*)GFX_PTR.RDRAM)[(addr+i + 12)^3];
+      v->g = ((wxUint8*)GFX_PTR.RDRAM)[(addr+i + 13)^3];
+      v->b = ((wxUint8*)GFX_PTR.RDRAM)[(addr+i + 14)^3];
     }
 #ifdef EXTREME_LOGGING
     FRDP ("v%d - x: %f, y: %f, z: %f, w: %f, u: %f, v: %f, f: %f, z_w: %f, r=%d, g=%d, b=%d, a=%d\n", i>>4, v->x, v->y, v->z, v->w, v->ou*rdp.tiles[rdp.cur_tile].s_scale, v->ov*rdp.tiles[rdp.cur_tile].t_scale, v->f, v->z_w, v->r, v->g, v->b, v->a);
@@ -275,7 +275,7 @@ void load_matrix (float m[4][4], wxUint32 addr)
   FRDP ("matrix - addr: %08lx\n", addr);
   int x,y;  // matrix index
   addr >>= 1;
-  wxUint16 * src = (wxUint16*)gfx.RDRAM;
+  wxUint16 * src = (wxUint16*)GFX_PTR.RDRAM;
   for (x=0; x<16; x+=4) { // Adding 4 instead of one, just to remove mult. later
     for (y=0; y<4; y++) {
       m[x>>2][y] = (float)(
@@ -372,12 +372,12 @@ static void uc0_movemem()
     {
       a = (segoffset(rdp.cmd1) & 0xFFFFFF) >> 1;
 
-      short scale_x = ((short*)gfx.RDRAM)[(a+0)^1] / 4;
-      short scale_y = ((short*)gfx.RDRAM)[(a+1)^1] / 4;
-      short scale_z = ((short*)gfx.RDRAM)[(a+2)^1];
-      short trans_x = ((short*)gfx.RDRAM)[(a+4)^1] / 4;
-      short trans_y = ((short*)gfx.RDRAM)[(a+5)^1] / 4;
-      short trans_z = ((short*)gfx.RDRAM)[(a+6)^1];
+      short scale_x = ((short*)GFX_PTR.RDRAM)[(a+0)^1] / 4;
+      short scale_y = ((short*)GFX_PTR.RDRAM)[(a+1)^1] / 4;
+      short scale_z = ((short*)GFX_PTR.RDRAM)[(a+2)^1];
+      short trans_x = ((short*)GFX_PTR.RDRAM)[(a+4)^1] / 4;
+      short trans_y = ((short*)GFX_PTR.RDRAM)[(a+5)^1] / 4;
+      short trans_z = ((short*)GFX_PTR.RDRAM)[(a+6)^1];
       if (settings.correct_viewport)
       {
         scale_x = abs(scale_x);
@@ -402,11 +402,11 @@ static void uc0_movemem()
   case 0x82:
     {
       a = segoffset(rdp.cmd1) & 0x00ffffff;
-      char dir_x = ((char*)gfx.RDRAM)[(a+8)^3];
+      char dir_x = ((char*)GFX_PTR.RDRAM)[(a+8)^3];
       rdp.lookat[1][0] = (float)(dir_x) / 127.0f;
-      char dir_y = ((char*)gfx.RDRAM)[(a+9)^3];
+      char dir_y = ((char*)GFX_PTR.RDRAM)[(a+9)^3];
       rdp.lookat[1][1] = (float)(dir_y) / 127.0f;
-      char dir_z = ((char*)gfx.RDRAM)[(a+10)^3];
+      char dir_z = ((char*)GFX_PTR.RDRAM)[(a+10)^3];
       rdp.lookat[1][2] = (float)(dir_z) / 127.0f;
       if (!dir_x && !dir_y)
         rdp.use_lookat = FALSE;
@@ -418,9 +418,9 @@ static void uc0_movemem()
 
   case 0x84:
     a = segoffset(rdp.cmd1) & 0x00ffffff;
-    rdp.lookat[0][0] = (float)(((char*)gfx.RDRAM)[(a+8)^3]) / 127.0f;
-    rdp.lookat[0][1] = (float)(((char*)gfx.RDRAM)[(a+9)^3]) / 127.0f;
-    rdp.lookat[0][2] = (float)(((char*)gfx.RDRAM)[(a+10)^3]) / 127.0f;
+    rdp.lookat[0][0] = (float)(((char*)GFX_PTR.RDRAM)[(a+8)^3]) / 127.0f;
+    rdp.lookat[0][1] = (float)(((char*)GFX_PTR.RDRAM)[(a+9)^3]) / 127.0f;
+    rdp.lookat[0][2] = (float)(((char*)GFX_PTR.RDRAM)[(a+10)^3]) / 127.0f;
     rdp.use_lookat = TRUE;
     FRDP("lookat_x (%f, %f, %f)\n", rdp.lookat[1][0], rdp.lookat[1][1], rdp.lookat[1][2]);
     break;
@@ -438,15 +438,15 @@ static void uc0_movemem()
     a = segoffset(rdp.cmd1) & 0x00ffffff;
 
     // Get the data
-    rdp.light[i].r = (float)(((wxUint8*)gfx.RDRAM)[(a+0)^3]) / 255.0f;
-    rdp.light[i].g = (float)(((wxUint8*)gfx.RDRAM)[(a+1)^3]) / 255.0f;
-    rdp.light[i].b = (float)(((wxUint8*)gfx.RDRAM)[(a+2)^3]) / 255.0f;
+    rdp.light[i].r = (float)(((wxUint8*)GFX_PTR.RDRAM)[(a+0)^3]) / 255.0f;
+    rdp.light[i].g = (float)(((wxUint8*)GFX_PTR.RDRAM)[(a+1)^3]) / 255.0f;
+    rdp.light[i].b = (float)(((wxUint8*)GFX_PTR.RDRAM)[(a+2)^3]) / 255.0f;
     rdp.light[i].a = 1.0f;
     // ** Thanks to Icepir8 for pointing this out **
     // Lighting must be signed byte instead of byte
-    rdp.light[i].dir_x = (float)(((char*)gfx.RDRAM)[(a+8)^3]) / 127.0f;
-    rdp.light[i].dir_y = (float)(((char*)gfx.RDRAM)[(a+9)^3]) / 127.0f;
-    rdp.light[i].dir_z = (float)(((char*)gfx.RDRAM)[(a+10)^3]) / 127.0f;
+    rdp.light[i].dir_x = (float)(((char*)GFX_PTR.RDRAM)[(a+8)^3]) / 127.0f;
+    rdp.light[i].dir_y = (float)(((char*)GFX_PTR.RDRAM)[(a+9)^3]) / 127.0f;
+    rdp.light[i].dir_z = (float)(((char*)GFX_PTR.RDRAM)[(a+10)^3]) / 127.0f;
     // **
 
     //rdp.update |= UPDATE_LIGHTS;

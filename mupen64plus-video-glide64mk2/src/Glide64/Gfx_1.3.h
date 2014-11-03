@@ -317,7 +317,11 @@ typedef struct {
 // <removed, already defined in API>
 } GFX_INFO;
 */
+#ifdef __LIBRETRO__
+extern GFX_INFO gfx_info;
+#else
 extern GFX_INFO gfx;
+#endif
 // extern wxWindow * GFXWindow;
 extern bool no_dlist;
 

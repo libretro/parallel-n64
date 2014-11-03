@@ -91,7 +91,9 @@ std::ofstream rdp_err;
 #define HAVE_NO_DYNAMIC
 #endif
 
+#ifndef __LIBRETRO__
 GFX_INFO gfx;
+#endif
 
 #ifdef HAVE_NO_DYNAMIC
 #define VIDEO_TAG(X) glide64##X
@@ -240,22 +242,22 @@ void _ChangeSize ()
 //  float res_scl_x = (float)settings.res_x / 320.0f;
   float res_scl_y = (float)settings.res_y / 240.0f;
 
-  wxUint32 scale_x = *gfx.VI_X_SCALE_REG & 0xFFF;
+  wxUint32 scale_x = *GFX_PTR.VI_X_SCALE_REG & 0xFFF;
   if (!scale_x) return;
-  wxUint32 scale_y = *gfx.VI_Y_SCALE_REG & 0xFFF;
+  wxUint32 scale_y = *GFX_PTR.VI_Y_SCALE_REG & 0xFFF;
   if (!scale_y) return;
 
   float fscale_x = (float)scale_x / 1024.0f;
   float fscale_y = (float)scale_y / 2048.0f;
 
-  wxUint32 dwHStartReg = *gfx.VI_H_START_REG;
-  wxUint32 dwVStartReg = *gfx.VI_V_START_REG;
+  wxUint32 dwHStartReg = *GFX_PTR.VI_H_START_REG;
+  wxUint32 dwVStartReg = *GFX_PTR.VI_V_START_REG;
 
   wxUint32 hstart = dwHStartReg >> 16;
   wxUint32 hend = dwHStartReg & 0xFFFF;
 
   // dunno... but sometimes this happens
-  if (hend == hstart) hend = (int)(*gfx.VI_WIDTH_REG / fscale_x);
+  if (hend == hstart) hend = (int)(*GFX_PTR.VI_WIDTH_REG / fscale_x);
 
   wxUint32 vstart = dwVStartReg >> 16;
   wxUint32 vend = dwVStartReg & 0xFFFF;
@@ -286,7 +288,7 @@ void _ChangeSize ()
   //rdp.offset_x = 0;
   //  rdp.offset_y = 0;
   rdp.offset_y = ((float)settings.res_y - rdp.vi_height * rdp.scale_y) * 0.5f;
-  if (((wxUint32)rdp.vi_width <= (*gfx.VI_WIDTH_REG)/2) && (rdp.vi_width > rdp.vi_height))
+  if (((wxUint32)rdp.vi_width <= (*GFX_PTR.VI_WIDTH_REG)/2) && (rdp.vi_width > rdp.vi_height))
     rdp.scale_y *= 0.5f;
 
   rdp.scissor_o.ul_x = 0;
@@ -1368,7 +1370,9 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 
   debug_init ();    // Initialize debugger
 
-  gfx = Gfx_Info;
+#ifndef __LIBRETRO__
+  GFX_PTR = Gfx_Info;
+#endif
 
   util_init ();
   math_init ();
@@ -1451,7 +1455,7 @@ static void CheckDRAMSize()
   wxUint32 test;
   GLIDE64_TRY
   {
-    test = gfx.RDRAM[0x007FFFFF] + 1;
+    test = GFX_PTR.RDRAM[0x007FFFFF] + 1;
   }
   GLIDE64_CATCH
   {
@@ -1483,7 +1487,7 @@ EXPORT int CALL RomOpen (void)
   rdp_reset ();
 
   // Get the country code & translate to NTSC(0) or PAL(1)
-  wxUint16 code = ((wxUint16*)gfx.HEADER)[0x1F^1];
+  wxUint16 code = ((wxUint16*)GFX_PTR.HEADER)[0x1F^1];
 
   if (code == 0x4400) region = 1; // Germany (PAL)
   if (code == 0x4500) region = 0; // USA (NTSC)
@@ -1496,7 +1500,7 @@ EXPORT int CALL RomOpen (void)
 
   // get the name of the ROM
   for (int i=0; i<20; i++)
-    name[i] = gfx.HEADER[(32+i)^3];
+    name[i] = GFX_PTR.HEADER[(32+i)^3];
   name[20] = 0;
 
   // remove all trailing spaces
@@ -1568,7 +1572,7 @@ EXPORT void CALL SetRenderingCallback(void (*callback)(int))
 void drawViRegBG()
 {
   LRDP("drawViRegBG\n");
-  const wxUint32 VIwidth = *gfx.VI_WIDTH_REG;
+  const wxUint32 VIwidth = *GFX_PTR.VI_WIDTH_REG;
   FB_TO_SCREEN_INFO fb_info;
   fb_info.width  = VIwidth;
   fb_info.height = (wxUint32)rdp.vi_height;
@@ -1584,8 +1588,8 @@ void drawViRegBG()
   fb_info.ul_y = 0;
   fb_info.lr_y = fb_info.height - 1;
   fb_info.opaque = 1;
-  fb_info.addr = *gfx.VI_ORIGIN_REG;
-  fb_info.size = *gfx.VI_STATUS_REG & 3;
+  fb_info.addr = *GFX_PTR.VI_ORIGIN_REG;
+  fb_info.size = *GFX_PTR.VI_STATUS_REG & 3;
   rdp.last_bg = fb_info.addr;
 
   bool drawn = DrawFrameBufferToScreen(fb_info);
@@ -1638,12 +1642,12 @@ EXPORT void CALL UpdateScreen (void)
   }
 #endif
   char out_buf[128];
-  sprintf (out_buf, "UpdateScreen (). Origin: %08x, Old origin: %08x, width: %d\n", *gfx.VI_ORIGIN_REG, rdp.vi_org_reg, *gfx.VI_WIDTH_REG);
+  sprintf (out_buf, "UpdateScreen (). Origin: %08x, Old origin: %08x, width: %d\n", *GFX_PTR.VI_ORIGIN_REG, rdp.vi_org_reg, *GFX_PTR.VI_WIDTH_REG);
   VLOG (out_buf);
   LRDP(out_buf);
 
-  wxUint32 width = (*gfx.VI_WIDTH_REG) << 1;
-  if (fullscreen && (*gfx.VI_ORIGIN_REG  > width))
+  wxUint32 width = (*GFX_PTR.VI_WIDTH_REG) << 1;
+  if (fullscreen && (*GFX_PTR.VI_ORIGIN_REG  > width))
     update_screen_count++;
 //TODO-PORT: wx times
 #ifdef FPS
@@ -1681,7 +1685,7 @@ EXPORT void CALL UpdateScreen (void)
   //*
   if( no_dlist )
   {
-    if( *gfx.VI_ORIGIN_REG  > width )
+    if( *GFX_PTR.VI_ORIGIN_REG  > width )
     {
       ChangeSize ();
       LRDP("ChangeSize done\n");
@@ -1719,7 +1723,7 @@ static void DrawWholeFrameBufferToScreen()
   fb_info.opaque = 0;
   DrawFrameBufferToScreen(fb_info);
   if (!(settings.frame_buffer & fb_ref))
-    memset(gfx.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
+    memset(GFX_PTR.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
 }
 
 static void GetGammaTable()
@@ -1946,7 +1950,7 @@ void newSwapBuffers()
       grAuxBufferExt( GR_BUFFER_AUXBUFFER );
     grBufferSwap (settings.vsync);
     fps_count ++;
-    if (*gfx.VI_STATUS_REG&0x08) //gamma correction is used
+    if (*GFX_PTR.VI_STATUS_REG&0x08) //gamma correction is used
     {
       if (!voodoo.gamma_correction)
       {

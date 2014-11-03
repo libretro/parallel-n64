@@ -85,17 +85,17 @@ static void t3dProcessRDP(wxUint32 a)
   if (a)
   {
     rdp.LLE = 1;
-    rdp.cmd0 = ((wxUint32*)gfx.RDRAM)[a++];
-    rdp.cmd1 = ((wxUint32*)gfx.RDRAM)[a++];
+    rdp.cmd0 = ((wxUint32*)GFX_PTR.RDRAM)[a++];
+    rdp.cmd1 = ((wxUint32*)GFX_PTR.RDRAM)[a++];
     while (rdp.cmd0 + rdp.cmd1) {
       gfx_instruction[0][rdp.cmd0>>24] ();
-      rdp.cmd0 = ((wxUint32*)gfx.RDRAM)[a++];
-      rdp.cmd1 = ((wxUint32*)gfx.RDRAM)[a++];
+      rdp.cmd0 = ((wxUint32*)GFX_PTR.RDRAM)[a++];
+      rdp.cmd1 = ((wxUint32*)GFX_PTR.RDRAM)[a++];
       wxUint32 cmd = rdp.cmd0>>24;
       if (cmd == 0xE4 || cmd == 0xE5)
       {
-        rdp.cmd2 = ((wxUint32*)gfx.RDRAM)[a++];
-        rdp.cmd3 = ((wxUint32*)gfx.RDRAM)[a++];
+        rdp.cmd2 = ((wxUint32*)GFX_PTR.RDRAM)[a++];
+        rdp.cmd3 = ((wxUint32*)GFX_PTR.RDRAM)[a++];
       }
     }
     rdp.LLE = 0;
@@ -104,7 +104,7 @@ static void t3dProcessRDP(wxUint32 a)
 
 static void t3dLoadGlobState(wxUint32 pgstate)
 {
-  t3dGlobState *gstate = (t3dGlobState*)&gfx.RDRAM[segoffset(pgstate)];
+  t3dGlobState *gstate = (t3dGlobState*)&GFX_PTR.RDRAM[segoffset(pgstate)];
   FRDP ("Global state. pad0: %04lx, perspNorm: %04lx, flag: %08lx\n", gstate->pad0, gstate->perspNorm, gstate->flag);
   rdp.cmd0 = gstate->othermode0;
   rdp.cmd1 = gstate->othermode1;
@@ -146,17 +146,17 @@ static void t3d_vertex(wxUint32 addr, wxUint32 v0, wxUint32 n)
     for (wxUint32 i=0; i < n; i+=16)
     {
       VERTEX *v = &rdp.vtx[v0 + (i>>4)];
-      x   = (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 0)^1];
-      y   = (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 1)^1];
-      z   = (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 2)^1];
-      v->flags  = ((wxUint16*)gfx.RDRAM)[(((addr+i) >> 1) + 3)^1];
-      v->ou   = 2.0f * (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 4)^1];
-      v->ov   = 2.0f * (float)((short*)gfx.RDRAM)[(((addr+i) >> 1) + 5)^1];
+      x   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 0)^1];
+      y   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 1)^1];
+      z   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 2)^1];
+      v->flags  = ((wxUint16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 3)^1];
+      v->ou   = 2.0f * (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 4)^1];
+      v->ov   = 2.0f * (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 5)^1];
       v->uv_scaled = 0;
-      v->r = ((wxUint8*)gfx.RDRAM)[(addr+i + 12)^3];
-      v->g = ((wxUint8*)gfx.RDRAM)[(addr+i + 13)^3];
-      v->b = ((wxUint8*)gfx.RDRAM)[(addr+i + 14)^3];
-      v->a    = ((wxUint8*)gfx.RDRAM)[(addr+i + 15)^3];
+      v->r = ((wxUint8*)GFX_PTR.RDRAM)[(addr+i + 12)^3];
+      v->g = ((wxUint8*)GFX_PTR.RDRAM)[(addr+i + 13)^3];
+      v->b = ((wxUint8*)GFX_PTR.RDRAM)[(addr+i + 14)^3];
+      v->a    = ((wxUint8*)GFX_PTR.RDRAM)[(addr+i + 15)^3];
 
       v->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
       v->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
@@ -188,7 +188,7 @@ static void t3d_vertex(wxUint32 addr, wxUint32 v0, wxUint32 n)
 static void t3dLoadObject(wxUint32 pstate, wxUint32 pvtx, wxUint32 ptri)
 {
   LRDP("Loading Turbo3D object\n");
-  t3dState *ostate = (t3dState*)&gfx.RDRAM[segoffset(pstate)];
+  t3dState *ostate = (t3dState*)&GFX_PTR.RDRAM[segoffset(pstate)];
   rdp.cur_tile = (ostate->textureState)&7;
   FRDP("tile: %d\n", rdp.cur_tile);
   if (rdp.tiles[rdp.cur_tile].s_scale < 0.001f)
@@ -233,7 +233,7 @@ static void t3dLoadObject(wxUint32 pstate, wxUint32 pvtx, wxUint32 ptri)
     wxUint32 a = segoffset(ptri);
     for (int t=0; t < ostate->triCount; t++)
     {
-      t3dTriN * tri = (t3dTriN*)&gfx.RDRAM[a];
+      t3dTriN * tri = (t3dTriN*)&GFX_PTR.RDRAM[a];
       a += 4;
       FRDP("tri #%d - %d, %d, %d\n", t, tri->v0, tri->v1, tri->v2);
       VERTEX *v[3] = { &rdp.vtx[tri->v0], &rdp.vtx[tri->v1], &rdp.vtx[tri->v2] };
@@ -255,10 +255,10 @@ static void Turbo3D()
   wxUint32 a = 0, pgstate = 0, pstate = 0, pvtx = 0, ptri = 0;
   do {
     a = rdp.pc[rdp.pc_i] & BMASK;
-    pgstate = ((wxUint32*)gfx.RDRAM)[a>>2];
-    pstate = ((wxUint32*)gfx.RDRAM)[(a>>2)+1];
-    pvtx = ((wxUint32*)gfx.RDRAM)[(a>>2)+2];
-    ptri = ((wxUint32*)gfx.RDRAM)[(a>>2)+3];
+    pgstate = ((wxUint32*)GFX_PTR.RDRAM)[a>>2];
+    pstate = ((wxUint32*)GFX_PTR.RDRAM)[(a>>2)+1];
+    pvtx = ((wxUint32*)GFX_PTR.RDRAM)[(a>>2)+2];
+    ptri = ((wxUint32*)GFX_PTR.RDRAM)[(a>>2)+3];
     FRDP("GlobalState: %08lx, Object: %08lx, Vertices: %08lx, Triangles: %08lx\n", pgstate, pstate, pvtx, ptri);
     if (!pstate)
     {

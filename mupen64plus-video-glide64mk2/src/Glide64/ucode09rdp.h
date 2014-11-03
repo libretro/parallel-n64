@@ -51,17 +51,17 @@ void uc9_rpdcmd ()
     wxUint32 cmd = 0;
     while(1) 
     {
-      rdp.cmd0 = ((wxUint32*)gfx.RDRAM)[a++];   
+      rdp.cmd0 = ((wxUint32*)GFX_PTR.RDRAM)[a++];   
       cmd = rdp.cmd0>>24; 
       if (cmd == 0xDF)
         break;
-      rdp.cmd1 = ((wxUint32*)gfx.RDRAM)[a++]; 
+      rdp.cmd1 = ((wxUint32*)GFX_PTR.RDRAM)[a++]; 
       if (cmd == 0xE4 || cmd == 0xE5)
       {
         a++;
-        rdp.cmd2 = ((wxUint32*)gfx.RDRAM)[a++]; 
+        rdp.cmd2 = ((wxUint32*)GFX_PTR.RDRAM)[a++]; 
         a++;
-        rdp.cmd3 = ((wxUint32*)gfx.RDRAM)[a++];
+        rdp.cmd3 = ((wxUint32*)GFX_PTR.RDRAM)[a++];
       }
       gfx_instruction[ucode_zSort][cmd] ();
     };

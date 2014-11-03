@@ -95,7 +95,7 @@ static void uc7_vertex ()
 
   FRDP ("uc7:vertex n: %d, v0: %d, from: %08lx\n", n, v0, addr);
 
-  vtx_uc7 *vertex = (vtx_uc7 *)&gfx.RDRAM[addr];
+  vtx_uc7 *vertex = (vtx_uc7 *)&GFX_PTR.RDRAM[addr];
 
   for(i = 0; i < n; i++)
   {
@@ -134,7 +134,7 @@ static void uc7_vertex ()
     if (v->y > v->w) v->scr_off |= 8;
     if (v->w < 0.1f) v->scr_off |= 16;
 
-	wxUint8 *color = &gfx.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
+	wxUint8 *color = &GFX_PTR.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
 
     v->a = color[0];
 	CalculateFog (v);

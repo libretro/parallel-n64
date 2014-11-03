@@ -66,15 +66,15 @@ static void fb_bg_copy ()
     return;
 
   wxUint32 addr = segoffset(rdp.cmd1) >> 1;
-  wxUint8 imageFmt	= ((wxUint8 *)gfx.RDRAM)[(((addr+11)<<1)+0)^3];
-  wxUint8 imageSiz	= ((wxUint8 *)gfx.RDRAM)[(((addr+11)<<1)+1)^3];
-  wxUint32 imagePtr	= segoffset(((wxUint32*)gfx.RDRAM)[(addr+8)>>1]);
+  wxUint8 imageFmt	= ((wxUint8 *)GFX_PTR.RDRAM)[(((addr+11)<<1)+0)^3];
+  wxUint8 imageSiz	= ((wxUint8 *)GFX_PTR.RDRAM)[(((addr+11)<<1)+1)^3];
+  wxUint32 imagePtr	= segoffset(((wxUint32*)GFX_PTR.RDRAM)[(addr+8)>>1]);
   FRDP ("fb_bg_copy. fmt: %d, size: %d, imagePtr %08lx, main_ci: %08lx, cur_ci: %08lx \n", imageFmt, imageSiz, imagePtr, rdp.main_ci, rdp.frame_buffers[rdp.ci_count-1].addr);
 
   if (status == ci_main)
   {
-    wxUint16 frameW	= ((wxUint16 *)gfx.RDRAM)[(addr+3)^1] >> 2;
-    wxUint16 frameH	= ((wxUint16 *)gfx.RDRAM)[(addr+7)^1] >> 2;
+    wxUint16 frameW	= ((wxUint16 *)GFX_PTR.RDRAM)[(addr+3)^1] >> 2;
+    wxUint16 frameH	= ((wxUint16 *)GFX_PTR.RDRAM)[(addr+7)^1] >> 2;
     if ( (frameW == rdp.frame_buffers[rdp.ci_count-1].width) && (frameH == rdp.frame_buffers[rdp.ci_count-1].height) )
       rdp.main_ci_bg = imagePtr;
   }
@@ -132,13 +132,13 @@ static void fb_uc2_movemem()
   if ((rdp.cmd0 & 0xFF) == 8)
   {
     wxUint32 a = segoffset(rdp.cmd1) >> 1;
-    short scale_x = ((short*)gfx.RDRAM)[(a+0)^1] >> 2;
-    short trans_x = ((short*)gfx.RDRAM)[(a+4)^1] >> 2;
+    short scale_x = ((short*)GFX_PTR.RDRAM)[(a+0)^1] >> 2;
+    short trans_x = ((short*)GFX_PTR.RDRAM)[(a+4)^1] >> 2;
     COLOR_IMAGE & cur_fb = rdp.frame_buffers[rdp.ci_count-1];
     if ( abs((int)(scale_x + trans_x - cur_fb.width)) < 3)
     {
-      short scale_y = ((short*)gfx.RDRAM)[(a+1)^1] >> 2;
-      short trans_y = ((short*)gfx.RDRAM)[(a+5)^1] >> 2;
+      short scale_y = ((short*)GFX_PTR.RDRAM)[(a+1)^1] >> 2;
+      short trans_y = ((short*)GFX_PTR.RDRAM)[(a+5)^1] >> 2;
       wxUint32 height = scale_y + trans_y;
       if (height < rdp.scissor_o.lr_y)
         cur_fb.height = height;
@@ -434,7 +434,7 @@ static void fb_setcolorimage()
   }
   if (cur_fb.status == ci_main)
   {
-    int viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *gfx.VI_ORIGIN_REG)) ? FALSE : TRUE;
+    int viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *GFX_PTR.VI_ORIGIN_REG)) ? FALSE : TRUE;
     if ((rdp.maincimg[0].addr != cur_fb.addr) && SwapOK && viSwapOK)
     {
       SwapOK = FALSE;

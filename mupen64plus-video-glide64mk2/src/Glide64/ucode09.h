@@ -181,7 +181,7 @@ static void uc9_draw_object (wxUint8 * addr, wxUint32 type)
 static wxUint32 uc9_load_object (wxUint32 zHeader, wxUint32 * rdpcmds)
 {
   wxUint32 type = zHeader & 7;
-  wxUint8 * addr = gfx.RDRAM + (zHeader&0xFFFFFFF8);
+  wxUint8 * addr = GFX_PTR.RDRAM + (zHeader&0xFFFFFFF8);
   switch (type) {
     case 1: //sh tri
     case 3: //sh quad
@@ -267,22 +267,22 @@ static void uc9_fmlight ()
     break;
   }
 
-  rdp.light[rdp.num_lights].r = (float)(((wxUint8*)gfx.DMEM)[(a+0)^3]) / 255.0f;
-  rdp.light[rdp.num_lights].g = (float)(((wxUint8*)gfx.DMEM)[(a+1)^3]) / 255.0f;
-  rdp.light[rdp.num_lights].b = (float)(((wxUint8*)gfx.DMEM)[(a+2)^3]) / 255.0f;
+  rdp.light[rdp.num_lights].r = (float)(((wxUint8*)GFX_PTR.DMEM)[(a+0)^3]) / 255.0f;
+  rdp.light[rdp.num_lights].g = (float)(((wxUint8*)GFX_PTR.DMEM)[(a+1)^3]) / 255.0f;
+  rdp.light[rdp.num_lights].b = (float)(((wxUint8*)GFX_PTR.DMEM)[(a+2)^3]) / 255.0f;
   rdp.light[rdp.num_lights].a = 1.0f;
   FRDP ("ambient light: r: %.3f, g: %.3f, b: %.3f\n", rdp.light[rdp.num_lights].r, rdp.light[rdp.num_lights].g, rdp.light[rdp.num_lights].b);
   a += 8;
   wxUint32 i;
   for (i = 0; i < rdp.num_lights; i++)
   {
-    rdp.light[i].r = (float)(((wxUint8*)gfx.DMEM)[(a+0)^3]) / 255.0f;
-    rdp.light[i].g = (float)(((wxUint8*)gfx.DMEM)[(a+1)^3]) / 255.0f;
-    rdp.light[i].b = (float)(((wxUint8*)gfx.DMEM)[(a+2)^3]) / 255.0f;
+    rdp.light[i].r = (float)(((wxUint8*)GFX_PTR.DMEM)[(a+0)^3]) / 255.0f;
+    rdp.light[i].g = (float)(((wxUint8*)GFX_PTR.DMEM)[(a+1)^3]) / 255.0f;
+    rdp.light[i].b = (float)(((wxUint8*)GFX_PTR.DMEM)[(a+2)^3]) / 255.0f;
     rdp.light[i].a = 1.0f;
-    rdp.light[i].dir_x = (float)(((char*)gfx.DMEM)[(a+8)^3]) / 127.0f;
-    rdp.light[i].dir_y = (float)(((char*)gfx.DMEM)[(a+9)^3]) / 127.0f;
-    rdp.light[i].dir_z = (float)(((char*)gfx.DMEM)[(a+10)^3]) / 127.0f;
+    rdp.light[i].dir_x = (float)(((char*)GFX_PTR.DMEM)[(a+8)^3]) / 127.0f;
+    rdp.light[i].dir_y = (float)(((char*)GFX_PTR.DMEM)[(a+9)^3]) / 127.0f;
+    rdp.light[i].dir_z = (float)(((char*)GFX_PTR.DMEM)[(a+10)^3]) / 127.0f;
     FRDP ("light: n: %d, r: %.3f, g: %.3f, b: %.3f, x: %.3f, y: %.3f, z: %.3f\n",
       i, rdp.light[i].r, rdp.light[i].g, rdp.light[i].b,
       rdp.light[i].dir_x, rdp.light[i].dir_y, rdp.light[i].dir_z);
@@ -295,9 +295,9 @@ static void uc9_fmlight ()
   }
   for (i = 0; i < 2; i++)
   {
-    float dir_x = (float)(((char*)gfx.DMEM)[(a+8)^3]) / 127.0f;
-    float dir_y = (float)(((char*)gfx.DMEM)[(a+9)^3]) / 127.0f;
-    float dir_z = (float)(((char*)gfx.DMEM)[(a+10)^3]) / 127.0f;
+    float dir_x = (float)(((char*)GFX_PTR.DMEM)[(a+8)^3]) / 127.0f;
+    float dir_y = (float)(((char*)GFX_PTR.DMEM)[(a+9)^3]) / 127.0f;
+    float dir_z = (float)(((char*)GFX_PTR.DMEM)[(a+10)^3]) / 127.0f;
     if (sqrt(dir_x*dir_x + dir_y*dir_y + dir_z*dir_z) < 0.98)
     {
       rdp.use_lookat = FALSE;
@@ -324,9 +324,9 @@ static void uc9_light ()
   VERTEX v;
   for (wxUint32 i = 0; i < num; i++)
   {
-    v.vec[0] = ((char*)gfx.DMEM)[(nsrs++)^3];
-    v.vec[1] = ((char*)gfx.DMEM)[(nsrs++)^3];
-    v.vec[2] = ((char*)gfx.DMEM)[(nsrs++)^3];
+    v.vec[0] = ((char*)GFX_PTR.DMEM)[(nsrs++)^3];
+    v.vec[1] = ((char*)GFX_PTR.DMEM)[(nsrs++)^3];
+    v.vec[2] = ((char*)GFX_PTR.DMEM)[(nsrs++)^3];
     calc_sphere (&v);
 //    calc_linear (&v);
     NormalizeVector (v.vec);
@@ -334,17 +334,17 @@ static void uc9_light ()
     v.a = 0xFF;
     if (use_material)
     {
-      v.r = (wxUint8)(((wxUint32)v.r * gfx.DMEM[(csrs++)^3])>>8);
-      v.g = (wxUint8)(((wxUint32)v.g * gfx.DMEM[(csrs++)^3])>>8);
-      v.b = (wxUint8)(((wxUint32)v.b * gfx.DMEM[(csrs++)^3])>>8);
-      v.a = gfx.DMEM[(csrs++)^3];
+      v.r = (wxUint8)(((wxUint32)v.r * GFX_PTR.DMEM[(csrs++)^3])>>8);
+      v.g = (wxUint8)(((wxUint32)v.g * GFX_PTR.DMEM[(csrs++)^3])>>8);
+      v.b = (wxUint8)(((wxUint32)v.b * GFX_PTR.DMEM[(csrs++)^3])>>8);
+      v.a = GFX_PTR.DMEM[(csrs++)^3];
     }
-    gfx.DMEM[(cdest++)^3] = v.r;
-    gfx.DMEM[(cdest++)^3] = v.g;
-    gfx.DMEM[(cdest++)^3] = v.b;
-    gfx.DMEM[(cdest++)^3] = v.a;
-    ((short*)gfx.DMEM)[(tdest++)^1] = (short)v.ou;
-    ((short*)gfx.DMEM)[(tdest++)^1] = (short)v.ov;
+    GFX_PTR.DMEM[(cdest++)^3] = v.r;
+    GFX_PTR.DMEM[(cdest++)^3] = v.g;
+    GFX_PTR.DMEM[(cdest++)^3] = v.b;
+    GFX_PTR.DMEM[(cdest++)^3] = v.a;
+    ((short*)GFX_PTR.DMEM)[(tdest++)^1] = (short)v.ou;
+    ((short*)GFX_PTR.DMEM)[(tdest++)^1] = (short)v.ov;
   }
 }
 
@@ -467,8 +467,8 @@ static void uc9_mult_mpmtx ()
   int src = -1024 + ((rdp.cmd1>>12)&0xFFF);
   int dst = -1024 + (rdp.cmd1&0xFFF);
   FRDP ("uc9:mult_mpmtx from: %04lx  to: %04lx n: %d\n", src, dst, num);
-  short * saddr = (short*)(gfx.DMEM+src);
-  zSortVDest * daddr = (zSortVDest*)(gfx.DMEM+dst);
+  short * saddr = (short*)(GFX_PTR.DMEM+src);
+  zSortVDest * daddr = (zSortVDest*)(GFX_PTR.DMEM+dst);
   int idx = 0;
   zSortVDest v;
   memset(&v, 0, sizeof(zSortVDest));
@@ -509,7 +509,7 @@ static void uc9_mult_mpmtx ()
     if (w < 0.1f) v.cc |= 0x04;
 
     daddr[i] = v;
-    //memcpy(gfx.DMEM+dst+sizeof(zSortVDest)*i, &v, sizeof(zSortVDest));
+    //memcpy(GFX_PTR.DMEM+dst+sizeof(zSortVDest)*i, &v, sizeof(zSortVDest));
 //    FRDP("v%d x: %d, y: %d, z: %d -> sx: %d, sy: %d, w: %d, xi: %d, yi: %d, wi: %d, fog: %d\n", i, sx, sy, sz, v.sx, v.sy, v.invw, v.xi, v.yi, v.wi, v.fog);
     FRDP("v%d x: %d, y: %d, z: %d -> sx: %04lx, sy: %04lx, invw: %08lx - %f, xi: %04lx, yi: %04lx, wi: %04lx, fog: %04lx\n", i, sx, sy, sz, v.sx, v.sy, v.invw, w, v.xi, v.yi, v.wi, v.fog);
   }
@@ -552,13 +552,13 @@ void uc9_movemem ()
     {
       int dmem_addr = (idx<<3) + ofs;
       FRDP ("Load to DMEM. %08lx -> %08lx\n", addr, dmem_addr);
-      memcpy(gfx.DMEM + dmem_addr, gfx.RDRAM + addr, len);
+      memcpy(GFX_PTR.DMEM + dmem_addr, GFX_PTR.RDRAM + addr, len);
     }
     else
     {
       int dmem_addr = (idx<<3) + ofs;
       FRDP ("Load from DMEM. %08lx -> %08lx\n", dmem_addr, addr);
-      memcpy(gfx.RDRAM + addr, gfx.DMEM + dmem_addr, len);
+      memcpy(GFX_PTR.RDRAM + addr, GFX_PTR.DMEM + dmem_addr, len);
     }
     break;
 
@@ -608,14 +608,14 @@ void uc9_movemem ()
   case 12:   // VIEWPORT
     {
       wxUint32 a = addr >> 1;
-      short scale_x = ((short*)gfx.RDRAM)[(a+0)^1] >> 2;
-      short scale_y = ((short*)gfx.RDRAM)[(a+1)^1] >> 2;
-      short scale_z = ((short*)gfx.RDRAM)[(a+2)^1];
-      rdp.fog_multiplier = ((short*)gfx.RDRAM)[(a+3)^1];
-      short trans_x = ((short*)gfx.RDRAM)[(a+4)^1] >> 2;
-      short trans_y = ((short*)gfx.RDRAM)[(a+5)^1] >> 2;
-      short trans_z = ((short*)gfx.RDRAM)[(a+6)^1];
-      rdp.fog_offset = ((short*)gfx.RDRAM)[(a+7)^1];
+      short scale_x = ((short*)GFX_PTR.RDRAM)[(a+0)^1] >> 2;
+      short scale_y = ((short*)GFX_PTR.RDRAM)[(a+1)^1] >> 2;
+      short scale_z = ((short*)GFX_PTR.RDRAM)[(a+2)^1];
+      rdp.fog_multiplier = ((short*)GFX_PTR.RDRAM)[(a+3)^1];
+      short trans_x = ((short*)GFX_PTR.RDRAM)[(a+4)^1] >> 2;
+      short trans_y = ((short*)GFX_PTR.RDRAM)[(a+5)^1] >> 2;
+      short trans_z = ((short*)GFX_PTR.RDRAM)[(a+6)^1];
+      rdp.fog_offset = ((short*)GFX_PTR.RDRAM)[(a+7)^1];
       rdp.view_scale[0] = scale_x * rdp.scale_x;
       rdp.view_scale[1] = scale_y * rdp.scale_y;
       rdp.view_scale[2] = 32.0f * scale_z;
