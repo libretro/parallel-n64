@@ -234,6 +234,19 @@ void (*renderCallback)(int) = NULL;
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
 
+#ifdef __LIBRETRO__
+extern "C" {
+
+void glide_set_filtering(unsigned value)
+{
+	if(settings.filtering != value){
+		settings.filtering = value;
+	}
+}
+
+}
+#endif
+
 void _ChangeSize ()
 {
   rdp.scale_1024 = settings.scr_res_x / 1024.0f;
