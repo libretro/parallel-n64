@@ -158,7 +158,7 @@ int npot_support;
 int fog_coord_support;
 int render_to_texture = 0;
 int texture_unit;
-int use_fbo;
+int use_fbo = 1;
 int buffer_cleared;
 // ZIGGY
 // to allocate a new static texture name, take the value (free_texture++)
@@ -619,7 +619,11 @@ grSstWinOpen(
   glFramebufferRenderbufferEXT = (PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC)wglGetProcAddress("glFramebufferRenderbufferEXT");
   use_fbo = config.fbo && (glFramebufferRenderbufferEXT != NULL);
 #else
+#ifdef __LIBRETRO__
+  use_fbo = 1;
+#else
   use_fbo = config.fbo;
+#endif
 #endif // _WIN32
 
   LOGINFO("use_fbo %d\n", use_fbo);
