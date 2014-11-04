@@ -1400,6 +1400,13 @@ EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *
     config_section *section;
     config_var *var;
 
+#ifdef __LIBRETRO__
+    if (strcmp(ParamName, "FullScreen") == 0)
+       return true;
+    if (strcmp(ParamName, "VerticalSync") == 0)
+       return false;
+#endif
+
     /* check input conditions */
     if (!l_ConfigInit || ConfigSectionHandle == NULL || ParamName == NULL)
     {
