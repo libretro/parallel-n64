@@ -390,7 +390,11 @@ grDepthBiasLevel( FxI32 level )
     if(w_buffer_mode)
       glPolygonOffset(1.0f, -(float)level*zscale/255.0f);
     else
+#ifdef __LIBRETRO__
+      glPolygonOffset(0, (float)level* settings.depth_bias * biasFactor);
+#else
       glPolygonOffset(0, (float)level*biasFactor);
+#endif
     #endif
     glEnable(GL_POLYGON_OFFSET_FILL);
   }

@@ -708,7 +708,11 @@ static void clip_w (int interpolate_colors)
         rdp.vtxbuf[index].x = Vi.x + (Vj.x - Vi.x) * percent;
         rdp.vtxbuf[index].y = Vi.y + (Vj.y - Vi.y) * percent;
         rdp.vtxbuf[index].z = Vi.z + (Vj.z - Vi.z) * percent;
+#ifdef __LIBRETRO__
+        rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
+#else
         rdp.vtxbuf[index].w = 0.01f;
+#endif
         rdp.vtxbuf[index].u0 = Vi.u0 + (Vj.u0 - Vi.u0) * percent;
         rdp.vtxbuf[index].v0 = Vi.v0 + (Vj.v0 - Vi.v0) * percent;
         rdp.vtxbuf[index].u1 = Vi.u1 + (Vj.u1 - Vi.u1) * percent;
@@ -729,7 +733,11 @@ static void clip_w (int interpolate_colors)
         rdp.vtxbuf[index].x = Vj.x + (Vi.x - Vj.x) * percent;
         rdp.vtxbuf[index].y = Vj.y + (Vi.y - Vj.y) * percent;
         rdp.vtxbuf[index].z = Vj.z + (Vi.z - Vj.z) * percent;
+#ifdef __LIBRETRO__
+        rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
+#else
         rdp.vtxbuf[index].w = 0.01f;
+#endif
         rdp.vtxbuf[index].u0 = Vj.u0 + (Vi.u0 - Vj.u0) * percent;
         rdp.vtxbuf[index].v0 = Vj.v0 + (Vi.v0 - Vj.v0) * percent;
         rdp.vtxbuf[index].u1 = Vj.u1 + (Vi.u1 - Vj.u1) * percent;
@@ -1401,7 +1409,7 @@ void clip_tri(int interpolate_colors)
           percent = (maxZ - Vj.z) / (Vi.z - Vj.z);
           rdp.vtxbuf[index].x = Vj.x + (Vi.x - Vj.x) * percent;
           rdp.vtxbuf[index].y = Vj.y + (Vi.y - Vj.y) * percent;
-          rdp.vtxbuf[index].z = maxZ - 0.001f;;
+          rdp.vtxbuf[index].z = maxZ - 0.001f;
           rdp.vtxbuf[index].q = Vj.q + (Vi.q - Vj.q) * percent;
           rdp.vtxbuf[index].u0 = Vj.u0 + (Vi.u0 - Vj.u0) * percent;
           rdp.vtxbuf[index].v0 = Vj.v0 + (Vi.v0 - Vj.v0) * percent;
