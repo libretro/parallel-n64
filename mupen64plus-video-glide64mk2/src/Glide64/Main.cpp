@@ -501,7 +501,24 @@ int GetTexAddrNonUMA(int tmu, int texsize)
 }
 GETTEXADDR GetTexAddr = GetTexAddrNonUMA;
 
-// guLoadTextures - used to load the cursor and font textures
+#ifdef __LIBRETRO__
+
+void guLoadTextures ()
+{
+   int tbuf_size = 0;
+
+   bool log2_2048 = (settings.scr_res_x > 1024) ? true : false;
+
+   tbuf_size = grTexCalcMemRequired(log2_2048 ? GR_LOD_LOG2_2048 : GR_LOD_LOG2_1024,
+         log2_2048 ? GR_LOD_LOG2_2048 : GR_LOD_LOG2_1024,
+         GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
+
+   offset_textures = tbuf_size + 16;
+}
+
+#else
+/* guLoadTextures - used to load the cursor and font textures */
+
 void guLoadTextures ()
 {
   if (grTextureBufferExt)
@@ -627,6 +644,7 @@ void guLoadTextures ()
     & 0xFFFFFFF0) + 16;
   free (cursorTex.data);
 }
+#endif
 
 #ifdef TEXTURE_FILTER
 void DisplayLoadProgress(const wchar_t *format, ...)
