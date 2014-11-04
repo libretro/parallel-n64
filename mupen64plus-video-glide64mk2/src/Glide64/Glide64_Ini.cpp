@@ -32,31 +32,19 @@ void glide_set_filtering(unsigned value)
 
 void ReadSettings(void)
 {
-   struct retro_variable var = { "mupen64-screensize", 0 };
-   unsigned screen_width = 640;
-   unsigned screen_height = 480;
-
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-   {
-      if (sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
-      {
-         screen_width  = 640;
-         screen_height = 480;
-      }
-   }
-
-   printf("screen width: %d, height: %d\n", screen_width, screen_height);
-
+   m64p_handle video_general_section;
 	PackedScreenResolution tmpRes;
-   tmpRes.width      = screen_width;
-   tmpRes.height     = screen_height;
-   tmpRes.fullscreen = true;
+
+   ConfigOpenSection("Video-General", &video_general_section);
+
+   tmpRes.width      = ConfigGetParamInt(video_general_section, "ScreenWidth");
+   tmpRes.height     = ConfigGetParamInt(video_general_section, "ScreenHeight");
+   tmpRes.fullscreen = ConfigGetParamBool(video_general_section, "Fullscreen");
 	settings.res_data = tmpRes.resolution;
-   settings.scr_res_x = settings.res_x = screen_width;
-   settings.scr_res_y = settings.res_y = screen_height;
+   settings.scr_res_x = settings.res_x = tmpRes.width;
+   settings.scr_res_y = settings.res_y = tmpRes.height;
 
-
-   settings.vsync = 1;
+   settings.vsync = ConfigGetParamBool(video_general_section, "VerticalSync");
 
    settings.autodetect_ucode = true;
    settings.ucode = 2;
