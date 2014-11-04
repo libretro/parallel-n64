@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus-sdl-audio - main.c                                        *
+ *   Mupen64plus-libretro-audio - main.c                                   *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
  *   Copyright (C) 2007-2009 Richard Goedeken                              *
  *   Copyright (C) 2007-2008 Ebenblues                                     *
