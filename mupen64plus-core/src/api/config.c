@@ -1230,7 +1230,7 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
     config_section *section;
     config_var *var;
 
-#ifdef __LIBRETRO__ // Conifg overrides
+#ifdef __LIBRETRO__
     static const struct
     {
         const char* ParamName;
@@ -1240,8 +1240,58 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
     {
         { "R4300Emulator", "mupen64-cpucore", { { 0, "pure_interpreter" }, { 1, "cached_interpreter" }, { 2, "dynamic_recompiler" }, { 3, "neb_dynamic_recompiler" }, { 0, 0 } } },
         { "DisableExtraMem", "mupen64-disableexpmem", { { 0, "no" }, { 1, "yes" }, { 0, 0 } } },
-        { "ScreenWidth", "mupen64-screensize", { { 320, "320x240" }, { 640, "640x480" }, { 1280, "1280x960" }, { 0, 0 } } },
-        { "ScreenHeight", "mupen64-screensize", { { 240, "320x240" }, { 480, "640x480" }, { 960, "1280x960" }, { 0, 0 } } },
+        { "ScreenWidth", "mupen64-screensize", { 
+                                                  { 320, "320x200" },
+                                                  { 320, "320x240" },
+                                                  { 400, "400x256" },
+                                                  { 512, "512x384" },
+                                                  { 640, "640x200" },
+                                                  { 640, "640x350" },
+                                                  { 640, "640x400" },
+                                                  { 640, "640x480" },
+                                                  { 800, "800x600" },
+                                                  { 960, "960x720" },
+                                                  { 856,  "856x480" },
+                                                  { 512,  "512x256" },
+                                                  { 1024, "1024x768" },
+                                                  { 1280, "1280x1024" },
+                                                  { 1600, "1600x1200" },
+                                                  { 400, "400x300" },
+                                                  { 1152, "1152x864" },
+                                                  { 1280, "1280x960" },
+                                                  { 1600, "1600x1024" },
+                                                  { 1920, "1920x1440" },
+                                                  { 2048, "2048x1536" },
+                                                  { 2048, "2048x2048" },
+                                                  { 0, 0 } 
+                                               }
+        },
+        { "ScreenHeight", "mupen64-screensize", { 
+                                                   { 200, "320x200" },
+                                                   { 240, "320x240" },
+                                                   { 256, "400x256" },
+                                                   { 384, "512x384" },
+                                                   { 200, "640x200" },
+                                                   { 350, "640x350" },
+                                                   { 400, "640x400" },
+                                                   { 480, "640x480" },
+                                                   { 600, "800x600" },
+                                                   { 720, "960x720" },
+                                                   { 480, "856x480" },
+                                                   { 256, "512x256" },
+                                                   { 768, "1024x768" },
+                                                   { 1024, "1280x1024" },
+                                                   { 1200, "1600x1200" },
+                                                   { 300, "400x300" },
+                                                   { 854, "1152x864" },
+                                                   { 960, "1280x960" },
+                                                   { 1024, "1600x1024" },
+                                                   { 1440, "1920x1440" },
+                                                   { 1536, "2048x1536" },
+                                                   { 2048, "2048x2048" },
+                                                   { 0, 0 } 
+                                                } 
+        },
         { 0, 0, { {0, 0} } }
     };
 
