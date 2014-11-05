@@ -243,7 +243,8 @@ SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLEScombiner.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLESgeometry.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLESglitchmain.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLEStextures.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/glitchlog.cpp
+					$(VIDEODIR_GLIDE)/Glitch64/glitchlog.cpp \
+					$(VIDEODIR_GLIDE)/Glitch64/glitchtextureman.cpp
 					#$(VIDEODIR_GLIDE)/Glitch64/glitchdebug.cpp
 #else
 #SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLcombiner.cpp \
