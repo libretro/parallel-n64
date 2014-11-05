@@ -678,41 +678,37 @@ void remove_tex(unsigned int idmin, unsigned int idmax)
 
 void add_tex(unsigned int id)
 {
-   texlist *entry;
+   texlist *entry = NULL;
    
    HASH_FIND_INT(list, &id, entry);
 
-   if (entry == NULL)
-   {
-      entry = (texlist*)malloc(sizeof(texlist));
-      entry->id = id;
-      glGenTextures(1, &entry->tex_id);
-      HASH_ADD_INT(list, id, entry);
-   }
+   if (entry)
+      return;
+
+   entry = (texlist*)malloc(sizeof(texlist));
+   entry->id = id;
+   glGenTextures(1, &entry->tex_id);
+   HASH_ADD_INT(list, id, entry);
 #ifdef LOG_TEXTUREMEM
    /* TODO - change - use glitch logger */
-addtex_log:
   if (log_cb)
      log_cb(RETRO_LOG_DEBUG, "ADDTEX nbtex is now %d (%06x)\n", HASH_COUNT(list), id);
 #endif
-  return;
 }
 
 GLuint get_tex_id(unsigned int id)
 {
-   texlist *entry;
-   
+   texlist *entry = NULL;
+
    HASH_FIND_INT(list, &id, entry);
 
-   if (entry != NULL)
+   if (entry)
       return entry->tex_id;
-   else
-   {
+
 #ifdef LOG_TEXTUREMEM
    /* TODO - change - use glitch logger */
-      if (log_cb)
-         log_cb(RETRO_LOG_ERROR, "get_tex_id for %08x failed!\n", id);
+   if (log_cb)
+      log_cb(RETRO_LOG_ERROR, "get_tex_id for %08x failed!\n", id);
 #endif
-      return 0;
-   }
+   return 0;
 }
