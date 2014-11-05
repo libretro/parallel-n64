@@ -209,9 +209,9 @@ ifeq ($(HAVE_NEON), 1)
 	SOURCES_C   += $(VIDEODIR_GLN64)/3DMathNeon.c \
 						$(VIDEODIR_GLN64)/gSPNeon.c
 
-	SOURCES_ASM	+= $(LIBRETRO_DIR)/utils_neon.S \
-						$(LIBRETRO_DIR)/resamplers/sinc_neon.S \
-						$(LIBRETRO_DIR)/resamplers/cc_resampler_neon.S
+	SOURCES_ASM	+= $(AUDIO_LIBRETRO_DIR)/utils_neon.S \
+						$(AUDIO_LIBRETRO_DIR)/resamplers/sinc_neon.S \
+						$(AUDIO_LIBRETRO_DIR)/resamplers/cc_resampler_neon.S
 endif
 
 # Glide64

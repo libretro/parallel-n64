@@ -1,3 +1,4 @@
+#if defined(__ARCH_ARM) || defined(__ARM_EABI__) || defined(HAVE_NEON)
 #include "3DMath.h"
 
 static void MultMatrix_neon( float m0[4][4], float m1[4][4], float dest[4][4])
@@ -131,3 +132,5 @@ void MathInitNeon(void)
    Normalize = Normalize_neon;
    DotProduct = DotProduct_neon;
 }
+
+#endif

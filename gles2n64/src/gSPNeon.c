@@ -1,3 +1,5 @@
+#if defined(__ARCH_ARM) || defined(__ARM_EABI__) || defined(HAVE_NEON)
+
 #include "gSP.h"
 #include "OpenGL.h"
 
@@ -482,3 +484,5 @@ void gSPInitNeon(void)
    gSPLightVertex = gSPLightVertexNEON;
    gSPBillboardVertex = gSPBillboardVertexNEON;
 }
+
+#endif

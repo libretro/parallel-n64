@@ -12,6 +12,14 @@ typedef GLfloat GLdouble;
 typedef GLclampf GLclampd;
 #endif
 
+#ifndef GL_FOG
+#define GL_FOG 0x0B60
+#endif
+
+#ifndef GL_ALPHA_TEST
+#define GL_ALPHA_TEST 0x0BC0
+#endif
+
 enum
 {
    SGL_TEXTURE_2D,
