@@ -69,10 +69,8 @@ extern PFNGLCOMPRESSEDTEXIMAGE2DARBPROC glCompressedTexImage2DARB;
 void init_textures()
 {
   tex0_width = tex0_height = tex1_width = tex1_height = 2;
-  // ZIGGY because remove_tex isn't called (Pj64 doesn't like it), it's better
-  // to leave these so that they'll be reused (otherwise we have a memory leak)
-  // 	list = NULL;
-  // 	nbTex = 0;
+
+  init_textureman();
 
   if (!texture)	texture = (unsigned char*)malloc(2048*2048*4);
 }

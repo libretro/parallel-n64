@@ -36,6 +36,14 @@ typedef struct _texlist
 static int nbTex = 0;
 static texlist *list = NULL;
 
+void init_textureman(void)
+{
+  // ZIGGY because remove_tex isn't called (Pj64 doesn't like it), it's better
+  // to leave these so that they'll be reused (otherwise we have a memory leak)
+   //list = NULL;
+   //nbTex = 0;
+}
+
 void remove_tex(unsigned int idmin, unsigned int idmax)
 {
   unsigned int *t;

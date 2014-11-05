@@ -569,7 +569,7 @@ grTexDownloadMipMap( GrChipID_t tmu,
   }
 
   add_tex(startAddress+1);
-  glBindTexture(GL_TEXTURE_2D, startAddress+1);
+  glBindTexture(GL_TEXTURE_2D, get_tex_id(startAddress+1));
 
   if (largest_supported_anisotropy > 1.0f)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, largest_supported_anisotropy);
