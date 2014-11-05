@@ -721,7 +721,7 @@ grSstWinOpen(
   init_textures();
   init_combiner();
 
-  config.anisofilter = ConfigGetParamInt(video_general_section, "AnisoFilter")
+  config.anisofilter = ConfigGetParamInt(video_general_section, "AnisoFilter");
 #ifndef GLES
   // Aniso filter check
   if (config.anisofilter > 0 )
