@@ -424,10 +424,6 @@ grSstWinOpen(
 #endif
      use_fbo = config.fbo;
 
-#ifdef __LIBRETRO__
-  use_fbo = 1;
-#endif
-
   LOGINFO("use_fbo %d\n", use_fbo);
 
   if (isExtensionSupported("GL_EXT_texture_compression_s3tc") == 0  && show_warning)
