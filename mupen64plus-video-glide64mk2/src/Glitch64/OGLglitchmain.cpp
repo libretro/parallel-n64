@@ -127,18 +127,7 @@ float invtex[2];
 //Gonetz
 int UMAmode = 0; //support for VSA-100 UMA mode;
 
-#ifdef _WIN32
-static HDC hDC = NULL;
-static HGLRC hGLRC = NULL;
-static HWND hToolBar = NULL;
-static HWND hwnd_win = NULL;
-static unsigned long windowedExStyle, windowedStyle;
-#endif // _WIN32
 static unsigned long fullscreen;
-#ifdef _WIN32
-static RECT windowedRect;
-static HMENU windowedMenu;
-#endif // _WIN32
 
 static int savedWidtho, savedHeighto;
 static int savedWidth, savedHeight;
@@ -304,10 +293,9 @@ grSstWinOpen(
 
   LOG("grSstWinOpen(%08lx, %d, %d, %d, %d, %d %d)\r\n", hWnd, screen_resolution&~0x80000000, refresh_rate, color_format, origin_location, nColBuffers, nAuxBuffers);
 
-#ifdef _WIN32
-  if ((HWND)hWnd == NULL) hWnd = GetActiveWindow();
-  hwnd_win = (HWND)hWnd;
-#endif // _WIN32
+#ifdef HAVE_WGL
+  wgl_init(hWnd);
+#endif
   width = height = 0;
 
   m64p_handle video_general_section;
@@ -549,29 +537,9 @@ grSstWinClose( GrContext_t context )
   remove_tex(0, 0xfffffff);
 #endif
 
-  //*/
-#ifdef _WIN32
-  if (hGLRC)
-  {
-    wglMakeCurrent(hDC,NULL);
-    wglDeleteContext(hGLRC);
-    hGLRC = NULL;
-  }
-  if (fullscreen)
-  {
-    ChangeDisplaySettings(NULL, 0);
-    SetWindowPos(hwnd_win, NULL,
-      windowedRect.left, windowedRect.top,
-      0, 0,
-      SWP_NOZORDER | SWP_NOSIZE);
-    SetWindowLong(hwnd_win, GWL_STYLE, windowedStyle);
-    SetWindowLong(hwnd_win, GWL_EXSTYLE, windowedExStyle);
-    if (windowedMenu) SetMenu(hwnd_win, windowedMenu);
-    fullscreen = 0;
-  }
-#else
-  //SDL_QuitSubSystem(SDL_INIT_VIDEO);
-  //sleep(2);
+#ifdef HAVE_WGL
+  wgl_deinit(fullscreen);
+  fullscreen = 0;
 #endif
 
   CoreVideo_Quit();

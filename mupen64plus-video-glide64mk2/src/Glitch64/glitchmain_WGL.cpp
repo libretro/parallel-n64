@@ -24,6 +24,14 @@
 
 #include <SDL_opengles.h>
 
+static HDC hDC = NULL;
+static HGLRC hGLRC = NULL;
+static HWND hToolBar = NULL;
+static HWND hwnd_win = NULL;
+static unsigned long windowedExStyle, windowedStyle;
+static RECT windowedRect;
+static HMENU windowedMenu;
+
 //forward decls
 extern int isExtensionSupported(const char *extension);
 
@@ -153,4 +161,32 @@ int WGL_LookupSymbols(void)
    glCompressedTexImage2DARB = (PFNGLCOMPRESSEDTEXIMAGE2DPROC)wglGetProcAddress("glCompressedTexImage2DARB");
 
    return (glFramebufferRenderbufferEXT != NULL);
+}
+
+void wgl_init(HWND hWnd)
+{
+   if ((HWND)hWnd == NULL)
+      hWnd = GetActiveWindow();
+   hwnd_win = (HWND)hWnd;
+}
+
+void wgl_deinit(unsigned long fullscreen)
+{
+   if (hGLRC)
+   {
+      wglMakeCurrent(hDC,NULL);
+      wglDeleteContext(hGLRC);
+      hGLRC = NULL;
+   }
+   if (fullscreen)
+   {
+      ChangeDisplaySettings(NULL, 0);
+      SetWindowPos(hwnd_win, NULL,
+            windowedRect.left, windowedRect.top,
+            0, 0,
+            SWP_NOZORDER | SWP_NOSIZE);
+      SetWindowLong(hwnd_win, GWL_STYLE, windowedStyle);
+      SetWindowLong(hwnd_win, GWL_EXSTYLE, windowedExStyle);
+      if (windowedMenu) SetMenu(hwnd_win, windowedMenu);
+   }
 }
