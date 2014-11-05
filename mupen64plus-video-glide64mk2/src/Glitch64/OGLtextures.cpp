@@ -618,7 +618,7 @@ grTexSource( GrChipID_t tmu,
       tex0_height = tex0_width >> info->aspectRatioLog2;
     }
 
-    glBindTexture(GL_TEXTURE_2D, startAddress+1);
+    glBindTexture(GL_TEXTURE_2D, get_tex_id(startAddress+1));
 #ifdef VPDEBUG
     dump_tex(startAddress+1);
 #endif
