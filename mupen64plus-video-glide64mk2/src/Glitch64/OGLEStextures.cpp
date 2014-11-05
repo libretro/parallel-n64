@@ -252,11 +252,12 @@ int grTexFormatSize(int fmt)
 
 int grTexFormat2GLPackedFmt(int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt)
 {
+#ifdef GLES
     *gltexfmt = GL_RGBA;
     *glpixfmt = GL_RGBA;
     *glpackfmt = GL_UNSIGNED_BYTE;
     return 0;
-/*
+#else
   int factor = -1;
   switch(fmt) {
   case GR_TEXFMT_ALPHA_8:
@@ -334,7 +335,7 @@ int grTexFormat2GLPackedFmt(int fmt, int * gltexfmt, int * glpixfmt, int * glpac
     display_warning("grTexFormat2GLPackedFmt : unknown texture format: %x", fmt);
   }
   return factor;
-*/
+#endif
 }
 
 FX_ENTRY void FX_CALL
