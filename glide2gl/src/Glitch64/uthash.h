@@ -104,7 +104,6 @@ do {                                                                            
   if (! (head)->hh.tbl->buckets) { uthash_fatal( "out of memory"); }             \
   memset((head)->hh.tbl->buckets, 0,                                             \
           HASH_INITIAL_NUM_BUCKETS*sizeof(struct UT_hash_bucket));               \
-  (head)->hh.tbl->signature = HASH_SIGNATURE;                                    \
 } while(0)
 
 #define HASH_ADD(hh,head,fieldname,keylen_in,add)                                \
@@ -570,9 +569,6 @@ typedef struct UT_hash_bucket {
 
 } UT_hash_bucket;
 
-/* random signature used only to find hash tables in external analysis */
-#define HASH_SIGNATURE 0xa0111fe1
-
 typedef struct UT_hash_table {
    UT_hash_bucket *buckets;
    unsigned num_buckets, log2_num_buckets;
@@ -596,8 +592,6 @@ typedef struct UT_hash_table {
     * function isn't a good fit for the key domain. When expansion is inhibited
     * the hash will still work, albeit no longer in constant time. */
    unsigned ineff_expands, noexpand;
-
-   uint32_t signature; /* used only to find hash tables in external analysis */
 } UT_hash_table;
 
 typedef struct UT_hash_handle {
