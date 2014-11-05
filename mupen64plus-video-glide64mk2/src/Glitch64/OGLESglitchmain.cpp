@@ -721,10 +721,13 @@ grSstWinOpen(
   init_textures();
   init_combiner();
 
-/*
+  config.anisofilter = ConfigGetParamInt(video_general_section, "AnisoFilter")
+#ifndef GLES
   // Aniso filter check
   if (config.anisofilter > 0 )
     glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &largest_supported_anisotropy);
+#endif
+/*
 
   // ATI hack - certain texture formats are slow on ATI?
   // Hmm, perhaps the internal format need to be specified explicitly...
