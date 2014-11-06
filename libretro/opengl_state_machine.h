@@ -39,10 +39,14 @@ GLboolean sglIsEnabled(GLenum cap);
 
 void sglEnableVertexAttribArray(GLuint index);
 void sglDisableVertexAttribArray(GLuint index);
-void sglVertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean normalize, GLsizei stride, const GLvoid* pointer);
+void sglVertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean normalize,
+      GLsizei stride, const GLvoid* pointer);
 void sglVertexAttrib4f(GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
 void sglVertexAttrib4fv(GLuint index, GLfloat* v);
 void sglGenerateMipmap(GLenum target);
+
+void sglCompressedTexImage2D(GLenum target, GLint level, GLenum internalformat,
+      GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const GLvoid *data);
 
 void sglGenTextures(GLsizei n, GLuint *textures);
 
@@ -105,6 +109,8 @@ void sglGenFramebuffers(GLsizei n, GLuint *ids);
 void sglFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
 void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers);
 
+void sglTexCoord2f(float S, float t);
+
 #ifndef NO_TRANSLATE
 #define glEnable(T) sglEnable(S##T)
 #define glDisable(T) sglDisable(S##T)
@@ -130,6 +136,7 @@ void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers);
 #define glScissor sglScissor
 #define glUseProgram sglUseProgram
 #define glViewport sglViewport
+#define glActiveTextureARB sglActiveTexture
 #define glActiveTexture sglActiveTexture
 #define glBindTexture sglBindTexture
 #define glGenerateMipmap sglGenerateMipmap
@@ -166,6 +173,9 @@ void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers);
 #define glDeleteFramebuffers sglDeleteFramebuffers
 #define glDeleteTextures sglDeleteTextures
 #define glFramebufferTexture2D sglFramebufferTexture2D
+#define glCompressedTexImage2DARB sglCompressedTexImage2D
+#define glCompressedTexImage2D sglCompressedTexImage2D
+#define glTexCoord2f sglTexCoord2f
 #endif
 
 void sglEnter(void);

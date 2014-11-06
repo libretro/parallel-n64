@@ -70,6 +70,5 @@
 #define glReadBuffer(x)
 #define glTexEnvi(x,y,z)
 #define glTexEnvfv(x,y,z)
-#define glTexCoord2f(u,v)
 
 #endif // OSAL_OPENGL_H

@@ -14,6 +14,8 @@
 #define GFX_ANGRYLION 3
 #endif
 
+#define HAVE_LEGACY_GL
+
 extern cothread_t main_thread;
 extern bool flip_only;
 extern int stop;
@@ -447,6 +449,18 @@ void sglBindBuffer(GLenum target, GLuint buffer)
    glBindBuffer(target, buffer);
 }
 
+void sglCompressedTexImage2D(GLenum target, GLint level, GLenum internalformat,
+      GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const GLvoid *data)
+{
+   glCompressedTexImage2D(target, level, internalformat, width, height, border, imageSize, data);
+}
+
+void sglTexCoord2f(GLfloat s, GLfloat t)
+{
+#ifdef HAVE_LEGACY_GL
+   glTexCoord2f(s, t);
+#endif
+}
 
 #if 0
 struct tex_map
