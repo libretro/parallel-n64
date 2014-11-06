@@ -30,6 +30,14 @@ void glide_set_filtering(unsigned value)
 }
 #endif
 
+void ConfigWrapper()
+{
+  char strConfigWrapperExt[] = "grConfigWrapperExt";
+  GRCONFIGWRAPPEREXT grConfigWrapperExt = (GRCONFIGWRAPPEREXT)grGetProcAddress(strConfigWrapperExt);
+  if (grConfigWrapperExt)
+    grConfigWrapperExt(settings.wrpResolution, settings.wrpVRAM * 1024 * 1024, settings.wrpFBO, settings.wrpAnisotropic);
+}
+
 void ReadSettings(void)
 {
    m64p_handle video_general_section;
@@ -44,15 +52,28 @@ void ReadSettings(void)
    settings.scr_res_x = settings.res_x = tmpRes.width;
    settings.scr_res_y = settings.res_y = tmpRes.height;
 
+   settings.wrpFBO         = ConfigGetParamBool(video_general_section, "FBO");
+   settings.wrpAnisotropic = ConfigGetParamBool(video_general_section, "AnisotropicFiltering");
+
    settings.vsync = ConfigGetParamBool(video_general_section, "VerticalSync");
 
-   settings.autodetect_ucode = true;
+   settings.autodetect_ucode = TRUE;
    settings.ucode = 2;
    settings.fog = 1;
    settings.buff_clear = 1;
-   settings.unk_as_red = false;
-   settings.unk_clear = false;
-   settings.run_in_window = false;
+   settings.unk_as_red = FALSE;
+   settings.unk_clear = FALSE;
+   settings.run_in_window = FALSE;
+   settings.logging = FALSE;
+   settings.log_clear = FALSE;
+   settings.elogging = FALSE;
+   settings.filter_cache = FALSE;
+   settings.unk_as_red = FALSE;
+   settings.log_unk = FALSE;
+   settings.unk_clear = FALSE;
+   settings.wfmode = 0;
+
+   ConfigWrapper();
 }
 
 void ReadSpecialSettings (const char * name)

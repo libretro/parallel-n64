@@ -1412,6 +1412,14 @@ EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *
        return true;
     if (strcmp(ParamName, "VerticalSync") == 0)
        return false;
+    if (strcmp(ParamName, "FBO") == 0)
+       return true;
+    if (strcmp(ParamName, "AnisotropicFiltering") == 0)
+#ifdef GLES
+       return false;
+#else
+       return true;
+#endif
 #endif
 
     /* check input conditions */
