@@ -173,36 +173,38 @@ grSstOrigin(GrOriginLocation_t  origin)
 FX_ENTRY void FX_CALL
 grClipWindow( FxU32 minx, FxU32 miny, FxU32 maxx, FxU32 maxy )
 {
-  LOG("grClipWindow(%d,%d,%d,%d)\r\n", minx, miny, maxx, maxy);
+   GLint new_y = (viewport_offset)+height-maxy;
 
   if (use_fbo && render_to_texture) {
     if (int(minx) < 0) minx = 0;
     if (int(miny) < 0) miny = 0;
     if (maxx < minx) maxx = minx;
     if (maxy < miny) maxy = miny;
-    glScissor(minx, miny, maxx - minx, maxy - miny);
-    glEnable(GL_SCISSOR_TEST);
-    return;
+    new_y = miny;
+    goto setscissor;
   }
-
-  if (!use_fbo) {
+  else if (!use_fbo) {
     int th = height;
     if (th > screen_height)
       th = screen_height;
     maxy = th - maxy;
     miny = th - miny;
-    FxU32 tmp = maxy; maxy = miny; miny = tmp;
+    FxU32 tmp = maxy;
+    maxy = miny;
+    miny = tmp;
     if (maxx > (FxU32) width) maxx = width;
     if (maxy > (FxU32) height) maxy = height;
     if (int(minx) < 0) minx = 0;
     if (int(miny) < 0) miny = 0;
     if (maxx < minx) maxx = minx;
     if (maxy < miny) maxy = miny;
-    glScissor(minx, miny+viewport_offset, maxx - minx, maxy - miny);
+    new_y = miny+viewport_offset;
     //printf("gl scissor %d %d %d %d\n", minx, miny, maxx, maxy);
-  } else {
-    glScissor(minx, (viewport_offset)+height-maxy, maxx - minx, maxy - miny);
   }
+  
+setscissor:
+  LOG("grClipWindow(%d,%d,%d,%d)\r\n", minx, miny, maxx, maxy);
+  glScissor(minx, new_y, maxx - minx, maxy - miny);
   glEnable(GL_SCISSOR_TEST);
 }
 
