@@ -238,6 +238,8 @@ SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/Glide64_Ini.cpp \
 #SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/Glide64_Ini_Default.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/Glide64_UCode_Default.cpp \
 
+SOURCES_CXX  += $(VIDEODIR_GLIDE)/Glitch64/textures_common.cpp
+
 #ifeq ($(GLES), 1)
 SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLEScombiner.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLESgeometry.cpp \
