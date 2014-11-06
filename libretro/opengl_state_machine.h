@@ -92,9 +92,6 @@ void sglGetShaderiv(GLuint shader, GLenum pname, GLint *params);
 void sglGetProgramiv(GLuint program, GLenum pname, GLint *params);
 void sglAttachShader(GLuint program, GLuint shader);
 
-// For gles2glide64
-void sglBindTextureGlide(GLenum target, GLuint texture);
-GLuint sglAddTextureMap(unsigned address);
 void sglLinkProgram(GLuint program);
 void sglBindAttribLocation(GLuint program, GLuint index, const GLchar *name);
 
