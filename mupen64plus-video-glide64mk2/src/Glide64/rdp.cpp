@@ -308,10 +308,6 @@ void rdp_reset ()
   rdp.Reset();
 }
 
-void drawNoFullscreenMessage()
-{
-}
-
 static wxUint32 d_ul_x, d_ul_y, d_lr_x, d_lr_y;
 
 static void DrawPartFrameBufferToScreen()
@@ -527,8 +523,6 @@ EXPORT void CALL ProcessDList(void)
   SoftLocker lock(mutexProcessDList);
   if (!lock.IsOk()) //mutex is busy
   {
-    if (!fullscreen)
-      drawNoFullscreenMessage();
     // Set an interrupt to allow the game to continue
     *GFX_PTR.MI_INTR_REG |= 0x20;
     GFX_PTR.CheckInterrupts();
@@ -551,7 +545,6 @@ EXPORT void CALL ProcessDList(void)
 
   if (!fullscreen)
   {
-    drawNoFullscreenMessage();
     // Set an interrupt to allow the game to continue
     *GFX_PTR.MI_INTR_REG |= 0x20;
     GFX_PTR.CheckInterrupts();
@@ -4138,8 +4131,6 @@ EXPORT void CALL ProcessRDPList(void)
   SoftLocker lock(mutexProcessDList);
   if (!lock.IsOk()) //mutex is busy
   {
-    if (!fullscreen)
-      drawNoFullscreenMessage();
     // Set an interrupt to allow the game to continue
     *GFX_PTR.MI_INTR_REG |= 0x20;
     GFX_PTR.CheckInterrupts();
