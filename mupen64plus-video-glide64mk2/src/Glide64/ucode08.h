@@ -135,9 +135,9 @@ static void uc8_vertex ()
 		if ((rdp.geom_mode & 0x00020000))
 		{
 			wxUint32 shift = v0 << 1;
-			v->vec[0] = ((char*)GFX_PTR.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 0)^3];
-			v->vec[1] = ((char*)GFX_PTR.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 1)^3];
-			v->vec[2] = (char)(v->flags&0xff);
+			v->vec[0] = ((wxInt8*)GFX_PTR.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 0)^3];
+			v->vec[1] = ((wxInt8*)GFX_PTR.RDRAM)[(uc8_normale_addr + (i>>3) + shift + 1)^3];
+			v->vec[2] = (wxInt8)(v->flags&0xff);
 
   			if (rdp.geom_mode & 0x80000)
   			{
@@ -369,11 +369,11 @@ static void uc8_movemem ()
 			int n = (ofs / 48);
             if (n < 2)
             {
-              char dir_x = ((char*)GFX_PTR.RDRAM)[(addr+8)^3];
+              wxInt8 dir_x = ((wxInt8*)GFX_PTR.RDRAM)[(addr+8)^3];
               rdp.lookat[n][0] = (float)(dir_x) / 127.0f;
-              char dir_y = ((char*)GFX_PTR.RDRAM)[(addr+9)^3];
+              wxInt8 dir_y = ((wxInt8*)GFX_PTR.RDRAM)[(addr+9)^3];
               rdp.lookat[n][1] = (float)(dir_y) / 127.0f;
-              char dir_z = ((char*)GFX_PTR.RDRAM)[(addr+10)^3];
+              wxInt8 dir_z = ((wxInt8*)GFX_PTR.RDRAM)[(addr+10)^3];
               rdp.lookat[n][2] = (float)(dir_z) / 127.0f;
               rdp.use_lookat = TRUE;
               if (n == 1)
@@ -395,9 +395,9 @@ static void uc8_movemem ()
 			rdp.light[n].b = (float)col / 255.0f;
 			rdp.light[n].nonblack += col;
 			rdp.light[n].a = 1.0f;
-			rdp.light[n].dir_x = (float)(((char*)GFX_PTR.RDRAM)[(addr+8)^3]) / 127.0f;
-			rdp.light[n].dir_y = (float)(((char*)GFX_PTR.RDRAM)[(addr+9)^3]) / 127.0f;
-			rdp.light[n].dir_z = (float)(((char*)GFX_PTR.RDRAM)[(addr+10)^3]) / 127.0f;
+			rdp.light[n].dir_x = (float)(((wxInt8*)GFX_PTR.RDRAM)[(addr+8)^3]) / 127.0f;
+			rdp.light[n].dir_y = (float)(((wxInt8*)GFX_PTR.RDRAM)[(addr+9)^3]) / 127.0f;
+			rdp.light[n].dir_z = (float)(((wxInt8*)GFX_PTR.RDRAM)[(addr+10)^3]) / 127.0f;
 			// **
 			wxUint32 a = addr >> 1;
 			rdp.light[n].x = (float)(((short*)GFX_PTR.RDRAM)[(a+16)^1]);
@@ -431,8 +431,8 @@ static void uc8_movemem ()
       int i;
 			for (i = 0; i < 32; i++)
 			{
-				char x = ((char*)GFX_PTR.RDRAM)[uc8_normale_addr + ((i<<1) + 0)^3];
-				char y = ((char*)GFX_PTR.RDRAM)[uc8_normale_addr + ((i<<1) + 1)^3];
+				wxInt8 x = ((wxInt8*)GFX_PTR.RDRAM)[uc8_normale_addr + ((i<<1) + 0)^3];
+				wxInt8 y = ((wxInt8*)GFX_PTR.RDRAM)[uc8_normale_addr + ((i<<1) + 1)^3];
 				FRDP("#%d x = %d, y = %d\n", i, x, y);
 			}
 			wxUint32 a = uc8_normale_addr >> 1;

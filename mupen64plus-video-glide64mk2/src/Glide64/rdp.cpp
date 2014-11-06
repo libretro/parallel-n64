@@ -1988,7 +1988,7 @@ static inline void loadTile(uint32_t *src, uint32_t *dst, int width, int height,
       v25 = v8;
       v24 = v9;
       v23 = v10;
-      v13 = (uint32_t *)((char *)v9 + (v10 & 0xFFFFFFFC));
+      v13 = (uint32_t *)((wxInt8*)v9 + (v10 & 0xFFFFFFFC));
       v14 = v10 & 3;
       if ( !(v10 & 3) )
         goto LABEL_20;
@@ -2005,7 +2005,7 @@ static inline void loadTile(uint32_t *src, uint32_t *dst, int width, int height,
       {
         v16 = __ROL__(v16, 8);
         *(uint8_t *)v7 = v16;
-        v7 = (uint32_t *)((char *)v7 + 1);
+        v7 = (uint32_t *)((wxInt8*)v7 + 1);
         --v15;
       }
       while ( v15 );
@@ -2030,12 +2030,12 @@ LABEL_20:
       v19 = v23 & 3;
       if ( v23 & 3 )
       {
-        v20 = *(uint32_t *)((char *)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
+        v20 = *(uint32_t *)((wxInt8*)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
         do
         {
           v20 = __ROL__(v20, 8);
           *(uint8_t *)v7 = v20;
-          v7 = (uint32_t *)((char *)v7 + 1);
+          v7 = (uint32_t *)((wxInt8*)v7 + 1);
           --v19;
         }
         while ( v19 );

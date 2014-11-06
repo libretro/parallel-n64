@@ -169,9 +169,9 @@ static void uc2_vertex ()
 
     if (rdp.geom_mode & 0x00020000)
     {
-      v->vec[0] = ((char*)GFX_PTR.RDRAM)[(addr+i + 12)^3];
-      v->vec[1] = ((char*)GFX_PTR.RDRAM)[(addr+i + 13)^3];
-      v->vec[2] = ((char*)GFX_PTR.RDRAM)[(addr+i + 14)^3];
+      v->vec[0] = ((wxInt8*)GFX_PTR.RDRAM)[(addr+i + 12)^3];
+      v->vec[1] = ((wxInt8*)GFX_PTR.RDRAM)[(addr+i + 13)^3];
+      v->vec[2] = ((wxInt8*)GFX_PTR.RDRAM)[(addr+i + 14)^3];
       //	  FRDP("Calc light. x: %f, y: %f z: %f\n", v->vec[0], v->vec[1], v->vec[2]);
       //      if (!(rdp.geom_mode & 0x800000))
       {
@@ -711,11 +711,11 @@ static void uc2_movemem ()
 
       if (n < 2)
       {
-        char dir_x = ((char*)GFX_PTR.RDRAM)[(addr+8)^3];
+        wxInt8 dir_x = ((wxInt8*)GFX_PTR.RDRAM)[(addr+8)^3];
         rdp.lookat[n][0] = (float)(dir_x) / 127.0f;
-        char dir_y = ((char*)GFX_PTR.RDRAM)[(addr+9)^3];
+        wxInt8 dir_y = ((wxInt8*)GFX_PTR.RDRAM)[(addr+9)^3];
         rdp.lookat[n][1] = (float)(dir_y) / 127.0f;
-        char dir_z = ((char*)GFX_PTR.RDRAM)[(addr+10)^3];
+        wxInt8 dir_z = ((wxInt8*)GFX_PTR.RDRAM)[(addr+10)^3];
         rdp.lookat[n][2] = (float)(dir_z) / 127.0f;
         rdp.use_lookat = TRUE;
         if (n == 1)
@@ -742,9 +742,9 @@ static void uc2_movemem ()
       rdp.light[n].a = 1.0f;
       // ** Thanks to Icepir8 for pointing this out **
       // Lighting must be signed byte instead of byte
-      rdp.light[n].dir_x = (float)(((char*)GFX_PTR.RDRAM)[(addr+8)^3]) / 127.0f;
-      rdp.light[n].dir_y = (float)(((char*)GFX_PTR.RDRAM)[(addr+9)^3]) / 127.0f;
-      rdp.light[n].dir_z = (float)(((char*)GFX_PTR.RDRAM)[(addr+10)^3]) / 127.0f;
+      rdp.light[n].dir_x = (float)(((wxInt8*)GFX_PTR.RDRAM)[(addr+8)^3]) / 127.0f;
+      rdp.light[n].dir_y = (float)(((wxInt8*)GFX_PTR.RDRAM)[(addr+9)^3]) / 127.0f;
+      rdp.light[n].dir_z = (float)(((wxInt8*)GFX_PTR.RDRAM)[(addr+10)^3]) / 127.0f;
       wxUint32 a = addr >> 1;
       rdp.light[n].x = (float)(((short*)GFX_PTR.RDRAM)[(a+4)^1]);
       rdp.light[n].y = (float)(((short*)GFX_PTR.RDRAM)[(a+5)^1]);

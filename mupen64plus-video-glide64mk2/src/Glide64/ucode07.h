@@ -141,9 +141,9 @@ static void uc7_vertex ()
 
     if (rdp.geom_mode & 0x00020000)
     {
-      v->vec[0] = (char)color[3];
-      v->vec[1] = (char)color[2];
-      v->vec[2] = (char)color[1];
+      v->vec[0] = (wxInt8)color[3];
+      v->vec[1] = (wxInt8)color[2];
+      v->vec[2] = (wxInt8)color[1];
 
       if (rdp.geom_mode & 0x80000) 
       {

@@ -121,9 +121,9 @@ static void rsp_vertex(int v0, int n)
 
     if (rdp.geom_mode & 0x00020000)
     {
-      v->vec[0] = ((char*)GFX_PTR.RDRAM)[(addr+i + 12)^3];
-      v->vec[1] = ((char*)GFX_PTR.RDRAM)[(addr+i + 13)^3];
-      v->vec[2] = ((char*)GFX_PTR.RDRAM)[(addr+i + 14)^3];
+      v->vec[0] = ((wxInt8*)GFX_PTR.RDRAM)[(addr+i + 12)^3];
+      v->vec[1] = ((wxInt8*)GFX_PTR.RDRAM)[(addr+i + 13)^3];
+      v->vec[2] = ((wxInt8*)GFX_PTR.RDRAM)[(addr+i + 14)^3];
       if (rdp.geom_mode & 0x40000)
       {
         if (rdp.geom_mode & 0x80000)
@@ -402,11 +402,11 @@ static void uc0_movemem()
   case 0x82:
     {
       a = segoffset(rdp.cmd1) & 0x00ffffff;
-      char dir_x = ((char*)GFX_PTR.RDRAM)[(a+8)^3];
+      wxInt8 dir_x = ((wxInt8*)GFX_PTR.RDRAM)[(a+8)^3];
       rdp.lookat[1][0] = (float)(dir_x) / 127.0f;
-      char dir_y = ((char*)GFX_PTR.RDRAM)[(a+9)^3];
+      wxInt8 dir_y = ((wxInt8*)GFX_PTR.RDRAM)[(a+9)^3];
       rdp.lookat[1][1] = (float)(dir_y) / 127.0f;
-      char dir_z = ((char*)GFX_PTR.RDRAM)[(a+10)^3];
+      wxInt8 dir_z = ((wxInt8*)GFX_PTR.RDRAM)[(a+10)^3];
       rdp.lookat[1][2] = (float)(dir_z) / 127.0f;
       if (!dir_x && !dir_y)
         rdp.use_lookat = FALSE;
@@ -418,9 +418,9 @@ static void uc0_movemem()
 
   case 0x84:
     a = segoffset(rdp.cmd1) & 0x00ffffff;
-    rdp.lookat[0][0] = (float)(((char*)GFX_PTR.RDRAM)[(a+8)^3]) / 127.0f;
-    rdp.lookat[0][1] = (float)(((char*)GFX_PTR.RDRAM)[(a+9)^3]) / 127.0f;
-    rdp.lookat[0][2] = (float)(((char*)GFX_PTR.RDRAM)[(a+10)^3]) / 127.0f;
+    rdp.lookat[0][0] = (float)(((wxInt8*)GFX_PTR.RDRAM)[(a+8)^3]) / 127.0f;
+    rdp.lookat[0][1] = (float)(((wxInt8*)GFX_PTR.RDRAM)[(a+9)^3]) / 127.0f;
+    rdp.lookat[0][2] = (float)(((wxInt8*)GFX_PTR.RDRAM)[(a+10)^3]) / 127.0f;
     rdp.use_lookat = TRUE;
     FRDP("lookat_x (%f, %f, %f)\n", rdp.lookat[1][0], rdp.lookat[1][1], rdp.lookat[1][2]);
     break;
@@ -444,9 +444,9 @@ static void uc0_movemem()
     rdp.light[i].a = 1.0f;
     // ** Thanks to Icepir8 for pointing this out **
     // Lighting must be signed byte instead of byte
-    rdp.light[i].dir_x = (float)(((char*)GFX_PTR.RDRAM)[(a+8)^3]) / 127.0f;
-    rdp.light[i].dir_y = (float)(((char*)GFX_PTR.RDRAM)[(a+9)^3]) / 127.0f;
-    rdp.light[i].dir_z = (float)(((char*)GFX_PTR.RDRAM)[(a+10)^3]) / 127.0f;
+    rdp.light[i].dir_x = (float)(((wxInt8*)GFX_PTR.RDRAM)[(a+8)^3]) / 127.0f;
+    rdp.light[i].dir_y = (float)(((wxInt8*)GFX_PTR.RDRAM)[(a+9)^3]) / 127.0f;
+    rdp.light[i].dir_z = (float)(((wxInt8*)GFX_PTR.RDRAM)[(a+10)^3]) / 127.0f;
     // **
 
     //rdp.update |= UPDATE_LIGHTS;
