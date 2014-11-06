@@ -134,6 +134,7 @@ void sglTexCoord2f(float S, float t);
 #define glFrontFace sglFrontFace
 #define glPolygonOffset sglPolygonOffset
 #define glScissor sglScissor
+#define glUseProgramARB sglUseProgram
 #define glUseProgram sglUseProgram
 #define glViewport sglViewport
 #define glActiveTextureARB sglActiveTexture
