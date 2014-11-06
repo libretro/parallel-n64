@@ -168,3 +168,28 @@ grTexLodBiasValue(GrChipID_t tmu, float bias )
 {
   LOG("grTexLodBiasValue(%d,%f)\r\n", tmu, bias);
 }
+
+FX_ENTRY void FX_CALL
+grTexDetailControl(
+                   GrChipID_t tmu,
+                   int lod_bias,
+                   FxU8 detail_scale,
+                   float detail_max
+                   )
+{
+  LOG("grTexDetailControl(%d,%d,%d,%d)\r\n", tmu, lod_bias, detail_scale, detail_max);
+  if (lod_bias != 31 && detail_scale != 7)
+  {
+    if (!lod_bias && !detail_scale && !detail_max) return;
+    else
+      display_warning("grTexDetailControl : %d, %d, %f", lod_bias, detail_scale, detail_max);
+  }
+  lambda = detail_max;
+  if(lambda > 1.0f)
+  {
+    lambda = 1.0f - (255.0f - lambda);
+  }
+  if(lambda > 1.0f) display_warning("lambda:%f", lambda);
+
+  set_lambda();
+}
