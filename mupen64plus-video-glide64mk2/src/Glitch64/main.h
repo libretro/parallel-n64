@@ -146,6 +146,21 @@ FX_ENTRY char ** FX_CALL grQueryResolutionsExt(FxI32*);
 FX_ENTRY FxBool FX_CALL grKeyPressedExt(FxU32 key);
 FX_ENTRY void FX_CALL grGetGammaTableExt(FxU32, FxU32*, FxU32*, FxU32*);
 
+#ifndef GrPixelFormat_t
+#define GrPixelFormat_t int
+#endif
+
+FX_ENTRY GrContext_t FX_CALL
+grSstWinOpenExt(
+                HWND                 hWnd,
+                GrScreenResolution_t screen_resolution,
+                GrScreenRefresh_t    refresh_rate,
+                GrColorFormat_t      color_format,
+                GrOriginLocation_t   origin_location,
+                GrPixelFormat_t      pixelformat,
+                int                  nColBuffers,
+                int                  nAuxBuffers);
+
 int getFullScreenWidth();
 int getFullScreenHeight();
 
@@ -226,6 +241,8 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
 FX_ENTRY void FX_CALL
 grConstantColorValueExt(GrChipID_t    tmu,
                         GrColor_t     value);
+
+int isExtensionSupported(const char *extension);
 
 #ifdef USE_GLES
 #define CHECK_FRAMEBUFFER_STATUS() \
