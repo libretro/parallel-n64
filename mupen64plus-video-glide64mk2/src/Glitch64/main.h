@@ -23,7 +23,15 @@
 
 #include <m64p_types.h>
 
-#include "glitchlog.h"
+#define LOG(...) WriteLog(M64MSG_VERBOSE, __VA_ARGS__)
+#define LOGINFO(...) WriteLog(M64MSG_VERBOSE, __VA_ARGS__)
+#ifdef __cplusplus
+extern "C" {
+#endif
+void WriteLog(m64p_msg_level level, const char *msg, ...);
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef VPDEBUG
 #include "glitchdebug.h"

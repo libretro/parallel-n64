@@ -11,12 +11,9 @@ void display_error(void);
 void OPEN_LOG(void);
 void CLOSE_LOG(void);
 void LOG(const char *text, ...);
-void LOGINFO(const char *text, ...);
 #else
 #define OPEN_LOG()
 #define CLOSE_LOG()
-#define LOG(...) ((void)0)
-#define LOGINFO(...) ((void)0)
 #endif
 
 #endif

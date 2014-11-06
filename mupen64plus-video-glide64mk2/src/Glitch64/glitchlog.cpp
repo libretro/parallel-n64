@@ -80,31 +80,16 @@ void CLOSE_LOG(void)
 void LOG(const char *text, ...)
 {
 #ifdef VPDEBUG
-   if (!dumping) return;
+  if (!dumping) return;
 #endif
-   if (!log_open)
-      return;
-   va_list ap;
-   va_start(ap, text);
-   vsprintf(out_buf, text, ap);
-   log_file << out_buf;
-   log_file.flush();
-   va_end(ap);
-}
-
-void LOGINFO(const char *text, ...)
-{
-#ifdef VPDEBUG
-   if (!dumping) return;
-#endif
-   if (!log_open)
-      return;
-   va_list ap;
-   va_start(ap, text);
-   vsprintf(out_buf, text, ap);
-   log_file << out_buf;
-   log_file.flush();
-   va_end(ap);
+	if (!log_open)
+    return;
+	va_list ap;
+	va_start(ap, text);
+	vsprintf(out_buf, text, ap);
+  log_file << out_buf;
+  log_file.flush();
+	va_end(ap);
 }
 
 class LogManager {
