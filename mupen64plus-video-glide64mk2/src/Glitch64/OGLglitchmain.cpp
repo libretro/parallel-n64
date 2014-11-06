@@ -264,13 +264,6 @@ grSstWinOpenExt(
     origin_location, nColBuffers, nAuxBuffers);
 }
 
-#ifdef WIN32
-# include <fcntl.h>
-# ifndef ATTACH_PARENT_PROCESS
-#  define ATTACH_PARENT_PROCESS ((FxU32)-1)
-# endif
-#endif
-
 FX_ENTRY GrContext_t FX_CALL
 grSstWinOpen(
              HWND                 hWnd,

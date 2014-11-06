@@ -24,6 +24,11 @@
 
 #include <SDL_opengles.h>
 
+#include <fcntl.h>
+#ifndef ATTACH_PARENT_PROCESS
+#define ATTACH_PARENT_PROCESS ((FxU32)-1)
+#endif
+
 static HDC hDC = NULL;
 static HGLRC hGLRC = NULL;
 static HWND hToolBar = NULL;
