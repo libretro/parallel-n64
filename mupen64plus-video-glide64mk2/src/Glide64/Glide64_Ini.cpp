@@ -38,6 +38,59 @@ void ConfigWrapper()
     grConfigWrapperExt(settings.wrpResolution, settings.wrpVRAM * 1024 * 1024, settings.wrpFBO, settings.wrpAnisotropic);
 }
 
+int ReadResolution(unsigned width, unsigned height)
+{
+   if (width == 320 && height == 200)
+      return 0;
+   if (width == 320 && height == 240)
+      return 1;
+   if (width == 400 && height == 256)
+      return 2;
+   if (width == 512 && height == 384)
+      return 3;
+   if (width == 640 && height == 200)
+      return 4;
+   if (width == 640 && height == 350)
+      return 5;
+   if (width == 640 && height == 400)
+      return 6;
+   if (width == 640 && height == 480)
+      return 7;
+   if (width == 800 && height == 600)
+      return 8;
+   if (width == 960 && height == 720)
+      return 9;
+   if (width == 856 && height == 480)
+      return 10;
+   if (width == 512 && height == 256)
+      return 11;
+   if (width == 1024 && height == 768)
+      return 12;
+   if (width == 1280 && height == 1024)
+      return 13;
+   if (width == 1600 && height == 1200)
+      return 14;
+   if (width == 400 && height == 300)
+      return 15;
+   if (width == 1152 && height == 864)
+      return 16;
+   if (width == 1280 && height == 960)
+      return 17;
+   if (width == 1600 && height == 1024)
+      return 18;
+   if (width == 1792 && height == 1344)
+      return 19;
+   if (width == 1856 && height == 1392)
+      return 20;
+   if (width == 1920 && height == 1440)
+      return 21;
+   if (width == 2048 && height == 1536)
+      return 22;
+   if (width == 2048 && height == 2048)
+      return 23;
+   return 0;
+}
+
 void ReadSettings(void)
 {
    m64p_handle video_general_section;
@@ -52,6 +105,8 @@ void ReadSettings(void)
    settings.scr_res_x = settings.res_x = tmpRes.width;
    settings.scr_res_y = settings.res_y = tmpRes.height;
 
+
+   settings.wrpResolution  = ReadResolution(tmpRes.width, tmpRes.height);
    settings.wrpFBO         = ConfigGetParamBool(video_general_section, "FBO");
    settings.wrpAnisotropic = ConfigGetParamBool(video_general_section, "AnisotropicFiltering");
 
