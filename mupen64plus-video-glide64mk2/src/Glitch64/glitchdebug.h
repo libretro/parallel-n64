@@ -9,4 +9,6 @@ void dump_tex(int id);
 
 void bufferswap_vpdebug(void);
 
+extern int dumping;
+
 #endif

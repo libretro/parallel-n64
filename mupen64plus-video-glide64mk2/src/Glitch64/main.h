@@ -34,10 +34,7 @@ void WriteLog(m64p_msg_level level, const char *msg, ...);
 #endif
 
 #ifdef VPDEBUG
-void dump_tex(int id);
-void dump_start();
-void dump_stop();
-extern int dumping;
+#include "glitchdebug.h"
 #endif
 
 #define zscale 1.0f
