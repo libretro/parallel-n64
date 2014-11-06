@@ -1057,6 +1057,12 @@ float ScaleZ(float z)
 
 static void DepthBuffer(VERTEX * vtx, int n)
 {
+#ifdef __LIBRETRO__
+   extern uint32_t gfx_plugin_accuracy;
+   if ( gfx_plugin_accuracy < 3)
+      return;
+#endif
+   
   if (fb_depth_render_enabled && !(settings.hacks&hack_RE2) && dzdx && (rdp.flags & ZBUF_UPDATE))
   {
     vertexi v[12];
