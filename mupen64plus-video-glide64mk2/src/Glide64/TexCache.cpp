@@ -164,7 +164,7 @@ uint32_t textureCRC(uint8_t *addr, int width, int height, int line)
       pixelpos += 2;
     }
     crc = ((unsigned int)height * (uint64_t)crc >> 32) + height * crc;
-    pixelpos = (uint32_t *)((char *)pixelpos + line);
+    pixelpos = (uint32_t *)((wxInt8 *)pixelpos + line);
   }
 
   return crc;
