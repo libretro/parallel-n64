@@ -743,19 +743,6 @@ int CheckTextureBufferFormat(GrChipID_t tmu, FxU32 startAddress, GrTexInfo *info
 }
 
 
-FX_ENTRY void FX_CALL
-grTextureAuxBufferExt( GrChipID_t tmu,
-                      FxU32      startAddress,
-                      GrLOD_t    thisLOD,
-                      GrLOD_t    largeLOD,
-                      GrAspectRatio_t aspectRatio,
-                      GrTextureFormat_t format,
-                      FxU32      odd_even_mask )
-{
-  LOG("grTextureAuxBufferExt(%d, %d, %d, %d %d, %d, %d)\r\n", tmu, startAddress, thisLOD, largeLOD, aspectRatio, format, odd_even_mask);
-  //display_warning("grTextureAuxBufferExt");
-}
-
 FX_ENTRY void FX_CALL grAuxBufferExt( GrBuffer_t buffer );
 
 FX_ENTRY GrProc FX_CALL

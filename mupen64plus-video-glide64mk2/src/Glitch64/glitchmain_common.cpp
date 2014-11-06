@@ -326,6 +326,19 @@ grLfbUnlock( GrLock_t type, GrBuffer_t buffer )
   return FXTRUE;
 }
 
+FX_ENTRY void FX_CALL
+grTextureAuxBufferExt( GrChipID_t tmu,
+                      FxU32      startAddress,
+                      GrLOD_t    thisLOD,
+                      GrLOD_t    largeLOD,
+                      GrAspectRatio_t aspectRatio,
+                      GrTextureFormat_t format,
+                      FxU32      odd_even_mask )
+{
+  LOG("grTextureAuxBufferExt(%d, %d, %d, %d %d, %d, %d)\r\n", tmu, startAddress, thisLOD, largeLOD, aspectRatio, format, odd_even_mask);
+  //display_warning("grTextureAuxBufferExt");
+}
+
 /* wrapper-specific glide extensions */
 
 FX_ENTRY char ** FX_CALL

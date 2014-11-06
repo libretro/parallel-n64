@@ -239,6 +239,15 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
                      FxU32 shift, FxBool invert);
 
 FX_ENTRY void FX_CALL
+grTextureAuxBufferExt( GrChipID_t tmu,
+                      FxU32      startAddress,
+                      GrLOD_t    thisLOD,
+                      GrLOD_t    largeLOD,
+                      GrAspectRatio_t aspectRatio,
+                      GrTextureFormat_t format,
+                      FxU32      odd_even_mask );
+
+FX_ENTRY void FX_CALL
 grConstantColorValueExt(GrChipID_t    tmu,
                         GrColor_t     value);
 
