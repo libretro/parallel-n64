@@ -1759,151 +1759,140 @@ static void GetGammaTable()
 }
 
 }
-wxUint32 curframe = 0;
-void newSwapBuffers()
+
+#ifndef __LIBRETRO__
+static void swapbuffer_osd(void)
 {
-  if (!rdp.updatescreen)
-    return;
-
-  rdp.updatescreen = 0;
-
-  LRDP("swapped\n");
-
-  // Allow access to the whole screen
-  if (fullscreen)
-  {
-    rdp.update |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
-    grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
-    grDepthBufferFunction (GR_CMP_ALWAYS);
-    grDepthMask (FXFALSE);
-    grCullMode (GR_CULL_DISABLE);
-
-    if ((settings.show_fps & 0xF) || settings.clock)
+   if ((settings.show_fps & 0xF) || settings.clock)
       set_message_combiner ();
 #ifdef FPS
-    float y = (float)settings.res_y;
-    if (settings.show_fps & 0x0F)
-    {
+   float y = (float)settings.res_y;
+   if (settings.show_fps & 0x0F)
+   {
       if (settings.show_fps & 4)
       {
-        if (region)   // PAL
-          output (0, y, 0, "%d%% ", (int)pal_percent);
-        else
-          output (0, y, 0, "%d%% ", (int)ntsc_percent);
-        y -= 16;
+         if (region)   // PAL
+            output (0, y, 0, "%d%% ", (int)pal_percent);
+         else
+            output (0, y, 0, "%d%% ", (int)ntsc_percent);
+         y -= 16;
       }
       if (settings.show_fps & 2)
       {
-        output (0, y, 0, "VI/s: %.02f ", vi);
-        y -= 16;
+         output (0, y, 0, "VI/s: %.02f ", vi);
+         y -= 16;
       }
       if (settings.show_fps & 1)
-        output (0, y, 0, "FPS: %.02f ", fps);
-    }
+         output (0, y, 0, "FPS: %.02f ", fps);
+   }
 #endif
 
-    if (settings.clock)
-    {
+   if (settings.clock)
+   {
       if (settings.clock_24_hr)
       {
-          time_t ltime;
-          time (&ltime);
-          tm *cur_time = localtime (&ltime);
+         time_t ltime;
+         time (&ltime);
+         tm *cur_time = localtime (&ltime);
 
-          sprintf (out_buf, "%.2d:%.2d:%.2d", cur_time->tm_hour, cur_time->tm_min, cur_time->tm_sec);
+         sprintf (out_buf, "%.2d:%.2d:%.2d", cur_time->tm_hour, cur_time->tm_min, cur_time->tm_sec);
       }
       else
       {
-          char ampm[] = "AM";
-          time_t ltime;
+         char ampm[] = "AM";
+         time_t ltime;
 
-          time (&ltime);
-          tm *cur_time = localtime (&ltime);
+         time (&ltime);
+         tm *cur_time = localtime (&ltime);
 
-          if (cur_time->tm_hour >= 12)
-          {
+         if (cur_time->tm_hour >= 12)
+         {
             strcpy (ampm, "PM");
             if (cur_time->tm_hour != 12)
-              cur_time->tm_hour -= 12;
-          }
-          if (cur_time->tm_hour == 0)
+               cur_time->tm_hour -= 12;
+         }
+         if (cur_time->tm_hour == 0)
             cur_time->tm_hour = 12;
 
-          if (cur_time->tm_hour >= 10)
+         if (cur_time->tm_hour >= 10)
             sprintf (out_buf, "%.5s %s", asctime(cur_time) + 11, ampm);
-          else
+         else
             sprintf (out_buf, " %.4s %s", asctime(cur_time) + 12, ampm);
-        }
-        output ((float)(settings.res_x - 68), y, 0, out_buf, 0);
       }
-    //hotkeys
-    if (CheckKeyPressed(G64_VK_BACK, 0x0001))
-    {
+      output ((float)(settings.res_x - 68), y, 0, out_buf, 0);
+   }
+   //hotkeys
+   if (CheckKeyPressed(G64_VK_BACK, 0x0001))
+   {
       hotkey_info.hk_filtering = 100;
       if (settings.filtering < 2)
-        settings.filtering++;
+         settings.filtering++;
       else
-        settings.filtering = 0;
-    }
-    if ((abs((int)(frame_count - curframe)) > 3 ) && CheckKeyPressed(G64_VK_ALT, 0x8000))  //alt +
-    {
+         settings.filtering = 0;
+   }
+   if ((abs((int)(frame_count - curframe)) > 3 ) && CheckKeyPressed(G64_VK_ALT, 0x8000))  //alt +
+   {
       if (CheckKeyPressed(G64_VK_B, 0x8000))  //b
       {
-        hotkey_info.hk_motionblur = 100;
-        hotkey_info.hk_ref = 0;
-        curframe = frame_count;
-        settings.frame_buffer ^= fb_motionblur;
+         hotkey_info.hk_motionblur = 100;
+         hotkey_info.hk_ref = 0;
+         curframe = frame_count;
+         settings.frame_buffer ^= fb_motionblur;
       }
       else if (CheckKeyPressed(G64_VK_V, 0x8000))  //v
       {
-        hotkey_info.hk_ref = 100;
-        hotkey_info.hk_motionblur = 0;
-        curframe = frame_count;
-        settings.frame_buffer ^= fb_ref;
+         hotkey_info.hk_ref = 100;
+         hotkey_info.hk_motionblur = 0;
+         curframe = frame_count;
+         settings.frame_buffer ^= fb_ref;
       }
-    }
-    if (settings.buff_clear && (hotkey_info.hk_ref || hotkey_info.hk_motionblur || hotkey_info.hk_filtering))
-    {
+   }
+   if (settings.buff_clear && (hotkey_info.hk_ref || hotkey_info.hk_motionblur || hotkey_info.hk_filtering))
+   {
       set_message_combiner ();
       char buf[256];
       buf[0] = 0;
       char * message = 0;
       if (hotkey_info.hk_ref)
       {
-        if (settings.frame_buffer & fb_ref)
-          message = strcat(buf, "FB READ ALWAYS: ON");
-        else
-          message = strcat(buf, "FB READ ALWAYS: OFF");
-        hotkey_info.hk_ref--;
+         if (settings.frame_buffer & fb_ref)
+            message = strcat(buf, "FB READ ALWAYS: ON");
+         else
+            message = strcat(buf, "FB READ ALWAYS: OFF");
+         hotkey_info.hk_ref--;
       }
       if (hotkey_info.hk_motionblur)
       {
-        if (settings.frame_buffer & fb_motionblur)
-          message = strcat(buf, "  MOTION BLUR: ON");
-        else
-          message = strcat(buf, "  MOTION BLUR: OFF");
-        hotkey_info.hk_motionblur--;
+         if (settings.frame_buffer & fb_motionblur)
+            message = strcat(buf, "  MOTION BLUR: ON");
+         else
+            message = strcat(buf, "  MOTION BLUR: OFF");
+         hotkey_info.hk_motionblur--;
       }
       if (hotkey_info.hk_filtering)
       {
-        switch (settings.filtering)
-        {
-        case 0:
-          message = strcat(buf, "  FILTERING MODE: AUTOMATIC");
-          break;
-        case 1:
-          message = strcat(buf, "  FILTERING MODE: FORCE BILINEAR");
-          break;
-        case 2:
-          message = strcat(buf, "  FILTERING MODE: FORCE POINT-SAMPLED");
-          break;
-        }
-        hotkey_info.hk_filtering--;
+         switch (settings.filtering)
+         {
+            case 0:
+               message = strcat(buf, "  FILTERING MODE: AUTOMATIC");
+               break;
+            case 1:
+               message = strcat(buf, "  FILTERING MODE: FORCE BILINEAR");
+               break;
+            case 2:
+               message = strcat(buf, "  FILTERING MODE: FORCE POINT-SAMPLED");
+               break;
+         }
+         hotkey_info.hk_filtering--;
       }
       output (120.0f, (float)settings.res_y, 0, message, 0);
-    }
-  }
+   }
+}
 
+static void swapbuffer_debug(void)
+{
+   if (fullscreen)
+      swapbuffer_osd();
   // Capture the screen if debug capture is set
   if (_debugger.capture)
   {
@@ -1958,6 +1947,68 @@ void newSwapBuffers()
     debug_cacheviewer ();
     debug_mouse ();
   }
+}
+
+static void swapbuffer_toggledebugger(void)
+{
+  // Open/close debugger?
+  if (CheckKeyPressed(G64_VK_SCROLL, 0x0001))
+  {
+    if (!debugging)
+    {
+      //if (settings.scr_res_x == 1024 && settings.scr_res_y == 768)
+      {
+        debugging = 1;
+
+        // Recalculate screen size, don't resize screen
+        settings.res_x = (wxUint32)(settings.scr_res_x * 0.625f);
+        settings.res_y = (wxUint32)(settings.scr_res_y * 0.625f);
+
+        ChangeSize ();
+      }
+    } 
+    else
+    {
+      debugging = 0;
+
+      settings.res_x = settings.scr_res_x;
+      settings.res_y = settings.scr_res_y;
+
+      ChangeSize ();
+    }
+  }
+
+  // Debug capture?
+  if (/*fullscreen && */debugging && CheckKeyPressed(G64_VK_INSERT, 0x0001))
+  {
+    _debugger.capture = 1;
+  }
+}
+#endif
+
+wxUint32 curframe = 0;
+void newSwapBuffers()
+{
+  if (!rdp.updatescreen)
+    return;
+
+  rdp.updatescreen = 0;
+
+  LRDP("swapped\n");
+
+  // Allow access to the whole screen
+  if (fullscreen)
+  {
+    rdp.update |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
+    grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
+    grDepthBufferFunction (GR_CMP_ALWAYS);
+    grDepthMask (FXFALSE);
+    grCullMode (GR_CULL_DISABLE);
+  }
+
+#ifndef __LIBRETRO__
+  swapbuffer_debug();
+#endif
 
   if (settings.frame_buffer & fb_read_back_to_screen)
     DrawWholeFrameBufferToScreen();
@@ -1991,8 +2042,10 @@ void newSwapBuffers()
     }
   }
 
+#ifndef __LIBRETRO__
   if (_debugger.capture)
     debug_capture ();
+#endif
 
   if (fullscreen)
   {
@@ -2020,38 +2073,9 @@ void newSwapBuffers()
 
   frame_count ++;
 
-  // Open/close debugger?
-  if (CheckKeyPressed(G64_VK_SCROLL, 0x0001))
-  {
-    if (!debugging)
-    {
-      //if (settings.scr_res_x == 1024 && settings.scr_res_y == 768)
-      {
-        debugging = 1;
-
-        // Recalculate screen size, don't resize screen
-        settings.res_x = (wxUint32)(settings.scr_res_x * 0.625f);
-        settings.res_y = (wxUint32)(settings.scr_res_y * 0.625f);
-
-        ChangeSize ();
-      }
-    } 
-    else
-    {
-      debugging = 0;
-
-      settings.res_x = settings.scr_res_x;
-      settings.res_y = settings.scr_res_y;
-
-      ChangeSize ();
-    }
-  }
-
-  // Debug capture?
-  if (/*fullscreen && */debugging && CheckKeyPressed(G64_VK_INSERT, 0x0001))
-  {
-    _debugger.capture = 1;
-  }
+#ifndef __LIBRETRO__
+  swapbuffer_toggledebugger();
+#endif
 }
 
 extern "C"
