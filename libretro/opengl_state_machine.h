@@ -37,6 +37,7 @@ void sglEnable(GLenum cap);
 void sglDisable(GLenum cap);
 GLboolean sglIsEnabled(GLenum cap);
 
+void sglDrawArrays(GLenum mode, GLint first, GLsizei count);
 void sglEnableVertexAttribArray(GLuint index);
 void sglDisableVertexAttribArray(GLuint index);
 void sglVertexAttribPointer(GLuint index, GLint size, GLenum type, GLboolean normalize,
@@ -175,6 +176,7 @@ void sglTexCoord2f(float S, float t);
 #define glCompressedTexImage2DARB sglCompressedTexImage2D
 #define glCompressedTexImage2D sglCompressedTexImage2D
 #define glTexCoord2f sglTexCoord2f
+#define glDrawArrays sglDrawArrays
 #endif
 
 void sglEnter(void);

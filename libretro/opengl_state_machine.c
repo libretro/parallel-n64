@@ -462,6 +462,11 @@ void sglTexCoord2f(GLfloat s, GLfloat t)
 #endif
 }
 
+void sglDrawArrays(GLenum mode, GLint first, GLsizei count)
+{
+   glDrawArrays(mode, first, count);
+}
+
 #if 0
 struct tex_map
 {
