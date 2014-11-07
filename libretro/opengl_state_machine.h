@@ -107,6 +107,8 @@ void sglGenFramebuffers(GLsizei n, GLuint *ids);
 void sglFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
 void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers);
 
+void sglBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage);
+
 void sglTexCoord2f(float S, float t);
 
 #ifndef NO_TRANSLATE
