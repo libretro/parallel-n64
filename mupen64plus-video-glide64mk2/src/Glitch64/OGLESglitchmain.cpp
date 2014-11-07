@@ -65,43 +65,6 @@ extern void (*renderCallback)(int);
 wrapper_config config = {0, 0, 0, 0};
 int screen_width, screen_height;
 
-/*
-static inline void opt_glCopyTexImage2D( GLenum target,
-                                        GLint level,
-                                        GLenum internalFormat,
-                                        GLint x,
-                                        GLint y,
-                                        GLsizei width,
-                                        GLsizei height,
-                                        GLint border )
-
-{
-  int w, h, fmt;
-  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
-  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &fmt);
-  //printf("copyteximage %dx%d fmt %x oldfmt %x\n", width, height, internalFormat, fmt);
-  if (w == (int) width && h == (int) height && fmt == (int) internalFormat) {
-    if (x+width >= screen_width) {
-      width = screen_width - x;
-      //printf("resizing w --> %d\n", width);
-    }
-    if (y+height >= screen_height+viewport_offset) {
-      height = screen_height+viewport_offset - y;
-      //printf("resizing h --> %d\n", height);
-    }
-    glCopyTexSubImage2D(target, level, 0, 0, x, y, width, height);
-  } else {
-    //printf("copyteximage %dx%d fmt %x old %dx%d oldfmt %x\n", width, height, internalFormat, w, h, fmt);
-    //       glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, internalFormat, GL_UNSIGNED_BYTE, 0);
-    //       glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &fmt);
-    //       printf("--> %dx%d newfmt %x\n", width, height, fmt);
-    glCopyTexImage2D(target, level, internalFormat, x, y, width, height, border);
-  }
-}
-#define glCopyTexImage2D opt_glCopyTexImage2D
-*/
-
 typedef struct
 {
   unsigned int address;
