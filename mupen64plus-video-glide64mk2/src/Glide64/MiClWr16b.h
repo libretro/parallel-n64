@@ -198,17 +198,11 @@ void Mirror16bT (unsigned char * tex, wxUint32 mask, wxUint32 max_height, wxUint
 
   for (wxUint32 y=mask_height; y<max_height; y++)
   {
-    if (y & mask_height)
-    {
-      // mirrored
-      memcpy ((void*)dst, (void*)(tex + (mask_mask - (y & mask_mask)) * line_full), line_full);
-    }
-    else
-    {
-      // not mirrored
-      memcpy ((void*)dst, (void*)(tex + (y & mask_mask) * line_full), line_full);
-    }
+     void *src = (y & mask_height) ? 
+        (void*)(tex + (mask_mask - (y & mask_mask)) * line_full) : /* mirrored */
+        (void*)(tex + (y & mask_mask) * line_full);                /* not mirrored */
 
+     memcpy ((void*)dst, src, line_full);
     dst += line_full;
   }
 }
