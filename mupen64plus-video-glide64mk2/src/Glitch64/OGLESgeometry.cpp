@@ -31,26 +31,20 @@
 #define Z_MAX (65536.0f)
 #define VERTEX_SIZE sizeof(VERTEX) //Size of vertex struct
 
-#ifdef ANDROID_EDITION
-#include "ae_imports.h"
-static float polygonOffsetFactor;
-static float polygonOffsetUnits;
-#endif
-
-static int xy_off;
-static int xy_en;
-static int z_en;
-static int z_off;
-static int q_off;
-static int q_en;
-static int pargb_off;
-static int pargb_en;
-static int st0_off;
-static int st0_en;
-static int st1_off;
-static int st1_en;
-static int fog_ext_off;
-static int fog_ext_en;
+int xy_off;
+int xy_en;
+int z_en;
+int z_off;
+int q_off;
+int q_en;
+int pargb_off;
+int pargb_en;
+int st0_off;
+int st0_en;
+int st1_off;
+int st1_en;
+int fog_ext_off;
+int fog_ext_en;
 
 int w_buffer_mode;
 int inverted_culling;
@@ -141,246 +135,7 @@ void init_geometry()
   vbo_init();
 }
 
-FX_ENTRY void FX_CALL
-grCoordinateSpace( GrCoordinateSpaceMode_t mode )
-{
-  LOG("grCoordinateSpace(%d)\r\n", mode);
-  switch(mode)
-  {
-  case GR_WINDOW_COORDS:
-    break;
-  default:
-    display_warning("unknwown coordinate space : %x", mode);
-  }
-}
-
-FX_ENTRY void FX_CALL
-grVertexLayout(FxU32 param, FxI32 offset, FxU32 mode)
-{
-  LOG("grVertexLayout(%d,%d,%d)\r\n", param, offset, mode);
-  switch(param)
-  {
-  case GR_PARAM_XY:
-    xy_en = mode;
-    xy_off = offset;
-    break;
-  case GR_PARAM_Z:
-    z_en = mode;
-    z_off = offset;
-    break;
-  case GR_PARAM_Q:
-    q_en = mode;
-    q_off = offset;
-    break;
-  case GR_PARAM_FOG_EXT:
-    fog_ext_en = mode;
-    fog_ext_off = offset;
-    break;
-  case GR_PARAM_PARGB:
-    pargb_en = mode;
-    pargb_off = offset;
-    break;
-  case GR_PARAM_ST0:
-    st0_en = mode;
-    st0_off = offset;
-    break;
-  case GR_PARAM_ST1:
-    st1_en = mode;
-    st1_off = offset;
-    break;
-  default:
-    display_warning("unknown grVertexLayout parameter : %x", param);
-  }
-}
-
-FX_ENTRY void FX_CALL
-grCullMode( GrCullMode_t mode )
-{
-  LOG("grCullMode(%d)\r\n", mode);
-  static int oldmode = -1, oldinv = -1;
-  culling_mode = mode;
-  if (inverted_culling == oldinv && oldmode == mode)
-    return;
-  oldmode = mode;
-  oldinv = inverted_culling;
-  switch(mode)
-  {
-  case GR_CULL_DISABLE:
-    glDisable(GL_CULL_FACE);
-    break;
-  case GR_CULL_NEGATIVE:
-    if (!inverted_culling)
-      glCullFace(GL_FRONT);
-    else
-      glCullFace(GL_BACK);
-    glEnable(GL_CULL_FACE);
-    break;
-  case GR_CULL_POSITIVE:
-    if (!inverted_culling)
-      glCullFace(GL_BACK);
-    else
-      glCullFace(GL_FRONT);
-    glEnable(GL_CULL_FACE);
-    break;
-  default:
-    display_warning("unknown cull mode : %x", mode);
-  }
-}
-
-// Depth buffer
-
-FX_ENTRY void FX_CALL
-grDepthBufferMode( GrDepthBufferMode_t mode )
-{
-  LOG("grDepthBufferMode(%d)\r\n", mode);
-  switch(mode)
-  {
-  case GR_DEPTHBUFFER_DISABLE:
-    glDisable(GL_DEPTH_TEST);
-    w_buffer_mode = 0;
-    return;
-  case GR_DEPTHBUFFER_WBUFFER:
-  case GR_DEPTHBUFFER_WBUFFER_COMPARE_TO_BIAS:
-    glEnable(GL_DEPTH_TEST);
-    w_buffer_mode = 1;
-    break;
-  case GR_DEPTHBUFFER_ZBUFFER:
-  case GR_DEPTHBUFFER_ZBUFFER_COMPARE_TO_BIAS:
-    glEnable(GL_DEPTH_TEST);
-    w_buffer_mode = 0;
-    break;
-  default:
-    display_warning("unknown depth buffer mode : %x", mode);
-  }
-}
-
-FX_ENTRY void FX_CALL
-grDepthBufferFunction( GrCmpFnc_t function )
-{
-  LOG("grDepthBufferFunction(%d)\r\n", function);
-  switch(function)
-  {
-  case GR_CMP_GEQUAL:
-    if (w_buffer_mode)
-      glDepthFunc(GL_LEQUAL);
-    else
-      glDepthFunc(GL_GEQUAL);
-    break;
-  case GR_CMP_LEQUAL:
-    if (w_buffer_mode)
-      glDepthFunc(GL_GEQUAL);
-    else
-      glDepthFunc(GL_LEQUAL);
-    break;
-  case GR_CMP_LESS:
-    if (w_buffer_mode)
-      glDepthFunc(GL_GREATER);
-    else
-      glDepthFunc(GL_LESS);
-    break;
-  case GR_CMP_ALWAYS:
-    glDepthFunc(GL_ALWAYS);
-    break;
-  case GR_CMP_EQUAL:
-    glDepthFunc(GL_EQUAL);
-    break;
-  case GR_CMP_GREATER:
-    if (w_buffer_mode)
-      glDepthFunc(GL_LESS);
-    else
-      glDepthFunc(GL_GREATER);
-    break;
-  case GR_CMP_NEVER:
-    glDepthFunc(GL_NEVER);
-    break;
-  case GR_CMP_NOTEQUAL:
-    glDepthFunc(GL_NOTEQUAL);
-    break;
-
-  default:
-    display_warning("unknown depth buffer function : %x", function);
-  }
-}
-
-FX_ENTRY void FX_CALL
-grDepthMask( FxBool mask )
-{
-  LOG("grDepthMask(%d)\r\n", mask);
-  glDepthMask(mask);
-}
 float biasFactor = 0;
-#if 0
-void FindBestDepthBias()
-{
-#ifdef ANDROID_EDITION
-  int hardwareType = Android_JNI_GetHardwareType();
-  Android_JNI_GetPolygonOffset(hardwareType, 1, &polygonOffsetFactor, &polygonOffsetUnits);
-#else
-  float f, bestz = 0.25f;
-  int x;
-  if (biasFactor) return;
-  biasFactor = 64.0f; // default value
-  glPushAttrib(GL_ALL_ATTRIB_BITS);
-  glEnable(GL_DEPTH_TEST);
-  glDepthFunc(GL_ALWAYS);
-  glEnable(GL_POLYGON_OFFSET_FILL);
-  glDrawBuffer(GL_BACK);
-  glReadBuffer(GL_BACK);
-  glDisable(GL_BLEND);
-  glDisable(GL_ALPHA_TEST);
-  glColor4ub(255,255,255,255);
-  glDepthMask(GL_TRUE);
-  for (x=0, f=1.0f; f<=65536.0f; x+=4, f*=2.0f) {
-    float z;
-    glPolygonOffset(0, f);
-    glBegin(GL_TRIANGLE_STRIP);
-    glVertex3f(float(x+4 - widtho)/(width/2), float(0 - heighto)/(height/2), 0.5);
-    glVertex3f(float(x - widtho)/(width/2), float(0 - heighto)/(height/2), 0.5);
-    glVertex3f(float(x+4 - widtho)/(width/2), float(4 - heighto)/(height/2), 0.5);
-    glVertex3f(float(x - widtho)/(width/2), float(4 - heighto)/(height/2), 0.5);
-    glEnd();
-    glReadPixels(x+2, 2+viewport_offset, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &z);
-    z -= 0.75f + 8e-6f;
-    if (z<0.0f) z = -z;
-    if (z > 0.01f) continue;
-    if (z < bestz) {
-      bestz = z;
-      biasFactor = f;
-    }
-    //printf("f %g z %g\n", f, z);
-  }
-  //printf(" --> bias factor %g\n", biasFactor);
-  glPopAttrib();
-#endif
-}
-#endif
-
-FX_ENTRY void FX_CALL
-grDepthBiasLevel( FxI32 level )
-{
-  LOG("grDepthBiasLevel(%d)\r\n", level);
-  if (level)
-  {
-    #ifdef ANDROID_EDITION
-    glPolygonOffset(polygonOffsetFactor, polygonOffsetUnits);
-    #elif defined(__LIBRETRO__)
-    extern float polygonOffsetFactor;
-    extern float polygonOffsetUnits;
-    glPolygonOffset(polygonOffsetFactor, (float)level * settings.depth_bias * 0.01 );
-    #else
-    if(w_buffer_mode)
-      glPolygonOffset(1.0f, -(float)level*zscale/255.0f);
-    else
-      glPolygonOffset(0, (float)level*biasFactor);
-    #endif
-    glEnable(GL_POLYGON_OFFSET_FILL);
-  }
-  else
-  {
-    glPolygonOffset(0,0);
-    glDisable(GL_POLYGON_OFFSET_FILL);
-  }
-}
 
 // draw
 

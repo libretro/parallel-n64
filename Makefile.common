@@ -247,6 +247,7 @@ SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLEScombiner.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLESglitchmain.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLEStextures.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/glitchlog.cpp \
+					$(VIDEODIR_GLIDE)/Glitch64/glitchgeometry.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/glitchtextureman_hash.cpp
 					#$(VIDEODIR_GLIDE)/Glitch64/glitchdebug.cpp
 #else
