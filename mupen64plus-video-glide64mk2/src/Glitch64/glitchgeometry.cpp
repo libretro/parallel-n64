@@ -86,7 +86,8 @@ grCullMode( GrCullMode_t mode )
 {
   LOG("grCullMode(%d)\r\n", mode);
   static int oldmode = -1, oldinv = -1;
-  culling_mode = mode;
+  int enable_culling = 0;
+  GLenum culling_mode = GL_BACK;
   if (inverted_culling == oldinv && oldmode == mode)
     return;
   oldmode = mode;
@@ -98,20 +99,22 @@ grCullMode( GrCullMode_t mode )
     break;
   case GR_CULL_NEGATIVE:
     if (!inverted_culling)
-      glCullFace(GL_FRONT);
-    else
-      glCullFace(GL_BACK);
-    glEnable(GL_CULL_FACE);
+       culling_mode = GL_FRONT;
+    enable_culling = 1;
     break;
   case GR_CULL_POSITIVE:
-    if (!inverted_culling)
-      glCullFace(GL_BACK);
-    else
-      glCullFace(GL_FRONT);
-    glEnable(GL_CULL_FACE);
+    if (inverted_culling)
+       culling_mode = GL_FRONT;
+    enable_culling = 1;
     break;
   default:
     display_warning("unknown cull mode : %x", mode);
+  }
+
+  if (enable_culling)
+  {
+     glCullFace(culling_mode);
+     glEnable(GL_CULL_FACE);
   }
 }
 
