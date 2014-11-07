@@ -148,49 +148,59 @@ grDepthBufferMode( GrDepthBufferMode_t mode )
 FX_ENTRY void FX_CALL
 grDepthBufferFunction( GrCmpFnc_t function )
 {
+   int do_depth_func = 0;
+   GLenum depth_func = GL_LESS;
+
   LOG("grDepthBufferFunction(%d)\r\n", function);
   switch(function)
   {
   case GR_CMP_GEQUAL:
     if (w_buffer_mode)
-      glDepthFunc(GL_LEQUAL);
+      depth_func = GL_LEQUAL;
     else
-      glDepthFunc(GL_GEQUAL);
+      depth_func = GL_GEQUAL;
+    do_depth_func = 1;
     break;
   case GR_CMP_LEQUAL:
     if (w_buffer_mode)
-      glDepthFunc(GL_GEQUAL);
+      depth_func = GL_GEQUAL;
     else
-      glDepthFunc(GL_LEQUAL);
+      depth_func = GL_LEQUAL;
+    do_depth_func = 1;
     break;
   case GR_CMP_LESS:
     if (w_buffer_mode)
-      glDepthFunc(GL_GREATER);
-    else
-      glDepthFunc(GL_LESS);
+      depth_func = GL_GREATER;
+    do_depth_func = 1;
     break;
   case GR_CMP_ALWAYS:
-    glDepthFunc(GL_ALWAYS);
+    depth_func = GL_ALWAYS;
+    do_depth_func = 1;
     break;
   case GR_CMP_EQUAL:
-    glDepthFunc(GL_EQUAL);
+    depth_func = GL_EQUAL;
+    do_depth_func = 1;
     break;
   case GR_CMP_GREATER:
-    if (w_buffer_mode)
-      glDepthFunc(GL_LESS);
-    else
-      glDepthFunc(GL_GREATER);
+    if (!w_buffer_mode)
+      depth_func = GL_GREATER;
+    do_depth_func = 1;
     break;
   case GR_CMP_NEVER:
-    glDepthFunc(GL_NEVER);
+    depth_func = GL_NEVER;
+    do_depth_func = 1;
     break;
   case GR_CMP_NOTEQUAL:
-    glDepthFunc(GL_NOTEQUAL);
+    depth_func = GL_NOTEQUAL;
+    do_depth_func = 1;
     break;
 
   default:
     display_warning("unknown depth buffer function : %x", function);
   }
+
+  if (do_depth_func)
+     glDepthFunc(depth_func);
 }
 
 FX_ENTRY void FX_CALL
