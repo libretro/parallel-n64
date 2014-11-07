@@ -177,6 +177,7 @@ void sglTexCoord2f(float S, float t);
 #define glCompressedTexImage2D sglCompressedTexImage2D
 #define glTexCoord2f sglTexCoord2f
 #define glDrawArrays sglDrawArrays
+#define glBufferData sglBufferData
 #endif
 
 void sglEnter(void);

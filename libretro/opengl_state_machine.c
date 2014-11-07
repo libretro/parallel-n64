@@ -467,6 +467,11 @@ void sglDrawArrays(GLenum mode, GLint first, GLsizei count)
    glDrawArrays(mode, first, count);
 }
 
+void sglBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage)
+{
+   glBufferData(target, size, data, usage);
+}
+
 #if 0
 struct tex_map
 {
