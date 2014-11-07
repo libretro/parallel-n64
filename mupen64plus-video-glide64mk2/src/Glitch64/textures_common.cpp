@@ -27,8 +27,7 @@ grTexMinAddress( GrChipID_t tmu )
   LOG("grTexMinAddress(%d)\r\n", tmu);
   if (UMAmode)
     return 0;
-  else
-    return tmu*TMU_SIZE;
+  return tmu*TMU_SIZE;
 }
 
 FX_ENTRY FxU32 FX_CALL
@@ -37,8 +36,7 @@ grTexMaxAddress( GrChipID_t tmu )
   LOG("grTexMaxAddress(%d)\r\n", tmu);
   if (UMAmode)
     return TMU_SIZE*2 - 1;
-  else
-    return tmu*TMU_SIZE + TMU_SIZE - 1;
+  return tmu*TMU_SIZE + TMU_SIZE - 1;
 }
 
 FX_ENTRY FxU32 FX_CALL
@@ -178,18 +176,14 @@ grTexDetailControl(
                    )
 {
   LOG("grTexDetailControl(%d,%d,%d,%d)\r\n", tmu, lod_bias, detail_scale, detail_max);
-  if (lod_bias != 31 && detail_scale != 7)
-  {
-    if (!lod_bias && !detail_scale && !detail_max) return;
-    else
-      display_warning("grTexDetailControl : %d, %d, %f", lod_bias, detail_scale, detail_max);
-  }
+  if (lod_bias != 31 && detail_scale != 7 && !lod_bias && !detail_scale && !detail_max)
+     return;
+
   lambda = detail_max;
   if(lambda > 1.0f)
-  {
     lambda = 1.0f - (255.0f - lambda);
-  }
-  if(lambda > 1.0f) display_warning("lambda:%f", lambda);
+  if(lambda > 1.0f)
+     display_warning("lambda:%f", lambda);
 
   set_lambda();
 }
