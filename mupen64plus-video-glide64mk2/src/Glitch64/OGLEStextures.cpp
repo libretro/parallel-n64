@@ -60,12 +60,6 @@ static int min_filter1, mag_filter1, wrap_s1, wrap_t1;
 
 unsigned char *filter(unsigned char *source, int width, int height, int *width2, int *height2);
 
-#ifdef _WIN32
-extern PFNGLDELETERENDERBUFFERSEXTPROC glDeleteRenderbuffersEXT;
-extern PFNGLDELETEFRAMEBUFFERSEXTPROC glDeleteFramebuffersEXT;
-extern PFNGLCOMPRESSEDTEXIMAGE2DARBPROC glCompressedTexImage2DARB;
-#endif
-
 void init_textures()
 {
   tex0_width = tex0_height = tex1_width = tex1_height = 2;
