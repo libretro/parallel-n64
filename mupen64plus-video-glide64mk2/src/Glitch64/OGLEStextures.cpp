@@ -183,7 +183,6 @@ grTexDownloadMipMap( GrChipID_t tmu,
 {
   int width, height, i, j;
   int factor;
-  int glformat = 0;
   int gltexfmt, glpixfmt, glpackfmt;
   LOG("grTexDownloadMipMap(%d,%d,%d)\r\n", tmu, startAddress, evenOdd);
   if (info->largeLodLog2 != info->smallLodLog2) display_warning("grTexDownloadMipMap : loading more than one LOD");
@@ -225,7 +224,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
         }
       }
       factor = 1;
-      glformat = GL_RGBA;
+      gltexfmt = GL_RGBA;
+      glpixfmt = GL_RGBA;
+      glpackfmt = GL_UNSIGNED_BYTE;
       break;
     case GR_TEXFMT_INTENSITY_8: // I8 support - H.Morii
       for (i=0; i<height; i++)
@@ -240,7 +241,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
         }
       }
       factor = 1;
-      glformat = GL_ALPHA;
+      gltexfmt = GL_ALPHA;
+      glpixfmt = GL_RGBA;
+      glpackfmt = GL_UNSIGNED_BYTE;
       break;
     case GR_TEXFMT_ALPHA_INTENSITY_44:
 #if 1
@@ -266,7 +269,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
         }
       }
       factor = 1;
-      glformat = GL_LUMINANCE_ALPHA;
+      gltexfmt = GL_LUMINANCE_ALPHA;
+      glpixfmt = GL_RGBA;
+      glpackfmt = GL_UNSIGNED_BYTE;
 #endif
       break;
     case GR_TEXFMT_RGB_565:
@@ -289,7 +294,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
         }
       }
       factor = 2;
-      glformat = GL_RGB;
+      gltexfmt = GL_RGB;
+      glpixfmt = GL_RGBA;
+      glpackfmt = GL_UNSIGNED_BYTE;
       break;
     case GR_TEXFMT_ARGB_1555:
       for (i=0; i<height; i++)
@@ -312,7 +319,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
         }
       }
       factor = 2;
-      glformat = GL_RGBA;
+      gltexfmt = GL_RGBA;
+      glpixfmt = GL_RGBA;
+      glpackfmt = GL_UNSIGNED_BYTE;
       break;
     case GR_TEXFMT_ALPHA_INTENSITY_88:
       for (i=0; i<height; i++)
@@ -327,7 +336,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
         }
       }
       factor = 2;
-      glformat = GL_LUMINANCE_ALPHA;
+      gltexfmt = GL_LUMINANCE_ALPHA;
+      glpixfmt = GL_RGBA;
+      glpackfmt = GL_UNSIGNED_BYTE;
       break;
     case GR_TEXFMT_ARGB_4444:
 
@@ -351,7 +362,9 @@ grTexDownloadMipMap( GrChipID_t tmu,
         }
       }
       factor = 2;
-      glformat = GL_RGBA;
+      gltexfmt = GL_RGBA;
+      glpixfmt = GL_RGBA;
+      glpackfmt = GL_UNSIGNED_BYTE;
       break;
     case GR_TEXFMT_ARGB_8888:
       for (i=0; i<height; i++)
@@ -369,24 +382,34 @@ grTexDownloadMipMap( GrChipID_t tmu,
         }
       }
       factor = 4;
-      glformat = GL_RGBA;
+      gltexfmt = GL_RGBA;
+      glpixfmt = GL_RGBA;
+      glpackfmt = GL_UNSIGNED_BYTE;
       break;
 /*
     case GR_TEXFMT_ARGB_CMP_DXT1: // FXT1,DXT1,5 support - H.Morii
       factor = 8;                 // HACKALERT: factor holds block bytes
-      glformat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
+      gltexfmt = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
+      glpixfmt = GL_RGBA;
+      glpackfmt = GL_UNSIGNED_BYTE;
       break;
     case GR_TEXFMT_ARGB_CMP_DXT3: // FXT1,DXT1,5 support - H.Morii
       factor = 16;                 // HACKALERT: factor holds block bytes
-      glformat = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
+      gltexfmt = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
+      glpixfmt = GL_RGBA;
+      glpackfmt = GL_UNSIGNED_BYTE;
       break;
     case GR_TEXFMT_ARGB_CMP_DXT5:
       factor = 16;
-      glformat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+      gltexfmt = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+      glpixfmt = GL_RGBA;
+      glpackfmt = GL_UNSIGNED_BYTE;
       break;
     case GR_TEXFMT_ARGB_CMP_FXT1:
       factor = 8;
-      glformat = GL_COMPRESSED_RGBA_FXT1_3DFX;
+      gltexfmt = GL_COMPRESSED_RGBA_FXT1_3DFX;
+      glpixfmt = GL_RGBA;
+      glpackfmt = GL_UNSIGNED_BYTE;
       break;
 */
     default:
@@ -418,7 +441,7 @@ grTexDownloadMipMap( GrChipID_t tmu,
   if (largest_supported_anisotropy > 1.0f)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, largest_supported_anisotropy);
 
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, gltexfmt, width, height, 0, glpixfmt, glpackfmt, texture);
 /*
   switch(info->format)
   {
@@ -426,13 +449,10 @@ grTexDownloadMipMap( GrChipID_t tmu,
   case GR_TEXFMT_ARGB_CMP_DXT3:
   case GR_TEXFMT_ARGB_CMP_DXT5:
   case GR_TEXFMT_ARGB_CMP_FXT1:
-    glCompressedTexImage2DARB(GL_TEXTURE_2D, 0, (glformat ? glformat : gltexfmt), width, height, 0, (width*height*factor)>>4, info->data);
+    glCompressedTexImage2DARB(GL_TEXTURE_2D, 0, gltexfmt, width, height, 0, (width*height*factor)>>4, info->data);
     break;
   default:
-    if (glformat) {
-      glTexImage2D(GL_TEXTURE_2D, 0, glformat, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture);
-    } else
-      glTexImage2D(GL_TEXTURE_2D, 0, gltexfmt, width, height, 0, glpixfmt, glpackfmt, info->data);
+  glTexImage2D(GL_TEXTURE_2D, 0, gltexfmt, width, height, 0, glpixfmt, glpackfmt, info->data);
   }
 */
 
