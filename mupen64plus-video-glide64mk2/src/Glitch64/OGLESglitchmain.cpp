@@ -929,7 +929,9 @@ void updateTexture()
     // on newer cards.
     //glDeleteTextures( 1, &pBufferAddress );
     glBindTexture(GL_TEXTURE_2D, pBufferAddress);
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+
+    /* TODO - verify */
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, GL_RGB,
       0, viewport_offset, width, height, 0);
 
     glBindTexture(GL_TEXTURE_2D, default_texture);
