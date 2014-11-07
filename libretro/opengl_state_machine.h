@@ -168,6 +168,7 @@ void sglTexCoord2f(float S, float t);
 #define glRenderbufferStorage sglRenderbufferStorage
 #define glFramebufferRenderbuffer sglFramebufferRenderbuffer
 #define glCheckFramebufferStatus sglCheckFramebufferStatus
+#define glCheckFramebufferStatusEXT sglCheckFramebufferStatus
 #define glDeleteFramebuffers sglDeleteFramebuffers
 #define glDeleteTextures sglDeleteTextures
 #define glFramebufferTexture2D sglFramebufferTexture2D

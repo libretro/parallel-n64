@@ -203,12 +203,14 @@ grDepthBufferFunction( GrCmpFnc_t function )
      glDepthFunc(depth_func);
 }
 
+#ifndef __LIBRETRO__
 FX_ENTRY void FX_CALL
 grDepthMask( FxBool mask )
 {
   LOG("grDepthMask(%d)\r\n", mask);
   glDepthMask(mask);
 }
+#endif
 
 FX_ENTRY void FX_CALL
 grDepthBiasLevel( FxI32 level )

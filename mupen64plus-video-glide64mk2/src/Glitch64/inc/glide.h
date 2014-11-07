@@ -43,6 +43,10 @@
 #include <glidesys.h>
 #include <sst1vid.h>
 
+#ifdef __LIBRETRO__
+#include <SDL_opengles2.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -702,8 +706,12 @@ grDepthBufferFunction( GrCmpFnc_t function );
 FX_ENTRY void FX_CALL 
 grDepthBufferMode( GrDepthBufferMode_t mode );
 
+#ifdef __LIBRETRO__
+#define grDepthMask(mask) sglDepthMask(mask)
+#else
 FX_ENTRY void FX_CALL 
 grDepthMask( FxBool mask );
+#endif
 
 FX_ENTRY void FX_CALL 
 grDisableAllEffects( void );
