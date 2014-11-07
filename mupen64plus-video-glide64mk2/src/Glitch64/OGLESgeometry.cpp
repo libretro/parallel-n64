@@ -129,18 +129,6 @@ void vbo_disable()
 }
 
 
-inline float ZCALC(const float & z, const float & q) {
-  float res = z_en ? ((z) / Z_MAX) / (q) : 1.0f;
-  return res;
-}
-
-static inline float ytex(int tmu, float y) {
-  if (invtex[tmu])
-    return invtex[tmu] - y;
-  else
-    return y;
-}
-
 void init_geometry()
 {
   xy_en = q_en = pargb_en = st0_en = st1_en = z_en = 0;
