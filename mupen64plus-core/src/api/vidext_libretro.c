@@ -133,3 +133,27 @@ EXPORT m64p_error CALL VidExt_GL_SwapBuffers(void)
    retro_return(true);
    return M64ERR_SUCCESS;
 }
+
+EXPORT m64p_error CALL VidExt_ListFullscreenModes(m64p_2d_size *SizeArray, int *NumSizes)
+{
+#if 0
+   /* TODO/FIXME - implement */
+    i = 0;
+    while (i < *NumSizes && modes[i] != NULL)
+    {
+        SizeArray[i].uiWidth  = modes[i]->w;
+        SizeArray[i].uiHeight = modes[i]->h;
+        i++;
+    }
+
+    *NumSizes = i;
+#endif
+
+    return M64ERR_SUCCESS;
+}
+
+EXPORT m64p_error CALL VidExt_ResizeWindow(int Width, int Height)
+{
+   /* TODO/FIXME - implement? */
+   return M64ERR_SUCCESS;
+}
