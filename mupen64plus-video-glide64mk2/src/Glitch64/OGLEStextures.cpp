@@ -136,6 +136,7 @@ int grTexFormat2GLPackedFmt(int fmt, int * gltexfmt, int * glpixfmt, int * glpac
     *glpixfmt = GL_BGRA;
     *glpackfmt = GL_UNSIGNED_INT_8_8_8_8_REV;
     break;
+#if 0
   case GR_TEXFMT_ARGB_CMP_DXT1:  // FXT1,DXT1,5 support - H.Morii
     // HACKALERT: 3Dfx Glide uses GR_TEXFMT_ARGB_CMP_DXT1 for both opaque DXT1 and DXT1 with 1bit alpha.
     // GlideHQ compiled with GLIDE64_DXTN option enabled, uses opaqe DXT1 only.
@@ -162,6 +163,7 @@ int grTexFormat2GLPackedFmt(int fmt, int * gltexfmt, int * glpixfmt, int * glpac
     *glpixfmt = GL_COMPRESSED_RGBA_FXT1_3DFX;
     *glpackfmt = GL_COMPRESSED_RGBA_FXT1_3DFX; // XXX: what should we do about GL_COMPRESSED_RGB_FXT1_3DFX?
     break;
+#endif
   default:
     display_warning("grTexFormat2GLPackedFmt : unknown texture format: %x", fmt);
   }
