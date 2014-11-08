@@ -183,8 +183,6 @@ void COGLGraphicsContext::Clear(ClearFlag dwFlags, uint32_t color, float depth)
     OPENGL_CHECK_ERRORS;
 }
 
-extern "C" int retro_return(bool just_flipping);
-
 void COGLGraphicsContext::UpdateFrame(bool swapOnly)
 {
     status.gFrameCount++;

@@ -1,8 +1,6 @@
 #ifndef _M64P_LIBRETRO_H
 #define _M64P_LIBRETRO_H
 
-extern "C" int retro_return(bool just_flipping);
-
 #define CoreVideo_Init(...)
 #define CoreVideo_Quit(...)
 #define CoreVideo_ListFullscreenModes(...)

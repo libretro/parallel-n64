@@ -578,7 +578,6 @@ grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); \
 }
 
-int retro_return(bool just_flipping);
 #define grBufferSwap(interval) retro_return(true)
 
 /*

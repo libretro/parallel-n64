@@ -85,8 +85,6 @@ void OGL_UpdateScale(void)
    OGL.scaleY = (float)config.screen.height / (float)VI.height;
 }
 
-int retro_return(bool just_flipping);
-
 bool OGL_Start(void)
 {
    float f;

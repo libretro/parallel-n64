@@ -187,6 +187,8 @@ void sglExit(void);
 
 void *retro_gl_init(void);
 
+int retro_return(int just_flipping);
+
 #ifdef __cplusplus
 }
 #endif

@@ -32,6 +32,11 @@
 #include "vidext.h"
 #include "callbacks.h"
 
+#include <libretro.h>
+#include <opengl_state_machine.h>
+
+extern struct retro_hw_render_callback hw_render;
+
 /* local variables */
 static m64p_video_extension_functions l_ExternalVideoFuncTable = {10, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 static int l_VideoExtensionActive = 0;
@@ -82,3 +87,15 @@ int VidExt_VideoRunning(void)
     return l_VideoOutputActive;
 }
 
+EXPORT void * CALL VidExt_GL_GetProcAddress(const char* Proc)
+{
+   if (hw_render.get_proc_address)
+      return hw_render.get_proc_address;
+   return NULL;
+}
+
+EXPORT m64p_error CALL VidExt_GL_SwapBuffers(void)
+{
+   retro_return(true);
+   return M64ERR_SUCCESS;
+}

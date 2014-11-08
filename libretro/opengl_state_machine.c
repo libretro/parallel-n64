@@ -20,7 +20,7 @@ extern cothread_t main_thread;
 extern bool flip_only;
 extern int stop;
 extern enum gfx_plugin_type gfx_plugin;
-static struct retro_hw_render_callback hw_render;
+struct retro_hw_render_callback hw_render;
 
 //forward declarations
 //
@@ -651,7 +651,7 @@ extern retro_video_refresh_t video_cb;
 extern uint32_t screen_width;
 extern uint32_t screen_height;
 
-int retro_return(bool just_flipping)
+int retro_return(int just_flipping)
 {
 
    flip_only = false;
@@ -673,7 +673,7 @@ int retro_return(bool just_flipping)
    return 0;
 }
 #else
-int retro_return(bool just_flipping)
+int retro_return(int just_flipping)
 {
    if (stop)
       return 0;
