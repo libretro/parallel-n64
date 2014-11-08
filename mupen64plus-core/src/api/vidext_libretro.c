@@ -41,7 +41,6 @@ extern struct retro_hw_render_callback hw_render;
 static m64p_video_extension_functions l_ExternalVideoFuncTable = {10, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 static int l_VideoExtensionActive = 0;
 static int l_VideoOutputActive = 0;
-static int l_Fullscreen = 0;
 
 /* global function for use by frontend.c */
 m64p_error OverrideVideoFunctions(m64p_video_extension_functions *VideoFunctionStruct)
@@ -85,6 +84,25 @@ int VidExt_InFullscreenMode(void)
 int VidExt_VideoRunning(void)
 {
     return l_VideoOutputActive;
+}
+
+EXPORT m64p_error CALL VidExt_Init(void)
+{
+   /* TODO/FIXME - implement. */
+   return M64ERR_SUCCESS;
+}
+
+EXPORT m64p_error CALL VidExt_Quit(void)
+{
+   /* TODO/FIXME - implement. */
+   return M64ERR_SUCCESS;
+}
+
+EXPORT m64p_error CALL VidExt_SetVideoMode(int Width, int Height, int BitsPerPixel,
+      m64p_video_mode ScreenMode, m64p_video_flags Flags)
+{
+   /* TODO/FIXME - implement. */ 
+   return M64ERR_SUCCESS;
 }
 
 EXPORT void * CALL VidExt_GL_GetProcAddress(const char* Proc)
