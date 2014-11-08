@@ -79,7 +79,7 @@ m64p_error OverrideVideoFunctions(m64p_video_extension_functions *VideoFunctionS
 
 int VidExt_InFullscreenMode(void)
 {
-    return l_Fullscreen;
+    return 1;
 }
 
 int VidExt_VideoRunning(void)
