@@ -86,6 +86,22 @@ int VidExt_VideoRunning(void)
     return l_VideoOutputActive;
 }
 
+EXPORT m64p_error CALL VidExt_SetCaption(const char *Title)
+{
+   return M64ERR_SUCCESS;
+}
+
+EXPORT m64p_error CALL VidExt_ToggleFullScreen(void)
+{
+   /* TODO/FIXME - should just do a context reset here. */
+   return M64ERR_SUCCESS;
+}
+
+EXPORT m64p_error CALL VidExt_GL_SetAttribute(m64p_GLattr Attr, int Value)
+{
+   return M64ERR_SUCCESS;
+}
+
 EXPORT m64p_error CALL VidExt_Init(void)
 {
    /* TODO/FIXME - implement. */
