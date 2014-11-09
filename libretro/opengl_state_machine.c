@@ -14,7 +14,9 @@
 #define GFX_ANGRYLION 3
 #endif
 
+#ifndef GLES
 #define HAVE_LEGACY_GL
+#endif
 
 extern cothread_t main_thread;
 extern bool flip_only;
