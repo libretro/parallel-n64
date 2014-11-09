@@ -56,25 +56,31 @@ static int vertex_buffer_count = 0;
 static GLenum vertex_draw_mode;
 static bool vertex_buffer_enabled = false;
 
+static GLuint glitch_vbo;
+
 void vbo_init()
 {
-  
+   glGenBuffers(1, &glitch_vbo);
 }
 
 void vbo_free()
 {
+   glDeleteBuffers(1, &glitch_vbo);
 }
 
 void vbo_bind()
 {
+   glBindBuffer(GL_ARRAY_BUFFER, glitch_vbo);
 }
 
 void vbo_unbind()
 {
+   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void vbo_buffer_data(void *data, size_t data_sizeof)
 {
+   glBufferData(GL_ARRAY_BUFFER, data_sizeof, data, GL_DYNAMIC_DRAW);
 }
 
 void vbo_draw()
