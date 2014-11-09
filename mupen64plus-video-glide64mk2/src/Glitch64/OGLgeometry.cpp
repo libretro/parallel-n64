@@ -67,6 +67,14 @@ static inline float ytex(int tmu, float y) {
     return y;
 }
 
+void vbo_init()
+{
+}
+
+void vbo_free()
+{
+}
+
 void init_geometry()
 {
   xy_en = q_en = pargb_en = st0_en = st1_en = z_en = 0;

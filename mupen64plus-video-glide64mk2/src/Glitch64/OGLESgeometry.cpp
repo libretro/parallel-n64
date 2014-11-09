@@ -61,6 +61,22 @@ void vbo_init()
   
 }
 
+void vbo_free()
+{
+}
+
+void vbo_bind()
+{
+}
+
+void vbo_unbind()
+{
+}
+
+void vbo_buffer_data(void *data, size_t data_sizeof)
+{
+}
+
 void vbo_draw()
 {
   if(vertex_buffer_count)

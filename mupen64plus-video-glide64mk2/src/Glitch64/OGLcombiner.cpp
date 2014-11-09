@@ -2756,3 +2756,24 @@ grConstantColorValueExt(GrChipID_t    tmu,
     glUniform4fARB(ccolor1_location, ccolor1[0], ccolor1[1], ccolor1[2], ccolor1[3]);
   }
 }
+
+void vbo_init()
+{
+  
+}
+
+void vbo_free()
+{
+}
+
+void vbo_bind()
+{
+}
+
+void vbo_unbind()
+{
+}
+
+void vbo_buffer_data(void *data, size_t data_sizeof)
+{
+}

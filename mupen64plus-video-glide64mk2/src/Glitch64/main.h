@@ -164,6 +164,12 @@ grSstWinOpenExt(
 int getFullScreenWidth();
 int getFullScreenHeight();
 
+void vbo_init();
+void vbo_free();
+void vbo_bind();
+void vbo_unbind();
+void vbo_buffer_data(void *data, size_t data_sizeof);
+
 // ZIGGY framebuffer copy extension
 // allow to copy the depth or color buffer from back/front to front/back
 #define GR_FBCOPY_MODE_DEPTH 0

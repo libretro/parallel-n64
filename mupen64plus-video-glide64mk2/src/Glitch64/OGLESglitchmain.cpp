@@ -195,6 +195,8 @@ grSstWinOpen(
 # endif // _DEBUG
   CoreVideo_SetCaption(caption);
 
+  vbo_init();
+
   glViewport(0, viewport_offset, width, height);
   lfb_color_fmt = color_format;
   if (origin_location != GR_ORIGIN_UPPER_LEFT) display_warning("origin must be in upper left corner");
@@ -389,6 +391,8 @@ grSstWinClose( GrContext_t context )
   wgl_deinit(glitch_fullscreen);
   glitch_fullscreen = 0;
 #endif
+
+  vbo_free();
 
   CoreVideo_Quit();
 
@@ -791,6 +795,9 @@ static void render_rectangle(int texture_number,
     0.0f
   };
 
+  vbo_bind();
+  vbo_buffer_data(data, sizeof(data));
+
   vbo_disable();
   glDisableVertexAttribArray(COLOUR_ATTR);
   glDisableVertexAttribArray(TEXCOORD_1_ATTR);
@@ -807,6 +814,7 @@ static void render_rectangle(int texture_number,
   disable_textureSizes();
 
   glDrawArrays(GL_TRIANGLE_STRIP,0,4);
+  vbo_unbind();
   vbo_enable();
 
 
