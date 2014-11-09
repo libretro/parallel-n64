@@ -2144,11 +2144,13 @@ EXPORT void CALL ViWidthChanged (void)
 
 int CheckKeyPressed(int key, int mask)
 {
+#ifndef __LIBRETRO__
 static Glide64Keys g64Keys;
   if (settings.use_hotkeys == 0)
     return 0;
   if (grKeyPressed)
     return grKeyPressed(g64Keys[key]);
+#endif
   return 0;
 }
 
