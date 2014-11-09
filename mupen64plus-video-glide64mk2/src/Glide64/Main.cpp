@@ -414,6 +414,7 @@ static retro_log_level m64p_log_level_to_retro(unsigned level)
 
 void WriteLog(m64p_msg_level level, const char *msg, ...)
 {
+#ifndef __LIBRETRO__
   char buf[1024];
   va_list args;
   va_start(args, msg);
@@ -432,6 +433,7 @@ void WriteLog(m64p_msg_level level, const char *msg, ...)
 #endif
          )
       log_cb(lvl, buf);
+#endif
 #endif
 }
 
