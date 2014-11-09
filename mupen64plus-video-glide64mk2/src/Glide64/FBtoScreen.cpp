@@ -138,10 +138,10 @@ static void DrawRE2Video(FB_TO_SCREEN_INFO & fb_info, float scale)
   float lr_u = (fb_info.width - 1)*scale;
   float lr_v = (fb_info.height - 1)*scale;
   VERTEX v[4] = {
-    { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} },
-    { lr_x, ul_y, 1, 1, lr_u, 0.5f, lr_u, 0.5f, {lr_u, 0.5f, lr_u, 0.5f} },
-    { ul_x, lr_y, 1, 1, 0.5f, lr_v, 0.5f, lr_v, {0.5f, lr_v, 0.5f, lr_v} },
-    { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} }
+    { .x = ul_x, .y = ul_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = 0.5f, .u1 = 0.5f, .v1 = 0.5f, .coord = {0.5f, 0.5f, 0.5f, 0.5f} },
+    { .x = lr_x, .y = ul_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = 0.5f, .u1 = lr_u, .v1 = 0.5f, .coord = {lr_u, 0.5f, lr_u, 0.5f} },
+    { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = lr_v, .u1 = 0.5f, .v1 = lr_v, .coord = {0.5f, lr_v, 0.5f, lr_v} },
+    { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
   };
   grDrawTriangle (&v[0], &v[2], &v[1]);
   grDrawTriangle (&v[2], &v[3], &v[1]);
@@ -291,10 +291,10 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO & fb_info)
       float lr_v = (float)(cur_height-1);
       // Make the vertices
       VERTEX v[4] = {
-        { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} },
-        { lr_x, ul_y, 1, 1, lr_u, 0.5f, lr_u, 0.5f, {lr_u, 0.5f, lr_u, 0.5f} },
-        { ul_x, lr_y, 1, 1, 0.5f, lr_v, 0.5f, lr_v, {0.5f, lr_v, 0.5f, lr_v} },
-        { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} }
+        { .x = ul_x, .y = ul_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = 0.5f, .u1 = 0.5f, .v1 = 0.5f, .coord = {0.5f, 0.5f, 0.5f, 0.5f} },
+        { .x = lr_x, .y = ul_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = 0.5f, .u1 = lr_u, .v1 = 0.5f, .coord = {lr_u, 0.5f, lr_u, 0.5f} },
+        { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = lr_v, .u1 = 0.5f, .v1 = lr_v, .coord = {0.5f, lr_v, 0.5f, lr_v} },
+        { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
       };
       grDrawTriangle (&v[0], &v[2], &v[1]);
       grDrawTriangle (&v[2], &v[3], &v[1]);
@@ -417,10 +417,10 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO & fb_info)
     float lr_v = (height-1)*scale;
     // Make the vertices
     VERTEX v[4] = {
-      { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} },
-      { lr_x, ul_y, 1, 1, lr_u, 0.5f, lr_u, 0.5f, {lr_u, 0.5f, lr_u, 0.5f} },
-      { ul_x, lr_y, 1, 1, 0.5f, lr_v, 0.5f, lr_v, {0.5f, lr_v, 0.5f, lr_v} },
-      { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} }
+      { .x = ul_x, .y = ul_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = 0.5f, .u1 = 0.5f, .v1 = 0.5f, .coord = {0.5f, 0.5f, 0.5f, 0.5f} },
+      { .x = lr_x, .y = ul_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = 0.5f, .u1 = lr_u, .v1 = 0.5f, .coord = {lr_u, 0.5f, lr_u, 0.5f} },
+      { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = lr_v, .u1 = 0.5f, .v1 = lr_v, .coord = {0.5f, lr_v, 0.5f, lr_v} },
+      { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
     };
     grDrawTriangle (&v[0], &v[2], &v[1]);
     grDrawTriangle (&v[2], &v[3], &v[1]);
@@ -489,10 +489,10 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO & fb_info)
       float lr_v = (float)(cur_height-1);
       // Make the vertices
       VERTEX v[4] = {
-        { ul_x, ul_y, 1, 1, 0.5f, 0.5f, 0.5f, 0.5f, {0.5f, 0.5f, 0.5f, 0.5f} },
-        { lr_x, ul_y, 1, 1, lr_u, 0.5f, lr_u, 0.5f, {lr_u, 0.5f, lr_u, 0.5f} },
-        { ul_x, lr_y, 1, 1, 0.5f, lr_v, 0.5f, lr_v, {0.5f, lr_v, 0.5f, lr_v} },
-        { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} }
+        { .x = ul_x, .y = ul_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = 0.5f, .u1 = 0.5f, .v1 = 0.5f, .coord = {0.5f, 0.5f, 0.5f, 0.5f} },
+        { .x = lr_x, .y = ul_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = 0.5f, .u1 = lr_u, .v1 = 0.5f, .coord = {lr_u, 0.5f, lr_u, 0.5f} },
+        { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = 0.5f, .v0 = lr_v, .u1 = 0.5f, .v1 = lr_v, .coord = {0.5f, lr_v, 0.5f, lr_v} },
+        { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
       };
       grDrawTriangle (&v[0], &v[2], &v[1]);
       grDrawTriangle (&v[2], &v[3], &v[1]);
@@ -558,10 +558,10 @@ static void DrawHiresDepthBufferToScreen(FB_TO_SCREEN_INFO & fb_info)
   float lr_v = (float)rdp.scissor.lr_y * scale;
   // Make the vertices
   VERTEX v[4] = {
-    { ul_x, ul_y, 1, 1, ul_u, ul_v, ul_u, ul_v, {ul_u, ul_v, ul_u, ul_v} },
-    { lr_x, ul_y, 1, 1, lr_u, ul_v, lr_u, ul_v, {lr_u, ul_v, lr_u, ul_v} },
-    { ul_x, lr_y, 1, 1, ul_u, lr_v, ul_u, lr_v, {ul_u, lr_v, ul_u, lr_v} },
-    { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} }
+    { .x = ul_x, .y = ul_y, .z = 1, .q = 1, .u0 = ul_u, .v0 = ul_v, .u1 = ul_u, .v1 = ul_v, .coord = {ul_u, ul_v, ul_u, ul_v} },
+    { .x = lr_x, .y = ul_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = ul_v, .u1 = lr_u, .v1 = ul_v, .coord = {lr_u, ul_v, lr_u, ul_v} },
+    { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = ul_u, .v0 = lr_v, .u1 = ul_u, .v1 = lr_v, .coord = {ul_u, lr_v, ul_u, lr_v} },
+    { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
   };
   grDrawTriangle (&v[0], &v[2], &v[1]);
   grDrawTriangle (&v[2], &v[3], &v[1]);
@@ -649,10 +649,10 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO & fb_info)
   float zero = scale*0.5f;
   // Make the vertices
   VERTEX v[4] = {
-    { ul_x, ul_y, 1, 1, zero, zero, zero, zero, {zero, zero, zero, zero} },
-    { lr_x, ul_y, 1, 1, lr_u, zero, lr_u, zero, {lr_u, zero, lr_u, zero} },
-    { ul_x, lr_y, 1, 1, zero, lr_v, zero, lr_v, {zero, lr_v, zero, lr_v} },
-    { lr_x, lr_y, 1, 1, lr_u, lr_v, lr_u, lr_v, {lr_u, lr_v, lr_u, lr_v} }
+    { .x = ul_x, .y = ul_y, .z = 1, .q = 1, .u0 = zero, .v0 = zero, .u1 = zero, .v1 = zero, .coord = {zero, zero, zero, zero} },
+    { .x = lr_x, .y = ul_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = zero, .u1 = lr_u, .v1 = zero, .coord = {lr_u, zero, lr_u, zero} },
+    { .x = ul_x, .y = lr_y, .z = 1, .q = 1, .u0 = zero, .v0 = lr_v, .u1 = zero, .v1 = lr_v, .coord = {zero, lr_v, zero, lr_v} },
+    { .x = lr_x, .y = lr_y, .z = 1, .q = 1, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v, .coord = {lr_u, lr_v, lr_u, lr_v} }
   };
   grDrawTriangle (&v[0], &v[2], &v[1]);
   grDrawTriangle (&v[2], &v[3], &v[1]);

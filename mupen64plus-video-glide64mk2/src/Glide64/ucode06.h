@@ -218,10 +218,10 @@ void DrawHiresDepthImage (const DRAWIMAGE & d)
   float lr_u = (float)d.imageW * 0.5f;// - 0.5f;
   float lr_v = (float)d.imageH * 0.5f;// - 0.5f;
   VERTEX v[4] = {
-    { 0, 0, 1.0f, 1.0f, 0, 0, 0, 0 },
-    { lr_x, 0, 1.0f, 1.0f, lr_u, 0, lr_u, 0 },
-    { 0, lr_y, 1.0f, 1.0f, 0, lr_v, 0, lr_v },
-    { lr_x, lr_y, 1.0f, 1.0f, lr_u, lr_v, lr_u, lr_v }
+    { .x = 0,    .y = 0,    .z = 1.0f, .q = 1.0f, .u0 = 0,    .v0 = 0,    .u1 = 0,    .v1 = 0 },
+    { .x = lr_x, .y = 0,    .z = 1.0f, .q = 1.0f, .u0 = lr_u, .v0 = 0,    .u1 = lr_u, .v1 = 0 },
+    { .x = 0,    .y = lr_y, .z = 1.0f, .q = 1.0f, .u0 = 0,    .v0 = lr_v, .u1 = 0,    .v1 = lr_v },
+    { .x = lr_x, .y = lr_y, .z = 1.0f, .q = 1.0f, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v }
   };
   AddOffset(v, 4);
   for (int i=0; i<4; i++)
@@ -541,10 +541,10 @@ void DrawImage (DRAWIMAGE & d)
       if ((flr_x <= rdp.scissor.lr_x) || (ful_x < rdp.scissor.lr_x))
       {
         VERTEX v[4] = {
-          { ful_x, ful_y, Z, 1.0f, ful_u, ful_v },
-          { flr_x, ful_y, Z, 1.0f, flr_u, ful_v },
-          { ful_x, flr_y, Z, 1.0f, ful_u, flr_v },
-          { flr_x, flr_y, Z, 1.0f, flr_u, flr_v } };
+          { .x = ful_x, .y = ful_y, .z = Z, .q = 1.0f, .u0 = ful_u, .v0 = ful_v },
+          { .x = flr_x, .y = ful_y, .z = Z, .q = 1.0f, .u0 = flr_u, .v0 = ful_v },
+          { .x = ful_x, .y = flr_y, .z = Z, .q = 1.0f, .u0 = ful_u, .v0 = flr_v },
+          { .x = flr_x, .y = flr_y, .z = Z, .q = 1.0f, .u0 = flr_u, .v0 = flr_v } };
           AllowShadeMods (v, 4);
           for (int s = 0; s < 4; s++)
             apply_shade_mods (&(v[s]));
@@ -672,10 +672,10 @@ void DrawHiresImage(DRAWIMAGE & d, int screensize = FALSE)
   }
   // Make the vertices
   VERTEX v[4] = {
-    { ul_x, ul_y, Z, 1.0f, ul_u, ul_v, ul_u, ul_v },
-    { lr_x, ul_y, Z, 1.0f, lr_u, ul_v, lr_u, ul_v },
-    { ul_x, lr_y, Z, 1.0f, ul_u, lr_v, ul_u, lr_v },
-    { lr_x, lr_y, Z, 1.0f, lr_u, lr_v, lr_u, lr_v } };
+    { .x = ul_x, .y = ul_y, .z = Z, .q = 1.0f, .u0 = ul_u, .v0 = ul_v, .u1 = ul_u, .v1 = ul_v },
+    { .x = lr_x, .y = ul_y, .z = Z, .q = 1.0f, .u0 = lr_u, .v0 = ul_v, .u1 = lr_u, .v1 = ul_v },
+    { .x = ul_x, .y = lr_y, .z = Z, .q = 1.0f, .u0 = ul_u, .v0 = lr_v, .u1 = ul_u, .v1 = lr_v },
+    { .x = lr_x, .y = lr_y, .z = Z, .q = 1.0f, .u0 = lr_u, .v0 = lr_v, .u1 = lr_u, .v1 = lr_v } };
     ConvertCoordsConvert (v, 4);
     AllowShadeMods (v, 4);
     AddOffset(v, 4);
@@ -1104,10 +1104,10 @@ static void uc6_obj_rectangle ()
 
   // Make the vertices
   VERTEX v[4] = {
-    { ul_x, ul_y, Z, 1, ul_u, ul_v },
-    { lr_x, ul_y, Z, 1, lr_u, ul_v },
-    { ul_x, lr_y, Z, 1, ul_u, lr_v },
-    { lr_x, lr_y, Z, 1, lr_u, lr_v }
+    { .x = ul_x, .y = ul_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = ul_v },
+    { .x = lr_x, .y = ul_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = ul_v },
+    { .x = ul_x, .y = lr_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = lr_v },
+    { .x = lr_x, .y = lr_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = lr_v }
   };
 
   for (int i=0; i<4; i++)
@@ -1163,10 +1163,10 @@ static void uc6_obj_sprite ()
   //    FRDP("scale_x: %f, scale_y: %f\n", rdp.cur_cache[0]->scale_x, rdp.cur_cache[0]->scale_y);
 
   VERTEX v[4] = {
-    { ul_x, ul_y, Z, 1, ul_u, ul_v },
-    { lr_x, ul_y, Z, 1, lr_u, ul_v },
-    { ul_x, lr_y, Z, 1, ul_u, lr_v },
-    { lr_x, lr_y, Z, 1, lr_u, lr_v }
+    { .x = ul_x, .y = ul_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = ul_v },
+    { .x = lr_x, .y = ul_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = ul_v },
+    { .x = ul_x, .y = lr_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = lr_v },
+    { .x = lr_x, .y = lr_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = lr_v }
   };
 
   for (int i=0; i<4; i++)
@@ -1336,10 +1336,10 @@ static void uc6_obj_rectangle_r ()
 
   // Make the vertices
   VERTEX v[4] = {
-    { ul_x, ul_y, Z, 1, ul_u, ul_v },
-    { lr_x, ul_y, Z, 1, lr_u, ul_v },
-    { ul_x, lr_y, Z, 1, ul_u, lr_v },
-    { lr_x, lr_y, Z, 1, lr_u, lr_v }
+    { .x = ul_x, .y = ul_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = ul_v },
+    { .x = lr_x, .y = ul_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = ul_v },
+    { .x = ul_x, .y = lr_y, .z = Z, .q = 1, .u0 = ul_u, .v0 = lr_v },
+    { .x = lr_x, .y = lr_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = lr_v }
   };
 
   for (int i=0; i<4; i++)
@@ -1650,10 +1650,10 @@ void uc6_sprite2d ()
 
       // Make the vertices
       VERTEX v[4] = {
-        { ul_x, ul_y, Z, 1, 0.5f, 0.5f },
-        { lr_x, ul_y, Z, 1, lr_u, 0.5f },
-        { ul_x, lr_y, Z, 1, 0.5f, lr_v },
-        { lr_x, lr_y, Z, 1, lr_u, lr_v } };
+        { .x = ul_x, .y = ul_y, .z = Z, .q = 1, .u0 = 0.5f, .v0 = 0.5f },
+        { .x = lr_x, .y = ul_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = 0.5f },
+        { .x = ul_x, .y = lr_y, .z = Z, .q = 1, .u0 = 0.5f, .v0 = lr_v },
+        { .x = lr_x, .y = lr_y, .z = Z, .q = 1, .u0 = lr_u, .v0 = lr_v } };
 
         for (int i=0; i<4; i++)
         {
