@@ -1241,10 +1241,10 @@ static void rdp_texrect()
   FRDP ("  draw at: (%f, %f) -> (%f, %f)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 
   VERTEX vstd[4] = {
-    { .x = s_ul_x, .y = s_ul_y, .z = Z, .q = 1.0f, .u0 = texUV[0].ul_u, .v0 = texUV[0].ul_v, .u1 = texUV[1].ul_u, .v1 = texUV[1].ul_v, .coord = {0, 0, 0, 0}, .w = 255 },
-    { .x = s_lr_x, .y = s_ul_y, .z = Z, .q = 1.0f, .u0 = texUV[0].lr_u, .v0 = texUV[0].ul_v, .u1 = texUV[1].lr_u, .v1 = texUV[1].ul_v, .coord = {0, 0, 0, 0}, .w = 255 },
-    { .x = s_ul_x, .y = s_lr_y, .z = Z, .q = 1.0f, .u0 = texUV[0].ul_u, .v0 = texUV[0].lr_v, .u1 = texUV[1].ul_u, .v1 = texUV[1].lr_v, .coord = {0, 0, 0, 0}, .w = 255 },
-    { .x = s_lr_x, .y = s_lr_y, .z = Z, .q = 1.0f, .u0 = texUV[0].lr_u, .v0 = texUV[0].lr_v, .u1 = texUV[1].lr_u, .v1 = texUV[1].lr_v, .coord = {0, 0, 0, 0}, .w = 255 } };
+    { s_ul_x, s_ul_y, Z, 1.0f, texUV[0].ul_u, texUV[0].ul_v, texUV[1].ul_u, texUV[1].ul_v, {0, 0, 0, 0}, 255 },
+    { s_lr_x, s_ul_y, Z, 1.0f, texUV[0].lr_u, texUV[0].ul_v, texUV[1].lr_u, texUV[1].ul_v, {0, 0, 0, 0}, 255 },
+    { s_ul_x, s_lr_y, Z, 1.0f, texUV[0].ul_u, texUV[0].lr_v, texUV[1].ul_u, texUV[1].lr_v, {0, 0, 0, 0}, 255 },
+    { s_lr_x, s_lr_y, Z, 1.0f, texUV[0].lr_u, texUV[0].lr_v, texUV[1].lr_u, texUV[1].lr_v, {0, 0, 0, 0}, 255 } };
 
     if ( ((rdp.cmd0>>24)&0xFF) == 0xE5 ) //texrectflip
     {
@@ -2338,10 +2338,10 @@ static void rdp_fillrect()
 
     // Draw the rectangle
     VERTEX v[4] = {
-      { .x = (float)s_ul_x, .y = (float)s_ul_y, .z = Z, .q = 1.0f,  .u0 = 0, .v0 = 0, .u1 = 0, .v1 = 0,  .coord = {0,0,0,0}, .w = 0, .flags = 0, .b = 0, .g = 0, .r = 0, .a = 0},
-      { .x = (float)s_lr_x, .y = (float)s_ul_y, .z = Z, .q = 1.0f,  .u0 = 0, .v0 = 0, .u1 = 0, .v1 = 0,  .coord = {0,0,0,0}, .w = 0, .flags = 0, .b = 0, .g = 0, .r = 0, .a = 0},
-      { .x = (float)s_ul_x, .y = (float)s_lr_y, .z = Z, .q = 1.0f,  .u0 = 0, .v0 = 0, .u1 = 0, .v1 = 0,  .coord = {0,0,0,0}, .w = 0, .flags = 0, .b = 0, .g = 0, .r = 0, .a = 0},
-      { .x = (float)s_lr_x, .y = (float)s_lr_y, .z = Z, .q = 1.0f,  .u0 = 0, .v0 = 0, .u1 = 0, .v1 = 0,  .coord = {0,0,0,0}, .w = 0, .flags = 0, .b = 0, .g = 0, .r = 0, .a = 0} };
+      { (float)s_ul_x, (float)s_ul_y, Z, 1.0f,  0,0,0,0,  {0,0,0,0}, 0,0, 0,0,0,0},
+      { (float)s_lr_x, (float)s_ul_y, Z, 1.0f,  0,0,0,0,  {0,0,0,0}, 0,0, 0,0,0,0},
+      { (float)s_ul_x, (float)s_lr_y, Z, 1.0f,  0,0,0,0,  {0,0,0,0}, 0,0, 0,0,0,0},
+      { (float)s_lr_x, (float)s_lr_y, Z, 1.0f,  0,0,0,0,  {0,0,0,0}, 0,0, 0,0,0,0} };
 
       if (rdp.cycle_mode == 3)
       {
