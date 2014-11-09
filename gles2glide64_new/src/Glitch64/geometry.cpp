@@ -104,26 +104,39 @@ void vbo_buffer(GLenum mode,GLint first,GLsizei count,void* pointers)
 
 }
 
+#ifdef EMSCRIPTEN
+#define gl_offset(x) offsetof(VERTEX, x)
+#else
+#define gl_offset(x) &vertex_buffer[0].x
+#endif
+
 void vbo_enable()
 {
   if(vertex_buffer_enabled)
     return;
 
   vertex_buffer_enabled = true;
+
+#ifdef EMSCRIPTEN
+  glBindBuffer(GL_ARRAY_BUFFER, glitch_vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(buffer_struct) * count, gli_vbo, GL_DYNAMIC_DRAW);
+  printf("ok\n");
+#endif
+
   glEnableVertexAttribArray(POSITION_ATTR);
-  glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, &vertex_buffer[0].x); //Position
+  glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, sizeof(VERTEX), gl_offset(x)); //Position
 
   glEnableVertexAttribArray(COLOUR_ATTR);
-  glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, &vertex_buffer[0].b); //Colour
+  glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, sizeof(VERTEX), gl_offset(b)); //Colour
 
   glEnableVertexAttribArray(TEXCOORD_0_ATTR);
-  glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &vertex_buffer[0].coord[2]); //Tex0
+  glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), gl_offset(coord[2])); //Tex0
 
   glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-  glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &vertex_buffer[0].coord[0]); //Tex1
+  glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, sizeof(VERTEX), gl_offset(coord[0])); //Tex1
 
   glEnableVertexAttribArray(FOG_ATTR);
-  glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, &vertex_buffer[0].f); //Fog
+  glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(VERTEX), gl_offset(f)); //Fog
 }
 
 void vbo_disable()

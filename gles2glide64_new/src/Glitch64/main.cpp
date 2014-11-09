@@ -166,6 +166,10 @@ static int texbuf_i;
 unsigned short frameBuffer[2048*2048];
 unsigned short depthBuffer[2048*2048];
 
+#ifdef EMSCRIPTEN
+GLuint glitch_vbo;
+#endif
+
 //#define VOODOO1
 
 void display_warning(const char *text, ...)
@@ -463,6 +467,10 @@ grSstWinOpen(
   sprintf(caption, "Glide64mk2");
 # endif // _DEBUG
   CoreVideo_SetCaption(caption);
+
+#ifdef EMSCRIPTEN
+glGenBuffers(1, &glitch_vbo);
+#endif
 
   glViewport(0, viewport_offset, width, height);
   lfb_color_fmt = color_format;
