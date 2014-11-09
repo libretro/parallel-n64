@@ -5390,7 +5390,7 @@ static void cjump_assemble(int i,struct regstat *i_regs)
           emit_jl(1);
         }else{
           add_to_linker((int)out,ba[i],internal);
-          emit_jge(0);
+          emit_jae(0);
         }
       }
       if(invert) {
