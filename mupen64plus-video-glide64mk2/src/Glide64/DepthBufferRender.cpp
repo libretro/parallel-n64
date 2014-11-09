@@ -87,16 +87,16 @@ static int left_z, left_dzdy;
 
 __inline int imul16(int x, int y)        // (x * y) >> 16
 {
-    return (((long long)x) * ((long long)y)) >> 16;
+    return (((int64_t)x) * ((int64_t)y)) >> 16;
 }
 
 __inline int imul14(int x, int y)        // (x * y) >> 14
 {
-    return (((long long)x) * ((long long)y)) >> 14;
+    return (((int64_t)x) * ((int64_t)y)) >> 14;
 }
 __inline int idiv16(int x, int y)        // (x << 16) / y
 {
-    //x = (((long long)x) << 16) / ((long long)y);
+    //x = (((int64_t)x) << 16) / ((int64_t)y);
  /*   
   eax = x;
   ebx = y;
@@ -119,7 +119,7 @@ __inline int idiv16(int x, int y)        // (x << 16) / y
           : "=a" (x), "=d" (reminder)
           : [divisor] "g" (y), "d" (x >> 16), "a" (x << 16));
 #else
-	x = (((long long)x) << 16) / ((long long)y);
+	x = (((int64_t)x) << 16) / ((int64_t)y);
 #endif
     return x;
 }

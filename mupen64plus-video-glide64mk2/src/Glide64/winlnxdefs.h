@@ -36,7 +36,7 @@ typedef uint32_t wxUint32;
 typedef uint16_t wxUint16;
 typedef uint8_t wxUint8;
 typedef uint8_t BYTE;
-typedef long long LONGLONG;
+typedef int64_t LONGLONG;
 
 
 typedef int32_t wxInt32;
@@ -63,7 +63,7 @@ typedef union _LARGE_INTEGER
     uint32_t LowPart;
     uint32_t HighPart;
      } u;
-   long long QuadPart;
+   int64_t QuadPart;
 } LARGE_INTEGER, *PLARGE_INTEGER;
 
 #define WINAPI
