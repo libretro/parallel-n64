@@ -23,21 +23,23 @@
 #ifndef __3DFX_H__
 #define __3DFX_H__
 
+#include <stdint.h>
+
 /*
 ** basic data types
 */
-typedef unsigned char   FxU8;
-typedef signed   char   FxI8;
-typedef unsigned short  FxU16;
-typedef signed   short  FxI16;
+typedef uint8_t   FxU8;
+typedef int8_t   FxI8;
+typedef uint16_t  FxU16;
+typedef int16_t  FxI16;
 #if defined(__alpha__) || defined (__LP64__)
-typedef signed   int    FxI32;
-typedef unsigned int    FxU32;
+typedef int32_t    FxI32;
+typedef uint32_t    FxU32;
 #else
-typedef signed   long   FxI32;
-typedef unsigned long   FxU32;
+typedef int32_t   FxI32;
+typedef uint32_t   FxU32;
 #endif
-typedef unsigned long   AnyPtr;
+typedef uintptr_t   AnyPtr;
 typedef int             FxBool;
 typedef float           FxFloat;
 typedef double          FxDouble;
@@ -45,7 +47,7 @@ typedef double          FxDouble;
 /*
 ** color types
 */
-typedef unsigned long                FxColor_t;
+typedef uint32_t                FxColor_t;
 typedef struct { float r, g, b, a; } FxColor4;
 
 /*
