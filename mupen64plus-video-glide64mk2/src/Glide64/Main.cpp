@@ -226,8 +226,30 @@ char    capture_path[256];
 SDL_sem *mutexProcessDList = SDL_CreateSemaphore(1);
 
 // SOME FUNCTION DEFINITIONS 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-static void DrawFrameBuffer ();
+static void drawViRegBG(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+static void DrawFrameBuffer ()
+{
+  if (to_fullscreen)
+    GoToFullScreen();
+
+  if (fullscreen)
+  {
+    grDepthMask (FXTRUE);
+    grColorMask (FXTRUE, FXTRUE);
+    grBufferClear (0, 0, 0xFFFF);
+    drawViRegBG();
+  }
+  LRDP("DrawFrameBuffer done\n");
+}
 
 
 void (*renderCallback)(int) = NULL;
@@ -1618,7 +1640,7 @@ EXPORT void CALL SetRenderingCallback(void (*callback)(int))
     renderCallback = callback;
 }
 
-void drawViRegBG()
+static void drawViRegBG(void)
 {
   LRDP("drawViRegBG\n");
   const wxUint32 VIwidth = *GFX_PTR.VI_WIDTH_REG;
@@ -1650,21 +1672,10 @@ void drawViRegBG()
   }
 }
 
+#ifdef __cplusplus
 }
+#endif
 
-void DrawFrameBuffer ()
-{
-  if (to_fullscreen)
-    GoToFullScreen();
-
-  if (fullscreen)
-  {
-    grDepthMask (FXTRUE);
-    grColorMask (FXTRUE, FXTRUE);
-    grBufferClear (0, 0, 0xFFFF);
-    drawViRegBG();
-  }
-}
 
 extern "C" {
 /******************************************************************
@@ -1733,7 +1744,6 @@ EXPORT void CALL UpdateScreen (void)
       ChangeSize ();
       LRDP("ChangeSize done\n");
       DrawFrameBuffer();
-      LRDP("DrawFrameBuffer done\n");
       rdp.updatescreen = 1;
       newSwapBuffers ();
     }
