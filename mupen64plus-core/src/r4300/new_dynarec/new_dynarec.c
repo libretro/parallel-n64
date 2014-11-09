@@ -929,7 +929,6 @@ static void mult64(int64_t m1,uint64_t m2)
      }
 }
 
-#if NEW_DYNAREC == NEW_DYNAREC_ARM
 static void multu64(uint64_t m1,uint64_t m2)
 {
    unsigned long long int op1, op2, op3, op4;
@@ -957,7 +956,6 @@ static void multu64(uint64_t m1,uint64_t m2)
   //DebugMessage(M64MSG_VERBOSE, "TRACE: dmultu %8x%8x %8x%8x",(int)reg[HIREG],(int)(reg[HIREG]>>32)
   //                                      ,(int)reg[LOREG],(int)(reg[LOREG]>>32));
 }
-#endif
 
 static uint64_t ldl_merge(uint64_t original,uint64_t loaded,u_int bits)
 {

@@ -711,8 +711,6 @@ static void multdiv_alloc_x86(struct regstat *current,int i)
     }
     else // 64-bit
     {
-      alloc_x86_reg(current,i,HIREG|64,EDX);
-      alloc_x86_reg(current,i,HIREG,EAX);
       alloc_reg64(current,i,rs1[i]);
       alloc_reg64(current,i,rs2[i]);
       alloc_all(current,i);
@@ -4249,36 +4247,7 @@ static void multdiv_assemble_x86(int i,struct regstat *i_regs)
         char m1l=get_reg(i_regs->regmap,rs1[i]);
         char m2h=get_reg(i_regs->regmap,rs2[i]|64);
         char m2l=get_reg(i_regs->regmap,rs2[i]);
-        char temp=get_reg(i_regs->regmap,-1);
-        assert(m1h>=0);
-        assert(m2h>=0);
-        assert(m1l>=0);
-        assert(m2l>=0);
-        assert(temp>=0);
-        emit_mov(m1l,EAX);
-        emit_mul(m2l);
-        emit_storereg(LOREG,EAX);
-        emit_mov(EDX,temp);
-        emit_mov(m1h,EAX);
-        emit_mul(m2l);
-        emit_add(EAX,temp,temp);
-        emit_adcimm(0,EDX);
-        emit_storereg(HIREG,EDX);
-        emit_mov(m2h,EAX);
-        emit_mul(m1l);
-        emit_add(EAX,temp,temp);
-        emit_adcimm(0,EDX);
-        emit_storereg(LOREG|64,temp);
-        emit_mov(EDX,temp);
-        emit_mov(m2h,EAX);
-        emit_mul(m1h);
-        emit_add(EAX,temp,EAX);
-        emit_loadreg(HIREG,temp);
-        emit_adcimm(0,EDX);
-        emit_add(EAX,temp,EAX);
-        emit_adcimm(0,EDX);
         // DEBUG
-        /*
         emit_pushreg(m2h);
         emit_pushreg(m2l);
         emit_pushreg(m1h);
@@ -4292,7 +4261,6 @@ static void multdiv_assemble_x86(int i,struct regstat *i_regs)
         char hil=get_reg(i_regs->regmap,HIREG);
         if(hih>=0) emit_loadreg(HIREG|64,hih);  // DEBUG
         if(hil>=0) emit_loadreg(HIREG,hil);  // DEBUG
-        */
         // Shouldn't be necessary
         //char loh=get_reg(i_regs->regmap,LOREG|64);
         //char lol=get_reg(i_regs->regmap,LOREG);
