@@ -83,12 +83,11 @@ void free_textures()
 
 int grTexFormat2GLPackedFmt(int fmt, int * gltexfmt, int * glpixfmt, int * glpackfmt)
 {
-#ifdef GLES
     *gltexfmt = GL_RGBA;
     *glpixfmt = GL_RGBA;
     *glpackfmt = GL_UNSIGNED_BYTE;
     return 0;
-#else
+#if 0
   int factor = -1;
   switch(fmt) {
   case GR_TEXFMT_ALPHA_8:
