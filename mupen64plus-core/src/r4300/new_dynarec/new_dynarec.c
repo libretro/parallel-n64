@@ -2150,12 +2150,8 @@ static void alu_assemble(int i,struct regstat *i_regs)
           if(opcode2[i]&2) emit_subs(s1l,s2l,tl);
           else emit_adds(s1l,s2l,tl);
           if(th>=0) {
-            #ifdef INVERTED_CARRY
-            if(opcode2[i]&2) {if(s1h!=th) emit_mov(s1h,th);emit_sbb(th,s2h);}
-            #else
             if(opcode2[i]&2) emit_sbc(s1h,s2h,th);
-            #endif
-            else emit_add(s1h,s2h,th);
+            else emit_adc(s1h,s2h,th);
           }
         }
         else if(rs1[i]) {
