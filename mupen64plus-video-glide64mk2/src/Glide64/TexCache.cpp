@@ -1623,7 +1623,7 @@ void LoadTex (int id, int tmu)
       if (settings.ghq_use)
       {
         if (!ghqTexInfo.data && ghq_dmptex_toggle_key) {
-          unsigned char *tmpbuf = (unsigned char*)texture;
+          uint8_t *tmpbuf = (uint8_t*)texture;
           int tmpwidth = real_x;
           if (texinfo[id].splits > 1) {
             int dstpixoffset, srcpixoffset;
@@ -1640,7 +1640,7 @@ void LoadTex (int id, int tmu)
                shift = 1;
             }
             tmpwidth = texinfo[id].real_image_width;
-            tmpbuf = (unsigned char*)malloc((256*256)<<3); // XXX performance overhead
+            tmpbuf = (uint8_t*)malloc((256*256)<<3); // XXX performance overhead
             for (int i = 0; i < cache->splitheight; i++) {
               dstpixoffset = texinfo[id].real_image_width * i;
               srcpixoffset = 256 * i;
@@ -1651,7 +1651,7 @@ void LoadTex (int id, int tmu)
               }
             }
           }
-          ext_ghq_dmptx(tmpbuf, (int)texinfo[id].real_image_width, (int)texinfo[id].real_image_height, (int)tmpwidth, (unsigned short)LOWORD(result), (unsigned short)((cache->format << 8) | (cache->size)), cache->ricecrc);
+          ext_ghq_dmptx(tmpbuf, (int)texinfo[id].real_image_width, (int)texinfo[id].real_image_height, (int)tmpwidth, (uint16_t)LOWORD(result), (uint16_t)((cache->format << 8) | (cache->size)), cache->ricecrc);
           if (tmpbuf != texture && tmpbuf) {
             free(tmpbuf);
           }
@@ -1659,7 +1659,7 @@ void LoadTex (int id, int tmu)
 
         if (!ghqTexInfo.data)
           if (!settings.ghq_enht_nobg || !rdp.texrecting || (texinfo[id].splits == 1 && texinfo[id].width <= 256))
-            ext_ghq_txfilter((unsigned char*)texture, (int)real_x, (int)real_y, LOWORD(result), (uint64)g64_crc, &ghqTexInfo);
+            ext_ghq_txfilter((uint8_t*)texture, (int)real_x, (int)real_y, LOWORD(result), (uint64)g64_crc, &ghqTexInfo);
 
         if (ghqTexInfo.data)
         {
