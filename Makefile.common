@@ -221,7 +221,6 @@ SOURCES_CXX += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR
 else ifeq ($(GLIDE64MK2), 1)
 SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/Combine.cpp \
-					$(VIDEODIR_GLIDE)/Glide64/Config.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/Debugger.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/FBtoScreen.cpp \
