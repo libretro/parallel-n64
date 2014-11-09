@@ -109,6 +109,10 @@ void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers);
 
 void sglBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage);
 
+void sglGenBuffers(GLsizei n, GLuint * buffers);
+
+void sglDeleteBuffers(GLsizei n, const GLuint *buffers);
+
 void sglTexCoord2f(float S, float t);
 
 #ifndef NO_TRANSLATE
@@ -180,6 +184,8 @@ void sglTexCoord2f(float S, float t);
 #define glTexCoord2f sglTexCoord2f
 #define glDrawArrays sglDrawArrays
 #define glBufferData sglBufferData
+#define glGenBuffers sglGenBuffers
+#define glDeleteBuffers sglDeleteBuffers
 #endif
 
 void sglEnter(void);

@@ -472,6 +472,16 @@ void sglBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum us
    glBufferData(target, size, data, usage);
 }
 
+void sglGenBuffers(GLsizei n, GLuint *buffers)
+{
+   glGenBuffers(n, buffers);
+}
+
+void sglDeleteBuffers(GLsizei n, const GLuint *buffers)
+{
+   glDeleteBuffers(n, buffers);
+}
+
 #if 0
 struct tex_map
 {
