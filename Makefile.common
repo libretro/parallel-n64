@@ -64,7 +64,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/main/util.c \
 	$(CORE_DIR)/src/memory/dma.c \
 	$(CORE_DIR)/src/memory/flashram.c \
-	$(CORE_DIR)/src/memory/memory.c \
+	$(CORE_DIR)/src/memory/m64p_memory.c \
 	$(CORE_DIR)/src/memory/n64_cic_nus_6105.c \
 	$(CORE_DIR)/src/memory/pif.c \
 	$(CORE_DIR)/src/plugin/plugin.c \
