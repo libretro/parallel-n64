@@ -1773,6 +1773,20 @@ static void emit_jae(int a)
  output_w32(0x2a000000|offset);
 }
 
+static void emit_jb(int a)
+{
+ assem_debug("bcc %x",a);
+ u_int offset=genjmp(a);
+ output_w32(0x3a000000|offset);
+}
+
+static void emit_jae(int a)
+{
+ assem_debug("bcs %x",a);
+ u_int offset=genjmp(a);
+ output_w32(0x2a000000|offset);
+}
+
 static void emit_pushreg(u_int r)
 {
   assem_debug("push %%%s",regname[r]);

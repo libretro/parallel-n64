@@ -1722,6 +1722,20 @@ static void emit_jae(int a)
  output_byte(0x83);
  output_w32(a-(int)out-4);
 }
+static void emit_jb(int a)
+{
+ assem_debug("jb %x",a);
+ output_byte(0x0f);
+ output_byte(0x82);
+ output_w32(a-(int)out-4);
+}
+static void emit_jae(int a)
+{
+ assem_debug("jae %x",a);
+ output_byte(0x0f);
+ output_byte(0x83);
+ output_w32(a-(int)out-4);
+}
 
 static void emit_pushimm(int imm)
 {
