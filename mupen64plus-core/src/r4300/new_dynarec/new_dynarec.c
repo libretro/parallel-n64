@@ -5379,7 +5379,7 @@ static void cjump_assemble(int i,struct regstat *i_regs)
         }else{
           add_to_linker((int)out,ba[i],internal);
           if(only32) emit_jl(0);
-          else emit_jb(0)
+          else emit_jb(0);
         }
       }
       if(opcode[i]==7) // BGTZ
