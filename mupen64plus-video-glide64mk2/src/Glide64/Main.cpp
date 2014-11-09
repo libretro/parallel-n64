@@ -368,6 +368,28 @@ static wxConfigBase * OpenIni()
 }
 */
 
+#ifdef __LIBRETRO__
+#include <libretro.h>
+extern retro_log_printf_t log_cb;
+
+static retro_log_level m64p_log_level_to_retro(unsigned level)
+{
+   switch (level)
+   {
+      case M64MSG_ERROR:
+         return RETRO_LOG_ERROR;
+      case M64MSG_WARNING:
+         return RETRO_LOG_WARN;
+      case M64MSG_INFO:
+      case M64MSG_STATUS:
+      case M64MSG_VERBOSE:
+         return RETRO_LOG_INFO;
+   }
+   
+   return RETRO_LOG_INFO;
+}
+#endif
+
 void WriteLog(m64p_msg_level level, const char *msg, ...)
 {
   char buf[1024];
@@ -380,6 +402,15 @@ void WriteLog(m64p_msg_level level, const char *msg, ...)
   {
     l_DebugCallback(l_DebugCallContext, level, buf);
   }
+#ifdef __LIBRETRO__
+  retro_log_level lvl = m64p_log_level_to_retro(level);
+   if (log_cb
+#ifdef _ENDUSER_RELEASE
+         && lvl != RETRO_LOG_INFO
+#endif
+         )
+      log_cb(lvl, buf);
+#endif
 }
 
 //TODO-PORT: more ini stuff
