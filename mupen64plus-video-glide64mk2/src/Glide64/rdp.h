@@ -159,16 +159,6 @@ typedef struct
   int   scr_off, z_off; // off the screen?
 } VERTEX;
 
-// Vertex structure
-typedef struct
-{
-  float x, y, z, q;
-  float u0, v0, u1, v1;
-  float coord[4];
-  float w;
-  wxUint16  flags;
-} VERTEXARRAY;
-
 // Clipping (scissors)
 typedef struct {
   wxUint32 ul_x;

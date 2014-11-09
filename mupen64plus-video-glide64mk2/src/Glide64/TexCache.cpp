@@ -1346,7 +1346,7 @@ void LoadTex (int id, int tmu)
     //g64_crc = CRC32( g64_crc, &cache->mod_color2, 4 ); // not used?
     g64_crc = CRC32( g64_crc, &cache->mod_factor, 4 );
 
-    cache->ricecrc = ext_ghq_checksum(addr, tile_width, tile_height, (unsigned short)(rdp.tiles[td].format << 8 | rdp.tiles[td].size), bpl, paladdr);
+    cache->ricecrc = ext_ghq_checksum(addr, tile_width, tile_height, (wxUint16)(rdp.tiles[td].format << 8 | rdp.tiles[td].size), bpl, paladdr);
     FRDP("CI RICE CRC. format: %d, size: %d, CRC: %08lx, PalCRC: %08lx\n", rdp.tiles[td].format, rdp.tiles[td].size, (wxUint32)(cache->ricecrc&0xFFFFFFFF), (wxUint32)(cache->ricecrc>>32));
     if (ext_ghq_hirestex((uint64)g64_crc, cache->ricecrc, palette, &ghqTexInfo))
     {

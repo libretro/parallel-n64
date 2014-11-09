@@ -85,12 +85,12 @@ static void rsp_vertex(int v0, int n)
   for (i=0; i < (n<<4); i+=16)
   {
     VERTEX *v = &rdp.vtx[v0 + (i>>4)];
-    x   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 0)^1];
-    y   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 1)^1];
-    z   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 2)^1];
+    x   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 0)^1];
+    y   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 1)^1];
+    z   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 2)^1];
     v->flags  = ((wxUint16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 3)^1];
-    v->ou = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 4)^1];
-    v->ov = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 5)^1];
+    v->ou = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 4)^1];
+    v->ov = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 5)^1];
     v->uv_scaled = 0;
     v->a    = ((wxUint8*)GFX_PTR.RDRAM)[(addr+i + 15)^3];
 
@@ -372,12 +372,12 @@ static void uc0_movemem()
     {
       a = (segoffset(rdp.cmd1) & 0xFFFFFF) >> 1;
 
-      short scale_x = ((short*)GFX_PTR.RDRAM)[(a+0)^1] / 4;
-      short scale_y = ((short*)GFX_PTR.RDRAM)[(a+1)^1] / 4;
-      short scale_z = ((short*)GFX_PTR.RDRAM)[(a+2)^1];
-      short trans_x = ((short*)GFX_PTR.RDRAM)[(a+4)^1] / 4;
-      short trans_y = ((short*)GFX_PTR.RDRAM)[(a+5)^1] / 4;
-      short trans_z = ((short*)GFX_PTR.RDRAM)[(a+6)^1];
+      wxInt16 scale_x = ((wxInt16*)GFX_PTR.RDRAM)[(a+0)^1] / 4;
+      wxInt16 scale_y = ((wxInt16*)GFX_PTR.RDRAM)[(a+1)^1] / 4;
+      wxInt16 scale_z = ((wxInt16*)GFX_PTR.RDRAM)[(a+2)^1];
+      wxInt16 trans_x = ((wxInt16*)GFX_PTR.RDRAM)[(a+4)^1] / 4;
+      wxInt16 trans_y = ((wxInt16*)GFX_PTR.RDRAM)[(a+5)^1] / 4;
+      wxInt16 trans_z = ((wxInt16*)GFX_PTR.RDRAM)[(a+6)^1];
       if (settings.correct_viewport)
       {
         scale_x = abs(scale_x);
@@ -663,19 +663,19 @@ static void uc0_modifyvtx(wxUint8 where, wxUint16 vtx, wxUint32 val)
   case 0x14:    // ST
     {
       float scale = rdp.Persp_en ? 0.03125f : 0.015625f;
-      v->ou = (float)((short)(val>>16)) * scale;
-      v->ov = (float)((short)(val&0xFFFF)) * scale;
+      v->ou = (float)((wxInt16)(val>>16)) * scale;
+      v->ov = (float)((wxInt16)(val&0xFFFF)) * scale;
       v->uv_calculated = 0xFFFFFFFF;
       v->uv_scaled = 1;
     }
-    FRDP ("u/v: (%04lx, %04lx), (%f, %f)\n", (short)(val>>16), (short)(val&0xFFFF),
+    FRDP ("u/v: (%04lx, %04lx), (%f, %f)\n", (wxInt16)(val>>16), (wxInt16)(val&0xFFFF),
       v->ou, v->ov);
     break;
 
   case 0x18:    // XY screen
     {
-      float scr_x = (float)((short)(val>>16)) / 4.0f;
-      float scr_y = (float)((short)(val&0xFFFF)) / 4.0f;
+      float scr_x = (float)((wxInt16)(val>>16)) / 4.0f;
+      float scr_y = (float)((wxInt16)(val&0xFFFF)) / 4.0f;
       v->screen_translated = 2;
       v->sx = scr_x * rdp.scale_x + rdp.offset_x;
       v->sy = scr_y * rdp.scale_y + rdp.offset_y;
@@ -700,7 +700,7 @@ static void uc0_modifyvtx(wxUint8 where, wxUint16 vtx, wxUint32 val)
 
   case 0x1C:    // Z screen
     {
-      float scr_z = (float)((short)(val>>16));
+      float scr_z = (float)((wxInt16)(val>>16));
       v->z_w = (scr_z - rdp.view_trans[2]) / rdp.view_scale[2];
       v->z = v->z_w * v->w;
       FRDP ("z: %f\n", scr_z);
@@ -753,8 +753,8 @@ static void uc0_moveword()
 
   case 0x08:
     {
-      rdp.fog_multiplier = (short)(rdp.cmd1 >> 16);
-      rdp.fog_offset = (short)(rdp.cmd1 & 0x0000FFFF);
+      rdp.fog_multiplier = (wxInt16)(rdp.cmd1 >> 16);
+      rdp.fog_offset = (wxInt16)(rdp.cmd1 & 0x0000FFFF);
       FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
     }
     break;

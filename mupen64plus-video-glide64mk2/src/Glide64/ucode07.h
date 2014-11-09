@@ -54,14 +54,14 @@ static void uc7_colorbase ()
 
 typedef struct 
 {
-	short y;
-	short x;
+	wxInt16 y;
+	wxInt16 x;
 	wxUint16 idx;
 
-	short z;
+	wxInt16 z;
 
-	short t;
-	short s;
+	wxInt16 t;
+	wxInt16 s;
 
 } vtx_uc7;
 

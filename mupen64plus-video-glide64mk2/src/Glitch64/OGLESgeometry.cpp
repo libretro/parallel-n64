@@ -71,7 +71,7 @@ void vbo_draw()
 }
 
 //Buffer vertices instead of glDrawArrays(...)
-void vbo_buffer(GLenum mode,GLint first,GLsizei count,void* pointers)
+static void vbo_buffer(GLenum mode,GLint first,GLsizei count,void* pointers)
 {
   if((count != 3 && mode != GL_TRIANGLES) || vertex_buffer_count + count > VERTEX_BUFFER_SIZE)
   {

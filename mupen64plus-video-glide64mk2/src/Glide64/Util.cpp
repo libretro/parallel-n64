@@ -1590,12 +1590,12 @@ static void render_tri (wxUint16 linew, int old_interpolate)
   unsigned int k;
 		for(k=0; k<3; k++)
     {
-		  FRDP2("V%d: r=%d, g=%d, b=%d, a=%d, f=%d\n", k, org_vtx[k]->r, org_vtx[k]->g, org_vtx[k]->b, org_vtx[k]->a, (short)org_vtx[k]->f);
+		  FRDP2("V%d: r=%d, g=%d, b=%d, a=%d, f=%d\n", k, org_vtx[k]->r, org_vtx[k]->g, org_vtx[k]->b, org_vtx[k]->a, (wxInt16)org_vtx[k]->f);
       }
       FRDP("Got %d vertex after clipping\n", n);
       for(k=0; k<n; k++)
       {
-      FRDP("V%d: r=%d, g=%d, b=%d, a=%d, f=%d\n", k, rdp.vtxbuf[k].r, rdp.vtxbuf[k].g, rdp.vtxbuf[k].b, rdp.vtxbuf[k].a, (short)rdp.vtxbuf[k].f);
+      FRDP("V%d: r=%d, g=%d, b=%d, a=%d, f=%d\n", k, rdp.vtxbuf[k].r, rdp.vtxbuf[k].g, rdp.vtxbuf[k].b, rdp.vtxbuf[k].a, (wxInt16)rdp.vtxbuf[k].f);
       }
       }
   */

@@ -138,9 +138,9 @@ static void uc5_vertex ()
   {
     start = (i-first) * 10;
     VERTEX *v = &rdp.vtx[i];
-    x   = (float)((short*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 0)^1];
-    y   = (float)((short*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 1)^1];
-    z   = (float)((short*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 2)^1];
+    x   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 0)^1];
+    y   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 1)^1];
+    z   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 2)^1];
 
     v->x = x*rdp.dkrproj[prj][0][0] + y*rdp.dkrproj[prj][1][0] + z*rdp.dkrproj[prj][2][0] + rdp.dkrproj[prj][3][0];
     v->y = x*rdp.dkrproj[prj][0][1] + y*rdp.dkrproj[prj][1][1] + z*rdp.dkrproj[prj][2][1] + rdp.dkrproj[prj][3][1];
@@ -239,12 +239,12 @@ static void uc5_tridma ()
     }
     start += 4;
 
-    v[0]->ou = (float)((short*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 5] / 32.0f;
-    v[0]->ov = (float)((short*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 4] / 32.0f;
-    v[1]->ou = (float)((short*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 3] / 32.0f;
-    v[1]->ov = (float)((short*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 2] / 32.0f;
-    v[2]->ou = (float)((short*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 1] / 32.0f;
-    v[2]->ov = (float)((short*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 0] / 32.0f;
+    v[0]->ou = (float)((wxInt16*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 5] / 32.0f;
+    v[0]->ov = (float)((wxInt16*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 4] / 32.0f;
+    v[1]->ou = (float)((wxInt16*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 3] / 32.0f;
+    v[1]->ov = (float)((wxInt16*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 2] / 32.0f;
+    v[2]->ou = (float)((wxInt16*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 1] / 32.0f;
+    v[2]->ov = (float)((wxInt16*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 0] / 32.0f;
 
     v[0]->uv_calculated = 0xFFFFFFFF;
     v[1]->uv_calculated = 0xFFFFFFFF;
@@ -306,8 +306,8 @@ static void uc5_moveword()
 
   case 0x08:
     {
-      rdp.fog_multiplier = (short)(rdp.cmd1 >> 16);
-      rdp.fog_offset = (short)(rdp.cmd1 & 0x0000FFFF);
+      rdp.fog_multiplier = (wxInt16)(rdp.cmd1 >> 16);
+      rdp.fog_offset = (wxInt16)(rdp.cmd1 & 0x0000FFFF);
       FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
       //	  rdp.update |= UPDATE_FOG_ENABLED;
     }

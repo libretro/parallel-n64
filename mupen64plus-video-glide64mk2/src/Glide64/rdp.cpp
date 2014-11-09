@@ -957,17 +957,17 @@ static void rdp_texrect()
   float ul_x, ul_y, lr_x, lr_y;
   if (rdp.cycle_mode == 2)
   {
-    ul_x = max(0.0f, (short)((rdp.cmd1 & 0x00FFF000) >> 14));
-    ul_y = max(0.0f, (short)((rdp.cmd1 & 0x00000FFF) >> 2));
-    lr_x = max(0.0f, (short)((rdp.cmd0 & 0x00FFF000) >> 14));
-    lr_y = max(0.0f, (short)((rdp.cmd0 & 0x00000FFF) >> 2));
+    ul_x = max(0.0f, (wxInt16)((rdp.cmd1 & 0x00FFF000) >> 14));
+    ul_y = max(0.0f, (wxInt16)((rdp.cmd1 & 0x00000FFF) >> 2));
+    lr_x = max(0.0f, (wxInt16)((rdp.cmd0 & 0x00FFF000) >> 14));
+    lr_y = max(0.0f, (wxInt16)((rdp.cmd0 & 0x00000FFF) >> 2));
   }
   else
   {
-    ul_x = max(0.0f, ((short)((rdp.cmd1 & 0x00FFF000) >> 12)) / 4.0f);
-    ul_y = max(0.0f, ((short)(rdp.cmd1 & 0x00000FFF)) / 4.0f);
-    lr_x = max(0.0f, ((short)((rdp.cmd0 & 0x00FFF000) >> 12)) / 4.0f);
-    lr_y = max(0.0f, ((short)(rdp.cmd0 & 0x00000FFF)) / 4.0f);
+    ul_x = max(0.0f, ((wxInt16)((rdp.cmd1 & 0x00FFF000) >> 12)) / 4.0f);
+    ul_y = max(0.0f, ((wxInt16)(rdp.cmd1 & 0x00000FFF)) / 4.0f);
+    lr_x = max(0.0f, ((wxInt16)((rdp.cmd0 & 0x00FFF000) >> 12)) / 4.0f);
+    lr_y = max(0.0f, ((wxInt16)(rdp.cmd0 & 0x00000FFF)) / 4.0f);
   }
 
   if (ul_x >= lr_x)
@@ -1077,8 +1077,8 @@ static void rdp_texrect()
   //needed to detect and avoid overflow after shifting
   wxInt32 off_x_i = (rdp.cmd2 >> 16) & 0xFFFF;
   wxInt32 off_y_i = rdp.cmd2 & 0xFFFF;
-  float dsdx = (float)((short)((rdp.cmd3 & 0xFFFF0000) >> 16)) / 1024.0f;
-  float dtdy = (float)((short)(rdp.cmd3 & 0x0000FFFF)) / 1024.0f;
+  float dsdx = (float)((wxInt16)((rdp.cmd3 & 0xFFFF0000) >> 16)) / 1024.0f;
+  float dtdy = (float)((wxInt16)(rdp.cmd3 & 0x0000FFFF)) / 1024.0f;
   if (off_x_i & 0x8000) //check for sign bit
     off_x_i |= ~0xffff; //make it negative
   //the same as for off_x_i

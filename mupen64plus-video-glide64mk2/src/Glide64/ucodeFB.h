@@ -132,13 +132,13 @@ static void fb_uc2_movemem()
   if ((rdp.cmd0 & 0xFF) == 8)
   {
     wxUint32 a = segoffset(rdp.cmd1) >> 1;
-    short scale_x = ((short*)GFX_PTR.RDRAM)[(a+0)^1] >> 2;
-    short trans_x = ((short*)GFX_PTR.RDRAM)[(a+4)^1] >> 2;
+    wxInt16 scale_x = ((wxInt16*)GFX_PTR.RDRAM)[(a+0)^1] >> 2;
+    wxInt16 trans_x = ((wxInt16*)GFX_PTR.RDRAM)[(a+4)^1] >> 2;
     COLOR_IMAGE & cur_fb = rdp.frame_buffers[rdp.ci_count-1];
     if ( abs((int)(scale_x + trans_x - cur_fb.width)) < 3)
     {
-      short scale_y = ((short*)GFX_PTR.RDRAM)[(a+1)^1] >> 2;
-      short trans_y = ((short*)GFX_PTR.RDRAM)[(a+5)^1] >> 2;
+      wxInt16 scale_y = ((wxInt16*)GFX_PTR.RDRAM)[(a+1)^1] >> 2;
+      wxInt16 trans_y = ((wxInt16*)GFX_PTR.RDRAM)[(a+5)^1] >> 2;
       wxUint32 height = scale_y + trans_y;
       if (height < rdp.scissor_o.lr_y)
         cur_fb.height = height;

@@ -128,18 +128,18 @@ static void uc2_vertex ()
   wxUint32 geom_mode = rdp.geom_mode;
   if ((settings.hacks&hack_Fzero) && (rdp.geom_mode & 0x40000))
   {
-    if (((short*)GFX_PTR.RDRAM)[(((addr) >> 1) + 4)^1] || ((short*)GFX_PTR.RDRAM)[(((addr) >> 1) + 5)^1])
+    if (((wxInt16*)GFX_PTR.RDRAM)[(((addr) >> 1) + 4)^1] || ((wxInt16*)GFX_PTR.RDRAM)[(((addr) >> 1) + 5)^1])
       rdp.geom_mode ^= 0x40000;
   }
   for (i=0; i < (n<<4); i+=16)
   {
     VERTEX *v = &rdp.vtx[v0 + (i>>4)];
-    x   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 0)^1];
-    y   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 1)^1];
-    z   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 2)^1];
+    x   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 0)^1];
+    y   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 1)^1];
+    z   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 2)^1];
     v->flags  = ((wxUint16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 3)^1];
-    v->ou   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 4)^1];
-    v->ov   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 5)^1];
+    v->ou   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 4)^1];
+    v->ov   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 5)^1];
     v->uv_scaled = 0;
     v->a    = ((wxUint8*)GFX_PTR.RDRAM)[(addr+i + 15)^3];
 
@@ -593,8 +593,8 @@ static void uc2_moveword ()
         int index_y = index_x >> 2;
         index_x &= 3;
 
-        rdp.combined[index_y][index_x] = (short)(rdp.cmd1>>16);
-        rdp.combined[index_y][index_x+1] = (short)(rdp.cmd1&0xFFFF);
+        rdp.combined[index_y][index_x] = (wxInt16)(rdp.cmd1>>16);
+        rdp.combined[index_y][index_x+1] = (wxInt16)(rdp.cmd1&0xFFFF);
       }
 
       LRDP("matrix\n");
@@ -627,8 +627,8 @@ static void uc2_moveword ()
 
   case 0x08:
     {
-      rdp.fog_multiplier = (short)(rdp.cmd1 >> 16);
-      rdp.fog_offset = (short)(rdp.cmd1 & 0x0000FFFF);
+      rdp.fog_multiplier = (wxInt16)(rdp.cmd1 >> 16);
+      rdp.fog_offset = (wxInt16)(rdp.cmd1 & 0x0000FFFF);
       FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
 
       //offset must be 0 for move_fog, but it can be non zero in Nushi Zuri 64 - Shiokaze ni Notte
@@ -685,12 +685,12 @@ static void uc2_movemem ()
   case 8:   // VIEWPORT
     {
       wxUint32 a = addr >> 1;
-      short scale_x = ((short*)GFX_PTR.RDRAM)[(a+0)^1] >> 2;
-      short scale_y = ((short*)GFX_PTR.RDRAM)[(a+1)^1] >> 2;
-      short scale_z = ((short*)GFX_PTR.RDRAM)[(a+2)^1];
-      short trans_x = ((short*)GFX_PTR.RDRAM)[(a+4)^1] >> 2;
-      short trans_y = ((short*)GFX_PTR.RDRAM)[(a+5)^1] >> 2;
-      short trans_z = ((short*)GFX_PTR.RDRAM)[(a+6)^1];
+      wxInt16 scale_x = ((wxInt16*)GFX_PTR.RDRAM)[(a+0)^1] >> 2;
+      wxInt16 scale_y = ((wxInt16*)GFX_PTR.RDRAM)[(a+1)^1] >> 2;
+      wxInt16 scale_z = ((wxInt16*)GFX_PTR.RDRAM)[(a+2)^1];
+      wxInt16 trans_x = ((wxInt16*)GFX_PTR.RDRAM)[(a+4)^1] >> 2;
+      wxInt16 trans_y = ((wxInt16*)GFX_PTR.RDRAM)[(a+5)^1] >> 2;
+      wxInt16 trans_z = ((wxInt16*)GFX_PTR.RDRAM)[(a+6)^1];
       rdp.view_scale[0] = scale_x * rdp.scale_x;
       rdp.view_scale[1] = -scale_y * rdp.scale_y;
       rdp.view_scale[2] = 32.0f * scale_z;
@@ -746,9 +746,9 @@ static void uc2_movemem ()
       rdp.light[n].dir_y = (float)(((wxInt8*)GFX_PTR.RDRAM)[(addr+9)^3]) / 127.0f;
       rdp.light[n].dir_z = (float)(((wxInt8*)GFX_PTR.RDRAM)[(addr+10)^3]) / 127.0f;
       wxUint32 a = addr >> 1;
-      rdp.light[n].x = (float)(((short*)GFX_PTR.RDRAM)[(a+4)^1]);
-      rdp.light[n].y = (float)(((short*)GFX_PTR.RDRAM)[(a+5)^1]);
-      rdp.light[n].z = (float)(((short*)GFX_PTR.RDRAM)[(a+6)^1]);
+      rdp.light[n].x = (float)(((wxInt16*)GFX_PTR.RDRAM)[(a+4)^1]);
+      rdp.light[n].y = (float)(((wxInt16*)GFX_PTR.RDRAM)[(a+5)^1]);
+      rdp.light[n].z = (float)(((wxInt16*)GFX_PTR.RDRAM)[(a+6)^1]);
       rdp.light[n].ca = (float)(GFX_PTR.RDRAM[(addr+3)^3]) / 16.0f;
       rdp.light[n].la = (float)(GFX_PTR.RDRAM[(addr+7)^3]);
       rdp.light[n].qa = (float)(GFX_PTR.RDRAM[(addr+14)^3]) / 8.0f;

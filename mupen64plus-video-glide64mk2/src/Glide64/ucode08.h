@@ -87,12 +87,12 @@ static void uc8_vertex ()
 	for (i=0; i < (n<<4); i+=16)
 	{
 		VERTEX *v = &rdp.vtx[v0 + (i>>4)];
-		x   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 0)^1];
-		y   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 1)^1];
-		z   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 2)^1];
+		x   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 0)^1];
+		y   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 1)^1];
+		z   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 2)^1];
 		v->flags  = ((wxUint16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 3)^1];
-		v->ou   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 4)^1];
-		v->ov   = (float)((short*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 5)^1];
+		v->ou   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 4)^1];
+		v->ov   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+i) >> 1) + 5)^1];
         v->uv_scaled = 0;
 		v->a    = ((wxUint8*)GFX_PTR.RDRAM)[(addr+i + 15)^3];
 
@@ -270,8 +270,8 @@ static void uc8_moveword ()
 
 	case 0x08:
 		{
-			rdp.fog_multiplier = (short)(rdp.cmd1 >> 16);
-			rdp.fog_offset = (short)(rdp.cmd1 & 0x0000FFFF);
+			rdp.fog_multiplier = (wxInt16)(rdp.cmd1 >> 16);
+			rdp.fog_offset = (wxInt16)(rdp.cmd1 & 0x0000FFFF);
 			FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
 		}
 		break;
@@ -296,8 +296,8 @@ static void uc8_moveword ()
 			wxUint32 pos = rdp.cmd0&0x30;
 			if (pos == 0)
 			{
-				uc8_coord_mod[0+idx] = (short)(rdp.cmd1>>16);
-				uc8_coord_mod[1+idx] = (short)(rdp.cmd1&0xffff);
+				uc8_coord_mod[0+idx] = (wxInt16)(rdp.cmd1>>16);
+				uc8_coord_mod[1+idx] = (wxInt16)(rdp.cmd1&0xffff);
 			}
 			else if (pos == 0x10)
 			{
@@ -309,8 +309,8 @@ static void uc8_moveword ()
 			}
 			else if (pos == 0x20)
 			{
-				uc8_coord_mod[8+idx] = (short)(rdp.cmd1>>16);
-				uc8_coord_mod[9+idx] = (short)(rdp.cmd1&0xffff);
+				uc8_coord_mod[8+idx] = (wxInt16)(rdp.cmd1>>16);
+				uc8_coord_mod[9+idx] = (wxInt16)(rdp.cmd1&0xffff);
 #ifdef EXTREME_LOGGING
 				if (idx)
 				{
@@ -344,12 +344,12 @@ static void uc8_movemem ()
 	case 8:   // VIEWPORT
 		{
 			wxUint32 a = addr >> 1;
-			short scale_x = ((short*)GFX_PTR.RDRAM)[(a+0)^1] >> 2;
-			short scale_y = ((short*)GFX_PTR.RDRAM)[(a+1)^1] >> 2;
-			short scale_z = ((short*)GFX_PTR.RDRAM)[(a+2)^1];
-			short trans_x = ((short*)GFX_PTR.RDRAM)[(a+4)^1] >> 2;
-			short trans_y = ((short*)GFX_PTR.RDRAM)[(a+5)^1] >> 2;
-			short trans_z = ((short*)GFX_PTR.RDRAM)[(a+6)^1];
+			wxInt16 scale_x = ((wxInt16*)GFX_PTR.RDRAM)[(a+0)^1] >> 2;
+			wxInt16 scale_y = ((wxInt16*)GFX_PTR.RDRAM)[(a+1)^1] >> 2;
+			wxInt16 scale_z = ((wxInt16*)GFX_PTR.RDRAM)[(a+2)^1];
+			wxInt16 trans_x = ((wxInt16*)GFX_PTR.RDRAM)[(a+4)^1] >> 2;
+			wxInt16 trans_y = ((wxInt16*)GFX_PTR.RDRAM)[(a+5)^1] >> 2;
+			wxInt16 trans_z = ((wxInt16*)GFX_PTR.RDRAM)[(a+6)^1];
 			rdp.view_scale[0] = scale_x * rdp.scale_x;
 			rdp.view_scale[1] = -scale_y * rdp.scale_y;
 			rdp.view_scale[2] = 32.0f * scale_z;
@@ -400,10 +400,10 @@ static void uc8_movemem ()
 			rdp.light[n].dir_z = (float)(((wxInt8*)GFX_PTR.RDRAM)[(addr+10)^3]) / 127.0f;
 			// **
 			wxUint32 a = addr >> 1;
-			rdp.light[n].x = (float)(((short*)GFX_PTR.RDRAM)[(a+16)^1]);
-			rdp.light[n].y = (float)(((short*)GFX_PTR.RDRAM)[(a+17)^1]);
-			rdp.light[n].z = (float)(((short*)GFX_PTR.RDRAM)[(a+18)^1]);
-			rdp.light[n].w = (float)(((short*)GFX_PTR.RDRAM)[(a+19)^1]);
+			rdp.light[n].x = (float)(((wxInt16*)GFX_PTR.RDRAM)[(a+16)^1]);
+			rdp.light[n].y = (float)(((wxInt16*)GFX_PTR.RDRAM)[(a+17)^1]);
+			rdp.light[n].z = (float)(((wxInt16*)GFX_PTR.RDRAM)[(a+18)^1]);
+			rdp.light[n].w = (float)(((wxInt16*)GFX_PTR.RDRAM)[(a+19)^1]);
 			rdp.light[n].nonzero = GFX_PTR.RDRAM[(addr+12)^3];
 			rdp.light[n].ca = (float)rdp.light[n].nonzero / 16.0f;
 			//rdp.light[n].la = rdp.light[n].ca * 1.0f;
