@@ -230,7 +230,37 @@ SDL_sem *mutexProcessDList = SDL_CreateSemaphore(1);
 extern "C" {
 #endif
 
-static void drawViRegBG(void);
+static void drawViRegBG(void)
+{
+  LRDP("drawViRegBG\n");
+  const uint32_t VIwidth = *GFX_PTR.VI_WIDTH_REG;
+  FB_TO_SCREEN_INFO fb_info;
+  fb_info.width  = VIwidth;
+  fb_info.height = (uint32_t)rdp.vi_height;
+  if (fb_info.height == 0)
+  {
+    LRDP("Image height = 0 - skipping\n");
+    return;
+  }
+  fb_info.ul_x = 0;
+
+  fb_info.lr_x = VIwidth - 1;
+  //  fb_info.lr_x = (uint32_t)rdp.vi_width - 1;
+  fb_info.ul_y = 0;
+  fb_info.lr_y = fb_info.height - 1;
+  fb_info.opaque = 1;
+  fb_info.addr = *GFX_PTR.VI_ORIGIN_REG;
+  fb_info.size = *GFX_PTR.VI_STATUS_REG & 3;
+  rdp.last_bg = fb_info.addr;
+
+  bool drawn = DrawFrameBufferToScreen(fb_info);
+  if (settings.hacks&hack_Lego && drawn)
+  {
+    rdp.updatescreen = 1;
+    newSwapBuffers ();
+    DrawFrameBufferToScreen(fb_info);
+  }
+}
 
 #ifdef __cplusplus
 }
@@ -1642,37 +1672,6 @@ EXPORT void CALL SetRenderingCallback(void (*callback)(int))
     renderCallback = callback;
 }
 
-static void drawViRegBG(void)
-{
-  LRDP("drawViRegBG\n");
-  const uint32_t VIwidth = *GFX_PTR.VI_WIDTH_REG;
-  FB_TO_SCREEN_INFO fb_info;
-  fb_info.width  = VIwidth;
-  fb_info.height = (uint32_t)rdp.vi_height;
-  if (fb_info.height == 0)
-  {
-    LRDP("Image height = 0 - skipping\n");
-    return;
-  }
-  fb_info.ul_x = 0;
-
-  fb_info.lr_x = VIwidth - 1;
-  //  fb_info.lr_x = (uint32_t)rdp.vi_width - 1;
-  fb_info.ul_y = 0;
-  fb_info.lr_y = fb_info.height - 1;
-  fb_info.opaque = 1;
-  fb_info.addr = *GFX_PTR.VI_ORIGIN_REG;
-  fb_info.size = *GFX_PTR.VI_STATUS_REG & 3;
-  rdp.last_bg = fb_info.addr;
-
-  bool drawn = DrawFrameBufferToScreen(fb_info);
-  if (settings.hacks&hack_Lego && drawn)
-  {
-    rdp.updatescreen = 1;
-    newSwapBuffers ();
-    DrawFrameBufferToScreen(fb_info);
-  }
-}
 
 #ifdef __cplusplus
 }
