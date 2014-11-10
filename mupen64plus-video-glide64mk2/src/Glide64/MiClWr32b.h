@@ -55,15 +55,9 @@ static inline void mirror32bS(uint8_t *tex, uint8_t *start, int width, int heigh
     do
     {
       if ( width & (v10 + width) )
-      {
-        *v8 = *(uint32_t *)(&tex[mask] - (mask & 4 * v10));
-        ++v8;
-      }
+        *v8++ = *(uint32_t *)(&tex[mask] - (mask & 4 * v10));
       else
-      {
-        *v8 = *(uint32_t *)&tex[mask & 4 * v10];
-        ++v8;
-      }
+        *v8++ = *(uint32_t *)&tex[mask & 4 * v10];
       ++v10;
     }
     while ( v10 != count );
