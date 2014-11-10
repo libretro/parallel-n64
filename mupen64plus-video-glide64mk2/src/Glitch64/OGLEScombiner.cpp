@@ -122,7 +122,7 @@ SHADER_HEADER
 "#define TEX1             texture2D(texture1, gl_TexCoord[1].xy) \n" \
 "#define TEX1_OFFSET(off) texture2D(texture1, gl_TexCoord[1].xy - (off)/exactSizes.zw) \n" \
 "#define TO_PREMUL_A(c)   vec4((c).rgb*(c).a,(c).a)  \n"
-"#define FROM_PREMUL_A(c) vec4((c).rgb/(c).a,(c).a)  \n"
+"#define FROM_PREMUL_A(c) vec4((c).rgb/max((c).a,0.01),(c).a)  \n"
 #endif
 
 SHADER_VARYING
