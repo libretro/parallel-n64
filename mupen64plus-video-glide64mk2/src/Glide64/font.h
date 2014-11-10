@@ -18,7 +18,7 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-wxUint8 font[] = {255,
+uint8_t font[] = {255,
 255,
 255,
 255,

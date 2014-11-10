@@ -14,13 +14,13 @@ extern SETTINGS settings;
 
 void microcheck(void)
 {
-  wxUint32 i;
+  uint32_t i;
   uc_crc = 0;
 
   // Check first 3k of ucode, because the last 1k sometimes contains trash
   for (i=0; i<3072>>2; i++)
   {
-    uc_crc += ((wxUint32*)microcode)[i];
+    uc_crc += ((uint32_t*)microcode)[i];
   }
 
   FRDP_E ("crc: %08lx\n", uc_crc);

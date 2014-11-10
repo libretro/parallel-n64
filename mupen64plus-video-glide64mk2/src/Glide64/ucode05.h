@@ -40,8 +40,8 @@
 int cur_mtx = 0;
 int billboarding = 0;
 int vtx_last = 0;
-wxUint32 dma_offset_mtx = 0;
-wxUint32 dma_offset_vtx = 0;
+uint32_t dma_offset_mtx = 0;
+uint32_t dma_offset_vtx = 0;
 
 static void uc5_dma_offsets ()
 {
@@ -54,19 +54,19 @@ static void uc5_dma_offsets ()
 static void uc5_matrix ()
 {
   // Use segment offset to get the address
-  wxUint32 addr = dma_offset_mtx + (segoffset(rdp.cmd1) & BMASK);
+  uint32_t addr = dma_offset_mtx + (segoffset(rdp.cmd1) & BMASK);
 
-  wxUint8 n = (wxUint8)((rdp.cmd0 >> 16) & 0xF);
-  wxUint8 multiply;
+  uint8_t n = (uint8_t)((rdp.cmd0 >> 16) & 0xF);
+  uint8_t multiply;
 
   if (n == 0) //DKR
   {
-    n = (wxUint8)((rdp.cmd0 >> 22) & 0x3);
+    n = (uint8_t)((rdp.cmd0 >> 22) & 0x3);
     multiply = 0;
   }
   else //JF
   {
-    multiply = (wxUint8)((rdp.cmd0 >> 23) & 0x1);
+    multiply = (uint8_t)((rdp.cmd0 >> 23) & 0x1);
   }
 
   cur_mtx = n;
@@ -106,7 +106,7 @@ static void uc5_matrix ()
 
 static void uc5_vertex ()
 {
-  wxUint32 addr = dma_offset_vtx + (segoffset(rdp.cmd1) & BMASK);
+  uint32_t addr = dma_offset_vtx + (segoffset(rdp.cmd1) & BMASK);
 
   // | cccc cccc 1111 1??? 0000 0002 2222 2222 | cmd1 = address |
   // c = vtx command
@@ -138,9 +138,9 @@ static void uc5_vertex ()
   {
     start = (i-first) * 10;
     VERTEX *v = &rdp.vtx[i];
-    x   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 0)^1];
-    y   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 1)^1];
-    z   = (float)((wxInt16*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 2)^1];
+    x   = (float)((int16_t*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 0)^1];
+    y   = (float)((int16_t*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 1)^1];
+    z   = (float)((int16_t*)GFX_PTR.RDRAM)[(((addr+start) >> 1) + 2)^1];
 
     v->x = x*rdp.dkrproj[prj][0][0] + y*rdp.dkrproj[prj][1][0] + z*rdp.dkrproj[prj][2][0] + rdp.dkrproj[prj][3][0];
     v->y = x*rdp.dkrproj[prj][0][1] + y*rdp.dkrproj[prj][1][1] + z*rdp.dkrproj[prj][2][1] + rdp.dkrproj[prj][3][1];
@@ -173,10 +173,10 @@ static void uc5_vertex ()
     if (v->w < 0.1f) v->scr_off |= 16;
     if (fabs(v->z_w) > 1.0) v->scr_off |= 32;
 
-    v->r = ((wxUint8*)GFX_PTR.RDRAM)[(addr+start + 6)^3];
-    v->g = ((wxUint8*)GFX_PTR.RDRAM)[(addr+start + 7)^3];
-    v->b = ((wxUint8*)GFX_PTR.RDRAM)[(addr+start + 8)^3];
-    v->a = ((wxUint8*)GFX_PTR.RDRAM)[(addr+start + 9)^3];
+    v->r = ((uint8_t*)GFX_PTR.RDRAM)[(addr+start + 6)^3];
+    v->g = ((uint8_t*)GFX_PTR.RDRAM)[(addr+start + 7)^3];
+    v->b = ((uint8_t*)GFX_PTR.RDRAM)[(addr+start + 8)^3];
+    v->a = ((uint8_t*)GFX_PTR.RDRAM)[(addr+start + 9)^3];
     CalculateFog (v);
 
 #ifdef EXTREME_LOGGING
@@ -199,7 +199,7 @@ static void uc5_tridma ()
   // 2 = method #2 of getting count
   // 0 = unused
 
-  wxUint32 addr = segoffset(rdp.cmd1) & BMASK;
+  uint32_t addr = segoffset(rdp.cmd1) & BMASK;
   int num = (rdp.cmd0 & 0xFFF0) >> 4;
   //int num = ((rdp.cmd0 & 0x00F00000) >> 20) + 1;  // same thing!
   FRDP("uc5:tridma #%d - addr: %08lx, count: %d\n", rdp.tri_n, addr, num);
@@ -239,12 +239,12 @@ static void uc5_tridma ()
     }
     start += 4;
 
-    v[0]->ou = (float)((wxInt16*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 5] / 32.0f;
-    v[0]->ov = (float)((wxInt16*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 4] / 32.0f;
-    v[1]->ou = (float)((wxInt16*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 3] / 32.0f;
-    v[1]->ov = (float)((wxInt16*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 2] / 32.0f;
-    v[2]->ou = (float)((wxInt16*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 1] / 32.0f;
-    v[2]->ov = (float)((wxInt16*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 0] / 32.0f;
+    v[0]->ou = (float)((int16_t*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 5] / 32.0f;
+    v[0]->ov = (float)((int16_t*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 4] / 32.0f;
+    v[1]->ou = (float)((int16_t*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 3] / 32.0f;
+    v[1]->ov = (float)((int16_t*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 2] / 32.0f;
+    v[2]->ou = (float)((int16_t*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 1] / 32.0f;
+    v[2]->ov = (float)((int16_t*)GFX_PTR.RDRAM)[((addr+start) >> 1) + 0] / 32.0f;
 
     v[0]->uv_calculated = 0xFFFFFFFF;
     v[1]->uv_calculated = 0xFFFFFFFF;
@@ -264,7 +264,7 @@ static void uc5_tridma ()
 
 static void uc5_dl_in_mem ()
 {
-  wxUint32 addr = segoffset(rdp.cmd1) & BMASK;
+  uint32_t addr = segoffset(rdp.cmd1) & BMASK;
   int count = (rdp.cmd0 & 0x00FF0000) >> 16;
   FRDP ("uc5:dl_in_mem - addr: %08lx, count: %d\n", addr, count);
 
@@ -306,8 +306,8 @@ static void uc5_moveword()
 
   case 0x08:
     {
-      rdp.fog_multiplier = (wxInt16)(rdp.cmd1 >> 16);
-      rdp.fog_offset = (wxInt16)(rdp.cmd1 & 0x0000FFFF);
+      rdp.fog_multiplier = (int16_t)(rdp.cmd1 >> 16);
+      rdp.fog_offset = (int16_t)(rdp.cmd1 & 0x0000FFFF);
       FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
       //	  rdp.update |= UPDATE_FOG_ENABLED;
     }

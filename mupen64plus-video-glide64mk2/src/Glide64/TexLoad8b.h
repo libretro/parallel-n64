@@ -73,26 +73,26 @@ static inline void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
       v11 = v10;
       v12 = bswap32(*(uint32_t *)v7);
       v13 = (uint32_t *)(v7 + 4);
-      ALOWORD(v10) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v12 >> 15) & 0x1FE)), 1);
+      ALOWORD(v10) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v12 >> 15) & 0x1FE)), 1);
       v14 = v10 << 16;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v12 >> 23) & 0x1FE)), 1);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v12 >> 23) & 0x1FE)), 1);
       *v8 = v14;
       v15 = v8 + 1;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + (2 * (uint16_t)v12 & 0x1FE)), 1);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + (2 * (uint16_t)v12 & 0x1FE)), 1);
       v14 <<= 16;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v12 >> 7) & 0x1FE)), 1);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v12 >> 7) & 0x1FE)), 1);
       *v15 = v14;
       ++v15;
       v16 = bswap32(*v13);
       v7 = (uint8_t *)(v13 + 1);
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v16 >> 15) & 0x1FE)), 1);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v16 >> 15) & 0x1FE)), 1);
       v14 <<= 16;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v16 >> 23) & 0x1FE)), 1);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v16 >> 23) & 0x1FE)), 1);
       *v15 = v14;
       ++v15;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + (2 * (uint16_t)v16 & 0x1FE)), 1);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + (2 * (uint16_t)v16 & 0x1FE)), 1);
       v14 <<= 16;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v16 >> 7) & 0x1FE)), 1);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v16 >> 7) & 0x1FE)), 1);
       *v15 = v14;
       v8 = v15 + 1;
       v10 = v11 - 1;
@@ -102,39 +102,39 @@ static inline void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
       break;
     v26 = v25 - 1;
     v17 = (uint32_t *)&src[(line + (uintptr_t)v7 - (uintptr_t)src) & 0x7FF];
-    v18 = (uint32_t *)((wxInt8 *)v8 + ext);
+    v18 = (uint32_t *)((int8_t *)v8 + ext);
     v19 = wid_64;
     do
     {
       v20 = v19;
       v21 = bswap32(v17[1]);
-      ALOWORD(v19) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v21 >> 15) & 0x1FE)), 1);
+      ALOWORD(v19) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v21 >> 15) & 0x1FE)), 1);
       v22 = v19 << 16;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v21 >> 23) & 0x1FE)), 1);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v21 >> 23) & 0x1FE)), 1);
       *v18 = v22;
       v23 = v18 + 1;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + (2 * (uint16_t)v21 & 0x1FE)), 1);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + (2 * (uint16_t)v21 & 0x1FE)), 1);
       v22 <<= 16;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v21 >> 7) & 0x1FE)), 1);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v21 >> 7) & 0x1FE)), 1);
       *v23 = v22;
       ++v23;
       v24 = bswap32(*v17);
       v17 = (uint32_t *)&src[((uintptr_t)v17 + 8 - (uintptr_t)src) & 0x7FF];
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v24 >> 15) & 0x1FE)), 1);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v24 >> 15) & 0x1FE)), 1);
       v22 <<= 16;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v24 >> 23) & 0x1FE)), 1);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v24 >> 23) & 0x1FE)), 1);
       *v23 = v22;
       ++v23;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + (2 * (uint16_t)v24 & 0x1FE)), 1);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + (2 * (uint16_t)v24 & 0x1FE)), 1);
       v22 <<= 16;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v24 >> 7) & 0x1FE)), 1);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v24 >> 7) & 0x1FE)), 1);
       *v23 = v22;
       v18 = v23 + 1;
       v19 = v20 - 1;
     }
     while ( v20 != 1 );
     v7 = &src[(line + (uintptr_t)v17 - (uintptr_t)src) & 0x7FF];
-    v8 = (uint32_t *)((wxInt8 *)v18 + ext);
+    v8 = (uint32_t *)((int8_t *)v18 + ext);
     v9 = v26 - 1;
   }
   while ( v26 != 1 );
@@ -175,26 +175,26 @@ static inline void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
       v11 = v10;
       v12 = bswap32(*v7);
       v13 = v7 + 1;
-      ALOWORD(v10) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v12 >> 15) & 0x1FE)), 8);
+      ALOWORD(v10) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v12 >> 15) & 0x1FE)), 8);
       v14 = v10 << 16;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v12 >> 23) & 0x1FE)), 8);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v12 >> 23) & 0x1FE)), 8);
       *v8 = v14;
       v15 = v8 + 1;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + (2 * (uint16_t)v12 & 0x1FE)), 8);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + (2 * (uint16_t)v12 & 0x1FE)), 8);
       v14 <<= 16;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v12 >> 7) & 0x1FE)), 8);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v12 >> 7) & 0x1FE)), 8);
       *v15 = v14;
       ++v15;
       v16 = bswap32(*v13);
       v7 = v13 + 1;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v16 >> 15) & 0x1FE)), 8);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v16 >> 15) & 0x1FE)), 8);
       v14 <<= 16;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v16 >> 23) & 0x1FE)), 8);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v16 >> 23) & 0x1FE)), 8);
       *v15 = v14;
       ++v15;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + (2 * (uint16_t)v16 & 0x1FE)), 8);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + (2 * (uint16_t)v16 & 0x1FE)), 8);
       v14 <<= 16;
-      ALOWORD(v14) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v16 >> 7) & 0x1FE)), 8);
+      ALOWORD(v14) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v16 >> 7) & 0x1FE)), 8);
       *v15 = v14;
       v8 = v15 + 1;
       v10 = v11 - 1;
@@ -203,40 +203,40 @@ static inline void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
     if ( v25 == 1 )
       break;
     v26 = v25 - 1;
-    v17 = (uint32_t *)((wxInt8 *)v7 + line);
-    v18 = (uint32_t *)((wxInt8 *)v8 + ext);
+    v17 = (uint32_t *)((int8_t *)v7 + line);
+    v18 = (uint32_t *)((int8_t *)v8 + ext);
     v19 = wid_64;
     do
     {
       v20 = v19;
       v21 = bswap32(v17[1]);
-      ALOWORD(v19) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v21 >> 15) & 0x1FE)), 8);
+      ALOWORD(v19) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v21 >> 15) & 0x1FE)), 8);
       v22 = v19 << 16;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v21 >> 23) & 0x1FE)), 8);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v21 >> 23) & 0x1FE)), 8);
       *v18 = v22;
       v23 = v18 + 1;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + (2 * (uint16_t)v21 & 0x1FE)), 8);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + (2 * (uint16_t)v21 & 0x1FE)), 8);
       v22 <<= 16;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v21 >> 7) & 0x1FE)), 8);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v21 >> 7) & 0x1FE)), 8);
       *v23 = v22;
       ++v23;
       v24 = bswap32(*v17);
       v17 += 2;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v24 >> 15) & 0x1FE)), 8);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v24 >> 15) & 0x1FE)), 8);
       v22 <<= 16;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v24 >> 23) & 0x1FE)), 8);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v24 >> 23) & 0x1FE)), 8);
       *v23 = v22;
       ++v23;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + (2 * (uint16_t)v24 & 0x1FE)), 8);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + (2 * (uint16_t)v24 & 0x1FE)), 8);
       v22 <<= 16;
-      ALOWORD(v22) = __ROR__(*(uint16_t *)((wxInt8 *)pal + ((v24 >> 7) & 0x1FE)), 8);
+      ALOWORD(v22) = __ROR__(*(uint16_t *)((int8_t *)pal + ((v24 >> 7) & 0x1FE)), 8);
       *v23 = v22;
       v18 = v23 + 1;
       v19 = v20 - 1;
     }
     while ( v20 != 1 );
-    v7 = (uint32_t *)((wxInt8 *)v17 + line);
-    v8 = (uint32_t *)((wxInt8 *)v18 + ext);
+    v7 = (uint32_t *)((int8_t *)v17 + line);
+    v8 = (uint32_t *)((int8_t *)v18 + ext);
     v9 = v26 - 1;
   }
   while ( v26 != 1 );
@@ -287,8 +287,8 @@ static inline void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height,
     if ( v21 == 1 )
       break;
     v22 = v21 - 1;
-    v16 = (uint32_t *)((wxInt8 *)v6 + line);
-    v17 = (uint32_t *)((wxInt8 *)v7 + ext);
+    v16 = (uint32_t *)((int8_t *)v6 + line);
+    v17 = (uint32_t *)((int8_t *)v7 + ext);
     v18 = wid_64;
     do
     {
@@ -301,8 +301,8 @@ static inline void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height,
       --v18;
     }
     while ( v18 );
-    v6 = (uint32_t *)((wxInt8 *)v16 + line);
-    v7 = (uint32_t *)((wxInt8 *)v17 + ext);
+    v6 = (uint32_t *)((int8_t *)v16 + line);
+    v7 = (uint32_t *)((int8_t *)v17 + ext);
     v8 = v22 - 1;
   }
   while ( v22 != 1 );
@@ -349,8 +349,8 @@ static inline void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
     if ( v19 == 1 )
       break;
     v20 = v19 - 1;
-    v14 = (uint32_t *)((wxInt8 *)v6 + line);
-    v15 = (uint32_t *)((wxInt8 *)v7 + ext);
+    v14 = (uint32_t *)((int8_t *)v6 + line);
+    v15 = (uint32_t *)((int8_t *)v7 + ext);
     v16 = wid_64;
     do
     {
@@ -363,8 +363,8 @@ static inline void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
       --v16;
     }
     while ( v16 );
-    v6 = (uint32_t *)((wxInt8 *)v14 + line);
-    v7 = (uint32_t *)((wxInt8 *)v15 + ext);
+    v6 = (uint32_t *)((int8_t *)v14 + line);
+    v7 = (uint32_t *)((int8_t *)v15 + ext);
     v8 = v20 - 1;
   }
   while ( v20 != 1 );
@@ -374,7 +374,7 @@ static inline void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
 // Size: 1, Format: 2
 //
 
-wxUint32 Load8bCI (wxUIntPtr dst, wxUIntPtr src, int wid_64, int height, int line, int real_width, int tile)
+uint32_t Load8bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
   if (wid_64 < 1) wid_64 = 1;
   if (height < 1) height = 1;
@@ -403,7 +403,7 @@ wxUint32 Load8bCI (wxUIntPtr dst, wxUIntPtr src, int wid_64, int height, int lin
 //
 // ** by Gugaman **
 
-wxUint32 Load8bIA (wxUIntPtr dst, wxUIntPtr src, int wid_64, int height, int line, int real_width, int tile)
+uint32_t Load8bIA (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
   if (rdp.tlut_mode != 0)
     return Load8bCI (dst, src, wid_64, height, line, real_width, tile);
@@ -420,7 +420,7 @@ wxUint32 Load8bIA (wxUIntPtr dst, wxUIntPtr src, int wid_64, int height, int lin
 //
 // ** by Gugaman **
 
-wxUint32 Load8bI (wxUIntPtr dst, wxUIntPtr src, int wid_64, int height, int line, int real_width, int tile)
+uint32_t Load8bI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
   if (rdp.tlut_mode != 0)
     return Load8bCI (dst, src, wid_64, height, line, real_width, tile);

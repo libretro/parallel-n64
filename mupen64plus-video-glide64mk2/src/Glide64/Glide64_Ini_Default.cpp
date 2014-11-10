@@ -29,7 +29,7 @@ void ReadSettings(void)
     return;
   }
 
-  settings.card_id = (BYTE)Config_ReadInt ("card_id", "Card ID", 0, TRUE, FALSE);
+  settings.card_id = (uint8_t)Config_ReadInt ("card_id", "Card ID", 0, TRUE, FALSE);
   //settings.lang_id not needed
   // depth_bias = -Config_ReadInt ("depth_bias", "Depth bias level", 0, TRUE, FALSE);
   settings.res_data = 0;
@@ -40,21 +40,21 @@ void ReadSettings(void)
   settings.ssformat = (BOOL)Config_ReadInt("ssformat", "TODO:ssformat", 0);
   //settings.fast_crc = (BOOL)Config_ReadInt ("fast_crc", "Fast CRC", 0);
 
-  settings.show_fps = (BYTE)Config_ReadInt ("show_fps", "Display performance stats (add together desired flags): 1=FPS counter, 2=VI/s counter, 4=% speed, 8=FPS transparent", 0, TRUE, FALSE);
+  settings.show_fps = (uint8_t)Config_ReadInt ("show_fps", "Display performance stats (add together desired flags): 1=FPS counter, 2=VI/s counter, 4=% speed, 8=FPS transparent", 0, TRUE, FALSE);
   settings.clock = (BOOL)Config_ReadInt ("clock", "Clock enabled", 0);
   settings.clock_24_hr = (BOOL)Config_ReadInt ("clock_24_hr", "Clock is 24-hour", 1);
   // settings.advanced_options only good for GUI config
   // settings.texenh_options = only good for GUI config
   //settings.use_hotkeys = ini->Read(_T("hotkeys"), 1l);
 
-  settings.wrpResolution = (BYTE)Config_ReadInt ("wrpResolution", "Wrapper resolution", 0, TRUE, FALSE);
-  settings.wrpVRAM = (BYTE)Config_ReadInt ("wrpVRAM", "Wrapper VRAM", 0, TRUE, FALSE);
+  settings.wrpResolution = (uint8_t)Config_ReadInt ("wrpResolution", "Wrapper resolution", 0, TRUE, FALSE);
+  settings.wrpVRAM = (uint8_t)Config_ReadInt ("wrpVRAM", "Wrapper VRAM", 0, TRUE, FALSE);
   settings.wrpFBO = (BOOL)Config_ReadInt ("wrpFBO", "Wrapper FBO", 1, TRUE, TRUE);
   settings.wrpAnisotropic = (BOOL)Config_ReadInt ("wrpAnisotropic", "Wrapper Anisotropic Filtering", 1, TRUE, TRUE);
 
 #ifndef _ENDUSER_RELEASE_
   settings.autodetect_ucode = (BOOL)Config_ReadInt ("autodetect_ucode", "Auto-detect microcode", 1);
-  settings.ucode = (wxUint32)Config_ReadInt ("ucode", "Force microcode", 2, TRUE, FALSE);
+  settings.ucode = (uint32_t)Config_ReadInt ("ucode", "Force microcode", 2, TRUE, FALSE);
   settings.wireframe = (BOOL)Config_ReadInt ("wireframe", "Wireframe display", 0);
   settings.wfmode = (int)Config_ReadInt ("wfmode", "Wireframe mode: 0=Normal colors, 1=Vertex colors, 2=Red only", 1, TRUE, FALSE);
 
@@ -278,7 +278,7 @@ void ReadSpecialSettings (const char * name)
     settings.stipple_mode = settings.special_stipple_mode;
 
   int stipple_pattern = ini->Read(_T("stipple_pattern"), -1);
-  if (stipple_pattern > 0) settings.stipple_pattern = (wxUint32)stipple_pattern;
+  if (stipple_pattern > 0) settings.stipple_pattern = (uint32_t)stipple_pattern;
   if (settings.special_stipple_pattern >= 0)
     stipple_pattern = settings.special_stipple_pattern;
 
@@ -390,7 +390,7 @@ void ReadSpecialSettings (const char * name)
     int resolution;
     if (ini->Read(_T("resolution"), &resolution))
     {
-      settings.res_data = (wxUint32)resolution;
+      settings.res_data = (uint32_t)resolution;
       if (settings.res_data >= 0x18) settings.res_data = 12;
       settings.scr_res_x = settings.res_x = resolutions[settings.res_data][0];
       settings.scr_res_y = settings.res_y = resolutions[settings.res_data][1];

@@ -76,7 +76,7 @@ BOOL Config_ReadInt(const char *itemname, const char *desc, int def_value, int c
 }
 
 #ifdef TEXTURE_FILTER
-wxUint32 texfltr[] = {
+uint32_t texfltr[] = {
   NO_FILTER, //"None"
   SMOOTH_FILTER_1, //"Smooth filtering 1"
   SMOOTH_FILTER_2, //"Smooth filtering 2"
@@ -86,7 +86,7 @@ wxUint32 texfltr[] = {
   SHARP_FILTER_2,  //"Sharp filtering 2"
 };
 
-wxUint32 texenht[] = {
+uint32_t texenht[] = {
   NO_ENHANCEMENT,    //"None"
   NO_ENHANCEMENT,    //"Store"
   X2_ENHANCEMENT,    //"X2"
@@ -98,14 +98,14 @@ wxUint32 texenht[] = {
   HQ4X_ENHANCEMENT,  //"HQ4X"
 };
 
-wxUint32 texcmpr[] = {
+uint32_t texcmpr[] = {
   //NO_COMPRESSION,   //"None"
   //  NCC_COMPRESSION,  //"NCC"
   S3TC_COMPRESSION, //"S3TC"
   FXT1_COMPRESSION, //"FXT1"
 };
 
-wxUint32 texhirs[] = {
+uint32_t texhirs[] = {
   NO_HIRESTEXTURES,   //"Do not use"
   RICE_HIRESTEXTURES,  //"Rice format"
   //  GHQ_HIRESTEXTURES, //"GlideHQ format"

@@ -67,7 +67,7 @@ FILE *ini;
 int sectionstart;
 int last_line;      // last good line
 int last_line_ret;  // last line ended in return?
-wxUint16 cr = 0x0A0D;
+uint16_t cr = 0x0A0D;
 static char configdir[PATH_MAX] = {0};
 
 

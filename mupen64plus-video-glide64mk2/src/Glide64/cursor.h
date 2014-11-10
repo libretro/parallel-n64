@@ -18,7 +18,7 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-wxUint8 cursor[] = {127,
+uint8_t cursor[] = {127,
 255,
 127,
 255,

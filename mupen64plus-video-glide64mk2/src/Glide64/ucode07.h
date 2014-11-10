@@ -43,7 +43,7 @@
 // Bugs fixed with help from glN64 sources. Thanks, Orkin!
 //****************************************************************
 
-wxUint32 pd_col_addr = 0;
+uint32_t pd_col_addr = 0;
 
 static void uc7_colorbase ()
 {
@@ -54,14 +54,14 @@ static void uc7_colorbase ()
 
 typedef struct 
 {
-	wxInt16 y;
-	wxInt16 x;
-	wxUint16 idx;
+	int16_t y;
+	int16_t x;
+	uint16_t idx;
 
-	wxInt16 z;
+	int16_t z;
 
-	wxInt16 t;
-	wxInt16 s;
+	int16_t t;
+	int16_t s;
 
 } vtx_uc7;
 
@@ -79,15 +79,15 @@ static void uc7_vertex ()
     rdp.update ^= UPDATE_LIGHTS;
     
     // Calculate light vectors
-    for (wxUint32 l=0; l<rdp.num_lights; l++)
+    for (uint32_t l=0; l<rdp.num_lights; l++)
     {
 	  InverseTransformVector(&rdp.light[l].dir_x, rdp.light_vector[l], rdp.model);
       NormalizeVector (rdp.light_vector[l]);
     }
   }
 
-  wxUint32 addr = segoffset(rdp.cmd1);
-  wxUint32 v0, i, n;
+  uint32_t addr = segoffset(rdp.cmd1);
+  uint32_t v0, i, n;
   float x, y, z;
 
   rdp.v0 = v0 = (rdp.cmd0 & 0x0F0000) >> 16;
@@ -134,16 +134,16 @@ static void uc7_vertex ()
     if (v->y > v->w) v->scr_off |= 8;
     if (v->w < 0.1f) v->scr_off |= 16;
 
-	wxUint8 *color = &GFX_PTR.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
+	uint8_t *color = &GFX_PTR.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
 
     v->a = color[0];
 	CalculateFog (v);
 
     if (rdp.geom_mode & 0x00020000)
     {
-      v->vec[0] = (wxInt8)color[3];
-      v->vec[1] = (wxInt8)color[2];
-      v->vec[2] = (wxInt8)color[1];
+      v->vec[0] = (int8_t)color[3];
+      v->vec[1] = (int8_t)color[2];
+      v->vec[2] = (int8_t)color[1];
 
       if (rdp.geom_mode & 0x80000) 
       {

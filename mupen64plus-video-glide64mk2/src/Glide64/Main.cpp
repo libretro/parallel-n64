@@ -185,12 +185,12 @@ LARGE_INTEGER perf_freq;
 LARGE_INTEGER fps_last;
 LARGE_INTEGER fps_next;
 float      fps = 0.0f;
-wxUint32   fps_count = 0;
+uint32_t   fps_count = 0;
 
-wxUint32   vi_count = 0;
+uint32_t   vi_count = 0;
 float      vi = 0.0f;
 
-wxUint32   region = 0;
+uint32_t   region = 0;
 
 float      ntsc_percent = 0.0f;
 float      pal_percent = 0.0f;
@@ -215,10 +215,10 @@ VOODOO voodoo = {0, 0, 0, 0,
 
 GrTexInfo fontTex;
 GrTexInfo cursorTex;
-wxUint32   offset_font = 0;
-wxUint32   offset_cursor = 0;
-wxUint32   offset_textures = 0;
-wxUint32   offset_texbuf1 = 0;
+uint32_t   offset_font = 0;
+uint32_t   offset_cursor = 0;
+uint32_t   offset_textures = 0;
+uint32_t   offset_texbuf1 = 0;
 
 int    capture_screen = 0;
 char    capture_path[256];
@@ -264,25 +264,25 @@ void _ChangeSize ()
 //  float res_scl_x = (float)settings.res_x / 320.0f;
   float res_scl_y = (float)settings.res_y / 240.0f;
 
-  wxUint32 scale_x = *GFX_PTR.VI_X_SCALE_REG & 0xFFF;
+  uint32_t scale_x = *GFX_PTR.VI_X_SCALE_REG & 0xFFF;
   if (!scale_x) return;
-  wxUint32 scale_y = *GFX_PTR.VI_Y_SCALE_REG & 0xFFF;
+  uint32_t scale_y = *GFX_PTR.VI_Y_SCALE_REG & 0xFFF;
   if (!scale_y) return;
 
   float fscale_x = (float)scale_x / 1024.0f;
   float fscale_y = (float)scale_y / 2048.0f;
 
-  wxUint32 dwHStartReg = *GFX_PTR.VI_H_START_REG;
-  wxUint32 dwVStartReg = *GFX_PTR.VI_V_START_REG;
+  uint32_t dwHStartReg = *GFX_PTR.VI_H_START_REG;
+  uint32_t dwVStartReg = *GFX_PTR.VI_V_START_REG;
 
-  wxUint32 hstart = dwHStartReg >> 16;
-  wxUint32 hend = dwHStartReg & 0xFFFF;
+  uint32_t hstart = dwHStartReg >> 16;
+  uint32_t hend = dwHStartReg & 0xFFFF;
 
   // dunno... but sometimes this happens
   if (hend == hstart) hend = (int)(*GFX_PTR.VI_WIDTH_REG / fscale_x);
 
-  wxUint32 vstart = dwVStartReg >> 16;
-  wxUint32 vend = dwVStartReg & 0xFFFF;
+  uint32_t vstart = dwVStartReg >> 16;
+  uint32_t vend = dwVStartReg & 0xFFFF;
 
   rdp.vi_width = (hend - hstart) * fscale_x;
   rdp.vi_height = (vend - vstart) * fscale_y * 1.0126582f;
@@ -310,13 +310,13 @@ void _ChangeSize ()
   //rdp.offset_x = 0;
   //  rdp.offset_y = 0;
   rdp.offset_y = ((float)settings.res_y - rdp.vi_height * rdp.scale_y) * 0.5f;
-  if (((wxUint32)rdp.vi_width <= (*GFX_PTR.VI_WIDTH_REG)/2) && (rdp.vi_width > rdp.vi_height))
+  if (((uint32_t)rdp.vi_width <= (*GFX_PTR.VI_WIDTH_REG)/2) && (rdp.vi_width > rdp.vi_height))
     rdp.scale_y *= 0.5f;
 
   rdp.scissor_o.ul_x = 0;
   rdp.scissor_o.ul_y = 0;
-  rdp.scissor_o.lr_x = (wxUint32)rdp.vi_width;
-  rdp.scissor_o.lr_y = (wxUint32)rdp.vi_height;
+  rdp.scissor_o.lr_x = (uint32_t)rdp.vi_width;
+  rdp.scissor_o.lr_y = (uint32_t)rdp.vi_height;
 
   rdp.update |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
 }
@@ -333,19 +333,19 @@ void ChangeSize ()
   case 0: //4:3
     if (settings.scr_res_x >= settings.scr_res_y * 4.0f / 3.0f) {
       settings.res_y = settings.scr_res_y;
-      settings.res_x = (wxUint32)(settings.res_y * 4.0f / 3.0f);
+      settings.res_x = (uint32_t)(settings.res_y * 4.0f / 3.0f);
     } else {
       settings.res_x = settings.scr_res_x;
-      settings.res_y = (wxUint32)(settings.res_x / 4.0f * 3.0f);
+      settings.res_y = (uint32_t)(settings.res_x / 4.0f * 3.0f);
     }
     break;
   case 1: //16:9
     if (settings.scr_res_x >= settings.scr_res_y * 16.0f / 9.0f) {
       settings.res_y = settings.scr_res_y;
-      settings.res_x = (wxUint32)(settings.res_y * 16.0f / 9.0f);
+      settings.res_x = (uint32_t)(settings.res_y * 16.0f / 9.0f);
     } else {
       settings.res_x = settings.scr_res_x;
-      settings.res_y = (wxUint32)(settings.res_x / 16.0f * 9.0f);
+      settings.res_y = (uint32_t)(settings.res_x / 16.0f * 9.0f);
     }
     break;
   default: //stretch or original
@@ -355,8 +355,8 @@ void ChangeSize ()
   _ChangeSize ();
   rdp.offset_x = (settings.scr_res_x - settings.res_x) / 2.0f;
   float offset_y = (settings.scr_res_y - settings.res_y) / 2.0f;
-  settings.res_x += (wxUint32)rdp.offset_x;
-  settings.res_y += (wxUint32)offset_y;
+  settings.res_x += (uint32_t)rdp.offset_x;
+  settings.res_y += (uint32_t)offset_y;
   rdp.offset_y += offset_y;
   if (settings.aspectmode == 3) // original
   {
@@ -630,11 +630,11 @@ void guLoadTextures ()
     offset_font = 0;
 
 #include "font.h"
-  wxUint32 *data = (wxUint32*)font;
-  wxUint32 cur;
+  uint32_t *data = (uint32_t*)font;
+  uint32_t cur;
 
   // ** Font texture **
-  wxUint8 *tex8 = (wxUint8*)malloc(256*64);
+  uint8_t *tex8 = (uint8_t*)malloc(256*64);
 
   fontTex.smallLodLog2 = fontTex.largeLodLog2 = GR_LOD_LOG2_256;
   fontTex.aspectRatioLog2 = GR_ASPECT_LOG2_4x1;
@@ -642,7 +642,7 @@ void guLoadTextures ()
   fontTex.data = tex8;
 
   // Decompression: [1-bit inverse alpha --> 8-bit alpha]
-  wxUint32 i,b;
+  uint32_t i,b;
   for (i=0; i<0x200; i++)
   {
     // cur = ~*(data++), byteswapped
@@ -672,9 +672,9 @@ void guLoadTextures ()
 
   // ** Cursor texture **
 #include "cursor.h"
-  data = (wxUint32*)cursor;
+  data = (uint32_t*)cursor;
 
-  wxUint16 *tex16 = (wxUint16*)malloc(32*32*2);
+  uint16_t *tex16 = (uint16_t*)malloc(32*32*2);
 
   cursorTex.smallLodLog2 = cursorTex.largeLodLog2 = GR_LOD_LOG2_32;
   cursorTex.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
@@ -685,8 +685,8 @@ void guLoadTextures ()
   for (i=0; i<0x200; i++)
   {
     cur = *(data++);
-    *(tex16++) = (wxUint16)(((cur&0x000000FF)<<8)|((cur&0x0000FF00)>>8));
-    *(tex16++) = (wxUint16)(((cur&0x00FF0000)>>8)|((cur&0xFF000000)>>24));
+    *(tex16++) = (uint16_t)(((cur&0x000000FF)<<8)|((cur&0x0000FF00)>>8));
+    *(tex16++) = (uint16_t)(((cur&0x00FF0000)>>8)|((cur&0xFF000000)>>24));
   }
 
   grTexDownloadMipMap (GR_TMU0,
@@ -797,14 +797,14 @@ int InitGfx ()
   }
   //*/
 //TODO-PORT: fullscreen stuff
-  wxUint32 res_data = settings.res_data;
+  uint32_t res_data = settings.res_data;
   char strWrapperFullScreenResolutionExt[] = "grWrapperFullScreenResolutionExt";
   if (ev_fullscreen)
   {
       GRWRAPPERFULLSCREENRESOLUTIONEXT grWrapperFullScreenResolutionExt =
         (GRWRAPPERFULLSCREENRESOLUTIONEXT)grGetProcAddress(strWrapperFullScreenResolutionExt);
       if (grWrapperFullScreenResolutionExt) {
-        wxUint32 _width, _height = 0;
+        uint32_t _width, _height = 0;
         settings.res_data = grWrapperFullScreenResolutionExt(&_width, &_height);
         settings.scr_res_x = settings.res_x = _width;
         settings.scr_res_y = settings.res_y = _height;
@@ -1099,12 +1099,12 @@ EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
   *height = settings.res_y;
   if (dest)
   {
-    BYTE * line = (BYTE*)dest;
+    uint8_t * line = (uint8_t*)dest;
     if (!fullscreen)
     {
-      for (wxUint32 y=0; y<settings.res_y; y++)
+      for (uint32_t y=0; y<settings.res_y; y++)
       {
-        for (wxUint32 x=0; x<settings.res_x; x++)
+        for (uint32_t x=0; x<settings.res_x; x++)
         {
           line[x*3] = 0x20;
           line[x*3+1] = 0x7f;
@@ -1127,10 +1127,10 @@ EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
     &info))
   {
     // Copy the screen, let's hope this works.
-      for (wxUint32 y=0; y<settings.res_y; y++)
+      for (uint32_t y=0; y<settings.res_y; y++)
       {
-        BYTE *ptr = (BYTE*) info.lfbPtr + (info.strideInBytes * y);
-        for (wxUint32 x=0; x<settings.res_x; x++)
+        uint8_t *ptr = (uint8_t*) info.lfbPtr + (info.strideInBytes * y);
+        for (uint32_t x=0; x<settings.res_x; x++)
         {
           line[x*3]   = ptr[2];  // red
           line[x*3+1] = ptr[1];  // green
@@ -1382,8 +1382,8 @@ void CALL GetDllInfo ( PLUGIN_INFO * PluginInfo )
 
   // If DLL supports memory these memory options then set them to TRUE or FALSE
   //  if it does not support it
-  PluginInfo->NormalMemory = TRUE;  // a normal wxUint8 array
-  PluginInfo->MemoryBswaped = TRUE; // a normal wxUint8 array where the memory has been pre
+  PluginInfo->NormalMemory = TRUE;  // a normal uint8_t array
+  PluginInfo->MemoryBswaped = TRUE; // a normal uint8_t array where the memory has been pre
   // bswap on a dword (32 bits) boundry
 }
 
@@ -1525,7 +1525,7 @@ EXPORT void CALL RomClosed (void)
 
 static void CheckDRAMSize()
 {
-  wxUint32 test;
+  uint32_t test;
   GLIDE64_TRY
   {
     test = GFX_PTR.RDRAM[0x007FFFFF] + 1;
@@ -1560,7 +1560,7 @@ EXPORT int CALL RomOpen (void)
   rdp_reset ();
 
   // Get the country code & translate to NTSC(0) or PAL(1)
-  wxUint16 code = ((wxUint16*)GFX_PTR.HEADER)[0x1F^1];
+  uint16_t code = ((uint16_t*)GFX_PTR.HEADER)[0x1F^1];
 
   if (code == 0x4400) region = 1; // Germany (PAL)
   if (code == 0x4500) region = 0; // USA (NTSC)
@@ -1645,10 +1645,10 @@ EXPORT void CALL SetRenderingCallback(void (*callback)(int))
 static void drawViRegBG(void)
 {
   LRDP("drawViRegBG\n");
-  const wxUint32 VIwidth = *GFX_PTR.VI_WIDTH_REG;
+  const uint32_t VIwidth = *GFX_PTR.VI_WIDTH_REG;
   FB_TO_SCREEN_INFO fb_info;
   fb_info.width  = VIwidth;
-  fb_info.height = (wxUint32)rdp.vi_height;
+  fb_info.height = (uint32_t)rdp.vi_height;
   if (fb_info.height == 0)
   {
     LRDP("Image height = 0 - skipping\n");
@@ -1657,7 +1657,7 @@ static void drawViRegBG(void)
   fb_info.ul_x = 0;
 
   fb_info.lr_x = VIwidth - 1;
-  //  fb_info.lr_x = (wxUint32)rdp.vi_width - 1;
+  //  fb_info.lr_x = (uint32_t)rdp.vi_width - 1;
   fb_info.ul_y = 0;
   fb_info.lr_y = fb_info.height - 1;
   fb_info.opaque = 1;
@@ -1688,7 +1688,7 @@ set
 input:    none
 output:   none
 *******************************************************************/
-wxUint32 update_screen_count = 0;
+uint32_t update_screen_count = 0;
 EXPORT void CALL UpdateScreen (void)
 {
 #ifdef LOG_KEY
@@ -1702,7 +1702,7 @@ EXPORT void CALL UpdateScreen (void)
   VLOG (out_buf);
   LRDP(out_buf);
 
-  wxUint32 width = (*GFX_PTR.VI_WIDTH_REG) << 1;
+  uint32_t width = (*GFX_PTR.VI_WIDTH_REG) << 1;
   if (fullscreen && (*GFX_PTR.VI_ORIGIN_REG  > width))
     update_screen_count++;
 //TODO-PORT: wx times
@@ -1727,7 +1727,7 @@ EXPORT void CALL UpdateScreen (void)
   }
 #endif
   //*
-  wxUint32 limit = (settings.hacks&hack_Lego) ? 15 : 30;
+  uint32_t limit = (settings.hacks&hack_Lego) ? 15 : 30;
   if ((settings.frame_buffer&fb_cpu_write_hack) && (update_screen_count > limit) && (rdp.last_bg == 0))
   {
     LRDP("DirectCPUWrite hack!\n");
@@ -1758,7 +1758,7 @@ EXPORT void CALL UpdateScreen (void)
 
 static void DrawWholeFrameBufferToScreen()
 {
-  static wxUint32 toScreenCI = 0;
+  static uint32_t toScreenCI = 0;
   if (rdp.ci_width < 200)
     return;
   if (rdp.cimg == toScreenCI)
@@ -1934,7 +1934,7 @@ static void swapbuffer_debug(void)
   if (_debugger.capture)
   {
     // Allocate the screen
-    _debugger.screen = new wxUint8 [(settings.res_x*settings.res_y) << 1];
+    _debugger.screen = new uint8_t [(settings.res_x*settings.res_y) << 1];
 
     // Lock the backbuffer (already rendered)
     GrLfbInfo_t info;
@@ -1946,29 +1946,29 @@ static void swapbuffer_debug(void)
       FXFALSE,
       &info));
 
-    wxUint32 offset_src=0, offset_dst=0;
+    uint32_t offset_src=0, offset_dst=0;
 
     // Copy the screen
-    for (wxUint32 y=0; y<settings.res_y; y++)
+    for (uint32_t y=0; y<settings.res_y; y++)
     {
       if (info.writeMode == GR_LFBWRITEMODE_8888)
       {
-        wxUint32 *src = (wxUint32*)((wxUint8*)info.lfbPtr + offset_src);
-        wxUint16 *dst = (wxUint16*)(_debugger.screen + offset_dst);
-        wxUint8 r, g, b;
-        wxUint32 col;
+        uint32_t *src = (uint32_t*)((uint8_t*)info.lfbPtr + offset_src);
+        uint16_t *dst = (uint16_t*)(_debugger.screen + offset_dst);
+        uint8_t r, g, b;
+        uint32_t col;
         for (unsigned int x = 0; x < settings.res_x; x++)
         {
           col = src[x];
-          r = (wxUint8)((col >> 19) & 0x1F);
-          g = (wxUint8)((col >> 10) & 0x3F);
-          b = (wxUint8)((col >> 3)  & 0x1F);
+          r = (uint8_t)((col >> 19) & 0x1F);
+          g = (uint8_t)((col >> 10) & 0x3F);
+          b = (uint8_t)((col >> 3)  & 0x1F);
           dst[x] = (r<<11)|(g<<5)|b;
         }
       }
       else
       {
-        memcpy (_debugger.screen + offset_dst, (wxUint8*)info.lfbPtr + offset_src, settings.res_x << 1);
+        memcpy (_debugger.screen + offset_dst, (uint8_t*)info.lfbPtr + offset_src, settings.res_x << 1);
       }
       offset_dst += settings.res_x << 1;
       offset_src += info.strideInBytes;
@@ -1998,8 +1998,8 @@ static void swapbuffer_toggledebugger(void)
         debugging = 1;
 
         // Recalculate screen size, don't resize screen
-        settings.res_x = (wxUint32)(settings.scr_res_x * 0.625f);
-        settings.res_y = (wxUint32)(settings.scr_res_y * 0.625f);
+        settings.res_x = (uint32_t)(settings.scr_res_x * 0.625f);
+        settings.res_y = (uint32_t)(settings.scr_res_y * 0.625f);
 
         ChangeSize ();
       }
@@ -2023,7 +2023,7 @@ static void swapbuffer_toggledebugger(void)
 }
 #endif
 
-wxUint32 curframe = 0;
+uint32_t curframe = 0;
 void newSwapBuffers()
 {
   if (!rdp.updatescreen)
