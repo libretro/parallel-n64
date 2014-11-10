@@ -261,7 +261,11 @@ grConstantColorValueExt(GrChipID_t    tmu,
 
 int isExtensionSupported(const char *extension);
 
-#ifdef USE_GLES
+#ifndef GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS // TODO: Not present
+#define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS 18283
+#endif
+
+#if defined(USE_GLES) || defined(__LIBRETRO__)
 #define CHECK_FRAMEBUFFER_STATUS() \
 {\
  GLenum status; \
