@@ -13,11 +13,6 @@ else
 VIDEODIR_GLIDE = $(ROOT_DIR)/gles2glide64/src
 endif
 
-ifeq ($(GLES2GLIDE64_NEW), 1)
-VIDEODIR_GLIDE = $(ROOT_DIR)/gles2glide64_new/src
-SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/TexBuffer.c
-endif
-
 ifeq ($(GLIDE64MK2), 1)
 VIDEODIR_GLIDE = $(ROOT_DIR)/mupen64plus-video-glide64mk2/src
 endif
@@ -216,9 +211,7 @@ ifeq ($(HAVE_NEON), 1)
 endif
 
 # Glide64
-ifeq ($(GLES2GLIDE64_NEW), 1)
-SOURCES_CXX += $(wildcard $(VIDEODIR_GLIDE)/Glide64/*.cpp) $(wildcard $(VIDEODIR_GLIDE)/Glitch64/*.cpp)
-else ifeq ($(GLIDE64MK2), 1)
+ifeq ($(GLIDE64MK2), 1)
 SOURCES_CXX += $(VIDEODIR_GLIDE)/Glide64/3dmath.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/Combine.cpp \
 					$(VIDEODIR_GLIDE)/Glide64/Debugger.cpp \
@@ -248,8 +241,7 @@ SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLEScombiner.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/glitchgeometry.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/glitchtextureman_hash.cpp
 					#$(VIDEODIR_GLIDE)/Glitch64/glitchdebug.cpp
-#else
-#SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLcombiner.cpp \
+#else #SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLcombiner.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLgeometry.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLglitchmain.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLtextures.cpp \
