@@ -105,6 +105,9 @@ SHADER_HEADER
 #endif
 "uniform sampler2D texture0;       \n"
 "uniform sampler2D texture1;       \n"
+#ifdef ENABLE_TEXTURE_SAMPLING
+"uniform vec4 exactSizes;     \n"  //textureSizes doesn't contain the correct sizes, use this one instead for offset calculations
+#endif
 "uniform sampler2D ditherTex;      \n"
 "uniform vec4 constant_color;      \n"
 "uniform vec4 ccolor0;             \n"
@@ -113,6 +116,15 @@ SHADER_HEADER
 "uniform float lambda;             \n"
 "uniform vec3 fogColor;            \n"
 "uniform float alphaRef;           \n"
+#ifdef ENABLE_TEXTURE_SAMPLING
+"#define TEX0             texture2D(texture0, gl_TexCoord[0].xy) \n" \
+"#define TEX0_OFFSET(off) texture2D(texture0, gl_TexCoord[0].xy - (off)/exactSizes.xy) \n" \
+"#define TEX1             texture2D(texture1, gl_TexCoord[1].xy) \n" \
+"#define TEX1_OFFSET(off) texture2D(texture1, gl_TexCoord[1].xy - (off)/exactSizes.zw) \n" \
+"#define TO_PREMUL_A(c)   vec4((c).rgb*(c).a,(c).a)  \n"
+"#define FROM_PREMUL_A(c) vec4((c).rgb/(c).a,(c).a)  \n"
+#endif
+
 SHADER_VARYING
 "                                  \n"
 "void test_chroma(vec4 ctexture1); \n"
@@ -120,6 +132,10 @@ SHADER_VARYING
 "                                  \n"
 "void main()                       \n"
 "{                                 \n"
+#ifdef ENABLE_TEXTURE_SAMPLING
+"  vec2 offset; \n"
+"  vec4 c0,c1,c2,c3; \n"
+#endif
 ;
 
 // using gl_FragCoord is terribly slow on ATI and varying variables don't work for some unknown
@@ -131,34 +147,120 @@ static const char* fragment_shader_dither =
 "                               (dithy-32.0*floor(dithy/32.0))/32.0)).a > 0.5) discard; \n"
 ;
 
+#ifdef ENABLE_TEXTURE_SAMPLING
+#define TEXTURE_SAMPLER_1() (TEX0)
+#define TEXTURE_SAMPLER_2() (TEX1)
+#else
+#define TEXTURE_SAMPLER_1() (texture2D(texture0, vec2(gl_TexCoord[0])))
+#define TEXTURE_SAMPLER_2() (texture2D(texture1, vec2(gl_TexCoord[1])))
+#endif
+
 static const char* fragment_shader_default =
-"  gl_FragColor = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
+"  gl_FragColor = TEXTURE_SAMPLER_1(); \n"
 ;
 
-static const char* fragment_shader_readtex0color =
-"  vec4 readtex0 = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
+#ifdef ENABLE_TEXTURE_SAMPLING
+static const char* fragment_shader_readtex0color_nearest =
+"  vec4 readtex0 = TEX0; \n"
 ;
+static const char* fragment_shader_readtex0color_3point =
+"  offset=fract(gl_TexCoord[0].xy*exactSizes.zw-vec2(0.5,0.5)); \n"
+"  offset-=step(1.0,offset.x+offset.y); \n"
+"  c0=TEX0_OFFSET(offset); \n"
+"  c0=TO_PREMUL_A(c0); \n"
+"  c1=TEX0_OFFSET(vec2(offset.x-sign(offset.x),offset.y)); \n"
+"  c1=TO_PREMUL_A(c1); \n"
+"  c2=TEX0_OFFSET(vec2(offset.x,offset.y-sign(offset.y))); \n"
+"  c2=TO_PREMUL_A(c2); \n"
+"  vec4 readtex0 =c0+abs(offset.x)*(c1-c0)+abs(offset.y)*(c2-c0); \n"
+"  readtex0=FROM_PREMUL_A(readtex0); \n"
+;
+static const char* fragment_shader_readtex0color_linear =
+"  offset=fract(gl_TexCoord[0].xy*exactSizes.zw-vec2(0.5,0.5)); \n"
+"  c0=TEX0_OFFSET(offset - vec2(0.0,0.0)); \n"
+"  c0=TO_PREMUL_A(c0); \n"
+"  c1=TEX0_OFFSET(offset - vec2(1.0,0.0)); \n"
+"  c1=TO_PREMUL_A(c1); \n"
+"  c0=mix(c0,c1,offset.x); \n"
+"  c2=TEX0_OFFSET(offset - vec2(0.0,1.0)); \n"
+"  c2=TO_PREMUL_A(c2); \n"
+"  c3=TEX0_OFFSET(offset - vec2(1.0,1.0)); \n"
+"  c3=TO_PREMUL_A(c3); \n"
+"  c2=mix(c2,c3,offset.x); \n"
+"  vec4 readtex0 = mix(c0,c2,offset.y); \n"
+"  readtex0=FROM_PREMUL_A(readtex0); \n"
+;
+#else
+static const char* fragment_shader_readtex0color =
+"  vec4 readtex0 = TEXTURE_SAMPLER_1(); \n"
+;
+#endif
 
 static const char* fragment_shader_readtex0bw =
-"  vec4 readtex0 = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
+#ifndef ENABLE_TEXTURE_SAMPLING
+"  vec4 readtex0 = TEXTURE_SAMPLER_1(); \n"
+#endif
 "  readtex0 = vec4(vec3(readtex0.b),                          \n"
 "                  readtex0.r + readtex0.g * 8.0 / 256.0);    \n"
 ;
 static const char* fragment_shader_readtex0bw_2 =
-"  vec4 readtex0 = vec4(dot(texture2D(texture0, vec2(gl_TexCoord[0])), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
+#ifdef ENABLE_TEXTURE_SAMPLING
+"  readtex0 = vec4(dot(TEXTURE_SAMPLER_1(), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
+#else
+"  vec4 readtex0 = vec4(dot(TEXTURE_SAMPLER_1(), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
+#endif
 ;
 
-static const char* fragment_shader_readtex1color =
-"  vec4 readtex1 = texture2D(texture1, vec2(gl_TexCoord[1])); \n"
+#ifdef ENABLE_TEXTURE_SAMPLING
+static const char* fragment_shader_readtex1color_nearest =
+"  vec4 readtex1 = TEX1; \n"
 ;
+static const char* fragment_shader_readtex1color_3point =
+"  offset=fract(gl_TexCoord[1].xy*exactSizes.zw-vec2(0.5,0.5)); \n"
+"  offset-=step(1.0,offset.x+offset.y); \n"
+"  c0=TEX1_OFFSET(offset); \n"
+"  c0=TO_PREMUL_A(c0); \n"
+"  c1=TEX1_OFFSET(vec2(offset.x-sign(offset.x),offset.y)); \n"
+"  c1=TO_PREMUL_A(c1); \n"
+"  c2=TEX1_OFFSET(vec2(offset.x,offset.y-sign(offset.y))); \n"
+"  c2=TO_PREMUL_A(c2); \n"
+"  vec4 readtex1 =c0+abs(offset.x)*(c1-c0)+abs(offset.y)*(c2-c0); \n"
+"  readtex1=FROM_PREMUL_A(readtex1); \n"
+;
+static const char* fragment_shader_readtex1color_linear =
+"  offset=fract(gl_TexCoord[1].xy*exactSizes.zw-vec2(0.5,0.5)); \n"
+"  c0=TEX1_OFFSET(offset - vec2(0.0,0.0)); \n"
+"  c0=TO_PREMUL_A(c0); \n"
+"  c1=TEX1_OFFSET(offset - vec2(1.0,0.0)); \n"
+"  c1=TO_PREMUL_A(c1); \n"
+"  c0=mix(c0,c1,offset.x); \n"
+"  c2=TEX1_OFFSET(offset - vec2(0.0,1.0)); \n"
+"  c2=TO_PREMUL_A(c2); \n"
+"  c3=TEX1_OFFSET(offset - vec2(1.0,1.0)); \n"
+"  c3=TO_PREMUL_A(c3); \n"
+"  c2=mix(c2,c3,offset.x); \n"
+"  vec4 readtex1 = mix(c0,c2,offset.y); \n"
+"  readtex1=FROM_PREMUL_A(readtex1); \n"
+ ;
+#else
+static const char* fragment_shader_readtex1color =
+"  vec4 readtex1 = TEXTURE_SAMPLER_2(); \n"
+;
+#endif
 
 static const char* fragment_shader_readtex1bw =
-"  vec4 readtex1 = texture2D(texture1, vec2(gl_TexCoord[1])); \n"
+#ifndef ENABLE_TEXTURE_SAMPLING
+"  vec4 readtex1 = TEXTURE_SAMPLER_2(); \n"
+#endif
 "  readtex1 = vec4(vec3(readtex1.b),                          \n"
 "                  readtex1.r + readtex1.g * 8.0 / 256.0);    \n"
 ;
 static const char* fragment_shader_readtex1bw_2 =
-"  vec4 readtex1 = vec4(dot(texture2D(texture1, vec2(gl_TexCoord[1])), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
+#ifdef ENABLE_TEXTURE_SAMPLING
+"  readtex1 = vec4(dot(TEXTURE_SAMPLER_2(), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
+#else
+"  vec4 readtex1 = vec4(dot(TEXTURE_SAMPLER_2(), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
+#endif
 ;
 
 static const char* fragment_shader_fog =
@@ -419,12 +521,15 @@ typedef struct _shader_program_key
   int dither_enabled;
   int blackandwhite0;
   int blackandwhite1;
+  int tex0_filter;
+  int tex1_filter;
   GLuint fragment_shader_object;
   GLuint program_object;
   int texture0_location;
   int texture1_location;
   int vertexOffset_location;
   int textureSizes_location;
+  int exactSizes_location;
   int fogModeEndScale_location;
   int fogColor_location;
   int alphaRef_location;
@@ -448,6 +553,9 @@ void update_uniforms(shader_program_key prog)
 
   glUniform3f(prog.vertexOffset_location,widtho,heighto,inverted_culling ? -1.0f : 1.0f);
   glUniform4f(prog.textureSizes_location,tex0_width,tex0_height,tex1_width,tex1_height);
+#ifdef ENABLE_TEXTURE_SAMPLING
+  glUniform4f(prog.exactSizes_location,tex_exactWidth[0], tex_exactHeight[0], tex_exactWidth[1], tex_exactHeight[1]);
+#endif
 
   glUniform3f(prog.fogModeEndScale_location,
     fog_enabled != 2 ? 0.0f : 1.0f,
@@ -516,7 +624,12 @@ void compile_shader()
       prog.chroma_enabled == chroma_enabled &&
       prog.dither_enabled == dither_enabled &&
       prog.blackandwhite0 == blackandwhite0 &&
-      prog.blackandwhite1 == blackandwhite1)
+      prog.blackandwhite1 == blackandwhite1
+#ifdef ENABLE_TEXTURE_SAMPLING
+      && prog.tex0_filter == tex0_filter
+      && prog.tex1_filter == tex1_filter
+#endif
+       )
     {
       program_object = shader_programs[i].program_object;
       glUseProgram(program_object);
@@ -542,6 +655,10 @@ void compile_shader()
   shader_programs[number_of_programs].dither_enabled = dither_enabled;
   shader_programs[number_of_programs].blackandwhite0 = blackandwhite0;
   shader_programs[number_of_programs].blackandwhite1 = blackandwhite1;
+#ifdef ENABLE_TEXTURE_SAMPLING
+  shader_programs[number_of_programs].tex0_filter = tex0_filter;
+  shader_programs[number_of_programs].tex1_filter = tex1_filter;
+#endif
 
   if(chroma_enabled)
   {
@@ -553,15 +670,47 @@ void compile_shader()
 
   strcpy(fragment_shader, fragment_shader_header);
   if(dither_enabled) strcat(fragment_shader, fragment_shader_dither);
+
+#ifdef ENABLE_TEXTURE_SAMPLING
+  switch (tex0_filter) {
+    case GR_TEXTUREFILTER_POINT_SAMPLED:
+      strcat(fragment_shader, fragment_shader_readtex0color_nearest); break;
+    case GR_TEXTUREFILTER_3POINT_LINEAR:
+      strcat(fragment_shader, fragment_shader_readtex0color_3point);
+      break;
+    case GR_TEXTUREFILTER_BILINEAR:
+      strcat(fragment_shader, fragment_shader_readtex0color_linear);
+      break;
+  }
+#endif
+
   switch (blackandwhite0) {
     case 1: strcat(fragment_shader, fragment_shader_readtex0bw); break;
     case 2: strcat(fragment_shader, fragment_shader_readtex0bw_2); break;
+#ifndef ENABLE_TEXTURE_SAMPLING
     default: strcat(fragment_shader, fragment_shader_readtex0color);
+#endif
   }
+
+#ifdef ENABLE_TEXTURE_SAMPLING
+  switch (tex1_filter) {
+    case GR_TEXTUREFILTER_POINT_SAMPLED:
+      strcat(fragment_shader, fragment_shader_readtex1color_nearest); break;
+    case GR_TEXTUREFILTER_3POINT_LINEAR:
+      strcat(fragment_shader, fragment_shader_readtex1color_3point);
+      break;
+    case GR_TEXTUREFILTER_BILINEAR:
+      strcat(fragment_shader, fragment_shader_readtex1color_linear);
+      break;
+  }
+#endif
+
   switch (blackandwhite1) {
     case 1: strcat(fragment_shader, fragment_shader_readtex1bw); break;
     case 2: strcat(fragment_shader, fragment_shader_readtex1bw_2); break;
+#ifndef ENABLE_TEXTURE_SAMPLING
     default: strcat(fragment_shader, fragment_shader_readtex1color);
+#endif
   }
   strcat(fragment_shader, fragment_shader_texture0);
   strcat(fragment_shader, fragment_shader_texture1);
@@ -603,6 +752,9 @@ void compile_shader()
   shader_programs[number_of_programs].alphaRef_location = glGetUniformLocation(program_object, "alphaRef");
   shader_programs[number_of_programs].chroma_color_location = glGetUniformLocation(program_object, "chroma_color");
   shader_programs[number_of_programs].ditherTex_location = glGetUniformLocation(program_object, "ditherTex");
+#ifdef ENABLE_TEXTURE_SAMPLING
+  shader_programs[number_of_programs].exactSizes_location = glGetUniformLocation(program_object, "exactSizes");
+#endif
 
   update_uniforms(shader_programs[number_of_programs]);
 

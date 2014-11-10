@@ -352,7 +352,12 @@ typedef FxI32 GrTextureCombineFnc_t;
 
 typedef FxI32 GrTextureFilterMode_t;
 #define GR_TEXTUREFILTER_POINT_SAMPLED  0x0
+#ifdef ENABLE_3POINT
+#define GR_TEXTUREFILTER_3POINT_LINEAR  0x1
+#define GR_TEXTUREFILTER_BILINEAR       0x2
+#else
 #define GR_TEXTUREFILTER_BILINEAR       0x1
+#endif
 
 typedef FxI32 GrTextureFormat_t;
 /* KoolSmoky - */
@@ -517,6 +522,8 @@ typedef struct {
     GrLOD_t           largeLodLog2;
     GrAspectRatio_t   aspectRatioLog2;
     GrTextureFormat_t format;
+    int               width;
+    int               height;
     void              *data;
 } GrTexInfo;
 

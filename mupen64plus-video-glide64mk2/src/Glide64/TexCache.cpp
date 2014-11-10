@@ -892,6 +892,20 @@ void TexCache ()
 
       int tile = rdp.cur_tile + i;
 
+#ifdef ENABLE_3POINT
+      if (settings.filtering == 0)
+      {
+        int filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_3POINT_LINEAR;
+        grTexFilterMode (tmu, filter, filter);
+      }
+      else
+      {
+        int filter = (settings.filtering==1)?GR_TEXTUREFILTER_3POINT_LINEAR:
+                        (settings.filtering==2)?GR_TEXTUREFILTER_POINT_SAMPLED:
+                                                GR_TEXTUREFILTER_BILINEAR;
+        grTexFilterMode (tmu, filter, filter);
+      }
+#else
       if (settings.filtering == 0)
       {
         int filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_BILINEAR;
@@ -902,6 +916,7 @@ void TexCache ()
         int filter = (settings.filtering==1)?GR_TEXTUREFILTER_BILINEAR:GR_TEXTUREFILTER_POINT_SAMPLED;
         grTexFilterMode (tmu, filter, filter);
       }
+#endif
 
       if (rdp.cur_cache[i])
       {
@@ -1786,6 +1801,17 @@ void LoadTex (int id, int tmu)
       t_info->smallLodLog2 = lod;
       t_info->largeLodLog2 = lod;
       t_info->aspectRatioLog2 = aspect;
+
+      if (t_info->aspectRatioLog2 < 0)
+      {
+        t_info->height = 1 << t_info->largeLodLog2;
+        t_info->width = t_info->height >> -t_info->aspectRatioLog2;
+      }
+      else
+      {
+        t_info->width = 1 << t_info->largeLodLog2;
+        t_info->height = t_info->width >> t_info->aspectRatioLog2;
+      }
 
       wxUint32 texture_size = grTexTextureMemRequired (GR_MIPMAPLEVELMASK_BOTH, t_info);
 

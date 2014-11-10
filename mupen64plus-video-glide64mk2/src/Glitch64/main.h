@@ -103,6 +103,8 @@ extern int w_buffer_mode;
 extern int nbTextureUnits;
 extern int width, height, widtho, heighto;
 extern int tex0_width, tex0_height, tex1_width, tex1_height;
+extern int tex_exactWidth[2], tex_exactHeight[2];
+extern int tex0_filter, tex1_filter;
 extern float texture_env_color[4];
 extern int fog_enabled;
 extern float lambda;

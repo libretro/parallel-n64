@@ -53,10 +53,12 @@ float largest_supported_anisotropy = 1.0f;
 #endif
 
 int tex0_width, tex0_height, tex1_width, tex1_height;
+int tex_exactWidth[2],tex_exactHeight[2];
+int tex0_filter, tex1_filter;
 float lambda;
 
-static int min_filter0, mag_filter0, wrap_s0, wrap_t0;
-static int min_filter1, mag_filter1, wrap_s1, wrap_t1;
+static int min_filter0 = GL_NEAREST, mag_filter0 = GL_NEAREST, wrap_s0, wrap_t0;
+static int min_filter1 = GL_NEAREST, mag_filter1 = GL_NEAREST, wrap_s1, wrap_t1;
 
 unsigned char *filter(unsigned char *source, int width, int height, int *width2, int *height2);
 
@@ -488,6 +490,8 @@ grTexSource( GrChipID_t tmu,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t0);
+    tex_exactWidth [0] = info->width;
+    tex_exactHeight[0] = info->height;
   }
   else
   {
@@ -512,6 +516,9 @@ grTexSource( GrChipID_t tmu,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter1);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s1);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t1);
+
+    tex_exactWidth [1] = info->width;
+    tex_exactHeight[1] = info->height;
   }
   if(!CheckTextureBufferFormat(tmu, startAddress+1, info))
   {
@@ -537,6 +544,24 @@ grTexSource( GrChipID_t tmu,
 #endif
 }
 
+#ifdef ENABLE_3POINT
+FX_ENTRY void FX_CALL
+grTexFilterMode(
+                GrChipID_t tmu,
+                GrTextureFilterMode_t minfilter_mode,
+                GrTextureFilterMode_t magfilter_mode
+                )
+{
+  LOG("grTexFilterMode(%d,%d,%d)\r\n", tmu, minfilter_mode, magfilter_mode);
+  if (tmu == GR_TMU1 || nbTextureUnits <= 2)
+  {
+    if (tmu == GR_TMU1 && nbTextureUnits <= 2) return;
+    tex0_filter = minfilter_mode;
+  }
+  else
+    tex1_filter = minfilter_mode;
+}
+#else
 FX_ENTRY void FX_CALL
 grTexFilterMode(
                 GrChipID_t tmu,
@@ -571,6 +596,7 @@ grTexFilterMode(
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter1);
   }
 }
+#endif
 
 FX_ENTRY void FX_CALL
 grTexClampMode(
