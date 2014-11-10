@@ -1802,6 +1802,7 @@ void LoadTex (int id, int tmu)
       t_info->largeLodLog2 = lod;
       t_info->aspectRatioLog2 = aspect;
 
+#ifdef ENABLE_TEXTURE_SAMPLING
       if (t_info->aspectRatioLog2 < 0)
       {
         t_info->height = 1 << t_info->largeLodLog2;
@@ -1812,6 +1813,7 @@ void LoadTex (int id, int tmu)
         t_info->width = 1 << t_info->largeLodLog2;
         t_info->height = t_info->width >> t_info->aspectRatioLog2;
       }
+#endif
 
       wxUint32 texture_size = grTexTextureMemRequired (GR_MIPMAPLEVELMASK_BOTH, t_info);
 
