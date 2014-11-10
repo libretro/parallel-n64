@@ -1242,7 +1242,7 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
     {
         const char* ParamName;
         const char* RetroName;
-        const value_pair Values[10];
+        const value_pair Values[32];
     }   libretro_translate[] =
     {
         { "R4300Emulator", "mupen64-cpucore", { { 0, "pure_interpreter" }, { 1, "cached_interpreter" }, { 2, "dynamic_recompiler" }, { 3, "neb_dynamic_recompiler" }, { 0, 0 } } },
