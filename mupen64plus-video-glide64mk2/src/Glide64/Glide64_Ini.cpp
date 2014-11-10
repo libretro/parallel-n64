@@ -271,7 +271,9 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"BAKUBOMB2")
          || strstr(name, (const char *)"BOMBERMAN64U2"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
    }
    else if (strstr(name, (const char *)"BANGAIOH"))
@@ -284,7 +286,9 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char *)"BANJO TOOIE")
          )
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -312,7 +316,9 @@ void ReadSpecialSettings (const char * name)
    {
       //wrap_big_tex = 1
       settings.n64_z_scale = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -323,25 +329,33 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char *)"Bust A Move '99")
          )
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 2;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char *)"Bust A Move 2"))
    {
       //fix_tex_coord = 1
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 2;
+#endif
       //depthmode = 1
       settings.fog = 0;
    }
    else if (strstr(name, (const char *)"CARMAGEDDON64"))
    {
       //wrap_big_tex = 1
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings. filtering = 1;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char *)"HYDRO THUNDER"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings. filtering = 1;
+#endif
    }
    else if (strstr(name, (const char *)"CENTRE COURT TENNIS"))
    {
@@ -350,7 +364,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"Chameleon Twist2"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
    }
    else if (strstr(name, (const char *)"extreme_g")
@@ -389,7 +405,9 @@ void ReadSpecialSettings (const char * name)
       //mischief_tex_hack = 0
       //tex_wrap_hack = 0
       //depthmode = 1
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       settings.fog = 0;
    }
    else if (strstr(name, (const char*)"Tigger's Honey Hunt"))
@@ -401,7 +419,9 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"TOM AND JERRY"))
    {
       settings.depth_bias = 2;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
    }
    else if (strstr(name, (const char*)"SPACE DYNAMITES"))
@@ -420,7 +440,9 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"STAR SOLDIER"))
    {
       settings.force_microcheck = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       settings.swapmode = 0;
    }
@@ -434,7 +456,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"TG RALLY 2"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       settings.buff_clear = 0;
       settings.swapmode = 2;
@@ -454,12 +478,16 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char*)"TONY HAWK SKATEBOARD")
          )
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
    }
    else if (strstr(name, (const char*)"TOP GEAR RALLY 2"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       settings.buff_clear = 0;
       settings.swapmode = 2;
@@ -480,7 +508,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"TSUMI TO BATSU"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -499,7 +529,9 @@ void ReadSpecialSettings (const char * name)
    {
       useless_is_useless = 1;
       settings.decrease_fillrect_edge = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -550,13 +582,17 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"EARTHWORM JIM 3D"))
    {
       //increase_primdepth = 1
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
       settings.buff_clear = 0;
    }
    else if (strstr(name, (const char *)"Cruis'n USA"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -566,7 +602,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"CruisnExotica"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       settings.buff_clear = 0;
       settings.swapmode = 0;
@@ -587,7 +625,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"Eltail"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 2;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char *)"DeadlyArts"))
@@ -602,7 +642,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"Bottom of the 9th"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0;
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -618,20 +660,26 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"CHOPPER ATTACK"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
    }
    else if (strstr(name, (const char *)"CITY TOUR GP"))
    {
       settings.force_microcheck = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char *)"Command&Conquer"))
    {
       //fix_tex_coord = 1
       settings.adjust_aspect = 2;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       settings.fog = 0;
    }
@@ -639,7 +687,9 @@ void ReadSpecialSettings (const char * name)
    {
       //ignore_previous = 1
       settings.lodmode = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -677,12 +727,16 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"F1 POLE POSITION 64"))
    {
       settings.clip_zmin = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 2;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char*)"HUMAN GRAND PRIX"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 2;
+#endif
       //depthmode = 0
    }
    else if (strstr(name, (const char*)"F1RacingChampionship"))
@@ -767,7 +821,9 @@ void ReadSpecialSettings (const char * name)
    {
       optimize_texrect = 0;
       settings.alt_tex_size = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -783,13 +839,17 @@ void ReadSpecialSettings (const char * name)
    {
       settings.zmode_compare_less = 1;
       //texrect_compare_less = 1
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 2;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char*)"GOEMON2 DERODERO")
          || strstr(name, (const char*)"GOEMONS GREAT ADV"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -798,13 +858,17 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"GOLDEN NUGGET 64"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 2;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char*)"GT64"))
    {
       settings.force_microcheck = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char*)"ÊÑ½À°ÓÉ¶ÞÀØ64")
@@ -834,7 +898,9 @@ void ReadSpecialSettings (const char * name)
    {
       useless_is_useless = 1;
       hires_buf_clear = 0;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       settings.swapmode = 2;
       smart_read = 1;
@@ -895,7 +961,9 @@ void ReadSpecialSettings (const char * name)
    {
       //wrap_big_tex = 1
       settings.n64_z_scale = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -921,13 +989,17 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"TWINE"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
    }
    else if (strstr(name, (const char*)"V-RALLY"))
    {
       //fix_tex_coord = 3
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
       settings.buff_clear = 0;
       settings.swapmode = 0;
@@ -988,7 +1060,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"·×¯Ä¶²¹Â 64ÀÝÃ²ÀÞÝ"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
       settings.buff_clear = 0;
    }
@@ -1030,7 +1104,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"Taz Express"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
       settings.buff_clear = 0;
    }
@@ -1063,7 +1139,9 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char*)"IT&F SUMMERGAMES")
          )
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -1149,12 +1227,16 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"RUSH 2049"))
    {
       //force_texrect_zbuf = 1
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
    }
    else if (strstr(name, (const char*)"SCARS"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
    }
    else if (strstr(name, (const char*)"LEGORacers"))
@@ -1175,7 +1257,9 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"Parlor PRO 64"))
    {
       settings.force_microcheck = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char*)"PUZZLE LEAGUE N64")
@@ -1184,7 +1268,9 @@ void ReadSpecialSettings (const char * name)
       //PPL = 1
       settings.force_microcheck = 1;
       //fix_tex_coord = 1
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 2;
+#endif
       //depthmode = 1
       settings.fog = 0;
       settings.buff_clear = 0;
@@ -1239,7 +1325,9 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"RALLY CHALLENGE")
          || strstr(name, (const char*)"Rally'99"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       settings.buff_clear = 0;
       smart_read = 1;
@@ -1255,7 +1343,9 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"quarterback_club_98"))
    {
       hires_buf_clear = 0;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       settings.swapmode = 0;
       settings.buff_clear = 0;
@@ -1440,7 +1530,9 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char *)"Dual heroes PAL")
          || strstr(name, (const char *)"Dual heroes USA"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
       settings.swapmode = 0;
    }
@@ -1451,7 +1543,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"Kirby64"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
       settings.buff_clear = 0;
       settings.swapmode = 0;
@@ -1460,7 +1554,9 @@ void ReadSpecialSettings (const char * name)
    {
       settings.lodmode = 1;
       settings.depth_bias = 40;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -1477,13 +1573,17 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"Glover"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0;
    }
    else if (strstr(name, (const char *)"GEX: ENTER THE GECKO")
          || strstr(name, (const char *)"Gex 3 Deep Cover Gec"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0;
    }
    else if (strstr(name, (const char *)"WAVE RACE 64"))
@@ -1493,12 +1593,16 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"WILD CHOPPERS"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
    }
    else if (strstr(name, (const char *)"Wipeout 64"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
       settings.swapmode = 0;
    }
@@ -1516,7 +1620,9 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"HEXEN"))
    {
       cpu_write_hack = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       settings.buff_clear = 0;
       settings.swapmode = 2;
@@ -1627,7 +1733,9 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char*)"KNIFE EDGE"))
    {
       //wrap_big_tex = 1
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char*)"Knockout Kings 2000"))
@@ -1669,7 +1777,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"Holy Magic Century"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 2;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char *)"Quest 64"))
@@ -1678,20 +1788,26 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"Silicon Valley"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
    }
    else if (strstr(name, (const char*)"SNOWBOARD KIDS2")
          || strstr(name, (const char*)"Snobow Kids 2"))
    {
       settings.swapmode = 0;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
    }
    else if (strstr(name, (const char*)"South Park Chef's Lu")
          || strstr(name, (const char*)"South Park: Chef's L"))
    {
       //fix_tex_coord = 4
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       settings.fog = 0;
       settings.buff_clear = 0;
@@ -1745,7 +1861,9 @@ void ReadSpecialSettings (const char * name)
    {
       settings.depth_bias = 1;
       settings.lodmode = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char *)"SUPERMAN"))
@@ -1777,7 +1895,9 @@ void ReadSpecialSettings (const char * name)
    {
       //fix_tex_coord = 32
       //depthmode = 1
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       settings.fog = 0;
    }
    else
