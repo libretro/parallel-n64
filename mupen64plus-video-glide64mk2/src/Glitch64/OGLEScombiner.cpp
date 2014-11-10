@@ -117,9 +117,7 @@ SHADER_HEADER
 "uniform vec3 fogColor;            \n"
 "uniform float alphaRef;           \n"
 #ifdef ENABLE_TEXTURE_SAMPLING
-"#define TEX0             texture2D(texture0, gl_TexCoord[0].xy) \n" \
 "#define TEX0_OFFSET(off) texture2D(texture0, gl_TexCoord[0].xy - (off)/exactSizes.xy) \n" \
-"#define TEX1             texture2D(texture1, gl_TexCoord[1].xy) \n" \
 "#define TEX1_OFFSET(off) texture2D(texture1, gl_TexCoord[1].xy - (off)/exactSizes.zw) \n" \
 "#define TO_PREMUL_A(c)   vec4((c).rgb*(c).a,(c).a)  \n"
 "#define FROM_PREMUL_A(c) vec4((c).rgb/max((c).a,0.01),(c).a)  \n"
@@ -147,21 +145,17 @@ static const char* fragment_shader_dither =
 "                               (dithy-32.0*floor(dithy/32.0))/32.0)).a > 0.5) discard; \n"
 ;
 
-#ifdef ENABLE_TEXTURE_SAMPLING
-#define TEXTURE_SAMPLER_1() (TEX0)
-#define TEXTURE_SAMPLER_2() (TEX1)
-#else
-#define TEXTURE_SAMPLER_1() (texture2D(texture0, vec2(gl_TexCoord[0])))
-#define TEXTURE_SAMPLER_2() (texture2D(texture1, vec2(gl_TexCoord[1])))
-#endif
-
 static const char* fragment_shader_default =
-"  gl_FragColor = TEXTURE_SAMPLER_1(); \n"
+#ifdef ENABLE_TEXTURE_SAMPLING
+"  gl_FragColor = texture2D(texture0, gl_TexCoord[0].xy); \n"
+#else
+"  gl_FragColor = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
+#endif
 ;
 
 #ifdef ENABLE_TEXTURE_SAMPLING
 static const char* fragment_shader_readtex0color_nearest =
-"  vec4 readtex0 = TEX0; \n"
+"  vec4 readtex0 = texture2D(texture0, gl_TexCoord[0].xy); \n"
 ;
 static const char* fragment_shader_readtex0color_3point =
 "  offset=fract(gl_TexCoord[0].xy*exactSizes.zw-vec2(0.5,0.5)); \n"
@@ -192,28 +186,32 @@ static const char* fragment_shader_readtex0color_linear =
 ;
 #else
 static const char* fragment_shader_readtex0color =
-"  vec4 readtex0 = TEXTURE_SAMPLER_1(); \n"
+#ifdef ENABLE_TEXTURE_SAMPLING
+"  vec4 readtex0 = texture2D(texture0, gl_TexCoord[0].xy); \n"
+#else
+"  vec4 readtex0 = texture2D(texture0, vec2(gl_TexCoord[0])); \n"
+#endif
 ;
 #endif
 
 static const char* fragment_shader_readtex0bw =
 #ifndef ENABLE_TEXTURE_SAMPLING
-"  vec4 readtex0 = TEXTURE_SAMPLER_1(); \n"
+"  vec4 readtex0 = texture2D(texture0, gl_TexCoord[0].xy); \n"
 #endif
 "  readtex0 = vec4(vec3(readtex0.b),                          \n"
 "                  readtex0.r + readtex0.g * 8.0 / 256.0);    \n"
 ;
 static const char* fragment_shader_readtex0bw_2 =
 #ifdef ENABLE_TEXTURE_SAMPLING
-"  readtex0 = vec4(dot(TEXTURE_SAMPLER_1(), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
+"  readtex0 = vec4(dot(texture2D(texture0, gl_TexCoord[0].xy), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
 #else
-"  vec4 readtex0 = vec4(dot(TEXTURE_SAMPLER_1(), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
+"  vec4 readtex0 = vec4(dot(texture2D(texture0, vec2(gl_TexCoord[0])), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
 #endif
 ;
 
 #ifdef ENABLE_TEXTURE_SAMPLING
 static const char* fragment_shader_readtex1color_nearest =
-"  vec4 readtex1 = TEX1; \n"
+"  vec4 readtex1 = texture2D(texture1, gl_TexCoord[1].xy); \n"
 ;
 static const char* fragment_shader_readtex1color_3point =
 "  offset=fract(gl_TexCoord[1].xy*exactSizes.zw-vec2(0.5,0.5)); \n"
@@ -244,22 +242,22 @@ static const char* fragment_shader_readtex1color_linear =
  ;
 #else
 static const char* fragment_shader_readtex1color =
-"  vec4 readtex1 = TEXTURE_SAMPLER_2(); \n"
+"  vec4 readtex1 = texture2D(texture1, vec2(gl_TexCoord[1])); \n"
 ;
 #endif
 
 static const char* fragment_shader_readtex1bw =
 #ifndef ENABLE_TEXTURE_SAMPLING
-"  vec4 readtex1 = TEXTURE_SAMPLER_2(); \n"
+"  vec4 readtex1 = texture2D(texture1, vec2(gl_TexCoord[1])); \n"
 #endif
 "  readtex1 = vec4(vec3(readtex1.b),                          \n"
 "                  readtex1.r + readtex1.g * 8.0 / 256.0);    \n"
 ;
 static const char* fragment_shader_readtex1bw_2 =
 #ifdef ENABLE_TEXTURE_SAMPLING
-"  readtex1 = vec4(dot(TEXTURE_SAMPLER_2(), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
+"  readtex1 = vec4(dot(texture2D(texture1, gl_TexCoord[1].xy), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
 #else
-"  vec4 readtex1 = vec4(dot(TEXTURE_SAMPLER_2(), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
+"  vec4 readtex1 = vec4(dot(texture2D(texture1, vec2(gl_TexCoord[1])), vec4(1.0/3, 1.0/3, 1.0/3, 0)));                        \n"
 #endif
 ;
 
