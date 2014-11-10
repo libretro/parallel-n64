@@ -213,7 +213,7 @@ static void rsp_reserved3();
 
 static void ys_memrect();
 
-wxUint8 microcode[4096];
+uint8_t microcode[4096];
 uint32_t uc_crc;
 
 // ** UCODE FUNCTIONS **
@@ -358,7 +358,7 @@ static void CopyFrameBuffer (GrBuffer_t buffer = GR_BUFFER_BACKBUFFER)
 
   if (rdp.scale_x < 1.1f)
   {
-    wxUint16 * ptr_src = new wxUint16[width*height];
+    uint16_t * ptr_src = new uint16_t[width*height];
     if (grLfbReadRegion(buffer,
       (uint32_t)rdp.offset_x,
       (uint32_t)rdp.offset_y,//rdp.ci_upper_bound,
@@ -367,9 +367,9 @@ static void CopyFrameBuffer (GrBuffer_t buffer = GR_BUFFER_BACKBUFFER)
       width<<1,
       ptr_src))
     {
-      wxUint16 *ptr_dst = (wxUint16*)(GFX_PTR.RDRAM+rdp.cimg);
+      uint16_t *ptr_dst = (uint16_t*)(GFX_PTR.RDRAM+rdp.cimg);
       uint32_t *ptr_dst32 = (uint32_t*)(GFX_PTR.RDRAM+rdp.cimg);
-      wxUint16 c;
+      uint16_t c;
 
       for (uint32_t y=0; y<height; y++)
       {
@@ -421,10 +421,10 @@ static void CopyFrameBuffer (GrBuffer_t buffer = GR_BUFFER_BACKBUFFER)
         FXFALSE,
         &info))
       {
-        wxUint16 *ptr_src = (wxUint16*)info.lfbPtr;
-        wxUint16 *ptr_dst = (wxUint16*)(GFX_PTR.RDRAM+rdp.cimg);
+        uint16_t *ptr_src = (uint16_t*)info.lfbPtr;
+        uint16_t *ptr_dst = (uint16_t*)(GFX_PTR.RDRAM+rdp.cimg);
         uint32_t *ptr_dst32 = (uint32_t*)(GFX_PTR.RDRAM+rdp.cimg);
-        wxUint16 c;
+        uint16_t c;
         uint32_t stride = info.strideInBytes>>1;
 
         int read_alpha = settings.frame_buffer & fb_read_alpha;
@@ -510,7 +510,7 @@ int cpu_fb_ignore = FALSE;
 int CI_SET = TRUE;
 uint32_t ucode5_texshiftaddr = 0;
 uint32_t ucode5_texshiftcount = 0;
-wxUint16 ucode5_texshift = 0;
+uint16_t ucode5_texshift = 0;
 int depth_buffer_fog;
 
 #ifdef __cplusplus
@@ -797,12 +797,12 @@ static void rdp_noop()
 
 static void ys_memrect ()
 {
-  uint32_t tile = (wxUint16)((rdp.cmd1 & 0x07000000) >> 24);
+  uint32_t tile = (uint16_t)((rdp.cmd1 & 0x07000000) >> 24);
 
-  uint32_t lr_x = (wxUint16)((rdp.cmd0 & 0x00FFF000) >> 14);
-  uint32_t lr_y = (wxUint16)((rdp.cmd0 & 0x00000FFF) >> 2);
-  uint32_t ul_x = (wxUint16)((rdp.cmd1 & 0x00FFF000) >> 14);
-  uint32_t ul_y = (wxUint16)((rdp.cmd1 & 0x00000FFF) >> 2);
+  uint32_t lr_x = (uint16_t)((rdp.cmd0 & 0x00FFF000) >> 14);
+  uint32_t lr_y = (uint16_t)((rdp.cmd0 & 0x00000FFF) >> 2);
+  uint32_t ul_x = (uint16_t)((rdp.cmd1 & 0x00FFF000) >> 14);
+  uint32_t ul_y = (uint16_t)((rdp.cmd1 & 0x00000FFF) >> 2);
 
   if (lr_y > rdp.scissor_o.lr_y)
     lr_y = rdp.scissor_o.lr_y;
@@ -818,27 +818,27 @@ static void ys_memrect ()
 
   uint32_t y, width = lr_x - ul_x;
   uint32_t tex_width = rdp.tiles[tile].line << 3;
-  wxUint8 * texaddr = GFX_PTR.RDRAM + rdp.addr[rdp.tiles[tile].t_mem] + tex_width*off_y + off_x;
-  wxUint8 * fbaddr = GFX_PTR.RDRAM + rdp.cimg + ul_x;
+  uint8_t * texaddr = GFX_PTR.RDRAM + rdp.addr[rdp.tiles[tile].t_mem] + tex_width*off_y + off_x;
+  uint8_t * fbaddr = GFX_PTR.RDRAM + rdp.cimg + ul_x;
 
   for (y = ul_y; y < lr_y; y++) {
-    wxUint8 *src = texaddr + (y - ul_y) * tex_width;
-    wxUint8 *dst = fbaddr + y * rdp.ci_width;
+    uint8_t *src = texaddr + (y - ul_y) * tex_width;
+    uint8_t *dst = fbaddr + y * rdp.ci_width;
     memcpy (dst, src, width);
   }
 }
 
 static void pm_palette_mod ()
 {
-  wxUint8 envr = (wxUint8)((float)((rdp.env_color >> 24)&0xFF)/255.0f*31.0f);
-  wxUint8 envg = (wxUint8)((float)((rdp.env_color >> 16)&0xFF)/255.0f*31.0f);
-  wxUint8 envb = (wxUint8)((float)((rdp.env_color >> 8)&0xFF)/255.0f*31.0f);
-  wxUint16 env16 = (wxUint16)((envr<<11)|(envg<<6)|(envb<<1)|1);
-  wxUint8 prmr = (wxUint8)((float)((rdp.prim_color >> 24)&0xFF)/255.0f*31.0f);
-  wxUint8 prmg = (wxUint8)((float)((rdp.prim_color >> 16)&0xFF)/255.0f*31.0f);
-  wxUint8 prmb = (wxUint8)((float)((rdp.prim_color >> 8)&0xFF)/255.0f*31.0f);
-  wxUint16 prim16 = (wxUint16)((prmr<<11)|(prmg<<6)|(prmb<<1)|1);
-  wxUint16 * dst = (wxUint16*)(GFX_PTR.RDRAM+rdp.cimg);
+  uint8_t envr = (uint8_t)((float)((rdp.env_color >> 24)&0xFF)/255.0f*31.0f);
+  uint8_t envg = (uint8_t)((float)((rdp.env_color >> 16)&0xFF)/255.0f*31.0f);
+  uint8_t envb = (uint8_t)((float)((rdp.env_color >> 8)&0xFF)/255.0f*31.0f);
+  uint16_t env16 = (uint16_t)((envr<<11)|(envg<<6)|(envb<<1)|1);
+  uint8_t prmr = (uint8_t)((float)((rdp.prim_color >> 24)&0xFF)/255.0f*31.0f);
+  uint8_t prmg = (uint8_t)((float)((rdp.prim_color >> 16)&0xFF)/255.0f*31.0f);
+  uint8_t prmb = (uint8_t)((float)((rdp.prim_color >> 8)&0xFF)/255.0f*31.0f);
+  uint16_t prim16 = (uint16_t)((prmr<<11)|(prmg<<6)|(prmb<<1)|1);
+  uint16_t * dst = (uint16_t*)(GFX_PTR.RDRAM+rdp.cimg);
   for (int i = 0; i < 16; i++)
   {
     dst[i^1] = (rdp.pal_8[i]&1) ? prim16 : env16;
@@ -848,14 +848,14 @@ static void pm_palette_mod ()
 
 static void pd_zcopy ()
 {
-  wxUint16 ul_x = (wxUint16)((rdp.cmd1 & 0x00FFF000) >> 14);
-  wxUint16 lr_x = (wxUint16)((rdp.cmd0 & 0x00FFF000) >> 14) + 1;
-  wxUint16 ul_u = (wxUint16)((rdp.cmd2 & 0xFFFF0000) >> 21) + 1;
-  wxUint16 *ptr_dst = (wxUint16*)(GFX_PTR.RDRAM+rdp.cimg);
-  wxUint16 width = lr_x - ul_x;
-  wxUint16 * ptr_src = ((wxUint16*)rdp.tmem)+ul_u;
-  wxUint16 c;
-  for (wxUint16 x=0; x<width; x++)
+  uint16_t ul_x = (uint16_t)((rdp.cmd1 & 0x00FFF000) >> 14);
+  uint16_t lr_x = (uint16_t)((rdp.cmd0 & 0x00FFF000) >> 14) + 1;
+  uint16_t ul_u = (uint16_t)((rdp.cmd2 & 0xFFFF0000) >> 21) + 1;
+  uint16_t *ptr_dst = (uint16_t*)(GFX_PTR.RDRAM+rdp.cimg);
+  uint16_t width = lr_x - ul_x;
+  uint16_t * ptr_src = ((uint16_t*)rdp.tmem)+ul_u;
+  uint16_t c;
+  for (uint16_t x=0; x<width; x++)
   {
     c = ptr_src[x];
     c = ((c<<8)&0xFF00) | (c >> 8);
@@ -886,8 +886,8 @@ static void rdp_texrect()
   if (!rdp.LLE)
   {
     uint32_t a = rdp.pc[rdp.pc_i];
-    wxUint8 cmdHalf1 = GFX_PTR.RDRAM[a+3];
-    wxUint8 cmdHalf2 = GFX_PTR.RDRAM[a+11];
+    uint8_t cmdHalf1 = GFX_PTR.RDRAM[a+3];
+    uint8_t cmdHalf2 = GFX_PTR.RDRAM[a+11];
     a >>= 2;
     if ((cmdHalf1 == 0xE1 && cmdHalf2 == 0xF1) || (cmdHalf1 == 0xB4 && cmdHalf2 == 0xB3) || (cmdHalf1 == 0xB3 && cmdHalf2 == 0xB2))
     {
@@ -957,17 +957,17 @@ static void rdp_texrect()
   float ul_x, ul_y, lr_x, lr_y;
   if (rdp.cycle_mode == 2)
   {
-    ul_x = max(0.0f, (wxInt16)((rdp.cmd1 & 0x00FFF000) >> 14));
-    ul_y = max(0.0f, (wxInt16)((rdp.cmd1 & 0x00000FFF) >> 2));
-    lr_x = max(0.0f, (wxInt16)((rdp.cmd0 & 0x00FFF000) >> 14));
-    lr_y = max(0.0f, (wxInt16)((rdp.cmd0 & 0x00000FFF) >> 2));
+    ul_x = max(0.0f, (int16_t)((rdp.cmd1 & 0x00FFF000) >> 14));
+    ul_y = max(0.0f, (int16_t)((rdp.cmd1 & 0x00000FFF) >> 2));
+    lr_x = max(0.0f, (int16_t)((rdp.cmd0 & 0x00FFF000) >> 14));
+    lr_y = max(0.0f, (int16_t)((rdp.cmd0 & 0x00000FFF) >> 2));
   }
   else
   {
-    ul_x = max(0.0f, ((wxInt16)((rdp.cmd1 & 0x00FFF000) >> 12)) / 4.0f);
-    ul_y = max(0.0f, ((wxInt16)(rdp.cmd1 & 0x00000FFF)) / 4.0f);
-    lr_x = max(0.0f, ((wxInt16)((rdp.cmd0 & 0x00FFF000) >> 12)) / 4.0f);
-    lr_y = max(0.0f, ((wxInt16)(rdp.cmd0 & 0x00000FFF)) / 4.0f);
+    ul_x = max(0.0f, ((int16_t)((rdp.cmd1 & 0x00FFF000) >> 12)) / 4.0f);
+    ul_y = max(0.0f, ((int16_t)(rdp.cmd1 & 0x00000FFF)) / 4.0f);
+    lr_x = max(0.0f, ((int16_t)((rdp.cmd0 & 0x00FFF000) >> 12)) / 4.0f);
+    lr_y = max(0.0f, ((int16_t)(rdp.cmd0 & 0x00000FFF)) / 4.0f);
   }
 
   if (ul_x >= lr_x)
@@ -999,14 +999,14 @@ static void rdp_texrect()
     {
       DRAWIMAGE d;
       d.imageX  = 0;
-      d.imageW  = (wxUint16)rdp.tbuff_tex->width;
-      d.frameX  = (wxUint16)ul_x;
-      d.frameW  = (wxUint16)(rdp.tbuff_tex->width);
+      d.imageW  = (uint16_t)rdp.tbuff_tex->width;
+      d.frameX  = (uint16_t)ul_x;
+      d.frameW  = (uint16_t)(rdp.tbuff_tex->width);
 
       d.imageY  = 0;
-      d.imageH  = (wxUint16)rdp.tbuff_tex->height;
-      d.frameY  = (wxUint16)ul_y;
-      d.frameH  = (wxUint16)(rdp.tbuff_tex->height);
+      d.imageH  = (uint16_t)rdp.tbuff_tex->height;
+      d.frameY  = (uint16_t)ul_y;
+      d.frameH  = (uint16_t)(rdp.tbuff_tex->height);
       FRDP("texrect. ul_x: %d, ul_y: %d, lr_x: %d, lr_y: %d, width: %d, height: %d\n", ul_x, ul_y, lr_x, lr_y, rdp.tbuff_tex->width, rdp.tbuff_tex->height);
       d.scaleX  = 1.0f;
       d.scaleY  = 1.0f;
@@ -1053,7 +1053,7 @@ static void rdp_texrect()
 
   int i;
 
-  uint32_t tile = (wxUint16)((rdp.cmd1 & 0x07000000) >> 24);
+  uint32_t tile = (uint16_t)((rdp.cmd1 & 0x07000000) >> 24);
 
   rdp.texrecting = 1;
 
@@ -1075,10 +1075,10 @@ static void rdp_texrect()
   //
   //integer representation of texture coordinate.
   //needed to detect and avoid overflow after shifting
-  wxInt32 off_x_i = (rdp.cmd2 >> 16) & 0xFFFF;
-  wxInt32 off_y_i = rdp.cmd2 & 0xFFFF;
-  float dsdx = (float)((wxInt16)((rdp.cmd3 & 0xFFFF0000) >> 16)) / 1024.0f;
-  float dtdy = (float)((wxInt16)(rdp.cmd3 & 0x0000FFFF)) / 1024.0f;
+  int32_t off_x_i = (rdp.cmd2 >> 16) & 0xFFFF;
+  int32_t off_y_i = rdp.cmd2 & 0xFFFF;
+  float dsdx = (float)((int16_t)((rdp.cmd3 & 0xFFFF0000) >> 16)) / 1024.0f;
+  float dtdy = (float)((int16_t)(rdp.cmd3 & 0x0000FFFF)) / 1024.0f;
   if (off_x_i & 0x8000) //check for sign bit
     off_x_i |= ~0xffff; //make it negative
   //the same as for off_x_i
@@ -1150,13 +1150,13 @@ static void rdp_texrect()
       {
         if (tile.shift_s > 10)
         {
-          wxUint8 iShift = (16 - tile.shift_s);
+          uint8_t iShift = (16 - tile.shift_s);
           x_i <<= iShift;
           sx = (float)(1 << iShift);
         }
         else
         {
-          wxUint8 iShift = tile.shift_s;
+          uint8_t iShift = tile.shift_s;
           x_i >>= iShift;
           sx = 1.0f/(float)(1 << iShift);
         }
@@ -1165,13 +1165,13 @@ static void rdp_texrect()
       {
         if (tile.shift_t > 10)
         {
-          wxUint8 iShift = (16 - tile.shift_t);
+          uint8_t iShift = (16 - tile.shift_t);
           y_i <<= iShift;
           sy = (float)(1 << iShift);
         }
         else
         {
-          wxUint8 iShift = tile.shift_t;
+          uint8_t iShift = tile.shift_t;
           y_i >>= iShift;
           sy = 1.0f/(float)(1 << iShift);
         }
@@ -1487,8 +1487,8 @@ static void rdp_setconvert()
   rdp.YUV_C3 = -0.40651f;
   rdp.YUV_C4 = 1.014f   ;
   */
-  rdp.K4 = (wxUint8)(rdp.cmd1>>9)&0x1FF;
-  rdp.K5 = (wxUint8)(rdp.cmd1&0x1FF);
+  rdp.K4 = (uint8_t)(rdp.cmd1>>9)&0x1FF;
+  rdp.K5 = (uint8_t)(rdp.cmd1&0x1FF);
   //  RDP_E("setconvert - IGNORED\n");
   FRDP("setconvert. K4=%02lx K5=%02lx\n", rdp.K4, rdp.K5);
 }
@@ -1526,8 +1526,8 @@ static void rdp_setscissor()
 
 static void rdp_setprimdepth()
 {
-  rdp.prim_depth = (wxUint16)((rdp.cmd1 >> 16) & 0x7FFF);
-  rdp.prim_dz = (wxUint16)(rdp.cmd1 & 0x7FFF);
+  rdp.prim_depth = (uint16_t)((rdp.cmd1 >> 16) & 0x7FFF);
+  rdp.prim_dz = (uint16_t)(rdp.cmd1 & 0x7FFF);
 
   FRDP("setprimdepth: %d\n", rdp.prim_depth);
 }
@@ -1561,33 +1561,33 @@ static void rdp_setothermode()
   }
 }
 
-void load_palette (uint32_t addr, wxUint16 start, wxUint16 count)
+void load_palette (uint32_t addr, uint16_t start, uint16_t count)
 {
   LRDP("Loading palette... ");
-  wxUint16 *dpal = rdp.pal_8 + start;
-  wxUint16 end = start+count;
+  uint16_t *dpal = rdp.pal_8 + start;
+  uint16_t end = start+count;
 #ifdef TEXTURE_FILTER
-  wxUint16 *spal = (wxUint16*)(GFX_PTR.RDRAM + (addr & BMASK));
+  uint16_t *spal = (uint16_t*)(GFX_PTR.RDRAM + (addr & BMASK));
 #endif
 
-  for (wxUint16 i=start; i<end; i++)
+  for (uint16_t i=start; i<end; i++)
   {
-    *(dpal++) = *(wxUint16 *)(GFX_PTR.RDRAM + (addr^2));
+    *(dpal++) = *(uint16_t *)(GFX_PTR.RDRAM + (addr^2));
     addr += 2;
 
 #ifdef TLUT_LOGGING
-    FRDP ("%d: %08lx\n", i, *(wxUint16 *)(GFX_PTR.RDRAM + (addr^2)));
+    FRDP ("%d: %08lx\n", i, *(uint16_t *)(GFX_PTR.RDRAM + (addr^2)));
 #endif
   }
 #ifdef TEXTURE_FILTER
   if (settings.ghq_hirs)
-    memcpy((wxUint8*)(rdp.pal_8_rice+start), spal, count<<1);
+    memcpy((uint8_t*)(rdp.pal_8_rice+start), spal, count<<1);
 #endif
   start >>= 4;
   end = start + (count >> 4);
   if (end == start) // it can be if count < 16
     end = start + 1;
-  for (wxUint16 p = start; p < end; p++)
+  for (uint16_t p = start; p < end; p++)
   {
     rdp.pal_8_crc[p] = CRC32( 0xFFFFFFFF, &rdp.pal_8[(p << 4)], 32 );
   }
@@ -1598,12 +1598,12 @@ void load_palette (uint32_t addr, wxUint16 start, wxUint16 count)
 static void rdp_loadtlut()
 {
   uint32_t tile = (rdp.cmd1 >> 24) & 0x07;
-  wxUint16 start = rdp.tiles[tile].t_mem - 256; // starting location in the palettes
-  //  wxUint16 start = ((wxUint16)(rdp.cmd1 >> 2) & 0x3FF) + 1;
-  wxUint16 count = ((wxUint16)(rdp.cmd1 >> 14) & 0x3FF) + 1;    // number to copy
+  uint16_t start = rdp.tiles[tile].t_mem - 256; // starting location in the palettes
+  //  uint16_t start = ((uint16_t)(rdp.cmd1 >> 2) & 0x3FF) + 1;
+  uint16_t count = ((uint16_t)(rdp.cmd1 >> 14) & 0x3FF) + 1;    // number to copy
 
   if (rdp.timg.addr + (count<<1) > BMASK)
-    count = (wxUint16)((BMASK - rdp.timg.addr) >> 1);
+    count = (uint16_t)((BMASK - rdp.timg.addr) >> 1);
 
   if (start+count > 256) count = 256-start;
 
@@ -1643,10 +1643,10 @@ static void rdp_settilesize()
   rdp.tiles[tile].f_ul_s = (float)((rdp.cmd0 >> 12) & 0xFFF) / 4.0f;
   rdp.tiles[tile].f_ul_t = (float)(rdp.cmd0 & 0xFFF) / 4.0f;
 
-  int ul_s = (((wxUint16)(rdp.cmd0 >> 14)) & 0x03ff);
-  int ul_t = (((wxUint16)(rdp.cmd0 >> 2 )) & 0x03ff);
-  int lr_s = (((wxUint16)(rdp.cmd1 >> 14)) & 0x03ff);
-  int lr_t = (((wxUint16)(rdp.cmd1 >> 2 )) & 0x03ff);
+  int ul_s = (((uint16_t)(rdp.cmd0 >> 14)) & 0x03ff);
+  int ul_t = (((uint16_t)(rdp.cmd0 >> 2 )) & 0x03ff);
+  int lr_s = (((uint16_t)(rdp.cmd1 >> 14)) & 0x03ff);
+  int lr_t = (((uint16_t)(rdp.cmd1 >> 2 )) & 0x03ff);
 
   if (lr_s == 0 && ul_s == 0)  //pokemon puzzle league set such tile size
     wrong_tile = tile;
@@ -1690,7 +1690,7 @@ static void rdp_settilesize()
     tile, ul_s, ul_t, lr_s, lr_t, rdp.tiles[tile].f_ul_s, rdp.tiles[tile].f_ul_t);
 }
 
-void setTBufTex(wxUint16 t_mem, uint32_t cnt)
+void setTBufTex(uint16_t t_mem, uint32_t cnt)
 {
   FRDP("setTBufTex t_mem=%d, cnt=%d\n", t_mem, cnt);
   TBUFF_COLOR_IMAGE * pTbufTex = rdp.tbuff_tex;
@@ -1854,7 +1854,7 @@ static void rdp_loadblock()
   }
   uint32_t tile = (uint32_t)((rdp.cmd1 >> 24) & 0x07);
   uint32_t dxt = (uint32_t)(rdp.cmd1 & 0x0FFF);
-  wxUint16 lr_s = (wxUint16)(rdp.cmd1 >> 14) & 0x3FF;
+  uint16_t lr_s = (uint16_t)(rdp.cmd1 >> 14) & 0x3FF;
   if (ucode5_texshiftaddr)
   {
     if (ucode5_texshift % ((lr_s+1)<<3))
@@ -1881,8 +1881,8 @@ static void rdp_loadblock()
 
   // lr_s specifies number of 64-bit words to copy
   // 10.2 format
-  wxUint16 ul_s = (wxUint16)(rdp.cmd0 >> 14) & 0x3FF;
-  wxUint16 ul_t = (wxUint16)(rdp.cmd0 >>  2) & 0x3FF;
+  uint16_t ul_s = (uint16_t)(rdp.cmd0 >> 14) & 0x3FF;
+  uint16_t ul_t = (uint16_t)(rdp.cmd0 >>  2) & 0x3FF;
 
   rdp.tiles[tile].ul_s = ul_s;
   rdp.tiles[tile].ul_t = ul_t;
@@ -1905,7 +1905,7 @@ static void rdp_loadblock()
     lr_s = 512-ul_s;
 
   if (addr+(lr_s<<3) > BMASK+1)
-    lr_s = (wxUint16)((BMASK-addr)>>3);
+    lr_s = (uint16_t)((BMASK-addr)>>3);
 
   //angrylion's advice to use ul_s in texture image offset and cnt calculations.
   //Helps to fix Vigilante 8 jpeg backgrounds and logos
@@ -1988,7 +1988,7 @@ static inline void loadTile(uint32_t *src, uint32_t *dst, int width, int height,
       v25 = v8;
       v24 = v9;
       v23 = v10;
-      v13 = (uint32_t *)((wxInt8*)v9 + (v10 & 0xFFFFFFFC));
+      v13 = (uint32_t *)((int8_t*)v9 + (v10 & 0xFFFFFFFC));
       v14 = v10 & 3;
       if ( !(v10 & 3) )
         goto LABEL_20;
@@ -2005,7 +2005,7 @@ static inline void loadTile(uint32_t *src, uint32_t *dst, int width, int height,
       {
         v16 = __ROL__(v16, 8);
         *(uint8_t *)v7 = v16;
-        v7 = (uint32_t *)((wxInt8*)v7 + 1);
+        v7 = (uint32_t *)((int8_t*)v7 + 1);
         --v15;
       }
       while ( v15 );
@@ -2030,12 +2030,12 @@ LABEL_20:
       v19 = v23 & 3;
       if ( v23 & 3 )
       {
-        v20 = *(uint32_t *)((wxInt8*)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
+        v20 = *(uint32_t *)((int8_t*)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
         do
         {
           v20 = __ROL__(v20, 8);
           *(uint8_t *)v7 = v20;
-          v7 = (uint32_t *)((wxInt8*)v7 + 1);
+          v7 = (uint32_t *)((int8_t*)v7 + 1);
           --v19;
         }
         while ( v19 );
@@ -2083,10 +2083,10 @@ static void rdp_loadtile()
 
   rdp.addr[rdp.tiles[tile].t_mem] = rdp.timg.addr;
 
-  wxUint16 ul_s = (wxUint16)((rdp.cmd0 >> 14) & 0x03FF);
-  wxUint16 ul_t = (wxUint16)((rdp.cmd0 >> 2 ) & 0x03FF);
-  wxUint16 lr_s = (wxUint16)((rdp.cmd1 >> 14) & 0x03FF);
-  wxUint16 lr_t = (wxUint16)((rdp.cmd1 >> 2 ) & 0x03FF);
+  uint16_t ul_s = (uint16_t)((rdp.cmd0 >> 14) & 0x03FF);
+  uint16_t ul_t = (uint16_t)((rdp.cmd0 >> 2 ) & 0x03FF);
+  uint16_t lr_s = (uint16_t)((rdp.cmd1 >> 14) & 0x03FF);
+  uint16_t lr_t = (uint16_t)((rdp.cmd1 >> 2 ) & 0x03FF);
 
   if (lr_s < ul_s || lr_t < ul_t) return;
 
@@ -2125,8 +2125,8 @@ static void rdp_loadtile()
   LOAD_TILE_INFO &info = rdp.load_info[rdp.tiles[tile].t_mem];
   info.tile_ul_s = ul_s;
   info.tile_ul_t = ul_t;
-  info.tile_width = (rdp.tiles[tile].mask_s ? min((wxUint16)width, 1<<rdp.tiles[tile].mask_s) : (wxUint16)width);
-  info.tile_height = (rdp.tiles[tile].mask_t ? min((wxUint16)height, 1<<rdp.tiles[tile].mask_t) : (wxUint16)height);
+  info.tile_width = (rdp.tiles[tile].mask_s ? min((uint16_t)width, 1<<rdp.tiles[tile].mask_s) : (uint16_t)width);
+  info.tile_height = (rdp.tiles[tile].mask_t ? min((uint16_t)height, 1<<rdp.tiles[tile].mask_t) : (uint16_t)height);
   if (settings.hacks&hack_MK64) {
     if (info.tile_width%2)
       info.tile_width--;
@@ -2177,19 +2177,19 @@ static void rdp_settile()
   rdp.last_tile = (uint32_t)((rdp.cmd1 >> 24) & 0x07);
   TILE *tile = &rdp.tiles[rdp.last_tile];
 
-  tile->format = (wxUint8)((rdp.cmd0 >> 21) & 0x07);
-  tile->size = (wxUint8)((rdp.cmd0 >> 19) & 0x03);
-  tile->line = (wxUint16)((rdp.cmd0 >> 9) & 0x01FF);
-  tile->t_mem = (wxUint16)(rdp.cmd0 & 0x1FF);
-  tile->palette = (wxUint8)((rdp.cmd1 >> 20) & 0x0F);
-  tile->clamp_t = (wxUint8)((rdp.cmd1 >> 19) & 0x01);
-  tile->mirror_t = (wxUint8)((rdp.cmd1 >> 18) & 0x01);
-  tile->mask_t = (wxUint8)((rdp.cmd1 >> 14) & 0x0F);
-  tile->shift_t = (wxUint8)((rdp.cmd1 >> 10) & 0x0F);
-  tile->clamp_s = (wxUint8)((rdp.cmd1 >> 9) & 0x01);
-  tile->mirror_s = (wxUint8)((rdp.cmd1 >> 8) & 0x01);
-  tile->mask_s = (wxUint8)((rdp.cmd1 >> 4) & 0x0F);
-  tile->shift_s = (wxUint8)(rdp.cmd1 & 0x0F);
+  tile->format = (uint8_t)((rdp.cmd0 >> 21) & 0x07);
+  tile->size = (uint8_t)((rdp.cmd0 >> 19) & 0x03);
+  tile->line = (uint16_t)((rdp.cmd0 >> 9) & 0x01FF);
+  tile->t_mem = (uint16_t)(rdp.cmd0 & 0x1FF);
+  tile->palette = (uint8_t)((rdp.cmd1 >> 20) & 0x0F);
+  tile->clamp_t = (uint8_t)((rdp.cmd1 >> 19) & 0x01);
+  tile->mirror_t = (uint8_t)((rdp.cmd1 >> 18) & 0x01);
+  tile->mask_t = (uint8_t)((rdp.cmd1 >> 14) & 0x0F);
+  tile->shift_t = (uint8_t)((rdp.cmd1 >> 10) & 0x0F);
+  tile->clamp_s = (uint8_t)((rdp.cmd1 >> 9) & 0x01);
+  tile->mirror_s = (uint8_t)((rdp.cmd1 >> 8) & 0x01);
+  tile->mask_s = (uint8_t)((rdp.cmd1 >> 4) & 0x0F);
+  tile->shift_s = (uint8_t)(rdp.cmd1 & 0x0F);
 
   rdp.update |= UPDATE_TEXTURE;
 
@@ -2318,10 +2318,10 @@ static void rdp_fillrect()
     rdp.scissor.lr_y);
 
   // KILL the floating point error with 0.01f
-  wxInt32 s_ul_x = (uint32_t)min(max(ul_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
-  wxInt32 s_lr_x = (uint32_t)min(max(lr_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
-  wxInt32 s_ul_y = (uint32_t)min(max(ul_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
-  wxInt32 s_lr_y = (uint32_t)min(max(lr_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
+  int32_t s_ul_x = (uint32_t)min(max(ul_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
+  int32_t s_lr_x = (uint32_t)min(max(lr_x * rdp.scale_x + rdp.offset_x + 0.01f, rdp.scissor.ul_x), rdp.scissor.lr_x);
+  int32_t s_ul_y = (uint32_t)min(max(ul_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
+  int32_t s_lr_y = (uint32_t)min(max(lr_y * rdp.scale_y + rdp.offset_y + 0.01f, rdp.scissor.ul_y), rdp.scissor.lr_y);
 
   if (s_lr_x < 0) s_lr_x = 0;
   if (s_lr_y < 0) s_lr_y = 0;
@@ -2497,23 +2497,23 @@ static void rdp_setenvcolor()
 
 static void rdp_setcombine()
 {
-  rdp.c_a0  = (wxUint8)((rdp.cmd0 >> 20) & 0xF);
-  rdp.c_b0  = (wxUint8)((rdp.cmd1 >> 28) & 0xF);
-  rdp.c_c0  = (wxUint8)((rdp.cmd0 >> 15) & 0x1F);
-  rdp.c_d0  = (wxUint8)((rdp.cmd1 >> 15) & 0x7);
-  rdp.c_Aa0 = (wxUint8)((rdp.cmd0 >> 12) & 0x7);
-  rdp.c_Ab0 = (wxUint8)((rdp.cmd1 >> 12) & 0x7);
-  rdp.c_Ac0 = (wxUint8)((rdp.cmd0 >> 9)  & 0x7);
-  rdp.c_Ad0 = (wxUint8)((rdp.cmd1 >> 9)  & 0x7);
+  rdp.c_a0  = (uint8_t)((rdp.cmd0 >> 20) & 0xF);
+  rdp.c_b0  = (uint8_t)((rdp.cmd1 >> 28) & 0xF);
+  rdp.c_c0  = (uint8_t)((rdp.cmd0 >> 15) & 0x1F);
+  rdp.c_d0  = (uint8_t)((rdp.cmd1 >> 15) & 0x7);
+  rdp.c_Aa0 = (uint8_t)((rdp.cmd0 >> 12) & 0x7);
+  rdp.c_Ab0 = (uint8_t)((rdp.cmd1 >> 12) & 0x7);
+  rdp.c_Ac0 = (uint8_t)((rdp.cmd0 >> 9)  & 0x7);
+  rdp.c_Ad0 = (uint8_t)((rdp.cmd1 >> 9)  & 0x7);
 
-  rdp.c_a1  = (wxUint8)((rdp.cmd0 >> 5)  & 0xF);
-  rdp.c_b1  = (wxUint8)((rdp.cmd1 >> 24) & 0xF);
-  rdp.c_c1  = (wxUint8)((rdp.cmd0 >> 0)  & 0x1F);
-  rdp.c_d1  = (wxUint8)((rdp.cmd1 >> 6)  & 0x7);
-  rdp.c_Aa1 = (wxUint8)((rdp.cmd1 >> 21) & 0x7);
-  rdp.c_Ab1 = (wxUint8)((rdp.cmd1 >> 3)  & 0x7);
-  rdp.c_Ac1 = (wxUint8)((rdp.cmd1 >> 18) & 0x7);
-  rdp.c_Ad1 = (wxUint8)((rdp.cmd1 >> 0)  & 0x7);
+  rdp.c_a1  = (uint8_t)((rdp.cmd0 >> 5)  & 0xF);
+  rdp.c_b1  = (uint8_t)((rdp.cmd1 >> 24) & 0xF);
+  rdp.c_c1  = (uint8_t)((rdp.cmd0 >> 0)  & 0x1F);
+  rdp.c_d1  = (uint8_t)((rdp.cmd1 >> 6)  & 0x7);
+  rdp.c_Aa1 = (uint8_t)((rdp.cmd1 >> 21) & 0x7);
+  rdp.c_Ab1 = (uint8_t)((rdp.cmd1 >> 3)  & 0x7);
+  rdp.c_Ac1 = (uint8_t)((rdp.cmd1 >> 18) & 0x7);
+  rdp.c_Ad1 = (uint8_t)((rdp.cmd1 >> 0)  & 0x7);
 
   rdp.cycle1 = (rdp.c_a0<<0)  | (rdp.c_b0<<4)  | (rdp.c_c0<<8)  | (rdp.c_d0<<13)|
     (rdp.c_Aa0<<16)| (rdp.c_Ab0<<19)| (rdp.c_Ac0<<22)| (rdp.c_Ad0<<25);
@@ -2538,15 +2538,15 @@ static void rdp_settextureimage()
   static const char *format[]   = { "RGBA", "YUV", "CI", "IA", "I", "?", "?", "?" };
   static const char *size[]     = { "4bit", "8bit", "16bit", "32bit" };
 
-  rdp.timg.format = (wxUint8)((rdp.cmd0 >> 21) & 0x07);
-  rdp.timg.size = (wxUint8)((rdp.cmd0 >> 19) & 0x03);
-  rdp.timg.width = (wxUint16)(1 + (rdp.cmd0 & 0x00000FFF));
+  rdp.timg.format = (uint8_t)((rdp.cmd0 >> 21) & 0x07);
+  rdp.timg.size = (uint8_t)((rdp.cmd0 >> 19) & 0x03);
+  rdp.timg.width = (uint16_t)(1 + (rdp.cmd0 & 0x00000FFF));
   rdp.timg.addr = segoffset(rdp.cmd1);
   if (ucode5_texshiftaddr)
   {
     if (rdp.timg.format == 0)
     {
-      wxUint16 * t = (wxUint16*)(GFX_PTR.RDRAM+ucode5_texshiftaddr);
+      uint16_t * t = (uint16_t*)(GFX_PTR.RDRAM+ucode5_texshiftaddr);
       ucode5_texshift = t[ucode5_texshiftcount^1];
       rdp.timg.addr += ucode5_texshift;
     }
@@ -2843,9 +2843,9 @@ static void rdp_setcolorimage()
         {
           int width = cur_fb.width;
           int height = cur_fb.height;
-          wxUint16 *ptr_dst = new wxUint16[width*height];
-          wxUint16 *ptr_src = (wxUint16*)(GFX_PTR.RDRAM+cur_fb.addr);
-          wxUint16 c;
+          uint16_t *ptr_dst = new uint16_t[width*height];
+          uint16_t *ptr_src = (uint16_t*)(GFX_PTR.RDRAM+cur_fb.addr);
+          uint16_t c;
 
           for (int y=0; y<height; y++)
           {
@@ -3093,7 +3093,7 @@ Emulator should not call this function again if other memory
 is read within the same 4KB range
 input:    addr          rdram address
 val                     val
-size            1 = wxUint8, 2 = wxUint16, 4 = uint32_t
+size            1 = uint8_t, 2 = uint16_t, 4 = uint32_t
 output:   none
 *******************************************************************/
 
@@ -3173,7 +3173,7 @@ Purpose:  This function is called to notify the dll that the
 frame buffer has been modified by CPU at the given address.
 input:    addr          rdram address
 val                     val
-size            1 = wxUint8, 2 = wxUint16, 4 = uint32_t
+size            1 = uint8_t, 2 = uint16_t, 4 = uint32_t
 output:   none
 *******************************************************************/
 EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
@@ -3520,9 +3520,9 @@ void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer,
   int drde = 0, dgde = 0, dbde = 0, dade = 0, dzde = 0, dsde = 0, dtde = 0, dwde = 0;
   int flip = (w1 & 0x800000) ? 1 : 0;
 
-  wxInt32 yl, ym, yh;
-  wxInt32 xl, xm, xh;
-  wxInt32 dxldy, dxhdy, dxmdy;
+  int32_t yl, ym, yh;
+  int32_t xl, xm, xh;
+  int32_t dxldy, dxhdy, dxmdy;
   uint32_t w3, w4, w5, w6, w7, w8;
 
   uint32_t * shade_base = rdp_cmd + 8;
@@ -3549,12 +3549,12 @@ void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer,
   yl = (w1 & 0x3fff);
   ym = ((w2 >> 16) & 0x3fff);
   yh = ((w2 >>  0) & 0x3fff);
-  xl = (wxInt32)(w3);
-  xh = (wxInt32)(w5);
-  xm = (wxInt32)(w7);
-  dxldy = (wxInt32)(w4);
-  dxhdy = (wxInt32)(w6);
-  dxmdy = (wxInt32)(w8);
+  xl = (int32_t)(w3);
+  xh = (int32_t)(w5);
+  xm = (int32_t)(w7);
+  dxldy = (int32_t)(w4);
+  dxhdy = (int32_t)(w6);
+  dxmdy = (int32_t)(w8);
 
   if (yl & (0x800<<2)) yl |= 0xfffff000<<2;
   if (ym & (0x800<<2)) ym |= 0xfffff000<<2;
