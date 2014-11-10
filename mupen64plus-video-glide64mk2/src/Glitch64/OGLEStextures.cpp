@@ -544,7 +544,7 @@ grTexSource( GrChipID_t tmu,
 #endif
 }
 
-#ifdef ENABLE_3POINT
+#ifdef ENABLE_TEXTURE_SAMPLING
 FX_ENTRY void FX_CALL
 grTexFilterMode(
                 GrChipID_t tmu,
