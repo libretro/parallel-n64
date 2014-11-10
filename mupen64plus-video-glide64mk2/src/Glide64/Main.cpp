@@ -562,7 +562,7 @@ void guLoadTextures ()
 {
    int tbuf_size = 0;
 
-   bool log2_2048 = (settings.scr_res_x > 1024) ? true : false;
+   bool log2_2048 = true;
 
    tbuf_size = grTexCalcMemRequired(log2_2048 ? GR_LOD_LOG2_2048 : GR_LOD_LOG2_1024,
          log2_2048 ? GR_LOD_LOG2_2048 : GR_LOD_LOG2_1024,
