@@ -490,7 +490,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"MortalKombatTrilogy"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 2;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char *)"Perfect Dark"))
@@ -1522,7 +1524,9 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"ZELDA MAJORA'S MASK") || strstr(name, (const char *)"THE MASK OF MUJURA"))
    {
       //wrap_big_tex = 1
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       smart_read = 1;
 #ifdef HAVE_HWFBE
       hires = 1;
@@ -1532,7 +1536,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"THE LEGEND OF ZELDA") || strstr(name, (const char *)"ZELDA MASTER QUEST"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
       settings.lodmode = 1;
       smart_read = 1;
@@ -1612,7 +1618,9 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"Killer Instinct Gold") || strstr(name, (const char *)"KILLER INSTINCT GOLD"))
    {
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 0
       settings.buff_clear = 0;
    }
@@ -1641,7 +1649,9 @@ void ReadSpecialSettings (const char * name)
       settings.increase_texrect_edge = 1;
 #endif
       //fix_tex_coord = 8
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char *)"Quake"))
@@ -1726,7 +1736,9 @@ void ReadSpecialSettings (const char * name)
    {
       settings.depth_bias = 64;
       settings.lodmode = 1;
+#ifndef ENABLE_TEXTURE_SAMPLING
       settings.filtering = 1;
+#endif
       //depthmode = 1
    }
    else if (strstr(name, (const char *)"SM64 Star Road"))
