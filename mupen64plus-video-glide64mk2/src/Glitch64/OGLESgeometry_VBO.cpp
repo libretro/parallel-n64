@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stddef.h>
 #ifdef _WIN32
 #include <windows.h>
 #endif // _WIN32
@@ -87,8 +88,11 @@ void vbo_draw()
 {
   if(vertex_buffer_count)
   {
+    vbo_bind();
+    vbo_buffer_data(&vertex_buffer[0], VERTEX_SIZE * vertex_buffer_count);
     glDrawArrays(vertex_draw_mode,0,vertex_buffer_count);
     vertex_buffer_count = 0;
+    vbo_unbind();
   }
 }
 
@@ -121,21 +125,22 @@ void vbo_enable()
   if(vertex_buffer_enabled)
     return;
 
-  vertex_buffer_enabled = true;
+  vbo_bind();
   glEnableVertexAttribArray(POSITION_ATTR);
-  glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, &vertex_buffer[0].x); //Position
+  glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, (GLvoid *) offsetof(VERTEX, x)); //Position
 
   glEnableVertexAttribArray(COLOUR_ATTR);
-  glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, &vertex_buffer[0].b); //Colour
+  glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, (GLvoid *) offsetof(VERTEX, b)); //Colour
 
   glEnableVertexAttribArray(TEXCOORD_0_ATTR);
-  glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &vertex_buffer[0].coord[2]); //Tex0
+  glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, (GLvoid *) offsetof(VERTEX, coord[2])); //Tex0
 
   glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-  glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &vertex_buffer[0].coord[0]); //Tex1
+  glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, (GLvoid *) offsetof(VERTEX, coord[0])); //Tex1
 
   glEnableVertexAttribArray(FOG_ATTR);
-  glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, &vertex_buffer[0].f); //Fog
+  glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, (GLvoid *) offsetof(VERTEX, f)); //Fog
+  vbo_unbind();
 }
 
 void vbo_disable()
@@ -176,15 +181,10 @@ grDrawTriangle( const void *a, const void *b, const void *c )
 
   if(need_to_compile) compile_shader();
 
-  if(vertex_buffer_count + 3 > VERTEX_BUFFER_SIZE)
-  {
-    vbo_draw();
-  }
-  vertex_draw_mode = GL_TRIANGLES;
-  memcpy(&vertex_buffer[vertex_buffer_count],a,VERTEX_SIZE);
-  memcpy(&vertex_buffer[vertex_buffer_count+1],b,VERTEX_SIZE);
-  memcpy(&vertex_buffer[vertex_buffer_count+2],c,VERTEX_SIZE);
-  vertex_buffer_count += 3;
+  VERTEX v[3] = {*(VERTEX *)a, *(VERTEX *)b, *(VERTEX *)c};
+
+  vbo_enable();
+  vbo_buffer(GL_TRIANGLES, 0, 3, &v[0]);
 }
 
 FX_ENTRY void FX_CALL
