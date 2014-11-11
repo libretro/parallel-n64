@@ -756,8 +756,10 @@ EXPORT void CALL ProcessDList(void)
   }
   if (settings.frame_buffer & fb_ref)
     CopyFrameBuffer ();
+#ifdef HAVE_HWFBE
   if (rdp.cur_image)
     CloseTextureBuffer(rdp.read_whole_frame && ((settings.hacks&hack_PMario) || rdp.swap_ci_index >= 0));
+#endif
 
   if ((settings.hacks&hack_TGR2) && rdp.vi_org_reg != *GFX_PTR.VI_ORIGIN_REG && CI_SET)
   {
@@ -2566,14 +2568,18 @@ static void rdp_settextureimage()
     {
       if (!rdp.cur_image)
         CopyFrameBuffer();
+#ifdef HAVE_HWFBE
       else
         CloseTextureBuffer(TRUE);
+#endif
       rdp.fb_drawn = TRUE;
     }
   }
 
+#ifdef HAVE_HWFBE
   if (fb_hwfbe_enabled) //search this texture among drawn texture buffers
     FindTextureBuffer(rdp.timg.addr, rdp.timg.width);
+#endif
 
   FRDP("settextureimage: format: %s, size: %s, width: %d, addr: %08lx\n",
     format[rdp.timg.format], size[rdp.timg.size],
@@ -2645,9 +2651,12 @@ static void rdp_setcolorimage()
               rdp.scale_y = 1.0f;
             }
           }
+#ifdef HAVE_HWFBE
           else if (rdp.copy_ci_index && (settings.hacks&hack_PMario)) //tidal wave
             OpenTextureBuffer(rdp.frame_buffers[rdp.main_ci_index]);
+#endif
         }
+#ifdef HAVE_HWFBE
         else if (!rdp.motionblur && fb_hwfbe_enabled && !SwapOK && (rdp.ci_count <= rdp.copy_ci_index))
         {
           if (next_fb.status == ci_aux_copy)
@@ -2655,6 +2664,7 @@ static void rdp_setcolorimage()
           else
             OpenTextureBuffer(rdp.frame_buffers[rdp.copy_ci_index]);
         }
+#endif
         else if (fb_hwfbe_enabled && prev_fb.status == ci_aux)
         {
           if (rdp.motionblur)
@@ -2664,10 +2674,12 @@ static void rdp_setcolorimage()
             grTextureBufferExt( rdp.cur_image->tmu, rdp.cur_image->tex_addr, rdp.cur_image->info.smallLodLog2, rdp.cur_image->info.largeLodLog2,
               rdp.cur_image->info.aspectRatioLog2, rdp.cur_image->info.format, GR_MIPMAPLEVELMASK_BOTH );
           }
+#ifdef HAVE_HWFBE
           else if (rdp.read_whole_frame)
           {
             OpenTextureBuffer(rdp.frame_buffers[rdp.main_ci_index]);
           }
+#endif
         }
         //else if (rdp.ci_status == ci_aux && !rdp.copy_ci_index)
         //  CloseTextureBuffer();
@@ -2681,6 +2693,7 @@ static void rdp_setcolorimage()
         {
           if (cur_fb.width == rdp.ci_width)
           {
+#ifdef HAVE_HWFBE
             if (CopyTextureBuffer(prev_fb, cur_fb))
             {
               //                      if (CloseTextureBuffer(TRUE))
@@ -2694,6 +2707,7 @@ static void rdp_setcolorimage()
               //*/
             }
             else
+#endif
             {
               if (!rdp.fb_drawn || prev_fb.status == ci_copy_self)
               {
@@ -2703,10 +2717,12 @@ static void rdp_setcolorimage()
               memcpy(GFX_PTR.RDRAM+cur_fb.addr,GFX_PTR.RDRAM+rdp.cimg, (cur_fb.width*cur_fb.height)<<cur_fb.size>>1);
             }
           }
+#ifdef HAVE_HWFBE
           else
           {
             CloseTextureBuffer(TRUE);
           }
+#endif
         }
         else
         {
@@ -2718,15 +2734,20 @@ static void rdp_setcolorimage()
     case ci_aux_copy:
       {
         rdp.skip_drawing = FALSE;
+#ifdef HAVE_HWFBE
         if (CloseTextureBuffer(prev_fb.status != ci_aux_copy))
           ;
-        else if (!rdp.fb_drawn)
+        else
+#endif
+           if (!rdp.fb_drawn)
         {
           CopyFrameBuffer ();
           rdp.fb_drawn = TRUE;
         }
+#ifdef HAVE_HWFBE
         if (fb_hwfbe_enabled)
           OpenTextureBuffer(cur_fb);
+#endif
       }
       break;
     case ci_old_copy:
@@ -2761,9 +2782,11 @@ static void rdp_setcolorimage()
         else
         {
           rdp.skip_drawing = FALSE;
+#ifdef HAVE_HWFBE
           if (fb_hwfbe_enabled && OpenTextureBuffer(cur_fb))
             ;
           else
+#endif
           {
             if (cur_fb.format != 0)
               rdp.skip_drawing = TRUE;
@@ -2802,10 +2825,12 @@ static void rdp_setcolorimage()
     case ci_zcopy:
       if (settings.ucode != ucode_PerfectDark)
       {
+#ifdef HAVE_HWFBE
         if (fb_hwfbe_enabled && !rdp.copy_ci_index && rdp.copy_zi_index == rdp.ci_count)
         {
           CopyDepthBuffer();
         }
+#endif
         rdp.skip_drawing = TRUE;
       }
       break;
@@ -2813,8 +2838,10 @@ static void rdp_setcolorimage()
       rdp.skip_drawing = TRUE;
       break;
     case ci_copy_self:
+#ifdef HAVE_HWFBE
       if (fb_hwfbe_enabled && (rdp.ci_count <= rdp.copy_ci_index) && (!SwapOK || settings.swapmode == 2))
         OpenTextureBuffer(cur_fb);
+#endif
       rdp.skip_drawing = FALSE;
       break;
     default:
@@ -2893,11 +2920,15 @@ static void rdp_setcolorimage()
         LRDP("return to original scale\n");
         rdp.scale_x = rdp.scale_x_bak;
         rdp.scale_y = rdp.scale_y_bak;
+#ifdef HAVE_HWFBE
         if (fb_hwfbe_enabled && !rdp.read_whole_frame)
           CloseTextureBuffer();
+#endif
       }
+#ifdef HAVE_HWFBE
       if (fb_hwfbe_enabled && !rdp.read_whole_frame && (prev_fb.status >= ci_aux) && (rdp.ci_count > rdp.copy_ci_index))
         CloseTextureBuffer();
+#endif
 
     }
     rdp.ci_status = cur_fb.status;
@@ -2929,9 +2960,12 @@ static void rdp_setcolorimage()
   {
     if (!rdp.cur_image)
     {
+#ifdef HAVE_HWFBE
       if (fb_hwfbe_enabled && rdp.ci_width <= 64)
         OpenTextureBuffer(rdp.frame_buffers[rdp.ci_count - 1]);
-      else if (format > 2)
+      else
+#endif
+         if (format > 2)
         rdp.skip_drawing = TRUE;
       return;
     }
@@ -2960,6 +2994,7 @@ static void rdp_setcolorimage()
       newSwapBuffers();
       rdp.vi_org_reg = *GFX_PTR.VI_ORIGIN_REG;
       SwapOK = FALSE;
+#ifdef HAVE_HWFBE
       if (fb_hwfbe_enabled)
       {
         if (rdp.copy_ci_index && (rdp.frame_buffers[rdp.ci_count-1].status != ci_zimg))
@@ -2975,6 +3010,7 @@ static void rdp_setcolorimage()
           OpenTextureBuffer(rdp.frame_buffers[rdp.main_ci_index]);
         }
       }
+#endif
     }
   }
 }
@@ -3428,6 +3464,7 @@ void DetectFrameBufferUsage ()
     rdp.read_whole_frame = TRUE;
   if (rdp.read_whole_frame)
   {
+#ifdef HAVE_HWFBE
     if (fb_hwfbe_enabled)
     {
       if (rdp.read_previous_ci && !previous_ci_was_read && (settings.swapmode != 2) && (settings.ucode != ucode_PerfectDark))
@@ -3445,6 +3482,7 @@ void DetectFrameBufferUsage ()
       }
     }
     else
+#endif
     {
       if (rdp.motionblur)
       {
