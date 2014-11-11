@@ -171,12 +171,14 @@ GLint sglGetUniformLocation(GLuint program, const GLchar *name)
 
 void sglEnable(GLenum cap)
 {
+   vbo_draw();
     glEnable(CapTranslate[cap]);
     CapState[cap] = 1;
 }
 
 void sglDisable(GLenum cap)
 {
+   vbo_draw();
     glDisable(CapTranslate[cap]);
     CapState[cap] = 0;
 }
@@ -190,6 +192,7 @@ GLboolean sglIsEnabled(GLenum cap)
 
 void sglEnableVertexAttribArray(GLuint index)
 {
+   vbo_draw();
 #ifndef HAVE_SHARED_CONTEXT
    VertexAttribPointer_enabled[index] = 1;
 #endif
@@ -221,12 +224,14 @@ void sglVertexAttrib4fv(GLuint name, GLfloat* v)
 
 void sglBindFramebuffer(GLenum target, GLuint framebuffer)
 {
+   vbo_draw();
    if (!stop)
       glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer : hw_render.get_current_framebuffer());
 }
 
 void sglBlendFunc(GLenum sfactor, GLenum dfactor)
 {
+   vbo_draw();
 #ifndef HAVE_SHARED_CONTEXT
     BlendFunc_srcRGB = BlendFunc_srcAlpha = sfactor;
     BlendFunc_dstRGB = BlendFunc_dstAlpha = dfactor;
@@ -236,6 +241,7 @@ void sglBlendFunc(GLenum sfactor, GLenum dfactor)
 
 void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha)
 {
+   vbo_draw();
 #ifndef HAVE_SHARED_CONTEXT
     BlendFunc_srcRGB = srcRGB;
     BlendFunc_dstRGB = dstRGB;
@@ -247,6 +253,7 @@ void sglBlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum 
 
 void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
+   vbo_draw();
    glClearColor(red, green, blue, alpha);
 #ifndef HAVE_SHARED_CONTEXT
    ClearColor_red = red;
@@ -258,6 +265,7 @@ void sglClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 
 void sglClearDepthf(GLdouble depth)
 {
+   vbo_draw();
 #ifdef GLES
    glClearDepthf(depth);
 #else
@@ -267,6 +275,7 @@ void sglClearDepthf(GLdouble depth)
 
 void sglClearDepth(GLdouble depth)
 {
+   vbo_draw();
    sglClearDepthf(depth);
 #ifndef HAVE_SHARED_CONTEXT
    ClearDepth_value = depth;
@@ -275,6 +284,7 @@ void sglClearDepth(GLdouble depth)
 
 void sglColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha)
 {
+   vbo_draw();
    glColorMask(red, green, blue, alpha);
 #ifndef HAVE_SHARED_CONTEXT
    ColorMask_red = red;
@@ -287,6 +297,7 @@ void sglColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alph
 
 void sglCullFace(GLenum mode)
 {
+   vbo_draw();
    glCullFace(mode);
 #ifndef HAVE_SHARED_CONTEXT
    CullFace_mode = mode;
@@ -295,6 +306,7 @@ void sglCullFace(GLenum mode)
 
 void sglDepthFunc(GLenum func)
 {
+   vbo_draw();
   glDepthFunc(func);
 #ifndef HAVE_SHARED_CONTEXT
   DepthFunc_func = func;
@@ -303,6 +315,7 @@ void sglDepthFunc(GLenum func)
 
 void sglDepthMask(GLboolean flag)
 {
+   vbo_draw();
   glDepthMask(flag);
 #ifndef HAVE_SHARED_CONTEXT
   DepthMask_flag = flag;
@@ -329,6 +342,7 @@ void sglDepthRange(GLclampd zNear, GLclampd zFar)
 
 void sglFrontFace(GLenum mode)
 {
+   vbo_draw();
    glFrontFace(mode);
 #ifndef HAVE_SHARED_CONTEXT
    FrontFace_mode = mode;
@@ -337,6 +351,7 @@ void sglFrontFace(GLenum mode)
 
 void sglPolygonOffset(GLfloat factor, GLfloat units)
 {
+   vbo_draw();
   glPolygonOffset(factor, units);
 #ifndef HAVE_SHARED_CONTEXT
   PolygonOffset_factor = factor;
@@ -346,6 +361,7 @@ void sglPolygonOffset(GLfloat factor, GLfloat units)
 
 void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 {
+   vbo_draw();
   glScissor(x, y, width, height);
 #ifndef HAVE_SHARED_CONTEXT
   Scissor_x = x;
@@ -357,6 +373,7 @@ void sglScissor(GLint x, GLint y, GLsizei width, GLsizei height)
 
 void sglUseProgram(GLuint program)
 {
+   vbo_draw();
    glUseProgram(program);
 #ifndef HAVE_SHARED_CONTEXT
    UseProgram_program = program;
@@ -365,6 +382,7 @@ void sglUseProgram(GLuint program)
 
 void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
+   vbo_draw();
    glViewport(x, y, width, height);
 #ifndef HAVE_SHARED_CONTEXT
    Viewport_x = x;
@@ -377,6 +395,7 @@ void sglViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 
 void sglActiveTexture(GLenum texture)
 {
+   vbo_draw();
    glActiveTexture(texture);
 #ifndef HAVE_SHARED_CONTEXT
    ActiveTexture_texture = texture - GL_TEXTURE0;
@@ -385,6 +404,7 @@ void sglActiveTexture(GLenum texture)
 
 void sglBindTexture(GLenum target, GLuint texture)
 {
+   vbo_draw();
    glBindTexture(target, texture);
 #ifndef HAVE_SHARED_CONTEXT
    BindTexture_ids[ActiveTexture_texture] = texture;
@@ -448,6 +468,7 @@ void sglFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget,
 
 void sglBindBuffer(GLenum target, GLuint buffer)
 {
+   vbo_draw();
    glBindBuffer(target, buffer);
 }
 
