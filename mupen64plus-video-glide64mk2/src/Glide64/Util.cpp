@@ -977,61 +977,30 @@ static void InterpolateColors3(VERTEX &v1, VERTEX &v2, VERTEX &v3, VERTEX &out)
 
 static void CalculateLOD(VERTEX *v, int n)
 {
-  //rdp.update |= UPDATE_TEXTURE;
-  /*
-  if (rdp.lod_calculated)
-  {
-  float detailmax;
-  if (dc0_detailmax < 0.5)
-  detailmax = rdp.lod_fraction;
-  else
-  detailmax = 1.0f - rdp.lod_fraction;
-  grTexDetailControl (GR_TMU0, dc0_lodbias, dc0_detailscale, detailmax);
-  if (num_tmu == 2)
-  grTexDetailControl (GR_TMU1, dc1_lodbias, dc1_detailscale, detailmax);
-  return;
-  }
-  */
-  float deltaS, deltaT;
-  float deltaX, deltaY;
-  double deltaTexels, deltaPixels, lodFactor = 0;
+  int i;
+  double lodFactor = 0;
   double intptr;
   float s_scale = rdp.tiles[rdp.cur_tile].width / 255.0f;
   float t_scale = rdp.tiles[rdp.cur_tile].height / 255.0f;
-  if (settings.lodmode == 1)
+  n = (settings.lodmode == 1) ? 1 : n;
+
+  for (i = 0; i < n; i++)
   {
-    deltaS = (v[1].u0/v[1].q - v[0].u0/v[0].q) * s_scale;
-    deltaT = (v[1].v0/v[1].q - v[0].v0/v[0].q) * t_scale;
-    deltaTexels = sqrt( deltaS * deltaS + deltaT * deltaT );
+     int j = ((n == 1) || (i < n-1)) ? i + 1 : 0;
+     float deltaS = (v[j].u0/v[j].q - v[i].u0/v[i].q) * s_scale;
+     float deltaT = (v[j].v0/v[j].q - v[i].v0/v[i].q) * t_scale;
+     double deltaTexels = sqrt( deltaS * deltaS + deltaT * deltaT );
 
-    deltaX = (v[1].x - v[0].x)/rdp.scale_x;
-    deltaY = (v[1].y - v[0].y)/rdp.scale_y;
-    deltaPixels = sqrt( deltaX * deltaX + deltaY * deltaY );
+     float deltaX = (v[j].x - v[i].x)/rdp.scale_x;
+     float deltaY = (v[j].y - v[i].y)/rdp.scale_y;
+     double deltaPixels = sqrt( deltaX * deltaX + deltaY * deltaY );
 
-    lodFactor = deltaTexels / deltaPixels;
+     lodFactor += deltaTexels / deltaPixels;
   }
-  else
-  {
-    int i, j;
-    for (i = 0; i < n; i++)
-    {
-      j = (i < n-1) ? i + 1 : 0;
 
-      deltaS = (v[j].u0/v[j].q - v[i].u0/v[i].q) * s_scale;
-      deltaT = (v[j].v0/v[j].q - v[i].v0/v[i].q) * t_scale;
-      //    deltaS = v[j].ou - v[i].ou;
-      //    deltaT = v[j].ov - v[i].ov;
-      deltaTexels = sqrt( deltaS * deltaS + deltaT * deltaT );
+  /* Divide by n (n edges) to find average */
+  lodFactor = lodFactor / n;
 
-      deltaX = (v[j].x - v[i].x)/rdp.scale_x;
-      deltaY = (v[j].y - v[i].y)/rdp.scale_y;
-      deltaPixels = sqrt( deltaX * deltaX + deltaY * deltaY );
-
-      lodFactor += deltaTexels / deltaPixels;
-    }
-    // Divide by n (n edges) to find average
-    lodFactor = lodFactor / n;
-  }
   int ilod = (int)lodFactor;
   int lod_tile = min((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + rdp.mipmap_level);
   float lod_fraction = 1.0f;
