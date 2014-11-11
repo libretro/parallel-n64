@@ -686,6 +686,7 @@ extern uint32_t screen_height;
 
 int retro_return(int just_flipping)
 {
+   vbo_draw();
 
    flip_only = false;
    if (just_flipping)
@@ -710,6 +711,8 @@ int retro_return(int just_flipping)
 {
    if (stop)
       return 0;
+
+   vbo_draw();
 
    flip_only = just_flipping;
 
