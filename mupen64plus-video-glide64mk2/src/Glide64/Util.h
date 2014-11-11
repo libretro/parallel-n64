@@ -110,17 +110,6 @@ static inline uint32_t bswap32(uint32_t val)
 
 #define __ROR16__(value, count) (((value >> (count % (NBITS16))) | (value << ((NBITS16) - (count % (NBITS16))))))
 #define __ROR32__(value, count) ( (value >> (count % (NBITS32))) | (value << ((NBITS32) - (count % (NBITS32)))))
-
-// rotate left
-template<class T> static T __ROL__(T value, unsigned int count)
-{
-  const unsigned int nbits = sizeof(T) * 8;
-  count %= nbits;
-
-  T high = value >> (nbits - count);
-  value <<= count;
-  value |= high;
-  return value;
-}
+#define __ROL32__(value, count) ( (value << (count % (NBITS32))) | (value >> ((NBITS32) - (count % (NBITS32)))))
 
 #endif  // ifndef Util_H
