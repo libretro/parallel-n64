@@ -47,7 +47,9 @@
 #include "Debugger.h"
 #include "Combine.h"
 #include "TexCache.h"
+#ifdef HAVE_HWFBE
 #include "TexBuffer.h"
+#endif
 #include "FBtoScreen.h"
 #include "CRC.h"
 #include "Glide64_UCode.h"
