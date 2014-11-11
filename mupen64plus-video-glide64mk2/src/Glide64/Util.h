@@ -105,16 +105,11 @@ static inline uint32_t bswap32(uint32_t val)
 
 #define ALOWORD(x)   (*((uint16_t*)&(x)))   // low word
 
-template<class T> static inline T __ROR__(T value, unsigned int count)
-{
-  const unsigned int nbits = sizeof(T) * 8;
-  count %= nbits;
+#define NBITS16 (sizeof(uint16_t) * 8)
+#define NBITS32 (sizeof(uint32_t) * 8)
 
-  T low = value << (nbits - count);
-  value >>= count;
-  value |= low;
-  return value;
-}
+#define __ROR16__(value, count) (((value >> (count % (NBITS16))) | (value << ((NBITS16) - (count % (NBITS16))))))
+#define __ROR32__(value, count) ( (value >> (count % (NBITS32))) | (value << ((NBITS32) - (count % (NBITS32)))))
 
 // rotate left
 template<class T> static T __ROL__(T value, unsigned int count)

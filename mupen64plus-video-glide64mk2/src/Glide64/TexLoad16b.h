@@ -64,12 +64,12 @@ static inline void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
     {
       v10 = bswap32(*v6);
       v11 = bswap32(v6[1]);
-      ALOWORD(v10) = __ROR__((uint16_t)v10, 1);
-      ALOWORD(v11) = __ROR__((uint16_t)v11, 1);
-      v10 = __ROR__(v10, 16);
-      v11 = __ROR__(v11, 16);
-      ALOWORD(v10) = __ROR__((uint16_t)v10, 1);
-      ALOWORD(v11) = __ROR__((uint16_t)v11, 1);
+      ALOWORD(v10) = __ROR16__((uint16_t)v10, 1);
+      ALOWORD(v11) = __ROR16__((uint16_t)v11, 1);
+      v10 = __ROR32__(v10, 16);
+      v11 = __ROR32__(v11, 16);
+      ALOWORD(v10) = __ROR16__((uint16_t)v10, 1);
+      ALOWORD(v11) = __ROR16__((uint16_t)v11, 1);
       *v7 = v10;
       v7[1] = v11;
       v6 += 2;
@@ -87,12 +87,12 @@ static inline void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
     {
       v15 = bswap32(v12[1]);
       v16 = bswap32(*v12);
-      ALOWORD(v15) = __ROR__((uint16_t)v15, 1);
-      ALOWORD(v16) = __ROR__((uint16_t)v16, 1);
-      v15 = __ROR__(v15, 16);
-      v16 = __ROR__(v16, 16);
-      ALOWORD(v15) = __ROR__((uint16_t)v15, 1);
-      ALOWORD(v16) = __ROR__((uint16_t)v16, 1);
+      ALOWORD(v15) = __ROR16__((uint16_t)v15, 1);
+      ALOWORD(v16) = __ROR16__((uint16_t)v16, 1);
+      v15 = __ROR32__(v15, 16);
+      v16 = __ROR32__(v16, 16);
+      ALOWORD(v15) = __ROR16__((uint16_t)v15, 1);
+      ALOWORD(v16) = __ROR16__((uint16_t)v16, 1);
       *v13 = v15;
       v13[1] = v16;
       v12 += 2;
