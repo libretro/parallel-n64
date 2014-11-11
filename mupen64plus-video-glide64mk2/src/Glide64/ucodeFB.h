@@ -269,6 +269,7 @@ static void fb_settextureimage()
         LRDP("read_previous_ci = TRUE\n");
       }
     }
+#ifdef HAVE_HWFBE
     else if (fb_hwfbe_enabled && (cur_fb.status == ci_main))
     {
       if ((addr >= rdp.main_ci) && (addr < rdp.main_ci_end)) //addr within main frame buffer
@@ -279,6 +280,7 @@ static void fb_settextureimage()
         FRDP("rdp.frame_buffers[%d].status = ci_copy_self\n", rdp.ci_count-1);
       }
     }
+#endif
   }
   if (cur_fb.status == ci_unknown)
   {
@@ -409,6 +411,7 @@ static void fb_setcolorimage()
   }
   if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == ci_unknown) //status of previous fb was not changed - it is useless
   {
+#ifdef HAVE_HWFBE
     if (fb_hwfbe_enabled && !(settings.frame_buffer & fb_useless_is_useless))
     {
       rdp.frame_buffers[rdp.ci_count-1].status = ci_aux;
@@ -416,6 +419,7 @@ static void fb_setcolorimage()
       FRDP("rdp.frame_buffers[%d].status = ci_aux\n", rdp.ci_count-1);
     }
     else
+#endif
     {
       rdp.frame_buffers[rdp.ci_count-1].status = ci_useless;
       /*

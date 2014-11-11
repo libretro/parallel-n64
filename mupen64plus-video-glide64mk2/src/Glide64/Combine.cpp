@@ -1020,6 +1020,7 @@ static void cc_shade ()
 
 static void cc_one_mul_shade ()
 {
+#ifdef HAVE_HWFBE
   if ((settings.hacks&hack_Knockout) && (rdp.aTBuffTex[0] || rdp.aTBuffTex[1] || rdp.cur_image)) //hack for boxer shadow
   {
     CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER,
@@ -1030,6 +1031,7 @@ static void cc_one_mul_shade ()
     USE_T0 ();
   }
   else
+#endif
   {
     cc_shade ();
   }
@@ -7240,11 +7242,13 @@ static void cc_shade_sub_env_mul__t0_mul_t1__add__t0_mul_t1 ()
 //Added by Gonetz
 static void cc_shade_sub_env_mul_t0_add_prim ()
 {
+#ifdef HAVE_HWFBE
   if (rdp.cur_image && (rdp.cur_image->format != 0))
   {
     cc_prim ();
     return;
   }
+#endif
 
   CCMB (GR_COMBINE_FUNCTION_SCALE_OTHER_ADD_LOCAL,
     GR_COMBINE_FACTOR_TEXTURE_RGB,
@@ -10230,11 +10234,13 @@ static void ac_t1_mul_prim_mul_shade ()
 
 static void ac_t0_mul_env_mul_shade ()
 {
+#ifdef HAVE_HWFBE
   if (rdp.cur_image && (rdp.cur_image->format != 0))
   {
     ac_shade ();
     return;
   }
+#endif
 
   ACMB (GR_COMBINE_FUNCTION_SCALE_OTHER,
     GR_COMBINE_FACTOR_LOCAL,
@@ -10488,6 +10494,7 @@ static void ac_one_sub_t0_mul_prim ()  //Aded by Gonetz
 
 static void ac_one_sub_t0_mul_shade ()  //Aded by Gonetz
 {
+#ifdef HAVE_HWFBE
   if (rdp.aTBuffTex[0] || rdp.aTBuffTex[1])
   {
     ACMB (GR_COMBINE_FUNCTION_BLEND_LOCAL,
@@ -10497,6 +10504,7 @@ static void ac_one_sub_t0_mul_shade ()  //Aded by Gonetz
     A_USE_T0 ();
   }
   else
+#endif
     ac_zero();
 }
 
@@ -15740,6 +15748,7 @@ void Combine ()
 
   if (fullscreen)
   {
+#ifdef HAVE_HWFBE
     TBUFF_COLOR_IMAGE * aTBuff[2] = {0, 0};
     if (rdp.aTBuffTex[0])
       aTBuff[rdp.aTBuffTex[0]->tile] = rdp.aTBuffTex[0];
@@ -15791,6 +15800,7 @@ void Combine ()
       }
     }
     else
+#endif
       grChromakeyMode(GR_CHROMAKEY_DISABLE);
   }
   cmb.shade_mod_hash = (rdp.cmb_flags + rdp.cmb_flags_2) * (rdp.prim_color + rdp.env_color + rdp.K5);

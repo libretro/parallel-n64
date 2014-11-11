@@ -262,13 +262,19 @@ typedef struct {
 
   //Frame buffer emulation options
   #define  fb_emulation            (1<<0)   //frame buffer emulation
+#ifdef HAVE_HWFBE
   #define  fb_hwfbe                (1<<1)   //hardware frame buffer emualtion
+#endif
   #define  fb_motionblur           (1<<2)   //emulate motion blur
   #define  fb_ref                  (1<<3)   //read every frame
   #define  fb_read_alpha           (1<<4)   //read alpha
+#ifdef HAVE_HWFBE
   #define  fb_hwfbe_buf_clear      (1<<5)   //clear auxiliary texture frame buffers
+#endif
   #define  fb_depth_render         (1<<6)   //enable software depth render
+#ifdef HAVE_HWFBE
   #define  fb_optimize_texrect     (1<<7)   //fast texrect rendering with hwfbe
+#endif
   #define  fb_ignore_aux_copy      (1<<8)   //do not copy auxiliary frame buffers
   #define  fb_useless_is_useless   (1<<10)  //
   #define  fb_get_info             (1<<11)  //get frame buffer info
@@ -277,7 +283,9 @@ typedef struct {
   #define  fb_cpu_write_hack       (1<<14)  //show images writed directly by CPU
 
   #define fb_emulation_enabled ((settings.frame_buffer&fb_emulation)>0)
+#ifdef HAVE_HWFBE
   #define fb_hwfbe_enabled ((settings.frame_buffer&(fb_emulation|fb_hwfbe))==(fb_emulation|fb_hwfbe))
+#endif
   #define fb_depth_render_enabled ((settings.frame_buffer&fb_depth_render)>0)
 
   uint32_t frame_buffer;
@@ -772,11 +780,13 @@ struct RDP_Base{
   uint32_t ci_upper_bound, ci_lower_bound;
   int  motionblur, fb_drawn, fb_drawn_front, read_previous_ci, read_whole_frame;
   CI_STATUS ci_status;
+#ifdef HAVE_HWFBE
   TBUFF_COLOR_IMAGE * cur_image;  //image currently being drawn
   TBUFF_COLOR_IMAGE * tbuff_tex;  //image, which corresponds to currently selected texture
   TBUFF_COLOR_IMAGE * aTBuffTex[2]; 
   uint8_t  cur_tex_buf;
   uint8_t  acc_tex_buf;
+#endif
   int skip_drawing; //rendering is not required. used for frame buffer emulation
 
   //fog related slots. Added by Gonetz

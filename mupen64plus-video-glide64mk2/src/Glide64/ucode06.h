@@ -47,8 +47,10 @@ static float set_sprite_combine_mode ()
     rdp.allow_combine = 0;
     // Now actually combine !
     GrCombineFunction_t color_source = GR_COMBINE_FUNCTION_LOCAL;
+#ifdef HAVE_HWFBE
     if (rdp.tbuff_tex && rdp.tbuff_tex->info.format == GR_TEXFMT_ALPHA_INTENSITY_88)
 		color_source = GR_COMBINE_FUNCTION_LOCAL_ALPHA;
+#endif
     cmb.tmu1_func = cmb.tmu0_func = color_source;
     cmb.tmu1_fac = cmb.tmu0_fac = GR_COMBINE_FACTOR_NONE;
     cmb.tmu1_a_func = cmb.tmu0_a_func = GR_COMBINE_FUNCTION_LOCAL;
@@ -252,11 +254,13 @@ void DrawDepthImage (const DRAWIMAGE & d)
   if (d.imageH > d.imageW)
     return;
   LRDP("Depth image write\n");
+#ifdef HAVE_HWFBE
   if (fb_hwfbe_enabled)
   {
     DrawHiresDepthImage(d);
     return;
   }
+#endif
   float scale_x_dst = rdp.scale_x;
   float scale_y_dst = rdp.scale_y;
   float scale_x_src = 1.0f/rdp.scale_x;
@@ -605,6 +609,7 @@ void DrawImage (DRAWIMAGE & d)
   rdp.bg_image_height = 0xFFFF;
 }
 
+#ifdef HAVE_HWFBE
 void DrawHiresImage(DRAWIMAGE & d, int screensize = FALSE)
 {
   if (!fullscreen)
@@ -703,6 +708,7 @@ void DrawHiresImage(DRAWIMAGE & d, int screensize = FALSE)
   rdp.tbuff_tex = tbuff_tex;
 
 }
+#endif
 
 //****************************************************************
 

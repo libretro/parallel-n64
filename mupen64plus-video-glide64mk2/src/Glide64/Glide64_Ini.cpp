@@ -2008,20 +2008,24 @@ void ReadSpecialSettings (const char * name)
 
    //frame buffer
 
+#ifdef HAVE_HWFBE
    if (optimize_texrect > 0)
       settings.frame_buffer |= fb_optimize_texrect;
    else if (optimize_texrect == 0)
       settings.frame_buffer &= ~fb_optimize_texrect;
+#endif
 
    if (ignore_aux_copy > 0)
       settings.frame_buffer |= fb_ignore_aux_copy;
    else if (ignore_aux_copy == 0)
       settings.frame_buffer &= ~fb_ignore_aux_copy;
 
+#ifdef HAVE_HWFBE
    if (hires_buf_clear > 0)
       settings.frame_buffer |= fb_hwfbe_buf_clear;
    else if (hires_buf_clear == 0)
       settings.frame_buffer &= ~fb_hwfbe_buf_clear;
+#endif
 
    if (read_alpha > 0)
       settings.frame_buffer |= fb_read_alpha;
@@ -2040,10 +2044,12 @@ void ReadSpecialSettings (const char * name)
    else if (smart_read == 0)
       settings.frame_buffer &= ~fb_emulation;
 
+#ifdef HAVE_HWFBE
    if (hires > 0)
       settings.frame_buffer |= fb_hwfbe;
    else if (hires == 0)
       settings.frame_buffer &= ~fb_hwfbe;
+#endif
    if (read_always > 0)
       settings.frame_buffer |= fb_ref;
    else if (read_always == 0)

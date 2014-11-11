@@ -377,11 +377,13 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 
       if (rdp.tex >= 1 && rdp.cur_cache[0])
       {
+#ifdef HAVE_HWFBE
         if (rdp.aTBuffTex[0])
         {
           v->u0 += rdp.aTBuffTex[0]->u_shift + rdp.aTBuffTex[0]->tile_uls;
           v->v0 += rdp.aTBuffTex[0]->v_shift + rdp.aTBuffTex[0]->tile_ult;
         }
+#endif
 
         if (rdp.tiles[rdp.cur_tile].shift_s)
         {
@@ -398,6 +400,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
             v->v0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
         }
 
+#ifdef HAVE_HWFBE
         if (rdp.aTBuffTex[0])
         {
           if (rdp.aTBuffTex[0]->tile_uls != (int)rdp.tiles[rdp.cur_tile].f_ul_s)
@@ -411,6 +414,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 #endif
         }
         else
+#endif
         {
           v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
           v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t;
@@ -423,11 +427,13 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 
       if (rdp.tex >= 2 && rdp.cur_cache[1])
       {
+#ifdef HAVE_HWFBE
         if (rdp.aTBuffTex[1])
         {
           v->u1 += rdp.aTBuffTex[1]->u_shift + rdp.aTBuffTex[1]->tile_uls;
           v->v1 += rdp.aTBuffTex[1]->v_shift + rdp.aTBuffTex[1]->tile_ult;
         }
+#endif
         if (rdp.tiles[rdp.cur_tile+1].shift_s)
         {
           if (rdp.tiles[rdp.cur_tile+1].shift_s > 10)
@@ -443,6 +449,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
             v->v1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
         }
 
+#ifdef HAVE_HWFBE
         if (rdp.aTBuffTex[1])
         {
           if (rdp.aTBuffTex[1]->tile_uls != (int)rdp.tiles[rdp.cur_tile].f_ul_s)
@@ -454,6 +461,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 #endif
         }
         else
+#endif
         {
           v->u1 -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
           v->v1 -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
@@ -482,6 +490,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
 
   vtx[0]->not_zclipped = vtx[1]->not_zclipped = vtx[2]->not_zclipped = 1;
 
+#ifdef HAVE_HWFBE
   if (rdp.cur_cache[0] && (rdp.tex & 1) && (rdp.cur_cache[0]->splits > 1) && !rdp.aTBuffTex[0] && !rdp.clip)
   {
     int index,i,j, min_256,max_256, cur_256,left_256,right_256;
@@ -644,6 +653,7 @@ void draw_tri (VERTEX **vtx, uint16_t linew)
     }
   }
   else
+#endif
   {
     // Set vertex buffers
     rdp.vtxbuf = rdp.vtx1;  // copy from v to rdp.vtx1
@@ -1907,6 +1917,7 @@ void update ()
   // Combine MUST go before texture
   if ((rdp.update & UPDATE_COMBINE) && rdp.allow_combine)
   {
+#ifdef HAVE_HWFBE
     TBUFF_COLOR_IMAGE * aTBuff[2] = {0, 0};
     if (rdp.aTBuffTex[0])
       aTBuff[rdp.aTBuffTex[0]->tile] = rdp.aTBuffTex[0];
@@ -1914,6 +1925,7 @@ void update ()
       aTBuff[rdp.aTBuffTex[1]->tile] = rdp.aTBuffTex[1];
     rdp.aTBuffTex[0] = aTBuff[0];
     rdp.aTBuffTex[1] = aTBuff[1];
+#endif
 
     LRDP (" |-+ update_combine\n");
     Combine ();

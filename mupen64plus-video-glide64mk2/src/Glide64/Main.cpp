@@ -861,6 +861,7 @@ int InitGfx ()
 
   // Select the window
 
+#ifdef HAVE_HWFBE
   if (fb_hwfbe_enabled)
   {
     char strSstWinOpenExt[] ="grSstWinOpenExt";
@@ -875,6 +876,7 @@ int InitGfx ()
       2,    // Double-buffering
       1);   // 1 auxillary buffer
   }
+#endif
   if (!gfx_context)
     gfx_context = grSstWinOpen ((FxU32)NULL,
     res_data,
@@ -932,6 +934,7 @@ int InitGfx ()
   if (strstr(extensions, "GETGAMMA"))
     grGet(GR_GAMMA_TABLE_ENTRIES, sizeof(voodoo.gamma_table_size), &voodoo.gamma_table_size);
 
+#ifdef HAVE_HWFBE
   if (fb_hwfbe_enabled)
   {
     if (char * extstr = (char*)strstr(extensions, "TEXTUREBUFFER"))
@@ -950,6 +953,7 @@ int InitGfx ()
       settings.frame_buffer &= ~fb_hwfbe;
   }
   else
+#endif
     grTextureBufferExt = 0;
 
   grStippleModeExt = (GRSTIPPLE)grStippleMode;
@@ -2051,8 +2055,10 @@ void newSwapBuffers()
 
   if (fullscreen)
   {
+#ifdef HAVE_HWFBE
     if (fb_hwfbe_enabled && !(settings.hacks&hack_RE2) && !evoodoo)
       grAuxBufferExt( GR_BUFFER_AUXBUFFER );
+#endif
     grBufferSwap (settings.vsync);
     fps_count ++;
     if (*GFX_PTR.VI_STATUS_REG&0x08) //gamma correction is used

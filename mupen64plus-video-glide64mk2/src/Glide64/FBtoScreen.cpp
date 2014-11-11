@@ -578,11 +578,13 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO & fb_info)
     DrawDepthBufferToScreen256(fb_info);
     return;
   }
+#ifdef HAVE_HWFBE
   if (fb_hwfbe_enabled && !evoodoo)
   {
     DrawHiresDepthBufferToScreen(fb_info);
     return;
   }
+#endif
   FRDP("DrawDepthBufferToScreen. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info.ul_x, fb_info.ul_y, fb_info.lr_x, fb_info.lr_y, fb_info.size, fb_info.addr);
   GrTexInfo t_info;
   uint8_t * image = GFX_PTR.RDRAM+fb_info.addr;
