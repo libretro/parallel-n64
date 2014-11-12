@@ -43,7 +43,7 @@
 #include "Combine.h"
 #include "Util.h"
 
-void LoadTex (int id, int tmu);
+static void LoadTex (int id, int tmu);
 
 uint8_t tex1[1024*1024*4];		// temporary texture
 uint8_t tex2[1024*1024*4];
@@ -149,7 +149,7 @@ void ClearCache ()
 }
 
 //****************************************************************
-uint32_t textureCRC(uint8_t *addr, int width, int height, int line)
+static uint32_t textureCRC(uint8_t *addr, int width, int height, int line)
 {
   uint32_t crc = 0;
   uint32_t *pixelpos;
@@ -171,7 +171,7 @@ uint32_t textureCRC(uint8_t *addr, int width, int height, int line)
 }
 // GetTexInfo - gets information for either t0 or t1, checks if in cache & fills tex_found
 
-void GetTexInfo (int id, int tile)
+static void GetTexInfo (int id, int tile)
 {
   FRDP (" | |-+ GetTexInfo (id: %d, tile: %d)\n", id, tile);
 
@@ -498,7 +498,7 @@ void GetTexInfo (int id, int tile)
 //****************************************************************
 // ChooseBestTmu - chooses the best TMU to load to (the one with the most memory)
 
-int ChooseBestTmu (int tmu1, int tmu2)
+static int ChooseBestTmu (int tmu1, int tmu2)
 {
   if (!fullscreen) return tmu1;
   if (voodoo.tex_UMA) return 0;
@@ -509,8 +509,7 @@ int ChooseBestTmu (int tmu1, int tmu2)
   if (voodoo.tex_max_addr[tmu1]-voodoo.tmem_ptr[tmu1] >
     voodoo.tex_max_addr[tmu2]-voodoo.tmem_ptr[tmu2])
     return tmu1;
-  else
-    return tmu2;
+  return tmu2;
 }
 
 //****************************************************************
@@ -1030,12 +1029,8 @@ inline uint32_t ReverseDXT(uint32_t val, uint32_t lrs, uint32_t width, uint32_t 
 //****************************************************************
 // LoadTex - does the actual texture loading after everything is prepared
 
-void LoadTex (int id, int tmu)
+static void LoadTex (int id, int tmu)
 {
-#ifdef __LIBRETRO__
-   RETRO_PERFORMANCE_INIT (perf_cb, load_tex);
-   RETRO_PERFORMANCE_START(perf_cb, load_tex);
-#endif
   FRDP (" | |-+ LoadTex (id: %d, tmu: %d)\n", id, tmu);
 
   int td = rdp.cur_tile + id;
@@ -1873,7 +1868,4 @@ void LoadTex (int id, int tmu)
     }
 
     LRDP(" | | +- LoadTex end\n");
-#ifdef __LIBRETRO__
-   RETRO_PERFORMANCE_STOP(perf_cb, load_tex);
-#endif
 }
