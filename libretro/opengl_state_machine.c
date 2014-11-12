@@ -64,6 +64,10 @@ static GLenum ActiveTexture_texture = 0;
 static GLuint BindTexture_ids[MAX_TEXTURE];
 #endif
 
+#ifndef GLIDE64_MK2
+void vbo_draw(void) {}
+#endif
+
 void sglGenerateMipmap(GLenum target)
 {
    glGenerateMipmap(target);
