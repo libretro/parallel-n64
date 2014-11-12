@@ -1,6 +1,264 @@
+#define T0_INTER_T1_USING_T1() \
+  if (!cmb.combine_ext) { \
+  T0_INTER_T1_USING_FACTOR(0x7F); \
+  }\
+  else {\
+  rdp.best_tex = 0; \
+  cmb.tex |= 3, \
+  cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_b_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_c = GR_CMBX_ZERO, \
+  cmb.t1c_ext_c_invert = 0, \
+  cmb.t1c_ext_d= GR_CMBX_B, \
+  cmb.t1c_ext_d_invert = 0, \
+  cmb.t0c_ext_a = GR_CMBX_OTHER_TEXTURE_RGB, \
+  cmb.t0c_ext_a_mode = GR_FUNC_MODE_X, \
+  cmb.t0c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t0c_ext_b_mode = GR_FUNC_MODE_NEGATIVE_X, \
+  cmb.t0c_ext_c = GR_CMBX_OTHER_TEXTURE_RGB, \
+  cmb.t0c_ext_c_invert = 0, \
+  cmb.t0c_ext_d= GR_CMBX_B, \
+  cmb.t0c_ext_d_invert = 0, \
+  cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR; \
+}
+
+#define T0_INTER_T1_USING_PRIM() \
+  if (!cmb.combine_ext) { \
+  T0_INTER_T1_USING_FACTOR ((rdp.prim_color&0xFF)); \
+  }\
+  else {\
+  rdp.best_tex = 0; \
+  cmb.tex |= 3, \
+  cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_b_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_c = GR_CMBX_ZERO, \
+  cmb.t1c_ext_c_invert = 0, \
+  cmb.t1c_ext_d= GR_CMBX_B, \
+  cmb.t1c_ext_d_invert = 0, \
+  cmb.t0c_ext_a = GR_CMBX_OTHER_TEXTURE_RGB, \
+  cmb.t0c_ext_a_mode = GR_FUNC_MODE_X, \
+  cmb.t0c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t0c_ext_b_mode = GR_FUNC_MODE_NEGATIVE_X, \
+  cmb.t0c_ext_c = GR_CMBX_TMU_CCOLOR, \
+  cmb.t0c_ext_c_invert = 0, \
+  cmb.t0c_ext_d= GR_CMBX_B, \
+  cmb.t0c_ext_d_invert = 0, \
+  cmb.tex_ccolor = rdp.prim_color, \
+  cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR; \
+}
+
+#define T1_INTER_T0_USING_PRIM() /* inverse of above */\
+  if (!cmb.combine_ext) { \
+  T1_INTER_T0_USING_FACTOR ((rdp.prim_color&0xFF)); \
+  }\
+  else {\
+  rdp.best_tex = 0; \
+  cmb.tex |= 3, \
+  cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_b_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_c = GR_CMBX_ZERO, \
+  cmb.t1c_ext_c_invert = 0, \
+  cmb.t1c_ext_d= GR_CMBX_B, \
+  cmb.t1c_ext_d_invert = 0, \
+  cmb.t0c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t0c_ext_a_mode = GR_FUNC_MODE_X, \
+  cmb.t0c_ext_b = GR_CMBX_OTHER_TEXTURE_RGB, \
+  cmb.t0c_ext_b_mode = GR_FUNC_MODE_NEGATIVE_X, \
+  cmb.t0c_ext_c = GR_CMBX_TMU_CCOLOR, \
+  cmb.t0c_ext_c_invert = 0, \
+  cmb.t0c_ext_d= GR_CMBX_B, \
+  cmb.t0c_ext_d_invert = 0, \
+  cmb.tex_ccolor = rdp.prim_color, \
+  cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR; \
+}
+
+#define A_T0_INTER_T1_USING_SHADEA() \
+  if (!cmb.combine_ext) { \
+  A_T0_INTER_T1_USING_FACTOR (0x7F); \
+  }\
+  else {\
+  rdp.best_tex = 0; \
+  cmb.tex |= 3, \
+  cmb.t1a_ext_a = GR_CMBX_LOCAL_TEXTURE_ALPHA, \
+  cmb.t1a_ext_a_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1a_ext_b = GR_CMBX_LOCAL_TEXTURE_ALPHA, \
+  cmb.t1a_ext_b_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1a_ext_c = GR_CMBX_ZERO, \
+  cmb.t1a_ext_c_invert = 0, \
+  cmb.t1a_ext_d= GR_CMBX_B, \
+  cmb.t1a_ext_d_invert = 0, \
+  cmb.t0a_ext_a = GR_CMBX_OTHER_TEXTURE_ALPHA, \
+  cmb.t0a_ext_a_mode = GR_FUNC_MODE_X, \
+  cmb.t0a_ext_b = GR_CMBX_LOCAL_TEXTURE_ALPHA, \
+  cmb.t0a_ext_b_mode = GR_FUNC_MODE_NEGATIVE_X, \
+  cmb.t0a_ext_c = GR_CMBX_ITALPHA, \
+  cmb.t0a_ext_c_invert = 0, \
+  cmb.t0a_ext_d= GR_CMBX_B, \
+  cmb.t0a_ext_d_invert = 0, \
+  cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_ALPHA; \
+}
+
+#define T0_INTER_T1_USING_ENV() \
+  if (!cmb.combine_ext) { \
+  T0_INTER_T1_USING_FACTOR ((rdp.env_color&0xFF)); \
+  }\
+  else {\
+  rdp.best_tex = 0; \
+  cmb.tex |= 3, \
+  cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_b_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_c = GR_CMBX_ZERO, \
+  cmb.t1c_ext_c_invert = 0, \
+  cmb.t1c_ext_d= GR_CMBX_B, \
+  cmb.t1c_ext_d_invert = 0, \
+  cmb.t0c_ext_a = GR_CMBX_OTHER_TEXTURE_RGB, \
+  cmb.t0c_ext_a_mode = GR_FUNC_MODE_X, \
+  cmb.t0c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t0c_ext_b_mode = GR_FUNC_MODE_NEGATIVE_X, \
+  cmb.t0c_ext_c = GR_CMBX_TMU_CCOLOR, \
+  cmb.t0c_ext_c_invert = 0, \
+  cmb.t0c_ext_d= GR_CMBX_B, \
+  cmb.t0c_ext_d_invert = 0, \
+  cmb.tex_ccolor = rdp.env_color, \
+  cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR; \
+}
+
+#define T1_INTER_T0_USING_ENV() /* inverse of above */\
+  if (!cmb.combine_ext) { \
+  T1_INTER_T0_USING_FACTOR ((rdp.env_color&0xFF)); \
+  }\
+  else {\
+  rdp.best_tex = 0; \
+  cmb.tex |= 3, \
+  cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_b_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_c = GR_CMBX_ZERO, \
+  cmb.t1c_ext_c_invert = 0, \
+  cmb.t1c_ext_d= GR_CMBX_B, \
+  cmb.t1c_ext_d_invert = 0, \
+  cmb.t0c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t0c_ext_a_mode = GR_FUNC_MODE_X, \
+  cmb.t0c_ext_b = GR_CMBX_OTHER_TEXTURE_RGB, \
+  cmb.t0c_ext_b_mode = GR_FUNC_MODE_NEGATIVE_X, \
+  cmb.t0c_ext_c = GR_CMBX_TMU_CCOLOR, \
+  cmb.t0c_ext_c_invert = 0, \
+  cmb.t0c_ext_d= GR_CMBX_B, \
+  cmb.t0c_ext_d_invert = 0, \
+  cmb.tex_ccolor = rdp.env_color, \
+  cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR; \
+}
+
+#define T0_INTER_T1_USING_SHADEA() \
+  if (!cmb.combine_ext) { \
+  T0_INTER_T1_USING_FACTOR (0x7F); \
+  }\
+  else {\
+  rdp.best_tex = 0; \
+  cmb.tex |= 3, \
+  cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_b_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_c = GR_CMBX_ZERO, \
+  cmb.t1c_ext_c_invert = 0, \
+  cmb.t1c_ext_d= GR_CMBX_B, \
+  cmb.t1c_ext_d_invert = 0, \
+  cmb.t0c_ext_a = GR_CMBX_OTHER_TEXTURE_RGB, \
+  cmb.t0c_ext_a_mode = GR_FUNC_MODE_X, \
+  cmb.t0c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t0c_ext_b_mode = GR_FUNC_MODE_NEGATIVE_X, \
+  cmb.t0c_ext_c = GR_CMBX_ITALPHA, \
+  cmb.t0c_ext_c_invert = 0, \
+  cmb.t0c_ext_d= GR_CMBX_B, \
+  cmb.t0c_ext_d_invert = 0, \
+  cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR; \
+}
+
+#define T1_INTER_T0_USING_SHADEA() \
+  if (!cmb.combine_ext) { \
+  T0_INTER_T1_USING_FACTOR (0x7F); \
+  }\
+  else {\
+  rdp.best_tex = 0; \
+  cmb.tex |= 3, \
+  cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t1c_ext_b_mode = GR_FUNC_MODE_ZERO, \
+  cmb.t1c_ext_c = GR_CMBX_ZERO, \
+  cmb.t1c_ext_c_invert = 0, \
+  cmb.t1c_ext_d= GR_CMBX_B, \
+  cmb.t1c_ext_d_invert = 0, \
+  cmb.t0c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t0c_ext_a_mode = GR_FUNC_MODE_X, \
+  cmb.t0c_ext_b = GR_CMBX_OTHER_TEXTURE_RGB, \
+  cmb.t0c_ext_b_mode = GR_FUNC_MODE_NEGATIVE_X, \
+  cmb.t0c_ext_c = GR_CMBX_ITALPHA, \
+  cmb.t0c_ext_c_invert = 0, \
+  cmb.t0c_ext_d= GR_CMBX_B, \
+  cmb.t0c_ext_d_invert = 0, \
+  cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR; \
+}
+
+#define T1_SUB_PRIM_MUL_PRIMLOD_ADD_T0() \
+  if (cmb.combine_ext) \
+{ \
+  T1CCMBEXT(GR_CMBX_LOCAL_TEXTURE_RGB, GR_FUNC_MODE_X, \
+  GR_CMBX_TMU_CCOLOR, GR_FUNC_MODE_NEGATIVE_X, \
+  GR_CMBX_DETAIL_FACTOR, 0, \
+  GR_CMBX_ZERO, 0); \
+  T0CCMBEXT(GR_CMBX_OTHER_TEXTURE_RGB, GR_FUNC_MODE_X, \
+  GR_CMBX_LOCAL_TEXTURE_RGB, GR_FUNC_MODE_X, \
+  GR_CMBX_ZERO, 1, \
+  GR_CMBX_ZERO, 0); \
+  cmb.tex_ccolor = rdp.prim_color; \
+  cmb.tex |= 3; \
+  percent = (float)(lod_frac) / 255.0f; \
+  cmb.dc0_detailmax = cmb.dc1_detailmax = percent; \
+} \
+  else \
+{  \
+  T0_ADD_T1 (); \
+  MOD_1 (TMOD_TEX_SUB_COL_MUL_FAC); \
+  MOD_1_COL (rdp.prim_color & 0xFFFFFF00); \
+  MOD_1_FAC (lod_frac & 0xFF); \
+}
+
+#define PRIM_INTER_T0_USING_SHADEA() \
+  if (!cmb.combine_ext) { \
+  USE_T0 (); \
+  }\
+  else {\
+  rdp.best_tex = 0; \
+  cmb.tex |= 1, \
+  cmb.t0c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB, \
+  cmb.t0c_ext_a_mode = GR_FUNC_MODE_X, \
+  cmb.t0c_ext_b = GR_CMBX_TMU_CCOLOR, \
+  cmb.t0c_ext_b_mode = GR_FUNC_MODE_NEGATIVE_X, \
+  cmb.t0c_ext_c = GR_CMBX_ITALPHA, \
+  cmb.t0c_ext_c_invert = 0, \
+  cmb.t0c_ext_d= GR_CMBX_B, \
+  cmb.t0c_ext_d_invert = 0, \
+  cmb.tex_ccolor = rdp.prim_color, \
+  cmb.tex_cmb_ext_use |= TEX_COMBINE_EXT_COLOR; \
+}
+
 //forward decls
 static void cc_t0_mul_env_mul_shade(void);
 static void cc_t0_mul_shade(void);
+static void cc_env (void);
+static void cc_t0_mul_prim (void);
+static void cc_t0(void);
 
 static void cc__t0_inter_one_using_primlod__mul_prim (void)
 {
