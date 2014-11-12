@@ -40,6 +40,10 @@
 
 static inline void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
 {
+#ifdef __LIBRETRO__
+  RETRO_PERFORMANCE_INIT (perf_cb, load8bCI);
+  RETRO_PERFORMANCE_START(perf_cb, load8bCI);
+#endif
   uint8_t *v7;
   uint32_t *v8;
   int v9;
@@ -138,10 +142,17 @@ static inline void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
     v9 = v26 - 1;
   }
   while ( v26 != 1 );
+#ifdef __LIBRETRO__
+  RETRO_PERFORMANCE_STOP(perf_cb, load8bCI);
+#endif
 }
 
 static inline void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
 {
+#ifdef __LIBRETRO__
+  RETRO_PERFORMANCE_INIT (perf_cb, load8bIA8);
+  RETRO_PERFORMANCE_START(perf_cb, load8bIA8);
+#endif
   uint32_t *v7;
   uint32_t *v8;
   int v9;
@@ -240,10 +251,17 @@ static inline void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
     v9 = v26 - 1;
   }
   while ( v26 != 1 );
+#ifdef __LIBRETRO__
+  RETRO_PERFORMANCE_STOP(perf_cb, load8bIA8);
+#endif
 }
 
 static inline void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
+#ifdef __LIBRETRO__
+  RETRO_PERFORMANCE_INIT (perf_cb, load8bIA4);
+  RETRO_PERFORMANCE_START(perf_cb, load8bIA4);
+#endif
   uint32_t *v6;
   uint32_t *v7;
   int v8;
@@ -306,10 +324,17 @@ static inline void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height,
     v8 = v22 - 1;
   }
   while ( v22 != 1 );
+#ifdef __LIBRETRO__
+  RETRO_PERFORMANCE_STOP(perf_cb, load8bIA4);
+#endif
 }
 
 static inline void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
+#ifdef __LIBRETRO__
+  RETRO_PERFORMANCE_INIT (perf_cb, load8bI);
+  RETRO_PERFORMANCE_START(perf_cb, load8bI);
+#endif
   uint32_t *v6;
   uint32_t *v7;
   int v8;
@@ -368,6 +393,9 @@ static inline void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
     v8 = v20 - 1;
   }
   while ( v20 != 1 );
+#ifdef __LIBRETRO__
+  RETRO_PERFORMANCE_STOP(perf_cb, load8bI);
+#endif
 }
 
 //****************************************************************
