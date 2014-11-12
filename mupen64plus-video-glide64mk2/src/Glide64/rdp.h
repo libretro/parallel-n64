@@ -411,7 +411,9 @@ typedef struct
   int sup_large_tex;
   int sup_mirroring;
   int sup_32bit_tex;
+#ifdef HAVE_GLIDE_2MB_TEX_BOUNDARY
   int has_2mb_tex_boundary;
+#endif
   int tex_UMA;
   int gamma_correction;
   FxI32 gamma_table_size;
