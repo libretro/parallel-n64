@@ -37,20 +37,32 @@
 //
 //****************************************************************
 
-static inline void texConv_ARGB1555_ARGB4444(uint8_t *src, uint8_t *dst, int size)
+static inline void texConv_ARGB1555_ARGB4444(uint8_t *_src, uint8_t *_dst, int size)
 {
 #ifdef __LIBRETRO__
   RETRO_PERFORMANCE_INIT (perf_cb, texConv_ARGB1555_ARGB4444);
   RETRO_PERFORMANCE_START(perf_cb, texConv_ARGB1555_ARGB4444);
-#endif
+
+  uint32_t *src = (uint32_t*)_src;
+  uint32_t *dst = (uint32_t*)_dst;
+
+  do
+  {
+     uint32_t col = *src++;
+     *dst++ = ((col & 0x1E001E) >> 1) | ((col & 0x3C003C0) >> 2) | ((col & 0x78007800) >> 3) | ((col & 0x80008000) >> 3) | ((col & 0x80008000) >> 2) | ((col & 0x80008000) >> 1) | (col & 0x80008000);
+  }while(--size);
+  
+
+  RETRO_PERFORMANCE_STOP(perf_cb, texConv_ARGB1555_ARGB4444);
+#else
   uint32_t *v3;
   uint32_t *v4;
   int v5;
   uint32_t v6;
   uint32_t v7;
 
-  v3 = (uint32_t *)src;
-  v4 = (uint32_t *)dst;
+  v3 = (uint32_t *)_src;
+  v4 = (uint32_t *)_dst;
   v5 = size;
   do
   {
@@ -62,8 +74,6 @@ static inline void texConv_ARGB1555_ARGB4444(uint8_t *src, uint8_t *dst, int siz
     --v5;
   }
   while ( v5 );
-#ifdef __LIBRETRO__
-  RETRO_PERFORMANCE_STOP(perf_cb, texConv_ARGB1555_ARGB4444);
 #endif
 }
 
@@ -108,6 +118,10 @@ static inline void texConv_AI88_ARGB4444(uint8_t *_src, uint8_t *_dst, int size)
 
 static inline void texConv_AI44_ARGB4444(uint8_t *src, uint8_t *dst, int size)
 {
+#ifdef __LIBRETRO__
+  RETRO_PERFORMANCE_INIT (perf_cb, texConv_ARGB1555_ARGB4444);
+  RETRO_PERFORMANCE_START(perf_cb, texConv_ARGB1555_ARGB4444);
+#endif
   uint32_t *v3;
   uint32_t *v4;
   int v5;
@@ -128,6 +142,9 @@ static inline void texConv_AI44_ARGB4444(uint8_t *src, uint8_t *dst, int size)
     --v5;
   }
   while ( v5 );
+#ifdef __LIBRETRO__
+  RETRO_PERFORMANCE_STOP(perf_cb, texConv_ARGB1555_ARGB4444);
+#endif
 }
 
 static inline void texConv_A8_ARGB4444(uint8_t *src, uint8_t *dst, int size)
