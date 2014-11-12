@@ -224,10 +224,12 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO & fb_info)
   uint8_t r, g, b, a;
   uint32_t cur_width, cur_height, cur_tail;
   uint32_t tex_adr = voodoo.tex_min_addr[tmu]+voodoo.tmem_ptr[tmu];
+#ifdef HAVE_GLIDE_2MB_TEX_BOUNDARY
   if ((voodoo.tmem_ptr[tmu] < TEXMEM_2MB_EDGE) && (voodoo.tmem_ptr[tmu]+tex_size*width256*height256 > TEXMEM_2MB_EDGE))
   {
     tex_adr = TEXMEM_2MB_EDGE;
   }
+#endif
   for (uint32_t h = 0; h < height256; h++)
   {
     for (uint32_t w = 0; w < width256; w++)
@@ -456,10 +458,12 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO & fb_info)
   uint32_t h_tail = height%256;
   uint32_t cur_width, cur_height, cur_tail;
   uint32_t tex_adr = voodoo.tex_min_addr[tmu]+voodoo.tmem_ptr[tmu];
+#ifdef HAVE_GLIDE_2MB_TEX_BOUNDARY
   if ((voodoo.tmem_ptr[tmu] < TEXMEM_2MB_EDGE) && (voodoo.tmem_ptr[tmu]+tex_size*width256*height256 > TEXMEM_2MB_EDGE))
   {
     tex_adr = TEXMEM_2MB_EDGE;
   }
+#endif
   for (uint32_t h = 0; h < height256; h++)
   {
     for (uint32_t w = 0; w < width256; w++)
