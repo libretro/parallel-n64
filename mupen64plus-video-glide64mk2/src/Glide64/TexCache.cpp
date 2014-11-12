@@ -1032,6 +1032,10 @@ inline uint32_t ReverseDXT(uint32_t val, uint32_t lrs, uint32_t width, uint32_t 
 
 void LoadTex (int id, int tmu)
 {
+#ifdef __LIBRETRO__
+   RETRO_PERFORMANCE_INIT (perf_cb, load_tex);
+   RETRO_PERFORMANCE_START(perf_cb, load_tex);
+#endif
   FRDP (" | |-+ LoadTex (id: %d, tmu: %d)\n", id, tmu);
 
   int td = rdp.cur_tile + id;
@@ -1869,4 +1873,7 @@ void LoadTex (int id, int tmu)
     }
 
     LRDP(" | | +- LoadTex end\n");
+#ifdef __LIBRETRO__
+   RETRO_PERFORMANCE_STOP(perf_cb, load_tex);
+#endif
 }
