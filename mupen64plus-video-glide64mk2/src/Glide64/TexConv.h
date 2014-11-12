@@ -75,7 +75,6 @@ static inline void texConv_AI88_ARGB4444(uint8_t *_src, uint8_t *_dst, int size)
 
   uint32_t *src = (uint32_t*)_src;
   uint32_t *dst = (uint32_t*)_dst;
-  size >>= 1;
 
   do
   {
