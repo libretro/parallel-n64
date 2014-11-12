@@ -119,8 +119,8 @@ static inline void texConv_AI88_ARGB4444(uint8_t *_src, uint8_t *_dst, int size)
 static inline void texConv_AI44_ARGB4444(uint8_t *src, uint8_t *dst, int size)
 {
 #ifdef __LIBRETRO__
-  RETRO_PERFORMANCE_INIT (perf_cb, texConv_ARGB1555_ARGB4444);
-  RETRO_PERFORMANCE_START(perf_cb, texConv_ARGB1555_ARGB4444);
+  RETRO_PERFORMANCE_INIT (perf_cb, texConv_AI4_ARGB4444);
+  RETRO_PERFORMANCE_START(perf_cb, texConv_AI4_ARGB4444);
 #endif
   uint32_t *v3;
   uint32_t *v4;
@@ -143,7 +143,7 @@ static inline void texConv_AI44_ARGB4444(uint8_t *src, uint8_t *dst, int size)
   }
   while ( v5 );
 #ifdef __LIBRETRO__
-  RETRO_PERFORMANCE_STOP(perf_cb, texConv_ARGB1555_ARGB4444);
+  RETRO_PERFORMANCE_STOP(perf_cb, texConv_AI4_ARGB4444);
 #endif
 }
 
