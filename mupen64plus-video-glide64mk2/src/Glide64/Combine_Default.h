@@ -259,6 +259,32 @@ static void cc_t0_mul_shade(void);
 static void cc_env (void);
 static void cc_t0_mul_prim (void);
 static void cc_t0(void);
+static void ac__t0_inter_t1_using_primlod__mul_shade(void);
+static void cc_t1_mul_shade (void);
+static void cc_t0_sub_shade_mul_shadea_add_shade (void);
+static void cc__t0_mul_t1__add_env_mul__t0_mul_t1__add_env (void);
+static void cc__t0_mul_t1__add_env(void);
+static void cc_t0_add_prim (void);
+static void cc_one_sub_prim_mul_t0_add_prim(void);
+static void cc_t0_add_env (void);
+static void cc_one (void);
+static void cc_prim_mul_shade_add_env (void);
+static void cc_t0_mul_prim_mul_shade (void);
+static void cc_t0_mul_prima(void);
+static void cc_t0_mul_env_add_shade (void);
+static void cc_t0_sub_env_mul_prim_add_shade(void);
+static void cc_t0_mul_t1 (void);
+static void cc_prim_sub_env_mul_t0_add_env (void);
+static void cc_shade_sub_env_mul_prim_add_t0 (void);
+static void cc_t0_inter_t1_using_prima (void);
+static void cc_t0_inter_t1_using_enva (void);
+static void cc_shade_sub_prim_mul_t0_add_prim (void);
+static void cc_t0_mul_prima_mul_shade (void);
+static void ac_t0 (void);
+static void ac_zero (void);
+static void ac_t0_mul_shade (void);
+static void ac_t0_mul_prim_add_env (void);
+static void ac__t0_mul_t1__mul_env (void);
 
 static void cc__t0_inter_one_using_primlod__mul_prim (void)
 {
@@ -368,6 +394,7 @@ static void cc__t0_mul_shade__add__t1_mul_shade ()
     USE_T0 ();
   }
 }
+
 
 static void ac__t0_inter_t1_using_primlod__sub_env_mul_shade_add_shade ()
 {
@@ -3259,24 +3286,6 @@ static void cc__t0_mul_shade_mul_shadea__add__t1_mul_one_sub_shadea ()
   else
   {
     cc_t0_mul_shade ();
-  }
-}
-
-//Added by Gonetz
-static void cc_shade_sub_env_mul__t0_mul_t1__add__t0_mul_t1 ()
-{
-  if (cmb.combine_ext)
-  {
-    CCMBEXT(GR_CMBX_ITRGB, GR_FUNC_MODE_X,
-      GR_CMBX_CONSTANT_COLOR, GR_FUNC_MODE_NEGATIVE_X,
-      GR_CMBX_TEXTURE_RGB, 0,
-      GR_CMBX_TEXTURE_RGB, 0);
-    CC_ENV ();
-    T0_MUL_T1 ();
-  }
-  else
-  {
-    cc_t0_mul_t1 ();
   }
 }
 
