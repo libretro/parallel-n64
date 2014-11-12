@@ -512,6 +512,7 @@ static int ChooseBestTmu (int tmu1, int tmu2)
   return tmu2;
 }
 
+#ifdef HAVE_HWFBE
 //****************************************************************
 // SelectTBuffTex - select texture from texture buffer
 static void SelectTBuffTex(TBUFF_COLOR_IMAGE * pTBuffTex)
@@ -519,10 +520,10 @@ static void SelectTBuffTex(TBUFF_COLOR_IMAGE * pTBuffTex)
   FRDP ("SelectTBuffTex: tex: %d, tmu: %d, tile: %d\n", rdp.tex, pTBuffTex->tmu, pTBuffTex->tile);
   grTexSource(pTBuffTex->tile, pTBuffTex->tex_addr, GR_MIPMAPLEVELMASK_BOTH, &(pTBuffTex->info) );
 }
+#endif
 
 //****************************************************************
 // TexCache - does texture loading after combiner is set
-int SwapTextureBuffer();
 void TexCache ()
 {
   LRDP(" |-+ TexCache called\n");
