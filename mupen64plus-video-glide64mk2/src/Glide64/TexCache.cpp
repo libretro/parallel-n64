@@ -901,32 +901,22 @@ void TexCache ()
       if (tmu >= voodoo.num_tmu) continue;
 
       int tile = rdp.cur_tile + i;
+      int filter = 0;
 
 #ifdef ENABLE_3POINT
       if (settings.filtering == 0)
-      {
-        int filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_3POINT_LINEAR;
-        grTexFilterMode (tmu, filter, filter);
-      }
+        filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_3POINT_LINEAR;
       else
-      {
-        int filter = (settings.filtering==1)?GR_TEXTUREFILTER_3POINT_LINEAR:
+        filter = (settings.filtering==1)?GR_TEXTUREFILTER_3POINT_LINEAR:
                         (settings.filtering==2)?GR_TEXTUREFILTER_POINT_SAMPLED:
                                                 GR_TEXTUREFILTER_BILINEAR;
-        grTexFilterMode (tmu, filter, filter);
-      }
 #else
       if (settings.filtering == 0)
-      {
-        int filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_BILINEAR;
-        grTexFilterMode (tmu, filter, filter);
-      }
+        filter = (rdp.filter_mode!=2)?GR_TEXTUREFILTER_POINT_SAMPLED:GR_TEXTUREFILTER_BILINEAR;
       else
-      {
-        int filter = (settings.filtering==1)?GR_TEXTUREFILTER_BILINEAR:GR_TEXTUREFILTER_POINT_SAMPLED;
-        grTexFilterMode (tmu, filter, filter);
-      }
+        filter = (settings.filtering==1)?GR_TEXTUREFILTER_BILINEAR:GR_TEXTUREFILTER_POINT_SAMPLED;
 #endif
+      grTexFilterMode (tmu, filter, filter);
 
       if (rdp.cur_cache[i])
       {
@@ -1002,8 +992,7 @@ inline uint32_t Txl2Words(uint32_t width, uint32_t size)
 {
   if( size == 0 )
     return max(1, width/16);
-  else
-    return max(1, width*sizeBytes[size]/8);
+  return max(1, width*sizeBytes[size]/8);
 }
 
 inline uint32_t ReverseDXT(uint32_t val, uint32_t lrs, uint32_t width, uint32_t size)
