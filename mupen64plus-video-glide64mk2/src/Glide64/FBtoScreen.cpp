@@ -105,21 +105,16 @@ static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
     GR_COMBINE_LOCAL_NONE,
     GR_COMBINE_OTHER_TEXTURE,
     FXFALSE);
+  GrAlphaBlendFnc_t rgb_sf = GR_BLEND_SRC_ALPHA;
+  GrAlphaBlendFnc_t rgb_df = GR_BLEND_ONE_MINUS_SRC_ALPHA;
   if (opaque)
   {
     grAlphaTestFunction (GR_CMP_ALWAYS);
-    grAlphaBlendFunction( GR_BLEND_ONE,
-      GR_BLEND_ZERO,
-      GR_BLEND_ONE,
-      GR_BLEND_ZERO);
+    rgb_sf = GR_BLEND_ONE;
+    rgb_df = GR_BLEND_ZERO;
   }
-  else
-  {
-    grAlphaBlendFunction( GR_BLEND_SRC_ALPHA,
-      GR_BLEND_ONE_MINUS_SRC_ALPHA,
-      GR_BLEND_ONE,
-      GR_BLEND_ZERO);
-  }
+  grAlphaBlendFunction( rgb_sf, rgb_df,
+        GR_BLEND_ONE, GR_BLEND_ZERO);
   grDepthBufferFunction (GR_CMP_ALWAYS);
   grCullMode(GR_CULL_DISABLE);
   grDepthMask (FXFALSE);
