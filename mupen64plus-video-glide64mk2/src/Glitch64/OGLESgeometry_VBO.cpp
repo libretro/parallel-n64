@@ -84,7 +84,11 @@ void vbo_buffer_data(void *data, size_t data_sizeof)
    glBufferData(GL_ARRAY_BUFFER, data_sizeof, data, GL_DYNAMIC_DRAW);
 }
 
-void vbo_draw()
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void vbo_draw(void)
 {
   if(vertex_buffer_count)
   {
@@ -95,6 +99,10 @@ void vbo_draw()
     vbo_unbind();
   }
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 //Buffer vertices instead of glDrawArrays(...)
 static void vbo_buffer(GLenum mode,GLint first,GLsizei count,void* pointers)
