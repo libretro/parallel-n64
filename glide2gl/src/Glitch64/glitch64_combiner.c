@@ -291,6 +291,7 @@ void init_combiner(void)
    shader_programs = (shader_program_key*)malloc(sizeof(shader_program_key));
    fragment_shader = (char*)malloc(4096*2);
 
+#ifndef ANDROID
    // depth shader
    fragment_depth_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
 
@@ -308,6 +309,7 @@ void init_combiner(void)
 
    glCompileShader(fragment_depth_shader_object);
    check_compile(fragment_depth_shader_object);
+#endif
 
    // default shader
    fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
