@@ -295,7 +295,7 @@ void init_combiner(void)
    fragment_depth_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
 
    // ZIGGY convert a 565 texture into depth component
-#ifdef EMSCRIPTEN
+#ifdef GLES
 #define FRAGDEPTH "gl_FragDepthEXT"
 #else
 #define FRAGDEPTH "gl_FragDepth"
