@@ -22,7 +22,6 @@ typedef GLclampf GLclampd;
 
 enum
 {
-   SGL_TEXTURE_2D,
    SGL_DEPTH_TEST,
    SGL_BLEND,
    SGL_POLYGON_OFFSET_FILL,
