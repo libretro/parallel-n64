@@ -606,6 +606,14 @@ void sglEnter(void)
    if (gfx_plugin == GFX_ANGRYLION || stop)
       return;
 
+   for (i = 0; i < MAX_ATTRIB; i ++)
+   {
+      if (VertexAttribPointer_enabled[i])
+         glEnableVertexAttribArray(i);
+      else
+         glDisableVertexAttribArray(i);
+   }
+
     sglBindFramebuffer(GL_FRAMEBUFFER, Framebuffer_framebuffer);
 
     glBlendFuncSeparate(BlendFunc_srcRGB, BlendFunc_dstRGB, BlendFunc_srcAlpha, BlendFunc_dstAlpha);
@@ -666,6 +674,9 @@ void sglExit(void)
         glBindTexture(GL_TEXTURE_2D, 0);
     }
     glActiveTexture(GL_TEXTURE0);
+
+    for (i = 0; i < MAX_ATTRIB; i ++)
+       glDisableVertexAttribArray(i);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
