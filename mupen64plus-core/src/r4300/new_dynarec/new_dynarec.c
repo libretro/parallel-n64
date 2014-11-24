@@ -57,7 +57,6 @@ typedef unsigned int u_int;
 
 #define MAXBLOCK 4096
 #define MAX_OUTPUT_BLOCK_SIZE 262144
-#define CACHE_SEGMENT_SIZE ((1<<(TARGET_SIZE_2-3))-1) /* 8 segments */
 #define CLOCK_DIVIDER count_per_op
 
 void *base_addr;
@@ -144,11 +143,6 @@ u_int hash_table[65536][4]  __attribute__((aligned(16)));
 static char shadow[2097152]  __attribute__((aligned(16)));
 static void *copy;
 static int expirep;
-
-#ifdef CLEAN_SEG_DEBUG
-static int expirep_base;
-#endif
-
 u_int using_tlb;
 static u_int stop_after_jal;
 extern u_char restore_candidate[512];
@@ -301,7 +295,6 @@ static int verify_dirty(void *addr);
 // Uncomment these two lines to generate debug output:
 //#define ASSEM_DEBUG 1
 //#define INV_DEBUG 1
-//#define CLEAN_SEG_DEBUG 1
 
 // Uncomment this line to output the number of NOTCOMPILED blocks as they occur:
 //#define COUNT_NOTCOMPILEDS 1
@@ -1088,7 +1081,7 @@ static void ll_remove_matching_addrs(struct ll_entry **head,int addr,int shift)
   struct ll_entry *next;
   while(*head) {
     if(((u_int)((*head)->addr)>>shift)==(addr>>shift) || 
-       ((u_int)((*head)->addr-CACHE_SEGMENT_SIZE)>>shift)==(addr>>shift))
+       ((u_int)((*head)->addr-MAX_OUTPUT_BLOCK_SIZE)>>shift)==(addr>>shift))
     {
       inv_debug("EXP: Remove pointer to %x (%x)\n",(int)(*head)->addr,(*head)->vaddr);
       remove_hash((*head)->vaddr);
@@ -1125,7 +1118,7 @@ static void ll_kill_pointers(struct ll_entry *head,int addr,int shift)
     int ptr=get_pointer(head->addr);
     inv_debug("EXP: Lookup pointer to %x at %x (%x)\n",(int)ptr,(int)head->addr,head->vaddr);
     if(((ptr>>shift)==(addr>>shift)) ||
-       (((ptr-CACHE_SEGMENT_SIZE)>>shift)==(addr>>shift)))
+       (((ptr-MAX_OUTPUT_BLOCK_SIZE)>>shift)==(addr>>shift)))
     {
       inv_debug("EXP: Kill pointer at %x (%x)\n",(int)head->addr,head->vaddr);
       u_int host_addr=(int)kill_pointer(head->addr);
@@ -7606,7 +7599,6 @@ void new_dynarec_init()
             MAP_PRIVATE | MAP_ANONYMOUS,
             -1, 0)) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
 #endif
-  log_message("%dMB cache initialised at: %.8X ", ((1<<TARGET_SIZE_2)/1048576), (int)base_addr);
   out=(u_char *)base_addr;
 
   rdword=&readmem_dword;
@@ -7621,12 +7613,7 @@ void new_dynarec_init()
   memset(mini_ht,-1,sizeof(mini_ht));
   memset(restore_candidate,0,sizeof(restore_candidate));
   copy=shadow;
-  expirep=16384; // Expiry pointer, +2 segments
-
-#ifdef CLEAN_SEG_DEBUG
-  expirep_base=16384;
-#endif
-
+  expirep=16384; // Expiry pointer, +2 blocks
   pending_exception=0;
   literalcount=0;
 #ifdef HOST_IMM8
@@ -10906,10 +10893,7 @@ int new_recompile_block(int addr)
   // If we're within 256K of the end of the buffer,
   // start over from the beginning. (Is 256K enough?)
   if(out > (u_char *)(base_addr+(1<<TARGET_SIZE_2)-MAX_OUTPUT_BLOCK_SIZE-JUMP_TABLE_SIZE))
-  {
-     log_message("%dMB cache is full, starting over from the beginning: %.8X ", ((1<<TARGET_SIZE_2)/1048576), (int)base_addr);
-     out=(u_char *)base_addr;
-  }
+    out=(u_char *)base_addr;
   
   // Trap writes to any of the pages we compiled
   for(i=start>>12;i<=(start+slen*4)>>12;i++) {
@@ -10930,7 +10914,7 @@ int new_recompile_block(int addr)
   while(expirep!=end)
   {
     int shift=TARGET_SIZE_2-3; // Divide into 8 blocks
-    int base=(int)base_addr+((expirep>>13)<<shift); // Base address of this segment
+    int base=(int)base_addr+((expirep>>13)<<shift); // Base address of this block
     inv_debug("EXP: Phase %d\n",expirep);
     switch((expirep>>11)&3)
     {
@@ -10951,12 +10935,12 @@ int new_recompile_block(int addr)
         for(i=0;i<32;i++) {
           u_int *ht_bin=hash_table[((expirep&2047)<<5)+i];
           if((ht_bin[3]>>shift)==(base>>shift) ||
-             ((ht_bin[3]-CACHE_SEGMENT_SIZE)>>shift)==(base>>shift)) {
+             ((ht_bin[3]-MAX_OUTPUT_BLOCK_SIZE)>>shift)==(base>>shift)) {
             inv_debug("EXP: Remove hash %x -> %x\n",ht_bin[2],ht_bin[3]);
             ht_bin[2]=ht_bin[3]=-1;
           }
           if((ht_bin[1]>>shift)==(base>>shift) ||
-             ((ht_bin[1]-CACHE_SEGMENT_SIZE)>>shift)==(base>>shift)) {
+             ((ht_bin[1]-MAX_OUTPUT_BLOCK_SIZE)>>shift)==(base>>shift)) {
             inv_debug("EXP: Remove hash %x -> %x\n",ht_bin[0],ht_bin[1]);
             ht_bin[0]=ht_bin[2];
             ht_bin[1]=ht_bin[3];
@@ -10975,15 +10959,6 @@ int new_recompile_block(int addr)
         break;
     }
     expirep=(expirep+1)&65535;
-
-#ifdef CLEAN_SEG_DEBUG
-    //Log end of segment
-    if(expirep==((expirep_base+8191)&65535))
-    {
-       expirep_base=((expirep_base+8192)&65535);
-       log_message("Segment cleaned: %.8X -> %.8X", (int)base, (int)(base+CACHE_SEGMENT_SIZE));
-    }
-#endif
   }
   return 0;
 }
