@@ -40,10 +40,6 @@
 #include "debugger/debugger.h"
 #endif
 
-#ifdef NEB_DYNAREC
-# include "neb_dynarec/driver.h"
-#endif
-
 /* global variables */
 char invalid_code[0x100000];
 precomp_block *blocks[0x100000];
@@ -556,12 +552,7 @@ void jump_to_func(void)
       }
       blocks[addr>>12]->start = addr & ~0xFFF;
       blocks[addr>>12]->end = (addr & ~0xFFF) + 0x1000;
-#ifdef NEB_DYNAREC
-      if (r4300emu == CORE_NEB_DYNAREC)
-         nd_init_page(blocks[addr>>12]);
-      else
-#endif
-         init_block(blocks[addr>>12]);
+      init_block(blocks[addr>>12]);
    }
    PC=actual->block+((addr-actual->start)>>2);
 
@@ -586,12 +577,7 @@ void free_blocks(void)
    {
       if (blocks[i])
       {
-#ifdef NEB_DYNAREC
-         if (r4300emu == CORE_NEB_DYNAREC)
-            nd_free_page(blocks[i]);
-         else
-#endif
-            free_block(blocks[i]);
+         free_block(blocks[i]);
          free(blocks[i]);
          blocks[i] = NULL;
       }

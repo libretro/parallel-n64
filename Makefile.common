@@ -99,21 +99,6 @@ else
 	SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
 endif
 
-ifeq ($(NEB_DYNAREC),1)
-	NEB_DYNADIR := $(CORE_DIR)/src/r4300/neb_dynarec
-	SOURCES_C += $(NEB_DYNADIR)/driver.c \
-				$(NEB_DYNADIR)/emitflags.c \
-				$(NEB_DYNADIR)/arch-ops.c \
-				$(NEB_DYNADIR)/il-ops.c \
-				$(NEB_DYNADIR)/n64ops.c
-
-	ifeq ($(WITH_DYNAREC), x86_64)
-		CPUFLAGS += -DNEB_DYNAREC=10
-		NEB_X64_DIR := $(NEB_DYNADIR)/amd64
-		SOURCES_C += $(NEB_X64_DIR)/functions.c
-	endif
-endif
-
 ### VIDEO PLUGINS ###
 
 # Rice

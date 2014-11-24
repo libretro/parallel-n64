@@ -41,9 +41,6 @@
 #include "recomph.h"
 #include "tlb.h"
 #include "new_dynarec/new_dynarec.h"
-#ifdef NEB_DYNAREC
-#include "neb_dynarec/driver.h"
-#endif
 
 
 #ifdef DBG
@@ -261,24 +258,6 @@ void r4300_init(void)
     {
         DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Dynamic Recompiler");
 
-#ifdef NEB_DYNAREC
-        if (r4300emu == CORE_NEB_DYNAREC)
-        {
-          DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Nebuleon's hybrid recompiler-interpreter");
-          r4300emu = CORE_NEB_DYNAREC;
-          current_instruction_table = neb_fallback_table;
-          init_blocks();
-          nd_init();
-          jump_to(0xa4000040);
-
-          /* Prevent segfault on failed jump_to */
-          if (!actual->block)
-             return;
-
-          last_addr = PC->addr;
-        }
-        else
-#endif
         {
            r4300emu = CORE_DYNAREC;
            init_blocks();
@@ -316,22 +295,12 @@ void r4300_deinit(void)
 #if defined(DYNAREC)
     else if (r4300emu >= 2)
     {
-#ifdef NEB_DYNAREC
-       if (r4300emu == CORE_NEB_DYNAREC)
-       {
-          nd_exit();
-          free_blocks();
-       }
-       else
-#endif
-       {
 #ifdef NEW_DYNAREC
           new_dynarec_cleanup();
           free_blocks();
 #else
           PC++;
 #endif
-       }
     }
 #endif
     else /* if (r4300emu == CORE_INTERPRETER) */
@@ -353,11 +322,7 @@ void r4300_execute(void)
        while (!stop)
           pure_interpreter();
     }
-    else if (r4300emu == CORE_INTERPRETER 
-#ifdef NEB_DYNAREC
-       || r4300emu == CORE_NEB_DYNAREC
-#endif
-       )
+    else if (r4300emu == CORE_INTERPRETER)
     {
         while (!stop)
         {

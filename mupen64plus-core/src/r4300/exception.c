@@ -52,21 +52,8 @@ static void exception_common(void)
       if (delay_slot)
       {
          skip_jump = PC->addr;
-#ifdef NEB_DYNAREC
-         if (r4300emu == CORE_NEB_DYNAREC)
-         {
-            // The Neb Dynarec does not require a pseudo-interrupt to
-            // enter the exception handler. But it does need this:
-            delay_slot = 0;
-         }
-         else
-         {
-#endif
-            // The interpreters and the Old Dynarec need this.
-            next_interupt = 0;
-#ifdef NEB_DYNAREC
-         }
-#endif
+         // The interpreters and the Old Dynarec need this.
+         next_interupt = 0;
       }
    }
 }

@@ -52,7 +52,6 @@ void generic_jump_to(unsigned int address);
 #define CORE_PURE_INTERPRETER 0
 #define CORE_INTERPRETER      1
 #define CORE_DYNAREC          2
-#define CORE_NEB_DYNAREC      3
 
 // profiling
 #define ALL_SECTION 0
