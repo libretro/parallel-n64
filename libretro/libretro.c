@@ -39,8 +39,6 @@ static cothread_t cpu_thread;
 float polygonOffsetFactor;
 float polygonOffsetUnits;
 
-static bool emu_thread_has_run = false; // < This is used to ensure the context_reset
-                                        //   function doesn't try to reinit graphics before needed
 uint16_t ab_button_orientation = 0;
 uint16_t lz_button_orientation = 0;
 int astick_deadzone;
@@ -57,6 +55,8 @@ static enum rsp_plugin_type rsp_plugin;
 uint32_t screen_width;
 uint32_t screen_height;
 uint32_t screen_pitch;
+
+static bool first_context_reset;
 
 extern unsigned int VI_REFRESH;
 
@@ -236,16 +236,24 @@ static void setup_variables(void)
 
 void reinit_gfx_plugin(void)
 {
-   if (gfx_plugin == GFX_GLIDE64 && emu_thread_has_run)
+    if(first_context_reset)
+    {
+        first_context_reset=false;
+#ifdef SINGLE_THREAD
+        EmuThreadFunction();
+#else
+        co_switch(cpu_thread);
+#endif
+    }
+
+   if (gfx_plugin == GFX_GLIDE64)
       glide64InitGfx();
-   else if (gfx_plugin == GFX_GLN64 && emu_thread_has_run)
+   else if (gfx_plugin == GFX_GLN64)
       gles2n64_reset();
 }
 
 static void EmuThreadFunction(void)
 {
-    emu_thread_has_run = true;
-
     if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0) && log_cb)
         log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to initialize core\n");
 
@@ -259,7 +267,7 @@ static void EmuThreadFunction(void)
     }
 
     free(game_data);
-    game_data = 0;
+    game_data = NULL;
 
     log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
 
@@ -270,6 +278,12 @@ static void EmuThreadFunction(void)
        goto load_fail;
     }
 
+#ifndef SINGLE_THREAD
+    //ROM is loaded, switch back to main thread so retro_load_game can return (returning failure if needed).
+    //We'll continue here once the context is reset.
+    co_switch(main_thread);
+#endif
+
     core_settings_set_defaults();
     core_settings_autoselect_gfx_plugin();
     core_settings_autoselect_rsp_plugin();
@@ -279,6 +293,11 @@ static void EmuThreadFunction(void)
     log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE. \n");
 
     CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
+
+#ifndef SINGLE_THREAD
+    //Context is reset too, everything is safe to use. Now back to main thread so we don't start pushing frames outside retro_run.
+    co_switch(main_thread);
+#endif
 
 #ifdef SINGLE_THREAD
     return;
@@ -291,7 +310,8 @@ static void EmuThreadFunction(void)
 
 load_fail:
     free(game_data);
-    game_data = 0;
+    game_data = NULL;
+    stop = 1;
 
 #ifndef SINGLE_THREAD
     //NEVER RETURN! That's how libco rolls
@@ -655,6 +675,15 @@ bool retro_load_game(const struct retro_game_info *game)
    memcpy(game_data, game->data, game->size);
    game_size = game->size;
 
+#ifndef SINGLE_THREAD
+   stop = false;
+   //Finish ROM load before doing anything funny, so we can return failure if needed.
+   co_switch(cpu_thread);
+   if (stop) return false;
+#endif
+
+   first_context_reset = true;
+
    return true;
 }
 
@@ -674,9 +703,6 @@ static bool pushed_frame;
 void retro_run (void)
 {
    static bool updated = false;
-#ifdef SINGLE_THREAD
-   static bool first_run = true;
-#endif
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       update_variables();
@@ -694,15 +720,7 @@ run_again:
 
 #ifdef SINGLE_THREAD
    stop = 0;
-   if (first_run)
-   {
-      first_run = false;
-      EmuThreadFunction();
-   }
-   else
-   {
-      main_run();
-   }
+   main_run();
    stop = 0;
 #else
    co_switch(cpu_thread);
