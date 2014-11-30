@@ -176,7 +176,6 @@ static void forward_gfx_task(struct hle_t* hle)
 {
    if (rsp_info.ProcessDlistList)
       rsp_info.ProcessDlistList();
-    *hle->dpc_status &= ~DP_STATUS_FREEZE;
 }
 
 static bool try_fast_audio_dispatching(struct hle_t* hle)
