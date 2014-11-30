@@ -3742,19 +3742,18 @@ uint32_t *fast_mem_access(uint32_t address)
 {
    /* This code is performance critical, specially on pure interpreter mode.
     * Removing error checking saves some time, but the emulator may crash. */
-   if (address < 0x80000000 || address >= 0xc0000000)
+   if ((address & 0xc0000000) != 0x80000000)
       address = virtual_to_physical_address(address, 2);
 
-   if ((address & 0x1FFFFFFF) >= 0x10000000)
-      return (uint32_t *)rom + ((address & 0x1FFFFFFF) - 0x10000000)/4;
-   else if ((address & 0x1FFFFFFF) < 0x800000)
-      return (uint32_t *)rdram + (address & 0x1FFFFFFF)/4;
-   else if (address >= 0xa4000000 && address <= 0xa4001000)
-      return (uint32_t *)SP_DMEM + (address & 0xFFF)/4;
-   else if ((address >= 0xa4001000 && address <= 0xa4002000))
-      return (uint32_t *)SP_IMEM + (address & 0xFFF)/4;
-   else
-      return NULL;
+   address &= 0x1ffffffc;
+
+   if (address < 0x800000)
+      return (unsigned int*)((unsigned char*)rdram + address);
+   else if (address >= 0x10000000)
+      return (unsigned int*)((unsigned char*)rom + address - 0x10000000);
+   else if ((address & 0xffffe000) == 0x04000000)
+      return (unsigned int*)((unsigned char*)SP_DMEM + (address & 0x1ffc));
+   return NULL;
 }
 
 void format_saved_memory(void)
