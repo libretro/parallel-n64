@@ -202,6 +202,34 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
     return M64ERR_INTERNAL;
 }
 
+EXPORT m64p_error CALL CoreAddCheat(const char *CheatName, m64p_cheat_code *CodeList, int NumCodes)
+{
+    if (!l_CoreInit)
+        return M64ERR_NOT_INIT;
+    if (CheatName == NULL || CodeList == NULL)
+        return M64ERR_INPUT_ASSERT;
+    if (strlen(CheatName) < 1 || NumCodes < 1)
+        return M64ERR_INPUT_INVALID;
+
+    if (cheat_add_new(CheatName, CodeList, NumCodes))
+        return M64ERR_SUCCESS;
+
+    return M64ERR_INPUT_INVALID;
+}
+
+EXPORT m64p_error CALL CoreCheatEnabled(const char *CheatName, int Enabled)
+{
+    if (!l_CoreInit)
+        return M64ERR_NOT_INIT;
+    if (CheatName == NULL)
+        return M64ERR_INPUT_ASSERT;
+
+    if (cheat_set_enabled(CheatName, Enabled))
+        return M64ERR_SUCCESS;
+
+    return M64ERR_INPUT_INVALID;
+}
+
 EXPORT m64p_error CALL CoreGetRomSettings(m64p_rom_settings *RomSettings, int RomSettingsLength, int Crc1, int Crc2)
 {
     romdatabase_entry* entry;
