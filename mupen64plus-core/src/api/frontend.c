@@ -230,6 +230,15 @@ EXPORT m64p_error CALL CoreCheatEnabled(const char *CheatName, int Enabled)
     return M64ERR_INPUT_INVALID;
 }
 
+EXPORT m64p_error CALL CoreCheatClearAll(void)
+{
+    if (!l_CoreInit)
+        return M64ERR_NOT_INIT;
+
+    cheat_delete_all();
+    return M64ERR_SUCCESS;
+}
+
 EXPORT m64p_error CALL CoreGetRomSettings(m64p_rom_settings *RomSettings, int RomSettingsLength, int Crc1, int Crc2)
 {
     romdatabase_entry* entry;

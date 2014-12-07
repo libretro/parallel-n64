@@ -80,6 +80,12 @@ typedef m64p_error (*ptr_CoreGetRomSettings)(m64p_rom_settings *, int, int, int)
 EXPORT m64p_error CALL CoreGetRomSettings(m64p_rom_settings *, int, int, int);
 #endif
 
+EXPORT m64p_error CALL CoreAddCheat(const char *CheatName, m64p_cheat_code *CodeList, int NumCodes);
+
+EXPORT m64p_error CALL CoreCheatEnabled(const char *CheatName, int Enabled);
+
+EXPORT m64p_error CALL CoreCheatClearAll(void);
+
 #ifdef __cplusplus
 }
 #endif
