@@ -19,10 +19,11 @@ LOCAL_ARM_MODE := arm
 LOCAL_CFLAGS := -marm
 WITH_DYNAREC := arm
 
-ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
 COMMON_FLAGS := -DANDROID_ARM -DDYNAREC -DNEW_DYNAREC=3 -DNO_ASM -DNOSSE
-LOCAL_ARM_NEON := true
 WITH_DYNAREC := arm
+
+ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
+LOCAL_ARM_NEON := true
 HAVE_NEON := 1
 endif
 
