@@ -1622,6 +1622,8 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 
       Z = (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3) ? 0.0f : set_sprite_combine_mode();
 
+      memset(v, 0, sizeof(VERTEX) * 4);
+
       // Draw the vertices
       v[0].x = (float)s_ul_x;
       v[0].y = (float)s_ul_y;
