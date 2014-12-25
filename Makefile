@@ -64,7 +64,7 @@ else ifneq (,$(findstring rpi,$(platform)))
 	GLES = 1
 	GL_LIB := -L/opt/vc/lib -lGLESv2
 	INCFLAGS += -I/opt/vc/include
-	CPUFLAGS += -DARMv5_ONLY -DNO_ASM -DNOSSE
+	CPUFLAGS += -DARMv5_ONLY -DNO_ASM
 	PLATFORM_EXT := unix
 	WITH_DYNAREC=arm
 
@@ -75,7 +75,7 @@ else ifneq (,$(findstring imx6,$(platform)))
 	fpic = -fPIC
 	GLES = 1
 	GL_LIB := -lGLESv2
-	CPUFLAGS += -DNO_ASM -DNOSSE
+	CPUFLAGS += -DNO_ASM
 	PLATFORM_EXT := unix
 	WITH_DYNAREC=arm
 	HAVE_NEON=1
@@ -102,8 +102,8 @@ else ifneq (,$(findstring ios,$(platform)))
 		IOSSDK := $(shell xcrun -sdk iphoneos -show-sdk-path)
 	endif
 	TARGET := $(TARGET_NAME)_libretro_ios.dylib
-	PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM -DNOSSE
-	CPUFLAGS += -DNO_ASM -DNOSSE -DARM
+	PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
+	CPUFLAGS += -DNO_ASM  -DARM
 	PLATCFLAGS += -DIOS -marm
 	LDFLAGS += -dynamiclib
 	fpic = -fPIC
@@ -141,7 +141,7 @@ else ifneq (,$(findstring android,$(platform)))
 	WITH_DYNAREC=arm
 	GLES = 1
 	PLATCFLAGS += -DANDROID
-	CPUCFLAGS  += -DNO_ASM -DNOSSE
+	CPUCFLAGS  += -DNO_ASM 
 	HAVE_NEON = 1
 	CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -D__arm__ -DARM_ASM -D__NEON_OPT
 	CFLAGS += -DANDROID
@@ -161,7 +161,7 @@ else ifeq ($(platform), qnx)
 	AR = QCC -Vgcc_ntoarmv7le
 	WITH_DYNAREC=arm
 	GLES = 1
-	PLATCFLAGS += -DNO_ASM -DNOSSE -D__BLACKBERRY_QNX__
+	PLATCFLAGS += -DNO_ASM -D__BLACKBERRY_QNX__
 	HAVE_NEON = 1
 	CPUFLAGS += -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=softfp -D__arm__ -DARM_ASM -D__NEON_OPT
 	CFLAGS += -D__QNX__
@@ -176,7 +176,7 @@ else ifneq (,$(findstring armv,$(platform)))
 	fpic := -fPIC
 	LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined
 	INCFLAGS += -I.
-	CPUFLAGS += -DNO_ASM -DNOSSE
+	CPUFLAGS += -DNO_ASM
 	WITH_DYNAREC=arm
 	ifneq (,$(findstring gles,$(platform)))
 		GLES := 1
@@ -205,7 +205,7 @@ else ifneq (,$(findstring armv,$(platform)))
 else ifeq ($(platform), emscripten)
 	TARGET := $(TARGET_NAME)_libretro_emscripten.bc
 	GLES := 1
-	CPUFLAGS += -DNO_ASM -DNOSSE
+	CPUFLAGS += -DNO_ASM
 	PLATCFLAGS += -DCC_resampler=mupen_CC_resampler -Dsinc_resampler=mupen_sinc_resampler \
 					-Drglgen_symbol_map=mupen_rglgen_symbol_map -Dmain_exit=mupen_main_exit \
 					-Dadler32=mupen_adler32 -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \

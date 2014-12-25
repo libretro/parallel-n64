@@ -219,14 +219,7 @@ void math_init(void)
    if (perf_get_cpu_features_cb)
       cpu = perf_get_cpu_features_cb();
 
-#if !defined(NOSSE)
-   if (cpu & RETRO_SIMD_SSE2)
-   {
-      glide64MulMatrices = MulMatricesC;
-      if (log_cb)
-         log_cb(RETRO_LOG_INFO, "SSE detected, using (some) optimized math functions.\n");
-   }
-#elif defined(__ARM_NEON__)
+#if defined(__ARM_NEON__)
    if (cpu & RETRO_SIMD_NEON)
    {
       glide64NormalizeVector = NormalizeVectorNeon;
