@@ -142,7 +142,7 @@ EXPORT int CALL angrylionRomOpen (void)
    screen_width = SCREEN_WIDTH;
    screen_height = SCREEN_HEIGHT;
    blitter_buf = (uint32_t*)calloc(screen_width * screen_height, sizeof(uint32_t));
-   pitchindwords = screen_width * 4;
+   pitchindwords = PRESCALE_WIDTH / 1; /* sizeof(DWORD) == sizeof(pixel) == 4 */
    screen_pitch = PRESCALE_WIDTH << 2;
 #else
     DDPIXELFORMAT ftpixel;
