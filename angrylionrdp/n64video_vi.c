@@ -99,14 +99,6 @@ void rdp_update(void)
     const int vitype = *GET_GFX_INFO(VI_STATUS_REG) & 0x00000003;
     const int pixel_size = sizeof(INT32);
 
-
-    if (log_cb)
-    {
-       log_cb(RETRO_LOG_INFO, "start of rdp_update.\n");
-       log_cb(RETRO_LOG_INFO, "VI_V_SYNC_REG is: %d\n", v_sync);
-       log_cb(RETRO_LOG_INFO, "x1 : %d y1: %d x2: %d y2: %d\n", x1, y1, x2, y2);
-    }
-
 /*
  * initial value (angrylion)
  */
