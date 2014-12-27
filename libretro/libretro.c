@@ -661,16 +661,13 @@ bool retro_load_game(const struct retro_game_info *game)
    update_variables();
    initial_boot = false;
 
-   if (gfx_plugin != GFX_ANGRYLION)
+   if ((render = (struct retro_hw_render_callback*)retro_gl_init()))
    {
-      if ((render = (struct retro_hw_render_callback*)retro_gl_init()))
+      if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, render))
       {
-         if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, render))
-         {
-            if (log_cb)
-               log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
-            return false;
-         }
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
+         return false;
       }
    }
 
