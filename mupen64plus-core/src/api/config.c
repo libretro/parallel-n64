@@ -37,6 +37,15 @@
 
 #include "osal/preproc.h"
 
+#ifdef __LIBRETRO__
+/* TODO/FIXME - put this in some header */
+
+#define GFX_GLIDE64     0
+#define GFX_RICE        1 
+#define GFX_GLN64       2
+#define GFX_ANGRYLION   3
+#endif
+
 /* local types */
 #define MUPEN64PLUS_CFG_NAME "mupen64plus.cfg"
 
@@ -1408,13 +1417,31 @@ EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *
     config_var *var;
 
 #ifdef __LIBRETRO__
-    if (strcmp(ParamName, "Fullscreen") == 0)
+    if (!strcmp(ParamName, "DisplayListToGraphicsPlugin"))
+    {
+       if (libretro_get_gfx_plugin() == GFX_ANGRYLION)
+          return false;
        return true;
-    if (strcmp(ParamName, "VerticalSync") == 0)
+    }
+    if (!strcmp(ParamName, "AudioListToAudioPlugin"))
+    {
        return false;
-    if (strcmp(ParamName, "FBO") == 0)
+    }
+    if (!strcmp(ParamName, "WaitForCPUHost"))
+    {
+       return false;
+    }
+    if (!strcmp(ParamName, "SupportCPUSemaphoreLock"))
+    {
+       return false;
+    }
+    if (!strcmp(ParamName, "Fullscreen"))
        return true;
-    if (strcmp(ParamName, "AnisotropicFiltering") == 0)
+    if (!strcmp(ParamName, "VerticalSync"))
+       return false;
+    if (!strcmp(ParamName, "FBO"))
+       return true;
+    if (!strcmp(ParamName, "AnisotropicFiltering"))
 #ifdef GLES
        return false;
 #else

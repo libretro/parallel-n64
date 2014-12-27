@@ -33,13 +33,6 @@
 #define CONFIG_API_VERSION       0x020100
 #define CONFIG_PARAM_VERSION     1.00
 
-#ifdef __LIBRETRO__
-#define GFX_GLIDE64     0
-#define GFX_RICE        1 
-#define GFX_GLN64       2
-#define GFX_ANGRYLION   3
-#endif
-
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
 static int l_PluginInit = 0;
@@ -59,23 +52,12 @@ ptr_ConfigSetDefaultBool   ConfigSetDefaultBool = NULL;
 ptr_ConfigGetParamBool     ConfigGetParamBool = NULL;
 #endif
 
-#ifdef __LIBRETRO__
-extern unsigned libretro_get_gfx_plugin(void);
-#endif
-
 NOINLINE void update_conf(const char* source)
 {
     memset(conf, 0, sizeof(conf));
 
-#ifdef __LIBRETRO__
-    CFG_HLE_GFX = 1;
-    if (libretro_get_gfx_plugin() == GFX_ANGRYLION)
-       CFG_HLE_GFX = 0;
-    CFG_HLE_AUD = 0;
-#else
     CFG_HLE_GFX = ConfigGetParamBool(l_ConfigRsp, "DisplayListToGraphicsPlugin");
     CFG_HLE_AUD = ConfigGetParamBool(l_ConfigRsp, "AudioListToAudioPlugin");
-#endif
     CFG_WAIT_FOR_CPU_HOST = ConfigGetParamBool(l_ConfigRsp, "WaitForCPUHost");
     CFG_MEND_SEMAPHORE_LOCK = ConfigGetParamBool(l_ConfigRsp, "SupportCPUSemaphoreLock");
 }
