@@ -109,7 +109,6 @@ static void core_settings_set_defaults(void)
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
-   gfx_plugin = GFX_GLIDE64;
    if (gfx_var.value)
    {
       if (gfx_var.value && !strcmp(gfx_var.value, "auto"))
@@ -123,6 +122,8 @@ static void core_settings_set_defaults(void)
 	  if(gfx_var.value && !strcmp(gfx_var.value, "angrylion"))
          gfx_plugin = GFX_ANGRYLION;
    }
+   else
+      gfx_plugin = GFX_GLIDE64;
 
    gfx_var.key = "mupen64-gfxplugin-accuracy";
    gfx_var.value = NULL;
