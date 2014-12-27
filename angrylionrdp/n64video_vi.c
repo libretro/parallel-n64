@@ -239,9 +239,9 @@ no_frame_buffer:
 #endif
 
     __src.bottom = (ispal ? 576 : 480) >> line_shifter; /* visible lines */
+#ifdef HAVE_DIRECTDRAW
     if (__dst.left < __dst.right && __dst.top < __dst.bottom)
     {
-#ifdef HAVE_DIRECTDRAW
         res = IDirectDrawSurface_Blt(
             lpddsprimary, &__dst, lpddsback, &__src, DDBLT_WAIT, 0);
         while (res == DDERR_SURFACELOST)
@@ -256,6 +256,26 @@ no_frame_buffer:
                 lpddsprimary, &__dst, lpddsback, &__src, DDBLT_WAIT, 0);
             if (res != DDERR_SURFACELOST)
                 break;
+        }
+#else
+    if (line_shifter != 0) /* 240p non-interlaced VI DAC mode */
+    {
+        register signed int cur_line;
+
+        cur_line = 240 - 1;
+        while (cur_line >= 0)
+        {
+            memcpy(
+                &PreScale[2*PRESCALE_WIDTH*cur_line + PRESCALE_WIDTH],
+                &PreScale[1*PRESCALE_WIDTH*cur_line],
+                4 * PRESCALE_WIDTH
+            );
+            memcpy(
+                &PreScale[2*PRESCALE_WIDTH*cur_line + 0],
+                &PreScale[1*PRESCALE_WIDTH*cur_line],
+                4 * PRESCALE_WIDTH
+            );
+            --cur_line;
         }
 #endif
     }
