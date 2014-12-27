@@ -1424,8 +1424,6 @@ EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *
 
     if (!strcmp(ParamName, "DisplayListToGraphicsPlugin"))
     {
-       if (libretro_get_gfx_plugin() == GFX_ANGRYLION)
-          return false;
        return CFG_HLE_GFX;
     }
     if (!strcmp(ParamName, "AudioListToAudioPlugin"))
