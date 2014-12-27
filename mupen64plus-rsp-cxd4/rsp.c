@@ -11,6 +11,11 @@
 * with this software.                                                          *
 * If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.             *
 \******************************************************************************/
+
+const char DLL_name[100] = "Static Interpreter";
+
+unsigned char conf[32];
+
 #include "config.h"
 
 #include <stdio.h>

@@ -11,6 +11,11 @@
 * with this software.                                                          *
 * If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.             *
 \******************************************************************************/
+#ifndef _CXD4_CONFIG_H
+#define _CXD4_CONFIG_H
+
+extern unsigned char conf[32];
+
 #define _CRT_SECURE_NO_WARNINGS
 /*
  * This is only here for people using modern Microsoft compilers.
@@ -38,9 +43,6 @@
 #define VU_EMULATE_SCALAR_ACCUMULATOR_READ
 #endif
 
-const char DLL_name[100] = "Static Interpreter";
-
-static unsigned char conf[32];
 #define CFG_FILE    "rsp_conf.cfg"
 /*
  * The config file used to be a 32-byte EEPROM with binary settings storage.
@@ -81,3 +83,5 @@ static unsigned char conf[32];
 #define CFG_WAIT_FOR_CPU_HOST       (*(int *)(conf + 0x10))
 #define CFG_MEND_SEMAPHORE_LOCK     (*(int *)(conf + 0x14))
 #define CFG_TRACE_RSP_REGISTERS     (*(int *)(conf + 0x18))
+
+#endif

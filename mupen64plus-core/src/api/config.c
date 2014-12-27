@@ -38,6 +38,9 @@
 #include "osal/preproc.h"
 
 #ifdef __LIBRETRO__
+/* Cxd4 RSP */
+#include "../../../mupen64plus-rsp-cxd4/config.h"
+
 /* TODO/FIXME - put this in some header */
 
 #define GFX_GLIDE64     0
@@ -1421,13 +1424,11 @@ EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *
 
     if (!strcmp(ParamName, "DisplayListToGraphicsPlugin"))
     {
-       if (libretro_get_gfx_plugin() == GFX_ANGRYLION)
-          return false;
-       return true;
+       return CFG_HLE_GFX;
     }
     if (!strcmp(ParamName, "AudioListToAudioPlugin"))
     {
-       return false;
+       return CFG_HLE_AUD;
     }
     if (!strcmp(ParamName, "WaitForCPUHost"))
     {

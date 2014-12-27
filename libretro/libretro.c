@@ -16,6 +16,9 @@
 #include "main/version.h"
 #include "main/savestates.h"
 
+/* Cxd4 RSP */
+#include "../mupen64plus-rsp-cxd4/config.h"
+
 struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 
@@ -215,6 +218,10 @@ static void setup_variables(void)
          "GFX Plugin; auto|glide64|gln64|rice|angrylion" },
       { "mupen64-rspplugin",
          "RSP Plugin; auto|hle|cxd4" },
+      { "mupen64-cxd4-rsp-al-to-audio",
+         "(Cxd4 RSP) Audio List to Audio; enabled|disabled" },
+      { "mupen64-cxd4-rsp-dl-to-video",
+         "(Cxd4 RSP) Display List to Video; enabled|disabled" },
       { "mupen64-screensize",
          "Resolution (restart); 640x480|320x200|320x240|400x256|512x384|640x200|640x350|640x400|800x600|960x720|856x480|512x256|1024x768|1280x1024|1600x1200|400x300|1152x864|1280x960|1600x1024|1920x1440|2048x1536|2048x2048" },
       { "mupen64-filtering",
@@ -514,6 +521,33 @@ void update_variables(bool startup)
    else
       overlay = 1;
 
+   var.key = "mupen64-cxd4-rsp-dl-to-video";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "enabled"))
+         CFG_HLE_GFX = 1;
+      else if (!strcmp(var.value, "disabled"))
+         CFG_HLE_GFX = 0;
+   }
+   else
+      CFG_HLE_GFX = 1;
+
+   var.key = "mupen64-cxd4-rsp-al-to-audio";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "enabled"))
+         CFG_HLE_AUD = 1;
+      else if (!strcmp(var.value, "disabled"))
+         CFG_HLE_AUD = 0;
+   }
+   else
+      CFG_HLE_AUD = 1;
+
+
    var.key = "mupen64-filtering";
    var.value = NULL;
 
@@ -779,7 +813,7 @@ run_again:
    if (flip_only)
    {
       if (gfx_plugin == GFX_ANGRYLION)
-         video_cb(blitter_buf, screen_width, screen_height, screen_pitch); 
+         video_cb((screen_pitch == 0) ? NULL : blitter_buf, screen_width, screen_height, screen_pitch); 
 #ifndef SINGLE_THREAD
       else
          video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
