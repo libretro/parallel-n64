@@ -677,7 +677,6 @@ void rdp_init(void)
 
     rdram_8 = (UINT8*)gfx_info.RDRAM;
     rdram_16 = (UINT16*)gfx_info.RDRAM;
-    return;
 }
 
 INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)

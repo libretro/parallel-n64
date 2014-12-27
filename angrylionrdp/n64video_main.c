@@ -135,6 +135,7 @@ EXPORT void CALL angrylionRomClosed (void)
     command_counter = 0;
 }
 
+static m64p_handle l_ConfigAngrylion;
  
 EXPORT int CALL angrylionRomOpen (void)
 {
@@ -264,7 +265,7 @@ EXPORT int CALL angrylionRomOpen (void)
 #endif
 
     rdp_init();
-    overlay = 0;
+    overlay = ConfigGetParamBool(l_ConfigAngrylion, "VIOverlay");
     return 1;
 }
 

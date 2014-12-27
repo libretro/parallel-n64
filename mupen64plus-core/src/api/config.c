@@ -1240,7 +1240,7 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
     config_var *var;
 
 #ifdef __LIBRETRO__
-    if (strcmp(ParamName, "AnisoFilter") == 0)
+    if (!strcmp(ParamName, "AnisoFilter"))
 #ifdef GLES
        return 0;
 #else
@@ -1417,6 +1417,8 @@ EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *
     config_var *var;
 
 #ifdef __LIBRETRO__
+    extern int overlay;
+
     if (!strcmp(ParamName, "DisplayListToGraphicsPlugin"))
     {
        if (libretro_get_gfx_plugin() == GFX_ANGRYLION)
@@ -1435,6 +1437,9 @@ EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *
     {
        return false;
     }
+    if (!strcmp(ParamName, "VIOverlay"))
+       return overlay;
+
     if (!strcmp(ParamName, "Fullscreen"))
        return true;
     if (!strcmp(ParamName, "VerticalSync"))
