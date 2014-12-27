@@ -276,10 +276,8 @@ EXPORT unsigned int CALL cxd4DoRspCycles(unsigned int cycles)
     { /* Simulation barrier to redirect processing externally. */
 #ifdef EXTERN_COMMAND_LIST_GBI
         case 0x00000001:
-#if 0
             if (CFG_HLE_GFX == 0)
                 break;
-#endif
             if (*(unsigned int *)(RSP.DMEM + 0xFF0) == 0x00000000)
                 break; /* Resident Evil 2 */
             if (rsp_info.ProcessDlistList == NULL) {/*branch next*/} else
