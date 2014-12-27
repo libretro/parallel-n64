@@ -143,7 +143,9 @@ EXPORT int CALL angrylionRomOpen (void)
 #ifndef HAVE_DIRECTDRAW
    screen_width = SCREEN_WIDTH;
    screen_height = SCREEN_HEIGHT;
-   blitter_buf = (uint32_t*)calloc(screen_width * screen_height, sizeof(uint32_t));
+   blitter_buf = (uint32_t*)calloc(
+      PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(uint32_t)
+   );
    pitchindwords = PRESCALE_WIDTH / 1; /* sizeof(DWORD) == sizeof(pixel) == 4 */
    screen_pitch = PRESCALE_WIDTH << 2;
 #else
