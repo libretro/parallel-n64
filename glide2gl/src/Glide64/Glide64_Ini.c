@@ -13,7 +13,7 @@ extern SETTINGS settings;
 
 extern retro_environment_t environ_cb;
 
-extern void update_variables(void);
+extern void update_variables(bool startup);
 
 void ReadSettings(void)
 {
@@ -59,7 +59,7 @@ void ReadSpecialSettings (const char * name)
 
    updated = false;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
-      update_variables();
+      update_variables(false);
    
    if (strstr(name, (const char *)"DEFAULT"))
    {

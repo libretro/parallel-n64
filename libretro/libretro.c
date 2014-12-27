@@ -454,7 +454,7 @@ unsigned int initial_boot = true;
 
 extern void glide_set_filtering(unsigned value);
 
-void update_variables(void)
+void update_variables(bool startup)
 {
    struct retro_variable var;
 
@@ -468,6 +468,30 @@ void update_variables(void)
          screen_width = 640;
          screen_height = 480;
       }
+   }
+
+   if (startup)
+   {
+      var.key = "mupen64-gfxplugin";
+      var.value = NULL;
+
+      environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
+      if (var.value)
+      {
+         if (var.value && !strcmp(var.value, "auto"))
+            core_settings_autoselect_gfx_plugin();
+         if (var.value && !strcmp(var.value, "gln64"))
+            gfx_plugin = GFX_GLN64;
+         if (var.value && !strcmp(var.value, "rice"))
+            gfx_plugin = GFX_RICE;
+         if(var.value && !strcmp(var.value, "glide64"))
+            gfx_plugin = GFX_GLIDE64;
+         if(var.value && !strcmp(var.value, "angrylion"))
+            gfx_plugin = GFX_ANGRYLION;
+      }
+      else
+         gfx_plugin = GFX_GLIDE64;
    }
 
    var.key = "mupen64-filtering";
@@ -659,7 +683,7 @@ bool retro_load_game(const struct retro_game_info *game)
    struct retro_hw_render_callback *render = NULL;
    format_saved_memory(); // < defined in mupen64plus-core/src/memory/memory.c
 
-   update_variables();
+   update_variables(true);
    initial_boot = false;
 
    if ((render = (struct retro_hw_render_callback*)retro_gl_init()))
@@ -706,7 +730,7 @@ void retro_run (void)
    static bool updated = false;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
-      update_variables();
+      update_variables(false);
 
    FAKE_SDL_TICKS += 16;
    pushed_frame = false;

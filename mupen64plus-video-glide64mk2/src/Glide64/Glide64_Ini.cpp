@@ -18,7 +18,7 @@ extern retro_environment_t environ_cb;
 #ifdef __LIBRETRO__
 extern "C" {
 
-void update_variables(void);
+void update_variables(bool startup);
 
 void glide_set_filtering(unsigned value)
 {
@@ -144,7 +144,7 @@ void ReadSpecialSettings (const char * name)
 
    updated = false;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
-      update_variables();
+      update_variables(false);
    
    if (strstr(name, (const char *)"DEFAULT"))
    {

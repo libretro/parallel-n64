@@ -138,6 +138,7 @@ EXPORT void CALL angrylionRomClosed (void)
  
 EXPORT int CALL angrylionRomOpen (void)
 {
+   printf("Gets here?\n");
 #ifndef HAVE_DIRECTDRAW
    screen_width = SCREEN_WIDTH;
    screen_height = SCREEN_HEIGHT;
