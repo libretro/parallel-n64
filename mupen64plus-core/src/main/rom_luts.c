@@ -220,6 +220,66 @@ static const uint64_t lut_ee4k[] = {
    0x9FE6162DE97E4037ULL  /* Yuke Yuke!! Trouble Makers (J) [!] */
 };
 
+/* Games that use Flash RAM */
+static const uint64_t lut_flashram[] = {
+   0xAE5B9465C54D6576ULL, /* Command & Conquer (E) (M2) [!] */
+   0xB5025BADD32675FDULL, /* Command & Conquer (G) [!] */
+   0x95286EB4B76AD58FULL, /* Command & Conquer (U) [!] */
+   0x68D7A1DE0079834AULL, /* Jet Force Gemini (E) (M4) [!] */
+   0x8A6009B694ACE150ULL, /* Jet Force Gemini (U) [!] */
+   0x36281F23009756CFULL, /* Ken Griffey Jr.'s Slugfest (U) [!] */
+   0xE97955C6BC338D38ULL, /* Legend of Zelda, The - Majora's Mask (E) (M4) (V1.0) [!] */
+   0x0A5D8F8398C5371AULL, /* Legend of Zelda, The - Majora's Mask (E) (M4) (V1.1) */
+   0x5354631C03A2DEF0ULL, /* Legend of Zelda, The - Majora's Mask (U) [!] */
+   0xB443EB084DB31193ULL, /* Legend of Zelda, The - Majora's Mask (U) (GC) */
+   0x3BA7CDDC464E52A0ULL, /* Mario Story (J) [!] */
+   0x0EC158F5FB3E6896ULL, /* Mega Man 64 (U) [!] */
+   0x916852D873DBEAEFULL, /* NBA Courtside 2 - Featuring Kobe Bryant (U) [!] */
+   0x19AB29AFC71BCD28ULL, /* Paper Mario (E) (M4) [!] */
+   0x65EEE53AED7D733CULL, /* Paper Mario (U) [!] */
+   0xEC0F690D32A7438CULL, /* Pocket Monsters Snap (J) [!] */
+   0x637758865FB80E7BULL, /* Pocket Monsters Stadium 2 (J) [!] */
+   0xEE4FD7C29CF1D938ULL, /* Pocket Monsters Stadium Kin Gin (J) [!] */
+   0x4A1CD153D830AEF8ULL, /* Pokemon Puzzle League (E) [!] */
+   0x3EB2E6F3062F9EFEULL, /* Pokemon Puzzle League (F) [!] */
+   0x7A4747AC44EEEC23ULL, /* Pokemon Puzzle League (G) [!] */
+   0x19C553A7A70F4B52ULL, /* Pokemon Puzzle League (U) [!] */
+   0x7BB18D4083138559ULL, /* Pokemon Snap (A) [!] */
+   0x4FF5976FACF559D8ULL, /* Pokemon Snap (E) [!] */
+   0xBA6C293A9FAFA338ULL, /* Pokemon Snap (F) [!] */
+   0x5753720D2A8A884DULL, /* Pokemon Snap (G) [!] */
+   0xC0C8504661051B05ULL, /* Pokemon Snap (I) [!] */
+   0x817D286AEF417416ULL, /* Pokemon Snap (S) [!] */
+   0xCA12B54771FA4EE4ULL, /* Pokemon Snap (U) [!] */
+   0x8407727557315B9CULL, /* Pokemon Stadium (E) (V1.0) [!] */
+   0x91C9E05DAD3AAFB9ULL, /* Pokemon Stadium (E) (V1.1) [!] */
+   0xA23553A342BF2D39ULL, /* Pokemon Stadium (F) [!] */
+   0x42011E1BE3552DB5ULL, /* Pokemon Stadium (G) [!] */
+   0xA53FA82DDAE2C15DULL, /* Pokemon Stadium (I) [!] */
+   0xB6E549CEDC8134C0ULL, /* Pokemon Stadium (S) [!] */
+   0x90F5D9B39D0EDCF0ULL, /* Pokemon Stadium (U) (V1.0) [!] */
+   0x1A122D43C17DAF0FULL, /* Pokemon Stadium (U) (V1.1) [!] */
+   0x2952369CB6E4C3A8ULL, /* Pokemon Stadium 2 (E) [!] */
+   0xAC5AA5C7A9B0CDC3ULL, /* Pokemon Stadium 2 (F) [!] */
+   0x439B7E7EC1A1495DULL, /* Pokemon Stadium 2 (G) [!] */
+   0xEFCEAF0022094848ULL, /* Pokemon Stadium 2 (I) [!] */
+   0xD0A1FC5B2FB8074BULL, /* Pokemon Stadium 2 (S) [!] */
+   0x03571182892FD06DULL, /* Pokemon Stadium 2 (U) [!] */
+   0xD666593BD7A25C07ULL, /* Rockman Dash (J) [!] */
+   0xF163A242F2449B3BULL, /* Star Twins (J) [!] */
+   0xBC9B2CC34ED04DA5ULL, /* StarCraft 64 (Beta) */
+   0x42CF5EA39A1334DFULL, /* StarCraft 64 (E) [!] */
+   0x0684FBFB5D3EA8A5ULL, /* StarCraft 64 (U) [!] */
+   0xE0C4F72F769E1506ULL, /* Tigger's Honey Hunt (E) (M7) [!] */
+   0x4EBFDD33664C9D84ULL, /* Tigger's Honey Hunt (U) [!] */
+   0x6D8DF08ED008C3CFULL, /* WWF No Mercy (E) (V1.0) [!] */
+   0x8CDB94C2CB46C6F0ULL, /* WWF No Mercy (E) (V1.1) [!] */
+   0x4E4B06401B49BCFBULL, /* WWF No Mercy (U) (V1.0) [!] */
+   0xF7F52DB82195E636ULL, /* Zelda no Densetsu - Toki no Ocarina - Zelda Collection Version (J) (GC) [!] */
+   0xF611F4BAC584135CULL, /* Zelda no Densetsu - Toki no Ocarina GC (J) (GC) [!] */
+   0xF43B45BA2F0E9B6FULL  /* Zelda no Densetsu - Toki no Ocarina GC URA (J) (GC) [!] */
+};
+
 /* (Delay SI) */
 static const uint64_t lut_delaysi[][2] = {
    { 0x514B6900B4B19881ULL, 0 }, /* Banjo to Kazooie no Daibouken 2 (J) [!] */

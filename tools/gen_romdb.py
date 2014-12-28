@@ -26,6 +26,7 @@ gConf.readfp(open(sys.argv[1]))
 gNameRe = re.compile(r'([^(]+)', re.IGNORECASE)
 
 gEeprom16k  = list()
+gFlashRAM   = list()
 gEeprom4k   = list()
 gCountPerOp = list()
 
@@ -58,6 +59,9 @@ for _, games in gGames.items():
 
         if game.get('savetype', '').lower() == 'eeprom 4kb':
             gEeprom4k.append(game)
+
+        if game.get('savetype', '').lower() == 'flash ram':
+            gFlashRAM.append(game)
 
         if 'countperop' in game:
             gCountPerOp.append(game)
@@ -97,6 +101,22 @@ for game in gEeprom4k:
 
 romdb.write("};\n")
 
+romdb.write("/* Games that use Flash RAM */\n")
+romdb.write("static const uint64_t lut_flashram[] = {\n")
+
+i = 0
+for game in gFlashRAM:
+    comma = ','
+
+    if i == len(gFlashRAM) - 1:
+        comma = ' '
+
+    romdb.write('   0x' + game['crc'] + 'ULL' + comma + ' /* ' + game['goodname'] + " */\n")
+
+    i = i + 1
+
+romdb.write("};\n")
+
 i = 0
 
 romdb.write("/* Cycles per emulated instruction (aka CountPerOp) */\n")
@@ -108,6 +128,9 @@ for game in gCountPerOp:
         comma = ' '
 
     if i == len(gEeprom4k) - 1:
+        comma = ' '
+
+    if i == len(gFlashRAM) - 1:
         comma = ' '
 
     romdb.write('   { 0x' + game['crc'] + 'ULL, ' + game['countperop'] + ' }' + comma + ' /* ' + game['goodname'] + " */\n")
