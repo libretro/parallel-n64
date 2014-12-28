@@ -218,8 +218,6 @@ static void setup_variables(void)
          "GFX Plugin; auto|glide64|gln64|rice|angrylion" },
       { "mupen64-rspplugin",
          "RSP Plugin; auto|hle|cxd4" },
-      { "mupen64-cxd4-rsp-al-to-audio",
-         "(Cxd4 RSP) Audio List to Audio; enabled|disabled" },
       { "mupen64-screensize",
          "Resolution (restart); 640x480|320x200|320x240|400x256|512x384|640x200|640x350|640x400|800x600|960x720|856x480|512x256|1024x768|1280x1024|1600x1200|400x300|1152x864|1280x960|1600x1024|1920x1440|2048x1536|2048x2048" },
       { "mupen64-filtering",
@@ -520,20 +518,7 @@ void update_variables(bool startup)
       overlay = 1;
 
    CFG_HLE_GFX = (gfx_plugin != GFX_ANGRYLION) ? 1 : 0;
-
-   var.key = "mupen64-cxd4-rsp-al-to-audio";
-   var.value = NULL;
-
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-   {
-      if (!strcmp(var.value, "enabled"))
-         CFG_HLE_AUD = 1;
-      else if (!strcmp(var.value, "disabled"))
-         CFG_HLE_AUD = 0;
-   }
-   else
-      CFG_HLE_AUD = 1;
-
+   CFG_HLE_AUD = 0; /* There is no HLE audio code in libretro audio plugin. */
 
    var.key = "mupen64-filtering";
    var.value = NULL;
