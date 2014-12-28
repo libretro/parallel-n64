@@ -521,18 +521,7 @@ void update_variables(bool startup)
    else
       overlay = 1;
 
-   var.key = "mupen64-cxd4-rsp-dl-to-video";
-   var.value = NULL;
-
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-   {
-      if (!strcmp(var.value, "enabled"))
-         CFG_HLE_GFX = 1;
-      else if (!strcmp(var.value, "disabled"))
-         CFG_HLE_GFX = 0;
-   }
-   else
-      CFG_HLE_GFX = 1;
+   CFG_HLE_GFX = (gfx_plugin != GFX_ANGRYLION) ? 1 : 0;
 
    var.key = "mupen64-cxd4-rsp-al-to-audio";
    var.value = NULL;
