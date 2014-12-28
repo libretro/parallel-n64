@@ -51,6 +51,7 @@ static const uint64_t lut_delaysi[][2] = {
    { 0xC2E9AA9A475D70AAULL, 0 }, 
    { 0xC9176D39EA4779D1ULL, 0 },
    { 0x155B7CDFF0DA7325ULL, 0 },
+   { 0x9F8B96C3A01194DCULL, 0 }, /* Yakouchuu II - Satsujin Kouro (J) */
 };
 
 /* Cycles per emulated instruction (aka CountPerOp) */
@@ -219,4 +220,5 @@ static const uint64_t lut_cpop[][2] = {
    { 0xDCB6EAFAC6BBCFA3ULL, 3 }, /* Wetrix (J) [!] */
    { 0x54310E7D6B5430D8ULL, 1 }, /* Wipeout 64 (E) [!] */
    { 0x132D2732C70E9118ULL, 1 }, /* Wipeout 64 (U) [!] */
+   { 0x9F8B96C3A01194DCULL, 1 }, /* Yakouchuu II - Satsujin Kouro (J) */
 };
