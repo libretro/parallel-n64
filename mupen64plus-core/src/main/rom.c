@@ -188,6 +188,19 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
         }
     }
 
+    for (i = 0; i < sizeof(lut_ee4k)/sizeof(lut_ee4k[0]); ++i)
+    {
+        if (lut_ee4k[i] == lut_id)
+        {
+            strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
+            ROM_SETTINGS.savetype = EEPROM_4KB;
+            DebugMessage(M64MSG_INFO, "%s INI patches applied.", ROM_PARAMS.headername);
+
+            patch_applied = 1;
+            break;
+        }
+    }
+
     if (!patch_applied)
     {
        /* Look up this ROM in the .ini file and fill in goodname, etc */
