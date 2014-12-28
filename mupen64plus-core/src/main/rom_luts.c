@@ -48,9 +48,10 @@ static const uint64_t lut_ee16k[] = {
 
 /* (Delay SI) */
 static const uint64_t lut_delaysi[][2] = {
-   { 0xC2E9AA9A475D70AAULL, 0 }, 
-   { 0xC9176D39EA4779D1ULL, 0 },
-   { 0x155B7CDFF0DA7325ULL, 0 },
+   { 0x514B6900B4B19881ULL, 0 }, /* Banjo to Kazooie no Daibouken 2 (J) [!] */
+   { 0xC2E9AA9A475D70AAULL, 0 }, /* Banjo-Tooie (U) [!] */
+   { 0xC9176D39EA4779D1ULL, 0 }, /* Banjo-Tooie (E) (M4) [!] */
+   { 0x155B7CDFF0DA7325ULL, 0 }, /* Banjo-Tooie (A) [!] */
    { 0x9F8B96C3A01194DCULL, 0 }, /* Yakouchuu II - Satsujin Kouro (J) */
 };
 
