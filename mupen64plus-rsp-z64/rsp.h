@@ -98,10 +98,10 @@ typedef struct
     UINT32 step_count;
 
     int inval_gen;
-    RSP_INFO ext;
 } RSP_REGS;
 
-#define z64_rspinfo (rsp.ext)
+extern RSP_INFO rsp_info;
+#define z64_rspinfo (rsp_info)
 
 int rsp_execute(int cycles);
 void rsp_reset(void);

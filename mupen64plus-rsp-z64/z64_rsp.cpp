@@ -313,7 +313,6 @@ void rsp_init(RSP_INFO info)
 #endif
 
     memset(&rsp, 0, sizeof(rsp));
-    rsp.ext = info;
 
     sp_pc = 0; //0x4001000;
     rsp.nextpc = ~0U;
