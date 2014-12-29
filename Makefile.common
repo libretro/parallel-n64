@@ -1,5 +1,6 @@
-RSPDIR             = $(ROOT_DIR)/mupen64plus-rsp-hle
-CXD4DIR            = $(ROOT_DIR)/mupen64plus-rsp-cxd4
+HLE_RSP_DIR        = $(ROOT_DIR)/mupen64plus-rsp-hle
+CXD4_RSP_DIR       = $(ROOT_DIR)/mupen64plus-rsp-cxd4
+Z64_RSP_DIR        = $(ROOT_DIR)/mupen64plus-rsp-z64
 AUDIO_LIBRETRO_DIR = $(ROOT_DIR)/mupen64plus-audio-libretro
 INPUT_LIBRETRO_DIR = $(ROOT_DIR)/mupen64plus-input-libretro
 CORE_DIR           = $(ROOT_DIR)/mupen64plus-core
@@ -27,20 +28,20 @@ INCFLAGS += \
 # libco
 SOURCES_C += $(LIBRETRO_DIR)/libco/libco.c
 
-SOURCES_C += $(RSPDIR)/src/alist.c \
-    $(RSPDIR)/src/alist_audio.c \
-    $(RSPDIR)/src/alist_naudio.c \
-    $(RSPDIR)/src/alist_nead.c \
-    $(RSPDIR)/src/audio.c \
-    $(RSPDIR)/src/cicx105.c \
-    $(RSPDIR)/src/hle.c \
-    $(RSPDIR)/src/jpeg.c \
-    $(RSPDIR)/src/hle_memory.c \
-    $(RSPDIR)/src/mp3.c \
-    $(RSPDIR)/src/musyx.c \
-    $(RSPDIR)/src/hle_plugin.c
+SOURCES_C += $(HLE_RSP_DIR)/src/alist.c \
+    $(HLE_RSP_DIR)/src/alist_audio.c \
+    $(HLE_RSP_DIR)/src/alist_naudio.c \
+    $(HLE_RSP_DIR)/src/alist_nead.c \
+    $(HLE_RSP_DIR)/src/audio.c \
+    $(HLE_RSP_DIR)/src/cicx105.c \
+    $(HLE_RSP_DIR)/src/hle.c \
+    $(HLE_RSP_DIR)/src/jpeg.c \
+    $(HLE_RSP_DIR)/src/hle_memory.c \
+    $(HLE_RSP_DIR)/src/mp3.c \
+    $(HLE_RSP_DIR)/src/musyx.c \
+    $(HLE_RSP_DIR)/src/hle_plugin.c
 
-SOURCES_C += $(CXD4DIR)/rsp.c
+SOURCES_C += $(CXD4_RSP_DIR)/rsp.c
 
 # Core
 SOURCES_C += \
@@ -259,6 +260,14 @@ SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video_main.c \
 						  $(VIDEODIR_ANGRYLION)/n64video_vi.c \
 						  $(VIDEODIR_ANGRYLION)/n64video_rdp.c \
 						  $(VIDEODIR_ANGRYLION)/n64video.c
+
+#Z64 RSP
+SOURCES_CXX += $(Z64_RSP_DIR)/z64_main_rsp.cpp \
+					$(Z64_RSP_DIR)/z64_rsp.cpp \
+					$(Z64_RSP_DIR)/z64_rsp_dasm.cpp \
+					$(Z64_RSP_DIR)/z64_rsp_opinfo.cpp \
+					$(Z64_RSP_DIR)/z64_rsp_recomp.cpp
+#SOURCES_CXX += $(Z64_RSP_DIR)/z64_rsp_gen.cpp
 
 ifeq ($(GLES), 1)
 	GLFLAGS += -DGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT -DUSE_GLES

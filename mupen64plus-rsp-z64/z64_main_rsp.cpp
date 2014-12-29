@@ -90,7 +90,7 @@ extern "C" {
 #endif
 
     /* DLL-exported functions */
-    EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
+    EXPORT m64p_error CALL z64rspPluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
         void (*DebugCallback)(void *, int, const char *))
     {
 
@@ -107,7 +107,7 @@ extern "C" {
         return M64ERR_SUCCESS;
     }
 
-    EXPORT m64p_error CALL PluginShutdown(void)
+    EXPORT m64p_error CALL z64rspPluginShutdown(void)
     {
         if (!l_PluginInit)
             return M64ERR_NOT_INIT;
@@ -120,7 +120,7 @@ extern "C" {
         return M64ERR_SUCCESS;
     }
 
-    EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+    EXPORT m64p_error CALL z64rspPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
     {
         /* set version info */
         if (PluginType != NULL)
@@ -143,7 +143,7 @@ extern "C" {
         return M64ERR_SUCCESS;
     }
 
-    EXPORT unsigned int CALL DoRspCycles(unsigned int Cycles)
+    EXPORT unsigned int CALL z64rspDoRspCycles(unsigned int Cycles)
     {
         //#define VIDEO_HLE_ALLOWED
         //#define AUDIO_HLE_ALLOWED
@@ -206,7 +206,7 @@ extern "C" {
         //return Cycles;
     }
 
-    EXPORT void CALL InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
+    EXPORT void CALL z64rspInitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
     {
         log(M64MSG_STATUS, "INITIATE RSP");
         rsp_init(Rsp_Info);
@@ -214,7 +214,7 @@ extern "C" {
         //*CycleCount = 0; //Causes segfault, doesn't seem to be used anyway
     }
 
-    EXPORT void CALL RomClosed(void)
+    EXPORT void CALL z64rspRomClosed(void)
     {
         extern int rsp_gen_cache_hit;
         extern int rsp_gen_cache_miss;
