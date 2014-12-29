@@ -46,6 +46,12 @@
 #include "main/util.h"
 
 int32_t delay_si = 0;
+int32_t enable_expmem = 1;
+
+void dma_enable_expmem(int enable)
+{
+   enable_expmem = enable;
+}
 
 void dma_pi_read(void)
 {
@@ -198,29 +204,17 @@ void dma_pi_write(void)
          case 2:
          case 3:
          case 6:
-            {
-               if (ConfigGetParamInt(g_CoreConfig, "DisableExtraMem"))
-               {
-                  rdram[0x318/4] = 0x400000;
-               }
-               else
-               {
-                  rdram[0x318/4] = 0x800000;
-               }
-               break;
-            }
+            if (enable_expmem)
+               rdram[0x318/4] = 0x800000;
+            else
+               rdram[0x318/4] = 0x400000;
+            break;
          case 5:
-            {
-               if (ConfigGetParamInt(g_CoreConfig, "DisableExtraMem"))
-               {
-                  rdram[0x3F0/4] = 0x400000;
-               }
-               else
-               {
-                  rdram[0x3F0/4] = 0x800000;
-               }
-               break;
-            }
+            if (enable_expmem)
+               rdram[0x3F0/4] = 0x800000;
+            else
+               rdram[0x3F0/4] = 0x400000;
+            break;
       }
    }
 

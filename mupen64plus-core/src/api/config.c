@@ -1258,7 +1258,6 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
     }   libretro_translate[] =
     {
         { "R4300Emulator", "mupen64-cpucore", { { 0, "pure_interpreter" }, { 1, "cached_interpreter" }, { 2, "dynamic_recompiler" }, { 3, "neb_dynamic_recompiler" }, { 0, 0 } } },
-        { "DisableExtraMem", "mupen64-disableexpmem", { { 0, "no" }, { 1, "yes" }, { 0, 0 } } },
         { "ScreenWidth", "mupen64-screensize", { 
                                                   { 320, "320x200" },
                                                   { 320, "320x240" },

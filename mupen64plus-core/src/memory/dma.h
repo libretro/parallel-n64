@@ -28,6 +28,7 @@ void dma_si_write(void);
 void dma_si_read(void);
 void dma_sp_write(void);
 void dma_sp_read(void);
+void dma_enable_expmem(int enable);
 
 #endif
 

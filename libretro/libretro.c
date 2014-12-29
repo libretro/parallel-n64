@@ -11,6 +11,7 @@
 #include "plugin/plugin.h"
 #include "api/m64p_types.h"
 #include "r4300/r4300.h"
+#include "memory/dma.h"
 #include "memory/memory.h"
 #include "main/main.h"
 #include "main/version.h"
@@ -501,6 +502,21 @@ void update_variables(bool startup)
       else
          gfx_plugin = GFX_GLIDE64;
    }
+
+   var.key = "mupen64-disableexpmem";
+   var.value = NULL;
+
+   if (var.value)
+   {
+      if(!strcmp(var.value, "enabled"))
+         dma_enable_expmem(1);
+      if(!strcmp(var.value, "disabled"))
+         dma_enable_expmem(0);
+   }
+   else
+      dma_enable_expmem(1);
+   
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
    var.key = "mupen64-angrylion-vioverlay";
    var.value = NULL;
