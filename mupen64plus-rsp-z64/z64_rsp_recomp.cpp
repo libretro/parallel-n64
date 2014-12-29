@@ -329,7 +329,7 @@ void rsp_invalidate(int begin, int len)
         begin += 4;
         len -= 4;
     }
-    rsp_regs.inval_gen = 1;
+    rsp.inval_gen = 1;
 }
 
 inline void rsp_execute_one(RSP_REGS & rsp, const UINT32 op)
@@ -547,7 +547,7 @@ int rsp_jump(int pc)
 {
     pc &= 0xfff;
     sp_pc = pc;
-    rsp_regs.nextpc = ~0;
+    rsp.nextpc = ~0;
     opinfo_t * opi = &OPI(pc);
     gen_t * gen = opi->curgen;
     rsp_gen_cache_hit++;
@@ -558,13 +558,13 @@ int rsp_jump(int pc)
     gen = opi->curgen;
     //fprintf(stderr, "rsp_jump %x (%s)\n", pc, gen->name);
 
-    int res = run(rsp_regs, gen);
+    int res = run(rsp, gen);
 
-    //fprintf(stderr, "r31 %x from %x nextpc %x pc %x res %d (%s)\n", rsp_regs.r[31], pc, rsp_regs.nextpc, sp_pc, res, gen->name);
-    if (rsp_regs.nextpc != ~0U)
+    //fprintf(stderr, "r31 %x from %x nextpc %x pc %x res %d (%s)\n", rsp.r[31], pc, rsp.nextpc, sp_pc, res, gen->name);
+    if (rsp.nextpc != ~0U)
     {
-        sp_pc = (rsp_regs.nextpc & 0xfff);
-        rsp_regs.nextpc = ~0U;
+        sp_pc = (rsp.nextpc & 0xfff);
+        rsp.nextpc = ~0U;
     }
     else
     {

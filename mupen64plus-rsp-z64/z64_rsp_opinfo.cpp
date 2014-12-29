@@ -303,7 +303,7 @@ void rsp_get_opinfo(UINT32 op, rsp_opinfo_t * info)
 
             element = 8 - (index >> 1);
             if (index & 0x1)
-                log(M64MSG_ERROR, "RSP: STV: index = %d at %08X\n", index, rsp_regs.ppc);
+                log(M64MSG_ERROR, "RSP: STV: index = %d at %08X\n", index, rsp.ppc);
 
             for (i=vs; i < ve; i++)
             {
