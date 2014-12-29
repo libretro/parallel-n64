@@ -254,9 +254,7 @@ static m64p_error plugin_start_input(void)
 
 DEFINE_RSP(hle);
 DEFINE_RSP(cxd4);
-#ifdef HAVE_Z64
 DEFINE_RSP(z64rsp);
-#endif
 
 rsp_plugin_functions rsp;
 RSP_INFO rsp_info;
@@ -313,11 +311,9 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
       case RSP_CXD4:
          rsp = rsp_cxd4;
          break;
-#ifdef HAVE_Z64
       case RSP_Z64:
          rsp = rsp_z64rsp;
          break;
-#endif
       default:       
          rsp = rsp_hle;
          break;
