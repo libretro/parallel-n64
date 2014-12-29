@@ -101,7 +101,7 @@ typedef struct
     RSP_INFO ext;
 } RSP_REGS;
 
-#define z64_rspinfo (rsp.ext)
+#define z64_rspinfo (rsp_regs.ext)
 
 int rsp_execute(int cycles);
 void rsp_reset(void);
@@ -118,18 +118,18 @@ extern void sp_write_reg(UINT32 reg, UINT32 data);
 #define RDREG           ((op >> 11) & 0x1f)
 #define SHIFT           ((op >> 6) & 0x1f)
 
-#define RSVAL           (rsp.r[RSREG])
-#define RTVAL           (rsp.r[RTREG])
-#define RDVAL           (rsp.r[RDREG])
+#define RSVAL           (rsp_regs.r[RSREG])
+#define RTVAL           (rsp_regs.r[RTREG])
+#define RDVAL           (rsp_regs.r[RDREG])
 
 #define _RSREG(op)      ((op >> 21) & 0x1f)
 #define _RTREG(op)      ((op >> 16) & 0x1f)
 #define _RDREG(op)      ((op >> 11) & 0x1f)
 #define _SHIFT(op)      ((op >> 6) & 0x1f)
 
-#define _RSVAL(op)      (rsp.r[_RSREG(op)])
-#define _RTVAL(op)      (rsp.r[_RTREG(op)])
-#define _RDVAL(op)      (rsp.r[_RDREG(op)])
+#define _RSVAL(op)      (rsp_regs.r[_RSREG(op)])
+#define _RTVAL(op)      (rsp_regs.r[_RTREG(op)])
+#define _RDVAL(op)      (rsp_regs.r[_RDREG(op)])
 
 #define SIMM16          ((INT32)(INT16)(op))
 #define UIMM16          ((UINT16)(op))
@@ -141,27 +141,27 @@ extern void sp_write_reg(UINT32 reg, UINT32 data);
 
 
 /*#define _JUMP(pc) \
-if ((GENTRACE("_JUMP %x\n", rsp.nextpc), 1) && rsp_jump(rsp.nextpc)) return 1; \
-if (rsp.inval_gen || sp_pc != pc+8) return 0;
+if ((GENTRACE("_JUMP %x\n", rsp_regs.nextpc), 1) && rsp_jump(rsp_regs.nextpc)) return 1; \
+if (rsp_regs.inval_gen || sp_pc != pc+8) return 0;
 */
 
-#define CARRY_FLAG(x)                   ((rsp.flag[0] & (1 << ((x)))) ? 1 : 0)
-#define CLEAR_CARRY_FLAGS()             { rsp.flag[0] &= ~0xff; }
-#define SET_CARRY_FLAG(x)               { rsp.flag[0] |= (1 << ((x))); }
-#define CLEAR_CARRY_FLAG(x)             { rsp.flag[0] &= ~(1 << ((x))); }
+#define CARRY_FLAG(x)                   ((rsp_regs.flag[0] & (1 << ((x)))) ? 1 : 0)
+#define CLEAR_CARRY_FLAGS()             { rsp_regs.flag[0] &= ~0xff; }
+#define SET_CARRY_FLAG(x)               { rsp_regs.flag[0] |= (1 << ((x))); }
+#define CLEAR_CARRY_FLAG(x)             { rsp_regs.flag[0] &= ~(1 << ((x))); }
 
-#define COMPARE_FLAG(x)                 ((rsp.flag[1] & (1 << ((x)))) ? 1 : 0)
-#define CLEAR_COMPARE_FLAGS()           { rsp.flag[1] &= ~0xff; }
-#define SET_COMPARE_FLAG(x)             { rsp.flag[1] |= (1 << ((x))); }
-#define CLEAR_COMPARE_FLAG(x)           { rsp.flag[1] &= ~(1 << ((x))); }
+#define COMPARE_FLAG(x)                 ((rsp_regs.flag[1] & (1 << ((x)))) ? 1 : 0)
+#define CLEAR_COMPARE_FLAGS()           { rsp_regs.flag[1] &= ~0xff; }
+#define SET_COMPARE_FLAG(x)             { rsp_regs.flag[1] |= (1 << ((x))); }
+#define CLEAR_COMPARE_FLAG(x)           { rsp_regs.flag[1] &= ~(1 << ((x))); }
 
-#define ZERO_FLAG(x)                    ((rsp.flag[0] & (1 << (8+(x)))) ? 1 : 0)
-#define CLEAR_ZERO_FLAGS()              { rsp.flag[0] &= ~0xff00; }
-#define SET_ZERO_FLAG(x)                { rsp.flag[0] |= (1 << (8+(x))); }
-#define CLEAR_ZERO_FLAG(x)              { rsp.flag[0] &= ~(1 << (8+(x))); }
+#define ZERO_FLAG(x)                    ((rsp_regs.flag[0] & (1 << (8+(x)))) ? 1 : 0)
+#define CLEAR_ZERO_FLAGS()              { rsp_regs.flag[0] &= ~0xff00; }
+#define SET_ZERO_FLAG(x)                { rsp_regs.flag[0] |= (1 << (8+(x))); }
+#define CLEAR_ZERO_FLAG(x)              { rsp_regs.flag[0] &= ~(1 << (8+(x))); }
 
 //#define rsp z64_rsp // to avoid namespace collision with other libs
-extern RSP_REGS rsp __attribute__((aligned(16)));
+extern RSP_REGS rsp_regs __attribute__((aligned(16)));
 
 
 //#define ROPCODE(pc)           cpu_readop32(pc)
@@ -209,7 +209,7 @@ INLINE UINT16 READ16(UINT32 address)
 
     if (address & 1)
     {
-        //osd_die("RSP: READ16: unaligned %08X at %08X\n", address, rsp.ppc);
+        //osd_die("RSP: READ16: unaligned %08X at %08X\n", address, rsp_regs.ppc);
         return ((program_read_byte_32be(address+0) & 0xff) << 8) | (program_read_byte_32be(address+1) & 0xff);
     }
 
@@ -222,7 +222,7 @@ INLINE UINT32 READ32(UINT32 address)
 
     if (address & 3)
     {
-        //fatalerror("RSP: READ32: unaligned %08X at %08X\n", address, rsp.ppc);
+        //fatalerror("RSP: READ32: unaligned %08X at %08X\n", address, rsp_regs.ppc);
         return ((program_read_byte_32be(address + 0) & 0xff) << 24) |
             ((program_read_byte_32be(address + 1) & 0xff) << 16) |
             ((program_read_byte_32be(address + 2) & 0xff) << 8) |
@@ -245,7 +245,7 @@ INLINE void WRITE16(UINT32 address, UINT16 data)
 
     if (address & 1)
     {
-        //fatalerror("RSP: WRITE16: unaligned %08X, %04X at %08X\n", address, data, rsp.ppc);
+        //fatalerror("RSP: WRITE16: unaligned %08X, %04X at %08X\n", address, data, rsp_regs.ppc);
         program_write_byte_32be(address + 0, (data >> 8) & 0xff);
         program_write_byte_32be(address + 1, (data >> 0) & 0xff);
         return;
@@ -260,7 +260,7 @@ INLINE void WRITE32(UINT32 address, UINT32 data)
 
     if (address & 3)
     {
-        //fatalerror("RSP: WRITE32: unaligned %08X, %08X at %08X\n", address, data, rsp.ppc);
+        //fatalerror("RSP: WRITE32: unaligned %08X, %08X at %08X\n", address, data, rsp_regs.ppc);
         program_write_byte_32be(address + 0, (data >> 24) & 0xff);
         program_write_byte_32be(address + 1, (data >> 16) & 0xff);
         program_write_byte_32be(address + 2, (data >> 8) & 0xff);
@@ -277,30 +277,30 @@ void rsp_execute_one(UINT32 op);
 
 
 
-#define JUMP_ABS(addr)                  { rsp.nextpc = 0x04001000 | (((addr) << 2) & 0xfff); }
-#define JUMP_ABS_L(addr,l)              { rsp.nextpc = 0x04001000 | (((addr) << 2) & 0xfff); rsp.r[l] = sp_pc + 4; }
-#define JUMP_REL(offset)                { rsp.nextpc = 0x04001000 | ((sp_pc + ((offset) << 2)) & 0xfff); }
-#define JUMP_REL_L(offset,l)            { rsp.nextpc = 0x04001000 | ((sp_pc + ((offset) << 2)) & 0xfff); rsp.r[l] = sp_pc + 4; }
-#define JUMP_PC(addr)                   { rsp.nextpc = 0x04001000 | ((addr) & 0xfff); }
-#define JUMP_PC_L(addr,l)               { rsp.nextpc = 0x04001000 | ((addr) & 0xfff); rsp.r[l] = sp_pc + 4; }
-#define LINK(l) rsp.r[l] = sp_pc + 4
+#define JUMP_ABS(addr)                  { rsp_regs.nextpc = 0x04001000 | (((addr) << 2) & 0xfff); }
+#define JUMP_ABS_L(addr,l)              { rsp_regs.nextpc = 0x04001000 | (((addr) << 2) & 0xfff); rsp_regs.r[l] = sp_pc + 4; }
+#define JUMP_REL(offset)                { rsp_regs.nextpc = 0x04001000 | ((sp_pc + ((offset) << 2)) & 0xfff); }
+#define JUMP_REL_L(offset,l)            { rsp_regs.nextpc = 0x04001000 | ((sp_pc + ((offset) << 2)) & 0xfff); rsp_regs.r[l] = sp_pc + 4; }
+#define JUMP_PC(addr)                   { rsp_regs.nextpc = 0x04001000 | ((addr) & 0xfff); }
+#define JUMP_PC_L(addr,l)               { rsp_regs.nextpc = 0x04001000 | ((addr) & 0xfff); rsp_regs.r[l] = sp_pc + 4; }
+#define LINK(l) rsp_regs.r[l] = sp_pc + 4
 
 #define VDREG                           ((op >> 6) & 0x1f)
 #define VS1REG                          ((op >> 11) & 0x1f)
 #define VS2REG                          ((op >> 16) & 0x1f)
 #define EL                              ((op >> 21) & 0xf)
 
-#define VREG_B(reg, offset)             rsp.v[(reg)].b[((offset)^1)]
-#define VREG_S(reg, offset)             rsp.v[(reg)].s[((offset))]
-#define VREG_L(reg, offset)             rsp.v[(reg)].l[((offset))]
+#define VREG_B(reg, offset)             rsp_regs.v[(reg)].b[((offset)^1)]
+#define VREG_S(reg, offset)             rsp_regs.v[(reg)].s[((offset))]
+#define VREG_L(reg, offset)             rsp_regs.v[(reg)].l[((offset))]
 
 #define VEC_EL_1(x,z)                   (z) //(vector_elements_1[(x)][(z)])
 #define VEC_EL_2(x,z)                   (vector_elements_2[(x)][(z)])
 
-#define ACCUM(x)                        rsp.accum[((x))].q
-#define ACCUM_H(x)                      rsp.accum[((x))].w[3]
-#define ACCUM_M(x)                      rsp.accum[((x))].w[2]
-#define ACCUM_L(x)                      rsp.accum[((x))].w[1]
+#define ACCUM(x)                        rsp_regs.accum[((x))].q
+#define ACCUM_H(x)                      rsp_regs.accum[((x))].w[3]
+#define ACCUM_M(x)                      rsp_regs.accum[((x))].w[2]
+#define ACCUM_L(x)                      rsp_regs.accum[((x))].w[1]
 
 void unimplemented_opcode(UINT32 op);
 void handle_vector_ops(UINT32 op);
@@ -418,23 +418,23 @@ inline void GENTRACE(const char * s, ...) {
     va_end(ap);
     int i;
     for (i=0; i<32; i++)
-        fprintf(stderr, "r%d=%x ", i, rsp.r[i]);
+        fprintf(stderr, "r%d=%x ", i, rsp_regs.r[i]);
     fprintf(stderr, "\n");
     for (i=0; i<32; i++)
         fprintf(stderr, "v%d=%x %x %x %x %x %x %x %x ", i,
-        (UINT16)rsp.v[i].s[0],
-        (UINT16)rsp.v[i].s[1],
-        (UINT16)rsp.v[i].s[2],
-        (UINT16)rsp.v[i].s[3],
-        (UINT16)rsp.v[i].s[4],
-        (UINT16)rsp.v[i].s[5],
-        (UINT16)rsp.v[i].s[6],
-        (UINT16)rsp.v[i].s[7]
+        (UINT16)rsp_regs.v[i].s[0],
+        (UINT16)rsp_regs.v[i].s[1],
+        (UINT16)rsp_regs.v[i].s[2],
+        (UINT16)rsp_regs.v[i].s[3],
+        (UINT16)rsp_regs.v[i].s[4],
+        (UINT16)rsp_regs.v[i].s[5],
+        (UINT16)rsp_regs.v[i].s[6],
+        (UINT16)rsp_regs.v[i].s[7]
     );
     fprintf(stderr, "\n");
 
-    fprintf(stderr, "f0=%x f1=%x f2=%x f3=%x\n", rsp.flag[0],
-        rsp.flag[1],rsp.flag[2],rsp.flag[3]);
+    fprintf(stderr, "f0=%x f1=%x f2=%x f3=%x\n", rsp_regs.flag[0],
+        rsp_regs.flag[1],rsp_regs.flag[2],rsp_regs.flag[3]);
 }
 #endif
 //#define GENTRACE printf

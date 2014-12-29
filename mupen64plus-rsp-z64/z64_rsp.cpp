@@ -118,13 +118,13 @@ int rspcounts[512];
 #endif
 
 
-#define JUMP_ABS(addr)                  { rsp.nextpc = 0x04001000 | (((addr) << 2) & 0xfff); }
-#define JUMP_ABS_L(addr,l)              { rsp.nextpc = 0x04001000 | (((addr) << 2) & 0xfff); rsp.r[l] = sp_pc + 4; }
-#define JUMP_REL(offset)                { rsp.nextpc = 0x04001000 | ((sp_pc + ((offset) << 2)) & 0xfff); }
-#define JUMP_REL_L(offset,l)            { rsp.nextpc = 0x04001000 | ((sp_pc + ((offset) << 2)) & 0xfff); rsp.r[l] = sp_pc + 4; }
-#define JUMP_PC(addr)                   { rsp.nextpc = 0x04001000 | ((addr) & 0xfff); }
-#define JUMP_PC_L(addr,l)               { rsp.nextpc = 0x04001000 | ((addr) & 0xfff); rsp.r[l] = sp_pc + 4; }
-#define LINK(l) rsp.r[l] = sp_pc + 4
+#define JUMP_ABS(addr)                  { rsp_regs.nextpc = 0x04001000 | (((addr) << 2) & 0xfff); }
+#define JUMP_ABS_L(addr,l)              { rsp_regs.nextpc = 0x04001000 | (((addr) << 2) & 0xfff); rsp_regs.r[l] = sp_pc + 4; }
+#define JUMP_REL(offset)                { rsp_regs.nextpc = 0x04001000 | ((sp_pc + ((offset) << 2)) & 0xfff); }
+#define JUMP_REL_L(offset,l)            { rsp_regs.nextpc = 0x04001000 | ((sp_pc + ((offset) << 2)) & 0xfff); rsp_regs.r[l] = sp_pc + 4; }
+#define JUMP_PC(addr)                   { rsp_regs.nextpc = 0x04001000 | ((addr) & 0xfff); }
+#define JUMP_PC_L(addr,l)               { rsp_regs.nextpc = 0x04001000 | ((addr) & 0xfff); rsp_regs.r[l] = sp_pc + 4; }
+#define LINK(l) rsp_regs.r[l] = sp_pc + 4
 
 
 #define VDREG           ((op >> 6) & 0x1f)
@@ -140,19 +140,19 @@ int rspcounts[512];
 #define M_VREG_S(offset)            ((UINT64)0x0000FFFFul << S_VREG_S(offset))
 #define M_VREG_L(offset)            ((UINT64)0x00000000FFFFFFFFull << S_VREG_L(offset))
 
-#define R_VREG_B(reg, offset)       ((rsp.v[(reg)].d[(15 - (offset)) >> 3] >> S_VREG_B(offset)) & 0x00FF)
-#define R_VREG_S(reg, offset)       (INT16)((rsp.v[(reg)].d[(7 - (offset)) >> 2] >> S_VREG_S(offset)) & 0x0000FFFFul)
-#define R_VREG_L(reg, offset)       ((rsp.v[(reg)].d[(3 - (offset)) >> 1] >> S_VREG_L(offset)) & 0x00000000FFFFFFFFull)
+#define R_VREG_B(reg, offset)       ((rsp_regs.v[(reg)].d[(15 - (offset)) >> 3] >> S_VREG_B(offset)) & 0x00FF)
+#define R_VREG_S(reg, offset)       (INT16)((rsp_regs.v[(reg)].d[(7 - (offset)) >> 2] >> S_VREG_S(offset)) & 0x0000FFFFul)
+#define R_VREG_L(reg, offset)       ((rsp_regs.v[(reg)].d[(3 - (offset)) >> 1] >> S_VREG_L(offset)) & 0x00000000FFFFFFFFull)
 
-#define W_VREG_B(reg, offset, val)  (rsp.v[(reg)].d[(15 - (offset)) >> 3] = (rsp.v[(reg)].d[(15 - (offset)) >> 3] & ~M_VREG_B(offset)) | (M_VREG_B(offset) & ((UINT64)(val) << S_VREG_B(offset))))
-#define W_VREG_S(reg, offset, val)  (rsp.v[(reg)].d[(7 - (offset)) >> 2] = (rsp.v[(reg)].d[(7 - (offset)) >> 2] & ~M_VREG_S(offset)) | (M_VREG_S(offset) & ((UINT64)(val) << S_VREG_S(offset))))
-#define W_VREG_L(reg, offset, val)  (rsp.v[(reg)].d[(3 - (offset)) >> 1] = (rsp.v[(reg)].d[(3 - (offset)) >> 1] & ~M_VREG_L(offset)) | (M_VREG_L(offset) & ((UINT64)(val) << S_VREG_L(offset))))
+#define W_VREG_B(reg, offset, val)  (rsp_regs.v[(reg)].d[(15 - (offset)) >> 3] = (rsp_regs.v[(reg)].d[(15 - (offset)) >> 3] & ~M_VREG_B(offset)) | (M_VREG_B(offset) & ((UINT64)(val) << S_VREG_B(offset))))
+#define W_VREG_S(reg, offset, val)  (rsp_regs.v[(reg)].d[(7 - (offset)) >> 2] = (rsp_regs.v[(reg)].d[(7 - (offset)) >> 2] & ~M_VREG_S(offset)) | (M_VREG_S(offset) & ((UINT64)(val) << S_VREG_S(offset))))
+#define W_VREG_L(reg, offset, val)  (rsp_regs.v[(reg)].d[(3 - (offset)) >> 1] = (rsp_regs.v[(reg)].d[(3 - (offset)) >> 1] & ~M_VREG_L(offset)) | (M_VREG_L(offset) & ((UINT64)(val) << S_VREG_L(offset))))
 
 
 #define VEC_EL_1(x,z)           (z)
 #define VEC_EL_2(x,z)           (vector_elements_2[(x)][(z)])
 
-#define ACCUM(x)                rsp.accum[((x))].q
+#define ACCUM(x)                rsp_regs.accum[((x))].q
 
 #define S_ACCUM_H               (3 << 4)
 #define S_ACCUM_M               (2 << 4)
@@ -172,7 +172,7 @@ int rspcounts[512];
 
 
 
-RSP_REGS rsp;
+RSP_REGS rsp_regs;
 static int rsp_icount;
 // RSP Interface
 
@@ -227,8 +227,8 @@ void unimplemented_opcode(UINT32 op)
     got_unimp = 1;
 #ifdef MAME_DEBUG
     char string[200];
-    rsp_dasm_one(string, rsp.ppc, op);
-    printf("%08X: %s\n", rsp.ppc, string);
+    rsp_dasm_one(string, rsp_regs.ppc, op);
+    printf("%08X: %s\n", rsp_regs.ppc, string);
 #endif
 
 #if SAVE_DISASM
@@ -261,7 +261,7 @@ void unimplemented_opcode(UINT32 op)
     }
 #endif
 
-    log(M64MSG_ERROR, "RSP: unknown opcode %02X (%d) (%08X) at %08X\n", op >> 26, op >> 26, op, rsp.ppc);
+    log(M64MSG_ERROR, "RSP: unknown opcode %02X (%d) (%08X) at %08X\n", op >> 26, op >> 26, op, rsp_regs.ppc);
 }
 
 /*****************************************************************************/
@@ -312,18 +312,18 @@ void rsp_init(RSP_INFO info)
     exec_output = fopen("rsp_execute.txt", "wt");
 #endif
 
-    memset(&rsp, 0, sizeof(rsp));
-    rsp.ext = info;
+    memset(&rsp_regs, 0, sizeof(rsp_regs));
+    rsp_regs.ext = info;
 
     sp_pc = 0; //0x4001000;
-    rsp.nextpc = ~0U;
+    rsp_regs.nextpc = ~0U;
     //rsp_invalidate(0, 0x1000);
-    rsp.step_count=0;
+    rsp_regs.step_count=0;
 }
 
 void rsp_reset(void)
 {
-    rsp.nextpc = ~0U;
+    rsp_regs.nextpc = ~0U;
 }
 
 void handle_lwc2(UINT32 op)
@@ -348,7 +348,7 @@ void handle_lwc2(UINT32 op)
             //
             // Load 1 byte to vector byte index
 
-            ea = (base) ? rsp.r[base] + offset : offset;
+            ea = (base) ? rsp_regs.r[base] + offset : offset;
             VREG_B(dest, index) = READ8(ea);
             break;
         }
@@ -361,7 +361,7 @@ void handle_lwc2(UINT32 op)
             //
             // Loads 2 bytes starting from vector byte index
 
-            ea = (base) ? rsp.r[base] + (offset * 2) : (offset * 2);
+            ea = (base) ? rsp_regs.r[base] + (offset * 2) : (offset * 2);
 
             end = index + 2;
 
@@ -382,7 +382,7 @@ void handle_lwc2(UINT32 op)
             //
             // Loads 4 bytes starting from vector byte index
 
-            ea = (base) ? rsp.r[base] + (offset * 4) : (offset * 4);
+            ea = (base) ? rsp_regs.r[base] + (offset * 4) : (offset * 4);
 
             end = index + 4;
 
@@ -403,7 +403,7 @@ void handle_lwc2(UINT32 op)
             //
             // Loads 8 bytes starting from vector byte index
 
-            ea = (base) ? rsp.r[base] + (offset * 8) : (offset * 8);
+            ea = (base) ? rsp_regs.r[base] + (offset * 8) : (offset * 8);
 
             end = index + 8;
 
@@ -424,7 +424,7 @@ void handle_lwc2(UINT32 op)
             //
             // Loads up to 16 bytes starting from vector byte index
 
-            ea = (base) ? rsp.r[base] + (offset * 16) : (offset * 16);
+            ea = (base) ? rsp_regs.r[base] + (offset * 16) : (offset * 16);
 
             end = index + (16 - (ea & 0xf));
             if (end > 16) end = 16;
@@ -444,7 +444,7 @@ void handle_lwc2(UINT32 op)
             //
             // Stores up to 16 bytes starting from right side until 16-byte boundary
 
-            ea = (base) ? rsp.r[base] + (offset * 16) : (offset * 16);
+            ea = (base) ? rsp_regs.r[base] + (offset * 16) : (offset * 16);
 
             index = 16 - ((ea & 0xf) - index);
             end = 16;
@@ -467,7 +467,7 @@ void handle_lwc2(UINT32 op)
             //
             // Loads a byte as the upper 8 bits of each element
 
-            ea = (base) ? rsp.r[base] + (offset * 8) : (offset * 8);
+            ea = (base) ? rsp_regs.r[base] + (offset * 8) : (offset * 8);
 
             for (i=0; i < 8; i++)
             {
@@ -484,7 +484,7 @@ void handle_lwc2(UINT32 op)
             //
             // Loads a byte as the bits 14-7 of each element
 
-            ea = (base) ? rsp.r[base] + (offset * 8) : (offset * 8);
+            ea = (base) ? rsp_regs.r[base] + (offset * 8) : (offset * 8);
 
             for (i=0; i < 8; i++)
             {
@@ -501,7 +501,7 @@ void handle_lwc2(UINT32 op)
             //
             // Loads a byte as the bits 14-7 of each element, with 2-byte stride
 
-            ea = (base) ? rsp.r[base] + (offset * 16) : (offset * 16);
+            ea = (base) ? rsp_regs.r[base] + (offset * 16) : (offset * 16);
 
             for (i=0; i < 8; i++)
             {
@@ -520,12 +520,12 @@ void handle_lwc2(UINT32 op)
 
             //                      fatalerror("RSP: LFV\n");
 
-            //if (index & 0x7)      fatalerror("RSP: LFV: index = %d at %08X\n", index, rsp.ppc);
+            //if (index & 0x7)      fatalerror("RSP: LFV: index = %d at %08X\n", index, rsp_regs.ppc);
 
-            ea = (base) ? rsp.r[base] + (offset * 16) : (offset * 16);
+            ea = (base) ? rsp_regs.r[base] + (offset * 16) : (offset * 16);
 
             // not sure what happens if 16-byte boundary is crossed...
-            //if ((ea & 0xf) > 0)   fatalerror("RSP: LFV: 16-byte boundary crossing at %08X, recheck this!\n", rsp.ppc);
+            //if ((ea & 0xf) > 0)   fatalerror("RSP: LFV: 16-byte boundary crossing at %08X, recheck this!\n", rsp_regs.ppc);
 
             end = (index >> 1) + 4;
 
@@ -546,10 +546,10 @@ void handle_lwc2(UINT32 op)
             // Loads the full 128-bit vector starting from vector byte index and wrapping to index 0
             // after byte index 15
 
-            ea = (base) ? rsp.r[base] + (offset * 16) : (offset * 16);
+            ea = (base) ? rsp_regs.r[base] + (offset * 16) : (offset * 16);
 
             // not sure what happens if 16-byte boundary is crossed...
-            //if ((ea & 0xf) > 0) fatalerror("RSP: LWV: 16-byte boundary crossing at %08X, recheck this!\n", rsp.ppc);
+            //if ((ea & 0xf) > 0) fatalerror("RSP: LWV: 16-byte boundary crossing at %08X, recheck this!\n", rsp_regs.ppc);
 
             end = (16 - index) + 16;
 
@@ -581,7 +581,7 @@ void handle_lwc2(UINT32 op)
 
             //if (index & 1)        fatalerror("RSP: LTV: index = %d\n", index);
 
-            ea = (base) ? rsp.r[base] + (offset * 16) : (offset * 16);
+            ea = (base) ? rsp_regs.r[base] + (offset * 16) : (offset * 16);
 
             ea = ((ea + 8) & ~0xf) + (index & 1);
             for (i=vs; i < ve; i++)
@@ -626,7 +626,7 @@ void handle_swc2(UINT32 op)
             //
             // Stores 1 byte from vector byte index
 
-            ea = (base) ? rsp.r[base] + offset : offset;
+            ea = (base) ? rsp_regs.r[base] + offset : offset;
             WRITE8(ea, VREG_B(dest, index));
             break;
         }
@@ -639,7 +639,7 @@ void handle_swc2(UINT32 op)
             //
             // Stores 2 bytes starting from vector byte index
 
-            ea = (base) ? rsp.r[base] + (offset * 2) : (offset * 2);
+            ea = (base) ? rsp_regs.r[base] + (offset * 2) : (offset * 2);
 
             end = index + 2;
 
@@ -659,7 +659,7 @@ void handle_swc2(UINT32 op)
             //
             // Stores 4 bytes starting from vector byte index
 
-            ea = (base) ? rsp.r[base] + (offset * 4) : (offset * 4);
+            ea = (base) ? rsp_regs.r[base] + (offset * 4) : (offset * 4);
 
             end = index + 4;
 
@@ -679,7 +679,7 @@ void handle_swc2(UINT32 op)
             //
             // Stores 8 bytes starting from vector byte index
 
-            ea = (base) ? rsp.r[base] + (offset * 8) : (offset * 8);
+            ea = (base) ? rsp_regs.r[base] + (offset * 8) : (offset * 8);
 
             end = index + 8;
 
@@ -699,7 +699,7 @@ void handle_swc2(UINT32 op)
             //
             // Stores up to 16 bytes starting from vector byte index until 16-byte boundary
 
-            ea = (base) ? rsp.r[base] + (offset * 16) : (offset * 16);
+            ea = (base) ? rsp_regs.r[base] + (offset * 16) : (offset * 16);
 
             end = index + (16 - (ea & 0xf));
             //       if (end != 16)
@@ -723,7 +723,7 @@ void handle_swc2(UINT32 op)
             // Stores up to 16 bytes starting from right side until 16-byte boundary
 
             int o;
-            ea = (base) ? rsp.r[base] + (offset * 16) : (offset * 16);
+            ea = (base) ? rsp_regs.r[base] + (offset * 16) : (offset * 16);
 
             end = index + (ea & 0xf);
             o = (16 - (ea & 0xf)) & 0xf;
@@ -748,7 +748,7 @@ void handle_swc2(UINT32 op)
             //
             // Stores upper 8 bits of each element
 
-            ea = (base) ? rsp.r[base] + (offset * 8) : (offset * 8);
+            ea = (base) ? rsp_regs.r[base] + (offset * 8) : (offset * 8);
             end = index + 8;
 
             for (i=index; i < end; i++)
@@ -774,7 +774,7 @@ void handle_swc2(UINT32 op)
             //
             // Stores bits 14-7 of each element
 
-            ea = (base) ? rsp.r[base] + (offset * 8) : (offset * 8);
+            ea = (base) ? rsp_regs.r[base] + (offset * 8) : (offset * 8);
             end = index + 8;
 
             for (i=index; i < end; i++)
@@ -800,7 +800,7 @@ void handle_swc2(UINT32 op)
             //
             // Stores bits 14-7 of each element, with 2-byte stride
 
-            ea = (base) ? rsp.r[base] + (offset * 16) : (offset * 16);
+            ea = (base) ? rsp_regs.r[base] + (offset * 16) : (offset * 16);
 
             for (i=0; i < 8; i++)
             {
@@ -824,9 +824,9 @@ void handle_swc2(UINT32 op)
             // FIXME: only works for index 0 and index 8
 
             if (index & 0x7)
-                log(M64MSG_WARNING, "SFV: index = %d at %08X\n", index, rsp.ppc);
+                log(M64MSG_WARNING, "SFV: index = %d at %08X\n", index, rsp_regs.ppc);
 
-            ea = (base) ? rsp.r[base] + (offset * 16) : (offset * 16);
+            ea = (base) ? rsp_regs.r[base] + (offset * 16) : (offset * 16);
 
             eaoffset = ea & 0xf;
             ea &= ~0xf;
@@ -850,7 +850,7 @@ void handle_swc2(UINT32 op)
             // Stores the full 128-bit vector starting from vector byte index and wrapping to index 0
             // after byte index 15
 
-            ea = (base) ? rsp.r[base] + (offset * 16) : (offset * 16);
+            ea = (base) ? rsp_regs.r[base] + (offset * 16) : (offset * 16);
 
             eaoffset = ea & 0xf;
             ea &= ~0xf;
@@ -880,11 +880,11 @@ void handle_swc2(UINT32 op)
                 ve = 32;
 
             element = 8 - (index >> 1);
-            //if (index & 0x1)      fatalerror("RSP: STV: index = %d at %08X\n", index, rsp.ppc);
+            //if (index & 0x1)      fatalerror("RSP: STV: index = %d at %08X\n", index, rsp_regs.ppc);
 
-            ea = (base) ? rsp.r[base] + (offset * 16) : (offset * 16);
+            ea = (base) ? rsp_regs.r[base] + (offset * 16) : (offset * 16);
 
-            //if (ea & 0x1)         fatalerror("RSP: STV: ea = %08X at %08X\n", ea, rsp.ppc);
+            //if (ea & 0x1)         fatalerror("RSP: STV: ea = %08X at %08X\n", ea, rsp_regs.ppc);
 
             eaoffset = (ea & 0xf) + (element * 2);
             ea &= ~0xf;
@@ -1431,7 +1431,7 @@ void handle_vector_ops(UINT32 op)
                 INT32 s1 = (INT32)(INT16)VREG_S(VS1REG, del);
                 INT32 s2 = (INT32)(INT16)VREG_S(VS2REG, sel);
 
-                rsp.accum[del].l[1] += s1*s2;
+                rsp_regs.accum[del].l[1] += s1*s2;
 
             }
             for (i=0; i < 8; i++)
@@ -1691,7 +1691,7 @@ void handle_vector_ops(UINT32 op)
             // Sets compare flags if elements in VS1 are less than VS2
             // Moves the element in VS2 to destination vector
 
-            rsp.flag[1] = 0;
+            rsp_regs.flag[1] = 0;
 
             for (i=0; i < 8; i++)
             {
@@ -1735,7 +1735,7 @@ void handle_vector_ops(UINT32 op)
             // Sets compare flags if elements in VS1 are equal with VS2
             // Moves the element in VS2 to destination vector
 
-            rsp.flag[1] = 0;
+            rsp_regs.flag[1] = 0;
 
             for (i=0; i < 8; i++)
             {
@@ -1770,7 +1770,7 @@ void handle_vector_ops(UINT32 op)
             // Sets compare flags if elements in VS1 are not equal with VS2
             // Moves the element in VS2 to destination vector
 
-            rsp.flag[1] = 0;
+            rsp_regs.flag[1] = 0;
 
             for (i=0; i < 8; i++)
             {
@@ -1809,7 +1809,7 @@ void handle_vector_ops(UINT32 op)
             // Sets compare flags if elements in VS1 are greater or equal with VS2
             // Moves the element in VS2 to destination vector
 
-            rsp.flag[1] = 0;
+            rsp_regs.flag[1] = 0;
 
             for (i=0; i < 8; i++)
             {
@@ -1877,7 +1877,7 @@ void handle_vector_ops(UINT32 op)
                     }
                     else
                     {
-                        if (rsp.flag[2] & (1 << (del)))
+                        if (rsp_regs.flag[2] & (1 << (del)))
                         {
                             if (((UINT32)(INT16)(s1) + (UINT32)(INT16)(s2)) > 0x10000)
                             {
@@ -1909,7 +1909,7 @@ void handle_vector_ops(UINT32 op)
                 {
                     if (ZERO_FLAG(del) != 0)
                     {
-                        if (rsp.flag[1] & (1 << (8+del)))
+                        if (rsp_regs.flag[1] & (1 << (8+del)))
                         {
                             ACCUM_L(del) = s2;
                         }
@@ -1923,12 +1923,12 @@ void handle_vector_ops(UINT32 op)
                         if (((INT32)(UINT16)s1 - (INT32)(UINT16)s2) >= 0)
                         {
                             ACCUM_L(del) = s2;
-                            rsp.flag[1] |= (1 << (8+del));
+                            rsp_regs.flag[1] |= (1 << (8+del));
                         }
                         else
                         {
                             ACCUM_L(del) = s1;
-                            rsp.flag[1] &= ~(1 << (8+del));
+                            rsp_regs.flag[1] &= ~(1 << (8+del));
                         }
                     }
                 }
@@ -1937,7 +1937,7 @@ void handle_vector_ops(UINT32 op)
             }
             CLEAR_ZERO_FLAGS();
             CLEAR_CARRY_FLAGS();
-            rsp.flag[2] = 0;
+            rsp_regs.flag[2] = 0;
             WRITEBACK_RESULT();
             break;
         }
@@ -1953,8 +1953,8 @@ void handle_vector_ops(UINT32 op)
 
             CLEAR_ZERO_FLAGS();
             CLEAR_CARRY_FLAGS();
-            rsp.flag[1] = 0;
-            rsp.flag[2] = 0;
+            rsp_regs.flag[1] = 0;
+            rsp_regs.flag[2] = 0;
 
             for (i=0; i < 8; i++)
             {
@@ -1968,14 +1968,14 @@ void handle_vector_ops(UINT32 op)
                     SET_CARRY_FLAG(del);
                     if (s2 < 0)
                     {
-                        rsp.flag[1] |= (1 << (8+del));
+                        rsp_regs.flag[1] |= (1 << (8+del));
                     }
 
                     if (s1 + s2 <= 0)
                     {
                         if (s1 + s2 == -1)
                         {
-                            rsp.flag[2] |= (1 << (del));
+                            rsp_regs.flag[2] |= (1 << (del));
                         }
                         SET_COMPARE_FLAG(del);
                         vres[del] = -((UINT16)s2);
@@ -2001,7 +2001,7 @@ void handle_vector_ops(UINT32 op)
                     }
                     if (s1 - s2 >= 0)
                     {
-                        rsp.flag[1] |= (1 << (8+del));
+                        rsp_regs.flag[1] |= (1 << (8+del));
                         vres[del] = s2;
                     }
                     else
@@ -2033,9 +2033,9 @@ void handle_vector_ops(UINT32 op)
             //
             // Vector clip reverse
 
-            rsp.flag[0] = 0;
-            rsp.flag[1] = 0;
-            rsp.flag[2] = 0;
+            rsp_regs.flag[0] = 0;
+            rsp_regs.flag[1] = 0;
+            rsp_regs.flag[2] = 0;
 
             for (i=0; i < 8; i++)
             {
@@ -2048,7 +2048,7 @@ void handle_vector_ops(UINT32 op)
                 {
                     if (s2 < 0)
                     {
-                        rsp.flag[1] |= (1 << (8+del));
+                        rsp_regs.flag[1] |= (1 << (8+del));
                     }
                     if ((s1 + s2) <= 0)
                     {
@@ -2069,7 +2069,7 @@ void handle_vector_ops(UINT32 op)
                     if ((s1 - s2) >= 0)
                     {
                         ACCUM_L(del) = s2;
-                        rsp.flag[1] |= (1 << (8+del));
+                        rsp_regs.flag[1] |= (1 << (8+del));
                     }
                     else
                     {
@@ -2281,9 +2281,9 @@ void handle_vector_ops(UINT32 op)
                 ACCUM_L(i) = VREG_S(VS2REG, element);
             }
 
-            rsp.reciprocal_res = rec;
+            rsp_regs.reciprocal_res = rec;
 
-            VREG_S(VDREG, del) = (UINT16)(rsp.reciprocal_res);                      // store low part
+            VREG_S(VDREG, del) = (UINT16)(rsp_regs.reciprocal_res);                      // store low part
             break;
         }
 
@@ -2300,7 +2300,7 @@ void handle_vector_ops(UINT32 op)
             int sel = VEC_EL_2(EL, del);
             INT32 rec;
 
-            rec = ((UINT16)(VREG_S(VS2REG, sel)) | ((UINT32)(rsp.reciprocal_high) << 16));
+            rec = ((UINT16)(VREG_S(VS2REG, sel)) | ((UINT32)(rsp_regs.reciprocal_high) << 16));
 
             if (rec == 0)
             {
@@ -2351,9 +2351,9 @@ void handle_vector_ops(UINT32 op)
                 ACCUM_L(i) = VREG_S(VS2REG, element);
             }
 
-            rsp.reciprocal_res = rec;
+            rsp_regs.reciprocal_res = rec;
 
-            VREG_S(VDREG, del) = (UINT16)(rsp.reciprocal_res);                      // store low part
+            VREG_S(VDREG, del) = (UINT16)(rsp_regs.reciprocal_res);                      // store low part
             break;
         }
 
@@ -2369,7 +2369,7 @@ void handle_vector_ops(UINT32 op)
             int del = (VS1REG & 7);
             int sel = VEC_EL_2(EL, del);
 
-            rsp.reciprocal_high = VREG_S(VS2REG, sel);
+            rsp_regs.reciprocal_high = VREG_S(VS2REG, sel);
 
             for (i=0; i < 8; i++)
             {
@@ -2377,7 +2377,7 @@ void handle_vector_ops(UINT32 op)
                 ACCUM_L(i) = VREG_S(VS2REG, element);           // perhaps accumulator is used to store the intermediate values ?
             }
 
-            VREG_S(VDREG, del) = (INT16)(rsp.reciprocal_res >> 16); // store high part
+            VREG_S(VDREG, del) = (INT16)(rsp_regs.reciprocal_res >> 16); // store high part
             break;
         }
 
@@ -2408,7 +2408,7 @@ void handle_vector_ops(UINT32 op)
             int sel = VEC_EL_2(EL, del);
             UINT32 sqr;
 
-            sqr = (UINT16)(VREG_S(VS2REG, sel)) | ((UINT32)(rsp.square_root_high) << 16);
+            sqr = (UINT16)(VREG_S(VS2REG, sel)) | ((UINT32)(rsp_regs.square_root_high) << 16);
 
             if (sqr == 0)
             {
@@ -2464,9 +2464,9 @@ void handle_vector_ops(UINT32 op)
                 ACCUM_L(i) = VREG_S(VS2REG, element);
             }
 
-            rsp.square_root_res = sqr;
+            rsp_regs.square_root_res = sqr;
 
-            VREG_S(VDREG, del) = (UINT16)(rsp.square_root_res);                     // store low part
+            VREG_S(VDREG, del) = (UINT16)(rsp_regs.square_root_res);                     // store low part
             break;
         }
 
@@ -2482,7 +2482,7 @@ void handle_vector_ops(UINT32 op)
             int del = (VS1REG & 7);
             int sel = VEC_EL_2(EL, del);
 
-            rsp.square_root_high = VREG_S(VS2REG, sel);
+            rsp_regs.square_root_high = VREG_S(VS2REG, sel);
 
             for (i=0; i < 8; i++)
             {
@@ -2490,7 +2490,7 @@ void handle_vector_ops(UINT32 op)
                 ACCUM_L(i) = VREG_S(VS2REG, element);           // perhaps accumulator is used to store the intermediate values ?
             }
 
-            VREG_S(VDREG, del) = (INT16)(rsp.square_root_res >> 16);        // store high part
+            VREG_S(VDREG, del) = (INT16)(rsp_regs.square_root_res >> 16);        // store high part
             break;
         }
 
@@ -2523,7 +2523,7 @@ int rsp_execute(int cycles)
         uint64_t lasttime;
         lasttime = RDTSC();
 #endif
-        rsp.ppc = sp_pc;
+        rsp_regs.ppc = sp_pc;
 
 
         op = ROPCODE(sp_pc);
@@ -2533,10 +2533,10 @@ int rsp_execute(int cycles)
         GENTRACE("%2x %3x\t%s\n", ((UINT8*)rsp_dmem)[0x1934], sp_pc, s);
 #endif
 
-        if (rsp.nextpc != ~0U)///DELAY SLOT USAGE
+        if (rsp_regs.nextpc != ~0U)///DELAY SLOT USAGE
         {
-            sp_pc = /*0x4001000 | */(rsp.nextpc & 0xfff); //rsp.nextpc;
-            rsp.nextpc = ~0U;
+            sp_pc = /*0x4001000 | */(rsp_regs.nextpc & 0xfff); //rsp_regs.nextpc;
+            rsp_regs.nextpc = ~0U;
         }
         else
         {
@@ -2663,12 +2663,12 @@ int rsp_execute(int cycles)
                             if (RDREG == 2)
                             {
                                 // Anciliary clipping flags
-                                RTVAL = rsp.flag[RDREG] & 0x00ff;
+                                RTVAL = rsp_regs.flag[RDREG] & 0x00ff;
                             }
                             else
                             {
                                 // All other flags are 16 bits but sign-extended at retrieval
-                                RTVAL = (UINT32)rsp.flag[RDREG] | ( ( rsp.flag[RDREG] & 0x8000 ) ? 0xffff0000 : 0 );
+                                RTVAL = (UINT32)rsp_regs.flag[RDREG] | ( ( rsp_regs.flag[RDREG] & 0x8000 ) ? 0xffff0000 : 0 );
                             }
                         }
                         break;
@@ -2695,7 +2695,7 @@ int rsp_execute(int cycles)
                         // ------------------------------------------------
                         //
 
-                        rsp.flag[RDREG] = RTVAL & 0xffff;
+                        rsp_regs.flag[RDREG] = RTVAL & 0xffff;
                         break;
                     }
 
@@ -2744,9 +2744,9 @@ int rsp_execute(int cycles)
             static UINT32 prev_regs[32];
             static VECTOR_REG prev_vecs[32];
             char string[200];
-            rsp_dasm_one(string, rsp.ppc, op);
+            rsp_dasm_one(string, rsp_regs.ppc, op);
 
-            fprintf(exec_output, "%08X: %s", rsp.ppc, string);
+            fprintf(exec_output, "%08X: %s", rsp_regs.ppc, string);
 
             l = strlen(string);
             if (l < 36)
@@ -2761,22 +2761,22 @@ int rsp_execute(int cycles)
 
             for (i=0; i < 32; i++)
             {
-                if (rsp.r[i] != prev_regs[i])
+                if (rsp_regs.r[i] != prev_regs[i])
                 {
-                    fprintf(exec_output, "R%d: %08X ", i, rsp.r[i]);
+                    fprintf(exec_output, "R%d: %08X ", i, rsp_regs.r[i]);
                 }
-                prev_regs[i] = rsp.r[i];
+                prev_regs[i] = rsp_regs.r[i];
             }
 
             for (i=0; i < 32; i++)
             {
-                if (rsp.v[i].d[0] != prev_vecs[i].d[0] || rsp.v[i].d[1] != prev_vecs[i].d[1])
+                if (rsp_regs.v[i].d[0] != prev_vecs[i].d[0] || rsp_regs.v[i].d[1] != prev_vecs[i].d[1])
                 {
                     fprintf(exec_output, "V%d: %04X|%04X|%04X|%04X|%04X|%04X|%04X|%04X ", i,
                         (UINT16)VREG_S(i,0), (UINT16)VREG_S(i,1), (UINT16)VREG_S(i,2), (UINT16)VREG_S(i,3), (UINT16)VREG_S(i,4), (UINT16)VREG_S(i,5), (UINT16)VREG_S(i,6), (UINT16)VREG_S(i,7));
                 }
-                prev_vecs[i].d[0] = rsp.v[i].d[0];
-                prev_vecs[i].d[1] = rsp.v[i].d[1];
+                prev_vecs[i].d[0] = rsp_regs.v[i].d[0];
+                prev_vecs[i].d[1] = rsp_regs.v[i].d[1];
             }
 
             fprintf(exec_output, "\n");
@@ -2788,9 +2788,9 @@ int rsp_execute(int cycles)
         ExecutedCycles++;
         if( rsp_sp_status & SP_STATUS_SSTEP )
         {
-            if( rsp.step_count )
+            if( rsp_regs.step_count )
             {
-                rsp.step_count--;
+                rsp_regs.step_count--;
             }
             else
             {
@@ -2807,20 +2807,20 @@ int rsp_execute(int cycles)
         }
 
         ///WDC&SR64 hack:VERSION3:1.8x -2x FASTER & safer
-        if((WDCHackFlag1==0)&&(rsp.ppc>0x137)&&(rsp.ppc<0x14D))
+        if((WDCHackFlag1==0)&&(rsp_regs.ppc>0x137)&&(rsp_regs.ppc<0x14D))
             WDCHackFlag1=ExecutedCycles;
-        if ((WDCHackFlag1!=0)&&((rsp.ppc<=0x137)||(rsp.ppc>=0x14D)))
+        if ((WDCHackFlag1!=0)&&((rsp_regs.ppc<=0x137)||(rsp_regs.ppc>=0x14D)))
             WDCHackFlag1=0;
-        if ((WDCHackFlag1!=0)&&((ExecutedCycles-WDCHackFlag1)>=0x20)&&(rsp.ppc>0x137)&&(rsp.ppc<0x14D)) 
+        if ((WDCHackFlag1!=0)&&((ExecutedCycles-WDCHackFlag1)>=0x20)&&(rsp_regs.ppc>0x137)&&(rsp_regs.ppc<0x14D)) 
         {
             //      printf("WDC hack quit 1\n");
             rsp_icount=0;//32 cycles should be enough
         }
-        if((WDCHackFlag2==0)&&(rsp.ppc>0xFCB)&&(rsp.ppc<0xFD5))
+        if((WDCHackFlag2==0)&&(rsp_regs.ppc>0xFCB)&&(rsp_regs.ppc<0xFD5))
             WDCHackFlag2=ExecutedCycles;
-        if ((WDCHackFlag2!=0)&&((rsp.ppc<=0xFCB)||(rsp.ppc>=0xFD5)))
+        if ((WDCHackFlag2!=0)&&((rsp_regs.ppc<=0xFCB)||(rsp_regs.ppc>=0xFD5)))
             WDCHackFlag2=0;
-        if ((WDCHackFlag2!=0)&&((ExecutedCycles-WDCHackFlag2)>=0x20)&&(rsp.ppc>0xFCB)&&(rsp.ppc<0xFD5)) 
+        if ((WDCHackFlag2!=0)&&((ExecutedCycles-WDCHackFlag2)>=0x20)&&(rsp_regs.ppc>0xFCB)&&(rsp_regs.ppc<0xFD5)) 
         {
             //      printf("WDC hack quit 2\n");
             rsp_icount=0;//32 cycles should be enough
