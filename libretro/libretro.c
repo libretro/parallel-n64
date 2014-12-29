@@ -154,8 +154,6 @@ static void core_settings_set_defaults(void)
          rsp_plugin = RSP_HLE;
       if (rsp_var.value && !strcmp(rsp_var.value, "cxd4"))
          rsp_plugin = RSP_CXD4;
-      if (rsp_var.value && !strcmp(rsp_var.value, "z64"))
-         rsp_plugin = RSP_Z64;
    }
 }
 
@@ -220,7 +218,7 @@ static void setup_variables(void)
       { "mupen64-gfxplugin",
          "GFX Plugin; auto|glide64|gln64|rice|angrylion" },
       { "mupen64-rspplugin",
-         "RSP Plugin; auto|hle|cxd4|z64" },
+         "RSP Plugin; auto|hle|cxd4" },
       { "mupen64-screensize",
          "Resolution (restart); 640x480|320x200|320x240|400x256|512x384|640x200|640x350|640x400|800x600|960x720|856x480|512x256|1024x768|1280x1024|1600x1200|400x300|1152x864|1280x960|1600x1024|1920x1440|2048x1536|2048x2048" },
       { "mupen64-filtering",

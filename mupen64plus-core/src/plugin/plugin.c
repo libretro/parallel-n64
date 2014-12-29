@@ -254,7 +254,6 @@ static m64p_error plugin_start_input(void)
 
 DEFINE_RSP(hle);
 DEFINE_RSP(cxd4);
-DEFINE_RSP(z64rsp);
 
 rsp_plugin_functions rsp;
 RSP_INFO rsp_info;
@@ -308,15 +307,8 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
 
    switch (rsp_plugin)
    {
-      case RSP_CXD4:
-         rsp = rsp_cxd4;
-         break;
-      case RSP_Z64:
-         rsp = rsp_z64rsp;
-         break;
-      default:       
-         rsp = rsp_hle;
-         break;
+      case RSP_CXD4: rsp = rsp_cxd4; break;
+      default:       rsp = rsp_hle; break;
    }
 
    plugin_start_gfx();
