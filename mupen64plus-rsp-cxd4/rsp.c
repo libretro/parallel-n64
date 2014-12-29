@@ -251,13 +251,6 @@ EXPORT void CALL cxd4InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
     if (CycleCount != NULL) /* cycle-accuracy not doable with today's hosts */
         *CycleCount = 0x00000000;
 
-#ifndef __LIBRETRO__
-    if (Rsp_Info.DMEM == Rsp_Info.IMEM) /* usually dummy RSP data for testing */
-        return; /* DMA is not executed just because plugin initiates. */
-    while (Rsp_Info.IMEM != Rsp_Info.DMEM + 4096)
-        message("Virtual host map noncontiguity.", 3);
-#endif
-
     RSP = Rsp_Info;
     *RSP.SP_PC_REG = 0x04001000 & 0x00000FFF; /* task init bug on Mupen64 */
     CR[0x0] = RSP.SP_MEM_ADDR_REG;
