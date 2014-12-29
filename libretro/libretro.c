@@ -207,8 +207,8 @@ static void setup_variables(void)
         "Player 3 Pak; none|memory|rumble"},
       {"mupen64-pak4",
         "Player 4 Pak; none|memory|rumble"},
-      { "mupen64-disableexpmem",
-         "Disable Expansion RAM; no|yes" },
+      { "mupen64-enable_expmem",
+         "Enable Expansion Pak RAM; enabled|disabled" },
       { "mupen64-gfxplugin-accuracy",
 #ifdef HAVE_OPENGLES2
          "GFX Accuracy (restart); medium|high|veryhigh|low" },
@@ -503,8 +503,10 @@ void update_variables(bool startup)
          gfx_plugin = GFX_GLIDE64;
    }
 
-   var.key = "mupen64-disableexpmem";
+   var.key = "mupen64-enable_expmem";
    var.value = NULL;
+
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
    if (var.value)
    {
@@ -516,7 +518,6 @@ void update_variables(bool startup)
    else
       dma_enable_expmem(1);
    
-   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
    var.key = "mupen64-angrylion-vioverlay";
    var.value = NULL;
