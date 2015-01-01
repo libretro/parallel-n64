@@ -47,6 +47,7 @@
 static precomp_instr interp_PC;
 
 static void prefetch(void);
+uint32_t adler32(uint32_t adler, void *buf, int len);
 
 #define PCADDR interp_PC.addr
 #define ADD_TO_PC(x) interp_PC.addr += x*4;

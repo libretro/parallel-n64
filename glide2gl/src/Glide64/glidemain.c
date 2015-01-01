@@ -48,6 +48,7 @@
 #include "Glide64_Ini.h"
 #include "../../libretro/libretro.h"
 
+extern void CRC_BuildTable();
 extern retro_log_printf_t log_cb;
 
 #if defined(__GNUC__)

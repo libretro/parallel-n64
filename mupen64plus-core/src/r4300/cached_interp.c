@@ -45,6 +45,7 @@ char invalid_code[0x100000];
 precomp_block *blocks[0x100000];
 precomp_block *actual;
 unsigned int jump_to_address;
+uint32_t adler32(uint32_t adler, void *buf, int len);
 
 // -----------------------------------------------------------
 // Cached interpreter functions (and fallback for dynarec).

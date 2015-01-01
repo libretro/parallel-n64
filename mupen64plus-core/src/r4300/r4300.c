@@ -265,7 +265,7 @@ void r4300_init(void)
 
 #ifdef NEW_DYNAREC
            new_dynarec_init();
-#else
+#elif !defined(NO_ASM) && defined(DYNAREC)
            dyna_start(dynarec_setup_code);
 #endif
         }

@@ -30,11 +30,13 @@ ifeq ($(platform),)
 	endif
 endif
 
-ifeq ($(firstword $(filter x86_64,$(UNAME))),x86_64)
-	WITH_DYNAREC=x86_64
-endif
-ifeq ($(firstword $(filter amd64,$(UNAME))),amd64)
-	WITH_DYNAREC=x86_64
+ifneq ($(platform), emscripten)
+	ifeq ($(firstword $(filter x86_64,$(UNAME))),x86_64)
+		WITH_DYNAREC=x86_64
+	endif
+	ifeq ($(firstword $(filter amd64,$(UNAME))),amd64)
+		WITH_DYNAREC=x86_64
+	endif
 endif
 
 TARGET_NAME := mupen64plus
@@ -205,13 +207,14 @@ else ifneq (,$(findstring armv,$(platform)))
 else ifeq ($(platform), emscripten)
 	TARGET := $(TARGET_NAME)_libretro_emscripten.bc
 	GLES := 1
-	CPUFLAGS += -DNO_ASM
+	CPUFLAGS += -DNO_ASM -DNOSSE
+	SINGLE_THREAD := 1
 	PLATCFLAGS += -DCC_resampler=mupen_CC_resampler -Dsinc_resampler=mupen_sinc_resampler \
 					-Drglgen_symbol_map=mupen_rglgen_symbol_map -Dmain_exit=mupen_main_exit \
 					-Dadler32=mupen_adler32 -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \
 					-Daudio_convert_s16_to_float_C=mupen_audio_convert_s16_to_float_C -Daudio_convert_float_to_s16_C=mupen_audio_convert_float_to_s16_C \
 					-Daudio_convert_init_simd=mupen_audio_convert_init_simd -Drglgen_resolve_symbols_custom=mupen_rglgen_resolve_symbols_custom \
-					-Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols
+					-Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols -Dnearest_resampler=mupen_nearest_resampler
 	PLATFORM_EXT := unix
 	#HAVE_SHARED_CONTEXT := 1
 

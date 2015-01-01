@@ -218,7 +218,7 @@ SOURCES_CXX  += $(VIDEODIR_GLIDE)/Glitch64/textures_common.cpp \
 
 #ifeq ($(GLES), 1)
 SOURCES_CXX += $(VIDEODIR_GLIDE)/Glitch64/OGLEScombiner.cpp \
-					$(VIDEODIR_GLIDE)/Glitch64/OGLESgeometry.cpp \
+					$(VIDEODIR_GLIDE)/Glitch64/OGLESgeometry_VBO.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLESglitchmain.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/OGLEStextures.cpp \
 					$(VIDEODIR_GLIDE)/Glitch64/glitchlog.cpp \

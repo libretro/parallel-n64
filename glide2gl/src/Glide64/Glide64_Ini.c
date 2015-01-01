@@ -2,6 +2,7 @@
 #include "Glide64_Ini.h"
 #include "Glide64_UCode.h"
 #include "rdp.h"
+#include "DepthBufferRender.h"
 
 #include "../../libretro/libretro.h"
 #include "../../libretro/SDL.h"
@@ -14,6 +15,7 @@ extern SETTINGS settings;
 extern retro_environment_t environ_cb;
 
 extern void update_variables(bool startup);
+extern void glide_set_filtering(unsigned value);
 
 void ReadSettings(void)
 {

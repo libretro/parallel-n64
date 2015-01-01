@@ -35,6 +35,7 @@
 #include "m64p_frontend.h"
 #include "config.h"
 #include "vidext.h"
+#include "../main/cheat.h"
 
 #include "main/main.h"
 #include "main/rom.h"

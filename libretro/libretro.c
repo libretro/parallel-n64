@@ -20,6 +20,10 @@
 /* Cxd4 RSP */
 #include "../mupen64plus-rsp-cxd4/config.h"
 
+static void EmuThreadFunction(void);
+int glide64InitGfx(void);
+void gles2n64_reset(void);
+
 struct retro_perf_callback perf_cb;
 retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 
