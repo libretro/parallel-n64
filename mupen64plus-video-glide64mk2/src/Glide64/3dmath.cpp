@@ -160,13 +160,14 @@ float DotProductC(register float *v1, register float *v2)
 void NormalizeVectorC(float *v)
 {
     register float len;
-    len = sqrtf(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-    if (len > 0.0f)
-    {
-        v[0] /= len;
-        v[1] /= len;
-        v[2] /= len;
-    }
+
+    len = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+    if (len == 0.0f)
+        return;
+    len = sqrtf(len); /* len >= 0, because a*a + b*b + c*c is never negative. */
+    v[0] /= len;
+    v[1] /= len;
+    v[2] /= len;
 }
 
 void TransformVectorC(float *src, float *dst, float mat[4][4])
@@ -183,7 +184,7 @@ void InverseTransformVectorC (float *src, float *dst, float mat[4][4])
   dst[2] = mat[2][0]*src[0] + mat[2][1]*src[1] + mat[2][2]*src[2];
 }
 
-void MulMatricesC(float m1[4][4],float m2[4][4],float r[4][4])
+void MulMatricesC(float m1[4][4], float m2[4][4], float r[4][4])
 {
     float row[4][4];
     register unsigned int i, j;
@@ -193,21 +194,15 @@ void MulMatricesC(float m1[4][4],float m2[4][4],float r[4][4])
             row[i][j] = m2[i][j];
     for (i = 0; i < 4; i++)
     {
-        float leftrow[4], destrow[4];
         float summand[4][4];
 
         for (j = 0; j < 4; j++)
-            leftrow[j] = m1[i][j];
-
-        for (j = 0; j < 4; j++)
-            summand[0][j] = leftrow[0] * row[0][j];
-        for (j = 0; j < 4; j++)
-            summand[1][j] = leftrow[1] * row[1][j];
-        for (j = 0; j < 4; j++)
-            summand[2][j] = leftrow[2] * row[2][j];
-        for (j = 0; j < 4; j++)
-            summand[3][j] = leftrow[3] * row[3][j];
-
+        {
+            summand[0][j] = m1[i][0] * row[0][j];
+            summand[1][j] = m1[i][1] * row[1][j];
+            summand[2][j] = m1[i][2] * row[2][j];
+            summand[3][j] = m1[i][3] * row[3][j];
+        }
         for (j = 0; j < 4; j++)
             r[i][j] =
                 summand[0][j]
