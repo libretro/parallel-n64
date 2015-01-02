@@ -160,13 +160,14 @@ float DotProductC(register float *v1, register float *v2)
 void NormalizeVectorC(float *v)
 {
     register float len;
-    len = sqrtf(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-    if (len > 0.0f)
-    {
-        v[0] /= len;
-        v[1] /= len;
-        v[2] /= len;
-    }
+
+    len = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+    if (len == 0.0f)
+        return;
+    len = sqrtf(len); /* len >= 0, because a*a + b*b + c*c is never negative. */
+    v[0] /= len;
+    v[1] /= len;
+    v[2] /= len;
 }
 
 void TransformVectorC(float *src, float *dst, float mat[4][4])
