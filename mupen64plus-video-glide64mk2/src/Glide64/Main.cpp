@@ -189,13 +189,13 @@ uint32_t   fps_count = 0;
 
 uint32_t   vi_count = 0;
 float      vi = 0.0f;
-
-uint32_t   region = 0;
-
-float      ntsc_percent = 0.0f;
-float      pal_percent = 0.0f;
-
 #endif
+
+/* custom macros made up by cxd4 for tracking the system type better */
+#define OS_TV_TYPE_PAL          0
+#define OS_TV_TYPE_NTSC         1
+#define OS_TV_TYPE_MPAL         2
+unsigned int region;
 
 // ref rate
 // 60=0x0, 70=0x1, 72=0x2, 75=0x3, 80=0x4, 90=0x5, 100=0x6, 85=0x7, 120=0x8, none=0xff
@@ -326,7 +326,7 @@ void _ChangeSize ()
 #endif
 
   rdp.scale_x = (float)settings.res_x / rdp.vi_width;
-  if (region > 0 && settings.pal230)
+  if (region != OS_TV_TYPE_NTSC && settings.pal230)
   {
     // odd... but pal games seem to want 230 as height...
     rdp.scale_y = res_scl_y * (230.0f / rdp.vi_height)  * aspect;
@@ -1599,14 +1599,47 @@ EXPORT int CALL RomOpen (void)
   ucode_error_report = TRUE;	// allowed to report ucode errors
   rdp_reset ();
 
-  // Get the country code & translate to NTSC(0) or PAL(1)
-  uint16_t code = ((uint16_t*)GFX_PTR.HEADER)[0x1F^1];
-
-  if (code == 0x4400) region = 1; // Germany (PAL)
-  if (code == 0x4500) region = 0; // USA (NTSC)
-  if (code == 0x4A00) region = 0; // Japan (NTSC)
-  if (code == 0x5000) region = 1; // Europe (PAL)
-  if (code == 0x5500) region = 0; // Australia (NTSC)
+  /* cxd4 -- Glide64 tries to predict PAL scaling based on the ROM header. */
+  region = OS_TV_TYPE_NTSC; /* Invalid region codes are probably NTSC betas. */
+  switch (GFX_PTR.HEADER[0x3E ^ 3])
+  {
+  case 'A': /* generic NTSC, not documented, used by 1080 Snowboarding */
+    region = OS_TV_TYPE_NTSC; break;
+  case 'B': /* Brazilian */
+    region = OS_TV_TYPE_MPAL; break;
+  case 'C': /* Chinese */
+    region = OS_TV_TYPE_NTSC; break;
+  case 'D': /* German */
+    region = OS_TV_TYPE_PAL ; break;
+  case 'E': /* North America */
+    region = OS_TV_TYPE_NTSC; break;
+  case 'F': /* French */
+    region = OS_TV_TYPE_PAL ; break;
+  case 'G': /* Gateway 64 (NTSC) */
+    region = OS_TV_TYPE_NTSC; break;
+  case 'H': /* Dutch */
+    region = OS_TV_TYPE_PAL ; break;
+  case 'I': /* Italian */
+    region = OS_TV_TYPE_PAL ; break;
+  case 'J': /* Japanese */
+    region = OS_TV_TYPE_NTSC; break;
+  case 'K': /* Korean */
+    region = OS_TV_TYPE_NTSC; break;
+  case 'L': /* Gateway 64 (PAL) */
+    region = OS_TV_TYPE_PAL ; break;
+  case 'N': /* Canadian */
+    region = OS_TV_TYPE_NTSC; break;
+  case 'P': /* European (basic spec.) */
+    region = OS_TV_TYPE_PAL ; break;
+  case 'S': /* Spanish */
+    region = OS_TV_TYPE_PAL ; break;
+  case 'U': /* Australian */
+    region = OS_TV_TYPE_PAL ; break;
+  case 'W': /* Scandinavian */
+    region = OS_TV_TYPE_PAL ; break;
+  case 'X': case 'Y': case 'Z': /* documented "others", always PAL I think? */
+    region = OS_TV_TYPE_PAL ; break;
+  }
 
   char name[21] = "DEFAULT";
   ReadSpecialSettings (name);
@@ -1728,8 +1761,6 @@ EXPORT void CALL UpdateScreen (void)
   {
     fps = (float)(fps_count / diff_secs);
     vi = (float)(vi_count / diff_secs);
-    ntsc_percent = vi / 0.6f;
-    pal_percent = vi / 0.5f;
     fps_last = fps_next;
     fps_count = 0;
     vi_count = 0;
@@ -1817,10 +1848,10 @@ static void swapbuffer_osd(void)
    {
       if (settings.show_fps & 4)
       {
-         if (region)   // PAL
-            output (0, y, 0, "%d%% ", (int)pal_percent);
-         else
-            output (0, y, 0, "%d%% ", (int)ntsc_percent);
+         const int is_NTSC = (unsigned)(region) % 2; /* neither PAL nor MPAL */
+         const float percentage = vi / (is_NTSC ? .6f : .5f);
+
+         output(0, y, 0, "%d%% ", (int)percentage);
          y -= 16;
       }
       if (settings.show_fps & 2)
