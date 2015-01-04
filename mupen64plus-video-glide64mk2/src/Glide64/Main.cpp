@@ -1848,8 +1848,7 @@ static void swapbuffer_osd(void)
    {
       if (settings.show_fps & 4)
       {
-         const int is_NTSC = (unsigned)(region) % 2; /* neither PAL nor MPAL */
-         const float percentage = vi / (is_NTSC ? .6f : .5f);
+         const float percentage = vi / (region == OS_TV_TYPE_PAL ? .5f : .6f); /* PAL is 50Hz; NTSC & MPAL are 60Hz */
 
          output(0, y, 0, "%d%% ", (int)percentage);
          y -= 16;
