@@ -33,8 +33,6 @@ extern retro_input_state_t input_cb;
 extern struct retro_rumble_interface rumble;
 extern int pad_pak_types[4];
 extern int pad_present[4];
-extern uint16_t ab_button_orientation;
-extern uint16_t lz_button_orientation;
 extern int astick_deadzone;
 
 #define M64P_PLUGIN_PROTOTYPES 1
@@ -713,10 +711,10 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
    }
    else
    {
-      Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, (ab_button_orientation == 1) ? RETRO_DEVICE_ID_JOYPAD_Y  : RETRO_DEVICE_ID_JOYPAD_B);
-      Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, (ab_button_orientation == 1) ? RETRO_DEVICE_ID_JOYPAD_B  : RETRO_DEVICE_ID_JOYPAD_A);
-      Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0,   (lz_button_orientation == 1) ? RETRO_DEVICE_ID_JOYPAD_L2 : RETRO_DEVICE_ID_JOYPAD_L);
-      Keys->Z_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0,   (lz_button_orientation == 1) ? RETRO_DEVICE_ID_JOYPAD_L  : RETRO_DEVICE_ID_JOYPAD_L2);
+      Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
+      Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
+      Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0,   RETRO_DEVICE_ID_JOYPAD_L);
+      Keys->Z_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0,   RETRO_DEVICE_ID_JOYPAD_L2);
    }
 
 

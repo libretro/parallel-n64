@@ -47,8 +47,6 @@ static cothread_t cpu_thread;
 float polygonOffsetFactor;
 float polygonOffsetUnits;
 
-uint16_t ab_button_orientation = 0;
-uint16_t lz_button_orientation = 0;
 int astick_deadzone;
 bool flip_only;
 
@@ -197,10 +195,6 @@ static void setup_variables(void)
 #else
          "CPU Core; cached_interpreter|pure_interpreter" },
 #endif
-      {"mupen64-button-orientation-ab",
-        "Buttons B and A; B A|Y B"},
-      {"mupen64-button-orientation-lz",
-        "Buttons L and Z; L L2|L2 L"},
       {"mupen64-astick-deadzone",
         "Analog Deadzone (percent); 15|20|25|30|0|5|10"},
       {"mupen64-pak1",
@@ -581,28 +575,6 @@ void update_variables(bool startup)
    {
       float new_val = (float)atoi(var.value);
       polygonOffsetUnits = new_val;
-   }
-
-   var.key = "mupen64-button-orientation-ab";
-   var.value = NULL;
-
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-   {
-      if (!strcmp(var.value, "B A"))
-         ab_button_orientation = 0;
-      else if (!strcmp(var.value, "Y B"))
-         ab_button_orientation = 1;
-   }
-
-   var.key = "mupen64-button-orientation-lz";
-   var.value = NULL;
-
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-   {
-      if (!strcmp(var.value, "L L2"))
-         lz_button_orientation = 0;
-      else if (!strcmp(var.value, "L2 L"))
-         lz_button_orientation = 1;
    }
 
    var.key = "mupen64-astick-deadzone";
