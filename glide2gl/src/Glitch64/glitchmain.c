@@ -42,9 +42,7 @@ int glsl_support = 1;
 uint16_t *frameBuffer;
 uint8_t  *buf;
 
-#ifdef EMSCRIPTEN
 GLuint glitch_vbo;
-#endif
 
 static int isExtensionSupported(const char *extension)
 {
@@ -94,9 +92,7 @@ grSstWinOpen(
    glGenTextures(1, &default_texture);
    frameBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
    buf = (uint8_t*)malloc(width * height * 4 * sizeof(uint8_t));
-#ifdef EMSCRIPTEN
    glGenBuffers(1, &glitch_vbo);
-#endif
    glViewport(0, 0, width, height);
 
    if (isExtensionSupported("GL_ARB_texture_env_combine") == 0 &&
@@ -162,9 +158,7 @@ grSstWinClose( GrContext_t context )
    if (buf)
       free(buf);
    glDeleteTextures(1, &default_texture);
-#ifdef EMSCRIPTEN
    glDeleteBuffers(1, &glitch_vbo);
-#endif
    frameBuffer = NULL;
    buf = NULL;
 

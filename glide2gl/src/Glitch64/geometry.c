@@ -28,7 +28,6 @@
 #include "main.h"
 #include "../Glide64/rdp.h"
 
-#ifdef EMSCRIPTEN
 struct draw_buffer {
   float x, y, z, q;
 
@@ -44,7 +43,6 @@ struct draw_buffer {
 
 static struct draw_buffer *gli_vbo;
 static unsigned gli_vbo_size;
-#endif
 
 FX_ENTRY void FX_CALL
 grCullMode( GrCullMode_t mode )
