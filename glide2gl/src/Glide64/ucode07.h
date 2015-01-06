@@ -65,7 +65,7 @@ typedef struct
 
 static void uc7_vertex(uint32_t w0, uint32_t w1)
 {
-   int i;
+   unsigned int i;
    float x, y, z;
 #ifdef __ARM_NEON__
    float32x4_t comb0, comb1, comb2, comb3;

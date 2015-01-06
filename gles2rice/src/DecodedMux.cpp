@@ -708,8 +708,8 @@ void DecodedMux::Reformat(bool do_complement)
         m_n64Combiners[3].d = MUX_COMBINED;
     }
     
-    unsigned cond3 = max(splitType[0], splitType[1]);
-    unsigned cond2 = max(cond3,splitType[2]);
+    signed cond3 = max(splitType[0], splitType[1]);
+    signed cond2 = max(cond3, splitType[2]);
     mType = (CombinerFormatType)max(cond2,splitType[3]);
 }
 

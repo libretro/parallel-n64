@@ -190,9 +190,9 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
 
    if (writeMode == GR_LFBWRITEMODE_565)
    {
-      unsigned i,j;
-      glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+      signed i, j;
 
+      glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
       for (j=0; j < height; j++)
       {
          for (i=0; i < width; i++)

@@ -31,9 +31,9 @@ void COGLDecodedMux::Simplify(void)
 void COGLDecodedMux::Reformat(void)
 {
     DecodedMux::Reformat(true);
-    unsigned cond3 = max(splitType[0], splitType[1]);
-    unsigned cond2 = max(cond3,splitType[2]);
-    mType = (CombinerFormatType)max(cond2,splitType[3]);
+    signed cond3 = max(splitType[0], splitType[1]);
+    signed cond2 = max(cond3, splitType[2]);
+    mType = (CombinerFormatType)max(cond2, splitType[3]);
 }
 
 void COGLExtDecodedMux::Simplify(void)

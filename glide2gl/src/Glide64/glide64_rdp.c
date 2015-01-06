@@ -3141,7 +3141,7 @@ output:   none
 EXPORT void CALL ProcessRDPList(void)
 {
    int32_t length;
-   uint32_t i;
+   int32_t i;
    uint32_t cmd, cmd_length;
 
    rdp_cmd_ptr = 0;

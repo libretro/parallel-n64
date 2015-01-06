@@ -591,7 +591,11 @@ void gSPLookAt( u32 l )
 
 void gSPVertex( u32 v, u32 n, u32 v0 )
 {
-   int i, j;
+#ifdef __VEC4_OPT
+   unsigned int i, j;
+#else
+   unsigned int i;
+#endif
    Vertex *vertex;
    //flush batched triangles:
 
@@ -671,7 +675,7 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
 
 void gSPCIVertex( u32 v, u32 n, u32 v0 )
 {
-   int i, j;
+   unsigned int i;
    PDVertex *vertex;
 
    u32 address = RSP_SegmentToPhysical( v );
@@ -755,7 +759,11 @@ void gSPCIVertex( u32 v, u32 n, u32 v0 )
 
 void gSPDMAVertex( u32 v, u32 n, u32 v0 )
 {
-   int i, j;
+#ifdef __VEC4_OPT
+   unsigned int i, j;
+#else
+   unsigned int i;
+#endif
    u32 address = gSP.DMAOffsets.vtx + RSP_SegmentToPhysical( v );
 
    if ((address + 10 * n) > RDRAMSize)
@@ -763,7 +771,7 @@ void gSPDMAVertex( u32 v, u32 n, u32 v0 )
 
    if ((n + v0) <= INDEXMAP_SIZE)
    {
-      u32 i = v0;
+      i = v0;
 #ifdef __VEC4_OPT
       for (; i < n - (n%4) + v0; i += 4)
       {
@@ -940,7 +948,7 @@ void gSPInterpolateVertex( SPVertex *dest, f32 percent, SPVertex *first, SPVerte
 
 void gSPDMATriangles( u32 tris, u32 n )
 {
-   int i, j;
+   unsigned int i;
    s32 v0, v1, v2;
    DKRTriangle *triangles;
    u32 address = RSP_SegmentToPhysical( tris );
@@ -994,20 +1002,19 @@ void gSP1Quadrangle( s32 v0, s32 v1, s32 v2, s32 v3)
 
 bool gSPCullVertices( u32 v0, u32 vn )
 {
-   int i, j;
-   s32 v;
+   unsigned int i;
+   u32 v;
    u32 clip;
 
    if (!config.enableClipping)
       return FALSE;
 
    v = v0;
-
    clip = OGL.triangles.vertices[v].clip;
    if (clip == 0)
       return FALSE;
 
-   for (i = (v0+1); i <= vn; i++)
+   for (i = v0 + 1; i <= vn; i++)
    {
       v = i;
       if (OGL.triangles.vertices[v].clip != clip) return FALSE;

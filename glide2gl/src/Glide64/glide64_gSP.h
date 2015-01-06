@@ -533,7 +533,7 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
 
 static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, bool do_cull, int32_t wd)
 {
-   int32_t i;
+   uint32_t i;
    int32_t vcount = 0;
 
    if (do_update)
@@ -591,7 +591,7 @@ static void pre_update(void)
  */
 static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
 {
-   int i;
+   unsigned int i;
    float x, y, z;
 #ifdef __ARM_NEON__
    float32x4_t comb0, comb1, comb2, comb3;

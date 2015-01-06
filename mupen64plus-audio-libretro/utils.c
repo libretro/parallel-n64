@@ -38,7 +38,8 @@ void audio_convert_s16_to_float_C(float *out,
 void audio_convert_float_to_s16_C(int16_t *out,
       const float *in, size_t samples)
 {
-   int i;
+   size_t i;
+
    for (i = 0; i < samples; i++)
    {
       int32_t val = (int32_t)(in[i] * 0x8000);

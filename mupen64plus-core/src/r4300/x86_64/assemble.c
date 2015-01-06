@@ -119,7 +119,7 @@ void free_assembler(void **block_jumps_table, int *block_jumps_number, void **bl
 
 void passe2(precomp_instr *dest, int start, int end, precomp_block *block)
 {
-  unsigned int i;
+  int i;
 
   build_wrappers(dest, start, end, block);
 
