@@ -525,13 +525,15 @@ void gDPSetFillColor( u32 c )
 {
 
    gDP.fillColor.i = c;
-   gDP.fillColor.r = _SHIFTR( c, 11, 5 ) * 0.032258064f;
-   gDP.fillColor.g = _SHIFTR( c,  6, 5 ) * 0.032258064f;
-   gDP.fillColor.b = _SHIFTR( c,  1, 5 ) * 0.032258064f;
-   gDP.fillColor.a = _SHIFTR( c,  0, 1 );
+   gDP.fillColor.r = _SHIFTR( c, 11,  5 ) * 0.032258064f;
+   gDP.fillColor.g = _SHIFTR( c,  6,  5 ) * 0.032258064f;
+   gDP.fillColor.b = _SHIFTR( c,  1,  5 ) * 0.032258064f;
+   gDP.fillColor.a = _SHIFTR( c,  0,  1 ) * 1.0f;
 
-   gDP.fillColor.z = _SHIFTR( c,  2, 14 );
-   gDP.fillColor.dz = _SHIFTR( c, 0, 2 );
+   gDP.fillColor.z =
+                (f32)_SHIFTR( c,  2, 14 );
+   gDP.fillColor.dz =
+                (f32)_SHIFTR( c,  0,  2 );
 
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetFillColor( 0x%08X );\n", c );
