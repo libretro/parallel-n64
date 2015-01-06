@@ -763,7 +763,6 @@ void inputInitiateCallback(const char *headername)
           (!strcmp(headername, "Clayfighter SC")) ||
           (!strcmp(headername, "RAKUGAKIDS")))
     {
-       getKeys = inputGetKeys_6ButtonFighters;
        static struct retro_input_descriptor desc[] = {
           { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT,  "D-Pad Left" },
           { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP,    "D-Pad Up" },
@@ -828,6 +827,7 @@ void inputInitiateCallback(const char *headername)
           { 0 },
        };
        environ_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, desc);
+       getKeys = inputGetKeys_6ButtonFighters;
     }
     else if (!strcmp(headername, "BIOFREAKS"))
        getKeys = inputGetKeys_Biofreaks;
@@ -837,7 +837,6 @@ void inputInitiateCallback(const char *headername)
        getKeys = inputGetKeys_XENA;
     else if (!strcmp(headername, "RIDGE RACER 64"))
     {
-       getKeys = inputGetKeys_RR64;
        static struct retro_input_descriptor desc[] = {
           { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT,  "D-Pad Left" },
           { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP,    "D-Pad Up" },
@@ -890,6 +889,7 @@ void inputInitiateCallback(const char *headername)
           { 0 },
        };
        environ_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, desc);
+	   getKeys = inputGetKeys_RR64;
     }
    else if ((!strcmp(headername, "I S S 64")) ||
          (!strcmp(headername, "J WORLD SOCCER3")) ||

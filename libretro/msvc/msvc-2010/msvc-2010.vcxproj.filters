@@ -88,6 +88,15 @@
     <Filter Include="Source Files\libretro\glsym">
       <UniqueIdentifier>{f36ec05b-e8c8-485f-92f6-7b3159b4fee2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\mupen64plus-audio-libretro">
+      <UniqueIdentifier>{655e8929-3d48-47b6-af96-47a1b787eaae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mupen64plus-audio-libretro\resamplers">
+      <UniqueIdentifier>{1bd5a036-6f31-4bab-a8dc-f6479eb862c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mupen64plus-input-libretro">
+      <UniqueIdentifier>{e25506ab-c81e-4516-b9ec-71e07afc57fc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\angrylionrdp\n64video.c">
@@ -99,25 +108,10 @@
     <ClCompile Include="..\..\adler32.c">
       <Filter>Source Files\libretro</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\audio_plugin.c">
-      <Filter>Source Files\libretro</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\input_plugin.c">
-      <Filter>Source Files\libretro</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\libretro.c">
       <Filter>Source Files\libretro</Filter>
     </ClCompile>
     <ClCompile Include="..\..\opengl_state_machine.c">
-      <Filter>Source Files\libretro</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\resampler.c">
-      <Filter>Source Files\libretro</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\sinc.c">
-      <Filter>Source Files\libretro</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\utils.c">
       <Filter>Source Files\libretro</Filter>
     </ClCompile>
     <ClCompile Include="..\..\libco\libco.c">
@@ -177,9 +171,6 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\api\frontend.c">
       <Filter>Source Files\mupen64plus-core\src\api</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\api\vidext.c">
-      <Filter>Source Files\mupen64plus-core\src\api</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\main\cheat.c">
       <Filter>Source Files\mupen64plus-core\src\main</Filter>
     </ClCompile>
@@ -214,9 +205,6 @@
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\FBtoScreen.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_crc.c">
       <Filter>Source Files\glide2gl\src\Glide64</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\glidemain.c">
@@ -471,9 +459,6 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\memory\flashram.c">
       <Filter>Source Files\mupen64plus-core\src\memory</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\memory\memory.c">
-      <Filter>Source Files\mupen64plus-core\src\memory</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\memory\n64_cic_nus_6105.c">
       <Filter>Source Files\mupen64plus-core\src\memory</Filter>
     </ClCompile>
@@ -531,17 +516,11 @@
     <ClCompile Include="..\..\..\tools\rzlib\zutil.c">
       <Filter>Source Files\rzlib</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\cc_resampler.c">
-      <Filter>Source Files\libretro</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2n64\src\glN64Config.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\RiceConfig.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\nearest.c">
-      <Filter>Source Files\libretro</Filter>
     </ClCompile>
     <ClCompile Include="..\..\glsym\glsym_gl.c">
       <Filter>Source Files\libretro\glsym</Filter>
@@ -572,6 +551,30 @@
     </ClCompile>
     <ClCompile Include="..\..\..\glide2gl\src\Glitch64\glitch64_textures.c">
       <Filter>Source Files\glide2gl\src\Glitch64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-audio-libretro\audio_plugin.c">
+      <Filter>Source Files\mupen64plus-audio-libretro</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-audio-libretro\utils.c">
+      <Filter>Source Files\mupen64plus-audio-libretro</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-audio-libretro\resamplers\cc_resampler.c">
+      <Filter>Source Files\mupen64plus-audio-libretro\resamplers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-audio-libretro\resamplers\nearest.c">
+      <Filter>Source Files\mupen64plus-audio-libretro\resamplers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-audio-libretro\resamplers\resampler.c">
+      <Filter>Source Files\mupen64plus-audio-libretro\resamplers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-audio-libretro\resamplers\sinc.c">
+      <Filter>Source Files\mupen64plus-audio-libretro\resamplers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-input-libretro\input_plugin.c">
+      <Filter>Source Files\mupen64plus-input-libretro</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\memory\m64p_memory.c">
+      <Filter>Source Files\mupen64plus-core\src\memory</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
