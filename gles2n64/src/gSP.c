@@ -331,9 +331,9 @@ static void gSPLightVertex_default(u32 v)
       g += gSP.lights[i].g * intensity;
       b += gSP.lights[i].b * intensity;
    }
-   OGL.triangles.vertices[v].r = min(1.0, r);
-   OGL.triangles.vertices[v].g = min(1.0, g);
-   OGL.triangles.vertices[v].b = min(1.0, b);
+   OGL.triangles.vertices[v].r = min(1.0f, r);
+   OGL.triangles.vertices[v].g = min(1.0f, g);
+   OGL.triangles.vertices[v].b = min(1.0f, b);
 }
 
 static void gSPBillboardVertex_default(u32 v, u32 i)

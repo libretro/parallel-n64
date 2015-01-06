@@ -988,9 +988,13 @@ static void LoadTex(int id, int tmu)
             do
             {
                uint8_t a = (*col & 0x0001);
-               uint8_t r = (1-percent_r) * (((*col & 0xF800) >> 11)) + percent_r * cr0;
-               uint8_t g = (1-percent_g) * (((*col & 0x07C0) >> 6)) + percent_g * cg0;
-               uint8_t b = (1-percent_b) * (((*col & 0x003E) >> 1)) + percent_b * cb0;
+               uint8_t r = (uint8_t)
+                  ((1-percent_r) * (((*col & 0xF800) >> 11)) + percent_r * cr0);
+               uint8_t g = (uint8_t)
+                  ((1-percent_g) * (((*col & 0x07C0) >>  6)) + percent_g * cg0);
+               uint8_t b = (uint8_t)
+                  ((1-percent_b) * (((*col & 0x003E) >>  1)) + percent_b * cb0);
+
                *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
                      ((uint16_t)(g >> 3) << 6) |
                      ((uint16_t)(b >> 3) << 1) |
@@ -1030,9 +1034,9 @@ static void LoadTex(int id, int tmu)
                float percent_g = ((*col & 0x07C0) >> 6) / 31.0f;
                float percent_b = ((*col & 0x003E) >> 1) / 31.0f;
                uint8_t a = (*col & 0x0001);
-               uint8_t r = (1.0f-percent_r) * cr0 + percent_r * cr1;
-               uint8_t g = (1.0f-percent_g) * cg0 + percent_g * cg1;
-               uint8_t b = (1.0f-percent_b) * cb0 + percent_b * cb1;
+               uint8_t r = (uint8_t)((1.0f-percent_r) * cr0 + percent_r * cr1);
+               uint8_t g = (uint8_t)((1.0f-percent_g) * cg0 + percent_g * cg1);
+               uint8_t b = (uint8_t)((1.0f-percent_b) * cb0 + percent_b * cb1);
                *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
                      ((uint16_t)(g >> 3) << 6) |
                      ((uint16_t)(b >> 3) << 1) |
@@ -1108,9 +1112,9 @@ static void LoadTex(int id, int tmu)
             do
             {
                uint8_t a = (*col & 0x0001);
-               uint8_t r = percent_r * (((*col & 0xF800) >> 11)) + cr0;
-               uint8_t g = percent_g * (((*col & 0x07C0) >> 6)) + cg0;
-               uint8_t b = percent_b * (((*col & 0x003E) >> 1)) + cb0;
+               uint8_t r = (uint8_t)(percent_r * ((*col & 0xF800) >> 11)) + cr0;
+               uint8_t g = (uint8_t)(percent_g * ((*col & 0x07C0) >> 6)) + cg0;
+               uint8_t b = (uint8_t)(percent_b * ((*col & 0x003E) >> 1)) + cb0;
                *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
                      ((uint16_t)(g >> 3) << 6) |
                      ((uint16_t)(b >> 3) << 1) |
@@ -1135,9 +1139,12 @@ static void LoadTex(int id, int tmu)
             do
             {
                uint8_t a = (*col & 0x0001);
-               uint8_t r = percent_r * (((*col & 0xF800) >> 11)) + (1-percent_r) * cr0;
-               uint8_t g = percent_g * (((*col & 0x07C0) >> 6)) + (1-percent_g) * cg0;
-               uint8_t b = percent_b * (((*col & 0x003E) >> 1)) + (1-percent_b) * cb0;
+               uint8_t r = (uint8_t)
+                  (uint8_t)(percent_r * ((*col & 0xF800) >> 11) + (1-percent_r) * cr0);
+               uint8_t g =
+                  (uint8_t)(percent_g * ((*col & 0x07C0) >>  6) + (1-percent_g) * cg0);
+               uint8_t b =
+                  (uint8_t)(percent_b * ((*col & 0x003E) >>  1) + (1-percent_b) * cb0);
                *col++ = (uint16_t)(((uint16_t)(r >> 3) << 11) |
                      ((uint16_t)(g >> 3) << 6) |
                      ((uint16_t)(b >> 3) << 1) |
@@ -1146,9 +1153,9 @@ static void LoadTex(int id, int tmu)
             break;
          case TMOD_TEX_INTER_COL_USING_TEXA:
             {
-               uint8_t r = (((modcolor >> 24) & 0xFF) / 255.0f * 31.0f);
-               uint8_t g = (((modcolor >> 16) & 0xFF) / 255.0f * 31.0f);
-               uint8_t b = (((modcolor >> 8)  & 0xFF) / 255.0f * 31.0f);
+               uint8_t r = (uint8_t)(((modcolor >> 24) & 0xFF) / 255.f * 31.f);
+               uint8_t g = (uint8_t)(((modcolor >> 16) & 0xFF) / 255.f * 31.f);
+               uint8_t b = (uint8_t)(((modcolor >>  8) & 0xFF) / 255.f * 31.f);
                uint8_t a = (modcolor & 0xFF) ? 1 : 0;
                uint16_t col16 = ((r << 11)|(g << 6)|(b << 1) | a);
 
@@ -1427,9 +1434,12 @@ static void LoadTex(int id, int tmu)
 
                   do
                   {
-                     uint8_t r = ((1 - percent) * (((*dst) >> 8) & 0xF) + percent * cr0);
-                     uint8_t g = ((1 - percent) * (((*dst) >> 4) & 0xF) + percent * cg0);
-                     uint8_t b = ((1 - percent) * ((*dst) & 0xF) + percent * cb0);
+                     uint8_t r = (uint8_t)
+                        ((1 - percent) * (((*dst) >> 8) & 0xF) + percent * cr0);
+                     uint8_t g = (uint8_t)
+                        ((1 - percent) * (((*dst) >> 4) & 0xF) + percent * cg0);
+                     uint8_t b = (uint8_t)
+                        ((1 - percent) * ((*dst) & 0xF) + percent * cb0);
                      *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                   }while(--size);
                }
@@ -1442,9 +1452,12 @@ static void LoadTex(int id, int tmu)
 
                   do
                   {
-                     uint8_t r = ((1 - percent_r) * (((*dst) >> 8) & 0xF) + percent_r * cr0);
-                     uint8_t g = ((1 - percent_g) * (((*dst) >> 4) & 0xF) + percent_g * cg0);
-                     uint8_t b = ((1 - percent_b) * ((*dst) & 0xF) + percent_b * cb0);
+                     uint8_t r = (uint8_t)
+                        ((1 - percent_r) * (((*dst) >> 8) & 0xF) + percent_r * cr0);
+                     uint8_t g = (uint8_t)
+                        ((1 - percent_g) * (((*dst) >> 4) & 0xF) + percent_g * cg0);
+                     uint8_t b = (uint8_t)
+                        ((1 - percent_b) * ((*dst) & 0xF) + percent_b * cb0);
                      *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                   }while(--size);
                }
@@ -1482,9 +1495,12 @@ static void LoadTex(int id, int tmu)
                      do
                      {
                         float percent = ((*dst & 0xF000) >> 12) / 15.0f;
-                        uint8_t r = ((((1 - percent) * cr0 + percent * cr1) / 15.0f) * ((((*dst) & 0x0F00) >> 8) / 15.0f) * 15.0f);
-                        uint8_t g = ((((1 - percent) * cg0 + percent * cg1) / 15.0f) * ((((*dst) & 0x00F0) >> 4) / 15.0f) * 15.0f);
-                        uint8_t b = ((((1 - percent) * cb0 + percent * cb1) / 15.0f) * (((*dst) & 0x000F) / 15.0f) * 15.0f);
+                        uint8_t r = (uint8_t)
+                           ((((1 - percent) * cr0 + percent * cr1) / 15.0f) * ((((*dst) & 0x0F00) >> 8) / 15.0f) * 15.0f);
+                        uint8_t g = (uint8_t)
+                           ((((1 - percent) * cg0 + percent * cg1) / 15.0f) * ((((*dst) & 0x00F0) >> 4) / 15.0f) * 15.0f);
+                        uint8_t b = (uint8_t)
+                           ((((1 - percent) * cb0 + percent * cb1) / 15.0f) * (((*dst) & 0x000F) / 15.0f) * 15.0f);
                         *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                      }while(--size);
                   }
@@ -1493,9 +1509,9 @@ static void LoadTex(int id, int tmu)
                      do
                      {
                         float percent = ((*dst & 0xF000) >> 12) / 15.0f;
-                        uint8_t r = ((1 - percent) * cr0 + percent * cr1);
-                        uint8_t g = ((1 - percent) * cg0 + percent * cg1);
-                        uint8_t b = ((1 - percent) * cb0 + percent * cb1);
+                        uint8_t r = (uint8_t)((1 - percent)*cr0 + percent*cr1);
+                        uint8_t g = (uint8_t)((1 - percent)*cg0 + percent*cg1);
+                        uint8_t b = (uint8_t)((1 - percent)*cb0 + percent*cb1);
                         *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                      }while(--size);
                   }
@@ -1511,9 +1527,12 @@ static void LoadTex(int id, int tmu)
                         float percent_r = (((*dst) >> 8) & 0xF) / 15.0f;
                         float percent_g = (((*dst) >> 4) & 0xF) / 15.0f;
                         float percent_b = ((*dst) & 0xF) / 15.0f;
-                        uint8_t r = ((1.0f-percent_r) * cr0 + percent_r * (((*dst) & 0x0F00) >> 8));
-                        uint8_t g = ((1.0f-percent_g) * cg0 + percent_g * (((*dst) & 0x00F0) >> 4));
-                        uint8_t b = ((1.0f-percent_b) * cb0 + percent_b * ((*dst) & 0x000F));       
+                        uint8_t r = (uint8_t)
+                           ((1.0f-percent_r) * cr0 + percent_r * (((*dst) & 0x0F00) >> 8));
+                        uint8_t g = (uint8_t)
+                           ((1.0f-percent_g) * cg0 + percent_g * (((*dst) & 0x00F0) >> 4));
+                        uint8_t b = (uint8_t)
+                           ((1.0f-percent_b) * cb0 + percent_b * ((*dst) & 0x000F));
                         *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                      }while(--size);
                   }
@@ -1522,9 +1541,12 @@ static void LoadTex(int id, int tmu)
                      do
                      {
                         float percent = ((*dst & 0xF000) >> 12) / 15.0f;
-                        uint8_t r = ((1 - percent) * cr0 + percent * ((*dst & 0x0F00) >> 8));
-                        uint8_t g = ((1 - percent) * cg0 + percent * ((*dst & 0x00F0) >> 4));
-                        uint8_t b = ((1 - percent) * cb0 + percent * (*dst & 0x000F));
+                        uint8_t r = (uint8_t)
+                           ((1 - percent)*cr0 + percent*((*dst & 0x0F00) >> 8));
+                        uint8_t g = (uint8_t)
+                           ((1 - percent)*cg0 + percent*((*dst & 0x00F0) >> 4));
+                        uint8_t b = (uint8_t)
+                           ((1 - percent)*cb0 + percent*(*dst & 0x000F));
                         *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                      }while(--size);
                   }
@@ -1538,9 +1560,12 @@ static void LoadTex(int id, int tmu)
                      float percent_r = (((*dst) >> 8) & 0xF) / 15.0f;
                      float percent_g = (((*dst) >> 4) & 0xF) / 15.0f;
                      float percent_b = (*dst & 0xF) / 15.0f;
-                     uint8_t r = (((1.0f-percent_r) * cr0 + percent_r * cr1) * percent_a + cr2 * (1.0f-percent_a));
-                     uint8_t g = (((1.0f-percent_g) * cg0 + percent_g * cg1) * percent_a + cg2 * (1.0f-percent_a));
-                     uint8_t b = (((1.0f-percent_b) * cb0 + percent_b * cb1) * percent_a + cb2 * (1.0f-percent_a));
+                     uint8_t r = (uint8_t)
+                        (((1.0f-percent_r)*cr0 + percent_r*cr1)*percent_a + cr2*(1.0f-percent_a));
+                     uint8_t g = (uint8_t)
+                        (((1.0f-percent_g)*cg0 + percent_g*cg1)*percent_a + cg2*(1.0f-percent_a));
+                     uint8_t b = (uint8_t)
+                        (((1.0f-percent_b)*cb0 + percent_b*cb1)*percent_a + cb2*(1.0f-percent_a));
                      *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                   }while(--size);
                }
@@ -1638,9 +1663,12 @@ static void LoadTex(int id, int tmu)
 
                   do
                   {
-                     uint8_t r = (percent_r * (((*dst) >> 8) & 0xF) + (1 - percent_r) * cr0);
-                     uint8_t g = (percent_g * (((*dst) >> 4) & 0xF) + (1 - percent_g) * cg0);
-                     uint8_t b = (percent_b * ((*dst) & 0xF) + (1 - percent_b) * cb0);
+                     uint8_t r = (uint8_t)
+                        (percent_r * (((*dst) >> 8) & 0xF) + (1 - percent_r) * cr0);
+                     uint8_t g = (uint8_t)
+                        (percent_g * (((*dst) >> 4) & 0xF) + (1 - percent_g) * cg0);
+                     uint8_t b = (uint8_t)
+                        (percent_b * ((*dst) & 0xF) + (1 - percent_b) * cb0);
                      *(dst++) = ((((*dst) >> 12) & 0xF) << 12) | (r << 8) | (g << 4) | b;
                   }while(--size);
                }
@@ -1664,9 +1692,12 @@ static void LoadTex(int id, int tmu)
                   do
                   {
                      uint8_t noise = rand()%16;
-                     uint8_t r = ((1 - percent_r) * (((*dst) >> 8) & 0xF) + percent_r * noise);
-                     uint8_t g = ((1 - percent_g) * (((*dst) >> 4) & 0xF) + percent_g * noise);
-                     uint8_t b = ((1 - percent_b) * (*dst & 0xF) + percent_b * noise);
+                     uint8_t r = (uint8_t)
+                        ((1 - percent_r)*(((*dst) >> 8) & 0xF) + percent_r*noise);
+                     uint8_t g = (uint8_t)
+                        ((1 - percent_g)*(((*dst) >> 4) & 0xF) + percent_g*noise);
+                     uint8_t b = (uint8_t)
+                        ((1 - percent_b)*(*dst & 0xF) + percent_b*noise);
                      *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                   }while(--size);
                }
@@ -1675,9 +1706,12 @@ static void LoadTex(int id, int tmu)
                do
                {
                   float percent = ((*dst & 0xF000) >> 12) / 15.0f;
-                  uint8_t r = (percent * cr0 + (1 - percent) * ((*dst & 0x0F00) >> 8));
-                  uint8_t g = (percent * cg0 + (1 - percent) * ((*dst & 0x00F0) >> 4));
-                  uint8_t b = (percent * cb0 + (1 - percent) * (*dst & 0x000F));
+                  uint8_t r = (uint8_t)
+                     (percent*cr0 + (1 - percent)*((*dst & 0x0F00) >> 8));
+                  uint8_t g = (uint8_t)
+                     (percent*cg0 + (1 - percent)*((*dst & 0x00F0) >> 4));
+                  uint8_t b = (uint8_t)
+                     (percent*cb0 + (1 - percent)*(*dst & 0x000F));
                   *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                }while(--size);
                break;
@@ -1696,9 +1730,9 @@ static void LoadTex(int id, int tmu)
 
                   do
                   {
-                     uint8_t r = cr0 + percent * (float)(((*dst) >> 8) & 0xF);
-                     uint8_t g = cg0 + percent * (float)(((*dst) >> 4) & 0xF);
-                     uint8_t b = cb0 + percent * (float)(*dst & 0xF);
+                     uint8_t r = (uint8_t)(cr0 + percent*(((*dst) >> 8) & 0xF));
+                     uint8_t g = (uint8_t)(cg0 + percent*(((*dst) >> 4) & 0xF));
+                     uint8_t b = (uint8_t)(cb0 + percent*(((*dst) >> 0) & 0xF));
                      *(dst++) = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                   }while(--size);
                }

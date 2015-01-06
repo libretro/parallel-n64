@@ -430,9 +430,26 @@ void update_uniforms(shader_program_key prog)
    glUniform1i(prog.texture1_location, 1);
 
    v2 = 1.0f;
-   glUniform3f(prog.vertexOffset_location,(width/2),(height/2),v2);
-   glUniform4f(prog.textureSizes_location,tex_width[0], tex_height[0] , tex_width[1], tex_height[1]);
-   glUniform4f(prog.exactSizes_location,tex_exactWidth[0], tex_exactHeight[0], tex_exactWidth[1], tex_exactHeight[1]);
+   glUniform3f(
+      prog.vertexOffset_location,
+      (GLfloat)width / 2.f,
+      (GLfloat)height / 2.f,
+      v2
+   );
+   glUniform4f(
+      prog.textureSizes_location,
+      (float)tex_width[0],
+      (float)tex_height[0],
+      (float)tex_width[1],
+      (float)tex_height[1]
+   );
+   glUniform4f(
+      prog.exactSizes_location,
+      (float)tex_exactWidth[0],
+      (float)tex_exactHeight[0],
+      (float)tex_exactWidth[1],
+      (float)tex_exactHeight[1]
+   );
 
    v0 = fog_enabled != 2 ? 0.0f : 1.0f;
    v2 /= (fogEnd - fogStart);

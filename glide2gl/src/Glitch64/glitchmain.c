@@ -249,7 +249,9 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
    {
       for (j=0; j<src_height; j++)
          for (i=0; i<src_width; i++)
-            buf[j * src_width+i] = (frameBuffer[(src_height-j-1)*(src_stride/2)+i]/(65536.0f*(2.0f/zscale)))+1-zscale/2.0f;
+            buf[j*src_width + i] = (uint8_t)
+               ((frameBuffer[(src_height-j-1)*(src_stride/2)+i]/(65536.0f*(2.0f/zscale)))+1-zscale/2.0f)
+            ;
 
       glEnable(GL_DEPTH_TEST);
       glDepthFunc(GL_ALWAYS);
@@ -291,22 +293,22 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
       tex_height = src_height;
       invert = 1;
 
-      data[0]   =     ((int)dst_x);                             //X 0
-      data[1]   =     invert*-((int)dst_y);                     //Y 0 
-      data[2]   =     0.0f;                                     //U 0 
-      data[3]   =     0.0f;                                     //V 0
-      data[4]   =     ((int)dst_x);                             //X 1
-      data[5]   =     invert*-((int)dst_y + (int)src_height);   //Y 1
-      data[6]   =     0.0f;                                     //U 1
-      data[7]   =     (float)src_height;                        //V 1
-      data[8]   =     ((int)dst_x + (int)src_width);
-      data[9]  =     invert*-((int)dst_y + (int)src_height);
-      data[10]  =     (float)src_width;
-      data[11]  =     (float)src_height;
-      data[12]  =     ((int)dst_x);
-      data[13]  =     invert*-((int)dst_y);
-      data[14]  =     0.0f;
-      data[15]  =     0.0f;
+      data[ 0] = (float)((int)dst_x);                             /* X 0 */
+      data[ 1] = (float)(invert*-((int)dst_y));                   /* Y 0 */
+      data[ 2] = 0.0f;                                            /* U 0 */
+      data[ 3] = 0.0f;                                            /* V 0 */
+      data[ 4] = (float)((int)dst_x);                             /* X 1 */
+      data[ 5] = (float)(invert*-((int)dst_y + (int)src_height)); /* Y 1 */
+      data[ 6] = 0.0f;                                            /* U 1 */
+      data[ 7] = (float)src_height;                               /* V 1 */
+      data[ 8] = (float)((int)dst_x + (int)src_width);
+      data[ 9] = (float)(invert*-((int)dst_y + (int)src_height));
+      data[10] = (float)src_width;
+      data[11] = (float)src_height;
+      data[12] = (float)((int)dst_x);
+      data[13] = (float)(invert*-((int)dst_y));
+      data[14] = 0.0f;
+      data[15] = 0.0f;
 
 #ifdef EMSCRIPTEN
       glBindBuffer(GL_ARRAY_BUFFER, glitch_vbo);

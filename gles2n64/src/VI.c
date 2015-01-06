@@ -33,8 +33,8 @@ void VI_UpdateSize(void)
       if (hEnd == hStart) hEnd = (u32)(*gfx_info.VI_WIDTH_REG / xScale);
 
 
-      VI.width = (hEnd - hStart) * xScale;
-      VI.height = (vEnd - vStart) * yScale * 1.0126582f;
+      VI.width = (u32)(xScale * (hEnd - hStart));
+      VI.height = (u32)(yScale * 1.0126582f * (vEnd - vStart));
    }
    else
    {
@@ -42,8 +42,8 @@ void VI_UpdateSize(void)
       VI.height = config.video.height;
    }
 
-   if (VI.width == 0.0f) VI.width = 320.0f;
-   if (VI.height == 0.0f) VI.height = 240.0f;
+   if (VI.width == 0.0f) VI.width = 320;
+   if (VI.height == 0.0f) VI.height = 240;
    VI.rwidth = 1.0f / VI.width;
    VI.rheight = 1.0f / VI.height;
 
