@@ -80,10 +80,11 @@ EXPORT int CALL angrylionInitiateGFX (GFX_INFO Gfx_Info)
  
 EXPORT void CALL angrylionMoveScreen (int xpos, int ypos)
 {
+#ifdef HAVE_DIRECTDRAW
     RECT statusrect;
     POINT p;
+
     p.x = p.y = 0;
-#ifdef HAVE_DIRECTDRAW
     GetClientRect(gfx.hWnd, &__dst);
     ClientToScreen(gfx.hWnd, &p);
     OffsetRect(&__dst, p.x, p.y);
