@@ -75,11 +75,11 @@ typedef struct
 
 static INLINE void InterpolateColors(VERTEX *dest, float percent, VERTEX *first, VERTEX *second)
 {
-   dest->r = first->r + percent * (second->r - first->r);
-   dest->g = first->g + percent * (second->g - first->g);
-   dest->b = first->b + percent * (second->b - first->b);
-   dest->a = first->a + percent * (second->a - first->a);
-   dest->f = first->f + percent * (second->f - first->f);
+   dest->r = (uint8_t)(first->r + percent*(second->r - first->r));
+   dest->g = (uint8_t)(first->g + percent*(second->g - first->g));
+   dest->b = (uint8_t)(first->b + percent*(second->b - first->b));
+   dest->a = (uint8_t)(first->a + percent*(second->a - first->a));
+   dest->f = ( float )(first->f + percent*(second->f - first->f));
 }
 
 void apply_shade_mods (VERTEX *v)
@@ -228,11 +228,15 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
 
    w = 1.0/interp3p(v1->oow,v2->oow,v3->oow,s1,s2);
 
-   out->r = interp3p(v1->r*v1->oow,v2->r*v2->oow,v3->r*v3->oow,s1,s2)*w;
-   out->g = interp3p(v1->g*v1->oow,v2->g*v2->oow,v3->g*v3->oow,s1,s2)*w;
-   out->b = interp3p(v1->b*v1->oow,v2->b*v2->oow,v3->b*v3->oow,s1,s2)*w;
-   out->a = interp3p(v1->a*v1->oow,v2->a*v2->oow,v3->a*v3->oow,s1,s2)*w;
-   out->f = (float)(interp3p(v1->f*v1->oow,v2->f*v2->oow,v3->f*v3->oow,s1,s2)*w);
+   out->r = (uint8_t)
+      (w * interp3p(v1->r*v1->oow,v2->r*v2->oow,v3->r*v3->oow,s1,s2));
+   out->g = (uint8_t)
+      (w * interp3p(v1->g*v1->oow,v2->g*v2->oow,v3->g*v3->oow,s1,s2));
+   out->b = (uint8_t)
+      (w * interp3p(v1->b*v1->oow,v2->b*v2->oow,v3->b*v3->oow,s1,s2));
+   out->a = (uint8_t)
+      (w * interp3p(v1->a*v1->oow,v2->a*v2->oow,v3->a*v3->oow,s1,s2));
+   out->f = interp3p(v1->f*v1->oow,v2->f*v2->oow,v3->f*v3->oow,s1,s2) * w;
 }
 
 static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
@@ -243,16 +247,16 @@ static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percen
    //   res->q = res->oow;
    ba = va->b * va->oow;
    bb = vb->b * vb->oow;
-   res->b = interp2p(ba, bb, percent) * w;
+   res->b = (uint8_t)(interp2p(ba, bb, percent) * w);
    ga = va->g * va->oow;
    gb = vb->g * vb->oow;
-   res->g = interp2p(ga, gb, percent) * w;
+   res->g = (uint8_t)(interp2p(ga, gb, percent) * w);
    ra = va->r * va->oow;
    rb = vb->r * vb->oow;
-   res->r = interp2p(ra, rb, percent) * w;
+   res->r = (uint8_t)(interp2p(ra, rb, percent) * w);
    aa = va->a * va->oow;
    ab = vb->a * vb->oow;
-   res->a = interp2p(aa, ab, percent) * w;
+   res->a = (uint8_t)(interp2p(aa, ab, percent) * w);
    fa = va->f * va->oow;
    fb = vb->f * vb->oow;
    res->f = interp2p(fa, fb, percent) * w;

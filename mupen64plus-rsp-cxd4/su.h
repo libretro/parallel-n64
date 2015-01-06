@@ -1310,12 +1310,12 @@ INLINE static void SQV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
     register int b;
-    const int e = element;
+    const unsigned int e = element;
 
     addr = (SR[base] + 16*offset) & 0x00000FFF;
     if (e != 0x0)
     { /* happens with "Mia Hamm Soccer 64" */
-        register int i;
+        register unsigned int i;
 
         for (i = 0; i < 16 - addr%16; i++)
             RSP.DMEM[BES((addr + i) & 0xFFF)] = VR_B(vt, (e + i) & 0xF);

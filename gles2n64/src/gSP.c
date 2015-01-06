@@ -53,7 +53,7 @@ void gSPTriangle(s32 v0, s32 v1, s32 v2)
    gDP.colorImage.height = (unsigned int)(max( gDP.colorImage.height, gDP.scissor.lry ));
 }
 
-void gSP1Triangle( const s32 v0, const s32 v1, const s32 v2)
+void gSP1Triangle( s32 v0, s32 v1, s32 v2)
 {
    gSPTriangle( v0, v1, v2);
    gSPFlushTriangles();
@@ -331,9 +331,9 @@ static void gSPLightVertex_default(u32 v)
       g += gSP.lights[i].g * intensity;
       b += gSP.lights[i].b * intensity;
    }
-   OGL.triangles.vertices[v].r = min(1.0, r);
-   OGL.triangles.vertices[v].g = min(1.0, g);
-   OGL.triangles.vertices[v].b = min(1.0, b);
+   OGL.triangles.vertices[v].r = min(1.0f, r);
+   OGL.triangles.vertices[v].g = min(1.0f, g);
+   OGL.triangles.vertices[v].b = min(1.0f, b);
 }
 
 static void gSPBillboardVertex_default(u32 v, u32 i)
@@ -1074,10 +1074,12 @@ void gSPInsertMatrix( u32 where, u32 num )
    if (where < 0x20)
    {
       fraction = modff( gSP.matrix.combined[0][where >> 1], &integer );
-      gSP.matrix.combined[0][where >> 1] = (s16)_SHIFTR( num, 16, 16 ) + abs( (int)fraction );
+      gSP.matrix.combined[0][where >> 1]
+       = (f32)_SHIFTR( num, 16, 16 ) + abs( (int)fraction );
 
       fraction = modff( gSP.matrix.combined[0][(where >> 1) + 1], &integer );
-      gSP.matrix.combined[0][(where >> 1) + 1] = (s16)_SHIFTR( num, 0, 16 ) + abs( (int)fraction );
+      gSP.matrix.combined[0][(where >> 1) + 1]
+       = (f32)_SHIFTR( num, 0, 16 ) + abs( (int)fraction );
    }
    else
    {
@@ -1223,23 +1225,23 @@ void gSPBgRect1Cyc( u32 bg )
 	   frameX0, frameX1, frameY0, frameY1, frameS0, frameT0;
    addr = RSP_SegmentToPhysical(bg) >> 1;
 
-   imageX	= (((uint16_t*)gfx_info.RDRAM)[(addr+0)^1] >> 5);	// 0
-   imageY	= (((uint16_t*)gfx_info.RDRAM)[(addr+4)^1] >> 5);	// 4
-   imageW	= (((uint16_t*)gfx_info.RDRAM)[(addr+1)^1] >> 2);	// 1
-   imageH	= (((uint16_t*)gfx_info.RDRAM)[(addr+5)^1] >> 2);	// 5
+   imageX = (f32)(((uint16_t*)gfx_info.RDRAM)[(addr+0)^1] >> 5); /* 0 */
+   imageY = (f32)(((uint16_t*)gfx_info.RDRAM)[(addr+4)^1] >> 5); /* 4 */
+   imageW = (f32)(((uint16_t*)gfx_info.RDRAM)[(addr+1)^1] >> 2); /* 1 */
+   imageH = (f32)(((uint16_t*)gfx_info.RDRAM)[(addr+5)^1] >> 2); /* 5 */
 
-   frameX	= ((int16_t*)gfx_info.RDRAM)[(addr+2)^1] / 4.0f;	// 2
-   frameY	= ((int16_t*)gfx_info.RDRAM)[(addr+6)^1] / 4.0f;	// 6
-   frameW	= ((uint16_t*)gfx_info.RDRAM)[(addr+3)^1] >> 2;		// 3
-   frameH	= ((uint16_t*)gfx_info.RDRAM)[(addr+7)^1] >> 2;		// 7
+   frameX = (f32)((int16_t*)gfx_info.RDRAM)[(addr+2)^1] / 4.0f;  /* 2 */
+   frameY = (f32)((int16_t*)gfx_info.RDRAM)[(addr+6)^1] / 4.0f;  /* 6 */
+   frameW = (f32)(((uint16_t*)gfx_info.RDRAM)[(addr+3)^1] >> 2); /* 3 */
+   frameH = (f32)(((uint16_t*)gfx_info.RDRAM)[(addr+7)^1] >> 2); /* 7 */
 
 
    imageFlip = ((uint16_t*)gfx_info.RDRAM)[(addr+13)^1];	// 13;
    //d.flipX 	= (uint8_t)imageFlip&0x01;
 
    gSP.bgImage.address	= RSP_SegmentToPhysical(((u32*)gfx_info.RDRAM)[(addr+8)>>1]);	// 8,9
-   gSP.bgImage.width = imageW;
-   gSP.bgImage.height = imageH;
+   gSP.bgImage.width = (u32)imageW;
+   gSP.bgImage.height = (u32)imageH;
    gSP.bgImage.format = ((u8*)gfx_info.RDRAM)[(((addr+11)<<1)+0)^3];
    gSP.bgImage.size = ((u8*)gfx_info.RDRAM)[(((addr+11)<<1)+1)^3];
    gSP.bgImage.palette = ((u16*)gfx_info.RDRAM)[(addr+12)^1];
@@ -1328,7 +1330,17 @@ void gSPBgRectCopy( u32 bg )
 
    gSPTexture( 1.0f, 1.0f, 0, 0, TRUE );
 
-   gDPTextureRectangle( frameX, frameY, frameX + frameW - 1, frameY + frameH - 1, 0, imageX, imageY, 4, 1 );
+   gDPTextureRectangle(
+      frameX,
+      frameY,
+      frameX + frameW - 1.f,
+      frameY + frameH - 1.f,
+      0,
+      imageX,
+      imageY,
+      4,
+      1
+   );
 }
 
 void gSPObjRectangle( u32 sp )
@@ -1405,20 +1417,20 @@ void gSPObjSprite( u32 sp )
    OGL.triangles.vertices[v1].y = gSP.objMatrix.C * x1 + gSP.objMatrix.D * y0 + gSP.objMatrix.Y;
    OGL.triangles.vertices[v1].z = 0.0f;
    OGL.triangles.vertices[v1].w = 1.0f;
-   OGL.triangles.vertices[v1].s = imageW - 1;
+   OGL.triangles.vertices[v1].s = imageW - 1.f;
    OGL.triangles.vertices[v1].t = 0.0f;
    OGL.triangles.vertices[v2].x = gSP.objMatrix.A * x1 + gSP.objMatrix.B * y1 + gSP.objMatrix.X;
    OGL.triangles.vertices[v2].y = gSP.objMatrix.C * x1 + gSP.objMatrix.D * y1 + gSP.objMatrix.Y;
    OGL.triangles.vertices[v2].z = 0.0f;
    OGL.triangles.vertices[v2].w = 1.0f;
-   OGL.triangles.vertices[v2].s = imageW - 1;
-   OGL.triangles.vertices[v2].t = imageH - 1;
+   OGL.triangles.vertices[v2].s = imageW - 1.f;
+   OGL.triangles.vertices[v2].t = imageH - 1.f;
    OGL.triangles.vertices[v3].x = gSP.objMatrix.A * x0 + gSP.objMatrix.B * y1 + gSP.objMatrix.X;
    OGL.triangles.vertices[v3].y = gSP.objMatrix.C * x0 + gSP.objMatrix.D * y1 + gSP.objMatrix.Y;
    OGL.triangles.vertices[v3].z = 0.0f;
    OGL.triangles.vertices[v3].w = 1.0f;
    OGL.triangles.vertices[v3].s = 0;
-   OGL.triangles.vertices[v3].t = imageH - 1;
+   OGL.triangles.vertices[v3].t = imageH - 1.f;
 
    gDPSetTile( objSprite->imageFmt, objSprite->imageSiz, objSprite->imageStride, objSprite->imageAdrs, 0, objSprite->imagePal, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0 );
    gDPSetTileSize( 0, 0, 0, (imageW - 1) << 2, (imageH - 1) << 2 );

@@ -66,9 +66,9 @@ void F3DCBFD_Vtx(u32 w0, u32 w1)
       gSPProcessVertex(v);
 
       nonblack = 0;
-      nonblack += OGL.triangles.vertices[v].r;
-      nonblack += OGL.triangles.vertices[v].g;
-      nonblack += OGL.triangles.vertices[v].b;
+      nonblack += (u32)OGL.triangles.vertices[v].r;
+      nonblack += (u32)OGL.triangles.vertices[v].g;
+      nonblack += (u32)OGL.triangles.vertices[v].b;
 
       if (config.enableLighting && (gSP.geometryMode & G_LIGHTING) && (nonblack != 0))
       {

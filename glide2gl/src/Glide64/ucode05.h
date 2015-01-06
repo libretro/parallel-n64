@@ -267,7 +267,7 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
       case G_MW_CLIP:
          if (((rdp.cmd0>>8)&0xFFFF) == 0x04)
          {
-            rdp.clip_ratio = vi_integer_sqrt(w1);
+            rdp.clip_ratio = (float)vi_integer_sqrt(w1);
             rdp.update |= UPDATE_VIEWPORT;
          }
          break;

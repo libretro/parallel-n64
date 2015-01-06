@@ -48,7 +48,7 @@ static void TLBWrite(unsigned int idx)
                invalid_code[i] = 1;
             if (!invalid_code[i])
             {
-                blocks[i]->adler32 = adler32(0, (const unsigned char *)&rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
+                blocks[i]->adler32 = adler32(0, (unsigned char *)&rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
                 
                 invalid_code[i] = 1;
             }
@@ -67,7 +67,7 @@ static void TLBWrite(unsigned int idx)
                invalid_code[i] = 1;
             if (!invalid_code[i])
             {
-               blocks[i]->adler32 = adler32(0, (const unsigned char *)&rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
+               blocks[i]->adler32 = adler32(0, (unsigned char *)&rdram[(tlb_LUT_r[i]&0x7FF000)/4], 0x1000);
                 
                invalid_code[i] = 1;
             }
@@ -117,7 +117,7 @@ static void TLBWrite(unsigned int idx)
          {
                if(blocks[i] && blocks[i]->adler32)
                {
-                  if(blocks[i]->adler32 == adler32(0,(const unsigned char *)&rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
+                  if(blocks[i]->adler32 == adler32(0,(unsigned char *)&rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
                      invalid_code[i] = 0;
                }
          }
@@ -129,7 +129,7 @@ static void TLBWrite(unsigned int idx)
          {
             if(blocks[i] && blocks[i]->adler32)
             {
-               if(blocks[i]->adler32 == adler32(0,(const unsigned char *)&rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
+               if(blocks[i]->adler32 == adler32(0,(unsigned char *)&rdram[(tlb_LUT_r[i]&0x7FF000)/4],0x1000))
                   invalid_code[i] = 0;
             }
          }
