@@ -16,13 +16,6 @@
 
 extern unsigned char conf[32];
 
-#define _CRT_SECURE_NO_WARNINGS
-/*
- * This is only here for people using modern Microsoft compilers.
- * Usually the default warning level complains over "deprecated" CRT methods.
- * It's basically Microsoft's way of saying they're better than everyone.
- */
-
 #define MINIMUM_MESSAGE_PRIORITY    1
 #define EXTERN_COMMAND_LIST_GBI
 #define EXTERN_COMMAND_LIST_ABI
