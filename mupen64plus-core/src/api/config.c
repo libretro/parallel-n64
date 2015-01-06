@@ -1241,15 +1241,6 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
    int i;
     config_section *section;
     config_var *var;
-
-#ifdef __LIBRETRO__
-    if (!strcmp(ParamName, "AnisoFilter"))
-#ifdef GLES
-       return 0;
-#else
-       return 1;
-#endif
-
     static const struct
     {
         const char* ParamName;
@@ -1312,6 +1303,14 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
         },
         { 0, 0, { {0, 0} } }
     };
+
+#ifdef __LIBRETRO__
+    if (!strcmp(ParamName, "AnisoFilter"))
+#ifdef GLES
+       return 0;
+#else
+       return 1;
+#endif
 
     for (i = 0; libretro_translate[i].ParamName; i ++)
     {
