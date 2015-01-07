@@ -112,6 +112,6 @@
 #define UCODE_ODT_PROTO                      0x9551177b
 #define UCODE_LAST_LEGION_UX                 0xff372492
 
-void microcheck(void);
+extern void microcheck(void);
 
 #endif
