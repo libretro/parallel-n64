@@ -131,7 +131,7 @@ grDepthBiasLevel( FxI32 level )
    LOG("grDepthBiasLevel(%d)\r\n", level);
    if (level)
    {
-      glPolygonOffset(polygonOffsetFactor, (float)level * settings.depth_bias * 0.01 );
+      glPolygonOffset(polygonOffsetFactor, (float)level * settings.depth_bias * 0.01f);
       glEnable(GL_POLYGON_OFFSET_FILL);
    }
    else
@@ -152,8 +152,10 @@ grDepthBiasLevel( FxI32 level )
 FX_ENTRY void FX_CALL
 grDrawVertexArrayContiguous(FxU32 mode, FxU32 count, void *pointers)
 {
-   VERTEX *v = (VERTEX*)pointers;
+#ifdef EMSCRIPTEN
    unsigned i;
+#endif
+   VERTEX *v = (VERTEX*)pointers;
 
    if(need_to_compile)
       compile_shader();

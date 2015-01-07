@@ -150,7 +150,6 @@ static void uc2_modifyvtx(uint32_t w0, uint32_t w1)
 static void uc2_culldl(uint32_t w0, uint32_t w1)
 {
    uint16_t i, vStart, vEnd, cond;
-   VERTEX *v;
 
    vStart = (uint16_t)(w0 & 0xFFFF) >> 1;
    vEnd = (uint16_t)(w1 & 0xFFFF) >> 1;
@@ -163,6 +162,8 @@ static void uc2_culldl(uint32_t w0, uint32_t w1)
    for (i = vStart; i <= vEnd; i++)
    {
 #if 0
+      VERTEX *v;
+
       v = (VERTEX*)&rdp.vtx[i];
 
       /*
