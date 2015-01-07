@@ -8,7 +8,7 @@
 #include "m64p_types.h"
 #include "m64p_config.h"
 
-extern int screen_width, screen_height;
+extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
 #ifdef HAVE_DIRECTDRAW
