@@ -6,6 +6,10 @@
 #include "libretro.h"
 #include "libretro_perf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern unsigned int FAKE_SDL_TICKS;
 
 extern retro_get_cpu_features_t perf_get_cpu_features_cb;
@@ -15,8 +19,13 @@ extern retro_perf_register_t perf_register_cb;
 
 #define SDL_GetTicks() FAKE_SDL_TICKS
 
+#ifdef __cplusplus
+}
+#endif
+
 #ifdef _MSC_VER
 #define strcasecmp stricmp
 #endif
+
 
 #endif
