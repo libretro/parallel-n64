@@ -169,6 +169,7 @@ static unsigned int get_cic_seed(void)
    }
 
    DebugMessage(M64MSG_WARNING, "Unknown CIC (%d)! using CIC 6102.", CIC_Chip);
+   return 0x00;
 }
 
 /* Simulates end result of PIFBootROM execution */
