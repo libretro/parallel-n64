@@ -24,18 +24,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
-#include "libretro.h"
-
-/* snprintf not available in MSVC 2010 and earlier */
-#include "../libretro/msvc_compat.h"
 
 /*
  * copied straight from mupen64plus-core/src/r4300/fpu.h by cxd4
  * Do not include said file above, as it currently will not compile.
  */
 static __inline double round(double x) { return floor(x + 0.5); }
+
+#include <math.h>
+
+#include "libretro.h"
+
+/* snprintf not available in MSVC 2010 and earlier */
+#include "../libretro/msvc_compat.h"
 
 extern retro_environment_t environ_cb;
 extern retro_input_state_t input_cb;
