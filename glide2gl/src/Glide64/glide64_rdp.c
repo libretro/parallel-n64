@@ -847,14 +847,14 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       lr_x += 1.0f;
       lr_y += 1.0f;
    } else if (lr_y - ul_y < 1.0f)
-      lr_y = ceil(lr_y);
+      lr_y = ceilf(lr_y);
 
    if (settings.increase_texrect_edge)
    {
       if (floor(lr_x) != lr_x)
-         lr_x = ceil(lr_x);
+         lr_x = ceilf(lr_x);
       if (floor(lr_y) != lr_y)
-         lr_y = ceil(lr_y);
+         lr_y = ceilf(lr_y);
    }
 
    //*/
@@ -3141,7 +3141,7 @@ output:   none
 EXPORT void CALL ProcessRDPList(void)
 {
    int32_t length;
-   uint32_t i;
+   int32_t i;
    uint32_t cmd, cmd_length;
 
    rdp_cmd_ptr = 0;

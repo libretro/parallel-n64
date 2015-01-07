@@ -1961,10 +1961,11 @@ void FrameBufferManager::CopyBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t
                 for (uint32_t j=0; j<width; j++)
                 {
                     int pos = 4*(j*bufWidth/width);
-                    uint16_t tempword = ConvertRGBATo555((pS[pos+2]),   // Red
-                                                       (pS[pos+1]),   // Green
-                                                       (pS[pos+0]),   // Blue
-                                                       (pS[pos+3]));  // Alpha
+
+                    tempword = ConvertRGBATo555((pS[pos+2]),    /* Red */
+                                                (pS[pos+1]),    /* Green */
+                                                (pS[pos+0]),    /* Blue */
+                                                (pS[pos+3]));   /* Alpha */
 
                     //*pD = CIFindIndex(tempword);
                     *(pD+(j^3)) = RevTlutTable[tempword];

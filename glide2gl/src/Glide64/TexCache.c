@@ -146,7 +146,7 @@ static uint32_t textureCRC(uint8_t *addr, int width, int height, int line)
       for (i = width; i; --i)
       {
          twopixel_crc = i * (uint64_t)(pixelpos[1] + pixelpos[0] + crc);
-         crc = (twopixel_crc >> 32) + twopixel_crc;
+         crc = (uint32_t)(twopixel_crc >> 32) + (uint32_t)twopixel_crc;
          pixelpos += 2;
       }
       crc = ((unsigned int)height * (uint64_t)crc >> 32) + height * crc;
@@ -1214,7 +1214,7 @@ static void LoadTex(int id, int tmu)
 
       // Load using mirroring/clamping
       if (min_x > texinfo[id].width &&
-            real_x > texinfo[id].width)
+  (signed)real_x > texinfo[id].width) /* real_x unsigned just for right shift */
       {
          if (size == 1)
             Clamp16bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
@@ -1227,7 +1227,7 @@ static void LoadTex(int id, int tmu)
       if (texinfo[id].width < (int)real_x)
       {
          bool cond_true = rdp.tiles[td].mask_s != 0
-               && (real_x > (1 << rdp.tiles[td].mask_s));
+               && (real_x > (1U << rdp.tiles[td].mask_s));
          if (rdp.tiles[td].mirror_s && cond_true)
          {
             if (size == 1)
@@ -1273,7 +1273,7 @@ static void LoadTex(int id, int tmu)
          int32_t line_full = real_x << size;
          uint8_t *dst = (uint8_t*)(texture + texinfo[id].height * line_full);
          uint8_t *const_line = (uint8_t*)(dst - line_full);
-         uint32_t y = texinfo[id].height;
+         int y = texinfo[id].height;
 
          for (; y < min_y; y++)
          {
@@ -1287,7 +1287,7 @@ static void LoadTex(int id, int tmu)
          if (rdp.tiles[td].mirror_t)
          {
             // Vertical Mirror
-            if (rdp.tiles[td].mask_t != 0 && (real_y > (1 << rdp.tiles[td].mask_t)))
+            if (rdp.tiles[td].mask_t != 0 && (real_y > (1U << rdp.tiles[td].mask_t)))
             {
                uint32_t mask_height = (1 << rdp.tiles[td].mask_t);
                uint32_t mask_mask = mask_height-1;
@@ -1308,7 +1308,7 @@ static void LoadTex(int id, int tmu)
                }
             }
          }
-         else if (rdp.tiles[td].mask_t != 0 && real_y > (1 << rdp.tiles[td].mask_t))
+         else if (rdp.tiles[td].mask_t != 0 && real_y > (1U << rdp.tiles[td].mask_t))
          {
             // Vertical Wrap
             uint32_t wrap_size = size;

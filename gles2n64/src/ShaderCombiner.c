@@ -489,7 +489,7 @@ void _force_uniforms(void)
    SC_ForceUniform1f(uRenderState, (float) OGL.renderState);
    SC_ForceUniform1f(uFogMultiplier, (float) gSP.fog.multiplier / 255.0f);
    SC_ForceUniform1f(uFogOffset, (float) gSP.fog.offset / 255.0f);
-   SC_ForceUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5 : gDP.blendColor.a);
+   SC_ForceUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5f : gDP.blendColor.a);
    SC_ForceUniform2f(uTexScale, gSP.texture.scales, gSP.texture.scalet);
 
    if (gSP.textureTile[0])
@@ -539,7 +539,7 @@ void _update_uniforms(void)
    SC_SetUniform1f(uRenderState, (float) OGL.renderState);
    SC_SetUniform1f(uFogMultiplier, (float) gSP.fog.multiplier / 255.0f);
    SC_SetUniform1f(uFogOffset, (float) gSP.fog.offset / 255.0f);
-   SC_SetUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5 : gDP.blendColor.a);
+   SC_SetUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5f : gDP.blendColor.a);
    SC_SetUniform1f(uK4, gDP.convert.k4);
    SC_SetUniform1f(uK5, gDP.convert.k5);
 

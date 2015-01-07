@@ -51,8 +51,9 @@ void VI_UpdateSize(void)
    //add display buffer if doesn't exist
    if (config.ignoreOffscreenRendering)
    {
-      int i;
+      unsigned int i;
       //int start = *REG.VI_ORIGIN;
+
       u32 start = RSP_SegmentToPhysical(*gfx_info.VI_ORIGIN_REG) & 0x00FFFFFF;
       u32 end = min(start + VI.width * VI.height * 4, RDRAMSize);
       for(i = 0; i < VI.displayNum; i++)

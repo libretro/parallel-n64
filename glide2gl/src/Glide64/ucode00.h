@@ -40,7 +40,7 @@
 
 static void rsp_vertex(int v0, int n)
 {
-   int i;
+   unsigned int i;
    uint32_t addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
 
    // This is special, not handled in update(), but here

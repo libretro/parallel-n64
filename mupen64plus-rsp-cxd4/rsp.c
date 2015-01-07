@@ -86,9 +86,10 @@ static void DebugMessage(int level, const char *message, ...)
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
                                      void (*DebugCallback)(void *, int, const char *))
 {
+#ifndef __LIBRETRO__
     ptr_CoreGetAPIVersions CoreAPIVersionFunc;
-
     int ConfigAPIVersion, DebugAPIVersion, VidextAPIVersion, bSaveConfig;
+#endif
     float fConfigParamsVersion = 0.0f;
 
     if (l_PluginInit)

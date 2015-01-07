@@ -226,7 +226,7 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
    if (s2 > 100.0f)
       s2 =(ty-v2->sy)/(v3->sy-v2->sy);
 
-   w = 1.0/interp3p(v1->oow,v2->oow,v3->oow,s1,s2);
+   w = 1.0f / interp3p(v1->oow,v2->oow,v3->oow,s1,s2);
 
    out->r = (uint8_t)
       (w * interp3p(v1->r*v1->oow,v2->r*v2->oow,v3->r*v3->oow,s1,s2));
@@ -267,11 +267,11 @@ static INLINE void CalculateLODValues(VERTEX *v, int32_t i, int32_t j, float *lo
    float deltaS, deltaT, deltaTexels, deltaPixels, deltaX, deltaY;
    deltaS = (v[j].u0/v[j].q - v[i].u0/v[i].q) * s_scale;
    deltaT = (v[j].v0/v[j].q - v[i].v0/v[i].q) * t_scale;
-   deltaTexels = sqrt( deltaS * deltaS + deltaT * deltaT );
+   deltaTexels = sqrtf( deltaS * deltaS + deltaT * deltaT );
 
    deltaX = (v[j].x - v[i].x)/rdp.scale_x;
    deltaY = (v[j].y - v[i].y)/rdp.scale_y;
-   deltaPixels = sqrt( deltaX * deltaX + deltaY * deltaY );
+   deltaPixels = sqrtf( deltaX * deltaX + deltaY * deltaY );
 
    *lodFactor += deltaTexels / deltaPixels;
 }

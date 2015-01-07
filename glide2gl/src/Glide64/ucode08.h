@@ -46,8 +46,7 @@ float uc8_coord_mod[16];
 
 static void uc8_vertex(uint32_t w0, uint32_t w1)
 {
-   uint32_t l;
-   int32_t i;
+   uint32_t i;
    float x, y, z;
 #ifdef __ARM_NEON__
    float32x4_t comb0, comb1, comb2, comb3;

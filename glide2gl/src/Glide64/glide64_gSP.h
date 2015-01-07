@@ -391,8 +391,8 @@ static void draw_tri_depth(VERTEX **vtx)
       if ((rdp.rm & ZMODE_DECAL) == ZMODE_DECAL)
       {
          // Calculate deltaZ per polygon for Decal z-mode
-         float fdzdy = (diffz_02 * diffx_12 - diffz_12 * diffx_02) / denom;
-         float fdz = fabs(fdzdx) + fabs(fdzdy);
+         float fdzdy = (float)((diffz_02*diffx_12 - diffz_12*diffx_02) / denom);
+         float fdz = (float)(fabs(fdzdx) + fabs(fdzdy));
          if ((settings.hacks & hack_Zelda) && (rdp.rm & 0x800))
             fdz *= 4.0;  // Decal mode in Zelda sometimes needs mutiplied deltaZ to work correct, e.g. roads
          deltaZ = max(8, (int)fdz);
@@ -533,7 +533,7 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
 
 static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, bool do_cull, int32_t wd)
 {
-   int32_t i;
+   uint32_t i;
    int32_t vcount = 0;
 
    if (do_update)
@@ -591,7 +591,7 @@ static void pre_update(void)
  */
 static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
 {
-   int i;
+   unsigned int i;
    float x, y, z;
 #ifdef __ARM_NEON__
    float32x4_t comb0, comb1, comb2, comb3;

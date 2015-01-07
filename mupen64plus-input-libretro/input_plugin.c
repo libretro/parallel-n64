@@ -28,6 +28,15 @@
 
 #include "libretro.h"
 
+/* snprintf not available in MSVC 2010 and earlier */
+#include "../libretro/msvc_compat.h"
+
+/*
+ * copied straight from mupen64plus-core/src/r4300/fpu.h by cxd4
+ * Do not include said file above, as it currently will not compile.
+ */
+static __inline double round(double x) { return floor(x + 0.5); }
+
 extern retro_environment_t environ_cb;
 extern retro_input_state_t input_cb;
 extern struct retro_rumble_interface rumble;
@@ -317,7 +326,7 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
       // N64 Analog stick range is from -80 to 80
       radius *= 80.0 / ASTICK_MAX;
       // Convert back to cartesian coordinates
-      Keys->X_AXIS = (int32_t)round(radius * cos(angle));
+      Keys->X_AXIS = +(int32_t)round(radius * cos(angle));
       Keys->Y_AXIS = -(int32_t)round(radius * sin(angle));
    }
    else

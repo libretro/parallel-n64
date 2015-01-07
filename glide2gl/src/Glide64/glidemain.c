@@ -732,7 +732,7 @@ EXPORT void CALL UpdateScreen (void)
 
    if (
          (settings.frame_buffer & fb_cpu_write_hack) &&
-         (update_screen_count > ((settings.hacks&hack_Lego) ? 15 : 30)) &&
+         (update_screen_count > ((settings.hacks&hack_Lego) ? 15U : 30U)) &&
          (rdp.last_bg == 0)
       )
    {

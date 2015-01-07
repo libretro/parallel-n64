@@ -426,14 +426,14 @@ static INLINE float cc_int(float x, float b)
 {
    float val = x * b;
 #if (CC_RESAMPLER_PRECISION > 0)
-   val = val*(1 - 0.25 * val * val * (3.0 - val * val));
+   val = val * (1.00f - 0.25f*val*val*(3.00f - val*val));
 #endif
-   return (val > 0.5) ? 0.5 : (val < -0.5) ? -0.5 : val;
+   return (val > 0.5f) ? 0.5f : (val < -0.5f) ? -0.5f : val;
 }
 
 static INLINE float cc_kernel(float x, float b)
 {
-   return (cc_int(x + 0.5, b) - cc_int(x - 0.5, b));
+   return (cc_int(x + 0.5f, b) - cc_int(x - 0.5f, b));
 }
 #endif
 
@@ -453,8 +453,8 @@ static void resampler_CC_downsample(void *re_, struct resampler_data *data)
    audio_frame_float_t *inp_max = (audio_frame_float_t*)(inp + data->input_frames);
    audio_frame_float_t *outp    = (audio_frame_float_t*)data->data_out;
 
-   ratio = 1.0 / data->ratio;
-   b = data->ratio; /* cutoff frequency. */
+   ratio = (float)(1.0 / data->ratio);
+   b = (float)data->ratio; /* cutoff frequency. */
 
    while (inp != inp_max)
    {
@@ -492,8 +492,8 @@ static void resampler_CC_upsample(void *re_, struct resampler_data *data)
    audio_frame_float_t *inp_max = (audio_frame_float_t*)(inp + data->input_frames);
    audio_frame_float_t *outp    = (audio_frame_float_t*)data->data_out;
 
-   b = min(data->ratio, 1.00); /* cutoff frequency. */
-   ratio = 1.0 / data->ratio;
+   b = (float)min(data->ratio, 1.00f); /* cutoff frequency. */
+   ratio = (float)(1.0 / data->ratio);
 
    while (inp != inp_max)
    {
@@ -511,7 +511,7 @@ static void resampler_CC_upsample(void *re_, struct resampler_data *data)
 
          for (i = 0; i < 4; i++)
          {
-            temp = cc_kernel(re->distance + 1.0 - i, b);
+            temp = cc_kernel(re->distance + 1.0f - i, b);
             outp->l += re->buffer[i].l * temp;
             outp->r += re->buffer[i].r * temp;
          }
