@@ -231,9 +231,6 @@
     <ClCompile Include="..\..\..\gles2n64\src\3DMath.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\CRC.c">
-      <Filter>Source Files\gles2n64\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2n64\src\DepthBuffer.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
@@ -575,6 +572,18 @@
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\memory\m64p_memory.c">
       <Filter>Source Files\mupen64plus-core\src\memory</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libretro_crc.c">
+      <Filter>Source Files\libretro</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\glide2gl\src\Glide64\Glide64_UCode.c">
+      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\glide2gl\src\Glide64\Glide64_Ini.c">
+      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gles2n64\src\Hash.c">
+      <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
