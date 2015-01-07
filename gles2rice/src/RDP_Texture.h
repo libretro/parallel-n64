@@ -108,7 +108,13 @@ inline uint32_t ReverseDXT(uint32_t val, uint32_t lrs, uint32_t width, uint32_t 
 
 inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
 {
-#if !defined(__GNUC__) && !defined(NO_ASM)
+#ifdef __LIBRETRO_WIN64__
+/* need to convert all this inline ass to C eventually so Rice works again */
+/* In the meantime just delete it all out and use a different plugin. :) */
+#if 0
+#error Not currently available with mupen64plus-libretro MSVC 64-bit.
+#endif
+#elif !defined(__GNUC__) && !defined(NO_ASM)
     __asm
     {
         mov     ecx, 0
@@ -297,7 +303,11 @@ Done:
 
 inline void DWordInterleave( void *mem, uint32_t numDWords )
 {
-#if !defined(__GNUC__) && !defined(NO_ASM)
+#ifdef __LIBRETRO_WIN64__
+#if 0
+#error Not currently available with mupen64plus-libretro MSVC 64-bit.
+#endif
+#elif !defined(__GNUC__) && !defined(NO_ASM)
     __asm {
         mov     esi, dword ptr [mem]
         mov     edi, dword ptr [mem]
@@ -350,7 +360,11 @@ DWordInterleaveLoop:
 
 inline void QWordInterleave( void *mem, uint32_t numDWords )
 {
-#if !defined(__GNUC__) && !defined(NO_ASM)
+#ifdef __LIBRETRO_WIN64__
+#if 0
+#error Not currently available with mupen64plus-libretro MSVC 64-bit.
+#endif
+#elif !defined(__GNUC__) && !defined(NO_ASM)
     __asm
     {
         // Interleave the line on the qword
