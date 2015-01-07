@@ -28,7 +28,7 @@ static void resampler_nearest_process(void *re_,
    audio_frame_float_t *inp = (audio_frame_float_t*)data->data_in;
    audio_frame_float_t *inp_max = inp + data->input_frames;
    audio_frame_float_t *outp = (audio_frame_float_t*)data->data_out;
-   float ratio = 1.0/data->ratio;
+   float ratio = 1.0f / (float)(data -> ratio);
  
    while(inp != inp_max)
    {

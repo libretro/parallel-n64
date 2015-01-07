@@ -369,7 +369,7 @@ void TextureCache_Init(void)
    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
    glGenTextures( 32, cache.glNoiseNames );
 
-   srand(time(NULL));
+   srand((unsigned)time(NULL));
    for (i = 0; i < 32; i++)
    {
       glBindTexture( GL_TEXTURE_2D, cache.glNoiseNames[i] );

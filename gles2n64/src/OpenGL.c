@@ -647,12 +647,12 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
    glDisable(GL_SCISSOR_TEST);
    glDisable(GL_CULL_FACE);
 
-   OGL.rect[0].x = (float) ulx * (2.0f * VI.rwidth) - 1.0;
-   OGL.rect[0].y = (float) uly * (-2.0f * VI.rheight) + 1.0;
-   OGL.rect[1].x = (float) (lrx+1) * (2.0f * VI.rwidth) - 1.0;
+   OGL.rect[0].x = (float)ulx * (2.0f * VI.rwidth) - 1.0f;
+   OGL.rect[0].y = (float)uly * (-2.0f * VI.rheight) + 1.0f;
+   OGL.rect[1].x = (float)(lrx+1) * (2.0f * VI.rwidth) - 1.0f;
    OGL.rect[1].y = OGL.rect[0].y;
    OGL.rect[2].x = OGL.rect[0].x;
-   OGL.rect[2].y = (float) (lry+1) * (-2.0f * VI.rheight) + 1.0;
+   OGL.rect[2].y = (float)(lry+1) * (-2.0f * VI.rheight) + 1.0f;
    OGL.rect[3].x = OGL.rect[1].x;
    OGL.rect[3].y = OGL.rect[2].y;
 

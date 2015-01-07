@@ -698,9 +698,10 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
     {
         // avoid slow float compare..
         if( *(int *)&gRDP.LODFrac != *(int *)&prog.EnvLODFrac ) {
-            prog.EnvLODFrac = gRDP.LODFrac;
             float frac = gRDP.LODFrac / 255.0f;
             float tempf[4] = {frac,frac,frac,frac};
+
+            prog.EnvLODFrac = (float)gRDP.LODFrac;
             glUniform4fv(prog.EnvFracLocation, 1, tempf);
             OPENGL_CHECK_ERRORS;
         }
@@ -709,9 +710,10 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
     if(prog.PrimFracLocation != -1)
     {
         if( *(int *)&gRDP.primLODFrac != *(int *)&prog.PrimLODFrac ) {
-            prog.PrimLODFrac = gRDP.primLODFrac;
             float frac2 = gRDP.primLODFrac / 255.0f;
             float tempf2[4] = {frac2,frac2,frac2,frac2};
+
+            prog.PrimLODFrac = (float)gRDP.primLODFrac;
             glUniform4fv(prog.PrimFracLocation, 1, tempf2);
             OPENGL_CHECK_ERRORS;
         }
