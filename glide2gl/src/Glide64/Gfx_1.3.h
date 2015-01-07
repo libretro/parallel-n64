@@ -170,8 +170,8 @@ extern bool no_dlist;
 
 
 int GetTexAddrUMA(int tmu, int texsize);
-void ReadSettings(void);
-void ReadSpecialSettings (const char * name);
+extern void ReadSettings(void);
+extern void ReadSpecialSettings(const char * name);
 
 extern void (*_gSPVertex)(uint32_t addr, uint32_t n, uint32_t v0);
 
