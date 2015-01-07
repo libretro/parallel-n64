@@ -98,23 +98,43 @@ else ifneq (,$(findstring osx,$(platform)))
 	GL_LIB := -framework OpenGL
 	PLATFORM_EXT := unix
 
-# iOS
+else ifneq (,$(findstring theos_ios,$(platform)))
+DEPLOYMENT_IOSVERSION = 5.0
+TARGET = iphone:latest:$(DEPLOYMENT_IOSVERSION)
+ARCHS = armv7
+TARGET_IPHONEOS_DEPLOYMENT_VERSION=$(DEPLOYMENT_IOSVERSION)
+THEOS_BUILD_DIR := objs
+include $(THEOS)/makefiles/common.mk
+
+LIBRARY_NAME = $(TARGET_NAME)_libretro_ios
+DEFINES += -DIOS
+GLES = 1
+WITH_DYNAREC=arm
+
+	# Theos iOS
+	PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
+	CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
+	PLATCFLAGS += -DIOS -marm
+	GLIDE2GL=1
+	GLIDE64MK2=0
+	HAVE_NEON=1
 else ifneq (,$(findstring ios,$(platform)))
+	# iOS
 	ifeq ($(IOSSDK),)
 		IOSSDK := $(shell xcrun -sdk iphoneos -show-sdk-path)
 	endif
 	TARGET := $(TARGET_NAME)_libretro_ios.dylib
 	PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
-	CPUFLAGS += -DNO_ASM  -DARM
+	CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
 	PLATCFLAGS += -DIOS -marm
 	LDFLAGS += -dynamiclib
 	fpic = -fPIC
 	GLES = 1
 	GL_LIB := -framework OpenGLES
-	GLIDE2GL=0
-	GLIDE64MK2=1
+	GLIDE2GL=1
+	GLIDE64MK2=0
 	HAVE_NEON=1
-	CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -D__arm__ -DARM_ASM -D__NEON_OPT
+	CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp 
 
 	CC = clang -arch armv7 -isysroot $(IOSSDK)
 	CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
@@ -263,7 +283,7 @@ endif
 
 ### Finalize ###
 OBJECTS		+= $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_ASM:.S=.o)
-CXXFLAGS	+= $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
+CXXFLAGS	   += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 CFLAGS		+= $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 
 ifeq ($(findstring Haiku,$(UNAME)),)
@@ -272,13 +292,19 @@ endif
 
 LDFLAGS	 += $(fpic)
 
+ifeq ($(platform), theos_ios)
+COMMON_FLAGS := -DIOS $(COMMON_DEFINES) $(INCFLAGS) -I$(THEOS_INCLUDE_PATH) -Wno-error
+$(LIBRARY_NAME)_ASFLAGS += $(CFLAGS) $(COMMON_FLAGS)
+$(LIBRARY_NAME)_CFLAGS += $(CFLAGS) $(COMMON_FLAGS)
+$(LIBRARY_NAME)_CXXFLAGS += $(CXXFLAGS) $(COMMON_FLAGS)
+${LIBRARY_NAME}_FILES = $(SOURCES_CXX) $(SOURCES_C) $(SOURCES_ASM)
+${LIBRARY_NAME}_FRAMEWORKS = OpenGLES
+${LIBRARY_NAME}_LIBRARIES = z
+include $(THEOS_MAKE_PATH)/library.mk
+else
 all: $(TARGET)
-
-$(CORE_DIR)/src/r4300/new_dynarec/linkage_arm.o: $(CORE_DIR)/src/r4300/new_dynarec/linkage_arm.S
-	$(CC_AS) $(CFLAGS) -c $^ -o $@
-
-$(VIDEODIR_RICE)/RenderBase_neon.o: $(VIDEODIR_RICE)/RenderBase_neon.S
-	$(CC_AS) $(CFLAGS) -c $^ -o $@
+$(TARGET): $(OBJECTS)
+	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)
 
 %.o: %.S
 	$(CC_AS) $(CFLAGS) -c $^ -o $@
@@ -289,10 +315,9 @@ $(VIDEODIR_RICE)/RenderBase_neon.o: $(VIDEODIR_RICE)/RenderBase_neon.S
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
-$(TARGET): $(OBJECTS)
-	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
 .PHONY: clean
+endif
