@@ -338,9 +338,10 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
 
 static void inputGetKeys_6ButtonFighters(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -364,9 +365,10 @@ static void inputGetKeys_6ButtonFighters(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_XENA(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -388,9 +390,10 @@ static void inputGetKeys_XENA(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_Biofreaks(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -412,9 +415,10 @@ static void inputGetKeys_Biofreaks(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_DarkRift(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -436,9 +440,10 @@ static void inputGetKeys_DarkRift(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_ISS(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -460,9 +465,10 @@ static void inputGetKeys_ISS(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_Mace(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -482,9 +488,10 @@ static void inputGetKeys_Mace(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_MischiefMakers(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -506,8 +513,8 @@ static void inputGetKeys_MischiefMakers(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_MKTrilogy(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
 
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
@@ -529,9 +536,10 @@ static void inputGetKeys_MKTrilogy(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_MK4(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -553,9 +561,10 @@ static void inputGetKeys_MK4(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_MKMythologies(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -577,9 +586,10 @@ static void inputGetKeys_MKMythologies(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_Rampage(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -597,9 +607,10 @@ static void inputGetKeys_Rampage(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_Ready2Rumble(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -619,9 +630,10 @@ static void inputGetKeys_Ready2Rumble(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_Wipeout64(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -641,9 +653,10 @@ static void inputGetKeys_Wipeout64(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_WWF(int Control, BUTTONS *Keys)
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -666,9 +679,10 @@ static void inputGetKeys_WWF(int Control, BUTTONS *Keys)
 
 static void inputGetKeys_RR64( int Control, BUTTONS *Keys )
 {
-   int16_t analogX, analogY;
-
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -693,10 +707,11 @@ static void inputGetKeys_RR64( int Control, BUTTONS *Keys )
 
 static void inputGetKeys_default( int Control, BUTTONS *Keys )
 {
-   bool hold_cstick;
-   int16_t analogX, analogY;
-
+   bool hold_cstick = false;
+   int16_t analogX = 0;
+   int16_t analogY = 0;
    Keys->Value = 0;
+
    Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
    Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
    Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);

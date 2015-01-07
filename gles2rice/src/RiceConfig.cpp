@@ -43,8 +43,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define INI_FILE        "RiceVideoLinux.ini"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern uint32_t screen_width, screen_height;
 extern retro_environment_t environ_cb;
+
+#ifdef __cplusplus
+}
+#endif
 
 static m64p_handle l_ConfigVideoRice = NULL;
 static m64p_handle l_ConfigVideoGeneral = NULL;

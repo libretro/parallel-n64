@@ -144,7 +144,17 @@ typedef struct {
 #define MI_INTR_SP          0x00000001  
 
 extern PluginStatus status;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern GFX_INFO gfx_info;
+
+#ifdef __cplusplus
+}
+#endif
+
 extern WindowSettingStruct windowSetting;
 
 extern uint32_t   g_dwRamSize;
