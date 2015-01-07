@@ -27,7 +27,13 @@
 #if defined(WIN32) && !defined(__MINGW32__)
 
   /* macros */
+#ifdef __LIBRETRO_WIN64__
+ /* Have not implemented interrupt in x64 on MSVC. */
+  #define OSAL_BREAKPOINT_INTERRUPT
+#else
   #define OSAL_BREAKPOINT_INTERRUPT __asm int 3
+#endif
+
   #define ALIGN(BYTES,DATA) __declspec(align(BYTES)) DATA
   #define osal_inline __inline
 
