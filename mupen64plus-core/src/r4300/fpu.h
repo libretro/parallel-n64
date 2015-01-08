@@ -153,18 +153,19 @@ static INLINE int32_t m64p_fesetround(int32_t __round)
    m64p_fesetenv(&_fpscr);
    return 0;
 }
-#elif defined(EMSCRIPTEN)
-static INLINE int32_t m64p_fesetround(int32_t __round)
-{
-   (void)__round;
-   return 0;
-}
-#elif defined(_MSC_VER)
+#elif defined(_MSC_VER) && defined(_M_IX86)
 static INLINE void m64p_fesetround(eRoundType RoundType)
 {
    static const uint32_t msRound[4] = { _RC_NEAR, _RC_CHOP, _RC_UP, _RC_DOWN };
    uint32_t oldX87, oldSSE2;
+
    __control87_2(msRound[RoundType], _MCW_RC, &oldX87, &oldSSE2);
+}
+#elif defined(EMSCRIPTEN) || (0 == 0)
+static INLINE int32_t m64p_fesetround(int32_t __round)
+{
+   (void)__round;
+   return 0;
 }
 #endif
 
