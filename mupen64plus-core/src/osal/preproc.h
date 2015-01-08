@@ -27,7 +27,7 @@
 #if defined(WIN32) && !defined(__MINGW32__)
 
   /* macros */
-#ifdef __LIBRETRO_WIN64__
+#ifdef _WIN64
  /* Have not implemented interrupt in x64 on MSVC. */
   #define OSAL_BREAKPOINT_INTERRUPT
 #else

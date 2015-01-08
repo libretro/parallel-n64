@@ -616,7 +616,7 @@ uint32_t CalculateRDRAMCRC(void *pPhysicalAddress, uint32_t left, uint32_t top, 
        dwAsmHeight = height - 1;
        dwAsmPitch = pitchInBytes;
 
-#ifdef __LIBRETRO_WIN64__
+#ifdef _WIN64
 #define NO_ASM
 #endif
 #if defined(NO_ASM)

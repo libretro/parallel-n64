@@ -102,13 +102,16 @@ inline uint32_t ReverseDXT(uint32_t val, uint32_t lrs, uint32_t width, uint32_t 
     return  (low+high)/2;   //dxt = 2047 / (dxt-1);
 }
 
+#ifdef _WIN64
+#define NO_ASM
+#endif
 // The following inline assemble routines are borrowed from glN64, I am too tired to
 // rewrite these routine by myself.
 // Rice, 02/24/2004
 
 inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
 {
-#ifdef __LIBRETRO_WIN64__
+#ifdef _WIN64
 /* need to convert all this inline ass to C eventually so Rice works again */
 /* In the meantime just delete it all out and use a different plugin. :) */
 #if 0
@@ -303,7 +306,7 @@ Done:
 
 inline void DWordInterleave( void *mem, uint32_t numDWords )
 {
-#ifdef __LIBRETRO_WIN64__
+#ifdef _WIN64
 #if 0
 #error Not currently available with mupen64plus-libretro MSVC 64-bit.
 #endif
@@ -360,7 +363,7 @@ DWordInterleaveLoop:
 
 inline void QWordInterleave( void *mem, uint32_t numDWords )
 {
-#ifdef __LIBRETRO_WIN64__
+#ifdef _WIN64
 #if 0
 #error Not currently available with mupen64plus-libretro MSVC 64-bit.
 #endif
