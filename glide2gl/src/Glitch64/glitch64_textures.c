@@ -95,7 +95,7 @@ static void add_tex(unsigned int id)
    
    HASH_FIND_INT(list, &id, entry);
 
-   if (entry == NULL)
+   if (!entry)
    {
       entry = malloc(sizeof(texlist));
       entry->id = id;
@@ -113,17 +113,17 @@ addtex_log:
 static GLuint get_tex_id(unsigned int id)
 {
    texlist *entry;
-   
+
    HASH_FIND_INT(list, &id, entry);
 
-   if (entry != NULL)
+   if (entry)
       return entry->tex_id;
-   else
-   {
-      if (log_cb)
-         log_cb(RETRO_LOG_ERROR, "get_tex_id for %08x failed!\n", id);
-      return 0;
-   }
+
+#ifdef LOG_TEXTUREMEM
+   if (log_cb)
+      log_cb(RETRO_LOG_ERROR, "get_tex_id for %08x failed!\n", id);
+#endif
+   return 0;
 }
 
 void init_textures(void)
@@ -425,18 +425,25 @@ grTexDetailControl(
                    float detail_max
                    )
 {
+#if 0
    LOG("grTexDetailControl(%d,%d,%d,%d)\r\n", tmu, lod_bias, detail_scale, detail_max);
+#endif
    if (lod_bias != 31 && detail_scale != 7)
    {
-      if (!lod_bias && !detail_scale && !detail_max) return;
+      if (!lod_bias && !detail_scale && !detail_max)
+         return;
+#if 0
       else
          DISPLAY_WARNING("grTexDetailControl : %d, %d, %f", lod_bias, detail_scale, detail_max);
+#endif
    }
    lambda = detail_max;
    if(lambda > 1.0f)
       lambda = 1.0f - (255.0f - lambda);
+#if 0
    if(lambda > 1.0f)
       DISPLAY_WARNING("lambda:%f", lambda);
+#endif
 
    set_lambda();
 }
@@ -450,9 +457,16 @@ grTexFilterClampMode(
                GrTextureFilterMode_t magfilter_mode
                )
 {
-   unsigned index = tmu == GR_TMU1 ? 0 : 1;
+   unsigned active_texindex = GL_TEXTURE1;
+   unsigned index = 1;
+   
+   if (tmu == GR_TMU1)
+   {
+      index = 0;
+      active_texindex = GL_TEXTURE0;
+   }
 
-   glActiveTexture((tmu == GR_TMU1) ? GL_TEXTURE0 : GL_TEXTURE1);
+   glActiveTexture(active_texindex);
 
    wrap_s[index] = s_clampmode;
    wrap_t[index] = t_clampmode;
