@@ -306,9 +306,6 @@
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage16.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\Debugger.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\DecodedMux.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
@@ -456,9 +453,6 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\memory\pif.c">
       <Filter>Source Files\mupen64plus-core\src\memory</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\tools\rzlib\adler32.c">
-      <Filter>Source Files\rzlib</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\tools\rzlib\compress.c">
       <Filter>Source Files\rzlib</Filter>
     </ClCompile>
@@ -584,6 +578,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-angrylion\n64video_vi.c">
       <Filter>Source Files\mupen64plus-video-angrylion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\gles2rice\src\RiceDebugger.cpp">
+      <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
