@@ -125,7 +125,6 @@
       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <ExceptionHandling>false</ExceptionHandling>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
@@ -149,7 +148,6 @@
       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
