@@ -13,9 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\angrylionrdp">
-      <UniqueIdentifier>{be734aec-bdb7-47ea-a241-31d3444ec246}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\libretro">
       <UniqueIdentifier>{08d74e8f-2a39-4efc-a018-65d09dd080e0}</UniqueIdentifier>
     </Filter>
@@ -97,14 +94,11 @@
     <Filter Include="Source Files\mupen64plus-input-libretro">
       <UniqueIdentifier>{e25506ab-c81e-4516-b9ec-71e07afc57fc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\mupen64plus-video-angrylion">
+      <UniqueIdentifier>{be734aec-bdb7-47ea-a241-31d3444ec246}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\angrylionrdp\n64video.c">
-      <Filter>Source Files\angrylionrdp</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\angrylionrdp\n64video_main.c">
-      <Filter>Source Files\angrylionrdp</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\adler32.c">
       <Filter>Source Files\libretro</Filter>
     </ClCompile>
@@ -537,12 +531,6 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\instr_counters.c">
       <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\angrylionrdp\n64video_rdp.c">
-      <Filter>Source Files\angrylionrdp</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\angrylionrdp\n64video_vi.c">
-      <Filter>Source Files\angrylionrdp</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\gles2n64\src\gles2n64_rsp.c">
       <Filter>Source Files\gles2n64\src</Filter>
     </ClCompile>
@@ -584,6 +572,18 @@
     </ClCompile>
     <ClCompile Include="..\..\..\gles2n64\src\Hash.c">
       <Filter>Source Files\gles2n64\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-angrylion\n64video.c">
+      <Filter>Source Files\mupen64plus-video-angrylion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-angrylion\n64video_main.c">
+      <Filter>Source Files\mupen64plus-video-angrylion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-angrylion\n64video_rdp.c">
+      <Filter>Source Files\mupen64plus-video-angrylion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-angrylion\n64video_vi.c">
+      <Filter>Source Files\mupen64plus-video-angrylion</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
