@@ -124,6 +124,8 @@
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;_ENDUSER_RELEASE;NDEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -145,6 +147,8 @@
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;_ENDUSER_RELEASE;NDEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
