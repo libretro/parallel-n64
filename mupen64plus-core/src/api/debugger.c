@@ -42,7 +42,7 @@
 #include "r4300/cp1.h"
 #include "r4300/tlb.h"
 
-extern unsigned int op; /* this is in r4300/pure_interp.c */
+extern unsigned int op_R4300; /* this is in r4300/pure_interp.c */
 
 /* local variables */
 static void (*callback_ui_init)(void) = NULL;
@@ -76,7 +76,7 @@ void DebuggerCallback(eDbgCallbackType type, unsigned int param)
 void CoreCompareCallback(void)
 {
     if (callback_core_compare != NULL)
-        (*callback_core_compare)(op);
+        (*callback_core_compare)(op_R4300);
 }
 
 void CoreCompareDataSync(int length, void *ptr)
