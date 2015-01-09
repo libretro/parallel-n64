@@ -102,12 +102,12 @@ static void add_tex(unsigned int id)
       glGenTextures(1, &entry->tex_id);
       HASH_ADD_INT(list, id, entry);
    }
+
 #ifdef LOG_TEXTUREMEM
 addtex_log:
   if (log_cb)
      log_cb(RETRO_LOG_DEBUG, "ADDTEX nbtex is now %d (%06x)\n", HASH_COUNT(list), id);
 #endif
-  return;
 }
 
 static GLuint get_tex_id(unsigned int id)
@@ -116,14 +116,16 @@ static GLuint get_tex_id(unsigned int id)
 
    HASH_FIND_INT(list, &id, entry);
 
-   if (entry)
-      return entry->tex_id;
-
+   if (!entry)
+   {
 #ifdef LOG_TEXTUREMEM
-   if (log_cb)
-      log_cb(RETRO_LOG_ERROR, "get_tex_id for %08x failed!\n", id);
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "get_tex_id for %08x failed!\n", id);
 #endif
-   return 0;
+      return 0;
+   }
+
+   return entry->tex_id;
 }
 
 void init_textures(void)
