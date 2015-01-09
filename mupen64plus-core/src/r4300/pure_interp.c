@@ -45,6 +45,7 @@
 #endif
 
 static precomp_instr interp_PC;
+unsigned int op_R4300;
 
 static void prefetch(void);
 uint32_t adler32(uint32_t adler, void *buf, int len);

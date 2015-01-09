@@ -328,7 +328,7 @@
     <ClCompile Include="..\..\..\gles2rice\src\Combiner.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\ConvertImage16.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\Debugger.cpp" />
+    <ClCompile Include="..\..\..\gles2rice\src\RiceDebugger.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\DecodedMux.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\DeviceBuilder.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\FrameBuffer.cpp" />
@@ -837,7 +837,6 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\tools\rzlib\adler32.c" />
     <ClCompile Include="..\..\..\tools\rzlib\compress.c" />
     <ClCompile Include="..\..\..\tools\rzlib\crc32.c" />
     <ClCompile Include="..\..\..\tools\rzlib\deflate.c" />

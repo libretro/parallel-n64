@@ -276,7 +276,7 @@ void genlink_subblock(void)
 }
 
 #ifdef COMPARE_CORE
-extern unsigned int op; /* api/debugger.c */
+extern unsigned int op_R4300; /* api/debugger.c */
 
 void gendebug(void)
 {

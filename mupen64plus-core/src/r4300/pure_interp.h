@@ -23,7 +23,7 @@
 #define M64P_R4300_PURE_INTERP_H
 
 /* FIXME: belongs to gr4300 module */
-extern unsigned int op;
+extern unsigned int op_R4300;
 
 void pure_interpreter_init(void);
 void pure_interpreter(void);
