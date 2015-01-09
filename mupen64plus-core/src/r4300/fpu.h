@@ -161,16 +161,16 @@ static INLINE void m64p_fesetround(eRoundType RoundType)
 
    __control87_2(msRound[RoundType], _MCW_RC, &oldX87, &oldSSE2);
 }
-#elif defined(EMSCRIPTEN) || (0 == 0)
+#elif defined(EMSCRIPTEN) || defined(_WIN64)
 static INLINE int32_t m64p_fesetround(int32_t __round)
 {
    (void)__round;
    return 0;
 }
 #endif
-
 #else
 #define m64p_fesetround fesetround
+
 #endif
 
 M64P_FPU_INLINE void set_rounding(void)
