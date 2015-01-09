@@ -457,7 +457,7 @@ unsigned int retro_filtering = 0;
 unsigned int frame_dupe = false;
 unsigned int initial_boot = true;
 
-#include "../angrylionrdp/vi.h"
+#include "../mupen64plus-video-angrylion/vi.h"
 
 extern void glide_set_filtering(unsigned value);
 

@@ -156,11 +156,7 @@ void rdp_update(void)
         return;
     }
 
-#ifdef HAVE_DIRECTDRAW
-    // direct draw surface lock
-#else
     PreScale = (UINT32*)blitter_buf;
-#endif
 
     if (vitype >> 1 == 0)
     {
@@ -226,30 +222,9 @@ void rdp_update(void)
     do_frame_buffer[overlay](
         prescale_ptr, hres, vres, x_start, vitype, line_count);
 no_frame_buffer:
-#ifdef HAVE_DIRECTDRAW
-    // direct draw surface unlock
-#endif
 
     __src.bottom = (ispal ? 576 : 480) >> line_shifter; /* visible lines */
-#ifdef HAVE_DIRECTDRAW
-    if (__dst.left < __dst.right && __dst.top < __dst.bottom)
-    {
-        res = IDirectDrawSurface_Blt(
-            lpddsprimary, &__dst, lpddsback, &__src, DDBLT_WAIT, 0);
-        while (res == DDERR_SURFACELOST)
-        {
-            res = IDirectDraw4_RestoreAllSurfaces(lpdd);
-            if (res != DD_OK)
-            {
-                DisplayError("RestoreAllSurfaces failed");
-                return;
-            }
-            res = IDirectDrawSurface_Blt(
-                lpddsprimary, &__dst, lpddsback, &__src, DDBLT_WAIT, 0);
-            if (res != DDERR_SURFACELOST)
-                break;
-        }
-#else
+
     if (line_shifter != 0) /* 240p non-interlaced VI DAC mode */
     {
         register signed int cur_line;
@@ -269,7 +244,6 @@ no_frame_buffer:
             );
             --cur_line;
         }
-#endif
     }
     return;
 }
