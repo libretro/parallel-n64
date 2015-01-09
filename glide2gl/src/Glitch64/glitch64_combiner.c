@@ -27,7 +27,7 @@
 #endif // _WIN32
 #include <math.h>
 #include "inc/glide.h"
-#include "main.h"
+#include "glitchmain.h"
 #include "../../libretro/SDL.h"
 
 float glide64_pow(float a, float b);

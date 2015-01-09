@@ -25,7 +25,7 @@
 #endif // _WIN32
 #include <stdint.h>
 #include "glide.h"
-#include "main.h"
+#include "glitchmain.h"
 #include "uthash.h"
 
 /* Napalm extensions to GrTextureFormat_t */

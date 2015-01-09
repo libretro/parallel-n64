@@ -26,7 +26,7 @@
 #include <math.h>
 #include "glide.h"
 #include "g3ext.h"
-#include "main.h"
+#include "glitchmain.h"
 #include "../../libretro/SDL.h"
 
 extern retro_environment_t environ_cb;
