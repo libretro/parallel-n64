@@ -470,7 +470,10 @@ void update_variables(bool startup)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-      if (sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
+      /* TODO/FIXME - hack - force screen width and height back to 640x480 in case
+       * we change it with Angrylion. If we ever want to support variable resolution sizes in Angrylion
+       * then we need to drop this. */
+      if (gfx_plugin == GFX_ANGRYLION || sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
       {
          screen_width = 640;
          screen_height = 480;

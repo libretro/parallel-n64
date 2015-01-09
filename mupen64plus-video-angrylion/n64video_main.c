@@ -51,11 +51,7 @@ EXPORT void CALL angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
     PluginInfo -> Version = 0x0103;
     PluginInfo -> Type  = 2;
     strcpy(
-#if (SCREEN_WIDTH == 320 && SCREEN_HEIGHT == 240)
-    PluginInfo -> Name, "angrylion's RDP (320x240)"
-#else
     PluginInfo -> Name, "angrylion's RDP"
-#endif
     );
     PluginInfo -> NormalMemory = true;
     PluginInfo -> MemoryBswaped = true;
@@ -105,8 +101,22 @@ static m64p_handle l_ConfigAngrylion;
  
 EXPORT int CALL angrylionRomOpen (void)
 {
-   screen_width = SCREEN_WIDTH;
-   screen_height = SCREEN_HEIGHT;
+   /* TODO/FIXME: For now just force it to 640x480.
+    *
+    * Later on we might want a low-res mode (320x240)
+    * for better performance as well in case screen_width
+    * is 320 and height is 240.
+    */
+   if (screen_width < 640)
+      screen_width = 640;
+   if (screen_width > 640)
+      screen_width = 640;
+
+   if (screen_height < 480)
+      screen_height = 480;
+   if (screen_height > 480)
+      screen_height = 480;
+
    blitter_buf = (uint32_t*)calloc(
          PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(uint32_t)
          );
