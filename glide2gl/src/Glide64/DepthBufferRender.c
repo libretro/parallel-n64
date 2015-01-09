@@ -98,11 +98,7 @@ static int left_z, left_dzdy;
 // (x * y) >> 14
 #define imul14(x, y) ((((long long)x) * ((long long)y)) >> 14)
 
-static INLINE int idiv16(int x, int y) // (x << 16) / y
-{
-    x = (int)(((long long)x) << 16) / ((long long)y);
-    return x;
-}
+#define idiv16(x, y) ((int)(((long long)x) << 16) / ((long long)y))
 
 #define iceil(x) ((x + 0xffff) >> 16)
 
