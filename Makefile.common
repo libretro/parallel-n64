@@ -108,7 +108,7 @@ SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/RiceConfig.cpp \
             $(VIDEODIR_RICE)/ConvertImage16.cpp \
             $(VIDEODIR_RICE)/ConvertImage.cpp \
-            $(VIDEODIR_RICE)/Debugger.cpp \
+            $(VIDEODIR_RICE)/RiceDebugger.cpp \
             $(VIDEODIR_RICE)/DecodedMux.cpp \
             $(VIDEODIR_RICE)/DeviceBuilder.cpp \
             $(VIDEODIR_RICE)/FrameBuffer.cpp \
