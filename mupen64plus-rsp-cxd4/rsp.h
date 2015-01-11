@@ -38,38 +38,6 @@ RSP_INFO RSP;
 
 typedef unsigned char byte;
 
-#if !defined(M64P_PLUGIN_API)
-NOINLINE void message(const char* body, int priority)
-{ /* Avoid SHELL32/ADVAPI32/USER32 dependencies by using standard C to print. */
-    char argv[4096] = "CMD /Q /D /C \"TITLE RSP Message&&ECHO ";
-    int i = 0;
-    int j = strlen(argv);
-
-    priority &= 03;
-    if (priority < MINIMUM_MESSAGE_PRIORITY)
-        return;
-
-/*
- * I'm just using system() to call the Windows command shell to print text.
- * When the subsystem permits, use printf to trace messages, not this crap.
- * I don't use WIN32 MessageBox because that's just extra OS dependencies. :P
- */
-    while (body[i] != '\0')
-    {
-        if (body[i] == '\n')
-        {
-            strcat(argv, "&&ECHO ");
-            ++i;
-            j += 7;
-            continue;
-        }
-        argv[j++] = body[i++];
-    }
-    strcat(argv, "&&PAUSE&&EXIT\"");
-    system(argv);
-    return;
-}
-#else
 NOINLINE void message(const char* body, int priority)
 {
     priority &= 03;
@@ -77,64 +45,6 @@ NOINLINE void message(const char* body, int priority)
         return;
     printf("%s\n", body);
 }
-#endif
-
-#if !defined(M64P_PLUGIN_API)
-/*
- * Update RSP configuration memory from local file resource.
- */
-#define CHARACTERS_PER_LINE     (80)
-/* typical standard DOS text file limit per line */
-NOINLINE void update_conf(const char* source)
-{
-    FILE* stream;
-    char line[CHARACTERS_PER_LINE] = "";
-    char key[CHARACTERS_PER_LINE], value[CHARACTERS_PER_LINE];
-    register int i, test;
-
-    stream = fopen(source, "r");
-    if (stream == NULL)
-    { /* try GetModulePath or whatever to correct the path? */
-        message("Failed to read config.", 3);
-        return;
-    }
-    do
-    {
-        int bvalue;
-
-        line[0] = '\0';
-        key[0] = '\0';
-        value[0] = '\0';
-        for (i = 0; i < CHARACTERS_PER_LINE; i++)
-        {
-            test = fgetc(stream);
-            if (test < 0) /* either EOF or invalid ASCII characters */
-                break;
-            line[i] = (char)(test);
-            if (line[i] == '\n')
-                break;
-        }
-        line[i] = '\0';
-
-        for (i = 0; i < CHARACTERS_PER_LINE && line[i] != '='; i++);
-        line[i] = '\0';
-        strcpy(key, line);
-        strcpy(value, line + i + 1);
-
-        bvalue = atoi(value);
-        if (strcmp(key, "DisplayListToGraphicsPlugin") == 0)
-            CFG_HLE_GFX = (byte)(bvalue);
-        else if (strcmp(key, "AudioListToAudioPlugin") == 0)
-            CFG_HLE_AUD = (byte)(bvalue);
-        else if (strcmp(key, "WaitForCPUHost") == 0)
-            CFG_WAIT_FOR_CPU_HOST = bvalue;
-        else if (strcmp(key, "SupportCPUSemaphoreLock") == 0)
-            CFG_MEND_SEMAPHORE_LOCK = bvalue;
-    } while (test != EOF);
-    fclose(stream);
-    return;
-}
-#endif
 
 #ifndef EMULATE_STATIC_PC
 static int stage;
