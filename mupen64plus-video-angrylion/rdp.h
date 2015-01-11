@@ -3,13 +3,6 @@
 
 #include "z64.h"
 
-#if 0
-#undef USE_SSE_SUPPORT
-#ifndef _DEBUG
-#define USE_SSE_SUPPORT
-#endif
-#endif
-
 #ifdef USE_SSE_SUPPORT
 #include <emmintrin.h>
 
@@ -33,7 +26,6 @@ INLINE extern __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src);
     { ((i64 *)buf)[0] = ((i64 *)buf)[1] = 0x0000000000000000; }
 #endif
 
-//#define USE_MMX_DECODES
 #ifdef USE_MMX_DECODES
 #include <xmmintrin.h>
 #define setzero_si64(buffer) { \

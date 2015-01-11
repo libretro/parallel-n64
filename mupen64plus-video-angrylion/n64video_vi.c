@@ -149,12 +149,8 @@ void rdp_update(void)
     validh = (hres >= 0 && h_start >= 0 && h_start < PRESCALE_WIDTH);
     pix = 0;
     cur_cvg = 0;
-    if (hres <= 0 || vres <= 0 || (!(vitype & 2) && prevwasblank))
-    {
-       if (log_cb)
-          log_cb(RETRO_LOG_WARN, "early return.\n");
+    if (hres <= 0 || vres <= 0 || (!(vitype & 2) && prevwasblank)) /* early return. */
         return;
-    }
 
     PreScale = (UINT32*)blitter_buf;
 
