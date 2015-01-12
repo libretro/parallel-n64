@@ -8,7 +8,7 @@
 floating-point and AltiVec save/restore */
 
 #define LIBCO_C
-#include "libco.h"
+#include <libco.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -363,45 +363,45 @@ cothread_t co_create( unsigned int size, void (*entry_)( void ) )
 
 void co_delete( cothread_t t )
 {
-	free( t );
+   free(t);
 }
 
 static void co_init_( void )
 {
-	#if LIBCO_MPROTECT
-		/* TODO: pre- and post-pad PPC code so that this doesn't make other
-		data executable and writable */
-		long page_size = sysconf( _SC_PAGESIZE );
-		if ( page_size > 0 )
-		{
-			uintptr_t align = page_size;
-			uintptr_t begin = (uintptr_t) libco_ppc_code;
-			uintptr_t end   = begin + sizeof libco_ppc_code;
-			
-			/* Align beginning and end */
-			end   += align - 1;
-			end   -= end   % align;
-			begin -= begin % align;
-			
-			mprotect( (void*) begin, end - begin, PROT_READ | PROT_WRITE | PROT_EXEC );
-		}
-	#endif
-    
-	co_active_handle = co_create_( state_size, (uintptr_t) &co_switch );
+#if LIBCO_MPROTECT
+   /* TODO: pre- and post-pad PPC code so that this doesn't make other
+      data executable and writable */
+   long page_size = sysconf( _SC_PAGESIZE );
+   if ( page_size > 0 )
+   {
+      uintptr_t align = page_size;
+      uintptr_t begin = (uintptr_t) libco_ppc_code;
+      uintptr_t end   = begin + sizeof libco_ppc_code;
+
+      /* Align beginning and end */
+      end   += align - 1;
+      end   -= end   % align;
+      begin -= begin % align;
+
+      mprotect( (void*) begin, end - begin, PROT_READ | PROT_WRITE | PROT_EXEC );
+   }
+#endif
+
+   co_active_handle = co_create_( state_size, (uintptr_t) &co_switch );
 }
 
-cothread_t co_active()
+cothread_t co_active(void)
 {
-	if ( !co_active_handle )
-		co_init_();
-	
-	return co_active_handle;
+   if (!co_active_handle)
+      co_init_();
+
+   return co_active_handle;
 }
 
-void co_switch( cothread_t t )
+void co_switch(cothread_t t)
 {
-	cothread_t old = co_active_handle;
-	co_active_handle = t;
-	
-	CO_SWAP_ASM( t, old );
+   cothread_t old = co_active_handle;
+   co_active_handle = t;
+
+   CO_SWAP_ASM( t, old );
 }
