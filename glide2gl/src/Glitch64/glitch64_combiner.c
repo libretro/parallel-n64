@@ -91,7 +91,6 @@ int need_to_compile;
 
 static char *fragment_shader;
 static GLuint fragment_shader_object;
-static GLuint fragment_depth_shader_object;
 static GLuint vertex_shader_object;
 GLuint program_object_default;
 static GLuint program_object_depth;
@@ -291,26 +290,6 @@ void init_combiner(void)
    shader_programs = (shader_program_key*)malloc(sizeof(shader_program_key));
    fragment_shader = (char*)malloc(4096*2);
 
-#ifndef ANDROID
-   // depth shader
-   fragment_depth_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
-
-   // ZIGGY convert a 565 texture into depth component
-#ifdef GLES
-#define FRAGDEPTH "gl_FragDepthEXT"
-#else
-#define FRAGDEPTH "gl_FragDepth"
-#endif
-   sprintf(s, FRAGDEPTH " = dot(texture2D(texture0, vec2(gl_TexCoord[0])), vec4(31*64*32, 63*32, 31, 0))*%g + %g; \n", zscale/2/65535.0, 1-zscale/2);
-   strcpy(fragment_shader, fragment_shader_header);
-   strcat(fragment_shader, s);
-   strcat(fragment_shader, fragment_shader_end);
-   glShaderSource(fragment_depth_shader_object, 1, (const GLchar**)&fragment_shader, NULL);
-
-   glCompileShader(fragment_depth_shader_object);
-   check_compile(fragment_depth_shader_object);
-#endif
-
    // default shader
    fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
 
@@ -330,7 +309,6 @@ void init_combiner(void)
    // depth program
    program_object = glCreateProgram();
    program_object_depth = program_object;
-   glAttachShader(program_object, fragment_depth_shader_object);
    glAttachShader(program_object, vertex_shader_object);
 
    glBindAttribLocation(program_object,POSITION_ATTR,"aPosition");
