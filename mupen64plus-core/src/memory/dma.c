@@ -198,18 +198,18 @@ void dma_pi_write(void)
    // (This is just a convenient way to run this code once at the beginning)
    if (pi_register.pi_cart_addr_reg == 0x10001000)
    {
-      switch (CIC_Chip)
+      switch (g_cic_type)
       {
-         case 1:
-         case 2:
-         case 3:
-         case 6:
+         case CIC_X101:
+         case CIC_X102:
+         case CIC_X103:
+         case CIC_X106:
             if (enable_expmem)
                rdram[0x318/4] = 0x800000;
             else
                rdram[0x318/4] = 0x400000;
             break;
-         case 5:
+         case CIC_X105:
             if (enable_expmem)
                rdram[0x3F0/4] = 0x800000;
             else
