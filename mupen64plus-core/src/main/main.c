@@ -228,7 +228,6 @@ void main_exit(void)
    input.romClosed();
    audio.romClosed();
    gfx.romClosed();
-   free_memory();
 
    // clean up
    g_EmulatorRunning = 0;
@@ -266,7 +265,6 @@ m64p_error main_init(void)
     if (!gfx.romOpen())
     {
        printf("Gfx RomOpen failed.\n");
-       free_memory();
        return M64ERR_PLUGIN_FAIL;
     }
     printf("Audio RomOpen.\n");
@@ -274,7 +272,6 @@ m64p_error main_init(void)
     {
        printf("Audio RomOpen failed.\n");
        gfx.romClosed();
-       free_memory();
        return M64ERR_PLUGIN_FAIL;
     }
     printf("Input RomOpen.\n");
@@ -283,7 +280,6 @@ m64p_error main_init(void)
        printf("Input RomOpen failed.\n");
        audio.romClosed();
        gfx.romClosed();
-       free_memory();
        return M64ERR_PLUGIN_FAIL;
     }
 
