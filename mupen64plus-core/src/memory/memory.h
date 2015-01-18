@@ -66,6 +66,23 @@ enum { RDRAM_MAX_SIZE = 0x800000 };
 
 extern ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
 
+enum rdram_registers
+{
+   RDRAM_CONFIG_REG,
+   RDRAM_DEVICE_ID_REG,
+   RDRAM_DELAY_REG,
+   RDRAM_MODE_REG,
+   RDRAM_REF_INTERVAL_REG,
+   RDRAM_REF_ROW_REG,
+   RDRAM_RAS_INTERVAL_REG,
+   RDRAM_MIN_INTERVAL_REG,
+   RDRAM_ADDR_SELECT_REG,
+   RDRAM_DEVICE_MANUF_REG,
+   RDRAM_REGS_COUNT
+};
+
+extern uint32_t g_rdram_regs[RDRAM_REGS_COUNT];
+
 extern uint32_t address, word;
 extern uint8_t cpu_byte;
 extern uint16_t hword;
@@ -80,7 +97,6 @@ extern void (*writememb[0x10000])(void);
 extern void (*writememh[0x10000])(void);
 extern void (*writememd[0x10000])(void);
 
-extern uint32_t *readrdramreg[0x10000];
 extern uint32_t *readrspreg[0x10000];
 extern uint32_t *readrsp[0x10000];
 extern uint32_t *readmi[0x10000];
@@ -91,20 +107,6 @@ extern uint32_t *readri[0x10000];
 extern uint32_t *readsi[0x10000];
 extern uint32_t *readdp[0x10000];
 extern uint32_t *readdps[0x10000];
-
-typedef struct _RDRAM_register
-{
-   uint32_t rdram_config;
-   uint32_t rdram_device_id;
-   uint32_t rdram_delay;
-   uint32_t rdram_mode;
-   uint32_t rdram_ref_interval;
-   uint32_t rdram_ref_row;
-   uint32_t rdram_ras_interval;
-   uint32_t rdram_min_interval;
-   uint32_t rdram_addr_select;
-   uint32_t rdram_device_manuf;
-} RDRAM_register;
 
 typedef struct _SP_register
 {
@@ -226,7 +228,6 @@ typedef struct _SI_register
    uint32_t si_stat;
 } SI_register;
 
-extern RDRAM_register rdram_register;
 extern PI_register pi_register;
 extern mips_register MI_register;
 extern SP_register sp_register;
