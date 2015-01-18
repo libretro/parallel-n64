@@ -209,7 +209,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
     dps_register.dps_buftest_addr = GETDATA(curr, unsigned int);
     dps_register.dps_buftest_data = GETDATA(curr, unsigned int);
 
-    COPYARRAY(rdram, curr, unsigned int, 0x800000/4);
+    COPYARRAY(g_rdram, curr, uint32_t, RDRAM_MAX_SIZE/4);
     COPYARRAY(SP_DMEM, curr, unsigned int, 0x1000/4);
     COPYARRAY(SP_IMEM, curr, unsigned int, 0x1000/4);
     COPYARRAY(PIF_RAM, curr, unsigned char, 0x40);
@@ -469,7 +469,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     PUTDATA(curr, unsigned int, dps_register.dps_buftest_addr);
     PUTDATA(curr, unsigned int, dps_register.dps_buftest_data);
 
-    PUTARRAY(rdram, curr, unsigned int, 0x800000/4);
+    PUTARRAY(g_rdram, curr, uint32_t, RDRAM_MAX_SIZE/4);
     PUTARRAY(SP_DMEM, curr, unsigned int, 0x1000/4);
     PUTARRAY(SP_IMEM, curr, unsigned int, 0x1000/4);
     PUTARRAY(PIF_RAM, curr, unsigned char, 0x40);

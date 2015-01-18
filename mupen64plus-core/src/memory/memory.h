@@ -62,7 +62,9 @@ typedef struct _save_memory_data
 extern save_memory_data saved_memory;
 void format_saved_memory(void);
 
-extern ALIGN(16, uint32_t rdram[0x800000/4]);
+enum { RDRAM_MAX_SIZE = 0x800000 };
+
+extern ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
 
 extern uint32_t address, word;
 extern uint8_t cpu_byte;
@@ -235,8 +237,6 @@ extern RI_register ri_register;
 extern AI_register ai_register;
 extern DPC_register dpc_register;
 extern DPS_register dps_register;
-
-extern uint8_t *const rdramb;
 
 enum cic_type
 {

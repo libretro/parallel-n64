@@ -65,7 +65,7 @@ void dma_pi_read(void)
          for (i=0; i < (pi_register.pi_rd_len_reg & 0xFFFFFF)+1; i++)
          {
             saved_memory.sram[((pi_register.pi_cart_addr_reg-0x08000000)+i)^S8] =
-               ((uint8_t*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8];
+               ((uint8_t*)g_rdram)[(pi_register.pi_dram_addr_reg+i)^S8];
          }
 
          flashram_info.use_flashram = -1;
@@ -101,7 +101,7 @@ void dma_pi_write(void)
 
             for (i=0; i< (int32_t)(pi_register.pi_wr_len_reg & 0xFFFFFF)+1; i++)
             {
-               ((uint8_t*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
+               ((uint8_t*)g_rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
                   saved_memory.sram[(((pi_register.pi_cart_addr_reg-0x08000000)&0xFFFF)+i)^S8];
             }
 
@@ -159,7 +159,7 @@ void dma_pi_write(void)
       {
          uint32_t rdram_address1 = pi_register.pi_dram_addr_reg+i+0x80000000;
          uint32_t rdram_address2 = pi_register.pi_dram_addr_reg+i+0xa0000000;
-         ((uint8_t*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
+         ((uint8_t*)g_rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
             rom[(((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF)+i)^S8];
 
          if (!invalid_code[rdram_address1>>12])
@@ -189,7 +189,7 @@ void dma_pi_write(void)
    {
       for (i=0; i<(int32_t)longueur; i++)
       {
-         ((uint8_t*)rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
+         ((uint8_t*)g_rdram)[(pi_register.pi_dram_addr_reg+i)^S8]=
             rom[(((pi_register.pi_cart_addr_reg-0x10000000)&0x3FFFFFF)+i)^S8];
       }
    }
@@ -205,15 +205,15 @@ void dma_pi_write(void)
          case CIC_X103:
          case CIC_X106:
             if (enable_expmem)
-               rdram[0x318/4] = 0x800000;
+               g_rdram[0x318/4] = 0x800000;
             else
-               rdram[0x318/4] = 0x400000;
+               g_rdram[0x318/4] = 0x400000;
             break;
          case CIC_X105:
             if (enable_expmem)
-               rdram[0x3F0/4] = 0x800000;
+               g_rdram[0x3F0/4] = 0x800000;
             else
-               rdram[0x3F0/4] = 0x400000;
+               g_rdram[0x3F0/4] = 0x400000;
             break;
       }
    }
@@ -239,7 +239,7 @@ void dma_sp_write(void)
    uint32_t dramaddr = sp_register.sp_dram_addr_reg & 0xffffff;
 
    uint8_t *spmem = ((sp_register.sp_mem_addr_reg & 0x1000) != 0) ? (uint8_t*)SP_IMEM : (uint8_t*)SP_DMEM;
-   uint8_t *dram = (uint8_t*)rdram;
+   uint8_t *dram = (uint8_t*)g_rdram;
 
    for(j=0; j<count; j++) {
       for(i=0; i<length; i++) {
@@ -265,7 +265,7 @@ void dma_sp_read(void)
    uint32_t dramaddr = sp_register.sp_dram_addr_reg & 0xffffff;
 
    uint8_t *spmem = ((sp_register.sp_mem_addr_reg & 0x1000) != 0) ? (uint8_t*)SP_IMEM : (uint8_t*)SP_DMEM;
-   uint8_t *dram = (uint8_t*)rdram;
+   uint8_t *dram = (uint8_t*)g_rdram;
 
    for(j=0; j<count; j++) {
       for(i=0; i<length; i++) {
@@ -289,7 +289,7 @@ void dma_si_write(void)
 
    for (i=0; i<(64/4); i++)
    {
-      PIF_RAM[i] = sl(rdram[si_register.si_dram_addr/4+i]);
+      PIF_RAM[i] = sl(g_rdram[si_register.si_dram_addr/4+i]);
    }
 
    update_pif_write();
@@ -323,7 +323,7 @@ void dma_si_read(void)
 
    for (i=0; i<(64/4); i++)
    {
-      rdram[si_register.si_dram_addr/4+i] = sl(PIF_RAM[i]);
+      g_rdram[si_register.si_dram_addr/4+i] = sl(PIF_RAM[i]);
    }
 
    // TODO: under what circumstances should bits 1 or 3 be set?
