@@ -283,17 +283,17 @@ static enum cic_type detect_cic_type(const void* ipl3)
 typedef int (*readfn)(uint32_t,uint32_t*);
 typedef int (*writefn)(uint32_t,uint32_t,uint32_t);
 
-static inline void masked_write(uint32_t* dst, uint32_t value, uint32_t mask)
+static INLINE void masked_write(uint32_t* dst, uint32_t value, uint32_t mask)
 {
    *dst = (*dst & ~mask) | (value & mask);
 }
 
-static inline unsigned int bshift(uint32_t address)
+static INLINE unsigned int bshift(uint32_t address)
 {
    return ((address & 3) ^ 3) << 3;
 }
 
-static inline unsigned int hshift(uint32_t address)
+static INLINE unsigned int hshift(uint32_t address)
 {
    return ((address & 2) ^ 2) << 3;
 }
@@ -1223,7 +1223,7 @@ static void write_nomemd(void)
    write_dword_in_memory();
 }
 
-static inline uint32_t rdram_ram_address(uint32_t address)
+static INLINE uint32_t rdram_ram_address(uint32_t address)
 {
    return (address & 0xffffff) >> 2;
 }
@@ -1334,7 +1334,7 @@ void write_rdramFBd(void)
    write_rdramd();
 }
 
-static inline uint32_t rdram_reg(uint32_t address)
+static INLINE uint32_t rdram_reg(uint32_t address)
 {
    return (address & 0x3ff) >> 2;
 }
@@ -1397,7 +1397,7 @@ void write_rdramregd(void)
    writed(write_rdram_regs, address, dword);
 }
 
-static inline uint32_t rsp_mem_address(uint32_t address)
+static INLINE uint32_t rsp_mem_address(uint32_t address)
 {
    return (address & 0x1fff) >> 2;
 }
@@ -1460,7 +1460,7 @@ static void write_rsp_memd(void)
    writed(write_rspmem, address, dword);
 }
 
-static inline uint32_t rsp_reg(uint32_t address)
+static INLINE uint32_t rsp_reg(uint32_t address)
 {
    return (address & 0xffff) >> 2;
 }
@@ -1541,7 +1541,7 @@ void write_rsp_regd(void)
     writed(write_rsp_regs, address, dword);
 }
 
-static inline uint32_t rsp_reg2(uint32_t address)
+static INLINE uint32_t rsp_reg2(uint32_t address)
 {
    return (address & 0xffff) >> 2;
 }
@@ -1604,7 +1604,7 @@ void write_rspd(void)
    writed(write_rsp_regs2, address, dword);
 }
 
-static inline uint32_t dpc_reg(uint32_t address)
+static INLINE uint32_t dpc_reg(uint32_t address)
 {
    return (address & 0xffff) >> 2;
 }
@@ -1685,7 +1685,7 @@ static void write_dpd(void)
    writed(write_dpc_regs, address, dword);
 }
 
-static inline uint32_t dps_reg(uint32_t address)
+static INLINE uint32_t dps_reg(uint32_t address)
 {
    return (address & 0xffff) >> 2;
 }
@@ -1748,7 +1748,7 @@ static void write_dpsd(void)
    writed(write_dps_regs, address, dword);
 }
 
-static inline uint32_t mi_reg(uint32_t address)
+static INLINE uint32_t mi_reg(uint32_t address)
 {
    return (address & 0xffff) >> 2;
 }
@@ -1823,7 +1823,7 @@ static void write_mid(void)
    writed(write_mi_regs, address, dword);
 }
 
-static inline uint32_t vi_reg(uint32_t address)
+static INLINE uint32_t vi_reg(uint32_t address)
 {
    return (address & 0xffff) >> 2;
 }
@@ -1909,7 +1909,7 @@ static void write_vid(void)
    writed(write_vi_regs, address, dword);
 }
 
-static inline uint32_t ai_reg(uint32_t address)
+static INLINE uint32_t ai_reg(uint32_t address)
 {
    return (address & 0xffff) >> 2;
 }
@@ -2016,7 +2016,7 @@ static void write_aid(void)
    writed(write_ai_regs, address, dword);
 }
 
-static inline uint32_t pi_reg(uint32_t address)
+static INLINE uint32_t pi_reg(uint32_t address)
 {
    return (address & 0xffff) >> 2;
 }
@@ -2109,7 +2109,7 @@ static void write_pid(void)
    writed(write_pi_regs, address, dword);
 }
 
-static inline uint32_t ri_reg(uint32_t address)
+static INLINE uint32_t ri_reg(uint32_t address)
 {
    return (address & 0xffff) >> 2;
 }
@@ -2172,7 +2172,7 @@ static void write_rid(void)
    writed(write_ri_regs, address, dword);
 }
 
-static inline uint32_t si_reg(uint32_t address)
+static INLINE uint32_t si_reg(uint32_t address)
 {
    return (address & 0xffff) >> 2;
 }
@@ -2319,7 +2319,7 @@ static void write_flashram_commandd(void)
 
 static uint32_t lastwrite = 0;
 
-static inline uint32_t rom_address(uint32_t address)
+static INLINE uint32_t rom_address(uint32_t address)
 {
    return (address & 0x03fffffc);
 }
@@ -2370,7 +2370,7 @@ static void write_rom(void)
    writew(write_cart_rom, address, word);
 }
 
-static inline uint32_t pif_ram_address(uint32_t address)
+static INLINE uint32_t pif_ram_address(uint32_t address)
 {
    return ((address & 0xfffc) - 0x7c0);
 }
