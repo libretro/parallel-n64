@@ -51,6 +51,154 @@
 #include "debugger/dbg_breakpoints.h"
 #endif
 
+
+/* some functions prototypes */
+static void read_nothing(void);
+static void read_nothingb(void);
+static void read_nothingh(void);
+static void read_nothingd(void);
+static void write_nothing(void);
+static void write_nothingb(void);
+static void write_nothingh(void);
+static void write_nothingd(void);
+static void read_nomem(void);
+static void read_nomemb(void);
+static void read_nomemh(void);
+static void read_nomemd(void);
+static void write_nomem(void);
+static void write_nomemb(void);
+static void write_nomemh(void);
+static void write_nomemd(void);
+static void read_rdramFB(void);
+static void read_rdramFBb(void);
+static void read_rdramFBh(void);
+static void read_rdramFBd(void);
+static void write_rdramFB(void);
+static void write_rdramFBb(void);
+static void write_rdramFBh(void);
+static void write_rdramFBd(void);
+static void read_rdramreg(void);
+static void read_rdramregb(void);
+static void read_rdramregh(void);
+static void read_rdramregd(void);
+static void write_rdramreg(void);
+static void write_rdramregb(void);
+static void write_rdramregh(void);
+static void write_rdramregd(void);
+static void read_rsp_mem(void);
+static void read_rsp_memb(void);
+static void read_rsp_memh(void);
+static void read_rsp_memd(void);
+static void write_rsp_mem(void);
+static void write_rsp_memb(void);
+static void write_rsp_memh(void);
+static void write_rsp_memd(void);
+static void read_rsp_reg(void);
+static void read_rsp_regb(void);
+static void read_rsp_regh(void);
+static void read_rsp_regd(void);
+static void write_rsp_reg(void);
+static void write_rsp_regb(void);
+static void write_rsp_regh(void);
+static void write_rsp_regd(void);
+static void read_rsp(void);
+static void read_rspb(void);
+static void read_rsph(void);
+static void read_rspd(void);
+static void write_rsp(void);
+static void write_rspb(void);
+static void write_rsph(void);
+static void write_rspd(void);
+static void read_dp(void);
+static void read_dpb(void);
+static void read_dph(void);
+static void read_dpd(void);
+static void write_dp(void);
+static void write_dpb(void);
+static void write_dph(void);
+static void write_dpd(void);
+static void read_dps(void);
+static void read_dpsb(void);
+static void read_dpsh(void);
+static void read_dpsd(void);
+static void write_dps(void);
+static void write_dpsb(void);
+static void write_dpsh(void);
+static void write_dpsd(void);
+static void read_mi(void);
+static void read_mib(void);
+static void read_mih(void);
+static void read_mid(void);
+static void write_mi(void);
+static void write_mib(void);
+static void write_mih(void);
+static void write_mid(void);
+static void read_vi(void);
+static void read_vib(void);
+static void read_vih(void);
+static void read_vid(void);
+static void write_vi(void);
+static void write_vib(void);
+static void write_vih(void);
+static void write_vid(void);
+static void read_ai(void);
+static void read_aib(void);
+static void read_aih(void);
+static void read_aid(void);
+static void write_ai(void);
+static void write_aib(void);
+static void write_aih(void);
+static void write_aid(void);
+static void read_pi(void);
+static void read_pib(void);
+static void read_pih(void);
+static void read_pid(void);
+static void write_pi(void);
+static void write_pib(void);
+static void write_pih(void);
+static void write_pid(void);
+static void read_ri(void);
+static void read_rib(void);
+static void read_rih(void);
+static void read_rid(void);
+static void write_ri(void);
+static void write_rib(void);
+static void write_rih(void);
+static void write_rid(void);
+static void read_si(void);
+static void read_sib(void);
+static void read_sih(void);
+static void read_sid(void);
+static void write_si(void);
+static void write_sib(void);
+static void write_sih(void);
+static void write_sid(void);
+static void read_flashram_status(void);
+static void read_flashram_statusb(void);
+static void read_flashram_statush(void);
+static void read_flashram_statusd(void);
+static void write_flashram_dummy(void);
+static void write_flashram_dummyb(void);
+static void write_flashram_dummyh(void);
+static void write_flashram_dummyd(void);
+static void write_flashram_command(void);
+static void write_flashram_commandb(void);
+static void write_flashram_commandh(void);
+static void write_flashram_commandd(void);
+static void read_rom(void);
+static void read_romb(void);
+static void read_romh(void);
+static void read_romd(void);
+static void write_rom(void);
+static void read_pif(void);
+static void read_pifb(void);
+static void read_pifh(void);
+static void read_pifd(void);
+static void write_pif(void);
+static void write_pifb(void);
+static void write_pifh(void);
+static void write_pifd(void);
+
 /* definitions of the rcp's structures and memory area */
 uint32_t g_rdram_regs[RDRAM_REGS_COUNT];
 uint32_t g_ri_regs[RI_REGS_COUNT];
@@ -274,6 +422,7 @@ static void writememd_with_bp_checks(void)
          M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_WRITE);
    return saved_writememd[address>>16]();
 }
+
 void activate_memory_break_read(uint32_t address)
 {
    uint16_t region = address >> 16;
@@ -289,6 +438,7 @@ void activate_memory_break_read(uint32_t address)
       readmemd[region] = readmemd_with_bp_checks;
    }
 }
+
 void deactivate_memory_break_read(uint32_t address)
 {
    uint16_t region = address >> 16;
@@ -976,51 +1126,51 @@ static void pre_framebuffer_write(uint32_t address, size_t size)
    }
 }
 
-void read_nothing(void)
+static void read_nothing(void)
 {
    if (address == 0xa5000508) *rdword = 0xFFFFFFFF;
    else *rdword = 0;
 }
 
-void read_nothingb(void)
+static void read_nothingb(void)
 {
    *rdword = 0;
 }
 
-void read_nothingh(void)
+static void read_nothingh(void)
 {
    *rdword = 0;
 }
 
-void read_nothingd(void)
+static void read_nothingd(void)
 {
    *rdword = 0;
 }
 
-void write_nothing(void)
+static void write_nothing(void)
 {
 }
 
-void write_nothingb(void)
+static void write_nothingb(void)
 {
 }
 
-void write_nothingh(void)
+static void write_nothingh(void)
 {
 }
 
-void write_nothingd(void)
+static void write_nothingd(void)
 {
 }
 
-void read_nomem(void)
+static void read_nomem(void)
 {
    address = virtual_to_physical_address(address,0);
    if (address == 0x00000000) return;
    read_word_in_memory();
 }
 
-void read_nomemb(void)
+static void read_nomemb(void)
 {
    address = virtual_to_physical_address(address,0);
    if (address == 0x00000000) return;
@@ -1041,7 +1191,7 @@ void read_nomemd(void)
    read_dword_in_memory();
 }
 
-void write_nomem(void)
+static void write_nomem(void)
 {
    invalidate_code(address);
    address = virtual_to_physical_address(address,1);
@@ -1049,7 +1199,7 @@ void write_nomem(void)
    write_word_in_memory();
 }
 
-void write_nomemb(void)
+static void write_nomemb(void)
 {
    invalidate_code(address);
    address = virtual_to_physical_address(address,1);
@@ -1057,7 +1207,7 @@ void write_nomemb(void)
    write_byte_in_memory();
 }
 
-void write_nomemh(void)
+static void write_nomemh(void)
 {
    invalidate_code(address);
    address = virtual_to_physical_address(address,1);
@@ -1065,7 +1215,7 @@ void write_nomemh(void)
    write_hword_in_memory();
 }
 
-void write_nomemd(void)
+static void write_nomemd(void)
 {
    invalidate_code(address);
    address = virtual_to_physical_address(address,1);
@@ -1116,25 +1266,25 @@ void read_rdramd(void)
    readd(read_rdram_ram, address, rdword);
 }
 
-void read_rdramFB(void)
+static void read_rdramFB(void)
 {
    pre_framebuffer_read(address);
    read_rdram();
 }
 
-void read_rdramFBb(void)
+static void read_rdramFBb(void)
 {
    pre_framebuffer_read(address);
    read_rdramb();
 }
 
-void read_rdramFBh(void)
+static void read_rdramFBh(void)
 {
    pre_framebuffer_read(address);
    read_rdramh();
 }
 
-void read_rdramFBd(void)
+static void read_rdramFBd(void)
 {
    pre_framebuffer_read(address);
    read_rdramd();
@@ -1270,42 +1420,42 @@ static int write_rspmem(uint32_t address, uint32_t value, uint32_t mask)
    return 0;
 }
 
-void read_rsp_mem(void)
+static void read_rsp_mem(void)
 {
    readw(read_rspmem, address, rdword);
 }
 
-void read_rsp_memb(void)
+static void read_rsp_memb(void)
 {
    readb(read_rspmem, address, rdword);
 }
 
-void read_rsp_memh(void)
+static void read_rsp_memh(void)
 {
    readh(read_rspmem, address, rdword);
 }
 
-void read_rsp_memd(void)
+static void read_rsp_memd(void)
 {
    readd(read_rspmem, address, rdword);
 }
 
-void write_rsp_mem(void)
+static void write_rsp_mem(void)
 {
    writew(write_rspmem, address, word);
 }
 
-void write_rsp_memb(void)
+static void write_rsp_memb(void)
 {
    writeb(write_rspmem, address, cpu_byte);
 }
 
-void write_rsp_memh(void)
+static void write_rsp_memh(void)
 {
    writeh(write_rspmem, address, hword);
 }
 
-void write_rsp_memd(void)
+static void write_rsp_memd(void)
 {
    writed(write_rspmem, address, dword);
 }
@@ -1495,42 +1645,42 @@ static int write_dpc_regs(uint32_t address, uint32_t value, uint32_t mask)
    return 0;
 }
 
-void read_dp(void)
+static void read_dp(void)
 {
    readw(read_dpc_regs, address, rdword);
 }
 
-void read_dpb(void)
+static void read_dpb(void)
 {
    readb(read_dpc_regs, address, rdword);
 }
 
-void read_dph(void)
+static void read_dph(void)
 {
    readh(read_dpc_regs, address, rdword);
 }
 
-void read_dpd(void)
+static void read_dpd(void)
 {
    readd(read_dpc_regs, address, rdword);
 }
 
-void write_dp(void)
+static void write_dp(void)
 {
    writew(write_dpc_regs, address, word);
 }
 
-void write_dpb(void)
+static void write_dpb(void)
 {
    writeb(write_dpc_regs, address, cpu_byte);
 }
 
-void write_dph(void)
+static void write_dph(void)
 {
    writeh(write_dpc_regs, address, hword);
 }
 
-void write_dpd(void)
+static void write_dpd(void)
 {
    writed(write_dpc_regs, address, dword);
 }
@@ -1558,42 +1708,42 @@ static int write_dps_regs(uint32_t address, uint32_t value, uint32_t mask)
    return 0;
 }
 
-void read_dps(void)
+static void read_dps(void)
 {
    readw(read_dps_regs, address, rdword);
 }
 
-void read_dpsb(void)
+static void read_dpsb(void)
 {
    readb(read_dps_regs, address, rdword);
 }
 
-void read_dpsh(void)
+static void read_dpsh(void)
 {
    readh(read_dps_regs, address, rdword);
 }
 
-void read_dpsd(void)
+static void read_dpsd(void)
 {
    readd(read_dps_regs, address, rdword);
 }
 
-void write_dps(void)
+static void write_dps(void)
 {
    writew(write_dps_regs, address, word);
 }
 
-void write_dpsb(void)
+static void write_dpsb(void)
 {
    writeb(write_dps_regs, address, cpu_byte);
 }
 
-void write_dpsh(void)
+static void write_dpsh(void)
 {
    writeh(write_dps_regs, address, hword);
 }
 
-void write_dpsd(void)
+static void write_dpsd(void)
 {
    writed(write_dps_regs, address, dword);
 }
@@ -1633,42 +1783,42 @@ static int write_mi_regs(uint32_t address, uint32_t value, uint32_t mask)
    return 0;
 }
 
-void read_mi(void)
+static void read_mi(void)
 {
    readw(read_mi_regs, address, rdword);
 }
 
-void read_mib(void)
+static void read_mib(void)
 {
    readb(read_mi_regs, address, rdword);
 }
 
-void read_mih(void)
+static void read_mih(void)
 {
    readh(read_mi_regs, address, rdword);
 }
 
-void read_mid(void)
+static void read_mid(void)
 {
    readd(read_mi_regs, address, rdword);
 }
 
-void write_mi(void)
+static void write_mi(void)
 {
    writew(write_mi_regs, address, word);
 }
 
-void write_mib(void)
+static void write_mib(void)
 {
    writeb(write_mi_regs, address, cpu_byte);
 }
 
-void write_mih(void)
+static void write_mih(void)
 {
    writeh(write_mi_regs, address, hword);
 }
 
-void write_mid(void)
+static void write_mid(void)
 {
    writed(write_mi_regs, address, dword);
 }
@@ -1719,42 +1869,42 @@ static int write_vi_regs(uint32_t address, uint32_t value, uint32_t mask)
    return 0;
 }
 
-void read_vi(void)
+static void read_vi(void)
 {
    readw(read_vi_regs, address, rdword);
 }
 
-void read_vib(void)
+static void read_vib(void)
 {
    readb(read_vi_regs, address, rdword);
 }
 
-void read_vih(void)
+static void read_vih(void)
 {
    readh(read_vi_regs, address, rdword);
 }
 
-void read_vid(void)
+static void read_vid(void)
 {
    readd(read_vi_regs, address, rdword);
 }
 
-void write_vi(void)
+static void write_vi(void)
 {
    writew(write_vi_regs, address, word);
 }
 
-void write_vib(void)
+static void write_vib(void)
 {
    writeb(write_vi_regs, address, cpu_byte);
 }
 
-void write_vih(void)
+static void write_vih(void)
 {
    writeh(write_vi_regs, address, hword);
 }
 
-void write_vid(void)
+static void write_vid(void)
 {
    writed(write_vi_regs, address, dword);
 }
@@ -1826,42 +1976,42 @@ static int write_ai_regs(uint32_t address, uint32_t value, uint32_t mask)
    return 0;
 }
 
-void read_ai(void)
+static void read_ai(void)
 {
    readw(read_ai_regs, address, rdword);
 }
 
-void read_aib(void)
+static void read_aib(void)
 {
    readb(read_ai_regs, address, rdword);
 }
 
-void read_aih(void)
+static void read_aih(void)
 {
    readh(read_ai_regs, address, rdword);
 }
 
-void read_aid(void)
+static void read_aid(void)
 {
    readd(read_ai_regs, address, rdword);
 }
 
-void write_ai(void)
+static void write_ai(void)
 {
    writew(write_ai_regs, address, word);
 }
 
-void write_aib(void)
+static void write_aib(void)
 {
    writeb(write_ai_regs, address, cpu_byte);
 }
 
-void write_aih(void)
+static void write_aih(void)
 {
    writeh(write_ai_regs, address, hword);
 }
 
-void write_aid(void)
+static void write_aid(void)
 {
    writed(write_ai_regs, address, dword);
 }
@@ -1919,42 +2069,42 @@ static int write_pi_regs(uint32_t address, uint32_t value, uint32_t mask)
    return 0;
 }
 
-void read_pi(void)
+static void read_pi(void)
 {
    readw(read_pi_regs, address, rdword);
 }
 
-void read_pib(void)
+static void read_pib(void)
 {
    readb(read_pi_regs, address, rdword);
 }
 
-void read_pih(void)
+static void read_pih(void)
 {
    readh(read_pi_regs, address, rdword);
 }
 
-void read_pid(void)
+static void read_pid(void)
 {
    readd(read_pi_regs, address, rdword);
 }
 
-void write_pi(void)
+static void write_pi(void)
 {
    writew(write_pi_regs, address, word);
 }
 
-void write_pib(void)
+static void write_pib(void)
 {
    writeb(write_pi_regs, address, cpu_byte);
 }
 
-void write_pih(void)
+static void write_pih(void)
 {
    writeh(write_pi_regs, address, hword);
 }
 
-void write_pid(void)
+static void write_pid(void)
 {
    writed(write_pi_regs, address, dword);
 }
@@ -1982,42 +2132,42 @@ static int write_ri_regs(uint32_t address, uint32_t value, uint32_t mask)
    return 0;
 }
 
-void read_ri(void)
+static void read_ri(void)
 {
    readw(read_ri_regs, address, rdword);
 }
 
-void read_rib(void)
+static void read_rib(void)
 {
    readb(read_ri_regs, address, rdword);
 }
 
-void read_rih(void)
+static void read_rih(void)
 {
    readh(read_ri_regs, address, rdword);
 }
 
-void read_rid(void)
+static void read_rid(void)
 {
    readd(read_ri_regs, address, rdword);
 }
 
-void write_ri(void)
+static void write_ri(void)
 {
    writew(write_ri_regs, address, word);
 }
 
-void write_rib(void)
+static void write_rib(void)
 {
    writeb(write_ri_regs, address, cpu_byte);
 }
 
-void write_rih(void)
+static void write_rih(void)
 {
    writeh(write_ri_regs, address, hword);
 }
 
-void write_rid(void)
+static void write_rid(void)
 {
    writed(write_ri_regs, address, dword);
 }
@@ -2059,47 +2209,47 @@ static int write_si_regs(uint32_t address, uint32_t value, uint32_t mask)
    return 0;
 }
 
-void read_si(void)
+static void read_si(void)
 {
    readw(read_si_regs, address, rdword);
 }
 
-void read_sib(void)
+static void read_sib(void)
 {
    readb(read_si_regs, address, rdword);
 }
 
-void read_sih(void)
+static void read_sih(void)
 {
    readh(read_si_regs, address, rdword);
 }
 
-void read_sid(void)
+static void read_sid(void)
 {
    readd(read_si_regs, address, rdword);
 }
 
-void write_si(void)
+static void write_si(void)
 {
    writew(write_si_regs, address, word);
 }
 
-void write_sib(void)
+static void write_sib(void)
 {
    writeb(write_si_regs, address, cpu_byte);
 }
 
-void write_sih(void)
+static void write_sih(void)
 {
    writeh(write_si_regs, address, hword);
 }
 
-void write_sid(void)
+static void write_sid(void)
 {
    writed(write_si_regs, address, dword);
 }
 
-void read_flashram_status(void)
+static void read_flashram_status(void)
 {
    if (flashram_info.use_flashram != -1 && ((address & 0xffff) == 0))
    {
@@ -2110,38 +2260,38 @@ void read_flashram_status(void)
       DebugMessage(M64MSG_ERROR, "unknown read in read_flashram_status()");
 }
 
-void read_flashram_statusb(void)
+static void read_flashram_statusb(void)
 {
    DebugMessage(M64MSG_ERROR, "read_flashram_statusb() not implemented");
 }
 
-void read_flashram_statush(void)
+static void read_flashram_statush(void)
 {
    DebugMessage(M64MSG_ERROR, "read_flashram_statush() not implemented");
 }
 
-void read_flashram_statusd(void)
+static void read_flashram_statusd(void)
 {
    DebugMessage(M64MSG_ERROR, "read_flashram_statusd() not implemented");
 }
 
-void write_flashram_dummy(void)
+static void write_flashram_dummy(void)
 {
 }
 
-void write_flashram_dummyb(void)
+static void write_flashram_dummyb(void)
 {
 }
 
-void write_flashram_dummyh(void)
+static void write_flashram_dummyh(void)
 {
 }
 
-void write_flashram_dummyd(void)
+static void write_flashram_dummyd(void)
 {
 }
 
-void write_flashram_command(void)
+static void write_flashram_command(void)
 {
    if (flashram_info.use_flashram != -1 && ((address & 0xffff) == 0))
    {
@@ -2152,17 +2302,17 @@ void write_flashram_command(void)
       DebugMessage(M64MSG_ERROR, "unknown write in write_flashram_command()");
 }
 
-void write_flashram_commandb(void)
+static void write_flashram_commandb(void)
 {
    DebugMessage(M64MSG_ERROR, "write_flashram_commandb() not implemented");
 }
 
-void write_flashram_commandh(void)
+static void write_flashram_commandh(void)
 {
    DebugMessage(M64MSG_ERROR, "write_flashram_commandh() not implemented");
 }
 
-void write_flashram_commandd(void)
+static void write_flashram_commandd(void)
 {
    DebugMessage(M64MSG_ERROR, "write_flashram_commandd() not implemented");
 }
@@ -2195,27 +2345,27 @@ static int write_cart_rom(uint32_t address, uint32_t value, uint32_t mask)
    return 0;
 }
 
-void read_rom(void)
+static void read_rom(void)
 {
    readw(read_cart_rom, address, rdword);
 }
 
-void read_romb(void)
+static void read_romb(void)
 {
    readb(read_cart_rom, address, rdword);
 }
 
-void read_romh(void)
+static void read_romh(void)
 {
    readh(read_cart_rom, address, rdword);
 }
 
-void read_romd(void)
+static void read_romd(void)
 {
    readd(read_cart_rom, address, rdword);
 }
 
-void write_rom(void)
+static void write_rom(void)
 {
    writew(write_cart_rom, address, word);
 }
@@ -2264,42 +2414,42 @@ static int write_pif_ram(uint32_t address, uint32_t value, uint32_t mask)
    return 0;
 }
 
-void read_pif(void)
+static void read_pif(void)
 {
    readw(read_pif_ram, address, rdword);
 }
 
-void read_pifb(void)
+static void read_pifb(void)
 {
    readb(read_pif_ram, address, rdword);
 }
 
-void read_pifh(void)
+static void read_pifh(void)
 {
    readh(read_pif_ram, address, rdword);
 }
 
-void read_pifd(void)
+static void read_pifd(void)
 {
    readd(read_pif_ram, address, rdword);
 }
 
-void write_pif(void)
+static void write_pif(void)
 {
    writew(write_pif_ram, address, word);
 }
 
-void write_pifb(void)
+static void write_pifb(void)
 {
    writeb(write_pif_ram, address, cpu_byte);
 }
 
-void write_pifh(void)
+static void write_pifh(void)
 {
    writeh(write_pif_ram, address, hword);
 }
 
-void write_pifd(void)
+static void write_pifd(void)
 {
    writed(write_pif_ram, address, dword);
 }
