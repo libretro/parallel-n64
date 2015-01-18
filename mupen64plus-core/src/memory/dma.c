@@ -229,16 +229,16 @@ void dma_sp_write(void)
 {
    uint32_t i,j;
 
-   uint32_t l = sp_register.sp_rd_len_reg;
+   uint32_t l = g_sp_regs[SP_RD_LEN_REG];
 
-   uint32_t length = ((l & 0xfff) | 7) + 1;
-   uint32_t count = ((l >> 12) & 0xff) + 1;
-   uint32_t skip = ((l >> 20) & 0xfff);
+   uint32_t length   = ((l & 0xfff) | 7) + 1;
+   uint32_t count    = ((l >> 12) & 0xff) + 1;
+   uint32_t skip     = ((l >> 20) & 0xfff);
 
-   uint32_t memaddr = sp_register.sp_mem_addr_reg & 0xfff;
-   uint32_t dramaddr = sp_register.sp_dram_addr_reg & 0xffffff;
+   uint32_t memaddr  = g_sp_regs[SP_MEM_ADDR_REG] & 0xfff;
+   uint32_t dramaddr = g_sp_regs[SP_DRAM_ADDR_REG] & 0xffffff;
 
-   unsigned char *spmem = (unsigned char*)g_sp_mem + (sp_register.sp_mem_addr_reg & 0x1000);
+   unsigned char *spmem = (unsigned char*)g_sp_mem + (g_sp_regs[SP_MEM_ADDR_REG] & 0x1000);
    uint8_t *dram = (uint8_t*)g_rdram;
 
    for(j=0; j<count; j++) {
@@ -255,16 +255,16 @@ void dma_sp_read(void)
 {
    uint32_t i,j;
 
-   uint32_t l = sp_register.sp_wr_len_reg;
+   uint32_t l = g_sp_regs[SP_WR_LEN_REG];
 
    uint32_t length = ((l & 0xfff) | 7) + 1;
    uint32_t count = ((l >> 12) & 0xff) + 1;
    uint32_t skip = ((l >> 20) & 0xfff);
 
-   uint32_t memaddr = sp_register.sp_mem_addr_reg & 0xfff;
-   uint32_t dramaddr = sp_register.sp_dram_addr_reg & 0xffffff;
+   uint32_t memaddr = g_sp_regs[SP_MEM_ADDR_REG] & 0xfff;
+   uint32_t dramaddr = g_sp_regs[SP_DRAM_ADDR_REG] & 0xffffff;
 
-   unsigned char *spmem = (unsigned char*)g_sp_mem + (sp_register.sp_mem_addr_reg & 0x1000);
+   unsigned char *spmem = (unsigned char*)g_sp_mem + (g_sp_regs[SP_MEM_ADDR_REG] & 0x1000);
    uint8_t *dram = (uint8_t*)g_rdram;
 
    for(j=0; j<count; j++) {
