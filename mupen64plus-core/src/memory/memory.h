@@ -82,7 +82,21 @@ enum rdram_registers
    RDRAM_REGS_COUNT
 };
 
+enum ri_registers
+{
+   RI_MODE_REG,
+   RI_CONFIG_REG,
+   RI_CURRENT_LOAD_REG,
+   RI_SELECT_REG,
+   RI_REFRESH_REG,
+   RI_LATENCY_REG,
+   RI_ERROR_REG,
+   RI_WERROR_REG,
+   RI_REGS_COUNT
+};
+
 extern uint32_t g_rdram_regs[RDRAM_REGS_COUNT];
+extern uint32_t g_ri_regs[RI_REGS_COUNT];
 
 extern uint32_t address, word;
 extern uint8_t cpu_byte;
@@ -219,20 +233,7 @@ enum pi_registers
 
 extern uint32_t g_pi_regs[PI_REGS_COUNT];
 
-extern uint32_t *readri[0x10000];
 extern uint32_t *readsi[0x10000];
-
-typedef struct _RI_register
-{
-   uint32_t ri_mode;
-   uint32_t ri_config;
-   uint32_t ri_current_load;
-   uint32_t ri_select;
-   uint32_t ri_refresh;
-   uint32_t ri_latency;
-   uint32_t ri_error;
-   uint32_t ri_werror;
-} RI_register;
 
 typedef struct _SI_register
 {
@@ -243,7 +244,6 @@ typedef struct _SI_register
 } SI_register;
 
 extern SI_register si_register;
-extern RI_register ri_register;
 
 enum cic_type
 {
