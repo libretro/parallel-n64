@@ -39,10 +39,11 @@ extern uint32_t VI_REFRESH;
 #define write_byte_in_memory() writememb[address >>16]()
 #define write_hword_in_memory() writememh[address >>16]()
 #define write_dword_in_memory() writememd[address >>16]()
-extern uint32_t SP_DMEM[0x1000/4*2];
-extern uint8_t *SP_DMEMb;
-extern uint32_t *SP_IMEM;
-extern uint8_t *SP_IMEMb;
+
+enum { SP_MEM_SIZE = 0x2000 };
+
+extern uint32_t g_sp_mem[SP_MEM_SIZE/4];
+
 extern uint32_t PIF_RAM[0x40/4];
 extern uint8_t *PIF_RAMb;
 

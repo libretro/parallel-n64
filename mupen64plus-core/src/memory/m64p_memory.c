@@ -68,10 +68,7 @@ enum cic_type g_cic_type;
 
 ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
 
-uint32_t SP_DMEM[0x1000/4*2];
-uint32_t *SP_IMEM = SP_DMEM+0x1000/4;
-uint8_t *SP_DMEMb = (uint8_t *)(SP_DMEM);
-uint8_t *SP_IMEMb = (uint8_t*)(SP_DMEM+0x1000/4);
+uint32_t g_sp_mem[SP_MEM_SIZE/4];
 uint32_t PIF_RAM[0x40/4];
 uint8_t *PIF_RAMb = (uint8_t *)(PIF_RAM);
 
@@ -338,7 +335,9 @@ int init_memory(void)
       writememd[0xa3f0+i] = write_nothingd;
    }
 
-   //init RSP memory
+   /* init RSP memory */
+   memset(g_sp_mem, 0, SP_MEM_SIZE);
+
    readmem[0x8400] = read_rsp_mem;
    readmem[0xa400] = read_rsp_mem;
    readmemb[0x8400] = read_rsp_memb;
@@ -355,8 +354,6 @@ int init_memory(void)
    writememh[0xa400] = write_rsp_memh;
    writememd[0x8400] = write_rsp_memd;
    writememd[0xa400] = write_rsp_memd;
-   for (i=0; i<(0x1000/4); i++) SP_DMEM[i]=0;
-   for (i=0; i<(0x1000/4); i++) SP_IMEM[i]=0;
 
    for (i=1; i<0x4; i++)
    {
@@ -1439,7 +1436,7 @@ static void unprotect_framebuffers(void)
 static void do_SP_Task(void)
 {
    int save_pc = rsp_register.rsp_pc & ~0xFFF;
-   if (SP_DMEM[0xFC0/4] == 1)
+   if (g_sp_mem[0xFC0/4] == 1)
    {
       if (dpc_register.dpc_status & 0x2) // DP frozen (DK64, BC)
       {
@@ -1468,7 +1465,7 @@ static void do_SP_Task(void)
 
       protect_framebuffers();
    }
-   else if (SP_DMEM[0xFC0/4] == 2)
+   else if (g_sp_mem[0xFC0/4] == 2)
    {
       //audio.processAList();
       rsp_register.rsp_pc &= 0xFFF;
@@ -1939,96 +1936,67 @@ void write_rdramregd(void)
    writed(write_rdram_regs, address, dword);
 }
 
+static inline uint32_t rsp_mem_address(uint32_t address)
+{
+   return (address & 0x1fff) >> 2;
+}
+
+static int read_rspmem(uint32_t address, uint32_t* value)
+{
+   uint32_t addr = rsp_mem_address(address);
+
+   *value = g_sp_mem[addr];
+
+   return 0;
+}
+
+static int write_rspmem(uint32_t address, uint32_t value, uint32_t mask)
+{
+   uint32_t addr = rsp_mem_address(address);
+
+   masked_write(&g_sp_mem[addr], value, mask);
+
+   return 0;
+}
+
 void read_rsp_mem(void)
 {
-   if (*address_low < 0x1000)
-      *rdword = *((uint32_t *)(SP_DMEMb + (*address_low)));
-   else if (*address_low < 0x2000)
-      *rdword = *((uint32_t *)(SP_IMEMb + (*address_low&0xFFF)));
-   else
-      read_nomem();
+   readw(read_rspmem, address, rdword);
 }
 
 void read_rsp_memb(void)
 {
-   if (*address_low < 0x1000)
-      *rdword = *(SP_DMEMb + (*address_low^S8));
-   else if (*address_low < 0x2000)
-      *rdword = *(SP_IMEMb + ((*address_low&0xFFF)^S8));
-   else
-      read_nomemb();
+   readb(read_rspmem, address, rdword);
 }
 
 void read_rsp_memh(void)
 {
-   if (*address_low < 0x1000)
-      *rdword = *((uint16_t *)(SP_DMEMb + (*address_low^S16)));
-   else if (*address_low < 0x2000)
-      *rdword = *((uint16_t *)(SP_IMEMb + ((*address_low&0xFFF)^S16)));
-   else
-      read_nomemh();
+   readh(read_rspmem, address, rdword);
 }
 
 void read_rsp_memd(void)
 {
-   if (*address_low < 0x1000)
-   {
-      *rdword = ((uint64_t)(*(uint32_t*)(SP_DMEMb + (*address_low))) << 32) |
-         ((*(uint32_t*)(SP_DMEMb + (*address_low) + 4)));
-   }
-   else if (*address_low < 0x2000)
-   {
-      *rdword = ((uint64_t)(*(uint32_t*)(SP_IMEMb + (*address_low&0xFFF))) << 32) |
-         ((*(uint32_t*)(SP_IMEMb + (*address_low&0xFFF) + 4)));
-   }
-   else
-      read_nomemd();
+   readd(read_rspmem, address, rdword);
 }
 
 void write_rsp_mem(void)
 {
-   if (*address_low < 0x1000)
-      *((uint32_t *)(SP_DMEMb + (*address_low))) = word;
-   else if (*address_low < 0x2000)
-      *((uint32_t *)(SP_IMEMb + (*address_low&0xFFF))) = word;
-   else
-      write_nomem();
+   writew(write_rspmem, address, word);
 }
 
 void write_rsp_memb(void)
 {
-   if (*address_low < 0x1000)
-      *(SP_DMEMb + (*address_low^S8)) = cpu_byte;
-   else if (*address_low < 0x2000)
-      *(SP_IMEMb + ((*address_low&0xFFF)^S8)) = cpu_byte;
-   else
-      write_nomemb();
+   writeb(write_rspmem, address, cpu_byte);
 }
 
 void write_rsp_memh(void)
 {
-   if (*address_low < 0x1000)
-      *((uint16_t *)(SP_DMEMb + (*address_low^S16))) = hword;
-   else if (*address_low < 0x2000)
-      *((uint16_t *)(SP_IMEMb + ((*address_low&0xFFF)^S16))) = hword;
-   else
-      write_nomemh();
+   writeh(write_rspmem, address, hword);
 }
 
 void write_rsp_memd(void)
 {
-   if (*address_low < 0x1000)
-   {
-      *((uint32_t *)(SP_DMEMb + *address_low)) = (uint32_t) (dword >> 32);
-      *((uint32_t *)(SP_DMEMb + *address_low + 4 )) = (uint32_t) (dword & 0xFFFFFFFF);
-   }
-   else if (*address_low < 0x2000)
-   {
-      *((uint32_t *)(SP_IMEMb + (*address_low&0xFFF))) = (uint32_t) (dword >> 32);
-      *((uint32_t *)(SP_IMEMb + (*address_low&0xFFF) + 4 )) = (uint32_t) (dword & 0xFFFFFFFF);
-   }
-   else
-      read_nomemd();
+   writed(write_rspmem, address, dword);
 }
 
 void read_rsp_reg(void)
@@ -3749,7 +3717,7 @@ uint32_t *fast_mem_access(uint32_t address)
    else if (address >= 0x10000000)
       return (unsigned int*)((unsigned char*)rom + address - 0x10000000);
    else if ((address & 0xffffe000) == 0x04000000)
-      return (unsigned int*)((unsigned char*)SP_DMEM + (address & 0x1ffc));
+      return (unsigned int*)((unsigned char*)g_sp_mem + (address & 0x1ffc));
    return NULL;
 }
 
