@@ -444,7 +444,7 @@ void gen_interupt(void)
 
          refresh_stat();
          if (g_vi_regs[VI_V_SYNC_REG] == 0) g_vi_delay = 500000;
-         else g_vi_delay = ((g_vi_regs[VI_V_SYNC_REG] + 1)*1500);
+         else g_vi_delay = ((g_vi_regs[VI_V_SYNC_REG] + 1)*VI_REFRESH);
          next_vi += g_vi_delay;
          if (g_vi_regs[VI_STATUS_REG]&0x40) vi_field=1-vi_field;
          else vi_field=0;

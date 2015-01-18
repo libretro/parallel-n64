@@ -1834,7 +1834,7 @@ static int read_vi_regs(uint32_t address, uint32_t* value)
    if (reg == VI_CURRENT_REG)
    {
       update_count();
-      g_vi_regs[VI_CURRENT_REG] = (g_vi_delay - (next_vi - g_cp0_regs[CP0_COUNT_REG]))/1500;
+      g_vi_regs[VI_CURRENT_REG] = (g_vi_delay - (next_vi - g_cp0_regs[CP0_COUNT_REG]))/VI_REFRESH;
       g_vi_regs[VI_CURRENT_REG] = (g_vi_regs[VI_CURRENT_REG] & (~1)) | vi_field;
    }
    *value = g_vi_regs[reg];
