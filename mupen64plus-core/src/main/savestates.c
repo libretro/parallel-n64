@@ -149,10 +149,10 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
     g_sp_regs2[SP_PC_REG] = GETDATA(curr, uint32_t);
     g_sp_regs2[SP_IBIST_REG] = GETDATA(curr, uint32_t);
 
-    si_register.si_dram_addr = GETDATA(curr, unsigned int);
-    si_register.si_pif_addr_rd64b = GETDATA(curr, unsigned int);
-    si_register.si_pif_addr_wr64b = GETDATA(curr, unsigned int);
-    si_register.si_stat = GETDATA(curr, unsigned int);
+    g_si_regs[SI_DRAM_ADDR_REG]      = GETDATA(curr, uint32_t);
+    g_si_regs[SI_PIF_ADDR_RD64B_REG] = GETDATA(curr, uint32_t);
+    g_si_regs[SI_PIF_ADDR_WR64B_REG] = GETDATA(curr, uint32_t);
+    g_si_regs[SI_STATUS_REG]         = GETDATA(curr, uint32_t);
 
     g_vi_regs[VI_STATUS_REG] = GETDATA(curr, uint32_t);
     g_vi_regs[VI_ORIGIN_REG] = GETDATA(curr, uint32_t);
@@ -401,10 +401,10 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     PUTDATA(curr, uint32_t, g_sp_regs2[SP_PC_REG]);
     PUTDATA(curr, uint32_t, g_sp_regs2[SP_IBIST_REG]);
 
-    PUTDATA(curr, unsigned int, si_register.si_dram_addr);
-    PUTDATA(curr, unsigned int, si_register.si_pif_addr_rd64b);
-    PUTDATA(curr, unsigned int, si_register.si_pif_addr_wr64b);
-    PUTDATA(curr, unsigned int, si_register.si_stat);
+    PUTDATA(curr, uint32_t, g_si_regs[SI_DRAM_ADDR_REG]);
+    PUTDATA(curr, uint32_t, g_si_regs[SI_PIF_ADDR_RD64B_REG]);
+    PUTDATA(curr, uint32_t, g_si_regs[SI_PIF_ADDR_WR64B_REG]);
+    PUTDATA(curr, uint32_t, g_si_regs[SI_STATUS_REG]);
 
     PUTDATA(curr, uint32_t, g_vi_regs[VI_STATUS_REG]);
     PUTDATA(curr, uint32_t, g_vi_regs[VI_ORIGIN_REG]);
