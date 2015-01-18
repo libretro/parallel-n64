@@ -204,10 +204,10 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
     g_dpc_regs[DPC_PIPEBUSY_REG] = GETDATA(curr, uint32_t);
     g_dpc_regs[DPC_TMEM_REG] = GETDATA(curr, uint32_t);
 
-    dps_register.dps_tbist = GETDATA(curr, unsigned int);
-    dps_register.dps_test_mode = GETDATA(curr, unsigned int);
-    dps_register.dps_buftest_addr = GETDATA(curr, unsigned int);
-    dps_register.dps_buftest_data = GETDATA(curr, unsigned int);
+    g_dps_regs[DPS_TBIST_REG] = GETDATA(curr, uint32_t);
+    g_dps_regs[DPS_TEST_MODE_REG] = GETDATA(curr, uint32_t);
+    g_dps_regs[DPS_BUFTEST_ADDR_REG] = GETDATA(curr, uint32_t);
+    g_dps_regs[DPS_BUFTEST_DATA_REG] = GETDATA(curr, uint32_t);
 
     COPYARRAY(g_rdram, curr, uint32_t, RDRAM_MAX_SIZE/4);
     COPYARRAY(g_sp_mem, curr, uint32_t, SP_MEM_SIZE/4);
@@ -463,10 +463,10 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     PUTDATA(curr, uint32_t, g_dpc_regs[DPC_PIPEBUSY_REG]);
     PUTDATA(curr, uint32_t, g_dpc_regs[DPC_TMEM_REG]);
 
-    PUTDATA(curr, unsigned int, dps_register.dps_tbist);
-    PUTDATA(curr, unsigned int, dps_register.dps_test_mode);
-    PUTDATA(curr, unsigned int, dps_register.dps_buftest_addr);
-    PUTDATA(curr, unsigned int, dps_register.dps_buftest_data);
+    PUTDATA(curr, uint32_t, g_dps_regs[DPS_TBIST_REG]);
+    PUTDATA(curr, uint32_t, g_dps_regs[DPS_TEST_MODE_REG]);
+    PUTDATA(curr, uint32_t, g_dps_regs[DPS_BUFTEST_ADDR_REG]);
+    PUTDATA(curr, uint32_t, g_dps_regs[DPS_BUFTEST_DATA_REG]);
 
     PUTARRAY(g_rdram, curr, uint32_t, RDRAM_MAX_SIZE/4);
     PUTARRAY(g_sp_mem, curr, uint32_t, SP_MEM_SIZE/4);

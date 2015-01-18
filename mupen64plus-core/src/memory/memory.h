@@ -134,7 +134,17 @@ enum dpc_registers
    DPC_REGS_COUNT
 };
 
+enum dps_registers
+{
+   DPS_TBIST_REG,
+   DPS_TEST_MODE_REG,
+   DPS_BUFTEST_ADDR_REG,
+   DPS_BUFTEST_DATA_REG,
+   DPS_REGS_COUNT
+};
+
 extern uint32_t g_dpc_regs[DPC_REGS_COUNT];
+extern uint32_t g_dps_regs[DPS_REGS_COUNT];
 
 extern uint32_t *readmi[0x10000];
 extern uint32_t *readvi[0x10000];
@@ -142,15 +152,6 @@ extern uint32_t *readai[0x10000];
 extern uint32_t *readpi[0x10000];
 extern uint32_t *readri[0x10000];
 extern uint32_t *readsi[0x10000];
-extern uint32_t *readdps[0x10000];
-
-typedef struct _DPS_register
-{
-   uint32_t dps_tbist;
-   uint32_t dps_test_mode;
-   uint32_t dps_buftest_addr;
-   uint32_t dps_buftest_data;
-} DPS_register;
 
 typedef struct _mips_register
 {
@@ -238,7 +239,6 @@ extern SI_register si_register;
 extern VI_register vi_register;
 extern RI_register ri_register;
 extern AI_register ai_register;
-extern DPS_register dps_register;
 
 enum cic_type
 {

@@ -62,7 +62,7 @@ VI_register vi_register;
 RI_register ri_register;
 AI_register ai_register;
 uint32_t g_dpc_regs[DPC_REGS_COUNT];
-DPS_register dps_register;
+uint32_t g_dps_regs[DPS_REGS_COUNT];
 
 enum cic_type g_cic_type;
 
@@ -116,7 +116,6 @@ uint32_t *readai[0x10000];
 uint32_t *readpi[0x10000];
 uint32_t *readri[0x10000];
 uint32_t *readsi[0x10000];
-uint32_t *readdps[0x10000];
 
 // the frameBufferInfos
 static FrameBufferInfo frameBufferInfos[6];
@@ -493,7 +492,9 @@ int init_memory(void)
       writememd[0xa410+i] = write_nothingd;
    }
 
-   //init rsp span registers
+   /* init DPS registers */
+   memset(g_dps_regs, 0, DPS_REGS_COUNT*sizeof(g_dps_regs[0]));
+
    readmem[0x8420] = read_dps;
    readmem[0xa420] = read_dps;
    readmemb[0x8420] = read_dpsb;
@@ -510,16 +511,7 @@ int init_memory(void)
    writememh[0xa420] = write_dpsh;
    writememd[0x8420] = write_dpsd;
    writememd[0xa420] = write_dpsd;
-   dps_register.dps_tbist=0;
-   dps_register.dps_test_mode=0;
-   dps_register.dps_buftest_addr=0;
-   dps_register.dps_buftest_data=0;
-   readdps[0x0] = &dps_register.dps_tbist;
-   readdps[0x4] = &dps_register.dps_test_mode;
-   readdps[0x8] = &dps_register.dps_buftest_addr;
-   readdps[0xc] = &dps_register.dps_buftest_data;
 
-   for (i=0x10; i<0x10000; i++) readdps[i] = &trash;
    for (i=1; i<0x10; i++)
    {
       readmem[0x8420+i] = read_nothing;
@@ -2087,50 +2079,67 @@ void write_dpd(void)
    writed(write_dpc_regs, address, dword);
 }
 
+static inline uint32_t dps_reg(uint32_t address)
+{
+   return (address & 0xffff) >> 2;
+}
+
+static int read_dps_regs(uint32_t address, uint32_t* value)
+{
+   uint32_t reg = dps_reg(address);
+
+   *value = g_dps_regs[reg];
+
+   return 0;
+}
+
+static int write_dps_regs(uint32_t address, uint32_t value, uint32_t mask)
+{
+   uint32_t reg = dps_reg(address);
+
+   masked_write(&g_dps_regs[reg], value, mask);
+
+   return 0;
+}
+
 void read_dps(void)
 {
-   *rdword = *(readdps[*address_low]);
+   readw(read_dps_regs, address, rdword);
 }
 
 void read_dpsb(void)
 {
-   *rdword = *((uint8_t*)readdps[*address_low & 0xfffc]
-         + ((*address_low&3)^S8) );
+   readb(read_dps_regs, address, rdword);
 }
 
 void read_dpsh(void)
 {
-   *rdword = *((uint16_t*)((uint8_t*)readdps[*address_low & 0xfffc]
-            + ((*address_low&3)^S16) ));
+   readh(read_dps_regs, address, rdword);
 }
 
 void read_dpsd(void)
 {
-   *rdword = ((uint64_t)(*readdps[*address_low])<<32) |
-      *readdps[*address_low+4];
+   readd(read_dps_regs, address, rdword);
 }
 
 void write_dps(void)
 {
-   *readdps[*address_low] = word;
+   writew(write_dps_regs, address, word);
 }
 
 void write_dpsb(void)
 {
-   *((uint8_t*)readdps[*address_low & 0xfffc]
-         + ((*address_low&3)^S8) ) = cpu_byte;
+   writeb(write_dps_regs, address, cpu_byte);
 }
 
 void write_dpsh(void)
 {
-   *((uint16_t*)((uint8_t*)readdps[*address_low & 0xfffc]
-            + ((*address_low&3)^S16) )) = hword;
+   writeh(write_dps_regs, address, hword);
 }
 
 void write_dpsd(void)
 {
-   *readdps[*address_low] = (uint32_t) (dword >> 32);
-   *readdps[*address_low+4] = (uint32_t) (dword & 0xFFFFFFFF);
+   writed(write_dps_regs, address, dword);
 }
 
 void read_mi(void)
