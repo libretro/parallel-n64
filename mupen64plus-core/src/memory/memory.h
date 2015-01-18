@@ -44,8 +44,9 @@ enum { SP_MEM_SIZE = 0x2000 };
 
 extern uint32_t g_sp_mem[SP_MEM_SIZE/4];
 
-extern uint32_t PIF_RAM[0x40/4];
-extern uint8_t *PIF_RAMb;
+enum { PIF_RAM_SIZE = 0x40 };
+
+extern uint8_t g_pif_ram[PIF_RAM_SIZE];
 
 typedef struct _save_memory_data
 {

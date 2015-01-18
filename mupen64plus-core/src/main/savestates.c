@@ -212,7 +212,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 
     COPYARRAY(g_rdram, curr, uint32_t, RDRAM_MAX_SIZE/4);
     COPYARRAY(g_sp_mem, curr, uint32_t, SP_MEM_SIZE/4);
-    COPYARRAY(PIF_RAM, curr, unsigned char, 0x40);
+    COPYARRAY(g_pif_ram, curr, uint8_t, PIF_RAM_SIZE);
 
     flashram_info.use_flashram = GETDATA(curr, int);
     flashram_info.mode = GETDATA(curr, int);
@@ -471,7 +471,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
 
     PUTARRAY(g_rdram, curr, uint32_t, RDRAM_MAX_SIZE/4);
     PUTARRAY(g_sp_mem, curr, uint32_t, SP_MEM_SIZE/4);
-    PUTARRAY(PIF_RAM, curr, unsigned char, 0x40);
+    PUTARRAY(g_pif_ram, curr, uint8_t, PIF_RAM_SIZE);
 
     PUTDATA(curr, int, flashram_info.use_flashram);
     PUTDATA(curr, int, flashram_info.mode);
