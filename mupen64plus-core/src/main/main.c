@@ -244,21 +244,21 @@ m64p_error main_init(void)
 
     /* set some other core parameters based on the config file values */
     no_compiled_jump = ConfigGetParamBool(g_CoreConfig, "NoCompiledJump");
-    //count_per_op = ConfigGetParamInt(g_CoreConfig, "CountPerOp");
+#if 0
+    count_per_op = ConfigGetParamInt(g_CoreConfig, "CountPerOp");
+#endif
 
     if (count_per_op <= 0)
        count_per_op = 2;
 
-    // initialize memory, and do byte-swapping if it's not been done yet
+    /* do byte-swapping if it's not been done yet */
     if (g_MemHasBeenBSwapped == 0)
     {
-        init_memory(1);
+        swap_buffer(rom, 4, rom_size/4);
         g_MemHasBeenBSwapped = 1;
     }
-    else
-    {
-        init_memory(0);
-    }
+
+    init_memory();
 
     // Attach rom to plugins
     printf("Gfx RomOpen.\n");
