@@ -140,13 +140,6 @@ static int firstFrameBufferSetting;
 
 uint32_t VI_REFRESH = 1500;
 
-// uncomment to output count of calls to write_rdram():
-//#define COUNT_WRITE_RDRAM_CALLS 1
-
-#if defined( COUNT_WRITE_RDRAM_CALLS )
-	int writerdram_count = 1;
-#endif
-
 int init_memory(int DoByteSwap)
 {
    int i;
@@ -1797,10 +1790,6 @@ void read_rdramFBd(void)
 
 void write_rdram(void)
 {
-#if defined( COUNT_WRITE_RDRAM_CALLS )
-   printf( "write_rdram, word=%i, count: %i", word, writerdram_count );
-   writerdram_count++;
-#endif
    *((uint32_t *)(rdramb + (address & 0xFFFFFF))) = word;
 }
 
