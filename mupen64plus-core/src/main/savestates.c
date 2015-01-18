@@ -111,13 +111,13 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
     g_rdram_regs[RDRAM_ADDR_SELECT_REG] = GETDATA(curr, uint32_t);
     g_rdram_regs[RDRAM_DEVICE_MANUF_REG] = GETDATA(curr, uint32_t);
 
-    MI_register.w_mi_init_mode_reg = GETDATA(curr, unsigned int);
-    MI_register.mi_init_mode_reg = GETDATA(curr, unsigned int);
+    curr += 4; /* Padding from old implementation */
+    g_mi_regs[MI_INIT_MODE_REG] = GETDATA(curr, uint32_t);
     curr += 4; // Duplicate MI init mode flags from old implementation
-    MI_register.mi_version_reg = GETDATA(curr, unsigned int);
-    MI_register.mi_intr_reg = GETDATA(curr, unsigned int);
-    MI_register.mi_intr_mask_reg = GETDATA(curr, unsigned int);
-    MI_register.w_mi_intr_mask_reg = GETDATA(curr, unsigned int);
+    g_mi_regs[MI_VERSION_REG] = GETDATA(curr, uint32_t);
+    g_mi_regs[MI_INTR_REG] = GETDATA(curr, uint32_t);
+    g_mi_regs[MI_INTR_MASK_REG] = GETDATA(curr, uint32_t);
+    curr += 4; /* Padding from old implementation. */
     curr += 8; // Duplicated MI intr flags and padding from old implementation
 
     pi_register.pi_dram_addr_reg = GETDATA(curr, unsigned int);
@@ -339,23 +339,23 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     PUTDATA(curr, uint32_t, g_rdram_regs[RDRAM_ADDR_SELECT_REG]);
     PUTDATA(curr, uint32_t, g_rdram_regs[RDRAM_DEVICE_MANUF_REG]);
 
-    PUTDATA(curr, unsigned int, MI_register.w_mi_init_mode_reg);
-    PUTDATA(curr, unsigned int, MI_register.mi_init_mode_reg);
-    PUTDATA(curr, unsigned char, MI_register.mi_init_mode_reg & 0x7F);
-    PUTDATA(curr, unsigned char, (MI_register.mi_init_mode_reg & 0x80) != 0);
-    PUTDATA(curr, unsigned char, (MI_register.mi_init_mode_reg & 0x100) != 0);
-    PUTDATA(curr, unsigned char, (MI_register.mi_init_mode_reg & 0x200) != 0);
-    PUTDATA(curr, unsigned int, MI_register.mi_version_reg);
-    PUTDATA(curr, unsigned int, MI_register.mi_intr_reg);
-    PUTDATA(curr, unsigned int, MI_register.mi_intr_mask_reg);
-    PUTDATA(curr, unsigned int, MI_register.w_mi_intr_mask_reg);
-    PUTDATA(curr, unsigned char, (MI_register.mi_intr_mask_reg & 0x1) != 0);
-    PUTDATA(curr, unsigned char, (MI_register.mi_intr_mask_reg & 0x2) != 0);
-    PUTDATA(curr, unsigned char, (MI_register.mi_intr_mask_reg & 0x4) != 0);
-    PUTDATA(curr, unsigned char, (MI_register.mi_intr_mask_reg & 0x8) != 0);
-    PUTDATA(curr, unsigned char, (MI_register.mi_intr_mask_reg & 0x10) != 0);
-    PUTDATA(curr, unsigned char, (MI_register.mi_intr_mask_reg & 0x20) != 0);
-    PUTDATA(curr, unsigned short, 0); // Padding from old implementation
+    PUTDATA(curr, uint32_t, 0);
+    PUTDATA(curr, uint32_t, g_mi_regs[MI_INIT_MODE_REG]);
+    PUTDATA(curr, uint8_t, g_mi_regs[MI_INIT_MODE_REG] & 0x7F);
+    PUTDATA(curr, uint8_t, (g_mi_regs[MI_INIT_MODE_REG] & 0x80) != 0);
+    PUTDATA(curr, uint8_t, (g_mi_regs[MI_INIT_MODE_REG] & 0x100) != 0);
+    PUTDATA(curr, uint8_t, (g_mi_regs[MI_INIT_MODE_REG] & 0x200) != 0);
+    PUTDATA(curr, uint32_t, g_mi_regs[MI_VERSION_REG]);
+    PUTDATA(curr, uint32_t, g_mi_regs[MI_INTR_REG]);
+    PUTDATA(curr, uint32_t, g_mi_regs[MI_INTR_MASK_REG]);
+    PUTDATA(curr, uint32_t, 0); /* Padding from old implementation */
+    PUTDATA(curr, uint8_t, (g_mi_regs[MI_INTR_MASK_REG] & 0x1) != 0);
+    PUTDATA(curr, uint8_t, (g_mi_regs[MI_INTR_MASK_REG] & 0x2) != 0);
+    PUTDATA(curr, uint8_t, (g_mi_regs[MI_INTR_MASK_REG] & 0x4) != 0);
+    PUTDATA(curr, uint8_t, (g_mi_regs[MI_INTR_MASK_REG] & 0x8) != 0);
+    PUTDATA(curr, uint8_t, (g_mi_regs[MI_INTR_MASK_REG] & 0x10) != 0);
+    PUTDATA(curr, uint8_t, (g_mi_regs[MI_INTR_MASK_REG] & 0x20) != 0);
+    PUTDATA(curr, uint16_t, 0); // Padding from old implementation
 
     PUTDATA(curr, unsigned int, pi_register.pi_dram_addr_reg);
     PUTDATA(curr, unsigned int, pi_register.pi_cart_addr_reg);
