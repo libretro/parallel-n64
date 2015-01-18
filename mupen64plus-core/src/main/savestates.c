@@ -145,8 +145,8 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
     g_sp_regs[SP_DMA_BUSY_REG] = GETDATA(curr, uint32_t);
     g_sp_regs[SP_SEMAPHORE_REG] = GETDATA(curr, uint32_t);
 
-    rsp_register.rsp_pc = GETDATA(curr, unsigned int);
-    rsp_register.rsp_ibist = GETDATA(curr, unsigned int);
+    g_sp_regs2[SP_PC_REG] = GETDATA(curr, uint32_t);
+    g_sp_regs2[SP_IBIST_REG] = GETDATA(curr, uint32_t);
 
     si_register.si_dram_addr = GETDATA(curr, unsigned int);
     si_register.si_pif_addr_rd64b = GETDATA(curr, unsigned int);
@@ -397,8 +397,8 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     PUTDATA(curr, uint32_t, g_sp_regs[SP_DMA_BUSY_REG]);
     PUTDATA(curr, uint32_t, g_sp_regs[SP_SEMAPHORE_REG]);
 
-    PUTDATA(curr, unsigned int, rsp_register.rsp_pc);
-    PUTDATA(curr, unsigned int, rsp_register.rsp_ibist);
+    PUTDATA(curr, uint32_t, g_sp_regs2[SP_PC_REG]);
+    PUTDATA(curr, uint32_t, g_sp_regs2[SP_IBIST_REG]);
 
     PUTDATA(curr, unsigned int, si_register.si_dram_addr);
     PUTDATA(curr, unsigned int, si_register.si_pif_addr_rd64b);

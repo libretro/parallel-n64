@@ -56,7 +56,7 @@ uint32_t g_rdram_regs[RDRAM_REGS_COUNT];
 mips_register MI_register;
 PI_register pi_register;
 uint32_t g_sp_regs[SP_REGS_COUNT];
-RSP_register rsp_register;
+uint32_t g_sp_regs2[SP_REGS2_COUNT];
 SI_register si_register;
 VI_register vi_register;
 RI_register ri_register;
@@ -110,7 +110,6 @@ void (*writememd[0x10000])(void);
 void (*writememh[0x10000])(void);
 
 // memory sections
-uint32_t *readrsp[0x10000];
 uint32_t *readmi[0x10000];
 uint32_t *readvi[0x10000];
 uint32_t *readai[0x10000];
@@ -415,6 +414,9 @@ int init_memory(void)
       writememd[0xa400+i] = write_nothingd;
    }
 
+   /* init RSP registers (2) */
+   memset(g_sp_regs2, 0, SP_REGS2_COUNT*sizeof(g_sp_regs2[0]));
+
    readmem[0x8408] = read_rsp;
    readmem[0xa408] = read_rsp;
    readmemb[0x8408] = read_rspb;
@@ -431,12 +433,7 @@ int init_memory(void)
    writememh[0xa408] = write_rsph;
    writememd[0x8408] = write_rspd;
    writememd[0xa408] = write_rspd;
-   rsp_register.rsp_pc=0;
-   rsp_register.rsp_ibist=0;
-   readrsp[0x0] = &rsp_register.rsp_pc;
-   readrsp[0x4] = &rsp_register.rsp_ibist;
 
-   for (i=0x8; i<0x10000; i++) readrsp[i] = &trash;
    for (i=9; i<0x10; i++)
    {
       readmem[0x8400+i] = read_nothing;
@@ -1355,7 +1352,7 @@ static void unprotect_framebuffers(void)
 
 static void do_SP_Task(void)
 {
-   int save_pc = rsp_register.rsp_pc & ~0xFFF;
+   int save_pc = g_sp_regs2[SP_PC_REG] & ~0xFFF;
    if (g_sp_mem[0xFC0/4] == 1)
    {
       if (dpc_register.dpc_status & 0x2) // DP frozen (DK64, BC)
@@ -1368,11 +1365,11 @@ static void do_SP_Task(void)
       unprotect_framebuffers;
 
       //gfx.processDList();
-      rsp_register.rsp_pc &= 0xFFF;
+      g_sp_regs2[SP_PC_REG] &= 0xFFF;
       start_section(GFX_SECTION);
       rsp.doRspCycles(0xFFFFFFFF);
       end_section(GFX_SECTION);
-      rsp_register.rsp_pc |= save_pc;
+      g_sp_regs2[SP_PC_REG] |= save_pc;
       new_frame();
 
       update_count();
@@ -1388,11 +1385,11 @@ static void do_SP_Task(void)
    else if (g_sp_mem[0xFC0/4] == 2)
    {
       //audio.processAList();
-      rsp_register.rsp_pc &= 0xFFF;
+      g_sp_regs2[SP_PC_REG] &= 0xFFF;
       start_section(AUDIO_SECTION);
       rsp.doRspCycles(0xFFFFFFFF);
       end_section(AUDIO_SECTION);
-      rsp_register.rsp_pc |= save_pc;
+      g_sp_regs2[SP_PC_REG] |= save_pc;
 
       update_count();
       if (MI_register.mi_intr_reg & 0x1)
@@ -1403,9 +1400,9 @@ static void do_SP_Task(void)
    }
    else
    {
-      rsp_register.rsp_pc &= 0xFFF;
+      g_sp_regs2[SP_PC_REG] &= 0xFFF;
       rsp.doRspCycles(0xFFFFFFFF);
-      rsp_register.rsp_pc |= save_pc;
+      g_sp_regs2[SP_PC_REG] |= save_pc;
 
       update_count();
       if (MI_register.mi_intr_reg & 0x1)
@@ -1986,50 +1983,67 @@ void write_rsp_regd(void)
     writed(write_rsp_regs, address, dword);
 }
 
+static inline uint32_t rsp_reg2(uint32_t address)
+{
+   return (address & 0xffff) >> 2;
+}
+
+static int read_rsp_regs2(uint32_t address, uint32_t* value)
+{
+   uint32_t reg = rsp_reg2(address);
+
+   *value = g_sp_regs2[reg];
+
+   return 0;
+}
+
+static int write_rsp_regs2(uint32_t address, uint32_t value, uint32_t mask)
+{
+   uint32_t reg = rsp_reg2(address);
+
+   masked_write(&g_sp_regs2[reg], value, mask);
+
+   return 0;
+}
+
 void read_rsp(void)
 {
-   *rdword = *(readrsp[*address_low]);
+   readw(read_rsp_regs2, address, rdword);
 }
 
 void read_rspb(void)
 {
-   *rdword = *((uint8_t*)readrsp[*address_low & 0xfffc]
-         + ((*address_low&3)^S8) );
+   readb(read_rsp_regs2, address, rdword);
 }
 
 void read_rsph(void)
 {
-   *rdword = *((uint16_t*)((uint8_t*)readrsp[*address_low & 0xfffc]
-            + ((*address_low&3)^S16) ));
+   readh(read_rsp_regs2, address, rdword);
 }
 
 void read_rspd(void)
 {
-   *rdword = ((uint64_t)(*readrsp[*address_low])<<32) |
-      *readrsp[*address_low+4];
+   readd(read_rsp_regs2, address, rdword);
 }
 
 void write_rsp(void)
 {
-   *readrsp[*address_low] = word;
+   writew(write_rsp_regs2, address, word);
 }
 
 void write_rspb(void)
 {
-   *((uint8_t*)readrsp[*address_low & 0xfffc]
-         + ((*address_low&3)^S8) ) = cpu_byte;
+   writeb(write_rsp_regs2, address, cpu_byte);
 }
 
 void write_rsph(void)
 {
-   *((uint16_t*)((uint8_t*)readrsp[*address_low & 0xfffc]
-            + ((*address_low&3)^S16) )) = hword;
+   writeh(write_rsp_regs2, address, hword);
 }
 
 void write_rspd(void)
 {
-   *readrsp[*address_low] = (uint32_t) (dword >> 32);
-   *readrsp[*address_low+4] = (uint32_t) (dword & 0xFFFFFFFF);
+   writed(write_rsp_regs2, address, dword);
 }
 
 void read_dp(void)

@@ -111,9 +111,16 @@ enum sp_registers
    SP_REGS_COUNT
 };
 
-extern uint32_t g_sp_regs[SP_REGS_COUNT];
+enum sp_registers2
+{
+ SP_PC_REG,
+ SP_IBIST_REG,
+ SP_REGS2_COUNT
+};
 
-extern uint32_t *readrsp[0x10000];
+extern uint32_t g_sp_regs[SP_REGS_COUNT];
+extern uint32_t g_sp_regs2[SP_REGS2_COUNT];
+
 extern uint32_t *readmi[0x10000];
 extern uint32_t *readvi[0x10000];
 extern uint32_t *readai[0x10000];
@@ -122,12 +129,6 @@ extern uint32_t *readri[0x10000];
 extern uint32_t *readsi[0x10000];
 extern uint32_t *readdp[0x10000];
 extern uint32_t *readdps[0x10000];
-
-typedef struct _RSP_register
-{
-   uint32_t rsp_pc;
-   uint32_t rsp_ibist;
-} RSP_register;
 
 typedef struct _DPC_register
 {
@@ -234,7 +235,6 @@ extern PI_register pi_register;
 extern mips_register MI_register;
 extern SI_register si_register;
 extern VI_register vi_register;
-extern RSP_register rsp_register;
 extern RI_register ri_register;
 extern AI_register ai_register;
 extern DPC_register dpc_register;
