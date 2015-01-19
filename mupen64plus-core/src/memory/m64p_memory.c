@@ -357,9 +357,14 @@ static int writew(writefn write_word, uint32_t address, uint32_t value)
 
 static int writed(writefn write_word, uint32_t address, uint64_t value)
 {
-   int result =
-      write_word(address , value >> 32, ~0U);
-   write_word(address + 4, value , ~0U);
+   int result;
+   const uint64_t doubleword = (uint64_t)value;
+   const uint32_t word_hi = (uint32_t)(doubleword >> 32);
+   const uint32_t word_lo = (uint32_t)(doubleword >>  0);
+
+   result =
+      write_word(address + 0, word_hi, ~0U);
+   write_word   (address + 4, word_lo, ~0U);
    return result;
 }
 
