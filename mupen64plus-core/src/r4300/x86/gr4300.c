@@ -353,7 +353,7 @@ void gendebug(void)
 }
 #endif
 
-void gencallinterp(unsigned long addr, int jump)
+void gencallinterp(uint32_t addr, int jump)
 {
    free_all_registers();
    simplify_access();
