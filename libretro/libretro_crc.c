@@ -7,7 +7,7 @@ unsigned int CRCTable[ 256 ];
 
 static uint32_t Reflect(uint32_t ref, char ch )
 {
-   unsigned i;
+   char i;
    uint32_t value = 0;
    /* Swap bit 0 for bit 7.
     * bit 1 for bit 6, etc.
