@@ -18,7 +18,12 @@ _mm_sub_epi32(_mm_xor_si128(m1, SIGND(m2)), SIGND(m2))
 #define mm_unpacklo_epi64_hz(m, n) \
 _mm_unpacklo_epi64(_mm_unpacklo_epi32(m, n), _mm_unpackhi_epi32(m, n))
 
+#if 1
+#ifndef USE_MMX_DECODES
 #define USE_MMX_DECODES
+#endif
+#endif
+
 INLINE extern __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src);
 
 #else
