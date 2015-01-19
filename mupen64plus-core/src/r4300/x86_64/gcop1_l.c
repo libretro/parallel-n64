@@ -38,7 +38,7 @@ void gencvt_s_l(void)
    inc_m32rel(&instr_count[117]);
 #endif
 #ifdef INTERPRET_CVT_S_L
-   gencallinterp((unsigned long long)cached_interpreter_table.CVT_S_L, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.CVT_S_L, 0);
 #else
    gencheck_cop1_unusable();
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -54,7 +54,7 @@ void gencvt_d_l(void)
    inc_m32rel(&instr_count[117]);
 #endif
 #ifdef INTERPRET_CVT_D_L
-   gencallinterp((unsigned long long)cached_interpreter_table.CVT_D_L, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.CVT_D_L, 0);
 #else
    gencheck_cop1_unusable();
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));

@@ -44,7 +44,7 @@ void genmfc1(void)
    inc_m32rel(&instr_count[111]);
 #endif
 #ifdef INTERPRET_MFC1
-   gencallinterp((unsigned long long)cached_interpreter_table.MFC1, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.MFC1, 0);
 #else
    gencheck_cop1_unusable();
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.r.nrd]));
@@ -61,7 +61,7 @@ void gendmfc1(void)
    inc_m32rel(&instr_count[112]);
 #endif
 #ifdef INTERPRET_DMFC1
-   gencallinterp((unsigned long long)cached_interpreter_table.DMFC1, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DMFC1, 0);
 #else
    gencheck_cop1_unusable();
    mov_xreg64_m64rel(RAX, (unsigned long long *) (&reg_cop1_double[dst->f.r.nrd]));
@@ -78,7 +78,7 @@ void gencfc1(void)
    inc_m32rel(&instr_count[113]);
 #endif
 #ifdef INTERPRET_CFC1
-   gencallinterp((unsigned long long)cached_interpreter_table.CFC1, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.CFC1, 0);
 #else
    gencheck_cop1_unusable();
    if(dst->f.r.nrd == 31) mov_xreg32_m32rel(EAX, (unsigned int*)&FCR31);
@@ -95,7 +95,7 @@ void genmtc1(void)
    inc_m32rel(&instr_count[114]);
 #endif
 #ifdef INTERPRET_MTC1
-   gencallinterp((unsigned long long)cached_interpreter_table.MTC1, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.MTC1, 0);
 #else
    gencheck_cop1_unusable();
    mov_xreg32_m32rel(EAX, (unsigned int*)dst->f.r.rt);
@@ -110,7 +110,7 @@ void gendmtc1(void)
    inc_m32rel(&instr_count[115]);
 #endif
 #ifdef INTERPRET_DMTC1
-   gencallinterp((unsigned long long)cached_interpreter_table.DMTC1, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DMTC1, 0);
 #else
    gencheck_cop1_unusable();
    mov_xreg32_m32rel(EAX, (unsigned int*)dst->f.r.rt);
@@ -127,7 +127,7 @@ void genctc1(void)
    inc_m32rel(&instr_count[116]);
 #endif
 #ifdef INTERPRET_CTC1
-   gencallinterp((unsigned long long)cached_interpreter_table.CTC1, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.CTC1, 0);
 #else
    gencheck_cop1_unusable();
    

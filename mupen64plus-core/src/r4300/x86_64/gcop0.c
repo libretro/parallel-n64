@@ -39,7 +39,7 @@ void genmfc0(void)
 #if defined(COUNT_INSTR)
    inc_m32rel(&instr_count[109]);
 #endif
-    gencallinterp((unsigned long long)cached_interpreter_table.MFC0, 0);
+    gencallinterp((uint64_t)cached_interpreter_table.MFC0, 0);
 }
 
 void genmtc0(void)
@@ -47,6 +47,6 @@ void genmtc0(void)
 #if defined(COUNT_INSTR)
    inc_m32rel(&instr_count[110]);
 #endif
-    gencallinterp((unsigned long long)cached_interpreter_table.MTC0, 0);
+    gencallinterp((uint64_t)cached_interpreter_table.MTC0, 0);
 }
 

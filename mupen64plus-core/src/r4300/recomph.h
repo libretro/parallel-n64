@@ -22,6 +22,7 @@
 #ifndef M64P_R4300_RECOMPH_H
 #define M64P_R4300_RECOMPH_H
 
+#include <stdint.h>
 #include "recomp.h"
 
 extern int code_length;
@@ -40,7 +41,7 @@ void passe2(precomp_instr *dest, int start, int end, precomp_block* block);
 void init_assembler(void *block_jumps_table, int block_jumps_number, void *block_riprel_table, int block_riprel_number);
 void free_assembler(void **block_jumps_table, int *block_jumps_number, void **block_riprel_table, int *block_riprel_number);
 
-void gencallinterp(unsigned long addr, int jump);
+void gencallinterp(uint64_t addr, int jump);
 
 void genupdate_system(int type);
 void genbnel(void);

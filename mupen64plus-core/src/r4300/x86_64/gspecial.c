@@ -47,7 +47,7 @@ void gensll(void)
    inc_m32rel(&instr_count[55]);
 #endif
 #ifdef INTERPRET_SLL
-   gencallinterp((unsigned long long)cached_interpreter_table.SLL, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.SLL, 0);
 #else
    int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
    int rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
@@ -63,7 +63,7 @@ void gensrl(void)
    inc_m32rel(&instr_count[56]);
 #endif
 #ifdef INTERPRET_SRL
-   gencallinterp((unsigned long long)cached_interpreter_table.SRL, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.SRL, 0);
 #else
    int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
    int rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
@@ -79,7 +79,7 @@ void gensra(void)
    inc_m32rel(&instr_count[57]);
 #endif
 #ifdef INTERPRET_SRA
-   gencallinterp((unsigned long long)cached_interpreter_table.SRA, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.SRA, 0);
 #else
    int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
    int rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
@@ -95,7 +95,7 @@ void gensllv(void)
    inc_m32rel(&instr_count[58]);
 #endif
 #ifdef INTERPRET_SLLV
-   gencallinterp((unsigned long long)cached_interpreter_table.SLLV, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.SLLV, 0);
 #else
    int rt, rd;
    allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
@@ -125,7 +125,7 @@ void gensrlv(void)
    inc_m32rel(&instr_count[59]);
 #endif
 #ifdef INTERPRET_SRLV
-   gencallinterp((unsigned long long)cached_interpreter_table.SRLV, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.SRLV, 0);
 #else
    int rt, rd;
    allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
@@ -155,7 +155,7 @@ void gensrav(void)
    inc_m32rel(&instr_count[60]);
 #endif
 #ifdef INTERPRET_SRAV
-   gencallinterp((unsigned long long)cached_interpreter_table.SRAV, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.SRAV, 0);
 #else
    int rt, rd;
    allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
@@ -185,7 +185,7 @@ void genjr(void)
    inc_m32rel(&instr_count[61]);
 #endif
 #ifdef INTERPRET_JR
-   gencallinterp((unsigned long long)cached_interpreter_table.JR, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.JR, 1);
 #else
    static unsigned int precomp_instr_size = sizeof(precomp_instr);
    unsigned int diff = (unsigned int) offsetof(precomp_instr, local_addr);
@@ -195,7 +195,7 @@ void genjr(void)
    if (((dst->addr & 0xFFF) == 0xFFC && 
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.JR, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.JR, 1);
     return;
      }
    
@@ -254,7 +254,7 @@ void genjalr(void)
    inc_m32rel(&instr_count[62]);
 #endif
 #ifdef INTERPRET_JALR
-   gencallinterp((unsigned long long)cached_interpreter_table.JALR, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.JALR, 0);
 #else
    static unsigned int precomp_instr_size = sizeof(precomp_instr);
    unsigned int diff = (unsigned int) offsetof(precomp_instr, local_addr);
@@ -264,7 +264,7 @@ void genjalr(void)
    if (((dst->addr & 0xFFF) == 0xFFC && 
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.JALR, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.JALR, 1);
     return;
      }
    
@@ -329,12 +329,12 @@ void gensyscall(void)
    inc_m32rel(&instr_count[63]);
 #endif
 #ifdef INTERPRET_SYSCALL
-   gencallinterp((unsigned long long)cached_interpreter_table.SYSCALL, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.SYSCALL, 0);
 #else
    free_registers_move_start();
 
    mov_m32rel_imm32(&g_cp0_regs[CP0_CAUSE_REG], 8 << 2);
-   gencallinterp((unsigned long long)exception_general, 0);
+   gencallinterp((uint64_t)exception_general, 0);
 #endif
 }
 
@@ -348,7 +348,7 @@ void genmfhi(void)
    inc_m32rel(&instr_count[64]);
 #endif
 #ifdef INTERPRET_MFHI
-   gencallinterp((unsigned long long)cached_interpreter_table.MFHI, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.MFHI, 0);
 #else
    int rd = allocate_register_64_w((unsigned long long *) dst->f.r.rd);
    int _hi = allocate_register_64((unsigned long long *) &hi);
@@ -363,7 +363,7 @@ void genmthi(void)
    inc_m32rel(&instr_count[65]);
 #endif
 #ifdef INTERPRET_MTHI
-   gencallinterp((unsigned long long)cached_interpreter_table.MTHI, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.MTHI, 0);
 #else
    int _hi = allocate_register_64_w((unsigned long long *) &hi);
    int rs = allocate_register_64((unsigned long long *) dst->f.r.rs);
@@ -378,7 +378,7 @@ void genmflo(void)
    inc_m32rel(&instr_count[66]);
 #endif
 #ifdef INTERPRET_MFLO
-   gencallinterp((unsigned long long)cached_interpreter_table.MFLO, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.MFLO, 0);
 #else
    int rd = allocate_register_64_w((unsigned long long *) dst->f.r.rd);
    int _lo = allocate_register_64((unsigned long long *) &lo);
@@ -393,7 +393,7 @@ void genmtlo(void)
    inc_m32rel(&instr_count[67]);
 #endif
 #ifdef INTERPRET_MTLO
-   gencallinterp((unsigned long long)cached_interpreter_table.MTLO, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.MTLO, 0);
 #else
    int _lo = allocate_register_64_w((unsigned long long *)&lo);
    int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
@@ -408,7 +408,7 @@ void gendsllv(void)
    inc_m32rel(&instr_count[68]);
 #endif
 #ifdef INTERPRET_DSLLV
-   gencallinterp((unsigned long long)cached_interpreter_table.DSLLV, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DSLLV, 0);
 #else
    int rt, rd;
    allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
@@ -440,7 +440,7 @@ void gendsrlv(void)
    inc_m32rel(&instr_count[69]);
 #endif
 #ifdef INTERPRET_DSRLV
-   gencallinterp((unsigned long long)cached_interpreter_table.DSRLV, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DSRLV, 0);
 #else
    int rt, rd;
    allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
@@ -472,7 +472,7 @@ void gendsrav(void)
    inc_m32rel(&instr_count[70]);
 #endif
 #ifdef INTERPRET_DSRAV
-   gencallinterp((unsigned long long)cached_interpreter_table.DSRAV, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DSRAV, 0);
 #else
    int rt, rd;
    allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
@@ -504,7 +504,7 @@ void genmult(void)
    inc_m32rel(&instr_count[71]);
 #endif
 #ifdef INTERPRET_MULT
-   gencallinterp((unsigned long long)cached_interpreter_table.MULT, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.MULT, 0);
 #else
    int rs, rt;
    allocate_register_32_manually_w(EAX, (unsigned int *)&lo); /* these must be done first so they are not assigned by allocate_register() */
@@ -522,7 +522,7 @@ void genmultu(void)
    inc_m32rel(&instr_count[72]);
 #endif
 #ifdef INTERPRET_MULTU
-   gencallinterp((unsigned long long)cached_interpreter_table.MULTU, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.MULTU, 0);
 #else
    int rs, rt;
    allocate_register_32_manually_w(EAX, (unsigned int *)&lo);
@@ -540,7 +540,7 @@ void gendiv(void)
    inc_m32rel(&instr_count[73]);
 #endif
 #ifdef INTERPRET_DIV
-   gencallinterp((unsigned long long)cached_interpreter_table.DIV, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DIV, 0);
 #else
    int rs, rt;
    allocate_register_32_manually_w(EAX, (unsigned int *)&lo);
@@ -561,7 +561,7 @@ void gendivu(void)
    inc_m32rel(&instr_count[74]);
 #endif
 #ifdef INTERPRET_DIVU
-   gencallinterp((unsigned long long)cached_interpreter_table.DIVU, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DIVU, 0);
 #else
    int rs, rt;
    allocate_register_32_manually_w(EAX, (unsigned int *)&lo);
@@ -581,7 +581,7 @@ void gendmult(void)
 #if defined(COUNT_INSTR)
    inc_m32rel(&instr_count[75]);
 #endif
-   gencallinterp((unsigned long long)cached_interpreter_table.DMULT, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DMULT, 0);
 }
 
 void gendmultu(void)
@@ -590,7 +590,7 @@ void gendmultu(void)
    inc_m32rel(&instr_count[76]);
 #endif
 #ifdef INTERPRET_DMULTU
-   gencallinterp((unsigned long long)cached_interpreter_table.DMULTU, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DMULTU, 0);
 #else
    free_registers_move_start();
    
@@ -607,7 +607,7 @@ void genddiv(void)
 #if defined(COUNT_INSTR)
    inc_m32rel(&instr_count[77]);
 #endif
-   gencallinterp((unsigned long long)cached_interpreter_table.DDIV, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DDIV, 0);
 }
 
 void genddivu(void)
@@ -615,7 +615,7 @@ void genddivu(void)
 #if defined(COUNT_INSTR)
    inc_m32rel(&instr_count[78]);
 #endif
-   gencallinterp((unsigned long long)cached_interpreter_table.DDIVU, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DDIVU, 0);
 }
 
 void genadd(void)
@@ -624,7 +624,7 @@ void genadd(void)
    inc_m32rel(&instr_count[79]);
 #endif
 #ifdef INTERPRET_ADD
-   gencallinterp((unsigned long long)cached_interpreter_table.ADD, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.ADD, 0);
 #else
    int rs = allocate_register_32((unsigned int *)dst->f.r.rs);
    int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
@@ -648,7 +648,7 @@ void genaddu(void)
    inc_m32rel(&instr_count[80]);
 #endif
 #ifdef INTERPRET_ADDU
-   gencallinterp((unsigned long long)cached_interpreter_table.ADDU, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.ADDU, 0);
 #else
    int rs = allocate_register_32((unsigned int *)dst->f.r.rs);
    int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
@@ -672,7 +672,7 @@ void gensub(void)
    inc_m32rel(&instr_count[81]);
 #endif
 #ifdef INTERPRET_SUB
-   gencallinterp((unsigned long long)cached_interpreter_table.SUB, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.SUB, 0);
 #else
    int rs = allocate_register_32((unsigned int *)dst->f.r.rs);
    int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
@@ -699,7 +699,7 @@ void gensubu(void)
    inc_m32rel(&instr_count[82]);
 #endif
 #ifdef INTERPRET_SUBU
-   gencallinterp((unsigned long long)cached_interpreter_table.SUBU, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.SUBU, 0);
 #else
    int rs = allocate_register_32((unsigned int *)dst->f.r.rs);
    int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
@@ -726,7 +726,7 @@ void genand(void)
    inc_m32rel(&instr_count[83]);
 #endif
 #ifdef INTERPRET_AND
-   gencallinterp((unsigned long long)cached_interpreter_table.AND, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.AND, 0);
 #else
    int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
@@ -750,7 +750,7 @@ void genor(void)
    inc_m32rel(&instr_count[84]);
 #endif
 #ifdef INTERPRET_OR
-   gencallinterp((unsigned long long)cached_interpreter_table.OR, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.OR, 0);
 #else
    int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
@@ -774,7 +774,7 @@ void genxor(void)
    inc_m32rel(&instr_count[85]);
 #endif
 #ifdef INTERPRET_XOR
-   gencallinterp((unsigned long long)cached_interpreter_table.XOR, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.XOR, 0);
 #else
    int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
@@ -798,7 +798,7 @@ void gennor(void)
    inc_m32rel(&instr_count[86]);
 #endif
 #ifdef INTERPRET_NOR
-   gencallinterp((unsigned long long)cached_interpreter_table.NOR, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.NOR, 0);
 #else
    int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
@@ -829,7 +829,7 @@ void genslt(void)
    inc_m32rel(&instr_count[87]);
 #endif
 #ifdef INTERPRET_SLT
-   gencallinterp((unsigned long long)cached_interpreter_table.SLT, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.SLT, 0);
 #else
    int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
@@ -847,7 +847,7 @@ void gensltu(void)
    inc_m32rel(&instr_count[88]);
 #endif
 #ifdef INTERPRET_SLTU
-   gencallinterp((unsigned long long)cached_interpreter_table.SLTU, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.SLTU, 0);
 #else
    int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
@@ -865,7 +865,7 @@ void gendadd(void)
    inc_m32rel(&instr_count[89]);
 #endif
 #ifdef INTERPRET_DADD
-   gencallinterp((unsigned long long)cached_interpreter_table.DADD, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DADD, 0);
 #else
    int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
@@ -889,7 +889,7 @@ void gendaddu(void)
    inc_m32rel(&instr_count[90]);
 #endif
 #ifdef INTERPRET_DADDU
-   gencallinterp((unsigned long long)cached_interpreter_table.DADDU, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DADDU, 0);
 #else
    int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
@@ -913,7 +913,7 @@ void gendsub(void)
    inc_m32rel(&instr_count[91]);
 #endif
 #ifdef INTERPRET_DSUB
-   gencallinterp((unsigned long long)cached_interpreter_table.DSUB, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DSUB, 0);
 #else
    int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
@@ -940,7 +940,7 @@ void gendsubu(void)
    inc_m32rel(&instr_count[92]);
 #endif
 #ifdef INTERPRET_DSUBU
-   gencallinterp((unsigned long long)cached_interpreter_table.DSUBU, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DSUBU, 0);
 #else
    int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
@@ -966,7 +966,7 @@ void genteq(void)
 #if defined(COUNT_INSTR)
    inc_m32rel(&instr_count[96]);
 #endif
-   gencallinterp((unsigned long long)cached_interpreter_table.TEQ, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.TEQ, 0);
 }
 
 void gendsll(void)
@@ -975,7 +975,7 @@ void gendsll(void)
    inc_m32rel(&instr_count[93]);
 #endif
 #ifdef INTERPRET_DSLL
-   gencallinterp((unsigned long long)cached_interpreter_table.DSLL, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DSLL, 0);
 #else
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
    int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
@@ -991,7 +991,7 @@ void gendsrl(void)
    inc_m32rel(&instr_count[94]);
 #endif
 #ifdef INTERPRET_DSRL
-   gencallinterp((unsigned long long)cached_interpreter_table.DSRL, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DSRL, 0);
 #else
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
    int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
@@ -1007,7 +1007,7 @@ void gendsra(void)
    inc_m32rel(&instr_count[95]);
 #endif
 #ifdef INTERPRET_DSRA
-   gencallinterp((unsigned long long)cached_interpreter_table.DSRA, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DSRA, 0);
 #else
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
    int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
@@ -1023,7 +1023,7 @@ void gendsll32(void)
    inc_m32rel(&instr_count[97]);
 #endif
 #ifdef INTERPRET_DSLL32
-   gencallinterp((unsigned long long)cached_interpreter_table.DSLL32, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DSLL32, 0);
 #else
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
    int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
@@ -1039,7 +1039,7 @@ void gendsrl32(void)
    inc_m32rel(&instr_count[98]);
 #endif
 #ifdef INTERPRET_DSRL32
-   gencallinterp((unsigned long long)cached_interpreter_table.DSRL32, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DSRL32, 0);
 #else
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
    int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
@@ -1055,7 +1055,7 @@ void gendsra32(void)
    inc_m32rel(&instr_count[99]);
 #endif
 #ifdef INTERPRET_DSRA32
-   gencallinterp((unsigned long long)cached_interpreter_table.DSRA32, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DSRA32, 0);
 #else
    int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
    int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);

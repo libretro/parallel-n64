@@ -47,12 +47,12 @@ void genbc1f(void)
    inc_m32rel(&instr_count[100]);
 #endif
 #ifdef INTERPRET_BC1F
-   gencallinterp((unsigned long long)cached_interpreter_table.BC1F, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.BC1F, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.BC1F, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.BC1F, 1);
     return;
      }
    
@@ -69,12 +69,12 @@ void genbc1f_out(void)
    inc_m32rel(&instr_count[100]);
 #endif
 #ifdef INTERPRET_BC1F_OUT
-   gencallinterp((unsigned long long)cached_interpreter_table.BC1F_OUT, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.BC1F_OUT, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.BC1F_OUT, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.BC1F_OUT, 1);
     return;
      }
    
@@ -88,12 +88,12 @@ void genbc1f_out(void)
 void genbc1f_idle(void)
 {
 #ifdef INTERPRET_BC1F_IDLE
-   gencallinterp((unsigned long long)cached_interpreter_table.BC1F_IDLE, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.BC1F_IDLE, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.BC1F_IDLE, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.BC1F_IDLE, 1);
     return;
      }
    
@@ -116,12 +116,12 @@ void genbc1t(void)
    inc_m32rel(&instr_count[101]);
 #endif
 #ifdef INTERPRET_BC1T
-   gencallinterp((unsigned long long)cached_interpreter_table.BC1T, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.BC1T, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.BC1T, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.BC1T, 1);
     return;
      }
    
@@ -138,12 +138,12 @@ void genbc1t_out(void)
    inc_m32rel(&instr_count[101]);
 #endif
 #ifdef INTERPRET_BC1T_OUT
-   gencallinterp((unsigned long long)cached_interpreter_table.BC1T_OUT, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.BC1T_OUT, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.BC1T_OUT, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.BC1T_OUT, 1);
     return;
      }
    
@@ -157,12 +157,12 @@ void genbc1t_out(void)
 void genbc1t_idle(void)
 {
 #ifdef INTERPRET_BC1T_IDLE
-   gencallinterp((unsigned long long)cached_interpreter_table.BC1T_IDLE, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.BC1T_IDLE, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.BC1T_IDLE, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.BC1T_IDLE, 1);
     return;
      }
    
@@ -179,12 +179,12 @@ void genbc1fl(void)
    inc_m32rel(&instr_count[102]);
 #endif
 #ifdef INTERPRET_BC1FL
-   gencallinterp((unsigned long long)cached_interpreter_table.BC1FL, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.BC1FL, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.BC1FL, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.BC1FL, 1);
     return;
      }
    
@@ -201,12 +201,12 @@ void genbc1fl_out(void)
    inc_m32rel(&instr_count[102]);
 #endif
 #ifdef INTERPRET_BC1FL_OUT
-   gencallinterp((unsigned long long)cached_interpreter_table.BC1FL_OUT, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.BC1FL_OUT, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.BC1FL_OUT, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.BC1FL_OUT, 1);
     return;
      }
    
@@ -220,12 +220,12 @@ void genbc1fl_out(void)
 void genbc1fl_idle(void)
 {
 #ifdef INTERPRET_BC1FL_IDLE
-   gencallinterp((unsigned long long)cached_interpreter_table.BC1FL_IDLE, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.BC1FL_IDLE, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.BC1FL_IDLE, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.BC1FL_IDLE, 1);
     return;
      }
    
@@ -242,12 +242,12 @@ void genbc1tl(void)
    inc_m32rel(&instr_count[103]);
 #endif
 #ifdef INTERPRET_BC1TL
-   gencallinterp((unsigned long long)cached_interpreter_table.BC1TL, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.BC1TL, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.BC1TL, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.BC1TL, 1);
     return;
      }
    
@@ -264,12 +264,12 @@ void genbc1tl_out(void)
    inc_m32rel(&instr_count[103]);
 #endif
 #ifdef INTERPRET_BC1TL_OUT
-   gencallinterp((unsigned long long)cached_interpreter_table.BC1TL_OUT, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.BC1TL_OUT, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.BC1TL_OUT, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.BC1TL_OUT, 1);
     return;
      }
    
@@ -283,12 +283,12 @@ void genbc1tl_out(void)
 void genbc1tl_idle(void)
 {
 #ifdef INTERPRET_BC1TL_IDLE
-   gencallinterp((unsigned long long)cached_interpreter_table.BC1TL_IDLE, 1);
+   gencallinterp((uint64_t)cached_interpreter_table.BC1TL_IDLE, 1);
 #else
    if (((dst->addr & 0xFFF) == 0xFFC &&
        (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
      {
-    gencallinterp((unsigned long long)cached_interpreter_table.BC1TL_IDLE, 1);
+    gencallinterp((uint64_t)cached_interpreter_table.BC1TL_IDLE, 1);
     return;
      }
    
