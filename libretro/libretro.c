@@ -378,6 +378,14 @@ static m64p_system_type rom_country_code_to_system_type(unsigned short country_c
         case 0x55:
         case 0x58:
         case 0x59:
+        case 0x144:
+        case 0x146:
+        case 0x149:
+        case 0x150:
+        case 0x153:
+        case 0x155:
+        case 0x158:
+        case 0x159:
             return SYSTEM_PAL;
 
         // NTSC codes
@@ -385,6 +393,10 @@ static m64p_system_type rom_country_code_to_system_type(unsigned short country_c
         case 0x41:
         case 0x45:
         case 0x4a:
+        case 0x137:
+        case 0x141:
+        case 0x145:
+        case 0x14a:
         default: // Fallback for unknown codes
             return SYSTEM_NTSC;
     }
