@@ -61,7 +61,7 @@ m64p_rom_header   ROM_HEADER;
 rom_params        ROM_PARAMS;
 m64p_rom_settings ROM_SETTINGS;
 
-static m64p_system_type rom_country_code_to_system_type(unsigned short country_code);
+static m64p_system_type rom_country_code_to_system_type(char country_code);
 static int rom_system_type_to_ai_dac_rate(m64p_system_type system_type);
 static int rom_system_type_to_vi_limit(m64p_system_type system_type);
 
@@ -165,7 +165,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     strcpy(ROM_SETTINGS.MD5, buffer);
 
     /* add some useful properties to ROM_PARAMS */
-    ROM_PARAMS.systemtype = rom_country_code_to_system_type(ROM_HEADER.Country_code);
+    ROM_PARAMS.systemtype = rom_country_code_to_system_type(ROM_HEADER.destination_code);
     ROM_PARAMS.vilimit = rom_system_type_to_vi_limit(ROM_PARAMS.systemtype);
     ROM_PARAMS.aidacrate = rom_system_type_to_ai_dac_rate(ROM_PARAMS.systemtype);
 
@@ -279,7 +279,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     else
         DebugMessage(M64MSG_INFO, "Manufacturer: %x", sl(ROM_HEADER.Manufacturer_ID));
     DebugMessage(M64MSG_VERBOSE, "Cartridge_ID: %x", ROM_HEADER.Cartridge_ID);
-    countrycodestring(ROM_HEADER.Country_code, buffer);
+    countrycodestring(ROM_HEADER.destination_code, buffer);
     DebugMessage(M64MSG_INFO, "Country: %s", buffer);
     DebugMessage(M64MSG_VERBOSE, "PC = %x", sl((unsigned int)ROM_HEADER.PC));
     DebugMessage(M64MSG_VERBOSE, "Save type: %d", ROM_SETTINGS.savetype);
@@ -311,7 +311,7 @@ m64p_error close_rom(void)
 /* ROM utility functions */
 
 // Get the system type associated to a ROM country code.
-static m64p_system_type rom_country_code_to_system_type(unsigned short country_code)
+static m64p_system_type rom_country_code_to_system_type(char country_code)
 {
     switch (country_code)
     {
@@ -324,14 +324,6 @@ static m64p_system_type rom_country_code_to_system_type(unsigned short country_c
         case 0x55:
         case 0x58:
         case 0x59:
-        case 0x144:
-        case 0x146:
-        case 0x149:
-        case 0x150:
-        case 0x153:
-        case 0x155:
-        case 0x158:
-        case 0x159:
             return SYSTEM_PAL;
 
         // NTSC codes
@@ -339,10 +331,6 @@ static m64p_system_type rom_country_code_to_system_type(unsigned short country_c
         case 0x41:
         case 0x45:
         case 0x4a:
-        case 0x137:
-        case 0x141:
-        case 0x145:
-        case 0x14a:
         default: // Fallback for unknown codes
             return SYSTEM_NTSC;
     }

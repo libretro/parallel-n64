@@ -81,11 +81,11 @@ void to_big_endian_buffer(void *buffer, size_t length, size_t count)
 /**********************
      GUI utilities
  **********************/
-void countrycodestring(unsigned short countrycode, char *string)
+void countrycodestring(char countrycode, char *string)
 {
     switch (countrycode)
     {
-    case 0:    /* Demo */
+    case '\0':    /* Demo */
         strcpy(string, "Demo");
         break;
 
@@ -93,19 +93,19 @@ void countrycodestring(unsigned short countrycode, char *string)
         strcpy(string, "Beta");
         break;
 
-    case 0x41: /* Japan / USA */
+    case 'A': /* Japan / USA */
         strcpy(string, "USA/Japan");
         break;
 
-    case 0x44: /* Germany */
+    case 'D': /* Germany */
         strcpy(string, "Germany");
         break;
 
-    case 0x45: /* USA */
+    case 'E': /* USA */
         strcpy(string, "USA");
         break;
 
-    case 0x46: /* France */
+    case 'F': /* France */
         strcpy(string, "France");
         break;
 
@@ -113,7 +113,7 @@ void countrycodestring(unsigned short countrycode, char *string)
         strcpy(string, "Italy");
         break;
 
-    case 0x4A: /* Japan */
+    case 'J': /* Japan */
         strcpy(string, "Japan");
         break;
 
@@ -121,13 +121,13 @@ void countrycodestring(unsigned short countrycode, char *string)
         strcpy(string, "Spain");
         break;
 
-    case 0x55: case 0x59:  /* Australia */
-        sprintf(string, "Australia (0x%02X)", countrycode);
+    case 'U': case 'Y':  /* Australia */
+        sprintf(string, "Australia (%c)", countrycode);
         break;
 
     case 0x50: case 0x58: case 0x20:
     case 0x21: case 0x38: case 0x70:
-        sprintf(string, "Europe (0x%02X)", countrycode);
+        sprintf(string, "Europe (%c)", countrycode);
         break;
 
     default:

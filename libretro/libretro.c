@@ -365,7 +365,7 @@ void retro_get_system_info(struct retro_system_info *info)
 }
 
 // Get the system type associated to a ROM country code.
-static m64p_system_type rom_country_code_to_system_type(unsigned short country_code)
+static m64p_system_type rom_country_code_to_system_type(char country_code)
 {
     switch (country_code)
     {
@@ -378,14 +378,6 @@ static m64p_system_type rom_country_code_to_system_type(unsigned short country_c
         case 0x55:
         case 0x58:
         case 0x59:
-        case 0x144:
-        case 0x146:
-        case 0x149:
-        case 0x150:
-        case 0x153:
-        case 0x155:
-        case 0x158:
-        case 0x159:
             return SYSTEM_PAL;
 
         // NTSC codes
@@ -393,10 +385,6 @@ static m64p_system_type rom_country_code_to_system_type(unsigned short country_c
         case 0x41:
         case 0x45:
         case 0x4a:
-        case 0x137:
-        case 0x141:
-        case 0x145:
-        case 0x14a:
         default: // Fallback for unknown codes
             return SYSTEM_NTSC;
     }
@@ -404,7 +392,7 @@ static m64p_system_type rom_country_code_to_system_type(unsigned short country_c
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
-   m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.Country_code);
+   m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.destination_code);
 
    info->geometry.base_width = screen_width;
    info->geometry.base_height = screen_height;
@@ -417,7 +405,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
 unsigned retro_get_region (void)
 {
-   m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.Country_code);
+   m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.destination_code);
    return ((region == SYSTEM_PAL) ? RETRO_REGION_PAL : RETRO_REGION_NTSC);
 }
 

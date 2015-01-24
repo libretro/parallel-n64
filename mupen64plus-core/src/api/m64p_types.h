@@ -167,11 +167,14 @@ typedef struct
    unsigned int CRC1;                       /* 0x10 */
    unsigned int CRC2;                       /* 0x14 */
    unsigned int Unknown[2];                 /* 0x18 */
-   unsigned char Name[20];                  /* 0x20 */
-   unsigned int unknown;                    /* 0x34 */
-   unsigned int Manufacturer_ID;            /* 0x38 */
-   unsigned short Cartridge_ID;             /* 0x3C - Game serial number  */
-   unsigned short Country_code;             /* 0x3E */
+
+/* ROM registration data */
+   unsigned char Name[20];                  /* 0x20 to 0x33 */
+   unsigned int unknown;
+   unsigned int Manufacturer_ID;            /* 0x3B */
+   unsigned short Cartridge_ID;             /* 0x3C to 0x3D  */
+   char destination_code;                   /* 0x3E */
+   unsigned char mask_ROM_version;          /* 0x3F */
 } m64p_rom_header;
 
 typedef struct
