@@ -329,7 +329,7 @@ static void tlb_hacks()
   {
     u_int addr;
     int n;
-    switch (ROM_HEADER.Country_code&0xFF) 
+    switch (ROM_HEADER.destination_code&0xFF) 
     {
       case 0x45: // U
         addr=0x34b30;
