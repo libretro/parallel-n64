@@ -8,7 +8,9 @@
 
 #define HOST_IMM8 1
 #define HAVE_CMOV_IMM 1
+#ifndef ARMv5_ONLY
 #define CORTEX_A8_BRANCH_PREDICTION_HACK 1
+#endif
 #define USE_MINI_HT 1
 //#define REG_PREFETCH 1
 #define HAVE_CONDITIONAL_CALL 1
