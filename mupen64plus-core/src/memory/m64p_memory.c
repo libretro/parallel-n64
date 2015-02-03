@@ -280,13 +280,8 @@ static enum cic_type detect_cic_type(const void* ipl3)
    return 0;
 }
 
-typedef int (*readfn)(uint32_t,uint32_t*);
-typedef int (*writefn)(uint32_t,uint32_t,uint32_t);
-
-static INLINE void masked_write(uint32_t* dst, uint32_t value, uint32_t mask)
-{
-   *dst = (*dst & ~mask) | (value & mask);
-}
+typedef int (*readfn)(void*,uint32_t,uint32_t*);
+typedef int (*writefn)(void*,uint32_t,uint32_t,uint32_t);
 
 static INLINE unsigned int bshift(uint32_t address)
 {
@@ -298,64 +293,64 @@ static INLINE unsigned int hshift(uint32_t address)
    return ((address & 2) ^ 2) << 3;
 }
 
-static int readb(readfn read_word, uint32_t address, unsigned long long int* value)
+static int readb(readfn read_word, void* opaque, uint32_t address, unsigned long long int* value)
 {
    uint32_t w;
    unsigned shift = bshift(address);
-   int result = read_word(address, &w);
+   int result = read_word(opaque, address, &w);
    *value = (w >> shift) & 0xff;
    return result;
 }
 
-static int readh(readfn read_word, uint32_t address, unsigned long long int* value)
+static int readh(readfn read_word, void* opaque, uint32_t address, unsigned long long int* value)
 {
    uint32_t w;
    unsigned shift = hshift(address);
-   int result = read_word(address, &w);
+   int result = read_word(opaque, address, &w);
    *value = (w >> shift) & 0xffff;
    return result;
 }
 
-static int readw(readfn read_word, uint32_t address, unsigned long long int* value)
+static int readw(readfn read_word, void* opaque, uint32_t address, unsigned long long int* value)
 {
    uint32_t w;
-   int result = read_word(address, &w);
+   int result = read_word(opaque, address, &w);
    *value = w;
    return result;
 }
 
-static int readd(readfn read_word, uint32_t address, unsigned long long int* value)
+static int readd(readfn read_word, void* opaque, uint32_t address, unsigned long long int* value)
 {
    uint32_t w[2];
    int result =
-      read_word(address , &w[0]);
-   read_word(address + 4, &w[1]);
+      read_word(opaque, address , &w[0]);
+   read_word(opaque, address + 4, &w[1]);
    *value = ((uint64_t)w[0] << 32) | w[1];
    return result;
 }
 
-static int writeb(writefn write_word, uint32_t address, uint8_t value)
+static int writeb(writefn write_word, void *opaque, uint32_t address, uint8_t value)
 {
    unsigned int shift = bshift(address);
    uint32_t w = (uint32_t)value << shift;
    uint32_t mask = (uint32_t)0xff << shift;
-   return write_word(address, w, mask);
+   return write_word(opaque, address, w, mask);
 }
 
-static int writeh(writefn write_word, uint32_t address, uint16_t value)
+static int writeh(writefn write_word, void *opaque, uint32_t address, uint16_t value)
 {
    unsigned int shift = hshift(address);
    uint32_t w = (uint32_t)value << shift;
    uint32_t mask = (uint32_t)0xffff << shift;
-   return write_word(address, w, mask);
+   return write_word(opaque, address, w, mask);
 }
 
-static int writew(writefn write_word, uint32_t address, uint32_t value)
+static int writew(writefn write_word, void *opaque, uint32_t address, uint32_t value)
 {
-   return write_word(address, value, ~0U);
+   return write_word(opaque, address, value, ~0U);
 }
 
-static int writed(writefn write_word, uint32_t address, uint64_t value)
+static int writed(writefn write_word, void *opaque, uint32_t address, uint64_t value)
 {
    int result;
    const uint64_t doubleword = (uint64_t)value;
@@ -363,8 +358,8 @@ static int writed(writefn write_word, uint32_t address, uint64_t value)
    const uint32_t word_lo = (uint32_t)(doubleword >>  0);
 
    result =
-      write_word(address + 0, word_hi, ~0U);
-   write_word   (address + 4, word_lo, ~0U);
+      write_word(opaque, address + 0, word_hi, ~0U);
+   write_word   (opaque, address + 4, word_lo, ~0U);
    return result;
 }
 
@@ -1233,7 +1228,7 @@ static INLINE uint32_t rdram_ram_address(uint32_t address)
    return (address & 0xffffff) >> 2;
 }
 
-static int read_rdram_ram(uint32_t address, uint32_t* value)
+static int read_rdram_ram(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t addr = rdram_ram_address(address);
 
@@ -1242,7 +1237,7 @@ static int read_rdram_ram(uint32_t address, uint32_t* value)
    return 0;
 }
 
-static int write_rdram_ram(uint32_t address, uint32_t value, uint32_t mask)
+static int write_rdram_ram(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t addr = rdram_ram_address(address);
 
@@ -1253,22 +1248,22 @@ static int write_rdram_ram(uint32_t address, uint32_t value, uint32_t mask)
 
 void read_rdram(void)
 {
-   readw(read_rdram_ram, address, rdword);
+   readw(read_rdram_ram, NULL, address, rdword);
 }
 
 void read_rdramb(void)
 {
-   readb(read_rdram_ram, address, rdword);
+   readb(read_rdram_ram, NULL, address, rdword);
 }
 
 void read_rdramh(void)
 {
-   readh(read_rdram_ram, address, rdword);
+   readh(read_rdram_ram, NULL, address, rdword);
 }
 
 void read_rdramd(void)
 {
-   readd(read_rdram_ram, address, rdword);
+   readd(read_rdram_ram, NULL, address, rdword);
 }
 
 static void read_rdramFB(void)
@@ -1297,22 +1292,22 @@ static void read_rdramFBd(void)
 
 void write_rdram(void)
 {
-   writew(write_rdram_ram, address, word);
+   writew(write_rdram_ram, NULL, address, word);
 }
 
 void write_rdramb(void)
 {
-   writeb(write_rdram_ram, address, cpu_byte);
+   writeb(write_rdram_ram, NULL, address, cpu_byte);
 }
 
 void write_rdramh(void)
 {
-   writeh(write_rdram_ram, address, hword);
+   writeh(write_rdram_ram, NULL, address, hword);
 }
 
 void write_rdramd(void)
 {
-   writed(write_rdram_ram, address, dword);
+   writed(write_rdram_ram, NULL, address, dword);
 }
 
 void write_rdramFB(void)
@@ -1344,7 +1339,7 @@ static INLINE uint32_t rdram_reg(uint32_t address)
    return (address & 0x3ff) >> 2;
 }
 
-static int read_rdram_regs(uint32_t address, uint32_t* value)
+static int read_rdram_regs(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t reg = rdram_reg(address);
 
@@ -1353,7 +1348,7 @@ static int read_rdram_regs(uint32_t address, uint32_t* value)
    return 0;
 }
 
-static int write_rdram_regs(uint32_t address, uint32_t value, uint32_t mask)
+static int write_rdram_regs(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t reg = rdram_reg(address);
 
@@ -1364,42 +1359,42 @@ static int write_rdram_regs(uint32_t address, uint32_t value, uint32_t mask)
 
 void read_rdramreg(void)
 {
-   readw(read_rdram_regs, address, rdword);
+   readw(read_rdram_regs, NULL, address, rdword);
 }
 
 void read_rdramregb(void)
 {
-   readb(read_rdram_regs, address, rdword);
+   readb(read_rdram_regs, NULL, address, rdword);
 }
 
 void read_rdramregh(void)
 {
-   readh(read_rdram_regs, address, rdword);
+   readh(read_rdram_regs, NULL, address, rdword);
 }
 
 void read_rdramregd(void)
 {
-   readd(read_rdram_regs, address, rdword);
+   readd(read_rdram_regs, NULL, address, rdword);
 }
 
 void write_rdramreg(void)
 {
-   writew(write_rdram_regs, address, word);
+   writew(write_rdram_regs, NULL, address, word);
 }
 
 void write_rdramregb(void)
 {
-   writeb(write_rdram_regs, address, cpu_byte);
+   writeb(write_rdram_regs, NULL, address, cpu_byte);
 }
 
 void write_rdramregh(void)
 {
-   writeh(write_rdram_regs, address, hword);
+   writeh(write_rdram_regs, NULL, address, hword);
 }
 
 void write_rdramregd(void)
 {
-   writed(write_rdram_regs, address, dword);
+   writed(write_rdram_regs, NULL, address, dword);
 }
 
 static INLINE uint32_t rsp_mem_address(uint32_t address)
@@ -1407,7 +1402,7 @@ static INLINE uint32_t rsp_mem_address(uint32_t address)
    return (address & 0x1fff) >> 2;
 }
 
-static int read_rspmem(uint32_t address, uint32_t* value)
+static int read_rspmem(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t addr = rsp_mem_address(address);
 
@@ -1416,7 +1411,7 @@ static int read_rspmem(uint32_t address, uint32_t* value)
    return 0;
 }
 
-static int write_rspmem(uint32_t address, uint32_t value, uint32_t mask)
+static int write_rspmem(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t addr = rsp_mem_address(address);
 
@@ -1427,42 +1422,42 @@ static int write_rspmem(uint32_t address, uint32_t value, uint32_t mask)
 
 static void read_rsp_mem(void)
 {
-   readw(read_rspmem, address, rdword);
+   readw(read_rspmem, NULL, address, rdword);
 }
 
 static void read_rsp_memb(void)
 {
-   readb(read_rspmem, address, rdword);
+   readb(read_rspmem, NULL, address, rdword);
 }
 
 static void read_rsp_memh(void)
 {
-   readh(read_rspmem, address, rdword);
+   readh(read_rspmem, NULL, address, rdword);
 }
 
 static void read_rsp_memd(void)
 {
-   readd(read_rspmem, address, rdword);
+   readd(read_rspmem, NULL, address, rdword);
 }
 
 static void write_rsp_mem(void)
 {
-   writew(write_rspmem, address, word);
+   writew(write_rspmem, NULL, address, word);
 }
 
 static void write_rsp_memb(void)
 {
-   writeb(write_rspmem, address, cpu_byte);
+   writeb(write_rspmem, NULL, address, cpu_byte);
 }
 
 static void write_rsp_memh(void)
 {
-   writeh(write_rspmem, address, hword);
+   writeh(write_rspmem, NULL, address, hword);
 }
 
 static void write_rsp_memd(void)
 {
-   writed(write_rspmem, address, dword);
+   writed(write_rspmem, NULL, address, dword);
 }
 
 static INLINE uint32_t rsp_reg(uint32_t address)
@@ -1470,7 +1465,7 @@ static INLINE uint32_t rsp_reg(uint32_t address)
    return (address & 0xffff) >> 2;
 }
 
-static int read_rsp_regs(uint32_t address, uint32_t* value)
+static int read_rsp_regs(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t reg = rsp_reg(address);
    *value = g_sp_regs[reg];
@@ -1479,7 +1474,7 @@ static int read_rsp_regs(uint32_t address, uint32_t* value)
    return 0;
 }
 
-static int write_rsp_regs(uint32_t address, uint32_t value, uint32_t mask)
+static int write_rsp_regs(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t reg = rsp_reg(address);
    switch(reg)
@@ -1508,42 +1503,42 @@ static int write_rsp_regs(uint32_t address, uint32_t value, uint32_t mask)
 
 void read_rsp_reg(void)
 {
-   readw(read_rsp_regs, address, rdword);
+   readw(read_rsp_regs, NULL, address, rdword);
 }
 
 void read_rsp_regb(void)
 {
-   readb(read_rsp_regs, address, rdword);
+   readb(read_rsp_regs, NULL, address, rdword);
 }
 
 void read_rsp_regh(void)
 {
-   readh(read_rsp_regs, address, rdword);
+   readh(read_rsp_regs, NULL, address, rdword);
 }
 
 void read_rsp_regd(void)
 {
-   readd(read_rsp_regs, address, rdword);
+   readd(read_rsp_regs, NULL, address, rdword);
 }
 
 void write_rsp_reg(void)
 {
-   writew(write_rsp_regs, address, word);
+   writew(write_rsp_regs, NULL, address, word);
 }
 
 void write_rsp_regb(void)
 {
-   writeb(write_rsp_regs, address, cpu_byte);
+   writeb(write_rsp_regs, NULL, address, cpu_byte);
 }
 
 void write_rsp_regh(void)
 {
-   writeh(write_rsp_regs, address, hword);
+   writeh(write_rsp_regs, NULL, address, hword);
 }
 
 void write_rsp_regd(void)
 {
-    writed(write_rsp_regs, address, dword);
+    writed(write_rsp_regs, NULL, address, dword);
 }
 
 static INLINE uint32_t rsp_reg2(uint32_t address)
@@ -1551,7 +1546,7 @@ static INLINE uint32_t rsp_reg2(uint32_t address)
    return (address & 0xffff) >> 2;
 }
 
-static int read_rsp_regs2(uint32_t address, uint32_t* value)
+static int read_rsp_regs2(void* opaque, uint32_t address, uint32_t* value)
 {
    uint32_t reg = rsp_reg2(address);
 
@@ -1560,7 +1555,7 @@ static int read_rsp_regs2(uint32_t address, uint32_t* value)
    return 0;
 }
 
-static int write_rsp_regs2(uint32_t address, uint32_t value, uint32_t mask)
+static int write_rsp_regs2(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t reg = rsp_reg2(address);
 
@@ -1571,42 +1566,42 @@ static int write_rsp_regs2(uint32_t address, uint32_t value, uint32_t mask)
 
 void read_rsp(void)
 {
-   readw(read_rsp_regs2, address, rdword);
+   readw(read_rsp_regs2, NULL, address, rdword);
 }
 
 void read_rspb(void)
 {
-   readb(read_rsp_regs2, address, rdword);
+   readb(read_rsp_regs2, NULL, address, rdword);
 }
 
 void read_rsph(void)
 {
-   readh(read_rsp_regs2, address, rdword);
+   readh(read_rsp_regs2, NULL, address, rdword);
 }
 
 void read_rspd(void)
 {
-   readd(read_rsp_regs2, address, rdword);
+   readd(read_rsp_regs2, NULL, address, rdword);
 }
 
 void write_rsp(void)
 {
-   writew(write_rsp_regs2, address, word);
+   writew(write_rsp_regs2, NULL, address, word);
 }
 
 void write_rspb(void)
 {
-   writeb(write_rsp_regs2, address, cpu_byte);
+   writeb(write_rsp_regs2, NULL, address, cpu_byte);
 }
 
 void write_rsph(void)
 {
-   writeh(write_rsp_regs2, address, hword);
+   writeh(write_rsp_regs2, NULL, address, hword);
 }
 
 void write_rspd(void)
 {
-   writed(write_rsp_regs2, address, dword);
+   writed(write_rsp_regs2, NULL, address, dword);
 }
 
 static INLINE uint32_t dpc_reg(uint32_t address)
@@ -1614,14 +1609,14 @@ static INLINE uint32_t dpc_reg(uint32_t address)
    return (address & 0xffff) >> 2;
 }
 
-static int read_dpc_regs(uint32_t address, uint32_t* value)
+static int read_dpc_regs(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t reg = dpc_reg(address);
    *value = g_dpc_regs[reg];
    return 0;
 }
 
-static int write_dpc_regs(uint32_t address, uint32_t value, uint32_t mask)
+static int write_dpc_regs(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t reg = dpc_reg(address);
    switch(reg)
@@ -1652,42 +1647,42 @@ static int write_dpc_regs(uint32_t address, uint32_t value, uint32_t mask)
 
 static void read_dp(void)
 {
-   readw(read_dpc_regs, address, rdword);
+   readw(read_dpc_regs, NULL, address, rdword);
 }
 
 static void read_dpb(void)
 {
-   readb(read_dpc_regs, address, rdword);
+   readb(read_dpc_regs, NULL, address, rdword);
 }
 
 static void read_dph(void)
 {
-   readh(read_dpc_regs, address, rdword);
+   readh(read_dpc_regs, NULL, address, rdword);
 }
 
 static void read_dpd(void)
 {
-   readd(read_dpc_regs, address, rdword);
+   readd(read_dpc_regs, NULL, address, rdword);
 }
 
 static void write_dp(void)
 {
-   writew(write_dpc_regs, address, word);
+   writew(write_dpc_regs, NULL, address, word);
 }
 
 static void write_dpb(void)
 {
-   writeb(write_dpc_regs, address, cpu_byte);
+   writeb(write_dpc_regs, NULL, address, cpu_byte);
 }
 
 static void write_dph(void)
 {
-   writeh(write_dpc_regs, address, hword);
+   writeh(write_dpc_regs, NULL, address, hword);
 }
 
 static void write_dpd(void)
 {
-   writed(write_dpc_regs, address, dword);
+   writed(write_dpc_regs, NULL, address, dword);
 }
 
 static INLINE uint32_t dps_reg(uint32_t address)
@@ -1695,7 +1690,7 @@ static INLINE uint32_t dps_reg(uint32_t address)
    return (address & 0xffff) >> 2;
 }
 
-static int read_dps_regs(uint32_t address, uint32_t* value)
+static int read_dps_regs(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t reg = dps_reg(address);
 
@@ -1704,7 +1699,7 @@ static int read_dps_regs(uint32_t address, uint32_t* value)
    return 0;
 }
 
-static int write_dps_regs(uint32_t address, uint32_t value, uint32_t mask)
+static int write_dps_regs(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t reg = dps_reg(address);
 
@@ -1715,42 +1710,42 @@ static int write_dps_regs(uint32_t address, uint32_t value, uint32_t mask)
 
 static void read_dps(void)
 {
-   readw(read_dps_regs, address, rdword);
+   readw(read_dps_regs, NULL, address, rdword);
 }
 
 static void read_dpsb(void)
 {
-   readb(read_dps_regs, address, rdword);
+   readb(read_dps_regs, NULL, address, rdword);
 }
 
 static void read_dpsh(void)
 {
-   readh(read_dps_regs, address, rdword);
+   readh(read_dps_regs, NULL, address, rdword);
 }
 
 static void read_dpsd(void)
 {
-   readd(read_dps_regs, address, rdword);
+   readd(read_dps_regs, NULL, address, rdword);
 }
 
 static void write_dps(void)
 {
-   writew(write_dps_regs, address, word);
+   writew(write_dps_regs, NULL, address, word);
 }
 
 static void write_dpsb(void)
 {
-   writeb(write_dps_regs, address, cpu_byte);
+   writeb(write_dps_regs, NULL, address, cpu_byte);
 }
 
 static void write_dpsh(void)
 {
-   writeh(write_dps_regs, address, hword);
+   writeh(write_dps_regs, NULL, address, hword);
 }
 
 static void write_dpsd(void)
 {
-   writed(write_dps_regs, address, dword);
+   writed(write_dps_regs, NULL, address, dword);
 }
 
 static INLINE uint32_t mi_reg(uint32_t address)
@@ -1758,7 +1753,7 @@ static INLINE uint32_t mi_reg(uint32_t address)
    return (address & 0xffff) >> 2;
 }
 
-static int read_mi_regs(uint32_t address, uint32_t* value)
+static int read_mi_regs(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t reg = mi_reg(address);
 
@@ -1767,7 +1762,7 @@ static int read_mi_regs(uint32_t address, uint32_t* value)
    return 0;
 }
 
-static int write_mi_regs(uint32_t address, uint32_t value, uint32_t mask)
+static int write_mi_regs(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t reg = mi_reg(address);
 
@@ -1790,42 +1785,42 @@ static int write_mi_regs(uint32_t address, uint32_t value, uint32_t mask)
 
 static void read_mi(void)
 {
-   readw(read_mi_regs, address, rdword);
+   readw(read_mi_regs, NULL, address, rdword);
 }
 
 static void read_mib(void)
 {
-   readb(read_mi_regs, address, rdword);
+   readb(read_mi_regs, NULL, address, rdword);
 }
 
 static void read_mih(void)
 {
-   readh(read_mi_regs, address, rdword);
+   readh(read_mi_regs, NULL, address, rdword);
 }
 
 static void read_mid(void)
 {
-   readd(read_mi_regs, address, rdword);
+   readd(read_mi_regs, NULL, address, rdword);
 }
 
 static void write_mi(void)
 {
-   writew(write_mi_regs, address, word);
+   writew(write_mi_regs, NULL, address, word);
 }
 
 static void write_mib(void)
 {
-   writeb(write_mi_regs, address, cpu_byte);
+   writeb(write_mi_regs, NULL, address, cpu_byte);
 }
 
 static void write_mih(void)
 {
-   writeh(write_mi_regs, address, hword);
+   writeh(write_mi_regs, NULL, address, hword);
 }
 
 static void write_mid(void)
 {
-   writed(write_mi_regs, address, dword);
+   writed(write_mi_regs, NULL, address, dword);
 }
 
 static INLINE uint32_t vi_reg(uint32_t address)
@@ -1833,7 +1828,7 @@ static INLINE uint32_t vi_reg(uint32_t address)
    return (address & 0xffff) >> 2;
 }
 
-static int read_vi_regs(uint32_t address, uint32_t* value)
+static int read_vi_regs(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t reg = vi_reg(address);
    if (reg == VI_CURRENT_REG)
@@ -1846,7 +1841,7 @@ static int read_vi_regs(uint32_t address, uint32_t* value)
    return 0;
 }
 
-static int write_vi_regs(uint32_t address, uint32_t value, uint32_t mask)
+static int write_vi_regs(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t reg = vi_reg(address);
    switch(reg)
@@ -1876,42 +1871,42 @@ static int write_vi_regs(uint32_t address, uint32_t value, uint32_t mask)
 
 static void read_vi(void)
 {
-   readw(read_vi_regs, address, rdword);
+   readw(read_vi_regs, NULL, address, rdword);
 }
 
 static void read_vib(void)
 {
-   readb(read_vi_regs, address, rdword);
+   readb(read_vi_regs, NULL, address, rdword);
 }
 
 static void read_vih(void)
 {
-   readh(read_vi_regs, address, rdword);
+   readh(read_vi_regs, NULL, address, rdword);
 }
 
 static void read_vid(void)
 {
-   readd(read_vi_regs, address, rdword);
+   readd(read_vi_regs, NULL, address, rdword);
 }
 
 static void write_vi(void)
 {
-   writew(write_vi_regs, address, word);
+   writew(write_vi_regs, NULL, address, word);
 }
 
 static void write_vib(void)
 {
-   writeb(write_vi_regs, address, cpu_byte);
+   writeb(write_vi_regs, NULL, address, cpu_byte);
 }
 
 static void write_vih(void)
 {
-   writeh(write_vi_regs, address, hword);
+   writeh(write_vi_regs, NULL, address, hword);
 }
 
 static void write_vid(void)
 {
-   writed(write_vi_regs, address, dword);
+   writed(write_vi_regs, NULL, address, dword);
 }
 
 static INLINE uint32_t ai_reg(uint32_t address)
@@ -1919,7 +1914,7 @@ static INLINE uint32_t ai_reg(uint32_t address)
    return (address & 0xffff) >> 2;
 }
 
-static int read_ai_regs(uint32_t address, uint32_t* value)
+static int read_ai_regs(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t reg = ai_reg(address);
    if (reg == AI_LEN_REG)
@@ -1938,7 +1933,7 @@ static int read_ai_regs(uint32_t address, uint32_t* value)
    return 0;
 }
 
-static int write_ai_regs(uint32_t address, uint32_t value, uint32_t mask)
+static int write_ai_regs(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t reg = ai_reg(address);
    unsigned int freq,delay=0;
@@ -1983,42 +1978,42 @@ static int write_ai_regs(uint32_t address, uint32_t value, uint32_t mask)
 
 static void read_ai(void)
 {
-   readw(read_ai_regs, address, rdword);
+   readw(read_ai_regs, NULL, address, rdword);
 }
 
 static void read_aib(void)
 {
-   readb(read_ai_regs, address, rdword);
+   readb(read_ai_regs, NULL, address, rdword);
 }
 
 static void read_aih(void)
 {
-   readh(read_ai_regs, address, rdword);
+   readh(read_ai_regs, NULL, address, rdword);
 }
 
 static void read_aid(void)
 {
-   readd(read_ai_regs, address, rdword);
+   readd(read_ai_regs, NULL, address, rdword);
 }
 
 static void write_ai(void)
 {
-   writew(write_ai_regs, address, word);
+   writew(write_ai_regs, NULL, address, word);
 }
 
 static void write_aib(void)
 {
-   writeb(write_ai_regs, address, cpu_byte);
+   writeb(write_ai_regs, NULL, address, cpu_byte);
 }
 
 static void write_aih(void)
 {
-   writeh(write_ai_regs, address, hword);
+   writeh(write_ai_regs, NULL, address, hword);
 }
 
 static void write_aid(void)
 {
-   writed(write_ai_regs, address, dword);
+   writed(write_ai_regs, NULL, address, dword);
 }
 
 static INLINE uint32_t pi_reg(uint32_t address)
@@ -2026,7 +2021,7 @@ static INLINE uint32_t pi_reg(uint32_t address)
    return (address & 0xffff) >> 2;
 }
 
-static int read_pi_regs(uint32_t address, uint32_t* value)
+static int read_pi_regs(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t reg = pi_reg(address);
 
@@ -2036,7 +2031,7 @@ static int read_pi_regs(uint32_t address, uint32_t* value)
 }
 
 
-static int write_pi_regs(uint32_t address, uint32_t value, uint32_t mask)
+static int write_pi_regs(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t reg = pi_reg(address);
 
@@ -2076,42 +2071,42 @@ static int write_pi_regs(uint32_t address, uint32_t value, uint32_t mask)
 
 static void read_pi(void)
 {
-   readw(read_pi_regs, address, rdword);
+   readw(read_pi_regs, NULL, address, rdword);
 }
 
 static void read_pib(void)
 {
-   readb(read_pi_regs, address, rdword);
+   readb(read_pi_regs, NULL, address, rdword);
 }
 
 static void read_pih(void)
 {
-   readh(read_pi_regs, address, rdword);
+   readh(read_pi_regs, NULL, address, rdword);
 }
 
 static void read_pid(void)
 {
-   readd(read_pi_regs, address, rdword);
+   readd(read_pi_regs, NULL, address, rdword);
 }
 
 static void write_pi(void)
 {
-   writew(write_pi_regs, address, word);
+   writew(write_pi_regs, NULL, address, word);
 }
 
 static void write_pib(void)
 {
-   writeb(write_pi_regs, address, cpu_byte);
+   writeb(write_pi_regs, NULL, address, cpu_byte);
 }
 
 static void write_pih(void)
 {
-   writeh(write_pi_regs, address, hword);
+   writeh(write_pi_regs, NULL, address, hword);
 }
 
 static void write_pid(void)
 {
-   writed(write_pi_regs, address, dword);
+   writed(write_pi_regs, NULL, address, dword);
 }
 
 static INLINE uint32_t ri_reg(uint32_t address)
@@ -2119,7 +2114,7 @@ static INLINE uint32_t ri_reg(uint32_t address)
    return (address & 0xffff) >> 2;
 }
 
-static int read_ri_regs(uint32_t address, uint32_t* value)
+static int read_ri_regs(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t reg = ri_reg(address);
 
@@ -2128,7 +2123,7 @@ static int read_ri_regs(uint32_t address, uint32_t* value)
    return 0;
 }
 
-static int write_ri_regs(uint32_t address, uint32_t value, uint32_t mask)
+static int write_ri_regs(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t reg = ri_reg(address);
 
@@ -2139,42 +2134,42 @@ static int write_ri_regs(uint32_t address, uint32_t value, uint32_t mask)
 
 static void read_ri(void)
 {
-   readw(read_ri_regs, address, rdword);
+   readw(read_ri_regs, NULL, address, rdword);
 }
 
 static void read_rib(void)
 {
-   readb(read_ri_regs, address, rdword);
+   readb(read_ri_regs, NULL, address, rdword);
 }
 
 static void read_rih(void)
 {
-   readh(read_ri_regs, address, rdword);
+   readh(read_ri_regs, NULL, address, rdword);
 }
 
 static void read_rid(void)
 {
-   readd(read_ri_regs, address, rdword);
+   readd(read_ri_regs, NULL, address, rdword);
 }
 
 static void write_ri(void)
 {
-   writew(write_ri_regs, address, word);
+   writew(write_ri_regs, NULL, address, word);
 }
 
 static void write_rib(void)
 {
-   writeb(write_ri_regs, address, cpu_byte);
+   writeb(write_ri_regs, NULL, address, cpu_byte);
 }
 
 static void write_rih(void)
 {
-   writeh(write_ri_regs, address, hword);
+   writeh(write_ri_regs, NULL, address, hword);
 }
 
 static void write_rid(void)
 {
-   writed(write_ri_regs, address, dword);
+   writed(write_ri_regs, NULL, address, dword);
 }
 
 static INLINE uint32_t si_reg(uint32_t address)
@@ -2182,14 +2177,14 @@ static INLINE uint32_t si_reg(uint32_t address)
    return (address & 0xffff) >> 2;
 }
 
-static int read_si_regs(uint32_t address, uint32_t* value)
+static int read_si_regs(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t reg = si_reg(address);
    *value = g_si_regs[reg];
    return 0;
 }
 
-static int write_si_regs(uint32_t address, uint32_t value, uint32_t mask)
+static int write_si_regs(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t reg = si_reg(address);
    switch (reg)
@@ -2216,42 +2211,42 @@ static int write_si_regs(uint32_t address, uint32_t value, uint32_t mask)
 
 static void read_si(void)
 {
-   readw(read_si_regs, address, rdword);
+   readw(read_si_regs, NULL, address, rdword);
 }
 
 static void read_sib(void)
 {
-   readb(read_si_regs, address, rdword);
+   readb(read_si_regs, NULL, address, rdword);
 }
 
 static void read_sih(void)
 {
-   readh(read_si_regs, address, rdword);
+   readh(read_si_regs, NULL, address, rdword);
 }
 
 static void read_sid(void)
 {
-   readd(read_si_regs, address, rdword);
+   readd(read_si_regs, NULL, address, rdword);
 }
 
 static void write_si(void)
 {
-   writew(write_si_regs, address, word);
+   writew(write_si_regs, NULL, address, word);
 }
 
 static void write_sib(void)
 {
-   writeb(write_si_regs, address, cpu_byte);
+   writeb(write_si_regs, NULL, address, cpu_byte);
 }
 
 static void write_sih(void)
 {
-   writeh(write_si_regs, address, hword);
+   writeh(write_si_regs, NULL, address, hword);
 }
 
 static void write_sid(void)
 {
-   writed(write_si_regs, address, dword);
+   writed(write_si_regs, NULL, address, dword);
 }
 
 static void read_flashram_status(void)
@@ -2329,7 +2324,7 @@ static INLINE uint32_t rom_address(uint32_t address)
    return (address & 0x03fffffc);
 }
 
-static int read_cart_rom(uint32_t address, uint32_t* value)
+static int read_cart_rom(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t addr = rom_address(address);
    if (lastwrite)
@@ -2344,7 +2339,7 @@ static int read_cart_rom(uint32_t address, uint32_t* value)
    return 0;
 }
 
-static int write_cart_rom(uint32_t address, uint32_t value, uint32_t mask)
+static int write_cart_rom(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    lastwrite = value & mask;
    return 0;
@@ -2352,27 +2347,27 @@ static int write_cart_rom(uint32_t address, uint32_t value, uint32_t mask)
 
 static void read_rom(void)
 {
-   readw(read_cart_rom, address, rdword);
+   readw(read_cart_rom, NULL, address, rdword);
 }
 
 static void read_romb(void)
 {
-   readb(read_cart_rom, address, rdword);
+   readb(read_cart_rom, NULL, address, rdword);
 }
 
 static void read_romh(void)
 {
-   readh(read_cart_rom, address, rdword);
+   readh(read_cart_rom, NULL, address, rdword);
 }
 
 static void read_romd(void)
 {
-   readd(read_cart_rom, address, rdword);
+   readd(read_cart_rom, NULL, address, rdword);
 }
 
 static void write_rom(void)
 {
-   writew(write_cart_rom, address, word);
+   writew(write_cart_rom, NULL, address, word);
 }
 
 static INLINE uint32_t pif_ram_address(uint32_t address)
@@ -2380,7 +2375,7 @@ static INLINE uint32_t pif_ram_address(uint32_t address)
    return ((address & 0xfffc) - 0x7c0);
 }
 
-static int read_pif_ram(uint32_t address, uint32_t* value)
+static int read_pif_ram(void *opaque, uint32_t address, uint32_t* value)
 {
    uint32_t addr = pif_ram_address(address);
    if (addr >= PIF_RAM_SIZE)
@@ -2394,7 +2389,7 @@ static int read_pif_ram(uint32_t address, uint32_t* value)
    return 0;
 }
 
-static int write_pif_ram(uint32_t address, uint32_t value, uint32_t mask)
+static int write_pif_ram(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    uint32_t addr = pif_ram_address(address);
    if (addr >= PIF_RAM_SIZE)
@@ -2421,42 +2416,42 @@ static int write_pif_ram(uint32_t address, uint32_t value, uint32_t mask)
 
 static void read_pif(void)
 {
-   readw(read_pif_ram, address, rdword);
+   readw(read_pif_ram, NULL, address, rdword);
 }
 
 static void read_pifb(void)
 {
-   readb(read_pif_ram, address, rdword);
+   readb(read_pif_ram, NULL, address, rdword);
 }
 
 static void read_pifh(void)
 {
-   readh(read_pif_ram, address, rdword);
+   readh(read_pif_ram, NULL, address, rdword);
 }
 
 static void read_pifd(void)
 {
-   readd(read_pif_ram, address, rdword);
+   readd(read_pif_ram, NULL, address, rdword);
 }
 
 static void write_pif(void)
 {
-   writew(write_pif_ram, address, word);
+   writew(write_pif_ram, NULL, address, word);
 }
 
 static void write_pifb(void)
 {
-   writeb(write_pif_ram, address, cpu_byte);
+   writeb(write_pif_ram, NULL, address, cpu_byte);
 }
 
 static void write_pifh(void)
 {
-   writeh(write_pif_ram, address, hword);
+   writeh(write_pif_ram, NULL, address, hword);
 }
 
 static void write_pifd(void)
 {
-   writed(write_pif_ram, address, dword);
+   writed(write_pif_ram, NULL, address, dword);
 }
 
 uint32_t *fast_mem_access(uint32_t address)
