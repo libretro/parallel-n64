@@ -41,7 +41,6 @@
 #include "api/callbacks.h"
 #include "main/main.h"
 #include "main/rom.h"
-#include "osal/preproc.h"
 #include "plugin/plugin.h"
 #include "r4300/new_dynarec/new_dynarec.h"
 #include "ri/ri_controller.h"
@@ -205,7 +204,6 @@ static void write_ddh(void);
 static void write_ddd(void);
 
 /* definitions of the rcp's structures and memory area */
-uint32_t g_rdram_regs[RDRAM_REGS_COUNT];
 uint32_t g_mi_regs[MI_REGS_COUNT];
 uint32_t g_pi_regs[PI_REGS_COUNT];
 uint32_t g_sp_regs[SP_REGS_COUNT];
@@ -219,8 +217,6 @@ uint32_t g_dpc_regs[DPC_REGS_COUNT];
 uint32_t g_dps_regs[DPS_REGS_COUNT];
 
 enum cic_type g_cic_type;
-
-ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
 
 uint32_t g_sp_mem[SP_MEM_SIZE/4];
 uint8_t g_pif_ram[PIF_RAM_SIZE];
@@ -513,9 +509,6 @@ int init_memory(void)
       map_region(i, M64P_MEM_NOMEM, RW(nomem));
    }
 
-   /* init RDRAM */
-   memset(g_rdram, 0, RDRAM_MAX_SIZE);
-
    /* map RDRAM */
    for (i = 0; i< 0x80; ++i)
    {
@@ -528,9 +521,6 @@ int init_memory(void)
       map_region(0x8000+i, M64P_MEM_NOTHING, RW(nothing));
       map_region(0xa000+i, M64P_MEM_NOTHING, RW(nothing));
    }
-
-   /* init RDRAM registers */
-   memset(g_rdram_regs, 0, RDRAM_REGS_COUNT*sizeof(g_rdram_regs[0]));
 
    /* map RDRAM registers */
    map_region(0x83f0, M64P_MEM_RDRAMREG, RW(rdramreg));
@@ -1232,59 +1222,36 @@ static void write_nomemd(void)
    write_dword_in_memory();
 }
 
-static INLINE uint32_t rdram_ram_address(uint32_t address)
-{
-   return (address & 0xffffff) >> 2;
-}
-
-static int read_rdram_ram(void *opaque, uint32_t address, uint32_t* value)
-{
-   uint32_t addr = rdram_ram_address(address);
-
-   *value = g_rdram[addr];
-
-   return 0;
-}
-
-static int write_rdram_ram(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
-{
-   uint32_t addr = rdram_ram_address(address);
-
-   masked_write(&g_rdram[addr], value, mask);
-
-   return 0;
-}
-
 void read_rdram(void)
 {
-   readw(read_rdram_ram, NULL, address, rdword);
+   readw(read_rdram_dram, &g_ri, address, rdword);
 }
 
 void read_rdramb(void)
 {
-   readb(read_rdram_ram, NULL, address, rdword);
+   readb(read_rdram_dram, &g_ri, address, rdword);
 }
 
 void read_rdramh(void)
 {
-   readh(read_rdram_ram, NULL, address, rdword);
+   readh(read_rdram_dram, &g_ri, address, rdword);
 }
 
 void read_rdramd(void)
 {
-   readd(read_rdram_ram, NULL, address, rdword);
+   readd(read_rdram_dram, &g_ri, address, rdword);
 }
 
 static int read_rdram_fb(void* opaque, uint32_t address, uint32_t* value)
 {
    pre_framebuffer_read(address);
-   return read_rdram_ram(opaque, address, value);
+   return read_rdram_dram(&g_ri, address, value);
 }
 
 static int write_rdram_fb(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    pre_framebuffer_write(address);
-   return write_rdram_ram(opaque, address, value, mask);
+   return write_rdram_dram(&g_ri, address, value, mask);
 }
 
 static void read_rdramFB(void)
@@ -1309,22 +1276,22 @@ static void read_rdramFBd(void)
 
 void write_rdram(void)
 {
-   writew(write_rdram_ram, NULL, address, word);
+   writew(write_rdram_dram, &g_ri, address, word);
 }
 
 void write_rdramb(void)
 {
-   writeb(write_rdram_ram, NULL, address, cpu_byte);
+   writeb(write_rdram_dram, &g_ri, address, cpu_byte);
 }
 
 void write_rdramh(void)
 {
-   writeh(write_rdram_ram, NULL, address, hword);
+   writeh(write_rdram_dram, &g_ri, address, hword);
 }
 
 void write_rdramd(void)
 {
-   writed(write_rdram_ram, NULL, address, dword);
+   writed(write_rdram_dram, &g_ri, address, dword);
 }
 
 void write_rdramFB(void)
@@ -1347,67 +1314,44 @@ void write_rdramFBd(void)
    writed(write_rdram_fb, NULL, address, dword);
 }
 
-static INLINE uint32_t rdram_reg(uint32_t address)
-{
-   return (address & 0x3ff) >> 2;
-}
-
-static int read_rdram_regs(void *opaque, uint32_t address, uint32_t* value)
-{
-   uint32_t reg = rdram_reg(address);
-
-   *value = g_rdram_regs[reg];
-
-   return 0;
-}
-
-static int write_rdram_regs(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
-{
-   uint32_t reg = rdram_reg(address);
-
-   masked_write(&g_rdram_regs[reg], value, mask);
-
-   return 0;
-}
-
 void read_rdramreg(void)
 {
-   readw(read_rdram_regs, NULL, address, rdword);
+   readw(read_rdram_regs, &g_ri, address, rdword);
 }
 
 void read_rdramregb(void)
 {
-   readb(read_rdram_regs, NULL, address, rdword);
+   readb(read_rdram_regs, &g_ri, address, rdword);
 }
 
 void read_rdramregh(void)
 {
-   readh(read_rdram_regs, NULL, address, rdword);
+   readh(read_rdram_regs, &g_ri, address, rdword);
 }
 
 void read_rdramregd(void)
 {
-   readd(read_rdram_regs, NULL, address, rdword);
+   readd(read_rdram_regs, &g_ri, address, rdword);
 }
 
 void write_rdramreg(void)
 {
-   writew(write_rdram_regs, NULL, address, word);
+   writew(write_rdram_regs, &g_ri, address, word);
 }
 
 void write_rdramregb(void)
 {
-   writeb(write_rdram_regs, NULL, address, cpu_byte);
+   writeb(write_rdram_regs, &g_ri, address, cpu_byte);
 }
 
 void write_rdramregh(void)
 {
-   writeh(write_rdram_regs, NULL, address, hword);
+   writeh(write_rdram_regs, &g_ri, address, hword);
 }
 
 void write_rdramregd(void)
 {
-   writed(write_rdram_regs, NULL, address, dword);
+   writed(write_rdram_regs, &g_ri, address, dword);
 }
 
 static INLINE uint32_t rsp_mem_address(uint32_t address)

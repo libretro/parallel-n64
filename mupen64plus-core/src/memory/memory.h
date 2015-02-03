@@ -23,7 +23,6 @@
 #define MEMORY_H
 
 #include <stdint.h>
-#include "osal/preproc.h"
 
 #define AI_STATUS_FIFO_FULL	0x80000000		/* Bit 31: full */
 #define AI_STATUS_DMA_BUSY	   0x40000000		/* Bit 30: busy */
@@ -63,27 +62,6 @@ typedef struct _save_memory_data
 } save_memory_data;
 extern save_memory_data saved_memory;
 void format_saved_memory(void);
-
-enum { RDRAM_MAX_SIZE = 0x800000 };
-
-extern ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
-
-enum rdram_registers
-{
-   RDRAM_CONFIG_REG,
-   RDRAM_DEVICE_ID_REG,
-   RDRAM_DELAY_REG,
-   RDRAM_MODE_REG,
-   RDRAM_REF_INTERVAL_REG,
-   RDRAM_REF_ROW_REG,
-   RDRAM_RAS_INTERVAL_REG,
-   RDRAM_MIN_INTERVAL_REG,
-   RDRAM_ADDR_SELECT_REG,
-   RDRAM_DEVICE_MANUF_REG,
-   RDRAM_REGS_COUNT
-};
-
-extern uint32_t g_rdram_regs[RDRAM_REGS_COUNT];
 
 extern uint32_t address, word;
 extern uint8_t cpu_byte;

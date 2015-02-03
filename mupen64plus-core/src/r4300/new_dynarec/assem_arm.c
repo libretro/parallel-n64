@@ -24,6 +24,9 @@
 #define CALLER_SAVE_REGS 0x120f
 #endif
 
+#include "main/main.h"
+#include "../cp0.h"
+
 extern int cycle_count;
 extern int last_count;
 extern int pcaddr;
