@@ -69,6 +69,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/r4300/cached_interp.c \
 	$(CORE_DIR)/src/r4300/pure_interp.c \
 	$(CORE_DIR)/src/r4300/reset.c \
+	$(CORE_DIR)/src/ri/ri_controller.c \
 	$(CORE_DIR)/src/r4300/interupt.c \
 	$(CORE_DIR)/src/r4300/tlb.c \
 	$(CORE_DIR)/src/r4300/cp0.c \

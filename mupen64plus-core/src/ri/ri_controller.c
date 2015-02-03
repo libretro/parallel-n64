@@ -1,8 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - main.h                                                  *
+ *   Mupen64plus - ri_controller.c                                         *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2012 CasualJames                                        *
- *   Copyright (C) 2002 Blight                                             *
+ *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -20,43 +19,34 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __MAIN_H__
-#define __MAIN_H__
+#include "ri_controller.h"
 
-#include "api/m64p_types.h"
+#include "memory/memory.h"
 
-struct ri_controller;
+#include <string.h>
 
-/* globals */
-extern m64p_handle g_CoreConfig;
+void init_ri(struct ri_controller* ri)
+{
+    memset(ri->regs, 0, RI_REGS_COUNT*sizeof(uint32_t));
+}
 
-extern int g_MemHasBeenBSwapped;
-extern int g_EmulatorRunning;
 
-extern struct ri_controller g_ri;
+int read_ri_regs(void* opaque, uint32_t address, uint32_t* value)
+{
+    struct ri_controller* ri = (struct ri_controller*)opaque;
+    uint32_t reg = ri_reg(address);
 
-extern m64p_frame_callback g_FrameCallback;
+    *value = ri->regs[reg];
 
-extern int delay_si;
+    return 0;
+}
 
-void new_frame(void);
+int write_ri_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+{
+    struct ri_controller* ri = (struct ri_controller*)opaque;
+    uint32_t reg = ri_reg(address);
 
-int  main_set_core_defaults(void);
-void main_message(m64p_msg_level level, unsigned int osd_corner, const char *format, ...);
+    masked_write(&ri->regs[reg], value, mask);
 
-m64p_error main_init(void);
-m64p_error main_run(void);
-void main_exit(void);
-void main_stop(void);
-void main_toggle_pause(void);
-void main_advance_one(void);
-
-m64p_error main_core_state_query(m64p_core_param param, int *rval);
-m64p_error main_core_state_set(m64p_core_param param, int val);
-
-m64p_error main_read_screen(void *pixels, int bFront);
-
-m64p_error main_reset(int do_hard_reset);
-
-#endif /* __MAIN_H__ */
-
+    return 0;
+}

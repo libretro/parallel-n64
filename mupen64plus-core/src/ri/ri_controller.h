@@ -1,8 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - main.h                                                  *
+ *   Mupen64plus - ri_controller.h                                         *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2012 CasualJames                                        *
- *   Copyright (C) 2002 Blight                                             *
+ *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -20,43 +19,37 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __MAIN_H__
-#define __MAIN_H__
+#ifndef M64P_RI_RI_CONTROLLER_H
+#define M64P_RI_RI_CONTROLLER_H
 
-#include "api/m64p_types.h"
+#include <stdint.h>
 
-struct ri_controller;
+enum ri_registers
+{
+    RI_MODE_REG,
+    RI_CONFIG_REG,
+    RI_CURRENT_LOAD_REG,
+    RI_SELECT_REG,
+    RI_REFRESH_REG,
+    RI_LATENCY_REG,
+    RI_ERROR_REG,
+    RI_WERROR_REG,
+    RI_REGS_COUNT
+};
 
-/* globals */
-extern m64p_handle g_CoreConfig;
+struct ri_controller
+{
+    uint32_t regs[RI_REGS_COUNT];
+};
 
-extern int g_MemHasBeenBSwapped;
-extern int g_EmulatorRunning;
+static inline uint32_t ri_reg(uint32_t address)
+{
+    return (address & 0xffff) >> 2;
+}
 
-extern struct ri_controller g_ri;
+void init_ri(struct ri_controller* ri);
 
-extern m64p_frame_callback g_FrameCallback;
+int read_ri_regs(void* opaque, uint32_t address, uint32_t* value);
+int write_ri_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
-extern int delay_si;
-
-void new_frame(void);
-
-int  main_set_core_defaults(void);
-void main_message(m64p_msg_level level, unsigned int osd_corner, const char *format, ...);
-
-m64p_error main_init(void);
-m64p_error main_run(void);
-void main_exit(void);
-void main_stop(void);
-void main_toggle_pause(void);
-void main_advance_one(void);
-
-m64p_error main_core_state_query(m64p_core_param param, int *rval);
-m64p_error main_core_state_set(m64p_core_param param, int val);
-
-m64p_error main_read_screen(void *pixels, int bFront);
-
-m64p_error main_reset(int do_hard_reset);
-
-#endif /* __MAIN_H__ */
-
+#endif
