@@ -38,24 +38,21 @@ enum flashram_mode
    FLASHRAM_MODE_STATUS
 };
 
-typedef struct _flashram_info
+struct flashram
 {
    uint8_t mem[FLASHRAM_SIZE];
-	int32_t use_flashram;
 	enum flashram_mode mode;
 	uint64_t status;
 	unsigned int erase_offset;
    unsigned int write_pointer;
-} Flashram_info;
+};
 
-extern Flashram_info flashram_info;
+void init_flashram(struct flashram *flashram);
 
-void init_flashram(void);
+int read_flashram_status(void* opaque, uint32_t address, uint32_t* value);
+int write_flashram_command(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
-void flashram_command(uint32_t command);
-uint32_t flashram_status(void);
-
-void dma_read_flashram(void);
-void dma_write_flashram(void);
+void dma_read_flashram(struct pi_controller* pi);
+void dma_write_flashram(struct pi_controller* pi);
 
 #endif

@@ -58,7 +58,6 @@ SOURCES_C += \
 	$(CORE_DIR)/src/main/savestates.c \
 	$(CORE_DIR)/src/main/util.c \
 	$(CORE_DIR)/src/memory/dma.c \
-	$(CORE_DIR)/src/memory/flashram.c \
 	$(CORE_DIR)/src/memory/m64p_memory.c \
 	$(CORE_DIR)/src/memory/n64_cic_nus_6105.c \
 	$(CORE_DIR)/src/memory/pif.c \
@@ -79,6 +78,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/ai/ai_controller.c \
 	$(CORE_DIR)/src/pi/pi_controller.c \
 	$(CORE_DIR)/src/pi/sram.c \
+	$(CORE_DIR)/src/pi/flashram.c \
 	$(CORE_DIR)/src/pi/cart_rom.c \
 	$(CORE_DIR)/src/r4300/interupt.c \
 	$(CORE_DIR)/src/r4300/tlb.c \
