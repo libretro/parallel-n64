@@ -71,6 +71,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/r4300/reset.c \
 	$(CORE_DIR)/src/ri/ri_controller.c \
 	$(CORE_DIR)/src/ri/rdram.c \
+	$(CORE_DIR)/src/si/si_controller.c \
 	$(CORE_DIR)/src/vi/vi_controller.c \
 	$(CORE_DIR)/src/rdp/rdp_core.c \
 	$(CORE_DIR)/src/rdp/fb.c \

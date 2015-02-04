@@ -221,7 +221,7 @@ EXPORT void * CALL DebugMemGetPointer(m64p_dbg_memptr_type mem_ptr_type)
         case M64P_DBG_PTR_PI_REG:
             return g_pi.regs;
         case M64P_DBG_PTR_SI_REG:
-            return g_si_regs;
+            return g_si.regs;
         case M64P_DBG_PTR_VI_REG:
             return g_vi.regs;
         case M64P_DBG_PTR_RI_REG:

@@ -51,6 +51,7 @@
 #include "../rdp/rdp_core.h"
 #include "../ri/ri_controller.h"
 #include "../rsp/rsp_core.h"
+#include "../si/si_controller.h"
 #include "../vi/vi_controller.h"
 #include "osal/preproc.h"
 
@@ -155,10 +156,10 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
     g_sp.regs2[SP_PC_REG] = GETDATA(curr, uint32_t);
     g_sp.regs2[SP_IBIST_REG] = GETDATA(curr, uint32_t);
 
-    g_si_regs[SI_DRAM_ADDR_REG]      = GETDATA(curr, uint32_t);
-    g_si_regs[SI_PIF_ADDR_RD64B_REG] = GETDATA(curr, uint32_t);
-    g_si_regs[SI_PIF_ADDR_WR64B_REG] = GETDATA(curr, uint32_t);
-    g_si_regs[SI_STATUS_REG]         = GETDATA(curr, uint32_t);
+    g_si.regs[SI_DRAM_ADDR_REG]      = GETDATA(curr, uint32_t);
+    g_si.regs[SI_PIF_ADDR_RD64B_REG] = GETDATA(curr, uint32_t);
+    g_si.regs[SI_PIF_ADDR_WR64B_REG] = GETDATA(curr, uint32_t);
+    g_si.regs[SI_STATUS_REG]         = GETDATA(curr, uint32_t);
 
     g_vi.regs[VI_STATUS_REG] = GETDATA(curr, uint32_t);
     g_vi.regs[VI_ORIGIN_REG] = GETDATA(curr, uint32_t);
@@ -407,10 +408,10 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     PUTDATA(curr, uint32_t, g_sp.regs2[SP_PC_REG]);
     PUTDATA(curr, uint32_t, g_sp.regs2[SP_IBIST_REG]);
 
-    PUTDATA(curr, uint32_t, g_si_regs[SI_DRAM_ADDR_REG]);
-    PUTDATA(curr, uint32_t, g_si_regs[SI_PIF_ADDR_RD64B_REG]);
-    PUTDATA(curr, uint32_t, g_si_regs[SI_PIF_ADDR_WR64B_REG]);
-    PUTDATA(curr, uint32_t, g_si_regs[SI_STATUS_REG]);
+    PUTDATA(curr, uint32_t, g_si.regs[SI_DRAM_ADDR_REG]);
+    PUTDATA(curr, uint32_t, g_si.regs[SI_PIF_ADDR_RD64B_REG]);
+    PUTDATA(curr, uint32_t, g_si.regs[SI_PIF_ADDR_WR64B_REG]);
+    PUTDATA(curr, uint32_t, g_si.regs[SI_STATUS_REG]);
 
     PUTDATA(curr, uint32_t, g_vi.regs[VI_STATUS_REG]);
     PUTDATA(curr, uint32_t, g_vi.regs[VI_ORIGIN_REG]);
