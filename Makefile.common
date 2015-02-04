@@ -60,6 +60,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/memory/m64p_memory.c \
 	$(CORE_DIR)/src/si/n64_cic_nus_6105.c \
 	$(CORE_DIR)/src/si/pif.c \
+	$(CORE_DIR)/src/si/cic.c \
 	$(CORE_DIR)/src/plugin/plugin.c \
 	$(CORE_DIR)/src/r4300/mi_controller.c \
 	$(CORE_DIR)/src/r4300/profile.c \

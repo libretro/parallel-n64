@@ -31,6 +31,7 @@
 #include "../main/rom.h"
 #include "../pi/pi_controller.h"
 #include "../rsp/rsp_core.h"
+#include "../si/si_controller.h"
 #include "../vi/vi_controller.h"
 
 #include "r4300.h"
@@ -158,24 +159,6 @@ static unsigned int get_tv_type(void)
          return 2;
    }
 }
-static unsigned int get_cic_seed(void)
-{
-   switch(g_cic_type)
-   {
-      case CIC_X101:
-      case CIC_X102:
-         return 0x3f;
-      case CIC_X103:
-         return 0x78;
-      case CIC_X105:
-         return 0x91;
-      case CIC_X106:
-         return 0x85;
-   }
-
-   DebugMessage(M64MSG_WARNING, "Unknown CIC (%d)! using CIC 6102.", g_cic_type);
-   return 0x00;
-}
 
 /* Simulates end result of PIFBootROM execution */
 void r4300_reset_soft(void)
@@ -184,7 +167,6 @@ void r4300_reset_soft(void)
    unsigned int reset_type = 0; /* 0:ColdReset, 1:NMI */
    unsigned int s7 = 0; /* ??? */
    unsigned int tv_type = get_tv_type(); /* 0:PAL, 1:NTSC, 2:MPAL */
-   unsigned int cic_seed = get_cic_seed();
    uint32_t bsd_dom1_config = *(uint32_t*)g_rom;
    g_cp0_regs[CP0_STATUS_REG] = 0x34000000;
    g_cp0_regs[CP0_CONFIG_REG] = 0x0006e463;
@@ -209,7 +191,7 @@ void r4300_reset_soft(void)
    reg[19] = rom_type; /* s3 */
    reg[20] = tv_type; /* s4 */
    reg[21] = reset_type; /* s5 */
-   reg[22] = cic_seed; /* s6 */
+   reg[22] = g_si.pif.cic.seed; /* s6 */
    reg[23] = s7; /* s7 */
 
    /* required by CIC x105 */
