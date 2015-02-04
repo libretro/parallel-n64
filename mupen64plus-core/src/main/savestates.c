@@ -49,6 +49,7 @@
 #include "r4300/interupt.h"
 #include "r4300/new_dynarec/new_dynarec.h"
 #include "../ri/ri_controller.h"
+#include "../rsp/rsp_core.h"
 #include "../vi/vi_controller.h"
 #include "osal/preproc.h"
 
@@ -139,19 +140,19 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
     g_pi_regs[PI_BSD_DOM2_PGS_REG] = GETDATA(curr, uint32_t);
     g_pi_regs[PI_BSD_DOM2_RLS_REG] = GETDATA(curr, uint32_t);
 
-    g_sp_regs[SP_MEM_ADDR_REG] = GETDATA(curr, uint32_t);
-    g_sp_regs[SP_DRAM_ADDR_REG] = GETDATA(curr, uint32_t);
-    g_sp_regs[SP_RD_LEN_REG] = GETDATA(curr, uint32_t);
-    g_sp_regs[SP_WR_LEN_REG] = GETDATA(curr, uint32_t);
+    g_sp.regs[SP_MEM_ADDR_REG] = GETDATA(curr, uint32_t);
+    g_sp.regs[SP_DRAM_ADDR_REG] = GETDATA(curr, uint32_t);
+    g_sp.regs[SP_RD_LEN_REG] = GETDATA(curr, uint32_t);
+    g_sp.regs[SP_WR_LEN_REG] = GETDATA(curr, uint32_t);
     curr += 4; /* Padding from old implementation. */
-    g_sp_regs[SP_STATUS_REG] = GETDATA(curr, uint32_t);
+    g_sp.regs[SP_STATUS_REG] = GETDATA(curr, uint32_t);
     curr += 16; // Duplicated SP flags and padding from old implementation
-    g_sp_regs[SP_DMA_FULL_REG] = GETDATA(curr, uint32_t);
-    g_sp_regs[SP_DMA_BUSY_REG] = GETDATA(curr, uint32_t);
-    g_sp_regs[SP_SEMAPHORE_REG] = GETDATA(curr, uint32_t);
+    g_sp.regs[SP_DMA_FULL_REG] = GETDATA(curr, uint32_t);
+    g_sp.regs[SP_DMA_BUSY_REG] = GETDATA(curr, uint32_t);
+    g_sp.regs[SP_SEMAPHORE_REG] = GETDATA(curr, uint32_t);
 
-    g_sp_regs2[SP_PC_REG] = GETDATA(curr, uint32_t);
-    g_sp_regs2[SP_IBIST_REG] = GETDATA(curr, uint32_t);
+    g_sp.regs2[SP_PC_REG] = GETDATA(curr, uint32_t);
+    g_sp.regs2[SP_IBIST_REG] = GETDATA(curr, uint32_t);
 
     g_si_regs[SI_DRAM_ADDR_REG]      = GETDATA(curr, uint32_t);
     g_si_regs[SI_PIF_ADDR_RD64B_REG] = GETDATA(curr, uint32_t);
@@ -215,7 +216,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
     g_dps_regs[DPS_BUFTEST_DATA_REG] = GETDATA(curr, uint32_t);
 
     COPYARRAY(g_rdram, curr, uint32_t, RDRAM_MAX_SIZE/4);
-    COPYARRAY(g_sp_mem, curr, uint32_t, SP_MEM_SIZE/4);
+    COPYARRAY(g_sp.mem, curr, uint32_t, SP_MEM_SIZE/4);
     COPYARRAY(g_pif_ram, curr, uint8_t, PIF_RAM_SIZE);
 
     flashram_info.use_flashram = GETDATA(curr, int);
@@ -376,34 +377,34 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     PUTDATA(curr, uint32_t, g_pi_regs[PI_BSD_DOM1_PGS_REG]);
     PUTDATA(curr, uint32_t, g_pi_regs[PI_BSD_DOM1_RLS_REG]);
 
-    PUTDATA(curr, uint32_t, g_sp_regs[SP_MEM_ADDR_REG]);
-    PUTDATA(curr, uint32_t, g_sp_regs[SP_DRAM_ADDR_REG]);
-    PUTDATA(curr, uint32_t, g_sp_regs[SP_RD_LEN_REG]);
-    PUTDATA(curr, uint32_t, g_sp_regs[SP_WR_LEN_REG]);
+    PUTDATA(curr, uint32_t, g_sp.regs[SP_MEM_ADDR_REG]);
+    PUTDATA(curr, uint32_t, g_sp.regs[SP_DRAM_ADDR_REG]);
+    PUTDATA(curr, uint32_t, g_sp.regs[SP_RD_LEN_REG]);
+    PUTDATA(curr, uint32_t, g_sp.regs[SP_WR_LEN_REG]);
     PUTDATA(curr, uint32_t, 0); /* Padding from old implementation */
-    PUTDATA(curr, uint32_t, g_sp_regs[SP_STATUS_REG]);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x1) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x2) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x4) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x8) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x10) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x20) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x40) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x80) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x100) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x200) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x400) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x800) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x1000) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x2000) != 0);
-    PUTDATA(curr, uint8_t, (g_sp_regs[SP_STATUS_REG] & 0x4000) != 0);
+    PUTDATA(curr, uint32_t, g_sp.regs[SP_STATUS_REG]);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x1) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x2) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x4) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x8) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x10) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x20) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x40) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x80) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x100) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x200) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x400) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x800) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x1000) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x2000) != 0);
+    PUTDATA(curr, uint8_t, (g_sp.regs[SP_STATUS_REG] & 0x4000) != 0);
     PUTDATA(curr, uint8_t, 0);
-    PUTDATA(curr, uint32_t, g_sp_regs[SP_DMA_FULL_REG]);
-    PUTDATA(curr, uint32_t, g_sp_regs[SP_DMA_BUSY_REG]);
-    PUTDATA(curr, uint32_t, g_sp_regs[SP_SEMAPHORE_REG]);
+    PUTDATA(curr, uint32_t, g_sp.regs[SP_DMA_FULL_REG]);
+    PUTDATA(curr, uint32_t, g_sp.regs[SP_DMA_BUSY_REG]);
+    PUTDATA(curr, uint32_t, g_sp.regs[SP_SEMAPHORE_REG]);
 
-    PUTDATA(curr, uint32_t, g_sp_regs2[SP_PC_REG]);
-    PUTDATA(curr, uint32_t, g_sp_regs2[SP_IBIST_REG]);
+    PUTDATA(curr, uint32_t, g_sp.regs2[SP_PC_REG]);
+    PUTDATA(curr, uint32_t, g_sp.regs2[SP_IBIST_REG]);
 
     PUTDATA(curr, uint32_t, g_si_regs[SI_DRAM_ADDR_REG]);
     PUTDATA(curr, uint32_t, g_si_regs[SI_PIF_ADDR_RD64B_REG]);
@@ -474,7 +475,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     PUTDATA(curr, uint32_t, g_dps_regs[DPS_BUFTEST_DATA_REG]);
 
     PUTARRAY(g_rdram, curr, uint32_t, RDRAM_MAX_SIZE/4);
-    PUTARRAY(g_sp_mem, curr, uint32_t, SP_MEM_SIZE/4);
+    PUTARRAY(g_sp.mem, curr, uint32_t, SP_MEM_SIZE/4);
     PUTARRAY(g_pif_ram, curr, uint8_t, PIF_RAM_SIZE);
 
     PUTDATA(curr, int, flashram_info.use_flashram);

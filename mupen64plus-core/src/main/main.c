@@ -57,6 +57,7 @@
 #include "r4300/interupt.h"
 #include "r4300/reset.h"
 #include "ri/ri_controller.h"
+#include "rsp/rsp_core.h"
 #include "vi/vi_controller.h"
 
 #ifdef DBG
@@ -80,6 +81,7 @@ struct ai_controller g_ai;
 struct ri_controller g_ri;
 struct vi_controller g_vi;
 struct r4300_core g_r4300;
+struct rsp_core g_sp;
 
 /** static (local) variables **/
 static int   l_CurrentFrame = 0;         // frame counter
@@ -247,12 +249,14 @@ void main_exit(void)
 
 static void connect_all(
       struct r4300_core *r4300,
+      struct rsp_core* sp,
       struct ai_controller* ai,
       struct ri_controller* ri,
       struct vi_controller* vi,
       uint32_t* dram,
       size_t dram_size)
 {
+   connect_rsp(sp, r4300, ri);
    connect_ai(ai, r4300, vi);
    connect_ri(ri, dram, dram_size);
    connect_vi(vi, r4300);
@@ -282,7 +286,7 @@ m64p_error main_init(void)
         g_MemHasBeenBSwapped = 1;
     }
 
-    connect_all(&g_r4300, &g_ai, &g_ri, &g_vi, g_rdram, RDRAM_MAX_SIZE);
+    connect_all(&g_r4300, &g_sp, &g_ai, &g_ri, &g_vi, g_rdram, RDRAM_MAX_SIZE);
 
     init_memory();
 
