@@ -39,10 +39,6 @@ extern uint32_t VI_REFRESH;
 #define write_hword_in_memory() writememh[address >>16]()
 #define write_dword_in_memory() writememd[address >>16]()
 
-enum { PIF_RAM_SIZE = 0x40 };
-
-extern uint8_t g_pif_ram[PIF_RAM_SIZE];
-
 typedef struct _save_memory_data
 {
     uint8_t eeprom[0x200];

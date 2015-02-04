@@ -487,7 +487,7 @@ void gen_interupt(void)
          break;
 
       case SI_INT:
-         g_pif_ram[0x3F] = 0x0;
+         g_si.pif.ram[0x3F] = 0x0;
          remove_interupt_event();
          g_r4300.mi.regs[MI_INTR_REG] |= 0x02;
          g_si.regs[SI_STATUS_REG] |= 0x1000;
