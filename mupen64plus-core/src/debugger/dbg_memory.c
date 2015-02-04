@@ -37,6 +37,7 @@
 #include "r4300/ops.h"
 #include "r4300/tlb.h"
 #include "ri/ri_controller.h"
+#include "vi/vi_controller.h"
  
 #if !defined(NO_ASM) && (defined(__i386__) || defined(__x86_64__))
 
@@ -318,9 +319,9 @@ uint32 read_memory_32(uint32 addr){
         return *(readdps[addrlow&0xfffc]);
       break;
     case M64P_MEM_VI:
-      offset = (addr & 0xffff) >> 2;
+      offset = vi_reg(addr);
       if (offset < VI_REGS_COUNT)
-         return g_vi_regs[offset];
+         return g_vi.regs[offset];
       break;
     case M64P_MEM_AI:
       offset = (addr & 0xffff) >> 2;

@@ -1,8 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - main.h                                                  *
+ *   Mupen64plus - vi_controller.h                                         *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2012 CasualJames                                        *
- *   Copyright (C) 2002 Blight                                             *
+ *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -20,55 +19,51 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __MAIN_H__
-#define __MAIN_H__
-
-#include "api/m64p_types.h"
-#include "osal/preproc.h"
+#ifndef M64P_VI_VI_CONTROLLER_H
+#define M64P_VI_VI_CONTROLLER_H
 
 #include <stdint.h>
 
 struct r4300_core;
-struct ri_controller;
-struct vi_controller;
 
-enum { RDRAM_MAX_SIZE = 0x800000 };
+enum vi_registers
+{
+    VI_STATUS_REG,
+    VI_ORIGIN_REG,
+    VI_WIDTH_REG,
+    VI_V_INTR_REG,
+    VI_CURRENT_REG,
+    VI_BURST_REG,
+    VI_V_SYNC_REG,
+    VI_H_SYNC_REG,
+    VI_LEAP_REG,
+    VI_H_START_REG,
+    VI_V_START_REG,
+    VI_V_BURST_REG,
+    VI_X_SCALE_REG,
+    VI_Y_SCALE_REG,
+    VI_REGS_COUNT
+};
 
-/* globals */
-extern m64p_handle g_CoreConfig;
+struct vi_controller
+{
+    uint32_t regs[VI_REGS_COUNT];
+    unsigned int delay;
 
-extern int g_MemHasBeenBSwapped;
-extern int g_EmulatorRunning;
+    struct r4300_core* r4300;
+};
 
-extern ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
+static inline uint32_t vi_reg(uint32_t address)
+{
+    return (address & 0xffff) >> 2;
+}
 
-extern struct ri_controller g_ri;
-extern struct vi_controller g_vi;
+void connect_vi(struct vi_controller* vi,
+                struct r4300_core* r4300);
 
-extern struct r4300_core g_r4300;
+void init_vi(struct vi_controller* vi);
 
-extern m64p_frame_callback g_FrameCallback;
+int read_vi_regs(void* opaque, uint32_t address, uint32_t* value);
+int write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
-extern int delay_si;
-
-void new_frame(void);
-
-int  main_set_core_defaults(void);
-void main_message(m64p_msg_level level, unsigned int osd_corner, const char *format, ...);
-
-m64p_error main_init(void);
-m64p_error main_run(void);
-void main_exit(void);
-void main_stop(void);
-void main_toggle_pause(void);
-void main_advance_one(void);
-
-m64p_error main_core_state_query(m64p_core_param param, int *rval);
-m64p_error main_core_state_set(m64p_core_param param, int val);
-
-m64p_error main_read_screen(void *pixels, int bFront);
-
-m64p_error main_reset(int do_hard_reset);
-
-#endif /* __MAIN_H__ */
-
+#endif
