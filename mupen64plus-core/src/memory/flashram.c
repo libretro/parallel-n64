@@ -38,18 +38,9 @@
 Flashram_info flashram_info;
 save_memory_data saved_memory;
 
-typedef enum flashram_mode
-{
-    NOPES_MODE = 0,
-    ERASE_MODE,
-    WRITE_MODE,
-    READ_MODE,
-    STATUS_MODE
-} Flashram_mode;
-
 void init_flashram(void)
 {
-   flashram_info.mode = NOPES_MODE;
+   flashram_info.mode = FLASHRAM_MODE_NOPES;
    flashram_info.status = 0;
 }
 
@@ -66,7 +57,7 @@ void flashram_command(uint32_t command)
          flashram_info.erase_offset = (command & 0xffff) * 128;
          break;
       case 0x78000000:
-         flashram_info.mode = ERASE_MODE;
+         flashram_info.mode = FLASHRAM_MODE_ERASE;
          flashram_info.status = 0x1111800800c20000LL;
          break;
       case 0xa5000000:
@@ -74,15 +65,15 @@ void flashram_command(uint32_t command)
          flashram_info.status = 0x1111800400c20000LL;
          break;
       case 0xb4000000:
-         flashram_info.mode = WRITE_MODE;
+         flashram_info.mode = FLASHRAM_MODE_WRITE;
          break;
       case 0xd2000000:  // execute
          switch (flashram_info.mode)
          {
-            case NOPES_MODE:
-            case READ_MODE:
+            case FLASHRAM_MODE_NOPES:
+            case FLASHRAM_MODE_READ:
                break;
-            case ERASE_MODE:
+            case FLASHRAM_MODE_ERASE:
                {
                   uint32_t i;
                   for (i=flashram_info.erase_offset; i<(flashram_info.erase_offset+128); i++)
@@ -91,7 +82,7 @@ void flashram_command(uint32_t command)
                   }
                }
                break;
-            case WRITE_MODE:
+            case FLASHRAM_MODE_WRITE:
                {
                   int i;
                   for (i=0; i<128; i++)
@@ -101,21 +92,21 @@ void flashram_command(uint32_t command)
                   }
                }
                break;
-            case STATUS_MODE:
+            case FLASHRAM_MODE_STATUS:
                break;
             default:
                DebugMessage(M64MSG_WARNING, "unknown flashram command with mode:%x", (int)flashram_info.mode);
                stop=1;
                break;
          }
-         flashram_info.mode = NOPES_MODE;
+         flashram_info.mode = FLASHRAM_MODE_NOPES;
          break;
       case 0xe1000000:
-         flashram_info.mode = STATUS_MODE;
+         flashram_info.mode = FLASHRAM_MODE_STATUS;
          flashram_info.status = 0x1111800100c20000LL;
          break;
       case 0xf0000000:
-         flashram_info.mode = READ_MODE;
+         flashram_info.mode = FLASHRAM_MODE_READ;
          flashram_info.status = 0x11118004f0000000LL;
          break;
       default:
@@ -130,11 +121,11 @@ void dma_read_flashram(void)
 
    switch (flashram_info.mode)
    {
-      case STATUS_MODE:
+      case FLASHRAM_MODE_STATUS:
          g_rdram[g_pi.regs[PI_DRAM_ADDR_REG]/4] = (uint32_t)(flashram_info.status >> 32);
          g_rdram[g_pi.regs[PI_DRAM_ADDR_REG]/4+1] = (uint32_t)(flashram_info.status);
          break;
-      case READ_MODE:
+      case FLASHRAM_MODE_READ:
          for (i=0; i<(g_pi.regs[PI_WR_LEN_REG] & 0x0FFFFFF)+1; i++)
          {
             ((uint8_t*)g_rdram)[(g_pi.regs[PI_DRAM_ADDR_REG]+i)^S8]=
@@ -152,7 +143,7 @@ void dma_write_flashram(void)
 {
    switch (flashram_info.mode)
    {
-      case WRITE_MODE:
+      case FLASHRAM_MODE_WRITE:
          flashram_info.write_pointer = g_pi.regs[PI_DRAM_ADDR_REG];
          break;
       default:
