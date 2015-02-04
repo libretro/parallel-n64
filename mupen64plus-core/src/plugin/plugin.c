@@ -26,10 +26,11 @@
 #include "plugin.h"
 
 #include "r4300/r4300_core.h"
-#include "rsp/rsp_core.h"
+#include "../rdp/rdp_core.h"
+#include "../rsp/rsp_core.h"
 
-#include "ai/ai_controller.h"
-#include "vi/vi_controller.h"
+#include "../ai/ai_controller.h"
+#include "../vi/vi_controller.h"
 
 #include "api/callbacks.h"
 #include "api/m64p_common.h"
@@ -109,14 +110,14 @@ static m64p_error plugin_start_gfx(void)
    gfx_info.DMEM = (unsigned char *) g_sp.mem;
    gfx_info.IMEM = (unsigned char *) g_sp.mem + 0x1000;
    gfx_info.MI_INTR_REG = &(g_r4300.mi.regs[MI_INTR_REG]);
-   gfx_info.DPC_START_REG = &(g_dpc_regs[DPC_START_REG]);
-   gfx_info.DPC_END_REG = &(g_dpc_regs[DPC_END_REG]);
-   gfx_info.DPC_CURRENT_REG = &(g_dpc_regs[DPC_CURRENT_REG]);
-   gfx_info.DPC_STATUS_REG = &(g_dpc_regs[DPC_STATUS_REG]);
-   gfx_info.DPC_CLOCK_REG = &(g_dpc_regs[DPC_CLOCK_REG]);
-   gfx_info.DPC_BUFBUSY_REG = &(g_dpc_regs[DPC_BUFBUSY_REG]);
-   gfx_info.DPC_PIPEBUSY_REG = &(g_dpc_regs[DPC_PIPEBUSY_REG]);
-   gfx_info.DPC_TMEM_REG = &(g_dpc_regs[DPC_TMEM_REG]);
+   gfx_info.DPC_START_REG = &(g_dp.dpc_regs[DPC_START_REG]);
+   gfx_info.DPC_END_REG = &(g_dp.dpc_regs[DPC_END_REG]);
+   gfx_info.DPC_CURRENT_REG = &(g_dp.dpc_regs[DPC_CURRENT_REG]);
+   gfx_info.DPC_STATUS_REG = &(g_dp.dpc_regs[DPC_STATUS_REG]);
+   gfx_info.DPC_CLOCK_REG = &(g_dp.dpc_regs[DPC_CLOCK_REG]);
+   gfx_info.DPC_BUFBUSY_REG = &(g_dp.dpc_regs[DPC_BUFBUSY_REG]);
+   gfx_info.DPC_PIPEBUSY_REG = &(g_dp.dpc_regs[DPC_PIPEBUSY_REG]);
+   gfx_info.DPC_TMEM_REG = &(g_dp.dpc_regs[DPC_TMEM_REG]);
    gfx_info.VI_STATUS_REG = &(g_vi.regs[VI_STATUS_REG]);
    gfx_info.VI_ORIGIN_REG = &(g_vi.regs[VI_ORIGIN_REG]);
    gfx_info.VI_WIDTH_REG = &(g_vi.regs[VI_WIDTH_REG]);
@@ -281,14 +282,14 @@ static m64p_error plugin_start_rsp(void)
    rsp_info.SP_DMA_BUSY_REG = &g_sp.regs[SP_DMA_BUSY_REG];
    rsp_info.SP_PC_REG = &g_sp.regs2[SP_PC_REG];
    rsp_info.SP_SEMAPHORE_REG = &g_sp.regs[SP_SEMAPHORE_REG];
-   rsp_info.DPC_START_REG = &g_dpc_regs[DPC_START_REG];
-   rsp_info.DPC_END_REG = &g_dpc_regs[DPC_END_REG];
-   rsp_info.DPC_CURRENT_REG = &g_dpc_regs[DPC_CURRENT_REG];
-   rsp_info.DPC_STATUS_REG = &g_dpc_regs[DPC_STATUS_REG];
-   rsp_info.DPC_CLOCK_REG = &g_dpc_regs[DPC_CLOCK_REG];
-   rsp_info.DPC_BUFBUSY_REG = &g_dpc_regs[DPC_BUFBUSY_REG];
-   rsp_info.DPC_PIPEBUSY_REG = &g_dpc_regs[DPC_PIPEBUSY_REG];
-   rsp_info.DPC_TMEM_REG = &g_dpc_regs[DPC_TMEM_REG];
+   rsp_info.DPC_START_REG = &g_dp.dpc_regs[DPC_START_REG];
+   rsp_info.DPC_END_REG = &g_dp.dpc_regs[DPC_END_REG];
+   rsp_info.DPC_CURRENT_REG = &g_dp.dpc_regs[DPC_CURRENT_REG];
+   rsp_info.DPC_STATUS_REG = &g_dp.dpc_regs[DPC_STATUS_REG];
+   rsp_info.DPC_CLOCK_REG = &g_dp.dpc_regs[DPC_CLOCK_REG];
+   rsp_info.DPC_BUFBUSY_REG = &g_dp.dpc_regs[DPC_BUFBUSY_REG];
+   rsp_info.DPC_PIPEBUSY_REG = &g_dp.dpc_regs[DPC_PIPEBUSY_REG];
+   rsp_info.DPC_TMEM_REG = &g_dp.dpc_regs[DPC_TMEM_REG];
    rsp_info.CheckInterrupts = EmptyFunc;
    rsp_info.ProcessDlistList = gfx.processDList;
    rsp_info.ProcessAlistList = audio.processAList;

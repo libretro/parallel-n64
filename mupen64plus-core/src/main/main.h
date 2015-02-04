@@ -49,7 +49,9 @@ extern struct ri_controller g_ri;
 extern struct vi_controller g_vi;
 
 extern struct r4300_core g_r4300;
+extern struct rdp_core g_dp;
 extern struct rsp_core g_sp;
+
 
 extern m64p_frame_callback g_FrameCallback;
 
