@@ -32,8 +32,6 @@
 #include "../r4300/cp0.h"
 #include "../si/si_controller.h"
 
-int32_t delay_si = 0;
-
 void dma_si_write(void)
 {
    int32_t i;
@@ -51,7 +49,7 @@ void dma_si_write(void)
 
    update_count();
 
-   if (delay_si)
+   if (g_delay_si)
       add_interupt_event(SI_INT, /*0x100*/0x900);
    else
    {
@@ -78,7 +76,7 @@ void dma_si_read(void)
 
    update_count();
 
-   if (delay_si)
+   if (g_delay_si)
       add_interupt_event(SI_INT, /*0x100*/0x900);
    else
    {

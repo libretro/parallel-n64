@@ -89,6 +89,8 @@ struct r4300_core g_r4300;
 struct rdp_core g_dp;
 struct rsp_core g_sp;
 
+int g_delay_si = 0;
+
 /** static (local) variables **/
 static int   l_CurrentFrame = 0;         // frame counter
 

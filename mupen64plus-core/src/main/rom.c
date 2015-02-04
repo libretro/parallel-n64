@@ -251,14 +251,14 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     if (frame_dupe)
        count_per_op = 1;
 
-    delay_si = 1; /* default */
+    g_delay_si = 1; /* default */
 
     for (i = 0; i < sizeof(lut_delaysi)/sizeof(lut_delaysi[0]); ++i)
     {
         if (lut_delaysi[i][0] == lut_id)
         {
-            delay_si = lut_delaysi[i][1];
-            DebugMessage(M64MSG_INFO, "DelaySI set to %u.", delay_si);
+            g_delay_si = lut_delaysi[i][1];
+            DebugMessage(M64MSG_INFO, "DelaySI set to %u.", g_delay_si);
             break;
         }
     }

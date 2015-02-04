@@ -59,7 +59,7 @@ extern struct rsp_core g_sp;
 
 extern m64p_frame_callback g_FrameCallback;
 
-extern int delay_si;
+extern int g_delay_si;
 
 void new_frame(void);
 
