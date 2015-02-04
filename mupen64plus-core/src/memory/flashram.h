@@ -40,6 +40,7 @@ enum flashram_mode
 
 typedef struct _flashram_info
 {
+   uint8_t mem[FLASHRAM_SIZE];
 	int32_t use_flashram;
 	enum flashram_mode mode;
 	uint64_t status;

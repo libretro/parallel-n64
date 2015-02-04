@@ -38,6 +38,16 @@
 Flashram_info flashram_info;
 save_memory_data saved_memory;
 
+static int flashram_inited = 0;
+
+static void flashram_format(uint8_t *mem)
+{
+   if (flashram_inited != 0)
+      return;
+   memset(mem, 0xff, FLASHRAM_SIZE);
+   flashram_inited = 1;
+}
+
 void init_flashram(void)
 {
    flashram_info.mode = FLASHRAM_MODE_NOPES;
@@ -78,7 +88,7 @@ void flashram_command(uint32_t command)
                   uint32_t i;
                   for (i=flashram_info.erase_offset; i<(flashram_info.erase_offset+128); i++)
                   {
-                     saved_memory.flashram[i^S8] = 0xff;
+                     flashram_info.mem[i^S8] = 0xff;
                   }
                }
                break;
@@ -87,7 +97,7 @@ void flashram_command(uint32_t command)
                   int i;
                   for (i=0; i<128; i++)
                   {
-                     saved_memory.flashram[(flashram_info.erase_offset+i)^S8]=
+                     flashram_info.mem[(flashram_info.erase_offset+i)^S8]=
                         ((uint8_t*)g_rdram)[(flashram_info.write_pointer+i)^S8];
                   }
                }
@@ -119,6 +129,8 @@ void dma_read_flashram(void)
 {
    uint32_t i;
 
+   flashram_format(&flashram_info.mem);
+
    switch (flashram_info.mode)
    {
       case FLASHRAM_MODE_STATUS:
@@ -129,7 +141,7 @@ void dma_read_flashram(void)
          for (i=0; i<(g_pi.regs[PI_WR_LEN_REG] & 0x0FFFFFF)+1; i++)
          {
             ((uint8_t*)g_rdram)[(g_pi.regs[PI_DRAM_ADDR_REG]+i)^S8]=
-               saved_memory.flashram[(((g_pi.regs[PI_CART_ADDR_REG]-0x08000000)&0xFFFF)*2+i)^S8];
+               flashram_info.mem[(((g_pi.regs[PI_CART_ADDR_REG]-0x08000000)&0xFFFF)*2+i)^S8];
          }
          break;
       default:
@@ -141,6 +153,8 @@ void dma_read_flashram(void)
 
 void dma_write_flashram(void)
 {
+   flashram_format(&flashram_info.mem);
+
    switch (flashram_info.mode)
    {
       case FLASHRAM_MODE_WRITE:
