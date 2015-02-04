@@ -644,20 +644,20 @@ int init_memory(void)
 
    /* map cart ROM */
 
-   for(i = 0; i < (rom_size >> 16); ++i)
+   for(i = 0; i < (g_rom_size >> 16); ++i)
    {
       map_region(0x9000+i, M64P_MEM_ROM, R(rom), W(nothing));
       map_region(0xb000+i, M64P_MEM_ROM, R(rom),
             write_nothingb, write_nothingh, write_rom, write_nothingd);
    }
-   for(i = (rom_size >> 16); i < 0xfc0; ++i)
+   for(i = (g_rom_size >> 16); i < 0xfc0; ++i)
    {
       map_region(0x9000+i, M64P_MEM_NOTHING, RW(nothing));
       map_region(0xb000+i, M64P_MEM_NOTHING, RW(nothing));
    }
 
    /* init CIC type */
-   g_cic_type = detect_cic_type(rom + 0x40);
+   g_cic_type = detect_cic_type(g_rom + 0x40);
 
    /* init PIF_RAM */
    memset(g_pif_ram, 0, PIF_RAM_SIZE);
@@ -1501,57 +1501,29 @@ static void write_pi_flashram_commandd(void)
    writed(write_flashram_command, NULL, address, dword);
 }
 
-static uint32_t lastwrite = 0;
-
-static INLINE uint32_t rom_address(uint32_t address)
-{
-   return (address & 0x03fffffc);
-}
-
-static int read_cart_rom(void *opaque, uint32_t address, uint32_t* value)
-{
-   uint32_t addr = rom_address(address);
-   if (lastwrite)
-   {
-      *value = lastwrite;
-      lastwrite = 0;
-   }
-   else
-   {
-      *value = *(uint32_t*)(rom + addr);
-   }
-   return 0;
-}
-
-static int write_cart_rom(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
-{
-   lastwrite = value & mask;
-   return 0;
-}
-
 static void read_rom(void)
 {
-   readw(read_cart_rom, NULL, address, rdword);
+   readw(read_cart_rom, &g_pi, address, rdword);
 }
 
 static void read_romb(void)
 {
-   readb(read_cart_rom, NULL, address, rdword);
+   readb(read_cart_rom, &g_pi, address, rdword);
 }
 
 static void read_romh(void)
 {
-   readh(read_cart_rom, NULL, address, rdword);
+   readh(read_cart_rom, &g_pi, address, rdword);
 }
 
 static void read_romd(void)
 {
-   readd(read_cart_rom, NULL, address, rdword);
+   readd(read_cart_rom, &g_pi, address, rdword);
 }
 
 static void write_rom(void)
 {
-   writew(write_cart_rom, NULL, address, word);
+   writew(write_cart_rom, &g_pi, address, word);
 }
 
 static INLINE uint32_t pif_ram_address(uint32_t address)
@@ -1707,7 +1679,7 @@ uint32_t *fast_mem_access(uint32_t address)
    if (address < RDRAM_MAX_SIZE)
       return (unsigned int*)((unsigned char*)g_rdram + address);
    else if (address >= 0x10000000)
-      return (unsigned int*)((unsigned char*)rom + address - 0x10000000);
+      return (unsigned int*)((unsigned char*)g_rom + address - 0x10000000);
    else if ((address & 0xffffe000) == 0x04000000)
       return (unsigned int*)((unsigned char*)g_sp.mem + (address & 0x1ffc));
    return NULL;

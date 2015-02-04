@@ -22,7 +22,10 @@
 #ifndef M64P_PI_PI_CONTROLLER_H
 #define M64P_PI_PI_CONTROLLER_H
 
+#include <stddef.h>
 #include <stdint.h>
+
+#include "cart_rom.h"
 
 struct r4300_core;
 
@@ -48,6 +51,8 @@ struct pi_controller
 {
     uint32_t regs[PI_REGS_COUNT];
 
+    struct cart_rom cart_rom;
+
     struct r4300_core* r4300;
 };
 
@@ -58,7 +63,8 @@ static inline uint32_t pi_reg(uint32_t address)
 
 
 void connect_pi(struct pi_controller* pi,
-                struct r4300_core* r4300);
+                struct r4300_core* r4300,
+                uint8_t *rom, size_t rom_size);
 
 void init_pi(struct pi_controller* pi);
 

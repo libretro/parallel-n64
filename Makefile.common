@@ -78,6 +78,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/rsp/rsp_core.c \
 	$(CORE_DIR)/src/ai/ai_controller.c \
 	$(CORE_DIR)/src/pi/pi_controller.c \
+	$(CORE_DIR)/src/pi/cart_rom.c \
 	$(CORE_DIR)/src/r4300/interupt.c \
 	$(CORE_DIR)/src/r4300/tlb.c \
 	$(CORE_DIR)/src/r4300/cp0.c \

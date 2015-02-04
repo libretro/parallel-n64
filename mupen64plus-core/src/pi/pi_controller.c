@@ -30,9 +30,11 @@
 #include <string.h>
 
 void connect_pi(struct pi_controller* pi,
-                struct r4300_core* r4300)
+                struct r4300_core* r4300,
+                uint8_t *rom, size_t rom_size)
 {
-    pi->r4300 = r4300;
+   connect_cart_rom(&pi->cart_rom, rom, rom_size);
+   pi->r4300 = r4300;
 }
 
 void init_pi(struct pi_controller* pi)
