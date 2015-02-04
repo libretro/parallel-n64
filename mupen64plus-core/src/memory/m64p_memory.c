@@ -26,7 +26,6 @@
 #include "api/m64p_types.h"
 
 #include "memory.h"
-#include "pif.h"
 
 #include "r4300/r4300.h"
 #include "r4300/r4300_core.h"
@@ -47,6 +46,7 @@
 #include "rdp/rdp_core.h"
 #include "ri/ri_controller.h"
 #include "rsp/rsp_core.h"
+#include "si/pif.h"
 #include "si/si_controller.h"
 #include "vi/vi_controller.h"
 
