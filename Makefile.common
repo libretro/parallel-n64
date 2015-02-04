@@ -63,6 +63,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/memory/n64_cic_nus_6105.c \
 	$(CORE_DIR)/src/memory/pif.c \
 	$(CORE_DIR)/src/plugin/plugin.c \
+	$(CORE_DIR)/src/r4300/mi_controller.c \
 	$(CORE_DIR)/src/r4300/profile.c \
 	$(CORE_DIR)/src/r4300/recomp.c \
 	$(CORE_DIR)/src/r4300/exception.c \
@@ -75,6 +76,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/r4300/tlb.c \
 	$(CORE_DIR)/src/r4300/cp0.c \
 	$(CORE_DIR)/src/r4300/cp1.c \
+	$(CORE_DIR)/src/r4300/r4300_core.c \
 	$(CORE_DIR)/src/r4300/r4300.c
 
 #	$(CORE_DIR)/src/api/debugger.c \

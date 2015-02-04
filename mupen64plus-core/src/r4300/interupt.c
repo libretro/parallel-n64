@@ -36,6 +36,7 @@
 
 #include "interupt.h"
 #include "r4300.h"
+#include "r4300_core.h"
 #include "cached_interp.h"
 #include "cp0.h"
 #include "exception.h"
@@ -355,7 +356,7 @@ void check_interupt(void)
 {
    struct node *event;
 
-   if (g_mi_regs[MI_INTR_REG] & g_mi_regs[MI_INTR_REG])
+   if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_REG])
       g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
    else
       g_cp0_regs[CP0_CAUSE_REG] &= ~0x400;
@@ -452,8 +453,8 @@ void gen_interupt(void)
          remove_interupt_event();
          add_interupt_event_count(VI_INT, next_vi);
 
-         g_mi_regs[MI_INTR_REG] |= 0x08;
-         if (g_mi_regs[MI_INTR_REG] & g_mi_regs[MI_INTR_MASK_REG])
+         g_r4300.mi.regs[MI_INTR_REG] |= 0x08;
+         if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
          else
             return;
@@ -482,10 +483,10 @@ void gen_interupt(void)
       case SI_INT:
          g_pif_ram[0x3F] = 0x0;
          remove_interupt_event();
-         g_mi_regs[MI_INTR_REG] |= 0x02;
+         g_r4300.mi.regs[MI_INTR_REG] |= 0x02;
          g_si_regs[SI_STATUS_REG] |= 0x1000;
 
-         if (g_mi_regs[MI_INTR_REG] & g_mi_regs[MI_INTR_MASK_REG])
+         if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
          else
             return;
@@ -495,9 +496,9 @@ void gen_interupt(void)
 
       case PI_INT:
          remove_interupt_event();
-         g_mi_regs[MI_INTR_REG] |= 0x10;
+         g_r4300.mi.regs[MI_INTR_REG] |= 0x10;
          g_pi_regs[PI_STATUS_REG] &= ~3;
-         if (g_mi_regs[MI_INTR_REG] & g_mi_regs[MI_INTR_MASK_REG])
+         if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
          else
             return;
@@ -515,8 +516,8 @@ void gen_interupt(void)
             g_ai_fifo[0].length = g_ai_fifo[1].length;
             add_interupt_event_count(AI_INT, ai_event + g_ai_fifo[1].delay);
 
-            g_mi_regs[MI_INTR_REG] |= 0x04;
-            if (g_mi_regs[MI_INTR_REG] & g_mi_regs[MI_INTR_MASK_REG])
+            g_r4300.mi.regs[MI_INTR_REG] |= 0x04;
+            if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
                g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
             else
                return;
@@ -529,8 +530,8 @@ void gen_interupt(void)
             g_ai_regs[AI_STATUS_REG] &= ~0x40000000;
 
             //-------
-            g_mi_regs[MI_INTR_REG] |= 0x04;
-            if (g_mi_regs[MI_INTR_REG] & g_mi_regs[MI_INTR_MASK_REG])
+            g_r4300.mi.regs[MI_INTR_REG] |= 0x04;
+            if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
                g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
             else
                return;
@@ -545,8 +546,8 @@ void gen_interupt(void)
          // g_sp_regs[SP_STATUS_REG] |= 0x303;
 
          if (!(g_sp_regs[SP_STATUS_REG] & 0x40)) return; // !intr_on_break
-         g_mi_regs[MI_INTR_REG] |= 0x01;
-         if (g_mi_regs[MI_INTR_REG] & g_mi_regs[MI_INTR_MASK_REG])
+         g_r4300.mi.regs[MI_INTR_REG] |= 0x01;
+         if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
          else
             return;
@@ -558,8 +559,8 @@ void gen_interupt(void)
          remove_interupt_event();
          g_dpc_regs[DPC_STATUS_REG] &= ~2;
          g_dpc_regs[DPC_STATUS_REG] |= 0x81;
-         g_mi_regs[MI_INTR_REG] |= 0x20;
-         if (g_mi_regs[MI_INTR_REG] & g_mi_regs[MI_INTR_MASK_REG])
+         g_r4300.mi.regs[MI_INTR_REG] |= 0x20;
+         if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
          else
             return;

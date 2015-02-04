@@ -31,6 +31,7 @@
 #include "flashram.h"
 
 #include "r4300/r4300.h"
+#include "r4300/r4300_core.h"
 #include "r4300/cached_interp.h"
 #include "r4300/cp0.h"
 #include "r4300/interupt.h"
@@ -204,7 +205,6 @@ static void write_ddh(void);
 static void write_ddd(void);
 
 /* definitions of the rcp's structures and memory area */
-uint32_t g_mi_regs[MI_REGS_COUNT];
 uint32_t g_pi_regs[PI_REGS_COUNT];
 uint32_t g_sp_regs[SP_REGS_COUNT];
 uint32_t g_sp_regs2[SP_REGS2_COUNT];
@@ -596,10 +596,6 @@ int init_memory(void)
       map_region(0xa420+i, M64P_MEM_NOTHING, RW(nothing));
    }
 
-   /* init MI registers */
-   memset(g_mi_regs, 0, MI_REGS_COUNT*sizeof(g_mi_regs[0]));
-   g_mi_regs[MI_VERSION_REG] = 0x02020102;
-
    /* map MI registers */
    map_region(0x8430, M64P_MEM_MI, RW(mi));
    map_region(0xa430, M64P_MEM_MI, RW(mi));
@@ -728,6 +724,7 @@ int init_memory(void)
    fast_memory = 1;
    firstFrameBufferSetting = 1;
 
+   init_r4300(&g_r4300);
    init_ri(&g_ri);
 
    DebugMessage(M64MSG_VERBOSE, "Memory initialized");
@@ -816,45 +813,6 @@ void map_region(uint16_t region,
    map_region_t(region, type);
    map_region_r(region, read8, read16, read32, read64);
    map_region_w(region, write8, write16, write32, write64);
-}
-
-static void update_MI_init_mode_reg(uint32_t w)
-{
-   g_mi_regs[MI_INIT_MODE_REG] &= ~0x7F; // init_length
-   g_mi_regs[MI_INIT_MODE_REG] |= w & 0x7F;
-   if (w & 0x80) // clear init_mode
-      g_mi_regs[MI_INIT_MODE_REG] &= ~0x80;
-   if (w & 0x100) // set init_mode
-      g_mi_regs[MI_INIT_MODE_REG] |= 0x80;
-   if (w & 0x200) // clear ebus_test_mode
-      g_mi_regs[MI_INIT_MODE_REG] &= ~0x100;
-   if (w & 0x400) // set ebus_test_mode
-      g_mi_regs[MI_INIT_MODE_REG] |= 0x100;
-   if (w & 0x800) // clear DP interupt
-   {
-      g_mi_regs[MI_INTR_REG] &= ~0x20;
-      check_interupt();
-   }
-   if (w & 0x1000) // clear RDRAM_reg_mode
-      g_mi_regs[MI_INIT_MODE_REG] &= ~0x200;
-   if (w & 0x2000) // set RDRAM_reg_mode
-      g_mi_regs[MI_INIT_MODE_REG] |= 0x200;
-}
-
-static void update_MI_intr_mask_reg(uint32_t w)
-{
-   if (w & 0x1) g_mi_regs[MI_INTR_MASK_REG] &= ~0x1; // clear SP mask
-   if (w & 0x2) g_mi_regs[MI_INTR_MASK_REG] |= 0x1; // set SP mask
-   if (w & 0x4) g_mi_regs[MI_INTR_MASK_REG] &= ~0x2; // clear SI mask
-   if (w & 0x8) g_mi_regs[MI_INTR_MASK_REG] |= 0x2; // set SI mask
-   if (w & 0x10) g_mi_regs[MI_INTR_MASK_REG] &= ~0x4; // clear AI mask
-   if (w & 0x20) g_mi_regs[MI_INTR_MASK_REG] |= 0x4; // set AI mask
-   if (w & 0x40) g_mi_regs[MI_INTR_MASK_REG] &= ~0x8; // clear VI mask
-   if (w & 0x80) g_mi_regs[MI_INTR_MASK_REG] |= 0x8; // set VI mask
-   if (w & 0x100) g_mi_regs[MI_INTR_MASK_REG] &= ~0x10; // clear PI mask
-   if (w & 0x200) g_mi_regs[MI_INTR_MASK_REG] |= 0x10; // set PI mask
-   if (w & 0x400) g_mi_regs[MI_INTR_MASK_REG] &= ~0x20; // clear DP mask
-   if (w & 0x800) g_mi_regs[MI_INTR_MASK_REG] |= 0x20; // set DP mask
 }
 
 static void protect_framebuffers(void)
@@ -954,11 +912,11 @@ static void do_SP_Task(void)
       new_frame();
 
       update_count();
-      if (g_mi_regs[MI_INTR_REG] & 0x1)
+      if (g_r4300.mi.regs[MI_INTR_REG] & 0x1)
          add_interupt_event(SP_INT, 1000);
-      if (g_mi_regs[MI_INTR_REG] & 0x20)
+      if (g_r4300.mi.regs[MI_INTR_REG] & 0x20)
          add_interupt_event(DP_INT, 1000);
-      g_mi_regs[MI_INTR_REG] &= ~0x21;
+      g_r4300.mi.regs[MI_INTR_REG] &= ~0x21;
       g_sp_regs[SP_STATUS_REG] &= ~0x303;
 
       protect_framebuffers();
@@ -973,9 +931,9 @@ static void do_SP_Task(void)
       g_sp_regs2[SP_PC_REG] |= save_pc;
 
       update_count();
-      if (g_mi_regs[MI_INTR_REG] & 0x1)
+      if (g_r4300.mi.regs[MI_INTR_REG] & 0x1)
          add_interupt_event(SP_INT, 4000/*500*/);
-      g_mi_regs[MI_INTR_REG] &= ~0x1;
+      g_r4300.mi.regs[MI_INTR_REG] &= ~0x1;
       g_sp_regs[SP_STATUS_REG] &= ~0x303;
 
    }
@@ -986,9 +944,9 @@ static void do_SP_Task(void)
       g_sp_regs2[SP_PC_REG] |= save_pc;
 
       update_count();
-      if (g_mi_regs[MI_INTR_REG] & 0x1)
+      if (g_r4300.mi.regs[MI_INTR_REG] & 0x1)
          add_interupt_event(SP_INT, 0/*100*/);
-      g_mi_regs[MI_INTR_REG] &= ~0x1;
+      g_r4300.mi.regs[MI_INTR_REG] &= ~0x1;
       g_sp_regs[SP_STATUS_REG] &= ~0x203;
    }
 }
@@ -1003,12 +961,12 @@ static void update_SP(uint32_t w)
       g_sp_regs[SP_STATUS_REG] &= ~0x2;
    if (w & 0x8) // clear SP interupt
    {
-      g_mi_regs[MI_INTR_REG] &= ~1;
+      g_r4300.mi.regs[MI_INTR_REG] &= ~1;
       check_interupt();
    }
    if (w & 0x10) // set SP interupt
    {
-      g_mi_regs[MI_INTR_REG] |= 1;
+      g_r4300.mi.regs[MI_INTR_REG] |= 1;
       check_interupt();
    }
    if (w & 0x20) // clear single step
@@ -1595,7 +1553,7 @@ static int write_dpc_regs(void *opaque, uint32_t address, uint32_t value, uint32
          break;
       case DPC_END_REG:
          gfx.processRDPList();
-         g_mi_regs[MI_INTR_REG] |= 0x20;
+         g_r4300.mi.regs[MI_INTR_REG] |= 0x20;
          check_interupt();
          break;
    }
@@ -1705,79 +1663,44 @@ static void write_dpsd(void)
    writed(write_dps_regs, NULL, address, dword);
 }
 
-static INLINE uint32_t mi_reg(uint32_t address)
-{
-   return (address & 0xffff) >> 2;
-}
-
-static int read_mi_regs(void *opaque, uint32_t address, uint32_t* value)
-{
-   uint32_t reg = mi_reg(address);
-
-   *value = g_mi_regs[reg];
-
-   return 0;
-}
-
-static int write_mi_regs(void *opaque, uint32_t address, uint32_t value, uint32_t mask)
-{
-   uint32_t reg = mi_reg(address);
-
-   switch(reg)
-   {
-      case MI_INIT_MODE_REG:
-         update_MI_init_mode_reg(value & mask);
-         break;
-      case MI_INTR_MASK_REG:
-         update_MI_intr_mask_reg(value & mask);
-
-         check_interupt();
-         update_count();
-         if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt();
-         break;
-   }
-
-   return 0;
-}
-
 static void read_mi(void)
 {
-   readw(read_mi_regs, NULL, address, rdword);
+   readw(read_mi_regs, &g_r4300, address, rdword);
 }
 
 static void read_mib(void)
 {
-   readb(read_mi_regs, NULL, address, rdword);
+   readb(read_mi_regs, &g_r4300, address, rdword);
 }
 
 static void read_mih(void)
 {
-   readh(read_mi_regs, NULL, address, rdword);
+   readh(read_mi_regs, &g_r4300, address, rdword);
 }
 
 static void read_mid(void)
 {
-   readd(read_mi_regs, NULL, address, rdword);
+   readd(read_mi_regs, &g_r4300, address, rdword);
 }
 
 static void write_mi(void)
 {
-   writew(write_mi_regs, NULL, address, word);
+   writew(write_mi_regs, &g_r4300, address, word);
 }
 
 static void write_mib(void)
 {
-   writeb(write_mi_regs, NULL, address, cpu_byte);
+   writeb(write_mi_regs, &g_r4300, address, cpu_byte);
 }
 
 static void write_mih(void)
 {
-   writeh(write_mi_regs, NULL, address, hword);
+   writeh(write_mi_regs, &g_r4300, address, hword);
 }
 
 static void write_mid(void)
 {
-   writed(write_mi_regs, NULL, address, dword);
+   writed(write_mi_regs, &g_r4300, address, dword);
 }
 
 static INLINE uint32_t vi_reg(uint32_t address)
@@ -1818,7 +1741,7 @@ static int write_vi_regs(void *opaque, uint32_t address, uint32_t value, uint32_
          }
          return 0;
       case VI_CURRENT_REG:
-         g_mi_regs[MI_INTR_REG] &= ~0x8;
+         g_r4300.mi.regs[MI_INTR_REG] &= ~0x8;
          check_interupt();
          return 0;
    }
@@ -1918,7 +1841,7 @@ static int write_ai_regs(void *opaque, uint32_t address, uint32_t value, uint32_
          }
          return 0;
       case AI_STATUS_REG:
-         g_mi_regs[MI_INTR_REG] &= ~0x4;
+         g_r4300.mi.regs[MI_INTR_REG] &= ~0x4;
          check_interupt();
          return 0;
       case AI_DACRATE_REG:
@@ -2005,7 +1928,7 @@ static int write_pi_regs(void *opaque, uint32_t address, uint32_t value, uint32_
          return 0;
 
       case PI_STATUS_REG:
-         if (value & mask & 2) g_mi_regs[MI_INTR_REG] &= ~0x10;
+         if (value & mask & 2) g_r4300.mi.regs[MI_INTR_REG] &= ~0x10;
          check_interupt();
          return 0;
 
@@ -2135,7 +2058,7 @@ static int write_si_regs(void *opaque, uint32_t address, uint32_t value, uint32_
          dma_si_write();
          break;
       case SI_STATUS_REG:
-         g_mi_regs[MI_INTR_REG] &= ~0x2;
+         g_r4300.mi.regs[MI_INTR_REG] &= ~0x2;
          g_si_regs[SI_STATUS_REG] &= ~0x1000;
          check_interupt();
          break;
