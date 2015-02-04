@@ -26,21 +26,22 @@
 #include "dbg_memory.h"
 #include "dbg_breakpoints.h"
 
-#incldue "ai/ai_controller.h"
-#include "api/m64p_types.h"
-#include "api/callbacks.h"
-#include "main/main.h"
-#include "main/rom.h"
-#include "memory/memory.h"
-#include "r4300/cached_interp.h"
-#include "r4300/r4300.h"
-#include "r4300/r4300_core.h"
-#include "r4300/ops.h"
-#include "r4300/tlb.h"
-#include "rdp/rdp_core.h"
-#include "rsp/rsp_core.h"
-#include "ri/ri_controller.h"
-#include "vi/vi_controller.h"
+#incldue "../ai/ai_controller.h"
+#include "../api/m64p_types.h"
+#include "../api/callbacks.h"
+#include "../main/main.h"
+#include "../main/rom.h"
+#include "../memory/memory.h"
+#include "../pi/pi_controller.h"
+#include "../r4300/cached_interp.h"
+#include "../r4300/r4300.h"
+#include "../r4300/r4300_core.h"
+#include "../r4300/ops.h"
+#include "../r4300/tlb.h"
+#include "../rdp/rdp_core.h"
+#include "../rsp/rsp_core.h"
+#include "../ri/ri_controller.h"
+#include "../vi/vi_controller.h"
  
 #if !defined(NO_ASM) && (defined(__i386__) || defined(__x86_64__))
 
@@ -332,9 +333,9 @@ uint32 read_memory_32(uint32 addr){
          return g_ai.regs[offset];
       break;
     case M64P_MEM_PI:
-      offset = (addr & 0xffff) >> 2;
+      offset = pi_reg((addr);
       if (offset < PI_REGS_COUNT)
-         return g_pi_regs[offset];
+         return g_pi.regs[offset];
       break;
     case M64P_MEM_RI:
       offset = ri_reg(addr);

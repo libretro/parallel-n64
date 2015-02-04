@@ -51,6 +51,7 @@
 #include "ai/ai_controller.h"
 #include "memory/memory.h"
 #include "osal/preproc.h"
+#include "../pi/pi_controller.h"
 #include "plugin/plugin.h"
 #include "r4300/r4300.h"
 #include "r4300/r4300_core.h"
@@ -79,6 +80,7 @@ int         g_EmulatorRunning = 0;      // need separate boolean to tell if emul
 
 ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
 struct ai_controller g_ai;
+struct pi_controller g_pi;
 struct ri_controller g_ri;
 struct vi_controller g_vi;
 struct r4300_core g_r4300;
@@ -254,6 +256,7 @@ static void connect_all(
       struct rdp_core* dp,
       struct rsp_core* sp,
       struct ai_controller* ai,
+      struct pi_controller* pi,
       struct ri_controller* ri,
       struct vi_controller* vi,
       uint32_t* dram,
@@ -262,6 +265,7 @@ static void connect_all(
    connect_rdp(dp, r4300, sp, ri);
    connect_rsp(sp, r4300, dp, ri);
    connect_ai(ai, r4300, vi);
+   connect_pi(pi, r4300);
    connect_ri(ri, dram, dram_size);
    connect_vi(vi, r4300);
 }
@@ -290,7 +294,9 @@ m64p_error main_init(void)
         g_MemHasBeenBSwapped = 1;
     }
 
-    connect_all(&g_r4300, &g_dp, &g_sp, &g_ai, &g_ri, &g_vi, g_rdram, RDRAM_MAX_SIZE);
+    connect_all(&g_r4300, &g_dp, &g_sp,
+          &g_ai, &g_pi, &g_ri, &g_vi,
+          g_rdram, RDRAM_MAX_SIZE);
 
     init_memory();
 

@@ -36,18 +36,19 @@
 #include "rom.h"
 #include "util.h"
 
-#include "ai/ai_controller.h"
-#include "memory/memory.h"
-#include "memory/flashram.h"
-#include "plugin/plugin.h"
-#include "r4300/tlb.h"
-#include "r4300/cp0.h"
-#include "r4300/cp1.h"
-#include "r4300/r4300.h"
-#include "r4300/r4300_core.h"
-#include "r4300/cached_interp.h"
-#include "r4300/interupt.h"
-#include "r4300/new_dynarec/new_dynarec.h"
+#include "../ai/ai_controller.h"
+#include "../memory/memory.h"
+#include "../memory/flashram.h"
+#include "../plugin/plugin.h"
+#include "../r4300/tlb.h"
+#include "../r4300/cp0.h"
+#include "../r4300/cp1.h"
+#include "../r4300/r4300.h"
+#include "../r4300/r4300_core.h"
+#include "../r4300/cached_interp.h"
+#include "../r4300/interupt.h"
+#include "../pi/pi_controller.h"
+#include "../r4300/new_dynarec/new_dynarec.h"
 #include "../rdp/rdp_core.h"
 #include "../ri/ri_controller.h"
 #include "../rsp/rsp_core.h"
@@ -127,19 +128,19 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
     curr += 4; /* Padding from old implementation. */
     curr += 8; // Duplicated MI intr flags and padding from old implementation
 
-    g_pi_regs[PI_DRAM_ADDR_REG] = GETDATA(curr, uint32_t);
-    g_pi_regs[PI_CART_ADDR_REG] = GETDATA(curr, uint32_t);
-    g_pi_regs[PI_RD_LEN_REG] = GETDATA(curr, uint32_t);
-    g_pi_regs[PI_WR_LEN_REG] = GETDATA(curr, uint32_t);
-    g_pi_regs[PI_STATUS_REG] = GETDATA(curr, uint32_t);
-    g_pi_regs[PI_BSD_DOM1_LAT_REG] = GETDATA(curr, uint32_t);
-    g_pi_regs[PI_BSD_DOM1_PWD_REG] = GETDATA(curr, uint32_t);
-    g_pi_regs[PI_BSD_DOM1_PGS_REG] = GETDATA(curr, uint32_t);
-    g_pi_regs[PI_BSD_DOM1_RLS_REG] = GETDATA(curr, uint32_t);
-    g_pi_regs[PI_BSD_DOM2_LAT_REG] = GETDATA(curr, uint32_t);
-    g_pi_regs[PI_BSD_DOM2_PWD_REG] = GETDATA(curr, uint32_t);
-    g_pi_regs[PI_BSD_DOM2_PGS_REG] = GETDATA(curr, uint32_t);
-    g_pi_regs[PI_BSD_DOM2_RLS_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_DRAM_ADDR_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_CART_ADDR_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_RD_LEN_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_WR_LEN_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_STATUS_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_BSD_DOM1_LAT_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_BSD_DOM1_PWD_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_BSD_DOM1_PGS_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_BSD_DOM1_RLS_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_BSD_DOM2_LAT_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_BSD_DOM2_PWD_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_BSD_DOM2_PGS_REG] = GETDATA(curr, uint32_t);
+    g_pi.regs[PI_BSD_DOM2_RLS_REG] = GETDATA(curr, uint32_t);
 
     g_sp.regs[SP_MEM_ADDR_REG] = GETDATA(curr, uint32_t);
     g_sp.regs[SP_DRAM_ADDR_REG] = GETDATA(curr, uint32_t);
@@ -364,19 +365,19 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     PUTDATA(curr, uint8_t, (g_r4300.mi.regs[MI_INTR_MASK_REG] & 0x20) != 0);
     PUTDATA(curr, uint16_t, 0); // Padding from old implementation
 
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_DRAM_ADDR_REG]);
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_CART_ADDR_REG]);
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_RD_LEN_REG]);
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_WR_LEN_REG]);
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_STATUS_REG]);
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_BSD_DOM1_LAT_REG]);
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_BSD_DOM1_PWD_REG]);
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_BSD_DOM1_PGS_REG]);
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_BSD_DOM1_RLS_REG]);
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_BSD_DOM1_LAT_REG]);
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_BSD_DOM1_PWD_REG]);
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_BSD_DOM1_PGS_REG]);
-    PUTDATA(curr, uint32_t, g_pi_regs[PI_BSD_DOM1_RLS_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_DRAM_ADDR_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_CART_ADDR_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_RD_LEN_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_WR_LEN_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_STATUS_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_BSD_DOM1_LAT_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_BSD_DOM1_PWD_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_BSD_DOM1_PGS_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_BSD_DOM1_RLS_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_BSD_DOM1_LAT_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_BSD_DOM1_PWD_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_BSD_DOM1_PGS_REG]);
+    PUTDATA(curr, uint32_t, g_pi.regs[PI_BSD_DOM1_RLS_REG]);
 
     PUTDATA(curr, uint32_t, g_sp.regs[SP_MEM_ADDR_REG]);
     PUTDATA(curr, uint32_t, g_sp.regs[SP_DRAM_ADDR_REG]);

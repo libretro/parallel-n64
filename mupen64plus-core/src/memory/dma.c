@@ -36,6 +36,7 @@
 #include "main/main.h"
 #include "main/rom.h"
 #include "main/util.h"
+#include "pi/pi_controller.h"
 #include "r4300/r4300.h"
 #include "r4300/r4300_core.h"
 #include "r4300/cached_interp.h"
@@ -56,15 +57,15 @@ void dma_pi_read(void)
 {
    uint32_t i;
 
-   if (g_pi_regs[PI_CART_ADDR_REG] >= 0x08000000
-         && g_pi_regs[PI_CART_ADDR_REG] < 0x08010000)
+   if (g_pi.regs[PI_CART_ADDR_REG] >= 0x08000000
+         && g_pi.regs[PI_CART_ADDR_REG] < 0x08010000)
    {
       if (flashram_info.use_flashram != 1)
       {
-         for (i=0; i < (g_pi_regs[PI_RD_LEN_REG] & 0xFFFFFF)+1; i++)
+         for (i=0; i < (g_pi.regs[PI_RD_LEN_REG] & 0xFFFFFF)+1; i++)
          {
-            saved_memory.sram[((g_pi_regs[PI_CART_ADDR_REG]-0x08000000)+i)^S8] =
-               ((uint8_t*)g_rdram)[(g_pi_regs[PI_DRAM_ADDR_REG]+i)^S8];
+            saved_memory.sram[((g_pi.regs[PI_CART_ADDR_REG]-0x08000000)+i)^S8] =
+               ((uint8_t*)g_rdram)[(g_pi.regs[PI_DRAM_ADDR_REG]+i)^S8];
          }
 
          flashram_info.use_flashram = -1;
@@ -79,9 +80,9 @@ void dma_pi_read(void)
       DebugMessage(M64MSG_WARNING, "Unknown dma read in dma_pi_read()");
    }
 
-   g_pi_regs[PI_STATUS_REG] |= 1;
+   g_pi.regs[PI_STATUS_REG] |= 1;
    update_count();
-   add_interupt_event(PI_INT, 0x1000/* g_pi_regs[PI_RD_LEN_REG] */);
+   add_interupt_event(PI_INT, 0x1000/* g_pi.regs[PI_RD_LEN_REG] */);
 }
 
 void dma_pi_write(void)
@@ -89,19 +90,19 @@ void dma_pi_write(void)
    uint32_t longueur;
    int32_t i;
 
-   if (g_pi_regs[PI_CART_ADDR_REG] < 0x10000000)
+   if (g_pi.regs[PI_CART_ADDR_REG] < 0x10000000)
    {
-      if (g_pi_regs[PI_CART_ADDR_REG] >= 0x08000000
-            && g_pi_regs[PI_CART_ADDR_REG] < 0x08010000)
+      if (g_pi.regs[PI_CART_ADDR_REG] >= 0x08000000
+            && g_pi.regs[PI_CART_ADDR_REG] < 0x08010000)
       {
          if (flashram_info.use_flashram != 1)
          {
             int32_t i;
 
-            for (i=0; i< (int32_t)(g_pi_regs[PI_WR_LEN_REG] & 0xFFFFFF)+1; i++)
+            for (i=0; i< (int32_t)(g_pi.regs[PI_WR_LEN_REG] & 0xFFFFFF)+1; i++)
             {
-               ((uint8_t*)g_rdram)[(g_pi_regs[PI_DRAM_ADDR_REG]+i)^S8]=
-                  saved_memory.sram[(((g_pi_regs[PI_CART_ADDR_REG]-0x08000000)&0xFFFF)+i)^S8];
+               ((uint8_t*)g_rdram)[(g_pi.regs[PI_DRAM_ADDR_REG]+i)^S8]=
+                  saved_memory.sram[(((g_pi.regs[PI_CART_ADDR_REG]-0x08000000)&0xFFFF)+i)^S8];
             }
 
             flashram_info.use_flashram = -1;
@@ -111,41 +112,41 @@ void dma_pi_write(void)
             dma_read_flashram();
          }
       }
-      else if (g_pi_regs[PI_CART_ADDR_REG] >= 0x06000000
-            && g_pi_regs[PI_CART_ADDR_REG] < 0x08000000)
+      else if (g_pi.regs[PI_CART_ADDR_REG] >= 0x06000000
+            && g_pi.regs[PI_CART_ADDR_REG] < 0x08000000)
       {
       }
       else
       {
-         DebugMessage(M64MSG_WARNING, "Unknown dma write 0x%x in dma_pi_write()", (int32_t)g_pi_regs[PI_CART_ADDR_REG]);
+         DebugMessage(M64MSG_WARNING, "Unknown dma write 0x%x in dma_pi_write()", (int32_t)g_pi.regs[PI_CART_ADDR_REG]);
       }
 
-      g_pi_regs[PI_STATUS_REG] |= 1;
+      g_pi.regs[PI_STATUS_REG] |= 1;
       update_count();
-      add_interupt_event(PI_INT, /*g_pi_regs[PI_WR_LEN_REG]*/0x1000);
+      add_interupt_event(PI_INT, /*g_pi.regs[PI_WR_LEN_REG]*/0x1000);
 
       return;
    }
 
-   if (g_pi_regs[PI_CART_ADDR_REG] >= 0x1fc00000) // for paper mario
+   if (g_pi.regs[PI_CART_ADDR_REG] >= 0x1fc00000) // for paper mario
    {
-      g_pi_regs[PI_STATUS_REG] |= 1;
+      g_pi.regs[PI_STATUS_REG] |= 1;
       update_count();
       add_interupt_event(PI_INT, 0x1000);
 
       return;
    }
 
-   longueur = (g_pi_regs[PI_WR_LEN_REG] & 0xFFFFFF)+1;
-   i = (g_pi_regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF;
+   longueur = (g_pi.regs[PI_WR_LEN_REG] & 0xFFFFFF)+1;
+   i = (g_pi.regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF;
    longueur = (i + (int32_t)longueur) > rom_size ?
       (rom_size - i) : longueur;
-   longueur = (g_pi_regs[PI_DRAM_ADDR_REG] + longueur) > 0x7FFFFF ?
-      (0x7FFFFF - g_pi_regs[PI_DRAM_ADDR_REG]) : longueur;
+   longueur = (g_pi.regs[PI_DRAM_ADDR_REG] + longueur) > 0x7FFFFF ?
+      (0x7FFFFF - g_pi.regs[PI_DRAM_ADDR_REG]) : longueur;
 
-   if (i>rom_size || g_pi_regs[PI_DRAM_ADDR_REG] > 0x7FFFFF)
+   if (i>rom_size || g_pi.regs[PI_DRAM_ADDR_REG] > 0x7FFFFF)
    {
-      g_pi_regs[PI_STATUS_REG] |= 3;
+      g_pi.regs[PI_STATUS_REG] |= 3;
       update_count();
       add_interupt_event(PI_INT, longueur/8);
 
@@ -156,10 +157,10 @@ void dma_pi_write(void)
    {
       for (i=0; i<(int32_t)longueur; i++)
       {
-         uint32_t rdram_address1 = g_pi_regs[PI_DRAM_ADDR_REG]+i+0x80000000;
-         uint32_t rdram_address2 = g_pi_regs[PI_DRAM_ADDR_REG]+i+0xa0000000;
-         ((uint8_t*)g_rdram)[(g_pi_regs[PI_DRAM_ADDR_REG]+i)^S8]=
-            rom[(((g_pi_regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF)+i)^S8];
+         uint32_t rdram_address1 = g_pi.regs[PI_DRAM_ADDR_REG]+i+0x80000000;
+         uint32_t rdram_address2 = g_pi.regs[PI_DRAM_ADDR_REG]+i+0xa0000000;
+         ((uint8_t*)g_rdram)[(g_pi.regs[PI_DRAM_ADDR_REG]+i)^S8]=
+            rom[(((g_pi.regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF)+i)^S8];
 
          if (!invalid_code[rdram_address1>>12])
          {
@@ -188,14 +189,14 @@ void dma_pi_write(void)
    {
       for (i=0; i<(int32_t)longueur; i++)
       {
-         ((uint8_t*)g_rdram)[(g_pi_regs[PI_DRAM_ADDR_REG]+i)^S8]=
-            rom[(((g_pi_regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF)+i)^S8];
+         ((uint8_t*)g_rdram)[(g_pi.regs[PI_DRAM_ADDR_REG]+i)^S8]=
+            rom[(((g_pi.regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF)+i)^S8];
       }
    }
 
    // Set the RDRAM memory size when copying main ROM code
    // (This is just a convenient way to run this code once at the beginning)
-   if (g_pi_regs[PI_CART_ADDR_REG] == 0x10001000)
+   if (g_pi.regs[PI_CART_ADDR_REG] == 0x10001000)
    {
       switch (g_cic_type)
       {
@@ -217,7 +218,7 @@ void dma_pi_write(void)
       }
    }
 
-   g_pi_regs[PI_STATUS_REG] |= 3;
+   g_pi.regs[PI_STATUS_REG] |= 3;
    update_count();
    add_interupt_event(PI_INT, longueur/8);
 
