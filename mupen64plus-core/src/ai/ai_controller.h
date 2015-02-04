@@ -1,8 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - main.h                                                  *
+ *   Mupen64plus - ai_controller.h                                         *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2012 CasualJames                                        *
- *   Copyright (C) 2002 Blight                                             *
+ *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -20,57 +19,52 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __MAIN_H__
-#define __MAIN_H__
-
-#include "api/m64p_types.h"
-#include "osal/preproc.h"
+#ifndef M64P_AI_AI_CONTROLLER_H
+#define M64P_AI_AI_CONTROLLER_H
 
 #include <stdint.h>
 
 struct r4300_core;
-struct ai_controller;
-struct ri_controller;
 struct vi_controller;
 
-enum { RDRAM_MAX_SIZE = 0x800000 };
+enum ai_registers
+{
+    AI_DRAM_ADDR_REG,
+    AI_LEN_REG,
+    AI_CONTROL_REG,
+    AI_STATUS_REG,
+    AI_DACRATE_REG,
+    AI_BITRATE_REG,
+    AI_REGS_COUNT
+};
 
-/* globals */
-extern m64p_handle g_CoreConfig;
+struct ai_dma
+{
+    uint32_t length;
+    unsigned int delay;
+};
 
-extern int g_MemHasBeenBSwapped;
-extern int g_EmulatorRunning;
+struct ai_controller
+{
+    uint32_t regs[AI_REGS_COUNT];
+    struct ai_dma fifo[2];
 
-extern ALIGN(16, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
+    struct r4300_core* r4300;
+    struct vi_controller* vi;
+};
 
-extern struct ai_controller g_ai;
-extern struct ri_controller g_ri;
-extern struct vi_controller g_vi;
+static inline uint32_t ai_reg(uint32_t address)
+{
+    return (address & 0xffff) >> 2;
+}
 
-extern struct r4300_core g_r4300;
+void connect_ai(struct ai_controller* ai,
+                struct r4300_core* r4300,
+                struct vi_controller* vi);
 
-extern m64p_frame_callback g_FrameCallback;
+void init_ai(struct ai_controller* ai);
 
-extern int delay_si;
+int read_ai_regs(void* opaque, uint32_t address, uint32_t* value);
+int write_ai_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
-void new_frame(void);
-
-int  main_set_core_defaults(void);
-void main_message(m64p_msg_level level, unsigned int osd_corner, const char *format, ...);
-
-m64p_error main_init(void);
-m64p_error main_run(void);
-void main_exit(void);
-void main_stop(void);
-void main_toggle_pause(void);
-void main_advance_one(void);
-
-m64p_error main_core_state_query(m64p_core_param param, int *rval);
-m64p_error main_core_state_set(m64p_core_param param, int val);
-
-m64p_error main_read_screen(void *pixels, int bFront);
-
-m64p_error main_reset(int do_hard_reset);
-
-#endif /* __MAIN_H__ */
-
+#endif

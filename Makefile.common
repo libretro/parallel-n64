@@ -73,6 +73,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/ri/ri_controller.c \
 	$(CORE_DIR)/src/ri/rdram.c \
 	$(CORE_DIR)/src/vi/vi_controller.c \
+	$(CORE_DIR)/src/ai/ai_controller.c \
 	$(CORE_DIR)/src/r4300/interupt.c \
 	$(CORE_DIR)/src/r4300/tlb.c \
 	$(CORE_DIR)/src/r4300/cp0.c \

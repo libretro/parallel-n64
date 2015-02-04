@@ -27,6 +27,7 @@
 
 #include "r4300/r4300_core.h"
 
+#include "ai/ai_controller.h"
 #include "vi/vi_controller.h"
 
 #include "api/callbacks.h"
@@ -184,12 +185,12 @@ static m64p_error plugin_start_audio(void)
    audio_info.DMEM = (unsigned char *) g_sp_mem;
    audio_info.IMEM = (unsigned char *) g_sp_mem + 0x1000;
    audio_info.MI_INTR_REG = &(g_r4300.mi.regs[MI_INTR_REG]);
-   audio_info.AI_DRAM_ADDR_REG = &(g_ai_regs[AI_DRAM_ADDR_REG]);
-   audio_info.AI_LEN_REG = &(g_ai_regs[AI_LEN_REG]);
-   audio_info.AI_CONTROL_REG = &(g_ai_regs[AI_CONTROL_REG]);
+   audio_info.AI_DRAM_ADDR_REG = &(g_ai.regs[AI_DRAM_ADDR_REG]);
+   audio_info.AI_LEN_REG = &(g_ai.regs[AI_LEN_REG]);
+   audio_info.AI_CONTROL_REG = &(g_ai.regs[AI_CONTROL_REG]);
    audio_info.AI_STATUS_REG = &dummy;
-   audio_info.AI_DACRATE_REG = &(g_ai_regs[AI_DACRATE_REG]);
-   audio_info.AI_BITRATE_REG = &(g_ai_regs[AI_BITRATE_REG]);
+   audio_info.AI_DACRATE_REG = &(g_ai.regs[AI_DACRATE_REG]);
+   audio_info.AI_BITRATE_REG = &(g_ai.regs[AI_BITRATE_REG]);
    audio_info.CheckInterrupts = EmptyFunc;
 
    /* call the audio plugin */

@@ -36,6 +36,7 @@
 #include "rom.h"
 #include "util.h"
 
+#include "ai/ai_controller.h"
 #include "memory/memory.h"
 #include "memory/flashram.h"
 #include "plugin/plugin.h"
@@ -185,16 +186,16 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
     g_ri.regs[RI_ERROR_REG]        = GETDATA(curr, uint32_t);
     g_ri.regs[RI_WERROR_REG]       = GETDATA(curr, uint32_t);
 
-    g_ai_regs[AI_DRAM_ADDR_REG] = GETDATA(curr, uint32_t);
-    g_ai_regs[AI_LEN_REG] = GETDATA(curr, uint32_t);
-    g_ai_regs[AI_CONTROL_REG] = GETDATA(curr, uint32_t);
-    g_ai_regs[AI_STATUS_REG] = GETDATA(curr, uint32_t);
-    g_ai_regs[AI_DACRATE_REG] = GETDATA(curr, uint32_t);
-    g_ai_regs[AI_BITRATE_REG] = GETDATA(curr, uint32_t);
-    g_ai_fifo[1].delay        = GETDATA(curr, unsigned int);
-    g_ai_fifo[1].length       = GETDATA(curr, uint32_t);
-    g_ai_fifo[0].delay        = GETDATA(curr, unsigned int);
-    g_ai_fifo[0].length       = GETDATA(curr, uint32_t);
+    g_ai.regs[AI_DRAM_ADDR_REG] = GETDATA(curr, uint32_t);
+    g_ai.regs[AI_LEN_REG] = GETDATA(curr, uint32_t);
+    g_ai.regs[AI_CONTROL_REG] = GETDATA(curr, uint32_t);
+    g_ai.regs[AI_STATUS_REG] = GETDATA(curr, uint32_t);
+    g_ai.regs[AI_DACRATE_REG] = GETDATA(curr, uint32_t);
+    g_ai.regs[AI_BITRATE_REG] = GETDATA(curr, uint32_t);
+    g_ai.fifo[1].delay        = GETDATA(curr, unsigned int);
+    g_ai.fifo[1].length       = GETDATA(curr, uint32_t);
+    g_ai.fifo[0].delay        = GETDATA(curr, unsigned int);
+    g_ai.fifo[0].length       = GETDATA(curr, uint32_t);
     audio.aiDacrateChanged(ROM_PARAMS.systemtype);
 
     g_dpc_regs[DPC_START_REG] = GETDATA(curr, uint32_t);
@@ -434,16 +435,16 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     PUTDATA(curr, uint32_t, g_ri.regs[RI_ERROR_REG]);
     PUTDATA(curr, uint32_t, g_ri.regs[RI_WERROR_REG]);
 
-    PUTDATA(curr, uint32_t, g_ai_regs[AI_DRAM_ADDR_REG]);
-    PUTDATA(curr, uint32_t, g_ai_regs[AI_LEN_REG]);
-    PUTDATA(curr, uint32_t, g_ai_regs[AI_CONTROL_REG]);
-    PUTDATA(curr, uint32_t, g_ai_regs[AI_STATUS_REG]);
-    PUTDATA(curr, uint32_t, g_ai_regs[AI_DACRATE_REG]);
-    PUTDATA(curr, uint32_t, g_ai_regs[AI_BITRATE_REG]);
-    PUTDATA(curr, unsigned int, g_ai_fifo[1].delay);
-    PUTDATA(curr, uint32_t, g_ai_fifo[1].length);
-    PUTDATA(curr, unsigned int, g_ai_fifo[0].delay);
-    PUTDATA(curr, uint32_t, g_ai_fifo[0].length);
+    PUTDATA(curr, uint32_t, g_ai.regs[AI_DRAM_ADDR_REG]);
+    PUTDATA(curr, uint32_t, g_ai.regs[AI_LEN_REG]);
+    PUTDATA(curr, uint32_t, g_ai.regs[AI_CONTROL_REG]);
+    PUTDATA(curr, uint32_t, g_ai.regs[AI_STATUS_REG]);
+    PUTDATA(curr, uint32_t, g_ai.regs[AI_DACRATE_REG]);
+    PUTDATA(curr, uint32_t, g_ai.regs[AI_BITRATE_REG]);
+    PUTDATA(curr, unsigned int, g_ai.fifo[1].delay);
+    PUTDATA(curr, uint32_t, g_ai.fifo[1].length);
+    PUTDATA(curr, unsigned int, g_ai.fifo[0].delay);
+    PUTDATA(curr, uint32_t, g_ai.fifo[0].length);
 
     PUTDATA(curr, uint32_t, g_dpc_regs[DPC_START_REG]);
     PUTDATA(curr, uint32_t, g_dpc_regs[DPC_END_REG]);
