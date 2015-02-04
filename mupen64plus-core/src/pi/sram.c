@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - pi_controller.h                                         *
+ *   Mupen64plus - sram.c                                                  *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
@@ -19,61 +19,48 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_PI_PI_CONTROLLER_H
-#define M64P_PI_PI_CONTROLLER_H
+#include "sram.h"
+#include "pi_controller.h"
+
+#include "api/m64p_types.h"
+#include "api/callbacks.h"
+
+#include "main/main.h"
+#include "main/rom.h"
+#include "main/util.h"
+
+#include "memory/memory.h"
+
+#include "ri/ri_controller.h"
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
 
-#include "cart_rom.h"
-#include "sram.h"
-
-struct r4300_core;
-struct ri_controller;
-
-enum pi_registers
+void dma_write_sram(struct pi_controller* pi)
 {
-    PI_DRAM_ADDR_REG,
-    PI_CART_ADDR_REG,
-    PI_RD_LEN_REG,
-    PI_WR_LEN_REG,
-    PI_STATUS_REG,
-    PI_BSD_DOM1_LAT_REG,
-    PI_BSD_DOM1_PWD_REG,
-    PI_BSD_DOM1_PGS_REG,
-    PI_BSD_DOM1_RLS_REG,
-    PI_BSD_DOM2_LAT_REG,
-    PI_BSD_DOM2_PWD_REG,
-    PI_BSD_DOM2_PGS_REG,
-    PI_BSD_DOM2_RLS_REG,
-    PI_REGS_COUNT
-};
+   unsigned int i;
+   uint8_t* sram = saved_memory.sram;
+   uint8_t* dram = (uint8_t*)g_rdram;
+   uint32_t cart_addr = pi->regs[PI_CART_ADDR_REG] - 0x08000000;
+   uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG];
+   size_t length     = (pi->regs[PI_RD_LEN_REG] & 0xffffff) + 1;
 
-struct pi_controller
-{
-    uint32_t regs[PI_REGS_COUNT];
-
-    struct cart_rom cart_rom;
-    uint8_t sram[SRAM_SIZE];
-
-    struct r4300_core* r4300;
-    struct ri_controller *ri;
-};
-
-static inline uint32_t pi_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
+   for(i = 0; i < length; ++i)
+      sram[(cart_addr+i)^S8] = dram[(dram_addr+i)^S8];
 }
 
+void dma_read_sram(struct pi_controller* pi)
+{
+   size_t i;
+   size_t length = (pi->regs[PI_WR_LEN_REG] & 0xffffff) + 1;
 
-void connect_pi(struct pi_controller* pi,
-                struct r4300_core* r4300,
-                struct ri_controller *ri,
-                uint8_t *rom, size_t rom_size);
+   uint8_t* sram = (uint8_t*)saved_memory.sram;
+   uint8_t* dram = (uint8_t*)g_rdram;
+   uint32_t cart_addr = (pi->regs[PI_CART_ADDR_REG] - 0x08000000) & 0xffff;
+   uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG];
 
-void init_pi(struct pi_controller* pi);
-
-int read_pi_regs(void* opaque, uint32_t address, uint32_t* value);
-int write_pi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
-
-#endif
+   for(i = 0; i < length; ++i)
+      dram[(dram_addr+i)^S8] = sram[(cart_addr+i)^S8];
+}

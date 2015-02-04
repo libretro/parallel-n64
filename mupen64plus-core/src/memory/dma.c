@@ -28,22 +28,23 @@
 #include "pif.h"
 #include "flashram.h"
 
-#include "api/m64p_types.h"
+#include "../api/m64p_types.h"
 #define M64P_CORE_PROTOTYPES 1
-#include "api/m64p_config.h"
-#include "api/config.h"
-#include "api/callbacks.h"
-#include "main/main.h"
-#include "main/rom.h"
-#include "main/util.h"
-#include "pi/pi_controller.h"
-#include "r4300/r4300.h"
-#include "r4300/r4300_core.h"
-#include "r4300/cached_interp.h"
-#include "r4300/interupt.h"
-#include "r4300/cp0.h"
-#include "r4300/ops.h"
-#include "r4300/new_dynarec/new_dynarec.h"
+#include "../api/m64p_config.h"
+#include "../api/config.h"
+#include "../api/callbacks.h"
+#include "../main/main.h"
+#include "../main/rom.h"
+#include "../main/util.h"
+#include "../pi/pi_controller.h"
+#include "../pi/sram.h"
+#include "../r4300/r4300.h"
+#include "../r4300/r4300_core.h"
+#include "../r4300/cached_interp.h"
+#include "../r4300/interupt.h"
+#include "../r4300/cp0.h"
+#include "../r4300/ops.h"
+#include "../r4300/new_dynarec/new_dynarec.h"
 
 int32_t delay_si = 0;
 int32_t enable_expmem = 1;
@@ -55,19 +56,12 @@ void dma_enable_expmem(int enable)
 
 void dma_pi_read(void)
 {
-   uint32_t i;
-
    if (g_pi.regs[PI_CART_ADDR_REG] >= 0x08000000
          && g_pi.regs[PI_CART_ADDR_REG] < 0x08010000)
    {
       if (flashram_info.use_flashram != 1)
       {
-         for (i=0; i < (g_pi.regs[PI_RD_LEN_REG] & 0xFFFFFF)+1; i++)
-         {
-            saved_memory.sram[((g_pi.regs[PI_CART_ADDR_REG]-0x08000000)+i)^S8] =
-               ((uint8_t*)g_rdram)[(g_pi.regs[PI_DRAM_ADDR_REG]+i)^S8];
-         }
-
+         dma_write_sram(&g_pi);
          flashram_info.use_flashram = -1;
       }
       else
@@ -97,14 +91,7 @@ void dma_pi_write(void)
       {
          if (flashram_info.use_flashram != 1)
          {
-            int32_t i;
-
-            for (i=0; i< (int32_t)(g_pi.regs[PI_WR_LEN_REG] & 0xFFFFFF)+1; i++)
-            {
-               ((uint8_t*)g_rdram)[(g_pi.regs[PI_DRAM_ADDR_REG]+i)^S8]=
-                  saved_memory.sram[(((g_pi.regs[PI_CART_ADDR_REG]-0x08000000)&0xFFFF)+i)^S8];
-            }
-
+            dma_read_sram(&g_pi);
             flashram_info.use_flashram = -1;
          }
          else
