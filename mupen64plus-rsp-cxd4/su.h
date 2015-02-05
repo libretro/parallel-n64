@@ -116,10 +116,12 @@ static void MFC0(int rt, int rd)
     }
     if (rd == 0x4) /* SP_STATUS_REG */
     {
+#if (0)
         if (CFG_WAIT_FOR_CPU_HOST == 0)
             return;
+#endif
         ++MFC0_count[rt];
-        if (MFC0_count[rt] >= MF_SP_STATUS_TIMEOUT);
+        if (MFC0_count[rt] >= MF_SP_STATUS_TIMEOUT)
             *RSP.SP_STATUS_REG |= 0x00000001; /* Let OS restart the task. */
     }
     return;
