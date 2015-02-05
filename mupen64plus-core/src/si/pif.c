@@ -41,42 +41,6 @@
 #include "r4300/r4300.h"
 #include "r4300/interupt.h"
 
-#if 0
-static void mempack_format(void)
-{
-   uint8_t init[] =
-   {
-      0x81,0x01,0x02,0x03, 0x04,0x05,0x06,0x07, 0x08,0x09,0x0a,0x0b, 0x0c,0x0d,0x0e,0x0f,
-      0x10,0x11,0x12,0x13, 0x14,0x15,0x16,0x17, 0x18,0x19,0x1a,0x1b, 0x1c,0x1d,0x1e,0x1f,
-      0xff,0xff,0xff,0xff, 0x05,0x1a,0x5f,0x13, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-      0xff,0xff,0xff,0xff, 0xff,0xff,0xff,0xff, 0xff,0xff,0x01,0xff, 0x66,0x25,0x99,0xcd,
-      0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-      0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-      0xff,0xff,0xff,0xff, 0x05,0x1a,0x5f,0x13, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-      0xff,0xff,0xff,0xff, 0xff,0xff,0xff,0xff, 0xff,0xff,0x01,0xff, 0x66,0x25,0x99,0xcd,
-      0xff,0xff,0xff,0xff, 0x05,0x1a,0x5f,0x13, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-      0xff,0xff,0xff,0xff, 0xff,0xff,0xff,0xff, 0xff,0xff,0x01,0xff, 0x66,0x25,0x99,0xcd,
-      0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-      0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-      0xff,0xff,0xff,0xff, 0x05,0x1a,0x5f,0x13, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-      0xff,0xff,0xff,0xff, 0xff,0xff,0xff,0xff, 0xff,0xff,0x01,0xff, 0x66,0x25,0x99,0xcd,
-      0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-      0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-      0x00,0x71,0x00,0x03, 0x00,0x03,0x00,0x03, 0x00,0x03,0x00,0x03, 0x00,0x03,0x00,0x03
-   };
-   int i,j;
-   for (i=0; i<4; i++)
-   {
-      for (j=0; j<0x8000; j+=2)
-      {
-         mempack[i][j] = 0;
-         mempack[i][j+1] = 0x03;
-      }
-      memcpy(mempack[i], init, 272);
-   }
-}
-#endif
-
 //#define DEBUG_PIF
 #ifdef DEBUG_PIF
 void print_pif(struct pif* pif)
@@ -95,105 +59,93 @@ static uint8_t byte2bcd(int n)
    return ((n / 10) << 4) | (n % 10);
 }
 
-static void EepromCommand(uint8_t *Command)
+void af_rtc_status_command(struct pif *pif, int channel, uint8_t *cmd)
+{
+   /* AF-RTC status query */
+   cmd[3] = 0x00;
+   cmd[4] = 0x10;
+   cmd[5] = 0x00;
+}
+
+void eeprom_status_command(struct pif *pif, int channel, uint8_t *cmd)
+{
+   /* check size */
+   if (cmd[1] != 3)
+   {
+      cmd[1] |= 0x40;
+      if ((cmd[1] & 3) > 0)
+         cmd[3] = 0;
+      if ((cmd[1] & 3) > 1)
+         cmd[4] = (ROM_SETTINGS.savetype != EEPROM_16KB) ? 0x80 : 0xc0;
+      if ((cmd[1] & 3) > 2)
+         cmd[5] = 0;
+   }
+   else
+   {
+      cmd[3] = 0;
+      cmd[4] = (ROM_SETTINGS.savetype != EEPROM_16KB) ? 0x80 : 0xc0;
+      cmd[5] = 0;
+   }
+}
+
+void eeprom_read_command(struct pif *pif, int channel, uint8_t *cmd)
+{
+   /* read 8-byte block. */
+   uint16_t addr = cmd[3] * 8;
+
+   if (addr < 0x200)
+      memcpy(&cmd[4], saved_memory.eeprom + addr, 8);
+   else
+      memcpy(&cmd[4], saved_memory.eeprom2 + addr - 0x200, 8);
+}
+
+void eeprom_write_command(struct pif *pif, int channel, uint8_t *cmd)
+{
+   /* write 8-byte block. */
+   uint16_t addr = cmd[3]*8;
+
+   if (addr < 0x200)
+      memcpy(saved_memory.eeprom + addr, &cmd[4], 8);
+   else
+      memcpy(saved_memory.eeprom2 + addr - 0x200, &cmd[4], 8);
+}
+
+void af_rtc_read_command(struct pif *pif, int channel, uint8_t *cmd)
 {
    time_t curtime_time;
    struct tm *curtime;
 
-   switch (Command[2])
+   /* read RTC block (cmd[3]: block number) */
+   switch (cmd[3])
    {
-      case 0: // check
-#ifdef DEBUG_PIF
-         DebugMessage(M64MSG_INFO, "EepromCommand() check size");
-#endif
-         if (Command[1] != 3)
-         {
-            Command[1] |= 0x40;
-            if ((Command[1] & 3) > 0)
-               Command[3] = 0;
-            if ((Command[1] & 3) > 1)
-               Command[4] = (ROM_SETTINGS.savetype != EEPROM_16KB) ? 0x80 : 0xc0;
-            if ((Command[1] & 3) > 2)
-               Command[5] = 0;
-         }
-         else
-         {
-            Command[3] = 0;
-            Command[4] = (ROM_SETTINGS.savetype != EEPROM_16KB) ? 0x80 : 0xc0;
-            Command[5] = 0;
-         }
+      case 0:
+         cmd[4] = 0x00;
+         cmd[5] = 0x02;
+         cmd[12] = 0x00;
          break;
-      case 4: // read
-         {
-#ifdef DEBUG_PIF
-            DebugMessage(M64MSG_INFO, "EepromCommand() read 8-byte block %i", Command[3]);
-#endif
-            uint16_t addr = Command[3]*8;
-
-            if (addr < 0x200)
-               memcpy(&Command[4], saved_memory.eeprom + addr, 8);
-            else
-               memcpy(&Command[4], saved_memory.eeprom2 + addr - 0x200, 8);
-         }
+      case 1:
+         DebugMessage(M64MSG_ERROR, "AF-RTC read command: cannot read block 1");
          break;
-      case 5: // write
-         {
-#ifdef DEBUG_PIF
-            DebugMessage(M64MSG_INFO, "EepromCommand() write 8-byte block %i", Command[3]);
-#endif
-            uint16_t addr = Command[3]*8;
-
-            if (addr < 0x200)
-               memcpy(saved_memory.eeprom + addr, &Command[4], 8);
-            else
-               memcpy(saved_memory.eeprom2 + addr - 0x200, &Command[4], 8);
-         }
+      case 2:
+         time(&curtime_time);
+         curtime = localtime(&curtime_time);
+         cmd[4] = byte2bcd(curtime->tm_sec);
+         cmd[5] = byte2bcd(curtime->tm_min);
+         cmd[6] = 0x80 + byte2bcd(curtime->tm_hour);
+         cmd[7] = byte2bcd(curtime->tm_mday);
+         cmd[8] = byte2bcd(curtime->tm_wday);
+         cmd[9] = byte2bcd(curtime->tm_mon + 1);
+         cmd[10] = byte2bcd(curtime->tm_year);
+         cmd[11] = byte2bcd(curtime->tm_year / 100);
+         cmd[12] = 0x00;	/* status */
          break;
-      case 6:
-#ifdef DEBUG_PIF
-         DebugMessage(M64MSG_INFO, "EepromCommand() RTC status query");
-#endif
-         // RTCstatus query
-         Command[3] = 0x00;
-         Command[4] = 0x10;
-         Command[5] = 0x00;
-         break;
-      case 7:
-#ifdef DEBUG_PIF
-         DebugMessage(M64MSG_INFO, "EepromCommand() read RTC block %i", Command[3]);
-#endif
-         // read RTC block
-         switch (Command[3]) {	// block number
-            case 0:
-               Command[4] = 0x00;
-               Command[5] = 0x02;
-               Command[12] = 0x00;
-               break;
-            case 1:
-               DebugMessage(M64MSG_ERROR, "RTC command in EepromCommand(): read block %d", Command[2]);
-               break;
-            case 2:
-               time(&curtime_time);
-               curtime = localtime(&curtime_time);
-               Command[4] = byte2bcd(curtime->tm_sec);
-               Command[5] = byte2bcd(curtime->tm_min);
-               Command[6] = 0x80 + byte2bcd(curtime->tm_hour);
-               Command[7] = byte2bcd(curtime->tm_mday);
-               Command[8] = byte2bcd(curtime->tm_wday);
-               Command[9] = byte2bcd(curtime->tm_mon + 1);
-               Command[10] = byte2bcd(curtime->tm_year);
-               Command[11] = byte2bcd(curtime->tm_year / 100);
-               Command[12] = 0x00;	// status
-               break;
-         }
-         break;
-      case 8:
-         // write RTC block
-         DebugMessage(M64MSG_ERROR, "RTC write in EepromCommand(): %d not yet implemented", Command[2]);
-         break;
-      default:
-         DebugMessage(M64MSG_ERROR, "unknown command in EepromCommand(): %x", Command[2]);
    }
+}
+
+void af_rtc_write_command(struct pif* pif, int channel, uint8_t* cmd)
+{
+   /* write RTC block */
+   DebugMessage(M64MSG_ERROR, "AF-RTC write command: not yet implemented");
 }
 
 static uint8_t mempack_crc(uint8_t *data)
@@ -384,6 +336,33 @@ static void internal_ControllerCommand(int Control, uint8_t *Command)
    }
 }
 
+static void process_cart_command(struct pif* pif, int channel, uint8_t* cmd)
+{
+   switch (cmd[2])
+   {
+      case 0:
+         eeprom_status_command(pif, channel, cmd);
+         break;
+      case 4:
+         eeprom_read_command(pif, channel, cmd);
+         break;
+      case 5:
+         eeprom_write_command(pif, channel, cmd);
+         break;
+      case 6:
+         af_rtc_status_command(pif, channel, cmd);
+         break;
+      case 7:
+         af_rtc_read_command(pif, channel, cmd);
+         break;
+      case 8:
+         af_rtc_write_command(pif, channel, cmd);
+         break;
+      default:
+         DebugMessage(M64MSG_ERROR, "unknown PIF command: %02x", cmd[2]);
+   }
+}
+
 void init_pif(struct pif* pif)
 {
    memset(pif->ram, 0, PIF_RAM_SIZE);
@@ -494,7 +473,7 @@ void update_pif_write(struct si_controller *si)
                      internal_ControllerCommand(channel, &pif->ram[i]);
                }
                else if (channel == 4)
-                  EepromCommand(&pif->ram[i]);
+                  process_cart_command(pif, channel, &pif->ram[i]);
                else
                   DebugMessage(M64MSG_ERROR, "channel >= 4 in update_pif_write");
                i += pif->ram[i] + (pif->ram[(i+1)] & 0x3F) + 1;
