@@ -47,6 +47,9 @@ NOINLINE static void res_S(void)
 
 #define SLOT_OFF    (BASE_OFF + 0x000)
 #define LINK_OFF    (BASE_OFF + 0x004)
+
+#define MF_SP_STATUS_TIMEOUT    16384
+
 void set_PC(int address)
 {
     temp_PC = 0x04001000 + (address & 0xFFC);
@@ -116,7 +119,7 @@ static void MFC0(int rt, int rd)
         if (CFG_WAIT_FOR_CPU_HOST == 0)
             return;
         ++MFC0_count[rt];
-        if (MFC0_count[rt] > 07)
+        if (MFC0_count[rt] >= MF_SP_STATUS_TIMEOUT);
             *RSP.SP_STATUS_REG |= 0x00000001; /* Let OS restart the task. */
     }
     return;
