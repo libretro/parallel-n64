@@ -16,25 +16,11 @@
 /* Bog-standard windowed SINC implementation. */
 
 #include "../audio_resampler_driver.h"
-#ifndef RARCH_INTERNAL
-#include "../libretro.h"
-#endif
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#ifdef _WIN32
-#include "../msvc_compat.h"
-#endif
-
-extern retro_get_cpu_features_t perf_get_cpu_features_cb;
-
-#if !defined(RESAMPLER_TEST) && defined(RARCH_INTERNAL)
-#include "../../general.h"
-#else
-#define RARCH_LOG(...) fprintf(stderr, __VA_ARGS__)
-#endif
+#include <compat/posix_string.h>
 
 #ifdef __SSE__
 #include <xmmintrin.h>
@@ -127,7 +113,7 @@ typedef struct rarch_sinc_resampler
    float *main_buffer;
 } rarch_sinc_resampler_t;
 
-static INLINE double sinc(double val)
+static inline double sinc(double val)
 {
    if (fabs(val) < 0.00001)
       return 1.0;
@@ -135,14 +121,14 @@ static INLINE double sinc(double val)
 }
 
 #if defined(SINC_WINDOW_LANCZOS)
-static inline double window_function(double index)
+static inline double window_function(double idx)
 {
-   return sinc(M_PI * index);
+   return sinc(M_PI * idx);
 }
 #elif defined(SINC_WINDOW_KAISER)
 /* Modified Bessel function of first order.
  * Check Wiki for mathematical definition ... */
-static INLINE double besseli0(double x)
+static inline double besseli0(double x)
 {
    unsigned i;
    double sum = 0.0;
@@ -168,9 +154,9 @@ static INLINE double besseli0(double x)
    return sum;
 }
 
-static INLINE double window_function(double index)
+static inline double window_function(double idx)
 {
-   return besseli0(SINC_WINDOW_KAISER_BETA * sqrt(1 - index * index));
+   return besseli0(SINC_WINDOW_KAISER_BETA * sqrt(1 - idx * idx));
 }
 #else
 #error "No SINC window function defined."
@@ -182,16 +168,16 @@ static void init_sinc_table(rarch_sinc_resampler_t *resamp, double cutoff,
    int i, j, p;
    double window_mod = window_function(0.0); /* Need to normalize w(0) to 1.0. */
    int stride = calculate_delta ? 2 : 1;
-
    double sidelobes = taps / 2.0;
+
    for (i = 0; i < phases; i++)
    {
       for (j = 0; j < taps; j++)
       {
-         double sinc_phase;
-		 float val;
+         double window_phase, sinc_phase;
+         float val;
          int n = j * phases + i;
-         double window_phase = (double)n / (phases * taps); /* [0, 1). */
+         window_phase = (double)n / (phases * taps); /* [0, 1). */
          window_phase = 2.0 * window_phase - 1.0; /* [-1, 1) */
          sinc_phase = sidelobes * window_phase;
 
@@ -217,10 +203,10 @@ static void init_sinc_table(rarch_sinc_resampler_t *resamp, double cutoff,
       phase = phases - 1;
       for (j = 0; j < taps; j++)
       {
-         double sinc_phase;
          float val, delta;
+         double window_phase, sinc_phase;
          int n = j * phases + (phase + 1);
-         double window_phase = (double)n / (phases * taps); /* (0, 1]. */
+         window_phase = (double)n / (phases * taps); /* (0, 1]. */
          window_phase = 2.0 * window_phase - 1.0; /* (-1, 1] */
          sinc_phase = sidelobes * window_phase;
 
@@ -235,15 +221,16 @@ static void init_sinc_table(rarch_sinc_resampler_t *resamp, double cutoff,
 /* No memalign() for us on Win32 ... */
 static void *aligned_alloc__(size_t boundary, size_t size)
 {
-   uintptr_t addr;
    void **place;
+   uintptr_t addr = 0;
    void *ptr = malloc(boundary + size + sizeof(uintptr_t));
+
    if (!ptr)
       return NULL;
 
-   addr = ((uintptr_t)ptr + 
-         sizeof(uintptr_t) + boundary) & ~(boundary - 1);
-   place   = (void**)addr;
+   addr           = ((uintptr_t)ptr + sizeof(uintptr_t) + boundary) 
+                    & ~(boundary - 1);
+   place          = (void**)addr;
    place[-1]      = ptr;
 
    return (void*)addr;
@@ -256,7 +243,7 @@ static void aligned_free__(void *ptr)
 }
 
 #if !(defined(__AVX__) && ENABLE_AVX) && !defined(__SSE__)
-static INLINE void process_sinc_C(rarch_sinc_resampler_t *resamp,
+static inline void process_sinc_C(rarch_sinc_resampler_t *resamp,
       float *out_buffer)
 {
    unsigned i;
@@ -372,16 +359,16 @@ static void process_sinc(rarch_sinc_resampler_t *resamp, float *out_buffer)
 
 #if SINC_COEFF_LERP
       __m128 deltas = _mm_load_ps(delta_table + i);
-      __m128 sinc = _mm_add_ps(_mm_load_ps(phase_table + i),
+      __m128 _sinc = _mm_add_ps(_mm_load_ps(phase_table + i),
             _mm_mul_ps(deltas, delta));
 #else
-      __m128 sinc = _mm_load_ps(phase_table + i);
+      __m128 _sinc = _mm_load_ps(phase_table + i);
 #endif
-      sum_l       = _mm_add_ps(sum_l, _mm_mul_ps(buf_l, sinc));
-      sum_r       = _mm_add_ps(sum_r, _mm_mul_ps(buf_r, sinc));
+      sum_l       = _mm_add_ps(sum_l, _mm_mul_ps(buf_l, _sinc));
+      sum_r       = _mm_add_ps(sum_r, _mm_mul_ps(buf_r, _sinc));
    }
 
-   /* Them annoying shuffles :V
+   /* Them annoying shuffles.
     * sum_l = { l3, l2, l1, l0 }
     * sum_r = { r3, r2, r1, r0 }
     */
@@ -485,12 +472,15 @@ static void resampler_sinc_free(void *re)
    free(resampler);
 }
 
-static void *resampler_sinc_new(double bandwidth_mod)
+static void *resampler_sinc_new(const struct resampler_config *config,
+      double bandwidth_mod, resampler_simd_mask_t mask)
 {
-   double cutoff;
    size_t phase_elems, elems;
+   double cutoff;
    rarch_sinc_resampler_t *re = (rarch_sinc_resampler_t*)
       calloc(1, sizeof(*re));
+   (void)config;
+
    if (!re)
       return NULL;
 
@@ -532,24 +522,11 @@ static void *resampler_sinc_new(double bandwidth_mod)
    init_sinc_table(re, cutoff, re->phase_table,
          1 << PHASE_BITS, re->taps, SINC_COEFF_LERP);
 
-#if defined(__AVX__) && ENABLE_AVX
-   RARCH_LOG("Sinc resampler [AVX]\n");
-#elif defined(__SSE__)
-   RARCH_LOG("Sinc resampler [SSE]\n");
-#elif defined(__ARM_NEON__)
-   unsigned cpu = 0;
-   if (perf_get_cpu_features_cb)
-      cpu = perf_get_cpu_features_cb();
-   process_sinc_func = cpu & RETRO_SIMD_NEON 
+#if defined(__ARM_NEON__)
+   process_sinc_func = mask & RESAMPLER_SIMD_NEON 
       ? process_sinc_neon : process_sinc_C;
-   RARCH_LOG("Sinc resampler [%s]\n",
-         cpu & RETRO_SIMD_NEON ? "NEON" : "C");
-#else
-   RARCH_LOG("Sinc resampler [C]\n");
 #endif
 
-   RARCH_LOG("SINC params (%u phase bits, %u taps).\n",
-         PHASE_BITS, re->taps);
    return re;
 
 error:

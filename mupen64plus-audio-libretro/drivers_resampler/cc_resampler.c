@@ -1,6 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
- *  Copyright (C) 2014      - Ali Bouhlel ( aliaspider@gmail.com )
+ *  Copyright (C) 2014-2015 - Ali Bouhlel ( aliaspider@gmail.com )
  *
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -14,23 +13,17 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// Convoluted Cosine Resampler
+/* Convoluted Cosine Resampler */
 
 #include "../audio_resampler_driver.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdio.h>
-
-#if !defined(RESAMPLER_TEST) && defined(RARCH_INTERNAL)
-#include "../../general.h"
-#else
-/* FIXME - variadic macros not supported for MSVC 2003 */
-#define RARCH_LOG(...) fprintf(stderr, __VA_ARGS__)
+#ifdef __SSE__
+#include <xmmintrin.h>
 #endif
 
-
-/* since SSE and NEON don't provide support for trigonometric functions
+/* Since SSE and NEON don't provide support for trigonometric functions
  * we approximate those with polynoms
  *
  * CC_RESAMPLER_PRECISION defines how accurate the approximation is
@@ -68,14 +61,14 @@ typedef struct rarch_CC_resampler
 
 static void *memalign_alloc__(size_t boundary, size_t size)
 {
-   uintptr_t addr;
+   uintptr_t addr = 0;
    void **place;
    void *ptr = malloc(boundary + size + sizeof(uintptr_t));
    if (!ptr)
       return NULL;
 
-   addr = ((uintptr_t)ptr +
-         sizeof(uintptr_t) + boundary) & ~(boundary - 1);
+   addr = ((uintptr_t)ptr + sizeof(uintptr_t) + boundary)
+      & ~(boundary - 1);
    place   = (void**)addr;
    place[-1]      = ptr;
 
@@ -91,13 +84,13 @@ static void memalign_free__(void *ptr)
 #ifdef _MIPS_ARCH_ALLEGREX
 static void resampler_CC_process(void *re_, struct resampler_data *data)
 {
-   (void)re_;
    float ratio, fraction;
-
    audio_frame_float_t *inp = (audio_frame_float_t*)data->data_in;
    audio_frame_float_t *inp_max = (audio_frame_float_t*)
       (inp + data->input_frames);
    audio_frame_float_t *outp = (audio_frame_float_t*)data->data_out;
+
+   (void)re_;
 
    __asm__ (
          ".set      push\n"
@@ -188,8 +181,13 @@ static void resampler_CC_free(void *re_)
    (void)re_;
 }
 
-static void *resampler_CC_init(double bandwidth_mod)
+static void *resampler_CC_init(const struct resampler_config *config,
+      double bandwidth_mod, resampler_simd_mask_t mask)
 {
+   (void)mask;
+   (void)bandwidth_mod;
+   (void)config;
+
    __asm__ (
          ".set      push\n"
          ".set      noreorder\n"
@@ -202,20 +200,17 @@ static void *resampler_CC_init(double bandwidth_mod)
 
          ".set      pop\n");
 
-   RARCH_LOG("\nConvoluted Cosine resampler (VFPU): \n");
    return (void*)-1;
 }
 #else
 
 
 #if defined(__SSE__)
-
-#include <xmmintrin.h>
-
 #define CC_RESAMPLER_IDENT "SSE"
 
 static void resampler_CC_downsample(void *re_, struct resampler_data *data)
 {
+   __m128 vec_previous, vec_current;
    float ratio, b;
    rarch_CC_resampler_t *re     = (rarch_CC_resampler_t*)re_;
 
@@ -226,8 +221,8 @@ static void resampler_CC_downsample(void *re_, struct resampler_data *data)
    ratio = 1.0 / data->ratio;
    b = data->ratio; /* cutoff frequency. */
 
-   __m128 vec_previous = _mm_loadu_ps((float*)&re->buffer[0]);
-   __m128 vec_current  = _mm_loadu_ps((float*)&re->buffer[2]);
+   vec_previous = _mm_loadu_ps((float*)&re->buffer[0]);
+   vec_current  = _mm_loadu_ps((float*)&re->buffer[2]);
 
    while (inp != inp_max)
    {
@@ -301,6 +296,7 @@ static void resampler_CC_downsample(void *re_, struct resampler_data *data)
 
 static void resampler_CC_upsample(void *re_, struct resampler_data *data)
 {
+   __m128 vec_previous, vec_current;
    float b, ratio;
    rarch_CC_resampler_t *re = (rarch_CC_resampler_t*)re_;
 
@@ -311,10 +307,8 @@ static void resampler_CC_upsample(void *re_, struct resampler_data *data)
    b = min(data->ratio, 1.00); /* cutoff frequency. */
    ratio = 1.0 / data->ratio;
 
-   __m128 vec_previous = _mm_loadu_ps((float*)&re->buffer[0]);
-   __m128 vec_current  = _mm_loadu_ps((float*)&re->buffer[2]);
-
-
+   vec_previous = _mm_loadu_ps((float*)&re->buffer[0]);
+   vec_current  = _mm_loadu_ps((float*)&re->buffer[2]);
 
    while (inp != inp_max)
    {
@@ -396,12 +390,14 @@ size_t resampler_CC_upsample_neon  (float *outp, const float *inp,
 
 static void resampler_CC_downsample(void *re_, struct resampler_data *data)
 {
-   data->output_frames = resampler_CC_downsample_neon(data->data_out, data->data_in, re_, data->input_frames, data->ratio);
+   data->output_frames = resampler_CC_downsample_neon(
+         data->data_out, data->data_in, re_, data->input_frames, data->ratio);
 }
 
 static void resampler_CC_upsample(void *re_, struct resampler_data *data)
 {
-   data->output_frames = resampler_CC_upsample_neon(data->data_out, data->data_in, re_, data->input_frames, data->ratio);
+   data->output_frames = resampler_CC_upsample_neon(
+         data->data_out, data->data_in, re_, data->input_frames, data->ratio);
 }
 
 #else
@@ -422,22 +418,22 @@ static inline float cc_kernel(float x, float b)
    return (cc_int(x + 0.5, b) - cc_int(x - 0.5, b)) / (2.0 * M_PI);
 }
 #else
-static INLINE float cc_int(float x, float b)
+static inline float cc_int(float x, float b)
 {
    float val = x * b;
 #if (CC_RESAMPLER_PRECISION > 0)
-   val = val * (1.00f - 0.25f*val*val*(3.00f - val*val));
+   val = val*(1 - 0.25 * val * val * (3.0 - val * val));
 #endif
-   return (val > 0.5f) ? 0.5f : (val < -0.5f) ? -0.5f : val;
+   return (val > 0.5) ? 0.5 : (val < -0.5) ? -0.5 : val;
 }
 
-static INLINE float cc_kernel(float x, float b)
+static inline float cc_kernel(float x, float b)
 {
-   return (cc_int(x + 0.5f, b) - cc_int(x - 0.5f, b));
+   return (cc_int(x + 0.5, b) - cc_int(x - 0.5, b));
 }
 #endif
 
-static INLINE void add_to(const audio_frame_float_t *source,
+static inline void add_to(const audio_frame_float_t *source,
       audio_frame_float_t *target, float ratio)
 {
    target->l += source->l * ratio;
@@ -450,11 +446,12 @@ static void resampler_CC_downsample(void *re_, struct resampler_data *data)
    rarch_CC_resampler_t *re     = (rarch_CC_resampler_t*)re_;
 
    audio_frame_float_t *inp     = (audio_frame_float_t*)data->data_in;
-   audio_frame_float_t *inp_max = (audio_frame_float_t*)(inp + data->input_frames);
+   audio_frame_float_t *inp_max = (audio_frame_float_t*)
+      (inp + data->input_frames);
    audio_frame_float_t *outp    = (audio_frame_float_t*)data->data_out;
 
-   ratio = (float)(1.0 / data->ratio);
-   b = (float)data->ratio; /* cutoff frequency. */
+   ratio = 1.0 / data->ratio;
+   b = data->ratio; /* cutoff frequency. */
 
    while (inp != inp_max)
    {
@@ -489,11 +486,12 @@ static void resampler_CC_upsample(void *re_, struct resampler_data *data)
    rarch_CC_resampler_t *re = (rarch_CC_resampler_t*)re_;
 
    audio_frame_float_t *inp     = (audio_frame_float_t*)data->data_in;
-   audio_frame_float_t *inp_max = (audio_frame_float_t*)(inp + data->input_frames);
+   audio_frame_float_t *inp_max = (audio_frame_float_t*)
+      (inp + data->input_frames);
    audio_frame_float_t *outp    = (audio_frame_float_t*)data->data_out;
 
-   b = (float)min(data->ratio, 1.00f); /* cutoff frequency. */
-   ratio = (float)(1.0 / data->ratio);
+   b = min(data->ratio, 1.00); /* cutoff frequency. */
+   ratio = 1.0 / data->ratio;
 
    while (inp != inp_max)
    {
@@ -511,7 +509,7 @@ static void resampler_CC_upsample(void *re_, struct resampler_data *data)
 
          for (i = 0; i < 4; i++)
          {
-            temp = cc_kernel(re->distance + 1.0f - i, b);
+            temp = cc_kernel(re->distance + 1.0 - i, b);
             outp->l += re->buffer[i].l * temp;
             outp->r += re->buffer[i].r * temp;
          }
@@ -531,7 +529,8 @@ static void resampler_CC_upsample(void *re_, struct resampler_data *data)
 static void resampler_CC_process(void *re_, struct resampler_data *data)
 {
    rarch_CC_resampler_t *re = (rarch_CC_resampler_t*)re_;
-   re->process(re_, data);
+   if (re)
+      re->process(re_, data);
 }
 
 static void resampler_CC_free(void *re_)
@@ -541,11 +540,20 @@ static void resampler_CC_free(void *re_)
       memalign_free__(re);
 }
 
-static void *resampler_CC_init(double bandwidth_mod)
+static void *resampler_CC_init(const struct resampler_config *config,
+      double bandwidth_mod, resampler_simd_mask_t mask)
 {
    int i;
    rarch_CC_resampler_t *re = (rarch_CC_resampler_t*)
       memalign_alloc__(32, sizeof(rarch_CC_resampler_t));
+
+   /* TODO: lookup if NEON support can be detected at 
+    * runtime and a funcptr set at runtime for either
+    * C codepath or NEON codepath. This will help out
+    * Android. */
+   (void)mask;
+   (void)config;
+
    if (!re)
       return NULL;
 
@@ -555,19 +563,15 @@ static void *resampler_CC_init(double bandwidth_mod)
       re->buffer[i].r = 0.0;
    }
 
-   RARCH_LOG("Convoluted Cosine resampler (" CC_RESAMPLER_IDENT ") - precision = %i : ", CC_RESAMPLER_PRECISION);
-
-   /* variations of data->ratio around 0.75 are safer
+   /* Variations of data->ratio around 0.75 are safer
     * than around 1.0 for both up/downsampler. */
    if (bandwidth_mod < 0.75)
    {
-      RARCH_LOG("CC_downsample @%f \n", bandwidth_mod);
       re->process = resampler_CC_downsample;
       re->distance = 0.0;
    }
    else
    {
-      RARCH_LOG("CC_upsample @%f \n", bandwidth_mod);
       re->process = resampler_CC_upsample;
       re->distance = 2.0;
    }
@@ -582,5 +586,5 @@ rarch_resampler_t CC_resampler = {
    resampler_CC_free,
    RESAMPLER_API_VERSION,
    "CC",
-   "CC"
+   "cc"
 };

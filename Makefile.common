@@ -166,9 +166,9 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 					 $(AUDIO_LIBRETRO_DIR)/file/config_file_userdata.c \
 					 $(AUDIO_LIBRETRO_DIR)/audio_plugin.c \
 					 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
-					 $(AUDIO_LIBRETRO_DIR)/resamplers/sinc.c \
-					 $(AUDIO_LIBRETRO_DIR)/resamplers/nearest.c \
-					 $(AUDIO_LIBRETRO_DIR)/resamplers/cc_resampler.c \
+					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc.c \
+					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/nearest.c \
+					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler.c \
 					 $(AUDIO_LIBRETRO_DIR)/compat/compat.c \
 					 $(AUDIO_LIBRETRO_DIR)/file/file_path.c \
 					 $(AUDIO_LIBRETRO_DIR)/string/string_list.c \
@@ -215,8 +215,8 @@ ifeq ($(HAVE_NEON), 1)
 						$(VIDEODIR_GLN64)/gSPNeon.c
 
 	SOURCES_ASM	+= $(AUDIO_LIBRETRO_DIR)/utils_neon.S \
-						$(AUDIO_LIBRETRO_DIR)/resamplers/sinc_neon.S \
-						$(AUDIO_LIBRETRO_DIR)/resamplers/cc_resampler_neon.S
+						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_neon.S \
+						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler_neon.S
 endif
 
 # Glide64
