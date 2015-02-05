@@ -116,7 +116,8 @@ static void controller_read_pak_command(struct pif* pif, int channel, uint8_t* c
          mempak_write_command(&pif->controllers, channel, cmd);
          break;
       case PLUGIN_RAW:
-         input.controllerCommand(channel, cmd);
+         if (input.controllerCommand)
+            input.controllerCommand(channel, cmd);
          break;
       default:
          memset(&cmd[5], 0, 0x20);
