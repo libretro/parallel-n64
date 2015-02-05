@@ -98,7 +98,7 @@ bool rarch_resampler_realloc(void **re, const rarch_resampler_t **backend,
       (*backend)->free(*re);
 
    *re      = NULL;
-   *backend = find_resampler_driver("CC");
+   *backend = find_resampler_driver(ident);
 
    if (!*backend)
       return false;

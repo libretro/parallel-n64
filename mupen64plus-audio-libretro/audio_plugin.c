@@ -171,7 +171,7 @@ EXPORT int CALL audioInitiateAudio(AUDIO_INFO Audio_Info)
 {
    AudioInfo = Audio_Info;
 
-   rarch_resampler_realloc(&resampler_audio_data, &resampler, NULL, 1.0);
+   rarch_resampler_realloc(&resampler_audio_data, &resampler, "CC", 1.0);
    audio_in_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
    audio_out_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
    audio_out_buffer_s16 = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
