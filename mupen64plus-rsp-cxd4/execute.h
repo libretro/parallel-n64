@@ -469,7 +469,9 @@ BRANCH:
     else /* ??? unknown, possibly external intervention from CPU memory map */
     {
         message("SP_SET_HALT", 3);
+#ifdef M64P_RSP_THREAD_RETASK_NOT_YET_IMPLEMENTED
         return;
+#endif
     }
     *RSP.SP_STATUS_REG &= ~0x00000001; /* CPU restarts with the correct SIGs. */
     return;
