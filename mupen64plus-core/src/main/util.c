@@ -83,75 +83,75 @@ void to_big_endian_buffer(void *buffer, size_t length, size_t count)
  **********************/
 void countrycodestring(char countrycode, char *string)
 {
-    switch (countrycode)
-    {
-    case '\0':    /* Demo */
-        strcpy(string, "Demo");
-        break;
+   switch (countrycode)
+   {
+      case '\0':    /* Demo */
+         strcpy(string, "Demo");
+         break;
 
-    case '7':  /* Beta */
-        strcpy(string, "Beta");
-        break;
+      case '7':  /* Beta */
+         strcpy(string, "Beta");
+         break;
 
-    case 'A': /* Japan / USA */
-        strcpy(string, "USA/Japan");
-        break;
+      case 'A': /* Japan / USA */
+         strcpy(string, "USA/Japan");
+         break;
 
-    case 'D': /* Germany */
-        strcpy(string, "Germany");
-        break;
+      case 'D': /* Germany */
+         strcpy(string, "Germany");
+         break;
 
-    case 'E': /* USA */
-        strcpy(string, "USA");
-        break;
+      case 'E': /* USA */
+         strcpy(string, "USA");
+         break;
 
-    case 'F': /* France */
-        strcpy(string, "France");
-        break;
+      case 'F': /* France */
+         strcpy(string, "France");
+         break;
 
-    case 'I':  /* Italy */
-        strcpy(string, "Italy");
-        break;
+      case 'I':  /* Italy */
+         strcpy(string, "Italy");
+         break;
 
-    case 'J': /* Japan */
-        strcpy(string, "Japan");
-        break;
+      case 'J': /* Japan */
+         strcpy(string, "Japan");
+         break;
 
-    case 'S':  /* Spain */
-        strcpy(string, "Spain");
-        break;
+      case 'S':  /* Spain */
+         strcpy(string, "Spain");
+         break;
 
-    case 'U': case 'Y':  /* Australia */
-        sprintf(string, "Australia (%c)", countrycode);
-        break;
+      case 'U': case 'Y':  /* Australia */
+         sprintf(string, "Australia (%c)", countrycode);
+         break;
 
-    case 0x50: case 0x58: case 0x20:
-    case 0x21: case 0x38: case 0x70:
-        sprintf(string, "Europe (%c)", countrycode);
-        break;
+      case 0x50: case 0x58: case 0x20:
+      case 0x21: case 0x38: case 0x70:
+         sprintf(string, "Europe (%c)", countrycode);
+         break;
 
-    default:
-        sprintf(string, "Unknown (0x%02X)", countrycode);
-        break;
-    }
+      default:
+         sprintf(string, "Unknown (0x%02X)", countrycode);
+         break;
+   }
 }
 
 void imagestring(unsigned char imagetype, char *string)
 {
-    switch (imagetype)
-    {
-    case Z64IMAGE:
-        strcpy(string, ".z64 (native)");
-        break;
-    case V64IMAGE:
-        strcpy(string, ".v64 (byteswapped)");
-        break;
-    case N64IMAGE:
-        strcpy(string, ".n64 (wordswapped)");
-        break;
-    default:
-        string[0] = '\0';
-    }
+   switch (imagetype)
+   {
+      case Z64IMAGE:
+         strcpy(string, ".z64 (native)");
+         break;
+      case V64IMAGE:
+         strcpy(string, ".v64 (byteswapped)");
+         break;
+      case N64IMAGE:
+         strcpy(string, ".n64 (wordswapped)");
+         break;
+      default:
+         string[0] = '\0';
+   }
 }
 
 /**********************
@@ -184,8 +184,7 @@ const char* namefrompath(const char* path)
     
     if (last_separator_ptr != NULL)
         return last_separator_ptr + 1;
-    else
-        return path;
+    return path;
 }
 
 static int is_path_separator(char c)
@@ -249,8 +248,7 @@ static unsigned char char2hex(char c)
         return c - '0';
     else if(c >= 'a' && c <= 'f')
         return c - 'a' + 10;
-    else
-        return 0xFF;
+    return 0xFF;
 }
 
 int parse_hex(const char *str, unsigned char *output, size_t output_size)

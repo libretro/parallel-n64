@@ -87,27 +87,24 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 
     /* Read and check Mupen64Plus magic number. */
     if(strncmp((char *)curr, savestate_magic, 8)!=0)
-    {
         return 0;
-    }
+
     curr += 8;
 
     version = *curr++;
     version = (version << 8) | *curr++;
     version = (version << 8) | *curr++;
     version = (version << 8) | *curr++;
+
     if(version != 0x00010000)
-    {
         return 0;
-    }
 
     if(memcmp((char *)curr, ROM_SETTINGS.MD5, 32))
-    {
         return 0;
-    }
+
     curr += 32;
 
-    // Parse savestate
+    /* Parse savestate */
     g_ri.rdram.regs[RDRAM_CONFIG_REG] = GETDATA(curr, uint32_t);
     g_ri.rdram.regs[RDRAM_DEVICE_ID_REG] = GETDATA(curr, uint32_t);
     g_ri.rdram.regs[RDRAM_DELAY_REG] = GETDATA(curr, uint32_t);
@@ -237,50 +234,60 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
     lo = GETDATA(curr, long long int);
     hi = GETDATA(curr, long long int);
     COPYARRAY(reg_cop1_fgr_64, curr, long long int, 32);
-    if ((g_cp0_regs[CP0_STATUS_REG] & 0x04000000) == 0)  // 32-bit FPR mode requires data shuffling because 64-bit layout is always stored in savestate file
+    
+    /* 32-bit FPR mode requires data shuffling because 
+     * 64-bit layout is always stored in savestate file */
+    if ((g_cp0_regs[CP0_STATUS_REG] & 0x04000000) == 0)  
         shuffle_fpr_data(0x04000000, 0);
     FCR0 = GETDATA(curr, int);
     FCR31 = GETDATA(curr, int);
 
     for (i = 0; i < 32; i++)
     {
-        tlb_e[i].mask = GETDATA(curr, short);
+        tlb_e[i].mask       = GETDATA(curr, short);
         curr += 2;
-        tlb_e[i].vpn2 = GETDATA(curr, int);
-        tlb_e[i].g = GETDATA(curr, char);
-        tlb_e[i].asid = GETDATA(curr, unsigned char);
+
+        tlb_e[i].vpn2       = GETDATA(curr, int);
+        tlb_e[i].g          = GETDATA(curr, char);
+        tlb_e[i].asid       = GETDATA(curr, unsigned char);
         curr += 2;
-        tlb_e[i].pfn_even = GETDATA(curr, int);
-        tlb_e[i].c_even = GETDATA(curr, char);
-        tlb_e[i].d_even = GETDATA(curr, char);
-        tlb_e[i].v_even = GETDATA(curr, char);
+
+        tlb_e[i].pfn_even   = GETDATA(curr, int);
+        tlb_e[i].c_even     = GETDATA(curr, char);
+        tlb_e[i].d_even     = GETDATA(curr, char);
+        tlb_e[i].v_even     = GETDATA(curr, char);
         curr++;
-        tlb_e[i].pfn_odd = GETDATA(curr, int);
-        tlb_e[i].c_odd = GETDATA(curr, char);
-        tlb_e[i].d_odd = GETDATA(curr, char);
-        tlb_e[i].v_odd = GETDATA(curr, char);
-        tlb_e[i].r = GETDATA(curr, char);
+
+        tlb_e[i].pfn_odd    = GETDATA(curr, int);
+        tlb_e[i].c_odd      = GETDATA(curr, char);
+        tlb_e[i].d_odd      = GETDATA(curr, char);
+        tlb_e[i].v_odd      = GETDATA(curr, char);
+        tlb_e[i].r          = GETDATA(curr, char);
    
         tlb_e[i].start_even = GETDATA(curr, unsigned int);
-        tlb_e[i].end_even = GETDATA(curr, unsigned int);
-        tlb_e[i].phys_even = GETDATA(curr, unsigned int);
-        tlb_e[i].start_odd = GETDATA(curr, unsigned int);
-        tlb_e[i].end_odd = GETDATA(curr, unsigned int);
-        tlb_e[i].phys_odd = GETDATA(curr, unsigned int);
+        tlb_e[i].end_even   = GETDATA(curr, unsigned int);
+        tlb_e[i].phys_even  = GETDATA(curr, unsigned int);
+        tlb_e[i].start_odd  = GETDATA(curr, unsigned int);
+        tlb_e[i].end_odd    = GETDATA(curr, unsigned int);
+        tlb_e[i].phys_odd   = GETDATA(curr, unsigned int);
     }
 
 #ifdef NEW_DYNAREC
-    if (r4300emu == CORE_DYNAREC) {
+    if (r4300emu == CORE_DYNAREC)
+    {
         pcaddr = GETDATA(curr, unsigned int);
         pending_exception = 1;
         invalidate_all_pages();
-    } else {
+    }
+    else
+    {
         if(r4300emu != CORE_PURE_INTERPRETER)
         {
             for (i = 0; i < 0x100000; i++)
                 invalid_code[i] = 1;
         }
-        generic_jump_to(GETDATA(curr, unsigned int)); // PC
+
+        generic_jump_to(GETDATA(curr, unsigned int)); /* PC */
     }
 #else
     if(r4300emu != CORE_PURE_INTERPRETER)
@@ -292,8 +299,8 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 #endif
 
     next_interupt = GETDATA(curr, unsigned int);
-    next_vi = GETDATA(curr, unsigned int);
-    vi_field = GETDATA(curr, unsigned int);
+    next_vi       = GETDATA(curr, unsigned int);
+    vi_field      = GETDATA(curr, unsigned int);
 
     memcpy(queue, curr, sizeof(queue));
     to_little_endian_buffer(queue, 4, 256);
@@ -306,7 +313,8 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 #endif
        last_addr = PC->addr;
 
-    // deliver callback to indicate completion of state loading operation
+    /* deliver callback to indicate 
+     * completion of state loading operation */
     StateChanged(M64CORE_STATE_LOADCOMPLETE, 1);
 
     return 1;
@@ -314,11 +322,10 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 
 int savestates_save_m64p(unsigned char *data, size_t size)
 {
-    unsigned char outbuf[4], *curr;
+    unsigned char outbuf[4];
     int i, queuelength;
     char queue[1024];
-
-    curr = (unsigned char*)data;
+    unsigned char *curr = (unsigned char*)data;
 
     if (!curr)
        return 0;
@@ -503,6 +510,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
 
     PUTDATA(curr, int, FCR0);
     PUTDATA(curr, int, FCR31);
+
     for (i = 0; i < 32; i++)
     {
         PUTDATA(curr, short, tlb_e[i].mask);
@@ -546,7 +554,8 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     to_little_endian_buffer(queue, 4, queuelength/4);
     PUTARRAY(queue, curr, char, queuelength);
 
-    // deliver callback to indicate completion of state saving operation
+    /* Deliver callback to indicate completion 
+     * of state saving operation */
     StateChanged(M64CORE_STATE_SAVECOMPLETE, 1);
 
     return 1;

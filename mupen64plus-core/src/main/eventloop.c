@@ -45,14 +45,18 @@ int event_gameshark_active(void)
 
 void event_set_gameshark(int active)
 {
-    // if boolean value doesn't change then just return
-    if (!active == !GamesharkActive)
-        return;
+   /* if boolean value doesn't change then just return */
+   if (!active == !GamesharkActive)
+      return;
 
-    // set the button state
-    GamesharkActive = (active ? 1 : 0);
+   /* set the button state */
+   GamesharkActive = 0;
 
-    // notify front-end application that gameshark button state has changed
-    StateChanged(M64CORE_INPUT_GAMESHARK, GamesharkActive);
+   if (active)
+      GamesharkActive = 1;
+
+   /* notify front-end application that 
+    * gameshark button state has changed */
+   StateChanged(M64CORE_INPUT_GAMESHARK, GamesharkActive);
 }
 
