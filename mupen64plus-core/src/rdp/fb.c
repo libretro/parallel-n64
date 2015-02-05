@@ -103,45 +103,56 @@ void protect_framebuffers(struct rdp_core* dp)
 
     if (gfx.fBGetFrameBufferInfo && gfx.fBRead && gfx.fBWrite)
         gfx.fBGetFrameBufferInfo(fb->infos);
-    if (gfx.fBGetFrameBufferInfo && gfx.fBRead && gfx.fBWrite
-            && fb->infos[0].addr)
-    {
-        size_t i;
-        for(i = 0; i < FB_INFOS_COUNT; ++i)
-        {
-            if (fb->infos[i].addr)
-            {
-                int j;
-                int start = fb->infos[i].addr & 0x7FFFFF;
-                int end = start + fb->infos[i].width*
-                          fb->infos[i].height*
-                          fb->infos[i].size - 1;
-                int start1 = start;
-                int end1 = end;
-                start >>= 16;
-                end >>= 16;
-                for (j=start; j<=end; j++)
-                {
-                    map_region(0x8000+j, M64P_MEM_RDRAM, RW(rdramFB));
-                    map_region(0xa000+j, M64P_MEM_RDRAM, RW(rdramFB));
-                }
-                start <<= 4;
-                end <<= 4;
-                for (j=start; j<=end; j++)
-                {
-                    if (j>=start1 && j<=end1) fb->dirty_page[j]=1;
-                    else fb->dirty_page[j] = 0;
-                }
 
-                if (fb->once != 0)
-                {
-                    fb->once = 0;
-                    fast_memory = 0;
-                    for (j=0; j<0x100000; j++)
-                        invalid_code[j] = 1;
-                }
-            }
-        }
+    if (!gfx.fBGetFrameBufferInfo)
+       return;
+    if (!gfx.fBRead && gfx.fBWrite)
+       return;
+
+    if (fb->infos[0].addr)
+    {
+       size_t i;
+       for(i = 0; i < FB_INFOS_COUNT; ++i)
+       {
+          if (fb->infos[i].addr)
+          {
+             int j;
+             int start = fb->infos[i].addr & 0x7FFFFF;
+             int end = start + fb->infos[i].width*
+                fb->infos[i].height*
+                fb->infos[i].size - 1;
+             int start1 = start;
+             int end1 = end;
+
+             start >>= 16;
+             end >>= 16;
+
+             for (j = start; j <= end; j++)
+             {
+                map_region(0x8000+j, M64P_MEM_RDRAM, RW(rdramFB));
+                map_region(0xa000+j, M64P_MEM_RDRAM, RW(rdramFB));
+             }
+
+             start <<= 4;
+             end <<= 4;
+
+             for (j=start; j<=end; j++)
+             {
+                if (j >= start1 && j <= end1)
+                   fb->dirty_page[j] = 1;
+                else
+                   fb->dirty_page[j] = 0;
+             }
+
+             if (fb->once != 0)
+             {
+                fb->once = 0;
+                fast_memory = 0;
+                for (j=0; j<0x100000; j++)
+                   invalid_code[j] = 1;
+             }
+          }
+       }
     }
 }
 
@@ -149,28 +160,32 @@ void unprotect_framebuffers(struct rdp_core* dp)
 {
     struct fb* fb = &dp->fb;
 
-    if (gfx.fBGetFrameBufferInfo && gfx.fBRead && gfx.fBWrite &&
-            fb->infos[0].addr)
+    if (!gfx.fBGetFrameBufferInfo)
+       return;
+    if (!gfx.fBRead && gfx.fBWrite)
+       return;
+    
+    if (fb->infos[0].addr)
     {
-        size_t i;
-        for(i = 0; i < FB_INFOS_COUNT; ++i)
-        {
-            if (fb->infos[i].addr)
-            {
-                int j;
-                int start = fb->infos[i].addr & 0x7FFFFF;
-                int end = start + fb->infos[i].width*
-                          fb->infos[i].height*
-                          fb->infos[i].size - 1;
-                start = start >> 16;
-                end = end >> 16;
+       size_t i;
+       for(i = 0; i < FB_INFOS_COUNT; ++i)
+       {
+          if (fb->infos[i].addr)
+          {
+             int j;
+             int start = fb->infos[i].addr & 0x7FFFFF;
+             int end = start + fb->infos[i].width *
+                fb->infos[i].height*
+                fb->infos[i].size - 1;
+             start = start >> 16;
+             end   = end >> 16;
 
-                for (j=start; j<=end; j++)
-                {
-                    map_region(0x8000+j, M64P_MEM_RDRAM, RW(rdram));
-                    map_region(0xa000+j, M64P_MEM_RDRAM, RW(rdram));
-                }
-            }
-        }
+             for (j = start; j <= end; j++)
+             {
+                map_region(0x8000+j, M64P_MEM_RDRAM, RW(rdram));
+                map_region(0xa000+j, M64P_MEM_RDRAM, RW(rdram));
+             }
+          }
+       }
     }
 }
