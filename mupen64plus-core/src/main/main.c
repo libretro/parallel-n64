@@ -35,12 +35,12 @@
 #include <stdarg.h>
 
 #define M64P_CORE_PROTOTYPES 1
-#include "api/m64p_types.h"
-#include "api/callbacks.h"
-#include "api/config.h"
-#include "api/m64p_config.h"
-#include "api/debugger.h"
-#include "api/vidext.h"
+#include "../api/m64p_types.h"
+#include "../api/callbacks.h"
+#include "../api/config.h"
+#include "../api/m64p_config.h"
+#include "../api/debugger.h"
+#include "../api/vidext.h"
 
 #include "main.h"
 #include "eventloop.h"
@@ -48,24 +48,25 @@
 #include "savestates.h"
 #include "util.h"
 
-#include "ai/ai_controller.h"
-#include "memory/memory.h"
-#include "osal/preproc.h"
+#include "../ai/ai_controller.h"
+#include "../memory/memory.h"
+#include "../osal/preproc.h"
 #include "../pi/pi_controller.h"
-#include "plugin/plugin.h"
-#include "r4300/r4300.h"
-#include "r4300/r4300_core.h"
-#include "r4300/interupt.h"
-#include "r4300/reset.h"
-#include "rdp/rdp_core.h"
-#include "rsp/rsp_core.h"
-#include "ri/ri_controller.h"
-#include "si/si_controller.h"
-#include "vi/vi_controller.h"
+#include "../plugin/plugin.h"
+#include "../plugin/get_time_using_C_localtime.h"
+#include "../r4300/r4300.h"
+#include "../r4300/r4300_core.h"
+#include "../r4300/interupt.h"
+#include "../r4300/reset.h"
+#include "../rdp/rdp_core.h"
+#include "../rsp/rsp_core.h"
+#include "../ri/ri_controller.h"
+#include "../si/si_controller.h"
+#include "../vi/vi_controller.h"
 
 #ifdef DBG
-#include "debugger/dbg_types.h"
-#include "debugger/debugger.h"
+#include "../debugger/dbg_types.h"
+#include "../debugger/debugger.h"
 #endif
 
 /* version number for Core config section */
@@ -344,6 +345,10 @@ m64p_error main_init(void)
     r4300_reset_hard();
     r4300_reset_soft();
     r4300_init();
+
+     /* connect external time source to AF_RTC component */
+    g_si.pif.af_rtc.user_data = NULL;
+    g_si.pif.af_rtc.get_time = get_time_using_C_localtime;
 
     return M64ERR_SUCCESS;
 }
