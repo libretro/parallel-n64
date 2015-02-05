@@ -24,8 +24,8 @@
 #include "../libretro/msvc_compat.h"
 
 static const rarch_resampler_t *resampler_drivers[] = {
-   &sinc_resampler,
    &CC_resampler,
+   &sinc_resampler,
    &nearest_resampler,
    NULL,
 };
