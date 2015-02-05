@@ -18,7 +18,6 @@
 #ifdef RARCH_INTERNAL
 #include "../performance.h"
 #endif
-#include <file/config_file_userdata.h>
 #include <string.h>
 #ifndef DONT_HAVE_STRING_LIST
 #include <string/string_list.h>
@@ -32,15 +31,6 @@ static const rarch_resampler_t *resampler_drivers[] = {
    &CC_resampler,
    &nearest_resampler,
    NULL,
-};
-
-static const struct resampler_config resampler_config = {
-   config_userdata_get_float,
-   config_userdata_get_int,
-   config_userdata_get_float_array,
-   config_userdata_get_int_array,
-   config_userdata_get_string,
-   config_userdata_free,
 };
 
 /**
@@ -91,52 +81,6 @@ const char *audio_resampler_driver_find_ident(int idx)
       return NULL;
    return drv->ident;
 }
-
-#ifndef DONT_HAVE_STRING_LIST
-/**
- * config_get_audio_resampler_driver_options:
- *
- * Get an enumerated list of all resampler driver names, separated by '|'.
- *
- * Returns: string listing of all resampler driver names, separated by '|'.
- **/
-const char* config_get_audio_resampler_driver_options(void)
-{
-   union string_list_elem_attr attr;
-   unsigned i;
-   char *options = NULL;
-   int options_len = 0;
-   struct string_list *options_l = string_list_new();
-
-   attr.i = 0;
-
-   if (!options_l)
-      return NULL;
-
-   for (i = 0; resampler_drivers[i]; i++)
-   {
-      const char *opt = resampler_drivers[i]->ident;
-      options_len += strlen(opt) + 1;
-      string_list_append(options_l, opt, attr);
-   }
-
-   options = (char*)calloc(options_len, sizeof(char));
-
-   if (!options)
-   {
-      options = NULL;
-      goto done;
-   }
-
-   string_list_join_concat(options, options_len, options_l, "|");
-
-done:
-   string_list_free(options_l);
-   options_l = NULL;
-
-   return options;
-}
-#endif
 
 /**
  * find_resampler_driver:
@@ -192,7 +136,7 @@ static bool resampler_append_plugs(void **re,
 {
    resampler_simd_mask_t mask = resampler_get_cpu_features();
 
-   *re = (*backend)->init(&resampler_config, bw_ratio, mask);
+   *re = (*backend)->init(NULL, bw_ratio, mask);
 
    if (!*re)
       return false;

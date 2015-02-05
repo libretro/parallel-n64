@@ -162,8 +162,6 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 					 $(LIBRETRO_DIR)/adler32.c \
 					 $(LIBRETRO_DIR)/opengl_state_machine.c \
 					 $(INPUT_LIBRETRO_DIR)/input_plugin.c \
-					 $(AUDIO_LIBRETRO_DIR)/file/config_file.c \
-					 $(AUDIO_LIBRETRO_DIR)/file/config_file_userdata.c \
 					 $(AUDIO_LIBRETRO_DIR)/audio_plugin.c \
 					 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
 					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc.c \
