@@ -167,9 +167,6 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc.c \
 					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/nearest.c \
 					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler.c \
-					 $(AUDIO_LIBRETRO_DIR)/compat/compat.c \
-					 $(AUDIO_LIBRETRO_DIR)/file/file_path.c \
-					 $(AUDIO_LIBRETRO_DIR)/string/string_list.c \
 					 $(AUDIO_LIBRETRO_DIR)/audio_utils.c
 
 ifeq ($(HAVE_CUSTOMCRC), 1)

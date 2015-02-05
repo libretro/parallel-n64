@@ -19,9 +19,6 @@
 #include "../performance.h"
 #endif
 #include <string.h>
-#ifndef DONT_HAVE_STRING_LIST
-#include <string/string_list.h>
-#endif
 
 /* strcasecmp not implemented in MSVC */
 #include "../libretro/msvc_compat.h"
