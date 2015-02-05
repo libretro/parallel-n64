@@ -16,7 +16,7 @@
 
 // Convoluted Cosine Resampler
 
-#include "resampler.h"
+#include "../audio_resampler_driver.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -580,5 +580,7 @@ rarch_resampler_t CC_resampler = {
    resampler_CC_init,
    resampler_CC_process,
    resampler_CC_free,
+   RESAMPLER_API_VERSION,
    "CC",
+   "CC"
 };

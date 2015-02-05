@@ -15,7 +15,7 @@
 
 /* Bog-standard windowed SINC implementation. */
 
-#include "resampler.h"
+#include "../audio_resampler_driver.h"
 #ifndef RARCH_INTERNAL
 #include "../libretro.h"
 #endif
@@ -561,6 +561,8 @@ rarch_resampler_t sinc_resampler = {
    resampler_sinc_new,
    resampler_sinc_process,
    resampler_sinc_free,
+   RESAMPLER_API_VERSION,
    "sinc",
+   "sinc"
 };
 

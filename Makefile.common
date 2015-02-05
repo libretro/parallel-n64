@@ -20,6 +20,7 @@ endif
 INCFLAGS += \
 	-I$(CORE_DIR)/src \
 	-I$(CORE_DIR)/src/api \
+	-I$(AUDIO_LIBRETRO_DIR) \
 	-I$(VIDEODIR_GLIDE)/Glitch64/inc \
 	-I$(LIBRETRO_DIR)/libco \
 	-I$(LIBRETRO_DIR)
@@ -161,11 +162,16 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 					 $(LIBRETRO_DIR)/adler32.c \
 					 $(LIBRETRO_DIR)/opengl_state_machine.c \
 					 $(INPUT_LIBRETRO_DIR)/input_plugin.c \
+					 $(AUDIO_LIBRETRO_DIR)/file/config_file.c \
+					 $(AUDIO_LIBRETRO_DIR)/file/config_file_userdata.c \
 					 $(AUDIO_LIBRETRO_DIR)/audio_plugin.c \
-					 $(AUDIO_LIBRETRO_DIR)/resamplers/resampler.c \
+					 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
 					 $(AUDIO_LIBRETRO_DIR)/resamplers/sinc.c \
 					 $(AUDIO_LIBRETRO_DIR)/resamplers/nearest.c \
 					 $(AUDIO_LIBRETRO_DIR)/resamplers/cc_resampler.c \
+					 $(AUDIO_LIBRETRO_DIR)/compat/compat.c \
+					 $(AUDIO_LIBRETRO_DIR)/file/file_path.c \
+					 $(AUDIO_LIBRETRO_DIR)/string/string_list.c \
 					 $(AUDIO_LIBRETRO_DIR)/utils.c
 
 ifeq ($(HAVE_CUSTOMCRC), 1)

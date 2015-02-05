@@ -1,4 +1,4 @@
-#include "resampler.h"
+#include "../audio_resampler_driver.h"
 #ifdef RARCH_INTERNAL
 #include "../../libretro.h"
 #include "../../performance.h"
@@ -69,5 +69,7 @@ rarch_resampler_t nearest_resampler = {
    resampler_nearest_init,
    resampler_nearest_process,
    resampler_nearest_free,
+   RESAMPLER_API_VERSION,
    "nearest",
+   "nearest"
 };
