@@ -37,7 +37,6 @@ void mempak_read_command(struct game_controllers* controllers, int channel, uint
 {
    /* address is in fact an offset (11bit) | CRC (5 bits) */
    uint16_t address = (cmd[3] << 8) | cmd[4];
-   controllers->mempaks = &saved_memory.mempack[channel][address];
 
    if (address == 0x8001)
    {
@@ -48,7 +47,7 @@ void mempak_read_command(struct game_controllers* controllers, int channel, uint
    {
       address &= 0xFFE0;
       if (address <= 0x7FE0)
-         memcpy(controllers->mempaks, &cmd[5], 0x20);
+         memcpy(&saved_memory.mempack[channel][address], &cmd[5], 0x20);
       else
          memset(&cmd[5], 0, 0x20);
       cmd[0x25] = pak_crc(&cmd[5]);
@@ -59,7 +58,6 @@ void mempak_write_command(struct game_controllers *controllers, int channel, uin
 {
    /* address is in fact an offset (11bit) | CRC (5 bits) */
    uint16_t address = (cmd[3] << 8) | cmd[4];
-   controllers->mempaks = &saved_memory.mempack[channel][address];
 
    if (address == 0x8001)
    {
@@ -70,7 +68,7 @@ void mempak_write_command(struct game_controllers *controllers, int channel, uin
       address &= 0xFFE0;
 
       if (address <= 0x7FE0)
-         memcpy(&cmd[5], controllers->mempaks, 0x20);
+         memcpy(&cmd[5], &saved_memory.mempack[channel][address], 0x20);
 
       cmd[0x25] = pak_crc(&cmd[5]);
    }
