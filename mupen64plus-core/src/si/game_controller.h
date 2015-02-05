@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - pif.h                                                   *
+ *   Mupen64plus - game_controller.h                                       *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2002 Hacktarux                                          *
+ *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -19,54 +19,25 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_SI_PIF_H
-#define M64P_SI_PIF_H
+#ifndef M64P_SI_GAME_CONTROLLER_H
+#define M64P_SI_GAME_CONTROLLER_H
 
 #include <stdint.h>
 
-#include "af_rtc.h"
-#include "cic.h"
-#include "game_controller.h"
-
-struct si_controller;
-
-enum { PIF_RAM_SIZE = 0x40 };
-
-
-enum pif_commands
-{
-   PIF_CMD_STATUS = 0x00,
-   PIF_CMD_CONTROLLER_READ = 0x01,
-   PIF_CMD_PAK_READ = 0x02,
-   PIF_CMD_PAK_WRITE = 0x03,
-   PIF_CMD_EEPROM_READ = 0x04,
-   PIF_CMD_EEPROM_WRITE = 0x05,
-   PIF_CMD_AF_RTC_STATUS = 0x06,
-   PIF_CMD_AF_RTC_READ = 0x07,
-   PIF_CMD_AF_RTC_WRITE = 0x08,
-   PIF_CMD_RESET = 0xff,
-};
-
-struct pif
-{
-   uint8_t ram[PIF_RAM_SIZE];
-
-   struct cic cic;
-};
-
-static inline uint32_t pif_ram_address(uint32_t address)
-{
-   return ((address & 0xfffc) - 0x7c0);
-}
-
-
-void init_pif(struct pif* pif);
-
-int read_pif_ram(void* opaque, uint32_t address, uint32_t* value);
-int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
-
-void update_pif_write(struct si_controller* si);
-void update_pif_read(struct si_controller* si);
-
+#if 0
+#include "mempak.h"
 #endif
 
+struct pif;
+
+struct game_controllers
+{
+    uint8_t *mempaks; 
+};
+
+void process_controller_command(struct pif* pif, int channel, uint8_t* cmd);
+void read_controller(struct pif* pif, int channel, uint8_t* cmd);
+
+uint8_t pak_crc(uint8_t* data);
+
+#endif
