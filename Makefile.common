@@ -172,7 +172,7 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 					 $(AUDIO_LIBRETRO_DIR)/compat/compat.c \
 					 $(AUDIO_LIBRETRO_DIR)/file/file_path.c \
 					 $(AUDIO_LIBRETRO_DIR)/string/string_list.c \
-					 $(AUDIO_LIBRETRO_DIR)/utils.c
+					 $(AUDIO_LIBRETRO_DIR)/audio_utils.c
 
 ifeq ($(HAVE_CUSTOMCRC), 1)
 SOURCES_C += $(LIBRETRO_DIR)/glide64_crc.c
@@ -214,7 +214,7 @@ ifeq ($(HAVE_NEON), 1)
 	SOURCES_C   += $(VIDEODIR_GLN64)/3DMathNeon.c \
 						$(VIDEODIR_GLN64)/gSPNeon.c
 
-	SOURCES_ASM	+= $(AUDIO_LIBRETRO_DIR)/utils_neon.S \
+	SOURCES_ASM	+= $(AUDIO_LIBRETRO_DIR)/audio_utils_neon.S \
 						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc_neon.S \
 						$(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler_neon.S
 endif

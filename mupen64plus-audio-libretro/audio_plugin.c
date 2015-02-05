@@ -37,7 +37,7 @@ extern retro_audio_sample_batch_t audio_batch_cb;
 #include "m64p_config.h"
 
 #include "audio_resampler_driver.h"
-#include "utils.h"
+#include "audio_utils.h"
 
 #ifndef MAX_AUDIO_FRAMES
 #define MAX_AUDIO_FRAMES 2048
