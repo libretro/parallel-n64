@@ -43,39 +43,39 @@
  **********************/
 void swap_buffer(void *buffer, size_t length, size_t count)
 {
-    size_t i;
-    if (length == 2)
-    {
-        unsigned short *pun = (unsigned short *)buffer;
-        for (i = 0; i < count; i++)
-            pun[i] = m64p_swap16(pun[i]);
-    }
-    else if (length == 4)
-    {
-        unsigned int *pun = (unsigned int *)buffer;
-        for (i = 0; i < count; i++)
-            pun[i] = m64p_swap32(pun[i]);
-    }
-    else if (length == 8)
-    {
-        unsigned long long *pun = (unsigned long long *)buffer;
-        for (i = 0; i < count; i++)
-            pun[i] = m64p_swap64(pun[i]);
-    }
+   size_t i;
+   if (length == 2)
+   {
+      unsigned short *pun = (unsigned short *)buffer;
+      for (i = 0; i < count; i++)
+         pun[i] = m64p_swap16(pun[i]);
+   }
+   else if (length == 4)
+   {
+      unsigned int *pun = (unsigned int *)buffer;
+      for (i = 0; i < count; i++)
+         pun[i] = m64p_swap32(pun[i]);
+   }
+   else if (length == 8)
+   {
+      unsigned long long *pun = (unsigned long long *)buffer;
+      for (i = 0; i < count; i++)
+         pun[i] = m64p_swap64(pun[i]);
+   }
 }
 
 void to_little_endian_buffer(void *buffer, size_t length, size_t count)
 {
-    #ifdef M64P_BIG_ENDIAN
-    swap_buffer(buffer, length, count);
-    #endif
+#ifdef M64P_BIG_ENDIAN
+   swap_buffer(buffer, length, count);
+#endif
 }
 
 void to_big_endian_buffer(void *buffer, size_t length, size_t count)
 {
-    #ifndef M64P_BIG_ENDIAN
-    swap_buffer(buffer, length, count);
-    #endif
+#ifndef M64P_BIG_ENDIAN
+   swap_buffer(buffer, length, count);
+#endif
 }
 
 /**********************
@@ -164,48 +164,48 @@ void imagestring(unsigned char imagetype, char *string)
  */
 static const char* strpbrk_reverse(const char* needles, const char* haystack)
 {
-    size_t stringlength = strlen(haystack), counter;
+   size_t stringlength = strlen(haystack), counter;
 
-    for (counter = stringlength; counter > 0; --counter)
-    {
-        if (strchr(needles, haystack[counter-1]))
-            break;
-    }
+   for (counter = stringlength; counter > 0; --counter)
+   {
+      if (strchr(needles, haystack[counter-1]))
+         break;
+   }
 
-    if (counter == 0)
-        return NULL;
+   if (counter == 0)
+      return NULL;
 
-    return haystack + counter - 1;
+   return haystack + counter - 1;
 }
 
 const char* namefrompath(const char* path)
 {
-    const char* last_separator_ptr = strpbrk_reverse(OSAL_DIR_SEPARATORS, path);
-    
-    if (last_separator_ptr != NULL)
-        return last_separator_ptr + 1;
-    return path;
+   const char* last_separator_ptr = strpbrk_reverse(OSAL_DIR_SEPARATORS, path);
+
+   if (last_separator_ptr != NULL)
+      return last_separator_ptr + 1;
+   return path;
 }
 
 static int is_path_separator(char c)
 {
-    return strchr(OSAL_DIR_SEPARATORS, c) != NULL;
+   return strchr(OSAL_DIR_SEPARATORS, c) != NULL;
 }
 
 char* combinepath(const char* first, const char *second)
 {
-    size_t len_first = strlen(first), off_second = 0;
+   size_t len_first = strlen(first), off_second = 0;
 
-    if (first == NULL || second == NULL)
-        return NULL;
+   if (first == NULL || second == NULL)
+      return NULL;
 
-    while (is_path_separator(first[len_first-1]))
-        len_first--;
+   while (is_path_separator(first[len_first-1]))
+      len_first--;
 
-    while (is_path_separator(second[off_second]))
-        off_second++;
+   while (is_path_separator(second[off_second]))
+      off_second++;
 
-    return formatstr("%.*s%c%s", (int) len_first, first, OSAL_DIR_SEPARATORS[0], second + off_second);
+   return formatstr("%.*s%c%s", (int) len_first, first, OSAL_DIR_SEPARATORS[0], second + off_second);
 }
 
 /**********************
@@ -213,149 +213,149 @@ char* combinepath(const char* first, const char *second)
  **********************/
 char *trim(char *str)
 {
-    char *start = str, *end = str + strlen(str);
+   char *start = str, *end = str + strlen(str);
 
-    while (start < end && isspace(*start))
-        start++;
+   while (start < end && isspace(*start))
+      start++;
 
-    while (end > start && isspace(*(end-1)))
-        end--;
+   while (end > start && isspace(*(end-1)))
+      end--;
 
-    memmove(str, start, end - start);
-    str[end - start] = '\0';
+   memmove(str, start, end - start);
+   str[end - start] = '\0';
 
-    return str;
+   return str;
 }
 
 int string_to_int(const char *str, int *result)
 {
-    char *endptr;
-    long int n;
-    if (*str == '\0' || isspace(*str))
-        return 0;
-    errno = 0;
-    n = strtol(str, &endptr, 10);
-    if (*endptr != '\0' || errno != 0 || n < INT_MIN || n > INT_MAX)
-        return 0;
-    *result = (int)n;
-    return 1;
+   char *endptr;
+   long int n;
+   if (*str == '\0' || isspace(*str))
+      return 0;
+   errno = 0;
+   n = strtol(str, &endptr, 10);
+   if (*endptr != '\0' || errno != 0 || n < INT_MIN || n > INT_MAX)
+      return 0;
+   *result = (int)n;
+   return 1;
 }
 
 static unsigned char char2hex(char c)
 {
-    c = tolower(c);
-    if(c >= '0' && c <= '9')
-        return c - '0';
-    else if(c >= 'a' && c <= 'f')
-        return c - 'a' + 10;
-    return 0xFF;
+   c = tolower(c);
+   if(c >= '0' && c <= '9')
+      return c - '0';
+   else if(c >= 'a' && c <= 'f')
+      return c - 'a' + 10;
+   return 0xFF;
 }
 
 int parse_hex(const char *str, unsigned char *output, size_t output_size)
 {
-    size_t i, j;
-    for (i = 0; i < output_size; i++)
-    {
-        output[i] = 0;
-        for (j = 0; j < 2; j++)
-        {
-            unsigned char h = char2hex(*str++);
-            if (h == 0xFF)
-                return 0;
+   size_t i, j;
+   for (i = 0; i < output_size; i++)
+   {
+      output[i] = 0;
+      for (j = 0; j < 2; j++)
+      {
+         unsigned char h = char2hex(*str++);
+         if (h == 0xFF)
+            return 0;
 
-            output[i] = (output[i] << 4) | h;
-        }
-    }
+         output[i] = (output[i] << 4) | h;
+      }
+   }
 
-    if (*str != '\0')
-        return 0;
+   if (*str != '\0')
+      return 0;
 
-    return 1;
+   return 1;
 }
 
 char *formatstr(const char *fmt, ...)
 {
-	int size = 128, ret;
-	char *str = (char *)malloc(size), *newstr;
-	va_list args;
+   int size = 128, ret;
+   char *str = (char *)malloc(size), *newstr;
+   va_list args;
 
-	/* There are two implementations of vsnprintf we have to deal with:
-	 * C99 version: Returns the number of characters which would have been written
-	 *              if the buffer had been large enough, and -1 on failure.
-	 * Windows version: Returns the number of characters actually written,
-	 *                  and -1 on failure or truncation.
-	 * NOTE: An implementation equivalent to the Windows one appears in glibc <2.1.
-	 */
-	while (str != NULL)
-	{
-		va_start(args, fmt);
-		ret = vsnprintf(str, size, fmt, args);
-		va_end(args);
+   /* There are two implementations of vsnprintf we have to deal with:
+    * C99 version: Returns the number of characters which would have been written
+    *              if the buffer had been large enough, and -1 on failure.
+    * Windows version: Returns the number of characters actually written,
+    *                  and -1 on failure or truncation.
+    * NOTE: An implementation equivalent to the Windows one appears in glibc <2.1.
+    */
+   while (str != NULL)
+   {
+      va_start(args, fmt);
+      ret = vsnprintf(str, size, fmt, args);
+      va_end(args);
 
-		// Successful result?
-		if (ret >= 0 && ret < size)
-			return str;
+      // Successful result?
+      if (ret >= 0 && ret < size)
+         return str;
 
-		// Increment the capacity of the buffer
-		if (ret >= size)
-			size = ret + 1; // C99 version: We got the needed buffer size
-		else
-			size *= 2; // Windows version: Keep guessing
+      // Increment the capacity of the buffer
+      if (ret >= size)
+         size = ret + 1; // C99 version: We got the needed buffer size
+      else
+         size *= 2; // Windows version: Keep guessing
 
-		newstr = (char *)realloc(str, size);
-		if (newstr == NULL)
-			free(str);
-		str = newstr;
-	}
+      newstr = (char *)realloc(str, size);
+      if (newstr == NULL)
+         free(str);
+      str = newstr;
+   }
 
-	return NULL;
+   return NULL;
 }
 
 ini_line ini_parse_line(char **lineptr)
 {
-    char *line = *lineptr, *endline = strchr(*lineptr, '\n'), *equal;
-    ini_line l;
+   char *line = *lineptr, *endline = strchr(*lineptr, '\n'), *equal;
+   ini_line l;
 
-    // Null terminate the current line and point to the next line
-    if (endline != NULL)
-        *endline = '\0';
-    *lineptr = line + strlen(line) + 1;
+   // Null terminate the current line and point to the next line
+   if (endline != NULL)
+      *endline = '\0';
+   *lineptr = line + strlen(line) + 1;
 
-    // Parse the line contents
-    trim(line);
+   // Parse the line contents
+   trim(line);
 
-    if (line[0] == '#' || line[0] == ';')
-    {
-        line++;
+   if (line[0] == '#' || line[0] == ';')
+   {
+      line++;
 
-        l.type = INI_COMMENT;
-        l.name = NULL;
-        l.value = trim(line);
-    }
-    else if (line[0] == '[' && line[strlen(line)-1] == ']')
-    {
-        line[strlen(line)-1] = '\0';
-        line++;
+      l.type = INI_COMMENT;
+      l.name = NULL;
+      l.value = trim(line);
+   }
+   else if (line[0] == '[' && line[strlen(line)-1] == ']')
+   {
+      line[strlen(line)-1] = '\0';
+      line++;
 
-        l.type = INI_SECTION;
-        l.name = trim(line);
-        l.value = NULL;
-    }
-    else if ((equal = strchr(line, '=')) != NULL)
-    {
-        char *name = line, *value = equal + 1;
-        *equal = '\0';
+      l.type = INI_SECTION;
+      l.name = trim(line);
+      l.value = NULL;
+   }
+   else if ((equal = strchr(line, '=')) != NULL)
+   {
+      char *name = line, *value = equal + 1;
+      *equal = '\0';
 
-        l.type = INI_PROPERTY;
-        l.name = trim(name);
-        l.value = trim(value);
-    }
-    else
-    {
-        l.type = (*line == '\0') ? INI_BLANK : INI_TRASH;
-        l.name = NULL;
-        l.value = NULL;
-    }
+      l.type = INI_PROPERTY;
+      l.name = trim(name);
+      l.value = trim(value);
+   }
+   else
+   {
+      l.type = (*line == '\0') ? INI_BLANK : INI_TRASH;
+      l.name = NULL;
+      l.value = NULL;
+   }
 
-    return l;
+   return l;
 }
