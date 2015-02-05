@@ -31,28 +31,34 @@
 
 static int update_dpc_status(struct rdp_core* dp, uint32_t w)
 {
-    /* see do_SP_Task for more info */
-    int do_sp_task_on_unfreeze = 0;
+   /* see do_SP_Task for more info */
+   int do_sp_task_on_unfreeze = 0;
 
-    /* clear / set xbus_dmem_dma */
-    if (w & 0x1) dp->dpc_regs[DPC_STATUS_REG] &= ~0x1;
-    if (w & 0x2) dp->dpc_regs[DPC_STATUS_REG] |= 0x1;
+   /* clear / set xbus_dmem_dma */
+   if (w & 0x1)
+      dp->dpc_regs[DPC_STATUS_REG] &= ~0x1;
+   if (w & 0x2)
+      dp->dpc_regs[DPC_STATUS_REG] |= 0x1;
 
-    /* clear / set freeze */
-    if (w & 0x4)
-    {
-        dp->dpc_regs[DPC_STATUS_REG] &= ~0x2;
+   /* clear / set freeze */
+   if (w & 0x4)
+   {
+      dp->dpc_regs[DPC_STATUS_REG] &= ~0x2;
 
-        if (!(dp->sp->regs[SP_STATUS_REG] & 0x3)) // !halt && !broke
-            do_sp_task_on_unfreeze = 1;
-    }
-    if (w & 0x8) dp->dpc_regs[DPC_STATUS_REG] |= 0x2;
+      if (!(dp->sp->regs[SP_STATUS_REG] & 0x3)) // !halt && !broke
+         do_sp_task_on_unfreeze = 1;
+   }
 
-    /* clear / set flush */
-    if (w & 0x10) dp->dpc_regs[DPC_STATUS_REG] &= ~0x4;
-    if (w & 0x20) dp->dpc_regs[DPC_STATUS_REG] |= 0x4;
+   if (w & 0x8)
+      dp->dpc_regs[DPC_STATUS_REG] |= 0x2;
 
-    return do_sp_task_on_unfreeze;
+   /* clear / set flush */
+   if (w & 0x10)
+      dp->dpc_regs[DPC_STATUS_REG] &= ~0x4;
+   if (w & 0x20)
+      dp->dpc_regs[DPC_STATUS_REG] |= 0x4;
+
+   return do_sp_task_on_unfreeze;
 }
 
 
@@ -87,37 +93,37 @@ int read_dpc_regs(void* opaque, uint32_t address, uint32_t* value)
 
 int write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-    struct rdp_core* dp = (struct rdp_core*)opaque;
-    uint32_t reg = dpc_reg(address);
+   struct rdp_core* dp = (struct rdp_core*)opaque;
+   uint32_t reg = dpc_reg(address);
 
-    switch(reg)
-    {
-    case DPC_STATUS_REG:
-        if (update_dpc_status(dp, value & mask) != 0)
+   switch(reg)
+   {
+      case DPC_STATUS_REG:
+         if (update_dpc_status(dp, value & mask) != 0)
             do_SP_Task(dp->sp);
-    case DPC_CURRENT_REG:
-    case DPC_CLOCK_REG:
-    case DPC_BUFBUSY_REG:
-    case DPC_PIPEBUSY_REG:
-    case DPC_TMEM_REG:
-        return 0;
-    }
+      case DPC_CURRENT_REG:
+      case DPC_CLOCK_REG:
+      case DPC_BUFBUSY_REG:
+      case DPC_PIPEBUSY_REG:
+      case DPC_TMEM_REG:
+         return 0;
+   }
 
-    masked_write(&dp->dpc_regs[reg], value, mask);
+   masked_write(&dp->dpc_regs[reg], value, mask);
 
-    switch(reg)
-    {
-    case DPC_START_REG:
-        dp->dpc_regs[DPC_CURRENT_REG] = dp->dpc_regs[DPC_START_REG];
-        break;
-    case DPC_END_REG:
-        gfx.processRDPList();
-        dp->r4300->mi.regs[MI_INTR_REG] |= 0x20;
-        check_interupt();
-        break;
-    }
+   switch(reg)
+   {
+      case DPC_START_REG:
+         dp->dpc_regs[DPC_CURRENT_REG] = dp->dpc_regs[DPC_START_REG];
+         break;
+      case DPC_END_REG:
+         gfx.processRDPList();
+         dp->r4300->mi.regs[MI_INTR_REG] |= 0x20;
+         check_interupt();
+         break;
+   }
 
-    return 0;
+   return 0;
 }
 
 

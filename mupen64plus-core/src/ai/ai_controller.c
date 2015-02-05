@@ -70,51 +70,51 @@ int read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
 
 int write_ai_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-    struct ai_controller* ai = (struct ai_controller*)opaque;
-    uint32_t reg = ai_reg(address);
+   struct ai_controller* ai = (struct ai_controller*)opaque;
+   uint32_t reg = ai_reg(address);
 
-    unsigned int freq,delay=0;
-    switch (reg)
-    {
-    case AI_LEN_REG:
-        masked_write(&ai->regs[AI_LEN_REG], value, mask);
-        audio.aiLenChanged();
+   unsigned int freq,delay=0;
+   switch (reg)
+   {
+      case AI_LEN_REG:
+         masked_write(&ai->regs[AI_LEN_REG], value, mask);
+         audio.aiLenChanged();
 
-        freq = ROM_PARAMS.aidacrate / (ai->regs[AI_DACRATE_REG]+1);
-        if (freq)
+         freq = ROM_PARAMS.aidacrate / (ai->regs[AI_DACRATE_REG]+1);
+         if (freq)
             delay = (unsigned int) (((unsigned long long)ai->regs[AI_LEN_REG]*ai->vi->delay*ROM_PARAMS.vilimit)/(freq*4));
 
-        if (ai->regs[AI_STATUS_REG] & 0x40000000) // busy
-        {
+         if (ai->regs[AI_STATUS_REG] & 0x40000000) // busy
+         {
             ai->fifo[1].delay = delay;
             ai->fifo[1].length = ai->regs[AI_LEN_REG];
             ai->regs[AI_STATUS_REG] |= 0x80000000;
-        }
-        else
-        {
+         }
+         else
+         {
             ai->fifo[0].delay = delay;
             ai->fifo[0].length = ai->regs[AI_LEN_REG];
             update_count();
             add_interupt_event(AI_INT, delay);
             ai->regs[AI_STATUS_REG] |= 0x40000000;
-        }
-        return 0;
+         }
+         return 0;
 
-    case AI_STATUS_REG:
-        ai->r4300->mi.regs[MI_INTR_REG] &= ~0x4;
-        check_interupt();
-        return 0;
+      case AI_STATUS_REG:
+         ai->r4300->mi.regs[MI_INTR_REG] &= ~0x4;
+         check_interupt();
+         return 0;
 
-    case AI_DACRATE_REG:
-        if ((ai->regs[AI_DACRATE_REG] & mask) != (value & mask))
-        {
+      case AI_DACRATE_REG:
+         if ((ai->regs[AI_DACRATE_REG] & mask) != (value & mask))
+         {
             masked_write(&ai->regs[AI_DACRATE_REG], value, mask);
             audio.aiDacrateChanged(ROM_PARAMS.systemtype);
-        }
-        return 0;
-    }
+         }
+         return 0;
+   }
 
-    masked_write(&ai->regs[reg], value, mask);
+   masked_write(&ai->regs[reg], value, mask);
 
-    return 0;
+   return 0;
 }
