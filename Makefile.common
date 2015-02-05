@@ -62,6 +62,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/si/pif.c \
 	$(CORE_DIR)/src/si/af_rtc.c \
 	$(CORE_DIR)/src/si/cic.c \
+	$(CORE_DIR)/src/si/eeprom.c \
 	$(CORE_DIR)/src/si/game_controller.c \
 	$(CORE_DIR)/src/si/mempak.c \
 	$(CORE_DIR)/src/plugin/plugin.c \

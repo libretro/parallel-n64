@@ -21,7 +21,6 @@
 
 #include "pif.h"
 #include "n64_cic_nus_6105.h"
-
 #include "si_controller.h"
 
 #include "../api/m64p_types.h"
@@ -47,49 +46,6 @@ void print_pif(struct pif* pif)
             pif->ram[i*8+4], pif->ram[i*8+5], pif->ram[i*8+6], pif->ram[i*8+7]);
 }
 #endif
-
-void eeprom_status_command(struct pif *pif, int channel, uint8_t *cmd)
-{
-   /* check size */
-   if (cmd[1] != 3)
-   {
-      cmd[1] |= 0x40;
-      if ((cmd[1] & 3) > 0)
-         cmd[3] = 0;
-      if ((cmd[1] & 3) > 1)
-         cmd[4] = (ROM_SETTINGS.savetype != EEPROM_16KB) ? 0x80 : 0xc0;
-      if ((cmd[1] & 3) > 2)
-         cmd[5] = 0;
-   }
-   else
-   {
-      cmd[3] = 0;
-      cmd[4] = (ROM_SETTINGS.savetype != EEPROM_16KB) ? 0x80 : 0xc0;
-      cmd[5] = 0;
-   }
-}
-
-void eeprom_read_command(struct pif *pif, int channel, uint8_t *cmd)
-{
-   /* read 8-byte block. */
-   uint16_t addr = cmd[3] * 8;
-
-   if (addr < 0x200)
-      memcpy(&cmd[4], saved_memory.eeprom + addr, 8);
-   else
-      memcpy(&cmd[4], saved_memory.eeprom2 + addr - 0x200, 8);
-}
-
-void eeprom_write_command(struct pif *pif, int channel, uint8_t *cmd)
-{
-   /* write 8-byte block. */
-   uint16_t addr = cmd[3]*8;
-
-   if (addr < 0x200)
-      memcpy(saved_memory.eeprom + addr, &cmd[4], 8);
-   else
-      memcpy(saved_memory.eeprom2 + addr - 0x200, &cmd[4], 8);
-}
 
 static void process_cart_command(struct pif* pif, int channel, uint8_t* cmd)
 {
