@@ -96,128 +96,135 @@ void eeprom_write_command(struct pif *pif, int channel, uint8_t *cmd)
       memcpy(saved_memory.eeprom2 + addr - 0x200, &cmd[4], 8);
 }
 
-static uint8_t mempack_crc(uint8_t *data)
+static uint8_t pak_crc(uint8_t *data)
 {
    int i;
-   uint8_t CRC = 0;
-   for (i=0; i<=0x20; i++)
+   uint8_t crc = 0;
+
+   for (i = 0; i <= 0x20; i++)
    {
       int mask;
       for (mask = 0x80; mask >= 1; mask >>= 1)
       {
-         int xor_tap = (CRC & 0x80) ? 0x85 : 0x00;
-         CRC <<= 1;
-         if (i != 0x20 && (data[i] & mask)) CRC |= 1;
-         CRC ^= xor_tap;
+         int xor_tap = (crc & 0x80) ? 0x85 : 0x00;
+         crc <<= 1;
+         if (i != 0x20 && (data[i] & mask)) crc |= 1;
+         crc ^= xor_tap;
       }
    }
-   return CRC;
+   return crc;
 }
 
-static void internal_ReadController(int Control, uint8_t *Command)
+static void read_controller_read_buttons(struct pif *pif, int channel, uint8_t *cmd)
 {
-   switch (Command[2])
+   BUTTONS Keys;
+   if (!Controls[channel].Present)
+      return;
+
+   input.getKeys(channel, &Keys);
+   *((uint32_t*)(cmd + 3)) = Keys.Value;
+
+#ifdef COMPARE_CORE
+   CoreCompareDataSync(4, cmd + 3);
+#endif
+}
+
+static void read_controller_read_pak(struct pif *pif, int channel, uint8_t *cmd)
+{
+   if (!Controls[channel].Present)
+      return;
+   if (Controls[channel].Plugin != PLUGIN_RAW)
+      return;
+
+   if (input.readController)
+      input.readController(channel, cmd);
+}
+
+static void read_controller_write_pak(struct pif *pif, int channel, uint8_t *cmd)
+{
+   if (!Controls[channel].Present)
+      return;
+   if (Controls[channel].Plugin != PLUGIN_RAW)
+      return;
+
+   input.readController(channel, cmd);
+}
+
+static void read_controller(struct pif *pif, int channel, uint8_t *cmd)
+{
+   switch (cmd[2])
    {
       case 1:
-#ifdef DEBUG_PIF
-         DebugMessage(M64MSG_INFO, "internal_ReadController() Channel %i Command 1 read buttons", Control);
-#endif
-         if (Controls[Control].Present)
-         {
-            BUTTONS Keys;
-            input.getKeys(Control, &Keys);
-            *((uint32_t*)(Command + 3)) = Keys.Value;
-#ifdef COMPARE_CORE
-            CoreCompareDataSync(4, Command+3);
-#endif
-         }
+         read_controller_read_buttons(pif, channel, cmd);
          break;
-      case 2: // read controller pack
-#ifdef DEBUG_PIF
-         DebugMessage(M64MSG_INFO, "internal_ReadController() Channel %i Command 2 read controller pack (in Input plugin)", Control);
-#endif
-         if (Controls[Control].Present)
-         {
-            if (Controls[Control].Plugin == PLUGIN_RAW)
-               input.readController(Control, Command);
-         }
+      case 2:
+         read_controller_read_pak(pif, channel, cmd);
          break;
-      case 3: // write controller pack
-#ifdef DEBUG_PIF
-         DebugMessage(M64MSG_INFO, "internal_ReadController() Channel %i Command 3 write controller pack (in Input plugin)", Control);
-#endif
-         if (Controls[Control].Present)
-         {
-            if (Controls[Control].Plugin == PLUGIN_RAW)
-               input.readController(Control, Command);
-         }
+      case 3:
+         read_controller_write_pak(pif, channel, cmd);
          break;
    }
 }
 
-static void internal_ControllerCommand(int Control, uint8_t *Command)
+static void process_controller_command(struct pif *pif, int channel, uint8_t *cmd)
 {
-   switch (Command[2])
+   switch (cmd[2])
    {
       case PIF_CMD_STATUS:
       case PIF_CMD_RESET:
-         if ((Command[1] & 0x80))
+         if ((cmd[1] & 0x80))
             break;
 #ifdef DEBUG_PIF
          DebugMessage(M64MSG_INFO, "internal_ControllerCommand() Channel %i Command %02x check pack present", Control, Command[2]);
 #endif
-         if (Controls[Control].Present)
+         if (Controls[channel].Present)
          {
-            Command[3] = 0x05;
-            Command[4] = 0x00;
-            switch (Controls[Control].Plugin)
+            cmd[3] = 0x05;
+            cmd[4] = 0x00;
+            switch (Controls[channel].Plugin)
             {
                case PLUGIN_MEMPAK:
-                  Command[5] = 1;
+                  cmd[5] = 1;
                   break;
                case PLUGIN_RAW:
-                  Command[5] = 1;
+                  cmd[5] = 1;
                   break;
                default:
-                  Command[5] = 0;
+                  cmd[5] = 0;
                   break;
             }
          }
          else
-            Command[1] |= 0x80;
+            cmd[1] |= 0x80;
          break;
       case PIF_CMD_CONTROLLER_READ:
-         if (!Controls[Control].Present)
-            Command[1] |= 0x80;
+         if (!Controls[channel].Present)
+            cmd[1] |= 0x80;
          break;
       case PIF_CMD_PAK_READ:
-         if (Controls[Control].Present)
+         if (Controls[channel].Present)
          {
-            switch (Controls[Control].Plugin)
+            switch (Controls[channel].Plugin)
             {
                case PLUGIN_MEMPAK:
                   {
-                     int address = (Command[3] << 8) | Command[4];
+                     int address = (cmd[3] << 8) | cmd[4];
 #ifdef DEBUG_PIF
                      DebugMessage(M64MSG_INFO, "internal_ControllerCommand() Channel %i Command 2 read mempack address %04x", Control, address);
 #endif
                      if (address == 0x8001)
                      {
-                        memset(&Command[5], 0, 0x20);
-                        Command[0x25] = mempack_crc(&Command[5]);
+                        memset(&cmd[5], 0, 0x20);
+                        cmd[0x25] = pak_crc(&cmd[5]);
                      }
                      else
                      {
                         address &= 0xFFE0;
                         if (address <= 0x7FE0)
-                        {
-                           memcpy(&Command[5], &saved_memory.mempack[Control][address], 0x20);
-                        }
+                           memcpy(&cmd[5], &saved_memory.mempack[channel][address], 0x20);
                         else
-                        {
-                           memset(&Command[5], 0, 0x20);
-                        }
-                        Command[0x25] = mempack_crc(&Command[5]);
+                           memset(&cmd[5], 0, 0x20);
+                        cmd[0x25] = pak_crc(&cmd[5]);
                      }
                   }
                   break;
@@ -225,40 +232,40 @@ static void internal_ControllerCommand(int Control, uint8_t *Command)
 #ifdef DEBUG_PIF
                   DebugMessage(M64MSG_INFO, "internal_ControllerCommand() Channel %i Command 2 controllerCommand (in Input plugin)", Control);
 #endif
-                  input.controllerCommand(Control, Command);
+                  input.controllerCommand(channel, cmd);
                   break;
                default:
 #ifdef DEBUG_PIF
                   DebugMessage(M64MSG_INFO, "internal_ControllerCommand() Channel %i Command 2 (no pack plugged in)", Control);
 #endif
-                  memset(&Command[5], 0, 0x20);
-                  Command[0x25] = 0;
+                  memset(&cmd[5], 0, 0x20);
+                  cmd[0x25] = 0;
             }
          }
          else
-            Command[1] |= 0x80;
+            cmd[1] |= 0x80;
          break;
       case PIF_CMD_PAK_WRITE: // write controller pack
-         if (Controls[Control].Present)
+         if (Controls[channel].Present)
          {
-            switch (Controls[Control].Plugin)
+            switch (Controls[channel].Plugin)
             {
                case PLUGIN_MEMPAK:
                   {
-                     int address = (Command[3] << 8) | Command[4];
+                     int address = (cmd[3] << 8) | cmd[4];
 #ifdef DEBUG_PIF
                      DebugMessage(M64MSG_INFO, "internal_ControllerCommand() Channel %i Command 3 write mempack address %04x", Control, address);
 #endif
                      if (address == 0x8001)
-                        Command[0x25] = mempack_crc(&Command[5]);
+                        cmd[0x25] = pak_crc(&cmd[5]);
                      else
                      {
                         address &= 0xFFE0;
                         if (address <= 0x7FE0)
                         {
-                           memcpy(&saved_memory.mempack[Control][address], &Command[5], 0x20);
+                           memcpy(&saved_memory.mempack[channel][address], &cmd[5], 0x20);
                         }
-                        Command[0x25] = mempack_crc(&Command[5]);
+                        cmd[0x25] = pak_crc(&cmd[5]);
                      }
                   }
                   break;
@@ -266,17 +273,17 @@ static void internal_ControllerCommand(int Control, uint8_t *Command)
 #ifdef DEBUG_PIF
                   DebugMessage(M64MSG_INFO, "internal_ControllerCommand() Channel %i Command 3 controllerCommand (in Input plugin)", Control);
 #endif
-                  input.controllerCommand(Control, Command);
+                  input.controllerCommand(channel, cmd);
                   break;
                default:
 #ifdef DEBUG_PIF
                   DebugMessage(M64MSG_INFO, "internal_ControllerCommand() Channel %i Command 3 (no pack plugged in)", Control);
 #endif
-                  Command[0x25] = mempack_crc(&Command[5]);
+                  cmd[0x25] = pak_crc(&cmd[5]);
             }
          }
          else
-            Command[1] |= 0x80;
+            cmd[1] |= 0x80;
          break;
    }
 }
@@ -411,11 +418,10 @@ void update_pif_write(struct si_controller *si)
             {
                if (channel < 4)
                {
-                  if (Controls[channel].Present &&
-                        Controls[channel].RawData)
+                  if (Controls[channel].Present && Controls[channel].RawData)
                      input.controllerCommand(channel, &pif->ram[i]);
                   else
-                     internal_ControllerCommand(channel, &pif->ram[i]);
+                     process_controller_command(pif, channel, &pif->ram[i]);
                }
                else if (channel == 4)
                   process_cart_command(pif, channel, &pif->ram[i]);
@@ -465,7 +471,7 @@ void update_pif_read(struct si_controller *si)
                         Controls[channel].RawData)
                      input.readController(channel, &pif->ram[i]);
                   else
-                     internal_ReadController(channel, &pif->ram[i]);
+                     read_controller(pif, channel, &pif->ram[i]);
                }
                i += pif->ram[i] + (pif->ram[(i+1)] & 0x3F) + 1;
                channel++;
