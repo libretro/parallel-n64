@@ -159,8 +159,8 @@ static void internal_ControllerCommand(int Control, uint8_t *Command)
 {
    switch (Command[2])
    {
-      case 0x00: // read status
-      case 0xFF: // reset
+      case PIF_CMD_STATUS:
+      case PIF_CMD_RESET:
          if ((Command[1] & 0x80))
             break;
 #ifdef DEBUG_PIF
@@ -186,14 +186,11 @@ static void internal_ControllerCommand(int Control, uint8_t *Command)
          else
             Command[1] |= 0x80;
          break;
-      case 0x01:
-#ifdef DEBUG_PIF
-         DebugMessage(M64MSG_INFO, "internal_ControllerCommand() Channel %i Command 1 check controller present", Control);
-#endif
+      case PIF_CMD_CONTROLLER_READ:
          if (!Controls[Control].Present)
             Command[1] |= 0x80;
          break;
-      case 0x02: // read controller pack
+      case PIF_CMD_PAK_READ:
          if (Controls[Control].Present)
          {
             switch (Controls[Control].Plugin)
@@ -241,7 +238,7 @@ static void internal_ControllerCommand(int Control, uint8_t *Command)
          else
             Command[1] |= 0x80;
          break;
-      case 0x03: // write controller pack
+      case PIF_CMD_PAK_WRITE: // write controller pack
          if (Controls[Control].Present)
          {
             switch (Controls[Control].Plugin)
@@ -288,22 +285,22 @@ static void process_cart_command(struct pif* pif, int channel, uint8_t* cmd)
 {
    switch (cmd[2])
    {
-      case 0:
+      case PIF_CMD_STATUS:
          eeprom_status_command(pif, channel, cmd);
          break;
-      case 4:
+      case PIF_CMD_EEPROM_READ:
          eeprom_read_command(pif, channel, cmd);
          break;
-      case 5:
+      case PIF_CMD_EEPROM_WRITE:
          eeprom_write_command(pif, channel, cmd);
          break;
-      case 6:
+      case PIF_CMD_AF_RTC_STATUS:
          af_rtc_status_command(pif, channel, cmd);
          break;
-      case 7:
+      case PIF_CMD_AF_RTC_READ:
          af_rtc_read_command(pif, channel, cmd);
          break;
-      case 8:
+      case PIF_CMD_AF_RTC_WRITE:
          af_rtc_write_command(pif, channel, cmd);
          break;
       default:
