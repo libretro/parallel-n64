@@ -36,17 +36,6 @@
 
 save_memory_data saved_memory;
 
-static int flashram_inited = 0;
-
-static void flashram_format(uint8_t *mem)
-{
-   if (flashram_inited != 0)
-      return;
-   memset(mem, 0xff, FLASHRAM_SIZE);
-   flashram_inited = 1;
-}
-
-
 static void flashram_command(struct pi_controller *pi, uint32_t command)
 {
    unsigned int i;
@@ -121,6 +110,7 @@ void init_flashram(struct flashram* flashram)
    flashram->status = 0;
    flashram->erase_offset = 0;
    flashram->write_pointer = 0;
+   flashram->mem = saved_memory.flashram;
 }
 
 int read_flashram_status(void* opaque, uint32_t address, uint32_t* value)
@@ -157,8 +147,6 @@ void dma_read_flashram(struct pi_controller *pi)
    uint32_t *dram = pi->ri->rdram.dram;
    uint8_t *mem = flashram->mem;
 
-   flashram_format(mem);
-
    switch (flashram->mode)
    {
       case FLASHRAM_MODE_STATUS:
@@ -183,8 +171,6 @@ void dma_read_flashram(struct pi_controller *pi)
 void dma_write_flashram(struct pi_controller *pi)
 {
    struct flashram *flashram = &pi->flashram;
-
-   flashram_format(flashram->mem);
 
    switch (flashram->mode)
    {

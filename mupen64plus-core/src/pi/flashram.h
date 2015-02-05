@@ -40,7 +40,7 @@ enum flashram_mode
 
 struct flashram
 {
-   uint8_t mem[FLASHRAM_SIZE];
+   uint8_t *mem;
 	enum flashram_mode mode;
 	uint64_t status;
 	unsigned int erase_offset;
