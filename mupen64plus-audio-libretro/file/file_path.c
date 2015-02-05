@@ -691,47 +691,6 @@ void fill_pathname_join_delim(char *out_path, const char *dir,
    rarch_assert(strlcat(out_path, path, size) < size);
 }
 
-void fill_pathname_expand_special(char *out_path,
-      const char *in_path, size_t size)
-{
-#if !defined(RARCH_CONSOLE)
-   if (*in_path == '~')
-   {
-      const char *home = getenv("HOME");
-      if (home)
-      {
-         size_t src_size = strlcpy(out_path, home, size);
-         rarch_assert(src_size < size);
-
-         out_path  += src_size;
-         size -= src_size;
-         in_path++;
-      }
-   }
-   else if ((in_path[0] == ':') &&
-#ifdef _WIN32
-         ((in_path[1] == '/') || (in_path[1] == '\\'))
-#else
-         (in_path[1] == '/')
-#endif
-            )
-   {
-      char application_dir[PATH_MAX_LENGTH];
-      fill_pathname_application_path(application_dir, sizeof(application_dir));
-      path_basedir(application_dir);
-
-      size_t src_size = strlcpy(out_path, application_dir, size);
-      rarch_assert(src_size < size);
-
-      out_path  += src_size;
-      size -= src_size;
-      in_path += 2;
-   }
-#endif
-
-   rarch_assert(strlcpy(out_path, in_path, size) < size);
-}
-
 /**
  * fill_short_pathname_representation:
  * @out_rep            : output representation
@@ -769,49 +728,4 @@ void fill_short_pathname_representation(char* out_rep,
    }
    else
       strlcpy(out_rep,path_short, size);
-}
-
-void fill_pathname_abbreviate_special(char *out_path,
-      const char *in_path, size_t size)
-{
-#if !defined(RARCH_CONSOLE)
-   unsigned i;
-
-   const char *home = getenv("HOME");
-   char application_dir[PATH_MAX_LENGTH];
-   fill_pathname_application_path(application_dir, sizeof(application_dir));
-   path_basedir(application_dir);
-
-   /* application_dir could be zero-string. Safeguard against this.
-    *
-    * Keep application dir in front of home, moving app dir to a
-    * new location inside home would break otherwise. */
-
-   const char *candidates[3] = { application_dir, home, NULL };
-   const char *notations[3] = { ":", "~", NULL };
-   
-   for (i = 0; candidates[i]; i++)
-   {
-      if (*candidates[i] && strstr(in_path, candidates[i]) == in_path)
-      {
-         size_t src_size = strlcpy(out_path, notations[i], size);
-         rarch_assert(src_size < size);
-      
-         out_path += src_size;
-         size -= src_size;
-         in_path += strlen(candidates[i]);
-      
-         if (!path_char_is_slash(*in_path))
-         {
-            rarch_assert(strlcpy(out_path, path_default_slash(), size) < size);
-            out_path++;
-            size--;
-         }
-
-         break; /* Don't allow more abbrevs to take place. */
-      }
-   }
-#endif
-
-   rarch_assert(strlcpy(out_path, in_path, size) < size);
 }

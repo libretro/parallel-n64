@@ -344,12 +344,6 @@ void fill_pathname_join_delim(char *out_path, const char *dir,
 void fill_short_pathname_representation(char* out_rep,
       const char *in_path, size_t size);
 
-void fill_pathname_expand_special(char *out_path,
-      const char *in_path, size_t size);
-
-void fill_pathname_abbreviate_special(char *out_path,
-      const char *in_path, size_t size);
-
 /** 
  * fill_pathname_slash:
  * @path               : path
@@ -359,10 +353,6 @@ void fill_pathname_abbreviate_special(char *out_path,
  * if not already there.
  **/
 void fill_pathname_slash(char *path, size_t size);
-
-#ifndef RARCH_CONSOLE
-void fill_pathname_application_path(char *buf, size_t size);
-#endif
 
 #ifdef __cplusplus
 }
