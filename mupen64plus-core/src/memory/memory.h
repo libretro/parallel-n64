@@ -43,6 +43,7 @@ typedef struct _save_memory_data
 {
     uint8_t eeprom[0x200];
     uint8_t mempack[4][0x8000];
+    uint8_t sram[0x8000];
     uint8_t flashram[0x20000];
 
     /* Some games use 16Kbit (2048 bytes) eeprom saves, the initial
@@ -51,7 +52,9 @@ typedef struct _save_memory_data
      * saves of games unaffected by the issue. */
     uint8_t eeprom2[0x600];
 } save_memory_data;
+
 extern save_memory_data saved_memory;
+
 void format_saved_memory(void);
 
 extern uint32_t address, word;
