@@ -19,11 +19,6 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
-
 #include "pif.h"
 #include "n64_cic_nus_6105.h"
 
@@ -31,14 +26,12 @@
 
 #include "../api/m64p_types.h"
 #include "../api/callbacks.h"
-#include "../api/debugger.h"
 #include "../main/main.h"
 #include "../main/rom.h"
 #include "../main/util.h"
 #include "../memory/memory.h"
 #include "../plugin/plugin.h"
 #include "r4300/cp0.h"
-#include "r4300/r4300.h"
 #include "r4300/interupt.h"
 
 #include <string.h>

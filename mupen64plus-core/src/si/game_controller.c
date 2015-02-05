@@ -113,23 +113,7 @@ static void controller_read_pak_command(struct pif* pif, int channel, uint8_t* c
    switch (Controls[channel].Plugin)
    {
       case PLUGIN_MEMPAK:
-         {
-            int address = (cmd[3] << 8) | cmd[4];
-            if (address == 0x8001)
-            {
-               memset(&cmd[5], 0, 0x20);
-               cmd[0x25] = pak_crc(&cmd[5]);
-            }
-            else
-            {
-               address &= 0xFFE0;
-               if (address <= 0x7FE0)
-                  memcpy(&cmd[5], &saved_memory.mempack[channel][address], 0x20);
-               else
-                  memset(&cmd[5], 0, 0x20);
-               cmd[0x25] = pak_crc(&cmd[5]);
-            }
-         }
+         mempak_write_command(&pif->controllers, channel, cmd);
          break;
       case PLUGIN_RAW:
          input.controllerCommand(channel, cmd);
@@ -151,18 +135,7 @@ static void controller_write_pak_command(struct pif* pif, int channel, uint8_t* 
    switch (Controls[channel].Plugin)
    {
       case PLUGIN_MEMPAK:
-         {
-            int address = (cmd[3] << 8) | cmd[4];
-            if (address == 0x8001)
-               cmd[0x25] = pak_crc(&cmd[5]);
-            else
-            {
-               address &= 0xFFE0;
-               if (address <= 0x7FE0)
-                  memcpy(&saved_memory.mempack[channel][address], &cmd[5], 0x20);
-               cmd[0x25] = pak_crc(&cmd[5]);
-            }
-         }
+         mempak_read_command(&pif->controllers, channel, cmd);
          break;
       case PLUGIN_RAW:
          if (input.controllerCommand)
