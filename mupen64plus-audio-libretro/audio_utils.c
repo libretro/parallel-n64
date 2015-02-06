@@ -398,6 +398,15 @@ void audio_convert_float_to_s16_ALLEGREX(int16_t *out,
 }
 #endif
 
+static unsigned audio_convert_get_cpu_features(void)
+{
+#ifdef RARCH_INTERNAL
+   return rarch_get_cpu_features();
+#else
+   return perf_get_cpu_features_cb();
+#endif
+}
+
 /**
  * audio_convert_init_simd:
  *
@@ -407,7 +416,7 @@ void audio_convert_float_to_s16_ALLEGREX(int16_t *out,
 void audio_convert_init_simd(void)
 {
 #if defined(__ARM_NEON__) 
-   unsigned cpu = rarch_get_cpu_features();
+   unsigned cpu = audio_convert_get_cpu_features();
    audio_convert_s16_to_float_arm = cpu & RETRO_SIMD_NEON ?
       audio_convert_s16_to_float_neon : audio_convert_s16_to_float_C;
    audio_convert_float_to_s16_arm = cpu & RETRO_SIMD_NEON ?
