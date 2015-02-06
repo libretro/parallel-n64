@@ -24,6 +24,7 @@
 #endif
 
 #ifdef RARCH_INTERNAL
+#include "../performance.h"
 #include "../libretro.h"
 #else
 #include "../libretro/libretro.h"
@@ -398,6 +399,19 @@ void audio_convert_float_to_s16_ALLEGREX(int16_t *out,
 }
 #endif
 
+#ifndef RARCH_INTERNAL
+
+#ifdef __cplusplus
+extern "C" 
+#endif
+retro_get_cpu_features_t perf_get_cpu_features_cb;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
 static unsigned audio_convert_get_cpu_features(void)
 {
 #ifdef RARCH_INTERNAL
@@ -415,8 +429,10 @@ static unsigned audio_convert_get_cpu_features(void)
  **/
 void audio_convert_init_simd(void)
 {
-#if defined(__ARM_NEON__) 
    unsigned cpu = audio_convert_get_cpu_features();
+
+   (void)cpu;
+#if defined(__ARM_NEON__) 
    audio_convert_s16_to_float_arm = cpu & RETRO_SIMD_NEON ?
       audio_convert_s16_to_float_neon : audio_convert_s16_to_float_C;
    audio_convert_float_to_s16_arm = cpu & RETRO_SIMD_NEON ?
