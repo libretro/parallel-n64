@@ -58,21 +58,11 @@ void eeprom_status_command(struct pif *pif, int channel, uint8_t *cmd)
 void eeprom_read_command(struct pif *pif, int channel, uint8_t *cmd)
 {
    /* read 8-byte block. */
-   uint16_t addr = cmd[3] * 8;
-
-   if (addr < 0x200)
-      memcpy(&cmd[4], saved_memory.eeprom + addr, 8);
-   else
-      memcpy(&cmd[4], saved_memory.eeprom2 + addr - 0x200, 8);
+   memcpy(&cmd[4], saved_memory.eeprom + cmd[3] * 8, 8);
 }
 
 void eeprom_write_command(struct pif *pif, int channel, uint8_t *cmd)
 {
    /* write 8-byte block. */
-   uint16_t addr = cmd[3]*8;
-
-   if (addr < 0x200)
-      memcpy(saved_memory.eeprom + addr, &cmd[4], 8);
-   else
-      memcpy(saved_memory.eeprom2 + addr - 0x200, &cmd[4], 8);
+   memcpy(saved_memory.eeprom + cmd[3] * 8, &cmd[4], 8);
 }
