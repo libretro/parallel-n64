@@ -744,7 +744,8 @@ static void format_saved_memory(void)
 bool retro_load_game(const struct retro_game_info *game)
 {
    struct retro_hw_render_callback *render = NULL;
-   format_saved_memory(); // < defined in mupen64plus-core/src/memory/memory.c
+
+   format_saved_memory();
 
    update_variables(true);
    initial_boot = false;
