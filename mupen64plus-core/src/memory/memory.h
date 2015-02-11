@@ -55,8 +55,6 @@ typedef struct _save_memory_data
 
 extern save_memory_data saved_memory;
 
-void format_saved_memory(void);
-
 extern uint32_t address, word;
 extern uint8_t cpu_byte;
 extern uint16_t hword;
