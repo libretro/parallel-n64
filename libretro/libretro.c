@@ -35,6 +35,8 @@ retro_environment_t environ_cb = NULL;
 
 struct retro_rumble_interface rumble;
 
+save_memory_data saved_memory;
+
 #ifdef SINGLE_THREAD
 void dyna_start(void *code);
 void dyna_jump(void);

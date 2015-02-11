@@ -34,8 +34,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-save_memory_data saved_memory;
-
 static void flashram_command(struct pi_controller *pi, uint32_t command)
 {
    unsigned int i;

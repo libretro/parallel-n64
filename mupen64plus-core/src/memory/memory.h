@@ -24,6 +24,10 @@
 
 #include <stdint.h>
 
+#ifdef __LIBRETRO__
+#include "../../libretro/libretro_memory.h"
+#endif
+
 #define AI_STATUS_FIFO_FULL	0x80000000		/* Bit 31: full */
 #define AI_STATUS_DMA_BUSY	   0x40000000		/* Bit 30: busy */
 #define MI_INTR_AI			   0x04			   /* Bit 2: AI intr */
@@ -38,22 +42,6 @@ extern uint32_t VI_REFRESH;
 #define write_byte_in_memory() writememb[address >>16]()
 #define write_hword_in_memory() writememh[address >>16]()
 #define write_dword_in_memory() writememd[address >>16]()
-
-typedef struct _save_memory_data
-{
-    uint8_t eeprom[0x200];
-    uint8_t mempack[4][0x8000];
-    uint8_t sram[0x8000];
-    uint8_t flashram[0x20000];
-
-    /* Some games use 16Kbit (2048 bytes) eeprom saves, the initial
-     * libretro-mupen64plus save file implementation failed to account
-     * for these. The missing bytes are stored here to avoid breaking
-     * saves of games unaffected by the issue. */
-    uint8_t eeprom2[0x600];
-} save_memory_data;
-
-extern save_memory_data saved_memory;
 
 extern uint32_t address, word;
 extern uint8_t cpu_byte;
@@ -146,4 +134,3 @@ int get_memory_type(uint32_t address);
 #endif
 
 #endif
-
