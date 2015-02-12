@@ -299,8 +299,8 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 #endif
 
    next_interupt = GETDATA(curr, unsigned int);
-   next_vi       = GETDATA(curr, unsigned int);
-   vi_field      = GETDATA(curr, unsigned int);
+   g_vi.next_vi  = GETDATA(curr, unsigned int);
+   g_vi.field    = GETDATA(curr, unsigned int);
 
    memcpy(queue, curr, sizeof(queue));
    to_little_endian_buffer(queue, 4, 256);
@@ -548,8 +548,8 @@ int savestates_save_m64p(unsigned char *data, size_t size)
          return 0;
 
    PUTDATA(curr, unsigned int, next_interupt);
-   PUTDATA(curr, unsigned int, next_vi);
-   PUTDATA(curr, unsigned int, vi_field);
+   PUTDATA(curr, unsigned int, g_vi.next_vi);
+   PUTDATA(curr, unsigned int, g_vi.field);
 
    to_little_endian_buffer(queue, 4, queuelength/4);
    PUTARRAY(queue, curr, char, queuelength);

@@ -61,6 +61,8 @@ extern m64p_frame_callback g_FrameCallback;
 
 extern int g_delay_si;
 
+extern int g_gs_vi_counter;
+
 void new_frame(void);
 
 int  main_set_core_defaults(void);

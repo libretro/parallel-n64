@@ -26,11 +26,8 @@
 
 void init_interupt(void);
 
-extern int vi_field;
-extern unsigned int next_vi;
-
-// set to avoid savestates/reset if state may be inconsistent
-// (e.g. in the middle of an instruction)
+/* set to avoid savestates/reset if state may be inconsistent
+ * (e.g. in the middle of an instruction) */
 extern int interupt_unsafe_state;
 
 void raise_maskable_interrupt(uint32_t cause);

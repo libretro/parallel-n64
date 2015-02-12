@@ -51,10 +51,6 @@
 
 extern int retro_return(bool just_flipping);
 
-unsigned int next_vi;
-int vi_field=0;
-int vi_counter=0;
-
 int interupt_unsafe_state = 0;
 
 struct interrupt_event
@@ -344,12 +340,11 @@ void load_eventqueue_infos(char *buf)
 void init_interupt(void)
 {
    SPECIAL_done = 1;
-   next_vi = next_interupt = 5000;
-   g_vi.delay = next_vi;
-   vi_field = 0;
+
+   g_vi.delay = g_vi.next_vi = 5000;
 
    clear_queue();
-   add_interupt_event_count(VI_INT, next_vi);
+   add_interupt_event_count(VI_INT, g_vi.next_vi);
    add_interupt_event_count(SPECIAL_INT, 0);
 }
 
@@ -430,31 +425,8 @@ static void special_int_handler(void)
 
 static void vi_int_handler(void)
 {
-   if (vi_counter < 60)
-   {
-      if (vi_counter == 0)
-         cheat_apply_cheats(ENTRY_BOOT);
-      vi_counter++;
-   }
-   else
-   {
-      cheat_apply_cheats(ENTRY_VI);
-   }
-   gfx.updateScreen();
-
-   main_check_inputs();
-
-   refresh_stat();
-   if (g_vi.regs[VI_V_SYNC_REG] == 0) g_vi.delay = 500000;
-   else g_vi.delay = ((g_vi.regs[VI_V_SYNC_REG] + 1)*VI_REFRESH);
-   next_vi += g_vi.delay;
-   if (g_vi.regs[VI_STATUS_REG]&0x40) vi_field=1-vi_field;
-   else vi_field=0;
-
    remove_interupt_event();
-   add_interupt_event_count(VI_INT, next_vi);
-
-   raise_rcp_interrupt(&g_r4300, MI_INTR_VI);
+   vi_vertical_interrupt_event(&g_vi);
 #ifdef __LIBRETRO__
    retro_return(false);
 #endif
@@ -538,7 +510,7 @@ static void nmi_int_handler(void)
    r4300_reset_soft();
    /* clear all interrupts, reset interrupt counters back to 0 */
    g_cp0_regs[CP0_COUNT_REG] = 0;
-   vi_counter = 0;
+   g_gs_vi_counter = 0;
    init_interupt();
    /* clear the audio status register so that 
     * subsequent write_ai() calls will work properly */
@@ -569,7 +541,7 @@ void gen_interupt(void)
    if (stop == 1)
    {
 #ifndef SINGLE_THREAD
-      vi_counter = 0; // debug
+      g_gs_vi_counter = 0; /* debug */
 #endif
       dyna_stop();
    }

@@ -40,9 +40,11 @@
 #include "../api/config.h"
 #include "../api/m64p_config.h"
 #include "../api/debugger.h"
+#include "../api/m64p_vidext.h"
 #include "../api/vidext.h"
 
 #include "main.h"
+#include "cheat.h"
 #include "eventloop.h"
 #include "rom.h"
 #include "savestates.h"
@@ -97,6 +99,8 @@ struct rdp_core g_dp;
 struct rsp_core g_sp;
 
 int g_delay_si = 0;
+
+int g_gs_vi_counter = 0;
 
 /** static (local) variables **/
 static int   l_CurrentFrame = 0;         // frame counter
@@ -260,6 +264,37 @@ void main_exit(void)
    StateChanged(M64CORE_EMU_STATE, M64EMU_STOPPED);
 }
 
+/* TODO: make a GameShark module and move that there */
+static void gs_apply_cheats(void)
+{
+   if(g_gs_vi_counter < 60)
+   {
+      if (g_gs_vi_counter == 0)
+         cheat_apply_cheats(ENTRY_BOOT);
+      g_gs_vi_counter++;
+   }
+   else
+   {
+      cheat_apply_cheats(ENTRY_VI);
+   }
+}
+
+/* called on vertical interrupt.
+ * Allow the core to perform various things */
+void new_vi(void)
+{
+   gs_apply_cheats();
+
+   main_check_inputs();
+
+#if 0
+   timed_sections_refresh();
+
+   pause_loop();
+
+   apply_speed_limiter();
+#endif
+}
 
 static void connect_all(
       struct r4300_core *r4300,
