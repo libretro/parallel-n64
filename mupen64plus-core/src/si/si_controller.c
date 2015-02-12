@@ -36,20 +36,23 @@
 static void dma_si_write(struct si_controller* si)
 {
    int i;
+
    if (si->regs[SI_PIF_ADDR_WR64B_REG] != 0x1FC007C0)
    {
       DebugMessage(M64MSG_ERROR, "dma_si_write(): unknown SI use");
       stop=1;
    }
+
    for (i = 0; i < PIF_RAM_SIZE; i += 4)
-   {
       *((uint32_t*)(&si->pif.ram[i])) = sl(si->ri->rdram.dram[(si->regs[SI_DRAM_ADDR_REG]+i)/4]);
-   }
+
    update_pif_write(si);
    update_count();
-   if (g_delay_si) {
+
+   if (g_delay_si)
       add_interupt_event(SI_INT, /*0x100*/0x900);
-   } else {
+   else
+   {
       si->regs[SI_STATUS_REG] |= 0x1000; // INTERRUPT
       signal_rcp_interrupt(si->r4300, MI_INTR_SI);
    }
@@ -58,18 +61,23 @@ static void dma_si_write(struct si_controller* si)
 static void dma_si_read(struct si_controller* si)
 {
    int i;
+
    if (si->regs[SI_PIF_ADDR_RD64B_REG] != 0x1FC007C0)
    {
       DebugMessage(M64MSG_ERROR, "dma_si_read(): unknown SI use");
       stop=1;
    }
+
    update_pif_read(si);
+
    for (i = 0; i < PIF_RAM_SIZE; i += 4)
       si->ri->rdram.dram[(si->regs[SI_DRAM_ADDR_REG]+i)/4] = sl(*(uint32_t*)(&si->pif.ram[i]));
    update_count();
-   if (g_delay_si) {
+
+   if (g_delay_si)
       add_interupt_event(SI_INT, /*0x100*/0x900);
-   } else {
+   else
+   {
       si->regs[SI_STATUS_REG] |= 0x1000; // INTERRUPT
       signal_rcp_interrupt(si->r4300, MI_INTR_SI);
    }
@@ -80,7 +88,7 @@ void connect_si(struct si_controller* si,
                 struct ri_controller *ri)
 {
     si->r4300 = r4300;
-    si->ri = ri;
+    si->ri    = ri;
 }
 
 void init_si(struct si_controller* si)
@@ -94,9 +102,9 @@ void init_si(struct si_controller* si)
 int read_si_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct si_controller* si = (struct si_controller*)opaque;
-    uint32_t reg = si_reg(address);
+    uint32_t reg             = si_reg(address);
 
-    *value = si->regs[reg];
+    *value                   = si->regs[reg];
 
     return 0;
 }
@@ -104,28 +112,28 @@ int read_si_regs(void* opaque, uint32_t address, uint32_t* value)
 int write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct si_controller* si = (struct si_controller*)opaque;
-    uint32_t reg = si_reg(address);
+    uint32_t reg             = si_reg(address);
 
     switch (reg)
     {
-    case SI_DRAM_ADDR_REG:
-        masked_write(&si->regs[SI_DRAM_ADDR_REG], value, mask);
-        break;
+       case SI_DRAM_ADDR_REG:
+          masked_write(&si->regs[SI_DRAM_ADDR_REG], value, mask);
+          break;
 
-    case SI_PIF_ADDR_RD64B_REG:
-        masked_write(&si->regs[SI_PIF_ADDR_RD64B_REG], value, mask);
-        dma_si_read(si);
-        break;
+       case SI_PIF_ADDR_RD64B_REG:
+          masked_write(&si->regs[SI_PIF_ADDR_RD64B_REG], value, mask);
+          dma_si_read(si);
+          break;
 
-    case SI_PIF_ADDR_WR64B_REG:
-        masked_write(&si->regs[SI_PIF_ADDR_WR64B_REG], value, mask);
-        dma_si_write(si);
-        break;
+       case SI_PIF_ADDR_WR64B_REG:
+          masked_write(&si->regs[SI_PIF_ADDR_WR64B_REG], value, mask);
+          dma_si_write(si);
+          break;
 
-    case SI_STATUS_REG:
-        si->regs[SI_STATUS_REG] &= ~0x1000;
-        clear_rcp_interrupt(si->r4300, MI_INTR_SI);
-        break;
+       case SI_STATUS_REG:
+          si->regs[SI_STATUS_REG] &= ~0x1000;
+          clear_rcp_interrupt(si->r4300, MI_INTR_SI);
+          break;
     }
 
     return 0;

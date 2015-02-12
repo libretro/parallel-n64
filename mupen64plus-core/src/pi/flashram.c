@@ -38,7 +38,7 @@ static void flashram_command(struct pi_controller *pi, uint32_t command)
 {
    unsigned int i;
    struct flashram *flashram = &pi->flashram;
-   uint8_t *dram = (uint8_t*)pi->ri->rdram.dram;
+   uint8_t *dram             = (uint8_t*)pi->ri->rdram.dram;
 
    switch (command & 0xff000000)
    {
@@ -83,7 +83,7 @@ static void flashram_command(struct pi_controller *pi, uint32_t command)
                break;
             default:
                DebugMessage(M64MSG_WARNING, "unknown flashram command with mode:%x", (int)flashram->mode);
-               stop=1;
+               stop = 1;
                break;
          }
          flashram->mode = FLASHRAM_MODE_NOPES;
@@ -114,6 +114,7 @@ void init_flashram(struct flashram* flashram)
 int read_flashram_status(void* opaque, uint32_t address, uint32_t* value)
 {
    struct pi_controller* pi = (struct pi_controller*)opaque;
+
    if ((pi->use_flashram == -1) || ((address & 0xffff) != 0))
    {
       DebugMessage(M64MSG_ERROR, "unknown read in read_flashram_status()");
@@ -127,6 +128,7 @@ int read_flashram_status(void* opaque, uint32_t address, uint32_t* value)
 int write_flashram_command(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    struct pi_controller* pi = (struct pi_controller*)opaque;
+
    if ((pi->use_flashram == -1) || ((address & 0xffff) != 0))
    {
       DebugMessage(M64MSG_ERROR, "unknown write in write_flashram_command()");
@@ -142,8 +144,8 @@ void dma_read_flashram(struct pi_controller *pi)
    unsigned int dram_addr, cart_addr;
    unsigned int i, length;
    struct flashram* flashram = &pi->flashram;
-   uint32_t *dram = pi->ri->rdram.dram;
-   uint8_t *mem = flashram->mem;
+   uint32_t *dram            = pi->ri->rdram.dram;
+   uint8_t *mem              = flashram->mem;
 
    switch (flashram->mode)
    {
@@ -161,7 +163,7 @@ void dma_read_flashram(struct pi_controller *pi)
          break;
       default:
          DebugMessage(M64MSG_WARNING, "unknown dma_read_flashram: %x", flashram->mode);
-         stop=1;
+         stop = 1;
          break;
    }
 }
@@ -177,7 +179,7 @@ void dma_write_flashram(struct pi_controller *pi)
          break;
       default:
          DebugMessage(M64MSG_ERROR, "unknown dma_write_flashram: %x", flashram->mode);
-         stop=1;
+         stop = 1;
          break;
    }
 }

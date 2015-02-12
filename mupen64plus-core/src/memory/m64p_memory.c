@@ -98,7 +98,7 @@ static INLINE unsigned int hshift(uint32_t address)
    return ((address & 2) ^ 2) << 3;
 }
 
-static int readb(readfn read_word, void* opaque, uint32_t address, unsigned long long int* value)
+static int readb(readfn read_word, void* opaque, uint32_t address, uint64_t* value)
 {
    uint32_t w;
    unsigned shift = bshift(address);
@@ -107,7 +107,7 @@ static int readb(readfn read_word, void* opaque, uint32_t address, unsigned long
    return result;
 }
 
-static int readh(readfn read_word, void* opaque, uint32_t address, unsigned long long int* value)
+static int readh(readfn read_word, void* opaque, uint32_t address, uint64_t* value)
 {
    uint32_t w;
    unsigned shift = hshift(address);
@@ -116,7 +116,7 @@ static int readh(readfn read_word, void* opaque, uint32_t address, unsigned long
    return result;
 }
 
-static int readw(readfn read_word, void* opaque, uint32_t address, unsigned long long int* value)
+static int readw(readfn read_word, void* opaque, uint32_t address, uint64_t* value)
 {
    uint32_t w;
    int result = read_word(opaque, address, &w);
@@ -124,7 +124,7 @@ static int readw(readfn read_word, void* opaque, uint32_t address, unsigned long
    return result;
 }
 
-static int readd(readfn read_word, void* opaque, uint32_t address, unsigned long long int* value)
+static int readd(readfn read_word, void* opaque, uint32_t address, uint64_t* value)
 {
    uint32_t w[2];
    int result =
@@ -137,16 +137,16 @@ static int readd(readfn read_word, void* opaque, uint32_t address, unsigned long
 static int writeb(writefn write_word, void *opaque, uint32_t address, uint8_t value)
 {
    unsigned int shift = bshift(address);
-   uint32_t w = (uint32_t)value << shift;
-   uint32_t mask = (uint32_t)0xff << shift;
+   uint32_t w         = (uint32_t)value << shift;
+   uint32_t mask      = (uint32_t)0xff << shift;
    return write_word(opaque, address, w, mask);
 }
 
 static int writeh(writefn write_word, void *opaque, uint32_t address, uint16_t value)
 {
    unsigned int shift = hshift(address);
-   uint32_t w = (uint32_t)value << shift;
-   uint32_t mask = (uint32_t)0xffff << shift;
+   uint32_t w         = (uint32_t)value << shift;
+   uint32_t mask      = (uint32_t)0xffff << shift;
    return write_word(opaque, address, w, mask);
 }
 
@@ -159,8 +159,8 @@ static int writed(writefn write_word, void *opaque, uint32_t address, uint64_t v
 {
    int result;
    const uint64_t doubleword = (uint64_t)value;
-   const uint32_t word_hi = (uint32_t)(doubleword >> 32);
-   const uint32_t word_lo = (uint32_t)(doubleword >>  0);
+   const uint32_t word_hi    = (uint32_t)(doubleword >> 32);
+   const uint32_t word_lo    = (uint32_t)(doubleword >>  0);
 
    result =
       write_word(opaque, address + 0, word_hi, ~0U);
@@ -1090,68 +1090,68 @@ void activate_memory_break_read(uint32_t address)
 {
    uint16_t region = address >> 16;
 
-   if (saved_readmem[region] == NULL)
-   {
-      saved_readmemb[region] = readmemb[region];
-      saved_readmemh[region] = readmemh[region];
-      saved_readmem [region] = readmem [region];
-      saved_readmemd[region] = readmemd[region];
-      readmemb[region] = readmemb_with_bp_checks;
-      readmemh[region] = readmemh_with_bp_checks;
-      readmem [region] = readmem_with_bp_checks;
-      readmemd[region] = readmemd_with_bp_checks;
-   }
+   if (saved_readmem[region] != NULL)
+      return;
+
+   saved_readmemb[region] = readmemb[region];
+   saved_readmemh[region] = readmemh[region];
+   saved_readmem [region] = readmem [region];
+   saved_readmemd[region] = readmemd[region];
+   readmemb[region] = readmemb_with_bp_checks;
+   readmemh[region] = readmemh_with_bp_checks;
+   readmem [region] = readmem_with_bp_checks;
+   readmemd[region] = readmemd_with_bp_checks;
 }
 
 void deactivate_memory_break_read(uint32_t address)
 {
    uint16_t region = address >> 16;
 
-   if (saved_readmem[region] != NULL)
-   {
-      readmemb[region] = saved_readmemb[region];
-      readmemh[region] = saved_readmemh[region];
-      readmem [region] = saved_readmem [region];
-      readmemd[region] = saved_readmemd[region];
-      saved_readmemb[region] = NULL;
-      saved_readmemh[region] = NULL;
-      saved_readmem [region] = NULL;
-      saved_readmemd[region] = NULL;
-   }
+   if (saved_readmem[region] == NULL)
+      return;
+
+   readmemb[region] = saved_readmemb[region];
+   readmemh[region] = saved_readmemh[region];
+   readmem [region] = saved_readmem [region];
+   readmemd[region] = saved_readmemd[region];
+   saved_readmemb[region] = NULL;
+   saved_readmemh[region] = NULL;
+   saved_readmem [region] = NULL;
+   saved_readmemd[region] = NULL;
 }
 
 void activate_memory_break_write(uint32_t address)
 {
    uint16_t region = address >> 16;
 
-   if (saved_writemem[region] == NULL)
-   {
-      saved_writememb[region] = writememb[region];
-      saved_writememh[region] = writememh[region];
-      saved_writemem [region] = writemem [region];
-      saved_writememd[region] = writememd[region];
-      writememb[region] = writememb_with_bp_checks;
-      writememh[region] = writememh_with_bp_checks;
-      writemem [region] = writemem_with_bp_checks;
-      writememd[region] = writememd_with_bp_checks;
-   }
+   if (saved_writemem[region] != NULL)
+      return;
+
+   saved_writememb[region] = writememb[region];
+   saved_writememh[region] = writememh[region];
+   saved_writemem [region] = writemem [region];
+   saved_writememd[region] = writememd[region];
+   writememb[region] = writememb_with_bp_checks;
+   writememh[region] = writememh_with_bp_checks;
+   writemem [region] = writemem_with_bp_checks;
+   writememd[region] = writememd_with_bp_checks;
 }
 
 void deactivate_memory_break_write(uint32_t address)
 {
    uint16_t region = address >> 16;
 
-   if (saved_writemem[region] != NULL)
-   {
-      writememb[region] = saved_writememb[region];
-      writememh[region] = saved_writememh[region];
-      writemem [region] = saved_writemem [region];
-      writememd[region] = saved_writememd[region];
-      saved_writememb[region] = NULL;
-      saved_writememh[region] = NULL;
-      saved_writemem [region] = NULL;
-      saved_writememd[region] = NULL;
-   }
+   if (saved_writemem[region] == NULL)
+      return;
+
+   writememb[region] = saved_writememb[region];
+   writememh[region] = saved_writememh[region];
+   writemem [region] = saved_writemem [region];
+   writememd[region] = saved_writememd[region];
+   saved_writememb[region] = NULL;
+   saved_writememh[region] = NULL;
+   saved_writemem [region] = NULL;
+   saved_writememd[region] = NULL;
 }
 
 int get_memory_type(uint32_t address)

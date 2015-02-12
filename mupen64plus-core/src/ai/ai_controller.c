@@ -47,8 +47,8 @@ void connect_ai(struct ai_controller* ai,
                 struct vi_controller* vi)
 {
     ai->r4300 = r4300;
-    ai->ri = ri;
-    ai->vi = vi;
+    ai->ri    = ri;
+    ai->vi    = vi;
 }
 
 
@@ -61,7 +61,8 @@ static uint32_t get_remaining_dma_length(struct ai_controller* ai)
       return 0;
 
    update_count();
-   next_ai_event = get_event(AI_INT);
+   next_ai_event          = get_event(AI_INT);
+
    if (next_ai_event == 0)
       return 0;
 
@@ -90,7 +91,7 @@ static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
          ? 44100
          : ROM_PARAMS.aidacrate / (1 + ai->regs[AI_DACRATE_REG]);
 
-      unsigned int bits = (ai->regs[AI_BITRATE_REG] == 0)
+      unsigned int bits      = (ai->regs[AI_BITRATE_REG] == 0)
          ? 16
          : 1 + ai->regs[AI_BITRATE_REG];
 
@@ -100,7 +101,8 @@ static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
    }
 
    /* push audio samples to external sink */
-   push_audio_samples(ai, &ai->ri->rdram.dram[dma->address/4], dma->length);
+   push_audio_samples(ai,
+         &ai->ri->rdram.dram[dma->address/4], dma->length);
 
    /* schedule end of dma event */
    update_count();

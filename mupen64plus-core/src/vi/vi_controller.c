@@ -39,8 +39,8 @@ void connect_vi(struct vi_controller* vi,
 void init_vi(struct vi_controller* vi)
 {
     memset(vi->regs, 0, VI_REGS_COUNT*sizeof(uint32_t));
-    vi->field = 0;
 
+    vi->field = 0;
     vi->delay = vi->next_vi = 5000;
 }
 
@@ -65,29 +65,29 @@ int read_vi_regs(void* opaque, uint32_t address, uint32_t* value)
 int write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct vi_controller* vi = (struct vi_controller*)opaque;
-    uint32_t reg = vi_reg(address);
+    uint32_t reg             = vi_reg(address);
 
     switch(reg)
     {
-    case VI_STATUS_REG:
-        if ((vi->regs[VI_STATUS_REG] & mask) != (value & mask))
-        {
-            masked_write(&vi->regs[VI_STATUS_REG], value, mask);
-            gfx.viStatusChanged();
-        }
-        return 0;
+       case VI_STATUS_REG:
+          if ((vi->regs[VI_STATUS_REG] & mask) != (value & mask))
+          {
+             masked_write(&vi->regs[VI_STATUS_REG], value, mask);
+             gfx.viStatusChanged();
+          }
+          return 0;
 
-    case VI_WIDTH_REG:
-        if ((vi->regs[VI_WIDTH_REG] & mask) != (value & mask))
-        {
-            masked_write(&vi->regs[VI_WIDTH_REG], value, mask);
-            gfx.viWidthChanged();
-        }
-        return 0;
+       case VI_WIDTH_REG:
+          if ((vi->regs[VI_WIDTH_REG] & mask) != (value & mask))
+          {
+             masked_write(&vi->regs[VI_WIDTH_REG], value, mask);
+             gfx.viWidthChanged();
+          }
+          return 0;
 
-    case VI_CURRENT_REG:
-        clear_rcp_interrupt(vi->r4300, MI_INTR_VI);
-        return 0;
+       case VI_CURRENT_REG:
+          clear_rcp_interrupt(vi->r4300, MI_INTR_VI);
+          return 0;
     }
 
     masked_write(&vi->regs[reg], value, mask);

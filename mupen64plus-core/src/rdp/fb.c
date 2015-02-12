@@ -47,9 +47,10 @@ static void pre_framebuffer_read(struct fb* fb, uint32_t address)
         if (fb->infos[i].addr)
         {
             unsigned int start = fb->infos[i].addr & 0x7FFFFF;
-            unsigned int end = start + fb->infos[i].width*
+            unsigned int end   = start + fb->infos[i].width*
                                fb->infos[i].height*
                                fb->infos[i].size - 1;
+
             if ((address & 0x7FFFFF) >= start && (address & 0x7FFFFF) <= end &&
                     fb->dirty_page[(address & 0x7FFFFF)>>12])
             {
@@ -69,7 +70,7 @@ static void pre_framebuffer_write(struct fb* fb, uint32_t address)
         if (fb->infos[i].addr)
         {
             unsigned int start = fb->infos[i].addr & 0x7FFFFF;
-            unsigned int end = start + fb->infos[i].width*
+            unsigned int end   = start + fb->infos[i].width*
                                fb->infos[i].height*
                                fb->infos[i].size - 1;
             if ((address & 0x7FFFFF) >= start && (address & 0x7FFFFF) <= end)
@@ -117,15 +118,15 @@ void protect_framebuffers(struct rdp_core* dp)
           if (fb->infos[i].addr)
           {
              int j;
-             int start = fb->infos[i].addr & 0x7FFFFF;
-             int end = start + fb->infos[i].width*
+             int start  = fb->infos[i].addr & 0x7FFFFF;
+             int end    = start + fb->infos[i].width*
                 fb->infos[i].height*
                 fb->infos[i].size - 1;
              int start1 = start;
-             int end1 = end;
+             int end1   = end;
 
              start >>= 16;
-             end >>= 16;
+             end   >>= 16;
 
              for (j = start; j <= end; j++)
              {
@@ -134,7 +135,7 @@ void protect_framebuffers(struct rdp_core* dp)
              }
 
              start <<= 4;
-             end <<= 4;
+             end   <<= 4;
 
              for (j=start; j<=end; j++)
              {
@@ -168,17 +169,18 @@ void unprotect_framebuffers(struct rdp_core* dp)
     if (fb->infos[0].addr)
     {
        size_t i;
+
        for(i = 0; i < FB_INFOS_COUNT; ++i)
        {
           if (fb->infos[i].addr)
           {
              int j;
              int start = fb->infos[i].addr & 0x7FFFFF;
-             int end = start + fb->infos[i].width *
+             int end   = start + fb->infos[i].width *
                 fb->infos[i].height*
                 fb->infos[i].size - 1;
-             start = start >> 16;
-             end   = end >> 16;
+             start     = start >> 16;
+             end       = end >> 16;
 
              for (j = start; j <= end; j++)
              {

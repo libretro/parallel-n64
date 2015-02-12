@@ -197,7 +197,7 @@ void connect_pi(struct pi_controller* pi,
 {
    connect_cart_rom(&pi->cart_rom, rom, rom_size);
    pi->r4300 = r4300;
-   pi->ri = ri;
+   pi->ri    = ri;
 }
 
 void init_pi(struct pi_controller* pi)
@@ -213,9 +213,9 @@ void init_pi(struct pi_controller* pi)
 int read_pi_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct pi_controller* pi = (struct pi_controller*)opaque;
-    uint32_t reg = pi_reg(address);
+    uint32_t reg             = pi_reg(address);
 
-    *value = pi->regs[reg];
+    *value                   = pi->regs[reg];
 
     return 0;
 }
@@ -224,7 +224,7 @@ int write_pi_regs(void* opaque, uint32_t address,
       uint32_t value, uint32_t mask)
 {
    struct pi_controller* pi = (struct pi_controller*)opaque;
-   uint32_t reg = pi_reg(address);
+   uint32_t reg             = pi_reg(address);
 
    switch (reg)
    {

@@ -47,20 +47,20 @@ static osal_inline void list_add(struct list_head *new_item, struct list_head *h
 {
     struct list_head *next = head->next;
 
-    next->prev = new_item;
-    new_item->next = next;
-    new_item->prev = head;
-    head->next = new_item;
+    next->prev             = new_item;
+    new_item->next         = next;
+    new_item->prev         = head;
+    head->next             = new_item;
 }
 
 static osal_inline void list_add_tail(struct list_head *new_item, struct list_head *head)
 {
     struct list_head *prev = head->prev;
 
-    prev->next = new_item;
-    new_item->next = head;
-    new_item->prev = prev;
-    head->prev = new_item;
+    prev->next             = new_item;
+    new_item->next         = head;
+    new_item->prev         = prev;
+    head->prev             = new_item;
 }
 
 static osal_inline void list_del(struct list_head *entry)
@@ -68,8 +68,8 @@ static osal_inline void list_del(struct list_head *entry)
     struct list_head *next = entry->next;
     struct list_head *prev = entry->prev;
 
-    next->prev = prev;
-    prev->next = next;
+    next->prev             = prev;
+    prev->next             = next;
 }
 
 static osal_inline void list_del_init(struct list_head *entry)

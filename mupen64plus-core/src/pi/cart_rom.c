@@ -25,7 +25,7 @@
 void connect_cart_rom(struct cart_rom* cart_rom,
                       uint8_t* rom, size_t rom_size)
 {
-    cart_rom->rom = rom;
+    cart_rom->rom      = rom;
     cart_rom->rom_size = rom_size;
 }
 
@@ -37,12 +37,12 @@ void init_cart_rom(struct cart_rom* cart_rom)
 
 int read_cart_rom(void* opaque, uint32_t address, uint32_t* value)
 {
-    struct pi_controller* pi = (struct pi_controller*)opaque;
-    uint32_t addr = rom_address(address);
+    struct pi_controller* pi    = (struct pi_controller*)opaque;
+    uint32_t addr               = rom_address(address);
 
     if (pi->cart_rom.last_write != 0)
     {
-        *value = pi->cart_rom.last_write;
+        *value                  = pi->cart_rom.last_write;
         pi->cart_rom.last_write = 0;
     }
     else
@@ -55,8 +55,8 @@ int read_cart_rom(void* opaque, uint32_t address, uint32_t* value)
 
 int write_cart_rom(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-    struct pi_controller* pi = (struct pi_controller*)opaque;
-    pi->cart_rom.last_write = value & mask;
+    struct pi_controller* pi     = (struct pi_controller*)opaque;
+    pi->cart_rom.last_write      = value & mask;
 
     return 0;
 }
