@@ -69,6 +69,12 @@
 #include "../debugger/debugger.h"
 #endif
 
+#ifdef __LIBRETRO__
+#include "../../libretro/libretro.h"
+
+extern retro_input_poll_t poll_cb;
+#endif
+
 /* version number for Core config section */
 #define CONFIG_PARAM_VERSION 1.01
 
@@ -374,4 +380,11 @@ void main_stop(void)
 #endif        
 
    r4300_deinit();
+}
+
+void main_check_inputs(void)
+{
+#ifdef __LIBRETRO__
+   poll_cb();
+#endif
 }

@@ -28,7 +28,7 @@ retro_get_cpu_features_t perf_get_cpu_features_cb = NULL;
 
 retro_log_printf_t log_cb = NULL;
 retro_video_refresh_t video_cb = NULL;
-static retro_input_poll_t poll_cb = NULL;
+retro_input_poll_t poll_cb = NULL;
 retro_input_state_t input_cb = NULL;
 retro_audio_sample_batch_t audio_batch_cb = NULL;
 retro_environment_t environ_cb = NULL;
@@ -797,8 +797,6 @@ void retro_run (void)
 
    FAKE_SDL_TICKS += 16;
    pushed_frame = false;
-
-   poll_cb();
 
 run_again:
 

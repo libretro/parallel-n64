@@ -446,6 +446,8 @@ static void vi_int_handler(void)
    }
    gfx.updateScreen();
 
+   main_check_inputs();
+
    refresh_stat();
    if (g_vi.regs[VI_V_SYNC_REG] == 0) g_vi.delay = 500000;
    else g_vi.delay = ((g_vi.regs[VI_V_SYNC_REG] + 1)*VI_REFRESH);
