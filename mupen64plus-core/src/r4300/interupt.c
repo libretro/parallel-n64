@@ -478,11 +478,8 @@ static void check_int_handler(void)
 
 static void si_int_handler(void)
 {
-   g_si.pif.ram[0x3F] = 0x0;
    remove_interupt_event();
-   g_si.regs[SI_STATUS_REG] |= 0x1000;
-
-   raise_rcp_interrupt(&g_r4300, MI_INTR_SI);
+   si_end_of_dma_event(&g_si);
 }
 
 static void pi_int_handler(void)
