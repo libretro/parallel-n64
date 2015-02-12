@@ -21,19 +21,12 @@
 #include "mempak.h"
 #include "game_controller.h"
 
-#include "../api/m64p_types.h"
-#include "../api/callbacks.h"
-
-#include "../main/main.h"
-#include "../main/rom.h"
-#include "../main/util.h"
 #include "../memory/memory.h"
 
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
-void mempak_read_command(struct game_controllers* controllers, int channel, uint8_t* cmd)
+void mempak_read_command(uint8_t *mempak, uint8_t* cmd)
 {
    /* address is in fact an offset (11bit) | CRC (5 bits) */
    uint16_t address = (cmd[3] << 8) | cmd[4];
@@ -47,14 +40,14 @@ void mempak_read_command(struct game_controllers* controllers, int channel, uint
    {
       address &= 0xFFE0;
       if (address <= 0x7FE0)
-         memcpy(&saved_memory.mempack[channel][address], &cmd[5], 0x20);
+         memcpy(&mempak[address], &cmd[5], 0x20);
       else
          memset(&cmd[5], 0, 0x20);
       cmd[0x25] = pak_crc(&cmd[5]);
    }
 }
 
-void mempak_write_command(struct game_controllers *controllers, int channel, uint8_t *cmd)
+void mempak_write_command(uint8_t *mempak, uint8_t *cmd)
 {
    /* address is in fact an offset (11bit) | CRC (5 bits) */
    uint16_t address = (cmd[3] << 8) | cmd[4];
@@ -68,7 +61,7 @@ void mempak_write_command(struct game_controllers *controllers, int channel, uin
       address &= 0xFFE0;
 
       if (address <= 0x7FE0)
-         memcpy(&cmd[5], &saved_memory.mempack[channel][address], 0x20);
+         memcpy(&cmd[5], &mempak[address], 0x20);
 
       cmd[0x25] = pak_crc(&cmd[5]);
    }

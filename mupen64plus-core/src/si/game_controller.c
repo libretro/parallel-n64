@@ -113,7 +113,7 @@ static void controller_read_pak_command(struct pif* pif, int channel, uint8_t* c
    switch (Controls[channel].Plugin)
    {
       case PLUGIN_MEMPAK:
-         mempak_write_command(&pif->controllers, channel, cmd);
+         mempak_write_command(&saved_memory.mempack[channel][0], cmd);
          break;
       case PLUGIN_RAW:
          if (input.controllerCommand)
@@ -136,7 +136,7 @@ static void controller_write_pak_command(struct pif* pif, int channel, uint8_t* 
    switch (Controls[channel].Plugin)
    {
       case PLUGIN_MEMPAK:
-         mempak_read_command(&pif->controllers, channel, cmd);
+         mempak_read_command(&saved_memory.mempack[channel][0], cmd);
          break;
       case PLUGIN_RAW:
          if (input.controllerCommand)

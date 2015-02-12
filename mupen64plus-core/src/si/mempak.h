@@ -29,7 +29,7 @@ struct game_controllers;
 enum { MEMPAK_COUNT = 4 };
 enum { MEMPAK_SIZE = 0x8000 };
 
-void mempak_read_command(struct game_controllers* controllers, int channel, uint8_t* cmd);
-void mempak_write_command(struct game_controllers* controllers, int channel, uint8_t* cmd);
+void mempak_read_command(uint8_t *mempak, uint8_t* cmd);
+void mempak_write_command(uint8_t *mempak, uint8_t* cmd);
 
 #endif
