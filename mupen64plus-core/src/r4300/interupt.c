@@ -493,9 +493,9 @@ static void pi_int_handler(void)
    raise_rcp_interrupt(&g_r4300, MI_INTR_PI);
 }
 
-static void ai_int_handler(void)
+static void ai_int_handler(unsigned int ai_event)
 {
-   if (g_ai.regs[AI_STATUS_REG] & 0x80000000) // full
+   if (g_ai.regs[AI_STATUS_REG] & 0x80000000) /* full */
    {
       unsigned int ai_event = get_event(AI_INT);
       remove_interupt_event();
@@ -637,7 +637,7 @@ void gen_interupt(void)
          pi_int_handler();
          break;
       case AI_INT:
-         ai_int_handler();
+         ai_int_handler(q.first->data.count);
          break;
       case SP_INT:
          sp_int_handler();
