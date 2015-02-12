@@ -251,8 +251,7 @@ int write_pi_regs(void* opaque, uint32_t address,
 
       case PI_STATUS_REG:
          if (value & mask & 2)
-            pi->r4300->mi.regs[MI_INTR_REG] &= ~0x10;
-         check_interupt();
+            clear_rcp_interrupt(pi->r4300, MI_INTR_PI);
          return 0;
 
       case PI_BSD_DOM1_LAT_REG:

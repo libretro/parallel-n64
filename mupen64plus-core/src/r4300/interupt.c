@@ -459,7 +459,7 @@ void gen_interupt(void)
          remove_interupt_event();
          add_interupt_event_count(VI_INT, next_vi);
 
-         g_r4300.mi.regs[MI_INTR_REG] |= 0x08;
+         g_r4300.mi.regs[MI_INTR_REG] |= MI_INTR_VI;
          if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
          else
@@ -489,7 +489,7 @@ void gen_interupt(void)
       case SI_INT:
          g_si.pif.ram[0x3F] = 0x0;
          remove_interupt_event();
-         g_r4300.mi.regs[MI_INTR_REG] |= 0x02;
+         g_r4300.mi.regs[MI_INTR_REG] |= MI_INTR_SI;
          g_si.regs[SI_STATUS_REG] |= 0x1000;
 
          if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
@@ -502,7 +502,7 @@ void gen_interupt(void)
 
       case PI_INT:
          remove_interupt_event();
-         g_r4300.mi.regs[MI_INTR_REG] |= 0x10;
+         g_r4300.mi.regs[MI_INTR_REG] |= MI_INTR_PI;
          g_pi.regs[PI_STATUS_REG] &= ~3;
          if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
@@ -522,7 +522,7 @@ void gen_interupt(void)
             g_ai.fifo[0].length = g_ai.fifo[1].length;
             add_interupt_event_count(AI_INT, ai_event + g_ai.fifo[1].delay);
 
-            g_r4300.mi.regs[MI_INTR_REG] |= 0x04;
+            g_r4300.mi.regs[MI_INTR_REG] |= MI_INTR_AI;
             if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
                g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
             else
@@ -536,7 +536,7 @@ void gen_interupt(void)
             g_ai.regs[AI_STATUS_REG] &= ~0x40000000;
 
             //-------
-            g_r4300.mi.regs[MI_INTR_REG] |= 0x04;
+            g_r4300.mi.regs[MI_INTR_REG] |= MI_INTR_AI;
             if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
                g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
             else
@@ -551,7 +551,7 @@ void gen_interupt(void)
          g_sp.regs[SP_STATUS_REG] |= 0x203;
 
          if (!(g_sp.regs[SP_STATUS_REG] & 0x40)) return; // !intr_on_break
-         g_r4300.mi.regs[MI_INTR_REG] |= 0x01;
+         g_r4300.mi.regs[MI_INTR_REG] |= MI_INTR_SP;
          if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
          else
@@ -564,7 +564,7 @@ void gen_interupt(void)
          remove_interupt_event();
          g_dp.dpc_regs[DPC_STATUS_REG] &= ~2;
          g_dp.dpc_regs[DPC_STATUS_REG] |= 0x81;
-         g_r4300.mi.regs[MI_INTR_REG] |= 0x20;
+         g_r4300.mi.regs[MI_INTR_REG] |= MI_INTR_DP;
          if (g_r4300.mi.regs[MI_INTR_REG] & g_r4300.mi.regs[MI_INTR_MASK_REG])
             g_cp0_regs[CP0_CAUSE_REG] = (g_cp0_regs[CP0_CAUSE_REG] | 0x400) & 0xFFFFFF83;
          else

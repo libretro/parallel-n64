@@ -30,7 +30,6 @@
 
 #define AI_STATUS_FIFO_FULL	0x80000000		/* Bit 31: full */
 #define AI_STATUS_DMA_BUSY	   0x40000000		/* Bit 30: busy */
-#define MI_INTR_AI			   0x04			   /* Bit 2: AI intr */
 
 extern uint32_t VI_REFRESH;
 
