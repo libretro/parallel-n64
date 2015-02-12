@@ -478,8 +478,6 @@ static void nmi_int_handler(void)
 
 void gen_interupt(void)
 {
-   unsigned int ai_event;
-
    if (stop == 1)
    {
 #ifndef SINGLE_THREAD
@@ -541,9 +539,8 @@ void gen_interupt(void)
          pi_end_of_dma_event(&g_pi);
          break;
       case AI_INT:
-         ai_event = q.first->data.count;
          remove_interupt_event();
-         ai_end_of_dma_event(&g_ai, ai_event);
+         ai_end_of_dma_event(&g_ai);
          break;
       case SP_INT:
          remove_interupt_event();

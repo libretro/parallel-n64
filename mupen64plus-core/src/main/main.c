@@ -312,7 +312,7 @@ static void connect_all(
 {
    connect_rdp(dp, r4300, sp, ri);
    connect_rsp(sp, r4300, dp, ri);
-   connect_ai(ai, r4300, vi);
+   connect_ai(ai, r4300, ri, vi);
    connect_pi(pi, r4300, ri, rom, rom_size);
    connect_ri(ri, dram, dram_size);
    connect_si(si, r4300, ri);

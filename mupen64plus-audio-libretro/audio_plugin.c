@@ -39,6 +39,12 @@ extern retro_audio_sample_batch_t audio_batch_cb;
 #include "audio_resampler_driver.h"
 #include "audio_utils.h"
 
+#include "../mupen64plus-core/src/ai/ai_controller.h"
+#include "../mupen64plus-core/src/main/main.h"
+#include "../mupen64plus-core/src/main/rom.h"
+#include "../mupen64plus-core/src/plugin/plugin.h"
+#include "../mupen64plus-core/src/ri/ri_controller.h"
+
 #ifndef MAX_AUDIO_FRAMES
 #define MAX_AUDIO_FRAMES 2048
 #endif
@@ -190,3 +196,34 @@ EXPORT int CALL audioVolumeGetLevel(void){return 100;}
 EXPORT void CALL audioVolumeSetLevel(int level){}
 EXPORT const char * CALL audioVolumeGetString(void){return "Not Supported";}
 
+void set_audio_format_via_libretro(void* user_data, unsigned int frequency, unsigned int bits)
+{
+    /* not really implementable with just the zilmar spec.
+     * Try a best effort approach
+     */
+    struct ai_controller* ai = (struct ai_controller*)&g_ai;
+    uint32_t saved_ai_dacrate = ai->regs[AI_DACRATE_REG];
+    
+    ai->regs[AI_DACRATE_REG] = ROM_PARAMS.aidacrate / frequency - 1;
+
+    audioAiDacrateChanged(ROM_PARAMS.systemtype);
+
+    ai->regs[AI_DACRATE_REG] = saved_ai_dacrate;
+}
+
+void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
+{
+    /* abuse core & audio plugin implementation to approximate desired effect */
+    struct ai_controller* ai = (struct ai_controller*)&g_ai;
+    uint32_t saved_ai_length = ai->regs[AI_LEN_REG];
+    uint32_t saved_ai_dram = ai->regs[AI_DRAM_ADDR_REG];
+
+    /* exploit the fact that buffer points in g_rdram to retreive dram_addr_reg value */
+    ai->regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)ai->ri->rdram.dram;
+    ai->regs[AI_LEN_REG] = size;
+
+    audioAiLenChanged();
+
+    ai->regs[AI_LEN_REG] = saved_ai_length;
+    ai->regs[AI_DRAM_ADDR_REG] = saved_ai_dram;
+}
