@@ -37,8 +37,6 @@
 
 #include <string.h>
 
-int32_t enable_expmem = 1;
-
 static void dma_pi_read(struct pi_controller *pi)
 {
    if (pi->regs[PI_CART_ADDR_REG] >= 0x08000000
