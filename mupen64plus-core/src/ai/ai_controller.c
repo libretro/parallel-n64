@@ -32,7 +32,7 @@
 #include <string.h>
 
 #ifdef __LIBRETRO__
-#include "../../mupen64plus-audio-libretro/audio_plugin.h"
+#include "../../../mupen64plus-audio-libretro/audio_plugin.h"
 #endif
 
 enum
