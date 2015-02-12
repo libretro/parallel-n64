@@ -324,11 +324,13 @@ static void connect_all(
 */
 m64p_error main_init(void)
 {
+   unsigned int disable_extra_mem;
    /* take the r4300 emulator mode from the config file at this point and cache it in a global variable */
    r4300emu = ConfigGetParamInt(g_CoreConfig, "R4300Emulator");
 
    /* set some other core parameters based on the config file values */
    no_compiled_jump = ConfigGetParamBool(g_CoreConfig, "NoCompiledJump");
+   disable_extra_mem = ConfigGetParamInt(g_CoreConfig, "DisableExtraMem");
 #if 0
    count_per_op = ConfigGetParamInt(g_CoreConfig, "CountPerOp");
 #endif
@@ -345,7 +347,7 @@ m64p_error main_init(void)
 
    connect_all(&g_r4300, &g_dp, &g_sp,
          &g_ai, &g_pi, &g_ri, &g_si, &g_vi,
-         g_rdram, RDRAM_MAX_SIZE,
+         g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
          g_rom, g_rom_size);
 
    init_memory();

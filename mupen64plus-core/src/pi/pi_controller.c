@@ -23,9 +23,7 @@
 
 #define M64P_CORE_PROTOTYPES 1
 #include "../api/m64p_types.h"
-#include "../api/m64p_config.h"
 #include "../api/callbacks.h"
-#include "../api/config.h"
 #include "../main/main.h"
 #include "../main/rom.h"
 #include "../memory/memory.h"
@@ -40,11 +38,6 @@
 #include <string.h>
 
 int32_t enable_expmem = 1;
-
-void dma_enable_expmem(int enable)
-{
-   enable_expmem = enable;
-}
 
 static void dma_pi_read(struct pi_controller *pi)
 {
@@ -182,17 +175,15 @@ static void dma_pi_write(struct pi_controller *pi)
          case CIC_X102:
          case CIC_X103:
          case CIC_X106:
-            if (enable_expmem)
-               g_rdram[0x318/4] = 0x800000;
-            else
-               g_rdram[0x318/4] = 0x400000;
-            break;
+            {
+               pi->ri->rdram.dram[0x318/4] = pi->ri->rdram.dram_size;
+               break;
+            }
          case CIC_X105:
-            if (enable_expmem)
-               g_rdram[0x3F0/4] = 0x800000;
-            else
-               g_rdram[0x3F0/4] = 0x400000;
-            break;
+            {
+               pi->ri->rdram.dram[0x3f0/4] = pi->ri->rdram.dram_size;
+               break;
+            }
       }
    }
 

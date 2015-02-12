@@ -1301,6 +1301,11 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
                                                    { 0, 0 } 
                                                 } 
         },
+        { "DisableExtraMem", "mupen64-disable_expmem", {
+                                                          { 0, "enabled" },
+                                                          { 1, "disabled" },
+                                                       }
+        },
         { 0, 0, { {0, 0} } }
     };
 
