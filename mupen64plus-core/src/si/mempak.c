@@ -19,7 +19,6 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA. *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #include "mempak.h"
-#include "game_controller.h"
 
 #include "../memory/memory.h"
 
@@ -34,7 +33,6 @@ void mempak_read_command(uint8_t *mempak, uint8_t* cmd)
    if (address == 0x8001)
    {
       memset(&cmd[5], 0, 0x20);
-      cmd[0x25] = pak_crc(&cmd[5]);
    }
    else
    {
@@ -43,7 +41,6 @@ void mempak_read_command(uint8_t *mempak, uint8_t* cmd)
          memcpy(&mempak[address], &cmd[5], 0x20);
       else
          memset(&cmd[5], 0, 0x20);
-      cmd[0x25] = pak_crc(&cmd[5]);
    }
 }
 
@@ -53,16 +50,10 @@ void mempak_write_command(uint8_t *mempak, uint8_t *cmd)
    uint16_t address = (cmd[3] << 8) | cmd[4];
 
    if (address == 0x8001)
-   {
-      cmd[0x25] = pak_crc(&cmd[5]);
-   }
-   else
-   {
-      address &= 0xFFE0;
+      return;
 
-      if (address <= 0x7FE0)
-         memcpy(&cmd[5], &mempak[address], 0x20);
+   address &= 0xFFE0;
 
-      cmd[0x25] = pak_crc(&cmd[5]);
-   }
+   if (address <= 0x7FE0)
+      memcpy(&cmd[5], &mempak[address], 0x20);
 }

@@ -32,6 +32,25 @@
 
 #include <string.h>
 
+static uint8_t pak_data_crc(uint8_t *data)
+{
+   int i;
+   uint8_t crc = 0;
+
+   for (i = 0; i <= 0x20; i++)
+   {
+      int mask;
+      for (mask = 0x80; mask >= 1; mask >>= 1)
+      {
+         int xor_tap = (crc & 0x80) ? 0x85 : 0x00;
+         crc <<= 1;
+         if (i != 0x20 && (data[i] & mask)) crc |= 1;
+         crc ^= xor_tap;
+      }
+   }
+   return crc;
+}
+
 void read_controller_read_buttons(struct pif *pif, int channel, uint8_t *cmd)
 {
    BUTTONS Keys;
@@ -120,9 +139,11 @@ static void controller_read_pak_command(struct pif* pif, int channel, uint8_t* c
             input.controllerCommand(channel, cmd);
          break;
       default:
-         memset(&cmd[5], 0, 0x20);
-         cmd[0x25] = 0;
+         //DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
+         break;
    }
+
+   cmd[0x25] = pak_data_crc(&cmd[5]);
 }
 
 static void controller_write_pak_command(struct pif* pif, int channel, uint8_t* cmd)
@@ -143,8 +164,11 @@ static void controller_write_pak_command(struct pif* pif, int channel, uint8_t* 
             input.controllerCommand(channel, cmd);
          break;
       default:
-         cmd[0x25] = pak_crc(&cmd[5]);
+         //DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
+         break;
    }
+
+   cmd[0x25] = pak_data_crc(&cmd[5]);
 }
 
 void process_controller_command(struct pif *pif, int channel, uint8_t *cmd)
@@ -183,21 +207,3 @@ void read_controller(struct pif *pif, int channel, uint8_t *cmd)
    }
 }
 
-uint8_t pak_crc(uint8_t *data)
-{
-   int i;
-   uint8_t crc = 0;
-
-   for (i = 0; i <= 0x20; i++)
-   {
-      int mask;
-      for (mask = 0x80; mask >= 1; mask >>= 1)
-      {
-         int xor_tap = (crc & 0x80) ? 0x85 : 0x00;
-         crc <<= 1;
-         if (i != 0x20 && (data[i] & mask)) crc |= 1;
-         crc ^= xor_tap;
-      }
-   }
-   return crc;
-}
