@@ -27,33 +27,18 @@
 
 void mempak_read_command(uint8_t *mempak, uint8_t* cmd)
 {
-   /* address is in fact an offset (11bit) | CRC (5 bits) */
-   uint16_t address = (cmd[3] << 8) | cmd[4];
+   uint16_t address = (cmd[3] << 8) | (cmd[4] & 0xe0);
 
-   if (address == 0x8001)
-   {
-      memset(&cmd[5], 0, 0x20);
-   }
+   if (address < 0x8000)
+      memcpy(&mempak[address], &cmd[5], 0x20);
    else
-   {
-      address &= 0xFFE0;
-      if (address <= 0x7FE0)
-         memcpy(&mempak[address], &cmd[5], 0x20);
-      else
-         memset(&cmd[5], 0, 0x20);
-   }
+      memset(&cmd[5], 0, 0x20);
 }
 
 void mempak_write_command(uint8_t *mempak, uint8_t *cmd)
 {
-   /* address is in fact an offset (11bit) | CRC (5 bits) */
-   uint16_t address = (cmd[3] << 8) | cmd[4];
+   uint16_t address = (cmd[3] << 8) | (cmd[4] & 0xe0);
 
-   if (address == 0x8001)
-      return;
-
-   address &= 0xFFE0;
-
-   if (address <= 0x7FE0)
+   if (address < 0x8000)
       memcpy(&cmd[5], &mempak[address], 0x20);
 }
