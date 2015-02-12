@@ -22,13 +22,6 @@
 #include "sram.h"
 #include "pi_controller.h"
 
-#include "api/m64p_types.h"
-#include "api/callbacks.h"
-
-#include "main/main.h"
-#include "main/rom.h"
-#include "main/util.h"
-
 #include "memory/memory.h"
 
 #include "ri/ri_controller.h"
@@ -36,7 +29,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdlib.h>
 
 void dma_write_sram(struct pi_controller* pi)
 {
