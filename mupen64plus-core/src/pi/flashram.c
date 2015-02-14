@@ -24,14 +24,10 @@
 
 #include "../api/m64p_types.h"
 #include "../api/callbacks.h"
-#include "../main/main.h"
-#include "../main/rom.h"
-#include "../main/util.h"
 #include "../memory/memory.h"
 #include "../r4300/r4300.h"
 #include "../ri/ri_controller.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 static void flashram_command(struct pi_controller *pi, uint32_t command)
@@ -64,19 +60,16 @@ static void flashram_command(struct pi_controller *pi, uint32_t command)
                break;
             case FLASHRAM_MODE_ERASE:
                {
-                  uint32_t i;
-                  for (i = flashram->erase_offset; i < (flashram->erase_offset+128); i++)
-                     flashram->mem[i^S8] = 0xff;
+                  for (i=flashram->erase_offset; i<(flashram->erase_offset+128); ++i)
+                     flashram->data[i^S8] = 0xff;
+                  flashram_save(flashram);
                }
                break;
             case FLASHRAM_MODE_WRITE:
                {
-                  int i;
-                  for (i=0; i<128; i++)
-                  {
-                     flashram->mem[(flashram->erase_offset+i)^S8]=
-                        ((uint8_t*)g_rdram)[(flashram->write_pointer+i)^S8];
-                  }
+                  for(i = 0; i < 128; ++i)
+                     flashram->data[(flashram->erase_offset+i)^S8]= dram[(flashram->write_pointer+i)^S8];
+                  flashram_save(flashram);
                }
                break;
             case FLASHRAM_MODE_STATUS:
@@ -108,7 +101,16 @@ void init_flashram(struct flashram* flashram)
    flashram->status = 0;
    flashram->erase_offset = 0;
    flashram->write_pointer = 0;
-   flashram->mem = saved_memory.flashram;
+}
+
+void flashram_save(struct flashram* flashram)
+{
+   flashram->save(flashram->user_data);
+}
+
+void format_flashram(uint8_t* flash)
+{
+   memset(flash, 0xff, FLASHRAM_SIZE);
 }
 
 int read_flashram_status(void* opaque, uint32_t address, uint32_t* value)
@@ -145,7 +147,7 @@ void dma_read_flashram(struct pi_controller *pi)
    unsigned int i, length;
    struct flashram* flashram = &pi->flashram;
    uint32_t *dram            = pi->ri->rdram.dram;
-   uint8_t *mem              = flashram->mem;
+   uint8_t* mem              = flashram->data;
 
    switch (flashram->mode)
    {
@@ -158,7 +160,7 @@ void dma_read_flashram(struct pi_controller *pi)
          dram_addr = pi->regs[PI_DRAM_ADDR_REG];
          cart_addr = ((pi->regs[PI_CART_ADDR_REG]-0x08000000)&0xffff)*2;
 
-         for (i=0; i<(g_pi.regs[PI_WR_LEN_REG] & 0x0FFFFFF)+1; i++)
+         for (i = 0; i < length; ++i)
             ((uint8_t*)dram)[(dram_addr+i)^S8] = mem[(cart_addr+i)^S8];
          break;
       default:
