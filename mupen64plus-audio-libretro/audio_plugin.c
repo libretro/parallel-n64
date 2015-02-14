@@ -30,27 +30,14 @@
 #include "libretro.h"
 extern retro_audio_sample_batch_t audio_batch_cb;
 
-#define M64P_PLUGIN_PROTOTYPES 1
-#include "m64p_types.h"
-#include "m64p_plugin.h"
-#include "m64p_common.h"
-#include "m64p_config.h"
-
 #include "audio_resampler_driver.h"
 #include "audio_utils.h"
-
-#include "../mupen64plus-core/src/ai/ai_controller.h"
-#include "../mupen64plus-core/src/main/main.h"
-#include "../mupen64plus-core/src/main/rom.h"
-#include "../mupen64plus-core/src/plugin/plugin.h"
-#include "../mupen64plus-core/src/ri/ri_controller.h"
 
 #ifndef MAX_AUDIO_FRAMES
 #define MAX_AUDIO_FRAMES 2048
 #endif
 
 /* Read header for type definition */
-static AUDIO_INFO AudioInfo;
 static int GameFreq = 33600;
 
 static const rarch_resampler_t *resampler;
@@ -64,40 +51,52 @@ void (*audio_convert_s16_to_float_arm)(float *out,
 void (*audio_convert_float_to_s16_arm)(int16_t *out,
       const float *in, size_t samples);
 
-/* Mupen64Plus plugin functions */
-EXPORT m64p_error CALL audioPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
-{
-    // This function should never be called in libretro version                    
-    return M64ERR_SUCCESS;
-}
+bool no_audio;
 
-/* ----------- Audio Functions ------------- */
-EXPORT void CALL audioAiDacrateChanged( int SystemType )
+void deinit_audio_libretro(void)
 {
-    switch (SystemType)
+    if (resampler && resampler_audio_data)
     {
-        case SYSTEM_NTSC: GameFreq = 48681812 / (*AudioInfo.AI_DACRATE_REG + 1); break;
-        case SYSTEM_PAL:  GameFreq = 49656530 / (*AudioInfo.AI_DACRATE_REG + 1); break;
-        case SYSTEM_MPAL: GameFreq = 48628316 / (*AudioInfo.AI_DACRATE_REG + 1); break;
+       resampler->free(resampler_audio_data);
+       resampler = NULL;
+       resampler_audio_data = NULL;
+       free(audio_in_buffer_float);
+       free(audio_out_buffer_float);
+       free(audio_out_buffer_s16);
     }
 }
 
-bool no_audio;
-
-EXPORT void CALL audioAiLenChanged(void)
+void init_audio_libretro(void)
 {
-   uint8_t *p;
-   int16_t *raw_data, *out;
-   size_t frames, max_frames, remain_frames;
+   rarch_resampler_realloc(&resampler_audio_data, &resampler, "CC", 1.0);
+   audio_in_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
+   audio_out_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
+   audio_out_buffer_s16 = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
+   audio_convert_init_simd();
+}
+
+void set_audio_format_via_libretro(void* user_data, unsigned int frequency, unsigned int bits)
+{
+    GameFreq = frequency;
+    // assume bits == 16
+}
+
+void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
+{
+    uint8_t *p;
+    int16_t *raw_data, *out;
+    size_t frames, max_frames, remain_frames;
 	uint32_t i, len;
-   double ratio;
-   struct resampler_data data = {0};
+    double ratio;
+    struct resampler_data data = {0};
 
-   len = *AudioInfo.AI_LEN_REG;
-   //if (log_cb)
-      //log_cb(RETRO_LOG_INFO, "AI_LEN_REG: %d\n", len);
-	p = (uint8_t*)(AudioInfo.RDRAM + (*AudioInfo.AI_DRAM_ADDR_REG & 0xFFFFFF));
+    len = size;
+    p = (uint8_t*)buffer;
+    //if (log_cb)
+        //log_cb(RETRO_LOG_INFO, "AI_LEN_REG: %d\n", len);
 
+#if 0
+    // not sure why it is swapped here.
    for (i = 0; i < len; i += 4)
    {
       p[i    ] ^= p[i + 2];
@@ -108,15 +107,16 @@ EXPORT void CALL audioAiLenChanged(void)
       p[i + 3] ^= p[i + 1];
       p[i + 1] ^= p[i + 3];
    }
+#endif
 
    raw_data = (int16_t*)p;
    frames = len / 4;
 
 audio_batch:
-   out = NULL;
+    out = NULL;
 	ratio = 44100.0 / GameFreq;
 	max_frames = GameFreq > 44100 ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
-   remain_frames = 0;
+    remain_frames = 0;
    
    if (no_audio)
       return;
@@ -151,79 +151,4 @@ audio_batch:
       frames = remain_frames;
       goto audio_batch;
    }
-}
-
-
-EXPORT m64p_error CALL audioPluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context, void (*DebugCallback)(void *, int, const char *))
-{
-   return M64ERR_SUCCESS;
-}
-
-EXPORT m64p_error CALL audioPluginShutdown(void)
-{
-    if (resampler && resampler_audio_data)
-    {
-       resampler->free(resampler_audio_data);
-       resampler = NULL;
-       resampler_audio_data = NULL;
-       free(audio_in_buffer_float);
-       free(audio_out_buffer_float);
-       free(audio_out_buffer_s16);
-    }
-   return M64ERR_SUCCESS;
-}
-
-EXPORT int CALL audioInitiateAudio(AUDIO_INFO Audio_Info)
-{
-   AudioInfo = Audio_Info;
-
-   rarch_resampler_realloc(&resampler_audio_data, &resampler, "CC", 1.0);
-   audio_in_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
-   audio_out_buffer_float = malloc(2 * MAX_AUDIO_FRAMES * sizeof(float));
-   audio_out_buffer_s16 = malloc(2 * MAX_AUDIO_FRAMES * sizeof(int16_t));
-   audio_convert_init_simd();
-   return 1;
-}
-
-EXPORT int CALL audioRomOpen(void){return 1;}
-EXPORT void CALL audioRomClosed(void){}
-EXPORT void CALL audioProcessAList(void){}
-EXPORT void CALL audioSetSpeedFactor(int percentage){}
-EXPORT void CALL audioVolumeMute(void){}
-EXPORT void CALL audioVolumeUp(void){}
-EXPORT void CALL audioVolumeDown(void){}
-EXPORT int CALL audioVolumeGetLevel(void){return 100;}
-EXPORT void CALL audioVolumeSetLevel(int level){}
-EXPORT const char * CALL audioVolumeGetString(void){return "Not Supported";}
-
-void set_audio_format_via_libretro(void* user_data, unsigned int frequency, unsigned int bits)
-{
-    /* not really implementable with just the zilmar spec.
-     * Try a best effort approach
-     */
-    struct ai_controller* ai = (struct ai_controller*)&g_ai;
-    uint32_t saved_ai_dacrate = ai->regs[AI_DACRATE_REG];
-    
-    ai->regs[AI_DACRATE_REG] = ROM_PARAMS.aidacrate / frequency - 1;
-
-    audioAiDacrateChanged(ROM_PARAMS.systemtype);
-
-    ai->regs[AI_DACRATE_REG] = saved_ai_dacrate;
-}
-
-void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
-{
-    /* abuse core & audio plugin implementation to approximate desired effect */
-    struct ai_controller* ai = (struct ai_controller*)&g_ai;
-    uint32_t saved_ai_length = ai->regs[AI_LEN_REG];
-    uint32_t saved_ai_dram = ai->regs[AI_DRAM_ADDR_REG];
-
-    /* exploit the fact that buffer points in g_rdram to retreive dram_addr_reg value */
-    ai->regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)ai->ri->rdram.dram;
-    ai->regs[AI_LEN_REG] = size;
-
-    audioAiLenChanged();
-
-    ai->regs[AI_LEN_REG] = saved_ai_length;
-    ai->regs[AI_DRAM_ADDR_REG] = saved_ai_dram;
 }
