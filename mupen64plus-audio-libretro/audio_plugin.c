@@ -86,36 +86,20 @@ void set_audio_format_via_libretro(void* user_data,
 
 void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
 {
-   uint8_t *p;
-   int16_t *raw_data, *out;
-   size_t frames, max_frames, remain_frames;
-   uint32_t i, len;
+   int16_t *out;
+   size_t max_frames, remain_frames;
+   uint32_t i;
    double ratio;
    struct resampler_data data = {0};
-   len = size;
-   p = (uint8_t*)buffer;
+   uint32_t len      = size;
+   int16_t *raw_data = (int16_t*)buffer;
+   size_t frames     = len / 4;
 
-   //if (log_cb)
-   //log_cb(RETRO_LOG_INFO, "AI_LEN_REG: %d\n", len);
-#if 0
-   // not sure why it is swapped here.
-   for (i = 0; i < len; i += 4)
-   {
-      p[i ] ^= p[i + 2];
-      p[i + 2] ^= p[i ];
-      p[i ] ^= p[i + 2];
-      p[i + 1] ^= p[i + 3];
-      p[i + 3] ^= p[i + 1];
-      p[i + 1] ^= p[i + 3];
-   }
-#endif
-   raw_data = (int16_t*)p;
-   frames = len / 4;
 audio_batch:
-   out = NULL;
-   ratio = 44100.0 / GameFreq;
-   max_frames = GameFreq > 44100 ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
-   remain_frames = 0;
+   out               = NULL;
+   ratio             = 44100.0 / GameFreq;
+   max_frames        = (GameFreq > 44100) ? MAX_AUDIO_FRAMES : (size_t)(MAX_AUDIO_FRAMES / ratio - 1);
+   remain_frames     = 0;
    if (no_audio)
       return;
 
@@ -124,24 +108,28 @@ audio_batch:
       remain_frames = frames - max_frames;
       frames = max_frames;
    }
-   data.data_in = audio_in_buffer_float;
-   data.data_out = audio_out_buffer_float;
+
+   data.data_in      = audio_in_buffer_float;
+   data.data_out     = audio_out_buffer_float;
    data.input_frames = frames;
-   data.ratio = ratio;
+   data.ratio        = ratio;
+
    audio_convert_s16_to_float(audio_in_buffer_float, raw_data, frames * 2, 1.0f);
    resampler->process(resampler_audio_data, &data);
    audio_convert_float_to_s16(audio_out_buffer_s16, audio_out_buffer_float, data.output_frames * 2);
-   out = audio_out_buffer_s16;
+
+   out                    = audio_out_buffer_s16;
+
    while (data.output_frames)
    {
-      size_t ret = audio_batch_cb(out, data.output_frames);
+      size_t ret          = audio_batch_cb(out, data.output_frames);
       data.output_frames -= ret;
-      out += ret * 2;
+      out                += ret * 2;
    }
    if (remain_frames)
    {
       raw_data = raw_data + frames * 2;
-      frames = remain_frames;
+      frames   = remain_frames;
       goto audio_batch;
    }
 }
