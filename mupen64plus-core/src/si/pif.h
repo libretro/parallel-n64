@@ -26,7 +26,10 @@
 
 #include "af_rtc.h"
 #include "cic.h"
+#include "eeprom.h"
 #include "game_controller.h"
+
+enum { GAME_CONTROLLERS_COUNT = 4 };
 
 struct si_controller;
 
@@ -51,8 +54,8 @@ struct pif
 {
    uint8_t ram[PIF_RAM_SIZE];
 
-   struct game_controllers controllers;
-
+   struct game_controller controllers[GAME_CONTROLLERS_COUNT];
+   struct eeprom eeprom;
    struct af_rtc af_rtc;
 
    struct cic cic;
@@ -73,4 +76,3 @@ void update_pif_write(struct si_controller* si);
 void update_pif_read(struct si_controller* si);
 
 #endif
-

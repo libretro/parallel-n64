@@ -66,8 +66,11 @@ SOURCES_C += \
 	$(CORE_DIR)/src/si/eeprom.c \
 	$(CORE_DIR)/src/si/game_controller.c \
 	$(CORE_DIR)/src/si/mempak.c \
+	$(CORE_DIR)/src/si/rumblepak.c \
 	$(CORE_DIR)/src/plugin/plugin.c \
+	$(CORE_DIR)/src/plugin/emulate_game_controller_via_input_plugin.c \
 	$(CORE_DIR)/src/plugin/get_time_using_C_localtime.c \
+	$(CORE_DIR)/src/plugin/rumble_via_input_plugin.c \
 	$(CORE_DIR)/src/r4300/mi_controller.c \
 	$(CORE_DIR)/src/r4300/profile.c \
 	$(CORE_DIR)/src/r4300/recomp.c \

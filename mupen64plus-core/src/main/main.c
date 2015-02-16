@@ -55,7 +55,9 @@
 #include "../osal/preproc.h"
 #include "../pi/pi_controller.h"
 #include "../plugin/plugin.h"
+#include "../plugin/emulate_game_controller_via_input_plugin.h"
 #include "../plugin/get_time_using_C_localtime.h"
+#include "../plugin/rumble_via_input_plugin.h"
 #include "../r4300/r4300.h"
 #include "../r4300/r4300_core.h"
 #include "../r4300/interupt.h"
@@ -319,12 +321,18 @@ static void connect_all(
    connect_vi(vi, r4300);
 }
 
+static void dummy_save(void *user_data)
+{
+}
+
 /*********************************************************************************************************
 * emulation thread - runs the core
 */
 m64p_error main_init(void)
 {
+   size_t i;
    unsigned int disable_extra_mem;
+   static int channels[] = { 0, 1, 2, 3 };
    /* take the r4300 emulator mode from the config file at this point and cache it in a global variable */
    r4300emu = ConfigGetParamInt(g_CoreConfig, "R4300Emulator");
 
@@ -372,6 +380,60 @@ m64p_error main_init(void)
    g_ai.set_audio_format = set_audio_format_via_libretro;
    g_ai.push_audio_samples = push_audio_samples_via_libretro;
 
+   /* connect external time source to AF_RTC component */
+   g_si.pif.af_rtc.user_data = NULL;
+   g_si.pif.af_rtc.get_time = get_time_using_C_localtime;
+
+   /* connect external game controllers */
+   for(i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
+   {
+      g_si.pif.controllers[i].user_data = &channels[i];
+      g_si.pif.controllers[i].is_connected = egcvip_is_connected;
+      g_si.pif.controllers[i].get_input = egcvip_get_input;
+   }
+
+   /* connect external rumblepaks */
+   for(i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
+   {
+      g_si.pif.controllers[i].rumblepak.user_data = &channels[i];
+      g_si.pif.controllers[i].rumblepak.rumble = rvip_rumble;
+   }
+
+   /* connect saved_memory.mempacks to mempaks */
+   for(i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
+   {
+      g_si.pif.controllers[i].mempak.user_data = NULL;
+      g_si.pif.controllers[i].mempak.save = dummy_save;
+      g_si.pif.controllers[i].mempak.data = &saved_memory.mempack[i][0];
+   }
+
+   /* connect saved_memory.eeprom to eeprom */
+   g_si.pif.eeprom.user_data = NULL;
+   g_si.pif.eeprom.save = dummy_save;
+   g_si.pif.eeprom.data = saved_memory.eeprom;
+   if (ROM_SETTINGS.savetype != EEPROM_16KB)
+   {
+      /* 4kbits EEPROM */
+      g_si.pif.eeprom.size = 0x200;
+      g_si.pif.eeprom.id = 0x8000;
+   }
+   else
+   {
+      /* 16kbits EEPROM */
+      g_si.pif.eeprom.size = 0x800;
+      g_si.pif.eeprom.id = 0xc000;
+   }
+
+   /* connect saved_memory.flashram to flashram */
+   g_pi.flashram.user_data = NULL;
+   g_pi.flashram.save = dummy_save;
+   g_pi.flashram.data = saved_memory.flashram;
+
+   /* connect saved_memory.sram to SRAM */
+   g_pi.sram.user_data = NULL;
+   g_pi.sram.save = dummy_save;
+   g_pi.sram.data = saved_memory.sram;
+
 #ifdef DBG
    if (ConfigGetParamBool(g_CoreConfig, "EnableDebugger"))
       init_debugger();
@@ -385,9 +447,6 @@ m64p_error main_init(void)
    r4300_reset_soft();
    r4300_init();
 
-   /* connect external time source to AF_RTC component */
-   g_si.pif.af_rtc.user_data = NULL;
-   g_si.pif.af_rtc.get_time = get_time_using_C_localtime;
 
    return M64ERR_SUCCESS;
 }
