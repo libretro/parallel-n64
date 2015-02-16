@@ -31,10 +31,6 @@
 
 #include <string.h>
 
-#ifdef __LIBRETRO__
-#include "../../../mupen64plus-audio-libretro/audio_plugin.h"
-#endif
-
 enum
 {
    AI_STATUS_BUSY = 0x40000000,
@@ -68,7 +64,7 @@ static uint32_t get_remaining_dma_length(struct ai_controller* ai)
 
    remaining_dma_duration = next_ai_event - g_cp0_regs[CP0_COUNT_REG];
 
-   if (remaining_dma_duration >= AI_STATUS_FULL)
+   if (remaining_dma_duration >= 0x80000000)
       return 0;
 
    return (uint64_t)remaining_dma_duration * ai->fifo[0].length / ai->fifo[0].duration;
@@ -151,20 +147,12 @@ static void fifo_pop(struct ai_controller* ai)
 
 void set_audio_format(struct ai_controller* ai, unsigned int frequency, unsigned int bits)
 {
-#ifdef __LIBRETRO__
-  set_audio_format_via_libretro(ai->user_data, frequency, bits);
-#else
    ai->set_audio_format(ai->user_data, frequency, bits);
-#endif
 }
 
 void push_audio_samples(struct ai_controller* ai, const void* buffer, size_t size)
 {
-#ifdef __LIBRETRO__
-   push_audio_samples_via_libretro(ai->user_data, buffer, size);
-#else
    ai->push_audio_samples(ai->user_data, buffer, size);
-#endif
 }
 
 void init_ai(struct ai_controller* ai)

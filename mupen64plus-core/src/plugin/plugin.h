@@ -37,7 +37,6 @@ extern CONTROL Controls[4];
 /*** Version requirement information ***/
 #define RSP_API_VERSION   0x20000
 #define GFX_API_VERSION   0x20200
-#define AUDIO_API_VERSION 0x20000
 #define INPUT_API_VERSION 0x20000
 
 /* video plugin function pointers */
@@ -65,27 +64,6 @@ typedef struct _gfx_plugin_functions
 } gfx_plugin_functions;
 
 extern gfx_plugin_functions gfx;
-
-/* audio plugin function pointers */
-typedef struct _audio_plugin_functions
-{
-	ptr_PluginGetVersion  getVersion;
-	ptr_AiDacrateChanged  aiDacrateChanged;
-	ptr_AiLenChanged      aiLenChanged;
-	ptr_InitiateAudio     initiateAudio;
-	ptr_ProcessAList      processAList;
-	ptr_RomClosed         romClosed;
-	ptr_RomOpen           romOpen;
-	ptr_SetSpeedFactor    setSpeedFactor;
-	ptr_VolumeUp          volumeUp;
-	ptr_VolumeDown        volumeDown;
-	ptr_VolumeGetLevel    volumeGetLevel;
-	ptr_VolumeSetLevel    volumeSetLevel;
-	ptr_VolumeMute        volumeMute;
-	ptr_VolumeGetString   volumeGetString;
-} audio_plugin_functions;
-
-extern audio_plugin_functions audio;
 
 /* input plugin function pointers */
 typedef struct _input_plugin_functions

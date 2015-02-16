@@ -29,7 +29,6 @@
 #include "../rdp/rdp_core.h"
 #include "../rsp/rsp_core.h"
 
-#include "../ai/ai_controller.h"
 #include "../vi/vi_controller.h"
 
 #include "api/callbacks.h"
@@ -146,62 +145,6 @@ static m64p_error plugin_start_gfx(void)
    return M64ERR_SUCCESS;
 }
 
-/* AUDIO */
-extern void audioAiDacrateChanged(int SystemType);
-extern void audioAiLenChanged(void);
-extern int  audioInitiateAudio(AUDIO_INFO Audio_Info);
-extern void audioProcessAList(void);
-extern int  audioRomOpen(void);
-extern void audioRomClosed(void);
-extern void audioSetSpeedFactor(int percent);
-extern void audioVolumeUp(void);
-extern void audioVolumeDown(void);
-extern int audioVolumeGetLevel(void);
-extern void audioVolumeSetLevel(int level);
-extern void audioVolumeMute(void);
-extern const char * audioVolumeGetString(void);
-
-audio_plugin_functions audio = {
-    EmptyGetVersionFunc,
-    audioAiDacrateChanged,
-    audioAiLenChanged,
-    audioInitiateAudio,
-    audioProcessAList,
-    audioRomClosed,
-    audioRomOpen,
-    audioSetSpeedFactor,
-    audioVolumeUp,
-    audioVolumeDown,
-    audioVolumeGetLevel,
-    audioVolumeSetLevel,
-    audioVolumeMute,
-    audioVolumeGetString
-};
-
-static AUDIO_INFO audio_info;
-
-static m64p_error plugin_start_audio(void)
-{
-   /* fill in the AUDIO_INFO data structure */
-   audio_info.RDRAM = (unsigned char *) g_rdram;
-   audio_info.DMEM = (unsigned char *) g_sp.mem;
-   audio_info.IMEM = (unsigned char *) g_sp.mem + 0x1000;
-   audio_info.MI_INTR_REG = &(g_r4300.mi.regs[MI_INTR_REG]);
-   audio_info.AI_DRAM_ADDR_REG = &(g_ai.regs[AI_DRAM_ADDR_REG]);
-   audio_info.AI_LEN_REG = &(g_ai.regs[AI_LEN_REG]);
-   audio_info.AI_CONTROL_REG = &(g_ai.regs[AI_CONTROL_REG]);
-   audio_info.AI_STATUS_REG = &dummy;
-   audio_info.AI_DACRATE_REG = &(g_ai.regs[AI_DACRATE_REG]);
-   audio_info.AI_BITRATE_REG = &(g_ai.regs[AI_BITRATE_REG]);
-   audio_info.CheckInterrupts = EmptyFunc;
-
-   /* call the audio plugin */
-   if (!audio.initiateAudio(audio_info))
-      return M64ERR_PLUGIN_FAIL;
-
-   return M64ERR_SUCCESS;
-}
-
 /* INPUT */
 extern m64p_error inputPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion,
                                               int *APIVersion, const char **PluginNamePtr, int *Capabilities);
@@ -292,7 +235,7 @@ static m64p_error plugin_start_rsp(void)
    rsp_info.DPC_TMEM_REG = &g_dp.dpc_regs[DPC_TMEM_REG];
    rsp_info.CheckInterrupts = EmptyFunc;
    rsp_info.ProcessDlistList = gfx.processDList;
-   rsp_info.ProcessAlistList = audio.processAList;
+   rsp_info.ProcessAlistList = NULL;
    rsp_info.ProcessRdpList = gfx.processRDPList;
    rsp_info.ShowCFB = gfx.showCFB;
 
@@ -320,7 +263,6 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
    }
 
    plugin_start_gfx();
-   plugin_start_audio();
    plugin_start_input();
    plugin_start_rsp();
 }

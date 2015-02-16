@@ -73,6 +73,7 @@
 
 #ifdef __LIBRETRO__
 #include "../../libretro/libretro.h"
+#include "../../mupen64plus-audio-libretro/audio_plugin.h"
 
 extern retro_input_poll_t poll_cb;
 #endif
@@ -256,7 +257,6 @@ void main_exit(void)
 
    rsp.romClosed();
    input.romClosed();
-   audio.romClosed();
    gfx.romClosed();
 
    // clean up
@@ -359,21 +359,18 @@ m64p_error main_init(void)
       printf("Gfx RomOpen failed.\n");
       return M64ERR_PLUGIN_FAIL;
    }
-   printf("Audio RomOpen.\n");
-   if (!audio.romOpen())
-   {
-      printf("Audio RomOpen failed.\n");
-      gfx.romClosed();
-      return M64ERR_PLUGIN_FAIL;
-   }
    printf("Input RomOpen.\n");
    if (!input.romOpen())
    {
       printf("Input RomOpen failed.\n");
-      audio.romClosed();
       gfx.romClosed();
       return M64ERR_PLUGIN_FAIL;
    }
+
+   /* connect external audio sink to AI component */
+   g_ai.user_data = NULL;
+   g_ai.set_audio_format = set_audio_format_via_libretro;
+   g_ai.push_audio_samples = push_audio_samples_via_libretro;
 
 #ifdef DBG
    if (ConfigGetParamBool(g_CoreConfig, "EnableDebugger"))

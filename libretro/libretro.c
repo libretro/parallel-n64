@@ -430,6 +430,8 @@ void retro_init(void)
 
 
    environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
+
+   init_audio_libretro();
    
    //hacky stuff for Glide64
    polygonOffsetUnits = -3.0f;
@@ -449,6 +451,8 @@ void retro_deinit(void)
 #ifndef SINGLE_THREAD
    co_delete(cpu_thread);
 #endif
+
+   deinit_audio_libretro();
 
    if (perf_cb.perf_log)
       perf_cb.perf_log();
