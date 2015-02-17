@@ -22,6 +22,7 @@
 #include "../audio_backend_compat.h"
 
 #include "api/m64p_types.h"
+#include "api/libretro.h"
 #include "ai/ai_controller.h"
 #include "main/main.h"
 #include "main/rom.h"
@@ -34,7 +35,6 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "libretro.h"
 extern retro_audio_sample_batch_t audio_batch_cb;
 
 #include "audio_resampler_driver.h"

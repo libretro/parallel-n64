@@ -74,8 +74,7 @@
 #endif
 
 #ifdef __LIBRETRO__
-#include "../../libretro/libretro.h"
-
+#include "api/libretro.h"
 extern retro_input_poll_t poll_cb;
 #endif
 

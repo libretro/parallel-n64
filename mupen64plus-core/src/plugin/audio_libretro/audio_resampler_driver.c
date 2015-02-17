@@ -15,15 +15,11 @@
  */
 
 #include "audio_resampler_driver.h"
-#ifdef RARCH_INTERNAL
-#include "../performance.h"
-#else
-#include "../libretro/libretro.h"
-#endif
+#include "api/libretro.h"
 #include <string.h>
 
 /* strcasecmp not implemented in MSVC */
-#include "../libretro/msvc_compat.h"
+#include "api/msvc_compat.h"
 
 static const rarch_resampler_t *resampler_drivers[] = {
    &CC_resampler,

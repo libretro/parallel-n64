@@ -23,12 +23,7 @@
 #include <altivec.h>
 #endif
 
-#ifdef RARCH_INTERNAL
-#include "../performance.h"
-#include "../libretro.h"
-#else
-#include "../libretro/libretro.h"
-#endif
+#include "api/libretro.h"
 
 /**
  * audio_convert_s16_to_float_C:

@@ -28,10 +28,10 @@
 #include <math.h>
 #define ROUND(x)    floor((x) + 0.5)
 
-#include "libretro.h"
+#include "api/libretro.h"
 
 /* snprintf not available in MSVC 2010 and earlier */
-#include "../libretro/msvc_compat.h"
+#include "api/msvc_compat.h"
 
 extern retro_environment_t environ_cb;
 extern retro_input_state_t input_cb;

@@ -2,7 +2,7 @@
 #include <SDL_opengles2.h>
 #include <string.h>
 
-#include "libretro.h"
+#include "api/libretro.h"
 #ifndef SINGLE_THREAD
 #include "libco/libco.h"
 #endif

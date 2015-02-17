@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include "Glide64_UCode.h"
 #include "rdp.h"
-#include "../../libretro/libretro.h"
+#include "api/libretro.h"
 
 extern uint8_t microcode[4096];
 extern uint32_t uc_crc;

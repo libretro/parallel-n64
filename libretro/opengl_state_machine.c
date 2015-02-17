@@ -6,7 +6,7 @@
 #include "glsym/glsym.h"
 #include "opengl_state_machine.h"
 #include "plugin/plugin.h"
-#include "libretro.h"
+#include "api/libretro.h"
 #include "libco/libco.h"
 
 // mupen64 defines

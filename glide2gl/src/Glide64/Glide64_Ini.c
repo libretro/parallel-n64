@@ -4,7 +4,7 @@
 #include "rdp.h"
 #include "DepthBufferRender.h"
 
-#include "../../libretro/libretro.h"
+#include "api/libretro.h"
 #include "../../libretro/SDL.h"
 
 extern bool no_audio;
