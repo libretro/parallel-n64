@@ -1,6 +1,5 @@
 RSPDIR             = $(ROOT_DIR)/mupen64plus-rsp-hle
 CXD4DIR            = $(ROOT_DIR)/mupen64plus-rsp-cxd4
-INPUT_LIBRETRO_DIR = $(ROOT_DIR)/mupen64plus-input-libretro
 CORE_DIR           = $(ROOT_DIR)/mupen64plus-core
 AUDIO_LIBRETRO_DIR = $(CORE_DIR)/src/plugin/audio_libretro
 VIDEODIR_RICE      = $(ROOT_DIR)/gles2rice/src
@@ -69,7 +68,6 @@ SOURCES_C += \
 	$(CORE_DIR)/src/si/mempak.c \
 	$(CORE_DIR)/src/si/rumblepak.c \
 	$(CORE_DIR)/src/plugin/plugin.c \
-	$(CORE_DIR)/src/plugin/emulate_game_controller_via_input_plugin.c \
 	$(CORE_DIR)/src/plugin/get_time_using_C_localtime.c \
 	$(CORE_DIR)/src/plugin/rumble_via_input_plugin.c \
 	$(CORE_DIR)/src/r4300/mi_controller.c \
@@ -165,7 +163,7 @@ endif
 SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 					 $(LIBRETRO_DIR)/adler32.c \
 					 $(LIBRETRO_DIR)/opengl_state_machine.c \
-					 $(INPUT_LIBRETRO_DIR)/input_plugin.c \
+					 $(CORE_DIR)/src/plugin/emulate_game_controller_via_libretro.c \
 					 $(AUDIO_LIBRETRO_DIR)/audio_backend_libretro.c \
 					 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
 					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc.c \

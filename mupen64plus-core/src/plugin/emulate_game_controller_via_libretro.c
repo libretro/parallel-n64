@@ -1,9 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus-input-libretro - plugin.c                                 *
+ *   Mupen64plus - emulate_game_controller_via_input_plugin.c              *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2008-2011 Richard Goedeken                              *
- *   Copyright (C) 2008 Tillin9                                            *
- *   Copyright (C) 2002 Blight                                             *
+ *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -21,14 +19,18 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "emulate_game_controller_via_input_plugin.h"
+#include "plugin.h"
+
+#include "api/m64p_plugin.h"
+#include "api/libretro.h"
+#include "si/game_controller.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <math.h>
-#define ROUND(x)    floor((x) + 0.5)
 
-#include "api/libretro.h"
+#define ROUND(x)    floor((x) + 0.5)
 
 /* snprintf not available in MSVC 2010 and earlier */
 #include "api/msvc_compat.h"
@@ -40,13 +42,6 @@ extern int pad_pak_types[4];
 extern int pad_present[4];
 extern int astick_deadzone;
 
-#define M64P_PLUGIN_PROTOTYPES 1
-#include "m64p_types.h"
-#include "m64p_plugin.h"
-#include "m64p_common.h"
-#include "m64p_config.h"
-
-#include "../mupen64plus-core/src/main/rom.h"
 extern m64p_rom_header ROM_HEADER;
 
 // Some stuff from n-rage plugin
@@ -71,7 +66,7 @@ struct
 
 static void inputGetKeys_default( int Control, BUTTONS *Keys );
 typedef void (*get_keys_t)(int, BUTTONS*);
-get_keys_t getKeys = inputGetKeys_default;
+static get_keys_t getKeys = inputGetKeys_default;
 
 static void inputGetKeys_default_descriptor(void)
 {
@@ -751,13 +746,6 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
 
-EXPORT void CALL inputGetKeys( int Control, BUTTONS *Keys )
-{
-   if (Keys != NULL && getKeys)
-      getKeys(Control, Keys);
-}
-
-
 void inputInitiateCallback(const char *headername)
 {
    struct retro_message msg; 
@@ -1018,3 +1006,37 @@ EXPORT void CALL inputRomClosed(void) { }
 *******************************************************************/
 EXPORT int CALL inputRomOpen(void) { return 1; }
 
+
+int egcvip_is_connected(void* opaque, enum pak_type* pak)
+{
+    int channel = *(int*)opaque;
+
+    CONTROL* c = &Controls[channel];
+
+    switch(c->Plugin)
+    {
+    case PLUGIN_NONE: *pak = PAK_NONE; break;
+    case PLUGIN_MEMPAK: *pak = PAK_MEM; break;
+    case PLUGIN_RUMBLE_PAK: *pak = PAK_RUMBLE; break;
+    case PLUGIN_TRANSFER_PAK: *pak = PAK_TRANSFER; break;
+
+    case PLUGIN_RAW:
+        /* historically PLUGIN_RAW has been mostly (exclusively ?) used for rumble,
+         * so we just reproduce that behavior */
+        *pak = PAK_RUMBLE; break;
+    }
+
+    return c->Present;
+}
+
+uint32_t egcvip_get_input(void* opaque)
+{
+    BUTTONS keys = { 0 };
+    int channel = *(int*)opaque;
+
+    if (getKeys)
+       getKeys(channel, &keys);
+
+    return keys.Value;
+
+}

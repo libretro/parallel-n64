@@ -149,9 +149,7 @@ static m64p_error plugin_start_gfx(void)
 extern m64p_error inputPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion,
                                               int *APIVersion, const char **PluginNamePtr, int *Capabilities);
 extern void inputInitiateControllers (CONTROL_INFO ControlInfo);
-extern void inputGetKeys(int Control, BUTTONS * Keys );
 extern void inputControllerCommand(int Control, unsigned char *Command);
-extern void inputGetKeys(int Control, BUTTONS * Keys);
 extern void inputInitiateControllers(CONTROL_INFO ControlInfo);
 extern void inputReadController(int Control, unsigned char *Command);
 extern int  inputRomOpen(void);
@@ -160,7 +158,7 @@ extern void inputRomClosed(void);
 input_plugin_functions input = {
     inputPluginGetVersion,
     inputControllerCommand,
-    inputGetKeys,
+    NULL,
     inputInitiateControllers,
     inputReadController,
     inputRomClosed,
