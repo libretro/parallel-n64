@@ -80,6 +80,17 @@ typedef m64p_error (*ptr_CoreGetRomSettings)(m64p_rom_settings *, int, int, int)
 EXPORT m64p_error CALL CoreGetRomSettings(m64p_rom_settings *, int, int, int);
 #endif
 
+/* CoreSetAudioInterfaceBackend()
+ *
+ * This function allows the frontend to specify the audio backend to be used by
+ * the AI controller. If any of the function pointers in the structure are NULL,
+ * a dummy backend will be used (eg no sound).
+ */
+typedef m64p_error (*ptr_CoreSetAudioInterfaceBackend)(const struct m64p_audio_backend *);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL CoreSetAudioInterfaceBackend(const struct m64p_audio_backend *);
+#endif
+
 EXPORT m64p_error CALL CoreAddCheat(const char *CheatName, m64p_cheat_code *CodeList, int NumCodes);
 
 EXPORT m64p_error CALL CoreCheatEnabled(const char *CheatName, int Enabled);

@@ -33,6 +33,7 @@
 #include "callbacks.h"
 #include "m64p_config.h"
 #include "m64p_frontend.h"
+#include "audio_backend.h"
 #include "config.h"
 #include "vidext.h"
 #include "../main/cheat.h"
@@ -42,6 +43,7 @@
 #include "main/version.h"
 #include "main/util.h"
 #include "plugin/plugin.h"
+#include "plugin/audio_backend_compat.h"
 
 /* some local state variables */
 static int l_CoreInit = 0;
@@ -54,6 +56,9 @@ EXPORT m64p_error CALL CoreStartup(int APIVersion, const char *ConfigPath, const
 {
     if (l_CoreInit)
         return M64ERR_ALREADY_INIT;
+
+    /* set default AI backend */
+    SetAudioInterfaceBackend(&AUDIO_BACKEND_COMPAT);
 
     /* very first thing is to set the callback functions for debug info and state changing*/
     SetDebugCallback(DebugCallback, Context);
@@ -201,6 +206,14 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
     }
 
     return M64ERR_INTERNAL;
+}
+
+EXPORT m64p_error CALL CoreSetAudioInterfaceBackend(const struct m64p_audio_backend* backend)
+{
+   if (!l_CoreInit)
+      return M64ERR_NOT_INIT;
+
+   return SetAudioInterfaceBackend(backend);
 }
 
 EXPORT m64p_error CALL CoreAddCheat(const char *CheatName, m64p_cheat_code *CodeList, int NumCodes)

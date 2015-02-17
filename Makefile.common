@@ -1,8 +1,8 @@
 RSPDIR             = $(ROOT_DIR)/mupen64plus-rsp-hle
 CXD4DIR            = $(ROOT_DIR)/mupen64plus-rsp-cxd4
-AUDIO_LIBRETRO_DIR = $(ROOT_DIR)/mupen64plus-audio-libretro
 INPUT_LIBRETRO_DIR = $(ROOT_DIR)/mupen64plus-input-libretro
 CORE_DIR           = $(ROOT_DIR)/mupen64plus-core
+AUDIO_LIBRETRO_DIR = $(CORE_DIR)/src/plugin/audio_libretro
 VIDEODIR_RICE      = $(ROOT_DIR)/gles2rice/src
 VIDEODIR_GLN64     = $(ROOT_DIR)/gles2n64/src
 VIDEODIR_ANGRYLION = $(ROOT_DIR)/mupen64plus-video-angrylion
@@ -50,6 +50,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/api/config.c \
 	$(CORE_DIR)/src/api/frontend.c \
 	$(CORE_DIR)/src/api/vidext_libretro.c \
+	$(CORE_DIR)/src/api/audio_backend.c \
 	$(CORE_DIR)/src/main/cheat.c \
 	$(CORE_DIR)/src/main/eventloop.c \
 	$(CORE_DIR)/src/main/main.c \
@@ -165,7 +166,7 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 					 $(LIBRETRO_DIR)/adler32.c \
 					 $(LIBRETRO_DIR)/opengl_state_machine.c \
 					 $(INPUT_LIBRETRO_DIR)/input_plugin.c \
-					 $(AUDIO_LIBRETRO_DIR)/audio_plugin.c \
+					 $(AUDIO_LIBRETRO_DIR)/audio_backend_libretro.c \
 					 $(AUDIO_LIBRETRO_DIR)/audio_resampler_driver.c \
 					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/sinc.c \
 					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/nearest.c \

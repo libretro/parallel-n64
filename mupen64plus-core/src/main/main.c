@@ -75,7 +75,6 @@
 
 #ifdef __LIBRETRO__
 #include "../../libretro/libretro.h"
-#include "../../mupen64plus-audio-libretro/audio_plugin.h"
 
 extern retro_input_poll_t poll_cb;
 #endif
@@ -374,11 +373,6 @@ m64p_error main_init(void)
       gfx.romClosed();
       return M64ERR_PLUGIN_FAIL;
    }
-
-   /* connect external audio sink to AI component */
-   g_ai.user_data = NULL;
-   g_ai.set_audio_format = set_audio_format_via_libretro;
-   g_ai.push_audio_samples = push_audio_samples_via_libretro;
 
    /* connect external time source to AF_RTC component */
    g_si.pif.af_rtc.user_data = NULL;
