@@ -84,13 +84,24 @@ void init_audio_libretro(void)
    audio_convert_init_simd();
 }
 
+/* A fully compliant implementation is not really possible with just the zilmar spec.
+ * We assume bits == 16 (assumption compatible with audio-sdl plugin implementation)
+ */
 static void set_audio_format_via_libretro(void* user_data,
       unsigned int frequency, unsigned int bits)
 {
+   uint32_t saved_ai_dacrate = g_ai.regs[AI_DACRATE_REG];
+
+   /* notify plugin of the new frequency (can't do the same for bits) */
+   g_ai.regs[AI_DACRATE_REG] = (ROM_PARAMS.aidacrate / frequency) - 1;
+
    GameFreq = frequency;
-   /* assume bits == 16 */
+
+   /* restore original registers values */
+   g_ai.regs[AI_DACRATE_REG] = saved_ai_dacrate;
 }
 
+/* Abuse core & audio plugin implementation details to obtain the desired effect. */
 static void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size)
 {
    int16_t *out;
@@ -101,6 +112,15 @@ static void push_audio_samples_via_libretro(void* user_data, const void* buffer,
    uint32_t len      = size;
    int16_t *raw_data = (int16_t*)buffer;
    size_t frames     = len / 4;
+
+   /* save registers values */
+   uint32_t saved_ai_length = g_ai.regs[AI_LEN_REG];
+   uint32_t saved_ai_dram = g_ai.regs[AI_DRAM_ADDR_REG];
+
+   /* notify plugin of new samples to play.
+    * Exploit the fact that buffer points in g_rdram to retreive dram_addr_reg value */
+   g_ai.regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_rdram;
+   g_ai.regs[AI_LEN_REG] = size;
 
 audio_batch:
    out               = NULL;
@@ -139,36 +159,6 @@ audio_batch:
       frames   = remain_frames;
       goto audio_batch;
    }
-}
-
-/* A fully compliant implementation is not really possible with just the zilmar spec.
- * We assume bits == 16 (assumption compatible with audio-sdl plugin implementation)
- */
-static void set_audio_format_via_audio_plugin(void* user_data, unsigned int frequency, unsigned int bits)
-{
-    uint32_t saved_ai_dacrate = g_ai.regs[AI_DACRATE_REG];
-    
-     /* notify plugin of the new frequency (can't do the same for bits) */
-    g_ai.regs[AI_DACRATE_REG] = (ROM_PARAMS.aidacrate / frequency) - 1;
-    set_audio_format_via_libretro(user_data, frequency, bits);
-
-    /* restore original registers values */
-    g_ai.regs[AI_DACRATE_REG] = saved_ai_dacrate;
-}
-
-/* Abuse core & audio plugin implementation details to obtain the desired effect. */
-static void push_audio_samples_via_audio_plugin(void* user_data, const void* buffer, size_t size)
-{
-   /* save registers values */
-   uint32_t saved_ai_length = g_ai.regs[AI_LEN_REG];
-   uint32_t saved_ai_dram = g_ai.regs[AI_DRAM_ADDR_REG];
-
-   /* notify plugin of new samples to play.
-    * Exploit the fact that buffer points in g_rdram to retreive dram_addr_reg value */
-   g_ai.regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_rdram;
-   g_ai.regs[AI_LEN_REG] = size;
-
-   push_audio_samples_via_libretro(user_data, buffer, size);
 
    /* restore original registers vlaues */
    g_ai.regs[AI_LEN_REG] = saved_ai_length;
@@ -178,6 +168,6 @@ static void push_audio_samples_via_audio_plugin(void* user_data, const void* buf
 const struct m64p_audio_backend AUDIO_BACKEND_COMPAT =
 {
    NULL,
-   set_audio_format_via_audio_plugin,
-   push_audio_samples_via_audio_plugin
+   set_audio_format_via_libretro,
+   push_audio_samples_via_libretro
 };
