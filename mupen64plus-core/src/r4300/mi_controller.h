@@ -50,7 +50,7 @@ struct mi_controller
     uint32_t regs[MI_REGS_COUNT];
 };
 
-static inline uint32_t mi_reg(uint32_t address)
+static INLINE uint32_t mi_reg(uint32_t address)
 {
     return (address & 0xffff) >> 2;
 }
