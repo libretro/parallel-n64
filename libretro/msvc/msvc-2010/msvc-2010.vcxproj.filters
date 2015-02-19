@@ -85,17 +85,35 @@
     <Filter Include="Source Files\libretro\glsym">
       <UniqueIdentifier>{f36ec05b-e8c8-485f-92f6-7b3159b4fee2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\mupen64plus-audio-libretro">
-      <UniqueIdentifier>{655e8929-3d48-47b6-af96-47a1b787eaae}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\mupen64plus-audio-libretro\resamplers">
-      <UniqueIdentifier>{1bd5a036-6f31-4bab-a8dc-f6479eb862c9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\mupen64plus-input-libretro">
-      <UniqueIdentifier>{e25506ab-c81e-4516-b9ec-71e07afc57fc}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\mupen64plus-video-angrylion">
       <UniqueIdentifier>{be734aec-bdb7-47ea-a241-31d3444ec246}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mupen64plus-core\src\plugin\audio_libretro">
+      <UniqueIdentifier>{d5c262d1-6d32-40ec-bda4-08e71ed16a83}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler">
+      <UniqueIdentifier>{d3d9ee3e-fedf-420e-85cb-60e6e88cdeaa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mupen64plus-core\src\ai">
+      <UniqueIdentifier>{0ed3c36d-5d7c-4c7e-b0af-d4fd41697658}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mupen64plus-core\src\pi">
+      <UniqueIdentifier>{ccc16655-7b53-4b76-b6d2-d7b0028deab5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mupen64plus-core\src\rdp">
+      <UniqueIdentifier>{411087e2-871a-4e56-ac73-2fb545941488}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mupen64plus-core\src\ri">
+      <UniqueIdentifier>{df287fcb-b034-4181-a275-fbdff2645b32}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mupen64plus-core\src\rsp">
+      <UniqueIdentifier>{8f9f1514-ae74-4a7e-953a-1ea03cef66f6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mupen64plus-core\src\si">
+      <UniqueIdentifier>{9c507cb5-ae0d-432d-a25b-77aa00bc014c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mupen64plus-core\src\vi">
+      <UniqueIdentifier>{9d83b714-4362-4144-8b9d-133a52ee3f48}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -157,9 +175,6 @@
       <Filter>Source Files\mupen64plus-core\src\api</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\api\config.c">
-      <Filter>Source Files\mupen64plus-core\src\api</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\api\debugger.c">
       <Filter>Source Files\mupen64plus-core\src\api</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\api\frontend.c">
@@ -438,21 +453,6 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\x86_64\regcache.c">
       <Filter>Source Files\mupen64plus-core\src\r4300\x86_64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\memory\dma.c">
-      <Filter>Source Files\mupen64plus-core\src\memory</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\tlb.c">
-      <Filter>Source Files\mupen64plus-core\src\memory</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\memory\flashram.c">
-      <Filter>Source Files\mupen64plus-core\src\memory</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\memory\n64_cic_nus_6105.c">
-      <Filter>Source Files\mupen64plus-core\src\memory</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\memory\pif.c">
-      <Filter>Source Files\mupen64plus-core\src\memory</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\tools\rzlib\compress.c">
       <Filter>Source Files\rzlib</Filter>
     </ClCompile>
@@ -531,27 +531,6 @@
     <ClCompile Include="..\..\..\glide2gl\src\Glitch64\glitch64_textures.c">
       <Filter>Source Files\glide2gl\src\Glitch64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-audio-libretro\audio_plugin.c">
-      <Filter>Source Files\mupen64plus-audio-libretro</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-audio-libretro\utils.c">
-      <Filter>Source Files\mupen64plus-audio-libretro</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-audio-libretro\resamplers\cc_resampler.c">
-      <Filter>Source Files\mupen64plus-audio-libretro\resamplers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-audio-libretro\resamplers\nearest.c">
-      <Filter>Source Files\mupen64plus-audio-libretro\resamplers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-audio-libretro\resamplers\resampler.c">
-      <Filter>Source Files\mupen64plus-audio-libretro\resamplers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-audio-libretro\resamplers\sinc.c">
-      <Filter>Source Files\mupen64plus-audio-libretro\resamplers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-input-libretro\input_plugin.c">
-      <Filter>Source Files\mupen64plus-input-libretro</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\memory\m64p_memory.c">
       <Filter>Source Files\mupen64plus-core\src\memory</Filter>
     </ClCompile>
@@ -581,6 +560,108 @@
     </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\RiceDebugger.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\get_time_using_C_localtime.c">
+      <Filter>Source Files\mupen64plus-core\src\plugin</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\rumble_via_input_plugin.c">
+      <Filter>Source Files\mupen64plus-core\src\plugin</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\emulate_game_controller_via_libretro.c">
+      <Filter>Source Files\mupen64plus-core\src\plugin</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\audio_libretro\audio_backend_libretro.c">
+      <Filter>Source Files\mupen64plus-core\src\plugin\audio_libretro</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\audio_libretro\audio_resampler_driver.c">
+      <Filter>Source Files\mupen64plus-core\src\plugin\audio_libretro</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\audio_libretro\audio_utils.c">
+      <Filter>Source Files\mupen64plus-core\src\plugin\audio_libretro</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler\cc_resampler.c">
+      <Filter>Source Files\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler\nearest.c">
+      <Filter>Source Files\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler\sinc.c">
+      <Filter>Source Files\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\api\audio_backend.c">
+      <Filter>Source Files\mupen64plus-core\src\api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\api\vidext_libretro.c">
+      <Filter>Source Files\mupen64plus-core\src\api</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\ai\ai_controller.c">
+      <Filter>Source Files\mupen64plus-core\src\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\pi\cart_rom.c">
+      <Filter>Source Files\mupen64plus-core\src\pi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\pi\flashram.c">
+      <Filter>Source Files\mupen64plus-core\src\pi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\pi\pi_controller.c">
+      <Filter>Source Files\mupen64plus-core\src\pi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\pi\sram.c">
+      <Filter>Source Files\mupen64plus-core\src\pi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\tlb.c">
+      <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\rdp\fb.c">
+      <Filter>Source Files\mupen64plus-core\src\rdp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\rdp\rdp_core.c">
+      <Filter>Source Files\mupen64plus-core\src\rdp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\ri\rdram.c">
+      <Filter>Source Files\mupen64plus-core\src\ri</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\ri\ri_controller.c">
+      <Filter>Source Files\mupen64plus-core\src\ri</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\rsp\rsp_core.c">
+      <Filter>Source Files\mupen64plus-core\src\rsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\si\af_rtc.c">
+      <Filter>Source Files\mupen64plus-core\src\si</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\si\cic.c">
+      <Filter>Source Files\mupen64plus-core\src\si</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\si\eeprom.c">
+      <Filter>Source Files\mupen64plus-core\src\si</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\si\game_controller.c">
+      <Filter>Source Files\mupen64plus-core\src\si</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\si\mempak.c">
+      <Filter>Source Files\mupen64plus-core\src\si</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\si\n64_cic_nus_6105.c">
+      <Filter>Source Files\mupen64plus-core\src\si</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\si\pif.c">
+      <Filter>Source Files\mupen64plus-core\src\si</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\si\rumblepak.c">
+      <Filter>Source Files\mupen64plus-core\src\si</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\si\si_controller.c">
+      <Filter>Source Files\mupen64plus-core\src\si</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\vi\vi_controller.c">
+      <Filter>Source Files\mupen64plus-core\src\vi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\mi_controller.c">
+      <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\r4300_core.c">
+      <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
