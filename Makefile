@@ -147,7 +147,6 @@ else ifneq (,$(findstring ios,$(platform)))
 		CXX += -miphoneos-version-min=5.0
 		PLATCFLAGS += -miphoneos-version-min=5.0
 	endif
-	LDFLAGS += -stdlib=libc++
 	PLATFORM_EXT := unix
 	WITH_DYNAREC=arm
 
