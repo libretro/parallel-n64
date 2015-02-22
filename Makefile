@@ -99,22 +99,22 @@ else ifneq (,$(findstring osx,$(platform)))
 	PLATFORM_EXT := unix
 
 else ifneq (,$(findstring theos_ios,$(platform)))
-DEPLOYMENT_IOSVERSION = 5.0
-TARGET = iphone:latest:$(DEPLOYMENT_IOSVERSION)
-ARCHS = armv7
-TARGET_IPHONEOS_DEPLOYMENT_VERSION=$(DEPLOYMENT_IOSVERSION)
-THEOS_BUILD_DIR := objs
-include $(THEOS)/makefiles/common.mk
-
-LIBRARY_NAME = $(TARGET_NAME)_libretro_ios
-DEFINES += -DIOS
-GLES = 1
-WITH_DYNAREC=arm
-
 	# Theos iOS
+	DEPLOYMENT_IOSVERSION = 5.0
+	TARGET = iphone:latest:$(DEPLOYMENT_IOSVERSION)
+	ARCHS = armv7
+	TARGET_IPHONEOS_DEPLOYMENT_VERSION=$(DEPLOYMENT_IOSVERSION)
+	THEOS_BUILD_DIR := objs
+	include $(THEOS)/makefiles/common.mk
+
+	LIBRARY_NAME = $(TARGET_NAME)_libretro_ios
+	DEFINES += -DIOS
+	GLES = 1
+	WITH_DYNAREC=arm
+
 	PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
-	CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
 	PLATCFLAGS += -DIOS -marm
+	CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
 	GLIDE2GL=1
 	GLIDE64MK2=0
 	HAVE_NEON=1
@@ -123,18 +123,24 @@ else ifneq (,$(findstring ios,$(platform)))
 	ifeq ($(IOSSDK),)
 		IOSSDK := $(shell xcrun -sdk iphoneos -show-sdk-path)
 	endif
+
 	TARGET := $(TARGET_NAME)_libretro_ios.dylib
-	PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
-	CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
-	PLATCFLAGS += -DIOS -marm
-	LDFLAGS += -dynamiclib
-	fpic = -fPIC
+	DEFINES += -DIOS
 	GLES = 1
-	GL_LIB := -framework OpenGLES
+	WITH_DYNAREC=arm
+	PLATFORM_EXT := unix
+
+	PLATCFLAGS += -DHAVE_POSIX_MEMALIGN -DNO_ASM
+	PLATCFLAGS += -DIOS -marm
+	CPUFLAGS += -DNO_ASM  -DARM -D__arm__ -DARM_ASM -D__NEON_OPT
+	CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp
+	LDFLAGS += -dynamiclib
 	GLIDE2GL=1
 	GLIDE64MK2=0
 	HAVE_NEON=1
-	CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp 
+
+	fpic = -fPIC
+	GL_LIB := -framework OpenGLES
 
 	CC = clang -arch armv7 -isysroot $(IOSSDK)
 	CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
@@ -147,9 +153,6 @@ else ifneq (,$(findstring ios,$(platform)))
 		CXX += -miphoneos-version-min=5.0
 		PLATCFLAGS += -miphoneos-version-min=5.0
 	endif
-	LDFLAGS += -stdlib=libc++
-	PLATFORM_EXT := unix
-	WITH_DYNAREC=arm
 
 # Android
 else ifneq (,$(findstring android,$(platform)))
@@ -163,7 +166,7 @@ else ifneq (,$(findstring android,$(platform)))
 	WITH_DYNAREC=arm
 	GLES = 1
 	PLATCFLAGS += -DANDROID
-	CPUCFLAGS  += -DNO_ASM 
+	CPUCFLAGS  += -DNO_ASM
 	HAVE_NEON = 1
 	CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -D__arm__ -DARM_ASM -D__NEON_OPT
 	CFLAGS += -DANDROID
