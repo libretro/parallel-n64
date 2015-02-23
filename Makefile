@@ -94,7 +94,7 @@ else ifneq (,$(findstring osx,$(platform)))
 	LDFLAGS += -stdlib=libc++
 	fpic = -fPIC
 
-	PLATCFLAGS += -D__MACOSX__
+	PLATCFLAGS += -D__MACOSX__ -DOSX
 	GL_LIB := -framework OpenGL
 	PLATFORM_EXT := unix
 
