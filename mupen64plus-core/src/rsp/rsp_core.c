@@ -31,6 +31,7 @@
 #include "../rdp/rdp_core.h"
 #include "../ri/ri_controller.h"
 
+#include <stdio.h>
 #include <string.h>
 
 static void dma_sp_write(struct rsp_core* sp)
@@ -308,7 +309,6 @@ void do_SP_Task(struct rsp_core* sp)
             add_interupt_event(SP_INT, 4000/*500*/);
         sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_SP;
         sp->regs[SP_STATUS_REG] &= ~0x300; /* task done && yielded */
-        
     }
     else
     {
@@ -323,6 +323,15 @@ void do_SP_Task(struct rsp_core* sp)
         sp->regs[SP_STATUS_REG] &= ~0x200; /* task done (SP_STATUS_SIG2) */
     }
 
+    if ((sp->regs[SP_STATUS_REG] & 0x00000001) == 0x00000000)
+    { /* needed for games like "Stunt Racer 64" with CPU-RSP timer sync fails */
+        printf(
+            "To do:  early RSP exit and task resume (SP_STATUS_REG = %08X)\n",
+            sp->regs[SP_STATUS_REG]
+        );
+        if (sp->regs[SP_STATUS_REG] & 0x00000002)
+            fputs("(...Why is SP_STATUS_BROKE set?)\n", stderr);
+    }
     sp->regs[SP_STATUS_REG] &= ~0x00000003; /* Clear BROKE and HALT. */
 }
 
