@@ -290,7 +290,7 @@ void do_SP_Task(struct rsp_core* sp)
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_DP)
             add_interupt_event(DP_INT, 1000);
         sp->r4300->mi.regs[MI_INTR_REG] &= ~(MI_INTR_SP | MI_INTR_DP);
-        sp->regs[SP_STATUS_REG] &= ~0x303;
+        sp->regs[SP_STATUS_REG] &= ~0x300; /* task done && yielded */
 
         protect_framebuffers(sp->dp);
     }
@@ -307,7 +307,7 @@ void do_SP_Task(struct rsp_core* sp)
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
             add_interupt_event(SP_INT, 4000/*500*/);
         sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_SP;
-        sp->regs[SP_STATUS_REG] &= ~0x303;
+        sp->regs[SP_STATUS_REG] &= ~0x300; /* task done && yielded */
         
     }
     else
@@ -320,8 +320,10 @@ void do_SP_Task(struct rsp_core* sp)
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
             add_interupt_event(SP_INT, 0/*100*/);
         sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_SP;
-        sp->regs[SP_STATUS_REG] &= ~0x203;
+        sp->regs[SP_STATUS_REG] &= ~0x200; /* task done (SP_STATUS_SIG2) */
     }
+
+    sp->regs[SP_STATUS_REG] &= ~0x00000003; /* Clear BROKE and HALT. */
 }
 
 void rsp_interrupt_event(struct rsp_core* sp)
