@@ -275,7 +275,7 @@ void NormalizeNormalVec()
 
 void InitRenderBase()
 {
-#if defined(__ARM_NEON__)
+#if defined(HAVE_NEON)
     if( !g_curRomInfo.bPrimaryDepthHack && options.enableHackForGames != HACK_FOR_NASCAR && options.enableHackForGames != HACK_FOR_ZELDA_MM && !options.bWinFrameMode)
     {
         ProcessVertexData = ProcessVertexDataNEON;
@@ -550,7 +550,7 @@ static noinline void InitVertex_texgen_correct(TLITVERTEX &v, uint32_t dwV)
 }
 
 #include "RenderBase_neon.h"
-#ifndef __ARM_NEON__
+#ifndef HAVE_NEON
 static void multiply_subtract2(float *d, const float *m1, const float *m2, const float *s)
 {
     int i;
@@ -900,7 +900,7 @@ void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
     DEBUGGER_PAUSE_AND_DUMP(NEXT_VERTEX_CMD,{TRACE0("Paused at Vertex Command");});
 }
 
-#ifdef __ARM_NEON__
+#ifdef HAVE_NEON
 /* NEON code */
 
 #include "RenderBase_neon.h"
@@ -1124,7 +1124,7 @@ bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
         // method doesn't work well when the z value is outside of screenspace
         //if (v0.z < 1 && v1.z < 1 && v2.z < 1)
         {
-#ifndef __ARM_NEON__
+#ifndef HAVE_NEON
             float V1 = v2.x - v0.x;
             float V2 = v2.y - v0.y;
 

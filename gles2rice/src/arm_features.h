@@ -23,7 +23,7 @@
 
 #endif
 
-/* no need for HAVE_NEON - GCC defines __ARM_NEON__ consistently */
+/* no need for HAVE_NEON - GCC defines HAVE_NEON consistently */
 
 /* global function/external symbol */
 #ifndef __MACH__

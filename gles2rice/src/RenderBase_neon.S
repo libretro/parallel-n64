@@ -5,7 +5,7 @@
  * See the COPYING file in the top-level directory.
  */
 
-#if defined(__ARCH_ARM) || defined(__ARM_EABI__) || defined(__ARM_NEON__)
+#if defined(__ARCH_ARM) || defined(__ARM_EABI__) || defined(HAVE_NEON)
 
 #include "arm_features.h"
 #include "RenderBase_neon.h"
