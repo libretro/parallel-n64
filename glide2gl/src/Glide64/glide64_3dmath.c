@@ -114,7 +114,7 @@ GLIDE64NORMALIZEVECTOR glide64NormalizeVector = NormalizeVectorC;
 // 2008.03.29 H.Morii - added SSE 3DNOW! 3x3 1x3 matrix multiplication
 //                      and 3DNOW! 4x4 4x4 matrix multiplication
 
-#if defined(__ARM_NEON__)
+#if defined(HAVE_NEON)
 static void NormalizeVectorNeon(float *v)
 {
    asm volatile (
@@ -212,7 +212,7 @@ void math_init(void)
    if (perf_get_cpu_features_cb)
       cpu = perf_get_cpu_features_cb();
 
-#if defined(__ARM_NEON__)
+#if defined(HAVE_NEON)
    if (cpu & RETRO_SIMD_NEON)
    {
       glide64NormalizeVector = NormalizeVectorNeon;
