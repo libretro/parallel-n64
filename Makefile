@@ -126,7 +126,7 @@ else ifneq (,$(findstring theos_ios,$(platform)))
 else ifneq (,$(findstring ios,$(platform)))
 	# iOS
 	ifeq ($(IOSSDK),)
-		IOSSDK := $(shell xcrun -sdk iphoneos -show-sdk-path)
+		IOSSDK := $(shell xcodebuild -version -sdk iphoneos Path)
 	endif
 
 	TARGET := $(TARGET_NAME)_libretro_ios.dylib
