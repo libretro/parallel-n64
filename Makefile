@@ -77,6 +77,34 @@ else ifneq (,$(findstring rpi,$(platform)))
 	PLATFORM_EXT := unix
 	WITH_DYNAREC=arm
 
+# ODROIDs
+else ifneq (,$(findstring odroid,$(platform)))
+	TARGET := $(TARGET_NAME)_libretro.so
+	LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T
+	fpic = -fPIC
+	GLES = 1
+	GL_LIB := -lGLESv2
+	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
+	CFLAGS += -mfloat-abi=hard -mfpu=neon
+	CXXFLAGS += -mfloat-abi=hard -mfpu=neon
+	GLIDE2GL = 1
+	HAVE_NEON = 1
+	ifneq (,$(findstring odroid-c1,$(platform)))
+		# ODROID-C1
+		CFLAGS += -mcpu=cortex-a5
+		CXXFLAGS += -mcpu=cortex-a5
+	else ifneq (,$(findstring odroid-u,$(platform)))
+		# ODROID-U2 & -U3
+		CFLAGS += -mcpu=cortex-a9
+		CXXFLAGS += -mcpu=cortex-a9
+	else ifneq (,$(findstring odroid-xu,$(platform)))
+		# ODROID-XU, -XU2, -XU3 & -XU3 Lite
+		CFLAGS += -mcpu=cortex-a15
+		CXXFLAGS += -mcpu=cortex-a15
+	endif
+	PLATFORM_EXT := unix
+	WITH_DYNAREC=arm
+
 # i.MX6
 else ifneq (,$(findstring imx6,$(platform)))
 	TARGET := $(TARGET_NAME)_libretro.so
