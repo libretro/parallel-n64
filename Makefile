@@ -69,7 +69,8 @@ else ifneq (,$(findstring rpi,$(platform)))
 	ifneq (,$(findstring rpi2,$(platform)))
 		CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
 		CFLAGS = -mcpu=cortex-a7 -mfloat-abi=hard
-		# HAVE_NEON=1
+		CXXFLAGS = -mcpu=cortex-a7 -mfloat-abi=hard
+		HAVE_NEON = 0
 	else
 		CPUFLAGS += -DARMv5_ONLY -DNO_ASM
 	endif
