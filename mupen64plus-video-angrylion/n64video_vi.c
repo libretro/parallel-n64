@@ -187,7 +187,7 @@ void rdp_update(void)
     for (i = 0; i < (v_start << two_lines) + lowerfield; i++)
     {
         tvfadeoutstate[i] >>= 1;
-        if (tvfadeoutstate[i] & validh)
+        if (~tvfadeoutstate[i] & validh)
             zerobuf(&PreScale[i*pitchindwords + h_start], pixel_size*hres);
     }
 
