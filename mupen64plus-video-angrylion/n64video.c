@@ -669,11 +669,18 @@ void rdp_init(void)
 
     precalculate_everything();
 
+/*
+ * Any current plugin specifications have never told the graphics plugin how
+ * much RDRAM is allocated, so it becomes very difficult to detect this in C.
+ *
+ * Mupen64Plus seems to carelessly map 8 MiB of RDRAM all the time, so we
+ * will simply use the 8-MiB addressing limit.
+ */
+    plim = 0x007FFFFFul;
 
-
-    plim = 0x3fffff;
-    idxlim16 = 0x1fffff;
-    idxlim32 = 0xfffff;
+/* 16- and 32-bit pointer indexing limits for aliasing RDRAM reads and writes */
+    idxlim16 = (plim >> 1) & 0x00FFFFFFul;
+    idxlim32 = (plim >> 2) & 0x00FFFFFFul;
 
     rdram_8 = (UINT8*)gfx_info.RDRAM;
     rdram_16 = (UINT16*)gfx_info.RDRAM;

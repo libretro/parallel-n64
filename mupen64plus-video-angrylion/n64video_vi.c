@@ -9,12 +9,9 @@ onetime onetimewarnings;
 
 UINT8* rdram_8;
 UINT16* rdram_16;
-UINT32 plim =
-    0x003FFFFF;
-UINT32 idxlim16 =
-    0x001FFFFF;
-UINT32 idxlim32 =
-    0x000FFFFF;
+UINT32 plim;
+UINT32 idxlim16;
+UINT32 idxlim32;
 UINT8 hidden_bits[0x400000];
 
 UINT32 gamma_table[0x100];
