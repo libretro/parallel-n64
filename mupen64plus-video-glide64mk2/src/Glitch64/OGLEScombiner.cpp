@@ -287,7 +287,7 @@ SHADER_HEADER
 "#define highp                                                  \n"
 #endif
 "#define Z_MAX 65536.0                                          \n"
-"attribute highp vec4 aVertex;                                  \n"
+"attribute highp vec4 aPosition;                                  \n"
 "attribute highp vec4 aColor;                                   \n"
 "attribute highp vec4 aMultiTexCoord0;                          \n"
 "attribute highp vec4 aMultiTexCoord1;                          \n"
@@ -299,11 +299,11 @@ SHADER_VARYING
 "                                                               \n"
 "void main()                                                    \n"
 "{                                                              \n"
-"  float q = aVertex.w;                                                     \n"
+"  float q = aPosition.w;                                                     \n"
 "  float invertY = vertexOffset.z;                                          \n" //Usually 1.0 but -1.0 when rendering to a texture (see inverted_culling grRenderBuffer)
-"  gl_Position.x = (aVertex.x - vertexOffset.x) / vertexOffset.x;           \n"
-"  gl_Position.y = invertY *-(aVertex.y - vertexOffset.y) / vertexOffset.y; \n"
-"  gl_Position.z = aVertex.z / Z_MAX;                                       \n"
+"  gl_Position.x = (aPosition.x - vertexOffset.x) / vertexOffset.x;           \n"
+"  gl_Position.y = invertY *-(aPosition.y - vertexOffset.y) / vertexOffset.y; \n"
+"  gl_Position.z = aPosition.z / Z_MAX;                                       \n"
 "  gl_Position.w = 1.0;                                                     \n"
 "  gl_Position /= q;                                                        \n"
 "  gl_FrontColor = aColor.bgra;                                             \n"
@@ -319,8 +319,8 @@ SHADER_VARYING
 "  float f = (fogModeEndScale[1] - fogV) * fogModeEndScale[2];              \n"
 "  f = clamp(f, 0.0, 1.0);                                      \n"
 "  gl_TexCoord[0].b = f;                                                    \n"
-"  gl_TexCoord[2].b = aVertex.x;                                            \n" 
-"  gl_TexCoord[2].a = aVertex.y;                                            \n" 
+"  gl_TexCoord[2].b = aPosition.x;                                            \n" 
+"  gl_TexCoord[2].a = aPosition.y;                                            \n" 
 "}                                                                          \n" 
 ;
 
@@ -733,14 +733,14 @@ void compile_shader()
   program_object = glCreateProgram();
   shader_programs[number_of_programs].program_object = program_object;
 
+  glAttachShader(program_object, shader_programs[number_of_programs].fragment_shader_object);
+  glAttachShader(program_object, vertex_shader_object);
+
   glBindAttribLocation(program_object,POSITION_ATTR,"aPosition");
   glBindAttribLocation(program_object,COLOUR_ATTR,"aColor");
   glBindAttribLocation(program_object,TEXCOORD_0_ATTR,"aMultiTexCoord0");
   glBindAttribLocation(program_object,TEXCOORD_1_ATTR,"aMultiTexCoord1");
   glBindAttribLocation(program_object,FOG_ATTR,"aFog");
-
-  glAttachShader(program_object, shader_programs[number_of_programs].fragment_shader_object);
-  glAttachShader(program_object, vertex_shader_object);
 
   glLinkProgram(program_object);
   check_link(program_object);

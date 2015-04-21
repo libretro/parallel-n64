@@ -93,7 +93,6 @@ static char *fragment_shader;
 static GLuint fragment_shader_object;
 static GLuint vertex_shader_object;
 GLuint program_object_default;
-static GLuint program_object_depth;
 static GLuint program_object;
 static int constant_color_location;
 static int ccolor0_location;
@@ -210,7 +209,7 @@ SHADER_HEADER
 "#define highp                         \n"
 #endif
 "#define Z_MAX 65536.0                 \n"
-"attribute highp vec4 aVertex;         \n"
+"attribute highp vec4 aPosition;         \n"
 "attribute highp vec4 aColor;          \n"
 "attribute highp vec4 aMultiTexCoord0; \n"
 "attribute highp vec4 aMultiTexCoord1; \n"
@@ -222,11 +221,11 @@ SHADER_VARYING
 "\n"
 "void main()\n"
 "{\n"
-"  float q = aVertex.w;                                                     \n"
-"  float invertY = vertexOffset.z;                                          \n" //Usually 1.0 but -1.0 when rendering to a texture (see inverted_culling grRenderBuffer)
-"  gl_Position.x = (aVertex.x - vertexOffset.x) / vertexOffset.x;           \n"
-"  gl_Position.y = invertY *-(aVertex.y - vertexOffset.y) / vertexOffset.y; \n"
-"  gl_Position.z = aVertex.z / Z_MAX;                                       \n"
+"  highp float q = aPosition.w;                                                     \n"
+"  highp float invertY = vertexOffset.z;                                          \n" //Usually 1.0 but -1.0 when rendering to a texture (see inverted_culling grRenderBuffer)
+"  gl_Position.x = (aPosition.x - vertexOffset.x) / vertexOffset.x;           \n"
+"  gl_Position.y = invertY *-(aPosition.y - vertexOffset.y) / vertexOffset.y; \n"
+"  gl_Position.z = aPosition.z / Z_MAX;                                       \n"
 "  gl_Position.w = 1.0;                                                     \n"
 "  gl_Position /= q;                                                        \n"
 "  gl_FrontColor = aColor.bgra;                                             \n"
@@ -242,8 +241,8 @@ SHADER_VARYING
 "  float f = (fogModeEndScale[1] - fogV) * fogModeEndScale[2];              \n"
 "  f = clamp(f, 0.0, 1.0);                                                  \n"
 "  gl_TexCoord[0].b = f;                                                    \n"
-"  gl_TexCoord[2].b = aVertex.x;                                            \n" 
-"  gl_TexCoord[2].a = aVertex.y;                                            \n" 
+"  gl_TexCoord[2].b = aPosition.x;                                            \n" 
+"  gl_TexCoord[2].a = aPosition.y;                                            \n" 
 "}                                                                          \n" 
 ;
 
@@ -302,35 +301,14 @@ void init_combiner(void)
    check_compile(fragment_shader_object);
 
    vertex_shader_object = glCreateShader(GL_VERTEX_SHADER);
-   glShaderSource(vertex_shader_object, 1, &vertex_shader, NULL);
+   glShaderSource(vertex_shader_object, 1, (const GLchar**)&vertex_shader, NULL);
    glCompileShader(vertex_shader_object);
    check_compile(vertex_shader_object);
 
-   // depth program
    program_object = glCreateProgram();
-   program_object_depth = program_object;
    glAttachShader(program_object, vertex_shader_object);
-
-   glBindAttribLocation(program_object,POSITION_ATTR,"aPosition");
-   glBindAttribLocation(program_object,COLOUR_ATTR,"aColor");
-   glBindAttribLocation(program_object,TEXCOORD_0_ATTR,"aMultiTexCoord0");
-   glBindAttribLocation(program_object,TEXCOORD_1_ATTR,"aMultiTexCoord1");
-   glBindAttribLocation(program_object,FOG_ATTR,"aFog");
-
-   glLinkProgram(program_object);
-   check_link(program_object);
-   glUseProgram(program_object);
-
-   texture0_location = glGetUniformLocation(program_object, "texture0");
-   texture1_location = glGetUniformLocation(program_object, "texture1");
-   glUniform1i(texture0_location, 0);
-   glUniform1i(texture1_location, 1);
-
-   // default program
-   program_object = glCreateProgram();
-   program_object_default = program_object;
    glAttachShader(program_object, fragment_shader_object);
-   glAttachShader(program_object, vertex_shader_object);
+   program_object_default = program_object;
 
    glBindAttribLocation(program_object,POSITION_ATTR,"aPosition");
    glBindAttribLocation(program_object,COLOUR_ATTR,"aColor");
@@ -524,14 +502,14 @@ void compile_shader(void)
    program_object = glCreateProgram();
    shader_programs[number_of_programs].program_object = program_object;
 
+   glAttachShader(program_object, shader_programs[number_of_programs].fragment_shader_object);
+   glAttachShader(program_object, vertex_shader_object);
+
    glBindAttribLocation(program_object,POSITION_ATTR,"aPosition");
    glBindAttribLocation(program_object,COLOUR_ATTR,"aColor");
    glBindAttribLocation(program_object,TEXCOORD_0_ATTR,"aMultiTexCoord0");
    glBindAttribLocation(program_object,TEXCOORD_1_ATTR,"aMultiTexCoord1");
    glBindAttribLocation(program_object,FOG_ATTR,"aFog");
-
-   glAttachShader(program_object, shader_programs[number_of_programs].fragment_shader_object);
-   glAttachShader(program_object, vertex_shader_object);
 
    glLinkProgram(program_object);
    check_link(program_object);
@@ -579,16 +557,6 @@ void set_copy_shader(void)
 
 void set_depth_shader(void)
 {
-   int texture0_location;
-   int alphaRef_location;
-
-   glUseProgram(program_object_depth);
-   texture0_location = glGetUniformLocation(program_object_depth, "texture0");
-   glUniform1i(texture0_location, 0);
-
-   alphaRef_location = glGetUniformLocation(program_object_depth, "alphaRef");
-   if(alphaRef_location != -1)
-      glUniform1f(alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f);
 }
 
 void set_lambda(void)
