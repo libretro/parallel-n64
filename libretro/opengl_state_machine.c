@@ -654,6 +654,8 @@ void sglEnter(void)
     }
 
     glActiveTexture(GL_TEXTURE0 + ActiveTexture_texture);
+
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
