@@ -67,7 +67,7 @@ extern "C" {
 #define F3DEX2_TRI1             0x05
 #define F3DEX2_TRI2             0x06
 #define F3DEX2_QUAD             0x07
-//#define F3DEX2_LINE3D         0x08
+#define F3DEX2_LINE3D			0x08
 
 
 void F3DEX2_Mtx( u32 w0, u32 w1 );

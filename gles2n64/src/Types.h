@@ -38,5 +38,13 @@ typedef double             f64;    /* double prec floating point */
 #define NULL    0
 #endif
 
+#ifndef MIN
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#endif
+
+#ifndef MAX
+#define MAX(a,b) (((a)>(b))?(a):(b))
+#endif
+
 #endif // TYPES_H
 

@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "gles2N64.h"
 #include "Debug.h"
 #include "F3D.h"
@@ -20,9 +21,6 @@ void F3DEX2_Mtx( u32 w0, u32 w1 )
 
 void F3DEX2_MoveMem( u32 w0, u32 w1 )
 {
-#ifdef __TRIBUFFER_OPT
-   gSPFlushTriangles();
-#endif
    switch (_SHIFTR( w0, 0, 8 ))
    {
       case F3DEX2_MV_VIEWPORT:
@@ -31,16 +29,20 @@ void F3DEX2_MoveMem( u32 w0, u32 w1 )
 
       case G_MV_MATRIX:
          gSPForceMatrix( w1 );
-         __RSP.PC[__RSP.PCi] += 8;             // force matrix takes two commands
+
+         /* force matrix takes two commands */
+         __RSP.PC[__RSP.PCi] += 8;
          break;
 
       case G_MV_LIGHT:
          {
-            uint32_t offset = _SHIFTR( w0, 8, 8 ) << 3;
-            if (offset >= 48)
-            {
-               gSPLight( w1, (offset - 24) / 24);
-            }
+            const uint32_t offset = (_SHIFTR( w0, 5, 11)) & 0x7F8;
+            const u32 n = offset / 24;
+
+            if (n < 2)
+               gSPLookAt(w1, n);
+            else
+               gSPLight(w1, n - 1);
          }
          break;
    }
@@ -64,6 +66,11 @@ void F3DEX2_Tri1( u32 w0, u32 w1 )
          _SHIFTR( w0, 1, 7 ));
 }
 
+void F3DEX2_Line3D( u32 w0, u32 w1 )
+{
+	assert(false);
+}
+
 void F3DEX2_PopMtx( u32 w0, u32 w1 )
 {
    gSPPopMatrixN( 0, w1 >> 6 );
@@ -74,7 +81,7 @@ void F3DEX2_MoveWord( u32 w0, u32 w1 )
    switch (_SHIFTR( w0, 16, 8 ))
    {
       case G_MW_FORCEMTX:
-         // Handled in movemem
+         /* Handled in movemem */
          break;
       case G_MW_MATRIX:
          gSPInsertMatrix( _SHIFTR( w0, 0, 16 ), w1 );
@@ -111,82 +118,16 @@ void F3DEX2_Texture( u32 w0, u32 w1 )
 
 void F3DEX2_SetOtherMode_H( u32 w0, u32 w1 )
 {
-   switch (32 - _SHIFTR( w0, 8, 8 ) - (_SHIFTR( w0, 0, 8 ) + 1))
-   {
-      case G_MDSFT_PIPELINE:
-         gDPPipelineMode( w1 >> G_MDSFT_PIPELINE );
-         break;
-      case G_MDSFT_CYCLETYPE:
-         gDPSetCycleType( w1 >> G_MDSFT_CYCLETYPE );
-         break;
-      case G_MDSFT_TEXTPERSP:
-         gDPSetTexturePersp( w1 >> G_MDSFT_TEXTPERSP );
-         break;
-      case G_MDSFT_TEXTDETAIL:
-         gDPSetTextureDetail( w1 >> G_MDSFT_TEXTDETAIL );
-         break;
-      case G_MDSFT_TEXTLOD:
-         gDPSetTextureLOD( w1 >> G_MDSFT_TEXTLOD );
-         break;
-      case G_MDSFT_TEXTLUT:
-         gDPSetTextureLUT( w1 >> G_MDSFT_TEXTLUT );
-         break;
-      case G_MDSFT_TEXTFILT:
-         gDPSetTextureFilter( w1 >> G_MDSFT_TEXTFILT );
-         break;
-      case G_MDSFT_TEXTCONV:
-         gDPSetTextureConvert( w1 >> G_MDSFT_TEXTCONV );
-         break;
-      case G_MDSFT_COMBKEY:
-         gDPSetCombineKey( w1 >> G_MDSFT_COMBKEY );
-         break;
-      case G_MDSFT_RGBDITHER:
-         gDPSetColorDither( w1 >> G_MDSFT_RGBDITHER );
-         break;
-      case G_MDSFT_ALPHADITHER:
-         gDPSetAlphaDither( w1 >> G_MDSFT_ALPHADITHER );
-         break;
-      default:
-         {
-            uint32_t length = _SHIFTR( w0, 0, 8 ) + 1;
-            uint32_t shift = 32 - _SHIFTR( w0, 8, 8 ) - length;
-            uint32_t mask = ((1 << length) - 1) << shift;
-
-            gDP.otherMode.h &= ~mask;
-            gDP.otherMode.h |= w1 & mask;
-
-            gDP.changed |= CHANGED_CYCLETYPE;
-         }
-         break;
-   }
+	const u32 length = _SHIFTR(w0, 0, 8) + 1;
+	const u32 shift = MAX(0, (s32)(32 - _SHIFTR(w0, 8, 8) - length));
+	gSPSetOtherMode_H(length, shift, w1);
 }
 
 void F3DEX2_SetOtherMode_L( u32 w0, u32 w1 )
 {
-   switch (32 - _SHIFTR( w0, 8, 8 ) - (_SHIFTR( w0, 0, 8 ) + 1))
-   {
-      case G_MDSFT_ALPHACOMPARE:
-         gDPSetAlphaCompare( w1 >> G_MDSFT_ALPHACOMPARE );
-         break;
-      case G_MDSFT_ZSRCSEL:
-         gDPSetDepthSource( w1 >> G_MDSFT_ZSRCSEL );
-         break;
-      case G_MDSFT_RENDERMODE:
-         gDPSetRenderMode( w1 & 0xCCCCFFFF, w1 & 0x3333FFFF );
-         break;
-      default:
-         {
-            uint32_t length = _SHIFTR( w0, 0, 8 ) + 1;
-            uint32_t shift = 32 - _SHIFTR( w0, 8, 8 ) - length;
-            uint32_t mask = ((1 << length) - 1) << shift;
-
-            gDP.otherMode.l &= ~mask;
-            gDP.otherMode.l |= w1 & mask;
-
-            gDP.changed |= CHANGED_RENDERMODE | CHANGED_ALPHACOMPARE;
-         }
-         break;
-   }
+	const u32 length = _SHIFTR(w0, 0, 8) + 1;
+	const u32 shift = MAX(0, (s32)(32 - _SHIFTR(w0, 8, 8) - length));
+	gSPSetOtherMode_L(length, shift, w1);
 }
 
 void F3DEX2_GeometryMode( u32 w0, u32 w1 )
@@ -200,6 +141,7 @@ void F3DEX2_DMAIO( u32 w0, u32 w1 )
 
 void F3DEX2_Special_1( u32 w0, u32 w1 )
 {
+	gSPDlistCount(_SHIFTR( w0, 0, 8 ), w1);
 }
 
 void F3DEX2_Special_2( u32 w0, u32 w1 )
@@ -256,5 +198,5 @@ void F3DEX2_Init(void)
    GBI_SetGBI( G_TRI1,                 F3DEX2_TRI1,                F3DEX2_Tri1 );
    GBI_SetGBI( G_TRI2,                 F3DEX2_TRI2,                F3DEX_Tri2 );
    GBI_SetGBI( G_QUAD,                 F3DEX2_QUAD,                F3DEX2_Quad );
-   //  GBI_SetGBI( G_LINE3D,               F3DEX2_LINE3D,              F3DEX2_Line3D );
+   GBI_SetGBI( G_LINE3D,               F3DEX2_LINE3D,              F3DEX2_Line3D );
 }

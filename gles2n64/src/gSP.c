@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <math.h>
 #include <stdlib.h>
 
@@ -585,8 +586,30 @@ void gSPLight( u32 l, s32 n )
    Normalize(&gSP.lights[n].x);
 }
 
-void gSPLookAt( u32 l )
+void gSPLookAt( u32 _l, u32 _n )
 {
+   u32 address = RSP_SegmentToPhysical(_l);
+
+   if ((address + sizeof(Light)) > RDRAMSize) {
+#ifdef DEBUG
+      DebugMsg(DEBUG_HIGH | DEBUG_ERROR, "// Attempting to load light from invalid address\n");
+      DebugMsg(DEBUG_HIGH | DEBUG_HANDLED, "gSPLookAt( 0x%08X, LOOKAT_%i );\n",
+            l, n);
+#endif
+      return;
+   }
+
+   assert(_n < 2);
+
+   Light *light = (Light*)&gfx_info.RDRAM[address];
+
+   gSP.lookat[_n].x = light->x;
+   gSP.lookat[_n].y = light->y;
+   gSP.lookat[_n].z = light->z;
+
+   gSP.lookatEnable = (_n == 0) || (_n == 1 && (light->x != 0 || light->y != 0));
+
+   Normalize(&gSP.lookat[_n].x);
 }
 
 void gSPVertex( u32 v, u32 n, u32 v0 )
@@ -903,6 +926,37 @@ void gSPBranchLessZ( u32 branchdl, u32 vtx, f32 zval )
       __RSP.PC[__RSP.PCi] = address;
 }
 
+void gSPDlistCount(u32 count, u32 v)
+{
+	u32 address = RSP_SegmentToPhysical( v );
+	if (address == 0 || (address + 8) > RDRAMSize)
+   {
+#if 0
+		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to branch to display list at invalid address\n" );
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDlistCnt(%d, 0x%08X );\n", count, v );
+#endif
+		return;
+	}
+
+	if (__RSP.PCi >= 9)
+   {
+#if 0
+		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// ** DL stack overflow **\n" );
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDlistCnt(%d, 0x%08X );\n", count, v );
+#endif
+		return;
+	}
+
+#if 0
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDlistCnt(%d, 0x%08X );\n", count, v );
+#endif
+
+	++__RSP.PCi;  // go to the next PC in the stack
+	__RSP.PC[__RSP.PCi] = address;  // jump to the address
+	__RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
+	__RSP.count = count + 1;
+}
+
 void gSPSetDMAOffsets( u32 mtxoffset, u32 vtxoffset )
 {
    gSP.DMAOffsets.mtx = mtxoffset;
@@ -1211,6 +1265,27 @@ void gSPClearGeometryMode( u32 mode )
 {
    gSP.geometryMode &= ~mode;
    gSP.changed |= CHANGED_GEOMETRYMODE;
+}
+
+void gSPSetOtherMode_H(u32 _length, u32 _shift, u32 _data)
+{
+	const u32 mask = (((u64)1 << _length) - 1) << _shift;
+	gDP.otherMode.h = (gDP.otherMode.h&(~mask)) | _data;
+
+	if (mask & 0x00300000)  // cycle type
+		gDP.changed |= CHANGED_CYCLETYPE;
+}
+
+void gSPSetOtherMode_L(u32 _length, u32 _shift, u32 _data)
+{
+	const u32 mask = (((u64)1 << _length) - 1) << _shift;
+	gDP.otherMode.l = (gDP.otherMode.l&(~mask)) | _data;
+
+	if (mask & 0x00000003)  // alpha compare
+		gDP.changed |= CHANGED_ALPHACOMPARE;
+
+	if (mask & 0xFFFFFFF8)  // rendermode / blender bits
+		gDP.changed |= CHANGED_RENDERMODE;
 }
 
 void gSPLine3D( s32 v0, s32 v1, s32 flag )
