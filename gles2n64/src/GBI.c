@@ -39,16 +39,38 @@ char uc_str[256];
 
 SpecialMicrocodeInfo specialMicrocodes[] =
 {
-    {F3DWRUS, FALSE, 0xd17906e2, "RSP SW Version: 2.0D, 04-01-96"},
-    {F3DWRUS, FALSE,  0x94c4c833, "RSP SW Version: 2.0D, 04-01-96"},
-    {S2DEX, FALSE, 0x9df31081, "RSP Gfx ucode S2DEX  1.06 Yoshitaka Yasumoto Nintendo."},
-    {F3DDKR, FALSE, 0x8d91244f, "Diddy Kong Racing"},
-    {F3DDKR, FALSE, 0x6e6fc893, "Diddy Kong Racing"},
-    {F3DDKR, FALSE, 0xbde9d1fb, "Jet Force Gemini"},
-    {F3DPD, FALSE, 0x1c4f7869, "Perfect Dark"},
-    {F3DEX, FALSE, 0x0ace4c3f, "Mario Kart"},
-    //{F3DEX, FALSE, 0xda51ccdb, "Rogue Squadron"},
-    {F3DCBFD, FALSE, 0x1b4ace88, "RSP Gfx ucode F3DEXBG.NoN fifo 2.08  Yoshitaka Yasumoto 1999 Nintendo."},
+   { F3D,		FALSE,	0xe62a706d, "Fast3D" },
+   { F3D,		FALSE,	0x7d372819, "Fast3D" },
+   { F3D,		FALSE,	0x2edee7be, "Fast3D" },
+   { F3D,		FALSE,	0xe01e14be, "Fast3D" },
+
+   {F3DWRUS, FALSE, 0xd17906e2, "RSP SW Version: 2.0D, 04-01-96"},
+#ifdef NEW
+	{ F3DSWSE,	FALSE,	0x94c4c833, "RSP SW Version: 2.0D, 04-01-96" },
+#else
+   {F3DWRUS,   FALSE,   0x94c4c833, "RSP SW Version: 2.0D, 04-01-96"},
+#endif
+	{ F3DEX,	TRUE,	0x637b4b58, "RSP SW Version: 2.0D, 04-01-96" },
+   { F3D,		TRUE,	0x54c558ba, "RSP SW Version: 2.0D, 04-01-96" }, // Pilot Wings
+
+   {S2DEX, FALSE, 0x9df31081, "RSP Gfx ucode S2DEX  1.06 Yoshitaka Yasumoto Nintendo."},
+
+   {F3DDKR, FALSE, 0x8d91244f, "Diddy Kong Racing"},
+   {F3DDKR, FALSE, 0x6e6fc893, "Diddy Kong Racing"},
+
+#ifdef NEW
+	{ F3DJFG,	FALSE,	0xbde9d1fb, "Jet Force Gemini" },
+#else
+   {F3DDKR, FALSE, 0xbde9d1fb, "Jet Force Gemini"},
+   {F3DEX, FALSE, 0x0ace4c3f, "Mario Kart"},
+#endif
+   {F3DPD, FALSE, 0x1c4f7869, "Perfect Dark"},
+#ifdef NEW
+	{ Turbo3D,	FALSE,	0x2bdcfc8a, "Turbo3D" },
+	{ F3DEX2CBFD, TRUE, 0x1b4ace88, "Conker's Bad Fur Day" }
+#else
+   {F3DCBFD, FALSE, 0x1b4ace88, "RSP Gfx ucode F3DEXBG.NoN fifo 2.08  Yoshitaka Yasumoto 1999 Nintendo."},
+#endif
 };
 
 u32 G_RDPHALF_1, G_RDPHALF_2, G_RDPHALF_CONT;
@@ -60,7 +82,7 @@ u32 G_MOVEMEM, G_MOVEWORD;
 u32 G_MTX, G_POPMTX;
 u32 G_GEOMETRYMODE, G_SETGEOMETRYMODE, G_CLEARGEOMETRYMODE;
 u32 G_TEXTURE;
-u32 G_DMA_IO, G_DMA_DL, G_DMA_TRI, G_DMA_MTX, G_DMA_VTX, G_DMA_OFFSETS;
+u32 G_DMA_IO, G_DMA_DL, G_DMA_TRI, G_DMA_MTX, G_DMA_VTX, G_DMA_TEX_OFFSET, G_DMA_OFFSETS;
 u32 G_SPECIAL_1, G_SPECIAL_2, G_SPECIAL_3;
 u32 G_VTX, G_MODIFYVTX, G_VTXCOLORBASE;
 u32 G_TRI1, G_TRI2, G_TRI4;
@@ -71,7 +93,10 @@ u32 G_BG_1CYC, G_BG_COPY;
 u32 G_OBJ_RECTANGLE, G_OBJ_SPRITE, G_OBJ_MOVEMEM;
 u32 G_SELECT_DL, G_OBJ_RENDERMODE, G_OBJ_RECTANGLE_R;
 u32 G_OBJ_LOADTXTR, G_OBJ_LDTX_SPRITE, G_OBJ_LDTX_RECT, G_OBJ_LDTX_RECT_R;
-u32 G_RDPHALF_0, G_TRI_UNKNOWN;
+u32 G_RDPHALF_0;
+
+/* TODO/FIXME - remove? */
+u32 G_TRI_UNKNOWN;
 
 u32 G_MTX_STACKSIZE;
 u32 G_MTX_MODELVIEW;
@@ -103,6 +128,14 @@ GBIInfo GBI;
 
 void GBI_Unknown( u32 w0, u32 w1 )
 {
+#ifdef DEBUG
+	if (Debug.level == DEBUG_LOW)
+		DebugMsg( DEBUG_LOW | DEBUG_UNKNOWN, "UNKNOWN GBI COMMAND 0x%02X", _SHIFTR( w0, 24, 8 ) );
+	if (Debug.level == DEBUG_MEDIUM)
+		DebugMsg( DEBUG_MEDIUM | DEBUG_UNKNOWN, "Unknown GBI Command 0x%02X", _SHIFTR( w0, 24, 8 ) );
+	else if (Debug.level == DEBUG_HIGH)
+		DebugMsg( DEBUG_HIGH | DEBUG_UNKNOWN, "// Unknown GBI Command 0x%02X", _SHIFTR( w0, 24, 8 ) );
+#endif
 }
 
 static int MicrocodeDialog(void)
@@ -324,12 +357,49 @@ void GBI_MakeCurrent( MicrocodeInfo *current )
          case S2DEX:     S2DEX_Init();   break;
          case S2DEX2:    S2DEX2_Init();  break;
          case F3DDKR:    F3DDKR_Init();  break;
+#ifdef NEW
+			case F3DJFG:	F3DJFG_Init();	break;
+			case F3DSWSE:	F3DSWSE_Init();	break;
+#endif
          case F3DWRUS:   F3DWRUS_Init(); break;
          case F3DPD:     F3DPD_Init();   break;
+#ifdef NEW
+			case F3DEX2CBFD:F3DEX2CBFD_Init(); break;
+			case Turbo3D:	F3D_Init();		break;
+			case ZSortp:	ZSort_Init();	break;
+#else
          case F3DCBFD:   F3DCBFD_Init(); break;
+#endif
       }
-   }
 
+#ifdef NEW
+		if (current->NoN)
+      {
+         // Disable near and far plane clipping
+         glEnable(GL_DEPTH_CLAMP);
+         // Enable Far clipping plane in vertex shader
+         glEnable(GL_CLIP_DISTANCE0);
+      } else {
+			glDisable(GL_DEPTH_CLAMP);
+			glDisable(GL_CLIP_DISTANCE0);
+		}
+#endif
+   }
+#ifdef NEW
+   else if (current->NoN != current->NoN)
+   {
+		if (current->NoN) {
+			// Disable near and far plane clipping
+			glEnable(GL_DEPTH_CLAMP);
+			// Enable Far clipping plane in vertex shader
+			glEnable(GL_CLIP_DISTANCE0);
+		}
+		else {
+			glDisable(GL_DEPTH_CLAMP);
+			glDisable(GL_CLIP_DISTANCE0);
+		}
+	}
+#endif
 
    GBI.current = current;
 }
