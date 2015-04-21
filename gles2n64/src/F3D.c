@@ -21,7 +21,6 @@ void F3D_Mtx( u32 w0, u32 w1 )
 {
    if (_SHIFTR( w0, 0, 16 ) != 64)
    {
-      //      GBI_DetectUCode(); // Something's wrong
 #ifdef DEBUG
       DebugMsg( DEBUG_MEDIUM | DEBUG_HIGH | DEBUG_ERROR, "G_MTX: address = 0x%08X    length = %i    params = 0x%02X\n", w1, _SHIFTR( w0, 0, 16 ), _SHIFTR( w0, 16, 8 ) );
 #endif
@@ -40,9 +39,6 @@ void F3D_Reserved0( u32 w0, u32 w1 )
 
 void F3D_MoveMem( u32 w0, u32 w1 )
 {
-#ifdef __TRIBUFFER_OPT
-   gSPFlushTriangles();
-#endif
    switch (_SHIFTR( w0, 16, 8 ))
    {
       case F3D_MV_VIEWPORT://G_MV_VIEWPORT:
@@ -78,8 +74,10 @@ void F3D_MoveMem( u32 w0, u32 w1 )
          gSPLight( w1, LIGHT_8 );
          break;
       case G_MV_LOOKATX:
+			gSPLookAt(w1, 0);
          break;
       case G_MV_LOOKATY:
+			gSPLookAt(w1, 1);
          break;
    }
 }
@@ -104,11 +102,6 @@ void F3D_DList( u32 w0, u32 w1 )
          gSPBranchList( w1 );
          break;
    }
-
-#ifdef __TRIBUFFER_OPT
-   //since PCi can be changed in gSPDisplayList
-   gSPFlushTriangles();
-#endif
 }
 
 void F3D_Reserved2( u32 w0, u32 w1 )
@@ -121,14 +114,15 @@ void F3D_Reserved3( u32 w0, u32 w1 )
 
 void F3D_Sprite2D_Base( u32 w0, u32 w1 )
 {
-   //gSPSprite2DBase( w1 );
    __RSP.PC[__RSP.PCi] += 8;
 }
 
 
 void F3D_Tri1( u32 w0, u32 w1 )
 {
-   gSP1Triangle( _SHIFTR( w1, 16, 8 ) / 10, _SHIFTR( w1, 8, 8 ) / 10, _SHIFTR( w1, 0, 8 ) / 10);
+   gSP1Triangle( _SHIFTR( w1, 16, 8 ) / 10,
+         _SHIFTR( w1, 8, 8 ) / 10,
+         _SHIFTR( w1, 0, 8 ) / 10);
 }
 
 void F3D_CullDL( u32 w0, u32 w1 )
@@ -158,11 +152,11 @@ void F3D_MoveWord( u32 w0, u32 w1 )
          break;
 
       case G_MW_SEGMENT:
-         gSPSegment( _SHIFTR( w0, 8, 16 ) >> 2, w1 & 0x00FFFFFF );
+			gSPSegment( _SHIFTR( w0, 10, 4 ), w1 & 0x00FFFFFF );
          break;
 
       case G_MW_FOG:
-         gSPFogFactor( (s16)_SHIFTR( w1, 16, 16 ), (s16)_SHIFTR( w1, 0, 16 ) );
+			gSPFogFactor( (s16)_SHIFTR( w1, 16, 16 ), (s16)_SHIFTR( w1, 0, 16 ) );
          break;
 
       case G_MW_LIGHTCOL:
@@ -195,7 +189,10 @@ void F3D_MoveWord( u32 w0, u32 w1 )
          }
          break;
       case G_MW_POINTS:
-         gSPModifyVertex( _SHIFTR( w0, 8, 16 ) / 40, _SHIFTR( w0, 0, 8 ) % 40, w1 );
+         {
+            const u32 val = _SHIFTR(w0, 8, 16);
+            gSPModifyVertex(val / 40, val % 40, w1);
+         }
          break;
       case G_MW_PERSPNORM:
          gSPPerspNormalize( w1 );
@@ -214,82 +211,16 @@ void F3D_Texture( u32 w0, u32 w1 )
 
 void F3D_SetOtherMode_H( u32 w0, u32 w1 )
 {
-   switch (_SHIFTR( w0, 8, 8 ))
-   {
-      case G_MDSFT_PIPELINE:
-         gDPPipelineMode( w1 >> G_MDSFT_PIPELINE );
-         break;
-      case G_MDSFT_CYCLETYPE:
-         gDPSetCycleType( w1 >> G_MDSFT_CYCLETYPE );
-         break;
-      case G_MDSFT_TEXTPERSP:
-         gDPSetTexturePersp( w1 >> G_MDSFT_TEXTPERSP );
-         break;
-      case G_MDSFT_TEXTDETAIL:
-         gDPSetTextureDetail( w1 >> G_MDSFT_TEXTDETAIL );
-         break;
-      case G_MDSFT_TEXTLOD:
-         gDPSetTextureLOD( w1 >> G_MDSFT_TEXTLOD );
-         break;
-      case G_MDSFT_TEXTLUT:
-         gDPSetTextureLUT( w1 >> G_MDSFT_TEXTLUT );
-         break;
-      case G_MDSFT_TEXTFILT:
-         gDPSetTextureFilter( w1 >> G_MDSFT_TEXTFILT );
-         break;
-      case G_MDSFT_TEXTCONV:
-         gDPSetTextureConvert( w1 >> G_MDSFT_TEXTCONV );
-         break;
-      case G_MDSFT_COMBKEY:
-         gDPSetCombineKey( w1 >> G_MDSFT_COMBKEY );
-         break;
-      case G_MDSFT_RGBDITHER:
-         gDPSetColorDither( w1 >> G_MDSFT_RGBDITHER );
-         break;
-      case G_MDSFT_ALPHADITHER:
-         gDPSetAlphaDither( w1 >> G_MDSFT_ALPHADITHER );
-         break;
-      default:
-         {
-            uint32_t shift = _SHIFTR( w0, 8, 8 );
-            uint32_t length = _SHIFTR( w0, 0, 8 );
-            uint32_t mask = ((1 << length) - 1) << shift;
-
-            gDP.otherMode.h &= ~mask;
-            gDP.otherMode.h |= w1 & mask;
-
-            gDP.changed |= CHANGED_CYCLETYPE;
-         }
-         break;
-   }
+	const u32 length = _SHIFTR(w0, 0, 8);
+	const u32 shift = _SHIFTR(w0, 8, 8);
+	gSPSetOtherMode_H(length, shift, w1);
 }
 
 void F3D_SetOtherMode_L( u32 w0, u32 w1 )
 {
-   switch (_SHIFTR( w0, 8, 8 ))
-   {
-      case G_MDSFT_ALPHACOMPARE:
-         gDPSetAlphaCompare( w1 >> G_MDSFT_ALPHACOMPARE );
-         break;
-      case G_MDSFT_ZSRCSEL:
-         gDPSetDepthSource( w1 >> G_MDSFT_ZSRCSEL );
-         break;
-      case G_MDSFT_RENDERMODE:
-         gDPSetRenderMode( w1 & 0xCCCCFFFF, w1 & 0x3333FFFF );
-         break;
-      default:
-         {
-            uint32_t shift = _SHIFTR( w0, 8, 8 );
-            uint32_t length = _SHIFTR( w0, 0, 8 );
-            uint32_t mask = ((1 << length) - 1) << shift;
-
-            gDP.otherMode.l &= ~mask;
-            gDP.otherMode.l |= w1 & mask;
-
-            gDP.changed |= CHANGED_RENDERMODE | CHANGED_ALPHACOMPARE;
-         }
-         break;
-   }
+	const u32 length = _SHIFTR(w0, 0, 8);
+	const u32 shift = _SHIFTR(w0, 8, 8);
+	gSPSetOtherMode_L(length, shift, w1);
 }
 
 void F3D_EndDL( u32 w0, u32 w1 )
@@ -307,19 +238,16 @@ void F3D_ClearGeometryMode( u32 w0, u32 w1 )
    gSPClearGeometryMode( w1 );
 }
 
-void F3D_Line3D( u32 w0, u32 w1 )
-{
-   // Hmmm...
-}
-
 void F3D_Quad( u32 w0, u32 w1 )
 {
-   gSP1Quadrangle( _SHIFTR( w1, 24, 8 ) / 10, _SHIFTR( w1, 16, 8 ) / 10, _SHIFTR( w1, 8, 8 ) / 10, _SHIFTR( w1, 0, 8 ) / 10 );
+	gSP1Quadrangle( _SHIFTR( w1, 24, 8 ) / 10, _SHIFTR( w1, 16, 8 ) / 10, _SHIFTR( w1, 8, 8 ) / 10, _SHIFTR( w1, 0, 8 ) / 10 );
 }
 
 void F3D_RDPHalf_1( u32 w0, u32 w1 )
 {
    gDP.half_1 = w1;
+   /* TODO/FIXME - implement */
+	//RDP_Half_1(w1);
 }
 
 void F3D_RDPHalf_2( u32 w0, u32 w1 )
@@ -333,10 +261,10 @@ void F3D_RDPHalf_Cont( u32 w0, u32 w1 )
 
 void F3D_Tri4( u32 w0, u32 w1 )
 {
-   gSP4Triangles( _SHIFTR( w0,  0, 4 ), _SHIFTR( w1,  0, 4 ), _SHIFTR( w1,  4, 4 ),
-         _SHIFTR( w0,  4, 4 ), _SHIFTR( w1,  8, 4 ), _SHIFTR( w1, 12, 4 ),
-         _SHIFTR( w0,  8, 4 ), _SHIFTR( w1, 16, 4 ), _SHIFTR( w1, 20, 4 ),
-         _SHIFTR( w0, 12, 4 ), _SHIFTR( w1, 24, 4 ), _SHIFTR( w1, 28, 4 ) );
+	gSP4Triangles( _SHIFTR( w1, 28, 4 ), _SHIFTR( w0, 12, 4 ), _SHIFTR( w1, 24, 4 ),
+				   _SHIFTR( w1, 20, 4 ), _SHIFTR( w0,  8, 4 ), _SHIFTR( w1, 16, 4 ),
+				   _SHIFTR( w1, 12, 4 ), _SHIFTR( w0,  4, 4 ), _SHIFTR( w1,  8, 4 ),
+				   _SHIFTR( w1,  4, 4 ), _SHIFTR( w0,  0, 4 ), _SHIFTR( w1,  0, 4 ) );
 }
 
 void F3D_Init(void)
