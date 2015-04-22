@@ -36,6 +36,7 @@ typedef struct CachedTexture
 
     struct CachedTexture   *lower, *higher;
     u32     lastDList;
+    u8      max_level;
 
 } CachedTexture;
 

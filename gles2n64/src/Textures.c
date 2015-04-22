@@ -665,7 +665,7 @@ void TextureCache_LoadBackground( CachedTexture *texInfo )
       glGenerateMipmap(GL_TEXTURE_2D);
 }
 
-void TextureCache_Load( CachedTexture *texInfo )
+void TextureCache_Load(int _tile, CachedTexture *texInfo )
 {
    u32 *dest;
 
@@ -674,6 +674,7 @@ void TextureCache_Load( CachedTexture *texInfo )
    u16 mirrorSBit, maskSMask, clampSClamp;
    u16 mirrorTBit, maskTMask, clampTClamp;
 
+	GLint mipLevel = 0, maxLevel = 0;
    int bytePerPixel=0;
    TextureFormat   texFormat;
    GetTexelFunc    getTexel;
@@ -730,78 +731,87 @@ void TextureCache_Load( CachedTexture *texInfo )
       return;
    }
 
+	if (/*config.generalEmulation.enableLOD != 0 &&*/gSP.texture.level > gSP.texture.tile + 1)
+		maxLevel = _tile == 0 ? 0 : gSP.texture.level - gSP.texture.tile - 1;
+
+	texInfo->max_level = maxLevel;
 
    line = texInfo->line;
 
    if (texInfo->size == G_IM_SIZ_32b)
       line <<= 1;
 
-   if (texInfo->maskS)
    {
-      clampSClamp = texInfo->clampS ? texInfo->clampWidth - 1 : (texInfo->mirrorS ? (texInfo->width << 1) - 1 : texInfo->width - 1);
-      maskSMask = (1 << texInfo->maskS) - 1;
-      mirrorSBit = texInfo->mirrorS ? (1 << texInfo->maskS) : 0;
-   }
-   else
-   {
-      clampSClamp = min( texInfo->clampWidth, texInfo->width ) - 1;
-      maskSMask = 0xFFFF;
-      mirrorSBit = 0x0000;
-   }
-
-   if (texInfo->maskT)
-   {
-      clampTClamp = texInfo->clampT ? texInfo->clampHeight - 1 : (texInfo->mirrorT ? (texInfo->height << 1) - 1: texInfo->height - 1);
-      maskTMask = (1 << texInfo->maskT) - 1;
-      mirrorTBit = texInfo->mirrorT ? (1 << texInfo->maskT) : 0;
-   }
-   else
-   {
-      clampTClamp = min( texInfo->clampHeight, texInfo->height ) - 1;
-      maskTMask = 0xFFFF;
-      mirrorTBit = 0x0000;
-   }
-
-   // Hack for Zelda warp texture
-   if (((texInfo->tMem << 3) + (texInfo->width * texInfo->height << texInfo->size >> 1)) > 4096)
-      texInfo->tMem = 0;
-
-   // limit clamp values to min-0 (Perfect Dark has height=0 textures, making negative clamps)
-   if (clampTClamp & 0x8000)
-      clampTClamp = 0;
-   if (clampSClamp & 0x8000)
-      clampSClamp = 0;
-
-   j = 0;
-   for (y = 0; y < texInfo->realHeight; y++)
-   {
-      ty = min(y, clampTClamp) & maskTMask;
-      if (y & mirrorTBit) ty ^= maskTMask;
-      src = &TMEM[(texInfo->tMem + line * ty) & 511];
-      i = (ty & 1) << 1;
-      for (x = 0; x < texInfo->realWidth; x++)
+      if (texInfo->maskS)
       {
-         tx = min(x, clampSClamp) & maskSMask;
-
-         if (x & mirrorSBit) tx ^= maskSMask;
-
-         if (bytePerPixel == 4)
-            ((u32*)dest)[j] = getTexel(src, tx, i, texInfo->palette);
-         else if (bytePerPixel == 2)
-            ((u16*)dest)[j] = getTexel(src, tx, i, texInfo->palette);
-         else if (bytePerPixel == 1)
-            ((u8*)dest)[j] = getTexel(src, tx, i, texInfo->palette);
-         j++;
+         clampSClamp = texInfo->clampS ? texInfo->clampWidth - 1 : (texInfo->mirrorS ? (texInfo->width << 1) - 1 : texInfo->width - 1);
+         maskSMask = (1 << texInfo->maskS) - 1;
+         mirrorSBit = texInfo->mirrorS ? (1 << texInfo->maskS) : 0;
       }
+      else
+      {
+         clampSClamp = min( texInfo->clampWidth, texInfo->width ) - 1;
+         maskSMask = 0xFFFF;
+         mirrorSBit = 0x0000;
+      }
+
+      if (texInfo->maskT)
+      {
+         clampTClamp = texInfo->clampT ? texInfo->clampHeight - 1 : (texInfo->mirrorT ? (texInfo->height << 1) - 1: texInfo->height - 1);
+         maskTMask = (1 << texInfo->maskT) - 1;
+         mirrorTBit = texInfo->mirrorT ? (1 << texInfo->maskT) : 0;
+      }
+      else
+      {
+         clampTClamp = min( texInfo->clampHeight, texInfo->height ) - 1;
+         maskTMask = 0xFFFF;
+         mirrorTBit = 0x0000;
+      }
+
+      // Hack for Zelda warp texture
+      if (((texInfo->tMem << 3) + (texInfo->width * texInfo->height << texInfo->size >> 1)) > 4096)
+         texInfo->tMem = 0;
+
+      // limit clamp values to min-0 (Perfect Dark has height=0 textures, making negative clamps)
+      if (clampTClamp & 0x8000)
+         clampTClamp = 0;
+      if (clampSClamp & 0x8000)
+         clampSClamp = 0;
+
+      j = 0;
+      for (y = 0; y < texInfo->realHeight; y++)
+      {
+         ty = min(y, clampTClamp) & maskTMask;
+
+         if (y & mirrorTBit)
+            ty ^= maskTMask;
+
+         src = &TMEM[(texInfo->tMem + line * ty) & 511];
+
+         i = (ty & 1) << 1;
+         for (x = 0; x < texInfo->realWidth; x++)
+         {
+            tx = min(x, clampSClamp) & maskSMask;
+
+            if (x & mirrorSBit)
+               tx ^= maskSMask;
+
+            if (bytePerPixel == 4)
+               ((u32*)dest)[j] = getTexel(src, tx, i, texInfo->palette);
+            else if (bytePerPixel == 2)
+               ((u16*)dest)[j] = getTexel(src, tx, i, texInfo->palette);
+            else if (bytePerPixel == 1)
+               ((u8*)dest)[j] = getTexel(src, tx, i, texInfo->palette);
+            j++;
+         }
+      }
+
+      glTexImage2D( GL_TEXTURE_2D, 0, glFormat, glWidth, glHeight, 0, glFormat, glType, dest);
+
+      if (config.texture.enableMipmap)
+         glGenerateMipmap(GL_TEXTURE_2D);
    }
-
-   glTexImage2D( GL_TEXTURE_2D, 0, glFormat, glWidth, glHeight, 0, glFormat, glType, dest);
-
    free(dest);
-
-   if (config.texture.enableMipmap)
-      glGenerateMipmap(GL_TEXTURE_2D);
-
 }
 
 u32 TextureCache_CalculateCRC( u32 t, u32 width, u32 height )
@@ -1163,7 +1173,7 @@ void TextureCache_Update( u32 t )
       cache.current[t]->shiftScaleT = (f32)(1 << (16 - gSP.textureTile[t]->shiftt));
    else if (gSP.textureTile[t]->shiftt > 0)
       cache.current[t]->shiftScaleT /= (f32)(1 << gSP.textureTile[t]->shiftt);
-   TextureCache_Load( cache.current[t] );
+   TextureCache_Load(t, cache.current[t] );
    TextureCache_ActivateTexture( t, cache.current[t] );
    cache.cachedBytes += cache.current[t]->textureBytes;
 }
