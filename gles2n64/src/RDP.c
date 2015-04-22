@@ -7,6 +7,7 @@
 #include "Common.h"
 #include "gSP.h"
 #include "RDP.h"
+#include <string.h>
 
 RDPInfo __RDP;
 
@@ -582,4 +583,70 @@ void RDP_Half_1( u32 _c )
 		DebugMsg( DEBUG_HIGH | DEBUG_IGNORED, "gDPHalf_1()\n" );
 	}
 #endif
+}
+
+static inline u32 GLN64_READ_RDP_DATA(u32 address)
+{
+	if ((*(u32*)gfx_info.DPC_STATUS_REG) & 0x1)          // XBUS_DMEM_DMA enabled
+		return gfx_info.DMEM[(address & 0xfff)>>2];
+   return gfx_info.RDRAM[address>>2];
+}
+
+EXPORT void CALL gln64ProcessRDPList(void)
+{
+   u32 i;
+   const u32 length = gfx_info.DPC_END_REG - gfx_info.DPC_CURRENT_REG;
+
+#ifdef DEBUG
+   DebugMsg(DEBUG_HIGH | DEBUG_HANDLED, "ProcessRDPList()\n");
+#endif
+
+   (*(u32*)gfx_info.DPC_STATUS_REG) &= ~0x0002;
+
+   if (gfx_info.DPC_END_REG <= gfx_info.DPC_CURRENT_REG)
+      return;
+
+   __RSP.bLLE = true;
+
+   /* load command data */
+   for (i = 0; i < length; i += 4)
+   {
+      __RDP.cmd_data[__RDP.cmd_ptr] = GLN64_READ_RDP_DATA(*gfx_info.DPC_CURRENT_REG + i);
+      __RDP.cmd_ptr = (__RDP.cmd_ptr + 1) & maxCMDMask;
+   }
+
+   bool setZero = true;
+   while (__RDP.cmd_cur != __RDP.cmd_ptr)
+   {
+      u32 cmd = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
+
+      if ((((__RDP.cmd_ptr - __RDP.cmd_cur)&maxCMDMask) * 4) < CmdLength[cmd])
+      {
+         setZero = false;
+         break;
+      }
+
+      if (__RDP.cmd_cur + CmdLength[cmd] / 4 > MAXCMD)
+         memcpy(__RDP.cmd_data + MAXCMD, __RDP.cmd_data, CmdLength[cmd] - (MAXCMD - __RDP.cmd_cur) * 4);
+
+      // execute the command
+      u32 w0 = __RDP.cmd_data[__RDP.cmd_cur+0];
+      u32 w1 = __RDP.cmd_data[__RDP.cmd_cur+1];
+      __RDP.w2 = __RDP.cmd_data[__RDP.cmd_cur+2];
+      __RDP.w3 = __RDP.cmd_data[__RDP.cmd_cur + 3];
+      __RSP.cmd = cmd;
+      LLEcmd[cmd](w0, w1);
+
+      __RDP.cmd_cur = (__RDP.cmd_cur + CmdLength[cmd] / 4) & maxCMDMask;
+   }
+
+   if (setZero) {
+      __RDP.cmd_ptr = 0;
+      __RDP.cmd_cur = 0;
+   }
+
+   __RSP.bLLE = false;
+   gSP.changed |= CHANGED_COLORBUFFER;
+
+   gfx_info.DPC_START_REG = gfx_info.DPC_CURRENT_REG = gfx_info.DPC_END_REG;
 }

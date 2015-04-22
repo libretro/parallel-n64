@@ -127,10 +127,6 @@ EXPORT void CALL ProcessDList(void)
     OGL.mustRenderDlist = true;
 }
 
-EXPORT void CALL ProcessRDPList(void)
-{
-}
-
 EXPORT void CALL ResizeVideoOutput(int Width, int Height)
 {
 }
