@@ -38,7 +38,6 @@ typedef struct
 
     int     updateMode;
     int     forceBufferClear;
-    int     ignoreOffscreenRendering;
     int     zHack;
 
     int     enableFog;

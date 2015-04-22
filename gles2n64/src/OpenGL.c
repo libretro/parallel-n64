@@ -588,12 +588,6 @@ static void OGL_prepareDrawTriangle(bool _dma)
 
 void OGL_DrawTriangles(void)
 {
-   if (OGL.renderingToTexture && config.ignoreOffscreenRendering)
-   {
-      OGL.triangles.num = 0;
-      return;
-   }
-
    if (OGL.triangles.num == 0) return;
 
    OGL_prepareDrawTriangle(false);
@@ -605,7 +599,6 @@ void OGL_DrawTriangles(void)
 void OGL_DrawLine(int v0, int v1, float width )
 {
    unsigned short elem[2];
-   if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
 
    if (gSP.changed || gDP.changed)
       OGL_UpdateStates();
@@ -634,7 +627,6 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
 {
    float scaleX, scaleY, Z, W;
    bool updateArrays;
-   if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
 
    gSP.changed &= ~CHANGED_GEOMETRYMODE; // Don't update cull mode
    if (gSP.changed || gDP.changed)
@@ -707,8 +699,6 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
             gDP.textureImage.size == G_IM_SIZ_8b)
          return;
    }
-
-   if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
 
    if (gSP.changed || gDP.changed)
       OGL_UpdateStates();
@@ -868,8 +858,6 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
 /* TODO/FIXME - not complete */
 void OGL_ClearDepthBuffer(void)
 {
-   if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
-
    glDisable( GL_SCISSOR_TEST );
    glDepthMask( GL_TRUE ); 
    glClear( GL_DEPTH_BUFFER_BIT );
@@ -881,8 +869,6 @@ void OGL_ClearDepthBuffer(void)
 
 void OGL_ClearColorBuffer( float *color )
 {
-   if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
-
 	glDisable( GL_SCISSOR_TEST );
 
    glClearColor( color[0], color[1], color[2], color[3] );

@@ -38,30 +38,6 @@ void VI_UpdateSize(void)
    if (VI.height == 0.0f) VI.height = 240;
    VI.rwidth = 1.0f / VI.width;
    VI.rheight = 1.0f / VI.height;
-
-
-   //add display buffer if doesn't exist
-   if (config.ignoreOffscreenRendering)
-   {
-      unsigned int i;
-      //int start = *REG.VI_ORIGIN;
-
-      u32 start = RSP_SegmentToPhysical(*gfx_info.VI_ORIGIN_REG) & 0x00FFFFFF;
-      u32 end = min(start + VI.width * VI.height * 4, RDRAMSize);
-      for(i = 0; i < VI.displayNum; i++)
-      {
-         if (VI.display[i].start <= end && VI.display[i].start >= start) break;
-         if (start <= VI.display[i].end && start >= VI.display[i].start) break;
-      }
-      if (i == VI.displayNum)
-      {
-         //printf("VI IMAGE=%i\n", o);
-         VI.display[i%16].start = start;
-         VI.display[i%16].end = end;
-         VI.displayNum = (VI.displayNum < 16) ? (VI.displayNum+1) : 16;
-      }
-   }
-
 }
 
 void VI_UpdateScreen(void)

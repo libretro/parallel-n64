@@ -388,59 +388,7 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
    gDP.colorImage.width   = width;
    gDP.colorImage.address = addr;
 
-   if (config.ignoreOffscreenRendering)
-   {
-      unsigned i;
-
-      //colorimage byte size:
-      //color image height is not the best thing to base this on, its normally set
-      //later on in the code
-
-      if (gDP.colorImage.address == gDP.depthImageAddress)
-      {
-         OGL.renderingToTexture = false;
-      }
-      else if (size == G_IM_SIZ_16b && format == G_IM_FMT_RGBA)
-      {
-		  u32 start, end;
-         int s = 0;
-         switch(size)
-         {
-            case G_IM_SIZ_4b:   s = (gDP.colorImage.width * gDP.colorImage.height) / 2; break;
-            case G_IM_SIZ_8b:   s = (gDP.colorImage.width * gDP.colorImage.height); break;
-            case G_IM_SIZ_16b:  s = (gDP.colorImage.width * gDP.colorImage.height) * 2; break;
-            case G_IM_SIZ_32b:  s = (gDP.colorImage.width * gDP.colorImage.height) * 4; break;
-         }
-         start = addr & 0x00FFFFFF;
-         end = min(start + s, RDRAMSize);
-         for(i = 0; i < VI.displayNum; i++)
-         {
-            if (VI.display[i].start <= end && VI.display[i].start >= start) break;
-            if (start <= VI.display[i].end && start >= VI.display[i].start) break;
-         }
-
-         OGL.renderingToTexture = (i == VI.displayNum);
-      }
-      else
-      {
-         OGL.renderingToTexture = true;
-      }
-
-#if 0
-      if (OGL.renderingToTexture)
-      {
-         printf("start=%i end=%i\n", start, end);
-         printf("display=");
-         for(int i=0; i< VI.displayNum; i++) printf("%i,%i:", VI.display[i].start, VI.display[i].end);
-         printf("\n");
-      }
-#endif
-   }
-   else
-   {
-      OGL.renderingToTexture = false;
-   }
-
+   OGL.renderingToTexture = false;
 
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetColorImage( %s, %s, %i, 0x%08X );\n",
