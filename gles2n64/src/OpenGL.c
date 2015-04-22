@@ -533,6 +533,7 @@ void OGL_SetColorArray(void)
 
 void OGL_SetTexCoordArrays(void)
 {
+#ifdef NEw
    if (OGL.renderState == RS_TRIANGLE)
    {
       glDisableVertexAttribArray(SC_TEXCOORD1);
@@ -542,6 +543,7 @@ void OGL_SetTexCoordArrays(void)
          glDisableVertexAttribArray(SC_TEXCOORD0);
    }
    else
+#endif
    {
       if (scProgramCurrent->usesT0)
          glEnableVertexAttribArray(SC_TEXCOORD0);
