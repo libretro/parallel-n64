@@ -90,24 +90,6 @@ bool OGL_Start(void)
    float f;
    OGL_InitStates();
 
-#ifdef USE_SDL
-   /////// paulscode, graphics bug-fixes
-   float depth = gDP.fillColor.z ;
-   glDisable( GL_SCISSOR_TEST );
-   glDepthMask( GL_TRUE );  // fixes side-bar graphics glitches
-   glClearDepth( 1.0f );  // fixes missing graphics on Qualcomm Adreno
-   glClearColor( 0, 0, 0, 1 );
-   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-   glFinish();
-   Android_JNI_SwapWindow();  // paulscode, fix for black-screen bug
-
-   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-   glFinish();
-   OGL_UpdateDepthUpdate();
-   glEnable( GL_SCISSOR_TEST );
-   ////////
-#endif
-
    //check extensions
    if ((config.texture.maxAnisotropy>0) && !OGL_IsExtSupported("GL_EXT_texture_filter_anistropic"))
    {
