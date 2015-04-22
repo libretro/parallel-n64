@@ -16,7 +16,6 @@ void F3DDKR_DMA_Mtx( u32 w0, u32 w1 )
    u32 index, multiply;
    if (_SHIFTR( w0, 0, 16 ) != 64)
    {
-      //      GBI_DetectUCode(); // Something's wrong
 #ifdef DEBUG
       DebugMsg( DEBUG_MEDIUM | DEBUG_HIGH | DEBUG_ERROR, "G_MTX: address = 0x%08X    length = %i    params = 0x%02X\n", w1, _SHIFTR( w0, 0, 16 ), _SHIFTR( w0, 16, 8 ) );
 #endif
@@ -56,6 +55,23 @@ void F3DDKR_DMA_Vtx( u32 w0, u32 w1 )
    gSP.vertexi += n;
 }
 
+void F3DJFG_DMA_Vtx(u32 w0, u32 w1)
+{
+   u32 n;
+	if ((w0 & F3DDKR_VTX_APPEND))
+   {
+		if (gSP.matrix.billboard)
+			gSP.vertexi = 1;
+	} else
+		gSP.vertexi = 0;
+
+	n = _SHIFTR(w0, 19, 5);
+
+	gSPDMAVertex(w1, n, gSP.vertexi + _SHIFTR(w0, 9, 5));
+
+	gSP.vertexi += n;
+}
+
 void F3DDKR_DMA_Tri( u32 w0, u32 w1 )
 {
    gSPDMATriangles( w1, _SHIFTR( w0, 4, 12 ) );
@@ -64,12 +80,17 @@ void F3DDKR_DMA_Tri( u32 w0, u32 w1 )
 
 void F3DDKR_DMA_DList( u32 w0, u32 w1 )
 {
-   gSPDMADisplayList( w1, _SHIFTR( w0, 16, 8 ) );
+	gSPDlistCount(_SHIFTR(w0, 16, 8), w1);
 }
 
 void F3DDKR_DMA_Offsets( u32 w0, u32 w1 )
 {
    gSPSetDMAOffsets( _SHIFTR( w0, 0, 24 ), _SHIFTR( w1, 0, 24 ) );
+}
+
+void F3DDKR_DMA_Tex_Offset(u32 w0, u32 w1)
+{
+	gSPSetDMATexOffset(w1);
 }
 
 void F3DDKR_MoveWord( u32 w0, u32 w1 )
@@ -99,6 +120,7 @@ void F3DDKR_Init(void)
    //          GBI Command             Command Value           Command Function
    GBI_SetGBI( G_SPNOOP,               F3D_SPNOOP,             F3D_SPNoOp );
    GBI_SetGBI( G_DMA_MTX,              F3DDKR_DMA_MTX,         F3DDKR_DMA_Mtx );
+	GBI_SetGBI( G_DMA_TEX_OFFSET,		   F3DDKR_DMA_TEX_OFFSET,	F3DDKR_DMA_Tex_Offset );
    GBI_SetGBI( G_MOVEMEM,              F3D_MOVEMEM,            F3D_MoveMem );
    GBI_SetGBI( G_DMA_VTX,              F3DDKR_DMA_VTX,         F3DDKR_DMA_Vtx );
    GBI_SetGBI( G_DL,                   F3D_DL,                 F3D_DList );
@@ -121,4 +143,10 @@ void F3DDKR_Init(void)
    GBI_SetGBI( G_TRI4,                 F3D_TRI4,               F3D_Tri4 );
 
    gSPSetDMAOffsets( 0, 0 );
+}
+
+void F3DJFG_Init(void)
+{
+	F3DDKR_Init();
+	GBI_SetGBI(G_DMA_VTX, F3DDKR_DMA_VTX, F3DJFG_DMA_Vtx);
 }

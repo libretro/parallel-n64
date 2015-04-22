@@ -557,19 +557,8 @@ void OGL_SetTexCoordArrays(void)
       glDisableVertexAttribArray(SC_TEXCOORD1);
 }
 
-void OGL_DrawTriangles(void)
+static void OGL_prepareDrawTriangle(bool _dma)
 {
-   if (OGL.renderingToTexture && config.ignoreOffscreenRendering)
-   {
-      OGL.triangles.num = 0;
-      return;
-   }
-
-   if (OGL.triangles.num == 0) return;
-
-   if ((config.updateMode == SCREEN_UPDATE_AT_1ST_PRIMITIVE) && OGL.screenUpdate)
-      OGL_SwapBuffers();
-
    if (gSP.changed || gDP.changed)
       OGL_UpdateStates();
 
@@ -595,6 +584,19 @@ void OGL_DrawTriangles(void)
       glEnable(GL_SCISSOR_TEST);
       OGL.renderState = RS_TRIANGLE;
    }
+}
+
+void OGL_DrawTriangles(void)
+{
+   if (OGL.renderingToTexture && config.ignoreOffscreenRendering)
+   {
+      OGL.triangles.num = 0;
+      return;
+   }
+
+   if (OGL.triangles.num == 0) return;
+
+   OGL_prepareDrawTriangle(false);
 
    glDrawElements(GL_TRIANGLES, OGL.triangles.num, GL_UNSIGNED_BYTE, OGL.triangles.elements);
    OGL.triangles.num = 0;
@@ -604,9 +606,6 @@ void OGL_DrawLine(int v0, int v1, float width )
 {
    unsigned short elem[2];
    if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
-
-   if ((config.updateMode == SCREEN_UPDATE_AT_1ST_PRIMITIVE) && OGL.screenUpdate)
-      OGL_SwapBuffers();
 
    if (gSP.changed || gDP.changed)
       OGL_UpdateStates();
@@ -634,9 +633,6 @@ void OGL_DrawLine(int v0, int v1, float width )
 void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
 {
    if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
-
-   if ((config.updateMode == SCREEN_UPDATE_AT_1ST_PRIMITIVE) && OGL.screenUpdate)
-      OGL_SwapBuffers();
 
    if (gSP.changed || gDP.changed)
       OGL_UpdateStates();
@@ -687,9 +683,6 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
    }
 
    if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
-
-   if ((config.updateMode == SCREEN_UPDATE_AT_1ST_PRIMITIVE) && OGL.screenUpdate)
-      OGL_SwapBuffers();
 
    if (gSP.changed || gDP.changed)
       OGL_UpdateStates();
@@ -825,9 +818,6 @@ void OGL_ClearDepthBuffer(void)
    float depth;
    if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
 
-   if ((config.updateMode == SCREEN_UPDATE_AT_1ST_PRIMITIVE) && OGL.screenUpdate)
-      OGL_SwapBuffers();
-
    //float depth = 1.0 - (gDP.fillColor.z / ((float)0x3FFF)); // broken on OMAP3
    depth = gDP.fillColor.z ;
 
@@ -845,9 +835,6 @@ void OGL_ClearDepthBuffer(void)
 void OGL_ClearColorBuffer( float *color )
 {
    if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
-
-   if ((config.updateMode == SCREEN_UPDATE_AT_1ST_PRIMITIVE) && OGL.screenUpdate)
-      OGL_SwapBuffers();
 
    glScissor(0, 0, config.screen.width, config.screen.height);
    glClearColor( color[0], color[1], color[2], color[3] );
