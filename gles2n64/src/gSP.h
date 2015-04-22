@@ -18,24 +18,6 @@
 if \
 ( \
     ( \
-         (config.tribufferOpt) && \
-         (OGL.triangles.num > 1000) || \
-         ( \
-             (__RSP.nextCmd != G_NOOP) && \
-             (__RSP.nextCmd != G_RDPNOOP) && \
-             (__RSP.nextCmd != G_MOVEMEM) && \
-             (__RSP.nextCmd != G_ENDDL) && \
-             (__RSP.nextCmd != G_DL) && \
-             (__RSP.nextCmd != G_VTXCOLORBASE) && \
-             (__RSP.nextCmd != G_TRI1) && \
-             (__RSP.nextCmd != G_TRI2) && \
-             (__RSP.nextCmd != G_TRI4) && \
-             (__RSP.nextCmd != G_QUAD) && \
-             (__RSP.nextCmd != G_VTX) && \
-             (__RSP.nextCmd != G_MTX) \
-         ) \
-    ) || \
-    ( \
         (__RSP.nextCmd != G_TRI1) && \
         (__RSP.nextCmd != G_TRI2) && \
         (__RSP.nextCmd != G_TRI4) && \

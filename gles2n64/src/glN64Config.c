@@ -87,10 +87,6 @@ static Option configOptions[] =
    {"update mode", &config.updateMode, SCREEN_UPDATE_AT_VI_UPDATE },
    {"force screen clear", &config.forceBufferClear, 0},
    {"flip vertical", &config.screen.flipVertical, 0},
-   // paulscode: removed from pre-compile to a config option
-   //// (part of the Galaxy S Zelda crash-fix
-   {"tribuffer opt", &config.tribufferOpt, 1},
-   //
    {"", NULL, 0},
 
    {"#Hack Settings:", NULL, 0},

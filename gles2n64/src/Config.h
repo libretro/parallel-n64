@@ -48,11 +48,6 @@ typedef struct
     int     enableFaceCulling;
     int     enableNoise;
 
-// paulscode: removed from pre-compile to a config option
-//// (part of the Galaxy S Zelda crash-fix
-    int     tribufferOpt;
-//
-
     int     hackBanjoTooie;
     int     hackZelda;
     int     hackAlpha;
