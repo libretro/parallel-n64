@@ -155,14 +155,22 @@ void OGL_UpdateCullFace(void)
       glDisable(GL_CULL_FACE);
 }
 
+/* TODO/FIXME - not complete yet */
 void OGL_UpdateViewport(void)
 {
-   int x, y, w, h;
-   x = (int)(gSP.viewport.x * OGL.scaleX);
-   y = (int)((VI.height - (gSP.viewport.y + gSP.viewport.height)) * OGL.scaleY);
-   w = (int)(gSP.viewport.width * OGL.scaleX);
-   h = (int)(gSP.viewport.height * OGL.scaleY);
-   glViewport(x, y, w, h);
+   const u32 VI_height = VI.height;
+   const f32 scaleX = OGL.scaleX;
+   const f32 scaleY = OGL.scaleY;
+   float Xf = gSP.viewport.vscale[0] < 0 ? (gSP.viewport.x + gSP.viewport.vscale[0] * 2.0f) : gSP.viewport.x;
+   const GLint X = (GLint)(Xf * scaleX);
+   const GLint Y = gSP.viewport.vscale[1] < 0 ? (GLint)((gSP.viewport.y + gSP.viewport.vscale[1] * 2.0f) * scaleY) : (GLint)((VI_height - (gSP.viewport.y + gSP.viewport.height)) * scaleY);
+   
+   glViewport(X,
+         Y,
+         max((GLint)(gSP.viewport.width * scaleX), 0),
+         max((GLint)(gSP.viewport.height * scaleY), 0));
+
+	gSP.changed &= ~CHANGED_VIEWPORT;
 }
 
 void OGL_UpdateDepthUpdate(void)
@@ -173,6 +181,7 @@ void OGL_UpdateDepthUpdate(void)
       glDepthMask(GL_FALSE);
 }
 
+/* TODO/FIXME - not complete */
 void OGL_UpdateScissor(void)
 {
    u32 heightOffset, screenHeight;
@@ -191,6 +200,7 @@ void OGL_UpdateScissor(void)
          max((GLint)((SX1 - gDP.scissor.ulx) * scaleX), 0),
          max((GLint)((gDP.scissor.lry - gDP.scissor.uly) * scaleY), 0)
          );
+	gDP.changed &= ~CHANGED_SCISSOR;
 }
 
 //copied from RICE VIDEO
