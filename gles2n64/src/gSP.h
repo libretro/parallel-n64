@@ -206,12 +206,6 @@ void gSP4Triangles(const s32 v00, const s32 v01, const s32 v02,
                     const s32 v30, const s32 v31, const s32 v32 );
 
 
-#ifdef __VEC4_OPT
-extern void (*gSPTransformVertex4)(u32 v, float mtx[4][4]);
-extern void (*gSPTransformNormal4)(u32 v, float mtx[4][4]);
-extern void (*gSPLightVertex4)(u32 v);
-extern void (*gSPBillboardVertex4)(u32 v);
-#endif
 extern void (*gSPTransformVertex)(float vtx[4], float mtx[4][4]);
 extern void (*gSPLightVertex)(u32 v);
 extern void (*gSPBillboardVertex)(u32 v, u32 i);
