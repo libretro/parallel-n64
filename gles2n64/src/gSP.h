@@ -142,8 +142,12 @@ typedef struct
 
     struct
     {
-        u32 vtx, mtx;
+       u32 vtx, mtx, tex_offset, tex_shift, tex_count;
     } DMAOffsets;
+
+	// CBFD
+	u32 vertexNormalBase;
+	f32 vertexCoordMod[16];
 } gSPInfo;
 
 extern gSPInfo gSP;

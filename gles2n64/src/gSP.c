@@ -678,11 +678,33 @@ void gSPSetDMAOffsets( u32 mtxoffset, u32 vtxoffset )
 {
    gSP.DMAOffsets.mtx = mtxoffset;
    gSP.DMAOffsets.vtx = vtxoffset;
+
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPSetDMAOffsets( 0x%08X, 0x%08X );\n",
+			mtxoffset, vtxoffset );
+#endif
+}
+
+void gSPSetDMATexOffset(u32 _addr)
+{
+	gSP.DMAOffsets.tex_offset = RSP_SegmentToPhysical(_addr);
+	gSP.DMAOffsets.tex_shift = 0;
+	gSP.DMAOffsets.tex_count = 0;
 }
 
 void gSPSetVertexColorBase( u32 base )
 {
    gSP.vertexColorBase = RSP_SegmentToPhysical( base );
+}
+
+void gSPSetVertexNormaleBase( u32 base )
+{
+	gSP.vertexNormalBase = RSP_SegmentToPhysical( base );
+
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPSetVertexNormaleBase( 0x%08X );\n",
+			base );
+#endif
 }
 
 void gSPSprite2DBase( u32 base )
@@ -769,6 +791,11 @@ void gSP1Quadrangle( s32 v0, s32 v1, s32 v2, s32 v3)
    gSPTriangle( v0, v1, v2);
    gSPTriangle( v0, v2, v3);
    gSPFlushTriangles();
+
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TRIANGLE, "gSP1Quadrangle( %i, %i, %i, %i );\n",
+			v0, v1, v2, v3 );
+#endif
 }
 
 bool gSPCullVertices( u32 v0, u32 vn )
@@ -816,23 +843,37 @@ void gSPPopMatrixN( u32 param, u32 num )
 
 void gSPPopMatrix( u32 param )
 {
-   if (gSP.matrix.modelViewi > 0)
+   switch (param)
    {
-      gSP.matrix.modelViewi--;
+      case 0: // modelview
+         if (gSP.matrix.modelViewi > 0)
+         {
+            gSP.matrix.modelViewi--;
 
-      gSP.changed |= CHANGED_MATRIX;
+            gSP.changed |= CHANGED_MATRIX;
+         }
+         break;
+      case 1: // projection, can't
+         break;
+      default:
+#ifdef DEBUG
+         DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_MATRIX, "// Attempting to pop matrix stack below 0\n" );
+         DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPPopMatrix( %s );\n",
+               (param == G_MTX_MODELVIEW) ? "G_MTX_MODELVIEW" :
+               (param == G_MTX_PROJECTION) ? "G_MTX_PROJECTION" : "G_MTX_INVALID" );
+#endif
+         break;
    }
 }
 
 void gSPSegment( s32 seg, s32 base )
 {
-    if (seg > 0xF)
-        return;
-
-    if ((unsigned int)base > RDRAMSize - 1)
-        return;
-
     gSP.segment[seg] = base;
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPSegment( %s, 0x%08X );\n",
+		SegmentText[seg], base );
+#endif
 }
 
 void gSPClipRatio( u32 r )
@@ -896,21 +937,51 @@ void gSPModifyVertex( u32 vtx, u32 where, u32 val )
          OGL.triangles.vertices[v].a = _SHIFTR( val, 0, 8 ) * 0.0039215689f;
          break;
       case G_MWO_POINT_ST:
-         OGL.triangles.vertices[v].s = _FIXED2FLOAT( (s16)_SHIFTR( val, 16, 16 ), 5 );
-         OGL.triangles.vertices[v].t = _FIXED2FLOAT( (s16)_SHIFTR( val, 0, 16 ), 5 );
+         OGL.triangles.vertices[v].s = _FIXED2FLOAT( (s16)_SHIFTR( val, 16, 16 ), 5 ) / gSP.texture.scales;
+         OGL.triangles.vertices[v].t = _FIXED2FLOAT( (s16)_SHIFTR( val, 0, 16 ), 5 ) / gSP.texture.scalet;
          break;
       case G_MWO_POINT_XYSCREEN:
+         {
+            f32 scrX = _FIXED2FLOAT( (s16)_SHIFTR( val, 16, 16 ), 2 );
+            f32 scrY = _FIXED2FLOAT( (s16)_SHIFTR( val, 0, 16 ), 2 );
+            OGL.triangles.vertices[v].x = (scrX - gSP.viewport.vtrans[0]) / gSP.viewport.vscale[0];
+            OGL.triangles.vertices[v].x *= OGL.triangles.vertices[v].w;
+            OGL.triangles.vertices[v].y = -(scrY - gSP.viewport.vtrans[1]) / gSP.viewport.vscale[1];
+            OGL.triangles.vertices[v].y *= OGL.triangles.vertices[v].w;
+            OGL.triangles.vertices[v].clip &= ~(CLIP_POSX | CLIP_NEGX | CLIP_POSY | CLIP_NEGY);
+         }
          break;
       case G_MWO_POINT_ZSCREEN:
+         {
+            f32 scrZ = _FIXED2FLOAT((s16)_SHIFTR(val, 16, 16), 15);
+            OGL.triangles.vertices[v].z = (scrZ - gSP.viewport.vtrans[2]) / (gSP.viewport.vscale[2]);
+            OGL.triangles.vertices[v].z *= OGL.triangles.vertices[v].w;
+            OGL.triangles.vertices[v].clip &= ~CLIP_Z;
+         }
          break;
    }
 }
 
 void gSPNumLights( s32 n )
 {
-   gSP.numLights = (n <= 8) ? n : 0;
-}
+   if (n <= 12)
+   {
+      gSP.numLights = n;
+#ifdef NEW
+      if (config.generalEmulation.enableHWLighting != 0)
+         gSP.changed |= CHANGED_LIGHT;
+#endif
+   }
+#ifdef DEBUG
+   else
+      DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Setting an invalid number of lights\n" );
+#endif
 
+#ifdef DEBUG
+   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPNumLights( %i );\n",
+         n );
+#endif
+}
 
 void gSPLightColor( u32 lightNum, u32 packedColor )
 {
@@ -921,23 +992,62 @@ void gSPLightColor( u32 lightNum, u32 packedColor )
       gSP.lights[lightNum].r = _SHIFTR( packedColor, 24, 8 ) * 0.0039215689f;
       gSP.lights[lightNum].g = _SHIFTR( packedColor, 16, 8 ) * 0.0039215689f;
       gSP.lights[lightNum].b = _SHIFTR( packedColor, 8, 8 ) * 0.0039215689f;
+#ifdef NEW
+		if (config.generalEmulation.enableHWLighting != 0)
+			gSP.changed |= CHANGED_LIGHT;
+#endif
    }
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPLightColor( %i, 0x%08X );\n",
+		lightNum, packedColor );
+#endif
 }
 
 void gSPFogFactor( s16 fm, s16 fo )
 {
    gSP.fog.multiplier = fm;
-   gSP.fog.offset = fo;
+   gSP.fog.offset     = fo;
 
    gSP.changed |= CHANGED_FOGPOSITION;
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPFogFactor( %i, %i );\n", fm, fo );
+#endif
 }
 
 void gSPPerspNormalize( u16 scale )
 {
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_UNHANDLED, "gSPPerspNormalize( %i );\n", scale );
+#endif
+}
+
+void gSPCoordMod(u32 _w0, u32 _w1)
+{
+	if ((_w0&8) != 0)
+		return;
+	u32 idx = _SHIFTR(_w0, 1, 2);
+	u32 pos = _w0&0x30;
+	if (pos == 0) {
+		gSP.vertexCoordMod[0+idx] = (f32)(s16)_SHIFTR(_w1, 16, 16);
+		gSP.vertexCoordMod[1+idx] = (f32)(s16)_SHIFTR(_w1, 0, 16);
+	} else if (pos == 0x10) {
+		assert(idx < 3);
+		gSP.vertexCoordMod[4+idx] = _SHIFTR(_w1, 16, 16)/65536.0f;
+		gSP.vertexCoordMod[5+idx] = _SHIFTR(_w1, 0, 16)/65536.0f;
+		gSP.vertexCoordMod[12+idx] = gSP.vertexCoordMod[0+idx] + gSP.vertexCoordMod[4+idx];
+		gSP.vertexCoordMod[13+idx] = gSP.vertexCoordMod[1+idx] + gSP.vertexCoordMod[5+idx];
+	} else if (pos == 0x20) {
+		gSP.vertexCoordMod[8+idx] = (f32)(s16)_SHIFTR(_w1, 16, 16);
+		gSP.vertexCoordMod[9+idx] = (f32)(s16)_SHIFTR(_w1, 0, 16);
+	}
 }
 
 void gSPTexture( f32 sc, f32 tc, s32 level, s32 tile, s32 on )
 {
+   gSP.texture.on = on;
+   if (on == 0)
+      return;
+
    gSP.texture.scales = sc;
    gSP.texture.scalet = tc;
 
@@ -945,17 +1055,21 @@ void gSPTexture( f32 sc, f32 tc, s32 level, s32 tile, s32 on )
    if (gSP.texture.scalet == 0.0f) gSP.texture.scalet = 1.0f;
 
    gSP.texture.level = level;
-   gSP.texture.on = on;
 
-   if (gSP.texture.tile != tile)
-   {
-      gSP.texture.tile = tile;
-      gSP.textureTile[0] = &gDP.tiles[tile];
-      gSP.textureTile[1] = &gDP.tiles[(tile < 7) ? (tile + 1) : tile];
-      gSP.changed |= CHANGED_TEXTURE;
-   }
+   gSP.texture.tile = tile;
+   gSP.textureTile[0] = &gDP.tiles[tile];
+   gSP.textureTile[1] = &gDP.tiles[(tile < 7) ? (tile + 1) : tile];
+   gSP.changed |= CHANGED_TEXTURE;
 
+   /* TODO/FIXME - remove? */
+#if 1
    gSP.changed |= CHANGED_TEXTURESCALE;
+#endif
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gSPTexture( %f, %f, %i, %i, %i );\n",
+		sc, tc, level, tile, on );
+#endif
 }
 
 void gSPEndDisplayList(void)
@@ -970,18 +1084,70 @@ void gSPGeometryMode( u32 clear, u32 set )
 {
    gSP.geometryMode = (gSP.geometryMode & ~clear) | set;
    gSP.changed |= CHANGED_GEOMETRYMODE;
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPGeometryMode( %s%s%s%s%s%s%s%s%s%s, %s%s%s%s%s%s%s%s%s%s );\n",
+		clear & G_SHADE ? "G_SHADE | " : "",
+		clear & G_LIGHTING ? "G_LIGHTING | " : "",
+		clear & G_SHADING_SMOOTH ? "G_SHADING_SMOOTH | " : "",
+		clear & G_ZBUFFER ? "G_ZBUFFER | " : "",
+		clear & G_TEXTURE_GEN ? "G_TEXTURE_GEN | " : "",
+		clear & G_TEXTURE_GEN_LINEAR ? "G_TEXTURE_GEN_LINEAR | " : "",
+		clear & G_CULL_FRONT ? "G_CULL_FRONT | " : "",
+		clear & G_CULL_BACK ? "G_CULL_BACK | " : "",
+		clear & G_FOG ? "G_FOG | " : "",
+		clear & G_CLIPPING ? "G_CLIPPING" : "",
+		set & G_SHADE ? "G_SHADE | " : "",
+		set & G_LIGHTING ? "G_LIGHTING | " : "",
+		set & G_SHADING_SMOOTH ? "G_SHADING_SMOOTH | " : "",
+		set & G_ZBUFFER ? "G_ZBUFFER | " : "",
+		set & G_TEXTURE_GEN ? "G_TEXTURE_GEN | " : "",
+		set & G_TEXTURE_GEN_LINEAR ? "G_TEXTURE_GEN_LINEAR | " : "",
+		set & G_CULL_FRONT ? "G_CULL_FRONT | " : "",
+		set & G_CULL_BACK ? "G_CULL_BACK | " : "",
+		set & G_FOG ? "G_FOG | " : "",
+		set & G_CLIPPING ? "G_CLIPPING" : "" );
+#endif
 }
 
 void gSPSetGeometryMode( u32 mode )
 {
    gSP.geometryMode |= mode;
    gSP.changed |= CHANGED_GEOMETRYMODE;
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPSetGeometryMode( %s%s%s%s%s%s%s%s%s%s );\n",
+		mode & G_SHADE ? "G_SHADE | " : "",
+		mode & G_LIGHTING ? "G_LIGHTING | " : "",
+		mode & G_SHADING_SMOOTH ? "G_SHADING_SMOOTH | " : "",
+		mode & G_ZBUFFER ? "G_ZBUFFER | " : "",
+		mode & G_TEXTURE_GEN ? "G_TEXTURE_GEN | " : "",
+		mode & G_TEXTURE_GEN_LINEAR ? "G_TEXTURE_GEN_LINEAR | " : "",
+		mode & G_CULL_FRONT ? "G_CULL_FRONT | " : "",
+		mode & G_CULL_BACK ? "G_CULL_BACK | " : "",
+		mode & G_FOG ? "G_FOG | " : "",
+		mode & G_CLIPPING ? "G_CLIPPING" : "" );
+#endif
 }
 
 void gSPClearGeometryMode( u32 mode )
 {
    gSP.geometryMode &= ~mode;
    gSP.changed |= CHANGED_GEOMETRYMODE;
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPClearGeometryMode( %s%s%s%s%s%s%s%s%s%s );\n",
+		mode & G_SHADE ? "G_SHADE | " : "",
+		mode & G_LIGHTING ? "G_LIGHTING | " : "",
+		mode & G_SHADING_SMOOTH ? "G_SHADING_SMOOTH | " : "",
+		mode & G_ZBUFFER ? "G_ZBUFFER | " : "",
+		mode & G_TEXTURE_GEN ? "G_TEXTURE_GEN | " : "",
+		mode & G_TEXTURE_GEN_LINEAR ? "G_TEXTURE_GEN_LINEAR | " : "",
+		mode & G_CULL_FRONT ? "G_CULL_FRONT | " : "",
+		mode & G_CULL_BACK ? "G_CULL_BACK | " : "",
+		mode & G_FOG ? "G_FOG | " : "",
+		mode & G_CLIPPING ? "G_CLIPPING" : "" );
+#endif
 }
 
 void gSPSetOtherMode_H(u32 _length, u32 _shift, u32 _data)
@@ -1008,11 +1174,18 @@ void gSPSetOtherMode_L(u32 _length, u32 _shift, u32 _data)
 void gSPLine3D( s32 v0, s32 v1, s32 flag )
 {
    OGL_DrawLine(v0, v1, 1.5f );
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_UNHANDLED, "gSPLine3D( %i, %i, %i );\n", v0, v1, flag );
+#endif
 }
 
 void gSPLineW3D( s32 v0, s32 v1, s32 wd, s32 flag )
 {
    OGL_DrawLine(v0, v1, 1.5f + wd * 0.5f );
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_UNHANDLED, "gSPLineW3D( %i, %i, %i, %i );\n", v0, v1, wd, flag );
+#endif
 }
 
 void gSPBgRect1Cyc( u32 bg )
@@ -1156,6 +1329,20 @@ void gSPObjRectangle( u32 sp )
 
    gDPTextureRectangle( objX, objY, objX + imageW / scaleW - 1, objY + imageH / scaleH - 1, 0, 0.0f, 0.0f, scaleW * (gDP.otherMode.cycleType == G_CYC_COPY ? 4.0f : 1.0f), scaleH );
 }
+
+#if 0
+void gSPObjRectangleR(u32 _sp)
+{
+	const u32 address = RSP_SegmentToPhysical(_sp);
+	const uObjSprite *objSprite = (uObjSprite*)&RDRAM[address];
+	gSPSetSpriteTile(objSprite);
+	ObjCoordinates objCoords(objSprite, true);
+
+	if (objSprite->imageFmt == G_IM_FMT_YUV && (config.generalEmulation.hacks&hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
+		_drawYUVImageToFrameBuffer(objCoords);
+	gSPDrawObjRect(objCoords);
+}
+#endif
 
 void gSPObjLoadTxtr( u32 tx )
 {
