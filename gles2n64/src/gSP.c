@@ -33,20 +33,7 @@ void gSPTriangle(s32 v0, s32 v1, s32 v2)
 {
    if ((v0 < INDEXMAP_SIZE) && (v1 < INDEXMAP_SIZE) && (v2 < INDEXMAP_SIZE))
    {
-
-#if 0
-      // Don't bother with triangles completely outside clipping frustrum
-      if (config.enableClipping)
-      {
-         if (OGL.triangles.vertices[v0].clip & OGL.triangles.vertices[v1].clip & OGL.triangles.vertices[v2].clip)
-         {
-            return;
-         }
-      }
-#endif
-
       OGL_AddTriangle(v0, v1, v2);
-
    }
 
    if (depthBuffer.current) depthBuffer.current->cleared = FALSE;
