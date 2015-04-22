@@ -533,15 +533,26 @@ void OGL_SetColorArray(void)
 
 void OGL_SetTexCoordArrays(void)
 {
-   if (scProgramCurrent->usesT0)
-      glEnableVertexAttribArray(SC_TEXCOORD0);
-   else
-      glDisableVertexAttribArray(SC_TEXCOORD0);
-
-   if (scProgramCurrent->usesT1)
-      glEnableVertexAttribArray(SC_TEXCOORD1);
-   else
+   if (OGL.renderState == RS_TRIANGLE)
+   {
       glDisableVertexAttribArray(SC_TEXCOORD1);
+      if (scProgramCurrent->usesT0 || scProgramCurrent->usesT1)
+         glEnableVertexAttribArray(SC_TEXCOORD0);
+      else
+         glDisableVertexAttribArray(SC_TEXCOORD0);
+   }
+   else
+   {
+      if (scProgramCurrent->usesT0)
+         glEnableVertexAttribArray(SC_TEXCOORD0);
+      else
+         glDisableVertexAttribArray(SC_TEXCOORD0);
+
+      if (scProgramCurrent->usesT1)
+         glEnableVertexAttribArray(SC_TEXCOORD1);
+      else
+         glDisableVertexAttribArray(SC_TEXCOORD1);
+   }
 }
 
 static void OGL_prepareDrawTriangle(bool _dma)
@@ -685,6 +696,8 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
 
 void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls, float ult, float lrs, float lrt, bool flip )
 {
+   float scaleX, scaleY, Z, W;
+   bool updateArrays;
    if (config.hackBanjoTooie)
    {
       if (gDP.textureImage.width == gDP.colorImage.width &&
@@ -698,14 +711,15 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
    if (gSP.changed || gDP.changed)
       OGL_UpdateStates();
 
-   if (OGL.renderState != RS_TEXTUREDRECT || scProgramChanged)
+   updateArrays = OGL.renderState != RS_TEXTUREDRECT;
+   if (updateArrays || scProgramChanged)
    {
       glDisableVertexAttribArray(SC_COLOR);
       OGL_SetTexCoordArrays();
       SC_ForceUniform1f(uRenderState, RS_TEXTUREDRECT);
    }
 
-   if (OGL.renderState != RS_TEXTUREDRECT)
+   if (updateArrays)
    {
       glVertexAttrib4f(SC_COLOR, 0, 0, 0, 0);
       glVertexAttrib4f(SC_POSITION, 0, 0, (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz, 1.0);
@@ -715,17 +729,39 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
       OGL.renderState = RS_TEXTUREDRECT;
    }
 
+#ifdef NEW
+	if (__RSP.cmd == 0xE4 && texturedRectSpecial != NULL && texturedRectSpecial(_params))
+   {
+      gSP.changed |= CHANGED_GEOMETRYMODE;
+      return;
+   }
+#endif
+
    glViewport(0, 0, config.screen.width, config.screen.height);
    glDisable(GL_CULL_FACE);
 
-   OGL.rect[0].x = (float) ulx * (2.0f * VI.rwidth) - 1.0f;
-   OGL.rect[0].y = (float) uly * (-2.0f * VI.rheight) + 1.0f;
-   OGL.rect[1].x = (float) (lrx) * (2.0f * VI.rwidth) - 1.0f;
+   scaleX = VI.rwidth;
+   scaleY = VI.rheight;
+
+   OGL.rect[0].x = (float) ulx * (2.0f * scaleX) - 1.0f;
+   OGL.rect[0].y = (float) uly * (-2.0f * scaleY) + 1.0f;
+   OGL.rect[0].z = Z;
+   OGL.rect[0].w = W;
+
+   OGL.rect[1].x = (float) (lrx) * (2.0f * scaleX) - 1.0f;
    OGL.rect[1].y = OGL.rect[0].y;
+   OGL.rect[1].z = Z;
+   OGL.rect[1].w = W;
+
    OGL.rect[2].x = OGL.rect[0].x;
-   OGL.rect[2].y = (float) (lry) * (-2.0f * VI.rheight) + 1.0f;
+   OGL.rect[2].y = (float) (lry) * (-2.0f * scaleY) + 1.0f;
+   OGL.rect[2].z = Z;
+   OGL.rect[2].w = W;
+
    OGL.rect[3].x = OGL.rect[1].x;
    OGL.rect[3].y = OGL.rect[2].y;
+   OGL.rect[3].z = Z;
+   OGL.rect[3].w = W;
 
    if (scProgramCurrent->usesT0 && cache.current[0] && gSP.textureTile[0])
    {
@@ -791,7 +827,7 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
       OGL.rect[3].t1 *= cache.current[1]->scaleT;
    }
 
-   if ((gDP.otherMode.cycleType == G_CYC_COPY) && !config.texture.forceBilinear)
+   if (gDP.otherMode.cycleType == G_CYC_COPY)
    {
       glActiveTexture(GL_TEXTURE0);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
@@ -804,6 +840,7 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
       OGL.rect[1].t0 = OGL.rect[3].t0;
       OGL.rect[1].s1 = OGL.rect[0].s1;
       OGL.rect[1].t1 = OGL.rect[3].t1;
+
       OGL.rect[2].s0 = OGL.rect[3].s0;
       OGL.rect[2].t0 = OGL.rect[0].t0;
       OGL.rect[2].s1 = OGL.rect[3].s1;
@@ -815,6 +852,7 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
       OGL.rect[1].t0 = OGL.rect[0].t0;
       OGL.rect[1].s1 = OGL.rect[3].s1;
       OGL.rect[1].t1 = OGL.rect[0].t1;
+
       OGL.rect[2].s0 = OGL.rect[0].s0;
       OGL.rect[2].t0 = OGL.rect[3].t0;
       OGL.rect[2].s1 = OGL.rect[0].s1;
@@ -822,6 +860,7 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
    }
 
    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
 }
 
 void OGL_ClearDepthBuffer(void)
