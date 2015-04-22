@@ -413,61 +413,10 @@ void OGL_UpdateStates(void)
       SC_SetUniform1f(uPrimLODFrac, gDP.primColor.l);
    }
 
-   if ((gDP.changed & CHANGED_RENDERMODE) || (gDP.changed & CHANGED_CYCLETYPE))
+   if ((gDP.changed & (CHANGED_RENDERMODE | CHANGED_CYCLETYPE)))
    {
-#ifndef OLD_BLENDMODE
       OGL_SetBlendMode();
-#else
-      if ((gDP.otherMode.forceBlender) &&
-            (gDP.otherMode.cycleType != G_CYC_COPY) &&
-            (gDP.otherMode.cycleType != G_CYC_FILL) &&
-            !(gDP.otherMode.alphaCvgSel))
-      {
-         glEnable( GL_BLEND );
-
-         switch (gDP.otherMode.l >> 16)
-         {
-            case 0x0448: // Add
-            case 0x055A:
-               glBlendFunc( GL_ONE, GL_ONE );
-               break;
-            case 0x0C08: // 1080 Sky
-            case 0x0F0A: // Used LOTS of places
-               glBlendFunc( GL_ONE, GL_ZERO );
-               break;
-
-            case 0x0040: // Fzero
-            case 0xC810: // Blends fog
-            case 0xC811: // Blends fog
-            case 0x0C18: // Standard interpolated blend
-            case 0x0C19: // Used for antialiasing
-            case 0x0050: // Standard interpolated blend
-            case 0x0055: // Used for antialiasing
-               glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-               break;
-
-            case 0x0FA5: // Seems to be doing just blend color - maybe combiner can be used for this?
-            case 0x5055: // Used in Paper Mario intro, I'm not sure if this is right...
-               glBlendFunc( GL_ZERO, GL_ONE );
-               break;
-
-            default:
-               LOG(LOG_VERBOSE, "Unhandled blend mode=%x", gDP.otherMode.l >> 16);
-               glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-               break;
-         }
-      }
-      else
-      {
-         glDisable( GL_BLEND );
-      }
-
-      if (gDP.otherMode.cycleType == G_CYC_FILL)
-      {
-         glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-         glEnable( GL_BLEND );
-      }
-#endif
+      gDP.changed &= ~(CHANGED_RENDERMODE | CHANGED_CYCLETYPE);
    }
 
    gDP.changed &= CHANGED_TILE | CHANGED_TMEM;
