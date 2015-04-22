@@ -14169,24 +14169,28 @@ void CombineBlender(void)
    {
       switch (blendmode)
       {
-         // Mace objects
+         /* Mace objects */
          case 0x0382:
+			/* Mace special blend mode */
          case 0x0091:
-            // 1080 sky
+            /* 1080 Snowboarding - sky */
          case 0x0c08:
-            // Mario kart player select
-            // clr_in * 0 + clr_in * 1
-            //  - or just clr_in, no matter what alpha
+            /* Mario Kart 64 - player select
+             * clr_in * 0 + clr_in * 1
+             * - or just clr_in, no matter what alpha
+             */
          case 0x0f0a:
-            //DK64 blue prints
+            /* Donkey Kong 64 blue prints */
          case 0x0302:
-            //Sin and Punishment
+            /* Sin and Punishment */
          case 0xcb02:
-            // Battlezone
-            // clr_in * a + clr_in * (1-a)
+			/* Bomberman 2 special blend mode */
+         case 0xA500:
+            /* Battlezone
+             * clr_in * a + clr_in * (1-a) */
          case BLEND_FOG_ASHADE:
          case 0x00c0:
-            //ISS64
+            /* ISS64 */
          case 0xc302:
             A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
             break;
@@ -14197,9 +14201,16 @@ void CombineBlender(void)
             A_BLEND (GR_BLEND_ONE, GR_BLEND_ONE);
             break;
 
-            // LOT in Zelda: MM
+            /* LOT in Zelda: Majora's Mask */
          case 0xaf50:
-         case 0x0f5a: //clr_in * 0 + clr_mem * 1
+            /* LOT in Zelda: Majora's Mask */
+            /* clr_in * 0 + clr_mem * 1 */
+			case 0x0FA5:
+            /* Seems to be doing just blend color - maybe combiner can be used for this? */
+         case 0x0f5a:
+            /* used in Paper Mario intro, I'm not sure if this is right... */
+            /* clr_in * 0 + clr_mem * 1 */
+         case 0x5055:
             A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
             break;
 
@@ -14207,6 +14218,8 @@ void CombineBlender(void)
             A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE_MINUS_SRC_ALPHA);
             break;
          case 0xf550: //clr_fog * a_fog + clr_mem * (1-a)
+			case 0x0550: // bomberman 64
+			case 0x0D18: //clr_in * a_fog + clr_mem * (1-a)
             A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
             {
                uint32_t temp = rdp.prim_color;
@@ -14226,7 +14239,6 @@ void CombineBlender(void)
             break;
 
          case 0x0150: //spiderman
-         case 0x0d18: //clr_in * a_fog + clr_mem * (1-a)
             A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
             if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_2CYCLE && rdp.cycle2 != 0x01ff1fff)
             {
@@ -14261,6 +14273,17 @@ void CombineBlender(void)
                rdp.prim_color_sep[3] = (rdp.prim_color & 0x000000FF);
             }
             A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE);
+            break;
+
+			case 0x0040: // Fzero
+			case 0xC810: // Blends fog
+			case 0xC811: // Blends fog
+			case 0x0C18: // Standard interpolated blend
+			case 0x0C19: // Used for antialiasing
+			case 0x0050: // Standard interpolated blend
+			case 0x0051: // Standard interpolated blend
+			case 0x0055: // Used for antialiasing
+            A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
             break;
 
          default:
