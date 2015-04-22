@@ -246,8 +246,7 @@ void F3D_Quad( u32 w0, u32 w1 )
 void F3D_RDPHalf_1( u32 w0, u32 w1 )
 {
    gDP.half_1 = w1;
-   /* TODO/FIXME - implement */
-	//RDP_Half_1(w1);
+	RDP_Half_1(w1);
 }
 
 void F3D_RDPHalf_2( u32 w0, u32 w1 )

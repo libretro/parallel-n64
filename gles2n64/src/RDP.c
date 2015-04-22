@@ -6,6 +6,9 @@
 #include "Debug.h"
 #include "Common.h"
 #include "gSP.h"
+#include "RDP.h"
+
+RDPInfo __RDP;
 
 void RDP_Unknown( u32 w0, u32 w1 )
 {
@@ -361,62 +364,222 @@ void RDP_TriShadeTxtr(u32 _w0, u32 _w1)
 	gDPTriShadeTxtr(_w0, _w1);
 }
 
+void RDP_TriFillZ( u32 _w0, u32 _w1 )
+{
+	gDPTriFillZ(_w0, _w1);
+}
+
 void RDP_TriShadeTxtrZBuff(u32 _w0, u32 _w1)
 {
 	gDPTriShadeTxtrZ(_w0, _w1);
 }
 
-void RDP_Init()
+void RDP_TriShadeZ( u32 _w0, u32 _w1 )
 {
-   int i;
-    // Initialize RDP commands to RDP_UNKNOWN
-    for (i = 0xC8; i <= 0xCF; i++)
-        GBI.cmd[i] = RDP_Unknown;
-
-    // Initialize RDP commands to RDP_UNKNOWN
-    for (i = 0xE4; i <= 0xFF; i++)
-        GBI.cmd[i] = RDP_Unknown;
-
-    // Set known GBI commands
-    GBI.cmd[G_NOOP]             = RDP_NoOp;
-    GBI.cmd[G_SETCIMG]          = RDP_SetCImg;
-    GBI.cmd[G_SETZIMG]          = RDP_SetZImg;
-    GBI.cmd[G_SETTIMG]          = RDP_SetTImg;
-    GBI.cmd[G_SETCOMBINE]       = RDP_SetCombine;
-    GBI.cmd[G_SETENVCOLOR]      = RDP_SetEnvColor;
-    GBI.cmd[G_SETPRIMCOLOR]     = RDP_SetPrimColor;
-    GBI.cmd[G_SETBLENDCOLOR]    = RDP_SetBlendColor;
-    GBI.cmd[G_SETFOGCOLOR]      = RDP_SetFogColor;
-    GBI.cmd[G_SETFILLCOLOR]     = RDP_SetFillColor;
-    GBI.cmd[G_FILLRECT]         = RDP_FillRect;
-    GBI.cmd[G_SETTILE]          = RDP_SetTile;
-    GBI.cmd[G_LOADTILE]         = RDP_LoadTile;
-    GBI.cmd[G_LOADBLOCK]        = RDP_LoadBlock;
-    GBI.cmd[G_SETTILESIZE]      = RDP_SetTileSize;
-    GBI.cmd[G_LOADTLUT]         = RDP_LoadTLUT;
-    GBI.cmd[G_RDPSETOTHERMODE]  = RDP_SetOtherMode;
-    GBI.cmd[G_SETPRIMDEPTH]     = RDP_SetPrimDepth;
-    GBI.cmd[G_SETSCISSOR]       = RDP_SetScissor;
-    GBI.cmd[G_SETCONVERT]       = RDP_SetConvert;
-    GBI.cmd[G_SETKEYR]          = RDP_SetKeyR;
-    GBI.cmd[G_SETKEYGB]         = RDP_SetKeyGB;
-    GBI.cmd[G_RDPFULLSYNC]      = RDP_FullSync;
-    GBI.cmd[G_RDPTILESYNC]      = RDP_TileSync;
-    GBI.cmd[G_RDPPIPESYNC]      = RDP_PipeSync;
-    GBI.cmd[G_RDPLOADSYNC]      = RDP_LoadSync;
-    GBI.cmd[G_TEXRECTFLIP]      = RDP_TexRectFlip;
-    GBI.cmd[G_TEXRECT]          = RDP_TexRect;
-
-    GBI.cmd[G_RDPNOOP]          = RDP_NoOp;
-
-    //Low Level RDP Drawing Commands:
-    GBI.cmd[G_TRI_FILL]             = RDP_TriFill;
-    GBI.cmd[G_TRI_FILL_ZBUFF]       = RDP_TriFillZBuff;
-    GBI.cmd[G_TRI_TXTR]             = RDP_TriTxtr;
-    GBI.cmd[G_TRI_TXTR_ZBUFF]       = RDP_TriTxtrZBuff;
-    GBI.cmd[G_TRI_SHADE]            = RDP_TriShade;
-    GBI.cmd[G_TRI_SHADE_TXTR]       = RDP_TriShadeTxtr;
-    GBI.cmd[G_TRI_SHADE_TXTR_ZBUFF] = RDP_TriShadeTxtrZBuff;
-
+	gDPTriShadeZ(_w0, _w1);
 }
 
+void RDP_TriTxtrZ( u32 _w0, u32 _w1 )
+{
+	gDPTriTxtrZ(_w0, _w1);
+}
+
+void RDP_TriShadeTxtrZ( u32 _w0, u32 _w1 )
+{
+	gDPTriShadeTxtrZ(_w0, _w1);
+}
+
+void RDP_Init(void)
+{
+   int i;
+   // Initialize RDP commands to RDP_UNKNOWN
+   for (i = 0xC8; i <= 0xCF; i++)
+      GBI.cmd[i] = RDP_Unknown;
+
+   // Initialize RDP commands to RDP_UNKNOWN
+   for (i = 0xE4; i <= 0xFF; i++)
+      GBI.cmd[i] = RDP_Unknown;
+
+   // Set known GBI commands
+   GBI.cmd[G_NOOP]             = RDP_NoOp;
+   GBI.cmd[G_SETCIMG]          = RDP_SetCImg;
+   GBI.cmd[G_SETZIMG]          = RDP_SetZImg;
+   GBI.cmd[G_SETTIMG]          = RDP_SetTImg;
+   GBI.cmd[G_SETCOMBINE]       = RDP_SetCombine;
+   GBI.cmd[G_SETENVCOLOR]      = RDP_SetEnvColor;
+   GBI.cmd[G_SETPRIMCOLOR]     = RDP_SetPrimColor;
+   GBI.cmd[G_SETBLENDCOLOR]    = RDP_SetBlendColor;
+   GBI.cmd[G_SETFOGCOLOR]      = RDP_SetFogColor;
+   GBI.cmd[G_SETFILLCOLOR]     = RDP_SetFillColor;
+   GBI.cmd[G_FILLRECT]         = RDP_FillRect;
+   GBI.cmd[G_SETTILE]          = RDP_SetTile;
+   GBI.cmd[G_LOADTILE]         = RDP_LoadTile;
+   GBI.cmd[G_LOADBLOCK]        = RDP_LoadBlock;
+   GBI.cmd[G_SETTILESIZE]      = RDP_SetTileSize;
+   GBI.cmd[G_LOADTLUT]         = RDP_LoadTLUT;
+   GBI.cmd[G_RDPSETOTHERMODE]  = RDP_SetOtherMode;
+   GBI.cmd[G_SETPRIMDEPTH]     = RDP_SetPrimDepth;
+   GBI.cmd[G_SETSCISSOR]       = RDP_SetScissor;
+   GBI.cmd[G_SETCONVERT]       = RDP_SetConvert;
+   GBI.cmd[G_SETKEYR]          = RDP_SetKeyR;
+   GBI.cmd[G_SETKEYGB]         = RDP_SetKeyGB;
+   GBI.cmd[G_RDPFULLSYNC]      = RDP_FullSync;
+   GBI.cmd[G_RDPTILESYNC]      = RDP_TileSync;
+   GBI.cmd[G_RDPPIPESYNC]      = RDP_PipeSync;
+   GBI.cmd[G_RDPLOADSYNC]      = RDP_LoadSync;
+   GBI.cmd[G_TEXRECTFLIP]      = RDP_TexRectFlip;
+   GBI.cmd[G_TEXRECT]          = RDP_TexRect;
+
+   /* FIXME/TODO - GLiden64 doesn't have this - remove it? */
+#if 1
+   GBI.cmd[G_RDPNOOP]          = RDP_NoOp;
+
+   //Low Level RDP Drawing Commands:
+   GBI.cmd[G_TRI_FILL]             = RDP_TriFill;
+   GBI.cmd[G_TRI_FILL_ZBUFF]       = RDP_TriFillZBuff;
+   GBI.cmd[G_TRI_TXTR]             = RDP_TriTxtr;
+   GBI.cmd[G_TRI_TXTR_ZBUFF]       = RDP_TriTxtrZBuff;
+   GBI.cmd[G_TRI_SHADE]            = RDP_TriShade;
+   GBI.cmd[G_TRI_SHADE_TXTR]       = RDP_TriShadeTxtr;
+   GBI.cmd[G_TRI_SHADE_TXTR_ZBUFF] = RDP_TriShadeTxtrZBuff;
+#endif
+
+   __RDP.w2 = __RDP.w3 = 0;
+   __RDP.cmd_ptr = __RDP.cmd_cur = 0;
+}
+
+static
+GBIFunc LLEcmd[64] = {
+	/* 0x00 */
+	RDP_NoOp,			RDP_Unknown,		RDP_Unknown,		RDP_Unknown,
+	RDP_Unknown,		RDP_Unknown,		RDP_Unknown,		RDP_Unknown,
+	RDP_TriFill,		RDP_TriFillZ,		RDP_TriTxtr,		RDP_TriTxtrZ,
+	RDP_TriShade,		RDP_TriShadeZ,		RDP_TriShadeTxtr,	RDP_TriShadeTxtrZ,
+	/* 0x10 */
+	RDP_Unknown,		RDP_Unknown,		RDP_Unknown,		RDP_Unknown,
+	RDP_Unknown,		RDP_Unknown,		RDP_Unknown,		RDP_Unknown,
+	RDP_Unknown,		RDP_Unknown,		RDP_Unknown,		RDP_Unknown,
+	RDP_Unknown,		RDP_Unknown,		RDP_Unknown,		RDP_Unknown,
+	/* 0x20 */
+	RDP_Unknown,		RDP_Unknown,		RDP_Unknown,		RDP_Unknown,
+	RDP_TexRect,		RDP_TexRectFlip,	RDP_LoadSync,		RDP_PipeSync,
+	RDP_TileSync,		RDP_FullSync,		RDP_SetKeyGB,		RDP_SetKeyR,
+	RDP_SetConvert,		RDP_SetScissor,		RDP_SetPrimDepth,	RDP_SetOtherMode,
+	/* 0x30 */
+	RDP_LoadTLUT,		RDP_Unknown,		RDP_SetTileSize,	RDP_LoadBlock,
+	RDP_LoadTile,		RDP_SetTile,		RDP_FillRect,		RDP_SetFillColor,
+	RDP_SetFogColor,	RDP_SetBlendColor,	RDP_SetPrimColor,	RDP_SetEnvColor,
+	RDP_SetCombine,		RDP_SetTImg,		RDP_SetZImg,		RDP_SetCImg
+};
+
+static
+const u32 CmdLength[64] =
+{
+	8,                      // 0x00, No Op
+	8,                      // 0x01, ???
+	8,                      // 0x02, ???
+	8,                      // 0x03, ???
+	8,                      // 0x04, ???
+	8,                      // 0x05, ???
+	8,                      // 0x06, ???
+	8,                      // 0x07, ???
+	32,                     // 0x08, Non-Shaded Triangle
+	32+16,          // 0x09, Non-Shaded, Z-Buffered Triangle
+	32+64,          // 0x0a, Textured Triangle
+	32+64+16,       // 0x0b, Textured, Z-Buffered Triangle
+	32+64,          // 0x0c, Shaded Triangle
+	32+64+16,       // 0x0d, Shaded, Z-Buffered Triangle
+	32+64+64,       // 0x0e, Shaded+Textured Triangle
+	32+64+64+16,// 0x0f, Shaded+Textured, Z-Buffered Triangle
+	8,                      // 0x10, ???
+	8,                      // 0x11, ???
+	8,                      // 0x12, ???
+	8,                      // 0x13, ???
+	8,                      // 0x14, ???
+	8,                      // 0x15, ???
+	8,                      // 0x16, ???
+	8,                      // 0x17, ???
+	8,                      // 0x18, ???
+	8,                      // 0x19, ???
+	8,                      // 0x1a, ???
+	8,                      // 0x1b, ???
+	8,                      // 0x1c, ???
+	8,                      // 0x1d, ???
+	8,                      // 0x1e, ???
+	8,                      // 0x1f, ???
+	8,                      // 0x20, ???
+	8,                      // 0x21, ???
+	8,                      // 0x22, ???
+	8,                      // 0x23, ???
+	16,                     // 0x24, Texture_Rectangle
+	16,                     // 0x25, Texture_Rectangle_Flip
+	8,                      // 0x26, Sync_Load
+	8,                      // 0x27, Sync_Pipe
+	8,                      // 0x28, Sync_Tile
+	8,                      // 0x29, Sync_Full
+	8,                      // 0x2a, Set_Key_GB
+	8,                      // 0x2b, Set_Key_R
+	8,                      // 0x2c, Set_Convert
+	8,                      // 0x2d, Set_Scissor
+	8,                      // 0x2e, Set_Prim_Depth
+	8,                      // 0x2f, Set_Other_Modes
+	8,                      // 0x30, Load_TLUT
+	8,                      // 0x31, ???
+	8,                      // 0x32, Set_Tile_Size
+	8,                      // 0x33, Load_Block
+	8,                      // 0x34, Load_Tile
+	8,                      // 0x35, Set_Tile
+	8,                      // 0x36, Fill_Rectangle
+	8,                      // 0x37, Set_Fill_Color
+	8,                      // 0x38, Set_Fog_Color
+	8,                      // 0x39, Set_Blend_Color
+	8,                      // 0x3a, Set_Prim_Color
+	8,                      // 0x3b, Set_Env_Color
+	8,                      // 0x3c, Set_Combine
+	8,                      // 0x3d, Set_Texture_Image
+	8,                      // 0x3e, Set_Mask_Image
+	8                       // 0x3f, Set_Color_Image
+};
+
+void RDP_Half_1( u32 _c )
+{
+	u32 w0 = 0, w1 = _c;
+	u32 cmd = _SHIFTR( _c, 24, 8 );
+	if (cmd >= 0xc8 && cmd <=0xcf)
+   {
+      /* triangle command */
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPHalf_1 LLE Triangle\n");
+#endif
+		__RDP.cmd_ptr = 0;
+		__RDP.cmd_cur = 0;
+		do
+      {
+         __RDP.cmd_data[__RDP.cmd_ptr++] = w1;
+         RSP_CheckDLCounter();
+
+         w0 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
+         w1 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+         __RSP.cmd = _SHIFTR( w0, 24, 8 );
+
+#ifdef DEBUG
+         DebugRSPState( __RSP.PCi, __RSP.PC[__RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
+         DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
+#endif
+
+         __RSP.PC[__RSP.PCi] += 8;
+         // RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[RSP.PC[RSP.PCi]], 24, 8 );
+      } while (__RSP.cmd != 0xb3);
+		__RDP.cmd_data[__RDP.cmd_ptr++] = w1;
+		__RSP.cmd = (__RDP.cmd_data[__RDP.cmd_cur] >> 24) & 0x3f;
+		w0 = __RDP.cmd_data[__RDP.cmd_cur+0];
+		w1 = __RDP.cmd_data[__RDP.cmd_cur+1];
+		LLEcmd[__RSP.cmd](w0, w1);
+	}
+#ifdef DEBUG
+   else
+   {
+		DebugMsg( DEBUG_HIGH | DEBUG_IGNORED, "gDPHalf_1()\n" );
+	}
+#endif
+}
