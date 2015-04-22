@@ -128,6 +128,13 @@ extern "C" {
 #define G_CC_HILITERGBDECALA2       ENVIRONMENT, COMBINED, TEXEL0, COMBINED, 0, 0, 0, TEXEL0
 #define G_CC_HILITERGBPASSA2        ENVIRONMENT, COMBINED, TEXEL0, COMBINED, 0, 0, 0, COMBINED
 
+// Internal combiner commands
+#define LOAD		0
+#define SUB		1
+#define MUL		2
+#define ADD		3
+#define INTER		4
+
 // Internal generalized combiner inputs
 #define COMBINED        0
 #define TEXEL0          1
@@ -187,10 +194,15 @@ typedef struct ShaderProgram
 #define SC_IGNORE_RGB1      (1<<2)
 #define SC_IGNORE_ALPHA1    (1<<3)
 
+struct CombineCycle
+{
+	int sa, sb, m, a;
+};
+
 typedef struct
 {
    gDPCombine combine;
-   int decode[4][4];
+   struct CombineCycle decode[4];
    int flags;
 } DecodedMux;
 

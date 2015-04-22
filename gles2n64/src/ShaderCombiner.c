@@ -235,7 +235,7 @@ const char * _alpha_param_str(int param)
 
 void *mux_new(u64 dmux, bool cycle2)
 {
-   int i, j;
+   int i;
    DecodedMux *mux = malloc(sizeof(DecodedMux)); 
 
    mux->combine.mux = dmux;
@@ -243,29 +243,34 @@ void *mux_new(u64 dmux, bool cycle2)
 
    //set to ZERO.
    for(i = 0; i < 4;i++)
-      for(j = 0; j < 4; j++)
-         mux->decode[i][j] = ZERO;
+   {
+      mux->decode[i].sa = ZERO;
+      mux->decode[i].sb = ZERO;
+      mux->decode[i].m  = ZERO;
+      mux->decode[i].a  = ZERO;
+   }
 
    //rgb cycle 0
-   mux->decode[0][0] = saRGBExpanded[mux->combine.saRGB0];
-   mux->decode[0][1] = sbRGBExpanded[mux->combine.sbRGB0];
-   mux->decode[0][2] = mRGBExpanded[mux->combine.mRGB0];
-   mux->decode[0][3] = aRGBExpanded[mux->combine.aRGB0];
-   mux->decode[1][0] = saAExpanded[mux->combine.saA0];
-   mux->decode[1][1] = sbAExpanded[mux->combine.sbA0];
-   mux->decode[1][2] = mAExpanded[mux->combine.mA0];
-   mux->decode[1][3] = aAExpanded[mux->combine.aA0];
+   mux->decode[0].sa = saRGBExpanded[mux->combine.saRGB0];
+   mux->decode[0].sb = sbRGBExpanded[mux->combine.sbRGB0];
+   mux->decode[0].m  = mRGBExpanded[mux->combine.mRGB0];
+   mux->decode[0].a  = aRGBExpanded[mux->combine.aRGB0];
+   mux->decode[1].sa = saAExpanded[mux->combine.saA0];
+   mux->decode[1].sb = sbAExpanded[mux->combine.sbA0];
+   mux->decode[1].m  = mAExpanded[mux->combine.mA0];
+   mux->decode[1].a  = aAExpanded[mux->combine.aA0];
+
    if (cycle2)
    {
       //rgb cycle 1
-      mux->decode[2][0] = saRGBExpanded[mux->combine.saRGB1];
-      mux->decode[2][1] = sbRGBExpanded[mux->combine.sbRGB1];
-      mux->decode[2][2] = mRGBExpanded[mux->combine.mRGB1];
-      mux->decode[2][3] = aRGBExpanded[mux->combine.aRGB1];
-      mux->decode[3][0] = saAExpanded[mux->combine.saA1];
-      mux->decode[3][1] = sbAExpanded[mux->combine.sbA1];
-      mux->decode[3][2] = mAExpanded[mux->combine.mA1];
-      mux->decode[3][3] = aAExpanded[mux->combine.aA1];
+      mux->decode[2].sa = saRGBExpanded[mux->combine.saRGB1];
+      mux->decode[2].sb = sbRGBExpanded[mux->combine.sbRGB1];
+      mux->decode[2].m  = mRGBExpanded[mux->combine.mRGB1];
+      mux->decode[2].a  = aRGBExpanded[mux->combine.aRGB1];
+      mux->decode[3].sa = saAExpanded[mux->combine.saA1];
+      mux->decode[3].sb = sbAExpanded[mux->combine.sbA1];
+      mux->decode[3].m  = mAExpanded[mux->combine.mA1];
+      mux->decode[3].a  = aAExpanded[mux->combine.aA1];
 
       //texel 0/1 are swapped in 2nd cycle.
       mux_swap(mux, 1, TEXEL0, TEXEL1);
@@ -309,10 +314,10 @@ void *mux_new(u64 dmux, bool cycle2)
    //mutiplying by zero: (A-B)*0 + C = C
    for(i = 0 ; i < 4; i++)
    {
-      if (mux->decode[i][2] == ZERO)
+      if (mux->decode[i].m == ZERO)
       {
-         mux->decode[i][0] = ZERO;
-         mux->decode[i][1] = ZERO;
+         mux->decode[i].sa = ZERO;
+         mux->decode[i].sb = ZERO;
       }
    }
 
@@ -332,11 +337,11 @@ void *mux_new(u64 dmux, bool cycle2)
       if (!(mux_find(mux, 2, COMBINED_ALPHA) || mux_find(mux, 3, COMBINED_ALPHA) || mux_find(mux, 3, COMBINED)))
          mux->flags |= SC_IGNORE_ALPHA0;
 
-      if (mux->decode[2][0] == ZERO && mux->decode[2][1] == ZERO && mux->decode[2][2] == ZERO && mux->decode[2][3] == COMBINED)
+      if (mux->decode[2].sa == ZERO && mux->decode[2].sb == ZERO && mux->decode[2].m == ZERO && mux->decode[2].a == COMBINED)
          mux->flags |= SC_IGNORE_RGB1;
 
-      if (mux->decode[3][0] == ZERO && mux->decode[3][1] == ZERO && mux->decode[3][2] == ZERO &&
-            (mux->decode[3][3] == COMBINED_ALPHA || mux->decode[3][3] == COMBINED))
+      if (mux->decode[3].sa == ZERO && mux->decode[3].sb == ZERO && mux->decode[3].m == ZERO &&
+            (mux->decode[3].a == COMBINED_ALPHA || mux->decode[3].a == COMBINED))
          mux->flags |= SC_IGNORE_ALPHA1;
    }
 
@@ -345,37 +350,48 @@ void *mux_new(u64 dmux, bool cycle2)
 
 bool mux_find(DecodedMux *dmux, int index, int src)
 {
-   int j;
-   for(j = 0;j < 4; j++)
-      if (dmux->decode[index][j] == src) return true;
+      if (dmux->decode[index].sa == src) return true;
+      if (dmux->decode[index].sb == src) return true;
+      if (dmux->decode[index].m == src) return true;
+      if (dmux->decode[index].a == src) return true;
    return false;
 }
 
 bool mux_replace(DecodedMux *dmux, int cycle, int src, int dest)
 {
-   int i, j, r;
+   int i, r;
    r = false;
 
    for(i = 0; i < 2; i++)
    {
       int ii = (cycle == 0) ? i : (2+i);
-      for(j = 0; j < 4;j++)
-         if (dmux->decode[ii][j] == src) {dmux->decode[ii][j] = dest; r=true;}
+      if (dmux->decode[ii].sa == src) {dmux->decode[ii].sa = dest; r=true;}
+      if (dmux->decode[ii].sb == src) {dmux->decode[ii].sb = dest; r=true;}
+      if (dmux->decode[ii].m  == src) {dmux->decode[ii].m  = dest; r=true;}
+      if (dmux->decode[ii].a  == src) {dmux->decode[ii].a  = dest; r=true;}
    }
    return r;
 }
 
 bool mux_swap(DecodedMux *dmux, int cycle, int src0, int src1)
 {
-   int i, j, r;
+   int i, r;
    r = false;
    for(i = 0; i < 2; i++)
    {
       int ii = (cycle == 0) ? i : (2+i);
-      for(j = 0; j < 4; j++)
       {
-         if (dmux->decode[ii][j] == src0) {dmux->decode[ii][j] = src1; r=true;}
-         else if (dmux->decode[ii][j] == src1) {dmux->decode[ii][j] = src0; r=true;}
+         if (dmux->decode[ii].sa == src0) {dmux->decode[ii].sa = src1; r=true;}
+         else if (dmux->decode[ii].sa == src1) {dmux->decode[ii].sa = src0; r=true;}
+
+         if (dmux->decode[ii].sb == src0) {dmux->decode[ii].sb = src1; r=true;}
+         else if (dmux->decode[ii].sb == src1) {dmux->decode[ii].sb = src0; r=true;}
+
+         if (dmux->decode[ii].m == src0) {dmux->decode[ii].m = src1; r=true;}
+         else if (dmux->decode[ii].m == src1) {dmux->decode[ii].m = src0; r=true;}
+
+         if (dmux->decode[ii].a == src0) {dmux->decode[ii].a = src1; r=true;}
+         else if (dmux->decode[ii].a == src1) {dmux->decode[ii].a = src0; r=true;}
       }
    }
    return r;
@@ -597,6 +613,8 @@ void ShaderCombiner_Init(void)
    glGetShaderiv(_vertex_shader, GL_COMPILE_STATUS, &success);
    if (!success)
       _glcompiler_error(_vertex_shader);
+
+   gDP.otherMode.cycleType = G_CYC_1CYCLE;
 }
 
 void ShaderCombiner_DeletePrograms(ShaderProgram *prog)
@@ -727,12 +745,26 @@ ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
       //make sure were not ignoring cycle:
       if ((dmux->flags&(1<<i)) == 0)
       {
-         for(j = 0;j < 4; j++)
          {
-            prog->usesT0 |= (dmux->decode[i][j] == TEXEL0 || dmux->decode[i][j] == TEXEL0_ALPHA);
-            prog->usesT1 |= (dmux->decode[i][j] == TEXEL1 || dmux->decode[i][j] == TEXEL1_ALPHA);
-            prog->usesCol |= (dmux->decode[i][j] == SHADE || dmux->decode[i][j] == SHADE_ALPHA);
-            prog->usesNoise |= (dmux->decode[i][j] == NOISE);
+            prog->usesT0 |= (dmux->decode[i].sa == TEXEL0 || dmux->decode[i].sa == TEXEL0_ALPHA);
+            prog->usesT1 |= (dmux->decode[i].sa == TEXEL1 || dmux->decode[i].sa == TEXEL1_ALPHA);
+            prog->usesCol |= (dmux->decode[i].sa == SHADE || dmux->decode[i].sa == SHADE_ALPHA);
+            prog->usesNoise |= (dmux->decode[i].sa == NOISE);
+
+            prog->usesT0 |= (dmux->decode[i].sb == TEXEL0 || dmux->decode[i].sb == TEXEL0_ALPHA);
+            prog->usesT1 |= (dmux->decode[i].sb == TEXEL1 || dmux->decode[i].sb == TEXEL1_ALPHA);
+            prog->usesCol |= (dmux->decode[i].sb == SHADE || dmux->decode[i].sb == SHADE_ALPHA);
+            prog->usesNoise |= (dmux->decode[i].sb == NOISE);
+
+            prog->usesT0 |= (dmux->decode[i].m == TEXEL0 || dmux->decode[i].m == TEXEL0_ALPHA);
+            prog->usesT1 |= (dmux->decode[i].m == TEXEL1 || dmux->decode[i].m == TEXEL1_ALPHA);
+            prog->usesCol |= (dmux->decode[i].m == SHADE || dmux->decode[i].m == SHADE_ALPHA);
+            prog->usesNoise |= (dmux->decode[i].m == NOISE);
+
+            prog->usesT0 |= (dmux->decode[i].a == TEXEL0 || dmux->decode[i].a == TEXEL0_ALPHA);
+            prog->usesT1 |= (dmux->decode[i].a == TEXEL1 || dmux->decode[i].a == TEXEL1_ALPHA);
+            prog->usesCol |= (dmux->decode[i].a == SHADE || dmux->decode[i].a == SHADE_ALPHA);
+            prog->usesNoise |= (dmux->decode[i].a == NOISE);
          }
       }
    }
@@ -750,20 +782,20 @@ ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
       if ((dmux->flags&(1<<(i*2))) == 0)
       {
          buffer += sprintf(buffer, "lFragColor.rgb = (%s - %s) * %s + %s; \n",
-               _color_param_str(dmux->decode[i*2][0]),
-               _color_param_str(dmux->decode[i*2][1]),
-               _color_param_str(dmux->decode[i*2][2]),
-               _color_param_str(dmux->decode[i*2][3])
+               _color_param_str(dmux->decode[i*2].sa),
+               _color_param_str(dmux->decode[i*2].sb),
+               _color_param_str(dmux->decode[i*2].m),
+               _color_param_str(dmux->decode[i*2].a)
                );
       }
 
       if ((dmux->flags&(1<<(i*2+1))) == 0)
       {
          buffer += sprintf(buffer, "lFragColor.a = (%s - %s) * %s + %s; \n",
-               _alpha_param_str(dmux->decode[i*2+1][0]),
-               _alpha_param_str(dmux->decode[i*2+1][1]),
-               _alpha_param_str(dmux->decode[i*2+1][2]),
-               _alpha_param_str(dmux->decode[i*2+1][3])
+               _alpha_param_str(dmux->decode[i*2+1].sa),
+               _alpha_param_str(dmux->decode[i*2+1].sb),
+               _alpha_param_str(dmux->decode[i*2+1].m),
+               _alpha_param_str(dmux->decode[i*2+1].a)
                );
       }
       buffer += sprintf(buffer, "gl_FragColor = lFragColor; \n");
