@@ -233,7 +233,56 @@ const char * _alpha_param_str(int param)
    }
 }
 
-void *mux_new(u64 dmux, bool cycle2)
+static bool mux_find(DecodedMux *dmux, int index, int src)
+{
+      if (dmux->decode[index].sa == src) return true;
+      if (dmux->decode[index].sb == src) return true;
+      if (dmux->decode[index].m == src) return true;
+      if (dmux->decode[index].a == src) return true;
+   return false;
+}
+
+static bool mux_swap(DecodedMux *dmux, int cycle, int src0, int src1)
+{
+   int i, r;
+   r = false;
+   for(i = 0; i < 2; i++)
+   {
+      int ii = (cycle == 0) ? i : (2+i);
+      {
+         if (dmux->decode[ii].sa == src0) {dmux->decode[ii].sa = src1; r=true;}
+         else if (dmux->decode[ii].sa == src1) {dmux->decode[ii].sa = src0; r=true;}
+
+         if (dmux->decode[ii].sb == src0) {dmux->decode[ii].sb = src1; r=true;}
+         else if (dmux->decode[ii].sb == src1) {dmux->decode[ii].sb = src0; r=true;}
+
+         if (dmux->decode[ii].m == src0) {dmux->decode[ii].m = src1; r=true;}
+         else if (dmux->decode[ii].m == src1) {dmux->decode[ii].m = src0; r=true;}
+
+         if (dmux->decode[ii].a == src0) {dmux->decode[ii].a = src1; r=true;}
+         else if (dmux->decode[ii].a == src1) {dmux->decode[ii].a = src0; r=true;}
+      }
+   }
+   return r;
+}
+
+static bool mux_replace(DecodedMux *dmux, int cycle, int src, int dest)
+{
+   int i, r;
+   r = false;
+
+   for(i = 0; i < 2; i++)
+   {
+      int ii = (cycle == 0) ? i : (2+i);
+      if (dmux->decode[ii].sa == src) {dmux->decode[ii].sa = dest; r=true;}
+      if (dmux->decode[ii].sb == src) {dmux->decode[ii].sb = dest; r=true;}
+      if (dmux->decode[ii].m  == src) {dmux->decode[ii].m  = dest; r=true;}
+      if (dmux->decode[ii].a  == src) {dmux->decode[ii].a  = dest; r=true;}
+   }
+   return r;
+}
+
+static void *mux_new(u64 dmux, bool cycle2)
 {
    int i;
    DecodedMux *mux = malloc(sizeof(DecodedMux)); 
@@ -348,85 +397,15 @@ void *mux_new(u64 dmux, bool cycle2)
    return mux;
 }
 
-bool mux_find(DecodedMux *dmux, int index, int src)
-{
-      if (dmux->decode[index].sa == src) return true;
-      if (dmux->decode[index].sb == src) return true;
-      if (dmux->decode[index].m == src) return true;
-      if (dmux->decode[index].a == src) return true;
-   return false;
-}
 
-bool mux_replace(DecodedMux *dmux, int cycle, int src, int dest)
-{
-   int i, r;
-   r = false;
-
-   for(i = 0; i < 2; i++)
-   {
-      int ii = (cycle == 0) ? i : (2+i);
-      if (dmux->decode[ii].sa == src) {dmux->decode[ii].sa = dest; r=true;}
-      if (dmux->decode[ii].sb == src) {dmux->decode[ii].sb = dest; r=true;}
-      if (dmux->decode[ii].m  == src) {dmux->decode[ii].m  = dest; r=true;}
-      if (dmux->decode[ii].a  == src) {dmux->decode[ii].a  = dest; r=true;}
-   }
-   return r;
-}
-
-bool mux_swap(DecodedMux *dmux, int cycle, int src0, int src1)
-{
-   int i, r;
-   r = false;
-   for(i = 0; i < 2; i++)
-   {
-      int ii = (cycle == 0) ? i : (2+i);
-      {
-         if (dmux->decode[ii].sa == src0) {dmux->decode[ii].sa = src1; r=true;}
-         else if (dmux->decode[ii].sa == src1) {dmux->decode[ii].sa = src0; r=true;}
-
-         if (dmux->decode[ii].sb == src0) {dmux->decode[ii].sb = src1; r=true;}
-         else if (dmux->decode[ii].sb == src1) {dmux->decode[ii].sb = src0; r=true;}
-
-         if (dmux->decode[ii].m == src0) {dmux->decode[ii].m = src1; r=true;}
-         else if (dmux->decode[ii].m == src1) {dmux->decode[ii].m = src0; r=true;}
-
-         if (dmux->decode[ii].a == src0) {dmux->decode[ii].a = src1; r=true;}
-         else if (dmux->decode[ii].a == src1) {dmux->decode[ii].a = src0; r=true;}
-      }
-   }
-   return r;
-}
-
-void mux_hack(DecodedMux *dmux)
-{
-   (void)dmux;
-#if 0
-   if (config.hackZelda)
-   {
-      if(dmux->combine.mux == 0xfffd923800ffadffLL)
-      {
-         mux_replace(dmux, G_CYC_1CYCLE, TEXEL1, TEXEL0);
-         mux_replace(dmux, G_CYC_2CYCLE, TEXEL1, TEXEL0);
-      }
-      else if (dmux->combine.mux == 0xff5bfff800121603LL)
-      {
-         mux_replace(dmux, G_CYC_1CYCLE, TEXEL1, ZERO);
-         mux_replace(dmux, G_CYC_2CYCLE, TEXEL1, ZERO);
-      }
-   }
-#endif
-}
-
-
-int _program_compare(ShaderProgram *prog, DecodedMux *dmux, u32 flags)
+static int program_compare(ShaderProgram *prog, DecodedMux *dmux, u32 flags)
 {
    if (prog)
       return ((prog->combine.mux == dmux->combine.mux) && (prog->flags == flags));
-   else
-      return 1;
+   return 1;
 }
 
-void _glcompiler_error(GLint shader)
+static void glcompiler_error(GLint shader)
 {
    int len, i;
    char* log;
@@ -439,7 +418,7 @@ void _glcompiler_error(GLint shader)
    free(log);
 }
 
-void _gllinker_error(GLint program)
+static void gllinker_error(GLint program)
 {
    int len, i;
    char* log;
@@ -452,7 +431,7 @@ void _gllinker_error(GLint program)
    free(log);
 }
 
-void _locate_attributes(ShaderProgram *p)
+static void locate_attributes(ShaderProgram *p)
 {
    glBindAttribLocation(p->program, SC_POSITION,   "aPosition");
    glBindAttribLocation(p->program, SC_COLOR,      "aColor");
@@ -463,7 +442,7 @@ void _locate_attributes(ShaderProgram *p)
 #define LocateUniform(A) \
     p->uniforms.A.loc = glGetUniformLocation(p->program, #A);
 
-void _locate_uniforms(ShaderProgram *p)
+static void locate_uniforms(ShaderProgram *p)
 {
    LocateUniform(uTex0);
    LocateUniform(uTex1);
@@ -490,7 +469,7 @@ void _locate_uniforms(ShaderProgram *p)
    LocateUniform(uCacheOffset[1]);
 }
 
-void _force_uniforms(void)
+static void force_uniforms(void)
 {
    SC_ForceUniform1i(uTex0, 0);
    SC_ForceUniform1i(uTex1, 1);
@@ -545,51 +524,6 @@ void _force_uniforms(void)
    }
 }
 
-void _update_uniforms(void)
-{
-   SC_SetUniform4fv(uEnvColor, &gDP.envColor.r);
-   SC_SetUniform4fv(uPrimColor, &gDP.primColor.r);
-   SC_SetUniform1f(uPrimLODFrac, gDP.primColor.l);
-   SC_SetUniform4fv(uFogColor, &gDP.fogColor.r);
-   SC_SetUniform1i(uEnableFog, ((gSP.geometryMode & G_FOG)));
-   SC_SetUniform1f(uRenderState, (float) OGL.renderState);
-   SC_SetUniform1f(uFogMultiplier, (float) gSP.fog.multiplier / 255.0f);
-   SC_SetUniform1f(uFogOffset, (float) gSP.fog.offset / 255.0f);
-   SC_SetUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5f : gDP.blendColor.a);
-   SC_SetUniform1f(uK4, gDP.convert.k4);
-   SC_SetUniform1f(uK5, gDP.convert.k5);
-
-   //for some reason i must force these...
-   SC_ForceUniform2f(uTexScale, gSP.texture.scales, gSP.texture.scalet);
-   if (scProgramCurrent->usesT0)
-   {
-      if (gSP.textureTile[0])
-      {
-         SC_ForceUniform2f(uTexOffset[0], gSP.textureTile[0]->fuls, gSP.textureTile[0]->fult);
-      }
-      if (cache.current[0])
-      {
-         SC_ForceUniform2f(uCacheShiftScale[0], cache.current[0]->shiftScaleS, cache.current[0]->shiftScaleT);
-         SC_ForceUniform2f(uCacheScale[0], cache.current[0]->scaleS, cache.current[0]->scaleT);
-         SC_ForceUniform2f(uCacheOffset[0], cache.current[0]->offsetS, cache.current[0]->offsetT);
-      }
-   }
-
-   if (scProgramCurrent->usesT1)
-   {
-      if (gSP.textureTile[1])
-      {
-         SC_ForceUniform2f(uTexOffset[1], gSP.textureTile[1]->fuls, gSP.textureTile[1]->fult);
-      }
-      if (cache.current[1])
-      {
-         SC_ForceUniform2f(uCacheShiftScale[1], cache.current[1]->shiftScaleS, cache.current[1]->shiftScaleT);
-         SC_ForceUniform2f(uCacheScale[1], cache.current[1]->scaleS, cache.current[1]->scaleT);
-         SC_ForceUniform2f(uCacheOffset[1], cache.current[1]->offsetS, cache.current[1]->offsetT);
-      }
-   }
-}
-
 void ShaderCombiner_Init(void)
 {
    //compile vertex shader:
@@ -611,7 +545,7 @@ void ShaderCombiner_Init(void)
    glCompileShader(_vertex_shader);
    glGetShaderiv(_vertex_shader, GL_COMPILE_STATUS, &success);
    if (!success)
-      _glcompiler_error(_vertex_shader);
+      glcompiler_error(_vertex_shader);
 
    gDP.otherMode.cycleType = G_CYC_1CYCLE;
 }
@@ -671,12 +605,11 @@ void ShaderCombiner_Set(u64 mux, int flags)
    }
 
    dmux = (DecodedMux*)mux_new(mux, flags&SC_2CYCLE);
-   mux_hack(dmux);
 
    //if already bound:
    if (scProgramCurrent)
    {
-      if (_program_compare(scProgramCurrent, dmux, flags))
+      if (program_compare(scProgramCurrent, dmux, flags))
       {
          scProgramChanged = 0;
          return;
@@ -688,7 +621,7 @@ void ShaderCombiner_Set(u64 mux, int flags)
 
    root = (ShaderProgram*)scProgramRoot;
    prog = (ShaderProgram*)root;
-   while(!_program_compare(prog, dmux, flags))
+   while(!program_compare(prog, dmux, flags))
    {
       root = prog;
       if (prog->combine.mux < dmux->combine.mux)
@@ -714,7 +647,7 @@ void ShaderCombiner_Set(u64 mux, int flags)
    prog->lastUsed = OGL.frame_dl;
    scProgramCurrent = prog;
    glUseProgram(prog->program);
-   _force_uniforms();
+   force_uniforms();
 
    if (dmux)
       free(dmux);
@@ -828,20 +761,20 @@ ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
 
    glGetShaderiv(prog->fragment, GL_COMPILE_STATUS, &success);
    if (!success)
-      _glcompiler_error(prog->fragment);
+      glcompiler_error(prog->fragment);
 
    //link
-   _locate_attributes(prog);
+   locate_attributes(prog);
    glAttachShader(prog->program, prog->fragment);
    glAttachShader(prog->program, prog->vertex);
    glLinkProgram(prog->program);
    glGetProgramiv(prog->program, GL_LINK_STATUS, &success);
    if (!success)
-      _gllinker_error(prog->program);
+      gllinker_error(prog->program);
 
    //remove fragment shader:
    glDeleteShader(prog->fragment);
 
-   _locate_uniforms(prog);
+   locate_uniforms(prog);
    return prog;
 }

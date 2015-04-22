@@ -206,12 +206,6 @@ typedef struct
    int flags;
 } DecodedMux;
 
-void *mux_new(u64 mux, bool cycle2);
-void mux_hack(DecodedMux *mux);
-bool mux_find(DecodedMux *mux, int index, int src);
-bool mux_swap(DecodedMux *mux, int cycle, int src0, int src1);
-bool mux_replace(DecodedMux *mux, int cycle, int src, int dest);
-
 extern int CCEncodeA[];
 extern int CCEncodeB[];
 extern int CCEncodeC[];

@@ -63,8 +63,6 @@ int OGL_IsExtSupported( const char *extension )
    return 0;
 }
 
-extern void _glcompiler_error(GLint shader);
-
 void OGL_InitStates(void)
 {
    glEnable( GL_CULL_FACE );
