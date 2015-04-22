@@ -121,10 +121,6 @@ bool OGL_Start(void)
    memset(OGL.triangles.elements, 0, ELEMBUFF_SIZE * sizeof(GLubyte));
    OGL.triangles.num = 0;
 
-#ifdef __TRIBUFFER_OPT
-   __indexmap_init();
-#endif
-
    OGL.renderingToTexture = false;
    OGL.renderState = RS_NONE;
    gSP.changed = gDP.changed = 0xFFFFFFFF;
@@ -602,10 +598,6 @@ void OGL_DrawTriangles(void)
 
    glDrawElements(GL_TRIANGLES, OGL.triangles.num, GL_UNSIGNED_BYTE, OGL.triangles.elements);
    OGL.triangles.num = 0;
-
-#ifdef __TRIBUFFER_OPT
-   __indexmap_clear();
-#endif
 }
 
 void OGL_DrawLine(int v0, int v1, float width )
@@ -826,7 +818,6 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
    }
 
    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-   OGL_UpdateViewport();
 }
 
 void OGL_ClearDepthBuffer(void)
