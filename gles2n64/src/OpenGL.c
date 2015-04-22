@@ -451,7 +451,7 @@ void OGL_UpdateStates(void)
       }
    }
 
-   if ((gDP.changed & CHANGED_FOGCOLOR) && config.enableFog)
+   if ((gDP.changed & CHANGED_FOGCOLOR))
       SC_SetUniform4fv(uFogColor, &gDP.fogColor.r );
 
    if (gDP.changed & CHANGED_ENV_COLOR)

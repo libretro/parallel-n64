@@ -501,7 +501,7 @@ void _force_uniforms(void)
    SC_ForceUniform1f(uK4, gDP.convert.k4);
    SC_ForceUniform1f(uK5, gDP.convert.k5);
    SC_ForceUniform4fv(uFogColor, &gDP.fogColor.r);
-   SC_ForceUniform1i(uEnableFog, ((config.enableFog==1) && (gSP.geometryMode & G_FOG)));
+   SC_ForceUniform1i(uEnableFog, ((gSP.geometryMode & G_FOG)));
    SC_ForceUniform1f(uRenderState, (float) OGL.renderState);
    SC_ForceUniform1f(uFogMultiplier, (float) gSP.fog.multiplier / 255.0f);
    SC_ForceUniform1f(uFogOffset, (float) gSP.fog.offset / 255.0f);
@@ -551,7 +551,7 @@ void _update_uniforms(void)
    SC_SetUniform4fv(uPrimColor, &gDP.primColor.r);
    SC_SetUniform1f(uPrimLODFrac, gDP.primColor.l);
    SC_SetUniform4fv(uFogColor, &gDP.fogColor.r);
-   SC_SetUniform1i(uEnableFog, (config.enableFog && (gSP.geometryMode & G_FOG)));
+   SC_SetUniform1i(uEnableFog, ((gSP.geometryMode & G_FOG)));
    SC_SetUniform1f(uRenderState, (float) OGL.renderState);
    SC_SetUniform1f(uFogMultiplier, (float) gSP.fog.multiplier / 255.0f);
    SC_SetUniform1f(uFogOffset, (float) gSP.fog.offset / 255.0f);
@@ -599,8 +599,7 @@ void ShaderCombiner_Init(void)
    str = buff;
 
    str += sprintf(str, "%s", _vert);
-   if (config.enableFog)
-      str += sprintf(str, "%s", _vertfog);
+   str += sprintf(str, "%s", _vertfog);
    if (config.zHack)
       str += sprintf(str, "%s", _vertzhack);
 
@@ -652,7 +651,7 @@ void ShaderCombiner_Set(u64 mux, int flags)
    if (flags == -1)
    {
       flags = 0;
-      if ((config.enableFog) && (gSP.geometryMode & G_FOG))
+      if ((gSP.geometryMode & G_FOG))
          flags |= SC_FOGENABLED;
 
       if (config.enableAlphaTest)

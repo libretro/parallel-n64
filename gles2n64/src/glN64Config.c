@@ -65,7 +65,6 @@ static Option configOptions[] =
    {"", NULL, 0},
 
    {"#Render Settings:", NULL, 0},
-   {"enable fog", &config.enableFog, 0},
    {"enable primitive z", &config.enablePrimZ, 1},
    {"enable lighting", &config.enableLighting, 1},
    {"enable alpha test", &config.enableAlphaTest, 1},

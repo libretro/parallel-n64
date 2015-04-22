@@ -40,7 +40,6 @@ typedef struct
     int     forceBufferClear;
     int     zHack;
 
-    int     enableFog;
     int     enablePrimZ;
     int     enableLighting;
     int     enableAlphaTest;
