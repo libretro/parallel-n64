@@ -230,7 +230,8 @@ void RDP_LoadSync( u32 w0, u32 w1 )
 #if 0
 static void _getTexRectParams(u32 *w2, u32 *w3)
 {
-	if (RSP.bLLE) {
+	if (__RSP.bLLE)
+   {
 		*w2 = RDP.w2;
 		*w3 = RDP.w3;
 		return;
@@ -242,8 +243,8 @@ static void _getTexRectParams(u32 *w2, u32 *w3)
 		halfTexRect
 	} texRectMode = gdpTexRect;
 
-	const u32 cmd1 = (*(u32*)&RDRAM[RSP.PC[RSP.PCi] + 0]) >> 24;
-	const u32 cmd2 = (*(u32*)&RDRAM[RSP.PC[RSP.PCi] + 8]) >> 24;
+	const u32 cmd1 = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0]) >> 24;
+	const u32 cmd2 = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 8]) >> 24;
 	if (cmd1 == G_RDPHALF_1) {
 		if (cmd2 == G_RDPHALF_2)
 			texRectMode = gspTexRect;
@@ -257,21 +258,21 @@ static void _getTexRectParams(u32 *w2, u32 *w3)
 
 	switch (texRectMode) {
 	case gspTexRect:
-		*w2 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
-		RSP.PC[RSP.PCi] += 8;
+		*w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+		__RSP.PC[__RSP.PCi] += 8;
 
-		*w3 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
-		RSP.PC[RSP.PCi] += 8;
+		*w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+		__RSP.PC[__RSP.PCi] += 8;
 		break;
 	case gdpTexRect:
-		*w2 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 0];
-		w3 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
-		RSP.PC[RSP.PCi] += 8;
+		*w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0];
+		*w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+		__RSP.PC[__RSP.PCi] += 8;
 		break;
 	case halfTexRect:
 		*w2 = 0;
-		w3 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 4];
-		RSP.PC[RSP.PCi] += 8;
+		*w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+		__RSP.PC[__RSP.PCi] += 8;
 		break;
 	default:
 		assert(false && "Unknown texrect mode");
