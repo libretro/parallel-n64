@@ -913,28 +913,12 @@ void OGL_SwapBuffers(void)
    // if emulator defined a render callback function, call it before
    // buffer swap
    if (renderCallback) (*renderCallback)();
-
-   //OGL_DrawTriangles();
-   scProgramChanged = 0;
-
    retro_return(true);
 
-   OGL.screenUpdate = false;
-
-   if (config.forceBufferClear)
-   {
-      /////// paulscode, graphics bug-fixes
-      float depth = gDP.fillColor.z ;
-      glDisable( GL_SCISSOR_TEST );
-      glDepthMask( GL_TRUE );  // fixes side-bar graphics glitches
-      glClearDepth( 1.0f );  // fixes missing graphics on Qualcomm Adreno
-      glClearColor( 0, 0, 0, 1 );
-      glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT );
-      OGL_UpdateDepthUpdate();
-      glEnable( GL_SCISSOR_TEST );
-      ///////
-   }
-
+   scProgramChanged = 0;
+	gDP.otherMode.l = 0;
+	gDPSetTextureLUT(G_TT_NONE);
+	++__RSP.DList;
 }
 
 void OGL_ReadScreen( void *dest, int *width, int *height )
