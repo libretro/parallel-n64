@@ -5,11 +5,19 @@
 extern "C" {
 #endif
 
-#define G_BGLT_LOADBLOCK    0x0033
-#define G_BGLT_LOADTILE     0xfff4
+#define G_BGLT_LOADBLOCK      0x0033
+#define G_BGLT_LOADTILE       0xfff4
 
-#define G_BG_FLAG_FLIPS     0x01
-#define G_BG_FLAG_FLIPT     0x10
+#define G_BG_FLAG_FLIPS       0x01
+#define G_BG_FLAG_FLIPT       0x10
+
+#define	G_OBJRM_NOTXCLAMP		0x01
+#define	G_OBJRM_XLU				0x02
+#define	G_OBJRM_ANTIALIAS		0x04
+#define	G_OBJRM_BILERP			0x08
+#define	G_OBJRM_SHRINKSIZE_1	0x10
+#define	G_OBJRM_SHRINKSIZE_2	0x20
+#define	G_OBJRM_WIDEN			0x40
 
 typedef struct
 {
@@ -190,6 +198,13 @@ typedef struct
   u16 BaseScaleX;   /* u5.10 */
 } uObjMtx;
 
+typedef struct
+{
+	s16 Y, X;		/* s10.2  */
+	u16 BaseScaleY;	/* u5.10  */
+	u16 BaseScaleX;	/* u5.10  */
+} uObjSubMtx;
+
 void S2DEX_BG_1Cyc( u32 w0, u32 w1 );
 void S2DEX_BG_Copy( u32 w0, u32 w1 );
 void S2DEX_Obj_Rectangle( u32 w0, u32 w1 );
@@ -203,6 +218,10 @@ void S2DEX_Obj_LdTx_Sprite( u32 w0, u32 w1 );
 void S2DEX_Obj_LdTx_Rect( u32 w0, u32 w1 );
 void S2DEX_Obj_LdTx_Rect_R( u32 w0, u32 w1 );
 void S2DEX_Init();
+
+#define S2DEX_MV_MATRIX			   0
+#define S2DEX_MV_SUBMUTRIX		   2
+#define S2DEX_MV_VIEWPORT		   8
 
 #define S2DEX_BG_1CYC           0x01
 #define S2DEX_BG_COPY           0x02

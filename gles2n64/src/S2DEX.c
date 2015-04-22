@@ -30,22 +30,37 @@ void S2DEX_Obj_Sprite( u32 w0, u32 w1 )
 
 void S2DEX_Obj_MoveMem( u32 w0, u32 w1 )
 {
-   if (_SHIFTR( w0, 0, 16 ) == 0)
-      gSPObjMatrix( w1 );
-   else
-      gSPObjSubMatrix( w1 );
+	switch (_SHIFTR( w0, 0, 16 )) {
+		case S2DEX_MV_MATRIX:
+			gSPObjMatrix( w1 );
+			break;
+		case S2DEX_MV_SUBMUTRIX:
+			gSPObjSubMatrix( w1 );
+			break;
+		case S2DEX_MV_VIEWPORT:
+			gSPViewport( w1 );
+			break;
+	}
 }
 
 void S2DEX_Select_DL( u32 w0, u32 w1 )
 {
+#ifdef DEBUG
+	LOG(LOG_WARNING, "S2DEX_Select_DL unimplemented\n");
+#endif
 }
 
 void S2DEX_Obj_RenderMode( u32 w0, u32 w1 )
 {
+	gSPObjRendermode(w1);
 }
 
 void S2DEX_Obj_Rectangle_R( u32 w0, u32 w1 )
 {
+   /* TODO/FIXME - implement */
+#if 0
+	gSPObjRectangleR(w1);
+#endif
 }
 
 void S2DEX_Obj_LoadTxtr( u32 w0, u32 w1 )
@@ -60,6 +75,7 @@ void S2DEX_Obj_LdTx_Sprite( u32 w0, u32 w1 )
 
 void S2DEX_Obj_LdTx_Rect( u32 w0, u32 w1 )
 {
+	gSPObjLoadTxSprite( w1 );
 }
 
 void S2DEX_Obj_LdTx_Rect_R( u32 w0, u32 w1 )

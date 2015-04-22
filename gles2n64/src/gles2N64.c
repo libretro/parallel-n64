@@ -65,10 +65,7 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle,
       cpu = perf_get_cpu_features_cb();
 
    if (cpu & RETRO_SIMD_NEON)
-   {
       MathInitNeon();
-      gSPInitNeon();
-   }
 #endif
    return M64ERR_SUCCESS;
 }

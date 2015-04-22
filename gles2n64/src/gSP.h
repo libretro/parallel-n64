@@ -100,6 +100,8 @@ typedef struct
         f32 baseScaleX, baseScaleY;
     } objMatrix;
 
+    u32 objRendermode;
+
     u32 vertexColorBase;
     u32 vertexi;
 
@@ -131,6 +133,7 @@ typedef struct
     struct
     {
         u32 address, width, height, format, size, palette;
+        f32 imageX, imageY, scaleW, scaleH;
     } bgImage;
 
     u32 geometryMode;
@@ -215,10 +218,6 @@ void gSP4Triangles(const s32 v00, const s32 v01, const s32 v02,
 extern void (*gSPTransformVertex)(float vtx[4], float mtx[4][4]);
 extern void (*gSPLightVertex)(u32 v);
 extern void (*gSPBillboardVertex)(u32 v, u32 i);
-
-#ifdef __NEON_OPT
-void gSPInitNeon();
-#endif
 
 #endif
 

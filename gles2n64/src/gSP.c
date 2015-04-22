@@ -1478,6 +1478,17 @@ void gSPObjMatrix( u32 mtx )
 
 void gSPObjSubMatrix( u32 mtx )
 {
+	u32 address = RSP_SegmentToPhysical(mtx);
+	uObjSubMtx *objMtx = (uObjSubMtx*)&gfx_info.RDRAM[address];
+	gSP.objMatrix.X = _FIXED2FLOAT(objMtx->X, 2);
+	gSP.objMatrix.Y = _FIXED2FLOAT(objMtx->Y, 2);
+	gSP.objMatrix.baseScaleX = _FIXED2FLOAT(objMtx->BaseScaleX, 10);
+	gSP.objMatrix.baseScaleY = _FIXED2FLOAT(objMtx->BaseScaleY, 10);
+}
+
+void gSPObjRendermode(u32 _mode)
+{
+	gSP.objRendermode = _mode;
 }
 
 void (*gSPTransformVertex)(float vtx[4], float mtx[4][4]) =
