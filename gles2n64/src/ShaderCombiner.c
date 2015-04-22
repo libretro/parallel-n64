@@ -66,15 +66,6 @@ static const u32 aAExpanded[] =
     SHADE_ALPHA,        ENV_ALPHA,          ONE,                ZERO
 };
 
-int CCEncodeA[] = {0, 1, 2, 3, 4, 5, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 7, 15, 15, 6, 15 };
-int CCEncodeB[] = {0, 1, 2, 3, 4, 5, 6, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 7, 15, 15, 15 };
-int CCEncodeC[] = {0, 1, 2, 3, 4, 5, 31, 6, 7, 8, 9, 10, 11, 12, 13, 14, 31, 31, 15, 31, 31};
-int CCEncodeD[] = {0, 1, 2, 3, 4, 5, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 6, 15};
-int ACEncodeA[] = {7, 7, 7, 7, 7, 7, 7, 7, 0, 1, 2, 3, 4, 5, 7, 7, 7, 7, 7, 6, 7};
-int ACEncodeB[] = {7, 7, 7, 7, 7, 7, 7, 7, 0, 1, 2, 3, 4, 5, 7, 7, 7, 7, 7, 6, 7};
-int ACEncodeC[] = {7, 7, 7, 7, 7, 7, 7, 7, 0, 1, 2, 3, 4, 5, 7, 6, 7, 7, 7, 7, 7};
-int ACEncodeD[] = {7, 7, 7, 7, 7, 7, 7, 7, 0, 1, 2, 3, 4, 5, 7, 7, 7, 7, 7, 6, 7};
-
 ShaderProgram *scProgramRoot = NULL;
 ShaderProgram *scProgramCurrent = NULL;
 int scProgramChanged = 0;
@@ -173,7 +164,7 @@ const char * _vertzhack = "                                 \n"\
 "}                                                          \n";
 
 
-const char * _color_param_str(int param)
+static const char * _color_param_str(int param)
 {
    switch(param)
    {
@@ -203,7 +194,7 @@ const char * _color_param_str(int param)
    }
 }
 
-const char * _alpha_param_str(int param)
+static const char * _alpha_param_str(int param)
 {
    switch(param)
    {
