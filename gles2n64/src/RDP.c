@@ -231,100 +231,106 @@ void RDP_LoadSync( u32 w0, u32 w1 )
     gDPLoadSync();
 }
 
-#if 0
 static void _getTexRectParams(u32 *w2, u32 *w3)
 {
-	if (__RSP.bLLE)
+   if (__RSP.bLLE)
    {
-		*w2 = RDP.w2;
-		*w3 = RDP.w3;
-		return;
-	}
+      *w2 = __RDP.w2;
+      *w3 = __RDP.w3;
+      return;
+   }
 
-	enum {
-		gspTexRect,
-		gdpTexRect,
-		halfTexRect
-	} texRectMode = gdpTexRect;
+   enum {
+      gspTexRect,
+      gdpTexRect,
+      halfTexRect
+   } texRectMode = gdpTexRect;
 
-	const u32 cmd1 = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0]) >> 24;
-	const u32 cmd2 = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 8]) >> 24;
-	if (cmd1 == G_RDPHALF_1) {
-		if (cmd2 == G_RDPHALF_2)
-			texRectMode = gspTexRect;
-	} else if (cmd1 == 0xB3) {
-		if (cmd2 == 0xB2)
-			texRectMode = gspTexRect;
-		else
-			texRectMode = halfTexRect;
-	} else if (cmd1 == 0xF1)
-		texRectMode = halfTexRect;
+   const u32 cmd1 = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0]) >> 24;
+   const u32 cmd2 = (*(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 8]) >> 24;
+   if (cmd1 == G_RDPHALF_1)
+   {
+      if (cmd2 == G_RDPHALF_2)
+         texRectMode = gspTexRect;
+   }
+   else if (cmd1 == 0xB3)
+   {
+      if (cmd2 == 0xB2)
+         texRectMode = gspTexRect;
+      else
+         texRectMode = halfTexRect;
+   }
+   else if (cmd1 == 0xF1)
+      texRectMode = halfTexRect;
 
-	switch (texRectMode) {
-	case gspTexRect:
-		*w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
-		__RSP.PC[__RSP.PCi] += 8;
+   switch (texRectMode)
+   {
+      case gspTexRect:
+         *w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+         __RSP.PC[__RSP.PCi] += 8;
 
-		*w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
-		__RSP.PC[__RSP.PCi] += 8;
-		break;
-	case gdpTexRect:
-		*w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0];
-		*w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
-		__RSP.PC[__RSP.PCi] += 8;
-		break;
-	case halfTexRect:
-		*w2 = 0;
-		*w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
-		__RSP.PC[__RSP.PCi] += 8;
-		break;
-	default:
-		assert(false && "Unknown texrect mode");
-	}
+         *w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+         __RSP.PC[__RSP.PCi] += 8;
+         break;
+      case gdpTexRect:
+         *w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 0];
+         *w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+         __RSP.PC[__RSP.PCi] += 8;
+         break;
+      case halfTexRect:
+         *w2 = 0;
+         *w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+         __RSP.PC[__RSP.PCi] += 8;
+         break;
+      default:
+         assert(false && "Unknown texrect mode");
+   }
 }
-#endif
 
-/* TODO/FIXME - update */
 void RDP_TexRectFlip( u32 w0, u32 w1 )
 {
+   u32 ulx, uly, lrx, lry;
 	u32 w2, w3;
-    w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
-    __RSP.PC[__RSP.PCi] += 8;
-
-    w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
-    __RSP.PC[__RSP.PCi] += 8;
-
-    gDPTextureRectangleFlip(
-          _FIXED2FLOAT( _SHIFTR( w1, 12, 12 ), 2 ),          // ulx
-          _FIXED2FLOAT( _SHIFTR( w1,  0, 12 ), 2 ),          // uly
-          _FIXED2FLOAT( _SHIFTR( w0, 12, 12 ), 2 ),          // lrx
-          _FIXED2FLOAT( _SHIFTR( w0,  0, 12 ), 2 ),          // lry
-          _SHIFTR( w1, 24,  3 ),                             // tile
-          _FIXED2FLOAT( (s16)_SHIFTR( w2, 16, 16 ), 5 ),     // s
-          _FIXED2FLOAT( (s16)_SHIFTR( w2,  0, 16 ), 5 ),     // t
-          _FIXED2FLOAT( (s16)_SHIFTR( w3, 16, 16 ), 10 ),    // dsdx
-          _FIXED2FLOAT( (s16)_SHIFTR( w3,  0, 16 ), 10 ) );  // dsdy
+	_getTexRectParams(&w2, &w3);
+	ulx = _SHIFTR(w1, 12, 12);
+	uly = _SHIFTR(w1, 0, 12);
+	lrx = _SHIFTR(w0, 12, 12);
+	lry = _SHIFTR(w0, 0, 12);
+	if ((lrx >> 2) < (ulx >> 2) || (lry >> 2) < (uly >> 2))
+		return;
+	gDPTextureRectangleFlip(
+		_FIXED2FLOAT(ulx, 2),
+		_FIXED2FLOAT(uly, 2),
+		_FIXED2FLOAT(lrx, 2),
+		_FIXED2FLOAT(lry, 2),
+		_SHIFTR(w1, 24, 3),							// tile
+		_FIXED2FLOAT((s16)_SHIFTR(w2, 16, 16), 5),	// s
+		_FIXED2FLOAT((s16)_SHIFTR(w2, 0, 16), 5),	// t
+		_FIXED2FLOAT((s16)_SHIFTR(w3, 16, 16), 10),	// dsdx
+		_FIXED2FLOAT((s16)_SHIFTR(w3, 0, 16), 10));	// dsdy
 }
 
-/* TODO/FIXME - update */
 void RDP_TexRect( u32 w0, u32 w1 )
 {
+   u32 ulx, uly, lrx, lry;
 	u32 w2, w3;
-    w2 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
-    __RSP.PC[__RSP.PCi] += 8;
-
-    w3 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
-    __RSP.PC[__RSP.PCi] += 8;
-
-    gDPTextureRectangle( _FIXED2FLOAT( _SHIFTR( w1, 12, 12 ), 2 ),          // ulx
-                         _FIXED2FLOAT( _SHIFTR( w1,  0, 12 ), 2 ),          // uly
-                         _FIXED2FLOAT( _SHIFTR( w0, 12, 12 ), 2 ),          // lrx
-                         _FIXED2FLOAT( _SHIFTR( w0,  0, 12 ), 2 ),          // lry
-                         _SHIFTR( w1, 24,  3 ),                             // tile
-                         _FIXED2FLOAT( (s16)_SHIFTR( w2, 16, 16 ), 5 ),     // s
-                         _FIXED2FLOAT( (s16)_SHIFTR( w2,  0, 16 ), 5 ),     // t
-                         _FIXED2FLOAT( (s16)_SHIFTR( w3, 16, 16 ), 10 ),    // dsdx
-                         _FIXED2FLOAT( (s16)_SHIFTR( w3,  0, 16 ), 10 ) );  // dsdy
+	_getTexRectParams(&w2, &w3);
+	ulx = _SHIFTR(w1, 12, 12);
+	uly = _SHIFTR(w1,  0, 12);
+	lrx = _SHIFTR(w0, 12, 12);
+	lry = _SHIFTR(w0,  0, 12);
+	if ((lrx >> 2) < (ulx >> 2) || (lry >> 2) < (uly >> 2))
+		return;
+	gDPTextureRectangle(
+		_FIXED2FLOAT(ulx, 2),
+		_FIXED2FLOAT(uly, 2),
+		_FIXED2FLOAT(lrx, 2),
+		_FIXED2FLOAT(lry, 2),
+		_SHIFTR(w1, 24, 3),							// tile
+		_FIXED2FLOAT((s16)_SHIFTR(w2, 16, 16), 5),	// s
+		_FIXED2FLOAT((s16)_SHIFTR(w2, 0, 16), 5),	// t
+		_FIXED2FLOAT((s16)_SHIFTR(w3, 16, 16), 10),	// dsdx
+		_FIXED2FLOAT((s16)_SHIFTR(w3, 0, 16), 10));	// dsdy
 }
 
 
