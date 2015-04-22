@@ -42,11 +42,7 @@ void F3DCBFD_Vtx(u32 w0, u32 w1)
    for (i = 0; i < n; i++)
    {
 	   u32 nonblack;
-#ifdef __TRIBUFFER_OPT
-      v = __indexmap_getnew(v0 + i, 1);
-#else
       v = v0 + i;
-#endif
 
       OGL.triangles.vertices[v].x = vertex->x;
       OGL.triangles.vertices[v].y = vertex->y;
@@ -125,9 +121,6 @@ void F3DCBFD_MoveWord(u32 w0, u32 w1)
 
 void F3DCBFD_MoveMem(u32 w0, u32 w1)
 {
-#ifdef __TRIBUFFER_OPT
-   gSPFlushTriangles();
-#endif
    switch (_SHIFTR( w0, 0, 8 ))
    {
       case F3DCBFD_MV_VIEWPORT:
