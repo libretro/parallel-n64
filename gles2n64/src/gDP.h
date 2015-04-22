@@ -12,21 +12,33 @@ extern "C" {
 #define CHANGED_SCISSOR         0x0004
 #define CHANGED_TMEM            0x0008
 #define CHANGED_TILE            0x0010
+
+/* TODO/FIXME - GLideN64 doesn't use this */
+#if 1
 #define CHANGED_COMBINE_COLORS  0x0020
+#endif
+
 #define CHANGED_COMBINE         0x0040
 #define CHANGED_ALPHACOMPARE    0x0080
 #define CHANGED_FOGCOLOR        0x0100
+
+/* New GLiden64 define name for CHANGED_DEPTHSOURCE */
+#define CHANGED_FB_TEXTURE      0x0200
 #define CHANGED_DEPTHSOURCE     0x0200
-#define CHANGED_PRIMITIVEZ      0x0400
-#define CHANGED_ENV_COLOR       0x0800
-#define CHANGED_PRIM_COLOR      0x1000
 #define CHANGED_BLENDCOLOR      0x2000
+
+/* TODO/FIXME - GLiden64 doesn't use these - remove? */
 #define CHANGED_CONVERT         0x4000
+#define CHANGED_PRIM_COLOR      0x1000
+#define CHANGED_ENV_COLOR       0x0800
+#define CHANGED_PRIMITIVEZ      0x0400
 
 #define TEXTUREMODE_NORMAL      0
 #define TEXTUREMODE_TEXRECT     1
 #define TEXTUREMODE_BGIMAGE     2
 #define TEXTUREMODE_FRAMEBUFFER 3
+/* New GLiden64 define */
+#define TEXTUREMODE_FRAMEBUFFER_BG	4
 
 #define LOADTYPE_BLOCK          0
 #define LOADTYPE_TILE           1
@@ -90,12 +102,30 @@ typedef struct
         };
     };
 
-    //FrameBuffer *frameBuffer;
     u32 maskt, masks;
     u32 shiftt, shifts;
     f32 fuls, fult, flrs, flrt;
     u32 uls, ult, lrs, lrt;
+
+    u32 textureMode;
+    u32 loadType;
+    u32 imageAddress;
+#if 0
+    FrameBuffer *frameBuffer;
+#endif
 } gDPTile;
+
+struct gDPLoadTileInfo {
+	u8 size;
+	u8 loadType;
+	u16 uls;
+	u16 ult;
+	u16 width;
+	u16 height;
+	u16 texWidth;
+	u32 texAddress;
+	u32 dxt;
+};
 
 typedef struct
 {
@@ -170,9 +200,9 @@ typedef struct
 
     gDPTile tiles[8], *loadTile;
 
-    struct
+    struct Color
     {
-        f32 r, g, b, a;
+       f32 r, g, b, a;
     } fogColor,  blendColor, envColor;
 
     struct
@@ -229,17 +259,17 @@ typedef struct
 
     struct
     {
-        u32 width, height;
+       u32 width, height;
     } texRect;
 
     u32 changed;
 
-    //u16 palette[256];
+    u16 TexFilterPalette[512];
     u32 paletteCRC16[16];
     u32 paletteCRC256;
     u32 half_1, half_2;
-    u32 textureMode;
-    u32 loadType;
+
+	 struct gDPLoadTileInfo loadInfo[512];
 } gDPInfo;
 
 extern gDPInfo gDP;

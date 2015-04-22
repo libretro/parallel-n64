@@ -1220,7 +1220,7 @@ void gSPBgRect1Cyc( u32 bg )
 
    scaleW	= ((s16*)gfx_info.RDRAM)[(addr+14)^1] / 1024.0f;	// 14
    scaleH	= ((s16*)gfx_info.RDRAM)[(addr+15)^1] / 1024.0f;	// 15
-   gDP.textureMode = TEXTUREMODE_BGIMAGE;
+   gDP.tiles[0].textureMode = TEXTUREMODE_BGIMAGE;
 
 #else
    u32 address = RSP_SegmentToPhysical( bg );
@@ -1232,7 +1232,7 @@ void gSPBgRect1Cyc( u32 bg )
    gSP.bgImage.format = objScaleBg->imageFmt;
    gSP.bgImage.size = objScaleBg->imageSiz;
    gSP.bgImage.palette = objScaleBg->imagePal;
-   gDP.textureMode = TEXTUREMODE_BGIMAGE;
+   gDP.tiles[0].textureMode = TEXTUREMODE_BGIMAGE;
 
    f32 imageX = _FIXED2FLOAT( objScaleBg->imageX, 5 );
    f32 imageY = _FIXED2FLOAT( objScaleBg->imageY, 5 );
@@ -1290,7 +1290,7 @@ void gSPBgRectCopy( u32 bg )
    gSP.bgImage.format = objBg->imageFmt;
    gSP.bgImage.size = objBg->imageSiz;
    gSP.bgImage.palette = objBg->imagePal;
-   gDP.textureMode = TEXTUREMODE_BGIMAGE;
+   gDP.tiles[0].textureMode = TEXTUREMODE_BGIMAGE;
 
    imageX = objBg->imageX >> 5;
    imageY = objBg->imageY >> 5;

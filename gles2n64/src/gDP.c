@@ -656,8 +656,6 @@ void gDPSetTile( u32 format, u32 size, u32 line, u32 tmem, u32 tile, u32 palette
    if (!gDP.tiles[tile].masks) gDP.tiles[tile].clamps = 1;
    if (!gDP.tiles[tile].maskt) gDP.tiles[tile].clampt = 1;
 
-   /* TODO/FIXME - update */
-#if 0
 	if (tile == gSP.texture.tile || tile == gSP.texture.tile + 1) {
 		u32 nTile = 7;
 		while(gDP.tiles[nTile].tmem != tmem && nTile > gSP.texture.tile + 1)
@@ -665,11 +663,12 @@ void gDPSetTile( u32 format, u32 size, u32 line, u32 tmem, u32 tile, u32 palette
 		if (nTile > gSP.texture.tile + 1) {
 			gDP.tiles[tile].textureMode = gDP.tiles[nTile].textureMode;
 			gDP.tiles[tile].loadType = gDP.tiles[nTile].loadType;
+#ifdef NEW
 			gDP.tiles[tile].frameBuffer = gDP.tiles[nTile].frameBuffer;
+#endif
 			gDP.tiles[tile].imageAddress = gDP.tiles[nTile].imageAddress;
 		}
 	}
-#endif
 }
 
 void gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
@@ -837,8 +836,8 @@ void gDPLoadTile( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
       dest += line;
    }
 
-   gDP.textureMode = TEXTUREMODE_NORMAL;
-   gDP.loadType = LOADTYPE_TILE;
+   gDP.loadTile->textureMode = TEXTUREMODE_NORMAL;
+   gDP.loadTile->loadType = LOADTYPE_TILE;
    gDP.changed |= CHANGED_TMEM;
 
 #ifdef DEBUG
@@ -906,8 +905,8 @@ void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt )
    else
       UnswapCopy( src, dest, bytes );
 
-   gDP.textureMode = TEXTUREMODE_NORMAL;
-   gDP.loadType = LOADTYPE_BLOCK;
+   gDP.loadTile->textureMode = TEXTUREMODE_NORMAL;
+   gDP.loadTile->loadType = LOADTYPE_BLOCK;
    gDP.changed |= CHANGED_TMEM;
 
 #ifdef DEBUG
@@ -1093,13 +1092,10 @@ void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f
    gSP.textureTile[0] = &gDP.tiles[tile];
    gSP.textureTile[1] = &gDP.tiles[(tile + 1) & 7];
 
-   if (gDP.textureMode == TEXTUREMODE_NORMAL)
-      gDP.textureMode = TEXTUREMODE_TEXRECT;
-#if 0
-   /* TODO/FIXME - update */
+   if (gDP.loadTile->textureMode == TEXTUREMODE_NORMAL)
+      gDP.loadTile->textureMode = TEXTUREMODE_TEXRECT;
 	if (gSP.textureTile[1]->textureMode == TEXTUREMODE_NORMAL)
 		gSP.textureTile[1]->textureMode = TEXTUREMODE_TEXRECT;
-#endif
 
 	// HACK ALERT!
 	if (((int)(s) == 512) && (gDP.colorImage.width < 512))
@@ -1115,7 +1111,6 @@ void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f
       lrs = s + (lrx - ulx - 1) * dsdx;
       lrt = t + (lry - uly - 1) * dtdy;
    }
-
 
    gDP.texRect.width = (unsigned int)(max( lrs, s ) + dsdx);
    gDP.texRect.height = (unsigned int)(max( lrt, t ) + dtdy);

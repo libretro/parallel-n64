@@ -997,7 +997,7 @@ void TextureCache_Update( u32 t )
    u32 maskSize;
    TextureFormat texFormat;
 
-   if (gDP.textureMode == TEXTUREMODE_BGIMAGE)
+   if (gDP.tiles[0].textureMode == TEXTUREMODE_BGIMAGE)
    {
       TextureCache_UpdateBackground();
       return;
@@ -1022,8 +1022,8 @@ void TextureCache_Update( u32 t )
       width = maskWidth;
    } else if (likely((tileWidth * tileHeight) <= maxTexels)) {
       width = tileWidth;
-   } else if (likely(gDP.textureMode != TEXTUREMODE_TEXRECT)) {
-      if (gDP.loadType == LOADTYPE_TILE)
+   } else if (likely(gDP.tiles[0].textureMode != TEXTUREMODE_TEXRECT)) {
+      if (gDP.loadTile->loadType == LOADTYPE_TILE)
          width = loadWidth;
       else
          width = lineWidth;
@@ -1036,7 +1036,7 @@ void TextureCache_Update( u32 t )
          width = gDP.texRect.width;
       else if ((texRectWidth * texRectHeight) <= maxTexels)
          width = gDP.texRect.width;
-      else if (gDP.loadType == LOADTYPE_TILE)
+      else if (gDP.loadTile->loadType == LOADTYPE_TILE)
          width = loadWidth;
       else
          width = lineWidth;
@@ -1045,8 +1045,8 @@ void TextureCache_Update( u32 t )
       height = maskHeight;
    } else if (likely((tileWidth * tileHeight) <= maxTexels)) {
       height = tileHeight;
-   } else if (likely(gDP.textureMode != TEXTUREMODE_TEXRECT)) {
-      if (gDP.loadType == LOADTYPE_TILE)
+   } else if (likely(gDP.tiles[0].textureMode != TEXTUREMODE_TEXRECT)) {
+      if (gDP.loadTile->loadType == LOADTYPE_TILE)
          height = loadHeight;
       else
          height = lineHeight;
@@ -1059,7 +1059,7 @@ void TextureCache_Update( u32 t )
          height = tileHeight;
       else if ((texRectWidth * texRectHeight) <= maxTexels)
          height = gDP.texRect.height;
-      else if (gDP.loadType == LOADTYPE_TILE)
+      else if (gDP.loadTile->loadType == LOADTYPE_TILE)
          height = loadHeight;
       else
          height = lineHeight;
