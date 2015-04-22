@@ -496,9 +496,48 @@ void OGL_DrawTriangle(SPVertex *vertices, int v0, int v1, int v2)
 
 void OGL_AddTriangle(int v0, int v1, int v2)
 {
+   u32 i;
+   SPVertex *vtx = NULL;
+
    OGL.triangles.elements[OGL.triangles.num++] = v0;
    OGL.triangles.elements[OGL.triangles.num++] = v1;
    OGL.triangles.elements[OGL.triangles.num++] = v2;
+
+	if ((gSP.geometryMode & G_SHADE) == 0)
+   {
+      /* Prim shading */
+      for (i = OGL.triangles.num - 3; i < OGL.triangles.num; ++i)
+      {
+         vtx = (SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
+         vtx->r = gDP.primColor.r;
+         vtx->g = gDP.primColor.g;
+         vtx->b = gDP.primColor.b;
+         vtx->a = gDP.primColor.a;
+      }
+   }
+   else if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0)
+   {
+      /* Flat shading */
+      SPVertex *vtx0 = (SPVertex*)&OGL.triangles.vertices[v0];
+
+      for (i = OGL.triangles.num - 3; i < OGL.triangles.num; ++i)
+      {
+         vtx = (SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
+         vtx->r = vtx0->r;
+         vtx->g = vtx0->g;
+         vtx->b = vtx0->b;
+         vtx->a = vtx0->a;
+      }
+   }
+
+	if (gDP.otherMode.depthSource == G_ZS_PRIM)
+   {
+		for (i = OGL.triangles.num - 3; i < OGL.triangles.num; ++i)
+      {
+			vtx = (SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
+			vtx->z = gDP.primDepth.z * vtx->w;
+		}
+	}
 }
 
 void OGL_SetColorArray(void)
