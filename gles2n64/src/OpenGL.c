@@ -863,34 +863,30 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
 	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
 }
 
+/* TODO/FIXME - not complete */
 void OGL_ClearDepthBuffer(void)
 {
-   float depth;
    if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
 
-   //float depth = 1.0 - (gDP.fillColor.z / ((float)0x3FFF)); // broken on OMAP3
-   depth = gDP.fillColor.z ;
-
-   /////// paulscode, graphics bug-fixes
    glDisable( GL_SCISSOR_TEST );
-   glDepthMask( GL_TRUE );  // fixes side-bar graphics glitches
-   glClearDepth( 1.0f );  // fixes missing graphics on Qualcomm Adreno
-   glClearColor( 0, 0, 0, 1 );
+   glDepthMask( GL_TRUE ); 
    glClear( GL_DEPTH_BUFFER_BIT );
+
    OGL_UpdateDepthUpdate();
+
    glEnable( GL_SCISSOR_TEST );
-   ////////
 }
 
 void OGL_ClearColorBuffer( float *color )
 {
    if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
 
-   glScissor(0, 0, config.screen.width, config.screen.height);
+	glDisable( GL_SCISSOR_TEST );
+
    glClearColor( color[0], color[1], color[2], color[3] );
    glClear( GL_COLOR_BUFFER_BIT );
-   OGL_UpdateScissor();
 
+	glEnable( GL_SCISSOR_TEST );
 }
 
 int OGL_CheckError(void)
@@ -948,6 +944,7 @@ void OGL_ReadScreen( void *dest, int *width, int *height )
    if (height)
       *height = config.screen.height;
 
+   dest = malloc(config.screen.height * config.screen.width * 3);
    if (dest == NULL)
       return;
 
