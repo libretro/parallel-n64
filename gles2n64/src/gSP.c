@@ -51,7 +51,7 @@ void gSPTriangle(s32 v0, s32 v1, s32 v2)
 
    if (depthBuffer.current) depthBuffer.current->cleared = FALSE;
    gDP.colorImage.changed = TRUE;
-   gDP.colorImage.height = (unsigned int)(max( gDP.colorImage.height, gDP.scissor.lry ));
+   gDP.colorImage.height = (u32)(max( gDP.colorImage.height, (u32)gDP.scissor.lry ));
 }
 
 void gSP1Triangle( s32 v0, s32 v1, s32 v2)
@@ -99,7 +99,7 @@ void gSPClipVertex(u32 v)
    if (vtx->x < -vtx->w)   vtx->clip |= CLIP_NEGX;
    if (vtx->y > +vtx->w)   vtx->clip |= CLIP_POSY;
    if (vtx->y < -vtx->w)   vtx->clip |= CLIP_NEGY;
-   //if (vtx->w < 0.1f)      vtx->clip |= CLIP_NEGW;
+   if (vtx->w < 0.1f)      vtx->clip |= CLIP_Z;
 }
 
 static void gSPTransformVertex_default(float vtx[4], float mtx[4][4])
@@ -121,7 +121,6 @@ static void gSPLightVertex_default(u32 v)
    int i;
    f32 r, g, b, intensity;
 
-   TransformVectorNormalize( &OGL.triangles.vertices[v].nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
 
    r = gSP.lights[gSP.numLights].r;
    g = gSP.lights[gSP.numLights].g;
@@ -129,7 +128,8 @@ static void gSPLightVertex_default(u32 v)
    for (i = 0; i < gSP.numLights; i++)
    {
       intensity = DotProduct( &OGL.triangles.vertices[v].nx, &gSP.lights[i].x );
-      if (intensity < 0.0f) intensity = 0.0f;
+      if (intensity < 0.0f)
+         intensity = 0.0f;
       r += gSP.lights[i].r * intensity;
       g += gSP.lights[i].g * intensity;
       b += gSP.lights[i].b * intensity;
@@ -185,6 +185,7 @@ void gSPProcessVertex( u32 v )
 
    if (gSP.geometryMode & G_LIGHTING)
    {
+      TransformVectorNormalize( &OGL.triangles.vertices[v].nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
       if (config.enableLighting)
       {
          gSPLightVertex(v);
