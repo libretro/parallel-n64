@@ -18,6 +18,7 @@
 #include "S2DEX.h"
 #include "S2DEX2.h"
 #include "F3DDKR.h"
+#include "F3DSWSE.h"
 #include "F3DWRUS.h"
 #include "F3DPD.h"
 #include "F3DCBFD.h"
@@ -45,11 +46,7 @@ SpecialMicrocodeInfo specialMicrocodes[] =
    { F3D,		FALSE,	0xe01e14be, "Fast3D" },
 
    {F3DWRUS, FALSE, 0xd17906e2, "RSP SW Version: 2.0D, 04-01-96"},
-#ifdef NEW
 	{ F3DSWSE,	FALSE,	0x94c4c833, "RSP SW Version: 2.0D, 04-01-96" },
-#else
-   {F3DWRUS,   FALSE,   0x94c4c833, "RSP SW Version: 2.0D, 04-01-96"},
-#endif
 	{ F3DEX,	TRUE,	0x637b4b58, "RSP SW Version: 2.0D, 04-01-96" },
    { F3D,		TRUE,	0x54c558ba, "RSP SW Version: 2.0D, 04-01-96" }, // Pilot Wings
 
@@ -67,10 +64,8 @@ SpecialMicrocodeInfo specialMicrocodes[] =
    {F3DPD, FALSE, 0x1c4f7869, "Perfect Dark"},
 #ifdef NEW
 	{ Turbo3D,	FALSE,	0x2bdcfc8a, "Turbo3D" },
-	{ F3DEX2CBFD, TRUE, 0x1b4ace88, "Conker's Bad Fur Day" }
-#else
-   {F3DCBFD, FALSE, 0x1b4ace88, "RSP Gfx ucode F3DEXBG.NoN fifo 2.08  Yoshitaka Yasumoto 1999 Nintendo."},
 #endif
+	{ F3DEX2CBFD, TRUE, 0x1b4ace88, "Conker's Bad Fur Day" }
 };
 
 u32 G_RDPHALF_1, G_RDPHALF_2, G_RDPHALF_CONT;
@@ -359,8 +354,8 @@ void GBI_MakeCurrent( MicrocodeInfo *current )
          case F3DDKR:    F3DDKR_Init();  break;
 #ifdef NEW
 			case F3DJFG:	F3DJFG_Init();	break;
-			case F3DSWSE:	F3DSWSE_Init();	break;
 #endif
+			case F3DSWSE:	F3DSWSE_Init();	break;
          case F3DWRUS:   F3DWRUS_Init(); break;
          case F3DPD:     F3DPD_Init();   break;
 #ifdef NEW
@@ -368,7 +363,7 @@ void GBI_MakeCurrent( MicrocodeInfo *current )
 			case Turbo3D:	F3D_Init();		break;
 			case ZSortp:	ZSort_Init();	break;
 #else
-         case F3DCBFD:   F3DCBFD_Init(); break;
+         case F3DEX2CBFD:   F3DCBFD_Init(); break;
 #endif
       }
 

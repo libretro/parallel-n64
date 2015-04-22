@@ -19,9 +19,13 @@ extern "C" {
 #define S2DEX2      7
 #define F3DPD       8
 #define F3DDKR      9
-#define F3DWRUS     10
-#define F3DCBFD     11
-#define NONE        12
+#define F3DJFG		  10
+#define F3DSWSE     11
+#define F3DWRUS		12
+#define F3DEX2CBFD	13
+#define Turbo3D		14
+#define ZSortp		15
+#define NONE		16
 
 #define F3DCBFD_MV_VIEWPORT     8
 #define F3DCBFD_MV_LIGHT        10

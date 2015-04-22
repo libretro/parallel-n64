@@ -187,6 +187,7 @@ SOURCES_GLN64VIDEO := $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/F3DEX2.c \
             $(VIDEODIR_GLN64)/F3DEX.c \
             $(VIDEODIR_GLN64)/F3DPD.c \
+            $(VIDEODIR_GLN64)/F3DSWSE.c \
             $(VIDEODIR_GLN64)/F3DWRUS.c \
             $(VIDEODIR_GLN64)/GBI.c \
             $(VIDEODIR_GLN64)/gDP.c \
