@@ -357,28 +357,35 @@ void gDPSetCombine( s32 muxs0, s32 muxs1 )
 /* FIXME/TODO - needs to be updated */
 void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 {
-   u32 addr;
+   u32 addr = RSP_SegmentToPhysical( address );
 
-   if (config.updateMode == SCREEN_UPDATE_AT_CI_CHANGE)
-      OGL_SwapBuffers();
-
-   if (config.updateMode == SCREEN_UPDATE_AT_1ST_CI_CHANGE && OGL.screenUpdate)
-      OGL_SwapBuffers();
-
-   addr = RSP_SegmentToPhysical( address );
-
-   if (gDP.colorImage.address != addr)
+	if (gDP.colorImage.address != address || gDP.colorImage.width != width || gDP.colorImage.size != size)
    {
+		u32 height = 1;
+
       gDP.colorImage.changed = FALSE;
-      if (width == VI.width)
-         gDP.colorImage.height = VI.height;
-      else
-         gDP.colorImage.height = 1;
+
+		if (width == VI.width)
+			height = VI.height;
+		else if (width == gDP.scissor.lrx && width == gSP.viewport.width)
+      {
+			height = max(gDP.scissor.lry, gSP.viewport.height);
+			height = min(height, VI.height);
+		} else if (width == gDP.scissor.lrx)
+			height = gDP.scissor.lry;
+		else if (width <= 64)
+			height = width;
+		else if (gSP.viewport.height > 0)
+			height = gSP.viewport.height;
+		else
+			height = gDP.scissor.lry;
+
+      gDP.colorImage.height = height;
    }
 
-   gDP.colorImage.format = format;
-   gDP.colorImage.size = size;
-   gDP.colorImage.width = width;
+   gDP.colorImage.format  = format;
+   gDP.colorImage.size    = size;
+   gDP.colorImage.width   = width;
    gDP.colorImage.address = addr;
 
    if (config.ignoreOffscreenRendering)
@@ -452,20 +459,21 @@ void gDPSetTextureImage( u32 format, u32 size, u32 width, u32 address )
    gDP.textureImage.address = RSP_SegmentToPhysical( address );
    gDP.textureImage.bpl     = gDP.textureImage.width << gDP.textureImage.size >> 1;
 
-   /* FIXME/TODO - update */
-#if 0
-	if (gSP.DMAOffsets.tex_offset != 0) {
-		if (format == G_IM_FMT_RGBA) {
-			u16 * t = (u16*)(RDRAM + gSP.DMAOffsets.tex_offset);
-			gSP.DMAOffsets.tex_shift = t[gSP.DMAOffsets.tex_count ^ 1];
-			gDP.textureImage.address += gSP.DMAOffsets.tex_shift;
-		} else {
-			gSP.DMAOffsets.tex_offset = 0;
-			gSP.DMAOffsets.tex_shift = 0;
-			gSP.DMAOffsets.tex_count = 0;
-		}
-	}
-#endif
+	if (gSP.DMAOffsets.tex_offset != 0)
+   {
+      if (format == G_IM_FMT_RGBA)
+      {
+         u16 * t = (u16*)(gfx_info.RDRAM + gSP.DMAOffsets.tex_offset);
+         gSP.DMAOffsets.tex_shift = t[gSP.DMAOffsets.tex_count ^ 1];
+         gDP.textureImage.address += gSP.DMAOffsets.tex_shift;
+      }
+      else
+      {
+         gSP.DMAOffsets.tex_offset = 0;
+         gSP.DMAOffsets.tex_shift = 0;
+         gSP.DMAOffsets.tex_count = 0;
+      }
+   }
 
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPSetTextureImage( %s, %s, %i, 0x%08X );\n",

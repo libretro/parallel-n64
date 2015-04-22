@@ -60,7 +60,6 @@ static Option configOptions[] =
    {"", NULL, 0},
 
    {"#VI Settings:", NULL, 0},
-   {"video force", &config.video.force, 0},
    {"video width", &config.video.width, 320},
    {"video height", &config.video.height, 240},
    {"", NULL, 0},
