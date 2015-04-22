@@ -81,6 +81,8 @@ void OGL_InitStates(void)
 
 void OGL_UpdateScale(void)
 {
+   if (VI.width == 0 || VI.height == 0)
+      return;
    OGL.scaleX = (float)config.screen.width / (float)VI.width;
    OGL.scaleY = (float)config.screen.height / (float)VI.height;
 }
@@ -140,12 +142,11 @@ void OGL_Stop(void)
 
 void OGL_UpdateCullFace(void)
 {
-   if (config.enableFaceCulling && (gSP.geometryMode & G_CULL_BOTH))
+   if (gSP.geometryMode & G_CULL_BOTH)
    {
       glEnable( GL_CULL_FACE );
-      if ((gSP.geometryMode & G_CULL_BACK) && (gSP.geometryMode & G_CULL_FRONT))
-         glCullFace(GL_FRONT_AND_BACK);
-      else if (gSP.geometryMode & G_CULL_BACK)
+
+      if (gSP.geometryMode & G_CULL_BACK)
          glCullFace(GL_BACK);
       else
          glCullFace(GL_FRONT);

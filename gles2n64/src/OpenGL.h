@@ -20,7 +20,6 @@ extern "C" {
 #define SCREEN_UPDATE_AT_VI_CHANGE              2
 #define SCREEN_UPDATE_AT_CI_CHANGE              3
 #define SCREEN_UPDATE_AT_1ST_CI_CHANGE          4
-#define SCREEN_UPDATE_AT_1ST_PRIMITIVE          5
 #define SCREEN_UPDATE_BEFORE_SCREEN_CLEAR       6
 #define SCREEN_UPDATE_AT_VI_UPDATE_AND_DRAWN    7
 
