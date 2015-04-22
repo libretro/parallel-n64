@@ -352,40 +352,54 @@ void gSPForceMatrix( u32 mptr )
 
 void gSPLight( u32 l, s32 n )
 {
-   u8 *addr;
-   u32 address;
-   n--;
-   if (n >= 8)
-      return;
+	--n;
+	u32 addrByte = RSP_SegmentToPhysical( l );
 
-   address = RSP_SegmentToPhysical( l );
-
-   if ((address + sizeof( Light )) > RDRAMSize)
-      return;
-
-   addr = (u8*)&gfx_info.RDRAM[address];
-
-   if (config.hackZelda && (addr[0] == 0x08) && (addr[4] == 0xFF))
+	if ((addrByte + sizeof( Light )) > RDRAMSize)
    {
-      LightMM *light = (LightMM*)addr;
-      gSP.lights[n].r = light->r * 0.0039215689f;
-      gSP.lights[n].g = light->g * 0.0039215689f;
-      gSP.lights[n].b = light->b * 0.0039215689f;
-      gSP.lights[n].x = light->x;
-      gSP.lights[n].y = light->y;
-      gSP.lights[n].z = light->z;
-   }
-   else
-   {
-      Light *light = (Light*)addr;
-      gSP.lights[n].r = light->r * 0.0039215689f;
-      gSP.lights[n].g = light->g * 0.0039215689f;
-      gSP.lights[n].b = light->b * 0.0039215689f;
-      gSP.lights[n].x = light->x;
-      gSP.lights[n].y = light->y;
-      gSP.lights[n].z = light->z;
-   }
-   Normalize(&gSP.lights[n].x);
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to load light from invalid address\n" );
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPLight( 0x%08X, LIGHT_%i );\n",
+			l, n );
+#endif
+		return;
+	}
+
+	Light *light = (Light*)&gfx_info.RDRAM[addrByte];
+
+	if (n < 8) {
+		gSP.lights[n].r = light->r * 0.0039215689f;
+		gSP.lights[n].g = light->g * 0.0039215689f;
+		gSP.lights[n].b = light->b * 0.0039215689f;
+
+		gSP.lights[n].x = light->x;
+		gSP.lights[n].y = light->y;
+		gSP.lights[n].z = light->z;
+
+		Normalize( &gSP.lights[n].x );
+		u32 addrShort = addrByte >> 1;
+		gSP.lights[n].posx = (float)(((short*)gfx_info.RDRAM)[(addrShort+4)^1]);
+		gSP.lights[n].posy = (float)(((short*)gfx_info.RDRAM)[(addrShort+5)^1]);
+		gSP.lights[n].posz = (float)(((short*)gfx_info.RDRAM)[(addrShort+6)^1]);
+		gSP.lights[n].ca = (float)(gfx_info.RDRAM[(addrByte + 3) ^ 3]) / 16.0f;
+		gSP.lights[n].la = (float)(gfx_info.RDRAM[(addrByte + 7) ^ 3]);
+		gSP.lights[n].qa = (float)(gfx_info.RDRAM[(addrByte + 14) ^ 3]) / 8.0f;
+	}
+
+   /* TODO/FIXME - update */
+#if 0
+	if (config.generalEmulation.enableHWLighting != 0)
+		gSP.changed |= CHANGED_LIGHT;
+#endif
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED, "// x = %2.6f    y = %2.6f    z = %2.6f\n",
+		_FIXED2FLOAT( light->x, 7 ), _FIXED2FLOAT( light->y, 7 ), _FIXED2FLOAT( light->z, 7 ) );
+	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED, "// r = %3i    g = %3i   b = %3i\n",
+		light->r, light->g, light->b );
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPLight( 0x%08X, LIGHT_%i );\n",
+		l, n );
+#endif
 }
 
 void gSPLookAt( u32 _l, u32 _n )

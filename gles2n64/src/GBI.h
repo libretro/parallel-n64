@@ -720,13 +720,6 @@ typedef struct
     s8 pad2, z, y, x;
 } Light;
 
-typedef struct
-{
-    u8 pad0, b, g, r;
-    u8 pad1, b2, g2, r2;
-    s16 y, x, range, z;
-} LightMM;
-
 // GBI commands
 typedef void (*GBIFunc)( u32 w0, u32 w1 );
 
