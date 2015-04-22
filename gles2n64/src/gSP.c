@@ -1217,11 +1217,6 @@ void gSPTexture( f32 sc, f32 tc, s32 level, s32 tile, s32 on )
    gSP.textureTile[1] = &gDP.tiles[(tile < 7) ? (tile + 1) : tile];
    gSP.changed |= CHANGED_TEXTURE;
 
-   /* TODO/FIXME - remove? */
-#if 1
-   gSP.changed |= CHANGED_TEXTURESCALE;
-#endif
-
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gSPTexture( %f, %f, %i, %i, %i );\n",
 		sc, tc, level, tile, on );
@@ -1471,6 +1466,29 @@ void gSPBgRectCopy( u32 bg )
    );
 }
 
+static
+u16 _YUVtoRGBA(u8 y, u8 u, u8 v)
+{
+	float r = y + (1.370705f * (v - 128));
+	float g = y - (0.698001f * (v - 128)) - (0.337633f * (u - 128));
+	float b = y + (1.732446f * (u - 128));
+	r *= 0.125f;
+	g *= 0.125f;
+	b *= 0.125f;
+	//clipping the result
+	if (r > 32) r = 32;
+	if (g > 32) g = 32;
+	if (b > 32) b = 32;
+	if (r < 0) r = 0;
+	if (g < 0) g = 0;
+	if (b < 0) b = 0;
+
+	u16 c = (u16)(((u16)(r) << 11) |
+		((u16)(g) << 6) |
+		((u16)(b) << 1) | 1);
+	return c;
+}
+
 void gSPObjRectangle( u32 sp )
 {
    u32 address = RSP_SegmentToPhysical( sp );
@@ -1486,19 +1504,19 @@ void gSPObjRectangle( u32 sp )
    gDPTextureRectangle( objX, objY, objX + imageW / scaleW - 1, objY + imageH / scaleH - 1, 0, 0.0f, 0.0f, scaleW * (gDP.otherMode.cycleType == G_CYC_COPY ? 4.0f : 1.0f), scaleH );
 }
 
-#ifdef NEW
 void gSPObjRectangleR(u32 _sp)
 {
-	const u32 address = RSP_SegmentToPhysical(_sp);
-	const uObjSprite *objSprite = (uObjSprite*)&gfx_info.RDRAM[address];
-	gSPSetSpriteTile(objSprite);
-	ObjCoordinates objCoords(objSprite, true);
+#ifdef NEW
+   const u32 address = RSP_SegmentToPhysical(_sp);
+   const uObjSprite *objSprite = (uObjSprite*)&gfx_info.RDRAM[address];
+   gSPSetSpriteTile(objSprite);
+   ObjCoordinates objCoords(objSprite, true);
 
-	if (objSprite->imageFmt == G_IM_FMT_YUV && (config.generalEmulation.hacks&hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
-		_drawYUVImageToFrameBuffer(objCoords);
-	gSPDrawObjRect(objCoords);
-}
+   if (objSprite->imageFmt == G_IM_FMT_YUV && (config.generalEmulation.hacks&hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
+      _drawYUVImageToFrameBuffer(objCoords);
+   gSPDrawObjRect(objCoords);
 #endif
+}
 
 void gSPObjLoadTxtr( u32 tx )
 {
@@ -1614,7 +1632,7 @@ void gSPObjLoadTxSprite( u32 txsp )
 void gSPObjLoadTxRectR( u32 txsp )
 {
    gSPObjLoadTxtr( txsp );
-   //gSPObjRectangleR( txsp + sizeof( uObjTxtr ) );
+   gSPObjRectangleR( txsp + sizeof( uObjTxtr ) );
 }
 
 void gSPObjMatrix( u32 mtx )

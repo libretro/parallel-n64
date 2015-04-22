@@ -12,7 +12,7 @@
 #define CHANGED_GEOMETRYMODE    0x08
 #define CHANGED_TEXTURE         0x10
 #define CHANGED_FOGPOSITION     0x20
-#define CHANGED_TEXTURESCALE    0x40
+#define CHANGED_TEXTURESCALE    0x100
 
 #define gSPFlushTriangles() \
 if \
