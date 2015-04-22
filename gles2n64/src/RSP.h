@@ -1,6 +1,8 @@
 #ifndef RSP_H
 #define RSP_H
 
+#include <boolean.h>
+
 #include "N64.h"
 #include "GBI.h"
 //#include "gSP.h"
@@ -19,7 +21,10 @@ extern "C" {
 
 typedef struct
 {
-    u32 PC[18], PCi, busy, halt, close, DList, uc_start, uc_dstart, cmd, nextCmd, count;
+	u32 PC[18], PCi, busy, halt, close, DList, uc_start, uc_dstart, cmd, nextCmd;
+	s32 count;
+	bool bLLE;
+	char romname[21];
 } RSPInfo;
 
 extern RSPInfo __RSP;
@@ -29,6 +34,7 @@ extern RSPInfo __RSP;
 void RSP_Init(void);
 void RSP_ProcessDList(void);
 void RSP_LoadMatrix( f32 mtx[4][4], u32 address );
+void RSP_CheckDLCounter();
 
 #ifdef __cplusplus
 }

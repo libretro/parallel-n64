@@ -33,6 +33,22 @@ void RSP_LoadMatrix( f32 mtx[4][4], u32 address )
          mtx[i][j] = (GLfloat)(n64Mat->integer[i][j^1]) + (GLfloat)(n64Mat->fraction[i][j^1]) * recip;
 }
 
+void RSP_CheckDLCounter(void)
+{
+	if (__RSP.count != -1)
+	{
+		--__RSP.count;
+		if (__RSP.count == 0)
+		{
+			__RSP.count = -1;
+			--__RSP.PCi;
+#ifdef DEBUG
+			DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "End of DL\n" );
+#endif
+		}
+	}
+}
+
 void RSP_ProcessDList(void)
 {
    int i, j;
@@ -43,15 +59,19 @@ void RSP_ProcessDList(void)
    TextureCache_ActivateNoise(2);
 
    __RSP.PC[0] = *(u32*)&gfx_info.DMEM[0x0FF0];
-   __RSP.PCi = 0;
-   __RSP.count = 0;
+   __RSP.PCi   = 0;
+   __RSP.count = -1;
 
-   __RSP.halt = FALSE;
-   __RSP.busy = TRUE;
+   __RSP.halt  = FALSE;
+   __RSP.busy  = TRUE;
 
    gSP.matrix.stackSize = min( 32, *(u32*)&gfx_info.DMEM[0x0FE4] >> 6 );
    gSP.matrix.modelViewi = 0;
+#ifdef NEW
+   gSP.changed &= ~CHANGED_CPU_FB_WRITE;
+#endif
    gSP.changed |= CHANGED_MATRIX;
+   gDPSetTexturePersp(G_TP_PERSP);
 
    for (i = 0; i < 4; i++)
       for (j = 0; j < 4; j++)
@@ -84,6 +104,11 @@ void RSP_ProcessDList(void)
    gDPSetCycleType(G_CYC_1CYCLE);
    gDPPipelineMode(G_PM_NPRIMITIVE);
 
+#ifdef NEW
+   if (GBI.getMicrocodeType() == Turbo3D)
+	   RunTurbo3D();
+   else
+#endif
    while (!__RSP.halt)
    {
 	  u32 w0, w1, pc;
@@ -100,27 +125,72 @@ void RSP_ProcessDList(void)
 
       w0 = *(u32*)&gfx_info.RDRAM[pc];
       w1 = *(u32*)&gfx_info.RDRAM[pc+4];
-      __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[pc+8], 24, 8 );
       __RSP.cmd = _SHIFTR( w0, 24, 8 );
+
+#ifdef DEBUG
+      DebugRSPState( RSP.PCi, RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
+      DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
+#endif
+
       __RSP.PC[__RSP.PCi] += 8;
+      __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[pc+8], 24, 8 );
 
       GBI.cmd[__RSP.cmd]( w0, w1 );
-
+      RSP_CheckDLCounter();
    }
 
+#ifdef NEW
+   if (config.frameBufferEmulation.copyToRDRAM)
+	   FrameBuffer_CopyToRDRAM( gDP.colorImage.address );
+   if (config.frameBufferEmulation.copyDepthToRDRAM)
+	   FrameBuffer_CopyDepthBuffer( gDP.colorImage.address );
+#endif
    __RSP.busy = FALSE;
    __RSP.DList++;
    gSP.changed |= CHANGED_COLORBUFFER;
 }
 
-void RSP_Init(void)
+static
+void RSP_SetDefaultState(void)
 {
-   RDRAMSize = 1024 * 1024 * 8;
-   __RSP.DList = 0;
-   __RSP.uc_start = __RSP.uc_dstart = 0;
+   unsigned i, j;
+
    gDP.loadTile = &gDP.tiles[7];
    gSP.textureTile[0] = &gDP.tiles[0];
    gSP.textureTile[1] = &gDP.tiles[1];
+   gSP.lookat[0].x = gSP.lookat[1].x = 1.0f;
+   gSP.lookatEnable = false;
+
+   gSP.objMatrix.A = 1.0f;
+   gSP.objMatrix.B = 0.0f;
+   gSP.objMatrix.C = 0.0f;
+   gSP.objMatrix.D = 1.0f;
+   gSP.objMatrix.X = 0.0f;
+   gSP.objMatrix.Y = 0.0f;
+   gSP.objMatrix.baseScaleX = 1.0f;
+   gSP.objMatrix.baseScaleY = 1.0f;
+   gSP.objRendermode = 0;
+
+   gSP.matrix.modelView[0][0][0] = 1.0f;
+   gSP.matrix.modelView[0][1][1] = 1.0f;
+   gSP.matrix.modelView[0][2][2] = 1.0f;
+   gSP.matrix.modelView[0][3][3] = 1.0f;
+
+   for (i = 0; i < 4; i++)
+	   for (j = 0; j < 4; j++)
+		   gSP.matrix.modelView[0][i][j] = 0.0f;
+
+   gDP.otherMode._u64 = 0U;
+}
+
+void RSP_Init(void)
+{
+   RDRAMSize      = 1024 * 1024 * 8;
+   __RSP.DList    = 0;
+   __RSP.uc_start = __RSP.uc_dstart = 0;
+   __RSP.bLLE     = false;
+
+   RSP_SetDefaultState();
 
    DepthBuffer_Init();
    GBI_Init();
