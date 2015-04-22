@@ -175,13 +175,22 @@ void OGL_UpdateDepthUpdate(void)
 
 void OGL_UpdateScissor(void)
 {
-   int x, y, w, h;
-   x = (int)(gDP.scissor.ulx * OGL.scaleX);
-   y = (int)((VI.height - gDP.scissor.lry) * OGL.scaleY);
-   w = (int)((gDP.scissor.lrx - gDP.scissor.ulx) * OGL.scaleX);
-   h = (int)((gDP.scissor.lry - gDP.scissor.uly) * OGL.scaleY);
+   u32 heightOffset, screenHeight;
+   f32 scaleX, scaleY;
+   float SX0 = gDP.scissor.ulx;
+   float SX1 = gDP.scissor.lrx;
 
-   glScissor(x, y, w, h);
+   scaleX       = OGL.scaleX;
+   scaleY       = OGL.scaleY;
+   heightOffset = 0;
+   screenHeight = VI.height; 
+
+   glScissor(
+         (GLint)(SX0 * scaleX),
+         (GLint)((screenHeight - gDP.scissor.lry) * scaleY + heightOffset),
+         max((GLint)((SX1 - gDP.scissor.ulx) * scaleX), 0),
+         max((GLint)((gDP.scissor.lry - gDP.scissor.uly) * scaleY), 0)
+         );
 }
 
 //copied from RICE VIDEO
