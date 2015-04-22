@@ -67,7 +67,6 @@ static Option configOptions[] =
    {"#Render Settings:", NULL, 0},
    {"enable primitive z", &config.enablePrimZ, 1},
    {"enable lighting", &config.enableLighting, 1},
-   {"enable alpha test", &config.enableAlphaTest, 1},
    {"enable clipping", &config.enableClipping, 0},
    {"enable face culling", &config.enableFaceCulling, 1},
    {"enable noise", &config.enableNoise, 0},

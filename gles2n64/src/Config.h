@@ -42,7 +42,6 @@ typedef struct
 
     int     enablePrimZ;
     int     enableLighting;
-    int     enableAlphaTest;
     int     enableClipping;
     int     enableFaceCulling;
     int     enableNoise;
