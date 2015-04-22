@@ -111,9 +111,9 @@ bool OGL_Start(void)
    OGL_EnableRunfast();
 
    //We must have a shader bound before binding any textures:
-   ShaderCombiner_Init();
-   ShaderCombiner_Set(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0), -1);
-   ShaderCombiner_Set(EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, 1, 0, 0, 0, SHADE, 0, 0, 0, 1), -1);
+   Combiner_Init();
+   Combiner_Set(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0), -1);
+   Combiner_Set(EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, 1, 0, 0, 0, SHADE, 0, 0, 0, 1), -1);
 
    TextureCache_Init();
 
@@ -134,7 +134,7 @@ void OGL_Stop(void)
 {
    LOG(LOG_MINIMAL, "Stopping OpenGL\n");
 
-   ShaderCombiner_Destroy();
+   Combiner_Destroy();
    TextureCache_Destroy();
 }
 
@@ -325,11 +325,11 @@ void OGL_SetBlendMode(void)
 void OGL_UpdateStates(void)
 {
    if (gDP.otherMode.cycleType == G_CYC_COPY)
-      ShaderCombiner_Set(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0), -1);
+      Combiner_Set(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0), -1);
    else if (gDP.otherMode.cycleType == G_CYC_FILL)
-      ShaderCombiner_Set(EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, 1, 0, 0, 0, SHADE, 0, 0, 0, 1), -1);
+      Combiner_Set(EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, 1, 0, 0, 0, SHADE, 0, 0, 0, 1), -1);
    else
-      ShaderCombiner_Set(gDP.combine.mux, -1);
+      Combiner_Set(gDP.combine.mux, -1);
 
    if (gSP.changed & CHANGED_GEOMETRYMODE)
    {

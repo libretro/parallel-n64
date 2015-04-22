@@ -524,7 +524,7 @@ static void force_uniforms(void)
    }
 }
 
-void ShaderCombiner_Init(void)
+void Combiner_Init(void)
 {
    //compile vertex shader:
    GLint success;
@@ -550,12 +550,12 @@ void ShaderCombiner_Init(void)
    gDP.otherMode.cycleType = G_CYC_1CYCLE;
 }
 
-void ShaderCombiner_DeletePrograms(ShaderProgram *prog)
+static void Combiner_DeletePrograms(ShaderProgram *prog)
 {
    if (prog)
    {
-      ShaderCombiner_DeletePrograms(prog->left);
-      ShaderCombiner_DeletePrograms(prog->right);
+      Combiner_DeletePrograms(prog->left);
+      Combiner_DeletePrograms(prog->right);
       glDeleteProgram(prog->program);
       //glDeleteShader(prog->fragment);
       free(prog);
@@ -563,97 +563,15 @@ void ShaderCombiner_DeletePrograms(ShaderProgram *prog)
    }
 }
 
-void ShaderCombiner_Destroy(void)
+void Combiner_Destroy(void)
 {
-   ShaderCombiner_DeletePrograms(scProgramRoot);
+   Combiner_DeletePrograms(scProgramRoot);
    glDeleteShader(_vertex_shader);
    scProgramCount = scProgramChanged = 0;
    scProgramRoot = scProgramCurrent = NULL;
 }
 
-void ShaderCombiner_Set(u64 mux, int flags)
-{
-   DecodedMux *dmux;
-   ShaderProgram *root, *prog;
-
-   //banjo tooie hack
-   if ((gDP.otherMode.cycleType == G_CYC_1CYCLE) && (mux == 0x00ffe7ffffcf9fcfLL))
-      mux = EncodeCombineMode( 0, 0, 0, 0, TEXEL0, 0, PRIMITIVE, 0,
-            0, 0, 0, 0, TEXEL0, 0, PRIMITIVE, 0 );
-
-   //determine flags
-   if (flags == -1)
-   {
-      flags = 0;
-      if ((gSP.geometryMode & G_FOG))
-         flags |= SC_FOGENABLED;
-
-      if ((gDP.otherMode.alphaCompare == G_AC_THRESHOLD) && !(gDP.otherMode.alphaCvgSel))
-      {
-         flags |= SC_ALPHAENABLED;
-         if (gDP.blendColor.a > 0.0f)
-            flags |= SC_ALPHAGREATER;
-      }
-      else if (gDP.otherMode.cvgXAlpha)
-      {
-         flags |= SC_ALPHAENABLED;
-         flags |= SC_ALPHAGREATER;
-      }
-
-      if (gDP.otherMode.cycleType == G_CYC_2CYCLE)
-         flags |= SC_2CYCLE;
-   }
-
-   dmux = (DecodedMux*)mux_new(mux, flags&SC_2CYCLE);
-
-   //if already bound:
-   if (scProgramCurrent)
-   {
-      if (program_compare(scProgramCurrent, dmux, flags))
-      {
-         scProgramChanged = 0;
-         return;
-      }
-   }
-
-   //traverse binary tree for cached programs
-   scProgramChanged = 1;
-
-   root = (ShaderProgram*)scProgramRoot;
-   prog = (ShaderProgram*)root;
-   while(!program_compare(prog, dmux, flags))
-   {
-      root = prog;
-      if (prog->combine.mux < dmux->combine.mux)
-         prog = prog->right;
-      else
-         prog = prog->left;
-   }
-
-   //build new program
-   if (!prog)
-   {
-      scProgramCount++;
-      prog = ShaderCombiner_Compile(dmux, flags);
-      if (!root)
-         scProgramRoot = prog;
-      else if (root->combine.mux < dmux->combine.mux)
-         root->right = prog;
-      else
-         root->left = prog;
-
-   }
-
-   prog->lastUsed = OGL.frame_dl;
-   scProgramCurrent = prog;
-   glUseProgram(prog->program);
-   force_uniforms();
-
-   if (dmux)
-      free(dmux);
-}
-
-ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
+static ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
 {
    int i, j;
    GLint success, len[1];
@@ -778,3 +696,86 @@ ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
    locate_uniforms(prog);
    return prog;
 }
+
+void Combiner_Set(u64 mux, int flags)
+{
+   DecodedMux *dmux;
+   ShaderProgram *root, *prog;
+
+   //banjo tooie hack
+   if ((gDP.otherMode.cycleType == G_CYC_1CYCLE) && (mux == 0x00ffe7ffffcf9fcfLL))
+      mux = EncodeCombineMode( 0, 0, 0, 0, TEXEL0, 0, PRIMITIVE, 0,
+            0, 0, 0, 0, TEXEL0, 0, PRIMITIVE, 0 );
+
+   //determine flags
+   if (flags == -1)
+   {
+      flags = 0;
+      if ((gSP.geometryMode & G_FOG))
+         flags |= SC_FOGENABLED;
+
+      if ((gDP.otherMode.alphaCompare == G_AC_THRESHOLD) && !(gDP.otherMode.alphaCvgSel))
+      {
+         flags |= SC_ALPHAENABLED;
+         if (gDP.blendColor.a > 0.0f)
+            flags |= SC_ALPHAGREATER;
+      }
+      else if (gDP.otherMode.cvgXAlpha)
+      {
+         flags |= SC_ALPHAENABLED;
+         flags |= SC_ALPHAGREATER;
+      }
+
+      if (gDP.otherMode.cycleType == G_CYC_2CYCLE)
+         flags |= SC_2CYCLE;
+   }
+
+   dmux = (DecodedMux*)mux_new(mux, flags & SC_2CYCLE);
+
+   //if already bound:
+   if (scProgramCurrent)
+   {
+      if (program_compare(scProgramCurrent, dmux, flags))
+      {
+         scProgramChanged = 0;
+         return;
+      }
+   }
+
+   //traverse binary tree for cached programs
+   scProgramChanged = 1;
+
+   root = (ShaderProgram*)scProgramRoot;
+   prog = (ShaderProgram*)root;
+   while(!program_compare(prog, dmux, flags))
+   {
+      root = prog;
+      if (prog->combine.mux < dmux->combine.mux)
+         prog = prog->right;
+      else
+         prog = prog->left;
+   }
+
+   //build new program
+   if (!prog)
+   {
+      scProgramCount++;
+      prog = ShaderCombiner_Compile(dmux, flags);
+      if (!root)
+         scProgramRoot = prog;
+      else if (root->combine.mux < dmux->combine.mux)
+         root->right = prog;
+      else
+         root->left = prog;
+
+   }
+
+   prog->lastUsed = OGL.frame_dl;
+   scProgramCurrent = prog;
+   glUseProgram(prog->program);
+   force_uniforms();
+
+   if (dmux)
+      free(dmux);
+}
+
