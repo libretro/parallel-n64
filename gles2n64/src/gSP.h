@@ -55,23 +55,21 @@ if \
 #define CLIP_NEGY   0x04
 #define CLIP_POSY   0x08
 
-#define CLIP_Z      0x30
-#define CLIP_NEGZ   0x10
-#define CLIP_POSZ   0x20
+#define CLIP_Z      0x10
+
+#define CLIP_ALL	0x1F // CLIP_NEGX|CLIP_POSX|CLIP_NEGY|CLIP_POSY|CLIP_Z
 
 typedef struct
 {
     f32     x, y, z, w;
     f32     nx, ny, nz, __pad0;
     f32     r, g, b, a;
+    f32 flat_r, flat_g, flat_b, flat_a;
     f32     s, t;
-
-    u32     clip;
+    u8 HWLight;
     s16     flag;
-    s16     __pad1;
+    u32     clip;
 } SPVertex;
-
-typedef SPVertex SPTriangle[3];
 
 typedef struct SPLight
 {
@@ -80,6 +78,8 @@ typedef struct SPLight
 	f32 posx, posy, posz, posw;
 	f32 ca, la, qa;
 } SPLight;
+
+typedef SPVertex SPTriangle[3];
 
 typedef struct
 {

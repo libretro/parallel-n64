@@ -50,7 +50,6 @@ void gSPTriangle(s32 v0, s32 v1, s32 v2)
    }
 
    if (depthBuffer.current) depthBuffer.current->cleared = FALSE;
-   gDP.colorImage.changed = TRUE;
    gDP.colorImage.height = (u32)(max( gDP.colorImage.height, (u32)gDP.scissor.lry ));
 }
 
@@ -180,8 +179,7 @@ void gSPProcessVertex( u32 v )
       OGL.triangles.vertices[v].z = -OGL.triangles.vertices[v].w;
    }
 
-   if (config.enableClipping)
-      gSPClipVertex(v);
+   gSPClipVertex(v);
 
    if (gSP.geometryMode & G_LIGHTING)
    {
@@ -243,6 +241,9 @@ void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 void gSPNoOp(void)
 {
    gSPFlushTriangles();
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_IGNORED, "gSPNoOp();\n" );
+#endif
 }
 
 void gSPTriangleUnknown(void)
@@ -255,7 +256,17 @@ void gSPMatrix( u32 matrix, u8 param )
    u32 address = RSP_SegmentToPhysical( matrix );
 
    if (address + 64 > RDRAMSize)
+   {
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_MATRIX, "// Attempting to load matrix from invalid address\n" );
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPMatrix( 0x%08X, %s | %s | %s );\n",
+			matrix,
+			(param & G_MTX_PROJECTION) ? "G_MTX_PROJECTION" : "G_MTX_MODELVIEW",
+			(param & G_MTX_LOAD) ? "G_MTX_LOAD" : "G_MTX_MUL",
+			(param & G_MTX_PUSH) ? "G_MTX_PUSH" : "G_MTX_NOPUSH" );
+#endif
       return;
+   }
 
    RSP_LoadMatrix( mtx, address );
 
@@ -280,6 +291,22 @@ void gSPMatrix( u32 matrix, u8 param )
    }
 
    gSP.changed |= CHANGED_MATRIX;
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED | DEBUG_MATRIX, "// %12.6f %12.6f %12.6f %12.6f\n",
+		mtx[0][0], mtx[0][1], mtx[0][2], mtx[0][3] );
+	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED | DEBUG_MATRIX, "// %12.6f %12.6f %12.6f %12.6f\n",
+		mtx[1][0], mtx[1][1], mtx[1][2], mtx[1][3] );
+	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED | DEBUG_MATRIX, "// %12.6f %12.6f %12.6f %12.6f\n",
+		mtx[2][0], mtx[2][1], mtx[2][2], mtx[2][3] );
+	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED | DEBUG_MATRIX, "// %12.6f %12.6f %12.6f %12.6f\n",
+		mtx[3][0], mtx[3][1], mtx[3][2], mtx[3][3] );
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPMatrix( 0x%08X, %s | %s | %s );\n",
+		matrix,
+		(param & G_MTX_PROJECTION) ? "G_MTX_PROJECTION" : "G_MTX_MODELVIEW",
+		(param & G_MTX_LOAD) ? "G_MTX_LOAD" : "G_MTX_MUL",
+		(param & G_MTX_PUSH) ? "G_MTX_PUSH" : "G_MTX_NOPUSH" );
+#endif
 }
 
 void gSPDMAMatrix( u32 matrix, u8 index, u8 multiply )
@@ -288,23 +315,40 @@ void gSPDMAMatrix( u32 matrix, u8 index, u8 multiply )
    u32 address = gSP.DMAOffsets.mtx + RSP_SegmentToPhysical( matrix );
 
    if (address + 64 > RDRAMSize)
+   {
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_MATRIX, "// Attempting to load matrix from invalid address\n" );
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPDMAMatrix( 0x%08X, %i, %s );\n",
+			matrix, index, multiply ? "TRUE" : "FALSE" );
+#endif
       return;
+   }
 
    RSP_LoadMatrix( mtx, address );
 
    gSP.matrix.modelViewi = index;
 
    if (multiply)
-   {
-      //CopyMatrix( gSP.matrix.modelView[gSP.matrix.modelViewi], gSP.matrix.modelView[0] );
-      //MultMatrix( gSP.matrix.modelView[gSP.matrix.modelViewi], mtx );
       MultMatrix(gSP.matrix.modelView[0], mtx, gSP.matrix.modelView[gSP.matrix.modelViewi]);
-   }
    else
       CopyMatrix( gSP.matrix.modelView[gSP.matrix.modelViewi], mtx );
 
    CopyMatrix( gSP.matrix.projection, identityMatrix );
+
    gSP.changed |= CHANGED_MATRIX;
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED | DEBUG_MATRIX, "// %12.6f %12.6f %12.6f %12.6f\n",
+		mtx[0][0], mtx[0][1], mtx[0][2], mtx[0][3] );
+	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED | DEBUG_MATRIX, "// %12.6f %12.6f %12.6f %12.6f\n",
+		mtx[1][0], mtx[1][1], mtx[1][2], mtx[1][3] );
+	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED | DEBUG_MATRIX, "// %12.6f %12.6f %12.6f %12.6f\n",
+		mtx[2][0], mtx[2][1], mtx[2][2], mtx[2][3] );
+	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED | DEBUG_MATRIX, "// %12.6f %12.6f %12.6f %12.6f\n",
+		mtx[3][0], mtx[3][1], mtx[3][2], mtx[3][3] );
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPDMAMatrix( 0x%08X, %i, %s );\n",
+		matrix, index, multiply ? "TRUE" : "FALSE" );
+#endif
 }
 
 void gSPViewport( u32 v )
@@ -337,6 +381,10 @@ void gSPViewport( u32 v )
    gSP.viewport.farz   = (gSP.viewport.vtrans[2] + gSP.viewport.vscale[2]) ;
 
    gSP.changed |= CHANGED_VIEWPORT;
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPViewport( 0x%08X );\n", v );
+#endif
 }
 
 void gSPForceMatrix( u32 mptr )
@@ -344,16 +392,84 @@ void gSPForceMatrix( u32 mptr )
    u32 address = RSP_SegmentToPhysical( mptr );
 
    if (address + 64 > RDRAMSize)
+   {
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_MATRIX, "// Attempting to load from invalid address" );
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPForceMatrix( 0x%08X );\n", mptr );
+#endif
       return;
+   }
 
    RSP_LoadMatrix( gSP.matrix.combined, RSP_SegmentToPhysical( mptr ) );
 
    gSP.changed &= ~CHANGED_MATRIX;
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPForceMatrix( 0x%08X );\n", mptr );
+#endif
 }
 
 void gSPLight( u32 l, s32 n )
 {
+   u32 addrByte;
+   Light *light = NULL;
+
 	--n;
+	addrByte = RSP_SegmentToPhysical( l );
+
+	if ((addrByte + sizeof( Light )) > RDRAMSize)
+   {
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to load light from invalid address\n" );
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPLight( 0x%08X, LIGHT_%i );\n",
+			l, n );
+#endif
+		return;
+	}
+
+	light = (Light*)&gfx_info.RDRAM[addrByte];
+
+	if (n < 8)
+   {
+      u32 addrShort;
+
+		gSP.lights[n].r = light->r * 0.0039215689f;
+		gSP.lights[n].g = light->g * 0.0039215689f;
+		gSP.lights[n].b = light->b * 0.0039215689f;
+
+		gSP.lights[n].x = light->x;
+		gSP.lights[n].y = light->y;
+		gSP.lights[n].z = light->z;
+
+		Normalize( &gSP.lights[n].x );
+		addrShort = addrByte >> 1;
+		gSP.lights[n].posx = (float)(((short*)gfx_info.RDRAM)[(addrShort+4)^1]);
+		gSP.lights[n].posy = (float)(((short*)gfx_info.RDRAM)[(addrShort+5)^1]);
+		gSP.lights[n].posz = (float)(((short*)gfx_info.RDRAM)[(addrShort+6)^1]);
+		gSP.lights[n].ca = (float)(gfx_info.RDRAM[(addrByte + 3) ^ 3]) / 16.0f;
+		gSP.lights[n].la = (float)(gfx_info.RDRAM[(addrByte + 7) ^ 3]);
+		gSP.lights[n].qa = (float)(gfx_info.RDRAM[(addrByte + 14) ^ 3]) / 8.0f;
+	}
+
+   /* TODO/FIXME - update */
+#if 0
+	if (config.generalEmulation.enableHWLighting != 0)
+		gSP.changed |= CHANGED_LIGHT;
+#endif
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED, "// x = %2.6f    y = %2.6f    z = %2.6f\n",
+		_FIXED2FLOAT( light->x, 7 ), _FIXED2FLOAT( light->y, 7 ), _FIXED2FLOAT( light->z, 7 ) );
+	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED, "// r = %3i    g = %3i   b = %3i\n",
+		light->r, light->g, light->b );
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPLight( 0x%08X, LIGHT_%i );\n",
+		l, n );
+#endif
+}
+
+void gSPLightCBFD( u32 l, s32 n )
+{
+   Light *light = NULL;
 	u32 addrByte = RSP_SegmentToPhysical( l );
 
 	if ((addrByte + sizeof( Light )) > RDRAMSize)
@@ -366,9 +482,10 @@ void gSPLight( u32 l, s32 n )
 		return;
 	}
 
-	Light *light = (Light*)&gfx_info.RDRAM[addrByte];
+	light = (Light*)&gfx_info.RDRAM[addrByte];
 
-	if (n < 8) {
+	if (n < 12)
+   {
 		gSP.lights[n].r = light->r * 0.0039215689f;
 		gSP.lights[n].g = light->g * 0.0039215689f;
 		gSP.lights[n].b = light->b * 0.0039215689f;
@@ -379,16 +496,14 @@ void gSPLight( u32 l, s32 n )
 
 		Normalize( &gSP.lights[n].x );
 		u32 addrShort = addrByte >> 1;
-		gSP.lights[n].posx = (float)(((short*)gfx_info.RDRAM)[(addrShort+4)^1]);
-		gSP.lights[n].posy = (float)(((short*)gfx_info.RDRAM)[(addrShort+5)^1]);
-		gSP.lights[n].posz = (float)(((short*)gfx_info.RDRAM)[(addrShort+6)^1]);
-		gSP.lights[n].ca = (float)(gfx_info.RDRAM[(addrByte + 3) ^ 3]) / 16.0f;
-		gSP.lights[n].la = (float)(gfx_info.RDRAM[(addrByte + 7) ^ 3]);
-		gSP.lights[n].qa = (float)(gfx_info.RDRAM[(addrByte + 14) ^ 3]) / 8.0f;
+		gSP.lights[n].posx = (float)(((short*)gfx_info.RDRAM)[(addrShort+16)^1]);
+		gSP.lights[n].posy = (float)(((short*)gfx_info.RDRAM)[(addrShort+17)^1]);
+		gSP.lights[n].posz = (float)(((short*)gfx_info.RDRAM)[(addrShort+18)^1]);
+		gSP.lights[n].posw = (float)(((short*)gfx_info.RDRAM)[(addrShort+19)^1]);
+		gSP.lights[n].ca = (float)(gfx_info.RDRAM[(addrByte + 12) ^ 3]) / 16.0f;
 	}
 
-   /* TODO/FIXME - update */
-#if 0
+#ifdef NEW
 	if (config.generalEmulation.enableHWLighting != 0)
 		gSP.changed |= CHANGED_LIGHT;
 #endif
@@ -433,8 +548,6 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
 {
    unsigned int i;
    Vertex *vertex;
-   //flush batched triangles:
-
    u32 address = RSP_SegmentToPhysical( v );
 
    if ((address + sizeof( Vertex ) * n) > RDRAMSize)
@@ -574,6 +687,45 @@ void gSPDMAVertex( u32 v, u32 n, u32 v0 )
    }
 }
 
+void gSPCBFDVertex( u32 a, u32 n, u32 v0 )
+{
+	u32 address = RSP_SegmentToPhysical(a);
+
+	if ((address + sizeof( Vertex ) * n) > RDRAMSize)
+		return;
+
+	Vertex *vertex = (Vertex*)&gfx_info.RDRAM[address];
+
+	if ((n + v0) <= INDEXMAP_SIZE)
+   {
+		unsigned int i = v0;
+		for (; i < n + v0; ++i)
+      {
+			u32 v = i;
+			OGL.triangles.vertices[v].x = vertex->x;
+			OGL.triangles.vertices[v].y = vertex->y;
+			OGL.triangles.vertices[v].z = vertex->z;
+			OGL.triangles.vertices[v].s = _FIXED2FLOAT( vertex->s, 5 );
+			OGL.triangles.vertices[v].t = _FIXED2FLOAT( vertex->t, 5 );
+			if (gSP.geometryMode & G_LIGHTING)
+         {
+				const u32 normaleAddrOffset = (v<<1);
+				OGL.triangles.vertices[v].nx = (float)(((s8*)gfx_info.RDRAM)[(gSP.vertexNormalBase + normaleAddrOffset + 0)^3]);
+				OGL.triangles.vertices[v].ny = (float)(((s8*)gfx_info.RDRAM)[(gSP.vertexNormalBase + normaleAddrOffset + 1)^3]);
+				OGL.triangles.vertices[v].nz = (float)((s8)(vertex->flag&0xFF));
+			}
+			OGL.triangles.vertices[v].r = vertex->color.r * 0.0039215689f;
+			OGL.triangles.vertices[v].g = vertex->color.g * 0.0039215689f;
+			OGL.triangles.vertices[v].b = vertex->color.b * 0.0039215689f;
+			OGL.triangles.vertices[v].a = vertex->color.a * 0.0039215689f;
+			gSPProcessVertex(v);
+			vertex++;
+		}
+	} else {
+		LOG(LOG_ERROR, "Using Vertex outside buffer v0=%i, n=%i\n", v0, n);
+	}
+}
+
 void gSPDisplayList( u32 dl )
 {
    u32 address = RSP_SegmentToPhysical( dl );
@@ -695,6 +847,11 @@ void gSPSetDMATexOffset(u32 _addr)
 void gSPSetVertexColorBase( u32 base )
 {
    gSP.vertexColorBase = RSP_SegmentToPhysical( base );
+
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPSetVertexColorBase( 0x%08X );\n",
+			base );
+#endif
 }
 
 void gSPSetVertexNormaleBase( u32 base )
@@ -801,21 +958,20 @@ void gSP1Quadrangle( s32 v0, s32 v1, s32 v2, s32 v3)
 bool gSPCullVertices( u32 v0, u32 vn )
 {
    unsigned int i;
-   u32 v;
-   u32 clip;
-
-   if (!config.enableClipping)
-      return FALSE;
-
-   v = v0;
-   clip = OGL.triangles.vertices[v].clip;
-   if (clip == 0)
-      return FALSE;
+   u32 clip = 0;
+	if (vn < v0)
+   {
+      // Aidyn Chronicles - The First Mage seems to pass parameters in reverse order.
+      const u32 v = v0;
+      v0 = vn;
+      vn = v;
+   }
 
    for (i = v0 + 1; i <= vn; i++)
    {
-      v = i;
-      if (OGL.triangles.vertices[v].clip != clip) return FALSE;
+      clip |= (~OGL.triangles.vertices[i].clip) & CLIP_ALL;
+      if (clip == CLIP_ALL)
+         return FALSE;
    }
    return TRUE;
 }
@@ -1330,11 +1486,11 @@ void gSPObjRectangle( u32 sp )
    gDPTextureRectangle( objX, objY, objX + imageW / scaleW - 1, objY + imageH / scaleH - 1, 0, 0.0f, 0.0f, scaleW * (gDP.otherMode.cycleType == G_CYC_COPY ? 4.0f : 1.0f), scaleH );
 }
 
-#if 0
+#ifdef NEW
 void gSPObjRectangleR(u32 _sp)
 {
 	const u32 address = RSP_SegmentToPhysical(_sp);
-	const uObjSprite *objSprite = (uObjSprite*)&RDRAM[address];
+	const uObjSprite *objSprite = (uObjSprite*)&gfx_info.RDRAM[address];
 	gSPSetSpriteTile(objSprite);
 	ObjCoordinates objCoords(objSprite, true);
 
