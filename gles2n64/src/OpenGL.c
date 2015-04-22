@@ -317,12 +317,7 @@ void OGL_UpdateStates(void)
    if (gSP.changed & CHANGED_GEOMETRYMODE)
    {
       OGL_UpdateCullFace();
-
-      if (gSP.geometryMode & G_ZBUFFER)
-         glEnable(GL_DEPTH_TEST);
-      else
-         glDisable(GL_DEPTH_TEST);
-
+		gSP.changed &= ~CHANGED_GEOMETRYMODE;
    }
 
    if (gDP.changed & CHANGED_CONVERT)
@@ -333,21 +328,57 @@ void OGL_UpdateStates(void)
 
    if (gDP.changed & CHANGED_RENDERMODE || gDP.changed & CHANGED_CYCLETYPE)
    {
-      if (gDP.otherMode.cycleType == G_CYC_1CYCLE || gDP.otherMode.cycleType == G_CYC_2CYCLE)
+      if (((gSP.geometryMode & G_ZBUFFER) || gDP.otherMode.depthSource == G_ZS_PRIM) && gDP.otherMode.cycleType <= G_CYC_2CYCLE)
       {
-         //glDepthFunc((gDP.otherMode.depthCompare) ? GL_GEQUAL : GL_ALWAYS);
-         glDepthFunc((gDP.otherMode.depthCompare) ? GL_LESS : GL_ALWAYS);
-         glDepthMask((gDP.otherMode.depthUpdate) ? GL_TRUE : GL_FALSE);
-
-         if (gDP.otherMode.depthMode == ZMODE_DEC)
-            glEnable(GL_POLYGON_OFFSET_FILL);
+         if (gDP.otherMode.depthCompare != 0)
+         {
+            switch (gDP.otherMode.depthMode)
+            {
+               case ZMODE_OPA:
+                  glDisable(GL_POLYGON_OFFSET_FILL);
+                  glDepthFunc(GL_LEQUAL);
+                  break;
+               case ZMODE_INTER:
+                  glDisable(GL_POLYGON_OFFSET_FILL);
+                  glDepthFunc(GL_LEQUAL);
+                  break;
+               case ZMODE_XLU:
+                  // Max || Infront;
+                  glDisable(GL_POLYGON_OFFSET_FILL);
+                  if (gDP.otherMode.depthSource == G_ZS_PRIM && gDP.primDepth.z == 1.0f)
+                     // Max
+                     glDepthFunc(GL_LEQUAL);
+                  else
+                     // Infront
+                     glDepthFunc(GL_LESS);
+                  break;
+               case ZMODE_DEC:
+                  glEnable(GL_POLYGON_OFFSET_FILL);
+                  glDepthFunc(GL_LEQUAL);
+                  break;
+            }
+         }
          else
+         {
             glDisable(GL_POLYGON_OFFSET_FILL);
+            glDepthFunc(GL_ALWAYS);
+         }
+
+         OGL_UpdateDepthUpdate();
+
+         glEnable(GL_DEPTH_TEST);
+#ifdef NEW
+         if (!GBI.isNoN())
+            glDisable(GL_DEPTH_CLAMP);
+#endif
       }
       else
       {
-         glDepthFunc(GL_ALWAYS);
-         glDepthMask(GL_FALSE);
+         glDisable(GL_DEPTH_TEST);
+#ifdef NEW
+         if (!GBI.isNoN())
+            glEnable(GL_DEPTH_CLAMP);
+#endif
       }
    }
 
