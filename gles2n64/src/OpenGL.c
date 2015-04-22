@@ -619,12 +619,17 @@ void OGL_DrawLine(int v0, int v1, float width )
 
 void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
 {
+   float scaleX, scaleY, Z, W;
+   bool updateArrays;
    if (OGL.renderingToTexture && config.ignoreOffscreenRendering) return;
 
+   gSP.changed &= ~CHANGED_GEOMETRYMODE; // Don't update cull mode
    if (gSP.changed || gDP.changed)
       OGL_UpdateStates();
 
-   if (OGL.renderState != RS_RECT || scProgramChanged)
+   updateArrays = OGL.renderState != RS_RECT;
+
+   if (updateArrays || scProgramChanged)
    {
       glDisableVertexAttribArray(SC_COLOR);
       glDisableVertexAttribArray(SC_TEXCOORD0);
@@ -632,7 +637,7 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
       SC_ForceUniform1f(uRenderState, RS_RECT);
    }
 
-   if (OGL.renderState != RS_RECT)
+   if (updateArrays)
    {
       glVertexAttrib4f(SC_POSITION, 0, 0, gSP.viewport.nearz, 1.0);
       glVertexAttribPointer(SC_POSITION, 2, GL_FLOAT, GL_FALSE, sizeof(GLVertex), &OGL.rect[0].x);
@@ -643,20 +648,39 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
    glDisable(GL_SCISSOR_TEST);
    glDisable(GL_CULL_FACE);
 
-   OGL.rect[0].x = (float)ulx * (2.0f * VI.rwidth) - 1.0f;
-   OGL.rect[0].y = (float)uly * (-2.0f * VI.rheight) + 1.0f;
-   OGL.rect[1].x = (float)(lrx+1) * (2.0f * VI.rwidth) - 1.0f;
+   scaleX = VI.rwidth;
+   scaleY = VI.rheight;
+	Z      = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
+	W      = 1.0f;
+
+   OGL.rect[0].x = (float)ulx * (2.0f * scaleX) - 1.0f;
+   OGL.rect[0].y = (float)uly * (-2.0f * scaleY) + 1.0f;
+   OGL.rect[0].z = Z;
+   OGL.rect[0].w = W;
+
+   OGL.rect[1].x = (float)lrx * (2.0f * scaleX) - 1.0f;
    OGL.rect[1].y = OGL.rect[0].y;
+   OGL.rect[1].z = Z;
+   OGL.rect[1].w = W;
+
    OGL.rect[2].x = OGL.rect[0].x;
-   OGL.rect[2].y = (float)(lry+1) * (-2.0f * VI.rheight) + 1.0f;
+   OGL.rect[2].y = (float)lry * (-2.0f * scaleY) + 1.0f;
+   OGL.rect[2].z = Z;
+   OGL.rect[2].w = W;
+
    OGL.rect[3].x = OGL.rect[1].x;
    OGL.rect[3].y = OGL.rect[2].y;
+   OGL.rect[3].z = Z;
+   OGL.rect[3].w = W;
 
-   glVertexAttrib4fv(SC_COLOR, color);
+	if (gDP.otherMode.cycleType == G_CYC_FILL)
+		glVertexAttrib4fv(SC_COLOR, color);
+   else
+		glVertexAttrib4f(SC_COLOR, 0.0f, 0.0f, 0.0f, 0.0f);
+
    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
    glEnable(GL_SCISSOR_TEST);
-   OGL_UpdateViewport();
-
+	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
 }
 
 void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls, float ult, float lrs, float lrt, bool flip )
