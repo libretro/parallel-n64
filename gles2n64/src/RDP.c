@@ -283,7 +283,10 @@ static void _getTexRectParams(u32 *w2, u32 *w3)
          __RSP.PC[__RSP.PCi] += 8;
          break;
       default:
+#if 0
          assert(false && "Unknown texrect mode");
+#endif
+	break;
    }
 }
 
