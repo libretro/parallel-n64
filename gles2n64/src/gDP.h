@@ -207,9 +207,8 @@ typedef struct
 
     struct
     {
-        unsigned int i;
-        f32 r, g, b, a;
         f32 z, dz;
+        u32 color;
     } fillColor;
 
     struct

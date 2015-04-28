@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <math.h>
 
 #include "Common.h"
 #include "gles2N64.h"
@@ -15,108 +16,6 @@
 #include "DepthBuffer.h"
 #include "VI.h"
 #include "Config.h"
-
-
-//thank rice_video for this:
-bool _IsRenderTexture()
-{
-   int i;
-    bool foundSetScissor=false;
-    bool foundFillRect=false;
-    bool foundSetFillColor=false;
-    bool foundSetCImg=false;
-    bool foundTxtRect=false;
-    int height;
-    unsigned int newFillColor = 0;
-    unsigned int dwPC = __RSP.PC[__RSP.PCi];       // This points to the next instruction
-
-    for(i = 0; i < 10; i++)
-    {
-        unsigned int w0 = *(unsigned int *)(gfx_info.RDRAM + dwPC + i*8);
-        unsigned int w1 = *(unsigned int *)(gfx_info.RDRAM + dwPC + 4 + i*8);
-
-        if ((w0>>24) == G_SETSCISSOR)
-        {
-            height = ((w1>>0 )&0xFFF)/4;
-            foundSetScissor = true;
-            continue;
-        }
-
-        if ((w0>>24) == G_SETFILLCOLOR)
-        {
-            height = ((w1>>0 )&0xFFF)/4;
-            foundSetFillColor = true;
-            newFillColor = w1;
-            continue;
-        }
-
-        if ((w0>>24) == G_FILLRECT)
-        {
-            unsigned int x0 = ((w1>>12)&0xFFF)/4;
-            unsigned int y0 = ((w1>>0 )&0xFFF)/4;
-            unsigned int x1 = ((w0>>12)&0xFFF)/4;
-            unsigned int y1 = ((w0>>0 )&0xFFF)/4;
-
-            if (x0 == 0 && y0 == 0)
-            {
-                if( x1 == gDP.colorImage.width)
-                {
-                    height = y1;
-                    foundFillRect = true;
-                    continue;
-                }
-
-                if(x1 == (unsigned int)(gDP.colorImage.width-1))
-                {
-                    height = y1+1;
-                    foundFillRect = true;
-                    continue;
-                }
-            }
-        }
-
-        if ((w0>>24) == G_TEXRECT)
-        {
-            foundTxtRect = true;
-            break;
-        }
-
-        if ((w0>>24) == G_SETCIMG)
-        {
-            foundSetCImg = true;
-            break;
-        }
-    }
-
-    if (foundFillRect )
-    {
-        if (foundSetFillColor)
-        {
-            if (newFillColor != 0xFFFCFFFC)
-                return true;    // this is a render_texture
-            else
-                return false;
-        }
-
-        if (gDP.fillColor.i == 0x00FFFFF7)
-            return true;    // this is a render_texture
-        else
-            return false;   // this is a normal ZImg
-    }
-    else if (foundSetFillColor && newFillColor == 0xFFFCFFFC && foundSetCImg )
-    {
-        return false;
-    }
-    else
-        return true;
-
-
-    if (!foundSetCImg) return true;
-
-    if (foundSetScissor ) return true;
-
-    return false;
-}
 
 gDPInfo gDP;
 
@@ -435,12 +334,12 @@ void gDPSetTextureImage( u32 format, u32 size, u32 width, u32 address )
 /* TODO/FIXME - update */
 void gDPSetDepthImage( u32 address )
 {
-   u32 addr = RSP_SegmentToPhysical(address);
-   gDP.depthImageAddress = addr;
+   address = RSP_SegmentToPhysical(address);
+   gDP.depthImageAddress = address;
 #if 0
 	depthBufferList().saveBuffer(address);
 #else
-   DepthBuffer_SetBuffer(addr);
+   DepthBuffer_SetBuffer(address);
 
    if (depthBuffer.current->cleared)
       OGL_ClearDepthBuffer();
@@ -513,25 +412,9 @@ void gDPSetFogColor( u32 r, u32 g, u32 b, u32 a )
 
 void gDPSetFillColor( u32 c )
 {
-   /* TODO/FIXME - remove */
-
-#if 1
-   gDP.fillColor.i = c;
-#else
 	gDP.fillColor.color = c;
-#endif
-
-#if 1
-   gDP.fillColor.r = _SHIFTR( c, 11,  5 ) * 0.032258064f;
-   gDP.fillColor.g = _SHIFTR( c,  6,  5 ) * 0.032258064f;
-   gDP.fillColor.b = _SHIFTR( c,  1,  5 ) * 0.032258064f;
-   gDP.fillColor.a = _SHIFTR( c,  0,  1 ) * 1.0f;
-#endif
-
-   gDP.fillColor.z =
-                (f32)_SHIFTR( c,  2, 14 );
-   gDP.fillColor.dz =
-                (f32)_SHIFTR( c,  0,  2 );
+   gDP.fillColor.z     = (f32)_SHIFTR( c,  2, 14 );
+   gDP.fillColor.dz    = (f32)_SHIFTR( c,  0,  2 );
 
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetFillColor( 0x%08X );\n", c );
@@ -540,11 +423,7 @@ void gDPSetFillColor( u32 c )
 
 void gDPGetFillColor(f32 _fillColor[4])
 {
-#if 0
 	const u32 c = gDP.fillColor.color;
-#else
-   const u32 c=  gDP.fillColor.i;
-#endif
 
 	if (gDP.colorImage.size < 3) {
 		_fillColor[0] = _SHIFTR( c, 11, 5 ) * 0.032258064f;
@@ -583,12 +462,6 @@ void gDPSetPrimColor( u32 m, u32 l, u32 r, u32 g, u32 b, u32 a )
 
 void gDPSetTile( u32 format, u32 size, u32 line, u32 tmem, u32 tile, u32 palette, u32 cmt, u32 cms, u32 maskt, u32 masks, u32 shiftt, u32 shifts )
 {
-   /* TODO/FIXME - remove */
-#if 1
-   if (((size == G_IM_SIZ_4b) || (size == G_IM_SIZ_8b)) && (format == G_IM_FMT_RGBA))
-      format = G_IM_FMT_CI;
-#endif
-
    gDP.tiles[tile].format = format;
    gDP.tiles[tile].size = size;
    gDP.tiles[tile].line = line;
@@ -604,19 +477,39 @@ void gDPSetTile( u32 format, u32 size, u32 line, u32 tmem, u32 tile, u32 palette
    if (!gDP.tiles[tile].masks) gDP.tiles[tile].clamps = 1;
    if (!gDP.tiles[tile].maskt) gDP.tiles[tile].clampt = 1;
 
-	if (tile == gSP.texture.tile || tile == gSP.texture.tile + 1) {
-		u32 nTile = 7;
-		while(gDP.tiles[nTile].tmem != tmem && nTile > gSP.texture.tile + 1)
-			--nTile;
-		if (nTile > gSP.texture.tile + 1) {
-			gDP.tiles[tile].textureMode = gDP.tiles[nTile].textureMode;
-			gDP.tiles[tile].loadType = gDP.tiles[nTile].loadType;
+   if (tile == gSP.texture.tile || tile == gSP.texture.tile + 1)
+   {
+      u32 nTile = 7;
+      while(gDP.tiles[nTile].tmem != tmem && nTile > gSP.texture.tile + 1)
+         --nTile;
+      if (nTile > gSP.texture.tile + 1)
+      {
+         gDP.tiles[tile].textureMode = gDP.tiles[nTile].textureMode;
+         gDP.tiles[tile].loadType = gDP.tiles[nTile].loadType;
 #ifdef NEW
-			gDP.tiles[tile].frameBuffer = gDP.tiles[nTile].frameBuffer;
+         gDP.tiles[tile].frameBuffer = gDP.tiles[nTile].frameBuffer;
 #endif
-			gDP.tiles[tile].imageAddress = gDP.tiles[nTile].imageAddress;
-		}
-	}
+         gDP.tiles[tile].imageAddress = gDP.tiles[nTile].imageAddress;
+      }
+   }
+
+#ifdef DEBUG
+   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPSetTile( %s, %s, %i, %i, %i, %i, %s%s, %s%s, %i, %i, %i, %i );\n",
+         ImageFormatText[format],
+         ImageSizeText[size],
+         line,
+         tmem,
+         tile,
+         palette,
+         cmt & G_TX_MIRROR ? "G_TX_MIRROR" : "G_TX_NOMIRROR",
+         cmt & G_TX_CLAMP ? " | G_TX_CLAMP" : "",
+         cms & G_TX_MIRROR ? "G_TX_MIRROR" : "G_TX_NOMIRROR",
+         cms & G_TX_CLAMP ? " | G_TX_CLAMP" : "",
+         maskt,
+         masks,
+         shiftt,
+         shifts );
+#endif
 }
 
 void gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
@@ -643,7 +536,6 @@ void gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 #endif
 }
 
-/* TODO/FIXME - update */
 #if 0
 static
 bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
@@ -931,45 +823,70 @@ void gDPSetScissor( u32 mode, f32 ulx, f32 uly, f32 lrx, f32 lry )
 #endif
 }
 
+void gDPFillRDRAM(u32 address, s32 ulx, s32 uly, s32 lrx, s32 lry, u32 width, u32 size, u32 color, bool scissor)
+{
+   /* stub right now */
+}
+
 void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 {
-   float black[4];
-   DepthBuffer *buffer = (DepthBuffer*)DepthBuffer_FindBuffer( gDP.colorImage.address );
+   f32 fillColor[4];
+   DepthBuffer *buffer = NULL;
+   
+   if (gDP.otherMode.cycleType == G_CYC_FILL)
+   {
+      ++lrx;
+      ++lry;
+   }
+   else if (lry == uly)
+      ++lry;
 
+   buffer = (DepthBuffer*)DepthBuffer_FindBuffer( gDP.colorImage.address );
    if (buffer)
       buffer->cleared = TRUE;
 
    if (gDP.depthImageAddress == gDP.colorImage.address)
    {
+      gDPFillRDRAM(gDP.colorImage.address, ulx, uly, lrx, lry,
+            gDP.colorImage.width, gDP.colorImage.size, gDP.fillColor.color, true);
       OGL_ClearDepthBuffer();
       return;
    }
 
+   gDPGetFillColor(fillColor);
+
    if (gDP.otherMode.cycleType == G_CYC_FILL)
    {
-      lrx++;
-      lry++;
-
-      if ((ulx == 0) && (uly == 0) && ((unsigned int)lrx == VI.width) && ((unsigned int)lry == VI.height))
+      if ((ulx == 0) && (uly == 0) && (lrx == gDP.scissor.lrx) && (lry == gDP.scissor.lry))
       {
-         OGL_ClearColorBuffer( &gDP.fillColor.r );
+			gDPFillRDRAM(gDP.colorImage.address, ulx, uly, lrx, lry,
+               gDP.colorImage.width, gDP.colorImage.size, gDP.fillColor.color, true);
+
+			if ((*gfx_info.VI_STATUS_REG & 8) != 0)
+         {
+				fillColor[0] = sqrtf(fillColor[0]);
+				fillColor[1] = sqrtf(fillColor[1]);
+				fillColor[2] = sqrtf(fillColor[2]);
+			}
+         OGL_ClearColorBuffer(&fillColor[0]);
          return;
       }
    }
 
-   //shouldn't this be primitive color?
-   //OGL_DrawRect( ulx, uly, lrx, lry, (gDP.otherMode.cycleType == G_CYC_FILL) ? &gDP.fillColor.r : &gDP.blendColor.r );
-   //OGL_DrawRect( ulx, uly, lrx, lry, (gDP.otherMode.cycleType == G_CYC_FILL) ? &gDP.fillColor.r : &gDP.primColor.r);
-
-   black[0] = 0;
-   black[1] = 0;
-   black[2] = 0;
-   black[3] = 0;
-   OGL_DrawRect( ulx, uly, lrx, lry, (gDP.otherMode.cycleType == G_CYC_FILL) ? &gDP.fillColor.r : black);
-
-   if (depthBuffer.current) depthBuffer.current->cleared = FALSE;
+   OGL_DrawRect( ulx, uly, lrx, lry, fillColor);
+   if (depthBuffer.current)
+      depthBuffer.current->cleared = FALSE;
    gDP.colorImage.changed = TRUE;
-   gDP.colorImage.height = max( gDP.colorImage.height, (unsigned int)lry );
+
+   if (gDP.otherMode.cycleType == G_CYC_FILL)
+   {
+      if (lry > (u32)gDP.scissor.lry)
+         gDP.colorImage.height = (u32)max( gDP.colorImage.height, (unsigned int)gDP.scissor.lry );
+      else
+         gDP.colorImage.height = (u32)max((s32)gDP.colorImage.height, lry);
+   }
+   else
+      gDP.colorImage.height = max( gDP.colorImage.height, (unsigned int)lry );
 
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPFillRectangle( %i, %i, %i, %i );\n",
