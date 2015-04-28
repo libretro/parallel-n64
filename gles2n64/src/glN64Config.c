@@ -80,8 +80,6 @@ static Option configOptions[] =
    {"", NULL, 0},
 
    {"#Hack Settings:", NULL, 0},
-   {"hack banjo tooie", &config.hackBanjoTooie, 0},
-   {"hack zelda", &config.hackZelda, 0},
    {"hack alpha", &config.hackAlpha, 0},
    {"hack z", &config.zHack, 0},
 

@@ -39,8 +39,6 @@ typedef struct
 
     int     enableNoise;
 
-    int     hackBanjoTooie;
-    int     hackZelda;
     int     hackAlpha;
 
     bool    stretchVideo;

@@ -700,13 +700,6 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
 {
    float scaleX, scaleY, Z, W;
    bool updateArrays;
-   if (config.hackBanjoTooie)
-   {
-      if (gDP.textureImage.width == gDP.colorImage.width &&
-            gDP.textureImage.format == G_IM_FMT_CI &&
-            gDP.textureImage.size == G_IM_SIZ_8b)
-         return;
-   }
 
    if (gSP.changed || gDP.changed)
       OGL_UpdateStates();
