@@ -693,11 +693,6 @@ void Combiner_Set(u64 mux, int flags)
    DecodedMux *dmux;
    ShaderProgram *root, *prog;
 
-   //banjo tooie hack
-   if ((gDP.otherMode.cycleType == G_CYC_1CYCLE) && (mux == 0x00ffe7ffffcf9fcfLL))
-      mux = EncodeCombineMode( 0, 0, 0, 0, TEXEL0, 0, PRIMITIVE, 0,
-            0, 0, 0, 0, TEXEL0, 0, PRIMITIVE, 0 );
-
    //determine flags
    if (flags == -1)
    {
