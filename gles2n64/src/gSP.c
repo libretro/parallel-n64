@@ -148,6 +148,7 @@ static void gSPLightVertex_default(SPVertex * _vtx)
 
 static void gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
 {
+   u32 l;
    float light_intensity = 0.0f;
 
    assert(_vPos != NULL);
@@ -156,7 +157,7 @@ static void gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
    _vtx->g = gSP.lights[gSP.numLights].g;
    _vtx->b = gSP.lights[gSP.numLights].b;
 
-   for (u32 l=0; l < gSP.numLights; ++l)
+   for (l = 0; l < gSP.numLights; ++l)
    {
       float light_len2, light_len, at;
       float lvec[3] = {gSP.lights[l].posx, gSP.lights[l].posy, gSP.lights[l].posz};
@@ -190,13 +191,15 @@ static void gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
 
 static void gSPPointLightVertex_CBFD(SPVertex *_vtx, float * _vPos)
 {
+   u32 l;
    const SPLight *light = NULL;
 	f32 r = gSP.lights[gSP.numLights].r;
 	f32 g = gSP.lights[gSP.numLights].g;
 	f32 b = gSP.lights[gSP.numLights].b;
 
 	f32 intensity = 0.0f;
-	for (u32 l = 0; l < gSP.numLights-1; ++l)
+
+	for (l = 0; l < gSP.numLights-1; ++l)
    {
 		light = (SPLight*)&gSP.lights[l];
 		intensity = DotProduct( &_vtx->nx, &light->x );

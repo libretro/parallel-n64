@@ -1090,7 +1090,9 @@ static void activateTexture( u32 t, CachedTexture *_pTexture )
    }
 #endif
 
+#ifndef GLES
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, _pTexture->max_level);
+#endif
 
    /* Set clamping modes */
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, _pTexture->clampS ? GL_CLAMP_TO_EDGE : _pTexture->mirrorS ? GL_MIRRORED_REPEAT : GL_REPEAT);

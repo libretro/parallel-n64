@@ -76,6 +76,7 @@ static void Turbo3D_ProcessRDP(u32 _cmds)
 static
 void Turbo3D_LoadGlobState(u32 pgstate)
 {
+   uint32_t s;
 	const u32 addr = RSP_SegmentToPhysical(pgstate);
 	struct T3DGlobState *gstate = (struct T3DGlobState*)&gfx_info.RDRAM[addr];
 	const u32 w0 = gstate->othermode0;
@@ -83,7 +84,7 @@ void Turbo3D_LoadGlobState(u32 pgstate)
 	gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
-	for (int s = 0; s < 16; ++s)
+	for (s = 0; s < 16; ++s)
 		gSPSegment(s, gstate->segBases[s] & 0x00FFFFFF);
 
 	gSPViewport(pgstate + 80);
@@ -120,9 +121,12 @@ void Turbo3D_LoadObject(u32 pstate, u32 pvtx, u32 ptri)
 
 	Turbo3D_ProcessRDP(ostate->rdpCmds);
 
-	if (ptri != 0) {
+	if (ptri != 0)
+   {
+      unsigned t;
 		addr = RSP_SegmentToPhysical(ptri);
-		for (int t = 0; t < ostate->triCount; ++t)
+
+		for (t = 0; t < ostate->triCount; ++t)
       {
 			struct T3DTriN * tri = (struct T3DTriN*)&gfx_info.RDRAM[addr];
 			addr += 4;
