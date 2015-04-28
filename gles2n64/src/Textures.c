@@ -999,6 +999,23 @@ int _texture_compare(u32 t, CachedTexture *current, u32 crc,  u32 width, u32 hei
          (current->size == gSP.textureTile[t]->size));
 }
 
+static
+void _updateShiftScale(u32 _t, CachedTexture *_pTexture)
+{
+	_pTexture->shiftScaleS = 1.0f;
+	_pTexture->shiftScaleT = 1.0f;
+
+	if (gSP.textureTile[_t]->shifts > 10)
+		_pTexture->shiftScaleS = (f32)(1 << (16 - gSP.textureTile[_t]->shifts));
+	else if (gSP.textureTile[_t]->shifts > 0)
+		_pTexture->shiftScaleS /= (f32)(1 << gSP.textureTile[_t]->shifts);
+
+	if (gSP.textureTile[_t]->shiftt > 10)
+		_pTexture->shiftScaleT = (f32)(1 << (16 - gSP.textureTile[_t]->shiftt));
+	else if (gSP.textureTile[_t]->shiftt > 0)
+		_pTexture->shiftScaleT /= (f32)(1 << gSP.textureTile[_t]->shiftt);
+}
+
 void TextureCache_Update( u32 t )
 {
    CachedTexture *current;
@@ -1107,6 +1124,7 @@ void TextureCache_Update( u32 t )
    //before we traverse cache, check to see if texture is already bound:
    if (_texture_compare(t, cache.current[t], crc, width, height, clampWidth, clampHeight))
    {
+      _updateShiftScale(t, cache.current[t]);
       cache.hits++;
       return;
    }
@@ -1177,14 +1195,7 @@ void TextureCache_Update( u32 t )
    pCurrent->shiftScaleS = 1.0f;
    pCurrent->shiftScaleT = 1.0f;
 
-   if (gSP.textureTile[t]->shifts > 10)
-      pCurrent->shiftScaleS = (f32)(1 << (16 - gSP.textureTile[t]->shifts));
-   else if (gSP.textureTile[t]->shifts > 0)
-      pCurrent->shiftScaleS /= (f32)(1 << gSP.textureTile[t]->shifts);
-   if (gSP.textureTile[t]->shiftt > 10)
-      pCurrent->shiftScaleT = (f32)(1 << (16 - gSP.textureTile[t]->shiftt));
-   else if (gSP.textureTile[t]->shiftt > 0)
-      pCurrent->shiftScaleT /= (f32)(1 << gSP.textureTile[t]->shiftt);
+	_updateShiftScale(t, pCurrent);
 
    TextureCache_Load(t, pCurrent );
 
