@@ -112,6 +112,7 @@ void F3DDKR_MoveWord( u32 w0, u32 w1 )
 
 void F3DDKR_Init(void)
 {
+	gSPSetupFunctions();
    // Set GeometryMode flags
    GBI_InitFlags( F3D );
 

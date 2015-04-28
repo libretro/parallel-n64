@@ -624,7 +624,7 @@ u32 G_ZLIGHTING_L, G_ZLIGHTING, G_ZXFMLIGHT, G_ZINTERPOLATE, G_ZSETSCISSOR;
 
 void ZSort_Init(void)
 {
-	//gSPSetupFunctions();
+	gSPSetupFunctions();
 	// Set GeometryMode flags
 	GBI_InitFlags( F3D );
 

@@ -166,6 +166,7 @@ void F3DEX2_Quad( u32 w0, u32 w1 )
 
 void F3DEX2_Init(void)
 {
+	gSPSetupFunctions();
    // Set GeometryMode flags
    GBI_InitFlags( F3DEX2 );
 

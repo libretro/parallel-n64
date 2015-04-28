@@ -171,8 +171,6 @@ void gSPSetDMAOffsets( u32 mtxoffset, u32 vtxoffset );
 void gSPSetVertexColorBase( u32 base );
 void gSPProcessVertex(u32 v);
 
-void gSPTriangleUnknown();
-
 void gSP1Triangle(s32 v0, s32 v1, s32 v2);
 void gSP2Triangles(const s32 v00, const s32 v01, const s32 v02, const s32 flag0,
                     const s32 v10, const s32 v11, const s32 v12, const s32 flag1 );
@@ -186,6 +184,7 @@ extern void (*gSPTransformVertex)(float vtx[4], float mtx[4][4]);
 extern void (*gSPLightVertex)(SPVertex * _vtx);
 extern void (*gSPPointLightVertex)(SPVertex *_vtx, float * _vPos);
 extern void (*gSPBillboardVertex)(u32 v, u32 i);
+void gSPSetupFunctions(void);
 
 #endif
 

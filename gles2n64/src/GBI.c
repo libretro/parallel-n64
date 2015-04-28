@@ -21,7 +21,8 @@
 #include "F3DSWSE.h"
 #include "F3DWRUS.h"
 #include "F3DPD.h"
-#include "F3DCBFD.h"
+#include "F3DEX2CBFD.h"
+#include "ZSort.h"
 #include "Types.h"
 # include <string.h>
 # include <stdlib.h>
@@ -362,12 +363,9 @@ void GBI_MakeCurrent( MicrocodeInfo *current )
 			case F3DSWSE:	 F3DSWSE_Init();	break;
          case F3DWRUS:   F3DWRUS_Init(); break;
          case F3DPD:     F3DPD_Init();   break;
-#ifdef NEW
 			case F3DEX2CBFD:F3DEX2CBFD_Init(); break;
-#endif
 			case ZSortp:	ZSort_Init();	break;
 			case Turbo3D:	F3D_Init();		break;
-         case F3DEX2CBFD:   F3DCBFD_Init(); break;
       }
 
 #ifdef NEW

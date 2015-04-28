@@ -1,11 +1,11 @@
-#ifndef F3DCBFD_H
-#define F3DCBFD_H
+#ifndef F3DEX2CBFD_H
+#define F3DEX2CBFD_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void F3DCBFD_Init(void);
+void F3DEX2CBFD_Init(void);
 
 #ifdef __cplusplus
 }

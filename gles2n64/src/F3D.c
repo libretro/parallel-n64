@@ -268,6 +268,7 @@ void F3D_Tri4( u32 w0, u32 w1 )
 
 void F3D_Init(void)
 {
+	gSPSetupFunctions();
    // Set GeometryMode flags
    GBI_InitFlags( F3D );
 

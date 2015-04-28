@@ -188,6 +188,38 @@ static void gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
       _vtx->b = 1.0f;
 }
 
+static void gSPLightVertex_CBFD(SPVertex *_vtx)
+{
+   u32 l;
+	f32 r = gSP.lights[gSP.numLights].r;
+	f32 g = gSP.lights[gSP.numLights].g;
+	f32 b = gSP.lights[gSP.numLights].b;
+
+	for (l = 0; l < gSP.numLights; ++l)
+   {
+      const SPLight *light = (const SPLight*)&gSP.lights[l];
+      const f32 vx = (_vtx->x + gSP.vertexCoordMod[ 8])*gSP.vertexCoordMod[12] - light->posx;
+      const f32 vy = (_vtx->y + gSP.vertexCoordMod[ 9])*gSP.vertexCoordMod[13] - light->posy;
+      const f32 vz = (_vtx->z + gSP.vertexCoordMod[10])*gSP.vertexCoordMod[14] - light->posz;
+      const f32 vw = (_vtx->w + gSP.vertexCoordMod[11])*gSP.vertexCoordMod[15] - light->posw;
+      const f32 len = (vx*vx+vy*vy+vz*vz+vw*vw)/65536.0f;
+      f32 intensity = light->ca / len;
+      if (intensity > 1.0f)
+         intensity = 1.0f;
+      r += light->r * intensity;
+      g += light->g * intensity;
+      b += light->b * intensity;
+   }
+
+	r = min(1.0f, r);
+	g = min(1.0f, g);
+	b = min(1.0f, b);
+
+	_vtx->r *= r;
+	_vtx->g *= g;
+	_vtx->b *= b;
+	_vtx->HWLight = 0;
+}
 
 static void gSPPointLightVertex_CBFD(SPVertex *_vtx, float * _vPos)
 {
@@ -1788,3 +1820,15 @@ void (*gSPLightVertex)(SPVertex * _vtx) = gSPLightVertex_default;
 void (*gSPPointLightVertex)(SPVertex *_vtx, float * _vPos) = gSPPointLightVertex_default;
 void (*gSPBillboardVertex)(u32 v, u32 i) = gSPBillboardVertex_default;
 
+void gSPSetupFunctions(void)
+{
+   if (GBI_GetCurrentMicrocodeType() != F3DEX2CBFD)
+   {
+      gSPLightVertex = gSPLightVertex_default;
+      gSPPointLightVertex = gSPPointLightVertex_default;
+      return;
+   }
+
+   gSPLightVertex = gSPLightVertex_CBFD;
+   gSPPointLightVertex = gSPPointLightVertex_CBFD;
+}

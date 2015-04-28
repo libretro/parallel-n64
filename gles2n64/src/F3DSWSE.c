@@ -27,8 +27,9 @@ void F3DSWSE_Quad( u32 w0, u32 w1 )
 }
 
 
-void F3DSWSE_Init()
+void F3DSWSE_Init(void)
 {
+	gSPSetupFunctions();
 	// Set GeometryMode flags
 	GBI_InitFlags( F3D );
 
@@ -62,4 +63,3 @@ void F3DSWSE_Init()
 	GBI_SetGBI( G_RDPHALF_CONT,			F3D_RDPHALF_CONT,		F3D_RDPHalf_Cont );
 	GBI_SetGBI( G_TRI4,					F3D_TRI4,				F3D_Tri4 );
 }
-
