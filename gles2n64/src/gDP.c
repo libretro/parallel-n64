@@ -1075,9 +1075,300 @@ void gDPNoOp(void)
  *    based on sources of ziggy's z64      *
  *******************************************/
 
+#define XSCALE(x) ((float)(x)/(1<<18))
+#define YSCALE(y) ((float)(y)/(1<<2))
+#define ZSCALE(z) ((gDP.otherMode.depthSource == G_ZS_PRIM) ? (gDP.primDepth.z) : ((float)((u32)((z))) / 0xffff0000))
+#define PERSP_EN (gDP.otherMode.texturePersp != 0)
+#define WSCALE(z) 1.0f/(PERSP_EN? ((float)((u32)(z) + 0x10000)/0xffff0000) : 1.0f)
+#define CSCALE(c) ((((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18)*0.0039215689f)
+#define _PERSP(w) ( w )
+#define PERSP(s, w) ( ((s64)(s) << 20) / (_PERSP(w)? _PERSP(w):1) )
+#define SSCALE(s, _w) (PERSP_EN? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
+#define TSCALE(s, w) (PERSP_EN? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
+
 void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, u32 * _pRdpCmd)
 {
-   /* TODO/FIXME - stub */
+	const u32 tile = _SHIFTR(_w1, 16, 3);
+	gDPTile *textureTileOrg[2];
+	textureTileOrg[0] = gSP.textureTile[0];
+	textureTileOrg[1] = gSP.textureTile[1];
+	gSP.textureTile[0] = &gDP.tiles[tile];
+	gSP.textureTile[1] = &gDP.tiles[(tile + 1) & 7];
+
+	int j;
+	int xleft, xright, xleft_inc, xright_inc;
+	int r, g, b, a, z, s, t, w;
+	int drdx = 0, dgdx = 0, dbdx = 0, dadx = 0, dzdx = 0, dsdx = 0, dtdx = 0, dwdx = 0;
+	int drde = 0, dgde = 0, dbde = 0, dade = 0, dzde = 0, dsde = 0, dtde = 0, dwde = 0;
+	int flip = (_w1 & 0x800000) ? 1 : 0;
+
+	s32 yl, ym, yh;
+	s32 xl, xm, xh;
+	s32 dxldy, dxhdy, dxmdy;
+	u32 w3, w4, w5, w6, w7, w8;
+
+	u32 * shade_base = _pRdpCmd + 8;
+	u32 * texture_base = _pRdpCmd + 8;
+	u32 * zbuffer_base = _pRdpCmd + 8;
+
+	if (_shade != 0) {
+		texture_base += 16;
+		zbuffer_base += 16;
+	}
+	if (_texture != 0) {
+		zbuffer_base += 16;
+	}
+
+	w3 = _pRdpCmd[2];
+	w4 = _pRdpCmd[3];
+	w5 = _pRdpCmd[4];
+	w6 = _pRdpCmd[5];
+	w7 = _pRdpCmd[6];
+	w8 = _pRdpCmd[7];
+
+	yl = (_w1 & 0x3fff);
+	ym = ((_w2 >> 16) & 0x3fff);
+	yh = ((_w2 >>  0) & 0x3fff);
+	xl = (s32)(w3);
+	xh = (s32)(w5);
+	xm = (s32)(w7);
+	dxldy = (s32)(w4);
+	dxhdy = (s32)(w6);
+	dxmdy = (s32)(w8);
+
+	if (yl & (0x800<<2)) yl |= 0xfffff000<<2;
+	if (ym & (0x800<<2)) ym |= 0xfffff000<<2;
+	if (yh & (0x800<<2)) yh |= 0xfffff000<<2;
+
+	yh &= ~3;
+
+	r = 0xff; g = 0xff; b = 0xff; a = 0xff; z = 0xffff0000; s = 0;  t = 0;  w = 0x30000;
+
+	if (_shade != 0) {
+		r    = (shade_base[0] & 0xffff0000) | ((shade_base[+4 ] >> 16) & 0x0000ffff);
+		g    = ((shade_base[0 ] << 16) & 0xffff0000) | (shade_base[4 ] & 0x0000ffff);
+		b    = (shade_base[1 ] & 0xffff0000) | ((shade_base[5 ] >> 16) & 0x0000ffff);
+		a    = ((shade_base[1 ] << 16) & 0xffff0000) | (shade_base[5 ] & 0x0000ffff);
+		drdx = (shade_base[2 ] & 0xffff0000) | ((shade_base[6 ] >> 16) & 0x0000ffff);
+		dgdx = ((shade_base[2 ] << 16) & 0xffff0000) | (shade_base[6 ] & 0x0000ffff);
+		dbdx = (shade_base[3 ] & 0xffff0000) | ((shade_base[7 ] >> 16) & 0x0000ffff);
+		dadx = ((shade_base[3 ] << 16) & 0xffff0000) | (shade_base[7 ] & 0x0000ffff);
+		drde = (shade_base[8 ] & 0xffff0000) | ((shade_base[12] >> 16) & 0x0000ffff);
+		dgde = ((shade_base[8 ] << 16) & 0xffff0000) | (shade_base[12] & 0x0000ffff);
+		dbde = (shade_base[9 ] & 0xffff0000) | ((shade_base[13] >> 16) & 0x0000ffff);
+		dade = ((shade_base[9 ] << 16) & 0xffff0000) | (shade_base[13] & 0x0000ffff);
+	}
+	if (_texture != 0) {
+		s    = (texture_base[0 ] & 0xffff0000) | ((texture_base[4 ] >> 16) & 0x0000ffff);
+		t    = ((texture_base[0 ] << 16) & 0xffff0000)      | (texture_base[4 ] & 0x0000ffff);
+		w    = (texture_base[1 ] & 0xffff0000) | ((texture_base[5 ] >> 16) & 0x0000ffff);
+		//    w = abs(w);
+		dsdx = (texture_base[2 ] & 0xffff0000) | ((texture_base[6 ] >> 16) & 0x0000ffff);
+		dtdx = ((texture_base[2 ] << 16) & 0xffff0000)      | (texture_base[6 ] & 0x0000ffff);
+		dwdx = (texture_base[3 ] & 0xffff0000) | ((texture_base[7 ] >> 16) & 0x0000ffff);
+		dsde = (texture_base[8 ] & 0xffff0000) | ((texture_base[12] >> 16) & 0x0000ffff);
+		dtde = ((texture_base[8 ] << 16) & 0xffff0000)      | (texture_base[12] & 0x0000ffff);
+		dwde = (texture_base[9 ] & 0xffff0000) | ((texture_base[13] >> 16) & 0x0000ffff);
+	}
+	if (_zbuffer != 0) {
+		z    = zbuffer_base[0];
+		dzdx = zbuffer_base[1];
+		dzde = zbuffer_base[2];
+	}
+
+	xh <<= 2;  xm <<= 2;  xl <<= 2;
+	r <<= 2;  g <<= 2;  b <<= 2;  a <<= 2;
+	dsde >>= 2;  dtde >>= 2;  dsdx >>= 2;  dtdx >>= 2;
+	dzdx >>= 2;  dzde >>= 2;
+	dwdx >>= 2;  dwde >>= 2;
+
+
+	SPVertex * vtx0 = (SPVertex*)&OGL.triangles.vertices[0];
+	SPVertex * vtx = (SPVertex*)vtx0;
+
+	xleft = xm;
+	xright = xh;
+	xleft_inc = dxmdy;
+	xright_inc = dxhdy;
+
+	while (yh<ym &&
+		!((!flip && xleft < xright+0x10000) ||
+		 (flip && xleft > xright-0x10000))) {
+		xleft += xleft_inc;
+		xright += xright_inc;
+		s += dsde;    t += dtde;    w += dwde;
+		r += drde;    g += dgde;    b += dbde;    a += dade;
+		z += dzde;
+		yh++;
+	}
+
+	j = ym-yh;
+	if (j > 0) {
+		int dx = (xleft-xright)>>16;
+		if ((!flip && xleft < xright) ||
+				(flip/* && xleft > xright*/))
+		{
+			if (_shade != 0) {
+				vtx->r = CSCALE(r+drdx*dx);
+				vtx->g = CSCALE(g+dgdx*dx);
+				vtx->b = CSCALE(b+dbdx*dx);
+				vtx->a = CSCALE(a+dadx*dx);
+			}
+			if (_texture != 0) {
+				vtx->s = SSCALE(s+dsdx*dx, w+dwdx*dx);
+				vtx->t = TSCALE(t+dtdx*dx, w+dwdx*dx);
+			}
+			vtx->x = XSCALE(xleft);
+			vtx->y = YSCALE(yh);
+			vtx->z = ZSCALE(z+dzdx*dx);
+			vtx->w = WSCALE(w+dwdx*dx);
+			++vtx;
+		}
+		if ((!flip/* && xleft < xright*/) ||
+				(flip && xleft > xright))
+		{
+			if (_shade != 0) {
+				vtx->r = CSCALE(r);
+				vtx->g = CSCALE(g);
+				vtx->b = CSCALE(b);
+				vtx->a = CSCALE(a);
+			}
+			if (_texture != 0) {
+				vtx->s = SSCALE(s, w);
+				vtx->t = TSCALE(t, w);
+			}
+			vtx->x = XSCALE(xright);
+			vtx->y = YSCALE(yh);
+			vtx->z = ZSCALE(z);
+			vtx->w = WSCALE(w);
+			++vtx;
+		}
+		xleft += xleft_inc*j;  xright += xright_inc*j;
+		s += dsde*j;  t += dtde*j;
+		if (w + dwde*j) w += dwde*j;
+		else w += dwde*(j-1);
+		r += drde*j;  g += dgde*j;  b += dbde*j;  a += dade*j;
+		z += dzde*j;
+		// render ...
+	}
+
+	if (xl != xh)
+		xleft = xl;
+
+	//if (yl-ym > 0)
+	{
+		int dx = (xleft-xright)>>16;
+		if ((!flip && xleft <= xright) ||
+				(flip/* && xleft >= xright*/))
+		{
+			if (_shade != 0) {
+				vtx->r = CSCALE(r+drdx*dx);
+				vtx->g = CSCALE(g+dgdx*dx);
+				vtx->b = CSCALE(b+dbdx*dx);
+				vtx->a = CSCALE(a+dadx*dx);
+			}
+			if (_texture != 0) {
+				vtx->s = SSCALE(s+dsdx*dx, w+dwdx*dx);
+				vtx->t = TSCALE(t+dtdx*dx, w+dwdx*dx);
+			}
+			vtx->x = XSCALE(xleft);
+			vtx->y = YSCALE(ym);
+			vtx->z = ZSCALE(z+dzdx*dx);
+			vtx->w = WSCALE(w+dwdx*dx);
+			++vtx;
+		}
+		if ((!flip/* && xleft <= xright*/) ||
+				(flip && xleft >= xright))
+		{
+			if (_shade != 0) {
+				vtx->r = CSCALE(r);
+				vtx->g = CSCALE(g);
+				vtx->b = CSCALE(b);
+				vtx->a = CSCALE(a);
+			}
+			if (_texture != 0) {
+				vtx->s = SSCALE(s, w);
+				vtx->t = TSCALE(t, w);
+			}
+			vtx->x = XSCALE(xright);
+			vtx->y = YSCALE(ym);
+			vtx->z = ZSCALE(z);
+			vtx->w = WSCALE(w);
+			++vtx;
+		}
+	}
+	xleft_inc = dxldy;
+	xright_inc = dxhdy;
+
+	j = yl-ym;
+	//j--; // ?
+	xleft += xleft_inc*j;  xright += xright_inc*j;
+	s += dsde*j;  t += dtde*j;  w += dwde*j;
+	r += drde*j;  g += dgde*j;  b += dbde*j;  a += dade*j;
+	z += dzde*j;
+
+	while (yl>ym &&
+		   !((!flip && xleft < xright+0x10000) ||
+			 (flip && xleft > xright-0x10000))) {
+		xleft -= xleft_inc;    xright -= xright_inc;
+		s -= dsde;    t -= dtde;    w -= dwde;
+		r -= drde;    g -= dgde;    b -= dbde;    a -= dade;
+		z -= dzde;
+		--j;
+		--yl;
+	}
+
+	// render ...
+	if (j >= 0) {
+		int dx = (xleft-xright)>>16;
+		if ((!flip && xleft <= xright) ||
+				(flip/* && xleft >= xright*/))
+		{
+			if (_shade != 0) {
+				vtx->r = CSCALE(r+drdx*dx);
+				vtx->g = CSCALE(g+dgdx*dx);
+				vtx->b = CSCALE(b+dbdx*dx);
+				vtx->a = CSCALE(a+dadx*dx);
+			}
+			if (_texture != 0) {
+				vtx->s = SSCALE(s+dsdx*dx, w+dwdx*dx);
+				vtx->t = TSCALE(t+dtdx*dx, w+dwdx*dx);
+			}
+			vtx->x = XSCALE(xleft);
+			vtx->y = YSCALE(yl);
+			vtx->z = ZSCALE(z+dzdx*dx);
+			vtx->w = WSCALE(w+dwdx*dx);
+			++vtx;
+		}
+		if ((!flip/* && xleft <= xright*/) ||
+				(flip && xleft >= xright))
+		{
+			if (_shade != 0) {
+				vtx->r = CSCALE(r);
+				vtx->g = CSCALE(g);
+				vtx->b = CSCALE(b);
+				vtx->a = CSCALE(a);
+			}
+			if (_texture != 0) {
+				vtx->s = SSCALE(s, w);
+				vtx->t = TSCALE(t, w);
+			}
+			vtx->x = XSCALE(xright);
+			vtx->y = YSCALE(yl);
+			vtx->z = ZSCALE(z);
+			vtx->w = WSCALE(w);
+			++vtx;
+		}
+	}
+
+	if (_texture != 0)
+		gSP.changed |= CHANGED_TEXTURE;
+	if (_zbuffer != 0)
+		gSP.geometryMode |= G_ZBUFFER;
+
+	OGL_DrawLLETriangle(vtx - vtx0);
+	gSP.textureTile[0] = textureTileOrg[0];
+	gSP.textureTile[1] = textureTileOrg[1];
 }
 
 static void gDPTriangle(u32 _w1, u32 _w2, int shade, int texture, int zbuffer)

@@ -23,13 +23,7 @@
 #include "RSP.h"
 #include "Config.h"
 
-void OGL_UpdateDepthUpdate(void);
-
 GLInfo OGL;
-
-void OGL_EnableRunfast(void)
-{
-}
 
 int OGL_IsExtSupported( const char *extension )
 {
@@ -63,7 +57,7 @@ int OGL_IsExtSupported( const char *extension )
    return 0;
 }
 
-void OGL_InitStates(void)
+static void _initStates(void)
 {
    glEnable( GL_CULL_FACE );
    glEnableVertexAttribArray( SC_POSITION );
@@ -88,7 +82,7 @@ void OGL_UpdateScale(void)
 bool OGL_Start(void)
 {
    float f;
-   OGL_InitStates();
+   _initStates();
 
    //check extensions
    if ((config.texture.maxAnisotropy>0) && !OGL_IsExtSupported("GL_EXT_texture_filter_anistropic"))
@@ -107,8 +101,6 @@ bool OGL_Start(void)
 
    //Print some info
    LOG(LOG_VERBOSE, "[gles2n64]: Enable Runfast... \n");
-
-   OGL_EnableRunfast();
 
    //We must have a shader bound before binding any textures:
    Combiner_Init();
@@ -138,7 +130,7 @@ void OGL_Stop(void)
    TextureCache_Destroy();
 }
 
-void OGL_UpdateCullFace(void)
+static void _updateCullFace(void)
 {
    if (gSP.geometryMode & G_CULL_BOTH)
    {
@@ -154,7 +146,7 @@ void OGL_UpdateCullFace(void)
 }
 
 /* TODO/FIXME - not complete yet */
-void OGL_UpdateViewport(void)
+static void _updateViewport(void)
 {
    const u32 VI_height = VI.height;
    const f32 scaleX = OGL.scaleX;
@@ -180,7 +172,7 @@ void OGL_UpdateDepthUpdate(void)
 }
 
 /* TODO/FIXME - not complete */
-void OGL_UpdateScissor(void)
+static void _updateScissor(void)
 {
    u32 heightOffset, screenHeight;
    f32 scaleX, scaleY;
@@ -322,7 +314,7 @@ void OGL_SetBlendMode(void)
 	}
 }
 
-void OGL_UpdateStates(void)
+static void _updateStates(void)
 {
    if (gDP.otherMode.cycleType == G_CYC_COPY)
       Combiner_Set(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0), -1);
@@ -333,7 +325,7 @@ void OGL_UpdateStates(void)
 
    if (gSP.changed & CHANGED_GEOMETRYMODE)
    {
-      OGL_UpdateCullFace();
+      _updateCullFace();
 		gSP.changed &= ~CHANGED_GEOMETRYMODE;
    }
 
@@ -403,10 +395,10 @@ void OGL_UpdateStates(void)
       SC_SetUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5f : gDP.blendColor.a);
 
    if (gDP.changed & CHANGED_SCISSOR)
-      OGL_UpdateScissor();
+      _updateScissor();
 
    if (gSP.changed & CHANGED_VIEWPORT)
-      OGL_UpdateViewport();
+      _updateViewport();
 
    if (gSP.changed & CHANGED_FOGPOSITION)
    {
@@ -475,6 +467,119 @@ void OGL_DrawTriangle(SPVertex *vertices, int v0, int v1, int v2)
 {
 }
 
+static void _setColorArray(void)
+{
+   if (scProgramCurrent->usesCol)
+      glEnableVertexAttribArray(SC_COLOR);
+   else
+      glDisableVertexAttribArray(SC_COLOR);
+}
+
+void OGL_SetTexCoordArrays(void)
+{
+#ifdef NEw
+   if (OGL.renderState == RS_TRIANGLE)
+   {
+      glDisableVertexAttribArray(SC_TEXCOORD1);
+      if (scProgramCurrent->usesT0 || scProgramCurrent->usesT1)
+         glEnableVertexAttribArray(SC_TEXCOORD0);
+      else
+         glDisableVertexAttribArray(SC_TEXCOORD0);
+   }
+   else
+#endif
+   {
+      if (scProgramCurrent->usesT0)
+         glEnableVertexAttribArray(SC_TEXCOORD0);
+      else
+         glDisableVertexAttribArray(SC_TEXCOORD0);
+
+      if (scProgramCurrent->usesT1)
+         glEnableVertexAttribArray(SC_TEXCOORD1);
+      else
+         glDisableVertexAttribArray(SC_TEXCOORD1);
+   }
+}
+
+static void OGL_prepareDrawTriangle(bool _dma)
+{
+   if (gSP.changed || gDP.changed)
+      _updateStates();
+
+   if (OGL.renderState != RS_TRIANGLE || scProgramChanged)
+   {
+      _setColorArray();
+      OGL_SetTexCoordArrays();
+      glDisableVertexAttribArray(SC_TEXCOORD1);
+      SC_ForceUniform1f(uRenderState, RS_TRIANGLE);
+   }
+
+   if (OGL.renderState != RS_TRIANGLE)
+   {
+      glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].x);
+      glEnableVertexAttribArray(SC_POSITION);
+      glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].r);
+      glEnableVertexAttribArray(SC_COLOR);
+      glVertexAttribPointer(SC_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].s);
+      glEnableVertexAttribArray(SC_TEXCOORD0);
+
+      _updateCullFace();
+      _updateViewport();
+      glEnable(GL_SCISSOR_TEST);
+      OGL.renderState = RS_TRIANGLE;
+   }
+}
+
+void OGL_DrawLLETriangle(u32 _numVtx)
+{
+   float scaleX, scaleY;
+   u32 i;
+	if (_numVtx == 0)
+		return;
+
+	gSP.changed &= ~CHANGED_GEOMETRYMODE; // Don't update cull mode
+	OGL_prepareDrawTriangle(false);
+	glDisable(GL_CULL_FACE);
+
+#if 0
+	OGLVideo & ogl = video();
+	FrameBuffer * pCurrentBuffer = frameBufferList().getCurrent();
+	if (pCurrentBuffer == NULL)
+		glViewport( 0, ogl.getHeightOffset(), ogl.getScreenWidth(), ogl.getScreenHeight());
+	else
+		glViewport(0, 0, pCurrentBuffer->m_width*pCurrentBuffer->m_scaleX, pCurrentBuffer->m_height*pCurrentBuffer->m_scaleY);
+
+	scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width : VI.rwidth;
+	scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : VI.rheight;
+#endif
+
+	for (i = 0; i < _numVtx; ++i)
+   {
+      SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[i];
+
+      vtx->HWLight = 0;
+      vtx->x  = vtx->x * (2.0f * scaleX) - 1.0f;
+      vtx->x *= vtx->w;
+      vtx->y  = vtx->y * (-2.0f * scaleY) + 1.0f;
+      vtx->y *= vtx->w;
+      vtx->z *= vtx->w;
+
+      if (gDP.otherMode.texturePersp == 0)
+      {
+         vtx->s *= 2.0f;
+         vtx->t *= 2.0f;
+      }
+   }
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, _numVtx);
+	OGL.triangles.num = 0;
+
+#if 0
+	frameBufferList().setBufferChanged();
+#endif
+	gSP.changed |= CHANGED_VIEWPORT | CHANGED_GEOMETRYMODE;
+}
+
 void OGL_AddTriangle(int v0, int v1, int v2)
 {
    u32 i;
@@ -521,68 +626,8 @@ void OGL_AddTriangle(int v0, int v1, int v2)
 	}
 }
 
-void OGL_SetColorArray(void)
-{
-   if (scProgramCurrent->usesCol)
-      glEnableVertexAttribArray(SC_COLOR);
-   else
-      glDisableVertexAttribArray(SC_COLOR);
-}
 
-void OGL_SetTexCoordArrays(void)
-{
-#ifdef NEw
-   if (OGL.renderState == RS_TRIANGLE)
-   {
-      glDisableVertexAttribArray(SC_TEXCOORD1);
-      if (scProgramCurrent->usesT0 || scProgramCurrent->usesT1)
-         glEnableVertexAttribArray(SC_TEXCOORD0);
-      else
-         glDisableVertexAttribArray(SC_TEXCOORD0);
-   }
-   else
-#endif
-   {
-      if (scProgramCurrent->usesT0)
-         glEnableVertexAttribArray(SC_TEXCOORD0);
-      else
-         glDisableVertexAttribArray(SC_TEXCOORD0);
 
-      if (scProgramCurrent->usesT1)
-         glEnableVertexAttribArray(SC_TEXCOORD1);
-      else
-         glDisableVertexAttribArray(SC_TEXCOORD1);
-   }
-}
-
-static void OGL_prepareDrawTriangle(bool _dma)
-{
-   if (gSP.changed || gDP.changed)
-      OGL_UpdateStates();
-
-   if (OGL.renderState != RS_TRIANGLE || scProgramChanged)
-   {
-      OGL_SetColorArray();
-      OGL_SetTexCoordArrays();
-      glDisableVertexAttribArray(SC_TEXCOORD1);
-      SC_ForceUniform1f(uRenderState, RS_TRIANGLE);
-   }
-
-   if (OGL.renderState != RS_TRIANGLE)
-   {
-      glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].x);
-      glEnableVertexAttribArray(SC_POSITION);
-      glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].r);
-      glEnableVertexAttribArray(SC_COLOR);
-      glVertexAttribPointer(SC_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].s);
-      glEnableVertexAttribArray(SC_TEXCOORD0);
-
-      OGL_UpdateCullFace();
-      OGL_UpdateViewport();
-      glEnable(GL_SCISSOR_TEST);
-      OGL.renderState = RS_TRIANGLE;
-   }
-}
 
 void OGL_DrawDMATriangles(u32 _numVtx)
 {
@@ -609,19 +654,19 @@ void OGL_DrawLine(int v0, int v1, float width )
    unsigned short elem[2];
 
    if (gSP.changed || gDP.changed)
-      OGL_UpdateStates();
+      _updateStates();
 
    if (OGL.renderState != RS_LINE || scProgramChanged)
    {
-      OGL_SetColorArray();
+      _setColorArray();
       glDisableVertexAttribArray(SC_TEXCOORD0);
       glDisableVertexAttribArray(SC_TEXCOORD1);
       glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].x);
       glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].r);
 
       SC_ForceUniform1f(uRenderState, RS_LINE);
-      OGL_UpdateCullFace();
-      OGL_UpdateViewport();
+      _updateCullFace();
+      _updateViewport();
       OGL.renderState = RS_LINE;
    }
 
@@ -638,7 +683,7 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
 
    gSP.changed &= ~CHANGED_GEOMETRYMODE; // Don't update cull mode
    if (gSP.changed || gDP.changed)
-      OGL_UpdateStates();
+      _updateStates();
 
    updateArrays = OGL.renderState != RS_RECT;
 
@@ -702,7 +747,7 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
    bool updateArrays;
 
    if (gSP.changed || gDP.changed)
-      OGL_UpdateStates();
+      _updateStates();
 
    updateArrays = OGL.renderState != RS_TEXTUREDRECT;
    if (updateArrays || scProgramChanged)

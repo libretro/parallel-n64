@@ -99,10 +99,6 @@ void OGL_DrawTexturedRect(float ulx, float uly, float lrx, float lry, float uls,
 
 void OGL_UpdateFrameTime();
 void OGL_UpdateScale();
-void OGL_UpdateStates();
-void OGL_UpdateViewport();
-void OGL_UpdateScissor();
-void OGL_UpdateCullFace();
 
 void OGL_ClearDepthBuffer();
 void OGL_ClearColorBuffer(float *color);
