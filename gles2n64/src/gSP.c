@@ -46,6 +46,12 @@ static INLINE void gSPFlushTriangles(void)
          OGL_DrawTriangles();
 }
 
+void gSPCombineMatrices(void)
+{
+   MultMatrix(gSP.matrix.projection, gSP.matrix.modelView[gSP.matrix.modelViewi], gSP.matrix.combined);
+   gSP.changed &= ~CHANGED_MATRIX;
+}
+
 void gSPTriangle(s32 v0, s32 v1, s32 v2)
 {
    if ((v0 < INDEXMAP_SIZE) && (v1 < INDEXMAP_SIZE) && (v2 < INDEXMAP_SIZE))
@@ -94,16 +100,6 @@ f32 identityMatrix[4][4] =
     { 0.0f, 0.0f, 0.0f, 1.0f }
 };
 
-void gSPClipVertex(u32 v)
-{
-   SPVertex *vtx = &OGL.triangles.vertices[v];
-   vtx->clip = 0;
-   if (vtx->x > +vtx->w)   vtx->clip |= CLIP_POSX;
-   if (vtx->x < -vtx->w)   vtx->clip |= CLIP_NEGX;
-   if (vtx->y > +vtx->w)   vtx->clip |= CLIP_POSY;
-   if (vtx->y < -vtx->w)   vtx->clip |= CLIP_NEGY;
-   if (vtx->w < 0.1f)      vtx->clip |= CLIP_Z;
-}
 
 static void gSPTransformVertex_default(float vtx[4], float mtx[4][4])
 {
@@ -191,13 +187,6 @@ static void gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
       _vtx->b = 1.0f;
 }
 
-static void gSPBillboardVertex_default(u32 v, u32 i)
-{
-   OGL.triangles.vertices[v].x += OGL.triangles.vertices[i].x;
-   OGL.triangles.vertices[v].y += OGL.triangles.vertices[i].y;
-   OGL.triangles.vertices[v].z += OGL.triangles.vertices[i].z;
-   OGL.triangles.vertices[v].w += OGL.triangles.vertices[i].w;
-}
 
 static void gSPPointLightVertex_CBFD(SPVertex *_vtx, float * _vPos)
 {
@@ -252,13 +241,29 @@ static void gSPPointLightVertex_CBFD(SPVertex *_vtx, float * _vPos)
 	_vtx->HWLight = 0;
 }
 
-void gSPCombineMatrices(void)
+static void gSPBillboardVertex_default(u32 v, u32 i)
 {
-   MultMatrix(gSP.matrix.projection, gSP.matrix.modelView[gSP.matrix.modelViewi], gSP.matrix.combined);
-   gSP.changed &= ~CHANGED_MATRIX;
+   SPVertex *vtx0 = (SPVertex*)&OGL.triangles.vertices[i];
+   SPVertex *vtx  = (SPVertex*)&OGL.triangles.vertices[v];
+
+   vtx->x += vtx0->x;
+   vtx->y += vtx0->y;
+   vtx->z += vtx0->z;
+   vtx->w += vtx0->w;
 }
 
-void gSPProcessVertex( u32 v )
+void gSPClipVertex(u32 v)
+{
+   SPVertex *vtx = &OGL.triangles.vertices[v];
+   vtx->clip = 0;
+   if (vtx->x > +vtx->w)   vtx->clip |= CLIP_POSX;
+   if (vtx->x < -vtx->w)   vtx->clip |= CLIP_NEGX;
+   if (vtx->y > +vtx->w)   vtx->clip |= CLIP_POSY;
+   if (vtx->y < -vtx->w)   vtx->clip |= CLIP_NEGY;
+   if (vtx->w < 0.1f)      vtx->clip |= CLIP_Z;
+}
+
+void gSPProcessVertex(u32 v)
 {
 	float vPos[3];
    
@@ -319,7 +324,6 @@ void gSPProcessVertex( u32 v )
    }
 }
 
-
 void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 {
    MicrocodeInfo *ucode;
@@ -350,10 +354,6 @@ void gSPNoOp(void)
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_IGNORED, "gSPNoOp();\n" );
 #endif
-}
-
-void gSPTriangleUnknown(void)
-{
 }
 
 void gSPMatrix( u32 matrix, u8 param )
@@ -457,7 +457,7 @@ void gSPDMAMatrix( u32 matrix, u8 index, u8 multiply )
 #endif
 }
 
-void gSPViewport( u32 v )
+void gSPViewport(u32 v)
 {
    u32 address = RSP_SegmentToPhysical( v );
 
@@ -472,17 +472,17 @@ void gSPViewport( u32 v )
 
    gSP.viewport.vscale[0] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address +  2], 2 );
    gSP.viewport.vscale[1] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address     ], 2 );
-   gSP.viewport.vscale[2] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address +  6], 10 );// * 0.00097847357f;
+   gSP.viewport.vscale[2] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address +  6], 10 ); /* * 0.00097847357f; */
    gSP.viewport.vscale[3] = *(s16*)&gfx_info.RDRAM[address +  4];
    gSP.viewport.vtrans[0] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address + 10], 2 );
    gSP.viewport.vtrans[1] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address +  8], 2 );
-   gSP.viewport.vtrans[2] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address + 14], 10 );// * 0.00097847357f;
+   gSP.viewport.vtrans[2] = _FIXED2FLOAT( *(s16*)&gfx_info.RDRAM[address + 14], 10 ); /* * 0.00097847357f; */
    gSP.viewport.vtrans[3] = *(s16*)&gfx_info.RDRAM[address + 12];
 
    gSP.viewport.x      = gSP.viewport.vtrans[0] - gSP.viewport.vscale[0];
    gSP.viewport.y      = gSP.viewport.vtrans[1] - gSP.viewport.vscale[1];
-   gSP.viewport.width  = gSP.viewport.vscale[0] * 2;
-   gSP.viewport.height = gSP.viewport.vscale[1] * 2;
+   gSP.viewport.width  = fabs(gSP.viewport.vscale[0]) * 2;
+   gSP.viewport.height = fabs(gSP.viewport.vscale[1]) * 2;
    gSP.viewport.nearz  = gSP.viewport.vtrans[2] - gSP.viewport.vscale[2];
    gSP.viewport.farz   = (gSP.viewport.vtrans[2] + gSP.viewport.vscale[2]) ;
 
@@ -506,7 +506,7 @@ void gSPForceMatrix( u32 mptr )
       return;
    }
 
-   RSP_LoadMatrix( gSP.matrix.combined, RSP_SegmentToPhysical( mptr ) );
+   RSP_LoadMatrix( gSP.matrix.combined, address);
 
    gSP.changed &= ~CHANGED_MATRIX;
 
@@ -837,7 +837,14 @@ void gSPDisplayList( u32 dl )
    u32 address = RSP_SegmentToPhysical( dl );
 
    if ((address + 8) > RDRAMSize)
+   {
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to load display list from invalid address\n" );
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDisplayList( 0x%08X );\n",
+			dl );
+#endif
       return;
+   }
 
    if (__RSP.PCi < (GBI.PCStackSize - 1))
    {
@@ -850,33 +857,15 @@ void gSPDisplayList( u32 dl )
       __RSP.PC[__RSP.PCi] = address;
       __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
    }
-}
-
-void gSPDMADisplayList( u32 dl, u32 n )
-{
-   u32 curDL, w0, w1;
-   if ((dl + (n << 3)) > RDRAMSize)
-      return;
-
-   curDL = __RSP.PC[__RSP.PCi];
-
-   __RSP.PC[__RSP.PCi] = RSP_SegmentToPhysical( dl );
-
-   while ((__RSP.PC[__RSP.PCi] - dl) < (n << 3))
-   {
-      if ((__RSP.PC[__RSP.PCi] + 8) > RDRAMSize)
-         break;
-
-      w0 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
-      w1 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
-
-      __RSP.PC[__RSP.PCi] += 8;
-      __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]], 24, 8 );
-
-      GBI.cmd[_SHIFTR( w0, 24, 8 )]( w0, w1 );
-   }
-
-   __RSP.PC[__RSP.PCi] = curDL;
+	else
+	{
+#ifdef DEBUG
+		assert(false);
+		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// PC stack overflow\n" );
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDisplayList( 0x%08X );\n",
+			dl );
+#endif
+	}
 }
 
 void gSPBranchList( u32 dl )
@@ -884,7 +873,19 @@ void gSPBranchList( u32 dl )
    u32 address = RSP_SegmentToPhysical( dl );
 
    if ((address + 8) > RDRAMSize)
+   {
+#ifdef DEBUG
+      DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to branch to display list at invalid address\n" );
+      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPBranchList( 0x%08X );\n",
+            dl );
+#endif
       return;
+   }
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPBranchList( 0x%08X );\n",
+		dl );
+#endif
 
    __RSP.PC[__RSP.PCi] = address;
    __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
@@ -892,13 +893,30 @@ void gSPBranchList( u32 dl )
 
 void gSPBranchLessZ( u32 branchdl, u32 vtx, f32 zval )
 {
+   float zTest;
+   SPVertex *v = NULL;
    u32 address = RSP_SegmentToPhysical( branchdl );
 
    if ((address + 8) > RDRAMSize)
+   {
+#ifdef DEBUG
+      DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Specified display list at invalid address\n" );
+      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPBranchLessZ( 0x%08X, %i, %i );\n",
+            branchdl, vtx, zval );
+#endif
       return;
+   }
 
-   if (OGL.triangles.vertices[vtx].z <= zval)
+   v = (SPVertex*)&OGL.triangles.vertices[vtx];
+   zTest = v->z / v->w;
+
+   if (zTest > 1.0f || zTest <= zval)
       __RSP.PC[__RSP.PCi] = address;
+
+#ifdef DEBUG
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPBranchLessZ( 0x%08X, %i, %i );\n",
+			branchdl, vtx, zval );
+#endif
 }
 
 void gSPDlistCount(u32 count, u32 v)
@@ -906,7 +924,7 @@ void gSPDlistCount(u32 count, u32 v)
 	u32 address = RSP_SegmentToPhysical( v );
 	if (address == 0 || (address + 8) > RDRAMSize)
    {
-#if 0
+#ifdef DEBUG
 		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// Attempting to branch to display list at invalid address\n" );
 		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDlistCnt(%d, 0x%08X );\n", count, v );
 #endif
@@ -915,19 +933,19 @@ void gSPDlistCount(u32 count, u32 v)
 
 	if (__RSP.PCi >= 9)
    {
-#if 0
+#ifdef DEBUG
 		DebugMsg( DEBUG_HIGH | DEBUG_ERROR, "// ** DL stack overflow **\n" );
 		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDlistCnt(%d, 0x%08X );\n", count, v );
 #endif
 		return;
 	}
 
-#if 0
+#ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPDlistCnt(%d, 0x%08X );\n", count, v );
 #endif
 
-	++__RSP.PCi;  // go to the next PC in the stack
-	__RSP.PC[__RSP.PCi] = address;  // jump to the address
+	++__RSP.PCi;  /* go to the next PC in the stack */
+	__RSP.PC[__RSP.PCi] = address;  /* jump to the address */
 	__RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[address], 24, 8 );
 	__RSP.count = count + 1;
 }
@@ -968,38 +986,6 @@ void gSPSetVertexNormaleBase( u32 base )
 		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPSetVertexNormaleBase( 0x%08X );\n",
 			base );
 #endif
-}
-
-void gSPSprite2DBase( u32 base )
-{
-}
-
-void gSPCopyVertex( SPVertex *dest, SPVertex *src )
-{
-   dest->x = src->x;
-   dest->y = src->y;
-   dest->z = src->z;
-   dest->w = src->w;
-   dest->r = src->r;
-   dest->g = src->g;
-   dest->b = src->b;
-   dest->a = src->a;
-   dest->s = src->s;
-   dest->t = src->t;
-}
-
-void gSPInterpolateVertex( SPVertex *dest, f32 percent, SPVertex *first, SPVertex *second )
-{
-   dest->x = first->x + percent * (second->x - first->x);
-   dest->y = first->y + percent * (second->y - first->y);
-   dest->z = first->z + percent * (second->z - first->z);
-   dest->w = first->w + percent * (second->w - first->w);
-   dest->r = first->r + percent * (second->r - first->r);
-   dest->g = first->g + percent * (second->g - first->g);
-   dest->b = first->b + percent * (second->b - first->b);
-   dest->a = first->a + percent * (second->a - first->a);
-   dest->s = first->s + percent * (second->s - first->s);
-   dest->t = first->t + percent * (second->t - first->t);
 }
 
 void gSPDMATriangles( u32 tris, u32 n )
@@ -1080,6 +1066,10 @@ bool gSPCullVertices( u32 v0, u32 vn )
          return FALSE;
    }
    return TRUE;
+}
+
+void gSPSprite2DBase( u32 base )
+{
 }
 
 void gSPCullDisplayList( u32 v0, u32 vn )
