@@ -343,12 +343,6 @@ void RDP_TriFill(u32 _w0, u32 _w1)
 	gDPTriFill(_w0, _w1);
 }
 
-/* TODO/FIXME - remove? */
-void RDP_TriFillZBuff(u32 w0, u32 w1)
-{
-    LOG(LOG_VERBOSE, "RSP_TRI_FILL_ZBUFF Command\n");
-}
-
 void RDP_TriTxtr(u32 _w0, u32 _w1)
 {
 	gDPTriTxtr(_w0, _w1);
@@ -439,20 +433,6 @@ void RDP_Init(void)
    GBI.cmd[G_RDPLOADSYNC]      = RDP_LoadSync;
    GBI.cmd[G_TEXRECTFLIP]      = RDP_TexRectFlip;
    GBI.cmd[G_TEXRECT]          = RDP_TexRect;
-
-   /* FIXME/TODO - GLiden64 doesn't have this - remove it? */
-#if 1
-   GBI.cmd[G_RDPNOOP]          = RDP_NoOp;
-
-   //Low Level RDP Drawing Commands:
-   GBI.cmd[G_TRI_FILL]             = RDP_TriFill;
-   GBI.cmd[G_TRI_FILL_ZBUFF]       = RDP_TriFillZBuff;
-   GBI.cmd[G_TRI_TXTR]             = RDP_TriTxtr;
-   GBI.cmd[G_TRI_TXTR_ZBUFF]       = RDP_TriTxtrZBuff;
-   GBI.cmd[G_TRI_SHADE]            = RDP_TriShade;
-   GBI.cmd[G_TRI_SHADE_TXTR]       = RDP_TriShadeTxtr;
-   GBI.cmd[G_TRI_SHADE_TXTR_ZBUFF] = RDP_TriShadeTxtrZBuff;
-#endif
 
    __RDP.w2 = __RDP.w3 = 0;
    __RDP.cmd_ptr = __RDP.cmd_cur = 0;

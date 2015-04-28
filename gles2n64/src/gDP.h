@@ -312,11 +312,19 @@ void gDPSetKeyR( u32 cR, u32 sR, u32 wR );
 void gDPSetKeyGB(u32 cG, u32 sG, u32 wG, u32 cB, u32 sB, u32 wB );
 void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f32 t, f32 dsdx, f32 dtdy );
 void gDPTextureRectangleFlip( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f32 t, f32 dsdx, f32 dtdy );
-void gDPFullSync();
-void gDPTileSync();
-void gDPPipeSync();
-void gDPLoadSync();
-void gDPNoOp();
+void gDPFullSync(void);
+void gDPTileSync(void);
+void gDPPipeSync(void);
+void gDPLoadSync(void);
+void gDPNoOp(void);
+
+void gDPTriFill(u32 w0, u32 w1);
+void gDPTriFillZ(u32 w0, u32 w1);
+void gDPTriShadeZ(u32 w0, u32 w1);
+void gDPTriTxtrZ(u32 w0, u32 w1);
+void gDPTriTxtr(u32 w0, u32 w1);
+void gDPTriShadeTxtrZ(u32 w0, u32 w1);
+void gDPTriShadeTxtr(u32 w0, u32 w1);
 
 #ifdef __cplusplus
 }
