@@ -142,6 +142,49 @@ static void gSPLightVertex_default(u32 v)
    OGL.triangles.vertices[v].b = min(1.0f, b);
 }
 
+static void gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
+{
+   float light_intensity = 0.0f;
+
+   assert(_vPos != NULL);
+#if 0
+   _vtx->HWLight = 0;
+#endif
+   _vtx->r = gSP.lights[gSP.numLights].r;
+   _vtx->g = gSP.lights[gSP.numLights].g;
+   _vtx->b = gSP.lights[gSP.numLights].b;
+
+   for (u32 l=0; l < gSP.numLights; ++l)
+   {
+      float light_len2, light_len, at;
+      float lvec[3] = {gSP.lights[l].posx, gSP.lights[l].posy, gSP.lights[l].posz};
+      lvec[0] -= _vPos[0];
+      lvec[1] -= _vPos[1];
+      lvec[2] -= _vPos[2];
+      light_len2 = lvec[0]*lvec[0] + lvec[1]*lvec[1] + lvec[2]*lvec[2];
+      light_len = sqrtf(light_len2);
+      at = gSP.lights[l].ca + light_len/65535.0f*gSP.lights[l].la + light_len2/65535.0f*gSP.lights[l].qa;
+
+      if (at > 0.0f)
+         light_intensity = 1/at;//DotProduct (lvec, nvec) / (light_len * normal_len * at);
+      else
+         light_intensity = 0.0f;
+
+      if (light_intensity > 0.0f)
+      {
+         _vtx->r += gSP.lights[l].r * light_intensity;
+         _vtx->g += gSP.lights[l].g * light_intensity;
+         _vtx->b += gSP.lights[l].b * light_intensity;
+      }
+   }
+   if (_vtx->r > 1.0f)
+      _vtx->r = 1.0f;
+   if (_vtx->g > 1.0f)
+      _vtx->g = 1.0f;
+   if (_vtx->b > 1.0f)
+      _vtx->b = 1.0f;
+}
+
 static void gSPBillboardVertex_default(u32 v, u32 i)
 {
    OGL.triangles.vertices[v].x += OGL.triangles.vertices[i].x;
@@ -158,15 +201,24 @@ void gSPCombineMatrices(void)
 
 void gSPProcessVertex( u32 v )
 {
+	float vPos[3];
+   
    f32 intensity, r, g, b;
+   SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
 
    if (gSP.changed & CHANGED_MATRIX)
       gSPCombineMatrices();
 
-   gSPTransformVertex( &OGL.triangles.vertices[v].x, gSP.matrix.combined );
+   vPos[0] = (float)vtx->x;
+   vPos[1] = (float)vtx->y;
+   vPos[2] = (float)vtx->z;
+   gSPTransformVertex( &vtx->x, gSP.matrix.combined );
+
+   if (gSP.viewport.vscale[0] < 0)
+		vtx->x = -vtx->x;
 
    if (gDP.otherMode.depthSource)
-      OGL.triangles.vertices[v].z = gDP.primDepth.z * OGL.triangles.vertices[v].w;
+      vtx->z = gDP.primDepth.z * vtx->w;
 
    if (gSP.matrix.billboard)
    {
@@ -177,29 +229,32 @@ void gSPProcessVertex( u32 v )
 
    if (!(gSP.geometryMode & G_ZBUFFER))
    {
-      OGL.triangles.vertices[v].z = -OGL.triangles.vertices[v].w;
+      vtx->z = -vtx->w;
    }
 
    gSPClipVertex(v);
 
    if (gSP.geometryMode & G_LIGHTING)
    {
-      TransformVectorNormalize( &OGL.triangles.vertices[v].nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
-      gSPLightVertex(v);
+      TransformVectorNormalize( &vtx->nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
+		if (gSP.geometryMode & G_POINT_LIGHTING)
+			gSPPointLightVertex(vtx, vPos);
+      else
+         gSPLightVertex(v);
 
       if (gSP.geometryMode & G_TEXTURE_GEN)
       {
-         TransformVectorNormalize(&OGL.triangles.vertices[v].nx, gSP.matrix.projection);
+         TransformVectorNormalize(&vtx->nx, gSP.matrix.projection);
 
          if (gSP.geometryMode & G_TEXTURE_GEN_LINEAR)
          {
-            OGL.triangles.vertices[v].s = acosf(OGL.triangles.vertices[v].nx) * 325.94931f;
-            OGL.triangles.vertices[v].t = acosf(OGL.triangles.vertices[v].ny) * 325.94931f;
+            vtx->s = acosf(vtx->nx) * 325.94931f;
+            vtx->t = acosf(vtx->ny) * 325.94931f;
          }
          else // G_TEXTURE_GEN
          {
-            OGL.triangles.vertices[v].s = (OGL.triangles.vertices[v].nx + 1.0f) * 512.0f;
-            OGL.triangles.vertices[v].t = (OGL.triangles.vertices[v].ny + 1.0f) * 512.0f;
+            vtx->s = (vtx->nx + 1.0f) * 512.0f;
+            vtx->t = (vtx->ny + 1.0f) * 512.0f;
          }
       }
    }
@@ -1660,5 +1715,6 @@ void gSPObjRendermode(u32 _mode)
 void (*gSPTransformVertex)(float vtx[4], float mtx[4][4]) =
         gSPTransformVertex_default;
 void (*gSPLightVertex)(u32 v) = gSPLightVertex_default;
+void (*gSPPointLightVertex)(SPVertex *_vtx, float * _vPos) = gSPPointLightVertex_default;
 void (*gSPBillboardVertex)(u32 v, u32 i) = gSPBillboardVertex_default;
 
