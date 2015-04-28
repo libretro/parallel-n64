@@ -59,9 +59,7 @@ SpecialMicrocodeInfo specialMicrocodes[] =
    {F3DEX, FALSE, 0x0ace4c3f, "Mario Kart"},
 #endif
    {F3DPD, FALSE, 0x1c4f7869, "Perfect Dark"},
-#ifdef NEW
 	{ Turbo3D,	FALSE,	0x2bdcfc8a, "Turbo3D" },
-#endif
 	{ F3DEX2CBFD, TRUE, 0x1b4ace88, "Conker's Bad Fur Day" }
 };
 
@@ -355,9 +353,9 @@ void GBI_MakeCurrent( MicrocodeInfo *current )
          case F3DPD:     F3DPD_Init();   break;
 #ifdef NEW
 			case F3DEX2CBFD:F3DEX2CBFD_Init(); break;
-			case Turbo3D:	F3D_Init();		break;
 			case ZSortp:	ZSort_Init();	break;
 #else
+			case Turbo3D:	F3D_Init();		break;
          case F3DEX2CBFD:   F3DCBFD_Init(); break;
 #endif
       }
