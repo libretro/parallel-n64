@@ -116,6 +116,13 @@ u32 G_MWO_aLIGHT_8, G_MWO_bLIGHT_8;
 
 GBIInfo GBI;
 
+static u32 current_type;
+
+u32 GBI_GetCurrentMicrocodeType(void)
+{
+   return current_type;
+}
+
 void GBI_Unknown( u32 w0, u32 w1 )
 {
 #ifdef DEBUG
@@ -222,6 +229,7 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
       if (uc_crc == specialMicrocodes[i].crc)
       {
          current->type = specialMicrocodes[i].type;
+         current_type  = current->type;
          return current;
       }
    }
@@ -281,6 +289,7 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
          if (type != NONE)
          {
             current->type = type;
+            current_type = type;
             return current;
          }
 
@@ -294,6 +303,7 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
       if (strcmp( uc_str, specialMicrocodes[i].text ) == 0)
       {
          current->type = specialMicrocodes[i].type;
+         current_type = current->type;
          return current;
       }
    }
@@ -304,6 +314,7 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
       current->type=last_good_ucode;
    else
       current->type = MicrocodeDialog();
+   current_type = current->type;
    return current;
 }
 

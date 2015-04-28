@@ -759,6 +759,7 @@ typedef struct
 
 extern GBIInfo GBI;
 
+u32 GBI_GetCurrentMicrocodeType(void);
 void GBI_MakeCurrent( MicrocodeInfo *current );
 MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize );
 extern u32 last_good_ucode;
