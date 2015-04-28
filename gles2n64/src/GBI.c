@@ -353,11 +353,10 @@ void GBI_MakeCurrent( MicrocodeInfo *current )
          case F3DPD:     F3DPD_Init();   break;
 #ifdef NEW
 			case F3DEX2CBFD:F3DEX2CBFD_Init(); break;
+#endif
 			case ZSortp:	ZSort_Init();	break;
-#else
 			case Turbo3D:	F3D_Init();		break;
          case F3DEX2CBFD:   F3DCBFD_Init(); break;
-#endif
       }
 
 #ifdef NEW

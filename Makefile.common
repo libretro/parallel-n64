@@ -205,6 +205,7 @@ SOURCES_GLN64VIDEO := $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/ShaderCombiner.c \
             $(VIDEODIR_GLN64)/Textures.c \
             $(VIDEODIR_GLN64)/Turbo3D.c \
+            $(VIDEODIR_GLN64)/ZSort.c \
             $(VIDEODIR_GLN64)/VI.c
 
 SOURCES_C	+= $(SOURCES_GLN64VIDEO)
