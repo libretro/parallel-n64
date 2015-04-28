@@ -155,9 +155,7 @@ static void gSPPointLightVertex_default(SPVertex *_vtx, float * _vPos)
    float light_intensity = 0.0f;
 
    assert(_vPos != NULL);
-#if 0
    _vtx->HWLight = 0;
-#endif
    _vtx->r = gSP.lights[gSP.numLights].r;
    _vtx->g = gSP.lights[gSP.numLights].g;
    _vtx->b = gSP.lights[gSP.numLights].b;
@@ -199,6 +197,59 @@ static void gSPBillboardVertex_default(u32 v, u32 i)
    OGL.triangles.vertices[v].y += OGL.triangles.vertices[i].y;
    OGL.triangles.vertices[v].z += OGL.triangles.vertices[i].z;
    OGL.triangles.vertices[v].w += OGL.triangles.vertices[i].w;
+}
+
+static void gSPPointLightVertex_CBFD(SPVertex *_vtx, float * _vPos)
+{
+   const SPLight *light = NULL;
+	f32 r = gSP.lights[gSP.numLights].r;
+	f32 g = gSP.lights[gSP.numLights].g;
+	f32 b = gSP.lights[gSP.numLights].b;
+
+	f32 intensity = 0.0f;
+	for (u32 l = 0; l < gSP.numLights-1; ++l)
+   {
+		light = (SPLight*)&gSP.lights[l];
+		intensity = DotProduct( &_vtx->nx, &light->x );
+
+		if (intensity < 0.0f)
+			continue;
+
+		if (light->ca > 0.0f)
+      {
+			const f32 vx = (_vtx->x + gSP.vertexCoordMod[ 8])*gSP.vertexCoordMod[12] - light->posx;
+			const f32 vy = (_vtx->y + gSP.vertexCoordMod[ 9])*gSP.vertexCoordMod[13] - light->posy;
+			const f32 vz = (_vtx->z + gSP.vertexCoordMod[10])*gSP.vertexCoordMod[14] - light->posz;
+			const f32 vw = (_vtx->w + gSP.vertexCoordMod[11])*gSP.vertexCoordMod[15] - light->posw;
+			const f32 len = (vx*vx+vy*vy+vz*vz+vw*vw)/65536.0f;
+			float p_i = light->ca / len;
+			if (p_i > 1.0f) p_i = 1.0f;
+			intensity *= p_i;
+		}
+		r += light->r * intensity;
+		g += light->g * intensity;
+		b += light->b * intensity;
+	}
+
+	light = (SPLight*)&gSP.lights[gSP.numLights-1];
+
+	intensity = DotProduct( &_vtx->nx, &light->x );
+
+	if (intensity > 0.0f)
+   {
+		r += light->r * intensity;
+		g += light->g * intensity;
+		b += light->b * intensity;
+	}
+
+	r = min(1.0f, r);
+	g = min(1.0f, g);
+	b = min(1.0f, b);
+
+	_vtx->r *= r;
+	_vtx->g *= g;
+	_vtx->b *= b;
+	_vtx->HWLight = 0;
 }
 
 void gSPCombineMatrices(void)
