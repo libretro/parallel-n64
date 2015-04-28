@@ -165,9 +165,6 @@ void gSPProcessVertex( u32 v )
 
    gSPTransformVertex( &OGL.triangles.vertices[v].x, gSP.matrix.combined );
 
-   if (config.screen.flipVertical)
-      OGL.triangles.vertices[v].y = -OGL.triangles.vertices[v].y;
-
    if (gDP.otherMode.depthSource)
       OGL.triangles.vertices[v].z = gDP.primDepth.z * OGL.triangles.vertices[v].w;
 

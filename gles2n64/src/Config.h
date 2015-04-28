@@ -17,7 +17,7 @@ typedef struct
 
     struct
     {
-        int flipVertical, width, height;
+        int width, height;
     } screen;
 
     struct
