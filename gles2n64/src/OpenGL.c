@@ -584,9 +584,19 @@ static void OGL_prepareDrawTriangle(bool _dma)
    }
 }
 
+void OGL_DrawDMATriangles(u32 _numVtx)
+{
+   if (_numVtx == 0)
+      return;
+
+   OGL_prepareDrawTriangle(false);
+	glDrawArrays(GL_TRIANGLES, 0, _numVtx);
+}
+
 void OGL_DrawTriangles(void)
 {
-   if (OGL.triangles.num == 0) return;
+   if (OGL.triangles.num == 0)
+      return;
 
    OGL_prepareDrawTriangle(false);
 
