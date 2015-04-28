@@ -29,11 +29,8 @@ typedef struct
     {
         int maxAnisotropy;
         int enableMipmap;
-        int forceBilinear;
-        int sai2x;
         int useIA;
         int fastCRC;
-        int pow2;
     } texture;
 
     int     updateMode;

@@ -389,26 +389,26 @@ void TextureCache_Init(void)
    cache.dummy->address = 0;
    cache.dummy->clampS = 1;
    cache.dummy->clampT = 1;
-   cache.dummy->clampWidth = 4;
-   cache.dummy->clampHeight = 4;
+   cache.dummy->clampWidth = 2;
+   cache.dummy->clampHeight = 2;
    cache.dummy->crc = 0;
    cache.dummy->format = 0;
    cache.dummy->size = 0;
-   cache.dummy->width = 4;
-   cache.dummy->height = 4;
-   cache.dummy->realWidth = 0;
-   cache.dummy->realHeight = 0;
+   cache.dummy->width = 2;
+   cache.dummy->height = 2;
+   cache.dummy->realWidth = 2;
+   cache.dummy->realHeight = 2;
    cache.dummy->maskS = 0;
    cache.dummy->maskT = 0;
    cache.dummy->scaleS = 0.5f;
    cache.dummy->scaleT = 0.5f;
    cache.dummy->shiftScaleS = 1.0f;
    cache.dummy->shiftScaleT = 1.0f;
-   cache.dummy->textureBytes = 64;
+   cache.dummy->textureBytes = 2 * 2 * 4;
    cache.dummy->tMem = 0;
 
    glBindTexture( GL_TEXTURE_2D, cache.dummy->glName );
-   glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, dummyTexture);
+   glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, dummyTexture);
 
    cache.cachedBytes = cache.dummy->textureBytes;
    TextureCache_ActivateDummy(0);
@@ -1155,18 +1155,18 @@ void TextureCache_Update( u32 t )
    pCurrent->lastDList = __RSP.DList;
 
    if (pCurrent->clampS)
-      pCurrent->realWidth = (config.texture.pow2) ? pow2(clampWidth) : clampWidth;
+      pCurrent->realWidth = clampWidth;
    else if (pCurrent->mirrorS)
       pCurrent->realWidth = maskWidth << 1;
    else
-      pCurrent->realWidth = (config.texture.pow2) ? pow2(width) : width;
+      pCurrent->realWidth = width;
    
    if (pCurrent->clampT)
-      pCurrent->realHeight = (config.texture.pow2) ? pow2(clampHeight) : clampHeight;
+      pCurrent->realHeight = clampHeight;
    else if (pCurrent->mirrorT)
       pCurrent->realHeight = maskHeight << 1;
    else
-      pCurrent->realHeight = (config.texture.pow2) ? pow2(height) : height;
+      pCurrent->realHeight = height;
 
    pCurrent->scaleS = 1.0f / (f32)(pCurrent->realWidth);
    pCurrent->scaleT = 1.0f / (f32)(pCurrent->realHeight);

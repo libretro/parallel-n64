@@ -73,12 +73,9 @@ static Option configOptions[] =
    {"", NULL, 0},
 
    {"#Texture Settings:", NULL, 0},
-   {"texture 2xSAI", &config.texture.sai2x, 0},
-   {"texture force bilinear", &config.texture.forceBilinear, 0},
    {"texture max anisotropy", &config.texture.maxAnisotropy, 0},
    {"texture use IA", &config.texture.useIA, 0},
    {"texture fast CRC", &config.texture.fastCRC, 1},
-   {"texture pow2", &config.texture.pow2, 1},
    {"", NULL, 0},
 
    {"#Other Settings:", NULL, 0},
