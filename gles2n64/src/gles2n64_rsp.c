@@ -102,42 +102,39 @@ void RSP_ProcessDList(void)
    gDPSetTextureDetail(G_TD_CLAMP);
    gDPSetTexturePersp(G_TP_PERSP);
    gDPSetCycleType(G_CYC_1CYCLE);
-   gDPPipelineMode(G_PM_NPRIMITIVE);
 
-#ifdef NEW
-   if (GBI.getMicrocodeType() == Turbo3D)
+   if (GBI_GetCurrentMicrocodeType() == Turbo3D)
 	   RunTurbo3D();
    else
-#endif
-   while (!__RSP.halt)
-   {
-	  u32 w0, w1, pc;
-      pc = __RSP.PC[__RSP.PCi];
-
-      if ((pc + 8) > RDRAMSize)
+      while (!__RSP.halt)
       {
+         u32 w0, w1, pc;
+         pc = __RSP.PC[__RSP.PCi];
+
+         if ((pc + 8) > RDRAMSize)
+         {
 #ifdef DEBUG
-         DebugMsg( DEBUG_LOW | DEBUG_ERROR, "ATTEMPTING TO EXECUTE RSP COMMAND AT INVALID RDRAM LOCATION\n" );
+            DebugMsg( DEBUG_LOW | DEBUG_ERROR, "ATTEMPTING TO EXECUTE RSP COMMAND AT INVALID RDRAM LOCATION\n" );
 #endif
-         break;
+            break;
+         }
+
+
+         w0 = *(u32*)&gfx_info.RDRAM[pc];
+         w1 = *(u32*)&gfx_info.RDRAM[pc+4];
+         __RSP.cmd = _SHIFTR( w0, 24, 8 );
+
+#ifdef DEBUG
+         DebugRSPState( RSP.PCi, RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
+         DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
+#endif
+
+         __RSP.PC[__RSP.PCi] += 8;
+         __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[pc+8], 24, 8 );
+
+         GBI.cmd[__RSP.cmd]( w0, w1 );
+         RSP_CheckDLCounter();
       }
-
-
-      w0 = *(u32*)&gfx_info.RDRAM[pc];
-      w1 = *(u32*)&gfx_info.RDRAM[pc+4];
-      __RSP.cmd = _SHIFTR( w0, 24, 8 );
-
-#ifdef DEBUG
-      DebugRSPState( RSP.PCi, RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
-      DebugMsg( DEBUG_LOW | DEBUG_HANDLED, "0x%08lX: CMD=0x%02lX W0=0x%08lX W1=0x%08lX\n", RSP.PC[RSP.PCi], _SHIFTR( w0, 24, 8 ), w0, w1 );
-#endif
-
-      __RSP.PC[__RSP.PCi] += 8;
-      __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[pc+8], 24, 8 );
-
-      GBI.cmd[__RSP.cmd]( w0, w1 );
-      RSP_CheckDLCounter();
-   }
 
 #ifdef NEW
    if (config.frameBufferEmulation.copyToRDRAM)
@@ -146,7 +143,6 @@ void RSP_ProcessDList(void)
 	   FrameBuffer_CopyDepthBuffer( gDP.colorImage.address );
 #endif
    __RSP.busy = FALSE;
-   __RSP.DList++;
    gSP.changed |= CHANGED_COLORBUFFER;
 }
 

@@ -70,13 +70,13 @@ void gDPSetPrimDepth( u16 z, u16 dz )
 #endif
 }
 
-void gDPPipelineMode( u32 mode )
+void gDPSetTexturePersp( u32 enable )
 {
-   gDP.otherMode.pipelineMode = mode;
+   gDP.otherMode.texturePersp = enable & 1;
 
 #ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPPipelineMode( %s );\n",
-         PipelineModeText[gDP.otherMode.pipelineMode] );
+   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPSetTexturePersp( %s );\n",
+         TexturePerspText[gDP.otherMode.texturePersp] );
 #endif
 }
 
@@ -91,15 +91,6 @@ void gDPSetCycleType( u32 type )
 #endif
 }
 
-void gDPSetTexturePersp( u32 enable )
-{
-   gDP.otherMode.texturePersp = enable & 1;
-
-#ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPSetTexturePersp( %s );\n",
-         TexturePerspText[gDP.otherMode.texturePersp] );
-#endif
-}
 
 void gDPSetTextureDetail( u32 type )
 {

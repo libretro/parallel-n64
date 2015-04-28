@@ -12,6 +12,8 @@
 #define CHANGED_GEOMETRYMODE    0x08
 #define CHANGED_TEXTURE         0x10
 #define CHANGED_FOGPOSITION     0x20
+#define CHANGED_LIGHT			  0x40
+#define CHANGED_CPU_FB_WRITE	  0x80
 #define CHANGED_TEXTURESCALE    0x100
 
 #define CLIP_X      0x03
@@ -24,7 +26,13 @@
 
 #define CLIP_Z      0x10
 
-#define CLIP_ALL	0x1F // CLIP_NEGX|CLIP_POSX|CLIP_NEGY|CLIP_POSY|CLIP_Z
+#define CLIP_ALL    0x1F // CLIP_NEGX|CLIP_POSX|CLIP_NEGY|CLIP_POSY|CLIP_Z
+
+#define SC_POSITION             1
+#define SC_COLOR                2
+#define SC_TEXCOORD0            3
+#define SC_TEXCOORD1            4
+#define SC_NUMLIGHTS            5
 
 typedef struct
 {
@@ -45,8 +53,6 @@ typedef struct SPLight
 	f32 posx, posy, posz, posw;
 	f32 ca, la, qa;
 } SPLight;
-
-typedef SPVertex SPTriangle[3];
 
 typedef struct
 {
