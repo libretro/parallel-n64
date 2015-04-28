@@ -1275,14 +1275,19 @@ void gSPPerspNormalize( u16 scale )
 
 void gSPCoordMod(u32 _w0, u32 _w1)
 {
+   u32 idx, pos;
+
 	if ((_w0&8) != 0)
 		return;
-	u32 idx = _SHIFTR(_w0, 1, 2);
-	u32 pos = _w0&0x30;
-	if (pos == 0) {
+	idx = _SHIFTR(_w0, 1, 2);
+	pos = _w0&0x30;
+	if (pos == 0)
+   {
 		gSP.vertexCoordMod[0+idx] = (f32)(s16)_SHIFTR(_w1, 16, 16);
 		gSP.vertexCoordMod[1+idx] = (f32)(s16)_SHIFTR(_w1, 0, 16);
-	} else if (pos == 0x10) {
+	}
+   else if (pos == 0x10)
+   {
 		assert(idx < 3);
 		gSP.vertexCoordMod[4+idx] = _SHIFTR(_w1, 16, 16)/65536.0f;
 		gSP.vertexCoordMod[5+idx] = _SHIFTR(_w1, 0, 16)/65536.0f;
@@ -1303,14 +1308,17 @@ void gSPTexture( f32 sc, f32 tc, s32 level, s32 tile, s32 on )
    gSP.texture.scales = sc;
    gSP.texture.scalet = tc;
 
-   if (gSP.texture.scales == 0.0f) gSP.texture.scales = 1.0f;
-   if (gSP.texture.scalet == 0.0f) gSP.texture.scalet = 1.0f;
+   if (gSP.texture.scales == 0.0f)
+      gSP.texture.scales = 1.0f;
+   if (gSP.texture.scalet == 0.0f)
+      gSP.texture.scalet = 1.0f;
 
    gSP.texture.level = level;
 
    gSP.texture.tile = tile;
    gSP.textureTile[0] = &gDP.tiles[tile];
-   gSP.textureTile[1] = &gDP.tiles[(tile < 7) ? (tile + 1) : tile];
+   gSP.textureTile[1] = &gDP.tiles[(tile + 1) & 7];
+
    gSP.changed |= CHANGED_TEXTURE;
 
 #ifdef DEBUG
@@ -1324,7 +1332,16 @@ void gSPEndDisplayList(void)
    if (__RSP.PCi > 0)
       __RSP.PCi--;
    else
+   {
+#ifdef DEBUG
+		DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED, "// End of display list, halting execution\n" );
+#endif
       __RSP.halt = TRUE;
+   }
+
+#ifdef DEBUG
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPEndDisplayList();\n\n" );
+#endif
 }
 
 void gSPGeometryMode( u32 clear, u32 set )
@@ -1548,6 +1565,7 @@ void gSPBgRectCopy( u32 bg )
    frameH = objBg->frameH >> 2;
 
    gSPTexture( 1.0f, 1.0f, 0, 0, TRUE );
+	gDP.otherMode.texturePersp = 1;
 
    gDPTextureRectangle(
       frameX,
