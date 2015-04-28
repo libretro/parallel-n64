@@ -41,25 +41,22 @@ char uc_str[256];
 
 SpecialMicrocodeInfo specialMicrocodes[] =
 {
-   { F3D,		FALSE,	0xe62a706d, "Fast3D" },
-   { F3D,		FALSE,	0x7d372819, "Fast3D" },
-   { F3D,		FALSE,	0x2edee7be, "Fast3D" },
-   { F3D,		FALSE,	0xe01e14be, "Fast3D" },
+	{ F3D,		FALSE,	0xe62a706d, "Fast3D" },
+	{ F3D,		FALSE,	0x7d372819, "Fast3D" },
+	{ F3D,		FALSE,	0x2edee7be, "Fast3D" },
+	{ F3D,		FALSE,	0xe01e14be, "Fast3D" },
 
-   {F3DWRUS, FALSE, 0xd17906e2, "RSP SW Version: 2.0D, 04-01-96"},
+	{ F3DWRUS,	FALSE,	0xd17906e2, "RSP SW Version: 2.0D, 04-01-96" },
 	{ F3DSWSE,	FALSE,	0x94c4c833, "RSP SW Version: 2.0D, 04-01-96" },
 	{ F3DEX,	TRUE,	0x637b4b58, "RSP SW Version: 2.0D, 04-01-96" },
-   { F3D,		TRUE,	0x54c558ba, "RSP SW Version: 2.0D, 04-01-96" }, // Pilot Wings
+	{ F3D,		TRUE,	0x54c558ba, "RSP SW Version: 2.0D, 04-01-96" }, // Pilot Wings
 
-   {S2DEX, FALSE, 0x9df31081, "RSP Gfx ucode S2DEX  1.06 Yoshitaka Yasumoto Nintendo."},
+	{ S2DEX,	FALSE,	0x9df31081, "RSP Gfx ucode S2DEX  1.06 Yoshitaka Yasumoto Nintendo." },
 
-   {F3DDKR, FALSE, 0x8d91244f, "Diddy Kong Racing"},
-   {F3DDKR, FALSE, 0x6e6fc893, "Diddy Kong Racing"},
+	{ F3DDKR,	FALSE,	0x8d91244f, "Diddy Kong Racing" },
+	{ F3DDKR,	FALSE,	0x6e6fc893, "Diddy Kong Racing" },
 	{ F3DJFG,	FALSE,	0xbde9d1fb, "Jet Force Gemini" },
-#ifndef NEW
-   {F3DEX, FALSE, 0x0ace4c3f, "Mario Kart"},
-#endif
-   {F3DPD, FALSE, 0x1c4f7869, "Perfect Dark"},
+	{ F3DPD,	TRUE,	0x1c4f7869, "Perfect Dark" },
 	{ Turbo3D,	FALSE,	0x2bdcfc8a, "Turbo3D" },
 	{ F3DEX2CBFD, TRUE, 0x1b4ace88, "Conker's Bad Fur Day" }
 };
@@ -194,6 +191,11 @@ void GBI_Destroy(void)
    }
 }
 
+static INLINE bool _isDigit(char _c)
+{
+	return _c >= '0' && _c <= '9';
+}
+
 MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 {
    unsigned i;
@@ -255,34 +257,38 @@ MicrocodeInfo *GBI_DetectMicrocode( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
          uc_str[j] = 0x00;
 
          if (strncmp( &uc_str[4], "SW", 2 ) == 0)
-         {
             type = F3D;
-         }
          else if (strncmp( &uc_str[4], "Gfx", 3 ) == 0)
          {
             current->NoN = (strncmp( &uc_str[20], ".NoN", 4 ) == 0);
 
             if (strncmp( &uc_str[14], "F3D", 3 ) == 0)
             {
-               if (uc_str[28] == '1')
-                  type = F3DEX;
-               else if (uc_str[31] == '2')
-                  type = F3DEX2;
+					if (uc_str[28] == '1' || strncmp(&uc_str[28], "0.95", 4) == 0 || strncmp(&uc_str[28], "0.96", 4) == 0)
+						type = F3DEX;
+					else if (uc_str[31] == '2')
+						type = F3DEX2;
             }
             else if (strncmp( &uc_str[14], "L3D", 3 ) == 0)
             {
-               if (uc_str[28] == '1')
-                  type = L3DEX;
-               else if (uc_str[31] == '2')
-                  type = L3DEX2;
+					u32 t = 22;
+					while (!_isDigit(uc_str[t]) && t++ < j);
+					if (uc_str[t] == '1')
+						type = L3DEX;
+					else if (uc_str[t] == '2')
+						type = L3DEX2;
             }
             else if (strncmp( &uc_str[14], "S2D", 3 ) == 0)
             {
-               if (uc_str[28] == '1')
-                  type = S2DEX;
-               else if (uc_str[31] == '2')
-                  type = S2DEX2;
+					u32 t = 20;
+					while (!_isDigit(uc_str[t]) && t++ < j);
+					if (uc_str[t] == '1')
+						type = S2DEX;
+					else if (uc_str[t] == '2')
+						type = S2DEX2;
             }
+				else if (strncmp(&uc_str[14], "ZSortp", 6) == 0) 
+					type = ZSortp;
          }
 
          LOG(LOG_VERBOSE, "UCODE STRING=%s\n", uc_str);
@@ -363,9 +369,9 @@ void GBI_MakeCurrent( MicrocodeInfo *current )
 			case F3DSWSE:	 F3DSWSE_Init();	break;
          case F3DWRUS:   F3DWRUS_Init(); break;
          case F3DPD:     F3DPD_Init();   break;
-			case F3DEX2CBFD:F3DEX2CBFD_Init(); break;
-			case ZSortp:	ZSort_Init();	break;
 			case Turbo3D:	F3D_Init();		break;
+			case ZSortp:	ZSort_Init();	break;
+			case F3DEX2CBFD:F3DEX2CBFD_Init(); break;
       }
 
 #ifdef NEW
