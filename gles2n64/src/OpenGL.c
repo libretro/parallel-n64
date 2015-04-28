@@ -589,7 +589,7 @@ void OGL_DrawDMATriangles(u32 _numVtx)
    if (_numVtx == 0)
       return;
 
-   OGL_prepareDrawTriangle(false);
+   OGL_prepareDrawTriangle(true);
 	glDrawArrays(GL_TRIANGLES, 0, _numVtx);
 }
 
