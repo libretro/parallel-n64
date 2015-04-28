@@ -42,25 +42,18 @@ void VI_UpdateSize(void)
 
 void VI_UpdateScreen(void)
 {
-   switch(config.updateMode)
+   bool bVIUpdated = false;
+
+   if (*gfx_info.VI_ORIGIN_REG != VI.lastOrigin)
    {
+      VI_UpdateSize();
+      bVIUpdated = true;
+   }
 
-      case SCREEN_UPDATE_AT_VI_CHANGE:
-         if (*gfx_info.VI_ORIGIN_REG != VI.lastOrigin)
-         {
-            if (*gfx_info.VI_ORIGIN_REG < VI.lastOrigin || *gfx_info.VI_ORIGIN_REG > VI.lastOrigin+0x2000  )
-               OGL_SwapBuffers();
-
-            VI.lastOrigin = *gfx_info.VI_ORIGIN_REG;
-         }
-         break;
-
-      case SCREEN_UPDATE_AT_VI_UPDATE:
-         if (gSP.changed & CHANGED_COLORBUFFER)
-         {
-            OGL_SwapBuffers();
-            gSP.changed &= ~CHANGED_COLORBUFFER;
-         }
-         break;
+   if (gSP.changed & CHANGED_COLORBUFFER)
+   {
+      OGL_SwapBuffers();
+      gSP.changed &= ~CHANGED_COLORBUFFER;
+      VI.lastOrigin = *gfx_info.VI_ORIGIN_REG;
    }
 }

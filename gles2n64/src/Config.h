@@ -33,8 +33,6 @@ typedef struct
         int fastCRC;
     } texture;
 
-    int     updateMode;
-    int     forceBufferClear;
     int     zHack;
 
     int     enableNoise;

@@ -75,8 +75,6 @@ static Option configOptions[] =
    {"", NULL, 0},
 
    {"#Other Settings:", NULL, 0},
-   {"update mode", &config.updateMode, SCREEN_UPDATE_AT_VI_UPDATE },
-   {"force screen clear", &config.forceBufferClear, 0},
    {"", NULL, 0},
 
    {"#Hack Settings:", NULL, 0},
