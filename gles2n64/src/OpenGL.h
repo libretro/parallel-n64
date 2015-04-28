@@ -93,6 +93,7 @@ void OGL_AddTriangle(int v0, int v1, int v2);
 void OGL_DrawTriangles(void);
 void OGL_DrawDMATriangles(u32 _numVtx);
 void OGL_DrawTriangle(SPVertex *vertices, int v0, int v1, int v2);
+void OGL_DrawLLETriangle(u32 _numVtx);
 void OGL_DrawLine(int v0, int v1, float width);
 void OGL_DrawRect(int ulx, int uly, int lrx, int lry, float *color);
 void OGL_DrawTexturedRect(float ulx, float uly, float lrx, float lry, float uls, float ult, float lrs, float lrt, bool flip );

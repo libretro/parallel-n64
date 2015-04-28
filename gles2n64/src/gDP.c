@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #include "Common.h"
@@ -263,8 +264,6 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
    {
 		u32 height = 1;
 
-      gDP.colorImage.changed = FALSE;
-
 		if (width == VI.width)
 			height = VI.height;
 		else if (width == gDP.scissor.lrx && width == gSP.viewport.width)
@@ -287,8 +286,6 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
    gDP.colorImage.size    = size;
    gDP.colorImage.width   = width;
    gDP.colorImage.address = addr;
-
-   OGL.renderingToTexture = false;
 
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetColorImage( %s, %s, %i, 0x%08X );\n",
@@ -624,135 +621,226 @@ bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
 }
 #endif
 
-void gDPLoadTile( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
+//****************************************************************
+// LoadTile for 32bit RGBA texture
+// Based on sources of angrylion's software plugin.
+//
+void gDPLoadTile32b(u32 uls, u32 ult, u32 lrs, u32 lrt)
 {
-   void (*Interleave)( void *mem, u32 numDWords );
+	const u32 width = lrs - uls + 1;
+	const u32 height = lrt - ult + 1;
+	const u32 line = gDP.loadTile->line << 2;
+	const u32 tbase = gDP.loadTile->tmem << 2;
+	const u32 addr = gDP.textureImage.address >> 2;
+	const u32 * src = (const u32*)gfx_info.RDRAM;
+	u16 * tmem16 = (u16*)TMEM;
+	u32 c, ptr, tline, s, xorval;
 
-   u32 address, height, bpl, line, y;
-   u64 *dest;
-   u8 *src;
+	for (u32 j = 0; j < height; ++j) {
+		tline = tbase + line * j;
+		s = ((j + ult) * gDP.textureImage.width) + uls;
+		xorval = (j & 1) ? 3 : 1;
+		for (u32 i = 0; i < width; ++i) {
+			c = src[addr + s + i];
+			ptr = ((tline + i) ^ xorval) & 0x3ff;
+			tmem16[ptr] = c >> 16;
+			tmem16[ptr | 0x400] = c & 0xffff;
+		}
+	}
+}
 
-   gDPSetTileSize( tile, uls, ult, lrs, lrt );
-   gDP.loadTile = &gDP.tiles[tile];
+void gDPLoadTile(u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt)
+{
+	gDPSetTileSize( tile, uls, ult, lrs, lrt );
+	gDP.loadTile = &gDP.tiles[tile];
+	gDP.loadTile->loadType = LOADTYPE_TILE;
+	gDP.loadTile->imageAddress = gDP.textureImage.address;
 
-   if (gDP.loadTile->line == 0)
-      return;
+	const u32 width = (gDP.loadTile->lrs - gDP.loadTile->uls + 1) & 0x03FF;
+	u32 height = (gDP.loadTile->lrt - gDP.loadTile->ult + 1) & 0x03FF;
 
-   address = gDP.textureImage.address + gDP.loadTile->ult * gDP.textureImage.bpl + (gDP.loadTile->uls << gDP.textureImage.size >> 1);
-   dest = &TMEM[gDP.loadTile->tmem];
-   bpl = (gDP.loadTile->lrs - gDP.loadTile->uls + 1) << gDP.loadTile->size >> 1;
-   height = gDP.loadTile->lrt - gDP.loadTile->ult + 1;
-   src = &gfx_info.RDRAM[address];
+	struct gDPLoadTileInfo *info = (struct gDPLoadTileInfo*)&gDP.loadInfo[gDP.loadTile->tmem];
+	info->texAddress = gDP.loadTile->imageAddress;
+	info->uls = gDP.loadTile->uls;
+	info->ult = gDP.loadTile->ult;
+	info->width = gDP.loadTile->masks != 0 ? (u16)min(width, 1U<<gDP.loadTile->masks) : (u16)width;
+	info->height = gDP.loadTile->maskt != 0 ? (u16)min(height, 1U<<gDP.loadTile->maskt) : (u16)height;
+	info->texWidth = gDP.textureImage.width;
+	info->size = gDP.textureImage.size;
+	info->loadType = LOADTYPE_TILE;
 
-   if (((address + height * bpl) > RDRAMSize) ||
-         (((gDP.loadTile->tmem << 3) + bpl * height) > 4096)) // Stay within TMEM
-   {
+	if (gDP.loadTile->line == 0)
+		return;
+
+	const u32 address = gDP.textureImage.address + gDP.loadTile->ult * gDP.textureImage.bpl + (gDP.loadTile->uls << gDP.textureImage.size >> 1);
+	if ((address + height * gDP.textureImage.bpl) > RDRAMSize)
+		return;
+
+	const u32 bpl = gDP.loadTile->line << 3;
+	if (((gDP.loadTile->tmem << 3) + height * bpl) > TMEM_SIZE_BYTES) // Stay within TMEM
+	{
 #ifdef DEBUG
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_TEXTURE, "// Attempting to load texture tile out of range\n" );
-      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPLoadTile( %u, %i, %i, %i, %i );\n",
-            tile, gDP.loadTile->uls, gDP.loadTile->ult, gDP.loadTile->lrs, gDP.loadTile->lrt );
+		DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_TEXTURE, "// Attempting to load texture tile out of range\n" );
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPLoadTile( %i, %i, %i, %i, %i );\n",
+			tile, gDP.loadTile->uls, gDP.loadTile->ult, gDP.loadTile->lrs, gDP.loadTile->lrt );
 #endif
-      return;
-   }
+		height = (TMEM_SIZE_BYTES - (gDP.loadTile->tmem << 3)) / bpl;
+	}
 
-   // Line given for 32-bit is half what it seems it should since they split the
-   // high and low words. I'm cheating by putting them together.
-   if (gDP.loadTile->size == G_IM_SIZ_32b)
-   {
-      line = gDP.loadTile->line << 1;
-      Interleave = QWordInterleave;
-   }
-   else
-   {
-      line = gDP.loadTile->line;
-      Interleave = DWordInterleave;
-   }
+	u32 bpl2 = bpl;
+	if (gDP.loadTile->lrs > gDP.textureImage.width)
+		bpl2 = (gDP.textureImage.width - gDP.loadTile->uls);
+	u32 height2 = height;
+	if (gDP.loadTile->lrt > gDP.scissor.lry)
+		height2 = gDP.scissor.lry - gDP.loadTile->ult;
+#ifdef NEW
+	if (CheckForFrameBufferTexture(address, bpl2*height2))
+		return;
+#endif
 
-   for (y = 0; y < height; y++)
-   {
-      UnswapCopy( src, dest, bpl );
-      if (y & 1) Interleave( dest, line );
+	if (gDP.loadTile->size == G_IM_SIZ_32b)
+		gDPLoadTile32b(gDP.loadTile->uls, gDP.loadTile->ult, gDP.loadTile->lrs, gDP.loadTile->lrt);
+	else {
+		u64 * dest = &TMEM[gDP.loadTile->tmem];
+		u8 * src = &gfx_info.RDRAM[address];
+		const u32 line = gDP.loadTile->line;
+		for (u32 y = 0; y < height; ++y) {
+			UnswapCopy(src, dest, bpl);
+			if (y & 1) DWordInterleave(dest, line);
 
-      src += gDP.textureImage.bpl;
-      dest += line;
-   }
-
-   gDP.loadTile->textureMode = TEXTUREMODE_NORMAL;
-   gDP.loadTile->loadType = LOADTYPE_TILE;
-   gDP.changed |= CHANGED_TMEM;
-
+			src += gDP.textureImage.bpl;
+			dest += line;
+		}
+	}
 #ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPLoadTile( %u, %i, %i, %i, %i );\n",
-         tile, gDP.loadTile->uls, gDP.loadTile->ult, gDP.loadTile->lrs, gDP.loadTile->lrt );
+		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPLoadTile( %i, %i, %i, %i, %i );\n",
+			tile, gDP.loadTile->uls, gDP.loadTile->ult, gDP.loadTile->lrs, gDP.loadTile->lrt );
 #endif
 }
 
-void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt )
+//****************************************************************
+// LoadBlock for 32bit RGBA texture
+// Based on sources of angrylion's software plugin.
+//
+void gDPLoadBlock32(u32 uls,u32 lrs, u32 dxt)
 {
-   u64 *src, *dest;
-   u32 bytes, address;
-   unsigned y;
-   gDPSetTileSize( tile, uls, ult, lrs, dxt );
-   gDP.loadTile = &gDP.tiles[tile];
+	const u32 * src = (const u32*)gfx_info.RDRAM;
+	const u32 tb = gDP.loadTile->tmem << 2;
+	const u32 line = gDP.loadTile->line << 2;
 
-   bytes = (lrs + 1) << gDP.loadTile->size >> 1;
-   address = gDP.textureImage.address + ult * gDP.textureImage.bpl + (uls << gDP.textureImage.size >> 1);
+	u16 *tmem16 = (u16*)TMEM;
+	u32 addr = gDP.loadTile->imageAddress >> 2;
+	u32 width = (lrs - uls + 1) << 2;
+	if (width == 4) // lr_s == 0, 1x1 texture
+		width = 1;
+	else if (width & 7)
+		width = (width & (~7)) + 8;
 
-   if ((bytes == 0) ||
-         ((address + bytes) > RDRAMSize) ||
-         (((gDP.loadTile->tmem << 3) + bytes) > 4096))
-   {
+	if (dxt != 0) {
+		u32 j = 0;
+		u32 t = 0;
+		u32 oldt = 0;
+		u32 ptr;
+
+		u32 c = 0;
+		for (u32 i = 0; i < width; i += 2) {
+			oldt = t;
+			t = ((j >> 11) & 1) ? 3 : 1;
+			if (t != oldt)
+				i += line;
+			ptr = ((tb + i) ^ t) & 0x3ff;
+			c = src[addr + i];
+			tmem16[ptr] = c >> 16;
+			tmem16[ptr | 0x400] = c & 0xffff;
+			ptr = ((tb + i + 1) ^ t) & 0x3ff;
+			c = src[addr + i + 1];
+			tmem16[ptr] = c >> 16;
+			tmem16[ptr | 0x400] = c & 0xffff;
+			j += dxt;
+		}
+	} else {
+		u32 c, ptr;
+		for (u32 i = 0; i < width; i++) {
+			ptr = ((tb + i) ^ 1) & 0x3ff;
+			c = src[addr + i];
+			tmem16[ptr] = c >> 16;
+			tmem16[ptr | 0x400] = c & 0xffff;
+		}
+	}
+}
+
+void gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
+{
+	gDPSetTileSize( tile, uls, ult, lrs, dxt );
+	gDP.loadTile = &gDP.tiles[tile];
+	gDP.loadTile->loadType = LOADTYPE_BLOCK;
+
+	if (gSP.DMAOffsets.tex_offset != 0) {
+		if (gSP.DMAOffsets.tex_shift % (((lrs>>2) + 1) << 3)) {
+			gDP.textureImage.address -= gSP.DMAOffsets.tex_shift;
+			gSP.DMAOffsets.tex_offset = 0;
+			gSP.DMAOffsets.tex_shift = 0;
+			gSP.DMAOffsets.tex_count = 0;
+		} else
+			++gSP.DMAOffsets.tex_count;
+	}
+	gDP.loadTile->imageAddress = gDP.textureImage.address;
+
+	struct gDPLoadTileInfo *info = (struct gDPLoadTileInfo*)&gDP.loadInfo[gDP.loadTile->tmem];
+	info->texAddress = gDP.loadTile->imageAddress;
+	info->width = gDP.loadTile->lrs;
+	info->dxt = dxt;
+	info->size = gDP.textureImage.size;
+	info->loadType = LOADTYPE_BLOCK;
+
+	u32 bytes = (lrs - uls + 1) << gDP.loadTile->size >> 1;
+	if (((gDP.loadTile->tmem << 3) + bytes) > TMEM_SIZE_BYTES) // Stay within TMEM
+		bytes = TMEM_SIZE_BYTES - (gDP.loadTile->tmem << 3);
+	if ((bytes & 7) != 0)
+		bytes = (bytes & (~7)) + 8;
+	u32 address = gDP.textureImage.address + ult * gDP.textureImage.bpl + (uls << gDP.textureImage.size >> 1);
+
+	if (bytes == 0 || (address + bytes) > RDRAMSize) {
 #ifdef DEBUG
-      DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_TEXTURE, "// Attempting to load texture block out of range\n" );
-      DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPLoadBlock( %u, %u, %u, %u, %u );\n",
-            tile, uls, ult, lrs, dxt );
+		DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_TEXTURE, "// Attempting to load texture block out of range\n" );
+		DebugMsg(DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPLoadBlock( %i, %i, %i, %i, %i );\n",
+			tile, uls, ult, lrs, dxt );
 #endif
-      //      bytes = min( bytes, min( RDRAMSize - gDP.textureImage.address, 4096 - (gDP.loadTile->tmem << 3) ) );
-      return;
-   }
+		return;
+	}
 
-   src = (u64*)&gfx_info.RDRAM[address];
-   dest = (u64*)&TMEM[gDP.loadTile->tmem];
+	gDP.loadTile->textureMode = TEXTUREMODE_NORMAL;
+#ifdef NEW
+	gDP.loadTile->frameBuffer = NULL;
+	CheckForFrameBufferTexture(address, bytes); // Load data to TMEM even if FB texture is found. See comment to texturedRectDepthBufferCopy
+#endif
 
-   if (dxt > 0)
-   {
-      u32 line = (2047 + dxt) / dxt;
-      u32 bpl = line << 3;
-      u32 height = bytes / bpl;
+	if (gDP.loadTile->size == G_IM_SIZ_32b)
+		gDPLoadBlock32(gDP.loadTile->uls, gDP.loadTile->lrs, dxt);
+	else if (gDP.loadTile->format == G_IM_FMT_YUV)
+		memcpy(TMEM, &gfx_info.RDRAM[address], bytes); // HACK!
+	else {
+		u64* src = (u64*)&gfx_info.RDRAM[address];
+		u64* dest = &TMEM[gDP.loadTile->tmem];
 
-      if (gDP.loadTile->size == G_IM_SIZ_32b)
-      {
-         for (y = 0; y < height; y++)
-         {
-            UnswapCopy( src, dest, bpl );
-            if (y & 1) QWordInterleave( dest, line );
-            src += line;
-            dest += line;
-         }
-      }
-      else
-      {
-         for (y = 0; y < height; y++)
-         {
-            UnswapCopy( src, dest, bpl );
-            if (y & 1) DWordInterleave( dest, line );
-            src += line;
-            dest += line;
-         }
+		if (dxt > 0) {
+			u32 line = (2047 + dxt) / dxt;
+			u32 bpl = line << 3;
+			u32 height = bytes / bpl;
 
-      }
+			for (u32 y = 0; y < height; ++y) {
+				UnswapCopy(src, dest, bpl);
+				if (y & 1) DWordInterleave(dest, line);
 
-   }
-   else
-      UnswapCopy( src, dest, bytes );
-
-   gDP.loadTile->textureMode = TEXTUREMODE_NORMAL;
-   gDP.loadTile->loadType = LOADTYPE_BLOCK;
-   gDP.changed |= CHANGED_TMEM;
-
+				src += line;
+				dest += line;
+			}
+		} else
+			UnswapCopy(src, dest, bytes);
+	}
 #ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPLoadBlock( %u, %u, %u, %u, %u );\n",
-         tile, uls, ult, lrs, dxt );
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPLoadBlock( %i, %i, %i, %i, %i );\n",
+		tile, uls, ult, lrs, dxt );
 #endif
 }
 
