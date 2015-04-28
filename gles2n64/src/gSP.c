@@ -188,16 +188,7 @@ void gSPProcessVertex( u32 v )
    if (gSP.geometryMode & G_LIGHTING)
    {
       TransformVectorNormalize( &OGL.triangles.vertices[v].nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
-      if (config.enableLighting)
-      {
-         gSPLightVertex(v);
-      }
-      else
-      {
-         OGL.triangles.vertices[v].r = 1.0f;
-         OGL.triangles.vertices[v].g = 1.0f;
-         OGL.triangles.vertices[v].b = 1.0f;
-      }
+      gSPLightVertex(v);
 
       if (gSP.geometryMode & G_TEXTURE_GEN)
       {

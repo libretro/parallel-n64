@@ -37,10 +37,6 @@ typedef struct
     int     forceBufferClear;
     int     zHack;
 
-    int     enablePrimZ;
-    int     enableLighting;
-    int     enableClipping;
-    int     enableFaceCulling;
     int     enableNoise;
 
     int     hackBanjoTooie;
