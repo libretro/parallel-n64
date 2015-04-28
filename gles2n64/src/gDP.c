@@ -6,6 +6,7 @@
 #include "N64.h"
 #include "GBI.h"
 #include "RSP.h"
+#include "RDP.h"
 #include "gDP.h"
 #include "gSP.h"
 #include "Types.h"
@@ -1068,15 +1069,26 @@ void gDPNoOp(void)
 #endif
 }
 
+/*******************************************
+ *          Low level triangle             *
+ *******************************************
+ *    based on sources of ziggy's z64      *
+ *******************************************/
+
+void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, u32 * _pRdpCmd)
+{
+   /* TODO/FIXME - stub */
+}
+
 static void gDPTriangle(u32 _w1, u32 _w2, int shade, int texture, int zbuffer)
 {
-	//gDPLLETriangle(_w1, _w2, shade, texture, zbuffer, RDP.cmd_data + RDP.cmd_cur);
+	gDPLLETriangle(_w1, _w2, shade, texture, zbuffer, __RDP.cmd_data + __RDP.cmd_cur);
 }
 
 void gDPTriFill(u32 w0, u32 w1)
 {
 	gDPTriangle(w0, w1, 0, 0, 0);
-#if 0
+#ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "trifill\n");
 #endif
 }
@@ -1084,7 +1096,7 @@ void gDPTriFill(u32 w0, u32 w1)
 void gDPTriShade(u32 w0, u32 w1)
 {
 	gDPTriangle(w0, w1, 1, 0, 0);
-#if 0
+#ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "trishade\n");
 #endif
 }
@@ -1092,7 +1104,7 @@ void gDPTriShade(u32 w0, u32 w1)
 void gDPTriTxtr(u32 w0, u32 w1)
 {
 	gDPTriangle(w0, w1, 0, 1, 0);
-#if 0
+#ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "tritxtr\n");
 #endif
 }
@@ -1100,7 +1112,7 @@ void gDPTriTxtr(u32 w0, u32 w1)
 void gDPTriShadeTxtr(u32 w0, u32 w1)
 {
 	gDPTriangle(w0, w1, 1, 1, 0);
-#if 0
+#ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "trishadetxtr\n");
 #endif
 }
@@ -1108,7 +1120,7 @@ void gDPTriShadeTxtr(u32 w0, u32 w1)
 void gDPTriFillZ(u32 w0, u32 w1)
 {
 	gDPTriangle(w0, w1, 0, 0, 1);
-#if 0
+#ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "trifillz\n");
 #endif
 }
@@ -1116,7 +1128,7 @@ void gDPTriFillZ(u32 w0, u32 w1)
 void gDPTriShadeZ(u32 w0, u32 w1)
 {
 	gDPTriangle(w0, w1, 1, 0, 1);
-#if 0
+#ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "trishadez\n");
 #endif
 }
@@ -1124,7 +1136,7 @@ void gDPTriShadeZ(u32 w0, u32 w1)
 void gDPTriTxtrZ(u32 w0, u32 w1)
 {
 	gDPTriangle(w0, w1, 0, 1, 1);
-#if 0
+#ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "tritxtrz\n");
 #endif
 }
@@ -1132,7 +1144,7 @@ void gDPTriTxtrZ(u32 w0, u32 w1)
 void gDPTriShadeTxtrZ(u32 w0, u32 w1)
 {
 	gDPTriangle(w0, w1, 1, 1, 1);
-#if 0
+#ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "trishadetxtrz\n");
 #endif
 }

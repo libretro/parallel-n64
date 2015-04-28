@@ -57,10 +57,7 @@ void S2DEX_Obj_RenderMode( u32 w0, u32 w1 )
 
 void S2DEX_Obj_Rectangle_R( u32 w0, u32 w1 )
 {
-   /* TODO/FIXME - implement */
-#if 0
 	gSPObjRectangleR(w1);
-#endif
 }
 
 void S2DEX_Obj_LoadTxtr( u32 w0, u32 w1 )
@@ -87,8 +84,6 @@ void S2DEX_Init(void)
 {
    // Set GeometryMode flags
    GBI_InitFlags( F3DEX );
-
-   gSP.geometryMode = 0;
 
    GBI.PCStackSize = 18;
 
