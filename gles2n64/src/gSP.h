@@ -14,21 +14,6 @@
 #define CHANGED_FOGPOSITION     0x20
 #define CHANGED_TEXTURESCALE    0x100
 
-#define gSPFlushTriangles() \
-if \
-( \
-    ( \
-        (__RSP.nextCmd != G_TRI1) && \
-        (__RSP.nextCmd != G_TRI2) && \
-        (__RSP.nextCmd != G_TRI4) && \
-        (__RSP.nextCmd != G_QUAD) \
-    ) \
-) \
-{ \
-    OGL_DrawTriangles(); \
-}
-
-
 #define CLIP_X      0x03
 #define CLIP_NEGX   0x01
 #define CLIP_POSX   0x02

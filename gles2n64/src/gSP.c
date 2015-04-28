@@ -29,6 +29,23 @@ extern char uc_str[256];
 
 void gSPCombineMatrices(void);
 
+static INLINE void gSPFlushTriangles(void)
+{
+   if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0)
+   {
+      OGL_DrawTriangles();
+      return;
+   }
+
+   if (
+         (__RSP.nextCmd != G_TRI1) &&
+         (__RSP.nextCmd != G_TRI2) &&
+         (__RSP.nextCmd != G_TRI4) &&
+         (__RSP.nextCmd != G_QUAD)
+      ) 
+         OGL_DrawTriangles();
+}
+
 void gSPTriangle(s32 v0, s32 v1, s32 v2)
 {
    if ((v0 < INDEXMAP_SIZE) && (v1 < INDEXMAP_SIZE) && (v2 < INDEXMAP_SIZE))

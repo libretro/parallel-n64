@@ -18,70 +18,11 @@
 
 //BASED ON GLIDE64 Implementation
 
-u32 normal_address = 0;
-
 void F3DCBFD_Vtx(u32 w0, u32 w1)
 {
-   Vertex *vertex;
-   s32 i;
-   s32 v0, n;
-   u32 address, v;
-   n = (w0 >> 12)&0xFF;
-   v0 = ((w0 >> 1)&0x7F) - n;
-   address = RSP_SegmentToPhysical(w1);
+	u32 n = _SHIFTR( w0, 12, 8 );
 
-   if (v0 < 0)
-   {
-      return;
-   }
-
-   gSPFlushTriangles();
-
-   vertex = (Vertex*)&gfx_info.RDRAM[address];
-
-   for (i = 0; i < n; i++)
-   {
-	   u32 nonblack;
-      v = v0 + i;
-
-      OGL.triangles.vertices[v].x = vertex->x;
-      OGL.triangles.vertices[v].y = vertex->y;
-      OGL.triangles.vertices[v].z = vertex->z;
-      OGL.triangles.vertices[v].w = 1.0f;
-
-      OGL.triangles.vertices[v].s = _FIXED2FLOAT(vertex->s, 5);
-      OGL.triangles.vertices[v].t = _FIXED2FLOAT(vertex->t, 5);
-
-      if (config.enableLighting && gSP.geometryMode & G_LIGHTING)
-      {
-         OGL.triangles.vertices[v].nx = ((s8*)gfx_info.RDRAM)[(normal_address + (i<<1) + (v0<<1) + 0)^3];
-         OGL.triangles.vertices[v].ny = ((s8*)gfx_info.RDRAM)[(normal_address + (i<<1) + (v0<<1) + 1)^3];
-         OGL.triangles.vertices[v].nz = (s8)(vertex->flag&0xff);
-      }
-
-      gSPProcessVertex(v);
-
-      nonblack = 0;
-      nonblack += (u32)OGL.triangles.vertices[v].r;
-      nonblack += (u32)OGL.triangles.vertices[v].g;
-      nonblack += (u32)OGL.triangles.vertices[v].b;
-
-      if (config.enableLighting && (gSP.geometryMode & G_LIGHTING) && (nonblack != 0))
-      {
-         OGL.triangles.vertices[v].r = OGL.triangles.vertices[v].r * vertex->color.r * 0.0039215689f;
-         OGL.triangles.vertices[v].g = OGL.triangles.vertices[v].g * vertex->color.g * 0.0039215689f;
-         OGL.triangles.vertices[v].b = OGL.triangles.vertices[v].b * vertex->color.b * 0.0039215689f;
-         OGL.triangles.vertices[v].a = vertex->color.a * 0.0039215689f;
-      }
-      else
-      {
-         OGL.triangles.vertices[v].r = vertex->color.r * 0.0039215689f;
-         OGL.triangles.vertices[v].g = vertex->color.g * 0.0039215689f;
-         OGL.triangles.vertices[v].b = vertex->color.b * 0.0039215689f;
-         OGL.triangles.vertices[v].a = vertex->color.a * 0.0039215689f;
-      }
-      vertex++;
-   }
+	gSPCBFDVertex( w1, n, _SHIFTR( w0, 1, 7 ) - n );
 }
 
 void F3DCBFD_MoveWord(u32 w0, u32 w1)
@@ -92,29 +33,27 @@ void F3DCBFD_MoveWord(u32 w0, u32 w1)
    switch (index)
    {
       case G_MW_NUMLIGHT:
-         if (config.enableLighting)
-            gSPNumLights(w1 / 48);
+         gSPNumLights(w1 / 48);
          break;
 
       case G_MW_CLIP:
-         if (offset == 0x04)
-         {
-            gSPClipRatio( w1 );
-         }
+         gSPClipRatio( w1 );
          break;
 
       case G_MW_SEGMENT:
-         gSPSegment(_SHIFTR(offset, 2, 4), w1 & 0x00FFFFFF);
+			gSPSegment( _SHIFTR( w0, 0, 16 ) >> 2, w1 & 0x00FFFFFF );
          break;
 
       case G_MW_FOG:
-         gSPFogFactor( (s16)_SHIFTR( w1, 16, 16 ), (s16)_SHIFTR( w1, 0, 16 ) );
+			gSPFogFactor( (s16)_SHIFTR( w1, 16, 16 ), (s16)_SHIFTR( w1, 0, 16 ) );
          break;
 
-      case G_MV_COORDMOD:  // moveword coord mod
-         break;
+		case G_MW_PERSPNORM:
+			gSPPerspNormalize( w1 );
+			break;
 
-      default:
+      case G_MV_COORDMOD:
+			gSPCoordMod( w0, w1 );
          break;
    }
 }
@@ -129,20 +68,16 @@ void F3DCBFD_MoveMem(u32 w0, u32 w1)
 
       case F3DCBFD_MV_LIGHT:
          {
-            u32 offset = (w0 >> 5) & 0x3FFF; 
+            const u32 offset = _SHIFTR(w0, 5, 14);
             u32 n = offset / 48;
             if (n < 2)
-            {
-               //LookAt
-               return;
-            }
-            n--;
-            gSPLight(w1, n);
-            break;
+               gSPLookAt(w1, n);
+            else
+               gSPLightCBFD(w1, n - 2);
          }
-
+         break;
       case F3DCBFD_MV_NORMAL:
-         normal_address = RSP_SegmentToPhysical(w1);
+			gSPSetVertexNormaleBase(w1);
          break;
 
    }
@@ -150,10 +85,10 @@ void F3DCBFD_MoveMem(u32 w0, u32 w1)
 
 void F3DCBFD_Tri4(u32 w0, u32 w1)
 {
-   gSP4Triangles( _SHIFTR(w0, 23, 5), _SHIFTR(w0, 18, 5), (_SHIFTR(w0, 15, 3 ) << 2) | _SHIFTR(w1, 30, 2),
-         _SHIFTR(w0, 10, 5), _SHIFTR(w0, 5, 5), _SHIFTR(w0, 0, 5),
-         _SHIFTR(w1, 25, 5), _SHIFTR(w1, 20, 5), _SHIFTR(w1, 15, 5),
-         _SHIFTR(w1, 10, 5), _SHIFTR(w1, 5, 5), _SHIFTR(w1, 0, 5));
+	gSP4Triangles( _SHIFTR( w0, 23, 5 ), _SHIFTR( w0, 18, 5 ), (_SHIFTR( w0, 15, 3 )<<2)|_SHIFTR( w1, 30, 2 ),
+				   _SHIFTR( w0, 10, 5 ), _SHIFTR( w0,  5, 5 ), _SHIFTR( w0,  0, 5 ),
+				   _SHIFTR( w1, 25, 5 ), _SHIFTR( w1, 20, 5 ), _SHIFTR( w1, 15, 5 ),
+				   _SHIFTR( w1, 10, 5 ), _SHIFTR( w1,  5, 5 ), _SHIFTR( w1,  0, 5 ) );
 }
 
 void F3DCBFD_Init(void)
