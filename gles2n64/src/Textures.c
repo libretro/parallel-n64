@@ -838,7 +838,7 @@ u32 TextureCache_CalculateCRC( u32 t, u32 width, u32 height )
       crc = Hash_Calculate( crc, src, bpl );
    }
 
-   if (gSP.textureTile[t]->format == G_IM_FMT_CI)
+   if (gDP.otherMode.textureLUT != G_TT_NONE || gSP.textureTile[t]->format == G_IM_FMT_CI)
    {
       if (gSP.textureTile[t]->size == G_IM_SIZ_4b)
          crc = Hash_Calculate( crc, &gDP.paletteCRC16[gSP.textureTile[t]->palette], 4 );
@@ -854,7 +854,7 @@ void TextureCache_ActivateTexture( u32 t, CachedTexture *texture )
    glBindTexture( GL_TEXTURE_2D, texture->glName );
 
    // Set filter mode. Almost always bilinear, but check anyways
-   if ((gDP.otherMode.textureFilter == G_TF_BILERP) || (gDP.otherMode.textureFilter == G_TF_AVERAGE) || (config.texture.forceBilinear))
+   if ((gDP.otherMode.textureFilter == G_TF_BILERP) || (gDP.otherMode.textureFilter == G_TF_AVERAGE))
    {
       glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
       glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
@@ -904,11 +904,12 @@ void TextureCache_UpdateBackground(void)
 {
    u32 numBytes, crc;
    CachedTexture *current;
+   CachedTexture *pCurrent;
 
    numBytes = gSP.bgImage.width * gSP.bgImage.height << gSP.bgImage.size >> 1;
    crc = Hash_Calculate( 0xFFFFFFFF, &gfx_info.RDRAM[gSP.bgImage.address], numBytes );
 
-   if (gSP.bgImage.format == G_IM_FMT_CI)
+   if (gDP.otherMode.textureLUT != G_TT_NONE || gSP.bgImage.format == G_IM_FMT_CI)
    {
       if (gSP.bgImage.size == G_IM_SIZ_4b)
          crc = Hash_Calculate( crc, &gDP.paletteCRC16[gSP.bgImage.palette], 4 );
@@ -934,40 +935,50 @@ void TextureCache_UpdateBackground(void)
    cache.misses++;
 
    glActiveTexture(GL_TEXTURE0);
-   cache.current[0] = TextureCache_AddTop();
 
-   glBindTexture( GL_TEXTURE_2D, cache.current[0]->glName );
-   cache.current[0]->address = gSP.bgImage.address;
-   cache.current[0]->crc = crc;
-   cache.current[0]->format = gSP.bgImage.format;
-   cache.current[0]->size = gSP.bgImage.size;
-   cache.current[0]->width = gSP.bgImage.width;
-   cache.current[0]->height = gSP.bgImage.height;
-   cache.current[0]->clampWidth = gSP.bgImage.width;
-   cache.current[0]->clampHeight = gSP.bgImage.height;
-   cache.current[0]->palette = gSP.bgImage.palette;
-   cache.current[0]->maskS = 0;
-   cache.current[0]->maskT = 0;
-   cache.current[0]->mirrorS = 0;
-   cache.current[0]->mirrorT = 0;
-   cache.current[0]->clampS = 1;
-   cache.current[0]->clampT = 1;
-   cache.current[0]->line = 0;
-   cache.current[0]->tMem = 0;
-   cache.current[0]->lastDList = __RSP.DList;
+   pCurrent = TextureCache_AddTop();
 
-   cache.current[0]->realWidth = (config.texture.pow2) ? pow2(gSP.bgImage.width ) : gSP.bgImage.width;
-   cache.current[0]->realHeight = (config.texture.pow2) ? pow2(gSP.bgImage.height) : gSP.bgImage.height;
+   glBindTexture( GL_TEXTURE_2D, pCurrent->glName );
 
-   cache.current[0]->scaleS = 1.0f / (f32)(cache.current[0]->realWidth);
-   cache.current[0]->scaleT = 1.0f / (f32)(cache.current[0]->realHeight);
-   cache.current[0]->shiftScaleS = 1.0f;
-   cache.current[0]->shiftScaleT = 1.0f;
+   pCurrent->address = gSP.bgImage.address;
+   pCurrent->crc = crc;
 
-   TextureCache_LoadBackground( cache.current[0] );
-   TextureCache_ActivateTexture( 0, cache.current[0] );
+   pCurrent->format = gSP.bgImage.format;
+   pCurrent->size = gSP.bgImage.size;
 
-   cache.cachedBytes += cache.current[0]->textureBytes;
+   pCurrent->width = gSP.bgImage.width;
+   pCurrent->height = gSP.bgImage.height;
+
+   pCurrent->clampWidth = gSP.bgImage.width;
+   pCurrent->clampHeight = gSP.bgImage.height;
+   pCurrent->palette = gSP.bgImage.palette;
+   pCurrent->maskS = 0;
+   pCurrent->maskT = 0;
+   pCurrent->mirrorS = 0;
+   pCurrent->mirrorT = 0;
+   pCurrent->clampS = 0;
+   pCurrent->clampT = 0;
+   pCurrent->line = 0;
+   pCurrent->tMem = 0;
+   pCurrent->lastDList = __RSP.DList;
+
+   pCurrent->realWidth = gSP.bgImage.width;
+   pCurrent->realHeight = gSP.bgImage.height;
+
+   pCurrent->scaleS = 1.0f / (f32)(pCurrent->realWidth);
+   pCurrent->scaleT = 1.0f / (f32)(pCurrent->realHeight);
+
+   pCurrent->shiftScaleS = 1.0f;
+   pCurrent->shiftScaleT = 1.0f;
+
+   pCurrent->offsetS = 0.5f;
+   pCurrent->offsetT = 0.5f;
+
+   TextureCache_LoadBackground( pCurrent );
+   TextureCache_ActivateTexture( 0, pCurrent );
+
+   cache.cachedBytes += pCurrent->textureBytes;
+   cache.current[0] = pCurrent;
 }
 
 int _texture_compare(u32 t, CachedTexture *current, u32 crc,  u32 width, u32 height, u32 clampWidth, u32 clampHeight)
@@ -991,16 +1002,26 @@ int _texture_compare(u32 t, CachedTexture *current, u32 crc,  u32 width, u32 hei
 void TextureCache_Update( u32 t )
 {
    CachedTexture *current;
+   CachedTexture *pCurrent;
    u32 crc, maxTexels;
    u32 tileWidth, maskWidth, loadWidth, lineWidth, clampWidth, height;
    u32 tileHeight, maskHeight, loadHeight, lineHeight, clampHeight, width;
    u32 maskSize;
    TextureFormat texFormat;
 
-   if (gDP.tiles[0].textureMode == TEXTUREMODE_BGIMAGE)
+   switch (gSP.textureTile[t]->textureMode)
    {
-      TextureCache_UpdateBackground();
-      return;
+      case TEXTUREMODE_BGIMAGE:
+         TextureCache_UpdateBackground();
+         return;
+#if 0
+	case TEXTUREMODE_FRAMEBUFFER:
+		FrameBuffer_ActivateBufferTexture( _t, gSP.textureTile[_t]->frameBuffer );
+		return;
+	case TEXTUREMODE_FRAMEBUFFER_BG:
+		FrameBuffer_ActivateBufferTextureBG( _t, gSP.textureTile[_t]->frameBuffer );
+		return;
+#endif
    }
 
    __texture_format(gSP.textureTile[t]->size, gSP.textureTile[t]->format, &texFormat);
@@ -1082,24 +1103,14 @@ void TextureCache_Update( u32 t )
       maskHeight = 1 << gSP.textureTile[t]->maskt;
    }
    crc = TextureCache_CalculateCRC( t, width, height );
+
    //before we traverse cache, check to see if texture is already bound:
    if (_texture_compare(t, cache.current[t], crc, width, height, clampWidth, clampHeight))
    {
       cache.hits++;
       return;
    }
-#ifdef __HASHMAP_OPT
-   CachedTexture *tex = cache.hash.find(crc);
-   if (tex)
-   {
-      if (_texture_compare(t, tex, crc, width, height, clampWidth, clampHeight))
-      {
-         TextureCache_ActivateTexture( t, tex);
-         cache.hits++;
-         return;
-      }
-   }
-#endif
+
    current = cache.top;
    while (current)
    {
@@ -1113,69 +1124,75 @@ void TextureCache_Update( u32 t )
    }
    cache.misses++;
    glActiveTexture( GL_TEXTURE0 + t);
-   cache.current[t] = TextureCache_AddTop();
-   if (cache.current[t] == NULL)
-   {
-      LOG(LOG_ERROR, "Texture Cache Failure\n");
-   }
-   glBindTexture( GL_TEXTURE_2D, cache.current[t]->glName );
-   cache.current[t]->address = gDP.textureImage.address;
-   cache.current[t]->crc = crc;
-   cache.current[t]->format = gSP.textureTile[t]->format;
-   cache.current[t]->size = gSP.textureTile[t]->size;
-   cache.current[t]->width = width;
-   cache.current[t]->height = height;
-   cache.current[t]->clampWidth = clampWidth;
-   cache.current[t]->clampHeight = clampHeight;
-   cache.current[t]->palette = gSP.textureTile[t]->palette;
-   cache.current[t]->maskS = gSP.textureTile[t]->masks;
-   cache.current[t]->maskT = gSP.textureTile[t]->maskt;
-   cache.current[t]->mirrorS = gSP.textureTile[t]->mirrors;
-   cache.current[t]->mirrorT = gSP.textureTile[t]->mirrort;
-   cache.current[t]->clampS = gSP.textureTile[t]->clamps;
-   cache.current[t]->clampT = gSP.textureTile[t]->clampt;
-   cache.current[t]->line = gSP.textureTile[t]->line;
-   cache.current[t]->tMem = gSP.textureTile[t]->tmem;
-   cache.current[t]->lastDList = __RSP.DList;
-   if (cache.current[t]->clampS)
-      cache.current[t]->realWidth = (config.texture.pow2) ? pow2(clampWidth) : clampWidth;
-   else if (cache.current[t]->mirrorS)
-      cache.current[t]->realWidth = maskWidth << 1;
+
+   pCurrent = TextureCache_AddTop();
+
+   glBindTexture( GL_TEXTURE_2D, pCurrent->glName );
+
+   pCurrent->address = gDP.textureImage.address;
+
+   pCurrent->crc = crc;
+
+   pCurrent->format = gSP.textureTile[t]->format;
+   pCurrent->size   = gSP.textureTile[t]->size;
+
+   pCurrent->width = width;
+   pCurrent->height = height;
+
+   pCurrent->clampWidth = clampWidth;
+   pCurrent->clampHeight = clampHeight;
+
+   pCurrent->palette = gSP.textureTile[t]->palette;
+
+   pCurrent->maskS = gSP.textureTile[t]->masks;
+   pCurrent->maskT = gSP.textureTile[t]->maskt;
+   pCurrent->mirrorS = gSP.textureTile[t]->mirrors;
+   pCurrent->mirrorT = gSP.textureTile[t]->mirrort;
+   pCurrent->clampS = gSP.textureTile[t]->clamps;
+   pCurrent->clampT = gSP.textureTile[t]->clampt;
+   pCurrent->line = gSP.textureTile[t]->line;
+   pCurrent->tMem = gSP.textureTile[t]->tmem;
+   pCurrent->lastDList = __RSP.DList;
+
+   if (pCurrent->clampS)
+      pCurrent->realWidth = (config.texture.pow2) ? pow2(clampWidth) : clampWidth;
+   else if (pCurrent->mirrorS)
+      pCurrent->realWidth = maskWidth << 1;
    else
-      cache.current[t]->realWidth = (config.texture.pow2) ? pow2(width) : width;
-   if (cache.current[t]->clampT)
-      cache.current[t]->realHeight = (config.texture.pow2) ? pow2(clampHeight) : clampHeight;
-   else if (cache.current[t]->mirrorT)
-      cache.current[t]->realHeight = maskHeight << 1;
+      pCurrent->realWidth = (config.texture.pow2) ? pow2(width) : width;
+   
+   if (pCurrent->clampT)
+      pCurrent->realHeight = (config.texture.pow2) ? pow2(clampHeight) : clampHeight;
+   else if (pCurrent->mirrorT)
+      pCurrent->realHeight = maskHeight << 1;
    else
-      cache.current[t]->realHeight = (config.texture.pow2) ? pow2(height) : height;
-   cache.current[t]->scaleS = 1.0f / (f32)(cache.current[t]->realWidth);
-   cache.current[t]->scaleT = 1.0f / (f32)(cache.current[t]->realHeight);
-   // Hack for Zelda Sun
-   if ((config.hackZelda) && (gDP.combine.mux == 0x00262a60150c937fLL))
-   {
-      if ((cache.current[t]->format = G_IM_FMT_I) && (cache.current[t]->size == G_IM_SIZ_8b) &&
-            (cache.current[t]->width == 64))
-      {
-         cache.current[t]->scaleS *= 0.5f;
-         cache.current[t]->scaleT *= 0.5f;
-      }
-   }
-   cache.current[t]->shiftScaleS = 1.0f;
-   cache.current[t]->shiftScaleT = 1.0f;
-   cache.current[t]->offsetS = config.texture.sai2x ? 0.25f : 0.5f;
-   cache.current[t]->offsetT = config.texture.sai2x ? 0.25f : 0.5f;
+      pCurrent->realHeight = (config.texture.pow2) ? pow2(height) : height;
+
+   pCurrent->scaleS = 1.0f / (f32)(pCurrent->realWidth);
+   pCurrent->scaleT = 1.0f / (f32)(pCurrent->realHeight);
+
+   pCurrent->offsetS = 0.5f;
+   pCurrent->offsetT = 0.5f;
+
+   pCurrent->shiftScaleS = 1.0f;
+   pCurrent->shiftScaleT = 1.0f;
+
    if (gSP.textureTile[t]->shifts > 10)
-      cache.current[t]->shiftScaleS = (f32)(1 << (16 - gSP.textureTile[t]->shifts));
+      pCurrent->shiftScaleS = (f32)(1 << (16 - gSP.textureTile[t]->shifts));
    else if (gSP.textureTile[t]->shifts > 0)
-      cache.current[t]->shiftScaleS /= (f32)(1 << gSP.textureTile[t]->shifts);
+      pCurrent->shiftScaleS /= (f32)(1 << gSP.textureTile[t]->shifts);
    if (gSP.textureTile[t]->shiftt > 10)
-      cache.current[t]->shiftScaleT = (f32)(1 << (16 - gSP.textureTile[t]->shiftt));
+      pCurrent->shiftScaleT = (f32)(1 << (16 - gSP.textureTile[t]->shiftt));
    else if (gSP.textureTile[t]->shiftt > 0)
-      cache.current[t]->shiftScaleT /= (f32)(1 << gSP.textureTile[t]->shiftt);
-   TextureCache_Load(t, cache.current[t] );
-   TextureCache_ActivateTexture( t, cache.current[t] );
-   cache.cachedBytes += cache.current[t]->textureBytes;
+      pCurrent->shiftScaleT /= (f32)(1 << gSP.textureTile[t]->shiftt);
+
+   TextureCache_Load(t, pCurrent );
+
+   TextureCache_ActivateTexture( t, pCurrent );
+
+   cache.cachedBytes += pCurrent->textureBytes;
+
+   cache.current[t] = pCurrent;
 }
 
 void TextureCache_ActivateNoise(u32 t)

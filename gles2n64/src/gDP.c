@@ -982,13 +982,21 @@ void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f
 
    if (lrs < s)
    {
-      tmp = ulx; ulx = lrx; lrx = tmp;
-      tmp = s; s = lrs; lrs = tmp;
+      tmp = ulx;
+      ulx = lrx;
+      lrx = tmp;
+      tmp = s;
+      s = lrs;
+      lrs = tmp;
    }
    if (lrt < t)
    {
-      tmp = uly; uly = lry; lry = tmp;
-      tmp = t; t = lrt; lrt = tmp;
+      tmp = uly;
+      uly = lry;
+      lry = tmp;
+      tmp = t;
+      t = lrt;
+      lrt = tmp;
    }
 
    OGL_DrawTexturedRect( ulx, uly, lrx, lry, s, t, lrs, lrt, (__RSP.cmd == G_TEXRECTFLIP));
@@ -996,9 +1004,14 @@ void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f
 	gSP.textureTile[0] = textureTileOrg[0];
 	gSP.textureTile[1] = textureTileOrg[1];
 
-   if (depthBuffer.current) depthBuffer.current->cleared = FALSE;
+   if (depthBuffer.current)
+      depthBuffer.current->cleared = FALSE;
    gDP.colorImage.changed = TRUE;
-   gDP.colorImage.height = (unsigned int)(max( gDP.colorImage.height, gDP.scissor.lry ));
+
+   if (gDP.colorImage.width < 64)
+		gDP.colorImage.height = (u32)max( (f32)gDP.colorImage.height, lry );
+   else
+      gDP.colorImage.height = (unsigned int)(max( gDP.colorImage.height, gDP.scissor.lry ));
 
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPTextureRectangle( %f, %f, %f, %f, %i, %f, %f, %f, %f );\n",
@@ -1008,8 +1021,6 @@ void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f
 
 void gDPTextureRectangleFlip( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f32 t, f32 dsdx, f32 dtdy )
 {
-   //gDPTextureRectangle( ulx, uly, lrx, lry, tile, s + (lrx - ulx) * dsdx, t + (lry - uly) * dtdy, -dsdx, -dtdy );
-
    gDPTextureRectangle( ulx, uly, lrx, lry, tile, s, t, dsdx, dtdy );
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPTextureRectangleFlip( %f, %f, %f, %f, %i, %f, %f, %f, %f);\n",
