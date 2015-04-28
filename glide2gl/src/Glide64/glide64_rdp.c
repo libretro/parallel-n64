@@ -2536,14 +2536,13 @@ static uint32_t rdp_cmd_data[0x1000];
 #define XSCALE(x) ((float)(x)/(1<<18))
 #define YSCALE(y) ((float)(y)/(1<<2))
 #define ZSCALE(z) ((rdp.zsrc == 1) ? (float)(rdp.prim_depth) : (float)((uint32_t)(z))/0xffff0000)
-  //#define WSCALE(w) ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? (float(uint32_t(w) + 0x10000)/0xffff0000) : 1.0f)
-  //#define WSCALE(w) ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? 4294901760.0/(w + 65536) : 1.0f)
-#define WSCALE(w) ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? 65536.0f/ (float)((w+ 0xffff)>>16) : 1.0f)
+#define PERSP_EN  ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE))
+#define WSCALE(z) 1.0f/(PERSP_EN? ((float)((uint32_t)(z) + 0x10000)/0xffff0000) : 1.0f)
 #define CSCALE(c) (((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18)
 #define _PERSP(w) ( w )
 #define PERSP(s, w) ( ((int64_t)(s) << 20) / (_PERSP(w)? _PERSP(w):1) )
-#define SSCALE(s, _w) ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
-#define TSCALE(s, w)  ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
+#define SSCALE(s, _w) (PERSP_EN ? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
+#define TSCALE(s, w)  (PERSP_EN ? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
 
 static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer, uint32_t *rdp_cmd)
 {
@@ -2552,6 +2551,11 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
    VERTEX vtxbuf[12], *vtx;
 
    int32_t nbVtxs;
+   int32_t yl, ym, yh;          /* triangle edge y-coordinates */
+   int32_t xl, xh, xm;          /* triangle edge x-coordinates */
+   int32_t dxldy, dxhdy, dxmdy; /* triangle edge inverse-slopes */
+
+   uint32_t w3, w4, w5, w6, w7, w8;
 
    int r = 0xff;
    int g = 0xff;
@@ -2569,30 +2573,6 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
    uint32_t * texture_base = rdp_cmd + 8;
    uint32_t * zbuffer_base = rdp_cmd + 8;
 
-   uint32_t w3 = rdp_cmd[2];
-   uint32_t w4 = rdp_cmd[3];
-   uint32_t w5 = rdp_cmd[4];
-   uint32_t w6 = rdp_cmd[5];
-   uint32_t w7 = rdp_cmd[6];
-   uint32_t w8 = rdp_cmd[7];
-
-   /* triangle edge y-coordinates */
-   int32_t yl = (w1 & 0x3fff);
-   int32_t ym = ((w2 >> 16) & 0x3fff);
-   int32_t yh = ((w2 >> 0) & 0x3fff);
-
-   /* triangle edge x-coordinates */
-   int32_t xl = (int32_t)(w3);
-   int32_t xh = (int32_t)(w5);
-   int32_t xm = (int32_t)(w7);
-
-   /* triangle edge inverse-slopes */
-   int32_t dxldy = (int32_t)(w4);
-   int32_t dxhdy = (int32_t)(w6);
-   int32_t dxmdy = (int32_t)(w8);
-
-   rdp.cur_tile = (w1 >> 16) & 0x7;
-
    if (shade)
    {
       texture_base += 16;
@@ -2602,6 +2582,31 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
    {
       zbuffer_base += 16;
    }
+
+   w3 = rdp_cmd[2];
+   w4 = rdp_cmd[3];
+   w5 = rdp_cmd[4];
+   w6 = rdp_cmd[5];
+   w7 = rdp_cmd[6];
+   w8 = rdp_cmd[7];
+
+   /* triangle edge y-coordinates */
+   yl = (w1 & 0x3fff);
+   ym = ((w2 >> 16) & 0x3fff);
+   yh = ((w2 >> 0) & 0x3fff);
+
+   /* triangle edge x-coordinates */
+   xl = (int32_t)(w3);
+   xh = (int32_t)(w5);
+   xm = (int32_t)(w7);
+
+   /* triangle edge inverse-slopes */
+   dxldy = (int32_t)(w4);
+   dxhdy = (int32_t)(w6);
+   dxmdy = (int32_t)(w8);
+
+   rdp.cur_tile = (w1 >> 16) & 0x7;
+
 
    if (yl & (0x800<<2)) yl |= 0xfffff000<<2;
    if (ym & (0x800<<2)) ym |= 0xfffff000<<2;
@@ -2654,9 +2659,9 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
    nbVtxs = 0;
    vtx = (VERTEX*)&vtxbuf[nbVtxs++];
 
-   xleft = xm;
-   xright = xh;
-   xleft_inc = dxmdy;
+   xleft      = xm;
+   xright     = xh;
+   xleft_inc  = dxmdy;
    xright_inc = dxhdy;
 
    while (yh<ym &&
@@ -2833,7 +2838,9 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
    //if (fullscreen)
    {
       int k;
+
       update ();
+
       for (k = 0; k < nbVtxs-1; k++)
       {
          VERTEX * v = (VERTEX*)&vtxbuf[k];
@@ -2894,7 +2901,7 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
          }
          apply_shade_mods (v);
       }
-      grCullMode (GR_CULL_DISABLE);
+      grCullMode(GR_CULL_DISABLE);
       ConvertCoordsConvert (vtxbuf, nbVtxs);
       grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, nbVtxs-1, vtxbuf);
    }
