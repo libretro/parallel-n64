@@ -100,7 +100,7 @@ void OGL_DrawTexturedRect(float ulx, float uly, float lrx, float lry, float uls,
 void OGL_UpdateFrameTime();
 void OGL_UpdateScale();
 
-void OGL_ClearDepthBuffer();
+void OGL_ClearDepthBuffer(bool _fullsize);
 void OGL_ClearColorBuffer(float *color);
 void OGL_ResizeWindow(int x, int y, int width, int height);
 void OGL_SwapBuffers();

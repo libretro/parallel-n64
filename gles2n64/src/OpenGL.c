@@ -163,7 +163,7 @@ static void _updateViewport(void)
 	gSP.changed &= ~CHANGED_VIEWPORT;
 }
 
-void OGL_UpdateDepthUpdate(void)
+static void _updateDepthUpdate(void)
 {
    if (gDP.otherMode.depthUpdate)
       glDepthMask(GL_TRUE);
@@ -193,8 +193,7 @@ static void _updateScissor(void)
 	gDP.changed &= ~CHANGED_SCISSOR;
 }
 
-//copied from RICE VIDEO
-void OGL_SetBlendMode(void)
+static void _setBlendMode(void)
 {
 	const u32 blendmode = gDP.otherMode.l >> 16;
 	// 0x7000 = CVG_X_ALPHA|ALPHA_CVG_SEL|FORCE_BL
@@ -373,7 +372,7 @@ static void _updateStates(void)
             glDepthFunc(GL_ALWAYS);
          }
 
-         OGL_UpdateDepthUpdate();
+         _updateDepthUpdate();
 
          glEnable(GL_DEPTH_TEST);
 #ifdef NEW
@@ -455,7 +454,7 @@ static void _updateStates(void)
 
    if ((gDP.changed & (CHANGED_RENDERMODE | CHANGED_CYCLETYPE)))
    {
-      OGL_SetBlendMode();
+      _setBlendMode();
       gDP.changed &= ~(CHANGED_RENDERMODE | CHANGED_CYCLETYPE);
    }
 
@@ -625,9 +624,6 @@ void OGL_AddTriangle(int v0, int v1, int v2)
 		}
 	}
 }
-
-
-
 
 void OGL_DrawDMATriangles(u32 _numVtx)
 {
@@ -902,18 +898,18 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
 }
 
 /* TODO/FIXME - not complete */
-void OGL_ClearDepthBuffer(void)
+void OGL_ClearDepthBuffer(bool _fullsize)
 {
    glDisable( GL_SCISSOR_TEST );
    glDepthMask( GL_TRUE ); 
    glClear( GL_DEPTH_BUFFER_BIT );
 
-   OGL_UpdateDepthUpdate();
+   _updateDepthUpdate();
 
    glEnable( GL_SCISSOR_TEST );
 }
 
-void OGL_ClearColorBuffer( float *color )
+void OGL_ClearColorBuffer(float *color)
 {
 	glDisable( GL_SCISSOR_TEST );
 

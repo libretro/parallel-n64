@@ -343,7 +343,7 @@ void gDPSetDepthImage( u32 address )
    DepthBuffer_SetBuffer(address);
 
    if (depthBuffer.current->cleared)
-      OGL_ClearDepthBuffer();
+      OGL_ClearDepthBuffer(false);
 #endif
 
 
@@ -850,7 +850,7 @@ void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
    {
       gDPFillRDRAM(gDP.colorImage.address, ulx, uly, lrx, lry,
             gDP.colorImage.width, gDP.colorImage.size, gDP.fillColor.color, true);
-      OGL_ClearDepthBuffer();
+      OGL_ClearDepthBuffer(lrx - ulx >= gDP.scissor.lrx - gDP.scissor.ulx && lry - uly >= gDP.scissor.lry - gDP.scissor.uly);
       return;
    }
 
