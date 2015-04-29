@@ -23,7 +23,6 @@
 #include "r4300.h"
 #include "r4300_core.h"
 #include "cp0_private.h"
-#include "interupt.h"
 
 #include <string.h>
 

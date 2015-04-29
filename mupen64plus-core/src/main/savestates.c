@@ -44,7 +44,6 @@
 #include "../r4300/cp1.h"
 #include "../r4300/r4300_core.h"
 #include "../r4300/cached_interp.h"
-#include "../r4300/interupt.h"
 #include "../pi/pi_controller.h"
 #include "../r4300/new_dynarec/new_dynarec.h"
 #include "../rdp/rdp_core.h"
