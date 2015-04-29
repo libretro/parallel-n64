@@ -80,6 +80,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    char queue[1024];
    int version;
    int i;
+   uint32_t FCR31;
 
    (void)header;
 
@@ -248,6 +249,8 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
       shuffle_fpr_data(0x04000000, 0);
    FCR0 = GETDATA(curr, int);
    FCR31 = GETDATA(curr, int);
+   *r4300_cp1_fcr31() = FCR31;
+   update_x86_rounding_mode(FCR31);
 
    for (i = 0; i < 32; i++)
    {
@@ -516,7 +519,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
       shuffle_fpr_data(0x04000000, 0);  // put it back in 32-bit mode
 
    PUTDATA(curr, int, FCR0);
-   PUTDATA(curr, int, FCR31);
+   PUTDATA(curr, uint32_t, *r4300_cp1_fcr31());
 
    for (i = 0; i < 32; i++)
    {

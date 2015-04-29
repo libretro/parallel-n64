@@ -22,9 +22,11 @@
 #ifndef M64P_R4300_FPU_H
 #define M64P_R4300_FPU_H
 
+#include <stdint.h>
 #include <math.h>
 
 #include "r4300.h"
+#include "cp1_private.h"
 
 #if defined(EMSCRIPTEN)
 #define CUSTOM_FESETROUND

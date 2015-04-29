@@ -22,13 +22,19 @@
 #ifndef M64P_R4300_CP1_H
 #define M64P_R4300_CP1_H
 
+#include <stdint.h>
+
 extern float *reg_cop1_simple[32];
 extern double *reg_cop1_double[32];
-extern int FCR0, FCR31;
+extern uint32_t FCR0;
 extern long long int reg_cop1_fgr_64[32];
-extern int rounding_mode;
+extern uint32_t rounding_mode;
+
+uint32_t* r4300_cp1_fcr31(void);
 
 void shuffle_fpr_data(int oldStatus, int newStatus);
 void set_fpr_pointers(int newStatus);
+
+void update_x86_rounding_mode(uint32_t FCR31);
 
 #endif /* M64P_R4300_CP1_H */

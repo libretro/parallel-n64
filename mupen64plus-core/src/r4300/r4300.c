@@ -38,7 +38,7 @@
 #include "r4300_core.h"
 #include "cached_interp.h"
 #include "cp0.h"
-#include "cp1.h"
+#include "cp1_private.h"
 #include "ops.h"
 #include "interupt.h"
 #include "macros.h"
@@ -143,7 +143,7 @@ void r4300_reset_hard(void)
    g_cp0_regs[CP0_BADVADDR_REG] = 0xFFFFFFFF;
    g_cp0_regs[CP0_ERROREPC_REG] = 0xFFFFFFFF;
 
-   rounding_mode = 0x33F;
+   update_x86_rounding_mode(FCR31);
 }
 
 static unsigned int get_tv_type(void)

@@ -18,21 +18,32 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+#include <stdint.h>
 
 #include "new_dynarec/new_dynarec.h"
 
 #if NEW_DYNAREC != NEW_DYNAREC_ARM
-int FCR0, FCR31;
+uint32_t FCR0, FCR31;
 float *reg_cop1_simple[32];
 double *reg_cop1_double[32];
 #else
 extern float *reg_cop1_simple[32];
 extern double *reg_cop1_double[32];
-extern int FCR0, FCR31;
+extern uint32_t FCR0, FCR31;
 #endif
 long long int reg_cop1_fgr_64[32];
 
-int rounding_mode = 0x33F;
+/* This is the x86 version of the rounding mode contained in FCR31.
+ * It should not really be here. Its size should also really be uint16_t,
+ * because FLDCW (Floating-point LoaD Control Word) loads 16-bit control
+ * words. However, x86/gcop1.c and x86-64/gcop1.c update this variable
+ * using 32-bit stores. */
+uint32_t rounding_mode = UINT32_C(0x33F);
+
+uint32_t *r4300_cp1_fcr31(void)
+{
+   return &FCR31;
+}
 
 /* Refer to Figure 6-2 on page 155 and explanation on page B-11
    of MIPS R4000 Microprocessor User's Manual (Second Edition)
@@ -116,4 +127,26 @@ void set_fpr_pointers(int newStatus)
          reg_cop1_simple[i] = ((float*) &reg_cop1_fgr_64[i>>1]) + ((i & 1) ^ isBigEndian);
       }
    }
+}
+
+/* XXX: This shouldn't really be here, but rounding_mode is used by the
+ * Hacktarux JIT and updated by CTC1 and saved states. Figure out a better
+ * place for this. */
+void update_x86_rounding_mode(uint32_t FCR31)
+{
+    switch (FCR31 & 3)
+    {
+    case 0: /* Round to nearest, or to even if equidistant */
+        rounding_mode = UINT32_C(0x33F);
+        break;
+    case 1: /* Truncate (toward 0) */
+        rounding_mode = UINT32_C(0xF3F);
+        break;
+    case 2: /* Round up (toward +Inf) */
+        rounding_mode = UINT32_C(0xB3F);
+        break;
+    case 3: /* Round down (toward -Inf) */
+        rounding_mode = UINT32_C(0x73F);
+        break;
+    }
 }
