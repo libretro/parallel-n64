@@ -23,13 +23,14 @@
 #ifndef __ASSEMBLE_H__
 #define __ASSEMBLE_H__
 
-#include "osal/preproc.h"
 #include "r4300/recomph.h"
 #include "api/callbacks.h"
+#include "osal/preproc.h"
 
 #include <stdlib.h>
 #include <stdint.h>
 
+#ifdef __x86_64__
 extern int64_t reg[32];
 
 #define RAX 0
@@ -40,6 +41,9 @@ extern int64_t reg[32];
 #define RBP 5
 #define RSI 6
 #define RDI 7
+#else
+extern long long int reg[32];
+#endif
 
 #define EAX 0
 #define ECX 1
@@ -84,7 +88,7 @@ static INLINE void put8(unsigned char octet)
    code_length++;
    if (code_length == max_code_length)
    {
-      *inst_pointer = realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
+      *inst_pointer = (unsigned char*)realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
       max_code_length += 8192;
    }
 }
@@ -93,7 +97,7 @@ static INLINE void put32(unsigned int dword)
 {
    if ((code_length + 4) >= max_code_length)
    {
-      *inst_pointer = realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
+      *inst_pointer = (unsigned char*)realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
       max_code_length += 8192;
    }
    *((unsigned int *) (*inst_pointer + code_length)) = dword;
@@ -128,9 +132,14 @@ static INLINE int rel_r15_offset(void *dest, const char *op_name)
 static INLINE void mov_memoffs32_eax(unsigned int *memoffs32)
 {
    put8(0xA3);
+#ifdef __x86_64__
    put64((unsigned long long) memoffs32);
+#else
+   put32((unsigned int)(memoffs32));
+#endif
 }
 
+#ifdef __x86_64__
 static INLINE void mov_rax_memoffs64(unsigned long long *memoffs64)
 {
    put8(0x48);
@@ -196,6 +205,7 @@ static INLINE void cmp_xreg64_m64rel(int xreg64, unsigned long long *m64)
    put8(0x87 | ((xreg64 & 7) << 3));
    put32(offset);
 }
+#endif
 
 static INLINE void cmp_reg32_reg32(int reg1, int reg2)
 {
@@ -203,12 +213,14 @@ static INLINE void cmp_reg32_reg32(int reg1, int reg2)
    put8((reg2 << 3) | reg1 | 0xC0);
 }
 
+#ifdef __x86_64__
 static INLINE void cmp_reg64_reg64(int reg1, int reg2)
 {
    put8(0x48);
    put8(0x39);
    put8((reg2 << 3) | reg1 | 0xC0);
 }
+#endif
 
 static INLINE void cmp_reg32_imm8(int reg32, unsigned char imm8)
 {
@@ -217,6 +229,7 @@ static INLINE void cmp_reg32_imm8(int reg32, unsigned char imm8)
    put8(imm8);
 }
 
+#ifdef __x86_64__
 static INLINE void cmp_reg64_imm8(int reg64, unsigned char imm8)
 {
    put8(0x48);
@@ -225,6 +238,17 @@ static INLINE void cmp_reg64_imm8(int reg64, unsigned char imm8)
    put8(imm8);
 }
 
+#else
+
+static INLINE void cmp_preg32pimm32_imm8(int reg32, unsigned int imm32, unsigned char imm8)
+{
+   put8(0x80);
+   put8(0xB8 + reg32);
+   put32(imm32);
+   put8(imm8);
+}
+#endif
+
 static INLINE void cmp_reg32_imm32(int reg32, unsigned int imm32)
 {
    put8(0x81);
@@ -232,6 +256,7 @@ static INLINE void cmp_reg32_imm32(int reg32, unsigned int imm32)
    put32(imm32);
 }
 
+#ifdef __x86_64__
 static INLINE void cmp_reg64_imm32(int reg64, unsigned int imm32)
 {
    put8(0x48);
@@ -302,6 +327,7 @@ static INLINE void setg_m8rel(unsigned char *m8)
    put8(0x87);
    put32(offset);
 }
+#endif
 
 static INLINE void setge_m8rel(unsigned char *m8)
 {
@@ -1050,6 +1076,7 @@ static INLINE void fldcw_m16rel(unsigned short *m16)
    put32(offset);
 }
 
+#ifdef __x86_64__
 static INLINE void fld_preg64_dword(int reg64)
 {
    put8(0xD9);
@@ -1067,6 +1094,7 @@ static INLINE void fstp_preg64_dword(int reg64)
    put8(0xD9);
    put8(0x18 + reg64);
 }
+#endif
 
 static INLINE void fchs(void)
 {
@@ -1074,6 +1102,7 @@ static INLINE void fchs(void)
    put8(0xE0);
 }
 
+#ifdef __x86_64__
 static INLINE void fstp_preg64_qword(int reg64)
 {
    put8(0xDD);
@@ -1151,6 +1180,87 @@ static INLINE void fmul_preg64_qword(int reg64)
    put8(0xDC);
    put8(0x08 + reg64);
 }
+
+#else
+
+static INLINE void fstp_preg32_qword(int reg32)
+{
+   put8(0xDD);
+   put8(0x18 + reg32);
+}
+
+static INLINE void fadd_preg32_dword(int reg32)
+{
+   put8(0xD8);
+   put8(reg32);
+}
+
+static INLINE void fsub_preg32_dword(int reg32)
+{
+   put8(0xD8);
+   put8(0x20 + reg32);
+}
+
+static INLINE void fmul_preg32_dword(int reg32)
+{
+   put8(0xD8);
+   put8(0x08 + reg32);
+}
+
+static INLINE void fistp_preg32_dword(int reg32)
+{
+   put8(0xDB);
+   put8(0x18 + reg32);
+}
+
+static INLINE void fistp_preg32_qword(int reg32)
+{
+   put8(0xDF);
+   put8(0x38 + reg32);
+}
+
+static INLINE void fld_preg32_qword(int reg32)
+{
+   put8(0xDD);
+   put8(reg32);
+}
+
+static INLINE void fild_preg32_qword(int reg32)
+{
+   put8(0xDF);
+   put8(0x28+reg32);
+}
+
+static INLINE void fild_preg32_dword(int reg32)
+{
+   put8(0xDB);
+   put8(reg32);
+}
+
+static INLINE void fadd_preg32_qword(int reg32)
+{
+   put8(0xDC);
+   put8(reg32);
+}
+
+static INLINE void fdiv_preg32_qword(int reg32)
+{
+   put8(0xDC);
+   put8(0x30 + reg32);
+}
+
+static INLINE void fsub_preg32_qword(int reg32)
+{
+   put8(0xDC);
+   put8(0x20 + reg32);
+}
+
+static INLINE void fmul_preg32_qword(int reg32)
+{
+   put8(0xDC);
+   put8(0x08 + reg32);
+}
+#endif
 
 static INLINE void fsqrt(void)
 {
