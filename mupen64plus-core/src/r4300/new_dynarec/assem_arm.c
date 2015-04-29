@@ -25,7 +25,7 @@
 #endif
 
 #include "main/main.h"
-#include "../cp0.h"
+#include "../cp0_private.h"
 
 extern int cycle_count;
 extern int last_count;

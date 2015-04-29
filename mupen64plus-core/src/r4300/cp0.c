@@ -21,7 +21,7 @@
 #include <stdint.h>
 
 #include "r4300.h"
-#include "cp0.h"
+#include "cp0_private.h"
 #include "exception.h"
 
 #include "new_dynarec/new_dynarec.h"
@@ -37,8 +37,15 @@
 
 /* global variable */
 #if NEW_DYNAREC != NEW_DYNAREC_ARM
+/* ARM backend requires a different memory layout
+ * and therefore manually allocate that variable */
 uint32_t g_cp0_regs[32];
 #endif
+
+uint32_t* r4300_cp0_regs(void)
+{
+    return g_cp0_regs;
+}
 
 /* global functions */
 int check_cop1_unusable(void)
