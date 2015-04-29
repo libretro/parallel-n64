@@ -26,7 +26,7 @@ extern float *reg_cop1_simple[32];
 extern double *reg_cop1_double[32];
 extern int FCR0, FCR31;
 extern long long int reg_cop1_fgr_64[32];
-extern int rounding_mode, trunc_mode, round_mode, ceil_mode, floor_mode;
+extern int rounding_mode;
 
 void shuffle_fpr_data(int oldStatus, int newStatus);
 void set_fpr_pointers(int newStatus);

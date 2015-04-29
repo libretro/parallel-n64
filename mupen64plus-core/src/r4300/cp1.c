@@ -32,8 +32,7 @@ extern int FCR0, FCR31;
 #endif
 long long int reg_cop1_fgr_64[32];
 
-int rounding_mode = 0x33F, trunc_mode = 0xF3F, round_mode = 0x33F,
-    ceil_mode = 0xB3F, floor_mode = 0x73F;
+int rounding_mode = 0x33F;
 
 /* Refer to Figure 6-2 on page 155 and explanation on page B-11
    of MIPS R4000 Microprocessor User's Manual (Second Edition)
