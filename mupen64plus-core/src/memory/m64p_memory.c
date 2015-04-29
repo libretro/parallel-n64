@@ -1454,13 +1454,13 @@ uint32_t *fast_mem_access(uint32_t address)
    if ((address & 0xc0000000) != 0x80000000)
       address = virtual_to_physical_address(address, 2);
 
-   address &= 0x1ffffffc;
+   address &= UINT32_C(0x1ffffffc);
 
    if (address < RDRAM_MAX_SIZE)
-      return (unsigned int*)((unsigned char*)g_rdram + address);
-   else if (address >= 0x10000000)
-      return (unsigned int*)((unsigned char*)g_rom + address - 0x10000000);
-   else if ((address & 0xffffe000) == 0x04000000)
-      return (unsigned int*)((unsigned char*)g_sp.mem + (address & 0x1ffc));
+      return (uint32_t*)((uint8_t*)g_rdram + address);
+   else if (address >= UINT32_C(0x10000000))
+      return (uint32_t*)((uint8_t*)g_rom + address - UINT32_C(0x10000000));
+   else if ((address & UINT32_C(0xffffe000)) == UINT32_C(0x04000000))
+      return (uint32_t*)((uint8_t*)g_sp.mem + (address & UINT32_C(0x1ffc)));
    return NULL;
 }

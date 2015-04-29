@@ -50,7 +50,7 @@ int code_length; // current real recompiled code length
 int max_code_length; // current recompiled code's buffer length
 unsigned char **inst_pointer; // output buffer for recompiled code
 precomp_block *dst_block; // the current block that we are recompiling
-int src; // the current recompiled instruction
+uint32_t src; // the current recompiled instruction
 int fast_memory;
 int no_compiled_jump = 0; /* use cached interpreter instead of recompiler for jumps */
 
@@ -61,7 +61,7 @@ static void (*recomp_func)(void); // pointer to the dynarec's generator
 FILE *pfProfile;
 #endif
 
-static int *SRC; // currently recompiled instruction in the input stream
+static const uint32_t *SRC; // currently recompiled instruction in the input stream
 static int check_nop; // next instruction is nop ?
 static int delay_slot_compiled = 0;
 
@@ -2355,9 +2355,10 @@ void free_block(precomp_block *block)
 /**********************************************************************
  ********************* recompile a block of code **********************
  **********************************************************************/
-void recompile_block(int *source, precomp_block *block, unsigned int func)
+void recompile_block(const uint32_t *source, precomp_block *block, unsigned int func)
 {
-   int i, length, finished=0;
+   uint32_t i;
+   int length, finished=0;
    start_section(COMPILER_SECTION);
    length = (block->end-block->start)/4;
    dst_block = block;
