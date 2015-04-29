@@ -285,28 +285,20 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 #ifdef NEW_DYNAREC
    if (r4300emu == CORE_DYNAREC)
    {
-      pcaddr = GETDATA(curr, unsigned int);
+      pcaddr = GETDATA(curr, uint32_t);
       pending_exception = 1;
       invalidate_all_pages();
    }
    else
+#endif
    {
       if(r4300emu != CORE_PURE_INTERPRETER)
       {
          for (i = 0; i < 0x100000; i++)
             invalid_code[i] = 1;
       }
-
-      generic_jump_to(GETDATA(curr, unsigned int)); /* PC */
+      generic_jump_to(GETDATA(curr, uint32_t)); /* PC */
    }
-#else
-   if(r4300emu != CORE_PURE_INTERPRETER)
-   {
-      for (i = 0; i < 0x100000; i++)
-         invalid_code[i] = 1;
-   }
-   generic_jump_to(GETDATA(curr, unsigned int)); // PC
-#endif
 
    next_interupt = GETDATA(curr, unsigned int);
    g_vi.next_vi  = GETDATA(curr, unsigned int);
@@ -549,11 +541,11 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    }
 #ifdef NEW_DYNAREC
    if (r4300emu == CORE_DYNAREC)
-      PUTDATA(curr, unsigned int, pcaddr);
+      PUTDATA(curr, uint32_t, pcaddr);
    else
 #endif
       if (PC)
-         PUTDATA(curr, unsigned int, PC->addr);
+         PUTDATA(curr, uint32_t, PC->addr);
       else
          return 0;
 

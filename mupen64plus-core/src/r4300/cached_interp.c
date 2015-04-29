@@ -65,7 +65,7 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
    static void name(void) \
    { \
       const int take_jump = (condition); \
-      const unsigned int jump_target = (destination); \
+      const uint32_t jump_target = (destination); \
       long long int *link_register = (link); \
       if (cop1 && check_cop1_unusable()) return; \
       if (link_register != &reg[0]) \
@@ -97,7 +97,7 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
    static void name##_OUT(void) \
    { \
       const int take_jump = (condition); \
-      const unsigned int jump_target = (destination); \
+      const uint32_t jump_target = (destination); \
       long long int *link_register = (link); \
       if (cop1 && check_cop1_unusable()) return; \
       if (link_register != &reg[0]) \
