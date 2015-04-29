@@ -31,6 +31,12 @@
 #include "r4300/ops.h"
 #include "r4300/recomph.h"
 
+#if defined(__x86_64__)
+typedef uint64_t native_type;
+#else
+typedef uint32_t native_type;
+#endif
+
 /* that's where the dynarec will restart when going back from a C function */
 #if defined(__x86_64__)
 static uint64_t *return_address;
@@ -62,21 +68,9 @@ void dyna_jump(void)
     }
 
     if (PC->reg_cache_infos.need_map)
-    {
-#if defined(__x86_64__)
-        *return_address = (uint64_t)(PC->reg_cache_infos.jump_wrapper);
-#else
-        *return_address = (uint32_t)(PC->reg_cache_infos.jump_wrapper);
-#endif
-    }
+        *return_address = (native_type)(PC->reg_cache_infos.jump_wrapper);
     else
-    {
-#if defined(__x86_64__)
-        *return_address = (uint64_t)(actual->code + PC->local_addr);
-#else
-        *return_address = (uint32_t)(actual->code + PC->local_addr);
-#endif
-    }
+        *return_address = (native_type)(actual->code + PC->local_addr);
 }
 
 #if !defined(__x86_64__)
@@ -234,13 +228,13 @@ void dyna_stop(void)
 #if defined(__x86_64__)
    if (save_rip != 0)
    {
-      *return_address = (uint64_t) save_rip;
+      *return_address = (native_type)save_rip;
       return;
    }
 #else
    if (save_eip != 0)
    {
-      *return_address = (uint32_t) save_eip;
+      *return_address = (native_type) save_eip;
       return;
    }
 #endif
