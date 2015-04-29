@@ -34,10 +34,6 @@
 
 #include "memory/memory.h"
 
-#if defined(COUNT_INSTR)
-#include "r4300/instr_counters.h"
-#endif
-
 /* These are constants with addresses so that FLDCW can read them.
  * They are declared 'extern' so that other files can do the same. */
 const uint16_t trunc_mode = 0xF3F;
@@ -47,9 +43,6 @@ const uint16_t floor_mode = 0x73F;
 
 void genmfc1(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[111]);
-#endif
 #ifdef INTERPRET_MFC1
    gencallinterp((uint64_t)cached_interpreter_table.MFC1, 0);
 #else
@@ -64,9 +57,6 @@ void genmfc1(void)
 
 void gendmfc1(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[112]);
-#endif
 #ifdef INTERPRET_DMFC1
    gencallinterp((uint64_t)cached_interpreter_table.DMFC1, 0);
 #else
@@ -81,9 +71,6 @@ void gendmfc1(void)
 
 void gencfc1(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[113]);
-#endif
 #ifdef INTERPRET_CFC1
    gencallinterp((uint64_t)cached_interpreter_table.CFC1, 0);
 #else
@@ -98,9 +85,6 @@ void gencfc1(void)
 
 void genmtc1(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[114]);
-#endif
 #ifdef INTERPRET_MTC1
    gencallinterp((uint64_t)cached_interpreter_table.MTC1, 0);
 #else
@@ -113,9 +97,6 @@ void genmtc1(void)
 
 void gendmtc1(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[115]);
-#endif
 #ifdef INTERPRET_DMTC1
    gencallinterp((uint64_t)cached_interpreter_table.DMTC1, 0);
 #else
@@ -130,9 +111,6 @@ void gendmtc1(void)
 
 void genctc1(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[116]);
-#endif
 #ifdef INTERPRET_CTC1
    gencallinterp((uint64_t)cached_interpreter_table.CTC1, 0);
 #else

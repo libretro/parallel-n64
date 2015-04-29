@@ -29,15 +29,8 @@
 #include "r4300/r4300.h"
 #include "r4300/ops.h"
 
-#if defined(COUNT_INSTR)
-#include "r4300/instr_counters.h"
-#endif
-
 void gentlbwi(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[104]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.TLBWI, 0);
    /*dst->local_addr = code_length;
    mov_m32_imm32((void *)(&PC), (unsigned int)(dst));
@@ -48,9 +41,6 @@ void gentlbwi(void)
 
 void gentlbp(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[105]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.TLBP, 0);
    /*dst->local_addr = code_length;
    mov_m32_imm32((void *)(&PC), (unsigned int)(dst));
@@ -61,9 +51,6 @@ void gentlbp(void)
 
 void gentlbr(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[106]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.TLBR, 0);
    /*dst->local_addr = code_length;
    mov_m32_imm32((void *)(&PC), (unsigned int)(dst));
@@ -74,9 +61,6 @@ void gentlbr(void)
 
 void generet(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[108]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.ERET, 1);
    /*dst->local_addr = code_length;
    mov_m32_imm32((void *)(&PC), (unsigned int)(dst));
@@ -89,9 +73,6 @@ void generet(void)
 
 void gentlbwr(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[107]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.TLBWR, 0);
 }
 

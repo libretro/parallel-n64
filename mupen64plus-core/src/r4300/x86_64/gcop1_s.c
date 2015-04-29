@@ -31,15 +31,8 @@
 #include "r4300/macros.h"
 #include "r4300/cp1_private.h"
 
-#if defined(COUNT_INSTR)
-#include "r4300/instr_counters.h"
-#endif
-
 void genadd_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[119]);
-#endif
 #ifdef INTERPRET_ADD_S
     gencallinterp((uint64_t)cached_interpreter_table.ADD_S, 0);
 #else
@@ -55,9 +48,6 @@ void genadd_s(void)
 
 void gensub_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[120]);
-#endif
 #ifdef INTERPRET_SUB_S
     gencallinterp((uint64_t)cached_interpreter_table.SUB_S, 0);
 #else
@@ -73,9 +63,6 @@ void gensub_s(void)
 
 void genmul_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[121]);
-#endif
 #ifdef INTERPRET_MUL_S
     gencallinterp((uint64_t)cached_interpreter_table.MUL_S, 0);
 #else
@@ -91,9 +78,6 @@ void genmul_s(void)
 
 void gendiv_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[122]);
-#endif
 #ifdef INTERPRET_DIV_S
     gencallinterp((uint64_t)cached_interpreter_table.DIV_S, 0);
 #else
@@ -109,9 +93,6 @@ void gendiv_s(void)
 
 void gensqrt_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[123]);
-#endif
 #ifdef INTERPRET_SQRT_S
    gencallinterp((uint64_t)cached_interpreter_table.SQRT_S, 0);
 #else
@@ -126,9 +107,6 @@ void gensqrt_s(void)
 
 void genabs_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[124]);
-#endif
 #ifdef INTERPRET_ABS_S
    gencallinterp((uint64_t)cached_interpreter_table.ABS_S, 0);
 #else
@@ -143,9 +121,6 @@ void genabs_s(void)
 
 void genmov_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[125]);
-#endif
 #ifdef INTERPRET_MOV_S
    gencallinterp((uint64_t)cached_interpreter_table.MOV_S, 0);
 #else
@@ -159,9 +134,6 @@ void genmov_s(void)
 
 void genneg_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[126]);
-#endif
 #ifdef INTERPRET_NEG_S
    gencallinterp((uint64_t)cached_interpreter_table.NEG_S, 0);
 #else
@@ -176,9 +148,6 @@ void genneg_s(void)
 
 void genround_l_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[127]);
-#endif
 #ifdef INTERPRET_ROUND_L_S
    gencallinterp((uint64_t)cached_interpreter_table.ROUND_L_S, 0);
 #else
@@ -194,9 +163,6 @@ void genround_l_s(void)
 
 void gentrunc_l_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[128]);
-#endif
 #ifdef INTERPRET_TRUNC_L_S
    gencallinterp((uint64_t)cached_interpreter_table.TRUNC_L_S, 0);
 #else
@@ -212,9 +178,6 @@ void gentrunc_l_s(void)
 
 void genceil_l_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[129]);
-#endif
 #ifdef INTERPRET_CEIL_L_S
    gencallinterp((uint64_t)cached_interpreter_table.CEIL_L_S, 0);
 #else
@@ -230,9 +193,6 @@ void genceil_l_s(void)
 
 void genfloor_l_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[130]);
-#endif
 #ifdef INTERPRET_FLOOR_L_S
    gencallinterp((uint64_t)cached_interpreter_table.FLOOR_L_S, 0);
 #else
@@ -248,9 +208,6 @@ void genfloor_l_s(void)
 
 void genround_w_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[127]);
-#endif
 #ifdef INTERPRET_ROUND_W_S
    gencallinterp((uint64_t)cached_interpreter_table.ROUND_W_S, 0);
 #else
@@ -266,9 +223,6 @@ void genround_w_s(void)
 
 void gentrunc_w_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[128]);
-#endif
 #ifdef INTERPRET_TRUNC_W_S
    gencallinterp((uint64_t)cached_interpreter_table.TRUNC_W_S, 0);
 #else
@@ -284,9 +238,6 @@ void gentrunc_w_s(void)
 
 void genceil_w_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[129]);
-#endif
 #ifdef INTERPRET_CEIL_W_S
    gencallinterp((uint64_t)cached_interpreter_table.CEIL_W_S, 0);
 #else
@@ -302,9 +253,6 @@ void genceil_w_s(void)
 
 void genfloor_w_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[130]);
-#endif
 #ifdef INTERPRET_FLOOR_W_S
    gencallinterp((uint64_t)cached_interpreter_table.FLOOR_W_S, 0);
 #else
@@ -320,9 +268,6 @@ void genfloor_w_s(void)
 
 void gencvt_d_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[117]);
-#endif
 #ifdef INTERPRET_CVT_D_S
    gencallinterp((uint64_t)cached_interpreter_table.CVT_D_S, 0);
 #else
@@ -336,9 +281,6 @@ void gencvt_d_s(void)
 
 void gencvt_w_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[117]);
-#endif
 #ifdef INTERPRET_CVT_W_S
    gencallinterp((uint64_t)cached_interpreter_table.CVT_W_S, 0);
 #else
@@ -352,9 +294,6 @@ void gencvt_w_s(void)
 
 void gencvt_l_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[117]);
-#endif
 #ifdef INTERPRET_CVT_L_S
    gencallinterp((uint64_t)cached_interpreter_table.CVT_L_S, 0);
 #else
@@ -368,9 +307,6 @@ void gencvt_l_s(void)
 
 void genc_f_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_F_S
    gencallinterp((uint64_t)cached_interpreter_table.C_F_S, 0);
 #else
@@ -381,9 +317,6 @@ void genc_f_s(void)
 
 void genc_un_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_UN_S
    gencallinterp((uint64_t)cached_interpreter_table.C_UN_S, 0);
 #else
@@ -403,9 +336,6 @@ void genc_un_s(void)
 
 void genc_eq_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_EQ_S
    gencallinterp((uint64_t)cached_interpreter_table.C_EQ_S, 0);
 #else
@@ -425,9 +355,6 @@ void genc_eq_s(void)
 
 void genc_ueq_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_UEQ_S
    gencallinterp((uint64_t)cached_interpreter_table.C_UEQ_S, 0);
 #else
@@ -448,9 +375,6 @@ void genc_ueq_s(void)
 
 void genc_olt_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_OLT_S
    gencallinterp((uint64_t)cached_interpreter_table.C_OLT_S, 0);
 #else
@@ -470,9 +394,6 @@ void genc_olt_s(void)
 
 void genc_ult_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_ULT_S
    gencallinterp((uint64_t)cached_interpreter_table.C_ULT_S, 0);
 #else
@@ -493,9 +414,6 @@ void genc_ult_s(void)
 
 void genc_ole_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_OLE_S
    gencallinterp((uint64_t)cached_interpreter_table.C_OLE_S, 0);
 #else
@@ -515,9 +433,6 @@ void genc_ole_s(void)
 
 void genc_ule_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_ULE_S
    gencallinterp((uint64_t)cached_interpreter_table.C_ULE_S, 0);
 #else
@@ -538,9 +453,6 @@ void genc_ule_s(void)
 
 void genc_sf_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_SF_S
    gencallinterp((uint64_t)cached_interpreter_table.C_SF_S, 0);
 #else
@@ -557,9 +469,6 @@ void genc_sf_s(void)
 
 void genc_ngle_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_NGLE_S
    gencallinterp((uint64_t)cached_interpreter_table.C_NGLE_S, 0);
 #else
@@ -579,9 +488,6 @@ void genc_ngle_s(void)
 
 void genc_seq_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_SEQ_S
    gencallinterp((uint64_t)cached_interpreter_table.C_SEQ_S, 0);
 #else
@@ -601,9 +507,6 @@ void genc_seq_s(void)
 
 void genc_ngl_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_NGL_S
    gencallinterp((uint64_t)cached_interpreter_table.C_NGL_S, 0);
 #else
@@ -624,9 +527,6 @@ void genc_ngl_s(void)
 
 void genc_lt_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_LT_S
    gencallinterp((uint64_t)cached_interpreter_table.C_LT_S, 0);
 #else
@@ -646,9 +546,6 @@ void genc_lt_s(void)
 
 void genc_nge_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_NGE_S
    gencallinterp((uint64_t)cached_interpreter_table.C_NGE_S, 0);
 #else
@@ -669,9 +566,6 @@ void genc_nge_s(void)
 
 void genc_le_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_LE_S
    gencallinterp((uint64_t)cached_interpreter_table.C_LE_S, 0);
 #else
@@ -691,9 +585,6 @@ void genc_le_s(void)
 
 void genc_ngt_s(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[118]);
-#endif
 #ifdef INTERPRET_C_NGT_S
    gencallinterp((uint64_t)cached_interpreter_table.C_NGT_S, 0);
 #else

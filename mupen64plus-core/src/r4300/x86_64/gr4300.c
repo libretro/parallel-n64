@@ -36,10 +36,6 @@
 #include "r4300/recomph.h"
 #include "r4300/exception.h"
 
-#if defined(COUNT_INSTR)
-#include "r4300/instr_counters.h"
-#endif
-
 #if !defined(offsetof)
 #define offsetof(TYPE,MEMBER) ((unsigned int) &((TYPE*)0)->MEMBER)
 #endif
@@ -343,17 +339,11 @@ void gendelayslot(void)
 
 void genni(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[1]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.NI, 0);
 }
 
 void genreserved(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[0]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.RESERVED, 0);
 }
 
@@ -384,9 +374,6 @@ void gennop(void)
 
 void genj(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[2]);
-#endif
 #ifdef INTERPRET_J
    gencallinterp((uint64_t)cached_interpreter_table.J, 1);
 #else
@@ -410,9 +397,6 @@ void genj(void)
 
 void genj_out(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[2]);
-#endif
 #ifdef INTERPRET_J_OUT
    gencallinterp((uint64_t)cached_interpreter_table.J_OUT, 1);
 #else
@@ -440,9 +424,6 @@ void genj_out(void)
 
 void genj_idle(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[2]);
-#endif
 #ifdef INTERPRET_J_IDLE
    gencallinterp((uint64_t)cached_interpreter_table.J_IDLE, 1);
 #else
@@ -467,9 +448,6 @@ void genj_idle(void)
 
 void genjal(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[3]);
-#endif
 #ifdef INTERPRET_JAL
    gencallinterp((uint64_t)cached_interpreter_table.JAL, 1);
 #else
@@ -500,9 +478,6 @@ void genjal(void)
 
 void genjal_out(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[3]);
-#endif
 #ifdef INTERPRET_JAL_OUT
    gencallinterp((uint64_t)cached_interpreter_table.JAL_OUT, 1);
 #else
@@ -537,9 +512,6 @@ void genjal_out(void)
 
 void genjal_idle(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[3]);
-#endif
 #ifdef INTERPRET_JAL_IDLE
    gencallinterp((uint64_t)cached_interpreter_table.JAL_IDLE, 1);
 #else
@@ -581,9 +553,6 @@ void gentest(void)
 
 void genbeq(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[4]);
-#endif
 #ifdef INTERPRET_BEQ
    gencallinterp((uint64_t)cached_interpreter_table.BEQ, 1);
 #else
@@ -622,9 +591,6 @@ void gentest_out(void)
 
 void genbeq_out(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[4]);
-#endif
 #ifdef INTERPRET_BEQ_OUT
    gencallinterp((uint64_t)cached_interpreter_table.BEQ_OUT, 1);
 #else
@@ -685,9 +651,6 @@ void genbeq_idle(void)
 
 void genbne(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[5]);
-#endif
 #ifdef INTERPRET_BNE
    gencallinterp((uint64_t)cached_interpreter_table.BNE, 1);
 #else
@@ -706,9 +669,6 @@ void genbne(void)
 
 void genbne_out(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[5]);
-#endif
 #ifdef INTERPRET_BNE_OUT
    gencallinterp((uint64_t)cached_interpreter_table.BNE_OUT, 1);
 #else
@@ -745,9 +705,6 @@ void genbne_idle(void)
 
 void genblez(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[6]);
-#endif
 #ifdef INTERPRET_BLEZ
    gencallinterp((uint64_t)cached_interpreter_table.BLEZ, 1);
 #else
@@ -766,9 +723,6 @@ void genblez(void)
 
 void genblez_out(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[6]);
-#endif
 #ifdef INTERPRET_BLEZ_OUT
    gencallinterp((uint64_t)cached_interpreter_table.BLEZ_OUT, 1);
 #else
@@ -805,9 +759,6 @@ void genblez_idle(void)
 
 void genbgtz(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[7]);
-#endif
 #ifdef INTERPRET_BGTZ
    gencallinterp((uint64_t)cached_interpreter_table.BGTZ, 1);
 #else
@@ -826,9 +777,6 @@ void genbgtz(void)
 
 void genbgtz_out(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[7]);
-#endif
 #ifdef INTERPRET_BGTZ_OUT
    gencallinterp((uint64_t)cached_interpreter_table.BGTZ_OUT, 1);
 #else
@@ -865,9 +813,6 @@ void genbgtz_idle(void)
 
 void genaddi(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[8]);
-#endif
 #ifdef INTERPRET_ADDI
    gencallinterp((uint64_t)cached_interpreter_table.ADDI, 0);
 #else
@@ -881,9 +826,6 @@ void genaddi(void)
 
 void genaddiu(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[9]);
-#endif
 #ifdef INTERPRET_ADDIU
    gencallinterp((uint64_t)cached_interpreter_table.ADDIU, 0);
 #else
@@ -897,9 +839,6 @@ void genaddiu(void)
 
 void genslti(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[10]);
-#endif
 #ifdef INTERPRET_SLTI
    gencallinterp((uint64_t)cached_interpreter_table.SLTI, 0);
 #else
@@ -915,9 +854,6 @@ void genslti(void)
 
 void gensltiu(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[11]);
-#endif
 #ifdef INTERPRET_SLTIU
    gencallinterp((uint64_t)cached_interpreter_table.SLTIU, 0);
 #else
@@ -933,9 +869,6 @@ void gensltiu(void)
 
 void genandi(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[12]);
-#endif
 #ifdef INTERPRET_ANDI
    gencallinterp((uint64_t)cached_interpreter_table.ANDI, 0);
 #else
@@ -949,9 +882,6 @@ void genandi(void)
 
 void genori(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[13]);
-#endif
 #ifdef INTERPRET_ORI
    gencallinterp((uint64_t)cached_interpreter_table.ORI, 0);
 #else
@@ -965,9 +895,6 @@ void genori(void)
 
 void genxori(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[14]);
-#endif
 #ifdef INTERPRET_XORI
    gencallinterp((uint64_t)cached_interpreter_table.XORI, 0);
 #else
@@ -981,9 +908,6 @@ void genxori(void)
 
 void genlui(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[15]);
-#endif
 #ifdef INTERPRET_LUI
    gencallinterp((uint64_t)cached_interpreter_table.LUI, 0);
 #else
@@ -1014,9 +938,6 @@ void gentestl(void)
 
 void genbeql(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[16]);
-#endif
 #ifdef INTERPRET_BEQL
    gencallinterp((uint64_t)cached_interpreter_table.BEQL, 1);
 #else
@@ -1059,9 +980,6 @@ void gentestl_out(void)
 
 void genbeql_out(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[16]);
-#endif
 #ifdef INTERPRET_BEQL_OUT
    gencallinterp((uint64_t)cached_interpreter_table.BEQL_OUT, 1);
 #else
@@ -1098,9 +1016,6 @@ void genbeql_idle(void)
 
 void genbnel(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[17]);
-#endif
 #ifdef INTERPRET_BNEL
    gencallinterp((uint64_t)cached_interpreter_table.BNEL, 1);
 #else
@@ -1119,9 +1034,6 @@ void genbnel(void)
 
 void genbnel_out(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[17]);
-#endif
 #ifdef INTERPRET_BNEL_OUT
    gencallinterp((uint64_t)cached_interpreter_table.BNEL_OUT, 1);
 #else
@@ -1158,9 +1070,6 @@ void genbnel_idle(void)
 
 void genblezl(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[18]);
-#endif
 #ifdef INTERPRET_BLEZL
    gencallinterp((uint64_t)cached_interpreter_table.BLEZL, 1);
 #else
@@ -1179,9 +1088,6 @@ void genblezl(void)
 
 void genblezl_out(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[18]);
-#endif
 #ifdef INTERPRET_BLEZL_OUT
    gencallinterp((uint64_t)cached_interpreter_table.BLEZL_OUT, 1);
 #else
@@ -1218,9 +1124,6 @@ void genblezl_idle(void)
 
 void genbgtzl(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[19]);
-#endif
 #ifdef INTERPRET_BGTZL
    gencallinterp((uint64_t)cached_interpreter_table.BGTZL, 1);
 #else
@@ -1239,9 +1142,6 @@ void genbgtzl(void)
 
 void genbgtzl_out(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[19]);
-#endif
 #ifdef INTERPRET_BGTZL_OUT
    gencallinterp((uint64_t)cached_interpreter_table.BGTZL_OUT, 1);
 #else
@@ -1278,9 +1178,6 @@ void genbgtzl_idle(void)
 
 void gendaddi(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[20]);
-#endif
 #ifdef INTERPRET_DADDI
    gencallinterp((uint64_t)cached_interpreter_table.DADDI, 0);
 #else
@@ -1307,26 +1204,17 @@ void gendaddiu(void)
 
 void genldl(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[22]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.LDL, 0);
 }
 
 void genldr(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[23]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.LDR, 0);
 }
 
 void genlb(void)
 {
    int gpr1, gpr2, base1, base2 = 0;
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[24]);
-#endif
 #ifdef INTERPRET_LB
    gencallinterp((uint64_t)cached_interpreter_table.LB, 0);
 #else
@@ -1374,9 +1262,6 @@ void genlb(void)
 void genlh(void)
 {
    int gpr1, gpr2, base1, base2 = 0;
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[25]);
-#endif
 #ifdef INTERPRET_LH
    gencallinterp((uint64_t)cached_interpreter_table.LH, 0);
 #else
@@ -1423,18 +1308,12 @@ void genlh(void)
 
 void genlwl(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[27]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.LWL, 0);
 }
 
 void genlw(void)
 {
    int gpr1, gpr2, base1, base2 = 0;
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[26]);
-#endif
 #ifdef INTERPRET_LW
    gencallinterp((uint64_t)cached_interpreter_table.LW, 0);
 #else
@@ -1482,9 +1361,6 @@ void genlw(void)
 void genlbu(void)
 {
    int gpr1, gpr2, base1, base2 = 0;
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[28]);
-#endif
 #ifdef INTERPRET_LBU
    gencallinterp((uint64_t)cached_interpreter_table.LBU, 0);
 #else
@@ -1533,9 +1409,6 @@ void genlbu(void)
 void genlhu(void)
 {
    int gpr1, gpr2, base1, base2 = 0;
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[29]);
-#endif
 #ifdef INTERPRET_LHU
    gencallinterp((uint64_t)cached_interpreter_table.LHU, 0);
 #else
@@ -1583,18 +1456,12 @@ void genlhu(void)
 
 void genlwr(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[31]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.LWR, 0);
 }
 
 void genlwu(void)
 {
    int gpr1, gpr2, base1, base2 = 0;
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[30]);
-#endif
 #ifdef INTERPRET_LWU
    gencallinterp((uint64_t)cached_interpreter_table.LWU, 0);
 #else
@@ -1640,9 +1507,6 @@ void genlwu(void)
 
 void gensb(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[32]);
-#endif
 #ifdef INTERPRET_SB
    gencallinterp((uint64_t)cached_interpreter_table.SB, 0);
 #else
@@ -1707,9 +1571,6 @@ void gensb(void)
 
 void gensh(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[33]);
-#endif
 #ifdef INTERPRET_SH
    gencallinterp((uint64_t)cached_interpreter_table.SH, 0);
 #else
@@ -1774,17 +1635,11 @@ void gensh(void)
 
 void genswl(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[35]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.SWL, 0);
 }
 
 void gensw(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[34]);
-#endif
 #ifdef INTERPRET_SW
    gencallinterp((uint64_t)cached_interpreter_table.SW, 0);
 #else
@@ -1848,25 +1703,16 @@ void gensw(void)
 
 void gensdl(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[37]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.SDL, 0);
 }
 
 void gensdr(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[38]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.SDR, 0);
 }
 
 void genswr(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[36]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.SWR, 0);
 }
 
@@ -1885,9 +1731,6 @@ void gencheck_cop1_unusable(void)
 
 void genlwc1(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[39]);
-#endif
 #ifdef INTERPRET_LWC1
    gencallinterp((uint64_t)cached_interpreter_table.LWC1, 0);
 #else
@@ -1931,9 +1774,6 @@ void genlwc1(void)
 
 void genldc1(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[40]);
-#endif
 #ifdef INTERPRET_LDC1
    gencallinterp((uint64_t)cached_interpreter_table.LDC1, 0);
 #else
@@ -1983,9 +1823,6 @@ void gencache(void)
 
 void genld(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[41]);
-#endif
 #ifdef INTERPRET_LD
    gencallinterp((uint64_t)cached_interpreter_table.LD, 0);
 #else
@@ -2034,9 +1871,6 @@ void genld(void)
 
 void genswc1(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[43]);
-#endif
 #ifdef INTERPRET_SWC1
    gencallinterp((uint64_t)cached_interpreter_table.SWC1, 0);
 #else
@@ -2101,9 +1935,6 @@ void genswc1(void)
 
 void gensdc1(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[44]);
-#endif
 #ifdef INTERPRET_SDC1
    gencallinterp((uint64_t)cached_interpreter_table.SDC1, 0);
 #else
@@ -2171,9 +2002,6 @@ void gensdc1(void)
 
 void gensd(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[45]);
-#endif
 #ifdef INTERPRET_SD
    gencallinterp((uint64_t)cached_interpreter_table.SD, 0);
 #else
@@ -2240,17 +2068,11 @@ void gensd(void)
 
 void genll(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[42]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.LL, 0);
 }
 
 void gensc(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[46]);
-#endif
    gencallinterp((uint64_t)cached_interpreter_table.SC, 0);
 }
 

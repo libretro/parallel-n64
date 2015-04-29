@@ -30,15 +30,8 @@
 #include "r4300/ops.h"
 #include "r4300/cp1_private.h"
 
-#if defined(COUNT_INSTR)
-#include "r4300/instr_counters.h"
-#endif
-
 void gencvt_s_w(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[117]);
-#endif
 #ifdef INTERPRET_CVT_S_W
    gencallinterp((uint64_t)cached_interpreter_table.CVT_S_W, 0);
 #else
@@ -52,9 +45,6 @@ void gencvt_s_w(void)
 
 void gencvt_d_w(void)
 {
-#if defined(COUNT_INSTR)
-   inc_m32rel(&instr_count[117]);
-#endif
 #ifdef INTERPRET_CVT_D_W
    gencallinterp((uint64_t)cached_interpreter_table.CVT_D_W, 0);
 #else

@@ -235,11 +235,6 @@ void r4300_init(void)
     stop = 0;
     rompause = 0;
 
-    /* clear instruction counters */
-#if defined(COUNT_INSTR)
-    memset(instr_count, 0, 131 * sizeof(instr_count[0]));
-#endif
-
     last_addr = 0xa4000040;
     next_interupt = 624999;
     init_interupt();
@@ -304,12 +299,6 @@ void r4300_deinit(void)
     {
         free_blocks();
     }
-
-        /* print instruction counts */
-#if defined(COUNT_INSTR)
-    if (r4300emu == CORE_DYNAREC)
-        instr_counters_print();
-#endif
 }
 
 void r4300_execute(void)
