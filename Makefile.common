@@ -125,7 +125,8 @@ ifdef WITH_DYNAREC
 			$(CORE_DIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).S
 	else
 		CPUFLAGS += -msse -msse2 -DUSE_MMX_DECODES -DUSE_SSE_SUPPORT
-		SOURCES_C += $(CORE_DIR)/src/r4300/hacktarux_dynarec/gbc.c \
+		SOURCES_C += $(CORE_DIR)/src/r4300/hacktarux_dynarec/assemble.c \
+						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gbc.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gtlb.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop0.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop1.c \

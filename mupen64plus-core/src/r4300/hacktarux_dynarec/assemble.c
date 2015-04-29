@@ -1,7 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - assemble.c                                              *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2007 Richard Goedeken (Richard42)                       *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -23,30 +22,27 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "assemble.h"
+#ifdef __x86_64__
+#include "../x86_64/assemble.h"
+#else
+#include "../x86/assemble.h"
+#endif
 
 #include "api/m64p_types.h"
 #include "api/callbacks.h"
+#include "osal/preproc.h"
 #include "r4300/recomph.h"
 #include "r4300/recomp.h"
 #include "r4300/r4300.h"
 
-/* Placeholder for RIP-relative offsets is maxmimum 32-bit signed value.
+/* (64-bit x86_64 only)
+ * Placeholder for RIP-relative offsets is maximum 32-bit signed value.
  * So, if recompiled code is run without running passe2() first, it will
  * cause an exception.
 */
 #define REL_PLACEHOLDER 0x7fffffff
 
-typedef struct _jump_table
-{
-   unsigned int mi_addr;
-   unsigned int pc_addr;
-   unsigned int absolute64;
-} jump_table;
-
-static jump_table *jumps_table = NULL;
-static int jumps_number = 0, max_jumps_number = 0;
-
+/* (64-bit x86_64 only) */
 typedef struct _riprelative_table
 {
    unsigned int   pc_addr;     /* index in bytes from start of x86_64 code block to the displacement value to write */
@@ -54,75 +50,106 @@ typedef struct _riprelative_table
    unsigned char *global_dst;  /* 64-bit pointer to the data object */
 } riprelative_table;
 
+typedef struct _jump_table
+{
+   unsigned int mi_addr;
+   unsigned int pc_addr;
+#ifdef __x86_64__
+   unsigned int absolute64;
+#endif
+} jump_table;
+
+#ifdef __x86_64__
+#define JUMP_TABLE_SIZE 512
+#else
+#define JUMP_TABLE_SIZE 1000
+#endif
+
+static jump_table *jumps_table = NULL;
+static int jumps_number, max_jumps_number;
+
 static riprelative_table *riprel_table = NULL;
 static int riprel_number = 0, max_riprel_number = 0;
-
-/* Static Functions */
-
-void add_jump(unsigned int pc_addr, unsigned int mi_addr, unsigned int absolute64)
-{
-   if (jumps_number == max_jumps_number)
-   {
-      max_jumps_number += 512;
-      jumps_table = realloc(jumps_table, max_jumps_number*sizeof(jump_table));
-   }
-   jumps_table[jumps_number].pc_addr = pc_addr;
-   jumps_table[jumps_number].mi_addr = mi_addr;
-   jumps_table[jumps_number].absolute64 = absolute64;
-   jumps_number++;
-}
-
-/* Global Functions */
 
 void init_assembler(void *block_jumps_table, int block_jumps_number, void *block_riprel_table, int block_riprel_number)
 {
    if (block_jumps_table)
    {
-      jumps_table = block_jumps_table;
+      jumps_table = (jump_table *) block_jumps_table;
       jumps_number = block_jumps_number;
-      if (jumps_number <= 512)
-         max_jumps_number = 512;
+#ifdef __x86_64__
+      if (jumps_number <= JUMP_TABLE_SIZE)
+         max_jumps_number = JUMP_TABLE_SIZE;
       else
-         max_jumps_number = (jumps_number + 511) & 0xfffffe00;
+         max_jumps_number = (jumps_number + (JUMP_TABLE_SIZE-1)) & 0xfffffe00;
+#else
+      max_jumps_number = jumps_number;
+#endif
    }
    else
    {
-      jumps_table = malloc(512*sizeof(jump_table));
-      jumps_number = 0;
-      max_jumps_number = 512;
+      jumps_table = (jump_table *) malloc(JUMP_TABLE_SIZE * sizeof(jump_table));
+      jumps_number     = 0;
+      max_jumps_number = JUMP_TABLE_SIZE;
    }
 
+#ifdef __x86_64__
    if (block_riprel_table)
    {
       riprel_table = block_riprel_table;
       riprel_number = block_riprel_number;
-      if (riprel_number <= 512)
-         max_riprel_number = 512;
+      if (riprel_number <= JUMP_TABLE_SIZE)
+         max_riprel_number = JUMP_TABLE_SIZE;
       else
-         max_riprel_number = (riprel_number + 511) & 0xfffffe00;
+         max_riprel_number = (riprel_number + (JUMP_TABLE_SIZE-1)) & 0xfffffe00;
    }
    else
    {
-      riprel_table = malloc(512 * sizeof(riprelative_table));
-      riprel_number = 0;
-      max_riprel_number = 512;
+      riprel_table = malloc(JUMP_TABLE_SIZE * sizeof(riprelative_table));
+      riprel_number     = 0;
+      max_riprel_number = JUMP_TABLE_SIZE; 
    }
+#endif
 }
 
 void free_assembler(void **block_jumps_table, int *block_jumps_number, void **block_riprel_table, int *block_riprel_number)
 {
-   *block_jumps_table = jumps_table;
-   *block_jumps_number = jumps_number;
-   *block_riprel_table = riprel_table;
-   *block_riprel_number = riprel_number;
+   *block_jumps_table   = jumps_table;
+   *block_jumps_number  = jumps_number;
+#ifdef __x86_64__
+   *block_riprel_table  = riprel_table;
+#else
+   *block_riprel_table  = NULL;  /* RIP-relative addressing is only for x86-64 */
+#endif
+   *block_riprel_number = 0;
+}
+
+#ifdef __x86_64__
+void add_jump(unsigned int pc_addr, unsigned int mi_addr, unsigned int absolute64)
+#else
+void add_jump(unsigned int pc_addr, unsigned int mi_addr)
+#endif
+{
+   if (jumps_number == max_jumps_number)
+   {
+      max_jumps_number += JUMP_TABLE_SIZE;
+      jumps_table = (jump_table *) realloc(jumps_table, max_jumps_number*sizeof(jump_table));
+   }
+   jumps_table[jumps_number].pc_addr = pc_addr;
+   jumps_table[jumps_number].mi_addr = mi_addr;
+#ifdef __x86_64__
+   jumps_table[jumps_number].absolute64 = absolute64;
+#endif
+   jumps_number++;
 }
 
 void passe2(precomp_instr *dest, int start, int end, precomp_block *block)
 {
+   unsigned int real_code_length, addr_dest;
    int i;
-
    build_wrappers(dest, start, end, block);
 
+#ifdef __x86_64__
    /* First, fix up all the jumps.  This involves a table lookup to find the offset into the block of x86_64 code for
     * for start of a recompiled r4300i instruction corresponding to the given jump destination address in the N64
     * address space.  Next, the relative offset between this destination and the location of the jump instruction is
@@ -175,7 +202,26 @@ void passe2(precomp_instr *dest, int start, int end, precomp_block *block)
       }
       *((int *) rel_offset_ptr) = (int) rip_rel_offset;
    }
+#else
 
+   real_code_length = code_length;
+
+   for (i=0; i < jumps_number; i++)
+   {
+      code_length = jumps_table[i].pc_addr;
+      if (dest[(jumps_table[i].mi_addr - dest[0].addr)/4].reg_cache_infos.need_map)
+      {
+         addr_dest = (unsigned int)dest[(jumps_table[i].mi_addr - dest[0].addr)/4].reg_cache_infos.jump_wrapper;
+         put32(addr_dest-((unsigned int)block->code+code_length)-4);
+      }
+      else
+      {
+         addr_dest = dest[(jumps_table[i].mi_addr - dest[0].addr)/4].local_addr;
+         put32(addr_dest-code_length-4);
+      }
+   }
+   code_length = real_code_length;
+#endif
 }
 
 static unsigned int g_jump_start8 = 0;
@@ -198,7 +244,7 @@ void jump_end_rel8(void)
 
    if (jump_vec > 127 || jump_vec < -128)
    {
-      DebugMessage(M64MSG_ERROR, "Error: 8-bit relative jump too long! From %x to %x", g_jump_start8, jump_end);
+      DebugMessage(M64MSG_ERROR, "8-bit relative jump too long! From %x to %x", g_jump_start8, jump_end);
 #if !defined(_MSC_VER)
       asm(" int $3; ");
 #endif
