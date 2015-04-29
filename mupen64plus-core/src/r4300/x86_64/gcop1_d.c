@@ -23,7 +23,7 @@
 #include <stdio.h>
 
 #include "assemble.h"
-#include "interpret.h"
+#include "../hacktarux_dynarec/interpret.h"
 
 #include "r4300/recomph.h"
 #include "r4300/r4300.h"

@@ -24,15 +24,14 @@
 
 #ifdef __x86_64__
 #include "../x86_64/assemble.h"
-#include "../x86_64/interpret.h"
 
 typedef uint64_t native_type;
 #else
 #include "../x86/assemble.h"
-#include "../x86/interpret.h"
 
 typedef uint32_t native_type;
 #endif
+#include "interpret.h"
 
 #include "r4300/recomph.h"
 #include "r4300/recomp.h"

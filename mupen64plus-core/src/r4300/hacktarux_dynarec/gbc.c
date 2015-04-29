@@ -24,11 +24,10 @@
 
 #if defined(__x86_64__)
 #include "../x86_64/assemble.h"
-#include "../x86_64/interpret.h"
 #else
 #include "../x86/assemble.h"
-#include "../x86/interpret.h"
 #endif
+#include "interpret.h"
 
 #include "r4300/cached_interp.h"
 #include "r4300/recomph.h"

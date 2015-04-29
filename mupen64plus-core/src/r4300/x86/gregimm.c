@@ -22,7 +22,7 @@
 #include <stdio.h>
 
 #include "assemble.h"
-#include "interpret.h"
+#include "../hacktarux_dynarec/interpret.h"
 
 #include "r4300/cached_interp.h"
 #include "r4300/recomph.h"

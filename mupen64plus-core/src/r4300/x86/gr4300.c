@@ -20,7 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "assemble.h"
-#include "interpret.h"
+#include "../hacktarux_dynarec/interpret.h"
 #include "../hacktarux_dynarec/regcache.h"
 
 #include "api/debugger.h"
