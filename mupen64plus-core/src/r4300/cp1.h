@@ -26,10 +26,14 @@
 
 extern float *reg_cop1_simple[32];
 extern double *reg_cop1_double[32];
-extern uint32_t FCR0;
-extern long long int reg_cop1_fgr_64[32];
+extern int64_t reg_cop1_fgr_64[32];
 extern uint32_t rounding_mode;
 
+int64_t* r4300_cp1_regs(void);
+float** r4300_cp1_regs_simple(void);
+double** r4300_cp1_regs_double(void);
+
+uint32_t* r4300_cp1_fcr0(void);
 uint32_t* r4300_cp1_fcr31(void);
 
 void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus);

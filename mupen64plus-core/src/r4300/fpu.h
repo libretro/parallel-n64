@@ -175,6 +175,8 @@ static INLINE int32_t m64p_fesetround(int32_t __round)
 
 #endif
 
+#define FCR31_CMP_BIT UINT32_C(0x800000)
+
 M64P_FPU_INLINE void set_rounding(void)
 {
    switch(FCR31 & 3)
@@ -213,7 +215,7 @@ M64P_FPU_INLINE void cvt_d_l(int64_t *source,double *dest)
    set_rounding();
    *dest = (double) *source;
 }
-M64P_FPU_INLINE void cvt_d_s(float *source,double *dest)
+M64P_FPU_INLINE void cvt_d_s(const float *source,double *dest)
 {
    *dest = (double) *source;
 }
@@ -223,35 +225,35 @@ M64P_FPU_INLINE void cvt_s_d(double *source,float *dest)
    *dest = (float) *source;
 }
 
-M64P_FPU_INLINE void round_l_s(float *source,int64_t *dest)
+M64P_FPU_INLINE void round_l_s(const float *source,int64_t *dest)
 {
    *dest = (int64_t) roundf(*source);
 }
-M64P_FPU_INLINE void round_w_s(float *source, int32_t *dest)
+M64P_FPU_INLINE void round_w_s(const float *source, int32_t *dest)
 {
    *dest = (int32_t) roundf(*source);
 }
-M64P_FPU_INLINE void trunc_l_s(float *source,int64_t *dest)
+M64P_FPU_INLINE void trunc_l_s(const float *source,int64_t *dest)
 {
    *dest = (int64_t) truncf(*source);
 }
-M64P_FPU_INLINE void trunc_w_s(float *source,int32_t *dest)
+M64P_FPU_INLINE void trunc_w_s(const float *source,int32_t *dest)
 {
    *dest = (int32_t) truncf(*source);
 }
-M64P_FPU_INLINE void ceil_l_s(float *source,int64_t *dest)
+M64P_FPU_INLINE void ceil_l_s(const float *source,int64_t *dest)
 {
    *dest = (int64_t) ceilf(*source);
 }
-M64P_FPU_INLINE void ceil_w_s(float *source,int32_t *dest)
+M64P_FPU_INLINE void ceil_w_s(const float *source,int32_t *dest)
 {
    *dest = (int32_t) ceilf(*source);
 }
-M64P_FPU_INLINE void floor_l_s(float *source,int64_t *dest)
+M64P_FPU_INLINE void floor_l_s(const float *source,int64_t *dest)
 {
    *dest = (int64_t) floorf(*source);
 }
-M64P_FPU_INLINE void floor_w_s(float *source,int32_t *dest)
+M64P_FPU_INLINE void floor_w_s(const float *source,int32_t *dest)
 {
    *dest = (int32_t) floorf(*source);
 }
@@ -289,7 +291,7 @@ M64P_FPU_INLINE void floor_w_d(double *source,int32_t *dest)
    *dest = (int32_t) floor(*source);
 }
 
-M64P_FPU_INLINE void cvt_w_s(float *source,int32_t *dest)
+M64P_FPU_INLINE void cvt_w_s(const float *source,int32_t *dest)
 {
    switch(FCR31&3)
    {
@@ -309,7 +311,7 @@ M64P_FPU_INLINE void cvt_w_d(double *source,int32_t *dest)
       case 3: floor_w_d(source,dest);return;
    }
 }
-M64P_FPU_INLINE void cvt_l_s(float *source,int64_t *dest)
+M64P_FPU_INLINE void cvt_l_s(const float *source,int64_t *dest)
 {
    switch(FCR31&3)
    {
@@ -332,211 +334,211 @@ M64P_FPU_INLINE void cvt_l_d(double *source,int64_t *dest)
 
 M64P_FPU_INLINE void c_f_s(void)
 {
-   FCR31 &= ~0x800000;
+   FCR31 &= ~FCR31_CMP_BIT;
 }
-M64P_FPU_INLINE void c_un_s(float *source,float *target)
+M64P_FPU_INLINE void c_un_s(const float *source,const float *target)
 {
-   FCR31=(isnan(*source) || isnan(*target)) ? FCR31|0x800000 : FCR31&~0x800000;
-}
-
-M64P_FPU_INLINE void c_eq_s(float *source,float *target)
-{
-   if (isnan(*source) || isnan(*target)) {FCR31&=~0x800000;return;}
-   FCR31 = *source==*target ? FCR31|0x800000 : FCR31&~0x800000;
-}
-M64P_FPU_INLINE void c_ueq_s(float *source,float *target)
-{
-   if (isnan(*source) || isnan(*target)) {FCR31|=0x800000;return;}
-   FCR31 = *source==*target ? FCR31|0x800000 : FCR31&~0x800000;
+   FCR31=(isnan(*source) || isnan(*target)) ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
-M64P_FPU_INLINE void c_olt_s(float *source,float *target)
+M64P_FPU_INLINE void c_eq_s(const float *source,const float *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31&=~0x800000;return;}
-   FCR31 = *source<*target ? FCR31|0x800000 : FCR31&~0x800000;
+   if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
+   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
-M64P_FPU_INLINE void c_ult_s(float *source,float *target)
+M64P_FPU_INLINE void c_ueq_s(const float *source,const float *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31|=0x800000;return;}
-   FCR31 = *source<*target ? FCR31|0x800000 : FCR31&~0x800000;
-}
-
-M64P_FPU_INLINE void c_ole_s(float *source,float *target)
-{
-   if (isnan(*source) || isnan(*target)) {FCR31&=~0x800000;return;}
-   FCR31 = *source<=*target ? FCR31|0x800000 : FCR31&~0x800000;
-}
-M64P_FPU_INLINE void c_ule_s(float *source,float *target)
-{
-   if (isnan(*source) || isnan(*target)) {FCR31|=0x800000;return;}
-   FCR31 = *source<=*target ? FCR31|0x800000 : FCR31&~0x800000;
+   if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
+   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
-M64P_FPU_INLINE void c_sf_s(float *source,float *target)
+M64P_FPU_INLINE void c_olt_s(const float *source,const float *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31&=~0x800000;
+   if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
+   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
-M64P_FPU_INLINE void c_ngle_s(float *source,float *target)
+M64P_FPU_INLINE void c_ult_s(const float *source,const float *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31&=~0x800000;
-}
-
-M64P_FPU_INLINE void c_seq_s(float *source,float *target)
-{
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source==*target ? FCR31|0x800000 : FCR31&~0x800000;
-}
-M64P_FPU_INLINE void c_ngl_s(float *source,float *target)
-{
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source==*target ? FCR31|0x800000 : FCR31&~0x800000;
+   if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
+   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
-M64P_FPU_INLINE void c_lt_s(float *source,float *target)
+M64P_FPU_INLINE void c_ole_s(const float *source,const float *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<*target ? FCR31|0x800000 : FCR31&~0x800000;
+   if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
+   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
-M64P_FPU_INLINE void c_nge_s(float *source,float *target)
+M64P_FPU_INLINE void c_ule_s(const float *source,const float *target)
 {
-   //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<*target ? FCR31|0x800000 : FCR31&~0x800000;
+   if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
+   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
-M64P_FPU_INLINE void c_le_s(float *source,float *target)
+M64P_FPU_INLINE void c_sf_s(const float *source,const float *target)
 {
    //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<=*target ? FCR31|0x800000 : FCR31&~0x800000;
+   FCR31&=~FCR31_CMP_BIT;
 }
-M64P_FPU_INLINE void c_ngt_s(float *source,float *target)
+M64P_FPU_INLINE void c_ngle_s(const float *source,const float *target)
 {
    //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<=*target ? FCR31|0x800000 : FCR31&~0x800000;
+   FCR31&=~FCR31_CMP_BIT;
+}
+
+M64P_FPU_INLINE void c_seq_s(const float *source,const float *target)
+{
+   //if (isnan(*source) || isnan(*target)) // FIXME - exception
+   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+}
+M64P_FPU_INLINE void c_ngl_s(const float *source,const float *target)
+{
+   //if (isnan(*source) || isnan(*target)) // FIXME - exception
+   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+}
+
+M64P_FPU_INLINE void c_lt_s(const float *source,const float *target)
+{
+   //if (isnan(*source) || isnan(*target)) // FIXME - exception
+   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+}
+M64P_FPU_INLINE void c_nge_s(const float *source,const float *target)
+{
+   //if (isnan(*source) || isnan(*target)) // FIXME - exception
+   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+}
+
+M64P_FPU_INLINE void c_le_s(const float *source,const float *target)
+{
+   //if (isnan(*source) || isnan(*target)) // FIXME - exception
+   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
+}
+M64P_FPU_INLINE void c_ngt_s(const float *source,const float *target)
+{
+   //if (isnan(*source) || isnan(*target)) // FIXME - exception
+   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_f_d(void)
 {
-   FCR31 &= ~0x800000;
+   FCR31 &= ~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_un_d(double *source,double *target)
 {
-   FCR31=(isnan(*source) || isnan(*target)) ? FCR31|0x800000 : FCR31&~0x800000;
+   FCR31=(isnan(*source) || isnan(*target)) ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_eq_d(double *source,double *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31&=~0x800000;return;}
-   FCR31 = *source==*target ? FCR31|0x800000 : FCR31&~0x800000;
+   if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
+   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_ueq_d(double *source,double *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31|=0x800000;return;}
-   FCR31 = *source==*target ? FCR31|0x800000 : FCR31&~0x800000;
+   if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
+   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_olt_d(double *source,double *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31&=~0x800000;return;}
-   FCR31 = *source<*target ? FCR31|0x800000 : FCR31&~0x800000;
+   if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
+   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_ult_d(double *source,double *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31|=0x800000;return;}
-   FCR31 = *source<*target ? FCR31|0x800000 : FCR31&~0x800000;
+   if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
+   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_ole_d(double *source,double *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31&=~0x800000;return;}
-   FCR31 = *source<=*target ? FCR31|0x800000 : FCR31&~0x800000;
+   if (isnan(*source) || isnan(*target)) {FCR31&=~FCR31_CMP_BIT;return;}
+   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_ule_d(double *source,double *target)
 {
-   if (isnan(*source) || isnan(*target)) {FCR31|=0x800000;return;}
-   FCR31 = *source<=*target ? FCR31|0x800000 : FCR31&~0x800000;
+   if (isnan(*source) || isnan(*target)) {FCR31|=FCR31_CMP_BIT;return;}
+   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_sf_d(double *source,double *target)
 {
    //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31&=~0x800000;
+   FCR31&=~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_ngle_d(double *source,double *target)
 {
    //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31&=~0x800000;
+   FCR31&=~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_seq_d(double *source,double *target)
 {
    //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source==*target ? FCR31|0x800000 : FCR31&~0x800000;
+   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_ngl_d(double *source,double *target)
 {
    //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source==*target ? FCR31|0x800000 : FCR31&~0x800000;
+   FCR31 = *source==*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_lt_d(double *source,double *target)
 {
    //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<*target ? FCR31|0x800000 : FCR31&~0x800000;
+   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_nge_d(double *source,double *target)
 {
    //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<*target ? FCR31|0x800000 : FCR31&~0x800000;
+   FCR31 = *source<*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 M64P_FPU_INLINE void c_le_d(double *source,double *target)
 {
    //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<=*target ? FCR31|0x800000 : FCR31&~0x800000;
+   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 M64P_FPU_INLINE void c_ngt_d(double *source,double *target)
 {
    //if (isnan(*source) || isnan(*target)) // FIXME - exception
-   FCR31 = *source<=*target ? FCR31|0x800000 : FCR31&~0x800000;
+   FCR31 = *source<=*target ? FCR31|FCR31_CMP_BIT : FCR31&~FCR31_CMP_BIT;
 }
 
 
-M64P_FPU_INLINE void add_s(float *source1,float *source2,float *target)
+M64P_FPU_INLINE void add_s(const float *source1,const float *source2, float *target)
 {
    set_rounding();
    *target=(*source1)+(*source2);
 }
-M64P_FPU_INLINE void sub_s(float *source1,float *source2,float *target)
+M64P_FPU_INLINE void sub_s(const float *source1,const float *source2, float *target)
 {
    set_rounding();
    *target=(*source1)-(*source2);
 }
-M64P_FPU_INLINE void mul_s(float *source1,float *source2,float *target)
+M64P_FPU_INLINE void mul_s(const float *source1,const float *source2, float *target)
 {
    set_rounding();
    *target=(*source1)*(*source2);
 }
-M64P_FPU_INLINE void div_s(float *source1,float *source2,float *target)
+M64P_FPU_INLINE void div_s(const float *source1,const float *source2, float *target)
 {
    set_rounding();
    *target=(*source1)/(*source2);
 }
-M64P_FPU_INLINE void sqrt_s(float *source,float *target)
+M64P_FPU_INLINE void sqrt_s(const float *source, float *target)
 {
    set_rounding();
    *target=sqrtf(*source);
 }
-M64P_FPU_INLINE void abs_s(float *source,float *target)
+M64P_FPU_INLINE void abs_s(const float *source, float *target)
 {
    *target=fabsf(*source);
 }
-M64P_FPU_INLINE void mov_s(float *source,float *target)
+M64P_FPU_INLINE void mov_s(const float *source, float *target)
 {
    *target=*source;
 }
-M64P_FPU_INLINE void neg_s(float *source,float *target)
+M64P_FPU_INLINE void neg_s(const float *source, float *target)
 {
    *target=-(*source);
 }

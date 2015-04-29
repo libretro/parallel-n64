@@ -126,11 +126,11 @@ void r4300_reset_hard(void)
       tlb_LUT_r[i] = 0;
       tlb_LUT_w[i] = 0;
    }
-   llbit=0;
-   hi=0;
-   lo=0;
-   FCR0=0x511;
-   FCR31=0;
+   llbit = 0;
+   hi    = 0;
+   lo    = 0;
+   FCR0  = UINT32_C(0x511);
+   FCR31 = 0;
 
    // set COP0 registers
    g_cp0_regs[CP0_RANDOM_REG]   = UINT32_C(31);

@@ -241,14 +241,14 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    set_fpr_pointers(g_cp0_regs[CP0_STATUS_REG]);
    lo = GETDATA(curr, long long int);
    hi = GETDATA(curr, long long int);
-   COPYARRAY(reg_cop1_fgr_64, curr, long long int, 32);
+   COPYARRAY(reg_cop1_fgr_64, curr, int64_t, 32);
 
    /* 32-bit FPR mode requires data shuffling because 
     * 64-bit layout is always stored in savestate file */
    if ((g_cp0_regs[CP0_STATUS_REG] & UINT32_C(0x04000000)) == 0)  
       shuffle_fpr_data(UINT32_C(0x04000000), 0);
-   FCR0 = GETDATA(curr, int);
-   FCR31 = GETDATA(curr, int);
+   *r4300_cp1_fcr0() = GETDATA(curr, uint32_t);
+   FCR31 = GETDATA(curr, uint32_t);
    *r4300_cp1_fcr31() = FCR31;
    update_x86_rounding_mode(FCR31);
 
@@ -506,11 +506,11 @@ int savestates_save_m64p(unsigned char *data, size_t size)
 
    if ((g_cp0_regs[CP0_STATUS_REG] & UINT32_C(0x04000000)) == 0) // FR bit == 0 means 32-bit (MIPS I) FGR mode
       shuffle_fpr_data(0, UINT32_C(0x04000000));  // shuffle data into 64-bit register format for storage
-   PUTARRAY(reg_cop1_fgr_64, curr, long long int, 32);
+   PUTARRAY(reg_cop1_fgr_64, curr, int64_t, 32);
    if ((g_cp0_regs[CP0_STATUS_REG] & UINT32_C(0x04000000)) == 0)
       shuffle_fpr_data(UINT32_C(0x04000000), 0);  // put it back in 32-bit mode
 
-   PUTDATA(curr, int, FCR0);
+   PUTDATA(curr, uint32_t, *r4300_cp1_fcr0());
    PUTDATA(curr, uint32_t, *r4300_cp1_fcr31());
 
    for (i = 0; i < 32; i++)
