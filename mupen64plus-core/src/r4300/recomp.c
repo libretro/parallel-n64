@@ -2284,7 +2284,7 @@ void init_block(precomp_block *block)
    * yet as the game should have already set up the code correctly.
    */
   invalid_code[block->start>>12] = 0;
-  if (block->end < 0x80000000 || block->start >= 0xc0000000)
+  if (block->end < UINT32_C(0x80000000) || block->start >= UINT32_C(0xc0000000))
   { 
     uint32_t paddr  = virtual_to_physical_address(block->start, 2);
     invalid_code[paddr>>12] = 0;
@@ -2295,8 +2295,8 @@ void init_block(precomp_block *block)
       blocks[paddr>>12]->block = NULL;
       blocks[paddr>>12]->jumps_table = NULL;
       blocks[paddr>>12]->riprel_table = NULL;
-      blocks[paddr>>12]->start = paddr & ~0xFFF;
-      blocks[paddr>>12]->end = (paddr & ~0xFFF) + 0x1000;
+      blocks[paddr>>12]->start = paddr & ~UINT32_C(0xFFF);
+      blocks[paddr>>12]->end = (paddr & ~UINT32_C(0xFFF)) + UINT32_C(0x1000);
     }
     init_block(blocks[paddr>>12]);
     
@@ -2309,8 +2309,8 @@ void init_block(precomp_block *block)
       blocks[paddr>>12]->block = NULL;
       blocks[paddr>>12]->jumps_table = NULL;
       blocks[paddr>>12]->riprel_table = NULL;
-      blocks[paddr>>12]->start = paddr & ~0xFFF;
-      blocks[paddr>>12]->end = (paddr & ~0xFFF) + 0x1000;
+      blocks[paddr>>12]->start = paddr & ~UINT32_C(0xFFF);
+      blocks[paddr>>12]->end = (paddr & ~UINT32_C(0xFFF)) + UINT32_C(0x1000);
     }
     init_block(blocks[paddr>>12]);
   }
@@ -2327,8 +2327,8 @@ void init_block(precomp_block *block)
         blocks[alt_addr >> 12]->block = NULL;
         blocks[alt_addr >> 12]->jumps_table = NULL;
         blocks[alt_addr >> 12]->riprel_table = NULL;
-        blocks[alt_addr >> 12]->start = alt_addr & ~0xFFF;
-        blocks[alt_addr >> 12]->end = (alt_addr & ~0xFFF) + 0x1000;
+        blocks[alt_addr >> 12]->start = alt_addr & ~UINT32_C(0xFFF);
+        blocks[alt_addr >> 12]->end = (alt_addr & ~UINT32_C(0xFFF)) + UINT32_C(0x1000);
       }
       init_block(blocks[alt_addr >> 12]);
     }
@@ -2379,12 +2379,12 @@ void recompile_block(int *source, precomp_block *block, unsigned int func)
 
    for (i = (func & 0xFFF) / 4; finished != 2; i++)
      {
-    if(block->start < 0x80000000 || block->start >= 0xc0000000)
+    if(block->start < UINT32_C(0x80000000) || block->start >= UINT32_C(0xc0000000))
       {
-          unsigned int address2 =
+         uint32_t address2 =
            virtual_to_physical_address(block->start + i*4, 0);
-         if(blocks[address2>>12]->block[(address2&0xFFF)/4].ops == current_instruction_table.NOTCOMPILED)
-           blocks[address2>>12]->block[(address2&0xFFF)/4].ops = current_instruction_table.NOTCOMPILED2;
+         if(blocks[address2>>12]->block[(address2 & UINT32_C(0xFFF))/4].ops == current_instruction_table.NOTCOMPILED)
+           blocks[address2>>12]->block[(address2 & UINT32_C(0xFFF))/4].ops = current_instruction_table.NOTCOMPILED2;
       }
     
     SRC = source + i;
@@ -2421,16 +2421,16 @@ void recompile_block(int *source, precomp_block *block, unsigned int func)
       }
     
     if (i >= length-2+(length>>2)) finished = 2;
-    if (i >= (length-1) && (block->start == 0xa4000000 ||
-                block->start >= 0xc0000000 ||
-                block->end   <  0x80000000)) finished = 2;
+    if (i >= (length-1) && (block->start == UINT32_C(0xa4000000) ||
+                block->start >= UINT32_C(0xc0000000) ||
+                block->end   <  UINT32_C(0x80000000))) finished = 2;
     if (dst->ops == current_instruction_table.ERET || finished == 1) finished = 2;
     if (/*i >= length &&*/ 
         (dst->ops == current_instruction_table.J ||
          dst->ops == current_instruction_table.J_OUT ||
          dst->ops == current_instruction_table.JR) &&
-        !(i >= (length-1) && (block->start >= 0xc0000000 ||
-                  block->end   <  0x80000000)))
+        !(i >= (length-1) && (block->start >= UINT32_C(0xc0000000) ||
+                  block->end   <  UINT32_C(0x80000000))))
       finished = 1;
      }
 
