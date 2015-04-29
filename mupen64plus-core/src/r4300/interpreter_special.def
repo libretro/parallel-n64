@@ -26,37 +26,37 @@ DECLARE_INSTRUCTION(NOP)
 
 DECLARE_INSTRUCTION(SLL)
 {
-   rrd32 = SE32((uint32_t)(rrt32) << rsa);
+   rrd = SE32((uint32_t)(rrt32) << rsa);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SRL)
 {
-   rrd32 = SE32((uint32_t)rrt32 >> rsa);
+   rrd = SE32((uint32_t)rrt32 >> rsa);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SRA)
 {
-   rrd32 = SE32((int32_t)rrt32 >> rsa);
+   rrd = SE32((int32_t)rrt32 >> rsa);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SLLV)
 {
-   rrd32 = SE32((uint32_t)(rrt32) << (rrs32 & 0x1F));
+   rrd = SE32((uint32_t)(rrt32) << (rrs32 & 0x1F));
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SRLV)
 {
-   rrd32 = SE32((uint32_t)rrt32 >> (rrs32 & 0x1F));
+   rrd = SE32((uint32_t)rrt32 >> (rrs32 & 0x1F));
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SRAV)
 {
-   rrd32 = SE32((int32_t)rrt32 >> (rrs32 & 0x1F));
+   rrd = SE32((int32_t)rrt32 >> (rrs32 & 0x1F));
    ADD_TO_PC(1);
 }
 
@@ -253,25 +253,25 @@ DECLARE_INSTRUCTION(DDIVU)
 
 DECLARE_INSTRUCTION(ADD)
 {
-   rrd32 = SE32(rrs32 + rrt32);
+   rrd = SE32(rrs32 + rrt32);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(ADDU)
 {
-   rrd32 = SE32(rrs32 + rrt32);
+   rrd = SE32(rrs32 + rrt32);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SUB)
 {
-   rrd32 = SE32(rrs32 - rrt32);
+   rrd = SE32(rrs32 - rrt32);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SUBU)
 {
-   rrd32 = SE32(rrs32 - rrt32);
+   rrd = SE32(rrs32 - rrt32);
    ADD_TO_PC(1);
 }
 
