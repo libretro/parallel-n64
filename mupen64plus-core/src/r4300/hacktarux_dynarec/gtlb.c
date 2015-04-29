@@ -1,7 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - gtlb.c                                                  *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2007 Richard Goedeken (Richard42)                       *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -22,7 +21,15 @@
 
 #include <stdio.h>
 
-#include "assemble.h"
+#ifdef __x86_64__
+#include "../x86_64/assemble.h"
+
+typedef uint64_t native_type;
+#else
+#include "../x86/assemble.h"
+
+typedef uint32_t native_type;
+#endif
 
 #include "r4300/cached_interp.h"
 #include "r4300/recomph.h"
@@ -31,48 +38,26 @@
 
 void gentlbwi(void)
 {
-   gencallinterp((uint64_t)cached_interpreter_table.TLBWI, 0);
-   /*dst->local_addr = code_length;
-   mov_m32_imm32((void *)(&PC), (unsigned int)(dst));
-   mov_reg32_imm32(EAX, (unsigned int)(TLBWI));
-   call_reg32(EAX);
-   genupdate_system(0);*/
+   gencallinterp((native_type)cached_interpreter_table.TLBWI, 0);
 }
 
 void gentlbp(void)
 {
-   gencallinterp((uint64_t)cached_interpreter_table.TLBP, 0);
-   /*dst->local_addr = code_length;
-   mov_m32_imm32((void *)(&PC), (unsigned int)(dst));
-   mov_reg32_imm32(EAX, (unsigned int)(TLBP));
-   call_reg32(EAX);
-   genupdate_system(0);*/
+   gencallinterp((native_type)cached_interpreter_table.TLBP, 0);
 }
 
 void gentlbr(void)
 {
-   gencallinterp((uint64_t)cached_interpreter_table.TLBR, 0);
-   /*dst->local_addr = code_length;
-   mov_m32_imm32((void *)(&PC), (unsigned int)(dst));
-   mov_reg32_imm32(EAX, (unsigned int)(TLBR));
-   call_reg32(EAX);
-   genupdate_system(0);*/
+   gencallinterp((native_type)cached_interpreter_table.TLBR, 0);
 }
 
 void generet(void)
 {
-   gencallinterp((uint64_t)cached_interpreter_table.ERET, 1);
-   /*dst->local_addr = code_length;
-   mov_m32_imm32((void *)(&PC), (unsigned int)(dst));
-   genupdate_system(0);
-   mov_reg32_imm32(EAX, (unsigned int)(ERET));
-   call_reg32(EAX);
-   mov_reg32_imm32(EAX, (unsigned int)(jump_code));
-   jmp_reg32(EAX);*/
+   gencallinterp((native_type)cached_interpreter_table.ERET, 1);
 }
 
 void gentlbwr(void)
 {
-   gencallinterp((uint64_t)cached_interpreter_table.TLBWR, 0);
+   gencallinterp((native_type)cached_interpreter_table.TLBWR, 0);
 }
 
