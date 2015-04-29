@@ -1,6 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - gcop0.c                                                 *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Copyright (C) 2007 Richard Goedeken (Richard42)                       *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -21,7 +22,15 @@
 
 #include <stdio.h>
 
-#include "assemble.h"
+#ifdef __x86_64__
+#include "../x86_64/assemble.h"
+typedef uint64_t native_type;
+
+#else
+
+#include "../x86/assemble.h"
+typedef uint32_t native_type;
+#endif
 
 #include "r4300/cached_interp.h"
 #include "r4300/recomp.h"
@@ -29,15 +38,13 @@
 #include "r4300/r4300.h"
 #include "r4300/ops.h"
 
-//static unsigned int pMFC0 = (unsigned int)(MFC0);
 void genmfc0(void)
 {
-    gencallinterp((unsigned int)cached_interpreter_table.MFC0, 0);
+   gencallinterp((native_type)cached_interpreter_table.MFC0, 0);
 }
 
-//static unsigned int pMTC0 = (unsigned int)(MTC0);
 void genmtc0(void)
 {
-    gencallinterp((unsigned int)cached_interpreter_table.MTC0, 0);
+   gencallinterp((native_type)cached_interpreter_table.MTC0, 0);
 }
 
