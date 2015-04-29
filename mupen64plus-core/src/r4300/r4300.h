@@ -23,12 +23,14 @@
 #define M64P_R4300_R4300_H
 
 #include "ops.h"
+#include "r4300_core.h"
 #include "recomp.h"
 #include "tlb.h"
 
 extern precomp_instr *PC;
 
-extern int stop, llbit, rompause;
+extern int stop, rompause;
+extern unsigned int llbit;
 extern int64_t reg[32], hi, lo;
 extern int64_t local_rs;
 extern unsigned int delay_slot;
@@ -46,11 +48,7 @@ void r4300_init(void);
 void r4300_deinit(void);
 void r4300_execute(void);
 
-/* Jump to the given address. This works for all r4300 emulator, but is slower.
- * Use this for common code which can be executed from any r4300 emulator. */ 
-void generic_jump_to(uint32_t address);
-
-// r4300 emulators
+/* r4300 emulators */
 #define CORE_PURE_INTERPRETER 0
 #define CORE_INTERPRETER      1
 #define CORE_DYNAREC          2

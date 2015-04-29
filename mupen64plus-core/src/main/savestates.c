@@ -38,12 +38,10 @@
 
 #include "../ai/ai_controller.h"
 #include "../memory/memory.h"
-#include "../plugin/plugin.h"
-#include "../r4300/r4300.h"
 #include "../r4300/cp1.h"
-#include "../r4300/r4300_core.h"
 #include "../pi/pi_controller.h"
-#include "../r4300/new_dynarec/new_dynarec.h"
+#include "../plugin/plugin.h"
+#include "../r4300/r4300_core.h"
 #include "../rdp/rdp_core.h"
 #include "../ri/ri_controller.h"
 #include "../rsp/rsp_core.h"
@@ -232,12 +230,12 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    COPYARRAY(tlb_LUT_r, curr, unsigned int, 0x100000);
    COPYARRAY(tlb_LUT_w, curr, unsigned int, 0x100000);
 
-   llbit = GETDATA(curr, unsigned int);
-   COPYARRAY(reg, curr, long long int, 32);
+   *r4300_llbit() = GETDATA(curr, unsigned int);
+   COPYARRAY(r4300_regs(), curr, int64_t, 32);
    COPYARRAY(cp0_regs, curr, uint32_t, 32);
    set_fpr_pointers(cp0_regs[CP0_STATUS_REG]);
-   lo = GETDATA(curr, long long int);
-   hi = GETDATA(curr, long long int);
+   *r4300_mult_lo() = GETDATA(curr, int64_t);
+   *r4300_mult_hi() = GETDATA(curr, int64_t);
    COPYARRAY(r4300_cp1_regs(), curr, int64_t, 32);
 
    /* 32-bit FPR mode requires data shuffling because 
@@ -279,21 +277,9 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
       tlb_e[i].phys_odd   = GETDATA(curr, unsigned int);
    }
 
-#ifdef NEW_DYNAREC
-   if (r4300emu == CORE_DYNAREC)
-   {
-      pcaddr = GETDATA(curr, uint32_t);
-      pending_exception = 1;
-      invalidate_all_pages();
-   }
-   else
-#endif
-   {
-      generic_jump_to(GETDATA(curr, uint32_t)); /* PC */
-      invalidate_r4300_cached_code(0, 0);
-   }
+   savestates_load_set_pc(GETDATA(curr, uint32_t));
 
-   next_interupt = GETDATA(curr, unsigned int);
+   *r4300_next_interrupt() = GETDATA(curr, unsigned int);
    g_vi.next_vi  = GETDATA(curr, unsigned int);
    g_vi.field    = GETDATA(curr, unsigned int);
 
@@ -301,12 +287,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    to_little_endian_buffer(queue, 4, 256);
    load_eventqueue_infos(queue);
 
-#ifdef NEW_DYNAREC
-   if (r4300emu == CORE_DYNAREC)
-      last_addr = pcaddr;
-   else
-#endif
-      last_addr = PC->addr;
+   *r4300_last_addr() = *r4300_pc();
 
    /* deliver callback to indicate 
     * completion of state loading operation */
@@ -492,11 +473,11 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    PUTARRAY(tlb_LUT_r, curr, unsigned int, 0x100000);
    PUTARRAY(tlb_LUT_w, curr, unsigned int, 0x100000);
 
-   PUTDATA(curr, unsigned int, llbit);
-   PUTARRAY(reg, curr, long long int, 32);
+   PUTDATA(curr, unsigned int, *r4300_llbit());
+   PUTARRAY(r4300_regs(), curr, int64_t, 32);
    PUTARRAY(cp0_regs, curr, uint32_t, 32);
-   PUTDATA(curr, long long int, lo);
-   PUTDATA(curr, long long int, hi);
+   PUTDATA(curr, int64_t, *r4300_mult_lo());
+   PUTDATA(curr, int64_t, *r4300_mult_hi());
 
    if ((cp0_regs[CP0_STATUS_REG] & UINT32_C(0x04000000)) == 0) // FR bit == 0 means 32-bit (MIPS I) FGR mode
       shuffle_fpr_data(0, UINT32_C(0x04000000));  // shuffle data into 64-bit register format for storage
@@ -533,14 +514,9 @@ int savestates_save_m64p(unsigned char *data, size_t size)
       PUTDATA(curr, unsigned int, tlb_e[i].end_odd);
       PUTDATA(curr, unsigned int, tlb_e[i].phys_odd);
    }
-#ifdef NEW_DYNAREC
-   if (r4300emu == CORE_DYNAREC)
-      PUTDATA(curr, uint32_t, pcaddr);
-   else
-#endif
-   PUTDATA(curr, uint32_t, PC->addr);
+   PUTDATA(curr, uint32_t, *r4300_pc());
 
-   PUTDATA(curr, unsigned int, next_interupt);
+   PUTDATA(curr, unsigned int, *r4300_next_interrupt());
    PUTDATA(curr, unsigned int, g_vi.next_vi);
    PUTDATA(curr, unsigned int, g_vi.field);
 
