@@ -589,39 +589,41 @@ void free_blocks(void)
 
 void invalidate_cached_code_hacktarux(uint32_t address, size_t size)
 {
-    size_t i;
-    uint32_t addr;
-    uint32_t addr_max;
+   size_t i;
+   uint32_t addr;
+   uint32_t addr_max;
 
-    if (size == 0)
-    {
-        /* invalidate everthing */
-        memset(invalid_code, 1, 0x100000);
-    }
-    else
-    {
-        /* invalidate blocks (if necessary) */
-        addr_max = address+size;
+   if (size == 0)
+   {
+      /* invalidate everthing */
+      memset(invalid_code, 1, 0x100000);
+   }
+   else
+   {
+      /* invalidate blocks (if necessary) */
+      addr_max = address+size;
 
-        for(addr = address; addr < addr_max; addr += 4)
-        {
-            i = (addr >> 12);
+      for(addr = address; addr < addr_max; addr += 4)
+      {
+         i = (addr >> 12);
 
-            if (invalid_code[i] == 0)
+         if (invalid_code[i] == 0)
+         {
+            if (blocks[i] == NULL
+                  || blocks[i]->block[(addr & 0xfff) / 4].ops != current_instruction_table.NOTCOMPILED)
             {
-                if (blocks[i] == NULL
-                || blocks[i]->block[(addr & 0xfff) / 4].ops != current_instruction_table.NOTCOMPILED)
-                {
-                    invalid_code[i] = 1;
-                    /* go directly to next i */
-                    addr |= 0xffc;
-                }
+               invalid_code[i] = 1;
+               /* go directly to next i */
+               addr &= ~0xfff;
+               addr |= 0xffc;
             }
-            else
-            {
-                /* go directly to next i */
-                addr |= 0xffc;
-            }
-        }
-    }
+         }
+         else
+         {
+            /* go directly to next i */
+            addr &= ~0xfff;
+            addr |= 0xffc;
+         }
+      }
+   }
 }
