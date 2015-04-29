@@ -1,6 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - gcop1.c                                                 *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Copyright (C) 2007 Richard Goedeken (Richard42)                       *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -21,8 +22,17 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "assemble.h"
-#include "interpret.h"
+#ifdef __x86_64__
+#include "../x86_64/assemble.h"
+#include "../x86_64/interpret.h"
+
+typedef uint64_t native_type;
+#else
+#include "../x86/assemble.h"
+#include "../x86/interpret.h"
+
+typedef uint32_t native_type;
+#endif
 
 #include "r4300/recomph.h"
 #include "r4300/recomp.h"
@@ -37,85 +47,152 @@
  * They are declared 'extern' so that other files can do the same. */
 const uint16_t trunc_mode = 0xF3F;
 const uint16_t round_mode = 0x33F;
-const uint16_t ceil_mode = 0xB3F;
+const uint16_t ceil_mode  = 0xB3F;
 const uint16_t floor_mode = 0x73F;
 
 void genmfc1(void)
 {
 #ifdef INTERPRET_MFC1
-   gencallinterp((unsigned int)cached_interpreter_table.MFC1, 0);
+   gencallinterp((native_type)cached_interpreter_table.MFC1, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
+   mov_xreg64_m64rel(RAX, (unsigned long long*)(&reg_cop1_simple[dst->f.r.nrd]));
+   mov_reg32_preg64(EBX, RAX);
+   mov_m32rel_xreg32((uint32_t*)dst->f.r.rt, EBX);
+   sar_reg32_imm8(EBX, 31);
+   mov_m32rel_xreg32(((uint32_t*)dst->f.r.rt)+1, EBX);
+#else
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.r.nrd]));
    mov_reg32_preg32(EBX, EAX);
    mov_m32_reg32((unsigned int*)dst->f.r.rt, EBX);
    sar_reg32_imm8(EBX, 31);
    mov_m32_reg32(((unsigned int*)dst->f.r.rt)+1, EBX);
 #endif
+#endif
 }
 
 void gendmfc1(void)
 {
 #ifdef INTERPRET_DMFC1
-   gencallinterp((unsigned int)cached_interpreter_table.DMFC1, 0);
+   gencallinterp((native_type)cached_interpreter_table.DMFC1, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
+   mov_xreg64_m64rel(RAX, (unsigned long long *) (&reg_cop1_double[dst->f.r.nrd]));
+   mov_reg32_preg64(EBX, RAX);
+   mov_reg32_preg64pimm32(ECX, RAX, 4);
+   mov_m32rel_xreg32((unsigned int*)dst->f.r.rt, EBX);
+   mov_m32rel_xreg32(((unsigned int*)dst->f.r.rt)+1, ECX);
+#else
    mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.r.nrd]));
    mov_reg32_preg32(EBX, EAX);
    mov_reg32_preg32pimm32(ECX, EAX, 4);
    mov_m32_reg32((unsigned int*)dst->f.r.rt, EBX);
    mov_m32_reg32(((unsigned int*)dst->f.r.rt)+1, ECX);
 #endif
+#endif
 }
 
 void gencfc1(void)
 {
 #ifdef INTERPRET_CFC1
-   gencallinterp((unsigned int)cached_interpreter_table.CFC1, 0);
+   gencallinterp((native_type)cached_interpreter_table.CFC1, 0);
 #else
    gencheck_cop1_unusable();
-   if(dst->f.r.nrd == 31) mov_eax_memoffs32((unsigned int*)&FCR31);
-   else mov_eax_memoffs32((unsigned int*)&FCR0);
+#ifdef __x86_64__
+   if(dst->f.r.nrd == 31)
+      mov_xreg32_m32rel(EAX, (unsigned int*)&FCR31);
+   else
+      mov_xreg32_m32rel(EAX, (unsigned int*)&FCR0);
+   mov_m32rel_xreg32((unsigned int*)dst->f.r.rt, EAX);
+   sar_reg32_imm8(EAX, 31);
+   mov_m32rel_xreg32(((unsigned int*)dst->f.r.rt)+1, EAX);
+#else
+   if(dst->f.r.nrd == 31)
+      mov_eax_memoffs32((unsigned int*)&FCR31);
+   else
+      mov_eax_memoffs32((unsigned int*)&FCR0);
    mov_memoffs32_eax((unsigned int*)dst->f.r.rt);
    sar_reg32_imm8(EAX, 31);
    mov_memoffs32_eax(((unsigned int*)dst->f.r.rt)+1);
+#endif
 #endif
 }
 
 void genmtc1(void)
 {
 #ifdef INTERPRET_MTC1
-   gencallinterp((unsigned int)cached_interpreter_table.MTC1, 0);
+   gencallinterp((native_type)cached_interpreter_table.MTC1, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
+   mov_xreg32_m32rel(EAX, (unsigned int*)dst->f.r.rt);
+   mov_xreg64_m64rel(RBX, (unsigned long long *)(&reg_cop1_simple[dst->f.r.nrd]));
+   mov_preg64_reg32(RBX, EAX);
+#else
    mov_eax_memoffs32((unsigned int*)dst->f.r.rt);
    mov_reg32_m32(EBX, (unsigned int*)(&reg_cop1_simple[dst->f.r.nrd]));
    mov_preg32_reg32(EBX, EAX);
+#endif
 #endif
 }
 
 void gendmtc1(void)
 {
 #ifdef INTERPRET_DMTC1
-   gencallinterp((unsigned int)cached_interpreter_table.DMTC1, 0);
+   gencallinterp((native_type)cached_interpreter_table.DMTC1, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
+   mov_xreg32_m32rel(EAX, (unsigned int*)dst->f.r.rt);
+   mov_xreg32_m32rel(EBX, ((unsigned int*)dst->f.r.rt)+1);
+   mov_xreg64_m64rel(RDX, (unsigned long long *)(&reg_cop1_double[dst->f.r.nrd]));
+   mov_preg64_reg32(RDX, EAX);
+   mov_preg64pimm32_reg32(RDX, 4, EBX);
+#else
    mov_eax_memoffs32((unsigned int*)dst->f.r.rt);
    mov_reg32_m32(EBX, ((unsigned int*)dst->f.r.rt)+1);
    mov_reg32_m32(EDX, (unsigned int*)(&reg_cop1_double[dst->f.r.nrd]));
    mov_preg32_reg32(EDX, EAX);
    mov_preg32pimm32_reg32(EDX, 4, EBX);
 #endif
+#endif
 }
 
 void genctc1(void)
 {
 #ifdef INTERPRET_CTC1
-   gencallinterp((unsigned int)cached_interpreter_table.CTC1, 0);
+   gencallinterp((native_type)cached_interpreter_table.CTC1, 0);
 #else
    gencheck_cop1_unusable();
    
-   if (dst->f.r.nrd != 31) return;
+   if (dst->f.r.nrd != 31)
+      return;
+#ifdef __x86_64__
+   mov_xreg32_m32rel(EAX, (unsigned int*)dst->f.r.rt);
+   mov_m32rel_xreg32((unsigned int*)&FCR31, EAX);
+   and_eax_imm32(3);
+   
+   cmp_eax_imm32(0);
+   jne_rj(13);
+   mov_m32rel_imm32((unsigned int*)&rounding_mode, 0x33F); // 11
+   jmp_imm_short(51); // 2
+   
+   cmp_eax_imm32(1); // 5
+   jne_rj(13); // 2
+   mov_m32rel_imm32((unsigned int*)&rounding_mode, 0xF3F); // 11
+   jmp_imm_short(31); // 2
+   
+   cmp_eax_imm32(2); // 5
+   jne_rj(13); // 2
+   mov_m32rel_imm32((unsigned int*)&rounding_mode, 0xB3F); // 11
+   jmp_imm_short(11); // 2
+   
+   mov_m32rel_imm32((unsigned int*)&rounding_mode, 0x73F); // 11
+   
+   fldcw_m16rel((unsigned short*)&rounding_mode);
+#else
    mov_eax_memoffs32((unsigned int*)dst->f.r.rt);
    mov_memoffs32_eax((unsigned int*)&FCR31);
    and_eax_imm32(3);
@@ -139,5 +216,5 @@ void genctc1(void)
    
    fldcw_m16((unsigned short*)&rounding_mode);
 #endif
+#endif
 }
-

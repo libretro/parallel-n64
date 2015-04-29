@@ -127,6 +127,7 @@ ifdef WITH_DYNAREC
 		CPUFLAGS += -msse -msse2 -DUSE_MMX_DECODES -DUSE_SSE_SUPPORT
 		SOURCES_C += $(CORE_DIR)/src/r4300/hacktarux_dynarec/gbc.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop0.c \
+						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop1.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/regcache.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/rjump.c
 		SOURCES_C += $(wildcard $(CORE_DIR)/src/r4300/$(WITH_DYNAREC)/*.c)
