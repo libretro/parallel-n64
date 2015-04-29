@@ -59,9 +59,7 @@ static void *opaddr_recompiled[564];
 
 static disassemble_info dis_info;
 
-#define CHECK_MEM(address) \
-   if (!invalid_code[(address) >> 12] && blocks[(address) >> 12]->block[((address) & 0xFFF) / 4].ops != current_instruction_table.NOTCOMPILED) \
-     invalid_code[(address) >> 12] = 1;
+#define CHECK_MEM(address) invalidate_r4300_cached_code(address, 4);
 
 static void process_opcode_out(void *strm, const char *fmt, ...){
   va_list ap;
