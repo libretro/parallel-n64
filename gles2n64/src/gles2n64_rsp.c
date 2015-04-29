@@ -13,6 +13,7 @@
 #include "DepthBuffer.h"
 #include "GBI.h"
 #include "gSP.h"
+#include "Turbo3D.h"
 #include "Textures.h"
 
 RSPInfo     __RSP;
