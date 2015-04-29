@@ -30,13 +30,17 @@ ifeq ($(platform),)
 	endif
 endif
 
-ifneq ($(platform), emscripten)
-	ifeq ($(firstword $(filter x86_64,$(UNAME))),x86_64)
-		WITH_DYNAREC=x86_64
-	endif
-	ifeq ($(firstword $(filter amd64,$(UNAME))),amd64)
-		WITH_DYNAREC=x86_64
-	endif
+# Cross compile ?
+
+ifeq (,$(ARCH))
+	ARCH = $(shell uname -m)
+endif
+
+# Target Dynarec
+WITH_DYNAREC = $(ARCH)
+
+ifeq ($(ARCH), $(filter $(ARCH), i386 i686))
+	WITH_DYNAREC = x86
 endif
 
 TARGET_NAME := mupen64plus
