@@ -34,7 +34,7 @@
 void genadd_s(void)
 {
 #ifdef INTERPRET_ADD_S
-    gencallinterp((uint64_t)cached_interpreter_table.ADD_S, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.ADD_S, 0);
 #else
    gencheck_cop1_unusable();
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fs]));
@@ -49,7 +49,7 @@ void genadd_s(void)
 void gensub_s(void)
 {
 #ifdef INTERPRET_SUB_S
-    gencallinterp((uint64_t)cached_interpreter_table.SUB_S, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.SUB_S, 0);
 #else
    gencheck_cop1_unusable();
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fs]));
@@ -64,7 +64,7 @@ void gensub_s(void)
 void genmul_s(void)
 {
 #ifdef INTERPRET_MUL_S
-    gencallinterp((uint64_t)cached_interpreter_table.MUL_S, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.MUL_S, 0);
 #else
    gencheck_cop1_unusable();
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fs]));
@@ -79,7 +79,7 @@ void genmul_s(void)
 void gendiv_s(void)
 {
 #ifdef INTERPRET_DIV_S
-    gencallinterp((uint64_t)cached_interpreter_table.DIV_S, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.DIV_S, 0);
 #else
    gencheck_cop1_unusable();
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fs]));

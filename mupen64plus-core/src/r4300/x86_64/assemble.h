@@ -80,49 +80,49 @@ void add_jump(unsigned int pc_addr, unsigned int mi_addr, unsigned int absolute6
 
 static INLINE void put8(unsigned char octet)
 {
-  (*inst_pointer)[code_length] = octet;
-  code_length++;
-  if (code_length == max_code_length)
-  {
-    *inst_pointer = realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
-    max_code_length += 8192;
-  }
+   (*inst_pointer)[code_length] = octet;
+   code_length++;
+   if (code_length == max_code_length)
+   {
+      *inst_pointer = realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
+      max_code_length += 8192;
+   }
 }
 
 static INLINE void put32(unsigned int dword)
 {
-  if ((code_length + 4) >= max_code_length)
-  {
-    *inst_pointer = realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
-    max_code_length += 8192;
-  }
-  *((unsigned int *) (*inst_pointer + code_length)) = dword;
-  code_length += 4;
+   if ((code_length + 4) >= max_code_length)
+   {
+      *inst_pointer = realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
+      max_code_length += 8192;
+   }
+   *((unsigned int *) (*inst_pointer + code_length)) = dword;
+   code_length += 4;
 }
 
 static INLINE void put64(unsigned long long qword)
 {
-  if ((code_length + 8) >= max_code_length)
-  {
-    *inst_pointer = realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
-    max_code_length += 8192;
-  }
-  *((unsigned long long *) (*inst_pointer + code_length)) = qword;
-  code_length += 8;
+   if ((code_length + 8) >= max_code_length)
+   {
+      *inst_pointer = realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
+      max_code_length += 8192;
+   }
+   *((unsigned long long *) (*inst_pointer + code_length)) = qword;
+   code_length += 8;
 }
 
 static INLINE int rel_r15_offset(void *dest, const char *op_name)
 {
-    /* calculate the destination pointer's offset from the base of the r4300 registers */
-    long long rel_offset = (long long) ((unsigned char *) dest - (unsigned char *) reg);
+   /* calculate the destination pointer's offset from the base of the r4300 registers */
+   long long rel_offset = (long long) ((unsigned char *) dest - (unsigned char *) reg);
 
-    if (llabs(rel_offset) > 0x7fffffff)
-    {
-        DebugMessage(M64MSG_ERROR, "Error: destination %p more than 2GB away from r15 base %p in %s()", dest, reg, op_name);
-        OSAL_BREAKPOINT_INTERRUPT;
-    }
+   if (llabs(rel_offset) > 0x7fffffff)
+   {
+      DebugMessage(M64MSG_ERROR, "Error: destination %p more than 2GB away from r15 base %p in %s()", dest, reg, op_name);
+      OSAL_BREAKPOINT_INTERRUPT;
+   }
 
-    return (int) rel_offset;
+   return (int) rel_offset;
 }
 
 static INLINE void mov_memoffs32_eax(unsigned int *memoffs32)

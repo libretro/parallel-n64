@@ -73,8 +73,8 @@ static INLINE void put8(unsigned char octet)
    code_length++;
    if (code_length == max_code_length)
    {
-     *inst_pointer = (unsigned char *) realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
-     max_code_length += 8192;
+      *inst_pointer = (unsigned char *) realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
+      max_code_length += 8192;
    }
 }
 
@@ -82,8 +82,8 @@ static INLINE void put32(unsigned int dword)
 {
    if ((code_length+4) >= max_code_length)
    {
-     *inst_pointer = (unsigned char *) realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
-     max_code_length += 8192;
+      *inst_pointer = (unsigned char *) realloc_exec(*inst_pointer, max_code_length, max_code_length+8192);
+      max_code_length += 8192;
    }
    *((unsigned int *)(&(*inst_pointer)[code_length])) = dword;
    code_length+=4;

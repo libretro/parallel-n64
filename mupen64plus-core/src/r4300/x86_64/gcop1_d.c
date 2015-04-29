@@ -33,7 +33,7 @@
 void genadd_d(void)
 {
 #ifdef INTERPRET_ADD_D
-    gencallinterp((uint64_t)cached_interpreter_table.ADD_D, 0);
+   gencallinterp((uint64_t)cached_interpreter_table.ADD_D, 0);
 #else
    gencheck_cop1_unusable();
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
