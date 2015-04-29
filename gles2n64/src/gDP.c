@@ -618,6 +618,7 @@ bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
 //
 void gDPLoadTile32b(u32 uls, u32 ult, u32 lrs, u32 lrt)
 {
+   u32 i, j;
 	const u32 width = lrs - uls + 1;
 	const u32 height = lrt - ult + 1;
 	const u32 line = gDP.loadTile->line << 2;
@@ -627,17 +628,20 @@ void gDPLoadTile32b(u32 uls, u32 ult, u32 lrs, u32 lrt)
 	u16 * tmem16 = (u16*)TMEM;
 	u32 c, ptr, tline, s, xorval;
 
-	for (u32 j = 0; j < height; ++j) {
-		tline = tbase + line * j;
-		s = ((j + ult) * gDP.textureImage.width) + uls;
-		xorval = (j & 1) ? 3 : 1;
-		for (u32 i = 0; i < width; ++i) {
-			c = src[addr + s + i];
-			ptr = ((tline + i) ^ xorval) & 0x3ff;
-			tmem16[ptr] = c >> 16;
-			tmem16[ptr | 0x400] = c & 0xffff;
-		}
-	}
+	for (j = 0; j < height; ++j)
+   {
+      tline = tbase + line * j;
+      s = ((j + ult) * gDP.textureImage.width) + uls;
+      xorval = (j & 1) ? 3 : 1;
+
+      for (i = 0; i < width; ++i)
+      {
+         c = src[addr + s + i];
+         ptr = ((tline + i) ^ xorval) & 0x3ff;
+         tmem16[ptr] = c >> 16;
+         tmem16[ptr | 0x400] = c & 0xffff;
+      }
+   }
 }
 
 void gDPLoadTile(u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt)
@@ -691,18 +695,22 @@ void gDPLoadTile(u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt)
 
 	if (gDP.loadTile->size == G_IM_SIZ_32b)
 		gDPLoadTile32b(gDP.loadTile->uls, gDP.loadTile->ult, gDP.loadTile->lrs, gDP.loadTile->lrt);
-	else {
-		u64 * dest = &TMEM[gDP.loadTile->tmem];
-		u8 * src = &gfx_info.RDRAM[address];
-		const u32 line = gDP.loadTile->line;
-		for (u32 y = 0; y < height; ++y) {
-			UnswapCopy(src, dest, bpl);
-			if (y & 1) DWordInterleave(dest, line);
+	else
+   {
+      u32 y;
+      u64 * dest = &TMEM[gDP.loadTile->tmem];
+      u8 * src = &gfx_info.RDRAM[address];
+      const u32 line = gDP.loadTile->line;
+      for (y = 0; y < height; ++y)
+      {
+         UnswapCopy(src, dest, bpl);
+         if (y & 1)
+            DWordInterleave(dest, line);
 
-			src += gDP.textureImage.bpl;
-			dest += line;
-		}
-	}
+         src += gDP.textureImage.bpl;
+         dest += line;
+      }
+   }
 #ifdef DEBUG
 		DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPLoadTile( %i, %i, %i, %i, %i );\n",
 			tile, gDP.loadTile->uls, gDP.loadTile->ult, gDP.loadTile->lrs, gDP.loadTile->lrt );
@@ -727,37 +735,43 @@ void gDPLoadBlock32(u32 uls,u32 lrs, u32 dxt)
 	else if (width & 7)
 		width = (width & (~7)) + 8;
 
-	if (dxt != 0) {
+	if (dxt != 0)
+   {
+      u32 i;
 		u32 j = 0;
 		u32 t = 0;
 		u32 oldt = 0;
 		u32 ptr;
 
 		u32 c = 0;
-		for (u32 i = 0; i < width; i += 2) {
-			oldt = t;
-			t = ((j >> 11) & 1) ? 3 : 1;
-			if (t != oldt)
-				i += line;
-			ptr = ((tb + i) ^ t) & 0x3ff;
-			c = src[addr + i];
-			tmem16[ptr] = c >> 16;
-			tmem16[ptr | 0x400] = c & 0xffff;
-			ptr = ((tb + i + 1) ^ t) & 0x3ff;
-			c = src[addr + i + 1];
-			tmem16[ptr] = c >> 16;
-			tmem16[ptr | 0x400] = c & 0xffff;
-			j += dxt;
-		}
-	} else {
-		u32 c, ptr;
-		for (u32 i = 0; i < width; i++) {
-			ptr = ((tb + i) ^ 1) & 0x3ff;
-			c = src[addr + i];
-			tmem16[ptr] = c >> 16;
-			tmem16[ptr | 0x400] = c & 0xffff;
-		}
+		for (i = 0; i < width; i += 2)
+      {
+         oldt = t;
+         t = ((j >> 11) & 1) ? 3 : 1;
+         if (t != oldt)
+            i += line;
+         ptr = ((tb + i) ^ t) & 0x3ff;
+         c = src[addr + i];
+         tmem16[ptr] = c >> 16;
+         tmem16[ptr | 0x400] = c & 0xffff;
+         ptr = ((tb + i + 1) ^ t) & 0x3ff;
+         c = src[addr + i + 1];
+         tmem16[ptr] = c >> 16;
+         tmem16[ptr | 0x400] = c & 0xffff;
+         j += dxt;
+      }
 	}
+   else
+   {
+      u32 c, ptr, i;
+      for (i = 0; i < width; i++)
+      {
+         ptr = ((tb + i) ^ 1) & 0x3ff;
+         c = src[addr + i];
+         tmem16[ptr] = c >> 16;
+         tmem16[ptr | 0x400] = c & 0xffff;
+      }
+   }
 }
 
 void gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
@@ -814,19 +828,22 @@ void gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
 		u64* src = (u64*)&gfx_info.RDRAM[address];
 		u64* dest = &TMEM[gDP.loadTile->tmem];
 
-		if (dxt > 0) {
-			u32 line = (2047 + dxt) / dxt;
-			u32 bpl = line << 3;
-			u32 height = bytes / bpl;
+		if (dxt > 0)
+      {
+         u32 y;
+         u32 line = (2047 + dxt) / dxt;
+         u32 bpl = line << 3;
+         u32 height = bytes / bpl;
 
-			for (u32 y = 0; y < height; ++y) {
-				UnswapCopy(src, dest, bpl);
-				if (y & 1) DWordInterleave(dest, line);
+         for (y = 0; y < height; ++y)
+         {
+            UnswapCopy(src, dest, bpl);
+            if (y & 1) DWordInterleave(dest, line);
 
-				src += line;
-				dest += line;
-			}
-		} else
+            src += line;
+            dest += line;
+         }
+      } else
 			UnswapCopy(src, dest, bytes);
 	}
 #ifdef DEBUG

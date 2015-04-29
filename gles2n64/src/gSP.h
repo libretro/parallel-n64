@@ -28,12 +28,6 @@
 
 #define CLIP_ALL    0x1F // CLIP_NEGX|CLIP_POSX|CLIP_NEGY|CLIP_POSY|CLIP_Z
 
-#define SC_POSITION             1
-#define SC_COLOR                2
-#define SC_TEXCOORD0            3
-#define SC_TEXCOORD1            4
-#define SC_NUMLIGHTS            5
-
 typedef struct
 {
     f32     x, y, z, w;
