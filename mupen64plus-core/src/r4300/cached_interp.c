@@ -70,8 +70,7 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
       if (cop1 && check_cop1_unusable()) return; \
       if (link_register != &reg[0]) \
       { \
-         *link_register=PC->addr + 8; \
-         sign_extended(*link_register); \
+         *link_register = SE32(PC->addr + 8); \
       } \
       if (!likely || take_jump) \
       { \
@@ -102,8 +101,7 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
       if (cop1 && check_cop1_unusable()) return; \
       if (link_register != &reg[0]) \
       { \
-         *link_register=PC->addr + 8; \
-         sign_extended(*link_register); \
+         *link_register = SE32(PC->addr + 8); \
       } \
       if (!likely || take_jump) \
       { \

@@ -26,43 +26,37 @@ DECLARE_INSTRUCTION(NOP)
 
 DECLARE_INSTRUCTION(SLL)
 {
-   rrd32 = (unsigned int)(rrt32) << rsa;
-   sign_extended(rrd);
+   rrd32 = SE32((uint32_t)(rrt32) << rsa);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SRL)
 {
-   rrd32 = (unsigned int)rrt32 >> rsa;
-   sign_extended(rrd);
+   rrd32 = SE32((uint32_t)rrt32 >> rsa);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SRA)
 {
-   rrd32 = (signed int)rrt32 >> rsa;
-   sign_extended(rrd);
+   rrd32 = SE32((int32_t)rrt32 >> rsa);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SLLV)
 {
-   rrd32 = (unsigned int)(rrt32) << (rrs32&0x1F);
-   sign_extended(rrd);
+   rrd32 = SE32((uint32_t)(rrt32) << (rrs32 & 0x1F));
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SRLV)
 {
-   rrd32 = (unsigned int)rrt32 >> (rrs32 & 0x1F);
-   sign_extended(rrd);
+   rrd32 = SE32((uint32_t)rrt32 >> (rrs32 & 0x1F));
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SRAV)
 {
-   rrd32 = (signed int)rrt32 >> (rrs32 & 0x1F);
-   sign_extended(rrd);
+   rrd32 = SE32((int32_t)rrt32 >> (rrs32 & 0x1F));
    ADD_TO_PC(1);
 }
 
@@ -127,8 +121,7 @@ DECLARE_INSTRUCTION(MULT)
    long long int temp;
    temp = rrs * rrt;
    hi = temp >> 32;
-   lo = temp;
-   sign_extended(lo);
+   lo = SE32(temp);
    ADD_TO_PC(1);
 }
 
@@ -137,8 +130,7 @@ DECLARE_INSTRUCTION(MULTU)
    unsigned long long int temp;
    temp = (unsigned int)rrs * (unsigned long long)((unsigned int)rrt);
    hi = (long long)temp >> 32;
-   lo = temp;
-   sign_extended(lo);
+   lo = SE32(temp);
    ADD_TO_PC(1);
 }
 
@@ -146,10 +138,8 @@ DECLARE_INSTRUCTION(DIV)
 {
    if (rrt32)
    {
-     lo = rrs32 / rrt32;
-     hi = rrs32 % rrt32;
-     sign_extended(lo);
-     sign_extended(hi);
+     lo = SE32(rrs32 / rrt32);
+     hi = SE32(rrs32 % rrt32);
    }
    else DebugMessage(M64MSG_ERROR, "DIV: divide by 0");
    ADD_TO_PC(1);
@@ -159,10 +149,8 @@ DECLARE_INSTRUCTION(DIVU)
 {
    if (rrt32)
    {
-     lo = (unsigned int)rrs32 / (unsigned int)rrt32;
-     hi = (unsigned int)rrs32 % (unsigned int)rrt32;
-     sign_extended(lo);
-     sign_extended(hi);
+     lo = SE32((uint32_t)rrs32 / (uint32_t)rrt32);
+     hi = SE32((uint32_t)rrs32 % (uint32_t)rrt32);
    }
    else DebugMessage(M64MSG_ERROR, "DIVU: divide by 0");
    ADD_TO_PC(1);
@@ -174,43 +162,43 @@ DECLARE_INSTRUCTION(DMULT)
    unsigned long long int result1, result2, result3, result4;
    unsigned long long int temp1, temp2, temp3, temp4;
    int sign = 0;
-   
+
    if (rrs < 0)
-     {
-    op2 = -rrs;
-    sign = 1 - sign;
-     }
+   {
+      op2 = -rrs;
+      sign = 1 - sign;
+   }
    else op2 = rrs;
    if (rrt < 0)
-     {
-    op4 = -rrt;
-    sign = 1 - sign;
-     }
+   {
+      op4 = -rrt;
+      sign = 1 - sign;
+   }
    else op4 = rrt;
-   
+
    op1 = op2 & 0xFFFFFFFF;
    op2 = (op2 >> 32) & 0xFFFFFFFF;
    op3 = op4 & 0xFFFFFFFF;
    op4 = (op4 >> 32) & 0xFFFFFFFF;
-   
+
    temp1 = op1 * op3;
    temp2 = (temp1 >> 32) + op1 * op4;
    temp3 = op2 * op3;
    temp4 = (temp3 >> 32) + op2 * op4;
-   
+
    result1 = temp1 & 0xFFFFFFFF;
    result2 = temp2 + (temp3 & 0xFFFFFFFF);
    result3 = (result2 >> 32) + temp4;
    result4 = (result3 >> 32);
-   
+
    lo = result1 | (result2 << 32);
    hi = (result3 & 0xFFFFFFFF) | (result4 << 32);
    if (sign)
-     {
-    hi = ~hi;
-    if (!lo) hi++;
-    else lo = ~lo + 1;
-     }
+   {
+      hi = ~hi;
+      if (!lo) hi++;
+      else lo = ~lo + 1;
+   }
    ADD_TO_PC(1);
 }
 
@@ -265,29 +253,25 @@ DECLARE_INSTRUCTION(DDIVU)
 
 DECLARE_INSTRUCTION(ADD)
 {
-   rrd32 = rrs32 + rrt32;
-   sign_extended(rrd);
+   rrd32 = SE32(rrs32 + rrt32);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(ADDU)
 {
-   rrd32 = rrs32 + rrt32;
-   sign_extended(rrd);
+   rrd32 = SE32(rrs32 + rrt32);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SUB)
 {
-   rrd32 = rrs32 - rrt32;
-   sign_extended(rrd);
+   rrd32 = SE32(rrs32 - rrt32);
    ADD_TO_PC(1);
 }
 
 DECLARE_INSTRUCTION(SUBU)
 {
-   rrd32 = rrs32 - rrt32;
-   sign_extended(rrd);
+   rrd32 = SE32(rrs32 - rrt32);
    ADD_TO_PC(1);
 }
 
