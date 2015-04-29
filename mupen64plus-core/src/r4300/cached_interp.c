@@ -18,6 +18,9 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+#include <stdint.h>
+#define __STDC_FORMAT_MACROS
+#include <string.h>
 
 #include "cached_interp.h"
 
@@ -586,21 +589,39 @@ void free_blocks(void)
 
 void invalidate_cached_code_hacktarux(uint32_t address, size_t size)
 {
-   size_t i;
-   size_t begin;
-   size_t end;
+    size_t i;
+    uint32_t addr;
+    uint32_t addr_max;
 
-   if (size == 0)
-   {
-      begin = 0;
-      end = 0xfffff;
-   }
-   else
-   {
-      begin = address >> 12;
-      end = (address+size-1) >> 12;
-   }
+    if (size == 0)
+    {
+        /* invalidate everthing */
+        memset(invalid_code, 1, 0x100000);
+    }
+    else
+    {
+        /* invalidate blocks (if necessary) */
+        addr_max = address+size;
 
-   for(i = begin; i <= end; ++i)
-      invalid_code[i] = 1;
+        for(addr = address; addr < addr_max; addr += 4)
+        {
+            i = (addr >> 12);
+
+            if (invalid_code[i] == 0)
+            {
+                if (blocks[i] == NULL
+                || blocks[i]->block[(addr & 0xfff) / 4].ops != current_instruction_table.NOTCOMPILED)
+                {
+                    invalid_code[i] = 1;
+                    /* go directly to next i */
+                    addr |= 0xffc;
+                }
+            }
+            else
+            {
+                /* go directly to next i */
+                addr |= 0xffc;
+            }
+        }
+    }
 }
