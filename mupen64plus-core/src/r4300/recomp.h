@@ -29,11 +29,7 @@
 #endif
 
 #include <stddef.h>
-#if defined(__x86_64__)
-  #include "x86_64/assemble_struct.h"
-#else
-  #include "x86/assemble_struct.h"
-#endif
+#include "hacktarux_dynarec/assemble_struct.h"
 
 typedef struct _precomp_instr
 {
