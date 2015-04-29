@@ -48,7 +48,7 @@ typedef struct _precomp_instr
       } i;
     struct
       {
-         unsigned int inst_index;
+         uint32_t inst_index;
       } j;
     struct
       {
