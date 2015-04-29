@@ -23,6 +23,7 @@
 #ifndef M64P_TYPES_H
 #define M64P_TYPES_H
 
+#include <stdint.h>
 #include <stddef.h>
 
 /* ----------------------------------------- */
@@ -141,8 +142,9 @@ typedef enum {
   M64CMD_ADVANCE_FRAME
 } m64p_command;
 
-typedef struct {
-  unsigned int address;
+typedef struct
+{
+  uint32_t     address;
   int          value;
 } m64p_cheat_code;
 
@@ -289,11 +291,12 @@ typedef enum {
 #define BPT_CLEAR_FLAG(a, b)  a.flags = (a.flags & (~b));
 #define BPT_TOGGLE_FLAG(a, b) a.flags = (a.flags ^ b);
 
-typedef struct _breakpoint {
-    unsigned int address; 
-    unsigned int endaddr;
-    unsigned int flags;
-    } breakpoint;
+typedef struct
+{
+   uint32_t address; 
+   uint32_t endaddr;
+   unsigned int flags;
+} breakpoint;
 
 /* ------------------------------------------------- */
 /* Structures and Types for Core Video Extension API */

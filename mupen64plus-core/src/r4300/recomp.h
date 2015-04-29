@@ -22,6 +22,8 @@
 #ifndef M64P_R4300_RECOMP_H
 #define M64P_R4300_RECOMP_H
 
+#include <stdint.h>
+
 #if defined(__LIBRETRO_WIN64__)
 #define __x86_64__
 #endif

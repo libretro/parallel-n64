@@ -58,7 +58,7 @@ static void exception_common(void)
    }
 }
 
-void TLB_refill_exception(unsigned int address, int w)
+void TLB_refill_exception(uint32_t address, int w)
 {
    int usual_handler = 0, i;
 
@@ -90,7 +90,7 @@ void TLB_refill_exception(unsigned int address, int w)
       g_cp0_regs[CP0_CAUSE_REG] &= ~0x80000000;
       g_cp0_regs[CP0_STATUS_REG] |= 0x2; //EXL=1
 
-      if (address >= 0x80000000 && address < 0xc0000000)
+      if (address >= UINT32_C(0x80000000) && address < UINT32_C(0xc0000000))
          usual_handler = 1;
       for (i=0; i<32; i++)
       {
