@@ -21,7 +21,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "assemble.h"
-#include "regcache.h"
+#include "../hacktarux_dynarec/regcache.h"
 #include "interpret.h"
 
 #include "api/debugger.h"

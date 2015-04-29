@@ -105,11 +105,10 @@ extern precomp_instr *dst; /* precomp_instr structure for instruction being reco
 extern int no_compiled_jump;
 
 #if defined(__x86_64__)
-  #include "x86_64/assemble.h"
-  #include "x86_64/regcache.h"
+#include "x86_64/assemble.h"
 #else
-  #include "x86/assemble.h"
-  #include "x86/regcache.h"
+#include "x86/assemble.h"
 #endif
+#include "hacktarux_dynarec/regcache.h"
 
 #endif /* M64P_R4300_RECOMP_H */

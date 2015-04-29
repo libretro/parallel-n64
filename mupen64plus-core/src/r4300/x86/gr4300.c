@@ -21,7 +21,7 @@
 
 #include "assemble.h"
 #include "interpret.h"
-#include "regcache.h"
+#include "../hacktarux_dynarec/regcache.h"
 
 #include "api/debugger.h"
 #include "main/main.h"
