@@ -24,15 +24,14 @@
 #define M64P_CORE_PROTOTYPES 1
 #include "../api/m64p_types.h"
 #include "../api/callbacks.h"
-#include "../main/main.h"
 #include "../main/rom.h"
 #include "../memory/memory.h"
 #include "../r4300/cached_interp.h"
 #include "../r4300/interupt.h"
 #include "../r4300/r4300.h"
 #include "../r4300/r4300_core.h"
+#include "../ri/rdram_detection_hack.h"
 #include "../ri/ri_controller.h"
-#include "../si/si_controller.h"
 
 #include <string.h>
 
@@ -110,12 +109,12 @@ static void dma_pi_write(struct pi_controller *pi)
 
    longueur = (pi->regs[PI_WR_LEN_REG] & 0xFFFFFF)+1;
    i = (pi->regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF;
-   longueur = (i + (int32_t)longueur) > g_rom_size ?
-      (g_rom_size - i) : longueur;
+   longueur = (i + (int32_t)longueur) > pi->cart_rom.rom_size ?
+      (pi->cart_rom.rom_size - i) : longueur;
    longueur = (pi->regs[PI_DRAM_ADDR_REG] + longueur) > 0x7FFFFF ?
       (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : longueur;
 
-   if (i>g_rom_size || pi->regs[PI_DRAM_ADDR_REG] > 0x7FFFFF)
+   if (i > pi->cart_rom.rom_size || pi->regs[PI_DRAM_ADDR_REG] > 0x7FFFFF)
    {
       pi->regs[PI_STATUS_REG] |= 3;
       update_count();
@@ -130,8 +129,8 @@ static void dma_pi_write(struct pi_controller *pi)
       {
          uint32_t rdram_address1 = pi->regs[PI_DRAM_ADDR_REG]+i+0x80000000;
          uint32_t rdram_address2 = pi->regs[PI_DRAM_ADDR_REG]+i+0xa0000000;
-         ((uint8_t*)g_rdram)[(pi->regs[PI_DRAM_ADDR_REG]+i)^S8]=
-            g_rom[(((pi->regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF)+i)^S8];
+         ((uint8_t*)pi->ri->rdram.dram)[(pi->regs[PI_DRAM_ADDR_REG]+i)^S8]=
+            pi->cart_rom.rom[(((pi->regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF)+i)^S8];
 
          if (!invalid_code[rdram_address1>>12])
          {
@@ -157,31 +156,16 @@ static void dma_pi_write(struct pi_controller *pi)
    {
       for (i=0; i<(int32_t)longueur; i++)
       {
-         ((uint8_t*)g_rdram)[(pi->regs[PI_DRAM_ADDR_REG]+i)^S8] =
-            g_rom[(((pi->regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF)+i)^S8];
+         ((uint8_t*)pi->ri->rdram.dram)[(pi->regs[PI_DRAM_ADDR_REG]+i)^S8] =
+            pi->cart_rom.rom[(((pi->regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF)+i)^S8];
       }
    }
 
-   // Set the RDRAM memory size when copying main ROM code
-   // (This is just a convenient way to run this code once at the beginning)
+   /* HACK: monitor PI DMA to trigger RDRAM size detection
+    * hack just before initial cart ROM loading. */
    if (pi->regs[PI_CART_ADDR_REG] == 0x10001000)
    {
-      switch (g_si.pif.cic.version)
-      {
-         case CIC_X101:
-         case CIC_X102:
-         case CIC_X103:
-         case CIC_X106:
-            {
-               pi->ri->rdram.dram[0x318/4] = pi->ri->rdram.dram_size;
-               break;
-            }
-         case CIC_X105:
-            {
-               pi->ri->rdram.dram[0x3f0/4] = pi->ri->rdram.dram_size;
-               break;
-            }
-      }
+      force_detected_rdram_size_hack();
    }
 
    pi->regs[PI_STATUS_REG] |= 3;
