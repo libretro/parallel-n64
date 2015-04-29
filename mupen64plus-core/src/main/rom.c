@@ -94,31 +94,28 @@ static int is_valid_rom(const unsigned char *buffer)
  */
 static void swap_copy_rom(void* dst, const void* src, size_t len, unsigned char* imagetype)
 {
-    if (memcmp(src, V64_SIGNATURE, sizeof(V64_SIGNATURE)) == 0)
+    if (*(const uint8_t*) src == 0x37)
     {
-        *imagetype = V64IMAGE;
-        /* .v64 images have byte-swapped half-words (16-bit). */
-        size_t i;
-        const uint16_t* src16 = (const uint16_t*) src;
-        uint16_t* dst16 = (uint16_t*) dst;
-        for (i = 0; i < len; i += 2)
-        {
-            *dst16++ = m64p_swap16(*src16++);
-        }
+       *imagetype = V64IMAGE;
+       /* .v64 images have byte-swapped half-words (16-bit). */
+       size_t i;
+       const uint16_t* src16 = (const uint16_t*) src;
+       uint16_t* dst16 = (uint16_t*) dst;
+       for (i = 0; i < len; i += 2)
+          *dst16++ = m64p_swap16(*src16++);
     }
-    else if (memcmp(src, N64_SIGNATURE, sizeof(N64_SIGNATURE)) == 0)
+    else if (*(const uint8_t*) src == 0x40)
     {
-        *imagetype = N64IMAGE;
-        /* .n64 images have byte-swapped words (32-bit). */
-        size_t i;
-        const uint32_t* src32 = (const uint32_t*) src;
-        uint32_t* dst32 = (uint32_t*) dst;
-        for (i = 0; i < len; i += 4)
-        {
-            *dst32++ = m64p_swap32(*src32++);
-        }
+       *imagetype = N64IMAGE;
+       /* .n64 images have byte-swapped words (32-bit). */
+       size_t i;
+       const uint32_t* src32 = (const uint32_t*) src;
+       uint32_t* dst32 = (uint32_t*) dst;
+       for (i = 0; i < len; i += 4)
+          *dst32++ = m64p_swap32(*src32++);
     }
-    else {
+    else
+    {
         *imagetype = Z64IMAGE;
         memcpy(dst, src, len);
     }
