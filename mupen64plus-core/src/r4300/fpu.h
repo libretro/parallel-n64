@@ -175,18 +175,18 @@ static INLINE int32_t m64p_fesetround(int32_t __round)
 
 M64P_FPU_INLINE void set_rounding(void)
 {
-   switch(rounding_mode)
+   switch(FCR31 & 3)
    {
-      case 0x33F:
+      case 0: /* Round to nearest, or to even if equidistant */
          m64p_fesetround(FE_TONEAREST);
          break;
-      case 0xF3F:
+      case 1: /* Truncate (toward 0) */
          m64p_fesetround(FE_TOWARDZERO);
          break;
-      case 0xB3F:
+      case 2: /* Round up (toward +Inf) */
          m64p_fesetround(FE_UPWARD);
          break;
-      case 0x73F:
+      case 3: /* Round down (toward -Inf) */
          m64p_fesetround(FE_DOWNWARD);
          break;
    }
