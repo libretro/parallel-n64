@@ -27,7 +27,11 @@ typedef struct _reg_cache_struct
 {
    int need_map;
    void *needed_registers[8];
+#ifdef __x86_64__
    unsigned char jump_wrapper[84];
+#else
+   unsigned char jump_wrapper[62];
+#endif
    int need_cop1_check;
 } reg_cache_struct;
 

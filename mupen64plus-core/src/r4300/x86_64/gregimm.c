@@ -22,8 +22,13 @@
 
 #include <stdio.h>
 
-#include "assemble.h"
-#include "interpret.h"
+#ifdef __x86_64__
+#include "../x86_64/assemble.h"
+#include "../x86_64/interpret.h"
+#else
+#include "../x86/assemble.h"
+#include "../x86/interpret.h"
+#endif
 
 #include "r4300/cached_interp.h"
 #include "r4300/recomph.h"
