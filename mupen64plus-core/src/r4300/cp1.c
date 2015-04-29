@@ -49,7 +49,7 @@ uint32_t *r4300_cp1_fcr31(void)
    of MIPS R4000 Microprocessor User's Manual (Second Edition)
    by Joe Heinrich.
 */
-void shuffle_fpr_data(int oldStatus, int newStatus)
+void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus)
 {
 #if defined(M64P_BIG_ENDIAN)
    const int isBigEndian = 1;
@@ -57,13 +57,13 @@ void shuffle_fpr_data(int oldStatus, int newStatus)
    const int isBigEndian = 0;
 #endif
 
-   if ((newStatus & 0x04000000) != (oldStatus & 0x04000000))
+   if ((newStatus & UINT32_C(0x04000000)) != (oldStatus & UINT32_C(0x04000000)))
    {
       int i;
       int temp_fgr_32[32];
 
       // pack or unpack the FGR register data
-      if (newStatus & 0x04000000)
+      if (newStatus & UINT32_C(0x04000000))
       {   // switching into 64-bit mode
          // retrieve 32 FPR values from packed 32-bit FGR registers
          for (i = 0; i < 32; i++)
@@ -101,7 +101,7 @@ void shuffle_fpr_data(int oldStatus, int newStatus)
    }
 }
 
-void set_fpr_pointers(int newStatus)
+void set_fpr_pointers(uint32_t newStatus)
 {
    int i;
 #if defined(M64P_BIG_ENDIAN)
@@ -111,7 +111,7 @@ void set_fpr_pointers(int newStatus)
 #endif
 
    // update the FPR register pointers
-   if (newStatus & 0x04000000)
+   if (newStatus & UINT32_C(0x04000000))
    {
       for (i = 0; i < 32; i++)
       {
@@ -134,19 +134,19 @@ void set_fpr_pointers(int newStatus)
  * place for this. */
 void update_x86_rounding_mode(uint32_t FCR31)
 {
-    switch (FCR31 & 3)
-    {
-    case 0: /* Round to nearest, or to even if equidistant */
-        rounding_mode = UINT32_C(0x33F);
-        break;
-    case 1: /* Truncate (toward 0) */
-        rounding_mode = UINT32_C(0xF3F);
-        break;
-    case 2: /* Round up (toward +Inf) */
-        rounding_mode = UINT32_C(0xB3F);
-        break;
-    case 3: /* Round down (toward -Inf) */
-        rounding_mode = UINT32_C(0x73F);
-        break;
-    }
+   switch (FCR31 & 3)
+   {
+      case 0: /* Round to nearest, or to even if equidistant */
+         rounding_mode = UINT32_C(0x33F);
+         break;
+      case 1: /* Truncate (toward 0) */
+         rounding_mode = UINT32_C(0xF3F);
+         break;
+      case 2: /* Round up (toward +Inf) */
+         rounding_mode = UINT32_C(0xB3F);
+         break;
+      case 3: /* Round down (toward -Inf) */
+         rounding_mode = UINT32_C(0x73F);
+         break;
+   }
 }

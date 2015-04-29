@@ -64,17 +64,17 @@ void TLB_refill_exception(uint32_t address, int w)
 
    if (r4300emu != CORE_DYNAREC && w != 2) update_count();
    if (w == 1)
-      g_cp0_regs[CP0_CAUSE_REG] = (3 << 2);
+      g_cp0_regs[CP0_CAUSE_REG] = (UINT32_C(3) << 2);
    else
-      g_cp0_regs[CP0_CAUSE_REG] = (2 << 2);
+      g_cp0_regs[CP0_CAUSE_REG] = (UINT32_C(2) << 2);
    g_cp0_regs[CP0_BADVADDR_REG] = address;
-   g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG] & 0xFF80000F) | ((address >> 9) & 0x007FFFF0);
-   g_cp0_regs[CP0_ENTRYHI_REG] = address & 0xFFFFE000;
+   g_cp0_regs[CP0_CONTEXT_REG] = (g_cp0_regs[CP0_CONTEXT_REG] & UINT32_C(0xFF80000F)) | ((address >> 9) & UINT32_C(0x007FFFF0));
+   g_cp0_regs[CP0_ENTRYHI_REG] = address & UINT32_C(0xFFFFE000);
    if (g_cp0_regs[CP0_STATUS_REG] & 0x2) // Test de EXL
    {
       generic_jump_to(UINT32_C(0x80000180));
-      if(delay_slot==1 || delay_slot==3) g_cp0_regs[CP0_CAUSE_REG] |= 0x80000000;
-      else g_cp0_regs[CP0_CAUSE_REG] &= 0x7FFFFFFF;
+      if(delay_slot==1 || delay_slot==3) g_cp0_regs[CP0_CAUSE_REG] |= UINT32_C(0x80000000);
+      else g_cp0_regs[CP0_CAUSE_REG] &= UINT32_C(0x7FFFFFFF);
    }
    else
    {
@@ -87,8 +87,8 @@ void TLB_refill_exception(uint32_t address, int w)
       }
       else g_cp0_regs[CP0_EPC_REG] = PC->addr;
 
-      g_cp0_regs[CP0_CAUSE_REG] &= ~0x80000000;
-      g_cp0_regs[CP0_STATUS_REG] |= 0x2; //EXL=1
+      g_cp0_regs[CP0_CAUSE_REG] &= ~UINT32_C(0x80000000);
+      g_cp0_regs[CP0_STATUS_REG] |= UINT32_C(0x2); //EXL=1
 
       if (address >= UINT32_C(0x80000000) && address < UINT32_C(0xc0000000))
          usual_handler = 1;

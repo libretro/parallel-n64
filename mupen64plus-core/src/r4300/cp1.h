@@ -32,8 +32,8 @@ extern uint32_t rounding_mode;
 
 uint32_t* r4300_cp1_fcr31(void);
 
-void shuffle_fpr_data(int oldStatus, int newStatus);
-void set_fpr_pointers(int newStatus);
+void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus);
+void set_fpr_pointers(uint32_t newStatus);
 
 void update_x86_rounding_mode(uint32_t FCR31);
 
