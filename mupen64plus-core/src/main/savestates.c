@@ -43,7 +43,6 @@
 #include "../r4300/r4300.h"
 #include "../r4300/cp1.h"
 #include "../r4300/r4300_core.h"
-#include "../r4300/cached_interp.h"
 #include "../pi/pi_controller.h"
 #include "../r4300/new_dynarec/new_dynarec.h"
 #include "../rdp/rdp_core.h"
@@ -291,12 +290,8 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    else
 #endif
    {
-      if(r4300emu != CORE_PURE_INTERPRETER)
-      {
-         for (i = 0; i < 0x100000; i++)
-            invalid_code[i] = 1;
-      }
       generic_jump_to(GETDATA(curr, uint32_t)); /* PC */
+      invalidate_r4300_cached_code(0, 0);
    }
 
    next_interupt = GETDATA(curr, unsigned int);
@@ -544,10 +539,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
       PUTDATA(curr, uint32_t, pcaddr);
    else
 #endif
-      if (PC)
-         PUTDATA(curr, uint32_t, PC->addr);
-      else
-         return 0;
+   PUTDATA(curr, uint32_t, PC->addr);
 
    PUTDATA(curr, unsigned int, next_interupt);
    PUTDATA(curr, unsigned int, g_vi.next_vi);

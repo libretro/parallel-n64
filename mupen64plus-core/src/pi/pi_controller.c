@@ -25,8 +25,6 @@
 #include "../api/m64p_types.h"
 #include "../api/callbacks.h"
 #include "../memory/memory.h"
-#include "../r4300/cached_interp.h"
-#include "../r4300/r4300.h"
 #include "../r4300/r4300_core.h"
 #include "../ri/rdram_detection_hack.h"
 #include "../ri/ri_controller.h"
@@ -62,6 +60,10 @@ static void dma_pi_write(struct pi_controller *pi)
 {
    uint32_t longueur;
    int32_t i;
+   uint32_t dram_address;
+   uint32_t rom_address;
+   uint8_t* dram;
+   const uint8_t* rom;
 
    if (pi->regs[PI_CART_ADDR_REG] < 0x10000000)
    {
@@ -78,16 +80,6 @@ static void dma_pi_write(struct pi_controller *pi)
             dma_read_flashram(pi);
          }
       }
-#if 0
-      else if (pi->regs[PI_CART_ADDR_REG] >= 0x06000000
-            && pi->regs[PI_CART_ADDR_REG] < 0x08000000)
-      {
-      }
-      else
-      {
-         DebugMessage(M64MSG_WARNING, "Unknown dma write 0x%x in dma_pi_write()", (int32_t)pi->regs[PI_CART_ADDR_REG]);
-      }
-#endif
 
       pi->regs[PI_STATUS_REG] |= 1;
       update_count();
@@ -121,43 +113,16 @@ static void dma_pi_write(struct pi_controller *pi)
       return;
    }
 
-   if (r4300emu != CORE_PURE_INTERPRETER)
-   {
-      for (i=0; i<(int32_t)longueur; i++)
-      {
-         uint32_t rdram_address1 = pi->regs[PI_DRAM_ADDR_REG]+i+0x80000000;
-         uint32_t rdram_address2 = pi->regs[PI_DRAM_ADDR_REG]+i+0xa0000000;
-         ((uint8_t*)pi->ri->rdram.dram)[(pi->regs[PI_DRAM_ADDR_REG]+i)^S8]=
-            pi->cart_rom.rom[(((pi->regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF)+i)^S8];
+   dram_address = pi->regs[PI_DRAM_ADDR_REG];
+   rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x10000000) & 0x3ffffff;
+   dram = (uint8_t*)pi->ri->rdram.dram;
+   rom = pi->cart_rom.rom;
 
-         if (!invalid_code[rdram_address1>>12])
-         {
-            if (!blocks[rdram_address1>>12] ||
-                  blocks[rdram_address1>>12]->block[(rdram_address1&0xFFF)/4].ops !=
-                  current_instruction_table.NOTCOMPILED)
-               invalid_code[rdram_address1>>12] = 1;
-#ifdef NEW_DYNAREC
-            invalidate_block(rdram_address1>>12);
-#endif
-         }
+   for (i=0; i < longueur; i++)
+      dram[(dram_address+i)^S8] = rom[(rom_address+i)^S8];
 
-         if (!invalid_code[rdram_address2>>12])
-         {
-            if (!blocks[rdram_address1>>12] ||
-                  blocks[rdram_address2>>12]->block[(rdram_address2&0xFFF)/4].ops !=
-                  current_instruction_table.NOTCOMPILED)
-               invalid_code[rdram_address2>>12] = 1;
-         }
-      }
-   }
-   else
-   {
-      for (i=0; i<(int32_t)longueur; i++)
-      {
-         ((uint8_t*)pi->ri->rdram.dram)[(pi->regs[PI_DRAM_ADDR_REG]+i)^S8] =
-            pi->cart_rom.rom[(((pi->regs[PI_CART_ADDR_REG]-0x10000000)&0x3FFFFFF)+i)^S8];
-      }
-   }
+   invalidate_r4300_cached_code(0x80000000 + dram_address, longueur);
+   invalidate_r4300_cached_code(0xa0000000 + dram_address, longueur);
 
    /* HACK: monitor PI DMA to trigger RDRAM size detection
     * hack just before initial cart ROM loading. */
