@@ -247,6 +247,21 @@ int lru_register(void)
    return reg;
 }
 
+void set_register_state(int reg, unsigned int *addr, int _dirty, int _is64bits)
+{
+  if (addr == NULL)
+    last_access[reg] = NULL;
+  else
+    last_access[reg] = dst;
+  reg_content[reg]   = (uint64_t*) addr;
+#ifdef __x86_64__
+  is64bits[reg]      = _is64bits;
+#else
+  r64[reg]           = -1;
+#endif
+  dirty[reg]         = _dirty;
+}
+
 #if defined(__x86_64__)
 int lru_base_register(void) /* EBP cannot be used as a base register for SIB addressing byte */
 {
@@ -263,16 +278,6 @@ int lru_base_register(void) /* EBP cannot be used as a base register for SIB add
    return reg;
 }
 
-void set_register_state(int reg, unsigned int *addr, int _dirty, int _is64bits)
-{
-  if (addr == NULL)
-    last_access[reg] = NULL;
-  else
-    last_access[reg] = dst;
-  reg_content[reg] = (uint64_t*) addr;
-  is64bits[reg] = _is64bits;
-  dirty[reg] = _dirty;
-}
 
 int lock_register(int reg)
 {
@@ -1094,13 +1099,6 @@ int allocate_64_register2_w(unsigned int *addr)
    return reg2;
 }
 
-void set_register_state(int reg, unsigned int *addr, int d)
-{
-   last_access[reg] = dst;
-   reg_content[reg] = addr;
-   r64[reg] = -1;
-   dirty[reg] = d;
-}
 
 void set_64_register_state(int reg1, int reg2, unsigned int *addr, int d)
 {

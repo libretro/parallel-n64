@@ -1717,5 +1717,13 @@ static INLINE void shrd_reg32_reg32_cl(unsigned int reg1, unsigned int reg2)
    put8(0xC0 | (reg2 << 3) | reg1);
 }
 
+#ifndef __x86_64__
+static INLINE void or_reg32_reg32(unsigned int reg1, unsigned int reg2)
+{
+   put8(0x09);
+   put8(0xC0 | (reg2 << 3) | reg1);
+}
+#endif
+
 #endif /* __ASSEMBLE_H__ */
 

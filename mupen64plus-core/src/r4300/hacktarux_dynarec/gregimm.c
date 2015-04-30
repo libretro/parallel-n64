@@ -148,11 +148,13 @@ static void genbgez_test(void)
 
    if (rs_64bit == 0)
    {
+#ifdef __x86_64__
       int rs = allocate_register_32((unsigned int *)dst->f.i.rs);
       cmp_reg32_imm32(rs, 0);
-#ifdef __x86_64__
       setge_m8rel((unsigned char *) &branch_taken);
 #else
+      int rs = allocate_register((unsigned int*)dst->f.i.rs);
+      cmp_reg32_imm32(rs, 0);
       jl_rj(12);
       mov_m32_imm32((unsigned int *)(&branch_taken), 1); // 10
       jmp_imm_short(10); // 2
