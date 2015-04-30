@@ -207,9 +207,9 @@ static void uc2_tri1(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing)
       return;
 
-   v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
-   v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
-   v[2] = &rdp.vtx[(w0 >> 1) & 0x7F];
+   v[0] = &rdp.vtx[_SHIFTR(w0,  17, 7)];
+   v[1] = &rdp.vtx[_SHIFTR(w0,   9, 7)];
+   v[2] = &rdp.vtx[_SHIFTR(w0,   1, 7)];
 
    cull_trianglefaces(v, 1, true, true, 0);
 }
@@ -235,12 +235,12 @@ static void uc2_quad(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing)
       return;
 
-   v[0] = &rdp.vtx[(w0 >> 17) & 0x7F];
-   v[1] = &rdp.vtx[(w0 >> 9) & 0x7F];
-   v[2] = &rdp.vtx[(w0 >> 1) & 0x7F];
-   v[3] = &rdp.vtx[(w1 >> 17) & 0x7F];
-   v[4] = &rdp.vtx[(w1 >> 9) & 0x7F];
-   v[5] = &rdp.vtx[(w1 >> 1) & 0x7F];
+   v[0] = &rdp.vtx[_SHIFTR(w0, 17, 7)];
+   v[1] = &rdp.vtx[_SHIFTR(w0,  9, 7)];
+   v[2] = &rdp.vtx[_SHIFTR(w0,  1, 7)];
+   v[3] = &rdp.vtx[_SHIFTR(w1, 17, 7)];
+   v[4] = &rdp.vtx[_SHIFTR(w1,  9, 7)];
+   v[5] = &rdp.vtx[_SHIFTR(w1,  1, 7)];
 
    cull_trianglefaces(v, 2, true, true, 0);
 }
