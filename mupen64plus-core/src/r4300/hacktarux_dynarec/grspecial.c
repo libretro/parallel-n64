@@ -1,6 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - gspecial.c                                              *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Copyright (C) 2007 Richard Goedeken (Richard42)                       *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,10 +20,17 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <stdint.h>
 #include <stdio.h>
 
-#include "assemble.h"
-#include "../hacktarux_dynarec/interpret.h"
+#ifdef __x86_64__
+#include "../x86_64/assemble.h"
+typedef uint64_t native_type;
+#else
+#include "../x86/assemble.h"
+typedef uint32_t native_type;
+#endif
+#include "interpret.h"
 
 #include "r4300/cached_interp.h"
 #include "r4300/recomph.h"
@@ -32,13 +40,22 @@
 #include "r4300/cp0_private.h"
 #include "r4300/exception.h"
 
+#if !defined(offsetof)
+#   define offsetof(TYPE,MEMBER) ((unsigned int) &((TYPE*)0)->MEMBER)
+#endif
+
 void gensll(void)
 {
 #ifdef INTERPRET_SLL
-   gencallinterp((unsigned int)cached_interpreter_table.SLL, 0);
+   gencallinterp((native_type)cached_interpreter_table.SLL, 0);
+#else
+#ifdef __x86_64__
+   int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
+   int rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
 #else
    int rt = allocate_register((unsigned int *)dst->f.r.rt);
    int rd = allocate_register_w((unsigned int *)dst->f.r.rd);
+#endif
 
    mov_reg32_reg32(rd, rt);
    shl_reg32_imm8(rd, dst->f.r.sa);
@@ -48,10 +65,15 @@ void gensll(void)
 void gensrl(void)
 {
 #ifdef INTERPRET_SRL
-   gencallinterp((unsigned int)cached_interpreter_table.SRL, 0);
+   gencallinterp((native_type)cached_interpreter_table.SRL, 0);
+#else
+#ifdef __x86_64__
+   int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
+   int rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
 #else
    int rt = allocate_register((unsigned int *)dst->f.r.rt);
    int rd = allocate_register_w((unsigned int *)dst->f.r.rd);
+#endif
 
    mov_reg32_reg32(rd, rt);
    shr_reg32_imm8(rd, dst->f.r.sa);
@@ -61,10 +83,15 @@ void gensrl(void)
 void gensra(void)
 {
 #ifdef INTERPRET_SRA
-   gencallinterp((unsigned int)cached_interpreter_table.SRA, 0);
+   gencallinterp((native_type)cached_interpreter_table.SRA, 0);
+#else
+#ifdef __x86_64__
+   int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
+   int rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
 #else
    int rt = allocate_register((unsigned int *)dst->f.r.rt);
    int rd = allocate_register_w((unsigned int *)dst->f.r.rd);
+#endif
 
    mov_reg32_reg32(rd, rt);
    sar_reg32_imm8(rd, dst->f.r.sa);
@@ -74,13 +101,20 @@ void gensra(void)
 void gensllv(void)
 {
 #ifdef INTERPRET_SLLV
-   gencallinterp((unsigned int)cached_interpreter_table.SLLV, 0);
+   gencallinterp((native_type)cached_interpreter_table.SLLV, 0);
 #else
    int rt, rd;
+#ifdef __x86_64__
+   allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
+
+   rt = allocate_register_32((unsigned int *)dst->f.r.rt);
+   rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
+#else
    allocate_register_manually(ECX, (unsigned int *)dst->f.r.rs);
 
    rt = allocate_register((unsigned int *)dst->f.r.rt);
    rd = allocate_register_w((unsigned int *)dst->f.r.rd);
+#endif
 
    if (rd != ECX)
    {
@@ -101,13 +135,20 @@ void gensllv(void)
 void gensrlv(void)
 {
 #ifdef INTERPRET_SRLV
-   gencallinterp((unsigned int)cached_interpreter_table.SRLV, 0);
+   gencallinterp((native_type)cached_interpreter_table.SRLV, 0);
 #else
    int rt, rd;
+#ifdef __x86_64__
+   allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
+
+   rt = allocate_register_32((unsigned int *)dst->f.r.rt);
+   rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
+#else
    allocate_register_manually(ECX, (unsigned int *)dst->f.r.rs);
 
    rt = allocate_register((unsigned int *)dst->f.r.rt);
    rd = allocate_register_w((unsigned int *)dst->f.r.rd);
+#endif
 
    if (rd != ECX)
    {
@@ -128,13 +169,20 @@ void gensrlv(void)
 void gensrav(void)
 {
 #ifdef INTERPRET_SRAV
-   gencallinterp((unsigned int)cached_interpreter_table.SRAV, 0);
+   gencallinterp((native_type)cached_interpreter_table.SRAV, 0);
 #else
    int rt, rd;
+#ifdef __x86_64__
+   allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
+
+   rt = allocate_register_32((unsigned int *)dst->f.r.rt);
+   rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
+#else
    allocate_register_manually(ECX, (unsigned int *)dst->f.r.rs);
 
    rt = allocate_register((unsigned int *)dst->f.r.rt);
    rd = allocate_register_w((unsigned int *)dst->f.r.rd);
+#endif
 
    if (rd != ECX)
    {
@@ -155,7 +203,67 @@ void gensrav(void)
 void genjr(void)
 {
 #ifdef INTERPRET_JR
-   gencallinterp((unsigned int)cached_interpreter_table.JR, 1);
+   gencallinterp((native_type)cached_interpreter_table.JR, 1);
+#else
+#ifdef __x86_64__
+   static unsigned int precomp_instr_size = sizeof(precomp_instr);
+   unsigned int diff = (unsigned int) offsetof(precomp_instr, local_addr);
+   unsigned int diff_need = (unsigned int) offsetof(precomp_instr, reg_cache_infos.need_map);
+   unsigned int diff_wrap = (unsigned int) offsetof(precomp_instr, reg_cache_infos.jump_wrapper);
+
+   if (((dst->addr & 0xFFF) == 0xFFC && 
+            (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
+   {
+      gencallinterp((native_type)cached_interpreter_table.JR, 1);
+      return;
+   }
+
+   free_registers_move_start();
+
+   mov_xreg32_m32rel(EAX, (unsigned int *)dst->f.i.rs);
+   mov_m32rel_xreg32((unsigned int *)&local_rs, EAX);
+
+   gendelayslot();
+
+   mov_xreg32_m32rel(EAX, (unsigned int *)&local_rs);
+   mov_m32rel_xreg32((unsigned int *)&last_addr, EAX);
+
+   gencheck_interupt_reg();
+
+   mov_xreg32_m32rel(EAX, (unsigned int *)&local_rs);
+   mov_reg32_reg32(EBX, EAX);
+   and_eax_imm32(0xFFFFF000);
+   cmp_eax_imm32(dst_block->start & 0xFFFFF000);
+   je_near_rj(0);
+
+   jump_start_rel32();
+
+   mov_m32rel_xreg32(&jump_to_address, EBX);
+   mov_reg64_imm64(RAX, (unsigned long long) (dst+1));
+   mov_m64rel_xreg64((unsigned long long *)(&PC), RAX);
+   mov_reg64_imm64(RAX, (unsigned long long) jump_to_func);
+   call_reg64(RAX);  /* will never return from call */
+
+   jump_end_rel32();
+
+   mov_reg64_imm64(RSI, (unsigned long long) dst_block->block);
+   mov_reg32_reg32(EAX, EBX);
+   sub_eax_imm32(dst_block->start);
+   shr_reg32_imm8(EAX, 2);
+   mul_m32rel((unsigned int *)(&precomp_instr_size));
+
+   mov_reg32_preg64preg64pimm32(EBX, RAX, RSI, diff_need);
+   cmp_reg32_imm32(EBX, 1);
+   jne_rj(11);
+
+   add_reg32_imm32(EAX, diff_wrap); // 6
+   add_reg64_reg64(RAX, RSI); // 3
+   jmp_reg64(RAX); // 2
+
+   mov_reg32_preg64preg64pimm32(EBX, RAX, RSI, diff);
+   mov_rax_memoffs64((unsigned long long *) &dst_block->code);
+   add_reg64_reg64(RAX, RBX);
+   jmp_reg64(RAX);
 #else
    static unsigned int precomp_instr_size = sizeof(precomp_instr);
    unsigned int diff =
@@ -216,12 +324,79 @@ void genjr(void)
 
    jmp_reg32(EAX);
 #endif
+#endif
 }
 
 void genjalr(void)
 {
 #ifdef INTERPRET_JALR
-   gencallinterp((unsigned int)cached_interpreter_table.JALR, 0);
+   gencallinterp((native_type)cached_interpreter_table.JALR, 0);
+#else
+#ifdef __x86_64__
+   static unsigned int precomp_instr_size = sizeof(precomp_instr);
+   unsigned int diff = (unsigned int) offsetof(precomp_instr, local_addr);
+   unsigned int diff_need = (unsigned int) offsetof(precomp_instr, reg_cache_infos.need_map);
+   unsigned int diff_wrap = (unsigned int) offsetof(precomp_instr, reg_cache_infos.jump_wrapper);
+
+   if (((dst->addr & 0xFFF) == 0xFFC && 
+            (dst->addr < 0x80000000 || dst->addr >= 0xC0000000))||no_compiled_jump)
+   {
+      gencallinterp((native_type)cached_interpreter_table.JALR, 1);
+      return;
+   }
+
+   free_registers_move_start();
+
+   mov_xreg32_m32rel(EAX, (unsigned int *)dst->f.r.rs);
+   mov_m32rel_xreg32((unsigned int *)&local_rs, EAX);
+
+   gendelayslot();
+
+   mov_m32rel_imm32((unsigned int *)(dst-1)->f.r.rd, dst->addr+4);
+   if ((dst->addr+4) & 0x80000000)
+      mov_m32rel_imm32(((unsigned int *)(dst-1)->f.r.rd)+1, 0xFFFFFFFF);
+   else
+      mov_m32rel_imm32(((unsigned int *)(dst-1)->f.r.rd)+1, 0);
+
+   mov_xreg32_m32rel(EAX, (unsigned int *)&local_rs);
+   mov_m32rel_xreg32((unsigned int *)&last_addr, EAX);
+
+   gencheck_interupt_reg();
+
+   mov_xreg32_m32rel(EAX, (unsigned int *)&local_rs);
+   mov_reg32_reg32(EBX, EAX);
+   and_eax_imm32(0xFFFFF000);
+   cmp_eax_imm32(dst_block->start & 0xFFFFF000);
+   je_near_rj(0);
+
+   jump_start_rel32();
+
+   mov_m32rel_xreg32(&jump_to_address, EBX);
+   mov_reg64_imm64(RAX, (unsigned long long) (dst+1));
+   mov_m64rel_xreg64((unsigned long long *)(&PC), RAX);
+   mov_reg64_imm64(RAX, (unsigned long long) jump_to_func);
+   call_reg64(RAX);  /* will never return from call */
+
+   jump_end_rel32();
+
+   mov_reg64_imm64(RSI, (unsigned long long) dst_block->block);
+   mov_reg32_reg32(EAX, EBX);
+   sub_eax_imm32(dst_block->start);
+   shr_reg32_imm8(EAX, 2);
+   mul_m32rel((unsigned int *)(&precomp_instr_size));
+
+   mov_reg32_preg64preg64pimm32(EBX, RAX, RSI, diff_need);
+   cmp_reg32_imm32(EBX, 1);
+   jne_rj(11);
+
+   add_reg32_imm32(EAX, diff_wrap); // 6
+   add_reg64_reg64(RAX, RSI); // 3
+   jmp_reg64(RAX); // 2
+
+   mov_reg32_preg64preg64pimm32(EBX, RAX, RSI, diff);
+   mov_rax_memoffs64((unsigned long long *) &dst_block->code);
+   add_reg64_reg64(RAX, RBX);
+   jmp_reg64(RAX);
 #else
    static unsigned int precomp_instr_size = sizeof(precomp_instr);
    unsigned int diff =
@@ -288,17 +463,24 @@ void genjalr(void)
 
    jmp_reg32(EAX);
 #endif
+#endif
 }
 
 void gensyscall(void)
 {
 #ifdef INTERPRET_SYSCALL
-   gencallinterp((unsigned int)cached_interpreter_table.SYSCALL, 0);
+   gencallinterp((native_type)cached_interpreter_table.SYSCALL, 0);
+#else
+#ifdef __x86_64__
+   free_registers_move_start();
+
+   mov_m32rel_imm32(&g_cp0_regs[CP0_CAUSE_REG], 8 << 2);
 #else
    free_all_registers();
    simplify_access();
    mov_m32_imm32(&g_cp0_regs[CP0_CAUSE_REG], 8 << 2);
-   gencallinterp((unsigned int)exception_general, 0);
+#endif
+   gencallinterp((native_type)exception_general, 0);
 #endif
 }
 
@@ -309,7 +491,13 @@ void gensync(void)
 void genmfhi(void)
 {
 #ifdef INTERPRET_MFHI
-   gencallinterp((unsigned int)cached_interpreter_table.MFHI, 0);
+   gencallinterp((native_type)cached_interpreter_table.MFHI, 0);
+#else
+#ifdef __x86_64__
+   int rd = allocate_register_64_w((unsigned long long *) dst->f.r.rd);
+   int _hi = allocate_register_64((unsigned long long *) &hi);
+
+   mov_reg64_reg64(rd, _hi);
 #else
    int rd1 = allocate_64_register1_w((unsigned int*)dst->f.r.rd);
    int rd2 = allocate_64_register2_w((unsigned int*)dst->f.r.rd);
@@ -319,12 +507,19 @@ void genmfhi(void)
    mov_reg32_reg32(rd1, hi1);
    mov_reg32_reg32(rd2, hi2);
 #endif
+#endif
 }
 
 void genmthi(void)
 {
 #ifdef INTERPRET_MTHI
-   gencallinterp((unsigned int)cached_interpreter_table.MTHI, 0);
+   gencallinterp((native_type)cached_interpreter_table.MTHI, 0);
+#else
+#ifdef __x86_64__
+   int _hi = allocate_register_64_w((unsigned long long *) &hi);
+   int rs = allocate_register_64((unsigned long long *) dst->f.r.rs);
+
+   mov_reg64_reg64(_hi, rs);
 #else
    int hi1 = allocate_64_register1_w((unsigned int*)&hi);
    int hi2 = allocate_64_register2_w((unsigned int*)&hi);
@@ -334,12 +529,19 @@ void genmthi(void)
    mov_reg32_reg32(hi1, rs1);
    mov_reg32_reg32(hi2, rs2);
 #endif
+#endif
 }
 
 void genmflo(void)
 {
 #ifdef INTERPRET_MFLO
-   gencallinterp((unsigned int)cached_interpreter_table.MFLO, 0);
+   gencallinterp((native_type)cached_interpreter_table.MFLO, 0);
+#else
+#ifdef __x86_64__
+   int rd = allocate_register_64_w((unsigned long long *) dst->f.r.rd);
+   int _lo = allocate_register_64((unsigned long long *) &lo);
+
+   mov_reg64_reg64(rd, _lo);
 #else
    int rd1 = allocate_64_register1_w((unsigned int*)dst->f.r.rd);
    int rd2 = allocate_64_register2_w((unsigned int*)dst->f.r.rd);
@@ -349,12 +551,19 @@ void genmflo(void)
    mov_reg32_reg32(rd1, lo1);
    mov_reg32_reg32(rd2, lo2);
 #endif
+#endif
 }
 
 void genmtlo(void)
 {
 #ifdef INTERPRET_MTLO
-   gencallinterp((unsigned int)cached_interpreter_table.MTLO, 0);
+   gencallinterp((native_type)cached_interpreter_table.MTLO, 0);
+#else
+#ifdef __x86_64__
+   int _lo = allocate_register_64_w((unsigned long long *)&lo);
+   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
+
+   mov_reg64_reg64(_lo, rs);
 #else
    int lo1 = allocate_64_register1_w((unsigned int*)&lo);
    int lo2 = allocate_64_register2_w((unsigned int*)&lo);
@@ -364,12 +573,36 @@ void genmtlo(void)
    mov_reg32_reg32(lo1, rs1);
    mov_reg32_reg32(lo2, rs2);
 #endif
+#endif
 }
 
 void gendsllv(void)
 {
 #ifdef INTERPRET_DSLLV
-   gencallinterp((unsigned int)cached_interpreter_table.DSLLV, 0);
+   gencallinterp((native_type)cached_interpreter_table.DSLLV, 0);
+#else
+#ifdef __x86_64__
+   int rt, rd;
+   allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
+
+   rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   if (rd != ECX)
+   {
+      mov_reg64_reg64(rd, rt);
+      shl_reg64_cl(rd);
+   }
+   else
+   {
+      int temp;
+      temp = lru_register();
+      free_register(temp);
+
+      mov_reg64_reg64(temp, rt);
+      shl_reg64_cl(temp);
+      mov_reg64_reg64(rd, temp);
+   }
 #else
    int rt1, rt2, rd1, rd2;
    allocate_register_manually(ECX, (unsigned int *)dst->f.r.rs);
@@ -412,12 +645,36 @@ void gendsllv(void)
       mov_reg32_reg32(rd2, temp2);
    }
 #endif
+#endif
 }
 
 void gendsrlv(void)
 {
 #ifdef INTERPRET_DSRLV
-   gencallinterp((unsigned int)cached_interpreter_table.DSRLV, 0);
+   gencallinterp((native_type)cached_interpreter_table.DSRLV, 0);
+#else
+#ifdef __x86_64__
+   int rt, rd;
+   allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
+
+   rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   if (rd != ECX)
+   {
+      mov_reg64_reg64(rd, rt);
+      shr_reg64_cl(rd);
+   }
+   else
+   {
+      int temp;
+      temp = lru_register();
+      free_register(temp);
+
+      mov_reg64_reg64(temp, rt);
+      shr_reg64_cl(temp);
+      mov_reg64_reg64(rd, temp);
+   }
 #else
    int rt1, rt2, rd1, rd2;
    allocate_register_manually(ECX, (unsigned int *)dst->f.r.rs);
@@ -460,12 +717,36 @@ void gendsrlv(void)
       mov_reg32_reg32(rd2, temp2);
    }
 #endif
+#endif
 }
 
 void gendsrav(void)
 {
 #ifdef INTERPRET_DSRAV
-   gencallinterp((unsigned int)cached_interpreter_table.DSRAV, 0);
+   gencallinterp((native_type)cached_interpreter_table.DSRAV, 0);
+#else
+#ifdef __x86_64__
+   int rt, rd;
+   allocate_register_32_manually(ECX, (unsigned int *)dst->f.r.rs);
+
+   rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   if (rd != ECX)
+   {
+      mov_reg64_reg64(rd, rt);
+      sar_reg64_cl(rd);
+   }
+   else
+   {
+      int temp;
+      temp = lru_register();
+      free_register(temp);
+
+      mov_reg64_reg64(temp, rt);
+      sar_reg64_cl(temp);
+      mov_reg64_reg64(rd, temp);
+   }
 #else
    int rt1, rt2, rd1, rd2;
    allocate_register_manually(ECX, (unsigned int *)dst->f.r.rs);
@@ -508,18 +789,26 @@ void gendsrav(void)
       mov_reg32_reg32(rd2, temp2);
    }
 #endif
+#endif
 }
 
 void genmult(void)
 {
 #ifdef INTERPRET_MULT
-   gencallinterp((unsigned int)cached_interpreter_table.MULT, 0);
+   gencallinterp((native_type)cached_interpreter_table.MULT, 0);
 #else
    int rs, rt;
+#ifdef __x86_64__
+   allocate_register_32_manually_w(EAX, (unsigned int *)&lo); /* these must be done first so they are not assigned by allocate_register() */
+   allocate_register_32_manually_w(EDX, (unsigned int *)&hi);
+   rs = allocate_register_32((unsigned int*)dst->f.r.rs);
+   rt = allocate_register_32((unsigned int*)dst->f.r.rt);
+#else
    allocate_register_manually_w(EAX, (unsigned int *)&lo, 0);
    allocate_register_manually_w(EDX, (unsigned int *)&hi, 0);
    rs = allocate_register((unsigned int*)dst->f.r.rs);
    rt = allocate_register((unsigned int*)dst->f.r.rt);
+#endif
    mov_reg32_reg32(EAX, rs);
    imul_reg32(rt);
 #endif
@@ -528,13 +817,20 @@ void genmult(void)
 void genmultu(void)
 {
 #ifdef INTERPRET_MULTU
-   gencallinterp((unsigned int)cached_interpreter_table.MULTU, 0);
+   gencallinterp((native_type)cached_interpreter_table.MULTU, 0);
 #else
    int rs, rt;
+#ifdef __x86_64__
+   allocate_register_32_manually_w(EAX, (unsigned int *)&lo);
+   allocate_register_32_manually_w(EDX, (unsigned int *)&hi);
+   rs = allocate_register_32((unsigned int*)dst->f.r.rs);
+   rt = allocate_register_32((unsigned int*)dst->f.r.rt);
+#else
    allocate_register_manually_w(EAX, (unsigned int *)&lo, 0);
    allocate_register_manually_w(EDX, (unsigned int *)&hi, 0);
    rs = allocate_register((unsigned int*)dst->f.r.rs);
    rt = allocate_register((unsigned int*)dst->f.r.rt);
+#endif
    mov_reg32_reg32(EAX, rs);
    mul_reg32(rt);
 #endif
@@ -543,13 +839,20 @@ void genmultu(void)
 void gendiv(void)
 {
 #ifdef INTERPRET_DIV
-   gencallinterp((unsigned int)cached_interpreter_table.DIV, 0);
+   gencallinterp((native_type)cached_interpreter_table.DIV, 0);
 #else
    int rs, rt;
+#ifdef __x86_64__
+   allocate_register_32_manually_w(EAX, (unsigned int *)&lo);
+   allocate_register_32_manually_w(EDX, (unsigned int *)&hi);
+   rs = allocate_register_32((unsigned int*)dst->f.r.rs);
+   rt = allocate_register_32((unsigned int*)dst->f.r.rt);
+#else
    allocate_register_manually_w(EAX, (unsigned int *)&lo, 0);
    allocate_register_manually_w(EDX, (unsigned int *)&hi, 0);
    rs = allocate_register((unsigned int*)dst->f.r.rs);
    rt = allocate_register((unsigned int*)dst->f.r.rt);
+#endif
    cmp_reg32_imm32(rt, 0);
    je_rj((rs == EAX ? 0 : 2) + 1 + 2);
    mov_reg32_reg32(EAX, rs); // 0 or 2
@@ -561,13 +864,20 @@ void gendiv(void)
 void gendivu(void)
 {
 #ifdef INTERPRET_DIVU
-   gencallinterp((unsigned int)cached_interpreter_table.DIVU, 0);
+   gencallinterp((native_type)cached_interpreter_table.DIVU, 0);
 #else
    int rs, rt;
+#ifdef __x86_64__
+   allocate_register_32_manually_w(EAX, (unsigned int *)&lo);
+   allocate_register_32_manually_w(EDX, (unsigned int *)&hi);
+   rs = allocate_register_32((unsigned int*)dst->f.r.rs);
+   rt = allocate_register_32((unsigned int*)dst->f.r.rt);
+#else
    allocate_register_manually_w(EAX, (unsigned int *)&lo, 0);
    allocate_register_manually_w(EDX, (unsigned int *)&hi, 0);
    rs = allocate_register((unsigned int*)dst->f.r.rs);
    rt = allocate_register((unsigned int*)dst->f.r.rt);
+#endif
    cmp_reg32_imm32(rt, 0);
    je_rj((rs == EAX ? 0 : 2) + 2 + 2);
    mov_reg32_reg32(EAX, rs); // 0 or 2
@@ -578,13 +888,22 @@ void gendivu(void)
 
 void gendmult(void)
 {
-   gencallinterp((unsigned int)cached_interpreter_table.DMULT, 0);
+   gencallinterp((native_type)cached_interpreter_table.DMULT, 0);
 }
 
 void gendmultu(void)
 {
 #ifdef INTERPRET_DMULTU
-   gencallinterp((unsigned int)cached_interpreter_table.DMULTU, 0);
+   gencallinterp((native_type)cached_interpreter_table.DMULTU, 0);
+#else
+#ifdef __x86_64__
+   free_registers_move_start();
+
+   mov_xreg64_m64rel(RAX, (unsigned long long *) dst->f.r.rs);
+   mov_xreg64_m64rel(RDX, (unsigned long long *) dst->f.r.rt);
+   mul_reg64(RDX);
+   mov_m64rel_xreg64((unsigned long long *) &lo, RAX);
+   mov_m64rel_xreg64((unsigned long long *) &hi, RDX);
 #else
    free_all_registers();
    simplify_access();
@@ -618,22 +937,38 @@ void gendmultu(void)
    mov_memoffs32_eax((unsigned int *)(&hi));
    mov_m32_reg32((unsigned int *)(&hi)+1, EDX);
 #endif
+#endif
 }
 
 void genddiv(void)
 {
-   gencallinterp((unsigned int)cached_interpreter_table.DDIV, 0);
+   gencallinterp((native_type)cached_interpreter_table.DDIV, 0);
 }
 
 void genddivu(void)
 {
-   gencallinterp((unsigned int)cached_interpreter_table.DDIVU, 0);
+   gencallinterp((native_type)cached_interpreter_table.DDIVU, 0);
 }
 
 void genadd(void)
 {
 #ifdef INTERPRET_ADD
-   gencallinterp((unsigned int)cached_interpreter_table.ADD, 0);
+   gencallinterp((native_type)cached_interpreter_table.ADD, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_32((unsigned int *)dst->f.r.rs);
+   int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
+   int rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
+
+   if (rs == rd)
+      add_reg32_reg32(rd, rt);
+   else if (rt == rd)
+      add_reg32_reg32(rd, rs);
+   else
+   {
+      mov_reg32_reg32(rd, rs);
+      add_reg32_reg32(rd, rt);
+   }
 #else
    int rs = allocate_register((unsigned int *)dst->f.r.rs);
    int rt = allocate_register((unsigned int *)dst->f.r.rt);
@@ -652,13 +987,29 @@ void genadd(void)
       add_reg32_reg32(temp, rt);
       mov_reg32_reg32(rd, temp);
    }
+#endif
 #endif
 }
 
 void genaddu(void)
 {
 #ifdef INTERPRET_ADDU
-   gencallinterp((unsigned int)cached_interpreter_table.ADDU, 0);
+   gencallinterp((native_type)cached_interpreter_table.ADDU, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_32((unsigned int *)dst->f.r.rs);
+   int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
+   int rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
+
+   if (rs == rd)
+      add_reg32_reg32(rd, rt);
+   else if (rt == rd)
+      add_reg32_reg32(rd, rs);
+   else
+   {
+      mov_reg32_reg32(rd, rs);
+      add_reg32_reg32(rd, rt);
+   }
 #else
    int rs = allocate_register((unsigned int *)dst->f.r.rs);
    int rt = allocate_register((unsigned int *)dst->f.r.rt);
@@ -678,12 +1029,31 @@ void genaddu(void)
       mov_reg32_reg32(rd, temp);
    }
 #endif
+#endif
 }
 
 void gensub(void)
 {
 #ifdef INTERPRET_SUB
-   gencallinterp((unsigned int)cached_interpreter_table.SUB, 0);
+   gencallinterp((native_type)cached_interpreter_table.SUB, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_32((unsigned int *)dst->f.r.rs);
+   int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
+   int rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
+
+   if (rs == rd)
+      sub_reg32_reg32(rd, rt);
+   else if (rt == rd)
+   {
+      neg_reg32(rd);
+      add_reg32_reg32(rd, rs);
+   }
+   else
+   {
+      mov_reg32_reg32(rd, rs);
+      sub_reg32_reg32(rd, rt);
+   }
 #else
    int rs = allocate_register((unsigned int *)dst->f.r.rs);
    int rt = allocate_register((unsigned int *)dst->f.r.rt);
@@ -702,13 +1072,32 @@ void gensub(void)
       sub_reg32_reg32(temp, rt);
       mov_reg32_reg32(rd, temp);
    }
+#endif
 #endif
 }
 
 void gensubu(void)
 {
 #ifdef INTERPRET_SUBU
-   gencallinterp((unsigned int)cached_interpreter_table.SUBU, 0);
+   gencallinterp((native_type)cached_interpreter_table.SUBU, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_32((unsigned int *)dst->f.r.rs);
+   int rt = allocate_register_32((unsigned int *)dst->f.r.rt);
+   int rd = allocate_register_32_w((unsigned int *)dst->f.r.rd);
+
+   if (rs == rd)
+      sub_reg32_reg32(rd, rt);
+   else if (rt == rd)
+   {
+      neg_reg32(rd);
+      add_reg32_reg32(rd, rs);
+   }
+   else
+   {
+      mov_reg32_reg32(rd, rs);
+      sub_reg32_reg32(rd, rt);
+   }
 #else
    int rs = allocate_register((unsigned int *)dst->f.r.rs);
    int rt = allocate_register((unsigned int *)dst->f.r.rt);
@@ -728,12 +1117,28 @@ void gensubu(void)
       mov_reg32_reg32(rd, temp);
    }
 #endif
+#endif
 }
 
 void genand(void)
 {
 #ifdef INTERPRET_AND
-   gencallinterp((unsigned int)cached_interpreter_table.AND, 0);
+   gencallinterp((native_type)cached_interpreter_table.AND, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   if (rs == rd)
+      and_reg64_reg64(rd, rt);
+   else if (rt == rd)
+      and_reg64_reg64(rd, rs);
+   else
+   {
+      mov_reg64_reg64(rd, rs);
+      and_reg64_reg64(rd, rt);
+   }
 #else
    int rs1 = allocate_64_register1((unsigned int *)dst->f.r.rs);
    int rs2 = allocate_64_register2((unsigned int *)dst->f.r.rs);
@@ -761,12 +1166,28 @@ void genand(void)
       mov_reg32_reg32(rd2, temp);
    }
 #endif
+#endif
 }
 
 void genor(void)
 {
 #ifdef INTERPRET_OR
-   gencallinterp((unsigned int)cached_interpreter_table.OR, 0);
+   gencallinterp((native_type)cached_interpreter_table.OR, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   if (rs == rd)
+      or_reg64_reg64(rd, rt);
+   else if (rt == rd)
+      or_reg64_reg64(rd, rs);
+   else
+   {
+      mov_reg64_reg64(rd, rs);
+      or_reg64_reg64(rd, rt);
+   }
 #else
    int rs1 = allocate_64_register1((unsigned int *)dst->f.r.rs);
    int rs2 = allocate_64_register2((unsigned int *)dst->f.r.rs);
@@ -794,12 +1215,28 @@ void genor(void)
       mov_reg32_reg32(rd2, temp);
    }
 #endif
+#endif
 }
 
 void genxor(void)
 {
 #ifdef INTERPRET_XOR
-   gencallinterp((unsigned int)cached_interpreter_table.XOR, 0);
+   gencallinterp((native_type)cached_interpreter_table.XOR, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   if (rs == rd)
+      xor_reg64_reg64(rd, rt);
+   else if (rt == rd)
+      xor_reg64_reg64(rd, rs);
+   else
+   {
+      mov_reg64_reg64(rd, rs);
+      xor_reg64_reg64(rd, rt);
+   }
 #else
    int rs1 = allocate_64_register1((unsigned int *)dst->f.r.rs);
    int rs2 = allocate_64_register2((unsigned int *)dst->f.r.rs);
@@ -827,12 +1264,35 @@ void genxor(void)
       mov_reg32_reg32(rd2, temp);
    }
 #endif
+#endif
 }
 
 void gennor(void)
 {
 #ifdef INTERPRET_NOR
-   gencallinterp((unsigned int)cached_interpreter_table.NOR, 0);
+   gencallinterp((native_type)cached_interpreter_table.NOR, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   if (rs == rd)
+   {
+      or_reg64_reg64(rd, rt);
+      not_reg64(rd);
+   }
+   else if (rt == rd)
+   {
+      or_reg64_reg64(rd, rs);
+      not_reg64(rd);
+   }
+   else
+   {
+      mov_reg64_reg64(rd, rs);
+      or_reg64_reg64(rd, rt);
+      not_reg64(rd);
+   }
 #else
    int rs1 = allocate_64_register1((unsigned int *)dst->f.r.rs);
    int rs2 = allocate_64_register2((unsigned int *)dst->f.r.rs);
@@ -864,12 +1324,22 @@ void gennor(void)
       not_reg32(rd2);
    }
 #endif
+#endif
 }
 
 void genslt(void)
 {
 #ifdef INTERPRET_SLT
-   gencallinterp((unsigned int)cached_interpreter_table.SLT, 0);
+   gencallinterp((native_type)cached_interpreter_table.SLT, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   cmp_reg64_reg64(rs, rt);
+   setl_reg8(rd);
+   and_reg64_imm8(rd, 1);
 #else
    int rs1 = allocate_64_register1((unsigned int *)dst->f.r.rs);
    int rs2 = allocate_64_register2((unsigned int *)dst->f.r.rs);
@@ -886,12 +1356,22 @@ void genslt(void)
    jmp_imm_short(5); // 2
    mov_reg32_imm32(rd, 1); // 5
 #endif
+#endif
 }
 
 void gensltu(void)
 {
 #ifdef INTERPRET_SLTU
-   gencallinterp((unsigned int)cached_interpreter_table.SLTU, 0);
+   gencallinterp((native_type)cached_interpreter_table.SLTU, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   cmp_reg64_reg64(rs, rt);
+   setb_reg8(rd);
+   and_reg64_imm8(rd, 1);
 #else
    int rs1 = allocate_64_register1((unsigned int *)dst->f.r.rs);
    int rs2 = allocate_64_register2((unsigned int *)dst->f.r.rs);
@@ -908,12 +1388,28 @@ void gensltu(void)
    jmp_imm_short(5); // 2
    mov_reg32_imm32(rd, 1); // 5
 #endif
+#endif
 }
 
 void gendadd(void)
 {
 #ifdef INTERPRET_DADD
-   gencallinterp((unsigned int)cached_interpreter_table.DADD, 0);
+   gencallinterp((native_type)cached_interpreter_table.DADD, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   if (rs == rd)
+      add_reg64_reg64(rd, rt);
+   else if (rt == rd)
+      add_reg64_reg64(rd, rs);
+   else
+   {
+      mov_reg64_reg64(rd, rs);
+      add_reg64_reg64(rd, rt);
+   }
 #else
    int rs1 = allocate_64_register1((unsigned int *)dst->f.r.rs);
    int rs2 = allocate_64_register2((unsigned int *)dst->f.r.rs);
@@ -940,13 +1436,29 @@ void gendadd(void)
       adc_reg32_reg32(temp, rt2);
       mov_reg32_reg32(rd2, temp);
    }
+#endif
 #endif
 }
 
 void gendaddu(void)
 {
 #ifdef INTERPRET_DADDU
-   gencallinterp((unsigned int)cached_interpreter_table.DADDU, 0);
+   gencallinterp((native_type)cached_interpreter_table.DADDU, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   if (rs == rd)
+      add_reg64_reg64(rd, rt);
+   else if (rt == rd)
+      add_reg64_reg64(rd, rs);
+   else
+   {
+      mov_reg64_reg64(rd, rs);
+      add_reg64_reg64(rd, rt);
+   }
 #else
    int rs1 = allocate_64_register1((unsigned int *)dst->f.r.rs);
    int rs2 = allocate_64_register2((unsigned int *)dst->f.r.rs);
@@ -974,12 +1486,31 @@ void gendaddu(void)
       mov_reg32_reg32(rd2, temp);
    }
 #endif
+#endif
 }
 
 void gendsub(void)
 {
 #ifdef INTERPRET_DSUB
-   gencallinterp((unsigned int)cached_interpreter_table.DSUB, 0);
+   gencallinterp((native_type)cached_interpreter_table.DSUB, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   if (rs == rd)
+      sub_reg64_reg64(rd, rt);
+   else if (rt == rd)
+   {
+      neg_reg64(rd);
+      add_reg64_reg64(rd, rs);
+   }
+   else
+   {
+      mov_reg64_reg64(rd, rs);
+      sub_reg64_reg64(rd, rt);
+   }
 #else
    int rs1 = allocate_64_register1((unsigned int *)dst->f.r.rs);
    int rs2 = allocate_64_register2((unsigned int *)dst->f.r.rs);
@@ -1006,13 +1537,32 @@ void gendsub(void)
       sbb_reg32_reg32(temp, rt2);
       mov_reg32_reg32(rd2, temp);
    }
+#endif
 #endif
 }
 
 void gendsubu(void)
 {
 #ifdef INTERPRET_DSUBU
-   gencallinterp((unsigned int)cached_interpreter_table.DSUBU, 0);
+   gencallinterp((native_type)cached_interpreter_table.DSUBU, 0);
+#else
+#ifdef __x86_64__
+   int rs = allocate_register_64((unsigned long long *)dst->f.r.rs);
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   if (rs == rd)
+      sub_reg64_reg64(rd, rt);
+   else if (rt == rd)
+   {
+      neg_reg64(rd);
+      add_reg64_reg64(rd, rs);
+   }
+   else
+   {
+      mov_reg64_reg64(rd, rs);
+      sub_reg64_reg64(rd, rt);
+   }
 #else
    int rs1 = allocate_64_register1((unsigned int *)dst->f.r.rs);
    int rs2 = allocate_64_register2((unsigned int *)dst->f.r.rs);
@@ -1040,17 +1590,25 @@ void gendsubu(void)
       mov_reg32_reg32(rd2, temp);
    }
 #endif
+#endif
 }
 
 void genteq(void)
 {
-   gencallinterp((unsigned int)cached_interpreter_table.TEQ, 0);
+   gencallinterp((native_type)cached_interpreter_table.TEQ, 0);
 }
 
 void gendsll(void)
 {
 #ifdef INTERPRET_DSLL
-   gencallinterp((unsigned int)cached_interpreter_table.DSLL, 0);
+   gencallinterp((native_type)cached_interpreter_table.DSLL, 0);
+#else
+#ifdef __x86_64__
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   mov_reg64_reg64(rd, rt);
+   shl_reg64_imm8(rd, dst->f.r.sa);
 #else
    int rt1 = allocate_64_register1((unsigned int *)dst->f.r.rt);
    int rt2 = allocate_64_register2((unsigned int *)dst->f.r.rt);
@@ -1067,12 +1625,20 @@ void gendsll(void)
       xor_reg32_reg32(rd1, rd1);
    }
 #endif
+#endif
 }
 
 void gendsrl(void)
 {
 #ifdef INTERPRET_DSRL
-   gencallinterp((unsigned int)cached_interpreter_table.DSRL, 0);
+   gencallinterp((native_type)cached_interpreter_table.DSRL, 0);
+#else
+#ifdef __x86_64__
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   mov_reg64_reg64(rd, rt);
+   shr_reg64_imm8(rd, dst->f.r.sa);
 #else
    int rt1 = allocate_64_register1((unsigned int *)dst->f.r.rt);
    int rt2 = allocate_64_register2((unsigned int *)dst->f.r.rt);
@@ -1089,12 +1655,20 @@ void gendsrl(void)
       xor_reg32_reg32(rd2, rd2);
    }
 #endif
+#endif
 }
 
 void gendsra(void)
 {
 #ifdef INTERPRET_DSRA
-   gencallinterp((unsigned int)cached_interpreter_table.DSRA, 0);
+   gencallinterp((native_type)cached_interpreter_table.DSRA, 0);
+#else
+#ifdef __x86_64__
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   mov_reg64_reg64(rd, rt);
+   sar_reg64_imm8(rd, dst->f.r.sa);
 #else
    int rt1 = allocate_64_register1((unsigned int *)dst->f.r.rt);
    int rt2 = allocate_64_register2((unsigned int *)dst->f.r.rt);
@@ -1111,12 +1685,20 @@ void gendsra(void)
       sar_reg32_imm8(rd2, 31);
    }
 #endif
+#endif
 }
 
 void gendsll32(void)
 {
 #ifdef INTERPRET_DSLL32
-   gencallinterp((unsigned int)cached_interpreter_table.DSLL32, 0);
+   gencallinterp((native_type)cached_interpreter_table.DSLL32, 0);
+#else
+#ifdef __x86_64__
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   mov_reg64_reg64(rd, rt);
+   shl_reg64_imm8(rd, dst->f.r.sa + 32);
 #else
    int rt1 = allocate_64_register1((unsigned int *)dst->f.r.rt);
    int rd1 = allocate_64_register1_w((unsigned int *)dst->f.r.rd);
@@ -1126,12 +1708,20 @@ void gendsll32(void)
    shl_reg32_imm8(rd2, dst->f.r.sa);
    xor_reg32_reg32(rd1, rd1);
 #endif
+#endif
 }
 
 void gendsrl32(void)
 {
 #ifdef INTERPRET_DSRL32
-   gencallinterp((unsigned int)cached_interpreter_table.DSRL32, 0);
+   gencallinterp((native_type)cached_interpreter_table.DSRL32, 0);
+#else
+#ifdef __x86_64__
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   mov_reg64_reg64(rd, rt);
+   shr_reg64_imm8(rd, dst->f.r.sa + 32);
 #else
    int rt2 = allocate_64_register2((unsigned int *)dst->f.r.rt);
    int rd1 = allocate_64_register1_w((unsigned int *)dst->f.r.rd);
@@ -1141,18 +1731,27 @@ void gendsrl32(void)
    shr_reg32_imm8(rd1, dst->f.r.sa);
    xor_reg32_reg32(rd2, rd2);
 #endif
+#endif
 }
 
 void gendsra32(void)
 {
 #ifdef INTERPRET_DSRA32
-   gencallinterp((unsigned int)cached_interpreter_table.DSRA32, 0);
+   gencallinterp((native_type)cached_interpreter_table.DSRA32, 0);
+#else
+#ifdef __x86_64__
+   int rt = allocate_register_64((unsigned long long *)dst->f.r.rt);
+   int rd = allocate_register_64_w((unsigned long long *)dst->f.r.rd);
+
+   mov_reg64_reg64(rd, rt);
+   sar_reg64_imm8(rd, dst->f.r.sa + 32);
 #else
    int rt2 = allocate_64_register2((unsigned int *)dst->f.r.rt);
    int rd = allocate_register_w((unsigned int *)dst->f.r.rd);
 
    mov_reg32_reg32(rd, rt2);
    sar_reg32_imm8(rd, dst->f.r.sa);
+#endif
 #endif
 }
 
