@@ -1103,8 +1103,161 @@ bool gSPCullVertices( u32 v0, u32 vn )
    return TRUE;
 }
 
-void gSPSprite2DBase( u32 base )
+static void _loadSpriteImage(const struct uSprite *_pSprite)
 {
+	gSP.bgImage.address = RSP_SegmentToPhysical( _pSprite->imagePtr );
+
+	gSP.bgImage.width = _pSprite->stride;
+	gSP.bgImage.height = _pSprite->imageY + _pSprite->imageH;
+	gSP.bgImage.format = _pSprite->imageFmt;
+	gSP.bgImage.size = _pSprite->imageSiz;
+	gSP.bgImage.palette = 0;
+	gDP.tiles[0].textureMode = TEXTUREMODE_BGIMAGE;
+	gSP.bgImage.imageX = _pSprite->imageX;
+	gSP.bgImage.imageY = _pSprite->imageY;
+	gSP.bgImage.scaleW = gSP.bgImage.scaleH = 1.0f;
+
+#ifdef NEW
+	if (config.frameBufferEmulation.enable != 0)
+	{
+		FrameBuffer *pBuffer = frameBufferList().findBuffer(gSP.bgImage.address);
+		if (pBuffer != NULL)
+      {
+			gDP.tiles[0].frameBuffer = pBuffer;
+			gDP.tiles[0].textureMode = TEXTUREMODE_FRAMEBUFFER_BG;
+			gDP.tiles[0].loadType = LOADTYPE_TILE;
+			gDP.changed |= CHANGED_TMEM;
+		}
+	}
+#endif
+}
+
+void gSPSprite2DBase( u32 _base )
+{
+   //assert(RSP.nextCmd == 0xBE);
+   const u32 address = RSP_SegmentToPhysical( _base );
+   struct uSprite *pSprite = (struct uSprite*)&gfx_info.RDRAM[address];
+
+   if (pSprite->tlutPtr != 0)
+   {
+      gDPSetTextureImage( 0, 2, 1, pSprite->tlutPtr );
+      gDPSetTile( 0, 2, 0, 256, 7, 0, 0, 0, 0, 0, 0, 0 );
+      gDPLoadTLUT( 7, 0, 0, 1020, 0 );
+
+      if (pSprite->imageFmt != G_IM_FMT_RGBA)
+         gDP.otherMode.textureLUT = G_TT_RGBA16;
+      else
+         gDP.otherMode.textureLUT = G_TT_NONE;
+   } else
+      gDP.otherMode.textureLUT = G_TT_NONE;
+
+   _loadSpriteImage(pSprite);
+   gSPTexture( 1.0f, 1.0f, 0, 0, TRUE );
+   gDP.otherMode.texturePersp = 1;
+
+   const f32 z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
+   const f32 w = 1.0f;
+
+   f32 scaleX = 1.0f, scaleY = 1.0f;
+   u32 flipX = 0, flipY = 0;
+   do
+   {
+      f32 ulx, uly, lrx, lry;
+      f32 frameX, frameY, frameW, frameH;
+      s32 v0 = 0, v1 = 1, v2 = 2, v3 = 3;
+      SPVertex *vtx0, *vtx1, *vtx2, *vtx3;
+      u32 w0 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]];
+      u32 w1 = *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi] + 4];
+      __RSP.cmd = _SHIFTR( w0, 24, 8 );
+
+      __RSP.PC[__RSP.PCi] += 8;
+      __RSP.nextCmd = _SHIFTR( *(u32*)&gfx_info.RDRAM[__RSP.PC[__RSP.PCi]], 24, 8 );
+
+      if (__RSP.cmd == 0xBE )
+      {
+         /* gSPSprite2DScaleFlip */
+         scaleX  = _FIXED2FLOAT( _SHIFTR(w1, 16, 16), 10 );
+         scaleY  = _FIXED2FLOAT( _SHIFTR(w1,  0, 16), 10 );
+         flipX = _SHIFTR(w0, 8, 8);
+         flipY = _SHIFTR(w0, 0, 8);
+         continue;
+      }
+
+      /* gSPSprite2DDraw */
+      frameX = _FIXED2FLOAT(((s16)_SHIFTR(w1, 16, 16)), 2);
+      frameY = _FIXED2FLOAT(((s16)_SHIFTR(w1,  0, 16)), 2);
+      frameW = pSprite->imageW / scaleX;
+      frameH = pSprite->imageH / scaleY;
+
+      if (flipX != 0)
+      {
+         ulx = frameX + frameW;
+         lrx = frameX;
+      }
+      else
+      {
+         ulx = frameX;
+         lrx = frameX + frameW;
+      }
+
+      if (flipY != 0)
+      {
+         uly = frameY + frameH;
+         lry = frameY;
+      }
+      else
+      {
+         uly = frameY;
+         lry = frameY + frameH;
+      }
+
+      f32 uls = pSprite->imageX;
+      f32 ult = pSprite->imageY;
+      f32 lrs = uls + pSprite->imageW - 1;
+      f32 lrt = ult + pSprite->imageH - 1;
+
+      /* Hack for WCW Nitro. TODO : activate it later.
+         if (WCW_NITRO) {
+         gSP.bgImage.height /= scaleY;
+         gSP.bgImage.imageY /= scaleY;
+         ult /= scaleY;
+         lrt /= scaleY;
+         gSP.bgImage.width *= scaleY;
+         }
+         */
+
+
+      vtx0 = (SPVertex*)&OGL.triangles.vertices[v0];
+      vtx0->x = ulx;
+      vtx0->y = uly;
+      vtx0->z = z;
+      vtx0->w = w;
+      vtx0->s = uls;
+      vtx0->t = ult;
+      vtx1 = (SPVertex*)&OGL.triangles.vertices[v1];
+      vtx1->x = lrx;
+      vtx1->y = uly;
+      vtx1->z = z;
+      vtx1->w = w;
+      vtx1->s = lrs;
+      vtx1->t = ult;
+      vtx2 = (SPVertex*)&OGL.triangles.vertices[v2];
+      vtx2->x = ulx;
+      vtx2->y = lry;
+      vtx2->z = z;
+      vtx2->w = w;
+      vtx2->s = uls;
+      vtx2->t = lrt;
+      vtx3 = (SPVertex*)&OGL.triangles.vertices[v3];
+      vtx3->x = lrx;
+      vtx3->y = lry;
+      vtx3->z = z;
+      vtx3->w = w;
+      vtx3->s = lrs;
+      vtx3->t = lrt;
+
+      OGL_DrawLLETriangle(4);
+   } while (__RSP.nextCmd == 0xBD || __RSP.nextCmd == 0xBE);
 }
 
 void gSPCullDisplayList( u32 v0, u32 vn )
@@ -1487,93 +1640,224 @@ void gSPLineW3D( s32 v0, s32 v1, s32 wd, s32 flag )
 #endif
 }
 
-void gSPBgRect1Cyc( u32 bg )
+static
+void _loadBGImage(const struct uObjScaleBg * _bgInfo, bool _loadScale)
 {
-#if 1
-   uint16_t imageFlip;
-   u32 addr;
-   f32 imageX, imageY, imageW, imageH, frameX, frameY, frameW, frameH, scaleW, scaleH,
-	   frameX0, frameX1, frameY0, frameY1, frameS0, frameT0;
-   addr = RSP_SegmentToPhysical(bg) >> 1;
+	gSP.bgImage.address = RSP_SegmentToPhysical( _bgInfo->imagePtr );
 
-   imageX = (f32)(((uint16_t*)gfx_info.RDRAM)[(addr+0)^1] >> 5); /* 0 */
-   imageY = (f32)(((uint16_t*)gfx_info.RDRAM)[(addr+4)^1] >> 5); /* 4 */
-   imageW = (f32)(((uint16_t*)gfx_info.RDRAM)[(addr+1)^1] >> 2); /* 1 */
-   imageH = (f32)(((uint16_t*)gfx_info.RDRAM)[(addr+5)^1] >> 2); /* 5 */
+	const u32 imageW = _bgInfo->imageW >> 2;
+	gSP.bgImage.width = imageW - imageW%2;
+	const u32 imageH = _bgInfo->imageH >> 2;
+	gSP.bgImage.height = imageH - imageH%2;
+	gSP.bgImage.format = _bgInfo->imageFmt;
+	gSP.bgImage.size = _bgInfo->imageSiz;
+	gSP.bgImage.palette = _bgInfo->imagePal;
+	gDP.tiles[0].textureMode = TEXTUREMODE_BGIMAGE;
+	gSP.bgImage.imageX = _FIXED2FLOAT( _bgInfo->imageX, 5 );
+	gSP.bgImage.imageY = _FIXED2FLOAT( _bgInfo->imageY, 5 );
+	if (_loadScale) {
+		gSP.bgImage.scaleW = _FIXED2FLOAT( _bgInfo->scaleW, 10 );
+		gSP.bgImage.scaleH = _FIXED2FLOAT( _bgInfo->scaleH, 10 );
+	} else
+		gSP.bgImage.scaleW = gSP.bgImage.scaleH = 1.0f;
 
-   frameX = (f32)((int16_t*)gfx_info.RDRAM)[(addr+2)^1] / 4.0f;  /* 2 */
-   frameY = (f32)((int16_t*)gfx_info.RDRAM)[(addr+6)^1] / 4.0f;  /* 6 */
-   frameW = (f32)(((uint16_t*)gfx_info.RDRAM)[(addr+3)^1] >> 2); /* 3 */
-   frameH = (f32)(((uint16_t*)gfx_info.RDRAM)[(addr+7)^1] >> 2); /* 7 */
-
-
-   imageFlip = ((uint16_t*)gfx_info.RDRAM)[(addr+13)^1];	// 13;
-   //d.flipX 	= (uint8_t)imageFlip&0x01;
-
-   gSP.bgImage.address	= RSP_SegmentToPhysical(((u32*)gfx_info.RDRAM)[(addr+8)>>1]);	// 8,9
-   gSP.bgImage.width = (u32)imageW;
-   gSP.bgImage.height = (u32)imageH;
-   gSP.bgImage.format = ((u8*)gfx_info.RDRAM)[(((addr+11)<<1)+0)^3];
-   gSP.bgImage.size = ((u8*)gfx_info.RDRAM)[(((addr+11)<<1)+1)^3];
-   gSP.bgImage.palette = ((u16*)gfx_info.RDRAM)[(addr+12)^1];
-
-   scaleW	= ((s16*)gfx_info.RDRAM)[(addr+14)^1] / 1024.0f;	// 14
-   scaleH	= ((s16*)gfx_info.RDRAM)[(addr+15)^1] / 1024.0f;	// 15
-   gDP.tiles[0].textureMode = TEXTUREMODE_BGIMAGE;
-
-#else
-   u32 address = RSP_SegmentToPhysical( bg );
-   uObjScaleBg *objScaleBg = (uObjScaleBg*)&gfx_info.RDRAM[address];
-
-   gSP.bgImage.address = RSP_SegmentToPhysical( objScaleBg->imagePtr );
-   gSP.bgImage.width = objScaleBg->imageW >> 2;
-   gSP.bgImage.height = objScaleBg->imageH >> 2;
-   gSP.bgImage.format = objScaleBg->imageFmt;
-   gSP.bgImage.size = objScaleBg->imageSiz;
-   gSP.bgImage.palette = objScaleBg->imagePal;
-   gDP.tiles[0].textureMode = TEXTUREMODE_BGIMAGE;
-
-   f32 imageX = _FIXED2FLOAT( objScaleBg->imageX, 5 );
-   f32 imageY = _FIXED2FLOAT( objScaleBg->imageY, 5 );
-   f32 imageW = objScaleBg->imageW >> 2;
-   f32 imageH = objScaleBg->imageH >> 2;
-
-   f32 frameX = _FIXED2FLOAT( objScaleBg->frameX, 2 );
-   f32 frameY = _FIXED2FLOAT( objScaleBg->frameY, 2 );
-   f32 frameW = _FIXED2FLOAT( objScaleBg->frameW, 2 );
-   f32 frameH = _FIXED2FLOAT( objScaleBg->frameH, 2 );
-   f32 scaleW = _FIXED2FLOAT( objScaleBg->scaleW, 10 );
-   f32 scaleH = _FIXED2FLOAT( objScaleBg->scaleH, 10 );
+#ifdef NEW
+	if (config.frameBufferEmulation.enable)
+   {
+		FrameBuffer *pBuffer = frameBufferList().findBuffer(gSP.bgImage.address);
+		if ((pBuffer != NULL) && pBuffer->m_size == gSP.bgImage.size && (!pBuffer->m_isDepthBuffer || pBuffer->m_changed)) {
+			gDP.tiles[0].frameBuffer = pBuffer;
+			gDP.tiles[0].textureMode = TEXTUREMODE_FRAMEBUFFER_BG;
+			gDP.tiles[0].loadType = LOADTYPE_TILE;
+			gDP.changed |= CHANGED_TMEM;
+		}
+	}
 #endif
+}
 
-   frameX0 = frameX;
-   frameY0 = frameY;
-   frameS0 = imageX;
-   frameT0 = imageY;
+struct ObjCoordinates
+{
+	f32 ulx, uly, lrx, lry;
+	f32 uls, ult, lrs, lrt;
+	f32 z, w;
+};
 
-   frameX1 = frameX + min( (imageW - imageX) / scaleW, frameW );
-   frameY1 = frameY + min( (imageH - imageY) / scaleH, frameH );
-   //f32 frameS1 = imageX + min( (imageW - imageX) * scaleW, frameW * scaleW );
-   //f32 frameT1 = imageY + min( (imageH - imageY) * scaleH, frameH * scaleH );
+struct ObjData
+{
+	f32 scaleW;
+	f32 scaleH;
+	u32 imageW;
+	u32 imageH;
+	f32 X0;
+	f32 X1;
+	f32 Y0;
+	f32 Y1;
+	bool flipS, flipT;
+};
 
-   gDP.otherMode.cycleType = G_CYC_1CYCLE;
-   gDP.changed |= CHANGED_CYCLETYPE;
-   gSPTexture( 1.0f, 1.0f, 0, 0, TRUE );
-   gDPTextureRectangle( frameX0, frameY0, frameX1 - 1, frameY1 - 1, 0, frameS0 - 1, frameT0 - 1, scaleW, scaleH );
+void ObjData_new(struct ObjData *obj, const struct uObjSprite *_pObjSprite)
+{
+   obj->scaleW = _FIXED2FLOAT(_pObjSprite->scaleW, 10);
+   obj->scaleH = _FIXED2FLOAT(_pObjSprite->scaleH, 10);
+   obj->imageW = _pObjSprite->imageW >> 5;
+   obj->imageH = _pObjSprite->imageH >> 5;
+   obj->X0     = _FIXED2FLOAT(_pObjSprite->objX, 2);
+   obj->X1     = obj->X0 + obj->imageW / obj->scaleW;
+   obj->Y0     = _FIXED2FLOAT(_pObjSprite->objY, 2);
+   obj->Y1     = obj->Y0 + obj->imageH / obj->scaleH;
+   obj->flipS  = (_pObjSprite->imageFlags & 0x01) != 0;
+   obj->flipT  = (_pObjSprite->imageFlags & 0x10) != 0;
+}
 
-   if ((frameX1 - frameX0) < frameW)
+void ObjCoordinates_new(struct ObjCoordinates *obj, const struct uObjSprite *_pObjSprite, bool _useMatrix)
+{
+   struct ObjData data;
+   
+   ObjData_new(&data, _pObjSprite);
+
+   obj->ulx = data.X0;
+   obj->lrx = data.X1;
+   obj->uly = data.Y0;
+   obj->lry = data.Y1;
+
+   if (_useMatrix)
    {
-      f32 frameX2 = frameW - (frameX1 - frameX0) + frameX1;
-      gDPTextureRectangle( frameX1, frameY0, frameX2 - 1, frameY1 - 1, 0, 0, frameT0, scaleW, scaleH );
+      obj->ulx = obj->ulx / gSP.objMatrix.baseScaleX + gSP.objMatrix.X;
+      obj->lrx = obj->lrx / gSP.objMatrix.baseScaleX + gSP.objMatrix.X;
+      obj->uly = obj->uly / gSP.objMatrix.baseScaleY + gSP.objMatrix.Y;
+      obj->lry = obj->lry / gSP.objMatrix.baseScaleY + gSP.objMatrix.Y;
    }
 
-   if ((frameY1 - frameY0) < frameH)
+   obj->uls = obj->ult = 0;
+   obj->lrs = data.imageW - 1;
+   obj->lrt = data.imageH - 1;
+   if (data.flipS)
    {
-      f32 frameY2 = frameH - (frameY1 - frameY0) + frameY1;
-      gDPTextureRectangle( frameX0, frameY1, frameX1 - 1, frameY2 - 1, 0, frameS0, 0, scaleW, scaleH );
+      obj->uls = obj->lrs;
+      obj->lrs = 0;
+   }
+   if (data.flipT)
+   {
+      obj->ult = obj->lrt;
+      obj->lrt = 0;
    }
 
-   gDPTextureRectangle( 0, 0, 319, 239, 0, 0, 0, scaleW, scaleH );
+   obj->z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
+   obj->w = 1.0f;
+}
+
+void ObjCoordinates2_new(struct ObjCoordinates *obj, const struct uObjScaleBg * _pObjScaleBg)
+{
+   const f32 frameX = _FIXED2FLOAT(_pObjScaleBg->frameX, 2);
+   const f32 frameY = _FIXED2FLOAT(_pObjScaleBg->frameY, 2);
+   const f32 frameW = _FIXED2FLOAT(_pObjScaleBg->frameW, 2);
+   const f32 frameH = _FIXED2FLOAT(_pObjScaleBg->frameH, 2);
+   const f32 imageX = gSP.bgImage.imageX;
+   const f32 imageY = gSP.bgImage.imageY;
+   const f32 imageW = (f32)(_pObjScaleBg->imageW>>2);
+   const f32 imageH = (f32)(_pObjScaleBg->imageH >> 2);
+   //		const f32 imageW = (f32)gSP.bgImage.width;
+   //		const f32 imageH = (f32)gSP.bgImage.height;
+   const f32 scaleW = gSP.bgImage.scaleW;
+   const f32 scaleH = gSP.bgImage.scaleH;
+
+   obj->ulx = frameX;
+   obj->uly = frameY;
+   obj->lrx = frameX + min(imageW/scaleW, frameW) - 1.0f;
+   obj->lry = frameY + min(imageH/scaleH, frameH) - 1.0f;
+   if (gDP.otherMode.cycleType == G_CYC_COPY)
+   {
+      obj->lrx += 1.0f;
+      obj->lry += 1.0f;;
+   }
+
+   obj->uls = imageX;
+   obj->ult = imageY;
+   obj->lrs = obj->uls + (obj->lrx - obj->ulx) * scaleW;
+   obj->lrt = obj->ult + (obj->lry - obj->uly) * scaleH;
+   if (gDP.otherMode.cycleType != G_CYC_COPY)
+   {
+      if ((gSP.objRendermode&G_OBJRM_SHRINKSIZE_1) != 0)
+      {
+         obj->lrs -= 1.0f / scaleW;
+         obj->lrt -= 1.0f / scaleH;
+      }
+      else if ((gSP.objRendermode&G_OBJRM_SHRINKSIZE_2) != 0)
+      {
+         obj->lrs -= 1.0f;
+         obj->lrt -= 1.0f;
+      }
+   }
+
+   if ((_pObjScaleBg->imageFlip & 0x01) != 0)
+   {
+      obj->ulx = obj->lrx;
+      obj->lrx = frameX;
+   }
+
+   obj->z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
+   obj->w = 1.0f;
+}
+
+static void gSPDrawObjRect(const struct ObjCoordinates *_coords)
+{
+   SPVertex *vtx0, *vtx1, *vtx2, *vtx3;
+	u32 v0 = 0, v1 = 1, v2 = 2, v3 = 3;
+   vtx0 = (SPVertex*)&OGL.triangles.vertices[v0];
+	vtx0->x = _coords->ulx;
+	vtx0->y = _coords->uly;
+	vtx0->z = _coords->z;
+	vtx0->w = _coords->w;
+	vtx0->s = _coords->uls;
+	vtx0->t = _coords->ult;
+	vtx1 = (SPVertex*)&OGL.triangles.vertices[v1];
+	vtx1->x = _coords->lrx;
+	vtx1->y = _coords->uly;
+	vtx1->z = _coords->z;
+	vtx1->w = _coords->w;
+	vtx1->s = _coords->lrs;
+	vtx1->t = _coords->ult;
+	vtx2 = (SPVertex*)&OGL.triangles.vertices[v2];
+	vtx2->x = _coords->ulx;
+	vtx2->y = _coords->lry;
+	vtx2->z = _coords->z;
+	vtx2->w = _coords->w;
+	vtx2->s = _coords->uls;
+	vtx2->t = _coords->lrt;
+	vtx3 = (SPVertex*)&OGL.triangles.vertices[v3];
+	vtx3->x = _coords->lrx;
+	vtx3->y = _coords->lry;
+	vtx3->z = _coords->z;
+	vtx3->w = _coords->w;
+	vtx3->s = _coords->lrs;
+	vtx3->t = _coords->lrt;
+
+   OGL_DrawLLETriangle(4);
+	gDP.colorImage.height = (u32)(max(gDP.colorImage.height, (u32)gDP.scissor.lry));
+}
+
+void gSPBgRect1Cyc( u32 _bg )
+{
+   struct ObjCoordinates objCoords;
+	const u32 address = RSP_SegmentToPhysical( _bg );
+	struct uObjScaleBg *objScaleBg = (struct uObjScaleBg*)&gfx_info.RDRAM[address];
+	_loadBGImage(objScaleBg, true);
+
+#ifdef GL_IMAGE_TEXTURES_SUPPORT
+	if (gSP.bgImage.address == gDP.depthImageAddress || depthBufferList().findBuffer(gSP.bgImage.address) != NULL)
+		_copyDepthBuffer();
+	// Zelda MM uses depth buffer copy in LoT and in pause screen.
+	// In later case depth buffer is used as temporal color buffer, and usual rendering must be used.
+	// Since both situations are hard to distinguish, do the both depth buffer copy and bg rendering.
+#endif // GL_IMAGE_TEXTURES_SUPPORT
+
+	gDP.otherMode.cycleType = G_CYC_1CYCLE;
+	gDP.changed |= CHANGED_CYCLETYPE;
+	gSPTexture(1.0f, 1.0f, 0, 0, TRUE);
+	gDP.otherMode.texturePersp = 1;
+
+	ObjCoordinates2_new(&objCoords, objScaleBg);
+	gSPDrawObjRect(&objCoords);
 }
 
 void gSPBgRectCopy( u32 bg )
@@ -1615,58 +1899,6 @@ void gSPBgRectCopy( u32 bg )
    );
 }
 
-static
-u16 _YUVtoRGBA(u8 y, u8 u, u8 v)
-{
-	float r = y + (1.370705f * (v - 128));
-	float g = y - (0.698001f * (v - 128)) - (0.337633f * (u - 128));
-	float b = y + (1.732446f * (u - 128));
-	r *= 0.125f;
-	g *= 0.125f;
-	b *= 0.125f;
-	//clipping the result
-	if (r > 32) r = 32;
-	if (g > 32) g = 32;
-	if (b > 32) b = 32;
-	if (r < 0) r = 0;
-	if (g < 0) g = 0;
-	if (b < 0) b = 0;
-
-	u16 c = (u16)(((u16)(r) << 11) |
-		((u16)(g) << 6) |
-		((u16)(b) << 1) | 1);
-	return c;
-}
-
-void gSPObjRectangle( u32 sp )
-{
-   u32 address = RSP_SegmentToPhysical( sp );
-   uObjSprite *objSprite = (uObjSprite*)&gfx_info.RDRAM[address];
-
-   f32 scaleW = _FIXED2FLOAT( objSprite->scaleW, 10 );
-   f32 scaleH = _FIXED2FLOAT( objSprite->scaleH, 10 );
-   f32 objX = _FIXED2FLOAT( objSprite->objX, 2 );
-   f32 objY = _FIXED2FLOAT( objSprite->objY, 2 );
-   u32 imageW = objSprite->imageW >> 2;
-   u32 imageH = objSprite->imageH >> 2;
-
-   gDPTextureRectangle( objX, objY, objX + imageW / scaleW - 1, objY + imageH / scaleH - 1, 0, 0.0f, 0.0f, scaleW * (gDP.otherMode.cycleType == G_CYC_COPY ? 4.0f : 1.0f), scaleH );
-}
-
-void gSPObjRectangleR(u32 _sp)
-{
-#ifdef NEW
-   const u32 address = RSP_SegmentToPhysical(_sp);
-   const uObjSprite *objSprite = (uObjSprite*)&gfx_info.RDRAM[address];
-   gSPSetSpriteTile(objSprite);
-   ObjCoordinates objCoords(objSprite, true);
-
-   if (objSprite->imageFmt == G_IM_FMT_YUV && (config.generalEmulation.hacks&hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
-      _drawYUVImageToFrameBuffer(objCoords);
-   gSPDrawObjRect(objCoords);
-#endif
-}
-
 void gSPObjLoadTxtr( u32 tx )
 {
    u32 address = RSP_SegmentToPhysical( tx );
@@ -1696,80 +1928,178 @@ void gSPObjLoadTxtr( u32 tx )
    }
 }
 
-void gSPObjSprite( u32 sp )
+static void gSPSetSpriteTile(const struct uObjSprite *_pObjSprite)
 {
-   u32 address = RSP_SegmentToPhysical( sp );
-   uObjSprite *objSprite = (uObjSprite*)&gfx_info.RDRAM[address];
+	const u32 w = max(_pObjSprite->imageW >> 5, 1);
+	const u32 h = max(_pObjSprite->imageH >> 5, 1);
 
-   f32 scaleW = _FIXED2FLOAT( objSprite->scaleW, 10 );
-   f32 scaleH = _FIXED2FLOAT( objSprite->scaleH, 10 );
-   f32 objX = _FIXED2FLOAT( objSprite->objX, 2 );
-   f32 objY = _FIXED2FLOAT( objSprite->objY, 2 );
-   u32 imageW = objSprite->imageW >> 5;
-   u32 imageH = objSprite->imageH >> 5;
-
-   f32 x0 = objX;
-   f32 y0 = objY;
-   f32 x1 = objX + imageW / scaleW - 1;
-   f32 y1 = objY + imageH / scaleH - 1;
-
-   s32 v0=0,v1=1,v2=2,v3=3;
+	gDPSetTile( _pObjSprite->imageFmt, _pObjSprite->imageSiz, _pObjSprite->imageStride, _pObjSprite->imageAdrs, 0, _pObjSprite->imagePal, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0 );
+	gDPSetTileSize( 0, 0, 0, (w - 1) << 2, (h - 1) << 2 );
+	gSPTexture( 1.0f, 1.0f, 0, 0, TRUE );
+	gDP.otherMode.texturePersp = 1;
+}
 
 
-   OGL.triangles.vertices[v0].x = gSP.objMatrix.A * x0 + gSP.objMatrix.B * y0 + gSP.objMatrix.X;
-   OGL.triangles.vertices[v0].y = gSP.objMatrix.C * x0 + gSP.objMatrix.D * y0 + gSP.objMatrix.Y;
-   OGL.triangles.vertices[v0].z = 0.0f;
-   OGL.triangles.vertices[v0].w = 1.0f;
-   OGL.triangles.vertices[v0].s = 0.0f;
-   OGL.triangles.vertices[v0].t = 0.0f;
-   OGL.triangles.vertices[v1].x = gSP.objMatrix.A * x1 + gSP.objMatrix.B * y0 + gSP.objMatrix.X;
-   OGL.triangles.vertices[v1].y = gSP.objMatrix.C * x1 + gSP.objMatrix.D * y0 + gSP.objMatrix.Y;
-   OGL.triangles.vertices[v1].z = 0.0f;
-   OGL.triangles.vertices[v1].w = 1.0f;
-   OGL.triangles.vertices[v1].s = imageW - 1.f;
-   OGL.triangles.vertices[v1].t = 0.0f;
-   OGL.triangles.vertices[v2].x = gSP.objMatrix.A * x1 + gSP.objMatrix.B * y1 + gSP.objMatrix.X;
-   OGL.triangles.vertices[v2].y = gSP.objMatrix.C * x1 + gSP.objMatrix.D * y1 + gSP.objMatrix.Y;
-   OGL.triangles.vertices[v2].z = 0.0f;
-   OGL.triangles.vertices[v2].w = 1.0f;
-   OGL.triangles.vertices[v2].s = imageW - 1.f;
-   OGL.triangles.vertices[v2].t = imageH - 1.f;
-   OGL.triangles.vertices[v3].x = gSP.objMatrix.A * x0 + gSP.objMatrix.B * y1 + gSP.objMatrix.X;
-   OGL.triangles.vertices[v3].y = gSP.objMatrix.C * x0 + gSP.objMatrix.D * y1 + gSP.objMatrix.Y;
-   OGL.triangles.vertices[v3].z = 0.0f;
-   OGL.triangles.vertices[v3].w = 1.0f;
-   OGL.triangles.vertices[v3].s = 0;
-   OGL.triangles.vertices[v3].t = imageH - 1.f;
+static
+u16 _YUVtoRGBA(u8 y, u8 u, u8 v)
+{
+	float r = y + (1.370705f * (v - 128));
+	float g = y - (0.698001f * (v - 128)) - (0.337633f * (u - 128));
+	float b = y + (1.732446f * (u - 128));
+	r *= 0.125f;
+	g *= 0.125f;
+	b *= 0.125f;
+	//clipping the result
+	if (r > 32) r = 32;
+	if (g > 32) g = 32;
+	if (b > 32) b = 32;
+	if (r < 0) r = 0;
+	if (g < 0) g = 0;
+	if (b < 0) b = 0;
 
-   gDPSetTile( objSprite->imageFmt, objSprite->imageSiz, objSprite->imageStride, objSprite->imageAdrs, 0, objSprite->imagePal, G_TX_CLAMP, G_TX_CLAMP, 0, 0, 0, 0 );
-   gDPSetTileSize( 0, 0, 0, (imageW - 1) << 2, (imageH - 1) << 2 );
-   gSPTexture( 1.0f, 1.0f, 0, 0, TRUE );
+	u16 c = (u16)(((u16)(r) << 11) |
+		((u16)(g) << 6) |
+		((u16)(b) << 1) | 1);
+	return c;
+}
 
-   //glOrtho( 0, VI.width, VI.height, 0, 0.0f, 32767.0f );
-   OGL.triangles.vertices[v0].x = 2.0f * VI.rwidth * OGL.triangles.vertices[v0].x - 1.0f;
-   OGL.triangles.vertices[v0].y = -2.0f * VI.rheight * OGL.triangles.vertices[v0].y + 1.0f;
-   OGL.triangles.vertices[v0].z = -1.0f;
-   OGL.triangles.vertices[v0].w = 1.0f;
-   OGL.triangles.vertices[v1].x = 2.0f * VI.rwidth * OGL.triangles.vertices[v0].x - 1.0f;
-   OGL.triangles.vertices[v1].y = -2.0f * VI.rheight * OGL.triangles.vertices[v0].y + 1.0f;
-   OGL.triangles.vertices[v1].z = -1.0f;
-   OGL.triangles.vertices[v1].w = 1.0f;
-   OGL.triangles.vertices[v2].x = 2.0f * VI.rwidth * OGL.triangles.vertices[v0].x - 1.0f;
-   OGL.triangles.vertices[v2].y = -2.0f * VI.rheight * OGL.triangles.vertices[v0].y + 1.0f;
-   OGL.triangles.vertices[v2].z = -1.0f;
-   OGL.triangles.vertices[v2].w = 1.0f;
-   OGL.triangles.vertices[v3].x = 2.0f * VI.rwidth * OGL.triangles.vertices[v0].x - 1.0f;
-   OGL.triangles.vertices[v3].y = -2.0f * VI.rheight * OGL.triangles.vertices[v0].y + 1.0f;
-   OGL.triangles.vertices[v3].z = -1.0f;
-   OGL.triangles.vertices[v3].w = 1.0f;
+static void _drawYUVImageToFrameBuffer(const struct ObjCoordinates *_objCoords)
+{
+	const u32 ulx = (u32)_objCoords->ulx;
+	const u32 uly = (u32)_objCoords->uly;
+	const u32 lrx = (u32)_objCoords->lrx;
+	const u32 lry = (u32)_objCoords->lry;
+	const u32 ci_width = gDP.colorImage.width;
+	const u32 ci_height = gDP.colorImage.height;
+	if (ulx >= ci_width)
+		return;
+	if (uly >= ci_height)
+		return;
+	u32 width = 16, height = 16;
+	if (lrx > ci_width)
+		width = ci_width - ulx;
+	if (lry > ci_height)
+		height = ci_height - uly;
+	u32 * mb = (u32*)(gfx_info.RDRAM + gDP.textureImage.address); //pointer to the first macro block
+	u16 * dst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
+	dst += ulx + uly * ci_width;
+	//yuv macro block contains 16x16 texture. we need to put it in the proper place inside cimg
+	for (u16 h = 0; h < 16; h++) {
+		for (u16 w = 0; w < 16; w += 2) {
+			u32 t = *(mb++); //each u32 contains 2 pixels
+			if ((h < height) && (w < width)) //clipping. texture image may be larger than color image
+			{
+				u8 y0 = (u8)t & 0xFF;
+				u8 v = (u8)(t >> 8) & 0xFF;
+				u8 y1 = (u8)(t >> 16) & 0xFF;
+				u8 u = (u8)(t >> 24) & 0xFF;
+				*(dst++) = _YUVtoRGBA(y0, u, v);
+				*(dst++) = _YUVtoRGBA(y1, u, v);
+			}
+		}
+		dst += ci_width - 16;
+	}
 
-   OGL_AddTriangle(v0, v1, v2);
-   OGL_AddTriangle(v0, v2, v3);
-   OGL_DrawTriangles();
+#if 0
+	FrameBuffer *pBuffer = frameBufferList().getCurrent();
+	if (pBuffer != NULL)
+		pBuffer->m_isOBScreen = true;
+#endif
+}
 
-   if (depthBuffer.current) depthBuffer.current->cleared = FALSE;
-   gDP.colorImage.changed = TRUE;
-   gDP.colorImage.height = (unsigned int)(max( gDP.colorImage.height, gDP.scissor.lry ));
+void gSPObjRectangle(u32 _sp)
+{
+   struct ObjCoordinates objCoords;
+	const u32 address = RSP_SegmentToPhysical(_sp);
+	struct uObjSprite *objSprite = (struct uObjSprite*)&gfx_info.RDRAM[address];
+	gSPSetSpriteTile(objSprite);
+   ObjCoordinates_new(&objCoords, objSprite, false);
+	gSPDrawObjRect(&objCoords);
+}
+
+void gSPObjRectangleR(u32 _sp)
+{
+   const u32 address = RSP_SegmentToPhysical(_sp);
+   const struct uObjSprite *objSprite = (struct uObjSprite*)&gfx_info.RDRAM[address];
+   gSPSetSpriteTile(objSprite);
+   struct ObjCoordinates objCoords;
+   
+   ObjCoordinates_new(&objCoords, objSprite, true);
+
+   /* TODO/FIXME -add Ogre Battle 64 hack */
+   if (objSprite->imageFmt == G_IM_FMT_YUV /*&& (config.generalEmulation.hacks&hack_Ogre64) */) //Ogre Battle needs to copy YUV texture to frame buffer
+      _drawYUVImageToFrameBuffer(&objCoords);
+   gSPDrawObjRect(&objCoords);
+}
+
+void gSPObjSprite( u32 _sp )
+{
+   SPVertex *vtx0, *vtx1, *vtx2, *vtx3;
+   float uls, lrs, ult, lrt;
+   f32 ulx, uly, lrx, lry;
+   struct ObjData data;
+	const u32 address = RSP_SegmentToPhysical( _sp );
+	struct uObjSprite *objSprite = (struct uObjSprite*)&gfx_info.RDRAM[address];
+	gSPSetSpriteTile(objSprite);
+	ObjData_new(&data, objSprite);
+
+	ulx = data.X0;
+	uly = data.Y0;
+	lrx = data.X1;
+	lry = data.Y1;
+
+	uls = 0;
+   lrs =  data.imageW - 1;
+   ult = 0;
+   lrt = data.imageH - 1;
+
+	if (objSprite->imageFlags & 0x01) { // flipS
+		uls = lrs;
+		lrs = 0;
+	}
+	if (objSprite->imageFlags & 0x10) { // flipT
+		ult = lrt;
+		lrt = 0;
+	}
+	const float z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
+
+	s32 v0 = 0, v1 = 1, v2 = 2, v3 = 3;
+
+   vtx0 = (SPVertex*)&OGL.triangles.vertices[v0];
+	vtx0->x = gSP.objMatrix.A * ulx + gSP.objMatrix.B * uly + gSP.objMatrix.X;
+	vtx0->y = gSP.objMatrix.C * ulx + gSP.objMatrix.D * uly + gSP.objMatrix.Y;
+	vtx0->z = z;
+	vtx0->w = 1.0f;
+	vtx0->s = uls;
+	vtx0->t = ult;
+   vtx1 = (SPVertex*)&OGL.triangles.vertices[v1];
+	vtx1->x = gSP.objMatrix.A * lrx + gSP.objMatrix.B * uly + gSP.objMatrix.X;
+	vtx1->y = gSP.objMatrix.C * lrx + gSP.objMatrix.D * uly + gSP.objMatrix.Y;
+	vtx1->z = z;
+	vtx1->w = 1.0f;
+	vtx1->s = lrs;
+	vtx1->t = ult;
+   vtx2 = (SPVertex*)&OGL.triangles.vertices[v2];
+	vtx2->x = gSP.objMatrix.A * ulx + gSP.objMatrix.B * lry + gSP.objMatrix.X;
+	vtx2->y = gSP.objMatrix.C * ulx + gSP.objMatrix.D * lry + gSP.objMatrix.Y;
+	vtx2->z = z;
+	vtx2->w = 1.0f;
+	vtx2->s = uls;
+	vtx2->t = lrt;
+   vtx3 = (SPVertex*)&OGL.triangles.vertices[v3];
+	vtx3->x = gSP.objMatrix.A * lrx + gSP.objMatrix.B * lry + gSP.objMatrix.X;
+	vtx3->y = gSP.objMatrix.C * lrx + gSP.objMatrix.D * lry + gSP.objMatrix.Y;
+	vtx3->z = z;
+	vtx3->w = 1.0f;
+	vtx3->s = lrs;
+	vtx3->t = lrt;
+
+   OGL_DrawLLETriangle(4);
+
+#ifdef NEW
+	frameBufferList().setBufferChanged();
+#endif
+	gDP.colorImage.height = (u32)(max( gDP.colorImage.height, (u32)gDP.scissor.lry ));
 }
 
 void gSPObjLoadTxSprite( u32 txsp )
@@ -1778,10 +2108,16 @@ void gSPObjLoadTxSprite( u32 txsp )
    gSPObjSprite( txsp + sizeof( uObjTxtr ) );
 }
 
+void gSPObjLoadTxRect(u32 txsp)
+{
+	gSPObjLoadTxtr(txsp);
+	gSPObjRectangle(txsp + sizeof(uObjTxtr));
+}
+
 void gSPObjLoadTxRectR( u32 txsp )
 {
-   gSPObjLoadTxtr( txsp );
-   gSPObjRectangleR( txsp + sizeof( uObjTxtr ) );
+	gSPObjLoadTxtr( txsp );
+	gSPObjRectangleR( txsp + sizeof( uObjTxtr ) );
 }
 
 void gSPObjMatrix( u32 mtx )
