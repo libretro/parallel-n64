@@ -165,10 +165,7 @@ static void gSPSetGeometryMode(uint32_t mode)
 {
    rdp.geom_mode |= mode;
 
-   // TODO - should we look at all these state changes at this point?
-   // This isn't done in gln64
-
-   if (mode & G_ZBUFFER)  // Z-Buffer enable
+   if (mode & G_ZBUFFER)
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -177,8 +174,7 @@ static void gSPSetGeometryMode(uint32_t mode)
       }
    }
 
-   //Added by Gonetz
-   if (mode & G_FOG)      // Fog enable
+   if (mode & G_FOG)
    {
       if (!(rdp.flags & FOG_ENABLED))
       {
@@ -186,11 +182,11 @@ static void gSPSetGeometryMode(uint32_t mode)
          rdp.update |= UPDATE_FOG_ENABLED;
       }
    }
-   //FRDP("uc0:setgeometrymode %08lx; result: %08lx\n", mode, rdp.geom_mode);
+
    if (settings.ucode == 5)
       return;
 
-   if (mode & CULL_FRONT)  // Front culling
+   if (mode & CULL_FRONT)
    {
       if (!(rdp.flags & CULL_FRONT))
       {
@@ -198,7 +194,8 @@ static void gSPSetGeometryMode(uint32_t mode)
          rdp.update |= UPDATE_CULL_MODE;
       }
    }
-   if (mode & CULL_BACK)  // Back culling
+
+   if (mode & CULL_BACK)
    {
       if (!(rdp.flags & CULL_BACK))
       {

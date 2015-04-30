@@ -302,14 +302,10 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       ((w1 & 0x00000600) << 3) |
       ((w1 & 0x00200000) >> 12);
 
-   FRDP("uc2:geom_mode c:%08lx, s:%08lx ", clr_mode, set_mode);
-
    rdp.geom_mode &= clr_mode;
    rdp.geom_mode |= set_mode;
 
-   FRDP ("result:%08lx\n", rdp.geom_mode);
-
-   if (rdp.geom_mode & 0x00000001) // Z-Buffer enable
+   if (rdp.geom_mode & G_ZBUFFER)
    {
       if (!(rdp.flags & ZBUF_ENABLED))
       {
@@ -326,7 +322,8 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_ZBUF_ENABLED;
       }
    }
-   if (rdp.geom_mode & 0x00001000) // Front culling
+
+   if (rdp.geom_mode & CULL_FRONT)
    {
       if (!(rdp.flags & CULL_FRONT))
       {
@@ -342,7 +339,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
          rdp.update |= UPDATE_CULL_MODE;
       }
    }
-   if (rdp.geom_mode & 0x00002000) // Back culling
+   if (rdp.geom_mode & CULL_BACK)
    {
       if (!(rdp.flags & CULL_BACK))
       {
@@ -359,8 +356,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       }
    }
 
-   //Added by Gonetz
-   if (rdp.geom_mode & 0x00010000)      // Fog enable
+   if (rdp.geom_mode & G_FOG)
    {
       if (!(rdp.flags & FOG_ENABLED))
       {
