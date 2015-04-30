@@ -120,11 +120,7 @@ void free_assembler(void **block_jumps_table, int *block_jumps_number, void **bl
    *block_riprel_number = 0;
 }
 
-#ifdef __x86_64__
 void add_jump(unsigned int pc_addr, unsigned int mi_addr, unsigned int absolute64)
-#else
-void add_jump(unsigned int pc_addr, unsigned int mi_addr)
-#endif
 {
    if (jumps_number == max_jumps_number)
    {

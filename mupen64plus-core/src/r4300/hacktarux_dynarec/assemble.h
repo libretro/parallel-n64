@@ -749,7 +749,7 @@ static INLINE void jmp(unsigned int mi_addr)
 #else
    put8(0xE9);
    put32(0);
-   add_jump(code_length-4, mi_addr);
+   add_jump(code_length-4, mi_addr, 0);
 #endif
 }
 
