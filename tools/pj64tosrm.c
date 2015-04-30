@@ -27,11 +27,10 @@
 /* from libretro's mupen64+ source (save_memory_data) */
 static struct
 {
-	uint8_t eeprom[0x200];
+	uint8_t eeprom[0x800];
 	uint8_t mempack[4][0x8000];
 	uint8_t sram[0x8000];
 	uint8_t flashram[0x20000];
-	uint8_t eeprom2[0x600];
 } srm;
 
 static struct
@@ -86,7 +85,7 @@ static int overwrite_confirm(const char *msg)
 static int is_empty_mem(uint8_t *mem, size_t size)
 {
 	int i;
-	if (mem == srm.eeprom || mem == srm.eeprom2 || mem == srm.sram) {
+	if (mem == srm.eeprom || mem == srm.sram) {
 		for (i = size-1; i >= 0; --i) {
 			if (mem[i] != 0)
 				return 0;
@@ -118,9 +117,6 @@ static void read_mem(const char *filename, void *dest, size_t size)
 
 	fread(dest, size, 1, fp);
 
-	if (dest == srm.eeprom)
-		fread(srm.eeprom2, sizeof(srm.eeprom2), 1, fp);
-
 	if (ferror(fp)) {
 		perror(filename);
 		fclose(fp);
@@ -141,16 +137,6 @@ static void write_mem(const char *filename, void *source, size_t size)
 
 	fwrite(source, size, 1, fp);
 
-	if (source == srm.eeprom) {
-		int i;
-		for (i = sizeof(srm.eeprom2)-1; i >= 0; --i) {
-			if (srm.eeprom2[i] != 0) {
-				fwrite(srm.eeprom2, i+1, 1, fp);
-				break;
-			}
-		}
-	}
-
 	if (ferror(fp)) {
 		perror(filename);
 		fclose(fp);
@@ -167,7 +153,6 @@ static void format_srm(void)
 
    memset(srm.sram, 0, sizeof(srm.sram));
    memset(srm.eeprom, 0, sizeof(srm.eeprom));
-   memset(srm.eeprom2, 0, sizeof(srm.eeprom2));
    memset(srm.flashram, 0xff, sizeof(srm.flashram));
 
    for (i=0; i<4; i++) {
@@ -319,7 +304,6 @@ Usage:
 		fwrite(srm.mempack, sizeof(srm.mempack), 1, fp);
 		fwrite(srm.sram, sizeof(srm.sram), 1, fp);
 		fwrite(srm.flashram, sizeof(srm.flashram), 1, fp);
-		fwrite(srm.eeprom2, sizeof(srm.eeprom2), 1, fp);
 		fclose(fp);
 	}
 
