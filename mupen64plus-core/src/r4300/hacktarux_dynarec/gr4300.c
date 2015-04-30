@@ -49,8 +49,6 @@ static int eax, ebx, ecx, edx, esp, ebp, esi, edi;
 #endif
 #endif
 
-typedef uint64_t native_type;
-
 int branch_taken = 0;
 
 /* static functions */
