@@ -22,8 +22,14 @@
 
 #include <stdio.h>
 
-#include "assemble.h"
-#include "../hacktarux_dynarec/interpret.h"
+#ifdef __x86_64__
+#include "../x86_64/assemble.h"
+typedef uint64_t native_type;
+#else
+#include "../x86/assemble.h"
+typedef uint32_t native_type;
+#endif
+#include "interpret.h"
 
 #include "r4300/recomph.h"
 #include "r4300/r4300.h"
@@ -33,295 +39,462 @@
 void genadd_d(void)
 {
 #ifdef INTERPRET_ADD_D
-   gencallinterp((uint64_t)cached_interpreter_table.ADD_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.ADD_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fadd_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
+#else
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.ft]));
+   fadd_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fd]));
+   fstp_preg32_qword(EAX);
+#endif
 #endif
 }
 
 void gensub_d(void)
 {
 #ifdef INTERPRET_SUB_D
-   gencallinterp((uint64_t)cached_interpreter_table.SUB_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.SUB_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fsub_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
+#else
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.ft]));
+   fsub_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fd]));
+   fstp_preg32_qword(EAX);
+#endif
 #endif
 }
 
 void genmul_d(void)
 {
 #ifdef INTERPRET_MUL_D
-   gencallinterp((uint64_t)cached_interpreter_table.MUL_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.MUL_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fmul_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
+#else
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.ft]));
+   fmul_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fd]));
+   fstp_preg32_qword(EAX);
+#endif
 #endif
 }
 
 void gendiv_d(void)
 {
 #ifdef INTERPRET_DIV_D
-   gencallinterp((uint64_t)cached_interpreter_table.DIV_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.DIV_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fdiv_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
+#else
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.ft]));
+   fdiv_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fd]));
+   fstp_preg32_qword(EAX);
+#endif
 #endif
 }
 
 void gensqrt_d(void)
 {
 #ifdef INTERPRET_SQRT_D
-   gencallinterp((uint64_t)cached_interpreter_table.SQRT_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.SQRT_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fsqrt();
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
+#else
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fsqrt();
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fd]));
+   fstp_preg32_qword(EAX);
+#endif
 #endif
 }
 
 void genabs_d(void)
 {
 #ifdef INTERPRET_ABS_D
-   gencallinterp((uint64_t)cached_interpreter_table.ABS_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.ABS_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fabs_();
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
+#else
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fabs_();
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fd]));
+   fstp_preg32_qword(EAX);
+#endif
 #endif
 }
 
 void genmov_d(void)
 {
 #ifdef INTERPRET_MOV_D
-   gencallinterp((uint64_t)cached_interpreter_table.MOV_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.MOV_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    mov_reg32_preg64(EBX, RAX);
    mov_reg32_preg64pimm32(ECX, RAX, 4);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    mov_preg64_reg32(RAX, EBX);
    mov_preg64pimm32_reg32(RAX, 4, ECX);
+#else
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
+   mov_reg32_preg32(EBX, EAX);
+   mov_reg32_preg32pimm32(ECX, EAX, 4);
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fd]));
+   mov_preg32_reg32(EAX, EBX);
+   mov_preg32pimm32_reg32(EAX, 4, ECX);
+#endif
 #endif
 }
 
 void genneg_d(void)
 {
 #ifdef INTERPRET_NEG_D
-   gencallinterp((uint64_t)cached_interpreter_table.NEG_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.NEG_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    fchs();
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    fstp_preg64_qword(RAX);
+#else
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fchs();
+   mov_eax_memoffs32((unsigned int *)(&reg_cop1_double[dst->f.cf.fd]));
+   fstp_preg32_qword(EAX);
+#endif
 #endif
 }
 
 void genround_l_d(void)
 {
 #ifdef INTERPRET_ROUND_L_D
-   gencallinterp((uint64_t)cached_interpreter_table.ROUND_L_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.ROUND_L_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    fldcw_m16rel((unsigned short*)&round_mode);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg64_qword(RAX);
    fldcw_m16rel((unsigned short*)&rounding_mode);
+#else
+   fldcw_m16((unsigned short*)&round_mode);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fd]));
+   fistp_preg32_qword(EAX);
+   fldcw_m16((unsigned short*)&rounding_mode);
+#endif
 #endif
 }
 
 void gentrunc_l_d(void)
 {
 #ifdef INTERPRET_TRUNC_L_D
-   gencallinterp((uint64_t)cached_interpreter_table.TRUNC_L_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.TRUNC_L_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    fldcw_m16rel((unsigned short*)&trunc_mode);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg64_qword(RAX);
    fldcw_m16rel((unsigned short*)&rounding_mode);
+#else
+   fldcw_m16((unsigned short*)&trunc_mode);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fd]));
+   fistp_preg32_qword(EAX);
+   fldcw_m16((unsigned short*)&rounding_mode);
+#endif
 #endif
 }
 
 void genceil_l_d(void)
 {
 #ifdef INTERPRET_CEIL_L_D
-   gencallinterp((uint64_t)cached_interpreter_table.CEIL_L_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.CEIL_L_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    fldcw_m16rel((unsigned short*)&ceil_mode);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg64_qword(RAX);
    fldcw_m16rel((unsigned short*)&rounding_mode);
+#else
+   fldcw_m16((unsigned short*)&ceil_mode);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fd]));
+   fistp_preg32_qword(EAX);
+   fldcw_m16((unsigned short*)&rounding_mode);
+#endif
 #endif
 }
 
 void genfloor_l_d(void)
 {
 #ifdef INTERPRET_FLOOR_L_D
-   gencallinterp((uint64_t)cached_interpreter_table.FLOOR_L_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.FLOOR_L_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    fldcw_m16rel((unsigned short*)&floor_mode);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg64_qword(RAX);
    fldcw_m16rel((unsigned short*)&rounding_mode);
+#else
+   fldcw_m16((unsigned short*)&floor_mode);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fd]));
+   fistp_preg32_qword(EAX);
+   fldcw_m16((unsigned short*)&rounding_mode);
+#endif
 #endif
 }
 
 void genround_w_d(void)
 {
 #ifdef INTERPRET_ROUND_W_D
-   gencallinterp((uint64_t)cached_interpreter_table.ROUND_W_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.ROUND_W_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    fldcw_m16rel((unsigned short*)&round_mode);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg64_dword(RAX);
    fldcw_m16rel((unsigned short*)&rounding_mode);
+#else
+   fldcw_m16((unsigned short*)&round_mode);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.cf.fd]));
+   fistp_preg32_dword(EAX);
+   fldcw_m16((unsigned short*)&rounding_mode);
+#endif
 #endif
 }
 
 void gentrunc_w_d(void)
 {
 #ifdef INTERPRET_TRUNC_W_D
-   gencallinterp((uint64_t)cached_interpreter_table.TRUNC_W_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.TRUNC_W_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    fldcw_m16rel((unsigned short*)&trunc_mode);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg64_dword(RAX);
    fldcw_m16rel((unsigned short*)&rounding_mode);
+#else
+   fldcw_m16((unsigned short*)&trunc_mode);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.cf.fd]));
+   fistp_preg32_dword(EAX);
+   fldcw_m16((unsigned short*)&rounding_mode);
+#endif
 #endif
 }
 
 void genceil_w_d(void)
 {
 #ifdef INTERPRET_CEIL_W_D
-   gencallinterp((uint64_t)cached_interpreter_table.CEIL_W_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.CEIL_W_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    fldcw_m16rel((unsigned short*)&ceil_mode);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg64_dword(RAX);
    fldcw_m16rel((unsigned short*)&rounding_mode);
+#else
+   fldcw_m16((unsigned short*)&ceil_mode);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.cf.fd]));
+   fistp_preg32_dword(EAX);
+   fldcw_m16((unsigned short*)&rounding_mode);
+#endif
 #endif
 }
 
 void genfloor_w_d(void)
 {
 #ifdef INTERPRET_FLOOR_W_D
-   gencallinterp((uint64_t)cached_interpreter_table.FLOOR_W_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.FLOOR_W_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    fldcw_m16rel((unsigned short*)&floor_mode);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg64_dword(RAX);
    fldcw_m16rel((unsigned short*)&rounding_mode);
+#else
+   fldcw_m16((unsigned short*)&floor_mode);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.cf.fd]));
+   fistp_preg32_dword(EAX);
+   fldcw_m16((unsigned short*)&rounding_mode);
+#endif
 #endif
 }
 
 void gencvt_s_d(void)
 {
 #ifdef INTERPRET_CVT_S_D
-   gencallinterp((uint64_t)cached_interpreter_table.CVT_S_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.CVT_S_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
    fstp_preg64_dword(RAX);
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.cf.fd]));
+   fstp_preg32_dword(EAX);
+#endif
 #endif
 }
 
 void gencvt_w_d(void)
 {
 #ifdef INTERPRET_CVT_W_D
-   gencallinterp((uint64_t)cached_interpreter_table.CVT_W_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.CVT_W_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_simple[dst->f.cf.fd]));
    fistp_preg64_dword(RAX);
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_simple[dst->f.cf.fd]));
+   fistp_preg32_dword(EAX);
+#endif
 #endif
 }
 
 void gencvt_l_d(void)
 {
 #ifdef INTERPRET_CVT_L_D
-   gencallinterp((uint64_t)cached_interpreter_table.CVT_L_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.CVT_L_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fd]));
    fistp_preg64_qword(RAX);
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fd]));
+   fistp_preg32_qword(EAX);
+#endif
 #endif
 }
 
 void genc_f_d(void)
 {
 #ifdef INTERPRET_C_F_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_F_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_F_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000);
+#else
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000);
+#endif
 #endif
 }
 
 void genc_un_d(void)
 {
 #ifdef INTERPRET_C_UN_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_UN_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_UN_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -332,15 +505,28 @@ void genc_un_d(void)
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
    jmp_imm_short(11); // 2
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fucomip_fpreg(1);
+   ffree_fpreg(0);
+   jp_rj(12);
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+   jmp_imm_short(10); // 2
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+#endif
 #endif
 }
 
 void genc_eq_d(void)
 {
 #ifdef INTERPRET_C_EQ_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_EQ_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_EQ_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -351,15 +537,28 @@ void genc_eq_d(void)
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
    jmp_imm_short(11); // 2
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fucomip_fpreg(1);
+   ffree_fpreg(0);
+   jne_rj(12); // 2
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+   jmp_imm_short(10); // 2
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+#endif
 #endif
 }
 
 void genc_ueq_d(void)
 {
 #ifdef INTERPRET_C_UEQ_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_UEQ_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_UEQ_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -371,15 +570,29 @@ void genc_ueq_d(void)
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
    jmp_imm_short(11); // 2
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fucomip_fpreg(1);
+   ffree_fpreg(0);
+   jp_rj(14);
+   jne_rj(12);
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+   jmp_imm_short(10); // 2
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+#endif
 #endif
 }
 
 void genc_olt_d(void)
 {
 #ifdef INTERPRET_C_OLT_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_OLT_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_OLT_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -390,15 +603,28 @@ void genc_olt_d(void)
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
    jmp_imm_short(11); // 2
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fucomip_fpreg(1);
+   ffree_fpreg(0);
+   jae_rj(12); // 2
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+   jmp_imm_short(10); // 2
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+#endif
 #endif
 }
 
 void genc_ult_d(void)
 {
 #ifdef INTERPRET_C_ULT_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_ULT_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_ULT_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -410,15 +636,29 @@ void genc_ult_d(void)
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
    jmp_imm_short(11); // 2
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fucomip_fpreg(1);
+   ffree_fpreg(0);
+   jp_rj(14);
+   jae_rj(12); // 2
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+   jmp_imm_short(10); // 2
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+#endif
 #endif
 }
 
 void genc_ole_d(void)
 {
 #ifdef INTERPRET_C_OLE_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_OLE_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_OLE_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -429,15 +669,28 @@ void genc_ole_d(void)
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
    jmp_imm_short(11); // 2
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fucomip_fpreg(1);
+   ffree_fpreg(0);
+   ja_rj(12); // 2
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+   jmp_imm_short(10); // 2
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+#endif
 #endif
 }
 
 void genc_ule_d(void)
 {
 #ifdef INTERPRET_C_ULE_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_ULE_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_ULE_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -449,15 +702,29 @@ void genc_ule_d(void)
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
    jmp_imm_short(11); // 2
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fucomip_fpreg(1);
+   ffree_fpreg(0);
+   jp_rj(14);
+   ja_rj(12); // 2
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+   jmp_imm_short(10); // 2
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+#endif
 #endif
 }
 
 void genc_sf_d(void)
 {
 #ifdef INTERPRET_C_SF_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_SF_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_SF_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -465,15 +732,25 @@ void genc_sf_d(void)
    fcomip_fpreg(1);
    ffree_fpreg(0);
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000);
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fcomip_fpreg(1);
+   ffree_fpreg(0);
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000);
+#endif
 #endif
 }
 
 void genc_ngle_d(void)
 {
 #ifdef INTERPRET_C_NGLE_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_NGLE_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_NGLE_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -484,15 +761,28 @@ void genc_ngle_d(void)
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
    jmp_imm_short(11); // 2
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fcomip_fpreg(1);
+   ffree_fpreg(0);
+   jp_rj(12);
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+   jmp_imm_short(10); // 2
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+#endif
 #endif
 }
 
 void genc_seq_d(void)
 {
 #ifdef INTERPRET_C_SEQ_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_SEQ_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_SEQ_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -503,15 +793,28 @@ void genc_seq_d(void)
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
    jmp_imm_short(11); // 2
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fcomip_fpreg(1);
+   ffree_fpreg(0);
+   jne_rj(12); // 2
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+   jmp_imm_short(10); // 2
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+#endif
 #endif
 }
 
 void genc_ngl_d(void)
 {
 #ifdef INTERPRET_C_NGL_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_NGL_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_NGL_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -523,15 +826,29 @@ void genc_ngl_d(void)
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
    jmp_imm_short(11); // 2
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fcomip_fpreg(1);
+   ffree_fpreg(0);
+   jp_rj(14);
+   jne_rj(12);
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+   jmp_imm_short(10); // 2
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+#endif
 #endif
 }
 
 void genc_lt_d(void)
 {
 #ifdef INTERPRET_C_LT_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_LT_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_LT_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -542,15 +859,28 @@ void genc_lt_d(void)
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
    jmp_imm_short(11); // 2
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fcomip_fpreg(1);
+   ffree_fpreg(0);
+   jae_rj(12); // 2
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+   jmp_imm_short(10); // 2
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+#endif
 #endif
 }
 
 void genc_nge_d(void)
 {
 #ifdef INTERPRET_C_NGE_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_NGE_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_NGE_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -562,15 +892,29 @@ void genc_nge_d(void)
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
    jmp_imm_short(11); // 2
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fcomip_fpreg(1);
+   ffree_fpreg(0);
+   jp_rj(14);
+   jae_rj(12); // 2
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+   jmp_imm_short(10); // 2
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+#endif
 #endif
 }
 
 void genc_le_d(void)
 {
 #ifdef INTERPRET_C_LE_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_LE_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_LE_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -581,15 +925,28 @@ void genc_le_d(void)
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
    jmp_imm_short(11); // 2
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fcomip_fpreg(1);
+   ffree_fpreg(0);
+   ja_rj(12); // 2
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+   jmp_imm_short(10); // 2
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+#endif
 #endif
 }
 
 void genc_ngt_d(void)
 {
 #ifdef INTERPRET_C_NGT_D
-   gencallinterp((uint64_t)cached_interpreter_table.C_NGT_D, 0);
+   gencallinterp((native_type)cached_interpreter_table.C_NGT_D, 0);
 #else
    gencheck_cop1_unusable();
+#ifdef __x86_64__
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.ft]));
    fld_preg64_qword(RAX);
    mov_xreg64_m64rel(RAX, (unsigned long long *)(&reg_cop1_double[dst->f.cf.fs]));
@@ -601,6 +958,19 @@ void genc_ngt_d(void)
    or_m32rel_imm32((unsigned int*)&FCR31, 0x800000); // 11
    jmp_imm_short(11); // 2
    and_m32rel_imm32((unsigned int*)&FCR31, ~0x800000); // 11
+#else
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.ft]));
+   fld_preg32_qword(EAX);
+   mov_eax_memoffs32((unsigned int*)(&reg_cop1_double[dst->f.cf.fs]));
+   fld_preg32_qword(EAX);
+   fcomip_fpreg(1);
+   ffree_fpreg(0);
+   jp_rj(14);
+   ja_rj(12); // 2
+   or_m32_imm32((unsigned int*)&FCR31, 0x800000); // 10
+   jmp_imm_short(10); // 2
+   and_m32_imm32((unsigned int*)&FCR31, ~0x800000); // 10
+#endif
 #endif
 }
 

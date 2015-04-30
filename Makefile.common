@@ -130,6 +130,7 @@ ifdef WITH_DYNAREC
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gtlb.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop0.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop1.c \
+						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop1_d.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop1_l.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gcop1_w.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gregimm.c \
