@@ -231,9 +231,9 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
    uint8_t *rdram_u8  = (uint8_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
 
    // Check the command
-   switch (index)
+   switch (_SHIFTR( w0, 16, 8))
    {
-      case 0x80: /* F3D_MV_VIEWPORT */
+      case F3D_MV_VIEWPORT:
          {
             int16_t scale_y = rdram[0] / 4;
             int16_t scale_x = rdram[1] / 4;
@@ -256,7 +256,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
             rdp.update |= UPDATE_VIEWPORT;
          }
          break;
-      case 0x82: /* G_MV_LOOKATY */
+      case G_MV_LOOKATY:
          {
             int8_t dir_x = rdram_s8[11];
             int8_t dir_y = rdram_s8[10];
@@ -324,20 +324,6 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
          }
          break;
          //next 3 command should never appear since they will be skipped in previous command
-      case G_MV_MATRIX_2:
-         //RDP_E ("uc0:movemem matrix 0 - ERROR!\n");
-         //LRDP("matrix 0 - IGNORED\n");
-         break;
-
-      case G_MV_MATRIX_3:
-         //RDP_E ("uc0:movemem matrix 1 - ERROR!\n");
-         //LRDP("matrix 1 - IGNORED\n");
-         break;
-
-      case G_MV_MATRIX_4:
-         //RDP_E ("uc0:movemem matrix 2 - ERROR!\n");
-         //LRDP("matrix 2 - IGNORED\n");
-         break;
    }
 }
 
@@ -563,14 +549,14 @@ static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
 static void uc0_moveword(uint32_t w0, uint32_t w1)
 {
    // Find which command this is (lowest byte of cmd0)
-   switch (w0 & 0xFF)
+   switch (_SHIFTR( w0, 0, 8))
    {
       case 0x00:
          RDP_E ("uc0:moveword matrix - IGNORED\n");
          LRDP("matrix - IGNORED\n");
          break;
 
-      case 0x02:
+      case G_MW_NUMLIGHT:
          rdp.num_lights = ((w1 - 0x80000000) >> 5) - 1; // inverse of equation
          if (rdp.num_lights > 8) rdp.num_lights = 0;
 
@@ -578,33 +564,25 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          //FRDP ("numlights: %d\n", rdp.num_lights);
          break;
 
-      case 0x04:
+      case G_MW_CLIP:
          if (((w0 >> 8)&0xFFFF) == 0x04)
          {
             rdp.clip_ratio = (float)vi_integer_sqrt(w1);
             rdp.update |= UPDATE_VIEWPORT;
          }
-         //FRDP ("clip %08lx, %08lx\n", w0, w1);
          break;
 
-      case 0x06: // segment
-         //FRDP ("segment: %08lx -> seg%d\n", w1, (w0 >> 10) & 0x0F);
+      case G_MW_SEGMENT:
          if ((w1 & BMASK)<BMASK)
             rdp.segment[(w0 >> 10) & 0x0F] = w1;
          break;
-
-      case 0x08:
-         {
-            rdp.fog_multiplier = (int16_t)(w1 >> 16);
-            rdp.fog_offset = (int16_t)(w1 & 0x0000FFFF);
-            //FRDP ("fog: multiplier: %f, offset: %f\n", rdp.fog_multiplier, rdp.fog_offset);
-         }
+      case G_MW_FOG:
+         rdp.fog_multiplier = (int16_t)(w1 >> 16);
+         rdp.fog_offset = (int16_t)(w1 & 0x0000FFFF);
          break;
-
-      case 0x0a: // moveword LIGHTCOL
+      case G_MW_LIGHTCOL:
          {
             int n = (w0 & 0xE000) >> 13;
-            //FRDP ("lightcol light:%d, %08lx\n", n, w1);
 
             rdp.light[n].col[0] = (float)((w1 >> 24) & 0xFF) / 255.0f;
             rdp.light[n].col[1] = (float)((w1 >> 16) & 0xFF) / 255.0f;
@@ -661,8 +639,8 @@ static void uc0_texture(uint32_t w0, uint32_t w1)
 static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
 {
    int i;
-   int len = w0 & 0xFF;
-   int shift = (w0 >> 8) & 0xFF;
+   int len   = _SHIFTR(w0, 0, 8);
+   int shift = _SHIFTR(w0, 8, 8);
    uint32_t mask = 0;
 
    if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
@@ -702,8 +680,8 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
 static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
 {
    int i;
-   int len = w0 & 0xFF;
-   int shift = (w0 >> 8) & 0xFF;
+   int len   = _SHIFTR(w0, 0, 8);
+   int shift = _SHIFTR(w0, 8, 8);
    uint32_t mask = 0;
 
    if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
