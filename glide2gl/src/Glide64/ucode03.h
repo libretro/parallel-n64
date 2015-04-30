@@ -43,7 +43,7 @@
 
 static void uc3_vertex(uint32_t w0, uint32_t w1)
 {
-   int v0 = ((w0 >> 16) & 0xFF) / 5;      // Current vertex
+   int v0 = _SHIFTR(w0, 16, 8) / 5;      // Current vertex
    int n = (uint16_t)((w0 & 0xFFFF) + 1) / 0x210;    // Number to copy
 
    if (v0 >= 32)
@@ -70,9 +70,9 @@ static void uc3_tri1(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing)
       return;
 
-   v[0] = &rdp.vtx[((w1 >> 16) & 0xFF) / 5];  /* v0 */
-   v[1] = &rdp.vtx[((w1 >> 8)  & 0xFF) / 5];  /* v1 */
-   v[2] = &rdp.vtx[(w1 & 0xFF) / 5];          /* v2 */
+   v[0] = &rdp.vtx[_SHIFTR( w1, 16, 8) / 5];  /* v0 */
+   v[1] = &rdp.vtx[_SHIFTR( w1,  8, 8) / 5];  /* v1 */
+   v[2] = &rdp.vtx[_SHIFTR( w1,  0, 8) / 5];  /* v2 */
 
    cull_trianglefaces(v, 1, true, true, 0);
 }
@@ -84,12 +84,12 @@ static void uc3_tri2(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing)
       return;
 
-   v[0] = &rdp.vtx[((w0 >> 16) & 0xFF) / 5]; /* v00 */
-   v[1] = &rdp.vtx[((w0 >> 8) & 0xFF)  / 5]; /* v01 */
-   v[2] = &rdp.vtx[(w0 & 0xFF)         / 5]; /* v02 */
-   v[3] = &rdp.vtx[((w1 >> 16) & 0xFF) / 5]; /* v10 */
-   v[4] = &rdp.vtx[((w1 >> 8) & 0xFF)  / 5]; /* v11 */
-   v[5] = &rdp.vtx[(w1 & 0xFF)         / 5]; /* v12 */
+   v[0] = &rdp.vtx[_SHIFTR(w0, 16, 8) / 5]; /* v00 */
+   v[1] = &rdp.vtx[_SHIFTR(w0,  8, 8) / 5]; /* v01 */
+   v[2] = &rdp.vtx[_SHIFTR(w0,  0, 8) / 5]; /* v02 */
+   v[3] = &rdp.vtx[_SHIFTR(w1, 16, 8) / 5]; /* v10 */
+   v[4] = &rdp.vtx[_SHIFTR(w1,  8, 8) / 5]; /* v11 */
+   v[5] = &rdp.vtx[_SHIFTR(w1,  0, 8) / 5]; /* v12 */
 
    cull_trianglefaces(v, 2, true, true, 0);
 }
