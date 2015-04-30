@@ -249,7 +249,6 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_SEGMENT:
-         //FRDP ("SEGMENT %08lx -> seg%d\n", w1, offset >> 2);
          rdp.segment[(offset >> 2) & 0xF] = w1;
          break;
 
@@ -258,12 +257,7 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
          rdp.fog_offset = (short)(w1 & 0x0000FFFF);
          break;
 
-      case 0x0c:
-         RDP_E ("uc8:moveword forcemtx - IGNORED\n");
-         LRDP("forcemtx - IGNORED\n");
-         break;
-
-      case 0x0e:
+      case G_MW_PERSPNORM:
          LRDP("perspnorm - IGNORED\n");
          break;
 
@@ -306,23 +300,16 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
 
          }
          break;
-
-      default:
-         FRDP_E("uc8:moveword unknown (index: 0x%08lx, offset 0x%08lx)\n", index, offset);
-         FRDP ("unknown (index: 0x%08lx, offset 0x%08lx)\n", index, offset);
    }
 }
 
 static void uc8_movemem(uint32_t w0, uint32_t w1)
 {
    int i, t;
-   int idx = w0 & 0xFF;
    uint32_t addr = segoffset(w1);
-   int ofs = (w0 >> 5) & 0x3FFF;
+   int ofs = _SHIFTR(w0, 5, 14);
 
-   FRDP ("uc8:movemem ofs:%d ", ofs);
-
-   switch (idx)
+   switch (_SHIFTR(w0, 0, 8))
    {
       case F3DCBFD_MV_VIEWPORT:   // VIEWPORT
          {
@@ -349,10 +336,9 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
 
       case F3DCBFD_MV_LIGHT:  // LIGHT
          {
-            int n;
-			uint32_t a;
+            uint32_t a;
+            int n = (ofs / 48);
 
-			n = (ofs / 48);
             if (n < 2)
             {
                int8_t dir_x, dir_y, dir_z;
@@ -428,9 +414,6 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
 #endif
          }
          break;
-
-      default:
-         FRDP ("uc8:movemem unknown (%d)\n", idx);
    }
 }
 
@@ -441,18 +424,18 @@ static void uc8_tri4(uint32_t w0, uint32_t w1) //by Gugaman Apr 19 2002
    if (rdp.skip_drawing)
       return;
 
-   v[0]  = &rdp.vtx[(w0 >> 23) & 0x1F]; /* v00 */
-   v[1]  = &rdp.vtx[(w0 >> 18) & 0x1F]; /* v01 */
-   v[2]  = &rdp.vtx[((((w0 >> 15) & 0x7) << 2) | ((w1 >> 30) &0x3))]; /* v02 */
-   v[3]  = &rdp.vtx[(w0 >> 10) & 0x1F]; /* v10 */
-   v[4]  = &rdp.vtx[(w0 >> 5) & 0x1F];  /* v11 */
-   v[5]  = &rdp.vtx[(w0 >> 0) & 0x1F];  /* v12 */
-   v[6]  = &rdp.vtx[(w1 >> 25) & 0x1F]; /* v20 */
-   v[7]  = &rdp.vtx[(w1 >> 20) & 0x1F]; /* v21 */
-   v[8]  = &rdp.vtx[(w1 >> 15) & 0x1F]; /* v22 */
-   v[9]  = &rdp.vtx[(w1 >> 10) & 0x1F]; /* v30 */
-   v[10] = &rdp.vtx[(w1 >> 5) & 0x1F];  /* v31 */
-   v[11] = &rdp.vtx[(w1 >> 0) & 0x1F];  /* v32 */
+   v[0]  = &rdp.vtx[_SHIFTR( w0, 23, 5)]; /* v00 */
+   v[1]  = &rdp.vtx[_SHIFTR( w0, 18, 5)]; /* v01 */
+   v[2]  = &rdp.vtx[(_SHIFTR(w0, 15, 3) << 2) | _SHIFTR(w1, 30, 2)]; /* v02 */
+   v[3]  = &rdp.vtx[_SHIFTR( w0, 10, 5)]; /* v10 */
+   v[4]  = &rdp.vtx[_SHIFTR( w0,  5, 5)];  /* v11 */
+   v[5]  = &rdp.vtx[_SHIFTR( w0,  0, 5)];  /* v12 */
+   v[6]  = &rdp.vtx[_SHIFTR( w1, 25, 5)]; /* v20 */
+   v[7]  = &rdp.vtx[_SHIFTR( w1, 20, 5)]; /* v21 */
+   v[8]  = &rdp.vtx[_SHIFTR( w1, 15, 5)]; /* v22 */
+   v[9]  = &rdp.vtx[_SHIFTR( w1, 10, 5)]; /* v30 */
+   v[10] = &rdp.vtx[_SHIFTR( w1,  5, 5)];  /* v31 */
+   v[11] = &rdp.vtx[_SHIFTR( w1,  0, 5)];  /* v32 */
 
    cull_trianglefaces(v, 4, true, true, 0);
 }
