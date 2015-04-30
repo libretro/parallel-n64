@@ -29,6 +29,7 @@
 #include "api/debugger.h"
 #endif
 
+#include <stdint.h>
 #include <string.h>
 
 static uint8_t pak_data_crc(uint8_t *data)
