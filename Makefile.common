@@ -139,7 +139,6 @@ ifdef WITH_DYNAREC
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/gregimm.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/regcache.c \
 						 $(CORE_DIR)/src/r4300/hacktarux_dynarec/rjump.c
-		SOURCES_C += $(wildcard $(CORE_DIR)/src/r4300/$(WITH_DYNAREC)/*.c)
 	endif
 else
 	SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
