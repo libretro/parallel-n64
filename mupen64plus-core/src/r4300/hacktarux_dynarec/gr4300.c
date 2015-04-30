@@ -2908,7 +2908,7 @@ void genld(void)
    shl_reg64_imm8(RAX, 32); // 4
    or_reg64_reg64(RAX, RBX); // 3
 
-   set_register_state(RAX, (unsigned int*)dst->f.i.rt, 1, 0);
+   set_register_state(RAX, (unsigned int*)dst->f.i.rt, 1, 1);
 #endif
 }
 
