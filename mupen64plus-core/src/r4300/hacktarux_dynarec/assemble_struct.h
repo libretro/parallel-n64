@@ -23,15 +23,17 @@
 #ifndef __ASSEMBLE_STRUCT_H__
 #define __ASSEMBLE_STRUCT_H__
 
+#ifdef __x86_64__
+#define JUMP_WRAPPER_SIZE 84
+#else
+#define JUMP_WRAPPER_SIZE 62
+#endif
+
 typedef struct _reg_cache_struct
 {
    int need_map;
    void *needed_registers[8];
-#ifdef __x86_64__
-   unsigned char jump_wrapper[84];
-#else
-   unsigned char jump_wrapper[62];
-#endif
+   unsigned char jump_wrapper[JUMP_WRAPPER_SIZE];
    int need_cop1_check;
 } reg_cache_struct;
 
