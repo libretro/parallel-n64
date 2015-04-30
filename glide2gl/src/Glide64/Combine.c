@@ -14169,31 +14169,22 @@ void CombineBlender(void)
    {
       switch (blendmode)
       {
-         /* Mace objects */
-         case 0x0382:
-			/* Mace special blend mode */
-         case 0x0091:
-            /* 1080 Snowboarding - sky */
-         case 0x0c08:
-            /* Mario Kart 64 - player select
-             * clr_in * 0 + clr_in * 1
-             * - or just clr_in, no matter what alpha
-             */
-         case 0x0f0a:
-            /* Donkey Kong 64 blue prints */
-         case 0x0302:
-            /* Sin and Punishment */
-         case 0xcb02:
-			/* Bomberman 2 special blend mode */
-         case 0xA500:
-            /* Battlezone
-             * clr_in * a + clr_in * (1-a) */
-         case BLEND_FOG_ASHADE:
-         case 0x00c0:
-            /* ISS64 */
-         case 0xc302:
-            /* Donald Duck */
-         case 0xC702:
+         case 0x0382:            /* Mace objects */
+         case 0x0091:            /* Mace special blend mode */
+         case 0x0c08:            /* 1080 Snowboarding - sky */
+         case 0x0f0a:            /* Mario Kart 64 - player select
+                                  * clr_in * 0 + clr_in * 1
+                                  * - or just clr_in, no matter what alpha
+                                  */
+         case 0x0302:            /* Donkey Kong 64 blue prints */
+         case 0xA500:            /* Bomberman 2 special blend mode */
+         case 0xcb02:            /* Sin and Punishment */
+         case BLEND_FOG_ASHADE:  /* Battlezone
+                                  * clr_in * a + clr_in * (1-a) */
+         case 0x07C2:            /* Conker BFD */
+         case 0x00c0:            /* Conker BFD */
+         case 0xc302:            /* ISS64 */
+         case 0xC702:            /* Donald Duck */
             A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
             break;
 
@@ -14204,17 +14195,12 @@ void CombineBlender(void)
             break;
 
 
-         case 0xc712: /* Pokemon Stadium? */
-            /* LOT in Zelda: Majora's Mask */
-         case 0xaf50:
-            /* LOT in Zelda: Majora's Mask */
+         case 0xc712:   /* Pokemon Stadium? */
+         case 0xaf50:   /* LOT in Zelda: Majora's Mask */
+         case 0x0FA5:   /* LOT in Zelda: Majora's Mask */
+         case 0x0f5a:   /* Seems to be doing just blend color - maybe combiner can be used for this? */
+         case 0x5055:   /* Used in Paper Mario intro, I'm not sure if this is right... */
             /* clr_in * 0 + clr_mem * 1 */
-			case 0x0FA5:
-            /* Seems to be doing just blend color - maybe combiner can be used for this? */
-         case 0x0f5a:
-            /* used in Paper Mario intro, I'm not sure if this is right... */
-            /* clr_in * 0 + clr_mem * 1 */
-         case 0x5055:
             A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
             break;
 
@@ -14311,22 +14297,18 @@ void CombineBlender(void)
    // The reason it wasn't working before was because I wasn't handling rdp:setothermode
    if ((rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && ((rdp.othermode_l & 0x7000) != 0x7000))
    {
-      if ((settings.hacks&hack_PMario) && (blendmode == 0x5055))
+      switch (blendmode)
       {
-         A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
-      }
-      else if (blendmode == 0x4055) // Mario Golf
-      {
-         A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
-      }
-      else
-      {
-         A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
+         case 0x4055:      /* Mario Golf */
+         case 0x5055:      /* Paper Mario intro clr_mem * a_in + clr_mem * a_mem */
+            A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
+            break;
+         default:
+            A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
+            break;
       }
    }
 
-   //hack
-   //*
    if (settings.hacks&hack_ISS64)
    {
       if (rdp.othermode_l == 0xff5a6379)
