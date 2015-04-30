@@ -35,12 +35,11 @@ static precomp_instr *last_access[8];
 static precomp_instr *free_since[8];
 static int dirty[8];
 
+static int r64[8];
 #if defined(__x86_64__)
-static int is64bits[8];
 static uint64_t *reg_content[8];
 static uint64_t *r0;
 #else
-static int r64[8];
 static uint32_t *reg_content[8];
 static uint32_t *r0;
 #endif
@@ -55,7 +54,7 @@ void init_cache(precomp_instr* start)
       reg_content[i] = NULL;
 #if defined(__x86_64__)
       dirty[i] = 0;
-      is64bits[i] = 0;
+      r64[i] = 0;
 #endif
    }
 
@@ -184,7 +183,7 @@ void free_register(int reg)
   if (dirty[reg]) 
   {
 #if defined(__x86_64__)
-     if (is64bits[reg])
+     if (r64[reg])
         mov_m64rel_xreg64((unsigned long long*)reg_content[reg], reg);
      else
      {
@@ -255,7 +254,7 @@ void set_register_state(int reg, unsigned int *addr, int _dirty, int _is64bits)
     last_access[reg] = dst;
   reg_content[reg]   = (uint64_t*) addr;
 #ifdef __x86_64__
-  is64bits[reg]      = _is64bits;
+  r64[reg]           = _is64bits;
 #else
   r64[reg]           = -1;
 #endif
@@ -336,10 +335,10 @@ int allocate_register_64(unsigned long long *addr)
           last++;
         }
         last_access[i] = dst;
-        if (is64bits[i] == 0)
+        if (r64[i] == 0)
         {
           movsxd_reg64_reg32(i, i);
-          is64bits[i] = 1;
+          r64[i] = 1;
         }
         return i;
       }
@@ -363,7 +362,7 @@ int allocate_register_64(unsigned long long *addr)
   last_access[reg] = dst;
   reg_content[reg] = addr;
   dirty[reg] = 0;
-  is64bits[reg] = 1;
+  r64[reg] = 1;
    
   if (addr != NULL)
   {
@@ -395,7 +394,7 @@ int allocate_register_32(unsigned int *addr)
           last++;
         }
         last_access[i] = dst;
-        is64bits[i] = 0;
+        r64[i] = 0;
         return i;
       }
     }
@@ -418,7 +417,7 @@ int allocate_register_32(unsigned int *addr)
   last_access[reg] = dst;
   reg_content[reg] = (uint64_t*) addr;
   dirty[reg] = 0;
-  is64bits[reg] = 0;
+  r64[reg] = 0;
    
   if (addr != NULL)
   {
@@ -601,7 +600,7 @@ int is64(unsigned int *addr)
             addr)
       {
 #if defined(__x86_64__)
-         return is64bits[i];
+         return r64[i];
 #else
          if (r64[i] == -1)
             return 0;
@@ -631,7 +630,7 @@ int allocate_register_32_w(unsigned int *addr)
       }
       last_access[i] = dst;
       dirty[i] = 1;
-      is64bits[i] = 0;
+      r64  [i] = 0;
       return i;
     }
   }
@@ -653,7 +652,7 @@ int allocate_register_32_w(unsigned int *addr)
   last_access[reg] = dst;
   reg_content[reg] = (uint64_t*) addr;
   dirty[reg] = 1;
-  is64bits[reg] = 0;
+  r64[reg] = 0;
 
   return reg;
 }
@@ -675,7 +674,7 @@ int allocate_register_64_w(unsigned long long *addr)
         last++;
       }
       last_access[i] = dst;
-      is64bits[i] = 1;
+      r64[i]   = 1;
       dirty[i] = 1;
       return i;
     }
@@ -698,7 +697,7 @@ int allocate_register_64_w(unsigned long long *addr)
   last_access[reg] = dst;
   reg_content[reg] = addr;
   dirty[reg] = 1;
-  is64bits[reg] = 1;
+  r64[reg] = 1;
 
   return reg;
 }
@@ -717,7 +716,7 @@ void allocate_register_32_manually(int reg, unsigned int *addr)
       last++;
     }
     last_access[reg] = dst;
-    /* we won't touch is64bits or dirty; the register returned is "read-only" */
+    /* we won't touch r64 or dirty; the register returned is "read-only" */
     return;
   }
 
@@ -745,12 +744,12 @@ void allocate_register_32_manually(int reg, unsigned int *addr)
         last++;
       }
       last_access[i] = dst;
-      if (is64bits[i])
+      if (r64[i])
         mov_reg64_reg64(reg, i);
       else
         mov_reg32_reg32(reg, i);
       last_access[reg] = dst;
-      is64bits[reg] = is64bits[i];
+      r64[reg] = r64[i];
       dirty[reg] = dirty[i];
       reg_content[reg] = reg_content[i];
       /* free the previous x86 register used to cache this r4300 register */
@@ -764,7 +763,7 @@ void allocate_register_32_manually(int reg, unsigned int *addr)
   last_access[reg] = dst;
   reg_content[reg] = (uint64_t*) addr;
   dirty[reg] = 0;
-  is64bits[reg] = 0;
+  r64[reg] = 0;
    
   if ((uint64_t*) addr == r0)
     xor_reg32_reg32(reg, reg);
@@ -786,7 +785,7 @@ void allocate_register_32_manually_w(int reg, unsigned int *addr)
       last++;
     }
     last_access[reg] = dst;
-    is64bits[reg] = 0;
+    r64[reg] = 0;
     dirty[reg] = 1;
     return;
   }
@@ -817,7 +816,7 @@ void allocate_register_32_manually_w(int reg, unsigned int *addr)
       last_access[reg] = dst;
       reg_content[reg] = reg_content[i];
       dirty[reg] = 1;
-      is64bits[reg] = 0;
+      r64[reg] = 0;
       /* free the previous x86 register used to cache this r4300 register */
       free_since[i] = dst+1;
       last_access[i] = NULL;
@@ -829,7 +828,7 @@ void allocate_register_32_manually_w(int reg, unsigned int *addr)
   last_access[reg] = dst;
   reg_content[reg] = (uint64_t*) addr;
   dirty[reg] = 1;
-  is64bits[reg] = 0;
+  r64[reg] = 0;
 }
 
 // 0x48 0x83 0xEC 0x8                     sub rsp, byte 8
