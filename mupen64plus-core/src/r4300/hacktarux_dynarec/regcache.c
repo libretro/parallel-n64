@@ -185,11 +185,11 @@ void free_register(int reg)
   {
 #if defined(__x86_64__)
      if (is64bits[reg])
-        mov_m64rel_xreg64((uint64_t*)reg_content[reg], reg);
+        mov_m64rel_xreg64((unsigned long long*)reg_content[reg], reg);
      else
      {
         movsxd_reg64_reg32(reg, reg);
-        mov_m64rel_xreg64((uint64_t*)reg_content[reg], reg);
+        mov_m64rel_xreg64((unsigned long long*)reg_content[reg], reg);
      }
 #else
      mov_m32_reg32(reg_content[reg], reg);

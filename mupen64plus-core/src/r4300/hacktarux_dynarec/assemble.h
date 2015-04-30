@@ -32,6 +32,7 @@
 
 #ifdef __x86_64__
 extern int64_t reg[32];
+typedef uint64_t native_type;
 
 #define RAX 0
 #define RCX 1
@@ -42,6 +43,7 @@ extern int64_t reg[32];
 #define RSI 6
 #define RDI 7
 #else
+typedef uint32_t native_type;
 extern long long int reg[32];
 #endif
 
@@ -128,6 +130,38 @@ static INLINE int rel_r15_offset(void *dest, const char *op_name)
 
    return (int) rel_offset;
 }
+
+#ifndef __x86_64__
+static INLINE void mov_m8_reg8(unsigned char *m8, int reg8)
+{
+   put8(0x88);
+   put8((reg8 << 3) | 5);
+   put32((unsigned int)(m8));
+}
+
+static INLINE void mov_reg16_m16(int reg16, unsigned short *m16)
+{
+   put8(0x66);
+   put8(0x8B);
+   put8((reg16 << 3) | 5);
+   put32((unsigned int)(m16));
+}
+
+static INLINE void mov_m16_reg16(unsigned short *m16, int reg16)
+{
+   put8(0x66);
+   put8(0x89);
+   put8((reg16 << 3) | 5);
+   put32((unsigned int)(m16));
+}
+
+static INLINE void cmp_reg32_m32(int reg32, unsigned int *m32)
+{
+   put8(0x3B);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m32));
+}
+#endif
 
 static INLINE void mov_memoffs32_eax(unsigned int *memoffs32)
 {
@@ -237,8 +271,26 @@ static INLINE void cmp_reg64_imm8(int reg64, unsigned char imm8)
    put8(0xF8 + reg64);
    put8(imm8);
 }
-
 #else
+static INLINE void add_m32_reg32(unsigned int *m32, int reg32)
+{
+   put8(0x01);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m32));
+}
+
+static INLINE void sub_reg32_m32(int reg32, unsigned int *m32)
+{
+   put8(0x2B);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m32));
+}
+
+static INLINE void mov_eax_memoffs32(unsigned int *memoffs32)
+{
+   put8(0xA1);
+   put32((unsigned int)(memoffs32));
+}
 
 static INLINE void cmp_preg32pimm32_imm8(int reg32, unsigned int imm32, unsigned char imm8)
 {
@@ -246,6 +298,34 @@ static INLINE void cmp_preg32pimm32_imm8(int reg32, unsigned int imm32, unsigned
    put8(0xB8 + reg32);
    put32(imm32);
    put8(imm8);
+}
+
+static INLINE void test_reg32_imm32(int reg32, unsigned int imm32)
+{
+   put8(0xF7);
+   put8(0xC0 + reg32);
+   put32(imm32);
+}
+
+static INLINE void test_m32_imm32(unsigned int *m32, unsigned int imm32)
+{
+   put8(0xF7);
+   put8(0x05);
+   put32((unsigned int)m32);
+   put32(imm32);
+}
+
+static INLINE void sbb_reg32_reg32(int reg1, int reg2)
+{
+   put8(0x19);
+   put8((reg2 << 3) | reg1 | 0xC0);
+}
+
+static INLINE void sub_reg32_imm32(int reg32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0xE8 + reg32);
+   put32(imm32);
 }
 #endif
 
@@ -426,6 +506,12 @@ static INLINE void je_rj(unsigned char saut)
    put8(saut);
 }
 
+static INLINE void jb_rj(unsigned char saut)
+{
+   put8(0x72);
+   put8(saut);
+}
+
 static INLINE void jbe_rj(unsigned char saut)
 {
    put8(0x76);
@@ -476,6 +562,16 @@ static INLINE void jmp_imm_short(char saut)
    put8(saut);
 }
 
+#ifndef __x86_64__
+static INLINE void or_m32_imm32(unsigned int *m32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0x0D);
+   put32((unsigned int)(m32));
+   put32(imm32);
+}
+#endif
+
 static INLINE void or_m32rel_imm32(unsigned int *m32, unsigned int imm32)
 {
    int offset = rel_r15_offset(m32, "or_m32rel_imm32");
@@ -518,6 +614,30 @@ static INLINE void xor_reg32_reg32(unsigned int reg1, unsigned int reg2)
    put8(0xC0 | (reg2 << 3) | reg1);
 }
 
+#ifndef __x86_64__
+static INLINE void and_m32_imm32(unsigned int *m32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0x25);
+   put32((unsigned int)(m32));
+   put32(imm32);
+}
+
+static INLINE void sub_m32_imm32(unsigned int *m32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0x2D);
+   put32((unsigned int)(m32));
+   put32(imm32);
+}
+#endif
+
+static INLINE void and_reg32_reg32(unsigned int reg1, unsigned int reg2)
+{
+   put8(0x21);
+   put8(0xC0 | (reg2 << 3) | reg1);
+}
+
 static INLINE void xor_reg64_reg64(unsigned int reg1, unsigned int reg2)
 {
    put8(0x48);
@@ -540,6 +660,23 @@ static INLINE void add_reg32_imm32(unsigned int reg32, unsigned int imm32)
    put32(imm32);
 }
 
+#ifndef __x86_64__
+static INLINE void cmp_m32_imm32(unsigned int *m32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0x3D);
+   put32((unsigned int)(m32));
+   put32(imm32);
+}
+
+static INLINE void inc_m32(unsigned int *m32)
+{
+   put8(0xFF);
+   put8(0x05);
+   put32((unsigned int)(m32));
+}
+#endif
+
 static INLINE void inc_m32rel(unsigned int *m32)
 {
    int offset = rel_r15_offset(m32, "inc_m32rel");
@@ -561,6 +698,16 @@ static INLINE void cmp_m32rel_imm32(unsigned int *m32, unsigned int imm32)
    put32(imm32);
 }
 
+#ifndef __x86_64__
+static INLINE void mov_m32_imm32(unsigned int *m32, unsigned int imm32)
+{
+   put8(0xC7);
+   put8(0x05);
+   put32((unsigned int)(m32));
+   put32(imm32);
+}
+#endif
+
 static INLINE void cmp_eax_imm32(unsigned int imm32)
 {
    put8(0x3D);
@@ -578,13 +725,32 @@ static INLINE void mov_m32rel_imm32(unsigned int *m32, unsigned int imm32)
    put32(imm32);
 }
 
+static INLINE void shr_reg32_imm8(unsigned int reg32, unsigned char imm8)
+{
+   put8(0xC1);
+   put8(0xE8+reg32);
+   put8(imm8);
+}
+
+static INLINE void call_reg32(unsigned int reg32)
+{
+   put8(0xFF);
+   put8(0xD0+reg32);
+}
+
 static INLINE void jmp(unsigned int mi_addr)
 {
+#ifdef __x86_64__
    put8(0xFF);
    put8(0x25);
    put32(0);
    put64(0);
    add_jump(code_length-8, mi_addr, 1);
+#else
+   put8(0xE9);
+   put32(0);
+   add_jump(code_length-4, mi_addr);
+#endif
 }
 
 static INLINE void cdq(void)
@@ -603,13 +769,6 @@ static INLINE void shr_reg64_imm8(unsigned int reg64, unsigned char imm8)
    put8(0x48);
    put8(0xC1);
    put8(0xE8+reg64);
-   put8(imm8);
-}
-
-static INLINE void shr_reg32_imm8(unsigned int reg32, unsigned char imm8)
-{
-   put8(0xC1);
-   put8(0xE8+reg32);
    put8(imm8);
 }
 
@@ -645,6 +804,21 @@ static INLINE void shl_reg32_cl(unsigned int reg32)
    put8(0xE0+reg32);
 }
 
+static INLINE void shld_reg32_reg32_cl(unsigned int reg1, unsigned int reg2)
+{
+   put8(0x0F);
+   put8(0xA5);
+   put8(0xC0 | (reg2 << 3) | reg1);
+}
+
+static INLINE void shld_reg32_reg32_imm8(unsigned int reg1, unsigned int reg2, unsigned char imm8)
+{
+   put8(0x0F);
+   put8(0xA4);
+   put8(0xC0 | (reg2 << 3) | reg1);
+   put8(imm8);
+}
+
 static INLINE void shl_reg64_cl(unsigned int reg64)
 {
    put8(0x48);
@@ -659,6 +833,14 @@ static INLINE void sar_reg32_imm8(unsigned int reg32, unsigned char imm8)
    put8(imm8);
 }
 
+static INLINE void shrd_reg32_reg32_imm8(unsigned int reg1, unsigned int reg2, unsigned char imm8)
+{
+   put8(0x0F);
+   put8(0xAC);
+   put8(0xC0 | (reg2 << 3) | reg1);
+   put8(imm8);
+}
+
 static INLINE void sar_reg64_imm8(unsigned int reg64, unsigned char imm8)
 {
    put8(0x48);
@@ -666,6 +848,15 @@ static INLINE void sar_reg64_imm8(unsigned int reg64, unsigned char imm8)
    put8(0xF8+reg64);
    put8(imm8);
 }
+
+#ifndef __x86_64__
+static INLINE void mul_m32(unsigned int *m32)
+{
+   put8(0xF7);
+   put8(0x25);
+   put32((unsigned int)(m32));
+}
+#endif
 
 static INLINE void mul_m32rel(unsigned int *m32)
 {
@@ -721,6 +912,12 @@ static INLINE void add_reg64_reg64(unsigned int reg1, unsigned int reg2)
    put8(0xC0 | (reg2 << 3) | reg1);
 }
 
+static INLINE void jmp_reg32(unsigned int reg32)
+{
+   put8(0xFF);
+   put8(0xE0 + reg32);
+}
+
 static INLINE void jmp_reg64(unsigned int reg64)
 {
    put8(0xFF);
@@ -742,6 +939,71 @@ static INLINE void mov_preg64_reg32(int reg1, int reg2)
 static INLINE void mov_reg64_preg64(int reg1, int reg2)
 {
    put8(0x48);
+   put8(0x8B);
+   put8((reg1 << 3) | reg2);
+}
+
+static INLINE void mov_reg32_preg32preg32pimm32(int reg1, int reg2, int reg3, unsigned int imm32)
+{
+   put8(0x8B);
+   put8((reg1 << 3) | 0x84);
+   put8(reg2 | (reg3 << 3));
+   put32(imm32);
+}
+
+static INLINE void mov_preg32pimm32_imm8(int reg32, unsigned int imm32, unsigned char imm8)
+{
+   put8(0xC6);
+   put8(0x80 + reg32);
+   put32(imm32);
+   put8(imm8);
+}
+
+static INLINE void mov_preg32_reg32(int reg1, int reg2)
+{
+   put8(0x89);
+   put8((reg2 << 3) | reg1);
+}
+
+static INLINE void mov_preg32pimm32_reg16(int reg32, unsigned int imm32, int reg16)
+{
+   put8(0x66);
+   put8(0x89);
+   put8(0x80 | reg32 | (reg16 << 3));
+   put32(imm32);
+}
+
+static INLINE void mov_preg32pimm32_reg32(int reg1, unsigned int imm32, int reg2)
+{
+   put8(0x89);
+   put8(0x80 | reg1 | (reg2 << 3));
+   put32(imm32);
+}
+
+static INLINE void mov_preg32pimm32_reg8(int reg32, unsigned int imm32, int reg8)
+{
+   put8(0x88);
+   put8(0x80 | reg32 | (reg8 << 3));
+   put32(imm32);
+}
+
+static INLINE void mov_reg32_preg32pimm32(int reg1, int reg2, unsigned int imm32)
+{
+   put8(0x8B);
+   put8(0x80 | (reg1 << 3) | reg2);
+   put32(imm32);
+}
+
+static INLINE void mov_reg32_preg32x4pimm32(int reg1, int reg2, unsigned int imm32)
+{
+   put8(0x8B);
+   put8((reg1 << 3) | 4);
+   put8(0x80 | (reg2 << 3) | 5);
+   put32(imm32);
+}
+
+static INLINE void mov_reg32_preg32(unsigned int reg1, unsigned int reg2)
+{
    put8(0x8B);
    put8((reg1 << 3) | reg2);
 }
@@ -883,6 +1145,48 @@ static INLINE void shl_reg64_imm8(unsigned int reg64, unsigned char imm8)
    put8(imm8);
 }
 
+#ifndef __x86_64__
+static INLINE void movsx_reg32_m8(int reg32, unsigned char *m8)
+{
+   put8(0x0F);
+   put8(0xBE);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m8));
+}
+#endif
+
+static INLINE void movsx_reg32_8preg32pimm32(int reg1, int reg2, unsigned int imm32)
+{
+   put8(0x0F);
+   put8(0xBE);
+   put8((reg1 << 3) | reg2 | 0x80);
+   put32(imm32);
+}
+
+static INLINE void movsx_reg32_16preg32pimm32(int reg1, int reg2, unsigned int imm32)
+{
+   put8(0x0F);
+   put8(0xBF);
+   put8((reg1 << 3) | reg2 | 0x80);
+   put32(imm32);
+}
+
+#ifndef __x86_64__
+static INLINE void movsx_reg32_m16(int reg32, unsigned short *m16)
+{
+   put8(0x0F);
+   put8(0xBF);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m16));
+}
+#endif
+
+static INLINE void not_reg32(unsigned int reg32)
+{
+   put8(0xF7);
+   put8(0xD0 + reg32);
+}
+
 static INLINE void mov_reg32_reg32(unsigned int reg1, unsigned int reg2)
 {
    if (reg1 == reg2) return;
@@ -948,6 +1252,37 @@ static INLINE void mov_xreg8_m8rel(int xreg8, unsigned char *m8)
    put32(offset);
 }
 
+#ifndef __x86_64__
+static INLINE void mov_reg32_m32(unsigned int reg32, unsigned int* m32)
+{
+   put8(0x8B);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m32));
+}
+#endif
+
+static INLINE void adc_reg32_reg32(unsigned int reg1, unsigned int reg2)
+{
+   put8(0x11);
+   put8(0xC0 | (reg2 << 3) | reg1);
+}
+
+static INLINE void adc_reg32_imm32(unsigned int reg32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0xD0 + reg32);
+   put32(imm32);
+}
+
+#ifndef __x86_64__
+static INLINE void add_reg32_m32(unsigned int reg32, unsigned int *m32)
+{
+   put8(0x03);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m32));
+}
+#endif
+
 static INLINE void and_eax_imm32(unsigned int imm32)
 {
    put8(0x25);
@@ -961,6 +1296,15 @@ static INLINE void or_reg64_imm32(int reg64, unsigned int imm32)
    put8(0xC8 + reg64);
    put32(imm32);
 }
+
+#ifndef __x86_64__
+static INLINE void mov_reg8_m8(int reg8, unsigned char *m8)
+{
+   put8(0x8A);
+   put8((reg8 << 3) | 5);
+   put32((unsigned int)(m8));
+}
+#endif
 
 static INLINE void and_reg32_imm32(int reg32, unsigned int imm32)
 {
@@ -985,20 +1329,36 @@ static INLINE void and_reg64_imm8(int reg64, unsigned char imm8)
    put8(imm8);
 }
 
+static INLINE void or_reg32_imm32(int reg32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0xC8 + reg32);
+   put32(imm32);
+}
+
+static INLINE void xor_reg32_imm32(int reg32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0xF0 + reg32);
+   put32(imm32);
+}
+
+static INLINE void xor_reg8_imm8(int reg8, unsigned char imm8)
+{
+#ifdef __x86_64__
+   put8(0x40);  /* we need an REX prefix to use the uniform byte registers */
+#endif
+   put8(0x80);
+   put8(0xF0 + reg8);
+   put8(imm8);
+}
+
 static INLINE void xor_reg64_imm32(int reg64, unsigned int imm32)
 {
    put8(0x48);
    put8(0x81);
    put8(0xF0 + reg64);
    put32(imm32);
-}
-
-static INLINE void xor_reg8_imm8(int reg8, unsigned char imm8)
-{
-   put8(0x40);  /* we need an REX prefix to use the uniform byte registers */
-   put8(0x80);
-   put8(0xF0 + reg8);
-   put8(imm8);
 }
 
 static INLINE void not_reg64(unsigned int reg64)
@@ -1065,6 +1425,15 @@ static INLINE void movsxd_reg64_reg32(int reg64, int reg32)
    put8(0x63);
    put8((reg64 << 3) | reg32 | 0xC0);
 }
+
+#ifndef __x86_64__
+static INLINE void fldcw_m16(unsigned short *m16)
+{
+   put8(0xD9);
+   put8(0x2D);
+   put32((unsigned int)(m16));
+}
+#endif
 
 static INLINE void fldcw_m16rel(unsigned short *m16)
 {
@@ -1183,6 +1552,25 @@ static INLINE void fmul_preg64_qword(int reg64)
 
 #else
 
+static INLINE void mov_m32_reg32(unsigned int *m32, unsigned int reg32)
+{
+   put8(0x89);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m32));
+}
+
+static INLINE void fdiv_preg32_dword(int reg32)
+{
+   put8(0xD8);
+   put8(0x30 + reg32);
+}
+
+static INLINE void fstp_preg32_dword(int reg32)
+{
+   put8(0xD9);
+   put8(0x18 + reg32);
+}
+
 static INLINE void fstp_preg32_qword(int reg32)
 {
    put8(0xDD);
@@ -1290,6 +1678,43 @@ static INLINE void ffree_fpreg(int fpreg)
 {
    put8(0xDD);
    put8(0xC0 + fpreg);
+}
+
+static INLINE void jle_rj(unsigned char saut)
+{
+   put8(0x7E);
+   put8(saut);
+}
+
+static INLINE void jge_rj(unsigned char saut)
+{
+   put8(0x7D);
+   put8(saut);
+}
+
+static INLINE void jg_rj(unsigned char saut)
+{
+   put8(0x7F);
+   put8(saut);
+}
+
+static INLINE void jl_rj(unsigned char saut)
+{
+   put8(0x7C);
+   put8(saut);
+}
+
+static INLINE void fld_preg32_dword(int reg32)
+{
+   put8(0xD9);
+   put8(reg32);
+}
+
+static INLINE void shrd_reg32_reg32_cl(unsigned int reg1, unsigned int reg2)
+{
+   put8(0x0F);
+   put8(0xAD);
+   put8(0xC0 | (reg2 << 3) | reg1);
 }
 
 #endif /* __ASSEMBLE_H__ */

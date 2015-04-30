@@ -23,13 +23,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#ifdef __x86_64__
-#include "../x86_64/assemble.h"
-typedef uint64_t native_type;
-#else
-#include "../x86/assemble.h"
-typedef uint32_t native_type;
-#endif
+#include "assemble.h"
 #include "interpret.h"
 
 #include "r4300/recomph.h"

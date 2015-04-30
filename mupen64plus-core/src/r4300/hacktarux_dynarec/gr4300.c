@@ -20,13 +20,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifdef __x86_64__
-#include "../x86_64/assemble.h"
-typedef uint64_t native_type;
-#else
-#include "../x86/assemble.h"
-typedef uint32_t native_type;
-#endif
+#include "assemble.h"
 #include "regcache.h"
 #include "interpret.h"
 

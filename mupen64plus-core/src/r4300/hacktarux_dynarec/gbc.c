@@ -22,11 +22,7 @@
 
 #include <stdio.h>
 
-#if defined(__x86_64__)
-#include "../x86_64/assemble.h"
-#else
-#include "../x86/assemble.h"
-#endif
+#include "assemble.h"
 #include "interpret.h"
 
 #include "r4300/cached_interp.h"
@@ -34,12 +30,6 @@
 #include "r4300/r4300.h"
 #include "r4300/ops.h"
 #include "r4300/cp1_private.h"
-
-#if defined(__x86_64__)
-typedef uint64_t native_type;
-#else
-typedef uint32_t native_type;
-#endif
 
 static void genbc1f_test(void)
 {

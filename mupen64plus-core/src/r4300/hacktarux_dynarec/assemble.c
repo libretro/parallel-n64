@@ -22,11 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#ifdef __x86_64__
-#include "../x86_64/assemble.h"
-#else
-#include "../x86/assemble.h"
-#endif
+#include "assemble.h"
 
 #include "api/m64p_types.h"
 #include "api/callbacks.h"
