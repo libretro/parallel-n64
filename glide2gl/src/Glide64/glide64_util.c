@@ -1131,25 +1131,25 @@ void update(void)
          int depthmask_val = FXFALSE;
          rdp.update ^= UPDATE_ZBUF_ENABLED;
 
-         if (((rdp.flags & ZBUF_ENABLED) || ((rdp.zsrc == 1) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
+         if (((rdp.flags & ZBUF_ENABLED) || ((rdp.zsrc == G_ZS_PRIM) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
          {
             if (rdp.flags & ZBUF_COMPARE)
             {
                switch ((rdp.rm & ZMODE_DECAL) >> 10)
                {
-                  case 0:
+                  case ZMODE_OPA:
                      depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
                      break;
-                  case 1:
+                  case ZMODE_INTER:
                      depthbias_level = -4;
                      depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
                      break;
-                  case 2:
+                  case ZMODE_XLU:
                      if (settings.ucode == 7)
                         depthbias_level = -4;
                      depthbuf_func = GR_CMP_LESS;
                      break;
-                  case 3:
+                  case ZMODE_DEC:
                      // will be set dynamically per polygon
                      //grDepthBiasLevel(-deltaZ);
                      depthbuf_func = GR_CMP_LEQUAL;
