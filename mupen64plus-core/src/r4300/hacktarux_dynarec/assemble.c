@@ -160,7 +160,7 @@ void passe2(precomp_instr *dest, int start, int end, precomp_block *block)
 
       /* write either a 32-bit IP-relative offset or a 64-bit absolute address */
       if (jumps_table[i].absolute64)
-         *((unsigned long long *) (block->code + jmp_offset_loc)) = (unsigned long long) addr_dest;
+         *((uint64_t *) (block->code + jmp_offset_loc)) = (uint64_t)addr_dest;
       else
       {
          long jump_rel_offset = (long) (addr_dest - (block->code + jmp_offset_loc + 4));
