@@ -45,10 +45,9 @@ uint32_t dma_offset_vtx = 0;
 
 static void uc5_dma_offsets(uint32_t w0, uint32_t w1)
 {
-  dma_offset_mtx = w0 & 0x00FFFFFF;
-  dma_offset_vtx = w1 & 0x00FFFFFF;
+  dma_offset_mtx = _SHIFTR( w0, 0, 24);
+  dma_offset_vtx = _SHIFTR( w1, 0, 24);
   vtx_last = 0;
-  FRDP("uc5:dma_offsets - mtx: %08lx, vtx: %08lx\n", dma_offset_mtx, dma_offset_vtx);
 }
 
 static void uc5_matrix(uint32_t w0, uint32_t w1)
@@ -56,20 +55,18 @@ static void uc5_matrix(uint32_t w0, uint32_t w1)
    // Use segment offset to get the address
    uint32_t addr = dma_offset_mtx + (segoffset(w1) & BMASK);
 
-   uint8_t n = (uint8_t)((w0 >> 16) & 0xF);
+   uint8_t index = _SHIFTR(w0, 16, 4);
    uint8_t multiply;
 
-   if (n == 0) //DKR
+   if (index == 0) //DKR
    {
-      n = (uint8_t)((w0 >> 22) & 0x3);
+      index = _SHIFTR(w0, 22, 2);
       multiply = 0;
    }
    else //JF
-      multiply = (uint8_t)((w0 >> 23) & 0x1);
+      multiply = _SHIFTR(w0, 23, 1);
 
-   cur_mtx = n;
-
-   FRDP("uc5:matrix - #%d, addr: %08lx\n", n, addr);
+   cur_mtx = index;
 
    if (multiply)
    {
@@ -78,17 +75,17 @@ static void uc5_matrix(uint32_t w0, uint32_t w1)
 
       load_matrix(m, addr);
       memcpy (m_src, rdp.dkrproj[0], 64);
-      MulMatrices(m, m_src, rdp.dkrproj[n]);
+      MulMatrices(m, m_src, rdp.dkrproj[index]);
    }
    else
-      load_matrix(rdp.dkrproj[n], addr);
+      load_matrix(rdp.dkrproj[index], addr);
 
    rdp.update |= UPDATE_MULT_MAT;
 }
 
 static void uc5_vertex(uint32_t w0, uint32_t w1)
 {
-   int i, first, prj, start;
+   int i, first, prj, start, n;
    float x, y, z;
    uint32_t addr = dma_offset_vtx + (segoffset(w1) & BMASK);
 
@@ -99,7 +96,7 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
    // ? = unknown, but used
    // 0 = unused
 
-   int n = ((w0 >> 19) & 0x1F);// + 1;
+   n = _SHIFTR( w0, 19, 5);
    if (settings.hacks&hack_Diddy)
       n++;
 
@@ -111,7 +108,7 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
    else
       vtx_last = 0;
 
-   first = ((w0 >> 9) & 0x1F) + vtx_last;
+   first = vtx_last + _SHIFTR(w0, 9, 5);;
 
    prj = cur_mtx;
 
@@ -178,7 +175,7 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
 {
    int i, start, v0, v1, v2, flags;
    uint32_t addr = segoffset(w1) & BMASK;
-   int num = (w0 & 0xFFF0) >> 4;
+   int num = _SHIFTR( w0, 4, 12);
 
    vtx_last = 0;    // we've drawn something, so the vertex index needs resetting
 
@@ -242,7 +239,6 @@ static void uc5_dl_in_mem(uint32_t w0, uint32_t w1)
 {
    uint32_t addr = segoffset(w1) & BMASK;
    int count = (w0 & 0x00FF0000) >> 16;
-   FRDP ("uc5:dl_in_mem - addr: %08lx, count: %d\n", addr, count);
 
    if (rdp.pc_i >= 9)
       return;
@@ -254,16 +250,11 @@ static void uc5_dl_in_mem(uint32_t w0, uint32_t w1)
 
 static void uc5_moveword(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc5:moveword ");
-
-   // Find which command this is (lowest byte of cmd0)
-   switch (w0 & 0xFF)
+   switch (_SHIFTR( w0, 0, 8))
    {
-      case 0x02:  // moveword matrix 2 billboard
-         billboarding = (w1 & 1);
-         FRDP ("matrix billboard - %s\n", str_offon[billboarding]);
+      case 0x02:
+         billboarding = w1 & 1;
          break;
-
       case G_MW_CLIP:
          if (((rdp.cmd0>>8)&0xFFFF) == 0x04)
          {
@@ -273,7 +264,6 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_SEGMENT:
-         //FRDP ("segment: %08lx -> seg%d\n", w1, (w0 >> 10) & 0x0F);
          rdp.segment[(w0 >> 10) & 0x0F] = w1;
          break;
       case G_MW_FOG:
@@ -282,12 +272,9 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case 0x0a:  // moveword matrix select
-         cur_mtx = (w1 >> 6) & 3;
+         cur_mtx = _SHIFTR( w1, 6, 2);
          FRDP ("matrix select - mtx: %d\n", cur_mtx);
          break;
-
-      default:
-         FRDP ("(unknown) %02lx - IGNORED\n", w0 & 0xFF);
    }
 }
 
