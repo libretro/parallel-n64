@@ -169,6 +169,7 @@ extern uint32_t gfx_plugin_accuracy;
 #define  hack_Tonic       (1<<26)  //tonic trouble
 #define  hack_Yoshi       (1<<27)  //Yoshi Story
 #define  hack_Zelda       (1<<28)  //zeldas hacks
+#define  hack_Blastcorps  (1<<29)  /* Blast Corps */
 
 #define FBCRCMODE_NONE  0
 #define FBCRCMODE_FAST  1

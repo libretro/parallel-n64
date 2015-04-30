@@ -14203,6 +14203,8 @@ void CombineBlender(void)
             A_BLEND (GR_BLEND_ONE, GR_BLEND_ONE);
             break;
 
+
+         case 0xc712: /* Pokemon Stadium? */
             /* LOT in Zelda: Majora's Mask */
          case 0xaf50:
             /* LOT in Zelda: Majora's Mask */
@@ -14296,6 +14298,12 @@ void CombineBlender(void)
       A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
    else if ((settings.hacks&hack_Pilotwings) && (rdp.othermode_l & RDP_COLOR_ON_CVG)) //RDP_COLOR_ON_CVG without RDP_FORCE_BLEND
       A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
+#if 0
+   else if ((settings.hacks & hack_Blastcorps))
+   {
+      A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
+   }
+#endif
    else
       A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
 
