@@ -14192,6 +14192,8 @@ void CombineBlender(void)
          case 0x00c0:
             /* ISS64 */
          case 0xc302:
+            /* Donald Duck */
+         case 0xC702:
             A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
             break;
 
