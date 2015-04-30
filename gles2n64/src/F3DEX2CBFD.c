@@ -1,12 +1,9 @@
-#include "Common.h"
 #include "gles2N64.h"
 #include "Debug.h"
 #include "F3D.h"
 #include "F3DEX.h"
 #include "F3DEX2.h"
 #include "F3DEX2CBFD.h"
-#include "S2DEX.h"
-#include "S2DEX2.h"
 #include "N64.h"
 #include "RSP.h"
 #include "RDP.h"
@@ -14,7 +11,6 @@
 #include "gDP.h"
 #include "GBI.h"
 #include "OpenGL.h"
-#include "Config.h"
 
 void F3DEX2CBFD_Vtx( u32 w0, u32 w1 )
 {
@@ -25,10 +21,7 @@ void F3DEX2CBFD_Vtx( u32 w0, u32 w1 )
 
 void F3DEX2CBFD_MoveWord( u32 w0, u32 w1 )
 {
-   u8 index = (u8)((w0 >> 16) & 0xFF);
-   u16 offset = (u16)(w0 & 0xFFFF);
-
-   switch (index)
+	switch (_SHIFTR( w0, 16, 8 ))
    {
       case G_MW_NUMLIGHT:
          gSPNumLights(w1 / 48);
@@ -74,7 +67,7 @@ void F3DEX2CBFD_MoveMem( u32 w0, u32 w1 )
                gSPLightCBFD(w1, n - 2);
          }
          break;
-      case F3DCBFD_MV_NORMAL:
+      case G_MV_NORMALES:
 			gSPSetVertexNormaleBase(w1);
          break;
 

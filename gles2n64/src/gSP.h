@@ -129,10 +129,12 @@ void gSPDMAMatrix( u32 matrix, u8 index, u8 multiply );
 void gSPViewport( u32 v );
 void gSPForceMatrix( u32 mptr );
 void gSPLight( u32 l, s32 n );
+void gSPLightCBFD( u32 l, s32 n );
 void gSPLookAt( u32 _l, u32 _n );
 void gSPVertex( u32 v, u32 n, u32 v0 );
 void gSPCIVertex( u32 v, u32 n, u32 v0 );
 void gSPDMAVertex( u32 v, u32 n, u32 v0 );
+void gSPCBFDVertex( u32 v, u32 n, u32 v0 );
 void gSPDisplayList( u32 dl );
 void gSPDMADisplayList( u32 dl, u32 n );
 void gSPBranchList( u32 dl );
@@ -156,6 +158,8 @@ void gSPEndDisplayList();
 void gSPGeometryMode( u32 clear, u32 set );
 void gSPSetGeometryMode( u32 mode );
 void gSPClearGeometryMode( u32 mode );
+void gSPSetOtherMode_H(u32 _length, u32 _shift, u32 _data);
+void gSPSetOtherMode_L(u32 _length, u32 _shift, u32 _data);
 void gSPLine3D( s32 v0, s32 v1, s32 flag );
 void gSPLineW3D( s32 v0, s32 v1, s32 wd, s32 flag );
 void gSPObjRectangle( u32 sp );
@@ -169,8 +173,13 @@ void gSPObjMatrix( u32 mtx );
 void gSPObjSubMatrix( u32 mtx );
 void gSPSetDMAOffsets( u32 mtxoffset, u32 vtxoffset );
 void gSPSetVertexColorBase( u32 base );
+void gSPSetVertexNormaleBase( u32 base );
 void gSPProcessVertex(u32 v);
+void gSPCoordMod(u32 _w0, u32 _w1);
 
+void gSPTriangleUnknown(void);
+
+void gSPTriangle(s32 v0, s32 v1, s32 v2);
 void gSP1Triangle(s32 v0, s32 v1, s32 v2);
 void gSP2Triangles(const s32 v00, const s32 v01, const s32 v02, const s32 flag0,
                     const s32 v10, const s32 v11, const s32 v12, const s32 flag1 );

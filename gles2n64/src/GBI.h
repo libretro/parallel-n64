@@ -118,6 +118,7 @@ static const int numMicrocodeTypes = 11;
 #define G_MV_LIGHT      10
 #define G_MV_POINT      12
 #define G_MV_MATRIX     14
+#define G_MV_NORMALES	14
 
 #define G_MVO_LOOKATX   0
 #define G_MVO_LOOKATY   24
