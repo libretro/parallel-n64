@@ -82,7 +82,7 @@ const char *_frag_header = "                                \n"
 #endif
 "uniform sampler2D uTex0;                                   \n"\
 "uniform sampler2D uTex1;                                   \n"\
-"uniform sampler2D uNoise;                                  \n"\
+"uniform sampler2D uTexNoise;                               \n"\
 "uniform lowp vec4 uEnvColor;                               \n"\
 "uniform lowp vec4 uPrimColor;                              \n"\
 "uniform lowp vec4 uFogColor;                               \n"\
@@ -114,7 +114,7 @@ const char *_vert = "                                       \n"
 "attribute highp vec2   aTexCoord1;                         \n"\
 "                                                           \n"\
 "uniform bool		    uEnableFog;                         \n"\
-"uniform float			uFogMultiplier, uFogOffset;         \n"\
+"uniform float			 uFogScale, uFogOffset;         \n"\
 "uniform float 			uRenderState;                       \n"\
 "                                                           \n"\
 "uniform mediump vec2 	uTexScale;                          \n"\
@@ -153,7 +153,7 @@ const char * _vertfog = "                                   \n"\
 "if (uEnableFog)                                            \n"\
 "{                                                          \n"\
 "vFactor = max(-1.0, aPosition.z / aPosition.w)             \n"\
-"   * uFogMultiplier + uFogOffset;                          \n"\
+"   * uFogScale + uFogOffset;                          \n"\
 "vFactor = clamp(vFactor, 0.0, 1.0);                        \n"\
 "}                                                          \n";
 
@@ -437,7 +437,7 @@ static void locate_uniforms(ShaderProgram *p)
 {
    LocateUniform(uTex0);
    LocateUniform(uTex1);
-   LocateUniform(uNoise);
+   LocateUniform(uTexNoise);
    LocateUniform(uEnvColor);
    LocateUniform(uPrimColor);
    LocateUniform(uPrimLODFrac);
@@ -446,7 +446,7 @@ static void locate_uniforms(ShaderProgram *p)
    LocateUniform(uFogColor);
    LocateUniform(uEnableFog);
    LocateUniform(uRenderState);
-   LocateUniform(uFogMultiplier);
+   LocateUniform(uFogScale);
    LocateUniform(uFogOffset);
    LocateUniform(uAlphaRef);
    LocateUniform(uTexScale);
@@ -464,7 +464,7 @@ static void force_uniforms(void)
 {
    SC_ForceUniform1i(uTex0, 0);
    SC_ForceUniform1i(uTex1, 1);
-   SC_ForceUniform1i(uNoise, 2);
+   SC_ForceUniform1i(uTexNoise, 2);
    SC_ForceUniform4fv(uEnvColor, &gDP.envColor.r);
    SC_ForceUniform4fv(uPrimColor, &gDP.primColor.r);
    SC_ForceUniform1f(uPrimLODFrac, gDP.primColor.l);
@@ -473,7 +473,7 @@ static void force_uniforms(void)
    SC_ForceUniform4fv(uFogColor, &gDP.fogColor.r);
    SC_ForceUniform1i(uEnableFog, ((gSP.geometryMode & G_FOG)));
    SC_ForceUniform1f(uRenderState, (float) OGL.renderState);
-   SC_ForceUniform1f(uFogMultiplier, (float) gSP.fog.multiplier / 255.0f);
+   SC_ForceUniform1f(uFogScale, (float) gSP.fog.multiplier / 256.0f);
    SC_ForceUniform1f(uFogOffset, (float) gSP.fog.offset / 255.0f);
    SC_ForceUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5f : gDP.blendColor.a);
    SC_ForceUniform2f(uTexScale, gSP.texture.scales, gSP.texture.scalet);
@@ -613,7 +613,7 @@ static ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
    if (prog->usesT1)
       buffer += sprintf(buffer, "lowp vec4 lTex1 = texture2D(uTex1, vTexCoord1); \n");
    if (prog->usesNoise)
-      buffer += sprintf(buffer, "lowp vec4 lNoise = texture2D(uNoise, (1.0 / 1024.0) * gl_FragCoord.st); \n");
+      buffer += sprintf(buffer, "lowp vec4 lNoise = texture2D(uTexNoise, (1.0 / 1024.0) * gl_FragCoord.st); \n");
 
    for(i = 0; i < ((flags & SC_2CYCLE) ? 2 : 1); i++)
    {

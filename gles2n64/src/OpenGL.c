@@ -410,7 +410,7 @@ static void _updateStates(void)
 
    if (gSP.changed & CHANGED_FOGPOSITION)
    {
-      SC_SetUniform1f(uFogMultiplier, (float) gSP.fog.multiplier / 255.0f);
+      SC_SetUniform1f(uFogScale, (float) gSP.fog.multiplier / 255.0f);
       SC_SetUniform1f(uFogOffset, (float) gSP.fog.offset / 255.0f);
    }
 

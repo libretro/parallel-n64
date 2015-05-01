@@ -162,9 +162,9 @@ extern "C" {
 
 typedef struct
 {
-    struct {GLint loc; int val;} uTex0, uTex1, uNoise;
+    struct {GLint loc; int val;} uTex0, uTex1, uTexNoise;
     struct {GLint loc; int val;} uEnableFog;
-    struct {GLint loc; float val;} uFogMultiplier, uFogOffset, uAlphaRef, uPrimLODFrac, uRenderState, uK4, uK5;
+    struct {GLint loc; float val;} uFogScale, uFogOffset, uAlphaRef, uPrimLODFrac, uRenderState, uK4, uK5;
     struct {GLint loc; float val[4];} uEnvColor, uPrimColor, uFogColor;
     struct {GLint loc; float val[2];}  uTexScale, uTexOffset[2], uCacheShiftScale[2],
         uCacheScale[2], uCacheOffset[2];
