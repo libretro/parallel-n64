@@ -1004,10 +1004,7 @@ void gDPSetKeyGB(u32 cG, u32 sG, u32 wG, u32 cB, u32 sB, u32 wB )
    gDP.key.scale.b = sB * 0.0039215689f;;
    gDP.key.width.b = wB * 0.0039215689f;;
 
-   /* TODO/FIXME - update */
-#if 0
-	CombinerInfo::get().updateKeyColor();
-#endif
+   ShaderCombiner_UpdateKeyColor();
 }
 
 void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f32 t, f32 dsdx, f32 dtdy )

@@ -791,3 +791,7 @@ void ShaderCombiner_UpdatePrimColor(void)
    SC_SetUniform4fv(uPrimColor, &gDP.primColor.r);
    SC_SetUniform1f(uPrimLODFrac, gDP.primColor.l);
 }
+
+void ShaderCombiner_UpdateKeyColor(void)
+{
+}

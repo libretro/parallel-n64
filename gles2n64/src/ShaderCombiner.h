@@ -228,6 +228,7 @@ void ShaderCombiner_UpdateBlendColor(void);
 void ShaderCombiner_UpdateEnvColor(void);
 void ShaderCombiner_UpdateFogColor(void);
 void ShaderCombiner_UpdatePrimColor(void);
+void ShaderCombiner_UpdateKeyColor(void);
 
 #ifdef __cplusplus
 }
