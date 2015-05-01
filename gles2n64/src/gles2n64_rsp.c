@@ -10,6 +10,7 @@
 #include "3DMath.h"
 #include "VI.h"
 #include "ShaderCombiner.h"
+#include "FrameBuffer.h"
 #include "DepthBuffer.h"
 #include "GBI.h"
 #include "gSP.h"
@@ -127,12 +128,10 @@ void RSP_ProcessDList(void)
          RSP_CheckDLCounter();
       }
 
-#ifdef NEW
    if (config.frameBufferEmulation.copyToRDRAM)
 	   FrameBuffer_CopyToRDRAM( gDP.colorImage.address );
    if (config.frameBufferEmulation.copyDepthToRDRAM)
 	   FrameBuffer_CopyDepthBuffer( gDP.colorImage.address );
-#endif
    __RSP.busy = FALSE;
    gSP.changed |= CHANGED_COLORBUFFER;
 }

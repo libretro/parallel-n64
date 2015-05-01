@@ -17,6 +17,7 @@
 #include "convert.h"
 #include "S2DEX.h"
 #include "VI.h"
+#include "FrameBuffer.h"
 #include "DepthBuffer.h"
 #include "Config.h"
 
@@ -1124,8 +1125,7 @@ static void _loadSpriteImage(const struct uSprite *_pSprite)
 
 	if (config.frameBufferEmulation.enable != 0)
 	{
-#ifdef NEW
-		FrameBuffer *pBuffer = frameBufferList().findBuffer(gSP.bgImage.address);
+		struct FrameBuffer *pBuffer = FrameBuffer_FindBuffer(gSP.bgImage.address);
 		if (pBuffer != NULL)
       {
 			gDP.tiles[0].frameBuffer = pBuffer;
@@ -1133,7 +1133,6 @@ static void _loadSpriteImage(const struct uSprite *_pSprite)
 			gDP.tiles[0].loadType = LOADTYPE_TILE;
 			gDP.changed |= CHANGED_TMEM;
 		}
-#endif
 	}
 }
 
@@ -1662,15 +1661,15 @@ void _loadBGImage(const struct uObjScaleBg * _bgInfo, bool _loadScale)
 
 	if (config.frameBufferEmulation.enable)
    {
-#ifdef NEW
-		FrameBuffer *pBuffer = frameBufferList().findBuffer(gSP.bgImage.address);
-		if ((pBuffer != NULL) && pBuffer->m_size == gSP.bgImage.size && (!pBuffer->m_isDepthBuffer || pBuffer->m_changed)) {
+		struct FrameBuffer *pBuffer = FrameBuffer_FindBuffer(gSP.bgImage.address);
+      /* TODO/FIXME */
+		if ((pBuffer != NULL) && pBuffer->size == gSP.bgImage.size && (/* !pBuffer->m_isDepthBuffer || */ pBuffer->changed))
+      {
 			gDP.tiles[0].frameBuffer = pBuffer;
 			gDP.tiles[0].textureMode = TEXTUREMODE_FRAMEBUFFER_BG;
 			gDP.tiles[0].loadType = LOADTYPE_TILE;
 			gDP.changed |= CHANGED_TMEM;
 		}
-#endif
 	}
 }
 
@@ -2081,6 +2080,7 @@ void gSPObjSprite( u32 _sp )
    OGL_DrawLLETriangle(4);
 
 #ifdef NEW
+   /* TODO/FIXME */
 	frameBufferList().setBufferChanged();
 #endif
 	gDP.colorImage.height = (u32)(max( gDP.colorImage.height, (u32)gDP.scissor.lry ));

@@ -335,3 +335,13 @@ void FrameBuffer_CopyFromRDRAM( u32 _address, bool _bUseAlpha )
 {
    /* stub */
 }
+
+void FrameBuffer_CopyToRDRAM( u32 _address )
+{
+   /* stub */
+}
+
+void FrameBuffer_CopyDepthBuffer( u32 _address )
+{
+   /* stub */
+}
