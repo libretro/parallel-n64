@@ -15,9 +15,7 @@ extern "C" {
 
 #define CHANGED_COMBINE         0x0040
 
-/* New GLiden64 define name for CHANGED_DEPTHSOURCE */
 #define CHANGED_FB_TEXTURE      0x0200
-#define CHANGED_DEPTHSOURCE     0x0200
 
 #define TEXTUREMODE_NORMAL          0
 #define TEXTUREMODE_TEXRECT         1
@@ -267,7 +265,6 @@ void gDPSetTexturePersp( u32 enable );
 void gDPSetTextureLUT( u32 mode );
 void gDPSetCombineKey( u32 type );
 void gDPSetAlphaCompare( u32 mode );
-void gDPSetDepthSource( u32 source );
 void gDPSetCombine( s32 muxs0, s32 muxs1 );
 void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address );
 void gDPSetTextureImage( u32 format, u32 size, u32 width, u32 address );

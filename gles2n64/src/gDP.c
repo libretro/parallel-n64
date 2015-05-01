@@ -112,17 +112,6 @@ void gDPSetCombineKey( u32 type )
 #endif
 }
 
-void gDPSetDepthSource( u32 source )
-{
-   gDP.otherMode.depthSource = source;
-   gDP.changed |= CHANGED_DEPTHSOURCE;
-
-#ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetDepthSource( %s );\n",
-         DepthSourceText[gDP.otherMode.depthSource] );
-#endif
-}
-
 void gDPSetCombine( s32 muxs0, s32 muxs1 )
 {
    gDP.combine.muxs0 = muxs0;
