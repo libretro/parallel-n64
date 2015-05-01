@@ -505,92 +505,117 @@ void gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 #endif
 }
 
-#if 0
-static
-bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
+static bool CheckForFrameBufferTexture(u32 _address, u32 _bytes)
 {
+   int nTile;
+   bool bRes = false;
+
 	gDP.loadTile->textureMode = TEXTUREMODE_NORMAL;
+#ifdef NEW
 	gDP.loadTile->frameBuffer = NULL;
+#endif
 	gDP.changed |= CHANGED_TMEM;
 	if (!config.frameBufferEmulation.enable)
 		return false;
 
+#ifdef NEW
 	FrameBuffer *pBuffer = frameBufferList().findBuffer(_address);
-	bool bRes = pBuffer != NULL;
-	if (bRes) {
-		if ((config.generalEmulation.hacks & hack_blurPauseScreen) != 0) {
-			if (gDP.colorImage.address == gDP.depthImageAddress && pBuffer->m_RdramCrc != 0) {
-				memcpy(RDRAM + gDP.depthImageAddress, RDRAM + pBuffer->m_startAddress, (pBuffer->m_width*pBuffer->m_height) << pBuffer->m_size >> 1);
-				pBuffer->m_RdramCrc = 0;
-				frameBufferList().getCurrent()->m_isPauseScreen = true;
-			}
-			if (pBuffer->m_isPauseScreen)
-				bRes = false;
-		}
+	bRes = pBuffer != NULL;
+#endif
+	if (bRes)
+   {
+      u32 texEndAddress;
+      if ((config.generalEmulation.hacks & hack_blurPauseScreen) != 0)
+      {
+#ifdef NEW
+         if (gDP.colorImage.address == gDP.depthImageAddress && pBuffer->m_RdramCrc != 0)
+         {
+            memcpy(RDRAM + gDP.depthImageAddress, RDRAM + pBuffer->m_startAddress, (pBuffer->m_width*pBuffer->m_height) << pBuffer->m_size >> 1);
+            pBuffer->m_RdramCrc = 0;
+            frameBufferList().getCurrent()->m_isPauseScreen = true;
+         }
+         if (pBuffer->m_isPauseScreen)
+            bRes = false;
+#endif
+      }
 
-		if (pBuffer->m_cfb) {
-			frameBufferList().removeBuffer(pBuffer->m_startAddress);
-			bRes = false;
-		}
+#ifdef NEW
+      if (pBuffer->m_cfb)
+      {
+         frameBufferList().removeBuffer(pBuffer->m_startAddress);
+         bRes = false;
+      }
+#endif
 
-		if ((config.generalEmulation.hacks & hack_noDepthFrameBuffers) != 0 && pBuffer->m_isDepthBuffer) {
-			frameBufferList().removeBuffer(pBuffer->m_startAddress);
-			bRes = false;
-		}
+      if ((config.generalEmulation.hacks & hack_noDepthFrameBuffers) != 0 /* && pBuffer->m_isDepthBuffer */)
+      {
+#ifdef NEW
+         frameBufferList().removeBuffer(pBuffer->m_startAddress);
+#endif
+         bRes = false;
+      }
 
-		const u32 texEndAddress = _address + _bytes - 1;
-		if (_address > pBuffer->m_startAddress && texEndAddress > (pBuffer->m_endAddress + (pBuffer->m_width << pBuffer->m_size >> 1))) {
-			//frameBufferList().removeBuffer(pBuffer->m_startAddress);
-			bRes = false;
-		}
+      texEndAddress = _address + _bytes - 1;
+#ifdef NEW
+      if (_address > pBuffer->m_startAddress && texEndAddress > (pBuffer->m_endAddress + (pBuffer->m_width << pBuffer->m_size >> 1)))
+         bRes = false;
 
-		if (bRes && gDP.loadTile->loadType == LOADTYPE_TILE && gDP.textureImage.width != pBuffer->m_width && gDP.textureImage.size != pBuffer->m_size) {
-			//frameBufferList().removeBuffer(pBuffer->m_startAddress); // Does not work with Zelda MM
-			bRes = false;
-		}
+      if (bRes && gDP.loadTile->loadType == LOADTYPE_TILE && gDP.textureImage.width != pBuffer->m_width && gDP.textureImage.size != pBuffer->m_size)
+         bRes = false;
+#endif
 
-		if (bRes && pBuffer->m_validityChecked != RSP.DList) {
-			if (pBuffer->m_cleared) {
-				const u32 color = pBuffer->m_fillcolor & 0xFFFEFFFE;
-				u32 wrongPixels = 0;
-				for (u32 i = pBuffer->m_startAddress + 4; i < pBuffer->m_endAddress; i += 4) {
-					if (((*(u32*)&RDRAM[i]) & 0xFFFEFFFE) != color)
-						++wrongPixels;
-				}
-				bRes = wrongPixels < (pBuffer->m_endAddress - pBuffer->m_startAddress)/100; // treshold level 1%
-				if (bRes)
-					pBuffer->m_validityChecked = RSP.DList;
-				else
-					frameBufferList().removeBuffer(pBuffer->m_startAddress);
-			} else if (pBuffer->m_RdramCrc != 0) {
-				const u32 crc = textureCRC(RDRAM + pBuffer->m_startAddress, pBuffer->m_height, pBuffer->m_width << pBuffer->m_size >> 1);
-				bRes = (pBuffer->m_RdramCrc == crc);
-				if (bRes)
-					pBuffer->m_validityChecked = RSP.DList;
-				else
-					frameBufferList().removeBuffer(pBuffer->m_startAddress);
-			}
-		}
 
-		if (bRes) {
-			pBuffer->m_pLoadTile = gDP.loadTile;
-			gDP.loadTile->frameBuffer = pBuffer;
-			gDP.loadTile->textureMode = TEXTUREMODE_FRAMEBUFFER;
-		}
-	}
+#ifdef NEW
+      if (bRes && pBuffer->m_validityChecked != RSP.DList)
+      {
+         if (pBuffer->m_cleared) {
+            const u32 color = pBuffer->m_fillcolor & 0xFFFEFFFE;
+            u32 wrongPixels = 0;
+            for (u32 i = pBuffer->m_startAddress + 4; i < pBuffer->m_endAddress; i += 4) {
+               if (((*(u32*)&RDRAM[i]) & 0xFFFEFFFE) != color)
+                  ++wrongPixels;
+            }
+            bRes = wrongPixels < (pBuffer->m_endAddress - pBuffer->m_startAddress)/100; // treshold level 1%
+            if (bRes)
+               pBuffer->m_validityChecked = RSP.DList;
+            else
+               frameBufferList().removeBuffer(pBuffer->m_startAddress);
+         } else if (pBuffer->m_RdramCrc != 0) {
+            const u32 crc = textureCRC(RDRAM + pBuffer->m_startAddress, pBuffer->m_height, pBuffer->m_width << pBuffer->m_size >> 1);
+            bRes = (pBuffer->m_RdramCrc == crc);
+            if (bRes)
+               pBuffer->m_validityChecked = RSP.DList;
+            else
+               frameBufferList().removeBuffer(pBuffer->m_startAddress);
+         }
+      }
+#endif
 
-	for (int nTile = gSP.texture.tile; nTile < 6; ++nTile) {
-		if (gDP.tiles[nTile].tmem == gDP.loadTile->tmem) {
-			gDPTile & curTile = gDP.tiles[nTile];
-			curTile.textureMode = gDP.loadTile->textureMode;
-			curTile.loadType = gDP.loadTile->loadType;
-			curTile.frameBuffer = gDP.loadTile->frameBuffer;
-			curTile.imageAddress = gDP.loadTile->imageAddress;
+      if (bRes)
+      {
+#ifdef NEW
+         pBuffer->m_pLoadTile = gDP.loadTile;
+         gDP.loadTile->frameBuffer = pBuffer;
+#endif
+         gDP.loadTile->textureMode = TEXTUREMODE_FRAMEBUFFER;
+      }
+   }
+
+	for (nTile = gSP.texture.tile; nTile < 6; ++nTile)
+   {
+		if (gDP.tiles[nTile].tmem == gDP.loadTile->tmem)
+      {
+			gDPTile *curTile = (gDPTile*)&gDP.tiles[nTile];
+			curTile->textureMode  = gDP.loadTile->textureMode;
+			curTile->loadType     = gDP.loadTile->loadType;
+			curTile->imageAddress = gDP.loadTile->imageAddress;
+#ifdef NEW
+			curTile->frameBuffer  = gDP.loadTile->frameBuffer;
+#endif
 		}
 	}
 	return bRes;
 }
-#endif
 
 //****************************************************************
 // LoadTile for 32bit RGBA texture
@@ -668,10 +693,8 @@ void gDPLoadTile(u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt)
 	u32 height2 = height;
 	if (gDP.loadTile->lrt > gDP.scissor.lry)
 		height2 = gDP.scissor.lry - gDP.loadTile->ult;
-#ifdef NEW
 	if (CheckForFrameBufferTexture(address, bpl2*height2))
 		return;
-#endif
 
 	if (gDP.loadTile->size == G_IM_SIZ_32b)
 		gDPLoadTile32b(gDP.loadTile->uls, gDP.loadTile->ult, gDP.loadTile->lrs, gDP.loadTile->lrt);
@@ -797,8 +820,8 @@ void gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
 	gDP.loadTile->textureMode = TEXTUREMODE_NORMAL;
 #ifdef NEW
 	gDP.loadTile->frameBuffer = NULL;
-	CheckForFrameBufferTexture(address, bytes); // Load data to TMEM even if FB texture is found. See comment to texturedRectDepthBufferCopy
 #endif
+	CheckForFrameBufferTexture(address, bytes); // Load data to TMEM even if FB texture is found. See comment to texturedRectDepthBufferCopy
 
 	if (gDP.loadTile->size == G_IM_SIZ_32b)
 		gDPLoadBlock32(gDP.loadTile->uls, gDP.loadTile->lrs, dxt);
