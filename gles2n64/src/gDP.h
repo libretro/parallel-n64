@@ -30,7 +30,6 @@ extern "C" {
 /* TODO/FIXME - GLiden64 doesn't use these - remove? */
 #define CHANGED_CONVERT         0x4000
 #define CHANGED_PRIM_COLOR      0x1000
-#define CHANGED_ENV_COLOR       0x0800
 #define CHANGED_PRIMITIVEZ      0x0400
 
 #define TEXTUREMODE_NORMAL      0

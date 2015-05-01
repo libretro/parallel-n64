@@ -348,11 +348,7 @@ void gDPSetEnvColor( u32 r, u32 g, u32 b, u32 a )
    gDP.envColor.b = b * 0.0039215689f;
    gDP.envColor.a = a * 0.0039215689f;
 
-#if 0
-	CombinerInfo::get().updateEnvColor();
-#else
-   gDP.changed |= CHANGED_ENV_COLOR;
-#endif
+	ShaderCombiner_UpdateEnvColor();
 
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_COMBINE, "gDPSetEnvColor( %u, %u, %u, %u );\n",

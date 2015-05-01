@@ -220,9 +220,11 @@ extern ShaderProgram    *scProgramCurrent;
 extern int              scProgramChanged;
 extern int              scProgramCount;
 
-extern void Combiner_Init(void);
-extern void Combiner_Destroy(void);
-extern void Combiner_Set(u64 mux, int flags);
+void Combiner_Init(void);
+void Combiner_Destroy(void);
+void Combiner_Set(u64 mux, int flags);
+
+void ShaderCombiner_UpdateEnvColor(void);
 
 #ifdef __cplusplus
 }

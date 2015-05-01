@@ -765,3 +765,7 @@ void Combiner_Set(u64 mux, int flags)
       free(dmux);
 }
 
+void ShaderCombiner_UpdateEnvColor(void)
+{
+   SC_SetUniform4fv(uEnvColor, &gDP.envColor.r);
+}

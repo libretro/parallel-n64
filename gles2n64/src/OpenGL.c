@@ -446,9 +446,6 @@ static void _updateStates(void)
    if ((gDP.changed & CHANGED_FOGCOLOR))
       SC_SetUniform4fv(uFogColor, &gDP.fogColor.r );
 
-   if (gDP.changed & CHANGED_ENV_COLOR)
-      SC_SetUniform4fv(uEnvColor, &gDP.envColor.r);
-
    if (gDP.changed & CHANGED_PRIM_COLOR)
    {
       SC_SetUniform4fv(uPrimColor, &gDP.primColor.r);
