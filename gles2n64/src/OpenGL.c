@@ -20,6 +20,7 @@
 #include "gSP.h"
 #include "gDP.h"
 #include "Textures.h"
+#include "FrameBuffer.h"
 #include "ShaderCombiner.h"
 #include "VI.h"
 #include "RSP.h"
@@ -532,6 +533,7 @@ static void OGL_prepareDrawTriangle(bool _dma)
 
 void OGL_DrawLLETriangle(u32 _numVtx)
 {
+   struct FrameBuffer * pCurrentBuffer;
    float scaleX, scaleY;
    u32 i;
 	if (_numVtx == 0)
@@ -541,17 +543,21 @@ void OGL_DrawLLETriangle(u32 _numVtx)
 	OGL_prepareDrawTriangle(false);
 	glDisable(GL_CULL_FACE);
 
-#if 0
-	OGLVideo & ogl = video();
-	FrameBuffer * pCurrentBuffer = frameBufferList().getCurrent();
-	if (pCurrentBuffer == NULL)
-		glViewport( 0, ogl.getHeightOffset(), ogl.getScreenWidth(), ogl.getScreenHeight());
-	else
-		glViewport(0, 0, pCurrentBuffer->m_width*pCurrentBuffer->m_scaleX, pCurrentBuffer->m_height*pCurrentBuffer->m_scaleY);
+	pCurrentBuffer = FrameBuffer_GetCurrent();
 
-	scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width : VI.rwidth;
-	scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : VI.rheight;
+	if (pCurrentBuffer == NULL)
+   {
+#if 0
+      glViewport( 0, ogl.getHeightOffset(), ogl.getScreenWidth(), ogl.getScreenHeight());
+#else
+      glViewport(0, 0, config.screen.width, config.screen.height);
 #endif
+   }
+	else
+		glViewport(0, 0, pCurrentBuffer->width * pCurrentBuffer->scaleX, pCurrentBuffer->height * pCurrentBuffer->scaleY);
+
+	scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->width : VI.rwidth;
+	scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->height : VI.rheight;
 
 	for (i = 0; i < _numVtx; ++i)
    {
