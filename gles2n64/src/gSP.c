@@ -1860,43 +1860,24 @@ void gSPBgRect1Cyc( u32 _bg )
 	gSPDrawObjRect(&objCoords);
 }
 
-void gSPBgRectCopy( u32 bg )
+void gSPBgRectCopy( u32 _bg )
 {
-   u16 imageX, imageY, frameW, frameH;
-   s16 frameX, frameY;
-   u32 address = RSP_SegmentToPhysical( bg );
-   uObjBg *objBg = (uObjBg*)&gfx_info.RDRAM[address];
+   struct ObjCoordinates objCoords;
+	const u32 address = RSP_SegmentToPhysical( _bg );
+	struct uObjScaleBg *objBg = (struct uObjScaleBg*)&gfx_info.RDRAM[address];
+	_loadBGImage(objBg, false);
 
-   gSP.bgImage.address = RSP_SegmentToPhysical( objBg->imagePtr );
-   gSP.bgImage.width = objBg->imageW >> 2;
-   gSP.bgImage.height = objBg->imageH >> 2;
-   gSP.bgImage.format = objBg->imageFmt;
-   gSP.bgImage.size = objBg->imageSiz;
-   gSP.bgImage.palette = objBg->imagePal;
-   gDP.tiles[0].textureMode = TEXTUREMODE_BGIMAGE;
+#ifdef GL_IMAGE_TEXTURES_SUPPORT
+	if (gSP.bgImage.address == gDP.depthImageAddress || depthBufferList().findBuffer(gSP.bgImage.address) != NULL)
+		_copyDepthBuffer();
+	// See comment to gSPBgRect1Cyc
+#endif // GL_IMAGE_TEXTURES_SUPPORT
 
-   imageX = objBg->imageX >> 5;
-   imageY = objBg->imageY >> 5;
-
-   frameX = objBg->frameX / 4;
-   frameY = objBg->frameY / 4;
-   frameW = objBg->frameW >> 2;
-   frameH = objBg->frameH >> 2;
-
-   gSPTexture( 1.0f, 1.0f, 0, 0, TRUE );
+	gSPTexture( 1.0f, 1.0f, 0, 0, TRUE );
 	gDP.otherMode.texturePersp = 1;
 
-   gDPTextureRectangle(
-      frameX,
-      frameY,
-      frameX + frameW - 1.f,
-      frameY + frameH - 1.f,
-      0,
-      imageX,
-      imageY,
-      4,
-      1
-   );
+   ObjCoordinates2_new(&objCoords, objBg);
+	gSPDrawObjRect(&objCoords);
 }
 
 void gSPObjLoadTxtr( u32 tx )
