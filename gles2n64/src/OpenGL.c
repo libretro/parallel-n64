@@ -454,7 +454,7 @@ void OGL_DrawTriangle(SPVertex *vertices, int v0, int v1, int v2)
 {
 }
 
-static void _setColorArray(void)
+static void OGL_SetColorArray(void)
 {
    if (scProgramCurrent->usesCol)
       glEnableVertexAttribArray(SC_COLOR);
@@ -462,30 +462,17 @@ static void _setColorArray(void)
       glDisableVertexAttribArray(SC_COLOR);
 }
 
-void OGL_SetTexCoordArrays(void)
+static void OGL_SetTexCoordArrays(void)
 {
-#ifdef NEw
-   if (OGL.renderState == RS_TRIANGLE)
-   {
-      glDisableVertexAttribArray(SC_TEXCOORD1);
-      if (scProgramCurrent->usesT0 || scProgramCurrent->usesT1)
-         glEnableVertexAttribArray(SC_TEXCOORD0);
-      else
-         glDisableVertexAttribArray(SC_TEXCOORD0);
-   }
+   if (scProgramCurrent->usesT0)
+      glEnableVertexAttribArray(SC_TEXCOORD0);
    else
-#endif
-   {
-      if (scProgramCurrent->usesT0)
-         glEnableVertexAttribArray(SC_TEXCOORD0);
-      else
-         glDisableVertexAttribArray(SC_TEXCOORD0);
+      glDisableVertexAttribArray(SC_TEXCOORD0);
 
-      if (scProgramCurrent->usesT1)
-         glEnableVertexAttribArray(SC_TEXCOORD1);
-      else
-         glDisableVertexAttribArray(SC_TEXCOORD1);
-   }
+   if (scProgramCurrent->usesT1)
+      glEnableVertexAttribArray(SC_TEXCOORD1);
+   else
+      glDisableVertexAttribArray(SC_TEXCOORD1);
 }
 
 static void OGL_prepareDrawTriangle(bool _dma)
@@ -495,7 +482,7 @@ static void OGL_prepareDrawTriangle(bool _dma)
 
    if (OGL.renderState != RS_TRIANGLE || scProgramChanged)
    {
-      _setColorArray();
+      OGL_SetColorArray();
       OGL_SetTexCoordArrays();
       glDisableVertexAttribArray(SC_TEXCOORD1);
       SC_ForceUniform1f(uRenderState, RS_TRIANGLE);
@@ -642,7 +629,7 @@ void OGL_DrawLine(int v0, int v1, float width )
 
    if (OGL.renderState != RS_LINE || scProgramChanged)
    {
-      _setColorArray();
+      OGL_SetColorArray();
       glDisableVertexAttribArray(SC_TEXCOORD0);
       glDisableVertexAttribArray(SC_TEXCOORD1);
       glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].x);
@@ -805,6 +792,7 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
       }
 
       glActiveTexture( GL_TEXTURE0);
+
       if ((OGL.rect[0].s0 >= 0.0f) && (OGL.rect[3].s0 <= cache.current[0]->width))
          glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
 
