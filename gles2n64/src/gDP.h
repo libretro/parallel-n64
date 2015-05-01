@@ -26,7 +26,6 @@ extern "C" {
 #define CHANGED_DEPTHSOURCE     0x0200
 
 /* TODO/FIXME - GLiden64 doesn't use these - remove? */
-#define CHANGED_PRIM_COLOR      0x1000
 #define CHANGED_PRIMITIVEZ      0x0400
 
 #define TEXTUREMODE_NORMAL      0

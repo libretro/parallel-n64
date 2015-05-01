@@ -785,3 +785,9 @@ void ShaderCombiner_UpdateConvertColor(void)
    SC_SetUniform1f(uK4, gDP.convert.k4);
    SC_SetUniform1f(uK5, gDP.convert.k5);
 }
+
+void ShaderCombiner_UpdatePrimColor(void)
+{
+   SC_SetUniform4fv(uPrimColor, &gDP.primColor.r);
+   SC_SetUniform1f(uPrimLODFrac, gDP.primColor.l);
+}

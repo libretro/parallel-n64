@@ -437,12 +437,6 @@ static void _updateStates(void)
       }
    }
 
-   if (gDP.changed & CHANGED_PRIM_COLOR)
-   {
-      SC_SetUniform4fv(uPrimColor, &gDP.primColor.r);
-      SC_SetUniform1f(uPrimLODFrac, gDP.primColor.l);
-   }
-
    if ((gDP.changed & (CHANGED_RENDERMODE | CHANGED_CYCLETYPE)))
    {
       _setBlendMode();

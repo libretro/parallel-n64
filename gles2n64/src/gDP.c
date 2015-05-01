@@ -412,7 +412,6 @@ void gDPGetFillColor(f32 _fillColor[4])
 	}
 }
 
-/* TODO/FIXME - update */
 void gDPSetPrimColor( u32 m, u32 l, u32 r, u32 g, u32 b, u32 a )
 {
 	gDP.primColor.m = m * 0.0039215689f;
@@ -422,11 +421,7 @@ void gDPSetPrimColor( u32 m, u32 l, u32 r, u32 g, u32 b, u32 a )
    gDP.primColor.b = b * 0.0039215689f;
    gDP.primColor.a = a * 0.0039215689f;
 
-#if 0
-	CombinerInfo::get().updatePrimColor();
-#else
-   gDP.changed |= CHANGED_PRIM_COLOR;
-#endif
+   ShaderCombiner_UpdatePrimColor();
 
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_COMBINE, "gDPSetPrimColor( %u, %u, %u, %u, %u, %u );\n",
