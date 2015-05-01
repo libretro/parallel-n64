@@ -142,9 +142,12 @@ void FrameBuffer_Destroy(void)
       FrameBuffer_RemoveBottom();
 }
 
-void FrameBuffer_SaveBuffer( u32 address, u16 size, u16 width, u16 height )
+void FrameBuffer_SaveBuffer( u32 address, u16 format, u16 size, u16 width, u16 height, bool unknown)
 {
    struct FrameBuffer *current = frameBuffer.top;
+
+   (void)format;
+   (void)unknown;
 
    /* Search through saved frame buffers */
    while (current != NULL)

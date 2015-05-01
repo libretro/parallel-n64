@@ -25,7 +25,7 @@ extern struct FrameBufferInfo frameBuffer;
 
 void FrameBuffer_Init(void);
 void FrameBuffer_Destroy(void);
-void FrameBuffer_SaveBuffer( u32 address, u16 size, u16 width, u16 height );
+void FrameBuffer_SaveBuffer( u32 address, u16 format, u16 size, u16 width, u16 height, bool unknown );
 void FrameBuffer_RenderBuffer( u32 address );
 void FrameBuffer_RestoreBuffer( u32 address, u16 size, u16 width );
 void FrameBuffer_RemoveBuffer( u32 address );
