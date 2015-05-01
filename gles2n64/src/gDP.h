@@ -25,9 +25,6 @@ extern "C" {
 #define CHANGED_FB_TEXTURE      0x0200
 #define CHANGED_DEPTHSOURCE     0x0200
 
-/* TODO/FIXME - GLiden64 doesn't use these - remove? */
-#define CHANGED_PRIMITIVEZ      0x0400
-
 #define TEXTUREMODE_NORMAL      0
 #define TEXTUREMODE_TEXRECT     1
 #define TEXTUREMODE_BGIMAGE     2
