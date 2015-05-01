@@ -65,13 +65,15 @@ static Option configOptions[] =
    {"", NULL, 0},
 
    {"#Render Settings:", NULL, 0},
-   {"enable noise", &config.enableNoise, 0},
+   {"enable noise", &config.enableNoise, 1},
+   {"enable lod", &config.generalEmulation.enableLOD, 1},
    {"", NULL, 0},
 
    {"#Texture Settings:", NULL, 0},
    {"texture max anisotropy", &config.texture.maxAnisotropy, 0},
    {"texture use IA", &config.texture.useIA, 0},
    {"texture fast CRC", &config.texture.fastCRC, 1},
+   {"bilinear mode", &config.texture.bilinearMode, 1},
    {"", NULL, 0},
 
    {"#Other Settings:", NULL, 0},

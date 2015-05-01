@@ -45,6 +45,7 @@ typedef struct
         int maxAnisotropy;
         float maxAnisotropyF;
         int enableMipmap;
+        uint32_t bilinearMode;
         int useIA;
         int fastCRC;
     } texture;

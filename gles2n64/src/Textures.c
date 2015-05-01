@@ -845,7 +845,7 @@ static void _load(u32 _tile, CachedTexture *_pTexture)
 	pDest = (u32*)malloc(_pTexture->textureBytes);
 
 	GLint mipLevel = 0, maxLevel = 0;
-	if (/* config.generalEmulation.enableLOD != 0 && */gSP.texture.level > gSP.texture.tile + 1)
+	if (config.generalEmulation.enableLOD != 0 && gSP.texture.level > gSP.texture.tile + 1)
 		maxLevel = _tile == 0 ? 0 : gSP.texture.level - gSP.texture.tile - 1;
 
 	_pTexture->max_level = maxLevel;
@@ -989,7 +989,7 @@ static void _load(u32 _tile, CachedTexture *_pTexture)
 		tmptex.clampWidth = sizes.clampWidth;
 		tmptex.height = sizes.height;
 		tmptex.clampHeight = sizes.clampHeight;
-		// Insure mip-map levels size consistency.
+		// Ensure mip-map levels size consistency.
 		if (tmptex.realWidth > 1)
 			tmptex.realWidth >>= 1;
 		if (tmptex.realHeight > 1)
@@ -1051,9 +1051,7 @@ static void activateTexture( u32 t, CachedTexture *_pTexture )
 
    bUseBilinear = (gDP.otherMode.textureFilter | (gSP.objRendermode&G_OBJRM_BILERP)) != 0;
 
-#if 0
    if (config.texture.bilinearMode == BILINEAR_STANDARD)
-#endif
    {
       if (bUseBilinear) {
          if (_pTexture->max_level > 0)
@@ -1069,7 +1067,6 @@ static void activateTexture( u32 t, CachedTexture *_pTexture )
          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
       }
    }
-#if 0
    else
    { // 3 point filter
       if (_pTexture->max_level > 0) { // Apply standard bilinear to mipmap textures
@@ -1088,7 +1085,6 @@ static void activateTexture( u32 t, CachedTexture *_pTexture )
          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
       }
    }
-#endif
 
 #ifndef GLES
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, _pTexture->max_level);
