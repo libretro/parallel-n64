@@ -13,7 +13,7 @@
 #include "N64.h"
 #include "CRC.h"
 #include "convert.h"
-//#include "FrameBuffer.h"
+#include "FrameBuffer.h"
 
 #define FORMAT_NONE     0
 #define FORMAT_I8       1
@@ -1254,14 +1254,12 @@ void TextureCache_Update( u32 _t )
       case TEXTUREMODE_BGIMAGE:
          _updateBackground();
          return;
-#if 0
-	case TEXTUREMODE_FRAMEBUFFER:
-		FrameBuffer_ActivateBufferTexture( _t, gSP.textureTile[_t]->frameBuffer );
-		return;
-	case TEXTUREMODE_FRAMEBUFFER_BG:
-		FrameBuffer_ActivateBufferTextureBG( _t, gSP.textureTile[_t]->frameBuffer );
-		return;
-#endif
+      case TEXTUREMODE_FRAMEBUFFER:
+         FrameBuffer_ActivateBufferTexture( _t, gSP.textureTile[_t]->frameBuffer );
+         return;
+      case TEXTUREMODE_FRAMEBUFFER_BG:
+         FrameBuffer_ActivateBufferTextureBG( _t, gSP.textureTile[_t]->frameBuffer );
+         return;
    }
 
 	if (gDP.otherMode.textureLOD == G_TL_LOD && gSP.texture.level == gSP.texture.tile && _t == 1)

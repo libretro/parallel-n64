@@ -63,6 +63,7 @@ typedef struct
     };
 } gDPCombine;
 
+struct FrameBuffer;
 typedef struct 
 {
     u32 format, size, line, tmem, palette;
@@ -94,9 +95,7 @@ typedef struct
     u32 textureMode;
     u32 loadType;
     u32 imageAddress;
-#if 0
-    FrameBuffer *frameBuffer;
-#endif
+    struct FrameBuffer *frameBuffer;
 } gDPTile;
 
 struct gDPLoadTileInfo {
