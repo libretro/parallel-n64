@@ -95,7 +95,6 @@ void RSP_ProcessDList(void)
    gDPSetAlphaDither(G_AD_DISABLE);
    gDPSetColorDither(G_CD_DISABLE);
    gDPSetCombineKey(G_CK_NONE);
-   gDPSetTextureConvert(G_TC_FILT);
    gDPSetTextureLUT(G_TT_NONE);
    gDPSetTexturePersp(G_TP_PERSP);
    gDPSetCycleType(G_CYC_1CYCLE);

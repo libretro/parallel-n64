@@ -102,16 +102,6 @@ void gDPSetTextureLUT( u32 mode )
 #endif
 }
 
-void gDPSetTextureConvert( u32 type )
-{
-   gDP.otherMode.textureConvert = type;
-
-#ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPSetTextureConvert( %s );\n",
-         TextureConvertText[gDP.otherMode.textureConvert] );
-#endif
-}
-
 void gDPSetCombineKey( u32 type )
 {
    gDP.otherMode.combineKey = type;
