@@ -1605,9 +1605,6 @@ void gSPSetOtherMode_L(u32 _length, u32 _shift, u32 _data)
 	const u32 mask = (((u64)1 << _length) - 1) << _shift;
 	gDP.otherMode.l = (gDP.otherMode.l&(~mask)) | _data;
 
-	if (mask & 0x00000003)  // alpha compare
-		gDP.changed |= CHANGED_ALPHACOMPARE;
-
 	if (mask & 0xFFFFFFF8)  // rendermode / blender bits
 		gDP.changed |= CHANGED_RENDERMODE;
 }

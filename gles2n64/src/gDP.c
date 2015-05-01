@@ -26,7 +26,7 @@ void gDPSetOtherMode( u32 mode0, u32 mode1 )
    gDP.otherMode.h = mode0;
    gDP.otherMode.l = mode1;
 
-   gDP.changed |= CHANGED_RENDERMODE | CHANGED_CYCLETYPE | CHANGED_ALPHACOMPARE;
+   gDP.changed |= CHANGED_RENDERMODE | CHANGED_CYCLETYPE;
 
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetOtherMode( %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s, %s | %s | %s%s%s%s%s | %s | %s%s%s );\n",
@@ -109,17 +109,6 @@ void gDPSetCombineKey( u32 type )
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_COMBINE, "gDPSetCombineKey( %s );\n",
          CombineKeyText[gDP.otherMode.combineKey] );
-#endif
-}
-
-void gDPSetAlphaCompare( u32 mode )
-{
-   gDP.otherMode.alphaCompare = mode;
-   gDP.changed |= CHANGED_ALPHACOMPARE;
-
-#ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetAlphaCompare( %s );\n",
-         AlphaCompareText[gDP.otherMode.alphaCompare] );
 #endif
 }
 

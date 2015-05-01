@@ -14,7 +14,6 @@ extern "C" {
 #define CHANGED_TILE            0x0010
 
 #define CHANGED_COMBINE         0x0040
-#define CHANGED_ALPHACOMPARE    0x0080
 
 /* New GLiden64 define name for CHANGED_DEPTHSOURCE */
 #define CHANGED_FB_TEXTURE      0x0200
