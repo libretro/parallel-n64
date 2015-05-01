@@ -57,7 +57,13 @@ void gSPTriangle(s32 v0, s32 v1, s32 v2)
 {
    if ((v0 < INDEXMAP_SIZE) && (v1 < INDEXMAP_SIZE) && (v2 < INDEXMAP_SIZE))
    {
+#ifdef NEW
+		if (render.isClipped(v0, v1, v2))
+			return;
+#endif
       OGL_AddTriangle(v0, v1, v2);
+      if (config.frameBufferEmulation.N64DepthCompare != 0)
+         OGL_DrawTriangles();
    }
 
    if (depthBuffer.current) depthBuffer.current->cleared = FALSE;
