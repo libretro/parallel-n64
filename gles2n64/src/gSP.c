@@ -801,24 +801,25 @@ void gSPDMAVertex( u32 v, u32 n, u32 v0 )
       for (; i < n + v0; i++)
       {
          u32 v = i;
+         SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
 
-         OGL.triangles.vertices[v].x = *(s16*)&gfx_info.RDRAM[address ^ 2];
-         OGL.triangles.vertices[v].y = *(s16*)&gfx_info.RDRAM[(address + 2) ^ 2];
-         OGL.triangles.vertices[v].z = *(s16*)&gfx_info.RDRAM[(address + 4) ^ 2];
+         vtx->x = *(s16*)&gfx_info.RDRAM[address ^ 2];
+         vtx->y = *(s16*)&gfx_info.RDRAM[(address + 2) ^ 2];
+         vtx->z = *(s16*)&gfx_info.RDRAM[(address + 4) ^ 2];
 
          if (gSP.geometryMode & G_LIGHTING)
          {
-            OGL.triangles.vertices[v].nx = *(s8*)&gfx_info.RDRAM[(address + 6) ^ 3];
-            OGL.triangles.vertices[v].ny = *(s8*)&gfx_info.RDRAM[(address + 7) ^ 3];
-            OGL.triangles.vertices[v].nz = *(s8*)&gfx_info.RDRAM[(address + 8) ^ 3];
-            OGL.triangles.vertices[v].a = *(u8*)&gfx_info.RDRAM[(address + 9) ^ 3] * 0.0039215689f;
+            vtx->nx = *(s8*)&gfx_info.RDRAM[(address + 6) ^ 3];
+            vtx->ny = *(s8*)&gfx_info.RDRAM[(address + 7) ^ 3];
+            vtx->nz = *(s8*)&gfx_info.RDRAM[(address + 8) ^ 3];
+            vtx->a = *(u8*)&gfx_info.RDRAM[(address + 9) ^ 3] * 0.0039215689f;
          }
          else
          {
-            OGL.triangles.vertices[v].r = *(u8*)&gfx_info.RDRAM[(address + 6) ^ 3] * 0.0039215689f;
-            OGL.triangles.vertices[v].g = *(u8*)&gfx_info.RDRAM[(address + 7) ^ 3] * 0.0039215689f;
-            OGL.triangles.vertices[v].b = *(u8*)&gfx_info.RDRAM[(address + 8) ^ 3] * 0.0039215689f;
-            OGL.triangles.vertices[v].a = *(u8*)&gfx_info.RDRAM[(address + 9) ^ 3] * 0.0039215689f;
+            vtx->r = *(u8*)&gfx_info.RDRAM[(address + 6) ^ 3] * 0.0039215689f;
+            vtx->g = *(u8*)&gfx_info.RDRAM[(address + 7) ^ 3] * 0.0039215689f;
+            vtx->b = *(u8*)&gfx_info.RDRAM[(address + 8) ^ 3] * 0.0039215689f;
+            vtx->a = *(u8*)&gfx_info.RDRAM[(address + 9) ^ 3] * 0.0039215689f;
          }
 
          gSPProcessVertex(v);
@@ -846,22 +847,24 @@ void gSPCBFDVertex( u32 a, u32 n, u32 v0 )
 		for (; i < n + v0; ++i)
       {
 			u32 v = i;
-			OGL.triangles.vertices[v].x = vertex->x;
-			OGL.triangles.vertices[v].y = vertex->y;
-			OGL.triangles.vertices[v].z = vertex->z;
-			OGL.triangles.vertices[v].s = _FIXED2FLOAT( vertex->s, 5 );
-			OGL.triangles.vertices[v].t = _FIXED2FLOAT( vertex->t, 5 );
+         SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
+
+			vtx->x = vertex->x;
+			vtx->y = vertex->y;
+			vtx->z = vertex->z;
+			vtx->s = _FIXED2FLOAT( vertex->s, 5 );
+			vtx->t = _FIXED2FLOAT( vertex->t, 5 );
 			if (gSP.geometryMode & G_LIGHTING)
          {
 				const u32 normaleAddrOffset = (v<<1);
-				OGL.triangles.vertices[v].nx = (float)(((s8*)gfx_info.RDRAM)[(gSP.vertexNormalBase + normaleAddrOffset + 0)^3]);
-				OGL.triangles.vertices[v].ny = (float)(((s8*)gfx_info.RDRAM)[(gSP.vertexNormalBase + normaleAddrOffset + 1)^3]);
-				OGL.triangles.vertices[v].nz = (float)((s8)(vertex->flag&0xFF));
+				vtx->nx = (float)(((s8*)gfx_info.RDRAM)[(gSP.vertexNormalBase + normaleAddrOffset + 0)^3]);
+				vtx->ny = (float)(((s8*)gfx_info.RDRAM)[(gSP.vertexNormalBase + normaleAddrOffset + 1)^3]);
+				vtx->nz = (float)((s8)(vertex->flag&0xFF));
 			}
-			OGL.triangles.vertices[v].r = vertex->color.r * 0.0039215689f;
-			OGL.triangles.vertices[v].g = vertex->color.g * 0.0039215689f;
-			OGL.triangles.vertices[v].b = vertex->color.b * 0.0039215689f;
-			OGL.triangles.vertices[v].a = vertex->color.a * 0.0039215689f;
+			vtx->r = vertex->color.r * 0.0039215689f;
+			vtx->g = vertex->color.g * 0.0039215689f;
+			vtx->b = vertex->color.b * 0.0039215689f;
+			vtx->a = vertex->color.a * 0.0039215689f;
 			gSPProcessVertex(v);
 			vertex++;
 		}
@@ -1030,6 +1033,7 @@ void gSPDMATriangles( u32 tris, u32 n )
 {
    unsigned int i;
    s32 v0, v1, v2;
+   SPVertex *pVtx;
    DKRTriangle *triangles;
    u32 address = RSP_SegmentToPhysical( tris );
 
@@ -1055,7 +1059,6 @@ void gSPDMATriangles( u32 tris, u32 n )
          gSP.geometryMode |= mode;
          gSP.changed |= CHANGED_GEOMETRYMODE;
       }
-
 
       v0 = triangles->v0;
       v1 = triangles->v1;
