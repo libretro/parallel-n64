@@ -348,9 +348,19 @@ void RDP_TriTxtr(u32 _w0, u32 _w1)
 	gDPTriTxtr(_w0, _w1);
 }
 
+void RDP_TriTxtrZBuff(u32 w0, u32 w1)
+{
+    LOG(LOG_VERBOSE, "RSP_TRI_TXTR_ZBUFF Command\n");
+}
+
 void RDP_TriShade(u32 _w0, u32 _w1)
 {
 	gDPTriShadeZ(_w0, _w1);
+}
+
+void RDP_TriShadeZBuff(u32 w0, u32 w1)
+{
+    LOG(LOG_VERBOSE, "RSP_TRI_SHADE_ZBUFF Command\n");
 }
 
 void RDP_TriShadeTxtr(u32 _w0, u32 _w1)
