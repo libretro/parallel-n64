@@ -744,6 +744,124 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
 	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
 }
 
+static
+bool texturedRectDepthBufferCopy(const struct TexturedRectParams *_params)
+{
+	// Copy one line from depth buffer into auxiliary color buffer with height = 1.
+	// Data from depth buffer loaded into TMEM and then rendered to RDRAM by texrect.
+	// Works only with depth buffer emulation enabled.
+	// Load of arbitrary data to that area causes weird camera rotation in CBFD.
+	const gDPTile *pTile = (const gDPTile*)gSP.textureTile[0];
+	if (pTile->loadType == LOADTYPE_BLOCK && gDP.textureImage.size == 2 
+         && gDP.textureImage.address >= gDP.depthImageAddress 
+         &&  gDP.textureImage.address < (gDP.depthImageAddress + gDP.colorImage.width*gDP.colorImage.width * 6 / 4))
+   {
+      struct FrameBuffer *pBuffer = FrameBuffer_GetCurrent();
+      if (config.frameBufferEmulation.enable == 0 || !pBuffer)
+         return true;
+      /* TODO/FIXMES */
+#ifdef NEW
+      pBuffer->m_cleared = true;
+#endif
+      if (config.frameBufferEmulation.copyDepthToRDRAM == 0)
+         return true;
+#ifdef NEW
+      if (FrameBuffer_CopyDepthBuffer(gDP.colorImage.address))
+         RDP_RepeatLastLoadBlock();
+#endif
+
+      const u32 width = (u32)(_params->lrx - _params->ulx);
+      const u32 ulx = (u32)_params->ulx;
+      u16 * pSrc = ((u16*)TMEM) + (u32)floorf(_params->uls + 0.5f);
+      u16 *pDst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
+      for (u32 x = 0; x < width; ++x)
+         pDst[(ulx + x) ^ 1] = swapword(pSrc[x]);
+
+      return true;
+   }
+	return false;
+}
+
+static
+bool texturedRectCopyToItself(const struct TexturedRectParams * _params)
+{
+   struct FrameBuffer *pCurrent = FrameBuffer_GetCurrent();
+	if (gSP.textureTile[0]->frameBuffer == pCurrent)
+		return true;
+	return texturedRectDepthBufferCopy(_params);
+}
+
+static bool texturedRectBGCopy(const struct TexturedRectParams *_params)
+{
+   u8 *texaddr, *fbaddr;
+   u32 y, width, tex_width, uly, lry;
+   float flry;
+	if (GBI_GetCurrentMicrocodeType() != S2DEX)
+		return false;
+
+	flry = _params->lry;
+	if (flry > gDP.scissor.lry)
+		flry = gDP.scissor.lry;
+
+	width = (u32)(_params->lrx - _params->ulx);
+	tex_width = gSP.textureTile[0]->line << 3;
+	uly = (u32)_params->uly;
+	lry = flry;
+
+	texaddr = gfx_info.RDRAM + gDP.loadInfo[gSP.textureTile[0]->tmem].texAddress + tex_width*(u32)_params->ult + (u32)_params->uls;
+	fbaddr = gfx_info.RDRAM + gDP.colorImage.address + (u32)_params->ulx;
+
+	for (y = uly; y < lry; ++y)
+   {
+		u8 *src = texaddr + (y - uly) * tex_width;
+		u8 *dst = fbaddr + y * gDP.colorImage.width;
+		memcpy(dst, src, width);
+	}
+	FrameBuffer_RemoveBuffer(gDP.colorImage.address);
+	return true;
+}
+
+static bool texturedRectPaletteMod(const struct TexturedRectParams *_params)
+{
+   u32 i;
+	if (gDP.scissor.lrx != 16 || gDP.scissor.lry != 1 || _params->lrx != 16 || _params->lry != 1)
+		return false;
+	u8 envr = (u8)(gDP.envColor.r * 31.0f);
+	u8 envg = (u8)(gDP.envColor.g * 31.0f);
+	u8 envb = (u8)(gDP.envColor.b * 31.0f);
+	u16 env16 = (u16)((envr << 11) | (envg << 6) | (envb << 1) | 1);
+	u8 prmr = (u8)(gDP.primColor.r * 31.0f);
+	u8 prmg = (u8)(gDP.primColor.g * 31.0f);
+	u8 prmb = (u8)(gDP.primColor.b * 31.0f);
+	u16 prim16 = (u16)((prmr << 11) | (prmg << 6) | (prmb << 1) | 1);
+	u16 * src = (u16*)&TMEM[256];
+	u16 * dst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
+	for (i = 0; i < 16; ++i)
+		dst[i ^ 1] = (src[i<<2] & 0x100) ? prim16 : env16;
+	return true;
+}
+
+static
+bool texturedRectMonochromeBackground(const struct TexturedRectParams * _params)
+{
+	if (gDP.textureImage.address >= gDP.colorImage.address && gDP.textureImage.address <= (gDP.colorImage.address + gDP.colorImage.width*gDP.colorImage.height * 2)) {
+#ifdef GL_IMAGE_TEXTURES_SUPPORT
+		FrameBuffer * pCurrentBuffer = frameBufferList().getCurrent();
+		if (pCurrentBuffer != NULL) {
+			FrameBuffer_ActivateBufferTexture(0, pCurrentBuffer);
+			SetMonochromeCombiner();
+			return false;
+		} else
+#endif
+			return true;
+	}
+	return false;
+}
+
+// Special processing of textured rect.
+// Return true if actuial rendering is not necessary
+bool(*texturedRectSpecial)(const struct TexturedRectParams * _params) = NULL;
+
 void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls, float ult, float lrs, float lrt, bool flip )
 {
    float scaleX, scaleY, Z, W;

@@ -84,6 +84,13 @@ typedef struct
     GLVertex rect[4];
 } GLInfo;
 
+struct TexturedRectParams
+{
+   float ulx, uly, lrx, lry;
+   float uls, ult, lrs, lrt;
+   bool flip;
+};
+
 extern GLInfo OGL;
 
 bool OGL_Start();
