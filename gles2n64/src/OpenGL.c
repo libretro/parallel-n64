@@ -414,12 +414,6 @@ static void _updateStates(void)
       SC_SetUniform1f(uFogOffset, (float) gSP.fog.offset / 255.0f);
    }
 
-   if (gSP.changed & CHANGED_TEXTURESCALE)
-   {
-      if (scProgramCurrent->usesT0 || scProgramCurrent->usesT1)
-         SC_SetUniform2f(uTexScale, gSP.texture.scales, gSP.texture.scalet);
-   }
-
    if ((gSP.changed & CHANGED_TEXTURE) || (gDP.changed & CHANGED_TILE) || (gDP.changed & CHANGED_TMEM))
    {
       //For some reason updating the texture cache on the first frame of LOZ:OOT causes a NULL Pointer exception...
