@@ -293,7 +293,7 @@ void gSPClipVertex(u32 v)
    if (vtx->x < -vtx->w)   vtx->clip |= CLIP_NEGX;
    if (vtx->y > +vtx->w)   vtx->clip |= CLIP_POSY;
    if (vtx->y < -vtx->w)   vtx->clip |= CLIP_NEGY;
-   if (vtx->w < 0.1f)      vtx->clip |= CLIP_Z;
+   if (vtx->w < 0.01f)      vtx->clip |= CLIP_Z;
 }
 
 void gSPProcessVertex(u32 v)
@@ -314,19 +314,11 @@ void gSPProcessVertex(u32 v)
    if (gSP.viewport.vscale[0] < 0)
 		vtx->x = -vtx->x;
 
-   if (gDP.otherMode.depthSource)
-      vtx->z = gDP.primDepth.z * vtx->w;
-
    if (gSP.matrix.billboard)
    {
       int i = 0;
 
       gSPBillboardVertex(v, i);
-   }
-
-   if (!(gSP.geometryMode & G_ZBUFFER))
-   {
-      vtx->z = -vtx->w;
    }
 
    gSPClipVertex(v);
@@ -339,22 +331,36 @@ void gSPProcessVertex(u32 v)
       else
 			gSPLightVertex(vtx);
 
-      if (gSP.geometryMode & G_TEXTURE_GEN)
+      if (/* GBI.isTextureGen() && */ gSP.geometryMode & G_TEXTURE_GEN)
       {
-         TransformVectorNormalize(&vtx->nx, gSP.matrix.projection);
+			f32 fLightDir[3] = {vtx->nx, vtx->ny, vtx->nz};
+			f32 x, y;
+
+			if (gSP.lookatEnable)
+         {
+				x = DotProduct(&gSP.lookat[0].x, fLightDir);
+				y = DotProduct(&gSP.lookat[1].x, fLightDir);
+			}
+         else
+         {
+				x = fLightDir[0];
+				y = fLightDir[1];
+			}
 
          if (gSP.geometryMode & G_TEXTURE_GEN_LINEAR)
          {
             vtx->s = acosf(vtx->nx) * 325.94931f;
             vtx->t = acosf(vtx->ny) * 325.94931f;
          }
-         else // G_TEXTURE_GEN
+         else /* G_TEXTURE_GEN */
          {
             vtx->s = (vtx->nx + 1.0f) * 512.0f;
             vtx->t = (vtx->ny + 1.0f) * 512.0f;
          }
       }
    }
+   else
+		vtx->HWLight = 0;
 }
 
 void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
@@ -695,24 +701,27 @@ void gSPVertex( u32 v, u32 n, u32 v0 )
       for (; i < n + v0; i++)
       {
          u32 v = i;
-         OGL.triangles.vertices[v].x = vertex->x;
-         OGL.triangles.vertices[v].y = vertex->y;
-         OGL.triangles.vertices[v].z = vertex->z;
-         OGL.triangles.vertices[v].s = _FIXED2FLOAT( vertex->s, 5 );
-         OGL.triangles.vertices[v].t = _FIXED2FLOAT( vertex->t, 5 );
+         SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
+
+         vtx->x = vertex->x;
+         vtx->y = vertex->y;
+         vtx->z = vertex->z;
+         vtx->s = _FIXED2FLOAT( vertex->s, 5 );
+         vtx->t = _FIXED2FLOAT( vertex->t, 5 );
+
          if (gSP.geometryMode & G_LIGHTING)
          {
-            OGL.triangles.vertices[v].nx = vertex->normal.x;
-            OGL.triangles.vertices[v].ny = vertex->normal.y;
-            OGL.triangles.vertices[v].nz = vertex->normal.z;
-            OGL.triangles.vertices[v].a = vertex->color.a * 0.0039215689f;
+            vtx->nx = vertex->normal.x;
+            vtx->ny = vertex->normal.y;
+            vtx->nz = vertex->normal.z;
+            vtx->a = vertex->color.a * 0.0039215689f;
          }
          else
          {
-            OGL.triangles.vertices[v].r = vertex->color.r * 0.0039215689f;
-            OGL.triangles.vertices[v].g = vertex->color.g * 0.0039215689f;
-            OGL.triangles.vertices[v].b = vertex->color.b * 0.0039215689f;
-            OGL.triangles.vertices[v].a = vertex->color.a * 0.0039215689f;
+            vtx->r = vertex->color.r * 0.0039215689f;
+            vtx->g = vertex->color.g * 0.0039215689f;
+            vtx->b = vertex->color.b * 0.0039215689f;
+            vtx->a = vertex->color.a * 0.0039215689f;
          }
          gSPProcessVertex(v);
          vertex++;
@@ -742,28 +751,29 @@ void gSPCIVertex( u32 v, u32 n, u32 v0 )
       i = v0;
       for(; i < n + v0; i++)
       {
-		 u8 *color;
+         u8 *color;
          u32 v = i;
-         OGL.triangles.vertices[v].x = vertex->x;
-         OGL.triangles.vertices[v].y = vertex->y;
-         OGL.triangles.vertices[v].z = vertex->z;
-         OGL.triangles.vertices[v].s = _FIXED2FLOAT( vertex->s, 5 );
-         OGL.triangles.vertices[v].t = _FIXED2FLOAT( vertex->t, 5 );
+         SPVertex *vtx = (SPVertex*)&OGL.triangles.vertices[v];
+         vtx->x = vertex->x;
+         vtx->y = vertex->y;
+         vtx->z = vertex->z;
+         vtx->s = _FIXED2FLOAT( vertex->s, 5 );
+         vtx->t = _FIXED2FLOAT( vertex->t, 5 );
          color = (u8*)&gfx_info.RDRAM[gSP.vertexColorBase + (vertex->ci & 0xff)];
 
          if (gSP.geometryMode & G_LIGHTING)
          {
-            OGL.triangles.vertices[v].nx = (s8)color[3];
-            OGL.triangles.vertices[v].ny = (s8)color[2];
-            OGL.triangles.vertices[v].nz = (s8)color[1];
-            OGL.triangles.vertices[v].a = color[0] * 0.0039215689f;
+            vtx->nx = (s8)color[3];
+            vtx->ny = (s8)color[2];
+            vtx->nz = (s8)color[1];
+            vtx->a = color[0] * 0.0039215689f;
          }
          else
          {
-            OGL.triangles.vertices[v].r = color[3] * 0.0039215689f;
-            OGL.triangles.vertices[v].g = color[2] * 0.0039215689f;
-            OGL.triangles.vertices[v].b = color[1] * 0.0039215689f;
-            OGL.triangles.vertices[v].a = color[0] * 0.0039215689f;
+            vtx->r = color[3] * 0.0039215689f;
+            vtx->g = color[2] * 0.0039215689f;
+            vtx->b = color[1] * 0.0039215689f;
+            vtx->a = color[0] * 0.0039215689f;
          }
 
          gSPProcessVertex(v);
