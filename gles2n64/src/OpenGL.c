@@ -396,6 +396,9 @@ static void _updateStates(void)
    if (gSP.changed & CHANGED_VIEWPORT)
       _updateViewport();
 
+	if (gSP.changed & CHANGED_LIGHT)
+		ShaderCombiner_UpdateLightParameters();
+
    if (gSP.changed & CHANGED_FOGPOSITION)
    {
       SC_SetUniform1f(uFogMultiplier, (float) gSP.fog.multiplier / 255.0f);

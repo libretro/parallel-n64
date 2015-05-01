@@ -795,3 +795,7 @@ void ShaderCombiner_UpdatePrimColor(void)
 void ShaderCombiner_UpdateKeyColor(void)
 {
 }
+
+void ShaderCombiner_UpdateLightParameters(void)
+{
+}
