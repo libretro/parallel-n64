@@ -226,6 +226,7 @@ void Combiner_Set(u64 mux, int flags);
 
 void ShaderCombiner_UpdateBlendColor(void);
 void ShaderCombiner_UpdateEnvColor(void);
+void ShaderCombiner_UpdateFogColor(void);
 
 #ifdef __cplusplus
 }

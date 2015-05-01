@@ -774,3 +774,8 @@ void ShaderCombiner_UpdateEnvColor(void)
 {
    SC_SetUniform4fv(uEnvColor, &gDP.envColor.r);
 }
+
+void ShaderCombiner_UpdateFogColor(void)
+{
+   SC_SetUniform4fv(uFogColor, &gDP.fogColor.r );
+}

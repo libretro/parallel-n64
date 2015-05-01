@@ -377,12 +377,7 @@ void gDPSetFogColor( u32 r, u32 g, u32 b, u32 a )
    gDP.fogColor.b = b * 0.0039215689f;
    gDP.fogColor.a = a * 0.0039215689f;
 
-#if 0
-	CombinerInfo::get().updateFogColor();
-#endif
-
-   gDP.changed |= CHANGED_FOGCOLOR;
-
+   ShaderCombiner_UpdateFogColor();
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetFogColor( %u, %u, %u, %u );\n",
          r, g, b, a );
