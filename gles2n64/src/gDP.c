@@ -92,16 +92,6 @@ void gDPSetCycleType( u32 type )
 }
 
 
-void gDPSetTextureDetail( u32 type )
-{
-   gDP.otherMode.textureDetail = type;
-
-#ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPSetTextureDetail( %s );\n",
-         TextureDetailText[gDP.otherMode.textureDetail] );
-#endif
-}
-
 void gDPSetTextureLOD( u32 mode )
 {
    gDP.otherMode.textureLOD = mode;

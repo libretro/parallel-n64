@@ -265,7 +265,6 @@ void gDPSetPrimDepth( u16 z, u16 dz );
 void gDPPipelineMode( u32 mode );
 void gDPSetCycleType( u32 type );
 void gDPSetTexturePersp( u32 enable );
-void gDPSetTextureDetail( u32 type );
 void gDPSetTextureLOD( u32 mode );
 void gDPSetTextureLUT( u32 mode );
 void gDPSetTextureFilter( u32 type );
