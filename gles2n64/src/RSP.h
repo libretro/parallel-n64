@@ -29,6 +29,8 @@ typedef struct
 
 extern RSPInfo __RSP;
 
+extern u32 DepthClearColor;
+
 #define RSP_SegmentToPhysical( segaddr ) ((gSP.segment[(segaddr >> 24) & 0x0F] + (segaddr & 0x00FFFFFF)) & 0x00FFFFFF)
 
 void RSP_Init(void);

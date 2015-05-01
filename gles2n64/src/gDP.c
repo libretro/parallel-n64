@@ -900,9 +900,41 @@ void gDPSetScissor( u32 mode, f32 ulx, f32 uly, f32 lrx, f32 lry )
 #endif
 }
 
+const bool g_bDepthClearOnly = false;
 void gDPFillRDRAM(u32 address, s32 ulx, s32 uly, s32 lrx, s32 lry, u32 width, u32 size, u32 color, bool scissor)
 {
-   /* stub right now */
+   u32 y, x;
+	if (g_bDepthClearOnly && color != DepthClearColor)
+		return;
+#ifdef NEW
+	FrameBuffer * pCurrentBuffer = frameBufferList().getCurrent();
+	if (pCurrentBuffer != NULL) {
+		pCurrentBuffer->m_cleared = true;
+		pCurrentBuffer->m_fillcolor = color;
+	}
+#endif
+	if (scissor) {
+		ulx = min(max((float)ulx, gDP.scissor.ulx), gDP.scissor.lrx);
+		lrx = min(max((float)lrx, gDP.scissor.ulx), gDP.scissor.lrx);
+		uly = min(max((float)uly, gDP.scissor.uly), gDP.scissor.lry);
+		lry = min(max((float)lry, gDP.scissor.uly), gDP.scissor.lry);
+	}
+	const u32 stride = width << size >> 1;
+	const u32 lowerBound = address + lry*stride;
+	if (lowerBound > RDRAMSize)
+		lry -= (lowerBound - RDRAMSize) / stride;
+	u32 ci_width_in_dwords = width >> (3 - size);
+	ulx >>= (3 - size);
+	lrx >>= (3 - size);
+	u32 * dst = (u32*)(gfx_info.RDRAM + address);
+	dst += uly * ci_width_in_dwords;
+
+	for (y = uly; y < lry; ++y)
+   {
+		for (x = ulx; x < lrx; ++x)
+			dst[x] = color;
+		dst += ci_width_in_dwords;
+	}
 }
 
 void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )

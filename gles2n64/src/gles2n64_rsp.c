@@ -15,6 +15,7 @@
 #include "gSP.h"
 #include "Turbo3D.h"
 #include "Textures.h"
+#include "Config.h"
 
 RSPInfo     __RSP;
 
@@ -178,15 +179,67 @@ void RSP_SetDefaultState(void)
    gDP.otherMode._u64 = 0U;
 }
 
+u32 DepthClearColor = 0xfffcfffc;
+
+static void setDepthClearColor(void)
+{
+	if (strstr(__RSP.romname, (const char *)"Elmo's") != NULL)
+		DepthClearColor = 0xFFFFFFFF;
+	else if (strstr(__RSP.romname, (const char *)"Taz Express") != NULL)
+		DepthClearColor = 0xFFBCFFBC;
+	else if (strstr(__RSP.romname, (const char *)"NFL QBC 2000") != NULL || strstr(__RSP.romname, (const char *)"NFL Quarterback Club") != NULL || strstr(__RSP.romname, (const char *)"Jeremy McGrath Super") != NULL)
+		DepthClearColor = 0xFFFDFFFC;
+	else
+		DepthClearColor = 0xFFFCFFFC;
+}
+
 void RSP_Init(void)
 {
+   unsigned i;
+	char romname[21];
+
    RDRAMSize      = 1024 * 1024 * 8;
    __RSP.DList    = 0;
    __RSP.uc_start = __RSP.uc_dstart = 0;
    __RSP.bLLE     = false;
 
+	for (i = 0; i < 20; ++i)
+		romname[i] = gfx_info.HEADER[(32 + i) ^ 3];
+	romname[20] = 0;
+
+	// remove all trailing spaces
+	while (romname[strlen(romname) - 1] == ' ')
+		romname[strlen(romname) - 1] = 0;
+
+	strncpy(__RSP.romname, romname, 21);
+	setDepthClearColor();
+	config.generalEmulation.hacks = 0;
+	if (strstr(__RSP.romname, (const char *)"OgreBattle64") != NULL)
+		config.generalEmulation.hacks |= hack_Ogre64;
+	else if (strstr(__RSP.romname, (const char *)"MarioGolf64") != NULL ||
+		strstr(__RSP.romname, (const char *)"F1 POLE POSITION 64") != NULL
+		)
+		config.generalEmulation.hacks |= hack_noDepthFrameBuffers;
+	else if (strstr(__RSP.romname, (const char *)"CONKER BFD") != NULL ||
+		strstr(__RSP.romname, (const char *)"MICKEY USA") != NULL
+		)
+		config.generalEmulation.hacks |= hack_blurPauseScreen;
+	else if (strstr(__RSP.romname, (const char *)"MarioTennis") != NULL)
+		config.generalEmulation.hacks |= hack_scoreboard;
+	else if (strstr(__RSP.romname, (const char *)"Pilot Wings64") != NULL)
+		config.generalEmulation.hacks |= hack_pilotWings;
+	else if (strstr(__RSP.romname, (const char *)"THE LEGEND OF ZELDA") != NULL ||
+		strstr(__RSP.romname, (const char *)"ZELDA MASTER QUEST") != NULL
+		)
+		config.generalEmulation.hacks |= hack_subscreen;
+	else if (strstr(__RSP.romname, (const char *)"LEGORacers") != NULL)
+		config.generalEmulation.hacks |= hack_legoRacers;
+	else if (strstr(__RSP.romname, (const char *)"Blast") != NULL)
+		config.generalEmulation.hacks |= hack_blastCorps;
+
    RSP_SetDefaultState();
 
    DepthBuffer_Init();
    GBI_Init();
+
 }
