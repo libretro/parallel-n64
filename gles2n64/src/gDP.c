@@ -246,7 +246,6 @@ void gDPSetCombine( s32 muxs0, s32 muxs1 )
 #endif
 }
 
-/* FIXME/TODO - needs to be updated */
 void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 {
    u32 addr = RSP_SegmentToPhysical( address );
@@ -270,7 +269,15 @@ void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 		else
 			height = gDP.scissor.lry;
 
-      gDP.colorImage.height = height;
+		if (config.frameBufferEmulation.enable)
+		{
+#ifdef NEW
+				frameBufferList().saveBuffer(address, (u16)format, (u16)size, (u16)width, height, false);
+#endif
+				gDP.colorImage.height = 0;
+		}
+      else
+			gDP.colorImage.height = height;
    }
 
    gDP.colorImage.format  = format;
