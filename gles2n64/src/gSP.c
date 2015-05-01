@@ -1984,11 +1984,13 @@ static void _drawYUVImageToFrameBuffer(const struct ObjCoordinates *_objCoords)
 		dst += ci_width - 16;
 	}
 
-#if 0
-	FrameBuffer *pBuffer = frameBufferList().getCurrent();
+	struct FrameBuffer *pBuffer = FrameBuffer_GetCurrent();
 	if (pBuffer != NULL)
+   {
+#if 0
 		pBuffer->m_isOBScreen = true;
 #endif
+   }
 }
 
 void gSPObjRectangle(u32 _sp)

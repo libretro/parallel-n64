@@ -824,14 +824,16 @@ void gDPFillRDRAM(u32 address, s32 ulx, s32 uly, s32 lrx, s32 lry, u32 width, u3
    u32 y, x;
 	if (g_bDepthClearOnly && color != DepthClearColor)
 		return;
+   struct FrameBuffer * pCurrentBuffer = FrameBuffer_GetCurrent();
+   if (pCurrentBuffer != NULL)
+   {
 #ifdef NEW
-   FrameBuffer * pCurrentBuffer = frameBufferList().getCurrent();
-   if (pCurrentBuffer != NULL) {
       pCurrentBuffer->m_cleared = true;
       pCurrentBuffer->m_fillcolor = color;
-   }
 #endif
-	if (scissor) {
+   }
+	if (scissor)
+   {
 		ulx = min(max((float)ulx, gDP.scissor.ulx), gDP.scissor.lrx);
 		lrx = min(max((float)lrx, gDP.scissor.ulx), gDP.scissor.lrx);
 		uly = min(max((float)uly, gDP.scissor.uly), gDP.scissor.lry);

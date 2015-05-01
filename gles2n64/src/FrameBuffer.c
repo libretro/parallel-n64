@@ -214,6 +214,11 @@ void FrameBuffer_SaveBuffer( u32 address, u16 format, u16 size, u16 width, u16 h
    gSP.changed |= CHANGED_TEXTURE;
 }
 
+struct FrameBuffer *FrameBuffer_GetCurrent(void)
+{
+   return (struct FrameBuffer*)frameBuffer.top;
+}
+
 void FrameBuffer_RenderBuffer( u32 address )
 {
    struct FrameBuffer *current = (struct FrameBuffer*)frameBuffer.top;
