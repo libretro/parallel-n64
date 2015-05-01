@@ -956,11 +956,29 @@ void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 
    if (gDP.depthImageAddress == gDP.colorImage.address)
    {
-      gDPFillRDRAM(gDP.colorImage.address, ulx, uly, lrx, lry,
-            gDP.colorImage.width, gDP.colorImage.size, gDP.fillColor.color, true);
-      OGL_ClearDepthBuffer(lrx - ulx >= gDP.scissor.lrx - gDP.scissor.ulx && lry - uly >= gDP.scissor.lry - gDP.scissor.uly);
-      return;
+		/* Game may use depth texture as auxilary color texture. Example: Mario Tennis
+       * If color is not depth clear color, that is most likely the case */
+      if (gDP.fillColor.color == DepthClearColor)
+      {
+         gDPFillRDRAM(gDP.colorImage.address, ulx, uly, lrx, lry,
+               gDP.colorImage.width, gDP.colorImage.size, gDP.fillColor.color, true);
+         OGL_ClearDepthBuffer(lrx - ulx >= gDP.scissor.lrx - gDP.scissor.ulx && lry - uly >= gDP.scissor.lry - gDP.scissor.uly);
+         return;
+      }
    }
+   else if (gDP.fillColor.color == DepthClearColor && gDP.otherMode.cycleType == G_CYC_FILL)
+   {
+#ifdef NEW
+		depthBufferList().saveBuffer(gDP.colorImage.address);
+#endif
+		gDPFillRDRAM(gDP.colorImage.address, ulx, uly, lrx, lry, gDP.colorImage.width, gDP.colorImage.size, gDP.fillColor.color, true);
+		OGL_ClearDepthBuffer(lrx - ulx == gDP.scissor.lrx - gDP.scissor.ulx && lry - uly == gDP.scissor.lry - gDP.scissor.uly);
+		return;
+	}
+
+#ifdef NEW
+	frameBufferList().setBufferChanged();
+#endif
 
    gDPGetFillColor(fillColor);
 
@@ -983,9 +1001,10 @@ void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
    }
 
    OGL_DrawRect( ulx, uly, lrx, lry, fillColor);
+
+   /* TODO/FIXME - remove? */
    if (depthBuffer.current)
       depthBuffer.current->cleared = FALSE;
-   gDP.colorImage.changed = TRUE;
 
    if (gDP.otherMode.cycleType == G_CYC_FILL)
    {
