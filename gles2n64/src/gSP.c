@@ -118,9 +118,7 @@ static void gSPTransformVertex_default(float vtx[4], float mtx[4][4])
 static void gSPLightVertex_default(SPVertex * _vtx)
 {
 
-#if 0
 	if (!config.generalEmulation.enableHWLighting)
-#endif
    {
       unsigned i;
 
@@ -592,11 +590,8 @@ void gSPLight( u32 l, s32 n )
 		gSP.lights[n].qa = (float)(gfx_info.RDRAM[(addrByte + 14) ^ 3]) / 8.0f;
 	}
 
-   /* TODO/FIXME - update */
-#if 0
 	if (config.generalEmulation.enableHWLighting != 0)
 		gSP.changed |= CHANGED_LIGHT;
-#endif
 
 #ifdef DEBUG
 	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED, "// x = %2.6f    y = %2.6f    z = %2.6f\n",
@@ -1940,6 +1935,7 @@ u16 _YUVtoRGBA(u8 y, u8 u, u8 v)
 
 static void _drawYUVImageToFrameBuffer(const struct ObjCoordinates *_objCoords)
 {
+   u16 h, w;
 	const u32 ulx = (u32)_objCoords->ulx;
 	const u32 uly = (u32)_objCoords->uly;
 	const u32 lrx = (u32)_objCoords->lrx;
@@ -1958,20 +1954,24 @@ static void _drawYUVImageToFrameBuffer(const struct ObjCoordinates *_objCoords)
 	u32 * mb = (u32*)(gfx_info.RDRAM + gDP.textureImage.address); //pointer to the first macro block
 	u16 * dst = (u16*)(gfx_info.RDRAM + gDP.colorImage.address);
 	dst += ulx + uly * ci_width;
-	//yuv macro block contains 16x16 texture. we need to put it in the proper place inside cimg
-	for (u16 h = 0; h < 16; h++) {
-		for (u16 w = 0; w < 16; w += 2) {
-			u32 t = *(mb++); //each u32 contains 2 pixels
-			if ((h < height) && (w < width)) //clipping. texture image may be larger than color image
-			{
-				u8 y0 = (u8)t & 0xFF;
-				u8 v = (u8)(t >> 8) & 0xFF;
-				u8 y1 = (u8)(t >> 16) & 0xFF;
-				u8 u = (u8)(t >> 24) & 0xFF;
-				*(dst++) = _YUVtoRGBA(y0, u, v);
-				*(dst++) = _YUVtoRGBA(y1, u, v);
-			}
-		}
+
+	/* YUV macro block contains 16x16 texture. 
+    * we need to put it in the proper place inside cimg */
+	for (h = 0; h < 16; h++)
+   {
+		for (w = 0; w < 16; w += 2)
+      {
+         u32 t = *(mb++); //each u32 contains 2 pixels
+         if ((h < height) && (w < width)) //clipping. texture image may be larger than color image
+         {
+            u8 y0 = (u8)t & 0xFF;
+            u8 v = (u8)(t >> 8) & 0xFF;
+            u8 y1 = (u8)(t >> 16) & 0xFF;
+            u8 u = (u8)(t >> 24) & 0xFF;
+            *(dst++) = _YUVtoRGBA(y0, u, v);
+            *(dst++) = _YUVtoRGBA(y1, u, v);
+         }
+      }
 		dst += ci_width - 16;
 	}
 

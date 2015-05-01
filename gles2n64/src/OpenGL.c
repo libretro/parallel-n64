@@ -299,16 +299,19 @@ static void _setBlendMode(void)
 				break;
 		}
 	}
-#if 0
    else if ((config.generalEmulation.hacks & hack_pilotWings) != 0 && (gDP.otherMode.l & 0x80) != 0) { //CLR_ON_CVG without FORCE_BL
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_ZERO, GL_ONE);
-	} else if ((config.generalEmulation.hacks & hack_blastCorps) != 0 && gSP.texture.on == 0 && currentCombiner()->usesTex()) { // Blast Corps
+	}
+   /* TODO/FIXME: update */
+   else if ((config.generalEmulation.hacks & hack_blastCorps) != 0 && gSP.texture.on == 0 /* && currentCombiner()->usesTex() */)
+   {
+      // Blast Corps
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_ZERO, GL_ONE);
 	}
-#endif
-   else {
+   else
+   {
 		glDisable( GL_BLEND );
 	}
 }
