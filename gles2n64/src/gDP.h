@@ -268,7 +268,6 @@ void gDPSetTextureLUT( u32 mode );
 void gDPSetCombineKey( u32 type );
 void gDPSetAlphaCompare( u32 mode );
 void gDPSetDepthSource( u32 source );
-void gDPSetRenderMode( u32 mode1, u32 mode2 );
 void gDPSetCombine( s32 muxs0, s32 muxs1 );
 void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address );
 void gDPSetTextureImage( u32 format, u32 size, u32 width, u32 address );

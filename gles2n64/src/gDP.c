@@ -123,27 +123,6 @@ void gDPSetDepthSource( u32 source )
 #endif
 }
 
-void gDPSetRenderMode( u32 mode1, u32 mode2 )
-{
-   gDP.otherMode.l &= 0x00000007;
-   gDP.otherMode.l |= mode1 | mode2;
-   gDP.changed |= CHANGED_RENDERMODE;
-
-#ifdef DEBUG
-   // THIS IS INCOMPLETE!!!
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetRenderMode( %s%s%s%s%s | %s | %s%s%s );\n",
-         gDP.otherMode.AAEnable ? "AA_EN | " : "",
-         gDP.otherMode.depthCompare ? "Z_CMP | " : "",
-         gDP.otherMode.depthUpdate ? "Z_UPD | " : "",
-         gDP.otherMode.imageRead ? "IM_RD | " : "",
-         CvgDestText[gDP.otherMode.cvgDest],
-         DepthModeText[gDP.otherMode.depthMode],
-         gDP.otherMode.cvgXAlpha ? "CVG_X_ALPHA | " : "",
-         gDP.otherMode.alphaCvgSel ? "ALPHA_CVG_SEL | " : "",
-         gDP.otherMode.forceBlender ? "FORCE_BL" : "" );
-#endif
-}
-
 void gDPSetCombine( s32 muxs0, s32 muxs1 )
 {
    gDP.combine.muxs0 = muxs0;

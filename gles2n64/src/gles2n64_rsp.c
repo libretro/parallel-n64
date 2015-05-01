@@ -89,9 +89,7 @@ void RSP_ProcessDList(void)
    if ((uc_start != __RSP.uc_start) || (uc_dstart != __RSP.uc_dstart))
       gSPLoadUcodeEx( uc_start, uc_dstart, uc_dsize );
 
-   gDPSetAlphaCompare(G_AC_NONE);
    gDPSetDepthSource(G_ZS_PIXEL);
-   gDPSetRenderMode(0, 0);
    gDPSetCombineKey(G_CK_NONE);
    gDPSetTextureLUT(G_TT_NONE);
    gDPSetTexturePersp(G_TP_PERSP);
