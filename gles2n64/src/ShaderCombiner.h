@@ -224,6 +224,7 @@ void Combiner_Init(void);
 void Combiner_Destroy(void);
 void Combiner_Set(u64 mux, int flags);
 
+void ShaderCombiner_UpdateBlendColor(void);
 void ShaderCombiner_UpdateEnvColor(void);
 
 #ifdef __cplusplus

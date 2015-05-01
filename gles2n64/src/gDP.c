@@ -340,7 +340,6 @@ void gDPSetDepthImage( u32 address )
 #endif
 }
 
-/* TODO/FIXME - update */
 void gDPSetEnvColor( u32 r, u32 g, u32 b, u32 a )
 {
    gDP.envColor.r = r * 0.0039215689f;
@@ -356,7 +355,6 @@ void gDPSetEnvColor( u32 r, u32 g, u32 b, u32 a )
 #endif
 }
 
-/* TODO/FIXME - update */
 void gDPSetBlendColor( u32 r, u32 g, u32 b, u32 a )
 {
    gDP.blendColor.r = r * 0.0039215689f;
@@ -364,11 +362,7 @@ void gDPSetBlendColor( u32 r, u32 g, u32 b, u32 a )
    gDP.blendColor.b = b * 0.0039215689f;
    gDP.blendColor.a = a * 0.0039215689f;
 
-#if 0
-	CombinerInfo::get().updateBlendColor();
-#endif
-
-   gDP.changed |= CHANGED_BLENDCOLOR;
+   ShaderCombiner_UpdateBlendColor();
 
 #ifdef DEBUG
    DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetBlendColor( %u, %u, %u, %u );\n",

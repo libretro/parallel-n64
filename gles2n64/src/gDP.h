@@ -25,7 +25,6 @@ extern "C" {
 /* New GLiden64 define name for CHANGED_DEPTHSOURCE */
 #define CHANGED_FB_TEXTURE      0x0200
 #define CHANGED_DEPTHSOURCE     0x0200
-#define CHANGED_BLENDCOLOR      0x2000
 
 /* TODO/FIXME - GLiden64 doesn't use these - remove? */
 #define CHANGED_CONVERT         0x4000

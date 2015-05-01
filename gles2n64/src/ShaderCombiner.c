@@ -765,6 +765,11 @@ void Combiner_Set(u64 mux, int flags)
       free(dmux);
 }
 
+void ShaderCombiner_UpdateBlendColor(void)
+{
+   SC_SetUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5f : gDP.blendColor.a);
+}
+
 void ShaderCombiner_UpdateEnvColor(void)
 {
    SC_SetUniform4fv(uEnvColor, &gDP.envColor.r);

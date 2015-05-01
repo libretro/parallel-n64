@@ -393,7 +393,7 @@ static void _updateStates(void)
       }
    }
 
-   if ((gDP.changed & CHANGED_BLENDCOLOR) || (gDP.changed & CHANGED_RENDERMODE))
+   if ((gDP.changed & CHANGED_RENDERMODE))
       SC_SetUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5f : gDP.blendColor.a);
 
    if (gDP.changed & CHANGED_SCISSOR)
