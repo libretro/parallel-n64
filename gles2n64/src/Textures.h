@@ -15,29 +15,29 @@ extern "C" {
 
 typedef struct CachedTexture
 {
-    GLuint  glName;
-    u32     address;
-    u32     crc;
-    float   offsetS, offsetT;
-    u32     maskS, maskT;
-    u32     clampS, clampT;
-    u32     mirrorS, mirrorT;
-    u32     line;
-    u32     size;
-    u32     format;
-    u32     tMem;
-    u32     palette;
-    u32     width, height;            // N64 width and height
-    u32     clampWidth, clampHeight;  // Size to clamp to
-    u32     realWidth, realHeight;    // Actual texture size
-    f32     scaleS, scaleT;           // Scale to map to 0.0-1.0
-    f32     shiftScaleS, shiftScaleT; // Scale to shift
-    u32     textureBytes;
+   GLuint  glName;
+   u32     address;
+   u32     crc;
+   float   offsetS, offsetT;
+   u32     maskS, maskT;
+   u32     clampS, clampT;
+   u32     mirrorS, mirrorT;
+   u32     line;
+   u32     size;
+   u32     format;
+   u32     tMem;
+   u32     palette;
+   u32     width, height;            // N64 width and height
+   u32     clampWidth, clampHeight;  // Size to clamp to
+   u32     realWidth, realHeight;    // Actual texture size
+   f32     scaleS, scaleT;           // Scale to map to 0.0-1.0
+   f32     shiftScaleS, shiftScaleT; // Scale to shift
+   u32     textureBytes;
 
-    struct CachedTexture   *lower, *higher;
-    u32     lastDList;
-    u8      max_level;
-
+   struct CachedTexture   *lower, *higher;
+   u32     lastDList;
+   u8      max_level;
+   u8		frameBufferTexture;
 } CachedTexture;
 
 #define TEXTURECACHE_MAX (8 * 1024 * 1024)

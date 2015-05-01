@@ -203,6 +203,7 @@ endif
 
 SOURCES_GLN64VIDEO := $(VIDEODIR_GLN64)/3DMath.c \
             $(VIDEODIR_GLN64)/glN64Config.c \
+            $(VIDEODIR_GLN64)/FrameBuffer.c \
             $(VIDEODIR_GLN64)/Hash.c \
             $(VIDEODIR_GLN64)/DepthBuffer.c \
             $(VIDEODIR_GLN64)/F3DEX2CBFD.c \

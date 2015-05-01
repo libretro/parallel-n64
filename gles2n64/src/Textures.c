@@ -1043,7 +1043,7 @@ static u32 _calculateCRC(u32 t, const struct TextureParams *_params)
    return crc;
 }
 
-static void activateTexture( u32 t, CachedTexture *_pTexture )
+void TextureCache_ActivateTexture( u32 t, CachedTexture *_pTexture )
 {
    bool bUseBilinear;
    glActiveTexture( GL_TEXTURE0 + t );
@@ -1151,7 +1151,7 @@ void _updateBackground(void)
    {
       if (_background_compare(current, crc))
       {
-         activateTexture( 0, current );
+         TextureCache_ActivateTexture( 0, current );
          cache.hits++;
          return;
       }
@@ -1200,7 +1200,7 @@ void _updateBackground(void)
    pCurrent->offsetT = 0.5f;
 
    _loadBackground( pCurrent );
-   activateTexture( 0, pCurrent );
+   TextureCache_ActivateTexture( 0, pCurrent );
 
    cache.cachedBytes += pCurrent->textureBytes;
    cache.current[0] = pCurrent;
@@ -1267,7 +1267,7 @@ void TextureCache_Update( u32 _t )
 	if (gDP.otherMode.textureLOD == G_TL_LOD && gSP.texture.level == gSP.texture.tile && _t == 1)
    {
 		cache.current[1] = cache.current[0];
-		activateTexture(_t, cache.current[_t]);
+		TextureCache_ActivateTexture(_t, cache.current[_t]);
 		return;
 	}
 
@@ -1295,7 +1295,7 @@ void TextureCache_Update( u32 _t )
    if (_texture_compare(_t, cache.current[_t], crc, params.width, params.height, params.clampWidth, params.clampHeight))
    {
       _updateShiftScale(_t, cache.current[_t]);
-      activateTexture(_t, cache.current[_t]);
+      TextureCache_ActivateTexture(_t, cache.current[_t]);
       return;
    }
 
@@ -1305,7 +1305,7 @@ void TextureCache_Update( u32 _t )
       if (_texture_compare(_t, current, crc, params.width, params.height, params.clampWidth, params.clampHeight))
       {
          _updateShiftScale(_t, current);
-         activateTexture(_t, current );
+         TextureCache_ActivateTexture(_t, current );
          cache.hits++;
          return;
       }
@@ -1359,7 +1359,7 @@ void TextureCache_Update( u32 _t )
 	_updateShiftScale(_t, pCurrent);
 
    _load(_t, pCurrent );
-   activateTexture(_t, pCurrent );
+   TextureCache_ActivateTexture(_t, pCurrent );
 
    cache.cachedBytes += pCurrent->textureBytes;
 
