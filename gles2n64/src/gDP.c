@@ -112,26 +112,6 @@ void gDPSetCombineKey( u32 type )
 #endif
 }
 
-void gDPSetColorDither( u32 type )
-{
-   gDP.otherMode.colorDither = type;
-
-#ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetColorDither( %s );\n",
-         ColorDitherText[gDP.otherMode.colorDither] );
-#endif
-}
-
-void gDPSetAlphaDither( u32 type )
-{
-   gDP.otherMode.alphaDither = type;
-
-#ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gDPSetAlphaDither( %s );\n",
-         AlphaDitherText[gDP.otherMode.alphaDither] );
-#endif
-}
-
 void gDPSetAlphaCompare( u32 mode )
 {
    gDP.otherMode.alphaCompare = mode;

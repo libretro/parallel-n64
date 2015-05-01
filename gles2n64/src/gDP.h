@@ -267,8 +267,6 @@ void gDPSetCycleType( u32 type );
 void gDPSetTexturePersp( u32 enable );
 void gDPSetTextureLUT( u32 mode );
 void gDPSetCombineKey( u32 type );
-void gDPSetColorDither( u32 type );
-void gDPSetAlphaDither( u32 type );
 void gDPSetAlphaCompare( u32 mode );
 void gDPSetDepthSource( u32 source );
 void gDPSetRenderMode( u32 mode1, u32 mode2 );

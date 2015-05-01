@@ -92,8 +92,6 @@ void RSP_ProcessDList(void)
    gDPSetAlphaCompare(G_AC_NONE);
    gDPSetDepthSource(G_ZS_PIXEL);
    gDPSetRenderMode(0, 0);
-   gDPSetAlphaDither(G_AD_DISABLE);
-   gDPSetColorDither(G_CD_DISABLE);
    gDPSetCombineKey(G_CK_NONE);
    gDPSetTextureLUT(G_TT_NONE);
    gDPSetTexturePersp(G_TP_PERSP);
