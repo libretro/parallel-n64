@@ -68,9 +68,7 @@ void RSP_ProcessDList(void)
 
    gSP.matrix.stackSize = min( 32, *(u32*)&gfx_info.DMEM[0x0FE4] >> 6 );
    gSP.matrix.modelViewi = 0;
-#ifdef NEW
    gSP.changed &= ~CHANGED_CPU_FB_WRITE;
-#endif
    gSP.changed |= CHANGED_MATRIX;
    gDPSetTexturePersp(G_TP_PERSP);
 

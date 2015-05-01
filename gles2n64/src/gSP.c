@@ -644,10 +644,8 @@ void gSPLightCBFD( u32 l, s32 n )
 		gSP.lights[n].ca = (float)(gfx_info.RDRAM[(addrByte + 12) ^ 3]) / 16.0f;
 	}
 
-#ifdef NEW
 	if (config.generalEmulation.enableHWLighting != 0)
 		gSP.changed |= CHANGED_LIGHT;
-#endif
 
 #ifdef DEBUG
 	DebugMsg( DEBUG_DETAIL | DEBUG_HANDLED, "// x = %2.6f    y = %2.6f    z = %2.6f\n",
@@ -1117,9 +1115,9 @@ static void _loadSpriteImage(const struct uSprite *_pSprite)
 	gSP.bgImage.imageY = _pSprite->imageY;
 	gSP.bgImage.scaleW = gSP.bgImage.scaleH = 1.0f;
 
-#ifdef NEW
 	if (config.frameBufferEmulation.enable != 0)
 	{
+#ifdef NEW
 		FrameBuffer *pBuffer = frameBufferList().findBuffer(gSP.bgImage.address);
 		if (pBuffer != NULL)
       {
@@ -1128,8 +1126,8 @@ static void _loadSpriteImage(const struct uSprite *_pSprite)
 			gDP.tiles[0].loadType = LOADTYPE_TILE;
 			gDP.changed |= CHANGED_TMEM;
 		}
-	}
 #endif
+	}
 }
 
 void gSPSprite2DBase( u32 _base )
@@ -1407,10 +1405,8 @@ void gSPNumLights( s32 n )
    if (n <= 12)
    {
       gSP.numLights = n;
-#ifdef NEW
       if (config.generalEmulation.enableHWLighting != 0)
          gSP.changed |= CHANGED_LIGHT;
-#endif
    }
 #ifdef DEBUG
    else
@@ -1432,10 +1428,8 @@ void gSPLightColor( u32 lightNum, u32 packedColor )
       gSP.lights[lightNum].r = _SHIFTR( packedColor, 24, 8 ) * 0.0039215689f;
       gSP.lights[lightNum].g = _SHIFTR( packedColor, 16, 8 ) * 0.0039215689f;
       gSP.lights[lightNum].b = _SHIFTR( packedColor, 8, 8 ) * 0.0039215689f;
-#ifdef NEW
 		if (config.generalEmulation.enableHWLighting != 0)
 			gSP.changed |= CHANGED_LIGHT;
-#endif
    }
 #ifdef DEBUG
 	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED, "gSPLightColor( %i, 0x%08X );\n",
@@ -1661,9 +1655,9 @@ void _loadBGImage(const struct uObjScaleBg * _bgInfo, bool _loadScale)
 	} else
 		gSP.bgImage.scaleW = gSP.bgImage.scaleH = 1.0f;
 
-#ifdef NEW
 	if (config.frameBufferEmulation.enable)
    {
+#ifdef NEW
 		FrameBuffer *pBuffer = frameBufferList().findBuffer(gSP.bgImage.address);
 		if ((pBuffer != NULL) && pBuffer->m_size == gSP.bgImage.size && (!pBuffer->m_isDepthBuffer || pBuffer->m_changed)) {
 			gDP.tiles[0].frameBuffer = pBuffer;
@@ -1671,8 +1665,8 @@ void _loadBGImage(const struct uObjScaleBg * _bgInfo, bool _loadScale)
 			gDP.tiles[0].loadType = LOADTYPE_TILE;
 			gDP.changed |= CHANGED_TMEM;
 		}
-	}
 #endif
+	}
 }
 
 struct ObjCoordinates
@@ -2007,8 +2001,7 @@ void gSPObjRectangleR(u32 _sp)
    
    ObjCoordinates_new(&objCoords, objSprite, true);
 
-   /* TODO/FIXME -add Ogre Battle 64 hack */
-   if (objSprite->imageFmt == G_IM_FMT_YUV /*&& (config.generalEmulation.hacks&hack_Ogre64) */) //Ogre Battle needs to copy YUV texture to frame buffer
+   if (objSprite->imageFmt == G_IM_FMT_YUV && (config.generalEmulation.hacks & hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
       _drawYUVImageToFrameBuffer(&objCoords);
    gSPDrawObjRect(&objCoords);
 }
