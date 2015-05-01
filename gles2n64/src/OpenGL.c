@@ -63,7 +63,7 @@ int OGL_IsExtSupported( const char *extension )
 
 static void _initStates(void)
 {
-   glEnable( GL_CULL_FACE );
+   glDisable( GL_CULL_FACE );
    glEnableVertexAttribArray( SC_POSITION );
    glEnable( GL_DEPTH_TEST );
    glDepthFunc( GL_ALWAYS );
@@ -73,6 +73,11 @@ static void _initStates(void)
    glDepthRange(0.0f, 1.0f);
    glPolygonOffset(-0.2f, -0.2f);
    glViewport(0, 0, config.screen.width, config.screen.height);
+
+   glClearColor( 0.0f, 0.0f, 0.0f, 0.0f);
+   glClear( GL_COLOR_BUFFER_BIT);
+
+   srand( time(NULL) );
 }
 
 void OGL_UpdateScale(void)
@@ -754,6 +759,7 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
    updateArrays = OGL.renderState != RS_TEXTUREDRECT;
    if (updateArrays || scProgramChanged)
    {
+      OGL.renderState = RS_TEXTUREDRECT;
       glDisableVertexAttribArray(SC_COLOR);
       OGL_SetTexCoordArrays();
       SC_ForceUniform1f(uRenderState, RS_TEXTUREDRECT);
@@ -762,11 +768,9 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
    if (updateArrays)
    {
       glVertexAttrib4f(SC_COLOR, 0, 0, 0, 0);
-      glVertexAttrib4f(SC_POSITION, 0, 0, (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz, 1.0);
       glVertexAttribPointer(SC_POSITION, 2, GL_FLOAT, GL_FALSE, sizeof(GLVertex), &OGL.rect[0].x);
       glVertexAttribPointer(SC_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, sizeof(GLVertex), &OGL.rect[0].s0);
       glVertexAttribPointer(SC_TEXCOORD1, 2, GL_FLOAT, GL_FALSE, sizeof(GLVertex), &OGL.rect[0].s1);
-      OGL.renderState = RS_TEXTUREDRECT;
    }
 
 #ifdef NEW
