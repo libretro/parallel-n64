@@ -98,7 +98,6 @@ void RSP_ProcessDList(void)
    gDPSetTextureConvert(G_TC_FILT);
    gDPSetTextureFilter(G_TF_POINT);
    gDPSetTextureLUT(G_TT_NONE);
-   gDPSetTextureLOD(G_TL_TILE);
    gDPSetTexturePersp(G_TP_PERSP);
    gDPSetCycleType(G_CYC_1CYCLE);
 
