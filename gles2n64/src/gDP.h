@@ -13,11 +13,6 @@ extern "C" {
 #define CHANGED_TMEM            0x0008
 #define CHANGED_TILE            0x0010
 
-/* TODO/FIXME - GLideN64 doesn't use this */
-#if 1
-#define CHANGED_COMBINE_COLORS  0x0020
-#endif
-
 #define CHANGED_COMBINE         0x0040
 #define CHANGED_ALPHACOMPARE    0x0080
 
@@ -25,10 +20,10 @@ extern "C" {
 #define CHANGED_FB_TEXTURE      0x0200
 #define CHANGED_DEPTHSOURCE     0x0200
 
-#define TEXTUREMODE_NORMAL      0
-#define TEXTUREMODE_TEXRECT     1
-#define TEXTUREMODE_BGIMAGE     2
-#define TEXTUREMODE_FRAMEBUFFER 3
+#define TEXTUREMODE_NORMAL          0
+#define TEXTUREMODE_TEXRECT         1
+#define TEXTUREMODE_BGIMAGE         2
+#define TEXTUREMODE_FRAMEBUFFER     3
 /* New GLiden64 define */
 #define TEXTUREMODE_FRAMEBUFFER_BG	4
 
