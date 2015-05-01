@@ -102,16 +102,6 @@ void gDPSetTextureLUT( u32 mode )
 #endif
 }
 
-void gDPSetTextureFilter( u32 type )
-{
-   gDP.otherMode.textureFilter = type;
-
-#ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPSetTextureFilter( %s );\n",
-         TextureFilterText[gDP.otherMode.textureFilter] );
-#endif
-}
-
 void gDPSetTextureConvert( u32 type )
 {
    gDP.otherMode.textureConvert = type;
