@@ -779,3 +779,9 @@ void ShaderCombiner_UpdateFogColor(void)
 {
    SC_SetUniform4fv(uFogColor, &gDP.fogColor.r );
 }
+
+void ShaderCombiner_UpdateConvertColor(void)
+{
+   SC_SetUniform1f(uK4, gDP.convert.k4);
+   SC_SetUniform1f(uK5, gDP.convert.k5);
+}

@@ -331,12 +331,6 @@ static void _updateStates(void)
 		gSP.changed &= ~CHANGED_GEOMETRYMODE;
    }
 
-   if (gDP.changed & CHANGED_CONVERT)
-   {
-      SC_SetUniform1f(uK4, gDP.convert.k4);
-      SC_SetUniform1f(uK5, gDP.convert.k5);
-   }
-
    if (gDP.changed & CHANGED_RENDERMODE || gDP.changed & CHANGED_CYCLETYPE)
    {
       if (((gSP.geometryMode & G_ZBUFFER) || gDP.otherMode.depthSource == G_ZS_PRIM) && gDP.otherMode.cycleType <= G_CYC_2CYCLE)
