@@ -834,45 +834,48 @@ void gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
 
 void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 {
-   u16 j, count, *dest, *src, pal;
-   u32 address;
    int i;
-   gDPSetTileSize( tile, uls, ult, lrs, lrt );
+   u32 address;
+   u16 count, pal, *dest, j;
+	gDPSetTileSize( tile, uls, ult, lrs, lrt );
+	if (gDP.tiles[tile].tmem < 256)
+		return;
+	count = (u16)((gDP.tiles[tile].lrs - gDP.tiles[tile].uls + 1) * (gDP.tiles[tile].lrt - gDP.tiles[tile].ult + 1));
+	address = gDP.textureImage.address + gDP.tiles[tile].ult * gDP.textureImage.bpl + (gDP.tiles[tile].uls << gDP.textureImage.size >> 1);
+	pal = (u16)((gDP.tiles[tile].tmem - 256) >> 4);
+	dest = (u16*)&TMEM[gDP.tiles[tile].tmem];
 
-   count = (gDP.tiles[tile].lrs - gDP.tiles[tile].uls + 1) * (gDP.tiles[tile].lrt - gDP.tiles[tile].ult + 1);
-   address = gDP.textureImage.address + gDP.tiles[tile].ult * gDP.textureImage.bpl + (gDP.tiles[tile].uls << gDP.textureImage.size >> 1);
-
-   dest = (u16*)&TMEM[gDP.tiles[tile].tmem];
-   src = (u16*)&gfx_info.RDRAM[address];
-
-   pal = (gDP.tiles[tile].tmem - 256) >> 4;
-
-   i = 0;
-   while (i < count)
+	i = 0;
+	while (i < count)
    {
-      for (j = 0; (j < 16) && (i < count); j++, i++)
+		for (j = 0; (j < 16) && (i < count); ++j, ++i)
       {
-         u16 color = swapword( src[i^1] );
+			*dest = swapword(*(u16*)(gfx_info.RDRAM + (address ^ 2)));
+			address += 2;
+			dest += 4;
+		}
 
-         *dest = color;
-         //dest[1] = color;
-         //dest[2] = color;
-         //dest[3] = color;
+      /* TODO/FIXME - should be CRC_CalculatePalette here instead */
+		gDP.paletteCRC16[pal] = Hash_Calculate(0xFFFFFFFF, &TMEM[256 + (pal << 4)], 16);
+		++pal;
+	}
 
-         dest += 4;
-      }
+	gDP.paletteCRC256 = Hash_Calculate(0xFFFFFFFF, gDP.paletteCRC16, 64);
 
-      gDP.paletteCRC16[pal] = Hash_CalculatePalette(&TMEM[256 + (pal << 4)], 16 );
-      pal++;
-   }
+#ifdef TEXTURE_FILTER
+	if (TFH.isInited())
+   {
+		const u16 start = gDP.tiles[tile].tmem - 256; // starting location in the palettes
+		u16 *spal = (u16*)(gfx_info.RDRAM + gDP.textureImage.address);
+		memcpy((u8*)(gDP.TexFilterPalette + start), spal, count<<1);
+	}
+#endif
 
-   gDP.paletteCRC256 = Hash_Calculate( 0xFFFFFFFF, gDP.paletteCRC16, 64 );
-
-   gDP.changed |= CHANGED_TMEM;
+	gDP.changed |= CHANGED_TMEM;
 
 #ifdef DEBUG
-   DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPLoadTLUT( %u, %i, %i, %i, %i );\n",
-         tile, gDP.tiles[tile].uls, gDP.tiles[tile].ult, gDP.tiles[tile].lrs, gDP.tiles[tile].lrt );
+	DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_TEXTURE, "gDPLoadTLUT( %i, %i, %i, %i, %i );\n",
+		tile, gDP.tiles[tile].uls, gDP.tiles[tile].ult, gDP.tiles[tile].lrs, gDP.tiles[tile].lrt );
 #endif
 }
 
