@@ -32,5 +32,6 @@ void FrameBuffer_RemoveBuffer( u32 address );
 struct FrameBuffer *FrameBuffer_FindBuffer( u32 address );
 void FrameBuffer_ActivateBufferTexture( s16 t, struct FrameBuffer *buffer);
 void FrameBuffer_ActivateBufferTextureBG(s16 t, struct FrameBuffer *buffer);
+void FrameBuffer_CopyFromRDRAM( u32 _address, bool _bUseAlpha );
 
 #endif

@@ -9,6 +9,7 @@
 #include "Types.h"
 
 struct FrameBufferInfo frameBuffer;
+CachedTexture *g_RDRAMtoFB;
 
 void FrameBuffer_Init(void)
 {
@@ -328,4 +329,9 @@ void FrameBuffer_ActivateBufferTextureBG(s16 t, struct FrameBuffer *buffer )
    FrameBuffer_MoveToTop( buffer );
    TextureCache_ActivateTexture( t, buffer->texture );
 	gDP.changed |= CHANGED_FB_TEXTURE;
+}
+
+void FrameBuffer_CopyFromRDRAM( u32 _address, bool _bUseAlpha )
+{
+   /* stub */
 }
