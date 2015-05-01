@@ -1056,7 +1056,6 @@ void gSPDMATriangles( u32 tris, u32 n )
       OGL.triangles.vertices[v1].t = _FIXED2FLOAT( triangles->t1, 5 );
       OGL.triangles.vertices[v2].s = _FIXED2FLOAT( triangles->s2, 5 );
       OGL.triangles.vertices[v2].t = _FIXED2FLOAT( triangles->t2, 5 );
-      gSPTriangle(triangles->v0, triangles->v1, triangles->v2);
       triangles++;
    }
 
@@ -1360,36 +1359,37 @@ void gSPInsertMatrix( u32 where, u32 num )
 void gSPModifyVertex( u32 vtx, u32 where, u32 val )
 {
    s32 v = vtx;
+   SPVertex *vtx0 = (SPVertex*)&OGL.triangles.vertices[v];
 
    switch (where)
    {
       case G_MWO_POINT_RGBA:
-         OGL.triangles.vertices[v].r = _SHIFTR( val, 24, 8 ) * 0.0039215689f;
-         OGL.triangles.vertices[v].g = _SHIFTR( val, 16, 8 ) * 0.0039215689f;
-         OGL.triangles.vertices[v].b = _SHIFTR( val, 8, 8 ) * 0.0039215689f;
-         OGL.triangles.vertices[v].a = _SHIFTR( val, 0, 8 ) * 0.0039215689f;
+         vtx0->r = _SHIFTR( val, 24, 8 ) * 0.0039215689f;
+         vtx0->g = _SHIFTR( val, 16, 8 ) * 0.0039215689f;
+         vtx0->b = _SHIFTR( val, 8, 8 ) * 0.0039215689f;
+         vtx0->a = _SHIFTR( val, 0, 8 ) * 0.0039215689f;
          break;
       case G_MWO_POINT_ST:
-         OGL.triangles.vertices[v].s = _FIXED2FLOAT( (s16)_SHIFTR( val, 16, 16 ), 5 ) / gSP.texture.scales;
-         OGL.triangles.vertices[v].t = _FIXED2FLOAT( (s16)_SHIFTR( val, 0, 16 ), 5 ) / gSP.texture.scalet;
+         vtx0->s = _FIXED2FLOAT( (s16)_SHIFTR( val, 16, 16 ), 5 ) / gSP.texture.scales;
+         vtx0->t = _FIXED2FLOAT( (s16)_SHIFTR( val, 0, 16 ), 5 ) / gSP.texture.scalet;
          break;
       case G_MWO_POINT_XYSCREEN:
          {
             f32 scrX = _FIXED2FLOAT( (s16)_SHIFTR( val, 16, 16 ), 2 );
             f32 scrY = _FIXED2FLOAT( (s16)_SHIFTR( val, 0, 16 ), 2 );
-            OGL.triangles.vertices[v].x = (scrX - gSP.viewport.vtrans[0]) / gSP.viewport.vscale[0];
-            OGL.triangles.vertices[v].x *= OGL.triangles.vertices[v].w;
-            OGL.triangles.vertices[v].y = -(scrY - gSP.viewport.vtrans[1]) / gSP.viewport.vscale[1];
-            OGL.triangles.vertices[v].y *= OGL.triangles.vertices[v].w;
-            OGL.triangles.vertices[v].clip &= ~(CLIP_POSX | CLIP_NEGX | CLIP_POSY | CLIP_NEGY);
+            vtx0->x = (scrX - gSP.viewport.vtrans[0]) / gSP.viewport.vscale[0];
+            vtx0->x *= vtx0->w;
+            vtx0->y = -(scrY - gSP.viewport.vtrans[1]) / gSP.viewport.vscale[1];
+            vtx0->y *= vtx0->w;
+            vtx0->clip &= ~(CLIP_POSX | CLIP_NEGX | CLIP_POSY | CLIP_NEGY);
          }
          break;
       case G_MWO_POINT_ZSCREEN:
          {
             f32 scrZ = _FIXED2FLOAT((s16)_SHIFTR(val, 16, 16), 15);
-            OGL.triangles.vertices[v].z = (scrZ - gSP.viewport.vtrans[2]) / (gSP.viewport.vscale[2]);
-            OGL.triangles.vertices[v].z *= OGL.triangles.vertices[v].w;
-            OGL.triangles.vertices[v].clip &= ~CLIP_Z;
+            vtx0->z = (scrZ - gSP.viewport.vtrans[2]) / (gSP.viewport.vscale[2]);
+            vtx0->z *= vtx0->w;
+            vtx0->clip &= ~CLIP_Z;
          }
          break;
    }
