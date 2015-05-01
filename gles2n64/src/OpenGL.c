@@ -10,6 +10,8 @@
 #include <unistd.h>
 #endif
 
+#include <boolean.h>
+
 #include "Common.h"
 #include "gles2N64.h"
 #include "OpenGL.h"
@@ -24,6 +26,8 @@
 #include "Config.h"
 
 GLInfo OGL;
+
+static bool m_bFlatColors;
 
 int OGL_IsExtSupported( const char *extension )
 {
@@ -464,43 +468,70 @@ static void OGL_SetColorArray(void)
 
 static void OGL_SetTexCoordArrays(void)
 {
-   if (scProgramCurrent->usesT0)
-      glEnableVertexAttribArray(SC_TEXCOORD0);
-   else
-      glDisableVertexAttribArray(SC_TEXCOORD0);
-
-   if (scProgramCurrent->usesT1)
-      glEnableVertexAttribArray(SC_TEXCOORD1);
-   else
+   if (OGL.renderState == RS_TRIANGLE)
+   {
       glDisableVertexAttribArray(SC_TEXCOORD1);
+      if (scProgramCurrent->usesT0 || scProgramCurrent->usesT1)
+         glEnableVertexAttribArray(SC_TEXCOORD0);
+      else
+         glDisableVertexAttribArray(SC_TEXCOORD0);
+   }
+   else
+   {
+      if (scProgramCurrent->usesT0)
+         glEnableVertexAttribArray(SC_TEXCOORD0);
+      else
+         glDisableVertexAttribArray(SC_TEXCOORD0);
+
+      if (scProgramCurrent->usesT1)
+         glEnableVertexAttribArray(SC_TEXCOORD1);
+      else
+         glDisableVertexAttribArray(SC_TEXCOORD1);
+   }
 }
 
 static void OGL_prepareDrawTriangle(bool _dma)
 {
+   bool updateColorArrays, updateArrays;
    if (gSP.changed || gDP.changed)
       _updateStates();
 
-   if (OGL.renderState != RS_TRIANGLE || scProgramChanged)
+   updateArrays = OGL.renderState != RS_TRIANGLE;
+
+   if (updateArrays || scProgramChanged)
    {
+      OGL.renderState = RS_TRIANGLE;
       OGL_SetColorArray();
       OGL_SetTexCoordArrays();
       glDisableVertexAttribArray(SC_TEXCOORD1);
       SC_ForceUniform1f(uRenderState, RS_TRIANGLE);
    }
 
-   if (OGL.renderState != RS_TRIANGLE)
+   updateColorArrays = m_bFlatColors != (!__RSP.bLLE && (gSP.geometryMode & G_SHADING_SMOOTH) == 0);
+   if (updateColorArrays)
+      m_bFlatColors = !m_bFlatColors;
+
+   if (updateArrays)
    {
-      glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].x);
-      glEnableVertexAttribArray(SC_POSITION);
-      glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].r);
-      glEnableVertexAttribArray(SC_COLOR);
-      glVertexAttribPointer(SC_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &OGL.triangles.vertices[0].s);
-      glEnableVertexAttribArray(SC_TEXCOORD0);
+      SPVertex *pVtx = (SPVertex*)&OGL.triangles.vertices[0];
+      glVertexAttribPointer(SC_POSITION, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->x);
+      if (m_bFlatColors)
+         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->flat_r);
+      else
+         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->r);
+      glVertexAttribPointer(SC_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->s);
 
       _updateCullFace();
       _updateViewport();
       glEnable(GL_SCISSOR_TEST);
-      OGL.renderState = RS_TRIANGLE;
+   }
+   else if (updateColorArrays)
+   {
+      SPVertex *pVtx = (SPVertex*)&OGL.triangles.vertices[0];
+      if (m_bFlatColors)
+         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->flat_r);
+      else
+         glVertexAttribPointer(SC_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), &pVtx->r);
    }
 }
 
@@ -569,10 +600,10 @@ void OGL_AddTriangle(int v0, int v1, int v2)
       for (i = OGL.triangles.num - 3; i < OGL.triangles.num; ++i)
       {
          vtx = (SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
-         vtx->r = gDP.primColor.r;
-         vtx->g = gDP.primColor.g;
-         vtx->b = gDP.primColor.b;
-         vtx->a = gDP.primColor.a;
+         vtx->flat_r = gDP.primColor.r;
+         vtx->flat_g = gDP.primColor.g;
+         vtx->flat_b = gDP.primColor.b;
+         vtx->flat_a = gDP.primColor.a;
       }
    }
    else if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0)
@@ -583,10 +614,10 @@ void OGL_AddTriangle(int v0, int v1, int v2)
       for (i = OGL.triangles.num - 3; i < OGL.triangles.num; ++i)
       {
          vtx = (SPVertex*)&OGL.triangles.vertices[OGL.triangles.elements[i]];
-         vtx->r = vtx0->r;
-         vtx->g = vtx0->g;
-         vtx->b = vtx0->b;
-         vtx->a = vtx0->a;
+         vtx->flat_r = vtx0->r;
+         vtx->flat_g = vtx0->g;
+         vtx->flat_b = vtx0->b;
+         vtx->flat_a = vtx0->a;
       }
    }
 
