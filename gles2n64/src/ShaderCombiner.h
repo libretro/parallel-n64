@@ -159,14 +159,18 @@ extern "C" {
 #define ZERO            20
 #define UNKNOWN         21
 
+struct iUniform {GLint loc; int val;};
+struct fUniform {GLint loc; float val;};
+struct fv2Uniform {GLint loc; float val[2];};
+struct fv4Uniform {GLint loc; float val[4];};
 
 typedef struct
 {
-    struct {GLint loc; int val;} uTex0, uTex1, uTexNoise;
-    struct {GLint loc; int val;} uEnableFog;
-    struct {GLint loc; float val;} uFogScale, uFogOffset, uAlphaRef, uPrimLODFrac, uRenderState, uK4, uK5;
-    struct {GLint loc; float val[4];} uEnvColor, uPrimColor, uFogColor;
-    struct {GLint loc; float val[2];}  uTexScale, uTexOffset[2], uCacheShiftScale[2],
+    struct iUniform uTex0, uTex1, uTexNoise;
+    struct iUniform uEnableFog;
+    struct fUniform uFogScale, uFogOffset, uAlphaRef, uPrimLODFrac, uRenderState, uK4, uK5;
+    struct fv4Uniform uEnvColor, uPrimColor, uFogColor;
+    struct fv2Uniform  uTexScale, uTexOffset[2], uCacheShiftScale[2],
         uCacheScale[2], uCacheOffset[2];
 } UniformLocation;
 
