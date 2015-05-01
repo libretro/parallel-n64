@@ -455,6 +455,7 @@ void TextureCache_Init(void)
    cache.dummy->crc = 0;
    cache.dummy->format = 0;
    cache.dummy->size = 0;
+   cache.dummy->frameBufferTexture = false;
    cache.dummy->width = 2;
    cache.dummy->height = 2;
    cache.dummy->realWidth = 2;
@@ -1186,6 +1187,7 @@ void _updateBackground(void)
    pCurrent->line = 0;
    pCurrent->tMem = 0;
    pCurrent->lastDList = __RSP.DList;
+   pCurrent->frameBufferTexture = false;
 
    pCurrent->realWidth = gSP.bgImage.width;
    pCurrent->realHeight = gSP.bgImage.height;
