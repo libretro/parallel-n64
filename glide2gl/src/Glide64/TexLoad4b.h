@@ -596,31 +596,33 @@ static INLINE void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
 
 uint32_t Load4bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
-  int ext;
-  uintptr_t pal;
+   int ext;
+   uintptr_t pal;
 
-  if (wid_64 < 1) wid_64 = 1;
-  if (height < 1) height = 1;
-  ext = (real_width - (wid_64 << 4)) << 1;
+   if (wid_64 < 1) wid_64 = 1;
+   if (height < 1) height = 1;
+   ext = (real_width - (wid_64 << 4));
 
-  if (rdp.tlut_mode == 0)
-  {
-    //in tlut DISABLE mode load CI texture as plain intensity texture instead of palette dereference.
-    //Thanks to angrylion for the advice
-    load4bI ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
-    return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;
-  }
+   if (rdp.tlut_mode == 0)
+   {
+      //in tlut DISABLE mode load CI texture as plain intensity texture instead of palette dereference.
+      //Thanks to angrylion for the advice
+      load4bI ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
+      return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;
+   }
 
-  pal = (uintptr_t)(rdp.pal_8 + (rdp.tiles[tile].palette << 4));
-  if (rdp.tlut_mode == 2)
-  {
-    load4bCI ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext, (uint16_t *)pal);
-    
-    return (1 << 16) | GR_TEXFMT_ARGB_1555;
-  }
+   pal = (uintptr_t)(rdp.pal_8 + (rdp.tiles[tile].palette << 4));
+   if (rdp.tlut_mode == 2)
+   {
+      ext <<= 1;
+      load4bCI ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext, (uint16_t *)pal);
 
-    load4bIAPal ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext, (uint16_t *)pal);
-  return (1 << 16) | GR_TEXFMT_ALPHA_INTENSITY_88;
+      return (1 << 16) | GR_TEXFMT_ARGB_1555;
+   }
+
+   ext <<= 1;
+   load4bIAPal ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext, (uint16_t *)pal);
+   return (1 << 16) | GR_TEXFMT_ALPHA_INTENSITY_88;
 }
 
 //****************************************************************
