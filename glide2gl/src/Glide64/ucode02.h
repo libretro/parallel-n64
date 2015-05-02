@@ -574,45 +574,37 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
             uint32_t n = offset / 24;
 
             if (n < 2)
+               gSPLookAt_G64(w1, n);
+            else
             {
-               rdp.lookat[n][0] = (float)rdram_s8[11] / 127.0f;
-               rdp.lookat[n][1] = (float)rdram_s8[10] / 127.0f;
-               rdp.lookat[n][2] = (float)rdram_s8[9] / 127.0f;
-               rdp.use_lookat = true;
-               if (n == 1)
-               {
-                  if (!rdram_s8[11] && !rdram_s8[10])
-                     rdp.use_lookat = false;
-               }
-               FRDP("lookat_%d (%f, %f, %f)\n", n, rdp.lookat[n][0], rdp.lookat[n][1], rdp.lookat[n][2]);
-               return;
+               /* gSPLight */
+               n -= 2;
+               if (n > 7)
+                  return;
+
+               // Get the data
+               rdp.light[n].nonblack  = rdram_u8[3];
+               rdp.light[n].nonblack += rdram_u8[2];
+               rdp.light[n].nonblack += rdram_u8[1];
+
+               rdp.light[n].col[0]    = rdram_u8[3] / 255.0f;
+               rdp.light[n].col[1]    = rdram_u8[2] / 255.0f;
+               rdp.light[n].col[2]    = rdram_u8[1] / 255.0f;
+               rdp.light[n].col[3]    = 1.0f;
+
+               // ** Thanks to Icepir8 for pointing this out **
+               // Lighting must be signed byte instead of byte
+               rdp.light[n].dir[0] = (float)rdram_s8[11] / 127.0f;
+               rdp.light[n].dir[1] = (float)rdram_s8[10] / 127.0f;
+               rdp.light[n].dir[2] = (float)rdram_s8[9] / 127.0f;
+
+               rdp.light[n].x = (float)rdram[5];
+               rdp.light[n].y = (float)rdram[4];
+               rdp.light[n].z = (float)rdram[7];
+               rdp.light[n].ca = (float)rdram[0] / 16.0f;
+               rdp.light[n].la = (float)rdram[4];
+               rdp.light[n].qa = (float)rdram[13] / 8.0f;
             }
-            n -= 2;
-            if (n > 7)
-               return;
-
-            // Get the data
-            rdp.light[n].nonblack  = rdram_u8[3];
-            rdp.light[n].nonblack += rdram_u8[2];
-            rdp.light[n].nonblack += rdram_u8[1];
-
-            rdp.light[n].col[0]    = rdram_u8[3] / 255.0f;
-            rdp.light[n].col[1]    = rdram_u8[2] / 255.0f;
-            rdp.light[n].col[2]    = rdram_u8[1] / 255.0f;
-            rdp.light[n].col[3]    = 1.0f;
-
-            // ** Thanks to Icepir8 for pointing this out **
-            // Lighting must be signed byte instead of byte
-            rdp.light[n].dir[0] = (float)rdram_s8[11] / 127.0f;
-            rdp.light[n].dir[1] = (float)rdram_s8[10] / 127.0f;
-            rdp.light[n].dir[2] = (float)rdram_s8[9] / 127.0f;
-
-            rdp.light[n].x = (float)rdram[5];
-            rdp.light[n].y = (float)rdram[4];
-            rdp.light[n].z = (float)rdram[7];
-            rdp.light[n].ca = (float)rdram[0] / 16.0f;
-            rdp.light[n].la = (float)rdram[4];
-            rdp.light[n].qa = (float)rdram[13] / 8.0f;
          }
          break;
 
