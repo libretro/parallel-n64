@@ -543,7 +543,22 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          uc6_obj_movemem(w0, w1);
          break;
       case F3DEX2_MV_VIEWPORT:
-         gSPViewport( w1 );
+         {
+            int16_t scale_y = rdram[0] >> 2;
+            int16_t scale_x = rdram[1] >> 2;
+            int16_t scale_z = rdram[3];
+            int16_t trans_y = rdram[4] >> 2;
+            int16_t trans_x = rdram[5] >> 2;
+            int16_t trans_z = rdram[7];
+            rdp.view_scale[0] = scale_x * rdp.scale_x;
+            rdp.view_scale[1] = -scale_y * rdp.scale_y;
+            rdp.view_scale[2] = 32.0f * scale_z;
+            rdp.view_trans[0] = trans_x * rdp.scale_x;
+            rdp.view_trans[1] = trans_y * rdp.scale_y;
+            rdp.view_trans[2] = 32.0f * trans_z;
+
+            rdp.update |= UPDATE_VIEWPORT;
+         }
          break;
       case G_MV_MATRIX:
          // do not update the combined matrix!
