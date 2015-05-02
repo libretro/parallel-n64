@@ -98,9 +98,21 @@ static int left_z, left_dzdy;
 // (x * y) >> 14
 #define imul14(x, y) ((((long long)x) * ((long long)y)) >> 14)
 
-#define idiv16(x, y) ((int)(((long long)x) << 16) / ((long long)y))
+static INLINE int idiv16(int x, int y)
+{
+   int64_t result;
+   const int64_t m = (int64_t)(x);
+   const int64_t n = (int64_t)(y);
 
-#define iceil(x) ((x + 0xffff) >> 16)
+   result = (m << 16) / n;
+   return (int)(result);
+}
+
+static INLINE int iceil(int x)
+{
+   x += 0xffff;
+   return (x >> 16);
+}
 
 static void RightSection(void)
 {
