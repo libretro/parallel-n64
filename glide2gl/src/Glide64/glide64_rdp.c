@@ -870,11 +870,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
    //*
-   //hack for Banjo2. it removes black texrects under Banjo
-   if (!fb_hwfbe_enabled && ((rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF)) == 0xFFFFFFFF && (rdp.othermode_l & 0xFFFF0000) == 0x00500000)
-   {
-      return;
-   }
    //*/
    //*
    //remove motion blur in night vision
