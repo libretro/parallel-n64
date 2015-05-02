@@ -261,34 +261,29 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
       case G_MV_LOOKATX:
          gSPLookAt_G64(w1, 0);
          break;
-
       case G_MV_L0:
+         gSPLight_G64( w1, LIGHT_1 );
+         break;
       case G_MV_L1:
+         gSPLight_G64( w1, LIGHT_2 );
+         break;
       case G_MV_L2:
+         gSPLight_G64( w1, LIGHT_3 );
+         break;
       case G_MV_L3:
+         gSPLight_G64( w1, LIGHT_4 );
+         break;
       case G_MV_L4:
+         gSPLight_G64( w1, LIGHT_5 );
+         break;
       case G_MV_L5:
+         gSPLight_G64( w1, LIGHT_6 );
+         break;
       case G_MV_L6:
+         gSPLight_G64( w1, LIGHT_7 );
+         break;
       case G_MV_L7:
-         {
-            // Get the light #
-            uint32_t n = (index - 0x86) >> 1;
-
-            // Get the data
-            rdp.light[n].col[0] = (float)rdram_u8[3] / 255.0f;
-            rdp.light[n].col[1] = (float)rdram_u8[2] / 255.0f;
-            rdp.light[n].col[2] = (float)rdram_u8[1] / 255.0f;
-            rdp.light[n].col[3] = 1.0f;
-
-            // ** Thanks to Icepir8 for pointing this out **
-            // Lighting must be signed byte instead of byte
-            rdp.light[n].dir[0] = (float)rdram_s8[11] / 127.0f;
-            rdp.light[n].dir[1] = (float)rdram_s8[10] / 127.0f;
-            rdp.light[n].dir[2] = (float)rdram_s8[9] / 127.0f;
-            // **
-
-            //rdp.update |= UPDATE_LIGHTS;
-         }
+         gSPLight_G64( w1, LIGHT_8 );
          break;
 
 
