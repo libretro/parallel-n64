@@ -403,7 +403,7 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
             uint32_t stride = info.strideInBytes>>1;
 
             read_alpha = settings.frame_buffer & fb_read_alpha;
-            if ((settings.hacks&hack_PMario) && rdp.frame_buffers[rdp.ci_count-1].status != CI_AUX)
+            if ((settings.hacks&hack_PMario) && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status != CI_AUX)
                read_alpha = false;
             x_start = 0;
 			y_start = 0;
@@ -802,7 +802,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   if ((settings.ucode == ucode_PerfectDark) && (rdp.frame_buffers[rdp.ci_count-1].status == CI_ZCOPY))
+   if ((settings.ucode == ucode_PerfectDark) && rdp.ci_count > 0 && (rdp.frame_buffers[rdp.ci_count-1].status == CI_ZCOPY))
    {
       pd_zcopy(w0, w1);
       LRDP("Depth buffer copied.\n");
@@ -881,7 +881,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if ((settings.ucode == ucode_PerfectDark) && (rdp.maincimg[1].addr != rdp.maincimg[0].addr) && (rdp.timg.addr >= rdp.maincimg[1].addr) && (rdp.timg.addr < (rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size)))
    {
       if (fb_emulation_enabled)
-         if (rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF)
+         if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF)
          {
             //FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.timg.addr, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width*rdp.ci_height*rdp.ci_size);
             LRDP("Wrong Texrect.\n");
@@ -1546,7 +1546,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    }
 
    pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3) && (rdp.fill_color == 0xFFFCFFFC);
-   if ((rdp.cimg == rdp.zimg) || (fb_emulation_enabled && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) || pd_multiplayer)
+   if ((rdp.cimg == rdp.zimg) || (fb_emulation_enabled && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) || pd_multiplayer)
    {
       //LRDP("Fillrect - cleared the depth buffer\n");
       //if (fullscreen)
@@ -1646,7 +1646,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       {
          uint32_t color = rdp.fill_color;
 
-         if ((settings.hacks&hack_PMario) && rdp.frame_buffers[rdp.ci_count-1].status == CI_AUX)
+         if ((settings.hacks&hack_PMario) && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_AUX)
          {
             //background of auxiliary frame buffers must have zero alpha.
             //make it black, set 0 alpha to plack pixels on frame buffer read
@@ -1835,7 +1835,7 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
    rdp.s2dex_tex_loaded = true;
    rdp.update |= UPDATE_TEXTURE;
 
-   if (rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF && (rdp.timg.addr >= rdp.cimg) && (rdp.timg.addr < rdp.ci_end))
+   if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF && (rdp.timg.addr >= rdp.cimg) && (rdp.timg.addr < rdp.ci_end))
    {
       if (!rdp.fb_drawn)
       {
@@ -2065,7 +2065,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
    rdp.ocimg = rdp.cimg;
    rdp.cimg = segoffset(w1) & BMASK;
    rdp.ci_width = (w0 & 0xFFF) + 1;
-   if (fb_emulation_enabled)
+   if (fb_emulation_enabled && rdp.ci_count > 0)
       rdp.ci_height = rdp.frame_buffers[rdp.ci_count-1].height;
    else if (rdp.ci_width == 32)
       rdp.ci_height = 32;
@@ -2430,7 +2430,7 @@ void DetectFrameBufferUsage(void)
          rdp.frame_buffers[rdp.ci_count-1].status = CI_MAIN;
    }
 
-   if ((rdp.frame_buffers[rdp.ci_count-1].status == CI_AUX) &&
+   if ((rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_AUX) &&
          (rdp.frame_buffers[rdp.main_ci_index].width < 320) &&
          (rdp.frame_buffers[rdp.ci_count-1].width > rdp.frame_buffers[rdp.main_ci_index].width))
    {
