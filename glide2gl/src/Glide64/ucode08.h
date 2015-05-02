@@ -321,58 +321,43 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
             int n = (ofs / 48);
 
             if (n < 2)
+               gSPLookAt_G64(w1, n);
+            else
             {
-               int8_t dir_x, dir_y, dir_z;
-               dir_x = ((int8_t*)gfx_info.RDRAM)[(addr+8)^3];
-               rdp.lookat[n][0] = (float)(dir_x) / 127.0f;
-               dir_y = ((int8_t*)gfx_info.RDRAM)[(addr+9)^3];
-               rdp.lookat[n][1] = (float)(dir_y) / 127.0f;
-               dir_z = ((int8_t*)gfx_info.RDRAM)[(addr+10)^3];
-               rdp.lookat[n][2] = (float)(dir_z) / 127.0f;
-               rdp.use_lookat = true;
-               if (n == 1)
-               {
-                  if (!dir_x && !dir_y)
-                     rdp.use_lookat = false;
-               }
-               FRDP("lookat_%d (%f, %f, %f)\n", n, rdp.lookat[n][0], rdp.lookat[n][1], rdp.lookat[n][2]);
-               return;
+               n -= 2;
+               rdp.light[n].nonblack = gfx_info.RDRAM[(addr+0)^3];
+               rdp.light[n].nonblack += gfx_info.RDRAM[(addr+1)^3];
+               rdp.light[n].nonblack += gfx_info.RDRAM[(addr+2)^3];
+
+               rdp.light[n].col[0] = (((uint8_t*)gfx_info.RDRAM)[(addr+0)^3]) / 255.0f;
+               rdp.light[n].col[1] = (((uint8_t*)gfx_info.RDRAM)[(addr+1)^3]) / 255.0f;
+               rdp.light[n].col[2] = (((uint8_t*)gfx_info.RDRAM)[(addr+2)^3]) / 255.0f;
+               rdp.light[n].col[3] = 1.0f;
+
+               // ** Thanks to Icepir8 for pointing this out **
+               // Lighting must be signed byte instead of byte
+               rdp.light[n].dir[0] = (float)(((int8_t*)gfx_info.RDRAM)[(addr+8)^3]) / 127.0f;
+               rdp.light[n].dir[1] = (float)(((int8_t*)gfx_info.RDRAM)[(addr+9)^3]) / 127.0f;
+               rdp.light[n].dir[2] = (float)(((int8_t*)gfx_info.RDRAM)[(addr+10)^3]) / 127.0f;
+               // **
+               a = addr >> 1;
+               rdp.light[n].x = (float)(((int16_t*)gfx_info.RDRAM)[(a+16)^1]);
+               rdp.light[n].y = (float)(((int16_t*)gfx_info.RDRAM)[(a+17)^1]);
+               rdp.light[n].z = (float)(((int16_t*)gfx_info.RDRAM)[(a+18)^1]);
+               rdp.light[n].w = (float)(((int16_t*)gfx_info.RDRAM)[(a+19)^1]);
+               rdp.light[n].nonzero = gfx_info.RDRAM[(addr+12)^3];
+               rdp.light[n].ca = (float)rdp.light[n].nonzero / 16.0f;
+               //rdp.light[n].la = rdp.light[n].ca * 1.0f;
+#ifdef EXTREME_LOGGING
+               FRDP ("light: n: %d, pos: x: %f, y: %f, z: %f, w: %f, ca: %f\n",
+                     n, rdp.light[n].x, rdp.light[n].y, rdp.light[n].z, rdp.light[n].w, rdp.light[n].ca);
+               FRDP ("light: n: %d, r: %f, g: %f, b: %f. dir: x: %.3f, y: %.3f, z: %.3f\n",
+                     n, rdp.light[n].r, rdp.light[n].g, rdp.light[n].b,
+                     rdp.light[n].dir_x, rdp.light[n].dir_y, rdp.light[n].dir_z);
+               for (t = 0; t < 24; t++)
+                  FRDP ("light[%d] = 0x%04lx \n", t, ((uint16_t*)gfx_info.RDRAM)[(a+t)^1]);
+#endif
             }
-            n -= 2;
-            rdp.light[n].nonblack = gfx_info.RDRAM[(addr+0)^3];
-            rdp.light[n].nonblack += gfx_info.RDRAM[(addr+1)^3];
-            rdp.light[n].nonblack += gfx_info.RDRAM[(addr+2)^3];
-
-            rdp.light[n].col[0] = (((uint8_t*)gfx_info.RDRAM)[(addr+0)^3]) / 255.0f;
-            rdp.light[n].col[1] = (((uint8_t*)gfx_info.RDRAM)[(addr+1)^3]) / 255.0f;
-            rdp.light[n].col[2] = (((uint8_t*)gfx_info.RDRAM)[(addr+2)^3]) / 255.0f;
-            rdp.light[n].col[3] = 1.0f;
-
-            // ** Thanks to Icepir8 for pointing this out **
-            // Lighting must be signed byte instead of byte
-            rdp.light[n].dir[0] = (float)(((int8_t*)gfx_info.RDRAM)[(addr+8)^3]) / 127.0f;
-            rdp.light[n].dir[1] = (float)(((int8_t*)gfx_info.RDRAM)[(addr+9)^3]) / 127.0f;
-            rdp.light[n].dir[2] = (float)(((int8_t*)gfx_info.RDRAM)[(addr+10)^3]) / 127.0f;
-            // **
-            a = addr >> 1;
-            rdp.light[n].x = (float)(((int16_t*)gfx_info.RDRAM)[(a+16)^1]);
-            rdp.light[n].y = (float)(((int16_t*)gfx_info.RDRAM)[(a+17)^1]);
-            rdp.light[n].z = (float)(((int16_t*)gfx_info.RDRAM)[(a+18)^1]);
-            rdp.light[n].w = (float)(((int16_t*)gfx_info.RDRAM)[(a+19)^1]);
-            rdp.light[n].nonzero = gfx_info.RDRAM[(addr+12)^3];
-            rdp.light[n].ca = (float)rdp.light[n].nonzero / 16.0f;
-            //rdp.light[n].la = rdp.light[n].ca * 1.0f;
-#ifdef EXTREME_LOGGING
-            FRDP ("light: n: %d, pos: x: %f, y: %f, z: %f, w: %f, ca: %f\n",
-                  n, rdp.light[n].x, rdp.light[n].y, rdp.light[n].z, rdp.light[n].w, rdp.light[n].ca);
-#endif
-            FRDP ("light: n: %d, r: %f, g: %f, b: %f. dir: x: %.3f, y: %.3f, z: %.3f\n",
-                  n, rdp.light[n].r, rdp.light[n].g, rdp.light[n].b,
-                  rdp.light[n].dir_x, rdp.light[n].dir_y, rdp.light[n].dir_z);
-#ifdef EXTREME_LOGGING
-            for (t = 0; t < 24; t++)
-               FRDP ("light[%d] = 0x%04lx \n", t, ((uint16_t*)gfx_info.RDRAM)[(a+t)^1]);
-#endif
          }
          break;
 
