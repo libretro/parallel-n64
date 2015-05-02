@@ -688,13 +688,14 @@ void TexCache(void)
    }
 
    {
+      int tmu_v[2];
+
+      tmu_v[0] = tmu_0;
+      tmu_v[1] = tmu_1;
       for (i = 0; i < NUM_TMU; i++)
       {
-         int tmu, tile, filter;
-         if (i==0)
-            tmu=tmu_0;
-         else if (i==1)
-            tmu=tmu_1;
+         int tile, filter;
+         const int tmu = tmu_v[i];
 
          if (tmu >= NUM_TMU)
             continue;
