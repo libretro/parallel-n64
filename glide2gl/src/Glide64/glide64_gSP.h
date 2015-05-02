@@ -711,3 +711,18 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
 #endif
    //FRDP ("loadblock: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, dxt: %08lx -> %08lx\n", tile, ul_s, ul_t, lr_s, dxt, _dxt);
 }
+
+static void gSPLookAt_G64(uint32_t l, uint32_t n)
+{
+   int8_t  *rdram_s8  = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(l));
+   int8_t dir_x = rdram_s8[11];
+   int8_t dir_y = rdram_s8[10];
+   int8_t dir_z = rdram_s8[9];
+   rdp.lookat[1][0] = (float)(dir_x) / 127.0f;
+   rdp.lookat[1][1] = (float)(dir_y) / 127.0f;
+   rdp.lookat[1][2] = (float)(dir_z) / 127.0f;
+   rdp.use_lookat = (n == 0) || (n == 1 && (dir_x || dir_y));
+#ifdef EXTREME_LOGGING
+   //FRDP("lookat_x (%f, %f, %f)\n", rdp.lookat[1][0], rdp.lookat[1][1], rdp.lookat[1][2]);
+#endif
+}

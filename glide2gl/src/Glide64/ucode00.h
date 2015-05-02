@@ -217,8 +217,6 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
    //FRDP ("{%f,%f,%f,%f}\n", rdp.proj[3][0], rdp.proj[3][1], rdp.proj[3][2], rdp.proj[3][3]);
 }
 
-
-//
 // uc0:movemem - loads a structure with data
 //
 static void uc0_movemem(uint32_t w0, uint32_t w1)
@@ -257,28 +255,11 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
          }
          break;
       case G_MV_LOOKATY:
-         {
-            int8_t dir_x = rdram_s8[11];
-            int8_t dir_y = rdram_s8[10];
-            int8_t dir_z = rdram_s8[9];
-            rdp.lookat[1][0] = (float)(dir_x) / 127.0f;
-            rdp.lookat[1][1] = (float)(dir_y) / 127.0f;
-            rdp.lookat[1][2] = (float)(dir_z) / 127.0f;
-            rdp.use_lookat = true;
-            if (!dir_x && !dir_y)
-               rdp.use_lookat = false;
-            //FRDP("lookat_y (%f, %f, %f)\n", rdp.lookat[1][0], rdp.lookat[1][1], rdp.lookat[1][2]);
-         }
+         gSPLookAt_G64(w1, 1);
          break;
 
       case G_MV_LOOKATX:
-         {
-            rdp.lookat[0][0] = (float)rdram_s8[11] / 127.0f;
-            rdp.lookat[0][1] = (float)rdram_s8[10] / 127.0f;
-            rdp.lookat[0][2] = (float)rdram_s8[9] / 127.0f;
-            rdp.use_lookat = true;
-            //FRDP("lookat_x (%f, %f, %f)\n", rdp.lookat[1][0], rdp.lookat[1][1], rdp.lookat[1][2]);
-         }
+         gSPLookAt_G64(w1, 0);
          break;
 
       case G_MV_L0:
