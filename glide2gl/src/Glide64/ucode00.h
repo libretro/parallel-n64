@@ -72,8 +72,8 @@ static void rsp_vertex(int v0, int n)
 //
 static void uc0_vertex(uint32_t w0, uint32_t w1)
 {
-   int v0 = (w0 >> 16) & 0xF; // Current vertex
-   int n = ((w0 >> 20) & 0xF) + 1; // Number of vertices to copy
+   int v0 = _SHIFTR(w0, 16, 4);     /* Current vertex */
+   int n  = _SHIFTR(w0, 20, 4) + 1; /* Number of vertices to copy */
    rsp_vertex(v0, n);
 }
 
@@ -334,21 +334,20 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 static void uc0_displaylist(uint32_t w0, uint32_t w1)
 {
    uint32_t addr = segoffset(w1) & 0x00FFFFFF;
-   uint32_t push = (w0 >> 16) & 0xFF; // push the old location?
 
-   // This fixes partially Gauntlet: Legends
+   /* This fixes partially Gauntlet: Legends */
    if (addr == rdp.pc[rdp.pc_i] - 8)
       return;
 
-   switch (push)
+   switch (_SHIFTR(w0, 16, 8))
    {
-      case 0: // push
+      case G_DL_PUSH:
          if (rdp.pc_i >= 9)
             return; /* DL stack overflow */
          rdp.pc_i++; // go to the next PC in the stack
          rdp.pc[rdp.pc_i] = addr; // jump to the address
          break;
-      case 1: // no push
+      case G_DL_NOPUSH:
          rdp.pc[rdp.pc_i] = addr; // jump to the address
          break;
    }
@@ -361,9 +360,9 @@ static void uc0_tri1(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[3];
 
-   v[0] = &rdp.vtx[((w1 >> 16) & 0xFF) / 10];
-   v[1] = &rdp.vtx[((w1 >> 8) & 0xFF) / 10];
-   v[2] = &rdp.vtx[(w1 & 0xFF) / 10];
+   v[0] = &rdp.vtx[_SHIFTR(w1, 16, 8) / 10];
+   v[1] = &rdp.vtx[_SHIFTR(w1,  8, 8) / 10];
+   v[2] = &rdp.vtx[_SHIFTR(w1,  0, 8) / 10];
 
    cull_trianglefaces(v, 1, true, true, 0);
 }
@@ -372,9 +371,9 @@ static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[3];
 
-   v[0] = &rdp.vtx[((w1 >> 16) & 0xFF) / 10];
-   v[1] = &rdp.vtx[((w1 >> 8) & 0xFF) / 10];
-   v[2] = &rdp.vtx[(w1 & 0xFF) / 10];
+   v[0] = &rdp.vtx[_SHIFTR(w1, 16, 8) / 10];
+   v[1] = &rdp.vtx[_SHIFTR(w1,  8, 8) / 10];
+   v[2] = &rdp.vtx[_SHIFTR(w1,  0, 8) / 10];
 
    {
       int i;
@@ -551,9 +550,11 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
    // Find which command this is (lowest byte of cmd0)
    switch (_SHIFTR( w0, 0, 8))
    {
-      case 0x00:
+      case G_MW_MATRIX:
+#if 0
          RDP_E ("uc0:moveword matrix - IGNORED\n");
          LRDP("matrix - IGNORED\n");
+#endif
          break;
 
       case G_MW_NUMLIGHT:
@@ -591,7 +592,7 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          }
          break;
 
-      case 0x0c:
+      case G_MW_POINTS:
          {
             uint16_t val = (uint16_t)((w0 >> 8) & 0xFFFF);
             uint16_t vtx = val / 40;
@@ -600,14 +601,11 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
             //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
          }
          break;
+      case G_MW_PERSPNORM:
 #if 0
-      case 0x0e:
          LRDP("perspnorm - IGNORED\n");
-         break;
-      default:
-         FRDP_E ("uc0:moveword unknown (index: 0x%08lx)\n", rdp.cmd0 & 0xFF);
-         FRDP ("unknown (index: 0x%08lx)\n", rdp.cmd0 & 0xFF);
 #endif
+         break;
    }
 }
 
@@ -836,18 +834,18 @@ static void uc0_tri4(uint32_t w0, uint32_t w1)
    if (rdp.skip_drawing)
       return;
 
-   v[0]  = &rdp.vtx[(w1 >> 28) & 0xF]; /* v00 */
-   v[1]  = &rdp.vtx[(w0 >> 12) & 0xF]; /* v01 */
-   v[2]  = &rdp.vtx[(w1 >> 24) & 0xF]; /* v02 */
-   v[3]  = &rdp.vtx[(w1 >> 20) & 0xF]; /* v10 */
-   v[4]  = &rdp.vtx[(w0 >> 8)  & 0xF]; /* v11 */
-   v[5]  = &rdp.vtx[(w1 >> 16) & 0xF]; /* v12 */
-   v[6]  = &rdp.vtx[(w1 >> 12) & 0xF]; /* v20 */
-   v[7]  = &rdp.vtx[(w0 >> 4) & 0xF];  /* v21 */
-   v[8]  = &rdp.vtx[(w1 >> 8) & 0xF];  /* v22 */
-   v[9]  = &rdp.vtx[(w1 >> 4) & 0xF];  /* v30 */
-   v[10] = &rdp.vtx[(w0 >> 0) & 0xF];  /* v31 */
-   v[11] = &rdp.vtx[(w1 >> 0) & 0xF];  /* v32 */
+   v[0]  = &rdp.vtx[_SHIFTR(w1, 28, 4)];  /* v00 */
+   v[1]  = &rdp.vtx[_SHIFTR(w0, 12, 4)];  /* v01 */
+   v[2]  = &rdp.vtx[_SHIFTR(w1, 24, 4)];  /* v02 */
+   v[3]  = &rdp.vtx[_SHIFTR(w1, 20, 4)];  /* v10 */
+   v[4]  = &rdp.vtx[_SHIFTR(w0,  8, 4)];  /* v11 */
+   v[5]  = &rdp.vtx[_SHIFTR(w1, 16, 4)];  /* v12 */
+   v[6]  = &rdp.vtx[_SHIFTR(w1, 12, 4)];  /* v20 */
+   v[7]  = &rdp.vtx[_SHIFTR(w0,  4, 4)];  /* v21 */
+   v[8]  = &rdp.vtx[_SHIFTR(w1,  8, 4)];  /* v22 */
+   v[9]  = &rdp.vtx[_SHIFTR(w1,  4, 4)];  /* v30 */
+   v[10] = &rdp.vtx[_SHIFTR(w0,  0, 4)];  /* v31 */
+   v[11] = &rdp.vtx[_SHIFTR(w1,  0, 4)];  /* v32 */
 
    cull_trianglefaces(v, 4, true, true, 0);
 }
