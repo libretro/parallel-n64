@@ -2,6 +2,7 @@
 #define FRAMEBUFFER_H
 
 #include "Types.h"
+#include "DepthBuffer.h"
 #include "Textures.h"
 
 struct FrameBuffer
@@ -11,8 +12,28 @@ struct FrameBuffer
 	CachedTexture *texture;
 
 	u32 startAddress, endAddress;
-	u32 size, width, height, changed;
+	u32 size, width, height, fillcolor, validityChecked;
+   bool changed;
 	float scaleX, scaleY;
+
+	bool m_copiedToRdram;
+	bool m_cleared;
+	bool m_changed;
+	bool m_cfb;
+	bool m_isDepthBuffer;
+	bool m_isPauseScreen;
+	bool m_isOBScreen;
+	bool m_needHeightCorrection;
+	bool m_postProcessed;
+
+	GLuint FBO;
+	struct gDPTile *pLoadTile;
+	CachedTexture *pTexture;
+	struct DepthBuffer *pDepthBuffer;
+	// multisampling
+	CachedTexture *pResolveTexture;
+	GLuint resolveFBO;
+	bool resolved;
 };
 
 struct FrameBufferInfo
