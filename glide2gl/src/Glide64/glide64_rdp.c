@@ -238,7 +238,7 @@ void rdp_new(void)
    if (perf_get_cpu_features_cb)
       cpu = perf_get_cpu_features_cb();
 
-   _gSPVertex = gSPVertex;
+   _gSPVertex = gSPVertex_G64;
 }
 
 void rdp_setfuncs(void)

@@ -64,7 +64,7 @@ static void rsp_vertex(int v0, int n)
       }
    }
 
-   gSPVertex(addr, n, v0);
+   gSPVertex_G64(addr, n, v0);
 }
 
 //

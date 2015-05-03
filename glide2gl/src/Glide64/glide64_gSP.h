@@ -423,7 +423,7 @@ static void pre_update(void)
  * n  - Number of vertices (1 - 32).
  * v0 - Starting index in vertex buffer where vertices are to be loaded into.
  */
-static void gSPVertex(uint32_t addr, uint32_t n, uint32_t v0)
+static void gSPVertex_G64(uint32_t addr, uint32_t n, uint32_t v0)
 {
    unsigned int i;
    float x, y, z;

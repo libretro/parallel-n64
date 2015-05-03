@@ -133,7 +133,7 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
          rdp.geom_mode ^= G_TEXTURE_GEN;
    }
 
-   gSPVertex(addr, n, v0);
+   gSPVertex_G64(addr, n, v0);
 
    rdp.geom_mode = geom_mode;
 }
