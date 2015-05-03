@@ -752,6 +752,23 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
 }
 
 static
+bool texturedRectShadowMap(const struct TexturedRectParams *a)
+{
+	struct FrameBuffer *pCurrentBuffer = FrameBuffer_GetCurrent();
+	if (pCurrentBuffer != NULL)
+   {
+      if (gDP.textureImage.size == 2 && gDP.textureImage.address >= gDP.depthImageAddress &&  gDP.textureImage.address < (gDP.depthImageAddress + gDP.colorImage.width*gDP.colorImage.width * 6 / 4))
+      {
+#ifdef NEW
+         pCurrentBuffer->m_pDepthBuffer->activateDepthBufferTexture(pCurrentBuffer);
+         SetDepthFogCombiner();
+#endif
+      }
+   }
+	return false;
+}
+
+static
 bool texturedRectDepthBufferCopy(const struct TexturedRectParams *_params)
 {
 	// Copy one line from depth buffer into auxiliary color buffer with height = 1.
@@ -1123,11 +1140,10 @@ void OGL_ReadScreen( void *dest, int *width, int *height )
 void _setSpecialTexrect(void)
 {
 	const char * name = __RSP.romname;
-   /*
 	if (strstr(name, (const char *)"Beetle") || strstr(name, (const char *)"BEETLE") || strstr(name, (const char *)"HSV")
 		|| strstr(name, (const char *)"DUCK DODGERS") || strstr(name, (const char *)"DAFFY DUCK"))
 		texturedRectSpecial = texturedRectShadowMap;
-	else */ if (strstr(name, (const char *)"Perfect Dark") || strstr(name, (const char *)"PERFECT DARK"))
+	else if (strstr(name, (const char *)"Perfect Dark") || strstr(name, (const char *)"PERFECT DARK"))
 		texturedRectSpecial = texturedRectDepthBufferCopy; // See comments to that function!
 	else if (strstr(name, (const char *)"CONKER BFD"))
 		texturedRectSpecial = texturedRectCopyToItself;
