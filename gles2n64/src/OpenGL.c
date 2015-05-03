@@ -1188,15 +1188,13 @@ bool OGL_Start(void)
 
    TextureCache_Init();
 
-   memset(OGL.triangles.vertices, 0, VERTBUFF_SIZE * sizeof(SPVertex));
-   memset(OGL.triangles.elements, 0, ELEMBUFF_SIZE * sizeof(GLubyte));
-   OGL.triangles.num = 0;
-
-   OGL.renderingToTexture = false;
    OGL.renderState = RS_NONE;
    gSP.changed = gDP.changed = 0xFFFFFFFF;
-   VI.displayNum = 0;
-   glGetError();
+
+   memset(OGL.triangles.vertices, 0, VERTBUFF_SIZE * sizeof(SPVertex));
+   memset(OGL.triangles.elements, 0, ELEMBUFF_SIZE * sizeof(GLubyte));
+
+   OGL.triangles.num = 0;
 
    return TRUE;
 }
