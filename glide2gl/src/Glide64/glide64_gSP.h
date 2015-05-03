@@ -775,3 +775,12 @@ static void gSPNumLights_G64(int32_t n)
    rdp.update |= UPDATE_LIGHTS;
    //FRDP ("numlights: %d\n", rdp.num_lights);
 }
+
+static void gSPForceMatrix_G64( uint32_t mptr )
+{
+   uint32_t address = RSP_SegmentToPhysical( mptr );
+
+   load_matrix(rdp.combined, address);
+
+   rdp.update &= ~UPDATE_MULT_MAT;
+}

@@ -545,9 +545,10 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          gSPViewport_G64( w1 );
          break;
       case G_MV_MATRIX:
-         // do not update the combined matrix!
-         rdp.update &= ~UPDATE_MULT_MAT;
-         load_matrix(rdp.combined, segoffset(w1));
+         gSPForceMatrix_G64(w1);
+
+         /* force matrix takes two commands */
+         rdp.pc[rdp.pc_i] += 8; 
          break;
 
       case G_MV_LIGHT:

@@ -234,12 +234,10 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
       case F3D_MV_VIEWPORT:
          gSPViewport_G64( w1 );
          break;
-      case G_MV_LOOKATY:
-         gSPLookAt_G64(w1, 1);
-         break;
-
-      case G_MV_LOOKATX:
-         gSPLookAt_G64(w1, 0);
+      case G_MV_MATRIX_1:
+         gSPForceMatrix_G64(w1);
+         /* force matrix takes four commands */
+         rdp.pc[rdp.pc_i] += 24; 
          break;
       case G_MV_L0:
          gSPLight_G64( w1, LIGHT_1 );
@@ -265,21 +263,13 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
       case G_MV_L7:
          gSPLight_G64( w1, LIGHT_8 );
          break;
-
-
-      case G_MV_MATRIX_1:
-         {
-            uint32_t addr = segoffset(w1) & 0x00FFFFFF;
-            // do not update the combined matrix!
-            rdp.update &= ~UPDATE_MULT_MAT;
-
-            load_matrix(rdp.combined, addr);
-
-            addr = rdp.pc[rdp.pc_i] & BMASK;
-            rdp.pc[rdp.pc_i] = (addr+24) & BMASK; //skip next 3 command, b/c they all are part of gSPForceMatrix
-         }
+      case G_MV_LOOKATX:
+         gSPLookAt_G64(w1, 0);
          break;
-         //next 3 command should never appear since they will be skipped in previous command
+      case G_MV_LOOKATY:
+         gSPLookAt_G64(w1, 1);
+         break;
+
    }
 }
 
