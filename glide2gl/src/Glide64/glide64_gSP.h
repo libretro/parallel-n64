@@ -482,14 +482,6 @@ static void gSPVertex_G64(uint32_t v, uint32_t n, uint32_t v0)
          vtx->vec[1] = (int8_t)color[2];
          vtx->vec[2] = (int8_t)color[1];
 
-         if (rdp.geom_mode & G_TEXTURE_GEN)
-         {
-            if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
-               calc_linear (vtx);
-            else
-               calc_sphere (vtx);
-         }
-
          if (settings.ucode == 2 && rdp.geom_mode & G_POINT_LIGHTING)
          {
             float tmpvec[3] = {x, y, z};
@@ -500,6 +492,15 @@ static void gSPVertex_G64(uint32_t v, uint32_t n, uint32_t v0)
             NormalizeVector (vtx->vec);
             calc_light (vtx);
          }
+
+         if (rdp.geom_mode & G_TEXTURE_GEN)
+         {
+            if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
+               calc_linear (vtx);
+            else
+               calc_sphere (vtx);
+         }
+
       }
       else
       {
