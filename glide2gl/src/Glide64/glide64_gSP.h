@@ -803,6 +803,7 @@ static void gSPPopMatrix_G64(uint32_t param)
          if (rdp.model_i > 0)
          {
             rdp.model_i--;
+            memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
             rdp.update |= UPDATE_MULT_MAT;
          }
          break;
