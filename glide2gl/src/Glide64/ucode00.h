@@ -331,17 +331,7 @@ static void uc0_tri1_mischief(uint32_t w0, uint32_t w1)
 //
 static void uc0_enddl(uint32_t w0, uint32_t w1)
 {
-   //LRDP("uc0:enddl\n");
-
-   if (rdp.pc_i == 0)
-   {
-      //LRDP("RDP end\n");
-
-      // Halt execution here
-      rdp.halt = 1;
-   }
-
-   rdp.pc_i --;
+   gSPEndDisplayList_G64();
 }
 
 static void uc0_culldl(uint32_t w0, uint32_t w1)

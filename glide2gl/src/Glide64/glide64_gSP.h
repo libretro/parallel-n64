@@ -739,3 +739,15 @@ static void gSPModifyVertex_G64( uint32_t vtx, uint32_t where, uint32_t val )
          break;
    }
 }
+
+static void gSPEndDisplayList_G64(void)
+{
+   if (rdp.pc_i > 0)
+      rdp.pc_i --;
+   else
+   {
+      //LRDP("RDP end\n");
+      // Halt execution here
+      rdp.halt = 1;
+   }
+}
