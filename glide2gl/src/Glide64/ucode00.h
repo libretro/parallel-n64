@@ -384,81 +384,6 @@ static void uc0_popmatrix(uint32_t w0, uint32_t w1)
    gSPPopMatrix_G64( w1 );
 }
 
-static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
-{
-   VERTEX *v = (VERTEX*)&rdp.vtx[vtx];
-
-   switch (where)
-   {
-      case 0:
-         uc6_obj_sprite(rdp.cmd0, rdp.cmd1);
-         break;
-
-      case 0x10: // RGBA
-         v->r = (uint8_t)(val >> 24);
-         v->g = (uint8_t)((val >> 16) & 0xFF);
-         v->b = (uint8_t)((val >> 8) & 0xFF);
-         v->a = (uint8_t)(val & 0xFF);
-         v->shade_mod = 0;
-
-         //FRDP ("RGBA: %d, %d, %d, %d\n", v->r, v->g, v->b, v->a);
-         break;
-
-      case 0x14: // ST
-         {
-            float scale = (rdp.othermode_h & RDP_PERSP_TEX_ENABLE) ? 0.03125f : 0.015625f;
-            v->ou = (float)((int16_t)(val>>16)) * scale;
-            v->ov = (float)((int16_t)(val&0xFFFF)) * scale;
-            v->uv_calculated = 0xFFFFFFFF;
-            v->uv_scaled = 1;
-         }
-#if 0
-         FRDP ("u/v: (%04lx, %04lx), (%f, %f)\n", (short)(val>>16), (short)(val&0xFFFF),
-               v->ou, v->ov);
-#endif
-         break;
-
-      case 0x18: // XY screen
-         {
-            float scr_x = (float)((int16_t)(val>>16)) / 4.0f;
-            float scr_y = (float)((int16_t)(val&0xFFFF)) / 4.0f;
-            v->screen_translated = 2;
-            v->sx = scr_x * rdp.scale_x + rdp.offset_x;
-            v->sy = scr_y * rdp.scale_y + rdp.offset_y;
-            if (v->w < 0.01f)
-            {
-               v->w = 1.0f;
-               v->oow = 1.0f;
-               v->z_w = 1.0f;
-            }
-            v->sz = rdp.view_trans[2] + v->z_w * rdp.view_scale[2];
-
-            v->scr_off = 0;
-            if (scr_x < 0) v->scr_off |= 1;
-            if (scr_x > rdp.vi_width) v->scr_off |= 2;
-            if (scr_y < 0) v->scr_off |= 4;
-            if (scr_y > rdp.vi_height) v->scr_off |= 8;
-            if (v->w < 0.1f) v->scr_off |= 16;
-
-            //FRDP ("x/y: (%f, %f)\n", scr_x, scr_y);
-         }
-         break;
-
-      case 0x1C: // Z screen
-         {
-            float scr_z = (float)((short)(val>>16));
-            v->z_w = (scr_z - rdp.view_trans[2]) / rdp.view_scale[2];
-            v->z = v->z_w * v->w;
-            //FRDP ("z: %f\n", scr_z);
-         }
-         break;
-
-      default:
-         //LRDP("UNKNOWN\n");
-         break;
-   }
-}
-
 //
 // uc0:moveword - moves a word to someplace, like the segment pointers
 //
@@ -524,11 +449,8 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 
       case G_MW_POINTS:
          {
-            uint16_t val = (uint16_t)((w0 >> 8) & 0xFFFF);
-            uint16_t vtx = val / 40;
-            uint8_t where = val % 40;
-            uc0_modifyvtx(where, vtx, w1);
-            //FRDP ("uc0:modifyvtx: vtx: %d, where: 0x%02lx, val: %08lx - ", vtx, where, w1);
+            const uint32_t val = _SHIFTR(w0, 8, 16);
+            gSPModifyVertex_G64(val / 40, val % 40, w1);
          }
          break;
       case G_MW_PERSPNORM:
