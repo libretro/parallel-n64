@@ -980,6 +980,7 @@ void gDPSetKeyGB(u32 cG, u32 sG, u32 wG, u32 cB, u32 sB, u32 wB )
 
 void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f32 t, f32 dsdx, f32 dtdy )
 {
+   struct TexturedRectParams params;
    f32 lrs, lrt;
    float tmp;
 
@@ -1020,33 +1021,27 @@ void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, f32 s, f
    gDP.texRect.width = (unsigned int)(max( lrs, s ) + dsdx);
    gDP.texRect.height = (unsigned int)(max( lrt, t ) + dtdy);
 
-   if (lrs < s)
-   {
-      tmp = ulx;
-      ulx = lrx;
-      lrx = tmp;
-      tmp = s;
-      s = lrs;
-      lrs = tmp;
-   }
-   if (lrt < t)
-   {
-      tmp = uly;
-      uly = lry;
-      lry = tmp;
-      tmp = t;
-      t = lrt;
-      lrt = tmp;
-   }
-
-   OGL_DrawTexturedRect( ulx, uly, lrx, lry, s, t, lrs, lrt, (__RSP.cmd == G_TEXRECTFLIP));
+   params.ulx  = ulx;
+   params.uly  = uly;
+   params.lrx  = lrx;
+   params.lry  = lry;
+   params.uls  = s;
+   params.ult  = t;
+   params.lrs  = lrs;
+   params.lrt  = lrt;
+   params.flip = (__RSP.cmd == G_TEXRECTFLIP);
+   OGL_DrawTexturedRect(&params);
 
 	gSP.textureTile[0] = textureTileOrg[0];
 	gSP.textureTile[1] = textureTileOrg[1];
 
+#ifdef NEW
+	frameBufferList().setBufferChanged();
+#else
    if (depthBuffer.current)
       depthBuffer.current->cleared = FALSE;
    gDP.colorImage.changed = TRUE;
+#endif
 
    if (gDP.colorImage.width < 64)
 		gDP.colorImage.height = (u32)max( (f32)gDP.colorImage.height, lry );

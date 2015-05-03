@@ -911,7 +911,7 @@ bool texturedRectMonochromeBackground(const struct TexturedRectParams * _params)
 // Return true if actuial rendering is not necessary
 bool(*texturedRectSpecial)(const struct TexturedRectParams * _params) = NULL;
 
-void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls, float ult, float lrs, float lrt, bool flip )
+void OGL_DrawTexturedRect(const struct TexturedRectParams *_params)
 {
    struct FrameBuffer *pCurrentBuffer;
    float scaleX, scaleY, Z, W;
@@ -937,13 +937,11 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
       glVertexAttribPointer(SC_TEXCOORD1, 2, GL_FLOAT, GL_FALSE, sizeof(GLVertex), &OGL.rect[0].s1);
    }
 
-#ifdef NEW
 	if (__RSP.cmd == 0xE4 && texturedRectSpecial != NULL && texturedRectSpecial(_params))
    {
       gSP.changed |= CHANGED_GEOMETRYMODE;
       return;
    }
-#endif
 
    pCurrentBuffer = FrameBuffer_GetCurrent();
 
@@ -959,18 +957,18 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
 	Z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
 	W = 1.0f;
 
-   OGL.rect[0].x = (float) ulx * (2.0f * scaleX) - 1.0f;
-   OGL.rect[0].y = (float) uly * (-2.0f * scaleY) + 1.0f;
+   OGL.rect[0].x = (float) _params->ulx * (2.0f * scaleX) - 1.0f;
+   OGL.rect[0].y = (float) _params->uly * (-2.0f * scaleY) + 1.0f;
    OGL.rect[0].z = Z;
    OGL.rect[0].w = W;
 
-   OGL.rect[1].x = (float) (lrx) * (2.0f * scaleX) - 1.0f;
+   OGL.rect[1].x = (float) (_params->lrx) * (2.0f * scaleX) - 1.0f;
    OGL.rect[1].y = OGL.rect[0].y;
    OGL.rect[1].z = Z;
    OGL.rect[1].w = W;
 
    OGL.rect[2].x = OGL.rect[0].x;
-   OGL.rect[2].y = (float) (lry) * (-2.0f * scaleY) + 1.0f;
+   OGL.rect[2].y = (float) (_params->lry) * (-2.0f * scaleY) + 1.0f;
    OGL.rect[2].z = Z;
    OGL.rect[2].w = W;
 
@@ -981,10 +979,10 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
 
    if (scProgramCurrent->usesT0 && cache.current[0] && gSP.textureTile[0])
    {
-      OGL.rect[0].s0 = uls * cache.current[0]->shiftScaleS - gSP.textureTile[0]->fuls;
-      OGL.rect[0].t0 = ult * cache.current[0]->shiftScaleT - gSP.textureTile[0]->fult;
-      OGL.rect[3].s0 = (lrs + 1.0f) * cache.current[0]->shiftScaleS - gSP.textureTile[0]->fuls;
-      OGL.rect[3].t0 = (lrt + 1.0f) * cache.current[0]->shiftScaleT - gSP.textureTile[0]->fult;
+      OGL.rect[0].s0 = _params->uls * cache.current[0]->shiftScaleS - gSP.textureTile[0]->fuls;
+      OGL.rect[0].t0 = _params->ult * cache.current[0]->shiftScaleT - gSP.textureTile[0]->fult;
+      OGL.rect[3].s0 = (_params->lrs + 1.0f) * cache.current[0]->shiftScaleS - gSP.textureTile[0]->fuls;
+      OGL.rect[3].t0 = (_params->lrt + 1.0f) * cache.current[0]->shiftScaleT - gSP.textureTile[0]->fult;
 
       if ((cache.current[0]->maskS) && !(cache.current[0]->mirrorS) && (fmod( OGL.rect[0].s0, cache.current[0]->width ) == 0.0f))
       {
@@ -1014,10 +1012,10 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
 
    if (scProgramCurrent->usesT1 && cache.current[1] && gSP.textureTile[1])
    {
-      OGL.rect[0].s1 = uls * cache.current[1]->shiftScaleS - gSP.textureTile[1]->fuls;
-      OGL.rect[0].t1 = ult * cache.current[1]->shiftScaleT - gSP.textureTile[1]->fult;
-      OGL.rect[3].s1 = (lrs + 1.0f) * cache.current[1]->shiftScaleS - gSP.textureTile[1]->fuls;
-      OGL.rect[3].t1 = (lrt + 1.0f) * cache.current[1]->shiftScaleT - gSP.textureTile[1]->fult;
+      OGL.rect[0].s1 = _params->uls * cache.current[1]->shiftScaleS - gSP.textureTile[1]->fuls;
+      OGL.rect[0].t1 = _params->ult * cache.current[1]->shiftScaleT - gSP.textureTile[1]->fult;
+      OGL.rect[3].s1 = (_params->lrs + 1.0f) * cache.current[1]->shiftScaleS - gSP.textureTile[1]->fuls;
+      OGL.rect[3].t1 = (_params->lrt + 1.0f) * cache.current[1]->shiftScaleT - gSP.textureTile[1]->fult;
 
       if ((cache.current[1]->maskS) && (fmod( OGL.rect[0].s1, cache.current[1]->width ) == 0.0f) && !(cache.current[1]->mirrorS))
       {
@@ -1051,7 +1049,7 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
    }
 
-   if (flip)
+   if (_params->flip)
    {
       OGL.rect[1].s0 = OGL.rect[0].s0;
       OGL.rect[1].t0 = OGL.rect[3].t0;
