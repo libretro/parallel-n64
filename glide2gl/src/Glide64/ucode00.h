@@ -514,13 +514,8 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_NUMLIGHT:
-         rdp.num_lights = ((w1 - 0x80000000) >> 5) - 1; // inverse of equation
-         if (rdp.num_lights > 8) rdp.num_lights = 0;
-
-         rdp.update |= UPDATE_LIGHTS;
-         //FRDP ("numlights: %d\n", rdp.num_lights);
+         gSPNumLights_G64( ((w1 - 0x80000000) >> 5) - 1 );
          break;
-
       case G_MW_CLIP:
          if (((w0 >> 8)&0xFFFF) == 0x04)
          {

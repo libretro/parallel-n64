@@ -488,8 +488,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_NUMLIGHT:
-         rdp.num_lights = w1 / 24;
-         rdp.update |= UPDATE_LIGHTS;
+         gSPNumLights_G64( w1 / 24);
          break;
       case G_MW_CLIP:
          if (offset == 0x04)

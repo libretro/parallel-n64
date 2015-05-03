@@ -793,3 +793,13 @@ static void gSPFogFactor_G64(int16_t fm, int16_t fo )
    rdp.fog_multiplier = fm;
    rdp.fog_offset     = fo;
 }
+
+static void gSPNumLights_G64(int32_t n)
+{
+   if (n > 12)
+      return;
+
+   rdp.num_lights = n;
+   rdp.update |= UPDATE_LIGHTS;
+   //FRDP ("numlights: %d\n", rdp.num_lights);
+}
