@@ -20,6 +20,10 @@ extern "C" {
 #define F3DCBFD     11
 #define NONE        12
 
+#define F3DCBFD_MV_VIEWPORT     8
+#define F3DCBFD_MV_LIGHT        10
+#define F3DCBFD_MV_NORMAL       14
+
 // Fixed point conversion factors
 #define FIXED2FLOATRECIP1   0.5f
 #define FIXED2FLOATRECIP2   0.25f
@@ -77,12 +81,14 @@ extern "C" {
 #define G_TEXTURE_GEN           0x00040000
 #define G_TEXTURE_GEN_LINEAR    0x00080000
 #define G_LOD                   0x00100000
+#define G_POINT_LIGHTING		  0x00400000
 
 #define G_MV_MMTX       2
 #define G_MV_PMTX       6
 #define G_MV_LIGHT      10
 #define G_MV_POINT      12
 #define G_MV_MATRIX     14
+#define G_MV_NORMALES	14
 
 #define G_MVO_LOOKATX   0
 #define G_MVO_LOOKATY   24
@@ -183,6 +189,36 @@ extern "C" {
 
 #define G_TX_MIRROR     0x1
 #define G_TX_CLAMP      0x2
+
+#ifdef DEBUG
+static const char *ImageFormatText[] =
+{
+    "G_IM_FMT_RGBA",
+    "G_IM_FMT_YUV",
+    "G_IM_FMT_CI",
+    "G_IM_FMT_IA",
+    "G_IM_FMT_I",
+    "G_IM_FMT_INVALID",
+    "G_IM_FMT_INVALID",
+    "G_IM_FMT_INVALID"
+};
+
+static const char *ImageSizeText[] =
+{
+    "G_IM_SIZ_4b",
+    "G_IM_SIZ_8b",
+    "G_IM_SIZ_16b",
+    "G_IM_SIZ_32b"
+};
+
+static const char *SegmentText[] =
+{
+    "G_MWO_SEGMENT_0", "G_MWO_SEGMENT_1", "G_MWO_SEGMENT_2", "G_MWO_SEGMENT_3",
+    "G_MWO_SEGMENT_4", "G_MWO_SEGMENT_5", "G_MWO_SEGMENT_6", "G_MWO_SEGMENT_7",
+    "G_MWO_SEGMENT_8", "G_MWO_SEGMENT_9", "G_MWO_SEGMENT_A", "G_MWO_SEGMENT_B",
+    "G_MWO_SEGMENT_C", "G_MWO_SEGMENT_D", "G_MWO_SEGMENT_E", "G_MWO_SEGMENT_F"
+};
+#endif
 
 #define G_NOOP                  0x00
 
@@ -345,6 +381,96 @@ extern "C" {
 #define G_SC_EVEN_INTERLACE     2
 #define G_SC_ODD_INTERLACE      3
 
+#ifdef DEBUG
+static const char *AAEnableText = "AA_EN";
+static const char *DepthCompareText = "Z_CMP";
+static const char *DepthUpdateText = "Z_UPD";
+static const char *ClearOnCvgText = "CLR_ON_CVG";
+static const char *CvgXAlphaText = "CVG_X_ALPHA";
+static const char *AlphaCvgSelText = "ALPHA_CVG_SEL";
+static const char *ForceBlenderText = "FORCE_BL";
+
+static const char *AlphaCompareText[] =
+{
+    "G_AC_NONE", "G_AC_THRESHOLD", "G_AC_INVALID", "G_AC_DITHER"
+};
+
+static const char *DepthSourceText[] =
+{
+    "G_ZS_PIXEL", "G_ZS_PRIM"
+};
+
+static const char *AlphaDitherText[] =
+{
+    "G_AD_PATTERN", "G_AD_NOTPATTERN", "G_AD_NOISE", "G_AD_DISABLE"
+};
+
+static const char *ColorDitherText[] =
+{
+    "G_CD_MAGICSQ", "G_CD_BAYER", "G_CD_NOISE", "G_CD_DISABLE"
+};
+
+static const char *CombineKeyText[] =
+{
+    "G_CK_NONE", "G_CK_KEY"
+};
+
+static const char *TextureConvertText[] =
+{
+    "G_TC_CONV", "G_TC_INVALID", "G_TC_INVALID", "G_TC_INVALID", "G_TC_INVALID", "G_TC_FILTCONV", "G_TC_FILT", "G_TC_INVALID"
+};
+
+static const char *TextureFilterText[] =
+{
+    "G_TF_POINT", "G_TF_INVALID", "G_TF_BILERP", "G_TF_AVERAGE"
+};
+
+static const char *TextureLUTText[] =
+{
+    "G_TT_NONE", "G_TT_INVALID", "G_TT_RGBA16", "G_TT_IA16"
+};
+
+static const char *TextureLODText[] =
+{
+    "G_TL_TILE", "G_TL_LOD"
+};
+
+static const char *TextureDetailText[] =
+{
+    "G_TD_CLAMP", "G_TD_SHARPEN", "G_TD_DETAIL"
+};
+
+static const char *TexturePerspText[] =
+{
+    "G_TP_NONE", "G_TP_PERSP"
+};
+
+static const char *CycleTypeText[] =
+{
+    "G_CYC_1CYCLE", "G_CYC_2CYCLE", "G_CYC_COPY", "G_CYC_FILL"
+};
+
+static const char *PipelineModeText[] =
+{
+    "G_PM_NPRIMITIVE", "G_PM_1PRIMITIVE"
+};
+
+static const char *CvgDestText[] =
+{
+    "CVG_DST_CLAMP", "CVG_DST_WRAP", "CVG_DST_FULL", "CVG_DST_SAVE"
+};
+
+static const char *DepthModeText[] =
+{
+    "ZMODE_OPA", "ZMODE_INTER", "ZMODE_XLU", "ZMODE_DEC"
+};
+
+static const char *ScissorModeText[] =
+{
+    "G_SC_NON_INTERLACE", "G_SC_INVALID", "G_SC_EVEN_INTERLACE", "G_SC_ODD_INTERLACE"
+};
+#endif
+
 /* Color combiner constants: */
 #define G_CCMUX_COMBINED        0
 #define G_CCMUX_TEXEL0          1
@@ -380,6 +506,66 @@ extern "C" {
 #define G_ACMUX_1               6
 #define G_ACMUX_0               7
 
+#ifdef DEBUG
+static const char *saRGBText[] =
+{
+    "COMBINED",         "TEXEL0",           "TEXEL1",           "PRIMITIVE",
+    "SHADE",            "ENVIRONMENT",      "NOISE",            "1",
+    "0",                "0",                "0",                "0",
+    "0",                "0",                "0",                "0"
+};
+
+static const char *sbRGBText[] =
+{
+    "COMBINED",         "TEXEL0",           "TEXEL1",           "PRIMITIVE",
+    "SHADE",            "ENVIRONMENT",      "CENTER",           "K4",
+    "0",                "0",                "0",                "0",
+    "0",                "0",                "0",                "0"
+};
+
+static const char *mRGBText[] =
+{
+    "COMBINED",         "TEXEL0",           "TEXEL1",           "PRIMITIVE",
+    "SHADE",            "ENVIRONMENT",      "SCALE",            "COMBINED_ALPHA",
+    "TEXEL0_ALPHA",     "TEXEL1_ALPHA",     "PRIMITIVE_ALPHA",  "SHADE_ALPHA",
+    "ENV_ALPHA",        "LOD_FRACTION",     "PRIM_LOD_FRAC",    "K5",
+    "0",                "0",                "0",                "0",
+    "0",                "0",                "0",                "0",
+    "0",                "0",                "0",                "0",
+    "0",                "0",                "0",                "0"
+};
+
+static const char *aRGBText[] =
+{
+    "COMBINED",         "TEXEL0",           "TEXEL1",           "PRIMITIVE",
+    "SHADE",            "ENVIRONMENT",      "1",                "0",
+};
+
+static const char *saAText[] =
+{
+    "COMBINED",         "TEXEL0",           "TEXEL1",           "PRIMITIVE",
+    "SHADE",            "ENVIRONMENT",      "1",                "0",
+};
+
+static const char *sbAText[] =
+{
+    "COMBINED",         "TEXEL0",           "TEXEL1",           "PRIMITIVE",
+    "SHADE",            "ENVIRONMENT",      "1",                "0",
+};
+
+static const char *mAText[] =
+{
+    "LOD_FRACTION",     "TEXEL0",           "TEXEL1",           "PRIMITIVE",
+    "SHADE",            "ENVIRONMENT",      "PRIM_LOD_FRAC",    "0",
+};
+
+static const char *aAText[] =
+{
+    "COMBINED",         "TEXEL0",           "TEXEL1",           "PRIMITIVE",
+    "SHADE",            "ENVIRONMENT",      "1",                "0",
+};
+#endif
+
 #define LIGHT_1 1
 #define LIGHT_2 2
 #define LIGHT_3 3
@@ -389,19 +575,9 @@ extern "C" {
 #define LIGHT_7 7
 #define LIGHT_8 8
 
-#define NUMLIGHTS_0 0
-
 #define G_DL_PUSH       0x00
 #define G_DL_NOPUSH     0x01
 
-#define F3D_MV_VIEWPORT 0x80
-
-#define F3DEX2_MV_VIEWPORT 8
-#define F3DEX2_ENDDL       0xDF
-
-#define F3DCBFD_MV_VIEWPORT     8
-#define F3DCBFD_MV_LIGHT        10
-#define F3DCBFD_MV_NORMAL       14
 
 //Blender
 #define BLEND_FOG_ASHADE   0xc800

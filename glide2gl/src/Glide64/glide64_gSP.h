@@ -492,7 +492,7 @@ static void gSPVertex_G64(uint32_t v, uint32_t n, uint32_t v0)
                calc_sphere (vtx);
          }
 
-         if (settings.ucode == 2 && rdp.geom_mode & 0x00400000)
+         if (settings.ucode == 2 && rdp.geom_mode & G_POINT_LIGHTING)
          {
             float tmpvec[3] = {x, y, z};
             calc_point_light (vtx, tmpvec);
