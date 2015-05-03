@@ -641,16 +641,14 @@ static void rdp_noop(uint32_t w0, uint32_t w1)
 
 static void ys_memrect(uint32_t w0, uint32_t w1)
 {
-  uint32_t off_x, off_y, tile, lr_x, lr_y, ul_x, ul_y;
+  uint32_t off_x, off_y;
   uint32_t y, width, tex_width;
   uint8_t *texaddr, *fbaddr;
-
-  tile = (uint16_t)((w1 & 0x07000000) >> 24);
-
-  lr_x = (uint16_t)((w0 & 0x00FFF000) >> 14);
-  lr_y = (uint16_t)((w0 & 0x00000FFF) >> 2);
-  ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
-  ul_y = (uint16_t)((w1 & 0x00000FFF) >> 2);
+  uint32_t tile = (uint16_t)((w1 & 0x07000000) >> 24);
+  uint32_t lr_x = (uint16_t)((w0 & 0x00FFF000) >> 14);
+  uint32_t lr_y = (uint16_t)((w0 & 0x00000FFF) >> 2);
+  uint32_t ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
+  uint32_t ul_y = (uint16_t)((w1 & 0x00000FFF) >> 2);
 
   if (lr_y > rdp.scissor_o.lr_y)
     lr_y = rdp.scissor_o.lr_y;
@@ -667,15 +665,15 @@ static void ys_memrect(uint32_t w0, uint32_t w1)
   LRDP("\n");
 #endif
 
-  width = lr_x - ul_x;
+  width     = lr_x - ul_x;
   tex_width = rdp.tiles[tile].line << 3;
-  texaddr = (uint8_t*)(gfx_info.RDRAM + rdp.addr[rdp.tiles[tile].t_mem] + tex_width*off_y + off_x);
-  fbaddr = (uint8_t*)(gfx_info.RDRAM + rdp.cimg + ul_x);
+  texaddr   = (uint8_t*)(gfx_info.RDRAM + rdp.addr[rdp.tiles[tile].t_mem] + tex_width*off_y + off_x);
+  fbaddr    = (uint8_t*)(gfx_info.RDRAM + rdp.cimg + ul_x);
 
-  for (y = ul_y; y < lr_y; y++) {
-    uint8_t *src, *dst;
-    src = (uint8_t*)(texaddr + (y - ul_y) * tex_width);
-    dst = (uint8_t*)(fbaddr + y * rdp.ci_width);
+  for (y = ul_y; y < lr_y; y++)
+  {
+    uint8_t *src = (uint8_t*)(texaddr + (y - ul_y) * tex_width);
+    uint8_t *dst = (uint8_t*)(fbaddr + y * rdp.ci_width);
     memcpy (dst, src, width);
   }
 }
@@ -821,7 +819,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    // FRDP ("rdp.cycle1 %08lx, rdp.cycle2 %08lx\n", rdp.cycle1, rdp.cycle2);
 
-   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 2)
+   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
    {
       ul_x = (short)((rdp.cmd1 & 0x00FFF000) >> 14);
       ul_y = (short)((rdp.cmd1 & 0x00000FFF) >> 2);
@@ -917,7 +915,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if (off_y_i & 0x8000)
       off_y_i |= ~0xffff;
 
-   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 2)
+   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
       dsdx /= 4.0f;
 
    s_ul_x = ul_x * rdp.scale_x + rdp.offset_x;
@@ -925,7 +923,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    s_ul_y = ul_y * rdp.scale_y + rdp.offset_y;
    s_lr_y = lr_y * rdp.scale_y + rdp.offset_y;
 
-   if ( ((rdp.cmd0>>24)&0xFF) == 0xE5 ) //texrectflip
+   if ( ((rdp.cmd0>>24)&0xFF) == G_TEXRECTFLIP ) //texrectflip
    {
       off_size_x = (lr_y - ul_y - 1) * dsdx;
       off_size_y = (lr_x - ul_x - 1) * dtdy;
@@ -1074,7 +1072,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[3].coord[3] = 0;
    vstd[3].f = 255.0f;
 
-   if ( ((rdp.cmd0>>24)&0xFF) == 0xE5 ) //texrectflip
+   if ( ((rdp.cmd0>>24)&0xFF) == G_TEXRECTFLIP )
    {
       vstd[1].u0 = texUV[0].ul_u;
       vstd[1].v0 = texUV[0].lr_v;
@@ -3074,7 +3072,6 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
    if (cmd >= G_TRI_FILL && cmd <= G_TRI_SHADE_TXTR_ZBUFF) //triangle command
    {
       uint32_t a;
-      LRDP("rdphalf_1 - lle triangle\n");
       rdp_cmd_ptr = 0;
       rdp_cmd_cur = 0;
 
@@ -3109,13 +3106,6 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
       cmd = (rdp_cmd_data[rdp_cmd_cur] >> 24) & 0x3f;
       rdp.cmd0 = rdp_cmd_data[rdp_cmd_cur+0];
       rdp.cmd1 = rdp_cmd_data[rdp_cmd_cur+1];
-      /*
-         uint32_t cmd3 = ((uint32_t*)gfx_info.RDRAM)[(a>>2)+2];
-         if ((cmd3>>24) == 0xb4)
-         rglSingleTriangle = true;
-         else
-         rglSingleTriangle = false;
-         */
       rdp_command_table[cmd](rdp.cmd0, rdp.cmd1);
    }
    //LRDP("rdphalf_1\n");
