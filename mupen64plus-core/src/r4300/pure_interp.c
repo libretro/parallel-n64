@@ -152,18 +152,18 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
 #define cffd FD_OF(op)
 
 /* 32 bits macros */
-#ifndef M64P_BIG_ENDIAN
-#define rrt32 *((int32_t*) &reg[RT_OF(op)])
-#define rrd32 *((int32_t*) &reg[RD_OF(op)])
-#define rrs32 *((int32_t*) &reg[RS_OF(op)])
-#define irs32 *((int32_t*) &reg[RS_OF(op)])
-#define irt32 *((int32_t*) &reg[RT_OF(op)])
-#else
+#ifdef MSB_FIRST
 #define rrt32 *((int32_t*) &reg[RT_OF(op)] + 1)
 #define rrd32 *((int32_t*) &reg[RD_OF(op)] + 1)
 #define rrs32 *((int32_t*) &reg[RS_OF(op)] + 1)
 #define irs32 *((int32_t*) &reg[RS_OF(op)] + 1)
 #define irt32 *((int32_t*) &reg[RT_OF(op)] + 1)
+#else
+#define rrt32 *((int32_t*) &reg[RT_OF(op)])
+#define rrd32 *((int32_t*) &reg[RD_OF(op)])
+#define rrs32 *((int32_t*) &reg[RS_OF(op)])
+#define irs32 *((int32_t*) &reg[RS_OF(op)])
+#define irt32 *((int32_t*) &reg[RT_OF(op)])
 #endif
 
 // two functions are defined from the macros above but never used

@@ -56,9 +56,11 @@ extern void (*writememb[0x10000])(void);
 extern void (*writememh[0x10000])(void);
 extern void (*writememd[0x10000])(void);
 
-#ifndef M64P_BIG_ENDIAN
-#if defined(__GNUC__) && (__GNUC__ > 4  || (__GNUC__ == 4 && __GNUC_MINOR__ >= 2))
-#define sl(x) __builtin_bswap32(x)
+#ifdef MSB_FIRST
+#define sl(mot) mot
+#define S8 0
+#define S16 0
+#define Sh16 0
 #else
 #define sl(mot) \
 ( \
@@ -67,19 +69,10 @@ extern void (*writememd[0x10000])(void);
 ((mot & 0x00FF0000) >>  8) | \
 ((mot & 0xFF000000) >> 24) \
 )
-#endif
 
 #define S8 3
 #define S16 2
 #define Sh16 1
-
-#else
-
-#define sl(mot) mot
-#define S8 0
-#define S16 0
-#define Sh16 0
-
 #endif
 
 static INLINE void masked_write(uint32_t* dst, uint32_t value, uint32_t mask)

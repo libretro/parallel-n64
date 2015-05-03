@@ -226,24 +226,25 @@ void alist_interleave(struct hle_t* hle, uint16_t dmemo, uint16_t left, uint16_t
 
     count >>= 2;
 
-    while(count != 0) {
-        uint16_t l1 = *(srcL++);
-        uint16_t l2 = *(srcL++);
-        uint16_t r1 = *(srcR++);
-        uint16_t r2 = *(srcR++);
+    while(count != 0)
+    {
+       uint16_t l1 = *(srcL++);
+       uint16_t l2 = *(srcL++);
+       uint16_t r1 = *(srcR++);
+       uint16_t r2 = *(srcR++);
 
-#if M64P_BIG_ENDIAN
-        *(dst++) = l1;
-        *(dst++) = r1;
-        *(dst++) = l2;
-        *(dst++) = r2;
+#ifdef MSB_FIRST
+       *(dst++) = l1;
+       *(dst++) = r1;
+       *(dst++) = l2;
+       *(dst++) = r2;
 #else
-        *(dst++) = r2;
-        *(dst++) = l2;
-        *(dst++) = r1;
-        *(dst++) = l1;
+       *(dst++) = r2;
+       *(dst++) = l2;
+       *(dst++) = r1;
+       *(dst++) = l1;
 #endif
-        --count;
+       --count;
     }
 }
 

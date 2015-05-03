@@ -71,7 +71,7 @@ uint32_t *r4300_cp1_fcr31(void)
 */
 void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus)
 {
-#if defined(M64P_BIG_ENDIAN)
+#ifdef MSB_FIRST
    const int isBigEndian = 1;
 #else
    const int isBigEndian = 0;
@@ -87,9 +87,7 @@ void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus)
       {   // switching into 64-bit mode
          // retrieve 32 FPR values from packed 32-bit FGR registers
          for (i = 0; i < 32; i++)
-         {
             temp_fgr_32[i] = *((int32_t*) &reg_cop1_fgr_64[i>>1] + ((i & 1) ^ isBigEndian));
-         }
          // unpack them into 32 64-bit registers, taking the high 32-bits from their temporary place in the upper 16 FGRs
          for (i = 0; i < 32; i++)
          {
@@ -124,7 +122,7 @@ void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus)
 void set_fpr_pointers(uint32_t newStatus)
 {
    int i;
-#if defined(M64P_BIG_ENDIAN)
+#ifdef MSB_FIRST
    const int isBigEndian = 1;
 #else
    const int isBigEndian = 0;

@@ -79,7 +79,7 @@ static osal_inline unsigned long long int m64p_swap64(unsigned long long int x)
     #endif
 }
 
-#ifdef M64P_BIG_ENDIAN
+#ifdef MSB_FIRST
 #define big16(x) (x)
 #define big32(x) (x)
 #define big64(x) (x)
