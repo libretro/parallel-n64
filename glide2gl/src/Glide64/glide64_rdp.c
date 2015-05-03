@@ -1814,7 +1814,7 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 
    if (ucode5_texshiftaddr)
    {
-      if (rdp.timg.format == 0)
+      if (rdp.timg.format == G_IM_FMT_RGBA)
       {
          uint16_t * t = (uint16_t*)(gfx_info.RDRAM+ucode5_texshiftaddr);
          ucode5_texshift = t[ucode5_texshiftcount^1];
