@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include "Common.h"
 #include "gles2N64.h"
 #include "Types.h"
@@ -15,30 +17,73 @@ VIInfo VI;
 
 void VI_UpdateSize(void)
 {
-   f32 xScale = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE_REG, 0, 12 ), 10 );
-   f32 xOffset = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE_REG, 16, 12 ), 10 );
-
-   f32 yScale = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_Y_SCALE_REG, 0, 12 ), 10 );
-   f32 yOffset = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_Y_SCALE_REG, 16, 12 ), 10 );
+   struct FrameBuffer *pBuffer, *pDepthBuffer;
+	const bool interlacedPrev = VI.interlaced;
+   f32 xScale  = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE_REG, 0, 12 ), 10 );
+	u32 vScale  = _SHIFTR(*gfx_info.VI_Y_SCALE_REG, 0, 12);
 
    u32 hEnd = _SHIFTR( *gfx_info.VI_H_START_REG, 0, 10 );
    u32 hStart = _SHIFTR( *gfx_info.VI_H_START_REG, 16, 10 );
 
    // These are in half-lines, so shift an extra bit
-   u32 vEnd = _SHIFTR( *gfx_info.VI_V_START_REG, 1, 9 );
-   u32 vStart = _SHIFTR( *gfx_info.VI_V_START_REG, 17, 9 );
+   u32 vEnd = _SHIFTR( *gfx_info.VI_V_START_REG, 0, 10 );
+   u32 vStart = _SHIFTR( *gfx_info.VI_V_START_REG, 16, 10 );
+	if (VI.width > 0)
+		VI.widthPrev = VI.width;
 
-   //Glide does this:
-   if (hEnd == hStart) hEnd = (u32)(*gfx_info.VI_WIDTH_REG / xScale);
+	VI.real_height = vEnd > vStart ? (((vEnd - vStart) >> 1) * vScale) >> 10 : 0;
+   VI.width = *gfx_info.VI_WIDTH_REG;
+	VI.interlaced = (*gfx_info.VI_STATUS_REG & 0x40) != 0;
+	if (VI.interlaced)
+   {
+		f32 fullWidth = 640.0f * xScale;
+		if (*gfx_info.VI_WIDTH_REG > fullWidth)
+      {
+			const u32 scale = (u32)floorf(*gfx_info.VI_WIDTH_REG / fullWidth + 0.5f);
+			VI.width /= scale;
+			VI.real_height *= scale;
+		}
+		if (VI.real_height % 2 == 1)
+			--VI.real_height;
+	} else if (hEnd != 0 && *gfx_info.VI_WIDTH_REG != 0)
+		VI.width = min((u32)floorf((hEnd - hStart)*xScale + 0.5f), *gfx_info.VI_WIDTH_REG);
 
+	VI.PAL = (*gfx_info.VI_V_SYNC_REG & 0x3ff) > 550;
+	if (VI.PAL && (vEnd - vStart) > 478)
+   {
+		VI.height = (u32)(VI.real_height*1.0041841f);
+		if (VI.height > 576)
+			VI.height = VI.real_height = 576;
+	}
+	else
+   {
+		VI.height = (u32)(VI.real_height*1.0126582f);
+		if (VI.height > 480)
+			VI.height = VI.real_height = 480;
+	}
+	if (VI.height % 2 == 1)
+		--VI.height;
 
-   VI.width = (u32)(xScale * (hEnd - hStart));
-   VI.height = (u32)(yScale * 1.0126582f * (vEnd - vStart));
+   pBuffer = FrameBuffer_FindBuffer(VI.lastOrigin);
+   pDepthBuffer = (pBuffer != NULL) ? NULL /* pBuffer->DepthBuffer */: NULL;
 
-   if (VI.width == 0.0f) VI.width = 320;
-   if (VI.height == 0.0f) VI.height = 240;
-   VI.rwidth = 1.0f / VI.width;
-   VI.rheight = 1.0f / VI.height;
+	if (config.frameBufferEmulation.enable &&
+		((interlacedPrev != VI.interlaced) ||
+		(VI.width > 0 && VI.width != VI.widthPrev) ||
+		(!VI.interlaced && pDepthBuffer != NULL && pDepthBuffer->width != VI.width) ||
+		(pBuffer != NULL && pBuffer->height != VI.height))
+	)
+   {
+      FrameBuffer_RemoveBuffer(VI.widthPrev);
+		FrameBuffer_RemoveBuffer(VI.width);
+#ifdef NEW
+		depthBufferList().destroy();
+		depthBufferList().init();
+#endif
+	}
+
+	VI.rwidth = VI.width != 0 ? 1.0f / VI.width : 0.0f;
+	VI.rheight = VI.height != 0 ? 1.0f / VI.height : 0.0f;
 }
 
 void VI_UpdateScreen(void)
@@ -50,6 +95,7 @@ void VI_UpdateScreen(void)
    {
       VI_UpdateSize();
       bVIUpdated = true;
+      OGL_UpdateScale();
    }
 
 	if (config.frameBufferEmulation.enable)
@@ -69,7 +115,7 @@ void VI_UpdateScreen(void)
 					if (!bVIUpdated)
                {
 						VI_UpdateSize();
-						//ogl.updateScale();
+						OGL_UpdateScale();
 						bVIUpdated = true;
 					}
 					size = *gfx_info.VI_STATUS_REG & 3;
