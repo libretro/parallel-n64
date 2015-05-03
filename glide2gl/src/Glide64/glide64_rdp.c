@@ -1476,7 +1476,7 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
    if (offs >= BMASK)
       return;
 
-   if (rdp.timg.size == 3)
+   if (rdp.timg.size == G_IM_SIZ_32b)
    {
       LoadTile32b(tile, ul_s, ul_t, width, height);
    }

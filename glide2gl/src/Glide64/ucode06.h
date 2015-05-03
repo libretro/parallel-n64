@@ -1208,7 +1208,7 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
       //FRDP ("addr: %08lx, tmem: %08lx, size: %d\n", image, tmem, tsize);
       rdp.timg.addr = image;
       rdp.timg.width = 1;
-      rdp.timg.size = 1;
+      rdp.timg.size = G_IM_SIZ_8b;
 
       rdp.tiles[7].t_mem = tmem;
       rdp.tiles[7].size = 1;
@@ -1231,7 +1231,7 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
 
       rdp.timg.addr = image;
       rdp.timg.width = line << 3;
-      rdp.timg.size = 1;
+      rdp.timg.size = G_IM_SIZ_8b;
 
       rdp.tiles[7].t_mem = tmem;
       rdp.tiles[7].line = line;
