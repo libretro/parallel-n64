@@ -747,12 +747,7 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
    else
       glViewport(0, 0, pCurrentBuffer->width * pCurrentBuffer->scaleX, pCurrentBuffer->height * pCurrentBuffer->scaleY);
 
-   glDisable(GL_SCISSOR_TEST);
-
-#if 1
-   /* TODO/FIXME - remove? */
    glDisable(GL_CULL_FACE);
-#endif
 
    scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->width  : VI.rwidth;
    scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->height : VI.rheight;
@@ -794,10 +789,6 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
 
    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-#if 1
-   /* TODO/FIXME - remove? */
-   glEnable(GL_SCISSOR_TEST);
-#endif
 	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
 }
 
