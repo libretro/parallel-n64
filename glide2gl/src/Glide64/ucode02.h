@@ -509,14 +509,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_LIGHTCOL:
-         {
-            int n = offset / 24;
-
-            rdp.light[n].col[0] = (float)((w1 >> 24) & 0xFF) / 255.0f;
-            rdp.light[n].col[1] = (float)((w1 >> 16) & 0xFF) / 255.0f;
-            rdp.light[n].col[2] = (float)((w1 >> 8) & 0xFF) / 255.0f;
-            rdp.light[n].col[3] = 255;
-         }
+         gSPLightColor_G64((_SHIFTR( w0, 0, 16 ) / 24) + 1, w1 );
          break;
 
       case G_MW_FORCEMTX:

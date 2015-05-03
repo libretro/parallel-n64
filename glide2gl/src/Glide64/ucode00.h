@@ -493,13 +493,32 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          gSPFogFactor_G64((int16_t)_SHIFTR(w1, 16, 16), (int16_t)_SHIFTR(w1, 0, 16));
          break;
       case G_MW_LIGHTCOL:
+         switch (_SHIFTR( w0, 8, 16 ))
          {
-            int n = (w0 & 0xE000) >> 13;
-
-            rdp.light[n].col[0] = (float)((w1 >> 24) & 0xFF) / 255.0f;
-            rdp.light[n].col[1] = (float)((w1 >> 16) & 0xFF) / 255.0f;
-            rdp.light[n].col[2] = (float)((w1 >> 8) & 0xFF) / 255.0f;
-            rdp.light[n].col[3] = 255;
+            case F3D_MWO_aLIGHT_1:
+               gSPLightColor_G64( LIGHT_1, w1 );
+               break;
+            case F3D_MWO_aLIGHT_2:
+               gSPLightColor_G64( LIGHT_2, w1 );
+               break;
+            case F3D_MWO_aLIGHT_3:
+               gSPLightColor_G64( LIGHT_3, w1 );
+               break;
+            case F3D_MWO_aLIGHT_4:
+               gSPLightColor_G64( LIGHT_4, w1 );
+               break;
+            case F3D_MWO_aLIGHT_5:
+               gSPLightColor_G64( LIGHT_5, w1 );
+               break;
+            case F3D_MWO_aLIGHT_6:
+               gSPLightColor_G64( LIGHT_6, w1 );
+               break;
+            case F3D_MWO_aLIGHT_7:
+               gSPLightColor_G64( LIGHT_7, w1 );
+               break;
+            case F3D_MWO_aLIGHT_8:
+               gSPLightColor_G64( LIGHT_8, w1 );
+               break;
          }
          break;
 
