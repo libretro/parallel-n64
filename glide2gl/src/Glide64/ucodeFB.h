@@ -111,20 +111,11 @@ static void fb_bg_copy(uint32_t w0, uint32_t w1)
 
 static void fb_setscissor(uint32_t w0, uint32_t w1)
 {
-   rdp.scissor_o.lr_y = (uint32_t)(((w1 & 0x00000FFF) >> 2));
-   if (rdp.ci_count)
-   {
-      COLOR_IMAGE *cur_fb;
-      rdp.scissor_o.ul_x = (uint32_t)(((w0 & 0x00FFF000) >> 14));
-      rdp.scissor_o.lr_x = (uint32_t)(((w1 & 0x00FFF000) >> 14));
-      cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count-1];
-      if (rdp.scissor_o.lr_x - rdp.scissor_o.ul_x > (uint32_t)(cur_fb->width >> 1))
-      {
-         if (cur_fb->height == 0 || (cur_fb->width >= rdp.scissor_o.lr_x-1 && cur_fb->width <= rdp.scissor_o.lr_x+1))
-            cur_fb->height = rdp.scissor_o.lr_y;
-      }
-      FRDP("fb_setscissor. lr_x = %d, lr_y = %d, fb_width = %d, fb_height = %d\n", rdp.scissor_o.lr_x, rdp.scissor_o.lr_y, cur_fb->width, cur_fb->height);
-   }
+    gDPSetScissor_G64( _SHIFTR( w1, 24, 2 ),                        // mode
+                   _FIXED2FLOAT( _SHIFTR( w0, 12, 12 ), 2 ),    // ulx
+                   _FIXED2FLOAT( _SHIFTR( w0,  0, 12 ), 2 ),    // uly
+                   _FIXED2FLOAT( _SHIFTR( w1, 12, 12 ), 2 ),    // lrx
+                   _FIXED2FLOAT( _SHIFTR( w1,  0, 12 ), 2 ) );  // lry
 }
 
 static void fb_uc2_movemem(uint32_t w0, uint32_t w1)
