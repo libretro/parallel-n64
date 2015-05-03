@@ -787,3 +787,9 @@ static void gSPViewport_G64(uint32_t v)
 
    rdp.update |= UPDATE_VIEWPORT;
 }
+
+static void gSPFogFactor_G64(int16_t fm, int16_t fo )
+{
+   rdp.fog_multiplier = fm;
+   rdp.fog_offset     = fo;
+}
