@@ -832,3 +832,16 @@ static void gSPLightColor_G64( uint32_t lightNum, uint32_t packedColor )
       rdp.light[lightNum].col[3] = 255;
    }
 }
+
+static void gSPDlistCount_G64(uint32_t count, uint32_t v)
+{
+   uint32_t address = RSP_SegmentToPhysical(v);
+
+   if (rdp.pc_i >= 9 || address == 0)
+      return;
+
+   rdp.pc_i ++;  // go to the next PC in the stack
+   rdp.pc[rdp.pc_i] = address;  // jump to the address
+   rdp.dl_count = count + 1;
+   //FRDP ("dl_count - address: %08lx, count: %d\n", address, count);
+}

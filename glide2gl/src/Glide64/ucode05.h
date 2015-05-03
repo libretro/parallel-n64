@@ -237,15 +237,7 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
 
 static void uc5_dl_in_mem(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr = segoffset(w1) & BMASK;
-   int count = (w0 & 0x00FF0000) >> 16;
-
-   if (rdp.pc_i >= 9)
-      return;
-
-   rdp.pc_i ++;  // go to the next PC in the stack
-   rdp.pc[rdp.pc_i] = addr;  // jump to the address
-   rdp.dl_count = count + 1;
+	gSPDlistCount_G64(_SHIFTR(w0, 16, 8), w1);
 }
 
 static void uc5_moveword(uint32_t w0, uint32_t w1)

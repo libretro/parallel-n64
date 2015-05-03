@@ -568,14 +568,5 @@ static void uc2_rdphalf_2(uint32_t w0, uint32_t w1)
 
 static void uc2_dlist_cnt(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr = segoffset(w1) & BMASK;
-   int count = w0 & 0x000000FF;
-
-   if (rdp.pc_i >= 9 || addr == 0)
-      return;
-
-   rdp.pc_i ++;  // go to the next PC in the stack
-   rdp.pc[rdp.pc_i] = addr;  // jump to the address
-   rdp.dl_count = count + 1;
-   FRDP ("dl_count - addr: %08lx, count: %d\n", addr, count);
+	gSPDlistCount_G64(_SHIFTR( w0, 0, 8 ), w1);
 }
