@@ -73,7 +73,7 @@ static void _initStates(void)
 
    glDepthRange(0.0f, 1.0f);
    glPolygonOffset(-0.2f, -0.2f);
-   glViewport(0, 0, config.screen.width, config.screen.height);
+   glViewport(0, OGL_GetHeightOffset(), OGL_GetScreenWidth(), OGL_GetScreenHeight());
 
    glClearColor( 0.0f, 0.0f, 0.0f, 0.0f);
    glClear( GL_COLOR_BUFFER_BIT);
@@ -85,8 +85,33 @@ void OGL_UpdateScale(void)
 {
    if (VI.width == 0 || VI.height == 0)
       return;
-   OGL.scaleX = (float)config.screen.width / (float)VI.width;
-   OGL.scaleY = (float)config.screen.height / (float)VI.height;
+   OGL.scaleX = OGL_GetScreenWidth()  / (float)VI.width;
+   OGL.scaleY = OGL_GetScreenHeight() / (float)VI.height;
+}
+
+uint32_t OGL_GetScreenWidth(void)
+{
+   return config.screen.width;
+}
+
+uint32_t OGL_GetScreenHeight(void)
+{
+   return config.screen.height;
+}
+
+float OGL_GetScaleX(void)
+{
+   return OGL.scaleX;
+}
+
+float OGL_GetScaleY(void)
+{
+   return OGL.scaleY;
+}
+
+uint32_t OGL_GetHeightOffset(void)
+{
+   return OGL.heightOffset;
 }
 
 bool OGL_Start(void)
@@ -159,14 +184,14 @@ static void _updateCullFace(void)
 static void _updateViewport(void)
 {
    const u32 VI_height = VI.height;
-   const f32 scaleX = OGL.scaleX;
-   const f32 scaleY = OGL.scaleY;
+   const f32 scaleX = OGL_GetScaleX();
+   const f32 scaleY = OGL_GetScaleY();
    float Xf = gSP.viewport.vscale[0] < 0 ? (gSP.viewport.x + gSP.viewport.vscale[0] * 2.0f) : gSP.viewport.x;
    const GLint X = (GLint)(Xf * scaleX);
    const GLint Y = gSP.viewport.vscale[1] < 0 ? (GLint)((gSP.viewport.y + gSP.viewport.vscale[1] * 2.0f) * scaleY) : (GLint)((VI_height - (gSP.viewport.y + gSP.viewport.height)) * scaleY);
    
    glViewport(X,
-         Y,
+         Y + OGL_GetHeightOffset(),
          max((GLint)(gSP.viewport.width * scaleX), 0),
          max((GLint)(gSP.viewport.height * scaleY), 0));
 
@@ -181,18 +206,32 @@ static void _updateDepthUpdate(void)
       glDepthMask(GL_FALSE);
 }
 
-/* TODO/FIXME - not complete */
-static void _updateScissor(void)
+static void _updateScissor(struct FrameBuffer *_pBuffer)
 {
    u32 heightOffset, screenHeight;
    f32 scaleX, scaleY;
    float SX0 = gDP.scissor.ulx;
    float SX1 = gDP.scissor.lrx;
 
-   scaleX       = OGL.scaleX;
-   scaleY       = OGL.scaleY;
-   heightOffset = 0;
-   screenHeight = VI.height; 
+   if (_pBuffer == NULL)
+   {
+      scaleX       = OGL_GetScaleX();
+      scaleY       = OGL_GetScaleY();
+      heightOffset = OGL_GetHeightOffset();
+      screenHeight = VI.height; 
+   }
+   else
+   {
+      scaleX       = _pBuffer->scaleX;
+      scaleY       = _pBuffer->scaleY;
+      heightOffset = 0;
+      screenHeight = (_pBuffer->height == 0) ? VI.height : _pBuffer->height;
+   }
+
+#if 0
+	if (ogl.isAdjustScreen() && gSP.viewport.width < gDP.colorImage.width && gDP.colorImage.width > VI.width * 98 / 100)
+		_adjustScissorX(SX0, SX1, ogl.getAdjustScale());
+#endif
 
    glScissor(
          (GLint)(SX0 * scaleX),
@@ -401,7 +440,7 @@ static void _updateStates(void)
       SC_SetUniform1f(uAlphaRef, (gDP.otherMode.cvgXAlpha) ? 0.5f : gDP.blendColor.a);
 
    if (gDP.changed & CHANGED_SCISSOR)
-      _updateScissor();
+      _updateScissor(FrameBuffer_GetCurrent());
 
    if (gSP.changed & CHANGED_VIEWPORT)
       _updateViewport();
@@ -547,11 +586,7 @@ void OGL_DrawLLETriangle(u32 _numVtx)
 
 	if (pCurrentBuffer == NULL)
    {
-#if 0
-      glViewport( 0, ogl.getHeightOffset(), ogl.getScreenWidth(), ogl.getScreenHeight());
-#else
-      glViewport(0, 0, config.screen.width, config.screen.height);
-#endif
+      glViewport( 0, OGL_GetHeightOffset(), OGL_GetScreenWidth(), OGL_GetScreenHeight());
    }
 	else
 		glViewport(0, 0, pCurrentBuffer->width * pCurrentBuffer->scaleX, pCurrentBuffer->height * pCurrentBuffer->scaleY);
@@ -681,6 +716,7 @@ void OGL_DrawLine(int v0, int v1, float width )
 
 void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
 {
+   struct FrameBuffer *pCurrentBuffer;
    float scaleX, scaleY, Z, W;
    bool updateArrays;
 
@@ -705,12 +741,21 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
       OGL.renderState = RS_RECT;
    }
 
-   glViewport(0, 0, config.screen.width, config.screen.height);
-   glDisable(GL_SCISSOR_TEST);
-   glDisable(GL_CULL_FACE);
+   pCurrentBuffer = FrameBuffer_GetCurrent();
+   if (pCurrentBuffer == NULL)
+      glViewport(0, OGL_GetHeightOffset(), OGL_GetScreenWidth(), OGL_GetScreenHeight());
+   else
+      glViewport(0, 0, pCurrentBuffer->width * pCurrentBuffer->scaleX, pCurrentBuffer->height * pCurrentBuffer->scaleY);
 
-   scaleX = VI.rwidth;
-   scaleY = VI.rheight;
+   glDisable(GL_SCISSOR_TEST);
+
+#if 1
+   /* TODO/FIXME - remove? */
+   glDisable(GL_CULL_FACE);
+#endif
+
+   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->width  : VI.rwidth;
+   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->height : VI.rheight;
 	Z      = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
 	W      = 1.0f;
 
@@ -734,13 +779,25 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
    OGL.rect[3].z = Z;
    OGL.rect[3].w = W;
 
+#if 0
+	if (ogl.isAdjustScreen() && (gDP.colorImage.width > VI.width * 98 / 100) && (_lrx - _ulx < VI.width * 9 / 10)) {
+		const float scale = ogl.getAdjustScale();
+		for (u32 i = 0; i < 4; ++i)
+			m_rect[i].x *= scale;
+	}
+#endif
+
 	if (gDP.otherMode.cycleType == G_CYC_FILL)
 		glVertexAttrib4fv(SC_COLOR, color);
    else
 		glVertexAttrib4f(SC_COLOR, 0.0f, 0.0f, 0.0f, 0.0f);
 
    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+#if 1
+   /* TODO/FIXME - remove? */
    glEnable(GL_SCISSOR_TEST);
+#endif
 	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
 }
 
@@ -865,6 +922,7 @@ bool(*texturedRectSpecial)(const struct TexturedRectParams * _params) = NULL;
 
 void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls, float ult, float lrs, float lrt, bool flip )
 {
+   struct FrameBuffer *pCurrentBuffer;
    float scaleX, scaleY, Z, W;
    bool updateArrays;
 
@@ -896,11 +954,19 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
    }
 #endif
 
-   glViewport(0, 0, config.screen.width, config.screen.height);
+   pCurrentBuffer = FrameBuffer_GetCurrent();
+
+   if (pCurrentBuffer == NULL)
+      glViewport(0, OGL_GetHeightOffset(), OGL_GetScreenWidth(), OGL_GetScreenHeight());
+   else
+      glViewport(0, 0, pCurrentBuffer->width * pCurrentBuffer->scaleX, pCurrentBuffer->height * pCurrentBuffer->scaleY);
+
    glDisable(GL_CULL_FACE);
 
-   scaleX = VI.rwidth;
-   scaleY = VI.rheight;
+   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->width  : VI.rwidth;
+   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->height : VI.rheight;
+	Z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
+	W = 1.0f;
 
    OGL.rect[0].x = (float) ulx * (2.0f * scaleX) - 1.0f;
    OGL.rect[0].y = (float) uly * (-2.0f * scaleY) + 1.0f;
@@ -1019,13 +1085,28 @@ void OGL_DrawTexturedRect( float ulx, float uly, float lrx, float lry, float uls
       OGL.rect[2].t1 = OGL.rect[3].t1;
    }
 
+#ifdef NEW
+	if (ogl.isAdjustScreen() && (gDP.colorImage.width > VI.width * 98 / 100) && (_params.lrx - _params.ulx < VI.width * 9 / 10))
+   {
+		const float scale = ogl.getAdjustScale();
+		for (u32 i = 0; i < 4; ++i)
+			m_rect[i].x *= scale;
+	}
+#endif
+
    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
 }
 
-/* TODO/FIXME - not complete */
 void OGL_ClearDepthBuffer(bool _fullsize)
 {
+	if (config.frameBufferEmulation.enable && FrameBuffer_GetCurrent() == NULL)
+		return;
+
+#ifdef NEW
+	depthBufferList().clearBuffer(_uly, _lry);
+#endif
+
    glDisable( GL_SCISSOR_TEST );
    glDepthMask( GL_TRUE ); 
    glClear( GL_DEPTH_BUFFER_BIT );
@@ -1079,16 +1160,14 @@ void OGL_SwapBuffers(void)
 
 void OGL_ReadScreen( void *dest, int *width, int *height )
 {
-   if (width)
-      *width = config.screen.width;
-   if (height)
-      *height = config.screen.height;
+   *width  = OGL_GetScreenWidth();
+   *height = OGL_GetScreenHeight();
 
-   dest = malloc(config.screen.height * config.screen.width * 3);
+   dest = malloc(OGL_GetScreenHeight() * OGL_GetScreenWidth() * 3);
    if (dest == NULL)
       return;
 
-   glReadPixels(0, 0,
-         config.screen.width, config.screen.height,
+   glReadPixels(0, OGL_GetHeightOffset(),
+         OGL_GetScreenWidth(), OGL_GetScreenHeight(),
          GL_RGBA, GL_UNSIGNED_BYTE, dest );
 }

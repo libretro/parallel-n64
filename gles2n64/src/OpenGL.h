@@ -74,6 +74,7 @@ typedef struct
     int     mustRenderDlist;
     int     renderingToTexture;
 
+    uint32_t heightOffset;
     float   scaleX, scaleY;
 
 
@@ -116,6 +117,16 @@ void OGL_ReadScreen( void *dest, int *width, int *height );
 
 int  OGL_CheckError();
 int  OGL_IsExtSupported( const char *extension );
+
+float OGL_GetScaleX(void);
+
+float OGL_GetScaleY(void);
+
+uint32_t OGL_GetHeightOffset(void);
+
+uint32_t OGL_GetScreenWidth(void);
+
+uint32_t OGL_GetScreenHeight(void);
 
 #ifdef __cplusplus
 }
