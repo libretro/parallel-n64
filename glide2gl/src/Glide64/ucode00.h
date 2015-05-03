@@ -336,37 +336,7 @@ static void uc0_enddl(uint32_t w0, uint32_t w1)
 
 static void uc0_culldl(uint32_t w0, uint32_t w1)
 {
-   VERTEX *v;
-   uint16_t i;
-   uint8_t v0 = (uint8_t)((w0 & 0x00FFFFFF) / 40) & 0xF;
-   uint8_t n = (uint8_t)(w1 / 40) & 0x0F;
-   uint32_t cond = 0;
-
-   //FRDP("uc0:culldl start: %d, end: %d\n", v0, n);
-
-   if (n < v0)
-      return;
-   for (i = v0; i <= n; i++)
-   {
-      v = &rdp.vtx[i];
-      // Check if completely off the screen (quick frustrum clipping for 90 FOV)
-      if (v->x >= -v->w)
-         cond |= 0x01;
-      if (v->x <= v->w)
-         cond |= 0x02;
-      if (v->y >= -v->w)
-         cond |= 0x04;
-      if (v->y <= v->w)
-         cond |= 0x08;
-      if (v->w >= 0.1f)
-         cond |= 0x10;
-
-      if (cond == 0x1F)
-         return;
-   }
-
-   //LRDP(" - "); // specify that the enddl is not a real command
-   uc0_enddl(w0, w1);
+	gSPCullDisplayList_G64( _SHIFTR( w0, 0, 24 ) / 40, (w1 / 40) - 1 );
 }
 
 static void uc0_popmatrix(uint32_t w0, uint32_t w1)

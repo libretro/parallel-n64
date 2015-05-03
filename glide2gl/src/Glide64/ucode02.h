@@ -145,50 +145,7 @@ static void uc2_modifyvtx(uint32_t w0, uint32_t w1)
 
 static void uc2_culldl(uint32_t w0, uint32_t w1)
 {
-   uint16_t i, vStart, vEnd, cond;
-
-   vStart = (uint16_t)(w0 & 0xFFFF) >> 1;
-   vEnd = (uint16_t)(w1 & 0xFFFF) >> 1;
-   cond = 0;
-   //FRDP ("uc2:culldl start: %d, end: %d\n", vStart, vEnd);
-
-   if (vEnd < vStart)
-      return;
-
-   for (i = vStart; i <= vEnd; i++)
-   {
-#if 0
-      VERTEX *v;
-
-      v = (VERTEX*)&rdp.vtx[i];
-
-      /*
-       * Check if completely off the screen
-       * (quick frustrum clipping for 90 FOV)
-       */
-
-      if (v->x >= -v->w)
-         cond |= X_CLIP_MAX;
-      if (v->x <= v->w)
-         cond |= X_CLIP_MIN;
-      if (v->y >= -v->w)
-         cond |= Y_CLIP_MAX;
-      if (v->y <= v->w)
-         cond |= Y_CLIP_MIN;
-      if (v->w >= 0.1f)
-         cond |= Z_CLIP_MAX;
-
-      if (cond == 0x1F)
-         return;
-#endif
-
-      cond |= (~rdp.vtx[i].scr_off) & 0x1F;
-      if (cond == 0x1F)
-         return;
-   }
-
-   //LRDP(" - ");  // specify that the enddl is not a real command
-   uc0_enddl(w0, w1);
+	gSPCullDisplayList_G64( _SHIFTR( w0, 1, 15 ), _SHIFTR( w1, 1, 15 ) );
 }
 
 static void uc2_tri1(uint32_t w0, uint32_t w1)

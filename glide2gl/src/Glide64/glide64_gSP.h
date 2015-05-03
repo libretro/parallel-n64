@@ -751,3 +751,35 @@ static void gSPEndDisplayList_G64(void)
       rdp.halt = 1;
    }
 }
+
+static bool gSPCullVertices_G64( uint32_t v0, uint32_t vn )
+{
+   uint32_t i, clip = 0;
+	if (vn < v0)
+   {
+      // Aidyn Chronicles - The First Mage seems to pass parameters in reverse order.
+      const u32 v = v0;
+      v0 = vn;
+      vn = v;
+   }
+
+   for (i = v0; i <= vn; i++)
+   {
+      VERTEX *v = (VERTEX*)&rdp.vtx[i];
+      // Check if completely off the screen (quick frustrum clipping for 90 FOV)
+      if (v->x >= -v->w) clip |= 0x01;
+      if (v->x <= v->w)  clip |= 0x02;
+      if (v->y >= -v->w) clip |= 0x04;
+      if (v->y <= v->w)  clip |= 0x08;
+      if (v->w >= 0.1f)  clip |= 0x10;
+      if (clip == 0x1F)
+         return false;
+   }
+   return true;
+}
+
+static void gSPCullDisplayList_G64( uint32_t v0, uint32_t vn )
+{
+	if (gSPCullVertices_G64( v0, vn ))
+      gSPEndDisplayList_G64();
+}
