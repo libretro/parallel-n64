@@ -415,6 +415,18 @@ static void pre_update(void)
 #include <arm_neon.h>
 #endif
 
+static void gSPClipVertex_G64(uint32_t v)
+{
+   VERTEX *vtx = (VERTEX*)&rdp.vtx[v];
+
+   vtx->scr_off = 0;
+   if (vtx->x > +vtx->w)   vtx->scr_off |= 2;
+   if (vtx->x < -vtx->w)   vtx->scr_off |= 1;
+   if (vtx->y > +vtx->w)   vtx->scr_off |= 8;
+   if (vtx->y < -vtx->w)   vtx->scr_off |= 4;
+   if (vtx->w < 0.1f)      vtx->scr_off |= 16;
+}
+
 /*
  * Loads into the RSP vertex buffer the vertices that will be used by the 
  * gSP1Triangle commands to generate polygons.
@@ -462,21 +474,7 @@ static void gSPVertex_G64(uint32_t v, uint32_t n, uint32_t v0)
       vtx->z_w = vtx->z * vtx->oow;
       CalculateFog (vtx);
 
-      vtx->scr_off = 0;
-      if (vtx->x < -vtx->w)
-         vtx->scr_off |= 1;
-      if (vtx->x > vtx->w)
-         vtx->scr_off |= 2;
-      if (vtx->y < -vtx->w)
-         vtx->scr_off |= 4;
-      if (vtx->y > vtx->w)
-         vtx->scr_off |= 8;
-      if (vtx->w < 0.1f)
-         vtx->scr_off |= 16;
-#if 0
-      if (vtx->z_w > 1.0f)
-         vtx->scr_off |= 32;
-#endif
+      gSPClipVertex_G64(v0 + (i / iter));
 
       if (rdp.geom_mode & G_LIGHTING)
       {
