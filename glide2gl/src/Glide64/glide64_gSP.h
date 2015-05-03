@@ -763,10 +763,9 @@ static void gSPLight_G64(uint32_t l, int32_t n)
    }
 }
 
-static void gSPViewport_G64(u32 v)
+static void gSPViewport_G64(uint32_t v)
 {
-   u32 address = RSP_SegmentToPhysical( v );
-   int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + address);
+   int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical( v ));
 
    int16_t scale_y = rdram[0] >> 2;
    int16_t scale_x = rdram[1] >> 2;

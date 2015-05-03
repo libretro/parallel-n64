@@ -543,7 +543,7 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
          uc6_obj_movemem(w0, w1);
          break;
       case F3DEX2_MV_VIEWPORT:
-         gSPViewport( w1 );
+         gSPViewport_G64( w1 );
          break;
       case G_MV_MATRIX:
          // do not update the combined matrix!
