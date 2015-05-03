@@ -57,10 +57,6 @@ void RSP_ProcessDList(void)
    int i, j;
    u32 uc_start, uc_dstart, uc_dsize;
 
-   VI_UpdateSize();
-   OGL_UpdateScale();
-   TextureCache_ActivateNoise(2);
-
    __RSP.PC[0] = *(u32*)&gfx_info.DMEM[0x0FF0];
    __RSP.PCi   = 0;
    __RSP.count = -1;
@@ -94,6 +90,10 @@ void RSP_ProcessDList(void)
    gDPSetTextureLUT(G_TT_NONE);
    gDPSetTexturePersp(G_TP_PERSP);
    gDPSetCycleType(G_CYC_1CYCLE);
+
+#ifdef NEW
+	depthBufferList().setNotCleared();
+#endif
 
    if (GBI_GetCurrentMicrocodeType() == Turbo3D)
 	   RunTurbo3D();
@@ -141,6 +141,7 @@ void RSP_SetDefaultState(void)
 {
    unsigned i, j;
 
+	gSPTexture(1.0f, 1.0f, 0, 0, TRUE);
    gDP.loadTile = &gDP.tiles[7];
    gSP.textureTile[0] = &gDP.tiles[0];
    gSP.textureTile[1] = &gDP.tiles[1];
@@ -157,14 +158,14 @@ void RSP_SetDefaultState(void)
    gSP.objMatrix.baseScaleY = 1.0f;
    gSP.objRendermode = 0;
 
+   for (i = 0; i < 4; i++)
+	   for (j = 0; j < 4; j++)
+		   gSP.matrix.modelView[0][i][j] = 0.0f;
+
    gSP.matrix.modelView[0][0][0] = 1.0f;
    gSP.matrix.modelView[0][1][1] = 1.0f;
    gSP.matrix.modelView[0][2][2] = 1.0f;
    gSP.matrix.modelView[0][3][3] = 1.0f;
-
-   for (i = 0; i < 4; i++)
-	   for (j = 0; j < 4; j++)
-		   gSP.matrix.modelView[0][i][j] = 0.0f;
 
    gDP.otherMode._u64 = 0U;
 }
