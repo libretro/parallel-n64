@@ -423,120 +423,93 @@ static void pre_update(void)
  * n  - Number of vertices (1 - 32).
  * v0 - Starting index in vertex buffer where vertices are to be loaded into.
  */
-static void gSPVertex_G64(uint32_t addr, uint32_t n, uint32_t v0)
+static void gSPVertex_G64(uint32_t v, uint32_t n, uint32_t v0)
 {
    unsigned int i;
    float x, y, z;
-#ifdef __ARM_NEON__
-   float32x4_t comb0, comb1, comb2, comb3;
-   float32x4_t v_xyzw;
-#endif
-   void   *membase_ptr  = (void*)(gfx_info.RDRAM + addr);
    uint32_t iter = 16;
-
-#ifdef __ARM_NEON__
-   comb0 = vld1q_f32(rdp.combined[0]);
-   comb1 = vld1q_f32(rdp.combined[1]);
-   comb2 = vld1q_f32(rdp.combined[2]);
-   comb3 = vld1q_f32(rdp.combined[3]);
-#endif
+   void   *vertex  = (void*)(gfx_info.RDRAM + v);
 
    for (i=0; i < (n * iter); i+= iter)
    {
-      VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i / iter)];
-      int16_t *rdram    = (int16_t*)membase_ptr;
-      int8_t  *rdram_s8 = (int8_t* )membase_ptr;
-      uint8_t *rdram_u8 = (uint8_t*)membase_ptr;
+      VERTEX *vtx = (VERTEX*)&rdp.vtx[v0 + (i / iter)];
+      int16_t *rdram    = (int16_t*)vertex;
+      uint8_t *rdram_u8 = (uint8_t*)vertex;
       uint8_t *color = (uint8_t*)(rdram_u8 + 12);
       y                 = (float)rdram[0];
       x                 = (float)rdram[1];
-      vert->flags       = (uint16_t)rdram[2];
+      vtx->flags        = (uint16_t)rdram[2];
       z                 = (float)rdram[3];
-      vert->ov          = (float)rdram[4];
-      vert->ou          = (float)rdram[5];
-      vert->uv_scaled   = 0;
-      vert->a           = color[0];
+      vtx->ov           = (float)rdram[4];
+      vtx->ou           = (float)rdram[5];
+      vtx->uv_scaled    = 0;
+      vtx->a            = color[0];
 
-#ifdef __ARM_NEON__
-      v_xyzw  = vmulq_n_f32(comb0,x)+vmulq_n_f32(comb1,y)+vmulq_n_f32(comb2,z)+comb3;
-      vert->x = vgetq_lane_f32(v_xyzw,0);
-      vert->y = vgetq_lane_f32(v_xyzw,1);
-      vert->z = vgetq_lane_f32(v_xyzw,2);
-      vert->w = vgetq_lane_f32(v_xyzw,3);
-#else
-      vert->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
-      vert->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
-      vert->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
-      vert->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
-#endif
+      vtx->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
+      vtx->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
+      vtx->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
+      vtx->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
 
-      vert->uv_calculated = 0xFFFFFFFF;
-      vert->screen_translated = 0;
-      vert->shade_mod = 0;
+      vtx->uv_calculated = 0xFFFFFFFF;
+      vtx->screen_translated = 0;
+      vtx->shade_mod = 0;
 
-      if (fabs(vert->w) < 0.001)
-         vert->w = 0.001f;
-      vert->oow = 1.0f / vert->w;
-#ifdef __ARM_NEON__
-      v_xyzw = vmulq_n_f32(v_xyzw,vert->oow);
-      vert->x_w=vgetq_lane_f32(v_xyzw,0);
-      vert->y_w=vgetq_lane_f32(v_xyzw,1);
-      vert->z_w=vgetq_lane_f32(v_xyzw,2);
-#else
-      vert->x_w = vert->x * vert->oow;
-      vert->y_w = vert->y * vert->oow;
-      vert->z_w = vert->z * vert->oow;
-#endif
-      CalculateFog (vert);
+      if (fabs(vtx->w) < 0.001)
+         vtx->w = 0.001f;
+      vtx->oow = 1.0f / vtx->w;
+      vtx->x_w = vtx->x * vtx->oow;
+      vtx->y_w = vtx->y * vtx->oow;
+      vtx->z_w = vtx->z * vtx->oow;
+      CalculateFog (vtx);
 
-      vert->scr_off = 0;
-      if (vert->x < -vert->w)
-         vert->scr_off |= 1;
-      if (vert->x > vert->w)
-         vert->scr_off |= 2;
-      if (vert->y < -vert->w)
-         vert->scr_off |= 4;
-      if (vert->y > vert->w)
-         vert->scr_off |= 8;
-      if (vert->w < 0.1f)
-         vert->scr_off |= 16;
+      vtx->scr_off = 0;
+      if (vtx->x < -vtx->w)
+         vtx->scr_off |= 1;
+      if (vtx->x > vtx->w)
+         vtx->scr_off |= 2;
+      if (vtx->y < -vtx->w)
+         vtx->scr_off |= 4;
+      if (vtx->y > vtx->w)
+         vtx->scr_off |= 8;
+      if (vtx->w < 0.1f)
+         vtx->scr_off |= 16;
 #if 0
-      if (vert->z_w > 1.0f)
-         vert->scr_off |= 32;
+      if (vtx->z_w > 1.0f)
+         vtx->scr_off |= 32;
 #endif
 
       if (rdp.geom_mode & G_LIGHTING)
       {
-         vert->vec[0] = (int8_t)color[3];
-         vert->vec[1] = (int8_t)color[2];
-         vert->vec[2] = (int8_t)color[1];
+         vtx->vec[0] = (int8_t)color[3];
+         vtx->vec[1] = (int8_t)color[2];
+         vtx->vec[2] = (int8_t)color[1];
 
          if (rdp.geom_mode & G_TEXTURE_GEN)
          {
             if (rdp.geom_mode & G_TEXTURE_GEN_LINEAR)
-               calc_linear (vert);
+               calc_linear (vtx);
             else
-               calc_sphere (vert);
+               calc_sphere (vtx);
          }
 
          if (settings.ucode == 2 && rdp.geom_mode & 0x00400000)
          {
             float tmpvec[3] = {x, y, z};
-            calc_point_light (vert, tmpvec);
+            calc_point_light (vtx, tmpvec);
          }
          else
          {
-            NormalizeVector (vert->vec);
-            calc_light (vert);
+            NormalizeVector (vtx->vec);
+            calc_light (vtx);
          }
       }
       else
       {
-         vert->r = color[3];
-         vert->g = color[2];
-         vert->b = color[1];
+         vtx->r = color[3];
+         vtx->g = color[2];
+         vtx->b = color[1];
       }
-      membase_ptr = (char*)membase_ptr + iter;
+      vertex = (char*)vertex + iter;
    }
 }
 
