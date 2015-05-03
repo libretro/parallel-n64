@@ -784,3 +784,37 @@ static void gSPForceMatrix_G64( uint32_t mptr )
 
    rdp.update &= ~UPDATE_MULT_MAT;
 }
+
+static void gSPPopMatrixN_G64(uint32_t param, uint32_t num )
+{
+   if (rdp.model_i > num - 1)
+   {
+      rdp.model_i -= num;
+   }
+   memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
+   rdp.update |= UPDATE_MULT_MAT;
+}
+
+static void gSPPopMatrix_G64(uint32_t param)
+{
+   switch (param)
+   {
+      case 0: // modelview
+         if (rdp.model_i > 0)
+         {
+            rdp.model_i--;
+            rdp.update |= UPDATE_MULT_MAT;
+         }
+         break;
+      case 1: // projection, can't
+         break;
+      default:
+#ifdef DEBUG
+         DebugMsg( DEBUG_HIGH | DEBUG_ERROR | DEBUG_MATRIX, "// Attempting to pop matrix stack below 0\n" );
+         DebugMsg( DEBUG_HIGH | DEBUG_HANDLED | DEBUG_MATRIX, "gSPPopMatrix( %s );\n",
+               (param == G_MTX_MODELVIEW) ? "G_MTX_MODELVIEW" :
+               (param == G_MTX_PROJECTION) ? "G_MTX_PROJECTION" : "G_MTX_INVALID" );
+#endif
+         break;
+   }
+}

@@ -286,10 +286,7 @@ static void uc2_dma_io(uint32_t w0, uint32_t w1)
 
 static void uc2_pop_matrix(uint32_t w0, uint32_t w1)
 {
-   // Just pop the modelview matrix
-   //   // Just pop the modelview matrix
-   modelview_pop (w1 >> 6);
-   //FRDP ("uc2:pop_matrix %08lx, %08lx\n", w0, w1);
+   gSPPopMatrixN_G64( 0, w1 >> 6 );
 }
 
 static void uc2_geom_mode(uint32_t w0, uint32_t w1)

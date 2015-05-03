@@ -99,17 +99,6 @@ static void modelview_push(void)
    CopyMatrix(rdp.model_stack[rdp.model_i++], rdp.model, 64);
 }
 
-void modelview_pop (int num)
-{
-   if (rdp.model_i > num - 1)
-      rdp.model_i -= num;
-   else
-      return;
-
-   memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
-   rdp.update |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
-}
-
 static void modelview_load_push (float m[4][4])
 {
    modelview_push();
@@ -392,25 +381,7 @@ static void uc0_culldl(uint32_t w0, uint32_t w1)
 
 static void uc0_popmatrix(uint32_t w0, uint32_t w1)
 {
-   //LRDP("uc0:popmatrix\n");
-
-#if 0
-   switch (w1)
-   {
-      case 0: // modelview
-         modelview_pop(1);
-         break;
-      case 1: // projection, can't
-         break;
-
-      default:
-         FRDP_E ("Unknown uc0:popmatrix command: 0x%08lx\n", w1);
-         FRDP ("Unknown uc0:popmatrix command: 0x%08lx\n", w1);
-   }
-#else
-   if (w1 == 0)
-      modelview_pop(1);
-#endif
+   gSPPopMatrix_G64( w1 );
 }
 
 static void uc0_modifyvtx(uint8_t where, uint16_t vtx, uint32_t val)
