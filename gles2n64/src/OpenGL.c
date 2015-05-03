@@ -114,48 +114,7 @@ uint32_t OGL_GetHeightOffset(void)
    return OGL.heightOffset;
 }
 
-bool OGL_Start(void)
-{
-   float f;
-   _initStates();
 
-   //check extensions
-   if ((config.texture.maxAnisotropy>0) && !OGL_IsExtSupported("GL_EXT_texture_filter_anistropic"))
-   {
-      LOG(LOG_WARNING, "Anistropic Filtering is not supported.\n");
-      config.texture.maxAnisotropy = 0;
-   }
-
-   f = 0;
-   glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &f);
-   if (config.texture.maxAnisotropy > ((int)f))
-   {
-      LOG(LOG_WARNING, "Clamping max anistropy to %ix.\n", (int)f);
-      config.texture.maxAnisotropy = (int)f;
-   }
-
-   //Print some info
-   LOG(LOG_VERBOSE, "[gles2n64]: Enable Runfast... \n");
-
-   //We must have a shader bound before binding any textures:
-   Combiner_Init();
-   Combiner_Set(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0), -1);
-   Combiner_Set(EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, 1, 0, 0, 0, SHADE, 0, 0, 0, 1), -1);
-
-   TextureCache_Init();
-
-   memset(OGL.triangles.vertices, 0, VERTBUFF_SIZE * sizeof(SPVertex));
-   memset(OGL.triangles.elements, 0, ELEMBUFF_SIZE * sizeof(GLubyte));
-   OGL.triangles.num = 0;
-
-   OGL.renderingToTexture = false;
-   OGL.renderState = RS_NONE;
-   gSP.changed = gDP.changed = 0xFFFFFFFF;
-   VI.displayNum = 0;
-   glGetError();
-
-   return TRUE;
-}
 
 void OGL_Stop(void)
 {
@@ -1159,4 +1118,69 @@ void OGL_ReadScreen( void *dest, int *width, int *height )
    glReadPixels(0, OGL_GetHeightOffset(),
          OGL_GetScreenWidth(), OGL_GetScreenHeight(),
          GL_RGBA, GL_UNSIGNED_BYTE, dest );
+}
+
+void _setSpecialTexrect(void)
+{
+	const char * name = __RSP.romname;
+   /*
+	if (strstr(name, (const char *)"Beetle") || strstr(name, (const char *)"BEETLE") || strstr(name, (const char *)"HSV")
+		|| strstr(name, (const char *)"DUCK DODGERS") || strstr(name, (const char *)"DAFFY DUCK"))
+		texturedRectSpecial = texturedRectShadowMap;
+	else */ if (strstr(name, (const char *)"Perfect Dark") || strstr(name, (const char *)"PERFECT DARK"))
+		texturedRectSpecial = texturedRectDepthBufferCopy; // See comments to that function!
+	else if (strstr(name, (const char *)"CONKER BFD"))
+		texturedRectSpecial = texturedRectCopyToItself;
+	else if (strstr(name, (const char *)"YOSHI STORY"))
+		texturedRectSpecial = texturedRectBGCopy;
+	else if (strstr(name, (const char *)"PAPER MARIO") || strstr(name, (const char *)"MARIO STORY"))
+		texturedRectSpecial = texturedRectPaletteMod;
+	else if (strstr(name, (const char *)"ZELDA"))
+		texturedRectSpecial = texturedRectMonochromeBackground;
+	else
+		texturedRectSpecial = NULL;
+}
+
+bool OGL_Start(void)
+{
+   float f;
+   _initStates();
+	_setSpecialTexrect();
+
+   //check extensions
+   if ((config.texture.maxAnisotropy>0) && !OGL_IsExtSupported("GL_EXT_texture_filter_anistropic"))
+   {
+      LOG(LOG_WARNING, "Anistropic Filtering is not supported.\n");
+      config.texture.maxAnisotropy = 0;
+   }
+
+   f = 0;
+   glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &f);
+   if (config.texture.maxAnisotropy > ((int)f))
+   {
+      LOG(LOG_WARNING, "Clamping max anistropy to %ix.\n", (int)f);
+      config.texture.maxAnisotropy = (int)f;
+   }
+
+   //Print some info
+   LOG(LOG_VERBOSE, "[gles2n64]: Enable Runfast... \n");
+
+   //We must have a shader bound before binding any textures:
+   Combiner_Init();
+   Combiner_Set(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0), -1);
+   Combiner_Set(EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, 1, 0, 0, 0, SHADE, 0, 0, 0, 1), -1);
+
+   TextureCache_Init();
+
+   memset(OGL.triangles.vertices, 0, VERTBUFF_SIZE * sizeof(SPVertex));
+   memset(OGL.triangles.elements, 0, ELEMBUFF_SIZE * sizeof(GLubyte));
+   OGL.triangles.num = 0;
+
+   OGL.renderingToTexture = false;
+   OGL.renderState = RS_NONE;
+   gSP.changed = gDP.changed = 0xFFFFFFFF;
+   VI.displayNum = 0;
+   glGetError();
+
+   return TRUE;
 }
