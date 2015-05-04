@@ -2,6 +2,8 @@
 #include "vi.h"
 #include "rdp.h"
 
+#include "rdp_common/gdp.h"
+
 static int cmd_cur;
 static int cmd_ptr; /* for 64-bit elements, always <= +0x7FFF */
 
@@ -1113,13 +1115,9 @@ static void set_blend_color(void)
 
 static void set_prim_color(void)
 {
-    min_level          = (cmd_data[cmd_cur + 0].UW32[0] & 0x00001F00) >>(40-32);
-    primitive_lod_frac = (cmd_data[cmd_cur + 0].UW32[0] & 0x000000FF) >>(32-32);
-    prim_color.r       = (cmd_data[cmd_cur + 0].UW32[1] & 0xFF000000) >> 24;
-    prim_color.g       = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FF0000) >> 16;
-    prim_color.b       = (cmd_data[cmd_cur + 0].UW32[1] & 0x0000FF00) >>  8;
-    prim_color.a       = (cmd_data[cmd_cur + 0].UW32[1] & 0x000000FF) >>  0;
-    return;
+   min_level          = (cmd_data[cmd_cur + 0].UW32[0] & 0x00001F00) >>(40-32);
+   primitive_lod_frac = (cmd_data[cmd_cur + 0].UW32[0] & 0x000000FF) >>(32-32);
+   gdp_set_prim_color(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1]);
 }
 
 static void set_env_color(void)

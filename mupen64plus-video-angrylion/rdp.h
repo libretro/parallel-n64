@@ -473,7 +473,6 @@ extern COLOR key_scale;
 extern COLOR key_center;
 extern COLOR fog_color;
 extern COLOR blend_color;
-extern COLOR prim_color;
 extern COLOR env_color;
 
 extern int rdp_pipeline_crashed;
