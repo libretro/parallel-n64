@@ -459,8 +459,6 @@ extern TILE tile[8];
 extern OTHER_MODES other_modes;
 extern COMBINE_MODES combine;
 
-extern COLOR env_color;
-
 extern int rdp_pipeline_crashed;
 
 extern UINT32 z64gl_command;
