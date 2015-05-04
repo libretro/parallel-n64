@@ -51,8 +51,6 @@ INT32 *blender2a_g[2];
 INT32 *blender2a_b[2];
 INT32 *blender2b_a[2];
 
-INT32 k0, k1, k2, k3, k4, k5;
-
 TILE tile[8];
 
 OTHER_MODES other_modes;
@@ -710,7 +708,7 @@ INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
         case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
         case 5:        *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
         case 6:        *input_r = &key_center.r;        *input_g = &key_center.g;        *input_b = &key_center.b;        break;
-        case 7:        *input_r = &k4;                    *input_g = &k4;                    *input_b = &k4;                    break;
+        case 7:        *input_r = &g_gdp.k4;                    *input_g = &g_gdp.k4;                    *input_b = &g_gdp.k4;                    break;
         case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
         {
             *input_r = &zero_color;        *input_g = &zero_color;        *input_b = &zero_color;        break;
@@ -737,7 +735,7 @@ INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
         case 12:    *input_r = &env_color.a;        *input_g = &env_color.a;        *input_b = &env_color.a;        break;
         case 13:    *input_r = &lod_frac;            *input_g = &lod_frac;            *input_b = &lod_frac;            break;
         case 14:    *input_r = &g_gdp.primitive_lod_frac;    *input_g = &g_gdp.primitive_lod_frac;    *input_b = &g_gdp.primitive_lod_frac; break;
-        case 15:    *input_r = &k5;                    *input_g = &k5;                    *input_b = &k5;                    break;
+        case 15:    *input_r = &g_gdp.k5;                    *input_g = &g_gdp.k5;                    *input_b = &g_gdp.k5;                    break;
         case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23:
         case 24: case 25: case 26: case 27: case 28: case 29: case 30: case 31:
         {
@@ -3292,10 +3290,10 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
         }
         else
         {
-            newk0 = SIGN(k0, 9);
-            newk1 = SIGN(k1, 9);
-            newk2 = SIGN(k2, 9);
-            newk3 = SIGN(k3, 9);
+            newk0 = SIGN(g_gdp.k0, 9);
+            newk1 = SIGN(g_gdp.k1, 9);
+            newk2 = SIGN(g_gdp.k2, 9);
+            newk3 = SIGN(g_gdp.k3, 9);
             invk0 = ~newk0; 
             invk1 = ~newk1; 
             invk2 = ~newk2; 
@@ -3347,10 +3345,10 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
         }
         else
         {
-            newk0 = SIGN(k0, 9); 
-            newk1 = SIGN(k1, 9); 
-            newk2 = SIGN(k2, 9); 
-            newk3 = SIGN(k3, 9);
+            newk0 = SIGN(g_gdp.k0, 9); 
+            newk1 = SIGN(g_gdp.k1, 9); 
+            newk2 = SIGN(g_gdp.k2, 9); 
+            newk3 = SIGN(g_gdp.k3, 9);
             invk0 = ~newk0; 
             invk1 = ~newk1; 
             invk2 = ~newk2; 

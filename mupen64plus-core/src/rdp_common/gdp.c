@@ -34,3 +34,14 @@ void gdp_set_fog_color(uint32_t w1)
    g_gdp.fog_color.b = _SHIFTR( w1,  8, 8 );
    g_gdp.fog_color.a = _SHIFTR( w1,  0, 8 );
 }
+
+void gdp_set_convert(uint32_t w0, uint32_t w1)
+{
+   g_gdp.k0  = (w0 & 0x003FE000)  >> 13;
+   g_gdp.k1  = (w0 & 0x00001FF0)  >>  4;
+   g_gdp.k2  = (w0 & 0x0000000F)  <<  5;
+   g_gdp.k2 |= (w1 & 0xF8000000)  >> 27;
+   g_gdp.k3  = (w1 & 0x07FC0000)  >> 18;
+   g_gdp.k4  = (w1 & 0x0003FE00)  >>  9;
+   g_gdp.k5  = (w1 & 0x000001FF)  >>  0;
+}

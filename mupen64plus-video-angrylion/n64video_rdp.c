@@ -765,14 +765,7 @@ static void set_key_r(void)
 
 static void set_convert(void)
 {
-    k0 = (cmd_data[cmd_cur + 0].UW32[0] & 0x003FE000) >> (45 - 32);
-    k1 = (cmd_data[cmd_cur + 0].UW32[0] & 0x00001FF0) >> (36 - 32);
-    k2  = (cmd_data[cmd_cur + 0].UW32[0] & 0x0000000F) << 5;
-    k2 |= (cmd_data[cmd_cur + 0].UW32[1] & 0xF8000000) >> (27 - 0);
-    k3 = (cmd_data[cmd_cur + 0].UW32[1] & 0x07FC0000) >> 18;
-    k4 = (cmd_data[cmd_cur + 0].UW32[1] & 0x0003FE00) >>  9;
-    k5 = (cmd_data[cmd_cur + 0].UW32[1] & 0x000001FF) >>  0;
-    return;
+   gdp_set_convert(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1]);
 }
 
 static void set_scissor(void)

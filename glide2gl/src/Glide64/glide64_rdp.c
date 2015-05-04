@@ -1151,9 +1151,7 @@ static void rdp_setkeyr(uint32_t w0, uint32_t w1)
 
 static void rdp_setconvert(uint32_t w0, uint32_t w1)
 {
-   rdp.K4 = (uint8_t)(w1 >> 9) & 0x1FF;
-   rdp.K5 = (uint8_t)(w1 & 0x1FF);
-   //FRDP("setconvert. K4=%02lx K5=%02lx\n", rdp.K4, rdp.K5);
+   gdp_set_convert(w0, w1);
 }
 
 static void rdp_setscissor(uint32_t w0, uint32_t w1)

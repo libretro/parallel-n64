@@ -32,6 +32,7 @@ struct gdp_global
    gdp_color env_color;
    uint32_t primitive_z;
    uint16_t primitive_delta_z;
+   int32_t k0, k1, k2, k3, k4, k5;
 };
 
 void gdp_set_prim_color(uint32_t w0, uint32_t w1);
