@@ -22,7 +22,7 @@ void microcheck(void)
    FRDP_E ("crc: %08lx\n", uc_crc);
 
    if (log_cb)
-      log_cb(RETRO_LOG_INFO, "Glide64 ucode = %08lx\n", uc_crc);
+      log_cb(RETRO_LOG_INFO, "Glide64 ucode = 0x%04x\n", uc_crc);
 
    old_ucode = settings.ucode;
 

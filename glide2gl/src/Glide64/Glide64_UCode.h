@@ -21,6 +21,7 @@
 #define UCODE_CASTLEVANIA_64                 0x65201989
 #define UCODE_CASTLEVANIA_64_LOD             0x65201989
 #define UCODE_GEX_3_DEEP_COVER_GECKO         0x65201989
+#define UCODE_BOKUJO_MONOGATARI_2            0x65201989
 #define UCODE_AIR_BOARDER_64                 0xe89c2b92
 #define UCODE_WIPEOUT_64                     0xe89c2b92
 #define UCODE_1080_SNOWBOARDING              0x64ed27e5
