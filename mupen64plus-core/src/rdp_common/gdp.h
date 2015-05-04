@@ -48,6 +48,8 @@ void gdp_set_convert(uint32_t w0, uint32_t w1);
 
 void gdp_set_key_r(uint32_t w1);
 
+void gdp_set_key_gb(uint32_t w0, uint32_t w1);
+
 extern struct gdp_global g_gdp;
 
 #ifdef __cplusplus

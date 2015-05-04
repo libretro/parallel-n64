@@ -746,13 +746,8 @@ static void sync_full(void)
 
 static void set_key_gb(void)
 {
-    g_gdp.key_width.g  = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
-    g_gdp.key_width.b  = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
-    g_gdp.key_center.g = (cmd_data[cmd_cur + 0].UW32[1] & 0xFF000000) >> 24;
-    g_gdp.key_scale.g  = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FF0000) >> 16;
-    g_gdp.key_center.b = (cmd_data[cmd_cur + 0].UW32[1] & 0x0000FF00) >>  8;
-    g_gdp.key_scale.b  = (cmd_data[cmd_cur + 0].UW32[1] & 0x000000FF) >>  0;
-    return;
+   gdp_set_key_gb(cmd_data[cmd_cur + 0].UW32[0],
+         cmd_data[cmd_cur + 0].UW32[1]);
 }
 
 static void set_key_r(void)
