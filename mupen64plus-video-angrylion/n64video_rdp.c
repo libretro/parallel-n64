@@ -1109,12 +1109,12 @@ static void set_env_color(void)
 
 static void set_combine(void)
 {
-    combine.sub_a_rgb0 = (cmd_data[cmd_cur + 0].UW32[0] & 0x00F00000) >>(52-32);
-    combine.mul_rgb0   = (cmd_data[cmd_cur + 0].UW32[0] & 0x000F8000) >>(47-32);
-    combine.sub_a_a0   = (cmd_data[cmd_cur + 0].UW32[0] & 0x00007000) >>(44-32);
-    combine.mul_a0     = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000E00) >>(41-32);
-    combine.sub_a_rgb1 = (cmd_data[cmd_cur + 0].UW32[0] & 0x000001E0) >>(37-32);
-    combine.mul_rgb1   = (cmd_data[cmd_cur + 0].UW32[0] & 0x0000001F) >>(32-32);
+    combine.sub_a_rgb0 = (cmd_data[cmd_cur + 0].UW32[0] & 0x00F00000) >> 20;
+    combine.mul_rgb0   = (cmd_data[cmd_cur + 0].UW32[0] & 0x000F8000) >> 15;
+    combine.sub_a_a0   = (cmd_data[cmd_cur + 0].UW32[0] & 0x00007000) >> 12;
+    combine.mul_a0     = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000E00) >>  9;
+    combine.sub_a_rgb1 = (cmd_data[cmd_cur + 0].UW32[0] & 0x000001E0) >>  5;
+    combine.mul_rgb1   = (cmd_data[cmd_cur + 0].UW32[0] & 0x0000001F) >>  0;
     combine.sub_b_rgb0 = (cmd_data[cmd_cur + 0].UW32[1] & 0xF0000000) >> 28;
     combine.sub_b_rgb1 = (cmd_data[cmd_cur + 0].UW32[1] & 0x0F000000) >> 24;
     combine.sub_a_a1   = (cmd_data[cmd_cur + 0].UW32[1] & 0x00E00000) >> 21;
