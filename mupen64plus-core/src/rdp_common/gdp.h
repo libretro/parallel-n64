@@ -20,7 +20,8 @@ extern "C" {
 typedef struct
 {
    uint32_t total;
-   float z, dz;
+   uint32_t z;
+   uint16_t dz;
    int32_t r, g, b, a, l;
 } gdp_color;
 
@@ -35,8 +36,6 @@ struct gdp_global
    gdp_color key_width;
    gdp_color key_scale;
    gdp_color key_center;
-   uint32_t primitive_z;
-   uint16_t primitive_delta_z;
    int32_t k0, k1, k2, k3, k4, k5;
 };
 

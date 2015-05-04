@@ -2505,7 +2505,7 @@ static uint32_t rdp_cmd_data[0x1000];
 
 #define XSCALE(x) ((float)(x)/(1<<18))
 #define YSCALE(y) ((float)(y)/(1<<2))
-#define ZSCALE(z) ((rdp.zsrc == 1) ? (float)(g_gdp.primitive_z) : (float)((uint32_t)(z))/0xffff0000)
+#define ZSCALE(z) ((rdp.zsrc == 1) ? (float)(g_gdp.prim_color.z) : (float)((uint32_t)(z))/0xffff0000)
 #define PERSP_EN  ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE))
 #define WSCALE(z) 1.0f/(PERSP_EN? ((float)((uint32_t)(z) + 0x10000)/0xffff0000) : 1.0f)
 #define CSCALE(c) (((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18)

@@ -22,8 +22,8 @@ void gdp_set_prim_color(uint32_t w0, uint32_t w1)
 
 void gdp_set_prim_depth(uint32_t w1)
 {
-   g_gdp.primitive_z       = _SHIFTR(w1, 16, 16);
-   g_gdp.primitive_delta_z = _SHIFTR(w1,  0, 16);
+   g_gdp.prim_color.z       = _SHIFTR(w1, 16, 16);
+   g_gdp.prim_color.dz      = _SHIFTR(w1,  0, 16);
 }
 
 void gdp_set_fog_color(uint32_t w1)
@@ -42,8 +42,8 @@ void gdp_set_fill_color(uint32_t w1)
    g_gdp.fill_color.g   = _SHIFTR( w1, 16, 8 );
    g_gdp.fill_color.b   = _SHIFTR( w1,  8, 8 );
    g_gdp.fill_color.a   = _SHIFTR( w1,  0, 8 );
-   g_gdp.fill_color.z   = (float)_SHIFTR( w1,  2, 14 );
-   g_gdp.fill_color.dz  = (float)_SHIFTR( w1,  0,  2 );
+   g_gdp.fill_color.z   = _SHIFTR( w1,  2, 14 );
+   g_gdp.fill_color.dz  = _SHIFTR( w1,  0,  2 );
 }
 
 void gdp_set_convert(uint32_t w0, uint32_t w1)

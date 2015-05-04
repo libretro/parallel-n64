@@ -775,7 +775,7 @@ static void set_prim_depth(void)
 {
    gdp_set_prim_depth(cmd_data[cmd_cur + 0].UW32[1]);
 
-   g_gdp.primitive_z = (g_gdp.primitive_z & 0x7FFF) << 16; /* angrylion does this why? */
+   g_gdp.prim_color.z = (g_gdp.prim_color.z & 0x7FFF) << 16; /* angrylion does this why? */
 }
 
 static void set_other_modes(void)
