@@ -48,6 +48,8 @@ void gdp_set_convert(uint32_t w0, uint32_t w1)
 
 void gdp_set_key_gb(uint32_t w0, uint32_t w1)
 {
+   g_gdp.key_scale.total = (g_gdp.key_scale.total & 0xFF0000FF) | (((w1 >> 16) & 0xFF) << 16)   | (((w1 & 0xFF)) << 8);
+   g_gdp.key_center.total = (g_gdp.key_center.total & 0xFF0000FF) | (((w1 >> 24) & 0xFF) << 16) | (((w1 >> 8) & 0xFF) << 8);
    g_gdp.key_width.g  = _SHIFTR( w0, 12, 12 );
    g_gdp.key_width.b  = _SHIFTR( w0,  0, 12 );
    g_gdp.key_center.g = _SHIFTR( w1, 24,  8 );
@@ -58,7 +60,9 @@ void gdp_set_key_gb(uint32_t w0, uint32_t w1)
 
 void gdp_set_key_r(uint32_t w1)
 {
-   g_gdp.key_center.r = _SHIFTR( w1,  8,  8 );
-   g_gdp.key_width.r  = _SHIFTR( w1,  0,  8 );
-   g_gdp.key_scale.r  = _SHIFTR( w1, 16, 12 );
+   g_gdp.key_scale.total  = (g_gdp.key_scale.total & 0x00FFFFFF)  | ((w1 & 0xFF) << 24);
+   g_gdp.key_center.total = (g_gdp.key_center.total & 0x00FFFFFF) | (((w1 >> 8) & 0xFF) << 24);
+   g_gdp.key_center.r     = _SHIFTR( w1,  8,  8 );
+   g_gdp.key_width.r      = _SHIFTR( w1,  0,  8 );
+   g_gdp.key_scale.r      = _SHIFTR( w1, 16, 12 );
 }

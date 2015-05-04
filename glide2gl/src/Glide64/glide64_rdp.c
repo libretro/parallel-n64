@@ -1130,23 +1130,12 @@ static void rdp_fullsync(uint32_t w0, uint32_t w1)
 
 static void rdp_setkeygb(uint32_t w0, uint32_t w1)
 {
-   rdp.SCALE = (rdp.SCALE & 0xFF0000FF) | (((w1 >> 16) & 0xFF) << 16)   | (((w1 & 0xFF)) << 8);
-   rdp.CENTER = (rdp.CENTER & 0xFF0000FF) | (((w1 >> 24) & 0xFF) << 16) | (((w1 >> 8) & 0xFF) << 8);
-   rdp.key_width[1]  = (w0 & 0x00FFF000) >> 12;
-   rdp.key_width[2]  = (w0 & 0x00000FFF) >>  0;
-   rdp.key_center[1] = (w1 & 0xFF000000) >> 24;
-   rdp.key_center[2] = (w1 & 0x0000FF00) >>  8;
-   rdp.key_scale[1]  = (w1 & 0x00FF0000) >> 16;
-   rdp.key_scale[2]  = (w1 & 0x000000FF) >>  0;
+   gdp_set_key_gb(w0, w1);
 }
 
 static void rdp_setkeyr(uint32_t w0, uint32_t w1)
 {
-   rdp.SCALE  = (rdp.SCALE & 0x00FFFFFF)  | ((w1 & 0xFF) << 24);
-   rdp.CENTER = (rdp.CENTER & 0x00FFFFFF) | (((w1 >> 8) & 0xFF) << 24);
-   rdp.key_width[0]  = (w1 & 0x0FFF0000) >> 16;
-   rdp.key_center[0] = (w1 & 0x0000FF00) >>  8;
-   rdp.key_scale[0]  = (w1 & 0x000000FF) >>  0;
+   gdp_set_key_r(w1);
 }
 
 static void rdp_setconvert(uint32_t w0, uint32_t w1)
