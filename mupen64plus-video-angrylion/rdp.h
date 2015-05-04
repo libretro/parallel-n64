@@ -173,14 +173,23 @@ typedef struct {
 } FAKETILE;
 
 typedef struct {
-    int format;
-    int size;
-    int line;
-    int tmem;
-    int palette;
-    int ct, mt, cs, ms;
-    int mask_t, shift_t, mask_s, shift_s;
-    INT32 sl, tl, sh, th;
+    int format;            /* format: ARGB, IA, ... */
+    int size;              /* size: 4, 8, 16, or 32-bit */
+    int line;              /* size of one row (x axis) in 64 bit words */
+    int tmem;              /* location in texture memory (in 64 bit words, max 512 (4MB)) */
+    int palette;           /* palette # to use */
+    int ct;                /* clamp_t */
+    int mt;                /* mirror_t */
+    int cs;                /* clamp_s */
+    int ms;                /* mirror_s */
+    int mask_t;            /* mask to wrap around (y axis) */
+    int shift_t;           /* ??? (scaling) */
+    int mask_s;            /* mask to wrap around (x axis) */
+    int shift_s;           /* ??? (scaling) */
+    INT32 sl;              /* lr_s - lower right s coordinate */
+    INT32 tl;              /* lr_t - lower right t coordinate */
+    INT32 sh;              /* ul_s - upper left  s coordinate */
+    INT32 th;              /* ul_t - upper left  t coordinate */
     FAKETILE f;
 } TILE;
 
@@ -413,10 +422,11 @@ extern i32 spans_d_stwz_dy[4];
 extern int scfield;
 extern int sckeepodd;
 
-extern int ti_format;
-extern int ti_size;
-extern int ti_width;
-extern UINT32 ti_address;
+/* texture image */
+extern int ti_format;         /* format: ARGB, IA, ... */
+extern int ti_size;           /* size: 4, 8, 16, or 32-bit */
+extern int ti_width;          /* used in rdp_settextureimage */
+extern UINT32 ti_address;     /* address in RDRAM to load the texture from */
 
 extern int fb_format;
 extern int fb_size;
