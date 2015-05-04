@@ -14190,7 +14190,6 @@ void CombineBlender(void)
             A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE_MINUS_SRC_ALPHA);
             break;
          case 0xf550: //clr_fog * a_fog + clr_mem * (1-a)
-			case 0x0550: // bomberman 64
 			case 0x0D18: //clr_in * a_fog + clr_mem * (1-a)
             A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
             {
