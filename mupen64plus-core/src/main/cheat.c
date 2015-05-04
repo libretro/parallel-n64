@@ -39,6 +39,7 @@
 
 /* Local definitions */
 #define CHEAT_CODE_MAGIC_VALUE 0xDEAD0000
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 typedef struct cheat_code
 {
@@ -62,24 +63,24 @@ static LIST_HEAD(active_cheats);
 extern unsigned int frame_dupe;
 
 /* Private functions */
-static unsigned short read_address_16bit(unsigned int address)
+static uint16_t read_address_16bit(unsigned int address)
 {
-    return *(unsigned short *)(((unsigned char*)g_rdram + ((address & 0xFFFFFF)^S16)));
+    return *(uint16_t*)(((uint8_t*)g_rdram + ((address & 0xFFFFFF)^S16)));
 }
 
-static unsigned char read_address_8bit(unsigned int address)
+static uint8_t read_address_8bit(unsigned int address)
 {
     return *(unsigned char *)(((unsigned char*)g_rdram + ((address & 0xFFFFFF)^S8)));
 }
 
 static void update_address_16bit(unsigned int address, unsigned short new_value)
 {
-    *(unsigned short *)(((unsigned char*)g_rdram + ((address & 0xFFFFFF)^S16))) = new_value;
+    *(uint16_t *)(((uint8_t*)g_rdram + ((address & 0xFFFFFF)^S16))) = new_value;
 }
 
 static void update_address_8bit(unsigned int address, unsigned char new_value)
 {
-     *(unsigned char *)(((unsigned char*)g_rdram + ((address & 0xFFFFFF)^S8))) = new_value;
+     *(uint8_t *)(((uint8_t*)g_rdram + ((address & 0xFFFFFF)^S8))) = new_value;
 }
 
 static int address_equal_to_8bit(unsigned int address, unsigned char value)
@@ -201,6 +202,7 @@ void cheat_apply_cheats(int entry)
     cheat_code_t *code;
     int skip;
     int execute_next;
+
 
 #if 0
    if ((
