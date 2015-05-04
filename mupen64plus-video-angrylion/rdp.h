@@ -166,34 +166,6 @@ typedef struct {
 } RECTANGLE;
 
 typedef struct {
-    int clampdiffs, clampdifft;
-    int clampens, clampent;
-    int masksclamped, masktclamped;
-    int notlutswitch, tlutswitch;
-} FAKETILE;
-
-typedef struct {
-    int format;            /* format: ARGB, IA, ... */
-    int size;              /* size: 4, 8, 16, or 32-bit */
-    int line;              /* size of one row (x axis) in 64 bit words */
-    int tmem;              /* location in texture memory (in 64 bit words, max 512 (4MB)) */
-    int palette;           /* palette # to use */
-    int ct;                /* clamp_t */
-    int mt;                /* mirror_t */
-    int cs;                /* clamp_s */
-    int ms;                /* mirror_s */
-    int mask_t;            /* mask to wrap around (y axis) */
-    int shift_t;           /* ??? (scaling) */
-    int mask_s;            /* mask to wrap around (x axis) */
-    int shift_s;           /* ??? (scaling) */
-    INT32 sl;              /* lr_s - lower right s coordinate */
-    INT32 tl;              /* lr_t - lower right t coordinate */
-    INT32 sh;              /* ul_s - upper left  s coordinate */
-    INT32 th;              /* ul_t - upper left  t coordinate */
-    FAKETILE f;
-} TILE;
-
-typedef struct {
     int stalederivs;
     int dolod;
     int partialreject_1cycle; 
@@ -464,7 +436,6 @@ extern INT32 *blender2a_b[2];
 extern INT32 *blender2b_a[2];
 
 extern RECTANGLE __clip;
-extern TILE tile[8];
 
 extern OTHER_MODES other_modes;
 extern COMBINE_MODES combine;

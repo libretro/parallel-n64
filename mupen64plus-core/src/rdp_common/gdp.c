@@ -14,7 +14,7 @@ void gdp_set_prim_color(uint32_t w0, uint32_t w1)
    g_gdp.primitive_lod_min  = _SHIFTL( w0,  8, 8 );
 }
 
-void gdp_set_env_color(uint32_t w0, uint32_t w1)
+void gdp_set_env_color(uint32_t w1)
 {
    g_gdp.env_color.total =  w1;
    g_gdp.env_color.r     = _SHIFTR( w1, 24, 8);
@@ -88,4 +88,25 @@ void gdp_set_key_r(uint32_t w1)
    g_gdp.key_center.r     = _SHIFTR( w1,  8,  8 );
    g_gdp.key_width.r      = _SHIFTR( w1,  0,  8 );
    g_gdp.key_scale.r      = _SHIFTR( w1, 16, 12 );
+}
+
+int32_t gdp_set_tile(uint32_t w0, uint32_t w1)
+{
+   int32_t tilenum             = (w1 & 0x07000000) >> 24;
+
+   g_gdp.tile[tilenum].format  = (w0 & 0x00E00000) >> (53 - 32);
+   g_gdp.tile[tilenum].size    = (w0 & 0x00180000) >> (51 - 32);
+   g_gdp.tile[tilenum].line    = (w0 & 0x0003FE00) >> (41 - 32);
+   g_gdp.tile[tilenum].tmem    = (w0 & 0x000001FF) >> (32 - 32);
+   g_gdp.tile[tilenum].palette = (w1 & 0x00F00000) >> (20 -  0);
+   g_gdp.tile[tilenum].ct      = (w1 & 0x00080000) >> (19 -  0);
+   g_gdp.tile[tilenum].mt      = (w1 & 0x00040000) >> (18 -  0);
+   g_gdp.tile[tilenum].mask_t  = (w1 & 0x0003C000) >> (14 -  0);
+   g_gdp.tile[tilenum].shift_t = (w1 & 0x00003C00) >> (10 -  0);
+   g_gdp.tile[tilenum].cs      = (w1 & 0x00000200) >> ( 9 -  0);
+   g_gdp.tile[tilenum].ms      = (w1 & 0x00000100) >> ( 8 -  0);
+   g_gdp.tile[tilenum].mask_s  = (w1 & 0x000000F0) >> ( 4 -  0);
+   g_gdp.tile[tilenum].shift_s = (w1 & 0x0000000F) >> ( 0 -  0);
+
+   return tilenum;
 }

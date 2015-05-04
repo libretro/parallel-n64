@@ -850,10 +850,10 @@ static void set_tile_size(void)
     sh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> (12 -  0);
     th      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >> ( 0 -  0);
 
-    tile[tilenum].sl = sl;
-    tile[tilenum].tl = tl;
-    tile[tilenum].sh = sh;
-    tile[tilenum].th = th;
+    g_gdp.tile[tilenum].sl = sl;
+    g_gdp.tile[tilenum].tl = tl;
+    g_gdp.tile[tilenum].sh = sh;
+    g_gdp.tile[tilenum].th = th;
     calculate_clamp_diffs(tilenum);
     return;
 }
@@ -869,10 +869,10 @@ static void load_block(void)
     const int dxt     = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >> ( 0- 0);
     const int tlclamped = tl & 0x3FF;
 
-    tile[tilenum].sl = sl;
-    tile[tilenum].tl = tl;
-    tile[tilenum].sh = sh;
-    tile[tilenum].th = dxt;
+    g_gdp.tile[tilenum].sl = sl;
+    g_gdp.tile[tilenum].tl = tl;
+    g_gdp.tile[tilenum].sh = sh;
+    g_gdp.tile[tilenum].th = dxt;
 
     calculate_clamp_diffs(tilenum);
 
@@ -911,26 +911,9 @@ static void load_tile(void)
 
 static void set_tile(void)
 {
-    const DP_FIFO cmd_fifo = cmd_data[cmd_cur + 0];
-    const int tilenum     = (cmd_fifo.UW32[1] & 0x07000000) >> 24;
-    
-    tile[tilenum].format  = (cmd_fifo.UW32[0] & 0x00E00000) >> (53 - 32);
-    tile[tilenum].size    = (cmd_fifo.UW32[0] & 0x00180000) >> (51 - 32);
-    tile[tilenum].line    = (cmd_fifo.UW32[0] & 0x0003FE00) >> (41 - 32);
-    tile[tilenum].tmem    = (cmd_fifo.UW32[0] & 0x000001FF) >> (32 - 32);
- /* tilenum               = (cmd_fifo.UW & 0x0000000007000000) >> 24; */
-    tile[tilenum].palette = (cmd_fifo.UW32[1] & 0x00F00000) >> (20 -  0);
-    tile[tilenum].ct      = (cmd_fifo.UW32[1] & 0x00080000) >> (19 -  0);
-    tile[tilenum].mt      = (cmd_fifo.UW32[1] & 0x00040000) >> (18 -  0);
-    tile[tilenum].mask_t  = (cmd_fifo.UW32[1] & 0x0003C000) >> (14 -  0);
-    tile[tilenum].shift_t = (cmd_fifo.UW32[1] & 0x00003C00) >> (10 -  0);
-    tile[tilenum].cs      = (cmd_fifo.UW32[1] & 0x00000200) >> ( 9 -  0);
-    tile[tilenum].ms      = (cmd_fifo.UW32[1] & 0x00000100) >> ( 8 -  0);
-    tile[tilenum].mask_s  = (cmd_fifo.UW32[1] & 0x000000F0) >> ( 4 -  0);
-    tile[tilenum].shift_s = (cmd_fifo.UW32[1] & 0x0000000F) >> ( 0 -  0);
-
-    calculate_tile_derivs(tilenum);
-    return;
+   int32_t tilenum = gdp_set_tile(
+         cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1]);
+   calculate_tile_derivs(tilenum);
 }
 
 static void fill_rect(void)
