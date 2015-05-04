@@ -785,9 +785,9 @@ static void cc_t0(void)
                GR_COMBINE_FACTOR_ONE,
                GR_COMBINE_LOCAL_CONSTANT,
                GR_COMBINE_OTHER_TEXTURE);
-         r = rdp.blend_color_sep[0] * g_gdp.fog_color.a;
-         g = rdp.blend_color_sep[1] * g_gdp.fog_color.a;
-         b = rdp.blend_color_sep[2] * g_gdp.fog_color.a;
+         r = g_gdp.blend_color.r * g_gdp.fog_color.a;
+         g = g_gdp.blend_color.g * g_gdp.fog_color.a;
+         b = g_gdp.blend_color.b * g_gdp.fog_color.a;
          rgb = (r << 24) | (g << 16) | (b << 8);
          cmb.ccolor= (rgb) & 0xFFFFFF00;
          return;
@@ -6964,7 +6964,7 @@ static void cc__env_inter_prim_using_t0__mul_shade()
       MOD_0 (TMOD_COL2_INTER__COL_INTER_COL1_USING_TEX__USING_TEXA);
       MOD_0_COL (rdp.env_color & 0xFFFFFF00);
       MOD_0_COL1 (g_gdp.prim_color.total & 0xFFFFFF00);
-      MOD_0_COL2 (rdp.blend_color & 0xFFFFFF00);
+      MOD_0_COL2 (g_gdp.blend_color.total & 0xFFFFFF00);
       USE_T0();
       return;
    }

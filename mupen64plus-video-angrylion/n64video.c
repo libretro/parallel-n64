@@ -54,7 +54,6 @@ TILE tile[8];
 OTHER_MODES other_modes;
 COMBINE_MODES combine;
 
-COLOR blend_color;
 COLOR env_color;
 
 int rdp_pipeline_crashed;
@@ -1155,7 +1154,7 @@ INLINE void SET_BLENDER_INPUT(int cycle, int which, INT32 **input_r, INT32 **inp
 
         case 2:
         {
-            *input_r = &blend_color.r;        *input_g = &blend_color.g;        *input_b = &blend_color.b;
+            *input_r = &g_gdp.blend_color.r;        *input_g = &g_gdp.blend_color.g;        *input_b = &g_gdp.blend_color.b;
             break;
         }
 
@@ -4749,7 +4748,7 @@ NOINLINE void render_spans_copy(int start, int end, int tilenum, int flip)
             else if (fb_size == PIXEL_SIZE_8BIT)
             {
                 alphamask = 0;
-                threshold = (other_modes.dither_alpha_en) ? (irand() & 0xff) : blend_color.a;
+                threshold = (other_modes.dither_alpha_en) ? (irand() & 0xff) : g_gdp.blend_color.a;
                 if (other_modes.dither_alpha_en)
                 {
                     currthreshold = threshold;
@@ -5310,7 +5309,7 @@ STRICTINLINE int alpha_compare(INT32 comb_alpha)
     else
     {
         if (!other_modes.dither_alpha_en)
-            threshold = blend_color.a;
+            threshold = g_gdp.blend_color.a;
         else
             threshold = irand() & 0xff;
         if (comb_alpha >= threshold)

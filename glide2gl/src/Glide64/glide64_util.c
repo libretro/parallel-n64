@@ -1171,9 +1171,9 @@ void update(void)
       {
          rdp.update ^= UPDATE_ALPHA_COMPARE;
 
-         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 1 && !(rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && (!(rdp.othermode_l & RDP_FORCE_BLEND) || (rdp.blend_color_sep[3])))
+         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 1 && !(rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && (!(rdp.othermode_l & RDP_FORCE_BLEND) || (g_gdp.blend_color.a)))
          {
-            uint8_t reference = (uint8_t)rdp.blend_color_sep[3];
+            uint8_t reference = (uint8_t)g_gdp.blend_color.a;
             grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER, reference, 1);
             FRDP (" |- alpha compare: blend: %02lx\n", reference);
          }
@@ -1184,7 +1184,7 @@ void update(void)
                bool cond_set = (rdp.othermode_l & 0x5000) == 0x5000;
                grAlphaTestFunction (!cond_set ? GR_CMP_GEQUAL : GR_CMP_GREATER, 0x20, !cond_set ? 1 : 0);
                if (cond_set)
-                  grAlphaTestReferenceValue (((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3) ? (uint8_t)rdp.blend_color_sep[3] : 0x00);
+                  grAlphaTestReferenceValue (((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3) ? (uint8_t)g_gdp.blend_color.a : 0x00);
             }
             else
             {

@@ -5,19 +5,13 @@ struct gdp_global g_gdp;
 
 void gdp_set_prim_color(uint32_t w0, uint32_t w1)
 {
-   int32_t m = _SHIFTL( w0,  8, 8 );
-   int32_t l = _SHIFTL( w0,  0, 8 );
-   int32_t r = _SHIFTR( w1, 24, 8 );
-   int32_t g = _SHIFTR( w1, 16, 8 );
-   int32_t b = _SHIFTR( w1,  8, 8 );
-   int32_t a = _SHIFTR( w1,  0, 8 );
-   g_gdp.prim_color.r       = r;
-   g_gdp.prim_color.g       = g;
-   g_gdp.prim_color.b       = b;
-   g_gdp.prim_color.a       = a;
-   g_gdp.prim_color.total   = w1;
-   g_gdp.primitive_lod_frac = l;
-   g_gdp.primitive_lod_min  = m;
+   g_gdp.prim_color.total   =  w1;
+   g_gdp.prim_color.r       = _SHIFTR( w1, 24, 8 );
+   g_gdp.prim_color.g       = _SHIFTR( w1, 16, 8 );
+   g_gdp.prim_color.b       = _SHIFTR( w1,  8, 8 );
+   g_gdp.prim_color.a       = _SHIFTR( w1,  0, 8 );
+   g_gdp.primitive_lod_frac = _SHIFTL( w0,  0, 8 );
+   g_gdp.primitive_lod_min  = _SHIFTL( w0,  8, 8 );
 }
 
 void gdp_set_prim_depth(uint32_t w1)
@@ -28,11 +22,20 @@ void gdp_set_prim_depth(uint32_t w1)
 
 void gdp_set_fog_color(uint32_t w1)
 {
-   g_gdp.fog_color.total = w1;
-   g_gdp.fog_color.r = _SHIFTR( w1, 24, 8 );
-   g_gdp.fog_color.g = _SHIFTR( w1, 16, 8 );
-   g_gdp.fog_color.b = _SHIFTR( w1,  8, 8 );
-   g_gdp.fog_color.a = _SHIFTR( w1,  0, 8 );
+   g_gdp.fog_color.total =  w1;
+   g_gdp.fog_color.r     = _SHIFTR( w1, 24, 8 );
+   g_gdp.fog_color.g     = _SHIFTR( w1, 16, 8 );
+   g_gdp.fog_color.b     = _SHIFTR( w1,  8, 8 );
+   g_gdp.fog_color.a     = _SHIFTR( w1,  0, 8 );
+}
+
+void gdp_set_blend_color(uint32_t w1)
+{
+   g_gdp.blend_color.total = w1;
+   g_gdp.blend_color.r = (w1 & 0xFF000000) >> 24;
+   g_gdp.blend_color.g = (w1 & 0x00FF0000) >> 16;
+   g_gdp.blend_color.b = (w1 & 0x0000FF00) >>  8;
+   g_gdp.blend_color.a = (w1 & 0x000000FF) >>  0;
 }
 
 void gdp_set_fill_color(uint32_t w1)

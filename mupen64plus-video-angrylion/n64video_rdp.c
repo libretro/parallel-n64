@@ -1085,11 +1085,7 @@ static void set_fog_color(void)
 
 static void set_blend_color(void)
 {
-    blend_color.r = (cmd_data[cmd_cur + 0].UW32[1] & 0xFF000000) >> 24;
-    blend_color.g = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FF0000) >> 16;
-    blend_color.b = (cmd_data[cmd_cur + 0].UW32[1] & 0x0000FF00) >>  8;
-    blend_color.a = (cmd_data[cmd_cur + 0].UW32[1] & 0x000000FF) >>  0;
-    return;
+   gdp_set_blend_color(cmd_data[cmd_cur + 0].UW32[1]);
 }
 
 static void set_prim_color(void)

@@ -31,6 +31,7 @@ struct gdp_global
    int32_t primitive_lod_frac;
    gdp_color prim_color;
    gdp_color fill_color;
+   gdp_color blend_color;
    gdp_color fog_color;
    gdp_color env_color;
    gdp_color key_width;
@@ -46,6 +47,8 @@ void gdp_set_prim_depth(uint32_t w1);
 void gdp_set_fill_color(uint32_t w1);
 
 void gdp_set_fog_color(uint32_t w1);
+
+void gdp_set_blend_color(uint32_t w1);
 
 void gdp_set_convert(uint32_t w0, uint32_t w1);
 
