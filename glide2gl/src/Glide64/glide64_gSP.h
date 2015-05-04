@@ -245,7 +245,7 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
          if (rdp.geom_mode & G_SHADE)
             glideSetVertexFlatShading(v, vtx, rdp.cmd1);
          else
-            glideSetVertexPrimShading(v, rdp.prim_color);
+            glideSetVertexPrimShading(v, g_gdp.prim_color.total);
       }
    }
 

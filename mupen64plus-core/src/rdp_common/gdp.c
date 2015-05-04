@@ -14,5 +14,6 @@ void gdp_set_prim_color(uint32_t w0, uint32_t w1)
    g_gdp.prim_color.g       = g;
    g_gdp.prim_color.b       = b;
    g_gdp.prim_color.a       = a;
+   g_gdp.prim_color.total   = w1;
 }
 

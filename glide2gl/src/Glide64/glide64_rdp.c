@@ -688,9 +688,9 @@ static void pm_palette_mod(void)
    envg = (uint8_t)(rdp.env_color_sep[1] * 0.0039215689f * 31.0f);
    envb = (uint8_t)(rdp.env_color_sep[2] * 0.0039215689f * 31.0f);
    env16 = (uint16_t)((envr<<11)|(envg<<6)|(envb<<1)|1);
-   prmr = (uint8_t)(rdp.prim_color_sep[0] * 0.0039215689f * 31.0f);
-   prmg = (uint8_t)(rdp.prim_color_sep[1] * 0.0039215689f * 31.0f);
-   prmb = (uint8_t)(rdp.prim_color_sep[2] * 0.0039215689f * 31.0f);
+   prmr = (uint8_t)(g_gdp.prim_color.r * 0.0039215689f * 31.0f);
+   prmg = (uint8_t)(g_gdp.prim_color.g * 0.0039215689f * 31.0f);
+   prmb = (uint8_t)(g_gdp.prim_color.b * 0.0039215689f * 31.0f);
    prim16 = (uint16_t)((prmr << 11)|(prmg << 6)|(prmb << 1)|1);
    dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
 
@@ -1740,11 +1740,7 @@ static void rdp_setblendcolor(uint32_t w0, uint32_t w1)
 
 static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 {
-   rdp.prim_color = w1;
-   rdp.prim_color_sep[0] = (w1 & 0xFF000000) >> 24;
-   rdp.prim_color_sep[1] = (w1 & 0x00FF0000) >> 16;
-   rdp.prim_color_sep[2] = (w1 & 0x0000FF00) >> 8;
-   rdp.prim_color_sep[3] = (w1 & 0x000000FF);
+   gdp_set_prim_color(w0, w1);
    rdp.prim_lodmin = (w0 >> 8) & 0xFF;
    rdp.prim_lodfrac = max(w0 & 0xFF, rdp.prim_lodmin);
    rdp.update |= UPDATE_COMBINE;

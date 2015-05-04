@@ -40,6 +40,7 @@
 #ifndef RDP_H
 #define RDP_H
 
+#include "rdp_common/gdp.h"
 #include "Gfx_1.3.h"
 
 extern uint32_t frame_count; // frame counter
@@ -616,8 +617,6 @@ struct RDP
    uint32_t fog_color;
    int32_t  fog_color_sep[4];
    uint32_t fill_color;
-   uint32_t prim_color;
-   int32_t  prim_color_sep[4];
    uint32_t blend_color;
    int32_t  blend_color_sep[4];
    uint32_t env_color;
@@ -862,10 +861,10 @@ static INLINE void glideSetVertexFlatShading(VERTEX *v, VERTEX **vtx, uint32_t w
 
 static INLINE void glideSetVertexPrimShading(VERTEX *v, uint32_t prim_color)
 {
-   v->r = (uint8_t)rdp.prim_color_sep[0];
-   v->g = (uint8_t)rdp.prim_color_sep[1];
-   v->b = (uint8_t)rdp.prim_color_sep[2];
-   v->a = (uint8_t)rdp.prim_color_sep[3];
+   v->r = (uint8_t)g_gdp.prim_color.r;
+   v->g = (uint8_t)g_gdp.prim_color.g;
+   v->b = (uint8_t)g_gdp.prim_color.b;
+   v->a = (uint8_t)g_gdp.prim_color.a;
 }
 
 static INLINE uint32_t vi_integer_sqrt(uint32_t a)
