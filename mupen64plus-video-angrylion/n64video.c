@@ -22,7 +22,6 @@ UINT32 zb_address;
 
 UINT32 max_level;
 INT32 min_level;
-INT32 primitive_lod_frac;
 
 UINT32 primitive_z;
 UINT16 primitive_delta_z;
@@ -742,7 +741,7 @@ INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
         case 11:    *input_r = &shade_color.a;        *input_g = &shade_color.a;        *input_b = &shade_color.a;        break;
         case 12:    *input_r = &env_color.a;        *input_g = &env_color.a;        *input_b = &env_color.a;        break;
         case 13:    *input_r = &lod_frac;            *input_g = &lod_frac;            *input_b = &lod_frac;            break;
-        case 14:    *input_r = &primitive_lod_frac;    *input_g = &primitive_lod_frac;    *input_b = &primitive_lod_frac; break;
+        case 14:    *input_r = &g_gdp.primitive_lod_frac;    *input_g = &g_gdp.primitive_lod_frac;    *input_b = &g_gdp.primitive_lod_frac; break;
         case 15:    *input_r = &k5;                    *input_g = &k5;                    *input_b = &k5;                    break;
         case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23:
         case 24: case 25: case 26: case 27: case 28: case 29: case 30: case 31:
@@ -792,7 +791,7 @@ INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code)
         case 3:        *input = &g_gdp.prim_color.a; break;
         case 4:        *input = &shade_color.a; break;
         case 5:        *input = &env_color.a; break;
-        case 6:        *input = &primitive_lod_frac; break;
+        case 6:        *input = &g_gdp.primitive_lod_frac; break;
         case 7:        *input = &zero_color; break;
     }
 }

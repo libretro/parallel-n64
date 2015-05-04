@@ -626,7 +626,7 @@ struct RDP
    int32_t  key_center[4];
    int32_t  key_width[4];
    uint32_t CENTER;
-   uint32_t prim_lodmin, prim_lodfrac;
+   uint32_t prim_lodmin;
    uint16_t prim_depth;
    uint16_t prim_dz;
    uint8_t K4;

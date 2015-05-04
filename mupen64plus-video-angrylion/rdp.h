@@ -426,7 +426,6 @@ extern UINT32 zb_address;
 
 extern UINT32 max_level;
 extern INT32 min_level;
-extern INT32 primitive_lod_frac;
 
 extern UINT32 primitive_z;
 extern UINT16 primitive_delta_z;

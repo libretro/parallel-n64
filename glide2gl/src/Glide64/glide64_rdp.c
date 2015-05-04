@@ -1742,7 +1742,6 @@ static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 {
    gdp_set_prim_color(w0, w1);
    rdp.prim_lodmin = (w0 >> 8) & 0xFF;
-   rdp.prim_lodfrac = max(w0 & 0xFF, rdp.prim_lodmin);
    rdp.update |= UPDATE_COMBINE;
 
    //FRDP("setprimcolor: %08lx, lodmin: %d, lodfrac: %d\n", rdp.cmd1, rdp.prim_lodmin, rdp.prim_lodfrac);
