@@ -1115,7 +1115,6 @@ static void set_blend_color(void)
 
 static void set_prim_color(void)
 {
-   min_level          = (cmd_data[cmd_cur + 0].UW32[0] & 0x00001F00) >>(40-32);
    gdp_set_prim_color(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1]);
 }
 

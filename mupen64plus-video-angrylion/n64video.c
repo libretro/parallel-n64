@@ -21,7 +21,6 @@ UINT32 fb_address;
 UINT32 zb_address;
 
 UINT32 max_level;
-INT32 min_level;
 
 UINT32 primitive_z;
 UINT16 primitive_delta_z;
@@ -6841,8 +6840,8 @@ static void tclod_2cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w,
         
         if ((lod & 0x4000) || lodclamp)
             lod = 0x7fff;
-        else if (lod < min_level)
-            lod = min_level;
+        else if (lod < g_gdp.primitive_lod_min)
+            lod = g_gdp.primitive_lod_min;
                         
         magnify = (lod < 32) ? 1: 0;
         l_tile =  log2table[(lod >> 5) & 0xff];
@@ -7146,8 +7145,8 @@ static void tclod_1cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w,
         
         if ((lod & 0x4000) || lodclamp)
             lod = 0x7fff;
-        else if (lod < min_level)
-            lod = min_level;
+        else if (lod < g_gdp.primitive_lod_min)
+            lod = g_gdp.primitive_lod_min;
                     
         magnify = (lod < 32) ? 1: 0;
         l_tile =  log2table[(lod >> 5) & 0xff];
@@ -7213,8 +7212,8 @@ static void tclod_copy(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w, INT32 
 
         if ((lod & 0x4000) || lodclamp)
             lod = 0x7fff;
-        else if (lod < min_level)
-            lod = min_level;
+        else if (lod < g_gdp.primitive_lod_min)
+            lod = g_gdp.primitive_lod_min;
                         
         magnify = (lod < 32) ? 1: 0;
         l_tile =  log2table[(lod >> 5) & 0xff];
@@ -7346,8 +7345,8 @@ STRICTINLINE void lodfrac_lodtile_signals(int lodclamp, INT32 lod, UINT32* l_til
     
     if ((lod & 0x4000) || lodclamp)
         lod = 0x7fff;
-    else if (lod < min_level)
-        lod = min_level;
+    else if (lod < g_gdp.primitive_lod_min)
+        lod = g_gdp.primitive_lod_min;
                         
     mag = (lod < 32) ? 1: 0;
     ltil=  log2table[(lod >> 5) & 0xff];

@@ -25,6 +25,7 @@ typedef struct
 
 struct gdp_global
 {
+   int32_t primitive_lod_min;
    int32_t primitive_lod_frac;
    gdp_color prim_color;
    gdp_color env_color;
