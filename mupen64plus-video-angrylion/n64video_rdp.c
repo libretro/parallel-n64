@@ -842,20 +842,10 @@ static void set_other_modes(void)
 
 static void set_tile_size(void)
 {
-    int sl, tl, tilenum, sh, th;
-
-    sl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> (44 - 32);
-    tl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >> (32 - 32);
-    tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> (24 -  0);
-    sh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> (12 -  0);
-    th      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >> ( 0 -  0);
-
-    g_gdp.tile[tilenum].sl = sl;
-    g_gdp.tile[tilenum].tl = tl;
-    g_gdp.tile[tilenum].sh = sh;
-    g_gdp.tile[tilenum].th = th;
-    calculate_clamp_diffs(tilenum);
-    return;
+   uint32_t w0     = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1     = cmd_data[cmd_cur + 0].UW32[1];
+   int32_t tilenum = gdp_set_tile_size(w0, w1);
+   calculate_clamp_diffs(tilenum);
 }
 
 static void load_block(void)

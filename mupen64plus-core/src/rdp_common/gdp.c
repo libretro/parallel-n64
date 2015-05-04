@@ -110,3 +110,14 @@ int32_t gdp_set_tile(uint32_t w0, uint32_t w1)
 
    return tilenum;
 }
+
+int32_t gdp_set_tile_size(uint32_t w0, uint32_t w1)
+{
+   int32_t tilenum = (w1 & 0x07000000) >> (24 -  0);
+   g_gdp.tile[tilenum].sl      = (w0 & 0x00FFF000) >> (44 - 32);
+   g_gdp.tile[tilenum].tl      = (w0 & 0x00000FFF) >> (32 - 32);
+   g_gdp.tile[tilenum].sh      = (w1 & 0x00FFF000) >> (12 -  0);
+   g_gdp.tile[tilenum].th      = (w1 & 0x00000FFF) >> ( 0 -  0);
+
+   return tilenum;
+}
