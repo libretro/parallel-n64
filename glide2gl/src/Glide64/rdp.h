@@ -614,8 +614,6 @@ struct RDP
    int scissor_set;
 
    // Colors
-   uint32_t env_color;
-   int32_t  env_color_sep[4];
    uint32_t prim_lodmin;
    unsigned noise;
 

@@ -14,6 +14,15 @@ void gdp_set_prim_color(uint32_t w0, uint32_t w1)
    g_gdp.primitive_lod_min  = _SHIFTL( w0,  8, 8 );
 }
 
+void gdp_set_env_color(uint32_t w0, uint32_t w1)
+{
+   g_gdp.env_color.total =  w1;
+   g_gdp.env_color.r     = _SHIFTR( w1, 24, 8);
+   g_gdp.env_color.g     = _SHIFTR( w1, 16, 8);
+   g_gdp.env_color.b     = _SHIFTR( w1,  8, 8);
+   g_gdp.env_color.a     = _SHIFTR( w1,  0, 8);
+}
+
 void gdp_set_prim_depth(uint32_t w1)
 {
    g_gdp.prim_color.z       = _SHIFTR(w1, 16, 16);

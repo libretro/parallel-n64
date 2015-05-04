@@ -1095,11 +1095,7 @@ static void set_prim_color(void)
 
 static void set_env_color(void)
 {
-    env_color.r = (cmd_data[cmd_cur + 0].UW32[1] & 0xFF000000) >> 24;
-    env_color.g = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FF0000) >> 16;
-    env_color.b = (cmd_data[cmd_cur + 0].UW32[1] & 0x0000FF00) >>  8;
-    env_color.a = (cmd_data[cmd_cur + 0].UW32[1] & 0x000000FF) >>  0;
-    return;
+   gdp_set_env_color(cmd_data[cmd_cur + 0].UW32[1]);
 }
 
 static void set_combine(void)

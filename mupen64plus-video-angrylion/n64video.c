@@ -54,7 +54,6 @@ TILE tile[8];
 OTHER_MODES other_modes;
 COMBINE_MODES combine;
 
-COLOR env_color;
 
 int rdp_pipeline_crashed;
 
@@ -646,7 +645,7 @@ void rdp_init(void)
 
     zerobuf(&combined_color, sizeof(COLOR));
     zerobuf(&g_gdp.prim_color, sizeof(gdp_color));
-    zerobuf(&env_color, sizeof(COLOR));
+    zerobuf(&g_gdp.env_color, sizeof(COLOR));
     zerobuf(&g_gdp.key_scale, sizeof(COLOR));
     zerobuf(&g_gdp.key_center, sizeof(COLOR));
 
@@ -681,7 +680,7 @@ INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
         case 2:        *input_r = &texel1_color.r;        *input_g = &texel1_color.g;        *input_b = &texel1_color.b;        break;
         case 3:        *input_r = &g_gdp.prim_color.r;        *input_g = &g_gdp.prim_color.g;        *input_b = &g_gdp.prim_color.b;        break;
         case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
-        case 5:        *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
+        case 5:        *input_r = &g_gdp.env_color.r;        *input_g = &g_gdp.env_color.g;        *input_b = &g_gdp.env_color.b;        break;
         case 6:        *input_r = &one_color;            *input_g = &one_color;            *input_b = &one_color;        break;
         case 7:        *input_r = &noise;                *input_g = &noise;                *input_b = &noise;                break;
         case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
@@ -700,7 +699,7 @@ INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
         case 2:        *input_r = &texel1_color.r;        *input_g = &texel1_color.g;        *input_b = &texel1_color.b;        break;
         case 3:        *input_r = &g_gdp.prim_color.r;        *input_g = &g_gdp.prim_color.g;        *input_b = &g_gdp.prim_color.b;        break;
         case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
-        case 5:        *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
+        case 5:        *input_r = &g_gdp.env_color.r;        *input_g = &g_gdp.env_color.g;        *input_b = &g_gdp.env_color.b;        break;
         case 6:        *input_r = &g_gdp.key_center.r;        *input_g = &g_gdp.key_center.g;        *input_b = &g_gdp.key_center.b;        break;
         case 7:        *input_r = &g_gdp.k4;                    *input_g = &g_gdp.k4;                    *input_b = &g_gdp.k4;                    break;
         case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
@@ -719,14 +718,14 @@ INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
         case 2:        *input_r = &texel1_color.r;        *input_g = &texel1_color.g;        *input_b = &texel1_color.b;        break;
         case 3:        *input_r = &g_gdp.prim_color.r;        *input_g = &g_gdp.prim_color.g;        *input_b = &g_gdp.prim_color.b;        break;
         case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
-        case 5:        *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
+        case 5:        *input_r = &g_gdp.env_color.r;        *input_g = &g_gdp.env_color.g;        *input_b = &g_gdp.env_color.b;        break;
         case 6:        *input_r = &g_gdp.key_scale.r;        *input_g = &g_gdp.key_scale.g;        *input_b = &g_gdp.key_scale.b;        break;
         case 7:        *input_r = &combined_color.a;    *input_g = &combined_color.a;    *input_b = &combined_color.a;    break;
         case 8:        *input_r = &texel0_color.a;        *input_g = &texel0_color.a;        *input_b = &texel0_color.a;        break;
         case 9:        *input_r = &texel1_color.a;        *input_g = &texel1_color.a;        *input_b = &texel1_color.a;        break;
         case 10:    *input_r = &g_gdp.prim_color.a;        *input_g = &g_gdp.prim_color.a;        *input_b = &g_gdp.prim_color.a;        break;
         case 11:    *input_r = &shade_color.a;        *input_g = &shade_color.a;        *input_b = &shade_color.a;        break;
-        case 12:    *input_r = &env_color.a;        *input_g = &env_color.a;        *input_b = &env_color.a;        break;
+        case 12:    *input_r = &g_gdp.env_color.a;        *input_g = &g_gdp.env_color.a;        *input_b = &g_gdp.env_color.a;        break;
         case 13:    *input_r = &lod_frac;            *input_g = &lod_frac;            *input_b = &lod_frac;            break;
         case 14:    *input_r = &g_gdp.primitive_lod_frac;    *input_g = &g_gdp.primitive_lod_frac;    *input_b = &g_gdp.primitive_lod_frac; break;
         case 15:    *input_r = &g_gdp.k5;                    *input_g = &g_gdp.k5;                    *input_b = &g_gdp.k5;                    break;
@@ -747,7 +746,7 @@ INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
         case 2:        *input_r = &texel1_color.r;        *input_g = &texel1_color.g;        *input_b = &texel1_color.b;        break;
         case 3:        *input_r = &g_gdp.prim_color.r;        *input_g = &g_gdp.prim_color.g;        *input_b = &g_gdp.prim_color.b;        break;
         case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
-        case 5:        *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
+        case 5:        *input_r = &g_gdp.env_color.r;        *input_g = &g_gdp.env_color.g;        *input_b = &g_gdp.env_color.b;        break;
         case 6:        *input_r = &one_color;            *input_g = &one_color;            *input_b = &one_color;            break;
         case 7:        *input_r = &zero_color;            *input_g = &zero_color;            *input_b = &zero_color;            break;
     }
@@ -762,7 +761,7 @@ INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
         case 2:        *input = &texel1_color.a; break;
         case 3:        *input = &g_gdp.prim_color.a; break;
         case 4:        *input = &shade_color.a; break;
-        case 5:        *input = &env_color.a; break;
+        case 5:        *input = &g_gdp.env_color.a; break;
         case 6:        *input = &one_color; break;
         case 7:        *input = &zero_color; break;
     }
@@ -777,7 +776,7 @@ INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code)
         case 2:        *input = &texel1_color.a; break;
         case 3:        *input = &g_gdp.prim_color.a; break;
         case 4:        *input = &shade_color.a; break;
-        case 5:        *input = &env_color.a; break;
+        case 5:        *input = &g_gdp.env_color.a; break;
         case 6:        *input = &g_gdp.primitive_lod_frac; break;
         case 7:        *input = &zero_color; break;
     }
