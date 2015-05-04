@@ -22,8 +22,6 @@ UINT32 zb_address;
 
 UINT32 max_level;
 
-UINT32 fill_color;
-
 INT32 *combiner_rgbsub_a_r[2];
 INT32 *combiner_rgbsub_a_g[2];
 INT32 *combiner_rgbsub_a_b[2];
@@ -5638,7 +5636,7 @@ void fbfill_8(UINT32 curpixel)
     addr  = fb_address + 1*curpixel;
     addr &= 0x00FFFFFF;
 
-    source = (fill_color >> 8*(~addr & 3)) & 0xFF;
+    source = (g_gdp.fill_color.total >> 8*(~addr & 3)) & 0xFF;
     PAIRWRITE8(addr, source, -(source & 1) & 3);
     return;
 }
@@ -5652,7 +5650,7 @@ void fbfill_16(UINT32 curpixel)
     addr &= 0x00FFFFFF;
     addr  = addr >> 1;
 
-    source = fill_color>>16*(~addr & 1) & 0xFFFF;
+    source = g_gdp.fill_color.total >> 16 * (~addr & 1) & 0xFFFF;
     PAIRWRITE16(addr, source, -(source & 1) & 3);
     return;
 }
@@ -5660,13 +5658,13 @@ void fbfill_16(UINT32 curpixel)
 void fbfill_32(UINT32 curpixel)
 {
     register unsigned long addr;
-    const unsigned short fill_color_hi = (fill_color >> 16) & 0xFFFF;
-    const unsigned short fill_color_lo = (fill_color >>  0) & 0xFFFF;
+    const unsigned short fill_color_hi = (g_gdp.fill_color.total >> 16) & 0xFFFF;
+    const unsigned short fill_color_lo = (g_gdp.fill_color.total >>  0) & 0xFFFF;
 
     addr  = fb_address + 4*curpixel;
     addr &= 0x00FFFFFF;
     addr  = addr >> 2;
-    PAIRWRITE32(addr, fill_color,
+    PAIRWRITE32(addr, g_gdp.fill_color.total,
         -(fill_color_hi & 0x0001) & 3, -(fill_color_lo & 0x0001) & 3);
     return;
 }

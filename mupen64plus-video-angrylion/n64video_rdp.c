@@ -1075,8 +1075,7 @@ static void fill_rect(void)
 
 static void set_fill_color(void)
 {
-    fill_color = cmd_data[cmd_cur + 0].UW32[1];
-    return;
+   gdp_set_fill_color(cmd_data[cmd_cur + 0].UW32[1]);
 }
 
 static void set_fog_color(void)

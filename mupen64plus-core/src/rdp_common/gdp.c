@@ -35,6 +35,17 @@ void gdp_set_fog_color(uint32_t w1)
    g_gdp.fog_color.a = _SHIFTR( w1,  0, 8 );
 }
 
+void gdp_set_fill_color(uint32_t w1)
+{
+   g_gdp.fill_color.total = w1;
+   g_gdp.fill_color.r   = _SHIFTR( w1, 24, 8 );
+   g_gdp.fill_color.g   = _SHIFTR( w1, 16, 8 );
+   g_gdp.fill_color.b   = _SHIFTR( w1,  8, 8 );
+   g_gdp.fill_color.a   = _SHIFTR( w1,  0, 8 );
+   g_gdp.fill_color.z   = (float)_SHIFTR( w1,  2, 14 );
+   g_gdp.fill_color.dz  = (float)_SHIFTR( w1,  0,  2 );
+}
+
 void gdp_set_convert(uint32_t w0, uint32_t w1)
 {
    g_gdp.k0  = (w0 & 0x003FE000)  >> 13;

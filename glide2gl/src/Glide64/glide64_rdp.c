@@ -1524,7 +1524,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3) && (rdp.fill_color == 0xFFFCFFFC);
+   pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3) && (g_gdp.fill_color.total == 0xFFFCFFFC);
    if ((rdp.cimg == rdp.zimg) || (fb_emulation_enabled && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) || pd_multiplayer)
    {
       //LRDP("Fillrect - cleared the depth buffer\n");
@@ -1535,7 +1535,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
             update_scissor(false);
             grDepthMask (FXTRUE);
             grColorMask (FXFALSE, FXFALSE);
-            grBufferClear (0, 0, rdp.fill_color ? rdp.fill_color&0xFFFF : 0xFFFF);
+            grBufferClear (0, 0, g_gdp.fill_color.total ? g_gdp.fill_color.total & 0xFFFF : 0xFFFF);
             grColorMask (FXTRUE, FXTRUE);
             rdp.update |= UPDATE_ZBUF_ENABLED;
          }
@@ -1554,7 +1554,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
             for (y = ul_y; y < lr_y; y++)
             {
                for (x = ul_x; x < lr_x; x++)
-                  dst[x] = rdp.fill_color;
+                  dst[x] = g_gdp.fill_color.total;
                dst += zi_width_in_dwords;
             }
          }
@@ -1623,7 +1623,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 
       if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3)
       {
-         uint32_t color = rdp.fill_color;
+         uint32_t color = g_gdp.fill_color.total;
 
          if ((settings.hacks&hack_PMario) && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_AUX)
          {
@@ -1700,7 +1700,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 
 static void rdp_setfillcolor(uint32_t w0, uint32_t w1)
 {
-   rdp.fill_color = w1;
+   gdp_set_fill_color(w1);
    rdp.update |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
 }
 

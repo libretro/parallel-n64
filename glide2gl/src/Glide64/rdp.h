@@ -614,7 +614,6 @@ struct RDP
    int scissor_set;
 
    // Colors
-   uint32_t fill_color;
    uint32_t blend_color;
    int32_t  blend_color_sep[4];
    uint32_t env_color;
