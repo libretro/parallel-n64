@@ -832,12 +832,12 @@ static void render_tri (uint16_t linew, int old_interpolate)
             rdp.vtxbuf[i].f = 1.0f/max(4.0f, rdp.vtxbuf[i].f);
          break;
       case FOG_MODE_BLEND:
-         fog = 1.0f/max(1, rdp.fog_color_sep[3]);
+         fog = 1.0f/max(1, g_gdp.fog_color.a);
          for (i = 0; i < n; i++)
             rdp.vtxbuf[i].f = fog;
          break;
       case FOG_MODE_BLEND_INVERSE:
-         fog = 1.0f/max(1, (~rdp.fog_color) & 0xFF);
+         fog = 1.0f/max(1, (~g_gdp.fog_color.total) & 0xFF);
          for (i = 0; i < n; i++)
             rdp.vtxbuf[i].f = fog;
          break;
@@ -1243,7 +1243,7 @@ void update(void)
             rdp_blender_setting *bl = (rdp_blender_setting*)(&blender);
             if((rdp.fog_multiplier > 0) && (bl->c1_m1a==3 || bl->c1_m2a == 3 || bl->c2_m1a == 3 || bl->c2_m2a == 3))
             {
-               grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
+               grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
                rdp.fog_mode = FOG_MODE_ENABLED;
                LRDP("fog enabled \n");
             }
@@ -1251,18 +1251,18 @@ void update(void)
             {
                LRDP("fog disabled in blender\n");
                rdp.fog_mode = FOG_MODE_DISABLED;
-               grFogMode (GR_FOG_DISABLE, rdp.fog_color);
+               grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
             }
          }
          else if (blender == 0xc410 || blender == 0xc411 || blender == 0xf500)
          {
-            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
+            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
             rdp.fog_mode = FOG_MODE_BLEND;
             LRDP("fog blend \n");
          }
          else if (blender == 0x04d1)
          {
-            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
+            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
             rdp.fog_mode = FOG_MODE_BLEND_INVERSE;
             LRDP("fog blend \n");
          }
@@ -1270,7 +1270,7 @@ void update(void)
          {
             LRDP("fog disabled\n");
             rdp.fog_mode = FOG_MODE_DISABLED;
-            grFogMode (GR_FOG_DISABLE, rdp.fog_color);
+            grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
          }
       }
    }

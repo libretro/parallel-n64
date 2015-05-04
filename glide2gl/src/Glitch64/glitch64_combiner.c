@@ -412,7 +412,7 @@ void update_uniforms(shader_program_key prog)
    glUniform3f(prog.fogModeEndScale_location, v0, fogEnd,  v2);
 
    if(prog.fogColor_location != -1)
-      glUniform3f(prog.fogColor_location,rdp.fog_color_sep[0] / 255.0f, rdp.fog_color_sep[1] / 255.0f, rdp.fog_color_sep[2] / 255.0f);
+      glUniform3f(prog.fogColor_location, g_gdp.fog_color.r / 255.0f, g_gdp.fog_color.g / 255.0f, g_gdp.fog_color.b / 255.0f);
 
    glUniform1f(prog.alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f);
 

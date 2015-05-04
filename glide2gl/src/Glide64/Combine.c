@@ -785,9 +785,9 @@ static void cc_t0(void)
                GR_COMBINE_FACTOR_ONE,
                GR_COMBINE_LOCAL_CONSTANT,
                GR_COMBINE_OTHER_TEXTURE);
-         r = rdp.blend_color_sep[0] * rdp.fog_color_sep[3];
-         g = rdp.blend_color_sep[1] * rdp.fog_color_sep[3];
-         b = rdp.blend_color_sep[2] * rdp.fog_color_sep[3];
+         r = rdp.blend_color_sep[0] * g_gdp.fog_color.a;
+         g = rdp.blend_color_sep[1] * g_gdp.fog_color.a;
+         b = rdp.blend_color_sep[2] * g_gdp.fog_color.a;
          rgb = (r << 24) | (g << 16) | (b << 8);
          cmb.ccolor= (rgb) & 0xFFFFFF00;
          return;
@@ -798,7 +798,7 @@ static void cc_t0(void)
                GR_COMBINE_FACTOR_ONE_MINUS_TEXTURE_ALPHA,
                GR_COMBINE_LOCAL_NONE,
                GR_COMBINE_OTHER_CONSTANT);
-         cmb.ccolor= (rdp.fog_color) & 0xFFFFFF00;
+         cmb.ccolor= (g_gdp.fog_color.total) & 0xFFFFFF00;
          A_USE_T0();
          return;
       }
@@ -7329,7 +7329,7 @@ static void ac_t0()
                GR_COMBINE_FACTOR_LOCAL,
                GR_COMBINE_LOCAL_CONSTANT,
                GR_COMBINE_OTHER_TEXTURE);
-         CA(rdp.fog_color);
+         CA(g_gdp.fog_color.total);
       }
       else if (blend_mode == 0x55f0) //cmem*afog + cfog*1ma
       {
@@ -7337,7 +7337,7 @@ static void ac_t0()
                GR_COMBINE_FACTOR_ONE,
                GR_COMBINE_LOCAL_CONSTANT,
                GR_COMBINE_OTHER_NONE);
-         CA(~rdp.fog_color);
+         CA(~g_gdp.fog_color.total);
       }
       else
       {
@@ -14195,7 +14195,7 @@ void CombineBlender(void)
             A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
             {
                uint32_t temp = g_gdp.prim_color.total;
-               g_gdp.prim_color.total = rdp.fog_color;
+               g_gdp.prim_color.total = g_gdp.fog_color.total;
                g_gdp.prim_color.r = (g_gdp.prim_color.total & 0xFF000000) >> 24;
                g_gdp.prim_color.g = (g_gdp.prim_color.total & 0x00FF0000) >> 16;
                g_gdp.prim_color.b = (g_gdp.prim_color.total & 0x0000FF00) >> 8;
@@ -14215,7 +14215,7 @@ void CombineBlender(void)
             if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_2CYCLE && rdp.cycle2 != 0x01ff1fff)
             {
                uint32_t temp = g_gdp.prim_color.total;
-               g_gdp.prim_color.total = rdp.fog_color;
+               g_gdp.prim_color.total = g_gdp.fog_color.total;
                g_gdp.prim_color.r = (g_gdp.prim_color.total & 0xFF000000) >> 24;
                g_gdp.prim_color.g = (g_gdp.prim_color.total & 0x00FF0000) >> 16;
                g_gdp.prim_color.b = (g_gdp.prim_color.total & 0x0000FF00) >> 8;
@@ -14232,7 +14232,7 @@ void CombineBlender(void)
          case 0xc912: //40 winks, clr_in * a_fog + clr_mem * 1
             {
                uint32_t temp = g_gdp.prim_color.total;
-               g_gdp.prim_color.total = rdp.fog_color;
+               g_gdp.prim_color.total = g_gdp.fog_color.total;
                g_gdp.prim_color.r = (g_gdp.prim_color.total & 0xFF000000) >> 24;
                g_gdp.prim_color.g = (g_gdp.prim_color.total & 0x00FF0000) >> 16;
                g_gdp.prim_color.b = (g_gdp.prim_color.total & 0x0000FF00) >> 8;

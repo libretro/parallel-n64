@@ -619,7 +619,7 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
    t_info.data = tex;
    tex_size = grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format);
    tmu = SetupFBtoScreenCombiner(tex_size*width256*height256, fb_info->opaque);
-   grConstantColorValue (rdp.fog_color);
+   grConstantColorValue (g_gdp.fog_color.total);
    grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
          GR_COMBINE_FACTOR_ONE,
          GR_COMBINE_LOCAL_NONE,
@@ -777,7 +777,7 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    t_info.data = tex;
 
    tmu = SetupFBtoScreenCombiner(grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
-   grConstantColorValue (rdp.fog_color);
+   grConstantColorValue (g_gdp.fog_color.total);
    grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
          GR_COMBINE_FACTOR_ONE,
          GR_COMBINE_LOCAL_NONE,

@@ -1096,13 +1096,13 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    {
       if (rdp.fog_mode >= FOG_MODE_BLEND)
       {
-         float fog = 1.0f/ rdp.fog_color_sep[3];
+         float fog = 1.0f/ g_gdp.fog_color.a;
          if (rdp.fog_mode != FOG_MODE_BLEND)
-            fog = 1.0f / ((~rdp.fog_color)&0xFF);
+            fog = 1.0f / ((~g_gdp.fog_color.total)&0xFF);
 
          for (i = 0; i < 4; i++)
             vptr[i].f = fog;
-         grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, rdp.fog_color);
+         grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
       }
 
       ConvertCoordsConvert (vptr, 4);
@@ -1610,7 +1610,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       VERTEX v[4], vout[4], vout2[4];
       float Z;
 
-      grFogMode (GR_FOG_DISABLE, rdp.fog_color);
+      grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
 
       Z = (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3) ? 0.0f : set_sprite_combine_mode();
 
@@ -1672,7 +1672,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
          grStippleMode(GR_STIPPLE_DISABLE);
 
          grCullMode(GR_CULL_DISABLE);
-         grFogMode (GR_FOG_DISABLE, rdp.fog_color);
+         grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
          grDepthBufferFunction (GR_CMP_ALWAYS);
          grDepthMask (FXFALSE);
 
@@ -1694,7 +1694,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
                   GR_COMBINE_LOCAL_CONSTANT,
                   GR_COMBINE_OTHER_NONE,
                   FXFALSE);
-            grConstantColorValue((cmb.ccolor & 0xFFFFFF00) | rdp.fog_color_sep[3]);
+            grConstantColorValue((cmb.ccolor & 0xFFFFFF00) | g_gdp.fog_color.a);
             rdp.update |= UPDATE_COMBINE;
          }
       }
@@ -1719,11 +1719,7 @@ static void rdp_setfillcolor(uint32_t w0, uint32_t w1)
 
 static void rdp_setfogcolor(uint32_t w0, uint32_t w1)
 {
-   rdp.fog_color = w1;
-   rdp.fog_color_sep[0] = (w1 & 0xFF000000) >> 24;
-   rdp.fog_color_sep[1] = (w1 & 0x00FF0000) >> 16;
-   rdp.fog_color_sep[2] = (w1 & 0x0000FF00) >>  8;
-   rdp.fog_color_sep[3] = (w1 & 0x000000FF) >>  0;
+   gdp_set_fog_color(w1);
    rdp.update |= UPDATE_COMBINE | UPDATE_FOG_ENABLED;
 }
 

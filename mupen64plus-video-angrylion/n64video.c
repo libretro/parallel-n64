@@ -61,7 +61,6 @@ COMBINE_MODES combine;
 COLOR key_width;
 COLOR key_scale;
 COLOR key_center;
-COLOR fog_color;
 COLOR blend_color;
 COLOR env_color;
 
@@ -1169,7 +1168,7 @@ INLINE void SET_BLENDER_INPUT(int cycle, int which, INT32 **input_r, INT32 **inp
 
         case 3:
         {
-            *input_r = &fog_color.r;        *input_g = &fog_color.g;        *input_b = &fog_color.b;
+            *input_r = &g_gdp.fog_color.r;        *input_g = &g_gdp.fog_color.g;        *input_b = &g_gdp.fog_color.b;
             break;
         }
     }
@@ -1179,7 +1178,7 @@ INLINE void SET_BLENDER_INPUT(int cycle, int which, INT32 **input_r, INT32 **inp
         switch (b & 0x3)
         {
             case 0:        *input_a = &pixel_color.a; break;
-            case 1:        *input_a = &fog_color.a; break;
+            case 1:        *input_a = &g_gdp.fog_color.a; break;
             case 2:        *input_a = &shade_color.a; break;
             case 3:        *input_a = &zero_color; break;
         }

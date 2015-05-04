@@ -25,3 +25,12 @@ void gdp_set_prim_depth(uint32_t w1)
    g_gdp.primitive_z       = _SHIFTR(w1, 16, 16);
    g_gdp.primitive_delta_z = _SHIFTR(w1,  0, 16);
 }
+
+void gdp_set_fog_color(uint32_t w1)
+{
+   g_gdp.fog_color.total = w1;
+   g_gdp.fog_color.r = _SHIFTR( w1, 24, 8 );
+   g_gdp.fog_color.g = _SHIFTR( w1, 16, 8 );
+   g_gdp.fog_color.b = _SHIFTR( w1,  8, 8 );
+   g_gdp.fog_color.a = _SHIFTR( w1,  0, 8 );
+}

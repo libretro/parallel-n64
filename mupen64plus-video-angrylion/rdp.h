@@ -466,7 +466,6 @@ extern COMBINE_MODES combine;
 extern COLOR key_width;
 extern COLOR key_scale;
 extern COLOR key_center;
-extern COLOR fog_color;
 extern COLOR blend_color;
 extern COLOR env_color;
 
