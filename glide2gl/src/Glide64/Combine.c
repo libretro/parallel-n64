@@ -599,15 +599,15 @@ COMBINE cmb;
   rdp.cmb_flags |= flag; \
 }
 #define XSHADE1M(color, flag) { \
-  rdp.col[0] *= 1.0f-((float)((color & 0xFF000000) >> 24)/255.0f); \
-  rdp.col[1] *= 1.0f-((float)((color & 0x00FF0000) >> 16)/255.0f); \
-  rdp.col[2] *= 1.0f-((float)((color & 0x0000FF00) >> 8)/255.0f); \
+  rdp.col[0] *= 1.0f-((float)color.r / 255.0f); \
+  rdp.col[1] *= 1.0f-((float)color.g / 255.0f); \
+  rdp.col[2] *= 1.0f-((float)color.b / 255.0f); \
   rdp.cmb_flags |= flag; \
 }
 #define XSHADEC1MC2(color1, color2, flag) { \
-  rdp.col[0] *= (float)( max(0, (int)((color1 & 0xFF000000) >> 24) - (int)((color2 & 0xFF000000) >> 24)) )/255.0f; \
-  rdp.col[1] *= (float)( max(0, (int)((color1 & 0x00FF0000) >> 16) - (int)((color2 & 0x00FF0000) >> 16)) )/255.0f; \
-  rdp.col[2] *= (float)( max(0, (int)((color1 & 0x0000FF00) >> 8)  - (int)((color2 & 0x0000FF00) >> 8)) )/255.0f; \
+  rdp.col[0] *= (float)( max(0, (int)color1.r  - (int)color2.r) )/255.0f; \
+  rdp.col[1] *= (float)( max(0, (int)color1.g  - (int)color2.g) )/255.0f; \
+  rdp.col[2] *= (float)( max(0, (int)color1.b  - (int)color2.b) )/255.0f; \
   rdp.cmb_flags |= flag; \
 }
 #define XSHADE_BYTE(byte, flag) { \
@@ -620,10 +620,10 @@ COMBINE cmb;
 #define MULSHADE(color) XSHADE(color, CMB_MULT)
 #define MULSHADE_PRIM() MULSHADE(g_gdp.prim_color.total)
 #define MULSHADE_ENV() MULSHADE(g_gdp.env_color.total)
-#define MULSHADE_1MPRIM() XSHADE1M(g_gdp.prim_color.total, CMB_MULT)
-#define MULSHADE_1MENV() XSHADE1M(g_gdp.env_color.total, CMB_MULT)
-#define MULSHADE_PRIMSUBENV() XSHADEC1MC2(g_gdp.prim_color.total, g_gdp.env_color.total, CMB_MULT)
-#define MULSHADE_ENVSUBPRIM() XSHADEC1MC2(g_gdp.env_color.total, g_gdp.prim_color.total, CMB_MULT)
+#define MULSHADE_1MPRIM() XSHADE1M(g_gdp.prim_color, CMB_MULT)
+#define MULSHADE_1MENV() XSHADE1M(g_gdp.env_color, CMB_MULT)
+#define MULSHADE_PRIMSUBENV() XSHADEC1MC2(g_gdp.prim_color, g_gdp.env_color, CMB_MULT)
+#define MULSHADE_ENVSUBPRIM() XSHADEC1MC2(g_gdp.env_color, g_gdp.prim_color, CMB_MULT)
 #define MULSHADE_BYTE(byte) XSHADE_BYTE(byte, CMB_MULT)
 #define MULSHADE_PRIMA() MULSHADE_BYTE((g_gdp.prim_color.total & 0xFF))
 #define MULSHADE_ENVA() MULSHADE_BYTE((g_gdp.env_color.total & 0xFF))
@@ -641,32 +641,32 @@ COMBINE cmb;
 #define SETSHADE_PRIMLOD() SETSHADE_BYTE((g_gdp.primitive_lod_frac & 0xFF))
 #define SETSHADE_1MPRIMLOD() SETSHADE_BYTE(((~g_gdp.primitive_lod_frac) & 0xFF))
 
-#define SETSHADE_1MPRIM() XSHADE1M(g_gdp.prim_color.total, CMB_SET)
-#define SETSHADE_1MENV() XSHADE1M(g_gdp.env_color.total, CMB_SET)
-#define SETSHADE_PRIMSUBENV() XSHADEC1MC2(g_gdp.prim_color.total, g_gdp.env_color.total, CMB_SET)
-#define SETSHADE_ENVSUBPRIM() XSHADEC1MC2(g_gdp.env_color.total, g_gdp.prim_color.total, CMB_SET)
+#define SETSHADE_1MPRIM() XSHADE1M(g_gdp.prim_color, CMB_SET)
+#define SETSHADE_1MENV() XSHADE1M(g_gdp.env_color, CMB_SET)
+#define SETSHADE_PRIMSUBENV() XSHADEC1MC2(g_gdp.prim_color, g_gdp.env_color, CMB_SET)
+#define SETSHADE_ENVSUBPRIM() XSHADEC1MC2(g_gdp.env_color, g_gdp.prim_color, CMB_SET)
 #define SETSHADE_SHADE_A() { \
   rdp.cmb_flags = CMB_SETSHADE_SHADEALPHA; \
 }
 
 #define XSHADEADD(color, flag) { \
-  rdp.coladd[0] *= (float)((color & 0xFF000000) >> 24) / 255.0f; \
-  rdp.coladd[1] *= (float)((color & 0x00FF0000) >> 16) / 255.0f; \
-  rdp.coladd[2] *= (float)((color & 0x0000FF00) >> 8) / 255.0f; \
+  rdp.coladd[0] *= (float)color.r / 255.0f; \
+  rdp.coladd[1] *= (float)color.g / 255.0f; \
+  rdp.coladd[2] *= (float)color.b / 255.0f; \
   rdp.cmb_flags |= flag; \
 }
 #define XSHADEC1MC2ADD(color1, color2, flag) { \
-  rdp.coladd[0] *= (float)( max(0, (int)((color1 & 0xFF000000) >> 24) - (int)((color2 & 0xFF000000) >> 24)) )/255.0f; \
-  rdp.coladd[1] *= (float)( max(0, (int)((color1 & 0x00FF0000) >> 16) - (int)((color2 & 0x00FF0000) >> 16)) )/255.0f; \
-  rdp.coladd[2] *= (float)( max(0, (int)((color1 & 0x0000FF00) >> 8)  - (int)((color2 & 0x0000FF00) >> 8)) )/255.0f; \
+  rdp.coladd[0] *= (float)( max(0, (int)color1.r -  (int)color2.r)) / 255.0f; \
+  rdp.coladd[1] *= (float)( max(0, (int)color1.g -  (int)color2.g)) / 255.0f; \
+  rdp.coladd[2] *= (float)( max(0, (int)color1.b  - (int)color2.b)) / 255.0f; \
   rdp.cmb_flags |= flag; \
 }
-#define SUBSHADE_PRIM() XSHADEADD(g_gdp.prim_color.total, CMB_SUB)
-#define SUBSHADE_ENV() XSHADEADD(g_gdp.env_color.total, CMB_SUB)
-#define SUBSHADE_PRIMSUBENV() XSHADEC1MC2ADD(g_gdp.prim_color.total, g_gdp.env_color.total, CMB_SUB)
-#define ADDSHADE_PRIM() XSHADEADD(g_gdp.prim_color.total, CMB_ADD)
-#define ADDSHADE_ENV() XSHADEADD(g_gdp.env_color.total, CMB_ADD)
-#define ADDSHADE_PRIMSUBENV() XSHADEC1MC2ADD(g_gdp.prim_color.total, g_gdp.env_color.total, CMB_ADD)
+#define SUBSHADE_PRIM() XSHADEADD(g_gdp.prim_color, CMB_SUB)
+#define SUBSHADE_ENV() XSHADEADD(g_gdp.env_color, CMB_SUB)
+#define SUBSHADE_PRIMSUBENV() XSHADEC1MC2ADD(g_gdp.prim_color, g_gdp.env_color, CMB_SUB)
+#define ADDSHADE_PRIM() XSHADEADD(g_gdp.prim_color, CMB_ADD)
+#define ADDSHADE_ENV() XSHADEADD(g_gdp.env_color, CMB_ADD)
+#define ADDSHADE_PRIMSUBENV() XSHADEC1MC2ADD(g_gdp.prim_color, g_gdp.env_color, CMB_ADD)
 #define SUBSHADE_PRIMMULENV() { \
   rdp.coladd[0] *= (float)( g_gdp.prim_color.r * g_gdp.env_color.r )/255.0f/255.0f; \
   rdp.coladd[1] *= (float)( g_gdp.prim_color.g * g_gdp.env_color.g )/255.0f/255.0f; \
@@ -707,32 +707,32 @@ COMBINE cmb;
   rdp.cmb_flags |= flag; \
 }
 #define XSHADE1M_A(color, flag) { \
-  rdp.col[3] *= 1.0f-((float)(color & 0xFF) / 255.0f); \
+  rdp.col[3] *= 1.0f-((float)color.a / 255.0f); \
   rdp.cmb_flags |= flag; \
 }
 #define XSHADEC1MC2_A(color1, color2, flag) { \
-  rdp.col[3] *= (float)( max(0, (int)(color1 & 0xFF) - (int)(color2 & 0xFF)) ) / 255.0f; \
+  rdp.col[3] *= (float)( max(0, (int)color1.a - (int)color2.a) ) / 255.0f; \
   rdp.cmb_flags |= flag; \
 }
 #define MULSHADE_A_PRIM() XSHADE_A(g_gdp.prim_color.total, CMB_A_MULT)
-#define MULSHADE_A_1MPRIM() XSHADE1M_A(g_gdp.prim_color.total, CMB_A_MULT)
+#define MULSHADE_A_1MPRIM() XSHADE1M_A(g_gdp.prim_color, CMB_A_MULT)
 #define MULSHADE_A_ENV() XSHADE_A(g_gdp.env_color.total, CMB_A_MULT)
-#define MULSHADE_A_PRIMSUBENV() XSHADEC1MC2_A(g_gdp.prim_color.total, g_gdp.env_color.total, CMB_A_MULT)
-#define MULSHADE_A_ENVSUBPRIM() XSHADEC1MC2_A(g_gdp.env_color.total, g_gdp.prim_color.total, CMB_A_MULT)
+#define MULSHADE_A_PRIMSUBENV() XSHADEC1MC2_A(g_gdp.prim_color, g_gdp.env_color, CMB_A_MULT)
+#define MULSHADE_A_ENVSUBPRIM() XSHADEC1MC2_A(g_gdp.env_color, g_gdp.prim_color, CMB_A_MULT)
 #define SETSHADE_A(color) XSHADE_A(color, CMB_A_SET)
 #define SETSHADE_A_PRIM() SETSHADE_A(g_gdp.prim_color.total)
 #define SETSHADE_A_ENV() SETSHADE_A(g_gdp.env_color.total)
-#define SETSHADE_A_PRIMSUBENV() XSHADEC1MC2_A(g_gdp.prim_color.total, g_gdp.env_color.total, CMB_A_SET)
-#define SETSHADE_A_INVENV() XSHADE1M_A(g_gdp.env_color.total, CMB_A_SET)
+#define SETSHADE_A_PRIMSUBENV() XSHADEC1MC2_A(g_gdp.prim_color, g_gdp.env_color, CMB_A_SET)
+#define SETSHADE_A_INVENV() XSHADE1M_A(g_gdp.env_color, CMB_A_SET)
 
 #define XSHADEADD_A(color, flag) { \
-  rdp.coladd[3] *= (float)(color & 0xFF) / 255.0f; \
+  rdp.coladd[3] *= (float)color.a / 255.0f; \
   rdp.cmb_flags |= flag; \
 }
-#define SUBSHADE_A_PRIM() XSHADEADD_A(g_gdp.prim_color.total, CMB_A_SUB)
-#define SUBSHADE_A_ENV() XSHADEADD_A(g_gdp.env_color.total, CMB_A_SUB)
-#define ADDSHADE_A_PRIM() XSHADEADD_A(g_gdp.prim_color.total, CMB_A_ADD)
-#define ADDSHADE_A_ENV() XSHADEADD_A(g_gdp.env_color.total, CMB_A_ADD)
+#define SUBSHADE_A_PRIM() XSHADEADD_A(g_gdp.prim_color, CMB_A_SUB)
+#define SUBSHADE_A_ENV() XSHADEADD_A(g_gdp.env_color, CMB_A_SUB)
+#define ADDSHADE_A_PRIM() XSHADEADD_A(g_gdp.prim_color, CMB_A_ADD)
+#define ADDSHADE_A_ENV() XSHADEADD_A(g_gdp.env_color, CMB_A_ADD)
 
 //****************************************************************
 // Combine Functions
