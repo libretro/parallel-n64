@@ -461,9 +461,6 @@ extern TILE tile[8];
 extern OTHER_MODES other_modes;
 extern COMBINE_MODES combine;
 
-extern COLOR key_width;
-extern COLOR key_scale;
-extern COLOR key_center;
 extern COLOR blend_color;
 extern COLOR env_color;
 

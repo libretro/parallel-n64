@@ -56,9 +56,6 @@ TILE tile[8];
 OTHER_MODES other_modes;
 COMBINE_MODES combine;
 
-COLOR key_width;
-COLOR key_scale;
-COLOR key_center;
 COLOR blend_color;
 COLOR env_color;
 
@@ -653,8 +650,8 @@ void rdp_init(void)
     zerobuf(&combined_color, sizeof(COLOR));
     zerobuf(&g_gdp.prim_color, sizeof(gdp_color));
     zerobuf(&env_color, sizeof(COLOR));
-    zerobuf(&key_scale, sizeof(COLOR));
-    zerobuf(&key_center, sizeof(COLOR));
+    zerobuf(&g_gdp.key_scale, sizeof(COLOR));
+    zerobuf(&g_gdp.key_center, sizeof(COLOR));
 
     rdp_pipeline_crashed = 0;
     zerobuf(&onetimewarnings, sizeof(onetimewarnings));
@@ -707,7 +704,7 @@ INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
         case 3:        *input_r = &g_gdp.prim_color.r;        *input_g = &g_gdp.prim_color.g;        *input_b = &g_gdp.prim_color.b;        break;
         case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
         case 5:        *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
-        case 6:        *input_r = &key_center.r;        *input_g = &key_center.g;        *input_b = &key_center.b;        break;
+        case 6:        *input_r = &g_gdp.key_center.r;        *input_g = &g_gdp.key_center.g;        *input_b = &g_gdp.key_center.b;        break;
         case 7:        *input_r = &g_gdp.k4;                    *input_g = &g_gdp.k4;                    *input_b = &g_gdp.k4;                    break;
         case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
         {
@@ -726,7 +723,7 @@ INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
         case 3:        *input_r = &g_gdp.prim_color.r;        *input_g = &g_gdp.prim_color.g;        *input_b = &g_gdp.prim_color.b;        break;
         case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
         case 5:        *input_r = &env_color.r;        *input_g = &env_color.g;        *input_b = &env_color.b;        break;
-        case 6:        *input_r = &key_scale.r;        *input_g = &key_scale.g;        *input_b = &key_scale.b;        break;
+        case 6:        *input_r = &g_gdp.key_scale.r;        *input_g = &g_gdp.key_scale.g;        *input_b = &g_gdp.key_scale.b;        break;
         case 7:        *input_r = &combined_color.a;    *input_g = &combined_color.a;    *input_b = &combined_color.a;    break;
         case 8:        *input_r = &texel0_color.a;        *input_g = &texel0_color.a;        *input_b = &texel0_color.a;        break;
         case 9:        *input_r = &texel1_color.a;        *input_g = &texel1_color.a;        *input_b = &texel1_color.a;        break;
@@ -820,19 +817,19 @@ static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
     {
         redkey = combined_color.r;
         if (redkey >= 0)
-            redkey = (key_width.r << 4) - redkey;
+            redkey = (g_gdp.key_width.r << 4) - redkey;
         else
-            redkey = (key_width.r << 4) + redkey;
+            redkey = (g_gdp.key_width.r << 4) + redkey;
         greenkey = combined_color.g;
         if (greenkey >= 0)
-            greenkey = (key_width.g << 4) - greenkey;
+            greenkey = (g_gdp.key_width.g << 4) - greenkey;
         else
-            greenkey = (key_width.g << 4) + greenkey;
+            greenkey = (g_gdp.key_width.g << 4) + greenkey;
         bluekey = combined_color.b;
         if (bluekey >= 0)
-            bluekey = (key_width.b << 4) - bluekey;
+            bluekey = (g_gdp.key_width.b << 4) - bluekey;
         else
-            bluekey = (key_width.b << 4) + bluekey;
+            bluekey = (g_gdp.key_width.b << 4) + bluekey;
         keyalpha = (redkey < greenkey) ? redkey : greenkey;
         keyalpha = (bluekey < keyalpha) ? bluekey : keyalpha;
         keyalpha = CLIP(keyalpha, 0, 0xff);
@@ -931,19 +928,19 @@ static void combiner_2cycle(int adseed, UINT32* curpixel_cvg)
     {
         redkey = combined_color.r;
         if (redkey >= 0)
-            redkey = (key_width.r << 4) - redkey;
+            redkey = (g_gdp.key_width.r << 4) - redkey;
         else
-            redkey = (key_width.r << 4) + redkey;
+            redkey = (g_gdp.key_width.r << 4) + redkey;
         greenkey = combined_color.g;
         if (greenkey >= 0)
-            greenkey = (key_width.g << 4) - greenkey;
+            greenkey = (g_gdp.key_width.g << 4) - greenkey;
         else
-            greenkey = (key_width.g << 4) + greenkey;
+            greenkey = (g_gdp.key_width.g << 4) + greenkey;
         bluekey = combined_color.b;
         if (bluekey >= 0)
-            bluekey = (key_width.b << 4) - bluekey;
+            bluekey = (g_gdp.key_width.b << 4) - bluekey;
         else
-            bluekey = (key_width.b << 4) + bluekey;
+            bluekey = (g_gdp.key_width.b << 4) + bluekey;
         keyalpha = (redkey < greenkey) ? redkey : greenkey;
         keyalpha = (bluekey < keyalpha) ? bluekey : keyalpha;
         keyalpha = CLIP(keyalpha, 0, 0xff);

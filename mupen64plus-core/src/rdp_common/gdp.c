@@ -45,3 +45,10 @@ void gdp_set_convert(uint32_t w0, uint32_t w1)
    g_gdp.k4  = (w1 & 0x0003FE00)  >>  9;
    g_gdp.k5  = (w1 & 0x000001FF)  >>  0;
 }
+
+void gdp_set_key_r(uint32_t w1)
+{
+   g_gdp.key_center.r = _SHIFTR( w1,  8,  8 );
+   g_gdp.key_width.r  = _SHIFTR( w1,  0,  8 );
+   g_gdp.key_scale.r  = _SHIFTR( w1, 16, 12 );
+}
