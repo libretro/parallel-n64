@@ -275,7 +275,6 @@ void do_SP_Task(struct rsp_core* sp)
 
         unprotect_framebuffers(sp->dp);
 
-        //gfx.processDList();
         sp->regs2[SP_PC_REG] &= 0xfff;
         timed_section_start(TIMED_SECTION_GFX);
         rsp.doRspCycles(0xffffffff);
@@ -295,7 +294,6 @@ void do_SP_Task(struct rsp_core* sp)
     }
     else if (sp->mem[0xfc0/4] == 2)
     {
-        //audio.processAList();
         sp->regs2[SP_PC_REG] &= 0xfff;
         timed_section_start(TIMED_SECTION_AUDIO);
         rsp.doRspCycles(0xffffffff);
