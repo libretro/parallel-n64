@@ -20,3 +20,8 @@ void gdp_set_prim_color(uint32_t w0, uint32_t w1)
    g_gdp.primitive_lod_min  = m;
 }
 
+void gdp_set_prim_depth(uint32_t w1)
+{
+   g_gdp.primitive_z       = _SHIFTR(w1, 16, 16);
+   g_gdp.primitive_delta_z = _SHIFTR(w1,  0, 16);
+}

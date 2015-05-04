@@ -67,12 +67,12 @@ static float set_sprite_combine_mode(void)
   if ((rdp.othermode_l & 0x00000030) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < 2))
   {
      if (rdp.zsrc == 1)
-      Z = rdp.prim_depth;
-    FRDP ("prim_depth = %d, prim_dz = %d\n", rdp.prim_depth, rdp.prim_dz);
+      Z = g_gdp.primitive_z;
+    FRDP ("prim_depth = %d, prim_dz = %d\n", g_gdp.primitive_z, g_gdp.primitive_delta_z);
     Z = ScaleZ(Z);
 
     if (rdp.othermode_l & 0x00000400)
-      grDepthBiasLevel(rdp.prim_dz);
+      grDepthBiasLevel(g_gdp.primitive_delta_z);
   }
 #if 0
   else

@@ -22,9 +22,6 @@ UINT32 zb_address;
 
 UINT32 max_level;
 
-UINT32 primitive_z;
-UINT16 primitive_delta_z;
-
 UINT32 fill_color;
 
 INT32 *combiner_rgbsub_a_r[2];
@@ -3491,7 +3488,7 @@ void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
         dzpix = spans_dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = g_gdp.primitive_delta_z;
         dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
     }
     dzpixenc = dz_compress(dzpix);
@@ -3510,7 +3507,7 @@ void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
         s = span[i].stwz[0];
         t = span[i].stwz[1];
         w = span[i].stwz[2];
-        z = other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
+        z = other_modes.z_source_sel ? g_gdp.primitive_z : span[i].stwz[3];
 
         x = xendsc;
         curpixel = fb_width * i + x;
@@ -3675,7 +3672,7 @@ void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
         dzpix = spans_dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = g_gdp.primitive_delta_z;
         dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
     }
     dzpixenc = dz_compress(dzpix);
@@ -3694,7 +3691,7 @@ void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
         s = span[i].stwz[0];
         t = span[i].stwz[1];
         w = span[i].stwz[2];
-        z = other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
+        z = other_modes.z_source_sel ? g_gdp.primitive_z : span[i].stwz[3];
 
         x = xendsc;
         curpixel = fb_width * i + x;
@@ -3833,7 +3830,7 @@ void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
         dzpix = spans_dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = g_gdp.primitive_delta_z;
         dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
     }
     dzpixenc = dz_compress(dzpix);
@@ -3849,7 +3846,7 @@ void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
         g = span[i].rgba[1];
         b = span[i].rgba[2];
         a = span[i].rgba[3];
-        z = other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
+        z = other_modes.z_source_sel ? g_gdp.primitive_z : span[i].stwz[3];
 
         x = xendsc;
         curpixel = fb_width * i + x;
@@ -3984,7 +3981,7 @@ void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
         dzpix = spans_dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = g_gdp.primitive_delta_z;
         dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
     }
     dzpixenc = dz_compress(dzpix);
@@ -4003,7 +4000,7 @@ void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
         s = span[i].stwz[0];
         t = span[i].stwz[1];
         w = span[i].stwz[2];
-        z = other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
+        z = other_modes.z_source_sel ? g_gdp.primitive_z : span[i].stwz[3];
 
         x = xendsc;
         curpixel = fb_width * i + x;
@@ -4171,7 +4168,7 @@ void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
         dzpix = spans_dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = g_gdp.primitive_delta_z;
         dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
     }
     dzpixenc = dz_compress(dzpix);
@@ -4190,7 +4187,7 @@ void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
         s = span[i].stwz[0];
         t = span[i].stwz[1];
         w = span[i].stwz[2];
-        z = other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
+        z = other_modes.z_source_sel ? g_gdp.primitive_z : span[i].stwz[3];
 
         x = xendsc;
         curpixel = fb_width * i + x;
@@ -4339,7 +4336,7 @@ void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
         dzpix = spans_dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = g_gdp.primitive_delta_z;
         dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
     }
     dzpixenc = dz_compress(dzpix);
@@ -4358,7 +4355,7 @@ void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
         s = span[i].stwz[0];
         t = span[i].stwz[1];
         w = span[i].stwz[2];
-        z = other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
+        z = other_modes.z_source_sel ? g_gdp.primitive_z : span[i].stwz[3];
 
         x = xendsc;
         curpixel = fb_width * i + x;
@@ -4496,7 +4493,7 @@ void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
         dzpix = spans_dzpix;
     else
     {
-        dzpix = primitive_delta_z;
+        dzpix = g_gdp.primitive_delta_z;
         dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
     }
     dzpixenc = dz_compress(dzpix);
@@ -4512,7 +4509,7 @@ void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
         g = span[i].rgba[1];
         b = span[i].rgba[2];
         a = span[i].rgba[3];
-        z = other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
+        z = other_modes.z_source_sel ? g_gdp.primitive_z : span[i].stwz[3];
 
         x = xendsc;
         curpixel = fb_width * i + x;

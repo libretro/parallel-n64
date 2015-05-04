@@ -788,10 +788,9 @@ static void set_scissor(void)
 
 static void set_prim_depth(void)
 {
-    primitive_z       = (cmd_data[cmd_cur + 0].UW32[1] & 0xFFFF0000) >> 16;
-    primitive_delta_z = (cmd_data[cmd_cur + 0].UW32[1] & 0x0000FFFF) >>  0;
-    primitive_z = (primitive_z & 0x7FFF) << 16; /* angrylion does this why? */
-    return;
+   gdp_set_prim_depth(cmd_data[cmd_cur + 0].UW32[1]);
+
+   g_gdp.primitive_z = (g_gdp.primitive_z & 0x7FFF) << 16; /* angrylion does this why? */
 }
 
 static void set_other_modes(void)

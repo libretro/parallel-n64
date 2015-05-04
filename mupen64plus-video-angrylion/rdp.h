@@ -426,9 +426,6 @@ extern UINT32 zb_address;
 
 extern UINT32 max_level;
 
-extern UINT32 primitive_z;
-extern UINT16 primitive_delta_z;
-
 extern UINT32 fill_color;
 
 extern INT32 *combiner_rgbsub_a_r[2];

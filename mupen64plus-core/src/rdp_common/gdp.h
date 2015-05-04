@@ -29,9 +29,13 @@ struct gdp_global
    int32_t primitive_lod_frac;
    gdp_color prim_color;
    gdp_color env_color;
+   uint32_t primitive_z;
+   uint16_t primitive_delta_z;
 };
 
 void gdp_set_prim_color(uint32_t w0, uint32_t w1);
+
+void gdp_set_prim_depth(uint32_t w1);
 
 extern struct gdp_global g_gdp;
 

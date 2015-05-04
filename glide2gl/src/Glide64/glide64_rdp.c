@@ -1184,8 +1184,7 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
 
 static void rdp_setprimdepth(uint32_t w0, uint32_t w1)
 {
-   rdp.prim_depth = (uint16_t)((w1 >> 16) & 0x7FFF);
-   rdp.prim_dz = (uint16_t)(w1 & 0x7FFF);
+   gdp_set_prim_depth(w1);
 }
 
 #define F3DEX2_SETOTHERMODE(cmd,sft,len,data) { \
@@ -2523,7 +2522,7 @@ static uint32_t rdp_cmd_data[0x1000];
 
 #define XSCALE(x) ((float)(x)/(1<<18))
 #define YSCALE(y) ((float)(y)/(1<<2))
-#define ZSCALE(z) ((rdp.zsrc == 1) ? (float)(rdp.prim_depth) : (float)((uint32_t)(z))/0xffff0000)
+#define ZSCALE(z) ((rdp.zsrc == 1) ? (float)(g_gdp.primitive_z) : (float)((uint32_t)(z))/0xffff0000)
 #define PERSP_EN  ((rdp.othermode_h & RDP_PERSP_TEX_ENABLE))
 #define WSCALE(z) 1.0f/(PERSP_EN? ((float)((uint32_t)(z) + 0x10000)/0xffff0000) : 1.0f)
 #define CSCALE(c) (((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18)

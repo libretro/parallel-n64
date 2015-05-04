@@ -949,7 +949,7 @@ void do_triangle_stuff_2 (uint16_t linew, uint8_t no_clip, int old_interpolate)
 void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do the triangle stuff :P (to keep from writing code twice)
 {
    int i;
-   float maxZ = (rdp.zsrc != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : rdp.prim_depth;
+   float maxZ = (rdp.zsrc != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : g_gdp.primitive_z;
    uint8_t no_clip = 2;
 
    for (i=0; i<rdp.n_global; i++)
@@ -986,7 +986,7 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
       }
 
       if (rdp.zsrc == 1)
-         rdp.vtxbuf[i].z = rdp.prim_depth;
+         rdp.vtxbuf[i].z = g_gdp.primitive_z;
 
       // Don't remove clipping, or it will freeze
       if (rdp.vtxbuf[i].z > maxZ)           rdp.clip |= CLIP_ZMAX;
