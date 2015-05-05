@@ -357,7 +357,7 @@ static void tex_rect(void)
    xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
    yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
 
-   yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
+   yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
    s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
    t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
@@ -403,7 +403,7 @@ static void tex_rect(void)
    spans_dzpix = normalize_dzpix(0);
 
    d_stwz_dxh[1] = 0x00000000;
-   if (other_modes.cycle_type == CYCLE_TYPE_COPY)
+   if (g_gdp.other_modes.cycle_type == CYCLE_TYPE_COPY)
       d_stwz_dxh[0] = 0x00000000;
    else
       d_stwz_dxh[0] = (d_stwz_dx[0] >> 8) & ~0x00000001;
@@ -551,7 +551,7 @@ static void tex_rect_flip(void)
    xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
    yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
 
-   yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
+   yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
    s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
    t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
@@ -604,7 +604,7 @@ static void tex_rect_flip(void)
    spans_dzpix = normalize_dzpix(0);
 
    d_stwz_dxh[1] = 0x00000000;
-   if (other_modes.cycle_type == CYCLE_TYPE_COPY)
+   if (g_gdp.other_modes.cycle_type == CYCLE_TYPE_COPY)
       d_stwz_dxh[0] = 0x00000000;
    else
       d_stwz_dxh[0] = (d_stwz_dx[0] >> 8) & ~0x00000001;
@@ -780,63 +780,25 @@ static void set_prim_depth(void)
 
 static void set_other_modes(void)
 {
-   const DP_FIFO cmd_fifo = cmd_data[cmd_cur + 0];
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
 
-   /* K:  atomic_prim              = (cmd_fifo.UW & 0x0080000000000000) >> 55; */
-   /* j:  reserved for future use -- (cmd_fifo.UW & 0x0040000000000000) >> 54 */
-   other_modes.cycle_type       = (cmd_fifo.UW32[0] & 0x00300000) >> (52 - 32);
-   other_modes.persp_tex_en     = !!(cmd_fifo.UW32[0] & 0x00080000); /* 51 */
-   other_modes.detail_tex_en    = !!(cmd_fifo.UW32[0] & 0x00040000); /* 50 */
-   other_modes.sharpen_tex_en   = !!(cmd_fifo.UW32[0] & 0x00020000); /* 49 */
-   other_modes.tex_lod_en       = !!(cmd_fifo.UW32[0] & 0x00010000); /* 48 */
-   other_modes.en_tlut          = !!(cmd_fifo.UW32[0] & 0x00008000); /* 47 */
-   other_modes.tlut_type        = !!(cmd_fifo.UW32[0] & 0x00004000); /* 46 */
-   other_modes.sample_type      = !!(cmd_fifo.UW32[0] & 0x00002000); /* 45 */
-   other_modes.mid_texel        = !!(cmd_fifo.UW32[0] & 0x00001000); /* 44 */
-   other_modes.bi_lerp0         = !!(cmd_fifo.UW32[0] & 0x00000800); /* 43 */
-   other_modes.bi_lerp1         = !!(cmd_fifo.UW32[0] & 0x00000400); /* 42 */
-   other_modes.convert_one      = !!(cmd_fifo.UW32[0] & 0x00000200); /* 41 */
-   other_modes.key_en           = !!(cmd_fifo.UW32[0] & 0x00000100); /* 40 */
-   other_modes.rgb_dither_sel   = (cmd_fifo.UW32[0] & 0x000000C0) >> (38 - 32);
-   other_modes.alpha_dither_sel = (cmd_fifo.UW32[0] & 0x00000030) >> (36 - 32);
-   /* reserved for future, def:15 -- (cmd_fifo.UW & 0x0000000F00000000) >> 32 */
-   other_modes.blend_m1a_0      = (cmd_fifo.UW32[1] & 0xC0000000) >> (30 -  0);
-   other_modes.blend_m1a_1      = (cmd_fifo.UW32[1] & 0x30000000) >> (28 -  0);
-   other_modes.blend_m1b_0      = (cmd_fifo.UW32[1] & 0x0C000000) >> (26 -  0);
-   other_modes.blend_m1b_1      = (cmd_fifo.UW32[1] & 0x03000000) >> (24 -  0);
-   other_modes.blend_m2a_0      = (cmd_fifo.UW32[1] & 0x00C00000) >> (22 -  0);
-   other_modes.blend_m2a_1      = (cmd_fifo.UW32[1] & 0x00300000) >> (20 -  0);
-   other_modes.blend_m2b_0      = (cmd_fifo.UW32[1] & 0x000C0000) >> (18 -  0);
-   other_modes.blend_m2b_1      = (cmd_fifo.UW32[1] & 0x00030000) >> (16 -  0);
-   /* N:  reserved for future use -- (cmd_fifo.UW & 0x0000000000008000) >> 15 */
-   other_modes.force_blend      = !!(cmd_fifo.UW32[1] & 0x00004000); /* 14 */
-   other_modes.alpha_cvg_select = !!(cmd_fifo.UW32[1] & 0x00002000); /* 13 */
-   other_modes.cvg_times_alpha  = !!(cmd_fifo.UW32[1] & 0x00001000); /* 12 */
-   other_modes.z_mode           = (cmd_fifo.UW32[1] & 0x00000C00) >> (10 -  0);
-   other_modes.cvg_dest         = (cmd_fifo.UW32[1] & 0x00000300) >> ( 8 -  0);
-   other_modes.color_on_cvg     = !!(cmd_fifo.UW32[1] & 0x00000080); /*  7 */
-   other_modes.image_read_en    = !!(cmd_fifo.UW32[1] & 0x00000040); /*  6 */
-   other_modes.z_update_en      = !!(cmd_fifo.UW32[1] & 0x00000020); /*  5 */
-   other_modes.z_compare_en     = !!(cmd_fifo.UW32[1] & 0x00000010); /*  4 */
-   other_modes.antialias_en     = !!(cmd_fifo.UW32[1] & 0x00000008); /*  3 */
-   other_modes.z_source_sel     = !!(cmd_fifo.UW32[1] & 0x00000004); /*  2 */
-   other_modes.dither_alpha_en  = !!(cmd_fifo.UW32[1] & 0x00000002); /*  1 */
-   other_modes.alpha_compare_en = !!(cmd_fifo.UW32[1] & 0x00000001); /*  0 */
+   gdp_set_other_modes(w0, w1);
 
    SET_BLENDER_INPUT(
          0, 0, &blender1a_r[0], &blender1a_g[0], &blender1a_b[0],
-         &blender1b_a[0], other_modes.blend_m1a_0, other_modes.blend_m1b_0);
+         &blender1b_a[0], g_gdp.other_modes.blend_m1a_0, g_gdp.other_modes.blend_m1b_0);
    SET_BLENDER_INPUT(
          0, 1, &blender2a_r[0], &blender2a_g[0], &blender2a_b[0],
-         &blender2b_a[0], other_modes.blend_m2a_0, other_modes.blend_m2b_0);
+         &blender2b_a[0], g_gdp.other_modes.blend_m2a_0, g_gdp.other_modes.blend_m2b_0);
    SET_BLENDER_INPUT(
          1, 0, &blender1a_r[1], &blender1a_g[1], &blender1a_b[1],
-         &blender1b_a[1], other_modes.blend_m1a_1, other_modes.blend_m1b_1);
+         &blender1b_a[1], g_gdp.other_modes.blend_m1a_1, g_gdp.other_modes.blend_m1b_1);
    SET_BLENDER_INPUT(
          1, 1, &blender2a_r[1], &blender2a_g[1], &blender2a_b[1],
-         &blender2b_a[1], other_modes.blend_m2a_1, other_modes.blend_m2b_1);
+         &blender2b_a[1], g_gdp.other_modes.blend_m2a_1, g_gdp.other_modes.blend_m2b_1);
 
-   other_modes.f.stalederivs = 1;
+   g_gdp.other_modes.f.stalederivs = 1;
    return;
 }
 
@@ -922,7 +884,7 @@ static void fill_rect(void)
    xh = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> (12 -  0);
    yh = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >> ( 0 -  0);
 
-   yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
+   yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
 
    xlint = (unsigned)(xl) >> 2;
    xhint = (unsigned)(xh) >> 2;
@@ -1294,7 +1256,7 @@ static void set_combine(void)
    SET_MUL_ALPHA_INPUT(&combiner_alphamul[1], g_gdp.combine.mul_a1);
    SET_SUB_ALPHA_INPUT(&combiner_alphaadd[1], g_gdp.combine.add_a1);
 
-   other_modes.f.stalederivs = 1;
+   g_gdp.other_modes.f.stalederivs = 1;
 }
 
 static void set_texture_image(void)
@@ -1718,7 +1680,7 @@ no_read_zbuffer_coefficients:
       d_stwz_diff[3] -= (d_stwz_diff[3] >> 2);
    }
 
-   if (other_modes.cycle_type == CYCLE_TYPE_COPY)
+   if (g_gdp.other_modes.cycle_type == CYCLE_TYPE_COPY)
    {
       setzero_si128(d_rgba_dxh);
       setzero_si128(d_stwz_dxh);
@@ -1960,14 +1922,14 @@ STRICTINLINE static u16 normalize_dzpix(u16 sum)
 NOINLINE static void render_spans(
       int yhlimit, int yllimit, int tilenum, int flip)
 {
-   const unsigned int cycle_type = other_modes.cycle_type & 03;
+   const unsigned int cycle_type = g_gdp.other_modes.cycle_type & 03;
 
-   if (other_modes.f.stalederivs == 0)
+   if (g_gdp.other_modes.f.stalederivs == 0)
    { /* branch */ }
    else
    {
       deduce_derivatives();
-      other_modes.f.stalederivs = 0;
+      g_gdp.other_modes.f.stalederivs = 0;
    }
    fbread1_ptr = fbread_func[fb_size];
    fbread2_ptr = fbread2_func[fb_size];

@@ -141,3 +141,47 @@ void gdp_set_combine(uint32_t w0, uint32_t w1)
    g_gdp.combine.sub_b_a1   = (w1 & 0x00000038) >>  3;
    g_gdp.combine.add_a1     = (w1 & 0x00000007) >>  0;
 }
+
+void gdp_set_other_modes(uint32_t w0, uint32_t w1)
+{
+   /* K:  atomic_prim              = (w0 & 0x0080000000000000) >> 55; */
+   /* j:  reserved for future use -- (w0 & 0x0040000000000000) >> 54 */
+   g_gdp.other_modes.cycle_type       = (w0 & 0x00300000) >> (52 - 32);
+   g_gdp.other_modes.persp_tex_en     = !!(w0 & 0x00080000); /* 51 */
+   g_gdp.other_modes.detail_tex_en    = !!(w0 & 0x00040000); /* 50 */
+   g_gdp.other_modes.sharpen_tex_en   = !!(w0 & 0x00020000); /* 49 */
+   g_gdp.other_modes.tex_lod_en       = !!(w0 & 0x00010000); /* 48 */
+   g_gdp.other_modes.en_tlut          = !!(w0 & 0x00008000); /* 47 */
+   g_gdp.other_modes.tlut_type        = !!(w0 & 0x00004000); /* 46 */
+   g_gdp.other_modes.sample_type      = !!(w0 & 0x00002000); /* 45 */
+   g_gdp.other_modes.mid_texel        = !!(w0 & 0x00001000); /* 44 */
+   g_gdp.other_modes.bi_lerp0         = !!(w0 & 0x00000800); /* 43 */
+   g_gdp.other_modes.bi_lerp1         = !!(w0 & 0x00000400); /* 42 */
+   g_gdp.other_modes.convert_one      = !!(w0 & 0x00000200); /* 41 */
+   g_gdp.other_modes.key_en           = !!(w0 & 0x00000100); /* 40 */
+   g_gdp.other_modes.rgb_dither_sel   = (w0 & 0x000000C0) >> (38 - 32);
+   g_gdp.other_modes.alpha_dither_sel = (w0 & 0x00000030) >> (36 - 32);
+   /* reserved for future, def:15 -- (w1 & 0x0000000F00000000) >> 32 */
+   g_gdp.other_modes.blend_m1a_0      = (w1 & 0xC0000000) >> (30 -  0);
+   g_gdp.other_modes.blend_m1a_1      = (w1 & 0x30000000) >> (28 -  0);
+   g_gdp.other_modes.blend_m1b_0      = (w1 & 0x0C000000) >> (26 -  0);
+   g_gdp.other_modes.blend_m1b_1      = (w1 & 0x03000000) >> (24 -  0);
+   g_gdp.other_modes.blend_m2a_0      = (w1 & 0x00C00000) >> (22 -  0);
+   g_gdp.other_modes.blend_m2a_1      = (w1 & 0x00300000) >> (20 -  0);
+   g_gdp.other_modes.blend_m2b_0      = (w1 & 0x000C0000) >> (18 -  0);
+   g_gdp.other_modes.blend_m2b_1      = (w1 & 0x00030000) >> (16 -  0);
+   /* N:  reserved for future use -- (w1 & 0x0000000000008000) >> 15 */
+   g_gdp.other_modes.force_blend      = !!(w1 & 0x00004000); /* 14 */
+   g_gdp.other_modes.alpha_cvg_select = !!(w1 & 0x00002000); /* 13 */
+   g_gdp.other_modes.cvg_times_alpha  = !!(w1 & 0x00001000); /* 12 */
+   g_gdp.other_modes.z_mode           = (w1 & 0x00000C00) >> (10 -  0);
+   g_gdp.other_modes.cvg_dest         = (w1 & 0x00000300) >> ( 8 -  0);
+   g_gdp.other_modes.color_on_cvg     = !!(w1 & 0x00000080); /*  7 */
+   g_gdp.other_modes.image_read_en    = !!(w1 & 0x00000040); /*  6 */
+   g_gdp.other_modes.z_update_en      = !!(w1 & 0x00000020); /*  5 */
+   g_gdp.other_modes.z_compare_en     = !!(w1 & 0x00000010); /*  4 */
+   g_gdp.other_modes.antialias_en     = !!(w1 & 0x00000008); /*  3 */
+   g_gdp.other_modes.z_source_sel     = !!(w1 & 0x00000004); /*  2 */
+   g_gdp.other_modes.dither_alpha_en  = !!(w1 & 0x00000002); /*  1 */
+   g_gdp.other_modes.alpha_compare_en = !!(w1 & 0x00000001); /*  0 */
+}

@@ -1,5 +1,5 @@
-#ifndef _RDP_COMMON_GDP_H
-#define _RDP_COMMON_GDP_H
+#ifndef _RDP_GDP_H
+#define _RDP_GDP_H
 
 #include <stdint.h>
 
@@ -35,23 +35,40 @@ typedef struct
 
 typedef struct
 {
-    int32_t format;        /* format: ARGB, IA, ... */
-    int32_t size;          /* size: 4, 8, 16, or 32-bit */
+    int32_t format;        /* Controls the output format of the rasterized image:
+                              
+                              000 - RGBA
+                              001 - YUV
+                              010 - Color Index
+                              011 - Intensity Alpha
+                              011 - Intensity
+                           */
+    int32_t size;          /* Size of an individual pixel in terms of bits:
+                              
+                              00 - 4 bits
+                              01 - 8 bits (Color Index)
+                              10 - 16 bits (RGBA)
+                              11 - 32 bits (RGBA)
+                           */
     int32_t line;          /* size of one row (x axis) in 64 bit words */
     int32_t tmem;          /* location in texture memory (in 64 bit words, max 512 (4MB)) */
     int32_t palette;       /* palette # to use */
-    int32_t ct;            /* clamp_t */
-    int32_t mt;            /* mirror_t */
-    int32_t cs;            /* clamp_s */
-    int32_t ms;            /* mirror_s */
+    int32_t ct;            /* clamp_t - Enable clamping in the T direction when texturing
+                              primitives. */
+    int32_t mt;            /* mirror_t - Enable mirroring in the T direction when texturing
+                              primitives.*/
+    int32_t cs;            /* clamp_s  - Enable clamping in the S direction when texturing
+                              primitives.*/
+    int32_t ms;            /* mirror_s - Enable mirroring in the T direction when texturing
+                              primitives.*/
     int32_t mask_t;        /* mask to wrap around (y axis) */
-    int32_t shift_t;       /* ??? (scaling) */
+    int32_t shift_t;       /* level of detail shifting in the t direction (scaling) */
     int32_t mask_s;        /* mask to wrap around (x axis) */
-    int32_t shift_s;       /* ??? (scaling) */
-    int32_t sl;            /* lr_s - lower right s coordinate */
-    int32_t tl;            /* lr_t - lower right t coordinate */
-    int32_t sh;            /* ul_s - upper left  s coordinate */
-    int32_t th;            /* ul_t - upper left  t coordinate */
+    int32_t shift_s;       /* level of detail shift in the s direction (scaling) */
+    int32_t sl;            /* lr_s - Lower right s coordinate (10.5 fixed point format) */
+    int32_t tl;            /* lr_t - Lower right t coordinate (10.5 fixed point format) */
+    int32_t sh;            /* ul_s - Upper left  s coordinate (10.5 fixed point format) */
+    int32_t th;            /* ul_t - Upper left  t coordinate (10.5 fixed point format) */
     gdp_faketile f;
 } gdp_tile;
 
@@ -76,6 +93,125 @@ typedef struct
     int32_t add_a1;         /* c_Ad1 */
 } gdp_combine_modes;
 
+typedef struct
+{
+    int stalederivs;
+    int dolod;
+    int partialreject_1cycle; 
+    int partialreject_2cycle;
+    int special_bsel0; 
+    int special_bsel1;
+    int rgb_alpha_dither;
+} MODEDERIVS;
+
+typedef struct
+{
+#if 0
+   int atomic_primitive_enable;  /* Force primitive to be written to the
+                                    framebuffer before processing next primitive.
+                                 */
+#endif
+   int cycle_type;               /* Pipeline rasterization mode:
+                                    00 - 1 Cycle
+                                    01 - 2 Cycle
+                                    10 - Copy
+                                    11 - Fill
+                                 */
+   int persp_tex_en;             /* Enable perspective correction on textures. */
+   int detail_tex_en;            /* Enable detail texture. */
+   int sharpen_tex_en;           /* Enable sharpen texture. */
+   int tex_lod_en;               /* Enable texture level of detail (mipmapping). */
+   int en_tlut;                  /* Enable texture lookup table. This is useful when
+                                    textures are color mapped but the desired output
+                                    to the frame buffer is RGB. */
+   int tlut_type;                /* Type of texels (texture color values) in TLUT table:
+
+                                    0 - 16 bit RGBA (0bRRRRRGGGGGBBBBBA)
+                                    1 - 16 bit IA   (0xIIAA)
+                                 */
+   int sample_type;              /* Type of texture sampling:
+
+                                    0 - 1x1 (point sample)
+                                    1 - 2x2
+                                 */
+   int mid_texel;                /* Enable 2x2 half-texel sampling for texture filter. */
+   int bi_lerp0;                 /* Enables bilinear interpolation for cycle 0 when 1 Cycle
+                                    or 2 Cycle mode is enabled. */
+   int bi_lerp1;                 /* Enables bilinear interpolation for cycle 1 when 1 Cycle
+                                    or 2 Cycle mode is enabled. */
+   int convert_one;              /* Color convert the texel outputted by the texture filter
+                                    on cycle 0. */
+   int key_en;                   /* Enable chroma keying. */
+   int rgb_dither_sel;           /* Type of dithering is done to RGB values in 1 Cycle
+                                    or 2 Cycle modes:
+
+                                    00 - Magic square matrix
+                                    01 - Bayer matrix
+                                    10 - Noise
+                                    11 - No dither
+                                  */
+   int alpha_dither_sel;         /* Type of dithering done to alpha values in 1 Cycle
+                                    or 2 Cycle modes:
+
+                                    00 - Pattern
+                                    01 - ~Pattern
+                                    10 - Noise
+                                    11 - No dither
+                                 */
+   int blend_m1a_0;              /* Multiply blend 1a input in cycle 0. */
+   int blend_m1a_1;              /* Multiply blend 1a input in cycle 1. */
+   int blend_m1b_0;              /* Multiply blend 1b input in cycle 0. */
+   int blend_m1b_1;              /* Multiply blend 1b input in cycle 1. */
+   int blend_m2a_0;              /* Multiply blend 2a input in cycle 0. */
+   int blend_m2a_1;              /* Multiply blend 2a input in cycle 1. */
+   int blend_m2b_0;              /* Multiply blend 2b input in cycle 0. */
+   int blend_m2b_1;              /* Multiply blend 2b input in cycle 1. */
+   int force_blend;              /* Enable force blend. */
+   int alpha_cvg_select;         /* Enable use of coverage bits in alpha calculation. */
+   int cvg_times_alpha;          /* Enable multiplying coverage bits by alpha value
+                                    for final pixel alpha:
+
+                                    0 - Alpha = CVG
+                                    1 - Alpha = CVG * A
+                                 */
+   int z_mode;                   /* Mode select for Z buffer:
+
+                                    00 - Opaque
+                                    01 - Interpenetrating
+                                    10 - Transparent
+                                    11 - Decal
+                                 */
+   int cvg_dest;                 /* Mode select for handling coverage values:
+
+                                    00 - Clamp
+                                    01 - Wrap
+                                    10 - Force to full coverage
+                                    11 - Don't write back
+                                 */
+   int color_on_cvg;             /* Only update color on coverage overflow. Useful
+                                    for transparent surfaces. */
+   int image_read_en;            /* Enable coverage read/modify/write access to
+                                    frame buffer. */
+   int z_update_en;              /* Enable writing new Z value if color write is
+                                    enabled. */
+   int z_compare_en;             /* Enable conditional color write based on depth
+                                    comparison. */
+   int antialias_en;             /* Enable anti-aliasing based on coverage bits if 
+                                    force blend is not enabled. */
+   int z_source_sel;             /* Select the source of the Z value:
+
+                                    0 - Pixel Z
+                                    1 - Primitive Z
+                                 */
+   int dither_alpha_en;          /* Select source for alpha compare:
+
+                                    0 - Random noise
+                                    1 - Blend alpha
+                                 */
+   int alpha_compare_en;         /* Enable conditional color write based on alpha compare. */
+   MODEDERIVS f;
+} gdp_other_modes;
+
 struct gdp_global
 {
    int32_t primitive_lod_min;
@@ -91,6 +227,7 @@ struct gdp_global
    int32_t k0, k1, k2, k3, k4, k5;
    gdp_tile tile[8];
    gdp_combine_modes combine;
+   gdp_other_modes other_modes;
 };
 
 
@@ -117,6 +254,8 @@ int32_t gdp_set_tile(uint32_t w0, uint32_t w1);
 int32_t gdp_set_tile_size(uint32_t w0, uint32_t w1);
 
 void gdp_set_combine(uint32_t w0, uint32_t w1);
+
+void gdp_set_other_modes(uint32_t w0, uint32_t w1);
 
 extern struct gdp_global g_gdp;
 
