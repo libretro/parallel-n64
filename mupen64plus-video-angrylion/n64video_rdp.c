@@ -265,8 +265,8 @@ exit_b:
 static char invalid_command[] = "00\nDP reserved command.";
 static void invalid(void)
 {
-   const unsigned int command
-      = (cmd_data[cmd_cur + 0].UW32[0] & 0x3F000000) >> 24;
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   const unsigned int command = (w0 & 0x3F000000) >> 24;
 
    invalid_command[0] = '0' | command >> 3;
    invalid_command[1] = '0' | command & 07;
@@ -350,12 +350,14 @@ static void tex_rect(void)
    u8 xfrac;
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
 
-   xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
-   yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
-   tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
-   xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
-   yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+   xl      = (w0 & 0x00FFF000) >> 12;
+   yl      = (w0 & 0x00000FFF) >>  0;
+   tilenum = (w1 & 0x07000000) >> 24;
+   xh      = (w1 & 0x00FFF000) >> 12;
+   yh      = (w1 & 0x00000FFF) >>  0;
 
    yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
@@ -544,12 +546,14 @@ static void tex_rect_flip(void)
    u8 xfrac;
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
 
-   xl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> 12;
-   yl      = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >>  0;
-   tilenum = (cmd_data[cmd_cur + 0].UW32[1] & 0x07000000) >> 24;
-   xh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> 12;
-   yh      = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >>  0;
+   xl      = (w0 & 0x00FFF000) >> 12;
+   yl      = (w0 & 0x00000FFF) >>  0;
+   tilenum = (w1 & 0x07000000) >> 24;
+   xh      = (w1 & 0x00FFF000) >> 12;
+   yh      = (w1 & 0x00000FFF) >>  0;
 
    yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
@@ -767,12 +771,14 @@ static void set_convert(void)
 
 static void set_scissor(void)
 {
-   __clip.xh   = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> (44 - 32);
-   __clip.yh   = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >> (32 - 32);
-   scfield   = (cmd_data[cmd_cur + 0].UW32[1] & 0x02000000) >> (25 -  0);
-   sckeepodd = (cmd_data[cmd_cur + 0].UW32[1] & 0x01000000) >> (24 -  0);
-   __clip.xl   = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> (12 -  0);
-   __clip.yl   = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >> ( 0 -  0);
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   __clip.xh   = (w0 & 0x00FFF000) >> (44 - 32);
+   __clip.yh   = (w0 & 0x00000FFF) >> (32 - 32);
+   scfield     = (w1 & 0x02000000) >> (25 -  0);
+   sckeepodd   = (w1 & 0x01000000) >> (24 -  0);
+   __clip.xl   = (w1 & 0x00FFF000) >> (12 -  0);
+   __clip.yl   = (w1 & 0x00000FFF) >> ( 0 -  0);
    return;
 }
 
@@ -885,11 +891,13 @@ static void fill_rect(void)
    register int j, k;
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
 
-   xl = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> (44 - 32);
-   yl = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >> (32 - 32);
-   xh = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> (12 -  0);
-   yh = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >> ( 0 -  0);
+   xl = (w0 & 0x00FFF000) >> (44 - 32);
+   yl = (w0 & 0x00000FFF) >> (32 - 32);
+   xh = (w1 & 0x00FFF000) >> (12 -  0);
+   yh = (w1 & 0x00000FFF) >> ( 0 -  0);
 
    yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
 
@@ -1278,10 +1286,12 @@ static void set_combine(void)
 
 static void set_texture_image(void)
 {
-   ti_format  = (cmd_data[cmd_cur + 0].UW32[0] & 0x00E00000) >> (53 - 32);
-   ti_size    = (cmd_data[cmd_cur + 0].UW32[0] & 0x00180000) >> (51 - 32);
-   ti_width   = (cmd_data[cmd_cur + 0].UW32[0] & 0x000003FF) >> (32 - 32);
-   ti_address = (cmd_data[cmd_cur + 0].UW32[1] & 0x03FFFFFF) >> ( 0 -  0);
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   ti_format  = (w0 & 0x00E00000) >> (53 - 32);
+   ti_size    = (w0 & 0x00180000) >> (51 - 32);
+   ti_width   = (w0 & 0x000003FF) >> (32 - 32);
+   ti_address = (w1 & 0x03FFFFFF) >> ( 0 -  0);
    /* ti_address &= 0x00FFFFFF; // physical memory limit, enforced later */
    ++ti_width;
    return;
@@ -1289,17 +1299,21 @@ static void set_texture_image(void)
 
 static void set_mask_image(void)
 {
-   zb_address = cmd_data[cmd_cur + 0].UW32[1] & 0x03FFFFFF;
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   zb_address = w1 & 0x03FFFFFF;
    /* zb_address &= 0x00FFFFFF; */
    return;
 }
 
 static void set_color_image(void)
 {
-   fb_format  = (cmd_data[cmd_cur + 0].UW32[0] & 0x00E00000) >> (53 - 32);
-   fb_size    = (cmd_data[cmd_cur + 0].UW32[0] & 0x00180000) >> (51 - 32);
-   fb_width   = (cmd_data[cmd_cur + 0].UW32[0] & 0x000003FF) >> (32 - 32);
-   fb_address = (cmd_data[cmd_cur + 0].UW32[1] & 0x03FFFFFF) >> ( 0 -  0);
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   fb_format  = (w0 & 0x00E00000) >> (53 - 32);
+   fb_size    = (w0 & 0x00180000) >> (51 - 32);
+   fb_width   = (w0 & 0x000003FF) >> (32 - 32);
+   fb_address = (w1 & 0x03FFFFFF) >> ( 0 -  0);
    ++fb_width;
    /* fb_address &= 0x00FFFFFF; */
    return;
