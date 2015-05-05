@@ -1187,8 +1187,7 @@ static void rdp_setprimdepth(uint32_t w0, uint32_t w1)
 
 static void rdp_setothermode(uint32_t w0, uint32_t w1)
 {
-
-   LRDP("rdp_setothermode\n");
+   gdp_set_other_modes(w0, w1);
 
    if ((settings.ucode == ucode_F3DEX2) || (settings.ucode == ucode_CBFD))
    {
