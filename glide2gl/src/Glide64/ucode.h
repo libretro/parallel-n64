@@ -198,11 +198,7 @@ static void rdp_loadsync(uint32_t w0, uint32_t w1);
 static void rdp_pipesync(uint32_t w0, uint32_t w1);
 static void rdp_tilesync(uint32_t w0, uint32_t w1);
 static void rdp_fullsync(uint32_t w0, uint32_t w1);
-static void rdp_setkeygb(uint32_t w0, uint32_t w1);
-static void rdp_setkeyr(uint32_t w0, uint32_t w1);
-static void rdp_setconvert(uint32_t w0, uint32_t w1);
 static void rdp_setscissor(uint32_t w0, uint32_t w1);
-static void rdp_setprimdepth(uint32_t w0, uint32_t w1);
 static void rdp_setothermode(uint32_t w0, uint32_t w1);
 static void rdp_loadtlut(uint32_t w0, uint32_t w1);
 static void rdp_settilesize(uint32_t w0, uint32_t w1);
@@ -434,8 +430,8 @@ static rdp_instr gfx_instruction[10][256] =
       undef,                  undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_texrect,                    rdp_texrect,                rdp_loadsync,           rdp_pipesync,
-      rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_setothermode,
+      rdp_tilesync,           rdp_fullsync,           gdp_set_key_gb,         gdp_set_key_r,
+      gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,
       rdp_setfogcolor,        rdp_setblendcolor,      rdp_setprimcolor,       rdp_setenvcolor,
@@ -507,8 +503,8 @@ static rdp_instr gfx_instruction[10][256] =
       undef,                  undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_texrect,            rdp_texrect,            rdp_loadsync,           rdp_pipesync,
-      rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_setothermode,
+      rdp_tilesync,           rdp_fullsync,           gdp_set_key_gb,         gdp_set_key_r,
+      gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,
       rdp_setfogcolor,        rdp_setblendcolor,      rdp_setprimcolor,       rdp_setenvcolor,
@@ -583,8 +579,8 @@ static rdp_instr gfx_instruction[10][256] =
       uc2_movemem,            uc2_load_ucode,         uc0_displaylist,        uc0_enddl,
       spnoop,                 uc1_rdphalf_1,          uc0_setothermode_l,     uc0_setothermode_h,
       rdp_texrect,            rdp_texrect,            rdp_loadsync,           rdp_pipesync,
-      rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_setothermode,
+      rdp_tilesync,           rdp_fullsync,           gdp_set_key_gb,         gdp_set_key_r,
+      gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           uc2_rdphalf_2,          rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,
       rdp_setfogcolor,        rdp_setblendcolor,      rdp_setprimcolor,       rdp_setenvcolor,
@@ -657,8 +653,8 @@ static rdp_instr gfx_instruction[10][256] =
       undef,                  undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_texrect,            rdp_texrect,            rdp_loadsync,           rdp_pipesync,
-      rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_setothermode,
+      rdp_tilesync,           rdp_fullsync,           gdp_set_key_gb,         gdp_set_key_r,
+      gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,
       rdp_setfogcolor,        rdp_setblendcolor,      rdp_setprimcolor,       rdp_setenvcolor,
@@ -730,8 +726,8 @@ static rdp_instr gfx_instruction[10][256] =
       undef,                  undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_texrect,                    rdp_texrect,            rdp_loadsync,           rdp_pipesync,
-      rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_setothermode,
+      rdp_tilesync,           rdp_fullsync,           gdp_set_key_gb,         gdp_set_key_r,
+      gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,
       rdp_setfogcolor,        rdp_setblendcolor,      rdp_setprimcolor,       rdp_setenvcolor,
@@ -803,8 +799,8 @@ static rdp_instr gfx_instruction[10][256] =
       undef,                  undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_texrect,                    rdp_texrect,            rdp_loadsync,           rdp_pipesync,
-      rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_setothermode,
+      rdp_tilesync,           rdp_fullsync,           gdp_set_key_gb,           gdp_set_key_r,
+      gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,
       rdp_setfogcolor,        rdp_setblendcolor,      rdp_setprimcolor,       rdp_setenvcolor,
@@ -875,8 +871,8 @@ static rdp_instr gfx_instruction[10][256] =
       undef,                  undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_texrect,            rdp_texrect,        rdp_loadsync,           rdp_pipesync,
-      rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_setothermode,
+      rdp_tilesync,           rdp_fullsync,           gdp_set_key_gb,           gdp_set_key_r,
+      gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,
       rdp_setfogcolor,        rdp_setblendcolor,      rdp_setprimcolor,       rdp_setenvcolor,
@@ -955,8 +951,8 @@ static rdp_instr gfx_instruction[10][256] =
 
       undef,                                  undef,                                  undef,                                  undef,
       rdp_texrect,            rdp_texrect,            rdp_loadsync,           rdp_pipesync,
-      rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_setothermode,
+      rdp_tilesync,           rdp_fullsync,           gdp_set_key_gb,           gdp_set_key_r,
+      gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
 
       rdp_loadtlut,           rdphalf_2,          rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,
@@ -1032,8 +1028,8 @@ static rdp_instr gfx_instruction[10][256] =
       uc8_movemem,                    uc2_load_ucode,                 uc0_displaylist,                uc0_enddl,
       spnoop,                                 rdphalf_1,                      uc0_setothermode_l,             uc0_setothermode_h,
       rdp_texrect,            rdp_texrect,            rdp_loadsync,           rdp_pipesync,
-      rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-      rdp_setconvert,         rdp_setscissor,         rdp_setprimdepth,       rdp_setothermode,
+      rdp_tilesync,           rdp_fullsync,           gdp_set_key_gb,           gdp_set_key_r,
+      gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           uc2_rdphalf_2,          rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,
       rdp_setfogcolor,        rdp_setblendcolor,      rdp_setprimcolor,       rdp_setenvcolor,
@@ -1107,8 +1103,8 @@ static rdp_instr gfx_instruction[10][256] =
 
       undef,                  undef,                  uc0_setothermode_l,     uc0_setothermode_h,    
       rdp_texrect,            rdp_texrect,            rdp_loadsync,           rdp_pipesync,
-      rdp_tilesync,           rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-      rdp_setconvert,         uc9_setscissor,         rdp_setprimdepth,       rdp_setothermode,
+      rdp_tilesync,           rdp_fullsync,           gdp_set_key_gb,           gdp_set_key_r,
+      gdp_set_convert,         uc9_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
 
       rdp_loadtlut,           rdphalf_2,              rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,

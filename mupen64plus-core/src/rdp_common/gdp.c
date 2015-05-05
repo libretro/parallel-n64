@@ -14,7 +14,7 @@ void gdp_set_prim_color(uint32_t w0, uint32_t w1)
    g_gdp.primitive_lod_min  = (w0 & 0x00001F00) >> (40-32);
 }
 
-void gdp_set_env_color(uint32_t w1)
+void gdp_set_env_color(uint32_t w0, uint32_t w1)
 {
    g_gdp.env_color.total =  w1;
    g_gdp.env_color.r       = (w1 & 0xFF000000) >> 24;
@@ -23,13 +23,13 @@ void gdp_set_env_color(uint32_t w1)
    g_gdp.env_color.a       = (w1 & 0x000000FF) >>  0;
 }
 
-void gdp_set_prim_depth(uint32_t w1)
+void gdp_set_prim_depth(uint32_t w0, uint32_t w1)
 {
    g_gdp.prim_color.z     = (w1 & 0xFFFF0000) >> 16;
    g_gdp.prim_color.dz    = (w1 & 0x0000FFFF) >>  0;
 }
 
-void gdp_set_fog_color(uint32_t w1)
+void gdp_set_fog_color(uint32_t w0, uint32_t w1)
 {
    g_gdp.fog_color.total =  w1;
    g_gdp.fog_color.r       = (w1 & 0xFF000000) >> 24;
@@ -38,7 +38,7 @@ void gdp_set_fog_color(uint32_t w1)
    g_gdp.fog_color.a       = (w1 & 0x000000FF) >>  0;
 }
 
-void gdp_set_blend_color(uint32_t w1)
+void gdp_set_blend_color(uint32_t w0, uint32_t w1)
 {
    g_gdp.blend_color.total = w1;
    g_gdp.blend_color.r       = (w1 & 0xFF000000) >> 24;
@@ -47,7 +47,7 @@ void gdp_set_blend_color(uint32_t w1)
    g_gdp.blend_color.a       = (w1 & 0x000000FF) >>  0;
 }
 
-void gdp_set_fill_color(uint32_t w1)
+void gdp_set_fill_color(uint32_t w0, uint32_t w1)
 {
    g_gdp.fill_color.total = w1;
    g_gdp.fill_color.r       = (w1 & 0xFF000000) >> 24;
@@ -82,7 +82,7 @@ void gdp_set_key_gb(uint32_t w0, uint32_t w1)
    g_gdp.key_scale.b      = (w1 & 0x000000FF) >>  0;
 }
 
-void gdp_set_key_r(uint32_t w1)
+void gdp_set_key_r(uint32_t w0, uint32_t w1)
 {
    g_gdp.key_scale.total  = (g_gdp.key_scale.total & 0x00FFFFFF)  | ((w1 & 0xFF) << 24);
    g_gdp.key_center.total = (g_gdp.key_center.total & 0x00FFFFFF) | (((w1 >> 8) & 0xFF) << 24);

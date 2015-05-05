@@ -746,18 +746,23 @@ static void sync_full(void)
 
 static void set_key_gb(void)
 {
-   gdp_set_key_gb(cmd_data[cmd_cur + 0].UW32[0],
-         cmd_data[cmd_cur + 0].UW32[1]);
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   gdp_set_key_gb(w0, w1);
 }
 
 static void set_key_r(void)
 {
-   gdp_set_key_r(cmd_data[cmd_cur + 0].UW32[1]);
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   gdp_set_key_r(w0, w1);
 }
 
 static void set_convert(void)
 {
-   gdp_set_convert(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1]);
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   gdp_set_convert(w0, w1);
 }
 
 static void set_scissor(void)
@@ -773,7 +778,9 @@ static void set_scissor(void)
 
 static void set_prim_depth(void)
 {
-   gdp_set_prim_depth(cmd_data[cmd_cur + 0].UW32[1]);
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   gdp_set_prim_depth(w0, w1);
 
    g_gdp.prim_color.z = (g_gdp.prim_color.z & 0x7FFF) << 16; /* angrylion does this why? */
 }
@@ -1006,27 +1013,37 @@ static void fill_rect(void)
 
 static void set_fill_color(void)
 {
-   gdp_set_fill_color(cmd_data[cmd_cur + 0].UW32[1]);
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   gdp_set_fill_color(w0, w1);
 }
 
 static void set_fog_color(void)
 {
-   gdp_set_fog_color(cmd_data[cmd_cur + 0].UW32[1]);
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   gdp_set_fog_color(w0, w1);
 }
 
 static void set_blend_color(void)
 {
-   gdp_set_blend_color(cmd_data[cmd_cur + 0].UW32[1]);
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   gdp_set_blend_color(w0, w1);
 }
 
 static void set_prim_color(void)
 {
-   gdp_set_prim_color(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1]);
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   gdp_set_prim_color(w0, w1);
 }
 
 static void set_env_color(void)
 {
-   gdp_set_env_color(cmd_data[cmd_cur + 0].UW32[1]);
+   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
+   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
+   gdp_set_env_color(w0, w1);
 }
 
 INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)

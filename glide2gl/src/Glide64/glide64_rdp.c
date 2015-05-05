@@ -1128,21 +1128,6 @@ static void rdp_fullsync(uint32_t w0, uint32_t w1)
    gfx_info.CheckInterrupts();
 }
 
-static void rdp_setkeygb(uint32_t w0, uint32_t w1)
-{
-   gdp_set_key_gb(w0, w1);
-}
-
-static void rdp_setkeyr(uint32_t w0, uint32_t w1)
-{
-   gdp_set_key_r(w1);
-}
-
-static void rdp_setconvert(uint32_t w0, uint32_t w1)
-{
-   gdp_set_convert(w0, w1);
-}
-
 static void rdp_setscissor(uint32_t w0, uint32_t w1)
 {
    // clipper resolution is 320x240, scale based on computer resolution
@@ -1167,11 +1152,6 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
       rdp.view_trans[1] = -rdp.view_scale[1];
       rdp.update |= UPDATE_VIEWPORT;
    }
-}
-
-static void rdp_setprimdepth(uint32_t w0, uint32_t w1)
-{
-   gdp_set_prim_depth(w1);
 }
 
 #define F3DEX2_SETOTHERMODE(cmd,sft,len,data) { \
@@ -1699,19 +1679,19 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 
 static void rdp_setfillcolor(uint32_t w0, uint32_t w1)
 {
-   gdp_set_fill_color(w1);
+   gdp_set_fill_color(w0, w1);
    rdp.update |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
 }
 
 static void rdp_setfogcolor(uint32_t w0, uint32_t w1)
 {
-   gdp_set_fog_color(w1);
+   gdp_set_fog_color(w0, w1);
    rdp.update |= UPDATE_COMBINE | UPDATE_FOG_ENABLED;
 }
 
 static void rdp_setblendcolor(uint32_t w0, uint32_t w1)
 {
-   gdp_set_blend_color(w1);
+   gdp_set_blend_color(w0, w1);
    rdp.update |= UPDATE_COMBINE;
 }
 
@@ -1726,7 +1706,7 @@ static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 
 static void rdp_setenvcolor(uint32_t w0, uint32_t w1)
 {
-   gdp_set_env_color(w1);
+   gdp_set_env_color(w0, w1);
    rdp.update |= UPDATE_COMBINE;
 
    //FRDP("setenvcolor: %08lx\n", rdp.cmd1);
@@ -2925,8 +2905,8 @@ static rdp_instr rdp_command_table[64] =
    /* 0x20 */
    undef,              undef,                  undef,                  undef,
    rdp_texrect,        rdp_texrect,            rdp_loadsync,           rdp_pipesync,
-   rdp_tilesync,       rdp_fullsync,           rdp_setkeygb,           rdp_setkeyr,
-   rdp_setconvert,     rdp_setscissor,         rdp_setprimdepth,       rdp_setothermode,
+   rdp_tilesync,       rdp_fullsync,           gdp_set_key_gb,           gdp_set_key_r,
+   gdp_set_convert,    rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
    /* 0x30 */
    rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
    rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,

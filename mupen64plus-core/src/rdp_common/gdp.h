@@ -233,19 +233,19 @@ struct gdp_global
 
 void gdp_set_prim_color(uint32_t w0, uint32_t w1);
 
-void gdp_set_prim_depth(uint32_t w1);
+void gdp_set_prim_depth(uint32_t w0, uint32_t w1);
 
-void gdp_set_env_color(uint32_t w1);
+void gdp_set_env_color(uint32_t w0, uint32_t w1);
 
-void gdp_set_fill_color(uint32_t w1);
+void gdp_set_fill_color(uint32_t w0, uint32_t w1);
 
-void gdp_set_fog_color(uint32_t w1);
+void gdp_set_fog_color(uint32_t w0, uint32_t w1);
 
-void gdp_set_blend_color(uint32_t w1);
+void gdp_set_blend_color(uint32_t w0, uint32_t w1);
 
 void gdp_set_convert(uint32_t w0, uint32_t w1);
 
-void gdp_set_key_r(uint32_t w1);
+void gdp_set_key_r(uint32_t w0, uint32_t w1);
 
 void gdp_set_key_gb(uint32_t w0, uint32_t w1);
 
