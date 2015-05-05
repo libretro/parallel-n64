@@ -1071,59 +1071,44 @@ static void set_combine(void)
 {
    uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
    uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
-    g_gdp.combine.sub_a_rgb0 = (w0 & 0x00F00000) >> 20;
-    g_gdp.combine.mul_rgb0   = (w0 & 0x000F8000) >> 15;
-    g_gdp.combine.sub_a_a0   = (w0 & 0x00007000) >> 12;
-    g_gdp.combine.mul_a0     = (w0 & 0x00000E00) >>  9;
-    g_gdp.combine.sub_a_rgb1 = (w0 & 0x000001E0) >>  5;
-    g_gdp.combine.mul_rgb1   = (w0 & 0x0000001F) >>  0;
-    g_gdp.combine.sub_b_rgb0 = (w1 & 0xF0000000) >> 28;
-    g_gdp.combine.sub_b_rgb1 = (w1 & 0x0F000000) >> 24;
-    g_gdp.combine.sub_a_a1   = (w1 & 0x00E00000) >> 21;
-    g_gdp.combine.mul_a1     = (w1 & 0x001C0000) >> 18;
-    g_gdp.combine.add_rgb0   = (w1 & 0x00038000) >> 15;
-    g_gdp.combine.sub_b_a0   = (w1 & 0x00007000) >> 12;
-    g_gdp.combine.add_a0     = (w1 & 0x00000E00) >>  9;
-    g_gdp.combine.add_rgb1   = (w1 & 0x000001C0) >>  6;
-    g_gdp.combine.sub_b_a1   = (w1 & 0x00000038) >>  3;
-    g_gdp.combine.add_a1     = (w1 & 0x00000007) >>  0;
 
-    SET_SUBA_RGB_INPUT(
-        &combiner_rgbsub_a_r[0], &combiner_rgbsub_a_g[0],
-        &combiner_rgbsub_a_b[0], g_gdp.combine.sub_a_rgb0);
-    SET_SUBB_RGB_INPUT(
-        &combiner_rgbsub_b_r[0], &combiner_rgbsub_b_g[0],
-        &combiner_rgbsub_b_b[0], g_gdp.combine.sub_b_rgb0);
-    SET_MUL_RGB_INPUT(
-        &combiner_rgbmul_r[0], &combiner_rgbmul_g[0], &combiner_rgbmul_b[0],
-        g_gdp.combine.mul_rgb0);
-    SET_ADD_RGB_INPUT(
-        &combiner_rgbadd_r[0], &combiner_rgbadd_g[0], &combiner_rgbadd_b[0],
-        g_gdp.combine.add_rgb0);
-    SET_SUB_ALPHA_INPUT(&combiner_alphasub_a[0], g_gdp.combine.sub_a_a0);
-    SET_SUB_ALPHA_INPUT(&combiner_alphasub_b[0], g_gdp.combine.sub_b_a0);
-    SET_MUL_ALPHA_INPUT(&combiner_alphamul[0], g_gdp.combine.mul_a0);
-    SET_SUB_ALPHA_INPUT(&combiner_alphaadd[0], g_gdp.combine.add_a0);
+   gdp_set_combine(w0, w1);
 
-    SET_SUBA_RGB_INPUT(
-        &combiner_rgbsub_a_r[1], &combiner_rgbsub_a_g[1],
-        &combiner_rgbsub_a_b[1], g_gdp.combine.sub_a_rgb1);
-    SET_SUBB_RGB_INPUT(
-        &combiner_rgbsub_b_r[1], &combiner_rgbsub_b_g[1],
-        &combiner_rgbsub_b_b[1], g_gdp.combine.sub_b_rgb1);
-    SET_MUL_RGB_INPUT(
-        &combiner_rgbmul_r[1], &combiner_rgbmul_g[1], &combiner_rgbmul_b[1],
-        g_gdp.combine.mul_rgb1);
-    SET_ADD_RGB_INPUT(
-        &combiner_rgbadd_r[1], &combiner_rgbadd_g[1], &combiner_rgbadd_b[1],
-        g_gdp.combine.add_rgb1);
-    SET_SUB_ALPHA_INPUT(&combiner_alphasub_a[1], g_gdp.combine.sub_a_a1);
-    SET_SUB_ALPHA_INPUT(&combiner_alphasub_b[1], g_gdp.combine.sub_b_a1);
-    SET_MUL_ALPHA_INPUT(&combiner_alphamul[1], g_gdp.combine.mul_a1);
-    SET_SUB_ALPHA_INPUT(&combiner_alphaadd[1], g_gdp.combine.add_a1);
+   SET_SUBA_RGB_INPUT(
+         &combiner_rgbsub_a_r[0], &combiner_rgbsub_a_g[0],
+         &combiner_rgbsub_a_b[0], g_gdp.combine.sub_a_rgb0);
+   SET_SUBB_RGB_INPUT(
+         &combiner_rgbsub_b_r[0], &combiner_rgbsub_b_g[0],
+         &combiner_rgbsub_b_b[0], g_gdp.combine.sub_b_rgb0);
+   SET_MUL_RGB_INPUT(
+         &combiner_rgbmul_r[0], &combiner_rgbmul_g[0], &combiner_rgbmul_b[0],
+         g_gdp.combine.mul_rgb0);
+   SET_ADD_RGB_INPUT(
+         &combiner_rgbadd_r[0], &combiner_rgbadd_g[0], &combiner_rgbadd_b[0],
+         g_gdp.combine.add_rgb0);
+   SET_SUB_ALPHA_INPUT(&combiner_alphasub_a[0], g_gdp.combine.sub_a_a0);
+   SET_SUB_ALPHA_INPUT(&combiner_alphasub_b[0], g_gdp.combine.sub_b_a0);
+   SET_MUL_ALPHA_INPUT(&combiner_alphamul[0], g_gdp.combine.mul_a0);
+   SET_SUB_ALPHA_INPUT(&combiner_alphaadd[0], g_gdp.combine.add_a0);
 
-    other_modes.f.stalederivs = 1;
-    return;
+   SET_SUBA_RGB_INPUT(
+         &combiner_rgbsub_a_r[1], &combiner_rgbsub_a_g[1],
+         &combiner_rgbsub_a_b[1], g_gdp.combine.sub_a_rgb1);
+   SET_SUBB_RGB_INPUT(
+         &combiner_rgbsub_b_r[1], &combiner_rgbsub_b_g[1],
+         &combiner_rgbsub_b_b[1], g_gdp.combine.sub_b_rgb1);
+   SET_MUL_RGB_INPUT(
+         &combiner_rgbmul_r[1], &combiner_rgbmul_g[1], &combiner_rgbmul_b[1],
+         g_gdp.combine.mul_rgb1);
+   SET_ADD_RGB_INPUT(
+         &combiner_rgbadd_r[1], &combiner_rgbadd_g[1], &combiner_rgbadd_b[1],
+         g_gdp.combine.add_rgb1);
+   SET_SUB_ALPHA_INPUT(&combiner_alphasub_a[1], g_gdp.combine.sub_a_a1);
+   SET_SUB_ALPHA_INPUT(&combiner_alphasub_b[1], g_gdp.combine.sub_b_a1);
+   SET_MUL_ALPHA_INPUT(&combiner_alphamul[1], g_gdp.combine.mul_a1);
+   SET_SUB_ALPHA_INPUT(&combiner_alphaadd[1], g_gdp.combine.add_a1);
+
+   other_modes.f.stalederivs = 1;
 }
 
 static void set_texture_image(void)
