@@ -342,19 +342,13 @@ NOINLINE extern void edgewalker_for_loads(INT32* lewdata);
 extern void (*render_spans_1cycle_ptr)(int, int, int, int);
 extern void (*render_spans_2cycle_ptr)(int, int, int, int);
 
-extern INLINE void SET_BLENDER_INPUT(
-    int cycle, int which, INT32 **input_r, INT32 **input_g, INT32 **input_b,
-    INT32 **input_a, int a, int b);
-extern INLINE void SET_SUBA_RGB_INPUT(
-    INT32 **input_r, INT32 **input_g, INT32 **input_b, int code);
-extern INLINE void SET_SUBB_RGB_INPUT(
-    INT32 **input_r, INT32 **input_g, INT32 **input_b, int code);
-extern INLINE void SET_MUL_RGB_INPUT(
-    INT32 **input_r, INT32 **input_g, INT32 **input_b, int code);
-extern INLINE void SET_ADD_RGB_INPUT(
-    INT32 **input_r, INT32 **input_g, INT32 **input_b, int code);
-extern INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code);
-extern INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code);
+void SET_BLENDER_INPUT(
+      int cycle, int which,
+      INT32 **input_r,
+      INT32 **input_g,
+      INT32 **input_b,
+      INT32 **input_a,
+      int a, int b);
 
 #ifdef _DEBUG
 int render_cycle_mode_counts[4];
@@ -418,6 +412,15 @@ extern INT32 *blender2b_a[2];
 extern RECTANGLE __clip;
 
 extern OTHER_MODES other_modes;
+extern COLOR combined_color;
+extern COLOR texel0_color;
+extern COLOR texel1_color;
+extern COLOR nexttexel_color;
+extern COLOR shade_color;
+extern INT32 noise;
+extern INT32 one_color;
+extern INT32 zero_color;
+extern INT32 lod_frac;
 
 extern int rdp_pipeline_crashed;
 
