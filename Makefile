@@ -89,8 +89,8 @@ else ifneq (,$(findstring odroid,$(platform)))
 	GLES = 1
 	GL_LIB := -lGLESv2
 	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
-	CFLAGS += -mfloat-abi=hard -mfpu=neon
-	CXXFLAGS += -mfloat-abi=hard -mfpu=neon
+	CFLAGS += -marm -mfloat-abi=hard -mfpu=neon
+	CXXFLAGS += -marm -mfloat-abi=hard -mfpu=neon
 	GLIDE2GL = 1
 	HAVE_NEON = 1
 	ifneq (,$(findstring odroid-c1,$(platform)))
