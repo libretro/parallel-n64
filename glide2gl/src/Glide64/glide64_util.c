@@ -1171,7 +1171,7 @@ void update(void)
       {
          rdp.update ^= UPDATE_ALPHA_COMPARE;
 
-         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 1 && !(rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && (!(rdp.othermode_l & RDP_FORCE_BLEND) || (g_gdp.blend_color.a)))
+         if (g_gdp.other_modes.alpha_compare_en == 1 && !(rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && (!(rdp.othermode_l & RDP_FORCE_BLEND) || (g_gdp.blend_color.a)))
          {
             uint8_t reference = (uint8_t)g_gdp.blend_color.a;
             grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER, reference, 1);
@@ -1184,7 +1184,7 @@ void update(void)
                bool cond_set = (rdp.othermode_l & 0x5000) == 0x5000;
                grAlphaTestFunction (!cond_set ? GR_CMP_GEQUAL : GR_CMP_GREATER, 0x20, !cond_set ? 1 : 0);
                if (cond_set)
-                  grAlphaTestReferenceValue (((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3) ? (uint8_t)g_gdp.blend_color.a : 0x00);
+                  grAlphaTestReferenceValue ((g_gdp.other_modes.alpha_compare_en == 3) ? (uint8_t)g_gdp.blend_color.a : 0x00);
             }
             else
             {
@@ -1192,7 +1192,7 @@ void update(void)
                LRDP (" |- alpha compare: none\n");
             }
          }
-         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3 && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+         if (g_gdp.other_modes.alpha_compare_en == 3 && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
          {
             if (settings.old_style_adither || g_gdp.other_modes.alpha_dither_sel != 3)
             {
