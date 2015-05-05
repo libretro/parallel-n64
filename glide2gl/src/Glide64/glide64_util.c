@@ -1135,7 +1135,7 @@ void update(void)
          {
             if (rdp.flags & ZBUF_COMPARE)
             {
-               switch ((rdp.rm & ZMODE_DECAL) >> 10)
+               switch (g_gdp.other_modes.z_mode)
                {
                   case ZMODE_OPA:
                      depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
