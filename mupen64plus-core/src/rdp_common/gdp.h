@@ -55,6 +55,27 @@ typedef struct
     gdp_faketile f;
 } gdp_tile;
 
+typedef struct
+{
+    int sub_a_rgb0;
+    int sub_b_rgb0;
+    int mul_rgb0;
+    int add_rgb0;
+    int sub_a_a0;
+    int sub_b_a0;
+    int mul_a0;
+    int add_a0;
+
+    int sub_a_rgb1;
+    int sub_b_rgb1;
+    int mul_rgb1;
+    int add_rgb1;
+    int sub_a_a1;
+    int sub_b_a1;
+    int mul_a1;
+    int add_a1;
+} gdp_combine_modes;
+
 struct gdp_global
 {
    int32_t primitive_lod_min;
@@ -69,6 +90,7 @@ struct gdp_global
    gdp_color key_center;
    int32_t k0, k1, k2, k3, k4, k5;
    gdp_tile tile[8];
+   gdp_combine_modes combine;
 };
 
 

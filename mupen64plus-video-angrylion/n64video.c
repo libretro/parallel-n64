@@ -51,7 +51,6 @@ INT32 *blender2b_a[2];
 
 
 OTHER_MODES other_modes;
-COMBINE_MODES combine;
 
 
 int rdp_pipeline_crashed;

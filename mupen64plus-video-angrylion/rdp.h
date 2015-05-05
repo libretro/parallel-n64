@@ -176,26 +176,6 @@ typedef struct {
 } MODEDERIVS;
 
 typedef struct {
-    int sub_a_rgb0;
-    int sub_b_rgb0;
-    int mul_rgb0;
-    int add_rgb0;
-    int sub_a_a0;
-    int sub_b_a0;
-    int mul_a0;
-    int add_a0;
-
-    int sub_a_rgb1;
-    int sub_b_rgb1;
-    int mul_rgb1;
-    int add_rgb1;
-    int sub_a_a1;
-    int sub_b_a1;
-    int mul_a1;
-    int add_a1;
-} COMBINE_MODES;
-
-typedef struct {
     int cycle_type;
     int persp_tex_en;
     int detail_tex_en;
@@ -438,7 +418,6 @@ extern INT32 *blender2b_a[2];
 extern RECTANGLE __clip;
 
 extern OTHER_MODES other_modes;
-extern COMBINE_MODES combine;
 
 extern int rdp_pipeline_crashed;
 
