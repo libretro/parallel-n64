@@ -553,9 +553,6 @@ struct RDP
 
    uint32_t cmb_flags, cmb_flags_2;
 
-   // othermode_l flags
-   int zsrc; // 0 = pixel, 1 = prim
-
    // Matrices
    DECLAREALIGN16VAR(model[4][4]);
    DECLAREALIGN16VAR(proj[4][4]);

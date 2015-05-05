@@ -66,7 +66,7 @@ static float set_sprite_combine_mode(void)
   Z = 0.0f;
   if ((rdp.othermode_l & 0x00000030) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < 2))
   {
-     if (rdp.zsrc == 1)
+     if (g_gdp.other_modes.z_source_sel == 1)
       Z = g_gdp.prim_color.z;
     FRDP ("prim_depth = %d, prim_dz = %d\n", g_gdp.prim_color.z, g_gdp.prim_color.dz);
     Z = ScaleZ(Z);
