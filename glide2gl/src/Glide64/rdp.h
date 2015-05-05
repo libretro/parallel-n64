@@ -555,7 +555,6 @@ struct RDP
 
    // othermode_l flags
    int zsrc; // 0 = pixel, 1 = prim
-   uint8_t alpha_dither_mode;
 
    // Matrices
    DECLAREALIGN16VAR(model[4][4]);

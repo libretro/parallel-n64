@@ -1194,7 +1194,7 @@ void update(void)
          }
          if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3 && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
          {
-            if (settings.old_style_adither || rdp.alpha_dither_mode != 3)
+            if (settings.old_style_adither || g_gdp.other_modes.alpha_dither_sel != 3)
             {
                LRDP (" |- alpha compare: dither\n");
                grStippleMode(settings.stipple_mode);

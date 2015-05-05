@@ -464,12 +464,6 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
    rdp.cmd1 &= mask;
    rdp.othermode_h = (rdp.othermode_h & ~mask) | rdp.cmd1;
 
-   if (mask & 0x00000030) // alpha dither mode
-   {
-      rdp.alpha_dither_mode = (rdp.othermode_h >> 4) & 0x3;
-      FRDP ("alpha dither mode: %s\n", str_dither[rdp.alpha_dither_mode]);
-   }
-
    if (mask & 0x00003000) // filter mode
    {
       rdp.filter_mode = (int)((rdp.othermode_h & 0x00003000) >> 12);
