@@ -50,6 +50,7 @@
 
 extern void CRC_BuildTable();
 extern retro_log_printf_t log_cb;
+extern uint32_t screen_aspectmodehint;
 
 #if defined(__GNUC__)
 #include <sys/time.h>
@@ -195,7 +196,7 @@ void ChangeSize(void)
 {
    float offset_y;
 
-   switch (settings.aspectmode)
+   switch (screen_aspectmodehint)
    {
       case 0: //4:3
          if (settings.scr_res_x >= settings.scr_res_y * 4.0f / 3.0f)
@@ -321,7 +322,7 @@ int InitGfx(void)
 
    settings.res_x = settings.scr_res_x;
    settings.res_y = settings.scr_res_y;
-   ChangeSize ();
+   ChangeSize();
 
    guLoadTextures ();
    ClearCache ();
@@ -749,7 +750,7 @@ EXPORT void CALL UpdateScreen (void)
    {
       if( *gfx_info.VI_ORIGIN_REG  > width )
       {
-         ChangeSize ();
+         ChangeSize();
          LRDP("ChangeSize done\n");
          if (rdp.vi_height != 0)
             drawViRegBG();

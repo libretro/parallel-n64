@@ -467,7 +467,7 @@ EXPORT void CALL ProcessDList(void)
 
   no_dlist = false;
   update_screen_count = 0;
-  ChangeSize ();
+  ChangeSize();
 
   if (reset)
   {

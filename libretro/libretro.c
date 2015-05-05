@@ -54,6 +54,8 @@ bool flip_only;
 static uint8_t* game_data;
 static uint32_t game_size;
 
+static bool reinit_screen;
+
 extern uint32_t *blitter_buf;
 
 enum gfx_plugin_type gfx_plugin;
@@ -62,6 +64,7 @@ static enum rsp_plugin_type rsp_plugin;
 uint32_t screen_width;
 uint32_t screen_height;
 uint32_t screen_pitch;
+uint32_t screen_aspectmodehint;
 
 static bool first_context_reset;
 
@@ -220,6 +223,8 @@ static void setup_variables(void)
          "RSP Plugin; auto|hle|cxd4" },
       { "mupen64-screensize",
          "Resolution (restart); 640x480|960x720|1280x960|1600x1200|1920x1440|2240x1680|320x240" },
+      { "mupen64-aspectratiohint",
+         "Aspect ratio hint (reinit); normal|widescreen" },
       { "mupen64-filtering",
 		 "Texture Filtering; automatic|N64 3-point|bilinear|nearest" },
       { "mupen64-polyoffset-factor",
@@ -395,10 +400,10 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 {
    m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.destination_code);
 
-   info->geometry.base_width = screen_width;
-   info->geometry.base_height = screen_height;
-   info->geometry.max_width = screen_width;
-   info->geometry.max_height = screen_height;
+   info->geometry.base_width   = screen_width;
+   info->geometry.base_height  = screen_height;
+   info->geometry.max_width    = screen_width;
+   info->geometry.max_height   = screen_height;
    info->geometry.aspect_ratio = 4.0 / 3.0;
    info->timing.fps = (region == SYSTEM_PAL) ? 50.0 : (60/1.001);                // TODO: Actual timing 
    info->timing.sample_rate = 44100.0;
@@ -465,9 +470,11 @@ unsigned int initial_boot = true;
 #include "../mupen64plus-video-angrylion/vi.h"
 
 extern void glide_set_filtering(unsigned value);
+extern void ChangeSize();
 
 void update_variables(bool startup)
 {
+   static float last_aspect = 4.0 / 3.0;
    struct retro_variable var;
 
    var.key = "mupen64-screensize";
@@ -484,6 +491,7 @@ void update_variables(bool startup)
          screen_height = 480;
       }
    }
+
 
    if (startup)
    {
@@ -548,6 +556,44 @@ void update_variables(bool startup)
       {
           log_cb(RETRO_LOG_DEBUG, "set glide filtering mode\n");
 		  glide_set_filtering(retro_filtering);
+      }
+   }
+
+   if (!startup)
+   {
+      var.key = "mupen64-aspectratiohint";
+      var.value = NULL;
+
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      {
+         float aspect_val = 4.0 / 3.0;
+         float aspectmode = 0;
+
+         if (!strcmp(var.value, "widescreen"))
+         {
+            aspect_val = 16.0 / 9.0;
+            aspectmode = 1;
+         }
+         else if (!strcmp(var.value, "normal"))
+         {
+            aspect_val = 4.0 / 3.0;
+            aspectmode = 0;
+         }
+
+         if (aspect_val != last_aspect)
+         {
+            screen_aspectmodehint = aspectmode;
+
+            switch (gfx_plugin)
+            {
+               case GFX_GLIDE64:
+                  ChangeSize();
+                  break;
+            }
+
+            last_aspect = aspect_val;
+            reinit_screen = true;
+         }
       }
    }
 
@@ -757,6 +803,24 @@ void retro_run (void)
 
    FAKE_SDL_TICKS += 16;
    pushed_frame = false;
+
+   if (reinit_screen)
+   {
+      bool ret;
+      struct retro_system_av_info info;
+      retro_get_system_av_info(&info);
+      switch (screen_aspectmodehint)
+      {
+         case 0:
+            info.geometry.aspect_ratio = 4.0 / 3.0;
+            break;
+         case 1:
+            info.geometry.aspect_ratio = 16.0 / 9.0;
+            break;
+      }
+      ret = environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &info.geometry);
+      reinit_screen = false;
+   }
 
 run_again:
 
