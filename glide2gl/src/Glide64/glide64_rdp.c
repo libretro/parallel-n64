@@ -1207,12 +1207,9 @@ void load_palette (uint32_t addr, uint16_t start, uint16_t count)
 static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 {
    int32_t i, j;
-   uint32_t tile;
-   uint16_t start, count;
-
-   tile = (w1 >> 24) & 0x07;
-   start = rdp.tiles[tile].t_mem - 256; // starting location in the palettes
-   count = ((uint16_t)(w1 >> 14) & 0x3FF) + 1;    // number to copy
+   uint32_t tile =  (w1 >> 24) & 0x07;
+   uint16_t start = rdp.tiles[tile].t_mem - 256; // starting location in the palettes
+   uint16_t count = ((uint16_t)(w1 >> 14) & 0x3FF) + 1;    // number to copy
 
    if (rdp.timg.addr + (count<<1) > BMASK)
       count = (uint16_t)((BMASK - rdp.timg.addr) >> 1);
@@ -1229,23 +1226,17 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 
 static void rdp_settilesize(uint32_t w0, uint32_t w1)
 {
-   int ul_s, ul_t, lr_s, lr_t, tilenum;
-
-   ul_s    = (((uint16_t)(w0 >> 14)) & 0x03ff);
-   ul_t    = (((uint16_t)(w0 >> 2 )) & 0x03ff);
-   tilenum = (w1 >> 24) & 0x07;
-   lr_s    = (((uint16_t)(w1 >> 14)) & 0x03ff);
-   lr_t    = (((uint16_t)(w1 >> 2 )) & 0x03ff);
+   int tilenum = (w1 >> 24) & 0x07;
 
    rdp.last_tile_size = tilenum;
 
    rdp.tiles[tilenum].f_ul_s = (float)((w0 >> 12) & 0xFFF) / 4.0f;
    rdp.tiles[tilenum].f_ul_t = (float)(w0 & 0xFFF) / 4.0f;
 
-   rdp.tiles[tilenum].ul_s = ul_s;
-   rdp.tiles[tilenum].ul_t = ul_t;
-   rdp.tiles[tilenum].lr_s = lr_s;
-   rdp.tiles[tilenum].lr_t = lr_t;
+   rdp.tiles[tilenum].ul_s   = (((uint16_t)(w0 >> 14)) & 0x03ff);
+   rdp.tiles[tilenum].ul_t   = (((uint16_t)(w0 >> 2 )) & 0x03ff);
+   rdp.tiles[tilenum].lr_s   = (((uint16_t)(w1 >> 14)) & 0x03ff);
+   rdp.tiles[tilenum].lr_t   = (((uint16_t)(w1 >> 2 )) & 0x03ff);
 
    // handle wrapping
    if (rdp.tiles[tilenum].lr_s < rdp.tiles[tilenum].ul_s)
@@ -1493,7 +1484,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    int pd_multiplayer;
 
    uint32_t ul_x = ((w1 & 0x00FFF000) >> 14);
-   uint32_t ul_y = (w1 & 0x00000FFF) >> 2;
+   uint32_t ul_y =  (w1 & 0x00000FFF) >> 2;
    uint32_t lr_x = ((w0 & 0x00FFF000) >> 14) + 1;
    uint32_t lr_y = ((w0 & 0x00000FFF) >> 2) + 1;
 
@@ -1729,9 +1720,9 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
    //static const char *size[] = { "4bit", "8bit", "16bit", "32bit" };
 
    rdp.timg.format = (uint8_t)((w0 >> 21) & 0x07);
-   rdp.timg.size = (uint8_t)((w0 >> 19) & 0x03);
-   rdp.timg.width = (uint16_t)(1 + (w0 & 0x00000FFF));
-   rdp.timg.addr = segoffset(w1);
+   rdp.timg.size   = (uint8_t)((w0 >> 19) & 0x03);
+   rdp.timg.width  = (uint16_t)(1 + (w0 & 0x00000FFF));
+   rdp.timg.addr   = segoffset(w1);
 
    if (ucode5_texshiftaddr)
    {
@@ -1978,8 +1969,8 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
       rdp.ci_count++;
    }
 
-   rdp.ocimg = rdp.cimg;
-   rdp.cimg = segoffset(w1) & BMASK;
+   rdp.ocimg    = rdp.cimg;
+   rdp.cimg     = segoffset(w1) & BMASK;
    rdp.ci_width = (w0 & 0xFFF) + 1;
    if (fb_emulation_enabled && rdp.ci_count > 0)
       rdp.ci_height = rdp.frame_buffers[rdp.ci_count-1].height;
