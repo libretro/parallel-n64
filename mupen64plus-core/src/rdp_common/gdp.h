@@ -57,23 +57,23 @@ typedef struct
 
 typedef struct
 {
-    int sub_a_rgb0;
-    int sub_b_rgb0;
-    int mul_rgb0;
-    int add_rgb0;
-    int sub_a_a0;
-    int sub_b_a0;
-    int mul_a0;
-    int add_a0;
+    int32_t sub_a_rgb0;     /* c_a0  */
+    int32_t sub_b_rgb0;     /* c_b0  */
+    int32_t mul_rgb0;       /* c_c0  */
+    int32_t add_rgb0;       /* c_d0  */
+    int32_t sub_a_a0;       /* c_Aa0 */
+    int32_t sub_b_a0;       /* c_Ab0 */
+    int32_t mul_a0;         /* c_Ac0 */
+    int32_t add_a0;         /* c_Ad0 */
 
-    int sub_a_rgb1;
-    int sub_b_rgb1;
-    int mul_rgb1;
-    int add_rgb1;
-    int sub_a_a1;
-    int sub_b_a1;
-    int mul_a1;
-    int add_a1;
+    int32_t sub_a_rgb1;     /* c_a1  */
+    int32_t sub_b_rgb1;     /* c_b1  */
+    int32_t mul_rgb1;       /* c_c1  */
+    int32_t add_rgb1;       /* c_d1  */
+    int32_t sub_a_a1;       /* c_Aa1 */
+    int32_t sub_b_a1;       /* c_Ab1 */
+    int32_t mul_a1;         /* c_Ac1 */
+    int32_t add_a1;         /* c_Ad1 */
 } gdp_combine_modes;
 
 struct gdp_global

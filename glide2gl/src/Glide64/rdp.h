@@ -433,26 +433,6 @@ typedef struct {
 } MODEDERIVS;
 
 typedef struct {
-    int sub_a_rgb0;
-    int sub_b_rgb0;
-    int mul_rgb0;
-    int add_rgb0;
-    int sub_a_a0;
-    int sub_b_a0;
-    int mul_a0;
-    int add_a0;
-
-    int sub_a_rgb1;
-    int sub_b_rgb1;
-    int mul_rgb1;
-    int add_rgb1;
-    int sub_a_a1;
-    int sub_b_a1;
-    int mul_a1;
-    int add_a1;
-} COMBINE_MODES;
-
-typedef struct {
     int cycle_type;
     int persp_tex_en;
     int detail_tex_en;
@@ -670,8 +650,6 @@ struct RDP
 
    // Combine modes
    uint32_t cycle1, cycle2;
-   uint8_t c_a0, c_b0, c_c0, c_d0, c_Aa0, c_Ab0, c_Ac0, c_Ad0;
-   uint8_t c_a1, c_b1, c_c1, c_d1, c_Aa1, c_Ab1, c_Ac1, c_Ad1;
 
    uint8_t fbl_a0, fbl_b0, fbl_c0, fbl_d0;
    uint8_t fbl_a1, fbl_b1, fbl_c1, fbl_d1;
