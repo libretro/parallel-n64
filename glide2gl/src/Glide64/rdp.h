@@ -204,26 +204,6 @@ typedef unsigned int            u32;
 typedef unsigned long long      u64;
 #endif
 
-#if defined(_AMD64_) || defined(_IA64_) || defined(__x86_64__)
-#define BUFFERFIFO(word, base, offset) { \
-    *(i64 *)&cmd_data[word] = *(i64 *)((base) + 8*(offset)); \
-}
-#elif defined(USE_MMX_DECODES)
-#define BUFFERFIFO(word, base, offset) { \
-    *(__m64 *)&cmd_data[word] = *(__m64 *)((base) + 8*(offset)); \
-}
-#else
-/*
- * compatibility fallback to prevent unspecified behavior from the ANSI C
- * specifications (reading unions per 32 bits when 64 bits were just written)
- */
-#define BUFFERFIFO(word, base, offset) { \
-    cmd_data[word].W32[0] = *(i32 *)((base) + 8*(offset) + 0); \
-    cmd_data[word].W32[1] = *(i32 *)((base) + 8*(offset) + 4); \
-}
-#endif
-
-
 typedef union {
     i64 W;
     s64 SW;
