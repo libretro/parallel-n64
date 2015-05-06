@@ -1064,14 +1064,46 @@ INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
 {
    switch (code & 0xf)
    {
-      case 0:        *input_r = &combined_color.r;    *input_g = &combined_color.g;    *input_b = &combined_color.b;    break;
-      case 1:        *input_r = &texel0_color.r;        *input_g = &texel0_color.g;        *input_b = &texel0_color.b;        break;
-      case 2:        *input_r = &texel1_color.r;        *input_g = &texel1_color.g;        *input_b = &texel1_color.b;        break;
-      case 3:        *input_r = &g_gdp.prim_color.r;        *input_g = &g_gdp.prim_color.g;        *input_b = &g_gdp.prim_color.b;        break;
-      case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
-      case 5:        *input_r = &g_gdp.env_color.r;        *input_g = &g_gdp.env_color.g;        *input_b = &g_gdp.env_color.b;        break;
-      case 6:        *input_r = &g_gdp.key_center.r;        *input_g = &g_gdp.key_center.g;        *input_b = &g_gdp.key_center.b;        break;
-      case 7:        *input_r = &g_gdp.k4;                    *input_g = &g_gdp.k4;                    *input_b = &g_gdp.k4;                    break;
+      case 0:
+         *input_r = &combined_color.r;
+         *input_g = &combined_color.g;
+         *input_b = &combined_color.b;
+         break;
+      case 1:
+         *input_r = &texel0_color.r;
+         *input_g = &texel0_color.g;
+         *input_b = &texel0_color.b;
+         break;
+      case 2:
+         *input_r = &texel1_color.r;
+         *input_g = &texel1_color.g;
+         *input_b = &texel1_color.b;
+         break;
+      case 3:
+         *input_r = &g_gdp.prim_color.r;
+         *input_g = &g_gdp.prim_color.g;
+         *input_b = &g_gdp.prim_color.b;
+         break;
+      case 4:
+         *input_r = &shade_color.r;
+         *input_g = &shade_color.g;
+         *input_b = &shade_color.b;
+         break;
+      case 5:
+         *input_r = &g_gdp.env_color.r;
+         *input_g = &g_gdp.env_color.g;
+         *input_b = &g_gdp.env_color.b;
+         break;
+      case 6:
+         *input_r = &g_gdp.key_center.r;
+         *input_g = &g_gdp.key_center.g;
+         *input_b = &g_gdp.key_center.b;
+         break;
+      case 7:
+         *input_r = &g_gdp.k4;
+         *input_g = &g_gdp.k4;
+         *input_b = &g_gdp.k4;
+         break;
       case 8:
       case 9:
       case 10:
@@ -1080,7 +1112,10 @@ INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
       case 13:
       case 14:
       case 15:
-                     *input_r = &zero_color;        *input_g = &zero_color;        *input_b = &zero_color;        break;
+         *input_r = &zero_color;
+         *input_g = &zero_color;
+         *input_b = &zero_color;
+         break;
    }
 }
 
@@ -1088,25 +1123,106 @@ INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
 {
    switch (code & 0x1f)
    {
-      case 0:        *input_r = &combined_color.r;    *input_g = &combined_color.g;    *input_b = &combined_color.b;    break;
-      case 1:        *input_r = &texel0_color.r;        *input_g = &texel0_color.g;        *input_b = &texel0_color.b;        break;
-      case 2:        *input_r = &texel1_color.r;        *input_g = &texel1_color.g;        *input_b = &texel1_color.b;        break;
-      case 3:        *input_r = &g_gdp.prim_color.r;        *input_g = &g_gdp.prim_color.g;        *input_b = &g_gdp.prim_color.b;        break;
-      case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
-      case 5:        *input_r = &g_gdp.env_color.r;        *input_g = &g_gdp.env_color.g;        *input_b = &g_gdp.env_color.b;        break;
-      case 6:        *input_r = &g_gdp.key_scale.r;        *input_g = &g_gdp.key_scale.g;        *input_b = &g_gdp.key_scale.b;        break;
-      case 7:        *input_r = &combined_color.a;    *input_g = &combined_color.a;    *input_b = &combined_color.a;    break;
-      case 8:        *input_r = &texel0_color.a;        *input_g = &texel0_color.a;        *input_b = &texel0_color.a;        break;
-      case 9:        *input_r = &texel1_color.a;        *input_g = &texel1_color.a;        *input_b = &texel1_color.a;        break;
-      case 10:    *input_r = &g_gdp.prim_color.a;        *input_g = &g_gdp.prim_color.a;        *input_b = &g_gdp.prim_color.a;        break;
-      case 11:    *input_r = &shade_color.a;        *input_g = &shade_color.a;        *input_b = &shade_color.a;        break;
-      case 12:    *input_r = &g_gdp.env_color.a;        *input_g = &g_gdp.env_color.a;        *input_b = &g_gdp.env_color.a;        break;
-      case 13:    *input_r = &lod_frac;            *input_g = &lod_frac;            *input_b = &lod_frac;            break;
-      case 14:    *input_r = &g_gdp.primitive_lod_frac;    *input_g = &g_gdp.primitive_lod_frac;    *input_b = &g_gdp.primitive_lod_frac; break;
-      case 15:    *input_r = &g_gdp.k5;                    *input_g = &g_gdp.k5;                    *input_b = &g_gdp.k5;                    break;
-      case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23:
-      case 24: case 25: case 26: case 27: case 28: case 29: case 30: case 31:
-                  *input_r = &zero_color;        *input_g = &zero_color;        *input_b = &zero_color;        break;
+      case 0:
+         *input_r = &combined_color.r;
+         *input_g = &combined_color.g;
+         *input_b = &combined_color.b;
+         break;
+      case 1:
+         *input_r = &texel0_color.r;
+         *input_g = &texel0_color.g;
+         *input_b = &texel0_color.b;
+         break;
+      case 2:
+         *input_r = &texel1_color.r;
+         *input_g = &texel1_color.g;
+         *input_b = &texel1_color.b;
+         break;
+      case 3:
+         *input_r = &g_gdp.prim_color.r;
+         *input_g = &g_gdp.prim_color.g;
+         *input_b = &g_gdp.prim_color.b;
+         break;
+      case 4:
+         *input_r = &shade_color.r;
+         *input_g = &shade_color.g;
+         *input_b = &shade_color.b;
+         break;
+      case 5:
+         *input_r = &g_gdp.env_color.r;
+         *input_g = &g_gdp.env_color.g;
+         *input_b = &g_gdp.env_color.b;
+         break;
+      case 6:
+         *input_r = &g_gdp.key_scale.r;
+         *input_g = &g_gdp.key_scale.g;
+         *input_b = &g_gdp.key_scale.b;
+         break;
+      case 7:
+         *input_r = &combined_color.a;
+         *input_g = &combined_color.a;
+         *input_b = &combined_color.a;
+         break;
+      case 8:
+         *input_r = &texel0_color.a;
+         *input_g = &texel0_color.a;
+         *input_b = &texel0_color.a;
+         break;
+      case 9:
+         *input_r = &texel1_color.a;
+         *input_g = &texel1_color.a;
+         *input_b = &texel1_color.a;
+         break;
+      case 10:
+         *input_r = &g_gdp.prim_color.a;
+         *input_g = &g_gdp.prim_color.a;
+         *input_b = &g_gdp.prim_color.a;
+         break;
+      case 11:
+         *input_r = &shade_color.a;
+         *input_g = &shade_color.a;
+         *input_b = &shade_color.a;
+         break;
+      case 12:
+         *input_r = &g_gdp.env_color.a;
+         *input_g = &g_gdp.env_color.a;
+         *input_b = &g_gdp.env_color.a;
+         break;
+      case 13:
+         *input_r = &lod_frac;
+         *input_g = &lod_frac;
+         *input_b = &lod_frac;
+         break;
+      case 14:
+         *input_r = &g_gdp.primitive_lod_frac;
+         *input_g = &g_gdp.primitive_lod_frac;
+         *input_b = &g_gdp.primitive_lod_frac;
+         break;
+      case 15:
+         *input_r = &g_gdp.k5;
+         *input_g = &g_gdp.k5;
+         *input_b = &g_gdp.k5;
+         break;
+      case 16:
+      case 17:
+      case 18:
+      case 19:
+      case 20:
+      case 21:
+      case 22:
+      case 23:
+      case 24:
+      case 25:
+      case 26:
+      case 27:
+      case 28:
+      case 29:
+      case 30:
+      case 31:
+         *input_r = &zero_color;
+         *input_g = &zero_color;
+         *input_b = &zero_color;
+         break;
    }
 }
 
@@ -1114,14 +1230,46 @@ INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
 {
    switch (code & 0x7)
    {
-      case 0:        *input_r = &combined_color.r;    *input_g = &combined_color.g;    *input_b = &combined_color.b;    break;
-      case 1:        *input_r = &texel0_color.r;        *input_g = &texel0_color.g;        *input_b = &texel0_color.b;        break;
-      case 2:        *input_r = &texel1_color.r;        *input_g = &texel1_color.g;        *input_b = &texel1_color.b;        break;
-      case 3:        *input_r = &g_gdp.prim_color.r;        *input_g = &g_gdp.prim_color.g;        *input_b = &g_gdp.prim_color.b;        break;
-      case 4:        *input_r = &shade_color.r;        *input_g = &shade_color.g;        *input_b = &shade_color.b;        break;
-      case 5:        *input_r = &g_gdp.env_color.r;        *input_g = &g_gdp.env_color.g;        *input_b = &g_gdp.env_color.b;        break;
-      case 6:        *input_r = &one_color;            *input_g = &one_color;            *input_b = &one_color;            break;
-      case 7:        *input_r = &zero_color;            *input_g = &zero_color;            *input_b = &zero_color;            break;
+      case 0:
+         *input_r = &combined_color.r;
+         *input_g = &combined_color.g;
+         *input_b = &combined_color.b;
+         break;
+      case 1:
+         *input_r = &texel0_color.r;
+         *input_g = &texel0_color.g;
+         *input_b = &texel0_color.b;
+         break;
+      case 2:
+         *input_r = &texel1_color.r;
+         *input_g = &texel1_color.g;
+         *input_b = &texel1_color.b;
+         break;
+      case 3:
+         *input_r = &g_gdp.prim_color.r;
+         *input_g = &g_gdp.prim_color.g;
+         *input_b = &g_gdp.prim_color.b;
+         break;
+      case 4:
+         *input_r = &shade_color.r;
+         *input_g = &shade_color.g;
+         *input_b = &shade_color.b;
+         break;
+      case 5:
+         *input_r = &g_gdp.env_color.r;
+         *input_g = &g_gdp.env_color.g;
+         *input_b = &g_gdp.env_color.b;
+         break;
+      case 6:
+         *input_r = &one_color;
+         *input_g = &one_color;
+         *input_b = &one_color;
+         break;
+      case 7:
+         *input_r = &zero_color;
+         *input_g = &zero_color;
+         *input_b = &zero_color;
+         break;
    }
 }
 
