@@ -26,9 +26,6 @@ static void sync_load(uint32_t w0, uint32_t w1);
 static void sync_pipe(uint32_t w0, uint32_t w1);
 static void sync_tile(uint32_t w0, uint32_t w1);
 static void sync_full(uint32_t w0, uint32_t w1);
-static void set_key_gb(uint32_t w0, uint32_t w1);
-static void set_key_r(uint32_t w0, uint32_t w1);
-static void set_convert(uint32_t w0, uint32_t w1);
 static void set_scissor(uint32_t w0, uint32_t w1);
 static void set_prim_depth(uint32_t w0, uint32_t w1);
 static void set_other_modes(uint32_t w0, uint32_t w1);
@@ -38,11 +35,6 @@ static void load_tlut(uint32_t w0, uint32_t w1);
 static void load_tile(uint32_t w0, uint32_t w1);
 static void set_tile(uint32_t w0, uint32_t w1);
 static void fill_rect(uint32_t w0, uint32_t w1);
-static void set_fill_color(uint32_t w0, uint32_t w1);
-static void set_fog_color(uint32_t w0, uint32_t w1);
-static void set_blend_color(uint32_t w0, uint32_t w1);
-static void set_prim_color(uint32_t w0, uint32_t w1);
-static void set_env_color(uint32_t w0, uint32_t w1);
 static void set_combine(uint32_t w0, uint32_t w1);
 static void set_texture_image(uint32_t w0, uint32_t w1);
 static void set_mask_image(uint32_t w0, uint32_t w1);
@@ -66,12 +58,12 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
 
    invalid           ,invalid           ,invalid           ,invalid           ,
    tex_rect          ,tex_rect_flip     ,sync_load         ,sync_pipe         ,
-   sync_tile         ,sync_full         ,set_key_gb        ,set_key_r         ,
-   set_convert       ,set_scissor       ,set_prim_depth    ,set_other_modes   ,
+   sync_tile         ,sync_full         ,gdp_set_key_gb        ,gdp_set_key_r         ,
+   gdp_set_convert       ,set_scissor       ,set_prim_depth    ,set_other_modes   ,
 
    load_tlut         ,invalid           ,set_tile_size     ,load_block        ,
-   load_tile         ,set_tile          ,fill_rect         ,set_fill_color    ,
-   set_fog_color     ,set_blend_color   ,set_prim_color    ,set_env_color     ,
+   load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
+   gdp_set_fog_color     ,gdp_set_blend_color   ,gdp_set_prim_color    ,gdp_set_env_color     ,
    set_combine       ,set_texture_image ,set_mask_image    ,set_color_image   ,
 };
 
@@ -730,21 +722,6 @@ static void sync_full(uint32_t w0, uint32_t w1)
    gfx_info.CheckInterrupts();
 }
 
-static void set_key_gb(uint32_t w0, uint32_t w1)
-{
-   gdp_set_key_gb(w0, w1);
-}
-
-static void set_key_r(uint32_t w0, uint32_t w1)
-{
-   gdp_set_key_r(w0, w1);
-}
-
-static void set_convert(uint32_t w0, uint32_t w1)
-{
-   gdp_set_convert(w0, w1);
-}
-
 static void set_scissor(uint32_t w0, uint32_t w1)
 {
    __clip.xh   = (w0 & 0x00FFF000) >> (44 - 32);
@@ -973,31 +950,6 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    }
    render_spans(yhlimit >> 2, yllimit >> 2, 0, 1);
    return;
-}
-
-static void set_fill_color(uint32_t w0, uint32_t w1)
-{
-   gdp_set_fill_color(w0, w1);
-}
-
-static void set_fog_color(uint32_t w0, uint32_t w1)
-{
-   gdp_set_fog_color(w0, w1);
-}
-
-static void set_blend_color(uint32_t w0, uint32_t w1)
-{
-   gdp_set_blend_color(w0, w1);
-}
-
-static void set_prim_color(uint32_t w0, uint32_t w1)
-{
-   gdp_set_prim_color(w0, w1);
-}
-
-static void set_env_color(uint32_t w0, uint32_t w1)
-{
-   gdp_set_env_color(w0, w1);
 }
 
 INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
