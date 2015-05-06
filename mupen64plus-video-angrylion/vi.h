@@ -76,7 +76,6 @@ extern INT32 oldvstart;
 extern INT32* PreScale;
 
 extern NOINLINE void DisplayError(char * error);
-extern NOINLINE void zerobuf(void * memory, size_t length);
 
 extern STRICTINLINE INT32 irand(void);
 extern void rdp_init(void);
