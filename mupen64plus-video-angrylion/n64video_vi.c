@@ -84,22 +84,22 @@ void rdp_update(void)
     int lowerfield;
     register int i, j;
     extern uint32_t *blitter_buf;
-    const int x_add = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
-    const int v_sync = *GET_GFX_INFO(VI_V_SYNC_REG) & 0x000003FF;
+    const int x_add = *gfx_info.VI_X_SCALE_REG & 0x00000FFF;
+    const int v_sync = *gfx_info.VI_V_SYNC_REG & 0x000003FF;
     const int ispal  = (v_sync > 550);
-    const int x1 = (*GET_GFX_INFO(VI_H_START_REG) >> 16) & 0x03FF;
-    const int y1 = (*GET_GFX_INFO(VI_V_START_REG) >> 16) & 0x03FF;
-    const int x2 = (*GET_GFX_INFO(VI_H_START_REG) >>  0) & 0x03FF;
-    const int y2 = (*GET_GFX_INFO(VI_V_START_REG) >>  0) & 0x03FF;
+    const int x1 = (*gfx_info.VI_H_START_REG >> 16) & 0x03FF;
+    const int y1 = (*gfx_info.VI_V_START_REG >> 16) & 0x03FF;
+    const int x2 = (*gfx_info.VI_H_START_REG >>  0) & 0x03FF;
+    const int y2 = (*gfx_info.VI_V_START_REG >>  0) & 0x03FF;
     const int delta_x = x2 - x1;
     const int delta_y = y2 - y1;
-    const int vitype = *GET_GFX_INFO(VI_STATUS_REG) & 0x00000003;
+    const int vitype = *gfx_info.VI_STATUS_REG & 0x00000003;
     const int pixel_size = sizeof(INT32);
 
 /*
  * initial value (angrylion)
  */
-    serration_pulses  = !!(*GET_GFX_INFO(VI_STATUS_REG) & 0x00000040);
+    serration_pulses  = !!(*gfx_info.VI_STATUS_REG & 0x00000040);
     serration_pulses &= (y1 != oldvstart);
     lowerfield = serration_pulses & (ispal ? y1 < oldvstart : y1 > oldvstart);
     two_lines = serration_pulses ^ 0;
@@ -264,16 +264,16 @@ static void do_frame_buffer_proper(
     int slowbright;
     int lerping = 0;
     int vi_width_low = vi_width & 0xFFF;
-    const int x_add = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
+    const int x_add = *gfx_info.VI_X_SCALE_REG & 0x00000FFF;
     UINT32 y_add = vi_y_scale & 0xfff;
     register int i, j;
-    const int gamma_dither     = !!(*GET_GFX_INFO(VI_STATUS_REG) & 0x00000004);
-    const int gamma            = !!(*GET_GFX_INFO(VI_STATUS_REG) & 0x00000008);
-    const int divot            = !!(*GET_GFX_INFO(VI_STATUS_REG) & 0x00000010);
-    const int clock_enable     = !!(*GET_GFX_INFO(VI_STATUS_REG) & 0x00000020);
-    const int extralines       =  !(*GET_GFX_INFO(VI_STATUS_REG) & 0x00000100);
-    const int fsaa             =  !(*GET_GFX_INFO(VI_STATUS_REG) & 0x00000200);
-    const int dither_filter    = !!(*GET_GFX_INFO(VI_STATUS_REG) & 0x00010000);
+    const int gamma_dither     = !!(*gfx_info.VI_STATUS_REG & 0x00000004);
+    const int gamma            = !!(*gfx_info.VI_STATUS_REG & 0x00000008);
+    const int divot            = !!(*gfx_info.VI_STATUS_REG & 0x00000010);
+    const int clock_enable     = !!(*gfx_info.VI_STATUS_REG & 0x00000020);
+    const int extralines       =  !(*gfx_info.VI_STATUS_REG & 0x00000100);
+    const int fsaa             =  !(*gfx_info.VI_STATUS_REG & 0x00000200);
+    const int dither_filter    = !!(*gfx_info.VI_STATUS_REG & 0x00010000);
     const int gamma_and_dither = (gamma << 1) | gamma_dither;
     const int lerp_en          = fsaa | extralines;
 
@@ -568,20 +568,20 @@ static void do_frame_buffer_raw(
     int prevy, y_start;
     int cur_x, line_x;
     register int i;
-    const int frame_buffer = *GET_GFX_INFO(VI_ORIGIN_REG) & 0x00FFFFFF;
-    const int VI_width = *GET_GFX_INFO(VI_WIDTH_REG) & 0x00000FFF;
-    const int x_add = *GET_GFX_INFO(VI_X_SCALE_REG) & 0x00000FFF;
-    const int y_add = *GET_GFX_INFO(VI_Y_SCALE_REG) & 0x00000FFF;
+    const int frame_buffer = *gfx_info.VI_ORIGIN_REG & 0x00FFFFFF;
+    const int VI_width     = *gfx_info.VI_WIDTH_REG & 0x00000FFF;
+    const int x_add        = *gfx_info.VI_X_SCALE_REG & 0x00000FFF;
+    const int y_add        = *gfx_info.VI_Y_SCALE_REG & 0x00000FFF;
 
     if (frame_buffer == 0)
         return;
-    y_start = *GET_GFX_INFO(VI_Y_SCALE_REG)>>16 & 0x0FFF;
+    y_start = *gfx_info.VI_Y_SCALE_REG >> 16 & 0x0FFF;
 
     if (vitype & 1) /* 32-bit RGBA (branch unlikely) */
     {
         while (--vres >= 0)
         {
-            x_start = *GET_GFX_INFO(VI_X_SCALE_REG)>>16 & 0x0FFF;
+            x_start = *gfx_info.VI_X_SCALE_REG >> 16 & 0x0FFF;
             scanline = &PreScale[prescale_ptr];
             prescale_ptr += linecount;
 
@@ -615,7 +615,7 @@ static void do_frame_buffer_raw(
     {
         while (--vres >= 0)
         {
-            x_start = *GET_GFX_INFO(VI_X_SCALE_REG)>>16 & 0x0FFF;
+            x_start = *gfx_info.VI_X_SCALE_REG >> 16 & 0x0FFF;
             scanline = &PreScale[prescale_ptr];
             prescale_ptr += linecount;
 
