@@ -1029,7 +1029,7 @@ void update_scissor(bool set_scissor)
    //FRDP (" |- scissor - (%d, %d) -> (%d, %d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
 }
 
-static void glide64_z_compare(void)
+void glide64_z_compare(void)
 {
    // Z buffer
    if (rdp.update & UPDATE_ZBUF_ENABLED)
