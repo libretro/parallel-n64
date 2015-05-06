@@ -112,6 +112,7 @@ static void push_audio_samples_via_libretro(void* user_data, const void* buffer,
    uint32_t len      = size;
    int16_t *raw_data = (int16_t*)buffer;
    size_t frames     = len / 4;
+   uint8_t *p        = (uint8_t*)buffer;
 
    /* save registers values */
    uint32_t saved_ai_length = g_ai.regs[AI_LEN_REG];
@@ -121,6 +122,16 @@ static void push_audio_samples_via_libretro(void* user_data, const void* buffer,
     * Exploit the fact that buffer points in g_rdram to retreive dram_addr_reg value */
    g_ai.regs[AI_DRAM_ADDR_REG] = (uint8_t*)buffer - (uint8_t*)g_rdram;
    g_ai.regs[AI_LEN_REG] = size;
+
+   for (i = 0; i < len; i += 4)
+   {
+      p[i ] ^= p[i + 2];
+      p[i + 2] ^= p[i ];
+      p[i ] ^= p[i + 2];
+      p[i + 1] ^= p[i + 3];
+      p[i + 3] ^= p[i + 1];
+      p[i + 1] ^= p[i + 3];
+   }
 
 audio_batch:
    out               = NULL;
