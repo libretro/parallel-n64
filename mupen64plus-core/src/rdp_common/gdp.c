@@ -1,5 +1,6 @@
 
 #include "gdp.h"
+#include "../plugin/plugin.h"
 
 struct gdp_global g_gdp;
 
@@ -185,4 +186,10 @@ void gdp_set_other_modes(uint32_t w0, uint32_t w1)
    g_gdp.other_modes.z_source_sel     = !!(w1 & 0x00000004); /*  2 */
    g_gdp.other_modes.dither_alpha_en  = !!(w1 & 0x00000002); /*  1 */
    g_gdp.other_modes.alpha_compare_en = !!(w1 & 0x00000001); /*  0 */
+}
+
+void gdp_fullsync(uint32_t w0, uint32_t w1)
+{
+   *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
+   gfx_info.CheckInterrupts();
 }

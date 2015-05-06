@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#ifndef DP_INTERRUPT
+#define DP_INTERRUPT    0x20
+#endif
+
 /* Useful macros for decoding GBI command's parameters */
 
 #ifndef _SHIFTL
@@ -262,6 +266,8 @@ int32_t gdp_set_tile_size(uint32_t w0, uint32_t w1);
 void gdp_set_combine(uint32_t w0, uint32_t w1);
 
 void gdp_set_other_modes(uint32_t w0, uint32_t w1);
+
+void gdp_fullsync(uint32_t w0, uint32_t w1);
 
 extern struct gdp_global g_gdp;
 

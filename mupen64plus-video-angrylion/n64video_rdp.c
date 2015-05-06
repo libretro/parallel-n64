@@ -25,7 +25,6 @@ static void tex_rect_flip(uint32_t w0, uint32_t w1);
 static void sync_load(uint32_t w0, uint32_t w1);
 static void sync_pipe(uint32_t w0, uint32_t w1);
 static void sync_tile(uint32_t w0, uint32_t w1);
-static void sync_full(uint32_t w0, uint32_t w1);
 static void set_scissor(uint32_t w0, uint32_t w1);
 static void set_prim_depth(uint32_t w0, uint32_t w1);
 static void set_other_modes(uint32_t w0, uint32_t w1);
@@ -58,7 +57,7 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
 
    invalid           ,invalid           ,invalid           ,invalid           ,
    tex_rect          ,tex_rect_flip     ,sync_load         ,sync_pipe         ,
-   sync_tile         ,sync_full         ,gdp_set_key_gb        ,gdp_set_key_r         ,
+   sync_tile         ,gdp_fullsync         ,gdp_set_key_gb        ,gdp_set_key_r         ,
    gdp_set_convert       ,set_scissor       ,set_prim_depth    ,set_other_modes   ,
 
    load_tlut         ,invalid           ,set_tile_size     ,load_block        ,
@@ -712,12 +711,6 @@ static void sync_pipe(uint32_t w0, uint32_t w1)
 
 static void sync_tile(uint32_t w0, uint32_t w1)
 {
-}
-
-static void sync_full(uint32_t w0, uint32_t w1)
-{
-   *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
-   gfx_info.CheckInterrupts();
 }
 
 static void set_scissor(uint32_t w0, uint32_t w1)
