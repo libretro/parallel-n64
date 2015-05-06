@@ -10,50 +10,50 @@ static int cmd_ptr; /* for 64-bit elements, always <= +0x7FFF */
 /* static DP_FIFO cmd_fifo; */
 static DP_FIFO cmd_data[0x0003FFFF/sizeof(i64) + 1];
 
-static void invalid(void);
-static void noop(void);
-static void tri_noshade(void);
-static void tri_noshade_z(void);
-static void tri_tex(void);
-static void tri_tex_z(void);
-static void tri_shade(void);
-static void tri_shade_z(void);
-static void tri_texshade(void);
-static void tri_texshade_z(void);
-static void tex_rect(void);
-static void tex_rect_flip(void);
-static void sync_load(void);
-static void sync_pipe(void);
-static void sync_tile(void);
-static void sync_full(void);
-static void set_key_gb(void);
-static void set_key_r(void);
-static void set_convert(void);
-static void set_scissor(void);
-static void set_prim_depth(void);
-static void set_other_modes(void);
-static void set_tile_size(void);
-static void load_block(void);
-static void load_tlut(void);
-static void load_tile(void);
-static void set_tile(void);
-static void fill_rect(void);
-static void set_fill_color(void);
-static void set_fog_color(void);
-static void set_blend_color(void);
-static void set_prim_color(void);
-static void set_env_color(void);
-static void set_combine(void);
-static void set_texture_image(void);
-static void set_mask_image(void);
-static void set_color_image(void);
+static void invalid(uint32_t w0, uint32_t w1);
+static void noop(uint32_t w0, uint32_t w1);
+static void tri_noshade(uint32_t w0, uint32_t w1);
+static void tri_noshade_z(uint32_t w0, uint32_t w1);
+static void tri_tex(uint32_t w0, uint32_t w1);
+static void tri_tex_z(uint32_t w0, uint32_t w1);
+static void tri_shade(uint32_t w0, uint32_t w1);
+static void tri_shade_z(uint32_t w0, uint32_t w1);
+static void tri_texshade(uint32_t w0, uint32_t w1);
+static void tri_texshade_z(uint32_t w0, uint32_t w1);
+static void tex_rect(uint32_t w0, uint32_t w1);
+static void tex_rect_flip(uint32_t w0, uint32_t w1);
+static void sync_load(uint32_t w0, uint32_t w1);
+static void sync_pipe(uint32_t w0, uint32_t w1);
+static void sync_tile(uint32_t w0, uint32_t w1);
+static void sync_full(uint32_t w0, uint32_t w1);
+static void set_key_gb(uint32_t w0, uint32_t w1);
+static void set_key_r(uint32_t w0, uint32_t w1);
+static void set_convert(uint32_t w0, uint32_t w1);
+static void set_scissor(uint32_t w0, uint32_t w1);
+static void set_prim_depth(uint32_t w0, uint32_t w1);
+static void set_other_modes(uint32_t w0, uint32_t w1);
+static void set_tile_size(uint32_t w0, uint32_t w1);
+static void load_block(uint32_t w0, uint32_t w1);
+static void load_tlut(uint32_t w0, uint32_t w1);
+static void load_tile(uint32_t w0, uint32_t w1);
+static void set_tile(uint32_t w0, uint32_t w1);
+static void fill_rect(uint32_t w0, uint32_t w1);
+static void set_fill_color(uint32_t w0, uint32_t w1);
+static void set_fog_color(uint32_t w0, uint32_t w1);
+static void set_blend_color(uint32_t w0, uint32_t w1);
+static void set_prim_color(uint32_t w0, uint32_t w1);
+static void set_env_color(uint32_t w0, uint32_t w1);
+static void set_combine(uint32_t w0, uint32_t w1);
+static void set_texture_image(uint32_t w0, uint32_t w1);
+static void set_mask_image(uint32_t w0, uint32_t w1);
+static void set_color_image(uint32_t w0, uint32_t w1);
 
 static NOINLINE void draw_triangle(int shade, int texture, int zbuffer);
 NOINLINE static void render_spans(
       int yhlimit, int yllimit, int tilenum, int flip);
 STRICTINLINE static u16 normalize_dzpix(u16 sum);
 
-static void (*const rdp_command_table[64])(void) = {
+static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
    noop              ,invalid           ,invalid           ,invalid           ,
    invalid           ,invalid           ,invalid           ,invalid           ,
    tri_noshade       ,tri_noshade_z     ,tri_tex           ,tri_tex_z         ,
@@ -240,16 +240,17 @@ void process_RDP_list(void)
 
    while (cmd_cur - cmd_ptr < 0)
    {
-      int command, cmd_length;
+      uint32_t w0    = cmd_data[cmd_cur + 0].UW32[0];
+      uint32_t w1    = cmd_data[cmd_cur + 0].UW32[1];
+      int command    = (cmd_data[cmd_cur + 0].UW32[0] >> 24) % 64;
+      int cmd_length = sizeof(i64)/sizeof(i64) * DP_CMD_LEN_W[command];
 
-      command = (cmd_data[cmd_cur + 0].UW32[0] >> 24) % 64;
-      cmd_length = sizeof(i64)/sizeof(i64) * DP_CMD_LEN_W[command];
 #ifdef TRACE_DP_COMMANDS
       ++cmd_count[command];
 #endif
       if (cmd_ptr - cmd_cur - cmd_length < 0)
          goto exit_b;
-      rdp_command_table[command]();
+      rdp_command_table[command](w0, w1);
       cmd_cur += cmd_length;
    };
 exit_a:
@@ -261,71 +262,63 @@ exit_b:
 }
 
 static char invalid_command[] = "00\nDP reserved command.";
-static void invalid(void)
+
+static void invalid(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
    const unsigned int command = (w0 & 0x3F000000) >> 24;
 
    invalid_command[0] = '0' | command >> 3;
    invalid_command[1] = '0' | command & 07;
    DisplayError(invalid_command);
-   return;
 }
 
-static void noop(void)
+static void noop(uint32_t w0, uint32_t w1)
 {
-   return;
+   (void)w0;
+   (void)w1;
 }
 
-static void tri_noshade(void)
+static void tri_noshade(uint32_t w0, uint32_t w1)
 {
    draw_triangle(SHADE_NO, TEXTURE_NO, ZBUFFER_NO);
-   return;
 }
 
-static void tri_noshade_z(void)
+static void tri_noshade_z(uint32_t w0, uint32_t w1)
 {
    draw_triangle(SHADE_NO, TEXTURE_NO, ZBUFFER_YES);
-   return;
 }
 
-static void tri_tex(void)
+static void tri_tex(uint32_t w0, uint32_t w1)
 {
    draw_triangle(SHADE_NO, TEXTURE_YES, ZBUFFER_NO);
-   return;
 }
 
-static void tri_tex_z(void)
+static void tri_tex_z(uint32_t w0, uint32_t w1)
 {
    draw_triangle(SHADE_NO, TEXTURE_YES, ZBUFFER_YES);
-   return;
 }
 
-static void tri_shade(void)
+static void tri_shade(uint32_t w0, uint32_t w1)
 {
    draw_triangle(SHADE_YES, TEXTURE_NO, ZBUFFER_NO);
-   return;
 }
 
-static void tri_shade_z(void)
+static void tri_shade_z(uint32_t w0, uint32_t w1)
 {
    draw_triangle(SHADE_YES, TEXTURE_NO, ZBUFFER_YES);
-   return;
 }
 
-static void tri_texshade(void)
+static void tri_texshade(uint32_t w0, uint32_t w1)
 {
    draw_triangle(SHADE_YES, TEXTURE_YES, ZBUFFER_NO);
-   return;
 }
 
-static void tri_texshade_z(void)
+static void tri_texshade_z(uint32_t w0, uint32_t w1)
 {
    draw_triangle(SHADE_YES, TEXTURE_YES, ZBUFFER_YES);
-   return;
 }
 
-static void tex_rect(void)
+static void tex_rect(uint32_t w0, uint32_t w1)
 {
    int tilenum;
    int xl, yl, xh, yh;
@@ -348,8 +341,6 @@ static void tex_rect(void)
    u8 xfrac;
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
 
    xl      = (w0 & 0x00FFF000) >> 12;
    yl      = (w0 & 0x00000FFF) >>  0;
@@ -520,7 +511,7 @@ static void tex_rect(void)
    return;
 }
 
-static void tex_rect_flip(void)
+static void tex_rect_flip(uint32_t w0, uint32_t w1)
 {
    int tilenum;
    int xl, yl, xh, yh;
@@ -544,8 +535,6 @@ static void tex_rect_flip(void)
    u8 xfrac;
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
 
    xl      = (w0 & 0x00FFF000) >> 12;
    yl      = (w0 & 0x00000FFF) >>  0;
@@ -723,54 +712,42 @@ static void tex_rect_flip(void)
    return;
 }
 
-static void sync_load(void)
+static void sync_load(uint32_t w0, uint32_t w1)
 {
-   return;
 }
 
-static void sync_pipe(void)
+static void sync_pipe(uint32_t w0, uint32_t w1)
 {
-   return;
 }
 
-static void sync_tile(void)
+static void sync_tile(uint32_t w0, uint32_t w1)
 {
-   return;
 }
 
-static void sync_full(void)
+static void sync_full(uint32_t w0, uint32_t w1)
 {
    z64gl_command = 0; /* wtf is this for */
    *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
    gfx_info.CheckInterrupts();
-   return;
 }
 
-static void set_key_gb(void)
+static void set_key_gb(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    gdp_set_key_gb(w0, w1);
 }
 
-static void set_key_r(void)
+static void set_key_r(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    gdp_set_key_r(w0, w1);
 }
 
-static void set_convert(void)
+static void set_convert(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    gdp_set_convert(w0, w1);
 }
 
-static void set_scissor(void)
+static void set_scissor(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    __clip.xh   = (w0 & 0x00FFF000) >> (44 - 32);
    __clip.yh   = (w0 & 0x00000FFF) >> (32 - 32);
    scfield     = (w1 & 0x02000000) >> (25 -  0);
@@ -780,20 +757,15 @@ static void set_scissor(void)
    return;
 }
 
-static void set_prim_depth(void)
+static void set_prim_depth(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    gdp_set_prim_depth(w0, w1);
 
    g_gdp.prim_color.z = (g_gdp.prim_color.z & 0x7FFF) << 16; /* angrylion does this why? */
 }
 
-static void set_other_modes(void)
+static void set_other_modes(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
-
    gdp_set_other_modes(w0, w1);
 
    SET_BLENDER_INPUT(
@@ -810,22 +782,17 @@ static void set_other_modes(void)
          &blender2b_a[1], g_gdp.other_modes.blend_m2a_1, g_gdp.other_modes.blend_m2b_1);
 
    g_gdp.other_modes.f.stalederivs = 1;
-   return;
 }
 
-static void set_tile_size(void)
+static void set_tile_size(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0     = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1     = cmd_data[cmd_cur + 0].UW32[1];
    int32_t tilenum = gdp_set_tile_size(w0, w1);
    calculate_clamp_diffs(tilenum);
 }
 
-static void load_block(void)
+static void load_block(uint32_t w0, uint32_t w1)
 {
    INT32 lewdata[10];
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    const int command = (w0 & 0xFF000000) >> (56-32);
    const int sl      = (w0 & 0x00FFF000) >> (44-32);
    const int tl      = (w0 & 0x00000FFF) >> (32-32);
@@ -851,31 +818,25 @@ static void load_block(void)
    lewdata[9] = 0x20;
 
    edgewalker_for_loads(lewdata);
-   return;
 }
 
-static void load_tlut(void)
+static void load_tlut(uint32_t w0, uint32_t w1)
 {
-   tile_tlut_common_cs_decoder(
-         cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1]);
-   return;
+   tile_tlut_common_cs_decoder(w0, w1);
 }
 
-static void load_tile(void)
+static void load_tile(uint32_t w0, uint32_t w1)
 {
-   tile_tlut_common_cs_decoder(
-         cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1]);
-   return;
+   tile_tlut_common_cs_decoder(w0, w1);
 }
 
-static void set_tile(void)
+static void set_tile(uint32_t w0, uint32_t w1)
 {
-   int32_t tilenum = gdp_set_tile(
-         cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1]);
+   int32_t tilenum = gdp_set_tile(w0, w1);
    calculate_tile_derivs(tilenum);
 }
 
-static void fill_rect(void)
+static void fill_rect(uint32_t w0, uint32_t w1)
 {
    int xl, yl, xh, yh;
    int xlint, xhint;
@@ -889,8 +850,6 @@ static void fill_rect(void)
    register int j, k;
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
 
    xl = (w0 & 0x00FFF000) >> (44 - 32);
    yl = (w0 & 0x00000FFF) >> (32 - 32);
@@ -1017,38 +976,28 @@ static void fill_rect(void)
    return;
 }
 
-static void set_fill_color(void)
+static void set_fill_color(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    gdp_set_fill_color(w0, w1);
 }
 
-static void set_fog_color(void)
+static void set_fog_color(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    gdp_set_fog_color(w0, w1);
 }
 
-static void set_blend_color(void)
+static void set_blend_color(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    gdp_set_blend_color(w0, w1);
 }
 
-static void set_prim_color(void)
+static void set_prim_color(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    gdp_set_prim_color(w0, w1);
 }
 
-static void set_env_color(void)
+static void set_env_color(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    gdp_set_env_color(w0, w1);
 }
 
@@ -1238,11 +1187,8 @@ INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code)
    }
 }
 
-static void set_combine(void)
+static void set_combine(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
-
    gdp_set_combine(w0, w1);
 
    SET_SUBA_RGB_INPUT(
@@ -1282,39 +1228,30 @@ static void set_combine(void)
    g_gdp.other_modes.f.stalederivs = 1;
 }
 
-static void set_texture_image(void)
+static void set_texture_image(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    ti_format  = (w0 & 0x00E00000) >> (53 - 32);
    ti_size    = (w0 & 0x00180000) >> (51 - 32);
    ti_width   = (w0 & 0x000003FF) >> (32 - 32);
    ti_address = (w1 & 0x03FFFFFF) >> ( 0 -  0);
    /* ti_address &= 0x00FFFFFF; // physical memory limit, enforced later */
    ++ti_width;
-   return;
 }
 
-static void set_mask_image(void)
+static void set_mask_image(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    zb_address = w1 & 0x03FFFFFF;
    /* zb_address &= 0x00FFFFFF; */
-   return;
 }
 
-static void set_color_image(void)
+static void set_color_image(uint32_t w0, uint32_t w1)
 {
-   uint32_t w0 = cmd_data[cmd_cur + 0].UW32[0];
-   uint32_t w1 = cmd_data[cmd_cur + 0].UW32[1];
    fb_format  = (w0 & 0x00E00000) >> (53 - 32);
    fb_size    = (w0 & 0x00180000) >> (51 - 32);
    fb_width   = (w0 & 0x000003FF) >> (32 - 32);
    fb_address = (w1 & 0x03FFFFFF) >> ( 0 -  0);
    ++fb_width;
    /* fb_address &= 0x00FFFFFF; */
-   return;
 }
 
 static NOINLINE void draw_triangle(int shade, int texture, int zbuffer)
