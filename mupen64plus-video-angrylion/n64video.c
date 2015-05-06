@@ -116,7 +116,6 @@ typedef struct
 #define ZMODE_TRANSPARENT        2
 #define ZMODE_DECAL                3
 
-COLOR combined_color;
 COLOR texel0_color;
 COLOR texel1_color;
 COLOR nexttexel_color;
@@ -629,7 +628,7 @@ void rdp_init(void)
         calculate_clamp_diffs(i);
     }
 
-    memset(&combined_color, 0, sizeof(COLOR));
+    memset(&g_gdp.combined_color, 0, sizeof(COLOR));
     memset(&g_gdp.prim_color, 0, sizeof(gdp_color));
     memset(&g_gdp.env_color, 0, sizeof(COLOR));
     memset(&g_gdp.key_scale, 0, sizeof(COLOR));
@@ -666,38 +665,38 @@ static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
     
 
     
-    combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
-    combined_color.g = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
-    combined_color.b = color_combiner_equation(*combiner_rgbsub_a_b[1],*combiner_rgbsub_b_b[1],*combiner_rgbmul_b[1],*combiner_rgbadd_b[1]);
-    combined_color.a = alpha_combiner_equation(*combiner_alphasub_a[1],*combiner_alphasub_b[1],*combiner_alphamul[1],*combiner_alphaadd[1]);
+    g_gdp.combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
+    g_gdp.combined_color.g = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
+    g_gdp.combined_color.b = color_combiner_equation(*combiner_rgbsub_a_b[1],*combiner_rgbsub_b_b[1],*combiner_rgbmul_b[1],*combiner_rgbadd_b[1]);
+    g_gdp.combined_color.a = alpha_combiner_equation(*combiner_alphasub_a[1],*combiner_alphasub_b[1],*combiner_alphamul[1],*combiner_alphaadd[1]);
 
-    pixel_color.a = special_9bit_clamptable[combined_color.a];
+    pixel_color.a = special_9bit_clamptable[g_gdp.combined_color.a];
     if (pixel_color.a == 0xff)
         pixel_color.a = 0x100;
 
     if (!g_gdp.other_modes.key_en)
     {
         
-        combined_color.r >>= 8;
-        combined_color.g >>= 8;
-        combined_color.b >>= 8;
-        pixel_color.r = special_9bit_clamptable[combined_color.r];
-        pixel_color.g = special_9bit_clamptable[combined_color.g];
-        pixel_color.b = special_9bit_clamptable[combined_color.b];
+        g_gdp.combined_color.r >>= 8;
+        g_gdp.combined_color.g >>= 8;
+        g_gdp.combined_color.b >>= 8;
+        pixel_color.r = special_9bit_clamptable[g_gdp.combined_color.r];
+        pixel_color.g = special_9bit_clamptable[g_gdp.combined_color.g];
+        pixel_color.b = special_9bit_clamptable[g_gdp.combined_color.b];
     }
     else
     {
-        redkey = combined_color.r;
+        redkey = g_gdp.combined_color.r;
         if (redkey >= 0)
             redkey = (g_gdp.key_width.r << 4) - redkey;
         else
             redkey = (g_gdp.key_width.r << 4) + redkey;
-        greenkey = combined_color.g;
+        greenkey = g_gdp.combined_color.g;
         if (greenkey >= 0)
             greenkey = (g_gdp.key_width.g << 4) - greenkey;
         else
             greenkey = (g_gdp.key_width.g << 4) + greenkey;
-        bluekey = combined_color.b;
+        bluekey = g_gdp.combined_color.b;
         if (bluekey >= 0)
             bluekey = (g_gdp.key_width.b << 4) - bluekey;
         else
@@ -712,9 +711,9 @@ static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
         pixel_color.b = special_9bit_clamptable[*combiner_rgbsub_a_b[1]];
 
         
-        combined_color.r >>= 8;
-        combined_color.g >>= 8;
-        combined_color.b >>= 8;
+        g_gdp.combined_color.r >>= 8;
+        g_gdp.combined_color.g >>= 8;
+        g_gdp.combined_color.b >>= 8;
     }
     
     
@@ -755,60 +754,47 @@ static void combiner_2cycle(int adseed, UINT32* curpixel_cvg)
 {
     INT32 redkey, greenkey, bluekey, temp;
 
-    combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[0],*combiner_rgbsub_b_r[0],*combiner_rgbmul_r[0],*combiner_rgbadd_r[0]);
-    combined_color.g = color_combiner_equation(*combiner_rgbsub_a_g[0],*combiner_rgbsub_b_g[0],*combiner_rgbmul_g[0],*combiner_rgbadd_g[0]);
-    combined_color.b = color_combiner_equation(*combiner_rgbsub_a_b[0],*combiner_rgbsub_b_b[0],*combiner_rgbmul_b[0],*combiner_rgbadd_b[0]);
-    combined_color.a = alpha_combiner_equation(*combiner_alphasub_a[0],*combiner_alphasub_b[0],*combiner_alphamul[0],*combiner_alphaadd[0]);
-
+    g_gdp.combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[0],*combiner_rgbsub_b_r[0],*combiner_rgbmul_r[0],*combiner_rgbadd_r[0]);
+    g_gdp.combined_color.g = color_combiner_equation(*combiner_rgbsub_a_g[0],*combiner_rgbsub_b_g[0],*combiner_rgbmul_g[0],*combiner_rgbadd_g[0]);
+    g_gdp.combined_color.b = color_combiner_equation(*combiner_rgbsub_a_b[0],*combiner_rgbsub_b_b[0],*combiner_rgbmul_b[0],*combiner_rgbadd_b[0]);
+    g_gdp.combined_color.a = alpha_combiner_equation(*combiner_alphasub_a[0],*combiner_alphasub_b[0],*combiner_alphamul[0],*combiner_alphaadd[0]);
     
-    
-
-    
-    combined_color.r >>= 8;
-    combined_color.g >>= 8;
-    combined_color.b >>= 8;
+    g_gdp.combined_color.r >>= 8;
+    g_gdp.combined_color.g >>= 8;
+    g_gdp.combined_color.b >>= 8;
 
     
     texel0_color = texel1_color;
     texel1_color = nexttexel_color;
 
-    
-    
-    
-    
-    
-    
-    
-
-    combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
-    combined_color.g = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
-    combined_color.b = color_combiner_equation(*combiner_rgbsub_a_b[1],*combiner_rgbsub_b_b[1],*combiner_rgbmul_b[1],*combiner_rgbadd_b[1]);
-    combined_color.a = alpha_combiner_equation(*combiner_alphasub_a[1],*combiner_alphasub_b[1],*combiner_alphamul[1],*combiner_alphaadd[1]);
+    g_gdp.combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
+    g_gdp.combined_color.g = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
+    g_gdp.combined_color.b = color_combiner_equation(*combiner_rgbsub_a_b[1],*combiner_rgbsub_b_b[1],*combiner_rgbmul_b[1],*combiner_rgbadd_b[1]);
+    g_gdp.combined_color.a = alpha_combiner_equation(*combiner_alphasub_a[1],*combiner_alphasub_b[1],*combiner_alphamul[1],*combiner_alphaadd[1]);
 
     if (!g_gdp.other_modes.key_en)
     {
-        
-        combined_color.r >>= 8;
-        combined_color.g >>= 8;
-        combined_color.b >>= 8;
+        g_gdp.combined_color.r >>= 8;
+        g_gdp.combined_color.g >>= 8;
+        g_gdp.combined_color.b >>= 8;
 
-        pixel_color.r = special_9bit_clamptable[combined_color.r];
-        pixel_color.g = special_9bit_clamptable[combined_color.g];
-        pixel_color.b = special_9bit_clamptable[combined_color.b];
+        pixel_color.r = special_9bit_clamptable[g_gdp.combined_color.r];
+        pixel_color.g = special_9bit_clamptable[g_gdp.combined_color.g];
+        pixel_color.b = special_9bit_clamptable[g_gdp.combined_color.b];
     }
     else
     {
-        redkey = combined_color.r;
+        redkey = g_gdp.combined_color.r;
         if (redkey >= 0)
             redkey = (g_gdp.key_width.r << 4) - redkey;
         else
             redkey = (g_gdp.key_width.r << 4) + redkey;
-        greenkey = combined_color.g;
+        greenkey = g_gdp.combined_color.g;
         if (greenkey >= 0)
             greenkey = (g_gdp.key_width.g << 4) - greenkey;
         else
             greenkey = (g_gdp.key_width.g << 4) + greenkey;
-        bluekey = combined_color.b;
+        bluekey = g_gdp.combined_color.b;
         if (bluekey >= 0)
             bluekey = (g_gdp.key_width.b << 4) - bluekey;
         else
@@ -823,12 +809,12 @@ static void combiner_2cycle(int adseed, UINT32* curpixel_cvg)
         pixel_color.b = special_9bit_clamptable[*combiner_rgbsub_a_b[1]];
 
         
-        combined_color.r >>= 8;
-        combined_color.g >>= 8;
-        combined_color.b >>= 8;
+        g_gdp.combined_color.r >>= 8;
+        g_gdp.combined_color.g >>= 8;
+        g_gdp.combined_color.b >>= 8;
     }
     
-    pixel_color.a = special_9bit_clamptable[combined_color.a];
+    pixel_color.a = special_9bit_clamptable[g_gdp.combined_color.a];
     if (pixel_color.a == 0xff)
         pixel_color.a = 0x100;
 

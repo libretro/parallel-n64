@@ -957,9 +957,9 @@ INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
    switch (code & 0xf)
    {
       case 0:
-         *input_r = &combined_color.r;
-         *input_g = &combined_color.g;
-         *input_b = &combined_color.b;
+         *input_r = &g_gdp.combined_color.r;
+         *input_g = &g_gdp.combined_color.g;
+         *input_b = &g_gdp.combined_color.b;
          break;
       case 1:
          *input_r = &texel0_color.r;
@@ -1016,9 +1016,9 @@ INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
    switch (code & 0xf)
    {
       case 0:
-         *input_r = &combined_color.r;
-         *input_g = &combined_color.g;
-         *input_b = &combined_color.b;
+         *input_r = &g_gdp.combined_color.r;
+         *input_g = &g_gdp.combined_color.g;
+         *input_b = &g_gdp.combined_color.b;
          break;
       case 1:
          *input_r = &texel0_color.r;
@@ -1075,9 +1075,9 @@ INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
    switch (code & 0x1f)
    {
       case 0:
-         *input_r = &combined_color.r;
-         *input_g = &combined_color.g;
-         *input_b = &combined_color.b;
+         *input_r = &g_gdp.combined_color.r;
+         *input_g = &g_gdp.combined_color.g;
+         *input_b = &g_gdp.combined_color.b;
          break;
       case 1:
          *input_r = &texel0_color.r;
@@ -1110,9 +1110,9 @@ INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
          *input_b = &g_gdp.key_scale.b;
          break;
       case 7:
-         *input_r = &combined_color.a;
-         *input_g = &combined_color.a;
-         *input_b = &combined_color.a;
+         *input_r = &g_gdp.combined_color.a;
+         *input_g = &g_gdp.combined_color.a;
+         *input_b = &g_gdp.combined_color.a;
          break;
       case 8:
          *input_r = &texel0_color.a;
@@ -1182,9 +1182,9 @@ INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
    switch (code & 0x7)
    {
       case 0:
-         *input_r = &combined_color.r;
-         *input_g = &combined_color.g;
-         *input_b = &combined_color.b;
+         *input_r = &g_gdp.combined_color.r;
+         *input_g = &g_gdp.combined_color.g;
+         *input_b = &g_gdp.combined_color.b;
          break;
       case 1:
          *input_r = &texel0_color.r;
@@ -1229,7 +1229,7 @@ INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
    switch (code & 0x7)
    {
       case 0:
-         *input = &combined_color.a;
+         *input = &g_gdp.combined_color.a;
          break;
       case 1:
          *input = &texel0_color.a;

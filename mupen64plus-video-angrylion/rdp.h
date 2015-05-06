@@ -376,7 +376,6 @@ extern INT32 *blender2b_a[2];
 
 extern RECTANGLE __clip;
 
-extern COLOR combined_color;
 extern COLOR texel0_color;
 extern COLOR texel1_color;
 extern COLOR nexttexel_color;
