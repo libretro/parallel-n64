@@ -23,6 +23,7 @@
 #ifndef M64P_PLUGIN_H
 #define M64P_PLUGIN_H
 
+#include <stdint.h>
 #include "m64p_types.h"
 
 #ifdef __cplusplus
@@ -38,30 +39,30 @@ extern "C" {
 
 /***** Structures *****/
 typedef struct {
-    unsigned char * RDRAM;
-    unsigned char * DMEM;
-    unsigned char * IMEM;
+    uint8_t * RDRAM;
+    uint8_t * DMEM;
+    uint8_t * IMEM;
 
-    unsigned int * MI_INTR_REG;
+    uint32_t * MI_INTR_REG;
 
-    unsigned int * SP_MEM_ADDR_REG;
-    unsigned int * SP_DRAM_ADDR_REG;
-    unsigned int * SP_RD_LEN_REG;
-    unsigned int * SP_WR_LEN_REG;
-    unsigned int * SP_STATUS_REG;
-    unsigned int * SP_DMA_FULL_REG;
-    unsigned int * SP_DMA_BUSY_REG;
-    unsigned int * SP_PC_REG;
-    unsigned int * SP_SEMAPHORE_REG;
+    uint32_t * SP_MEM_ADDR_REG;
+    uint32_t * SP_DRAM_ADDR_REG;
+    uint32_t * SP_RD_LEN_REG;
+    uint32_t * SP_WR_LEN_REG;
+    uint32_t * SP_STATUS_REG;
+    uint32_t * SP_DMA_FULL_REG;
+    uint32_t * SP_DMA_BUSY_REG;
+    uint32_t * SP_PC_REG;
+    uint32_t * SP_SEMAPHORE_REG;
 
-    unsigned int * DPC_START_REG;
-    unsigned int * DPC_END_REG;
-    unsigned int * DPC_CURRENT_REG;
-    unsigned int * DPC_STATUS_REG;
-    unsigned int * DPC_CLOCK_REG;
-    unsigned int * DPC_BUFBUSY_REG;
-    unsigned int * DPC_PIPEBUSY_REG;
-    unsigned int * DPC_TMEM_REG;
+    uint32_t * DPC_START_REG;
+    uint32_t * DPC_END_REG;
+    uint32_t * DPC_CURRENT_REG;
+    uint32_t * DPC_STATUS_REG;
+    uint32_t * DPC_CLOCK_REG;
+    uint32_t * DPC_BUFBUSY_REG;
+    uint32_t * DPC_PIPEBUSY_REG;
+    uint32_t * DPC_TMEM_REG;
 
     void (*CheckInterrupts)(void);
     void (*ProcessDlistList)(void);
@@ -71,53 +72,53 @@ typedef struct {
 } RSP_INFO;
 
 typedef struct {
-    unsigned char * HEADER;  /* This is the rom header (first 40h bytes of the rom) */
-    unsigned char * RDRAM;
-    unsigned char * DMEM;
-    unsigned char * IMEM;
+    uint8_t * HEADER;  /* This is the rom header (first 40h bytes of the rom) */
+    uint8_t * RDRAM;
+    uint8_t * DMEM;
+    uint8_t * IMEM;
 
-    unsigned int * MI_INTR_REG;
+    uint32_t * MI_INTR_REG;
 
-    unsigned int * DPC_START_REG;
-    unsigned int * DPC_END_REG;
-    unsigned int * DPC_CURRENT_REG;
-    unsigned int * DPC_STATUS_REG;
-    unsigned int * DPC_CLOCK_REG;
-    unsigned int * DPC_BUFBUSY_REG;
-    unsigned int * DPC_PIPEBUSY_REG;
-    unsigned int * DPC_TMEM_REG;
+    uint32_t * DPC_START_REG;
+    uint32_t * DPC_END_REG;
+    uint32_t * DPC_CURRENT_REG;
+    uint32_t * DPC_STATUS_REG;
+    uint32_t * DPC_CLOCK_REG;
+    uint32_t * DPC_BUFBUSY_REG;
+    uint32_t * DPC_PIPEBUSY_REG;
+    uint32_t * DPC_TMEM_REG;
 
-    unsigned int * VI_STATUS_REG;
-    unsigned int * VI_ORIGIN_REG;
-    unsigned int * VI_WIDTH_REG;
-    unsigned int * VI_INTR_REG;
-    unsigned int * VI_V_CURRENT_LINE_REG;
-    unsigned int * VI_TIMING_REG;
-    unsigned int * VI_V_SYNC_REG;
-    unsigned int * VI_H_SYNC_REG;
-    unsigned int * VI_LEAP_REG;
-    unsigned int * VI_H_START_REG;
-    unsigned int * VI_V_START_REG;
-    unsigned int * VI_V_BURST_REG;
-    unsigned int * VI_X_SCALE_REG;
-    unsigned int * VI_Y_SCALE_REG;
+    uint32_t * VI_STATUS_REG;
+    uint32_t * VI_ORIGIN_REG;
+    uint32_t * VI_WIDTH_REG;
+    uint32_t * VI_INTR_REG;
+    uint32_t * VI_V_CURRENT_LINE_REG;
+    uint32_t * VI_TIMING_REG;
+    uint32_t * VI_V_SYNC_REG;
+    uint32_t * VI_H_SYNC_REG;
+    uint32_t * VI_LEAP_REG;
+    uint32_t * VI_H_START_REG;
+    uint32_t * VI_V_START_REG;
+    uint32_t * VI_V_BURST_REG;
+    uint32_t * VI_X_SCALE_REG;
+    uint32_t * VI_Y_SCALE_REG;
 
     void (*CheckInterrupts)(void);
 } GFX_INFO;
 
 typedef struct {
-    unsigned char * RDRAM;
-    unsigned char * DMEM;
-    unsigned char * IMEM;
+    uint8_t * RDRAM;
+    uint8_t * DMEM;
+    uint8_t * IMEM;
 
-    unsigned int * MI_INTR_REG;
+    uint32_t * MI_INTR_REG;
 
-    unsigned int * AI_DRAM_ADDR_REG;
-    unsigned int * AI_LEN_REG;
-    unsigned int * AI_CONTROL_REG;
-    unsigned int * AI_STATUS_REG;
-    unsigned int * AI_DACRATE_REG;
-    unsigned int * AI_BITRATE_REG;
+    uint32_t * AI_DRAM_ADDR_REG;
+    uint32_t * AI_LEN_REG;
+    uint32_t * AI_CONTROL_REG;
+    uint32_t * AI_STATUS_REG;
+    uint32_t * AI_DACRATE_REG;
+    uint32_t * AI_BITRATE_REG;
 
     void (*CheckInterrupts)(void);
 } AUDIO_INFO;
@@ -129,7 +130,7 @@ typedef struct {
 } CONTROL;
 
 typedef union {
-    unsigned int Value;
+    uint32_t Value;
     struct {
         unsigned R_DPAD       : 1;
         unsigned L_DPAD       : 1;
@@ -198,17 +199,17 @@ EXPORT void CALL ResizeVideoOutput(int width, int height);
 /* frame buffer plugin spec extension */
 typedef struct
 {
-   unsigned int addr;
-   unsigned int size;
-   unsigned int width;
-   unsigned int height;
+   uint32_t addr;
+   uint32_t size;
+   uint32_t width;
+   uint32_t height;
 } FrameBufferInfo;
-typedef void (*ptr_FBRead)(unsigned int addr);
-typedef void (*ptr_FBWrite)(unsigned int addr, unsigned int size);
+typedef void (*ptr_FBRead)(uint32_t addr);
+typedef void (*ptr_FBWrite)(uint32_t addr, uint32_t size);
 typedef void (*ptr_FBGetFrameBufferInfo)(void *p);
 #if defined(M64P_PLUGIN_PROTOTYPES)
-EXPORT void CALL FBRead(unsigned int addr);
-EXPORT void CALL FBWrite(unsigned int addr, unsigned int size);
+EXPORT void CALL FBRead(uint32_t addr);
+EXPORT void CALL FBWrite(uint32_t addr, uint32_t size);
 EXPORT void CALL FBGetFrameBufferInfo(void *p);
 #endif
 
@@ -239,23 +240,23 @@ EXPORT const char * CALL VolumeGetString(void);
 #endif
 
 /* input plugin function pointers */
-typedef void (*ptr_ControllerCommand)(int Control, unsigned char *Command);
+typedef void (*ptr_ControllerCommand)(int Control, uint8_t *Command);
 typedef void (*ptr_GetKeys)(int Control, BUTTONS *Keys);
 typedef void (*ptr_InitiateControllers)(CONTROL_INFO ControlInfo);
-typedef void (*ptr_ReadController)(int Control, unsigned char *Command);
+typedef void (*ptr_ReadController)(int Control, uint8_t *Command);
 #if defined(M64P_PLUGIN_PROTOTYPES)
-EXPORT void CALL ControllerCommand(int Control, unsigned char *Command);
+EXPORT void CALL ControllerCommand(int Control, uint8_t *Command);
 EXPORT void CALL GetKeys(int Control, BUTTONS *Keys);
 EXPORT void CALL InitiateControllers(CONTROL_INFO ControlInfo);
-EXPORT void CALL ReadController(int Control, unsigned char *Command);
+EXPORT void CALL ReadController(int Control, uint8_t *Command);
 #endif
 
 /* RSP plugin function pointers */
-typedef unsigned int (*ptr_DoRspCycles)(unsigned int Cycles);
-typedef void (*ptr_InitiateRSP)(RSP_INFO Rsp_Info, unsigned int *CycleCount);
+typedef uint32_t (*ptr_DoRspCycles)(uint32_t Cycles);
+typedef void (*ptr_InitiateRSP)(RSP_INFO Rsp_Info, uint32_t *CycleCount);
 #if defined(M64P_PLUGIN_PROTOTYPES)
-EXPORT unsigned int CALL DoRspCycles(unsigned int Cycles);
-EXPORT void CALL InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount);
+EXPORT uint32_t CALL DoRspCycles(uint32_t Cycles);
+EXPORT void CALL InitiateRSP(RSP_INFO Rsp_Info, uint32_t *CycleCount);
 #endif
 
 #ifdef __cplusplus

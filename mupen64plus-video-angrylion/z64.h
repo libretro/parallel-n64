@@ -141,14 +141,14 @@ typedef unsigned int offs_t;
 #define GET_HI(x)       (((x) >> 8) & 0x00F8)
 
 #define RREADADDR8(in) \
-    (((in) <= plim) ? (rdram_8[(in) ^ BYTE_ADDR_XOR]) : 0)
+    (((in) <= plim) ? (rdram8[(in) ^ BYTE_ADDR_XOR]) : 0)
 #define RREADIDX16(in) \
     (((in) <= idxlim16) ? (rdram_16[(in) ^ WORD_ADDR_XOR]) : 0)
 #define RREADIDX32(in) \
     (((in) <= idxlim32) ? (rdram[(in)]) : 0)
 
 #define RWRITEADDR8(in, val) { \
-    if ((in) <= plim) rdram_8[(in) ^ BYTE_ADDR_XOR] = (val);}
+    if ((in) <= plim) rdram8[(in) ^ BYTE_ADDR_XOR] = (val);}
 #define RWRITEIDX16(in, val) { \
     if ((in) <= idxlim16) rdram_16[(in) ^ WORD_ADDR_XOR] = (val);}
 #define RWRITEIDX32(in, val) { \
@@ -176,7 +176,7 @@ typedef unsigned int offs_t;
 }
 #define PAIRWRITE8(in, rval, hval) {             \
     if ((in) <= plim) {                          \
-        rdram_8[(in) ^ BYTE_ADDR_XOR] = (rval);  \
+        rdram8[(in) ^ BYTE_ADDR_XOR] = (rval);  \
         if ((in) & 1)                            \
             hidden_bits[(in) >> 1] = (hval);     \
     }                                            \

@@ -7,7 +7,6 @@ extern retro_log_printf_t log_cb;
 
 onetime onetimewarnings;
 
-UINT8* rdram_8;
 UINT16* rdram_16;
 UINT32 plim;
 UINT32 idxlim16;
