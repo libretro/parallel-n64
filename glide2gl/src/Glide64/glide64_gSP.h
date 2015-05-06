@@ -386,9 +386,6 @@ static void cull_trianglefaces(VERTEX **v, unsigned iterations, bool do_update, 
    }
 }
 
-//angrylion's macro, helps to cut overflowed values.
-#define SIGN16(x) (((x) & 0x8000) ? ((x) | ~0xffff) : ((x) & 0xffff))
-
 static void pre_update(void)
 {
    // This is special, not handled in update(), but here

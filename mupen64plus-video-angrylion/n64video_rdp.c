@@ -500,7 +500,6 @@ static void tex_rect(uint32_t w0, uint32_t w1)
       }
    }
    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
-   return;
 }
 
 static void tex_rect_flip(uint32_t w0, uint32_t w1)
@@ -701,7 +700,6 @@ static void tex_rect_flip(uint32_t w0, uint32_t w1)
       }
    }
    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
-   return;
 }
 
 static void sync_load(uint32_t w0, uint32_t w1)

@@ -86,7 +86,7 @@ static DP_FIFO cmd_data[0x0003FFFF/sizeof(i64) + 1];
 #endif
 
 //angrylion's macro, helps to cut overflowed values.
-#define SIGN16(x) (((x) & 0x8000) ? ((x) | ~0xffff) : ((x) & 0xffff))
+#define SIGN16(x) (int16_t)(x)
 
 #ifdef __GNUC__
 #define align(x) __attribute__ ((aligned(x)))
@@ -755,7 +755,8 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    uint8_t cmdHalf1, cmdHalf2;
    int i;
    int32_t off_x_i, off_y_i;
-   uint32_t tile, prev_tile;
+   uint32_t prev_tile;
+   int32_t tilenum;
    float Z, dsdx, dtdy, s_ul_x, s_lr_x, s_ul_y, s_lr_y, off_size_x, off_size_y;
    struct {
       float ul_u, ul_v, lr_u, lr_v;
@@ -821,17 +822,17 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
    {
-      ul_x = (short)((rdp.cmd1 & 0x00FFF000) >> 14);
-      ul_y = (short)((rdp.cmd1 & 0x00000FFF) >> 2);
-      lr_x = (short)((rdp.cmd0 & 0x00FFF000) >> 14);
-      lr_y = (short)((rdp.cmd0 & 0x00000FFF) >> 2);
+      ul_x = (short)((w1 & 0x00FFF000) >> 14);
+      ul_y = (short)((w1 & 0x00000FFF) >> 2);
+      lr_x = (short)((w0 & 0x00FFF000) >> 14);
+      lr_y = (short)((w0 & 0x00000FFF) >> 2);
    }
    else
    {
-      ul_x = ((short)((rdp.cmd1 & 0x00FFF000) >> 12)) / 4.0f;
-      ul_y = ((short)(rdp.cmd1 & 0x00000FFF)) / 4.0f;
-      lr_x = ((short)((rdp.cmd0 & 0x00FFF000) >> 12)) / 4.0f;
-      lr_y = ((short)(rdp.cmd0 & 0x00000FFF)) / 4.0f;
+      ul_x = ((short)((w1 & 0x00FFF000) >> 12)) / 4.0f;
+      ul_y = ((short)(w1 & 0x00000FFF)) / 4.0f;
+      lr_x = ((short)((w0 & 0x00FFF000) >> 12)) / 4.0f;
+      lr_y = ((short)(w0 & 0x00000FFF)) / 4.0f;
    }
 
    if (ul_x >= lr_x)
@@ -884,12 +885,12 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    //*/
 
 
-   tile = (uint16_t)((w1 & 0x07000000) >> 24);
+   tilenum = (uint16_t)((w1 & 0x07000000) >> 24);
 
    rdp.texrecting = 1;
 
-   prev_tile = rdp.cur_tile;
-   rdp.cur_tile = tile;
+   prev_tile    = rdp.cur_tile;
+   rdp.cur_tile = tilenum;
 
    Z = set_sprite_combine_mode ();
 
