@@ -162,10 +162,6 @@ typedef struct {
     INT32 invalyscan[4];
 } SPAN;
 
-typedef struct {
-    INT32 xl, yl, xh, yh;
-} RECTANGLE;
-
 enum {
     PIXEL_SIZE_4BIT,
     PIXEL_SIZE_8BIT,
@@ -374,7 +370,7 @@ extern INT32 *blender2a_g[2];
 extern INT32 *blender2a_b[2];
 extern INT32 *blender2b_a[2];
 
-extern RECTANGLE __clip;
+extern gdp_rectangle __clip;
 
 extern COLOR texel0_color;
 extern COLOR texel1_color;

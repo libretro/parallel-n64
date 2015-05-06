@@ -55,7 +55,7 @@ INT32 *blender2b_a[2];
 
 int rdp_pipeline_crashed;
 
-RECTANGLE __clip = {
+gdp_rectangle __clip = {
     0, 0, 0x2000, 0x2000
 };
 
@@ -102,7 +102,6 @@ typedef struct
     INT16 dsdx, dtdy;            
     UINT32 flip;    
 } TEX_RECTANGLE;
-
 
 #define CVG_CLAMP               0
 #define CVG_WRAP                1

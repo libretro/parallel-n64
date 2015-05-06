@@ -27,6 +27,11 @@ typedef struct
 
 typedef struct
 {
+   int32_t xl, yl, xh, yh;
+} gdp_rectangle;
+
+typedef struct
+{
     int32_t clampdiffs, clampdifft;
     int32_t clampens, clampent;
     int32_t masksclamped, masktclamped;
