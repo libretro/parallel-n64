@@ -726,7 +726,6 @@ static void sync_tile(uint32_t w0, uint32_t w1)
 
 static void sync_full(uint32_t w0, uint32_t w1)
 {
-   z64gl_command = 0; /* wtf is this for */
    *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
    gfx_info.CheckInterrupts();
 }

@@ -55,8 +55,6 @@ INT32 *blender2b_a[2];
 
 int rdp_pipeline_crashed;
 
-UINT32 z64gl_command;
-
 RECTANGLE __clip = {
     0, 0, 0x2000, 0x2000
 };

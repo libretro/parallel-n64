@@ -388,6 +388,4 @@ extern INT32 lod_frac;
 
 extern int rdp_pipeline_crashed;
 
-extern UINT32 z64gl_command;
-
 #endif
