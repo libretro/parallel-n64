@@ -153,9 +153,9 @@ void rdp_update(void)
 
     if (vitype >> 1 == 0)
     {
-        zerobuf(tvfadeoutstate, pixel_size*PRESCALE_HEIGHT);
+        memset(tvfadeoutstate, 0, pixel_size*PRESCALE_HEIGHT);
         for (i = 0; i < PRESCALE_HEIGHT; i++)
-            zerobuf(&PreScale[i * pitchindwords], pixel_size*PRESCALE_WIDTH);
+            memset(&PreScale[i * pitchindwords], 0, pixel_size*PRESCALE_WIDTH);
         prevwasblank = 1;
         goto no_frame_buffer;
     }
@@ -175,17 +175,17 @@ void rdp_update(void)
     prevwasblank = 0;
     if (h_start > 0 && h_start < PRESCALE_WIDTH)
         for (i = 0; i < vactivelines; i++)
-            zerobuf(&PreScale[i*pitchindwords], pixel_size*h_start);
+            memset(&PreScale[i*pitchindwords], 0, pixel_size*h_start);
 
     if (h_end >= 0 && h_end < PRESCALE_WIDTH)
         for (i = 0; i < vactivelines; i++)
-            zerobuf(&PreScale[i*pitchindwords + h_end], pixel_size*hrightblank);
+            memset(&PreScale[i*pitchindwords + h_end], 0, pixel_size*hrightblank);
 
     for (i = 0; i < (v_start << two_lines) + lowerfield; i++)
     {
         tvfadeoutstate[i] >>= 1;
         if (~tvfadeoutstate[i] & validh)
-            zerobuf(&PreScale[i*pitchindwords + h_start], pixel_size*hres);
+            memset(&PreScale[i*pitchindwords + h_start], 0, pixel_size*hres);
     }
 
     if (serration_pulses == 0)
@@ -198,7 +198,7 @@ void rdp_update(void)
             ++i;
             tvfadeoutstate[i] >>= 1;
             if (~tvfadeoutstate[i] & validh)
-                zerobuf(&PreScale[i*pitchindwords + h_start], pixel_size*hres);
+                memset(&PreScale[i*pitchindwords + h_start], 0, pixel_size*hres);
             ++i;
         }
 
@@ -206,7 +206,7 @@ void rdp_update(void)
     {
         tvfadeoutstate[i] >>= 1;
         if (~tvfadeoutstate[i] & validh)
-            zerobuf(&PreScale[i*pitchindwords + h_start], pixel_size*hres);
+            memset(&PreScale[i*pitchindwords + h_start], 0, pixel_size*hres);
         ++i;
     }
 
@@ -1096,9 +1096,4 @@ NOINLINE void DisplayError(char * error)
 {
     //MessageBox(NULL, error, NULL, MB_ICONERROR);
     return;
-}
-
-NOINLINE void zerobuf(void * memory, size_t length)
-{
-    memset(memory, 0, length);
 }

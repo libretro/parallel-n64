@@ -1,9 +1,11 @@
+#include <stdarg.h>
+#include <string.h>
+
 #include "z64.h"
 #include "Gfx #1.3.h"
 #include "tctables.h"
 #include "vi.h"
 #include "rdp.h"
-#include <stdarg.h>
 #include "rdp_common/gdp.h"
 
 int scfield;
@@ -617,26 +619,26 @@ void rdp_init(void)
     SET_BLENDER_INPUT(1, 1, &blender2a_r[1], &blender2a_g[1], &blender2a_b[1],
                       &blender2b_a[1], 0, 0);
     g_gdp.other_modes.f.stalederivs = 1;
-    zerobuf(__TMEM, 0x1000);
+    memset(__TMEM, 0, 0x1000);
 
     for (i = 0; i < sizeof(hidden_bits); i++)
         hidden_bits[i] = 0x03;
 
-    zerobuf(g_gdp.tile, sizeof(g_gdp.tile));
+    memset(g_gdp.tile, 0, sizeof(g_gdp.tile));
     for (i = 0; i < 8; i++)
     {
         calculate_tile_derivs(i);
         calculate_clamp_diffs(i);
     }
 
-    zerobuf(&combined_color, sizeof(COLOR));
-    zerobuf(&g_gdp.prim_color, sizeof(gdp_color));
-    zerobuf(&g_gdp.env_color, sizeof(COLOR));
-    zerobuf(&g_gdp.key_scale, sizeof(COLOR));
-    zerobuf(&g_gdp.key_center, sizeof(COLOR));
+    memset(&combined_color, 0, sizeof(COLOR));
+    memset(&g_gdp.prim_color, 0, sizeof(gdp_color));
+    memset(&g_gdp.env_color, 0, sizeof(COLOR));
+    memset(&g_gdp.key_scale, 0, sizeof(COLOR));
+    memset(&g_gdp.key_center, 0, sizeof(COLOR));
 
     rdp_pipeline_crashed = 0;
-    zerobuf(&onetimewarnings, sizeof(onetimewarnings));
+    memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 
     precalculate_everything();
 
@@ -5267,7 +5269,7 @@ static void compute_cvg_flip(INT32 scanline)
    length = purgeend - purgestart;
    if (length >= 0)
    {
-      zerobuf(&cvgbuf[purgestart], (length + 1) << 2);
+      memset(&cvgbuf[purgestart], 0, (length + 1) << 2);
       for(i = 0; i < 4; i++)
       {
          if (!span[scanline].invalyscan[i])
@@ -5315,7 +5317,7 @@ static void compute_cvg_noflip(INT32 scanline)
 
    if (length >= 0)
    {
-      zerobuf(&cvgbuf[purgestart], (length + 1) << 2);
+      memset(&cvgbuf[purgestart], 0, (length + 1) << 2);
 
       for(i = 0; i < 4; i++)
       {
