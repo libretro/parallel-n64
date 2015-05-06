@@ -192,10 +192,10 @@ void process_RDP_list(void)
 {
    int length;
    unsigned int offset;
-   const u32 DP_CURRENT = *GET_GFX_INFO(DPC_CURRENT_REG) & 0x00FFFFF8;
-   const u32 DP_END     = *GET_GFX_INFO(DPC_END_REG)     & 0x00FFFFF8;
+   const u32 DP_CURRENT = *gfx_info.DPC_CURRENT_REG & 0x00FFFFF8;
+   const u32 DP_END     = *gfx_info.DPC_END_REG     & 0x00FFFFF8;
 
-   *GET_GFX_INFO(DPC_STATUS_REG) &= ~DP_STATUS_FREEZE;
+   *gfx_info.DPC_STATUS_REG &= ~DP_STATUS_FREEZE;
 
    length = DP_END - DP_CURRENT;
    if (length <= 0)
@@ -209,7 +209,7 @@ void process_RDP_list(void)
 
    --length; /* filling in cmd data in backwards order for performance */
    offset = (DP_END - sizeof(i64)) / sizeof(i64);
-   if (*GET_GFX_INFO(DPC_STATUS_REG) & DP_STATUS_XBUS_DMA)
+   if (*gfx_info.DPC_STATUS_REG & DP_STATUS_XBUS_DMA)
       do
       {
          offset &= 0xFFF / sizeof(i64);
@@ -256,9 +256,7 @@ exit_a:
    cmd_ptr = 0;
    cmd_cur = 0;
 exit_b:
-   *GET_GFX_INFO(DPC_START_REG)
-      = *GET_GFX_INFO(DPC_CURRENT_REG)
-      = *GET_GFX_INFO(DPC_END_REG);
+   *gfx_info.DPC_START_REG = *gfx_info.DPC_CURRENT_REG = *gfx_info.DPC_END_REG;
    return;
 }
 
