@@ -47,6 +47,76 @@
 #include "FBtoScreen.h"
 #include "TexCache.h"
 
+static void glide64_draw_fb(float ul_x, float ul_y, float lr_x,
+      float lr_y, float lr_u, float lr_v, float zero)
+{
+   VERTEX v[4], vout[4], vout2[4];
+   /* Make the vertices */
+
+   v[0].x  = ul_x;
+   v[0].y  = ul_y;
+   v[0].z  = 1.0f;
+   v[0].q  = 1.0f;
+   v[0].u0 = zero;
+   v[0].v0 = zero;
+   v[0].u1 = zero;
+   v[0].v1 = zero;
+   v[0].coord[0] = zero;
+   v[0].coord[1] = zero;
+   v[0].coord[2] = zero;
+   v[0].coord[3] = zero;
+
+   v[1].x  = lr_x;
+   v[1].y  = ul_y;
+   v[1].z  = 1.0f;
+   v[1].q  = 1.0f;
+   v[1].u0 = lr_u;
+   v[1].v0 = zero;
+   v[1].u1 = lr_u;
+   v[1].v1 = zero;
+   v[1].coord[0] = lr_u;
+   v[1].coord[1] = zero;
+   v[1].coord[2] = lr_u;
+   v[1].coord[3] = zero;
+
+   v[2].x  = ul_x;
+   v[2].y  = lr_y;
+   v[2].z  = 1.0f;
+   v[2].q  = 1.0f;
+   v[2].u0 = zero; 
+   v[2].v0 = lr_v;
+   v[2].u1 = zero;
+   v[2].v1 = lr_v;
+   v[2].coord[0] = zero;
+   v[2].coord[1] = lr_v;
+   v[2].coord[2] = zero;
+   v[2].coord[3] = lr_v;
+
+   v[3].x  = lr_x;
+   v[3].y  = lr_y;
+   v[3].z  = 1.0f;
+   v[3].q  = 1.0f;
+   v[3].u0 = lr_u; 
+   v[3].v0 = lr_v;
+   v[3].u1 = lr_u;
+   v[3].v1 = lr_v;
+   v[3].coord[0] = lr_u;
+   v[3].coord[1] = lr_v;
+   v[3].coord[2] = lr_u;
+   v[3].coord[3] = lr_v;
+
+   vout[0] = v[0];
+   vout[1] = v[2];
+   vout[2] = v[1];
+
+   vout2[0] = v[2];
+   vout2[1] = v[3];
+   vout2[2] = v[1];
+
+   grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
+   grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
+}
+
 static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
 {
    int tmu, filter;
@@ -143,73 +213,8 @@ static void DrawRE2Video(FB_TO_SCREEN_INFO *fb_info, float scale)
    lr_u = (fb_info->width - 1) * scale;
    lr_v = (fb_info->height - 1) * scale;
 
-   {
-      VERTEX v[4], vout[4], vout2[4];
-      /* Make the vertices */
-
-      v[0].x = ul_x;
-      v[0].y = ul_y;
-      v[0].z = 1;
-      v[0].q = 1;
-      v[0].u0 = 0.5f;
-      v[0].v0 = 0.5f;
-      v[0].u1 = 0.5f;
-      v[0].v1 = 0.5f;
-      v[0].coord[0] = 0.5f;
-      v[0].coord[1] = 0.5f;
-      v[0].coord[2] = 0.5f;
-      v[0].coord[3] = 0.5f;
-
-      v[1].x = lr_x;
-      v[1].y = ul_y;
-      v[1].z = 1;
-      v[1].q = 1;
-      v[1].u0 = lr_u;
-      v[1].v0 = 0.5f;
-      v[1].u1 = lr_u;
-      v[1].v1 = 0.5f;
-      v[1].coord[0] = lr_u;
-      v[1].coord[1] = 0.5f;
-      v[1].coord[2] = lr_u;
-      v[1].coord[3] = 0.5f;
-
-      v[2].x = ul_x;
-      v[2].y = lr_y;
-      v[2].z = 1;
-      v[2].q = 1;
-      v[2].u0 = 0.5f;
-      v[2].v0 = lr_v;
-      v[2].u1 = 0.5f;
-      v[2].v1 = lr_v;
-      v[2].coord[0] = 0.5f;
-      v[2].coord[1] = lr_v;
-      v[2].coord[2] = 0.5f;
-      v[2].coord[3] = lr_v;
-
-      v[3].x = lr_x;
-      v[3].y = lr_y;
-      v[3].z = 1;
-      v[3].q = 1;
-      v[3].u0 = lr_u;
-      v[3].v0 = lr_v;
-      v[3].u1 = lr_u;
-      v[3].v1 = lr_v;
-      v[3].coord[0] = lr_u;
-      v[3].coord[1] = lr_v;
-      v[3].coord[2] = lr_u;
-      v[3].coord[3] = lr_v;
-
-      vout[0] = v[0];
-      vout[1] = v[2];
-      vout[2] = v[1];
-
-      vout2[0] = v[2];
-      vout2[1] = v[3];
-      vout2[2] = v[1];
-
-      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
-   }
+   glide64_draw_fb(ul_x, ul_y, lr_x,
+         lr_y, lr_u, lr_v, 0.5f);
 }
 
 static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
@@ -346,72 +351,9 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
 
       lr_u = (float)(cur_width - 1);
       lr_v = (float)(cur_height - 1);
-      {
-         VERTEX v[4], vout[4], vout2[4];
-         /* Make the vertices */
 
-         v[0].x  = ul_x;
-         v[0].y  = ul_y;
-         v[0].z  = 1.0f;
-         v[0].q  = 1.0f;
-         v[0].u0 = 0.5f;
-         v[0].v0 = 0.5f;
-         v[0].u1 = 0.5f;
-         v[0].v1 = 0.5f;
-         v[0].coord[0] = 0.5f;
-         v[0].coord[1] = 0.5f;
-         v[0].coord[2] = 0.5f;
-         v[0].coord[3] = 0.5f;
-
-         v[1].x  = lr_x;
-         v[1].y  = ul_y;
-         v[1].z  = 1.0f;
-         v[1].q  = 1.0f;
-         v[1].u0 = lr_u;
-         v[1].v0 = 0.5f;
-         v[1].u1 = lr_u;
-         v[1].v1 = 0.5f;
-         v[1].coord[0] = lr_u;
-         v[1].coord[1] = 0.5f;
-         v[1].coord[2] = lr_u;
-         v[1].coord[3] = 0.5f;
-
-         v[2].x  = ul_x;
-         v[2].y  = lr_y;
-         v[2].z  = 1.0f;
-         v[2].q  = 1.0f;
-         v[2].u0 = 0.5f; 
-         v[2].v0 = lr_v;
-         v[2].u1 = 0.5f;
-         v[2].v1 = lr_v;
-         v[2].coord[0] = 0.5f;
-         v[2].coord[1] = lr_v;
-         v[2].coord[2] = 0.5f;
-         v[2].coord[3] = lr_v;
-
-         v[3].x  = lr_x;
-         v[3].y  = lr_y;
-         v[3].z  = 1.0f;
-         v[3].q  = 1.0f;
-         v[3].u0 = lr_u; 
-         v[3].v0 = lr_v;
-         v[3].u1 = lr_u;
-         v[3].v1 = lr_v;
-         v[3].coord[0] = lr_u;
-         v[3].coord[1] = lr_v;
-         v[3].coord[2] = lr_u;
-         v[3].coord[3] = lr_v;
-
-         vout[0] = v[0];
-         vout[1] = v[2];
-         vout[2] = v[1];
-         vout2[0] = v[2];
-         vout2[1] = v[3];
-         vout2[2] = v[1];
-
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
-      }
+      glide64_draw_fb(ul_x, ul_y, lr_x,
+            lr_y, lr_u, lr_v, 0.5f);
     }
   }
 }
@@ -527,72 +469,9 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       lr_y = fb_info->lr_y * rdp.scale_y + rdp.offset_y;
       lr_u = (width  - 1) * scale;
       lr_v = (height - 1) * scale;
-      {
-         VERTEX v[4], vout[4], vout2[4];
-         /* Make the vertices */
 
-         v[0].x  = ul_x;
-         v[0].y  = ul_y;
-         v[0].z  = 1.0f;
-         v[0].q  = 1.0f;
-         v[0].u0 = 0.5f;
-         v[0].v0 = 0.5f;
-         v[0].u1 = 0.5f;
-         v[0].v1 = 0.5f;
-         v[0].coord[0] = 0.5f;
-         v[0].coord[1] = 0.5f;
-         v[0].coord[2] = 0.5f;
-         v[0].coord[3] = 0.5f;
-
-         v[1].x  = lr_x;
-         v[1].y  = ul_y;
-         v[1].z  = 1.0f;
-         v[1].q  = 1.0f;
-         v[1].u0 = lr_u;
-         v[1].v0 = 0.5f;
-         v[1].u1 = lr_u;
-         v[1].v1 = 0.5f;
-         v[1].coord[0] = lr_u;
-         v[1].coord[1] = 0.5f;
-         v[1].coord[2] = lr_u;
-         v[1].coord[3] = 0.5f;
-
-         v[2].x  = ul_x;
-         v[2].y  = lr_y;
-         v[2].z  = 1.0f;
-         v[2].q  = 1.0f;
-         v[2].u0 = 0.5f; 
-         v[2].v0 = lr_v;
-         v[2].u1 = 0.5f;
-         v[2].v1 = lr_v;
-         v[2].coord[0] = 0.5f;
-         v[2].coord[1] = lr_v;
-         v[2].coord[2] = 0.5f;
-         v[2].coord[3] = lr_v;
-
-         v[3].x  = lr_x;
-         v[3].y  = lr_y;
-         v[3].z  = 1.0f;
-         v[3].q  = 1.0f;
-         v[3].u0 = lr_u; 
-         v[3].v0 = lr_v;
-         v[3].u1 = lr_u;
-         v[3].v1 = lr_v;
-         v[3].coord[0] = lr_u;
-         v[3].coord[1] = lr_v;
-         v[3].coord[2] = lr_u;
-         v[3].coord[3] = lr_v;
-
-         vout[0] = v[0];
-         vout[1] = v[2];
-         vout[2] = v[1];
-         vout2[0] = v[2];
-         vout2[1] = v[3];
-         vout2[2] = v[1];
-
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
-      }
+      glide64_draw_fb(ul_x, ul_y, lr_x,
+            lr_y, lr_u, lr_v, 0.5f);
    }
    return true;
 }
@@ -659,72 +538,8 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
          lr_u = (float)(cur_width-1);
          lr_v = (float)(cur_height-1);
 
-         {
-            VERTEX v[4], vout[4], vout2[4];
-            /* Make the vertices */
-
-            v[0].x  = ul_x;
-            v[0].y  = ul_y;
-            v[0].z  = 1.0f;
-            v[0].q  = 1.0f;
-            v[0].u0 = 0.5f;
-            v[0].v0 = 0.5f;
-            v[0].u1 = 0.5f;
-            v[0].v1 = 0.5f;
-            v[0].coord[0] = 0.5f;
-            v[0].coord[1] = 0.5f;
-            v[0].coord[2] = 0.5f;
-            v[0].coord[3] = 0.5f;
-
-            v[1].x  = lr_x;
-            v[1].y  = ul_y;
-            v[1].z  = 1.0f;
-            v[1].q  = 1.0f;
-            v[1].u0 = lr_u;
-            v[1].v0 = 0.5f;
-            v[1].u1 = lr_u;
-            v[1].v1 = 0.5f;
-            v[1].coord[0] = lr_u;
-            v[1].coord[1] = 0.5f;
-            v[1].coord[2] = lr_u;
-            v[1].coord[3] = 0.5f;
-
-            v[2].x  = ul_x;
-            v[2].y  = lr_y;
-            v[2].z  = 1.0f;
-            v[2].q  = 1.0f;
-            v[2].u0 = 0.5f; 
-            v[2].v0 = lr_v;
-            v[2].u1 = 0.5f;
-            v[2].v1 = lr_v;
-            v[2].coord[0] = 0.5f;
-            v[2].coord[1] = lr_v;
-            v[2].coord[2] = 0.5f;
-            v[2].coord[3] = lr_v;
-
-            v[3].x  = lr_x;
-            v[3].y  = lr_y;
-            v[3].z  = 1.0f;
-            v[3].q  = 1.0f;
-            v[3].u0 = lr_u; 
-            v[3].v0 = lr_v;
-            v[3].u1 = lr_u;
-            v[3].v1 = lr_v;
-            v[3].coord[0] = lr_u;
-            v[3].coord[1] = lr_v;
-            v[3].coord[2] = lr_u;
-            v[3].coord[3] = lr_v;
-
-            vout[0] = v[0];
-            vout[1] = v[2];
-            vout[2] = v[1];
-            vout2[0]  = v[2];
-            vout2[1] = v[3];
-            vout2[2] = v[1];
-
-            grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-            grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
-         }
+         glide64_draw_fb(ul_x, ul_y, lr_x,
+               lr_y, lr_u, lr_v, 0.5f);
       }
    }
 }
@@ -795,71 +610,6 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    lr_v = (height - 1) * scale;
    zero = scale * 0.5f;
 
-   {
-      VERTEX v[4], vout[4], vout2[4];
-      /* Make the vertices */
-
-      v[0].x  = ul_x;
-      v[0].y  = ul_y;
-      v[0].z  = 1.0f;
-      v[0].q  = 1.0f;
-      v[0].u0 = zero;
-      v[0].v0 = zero;
-      v[0].u1 = zero;
-      v[0].v1 = zero;
-      v[0].coord[0] = zero;
-      v[0].coord[1] = zero;
-      v[0].coord[2] = zero;
-      v[0].coord[3] = zero;
-
-      v[1].x  = lr_x;
-      v[1].y  = ul_y;
-      v[1].z  = 1.0f;
-      v[1].q  = 1.0f;
-      v[1].u0 = lr_u;
-      v[1].v0 = zero;
-      v[1].u1 = lr_u;
-      v[1].v1 = zero;
-      v[1].coord[0] = lr_u;
-      v[1].coord[1] = zero;
-      v[1].coord[2] = lr_u;
-      v[1].coord[3] = zero;
-
-      v[2].x  = ul_x;
-      v[2].y  = lr_y;
-      v[2].z  = 1.0f;
-      v[2].q  = 1.0f;
-      v[2].u0 = zero; 
-      v[2].v0 = lr_v;
-      v[2].u1 = zero;
-      v[2].v1 = lr_v;
-      v[2].coord[0] = zero;
-      v[2].coord[1] = lr_v;
-      v[2].coord[2] = zero;
-      v[2].coord[3] = lr_v;
-
-      v[3].x  = lr_x;
-      v[3].y  = lr_y;
-      v[3].z  = 1.0f;
-      v[3].q  = 1.0f;
-      v[3].u0 = lr_u; 
-      v[3].v0 = lr_v;
-      v[3].u1 = lr_u;
-      v[3].v1 = lr_v;
-      v[3].coord[0] = lr_u;
-      v[3].coord[1] = lr_v;
-      v[3].coord[2] = lr_u;
-      v[3].coord[3] = lr_v;
-
-      vout[0] = v[0];
-      vout[1] = v[2];
-      vout[2] = v[1];
-
-      vout2[0] = v[2];
-      vout2[1] = v[3];
-      vout2[2] = v[1];
-
-      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-      grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
-   }
+   glide64_draw_fb(ul_x, ul_y, lr_x,
+         lr_y, lr_u, lr_v, zero);
 }
