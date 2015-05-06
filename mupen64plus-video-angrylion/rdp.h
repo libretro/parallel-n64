@@ -2,6 +2,7 @@
 #define _RDP_H_
 
 #include "z64.h"
+#include "../mupen64plus-core/src/rdp_common/gdp.h"
 
 #ifdef USE_SSE_SUPPORT
 #include <emmintrin.h>
@@ -277,8 +278,22 @@ static void (*fbfill_func[4])(UINT32) = {
     fbfill_4, fbfill_8, fbfill_16, fbfill_32
 };
 
-INLINE extern void calculate_clamp_diffs(UINT32 tile);
-INLINE extern void calculate_tile_derivs(UINT32 tile);
+static INLINE void calculate_clamp_diffs(UINT32 i)
+{
+   g_gdp.tile[i].f.clampdiffs = ((g_gdp.tile[i].sh >> 2) - (g_gdp.tile[i].sl >> 2)) & 0x3ff;
+   g_gdp.tile[i].f.clampdifft = ((g_gdp.tile[i].th >> 2) - (g_gdp.tile[i].tl >> 2)) & 0x3ff;
+}
+
+static INLINE void calculate_tile_derivs(UINT32 i)
+{
+   g_gdp.tile[i].f.clampens     = g_gdp.tile[i].cs || !g_gdp.tile[i].mask_s;
+   g_gdp.tile[i].f.clampent     = g_gdp.tile[i].ct || !g_gdp.tile[i].mask_t;
+   g_gdp.tile[i].f.masksclamped = g_gdp.tile[i].mask_s <= 10 ? g_gdp.tile[i].mask_s : 10;
+   g_gdp.tile[i].f.masktclamped = g_gdp.tile[i].mask_t <= 10 ? g_gdp.tile[i].mask_t : 10;
+   g_gdp.tile[i].f.notlutswitch = (g_gdp.tile[i].format << 2) | g_gdp.tile[i].size;
+   g_gdp.tile[i].f.tlutswitch    = (g_gdp.tile[i].size << 2) | ((g_gdp.tile[i].format + 2) & 3);
+}
+
 extern void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2);
 extern void deduce_derivatives(void);
 

@@ -6023,27 +6023,9 @@ STRICTINLINE INT32 CLIP(INT32 value,INT32 min,INT32 max)
 {
    if (value < min)
       return min;
-   else if (value > max)
+   if (value > max)
       return max;
-   else
-      return value;
-}
-
-INLINE void calculate_clamp_diffs(UINT32 i)
-{
-   g_gdp.tile[i].f.clampdiffs = ((g_gdp.tile[i].sh >> 2) - (g_gdp.tile[i].sl >> 2)) & 0x3ff;
-   g_gdp.tile[i].f.clampdifft = ((g_gdp.tile[i].th >> 2) - (g_gdp.tile[i].tl >> 2)) & 0x3ff;
-}
-
-
-INLINE void calculate_tile_derivs(UINT32 i)
-{
-   g_gdp.tile[i].f.clampens     = g_gdp.tile[i].cs || !g_gdp.tile[i].mask_s;
-   g_gdp.tile[i].f.clampent     = g_gdp.tile[i].ct || !g_gdp.tile[i].mask_t;
-   g_gdp.tile[i].f.masksclamped = g_gdp.tile[i].mask_s <= 10 ? g_gdp.tile[i].mask_s : 10;
-   g_gdp.tile[i].f.masktclamped = g_gdp.tile[i].mask_t <= 10 ? g_gdp.tile[i].mask_t : 10;
-   g_gdp.tile[i].f.notlutswitch = (g_gdp.tile[i].format << 2) | g_gdp.tile[i].size;
-   g_gdp.tile[i].f.tlutswitch    = (g_gdp.tile[i].size << 2) | ((g_gdp.tile[i].format + 2) & 3);
+   return value;
 }
 
 static void rgb_dither_complete(int* r, int* g, int* b, int dith)
