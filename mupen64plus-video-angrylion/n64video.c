@@ -67,7 +67,6 @@ void (*fbfill_ptr)(UINT32);
 #undef  LOG_RDP_EXECUTION
 #define DETAILED_LOGGING 0
 
-
 FILE *rdp_exec;
 
 UINT32 old_vi_origin = 0;
@@ -105,16 +104,15 @@ typedef struct
 } TEX_RECTANGLE;
 
 
-#define CVG_CLAMP                0
+#define CVG_CLAMP               0
 #define CVG_WRAP                1
-#define CVG_ZAP                    2
+#define CVG_ZAP                 2
 #define CVG_SAVE                3
 
-
 #define ZMODE_OPAQUE            0
-#define ZMODE_INTERPENETRATING    1
-#define ZMODE_TRANSPARENT        2
-#define ZMODE_DECAL                3
+#define ZMODE_INTERPENETRATING  1
+#define ZMODE_TRANSPARENT       2
+#define ZMODE_DECAL             3
 
 COLOR texel0_color;
 COLOR texel1_color;
@@ -410,9 +408,6 @@ STRICTINLINE void tcmask_copy(INT32* S, INT32* S1, INT32* S2, INT32* S3, INT32* 
 
 STRICTINLINE void tcshift_cycle(INT32* S, INT32* T, INT32* maxs, INT32* maxt, UINT32 num)
 {
-
-
-
     INT32 coord = *S;
     INT32 shifter = g_gdp.tile[num].shift_s;
 
@@ -427,14 +422,7 @@ STRICTINLINE void tcshift_cycle(INT32* S, INT32* T, INT32* maxs, INT32* maxt, UI
         coord = SIGN16(coord);
     }
     *S = coord; 
-
-    
-
-    
     *maxs = ((coord >> 3) >= g_gdp.tile[num].sh);
-    
-    
-
     coord = *T;
     shifter = g_gdp.tile[num].shift_t;
 
@@ -661,9 +649,6 @@ static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
 {
 
     INT32 redkey, greenkey, bluekey, temp;
-
-    
-
     
     g_gdp.combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
     g_gdp.combined_color.g = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
@@ -5049,7 +5034,8 @@ void deduce_derivatives(void)
       lodfracused = 1;
 
    if ((g_gdp.other_modes.cycle_type == CYCLE_TYPE_1 && combiner_rgbsub_a_r[1] == &noise) || \
-         (g_gdp.other_modes.cycle_type == CYCLE_TYPE_2 && (combiner_rgbsub_a_r[0] == &noise || combiner_rgbsub_a_r[1] == &noise)) || \
+         (g_gdp.other_modes.cycle_type == CYCLE_TYPE_2 && 
+          (combiner_rgbsub_a_r[0] == &noise || combiner_rgbsub_a_r[1] == &noise)) || \
          g_gdp.other_modes.alpha_dither_sel == 2)
       get_dither_noise_ptr = get_dither_noise_func[0];
    else if (g_gdp.other_modes.f.rgb_alpha_dither != 0xf)
@@ -5810,7 +5796,8 @@ STRICTINLINE UINT16 decompress_cvmask_frombyte(UINT8 x)
    return y;
 }
 
-STRICTINLINE void lookup_cvmask_derivatives(UINT32 mask, UINT8* offx, UINT8* offy, UINT32* curpixel_cvg, UINT32* curpixel_cvbit)
+STRICTINLINE void lookup_cvmask_derivatives(UINT32 mask, UINT8* offx, UINT8* offy,
+      UINT32* curpixel_cvg, UINT32* curpixel_cvbit)
 {
    CVtcmaskDERIVATIVE temp = cvarray[mask];
    *curpixel_cvg = temp.cvg;
@@ -5845,7 +5832,8 @@ STRICTINLINE UINT32 dz_compress(UINT32 value)
    return j;
 }
 
-static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc, UINT32* blend_en, UINT32* prewrap, UINT32* curpixel_cvg, UINT32 curpixel_memcvg)
+static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
+      UINT32* blend_en, UINT32* prewrap, UINT32* curpixel_cvg, UINT32 curpixel_memcvg)
 {
    int cvgcoeff = 0;
    UINT32 dzenc = 0;
@@ -6383,7 +6371,8 @@ static void tclod_2cycle_current(INT32* sss, INT32* sst,
 
       tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
-      lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
+      lodclamp = (initt & 0x60000) || (nextt & 0x60000) || 
+         (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
       tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
       tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
@@ -6445,7 +6434,8 @@ static void tclod_2cycle_current_simple(INT32* sss, INT32* sst,
       tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
       tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
-      lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
+      lodclamp = (initt & 0x60000) || (nextt & 0x60000) || 
+         (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
       tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
       tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
@@ -6507,7 +6497,8 @@ static void tclod_2cycle_current_notexel1(INT32* sss, INT32* sst,
       tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
       tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
-      lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
+      lodclamp = (initt & 0x60000) || (nextt & 0x60000) || 
+         (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
       tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
       tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
@@ -6553,7 +6544,8 @@ static void tclod_2cycle_next(INT32* sss, INT32* sst,
       tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
       tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
-      lodclamp = (initt & 0x60000) || (nextt & 0x60000) || (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
+      lodclamp = (initt & 0x60000) || (nextt & 0x60000) || 
+         (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
 
       tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
       tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
@@ -6958,7 +6950,8 @@ STRICTINLINE void get_texel1_1cycle(INT32* s1, INT32* t1, INT32 s, INT32 t,
    tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
 }
 
-STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc)
+STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1,
+      INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc)
 {
    INT32 nexts, nextt, nextsw;
    nextsw = (w + dwinc) >> 16;
@@ -6968,7 +6961,8 @@ STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1, INT32 s, INT32 t, 
    tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
 }
 
-STRICTINLINE void tclod_4x17_to_15(INT32 scurr, INT32 snext, INT32 tcurr, INT32 tnext, INT32 previous, INT32* lod)
+STRICTINLINE void tclod_4x17_to_15(INT32 scurr, INT32 snext,
+      INT32 tcurr, INT32 tnext, INT32 previous, INT32* lod)
 {
    int dels = SIGN(snext, 17) - SIGN(scurr, 17);
    int delt = SIGN(tnext, 17) - SIGN(tcurr, 17);
