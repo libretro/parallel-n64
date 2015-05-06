@@ -175,7 +175,7 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
    //angrylion's advice to use ul_s in texture image offset and cnt calculations.
    //Helps to fix Vigilante 8 jpeg backgrounds and logos
    off = rdp.timg.addr + (ul_s << rdp.tiles[tile].size >> 1);
-   dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
+   dst = ((uint8_t*)g_gdp.tmem) + (rdp.tiles[tile].t_mem<<3);
    cnt = lr_s-ul_s+1;
    if (rdp.tiles[tile].size == 3)
       cnt <<= 1;

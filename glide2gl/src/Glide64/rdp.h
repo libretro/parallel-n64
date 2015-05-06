@@ -546,7 +546,6 @@ struct RDP
    // Textures
    TEXTURE_IMAGE timg;       // 1 for each tmem address
    TILE tiles[8];          // 8 tile descriptors
-   uint8_t tmem[4096];        // 4k tmem
    uint32_t addr[512];        // 512 addresses (used to determine address loaded from)
 
    int     cur_tile;   // current tile

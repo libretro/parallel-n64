@@ -805,9 +805,7 @@ static void set_tile(uint32_t w0, uint32_t w1)
 
 static void fill_rect(uint32_t w0, uint32_t w1)
 {
-   int xl, yl, xh, yh;
    int xlint, xhint;
-
    int ycur, ylfar;
    int yllimit, yhlimit;
    int invaly;
@@ -817,11 +815,10 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    register int j, k;
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
-
-   xl = (w0 & 0x00FFF000) >> (44 - 32);
-   yl = (w0 & 0x00000FFF) >> (32 - 32);
-   xh = (w1 & 0x00FFF000) >> (12 -  0);
-   yh = (w1 & 0x00000FFF) >> ( 0 -  0);
+   int xl = (w0 & 0x00FFF000) >> (44 - 32);
+   int yl = (w0 & 0x00000FFF) >> (32 - 32);
+   int xh = (w1 & 0x00FFF000) >> (12 -  0);
+   int yh = (w1 & 0x00000FFF) >> ( 0 -  0);
 
    yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
 

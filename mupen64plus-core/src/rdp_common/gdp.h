@@ -238,6 +238,7 @@ struct gdp_global
    gdp_tile tile[8];
    gdp_combine_modes combine;
    gdp_other_modes other_modes;
+   uint8_t tmem[0x1000];
 };
 
 

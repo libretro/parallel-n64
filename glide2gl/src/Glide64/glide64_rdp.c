@@ -708,7 +708,7 @@ static void pd_zcopy(uint32_t w0, uint32_t w1)
    uint16_t ul_u = (uint16_t)((rdp.cmd2 & 0xFFFF0000) >> 21) + 1;
    uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
    uint16_t width = lr_x - ul_x;
-   uint16_t * ptr_src = ((uint16_t*)rdp.tmem)+ul_u;
+   uint16_t * ptr_src = ((uint16_t*)g_gdp.tmem)+ul_u;
    uint16_t c;
    for (x = 0; x < width; x++)
    {
@@ -1441,8 +1441,8 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
          return;
 
       wid_64 = rdp.tiles[tile].line;
-      dst = ((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3);
-      end = ((uint8_t*)rdp.tmem) + 4096 - (wid_64<<3);
+      dst = ((uint8_t*)g_gdp.tmem) + (rdp.tiles[tile].t_mem<<3);
+      end = ((uint8_t*)g_gdp.tmem) + 4096 - (wid_64<<3);
       loadTile((uint32_t *)gfx_info.RDRAM, (uint32_t *)dst, wid_64, height, line_n, offs, (uint32_t *)end);
    }
    //FRDP("loadtile: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, lr_t: %d\n", tile, ul_s, ul_t, lr_s, lr_t);

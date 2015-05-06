@@ -308,7 +308,7 @@ static void GetTexInfo (int id, int tile)
       line = (line - wid_64) << 3;
       if (wid_64 < 1)
          wid_64 = 1;
-      addr = (uint8_t*)((((uint8_t*)rdp.tmem) + (rdp.tiles[tile].t_mem<<3)));
+      addr = (uint8_t*)((((uint8_t*)g_gdp.tmem) + (rdp.tiles[tile].t_mem<<3)));
       if (crc_height > 0) // Check the CRC
       {
          if (rdp.tiles[tile].size < 3)
@@ -1199,7 +1199,7 @@ static void LoadTex(int id, int tmu)
 	  int min_x, min_y;
 
       result = load_table[rdp.tiles[td].size][rdp.tiles[td].format]
-         ((uintptr_t)(texture), (uintptr_t)(rdp.tmem)+(rdp.tiles[td].t_mem<<3),
+         ((uintptr_t)(texture), (uintptr_t)(g_gdp.tmem)+(rdp.tiles[td].t_mem<<3),
           texinfo[id].wid_64, texinfo[id].height, texinfo[id].line, real_x, td);
 
       size = HIWORD(result);
