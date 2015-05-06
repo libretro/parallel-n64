@@ -1029,6 +1029,52 @@ void update_scissor(bool set_scissor)
    //FRDP (" |- scissor - (%d, %d) -> (%d, %d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
 }
 
+static void glide64_z_compare(void)
+{
+   // Z buffer
+   if (rdp.update & UPDATE_ZBUF_ENABLED)
+   {
+      int depthbias_level = 0;
+      int depthbuf_func = GR_CMP_ALWAYS;
+      int depthmask_val = FXFALSE;
+      rdp.update ^= UPDATE_ZBUF_ENABLED;
+
+      if (((rdp.flags & ZBUF_ENABLED) || ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
+      {
+         if (rdp.flags & ZBUF_COMPARE)
+         {
+            switch (g_gdp.other_modes.z_mode)
+            {
+               case ZMODE_OPA:
+                  depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
+                  break;
+               case ZMODE_INTER:
+                  depthbias_level = -4;
+                  depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
+                  break;
+               case ZMODE_XLU:
+                  if (settings.ucode == 7)
+                     depthbias_level = -4;
+                  depthbuf_func = GR_CMP_LESS;
+                  break;
+               case ZMODE_DEC:
+                  // will be set dynamically per polygon
+                  //grDepthBiasLevel(-deltaZ);
+                  depthbuf_func = GR_CMP_LEQUAL;
+                  break;
+            }
+         }
+
+         if (rdp.flags & ZBUF_UPDATE)
+            depthmask_val = FXTRUE;
+      }
+
+      grDepthBiasLevel(depthbias_level);
+      grDepthBufferFunction (depthbuf_func);
+      grDepthMask(depthmask_val);
+   }
+}
+
 //
 // update - update states if they need it
 //
@@ -1122,50 +1168,9 @@ void update(void)
          rdp.update ^= UPDATE_TEXTURE;
    }
 
+   glide64_z_compare();
+
    {
-      // Z buffer
-      if (rdp.update & UPDATE_ZBUF_ENABLED)
-      {
-         int depthbias_level = 0;
-         int depthbuf_func = GR_CMP_ALWAYS;
-         int depthmask_val = FXFALSE;
-         rdp.update ^= UPDATE_ZBUF_ENABLED;
-
-         if (((rdp.flags & ZBUF_ENABLED) || ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
-         {
-            if (rdp.flags & ZBUF_COMPARE)
-            {
-               switch (g_gdp.other_modes.z_mode)
-               {
-                  case ZMODE_OPA:
-                     depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
-                     break;
-                  case ZMODE_INTER:
-                     depthbias_level = -4;
-                     depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
-                     break;
-                  case ZMODE_XLU:
-                     if (settings.ucode == 7)
-                        depthbias_level = -4;
-                     depthbuf_func = GR_CMP_LESS;
-                     break;
-                  case ZMODE_DEC:
-                     // will be set dynamically per polygon
-                     //grDepthBiasLevel(-deltaZ);
-                     depthbuf_func = GR_CMP_LEQUAL;
-                     break;
-               }
-            }
-
-            if (rdp.flags & ZBUF_UPDATE)
-               depthmask_val = FXTRUE;
-         }
-
-         grDepthBiasLevel(depthbias_level);
-         grDepthBufferFunction (depthbuf_func);
-         grDepthMask(depthmask_val);
-      }
-
       // Alpha compare
       if (rdp.update & UPDATE_ALPHA_COMPARE)
       {
