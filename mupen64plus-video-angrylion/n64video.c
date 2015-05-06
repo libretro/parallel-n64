@@ -158,10 +158,6 @@ void render_spans_2cycle_complete(int start, int end, int tilenum, int flip);
 void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip);
 void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip);
 void render_spans_2cycle_notex(int start, int end, int tilenum, int flip);
-STRICTINLINE void tcclamp_cycle(INT32* S, INT32* T, INT32* SFRAC, INT32* TFRAC, INT32 maxs, INT32 maxt, INT32 num);
-STRICTINLINE void tcclamp_cycle_light(INT32* S, INT32* T, INT32 maxs, INT32 maxt, INT32 num);
-STRICTINLINE void tcshift_cycle(INT32* S, INT32* T, INT32* maxs, INT32* maxt, UINT32 num);
-STRICTINLINE void tcshift_copy(INT32* S, INT32* T, UINT32 num);
 static void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst);
 static void tcdiv_nopersp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst);
 static void rgb_dither_complete(int* r, int* g, int* b, int dith);
@@ -349,8 +345,7 @@ STRICTINLINE void tcmask_copy(INT32* S, INT32* S1, INT32* S2, INT32* S3, INT32* 
     }
 }
 
-
-STRICTINLINE void tcshift_cycle(INT32* S, INT32* T, INT32* maxs, INT32* maxt, UINT32 num)
+static STRICTINLINE void tcshift_cycle(INT32* S, INT32* T, INT32* maxs, INT32* maxt, UINT32 num)
 {
     INT32 coord = *S;
     INT32 shifter = g_gdp.tile[num].shift_s;
@@ -384,8 +379,7 @@ STRICTINLINE void tcshift_cycle(INT32* S, INT32* T, INT32* maxs, INT32* maxt, UI
     *maxt = ((coord >> 3) >= g_gdp.tile[num].th);
 }    
 
-
-STRICTINLINE void tcshift_copy(INT32* S, INT32* T, UINT32 num)
+static STRICTINLINE void tcshift_copy(INT32* S, INT32* T, UINT32 num)
 {
     INT32 coord = *S;
     INT32 shifter = g_gdp.tile[num].shift_s;
@@ -419,8 +413,7 @@ STRICTINLINE void tcshift_copy(INT32* S, INT32* T, UINT32 num)
     
 }
 
-
-STRICTINLINE void tcclamp_cycle(INT32* S, INT32* T, INT32* SFRAC, INT32* TFRAC, INT32 maxs, INT32 maxt, INT32 num)
+static STRICTINLINE void tcclamp_cycle(INT32* S, INT32* T, INT32* SFRAC, INT32* TFRAC, INT32 maxs, INT32 maxt, INT32 num)
 {
 
     INT32 locs = *S, loct = *T;
@@ -467,8 +460,7 @@ STRICTINLINE void tcclamp_cycle(INT32* S, INT32* T, INT32* SFRAC, INT32* TFRAC, 
         *T = (loct >> 5);
 }
 
-
-STRICTINLINE void tcclamp_cycle_light(INT32* S, INT32* T, INT32 maxs, INT32 maxt, INT32 num)
+static STRICTINLINE void tcclamp_cycle_light(INT32* S, INT32* T, INT32 maxs, INT32 maxt, INT32 num)
 {
     INT32 locs = *S, loct = *T;
     if (g_gdp.tile[num].f.clampens)
@@ -808,9 +800,7 @@ static void precalculate_everything(void)
    }
 
    for(i = 0; i < 0x200; i++)
-   {
       special_9bit_exttable[i] = ((i & 0x180) == 0x180) ? (i | ~0x1ff) : (i & 0x1ff);
-   }
 
    for (i = 0; i < 0x8000; i++)
    {
@@ -3318,7 +3308,6 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
       tfrac = sst1 & 0x1f;
 
       tcclamp_cycle(&sss1, &sst1, &sfrac, &tfrac, maxs, maxt, tilenum);
-
 
       if (g_gdp.tile[tilenum].format != FORMAT_YUV)
          sss2 = sss1 + 1;
