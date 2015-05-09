@@ -212,11 +212,7 @@ static void setup_variables(void)
       { "mupen64-disable_expmem",
          "Enable Expansion Pak RAM; enabled|disabled" },
       { "mupen64-gfxplugin-accuracy",
-#ifdef HAVE_OPENGLES2
          "GFX Accuracy (restart); medium|high|veryhigh|low" },
-#else
-         "GFX Accuracy (restart); high|veryhigh|medium|low" },
-#endif
       { "mupen64-gfxplugin",
          "GFX Plugin; auto|glide64|gln64|rice|angrylion" },
       { "mupen64-rspplugin",
