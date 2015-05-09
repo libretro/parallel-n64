@@ -627,18 +627,6 @@ static void undef(uint32_t w0, uint32_t w1)
 #endif
 }
 
-// spnoop - no operation, always ignore
-static void spnoop(uint32_t w0, uint32_t w1)
-{
-  LRDP("spnoop\n");
-}
-
-// noop - no operation, always ignore
-static void rdp_noop(uint32_t w0, uint32_t w1)
-{
-  LRDP("noop\n");
-}
-
 static void ys_memrect(uint32_t w0, uint32_t w1)
 {
   uint32_t off_x, off_y;
@@ -2833,7 +2821,7 @@ static void rdp_trishadetxtrz(uint32_t w0, uint32_t w1)
 static rdp_instr rdp_command_table[64] =
 {
    /* 0x00 */
-   spnoop,             undef,                  undef,                  undef,
+   gdp_no_op,          undef,                  undef,                  undef,
    undef,              undef,                  undef,                  undef,
    rdp_trifill,        rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
    rdp_trishade,       rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,

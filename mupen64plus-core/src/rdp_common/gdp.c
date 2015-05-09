@@ -360,3 +360,7 @@ void gdp_tile_sync(uint32_t w0, uint32_t w1)
 void gdp_load_sync(uint32_t w0, uint32_t w1)
 {
 }
+
+void gdp_no_op(uint32_t w0, uint32_t w1)
+{
+}

@@ -790,7 +790,7 @@ static rdp_instr gfx_instruction_lite[9][256] =
       uc0_enddl,              0,     0,     0,
       fb_uc0_moveword,           0,          uc0_culldl,             0,
       // c0-ff: RDP commands
-      rdp_noop,               0,                  0,                  0,
+      gdp_no_op,               0,                  0,                  0,
       0,                  0,                  0,                  0,
       0,                  0,                  0,                  0,
       0,                  0,                  0,                  0,

@@ -11,7 +11,6 @@ static int cmd_ptr; /* for 64-bit elements, always <= +0x7FFF */
 static DP_FIFO cmd_data[0x0003FFFF/sizeof(i64) + 1];
 
 static void invalid(uint32_t w0, uint32_t w1);
-static void noop(uint32_t w0, uint32_t w1);
 static void tri_noshade(uint32_t w0, uint32_t w1);
 static void tri_noshade_z(uint32_t w0, uint32_t w1);
 static void tri_tex(uint32_t w0, uint32_t w1);
@@ -41,7 +40,7 @@ NOINLINE static void render_spans(
 STRICTINLINE static u16 normalize_dzpix(u16 sum);
 
 static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
-   noop              ,invalid           ,invalid           ,invalid           ,
+   gdp_no_op              ,invalid           ,invalid           ,invalid           ,
    invalid           ,invalid           ,invalid           ,invalid           ,
    tri_noshade       ,tri_noshade_z     ,tri_tex           ,tri_tex_z         ,
    tri_shade         ,tri_shade_z       ,tri_texshade      ,tri_texshade_z    ,
@@ -257,12 +256,6 @@ static void invalid(uint32_t w0, uint32_t w1)
    invalid_command[0] = '0' | command >> 3;
    invalid_command[1] = '0' | command & 07;
    DisplayError(invalid_command);
-}
-
-static void noop(uint32_t w0, uint32_t w1)
-{
-   (void)w0;
-   (void)w1;
 }
 
 static void tri_noshade(uint32_t w0, uint32_t w1)

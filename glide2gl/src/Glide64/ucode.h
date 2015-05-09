@@ -189,9 +189,6 @@
 // ** RDP graphics functions **
 static void undef(uint32_t w0, uint32_t w1);
 
-static void spnoop(uint32_t w0, uint32_t w1);
-
-static void rdp_noop(uint32_t w0, uint32_t w1);
 static void rdp_texrect(uint32_t w0, uint32_t w1);
 static void rdp_setscissor(uint32_t w0, uint32_t w1);
 static void rdp_setothermode(uint32_t w0, uint32_t w1);
@@ -360,7 +357,7 @@ static rdp_instr gfx_instruction[10][256] =
       // uCode 0 - RSP SW 2.0X
       // 00-3f
       // games: Super Mario 64, Tetrisphere, Demos
-      spnoop,                     uc0_matrix,             rsp_reserved0,              uc0_movemem,
+      gdp_no_op,                     uc0_matrix,             rsp_reserved0,              uc0_movemem,
       uc0_vertex,             rsp_reserved1,              uc0_displaylist,        rsp_reserved2,
       rsp_reserved3,              uc6_sprite2d,           undef,                      undef,
       undef,                      undef,                      undef,                      undef,        
@@ -411,7 +408,7 @@ static rdp_instr gfx_instruction[10][256] =
       uc0_enddl,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
       uc0_moveword,           uc0_popmatrix,          uc0_culldl,             uc0_tri1,
       // c0-ff: RDP commands
-      rdp_noop,               undef,                  undef,                  undef,    
+      gdp_no_op,               undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_trifill,            rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
       rdp_trishade,           rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,
@@ -433,7 +430,7 @@ static rdp_instr gfx_instruction[10][256] =
    // 00-3f
    // games: Mario Kart, Star Fox
    {
-      spnoop,                     uc0_matrix,             rsp_reserved0,              uc0_movemem,
+      gdp_no_op,                     uc0_matrix,             rsp_reserved0,              uc0_movemem,
       uc1_vertex,             rsp_reserved1,              uc0_displaylist,        rsp_reserved2,
       rsp_reserved3,              uc6_sprite2d,           undef,                      undef,
       undef,                      undef,                      undef,                      undef,        
@@ -484,7 +481,7 @@ static rdp_instr gfx_instruction[10][256] =
       uc0_enddl,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
       uc0_moveword,           uc0_popmatrix,          uc2_culldl,             uc1_tri1,
       // c0-ff: RDP commands
-      rdp_noop,               undef,                  undef,                  undef,    
+      gdp_no_op,               undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_trifill,            rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
       rdp_trishade,           rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,
@@ -506,7 +503,7 @@ static rdp_instr gfx_instruction[10][256] =
    // games: Zelda 64
    {
       // 00-3f
-      spnoop,                                 uc2_vertex,                             uc2_modifyvtx,                  uc2_culldl,
+      gdp_no_op,                                 uc2_vertex,                             uc2_modifyvtx,                  uc2_culldl,
       uc1_branch_z,                   uc2_tri1,                               uc2_quad,                           uc2_quad,
       uc2_line3d,                             uc6_bg_1cyc,                    uc6_bg_copy,                    uc6_obj_rendermode/*undef*/,
       undef,                                  undef,                                  undef,                                  undef,
@@ -560,7 +557,7 @@ static rdp_instr gfx_instruction[10][256] =
       undef,                                  undef,                                  undef,                                  undef,
 
       // c0-ff: RDP commands mixed with uc2 commands
-      rdp_noop,               undef,                  undef,                  undef,    
+      gdp_no_op,               undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_trifill,            rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
       rdp_trishade,           rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,
@@ -568,7 +565,7 @@ static rdp_instr gfx_instruction[10][256] =
       uc2_special2,           uc2_dlist_cnt,          uc2_dma_io,             uc0_texture,
       uc2_pop_matrix,         uc2_geom_mode,          uc2_matrix,             uc2_moveword,
       uc2_movemem,            uc2_load_ucode,         uc0_displaylist,        uc0_enddl,
-      spnoop,                 uc1_rdphalf_1,          uc0_setothermode_l,     uc0_setothermode_h,
+      gdp_no_op,                 uc1_rdphalf_1,          uc0_setothermode_l,     uc0_setothermode_h,
       rdp_texrect,            rdp_texrect,            gdp_load_sync,           gdp_pipe_sync,
       gdp_tile_sync,           gdp_full_sync,           gdp_set_key_gb,         gdp_set_key_r,
       gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
@@ -583,7 +580,7 @@ static rdp_instr gfx_instruction[10][256] =
    // games: Wave Race
    // ** Added by Gonetz **
    {
-      spnoop,                                 uc0_matrix,             rsp_reserved0,              uc0_movemem,
+      gdp_no_op,                                 uc0_matrix,             rsp_reserved0,              uc0_movemem,
       uc3_vertex,                             rsp_reserved1,              uc0_displaylist,        rsp_reserved2,
       rsp_reserved3,              uc6_sprite2d,           undef,                      undef,
       undef,                      undef,                      undef,                      undef,        
@@ -634,7 +631,7 @@ static rdp_instr gfx_instruction[10][256] =
       uc0_enddl,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
       uc0_moveword,           uc0_popmatrix,          uc0_culldl,             uc3_tri1,
       // c0-ff: RDP commands
-      rdp_noop,               undef,                  undef,                  undef,    
+      gdp_no_op,               undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_trifill,            rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
       rdp_trishade,           rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,
@@ -656,7 +653,7 @@ static rdp_instr gfx_instruction[10][256] =
       // uCode 4 - RSP SW 2.0D EXT
       // 00-3f
       // games: Star Wars: Shadows of the Empire
-      spnoop,                     uc0_matrix,             rsp_reserved0,              uc0_movemem,
+      gdp_no_op,                     uc0_matrix,             rsp_reserved0,              uc0_movemem,
       uc4_vertex,             rsp_reserved1,              uc0_displaylist,        rsp_reserved2,
       rsp_reserved3,              uc6_sprite2d,           undef,                      undef,
       undef,                      undef,                      undef,                      undef,        
@@ -707,7 +704,7 @@ static rdp_instr gfx_instruction[10][256] =
       uc0_enddl,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
       uc0_moveword,           uc0_popmatrix,          uc0_culldl,             uc4_tri1,
       // c0-ff: RDP commands
-      rdp_noop,               undef,                  undef,                  undef,    
+      gdp_no_op,               undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_trifill,            rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
       rdp_trishade,           rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,
@@ -729,7 +726,7 @@ static rdp_instr gfx_instruction[10][256] =
       // uCode 5 - RSP SW 2.0 Diddy
       // 00-3f
       // games: Diddy Kong Racing
-      spnoop,                     uc5_matrix,             rsp_uc5_reserved0,              uc0_movemem,
+      gdp_no_op,                     uc5_matrix,             rsp_uc5_reserved0,              uc0_movemem,
       uc5_vertex,                                     uc5_tridma,                            uc0_displaylist,                  uc5_dl_in_mem,
       rsp_reserved3,              uc6_sprite2d,           undef,                      undef,
       undef,                      undef,                      undef,                      undef,        
@@ -780,7 +777,7 @@ static rdp_instr gfx_instruction[10][256] =
       uc0_enddl,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
       uc5_moveword,           uc0_popmatrix,          uc0_culldl,             uc5_dma_offsets,
       // c0-ff: RDP commands
-      rdp_noop,               undef,                  undef,                  undef,    
+      gdp_no_op,               undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_trifill,            rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
       rdp_trishade,           rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,
@@ -801,7 +798,7 @@ static rdp_instr gfx_instruction[10][256] =
    // uCode 6 - S2DEX 1.XX
    // games: Yoshi's Story
    {
-      spnoop,                     uc6_bg_1cyc,             uc6_bg_copy,              uc6_obj_rectangle,
+      gdp_no_op,                     uc6_bg_1cyc,             uc6_bg_copy,              uc6_obj_rectangle,
       uc6_obj_sprite,             uc6_obj_movemem,         uc0_displaylist,        rsp_reserved2,
       rsp_reserved3,              undef/*uc6_sprite2d*/,           undef,                      undef,
       undef,                      undef,                      undef,                      undef,        
@@ -852,7 +849,7 @@ static rdp_instr gfx_instruction[10][256] =
       uc0_enddl,              uc0_setothermode_l,     uc0_setothermode_h,     uc0_texture,
       uc0_moveword,           uc0_popmatrix,          uc2_culldl,             uc1_tri1,
       // c0-ff: RDP commands
-      rdp_noop,               uc6_obj_loadtxtr,       uc6_obj_ldtx_sprite,    uc6_obj_ldtx_rect,
+      gdp_no_op,               uc6_obj_loadtxtr,       uc6_obj_ldtx_sprite,    uc6_obj_ldtx_rect,
       uc6_ldtx_rect_r,        undef,                  undef,                  undef,
       rdp_trifill,            rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
       rdp_trishade,           rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,
@@ -873,7 +870,7 @@ static rdp_instr gfx_instruction[10][256] =
    // games: Perfect Dark
    {
       // 00-3f
-      spnoop,                                 uc0_matrix,                             rsp_reserved0,                  uc0_movemem,
+      gdp_no_op,                                 uc0_matrix,                             rsp_reserved0,                  uc0_movemem,
       uc7_vertex,                             rsp_reserved1,                  uc0_displaylist,                uc7_colorbase,
       rsp_reserved3,                  undef,                                  undef,                                  undef,
       undef,                                  undef,                                  undef,                                  undef,
@@ -930,7 +927,7 @@ static rdp_instr gfx_instruction[10][256] =
       uc0_moveword,                   uc0_popmatrix,                  uc0_culldl,                             uc0_tri1,
 
       // c0-ff: RDP commands mixed with uc2 commands
-      rdp_noop,               undef,                  undef,                  undef,    
+      gdp_no_op,               undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_trifill,            rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
       rdp_trishade,           rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,
@@ -955,7 +952,7 @@ static rdp_instr gfx_instruction[10][256] =
    // games: Conker's Bad Fur Day
    {
       // 00-3f
-      spnoop,                                 uc8_vertex,                             uc2_modifyvtx,                  uc2_culldl,
+      gdp_no_op,                                 uc8_vertex,                             uc2_modifyvtx,                  uc2_culldl,
       uc1_branch_z,                   uc2_tri1,                               uc2_quad,                               uc2_quad,
       uc2_line3d,                             uc6_bg_1cyc,                    uc6_bg_copy,                    uc6_obj_rendermode/*undef*/,
       undef,                                  undef,                                  undef,                                  undef,
@@ -1009,7 +1006,7 @@ static rdp_instr gfx_instruction[10][256] =
       undef,                                  undef,                                  undef,                                  undef,
 
       // c0-ff: RDP commands mixed with uc2 commands
-      rdp_noop,               undef,                  undef,                  undef,    
+      gdp_no_op,               undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_trifill,            rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
       rdp_trishade,           rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,
@@ -1017,7 +1014,7 @@ static rdp_instr gfx_instruction[10][256] =
       uc2_special2,                   uc2_dlist_cnt,                  uc2_dma_io,                             uc0_texture,
       uc2_pop_matrix,                 uc2_geom_mode,                  uc2_matrix,                             uc8_moveword,
       uc8_movemem,                    uc2_load_ucode,                 uc0_displaylist,                uc0_enddl,
-      spnoop,                                 rdphalf_1,                      uc0_setothermode_l,             uc0_setothermode_h,
+      gdp_no_op,                                 rdphalf_1,                      uc0_setothermode_l,             uc0_setothermode_h,
       rdp_texrect,            rdp_texrect,            gdp_load_sync,           gdp_pipe_sync,
       gdp_tile_sync,           gdp_full_sync,           gdp_set_key_gb,           gdp_set_key_r,
       gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
@@ -1031,7 +1028,7 @@ static rdp_instr gfx_instruction[10][256] =
       // uCode 9 - gzsort
       // games: Telefoot Soccer
       // 00-3f
-      spnoop,                     undef,                      undef,                      undef,        
+      gdp_no_op,                     undef,                      undef,                      undef,        
       undef,                      undef,                      undef,                      undef,        
       undef,                      undef,                      undef,                      undef,        
       undef,                      undef,                      undef,                      undef,        
@@ -1082,7 +1079,7 @@ static rdp_instr gfx_instruction[10][256] =
       uc0_enddl,                  uc0_setothermode_l,         uc0_setothermode_h,         uc0_texture,
       uc0_moveword,               undef,                      uc0_culldl,                 undef,
       // c0-ff: RDP commands
-      rdp_noop,               undef,                  undef,                  undef,    
+      gdp_no_op,               undef,                  undef,                  undef,    
       undef,                  undef,                  undef,                  undef,    
       rdp_trifill,            rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
       rdp_trishade,           rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,
