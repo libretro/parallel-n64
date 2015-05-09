@@ -39,7 +39,7 @@ static void set_texture_image(uint32_t w0, uint32_t w1);
 static void set_mask_image(uint32_t w0, uint32_t w1);
 static void set_color_image(uint32_t w0, uint32_t w1);
 
-static NOINLINE void draw_triangle(int shade, int texture, int zbuffer);
+static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer);
 NOINLINE static void render_spans(
       int yhlimit, int yllimit, int tilenum, int flip);
 STRICTINLINE static u16 normalize_dzpix(u16 sum);
@@ -271,42 +271,42 @@ static void noop(uint32_t w0, uint32_t w1)
 
 static void tri_noshade(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(SHADE_NO, TEXTURE_NO, ZBUFFER_NO);
+   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_NO, TEXTURE_NO, ZBUFFER_NO);
 }
 
 static void tri_noshade_z(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(SHADE_NO, TEXTURE_NO, ZBUFFER_YES);
+   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_NO, TEXTURE_NO, ZBUFFER_YES);
 }
 
 static void tri_tex(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(SHADE_NO, TEXTURE_YES, ZBUFFER_NO);
+   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_NO, TEXTURE_YES, ZBUFFER_NO);
 }
 
 static void tri_tex_z(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(SHADE_NO, TEXTURE_YES, ZBUFFER_YES);
+   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_NO, TEXTURE_YES, ZBUFFER_YES);
 }
 
 static void tri_shade(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(SHADE_YES, TEXTURE_NO, ZBUFFER_NO);
+   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_YES, TEXTURE_NO, ZBUFFER_NO);
 }
 
 static void tri_shade_z(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(SHADE_YES, TEXTURE_NO, ZBUFFER_YES);
+   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_YES, TEXTURE_NO, ZBUFFER_YES);
 }
 
 static void tri_texshade(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(SHADE_YES, TEXTURE_YES, ZBUFFER_NO);
+   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_YES, TEXTURE_YES, ZBUFFER_NO);
 }
 
 static void tri_texshade_z(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(SHADE_YES, TEXTURE_YES, ZBUFFER_YES);
+   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_YES, TEXTURE_YES, ZBUFFER_YES);
 }
 
 static void tex_rect(uint32_t w0, uint32_t w1)
@@ -1341,7 +1341,7 @@ static void set_color_image(uint32_t w0, uint32_t w1)
    /* fb_address &= 0x00FFFFFF; */
 }
 
-static NOINLINE void draw_triangle(int shade, int texture, int zbuffer)
+static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer)
 {
    register int base;
    int lft, level, tile;
@@ -1417,11 +1417,11 @@ static NOINLINE void draw_triangle(int shade, int texture, int zbuffer)
    max_level = level;
    tilenum = tile;
 
-   yl = (cmd_data[base + 0].UW32[0] & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
+   yl = (w0 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
    yl = SIGN(yl, 14);
-   ym = (cmd_data[base + 0].UW32[1] & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
+   ym = (w1 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
    ym = SIGN(ym, 14);
-   yh = (cmd_data[base + 0].UW32[1] & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
+   yh = (w1 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
    yh = SIGN(yh, 14);
 
    xl = cmd_data[base + 1].UW32[0];
