@@ -1685,6 +1685,8 @@ static void rdp_setcombine(uint32_t w0, uint32_t w1)
 
 static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 {
+   gdp_set_texture_image(w0, w1);
+
    rdp.timg.format = (uint8_t)((w0 >> 21) & 0x07);
    rdp.timg.size   = (uint8_t)((w0 >> 19) & 0x03);
    rdp.timg.width  = (uint16_t)(1 + (w0 & 0x00000FFF));
@@ -1716,13 +1718,6 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
          rdp.fb_drawn = true;
       }
    }
-
-
-#if 0
-   FRDP("settextureimage: format: %s, size: %s, width: %d, addr: %08lx\n",
-         format[rdp.timg.format], size[rdp.timg.size],
-         rdp.timg.width, rdp.timg.addr);
-#endif
 }
 
 static void rdp_setdepthimage(uint32_t w0, uint32_t w1)
