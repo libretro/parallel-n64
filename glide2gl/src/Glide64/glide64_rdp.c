@@ -2446,7 +2446,7 @@ static uint32_t rdp_cmd_data[0x1000];
 #define SSCALE(s, _w) (PERSP_EN ? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
 #define TSCALE(s, w)  (PERSP_EN ? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
 
-static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int zbuffer, uint32_t *rdp_cmd)
+static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer, uint32_t *rdp_cmd)
 {
    int j;
    int xleft, xright, xleft_inc, xright_inc;
@@ -2457,7 +2457,7 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
    int32_t xl, xh, xm;          /* triangle edge x-coordinates */
    int32_t dxldy, dxhdy, dxmdy; /* triangle edge inverse-slopes */
 
-   uint32_t w3, w4, w5, w6, w7, w8;
+   uint32_t w2, w3, w4, w5, w6, w7;
 
    int r = 0xff;
    int g = 0xff;
@@ -2470,7 +2470,7 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
 
    int drdx = 0, dgdx = 0, dbdx = 0, dadx = 0, dzdx = 0, dsdx = 0, dtdx = 0, dwdx = 0;
    int drde = 0, dgde = 0, dbde = 0, dade = 0, dzde = 0, dsde = 0, dtde = 0, dwde = 0;
-   int flip = (w1 & 0x800000) ? 1 : 0;
+   int flip = (w0 & 0x800000) ? 1 : 0;
    uint32_t * shade_base = rdp_cmd + 8;
    uint32_t * texture_base = rdp_cmd + 8;
    uint32_t * zbuffer_base = rdp_cmd + 8;
@@ -2485,29 +2485,29 @@ static void lle_triangle(uint32_t w1, uint32_t w2, int shade, int texture, int z
       zbuffer_base += 16;
    }
 
-   w3 = rdp_cmd[2];
-   w4 = rdp_cmd[3];
-   w5 = rdp_cmd[4];
-   w6 = rdp_cmd[5];
-   w7 = rdp_cmd[6];
-   w8 = rdp_cmd[7];
+   w2 = rdp_cmd[2];
+   w3 = rdp_cmd[3];
+   w4 = rdp_cmd[4];
+   w5 = rdp_cmd[5];
+   w6 = rdp_cmd[6];
+   w7 = rdp_cmd[7];
 
    /* triangle edge y-coordinates */
-   yl = (w1 & 0x3fff);
-   ym = ((w2 >> 16) & 0x3fff);
-   yh = ((w2 >> 0) & 0x3fff);
+   yl = (w0 & 0x3fff);
+   ym = ((w1 >> 16) & 0x3fff);
+   yh = ((w1 >> 0) & 0x3fff);
 
    /* triangle edge x-coordinates */
-   xl = (int32_t)(w3);
-   xh = (int32_t)(w5);
-   xm = (int32_t)(w7);
+   xl = (int32_t)(w2);
+   xh = (int32_t)(w4);
+   xm = (int32_t)(w6);
 
    /* triangle edge inverse-slopes */
-   dxldy = (int32_t)(w4);
-   dxhdy = (int32_t)(w6);
-   dxmdy = (int32_t)(w8);
+   dxldy = (int32_t)(w3);
+   dxhdy = (int32_t)(w5);
+   dxmdy = (int32_t)(w7);
 
-   rdp.cur_tile = (w1 >> 16) & 0x7;
+   rdp.cur_tile = (w0 >> 16) & 0x7;
 
 
    if (yl & (0x800<<2)) yl |= 0xfffff000<<2;
