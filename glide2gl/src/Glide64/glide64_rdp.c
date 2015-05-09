@@ -547,7 +547,7 @@ EXPORT void CALL ProcessDList(void)
     DrawPartFrameBufferToScreen();
   if ((settings.hacks&hack_Tonic) && dlist_length < 16)
   {
-    gdp_fullsync(rdp.cmd0, rdp.cmd1);
+    gdp_full_sync(rdp.cmd0, rdp.cmd1);
     FRDP_E("DLIST is too short!\n");
     return;
   }
@@ -1109,18 +1109,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       ConvertCoordsConvert (vptr, 4);
       grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, vptr);
    }
-}
-
-static void rdp_loadsync(uint32_t w0, uint32_t w1)
-{
-}
-
-static void rdp_pipesync(uint32_t w0, uint32_t w1)
-{
-}
-
-static void rdp_tilesync(uint32_t w0, uint32_t w1)
-{
 }
 
 static void rdp_setscissor(uint32_t w0, uint32_t w1)
@@ -2856,8 +2844,8 @@ static rdp_instr rdp_command_table[64] =
    undef,              undef,                  undef,                  undef,
    /* 0x20 */
    undef,              undef,                  undef,                  undef,
-   rdp_texrect,        rdp_texrect,            rdp_loadsync,           rdp_pipesync,
-   rdp_tilesync,       gdp_fullsync,           gdp_set_key_gb,           gdp_set_key_r,
+   rdp_texrect,        rdp_texrect,            gdp_load_sync,           gdp_pipe_sync,
+   gdp_tile_sync,       gdp_full_sync,           gdp_set_key_gb,           gdp_set_key_r,
    gdp_set_convert,    rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
    /* 0x30 */
    rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,

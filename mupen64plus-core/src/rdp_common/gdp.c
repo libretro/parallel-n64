@@ -343,8 +343,20 @@ void gdp_set_other_modes(uint32_t w0, uint32_t w1)
  * if the memory data is to be reused, like switching display buffers,
  * or writing a color_image to be used as a texture_image, or for
  * consistent read/write access to an RDP write/read image from the CPU. */
-void gdp_fullsync(uint32_t w0, uint32_t w1)
+void gdp_full_sync(uint32_t w0, uint32_t w1)
 {
    *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
    gfx_info.CheckInterrupts();
+}
+
+void gdp_pipe_sync(uint32_t w0, uint32_t w1)
+{
+}
+
+void gdp_tile_sync(uint32_t w0, uint32_t w1)
+{
+}
+
+void gdp_load_sync(uint32_t w0, uint32_t w1)
+{
 }

@@ -22,9 +22,6 @@ static void tri_texshade(uint32_t w0, uint32_t w1);
 static void tri_texshade_z(uint32_t w0, uint32_t w1);
 static void tex_rect(uint32_t w0, uint32_t w1);
 static void tex_rect_flip(uint32_t w0, uint32_t w1);
-static void sync_load(uint32_t w0, uint32_t w1);
-static void sync_pipe(uint32_t w0, uint32_t w1);
-static void sync_tile(uint32_t w0, uint32_t w1);
 static void set_scissor(uint32_t w0, uint32_t w1);
 static void set_prim_depth(uint32_t w0, uint32_t w1);
 static void set_other_modes(uint32_t w0, uint32_t w1);
@@ -55,8 +52,8 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
    invalid           ,invalid           ,invalid           ,invalid           ,
 
    invalid           ,invalid           ,invalid           ,invalid           ,
-   tex_rect          ,tex_rect_flip     ,sync_load         ,sync_pipe         ,
-   sync_tile         ,gdp_fullsync         ,gdp_set_key_gb        ,gdp_set_key_r         ,
+   tex_rect          ,tex_rect_flip     ,gdp_load_sync         ,gdp_pipe_sync         ,
+   gdp_tile_sync         ,gdp_full_sync         ,gdp_set_key_gb        ,gdp_set_key_r         ,
    gdp_set_convert       ,set_scissor       ,set_prim_depth    ,set_other_modes   ,
 
    load_tlut         ,invalid           ,set_tile_size     ,load_block        ,
@@ -698,18 +695,6 @@ static void tex_rect_flip(uint32_t w0, uint32_t w1)
       }
    }
    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
-}
-
-static void sync_load(uint32_t w0, uint32_t w1)
-{
-}
-
-static void sync_pipe(uint32_t w0, uint32_t w1)
-{
-}
-
-static void sync_tile(uint32_t w0, uint32_t w1)
-{
 }
 
 static void set_scissor(uint32_t w0, uint32_t w1)

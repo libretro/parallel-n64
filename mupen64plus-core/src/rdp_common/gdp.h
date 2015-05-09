@@ -291,7 +291,13 @@ void gdp_set_texture_image(uint32_t w0, uint32_t w1);
 
 void gdp_set_other_modes(uint32_t w0, uint32_t w1);
 
-void gdp_fullsync(uint32_t w0, uint32_t w1);
+void gdp_full_sync(uint32_t w0, uint32_t w1);
+
+void gdp_pipe_sync(uint32_t w0, uint32_t w1);
+
+void gdp_tile_sync(uint32_t w0, uint32_t w1);
+
+void gdp_load_sync(uint32_t w0, uint32_t w1);
 
 extern struct gdp_global g_gdp;
 
