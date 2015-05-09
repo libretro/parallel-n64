@@ -11,7 +11,13 @@ void gdp_set_prim_color(uint32_t w0, uint32_t w1)
    g_gdp.prim_color.g       = (w1 & 0x00FF0000) >> 16;
    g_gdp.prim_color.b       = (w1 & 0x0000FF00) >>  8;
    g_gdp.prim_color.a       = (w1 & 0x000000FF) >>  0;
-   g_gdp.primitive_lod_frac = (w0 & 0x000000FF) >> (32-32);
+
+   /* Level of Detail fraction for primitive, used primarily
+    * in multi-tile operations for rectangle primitives. */
+   g_gdp.primitive_lod_frac = (w0 & 0x000000FF) >> (32-32); 
+
+   /* Minimum clamp for LOD fraction when in detail or sharpen
+    * texture modes, fixed point 0.5. */
    g_gdp.primitive_lod_min  = (w0 & 0x00001F00) >> (40-32);
 }
 
@@ -59,14 +65,23 @@ void gdp_set_fill_color(uint32_t w0, uint32_t w1)
    g_gdp.fill_color.dz  = _SHIFTR( w1,  0,  2 );
 }
 
+/* This command updates the coefficients for converting YUV
+ * pixels to RGB. */
+
 void gdp_set_convert(uint32_t w0, uint32_t w1)
 {
+   /* KO term of YUV-RGB conversion matrix. */
    g_gdp.k0  = (w0 & 0x003FE000)  >> 13;
+   /* K1 term of YUV-RGB conversion matrix. */
    g_gdp.k1  = (w0 & 0x00001FF0)  >>  4;
+   /* K2 term of YUV-RGB conversion matrix. */
    g_gdp.k2  = (w0 & 0x0000000F)  <<  5;
    g_gdp.k2 |= (w1 & 0xF8000000)  >> 27;
+   /* K3 term of YUV-RGB conversion matrix. */
    g_gdp.k3  = (w1 & 0x07FC0000)  >> 18;
+   /* K4 term of YUV-RGB conversion matrix. */
    g_gdp.k4  = (w1 & 0x0003FE00)  >>  9;
+   /* K5 term of YUV-RGB conversion matrix. */
    g_gdp.k5  = (w1 & 0x000001FF)  >>  0;
 }
 
@@ -83,12 +98,18 @@ void gdp_set_key_gb(uint32_t w0, uint32_t w1)
    g_gdp.key_scale.b      = (w1 & 0x000000FF) >>  0;
 }
 
+/* This command sets the coefficients used for Red keying. */
 void gdp_set_key_r(uint32_t w0, uint32_t w1)
 {
    g_gdp.key_scale.total  = (g_gdp.key_scale.total & 0x00FFFFFF)  | ((w1 & 0xFF) << 24);
    g_gdp.key_center.total = (g_gdp.key_center.total & 0x00FFFFFF) | (((w1 >> 8) & 0xFF) << 24);
+
+   /* Defines color or intensity at which key is active, 0-255. */
    g_gdp.key_center.r     = (w1 & 0x0000FF00) >>  8;
+   /* (Size of half the key window including the soft edge) * scale. If width > 1.0,
+    * then keying is disabled for that channel. */
    g_gdp.key_width.r      = (w1 & 0x0FFF0000) >> 16;
+   /* (1.0 / (size of soft edge). For hard ege keying, set scale to 255. */
    g_gdp.key_scale.r      = (w1 & 0x000000FF) >>  0;
 }
 
@@ -96,18 +117,34 @@ int32_t gdp_set_tile(uint32_t w0, uint32_t w1)
 {
    int32_t tilenum             = (w1 & 0x07000000) >> 24;
 
+   /* Image data format, 0 = RGBA, 1 = YUV, 2 = Color Index, 3 = IA, 4 = I */
    g_gdp.tile[tilenum].format  = (w0 & 0x00E00000) >> (53 - 32);
+   /* Size of pixel/texel color element, 0 = 4b, 1 = 8b, 2 = 16b, 3 = 32b, 4 = Other */
    g_gdp.tile[tilenum].size    = (w0 & 0x00180000) >> (51 - 32);
+   /* Size of tile line in 64bit words, max of 4KB. */
    g_gdp.tile[tilenum].line    = (w0 & 0x0003FE00) >> (41 - 32);
+   /* Starting TMEM address for this tile in words (64bits), 4KB range. */
    g_gdp.tile[tilenum].tmem    = (w0 & 0x000001FF) >> (32 - 32);
+   /* Palette number for 4b Color Indexed texels. This number is
+    * used as the MS 4b of an 8b index. */
    g_gdp.tile[tilenum].palette = (w1 & 0x00F00000) >> (20 -  0);
+   /* Clamp enable for T direction. */
    g_gdp.tile[tilenum].ct      = (w1 & 0x00080000) >> (19 -  0);
+   /* Mirror enable for T direction. */
    g_gdp.tile[tilenum].mt      = (w1 & 0x00040000) >> (18 -  0);
+   /* Mask for wrapping/mirroring in T direction. If this field
+    * is zero then clamp, otherwise pass (mask) LSBs of T address. */
    g_gdp.tile[tilenum].mask_t  = (w1 & 0x0003C000) >> (14 -  0);
+   /* Level of Detail shift for T addresses. */
    g_gdp.tile[tilenum].shift_t = (w1 & 0x00003C00) >> (10 -  0);
+   /* Clamp enable bit for S direction. */
    g_gdp.tile[tilenum].cs      = (w1 & 0x00000200) >> ( 9 -  0);
+   /* Mirror enable bit for S direction. */
    g_gdp.tile[tilenum].ms      = (w1 & 0x00000100) >> ( 8 -  0);
+   /* Mask for wrapping/mirroring in S direction. If this field is
+    * zero then clamp, otherwise pass (mask) LSBs of S address. */
    g_gdp.tile[tilenum].mask_s  = (w1 & 0x000000F0) >> ( 4 -  0);
+   /* Level of Detail shift for S addresses. */
    g_gdp.tile[tilenum].shift_s = (w1 & 0x0000000F) >> ( 0 -  0);
 
    return tilenum;
@@ -116,9 +153,14 @@ int32_t gdp_set_tile(uint32_t w0, uint32_t w1)
 int32_t gdp_set_tile_size(uint32_t w0, uint32_t w1)
 {
    int32_t tilenum = (w1 & 0x07000000) >> (24 -  0);
+
+   /* Low S coordiante of tile in image. */
    g_gdp.tile[tilenum].sl      = (w0 & 0x00FFF000) >> (44 - 32);
+   /* Low T coordinate of tile in image. */
    g_gdp.tile[tilenum].tl      = (w0 & 0x00000FFF) >> (32 - 32);
+   /* High S coordinate of tile in image. */
    g_gdp.tile[tilenum].sh      = (w1 & 0x00FFF000) >> (12 -  0);
+   /* High T coordinate of tile in image. */
    g_gdp.tile[tilenum].th      = (w1 & 0x00000FFF) >> ( 0 -  0);
 
    return tilenum;
@@ -188,6 +230,11 @@ void gdp_set_other_modes(uint32_t w0, uint32_t w1)
    g_gdp.other_modes.alpha_compare_en = !!(w1 & 0x00000001); /*  0 */
 }
 
+/* This command stalls the RDP until the last DRAM buffer is read
+ * or written from any preceding primitive. It is typically only needed
+ * if the memory data is to be reused, like switching display buffers,
+ * or writing a color_image to be used as a texture_image, or for
+ * consistent read/write access to an RDP write/read image from the CPU. */
 void gdp_fullsync(uint32_t w0, uint32_t w1)
 {
    *gfx_info.MI_INTR_REG |= DP_INTERRUPT;

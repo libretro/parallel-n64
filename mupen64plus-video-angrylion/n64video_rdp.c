@@ -815,10 +815,10 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    register int j, k;
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
-   int xl = (w0 & 0x00FFF000) >> (44 - 32);
-   int yl = (w0 & 0x00000FFF) >> (32 - 32);
-   int xh = (w1 & 0x00FFF000) >> (12 -  0);
-   int yh = (w1 & 0x00000FFF) >> ( 0 -  0);
+   int xl = (w0 & 0x00FFF000) >> (44 - 32);  /* X coordinate of bottom right corner of rectangle. */
+   int yl = (w0 & 0x00000FFF) >> (32 - 32);  /* Y coordinate of bottom right corner of rectangle. */
+   int xh = (w1 & 0x00FFF000) >> (12 -  0);  /* X coordinate of top left corner of rectangle. */
+   int yh = (w1 & 0x00000FFF) >> ( 0 -  0);  /* Y coordinate of top left corner of rectangle. */
 
    yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
 
