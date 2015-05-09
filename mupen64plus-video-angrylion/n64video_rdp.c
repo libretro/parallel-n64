@@ -271,42 +271,42 @@ static void noop(uint32_t w0, uint32_t w1)
 
 static void tri_noshade(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_NO, TEXTURE_NO, ZBUFFER_NO);
+   draw_triangle(w0, w1, SHADE_NO, TEXTURE_NO, ZBUFFER_NO);
 }
 
 static void tri_noshade_z(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_NO, TEXTURE_NO, ZBUFFER_YES);
+   draw_triangle(w0, w1, SHADE_NO, TEXTURE_NO, ZBUFFER_YES);
 }
 
 static void tri_tex(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_NO, TEXTURE_YES, ZBUFFER_NO);
+   draw_triangle(w0, w1, SHADE_NO, TEXTURE_YES, ZBUFFER_NO);
 }
 
 static void tri_tex_z(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_NO, TEXTURE_YES, ZBUFFER_YES);
+   draw_triangle(w0, w1, SHADE_NO, TEXTURE_YES, ZBUFFER_YES);
 }
 
 static void tri_shade(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_YES, TEXTURE_NO, ZBUFFER_NO);
+   draw_triangle(w0, w1, SHADE_YES, TEXTURE_NO, ZBUFFER_NO);
 }
 
 static void tri_shade_z(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_YES, TEXTURE_NO, ZBUFFER_YES);
+   draw_triangle(w0, w1, SHADE_YES, TEXTURE_NO, ZBUFFER_YES);
 }
 
 static void tri_texshade(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_YES, TEXTURE_YES, ZBUFFER_NO);
+   draw_triangle(w0, w1, SHADE_YES, TEXTURE_YES, ZBUFFER_NO);
 }
 
 static void tri_texshade_z(uint32_t w0, uint32_t w1)
 {
-   draw_triangle(cmd_data[cmd_cur + 0].UW32[0], cmd_data[cmd_cur + 0].UW32[1], SHADE_YES, TEXTURE_YES, ZBUFFER_YES);
+   draw_triangle(w0, w1, SHADE_YES, TEXTURE_YES, ZBUFFER_YES);
 }
 
 static void tex_rect(uint32_t w0, uint32_t w1)
