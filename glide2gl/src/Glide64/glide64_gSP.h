@@ -682,10 +682,10 @@ static void gSPModifyVertex_G64( uint32_t vtx, uint32_t where, uint32_t val )
          break;
 
       case G_MWO_POINT_RGBA:
-         v->r = _SHIFTR( val, 24, 8 ) * 0.0039215689f;
-         v->g = _SHIFTR( val, 16, 8 ) * 0.0039215689f;
-         v->b = _SHIFTR( val, 8, 8 ) * 0.0039215689f;
-         v->a = _SHIFTR( val, 0, 8 ) * 0.0039215689f;
+         v->r = (uint8_t)(val >> 24);
+         v->g = (uint8_t)((val >> 16) & 0xFF);
+         v->b = (uint8_t)((val >> 8) & 0xFF);
+         v->a = (uint8_t)(val & 0xFF);
          v->shade_mod = 0;
          break;
 
