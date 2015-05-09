@@ -154,7 +154,7 @@ int32_t gdp_set_tile_size(uint32_t w0, uint32_t w1)
 {
    int32_t tilenum = (w1 & 0x07000000) >> (24 -  0);
 
-   /* Low S coordiante of tile in image. */
+   /* Low S coordinate of tile in image. */
    g_gdp.tile[tilenum].sl      = (w0 & 0x00FFF000) >> (44 - 32);
    /* Low T coordinate of tile in image. */
    g_gdp.tile[tilenum].tl      = (w0 & 0x00000FFF) >> (32 - 32);
@@ -206,21 +206,67 @@ void gdp_set_other_modes(uint32_t w0, uint32_t w1)
 {
    /* K:  atomic_prim              = (w0 & 0x0080000000000000) >> 55; */
    /* j:  reserved for future use -- (w0 & 0x0040000000000000) >> 54 */
+
+   /* Display pipeline cycle control mode: 0 = 1 cycle, 1 = 2 cycle,
+    * 2 = Copy, 3 = Fill */
    g_gdp.other_modes.cycle_type       = (w0 & 0x00300000) >> (52 - 32);
+
+   /* Enable perspective correction on texture. */
    g_gdp.other_modes.persp_tex_en     = !!(w0 & 0x00080000); /* 51 */
+
+   /* Enable detail texture. */
    g_gdp.other_modes.detail_tex_en    = !!(w0 & 0x00040000); /* 50 */
+
+   /* Enable sharpened texture. */
    g_gdp.other_modes.sharpen_tex_en   = !!(w0 & 0x00020000); /* 49 */
+
+   /* Enable texture Level of Detail (LOD). */
    g_gdp.other_modes.tex_lod_en       = !!(w0 & 0x00010000); /* 48 */
+
+   /* Enable lookup of texel values from TLUT. Meaningful if texture
+    * type is index, tile is in low TMEM, TLUT is in high TMEM, and
+    * color image is RGB. */
    g_gdp.other_modes.en_tlut          = !!(w0 & 0x00008000); /* 47 */
+
+   /* Type of texels in table, 0 = 16b RGBA (5/5/5/1), I = IA (8/8) */
    g_gdp.other_modes.tlut_type        = !!(w0 & 0x00004000); /* 46 */
+
+   /* Determines how textures are sampled: 0 = 1x1 (Point Sample), 1 = 2x2.
+    * Note that copy (point sample 4 horizontally adjacent texels) mode
+    * is indicated by cycle_type. */
    g_gdp.other_modes.sample_type      = !!(w0 & 0x00002000); /* 45 */
+
+   /* Indicates Texture Filter should do a 2x2x half texel interpolation,
+    * primarily used for MPEG motion compensation processing. */
    g_gdp.other_modes.mid_texel        = !!(w0 & 0x00001000); /* 44 */
+
+   /* color convert operation in Texture Filter. Used in cycle 0. */
    g_gdp.other_modes.bi_lerp0         = !!(w0 & 0x00000800); /* 43 */
+
+   /* Color convert operation in Texture Filter. Used in cycle 1. */
    g_gdp.other_modes.bi_lerp1         = !!(w0 & 0x00000400); /* 42 */
+
+   /* Color convert texel that was the output of the texture filter
+    * on cycle0, used to qualify bi_lerp_1. */
    g_gdp.other_modes.convert_one      = !!(w0 & 0x00000200); /* 41 */
+
+   /* Enable chroma keying. */
    g_gdp.other_modes.key_en           = !!(w0 & 0x00000100); /* 40 */
+
+   /* 0 = magic square matrix (preferred if filtered)
+    * 1 = "standard" bayer matrix (preferred if not filtered)
+    * 2 = noise (as before)
+    * 3 = no dither.
+    */
    g_gdp.other_modes.rgb_dither_sel   = (w0 & 0x000000C0) >> (38 - 32);
+
+   /* 0 = pattern
+    * 1 = ~pattern
+    * 2 = noise
+    * 3 = noi dither
+    */
    g_gdp.other_modes.alpha_dither_sel = (w0 & 0x00000030) >> (36 - 32);
+
    /* reserved for future, def:15 -- (w1 & 0x0000000F00000000) >> 32 */
    g_gdp.other_modes.blend_m1a_0      = (w1 & 0xC0000000) >> (30 -  0);
    g_gdp.other_modes.blend_m1a_1      = (w1 & 0x30000000) >> (28 -  0);
@@ -231,18 +277,46 @@ void gdp_set_other_modes(uint32_t w0, uint32_t w1)
    g_gdp.other_modes.blend_m2b_0      = (w1 & 0x000C0000) >> (18 -  0);
    g_gdp.other_modes.blend_m2b_1      = (w1 & 0x00030000) >> (16 -  0);
    /* N:  reserved for future use -- (w1 & 0x0000000000008000) >> 15 */
+
+   /* Force blend enable */
    g_gdp.other_modes.force_blend      = !!(w1 & 0x00004000); /* 14 */
+
+   /* Use cvg (or cvg * alpha) for pixel alpha. */
    g_gdp.other_modes.alpha_cvg_select = !!(w1 & 0x00002000); /* 13 */
+
+   /* Use cvg times alpha for pixel alpha and coverage. */
    g_gdp.other_modes.cvg_times_alpha  = !!(w1 & 0x00001000); /* 12 */
+
+   /* 0 : opaque, 1 : interpenetrating, 2 : transparent, 3 : decal */
    g_gdp.other_modes.z_mode           = (w1 & 0x00000C00) >> (10 -  0);
+
+   /* 0 : clamp (normal), 1 : wrap (was assume full cvg),
+    * 2 : zap (force to full cvg), 3: save (don't overwrite memory cvg). */
    g_gdp.other_modes.cvg_dest         = (w1 & 0x00000300) >> ( 8 -  0);
+
+   /* Only update color on coverage overflow (transparent surfaces). */
    g_gdp.other_modes.color_on_cvg     = !!(w1 & 0x00000080); /*  7 */
+
+   /* Enable color/cvg read/modify/write memory access. */
    g_gdp.other_modes.image_read_en    = !!(w1 & 0x00000040); /*  6 */
+
+   /* Enable writing of Z if color write enabled. */
    g_gdp.other_modes.z_update_en      = !!(w1 & 0x00000020); /*  5 */
+
+   /* Conditional color write enable on depth comparison. */
    g_gdp.other_modes.z_compare_en     = !!(w1 & 0x00000010); /*  4 */
+
+   /* If not force blend, allow blend enable - use cvg bits */
    g_gdp.other_modes.antialias_en     = !!(w1 & 0x00000008); /*  3 */
+
+   /* Choose between Primitive Z and pixel Z. */
    g_gdp.other_modes.z_source_sel     = !!(w1 & 0x00000004); /*  2 */
+
+   /* Use random noise in alpha compare, otherwise use blend alpha
+    * in alpha compare. */
    g_gdp.other_modes.dither_alpha_en  = !!(w1 & 0x00000002); /*  1 */
+
+   /* Conditional color write on alpha compare. */
    g_gdp.other_modes.alpha_compare_en = !!(w1 & 0x00000001); /*  0 */
 }
 
