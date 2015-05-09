@@ -166,16 +166,32 @@ int32_t gdp_set_tile_size(uint32_t w0, uint32_t w1)
    return tilenum;
 }
 
+/* The Color Combiner implements the 
+ * following equation on each color:
+ * (A - B) * C + D
+ *
+ * RGB and Alpha channels have separate
+ * mux selects. In addition, there are separate
+ * mux selects for cycle 0 and cycle 1. */
 void gdp_set_combine(uint32_t w0, uint32_t w1)
 {
+   /* subtract A input, RGB components, cycle 0. */
    g_gdp.combine.sub_a_rgb0 = (w0 & 0x00F00000) >> 20;
+   /* multiply input,   RGB components, cycle 0. */
    g_gdp.combine.mul_rgb0   = (w0 & 0x000F8000) >> 15;
+   /* subtract A input, alpha component, cycle 0. */
    g_gdp.combine.sub_a_a0   = (w0 & 0x00007000) >> 12;
+   /* multiply input,   alpha component, cycle 0. */
    g_gdp.combine.mul_a0     = (w0 & 0x00000E00) >>  9;
+   /* subtract A input, RGB components,  cycle 1. */
    g_gdp.combine.sub_a_rgb1 = (w0 & 0x000001E0) >>  5;
+   /* multiply input,   RGB components, cycle 1. */
    g_gdp.combine.mul_rgb1   = (w0 & 0x0000001F) >>  0;
+   /* subtract B input, RGB components, cycle 0. */
    g_gdp.combine.sub_b_rgb0 = (w1 & 0xF0000000) >> 28;
+   /* subtract B input, RGB components, cycle 1. */
    g_gdp.combine.sub_b_rgb1 = (w1 & 0x0F000000) >> 24;
+   /* subtract A input, alpha component, cycle 1. */
    g_gdp.combine.sub_a_a1   = (w1 & 0x00E00000) >> 21;
    g_gdp.combine.mul_a1     = (w1 & 0x001C0000) >> 18;
    g_gdp.combine.add_rgb0   = (w1 & 0x00038000) >> 15;
