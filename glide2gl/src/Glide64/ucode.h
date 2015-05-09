@@ -206,7 +206,6 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1);
 static void rdp_settile(uint32_t w0, uint32_t w1);
 static void rdp_fillrect(uint32_t w0, uint32_t w1);
 static void rdp_setprimcolor(uint32_t w0, uint32_t w1);
-static void rdp_setenvcolor(uint32_t w0, uint32_t w1);
 static void rdp_setcombine(uint32_t w0, uint32_t w1);
 static void rdp_settextureimage(uint32_t w0, uint32_t w1);
 static void rdp_setdepthimage(uint32_t w0, uint32_t w1);
@@ -430,7 +429,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
-      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       rdp_setenvcolor,
+      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
       rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
    },
 
@@ -503,7 +502,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
-      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       rdp_setenvcolor,
+      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
       rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
    },
 
@@ -579,7 +578,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           uc2_rdphalf_2,          rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
-      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       rdp_setenvcolor,
+      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
       rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
    },
 
@@ -653,7 +652,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
-      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       rdp_setenvcolor,
+      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
       rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
    },
 
@@ -726,7 +725,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
-      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       rdp_setenvcolor,
+      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
       rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
    },
 
@@ -799,7 +798,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
-      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       rdp_setenvcolor,
+      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
       rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
    },
 
@@ -871,7 +870,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
-      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       rdp_setenvcolor,
+      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
       rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
    },
    // uCode 7 - unknown
@@ -952,7 +951,7 @@ static rdp_instr gfx_instruction[10][256] =
 
       rdp_loadtlut,           rdphalf_2,          rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
-      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       rdp_setenvcolor,
+      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
       rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
    },
 
@@ -1028,7 +1027,7 @@ static rdp_instr gfx_instruction[10][256] =
       gdp_set_convert,         rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
       rdp_loadtlut,           uc2_rdphalf_2,          rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
-      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       rdp_setenvcolor,
+      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
       rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
    },
 
@@ -1104,7 +1103,7 @@ static rdp_instr gfx_instruction[10][256] =
 
       rdp_loadtlut,           rdphalf_2,              rdp_settilesize,        rdp_loadblock,
       rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
-      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       rdp_setenvcolor,
+      gdp_set_fog_color,        gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
       rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
    },
 };

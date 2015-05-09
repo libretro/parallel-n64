@@ -28,6 +28,8 @@ void gdp_set_env_color(uint32_t w0, uint32_t w1)
    g_gdp.env_color.g       = (w1 & 0x00FF0000) >> 16;
    g_gdp.env_color.b       = (w1 & 0x0000FF00) >>  8;
    g_gdp.env_color.a       = (w1 & 0x000000FF) >>  0;
+
+   g_gdp.flags |= UPDATE_COMBINE;
 }
 
 void gdp_set_prim_depth(uint32_t w0, uint32_t w1)

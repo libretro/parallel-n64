@@ -1672,14 +1672,6 @@ static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
    //FRDP("setprimcolor: %08lx, lodmin: %d, lodfrac: %d\n", rdp.cmd1, rdp.prim_lodmin, rdp.prim_lodfrac);
 }
 
-static void rdp_setenvcolor(uint32_t w0, uint32_t w1)
-{
-   gdp_set_env_color(w0, w1);
-   g_gdp.flags |= UPDATE_COMBINE;
-
-   //FRDP("setenvcolor: %08lx\n", rdp.cmd1);
-}
-
 static void rdp_setcombine(uint32_t w0, uint32_t w1)
 {
    gdp_set_combine(w0, w1);
@@ -2878,7 +2870,7 @@ static rdp_instr rdp_command_table[64] =
    /* 0x30 */
    rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
    rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
-   gdp_set_fog_color,      gdp_set_blend_color,      rdp_setprimcolor,       rdp_setenvcolor,
+   gdp_set_fog_color,      gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
    rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
 };
 
