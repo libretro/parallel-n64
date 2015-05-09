@@ -95,11 +95,11 @@ static void uc1_line3d(uint32_t w0, uint32_t w1)
       v[2] = &rdp.vtx[(w1 >> 9) & 0x7F];
       cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
       rdp.flags |= CULLMASK;
-      rdp.update |= UPDATE_CULL_MODE;
+      g_gdp.flags |= UPDATE_CULL_MODE;
       cull_trianglefaces(v, 1, true, true, width);
       rdp.flags ^= CULLMASK;
       rdp.flags |= cull_mode << CULLSHIFT;
-      rdp.update |= UPDATE_CULL_MODE;
+      g_gdp.flags |= UPDATE_CULL_MODE;
    }
    else
    {

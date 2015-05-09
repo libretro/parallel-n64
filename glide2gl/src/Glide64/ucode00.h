@@ -45,16 +45,16 @@ static void rsp_vertex(int v0, int n)
 
    // This is special, not handled in update(), but here
    // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
-   if (rdp.update & UPDATE_MULT_MAT)
+   if (g_gdp.flags & UPDATE_MULT_MAT)
    {
-      rdp.update ^= UPDATE_MULT_MAT;
+      g_gdp.flags ^= UPDATE_MULT_MAT;
       MulMatrices(rdp.model, rdp.proj, rdp.combined);
    }
 
    // This is special, not handled in update()
-   if (rdp.update & UPDATE_LIGHTS)
+   if (g_gdp.flags & UPDATE_LIGHTS)
    {
-      rdp.update ^= UPDATE_LIGHTS;
+      g_gdp.flags ^= UPDATE_LIGHTS;
 
       // Calculate light vectors
       for (i = 0; i < rdp.num_lights; i++)
@@ -82,13 +82,13 @@ static void uc0_vertex(uint32_t w0, uint32_t w1)
 static void modelview_load (float m[4][4])
 {
    CopyMatrix(rdp.model, m, 64); // 4*4*4 (float)
-   rdp.update |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
+   g_gdp.flags |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
 }
 
 static void modelview_mul (float m[4][4])
 {
    MulMatrices(m, rdp.model, rdp.model);
-   rdp.update |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
+   g_gdp.flags |= UPDATE_MULT_MAT | UPDATE_LIGHTS;
 }
 
 static void modelview_push(void)
@@ -114,13 +114,13 @@ static void modelview_mul_push (float m[4][4])
 static void projection_load (float m[4][4])
 {
    CopyMatrix(rdp.proj, m, 64); // 4*4*4 (float)
-   rdp.update |= UPDATE_MULT_MAT;
+   g_gdp.flags |= UPDATE_MULT_MAT;
 }
 
 static void projection_mul (float m[4][4])
 {
    MulMatrices(m, rdp.proj, rdp.proj);
-   rdp.update |= UPDATE_MULT_MAT;
+   g_gdp.flags |= UPDATE_MULT_MAT;
 }
 
 static void load_matrix (float m[4][4], uint32_t addr)
@@ -366,7 +366,7 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          if (((w0 >> 8)&0xFFFF) == 0x04)
          {
             rdp.clip_ratio = (float)vi_integer_sqrt(w1);
-            rdp.update |= UPDATE_VIEWPORT;
+            g_gdp.flags |= UPDATE_VIEWPORT;
          }
          break;
 
@@ -442,7 +442,7 @@ static void uc0_texture(uint32_t w0, uint32_t w1)
       rdp.tiles[tile].s_scale = (float)((s+1)/65536.0f) / 32.0f;
       rdp.tiles[tile].t_scale = (float)((t+1)/65536.0f) / 32.0f;
 
-      rdp.update |= UPDATE_TEXTURE;
+      g_gdp.flags |= UPDATE_TEXTURE;
    }
 }
 
@@ -467,7 +467,7 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
    if (mask & 0x00003000) // filter mode
    {
       rdp.filter_mode = (int)((rdp.othermode_h & 0x00003000) >> 12);
-      rdp.update |= UPDATE_TEXTURE;
+      g_gdp.flags |= UPDATE_TEXTURE;
       FRDP ("filter mode: %s\n", str_filter[rdp.filter_mode]);
    }
 
@@ -478,7 +478,7 @@ static void uc0_setothermode_h(uint32_t w0, uint32_t w1)
    }
 
    if (mask & 0x00300000) // cycle type
-      rdp.update |= UPDATE_ZBUF_ENABLED;
+      g_gdp.flags |= UPDATE_ZBUF_ENABLED;
 }
 
 static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
@@ -503,11 +503,11 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
    rdp.othermode_l = (rdp.othermode_l & ~mask) | rdp.cmd1;
 
    if (mask & RDP_ALPHA_COMPARE) // alpha compare
-      rdp.update |= UPDATE_ALPHA_COMPARE;
+      g_gdp.flags |= UPDATE_ALPHA_COMPARE;
 
    if (mask & 0xFFFFFFF8) // rendermode / blender bits
    {
-      rdp.update |= UPDATE_FOG_ENABLED; //if blender has no fog bits, fog must be set off
+      g_gdp.flags |= UPDATE_FOG_ENABLED; //if blender has no fog bits, fog must be set off
       rdp.render_mode_changed |= rdp.rm ^ rdp.othermode_l;
       rdp.rm = rdp.othermode_l;
       if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
@@ -528,7 +528,7 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
       if (!(rdp.flags & ZBUF_ENABLED))
       {
          rdp.flags |= ZBUF_ENABLED;
-         rdp.update |= UPDATE_ZBUF_ENABLED;
+         g_gdp.flags |= UPDATE_ZBUF_ENABLED;
       }
    }
    if (w1 & 0x00001000) // Front culling
@@ -536,7 +536,7 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
       if (!(rdp.flags & CULL_FRONT))
       {
          rdp.flags |= CULL_FRONT;
-         rdp.update |= UPDATE_CULL_MODE;
+         g_gdp.flags |= UPDATE_CULL_MODE;
       }
    }
    if (w1 & 0x00002000) // Back culling
@@ -544,7 +544,7 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
       if (!(rdp.flags & CULL_BACK))
       {
          rdp.flags |= CULL_BACK;
-         rdp.update |= UPDATE_CULL_MODE;
+         g_gdp.flags |= UPDATE_CULL_MODE;
       }
    }
 
@@ -554,7 +554,7 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
       if (!(rdp.flags & FOG_ENABLED))
       {
          rdp.flags |= FOG_ENABLED;
-         rdp.update |= UPDATE_FOG_ENABLED;
+         g_gdp.flags |= UPDATE_FOG_ENABLED;
       }
    }
 }
@@ -571,7 +571,7 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
       if (rdp.flags & ZBUF_ENABLED)
       {
          rdp.flags ^= ZBUF_ENABLED;
-         rdp.update |= UPDATE_ZBUF_ENABLED;
+         g_gdp.flags |= UPDATE_ZBUF_ENABLED;
       }
    }
    if (w1 & 0x00001000) // Front culling
@@ -579,7 +579,7 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
       if (rdp.flags & CULL_FRONT)
       {
          rdp.flags ^= CULL_FRONT;
-         rdp.update |= UPDATE_CULL_MODE;
+         g_gdp.flags |= UPDATE_CULL_MODE;
       }
    }
    if (w1 & 0x00002000) // Back culling
@@ -587,7 +587,7 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
       if (rdp.flags & CULL_BACK)
       {
          rdp.flags ^= CULL_BACK;
-         rdp.update |= UPDATE_CULL_MODE;
+         g_gdp.flags |= UPDATE_CULL_MODE;
       }
    }
 
@@ -597,7 +597,7 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
       if (rdp.flags & FOG_ENABLED)
       {
          rdp.flags ^= FOG_ENABLED;
-         rdp.update |= UPDATE_FOG_ENABLED;
+         g_gdp.flags |= UPDATE_FOG_ENABLED;
       }
    }
 }
@@ -615,11 +615,11 @@ static void uc0_line3d(uint32_t w0, uint32_t w1)
    v[2] = &rdp.vtx[v0];
 
    rdp.flags |= CULLMASK;
-   rdp.update |= UPDATE_CULL_MODE;
+   g_gdp.flags |= UPDATE_CULL_MODE;
    cull_trianglefaces(v, 1, true, true, width);
    rdp.flags ^= CULLMASK;
    rdp.flags |= cull_mode << CULLSHIFT;
-   rdp.update |= UPDATE_CULL_MODE;
+   g_gdp.flags |= UPDATE_CULL_MODE;
 }
 
 static void uc0_tri4(uint32_t w0, uint32_t w1)

@@ -134,7 +134,7 @@ static void t3dLoadGlobState(uint32_t pgstate)
    rdp.view_trans[0] = trans_x * rdp.scale_x;
    rdp.view_trans[1] = trans_y * rdp.scale_y;
    rdp.view_trans[2] = 32.0f * trans_z;
-   rdp.update |= UPDATE_VIEWPORT;
+   g_gdp.flags |= UPDATE_VIEWPORT;
    FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d)\n", scale_x, scale_y, scale_z,
          trans_x, trans_y, trans_z);
 

@@ -609,7 +609,7 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
                   break;
                case 8:  // projection matrix
                   LRDP("Combined load\n");
-                  rdp.update &= ~UPDATE_MULT_MAT;
+                  g_gdp.flags &= ~UPDATE_MULT_MAT;
                   memcpy (rdp.combined, m, 64);;
                   break;
             }
@@ -662,7 +662,7 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
             zSortRdp.scale_x = rdp.scale_x / 4.0f;
             zSortRdp.scale_y = rdp.scale_y / 4.0f;
 
-            rdp.update |= UPDATE_VIEWPORT;
+            g_gdp.flags |= UPDATE_VIEWPORT;
 
             rdp.mipmap_level = 0;
             rdp.cur_tile = 0;
@@ -706,7 +706,7 @@ static void uc9_setscissor(uint32_t w0, uint32_t w1)
       zSortRdp.view_trans[1] = h * 4.0f;
       zSortRdp.scale_x = rdp.scale_x / 4.0f;
       zSortRdp.scale_y = rdp.scale_y / 4.0f;
-      rdp.update |= UPDATE_VIEWPORT;
+      g_gdp.flags |= UPDATE_VIEWPORT;
 
       rdp.mipmap_level = 0;
       rdp.cur_tile = 0;

@@ -188,7 +188,7 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
    rdp.timg.addr += cnt << 3;
    rdp.tiles[tile].lr_t = ul_t + ((dxt*cnt)>>11);
 
-   rdp.update |= UPDATE_TEXTURE;
+   g_gdp.flags |= UPDATE_TEXTURE;
 
 #ifdef HAVE_HWFBE
    if (fb_hwfbe_enabled)

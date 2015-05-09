@@ -80,7 +80,7 @@ static void uc5_matrix(uint32_t w0, uint32_t w1)
    else
       load_matrix(rdp.dkrproj[index], addr);
 
-   rdp.update |= UPDATE_MULT_MAT;
+   g_gdp.flags |= UPDATE_MULT_MAT;
 }
 
 static void uc5_vertex(uint32_t w0, uint32_t w1)
@@ -251,7 +251,7 @@ static void uc5_moveword(uint32_t w0, uint32_t w1)
          if (((rdp.cmd0>>8)&0xFFFF) == 0x04)
          {
             rdp.clip_ratio = (float)vi_integer_sqrt(w1);
-            rdp.update |= UPDATE_VIEWPORT;
+            g_gdp.flags |= UPDATE_VIEWPORT;
          }
          break;
 
@@ -279,7 +279,7 @@ static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
     if (!(rdp.flags & ZBUF_ENABLED))
     {
       rdp.flags |= ZBUF_ENABLED;
-      rdp.update |= UPDATE_ZBUF_ENABLED;
+      g_gdp.flags |= UPDATE_ZBUF_ENABLED;
     }
   }
 
@@ -288,7 +288,7 @@ static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
     if (!(rdp.flags & FOG_ENABLED))
     {
       rdp.flags |= FOG_ENABLED;
-      rdp.update |= UPDATE_FOG_ENABLED;
+      g_gdp.flags |= UPDATE_FOG_ENABLED;
     }
   }
 }
@@ -302,7 +302,7 @@ static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1)
       if (rdp.flags & ZBUF_ENABLED)
       {
          rdp.flags ^= ZBUF_ENABLED;
-         rdp.update |= UPDATE_ZBUF_ENABLED;
+         g_gdp.flags |= UPDATE_ZBUF_ENABLED;
       }
    }
 
@@ -311,7 +311,7 @@ static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1)
       if (rdp.flags & FOG_ENABLED)
       {
          rdp.flags ^= FOG_ENABLED;
-         rdp.update |= UPDATE_FOG_ENABLED;
+         g_gdp.flags |= UPDATE_FOG_ENABLED;
       }
    }
 }

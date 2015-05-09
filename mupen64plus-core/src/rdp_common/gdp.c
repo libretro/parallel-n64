@@ -43,6 +43,8 @@ void gdp_set_fog_color(uint32_t w0, uint32_t w1)
    g_gdp.fog_color.g       = (w1 & 0x00FF0000) >> 16;
    g_gdp.fog_color.b       = (w1 & 0x0000FF00) >>  8;
    g_gdp.fog_color.a       = (w1 & 0x000000FF) >>  0;
+
+   g_gdp.flags |= UPDATE_COMBINE;
 }
 
 void gdp_set_blend_color(uint32_t w0, uint32_t w1)
@@ -52,6 +54,8 @@ void gdp_set_blend_color(uint32_t w0, uint32_t w1)
    g_gdp.blend_color.g       = (w1 & 0x00FF0000) >> 16;
    g_gdp.blend_color.b       = (w1 & 0x0000FF00) >>  8;
    g_gdp.blend_color.a       = (w1 & 0x000000FF) >>  0;
+
+   g_gdp.flags |= UPDATE_COMBINE;
 }
 
 void gdp_set_fill_color(uint32_t w0, uint32_t w1)
@@ -63,6 +67,8 @@ void gdp_set_fill_color(uint32_t w0, uint32_t w1)
    g_gdp.fill_color.a       = (w1 & 0x000000FF) >>  0;
    g_gdp.fill_color.z   = _SHIFTR( w1,  2, 14 );
    g_gdp.fill_color.dz  = _SHIFTR( w1,  0,  2 );
+
+   g_gdp.flags |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
 }
 
 /* This command updates the coefficients for converting YUV

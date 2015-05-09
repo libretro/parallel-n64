@@ -293,7 +293,7 @@ void rdp_reset(void)
    rdp.lookat[0][0] = rdp.lookat[1][1] = 1.0f;
 
    rdp.allow_combine = 1;
-   rdp.update = UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
+   g_gdp.flags = UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
    rdp.fog_mode = FOG_MODE_ENABLED;
    rdp.maincimg[0].addr = rdp.maincimg[1].addr = rdp.last_drawn_ci_addr = 0x7FFFFFFF;
 }
@@ -503,7 +503,7 @@ EXPORT void CALL ProcessDList(void)
   if (rdp.model_stack_size == 0)
     rdp.model_stack_size = 32;
   rdp.fb_drawn = rdp.fb_drawn_front = false;
-  rdp.update = 0x7FFFFFFF;  // All but clear cache
+  g_gdp.flags = 0x7FFFFFFF;  // All but clear cache
   rdp.geom_mode = 0;
   rdp.maincimg[1] = rdp.maincimg[0];
   rdp.skip_drawing = false;
@@ -1137,7 +1137,7 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
 
    //FRDP("setscissor: (%d,%d) -> (%d,%d)\n", rdp.scissor_o.ul_x, rdp.scissor_o.ul_y, rdp.scissor_o.lr_x, rdp.scissor_o.lr_y);
 
-   rdp.update |= UPDATE_SCISSOR;
+   g_gdp.flags |= UPDATE_SCISSOR;
 
    if (rdp.view_scale[0] == 0) //viewport is not set?
    {
@@ -1145,7 +1145,7 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
       rdp.view_scale[1] = (rdp.scissor_o.lr_y>>1) * -rdp.scale_y;
       rdp.view_trans[0] = rdp.view_scale[0];
       rdp.view_trans[1] = -rdp.view_scale[1];
-      rdp.update |= UPDATE_VIEWPORT;
+      g_gdp.flags |= UPDATE_VIEWPORT;
    }
 }
 
@@ -1239,7 +1239,7 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
    if (rdp.tiles[tilenum].lr_t < rdp.tiles[tilenum].ul_t)
       rdp.tiles[tilenum].lr_t += 0x400;
 
-   rdp.update |= UPDATE_TEXTURE;
+   g_gdp.flags |= UPDATE_TEXTURE;
 }
 
 
@@ -1470,7 +1470,7 @@ static void rdp_settile(uint32_t w0, uint32_t w1)
    tile->mask_s    = (uint8_t)((w1 >> 4) & 0x0F);
    tile->shift_s   = (uint8_t)(w1 & 0x0F);
 
-   rdp.update |= UPDATE_TEXTURE;
+   g_gdp.flags |= UPDATE_TEXTURE;
 }
 
 static void rdp_fillrect(uint32_t w0, uint32_t w1)
@@ -1502,7 +1502,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
             grColorMask (FXFALSE, FXFALSE);
             grBufferClear (0, 0, g_gdp.fill_color.total ? g_gdp.fill_color.total & 0xFFFF : 0xFFFF);
             grColorMask (FXTRUE, FXTRUE);
-            rdp.update |= UPDATE_ZBUF_ENABLED;
+            g_gdp.flags |= UPDATE_ZBUF_ENABLED;
          }
          //if (settings.frame_buffer&fb_depth_clear)
          {
@@ -1628,7 +1628,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
          grDepthBufferFunction (GR_CMP_ALWAYS);
          grDepthMask (FXFALSE);
 
-         rdp.update |= UPDATE_COMBINE | UPDATE_CULL_MODE | UPDATE_FOG_ENABLED | UPDATE_ZBUF_ENABLED;
+         g_gdp.flags |= UPDATE_COMBINE | UPDATE_CULL_MODE | UPDATE_FOG_ENABLED | UPDATE_ZBUF_ENABLED;
       }
       else
       {
@@ -1647,7 +1647,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
                   GR_COMBINE_OTHER_NONE,
                   FXFALSE);
             grConstantColorValue((cmb.ccolor & 0xFFFFFF00) | g_gdp.fog_color.a);
-            rdp.update |= UPDATE_COMBINE;
+            g_gdp.flags |= UPDATE_COMBINE;
          }
       }
 
@@ -1663,29 +1663,11 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    }
 }
 
-static void rdp_setfillcolor(uint32_t w0, uint32_t w1)
-{
-   gdp_set_fill_color(w0, w1);
-   rdp.update |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
-}
-
-static void rdp_setfogcolor(uint32_t w0, uint32_t w1)
-{
-   gdp_set_fog_color(w0, w1);
-   rdp.update |= UPDATE_COMBINE | UPDATE_FOG_ENABLED;
-}
-
-static void rdp_setblendcolor(uint32_t w0, uint32_t w1)
-{
-   gdp_set_blend_color(w0, w1);
-   rdp.update |= UPDATE_COMBINE;
-}
-
 static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 {
    gdp_set_prim_color(w0, w1);
    rdp.prim_lodmin = (w0 >> 8) & 0xFF;
-   rdp.update |= UPDATE_COMBINE;
+   g_gdp.flags |= UPDATE_COMBINE;
 
    //FRDP("setprimcolor: %08lx, lodmin: %d, lodfrac: %d\n", rdp.cmd1, rdp.prim_lodmin, rdp.prim_lodfrac);
 }
@@ -1693,7 +1675,7 @@ static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 static void rdp_setenvcolor(uint32_t w0, uint32_t w1)
 {
    gdp_set_env_color(w0, w1);
-   rdp.update |= UPDATE_COMBINE;
+   g_gdp.flags |= UPDATE_COMBINE;
 
    //FRDP("setenvcolor: %08lx\n", rdp.cmd1);
 }
@@ -1706,7 +1688,7 @@ static void rdp_setcombine(uint32_t w0, uint32_t w1)
    rdp.cycle2 = (g_gdp.combine.sub_a_rgb1 << 0) | (g_gdp.combine.sub_b_rgb1 << 4) | (g_gdp.combine.mul_rgb1 << 8) | (g_gdp.combine.add_rgb1 << 13) |
       (g_gdp.combine.sub_a_a1 << 16)| (g_gdp.combine.sub_b_a1 << 19)| (g_gdp.combine.mul_a1 << 22)| (g_gdp.combine.add_a1 << 25);
 
-   rdp.update |= UPDATE_COMBINE;
+   g_gdp.flags |= UPDATE_COMBINE;
 }
 
 static void rdp_settextureimage(uint32_t w0, uint32_t w1)
@@ -1735,7 +1717,7 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
       }
    }
    rdp.s2dex_tex_loaded = true;
-   rdp.update |= UPDATE_TEXTURE;
+   g_gdp.flags |= UPDATE_TEXTURE;
 
    if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF && (rdp.timg.addr >= rdp.cimg) && (rdp.timg.addr < rdp.ci_end))
    {
@@ -1772,7 +1754,7 @@ void RestoreScale(void)
   rdp.view_scale[1] *= rdp.scale_y;
   rdp.view_trans[0] *= rdp.scale_x;
   rdp.view_trans[1] *= rdp.scale_y;
-  rdp.update |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
+  g_gdp.flags |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
 }
 
 
@@ -2895,8 +2877,8 @@ static rdp_instr rdp_command_table[64] =
    gdp_set_convert,    rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
    /* 0x30 */
    rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
-   rdp_loadtile,           rdp_settile,            rdp_fillrect,           rdp_setfillcolor,
-   rdp_setfogcolor,        rdp_setblendcolor,      rdp_setprimcolor,       rdp_setenvcolor,
+   rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
+   gdp_set_fog_color,      gdp_set_blend_color,      rdp_setprimcolor,       rdp_setenvcolor,
    rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage
 };
 

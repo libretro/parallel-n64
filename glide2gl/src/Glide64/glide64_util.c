@@ -1005,7 +1005,7 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
 
 void update_scissor(bool set_scissor)
 {
-   if (!(rdp.update & UPDATE_SCISSOR))
+   if (!(g_gdp.flags & UPDATE_SCISSOR))
       return;
 
    if (set_scissor)
@@ -1025,19 +1025,19 @@ void update_scissor(bool set_scissor)
 
    grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
 
-   rdp.update ^= UPDATE_SCISSOR;
+   g_gdp.flags ^= UPDATE_SCISSOR;
    //FRDP (" |- scissor - (%d, %d) -> (%d, %d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
 }
 
 void glide64_z_compare(void)
 {
    // Z buffer
-   if (rdp.update & UPDATE_ZBUF_ENABLED)
+   if (g_gdp.flags & UPDATE_ZBUF_ENABLED)
    {
       int depthbias_level = 0;
       int depthbuf_func = GR_CMP_ALWAYS;
       int depthmask_val = FXFALSE;
-      rdp.update ^= UPDATE_ZBUF_ENABLED;
+      g_gdp.flags ^= UPDATE_ZBUF_ENABLED;
 
       if (((rdp.flags & ZBUF_ENABLED) || ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
       {
@@ -1093,7 +1093,7 @@ void update(void)
             str_yn[(rdp.othermode_l & ALPHA_COMPARE)?1:0]);
 
       rdp.render_mode_changed &= ~0x00000C30;
-      rdp.update |= UPDATE_ZBUF_ENABLED;
+      g_gdp.flags |= UPDATE_ZBUF_ENABLED;
 
       // Update?
       if ((rdp.othermode_l & RDP_Z_UPDATE_ENABLE))
@@ -1114,7 +1114,7 @@ void update(void)
       FRDP (" |- render_mode_changed alpha compare - on: %s\n",
             str_yn[(rdp.othermode_l & CULL_FRONT)?1:0]);
       rdp.render_mode_changed &= ~CULL_FRONT;
-      rdp.update |= UPDATE_ALPHA_COMPARE;
+      g_gdp.flags |= UPDATE_ALPHA_COMPARE;
 
       if (rdp.othermode_l & CULL_FRONT)
          rdp.flags |= ALPHA_COMPARE;
@@ -1127,8 +1127,8 @@ void update(void)
       FRDP (" |- render_mode_changed alpha cvg sel - on: %s\n",
             str_yn[(rdp.othermode_l & CULL_BACK)?1:0]);
       rdp.render_mode_changed &= ~CULL_BACK;
-      rdp.update |= UPDATE_COMBINE;
-      rdp.update |= UPDATE_ALPHA_COMPARE;
+      g_gdp.flags |= UPDATE_COMBINE;
+      g_gdp.flags |= UPDATE_ALPHA_COMPARE;
    }
 
    // Force blend
@@ -1146,18 +1146,18 @@ void update(void)
       rdp.fbl_c1 = (uint8_t)((rdp.othermode_l>>20)&0x3);
       rdp.fbl_d1 = (uint8_t)((rdp.othermode_l>>16)&0x3);
 
-      rdp.update |= UPDATE_COMBINE;
+      g_gdp.flags |= UPDATE_COMBINE;
    }
 
    // Combine MUST go before texture
-   if ((rdp.update & UPDATE_COMBINE) && rdp.allow_combine)
+   if ((g_gdp.flags & UPDATE_COMBINE) && rdp.allow_combine)
    {
 
       LRDP (" |-+ update_combine\n");
       Combine ();
    }
 
-   if (rdp.update & UPDATE_TEXTURE)  // note: UPDATE_TEXTURE and UPDATE_COMBINE are the same
+   if (g_gdp.flags & UPDATE_TEXTURE)  // note: UPDATE_TEXTURE and UPDATE_COMBINE are the same
    {
       rdp.tex_ctr ++;
       if (rdp.tex_ctr == 0xFFFFFFFF)
@@ -1165,16 +1165,16 @@ void update(void)
 
       TexCache ();
       if (rdp.noise == NOISE_MODE_NONE)
-         rdp.update ^= UPDATE_TEXTURE;
+         g_gdp.flags ^= UPDATE_TEXTURE;
    }
 
    glide64_z_compare();
 
    {
       // Alpha compare
-      if (rdp.update & UPDATE_ALPHA_COMPARE)
+      if (g_gdp.flags & UPDATE_ALPHA_COMPARE)
       {
-         rdp.update ^= UPDATE_ALPHA_COMPARE;
+         g_gdp.flags ^= UPDATE_ALPHA_COMPARE;
 
          if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 1 && !(rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && (!(rdp.othermode_l & RDP_FORCE_BLEND) || (g_gdp.blend_color.a)))
          {
@@ -1215,10 +1215,10 @@ void update(void)
       }
 
       // Cull mode (leave this in for z-clipped triangles)
-      if (rdp.update & UPDATE_CULL_MODE)
+      if (g_gdp.flags & UPDATE_CULL_MODE)
       {
          uint32_t mode;
-         rdp.update ^= UPDATE_CULL_MODE;
+         g_gdp.flags ^= UPDATE_CULL_MODE;
          mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
          FRDP (" |- cull_mode - mode: %s\n", str_cull[mode]);
          switch (mode)
@@ -1237,10 +1237,10 @@ void update(void)
       }
 
       //Added by Gonetz.
-      if (settings.fog && (rdp.update & UPDATE_FOG_ENABLED))
+      if (settings.fog && (g_gdp.flags & UPDATE_FOG_ENABLED))
       {
          uint16_t blender;
-         rdp.update ^= UPDATE_FOG_ENABLED;
+         g_gdp.flags ^= UPDATE_FOG_ENABLED;
 
          blender = (uint16_t)(rdp.othermode_l >> 16);
          if (rdp.flags & FOG_ENABLED)
@@ -1280,9 +1280,9 @@ void update(void)
       }
    }
 
-   if (rdp.update & UPDATE_VIEWPORT)
+   if (g_gdp.flags & UPDATE_VIEWPORT)
    {
-      rdp.update ^= UPDATE_VIEWPORT;
+      g_gdp.flags ^= UPDATE_VIEWPORT;
       {
          float scale_x = (float)fabs(rdp.view_scale[0]);
          float scale_y = (float)fabs(rdp.view_scale[1]);
@@ -1295,7 +1295,7 @@ void update(void)
          FRDP (" |- viewport - (%d, %d, %d, %d)\n", (uint32_t)rdp.clip_min_x, (uint32_t)rdp.clip_min_y, (uint32_t)rdp.clip_max_x, (uint32_t)rdp.clip_max_y);
          if (!rdp.scissor_set)
          {
-            rdp.update |= UPDATE_SCISSOR;
+            g_gdp.flags |= UPDATE_SCISSOR;
             set_scissor = true;
          }
       }

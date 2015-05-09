@@ -57,7 +57,7 @@ static float set_sprite_combine_mode(void)
     cmb.tmu1_a_invert = cmb.tmu0_a_invert = FXFALSE;
   }
 
-  rdp.update |= UPDATE_COMBINE;
+  g_gdp.flags |= UPDATE_COMBINE;
   update ();
 
   rdp.allow_combine = 1;
@@ -83,7 +83,7 @@ static float set_sprite_combine_mode(void)
 
   grCullMode (GR_CULL_DISABLE);
   grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
-  rdp.update |= UPDATE_CULL_MODE | UPDATE_FOG_ENABLED;
+  g_gdp.flags |= UPDATE_CULL_MODE | UPDATE_FOG_ENABLED;
 
   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
   {
@@ -102,7 +102,7 @@ static float set_sprite_combine_mode(void)
       GR_BLEND_ZERO,
       GR_BLEND_ZERO);
     grAlphaTestFunction ((rdp.othermode_l & 1) ? GR_CMP_GEQUAL : GR_CMP_ALWAYS, 0x80, (rdp.othermode_l & 1) ? 1 : 0);
-    rdp.update |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
+    g_gdp.flags |= UPDATE_ALPHA_COMPARE | UPDATE_COMBINE;
   }
   return Z;
 }
@@ -239,7 +239,7 @@ static void DrawImage (DRAWIMAGE *d)
       if (rdp.zimg == rdp.cimg)
       {
          DrawDepthImage(d);
-         rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE |
+         g_gdp.flags |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE |
             UPDATE_ALPHA_COMPARE | UPDATE_VIEWPORT;
          return;
       }
@@ -351,7 +351,7 @@ static void DrawImage (DRAWIMAGE *d)
          maxy = min(rdp.scissor.lr_y, (uint32_t)((d->frameY+d->imageH/d->scaleY+0.5f)*rdp.scale_y));
       }
       grClipWindow(minx, miny, maxx, maxy);
-      rdp.update |= UPDATE_SCISSOR;
+      g_gdp.flags |= UPDATE_SCISSOR;
    }
 
    // Texture ()
@@ -749,7 +749,7 @@ static void uc6_draw_polygons (VERTEX v[4])
       memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
       do_triangle_stuff_2 (0, 1, 1);
    }
-   rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
+   g_gdp.flags |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
    if (settings.fog && (rdp.flags & FOG_ENABLED))
       grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
@@ -1184,7 +1184,7 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
    uint16_t twidth, theight, tmem, tsize, tline, phead, pnum;
    //LRDP("uc6:obj_loadtxtr ");
    rdp.s2dex_tex_loaded = true;
-   rdp.update |= UPDATE_TEXTURE;
+   g_gdp.flags |= UPDATE_TEXTURE;
 
    addr = segoffset(w1) >> 1;
    type = ((uint32_t*)gfx_info.RDRAM)[(addr + 0) >> 1]; // 0, 1
@@ -1558,7 +1558,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
             memcpy (rdp.vtxbuf, v+1, sizeof(VERTEX)*3);
             do_triangle_stuff_2 (0, 1, 1);
          }
-         rdp.update |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
+         g_gdp.flags |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
          if (settings.fog && (rdp.flags & FOG_ENABLED))
             grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);

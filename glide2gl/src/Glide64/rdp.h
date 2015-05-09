@@ -86,21 +86,6 @@ extern uint32_t gfx_plugin_accuracy;
 #define CULLMASK    0x00003000
 #define CULLSHIFT   12
 
-// Update flags
-#define UPDATE_ZBUF_ENABLED 0x00000001
-
-#define UPDATE_TEXTURE    0x00000002  // \ Same thing!
-#define UPDATE_COMBINE    0x00000002  // /
-
-#define UPDATE_CULL_MODE  0x00000004
-#define UPDATE_LIGHTS     0x00000010
-#define UPDATE_BIASLEVEL  0x00000020
-#define UPDATE_ALPHA_COMPARE  0x00000040
-#define UPDATE_VIEWPORT   0x00000080
-#define UPDATE_MULT_MAT   0x00000100
-#define UPDATE_SCISSOR    0x00000200
-#define UPDATE_FOG_ENABLED  0x00010000
-
 #define CMB_MULT    0x00000001
 #define CMB_SET     0x00000002
 #define CMB_SUB     0x00000004
@@ -580,7 +565,6 @@ struct RDP
    //  float YUV_C0, YUV_C1, YUV_C2, YUV_C3, YUV_C4; //YUV textures conversion coefficients
 
    // What needs updating
-   uint32_t update;
    uint32_t flags;
 
    uint32_t tex_ctr;    // incremented every time textures are updated

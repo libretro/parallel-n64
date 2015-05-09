@@ -128,7 +128,7 @@ static int cull_tri(VERTEX **v) // type changed to VERTEX** [Dave2001]
 static void gSPCombineMatrices(void)
 {
    MulMatrices(rdp.model, rdp.proj, rdp.combined);
-   rdp.update ^= UPDATE_MULT_MAT;
+   g_gdp.flags ^= UPDATE_MULT_MAT;
 }
 
 /* clip_w - clips aint the z-axis */
@@ -390,14 +390,14 @@ static void pre_update(void)
 {
    // This is special, not handled in update(), but here
    // Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
-   if (rdp.update & UPDATE_MULT_MAT)
+   if (g_gdp.flags & UPDATE_MULT_MAT)
       gSPCombineMatrices();
 
    // This is special, not handled in update()
-   if (rdp.update & UPDATE_LIGHTS)
+   if (g_gdp.flags & UPDATE_LIGHTS)
    {
       uint32_t l;
-      rdp.update ^= UPDATE_LIGHTS;
+      g_gdp.flags ^= UPDATE_LIGHTS;
 
       // Calculate light vectors
       for (l = 0; l < rdp.num_lights; l++)
@@ -556,7 +556,7 @@ static void gSPLight_G64(uint32_t l, int32_t n)
       rdp.light[n].ca = (float)rdram[0] / 16.0f;
       rdp.light[n].la = (float)rdram[4];
       rdp.light[n].qa = (float)rdram[13] / 8.0f;
-      //rdp.update |= UPDATE_LIGHTS;
+      //g_gdp.flags |= UPDATE_LIGHTS;
    }
 }
 
@@ -582,7 +582,7 @@ static void gSPViewport_G64(uint32_t v)
    rdp.view_trans[1] = trans_y * rdp.scale_y;
    rdp.view_trans[2] = 32.0f * trans_z;
 
-   rdp.update |= UPDATE_VIEWPORT;
+   g_gdp.flags |= UPDATE_VIEWPORT;
 }
 
 static void gSPFogFactor_G64(int16_t fm, int16_t fo )
@@ -597,7 +597,7 @@ static void gSPNumLights_G64(int32_t n)
       return;
 
    rdp.num_lights = n;
-   rdp.update |= UPDATE_LIGHTS;
+   g_gdp.flags |= UPDATE_LIGHTS;
    //FRDP ("numlights: %d\n", rdp.num_lights);
 }
 
@@ -607,7 +607,7 @@ static void gSPForceMatrix_G64( uint32_t mptr )
 
    load_matrix(rdp.combined, address);
 
-   rdp.update &= ~UPDATE_MULT_MAT;
+   g_gdp.flags &= ~UPDATE_MULT_MAT;
 }
 
 static void gSPPopMatrixN_G64(uint32_t param, uint32_t num )
@@ -617,7 +617,7 @@ static void gSPPopMatrixN_G64(uint32_t param, uint32_t num )
       rdp.model_i -= num;
    }
    memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
-   rdp.update |= UPDATE_MULT_MAT;
+   g_gdp.flags |= UPDATE_MULT_MAT;
 }
 
 static void gSPPopMatrix_G64(uint32_t param)
@@ -629,7 +629,7 @@ static void gSPPopMatrix_G64(uint32_t param)
          {
             rdp.model_i--;
             memcpy (rdp.model, rdp.model_stack[rdp.model_i], 64);
-            rdp.update |= UPDATE_MULT_MAT;
+            g_gdp.flags |= UPDATE_MULT_MAT;
          }
          break;
       case 1: // projection, can't

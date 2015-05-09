@@ -240,7 +240,7 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
          if (offset == 0x04)
          {
             rdp.clip_ratio = (float)vi_integer_sqrt(w1);
-            rdp.update |= UPDATE_VIEWPORT;
+            g_gdp.flags |= UPDATE_VIEWPORT;
          }
          break;
 

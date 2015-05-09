@@ -189,7 +189,7 @@ void _ChangeSize(void)
    rdp.scissor_o.lr_x = (uint32_t)rdp.vi_width;
    rdp.scissor_o.lr_y = (uint32_t)rdp.vi_height;
 
-   rdp.update |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
+   g_gdp.flags |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
 }
 
 void ChangeSize(void)
@@ -809,7 +809,7 @@ void newSwapBuffers(void)
 
    rdp.updatescreen = 0;
 
-   rdp.update |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
+   g_gdp.flags |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
    grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
    grDepthBufferFunction (GR_CMP_ALWAYS);
    grDepthMask (FXFALSE);

@@ -17,6 +17,20 @@
 #define _SHIFTR( v, s, w )  (((uint32_t)v >> s) & ((0x01 << w) - 1))
 #endif
 
+/* Update flags */
+#define UPDATE_ZBUF_ENABLED   0x00000001
+#define UPDATE_TEXTURE        0x00000002  /* Same thing */
+#define UPDATE_COMBINE        0x00000002  /* Same thing */
+
+#define UPDATE_CULL_MODE      0x00000004
+#define UPDATE_LIGHTS         0x00000010
+#define UPDATE_BIASLEVEL      0x00000020
+#define UPDATE_ALPHA_COMPARE  0x00000040
+#define UPDATE_VIEWPORT       0x00000080
+#define UPDATE_MULT_MAT       0x00000100
+#define UPDATE_SCISSOR        0x00000200
+#define UPDATE_FOG_ENABLED    0x00010000
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -223,6 +237,7 @@ typedef struct
 
 struct gdp_global
 {
+   uint32_t flags;
    int32_t primitive_lod_min;
    int32_t primitive_lod_frac;
    gdp_color combined_color;

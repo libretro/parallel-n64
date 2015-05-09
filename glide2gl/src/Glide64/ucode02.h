@@ -101,14 +101,14 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
 
    // This is special, not handled in update(), but here
    // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
-   if (rdp.update & UPDATE_MULT_MAT)
+   if (g_gdp.flags & UPDATE_MULT_MAT)
    {
-      rdp.update ^= UPDATE_MULT_MAT;
+      g_gdp.flags ^= UPDATE_MULT_MAT;
       MulMatrices(rdp.model, rdp.proj, rdp.combined);
    }
-   if (rdp.update & UPDATE_LIGHTS)
+   if (g_gdp.flags & UPDATE_LIGHTS)
    {
-      rdp.update ^= UPDATE_LIGHTS;
+      g_gdp.flags ^= UPDATE_LIGHTS;
 
       // Calculate light vectors
       for (l = 0; l < rdp.num_lights; l++)
@@ -214,11 +214,11 @@ static void uc2_line3d(uint32_t w0, uint32_t w1)
       width = (uint16_t)(w0 + 3)&0xFF;
       cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
       rdp.flags |= CULLMASK;
-      rdp.update |= UPDATE_CULL_MODE;
+      g_gdp.flags |= UPDATE_CULL_MODE;
       cull_trianglefaces(v, 1, true, true, width);
       rdp.flags ^= CULLMASK;
       rdp.flags |= cull_mode << CULLSHIFT;
-      rdp.update |= UPDATE_CULL_MODE;
+      g_gdp.flags |= UPDATE_CULL_MODE;
    }
 }
 
@@ -260,7 +260,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       if (!(rdp.flags & ZBUF_ENABLED))
       {
          rdp.flags |= ZBUF_ENABLED;
-         rdp.update |= UPDATE_ZBUF_ENABLED;
+         g_gdp.flags |= UPDATE_ZBUF_ENABLED;
       }
    }
    else
@@ -269,7 +269,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       {
          if (!settings.flame_corona || (rdp.rm != 0x00504341)) //hack for flame's corona
             rdp.flags ^= ZBUF_ENABLED;
-         rdp.update |= UPDATE_ZBUF_ENABLED;
+         g_gdp.flags |= UPDATE_ZBUF_ENABLED;
       }
    }
 
@@ -278,7 +278,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       if (!(rdp.flags & CULL_FRONT))
       {
          rdp.flags |= CULL_FRONT;
-         rdp.update |= UPDATE_CULL_MODE;
+         g_gdp.flags |= UPDATE_CULL_MODE;
       }
    }
    else
@@ -286,7 +286,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       if (rdp.flags & CULL_FRONT)
       {
          rdp.flags ^= CULL_FRONT;
-         rdp.update |= UPDATE_CULL_MODE;
+         g_gdp.flags |= UPDATE_CULL_MODE;
       }
    }
    if (rdp.geom_mode & CULL_BACK)
@@ -294,7 +294,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       if (!(rdp.flags & CULL_BACK))
       {
          rdp.flags |= CULL_BACK;
-         rdp.update |= UPDATE_CULL_MODE;
+         g_gdp.flags |= UPDATE_CULL_MODE;
       }
    }
    else
@@ -302,7 +302,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       if (rdp.flags & CULL_BACK)
       {
          rdp.flags ^= CULL_BACK;
-         rdp.update |= UPDATE_CULL_MODE;
+         g_gdp.flags |= UPDATE_CULL_MODE;
       }
    }
 
@@ -311,7 +311,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       if (!(rdp.flags & FOG_ENABLED))
       {
          rdp.flags |= FOG_ENABLED;
-         rdp.update |= UPDATE_FOG_ENABLED;
+         g_gdp.flags |= UPDATE_FOG_ENABLED;
       }
    }
    else
@@ -319,7 +319,7 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       if (rdp.flags & FOG_ENABLED)
       {
          rdp.flags ^= FOG_ENABLED;
-         rdp.update |= UPDATE_FOG_ENABLED;
+         g_gdp.flags |= UPDATE_FOG_ENABLED;
       }
    }
 }
@@ -405,9 +405,9 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          // be easily fixed, but only if i had something to test with.
          
          // do matrix pre-mult so it's re-updated next time
-         if (rdp.update & UPDATE_MULT_MAT)
+         if (g_gdp.flags & UPDATE_MULT_MAT)
          {
-            rdp.update ^= UPDATE_MULT_MAT;
+            g_gdp.flags ^= UPDATE_MULT_MAT;
             MulMatrices(rdp.model, rdp.proj, rdp.combined);
          }
 
@@ -444,7 +444,7 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
          if (offset == 0x04)
          {
             rdp.clip_ratio = (float)vi_integer_sqrt(w1);
-            rdp.update |= UPDATE_VIEWPORT;
+            g_gdp.flags |= UPDATE_VIEWPORT;
          }
          break;
       case G_MW_SEGMENT:
