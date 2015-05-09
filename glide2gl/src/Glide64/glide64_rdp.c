@@ -820,7 +820,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    // FRDP ("rdp.cycle1 %08lx, rdp.cycle2 %08lx\n", rdp.cycle1, rdp.cycle2);
 
-   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
+   if (g_gdp.other_modes.cycle_type == 2)
    {
       ul_x = (short)((w1 & 0x00FFF000) >> 14);
       ul_y = (short)((w1 & 0x00000FFF) >> 2);
