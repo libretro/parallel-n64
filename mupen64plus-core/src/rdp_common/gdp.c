@@ -4,6 +4,16 @@
 
 struct gdp_global g_gdp;
 
+void gdp_set_texture_image(uint32_t w0, uint32_t w1)
+{
+   g_gdp.ti_format  = (w0 & 0x00E00000) >> (53 - 32);
+   g_gdp.ti_size    = (w0 & 0x00180000) >> (51 - 32);
+   g_gdp.ti_width   = (w0 & 0x000003FF) >> (32 - 32);
+   g_gdp.ti_address = (w1 & 0x03FFFFFF) >> ( 0 -  0);
+   /* g_gdp.ti_address &= 0x00FFFFFF; // physical memory limit, enforced later */
+   ++g_gdp.ti_width;
+}
+
 void gdp_set_prim_color(uint32_t w0, uint32_t w1)
 {
    g_gdp.prim_color.total   =  w1;

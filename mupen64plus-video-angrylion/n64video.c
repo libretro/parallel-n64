@@ -11,11 +11,6 @@
 int scfield;
 int sckeepodd;
 
-int ti_format;
-int ti_size;
-int ti_width;
-UINT32 ti_address;
-
 int fb_format;
 int fb_size;
 int fb_width;
@@ -5937,7 +5932,7 @@ static NOINLINE void loading_pipeline(
    else
       tmem_formatting = 2;
 
-   switch (ti_size)
+   switch (g_gdp.ti_size)
    {
       case PIXEL_SIZE_4BIT:
          rdp_pipeline_crashed = 1;
@@ -5973,8 +5968,8 @@ static NOINLINE void loading_pipeline(
       s = span[i].stwz[0];
       t = span[i].stwz[1];
 
-      ti_index = ti_width * i + xend;
-      tiptr = ti_address + PIXELS_TO_BYTES(ti_index, ti_size);
+      ti_index = g_gdp.ti_width * i + xend;
+      tiptr = g_gdp.ti_address + PIXELS_TO_BYTES(ti_index, g_gdp.ti_size);
       tiptr = tiptr & 0x00FFFFFF;
 
       length = (xstart - xend + 1) & 0xfff;
@@ -6377,7 +6372,7 @@ void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2)
    lewdata[4] = ((sh >> 2) << 16) | ((sh & 3) << 14);
    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
    lewdata[6] = 0;
-   lewdata[7] = (0x200 >> ti_size) << 16;
+   lewdata[7] = (0x200 >> g_gdp.ti_size) << 16;
    lewdata[8] = 0x20;
    lewdata[9] = 0x20;
 

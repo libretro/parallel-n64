@@ -329,12 +329,6 @@ extern i32 spans_d_stwz_dy[4];
 extern int scfield;
 extern int sckeepodd;
 
-/* texture image */
-extern int ti_format;         /* format: ARGB, IA, ... */
-extern int ti_size;           /* size: 4, 8, 16, or 32-bit */
-extern int ti_width;          /* used in rdp_settextureimage */
-extern UINT32 ti_address;     /* address in RDRAM to load the texture from */
-
 extern int fb_format;
 extern int fb_size;
 extern int fb_width;

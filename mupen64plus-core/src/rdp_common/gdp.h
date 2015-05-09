@@ -238,6 +238,12 @@ typedef struct
 struct gdp_global
 {
    uint32_t flags;
+
+   int32_t ti_format;         /* format: ARGB, IA, ... */
+   int32_t ti_size;           /* size: 4, 8, 16, or 32-bit */
+   int32_t ti_width;          /* used in rdp_settextureimage */
+   uint32_t ti_address;     /* address in RDRAM to load the texture from */
+
    int32_t primitive_lod_min;
    int32_t primitive_lod_frac;
    gdp_color combined_color;
@@ -280,6 +286,8 @@ int32_t gdp_set_tile(uint32_t w0, uint32_t w1);
 int32_t gdp_set_tile_size(uint32_t w0, uint32_t w1);
 
 void gdp_set_combine(uint32_t w0, uint32_t w1);
+
+void gdp_set_texture_image(uint32_t w0, uint32_t w1);
 
 void gdp_set_other_modes(uint32_t w0, uint32_t w1);
 

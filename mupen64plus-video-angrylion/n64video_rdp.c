@@ -35,7 +35,6 @@ static void load_tile(uint32_t w0, uint32_t w1);
 static void set_tile(uint32_t w0, uint32_t w1);
 static void fill_rect(uint32_t w0, uint32_t w1);
 static void set_combine(uint32_t w0, uint32_t w1);
-static void set_texture_image(uint32_t w0, uint32_t w1);
 static void set_mask_image(uint32_t w0, uint32_t w1);
 static void set_color_image(uint32_t w0, uint32_t w1);
 
@@ -63,7 +62,7 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
    load_tlut         ,invalid           ,set_tile_size     ,load_block        ,
    load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
    gdp_set_fog_color     ,gdp_set_blend_color   ,gdp_set_prim_color    ,gdp_set_env_color     ,
-   set_combine       ,set_texture_image ,set_mask_image    ,set_color_image   ,
+   set_combine       ,gdp_set_texture_image ,set_mask_image    ,set_color_image   ,
 };
 
 static const int DP_CMD_LEN_W[64] = { /* command length, in DP FIFO words */
@@ -780,7 +779,7 @@ static void load_block(uint32_t w0, uint32_t w1)
    lewdata[4] = sh << 16;
    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
    lewdata[6] = (dxt & 0xff) << 8;
-   lewdata[7] = ((0x80 >> ti_size) << 16) | (dxt >> 8);
+   lewdata[7] = ((0x80 >> g_gdp.ti_size) << 16) | (dxt >> 8);
    lewdata[8] = 0x20;
    lewdata[9] = 0x20;
 
@@ -1313,16 +1312,6 @@ static void set_combine(uint32_t w0, uint32_t w1)
    SET_SUB_ALPHA_INPUT(&combiner_alphaadd[1], g_gdp.combine.add_a1);
 
    g_gdp.other_modes.f.stalederivs = 1;
-}
-
-static void set_texture_image(uint32_t w0, uint32_t w1)
-{
-   ti_format  = (w0 & 0x00E00000) >> (53 - 32);
-   ti_size    = (w0 & 0x00180000) >> (51 - 32);
-   ti_width   = (w0 & 0x000003FF) >> (32 - 32);
-   ti_address = (w1 & 0x03FFFFFF) >> ( 0 -  0);
-   /* ti_address &= 0x00FFFFFF; // physical memory limit, enforced later */
-   ++ti_width;
 }
 
 static void set_mask_image(uint32_t w0, uint32_t w1)

@@ -1685,9 +1685,6 @@ static void rdp_setcombine(uint32_t w0, uint32_t w1)
 
 static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 {
-   //static const char *format[] = { "RGBA", "YUV", "CI", "IA", "I", "?", "?", "?" };
-   //static const char *size[] = { "4bit", "8bit", "16bit", "32bit" };
-
    rdp.timg.format = (uint8_t)((w0 >> 21) & 0x07);
    rdp.timg.size   = (uint8_t)((w0 >> 19) & 0x03);
    rdp.timg.width  = (uint16_t)(1 + (w0 & 0x00000FFF));
