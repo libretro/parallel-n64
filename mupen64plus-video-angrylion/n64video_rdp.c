@@ -1344,20 +1344,32 @@ static void set_color_image(uint32_t w0, uint32_t w1)
 static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer)
 {
    register int base;
-   int lft, level, tile;
-   s32 yl, ym, yh; /* triangle edge y-coordinates */
-   s32 xl, xh, xm; /* triangle edge x-coordinates */
-   s32 DxLDy, DxHDy, DxMDy; /* triangle edge inverse-slopes */
+   int lft;             /* Left major flag, 0 = left major, 1 = right major */
+   int level;           /* Number of mip-maps minus one. */
+   int tile;            /* Tile descriptor index. Used to reference texture for this primitive */
+   s32 yl;              /* Y coordinate of low minor edge. */
+   s32 ym;              /* Y coordinate of mid minor edge. */
+   s32 yh;              /* Y coordinate of major edge. */
+   s32 xl;              /* X coordinate of low edge, integer. */
+   s32 xh;              /* X coordinate of major edge. */
+   s32 xm;              /* triangle edge x-coordinates */
+   s32 DxLDy;           /* Inverse slope of low edge, integer. */
+   s32 DxHDy;           /* Inverse slope of major edge, integer. */
+   s32 DxMDy;           /* INverse slope of middle edge, integer. */
    int tilenum, flip;
 
-   i32 rgba[4]; /* RGBA color components */
-   i32 d_rgba_dx[4]; /* RGBA delda per x-coordinate delta */
-   i32 d_rgba_de[4]; /* RGBA delta along the edge */
-   i32 d_rgba_dy[4]; /* RGBA delta per y-coordinate delta */
-   i16 rgba_int[4], rgba_frac[4];
-   i16 d_rgba_dx_int[4], d_rgba_dx_frac[4];
-   i16 d_rgba_de_int[4], d_rgba_de_frac[4];
-   i16 d_rgba_dy_int[4], d_rgba_dy_frac[4];
+   i32 rgba[4];         /* RGBA color components */
+   i32 d_rgba_dx[4];    /* RGBA delda per x-coordinate delta */
+   i32 d_rgba_de[4];    /* RGBA delta along the edge */
+   i32 d_rgba_dy[4];    /* RGBA delta per y-coordinate delta */
+   i16 rgba_int[4];
+   i16 rgba_frac[4];
+   i16 d_rgba_dx_int[4];
+   i16 d_rgba_dx_frac[4];
+   i16 d_rgba_de_int[4];
+   i16 d_rgba_de_frac[4];
+   i16 d_rgba_dy_int[4];
+   i16 d_rgba_dy_frac[4];
 
    i32 stwz[4];
    i32 d_stwz_dx[4];
@@ -1406,9 +1418,7 @@ static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int text
    setzero_si64(d_stwz_dy_int);
    setzero_si64(d_stwz_dy_frac);
 
-   /*
-    * Edge Coefficients
-    */
+   /* Edge Coefficients */
    lft   = (cmd_data[base + 0].UW32[0] & 0x00800000) >> (55 - 32);
    /* unused  (cmd_data[base + 0].UW32[0] & 0x00400000) >> (54 - 32) */
    level = (cmd_data[base + 0].UW32[0] & 0x00380000) >> (51 - 32);
