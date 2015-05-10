@@ -352,10 +352,10 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
                width<<1,
                ptr_src))
       {
-         uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
-         uint32_t *ptr_dst32 = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
          uint16_t c;
          uint32_t y, x;
+         uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
+         uint32_t *ptr_dst32 = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
 
          for (y = 0; y < height; y++)
          {
@@ -621,15 +621,6 @@ static void ys_memrect(uint32_t w0, uint32_t w1)
   off_x = ((rdp.cmd2 & 0xFFFF0000) >> 16) >> 5;
   off_y = (rdp.cmd2 & 0x0000FFFF) >> 5;
 
-#ifndef NDEBUG
-  FRDP ("memrect (%d, %d, %d, %d), ci_width: %d", ul_x, ul_y, lr_x, lr_y, rdp.ci_width);
-  if (off_x > 0)
-    FRDP ("  off_x: %d", off_x);
-  if (off_y > 0)
-    FRDP ("  off_y: %d", off_y);
-  LRDP("\n");
-#endif
-
   width     = lr_x - ul_x;
   tex_width = rdp.tiles[tile].line << 3;
   texaddr   = (uint8_t*)(gfx_info.RDRAM + rdp.addr[rdp.tiles[tile].t_mem] + tex_width*off_y + off_x);
@@ -668,13 +659,14 @@ static void pm_palette_mod(void)
 static void pd_zcopy(uint32_t w0, uint32_t w1)
 {
    int x;
-   uint16_t ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
-   uint16_t lr_x = (uint16_t)((w0 & 0x00FFF000) >> 14) + 1;
-   uint16_t ul_u = (uint16_t)((rdp.cmd2 & 0xFFFF0000) >> 21) + 1;
-   uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
-   uint16_t width = lr_x - ul_x;
-   uint16_t * ptr_src = ((uint16_t*)g_gdp.tmem)+ul_u;
    uint16_t c;
+   uint16_t      ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
+   uint16_t      lr_x = (uint16_t)((w0 & 0x00FFF000) >> 14) + 1;
+   uint16_t      ul_u = (uint16_t)((rdp.cmd2 & 0xFFFF0000) >> 21) + 1;
+   uint16_t *ptr_dst  = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
+   uint16_t     width = lr_x - ul_x;
+   uint16_t * ptr_src = ((uint16_t*)g_gdp.tmem)+ul_u;
+
    for (x = 0; x < width; x++)
    {
       c = ptr_src[x];
@@ -842,12 +834,9 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF)
          {
             //FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.timg.addr, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width*rdp.ci_height*rdp.ci_size);
-            LRDP("Wrong Texrect.\n");
             return;
          }
    }
-   //*/
-
 
    tilenum = (uint16_t)((w1 & 0x07000000) >> 24);
 
