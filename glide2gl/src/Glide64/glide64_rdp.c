@@ -536,8 +536,6 @@ EXPORT void CALL ProcessDList(void)
   // Get the start of the display list and the length of it
   dlist_start = *(uint32_t*)(gfx_info.DMEM+0xFF0);
   dlist_length = *(uint32_t*)(gfx_info.DMEM+0xFF4);
-  FRDP("--- NEW DLIST --- crc: %08lx, ucode: %d, fbuf: %08lx, fbuf_width: %d, dlist start: %08lx, dlist_length: %d, x_scale: %f, y_scale: %f\n", uc_crc, settings.ucode, *gfx_info.VI_ORIGIN_REG, *gfx_info.VI_WIDTH_REG, dlist_start, dlist_length, (*gfx_info.VI_X_SCALE_REG & 0xFFF)/1024.0f, (*gfx_info.VI_Y_SCALE_REG & 0xFFF)/1024.0f);
-  FRDP_E("--- NEW DLIST --- crc: %08lx, ucode: %d, fbuf: %08lx\n", uc_crc, settings.ucode, *gfx_info.VI_ORIGIN_REG);
 
   // Do nothing if dlist is empty
   if (dlist_start == 0)
@@ -611,20 +609,14 @@ EXPORT void CALL ProcessDList(void)
     newSwapBuffers ();
     CI_SET = false;
   }
-  LRDP("ProcessDList end\n");
 }
 
 // undef - undefined instruction, always ignore
 static void undef(uint32_t w0, uint32_t w1)
 {
-#ifdef _ENDUSER_RELEASE_
-  *gfx_info.MI_INTR_REG |= 0x20;
-  gfx_info.CheckInterrupts();
-  rdp.halt = 1;
-#else
-  FRDP_E("** undefined ** (%08lx)\n", w0);
-  FRDP("** undefined ** (%08lx) - IGNORED\n", w0);
-#endif
+   *gfx_info.MI_INTR_REG |= 0x20;
+   gfx_info.CheckInterrupts();
+   rdp.halt = 1;
 }
 
 static void ys_memrect(uint32_t w0, uint32_t w1)
@@ -703,7 +695,6 @@ static void pd_zcopy(uint32_t w0, uint32_t w1)
       c = ptr_src[x];
       c = ((c<<8)&0xFF00) | (c >> 8);
       ptr_dst[(ul_x+x)^1] = c;
-      //      FRDP("dst[%d]=%04lx \n", (x + ul_x)^1, c);
    }
 }
 
@@ -1110,8 +1101,6 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
    rdp.ci_upper_bound = rdp.scissor_o.ul_y;
    rdp.ci_lower_bound = rdp.scissor_o.lr_y;
    rdp.scissor_set = true;
-
-   //FRDP("setscissor: (%d,%d) -> (%d,%d)\n", rdp.scissor_o.ul_x, rdp.scissor_o.ul_y, rdp.scissor_o.lr_x, rdp.scissor_o.lr_y);
 
    g_gdp.flags |= UPDATE_SCISSOR;
 
@@ -1695,7 +1684,6 @@ static void rdp_setdepthimage(uint32_t w0, uint32_t w1)
 {
    rdp.zimg = segoffset(w1) & BMASK;
    rdp.zi_width = rdp.ci_width;
-   //FRDP("setdepthimage - %08lx\n", rdp.zimg);
 }
 
 int SwapOK = true;
@@ -1969,31 +1957,18 @@ static void rsp_uc5_reserved0(uint32_t w0, uint32_t w1)
 {
   ucode5_texshiftaddr = segoffset(w1);
   ucode5_texshiftcount = 0;
-
-#ifdef EXTREME_LOGGING
-  FRDP("uc5_texshift. addr: %08lx\n", ucode5_texshiftaddr);
-#endif
 }
 
 static void rsp_reserved1(uint32_t w0, uint32_t w1)
 {
-#ifdef EXTREME_LOGGING
-  LRDP("reserved1 - ignored\n");
-#endif
 }
 
 static void rsp_reserved2(uint32_t w0, uint32_t w1)
 {
-#ifdef EXTREME_LOGGING
-  LRDP("reserved2\n");
-#endif
 }
 
 static void rsp_reserved3(uint32_t w0, uint32_t w1)
 {
-#ifdef EXTREME_LOGGING
-  LRDP("reserved3 - ignored\n");
-#endif
 }
 
 /******************************************************************
@@ -2137,10 +2112,6 @@ EXPORT void CALL FBGetFrameBufferInfo(void *p)
    if (!(settings.frame_buffer&fb_get_info))
       return;
 
-#ifdef EXTREME_LOGGING
-   LRDP("FBGetFrameBufferInfo ()\n");
-#endif
-   //*
    if (fb_emulation_enabled)
    {
       int info_index;
@@ -2174,19 +2145,15 @@ EXPORT void CALL FBGetFrameBufferInfo(void *p)
       pinfo[1].width  = rdp.ci_width;
       pinfo[1].height = rdp.ci_width*3/4;
    }
-   //*/
 }
 
 #include "ucodeFB.h"
 
 void DetectFrameBufferUsage(void)
 {
-   uint32_t dlist_start, a, ci, zi, ci_height;
+   uint32_t a, ci, zi, ci_height;
    int i, previous_ci_was_read, all_zimg;
-
-   LRDP("DetectFrameBufferUsage\n");
-
-   dlist_start = *(uint32_t*)(gfx_info.DMEM+0xFF0);
+   uint32_t dlist_start = *(uint32_t*)(gfx_info.DMEM+0xFF0);
 
    // Do nothing if dlist is empty
    if (dlist_start == 0)
@@ -2358,8 +2325,6 @@ void DetectFrameBufferUsage(void)
    rdp.maincimg[0] = rdp.frame_buffers[rdp.main_ci_index];
    //rdp.scale_x = rdp.scale_x_bak;
    //rdp.scale_y = rdp.scale_y_bak;
-  
-   //LRDP("DetectFrameBufferUsage End\n");
 }
 
 /*******************************************
@@ -2751,65 +2716,41 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
 static void rdp_trifill(uint32_t w0, uint32_t w1)
 {
    rdp_triangle(w0, w1, 0, 0, 0, rdp_cmd_data + rdp_cmd_cur);
-#ifdef EXTREME_LOGGING
-  LRDP("trifill\n");
-#endif
 }
 
 static void rdp_trishade(uint32_t w0, uint32_t w1)
 {
    rdp_triangle(w0, w1, 1, 0, 0, rdp_cmd_data + rdp_cmd_cur);
-#ifdef EXTREME_LOGGING
-  LRDP("trishade\n");
-#endif
 }
 
 static void rdp_tritxtr(uint32_t w0, uint32_t w1)
 {
    rdp_triangle(w0, w1, 0, 1, 0, rdp_cmd_data + rdp_cmd_cur);
-#ifdef EXTREME_LOGGING
-  LRDP("tritxtr\n");
-#endif
 }
 
 static void rdp_trishadetxtr(uint32_t w0, uint32_t w1)
 {
    rdp_triangle(w0, w1, 1, 1, 0, rdp_cmd_data + rdp_cmd_cur);
-#ifdef EXTREME_LOGGING
-  LRDP("trishadetxtr\n");
-#endif
 }
 
 static void rdp_trifillz(uint32_t w0, uint32_t w1)
 {
    rdp_triangle(w0, w1, 0, 0, 1, rdp_cmd_data + rdp_cmd_cur);
-#ifdef EXTREME_LOGGING
-  LRDP("trifillz\n");
-#endif
 }
 
 static void rdp_trishadez(uint32_t w0, uint32_t w1)
 {
    rdp_triangle(w0, w1, 1, 0, 1, rdp_cmd_data + rdp_cmd_cur);
-#ifdef EXTREME_LOGGING
-  LRDP("trishadez\n");
-#endif
 }
 
 static void rdp_tritxtrz(uint32_t w0, uint32_t w1)
 {
    rdp_triangle(w0, w1, 0, 1, 1, rdp_cmd_data + rdp_cmd_cur);
-#ifdef EXTREME_LOGGING
-   LRDP("tritxtrz\n");
-#endif
 }
 
 static void rdp_trishadetxtrz(uint32_t w0, uint32_t w1)
 {
    rdp_triangle(w0, w1, 1, 1, 1, rdp_cmd_data + rdp_cmd_cur);
-#ifdef EXTREME_LOGGING
-   LRDP("trishadetxtrz\n");
-#endif
 }
 
 
@@ -2954,19 +2895,14 @@ static void rdphalf_1(uint32_t w0, uint32_t w1)
       rdp.cmd1 = rdp_cmd_data[rdp_cmd_cur+1];
       rdp_command_table[cmd](rdp.cmd0, rdp.cmd1);
    }
-   //LRDP("rdphalf_1\n");
 }
 
 static void rdphalf_2(uint32_t w0, uint32_t w1)
 {
-   RDP_E("rdphalf_2 - IGNORED\n");
-   LRDP("rdphalf_2 - IGNORED\n");
 }
 
 static void rdphalf_cont(uint32_t w0, uint32_t w1)
 {
-   RDP_E("rdphalf_cont - IGNORED\n");
-   LRDP("rdphalf_cont - IGNORED\n");
 }
 
 /******************************************************************
