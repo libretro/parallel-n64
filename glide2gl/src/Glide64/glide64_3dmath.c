@@ -263,7 +263,6 @@ void calc_linear (VERTEX *v)
    }
 
    TransformVector (v->vec, vec, rdp.model);
-   //    TransformVector (v->vec, vec, rdp.combined);
    NormalizeVector (vec);
    x = vec[0];
    y = vec[1];
@@ -296,7 +295,6 @@ void calc_linear (VERTEX *v)
 
 void calc_sphere (VERTEX *v)
 {
-   //  LRDP("calc_sphere\n");
    DECLAREALIGN16VAR(vec[3]);
    float x, y;
    int s_scale, t_scale;
