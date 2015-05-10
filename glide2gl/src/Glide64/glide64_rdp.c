@@ -51,9 +51,6 @@
 
 static int cmd_ptr; /* for 64-bit elements, always <= +0x7FFF */
 
-/* static DP_FIFO cmd_fifo; */
-static DP_FIFO cmd_data[0x0003FFFF/sizeof(i64) + 1];
-
 #ifdef __LIBRETRO__ // Prefix API
 #define VIDEO_TAG(X) glide64##X
 
