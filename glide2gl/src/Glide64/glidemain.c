@@ -131,19 +131,14 @@ static void *l_DebugCallContext = NULL;
 
 void _ChangeSize(void)
 {
-
    float res_scl_y = (float)settings.res_y / 240.0f;
    uint32_t scale_x = 0;
    uint32_t scale_y = 0;
    uint32_t dwHStartReg = *gfx_info.VI_H_START_REG;
-#if 0
-   if (log_cb)
-      log_cb(RETRO_LOG_INFO, "VI_H_START_REG: %d\n", dwHStartReg);
-#endif
    uint32_t dwVStartReg = *gfx_info.VI_V_START_REG;
    float fscale_x = 0.0;
-    float fscale_y = 0.0;
-	float aspect = 0.0;
+   float fscale_y = 0.0;
+   float aspect = 0.0;
    uint32_t hstart = dwHStartReg >> 16;
    uint32_t hend = dwHStartReg & 0xFFFF;
    uint32_t vstart = dwVStartReg >> 16;
@@ -157,10 +152,9 @@ void _ChangeSize(void)
    fscale_x = (float)scale_x / 1024.0f;
    fscale_y = (float)scale_y / 2048.0f;
 
-   //  float res_scl_x = (float)settings.res_x / 320.0f;
-  
    // dunno... but sometimes this happens
-   if (hend == hstart) hend = (int)(*gfx_info.VI_WIDTH_REG / fscale_x);
+   if (hend == hstart)
+      hend = (int)(*gfx_info.VI_WIDTH_REG / fscale_x);
 
    rdp.vi_width = (hend - hstart) * fscale_x;
    rdp.vi_height = (vend - vstart) * fscale_y * 1.0126582f;
@@ -284,19 +278,15 @@ void guLoadTextures(void)
 
 int InitGfx(void)
 {
-   OPEN_RDP_LOG ();  // doesn't matter if opens again; it will check for it
-   OPEN_RDP_E_LOG ();
-   VLOG ("InitGfx ()\n");
-
    rdp_reset ();
 
    if (!grSstWinOpen (
-         0,
-         GR_REFRESH_60Hz,
-         GR_COLORFORMAT_RGBA,
-         GR_ORIGIN_UPPER_LEFT,
-         2,
-         1))
+            0,
+            GR_REFRESH_60Hz,
+            GR_COLORFORMAT_RGBA,
+            GR_ORIGIN_UPPER_LEFT,
+            2,
+            1))
    {
       ERRLOG("Error setting display mode");
       return false;
@@ -309,11 +299,11 @@ int InitGfx(void)
 
    InitCombine();
 
-   if (settings.fog) //"FOGCOORD" extension
+   if (settings.fog)
    {
-      guFogGenerateLinear (0.0f, 255.0f);//(float)rdp.fog_multiplier + (float)rdp.fog_offset);//256.0f);
+      guFogGenerateLinear(0.0f, 255.0f);
    }
-   else //not supported
+   else
       settings.fog = false;
 
    grDepthBufferMode (GR_DEPTHBUFFER_ZBUFFER);
@@ -383,7 +373,6 @@ EXPORT void CALL ReadScreen2(void *dest, int *width, int *height, int front)
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
                                    void (*DebugCallback)(void *, int, const char *))
 {
-   VLOG("CALL PluginStartup ()\n");
    l_DebugCallback = DebugCallback;
    l_DebugCallContext = Context;
 
@@ -393,13 +382,12 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
 
 EXPORT m64p_error CALL PluginShutdown(void)
 {
-   VLOG("CALL PluginShutdown ()\n");
    return M64ERR_SUCCESS;
 }
 
-EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
+EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType,
+      int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
-   VLOG("CALL PluginGetVersion ()\n");
    /* set version info */
    if (PluginType != NULL)
       *PluginType = M64PLUGIN_GFX;
@@ -442,7 +430,6 @@ output:   none
 //#warning ChangeWindow unimplemented
 EXPORT void CALL ChangeWindow (void)
 {
-   VLOG ("ChangeWindow()\n");
 }
 
 /******************************************************************
@@ -454,8 +441,6 @@ output:   none
 *******************************************************************/
 void CALL CloseDLL (void)
 {
-   VLOG ("CloseDLL ()\n");
-
    ZLUT_release();
    ClearCache ();
 }
@@ -470,7 +455,6 @@ output:   none
 *******************************************************************/
 void CALL DrawScreen (void)
 {
-   VLOG ("DrawScreen ()\n");
 }
 
 /******************************************************************
@@ -483,7 +467,6 @@ output:   none
 *******************************************************************/
 void CALL GetDllInfo ( PLUGIN_INFO * PluginInfo )
 {
-   VLOG ("GetDllInfo ()\n");
    PluginInfo->Version = 0x0103;     // Set to 0x0103
    PluginInfo->Type  = PLUGIN_TYPE_GFX;  // Set to PLUGIN_TYPE_GFX
    sprintf (PluginInfo->Name, "Glide64mk2 "G64_VERSION RELTIME);  // Name of the DLL
@@ -515,7 +498,6 @@ EXPORT int CALL InitiateGFX (GFX_INFO Gfx_Info)
 {
    char name[21] = "DEFAULT";
 
-   VLOG ("InitiateGFX (*)\n");
    rdp_new();
 
    // Assume scale of 1 for debug purposes
@@ -559,10 +541,6 @@ output:   none
 *******************************************************************/
 EXPORT void CALL RomClosed (void)
 {
-   VLOG ("RomClosed ()\n");
-
-   CLOSE_RDP_LOG ();
-   CLOSE_RDP_E_LOG ();
    romopen = false;
    ReleaseGfx ();
 }
@@ -591,7 +569,6 @@ EXPORT int CALL RomOpen (void)
    int i;
    char name[21] = "DEFAULT";
 
-   VLOG ("RomOpen ()\n");
    no_dlist = true;
    romopen = true;
    ucode_error_report = true;	// allowed to report ucode errors
