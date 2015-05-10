@@ -1643,9 +1643,6 @@ static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 {
    gdp_set_prim_color(w0, w1);
    rdp.prim_lodmin = (w0 >> 8) & 0xFF;
-   g_gdp.flags |= UPDATE_COMBINE;
-
-   //FRDP("setprimcolor: %08lx, lodmin: %d, lodfrac: %d\n", rdp.cmd1, rdp.prim_lodmin, rdp.prim_lodfrac);
 }
 
 static void rdp_setcombine(uint32_t w0, uint32_t w1)
@@ -1655,8 +1652,6 @@ static void rdp_setcombine(uint32_t w0, uint32_t w1)
       (g_gdp.combine.sub_a_a0 << 16) | (g_gdp.combine.sub_b_a0 << 19)| (g_gdp.combine.mul_a0 << 22)| (g_gdp.combine.add_a0 << 25);
    rdp.cycle2 = (g_gdp.combine.sub_a_rgb1 << 0) | (g_gdp.combine.sub_b_rgb1 << 4) | (g_gdp.combine.mul_rgb1 << 8) | (g_gdp.combine.add_rgb1 << 13) |
       (g_gdp.combine.sub_a_a1 << 16)| (g_gdp.combine.sub_b_a1 << 19)| (g_gdp.combine.mul_a1 << 22)| (g_gdp.combine.add_a1 << 25);
-
-   g_gdp.flags |= UPDATE_COMBINE;
 }
 
 static void rdp_settextureimage(uint32_t w0, uint32_t w1)
@@ -1683,8 +1678,8 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
          ucode5_texshiftcount = 0;
       }
    }
+
    rdp.s2dex_tex_loaded = true;
-   g_gdp.flags |= UPDATE_TEXTURE;
 
    if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF && (rdp.timg.addr >= rdp.cimg) && (rdp.timg.addr < rdp.ci_end))
    {

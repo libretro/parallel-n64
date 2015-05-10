@@ -12,6 +12,8 @@ void gdp_set_texture_image(uint32_t w0, uint32_t w1)
    g_gdp.ti_address = (w1 & 0x03FFFFFF) >> ( 0 -  0);
    /* g_gdp.ti_address &= 0x00FFFFFF; // physical memory limit, enforced later */
    ++g_gdp.ti_width;
+
+   g_gdp.flags |= UPDATE_TEXTURE;
 }
 
 void gdp_set_prim_color(uint32_t w0, uint32_t w1)
@@ -29,6 +31,8 @@ void gdp_set_prim_color(uint32_t w0, uint32_t w1)
    /* Minimum clamp for LOD fraction when in detail or sharpen
     * texture modes, fixed point 0.5. */
    g_gdp.primitive_lod_min  = (w0 & 0x00001F00) >> (40-32);
+   
+   g_gdp.flags |= UPDATE_COMBINE;
 }
 
 void gdp_set_env_color(uint32_t w0, uint32_t w1)
@@ -218,6 +222,8 @@ void gdp_set_combine(uint32_t w0, uint32_t w1)
    g_gdp.combine.add_rgb1   = (w1 & 0x000001C0) >>  6;
    g_gdp.combine.sub_b_a1   = (w1 & 0x00000038) >>  3;
    g_gdp.combine.add_a1     = (w1 & 0x00000007) >>  0;
+
+   g_gdp.flags |= UPDATE_COMBINE;
 }
 
 void gdp_set_other_modes(uint32_t w0, uint32_t w1)
