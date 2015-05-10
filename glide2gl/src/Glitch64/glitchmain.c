@@ -90,6 +90,7 @@ GrContext_t grSstWinOpen(void)
 #endif
    glViewport(0, 0, width, height);
 
+#if 0
    if (isExtensionSupported("GL_ARB_texture_env_combine") == 0 &&
          isExtensionSupported("GL_EXT_texture_env_combine") == 0)
       DISPLAY_WARNING("Your video card doesn't support GL_ARB_texture_env_combine extension");
@@ -97,6 +98,7 @@ GrContext_t grSstWinOpen(void)
       DISPLAY_WARNING("Your video card doesn't support GL_ARB_multitexture extension");
    if (isExtensionSupported("GL_ARB_texture_mirrored_repeat") == 0)
       DISPLAY_WARNING("Your video card doesn't support GL_ARB_texture_mirrored_repeat extension");
+#endif
 
    packed_pixels_support = 0;
    
@@ -107,7 +109,7 @@ GrContext_t grSstWinOpen(void)
 
    if (isExtensionSupported("GL_ARB_texture_non_power_of_two") == 0)
    {
-      DISPLAY_WARNING("GL_ARB_texture_non_power_of_two supported.\n");
+      //DISPLAY_WARNING("GL_ARB_texture_non_power_of_two supported.\n");
       npot_support = 0;
    }
    else
@@ -129,7 +131,7 @@ GrContext_t grSstWinOpen(void)
    }
    else
    {
-      DISPLAY_WARNING("GL_EXT_texture_format_BGRA8888 not supported.\n");
+      //DISPLAY_WARNING("GL_EXT_texture_format_BGRA8888 not supported.\n");
       bgra8888_support = 0;
    }
 

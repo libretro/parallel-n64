@@ -44,12 +44,6 @@ typedef struct
   int   scr_off, z_off; // off the screen?
 } VERTEX;
 
-typedef FxU32 GrCCUColor_t;
-typedef FxU32 GrACUColor_t;
-typedef FxU32 GrTCCUColor_t;
-typedef FxU32 GrTACUColor_t;
-typedef FxU32 GrCombineMode_t;
-
 // ZIGGY framebuffer copy extension
 // allow to copy the depth or color buffer from back/front to front/back
 #define GR_FBCOPY_MODE_DEPTH 0
@@ -85,47 +79,47 @@ typedef FxU32 GrCombineMode_t;
 #define GR_CMBX_TMU_CCOLOR                0x11
 
 
-void grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
-				  GrCCUColor_t b, GrCombineMode_t b_mode,
-                  GrCCUColor_t c, FxBool c_invert,
-				  GrCCUColor_t d, FxBool d_invert,
+void grColorCombineExt(uint32_t a, uint32_t a_mode,
+				  uint32_t b, uint32_t b_mode,
+                  uint32_t c, FxBool c_invert,
+				  uint32_t d, FxBool d_invert,
 				  FxU32 shift, FxBool invert);
 
-void grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
-				  GrACUColor_t b, GrCombineMode_t b_mode,
-				  GrACUColor_t c, FxBool c_invert,
-				  GrACUColor_t d, FxBool d_invert,
+void grAlphaCombineExt(uint32_t a, uint32_t a_mode,
+				  uint32_t b, uint32_t b_mode,
+				  uint32_t c, FxBool c_invert,
+				  uint32_t d, FxBool d_invert,
 				  FxU32 shift, FxBool invert);
 
 void 
 grTexColorCombineExt(GrChipID_t       tmu,
-                     GrTCCUColor_t a, GrCombineMode_t a_mode,
-                     GrTCCUColor_t b, GrCombineMode_t b_mode,
-                     GrTCCUColor_t c, FxBool c_invert,
-                     GrTCCUColor_t d, FxBool d_invert,
+                     uint32_t a, uint32_t a_mode,
+                     uint32_t b, uint32_t b_mode,
+                     uint32_t c, FxBool c_invert,
+                     uint32_t d, FxBool d_invert,
                      FxU32 shift, FxBool invert);
 
 void 
 grTexAlphaCombineExt(GrChipID_t       tmu,
-                     GrTACUColor_t a, GrCombineMode_t a_mode,
-                     GrTACUColor_t b, GrCombineMode_t b_mode,
-                     GrTACUColor_t c, FxBool c_invert,
-                     GrTACUColor_t d, FxBool d_invert,
+                     uint32_t a, uint32_t a_mode,
+                     uint32_t b, uint32_t b_mode,
+                     uint32_t c, FxBool c_invert,
+                     uint32_t d, FxBool d_invert,
                      FxU32 shift, FxBool invert,
                      GrColor_t ccolor_value);
 
 void  
-grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
-                  GrCCUColor_t b, GrCombineMode_t b_mode,
-                  GrCCUColor_t c, FxBool c_invert,
-                  GrCCUColor_t d, FxBool d_invert,
+grColorCombineExt(uint32_t a, uint32_t a_mode,
+                  uint32_t b, uint32_t b_mode,
+                  uint32_t c, FxBool c_invert,
+                  uint32_t d, FxBool d_invert,
                   FxU32 shift, FxBool invert);
 
  void 
-grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
-                  GrACUColor_t b, GrCombineMode_t b_mode,
-                  GrACUColor_t c, FxBool c_invert,
-                  GrACUColor_t d, FxBool d_invert,
+grAlphaCombineExt(uint32_t a, uint32_t a_mode,
+                  uint32_t b, uint32_t b_mode,
+                  uint32_t c, FxBool c_invert,
+                  uint32_t d, FxBool d_invert,
                   FxU32 shift, FxBool invert);
 
 extern void grChromaRangeExt(GrColor_t color0, GrColor_t color1, FxU32 mode);
@@ -137,14 +131,6 @@ extern int width, height;
 extern float fogStart, fogEnd;
 
 #include "Glide64/rdp.h"
-
-//#define DISPLAY_WARNING_DEBUG
-
-#ifdef DISPLAY_WARNING_DEBUG
-#define DISPLAY_WARNING(format, ...) fprintf(stderr, format, __VA_ARGS__)
-#else
-#define DISPLAY_WARNING(format, ...) ((void)0)
-#endif
 
 #ifdef __cplusplus
 }

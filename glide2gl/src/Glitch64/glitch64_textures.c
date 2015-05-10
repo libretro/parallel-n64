@@ -165,8 +165,6 @@ FxU32 grTexCalcMemRequired(GrLOD_t lodmax,
       case GR_TEXFMT_ARGB_8888:
          return (width*height)<<2;
          break;
-      default:
-         DISPLAY_WARNING("grTexCalcMemRequired : unknown texture format: %x", fmt);
    }
    return 0;
 }
@@ -241,8 +239,6 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
             *glpixfmt = GL_BGRA;
             *glpackfmt = GL_UNSIGNED_INT_8_8_8_8_REV;
             break;
-         default:
-            DISPLAY_WARNING("grTexFormat2GLPackedFmt : unknown texture format: %x", fmt);
       }
    }
 #endif
