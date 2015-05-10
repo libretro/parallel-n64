@@ -37,19 +37,19 @@
 //
 //****************************************************************
 
-//****************************************************************
-// 16-bit Horizontal Mirror
 #include <stdint.h>
 #include <string.h>
 
-void Mirror16bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
+/* 16-bit Horizontal Mirror */
+void Mirror16bS (uint8_t *tex, uint32_t mask,
+      uint32_t max_width, uint32_t real_width, uint32_t height)
 {
    uint32_t mask_width = (1 << mask);
-   uint32_t mask_mask = (mask_width-1) << 1;
-   int32_t count = max_width - mask_width;
-   int32_t line_full = real_width << 1;
-   int32_t line = line_full - (count << 1);
-   uint16_t *v8 = (uint16_t *)(uint8_t*)(tex + (mask_width << 1));
+   uint32_t mask_mask  = (mask_width-1) << 1;
+   int32_t count       = max_width - mask_width;
+   int32_t line_full   = real_width << 1;
+   int32_t line        = line_full - (count << 1);
+   uint16_t *v8        = (uint16_t *)(uint8_t*)(tex + (mask_width << 1));
    do
    {
       int v10 = 0;
@@ -65,19 +65,18 @@ void Mirror16bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_
    }while (--height);
 }
 
-//****************************************************************
-// 16-bit Horizontal Clamp
+/* 16-bit Horizontal Clamp */
 
-void Clamp16bS (uint8_t *tex, uint32_t width, uint32_t clamp_to, uint32_t real_width, uint32_t real_height)
+void Clamp16bS (uint8_t *tex, uint32_t width,
+      uint32_t clamp_to, uint32_t real_width, uint32_t real_height)
 {
-   uint8_t *dest = (uint8_t*)(tex + (width << 1));
+   uint8_t *dest     = (uint8_t*)(tex + (width << 1));
    uint8_t *constant = (uint8_t*)(dest-2);
-   int32_t count = clamp_to - width;
+   int32_t count     = clamp_to - width;
    int32_t line_full = real_width << 1;
-   int32_t line = width << 1;
-
-   uint16_t *v6 = (uint16_t *)constant;
-   uint16_t *v7 = (uint16_t *)dest;
+   int32_t line      = width << 1;
+   uint16_t *v6      = (uint16_t *)constant;
+   uint16_t *v7      = (uint16_t *)dest;
 
    do
    {

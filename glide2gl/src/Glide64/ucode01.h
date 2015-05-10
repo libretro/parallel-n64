@@ -43,15 +43,10 @@
 
 static void uc1_vertex(uint32_t w0, uint32_t w1)
 {
-   int v0, n;
-   v0 = (w0 >> 17) & 0x7F; // Current vertex
-   n = (w0 >> 10) & 0x3F; // Number to copy
+   int32_t v0 = (w0 >> 17) & 0x7F; // Current vertex
+   int32_t n = (w0 >> 10) & 0x3F; // Number to copy
    rsp_vertex(v0, n);
 }
-
-//
-// tri1 - renders a triangle
-//
 
 static void uc1_tri1(uint32_t w0, uint32_t w1)
 {
@@ -126,10 +121,9 @@ static void uc1_rdphalf_1(uint32_t w0, uint32_t w1)
 
 static void uc1_branch_z(uint32_t w0, uint32_t w1)
 {
-   uint32_t vtx;
    uint32_t addr = RSP_SegmentToPhysical(branch_dl);
-   //FRDP ("uc1:branch_less_z, addr: %08lx\n", addr);
-   vtx = (w0 & 0xFFF) >> 1;
+   uint32_t vtx  = (w0 & 0xFFF) >> 1;
+
    if( fabs(rdp.vtx[vtx].z) <= (w1/*&0xFFFF*/) )
       rdp.pc[rdp.pc_i] = addr;
 }

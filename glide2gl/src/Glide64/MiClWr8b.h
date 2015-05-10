@@ -37,17 +37,16 @@
 //
 //****************************************************************
 
-//****************************************************************
-// 8-bit Horizontal Mirror
-
-void Mirror8bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
+/* 8-bit Horizontal Mirror */
+void Mirror8bS (uint8_t *tex, uint32_t mask,
+      uint32_t max_width, uint32_t real_width, uint32_t height)
 {
    uint32_t mask_width = (1 << mask);
-   uint32_t mask_mask = (mask_width-1);
-   int32_t count = max_width - mask_width;
-   int32_t line_full = real_width;
-   int32_t line = line_full - (count);
-   uint8_t *start = (uint8_t*)(tex + (mask_width));
+   uint32_t mask_mask  = (mask_width-1);
+   int32_t count       = max_width - mask_width;
+   int32_t line_full   = real_width;
+   int32_t line        = line_full - (count);
+   uint8_t *start      = (uint8_t*)(tex + (mask_width));
 
    do
    {
@@ -64,17 +63,15 @@ void Mirror8bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_w
    }while ( --height);
 }
 
-//****************************************************************
-// 8-bit Horizontal Clamp
-
-
-void Clamp8bS (uint8_t *tex, uint32_t width, uint32_t clamp_to, uint32_t real_width, uint32_t real_height)
+/* 8-bit Horizontal Clamp */
+void Clamp8bS (uint8_t *tex, uint32_t width,
+      uint32_t clamp_to, uint32_t real_width, uint32_t real_height)
 {
-   uint8_t *dest = tex + (width);
+   uint8_t *dest     = tex + (width);
    uint8_t *constant = dest-1;
-   int32_t count = clamp_to - width;
+   int32_t count     = clamp_to - width;
    int32_t line_full = real_width;
-   int32_t line = width;
+   int32_t line      = width;
 
    do
    {

@@ -43,9 +43,6 @@
 
 static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, uint16_t line, int ext, uint16_t *pal)
 {
-  uint8_t *v7;
-  uint8_t *v8;
-  int v9;
   int v10;
   int v11;
   uint32_t v12;
@@ -63,10 +60,9 @@ static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
   uint32_t v24;
   int v25;
   int v26;
-
-  v7 = src;
-  v8 = dst;
-  v9 = height;
+  uint8_t *v7 = src;
+  uint8_t *v8 = dst;
+  int v9 = height;
   do
   {
     v25 = v9;
@@ -185,9 +181,6 @@ static INLINE void load4bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
 
 static INLINE void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
 {
-  uint8_t *v7;
-  uint32_t *v8;
-  int v9;
   int v10;
   int v11;
   uint32_t v12;
@@ -205,10 +198,10 @@ static INLINE void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int heigh
   uint32_t v24;
   int v25;
   int v26;
+  uint8_t *v7 = src;
+  uint32_t *v8 = (uint32_t *)dst;
+  int v9 = height;
 
-  v7 = src;
-  v8 = (uint32_t *)dst;
-  v9 = height;
   do
   {
     v25 = v9;
@@ -492,9 +485,6 @@ static INLINE void load4bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, 
 
 static INLINE void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-  uint32_t *v6;
-  uint32_t *v7;
-  int v8;
   int v9;
   int v10;
   uint32_t v11;
@@ -521,10 +511,10 @@ static INLINE void load4bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
   uint32_t v32;
   int v33;
   int v34;
+  uint32_t *v6 = (uint32_t *)src;
+  uint32_t *v7 = (uint32_t *)dst;
+  int v8 = height;
 
-  v6 = (uint32_t *)src;
-  v7 = (uint32_t *)dst;
-  v8 = height;
   do
   {
     v33 = v8;
@@ -599,8 +589,10 @@ uint32_t Load4bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
    int ext;
    uintptr_t pal;
 
-   if (wid_64 < 1) wid_64 = 1;
-   if (height < 1) height = 1;
+   if (wid_64 < 1)
+      wid_64 = 1;
+   if (height < 1)
+      height = 1;
    ext = (real_width - (wid_64 << 4));
 
    if (rdp.tlut_mode == 0)
@@ -652,8 +644,10 @@ uint32_t Load4bI (uintptr_t dst, uintptr_t src, int wid_64, int height, int line
   if (rdp.tlut_mode != 0)
     return Load4bCI (dst, src, wid_64, height, line, real_width, tile);
 
-  if (wid_64 < 1) wid_64 = 1;
-  if (height < 1) height = 1;
+  if (wid_64 < 1)
+     wid_64 = 1;
+  if (height < 1)
+     height = 1;
   ext = (real_width - (wid_64 << 4));
   load4bI ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);
   

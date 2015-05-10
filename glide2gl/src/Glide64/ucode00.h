@@ -125,11 +125,9 @@ static void projection_mul (float m[4][4])
 
 static void load_matrix (float m[4][4], uint32_t addr)
 {
-   //FRDP ("matrix - addr: %08lx\n", addr);
    int x,y;  // matrix index
-   uint16_t *src;
+   uint16_t *src = (uint16_t*)gfx_info.RDRAM;
    addr >>= 1;
-   src = (uint16_t*)gfx_info.RDRAM;
 
    // Adding 4 instead of one, just to remove mult. later
    for (x = 0; x < 16; x += 4)
@@ -203,7 +201,7 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
 //
 static void uc0_movemem(uint32_t w0, uint32_t w1)
 {
-   uint32_t index = (w0 >> 16) & 0xFF;
+   uint32_t index     = (w0 >> 16) & 0xFF;
    int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
    int8_t  *rdram_s8  = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
    uint8_t *rdram_u8  = (uint8_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
@@ -588,9 +586,9 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
 static void uc0_line3d(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[3];
-   uint32_t v0 = ((w1 >> 16) & 0xff) / 10;
-   uint32_t v1 = ((w1 >> 8) & 0xff) / 10;
-   uint16_t width = (uint16_t)(w1 & 0xFF) + 3;
+   uint32_t v0        = ((w1 >> 16) & 0xff) / 10;
+   uint32_t v1        = ((w1 >> 8) & 0xff) / 10;
+   uint16_t width     = (uint16_t)(w1 & 0xFF) + 3;
    uint32_t cull_mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
 
    v[0] = &rdp.vtx[v1];

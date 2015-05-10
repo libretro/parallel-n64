@@ -275,21 +275,19 @@ void rdp_reset(void)
    for (i = 0; i < MAX_VTX; i++)
       rdp.vtx[i].number = i;
 
-   rdp.scissor_o.ul_x = 0;
-   rdp.scissor_o.ul_y = 0;
-   rdp.scissor_o.lr_x = 320;
-   rdp.scissor_o.lr_y = 240;
+   rdp.scissor_o.ul_x   = 0;
+   rdp.scissor_o.ul_y   = 0;
+   rdp.scissor_o.lr_x   = 320;
+   rdp.scissor_o.lr_y   = 240;
 
-   rdp.vi_org_reg = *gfx_info.VI_ORIGIN_REG;
-   rdp.view_scale[2] = 32.0f * 511.0f;
-   rdp.view_trans[2] = 32.0f * 511.0f;
-   rdp.clip_ratio = 1.0f;
-
-   rdp.lookat[0][0] = rdp.lookat[1][1] = 1.0f;
-
-   rdp.allow_combine = 1;
-   g_gdp.flags = UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
-   rdp.fog_mode = FOG_MODE_ENABLED;
+   rdp.vi_org_reg       = *gfx_info.VI_ORIGIN_REG;
+   rdp.view_scale[2]    = 32.0f * 511.0f;
+   rdp.view_trans[2]    = 32.0f * 511.0f;
+   rdp.clip_ratio       = 1.0f;
+   rdp.lookat[0][0]     = rdp.lookat[1][1] = 1.0f;
+   rdp.allow_combine    = 1;
+   g_gdp.flags          = UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
+   rdp.fog_mode         = FOG_MODE_ENABLED;
    rdp.maincimg[0].addr = rdp.maincimg[1].addr = rdp.last_drawn_ci_addr = 0x7FFFFFFF;
 }
 
@@ -303,11 +301,12 @@ static void DrawPartFrameBufferToScreen(void)
    fb_info.size   = rdp.ci_size;
    fb_info.width  = rdp.ci_width;
    fb_info.height = rdp.ci_height;
-   fb_info.ul_x = d_ul_x;
-   fb_info.lr_x = d_lr_x;
-   fb_info.ul_y = d_ul_y;
-   fb_info.lr_y = d_lr_y;
+   fb_info.ul_x   = d_ul_x;
+   fb_info.lr_x   = d_lr_x;
+   fb_info.ul_y   = d_ul_y;
+   fb_info.lr_y   = d_lr_y;
    fb_info.opaque = 0;
+
    DrawFrameBufferToScreen(&fb_info);
    memset(gfx_info.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
 }
@@ -325,21 +324,14 @@ static void CopyFrameBuffer(int32_t buffer)
    // don't bother to write the stuff in asm... the slow part is the read from video card,
    //   not the copy.
 
-   uint32_t width, height;
-   width = rdp.ci_width;//*gfx_info.VI_WIDTH_REG;
-
-   FRDP ("CopyFrameBuffer: %08lx... ", rdp.cimg);
+   uint32_t height = rdp.ci_lower_bound;
+   uint32_t width  = rdp.ci_width;//*gfx_info.VI_WIDTH_REG;
 
    if (fb_emulation_enabled)
    {
-      int ind = (rdp.ci_count > 0)?rdp.ci_count-1:0;
+      int ind = (rdp.ci_count > 0) ? (rdp.ci_count-1) : 0;
       height = rdp.frame_buffers[ind].height;
    }
-   else
-   {
-      height = rdp.ci_lower_bound;
-   }
-   FRDP ("width: %d, height: %d...  ", width, height);
 
    if (rdp.scale_x < 1.1f)
    {
@@ -458,7 +450,7 @@ EXPORT void CALL ProcessDList(void)
 {
   uint32_t dlist_start, dlist_length, a;
 
-  no_dlist = false;
+  no_dlist            = false;
   update_screen_count = 0;
   ChangeSize();
 
@@ -636,19 +628,17 @@ static void ys_memrect(uint32_t w0, uint32_t w1)
 
 static void pm_palette_mod(void)
 {
-   uint8_t envr, envg, envb;
-   uint16_t env16, prmr, prmg, prmb, prim16, *dst;
    int8_t i;
 
-   envr = (uint8_t)(g_gdp.env_color.r * 0.0039215689f * 31.0f);
-   envg = (uint8_t)(g_gdp.env_color.g * 0.0039215689f * 31.0f);
-   envb = (uint8_t)(g_gdp.env_color.b * 0.0039215689f * 31.0f);
-   env16 = (uint16_t)((envr<<11)|(envg<<6)|(envb<<1)|1);
-   prmr = (uint8_t)(g_gdp.prim_color.r * 0.0039215689f * 31.0f);
-   prmg = (uint8_t)(g_gdp.prim_color.g * 0.0039215689f * 31.0f);
-   prmb = (uint8_t)(g_gdp.prim_color.b * 0.0039215689f * 31.0f);
-   prim16 = (uint16_t)((prmr << 11)|(prmg << 6)|(prmb << 1)|1);
-   dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
+   uint8_t envr = (uint8_t)(g_gdp.env_color.r * 0.0039215689f * 31.0f);
+   uint8_t envg = (uint8_t)(g_gdp.env_color.g * 0.0039215689f * 31.0f);
+   uint8_t envb = (uint8_t)(g_gdp.env_color.b * 0.0039215689f * 31.0f);
+   uint16_t env16 = (uint16_t)((envr<<11)|(envg<<6)|(envb<<1)|1);
+   uint16_t prmr = (uint8_t)(g_gdp.prim_color.r * 0.0039215689f * 31.0f);
+   uint16_t prmg = (uint8_t)(g_gdp.prim_color.g * 0.0039215689f * 31.0f);
+   uint16_t prmb = (uint8_t)(g_gdp.prim_color.b * 0.0039215689f * 31.0f);
+   uint16_t prim16 = (uint16_t)((prmr << 11)|(prmg << 6)|(prmb << 1)|1);
+   uint16_t *dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
 
    for (i = 0; i < 16; i++)
       dst[i^1] = (rdp.pal_8[i]&1) ? prim16 : env16;
@@ -685,10 +675,10 @@ static void DrawDepthBufferFog(void)
   fb_info.size   = 2;
   fb_info.width  = rdp.zi_width;
   fb_info.height = rdp.ci_height;
-  fb_info.ul_x = rdp.scissor_o.ul_x;
-  fb_info.lr_x = rdp.scissor_o.lr_x;
-  fb_info.ul_y = rdp.scissor_o.ul_y;
-  fb_info.lr_y = rdp.scissor_o.lr_y;
+  fb_info.ul_x   = rdp.scissor_o.ul_x;
+  fb_info.lr_x   = rdp.scissor_o.lr_x;
+  fb_info.ul_y   = rdp.scissor_o.ul_y;
+  fb_info.lr_y   = rdp.scissor_o.lr_y;
   fb_info.opaque = 0;
 
   DrawDepthBufferToScreen(&fb_info);
@@ -726,7 +716,10 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       cmdHalf2 = gfx_info.RDRAM[a+11];
       a >>= 2;
 
-      if ((cmdHalf1 == 0xE1 && cmdHalf2 == 0xF1) || (cmdHalf1 == 0xB4 && cmdHalf2 == 0xB3) || (cmdHalf1 == 0xB3 && cmdHalf2 == 0xB2))
+      if (  (cmdHalf1 == 0xE1 && cmdHalf2 == 0xF1) || 
+            (cmdHalf1 == 0xB4 && cmdHalf2 == 0xB3) || 
+            (cmdHalf1 == 0xB3 && cmdHalf2 == 0xB2)
+         )
       {
          //gSPTextureRectangle
          rdp.cmd2 = ((uint32_t*)gfx_info.RDRAM)[a+1];
@@ -757,14 +750,17 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   if ((settings.ucode == ucode_PerfectDark) && rdp.ci_count > 0 && (rdp.frame_buffers[rdp.ci_count-1].status == CI_ZCOPY))
+   if ((settings.ucode == ucode_PerfectDark) 
+         && rdp.ci_count > 0 && (rdp.frame_buffers[rdp.ci_count-1].status == CI_ZCOPY))
    {
       pd_zcopy(w0, w1);
       LRDP("Depth buffer copied.\n");
       return;
    }
 
-   if ((rdp.othermode_l >> 16) == 0x3c18 && rdp.cycle1 == 0x03ffffff && rdp.cycle2 == 0x01ff1fff) //depth image based fog
+   if ((rdp.othermode_l >> 16) == 0x3c18 && 
+         rdp.cycle1 == 0x03ffffff && 
+         rdp.cycle2 == 0x01ff1fff) //depth image based fog
    {
       if (!depth_buffer_fog)
          return;
@@ -865,8 +861,8 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    //needed to detect and avoid overflow after shifting
    off_x_i = (rdp.cmd2 >> 16) & 0xFFFF;
    off_y_i = rdp.cmd2 & 0xFFFF;
-   dsdx = (float)((int16_t)((rdp.cmd3 & 0xFFFF0000) >> 16)) / 1024.0f;
-   dtdy = (float)((int16_t)(rdp.cmd3 & 0x0000FFFF)) / 1024.0f;
+   dsdx    = (float)((int16_t)((rdp.cmd3 & 0xFFFF0000) >> 16)) / 1024.0f;
+   dtdy    = (float)((int16_t)(rdp.cmd3 & 0x0000FFFF)) / 1024.0f;
    if (off_x_i & 0x8000) //check for sign bit
       off_x_i |= ~0xffff; //make it negative
    //the same as for off_x_i
@@ -1123,16 +1119,16 @@ static void rdp_setothermode(uint32_t w0, uint32_t w1)
 
 void load_palette (uint32_t addr, uint16_t start, uint16_t count)
 {
-   uint16_t *dpal, end, i, p;
-   dpal = (uint16_t*)(rdp.pal_8 + start);
-   end = start+count;
+   uint16_t i, p;
+   uint16_t *dpal = (uint16_t*)(rdp.pal_8 + start);
+   uint16_t end = start+count;
 
    for (i=start; i<end; i++)
    {
       *(dpal++) = *(uint16_t *)(gfx_info.RDRAM + (addr^2));
       addr += 2;
-      //FRDP ("%d: %08lx\n", i, *(uint16_t *)(gfx_info.RDRAM + (addr^2)));
    }
+
    start >>= 4;
    end = start + (count >> 4);
    if (end == start) // it can be if count < 16
@@ -1145,7 +1141,7 @@ void load_palette (uint32_t addr, uint16_t start, uint16_t count)
 static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 {
    int32_t i, j;
-   uint32_t tile =  (w1 >> 24) & 0x07;
+   uint32_t tile  =  (w1 >> 24) & 0x07;
    uint16_t start = rdp.tiles[tile].t_mem - 256; // starting location in the palettes
    uint16_t count = ((uint16_t)(w1 >> 14) & 0x3FF) + 1;    // number to copy
 
@@ -1189,16 +1185,15 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
 static INLINE void loadTile(uint32_t *src, uint32_t *dst,
       int width, int height, int line, int off, uint32_t *end)
 {
-   uint32_t *v7, *v9, *v13, v16, *v17, v18, v20, v22, *v24, *v27, *v31, nbits;
-   int v8, v10, v11, v12, v14, v15, v19, v21, v23, v25, v26, v28, v29, v30;
-   nbits = sizeof(uint32_t) * 8;
-
-   v7 = dst;
-   v8 = width;
-   v9 = src;
-   v10 = off;
-   v11 = 0;
-   v12 = height;
+   uint32_t *v13, v16, *v17, v18, v20, v22, *v24, *v27, *v31;
+   int       v14, v15, v19, v21, v23, v25, v26, v28, v29, v30;
+   uint32_t nbits = sizeof(uint32_t) * 8;
+   uint32_t *v7 = dst;
+   int32_t   v8 = width;
+   uint32_t *v9 = src;
+   int32_t v10  = off;
+   int32_t v11  = 0;
+   int32_t v12  = height;
    do
    {
       if ( end < v7 )
@@ -1961,10 +1956,6 @@ EXPORT void CALL FBRead(uint32_t addr)
   }
   cpu_fb_read_called = true;
   a = RSP_SegmentToPhysical(addr);
-
-#ifdef EXTREME_LOGGING
-  FRDP("FBRead. addr: %08lx\n", a);
-#endif
 
   if (!rdp.fb_drawn && (a >= rdp.cimg) && (a < rdp.ci_end))
   {
@@ -2890,13 +2881,12 @@ output:   none
 *******************************************************************/
 EXPORT void CALL ProcessRDPList(void)
 {
-   int32_t length;
    int32_t i;
    uint32_t cmd, cmd_length;
+   int32_t length = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);
 
    rdp_cmd_ptr = 0;
    rdp_cmd_cur = 0;
-   length = (*(uint32_t*)gfx_info.DPC_END_REG) - (*(uint32_t*)gfx_info.DPC_CURRENT_REG);
 
    if ((*(uint32_t*)gfx_info.DPC_END_REG) <= (*(uint32_t*)gfx_info.DPC_CURRENT_REG))
       return;
@@ -2913,7 +2903,7 @@ EXPORT void CALL ProcessRDPList(void)
 
    (*(uint32_t*)gfx_info.DPC_CURRENT_REG) = (*(uint32_t*)gfx_info.DPC_END_REG);
 
-   cmd = (rdp_cmd_data[0] >> 24) & 0x3f;
+   cmd        = (rdp_cmd_data[0] >> 24) & 0x3f;
    cmd_length = (rdp_cmd_ptr + 1) * 4;
 
    // check if more data is needed
@@ -2939,7 +2929,6 @@ EXPORT void CALL ProcessRDPList(void)
       w0 = rdp.cmd0;
       w1 = rdp.cmd1;
 
-      //printf("cmd: %d (w0: %d, w1: %d)\n", cmd, w0, w1);
       rdp_command_table[cmd](w0, w1);
 
       rdp_cmd_cur += rdp_command_length[cmd] / 4;

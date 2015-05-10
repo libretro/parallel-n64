@@ -42,9 +42,6 @@
 
 static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
 {
-  uint8_t *v7;
-  uint32_t *v8;
-  int v9;
   int v10;
   int v11;
   uint32_t v12;
@@ -62,10 +59,10 @@ static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
   uint32_t v24;
   int v25;
   int v26;
+  uint8_t *v7 = src;
+  uint32_t *v8 = (uint32_t *)dst;
+  int v9 = height;
 
-  v7 = src;
-  v8 = (uint32_t *)dst;
-  v9 = height;
   do
   {
     v25 = v9;
@@ -144,9 +141,6 @@ static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
 
 static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext, uint16_t *pal)
 {
-  uint32_t *v7;
-  uint32_t *v8;
-  int v9;
   int v10;
   int v11;
   uint32_t v12;
@@ -164,10 +158,10 @@ static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
   uint32_t v24;
   int v25;
   int v26;
+  uint32_t *v7 = (uint32_t *)src;
+  uint32_t *v8 = (uint32_t *)dst;
+  int v9 = height;
 
-  v7 = (uint32_t *)src;
-  v8 = (uint32_t *)dst;
-  v9 = height;
   do
   {
     v25 = v9;
@@ -246,9 +240,6 @@ static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
 
 static INLINE void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-  uint32_t *v6;
-  uint32_t *v7;
-  int v8;
   int v9;
   uint32_t v10;
   uint32_t v11;
@@ -263,10 +254,10 @@ static INLINE void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height,
   uint32_t v20;
   int v21;
   int v22;
+  uint32_t *v6 = (uint32_t *)src;
+  uint32_t *v7 = (uint32_t *)dst;
+  int v8 = height;
 
-  v6 = (uint32_t *)src;
-  v7 = (uint32_t *)dst;
-  v8 = height;
   do
   {
     v21 = v8;
@@ -312,9 +303,6 @@ static INLINE void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height,
 
 static INLINE void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-  uint32_t *v6;
-  uint32_t *v7;
-  int v8;
   int v9;
   uint32_t v10;
   uint32_t *v11;
@@ -327,10 +315,10 @@ static INLINE void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, i
   uint32_t v18;
   int v19;
   int v20;
+  uint32_t *v6 = (uint32_t *)src;
+  uint32_t *v7 = (uint32_t *)dst;
+  int v8 = height;
 
-  v6 = (uint32_t *)src;
-  v7 = (uint32_t *)dst;
-  v8 = height;
   do
   {
     v19 = v8;
@@ -380,14 +368,19 @@ uint32_t Load8bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
 {
   int ext;
   unsigned short *pal;
-  if (wid_64 < 1) wid_64 = 1;
-  if (height < 1) height = 1;
+
+  if (wid_64 < 1)
+     wid_64 = 1;
+  if (height < 1)
+     height = 1;
+
   ext = (real_width - (wid_64 << 3));
   pal = (unsigned short*)rdp.pal_8;
 
   switch (rdp.tlut_mode)
   {
-    case 0: //palette is not used
+    case 0:
+       //palette is not used
       //in tlut DISABLE mode load CI texture as plain intensity texture instead of palette dereference.
       //Thanks to angrylion for the advice
       load8bI ((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext);

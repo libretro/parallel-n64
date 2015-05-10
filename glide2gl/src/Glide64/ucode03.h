@@ -44,7 +44,7 @@
 static void uc3_vertex(uint32_t w0, uint32_t w1)
 {
    int v0 = _SHIFTR(w0, 16, 8) / 5;      // Current vertex
-   int n = (uint16_t)((w0 & 0xFFFF) + 1) / 0x210;    // Number to copy
+   int n  = (uint16_t)((w0 & 0xFFFF) + 1) / 0x210;    // Number to copy
 
    if (v0 >= 32)
       v0 = 31;
