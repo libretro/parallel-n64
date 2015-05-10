@@ -305,7 +305,6 @@ typedef struct {
 #define GR_TEXBASE_64       0x1
 #define GR_TEXBASE_32_TO_1  0x0
 
-typedef uint32_t GrEnableMode_t;
 #define GR_MODE_DISABLE     0x0
 #define GR_MODE_ENABLE      0x1
 
@@ -542,10 +541,6 @@ void grDepthBiasLevel( int32_t level );
 void grFogMode( int32_t mode, GrColor_t fogcolor );
 
 void grLoadGammaTable( uint32_t nentries, uint32_t *red, uint32_t *green, uint32_t *blue);
-
-void grEnable( GrEnableMode_t mode );
-
-void grDisable( GrEnableMode_t mode );
 
 void grDepthRange( float n, float f );
 
