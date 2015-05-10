@@ -545,7 +545,7 @@ static void CheckDRAMSize()
    if (test)
       BMASK = 0x7FFFFF;
    else
-      BMASK = WMASK;
+      BMASK = 0x3FFFFF;
 
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "Detected RDRAM size: %08lx\n", BMASK);
