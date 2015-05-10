@@ -42,7 +42,6 @@
 #include "Combine.h"
 #include "GBI.h"
 
-#define FASTSEARCH  // Enable fast combine mode searching algorithm
 #define HAVE_ASSUME_COMBINE_EXT
 
 float percent_org, percent, r, g, b;
@@ -14001,7 +14000,6 @@ void Combine(void)
    cmb.abf1 = GR_BLEND_SRC_ALPHA;
    cmb.abf2 = GR_BLEND_ONE_MINUS_SRC_ALPHA;
 
-#ifdef FASTSEARCH
    // Fast, ordered search
    current = 0x7FFFFFFF;
 
@@ -14120,7 +14118,6 @@ void Combine(void)
    }
 
    LRDP(" | |- Alpha done\n");
-#endif // FASTSEARCH
 
    CombineBlender();
    //*
