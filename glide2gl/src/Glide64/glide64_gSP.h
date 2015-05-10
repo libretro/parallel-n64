@@ -728,7 +728,7 @@ static void gSPModifyVertex_G64( uint32_t vtx, uint32_t where, uint32_t val )
          break;
       case G_MWO_POINT_ZSCREEN:
          {
-            float scr_z = _FIXED2FLOAT((s16)_SHIFTR(val, 16, 16), 15);
+            float scr_z = _FIXED2FLOAT((int16_t)_SHIFTR(val, 16, 16), 15);
             v->z_w = (scr_z - rdp.view_trans[2]) / rdp.view_scale[2];
             v->z = v->z_w * v->w;
             //FRDP ("z: %f\n", scr_z);
@@ -755,7 +755,7 @@ static bool gSPCullVertices_G64( uint32_t v0, uint32_t vn )
 	if (vn < v0)
    {
       // Aidyn Chronicles - The First Mage seems to pass parameters in reverse order.
-      const u32 v = v0;
+      const uint32_t v = v0;
       v0 = vn;
       vn = v;
    }
