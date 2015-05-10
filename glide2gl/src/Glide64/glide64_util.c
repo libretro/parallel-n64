@@ -1079,7 +1079,6 @@ void glide64_z_compare(void)
 void update(void)
 {
    bool set_scissor = false;
-   LRDP ("-+ update called\n");
 
    // Check for rendermode changes
    // Z buffer
@@ -1300,6 +1299,4 @@ void update(void)
    }
 
    update_scissor(set_scissor);
-
-   LRDP (" + update end\n");
 }

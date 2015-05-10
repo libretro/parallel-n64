@@ -244,7 +244,6 @@ static void uc9_object(uint32_t w0, uint32_t w1)
    uint32_t cmd1, zHeader;
    uint32_t rdpcmds[3];
 
-   LRDP("uc9:object\n");
    rdpcmds[0] = 0;
    rdpcmds[1] = 0;
    rdpcmds[2] = 0;
@@ -261,7 +260,6 @@ static void uc9_object(uint32_t w0, uint32_t w1)
 
 static void uc9_mix(uint32_t w0, uint32_t w1)
 {
-  LRDP("uc9:mix IGNORED\n");
 }
 
 static void uc9_fmlight(uint32_t w0, uint32_t w1)
@@ -370,9 +368,7 @@ static void uc9_light(uint32_t w0, uint32_t w1)
 
 static void uc9_mtxtrnsp(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc9:mtxtrnsp - ignored\n");
    /*
-   LRDP("uc9:mtxtrnsp ");
    M44 *s;
    switch (w1 & 0xF)
    {
@@ -409,7 +405,6 @@ static void uc9_mtxcat(uint32_t w0, uint32_t w1)
    uint32_t S = w0 & 0xF;
    uint32_t T = (w1 >> 16) & 0xF;
    uint32_t D = w1 & 0xF;
-   LRDP("uc9:mtxcat ");
 
    switch (S)
    {
@@ -546,22 +541,18 @@ static void uc9_mult_mpmtx(uint32_t w0, uint32_t w1)
 
 static void uc9_link_subdl(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc9:link_subdl IGNORED\n");
 }
 
 static void uc9_set_subdl(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc9:set_subdl IGNORED\n");
 }
 
 static void uc9_wait_signal(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc9:wait_signal IGNORED\n");
 }
 
 static void uc9_send_signal(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc9:send_signal IGNORED\n");
 }
 
 static void uc9_movemem(uint32_t w0, uint32_t w1)
@@ -571,8 +562,6 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
    int len = (1 + ((w0 >> 15) & 0x1ff))<<3;
    int flag = w0 & 0x01;
    uint32_t addr = segoffset(w1);
-   LRDP("uc9:movemem\n");
-   FRDP ("uc9:movemem ofs: %d, len: %d. ", ofs, len);
 
    switch (idx)
    {
@@ -600,11 +589,9 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
             switch (idx)
             {
                case 4:  // model matrix
-                  LRDP("Modelview load\n");
                   modelview_load (m);
                   break;
                case 6:  // projection matrix
-                  LRDP("Projection load\n");
                   projection_load (m);
                   break;
                case 8:  // projection matrix

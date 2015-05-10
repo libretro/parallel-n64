@@ -224,17 +224,14 @@ static void uc2_line3d(uint32_t w0, uint32_t w1)
 
 static void uc2_special3(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc2:special3\n");
 }
 
 static void uc2_special2(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc2:special2\n");
 }
 
 static void uc2_dma_io(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc2:dma_io\n");
 }
 
 static void uc2_pop_matrix(uint32_t w0, uint32_t w1)
@@ -334,7 +331,6 @@ static void uc2_matrix(uint32_t w0, uint32_t w1)
       uc6_obj_rectangle_r(w0, w1);
       return;
    }
-   LRDP("uc2:matrix\n");
 
    load_matrix(m, segoffset(w1));
 
@@ -342,34 +338,28 @@ static void uc2_matrix(uint32_t w0, uint32_t w1)
    switch (command)
    {
       case 0: // modelview mul nopush
-         LRDP("modelview mul\n");
          modelview_mul (m);
          break;
 
       case 1: // modelview mul push
-         LRDP("modelview mul push\n");
          modelview_mul_push (m);
          break;
 
       case 2: // modelview load nopush
-         LRDP("modelview load\n");
          modelview_load (m);
          break;
 
       case 3: // modelview load push
-         LRDP("modelview load push\n");
          modelview_load_push (m);
          break;
 
       case 4: // projection mul nopush
       case 5: // projection mul push, can't push projection
-         LRDP("projection mul\n");
          projection_mul (m);
          break;
 
       case 6: // projection load nopush
       case 7: // projection load push, can't push projection
-         LRDP("projection load\n");
          projection_load (m);
          break;
 
@@ -511,12 +501,10 @@ static void uc2_movemem(uint32_t w0, uint32_t w1)
 
 static void uc2_load_ucode(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc2:load_ucode\n");
 }
 
 static void uc2_rdphalf_2(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc2:rdphalf_2\n");
 }
 
 static void uc2_dlist_cnt(uint32_t w0, uint32_t w1)

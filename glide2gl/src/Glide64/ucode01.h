@@ -120,7 +120,6 @@ uint32_t branch_dl = 0;
 
 static void uc1_rdphalf_1(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc1:rdphalf_1\n");
    branch_dl = w1;
    rdphalf_1(w0, w1);
 }

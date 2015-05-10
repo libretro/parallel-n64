@@ -144,7 +144,6 @@ static void load_matrix (float m[4][4], uint32_t addr)
 //
 static void uc0_matrix(uint32_t w0, uint32_t w1)
 {
-   //LRDP("uc0:matrix ");
    DECLAREALIGN16VAR(m[4][4]);
    // Use segment offset to get the address
    uint32_t addr = RSP_SegmentToPhysical(w1);
@@ -155,34 +154,28 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
    switch (command)
    {
       case G_MTX_NOPUSH: // modelview mul nopush
-         //LRDP("modelview mul\n");
          modelview_mul (m);
          break;
 
       case 1: // projection mul nopush
       case 5: // projection mul push, can't push projection
-         //LRDP("projection mul\n");
          projection_mul(m);
          break;
 
       case G_MTX_LOAD: // modelview load nopush
-         //LRDP("modelview load\n");
          modelview_load(m);
          break;
 
       case 3: // projection load nopush
       case 7: // projection load push, can't push projection
-         //LRDP("projection load\n");
          projection_load(m);
          break;
 
       case 4: // modelview mul push
-         //LRDP("modelview mul push\n");
          modelview_mul_push(m);
          break;
 
       case 6: // modelview load push
-         //LRDP("modelview load push\n");
          modelview_load_push(m);
          break;
 #if 0
@@ -210,8 +203,6 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
 //
 static void uc0_movemem(uint32_t w0, uint32_t w1)
 {
-   //LRDP("uc0:movemem ");
-
    uint32_t index = (w0 >> 16) & 0xFF;
    int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
    int8_t  *rdram_s8  = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
@@ -353,12 +344,7 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
    switch (_SHIFTR( w0, 0, 8))
    {
       case G_MW_MATRIX:
-#if 0
-         RDP_E ("uc0:moveword matrix - IGNORED\n");
-         LRDP("matrix - IGNORED\n");
-#endif
          break;
-
       case G_MW_NUMLIGHT:
          gSPNumLights_G64( ((w1 - 0x80000000) >> 5) - 1 );
          break;
@@ -414,9 +400,6 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
          }
          break;
       case G_MW_PERSPNORM:
-#if 0
-         LRDP("perspnorm - IGNORED\n");
-#endif
          break;
    }
 }

@@ -162,8 +162,6 @@ static void DrawDepthImage (const DRAWIMAGE *d)
          dst_width<<1,
          dst);
    free(dst);
-
-   //LRDP("Depth image write\n");
 }
 
 static void DrawImage (DRAWIMAGE *d)
@@ -812,7 +810,6 @@ static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
    VERTEX v[4];
    DRAWOBJECT d;
 
-   LRDP ("uc6:obj_rectangle ");
    uc6_read_object_data(&d);
 
    if (d.imageAdrs > 4096)
@@ -897,8 +894,6 @@ static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
    int i;
    float Z, ul_x, lr_x, ul_y, lr_y, ul_u, lr_u, ul_v, lr_v;
 
-   LRDP ("uc6:obj_sprite ");
-
    uc6_read_object_data(&d);
    uc6_init_tile(&d);
 
@@ -981,13 +976,8 @@ static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
 
 static void uc6_obj_movemem(uint32_t w0, uint32_t w1)
 {
-   int index;
-   uint32_t addr;
-
-   //LRDP("uc6:obj_movemem\n");
-
-   index = w0 & 0xFFFF;
-   addr = segoffset(w1) >> 1;
+   int index = w0 & 0xFFFF;
+   uint32_t addr = segoffset(w1) >> 1;
 
    if (index == 0)
    { // movemem matrix
@@ -1014,14 +1004,10 @@ static void uc6_obj_movemem(uint32_t w0, uint32_t w1)
 
 static void uc6_select_dl(uint32_t w0, uint32_t w1)
 {
-  LRDP("uc6:select_dl\n");
-  RDP_E ("uc6:select_dl\n");
 }
 
 static void uc6_obj_rendermode(uint32_t w0, uint32_t w1)
 {
-  LRDP("uc6:obj_rendermode\n");
-  RDP_E ("uc6:obj_rendermode\n");
 }
 
 static uint16_t uc6_yuv_to_rgba(uint8_t y, uint8_t u, uint8_t v)
@@ -1100,7 +1086,6 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
    VERTEX v[4];
    DRAWOBJECT d;
 
-   LRDP ("uc6:obj_rectangle_r ");
    uc6_read_object_data(&d);
 
    if (d.imageFmt == 1 && (settings.hacks&hack_Ogre64)) //Ogre Battle needs to copy YUV texture to frame buffer
@@ -1182,7 +1167,6 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
 {
    uint32_t addr, type, image;
    uint16_t twidth, theight, tmem, tsize, tline, phead, pnum;
-   //LRDP("uc6:obj_loadtxtr ");
    rdp.s2dex_tex_loaded = true;
    g_gdp.flags |= UPDATE_TEXTURE;
 
@@ -1253,10 +1237,7 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
 
 static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr;
-   LRDP("uc6:obj_ldtx_sprite\n");
-
-   addr = w1;
+   uint32_t addr = w1;
    uc6_obj_loadtxtr(rdp.cmd0, rdp.cmd1);
    rdp.cmd1 = addr + 24;
    uc6_obj_sprite(rdp.cmd0, rdp.cmd1);
@@ -1264,10 +1245,7 @@ static void uc6_obj_ldtx_sprite(uint32_t w0, uint32_t w1)
 
 static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr;
-   //LRDP("uc6:obj_ldtx_rect\n");
-
-   addr = w1;
+   uint32_t addr = w1;
    uc6_obj_loadtxtr(rdp.cmd0, rdp.cmd1);
    rdp.cmd1 = addr + 24;
    uc6_obj_rectangle(rdp.cmd0, rdp.cmd1);
@@ -1275,10 +1253,7 @@ static void uc6_obj_ldtx_rect(uint32_t w0, uint32_t w1)
 
 static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr;
-   LRDP("uc6:ldtx_rect_r\n");
-
-   addr = w1;
+   uint32_t addr = w1;
    uc6_obj_loadtxtr(rdp.cmd0, rdp.cmd1);
    rdp.cmd1 = addr + 24;
    uc6_obj_rectangle_r(rdp.cmd0, rdp.cmd1);
@@ -1286,13 +1261,9 @@ static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
 
 static void uc6_loaducode(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr, size;
-   //LRDP("uc6:load_ucode\n");
-   //RDP_E ("uc6:load_ucode\n");
-
    // copy the microcode data
-   addr = segoffset(rdp.cmd1);
-   size = (w0 & 0xFFFF) + 1;
+   uint32_t addr = segoffset(rdp.cmd1);
+   uint32_t size = (w0 & 0xFFFF) + 1;
    memcpy (microcode, gfx_info.RDRAM+addr, size);
 
    microcheck ();

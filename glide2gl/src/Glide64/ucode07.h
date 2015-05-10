@@ -47,7 +47,6 @@ uint32_t pd_col_addr = 0;
 
 static void uc7_colorbase(uint32_t w0, uint32_t w1)
 {
-   LRDP("uc7_colorbase\n");
    pd_col_addr = segoffset(w1);
 }
 

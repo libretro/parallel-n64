@@ -90,7 +90,6 @@ static void fb_bg_copy(uint32_t w0, uint32_t w1)
       }
       else
       {
-         LRDP("motion blur!\n");
          rdp.motionblur = true;
       }
 
@@ -206,7 +205,6 @@ static void fb_settextureimage(uint32_t w0, uint32_t w1)
                   if ((rdp.main_ci_last_tex_addr >= cur_fb->addr) &&
                         (rdp.main_ci_last_tex_addr < (cur_fb->addr + cur_fb->width*cur_fb->height*cur_fb->size)))
                   {
-                     LRDP("motion blur!\n");
                      rdp.motionblur = true;
                   }
                   else
@@ -248,7 +246,6 @@ static void fb_settextureimage(uint32_t w0, uint32_t w1)
                FRDP("rdp.frame_buffers[%d].status = CI_OLD_COPY 1, addr:%08lx\n", rdp.ci_count-1, rdp.last_drawn_ci_addr);
             }
             rdp.read_previous_ci = true;
-            LRDP("read_previous_ci = TRUE\n");
          }
          else if ((addr >= rdp.last_drawn_ci_addr) && (addr < (rdp.last_drawn_ci_addr + rdp.maincimg[0].width*rdp.maincimg[0].height*2)))
          {
@@ -258,7 +255,6 @@ static void fb_settextureimage(uint32_t w0, uint32_t w1)
                FRDP("rdp.frame_buffers[%d].status = CI_OLD_COPY 2, addr:%08lx\n", rdp.ci_count-1, rdp.last_drawn_ci_addr);
             }
             rdp.read_previous_ci = true;
-            LRDP("read_previous_ci = TRUE\n");
          }
       }
       else if (fb_hwfbe_enabled && (cur_fb->status == CI_MAIN))

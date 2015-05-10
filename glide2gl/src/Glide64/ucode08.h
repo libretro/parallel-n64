@@ -253,7 +253,6 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
          break;
 
       case G_MW_PERSPNORM:
-         LRDP("perspnorm - IGNORED\n");
          break;
 
       case G_MV_COORDMOD:  // moveword coord mod
