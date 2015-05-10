@@ -44,7 +44,7 @@ static float set_sprite_combine_mode(void)
   float Z;
   if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
   {
-    GrCombineFunction_t color_source;
+    int32_t color_source;
     rdp.tex = 1;
     rdp.allow_combine = 0;
     // Now actually combine !

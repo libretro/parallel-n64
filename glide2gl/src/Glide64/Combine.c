@@ -14632,7 +14632,7 @@ void AlphaCombinerToExtension(void)
    }
 }
 
-void TexColorCombinerToExtension (GrChipID_t tmu)
+void TexColorCombinerToExtension (int32_t tmu)
 {
    uint32_t tc_ext_a, tc_ext_a_mode, tc_ext_b, tc_ext_b_mode, tc_ext_c, tc_ext_d;
    int  tc_ext_c_invert, tc_ext_d_invert;
@@ -14815,7 +14815,7 @@ void TexColorCombinerToExtension (GrChipID_t tmu)
    }
 }
 
-void TexAlphaCombinerToExtension (GrChipID_t tmu)
+void TexAlphaCombinerToExtension (int32_t tmu)
 {
    uint32_t ta_ext_a, ta_ext_a_mode, ta_ext_b, ta_ext_b_mode, ta_ext_c, ta_ext_d;
    int  ta_ext_c_invert, ta_ext_d_invert;

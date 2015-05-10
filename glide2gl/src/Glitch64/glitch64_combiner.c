@@ -650,9 +650,9 @@ void writeGLSLColorFactor(int factor, int local, int need_local, int other, int 
 }
 
 void grColorCombine(
-      GrCombineFunction_t function, GrCombineFactor_t factor,
-      GrCombineLocal_t local, GrCombineOther_t other,
-      FxBool invert )
+      int32_t function, int32_t factor,
+      int32_t local, int32_t other,
+      int32_t invert )
 {
    static int last_function = 0;
    static int last_factor = 0;
@@ -813,9 +813,9 @@ void writeGLSLAlphaFactor(int factor, int local, int need_local, int other, int 
 }
 
 void grAlphaCombine(
-      GrCombineFunction_t function, GrCombineFactor_t factor,
-      GrCombineLocal_t local, GrCombineOther_t other,
-      FxBool invert
+      int32_t function, int32_t factor,
+      int32_t local, int32_t other,
+      int32_t invert
       )
 {
    static int last_function = 0;
@@ -1052,13 +1052,13 @@ static void writeGLSLTextureAlphaFactorTMU1(int num_tex, int factor)
 
 void  
 grTexCombine(
-             GrChipID_t tmu,
-             GrCombineFunction_t rgb_function,
-             GrCombineFactor_t rgb_factor, 
-             GrCombineFunction_t alpha_function,
-             GrCombineFactor_t alpha_factor,
-             FxBool rgb_invert,
-             FxBool alpha_invert
+             int32_t tmu,
+             int32_t rgb_function,
+             int32_t rgb_factor, 
+             int32_t alpha_function,
+             int32_t alpha_factor,
+             int32_t rgb_invert,
+             int32_t alpha_invert
              )
 {
    int num_tex = 0;
@@ -1334,14 +1334,14 @@ void grAlphaTestReferenceValue(GrAlpha_t value)
    alpha_ref = value;
 }
 
-void grAlphaTestFunction( GrCmpFnc_t function, GrAlpha_t value, int set_alpha_ref)
+void grAlphaTestFunction( int32_t function, GrAlpha_t value, int set_alpha_ref)
 {
    alpha_func = function;
    alpha_test = (function == GR_CMP_ALWAYS) ? false : true;
    alpha_ref = (set_alpha_ref) ? value : alpha_ref;
 }
 
-void grFogMode( GrFogMode_t mode, GrColor_t fogcolor)
+void grFogMode( int32_t mode, GrColor_t fogcolor)
 {
    fog_enabled = mode;
 
@@ -1350,7 +1350,7 @@ void grFogMode( GrFogMode_t mode, GrColor_t fogcolor)
 
 // chroma
 
-void grChromakeyMode( GrChromakeyMode_t mode )
+void grChromakeyMode( int32_t mode )
 {
    LOG("grChromakeyMode(%d)\r\n", mode);
    switch(mode)
@@ -1384,7 +1384,7 @@ void grStipplePattern(
    LOG("grStipplePattern(%x)\r\n", stipple);
 }
 
-void grStippleMode( GrStippleMode_t mode )
+void grStippleMode( int32_t mode )
 {
    LOG("grStippleMode(%d)\r\n", mode);
    switch(mode)
@@ -1402,9 +1402,9 @@ void grStippleMode( GrStippleMode_t mode )
 
 void  grColorCombineExt(uint32_t a, uint32_t a_mode,
       uint32_t b, uint32_t b_mode,
-      uint32_t c, FxBool c_invert,
-      uint32_t d, FxBool d_invert,
-      FxU32 shift, FxBool invert)
+      uint32_t c, int32_t c_invert,
+      uint32_t d, int32_t d_invert,
+      uint32_t shift, int32_t invert)
 {
    color_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
       ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
@@ -1573,9 +1573,9 @@ void  grColorCombineExt(uint32_t a, uint32_t a_mode,
 
 void grAlphaCombineExt(uint32_t a, uint32_t a_mode,
       uint32_t b, uint32_t b_mode,
-      uint32_t c, FxBool c_invert,
-      uint32_t d, FxBool d_invert,
-      FxU32 shift, FxBool invert)
+      uint32_t c, int32_t c_invert,
+      uint32_t d, int32_t d_invert,
+      uint32_t shift, int32_t invert)
 {
    alpha_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
       ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
@@ -1713,12 +1713,12 @@ void grAlphaCombineExt(uint32_t a, uint32_t a_mode,
 }
 
 void  
-grTexColorCombineExt(GrChipID_t       tmu,
+grTexColorCombineExt(int32_t       tmu,
       uint32_t a, uint32_t a_mode,
       uint32_t b, uint32_t b_mode,
-      uint32_t c, FxBool c_invert,
-      uint32_t d, FxBool d_invert,
-      FxU32 shift, FxBool invert)
+      uint32_t c, int32_t c_invert,
+      uint32_t d, int32_t d_invert,
+      uint32_t shift, int32_t invert)
 {
    int num_tex = 0;
 
@@ -2082,12 +2082,12 @@ grTexColorCombineExt(GrChipID_t       tmu,
 }
 
 void  
-grTexAlphaCombineExt(GrChipID_t       tmu,
+grTexAlphaCombineExt(int32_t       tmu,
       uint32_t a, uint32_t a_mode,
       uint32_t b, uint32_t b_mode,
-      uint32_t c, FxBool c_invert,
-      uint32_t d, FxBool d_invert,
-      FxU32 shift, FxBool invert,
+      uint32_t c, int32_t c_invert,
+      uint32_t d, int32_t d_invert,
+      uint32_t shift, int32_t invert,
       GrColor_t     ccolor_value)
 {
    int num_tex = 0;

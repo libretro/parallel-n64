@@ -182,7 +182,7 @@ uint8_t microcode[4096];
 uint32_t uc_crc;
 
 //forward decls
-static void CopyFrameBuffer (GrBuffer_t buffer);
+static void CopyFrameBuffer (int32_t buffer);
 static void apply_shading(VERTEX *vptr);
 
 // ** UCODE FUNCTIONS **
@@ -320,7 +320,7 @@ static void DrawPartFrameBufferToScreen(void)
 
 extern uint16_t *frameBuffer;
 
-static void CopyFrameBuffer (GrBuffer_t buffer)
+static void CopyFrameBuffer(int32_t buffer)
 {
    // don't bother to write the stuff in asm... the slow part is the read from video card,
    //   not the copy.

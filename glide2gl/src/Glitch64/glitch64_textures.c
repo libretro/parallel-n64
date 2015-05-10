@@ -138,8 +138,8 @@ void free_textures(void)
   remove_tex(0x00000000, 0xFFFFFFFF);
 }
 
-FxU32 grTexCalcMemRequired(GrLOD_t lodmax,
-      GrAspectRatio_t aspect, GrTextureFormat_t fmt)
+uint32_t grTexCalcMemRequired(int32_t lodmax,
+      int32_t aspect, int32_t fmt)
 {
    int width  = 1 << lodmax;
    int height = 1 << lodmax;
@@ -361,9 +361,9 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
    return factor;
 }
 
-void grTexSource( GrChipID_t tmu,
-      FxU32      startAddress,
-      FxU32      evenOdd,
+void grTexSource( int32_t tmu,
+      uint32_t      startAddress,
+      uint32_t      evenOdd,
       GrTexInfo  *info,
       int do_download)
 {
@@ -415,9 +415,9 @@ grtexsource:
 
 void 
 grTexDetailControl(
-      GrChipID_t tmu,
+      int32_t tmu,
       int lod_bias,
-      FxU8 detail_scale,
+      uint8_t detail_scale,
       float detail_max
       )
 {
@@ -445,11 +445,11 @@ grTexDetailControl(
 }
 
 void grTexFilterClampMode(
-      GrChipID_t tmu,
-      GrTextureClampMode_t s_clampmode,
-      GrTextureClampMode_t t_clampmode,
-      GrTextureFilterMode_t minfilter_mode,
-      GrTextureFilterMode_t magfilter_mode
+      int32_t tmu,
+      int32_t s_clampmode,
+      int32_t t_clampmode,
+      int32_t minfilter_mode,
+      int32_t magfilter_mode
       )
 {
    unsigned active_texindex = GL_TEXTURE1;

@@ -141,7 +141,7 @@ GrContext_t grSstWinOpen(void)
    return 1;
 }
 
-FxBool grSstWinClose( GrContext_t context )
+int32_t grSstWinClose( GrContext_t context )
 {
    if (frameBuffer)
       free(frameBuffer);
@@ -162,8 +162,8 @@ FxBool grSstWinClose( GrContext_t context )
 
 // frame buffer
 
-FxBool grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
-          GrOriginLocation_t origin, FxBool pixelPipeline,
+int32_t grLfbLock( int32_t type, int32_t buffer, int32_t writeMode,
+          int32_t origin, int32_t pixelPipeline,
           GrLfbInfo_t *info )
 {
    LOG("grLfbLock(%d,%d,%d,%d,%d)\r\n", type, buffer, writeMode, origin, pixelPipeline);
@@ -193,10 +193,10 @@ FxBool grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
    return FXTRUE;
 }
 
-FxBool grLfbReadRegion( GrBuffer_t src_buffer,
-      FxU32 src_x, FxU32 src_y,
-      FxU32 src_width, FxU32 src_height,
-      FxU32 dst_stride, void *dst_data )
+int32_t grLfbReadRegion( int32_t src_buffer,
+      uint32_t src_x, uint32_t src_y,
+      uint32_t src_width, uint32_t src_height,
+      uint32_t dst_stride, void *dst_data )
 {
    unsigned int i,j;
    LOG("grLfbReadRegion(%d,%d,%d,%d,%d,%d)\r\n", src_buffer, src_x, src_y, src_width, src_height, dst_stride);
@@ -217,13 +217,13 @@ FxBool grLfbReadRegion( GrBuffer_t src_buffer,
    return FXTRUE;
 }
 
-FxBool 
-grLfbWriteRegion( GrBuffer_t dst_buffer,
-      FxU32 dst_x, FxU32 dst_y,
+int32_t 
+grLfbWriteRegion( int32_t dst_buffer,
+      uint32_t dst_x, uint32_t dst_y,
       GrLfbSrcFmt_t src_format,
-      FxU32 src_width, FxU32 src_height,
-      FxBool pixelPipeline,
-      FxI32 src_stride, void *src_data )
+      uint32_t src_width, uint32_t src_height,
+      int32_t pixelPipeline,
+      int32_t src_stride, void *src_data )
 {
    unsigned int i,j;
    uint16_t *frameBuffer = (uint16_t*)src_data;

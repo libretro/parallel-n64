@@ -81,51 +81,51 @@ typedef struct
 
 void grColorCombineExt(uint32_t a, uint32_t a_mode,
 				  uint32_t b, uint32_t b_mode,
-                  uint32_t c, FxBool c_invert,
-				  uint32_t d, FxBool d_invert,
-				  FxU32 shift, FxBool invert);
+                  uint32_t c, int32_t c_invert,
+				  uint32_t d, int32_t d_invert,
+				  uint32_t shift, int32_t invert);
 
 void grAlphaCombineExt(uint32_t a, uint32_t a_mode,
 				  uint32_t b, uint32_t b_mode,
-				  uint32_t c, FxBool c_invert,
-				  uint32_t d, FxBool d_invert,
-				  FxU32 shift, FxBool invert);
+				  uint32_t c, int32_t c_invert,
+				  uint32_t d, int32_t d_invert,
+				  uint32_t shift, int32_t invert);
 
 void 
-grTexColorCombineExt(GrChipID_t       tmu,
+grTexColorCombineExt(int32_t       tmu,
                      uint32_t a, uint32_t a_mode,
                      uint32_t b, uint32_t b_mode,
-                     uint32_t c, FxBool c_invert,
-                     uint32_t d, FxBool d_invert,
-                     FxU32 shift, FxBool invert);
+                     uint32_t c, int32_t c_invert,
+                     uint32_t d, int32_t d_invert,
+                     uint32_t shift, int32_t invert);
 
 void 
-grTexAlphaCombineExt(GrChipID_t       tmu,
+grTexAlphaCombineExt(int32_t       tmu,
                      uint32_t a, uint32_t a_mode,
                      uint32_t b, uint32_t b_mode,
-                     uint32_t c, FxBool c_invert,
-                     uint32_t d, FxBool d_invert,
-                     FxU32 shift, FxBool invert,
+                     uint32_t c, int32_t c_invert,
+                     uint32_t d, int32_t d_invert,
+                     uint32_t shift, int32_t invert,
                      GrColor_t ccolor_value);
 
 void  
 grColorCombineExt(uint32_t a, uint32_t a_mode,
                   uint32_t b, uint32_t b_mode,
-                  uint32_t c, FxBool c_invert,
-                  uint32_t d, FxBool d_invert,
-                  FxU32 shift, FxBool invert);
+                  uint32_t c, int32_t c_invert,
+                  uint32_t d, int32_t d_invert,
+                  uint32_t shift, int32_t invert);
 
  void 
 grAlphaCombineExt(uint32_t a, uint32_t a_mode,
                   uint32_t b, uint32_t b_mode,
-                  uint32_t c, FxBool c_invert,
-                  uint32_t d, FxBool d_invert,
-                  FxU32 shift, FxBool invert);
+                  uint32_t c, int32_t c_invert,
+                  uint32_t d, int32_t d_invert,
+                  uint32_t shift, int32_t invert);
 
-extern void grChromaRangeExt(GrColor_t color0, GrColor_t color1, FxU32 mode);
-extern void grChromaRangeModeExt(GrChromakeyMode_t mode);
-extern void grTexChromaRangeExt(GrChipID_t tmu, GrColor_t color0, GrColor_t color1, GrTexChromakeyMode_t mode);
-extern void grTexChromaModeExt(GrChipID_t tmu, GrChromakeyMode_t mode);
+extern void grChromaRangeExt(GrColor_t color0, GrColor_t color1, uint32_t mode);
+extern void grChromaRangeModeExt(int32_t mode);
+extern void grTexChromaRangeExt(int32_t tmu, GrColor_t color0, GrColor_t color1, int32_t mode);
+extern void grTexChromaModeExt(int32_t tmu, int32_t mode);
 
 extern int width, height;
 extern float fogStart, fogEnd;

@@ -69,8 +69,6 @@ extern "C" {
 #define GR_BUFFER_TEXTUREBUFFER_EXT 0x6
 #define GR_BUFFER_TEXTUREAUXBUFFER_EXT 0x7
 
-typedef FxU32 GrPixelFormat_t;
-
 #define GR_PIXFMT_I_8                           0x0001
 #define GR_PIXFMT_AI_88                         0x0002
 #define GR_PIXFMT_RGB_565                       0x0003
@@ -89,14 +87,9 @@ typedef FxU32 GrPixelFormat_t;
 
 #define GR_LFBWRITEMODE_Z32                     0x0008
 
-typedef FxU32 GrAAMode_t;
-
 #define GR_AA_NONE                              0x0000
 #define GR_AA_4SAMPLES                          0x0001
 
-typedef FxU8 GrStencil_t;
-
-typedef FxU32 GrStencilOp_t;
 #define GR_STENCILOP_KEEP        0x00              /* keep current value */
 #define GR_STENCILOP_ZERO        0x01              /* set to zero */
 #define GR_STENCILOP_REPLACE     0x02              /* replace with reference value */
@@ -135,7 +128,6 @@ typedef FxU32 GrStencilOp_t;
 #define GR_FUNC_MODE_NEGATIVE_X           0x03
 #define GR_FUNC_MODE_X_MINUS_HALF         0x04
 
-typedef FxU32 GrAlphaBlendOp_t;
 #define GR_BLEND_OP_ADD                   0x00
 #define GR_BLEND_OP_SUB                   0x01
 #define GR_BLEND_OP_REVSUB                0x02

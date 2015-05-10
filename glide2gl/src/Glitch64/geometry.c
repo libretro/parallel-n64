@@ -46,7 +46,7 @@ static struct draw_buffer *gli_vbo;
 static unsigned gli_vbo_size;
 #endif
 
-void grCullMode( GrCullMode_t mode )
+void grCullMode( int32_t mode )
 {
    switch(mode)
    {
@@ -124,7 +124,7 @@ void FindBestDepthBias(void)
 #endif
 }
 
-void grDepthBiasLevel( FxI32 level )
+void grDepthBiasLevel( int32_t level )
 {
    LOG("grDepthBiasLevel(%d)\r\n", level);
    if (level)
@@ -147,7 +147,7 @@ void grDepthBiasLevel( FxI32 level )
 #define gl_offset(x) &v->x
 #endif
 
-void grDrawVertexArrayContiguous(FxU32 mode, FxU32 count, void *pointers)
+void grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointers)
 {
 #ifdef EMSCRIPTEN
    unsigned i;
