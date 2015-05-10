@@ -752,7 +752,6 @@ static void render_tri (uint16_t linew, int old_interpolate)
       clip_tri(old_interpolate);
    n = rdp.n_global;
 
-   //*
    if ((rdp.clip & CLIP_ZMIN) && (rdp.othermode_l & G_OBJLT_TLUT))
    {
 
@@ -771,7 +770,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
          return;
       }
    }
-   //*/
+
    if (rdp.clip && !old_interpolate)
    {
       for (i = 0; i < n; i++)
@@ -1026,7 +1025,6 @@ void update_scissor(bool set_scissor)
    grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
 
    g_gdp.flags ^= UPDATE_SCISSOR;
-   //FRDP (" |- scissor - (%d, %d) -> (%d, %d)\n", rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);
 }
 
 void glide64_z_compare(void)
