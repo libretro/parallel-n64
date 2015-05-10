@@ -609,9 +609,6 @@ EXPORT void CALL ProcessDList(void)
 // undef - undefined instruction, always ignore
 static void undef(uint32_t w0, uint32_t w1)
 {
-   *gfx_info.MI_INTR_REG |= 0x20;
-   gfx_info.CheckInterrupts();
-   rdp.halt = 1;
 }
 
 static void ys_memrect(uint32_t w0, uint32_t w1)
