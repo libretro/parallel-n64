@@ -189,20 +189,6 @@ typedef unsigned int            u32;
 typedef unsigned long long      u64;
 #endif
 
-typedef union {
-    i64 W;
-    s64 SW;
-    u64 UW;
-    i32 W32[2];
-    s32 SW32[2];
-    u32 UW32[2];
-    i16 W16[4];
-    s16 SW16[4];
-    u16 UW16[4];
-    uint8_t B[8];
-    int8_t SB[8];
-} DP_FIFO;
-
 // Clipping (scissors)
 typedef struct
 {
@@ -725,7 +711,6 @@ static INLINE void glideSetVertexFlatShading(VERTEX *v, VERTEX **vtx, uint32_t w
    v->b = vtx[flag]->b;
    v->g = vtx[flag]->g;
    v->r = vtx[flag]->r;
-   //FRDP(" * Flat shaded, flag%d - r: %d, g: %d, b: %d, a: %d\n", flag, v->r, v->g, v->b, v->a);
 }
 
 static INLINE void glideSetVertexPrimShading(VERTEX *v, uint32_t prim_color)
