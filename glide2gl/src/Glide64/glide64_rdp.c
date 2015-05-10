@@ -1713,83 +1713,72 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
       switch (cur_fb->status)
       {
          case CI_MAIN:
+            if (rdp.ci_count == 0)
             {
-
-               if (rdp.ci_count == 0)
+               if (rdp.ci_status == CI_AUX) //for PPL
                {
-                  if (rdp.ci_status == CI_AUX) //for PPL
+                  float sx, sy;
+                  sx = rdp.scale_x;
+                  sy = rdp.scale_y;
+                  rdp.scale_x = 1.0f;
+                  rdp.scale_y = 1.0f;
+                  CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+                  rdp.scale_x = sx;
+                  rdp.scale_y = sy;
+               }
+               {
+                  if ((rdp.num_of_ci > 1) &&
+                        (next_fb->status == CI_AUX) &&
+                        (next_fb->width >= cur_fb->width))
                   {
-                     float sx, sy;
-                     sx = rdp.scale_x;
-                     sy = rdp.scale_y;
                      rdp.scale_x = 1.0f;
                      rdp.scale_y = 1.0f;
-                     CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
-                     rdp.scale_x = sx;
-                     rdp.scale_y = sy;
-                  }
-                  {
-                     if ((rdp.num_of_ci > 1) &&
-                           (next_fb->status == CI_AUX) &&
-                           (next_fb->width >= cur_fb->width))
-                     {
-                        rdp.scale_x = 1.0f;
-                        rdp.scale_y = 1.0f;
-                     }
                   }
                }
-               //else if (rdp.ci_status == CI_AUX && !rdp.copy_ci_index)
-               // CloseTextureBuffer();
-
-               rdp.skip_drawing = false;
             }
+            //else if (rdp.ci_status == CI_AUX && !rdp.copy_ci_index)
+            // CloseTextureBuffer();
+
+            rdp.skip_drawing = false;
             break;
          case CI_COPY:
+            if (!rdp.motionblur || (settings.frame_buffer&fb_motionblur))
             {
-               if (!rdp.motionblur || (settings.frame_buffer&fb_motionblur))
+               if (cur_fb->width == rdp.ci_width)
                {
-                  if (cur_fb->width == rdp.ci_width)
                   {
+                     if (!rdp.fb_drawn || prev_fb->status == CI_COPY_SELF)
                      {
-                        if (!rdp.fb_drawn || prev_fb->status == CI_COPY_SELF)
-                        {
-                           CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
-                           rdp.fb_drawn = true;
-                        }
-                        memcpy(gfx_info.RDRAM+cur_fb->addr,gfx_info.RDRAM+rdp.cimg, (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
+                        CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+                        rdp.fb_drawn = true;
                      }
+                     memcpy(gfx_info.RDRAM+cur_fb->addr,gfx_info.RDRAM+rdp.cimg, (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
                   }
                }
-               else
-                  memset(gfx_info.RDRAM+cur_fb->addr, 0, cur_fb->width*cur_fb->height*rdp.ci_size);
-               rdp.skip_drawing = true;
             }
+            else
+               memset(gfx_info.RDRAM+cur_fb->addr, 0, cur_fb->width*cur_fb->height*rdp.ci_size);
+            rdp.skip_drawing = true;
             break;
          case CI_AUX_COPY:
+            rdp.skip_drawing = false;
+            if (!rdp.fb_drawn)
             {
-               rdp.skip_drawing = false;
-                  if (!rdp.fb_drawn)
-               {
-                  CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
-                  rdp.fb_drawn = true;
-               }
+               CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+               rdp.fb_drawn = true;
             }
             break;
          case CI_OLD_COPY:
+            if (!rdp.motionblur || (settings.frame_buffer&fb_motionblur))
             {
-               if (!rdp.motionblur || (settings.frame_buffer&fb_motionblur))
-               {
-                  if (cur_fb->width == rdp.ci_width)
-                  {
-                     memcpy(gfx_info.RDRAM+cur_fb->addr,gfx_info.RDRAM+rdp.maincimg[1].addr, (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
-                  }
-                  //rdp.skip_drawing = true;
-               }
-               else
-               {
-                  memset(gfx_info.RDRAM+cur_fb->addr, 0, (cur_fb->width*cur_fb->height)<<rdp.ci_size>>1);
-               }
+               if (cur_fb->width == rdp.ci_width)
+                  memcpy(gfx_info.RDRAM+cur_fb->addr,
+                        gfx_info.RDRAM+rdp.maincimg[1].addr,
+                        (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
+               //rdp.skip_drawing = true;
             }
+            else
+               memset(gfx_info.RDRAM+cur_fb->addr, 0, (cur_fb->width*cur_fb->height)<<rdp.ci_size>>1);
             break;
             /*
                else if (rdp.frame_buffers[rdp.ci_count].status == ci_main_i)
@@ -1801,41 +1790,37 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
             }
             */
          case CI_AUX:
+            if (
+                  cur_fb->format != 0)
+               rdp.skip_drawing = true;
+            else
             {
-               if (
-                     cur_fb->format != 0)
-                  rdp.skip_drawing = true;
-               else
+               rdp.skip_drawing = false;
                {
-                  rdp.skip_drawing = false;
+                  if (cur_fb->format != 0)
+                     rdp.skip_drawing = true;
+                  if (rdp.ci_count == 0)
                   {
-                     if (cur_fb->format != 0)
-                        rdp.skip_drawing = true;
-                     if (rdp.ci_count == 0)
-                     {
-                        // if (rdp.num_of_ci > 1)
-                        // {
-                        rdp.scale_x = 1.0f;
-                        rdp.scale_y = 1.0f;
-                        // }
-                     }
-                     else if (
-                           (prev_fb->status == CI_MAIN) &&
-                           (prev_fb->width == cur_fb->width)) // for Pokemon Stadium
-                        CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
+                     // if (rdp.num_of_ci > 1)
+                     // {
+                     rdp.scale_x = 1.0f;
+                     rdp.scale_y = 1.0f;
+                     // }
                   }
+                  else if (
+                        (prev_fb->status == CI_MAIN) &&
+                        (prev_fb->width == cur_fb->width)) // for Pokemon Stadium
+                     CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
                }
-               cur_fb->status = CI_AUX;
             }
+            cur_fb->status = CI_AUX;
             break;
          case CI_ZIMG:
             rdp.skip_drawing = true;
             break;
          case CI_ZCOPY:
             if (settings.ucode != ucode_PerfectDark)
-            {
                rdp.skip_drawing = true;
-            }
             break;
          case CI_USELESS:
             rdp.skip_drawing = true;
@@ -1855,19 +1840,17 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
          else if ((settings.hacks&hack_Knockout) && prev_fb->width < 100)
             CopyFrameBuffer (GR_BUFFER_TEXTUREBUFFER_EXT);
       }
-      if (cur_fb->status == CI_COPY
-      )
+      if (cur_fb->status == CI_COPY)
       {
          if (!rdp.motionblur && (rdp.num_of_ci > rdp.ci_count+1) && (next_fb->status != CI_AUX))
-         {
             RestoreScale();
-         }
       }
 
       if ((cur_fb->status == CI_MAIN) && (rdp.ci_count > 0))
       {
-         int to_org_res, i;
-         to_org_res = true;
+         int i;
+         int to_org_res = true;
+
          for (i = rdp.ci_count + 1; i < rdp.num_of_ci; i++)
          {
             if ((rdp.frame_buffers[i].status != CI_MAIN) && (rdp.frame_buffers[i].status != CI_ZIMG) && (rdp.frame_buffers[i].status != CI_ZCOPY))
@@ -1876,6 +1859,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
                break;
             }
          }
+
          if (to_org_res)
          {
             LRDP("return to original scale\n");
@@ -1910,11 +1894,9 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 
    if (format != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
    {
-      {
-            if (format > 2)
-            rdp.skip_drawing = true;
-         return;
-      }
+      if (format > 2)
+         rdp.skip_drawing = true;
+      return;
    }
    else
    {
@@ -1923,6 +1905,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
    }
 
    CI_SET = true;
+
    if (settings.swapmode > 0)
    {
       int viSwapOK;
@@ -2052,20 +2035,19 @@ output:   none
 EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
 {
   uint32_t a, shift_l, shift_r;
+
   if (cpu_fb_ignore)
     return;
+
   if (cpu_fb_read_called)
   {
     cpu_fb_ignore = true;
     cpu_fb_write = false;
     return;
   }
+
   cpu_fb_write_called = true;
   a = segoffset(addr);
-
-#ifdef EXTREME_LOGGING
-  FRDP("FBWrite. addr: %08lx\n", a);
-#endif
 
   if (a < rdp.cimg || a > rdp.ci_end)
     return;
