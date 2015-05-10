@@ -824,18 +824,22 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.cur_cache[0]->addr, rdp.cimg, rdp.cimg+rdp.ci_width*rdp.ci_height*2);
       return;
    }
-   //*
-   //*/
-   //*
-   //remove motion blur in night vision
-   if ((settings.ucode == ucode_PerfectDark) && (rdp.maincimg[1].addr != rdp.maincimg[0].addr) && (rdp.timg.addr >= rdp.maincimg[1].addr) && (rdp.timg.addr < (rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size)))
+
+   /*remove motion blur in night vision */
+   if (
+         (    settings.ucode == ucode_PerfectDark)
+         && (rdp.maincimg[1].addr != rdp.maincimg[0].addr)
+         && (rdp.timg.addr >= rdp.maincimg[1].addr)
+         && (rdp.timg.addr < (rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size))
+      )
    {
       if (fb_emulation_enabled)
+      {
+         /* FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n",
+          * rdp.timg.addr, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width*rdp.ci_height*rdp.ci_size); */
          if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF)
-         {
-            //FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.timg.addr, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width*rdp.ci_height*rdp.ci_size);
             return;
-         }
+      }
    }
 
    tilenum = (uint16_t)((w1 & 0x07000000) >> 24);
@@ -1182,7 +1186,8 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
 }
 
 
-static INLINE void loadTile(uint32_t *src, uint32_t *dst, int width, int height, int line, int off, uint32_t *end)
+static INLINE void loadTile(uint32_t *src, uint32_t *dst,
+      int width, int height, int line, int off, uint32_t *end)
 {
    uint32_t *v7, *v9, *v13, v16, *v17, v18, v20, v22, *v24, *v27, *v31, nbits;
    int v8, v10, v11, v12, v14, v15, v19, v21, v23, v25, v26, v28, v29, v30;
