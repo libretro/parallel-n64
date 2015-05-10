@@ -54,8 +54,6 @@ static int isExtensionSupported(const char *extension)
    return 0;
 }
 
-#define GrPixelFormat_t int
-
 void FindBestDepthBias();
 
 GrContext_t grSstWinOpen(void)
