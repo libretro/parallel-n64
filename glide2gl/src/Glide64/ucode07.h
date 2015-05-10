@@ -47,7 +47,7 @@ uint32_t pd_col_addr = 0;
 
 static void uc7_colorbase(uint32_t w0, uint32_t w1)
 {
-   pd_col_addr = segoffset(w1);
+   pd_col_addr = RSP_SegmentToPhysical(w1);
 }
 
 typedef struct 
@@ -72,7 +72,7 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
 #endif
    uint32_t v0 = (w0 & 0x0F0000) >> 16;
    uint32_t n = ((w0 & 0xF00000) >> 20) + 1;
-   uint32_t addr = segoffset(w1);
+   uint32_t addr = RSP_SegmentToPhysical(w1);
    vtx_uc7 *vertex = (vtx_uc7*)&gfx_info.RDRAM[addr];
    void   *membase_ptr  = (void*)(gfx_info.RDRAM + addr);
    uint32_t iter = 1;

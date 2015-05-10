@@ -41,7 +41,7 @@
 static void rsp_vertex(int v0, int n)
 {
    unsigned int i;
-   uint32_t addr = segoffset(rdp.cmd1) & 0x00FFFFFF;
+   uint32_t addr = RSP_SegmentToPhysical(rdp.cmd1);
 
    // This is special, not handled in update(), but here
    // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
@@ -259,7 +259,7 @@ static void uc0_movemem(uint32_t w0, uint32_t w1)
 
 static void uc0_displaylist(uint32_t w0, uint32_t w1)
 {
-   uint32_t addr = segoffset(w1) & 0x00FFFFFF;
+   uint32_t addr = RSP_SegmentToPhysical(w1);
 
    /* This fixes partially Gauntlet: Legends */
    if (addr == rdp.pc[rdp.pc_i] - 8)

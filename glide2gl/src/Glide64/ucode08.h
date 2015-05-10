@@ -52,7 +52,7 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
    float32x4_t comb0, comb1, comb2, comb3;
    float32x4_t v_xyzw;
 #endif
-   uint32_t addr = segoffset(w1);
+   uint32_t addr = RSP_SegmentToPhysical(w1);
    int32_t n = (w0 >> 12) & 0xFF;
    int32_t v0 = ((w0 >> 1) & 0x7F) - n;
    void   *membase_ptr  = (void*)(gfx_info.RDRAM + addr);
@@ -300,7 +300,7 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
 static void uc8_movemem(uint32_t w0, uint32_t w1)
 {
    int i, t;
-   uint32_t addr = segoffset(w1);
+   uint32_t addr = RSP_SegmentToPhysical(w1);
    int ofs = _SHIFTR(w0, 5, 14);
 
    switch (_SHIFTR(w0, 0, 8))
@@ -357,7 +357,7 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
 
       case F3DCBFD_MV_NORMAL: //Normals
          {
-            uc8_normale_addr = segoffset(w1);
+            uc8_normale_addr = RSP_SegmentToPhysical(w1);
             FRDP ("Normals - addr: %08lx\n", uc8_normale_addr);
 #ifdef EXTREME_LOGGING
             for (i = 0; i < 32; i++)

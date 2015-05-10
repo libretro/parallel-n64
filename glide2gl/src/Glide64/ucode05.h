@@ -53,7 +53,7 @@ static void uc5_dma_offsets(uint32_t w0, uint32_t w1)
 static void uc5_matrix(uint32_t w0, uint32_t w1)
 {
    // Use segment offset to get the address
-   uint32_t addr = dma_offset_mtx + (segoffset(w1) & BMASK);
+   uint32_t addr = dma_offset_mtx + RSP_SegmentToPhysical(w1);
 
    uint8_t index = _SHIFTR(w0, 16, 4);
    uint8_t multiply;
@@ -87,7 +87,7 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
 {
    int i, first, prj, start, n;
    float x, y, z;
-   uint32_t addr = dma_offset_vtx + (segoffset(w1) & BMASK);
+   uint32_t addr = dma_offset_vtx + RSP_SegmentToPhysical(w1);
 
    // | cccc cccc 1111 1??? 0000 0002 2222 2222 | cmd1 = address |
    // c = vtx command
@@ -174,7 +174,7 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
 static void uc5_tridma(uint32_t w0, uint32_t w1)
 {
    int i, start, v0, v1, v2, flags;
-   uint32_t addr = segoffset(w1) & BMASK;
+   uint32_t addr = RSP_SegmentToPhysical(w1);
    int num = _SHIFTR( w0, 4, 12);
 
    vtx_last = 0;    // we've drawn something, so the vertex index needs resetting

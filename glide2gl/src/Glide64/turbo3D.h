@@ -112,7 +112,7 @@ static void t3dLoadGlobState(uint32_t pgstate)
 {
    int s;
    int16_t scale_x, scale_y, scale_z, trans_x, trans_y, trans_z;
-   struct t3dGlobState *gstate = (struct t3dGlobState*)&gfx_info.RDRAM[segoffset(pgstate)];
+   struct t3dGlobState *gstate = (struct t3dGlobState*)&gfx_info.RDRAM[RSP_SegmentToPhysical(pgstate)];
 
    FRDP ("Global state. pad0: %04lx, perspNorm: %04lx, flag: %08lx\n", gstate->pad0, gstate->perspNorm, gstate->flag);
    rdp.cmd0 = gstate->othermode0;
@@ -138,7 +138,7 @@ static void t3dLoadGlobState(uint32_t pgstate)
    FRDP ("viewport scale(%d, %d, %d), trans(%d, %d, %d)\n", scale_x, scale_y, scale_z,
          trans_x, trans_y, trans_z);
 
-   t3dProcessRDP(segoffset(gstate->rdpCmds) >> 2);
+   t3dProcessRDP(RSP_SegmentToPhysical(gstate->rdpCmds) >> 2);
 }
 
 static void t3d_vertex(uint32_t addr, uint32_t v0, uint32_t n)
@@ -199,7 +199,7 @@ static void t3d_vertex(uint32_t addr, uint32_t v0, uint32_t n)
 static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 {
    int t;
-   struct t3dState *ostate = (struct t3dState*)&gfx_info.RDRAM[segoffset(pstate)];
+   struct t3dState *ostate = (struct t3dState*)&gfx_info.RDRAM[RSP_SegmentToPhysical(pstate)];
    rdp.cur_tile = (ostate->textureState)&7;
 
    LRDP("Loading Turbo3D object\n");
@@ -224,7 +224,7 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
 
    if (!(ostate->flag&1)) //load matrix
    {
-      uint32_t addr = segoffset(pstate+sizeof(struct t3dState)) & BMASK;
+      uint32_t addr = RSP_SegmentToPhysical(pstate+sizeof(struct t3dState)) & BMASK;
       load_matrix(rdp.combined, addr);
 #ifdef EXTREME_LOGGING
       FRDP ("{%f,%f,%f,%f}\n", rdp.combined[0][0], rdp.combined[0][1], rdp.combined[0][2], rdp.combined[0][3]);
@@ -237,15 +237,15 @@ static void t3dLoadObject(uint32_t pstate, uint32_t pvtx, uint32_t ptri)
    rdp.geom_mode &= ~G_LIGHTING;
    rdp.geom_mode |= UPDATE_SCISSOR;
    if (pvtx) //load vtx
-      t3d_vertex(segoffset(pvtx) & BMASK, ostate->vtxV0, ostate->vtxCount);
+      t3d_vertex(RSP_SegmentToPhysical(pvtx), ostate->vtxV0, ostate->vtxCount);
 
-   t3dProcessRDP(segoffset(ostate->rdpCmds) >> 2);
+   t3dProcessRDP(RSP_SegmentToPhysical(ostate->rdpCmds) >> 2);
 
    if (ptri)
    {
       uint32_t a;
       update();
-      a = segoffset(ptri);
+      a = RSP_SegmentToPhysical(ptri);
       for (t = 0; t < ostate->triCount; t++)
       {
          VERTEX *v[3];

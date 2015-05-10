@@ -64,10 +64,10 @@ static void fb_bg_copy(uint32_t w0, uint32_t w1)
    if (status == CI_COPY)
       return;
 
-   addr = segoffset(w1) >> 1;
+   addr = RSP_SegmentToPhysical(w1) >> 1;
    imageFmt	= ((uint8_t *)gfx_info.RDRAM)[(((addr+11)<<1)+0)^3];
    imageSiz	= ((uint8_t *)gfx_info.RDRAM)[(((addr+11)<<1)+1)^3];
-   imagePtr	= segoffset(((uint32_t*)gfx_info.RDRAM)[(addr+8)>>1]);
+   imagePtr	= RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr+8)>>1]);
    FRDP ("fb_bg_copy. fmt: %d, size: %d, imagePtr %08lx, main_ci: %08lx, cur_ci: %08lx \n", imageFmt, imageSiz, imagePtr, rdp.main_ci, rdp.frame_buffers[rdp.ci_count-1].addr);
 
    if (status == CI_MAIN)
@@ -121,7 +121,7 @@ static void fb_uc2_movemem(uint32_t w0, uint32_t w1)
 {
    if ((w0 & 0xFF) == 8)
    {
-      uint32_t a = segoffset(w1) >> 1;
+      uint32_t a = RSP_SegmentToPhysical(w1) >> 1;
       int16_t scale_x = ((int16_t*)gfx_info.RDRAM)[(a+0)^1] >> 2;
       int16_t trans_x = ((int16_t*)gfx_info.RDRAM)[(a+4)^1] >> 2;
       COLOR_IMAGE *cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count-1];
@@ -172,7 +172,7 @@ static void fb_settextureimage(uint32_t w0, uint32_t w1)
    if (((w0 >> 19) & 0x03) >= 2)  //check that texture is 16/32bit
    {
       int tex_format = ((w0 >> 21) & 0x07);
-      uint32_t addr = segoffset(w1);
+      uint32_t addr = RSP_SegmentToPhysical(w1);
       if ( tex_format == 0 )
       {
          FRDP ("fb_settextureimage. fmt: %d, size: %d, imagePtr %08lx, main_ci: %08lx, cur_ci: %08lx \n", ((w0 >> 21) & 0x07), ((w0 >> 19) & 0x03), addr, rdp.main_ci, rdp.frame_buffers[rdp.ci_count-1].addr);
@@ -287,7 +287,7 @@ static void fb_loadtxtr(uint32_t w0, uint32_t w1)
 static void fb_setdepthimage(uint32_t w0, uint32_t w1)
 {
    int i;
-   rdp.zimg = segoffset(w1) & BMASK;
+   rdp.zimg = RSP_SegmentToPhysical(w1);
    rdp.zimg_end = rdp.zimg + rdp.ci_width*rdp.ci_height*2;
    FRDP ("fb_setdepthimage. addr %08lx - %08lx\n", rdp.zimg, rdp.zimg_end);
    if (rdp.zimg == rdp.main_ci)  //strange, but can happen
@@ -330,7 +330,7 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
 {
    COLOR_IMAGE *cur_fb;
    rdp.ocimg = rdp.cimg;
-   rdp.cimg = segoffset(w1) & BMASK;
+   rdp.cimg = RSP_SegmentToPhysical(w1);
 
    cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count];
    cur_fb->width = (w0 & 0xFFF) + 1;

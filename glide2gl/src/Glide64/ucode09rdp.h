@@ -44,7 +44,7 @@
 
 void uc9_rpdcmd(uint32_t w0, uint32_t w1)
 {
-   uint32_t a = segoffset(w1) >> 2;
+   uint32_t a = RSP_SegmentToPhysical(w1) >> 2;
    FRDP ("uc9:rdpcmd addr: %08lx\n", a);
 
    if (a)

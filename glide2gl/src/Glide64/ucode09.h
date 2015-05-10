@@ -236,7 +236,7 @@ static uint32_t uc9_load_object (uint32_t zHeader, uint32_t * rdpcmds)
          }
          break;
    }
-   return segoffset(((uint32_t*)addr)[0]);
+   return RSP_SegmentToPhysical(((uint32_t*)addr)[0]);
 }
 
 static void uc9_object(uint32_t w0, uint32_t w1)
@@ -249,11 +249,11 @@ static void uc9_object(uint32_t w0, uint32_t w1)
    rdpcmds[2] = 0;
 
    cmd1 = w1;
-   zHeader = segoffset(w0);
+   zHeader = RSP_SegmentToPhysical(w0);
 
    while (zHeader)
       zHeader = uc9_load_object(zHeader, rdpcmds);
-   zHeader = segoffset(cmd1);
+   zHeader = RSP_SegmentToPhysical(cmd1);
    while (zHeader)
       zHeader = uc9_load_object(zHeader, rdpcmds);
 }
@@ -561,7 +561,7 @@ static void uc9_movemem(uint32_t w0, uint32_t w1)
    int ofs = ((w0 >> 6) & 0x1ff)<<3;
    int len = (1 + ((w0 >> 15) & 0x1ff))<<3;
    int flag = w0 & 0x01;
-   uint32_t addr = segoffset(w1);
+   uint32_t addr = RSP_SegmentToPhysical(w1);
 
    switch (idx)
    {

@@ -118,7 +118,7 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
       }
    }
 
-   addr = segoffset(w1);
+   addr = RSP_SegmentToPhysical(w1);
 
    n = (w0 >> 12) & 0xFF;
    v0 = ((w0 >> 1) & 0x7F) - n;
@@ -332,7 +332,7 @@ static void uc2_matrix(uint32_t w0, uint32_t w1)
       return;
    }
 
-   load_matrix(m, segoffset(w1));
+   load_matrix(m, RSP_SegmentToPhysical(w1));
 
    command = (uint8_t)((w0 ^ 1) & 0xFF);
    switch (command)

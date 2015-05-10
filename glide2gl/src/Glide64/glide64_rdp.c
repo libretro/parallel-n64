@@ -1629,7 +1629,7 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
    rdp.timg.format = (uint8_t)((w0 >> 21) & 0x07);
    rdp.timg.size   = (uint8_t)((w0 >> 19) & 0x03);
    rdp.timg.width  = (uint16_t)(1 + (w0 & 0x00000FFF));
-   rdp.timg.addr   = segoffset(w1);
+   rdp.timg.addr   = RSP_SegmentToPhysical(w1);
 
    if (ucode5_texshiftaddr)
    {
@@ -1661,7 +1661,7 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 
 static void rdp_setdepthimage(uint32_t w0, uint32_t w1)
 {
-   rdp.zimg = segoffset(w1) & BMASK;
+   rdp.zimg = RSP_SegmentToPhysical(w1);
    rdp.zi_width = rdp.ci_width;
 }
 
@@ -1852,7 +1852,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
    }
 
    rdp.ocimg    = rdp.cimg;
-   rdp.cimg     = segoffset(w1) & BMASK;
+   rdp.cimg     = RSP_SegmentToPhysical(w1);
    rdp.ci_width = (w0 & 0xFFF) + 1;
    if (fb_emulation_enabled && rdp.ci_count > 0)
       rdp.ci_height = rdp.frame_buffers[rdp.ci_count-1].height;
@@ -1916,7 +1916,7 @@ static void rsp_reserved0(uint32_t w0, uint32_t w1)
 
 static void rsp_uc5_reserved0(uint32_t w0, uint32_t w1)
 {
-  ucode5_texshiftaddr = segoffset(w1);
+  ucode5_texshiftaddr = RSP_SegmentToPhysical(w1);
   ucode5_texshiftcount = 0;
 }
 
@@ -1960,7 +1960,7 @@ EXPORT void CALL FBRead(uint32_t addr)
     return;
   }
   cpu_fb_read_called = true;
-  a = segoffset(addr);
+  a = RSP_SegmentToPhysical(addr);
 
 #ifdef EXTREME_LOGGING
   FRDP("FBRead. addr: %08lx\n", a);
@@ -2027,7 +2027,7 @@ EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
   }
 
   cpu_fb_write_called = true;
-  a                   = segoffset(addr);
+  a                   = RSP_SegmentToPhysical(addr);
 
   if (a < rdp.cimg || a > rdp.ci_end)
     return;

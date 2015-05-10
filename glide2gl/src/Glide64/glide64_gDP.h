@@ -152,7 +152,7 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
 
    // 0x00000800 -> 0x80000000 (so we can check the sign bit instead of the 11th bit)
    _dxt = dxt << 20;
-   addr = segoffset(rdp.timg.addr) & BMASK;
+   addr = RSP_SegmentToPhysical(rdp.timg.addr);
 
    rdp.tiles[tile].ul_s = ul_s;
    rdp.tiles[tile].ul_t = ul_t;

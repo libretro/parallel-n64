@@ -500,7 +500,7 @@ static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
 {
    int imageYorig;
    uint16_t imageFlip;
-   uint32_t addr = segoffset(rdp.cmd1) >> 1;
+   uint32_t addr = RSP_SegmentToPhysical(rdp.cmd1) >> 1;
 
    d->imageX      = (((uint16_t *)gfx_info.RDRAM)[(addr+0)^1] >> 5);   // 0
    d->imageW      = (((uint16_t *)gfx_info.RDRAM)[(addr+1)^1] >> 2);   // 1
@@ -512,7 +512,7 @@ static void uc6_read_background_data (DRAWIMAGE *d, bool bReadScale)
    d->frameY      = ((int16_t*)gfx_info.RDRAM)[(addr+6)^1] / 4.0f;       // 6
    d->frameH      = ((uint16_t *)gfx_info.RDRAM)[(addr+7)^1] >> 2;             // 7
 
-   d->imagePtr    = segoffset(((uint32_t*)gfx_info.RDRAM)[(addr+8)>>1]);       // 8,9
+   d->imagePtr    = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr+8)>>1]);       // 8,9
    d->imageFmt    = ((uint8_t *)gfx_info.RDRAM)[(((addr+11)<<1)+0)^3]; // 11
    d->imageSiz    = ((uint8_t *)gfx_info.RDRAM)[(((addr+11)<<1)+1)^3]; // |
    d->imagePal    = ((uint16_t *)gfx_info.RDRAM)[(addr+12)^1]; // 12
@@ -755,7 +755,7 @@ static void uc6_draw_polygons (VERTEX v[4])
 
 static void uc6_read_object_data (DRAWOBJECT *d)
 {
-   uint32_t addr = segoffset(rdp.cmd1) >> 1;
+   uint32_t addr = RSP_SegmentToPhysical(rdp.cmd1) >> 1;
 
    d->objX    = ((int16_t*)gfx_info.RDRAM)[(addr+0)^1] / 4.0f;               // 0
    d->scaleW  = ((uint16_t *)gfx_info.RDRAM)[(addr+1)^1] / 1024.0f;        // 1
@@ -977,7 +977,7 @@ static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
 static void uc6_obj_movemem(uint32_t w0, uint32_t w1)
 {
    int index = w0 & 0xFFFF;
-   uint32_t addr = segoffset(w1) >> 1;
+   uint32_t addr = RSP_SegmentToPhysical(w1) >> 1;
 
    if (index == 0)
    { // movemem matrix
@@ -1170,12 +1170,12 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
    rdp.s2dex_tex_loaded = true;
    g_gdp.flags |= UPDATE_TEXTURE;
 
-   addr = segoffset(w1) >> 1;
+   addr = RSP_SegmentToPhysical(w1) >> 1;
    type = ((uint32_t*)gfx_info.RDRAM)[(addr + 0) >> 1]; // 0, 1
 
    if (type == 0x00000030)
    { // TLUT
-      image = segoffset(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
+      image = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
       phead = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1] - 256; // 4
       pnum = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1] + 1; // 5
 
@@ -1184,7 +1184,7 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
    }
    else if (type == 0x00001033)
    { // TxtrBlock
-      image = segoffset(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
+      image = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
       tmem = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1]; // 4
       tsize = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1]; // 5
       tline = ((uint16_t *)gfx_info.RDRAM)[(addr + 6) ^ 1]; // 6
@@ -1204,7 +1204,7 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
    {
       int line;
 
-      image = segoffset(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
+      image = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr + 2) >> 1]); // 2, 3
       tmem = ((uint16_t *)gfx_info.RDRAM)[(addr + 4) ^ 1]; // 4
       twidth = ((uint16_t *)gfx_info.RDRAM)[(addr + 5) ^ 1]; // 5
       theight = ((uint16_t *)gfx_info.RDRAM)[(addr + 6) ^ 1]; // 6
@@ -1262,7 +1262,7 @@ static void uc6_ldtx_rect_r(uint32_t w0, uint32_t w1)
 static void uc6_loaducode(uint32_t w0, uint32_t w1)
 {
    // copy the microcode data
-   uint32_t addr = segoffset(rdp.cmd1);
+   uint32_t addr = RSP_SegmentToPhysical(w1);
    uint32_t size = (w0 & 0xFFFF) + 1;
    memcpy (microcode, gfx_info.RDRAM+addr, size);
 
@@ -1282,9 +1282,9 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
    if ( (cmd0>>24) != 0xBE )
       return;
 
-   addr = segoffset(w1) >> 1;
+   addr = RSP_SegmentToPhysical(w1) >> 1;
 
-   d.imagePtr = segoffset(((uint32_t*)gfx_info.RDRAM)[(addr+0)>>1]); // 0,1
+   d.imagePtr = RSP_SegmentToPhysical(((uint32_t*)gfx_info.RDRAM)[(addr+0)>>1]); // 0,1
    stride = (((uint16_t *)gfx_info.RDRAM)[(addr+4)^1]); // 4
    d.imageW = (((uint16_t *)gfx_info.RDRAM)[(addr+5)^1]); // 5
    d.imageH = (((uint16_t *)gfx_info.RDRAM)[(addr+6)^1]); // 6
@@ -1303,7 +1303,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
    rdp.tlut_mode = 0;
    if (tlut)
    {
-      load_palette (segoffset(tlut), 0, 256);
+      load_palette (RSP_SegmentToPhysical(tlut), 0, 256);
       if (d.imageFmt > 0)
          rdp.tlut_mode = 2;
       else
