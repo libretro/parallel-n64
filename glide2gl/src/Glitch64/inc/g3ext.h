@@ -40,7 +40,6 @@
 #define __H3EXT_H__
 
 #include <3dfx.h>
-#include <glidesys.h>
 
 #ifdef __cplusplus
 extern "C" {

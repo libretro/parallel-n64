@@ -2,7 +2,6 @@
 #define __GLIDE_H__
 
 #include <3dfx.h>
-#include <glidesys.h>
 #define GL_GLEXT_PROTOTYPES
 #include <SDL_opengles2.h>
 #include "boolean.h"
