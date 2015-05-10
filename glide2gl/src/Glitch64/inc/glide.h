@@ -488,8 +488,6 @@ uint32_t grSstWinOpen(void);
  int32_t 
 grSstWinClose( uint32_t context );
 
-int32_t grSelectContext( uint32_t context );
-
 /*
 ** Glide configuration and special effect maintenance functions
 */
