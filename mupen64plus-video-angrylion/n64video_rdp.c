@@ -10,7 +10,6 @@ static int cmd_ptr; /* for 64-bit elements, always <= +0x7FFF */
 /* static DP_FIFO cmd_fifo; */
 static DP_FIFO cmd_data[0x0003FFFF/sizeof(i64) + 1];
 
-static void invalid(uint32_t w0, uint32_t w1);
 static void tri_noshade(uint32_t w0, uint32_t w1);
 static void tri_noshade_z(uint32_t w0, uint32_t w1);
 static void tri_tex(uint32_t w0, uint32_t w1);
@@ -40,22 +39,22 @@ NOINLINE static void render_spans(
 STRICTINLINE static u16 normalize_dzpix(u16 sum);
 
 static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
-   gdp_no_op              ,invalid           ,invalid           ,invalid           ,
-   invalid           ,invalid           ,invalid           ,invalid           ,
+   gdp_no_op              ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
+   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
    tri_noshade       ,tri_noshade_z     ,tri_tex           ,tri_tex_z         ,
    tri_shade         ,tri_shade_z       ,tri_texshade      ,tri_texshade_z    ,
 
-   invalid           ,invalid           ,invalid           ,invalid           ,
-   invalid           ,invalid           ,invalid           ,invalid           ,
-   invalid           ,invalid           ,invalid           ,invalid           ,
-   invalid           ,invalid           ,invalid           ,invalid           ,
+   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
+   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
+   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
+   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
 
-   invalid           ,invalid           ,invalid           ,invalid           ,
+   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
    tex_rect          ,tex_rect_flip     ,gdp_load_sync         ,gdp_pipe_sync         ,
    gdp_tile_sync         ,gdp_full_sync         ,gdp_set_key_gb        ,gdp_set_key_r         ,
    gdp_set_convert       ,set_scissor       ,set_prim_depth    ,set_other_modes   ,
 
-   load_tlut         ,invalid           ,set_tile_size     ,load_block        ,
+   load_tlut         ,gdp_invalid           ,set_tile_size     ,load_block        ,
    load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
    gdp_set_fog_color     ,gdp_set_blend_color   ,gdp_set_prim_color    ,gdp_set_env_color     ,
    set_combine       ,gdp_set_texture_image ,set_mask_image    ,set_color_image   ,
@@ -245,17 +244,6 @@ exit_a:
 exit_b:
    *gfx_info.DPC_START_REG = *gfx_info.DPC_CURRENT_REG = *gfx_info.DPC_END_REG;
    return;
-}
-
-static char invalid_command[] = "00\nDP reserved command.";
-
-static void invalid(uint32_t w0, uint32_t w1)
-{
-   const unsigned int command = (w0 & 0x3F000000) >> 24;
-
-   invalid_command[0] = '0' | command >> 3;
-   invalid_command[1] = '0' | command & 07;
-   DisplayError(invalid_command);
 }
 
 static void tri_noshade(uint32_t w0, uint32_t w1)

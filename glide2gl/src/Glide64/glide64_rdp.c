@@ -606,11 +606,6 @@ EXPORT void CALL ProcessDList(void)
   }
 }
 
-// undef - undefined instruction, always ignore
-static void undef(uint32_t w0, uint32_t w1)
-{
-}
-
 static void ys_memrect(uint32_t w0, uint32_t w1)
 {
   uint32_t off_x, off_y;
@@ -2731,22 +2726,22 @@ static void rdp_trishadetxtrz(uint32_t w0, uint32_t w1)
 static rdp_instr rdp_command_table[64] =
 {
    /* 0x00 */
-   gdp_no_op,          undef,                  undef,                  undef,
-   undef,              undef,                  undef,                  undef,
+   gdp_no_op,          gdp_invalid,                  gdp_invalid,                  gdp_invalid,
+   gdp_invalid,              gdp_invalid,                  gdp_invalid,                  gdp_invalid,
    rdp_trifill,        rdp_trifillz,           rdp_tritxtr,            rdp_tritxtrz,
    rdp_trishade,       rdp_trishadez,          rdp_trishadetxtr,       rdp_trishadetxtrz,
    /* 0x10 */
-   undef,              undef,                  undef,                  undef,
-   undef,              undef,                  undef,                  undef,
-   undef,              undef,                  undef,                  undef,
-   undef,              undef,                  undef,                  undef,
+   gdp_invalid,              gdp_invalid,                  gdp_invalid,                  gdp_invalid,
+   gdp_invalid,              gdp_invalid,                  gdp_invalid,                  gdp_invalid,
+   gdp_invalid,              gdp_invalid,                  gdp_invalid,                  gdp_invalid,
+   gdp_invalid,              gdp_invalid,                  gdp_invalid,                  gdp_invalid,
    /* 0x20 */
-   undef,              undef,                  undef,                  undef,
+   gdp_invalid,              gdp_invalid,                  gdp_invalid,                  gdp_invalid,
    rdp_texrect,        rdp_texrect,            gdp_load_sync,           gdp_pipe_sync,
    gdp_tile_sync,       gdp_full_sync,           gdp_set_key_gb,           gdp_set_key_r,
    gdp_set_convert,    rdp_setscissor,         gdp_set_prim_depth,       rdp_setothermode,
    /* 0x30 */
-   rdp_loadtlut,           undef,                  rdp_settilesize,        rdp_loadblock,
+   rdp_loadtlut,           gdp_invalid,                  rdp_settilesize,        rdp_loadblock,
    rdp_loadtile,           rdp_settile,            rdp_fillrect,           gdp_set_fill_color,
    gdp_set_fog_color,      gdp_set_blend_color,      rdp_setprimcolor,       gdp_set_env_color,
    rdp_setcombine,         rdp_settextureimage,    rdp_setdepthimage,      rdp_setcolorimage

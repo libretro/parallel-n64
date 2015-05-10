@@ -370,3 +370,15 @@ void gdp_load_sync(uint32_t w0, uint32_t w1)
 void gdp_no_op(uint32_t w0, uint32_t w1)
 {
 }
+
+static char invalid_command[] = "00\nDP reserved command.";
+
+void gdp_invalid(uint32_t w0, uint32_t w1)
+{
+   const unsigned int command = (w0 & 0x3F000000) >> 24;
+
+   invalid_command[0] = '0' | command >> 3;
+   invalid_command[1] = '0' | command & 07;
+
+   //DisplayError(invalid_command);
+}
