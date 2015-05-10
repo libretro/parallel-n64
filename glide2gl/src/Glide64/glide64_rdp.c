@@ -49,8 +49,6 @@
 #include "Glide64_UCode.h"
 #include "../../libretro/SDL.h"
 
-static int cmd_ptr; /* for 64-bit elements, always <= +0x7FFF */
-
 #ifdef __LIBRETRO__ // Prefix API
 #define VIDEO_TAG(X) glide64##X
 
