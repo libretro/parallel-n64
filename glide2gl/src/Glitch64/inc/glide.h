@@ -15,8 +15,6 @@ extern "C" {
 ** TYPE DEFINITIONS
 ** -----------------------------------------------------------------------
 */
-typedef uint32_t GrColor_t;
-typedef uint32_t GrContext_t;
 typedef int (*GrProc)();
 
 /*
@@ -485,12 +483,12 @@ void grErrorSetCallback( GrErrorCallbackFnc_t fnc );
 /*
 ** SST routines
 */
- GrContext_t grSstWinOpen(void);
+uint32_t grSstWinOpen(void);
 
  int32_t 
-grSstWinClose( GrContext_t context );
+grSstWinClose( uint32_t context );
 
-int32_t grSelectContext( GrContext_t context );
+int32_t grSelectContext( uint32_t context );
 
 /*
 ** Glide configuration and special effect maintenance functions
@@ -509,7 +507,7 @@ void  grAlphaTestReferenceValue( uint8_t value );
 
 void  grChromakeyMode( int32_t mode );
 
-void grChromakeyValue( GrColor_t value );
+void grChromakeyValue( uint32_t value );
 
 #define grClipWindow(minx, miny, maxx, maxy) glScissor(minx, height - maxy, maxx - minx, maxy - miny); glEnable(GL_SCISSOR_TEST)
 
@@ -522,7 +520,7 @@ void grColorCombine(
 
 void grCullMode( int32_t mode );
 
-void grConstantColorValue( GrColor_t value );
+void grConstantColorValue( uint32_t value );
 
 void grDepthBiasLevel( int32_t level );
 
@@ -538,7 +536,7 @@ void grDepthBiasLevel( int32_t level );
 
 #define grDepthMask(mask) glDepthMask(mask)
 
-void grFogMode( int32_t mode, GrColor_t fogcolor );
+void grFogMode( int32_t mode, uint32_t fogcolor );
 
 void grLoadGammaTable( uint32_t nentries, uint32_t *red, uint32_t *green, uint32_t *blue);
 

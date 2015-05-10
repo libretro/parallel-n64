@@ -56,7 +56,7 @@ static int isExtensionSupported(const char *extension)
 
 void FindBestDepthBias();
 
-GrContext_t grSstWinOpen(void)
+uint32_t grSstWinOpen(void)
 {
    bool ret;
    struct retro_variable var = { "mupen64-screensize", 0 };
@@ -141,7 +141,7 @@ GrContext_t grSstWinOpen(void)
    return 1;
 }
 
-int32_t grSstWinClose( GrContext_t context )
+int32_t grSstWinClose( uint32_t context )
 {
    if (frameBuffer)
       free(frameBuffer);

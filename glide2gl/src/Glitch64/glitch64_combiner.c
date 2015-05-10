@@ -561,7 +561,7 @@ void set_lambda(void)
    glUniform1f(lambda_location, lambda);
 }
 
-void grConstantColorValue( GrColor_t value )
+void grConstantColorValue( uint32_t value )
 {
    LOG("grConstantColorValue(%d)\r\n", value);
    texture_env_color[0] = ((value >> 24) & 0xFF) / 255.0f;
@@ -1341,7 +1341,7 @@ void grAlphaTestFunction( int32_t function, uint8_t value, int set_alpha_ref)
    alpha_ref = (set_alpha_ref) ? value : alpha_ref;
 }
 
-void grFogMode( int32_t mode, GrColor_t fogcolor)
+void grFogMode( int32_t mode, uint32_t fogcolor)
 {
    fog_enabled = mode;
 
@@ -1365,7 +1365,7 @@ void grChromakeyMode( int32_t mode )
    need_to_compile = 1;
 }
 
-void grChromakeyValue( GrColor_t value )
+void grChromakeyValue( uint32_t value )
 {
    int chroma_color_location = glGetUniformLocation(program_object, "chroma_color");
 
@@ -2086,7 +2086,7 @@ grTexAlphaCombineExt(int32_t       tmu,
       uint32_t c, int32_t c_invert,
       uint32_t d, int32_t d_invert,
       uint32_t shift, int32_t invert,
-      GrColor_t     ccolor_value)
+      uint32_t     ccolor_value)
 {
    int num_tex = 0;
 

@@ -106,7 +106,7 @@ grTexAlphaCombineExt(int32_t       tmu,
                      uint32_t c, int32_t c_invert,
                      uint32_t d, int32_t d_invert,
                      uint32_t shift, int32_t invert,
-                     GrColor_t ccolor_value);
+                     uint32_t ccolor_value);
 
 void  
 grColorCombineExt(uint32_t a, uint32_t a_mode,
@@ -122,9 +122,9 @@ grAlphaCombineExt(uint32_t a, uint32_t a_mode,
                   uint32_t d, int32_t d_invert,
                   uint32_t shift, int32_t invert);
 
-extern void grChromaRangeExt(GrColor_t color0, GrColor_t color1, uint32_t mode);
+extern void grChromaRangeExt(uint32_t color0, uint32_t color1, uint32_t mode);
 extern void grChromaRangeModeExt(int32_t mode);
-extern void grTexChromaRangeExt(int32_t tmu, GrColor_t color0, GrColor_t color1, int32_t mode);
+extern void grTexChromaRangeExt(int32_t tmu, uint32_t color0, uint32_t color1, int32_t mode);
 extern void grTexChromaModeExt(int32_t tmu, int32_t mode);
 
 extern int width, height;
