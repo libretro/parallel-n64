@@ -380,62 +380,60 @@ static void CopyFrameBuffer (GrBuffer_t buffer)
    }
    else
    {
+      GrLfbInfo_t info;
+      float scale_x = (settings.scr_res_x - rdp.offset_x*2.0f)  / max(width, rdp.vi_width);
+      float scale_y = (settings.scr_res_y - rdp.offset_y*2.0f) / max(height, rdp.vi_height);
+
+      FRDP("width: %d, height: %d, ul_y: %d, lr_y: %d, scale_x: %f, scale_y: %f, ci_width: %d, ci_height: %d\n",width, height, rdp.ci_upper_bound, rdp.ci_lower_bound, scale_x, scale_y, rdp.ci_width, rdp.ci_height);
+      info.size = sizeof(GrLfbInfo_t);
+
+      if (grLfbLock (GR_LFB_READ_ONLY,
+               buffer,
+               GR_LFBWRITEMODE_565,
+               GR_ORIGIN_UPPER_LEFT,
+               FXFALSE,
+               &info))
       {
-         GrLfbInfo_t info;
-         float scale_x = (settings.scr_res_x - rdp.offset_x*2.0f)  / max(width, rdp.vi_width);
-         float scale_y = (settings.scr_res_y - rdp.offset_y*2.0f) / max(height, rdp.vi_height);
+         int y, x, x_start, y_start, x_end, y_end, read_alpha;
+         uint16_t c;
+         uint16_t *ptr_src = (uint16_t*)info.lfbPtr;
+         uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
+         uint32_t *ptr_dst32 = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
+         uint32_t stride = info.strideInBytes>>1;
 
-         FRDP("width: %d, height: %d, ul_y: %d, lr_y: %d, scale_x: %f, scale_y: %f, ci_width: %d, ci_height: %d\n",width, height, rdp.ci_upper_bound, rdp.ci_lower_bound, scale_x, scale_y, rdp.ci_width, rdp.ci_height);
-         info.size = sizeof(GrLfbInfo_t);
+         read_alpha = settings.frame_buffer & fb_read_alpha;
+         if ((settings.hacks&hack_PMario) && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status != CI_AUX)
+            read_alpha = false;
+         x_start = 0;
+         y_start = 0;
+         x_end = width;
+         y_end = height;
 
-         if (grLfbLock (GR_LFB_READ_ONLY,
-                  buffer,
-                  GR_LFBWRITEMODE_565,
-                  GR_ORIGIN_UPPER_LEFT,
-                  FXFALSE,
-                  &info))
+         if (settings.hacks&hack_BAR)
+            x_start = 80, y_start = 24, x_end = 240, y_end = 86;
+
+         for (y = y_start; y < y_end; y++)
          {
-            int y, x, x_start, y_start, x_end, y_end, read_alpha;
-            uint16_t c;
-            uint16_t *ptr_src = (uint16_t*)info.lfbPtr;
-            uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
-            uint32_t *ptr_dst32 = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
-            uint32_t stride = info.strideInBytes>>1;
-
-            read_alpha = settings.frame_buffer & fb_read_alpha;
-            if ((settings.hacks&hack_PMario) && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status != CI_AUX)
-               read_alpha = false;
-            x_start = 0;
-			y_start = 0;
-			x_end = width;
-			y_end = height;
-
-            if (settings.hacks&hack_BAR)
-               x_start = 80, y_start = 24, x_end = 240, y_end = 86;
-
-            for (y = y_start; y < y_end; y++)
+            for (x = x_start; x < x_end; x++)
             {
-               for (x = x_start; x < x_end; x++)
-               {
-                  c = ptr_src[(int)(x*scale_x + rdp.offset_x) + (int)(y * scale_y + rdp.offset_y) * stride];
-                  c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-                  if (read_alpha && c == 1)
-                     c = 0;
-                  if (rdp.ci_size <= 2)
-                     ptr_dst[(x + y * width)^1] = c;
-                  else
-                     ptr_dst32[x + y * width] = RGBA16TO32(c);
-               }
+               c = ptr_src[(int)(x*scale_x + rdp.offset_x) + (int)(y * scale_y + rdp.offset_y) * stride];
+               c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
+               if (read_alpha && c == 1)
+                  c = 0;
+               if (rdp.ci_size <= 2)
+                  ptr_dst[(x + y * width)^1] = c;
+               else
+                  ptr_dst32[x + y * width] = RGBA16TO32(c);
             }
+         }
 
-            // Unlock the backbuffer
-            grLfbUnlock (GR_LFB_READ_ONLY, buffer);
-            LRDP("LfbLock.  Framebuffer copy complete.\n");
-         }
-         else
-         {
-            LRDP("Framebuffer copy failed.\n");
-         }
+         // Unlock the backbuffer
+         grLfbUnlock (GR_LFB_READ_ONLY, buffer);
+         LRDP("LfbLock.  Framebuffer copy complete.\n");
+      }
+      else
+      {
+         LRDP("Framebuffer copy failed.\n");
       }
    }
 }
