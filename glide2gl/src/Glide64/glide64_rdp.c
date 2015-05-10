@@ -1686,10 +1686,9 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 
    if (fb_emulation_enabled && (rdp.num_of_ci < NUMTEXBUF))
    {
-      COLOR_IMAGE *cur_fb, *prev_fb, *next_fb;
-      cur_fb  = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count];
-      prev_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count?rdp.ci_count-1:0];
-      next_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count+1];
+      COLOR_IMAGE *cur_fb  = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count];
+      COLOR_IMAGE *prev_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count?rdp.ci_count-1:0];
+      COLOR_IMAGE *next_fb = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count+1];
 
       switch (cur_fb->status)
       {
@@ -2023,23 +2022,24 @@ EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
   if (cpu_fb_read_called)
   {
     cpu_fb_ignore = true;
-    cpu_fb_write = false;
+    cpu_fb_write  = false;
     return;
   }
 
   cpu_fb_write_called = true;
-  a = segoffset(addr);
+  a                   = segoffset(addr);
 
   if (a < rdp.cimg || a > rdp.ci_end)
     return;
-  cpu_fb_write = true;
-  shift_l = (a-rdp.cimg) >> 1;
-  shift_r = shift_l+2;
 
-  d_ul_x = min(d_ul_x, shift_l%rdp.ci_width);
-  d_ul_y = min(d_ul_y, shift_l/rdp.ci_width);
-  d_lr_x = max(d_lr_x, shift_r%rdp.ci_width);
-  d_lr_y = max(d_lr_y, shift_r/rdp.ci_width);
+  cpu_fb_write = true;
+  shift_l      = (a-rdp.cimg) >> 1;
+  shift_r      = shift_l+2;
+
+  d_ul_x       = min(d_ul_x, shift_l%rdp.ci_width);
+  d_ul_y       = min(d_ul_y, shift_l/rdp.ci_width);
+  d_lr_x       = max(d_lr_x, shift_r%rdp.ci_width);
+  d_lr_y       = max(d_lr_y, shift_r/rdp.ci_width);
 }
 
 
@@ -2069,7 +2069,9 @@ EXPORT void CALL FBGetFrameBufferInfo(void *p)
 {
    int i;
    FrameBufferInfo * pinfo = (FrameBufferInfo *)p;
+
    memset(pinfo,0,sizeof(FrameBufferInfo)*6);
+
    if (!(settings.frame_buffer&fb_get_info))
       return;
 
@@ -2080,12 +2082,17 @@ EXPORT void CALL FBGetFrameBufferInfo(void *p)
       pinfo[0].size   = rdp.maincimg[1].size;
       pinfo[0].width  = rdp.maincimg[1].width;
       pinfo[0].height = rdp.maincimg[1].height;
-      info_index = 1;
+      info_index      = 1;
+
       for (i = 0; i < rdp.num_of_ci && info_index < 6; i++)
       {
          COLOR_IMAGE *cur_fb = (COLOR_IMAGE*)&rdp.frame_buffers[i];
-         if (cur_fb->status == CI_MAIN || cur_fb->status == CI_COPY_SELF ||
-               cur_fb->status == CI_OLD_COPY)
+
+         if (
+                  cur_fb->status == CI_MAIN
+               || cur_fb->status == CI_COPY_SELF
+               || cur_fb->status == CI_OLD_COPY
+            )
          {
             pinfo[info_index].addr   = cur_fb->addr;
             pinfo[info_index].size   = cur_fb->size;
@@ -2123,29 +2130,33 @@ void DetectFrameBufferUsage(void)
    ci = rdp.cimg;
    zi = rdp.zimg;
    ci_height = rdp.frame_buffers[(rdp.ci_count > 0)?rdp.ci_count-1:0].height;
-   rdp.main_ci = rdp.main_ci_end = rdp.main_ci_bg = rdp.ci_count = 0;
-   rdp.main_ci_index = rdp.copy_ci_index = rdp.copy_zi_index = 0;
-   rdp.zimg_end = 0;
-   rdp.tmpzimg = 0;
-   rdp.motionblur = false;
    rdp.main_ci_last_tex_addr = 0;
+   rdp.main_ci          = 0;
+   rdp.main_ci_end      = 0;
+   rdp.main_ci_bg       = 0;
+   rdp.ci_count         = 0;
+   rdp.main_ci_index    = 0;
+   rdp.copy_ci_index    = 0;
+   rdp.copy_zi_index    = 0;
+   rdp.zimg_end         = 0;
+   rdp.tmpzimg          = 0;
+   rdp.motionblur       = false;
    previous_ci_was_read = rdp.read_previous_ci;
    rdp.read_previous_ci = false;
    rdp.read_whole_frame = false;
-   rdp.swap_ci_index = rdp.black_ci_index = -1;
-   SwapOK = true;
+   rdp.swap_ci_index    = rdp.black_ci_index = -1;
+   SwapOK               = true;
 
    // Start executing at the start of the display list
-   rdp.pc_i = 0;
-   rdp.pc[rdp.pc_i] = dlist_start;
-   rdp.dl_count = -1;
-   rdp.halt = 0;
-   rdp.scale_x_bak = rdp.scale_x;
-   rdp.scale_y_bak = rdp.scale_y;
+   rdp.pc_i             = 0;
+   rdp.pc[rdp.pc_i]     = dlist_start;
+   rdp.dl_count         = -1;
+   rdp.halt             = 0;
+   rdp.scale_x_bak      = rdp.scale_x;
+   rdp.scale_y_bak      = rdp.scale_y;
 
-   // MAIN PROCESSING LOOP
-   do {
-
+   do
+   {
       // Get the address of the next command
       a = rdp.pc[rdp.pc_i] & BMASK;
 
@@ -2174,8 +2185,10 @@ void DetectFrameBufferUsage(void)
          }
       }
 
-   } while (!rdp.halt);
+   }while (!rdp.halt);
+
    SwapOK = true;
+
    if (rdp.ci_count > NUMTEXBUF) //overflow
    {
       rdp.cimg = ci;
@@ -2235,9 +2248,10 @@ void DetectFrameBufferUsage(void)
    }
 #endif
 
-   rdp.cimg = ci;
-   rdp.zimg = zi;
+   rdp.cimg      = ci;
+   rdp.zimg      = zi;
    rdp.num_of_ci = rdp.ci_count;
+
    if (rdp.read_previous_ci && previous_ci_was_read)
    {
       if (!fb_hwfbe_enabled || !rdp.copy_ci_index)
@@ -2282,7 +2296,7 @@ void DetectFrameBufferUsage(void)
       }
    }
 
-   rdp.ci_count = 0;
+   rdp.ci_count    = 0;
    rdp.maincimg[0] = rdp.frame_buffers[rdp.main_ci_index];
    //rdp.scale_x = rdp.scale_x_bak;
    //rdp.scale_y = rdp.scale_y_bak;
