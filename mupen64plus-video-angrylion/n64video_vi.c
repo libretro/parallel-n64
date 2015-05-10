@@ -81,18 +81,18 @@ void rdp_update(void)
    int validh;
    int serration_pulses;
    int lowerfield;
-   register int i, j;
+   int i, j;
    extern uint32_t *blitter_buf;
-   const int x_add = *gfx_info.VI_X_SCALE_REG & 0x00000FFF;
-   const int v_sync = *gfx_info.VI_V_SYNC_REG & 0x000003FF;
-   const int ispal  = (v_sync > 550);
-   const int x1 = (*gfx_info.VI_H_START_REG >> 16) & 0x03FF;
-   const int y1 = (*gfx_info.VI_V_START_REG >> 16) & 0x03FF;
-   const int x2 = (*gfx_info.VI_H_START_REG >>  0) & 0x03FF;
-   const int y2 = (*gfx_info.VI_V_START_REG >>  0) & 0x03FF;
-   const int delta_x = x2 - x1;
-   const int delta_y = y2 - y1;
-   const int vitype = *gfx_info.VI_STATUS_REG & 0x00000003;
+   const int x_add      = *gfx_info.VI_X_SCALE_REG & 0x00000FFF;
+   const int v_sync     = *gfx_info.VI_V_SYNC_REG & 0x000003FF;
+   const int ispal      = (v_sync > 550);
+   const int x1         = (*gfx_info.VI_H_START_REG >> 16) & 0x03FF;
+   const int y1         = (*gfx_info.VI_V_START_REG >> 16) & 0x03FF;
+   const int x2         = (*gfx_info.VI_H_START_REG >>  0) & 0x03FF;
+   const int y2         = (*gfx_info.VI_V_START_REG >>  0) & 0x03FF;
+   const int delta_x    = x2 - x1;
+   const int delta_y    = y2 - y1;
+   const int vitype     = *gfx_info.VI_STATUS_REG & 0x00000003;
    const int pixel_size = sizeof(INT32);
 
    /*
@@ -100,16 +100,16 @@ void rdp_update(void)
     */
    serration_pulses  = !!(*gfx_info.VI_STATUS_REG & 0x00000040);
    serration_pulses &= (y1 != oldvstart);
-   lowerfield = serration_pulses & (ispal ? y1 < oldvstart : y1 > oldvstart);
-   two_lines = serration_pulses ^ 0;
-   line_shifter = serration_pulses ^ 1;
-   line_count = pitchindwords << serration_pulses;
+   lowerfield        = serration_pulses & (ispal ? y1 < oldvstart : y1 > oldvstart);
+   two_lines         = serration_pulses ^ 0;
+   line_shifter      = serration_pulses ^ 1;
+   line_count        = pitchindwords << serration_pulses;
 
-   hres = delta_x;
-   vres = delta_y;
-   h_start = x1 - (ispal ? 128 : 108);
-   v_start = y1 - (ispal ?  47 :  37);
-   x_start = (*gfx_info.VI_X_SCALE_REG >> 16) & 0x00000FFF;
+   hres              = delta_x;
+   vres              = delta_y;
+   h_start           = x1 - (ispal ? 128 : 108);
+   v_start           = y1 - (ispal ?  47 :  37);
+   x_start           = (*gfx_info.VI_X_SCALE_REG >> 16) & 0x00000FFF;
 
    if (h_start < 0)
    {
@@ -127,7 +127,7 @@ void rdp_update(void)
       vres = PRESCALE_HEIGHT - v_start;
    h_end = hres + h_start;
 
-   hrightblank = PRESCALE_WIDTH - h_end;
+   hrightblank  = PRESCALE_WIDTH - h_end;
    vactivelines = v_sync - (ispal ? 47 : 37);
    if (vactivelines > PRESCALE_HEIGHT)
    {
@@ -142,9 +142,9 @@ void rdp_update(void)
       return;
    }
    vactivelines >>= line_shifter;
-   validh = (hres >= 0 && h_start >= 0 && h_start < PRESCALE_WIDTH);
-   pix = 0;
-   cur_cvg = 0;
+   validh   = (hres >= 0 && h_start >= 0 && h_start < PRESCALE_WIDTH);
+   pix      = 0;
+   cur_cvg  = 0;
    if (hres <= 0 || vres <= 0 || (!(vitype & 2) && prevwasblank)) /* early return. */
       return;
 
@@ -219,9 +219,7 @@ no_frame_buffer:
 
    if (line_shifter != 0) /* 240p non-interlaced VI DAC mode */
    {
-      register signed int cur_line;
-
-      cur_line = 240 - 1;
+      signed int cur_line = 240 - 1;
       while (cur_line >= 0)
       {
          memcpy(
@@ -248,6 +246,7 @@ static void do_frame_buffer_proper(
    CCVG *viaa_cache, *viaa_cache_next, *divot_cache, *divot_cache_next;
    CCVG *tempccvgptr;
    CCVG color, nextcolor, scancolor, scannextcolor;
+   int i, j;
    UINT32 * scanline;
    UINT32 pixels = 0, nextpixels = 0;
    UINT32 prevy = 0;
@@ -264,7 +263,6 @@ static void do_frame_buffer_proper(
    int vi_width_low = vi_width & 0xFFF;
    const int x_add = *gfx_info.VI_X_SCALE_REG & 0x00000FFF;
    UINT32 y_add = vi_y_scale & 0xfff;
-   register int i, j;
    const int gamma_dither     = !!(*gfx_info.VI_STATUS_REG & 0x00000004);
    const int gamma            = !!(*gfx_info.VI_STATUS_REG & 0x00000008);
    const int divot            = !!(*gfx_info.VI_STATUS_REG & 0x00000010);
@@ -285,15 +283,15 @@ static void do_frame_buffer_proper(
             "turning this bit on will result in permanent damage to the "\
             "hardware! Emulation will now continue.");
 
-   viaa_cache = &viaa_array[0];
-   viaa_cache_next = &viaa_array[1024];
-   divot_cache = &divot_array[0];
-   divot_cache_next = &divot_array[1024];
+   viaa_cache         = &viaa_array[0];
+   viaa_cache_next    = &viaa_array[1024];
+   divot_cache        = &divot_array[0];
+   divot_cache_next   = &divot_array[1024];
 
    cache_marker_init  = (x_start >> 10) - 2;
    cache_marker_init |= -(cache_marker_init < 0);
 
-   slowbright = 0;
+   slowbright         = 0;
 #if 0
    if (GetAsyncKeyState(0x91))
       brightness = ++brightness & 0xF;
@@ -313,6 +311,7 @@ static void do_frame_buffer_proper(
          tempccvgptr = viaa_cache;
          viaa_cache = viaa_cache_next;
          viaa_cache_next = tempccvgptr;
+
          if (divot == 0)
          {/* do nothing and branch */}
          else
@@ -335,35 +334,35 @@ static void do_frame_buffer_proper(
                = cache_marker_init;
       }
 
-      scanline = &PreScale[prescale_ptr];
+      scanline      = &PreScale[prescale_ptr];
       prescale_ptr += linecount;
 
-      prevy = y_start >> 10;
-      yfrac = (y_start >> 5) & 0x1f;
-      pixels = vi_width_low * prevy;
-      nextpixels = pixels + vi_width_low;
+      prevy         = y_start >> 10;
+      yfrac         = (y_start >> 5) & 0x1f;
+      pixels        = vi_width_low * prevy;
+      nextpixels    = pixels + vi_width_low;
 
       for (i = 0; i < hres; i++)
       {
          unsigned char argb[4];
 
-         line_x = x_start >> 10;
+         line_x      = x_start >> 10;
          prev_line_x = line_x - 1;
          next_line_x = line_x + 1;
-         far_line_x = line_x + 2;
+         far_line_x  = line_x + 2;
 
-         cur_x = pixels + line_x;
-         prev_x = pixels + prev_line_x;
-         next_x = pixels + next_line_x;
-         far_x = pixels + far_line_x;
+         cur_x       = pixels + line_x;
+         prev_x      = pixels + prev_line_x;
+         next_x      = pixels + next_line_x;
+         far_x       = pixels + far_line_x;
 
-         scan_x = nextpixels + line_x;
+         scan_x      = nextpixels + line_x;
          prev_scan_x = nextpixels + prev_line_x;
          next_scan_x = nextpixels + next_line_x;
-         far_scan_x = nextpixels + far_line_x;
+         far_scan_x  = nextpixels + far_line_x;
 
-         xfrac = (x_start >> 5) & 0x1f;
-         lerping = lerp_en & (xfrac || yfrac);
+         xfrac       = (x_start >> 5) & 0x1f;
+         lerping     = lerp_en & (xfrac || yfrac);
 
          if (prev_line_x > cache_marker)
          {
@@ -566,7 +565,7 @@ static void do_frame_buffer_raw(
    int pixels;
    int prevy, y_start;
    int cur_x, line_x;
-   register int i;
+   int i;
    const int frame_buffer = *gfx_info.VI_ORIGIN_REG & 0x00FFFFFF;
    const int VI_width     = *gfx_info.VI_WIDTH_REG & 0x00000FFF;
    const int x_add        = *gfx_info.VI_X_SCALE_REG & 0x00000FFF;
@@ -719,13 +718,12 @@ STRICTINLINE static void video_filter16(
 {
    UINT32 penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
    UINT16 pix;
-   UINT32 numoffull = 1;
    UINT32 hidval;
-   UINT32 r, g, b; 
    UINT32 backr[7], backg[7], backb[7];
    UINT32 invr[7], invg[7], invb[7];
    UINT32 colr, colg, colb;
 
+   UINT32 numoffull = 1;
    UINT32 idx = (fboffset >> 1) + num;
    UINT32 leftup = idx - hres - 1;
    UINT32 rightup = idx - hres + 1;
@@ -734,10 +732,9 @@ STRICTINLINE static void video_filter16(
    UINT32 leftdown = idx + hres - 1;
    UINT32 rightdown = idx + hres + 1;
    UINT32 coeff = 7 - centercvg;
-
-   r = *endr;
-   g = *endg;
-   b = *endb;
+   UINT32 r = *endr;
+   UINT32 g = *endg;
+   UINT32 b = *endb;
 
    backr[0] = r;
    backg[0] = g;
@@ -782,13 +779,12 @@ STRICTINLINE static void video_filter32(
     UINT32 centercvg)
 {
    UINT32 penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
-   UINT32 numoffull = 1;
    UINT32 pix = 0, pixcvg = 0;
-   UINT32 r, g, b; 
    UINT32 backr[7], backg[7], backb[7];
    UINT32 invr[7], invg[7], invb[7];
    UINT32 colr, colg, colb;
 
+   UINT32 numoffull = 1;
    UINT32 idx = (fboffset >> 2) + num;
    UINT32 leftup = idx - hres - 1;
    UINT32 rightup = idx - hres + 1;
@@ -798,9 +794,9 @@ STRICTINLINE static void video_filter32(
    UINT32 rightdown = idx + hres + 1;
    UINT32 coeff = 7 - centercvg;
 
-   r = *endr;
-   g = *endg;
-   b = *endb;
+   UINT32 r = *endr;
+   UINT32 g = *endg;
+   UINT32 b = *endb;
 
    backr[0] = r;
    backg[0] = g;
