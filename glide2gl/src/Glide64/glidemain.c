@@ -539,7 +539,7 @@ EXPORT void CALL RomClosed (void)
    ReleaseGfx ();
 }
 
-static void CheckDRAMSize()
+static void CheckDRAMSize(void)
 {
    uint32_t test = gfx_info.RDRAM[0x007FFFFF] + 1;
    if (test)
