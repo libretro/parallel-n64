@@ -2813,12 +2813,6 @@ static const uint32_t rdp_command_length[64] =
    8                       // 0x3f, Set_Color_Image
 };
 
-static INLINE uint32_t READ_RDP_DATA(uint32_t address)
-{
-   if ((*(uint32_t*)gfx_info.DPC_STATUS_REG) & 0x1) /* XBUS_DMEM_DMA enabled */
-      return ((uint32_t*)gfx_info.DMEM)[(address & 0xfff) >> 2];
-   return ((uint32_t*)gfx_info.RDRAM)[address >> 2];
-}
 
 static void rdphalf_1(uint32_t w0, uint32_t w1)
 {
@@ -2870,6 +2864,13 @@ static void rdphalf_2(uint32_t w0, uint32_t w1)
 
 static void rdphalf_cont(uint32_t w0, uint32_t w1)
 {
+}
+
+static INLINE uint32_t READ_RDP_DATA(uint32_t address)
+{
+   if ((*(uint32_t*)gfx_info.DPC_STATUS_REG) & 0x1) /* XBUS_DMEM_DMA enabled */
+      return ((uint32_t*)gfx_info.DMEM)[(address & 0xfff) >> 2];
+   return ((uint32_t*)gfx_info.RDRAM)[address >> 2];
 }
 
 /******************************************************************
