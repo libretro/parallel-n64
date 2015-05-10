@@ -1,47 +1,8 @@
-/*
-** THIS SOFTWARE IS SUBJECT TO COPYRIGHT PROTECTION AND IS OFFERED ONLY
-** PURSUANT TO THE 3DFX GLIDE GENERAL PUBLIC LICENSE. THERE IS NO RIGHT
-** TO USE THE GLIDE TRADEMARK WITHOUT PRIOR WRITTEN PERMISSION OF 3DFX
-** INTERACTIVE, INC. A COPY OF THIS LICENSE MAY BE OBTAINED FROM THE 
-** DISTRIBUTOR OR BY CONTACTING 3DFX INTERACTIVE INC(info@3dfx.com). 
-** THIS PROGRAM IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER 
-** EXPRESSED OR IMPLIED. SEE THE 3DFX GLIDE GENERAL PUBLIC LICENSE FOR A
-** FULL TEXT OF THE NON-WARRANTY PROVISIONS.  
-** 
-** USE, DUPLICATION OR DISCLOSURE BY THE GOVERNMENT IS SUBJECT TO
-** RESTRICTIONS AS SET FORTH IN SUBDIVISION (C)(1)(II) OF THE RIGHTS IN
-** TECHNICAL DATA AND COMPUTER SOFTWARE CLAUSE AT DFARS 252.227-7013,
-** AND/OR IN SIMILAR OR SUCCESSOR CLAUSES IN THE FAR, DOD OR NASA FAR
-** SUPPLEMENT. UNPUBLISHED RIGHTS RESERVED UNDER THE COPYRIGHT LAWS OF
-** THE UNITED STATES.  
-** 
-** COPYRIGHT 3DFX INTERACTIVE, INC. 1999, ALL RIGHTS RESERVED
-*/
-
-/*
-** GLIDE.H
-**
-** The following #defines are relevant when using Glide:
-**
-** One of the following "platform constants" must be defined during
-** compilation:
-**
-**            __DOS__           Defined for 32-bit DOS applications
-**            __WIN32__         Defined for 32-bit Windows applications
-**            __sparc__         Defined for Sun Solaris/SunOS
-**            __linux__         Defined for Linux applications
-**            __FreeBSD__       Defined for FreeBSD applications
-**            __NetBSD__        Defined for NetBSD applications
-**            __OpenBSD__       Defined for OpenBSD applications
-**            __IRIX__          Defined for SGI Irix applications
-**
-*/
 #ifndef __GLIDE_H__
 #define __GLIDE_H__
 
 #include <3dfx.h>
 #include <glidesys.h>
-#include <sst1vid.h>
 #define GL_GLEXT_PROTOTYPES
 #include <SDL_opengles2.h>
 #include "boolean.h"
@@ -61,7 +22,7 @@ typedef FxU32 GrMipMapId_t;
 typedef FxU32 GrStipplePattern_t;
 typedef FxU8  GrFog_t;
 typedef FxU32 GrContext_t;
-typedef int (FX_CALL *GrProc)();
+typedef int (*GrProc)();
 
 /*
 ** -----------------------------------------------------------------------
@@ -521,15 +482,6 @@ typedef struct GrSstPerfStats_s {
   FxU32  pixelsOut;             /* # pixels drawn (including buffer clears) */
 } GrSstPerfStats_t;
 
-typedef struct {
-  GrScreenResolution_t resolution;
-  GrScreenRefresh_t    refresh;
-  int                  numColorBuffers;
-  int                  numAuxBuffers;
-} GrResolution;
-
-typedef GrResolution GlideResolution;
-
 #define GR_QUERY_ANY  ((FxU32)(~0))
 
 typedef FxU32 GrLfbSrcFmt_t;
@@ -559,17 +511,13 @@ typedef FxU32 GrLfbSrcFmt_t;
 /*
 ** rendering functions
 */
-FX_ENTRY void FX_CALL
-grDrawPoint( const void *pt );
+void grDrawPoint( const void *pt );
 
-FX_ENTRY void FX_CALL
-grDrawLine( const void *v1, const void *v2 );
+void grDrawLine( const void *v1, const void *v2 );
 
-FX_ENTRY void FX_CALL
-grVertexLayout(FxU32 param, FxI32 offset, FxU32 mode);
+void grVertexLayout(FxU32 param, FxI32 offset, FxU32 mode);
 
-FX_ENTRY void FX_CALL 
-grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers);
+void grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers);
 
 #define grBufferClear(color, alpha, depth) \
 { \
@@ -585,28 +533,19 @@ grDrawVertexArrayContiguous(FxU32 mode, FxU32 Count, void *pointers);
 */
 typedef void (*GrErrorCallbackFnc_t)( const char *string, FxBool fatal );
 
-FX_ENTRY void FX_CALL 
-grErrorSetCallback( GrErrorCallbackFnc_t fnc );
+void grErrorSetCallback( GrErrorCallbackFnc_t fnc );
 
 /*
 ** SST routines
 */
-FX_ENTRY GrContext_t FX_CALL 
-grSstWinOpen(
-          GrScreenResolution_t screen_resolution,
-          GrScreenRefresh_t    refresh_rate,
-          GrColorFormat_t      color_format,
-          GrOriginLocation_t   origin_location,
-          int                  nColBuffers,
-          int                  nAuxBuffers);
+ GrContext_t grSstWinOpen(void);
 
-FX_ENTRY FxBool FX_CALL
+ FxBool 
 grSstWinClose( GrContext_t context );
 
-FX_ENTRY void FX_CALL
-grSetNumPendingBuffers(FxI32 NumPendingBuffers);
+void  grSetNumPendingBuffers(FxI32 NumPendingBuffers);
 
-FX_ENTRY FxBool FX_CALL
+ FxBool 
 grSelectContext( GrContext_t context );
 
 /*
@@ -614,43 +553,34 @@ grSelectContext( GrContext_t context );
 */
 #define grAlphaBlendFunction(rgb_sf, rgb_df, alpha_sf, alpha_df) glEnable(GL_BLEND); glBlendFuncSeparate(rgb_sf, rgb_df, alpha_sf, alpha_df)
 
-FX_ENTRY void FX_CALL
-grAlphaCombine(
+void grAlphaCombine(
                GrCombineFunction_t function, GrCombineFactor_t factor,
                GrCombineLocal_t local, GrCombineOther_t other,
                FxBool invert
                );
 
-FX_ENTRY void FX_CALL
-grAlphaTestFunction( GrCmpFnc_t function, GrAlpha_t value, int set_alpha_ref);
+void  grAlphaTestFunction( GrCmpFnc_t function, GrAlpha_t value, int set_alpha_ref);
 
-FX_ENTRY void FX_CALL
-grAlphaTestReferenceValue( GrAlpha_t value );
+void  grAlphaTestReferenceValue( GrAlpha_t value );
 
-FX_ENTRY void FX_CALL 
-grChromakeyMode( GrChromakeyMode_t mode );
+void  grChromakeyMode( GrChromakeyMode_t mode );
 
-FX_ENTRY void FX_CALL 
-grChromakeyValue( GrColor_t value );
+void grChromakeyValue( GrColor_t value );
 
 #define grClipWindow(minx, miny, maxx, maxy) glScissor(minx, height - maxy, maxx - minx, maxy - miny); glEnable(GL_SCISSOR_TEST)
 
-FX_ENTRY void FX_CALL 
-grColorCombine(
+void grColorCombine(
                GrCombineFunction_t function, GrCombineFactor_t factor,
                GrCombineLocal_t local, GrCombineOther_t other,
                FxBool invert );
 
 #define grColorMask(rgb, a) glColorMask(rgb, rgb, rgb, a)
 
-FX_ENTRY void FX_CALL 
-grCullMode( GrCullMode_t mode );
+void grCullMode( GrCullMode_t mode );
 
-FX_ENTRY void FX_CALL 
-grConstantColorValue( GrColor_t value );
+void grConstantColorValue( GrColor_t value );
 
-FX_ENTRY void FX_CALL 
-grDepthBiasLevel( FxI32 level );
+void grDepthBiasLevel( FxI32 level );
 
 #define grDepthBufferFunction(function) glDepthFunc(function)
 
@@ -664,43 +594,31 @@ grDepthBiasLevel( FxI32 level );
 
 #define grDepthMask(mask) glDepthMask(mask)
 
-FX_ENTRY void FX_CALL 
-grDisableAllEffects( void );
+void grDisableAllEffects( void );
 
-FX_ENTRY void FX_CALL 
-grFogMode( GrFogMode_t mode, GrColor_t fogcolor );
+void grFogMode( GrFogMode_t mode, GrColor_t fogcolor );
 
-FX_ENTRY void FX_CALL 
-grLoadGammaTable( FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue);
+void grLoadGammaTable( FxU32 nentries, FxU32 *red, FxU32 *green, FxU32 *blue);
 
-FX_ENTRY void FX_CALL
-grSplash(float x, float y, float width, float height, FxU32 frame);
+void grEnable( GrEnableMode_t mode );
 
-FX_ENTRY void FX_CALL 
-grEnable( GrEnableMode_t mode );
+void grDisable( GrEnableMode_t mode );
 
-FX_ENTRY void FX_CALL 
-grDisable( GrEnableMode_t mode );
+void grCoordinateSpace( GrCoordinateSpaceMode_t mode );
 
-FX_ENTRY void FX_CALL 
-grCoordinateSpace( GrCoordinateSpaceMode_t mode );
+void grDepthRange( FxFloat n, FxFloat f );
 
-FX_ENTRY void FX_CALL 
-grDepthRange( FxFloat n, FxFloat f );
-
-FX_ENTRY void FX_CALL 
+void  
 grStippleMode( GrStippleMode_t mode );
 
-FX_ENTRY void FX_CALL 
-grStipplePattern( GrStipplePattern_t mode );
+void grStipplePattern( GrStipplePattern_t mode );
 
-FX_ENTRY void FX_CALL 
-grViewport( FxI32 x, FxI32 y, FxI32 width, FxI32 height );
+void grViewport( FxI32 x, FxI32 y, FxI32 width, FxI32 height );
 
 /*
 ** texture mapping control functions
 */
-FX_ENTRY FxU32 FX_CALL 
+ FxU32  
 grTexCalcMemRequired(
                     GrLOD_t lodmax,
                      GrAspectRatio_t aspect, GrTextureFormat_t fmt);
@@ -709,18 +627,15 @@ grTexCalcMemRequired(
 
 #define grTexMaxAddress(tmu) ((TMU_SIZE * 2) - 1)
 
-FX_ENTRY void FX_CALL 
-grTexNCCTable( GrNCCTable_t table );
+void grTexNCCTable( GrNCCTable_t table );
 
-FX_ENTRY void FX_CALL 
-grTexSource( GrChipID_t tmu,
+void grTexSource( GrChipID_t tmu,
              FxU32      startAddress,
              FxU32      evenOdd,
              GrTexInfo  *info,
              int do_download);
 
-FX_ENTRY void FX_CALL 
-grTexFilterClampMode(
+void grTexFilterClampMode(
                GrChipID_t tmu,
                GrTextureClampMode_t s_clampmode,
                GrTextureClampMode_t t_clampmode,
@@ -728,8 +643,7 @@ grTexFilterClampMode(
                GrTextureFilterMode_t magfilter_mode
                );
 
-FX_ENTRY void FX_CALL 
-grTexCombine(
+void grTexCombine(
              GrChipID_t tmu,
              GrCombineFunction_t rgb_function,
              GrCombineFactor_t rgb_factor, 
@@ -739,25 +653,21 @@ grTexCombine(
              FxBool alpha_invert
              );
 
-FX_ENTRY void FX_CALL 
-grTexDetailControl(
+void grTexDetailControl(
                    GrChipID_t tmu,
                    int lod_bias,
                    FxU8 detail_scale,
                    float detail_max
                    );
 
-FX_ENTRY void FX_CALL 
-grTexMipMapMode( GrChipID_t     tmu, 
+void grTexMipMapMode( GrChipID_t     tmu, 
                  GrMipMapMode_t mode,
                  FxBool         lodBlend );
 
-FX_ENTRY void FX_CALL 
-grTexMultibase( GrChipID_t tmu,
+void grTexMultibase( GrChipID_t tmu,
                 FxBool     enable );
 
-FX_ENTRY void FX_CALL
-grTexMultibaseAddress( GrChipID_t       tmu,
+void grTexMultibaseAddress( GrChipID_t       tmu,
                        GrTexBaseRange_t range,
                        FxU32            startAddress,
                        FxU32            evenOdd,
@@ -767,26 +677,22 @@ grTexMultibaseAddress( GrChipID_t       tmu,
 ** linear frame buffer functions
 */
 
-FX_ENTRY FxBool FX_CALL
+ FxBool 
 grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
            GrOriginLocation_t origin, FxBool pixelPipeline, 
            GrLfbInfo_t *info );
 
 #define grLfbUnlock(type, buffer) (true)
 
-FX_ENTRY void FX_CALL 
-grLfbConstantAlpha( GrAlpha_t alpha );
+void grLfbConstantAlpha( GrAlpha_t alpha );
 
-FX_ENTRY void FX_CALL 
-grLfbConstantDepth( FxU32 depth );
+void grLfbConstantDepth( FxU32 depth );
 
-FX_ENTRY void FX_CALL 
-grLfbWriteColorSwizzle(FxBool swizzleBytes, FxBool swapWords);
+void grLfbWriteColorSwizzle(FxBool swizzleBytes, FxBool swapWords);
 
-FX_ENTRY void FX_CALL
-grLfbWriteColorFormat(GrColorFormat_t colorFormat);
+void grLfbWriteColorFormat(GrColorFormat_t colorFormat);
 
-FX_ENTRY FxBool FX_CALL
+ FxBool 
 grLfbWriteRegion( GrBuffer_t dst_buffer, 
                   FxU32 dst_x, FxU32 dst_y, 
                   GrLfbSrcFmt_t src_format, 
@@ -794,7 +700,7 @@ grLfbWriteRegion( GrBuffer_t dst_buffer,
                   FxBool pixelPipeline,
                   FxI32 src_stride, void *src_data );
 
-FX_ENTRY FxBool FX_CALL
+ FxBool 
 grLfbReadRegion( GrBuffer_t src_buffer,
                  FxU32 src_x, FxU32 src_y,
                  FxU32 src_width, FxU32 src_height,
@@ -803,17 +709,13 @@ grLfbReadRegion( GrBuffer_t src_buffer,
 /*
 ** glide management functions
 */
-FX_ENTRY void FX_CALL
-grGlideGetState( void *state );
+void grGlideGetState( void *state );
 
-FX_ENTRY void FX_CALL
-grGlideSetState( const void *state );
+void grGlideSetState( const void *state );
 
-FX_ENTRY void FX_CALL
-grGlideGetVertexLayout( void *layout );
+void grGlideGetVertexLayout( void *layout );
 
-FX_ENTRY void FX_CALL
-grGlideSetVertexLayout( const void *layout );
+void grGlideSetVertexLayout( const void *layout );
 
 #define guFogGenerateLinear(nearZ, farZ) \
 { \
@@ -826,7 +728,5 @@ grGlideSetVertexLayout( const void *layout );
 #ifdef __cplusplus
 }
 #endif
-
-#include <glideutl.h>
 
 #endif /* __GLIDE_H__ */

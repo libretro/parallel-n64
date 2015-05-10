@@ -58,19 +58,10 @@ static int isExtensionSupported(const char *extension)
 
 void FindBestDepthBias();
 
-FX_ENTRY GrContext_t FX_CALL
-grSstWinOpen(
-             GrScreenResolution_t screen_resolution,
-             GrScreenRefresh_t    refresh_rate,
-             GrColorFormat_t      color_format,
-             GrOriginLocation_t   origin_location,
-             int                  nColBuffers,
-             int                  nAuxBuffers)
+GrContext_t grSstWinOpen(void)
 {
    bool ret;
    struct retro_variable var = { "mupen64-screensize", 0 };
-
-   LOG("grSstWinOpen(%d, %d, %d, %d, %d %d)\r\n", screen_resolution&~0x80000000, refresh_rate, color_format, origin_location, nColBuffers, nAuxBuffers);
 
    ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
@@ -150,8 +141,7 @@ grSstWinOpen(
    return 1;
 }
 
-FX_ENTRY FxBool FX_CALL
-grSstWinClose( GrContext_t context )
+FxBool grSstWinClose( GrContext_t context )
 {
    if (frameBuffer)
       free(frameBuffer);
@@ -172,8 +162,7 @@ grSstWinClose( GrContext_t context )
 
 // frame buffer
 
-FX_ENTRY FxBool FX_CALL
-grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
+FxBool grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
           GrOriginLocation_t origin, FxBool pixelPipeline,
           GrLfbInfo_t *info )
 {
@@ -204,11 +193,10 @@ grLfbLock( GrLock_t type, GrBuffer_t buffer, GrLfbWriteMode_t writeMode,
    return FXTRUE;
 }
 
-FX_ENTRY FxBool FX_CALL
-grLfbReadRegion( GrBuffer_t src_buffer,
-                FxU32 src_x, FxU32 src_y,
-                FxU32 src_width, FxU32 src_height,
-                FxU32 dst_stride, void *dst_data )
+FxBool grLfbReadRegion( GrBuffer_t src_buffer,
+      FxU32 src_x, FxU32 src_y,
+      FxU32 src_width, FxU32 src_height,
+      FxU32 dst_stride, void *dst_data )
 {
    unsigned int i,j;
    LOG("grLfbReadRegion(%d,%d,%d,%d,%d,%d)\r\n", src_buffer, src_x, src_y, src_width, src_height, dst_stride);
@@ -229,13 +217,13 @@ grLfbReadRegion( GrBuffer_t src_buffer,
    return FXTRUE;
 }
 
-FX_ENTRY FxBool FX_CALL
+FxBool 
 grLfbWriteRegion( GrBuffer_t dst_buffer,
-                 FxU32 dst_x, FxU32 dst_y,
-                 GrLfbSrcFmt_t src_format,
-                 FxU32 src_width, FxU32 src_height,
-                 FxBool pixelPipeline,
-                 FxI32 src_stride, void *src_data )
+      FxU32 dst_x, FxU32 dst_y,
+      GrLfbSrcFmt_t src_format,
+      FxU32 src_width, FxU32 src_height,
+      FxBool pixelPipeline,
+      FxI32 src_stride, void *src_data )
 {
    unsigned int i,j;
    uint16_t *frameBuffer = (uint16_t*)src_data;

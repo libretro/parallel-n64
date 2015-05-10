@@ -85,21 +85,19 @@ typedef FxU32 GrCombineMode_t;
 #define GR_CMBX_TMU_CCOLOR                0x11
 
 
-FX_ENTRY void FX_CALL
-grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
+void grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
 				  GrCCUColor_t b, GrCombineMode_t b_mode,
                   GrCCUColor_t c, FxBool c_invert,
 				  GrCCUColor_t d, FxBool d_invert,
 				  FxU32 shift, FxBool invert);
 
-FX_ENTRY void FX_CALL
-grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
+void grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
 				  GrACUColor_t b, GrCombineMode_t b_mode,
 				  GrACUColor_t c, FxBool c_invert,
 				  GrACUColor_t d, FxBool d_invert,
 				  FxU32 shift, FxBool invert);
 
-FX_ENTRY void FX_CALL
+void 
 grTexColorCombineExt(GrChipID_t       tmu,
                      GrTCCUColor_t a, GrCombineMode_t a_mode,
                      GrTCCUColor_t b, GrCombineMode_t b_mode,
@@ -107,7 +105,7 @@ grTexColorCombineExt(GrChipID_t       tmu,
                      GrTCCUColor_t d, FxBool d_invert,
                      FxU32 shift, FxBool invert);
 
-FX_ENTRY void FX_CALL
+void 
 grTexAlphaCombineExt(GrChipID_t       tmu,
                      GrTACUColor_t a, GrCombineMode_t a_mode,
                      GrTACUColor_t b, GrCombineMode_t b_mode,
@@ -116,14 +114,14 @@ grTexAlphaCombineExt(GrChipID_t       tmu,
                      FxU32 shift, FxBool invert,
                      GrColor_t ccolor_value);
 
-FX_ENTRY void FX_CALL 
+void  
 grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
                   GrCCUColor_t b, GrCombineMode_t b_mode,
                   GrCCUColor_t c, FxBool c_invert,
                   GrCCUColor_t d, FxBool d_invert,
                   FxU32 shift, FxBool invert);
 
-FX_ENTRY void FX_CALL
+ void 
 grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
                   GrACUColor_t b, GrCombineMode_t b_mode,
                   GrACUColor_t c, FxBool c_invert,

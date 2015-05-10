@@ -112,7 +112,7 @@ uint32_t BMASK = 0x7FFFFF;
 // Reality display processor structure
 struct RDP rdp;
 
-SETTINGS settings = { false, 640, 480, GR_RESOLUTION_640x480, 0 };
+SETTINGS settings = { false, 640, 480, 0, 0 };
 
 VOODOO voodoo = {0, 0};
 
@@ -280,13 +280,7 @@ int InitGfx(void)
 {
    rdp_reset ();
 
-   if (!grSstWinOpen (
-            0,
-            GR_REFRESH_60Hz,
-            GR_COLORFORMAT_RGBA,
-            GR_ORIGIN_UPPER_LEFT,
-            2,
-            1))
+   if (!grSstWinOpen())
    {
       ERRLOG("Error setting display mode");
       return false;

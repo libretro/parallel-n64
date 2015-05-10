@@ -565,8 +565,7 @@ void set_lambda(void)
    glUniform1f(lambda_location, lambda);
 }
 
-FX_ENTRY void FX_CALL 
-grConstantColorValue( GrColor_t value )
+void grConstantColorValue( GrColor_t value )
 {
    LOG("grConstantColorValue(%d)\r\n", value);
    texture_env_color[0] = ((value >> 24) & 0xFF) / 255.0f;
@@ -660,11 +659,10 @@ void writeGLSLColorFactor(int factor, int local, int need_local, int other, int 
    }
 }
 
-FX_ENTRY void FX_CALL 
-grColorCombine(
-               GrCombineFunction_t function, GrCombineFactor_t factor,
-               GrCombineLocal_t local, GrCombineOther_t other,
-               FxBool invert )
+void grColorCombine(
+      GrCombineFunction_t function, GrCombineFactor_t factor,
+      GrCombineLocal_t local, GrCombineOther_t other,
+      FxBool invert )
 {
    static int last_function = 0;
    static int last_factor = 0;
@@ -831,12 +829,11 @@ void writeGLSLAlphaFactor(int factor, int local, int need_local, int other, int 
    }
 }
 
-FX_ENTRY void FX_CALL
-grAlphaCombine(
-               GrCombineFunction_t function, GrCombineFactor_t factor,
-               GrCombineLocal_t local, GrCombineOther_t other,
-               FxBool invert
-               )
+void grAlphaCombine(
+      GrCombineFunction_t function, GrCombineFactor_t factor,
+      GrCombineLocal_t local, GrCombineOther_t other,
+      FxBool invert
+      )
 {
    static int last_function = 0;
    static int last_factor = 0;
@@ -1080,7 +1077,7 @@ static void writeGLSLTextureAlphaFactorTMU1(int num_tex, int factor)
    }
 }
 
-FX_ENTRY void FX_CALL 
+void  
 grTexCombine(
              GrChipID_t tmu,
              GrCombineFunction_t rgb_function,
@@ -1363,22 +1360,19 @@ grTexCombine(
    need_to_compile = 1;
 }
 
-FX_ENTRY void FX_CALL
-grAlphaTestReferenceValue(GrAlpha_t value)
+void grAlphaTestReferenceValue(GrAlpha_t value)
 {
    alpha_ref = value;
 }
 
-FX_ENTRY void FX_CALL
-grAlphaTestFunction( GrCmpFnc_t function, GrAlpha_t value, int set_alpha_ref)
+void grAlphaTestFunction( GrCmpFnc_t function, GrAlpha_t value, int set_alpha_ref)
 {
    alpha_func = function;
    alpha_test = (function == GR_CMP_ALWAYS) ? false : true;
    alpha_ref = (set_alpha_ref) ? value : alpha_ref;
 }
 
-FX_ENTRY void FX_CALL 
-grFogMode( GrFogMode_t mode, GrColor_t fogcolor)
+void grFogMode( GrFogMode_t mode, GrColor_t fogcolor)
 {
    fog_enabled = mode;
 
@@ -1387,8 +1381,7 @@ grFogMode( GrFogMode_t mode, GrColor_t fogcolor)
 
 // chroma
 
-FX_ENTRY void FX_CALL 
-grChromakeyMode( GrChromakeyMode_t mode )
+void grChromakeyMode( GrChromakeyMode_t mode )
 {
    LOG("grChromakeyMode(%d)\r\n", mode);
    switch(mode)
@@ -1405,8 +1398,7 @@ grChromakeyMode( GrChromakeyMode_t mode )
    need_to_compile = 1;
 }
 
-FX_ENTRY void FX_CALL 
-grChromakeyValue( GrColor_t value )
+void grChromakeyValue( GrColor_t value )
 {
    int chroma_color_location = glGetUniformLocation(program_object, "chroma_color");
 
@@ -1419,15 +1411,13 @@ grChromakeyValue( GrColor_t value )
          chroma_color[2], chroma_color[3]);
 }
 
-FX_ENTRY void FX_CALL
-grStipplePattern(
-                 GrStipplePattern_t stipple)
+void grStipplePattern(
+      GrStipplePattern_t stipple)
 {
    LOG("grStipplePattern(%x)\r\n", stipple);
 }
 
-FX_ENTRY void FX_CALL
-grStippleMode( GrStippleMode_t mode )
+void grStippleMode( GrStippleMode_t mode )
 {
    LOG("grStippleMode(%d)\r\n", mode);
    switch(mode)
@@ -1445,12 +1435,11 @@ grStippleMode( GrStippleMode_t mode )
    need_to_compile = 1;
 }
 
-FX_ENTRY void FX_CALL 
-grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
-                  GrCCUColor_t b, GrCombineMode_t b_mode,
-                  GrCCUColor_t c, FxBool c_invert,
-                  GrCCUColor_t d, FxBool d_invert,
-                  FxU32 shift, FxBool invert)
+void  grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
+      GrCCUColor_t b, GrCombineMode_t b_mode,
+      GrCCUColor_t c, FxBool c_invert,
+      GrCCUColor_t d, FxBool d_invert,
+      FxU32 shift, FxBool invert)
 {
    color_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
       ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
@@ -1623,12 +1612,11 @@ grColorCombineExt(GrCCUColor_t a, GrCombineMode_t a_mode,
    need_to_compile = 1;
 }
 
-FX_ENTRY void FX_CALL
-grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
-                  GrACUColor_t b, GrCombineMode_t b_mode,
-                  GrACUColor_t c, FxBool c_invert,
-                  GrACUColor_t d, FxBool d_invert,
-                  FxU32 shift, FxBool invert)
+void grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
+      GrACUColor_t b, GrCombineMode_t b_mode,
+      GrACUColor_t c, FxBool c_invert,
+      GrACUColor_t d, FxBool d_invert,
+      FxU32 shift, FxBool invert)
 {
    alpha_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) | 
       ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
@@ -1771,13 +1759,13 @@ grAlphaCombineExt(GrACUColor_t a, GrCombineMode_t a_mode,
    need_to_compile = 1;
 }
 
-FX_ENTRY void FX_CALL 
+void  
 grTexColorCombineExt(GrChipID_t       tmu,
-                     GrTCCUColor_t a, GrCombineMode_t a_mode,
-                     GrTCCUColor_t b, GrCombineMode_t b_mode,
-                     GrTCCUColor_t c, FxBool c_invert,
-                     GrTCCUColor_t d, FxBool d_invert,
-                     FxU32 shift, FxBool invert)
+      GrTCCUColor_t a, GrCombineMode_t a_mode,
+      GrTCCUColor_t b, GrCombineMode_t b_mode,
+      GrTCCUColor_t c, FxBool c_invert,
+      GrTCCUColor_t d, FxBool d_invert,
+      FxU32 shift, FxBool invert)
 {
    int num_tex = 0;
 
@@ -2152,14 +2140,14 @@ grTexColorCombineExt(GrChipID_t       tmu,
    need_to_compile = 1;
 }
 
-FX_ENTRY void FX_CALL 
+void  
 grTexAlphaCombineExt(GrChipID_t       tmu,
-                     GrTACUColor_t a, GrCombineMode_t a_mode,
-                     GrTACUColor_t b, GrCombineMode_t b_mode,
-                     GrTACUColor_t c, FxBool c_invert,
-                     GrTACUColor_t d, FxBool d_invert,
-                     FxU32 shift, FxBool invert,
-                        GrColor_t     ccolor_value)
+      GrTACUColor_t a, GrCombineMode_t a_mode,
+      GrTACUColor_t b, GrCombineMode_t b_mode,
+      GrTACUColor_t c, FxBool c_invert,
+      GrTACUColor_t d, FxBool d_invert,
+      FxU32 shift, FxBool invert,
+      GrColor_t     ccolor_value)
 {
    int num_tex = 0;
 

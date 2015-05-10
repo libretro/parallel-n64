@@ -41,7 +41,6 @@
 
 #include <3dfx.h>
 #include <glidesys.h>
-#include <sst1vid.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -172,7 +171,5 @@ typedef FxU32 GrAlphaBlendOp_t;
 #ifdef __cplusplus
 }
 #endif
-
-#include <glideutl.h>
 
 #endif /* __H3EXT_H__ */

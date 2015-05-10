@@ -138,9 +138,8 @@ void free_textures(void)
   remove_tex(0x00000000, 0xFFFFFFFF);
 }
 
-FX_ENTRY FxU32 FX_CALL
-grTexCalcMemRequired(GrLOD_t lodmax,
-                     GrAspectRatio_t aspect, GrTextureFormat_t fmt)
+FxU32 grTexCalcMemRequired(GrLOD_t lodmax,
+      GrAspectRatio_t aspect, GrTextureFormat_t fmt)
 {
    int width  = 1 << lodmax;
    int height = 1 << lodmax;
@@ -366,12 +365,11 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
    return factor;
 }
 
-FX_ENTRY void FX_CALL
-grTexSource( GrChipID_t tmu,
-                    FxU32      startAddress,
-                    FxU32      evenOdd,
-                    GrTexInfo  *info,
-                    int do_download)
+void grTexSource( GrChipID_t tmu,
+      FxU32      startAddress,
+      FxU32      evenOdd,
+      GrTexInfo  *info,
+      int do_download)
 {
    int width, height;
    int factor;
@@ -419,13 +417,13 @@ grtexsource:
 }
 
 
-FX_ENTRY void FX_CALL
+void 
 grTexDetailControl(
-                   GrChipID_t tmu,
-                   int lod_bias,
-                   FxU8 detail_scale,
-                   float detail_max
-                   )
+      GrChipID_t tmu,
+      int lod_bias,
+      FxU8 detail_scale,
+      float detail_max
+      )
 {
 #if 0
    LOG("grTexDetailControl(%d,%d,%d,%d)\r\n", tmu, lod_bias, detail_scale, detail_max);
@@ -450,18 +448,17 @@ grTexDetailControl(
    set_lambda();
 }
 
-FX_ENTRY void FX_CALL
-grTexFilterClampMode(
-               GrChipID_t tmu,
-               GrTextureClampMode_t s_clampmode,
-               GrTextureClampMode_t t_clampmode,
-               GrTextureFilterMode_t minfilter_mode,
-               GrTextureFilterMode_t magfilter_mode
-               )
+void grTexFilterClampMode(
+      GrChipID_t tmu,
+      GrTextureClampMode_t s_clampmode,
+      GrTextureClampMode_t t_clampmode,
+      GrTextureFilterMode_t minfilter_mode,
+      GrTextureFilterMode_t magfilter_mode
+      )
 {
    unsigned active_texindex = GL_TEXTURE1;
    unsigned index = 1;
-   
+
    if (tmu == GR_TMU1)
    {
       index = 0;
