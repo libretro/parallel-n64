@@ -2,11 +2,6 @@
 #define __3DFX_H__
 
 /*
-** color types
-*/
-typedef struct { float r, g, b, a; } FxColor4;
-
-/*
 ** fundamental types
 */
 #define FXTRUE    1

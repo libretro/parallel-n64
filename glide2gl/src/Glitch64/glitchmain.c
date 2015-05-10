@@ -220,7 +220,7 @@ int32_t grLfbReadRegion( int32_t src_buffer,
 int32_t 
 grLfbWriteRegion( int32_t dst_buffer,
       uint32_t dst_x, uint32_t dst_y,
-      GrLfbSrcFmt_t src_format,
+      uint32_t src_format,
       uint32_t src_width, uint32_t src_height,
       int32_t pixelPipeline,
       int32_t src_stride, void *src_data )

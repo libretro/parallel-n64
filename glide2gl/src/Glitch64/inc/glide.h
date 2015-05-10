@@ -16,10 +16,6 @@ extern "C" {
 ** -----------------------------------------------------------------------
 */
 typedef uint32_t GrColor_t;
-typedef uint8_t  GrAlpha_t;
-typedef uint32_t GrMipMapId_t;
-typedef uint32_t GrStipplePattern_t;
-typedef uint8_t  GrFog_t;
 typedef uint32_t GrContext_t;
 typedef int (*GrProc)();
 
@@ -296,22 +292,18 @@ typedef struct {
 #define GR_TEXFMT_RSVD2                 0xf
 #define GR_TEXFMT_RSVD4                 GR_TEXFMT_RSVD2
 
-typedef uint32_t GrTexTable_t;
 #define GR_TEXTABLE_NCC0                 0x0
 #define GR_TEXTABLE_NCC1                 0x1
 #define GR_TEXTABLE_PALETTE              0x2
 #define GR_TEXTABLE_PALETTE_6666_EXT     0x3
 
-typedef uint32_t GrNCCTable_t;
 #define GR_NCCTABLE_NCC0    0x0
 #define GR_NCCTABLE_NCC1    0x1
 
-typedef uint32_t GrTexBaseRange_t;
 #define GR_TEXBASE_256      0x3
 #define GR_TEXBASE_128      0x2
 #define GR_TEXBASE_64       0x1
 #define GR_TEXBASE_32_TO_1  0x0
-
 
 typedef uint32_t GrEnableMode_t;
 #define GR_MODE_DISABLE     0x0
@@ -323,7 +315,6 @@ typedef uint32_t GrEnableMode_t;
 #define GR_SHAMELESS_PLUG        0x04
 #define GR_VIDEO_SMOOTHING       0x05
 
-typedef uint32_t GrCoordinateSpaceMode_t;
 #define GR_WINDOW_COORDS    0x00
 #define GR_CLIP_COORDS      0x01
 
@@ -440,17 +431,8 @@ typedef struct {
     void              *data;
 } GrTexInfo;
 
-typedef struct GrSstPerfStats_s {
-  uint32_t  pixelsIn;              /* # pixels processed (minus buffer clears) */
-  uint32_t  chromaFail;            /* # pixels not drawn due to chroma key */ 
-  uint32_t  zFuncFail;             /* # pixels not drawn due to Z comparison */
-  uint32_t  aFuncFail;             /* # pixels not drawn due to alpha comparison */
-  uint32_t  pixelsOut;             /* # pixels drawn (including buffer clears) */
-} GrSstPerfStats_t;
-
 #define GR_QUERY_ANY  ((uint32_t)(~0))
 
-typedef uint32_t GrLfbSrcFmt_t;
 #define GR_LFB_SRC_FMT_565          0x00
 #define GR_LFB_SRC_FMT_555          0x01
 #define GR_LFB_SRC_FMT_1555         0x02
@@ -509,10 +491,7 @@ void grErrorSetCallback( GrErrorCallbackFnc_t fnc );
  int32_t 
 grSstWinClose( GrContext_t context );
 
-void  grSetNumPendingBuffers(int32_t NumPendingBuffers);
-
- int32_t 
-grSelectContext( GrContext_t context );
+int32_t grSelectContext( GrContext_t context );
 
 /*
 ** Glide configuration and special effect maintenance functions
@@ -525,9 +504,9 @@ void grAlphaCombine(
                int32_t invert
                );
 
-void  grAlphaTestFunction( int32_t function, GrAlpha_t value, int set_alpha_ref);
+void  grAlphaTestFunction( int32_t function, uint8_t value, int set_alpha_ref);
 
-void  grAlphaTestReferenceValue( GrAlpha_t value );
+void  grAlphaTestReferenceValue( uint8_t value );
 
 void  grChromakeyMode( int32_t mode );
 
@@ -560,8 +539,6 @@ void grDepthBiasLevel( int32_t level );
 
 #define grDepthMask(mask) glDepthMask(mask)
 
-void grDisableAllEffects( void );
-
 void grFogMode( int32_t mode, GrColor_t fogcolor );
 
 void grLoadGammaTable( uint32_t nentries, uint32_t *red, uint32_t *green, uint32_t *blue);
@@ -570,14 +547,11 @@ void grEnable( GrEnableMode_t mode );
 
 void grDisable( GrEnableMode_t mode );
 
-void grCoordinateSpace( GrCoordinateSpaceMode_t mode );
-
 void grDepthRange( float n, float f );
 
-void  
-grStippleMode( int32_t mode );
+void grStippleMode( int32_t mode );
 
-void grStipplePattern( GrStipplePattern_t mode );
+void grStipplePattern( uint32_t mode );
 
 void grViewport( int32_t x, int32_t y, int32_t width, int32_t height );
 
@@ -592,8 +566,6 @@ grTexCalcMemRequired(
 #define TMU_SIZE (8 * 2048 * 2048)
 
 #define grTexMaxAddress(tmu) ((TMU_SIZE * 2) - 1)
-
-void grTexNCCTable( GrNCCTable_t table );
 
 void grTexSource( int32_t tmu,
              uint32_t      startAddress,
@@ -630,15 +602,6 @@ void grTexMipMapMode( int32_t     tmu,
                  int32_t mode,
                  int32_t         lodBlend );
 
-void grTexMultibase( int32_t tmu,
-                int32_t     enable );
-
-void grTexMultibaseAddress( int32_t       tmu,
-                       GrTexBaseRange_t range,
-                       uint32_t            startAddress,
-                       uint32_t            evenOdd,
-                       GrTexInfo        *info );
-
 /*
 ** linear frame buffer functions
 */
@@ -650,7 +613,7 @@ grLfbLock( int32_t type, int32_t buffer, int32_t writeMode,
 
 #define grLfbUnlock(type, buffer) (true)
 
-void grLfbConstantAlpha( GrAlpha_t alpha );
+void grLfbConstantAlpha( uint8_t alpha );
 
 void grLfbConstantDepth( uint32_t depth );
 
@@ -661,7 +624,7 @@ void grLfbWriteColorFormat(int32_t colorFormat);
  int32_t 
 grLfbWriteRegion( int32_t dst_buffer, 
                   uint32_t dst_x, uint32_t dst_y, 
-                  GrLfbSrcFmt_t src_format, 
+                  uint32_t src_format, 
                   uint32_t src_width, uint32_t src_height, 
                   int32_t pixelPipeline,
                   int32_t src_stride, void *src_data );
@@ -671,17 +634,6 @@ grLfbReadRegion( int32_t src_buffer,
                  uint32_t src_x, uint32_t src_y,
                  uint32_t src_width, uint32_t src_height,
                  uint32_t dst_stride, void *dst_data );
-
-/*
-** glide management functions
-*/
-void grGlideGetState( void *state );
-
-void grGlideSetState( const void *state );
-
-void grGlideGetVertexLayout( void *layout );
-
-void grGlideSetVertexLayout( const void *layout );
 
 #define guFogGenerateLinear(nearZ, farZ) \
 { \

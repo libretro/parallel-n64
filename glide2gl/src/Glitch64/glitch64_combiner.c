@@ -1329,12 +1329,12 @@ grTexCombine(
    need_to_compile = 1;
 }
 
-void grAlphaTestReferenceValue(GrAlpha_t value)
+void grAlphaTestReferenceValue(uint8_t value)
 {
    alpha_ref = value;
 }
 
-void grAlphaTestFunction( int32_t function, GrAlpha_t value, int set_alpha_ref)
+void grAlphaTestFunction( int32_t function, uint8_t value, int set_alpha_ref)
 {
    alpha_func = function;
    alpha_test = (function == GR_CMP_ALWAYS) ? false : true;
@@ -1378,10 +1378,8 @@ void grChromakeyValue( GrColor_t value )
          chroma_color[2], chroma_color[3]);
 }
 
-void grStipplePattern(
-      GrStipplePattern_t stipple)
+void grStipplePattern(uint32_t stipple)
 {
-   LOG("grStipplePattern(%x)\r\n", stipple);
 }
 
 void grStippleMode( int32_t mode )
