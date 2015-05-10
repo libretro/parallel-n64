@@ -143,8 +143,8 @@ else ifneq (,$(findstring osx,$(platform)))
 	GL_LIB := -framework OpenGL
 	PLATFORM_EXT := unix
 
+# Theos iOS
 else ifneq (,$(findstring theos_ios,$(platform)))
-	# Theos iOS
 	DEPLOYMENT_IOSVERSION = 5.0
 	TARGET = iphone:latest:$(DEPLOYMENT_IOSVERSION)
 	ARCHS = armv7
@@ -163,8 +163,9 @@ else ifneq (,$(findstring theos_ios,$(platform)))
 	GLIDE2GL=1
 	GLIDE64MK2=0
 	HAVE_NEON=1
+
+# iOS
 else ifneq (,$(findstring ios,$(platform)))
-	# iOS
 	ifeq ($(IOSSDK),)
 		IOSSDK := $(shell xcodebuild -version -sdk iphoneos Path)
 	endif
@@ -240,26 +241,29 @@ else ifeq ($(platform), qnx)
 
 # ARM
 else ifneq (,$(findstring armv,$(platform)))
-	CC = gcc
-	CXX = g++
 	TARGET := $(TARGET_NAME)_libretro.so
-	fpic := -fPIC
 	LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined
-	INCFLAGS += -I.
-	CPUFLAGS += -DNO_ASM
+	fpic := -fPIC
+	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
 	WITH_DYNAREC=arm
+	PLATCFLAGS += -DARM
 	ifneq (,$(findstring gles,$(platform)))
-		GLES := 1
+		GLES = 1
 		GL_LIB := -lGLESv2
 	else
 		GL_LIB := -lGL
 	endif
-	ifneq (,$(findstring cortexa8,$(platform)))
+	ifneq (,$(findstring cortexa5,$(platform)))
+		CPUFLAGS += -marm -mcpu=cortex-a5
+	else ifneq (,$(findstring cortexa8,$(platform)))
 		CPUFLAGS += -marm -mcpu=cortex-a8
 	else ifneq (,$(findstring cortexa9,$(platform)))
 		CPUFLAGS += -marm -mcpu=cortex-a9
+	else ifneq (,$(findstring cortexa15a7,$(platform)))
+		CPUFLAGS += -marm -mcpu=cortex-a15.cortex-a7
+	else
+		CPUFLAGS += -marm
 	endif
-	CPUFLAGS += -marm
 	ifneq (,$(findstring neon,$(platform)))
 		CPUFLAGS += -mfpu=neon
 		HAVE_NEON = 1
@@ -269,7 +273,6 @@ else ifneq (,$(findstring armv,$(platform)))
 	else ifneq (,$(findstring hardfloat,$(platform)))
 		CPUFLAGS += -mfloat-abi=hard
 	endif
-	PLATCFLAGS += -DARM
 
 # emscripten
 else ifeq ($(platform), emscripten)
