@@ -1232,7 +1232,7 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst,
          while ( v15 );
          v18 = *v17;
          v13 = v17 + 1;
-         *v7 = bswap32(v18);
+         *v7 = m64p_swap32(v18);
          ++v7;
          --v8;
          if ( v8 )
@@ -1240,8 +1240,8 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst,
 LABEL_20:
             do
             {
-               *v7 = bswap32(*v13);
-               v7[1] = bswap32(v13[1]);
+               *v7 = m64p_swap32(*v13);
+               v7[1] = m64p_swap32(v13[1]);
                v13 += 2;
                v7 += 2;
                --v8;
