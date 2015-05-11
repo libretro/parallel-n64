@@ -62,24 +62,22 @@ typedef int8_t INT8;
 
 #define R4300i_SP_Intr 1
 
-
-#define LSB_FIRST 1 
-#ifdef LSB_FIRST
-    #define BYTE_ADDR_XOR        3
-    #define WORD_ADDR_XOR        1
-    #define BYTE4_XOR_BE(a)     ((a) ^ 3)                
-#else
+#ifdef MSB_FIRST
     #define BYTE_ADDR_XOR        0
     #define WORD_ADDR_XOR        0
     #define BYTE4_XOR_BE(a)     (a)
+#else
+    #define BYTE_ADDR_XOR        3
+    #define WORD_ADDR_XOR        1
+    #define BYTE4_XOR_BE(a)     ((a) ^ 3)                
 #endif
 
-#ifdef LSB_FIRST
-#define BYTE_XOR_DWORD_SWAP 7
-#define WORD_XOR_DWORD_SWAP 3
-#else
+#ifdef MSB_FIRST
 #define BYTE_XOR_DWORD_SWAP 4
 #define WORD_XOR_DWORD_SWAP 2
+#else
+#define BYTE_XOR_DWORD_SWAP 7
+#define WORD_XOR_DWORD_SWAP 3
 #endif
 #define DWORD_XOR_DWORD_SWAP 1
 
