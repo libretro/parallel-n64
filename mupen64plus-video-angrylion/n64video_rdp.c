@@ -97,7 +97,6 @@ void count_DP_commands(void)
    fclose(stream);
    for (i = 0; i < 64; i++)
       cmd_count[i] = 0; /* reset for fresh data */
-   return;
 }
 #endif
 
@@ -1296,7 +1295,6 @@ static void set_scissor(uint32_t w0, uint32_t w1)
    sckeepodd   = (w1 & 0x01000000) >> (24 -  0);
    __clip.xl   = (w1 & 0x00FFF000) >> (12 -  0);
    __clip.yl   = (w1 & 0x00000FFF) >> ( 0 -  0);
-   return;
 }
 
 static void set_prim_depth(uint32_t w0, uint32_t w1)
@@ -1674,7 +1672,6 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       }
    }
    render_spans(yhlimit >> 2, yllimit >> 2, 0, 1);
-   return;
 }
 
 INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)

@@ -390,7 +390,6 @@ static void fbwrite_8(
    addr  = fb_address + 1*curpixel;
    addr &= 0x00FFFFFF;
    PAIRWRITE8(addr, r, (r & 1) ? 3 : 0);
-   return;
 }
 
 static void fbwrite_16(
@@ -427,7 +426,6 @@ static void fbwrite_16(
    addr &= 0x00FFFFFF;
    addr  = addr >> 1;
    PAIRWRITE16(addr, color, coverage & 3);
-   return;
 }
 
 static void fbwrite_32(
@@ -6177,8 +6175,6 @@ static void fetch_qword_copy(UINT32* hidword, UINT32* lowdword, INT32 ssss, INT3
    }
 }
 
-
-
 static STRICTINLINE void tc_pipeline_load(INT32* sss, INT32* sst, int tilenum, int coord_quad)
 {
    int sss1 = *sss, sst1 = *sst;
@@ -6201,10 +6197,6 @@ static STRICTINLINE void tc_pipeline_load(INT32* sss, INT32* sst, int tilenum, i
    *sss = sss1;
    *sst = sst1;
 }
-
-
-
-
 
 NOINLINE void render_spans_fill(int start, int end, int flip)
 {
@@ -6475,7 +6467,6 @@ NOINLINE void render_spans_copy(int start, int end, int tilenum, int flip)
          fbptr &= 0x00FFFFFF;
       }
    }
-   return;
 }
 
 NOINLINE void loading_pipeline(
