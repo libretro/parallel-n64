@@ -84,7 +84,7 @@ void count_DP_commands(void)
 {
    FILE * stream;
    long total;
-   register int i;
+   int i;
 
    total = 0;
    for (i = 0; i < 64; i++)
@@ -217,7 +217,7 @@ NOINLINE static void render_spans(
 
 STRICTINLINE static u16 normalize_dzpix(u16 sum)
 {
-   register int count;
+   int count;
 
    if (sum & 0xC000)
       return 0x8000;
@@ -233,7 +233,7 @@ STRICTINLINE static u16 normalize_dzpix(u16 sum)
 
 static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer)
 {
-   register int base;
+   int base;
    int lft;             /* Left major flag, 0 = left major, 1 = right major */
    int level;           /* Number of mip-maps minus one. */
    int tile;            /* Tile descriptor index. Used to reference texture for this primitive */
@@ -286,7 +286,7 @@ static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int text
    int curcross;
    int allover, allunder, curover, curunder;
    int allinval;
-   register int j, k;
+   int j, k;
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
 
@@ -908,7 +908,7 @@ static void tex_rect(uint32_t w0, uint32_t w1)
    int curcross;
    int allover, allunder, curover, curunder;
    int allinval;
-   register int j, k;
+   int j, k;
    i32 stwz[4];
    i32 d_stwz_dx[4];
    i32 d_stwz_de[4];
@@ -1101,7 +1101,7 @@ static void tex_rect_flip(uint32_t w0, uint32_t w1)
    int curcross;
    int allover, allunder, curover, curunder;
    int allinval;
-   register int j, k;
+   int j, k;
    i32 stwz[4];
    i32 d_stwz_dx[4];
    i32 d_stwz_de[4];
@@ -1547,7 +1547,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    int curcross;
    int allover, allunder, curover, curunder;
    int allinval;
-   register int j, k;
+   int j, k;
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
    int xl = (w0 & 0x00FFF000) >> (44 - 32);  /* X coordinate of bottom right corner of rectangle. */

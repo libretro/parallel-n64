@@ -206,9 +206,8 @@ static void fbread_4(UINT32 curpixel, UINT32* curpixel_memcvg)
 static void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    u8 color;
-   register unsigned long addr;
+   unsigned long addr  = fb_address + 1*curpixel;
 
-   addr  = fb_address + 1*curpixel;
    addr &= 0x00FFFFFF;
    color = RREADADDR8(addr);
 
@@ -223,9 +222,8 @@ static void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    u8 hidden;
    u16 color;
-   register unsigned long addr;
+   unsigned long addr  = fb_address + 2*curpixel;
 
-   addr  = fb_address + 2*curpixel;
    addr &= 0x00FFFFFF;
    addr  = addr >> 1;
    PAIRREAD16(color, hidden, addr);
@@ -252,9 +250,8 @@ static void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 static void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    u32 color;
-   register unsigned long addr;
+   unsigned long addr  = fb_address + 4*curpixel;
 
-   addr  = fb_address + 4*curpixel;
    addr &= 0x00FFFFFF;
    addr  = addr >> 2;
    color = RREADIDX32(addr);
@@ -284,9 +281,8 @@ static void fbread2_4(UINT32 curpixel, UINT32* curpixel_memcvg)
 static void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    u8 color;
-   register unsigned long addr;
+   unsigned long addr  = fb_address + 1*curpixel;
 
-   addr  = fb_address + 1*curpixel;
    addr &= 0x00FFFFFF;
    color = RREADADDR8(addr);
 
@@ -301,9 +297,8 @@ static void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    u8 hidden;
    u16 color;
-   register unsigned long addr;
+   unsigned long addr  = fb_address + 2*curpixel;
 
-   addr  = fb_address + 2*curpixel;
    addr &= 0x00FFFFFF;
    addr  = addr >> 1;
    PAIRREAD16(color, hidden, addr);
@@ -330,9 +325,8 @@ static void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 static void fbread2_32(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    u32 color;
-   register unsigned long addr;
+   unsigned long addr  = fb_address + 4*curpixel;
 
-   addr  = fb_address + 4*curpixel;
    addr &= 0x00FFFFFF;
    addr  = addr >> 2;
    color = RREADIDX32(addr);
@@ -356,9 +350,8 @@ static void fbwrite_4(
       UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
       UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
-   register unsigned long addr;
+   unsigned long addr  = fb_address + curpixel*1;
 
-   addr  = fb_address + curpixel*1;
    addr &= 0x00FFFFFF;
 
    RWRITEADDR8(addr, 0x00);
@@ -385,9 +378,8 @@ static void fbwrite_8(
       UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
       UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
-   register unsigned long addr;
+   unsigned long addr  = fb_address + 1*curpixel;
 
-   addr  = fb_address + 1*curpixel;
    addr &= 0x00FFFFFF;
    PAIRWRITE8(addr, r, (r & 1) ? 3 : 0);
 }
@@ -398,7 +390,7 @@ static void fbwrite_16(
 {
    u16 color;
    int coverage;
-   register unsigned long addr;
+   unsigned long addr;
 
    coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
 #undef CVG_DRAW
@@ -434,9 +426,8 @@ static void fbwrite_32(
 {
    u32 color;
    int coverage;
-   register unsigned long addr;
+   unsigned long addr  = fb_address + 4*curpixel;
 
-   addr  = fb_address + 4*curpixel;
    addr &= 0x00FFFFFF;
    addr  = addr >> 2;
 
@@ -461,9 +452,8 @@ static void fbfill_4(UINT32 curpixel)
 static void fbfill_8(UINT32 curpixel)
 {
    unsigned char source;
-   register unsigned long addr;
+   unsigned long addr  = fb_address + 1*curpixel;
 
-   addr  = fb_address + 1*curpixel;
    addr &= 0x00FFFFFF;
 
    source = (g_gdp.fill_color.total >> 8*(~addr & 3)) & 0xFF;
@@ -472,10 +462,9 @@ static void fbfill_8(UINT32 curpixel)
 
 static void fbfill_16(UINT32 curpixel)
 {
-   register unsigned long addr;
-   register unsigned short source;
+   unsigned short source;
+   unsigned long addr  = fb_address + 2*curpixel;
 
-   addr  = fb_address + 2*curpixel;
    addr &= 0x00FFFFFF;
    addr  = addr >> 1;
 
@@ -485,11 +474,10 @@ static void fbfill_16(UINT32 curpixel)
 
 static void fbfill_32(UINT32 curpixel)
 {
-   register unsigned long addr;
    const unsigned short fill_color_hi = (g_gdp.fill_color.total >> 16) & 0xFFFF;
    const unsigned short fill_color_lo = (g_gdp.fill_color.total >>  0) & 0xFFFF;
+   unsigned long addr  = fb_address + 4*curpixel;
 
-   addr  = fb_address + 4*curpixel;
    addr &= 0x00FFFFFF;
    addr  = addr >> 2;
    PAIRWRITE32(addr, g_gdp.fill_color.total,
@@ -519,13 +507,13 @@ static INLINE UINT32 leftcvghex(UINT32 x, UINT32 fmask)
 
 static void compute_cvg_flip(INT32 scanline)
 {
-   INT32 purgestart, purgeend;
-   int i, length, fmask, maskshift, fmaskshifted;
+   int i, fmask, maskshift, fmaskshifted;
    INT32 fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
 
-   purgestart = span[scanline].rx;
-   purgeend = span[scanline].lx;
-   length = purgeend - purgestart;
+   INT32 purgestart = span[scanline].rx;
+   INT32 purgeend = span[scanline].lx;
+   int length = purgeend - purgestart;
+
    if (length >= 0)
    {
       memset(&cvgbuf[purgestart], 0, (length + 1) << 2);
@@ -562,13 +550,11 @@ static void compute_cvg_flip(INT32 scanline)
 
 static void compute_cvg_noflip(INT32 scanline)
 {
-   INT32 purgestart, purgeend;
-   int i, length, fmask, maskshift, fmaskshifted;
+   int i, fmask, maskshift, fmaskshifted;
    INT32 fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
-
-   purgestart = span[scanline].lx;
-   purgeend = span[scanline].rx;
-   length = purgeend - purgestart;
+   INT32 purgestart = span[scanline].lx;
+   INT32 purgeend = span[scanline].rx;
+   int length = purgeend - purgestart;
 
    if (length >= 0)
    {
@@ -849,7 +835,6 @@ static void tcdiv_nopersp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
 
 static void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
 {
-   int w_carry = 0;
    int shift; 
    int tlu_rcp;
    int sprod, tprod;
@@ -857,6 +842,7 @@ static void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst)
    int tempmask;
    int shift_value;
    INT32 temps, tempt;
+   int w_carry = 0;
    int overunder_s = 0, overunder_t = 0;
 
    if (SIGN16(sw) <= 0)
@@ -1342,9 +1328,10 @@ static void tclod_1cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w,
    }
 }
 
-static STRICTINLINE void tcshift_cycle(INT32* S, INT32* T, INT32* maxs, INT32* maxt, UINT32 num)
+static STRICTINLINE void tcshift_cycle(INT32* S,
+      INT32* T, INT32* maxs, INT32* maxt, UINT32 num)
 {
-    INT32 coord = *S;
+    INT32 coord   = *S;
     INT32 shifter = g_gdp.tile[num].shift_s;
 
     if (shifter < 11)
@@ -1378,7 +1365,7 @@ static STRICTINLINE void tcshift_cycle(INT32* S, INT32* T, INT32* maxs, INT32* m
 
 static STRICTINLINE void tcshift_copy(INT32* S, INT32* T, UINT32 num)
 {
-    INT32 coord = *S;
+    INT32 coord   = *S;
     INT32 shifter = g_gdp.tile[num].shift_s;
 
     if (shifter < 11)
@@ -1410,10 +1397,11 @@ static STRICTINLINE void tcshift_copy(INT32* S, INT32* T, UINT32 num)
     
 }
 
-static STRICTINLINE void tcclamp_cycle(INT32* S, INT32* T, INT32* SFRAC, INT32* TFRAC, INT32 maxs, INT32 maxt, INT32 num)
+static STRICTINLINE void tcclamp_cycle(INT32* S,
+      INT32* T, INT32* SFRAC, INT32* TFRAC, INT32 maxs, INT32 maxt, INT32 num)
 {
-
     INT32 locs = *S, loct = *T;
+
     if (g_gdp.tile[num].f.clampens)
     {
         if (!(locs & 0x10000))
@@ -1460,6 +1448,7 @@ static STRICTINLINE void tcclamp_cycle(INT32* S, INT32* T, INT32* SFRAC, INT32* 
 static STRICTINLINE void tcclamp_cycle_light(INT32* S, INT32* T, INT32 maxs, INT32 maxt, INT32 num)
 {
     INT32 locs = *S, loct = *T;
+
     if (g_gdp.tile[num].f.clampens)
     {
         if (!(locs & 0x10000))
@@ -1608,10 +1597,10 @@ STRICTINLINE void tcmask_copy(INT32* S, INT32* S1, INT32* S2, INT32* S3, INT32* 
 
 static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 {
-   UINT32 tbase = g_gdp.tile[tilenum].line * t + g_gdp.tile[tilenum].tmem;
+   UINT32 tbase   = g_gdp.tile[tilenum].line * t + g_gdp.tile[tilenum].tmem;
    UINT32 tpal    = g_gdp.tile[tilenum].palette;
-   UINT16 *tc16 = (UINT16*)g_gdp.tmem;
-   UINT32 taddr = 0;
+   UINT16 *tc16   = (UINT16*)g_gdp.tmem;
+   UINT32 taddr   = 0;
 
    switch (g_gdp.tile[tilenum].f.notlutswitch)
    {
@@ -1895,11 +1884,11 @@ static void fetch_texel(COLOR *color, int s, int t, UINT32 tilenum)
 
 static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
 {
+   UINT32 c;
    UINT32 tbase = g_gdp.tile[tilenum].line * t + g_gdp.tile[tilenum].tmem;
    UINT32 tpal    = g_gdp.tile[tilenum].palette << 4;
    UINT16 *tc16 = (UINT16*)g_gdp.tmem;
    UINT32 taddr = 0;
-   UINT32 c;
 
    switch(g_gdp.tile[tilenum].f.tlutswitch)
    {
@@ -1985,17 +1974,16 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, UINT32 tilenum)
       color->r = color->g = color->b = c >> 8;
       color->a = c & 0xff;
    }
-
 }
 
 static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum)
 {
-   UINT32 tbase0 = g_gdp.tile[tilenum].line * t0 + g_gdp.tile[tilenum].tmem;
-   UINT32 tbase2 = g_gdp.tile[tilenum].line * t1 + g_gdp.tile[tilenum].tmem;
-   UINT32 tpal    = g_gdp.tile[tilenum].palette;
-   UINT32 xort = 0, ands = 0;
-   UINT16 *tc16 = (UINT16*)g_gdp.tmem;
-   UINT32 taddr0 = 0, taddr1 = 0, taddr2 = 0, taddr3 = 0;
+   UINT32 tbase0    = g_gdp.tile[tilenum].line * t0 + g_gdp.tile[tilenum].tmem;
+   UINT32 tbase2    = g_gdp.tile[tilenum].line * t1 + g_gdp.tile[tilenum].tmem;
+   UINT32 tpal      = g_gdp.tile[tilenum].palette;
+   UINT32 xort      = 0, ands = 0;
+   UINT16 *tc16     = (UINT16*)g_gdp.tmem;
+   UINT32 taddr0    = 0, taddr1 = 0, taddr2 = 0, taddr3 = 0;
    UINT32 taddrlow0 = 0, taddrlow1 = 0, taddrlow2 = 0, taddrlow3 = 0;
 
    switch (g_gdp.tile[tilenum].f.notlutswitch)
@@ -2837,14 +2825,14 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLO
 
 static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1, COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, UINT32 tilenum)
 {
+   UINT16 c0, c1, c2, c3;
    UINT32 tbase0 = g_gdp.tile[tilenum].line * t0 + g_gdp.tile[tilenum].tmem;
    UINT32 tbase2 = g_gdp.tile[tilenum].line * t1 + g_gdp.tile[tilenum].tmem;
-   UINT32 tpal    = g_gdp.tile[tilenum].palette << 4;
-   UINT32 xort = 0, ands = 0;
+   UINT32 tpal   = g_gdp.tile[tilenum].palette << 4;
+   UINT32 xort   = 0, ands = 0;
 
-   UINT16 *tc16 = (UINT16*)g_gdp.tmem;
+   UINT16 *tc16  = (UINT16*)g_gdp.tmem;
    UINT32 taddr0 = 0, taddr1 = 0, taddr2 = 0, taddr3 = 0;
-   UINT16 c0, c1, c2, c3;
 
    switch(g_gdp.tile[tilenum].f.tlutswitch)
    {
@@ -3070,15 +3058,14 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, INT32 SSS, INT32 SST
 {
    INT32 maxs, maxt, invt0r, invt0g, invt0b, invt0a;
    INT32 sfrac, tfrac, invsf, invtf;
-   int upper = 0;
-   int bilerp = cycle ? g_gdp.other_modes.bi_lerp1 : g_gdp.other_modes.bi_lerp0;
-   int convert = g_gdp.other_modes.convert_one && cycle;
    COLOR t0, t1, t2, t3;
-   int sss1, sst1, sss2, sst2;
    INT32 newk0, newk1, newk2, newk3, invk0, invk1, invk2, invk3;
-
-   sss1 = SSS;
-   sst1 = SST;
+   int sss2, sst2;
+   int upper   = 0;
+   int bilerp  = cycle ? g_gdp.other_modes.bi_lerp1 : g_gdp.other_modes.bi_lerp0;
+   int convert = g_gdp.other_modes.convert_one && cycle;
+   int sss1    = SSS;
+   int sst1    = SST;
 
    tcshift_cycle(&sss1, &sst1, &maxs, &maxt, tilenum);
 
@@ -3254,8 +3241,8 @@ static void rgbaz_correct_clip(int offx, int offy, int r, int g, int b, int a, i
 {
    int summand_r, summand_b, summand_g, summand_a;
    int summand_z;
-   int sz = *z;
    int zanded;
+   int sz = *z;
 
    if (curpixel_cvg == 8)
    {
@@ -3335,7 +3322,6 @@ static STRICTINLINE INT32 CLIP(INT32 value,INT32 min,INT32 max)
 
 static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
 {
-
     INT32 redkey, greenkey, bluekey, temp;
     
     g_gdp.combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
@@ -3426,7 +3412,7 @@ static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
 static STRICTINLINE void z_store(UINT32 zcurpixel, UINT32 z, int dzpixenc)
 {
    UINT16 zval = z_com_table[z & 0x3ffff]|(dzpixenc >> 2);
-   UINT8 hval = dzpixenc & 3;
+   UINT8  hval = dzpixenc & 3;
    PAIRWRITE16(zcurpixel, zval, hval);
 }
 
@@ -3444,15 +3430,14 @@ static STRICTINLINE UINT32 dz_decompress(UINT32 dz_compressed)
 static UINT32 z_compare(UINT32 zcurpixel, UINT32 sz, UINT16 dzpix, int dzpixenc,
       UINT32* blend_en, UINT32* prewrap, UINT32* curpixel_cvg, UINT32 curpixel_memcvg)
 {
-   int cvgcoeff = 0;
-   UINT32 dzenc = 0;
-
    INT32 diff;
    UINT32 nearer, max, infront;
-   int force_coplanar = 0;
-
    UINT32 oz, dzmem, zval, hval;
    INT32 rawdzmem;
+
+   int cvgcoeff = 0;
+   UINT32 dzenc = 0;
+   int force_coplanar = 0;
 
    sz &= 0x3ffff;
    if (g_gdp.other_modes.z_compare_en)
@@ -3580,12 +3565,10 @@ static STRICTINLINE int alpha_compare(INT32 comb_alpha)
 
 static void blender_equation_cycle0(int* r, int* g, int* b)
 {
-   int blend1a, blend2a;
    int blr, blg, blb, sum;
    int mulb;
-
-   blend1a = *blender1b_a[0] >> 3;
-   blend2a = *blender2b_a[0] >> 3;
+   int blend1a = *blender1b_a[0] >> 3;
+   int blend2a = *blender2b_a[0] >> 3;
 
    if (g_gdp.other_modes.f.special_bsel0)
    {
@@ -3675,16 +3658,16 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
    int dzpix;
    int dzpixenc;
-
-   int cdith = 7, adith = 0;
    int r, g, b, a, z, s, t, w;
    int sr, sg, sb, sa, sz, ss, st, sw;
    int xstart, xend, xendsc;
-   int sss = 0, sst = 0;
    INT32 prelodfrac;
-   int curpixel = 0;
    int x, length, scdiff;
    UINT32 fir, fig, fib;
+
+   int cdith = 7, adith = 0;
+   int sss = 0, sst = 0;
+   int curpixel = 0;
 
    if (flip)
    {
@@ -3848,10 +3831,6 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
    UINT32 blend_en;
    UINT32 prewrap;
    UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-
-   int prim_tile = tilenum;
-   int tile1 = tilenum;
-
    int i, j;
 
    int drinc, dginc, dbinc, dainc, dzinc, dsinc, dtinc, dwinc;
@@ -3859,15 +3838,18 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
    int dzpix;
    int dzpixenc;
-
-   int cdith = 7, adith = 0;
    int r, g, b, a, z, s, t, w;
    int sr, sg, sb, sa, sz, ss, st, sw;
    int xstart, xend, xendsc;
-   int sss = 0, sst = 0;
-   int curpixel = 0;
    int x, length, scdiff;
    UINT32 fir, fig, fib;
+
+   int prim_tile = tilenum;
+   int tile1 = tilenum;
+
+   int cdith = 7, adith = 0;
+   int sss = 0, sst = 0;
+   int curpixel = 0;
 
    if (flip)
    {
@@ -4009,27 +3991,25 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
 static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 {
-   int zbcur;
-   UINT8 offx, offy;
-   UINT32 blend_en;
-   UINT32 prewrap;
-   UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
-
    int i, j;
-
    int drinc, dginc, dbinc, dainc, dzinc;
    int xinc;
 
    int dzpix;
    int dzpixenc;
-
-   int cdith = 7, adith = 0;
+   int zbcur;
    int r, g, b, a, z;
    int sr, sg, sb, sa, sz;
    int xstart, xend, xendsc;
-   int curpixel = 0;
    int x, length, scdiff;
+   UINT8 offx, offy;
+   UINT32 blend_en;
+   UINT32 prewrap;
+   UINT32 curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
    UINT32 fir, fig, fib;
+
+   int cdith = 7, adith = 0;
+   int curpixel = 0;
 
    if (flip)
    {
@@ -4146,10 +4126,9 @@ void (*render_spans_1cycle_func[3])(int, int, int, int) =
 static STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1,
       INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc)
 {
-   INT32 nexts, nextt, nextsw;
-   nextsw = (w + dwinc) >> 16;
-   nexts = (s + dsinc) >> 16;
-   nextt = (t + dtinc) >> 16;
+   INT32 nextsw = (w + dwinc) >> 16;
+   INT32 nexts = (s + dsinc) >> 16;
+   INT32 nextt = (t + dtinc) >> 16;
 
    tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
 }
@@ -5285,7 +5264,7 @@ void (*render_spans_2cycle_func[4])(int, int, int, int) =
 
 static INLINE void z_build_com_table(void)
 {
-   register int z;
+   int z;
    UINT16 altmem = 0;
 
    for (z = 0; z < 0x40000; z++)
@@ -5711,7 +5690,7 @@ void SET_BLENDER_INPUT(
 
 void rdp_init(void)
 {
-    register int i;
+    int i;
 
 #ifdef LOG_RDP_EXECUTION
         rdp_exec = fopen("rdp_execute.txt", "wt");
@@ -6202,7 +6181,7 @@ NOINLINE void render_spans_fill(int start, int end, int flip)
 {
    int curpixel;
    int length;
-   register int i, j;
+   int i, j;
    const int xinc = (flip & 1) ? +1 : -1;
    const int fastkillbits
       = g_gdp.other_modes.image_read_en | g_gdp.other_modes.z_compare_en;
