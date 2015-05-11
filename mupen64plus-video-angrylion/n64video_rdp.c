@@ -10,78 +10,6 @@ static int cmd_ptr; /* for 64-bit elements, always <= +0x7FFF */
 /* static DP_FIFO cmd_fifo; */
 static DP_FIFO cmd_data[0x0003FFFF/sizeof(i64) + 1];
 
-static void tri_noshade(uint32_t w0, uint32_t w1);
-static void tri_noshade_z(uint32_t w0, uint32_t w1);
-static void tri_tex(uint32_t w0, uint32_t w1);
-static void tri_tex_z(uint32_t w0, uint32_t w1);
-static void tri_shade(uint32_t w0, uint32_t w1);
-static void tri_shade_z(uint32_t w0, uint32_t w1);
-static void tri_texshade(uint32_t w0, uint32_t w1);
-static void tri_texshade_z(uint32_t w0, uint32_t w1);
-static void tex_rect(uint32_t w0, uint32_t w1);
-static void tex_rect_flip(uint32_t w0, uint32_t w1);
-static void set_scissor(uint32_t w0, uint32_t w1);
-static void set_prim_depth(uint32_t w0, uint32_t w1);
-static void set_other_modes(uint32_t w0, uint32_t w1);
-static void set_tile_size(uint32_t w0, uint32_t w1);
-static void load_block(uint32_t w0, uint32_t w1);
-static void load_tlut(uint32_t w0, uint32_t w1);
-static void load_tile(uint32_t w0, uint32_t w1);
-static void set_tile(uint32_t w0, uint32_t w1);
-static void fill_rect(uint32_t w0, uint32_t w1);
-static void set_combine(uint32_t w0, uint32_t w1);
-static void set_mask_image(uint32_t w0, uint32_t w1);
-static void set_color_image(uint32_t w0, uint32_t w1);
-
-static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer);
-NOINLINE static void render_spans(
-      int yhlimit, int yllimit, int tilenum, int flip);
-STRICTINLINE static u16 normalize_dzpix(u16 sum);
-
-static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
-   gdp_no_op              ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-   tri_noshade       ,tri_noshade_z     ,tri_tex           ,tri_tex_z         ,
-   tri_shade         ,tri_shade_z       ,tri_texshade      ,tri_texshade_z    ,
-
-   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-
-   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-   tex_rect          ,tex_rect_flip     ,gdp_load_sync         ,gdp_pipe_sync         ,
-   gdp_tile_sync         ,gdp_full_sync         ,gdp_set_key_gb        ,gdp_set_key_r         ,
-   gdp_set_convert       ,set_scissor       ,set_prim_depth    ,set_other_modes   ,
-
-   load_tlut         ,gdp_invalid           ,set_tile_size     ,load_block        ,
-   load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
-   gdp_set_fog_color     ,gdp_set_blend_color   ,gdp_set_prim_color    ,gdp_set_env_color     ,
-   set_combine       ,gdp_set_texture_image ,set_mask_image    ,set_color_image   ,
-};
-
-static const int DP_CMD_LEN_W[64] = { /* command length, in DP FIFO words */
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-   (32) / 8         ,(32+16) / 8      ,(32+64) / 8      ,(32+64+16) / 8   ,
-   (32+64) / 8      ,(32+64+16) / 8   ,(32+64+64) / 8   ,(32+64+64+16) / 8,
-
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-   (16) / 8         ,(16) / 8         ,(8) / 8          ,(8) / 8          ,
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
-};
-
 #ifdef TRACE_DP_COMMANDS
 static long cmd_count[64];
 
@@ -173,77 +101,677 @@ void count_DP_commands(void)
 }
 #endif
 
-void process_RDP_list(void)
+
+NOINLINE static void render_spans(
+      int yhlimit, int yllimit, int tilenum, int flip)
 {
-   int length;
-   unsigned int offset;
-   const u32 DP_CURRENT = *gfx_info.DPC_CURRENT_REG & 0x00FFFFF8;
-   const u32 DP_END     = *gfx_info.DPC_END_REG     & 0x00FFFFF8;
+   const unsigned int cycle_type = g_gdp.other_modes.cycle_type & 03;
 
-   *gfx_info.DPC_STATUS_REG &= ~DP_STATUS_FREEZE;
-
-   length = DP_END - DP_CURRENT;
-   if (length <= 0)
-      return;
-   length = (unsigned)(length) / sizeof(i64);
-   if ((cmd_ptr + length) & ~(0x0003FFFF / sizeof(i64)))
+   if (g_gdp.other_modes.f.stalederivs == 0)
+   { /* branch */ }
+   else
    {
-      DisplayError("ProcessRDPList\nOut of command cache memory.");
-      return;
+      deduce_derivatives();
+      g_gdp.other_modes.f.stalederivs = 0;
+   }
+   fbread1_ptr = fbread_func[fb_size];
+   fbread2_ptr = fbread2_func[fb_size];
+   fbwrite_ptr = fbwrite_func[fb_size];
+
+#ifdef _DEBUG
+   ++render_cycle_mode_counts[cycle_type];
+#endif
+
+   if (cycle_type & 02)
+      if (cycle_type & 01)
+         render_spans_fill(yhlimit, yllimit, flip);
+      else
+         render_spans_copy(yhlimit, yllimit, tilenum, flip);
+   else
+      if (cycle_type & 01)
+         render_spans_2cycle_ptr(yhlimit, yllimit, tilenum, flip);
+      else
+         render_spans_1cycle_ptr(yhlimit, yllimit, tilenum, flip);
+}
+
+STRICTINLINE static u16 normalize_dzpix(u16 sum)
+{
+   register int count;
+
+   if (sum & 0xC000)
+      return 0x8000;
+   if (sum == 0x0000)
+      return 0x0001;
+   if (sum == 0x0001)
+      return 0x0003;
+   for (count = 0x2000; count > 0; count >>= 1)
+      if (sum & count)
+         return (count << 1);
+   return 0;
+}
+
+static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer)
+{
+   register int base;
+   int lft;             /* Left major flag, 0 = left major, 1 = right major */
+   int level;           /* Number of mip-maps minus one. */
+   int tile;            /* Tile descriptor index. Used to reference texture for this primitive */
+   s32 yl;              /* Y coordinate of low minor edge. */
+   s32 ym;              /* Y coordinate of mid minor edge. */
+   s32 yh;              /* Y coordinate of major edge. */
+   s32 xl;              /* X coordinate of low edge, integer. */
+   s32 xh;              /* X coordinate of major edge. */
+   s32 xm;              /* triangle edge x-coordinates */
+   s32 DxLDy;           /* Inverse slope of low edge, integer. */
+   s32 DxHDy;           /* Inverse slope of major edge, integer. */
+   s32 DxMDy;           /* INverse slope of middle edge, integer. */
+   int tilenum, flip;
+
+   i32 rgba[4];         /* RGBA color components */
+   i32 d_rgba_dx[4];    /* RGBA delda per x-coordinate delta */
+   i32 d_rgba_de[4];    /* RGBA delta along the edge */
+   i32 d_rgba_dy[4];    /* RGBA delta per y-coordinate delta */
+   i16 rgba_int[4];
+   i16 rgba_frac[4];
+   i16 d_rgba_dx_int[4];
+   i16 d_rgba_dx_frac[4];
+   i16 d_rgba_de_int[4];
+   i16 d_rgba_de_frac[4];
+   i16 d_rgba_dy_int[4];
+   i16 d_rgba_dy_frac[4];
+
+   i32 stwz[4];
+   i32 d_stwz_dx[4];
+   i32 d_stwz_de[4];
+   i32 d_stwz_dy[4];
+   i16 stwz_int[4], stwz_frac[4];
+   i16 d_stwz_dx_int[4], d_stwz_dx_frac[4];
+   i16 d_stwz_de_int[4], d_stwz_de_frac[4];
+   i16 d_stwz_dy_int[4], d_stwz_dy_frac[4];
+
+   i32 d_rgba_dxh[4];
+   i32 d_stwz_dxh[4];
+   i32 d_rgba_diff[4], d_stwz_diff[4];
+   i32 xlr[2], xlr_inc[2];
+   u8 xfrac;
+#ifdef USE_SSE_SUPPORT
+   __m128i xmm_d_rgba_de, xmm_d_stwz_de;
+#endif
+   int sign_dxhdy;
+   int ycur, ylfar;
+   int yllimit, yhlimit;
+   int ldflag;
+   int invaly;
+   int curcross;
+   int allover, allunder, curover, curunder;
+   int allinval;
+   register int j, k;
+   const i32 clipxlshift = __clip.xl << 1;
+   const i32 clipxhshift = __clip.xh << 1;
+
+   base = cmd_cur + 0;
+   setzero_si64(rgba_int);
+   setzero_si64(rgba_frac);
+   setzero_si64(d_rgba_dx_int);
+   setzero_si64(d_rgba_dx_frac);
+   setzero_si64(d_rgba_de_int);
+   setzero_si64(d_rgba_de_frac);
+   setzero_si64(d_rgba_dy_int);
+   setzero_si64(d_rgba_dy_frac);
+   setzero_si64(stwz_int);
+   setzero_si64(stwz_frac);
+   setzero_si64(d_stwz_dx_int);
+   setzero_si64(d_stwz_dx_frac);
+   setzero_si64(d_stwz_de_int);
+   setzero_si64(d_stwz_de_frac);
+   setzero_si64(d_stwz_dy_int);
+   setzero_si64(d_stwz_dy_frac);
+
+   /* Edge Coefficients */
+   lft   = (cmd_data[base + 0].UW32[0] & 0x00800000) >> (55 - 32);
+   /* unused  (cmd_data[base + 0].UW32[0] & 0x00400000) >> (54 - 32) */
+   level = (cmd_data[base + 0].UW32[0] & 0x00380000) >> (51 - 32);
+   tile  = (cmd_data[base + 0].UW32[0] & 0x00070000) >> (48 - 32);
+   flip = lft;
+   max_level = level;
+   tilenum = tile;
+
+   yl = (w0 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
+   yl = SIGN(yl, 14);
+   ym = (w1 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
+   ym = SIGN(ym, 14);
+   yh = (w1 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
+   yh = SIGN(yh, 14);
+
+   xl = cmd_data[base + 1].UW32[0];
+   xl = SIGN(xl, 30);
+   DxLDy = cmd_data[base + 1].UW32[1];
+   xh = cmd_data[base + 2].UW32[0];
+   xh = SIGN(xh, 30);
+   DxHDy = cmd_data[base + 2].UW32[1];
+   xm = cmd_data[base + 3].UW32[0];
+   xm = SIGN(xm, 30);
+   DxMDy = cmd_data[base + 3].UW32[1];
+
+   /*
+    * Shade Coefficients
+    */
+   if (shade == 0) /* branch unlikely */
+      goto no_read_shade_coefficients;
+#ifdef USE_MMX_DECODES
+   *(__m64 *)rgba_int       = *(__m64 *)&cmd_data[base +  4];
+   *(__m64 *)d_rgba_dx_int  = *(__m64 *)&cmd_data[base +  5];
+   *(__m64 *)rgba_frac      = *(__m64 *)&cmd_data[base +  6];
+   *(__m64 *)d_rgba_dx_frac = *(__m64 *)&cmd_data[base +  7];
+   *(__m64 *)d_rgba_de_int  = *(__m64 *)&cmd_data[base +  8];
+   *(__m64 *)d_rgba_dy_int  = *(__m64 *)&cmd_data[base +  9];
+   *(__m64 *)d_rgba_de_frac = *(__m64 *)&cmd_data[base + 10];
+   *(__m64 *)d_rgba_dy_frac = *(__m64 *)&cmd_data[base + 11];
+   *(__m64 *)rgba_int       = _mm_shuffle_pi16(*(__m64 *)rgba_int, 0xB1);
+   *(__m64 *)d_rgba_dx_int  = _mm_shuffle_pi16(*(__m64 *)d_rgba_dx_int, 0xB1);
+   *(__m64 *)rgba_frac      = _mm_shuffle_pi16(*(__m64 *)rgba_frac, 0xB1);
+   *(__m64 *)d_rgba_dx_frac = _mm_shuffle_pi16(*(__m64 *)d_rgba_dx_frac, 0xB1);
+   *(__m64 *)d_rgba_de_int  = _mm_shuffle_pi16(*(__m64 *)d_rgba_de_int, 0xB1);
+   *(__m64 *)d_rgba_dy_int  = _mm_shuffle_pi16(*(__m64 *)d_rgba_dy_int, 0xB1);
+   *(__m64 *)d_rgba_de_frac = _mm_shuffle_pi16(*(__m64 *)d_rgba_de_frac, 0xB1);
+   *(__m64 *)d_rgba_dy_frac = _mm_shuffle_pi16(*(__m64 *)d_rgba_dy_frac, 0xB1);
+#else
+   rgba_int[0] = (cmd_data[base + 4].UW32[0] >> 16) & 0xFFFF;
+   rgba_int[1] = (cmd_data[base + 4].UW32[0] >>  0) & 0xFFFF;
+   rgba_int[2] = (cmd_data[base + 4].UW32[1] >> 16) & 0xFFFF;
+   rgba_int[3] = (cmd_data[base + 4].UW32[1] >>  0) & 0xFFFF;
+   d_rgba_dx_int[0] = (cmd_data[base + 5].UW32[0] >> 16) & 0xFFFF;
+   d_rgba_dx_int[1] = (cmd_data[base + 5].UW32[0] >>  0) & 0xFFFF;
+   d_rgba_dx_int[2] = (cmd_data[base + 5].UW32[1] >> 16) & 0xFFFF;
+   d_rgba_dx_int[3] = (cmd_data[base + 5].UW32[1] >>  0) & 0xFFFF;
+   rgba_frac[0] = (cmd_data[base + 6].UW32[0] >> 16) & 0xFFFF;
+   rgba_frac[1] = (cmd_data[base + 6].UW32[0] >>  0) & 0xFFFF;
+   rgba_frac[2] = (cmd_data[base + 6].UW32[1] >> 16) & 0xFFFF;
+   rgba_frac[3] = (cmd_data[base + 6].UW32[1] >>  0) & 0xFFFF;
+   d_rgba_dx_frac[0] = (cmd_data[base + 7].UW32[0] >> 16) & 0xFFFF;
+   d_rgba_dx_frac[1] = (cmd_data[base + 7].UW32[0] >>  0) & 0xFFFF;
+   d_rgba_dx_frac[2] = (cmd_data[base + 7].UW32[1] >> 16) & 0xFFFF;
+   d_rgba_dx_frac[3] = (cmd_data[base + 7].UW32[1] >>  0) & 0xFFFF;
+   d_rgba_de_int[0] = (cmd_data[base + 8].UW32[0] >> 16) & 0xFFFF;
+   d_rgba_de_int[1] = (cmd_data[base + 8].UW32[0] >>  0) & 0xFFFF;
+   d_rgba_de_int[2] = (cmd_data[base + 8].UW32[1] >> 16) & 0xFFFF;
+   d_rgba_de_int[3] = (cmd_data[base + 8].UW32[1] >>  0) & 0xFFFF;
+   d_rgba_dy_int[0] = (cmd_data[base + 9].UW32[0] >> 16) & 0xFFFF;
+   d_rgba_dy_int[1] = (cmd_data[base + 9].UW32[0] >>  0) & 0xFFFF;
+   d_rgba_dy_int[2] = (cmd_data[base + 9].UW32[1] >> 16) & 0xFFFF;
+   d_rgba_dy_int[3] = (cmd_data[base + 9].UW32[1] >>  0) & 0xFFFF;
+   d_rgba_de_frac[0] = (cmd_data[base + 10].UW32[0] >> 16) & 0xFFFF;
+   d_rgba_de_frac[1] = (cmd_data[base + 10].UW32[0] >>  0) & 0xFFFF;
+   d_rgba_de_frac[2] = (cmd_data[base + 10].UW32[1] >> 16) & 0xFFFF;
+   d_rgba_de_frac[3] = (cmd_data[base + 10].UW32[1] >>  0) & 0xFFFF;
+   d_rgba_dy_frac[0] = (cmd_data[base + 11].UW32[0] >> 16) & 0xFFFF;
+   d_rgba_dy_frac[1] = (cmd_data[base + 11].UW32[0] >>  0) & 0xFFFF;
+   d_rgba_dy_frac[2] = (cmd_data[base + 11].UW32[1] >> 16) & 0xFFFF;
+   d_rgba_dy_frac[3] = (cmd_data[base + 11].UW32[1] >>  0) & 0xFFFF;
+#endif
+   base += 8;
+no_read_shade_coefficients:
+   base -= 8;
+#ifdef USE_MMX_DECODES
+   *(__m64 *)(rgba + (0 ^ 2))
+      = _mm_unpackhi_pi16(*(__m64 *)rgba_frac, *(__m64 *)rgba_int);
+   *(__m64 *)(rgba + (2 ^ 2))
+      = _mm_unpacklo_pi16(*(__m64 *)rgba_frac, *(__m64 *)rgba_int);
+   *(__m64 *)(d_rgba_dx + (0 ^ 2))
+      = _mm_unpackhi_pi16(*(__m64 *)d_rgba_dx_frac, *(__m64 *)d_rgba_dx_int);
+   *(__m64 *)(d_rgba_dx + (2 ^ 2))
+      = _mm_unpacklo_pi16(*(__m64 *)d_rgba_dx_frac, *(__m64 *)d_rgba_dx_int);
+   *(__m64 *)(d_rgba_de + (0 ^ 2))
+      = _mm_unpackhi_pi16(*(__m64 *)d_rgba_de_frac, *(__m64 *)d_rgba_de_int);
+   *(__m64 *)(d_rgba_de + (2 ^ 2))
+      = _mm_unpacklo_pi16(*(__m64 *)d_rgba_de_frac, *(__m64 *)d_rgba_de_int);
+   *(__m64 *)(d_rgba_dy + (0 ^ 2))
+      = _mm_unpackhi_pi16(*(__m64 *)d_rgba_dy_frac, *(__m64 *)d_rgba_dy_int);
+   *(__m64 *)(d_rgba_dy + (2 ^ 2))
+      = _mm_unpacklo_pi16(*(__m64 *)d_rgba_dy_frac, *(__m64 *)d_rgba_dy_int);
+#else
+   rgba[0] = (rgba_int[0] << 16) | (u16)(rgba_frac[0]);
+   rgba[1] = (rgba_int[1] << 16) | (u16)(rgba_frac[1]);
+   rgba[2] = (rgba_int[2] << 16) | (u16)(rgba_frac[2]);
+   rgba[3] = (rgba_int[3] << 16) | (u16)(rgba_frac[3]);
+   d_rgba_dx[0] = (d_rgba_dx_int[0] << 16) | (u16)(d_rgba_dx_frac[0]);
+   d_rgba_dx[1] = (d_rgba_dx_int[1] << 16) | (u16)(d_rgba_dx_frac[1]);
+   d_rgba_dx[2] = (d_rgba_dx_int[2] << 16) | (u16)(d_rgba_dx_frac[2]);
+   d_rgba_dx[3] = (d_rgba_dx_int[3] << 16) | (u16)(d_rgba_dx_frac[3]);
+   d_rgba_de[0] = (d_rgba_de_int[0] << 16) | (u16)(d_rgba_de_frac[0]);
+   d_rgba_de[1] = (d_rgba_de_int[1] << 16) | (u16)(d_rgba_de_frac[1]);
+   d_rgba_de[2] = (d_rgba_de_int[2] << 16) | (u16)(d_rgba_de_frac[2]);
+   d_rgba_de[3] = (d_rgba_de_int[3] << 16) | (u16)(d_rgba_de_frac[3]);
+   d_rgba_dy[0] = (d_rgba_dy_int[0] << 16) | (u16)(d_rgba_dy_frac[0]);
+   d_rgba_dy[1] = (d_rgba_dy_int[1] << 16) | (u16)(d_rgba_dy_frac[1]);
+   d_rgba_dy[2] = (d_rgba_dy_int[2] << 16) | (u16)(d_rgba_dy_frac[2]);
+   d_rgba_dy[3] = (d_rgba_dy_int[3] << 16) | (u16)(d_rgba_dy_frac[3]);
+#endif
+   /*
+    * Texture Coefficients
+    */
+   if (texture == 0)
+      goto no_read_texture_coefficients;
+#ifdef USE_MMX_DECODES
+   *(__m64 *)stwz_int       = *(__m64 *)&cmd_data[base + 12];
+   *(__m64 *)d_stwz_dx_int  = *(__m64 *)&cmd_data[base + 13];
+   *(__m64 *)stwz_frac      = *(__m64 *)&cmd_data[base + 14];
+   *(__m64 *)d_stwz_dx_frac = *(__m64 *)&cmd_data[base + 15];
+   *(__m64 *)d_stwz_de_int  = *(__m64 *)&cmd_data[base + 16];
+   *(__m64 *)d_stwz_dy_int  = *(__m64 *)&cmd_data[base + 17];
+   *(__m64 *)d_stwz_de_frac = *(__m64 *)&cmd_data[base + 18];
+   *(__m64 *)d_stwz_dy_frac = *(__m64 *)&cmd_data[base + 19];
+   *(__m64 *)stwz_int       = _mm_shuffle_pi16(*(__m64 *)stwz_int, 0xB1);
+   *(__m64 *)d_stwz_dx_int  = _mm_shuffle_pi16(*(__m64 *)d_stwz_dx_int, 0xB1);
+   *(__m64 *)stwz_frac      = _mm_shuffle_pi16(*(__m64 *)stwz_frac, 0xB1);
+   *(__m64 *)d_stwz_dx_frac = _mm_shuffle_pi16(*(__m64 *)d_stwz_dx_frac, 0xB1);
+   *(__m64 *)d_stwz_de_int  = _mm_shuffle_pi16(*(__m64 *)d_stwz_de_int, 0xB1);
+   *(__m64 *)d_stwz_dy_int  = _mm_shuffle_pi16(*(__m64 *)d_stwz_dy_int, 0xB1);
+   *(__m64 *)d_stwz_de_frac = _mm_shuffle_pi16(*(__m64 *)d_stwz_de_frac, 0xB1);
+   *(__m64 *)d_stwz_dy_frac = _mm_shuffle_pi16(*(__m64 *)d_stwz_dy_frac, 0xB1);
+#else
+   stwz_int[0] = (cmd_data[base + 12].UW32[0] >> 16) & 0xFFFF;
+   stwz_int[1] = (cmd_data[base + 12].UW32[0] >>  0) & 0xFFFF;
+   stwz_int[2] = (cmd_data[base + 12].UW32[1] >> 16) & 0xFFFF;
+   /* stwz_int[3] = (cmd_data[base + 12].UW32[1] >>  0) & 0xFFFF; */
+   d_stwz_dx_int[0] = (cmd_data[base + 13].UW32[0] >> 16) & 0xFFFF;
+   d_stwz_dx_int[1] = (cmd_data[base + 13].UW32[0] >>  0) & 0xFFFF;
+   d_stwz_dx_int[2] = (cmd_data[base + 13].UW32[1] >> 16) & 0xFFFF;
+   /* d_stwz_dx_int[3] = (cmd_data[base + 13].UW32[1] >>  0) & 0xFFFF; */
+   stwz_frac[0] = (cmd_data[base + 14].UW32[0] >> 16) & 0xFFFF;
+   stwz_frac[1] = (cmd_data[base + 14].UW32[0] >>  0) & 0xFFFF;
+   stwz_frac[2] = (cmd_data[base + 14].UW32[1] >> 16) & 0xFFFF;
+   /* stwz_frac[3] = (cmd_data[base + 14].UW32[1] >>  0) & 0xFFFF; */
+   d_stwz_dx_frac[0] = (cmd_data[base + 15].UW32[0] >> 16) & 0xFFFF;
+   d_stwz_dx_frac[1] = (cmd_data[base + 15].UW32[0] >>  0) & 0xFFFF;
+   d_stwz_dx_frac[2] = (cmd_data[base + 15].UW32[1] >> 16) & 0xFFFF;
+   /* d_stwz_dx_frac[3] = (cmd_data[base + 15].UW32[1] >>  0) & 0xFFFF; */
+   d_stwz_de_int[0] = (cmd_data[base + 16].UW32[0] >> 16) & 0xFFFF;
+   d_stwz_de_int[1] = (cmd_data[base + 16].UW32[0] >>  0) & 0xFFFF;
+   d_stwz_de_int[2] = (cmd_data[base + 16].UW32[1] >> 16) & 0xFFFF;
+   /* d_stwz_de_int[3] = (cmd_data[base + 16].UW32[1] >>  0) & 0xFFFF; */
+   d_stwz_dy_int[0] = (cmd_data[base + 17].UW32[0] >> 16) & 0xFFFF;
+   d_stwz_dy_int[1] = (cmd_data[base + 17].UW32[0] >>  0) & 0xFFFF;
+   d_stwz_dy_int[2] = (cmd_data[base + 17].UW32[1] >> 16) & 0xFFFF;
+   /* d_stwz_dy_int[3] = (cmd_data[base + 17].UW32[1] >>  0) & 0xFFFF; */
+   d_stwz_de_frac[0] = (cmd_data[base + 18].UW32[0] >> 16) & 0xFFFF;
+   d_stwz_de_frac[1] = (cmd_data[base + 18].UW32[0] >>  0) & 0xFFFF;
+   d_stwz_de_frac[2] = (cmd_data[base + 18].UW32[1] >> 16) & 0xFFFF;
+   /* d_stwz_de_frac[3] = (cmd_data[base + 18].UW32[1] >>  0) & 0xFFFF; */
+   d_stwz_dy_frac[0] = (cmd_data[base + 19].UW32[0] >> 16) & 0xFFFF;
+   d_stwz_dy_frac[1] = (cmd_data[base + 19].UW32[0] >>  0) & 0xFFFF;
+   d_stwz_dy_frac[2] = (cmd_data[base + 19].UW32[1] >> 16) & 0xFFFF;
+   /* d_stwz_dy_frac[3] = (cmd_data[base + 19].UW32[1] >>  0) & 0xFFFF; */
+#endif
+   base += 8;
+no_read_texture_coefficients:
+   base -= 8;
+
+   /*
+    * Z-Buffer Coefficients
+    */
+   if (zbuffer == 0) /* branch unlikely */
+      goto no_read_zbuffer_coefficients;
+   stwz_int[3]       = (cmd_data[base + 20].UW32[0] >> 16) & 0xFFFF;
+   stwz_frac[3]      = (cmd_data[base + 20].UW32[0] >>  0) & 0xFFFF;
+   d_stwz_dx_int[3]  = (cmd_data[base + 20].UW32[1] >> 16) & 0xFFFF;
+   d_stwz_dx_frac[3] = (cmd_data[base + 20].UW32[1] >>  0) & 0xFFFF;
+   d_stwz_de_int[3]  = (cmd_data[base + 21].UW32[0] >> 16) & 0xFFFF;
+   d_stwz_de_frac[3] = (cmd_data[base + 21].UW32[0] >>  0) & 0xFFFF;
+   d_stwz_dy_int[3]  = (cmd_data[base + 21].UW32[1] >> 16) & 0xFFFF;
+   d_stwz_dy_frac[3] = (cmd_data[base + 21].UW32[1] >>  0) & 0xFFFF;
+   base += 8;
+no_read_zbuffer_coefficients:
+   base -= 8;
+#ifdef USE_MMX_DECODES
+   *(__m64 *)(stwz + (0 ^ 2))
+      = _mm_unpackhi_pi16(*(__m64 *)stwz_frac, *(__m64 *)stwz_int);
+   *(__m64 *)(stwz + (2 ^ 2))
+      = _mm_unpacklo_pi16(*(__m64 *)stwz_frac, *(__m64 *)stwz_int);
+   *(__m64 *)(d_stwz_dx + (0 ^ 2))
+      = _mm_unpackhi_pi16(*(__m64 *)d_stwz_dx_frac, *(__m64 *)d_stwz_dx_int);
+   *(__m64 *)(d_stwz_dx + (2 ^ 2))
+      = _mm_unpacklo_pi16(*(__m64 *)d_stwz_dx_frac, *(__m64 *)d_stwz_dx_int);
+   *(__m64 *)(d_stwz_de + (0 ^ 2))
+      = _mm_unpackhi_pi16(*(__m64 *)d_stwz_de_frac, *(__m64 *)d_stwz_de_int);
+   *(__m64 *)(d_stwz_de + (2 ^ 2))
+      = _mm_unpacklo_pi16(*(__m64 *)d_stwz_de_frac, *(__m64 *)d_stwz_de_int);
+   *(__m64 *)(d_stwz_dy + (0 ^ 2))
+      = _mm_unpackhi_pi16(*(__m64 *)d_stwz_dy_frac, *(__m64 *)d_stwz_dy_int);
+   *(__m64 *)(d_stwz_dy + (2 ^ 2))
+      = _mm_unpacklo_pi16(*(__m64 *)d_stwz_dy_frac, *(__m64 *)d_stwz_dy_int);
+#else
+   stwz[0] = (stwz_int[0] << 16) | (u16)(stwz_frac[0]);
+   stwz[1] = (stwz_int[1] << 16) | (u16)(stwz_frac[1]);
+   stwz[2] = (stwz_int[2] << 16) | (u16)(stwz_frac[2]);
+   stwz[3] = (stwz_int[3] << 16) | (u16)(stwz_frac[3]);
+   d_stwz_dx[0] = (d_stwz_dx_int[0] << 16) | (u16)(d_stwz_dx_frac[0]);
+   d_stwz_dx[1] = (d_stwz_dx_int[1] << 16) | (u16)(d_stwz_dx_frac[1]);
+   d_stwz_dx[2] = (d_stwz_dx_int[2] << 16) | (u16)(d_stwz_dx_frac[2]);
+   d_stwz_dx[3] = (d_stwz_dx_int[3] << 16) | (u16)(d_stwz_dx_frac[3]);
+   d_stwz_de[0] = (d_stwz_de_int[0] << 16) | (u16)(d_stwz_de_frac[0]);
+   d_stwz_de[1] = (d_stwz_de_int[1] << 16) | (u16)(d_stwz_de_frac[1]);
+   d_stwz_de[2] = (d_stwz_de_int[2] << 16) | (u16)(d_stwz_de_frac[2]);
+   d_stwz_de[3] = (d_stwz_de_int[3] << 16) | (u16)(d_stwz_de_frac[3]);
+   d_stwz_dy[0] = (d_stwz_dy_int[0] << 16) | (u16)(d_stwz_dy_frac[0]);
+   d_stwz_dy[1] = (d_stwz_dy_int[1] << 16) | (u16)(d_stwz_dy_frac[1]);
+   d_stwz_dy[2] = (d_stwz_dy_int[2] << 16) | (u16)(d_stwz_dy_frac[2]);
+   d_stwz_dy[3] = (d_stwz_dy_int[3] << 16) | (u16)(d_stwz_dy_frac[3]);
+#endif
+#ifdef USE_SSE_SUPPORT
+   xmm_d_rgba_de = _mm_load_si128((__m128i *)d_rgba_de);
+   xmm_d_stwz_de = _mm_load_si128((__m128i *)d_stwz_de);
+#endif
+
+   /*
+    * rest of edgewalker algorithm
+    */
+   spans_d_rgba[0] = d_rgba_dx[0] & ~0x0000001F;
+   spans_d_rgba[1] = d_rgba_dx[1] & ~0x0000001F;
+   spans_d_rgba[2] = d_rgba_dx[2] & ~0x0000001F;
+   spans_d_rgba[3] = d_rgba_dx[3] & ~0x0000001F;
+   spans_d_stwz[0] = d_stwz_dx[0] & ~0x0000001F;
+   spans_d_stwz[1] = d_stwz_dx[1] & ~0x0000001F;
+   spans_d_stwz[2] = d_stwz_dx[2] & ~0x0000001F;
+   spans_d_stwz[3] = d_stwz_dx[3];
+
+   spans_d_rgba_dy[0] = d_rgba_dy[0] >> 14;
+   spans_d_rgba_dy[1] = d_rgba_dy[1] >> 14;
+   spans_d_rgba_dy[2] = d_rgba_dy[2] >> 14;
+   spans_d_rgba_dy[3] = d_rgba_dy[3] >> 14;
+   spans_d_rgba_dy[0] = SIGN(spans_d_rgba_dy[0], 13);
+   spans_d_rgba_dy[1] = SIGN(spans_d_rgba_dy[1], 13);
+   spans_d_rgba_dy[2] = SIGN(spans_d_rgba_dy[2], 13);
+   spans_d_rgba_dy[3] = SIGN(spans_d_rgba_dy[3], 13);
+
+   spans_cd_rgba[0] = spans_d_rgba[0] >> 14;
+   spans_cd_rgba[1] = spans_d_rgba[1] >> 14;
+   spans_cd_rgba[2] = spans_d_rgba[2] >> 14;
+   spans_cd_rgba[3] = spans_d_rgba[3] >> 14;
+   spans_cd_rgba[0] = SIGN(spans_cd_rgba[0], 13);
+   spans_cd_rgba[1] = SIGN(spans_cd_rgba[1], 13);
+   spans_cd_rgba[2] = SIGN(spans_cd_rgba[2], 13);
+   spans_cd_rgba[3] = SIGN(spans_cd_rgba[3], 13);
+   spans_cdz = spans_d_stwz[3] >> 10;
+   spans_cdz = SIGN(spans_cdz, 22);
+
+   spans_d_stwz_dy[0] = d_stwz_dy[0] & ~0x00007FFF;
+   spans_d_stwz_dy[1] = d_stwz_dy[1] & ~0x00007FFF;
+   spans_d_stwz_dy[2] = d_stwz_dy[2] & ~0x00007FFF;
+   spans_d_stwz_dy[3] = d_stwz_dy[3] >> 10;
+   spans_d_stwz_dy[3] = SIGN(spans_d_stwz_dy[3], 22);
+
+   d_stwz_dx_int[3] ^= (d_stwz_dx_int[3] < 0) ? ~0 : 0;
+   d_stwz_dy_int[3] ^= (d_stwz_dy_int[3] < 0) ? ~0 : 0;
+   spans_dzpix = normalize_dzpix(d_stwz_dx_int[3] + d_stwz_dy_int[3]);
+
+   sign_dxhdy = (DxHDy < 0);
+   if (sign_dxhdy ^ flip) /* !do_offset */
+   {
+      setzero_si128(d_rgba_diff);
+      setzero_si128(d_stwz_diff);
+   }
+   else
+   {
+      i32 d_rgba_deh[4], d_stwz_deh[4];
+      i32 d_rgba_dyh[4], d_stwz_dyh[4];
+
+      d_rgba_deh[0] = d_rgba_de[0] & ~0x000001FF;
+      d_rgba_deh[1] = d_rgba_de[1] & ~0x000001FF;
+      d_rgba_deh[2] = d_rgba_de[2] & ~0x000001FF;
+      d_rgba_deh[3] = d_rgba_de[3] & ~0x000001FF;
+      d_stwz_deh[0] = d_stwz_de[0] & ~0x000001FF;
+      d_stwz_deh[1] = d_stwz_de[1] & ~0x000001FF;
+      d_stwz_deh[2] = d_stwz_de[2] & ~0x000001FF;
+      d_stwz_deh[3] = d_stwz_de[3] & ~0x000001FF;
+
+      d_rgba_dyh[0] = d_rgba_dy[0] & ~0x000001FF;
+      d_rgba_dyh[1] = d_rgba_dy[1] & ~0x000001FF;
+      d_rgba_dyh[2] = d_rgba_dy[2] & ~0x000001FF;
+      d_rgba_dyh[3] = d_rgba_dy[3] & ~0x000001FF;
+      d_stwz_dyh[0] = d_stwz_dy[0] & ~0x000001FF;
+      d_stwz_dyh[1] = d_stwz_dy[1] & ~0x000001FF;
+      d_stwz_dyh[2] = d_stwz_dy[2] & ~0x000001FF;
+      d_stwz_dyh[3] = d_stwz_dy[3] & ~0x000001FF;
+
+      d_rgba_diff[0] = d_rgba_deh[0] - d_rgba_dyh[0];
+      d_rgba_diff[1] = d_rgba_deh[1] - d_rgba_dyh[1];
+      d_rgba_diff[2] = d_rgba_deh[2] - d_rgba_dyh[2];
+      d_rgba_diff[3] = d_rgba_deh[3] - d_rgba_dyh[3];
+      d_rgba_diff[0] -= (d_rgba_diff[0] >> 2);
+      d_rgba_diff[1] -= (d_rgba_diff[1] >> 2);
+      d_rgba_diff[2] -= (d_rgba_diff[2] >> 2);
+      d_rgba_diff[3] -= (d_rgba_diff[3] >> 2);
+      d_stwz_diff[0] = d_stwz_deh[0] - d_stwz_dyh[0];
+      d_stwz_diff[1] = d_stwz_deh[1] - d_stwz_dyh[1];
+      d_stwz_diff[2] = d_stwz_deh[2] - d_stwz_dyh[2];
+      d_stwz_diff[3] = d_stwz_deh[3] - d_stwz_dyh[3];
+      d_stwz_diff[0] -= (d_stwz_diff[0] >> 2);
+      d_stwz_diff[1] -= (d_stwz_diff[1] >> 2);
+      d_stwz_diff[2] -= (d_stwz_diff[2] >> 2);
+      d_stwz_diff[3] -= (d_stwz_diff[3] >> 2);
    }
 
-   --length; /* filling in cmd data in backwards order for performance */
-   offset = (DP_END - sizeof(i64)) / sizeof(i64);
-   if (*gfx_info.DPC_STATUS_REG & DP_STATUS_XBUS_DMA)
-      do
-      {
-         offset &= 0xFFF / sizeof(i64);
-         BUFFERFIFO(cmd_ptr + length, SP_DMEM, offset);
-         offset -= 0x001 * sizeof(i8);
-      } while (--length >= 0);
+   if (g_gdp.other_modes.cycle_type == CYCLE_TYPE_COPY)
+   {
+      setzero_si128(d_rgba_dxh);
+      setzero_si128(d_stwz_dxh);
+   }
    else
-      if (DP_END > plim || DP_CURRENT > plim)
+   {
+      d_rgba_dxh[0] = (d_rgba_dx[0] >> 8) & ~0x00000001;
+      d_rgba_dxh[1] = (d_rgba_dx[1] >> 8) & ~0x00000001;
+      d_rgba_dxh[2] = (d_rgba_dx[2] >> 8) & ~0x00000001;
+      d_rgba_dxh[3] = (d_rgba_dx[3] >> 8) & ~0x00000001;
+      d_stwz_dxh[0] = (d_stwz_dx[0] >> 8) & ~0x00000001;
+      d_stwz_dxh[1] = (d_stwz_dx[1] >> 8) & ~0x00000001;
+      d_stwz_dxh[2] = (d_stwz_dx[2] >> 8) & ~0x00000001;
+      d_stwz_dxh[3] = (d_stwz_dx[3] >> 8) & ~0x00000001;
+   }
+
+   ldflag = (sign_dxhdy ^ flip) ? 0 : 3;
+   invaly = 1;
+   yllimit = (yl - __clip.yl < 0) ? yl : __clip.yl; /* clip.yl always &= 0xFFF */
+
+   ycur = yh & ~3;
+   ylfar = yllimit | 3;
+   if (yl >> 2 > ylfar >> 2)
+      ylfar += 4;
+   else if (yllimit >> 2 >= 0 && yllimit >> 2 < 1023)
+      span[(yllimit >> 2) + 1].validline = 0;
+
+   yhlimit = (yh - __clip.yh >= 0) ? yh : __clip.yh; /* clip.yh always &= 0xFFF */
+
+   xlr_inc[0] = (DxMDy >> 2) & ~0x00000001;
+   xlr_inc[1] = (DxHDy >> 2) & ~0x00000001;
+   xlr[0] = xm & ~0x00000001;
+   xlr[1] = xh & ~0x00000001;
+   xfrac = (xlr[1] >> 8) & 0xFF;
+
+   allover = 1;
+   allunder = 1;
+   curover = 0;
+   curunder = 0;
+   allinval = 1;
+
+   for (k = ycur; k <= ylfar; k++)
+   {
+      static int minmax[2];
+      int stickybit;
+      int xlrsc[2];
+      const int spix = k & 3;
+      const int yhclose = yhlimit & ~3;
+
+      if (k == ym)
       {
-         DisplayError("DRAM access violation overrides");
-         return;
+         xlr[0] = xl & ~0x00000001;
+         xlr_inc[0] = (DxLDy >> 2) & ~0x00000001;
       }
+
+      if (k < yhclose)
+      { /* branch */ }
       else
       {
-         do
+         invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
+         j = k >> 2;
+         if (spix == 0)
          {
-            offset &= 0xFFFFFF / sizeof(i64);
-            BUFFERFIFO(cmd_ptr + length, DRAM, offset);
-            offset -= 0x000001 * sizeof(i8);
-         } while (--length >= 0);
+            minmax[1] = 0x000;
+            minmax[0] = 0xFFF;
+            allover = allunder = 1;
+            allinval = 1;
+         }
+
+         stickybit = (xlr[1] & 0x00003FFF) - 1;
+         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+         xlrsc[1] = (xlr[1] >> 13)&0x1FFE | stickybit;
+         curunder = !!(xlr[1] & 0x08000000);
+         curunder = curunder | (u32)(xlrsc[1] - clipxhshift)>>31;
+         xlrsc[1] = curunder ? clipxhshift : (xlr[1]>>13)&0x3FFE | stickybit;
+         curover  = !!(xlrsc[1] & 0x00002000);
+         xlrsc[1] = xlrsc[1] & 0x1FFF;
+         curover |= (u32)~(xlrsc[1] - clipxlshift) >> 31;
+         xlrsc[1] = curover ? clipxlshift : xlrsc[1];
+         span[j].majorx[spix] = xlrsc[1] & 0x1FFF;
+         allover &= curover;
+         allunder &= curunder;
+
+         stickybit = (xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+         xlrsc[0] = (xlr[0] >> 13)&0x1FFE | stickybit;
+         curunder = !!(xlr[0] & 0x08000000);
+         curunder = curunder | (u32)(xlrsc[0] - clipxhshift)>>31;
+         xlrsc[0] = curunder ? clipxhshift : (xlr[0]>>13)&0x3FFE | stickybit;
+         curover  = !!(xlrsc[0] & 0x00002000);
+         xlrsc[0] &= 0x1FFF;
+         curover |= (u32)~(xlrsc[0] - clipxlshift) >> 31;
+         xlrsc[0] = curover ? clipxlshift : xlrsc[0];
+         span[j].minorx[spix] = xlrsc[0] & 0x1FFF;
+         allover &= curover;
+         allunder &= curunder;
+
+         curcross = ((xlr[1 - flip]&0x0FFFC000 ^ 0x08000000)
+               <  (xlr[0 + flip]&0x0FFFC000 ^ 0x08000000));
+         invaly |= curcross;
+         span[j].invalyscan[spix] = invaly;
+         allinval &= invaly;
+         if (invaly != 0)
+         { /* branch */ }
+         else
+         {
+            xlrsc[0] = (xlrsc[0] >> 3) & 0xFFF;
+            xlrsc[1] = (xlrsc[1] >> 3) & 0xFFF;
+            minmax[0]
+            = (xlrsc[flip - 0] < minmax[0]) ? xlrsc[flip - 0] : minmax[0];
+            minmax[1]
+            = (xlrsc[1 - flip] > minmax[1]) ? xlrsc[1 - flip] : minmax[1];
+         }
+
+         if (spix == ldflag)
+#ifdef USE_SSE_SUPPORT
+         {
+            __m128i xmm_frac;
+            __m128i delta_x_high, delta_diff;
+            __m128i prod_hi, prod_lo;
+            __m128i result;
+
+            span[j].unscrx = xlr[1] >> 16;
+            xfrac = (xlr[1] >> 8) & 0xFF;
+            xmm_frac = _mm_set1_epi32(xfrac);
+
+            delta_x_high = _mm_load_si128((__m128i *)d_rgba_dxh);
+            prod_lo = _mm_mul_epu32(delta_x_high, xmm_frac);
+            delta_x_high = _mm_srli_epi64(delta_x_high, 32);
+            prod_hi = _mm_mul_epu32(delta_x_high, xmm_frac);
+            prod_lo = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
+            prod_hi = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
+            delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
+
+            delta_diff = _mm_load_si128((__m128i *)d_rgba_diff);
+            result = _mm_load_si128((__m128i *)rgba);
+            result = _mm_srli_epi32(result, 9);
+            result = _mm_slli_epi32(result, 9);
+            result = _mm_add_epi32(result, delta_diff);
+            result = _mm_sub_epi32(result, delta_x_high);
+            result = _mm_srli_epi32(result, 10);
+            result = _mm_slli_epi32(result, 10);
+            _mm_store_si128((__m128i *)span[j].rgba, result);
+
+            delta_x_high = _mm_load_si128((__m128i *)d_stwz_dxh);
+            prod_lo = _mm_mul_epu32(delta_x_high, xmm_frac);
+            delta_x_high = _mm_srli_epi64(delta_x_high, 32);
+            prod_hi = _mm_mul_epu32(delta_x_high, xmm_frac);
+            prod_lo = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
+            prod_hi = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
+            delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
+
+            delta_diff = _mm_load_si128((__m128i *)d_stwz_diff);
+            result = _mm_load_si128((__m128i *)stwz);
+            result = _mm_srli_epi32(result, 9);
+            result = _mm_slli_epi32(result, 9);
+            result = _mm_add_epi32(result, delta_diff);
+            result = _mm_sub_epi32(result, delta_x_high);
+            result = _mm_srli_epi32(result, 10);
+            result = _mm_slli_epi32(result, 10);
+            _mm_store_si128((__m128i *)span[j].stwz, result);
+         }
+#else
+         {
+            span[j].unscrx = xlr[1] >> 16;
+            xfrac = (xlr[1] >> 8) & 0xFF;
+            span[j].rgba[0]
+            = ((rgba[0] & ~0x1FF) + d_rgba_diff[0] - xfrac*d_rgba_dxh[0])
+            & ~0x000003FF;
+            span[j].rgba[1]
+            = ((rgba[1] & ~0x1FF) + d_rgba_diff[1] - xfrac*d_rgba_dxh[1])
+            & ~0x000003FF;
+            span[j].rgba[2]
+            = ((rgba[2] & ~0x1FF) + d_rgba_diff[2] - xfrac*d_rgba_dxh[2])
+            & ~0x000003FF;
+            span[j].rgba[3]
+            = ((rgba[3] & ~0x1FF) + d_rgba_diff[3] - xfrac*d_rgba_dxh[3])
+            & ~0x000003FF;
+            span[j].stwz[0]
+            = ((stwz[0] & ~0x1FF) + d_stwz_diff[0] - xfrac*d_stwz_dxh[0])
+            & ~0x000003FF;
+            span[j].stwz[1]
+            = ((stwz[1] & ~0x1FF) + d_stwz_diff[1] - xfrac*d_stwz_dxh[1])
+            & ~0x000003FF;
+            span[j].stwz[2]
+            = ((stwz[2] & ~0x1FF) + d_stwz_diff[2] - xfrac*d_stwz_dxh[2])
+            & ~0x000003FF;
+            span[j].stwz[3]
+            = ((stwz[3] & ~0x1FF) + d_stwz_diff[3] - xfrac*d_stwz_dxh[3])
+            & ~0x000003FF;
+         }
+#endif
+         if (spix == 3)
+         {
+            const int invalidline = (sckeepodd ^ j) & scfield
+               | (allinval | allover | allunder);
+            span[j].lx = minmax[flip - 0];
+            span[j].rx = minmax[1 - flip];
+            span[j].validline = invalidline ^ 1;
+         }
       }
+      if (spix == 3)
+      {
+         rgba[0] += d_rgba_de[0];
+         rgba[1] += d_rgba_de[1];
+         rgba[2] += d_rgba_de[2];
+         rgba[3] += d_rgba_de[3];
+         stwz[0] += d_stwz_de[0];
+         stwz[1] += d_stwz_de[1];
+         stwz[2] += d_stwz_de[2];
+         stwz[3] += d_stwz_de[3];
+      }
+      xlr[0] += xlr_inc[0];
+      xlr[1] += xlr_inc[1];
+   }
+   render_spans(yhlimit >> 2, yllimit >> 2, tilenum, flip);
 #ifdef USE_MMX_DECODES
    _mm_empty();
 #endif
-   cmd_ptr += (DP_END - DP_CURRENT) / sizeof(i64); /* += length */
-   if (rdp_pipeline_crashed != 0)
-      goto exit_a;
-
-   while (cmd_cur - cmd_ptr < 0)
-   {
-      uint32_t w0    = cmd_data[cmd_cur + 0].UW32[0];
-      uint32_t w1    = cmd_data[cmd_cur + 0].UW32[1];
-      int command    = (cmd_data[cmd_cur + 0].UW32[0] >> 24) % 64;
-      int cmd_length = sizeof(i64)/sizeof(i64) * DP_CMD_LEN_W[command];
-
-#ifdef TRACE_DP_COMMANDS
-      ++cmd_count[command];
-#endif
-      if (cmd_ptr - cmd_cur - cmd_length < 0)
-         goto exit_b;
-      rdp_command_table[command](w0, w1);
-      cmd_cur += cmd_length;
-   };
-exit_a:
-   cmd_ptr = 0;
-   cmd_cur = 0;
-exit_b:
-   *gfx_info.DPC_START_REG = *gfx_info.DPC_CURRENT_REG = *gfx_info.DPC_END_REG;
-   return;
 }
 
 static void tri_noshade(uint32_t w0, uint32_t w1)
@@ -1296,678 +1824,6 @@ static void set_color_image(uint32_t w0, uint32_t w1)
    /* fb_address &= 0x00FFFFFF; */
 }
 
-static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer)
-{
-   register int base;
-   int lft;             /* Left major flag, 0 = left major, 1 = right major */
-   int level;           /* Number of mip-maps minus one. */
-   int tile;            /* Tile descriptor index. Used to reference texture for this primitive */
-   s32 yl;              /* Y coordinate of low minor edge. */
-   s32 ym;              /* Y coordinate of mid minor edge. */
-   s32 yh;              /* Y coordinate of major edge. */
-   s32 xl;              /* X coordinate of low edge, integer. */
-   s32 xh;              /* X coordinate of major edge. */
-   s32 xm;              /* triangle edge x-coordinates */
-   s32 DxLDy;           /* Inverse slope of low edge, integer. */
-   s32 DxHDy;           /* Inverse slope of major edge, integer. */
-   s32 DxMDy;           /* INverse slope of middle edge, integer. */
-   int tilenum, flip;
-
-   i32 rgba[4];         /* RGBA color components */
-   i32 d_rgba_dx[4];    /* RGBA delda per x-coordinate delta */
-   i32 d_rgba_de[4];    /* RGBA delta along the edge */
-   i32 d_rgba_dy[4];    /* RGBA delta per y-coordinate delta */
-   i16 rgba_int[4];
-   i16 rgba_frac[4];
-   i16 d_rgba_dx_int[4];
-   i16 d_rgba_dx_frac[4];
-   i16 d_rgba_de_int[4];
-   i16 d_rgba_de_frac[4];
-   i16 d_rgba_dy_int[4];
-   i16 d_rgba_dy_frac[4];
-
-   i32 stwz[4];
-   i32 d_stwz_dx[4];
-   i32 d_stwz_de[4];
-   i32 d_stwz_dy[4];
-   i16 stwz_int[4], stwz_frac[4];
-   i16 d_stwz_dx_int[4], d_stwz_dx_frac[4];
-   i16 d_stwz_de_int[4], d_stwz_de_frac[4];
-   i16 d_stwz_dy_int[4], d_stwz_dy_frac[4];
-
-   i32 d_rgba_dxh[4];
-   i32 d_stwz_dxh[4];
-   i32 d_rgba_diff[4], d_stwz_diff[4];
-   i32 xlr[2], xlr_inc[2];
-   u8 xfrac;
-#ifdef USE_SSE_SUPPORT
-   __m128i xmm_d_rgba_de, xmm_d_stwz_de;
-#endif
-   int sign_dxhdy;
-   int ycur, ylfar;
-   int yllimit, yhlimit;
-   int ldflag;
-   int invaly;
-   int curcross;
-   int allover, allunder, curover, curunder;
-   int allinval;
-   register int j, k;
-   const i32 clipxlshift = __clip.xl << 1;
-   const i32 clipxhshift = __clip.xh << 1;
-
-   base = cmd_cur + 0;
-   setzero_si64(rgba_int);
-   setzero_si64(rgba_frac);
-   setzero_si64(d_rgba_dx_int);
-   setzero_si64(d_rgba_dx_frac);
-   setzero_si64(d_rgba_de_int);
-   setzero_si64(d_rgba_de_frac);
-   setzero_si64(d_rgba_dy_int);
-   setzero_si64(d_rgba_dy_frac);
-   setzero_si64(stwz_int);
-   setzero_si64(stwz_frac);
-   setzero_si64(d_stwz_dx_int);
-   setzero_si64(d_stwz_dx_frac);
-   setzero_si64(d_stwz_de_int);
-   setzero_si64(d_stwz_de_frac);
-   setzero_si64(d_stwz_dy_int);
-   setzero_si64(d_stwz_dy_frac);
-
-   /* Edge Coefficients */
-   lft   = (cmd_data[base + 0].UW32[0] & 0x00800000) >> (55 - 32);
-   /* unused  (cmd_data[base + 0].UW32[0] & 0x00400000) >> (54 - 32) */
-   level = (cmd_data[base + 0].UW32[0] & 0x00380000) >> (51 - 32);
-   tile  = (cmd_data[base + 0].UW32[0] & 0x00070000) >> (48 - 32);
-   flip = lft;
-   max_level = level;
-   tilenum = tile;
-
-   yl = (w0 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
-   yl = SIGN(yl, 14);
-   ym = (w1 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
-   ym = SIGN(ym, 14);
-   yh = (w1 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
-   yh = SIGN(yh, 14);
-
-   xl = cmd_data[base + 1].UW32[0];
-   xl = SIGN(xl, 30);
-   DxLDy = cmd_data[base + 1].UW32[1];
-   xh = cmd_data[base + 2].UW32[0];
-   xh = SIGN(xh, 30);
-   DxHDy = cmd_data[base + 2].UW32[1];
-   xm = cmd_data[base + 3].UW32[0];
-   xm = SIGN(xm, 30);
-   DxMDy = cmd_data[base + 3].UW32[1];
-
-   /*
-    * Shade Coefficients
-    */
-   if (shade == 0) /* branch unlikely */
-      goto no_read_shade_coefficients;
-#ifdef USE_MMX_DECODES
-   *(__m64 *)rgba_int       = *(__m64 *)&cmd_data[base +  4];
-   *(__m64 *)d_rgba_dx_int  = *(__m64 *)&cmd_data[base +  5];
-   *(__m64 *)rgba_frac      = *(__m64 *)&cmd_data[base +  6];
-   *(__m64 *)d_rgba_dx_frac = *(__m64 *)&cmd_data[base +  7];
-   *(__m64 *)d_rgba_de_int  = *(__m64 *)&cmd_data[base +  8];
-   *(__m64 *)d_rgba_dy_int  = *(__m64 *)&cmd_data[base +  9];
-   *(__m64 *)d_rgba_de_frac = *(__m64 *)&cmd_data[base + 10];
-   *(__m64 *)d_rgba_dy_frac = *(__m64 *)&cmd_data[base + 11];
-   *(__m64 *)rgba_int       = _mm_shuffle_pi16(*(__m64 *)rgba_int, 0xB1);
-   *(__m64 *)d_rgba_dx_int  = _mm_shuffle_pi16(*(__m64 *)d_rgba_dx_int, 0xB1);
-   *(__m64 *)rgba_frac      = _mm_shuffle_pi16(*(__m64 *)rgba_frac, 0xB1);
-   *(__m64 *)d_rgba_dx_frac = _mm_shuffle_pi16(*(__m64 *)d_rgba_dx_frac, 0xB1);
-   *(__m64 *)d_rgba_de_int  = _mm_shuffle_pi16(*(__m64 *)d_rgba_de_int, 0xB1);
-   *(__m64 *)d_rgba_dy_int  = _mm_shuffle_pi16(*(__m64 *)d_rgba_dy_int, 0xB1);
-   *(__m64 *)d_rgba_de_frac = _mm_shuffle_pi16(*(__m64 *)d_rgba_de_frac, 0xB1);
-   *(__m64 *)d_rgba_dy_frac = _mm_shuffle_pi16(*(__m64 *)d_rgba_dy_frac, 0xB1);
-#else
-   rgba_int[0] = (cmd_data[base + 4].UW32[0] >> 16) & 0xFFFF;
-   rgba_int[1] = (cmd_data[base + 4].UW32[0] >>  0) & 0xFFFF;
-   rgba_int[2] = (cmd_data[base + 4].UW32[1] >> 16) & 0xFFFF;
-   rgba_int[3] = (cmd_data[base + 4].UW32[1] >>  0) & 0xFFFF;
-   d_rgba_dx_int[0] = (cmd_data[base + 5].UW32[0] >> 16) & 0xFFFF;
-   d_rgba_dx_int[1] = (cmd_data[base + 5].UW32[0] >>  0) & 0xFFFF;
-   d_rgba_dx_int[2] = (cmd_data[base + 5].UW32[1] >> 16) & 0xFFFF;
-   d_rgba_dx_int[3] = (cmd_data[base + 5].UW32[1] >>  0) & 0xFFFF;
-   rgba_frac[0] = (cmd_data[base + 6].UW32[0] >> 16) & 0xFFFF;
-   rgba_frac[1] = (cmd_data[base + 6].UW32[0] >>  0) & 0xFFFF;
-   rgba_frac[2] = (cmd_data[base + 6].UW32[1] >> 16) & 0xFFFF;
-   rgba_frac[3] = (cmd_data[base + 6].UW32[1] >>  0) & 0xFFFF;
-   d_rgba_dx_frac[0] = (cmd_data[base + 7].UW32[0] >> 16) & 0xFFFF;
-   d_rgba_dx_frac[1] = (cmd_data[base + 7].UW32[0] >>  0) & 0xFFFF;
-   d_rgba_dx_frac[2] = (cmd_data[base + 7].UW32[1] >> 16) & 0xFFFF;
-   d_rgba_dx_frac[3] = (cmd_data[base + 7].UW32[1] >>  0) & 0xFFFF;
-   d_rgba_de_int[0] = (cmd_data[base + 8].UW32[0] >> 16) & 0xFFFF;
-   d_rgba_de_int[1] = (cmd_data[base + 8].UW32[0] >>  0) & 0xFFFF;
-   d_rgba_de_int[2] = (cmd_data[base + 8].UW32[1] >> 16) & 0xFFFF;
-   d_rgba_de_int[3] = (cmd_data[base + 8].UW32[1] >>  0) & 0xFFFF;
-   d_rgba_dy_int[0] = (cmd_data[base + 9].UW32[0] >> 16) & 0xFFFF;
-   d_rgba_dy_int[1] = (cmd_data[base + 9].UW32[0] >>  0) & 0xFFFF;
-   d_rgba_dy_int[2] = (cmd_data[base + 9].UW32[1] >> 16) & 0xFFFF;
-   d_rgba_dy_int[3] = (cmd_data[base + 9].UW32[1] >>  0) & 0xFFFF;
-   d_rgba_de_frac[0] = (cmd_data[base + 10].UW32[0] >> 16) & 0xFFFF;
-   d_rgba_de_frac[1] = (cmd_data[base + 10].UW32[0] >>  0) & 0xFFFF;
-   d_rgba_de_frac[2] = (cmd_data[base + 10].UW32[1] >> 16) & 0xFFFF;
-   d_rgba_de_frac[3] = (cmd_data[base + 10].UW32[1] >>  0) & 0xFFFF;
-   d_rgba_dy_frac[0] = (cmd_data[base + 11].UW32[0] >> 16) & 0xFFFF;
-   d_rgba_dy_frac[1] = (cmd_data[base + 11].UW32[0] >>  0) & 0xFFFF;
-   d_rgba_dy_frac[2] = (cmd_data[base + 11].UW32[1] >> 16) & 0xFFFF;
-   d_rgba_dy_frac[3] = (cmd_data[base + 11].UW32[1] >>  0) & 0xFFFF;
-#endif
-   base += 8;
-no_read_shade_coefficients:
-   base -= 8;
-#ifdef USE_MMX_DECODES
-   *(__m64 *)(rgba + (0 ^ 2))
-      = _mm_unpackhi_pi16(*(__m64 *)rgba_frac, *(__m64 *)rgba_int);
-   *(__m64 *)(rgba + (2 ^ 2))
-      = _mm_unpacklo_pi16(*(__m64 *)rgba_frac, *(__m64 *)rgba_int);
-   *(__m64 *)(d_rgba_dx + (0 ^ 2))
-      = _mm_unpackhi_pi16(*(__m64 *)d_rgba_dx_frac, *(__m64 *)d_rgba_dx_int);
-   *(__m64 *)(d_rgba_dx + (2 ^ 2))
-      = _mm_unpacklo_pi16(*(__m64 *)d_rgba_dx_frac, *(__m64 *)d_rgba_dx_int);
-   *(__m64 *)(d_rgba_de + (0 ^ 2))
-      = _mm_unpackhi_pi16(*(__m64 *)d_rgba_de_frac, *(__m64 *)d_rgba_de_int);
-   *(__m64 *)(d_rgba_de + (2 ^ 2))
-      = _mm_unpacklo_pi16(*(__m64 *)d_rgba_de_frac, *(__m64 *)d_rgba_de_int);
-   *(__m64 *)(d_rgba_dy + (0 ^ 2))
-      = _mm_unpackhi_pi16(*(__m64 *)d_rgba_dy_frac, *(__m64 *)d_rgba_dy_int);
-   *(__m64 *)(d_rgba_dy + (2 ^ 2))
-      = _mm_unpacklo_pi16(*(__m64 *)d_rgba_dy_frac, *(__m64 *)d_rgba_dy_int);
-#else
-   rgba[0] = (rgba_int[0] << 16) | (u16)(rgba_frac[0]);
-   rgba[1] = (rgba_int[1] << 16) | (u16)(rgba_frac[1]);
-   rgba[2] = (rgba_int[2] << 16) | (u16)(rgba_frac[2]);
-   rgba[3] = (rgba_int[3] << 16) | (u16)(rgba_frac[3]);
-   d_rgba_dx[0] = (d_rgba_dx_int[0] << 16) | (u16)(d_rgba_dx_frac[0]);
-   d_rgba_dx[1] = (d_rgba_dx_int[1] << 16) | (u16)(d_rgba_dx_frac[1]);
-   d_rgba_dx[2] = (d_rgba_dx_int[2] << 16) | (u16)(d_rgba_dx_frac[2]);
-   d_rgba_dx[3] = (d_rgba_dx_int[3] << 16) | (u16)(d_rgba_dx_frac[3]);
-   d_rgba_de[0] = (d_rgba_de_int[0] << 16) | (u16)(d_rgba_de_frac[0]);
-   d_rgba_de[1] = (d_rgba_de_int[1] << 16) | (u16)(d_rgba_de_frac[1]);
-   d_rgba_de[2] = (d_rgba_de_int[2] << 16) | (u16)(d_rgba_de_frac[2]);
-   d_rgba_de[3] = (d_rgba_de_int[3] << 16) | (u16)(d_rgba_de_frac[3]);
-   d_rgba_dy[0] = (d_rgba_dy_int[0] << 16) | (u16)(d_rgba_dy_frac[0]);
-   d_rgba_dy[1] = (d_rgba_dy_int[1] << 16) | (u16)(d_rgba_dy_frac[1]);
-   d_rgba_dy[2] = (d_rgba_dy_int[2] << 16) | (u16)(d_rgba_dy_frac[2]);
-   d_rgba_dy[3] = (d_rgba_dy_int[3] << 16) | (u16)(d_rgba_dy_frac[3]);
-#endif
-   /*
-    * Texture Coefficients
-    */
-   if (texture == 0)
-      goto no_read_texture_coefficients;
-#ifdef USE_MMX_DECODES
-   *(__m64 *)stwz_int       = *(__m64 *)&cmd_data[base + 12];
-   *(__m64 *)d_stwz_dx_int  = *(__m64 *)&cmd_data[base + 13];
-   *(__m64 *)stwz_frac      = *(__m64 *)&cmd_data[base + 14];
-   *(__m64 *)d_stwz_dx_frac = *(__m64 *)&cmd_data[base + 15];
-   *(__m64 *)d_stwz_de_int  = *(__m64 *)&cmd_data[base + 16];
-   *(__m64 *)d_stwz_dy_int  = *(__m64 *)&cmd_data[base + 17];
-   *(__m64 *)d_stwz_de_frac = *(__m64 *)&cmd_data[base + 18];
-   *(__m64 *)d_stwz_dy_frac = *(__m64 *)&cmd_data[base + 19];
-   *(__m64 *)stwz_int       = _mm_shuffle_pi16(*(__m64 *)stwz_int, 0xB1);
-   *(__m64 *)d_stwz_dx_int  = _mm_shuffle_pi16(*(__m64 *)d_stwz_dx_int, 0xB1);
-   *(__m64 *)stwz_frac      = _mm_shuffle_pi16(*(__m64 *)stwz_frac, 0xB1);
-   *(__m64 *)d_stwz_dx_frac = _mm_shuffle_pi16(*(__m64 *)d_stwz_dx_frac, 0xB1);
-   *(__m64 *)d_stwz_de_int  = _mm_shuffle_pi16(*(__m64 *)d_stwz_de_int, 0xB1);
-   *(__m64 *)d_stwz_dy_int  = _mm_shuffle_pi16(*(__m64 *)d_stwz_dy_int, 0xB1);
-   *(__m64 *)d_stwz_de_frac = _mm_shuffle_pi16(*(__m64 *)d_stwz_de_frac, 0xB1);
-   *(__m64 *)d_stwz_dy_frac = _mm_shuffle_pi16(*(__m64 *)d_stwz_dy_frac, 0xB1);
-#else
-   stwz_int[0] = (cmd_data[base + 12].UW32[0] >> 16) & 0xFFFF;
-   stwz_int[1] = (cmd_data[base + 12].UW32[0] >>  0) & 0xFFFF;
-   stwz_int[2] = (cmd_data[base + 12].UW32[1] >> 16) & 0xFFFF;
-   /* stwz_int[3] = (cmd_data[base + 12].UW32[1] >>  0) & 0xFFFF; */
-   d_stwz_dx_int[0] = (cmd_data[base + 13].UW32[0] >> 16) & 0xFFFF;
-   d_stwz_dx_int[1] = (cmd_data[base + 13].UW32[0] >>  0) & 0xFFFF;
-   d_stwz_dx_int[2] = (cmd_data[base + 13].UW32[1] >> 16) & 0xFFFF;
-   /* d_stwz_dx_int[3] = (cmd_data[base + 13].UW32[1] >>  0) & 0xFFFF; */
-   stwz_frac[0] = (cmd_data[base + 14].UW32[0] >> 16) & 0xFFFF;
-   stwz_frac[1] = (cmd_data[base + 14].UW32[0] >>  0) & 0xFFFF;
-   stwz_frac[2] = (cmd_data[base + 14].UW32[1] >> 16) & 0xFFFF;
-   /* stwz_frac[3] = (cmd_data[base + 14].UW32[1] >>  0) & 0xFFFF; */
-   d_stwz_dx_frac[0] = (cmd_data[base + 15].UW32[0] >> 16) & 0xFFFF;
-   d_stwz_dx_frac[1] = (cmd_data[base + 15].UW32[0] >>  0) & 0xFFFF;
-   d_stwz_dx_frac[2] = (cmd_data[base + 15].UW32[1] >> 16) & 0xFFFF;
-   /* d_stwz_dx_frac[3] = (cmd_data[base + 15].UW32[1] >>  0) & 0xFFFF; */
-   d_stwz_de_int[0] = (cmd_data[base + 16].UW32[0] >> 16) & 0xFFFF;
-   d_stwz_de_int[1] = (cmd_data[base + 16].UW32[0] >>  0) & 0xFFFF;
-   d_stwz_de_int[2] = (cmd_data[base + 16].UW32[1] >> 16) & 0xFFFF;
-   /* d_stwz_de_int[3] = (cmd_data[base + 16].UW32[1] >>  0) & 0xFFFF; */
-   d_stwz_dy_int[0] = (cmd_data[base + 17].UW32[0] >> 16) & 0xFFFF;
-   d_stwz_dy_int[1] = (cmd_data[base + 17].UW32[0] >>  0) & 0xFFFF;
-   d_stwz_dy_int[2] = (cmd_data[base + 17].UW32[1] >> 16) & 0xFFFF;
-   /* d_stwz_dy_int[3] = (cmd_data[base + 17].UW32[1] >>  0) & 0xFFFF; */
-   d_stwz_de_frac[0] = (cmd_data[base + 18].UW32[0] >> 16) & 0xFFFF;
-   d_stwz_de_frac[1] = (cmd_data[base + 18].UW32[0] >>  0) & 0xFFFF;
-   d_stwz_de_frac[2] = (cmd_data[base + 18].UW32[1] >> 16) & 0xFFFF;
-   /* d_stwz_de_frac[3] = (cmd_data[base + 18].UW32[1] >>  0) & 0xFFFF; */
-   d_stwz_dy_frac[0] = (cmd_data[base + 19].UW32[0] >> 16) & 0xFFFF;
-   d_stwz_dy_frac[1] = (cmd_data[base + 19].UW32[0] >>  0) & 0xFFFF;
-   d_stwz_dy_frac[2] = (cmd_data[base + 19].UW32[1] >> 16) & 0xFFFF;
-   /* d_stwz_dy_frac[3] = (cmd_data[base + 19].UW32[1] >>  0) & 0xFFFF; */
-#endif
-   base += 8;
-no_read_texture_coefficients:
-   base -= 8;
-
-   /*
-    * Z-Buffer Coefficients
-    */
-   if (zbuffer == 0) /* branch unlikely */
-      goto no_read_zbuffer_coefficients;
-   stwz_int[3]       = (cmd_data[base + 20].UW32[0] >> 16) & 0xFFFF;
-   stwz_frac[3]      = (cmd_data[base + 20].UW32[0] >>  0) & 0xFFFF;
-   d_stwz_dx_int[3]  = (cmd_data[base + 20].UW32[1] >> 16) & 0xFFFF;
-   d_stwz_dx_frac[3] = (cmd_data[base + 20].UW32[1] >>  0) & 0xFFFF;
-   d_stwz_de_int[3]  = (cmd_data[base + 21].UW32[0] >> 16) & 0xFFFF;
-   d_stwz_de_frac[3] = (cmd_data[base + 21].UW32[0] >>  0) & 0xFFFF;
-   d_stwz_dy_int[3]  = (cmd_data[base + 21].UW32[1] >> 16) & 0xFFFF;
-   d_stwz_dy_frac[3] = (cmd_data[base + 21].UW32[1] >>  0) & 0xFFFF;
-   base += 8;
-no_read_zbuffer_coefficients:
-   base -= 8;
-#ifdef USE_MMX_DECODES
-   *(__m64 *)(stwz + (0 ^ 2))
-      = _mm_unpackhi_pi16(*(__m64 *)stwz_frac, *(__m64 *)stwz_int);
-   *(__m64 *)(stwz + (2 ^ 2))
-      = _mm_unpacklo_pi16(*(__m64 *)stwz_frac, *(__m64 *)stwz_int);
-   *(__m64 *)(d_stwz_dx + (0 ^ 2))
-      = _mm_unpackhi_pi16(*(__m64 *)d_stwz_dx_frac, *(__m64 *)d_stwz_dx_int);
-   *(__m64 *)(d_stwz_dx + (2 ^ 2))
-      = _mm_unpacklo_pi16(*(__m64 *)d_stwz_dx_frac, *(__m64 *)d_stwz_dx_int);
-   *(__m64 *)(d_stwz_de + (0 ^ 2))
-      = _mm_unpackhi_pi16(*(__m64 *)d_stwz_de_frac, *(__m64 *)d_stwz_de_int);
-   *(__m64 *)(d_stwz_de + (2 ^ 2))
-      = _mm_unpacklo_pi16(*(__m64 *)d_stwz_de_frac, *(__m64 *)d_stwz_de_int);
-   *(__m64 *)(d_stwz_dy + (0 ^ 2))
-      = _mm_unpackhi_pi16(*(__m64 *)d_stwz_dy_frac, *(__m64 *)d_stwz_dy_int);
-   *(__m64 *)(d_stwz_dy + (2 ^ 2))
-      = _mm_unpacklo_pi16(*(__m64 *)d_stwz_dy_frac, *(__m64 *)d_stwz_dy_int);
-#else
-   stwz[0] = (stwz_int[0] << 16) | (u16)(stwz_frac[0]);
-   stwz[1] = (stwz_int[1] << 16) | (u16)(stwz_frac[1]);
-   stwz[2] = (stwz_int[2] << 16) | (u16)(stwz_frac[2]);
-   stwz[3] = (stwz_int[3] << 16) | (u16)(stwz_frac[3]);
-   d_stwz_dx[0] = (d_stwz_dx_int[0] << 16) | (u16)(d_stwz_dx_frac[0]);
-   d_stwz_dx[1] = (d_stwz_dx_int[1] << 16) | (u16)(d_stwz_dx_frac[1]);
-   d_stwz_dx[2] = (d_stwz_dx_int[2] << 16) | (u16)(d_stwz_dx_frac[2]);
-   d_stwz_dx[3] = (d_stwz_dx_int[3] << 16) | (u16)(d_stwz_dx_frac[3]);
-   d_stwz_de[0] = (d_stwz_de_int[0] << 16) | (u16)(d_stwz_de_frac[0]);
-   d_stwz_de[1] = (d_stwz_de_int[1] << 16) | (u16)(d_stwz_de_frac[1]);
-   d_stwz_de[2] = (d_stwz_de_int[2] << 16) | (u16)(d_stwz_de_frac[2]);
-   d_stwz_de[3] = (d_stwz_de_int[3] << 16) | (u16)(d_stwz_de_frac[3]);
-   d_stwz_dy[0] = (d_stwz_dy_int[0] << 16) | (u16)(d_stwz_dy_frac[0]);
-   d_stwz_dy[1] = (d_stwz_dy_int[1] << 16) | (u16)(d_stwz_dy_frac[1]);
-   d_stwz_dy[2] = (d_stwz_dy_int[2] << 16) | (u16)(d_stwz_dy_frac[2]);
-   d_stwz_dy[3] = (d_stwz_dy_int[3] << 16) | (u16)(d_stwz_dy_frac[3]);
-#endif
-#ifdef USE_SSE_SUPPORT
-   xmm_d_rgba_de = _mm_load_si128((__m128i *)d_rgba_de);
-   xmm_d_stwz_de = _mm_load_si128((__m128i *)d_stwz_de);
-#endif
-
-   /*
-    * rest of edgewalker algorithm
-    */
-   spans_d_rgba[0] = d_rgba_dx[0] & ~0x0000001F;
-   spans_d_rgba[1] = d_rgba_dx[1] & ~0x0000001F;
-   spans_d_rgba[2] = d_rgba_dx[2] & ~0x0000001F;
-   spans_d_rgba[3] = d_rgba_dx[3] & ~0x0000001F;
-   spans_d_stwz[0] = d_stwz_dx[0] & ~0x0000001F;
-   spans_d_stwz[1] = d_stwz_dx[1] & ~0x0000001F;
-   spans_d_stwz[2] = d_stwz_dx[2] & ~0x0000001F;
-   spans_d_stwz[3] = d_stwz_dx[3];
-
-   spans_d_rgba_dy[0] = d_rgba_dy[0] >> 14;
-   spans_d_rgba_dy[1] = d_rgba_dy[1] >> 14;
-   spans_d_rgba_dy[2] = d_rgba_dy[2] >> 14;
-   spans_d_rgba_dy[3] = d_rgba_dy[3] >> 14;
-   spans_d_rgba_dy[0] = SIGN(spans_d_rgba_dy[0], 13);
-   spans_d_rgba_dy[1] = SIGN(spans_d_rgba_dy[1], 13);
-   spans_d_rgba_dy[2] = SIGN(spans_d_rgba_dy[2], 13);
-   spans_d_rgba_dy[3] = SIGN(spans_d_rgba_dy[3], 13);
-
-   spans_cd_rgba[0] = spans_d_rgba[0] >> 14;
-   spans_cd_rgba[1] = spans_d_rgba[1] >> 14;
-   spans_cd_rgba[2] = spans_d_rgba[2] >> 14;
-   spans_cd_rgba[3] = spans_d_rgba[3] >> 14;
-   spans_cd_rgba[0] = SIGN(spans_cd_rgba[0], 13);
-   spans_cd_rgba[1] = SIGN(spans_cd_rgba[1], 13);
-   spans_cd_rgba[2] = SIGN(spans_cd_rgba[2], 13);
-   spans_cd_rgba[3] = SIGN(spans_cd_rgba[3], 13);
-   spans_cdz = spans_d_stwz[3] >> 10;
-   spans_cdz = SIGN(spans_cdz, 22);
-
-   spans_d_stwz_dy[0] = d_stwz_dy[0] & ~0x00007FFF;
-   spans_d_stwz_dy[1] = d_stwz_dy[1] & ~0x00007FFF;
-   spans_d_stwz_dy[2] = d_stwz_dy[2] & ~0x00007FFF;
-   spans_d_stwz_dy[3] = d_stwz_dy[3] >> 10;
-   spans_d_stwz_dy[3] = SIGN(spans_d_stwz_dy[3], 22);
-
-   d_stwz_dx_int[3] ^= (d_stwz_dx_int[3] < 0) ? ~0 : 0;
-   d_stwz_dy_int[3] ^= (d_stwz_dy_int[3] < 0) ? ~0 : 0;
-   spans_dzpix = normalize_dzpix(d_stwz_dx_int[3] + d_stwz_dy_int[3]);
-
-   sign_dxhdy = (DxHDy < 0);
-   if (sign_dxhdy ^ flip) /* !do_offset */
-   {
-      setzero_si128(d_rgba_diff);
-      setzero_si128(d_stwz_diff);
-   }
-   else
-   {
-      i32 d_rgba_deh[4], d_stwz_deh[4];
-      i32 d_rgba_dyh[4], d_stwz_dyh[4];
-
-      d_rgba_deh[0] = d_rgba_de[0] & ~0x000001FF;
-      d_rgba_deh[1] = d_rgba_de[1] & ~0x000001FF;
-      d_rgba_deh[2] = d_rgba_de[2] & ~0x000001FF;
-      d_rgba_deh[3] = d_rgba_de[3] & ~0x000001FF;
-      d_stwz_deh[0] = d_stwz_de[0] & ~0x000001FF;
-      d_stwz_deh[1] = d_stwz_de[1] & ~0x000001FF;
-      d_stwz_deh[2] = d_stwz_de[2] & ~0x000001FF;
-      d_stwz_deh[3] = d_stwz_de[3] & ~0x000001FF;
-
-      d_rgba_dyh[0] = d_rgba_dy[0] & ~0x000001FF;
-      d_rgba_dyh[1] = d_rgba_dy[1] & ~0x000001FF;
-      d_rgba_dyh[2] = d_rgba_dy[2] & ~0x000001FF;
-      d_rgba_dyh[3] = d_rgba_dy[3] & ~0x000001FF;
-      d_stwz_dyh[0] = d_stwz_dy[0] & ~0x000001FF;
-      d_stwz_dyh[1] = d_stwz_dy[1] & ~0x000001FF;
-      d_stwz_dyh[2] = d_stwz_dy[2] & ~0x000001FF;
-      d_stwz_dyh[3] = d_stwz_dy[3] & ~0x000001FF;
-
-      d_rgba_diff[0] = d_rgba_deh[0] - d_rgba_dyh[0];
-      d_rgba_diff[1] = d_rgba_deh[1] - d_rgba_dyh[1];
-      d_rgba_diff[2] = d_rgba_deh[2] - d_rgba_dyh[2];
-      d_rgba_diff[3] = d_rgba_deh[3] - d_rgba_dyh[3];
-      d_rgba_diff[0] -= (d_rgba_diff[0] >> 2);
-      d_rgba_diff[1] -= (d_rgba_diff[1] >> 2);
-      d_rgba_diff[2] -= (d_rgba_diff[2] >> 2);
-      d_rgba_diff[3] -= (d_rgba_diff[3] >> 2);
-      d_stwz_diff[0] = d_stwz_deh[0] - d_stwz_dyh[0];
-      d_stwz_diff[1] = d_stwz_deh[1] - d_stwz_dyh[1];
-      d_stwz_diff[2] = d_stwz_deh[2] - d_stwz_dyh[2];
-      d_stwz_diff[3] = d_stwz_deh[3] - d_stwz_dyh[3];
-      d_stwz_diff[0] -= (d_stwz_diff[0] >> 2);
-      d_stwz_diff[1] -= (d_stwz_diff[1] >> 2);
-      d_stwz_diff[2] -= (d_stwz_diff[2] >> 2);
-      d_stwz_diff[3] -= (d_stwz_diff[3] >> 2);
-   }
-
-   if (g_gdp.other_modes.cycle_type == CYCLE_TYPE_COPY)
-   {
-      setzero_si128(d_rgba_dxh);
-      setzero_si128(d_stwz_dxh);
-   }
-   else
-   {
-      d_rgba_dxh[0] = (d_rgba_dx[0] >> 8) & ~0x00000001;
-      d_rgba_dxh[1] = (d_rgba_dx[1] >> 8) & ~0x00000001;
-      d_rgba_dxh[2] = (d_rgba_dx[2] >> 8) & ~0x00000001;
-      d_rgba_dxh[3] = (d_rgba_dx[3] >> 8) & ~0x00000001;
-      d_stwz_dxh[0] = (d_stwz_dx[0] >> 8) & ~0x00000001;
-      d_stwz_dxh[1] = (d_stwz_dx[1] >> 8) & ~0x00000001;
-      d_stwz_dxh[2] = (d_stwz_dx[2] >> 8) & ~0x00000001;
-      d_stwz_dxh[3] = (d_stwz_dx[3] >> 8) & ~0x00000001;
-   }
-
-   ldflag = (sign_dxhdy ^ flip) ? 0 : 3;
-   invaly = 1;
-   yllimit = (yl - __clip.yl < 0) ? yl : __clip.yl; /* clip.yl always &= 0xFFF */
-
-   ycur = yh & ~3;
-   ylfar = yllimit | 3;
-   if (yl >> 2 > ylfar >> 2)
-      ylfar += 4;
-   else if (yllimit >> 2 >= 0 && yllimit >> 2 < 1023)
-      span[(yllimit >> 2) + 1].validline = 0;
-
-   yhlimit = (yh - __clip.yh >= 0) ? yh : __clip.yh; /* clip.yh always &= 0xFFF */
-
-   xlr_inc[0] = (DxMDy >> 2) & ~0x00000001;
-   xlr_inc[1] = (DxHDy >> 2) & ~0x00000001;
-   xlr[0] = xm & ~0x00000001;
-   xlr[1] = xh & ~0x00000001;
-   xfrac = (xlr[1] >> 8) & 0xFF;
-
-   allover = 1;
-   allunder = 1;
-   curover = 0;
-   curunder = 0;
-   allinval = 1;
-
-   for (k = ycur; k <= ylfar; k++)
-   {
-      static int minmax[2];
-      int stickybit;
-      int xlrsc[2];
-      const int spix = k & 3;
-      const int yhclose = yhlimit & ~3;
-
-      if (k == ym)
-      {
-         xlr[0] = xl & ~0x00000001;
-         xlr_inc[0] = (DxLDy >> 2) & ~0x00000001;
-      }
-
-      if (k < yhclose)
-      { /* branch */ }
-      else
-      {
-         invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
-         j = k >> 2;
-         if (spix == 0)
-         {
-            minmax[1] = 0x000;
-            minmax[0] = 0xFFF;
-            allover = allunder = 1;
-            allinval = 1;
-         }
-
-         stickybit = (xlr[1] & 0x00003FFF) - 1;
-         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-         xlrsc[1] = (xlr[1] >> 13)&0x1FFE | stickybit;
-         curunder = !!(xlr[1] & 0x08000000);
-         curunder = curunder | (u32)(xlrsc[1] - clipxhshift)>>31;
-         xlrsc[1] = curunder ? clipxhshift : (xlr[1]>>13)&0x3FFE | stickybit;
-         curover  = !!(xlrsc[1] & 0x00002000);
-         xlrsc[1] = xlrsc[1] & 0x1FFF;
-         curover |= (u32)~(xlrsc[1] - clipxlshift) >> 31;
-         xlrsc[1] = curover ? clipxlshift : xlrsc[1];
-         span[j].majorx[spix] = xlrsc[1] & 0x1FFF;
-         allover &= curover;
-         allunder &= curunder;
-
-         stickybit = (xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-         xlrsc[0] = (xlr[0] >> 13)&0x1FFE | stickybit;
-         curunder = !!(xlr[0] & 0x08000000);
-         curunder = curunder | (u32)(xlrsc[0] - clipxhshift)>>31;
-         xlrsc[0] = curunder ? clipxhshift : (xlr[0]>>13)&0x3FFE | stickybit;
-         curover  = !!(xlrsc[0] & 0x00002000);
-         xlrsc[0] &= 0x1FFF;
-         curover |= (u32)~(xlrsc[0] - clipxlshift) >> 31;
-         xlrsc[0] = curover ? clipxlshift : xlrsc[0];
-         span[j].minorx[spix] = xlrsc[0] & 0x1FFF;
-         allover &= curover;
-         allunder &= curunder;
-
-         curcross = ((xlr[1 - flip]&0x0FFFC000 ^ 0x08000000)
-               <  (xlr[0 + flip]&0x0FFFC000 ^ 0x08000000));
-         invaly |= curcross;
-         span[j].invalyscan[spix] = invaly;
-         allinval &= invaly;
-         if (invaly != 0)
-         { /* branch */ }
-         else
-         {
-            xlrsc[0] = (xlrsc[0] >> 3) & 0xFFF;
-            xlrsc[1] = (xlrsc[1] >> 3) & 0xFFF;
-            minmax[0]
-            = (xlrsc[flip - 0] < minmax[0]) ? xlrsc[flip - 0] : minmax[0];
-            minmax[1]
-            = (xlrsc[1 - flip] > minmax[1]) ? xlrsc[1 - flip] : minmax[1];
-         }
-
-         if (spix == ldflag)
-#ifdef USE_SSE_SUPPORT
-         {
-            __m128i xmm_frac;
-            __m128i delta_x_high, delta_diff;
-            __m128i prod_hi, prod_lo;
-            __m128i result;
-
-            span[j].unscrx = xlr[1] >> 16;
-            xfrac = (xlr[1] >> 8) & 0xFF;
-            xmm_frac = _mm_set1_epi32(xfrac);
-
-            delta_x_high = _mm_load_si128((__m128i *)d_rgba_dxh);
-            prod_lo = _mm_mul_epu32(delta_x_high, xmm_frac);
-            delta_x_high = _mm_srli_epi64(delta_x_high, 32);
-            prod_hi = _mm_mul_epu32(delta_x_high, xmm_frac);
-            prod_lo = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
-            prod_hi = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
-            delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
-
-            delta_diff = _mm_load_si128((__m128i *)d_rgba_diff);
-            result = _mm_load_si128((__m128i *)rgba);
-            result = _mm_srli_epi32(result, 9);
-            result = _mm_slli_epi32(result, 9);
-            result = _mm_add_epi32(result, delta_diff);
-            result = _mm_sub_epi32(result, delta_x_high);
-            result = _mm_srli_epi32(result, 10);
-            result = _mm_slli_epi32(result, 10);
-            _mm_store_si128((__m128i *)span[j].rgba, result);
-
-            delta_x_high = _mm_load_si128((__m128i *)d_stwz_dxh);
-            prod_lo = _mm_mul_epu32(delta_x_high, xmm_frac);
-            delta_x_high = _mm_srli_epi64(delta_x_high, 32);
-            prod_hi = _mm_mul_epu32(delta_x_high, xmm_frac);
-            prod_lo = _mm_shuffle_epi32(prod_lo, _MM_SHUFFLE(3, 1, 2, 0));
-            prod_hi = _mm_shuffle_epi32(prod_hi, _MM_SHUFFLE(3, 1, 2, 0));
-            delta_x_high = _mm_unpacklo_epi32(prod_lo, prod_hi);
-
-            delta_diff = _mm_load_si128((__m128i *)d_stwz_diff);
-            result = _mm_load_si128((__m128i *)stwz);
-            result = _mm_srli_epi32(result, 9);
-            result = _mm_slli_epi32(result, 9);
-            result = _mm_add_epi32(result, delta_diff);
-            result = _mm_sub_epi32(result, delta_x_high);
-            result = _mm_srli_epi32(result, 10);
-            result = _mm_slli_epi32(result, 10);
-            _mm_store_si128((__m128i *)span[j].stwz, result);
-         }
-#else
-         {
-            span[j].unscrx = xlr[1] >> 16;
-            xfrac = (xlr[1] >> 8) & 0xFF;
-            span[j].rgba[0]
-            = ((rgba[0] & ~0x1FF) + d_rgba_diff[0] - xfrac*d_rgba_dxh[0])
-            & ~0x000003FF;
-            span[j].rgba[1]
-            = ((rgba[1] & ~0x1FF) + d_rgba_diff[1] - xfrac*d_rgba_dxh[1])
-            & ~0x000003FF;
-            span[j].rgba[2]
-            = ((rgba[2] & ~0x1FF) + d_rgba_diff[2] - xfrac*d_rgba_dxh[2])
-            & ~0x000003FF;
-            span[j].rgba[3]
-            = ((rgba[3] & ~0x1FF) + d_rgba_diff[3] - xfrac*d_rgba_dxh[3])
-            & ~0x000003FF;
-            span[j].stwz[0]
-            = ((stwz[0] & ~0x1FF) + d_stwz_diff[0] - xfrac*d_stwz_dxh[0])
-            & ~0x000003FF;
-            span[j].stwz[1]
-            = ((stwz[1] & ~0x1FF) + d_stwz_diff[1] - xfrac*d_stwz_dxh[1])
-            & ~0x000003FF;
-            span[j].stwz[2]
-            = ((stwz[2] & ~0x1FF) + d_stwz_diff[2] - xfrac*d_stwz_dxh[2])
-            & ~0x000003FF;
-            span[j].stwz[3]
-            = ((stwz[3] & ~0x1FF) + d_stwz_diff[3] - xfrac*d_stwz_dxh[3])
-            & ~0x000003FF;
-         }
-#endif
-         if (spix == 3)
-         {
-            const int invalidline = (sckeepodd ^ j) & scfield
-               | (allinval | allover | allunder);
-            span[j].lx = minmax[flip - 0];
-            span[j].rx = minmax[1 - flip];
-            span[j].validline = invalidline ^ 1;
-         }
-      }
-      if (spix == 3)
-      {
-         rgba[0] += d_rgba_de[0];
-         rgba[1] += d_rgba_de[1];
-         rgba[2] += d_rgba_de[2];
-         rgba[3] += d_rgba_de[3];
-         stwz[0] += d_stwz_de[0];
-         stwz[1] += d_stwz_de[1];
-         stwz[2] += d_stwz_de[2];
-         stwz[3] += d_stwz_de[3];
-      }
-      xlr[0] += xlr_inc[0];
-      xlr[1] += xlr_inc[1];
-   }
-   render_spans(yhlimit >> 2, yllimit >> 2, tilenum, flip);
-#ifdef USE_MMX_DECODES
-   _mm_empty();
-#endif
-}
-
-STRICTINLINE static u16 normalize_dzpix(u16 sum)
-{
-   register int count;
-
-   if (sum & 0xC000)
-      return 0x8000;
-   if (sum == 0x0000)
-      return 0x0001;
-   if (sum == 0x0001)
-      return 0x0003;
-   for (count = 0x2000; count > 0; count >>= 1)
-      if (sum & count)
-         return (count << 1);
-   return 0;
-}
-
-NOINLINE static void render_spans(
-      int yhlimit, int yllimit, int tilenum, int flip)
-{
-   const unsigned int cycle_type = g_gdp.other_modes.cycle_type & 03;
-
-   if (g_gdp.other_modes.f.stalederivs == 0)
-   { /* branch */ }
-   else
-   {
-      deduce_derivatives();
-      g_gdp.other_modes.f.stalederivs = 0;
-   }
-   fbread1_ptr = fbread_func[fb_size];
-   fbread2_ptr = fbread2_func[fb_size];
-   fbwrite_ptr = fbwrite_func[fb_size];
-
-#ifdef _DEBUG
-   ++render_cycle_mode_counts[cycle_type];
-#endif
-
-   if (cycle_type & 02)
-      if (cycle_type & 01)
-         render_spans_fill(yhlimit, yllimit, flip);
-      else
-         render_spans_copy(yhlimit, yllimit, tilenum, flip);
-   else
-      if (cycle_type & 01)
-         render_spans_2cycle_ptr(yhlimit, yllimit, tilenum, flip);
-      else
-         render_spans_1cycle_ptr(yhlimit, yllimit, tilenum, flip);
-}
-
 #ifdef USE_SSE_SUPPORT
 INLINE __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src)
 { /* source scalar element, shift half:  src[0] == src[1] && src[2] == src[3] */
@@ -1986,3 +1842,119 @@ INLINE __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src)
 #endif
 }
 #endif
+
+static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
+   gdp_no_op              ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
+   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
+   tri_noshade       ,tri_noshade_z     ,tri_tex           ,tri_tex_z         ,
+   tri_shade         ,tri_shade_z       ,tri_texshade      ,tri_texshade_z    ,
+
+   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
+   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
+   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
+   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
+
+   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
+   tex_rect          ,tex_rect_flip     ,gdp_load_sync         ,gdp_pipe_sync         ,
+   gdp_tile_sync         ,gdp_full_sync         ,gdp_set_key_gb        ,gdp_set_key_r         ,
+   gdp_set_convert       ,set_scissor       ,set_prim_depth    ,set_other_modes   ,
+
+   load_tlut         ,gdp_invalid           ,set_tile_size     ,load_block        ,
+   load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
+   gdp_set_fog_color     ,gdp_set_blend_color   ,gdp_set_prim_color    ,gdp_set_env_color     ,
+   set_combine       ,gdp_set_texture_image ,set_mask_image    ,set_color_image   ,
+};
+
+static const int DP_CMD_LEN_W[64] = { /* command length, in DP FIFO words */
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+   (32) / 8         ,(32+16) / 8      ,(32+64) / 8      ,(32+64+16) / 8   ,
+   (32+64) / 8      ,(32+64+16) / 8   ,(32+64+64) / 8   ,(32+64+64+16) / 8,
+
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+   (16) / 8         ,(16) / 8         ,(8) / 8          ,(8) / 8          ,
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+   (8) / 8          ,(8) / 8          ,(8) / 8          ,(8) / 8          ,
+};
+
+void process_RDP_list(void)
+{
+   int length;
+   unsigned int offset;
+   const u32 DP_CURRENT = *gfx_info.DPC_CURRENT_REG & 0x00FFFFF8;
+   const u32 DP_END     = *gfx_info.DPC_END_REG     & 0x00FFFFF8;
+
+   *gfx_info.DPC_STATUS_REG &= ~DP_STATUS_FREEZE;
+
+   length = DP_END - DP_CURRENT;
+   if (length <= 0)
+      return;
+   length = (unsigned)(length) / sizeof(i64);
+   if ((cmd_ptr + length) & ~(0x0003FFFF / sizeof(i64)))
+   {
+      DisplayError("ProcessRDPList\nOut of command cache memory.");
+      return;
+   }
+
+   --length; /* filling in cmd data in backwards order for performance */
+   offset = (DP_END - sizeof(i64)) / sizeof(i64);
+   if (*gfx_info.DPC_STATUS_REG & DP_STATUS_XBUS_DMA)
+      do
+      {
+         offset &= 0xFFF / sizeof(i64);
+         BUFFERFIFO(cmd_ptr + length, SP_DMEM, offset);
+         offset -= 0x001 * sizeof(i8);
+      } while (--length >= 0);
+   else
+      if (DP_END > plim || DP_CURRENT > plim)
+      {
+         DisplayError("DRAM access violation overrides");
+         return;
+      }
+      else
+      {
+         do
+         {
+            offset &= 0xFFFFFF / sizeof(i64);
+            BUFFERFIFO(cmd_ptr + length, DRAM, offset);
+            offset -= 0x000001 * sizeof(i8);
+         } while (--length >= 0);
+      }
+#ifdef USE_MMX_DECODES
+   _mm_empty();
+#endif
+   cmd_ptr += (DP_END - DP_CURRENT) / sizeof(i64); /* += length */
+   if (rdp_pipeline_crashed != 0)
+      goto exit_a;
+
+   while (cmd_cur - cmd_ptr < 0)
+   {
+      uint32_t w0    = cmd_data[cmd_cur + 0].UW32[0];
+      uint32_t w1    = cmd_data[cmd_cur + 0].UW32[1];
+      int command    = (cmd_data[cmd_cur + 0].UW32[0] >> 24) % 64;
+      int cmd_length = sizeof(i64)/sizeof(i64) * DP_CMD_LEN_W[command];
+
+#ifdef TRACE_DP_COMMANDS
+      ++cmd_count[command];
+#endif
+      if (cmd_ptr - cmd_cur - cmd_length < 0)
+         goto exit_b;
+      rdp_command_table[command](w0, w1);
+      cmd_cur += cmd_length;
+   };
+exit_a:
+   cmd_ptr = 0;
+   cmd_cur = 0;
+exit_b:
+   *gfx_info.DPC_START_REG = *gfx_info.DPC_CURRENT_REG = *gfx_info.DPC_END_REG;
+}
