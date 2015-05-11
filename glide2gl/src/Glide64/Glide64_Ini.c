@@ -59,7 +59,23 @@ void ReadSpecialSettings (const char * name)
 
    fprintf(stderr, "ReadSpecialSettings: %s\n", name);
 
+   /* frame buffer */
+   smart_read = 0;
+   hires = 0;
+   get_fbinfo = 0;
+   read_always = 0;
+   depth_render = 1;
+   fb_crc_mode = 1;
+   read_back_to_screen = 0;
+   cpu_write_hack = 0;
+   optimize_texrect = 1;
+   hires_buf_clear = 0;
+   read_alpha = 0;
+   ignore_aux_copy = 0;
+   useless_is_useless = 0;
+
    updated = false;
+
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       update_variables(false);
    
@@ -70,21 +86,7 @@ void ReadSpecialSettings (const char * name)
       settings.swapmode = 1;
       settings.lodmode = 0;
 
-      //frame buffer
-      smart_read = 0;
-      hires = 0;
-      get_fbinfo = 0;
-      read_always = 0;
-      depth_render = 1;
-      fb_crc_mode = 1;
-      read_back_to_screen = 0; 
-      cpu_write_hack = 0;
-      optimize_texrect = 1;
-      hires_buf_clear = 0;
-      read_alpha = 0;
-      ignore_aux_copy = 0;
-      useless_is_useless = 0;
-
+      /* frame buffer */
       settings.alt_tex_size = 0;
       settings.force_microcheck = 0;
       settings.force_quad3d = 0;
