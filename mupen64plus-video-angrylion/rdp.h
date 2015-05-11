@@ -235,44 +235,10 @@ extern void (*fbwrite_ptr)(
     UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32);
 extern void (*fbfill_ptr)(UINT32);
 
-extern void fbwrite_4(
-    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
-    UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-extern void fbwrite_8(
-    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
-    UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-extern void fbwrite_16(
-    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
-    UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-extern void fbwrite_32(
-    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
-    UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
-extern void fbfill_4(UINT32 curpixel);
-extern void fbfill_8(UINT32 curpixel);
-extern void fbfill_16(UINT32 curpixel);
-extern void fbfill_32(UINT32 curpixel);
-extern void fbread_4(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread_8(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread_16(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread_32(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread2_4(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread2_8(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread2_16(UINT32 num, UINT32* curpixel_memcvg);
-extern void fbread2_32(UINT32 num, UINT32* curpixel_memcvg);
-
-static void (*fbread_func[4])(UINT32, UINT32*) = {
-    fbread_4, fbread_8, fbread_16, fbread_32
-};
-static void (*fbread2_func[4])(UINT32, UINT32*) = {
-    fbread2_4, fbread2_8, fbread2_16, fbread2_32
-};
-static void (*fbwrite_func[4])(
-    UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32) = {
-    fbwrite_4, fbwrite_8, fbwrite_16, fbwrite_32
-};
-static void (*fbfill_func[4])(UINT32) = {
-    fbfill_4, fbfill_8, fbfill_16, fbfill_32
-};
+extern void (*fbread_func[4])(UINT32, UINT32*);
+extern void (*fbread2_func[4])(UINT32, UINT32*);
+extern void (*fbwrite_func[4])(
+    UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32);
 
 static INLINE void calculate_clamp_diffs(UINT32 i)
 {

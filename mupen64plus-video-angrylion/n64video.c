@@ -54,10 +54,51 @@ gdp_rectangle __clip = {
     0, 0, 0x2000, 0x2000
 };
 
+static void fbfill_4(UINT32 curpixel);
+static void fbfill_8(UINT32 curpixel);
+static void fbfill_16(UINT32 curpixel);
+static void fbfill_32(UINT32 curpixel);
+
+static void fbread_4(UINT32 curpixel, UINT32* curpixel_memcvg);
+static void fbread2_4(UINT32 curpixel, UINT32* curpixel_memcvg);
+static void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg);
+static void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg);
+static void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg);
+static void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg);
+static void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg);
+static void fbread2_32(UINT32 curpixel, UINT32* curpixel_memcvg);
+
+static void fbwrite_4(
+      UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
+      UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
+static void fbwrite_8(
+      UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
+      UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
+static void fbwrite_16(
+      UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
+      UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
+static void fbwrite_32(
+      UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
+      UINT32 curpixel_cvg, UINT32 curpixel_memcvg);
+
 void (*fbread1_ptr)(UINT32, UINT32*);
 void (*fbread2_ptr)(UINT32, UINT32*);
 void (*fbwrite_ptr)(UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32);
 void (*fbfill_ptr)(UINT32);
+
+void (*fbread_func[4])(UINT32, UINT32*) = {
+    fbread_4, fbread_8, fbread_16, fbread_32
+};
+void (*fbread2_func[4])(UINT32, UINT32*) = {
+    fbread2_4, fbread2_8, fbread2_16, fbread2_32
+};
+void (*fbwrite_func[4])(
+    UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32) = {
+    fbwrite_4, fbwrite_8, fbwrite_16, fbwrite_32
+};
+void (*fbfill_func[4])(UINT32) = {
+    fbfill_4, fbfill_8, fbfill_16, fbfill_32
+};
 
 #undef  LOG_RDP_EXECUTION
 #define DETAILED_LOGGING 0
@@ -6402,7 +6443,8 @@ static STRICTINLINE int finalize_spanalpha(
    return (possibilities[g_gdp.other_modes.cvg_dest] & 7);
 }
 
-void fbwrite_4(
+
+static void fbwrite_4(
       UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
       UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
@@ -6415,7 +6457,7 @@ void fbwrite_4(
    return;
 }
 
-void fbwrite_8(
+static void fbwrite_8(
       UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
       UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
@@ -6427,7 +6469,7 @@ void fbwrite_8(
    return;
 }
 
-void fbwrite_16(
+static void fbwrite_16(
       UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
       UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
@@ -6464,7 +6506,7 @@ void fbwrite_16(
    return;
 }
 
-void fbwrite_32(
+static void fbwrite_32(
       UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
       UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
@@ -6484,12 +6526,13 @@ void fbwrite_32(
    PAIRWRITE32(addr, color, g, 0);
 }
 
-void fbfill_4(UINT32 curpixel)
+
+static void fbfill_4(UINT32 curpixel)
 {
    rdp_pipeline_crashed = 1;
 }
 
-void fbfill_8(UINT32 curpixel)
+static void fbfill_8(UINT32 curpixel)
 {
    unsigned char source;
    register unsigned long addr;
@@ -6501,7 +6544,7 @@ void fbfill_8(UINT32 curpixel)
    PAIRWRITE8(addr, source, -(source & 1) & 3);
 }
 
-void fbfill_16(UINT32 curpixel)
+static void fbfill_16(UINT32 curpixel)
 {
    register unsigned long addr;
    register unsigned short source;
@@ -6514,7 +6557,7 @@ void fbfill_16(UINT32 curpixel)
    PAIRWRITE16(addr, source, -(source & 1) & 3);
 }
 
-void fbfill_32(UINT32 curpixel)
+static void fbfill_32(UINT32 curpixel)
 {
    register unsigned long addr;
    const unsigned short fill_color_hi = (g_gdp.fill_color.total >> 16) & 0xFFFF;
@@ -6527,21 +6570,22 @@ void fbfill_32(UINT32 curpixel)
          -(fill_color_hi & 0x0001) & 3, -(fill_color_lo & 0x0001) & 3);
 }
 
-void fbread_4(UINT32 curpixel, UINT32* curpixel_memcvg)
+
+static void fbread_4(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    memory_color.r = memory_color.g = memory_color.b = 0x00;
    memory_color.a = 0xE0;
    *curpixel_memcvg = 7;
 }
 
-void fbread2_4(UINT32 curpixel, UINT32* curpixel_memcvg)
+static void fbread2_4(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = 0x00;
    pre_memory_color.a = 0xE0;
    *curpixel_memcvg = 7;
 }
 
-void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
+static void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    u8 color;
    register unsigned long addr;
@@ -6557,7 +6601,7 @@ void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
    *curpixel_memcvg = 7;
 }
 
-void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
+static void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    u8 color;
    register unsigned long addr;
@@ -6573,7 +6617,7 @@ void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
    *curpixel_memcvg = 7;
 }
 
-void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
+static void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    u8 hidden;
    u16 color;
@@ -6603,7 +6647,8 @@ void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
    *curpixel_memcvg = (unsigned char)(memory_color.a) >> 5;
 }
 
-void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
+
+static void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    u8 hidden;
    u16 color;
@@ -6633,7 +6678,8 @@ void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
    *curpixel_memcvg = (unsigned char)(pre_memory_color.a) >> 5;
 }
 
-void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
+
+static void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    u32 color;
    register unsigned long addr;
@@ -6654,7 +6700,7 @@ void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
    *curpixel_memcvg = (unsigned char)(memory_color.a) >> 5;
 }
 
-void fbread2_32(UINT32 curpixel, UINT32* curpixel_memcvg)
+static void fbread2_32(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
    u32 color;
    register unsigned long addr;
