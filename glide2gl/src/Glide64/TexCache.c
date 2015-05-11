@@ -962,24 +962,22 @@ static void LoadTex(int id, int tmu)
 
    if (modifyPalette)
    {
-      int size;
-      uint16_t tmp_pal[256], *col;
-	  uint8_t cr0, cg0, cb0, ca0, cr1, cg1, cb1;
-	  float percent_r, percent_g, percent_b;
-      memcpy(tmp_pal, rdp.pal_8, 512);
+      uint16_t tmp_pal[256];
 
-      cr0 = ((modcolor >> 24) & 0xFF);
-      cg0 = ((modcolor >> 16) & 0xFF);
-      cb0 = ((modcolor >> 8) & 0xFF);
-      ca0 = (modcolor & 0xFF);
-      cr1 = ((modcolor1 >> 24) & 0xFF);
-      cg1 = ((modcolor1 >> 16) & 0xFF);
-      cb1 = ((modcolor1 >> 8)  & 0xFF);
-      size = 256;
-      col = (uint16_t*)&rdp.pal_8[0];
-      percent_r = ((modcolor1 >> 24) & 0xFF) / 255.0f;
-      percent_g = ((modcolor1 >> 16) & 0xFF) / 255.0f;
-      percent_b = ((modcolor1 >> 8)  & 0xFF) / 255.0f;
+      uint8_t cr0       = ((modcolor >> 24) & 0xFF);
+      uint8_t cg0       = ((modcolor >> 16) & 0xFF);
+      uint8_t cb0       = ((modcolor >> 8) & 0xFF);
+      uint8_t ca0       = (modcolor & 0xFF);
+      uint8_t cr1       = ((modcolor1 >> 24) & 0xFF);
+      uint8_t cg1       = ((modcolor1 >> 16) & 0xFF);
+      uint8_t cb1       = ((modcolor1 >> 8)  & 0xFF);
+      int32_t size      = 256;
+      float   percent_r = ((modcolor1 >> 24) & 0xFF) / 255.0f;
+      float   percent_g = ((modcolor1 >> 16) & 0xFF) / 255.0f;
+      float   percent_b = ((modcolor1 >> 8)  & 0xFF) / 255.0f;
+      uint16_t *col     = (uint16_t*)&rdp.pal_8[0];
+
+      memcpy(tmp_pal, rdp.pal_8, 512);
 
       switch (mod)
       {
