@@ -5574,10 +5574,14 @@ void SET_BLENDER_INPUT(
          *input_b = &memory_color.b;
          break;
       case 2:
-         *input_r = &g_gdp.blend_color.r;        *input_g = &g_gdp.blend_color.g;        *input_b = &g_gdp.blend_color.b;
+         *input_r = &g_gdp.blend_color.r;
+         *input_g = &g_gdp.blend_color.g;
+         *input_b = &g_gdp.blend_color.b;
          break;
       case 3:
-         *input_r = &g_gdp.fog_color.r;        *input_g = &g_gdp.fog_color.g;        *input_b = &g_gdp.fog_color.b;
+         *input_r = &g_gdp.fog_color.r;
+         *input_g = &g_gdp.fog_color.g;
+         *input_b = &g_gdp.fog_color.b;
          break;
    }
 
