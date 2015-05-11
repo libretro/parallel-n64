@@ -271,7 +271,8 @@ extern NOINLINE void render_spans_copy(
     int start, int end, int tilenum, int flip);
 extern NOINLINE void render_spans_fill(int start, int end, int flip);
 
-NOINLINE extern void edgewalker_for_loads(INT32* lewdata);
+extern NOINLINE void loading_pipeline(
+      int start, int end, int tilenum, int coord_quad, int ltlut);
 
 void SET_BLENDER_INPUT(
       int cycle, int which,

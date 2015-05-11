@@ -1332,6 +1332,141 @@ static void set_tile_size(uint32_t w0, uint32_t w1)
    calculate_clamp_diffs(tilenum);
 }
 
+#define ADJUST_ATTR_LOAD() {           \
+   span[j].stwz[0] = s & ~0x000003FF; \
+   span[j].stwz[1] = t & ~0x000003FF; \
+}
+
+#define ADDVALUES_LOAD() { t += dtde; }
+
+static void edgewalker_for_loads(INT32* lewdata)
+{
+   int j = 0;
+   int xleft = 0, xright = 0;
+   int xstart = 0, xend = 0;
+   int s = 0, t = 0, w = 0;
+   int dsdx = 0, dtdx = 0;
+   int dsdy = 0, dtdy = 0;
+   int dsde = 0, dtde = 0;
+   int tilenum = 0, flip = 0;
+
+   int spix;
+   int ycur;
+   int ylfar;
+
+   INT32 maxxmx, minxhx;
+   INT32 yl = 0, ym = 0, yh = 0;
+   INT32 xl = 0, xm = 0, xh = 0;
+   INT32 dxldy = 0, dxhdy = 0, dxmdy = 0;
+
+   int commandcode = (lewdata[0] >> 24) & 0x3f;
+   int ltlut = (commandcode == 0x30);
+   int coord_quad = ltlut || (commandcode == 0x33);
+
+   int k = 0;
+   int sign_dxhdy = 0;
+   int do_offset = 0;
+   int xfrac = 0;
+
+   int valid_y = 1;
+   int length = 0;
+   INT32 xrsc = 0, xlsc = 0, stickybit = 0;
+   INT32 yllimit;
+   INT32 yhlimit;
+
+   flip = 1;
+   max_level = 0;
+   tilenum = (lewdata[0] >> 16) & 7;
+
+
+   yl = SIGN(lewdata[0], 14); 
+   ym = lewdata[1] >> 16;
+   ym = SIGN(ym, 14);
+   yh = SIGN(lewdata[1], 14); 
+
+   xl = SIGN(lewdata[2], 30);
+   xh = SIGN(lewdata[3], 30);
+   xm = SIGN(lewdata[4], 30);
+
+   dxldy = 0;
+   dxhdy = 0;
+   dxmdy = 0;
+
+   s    = lewdata[5] & 0xffff0000;
+   t    = (lewdata[5] & 0xffff) << 16;
+   w    = 0;
+   dsdx = (lewdata[7] & 0xffff0000) | ((lewdata[6] >> 16) & 0xffff);
+   dtdx = ((lewdata[7] << 16) & 0xffff0000)    | (lewdata[6] & 0xffff);
+   dsde = 0;
+   dtde = (lewdata[9] & 0xffff) << 16;
+   dsdy = 0;
+   dtdy = (lewdata[8] & 0xffff) << 16;
+
+   spans_d_stwz[0] = dsdx & ~0x1f;
+   spans_d_stwz[1] = dtdx & ~0x1f;
+   spans_d_stwz[2] = 0;
+
+   xright = xh & ~0x1;
+   xleft = xm & ~0x1;
+
+
+   spix = 0;
+   ycur = yh & ~3;
+   ylfar = yl | 3;
+   yllimit = yl;
+   yhlimit = yh;
+
+   xfrac = 0;
+   xend = xright >> 16;
+
+   for (k = ycur; k <= ylfar; k++)
+   {
+      if (k == ym)
+         xleft = xl & ~1;
+      spix = k & 3;
+      if (!(k & ~0xfff))
+      {
+         j = k >> 2;
+         valid_y = !(k < yhlimit || k >= yllimit);
+
+         if (spix == 0)
+         {
+            maxxmx = 0;
+            minxhx = 0xfff;
+         }
+
+         xrsc = (xright >> 13) & 0x7ffe;
+
+         xlsc = (xleft >> 13) & 0x7ffe;
+
+         if (valid_y)
+         {
+            maxxmx = (((xlsc >> 3) & 0xfff) > maxxmx) ? (xlsc >> 3) & 0xfff : maxxmx;
+            minxhx = (((xrsc >> 3) & 0xfff) < minxhx) ? (xrsc >> 3) & 0xfff : minxhx;
+         }
+
+         if (spix == 0)
+         {
+            span[j].unscrx = xend;
+            ADJUST_ATTR_LOAD();
+         }
+
+         if (spix == 3)
+         {
+            span[j].lx = maxxmx;
+            span[j].rx = minxhx;
+         }
+      }
+
+      if (spix == 3)
+      {
+         ADDVALUES_LOAD();
+      }
+   }
+
+   loading_pipeline(yhlimit >> 2, yllimit >> 2, tilenum, coord_quad, ltlut);
+}
+
 static void load_block(uint32_t w0, uint32_t w1)
 {
    INT32 lewdata[10];
