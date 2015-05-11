@@ -101,6 +101,88 @@ void count_DP_commands(void)
 }
 #endif
 
+static const char *const image_format[] = { "RGBA", "YUV", "CI", "IA", "I", "???", "???", "???" };
+static const char *const image_size[] = { "4-bit", "8-bit", "16-bit", "32-bit" };
+
+static void deduce_derivatives(void)
+{
+   int texel1_used_in_cc1 = 0, texel0_used_in_cc1 = 0, texel0_used_in_cc0 = 0, texel1_used_in_cc0 = 0;
+   int texels_in_cc0 = 0, texels_in_cc1 = 0;
+   int lod_frac_used_in_cc1 = 0, lod_frac_used_in_cc0 = 0;
+   int lodfracused = 0;
+
+   g_gdp.other_modes.f.partialreject_1cycle = (blender2b_a[0] == &inv_pixel_color.a && blender1b_a[0] == &pixel_color.a);
+   g_gdp.other_modes.f.partialreject_2cycle = (blender2b_a[1] == &inv_pixel_color.a && blender1b_a[1] == &pixel_color.a);
+
+   g_gdp.other_modes.f.special_bsel0 = (blender2b_a[0] == &memory_color.a);
+   g_gdp.other_modes.f.special_bsel1 = (blender2b_a[1] == &memory_color.a);
+
+   g_gdp.other_modes.f.rgb_alpha_dither = (g_gdp.other_modes.rgb_dither_sel << 2) | g_gdp.other_modes.alpha_dither_sel;
+
+   if (g_gdp.other_modes.rgb_dither_sel == 3)
+      rgb_dither_ptr = rgb_dither_func[1];
+   else
+      rgb_dither_ptr = rgb_dither_func[0];
+
+   tcdiv_ptr = tcdiv_func[g_gdp.other_modes.persp_tex_en];
+
+   if ((combiner_rgbmul_r[1] == &lod_frac) || (combiner_alphamul[1] == &lod_frac))
+      lod_frac_used_in_cc1 = 1;
+   if ((combiner_rgbmul_r[0] == &lod_frac) || (combiner_alphamul[0] == &lod_frac))
+      lod_frac_used_in_cc0 = 1;
+
+   if (combiner_rgbmul_r[1] == &texel1_color.r || combiner_rgbsub_a_r[1] == &texel1_color.r || combiner_rgbsub_b_r[1] == &texel1_color.r || combiner_rgbadd_r[1] == &texel1_color.r || \
+         combiner_alphamul[1] == &texel1_color.a || combiner_alphasub_a[1] == &texel1_color.a || combiner_alphasub_b[1] == &texel1_color.a || combiner_alphaadd[1] == &texel1_color.a || \
+         combiner_rgbmul_r[1] == &texel1_color.a)
+      texel1_used_in_cc1 = 1;
+   if (combiner_rgbmul_r[1] == &texel0_color.r || combiner_rgbsub_a_r[1] == &texel0_color.r || combiner_rgbsub_b_r[1] == &texel0_color.r || combiner_rgbadd_r[1] == &texel0_color.r || \
+         combiner_alphamul[1] == &texel0_color.a || combiner_alphasub_a[1] == &texel0_color.a || combiner_alphasub_b[1] == &texel0_color.a || combiner_alphaadd[1] == &texel0_color.a || \
+         combiner_rgbmul_r[1] == &texel0_color.a)
+      texel0_used_in_cc1 = 1;
+   if (combiner_rgbmul_r[0] == &texel1_color.r || combiner_rgbsub_a_r[0] == &texel1_color.r || combiner_rgbsub_b_r[0] == &texel1_color.r || combiner_rgbadd_r[0] == &texel1_color.r || \
+         combiner_alphamul[0] == &texel1_color.a || combiner_alphasub_a[0] == &texel1_color.a || combiner_alphasub_b[0] == &texel1_color.a || combiner_alphaadd[0] == &texel1_color.a || \
+         combiner_rgbmul_r[0] == &texel1_color.a)
+      texel1_used_in_cc0 = 1;
+   if (combiner_rgbmul_r[0] == &texel0_color.r || combiner_rgbsub_a_r[0] == &texel0_color.r || combiner_rgbsub_b_r[0] == &texel0_color.r || combiner_rgbadd_r[0] == &texel0_color.r || \
+         combiner_alphamul[0] == &texel0_color.a || combiner_alphasub_a[0] == &texel0_color.a || combiner_alphasub_b[0] == &texel0_color.a || combiner_alphaadd[0] == &texel0_color.a || \
+         combiner_rgbmul_r[0] == &texel0_color.a)
+      texel0_used_in_cc0 = 1;
+   texels_in_cc0 = texel0_used_in_cc0 || texel1_used_in_cc0;
+   texels_in_cc1 = texel0_used_in_cc1 || texel1_used_in_cc1;    
+
+
+   if (texel1_used_in_cc1)
+      render_spans_1cycle_ptr = render_spans_1cycle_func[2];
+   else if (texel0_used_in_cc1 || lod_frac_used_in_cc1)
+      render_spans_1cycle_ptr = render_spans_1cycle_func[1];
+   else
+      render_spans_1cycle_ptr = render_spans_1cycle_func[0];
+
+   if (texel1_used_in_cc1)
+      render_spans_2cycle_ptr = render_spans_2cycle_func[3];
+   else if (texel1_used_in_cc0 || texel0_used_in_cc1)
+      render_spans_2cycle_ptr = render_spans_2cycle_func[2];
+   else if (texel0_used_in_cc0 || lod_frac_used_in_cc0 || lod_frac_used_in_cc1)
+      render_spans_2cycle_ptr = render_spans_2cycle_func[1];
+   else
+      render_spans_2cycle_ptr = render_spans_2cycle_func[0];
+
+   if ((g_gdp.other_modes.cycle_type == CYCLE_TYPE_2 && (lod_frac_used_in_cc0 || lod_frac_used_in_cc1)) || \
+         (g_gdp.other_modes.cycle_type == CYCLE_TYPE_1 && lod_frac_used_in_cc1))
+      lodfracused = 1;
+
+   if ((g_gdp.other_modes.cycle_type == CYCLE_TYPE_1 && combiner_rgbsub_a_r[1] == &noise) || \
+         (g_gdp.other_modes.cycle_type == CYCLE_TYPE_2 && 
+          (combiner_rgbsub_a_r[0] == &noise || combiner_rgbsub_a_r[1] == &noise)) || \
+         g_gdp.other_modes.alpha_dither_sel == 2)
+      get_dither_noise_ptr = get_dither_noise_func[0];
+   else if (g_gdp.other_modes.f.rgb_alpha_dither != 0xf)
+      get_dither_noise_ptr = get_dither_noise_func[1];
+   else
+      get_dither_noise_ptr = get_dither_noise_func[2];
+
+   g_gdp.other_modes.f.dolod = g_gdp.other_modes.tex_lod_en || lodfracused;
+}
 
 NOINLINE static void render_spans(
       int yhlimit, int yllimit, int tilenum, int flip)
@@ -1274,6 +1356,33 @@ static void load_block(uint32_t w0, uint32_t w1)
    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
    lewdata[6] = (dxt & 0xff) << 8;
    lewdata[7] = ((0x80 >> g_gdp.ti_size) << 16) | (dxt >> 8);
+   lewdata[8] = 0x20;
+   lewdata[9] = 0x20;
+
+   edgewalker_for_loads(lewdata);
+}
+
+static void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2)
+{
+   INT32 lewdata[10];
+   int tilenum = (w2 >> 24) & 0x7;
+   int sl, tl, sh, th;
+
+   g_gdp.tile[tilenum].sl = sl = ((w1 >> 12) & 0xfff);
+   g_gdp.tile[tilenum].tl = tl = ((w1 >>  0) & 0xfff);
+   g_gdp.tile[tilenum].sh = sh = ((w2 >> 12) & 0xfff);
+   g_gdp.tile[tilenum].th = th = ((w2 >>  0) & 0xfff);
+
+   calculate_clamp_diffs(tilenum);
+
+   lewdata[0] = (w1 & 0xff000000) | (0x10 << 19) | (tilenum << 16) | (th | 3);
+   lewdata[1] = ((th | 3) << 16) | (tl);
+   lewdata[2] = ((sh >> 2) << 16) | ((sh & 3) << 14);
+   lewdata[3] = ((sl >> 2) << 16) | ((sl & 3) << 14);
+   lewdata[4] = ((sh >> 2) << 16) | ((sh & 3) << 14);
+   lewdata[5] = ((sl << 3) << 16) | (tl << 3);
+   lewdata[6] = 0;
+   lewdata[7] = (0x200 >> g_gdp.ti_size) << 16;
    lewdata[8] = 0x20;
    lewdata[9] = 0x20;
 

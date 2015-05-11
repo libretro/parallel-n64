@@ -240,6 +240,17 @@ extern void (*fbread2_func[4])(UINT32, UINT32*);
 extern void (*fbwrite_func[4])(
     UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32);
 
+extern void (*get_dither_noise_ptr)(int, int, int*, int*);
+extern void (*rgb_dither_func[2])(int*, int*, int*, int);
+extern void (*rgb_dither_ptr)(int*, int*, int*, int);
+extern void (*tcdiv_ptr)(INT32, INT32, INT32, INT32*, INT32*);
+extern void (*tcdiv_func[2])(INT32, INT32, INT32, INT32*, INT32*);
+extern void (*render_spans_1cycle_ptr)(int, int, int, int);
+extern void (*render_spans_2cycle_ptr)(int, int, int, int);
+extern void (*render_spans_1cycle_func[3])(int, int, int, int);
+extern void (*render_spans_2cycle_func[4])(int, int, int, int);
+extern void (*get_dither_noise_func[3])(int, int, int*, int*);
+
 static INLINE void calculate_clamp_diffs(UINT32 i)
 {
    g_gdp.tile[i].f.clampdiffs = ((g_gdp.tile[i].sh >> 2) - (g_gdp.tile[i].sl >> 2)) & 0x3ff;
@@ -256,16 +267,11 @@ static INLINE void calculate_tile_derivs(UINT32 i)
    g_gdp.tile[i].f.tlutswitch    = (g_gdp.tile[i].size << 2) | ((g_gdp.tile[i].format + 2) & 3);
 }
 
-extern void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2);
-extern void deduce_derivatives(void);
-
 extern NOINLINE void render_spans_copy(
     int start, int end, int tilenum, int flip);
 extern NOINLINE void render_spans_fill(int start, int end, int flip);
 
 NOINLINE extern void edgewalker_for_loads(INT32* lewdata);
-extern void (*render_spans_1cycle_ptr)(int, int, int, int);
-extern void (*render_spans_2cycle_ptr)(int, int, int, int);
 
 void SET_BLENDER_INPUT(
       int cycle, int which,
@@ -333,6 +339,9 @@ extern gdp_rectangle __clip;
 extern COLOR texel0_color;
 extern COLOR texel1_color;
 extern COLOR nexttexel_color;
+extern COLOR pixel_color;
+extern COLOR inv_pixel_color;
+extern COLOR memory_color;
 extern COLOR shade_color;
 extern INT32 noise;
 extern INT32 one_color;
