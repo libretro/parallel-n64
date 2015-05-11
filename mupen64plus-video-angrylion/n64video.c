@@ -3795,7 +3795,6 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
          texture_pipeline_cycle(&texel1_color, &texel1_color, news, newt, newtile, 0);
 
          rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
-
          get_dither_noise_ptr(x, i, &cdith, &adith);
          combiner_1cycle(adith, &curpixel_cvg);
          fbread1_ptr(curpixel, &curpixel_memcvg);
@@ -3814,9 +3813,10 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
          a += dainc;
          z += dzinc;
          x += xinc;
+
          curpixel += xinc;
-         zbcur += xinc;
-         zbcur &= 0x00FFFFFF >> 1;
+         zbcur    += xinc;
+         zbcur    &= 0x00FFFFFF >> 1;
       }
    }
 }
@@ -3953,11 +3953,9 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
          tcdiv_ptr(ss, st, sw, &sss, &sst);
 
          tclod_1cycle_current_simple(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
-
          texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
 
          rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
-
          get_dither_noise_ptr(x, i, &cdith, &adith);
          combiner_1cycle(adith, &curpixel_cvg);
          fbread1_ptr(curpixel, &curpixel_memcvg);
@@ -3980,10 +3978,10 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
          a += dainc;
          z += dzinc;
 
-         x += xinc;
+         x        += xinc;
          curpixel += xinc;
-         zbcur += xinc;
-         zbcur &= 0x00FFFFFF >> 1;
+         zbcur    += xinc;
+         zbcur    &= 0x00FFFFFF >> 1;
       }
    }
 }
@@ -4090,7 +4088,6 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
          lookup_cvmask_derivatives(cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
          rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
-
          get_dither_noise_ptr(x, i, &cdith, &adith);
          combiner_1cycle(adith, &curpixel_cvg);
          fbread1_ptr(curpixel, &curpixel_memcvg);
@@ -4109,10 +4106,10 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
          a += dainc;
          z += dzinc;
 
-         x += xinc;
+         x        += xinc;
          curpixel += xinc;
-         zbcur += xinc;
-         zbcur &= 0x00FFFFFF >> 1;
+         zbcur    += xinc;
+         zbcur    &= 0x00FFFFFF >> 1;
       }
    }
 }
@@ -4721,10 +4718,10 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
          a += dainc;
          z += dzinc;
 
-         x += xinc;
+         x        += xinc;
          curpixel += xinc;
-         zbcur += xinc;
-         zbcur &= 0x00FFFFFF >> 1;
+         zbcur    += xinc;
+         zbcur    &= 0x00FFFFFF >> 1;
       }
    }
 }
@@ -4861,12 +4858,9 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
          texture_pipeline_cycle(&texel1_color, &texel0_color, sss, sst, tile2, 1);
 
          rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
-
          get_dither_noise_ptr(x, i, &cdith, &adith);
          combiner_2cycle(adith, &curpixel_cvg);
-
          fbread2_ptr(curpixel, &curpixel_memcvg);
-
          if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
          {
             if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
@@ -4889,10 +4883,10 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
          a += dainc;
          z += dzinc;
 
-         x += xinc;
+         x        += xinc;
          curpixel += xinc;
-         zbcur += xinc;
-         zbcur &= 0x00FFFFFF >> 1;
+         zbcur    += xinc;
+         zbcur    &= 0x00FFFFFF >> 1;
       }
    }
 }
@@ -5024,16 +5018,12 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
          tclod_2cycle_current_notexel1(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
 
-
          texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
 
          rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
-
          get_dither_noise_ptr(x, i, &cdith, &adith);
          combiner_2cycle(adith, &curpixel_cvg);
-
          fbread2_ptr(curpixel, &curpixel_memcvg);
-
          if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
          {
             if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
@@ -5056,10 +5046,10 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
          a += dainc;
          z += dzinc;
 
-         x += xinc;
+         x        += xinc;
          curpixel += xinc;
-         zbcur += xinc;
-         zbcur &= 0x00FFFFFF >> 1;
+         zbcur    += xinc;
+         zbcur    &= 0x00FFFFFF >> 1;
       }
    }
 }
@@ -5168,12 +5158,9 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
          lookup_cvmask_derivatives(cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
          rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
-
          get_dither_noise_ptr(x, i, &cdith, &adith);
          combiner_2cycle(adith, &curpixel_cvg);
-
          fbread2_ptr(curpixel, &curpixel_memcvg);
-
          if (z_compare(zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
          {
             if (blender_2cycle(&fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
@@ -5193,10 +5180,10 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
          a += dainc;
          z += dzinc;
 
-         x += xinc;
+         x        += xinc;
          curpixel += xinc;
-         zbcur += xinc;
-         zbcur &= 0x00FFFFFF >> 1;
+         zbcur    += xinc;
+         zbcur    &= 0x00FFFFFF >> 1;
       }
    }
 }
