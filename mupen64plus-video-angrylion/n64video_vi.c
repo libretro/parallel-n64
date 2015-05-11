@@ -25,39 +25,291 @@ static UINT32 tvfadeoutstate[625];
 static UINT32 brightness = 0;
 static UINT32 prevwasblank = 0;
 
+STRICTINLINE static void video_max_optimized(UINT32* Pixels, UINT32* pen)
+{
+   int i;
+   int pos;
+   UINT32 max;
+   UINT32 curpen = Pixels[0];
+
+   pos = 0;
+   for (i = 1; i < 7; i++)
+   {
+      if (Pixels[i] > Pixels[pos])
+      {
+         curpen = Pixels[pos];
+         pos = i;            
+      }
+   }
+   max = Pixels[pos];
+   if (curpen != max)
+   {
+      for (i = pos + 1; i < 7; i++)
+      {
+         if (Pixels[i] > curpen)
+         {
+            curpen = Pixels[i];
+         }
+      }
+   }
+   *pen = curpen;
+}
+
+STRICTINLINE static void restore_filter16(
+    int* r, int* g, int* b, UINT32 fboffset, UINT32 num, UINT32 hres)
+{
+   UINT32 tempr, tempg, tempb;
+   UINT16 pix;
+
+   UINT32 idx = (fboffset >> 1) + num;
+   UINT32 leftuppix = idx - hres - 1;
+   UINT32 leftdownpix = idx + hres - 1;
+   UINT32 toleftpix = idx - 1;
+
+   UINT32 rend = *r;
+   UINT32 gend = *g;
+   UINT32 bend = *b;
+   UINT32 rcomp = (rend >> 3) & 31;
+   UINT32 gcomp = (gend >> 3) & 31;
+   UINT32 bcomp = (bend >> 3) & 31;
+
+   VI_COMPARE(leftuppix);
+   VI_COMPARE(leftuppix + 1);
+   VI_COMPARE(leftuppix + 2);
+   VI_COMPARE(leftdownpix);
+   VI_COMPARE(leftdownpix + 1);
+   VI_COMPARE(leftdownpix + 2);
+   VI_COMPARE(toleftpix);
+   VI_COMPARE(toleftpix + 2);
+
+   *r = rend;
+   *g = gend;
+   *b = bend;
+}
+
 STRICTINLINE static void video_filter16(
-    int* r, int* g, int* b, UINT32 fboffset, UINT32 num, UINT32 hres,
-    UINT32 centercvg);
+    int* endr, int* endg, int* endb, UINT32 fboffset, UINT32 num, UINT32 hres,
+    UINT32 centercvg)
+{
+   UINT32 penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
+   UINT16 pix;
+   UINT32 hidval;
+   UINT32 backr[7], backg[7], backb[7];
+   UINT32 invr[7], invg[7], invb[7];
+   UINT32 colr, colg, colb;
+
+   UINT32 numoffull = 1;
+   UINT32 idx = (fboffset >> 1) + num;
+   UINT32 leftup = idx - hres - 1;
+   UINT32 rightup = idx - hres + 1;
+   UINT32 toleft = idx - 2;
+   UINT32 toright = idx + 2;
+   UINT32 leftdown = idx + hres - 1;
+   UINT32 rightdown = idx + hres + 1;
+   UINT32 coeff = 7 - centercvg;
+   UINT32 r = *endr;
+   UINT32 g = *endg;
+   UINT32 b = *endb;
+
+   backr[0] = r;
+   backg[0] = g;
+   backb[0] = b;
+   invr[0] = (~r) & 0xff;
+   invg[0] = (~g) & 0xff;
+   invb[0] = (~b) & 0xff;
+
+   VI_ANDER(leftup);
+   VI_ANDER(rightup);
+   VI_ANDER(toleft);
+   VI_ANDER(toright);
+   VI_ANDER(leftdown);
+   VI_ANDER(rightdown);
+
+   video_max_optimized(&backr[0], &penumaxr);
+   video_max_optimized(&backg[0], &penumaxg);
+   video_max_optimized(&backb[0], &penumaxb);
+   video_max_optimized(&invr[0], &penuminr);
+   video_max_optimized(&invg[0], &penuming);
+   video_max_optimized(&invb[0], &penuminb);
+
+   penuminr = (~penuminr) & 0xFF;
+   penuming = (~penuming) & 0xFF;
+   penuminb = (~penuminb) & 0xFF;
+
+   colr = penuminr + penumaxr - (r << 1);
+   colg = penuming + penumaxg - (g << 1);
+   colb = penuminb + penumaxb - (b << 1);
+
+   colr = (((colr * coeff) + 4) >> 3) + r;
+   colg = (((colg * coeff) + 4) >> 3) + g;
+   colb = (((colb * coeff) + 4) >> 3) + b;
+
+   *endr = colr & 0xFF;
+   *endg = colg & 0xFF;
+   *endb = colb & 0xFF;
+}
+
+
+static INLINE void vi_fetch_filter16(
+    CCVG* res, UINT32 fboffset, UINT32 cur_x, UINT32 fsaa, UINT32 dither_filter,
+    UINT32 vres)
+{
+   int r, g, b;
+   UINT32 pix, hval;
+   UINT32 cur_cvg;
+   UINT32 idx = (fboffset >> 1) + cur_x;
+   UINT32 fbw = vi_width & 0xfff;
+
+   PAIRREAD16(pix, hval, idx); 
+   if (fsaa)
+      cur_cvg = ((pix & 1) << 2) | hval;
+   else
+      cur_cvg = 7;
+   r = GET_HI(pix);
+   g = GET_MED(pix);
+   b = GET_LOW(pix);
+
+   if (cur_cvg == 7)
+   {
+      if (dither_filter)
+         restore_filter16(&r, &g, &b, fboffset, cur_x, fbw);
+   }
+   else
+   {
+      video_filter16(&r, &g, &b, fboffset, cur_x, fbw, cur_cvg);
+   }
+
+   res -> r = r;
+   res -> g = g;
+   res -> b = b;
+   res -> cvg = cur_cvg;
+}
+
+STRICTINLINE static void restore_filter32(
+    int* r, int* g, int* b, UINT32 fboffset, UINT32 num, UINT32 hres)
+{
+   UINT32 tempr, tempg, tempb;
+   UINT32 pix;
+
+   UINT32 idx = (fboffset >> 2) + num;
+   UINT32 leftuppix = idx - hres - 1;
+   UINT32 leftdownpix = idx + hres - 1;
+   UINT32 toleftpix = idx - 1;
+
+   UINT32 rend = *r;
+   UINT32 gend = *g;
+   UINT32 bend = *b;
+   UINT32 rcomp = (rend >> 3) & 31;
+   UINT32 gcomp = (gend >> 3) & 31;
+   UINT32 bcomp = (bend >> 3) & 31;
+
+   VI_COMPARE32(leftuppix);
+   VI_COMPARE32(leftuppix + 1);
+   VI_COMPARE32(leftuppix + 2);
+   VI_COMPARE32(leftdownpix);
+   VI_COMPARE32(leftdownpix + 1);
+   VI_COMPARE32(leftdownpix + 2);
+   VI_COMPARE32(toleftpix);
+   VI_COMPARE32(toleftpix + 2);
+
+   *r = rend;
+   *g = gend;
+   *b = bend;
+}
+
 STRICTINLINE static void video_filter32(
     int* endr, int* endg, int* endb, UINT32 fboffset, UINT32 num, UINT32 hres,
-    UINT32 centercvg);
-STRICTINLINE static void divot_filter(
-    CCVG* final, CCVG centercolor, CCVG leftcolor, CCVG rightcolor);
-STRICTINLINE static void restore_filter16(
-    int* r, int* g, int* b, UINT32 fboffset, UINT32 num, UINT32 hres);
-STRICTINLINE static void restore_filter32(
-    int* r, int* g, int* b, UINT32 fboffset, UINT32 num, UINT32 hres);
-static void gamma_filters(unsigned char* argb, int gamma_and_dither);
-static void adjust_brightness(unsigned char* argb, int brightcoeff);
-STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, UINT32 frac);
-STRICTINLINE static void video_max_optimized(UINT32* Pixels, UINT32* pen);
+    UINT32 centercvg)
+{
+   UINT32 penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
+   UINT32 pix = 0, pixcvg = 0;
+   UINT32 backr[7], backg[7], backb[7];
+   UINT32 invr[7], invg[7], invb[7];
+   UINT32 colr, colg, colb;
 
-STRICTINLINE static void vi_fetch_filter16(
-    CCVG* res, UINT32 fboffset, UINT32 cur_x, UINT32 fsaa, UINT32 dither_filter,
-    UINT32 vres);
-STRICTINLINE static void vi_fetch_filter32(
-    CCVG* res, UINT32 fboffset, UINT32 cur_x, UINT32 fsaa, UINT32 dither_filter,
-    UINT32 vres);
+   UINT32 numoffull = 1;
+   UINT32 idx = (fboffset >> 2) + num;
+   UINT32 leftup = idx - hres - 1;
+   UINT32 rightup = idx - hres + 1;
+   UINT32 toleft = idx - 2;
+   UINT32 toright = idx + 2;
+   UINT32 leftdown = idx + hres - 1;
+   UINT32 rightdown = idx + hres + 1;
+   UINT32 coeff = 7 - centercvg;
 
-static void do_frame_buffer_proper(
-    UINT32 prescale_ptr, int hres, int vres, int x_start, int vitype,
-    int linecount);
-static void do_frame_buffer_raw(
-    UINT32 prescale_ptr, int hres, int vres, int x_start, int vitype,
-    int linecount);
-static void (*do_frame_buffer[2])(UINT32, int, int, int, int, int) = {
-    do_frame_buffer_raw, do_frame_buffer_proper
-};
+   UINT32 r = *endr;
+   UINT32 g = *endg;
+   UINT32 b = *endb;
+
+   backr[0] = r;
+   backg[0] = g;
+   backb[0] = b;
+   invr[0] = (~r) & 0xff;
+   invg[0] = (~g) & 0xff;
+   invb[0] = (~b) & 0xff;
+
+   VI_ANDER32(leftup);
+   VI_ANDER32(rightup);
+   VI_ANDER32(toleft);
+   VI_ANDER32(toright);
+   VI_ANDER32(leftdown);
+   VI_ANDER32(rightdown);
+
+   video_max_optimized(&backr[0], &penumaxr);
+   video_max_optimized(&backg[0], &penumaxg);
+   video_max_optimized(&backb[0], &penumaxb);
+   video_max_optimized(&invr[0], &penuminr);
+   video_max_optimized(&invg[0], &penuming);
+   video_max_optimized(&invb[0], &penuminb);
+
+   penuminr = (~penuminr) & 0xFF;
+   penuming = (~penuming) & 0xFF;
+   penuminb = (~penuminb) & 0xFF;
+
+   colr = penuminr + penumaxr - (r << 1);
+   colg = penuming + penumaxg - (g << 1);
+   colb = penuminb + penumaxb - (b << 1);
+
+   colr = (((colr * coeff) + 4) >> 3) + r;
+   colg = (((colg * coeff) + 4) >> 3) + g;
+   colb = (((colb * coeff) + 4) >> 3) + b;
+
+   *endr = colr & 0xFF;
+   *endg = colg & 0xFF;
+   *endb = colb & 0xFF;
+}
+
+static INLINE void vi_fetch_filter32(
+    CCVG* res, UINT32 fboffset, UINT32 cur_x, UINT32 fsaa, UINT32 dither_filter,
+    UINT32 vres)
+{
+   int r, g, b;
+   UINT32 cur_cvg;
+   UINT32 pix = RREADIDX32((fboffset >> 2) + cur_x);
+   UINT32 fbw = vi_width & 0xfff;
+
+   if (fsaa)
+      cur_cvg = (pix >> 5) & 7;
+   else
+      cur_cvg = 7;
+
+   r = (pix >> 24) & 0xff;
+   g = (pix >> 16) & 0xff;
+   b = (pix >> 8) & 0xff;
+
+   if (cur_cvg == 7)
+   {
+      if (dither_filter)
+         restore_filter32(&r, &g, &b, fboffset, cur_x, fbw);
+   }
+   else
+      video_filter32(&r, &g, &b, fboffset, cur_x, fbw, cur_cvg);
+
+   res -> r = r;
+   res -> g = g;
+   res -> b = b;
+   res -> cvg = cur_cvg;
+}
 
 static void (*vi_fetch_filter_ptr)(
     CCVG*, UINT32, UINT32, UINT32, UINT32, UINT32);
@@ -66,175 +318,145 @@ static void (*vi_fetch_filter_func[2])(
     vi_fetch_filter16, vi_fetch_filter32
 };
 
-void rdp_update(void)
+STRICTINLINE static void divot_filter(
+    CCVG* final, CCVG centercolor, CCVG leftcolor, CCVG rightcolor)
 {
-   UINT32 prescale_ptr;
-   UINT32 pix;
-   UINT8 cur_cvg;
-   int hres, vres;
-   int h_start, v_start;
-   int x_start;
-   int h_end;
-   int two_lines, line_shifter, line_count;
-   int hrightblank;
-   int vactivelines;
-   int validh;
-   int serration_pulses;
-   int lowerfield;
-   int i, j;
-   extern uint32_t *blitter_buf;
-   const int x_add      = *gfx_info.VI_X_SCALE_REG & 0x00000FFF;
-   const int v_sync     = *gfx_info.VI_V_SYNC_REG & 0x000003FF;
-   const int ispal      = (v_sync > 550);
-   const int x1         = (*gfx_info.VI_H_START_REG >> 16) & 0x03FF;
-   const int y1         = (*gfx_info.VI_V_START_REG >> 16) & 0x03FF;
-   const int x2         = (*gfx_info.VI_H_START_REG >>  0) & 0x03FF;
-   const int y2         = (*gfx_info.VI_V_START_REG >>  0) & 0x03FF;
-   const int delta_x    = x2 - x1;
-   const int delta_y    = y2 - y1;
-   const int vitype     = *gfx_info.VI_STATUS_REG & 0x00000003;
-   const int pixel_size = sizeof(INT32);
+   UINT32 leftr, leftg, leftb;
+   UINT32 rightr, rightg, rightb;
+   UINT32 centerr, centerg, centerb;
 
-   /*
-    * initial value (angrylion)
-    */
-   serration_pulses  = !!(*gfx_info.VI_STATUS_REG & 0x00000040);
-   serration_pulses &= (y1 != oldvstart);
-   lowerfield        = serration_pulses & (ispal ? y1 < oldvstart : y1 > oldvstart);
-   two_lines         = serration_pulses ^ 0;
-   line_shifter      = serration_pulses ^ 1;
-   line_count        = pitchindwords << serration_pulses;
-
-   hres              = delta_x;
-   vres              = delta_y;
-   h_start           = x1 - (ispal ? 128 : 108);
-   v_start           = y1 - (ispal ?  47 :  37);
-   x_start           = (*gfx_info.VI_X_SCALE_REG >> 16) & 0x00000FFF;
-
-   if (h_start < 0)
-   {
-      x_start -= x_add * h_start;
-      h_start  = 0;
-   }
-   oldvstart = y1;
-   v_start >>= 1;
-   v_start  &= -(v_start >= 0);
-   vres >>= 1;
-
-   if (hres > PRESCALE_WIDTH - h_start)
-      hres = PRESCALE_WIDTH - h_start;
-   if (vres > PRESCALE_HEIGHT - v_start)
-      vres = PRESCALE_HEIGHT - v_start;
-   h_end = hres + h_start;
-
-   hrightblank  = PRESCALE_WIDTH - h_end;
-   vactivelines = v_sync - (ispal ? 47 : 37);
-   if (vactivelines > PRESCALE_HEIGHT)
-   {
-      if (log_cb)
-         log_cb(RETRO_LOG_WARN, "VI_V_SYNC_REG too big\n");
-      return;
-   }
-   if (vactivelines < 0)
-   {
-      if (log_cb)
-         log_cb(RETRO_LOG_WARN, "vactivelines lesser than 0\n");
-      return;
-   }
-   vactivelines >>= line_shifter;
-   validh   = (hres >= 0 && h_start >= 0 && h_start < PRESCALE_WIDTH);
-   pix      = 0;
-   cur_cvg  = 0;
-   if (hres <= 0 || vres <= 0 || (!(vitype & 2) && prevwasblank)) /* early return. */
+   *final = centercolor;
+   if ((centercolor.cvg & leftcolor.cvg & rightcolor.cvg) == 7)
       return;
 
-   PreScale = (UINT32*)blitter_buf;
+   leftr = leftcolor.r;    
+   leftg = leftcolor.g;    
+   leftb = leftcolor.b;
+   rightr = rightcolor.r;    
+   rightg = rightcolor.g;    
+   rightb = rightcolor.b;
+   centerr = centercolor.r;
+   centerg = centercolor.g;
+   centerb = centercolor.b;
 
-   if (vitype >> 1 == 0)
+   if ((leftr >= centerr && rightr >= leftr) || (leftr >= rightr && centerr >= leftr))
+      final -> r = leftr;
+   else if ((rightr >= centerr && leftr >= rightr) || (rightr >= leftr && centerr >= rightr))
+      final -> r = rightr;
+
+   if ((leftg >= centerg && rightg >= leftg) || (leftg >= rightg && centerg >= leftg))
+      final -> g = leftg;
+   else if ((rightg >= centerg && leftg >= rightg) || (rightg >= leftg && centerg >= rightg))
+      final -> g = rightg;
+
+   if ((leftb >= centerb && rightb >= leftb) || (leftb >= rightb && centerb >= leftb))
+      final -> b = leftb;
+   else if ((rightb >= centerb && leftb >= rightb) || (rightb >= leftb && centerb >= rightb))
+      final -> b = rightb;
+}
+
+STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, UINT32 frac)
+{
+   UINT32 r0, g0, b0;
+
+   if (frac == 0)
+      return;
+
+   r0 = up -> r;
+   g0 = up -> g;
+   b0 = up -> b;
+
+   up -> r = (((frac*(down.r - r0) + 16) >> 5) + r0) & 0xFF;
+   up -> g = (((frac*(down.g - g0) + 16) >> 5) + g0) & 0xFF;
+   up -> b = (((frac*(down.b - b0) + 16) >> 5) + b0) & 0xFF;
+}
+
+static void gamma_filters(unsigned char* argb, int gamma_and_dither)
+{
+   int cdith, dith;
+   int r = argb[1 ^ BYTE_ADDR_XOR];
+   int g = argb[2 ^ BYTE_ADDR_XOR];
+   int b = argb[3 ^ BYTE_ADDR_XOR];
+
+   switch(gamma_and_dither)
    {
-      memset(tvfadeoutstate, 0, pixel_size*PRESCALE_HEIGHT);
-      for (i = 0; i < PRESCALE_HEIGHT; i++)
-         memset(&PreScale[i * pitchindwords], 0, pixel_size*PRESCALE_WIDTH);
-      prevwasblank = 1;
-      goto no_frame_buffer;
+      case 0:
+         return;
+         break;
+      case 1:
+         cdith = irand();
+         dith = cdith & 1;
+         if (r < 255)
+            r += dith;
+         dith = (cdith >> 1) & 1;
+         if (g < 255)
+            g += dith;
+         dith = (cdith >> 2) & 1;
+         if (b < 255)
+            b += dith;
+         break;
+      case 2:
+         r = gamma_table[r];
+         g = gamma_table[g];
+         b = gamma_table[b];
+         break;
+      case 3:
+         cdith = irand();
+         dith = cdith & 0x3f;
+         r = gamma_dither_table[(r << 6) | dith];
+         dith = (cdith >> 6) & 0x3f;
+         g = gamma_dither_table[(g << 6) | dith];
+         dith = ((cdith >> 9) & 0x38) | (cdith & 7);
+         b = gamma_dither_table[(b << 6) | dith];
+         break;
    }
-#undef RENDER_CVG_BITS16
-#undef RENDER_CVG_BITS32
-#undef RENDER_MIN_CVG_ONLY
-#undef RENDER_MAX_CVG_ONLY
+   argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(r);
+   argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(g);
+   argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(b);
+}
 
-#undef MONITOR_Z
-#undef BW_ZBUFFER
-#undef ZBUFF_AS_16B_IATEXTURE
+static void adjust_brightness(unsigned char* argb, int brightcoeff)
+{
+   int r = argb[1 ^ BYTE_ADDR_XOR];
+   int g = argb[2 ^ BYTE_ADDR_XOR];
+   int b = argb[3 ^ BYTE_ADDR_XOR];
+   brightcoeff &= 7;
 
-#ifdef MONITOR_Z
-   frame_buffer = zb_address;
-#endif
-
-   prevwasblank = 0;
-   if (h_start > 0 && h_start < PRESCALE_WIDTH)
-      for (i = 0; i < vactivelines; i++)
-         memset(&PreScale[i*pitchindwords], 0, pixel_size*h_start);
-
-   if (h_end >= 0 && h_end < PRESCALE_WIDTH)
-      for (i = 0; i < vactivelines; i++)
-         memset(&PreScale[i*pitchindwords + h_end], 0, pixel_size*hrightblank);
-
-   for (i = 0; i < (v_start << two_lines) + lowerfield; i++)
+   switch (brightcoeff)
    {
-      tvfadeoutstate[i] >>= 1;
-      if (~tvfadeoutstate[i] & validh)
-         memset(&PreScale[i*pitchindwords + h_start], 0, pixel_size*hres);
+      case 0:    
+         break;
+      case 1: 
+      case 2:
+      case 3:
+         r += (r >> (4 - brightcoeff));
+         g += (g >> (4 - brightcoeff));
+         b += (b >> (4 - brightcoeff));
+         if (r > 0xFF)
+            r = 0xFF;
+         if (g > 0xFF)
+            g = 0xFF;
+         if (b > 0xFF)
+            b = 0xFF;
+         break;
+      case 4:
+      case 5:
+      case 6:
+      case 7:
+         r = (r + 1) << (brightcoeff - 3);
+         g = (g + 1) << (brightcoeff - 3);
+         b = (b + 1) << (brightcoeff - 3);
+         if (r > 0xFF)
+            r = 0xFF;
+         if (g > 0xFF)
+            g = 0xFF;
+         if (b > 0xFF)
+            b = 0xFF;
+         break;
    }
-
-   if (serration_pulses == 0)
-      for (j = 0; j < vres; j++)
-         tvfadeoutstate[i++] = 2;
-   else
-      for (j = 0; j < vres; j++)
-      {
-         tvfadeoutstate[i] = 2;
-         ++i;
-         tvfadeoutstate[i] >>= 1;
-         if (~tvfadeoutstate[i] & validh)
-            memset(&PreScale[i*pitchindwords + h_start], 0, pixel_size*hres);
-         ++i;
-      }
-
-   while (i < vactivelines)
-   {
-      tvfadeoutstate[i] >>= 1;
-      if (~tvfadeoutstate[i] & validh)
-         memset(&PreScale[i*pitchindwords + h_start], 0, pixel_size*hres);
-      ++i;
-   }
-
-   prescale_ptr =
-      (v_start * line_count) + h_start + (lowerfield ? pitchindwords : 0);
-   do_frame_buffer[overlay](
-         prescale_ptr, hres, vres, x_start, vitype, line_count);
-no_frame_buffer:
-
-   __src.bottom = (ispal ? 576 : 480) >> line_shifter; /* visible lines */
-
-   if (line_shifter != 0) /* 240p non-interlaced VI DAC mode */
-   {
-      signed int cur_line = 240 - 1;
-      while (cur_line >= 0)
-      {
-         memcpy(
-               &PreScale[2*PRESCALE_WIDTH*cur_line + PRESCALE_WIDTH],
-               &PreScale[1*PRESCALE_WIDTH*cur_line],
-               4 * PRESCALE_WIDTH
-               );
-         memcpy(
-               &PreScale[2*PRESCALE_WIDTH*cur_line + 0],
-               &PreScale[1*PRESCALE_WIDTH*cur_line],
-               4 * PRESCALE_WIDTH
-               );
-         --cur_line;
-      }
-   }
+   argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(r);
+   argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(g);
+   argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(b);
 }
 
 static void do_frame_buffer_proper(
@@ -645,430 +867,179 @@ static void do_frame_buffer_raw(
    }
 }
 
-STRICTINLINE static void vi_fetch_filter16(
-    CCVG* res, UINT32 fboffset, UINT32 cur_x, UINT32 fsaa, UINT32 dither_filter,
-    UINT32 vres)
+static void (*do_frame_buffer[2])(UINT32, int, int, int, int, int) = {
+    do_frame_buffer_raw, do_frame_buffer_proper
+};
+
+void rdp_update(void)
 {
-   int r, g, b;
-   UINT32 pix, hval;
-   UINT32 cur_cvg;
-   UINT32 idx = (fboffset >> 1) + cur_x;
-   UINT32 fbw = vi_width & 0xfff;
-
-   PAIRREAD16(pix, hval, idx); 
-   if (fsaa)
-      cur_cvg = ((pix & 1) << 2) | hval;
-   else
-      cur_cvg = 7;
-   r = GET_HI(pix);
-   g = GET_MED(pix);
-   b = GET_LOW(pix);
-
-   if (cur_cvg == 7)
-   {
-      if (dither_filter)
-         restore_filter16(&r, &g, &b, fboffset, cur_x, fbw);
-   }
-   else
-   {
-      video_filter16(&r, &g, &b, fboffset, cur_x, fbw, cur_cvg);
-   }
-
-   res -> r = r;
-   res -> g = g;
-   res -> b = b;
-   res -> cvg = cur_cvg;
-}
-
-STRICTINLINE static void vi_fetch_filter32(
-    CCVG* res, UINT32 fboffset, UINT32 cur_x, UINT32 fsaa, UINT32 dither_filter,
-    UINT32 vres)
-{
-   int r, g, b;
-   UINT32 cur_cvg;
-   UINT32 pix = RREADIDX32((fboffset >> 2) + cur_x);
-   UINT32 fbw = vi_width & 0xfff;
-
-   if (fsaa)
-      cur_cvg = (pix >> 5) & 7;
-   else
-      cur_cvg = 7;
-
-   r = (pix >> 24) & 0xff;
-   g = (pix >> 16) & 0xff;
-   b = (pix >> 8) & 0xff;
-
-   if (cur_cvg == 7)
-   {
-      if (dither_filter)
-         restore_filter32(&r, &g, &b, fboffset, cur_x, fbw);
-   }
-   else
-      video_filter32(&r, &g, &b, fboffset, cur_x, fbw, cur_cvg);
-
-   res -> r = r;
-   res -> g = g;
-   res -> b = b;
-   res -> cvg = cur_cvg;
-}
-
-STRICTINLINE static void video_filter16(
-    int* endr, int* endg, int* endb, UINT32 fboffset, UINT32 num, UINT32 hres,
-    UINT32 centercvg)
-{
-   UINT32 penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
-   UINT16 pix;
-   UINT32 hidval;
-   UINT32 backr[7], backg[7], backb[7];
-   UINT32 invr[7], invg[7], invb[7];
-   UINT32 colr, colg, colb;
-
-   UINT32 numoffull = 1;
-   UINT32 idx = (fboffset >> 1) + num;
-   UINT32 leftup = idx - hres - 1;
-   UINT32 rightup = idx - hres + 1;
-   UINT32 toleft = idx - 2;
-   UINT32 toright = idx + 2;
-   UINT32 leftdown = idx + hres - 1;
-   UINT32 rightdown = idx + hres + 1;
-   UINT32 coeff = 7 - centercvg;
-   UINT32 r = *endr;
-   UINT32 g = *endg;
-   UINT32 b = *endb;
-
-   backr[0] = r;
-   backg[0] = g;
-   backb[0] = b;
-   invr[0] = (~r) & 0xff;
-   invg[0] = (~g) & 0xff;
-   invb[0] = (~b) & 0xff;
-
-   VI_ANDER(leftup);
-   VI_ANDER(rightup);
-   VI_ANDER(toleft);
-   VI_ANDER(toright);
-   VI_ANDER(leftdown);
-   VI_ANDER(rightdown);
-
-   video_max_optimized(&backr[0], &penumaxr);
-   video_max_optimized(&backg[0], &penumaxg);
-   video_max_optimized(&backb[0], &penumaxb);
-   video_max_optimized(&invr[0], &penuminr);
-   video_max_optimized(&invg[0], &penuming);
-   video_max_optimized(&invb[0], &penuminb);
-
-   penuminr = (~penuminr) & 0xFF;
-   penuming = (~penuming) & 0xFF;
-   penuminb = (~penuminb) & 0xFF;
-
-   colr = penuminr + penumaxr - (r << 1);
-   colg = penuming + penumaxg - (g << 1);
-   colb = penuminb + penumaxb - (b << 1);
-
-   colr = (((colr * coeff) + 4) >> 3) + r;
-   colg = (((colg * coeff) + 4) >> 3) + g;
-   colb = (((colb * coeff) + 4) >> 3) + b;
-
-   *endr = colr & 0xFF;
-   *endg = colg & 0xFF;
-   *endb = colb & 0xFF;
-}
-
-STRICTINLINE static void video_filter32(
-    int* endr, int* endg, int* endb, UINT32 fboffset, UINT32 num, UINT32 hres,
-    UINT32 centercvg)
-{
-   UINT32 penumaxr, penumaxg, penumaxb, penuminr, penuming, penuminb;
-   UINT32 pix = 0, pixcvg = 0;
-   UINT32 backr[7], backg[7], backb[7];
-   UINT32 invr[7], invg[7], invb[7];
-   UINT32 colr, colg, colb;
-
-   UINT32 numoffull = 1;
-   UINT32 idx = (fboffset >> 2) + num;
-   UINT32 leftup = idx - hres - 1;
-   UINT32 rightup = idx - hres + 1;
-   UINT32 toleft = idx - 2;
-   UINT32 toright = idx + 2;
-   UINT32 leftdown = idx + hres - 1;
-   UINT32 rightdown = idx + hres + 1;
-   UINT32 coeff = 7 - centercvg;
-
-   UINT32 r = *endr;
-   UINT32 g = *endg;
-   UINT32 b = *endb;
-
-   backr[0] = r;
-   backg[0] = g;
-   backb[0] = b;
-   invr[0] = (~r) & 0xff;
-   invg[0] = (~g) & 0xff;
-   invb[0] = (~b) & 0xff;
-
-   VI_ANDER32(leftup);
-   VI_ANDER32(rightup);
-   VI_ANDER32(toleft);
-   VI_ANDER32(toright);
-   VI_ANDER32(leftdown);
-   VI_ANDER32(rightdown);
-
-   video_max_optimized(&backr[0], &penumaxr);
-   video_max_optimized(&backg[0], &penumaxg);
-   video_max_optimized(&backb[0], &penumaxb);
-   video_max_optimized(&invr[0], &penuminr);
-   video_max_optimized(&invg[0], &penuming);
-   video_max_optimized(&invb[0], &penuminb);
-
-   penuminr = (~penuminr) & 0xFF;
-   penuming = (~penuming) & 0xFF;
-   penuminb = (~penuminb) & 0xFF;
-
-   colr = penuminr + penumaxr - (r << 1);
-   colg = penuming + penumaxg - (g << 1);
-   colb = penuminb + penumaxb - (b << 1);
-
-   colr = (((colr * coeff) + 4) >> 3) + r;
-   colg = (((colg * coeff) + 4) >> 3) + g;
-   colb = (((colb * coeff) + 4) >> 3) + b;
-
-   *endr = colr & 0xFF;
-   *endg = colg & 0xFF;
-   *endb = colb & 0xFF;
-}
-
-STRICTINLINE static void divot_filter(
-    CCVG* final, CCVG centercolor, CCVG leftcolor, CCVG rightcolor)
-{
-   UINT32 leftr, leftg, leftb;
-   UINT32 rightr, rightg, rightb;
-   UINT32 centerr, centerg, centerb;
-
-   *final = centercolor;
-   if ((centercolor.cvg & leftcolor.cvg & rightcolor.cvg) == 7)
-      return;
-
-   leftr = leftcolor.r;    
-   leftg = leftcolor.g;    
-   leftb = leftcolor.b;
-   rightr = rightcolor.r;    
-   rightg = rightcolor.g;    
-   rightb = rightcolor.b;
-   centerr = centercolor.r;
-   centerg = centercolor.g;
-   centerb = centercolor.b;
-
-   if ((leftr >= centerr && rightr >= leftr) || (leftr >= rightr && centerr >= leftr))
-      final -> r = leftr;
-   else if ((rightr >= centerr && leftr >= rightr) || (rightr >= leftr && centerr >= rightr))
-      final -> r = rightr;
-
-   if ((leftg >= centerg && rightg >= leftg) || (leftg >= rightg && centerg >= leftg))
-      final -> g = leftg;
-   else if ((rightg >= centerg && leftg >= rightg) || (rightg >= leftg && centerg >= rightg))
-      final -> g = rightg;
-
-   if ((leftb >= centerb && rightb >= leftb) || (leftb >= rightb && centerb >= leftb))
-      final -> b = leftb;
-   else if ((rightb >= centerb && leftb >= rightb) || (rightb >= leftb && centerb >= rightb))
-      final -> b = rightb;
-}
-
-STRICTINLINE static void restore_filter16(
-    int* r, int* g, int* b, UINT32 fboffset, UINT32 num, UINT32 hres)
-{
-   UINT32 tempr, tempg, tempb;
-   UINT16 pix;
-
-   UINT32 idx = (fboffset >> 1) + num;
-   UINT32 leftuppix = idx - hres - 1;
-   UINT32 leftdownpix = idx + hres - 1;
-   UINT32 toleftpix = idx - 1;
-
-   UINT32 rend = *r;
-   UINT32 gend = *g;
-   UINT32 bend = *b;
-   UINT32 rcomp = (rend >> 3) & 31;
-   UINT32 gcomp = (gend >> 3) & 31;
-   UINT32 bcomp = (bend >> 3) & 31;
-
-   VI_COMPARE(leftuppix);
-   VI_COMPARE(leftuppix + 1);
-   VI_COMPARE(leftuppix + 2);
-   VI_COMPARE(leftdownpix);
-   VI_COMPARE(leftdownpix + 1);
-   VI_COMPARE(leftdownpix + 2);
-   VI_COMPARE(toleftpix);
-   VI_COMPARE(toleftpix + 2);
-
-   *r = rend;
-   *g = gend;
-   *b = bend;
-}
-
-STRICTINLINE static void restore_filter32(
-    int* r, int* g, int* b, UINT32 fboffset, UINT32 num, UINT32 hres)
-{
-   UINT32 tempr, tempg, tempb;
+   UINT32 prescale_ptr;
    UINT32 pix;
+   UINT8 cur_cvg;
+   int hres, vres;
+   int h_start, v_start;
+   int x_start;
+   int h_end;
+   int two_lines, line_shifter, line_count;
+   int hrightblank;
+   int vactivelines;
+   int validh;
+   int serration_pulses;
+   int lowerfield;
+   int i, j;
+   extern uint32_t *blitter_buf;
+   const int x_add      = *gfx_info.VI_X_SCALE_REG & 0x00000FFF;
+   const int v_sync     = *gfx_info.VI_V_SYNC_REG & 0x000003FF;
+   const int ispal      = (v_sync > 550);
+   const int x1         = (*gfx_info.VI_H_START_REG >> 16) & 0x03FF;
+   const int y1         = (*gfx_info.VI_V_START_REG >> 16) & 0x03FF;
+   const int x2         = (*gfx_info.VI_H_START_REG >>  0) & 0x03FF;
+   const int y2         = (*gfx_info.VI_V_START_REG >>  0) & 0x03FF;
+   const int delta_x    = x2 - x1;
+   const int delta_y    = y2 - y1;
+   const int vitype     = *gfx_info.VI_STATUS_REG & 0x00000003;
+   const int pixel_size = sizeof(INT32);
 
-   UINT32 idx = (fboffset >> 2) + num;
-   UINT32 leftuppix = idx - hres - 1;
-   UINT32 leftdownpix = idx + hres - 1;
-   UINT32 toleftpix = idx - 1;
+   /*
+    * initial value (angrylion)
+    */
+   serration_pulses  = !!(*gfx_info.VI_STATUS_REG & 0x00000040);
+   serration_pulses &= (y1 != oldvstart);
+   lowerfield        = serration_pulses & (ispal ? y1 < oldvstart : y1 > oldvstart);
+   two_lines         = serration_pulses ^ 0;
+   line_shifter      = serration_pulses ^ 1;
+   line_count        = pitchindwords << serration_pulses;
 
-   UINT32 rend = *r;
-   UINT32 gend = *g;
-   UINT32 bend = *b;
-   UINT32 rcomp = (rend >> 3) & 31;
-   UINT32 gcomp = (gend >> 3) & 31;
-   UINT32 bcomp = (bend >> 3) & 31;
+   hres              = delta_x;
+   vres              = delta_y;
+   h_start           = x1 - (ispal ? 128 : 108);
+   v_start           = y1 - (ispal ?  47 :  37);
+   x_start           = (*gfx_info.VI_X_SCALE_REG >> 16) & 0x00000FFF;
 
-   VI_COMPARE32(leftuppix);
-   VI_COMPARE32(leftuppix + 1);
-   VI_COMPARE32(leftuppix + 2);
-   VI_COMPARE32(leftdownpix);
-   VI_COMPARE32(leftdownpix + 1);
-   VI_COMPARE32(leftdownpix + 2);
-   VI_COMPARE32(toleftpix);
-   VI_COMPARE32(toleftpix + 2);
-
-   *r = rend;
-   *g = gend;
-   *b = bend;
-}
-
-static void gamma_filters(unsigned char* argb, int gamma_and_dither)
-{
-   int cdith, dith;
-   int r = argb[1 ^ BYTE_ADDR_XOR];
-   int g = argb[2 ^ BYTE_ADDR_XOR];
-   int b = argb[3 ^ BYTE_ADDR_XOR];
-
-   switch(gamma_and_dither)
+   if (h_start < 0)
    {
-      case 0:
-         return;
-         break;
-      case 1:
-         cdith = irand();
-         dith = cdith & 1;
-         if (r < 255)
-            r += dith;
-         dith = (cdith >> 1) & 1;
-         if (g < 255)
-            g += dith;
-         dith = (cdith >> 2) & 1;
-         if (b < 255)
-            b += dith;
-         break;
-      case 2:
-         r = gamma_table[r];
-         g = gamma_table[g];
-         b = gamma_table[b];
-         break;
-      case 3:
-         cdith = irand();
-         dith = cdith & 0x3f;
-         r = gamma_dither_table[(r << 6) | dith];
-         dith = (cdith >> 6) & 0x3f;
-         g = gamma_dither_table[(g << 6) | dith];
-         dith = ((cdith >> 9) & 0x38) | (cdith & 7);
-         b = gamma_dither_table[(b << 6) | dith];
-         break;
+      x_start -= x_add * h_start;
+      h_start  = 0;
    }
-   argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(r);
-   argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(g);
-   argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(b);
-}
+   oldvstart = y1;
+   v_start >>= 1;
+   v_start  &= -(v_start >= 0);
+   vres >>= 1;
 
-static void adjust_brightness(unsigned char* argb, int brightcoeff)
-{
-   int r = argb[1 ^ BYTE_ADDR_XOR];
-   int g = argb[2 ^ BYTE_ADDR_XOR];
-   int b = argb[3 ^ BYTE_ADDR_XOR];
-   brightcoeff &= 7;
+   if (hres > PRESCALE_WIDTH - h_start)
+      hres = PRESCALE_WIDTH - h_start;
+   if (vres > PRESCALE_HEIGHT - v_start)
+      vres = PRESCALE_HEIGHT - v_start;
+   h_end = hres + h_start;
 
-   switch (brightcoeff)
+   hrightblank  = PRESCALE_WIDTH - h_end;
+   vactivelines = v_sync - (ispal ? 47 : 37);
+   if (vactivelines > PRESCALE_HEIGHT)
    {
-      case 0:    
-         break;
-      case 1: 
-      case 2:
-      case 3:
-         r += (r >> (4 - brightcoeff));
-         g += (g >> (4 - brightcoeff));
-         b += (b >> (4 - brightcoeff));
-         if (r > 0xFF)
-            r = 0xFF;
-         if (g > 0xFF)
-            g = 0xFF;
-         if (b > 0xFF)
-            b = 0xFF;
-         break;
-      case 4:
-      case 5:
-      case 6:
-      case 7:
-         r = (r + 1) << (brightcoeff - 3);
-         g = (g + 1) << (brightcoeff - 3);
-         b = (b + 1) << (brightcoeff - 3);
-         if (r > 0xFF)
-            r = 0xFF;
-         if (g > 0xFF)
-            g = 0xFF;
-         if (b > 0xFF)
-            b = 0xFF;
-         break;
+      if (log_cb)
+         log_cb(RETRO_LOG_WARN, "VI_V_SYNC_REG too big\n");
+      return;
    }
-   argb[1 ^ BYTE_ADDR_XOR] = (unsigned char)(r);
-   argb[2 ^ BYTE_ADDR_XOR] = (unsigned char)(g);
-   argb[3 ^ BYTE_ADDR_XOR] = (unsigned char)(b);
-}
-
-STRICTINLINE static void vi_vl_lerp(CCVG* up, CCVG down, UINT32 frac)
-{
-   UINT32 r0, g0, b0;
-
-   if (frac == 0)
+   if (vactivelines < 0)
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_WARN, "vactivelines lesser than 0\n");
+      return;
+   }
+   vactivelines >>= line_shifter;
+   validh   = (hres >= 0 && h_start >= 0 && h_start < PRESCALE_WIDTH);
+   pix      = 0;
+   cur_cvg  = 0;
+   if (hres <= 0 || vres <= 0 || (!(vitype & 2) && prevwasblank)) /* early return. */
       return;
 
-   r0 = up -> r;
-   g0 = up -> g;
-   b0 = up -> b;
+   PreScale = (UINT32*)blitter_buf;
 
-   up -> r = (((frac*(down.r - r0) + 16) >> 5) + r0) & 0xFF;
-   up -> g = (((frac*(down.g - g0) + 16) >> 5) + g0) & 0xFF;
-   up -> b = (((frac*(down.b - b0) + 16) >> 5) + b0) & 0xFF;
-}
-
-STRICTINLINE static void video_max_optimized(UINT32* Pixels, UINT32* pen)
-{
-   int i;
-   int pos;
-   UINT32 max;
-   UINT32 curpen = Pixels[0];
-
-   pos = 0;
-   for (i = 1; i < 7; i++)
+   if (vitype >> 1 == 0)
    {
-      if (Pixels[i] > Pixels[pos])
+      memset(tvfadeoutstate, 0, pixel_size*PRESCALE_HEIGHT);
+      for (i = 0; i < PRESCALE_HEIGHT; i++)
+         memset(&PreScale[i * pitchindwords], 0, pixel_size*PRESCALE_WIDTH);
+      prevwasblank = 1;
+      goto no_frame_buffer;
+   }
+#undef RENDER_CVG_BITS16
+#undef RENDER_CVG_BITS32
+#undef RENDER_MIN_CVG_ONLY
+#undef RENDER_MAX_CVG_ONLY
+
+#undef MONITOR_Z
+#undef BW_ZBUFFER
+#undef ZBUFF_AS_16B_IATEXTURE
+
+#ifdef MONITOR_Z
+   frame_buffer = zb_address;
+#endif
+
+   prevwasblank = 0;
+   if (h_start > 0 && h_start < PRESCALE_WIDTH)
+      for (i = 0; i < vactivelines; i++)
+         memset(&PreScale[i*pitchindwords], 0, pixel_size*h_start);
+
+   if (h_end >= 0 && h_end < PRESCALE_WIDTH)
+      for (i = 0; i < vactivelines; i++)
+         memset(&PreScale[i*pitchindwords + h_end], 0, pixel_size*hrightblank);
+
+   for (i = 0; i < (v_start << two_lines) + lowerfield; i++)
+   {
+      tvfadeoutstate[i] >>= 1;
+      if (~tvfadeoutstate[i] & validh)
+         memset(&PreScale[i*pitchindwords + h_start], 0, pixel_size*hres);
+   }
+
+   if (serration_pulses == 0)
+      for (j = 0; j < vres; j++)
+         tvfadeoutstate[i++] = 2;
+   else
+      for (j = 0; j < vres; j++)
       {
-         curpen = Pixels[pos];
-         pos = i;            
+         tvfadeoutstate[i] = 2;
+         ++i;
+         tvfadeoutstate[i] >>= 1;
+         if (~tvfadeoutstate[i] & validh)
+            memset(&PreScale[i*pitchindwords + h_start], 0, pixel_size*hres);
+         ++i;
+      }
+
+   while (i < vactivelines)
+   {
+      tvfadeoutstate[i] >>= 1;
+      if (~tvfadeoutstate[i] & validh)
+         memset(&PreScale[i*pitchindwords + h_start], 0, pixel_size*hres);
+      ++i;
+   }
+
+   prescale_ptr =
+      (v_start * line_count) + h_start + (lowerfield ? pitchindwords : 0);
+   do_frame_buffer[overlay](
+         prescale_ptr, hres, vres, x_start, vitype, line_count);
+no_frame_buffer:
+
+   __src.bottom = (ispal ? 576 : 480) >> line_shifter; /* visible lines */
+
+   if (line_shifter != 0) /* 240p non-interlaced VI DAC mode */
+   {
+      signed int cur_line = 240 - 1;
+      while (cur_line >= 0)
+      {
+         memcpy(
+               &PreScale[2*PRESCALE_WIDTH*cur_line + PRESCALE_WIDTH],
+               &PreScale[1*PRESCALE_WIDTH*cur_line],
+               4 * PRESCALE_WIDTH
+               );
+         memcpy(
+               &PreScale[2*PRESCALE_WIDTH*cur_line + 0],
+               &PreScale[1*PRESCALE_WIDTH*cur_line],
+               4 * PRESCALE_WIDTH
+               );
+         --cur_line;
       }
    }
-   max = Pixels[pos];
-   if (curpen != max)
-   {
-      for (i = pos + 1; i < 7; i++)
-      {
-         if (Pixels[i] > curpen)
-         {
-            curpen = Pixels[i];
-         }
-      }
-   }
-   *pen = curpen;
 }
 
 NOINLINE void DisplayError(char * error)
