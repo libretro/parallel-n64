@@ -73,8 +73,6 @@
 #define PRESCALE_WIDTH 640
 #define PRESCALE_HEIGHT 625
 
-typedef unsigned int offs_t;
-
 #define GET_GFX_INFO(member)    (gfx_info.member)
 
 #define DRAM        GET_GFX_INFO(RDRAM)
