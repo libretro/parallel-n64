@@ -1050,6 +1050,20 @@ static STRICTINLINE void lodfrac_lodtile_signals(int lodclamp,
    lod_frac = lf;
 }
 
+static void tclod_lod(UINT32 l_tile, INT32 prim_tile, UINT32 magnify,
+      UINT32 distant, INT32 *t1)
+{
+      if (g_gdp.other_modes.tex_lod_en)
+      {
+         if (distant)
+            l_tile = max_level;
+         if (!g_gdp.other_modes.detail_tex_en || magnify)
+            *t1 = (prim_tile + l_tile) & 7;
+         else
+            *t1 = (prim_tile + l_tile + 1) & 7;
+      }
+}
+
 static void tclod_1cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 nextt,
       INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc,
       INT32 scanline, INT32 prim_tile, INT32* t1, SPANSIGS* sigs)
@@ -1105,18 +1119,7 @@ static void tclod_1cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 next
 
       lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
 
-      if (g_gdp.other_modes.tex_lod_en)
-      {
-         if (distant)
-            l_tile = max_level;
-
-
-
-         if (!g_gdp.other_modes.detail_tex_en || magnify)
-            *t1 = (prim_tile + l_tile) & 7;
-         else
-            *t1 = (prim_tile + l_tile + 1) & 7;
-      }
+      tclod_lod(l_tile, prim_tile, magnify, distant, t1);
    }
 }
 
@@ -1185,15 +1188,7 @@ static void tclod_1cycle_current_simple(INT32* sss, INT32* sst, INT32 s, INT32 t
 
       lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
 
-      if (g_gdp.other_modes.tex_lod_en)
-      {
-         if (distant)
-            l_tile = max_level;
-         if (!g_gdp.other_modes.detail_tex_en || magnify)
-            *t1 = (prim_tile + l_tile) & 7;
-         else
-            *t1 = (prim_tile + l_tile + 1) & 7;
-      }
+      tclod_lod(l_tile, prim_tile, magnify, distant, t1);
    }
 }
 
@@ -1316,15 +1311,7 @@ static void tclod_1cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w,
       if(g_gdp.other_modes.sharpen_tex_en && magnify)
          *prelodfrac |= 0x100;
 
-      if (g_gdp.other_modes.tex_lod_en)
-      {
-         if (distant)
-            l_tile = max_level;
-         if (!g_gdp.other_modes.detail_tex_en || magnify)
-            *t1 = (prim_tile + l_tile) & 7;
-         else
-            *t1 = (prim_tile + l_tile + 1) & 7;
-      }
+      tclod_lod(l_tile, prim_tile, magnify, distant, t1);
    }
 }
 
@@ -4291,16 +4278,7 @@ static void tclod_2cycle_current_notexel1(INT32* sss, INT32* sst,
 
       lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
 
-      if (g_gdp.other_modes.tex_lod_en)
-      {
-         if (distant)
-            l_tile = max_level;
-         if (!g_gdp.other_modes.detail_tex_en || magnify)
-            *t1 = (prim_tile + l_tile) & 7;
-         else
-            *t1 = (prim_tile + l_tile + 1) & 7;
-      }
-
+      tclod_lod(l_tile, prim_tile, magnify, distant, t1);
    }
 }
 
