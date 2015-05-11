@@ -70,12 +70,7 @@ static void remove_tex(unsigned int idmin, unsigned int idmax)
    unsigned int n = 0;
    texlist *current, *tmp;
 
-   unsigned count = HASH_COUNT(list);
-
-   if (!count)
-       return;
-
-   t = (GLuint*)malloc(count * sizeof(GLuint));
+   t = (GLuint*)malloc(HASH_COUNT(list) * sizeof(GLuint));
    HASH_ITER(hh, list, current, tmp)
    {
       if (current->id >= idmin && current->id < idmax)
