@@ -39,7 +39,7 @@ static GLuint default_texture;
 int glsl_support = 1;
 //Gonetz
 
-static uint16_t *frameBuffer;
+uint16_t *frameBuffer;
 static uint8_t  *buf;
 
 #ifdef EMSCRIPTEN

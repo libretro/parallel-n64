@@ -317,6 +317,7 @@ static void DrawPartFrameBufferToScreen(void)
   ((uint32_t)(((color & 0x07C0) >> 6)) << 16) | \
   ((uint32_t)(((color & 0x003E) >> 1)) << 8)
 
+/* defined in glitchmain.c */
 extern uint16_t *frameBuffer;
 
 static void CopyFrameBuffer(int32_t buffer)
