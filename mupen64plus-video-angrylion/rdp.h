@@ -148,18 +148,18 @@ typedef union {
 } DP_FIFO;
 
 typedef struct {
-    INT32 r, g, b, a;
+    int32_t r, g, b, a;
 } COLOR;
 
 typedef struct {
     int lx, rx;
     int unscrx;
     int validline;
-    ALIGNED INT32 rgba[4];
-    ALIGNED INT32 stwz[4];
-    INT32 majorx[4];
-    INT32 minorx[4];
-    INT32 invalyscan[4];
+    ALIGNED int32_t rgba[4];
+    ALIGNED int32_t stwz[4];
+    int32_t majorx[4];
+    int32_t minorx[4];
+    int32_t invalyscan[4];
 } SPAN;
 
 enum {
@@ -229,35 +229,35 @@ extern void process_RDP_list(void);
 extern void count_DP_commands(void);
 #endif
 
-extern void (*fbread1_ptr)(UINT32, UINT32*);
-extern void (*fbread2_ptr)(UINT32, UINT32*);
+extern void (*fbread1_ptr)(uint32_t, uint32_t*);
+extern void (*fbread2_ptr)(uint32_t, uint32_t*);
 extern void (*fbwrite_ptr)(
-    UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32);
-extern void (*fbfill_ptr)(UINT32);
+    uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+extern void (*fbfill_ptr)(uint32_t);
 
-extern void (*fbread_func[4])(UINT32, UINT32*);
-extern void (*fbread2_func[4])(UINT32, UINT32*);
+extern void (*fbread_func[4])(uint32_t, uint32_t*);
+extern void (*fbread2_func[4])(uint32_t, uint32_t*);
 extern void (*fbwrite_func[4])(
-    UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32);
+    uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 
 extern void (*get_dither_noise_ptr)(int, int, int*, int*);
 extern void (*rgb_dither_func[2])(int*, int*, int*, int);
 extern void (*rgb_dither_ptr)(int*, int*, int*, int);
-extern void (*tcdiv_ptr)(INT32, INT32, INT32, INT32*, INT32*);
-extern void (*tcdiv_func[2])(INT32, INT32, INT32, INT32*, INT32*);
+extern void (*tcdiv_ptr)(int32_t, int32_t, int32_t, int32_t*, int32_t*);
+extern void (*tcdiv_func[2])(int32_t, int32_t, int32_t, int32_t*, int32_t*);
 extern void (*render_spans_1cycle_ptr)(int, int, int, int);
 extern void (*render_spans_2cycle_ptr)(int, int, int, int);
 extern void (*render_spans_1cycle_func[3])(int, int, int, int);
 extern void (*render_spans_2cycle_func[4])(int, int, int, int);
 extern void (*get_dither_noise_func[3])(int, int, int*, int*);
 
-static INLINE void calculate_clamp_diffs(UINT32 i)
+static INLINE void calculate_clamp_diffs(uint32_t i)
 {
    g_gdp.tile[i].f.clampdiffs = ((g_gdp.tile[i].sh >> 2) - (g_gdp.tile[i].sl >> 2)) & 0x3ff;
    g_gdp.tile[i].f.clampdifft = ((g_gdp.tile[i].th >> 2) - (g_gdp.tile[i].tl >> 2)) & 0x3ff;
 }
 
-static INLINE void calculate_tile_derivs(UINT32 i)
+static INLINE void calculate_tile_derivs(uint32_t i)
 {
    g_gdp.tile[i].f.clampens     = g_gdp.tile[i].cs || !g_gdp.tile[i].mask_s;
    g_gdp.tile[i].f.clampent     = g_gdp.tile[i].ct || !g_gdp.tile[i].mask_t;
@@ -276,10 +276,10 @@ extern NOINLINE void loading_pipeline(
 
 void SET_BLENDER_INPUT(
       int cycle, int which,
-      INT32 **input_r,
-      INT32 **input_g,
-      INT32 **input_b,
-      INT32 **input_a,
+      int32_t **input_r,
+      int32_t **input_g,
+      int32_t **input_b,
+      int32_t **input_a,
       int a, int b);
 
 #ifdef _DEBUG
@@ -303,37 +303,37 @@ extern int sckeepodd;
 extern int fb_format;
 extern int fb_size;
 extern int fb_width;
-extern UINT32 fb_address;
-extern UINT32 zb_address;
+extern uint32_t fb_address;
+extern uint32_t zb_address;
 
-extern UINT32 max_level;
+extern uint32_t max_level;
 
-extern INT32 *combiner_rgbsub_a_r[2];
-extern INT32 *combiner_rgbsub_a_g[2];
-extern INT32 *combiner_rgbsub_a_b[2];
-extern INT32 *combiner_rgbsub_b_r[2];
-extern INT32 *combiner_rgbsub_b_g[2];
-extern INT32 *combiner_rgbsub_b_b[2];
-extern INT32 *combiner_rgbmul_r[2];
-extern INT32 *combiner_rgbmul_g[2];
-extern INT32 *combiner_rgbmul_b[2];
-extern INT32 *combiner_rgbadd_r[2];
-extern INT32 *combiner_rgbadd_g[2];
-extern INT32 *combiner_rgbadd_b[2];
+extern int32_t *combiner_rgbsub_a_r[2];
+extern int32_t *combiner_rgbsub_a_g[2];
+extern int32_t *combiner_rgbsub_a_b[2];
+extern int32_t *combiner_rgbsub_b_r[2];
+extern int32_t *combiner_rgbsub_b_g[2];
+extern int32_t *combiner_rgbsub_b_b[2];
+extern int32_t *combiner_rgbmul_r[2];
+extern int32_t *combiner_rgbmul_g[2];
+extern int32_t *combiner_rgbmul_b[2];
+extern int32_t *combiner_rgbadd_r[2];
+extern int32_t *combiner_rgbadd_g[2];
+extern int32_t *combiner_rgbadd_b[2];
 
-extern INT32 *combiner_alphasub_a[2];
-extern INT32 *combiner_alphasub_b[2];
-extern INT32 *combiner_alphamul[2];
-extern INT32 *combiner_alphaadd[2];
+extern int32_t *combiner_alphasub_a[2];
+extern int32_t *combiner_alphasub_b[2];
+extern int32_t *combiner_alphamul[2];
+extern int32_t *combiner_alphaadd[2];
 
-extern INT32 *blender1a_r[2];
-extern INT32 *blender1a_g[2];
-extern INT32 *blender1a_b[2];
-extern INT32 *blender1b_a[2];
-extern INT32 *blender2a_r[2];
-extern INT32 *blender2a_g[2];
-extern INT32 *blender2a_b[2];
-extern INT32 *blender2b_a[2];
+extern int32_t *blender1a_r[2];
+extern int32_t *blender1a_g[2];
+extern int32_t *blender1a_b[2];
+extern int32_t *blender1b_a[2];
+extern int32_t *blender2a_r[2];
+extern int32_t *blender2a_g[2];
+extern int32_t *blender2a_b[2];
+extern int32_t *blender2b_a[2];
 
 extern gdp_rectangle __clip;
 
@@ -344,10 +344,10 @@ extern COLOR pixel_color;
 extern COLOR inv_pixel_color;
 extern COLOR memory_color;
 extern COLOR shade_color;
-extern INT32 noise;
-extern INT32 one_color;
-extern INT32 zero_color;
-extern INT32 lod_frac;
+extern int32_t noise;
+extern int32_t one_color;
+extern int32_t zero_color;
+extern int32_t lod_frac;
 
 extern int rdp_pipeline_crashed;
 

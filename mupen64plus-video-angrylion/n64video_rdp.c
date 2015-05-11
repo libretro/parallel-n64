@@ -1337,7 +1337,7 @@ static void set_tile_size(uint32_t w0, uint32_t w1)
 
 #define ADDVALUES_LOAD() { t += dtde; }
 
-static void edgewalker_for_loads(INT32* lewdata)
+static void edgewalker_for_loads(int32_t* lewdata)
 {
    int j = 0;
    int xleft = 0, xright = 0;
@@ -1352,10 +1352,10 @@ static void edgewalker_for_loads(INT32* lewdata)
    int ycur;
    int ylfar;
 
-   INT32 maxxmx, minxhx;
-   INT32 yl = 0, ym = 0, yh = 0;
-   INT32 xl = 0, xm = 0, xh = 0;
-   INT32 dxldy = 0, dxhdy = 0, dxmdy = 0;
+   int32_t maxxmx, minxhx;
+   int32_t yl = 0, ym = 0, yh = 0;
+   int32_t xl = 0, xm = 0, xh = 0;
+   int32_t dxldy = 0, dxhdy = 0, dxmdy = 0;
 
    int commandcode = (lewdata[0] >> 24) & 0x3f;
    int ltlut = (commandcode == 0x30);
@@ -1368,9 +1368,9 @@ static void edgewalker_for_loads(INT32* lewdata)
 
    int valid_y = 1;
    int length = 0;
-   INT32 xrsc = 0, xlsc = 0, stickybit = 0;
-   INT32 yllimit;
-   INT32 yhlimit;
+   int32_t xrsc = 0, xlsc = 0, stickybit = 0;
+   int32_t yllimit;
+   int32_t yhlimit;
 
    flip = 1;
    max_level = 0;
@@ -1467,7 +1467,7 @@ static void edgewalker_for_loads(INT32* lewdata)
 
 static void load_block(uint32_t w0, uint32_t w1)
 {
-   INT32 lewdata[10];
+   int32_t lewdata[10];
    const int command = (w0 & 0xFF000000) >> (56-32);
    const int sl      = (w0 & 0x00FFF000) >> (44-32);
    const int tl      = (w0 & 0x00000FFF) >> (32-32);
@@ -1495,9 +1495,9 @@ static void load_block(uint32_t w0, uint32_t w1)
    edgewalker_for_loads(lewdata);
 }
 
-static void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2)
+static void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2)
 {
-   INT32 lewdata[10];
+   int32_t lewdata[10];
    int tilenum = (w2 >> 24) & 0x7;
    int sl, tl, sh, th;
 
@@ -1674,7 +1674,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    render_spans(yhlimit >> 2, yllimit >> 2, 0, 1);
 }
 
-INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+INLINE void SET_SUBA_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
    switch (code & 0xf)
    {
@@ -1733,7 +1733,7 @@ INLINE void SET_SUBA_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
    }
 }
 
-INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
    switch (code & 0xf)
    {
@@ -1792,7 +1792,7 @@ INLINE void SET_SUBB_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b
    }
 }
 
-INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
    switch (code & 0x1f)
    {
@@ -1899,7 +1899,7 @@ INLINE void SET_MUL_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
    }
 }
 
-INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b, int code)
+INLINE void SET_ADD_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
    switch (code & 0x7)
    {
@@ -1946,7 +1946,7 @@ INLINE void SET_ADD_RGB_INPUT(INT32 **input_r, INT32 **input_g, INT32 **input_b,
    }
 }
 
-INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
+INLINE void SET_SUB_ALPHA_INPUT(int32_t **input, int code)
 {
    switch (code & 0x7)
    {
@@ -1977,7 +1977,7 @@ INLINE void SET_SUB_ALPHA_INPUT(INT32 **input, int code)
    }
 }
 
-INLINE void SET_MUL_ALPHA_INPUT(INT32 **input, int code)
+INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
 {
    switch (code & 0x7)
    {

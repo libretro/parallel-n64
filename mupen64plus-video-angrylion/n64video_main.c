@@ -14,11 +14,11 @@ extern uint32_t screen_pitch;
 uint32_t *blitter_buf;
 int res;
 RECT __dst, __src;
-INT32 pitchindwords;
+int32_t pitchindwords;
 
 int ProcessDListShown = 0;
 extern int SaveLoaded;
-extern UINT32 command_counter;
+extern uint32_t command_counter;
 
 int retro_return(bool just_flipping);
 

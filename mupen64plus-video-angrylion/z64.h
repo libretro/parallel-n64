@@ -2,28 +2,7 @@
 #define __Z64_H__
 
 #include <stdio.h>
-
-#if defined (_MSC_VER) && (_MSC_VER >= 1300)
-#include <basetsd.h>
-#endif
-
-#if defined (_MSC_VER) && (_MSC_VER < 1300)
-typedef unsigned char UINT8;
-typedef signed short INT16;
-typedef unsigned short UINT16;
-#endif
-
-#if !defined (_MSC_VER) || (_MSC_VER >= 1600)
 #include <stdint.h>
-typedef uint64_t UINT64;
-typedef int64_t INT64;
-typedef uint32_t UINT32;
-typedef int32_t INT32;
-typedef uint16_t UINT16;
-typedef int16_t INT16;
-typedef uint8_t UINT8;
-typedef int8_t INT8;
-#endif
 
 #define SP_INTERRUPT    0x1
 #define SI_INTERRUPT    0x2
@@ -109,30 +88,30 @@ typedef unsigned int offs_t;
 #define SP_DMEM32       ((i32 *)SP_DMEM)
 #define SP_IMEM32       ((i32 *)SP_IMEM)
 
-#define rdram ((UINT32*)DRAM)
-#define rsp_imem ((UINT32*)gfx_info.IMEM)
-#define rsp_dmem ((UINT32*)gfx_info.DMEM)
+#define rdram ((uint32_t*)DRAM)
+#define rsp_imem ((uint32_t*)gfx_info.IMEM)
+#define rsp_dmem ((uint32_t*)gfx_info.DMEM)
 
 #define rdram16 ((UINT16*)DRAM)
 #define rdram8 (DRAM)
 
-#define vi_origin (*(UINT32*)gfx_info.VI_ORIGIN_REG)
-#define vi_width (*(UINT32*)gfx_info.VI_WIDTH_REG)
-#define vi_control (*(UINT32*)gfx_info.VI_STATUS_REG)
-#define vi_v_sync (*(UINT32*)gfx_info.VI_V_SYNC_REG)
-#define vi_h_sync (*(UINT32*)gfx_info.VI_H_SYNC_REG)
-#define vi_h_start (*(UINT32*)gfx_info.VI_H_START_REG)
-#define vi_v_start (*(UINT32*)gfx_info.VI_V_START_REG)
-#define vi_v_intr (*(UINT32*)gfx_info.VI_INTR_REG)
-#define vi_x_scale (*(UINT32*)gfx_info.VI_X_SCALE_REG)
-#define vi_y_scale (*(UINT32*)gfx_info.VI_Y_SCALE_REG)
-#define vi_timing (*(UINT32*)gfx_info.VI_TIMING_REG)
-#define vi_v_current_line (*(UINT32*)gfx_info.VI_V_CURRENT_LINE_REG)
+#define vi_origin (*(uint32_t*)gfx_info.VI_ORIGIN_REG)
+#define vi_width (*(uint32_t*)gfx_info.VI_WIDTH_REG)
+#define vi_control (*(uint32_t*)gfx_info.VI_STATUS_REG)
+#define vi_v_sync (*(uint32_t*)gfx_info.VI_V_SYNC_REG)
+#define vi_h_sync (*(uint32_t*)gfx_info.VI_H_SYNC_REG)
+#define vi_h_start (*(uint32_t*)gfx_info.VI_H_START_REG)
+#define vi_v_start (*(uint32_t*)gfx_info.VI_V_START_REG)
+#define vi_v_intr (*(uint32_t*)gfx_info.VI_INTR_REG)
+#define vi_x_scale (*(uint32_t*)gfx_info.VI_X_SCALE_REG)
+#define vi_y_scale (*(uint32_t*)gfx_info.VI_Y_SCALE_REG)
+#define vi_timing (*(uint32_t*)gfx_info.VI_TIMING_REG)
+#define vi_v_current_line (*(uint32_t*)gfx_info.VI_V_CURRENT_LINE_REG)
 
-#define dp_start (*(UINT32*)gfx_info.DPC_START_REG)
-#define dp_end (*(UINT32*)gfx_info.DPC_END_REG)
-#define dp_current (*(UINT32*)gfx_info.DPC_CURRENT_REG)
-#define dp_status (*(UINT32*)gfx_info.DPC_STATUS_REG)
+#define dp_start (*(uint32_t*)gfx_info.DPC_START_REG)
+#define dp_end (*(uint32_t*)gfx_info.DPC_END_REG)
+#define dp_current (*(uint32_t*)gfx_info.DPC_CURRENT_REG)
+#define dp_status (*(uint32_t*)gfx_info.DPC_STATUS_REG)
 
 #define GET_LOW(x)      (((x) & 0x003E) << 2)
 #define GET_MED(x)      (((x) & 0x07C0) >> 3)
