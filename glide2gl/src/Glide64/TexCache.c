@@ -1212,8 +1212,7 @@ static void LoadTex(int id, int tmu)
          min_y = real_y;
 
       // Load using mirroring/clamping
-      if (min_x > texinfo[id].width &&
-  (signed)real_x > texinfo[id].width) /* real_x unsigned just for right shift */
+      if (min_x > texinfo[id].width && (signed)real_x > texinfo[id].width) /* real_x unsigned just for right shift */
       {
          if (size == 1)
             Clamp16bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
@@ -1227,6 +1226,7 @@ static void LoadTex(int id, int tmu)
       {
          bool cond_true = rdp.tiles[td].mask_s != 0
                && (real_x > (1U << rdp.tiles[td].mask_s));
+
          if (rdp.tiles[td].mirror_s && cond_true)
          {
             if (size == 1)
@@ -1242,16 +1242,16 @@ static void LoadTex(int id, int tmu)
          else if (cond_true)
          {
             // Horizontal Wrap (like mirror) ** UNTESTED **
-            uint8_t *tex = (uint8_t*)texture;
+            uint8_t *tex        = (uint8_t*)texture;
             uint32_t max_height = texinfo[id].height;
-            uint8_t shift_a = (size == 0) ? 2 : (size == 1) ? 1 : 0;
+            uint8_t shift_a     = (size == 0) ? 2 : (size == 1) ? 1 : 0;
             uint32_t mask_width = (1 << rdp.tiles[td].mask_s);
-            uint32_t mask_mask = (mask_width-1) >> shift_a;
-            int32_t count = (real_x - mask_width) >> shift_a;
-            int32_t line_full = real_x << size;
-            int32_t line = line_full - (count << 2);
-            uint8_t *start = (uint8_t*)(tex + (mask_width << size));
-            uint32_t *v7 = (uint32_t *)start;
+            uint32_t mask_mask  = (mask_width-1) >> shift_a;
+            int32_t count       = (real_x - mask_width) >> shift_a;
+            int32_t line_full   = real_x << size;
+            int32_t line        = line_full - (count << 2);
+            uint8_t *start      = (uint8_t*)(tex + (mask_width << size));
+            uint32_t *v7        = (uint32_t *)start;
 
             do
             {
@@ -1269,10 +1269,10 @@ static void LoadTex(int id, int tmu)
       if (min_y > texinfo[id].height)
       {
          // Vertical Clamp
-         int32_t line_full = real_x << size;
-         uint8_t *dst = (uint8_t*)(texture + texinfo[id].height * line_full);
+         int32_t line_full   = real_x << size;
+         uint8_t *dst        = (uint8_t*)(texture + texinfo[id].height * line_full);
          uint8_t *const_line = (uint8_t*)(dst - line_full);
-         int y = texinfo[id].height;
+         int y               = texinfo[id].height;
 
          for (; y < min_y; y++)
          {
@@ -1289,12 +1289,10 @@ static void LoadTex(int id, int tmu)
             if (rdp.tiles[td].mask_t != 0 && (real_y > (1U << rdp.tiles[td].mask_t)))
             {
                uint32_t mask_height = (1 << rdp.tiles[td].mask_t);
-               uint32_t mask_mask = mask_height-1;
-
-               int32_t line_full = real_x << size;
-
-               uint8_t *dst = (uint8_t*)(texture + mask_height * line_full);
-               uint32_t y = mask_height;
+               uint32_t mask_mask   = mask_height-1;
+               int32_t line_full    = real_x << size;
+               uint8_t *dst         = (uint8_t*)(texture + mask_height * line_full);
+               uint32_t y           = mask_height;
 
                for (; y < real_y; y++)
                {
@@ -1310,12 +1308,12 @@ static void LoadTex(int id, int tmu)
          else if (rdp.tiles[td].mask_t != 0 && real_y > (1U << rdp.tiles[td].mask_t))
          {
             // Vertical Wrap
-            uint32_t wrap_size = size;
+            uint32_t wrap_size   = size;
             uint32_t mask_height = (1 << rdp.tiles[td].mask_t);
-            uint32_t y = mask_height;
-            uint32_t mask_mask = mask_height-1;
-            int32_t line_full = real_x << wrap_size;
-            uint8_t *dst = (uint8_t*)(texture + mask_height * line_full);
+            uint32_t y           = mask_height;
+            uint32_t mask_mask   = mask_height-1;
+            int32_t line_full    = real_x << wrap_size;
+            uint8_t *dst         = (uint8_t*)(texture + mask_height * line_full);
 
             if (wrap_size == 1)
                wrap_size = 0;
@@ -1333,7 +1331,7 @@ static void LoadTex(int id, int tmu)
 
    if (mod && !modifyPalette)
    {
-	   int size = real_x * real_y;
+	   int size      = real_x * real_y;
       uint32_t *src = (uint32_t*)texture;
       uint32_t *dst = (uint32_t*)tex2;
 
@@ -1411,19 +1409,17 @@ static void LoadTex(int id, int tmu)
          ((modcolor2 & 0x0000F000) >> 8) | ((modcolor2 & 0x000000F0) >> 4);
 
       {
-         uint16_t *dst;
-		 uint32_t cr0, cg0, cb0, cr1, cg1, cb1, cr2, cg2, cb2;
          size = (real_x * real_y) << 1;
-         dst = (uint16_t*)texture;
-         cr0 = (modcolor >> 12) & 0xF;
-         cg0 = (modcolor >> 8) & 0xF;
-         cb0 = (modcolor >> 4) & 0xF;
-         cr1 = (modcolor1 >> 12) & 0xF;
-         cg1 = (modcolor1 >> 8) & 0xF;
-         cb1 = (modcolor1 >> 4) & 0xF;
-         cr2 = (modcolor2 >> 12) & 0xF;
-         cg2 = (modcolor2 >> 8) & 0xF;
-         cb2 = (modcolor2 >> 4) & 0xF;
+         uint16_t *dst = (uint16_t*)texture;
+         uint32_t cr0 = (modcolor >> 12) & 0xF;
+         uint32_t cg0 = (modcolor >> 8) & 0xF;
+         uint32_t cb0 = (modcolor >> 4) & 0xF;
+         uint32_t cr1 = (modcolor1 >> 12) & 0xF;
+         uint32_t cg1 = (modcolor1 >> 8) & 0xF;
+         uint32_t cb1 = (modcolor1 >> 4) & 0xF;
+         uint32_t cr2 = (modcolor2 >> 12) & 0xF;
+         uint32_t cg2 = (modcolor2 >> 8) & 0xF;
+         uint32_t cb2 = (modcolor2 >> 4) & 0xF;
 
          switch (mod)
          {
@@ -1643,12 +1639,18 @@ static void LoadTex(int id, int tmu)
                      float r = ((float)(((*dst) >> 8) & 0xF) - cr0) * percent;
                      float g = ((float)(((*dst) >> 4) & 0xF) - cg0) * percent;
                      float b = ((float)(*dst & 0xF) - cb0) * percent;
-                     if (r > 15.0f) r = 15.0f;
-                     if (r < 0.0f) r = 0.0f;
-                     if (g > 15.0f) g = 15.0f;
-                     if (g < 0.0f) g = 0.0f;
-                     if (b > 15.0f) b = 15.0f;
-                     if (b < 0.0f) b = 0.0f;
+                     if (r > 15.0f)
+                        r = 15.0f;
+                     if (r < 0.0f)
+                        r = 0.0f;
+                     if (g > 15.0f)
+                        g = 15.0f;
+                     if (g < 0.0f)
+                        g = 0.0f;
+                     if (b > 15.0f)
+                        b = 15.0f;
+                     if (b < 0.0f)
+                        b = 0.0f;
 
                      *(dst++) = ((((*dst) >> 12) & 0xF) << 12) | ((uint16_t)r << 8) | ((uint16_t)g << 4) | (uint16_t)b;
                   }while(--size);
