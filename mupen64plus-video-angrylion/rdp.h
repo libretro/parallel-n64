@@ -293,8 +293,6 @@ static INLINE void calculate_tile_derivs(UINT32 i)
 extern void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2);
 extern void deduce_derivatives(void);
 
-extern void render_spans_1cycle(int start, int end, int tilenum, int flip);
-extern void render_spans_2cycle(int start, int end, int tilenum, int flip);
 extern NOINLINE void render_spans_copy(
     int start, int end, int tilenum, int flip);
 extern NOINLINE void render_spans_fill(int start, int end, int flip);

@@ -144,13 +144,13 @@ typedef struct{
     int longspan;
 }SPANSIGS;
 
-void render_spans_1cycle_complete(int start, int end, int tilenum, int flip);
-void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip);
-void render_spans_1cycle_notex(int start, int end, int tilenum, int flip);
-void render_spans_2cycle_complete(int start, int end, int tilenum, int flip);
-void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip);
-void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip);
-void render_spans_2cycle_notex(int start, int end, int tilenum, int flip);
+static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip);
+static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip);
+static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip);
+static void render_spans_2cycle_complete(int start, int end, int tilenum, int flip);
+static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip);
+static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip);
+static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip);
 static void tcdiv_persp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst);
 static void tcdiv_nopersp(INT32 ss, INT32 st, INT32 sw, INT32* sss, INT32* sst);
 static void rgb_dither_complete(int* r, int* g, int* b, int dith);
@@ -4201,7 +4201,7 @@ static STRICTINLINE void get_texel1_1cycle(INT32* s1, INT32* t1, INT32 s, INT32 
    tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
 }
 
-void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
+static void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
 {
    UINT8 offx, offy;
    SPANSIGS sigs;
@@ -4386,7 +4386,7 @@ void render_spans_1cycle_complete(int start, int end, int tilenum, int flip)
 }
 
 
-void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
+static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
 {
    int zbcur;
    UINT8 offx, offy;
@@ -4553,8 +4553,7 @@ void render_spans_1cycle_notexel1(int start, int end, int tilenum, int flip)
    }
 }
 
-
-void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
+static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 {
    int zbcur;
    UINT8 offx, offy;
@@ -4949,7 +4948,7 @@ static STRICTINLINE void get_nexttexel0_2cycle(INT32* s1, INT32* t1,
    tcdiv_ptr(nexts, nextt, nextsw, s1, t1);
 }
 
-void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
+static void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
 {
    int zbcur;
    UINT8 offx, offy;
@@ -5141,9 +5140,7 @@ void render_spans_2cycle_complete(int start, int end, int tilenum, int flip)
    }
 }
 
-
-
-void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
+static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
 {
    int zbcur;
    UINT8 offx, offy;
@@ -5311,8 +5308,7 @@ void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int flip)
    }
 }
 
-
-void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
+static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
 {
    int zbcur;
    UINT8 offx, offy;
@@ -5479,8 +5475,7 @@ void render_spans_2cycle_notexel1(int start, int end, int tilenum, int flip)
    }
 }
 
-
-void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
+static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 {
    int zbcur;
    UINT8 offx, offy;

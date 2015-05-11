@@ -1167,113 +1167,111 @@ void update(void)
 
    glide64_z_compare();
 
+   // Alpha compare
+   if (g_gdp.flags & UPDATE_ALPHA_COMPARE)
    {
-      // Alpha compare
-      if (g_gdp.flags & UPDATE_ALPHA_COMPARE)
-      {
-         g_gdp.flags ^= UPDATE_ALPHA_COMPARE;
+      g_gdp.flags ^= UPDATE_ALPHA_COMPARE;
 
-         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 1 && !(rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && (!(rdp.othermode_l & RDP_FORCE_BLEND) || (g_gdp.blend_color.a)))
+      if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 1 && !(rdp.othermode_l & RDP_ALPHA_CVG_SELECT) && (!(rdp.othermode_l & RDP_FORCE_BLEND) || (g_gdp.blend_color.a)))
+      {
+         uint8_t reference = (uint8_t)g_gdp.blend_color.a;
+         grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER, reference, 1);
+         FRDP (" |- alpha compare: blend: %02lx\n", reference);
+      }
+      else
+      {
+         if (rdp.flags & ALPHA_COMPARE)
          {
-            uint8_t reference = (uint8_t)g_gdp.blend_color.a;
-            grAlphaTestFunction (reference ? GR_CMP_GEQUAL : GR_CMP_GREATER, reference, 1);
-            FRDP (" |- alpha compare: blend: %02lx\n", reference);
+            bool cond_set = (rdp.othermode_l & 0x5000) == 0x5000;
+            grAlphaTestFunction (!cond_set ? GR_CMP_GEQUAL : GR_CMP_GREATER, 0x20, !cond_set ? 1 : 0);
+            if (cond_set)
+               grAlphaTestReferenceValue (((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3) ? (uint8_t)g_gdp.blend_color.a : 0x00);
          }
          else
          {
-            if (rdp.flags & ALPHA_COMPARE)
-            {
-               bool cond_set = (rdp.othermode_l & 0x5000) == 0x5000;
-               grAlphaTestFunction (!cond_set ? GR_CMP_GEQUAL : GR_CMP_GREATER, 0x20, !cond_set ? 1 : 0);
-               if (cond_set)
-                  grAlphaTestReferenceValue (((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3) ? (uint8_t)g_gdp.blend_color.a : 0x00);
-            }
-            else
-            {
-               grAlphaTestFunction (GR_CMP_ALWAYS, 0x00, 0);
-               LRDP (" |- alpha compare: none\n");
-            }
+            grAlphaTestFunction (GR_CMP_ALWAYS, 0x00, 0);
+            LRDP (" |- alpha compare: none\n");
          }
-         if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3 && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+      }
+      if ((rdp.othermode_l & RDP_ALPHA_COMPARE) == 3 && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))
+      {
+         if (settings.old_style_adither || g_gdp.other_modes.alpha_dither_sel != 3)
          {
-            if (settings.old_style_adither || g_gdp.other_modes.alpha_dither_sel != 3)
-            {
-               LRDP (" |- alpha compare: dither\n");
-               grStippleMode(settings.stipple_mode);
-            }
-            else
-               grStippleMode(GR_STIPPLE_DISABLE);
+            LRDP (" |- alpha compare: dither\n");
+            grStippleMode(settings.stipple_mode);
          }
          else
-         {
-            //LRDP (" |- alpha compare: dither disabled\n");
             grStippleMode(GR_STIPPLE_DISABLE);
-         }
       }
-
-      // Cull mode (leave this in for z-clipped triangles)
-      if (g_gdp.flags & UPDATE_CULL_MODE)
+      else
       {
-         uint32_t mode;
-         g_gdp.flags ^= UPDATE_CULL_MODE;
-         mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
-         FRDP (" |- cull_mode - mode: %s\n", str_cull[mode]);
-         switch (mode)
-         {
-            case 0: // cull none
-            case 3: // cull both
-               grCullMode(GR_CULL_DISABLE);
-               break;
-            case 1: // cull front
-               grCullMode(GR_CULL_NEGATIVE);
-               break;
-            case 2: // cull back
-               grCullMode (GR_CULL_POSITIVE);
-               break;
-         }
+         //LRDP (" |- alpha compare: dither disabled\n");
+         grStippleMode(GR_STIPPLE_DISABLE);
       }
+   }
 
-      //Added by Gonetz.
-      if (settings.fog && (g_gdp.flags & UPDATE_FOG_ENABLED))
+   // Cull mode (leave this in for z-clipped triangles)
+   if (g_gdp.flags & UPDATE_CULL_MODE)
+   {
+      uint32_t mode;
+      g_gdp.flags ^= UPDATE_CULL_MODE;
+      mode = (rdp.flags & CULLMASK) >> CULLSHIFT;
+      FRDP (" |- cull_mode - mode: %s\n", str_cull[mode]);
+      switch (mode)
       {
-         uint16_t blender;
-         g_gdp.flags ^= UPDATE_FOG_ENABLED;
+         case 0: // cull none
+         case 3: // cull both
+            grCullMode(GR_CULL_DISABLE);
+            break;
+         case 1: // cull front
+            grCullMode(GR_CULL_NEGATIVE);
+            break;
+         case 2: // cull back
+            grCullMode (GR_CULL_POSITIVE);
+            break;
+      }
+   }
 
-         blender = (uint16_t)(rdp.othermode_l >> 16);
-         if (rdp.flags & FOG_ENABLED)
-         {
-            rdp_blender_setting *bl = (rdp_blender_setting*)(&blender);
-            if((rdp.fog_multiplier > 0) && (bl->c1_m1a==3 || bl->c1_m2a == 3 || bl->c2_m1a == 3 || bl->c2_m2a == 3))
-            {
-               grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
-               rdp.fog_mode = FOG_MODE_ENABLED;
-               LRDP("fog enabled \n");
-            }
-            else
-            {
-               LRDP("fog disabled in blender\n");
-               rdp.fog_mode = FOG_MODE_DISABLED;
-               grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
-            }
-         }
-         else if (blender == 0xc410 || blender == 0xc411 || blender == 0xf500)
+   //Added by Gonetz.
+   if (settings.fog && (g_gdp.flags & UPDATE_FOG_ENABLED))
+   {
+      uint16_t blender;
+      g_gdp.flags ^= UPDATE_FOG_ENABLED;
+
+      blender = (uint16_t)(rdp.othermode_l >> 16);
+      if (rdp.flags & FOG_ENABLED)
+      {
+         rdp_blender_setting *bl = (rdp_blender_setting*)(&blender);
+         if((rdp.fog_multiplier > 0) && (bl->c1_m1a==3 || bl->c1_m2a == 3 || bl->c2_m1a == 3 || bl->c2_m2a == 3))
          {
             grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
-            rdp.fog_mode = FOG_MODE_BLEND;
-            LRDP("fog blend \n");
-         }
-         else if (blender == 0x04d1)
-         {
-            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
-            rdp.fog_mode = FOG_MODE_BLEND_INVERSE;
-            LRDP("fog blend \n");
+            rdp.fog_mode = FOG_MODE_ENABLED;
+            LRDP("fog enabled \n");
          }
          else
          {
-            LRDP("fog disabled\n");
+            LRDP("fog disabled in blender\n");
             rdp.fog_mode = FOG_MODE_DISABLED;
             grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
          }
+      }
+      else if (blender == 0xc410 || blender == 0xc411 || blender == 0xf500)
+      {
+         grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
+         rdp.fog_mode = FOG_MODE_BLEND;
+         LRDP("fog blend \n");
+      }
+      else if (blender == 0x04d1)
+      {
+         grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
+         rdp.fog_mode = FOG_MODE_BLEND_INVERSE;
+         LRDP("fog blend \n");
+      }
+      else
+      {
+         LRDP("fog disabled\n");
+         rdp.fog_mode = FOG_MODE_DISABLED;
+         grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
       }
    }
 
