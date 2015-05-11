@@ -339,6 +339,13 @@ static void compute_cvg_noflip(INT32 scanline)
    }
 }
 
+STRICTINLINE INT32 irand(void)
+{
+   iseed *= 0x343fd;
+   iseed += 0x269ec3;
+   return ((iseed >> 16) & 0x7fff);
+}
+
 static void get_dither_noise_complete(int x, int y, int* cdith, int* adith)
 {
    int dithindex;
@@ -3301,9 +3308,9 @@ static STRICTINLINE int alpha_compare(INT32 comb_alpha)
          threshold = irand() & 0xff;
       if (comb_alpha >= threshold)
          return 1;
-      else
-         return 0;
    }
+
+   return 0;
 }
 
 static void blender_equation_cycle0(int* r, int* g, int* b)
@@ -5362,6 +5369,81 @@ static void precalculate_everything(void)
    }
 }
 
+void SET_BLENDER_INPUT(
+      int cycle, int which,
+      INT32 **input_r,
+      INT32 **input_g,
+      INT32 **input_b,
+      INT32 **input_a,
+      int a, int b)
+{
+   switch (a & 0x3)
+   {
+      case 0:
+         if (cycle == 0)
+         {
+            *input_r = &pixel_color.r;
+            *input_g = &pixel_color.g;
+            *input_b = &pixel_color.b;
+         }
+         else
+         {
+            *input_r = &blended_pixel_color.r;
+            *input_g = &blended_pixel_color.g;
+            *input_b = &blended_pixel_color.b;
+         }
+         break;
+      case 1:
+         *input_r = &memory_color.r;
+         *input_g = &memory_color.g;
+         *input_b = &memory_color.b;
+         break;
+      case 2:
+         *input_r = &g_gdp.blend_color.r;        *input_g = &g_gdp.blend_color.g;        *input_b = &g_gdp.blend_color.b;
+         break;
+      case 3:
+         *input_r = &g_gdp.fog_color.r;        *input_g = &g_gdp.fog_color.g;        *input_b = &g_gdp.fog_color.b;
+         break;
+   }
+
+   if (which == 0)
+   {
+      switch (b & 0x3)
+      {
+         case 0:
+            *input_a = &pixel_color.a;
+            break;
+         case 1:
+            *input_a = &g_gdp.fog_color.a;
+            break;
+         case 2:
+            *input_a = &shade_color.a;
+            break;
+         case 3:
+            *input_a = &zero_color;
+            break;
+      }
+   }
+   else
+   {
+      switch (b & 0x3)
+      {
+         case 0:
+            *input_a = &inv_pixel_color.a;
+            break;
+         case 1:
+            *input_a = &memory_color.a;
+            break;
+         case 2:
+            *input_a = &blenderone;
+            break;
+         case 3:
+            *input_a = &zero_color;
+            break;
+      }
+   }
+}
+
 void rdp_init(void)
 {
     register int i;
@@ -5445,96 +5527,6 @@ void rdp_init(void)
 
     rdram_16 = (UINT16*)gfx_info.RDRAM;
 }
-
-
-
-
-
-
-
-void SET_BLENDER_INPUT(
-      int cycle, int which,
-      INT32 **input_r,
-      INT32 **input_g,
-      INT32 **input_b,
-      INT32 **input_a,
-      int a, int b)
-{
-   switch (a & 0x3)
-   {
-      case 0:
-         if (cycle == 0)
-         {
-            *input_r = &pixel_color.r;
-            *input_g = &pixel_color.g;
-            *input_b = &pixel_color.b;
-         }
-         else
-         {
-            *input_r = &blended_pixel_color.r;
-            *input_g = &blended_pixel_color.g;
-            *input_b = &blended_pixel_color.b;
-         }
-         break;
-      case 1:
-         *input_r = &memory_color.r;
-         *input_g = &memory_color.g;
-         *input_b = &memory_color.b;
-         break;
-      case 2:
-         *input_r = &g_gdp.blend_color.r;        *input_g = &g_gdp.blend_color.g;        *input_b = &g_gdp.blend_color.b;
-         break;
-      case 3:
-         *input_r = &g_gdp.fog_color.r;        *input_g = &g_gdp.fog_color.g;        *input_b = &g_gdp.fog_color.b;
-         break;
-   }
-
-   if (which == 0)
-   {
-      switch (b & 0x3)
-      {
-         case 0:
-            *input_a = &pixel_color.a;
-            break;
-         case 1:
-            *input_a = &g_gdp.fog_color.a;
-            break;
-         case 2:
-            *input_a = &shade_color.a;
-            break;
-         case 3:
-            *input_a = &zero_color;
-            break;
-      }
-   }
-   else
-   {
-      switch (b & 0x3)
-      {
-         case 0:
-            *input_a = &inv_pixel_color.a;
-            break;
-         case 1:
-            *input_a = &memory_color.a;
-            break;
-         case 2:
-            *input_a = &blenderone;
-            break;
-         case 3:
-            *input_a = &zero_color;
-            break;
-      }
-   }
-}
-
-
-
-
-
-
-
-
-
 
 static void sort_tmem_idx(UINT32 *idx, UINT32 idxa, UINT32 idxb, UINT32 idxc, UINT32 idxd, UINT32 bankno)
 {
@@ -6709,12 +6701,6 @@ void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2)
    edgewalker_for_loads(lewdata);
 }
 
-STRICTINLINE INT32 irand(void)
-{
-   iseed *= 0x343fd;
-   iseed += 0x269ec3;
-   return ((iseed >> 16) & 0x7fff);
-}
 
 void rdp_close(void)
 {
@@ -7015,16 +7001,7 @@ static void fbread2_32(UINT32 curpixel, UINT32* curpixel_memcvg)
    *curpixel_memcvg = (unsigned char)(pre_memory_color.a) >> 5;
 }
 
-
-
-
-
-
-
-
 int IsBadPtrW32(void *ptr, UINT32 bytes)
 {
    return 0;
 }
-
-
