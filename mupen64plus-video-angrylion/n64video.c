@@ -3309,6 +3309,40 @@ static STRICTINLINE INT32 CLIP(INT32 value,INT32 min,INT32 max)
    return value;
 }
 
+static void combiner_modes(int adseed, UINT32* curpixel_cvg, INT32 temp)
+{
+   if (g_gdp.other_modes.cvg_times_alpha)
+   {
+      temp = (pixel_color.a * (*curpixel_cvg) + 4) >> 3;
+      *curpixel_cvg = (temp >> 5) & 0xf;
+   }
+
+   if (!g_gdp.other_modes.alpha_cvg_select)
+   {
+      if (!g_gdp.other_modes.key_en)
+      {
+         pixel_color.a += adseed;
+         if (pixel_color.a & 0x100)
+            pixel_color.a = 0xff;
+      }
+      else
+         pixel_color.a = keyalpha;
+   }
+   else
+   {
+      if (g_gdp.other_modes.cvg_times_alpha)
+         pixel_color.a = temp;
+      else
+         pixel_color.a = (*curpixel_cvg) << 5;
+      if (pixel_color.a > 0xff)
+         pixel_color.a = 0xff;
+   }
+
+   shade_color.a += adseed;
+   if (shade_color.a & 0x100)
+      shade_color.a = 0xff;
+}
+
 static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
 {
     INT32 redkey, greenkey, bluekey, temp;
@@ -3363,39 +3397,8 @@ static void combiner_1cycle(int adseed, UINT32* curpixel_cvg)
         g_gdp.combined_color.g >>= 8;
         g_gdp.combined_color.b >>= 8;
     }
-    
-    
-    if (g_gdp.other_modes.cvg_times_alpha)
-    {
-        temp = (pixel_color.a * (*curpixel_cvg) + 4) >> 3;
-        *curpixel_cvg = (temp >> 5) & 0xf;
-    }
 
-    if (!g_gdp.other_modes.alpha_cvg_select)
-    {    
-        if (!g_gdp.other_modes.key_en)
-        {
-            pixel_color.a += adseed;
-            if (pixel_color.a & 0x100)
-                pixel_color.a = 0xff;
-        }
-        else
-            pixel_color.a = keyalpha;
-    }
-    else
-    {
-        if (g_gdp.other_modes.cvg_times_alpha)
-            pixel_color.a = temp;
-        else
-            pixel_color.a = (*curpixel_cvg) << 5;
-        if (pixel_color.a > 0xff)
-            pixel_color.a = 0xff;
-    }
-    
-
-    shade_color.a += adseed;
-    if (shade_color.a & 0x100)
-        shade_color.a = 0xff;
+    combiner_modes(adseed, curpixel_cvg, temp);
 }
 
 static STRICTINLINE void z_store(UINT32 zcurpixel, UINT32 z, int dzpixenc)
@@ -4366,6 +4369,7 @@ static void tclod_2cycle_next(INT32* sss, INT32* sst,
    }
 }
 
+
 static void combiner_2cycle(int adseed, UINT32* curpixel_cvg)
 {
     INT32 redkey, greenkey, bluekey, temp;
@@ -4434,38 +4438,7 @@ static void combiner_2cycle(int adseed, UINT32* curpixel_cvg)
     if (pixel_color.a == 0xff)
         pixel_color.a = 0x100;
 
-    
-    if (g_gdp.other_modes.cvg_times_alpha)
-    {
-        temp = (pixel_color.a * (*curpixel_cvg) + 4) >> 3;
-        *curpixel_cvg = (temp >> 5) & 0xf;
-    }
-
-    if (!g_gdp.other_modes.alpha_cvg_select)
-    {
-        if (!g_gdp.other_modes.key_en)
-        {
-            pixel_color.a += adseed;
-            if (pixel_color.a & 0x100)
-                pixel_color.a = 0xff;
-        }
-        else
-            pixel_color.a = keyalpha;
-    }
-    else
-    {
-        if (g_gdp.other_modes.cvg_times_alpha)
-            pixel_color.a = temp;
-        else
-            pixel_color.a = (*curpixel_cvg) << 5;
-        if (pixel_color.a > 0xff)
-            pixel_color.a = 0xff;
-    }
-    
-
-    shade_color.a += adseed;
-    if (shade_color.a & 0x100)
-        shade_color.a = 0xff;
+    combiner_modes(adseed, curpixel_cvg, temp);
 }
 
 STRICTINLINE void blender_equation_cycle0_2(int* r, int* g, int* b)
