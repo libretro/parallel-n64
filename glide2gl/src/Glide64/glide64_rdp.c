@@ -2428,6 +2428,7 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
 
    nbVtxs = 0;
    vtx = (VERTEX*)&vtxbuf[nbVtxs++];
+   memset(vtxbuf, 0, sizeof(vtxbuf));
 
    xleft      = xm;
    xright     = xh;
