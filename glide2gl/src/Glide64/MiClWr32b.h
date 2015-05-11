@@ -44,9 +44,8 @@
 
 static INLINE void clamp32bS(uint8_t *tex, uint8_t *constant, int height, int line, int full, int count)
 {
-   uint32_t *v6, *v7;
-   v6 = (uint32_t *)constant;
-   v7 = (uint32_t *)tex;
+   uint32_t *v6 = (uint32_t *)constant;
+   uint32_t *v7 = (uint32_t *)tex;
 
    do
    {
@@ -60,17 +59,17 @@ static INLINE void clamp32bS(uint8_t *tex, uint8_t *constant, int height, int li
    }while (--height);
 }
 
-//****************************************************************
-// 32-bit Horizontal Mirror
-void Mirror32bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_width, uint32_t height)
+/* 32-bit Horizontal Mirror */
+void Mirror32bS (uint8_t *tex, uint32_t mask, uint32_t max_width,
+      uint32_t real_width, uint32_t height)
 {
    uint32_t mask_width = (1 << mask);
-   uint32_t mask_mask = (mask_width-1) << 2;
-   int32_t count = max_width - mask_width;
-   int32_t line_full = real_width << 2;
-   int32_t line = line_full - (count << 2);
-   uint8_t *start = (uint8_t*)(tex + (mask_width << 2));
-   uint32_t *v8 = (uint32_t *)start;
+   uint32_t mask_mask  = (mask_width-1) << 2;
+   int32_t count       = max_width - mask_width;
+   int32_t line_full   = real_width << 2;
+   int32_t line        = line_full - (count << 2);
+   uint8_t *start      = (uint8_t*)(tex + (mask_width << 2));
+   uint32_t *v8        = (uint32_t *)start;
 
    do
    {
@@ -90,7 +89,8 @@ void Mirror32bS (uint8_t *tex, uint32_t mask, uint32_t max_width, uint32_t real_
 //****************************************************************
 // 32-bit Horizontal Clamp
 
-void Clamp32bS (uint8_t *tex, uint32_t width, uint32_t clamp_to, uint32_t real_width, uint32_t real_height)
+void Clamp32bS (uint8_t *tex, uint32_t width, uint32_t clamp_to,
+      uint32_t real_width, uint32_t real_height)
 {
    uint8_t *dest, *constant;
    int32_t count, line_full, line;

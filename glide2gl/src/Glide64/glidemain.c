@@ -131,36 +131,36 @@ static void *l_DebugCallContext = NULL;
 
 void _ChangeSize(void)
 {
-   float res_scl_y = (float)settings.res_y / 240.0f;
-   uint32_t scale_x = 0;
-   uint32_t scale_y = 0;
+   float res_scl_y      = (float)settings.res_y / 240.0f;
    uint32_t dwHStartReg = *gfx_info.VI_H_START_REG;
    uint32_t dwVStartReg = *gfx_info.VI_V_START_REG;
-   float fscale_x = 0.0;
-   float fscale_y = 0.0;
-   float aspect = 0.0;
-   uint32_t hstart = dwHStartReg >> 16;
-   uint32_t hend = dwHStartReg & 0xFFFF;
-   uint32_t vstart = dwVStartReg >> 16;
-   uint32_t vend = dwVStartReg & 0xFFFF;
-   rdp.scale_1024 = settings.scr_res_x / 1024.0f;
-   rdp.scale_768 = settings.scr_res_y / 768.0f;
-   scale_x = *gfx_info.VI_X_SCALE_REG & 0xFFF;
-   if (!scale_x) return;
-   scale_y = *gfx_info.VI_Y_SCALE_REG & 0xFFF;
-   if (!scale_y) return;
-   fscale_x = (float)scale_x / 1024.0f;
-   fscale_y = (float)scale_y / 2048.0f;
+   float fscale_x       = 0.0;
+   float fscale_y       = 0.0;
+   float aspect         = 0.0;
+   uint32_t hstart      = dwHStartReg >> 16;
+   uint32_t hend        = dwHStartReg & 0xFFFF;
+   uint32_t vstart      = dwVStartReg >> 16;
+   uint32_t vend        = dwVStartReg & 0xFFFF;
+   rdp.scale_1024       = settings.scr_res_x / 1024.0f;
+   rdp.scale_768        = settings.scr_res_y / 768.0f;
+   uint32_t scale_x     = *gfx_info.VI_X_SCALE_REG & 0xFFF;
+   uint32_t scale_y     = *gfx_info.VI_Y_SCALE_REG & 0xFFF;
+   if (!scale_x)
+      return;
+   if (!scale_y)
+      return;
+   fscale_x             = (float)scale_x / 1024.0f;
+   fscale_y             = (float)scale_y / 2048.0f;
 
    // dunno... but sometimes this happens
    if (hend == hstart)
-      hend = (int)(*gfx_info.VI_WIDTH_REG / fscale_x);
+      hend              = (int)(*gfx_info.VI_WIDTH_REG / fscale_x);
 
-   rdp.vi_width = (hend - hstart) * fscale_x;
-   rdp.vi_height = (vend - vstart) * fscale_y * 1.0126582f;
-   aspect = (settings.adjust_aspect && (fscale_y > fscale_x) && (rdp.vi_width > rdp.vi_height)) ? fscale_x/fscale_y : 1.0f;
+   rdp.vi_width         = (hend - hstart) * fscale_x;
+   rdp.vi_height        = (vend - vstart) * fscale_y * 1.0126582f;
+   aspect               = (settings.adjust_aspect && (fscale_y > fscale_x) && (rdp.vi_width > rdp.vi_height)) ? fscale_x/fscale_y : 1.0f;
+   rdp.scale_x          = (float)settings.res_x / rdp.vi_width;
 
-   rdp.scale_x = (float)settings.res_x / rdp.vi_width;
    if (region != OS_TV_TYPE_NTSC && settings.pal230)
    {
       // odd... but pal games seem to want 230 as height...
@@ -170,11 +170,8 @@ void _ChangeSize(void)
    {
       rdp.scale_y = (float)settings.res_y / rdp.vi_height * aspect;
    }
-   //  rdp.offset_x = settings.offset_x * res_scl_x;
-   //  rdp.offset_y = settings.offset_y * res_scl_y;
-   //rdp.offset_x = 0;
-   //  rdp.offset_y = 0;
-   rdp.offset_y = ((float)settings.res_y - rdp.vi_height * rdp.scale_y) * 0.5f;
+
+   rdp.offset_y   = ((float)settings.res_y - rdp.vi_height * rdp.scale_y) * 0.5f;
    if (((uint32_t)rdp.vi_width <= (*gfx_info.VI_WIDTH_REG)/2) && (rdp.vi_width > rdp.vi_height))
       rdp.scale_y *= 0.5f;
 
@@ -665,16 +662,16 @@ static void drawViRegBG(void)
 
    fb_info.width  = *gfx_info.VI_WIDTH_REG;
    fb_info.height = (uint32_t)rdp.vi_height;
-   fb_info.ul_x = 0;
-   fb_info.lr_x = fb_info.width - 1;
-   fb_info.ul_y = 0;
-   fb_info.lr_y = fb_info.height - 1;
+   fb_info.ul_x   = 0;
+   fb_info.lr_x   = fb_info.width - 1;
+   fb_info.ul_y   = 0;
+   fb_info.lr_y   = fb_info.height - 1;
    fb_info.opaque = 1;
-   fb_info.addr = *gfx_info.VI_ORIGIN_REG;
-   fb_info.size = *gfx_info.VI_STATUS_REG & 3;
+   fb_info.addr   = *gfx_info.VI_ORIGIN_REG;
+   fb_info.size   = *gfx_info.VI_STATUS_REG & 3;
 
-   rdp.last_bg = fb_info.addr;
-   drawn = DrawFrameBufferToScreen(&fb_info);
+   rdp.last_bg    = fb_info.addr;
+   drawn          = DrawFrameBufferToScreen(&fb_info);
 
    if (settings.hacks&hack_Lego && drawn)
    {
@@ -731,7 +728,7 @@ EXPORT void CALL UpdateScreen (void)
       else
          return;
    }
-   //*/
+
    if (settings.swapmode == 0 || forced_update)
       newSwapBuffers ();
 }
@@ -758,9 +755,12 @@ static void DrawWholeFrameBufferToScreen(void)
   fb_info.ul_y = 0;
   fb_info.lr_y = rdp.ci_height-1;
   fb_info.opaque = 0;
+
   DrawFrameBufferToScreen(&fb_info);
+
   if (!(settings.frame_buffer & fb_ref))
-    memset(gfx_info.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
+    memset(gfx_info.RDRAM+rdp.cimg, 0,
+          (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
 }
 
 uint32_t curframe = 0;
