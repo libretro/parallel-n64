@@ -33,14 +33,14 @@ extern retro_environment_t environ_cb;
 
 int width, height;
 int bgra8888_support;
-int npot_support;
+static int npot_support;
 // ZIGGY
 static GLuint default_texture;
 int glsl_support = 1;
 //Gonetz
 
-uint16_t *frameBuffer;
-uint8_t  *buf;
+static uint16_t *frameBuffer;
+static uint8_t  *buf;
 
 #ifdef EMSCRIPTEN
 GLuint glitch_vbo;

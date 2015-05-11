@@ -62,8 +62,8 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
     v9 = wid_64;
     do
     {
-      v10 = bswap32(*v6);
-      v11 = bswap32(v6[1]);
+      v10 = m64p_swap32(*v6);
+      v11 = m64p_swap32(v6[1]);
       ALOWORD(v10) = __ROR16((uint16_t)v10, 1, NBITS16_16B);
       ALOWORD(v11) = __ROR16((uint16_t)v11, 1, NBITS16_16B);
       v10 = __ROR32(v10, 16, NBITS32_16B);
@@ -85,8 +85,8 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
     v14 = wid_64;
     do
     {
-      v15 = bswap32(v12[1]);
-      v16 = bswap32(*v12);
+      v15 = m64p_swap32(v12[1]);
+      v16 = m64p_swap32(*v12);
       ALOWORD(v15) = __ROR16((uint16_t)v15, 1, NBITS16_16B);
       ALOWORD(v16) = __ROR16((uint16_t)v16, 1, NBITS16_16B);
       v15 = __ROR32(v15, 16, NBITS32_16B);
