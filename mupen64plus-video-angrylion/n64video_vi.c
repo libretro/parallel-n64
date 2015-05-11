@@ -25,6 +25,60 @@ static UINT32 tvfadeoutstate[625];
 static UINT32 brightness = 0;
 static UINT32 prevwasblank = 0;
 
+#define VI_COMPARE(x) {                      \
+    pix = RREADIDX16((x));                   \
+    tempr = (pix >> 6) & 0x03E0;             \
+    tempg = (pix >> 1) & 0x03E0;             \
+    tempb = (pix << 4) & 0x03E0;             \
+    rend += vi_restore_table[tempr | rcomp]; \
+    gend += vi_restore_table[tempg | gcomp]; \
+    bend += vi_restore_table[tempb | bcomp]; \
+}
+
+#define VI_COMPARE32(x) {                    \
+    pix = RREADIDX32(x);                     \
+    tempr = (pix >> 19) & 0x03E0;            \
+    tempg = (pix >> 11) & 0x03E0;            \
+    tempb = (pix >>  3) & 0x03E0;            \
+    rend += vi_restore_table[tempr | rcomp]; \
+    gend += vi_restore_table[tempg | gcomp]; \
+    bend += vi_restore_table[tempb | bcomp]; \
+}
+
+#define VI_ANDER(x) {                                 \
+    PAIRREAD16(pix, hidval, x);                       \
+    if (hidval == 3 && (pix & 1)) {                   \
+        backr[numoffull] = GET_HI(pix);               \
+        backg[numoffull] = GET_MED(pix);              \
+        backb[numoffull] = GET_LOW(pix);              \
+        invr[numoffull] = (~backr[numoffull]) & 0xFF; \
+        invg[numoffull] = (~backg[numoffull]) & 0xFF; \
+        invb[numoffull] = (~backb[numoffull]) & 0xFF; \
+    } else {                                          \
+        backr[numoffull] = invr[numoffull] = 0;       \
+        backg[numoffull] = invg[numoffull] = 0;       \
+        backb[numoffull] = invb[numoffull] = 0;       \
+    }                                                 \
+    numoffull++;                                      \
+}
+#define VI_ANDER32(x) {                               \
+    pix = RREADIDX32(x);                              \
+    pixcvg = (pix >> 5) & 7;                          \
+    if (pixcvg == 7) {                                \
+        backr[numoffull] = (pix >> 24) & 0xFF;        \
+        backg[numoffull] = (pix >> 16) & 0xFF;        \
+        backb[numoffull] = (pix >>  8) & 0xFF;        \
+        invr[numoffull] = (~backr[numoffull]) & 0xFF; \
+        invg[numoffull] = (~backg[numoffull]) & 0xFF; \
+        invb[numoffull] = (~backb[numoffull]) & 0xFF; \
+    } else {                                          \
+        backr[numoffull] = invr[numoffull] = 0;       \
+        backg[numoffull] = invg[numoffull] = 0;       \
+        backb[numoffull] = invb[numoffull] = 0;       \
+    }                                                 \
+    numoffull++;                                      \
+}
+
 STRICTINLINE static void video_max_optimized(UINT32* Pixels, UINT32* pen)
 {
    int i;
@@ -463,6 +517,8 @@ static void do_frame_buffer_proper(
     UINT32 prescale_ptr, int hres, int vres, int x_start, int vitype,
     int linecount)
 {
+   signed int cache_marker_init;
+   int slowbright;
    CCVG viaa_array[2048];
    CCVG divot_array[2048];
    CCVG *viaa_cache, *viaa_cache_next, *divot_cache, *divot_cache_next;
@@ -472,19 +528,17 @@ static void do_frame_buffer_proper(
    UINT32 * scanline;
    UINT32 pixels = 0, nextpixels = 0;
    UINT32 prevy = 0;
-   UINT32 y_start = (vi_y_scale >> 16) & 0x0FFF;
-   UINT32 frame_buffer = vi_origin & 0x00FFFFFF;
-   signed int cache_marker_init;
    int line_x = 0, next_line_x = 0, prev_line_x = 0, far_line_x = 0;
    int prev_scan_x = 0, scan_x = 0, next_scan_x = 0, far_scan_x = 0;
    int prev_x = 0, cur_x = 0, next_x = 0, far_x = 0;
    int cache_marker = 0, cache_next_marker = 0, divot_cache_marker = 0, divot_cache_next_marker = 0;
    int xfrac = 0, yfrac = 0;
-   int slowbright;
    int lerping = 0;
-   int vi_width_low = vi_width & 0xFFF;
-   const int x_add = *gfx_info.VI_X_SCALE_REG & 0x00000FFF;
-   UINT32 y_add = vi_y_scale & 0xfff;
+   UINT32 frame_buffer        = vi_origin & 0x00FFFFFF;
+   int vi_width_low           = vi_width & 0xFFF;
+   const int x_add            = *gfx_info.VI_X_SCALE_REG & 0x00000FFF;
+   UINT32 y_start             = (vi_y_scale >> 16) & 0x0FFF;
+   UINT32 y_add               = vi_y_scale & 0xfff;
    const int gamma_dither     = !!(*gfx_info.VI_STATUS_REG & 0x00000004);
    const int gamma            = !!(*gfx_info.VI_STATUS_REG & 0x00000008);
    const int divot            = !!(*gfx_info.VI_STATUS_REG & 0x00000010);
@@ -514,11 +568,6 @@ static void do_frame_buffer_proper(
    cache_marker_init |= -(cache_marker_init < 0);
 
    slowbright         = 0;
-#if 0
-   if (GetAsyncKeyState(0x91))
-      brightness = ++brightness & 0xF;
-   slowbright = brightness >> 1;
-#endif
    pixels = 0;
 
    for (j = 0; j < vres; j++)
@@ -1024,7 +1073,7 @@ no_frame_buffer:
 
    if (line_shifter != 0) /* 240p non-interlaced VI DAC mode */
    {
-      signed int cur_line = 240 - 1;
+      int32_t cur_line = 240 - 1;
       while (cur_line >= 0)
       {
          memcpy(
