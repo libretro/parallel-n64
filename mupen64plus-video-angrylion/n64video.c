@@ -570,6 +570,7 @@ static void compute_cvg_noflip(INT32 scanline)
             majorcurint = majorcur >> 3;
             fmask = 0xa >> (i & 1);
             maskshift = (i - 2) & 4;
+
             fmaskshifted = fmask << maskshift;
             fleft = minorcurint + 1;
 
@@ -1068,17 +1069,15 @@ static void tclod_1cycle_current(INT32* sss, INT32* sst, INT32 nexts, INT32 next
       INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc,
       INT32 scanline, INT32 prim_tile, INT32* t1, SPANSIGS* sigs)
 {
-   int fars, fart, farsw;
-   int lodclamp = 0;
-   INT32 lod = 0;
-   UINT32 l_tile = 0, magnify = 0, distant = 0;
-
    tclod_tcclamp(sss, sst);
 
    if (g_gdp.other_modes.f.dolod)
    {
+      int fars, fart, farsw;
+      int lodclamp = 0;
+      INT32 lod = 0;
+      UINT32 l_tile = 0, magnify = 0, distant = 0;
       int nextscan = scanline + 1;
-
 
       if (span[nextscan].validline)
       {
@@ -1127,15 +1126,14 @@ static void tclod_1cycle_current_simple(INT32* sss, INT32* sst, INT32 s, INT32 t
       INT32 w, INT32 dsinc, INT32 dtinc, INT32 dwinc,
       INT32 scanline, INT32 prim_tile, INT32* t1, SPANSIGS* sigs)
 {
-   int fars, fart, farsw, nexts, nextt, nextsw;
-   int lodclamp = 0;
-   INT32 lod = 0;
-   UINT32 l_tile = 0, magnify = 0, distant = 0;
-
    tclod_tcclamp(sss, sst);
 
    if (g_gdp.other_modes.f.dolod)
    {
+      int fars, fart, farsw, nexts, nextt, nextsw;
+      int lodclamp = 0;
+      INT32 lod = 0;
+      UINT32 l_tile = 0, magnify = 0, distant = 0;
       int nextscan = scanline + 1;
 
       if (span[nextscan].validline)
@@ -1196,16 +1194,14 @@ static void tclod_1cycle_next(INT32* sss, INT32* sst, INT32 s, INT32 t, INT32 w,
       INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 scanline,
       INT32 prim_tile, INT32* t1, SPANSIGS* sigs, INT32* prelodfrac)
 {
-   int nexts, nextt, nextsw, fars, fart, farsw;
-   int lodclamp = 0;
-   INT32 lod = 0;
-   UINT32 l_tile = 0, magnify = 0, distant = 0;
-
    tclod_tcclamp(sss, sst);
 
    if (g_gdp.other_modes.f.dolod)
    {
-
+      int nexts, nextt, nextsw, fars, fart, farsw;
+      int lodclamp = 0;
+      INT32 lod = 0;
+      UINT32 l_tile = 0, magnify = 0, distant = 0;
       int nextscan = scanline + 1;
 
       if (span[nextscan].validline)
@@ -4133,21 +4129,20 @@ static void tclod_2cycle_current(INT32* sss, INT32* sst,
       INT32 nexts, INT32 nextt, INT32 s, INT32 t, INT32 w,
       INT32 dsinc, INT32 dtinc, INT32 dwinc, INT32 prim_tile, INT32* t1, INT32* t2)
 {
-   int nextys, nextyt, nextysw;
-   int lodclamp = 0;
-   INT32 lod = 0;
-   UINT32 l_tile;
-   UINT32 magnify = 0;
-   UINT32 distant = 0;
    int inits = *sss, initt = *sst;
 
    tclod_tcclamp(sss, sst);
 
    if (g_gdp.other_modes.f.dolod)
    {
-      nextys = (s + spans_d_stwz_dy[0]) >> 16;
-      nextyt = (t + spans_d_stwz_dy[1]) >> 16;
-      nextysw = (w + spans_d_stwz_dy[2]) >> 16;
+      int lodclamp = 0;
+      INT32 lod = 0;
+      UINT32 l_tile;
+      UINT32 magnify = 0;
+      UINT32 distant = 0;
+      int nextys = (s + spans_d_stwz_dy[0]) >> 16;
+      int nextyt = (t + spans_d_stwz_dy[1]) >> 16;
+      int nextysw = (w + spans_d_stwz_dy[2]) >> 16;
 
       tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
@@ -4192,24 +4187,23 @@ static void tclod_2cycle_current_simple(INT32* sss, INT32* sst,
       INT32 s, INT32 t, INT32 w, INT32 dsinc, INT32 dtinc,
       INT32 dwinc, INT32 prim_tile, INT32* t1, INT32* t2)
 {
-   int nextys, nextyt, nextysw, nexts, nextt, nextsw;
-   int lodclamp = 0;
-   INT32 lod = 0;
-   UINT32 l_tile;
-   UINT32 magnify = 0;
-   UINT32 distant = 0;
    int inits = *sss, initt = *sst;
 
    tclod_tcclamp(sss, sst);
 
    if (g_gdp.other_modes.f.dolod)
    {
-      nextsw = (w + dwinc) >> 16;
-      nexts = (s + dsinc) >> 16;
-      nextt = (t + dtinc) >> 16;
-      nextys = (s + spans_d_stwz_dy[0]) >> 16;
-      nextyt = (t + spans_d_stwz_dy[1]) >> 16;
-      nextysw = (w + spans_d_stwz_dy[2]) >> 16;
+      INT32 lod = 0;
+      UINT32 l_tile;
+      UINT32 magnify = 0;
+      UINT32 distant = 0;
+      int lodclamp = 0;
+      int nextsw = (w + dwinc) >> 16;
+      int nexts = (s + dsinc) >> 16;
+      int nextt = (t + dtinc) >> 16;
+      int nextys = (s + spans_d_stwz_dy[0]) >> 16;
+      int nextyt = (t + spans_d_stwz_dy[1]) >> 16;
+      int nextysw = (w + spans_d_stwz_dy[2]) >> 16;
 
       tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
       tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
