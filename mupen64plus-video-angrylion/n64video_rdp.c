@@ -1918,7 +1918,6 @@ no_read_zbuffer_coefficients:
 #ifdef USE_MMX_DECODES
    _mm_empty();
 #endif
-   return;
 }
 
 STRICTINLINE static u16 normalize_dzpix(u16 sum)
@@ -1967,7 +1966,6 @@ NOINLINE static void render_spans(
          render_spans_2cycle_ptr(yhlimit, yllimit, tilenum, flip);
       else
          render_spans_1cycle_ptr(yhlimit, yllimit, tilenum, flip);
-   return;
 }
 
 #ifdef USE_SSE_SUPPORT
