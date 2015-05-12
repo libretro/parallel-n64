@@ -1408,6 +1408,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"WAVE RACE 64"))
    {
+      settings.swapmode_retro = true;
       settings.lodmode = 1;
       settings.pal230 = 1;
    }
