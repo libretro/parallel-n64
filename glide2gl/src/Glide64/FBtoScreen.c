@@ -224,7 +224,6 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
    int tmu;
    GrTexInfo t_info;
 
-   FRDP("DrawRE2Video256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
    src = (uint32_t*)(gfx_info.RDRAM + fb_info->addr);
    t_info.smallLodLog2 = GR_LOD_LOG2_256;
    t_info.largeLodLog2 = GR_LOD_LOG2_256;
@@ -269,6 +268,12 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
   float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
   int tmu;
   GrTexInfo t_info;
+
+  if (settings.hacks & hack_RE2)
+  {
+     DrawRE2Video256(fb_info);
+     return;
+  }
 
   FRDP("DrawFrameBufferToScreen256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
   width = fb_info->lr_x - fb_info->ul_x + 1;
