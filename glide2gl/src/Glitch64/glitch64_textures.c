@@ -18,12 +18,8 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#ifdef _WIN32
-#include <windows.h>
-#else // _WIN32
-#include <stdlib.h>
-#endif // _WIN32
 #include <stdint.h>
+#include <stdlib.h>
 #include "glide.h"
 #include "glitchmain.h"
 #include "uthash.h"
