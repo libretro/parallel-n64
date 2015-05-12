@@ -166,12 +166,10 @@ int32_t grLfbLock( int32_t type, int32_t buffer, int32_t writeMode,
           int32_t origin, int32_t pixelPipeline,
           GrLfbInfo_t *info )
 {
-   LOG("grLfbLock(%d,%d,%d,%d,%d)\r\n", type, buffer, writeMode, origin, pixelPipeline);
-
-   info->origin = origin;
+   info->origin        = origin;
    info->strideInBytes = width * ((writeMode == GR_LFBWRITEMODE_888) ? 4 : 2);
-   info->lfbPtr = frameBuffer;
-   info->writeMode = writeMode;
+   info->lfbPtr        = frameBuffer;
+   info->writeMode     = writeMode;
 
    if (writeMode == GR_LFBWRITEMODE_565)
    {
@@ -199,7 +197,6 @@ int32_t grLfbReadRegion( int32_t src_buffer,
       uint32_t dst_stride, void *dst_data )
 {
    unsigned int i,j;
-   LOG("grLfbReadRegion(%d,%d,%d,%d,%d,%d)\r\n", src_buffer, src_x, src_y, src_width, src_height, dst_stride);
 
    glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 
@@ -227,7 +224,6 @@ grLfbWriteRegion( int32_t dst_buffer,
 {
    unsigned int i,j;
    uint16_t *frameBuffer = (uint16_t*)src_data;
-   LOG("grLfbWriteRegion(%d,%d,%d,%d,%d,%d,%d,%d)\r\n",dst_buffer, dst_x, dst_y, src_format, src_width, src_height, pixelPipeline, src_stride);
 
    if(dst_buffer == GR_BUFFER_AUXBUFFER)
    {
@@ -251,6 +247,7 @@ grLfbWriteRegion( int32_t dst_buffer,
       int vertexOffset_location, textureSizes_location;
       static float data[16];
       const unsigned int half_stride = src_stride / 2;
+
       glActiveTexture(GL_TEXTURE0);
 
       /* src_format is GR_LFBWRITEMODE_555 */
