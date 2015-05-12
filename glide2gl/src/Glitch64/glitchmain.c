@@ -294,8 +294,6 @@ grLfbWriteRegion( int32_t dst_buffer,
 #ifdef EMSCRIPTEN
       glBindBuffer(GL_ARRAY_BUFFER, glitch_vbo);
       glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_DYNAMIC_DRAW);
-#else
-      glBindBuffer(GL_ARRAY_BUFFER, 0);
 #endif
 
       glDisableVertexAttribArray(COLOUR_ATTR);
@@ -318,7 +316,9 @@ grLfbWriteRegion( int32_t dst_buffer,
       glUniform4f(textureSizes_location,1,1,1,1);
 
       glDrawArrays(GL_TRIANGLE_STRIP,0,4);
+#ifdef EMSCRIPTEN
       glBindBuffer(GL_ARRAY_BUFFER, 0);
+#endif
 
       compile_shader();
 
