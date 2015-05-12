@@ -1470,6 +1470,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char*)"RIDGE RACER 64"))
    {
+      settings.swapmode_retro = true;
       settings.force_calc_sphere = 1;
       //depthmode = 0
       smart_read = 1;
@@ -1535,6 +1536,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"Killer Instinct Gold") || strstr(name, (const char *)"KILLER INSTINCT GOLD"))
    {
+      settings.swapmode_retro = true;
       settings.filtering = 1;
       //depthmode = 0
       settings.buff_clear = 0;
@@ -1558,6 +1560,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"MACE"))
    {
+      settings.swapmode_retro = true;
 #if 1
       // Not in original INI - fixes black stripes on big textures
       // TODO: check for regressions
@@ -1641,6 +1644,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"TUROK_DINOSAUR_HUNTE"))
    {
+      settings.swapmode_retro = true;
       settings.depth_bias = 1;
       settings.lodmode = 1;
    }
@@ -1677,6 +1681,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"MARIOKART64"))
    {
+      settings.swapmode_retro = true;
       settings.depth_bias = 30;
       settings.stipple_mode = 1;
       settings.stipple_pattern = (uint32_t)4286595040UL;
