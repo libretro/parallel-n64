@@ -1028,7 +1028,7 @@ static STRICTINLINE void lodfrac_lodtile_signals(unsigned int lodclamp,
    else if (lod < g_gdp.primitive_lod_min)
       lod = g_gdp.primitive_lod_min;
 
-   mag = (lod < 32) ? ~0 : 0;
+   mag = FULL_MSB(lod - 32);
    ltil=  log2table[(lod >> 5) & 0xff];
    dis = ((lod & 0x6000) || (ltil >= max_level)) ? ~0 : 0;
 
@@ -1288,9 +1288,9 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
    else if (lod < g_gdp.primitive_lod_min)
       lod = g_gdp.primitive_lod_min;
 
-   magnify = (lod < 32) ? 1: 0;
+   magnify = FULL_MSB(lod - 32);
    l_tile =  log2table[(lod >> 5) & 0xff];
-   distant = ((lod & 0x6000) || (l_tile >= max_level)) ? 1 : 0;
+   distant = ((lod & 0x6000) || (l_tile >= max_level)) ? ~0 : 0;
 
    *prelodfrac = (lod << 3) >> l_tile;
    if (!g_gdp.other_modes.sharpen_tex_en && !g_gdp.other_modes.detail_tex_en)
@@ -4297,7 +4297,7 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst,
       else if (lod < g_gdp.primitive_lod_min)
          lod = g_gdp.primitive_lod_min;
 
-      magnify = (lod < 32) ? ~0 : 0;
+      magnify = FULL_MSB(lod - 32);
       l_tile =  log2table[(lod >> 5) & 0xff];
       distant = ((lod & 0x6000) || (l_tile >= max_level)) ? ~0 : 0;
 
@@ -6173,7 +6173,7 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
       else if (lod < g_gdp.primitive_lod_min)
          lod = g_gdp.primitive_lod_min;
 
-      magnify = (lod < 32) ? 1: 0;
+      magnify = ZERO_MSB(lod - 32);
       l_tile =  log2table[(lod >> 5) & 0xff];
       distant = ((lod & 0x6000) || (l_tile >= max_level)) ? 1 : 0;
 

@@ -126,6 +126,16 @@ typedef int*        v32;
 #endif
 #define SIGNF(x, numb)    ((x) | -((x) & (1 << (numb - 1))))
 
+#if defined(USE_SSE_SUPPORT)
+#define ZERO_MSB(word)    ((unsigned)(word) >> (8*sizeof(word) - 1))
+#define SIGN_MSB(word)    ((signed)(word) >> (8*sizeof(word) - 1))
+#define FULL_MSB(word)    SIGN_MSB(word)
+#else
+#define ZERO_MSB(word)    ((word < 0) ? +1 :  0)
+#define SIGN_MSB(word)    ((word < 0) ? -1 :  0)
+#define FULL_MSB(word)    ((word < 0) ? ~0 :  0)
+#endif
+
 #define GET_LOW_RGBA16_TMEM(x)      replicated_rgba[((x) & 0x003F) >>  1]
 #define GET_MED_RGBA16_TMEM(x)      replicated_rgba[((x) & 0x07FF) >>  6]
 #define GET_HI_RGBA16_TMEM(x)       replicated_rgba[(u16)(x) >> 11]
