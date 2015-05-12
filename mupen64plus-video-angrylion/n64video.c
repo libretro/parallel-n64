@@ -4166,17 +4166,11 @@ static void tclod_2cycle_current(int32_t* sss, int32_t* sst,
             else
                *t2 = *t1;
          }
-         else 
+         else
          {
-            if (!magnify)
-               *t1 = (prim_tile + l_tile + 1);
-            else
-               *t1 = (prim_tile + l_tile);
-            *t1 &= 7;
-            if (!distant && !magnify)
-               *t2 = (prim_tile + l_tile + 2) & 7;
-            else
-               *t2 = (prim_tile + l_tile + 1) & 7;
+            *t1 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
+            magnify = distant | magnify;
+            *t2 = (prim_tile + l_tile + 1 + 1 - magnify) & 7;
          }
       }
    }
@@ -4229,17 +4223,11 @@ static void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst,
             else
                *t2 = *t1;
          }
-         else 
+         else
          {
-            if (!magnify)
-               *t1 = (prim_tile + l_tile + 1);
-            else
-               *t1 = (prim_tile + l_tile);
-            *t1 &= 7;
-            if (!distant && !magnify)
-               *t2 = (prim_tile + l_tile + 2) & 7;
-            else
-               *t2 = (prim_tile + l_tile + 1) & 7;
+            *t1 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
+            magnify = distant | magnify;
+            *t2 = (prim_tile + l_tile + 1 + 1 - magnify) & 7;
          }
       }
    }
@@ -4351,17 +4339,11 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst,
             else
                *t2 = *t1;
          }
-         else 
+         else
          {
-            if (!magnify)
-               *t1 = (prim_tile + l_tile + 1);
-            else
-               *t1 = (prim_tile + l_tile);
-            *t1 &= 7;
-            if (!distant && !magnify)
-               *t2 = (prim_tile + l_tile + 2) & 7;
-            else
-               *t2 = (prim_tile + l_tile + 1) & 7;
+            *t1 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
+            magnify = distant | magnify;
+            *t2 = (prim_tile + l_tile + 1 + 1 - magnify) & 7;
          }
       }
    }
