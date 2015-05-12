@@ -420,6 +420,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"Perfect Dark"))
    {
+      settings.swapmode_retro = true;
       useless_is_useless = 1;
       settings.decrease_fillrect_edge = 1;
       settings.filtering = 1;
@@ -1384,6 +1385,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"GOLDENEYE"))
    {
+      settings.swapmode_retro = true;
       settings.lodmode = 1;
       settings.depth_bias = 40;
       settings.filtering = 1;
