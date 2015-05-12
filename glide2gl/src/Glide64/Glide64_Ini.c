@@ -1335,6 +1335,7 @@ void ReadSpecialSettings (const char * name)
 #endif
    else if (strstr(name, (const char *)"Pilot Wings64"))
    {
+      settings.swapmode_retro = true;
       settings.depth_bias = 10;
       //depthmode = 1
       settings.buff_clear = 0;
@@ -1350,6 +1351,7 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"CASTLEVANIA")
          || strstr(name, (const char *)"CASTLEVANIA2"))
    {
+      settings.swapmode_retro = true;
       //depthmode = 0
       //fb_clear = 1
 #ifndef HAVE_HWFBE
@@ -1431,6 +1433,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"Doom64"))
    {
+      settings.swapmode_retro = true;
       //fillcolor_fix = 1
       //depthmode = 1
    }
@@ -1444,6 +1447,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"ZELDA MAJORA'S MASK") || strstr(name, (const char *)"THE MASK OF MUJURA"))
    {
+      settings.swapmode_retro = true;
       //wrap_big_tex = 1
       settings.filtering = 1;
       smart_read = 1;
@@ -1455,6 +1459,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"THE LEGEND OF ZELDA") || strstr(name, (const char *)"ZELDA MASTER QUEST"))
    {
+      settings.swapmode_retro = true;
       settings.filtering = 1;
       //depthmode = 1
       settings.lodmode = 1;
