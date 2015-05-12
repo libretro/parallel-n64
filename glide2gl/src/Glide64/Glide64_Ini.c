@@ -278,11 +278,16 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"extreme_g")
          || strstr(name, (const char *)"extremeg"))
    {
+      settings.swapmode_retro = true;
       //depthmode = 0
       smart_read = 1;
 #ifdef HAVE_HWFBE
       hires = 1;
 #endif
+   }
+   else if (strstr(name, (const char *)"Forsaken"))
+   {
+      settings.swapmode_retro = true;
    }
    else if (strstr(name, (const char *)"Extreme G 2"))
    {
@@ -1743,7 +1748,10 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"ROADSTERS TROPHY"))
       settings.hacks |= hack_Zelda;
    else if (strstr(name, (const char *)"Diddy Kong Racing"))
+   {
+      settings.swapmode_retro = true;
       settings.hacks |= hack_Diddy;
+   }
    else if (strstr(name, (const char *)"Tonic Trouble"))
       settings.hacks |= hack_Tonic;
    else if (strstr(name, (const char *)"All") && strstr(name, (const char *)"Star") && strstr(name, (const char *)"Baseball"))
