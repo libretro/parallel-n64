@@ -4160,11 +4160,9 @@ static void tclod_2cycle_current(int32_t* sss, int32_t* sst,
             l_tile = max_level;
          if (!g_gdp.other_modes.detail_tex_en)
          {
-            *t1 = (prim_tile + l_tile) & 7;
-            if (!(distant || (!g_gdp.other_modes.sharpen_tex_en && magnify)))
-               *t2 = (*t1 + 1) & 7;
-            else
-               *t2 = *t1;
+            *t1 = (prim_tile + l_tile + 0 + 0) & 7;
+            magnify = (magnify & ~g_gdp.other_modes.sharpen_tex_en) | distant;
+            *t2 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
          }
          else
          {
@@ -4217,11 +4215,9 @@ static void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst,
             l_tile = max_level;
          if (!g_gdp.other_modes.detail_tex_en)
          {
-            *t1 = (prim_tile + l_tile) & 7;
-            if (!(distant || (!g_gdp.other_modes.sharpen_tex_en && magnify)))
-               *t2 = (*t1 + 1) & 7;
-            else
-               *t2 = *t1;
+            *t1 = (prim_tile + l_tile + 0 + 0) & 7;
+            magnify = (magnify & ~g_gdp.other_modes.sharpen_tex_en) | distant;
+            *t2 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
          }
          else
          {
@@ -4333,11 +4329,9 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst,
             l_tile = max_level;
          if (!g_gdp.other_modes.detail_tex_en)
          {
-            *t1 = (prim_tile + l_tile) & 7;
-            if (!(distant || (!g_gdp.other_modes.sharpen_tex_en && magnify)))
-               *t2 = (*t1 + 1) & 7;
-            else
-               *t2 = *t1;
+            *t1 = (prim_tile + l_tile + 0 + 0) & 7;
+            magnify = (magnify & ~g_gdp.other_modes.sharpen_tex_en) | distant;
+            *t2 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
          }
          else
          {
