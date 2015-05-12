@@ -4150,26 +4150,25 @@ static void tclod_2cycle_current(int32_t* sss, int32_t* sst,
 
       lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
 
-      if (g_gdp.other_modes.tex_lod_en)
+      if (!g_gdp.other_modes.tex_lod_en)
+         return;
+
+      if (distant)
+         l_tile = max_level;
+      if (!g_gdp.other_modes.detail_tex_en)
       {
-         if (distant)
-            l_tile = max_level;
-         if (!g_gdp.other_modes.detail_tex_en)
-         {
-            *t1 = (prim_tile + l_tile + 0 + 0) & 7;
-            magnify = (magnify & ~g_gdp.other_modes.sharpen_tex_en) | distant;
-            *t2 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
-         }
-         else
-         {
-            *t1 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
-            magnify = distant | magnify;
-            *t2 = (prim_tile + l_tile + 1 + 1 - magnify) & 7;
-         }
+         *t1 = (prim_tile + l_tile + 0 + 0) & 7;
+         magnify = (magnify & ~g_gdp.other_modes.sharpen_tex_en) | distant;
+         *t2 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
+      }
+      else
+      {
+         *t1 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
+         magnify = distant | magnify;
+         *t2 = (prim_tile + l_tile + 1 + 1 - magnify) & 7;
       }
    }
 }
-
 
 static void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst,
       int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc,
@@ -4205,26 +4204,25 @@ static void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst,
 
       lodfrac_lodtile_signals(lodclamp, lod, &l_tile, &magnify, &distant);
 
-      if (g_gdp.other_modes.tex_lod_en)
+      if (!g_gdp.other_modes.tex_lod_en)
+         return;
+
+      if (distant)
+         l_tile = max_level;
+      if (!g_gdp.other_modes.detail_tex_en)
       {
-         if (distant)
-            l_tile = max_level;
-         if (!g_gdp.other_modes.detail_tex_en)
-         {
-            *t1 = (prim_tile + l_tile + 0 + 0) & 7;
-            magnify = (magnify & ~g_gdp.other_modes.sharpen_tex_en) | distant;
-            *t2 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
-         }
-         else
-         {
-            *t1 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
-            magnify = distant | magnify;
-            *t2 = (prim_tile + l_tile + 1 + 1 - magnify) & 7;
-         }
+         *t1 = (prim_tile + l_tile + 0 + 0) & 7;
+         magnify = (magnify & ~g_gdp.other_modes.sharpen_tex_en) | distant;
+         *t2 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
+      }
+      else
+      {
+         *t1 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
+         magnify = distant | magnify;
+         *t2 = (prim_tile + l_tile + 1 + 1 - magnify) & 7;
       }
    }
 }
-
 
 static void tclod_2cycle_current_notexel1(int32_t* sss, int32_t* sst,
       int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc,
@@ -4316,26 +4314,25 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst,
       *prelodfrac &= 0xFF;
       *prelodfrac |= (g_gdp.other_modes.sharpen_tex_en & magnify) << 8;
 
-      if (g_gdp.other_modes.tex_lod_en)
+      if (!g_gdp.other_modes.tex_lod_en)
+         return;
+
+      if (distant)
+         l_tile = max_level;
+      if (!g_gdp.other_modes.detail_tex_en)
       {
-         if (distant)
-            l_tile = max_level;
-         if (!g_gdp.other_modes.detail_tex_en)
-         {
-            *t1 = (prim_tile + l_tile + 0 + 0) & 7;
-            magnify = (magnify & ~g_gdp.other_modes.sharpen_tex_en) | distant;
-            *t2 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
-         }
-         else
-         {
-            *t1 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
-            magnify = distant | magnify;
-            *t2 = (prim_tile + l_tile + 1 + 1 - magnify) & 7;
-         }
+         *t1 = (prim_tile + l_tile + 0 + 0) & 7;
+         magnify = (magnify & ~g_gdp.other_modes.sharpen_tex_en) | distant;
+         *t2 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
+      }
+      else
+      {
+         *t1 = (prim_tile + l_tile + 0 + 1 - magnify) & 7;
+         magnify = distant | magnify;
+         *t2 = (prim_tile + l_tile + 1 + 1 - magnify) & 7;
       }
    }
 }
-
 
 static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg)
 {
