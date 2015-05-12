@@ -126,7 +126,6 @@ void FindBestDepthBias(void)
 
 void grDepthBiasLevel( int32_t level )
 {
-   LOG("grDepthBiasLevel(%d)\r\n", level);
    if (level)
    {
       glPolygonOffset(polygonOffsetFactor, (float)level * settings.depth_bias * 0.01f);
@@ -171,8 +170,6 @@ void grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointers)
 
    glBindBuffer(GL_ARRAY_BUFFER, glitch_vbo);
    glBufferData(GL_ARRAY_BUFFER, sizeof(buffer_struct) * count, gli_vbo, GL_DYNAMIC_DRAW);
-#else
-   glBindBuffer(GL_ARRAY_BUFFER, 0);
 #endif
 
    glEnableVertexAttribArray(POSITION_ATTR);
@@ -191,5 +188,7 @@ void grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointers)
    glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, sizeof(buffer_struct), gl_offset(f)); //Fog
 
    glDrawArrays(mode, 0, count);
+#ifdef EMSCRIPTEN
    glBindBuffer(GL_ARRAY_BUFFER, 0);
+#endif
 }

@@ -22,8 +22,6 @@ typedef int (*GrProc)();
 ** CONSTANTS AND TYPES
 ** -----------------------------------------------------------------------
 */
-#define GR_NULL_MIPMAP_HANDLE  ((GrMipMapId_t) -1)
-
 #define GR_MIPMAPLEVELMASK_EVEN  FXBIT(0)
 #define GR_MIPMAPLEVELMASK_ODD  FXBIT(1)
 #define GR_MIPMAPLEVELMASK_BOTH (GR_MIPMAPLEVELMASK_EVEN | GR_MIPMAPLEVELMASK_ODD )
@@ -34,8 +32,6 @@ typedef int (*GrProc)();
 #define GR_TMU0         0x0
 #define GR_TMU1         0x1
 #define GR_TMU2         0x2
-
-#define GR_FBI          0x0
 
 #define GR_COMBINE_FUNCTION_ZERO        0x0
 #define GR_COMBINE_FUNCTION_NONE        GR_COMBINE_FUNCTION_ZERO
@@ -251,18 +247,6 @@ typedef struct {
 #define GR_TEXTURECLAMP_CLAMP       GL_CLAMP_TO_EDGE
 #define GR_TEXTURECLAMP_MIRROR_EXT  GL_MIRRORED_REPEAT
 
-#define GR_TEXTURECOMBINE_ZERO          0x0 /* texout = 0 */
-#define GR_TEXTURECOMBINE_DECAL         0x1 /* texout = texthis */
-#define GR_TEXTURECOMBINE_OTHER         0x2 /* this TMU in passthru mode */
-#define GR_TEXTURECOMBINE_ADD           0x3 /* tout = tthis + t(this+1) */
-#define GR_TEXTURECOMBINE_MULTIPLY      0x4 /* texout = tthis * t(this+1) */
-#define GR_TEXTURECOMBINE_SUBTRACT      0x5 /* Sutract from upstream TMU */
-#define GR_TEXTURECOMBINE_DETAIL        0x6 /* detail--detail on tthis */
-#define GR_TEXTURECOMBINE_DETAIL_OTHER  0x7 /* detail--detail on tthis+1 */
-#define GR_TEXTURECOMBINE_TRILINEAR_ODD 0x8 /* trilinear--odd levels tthis*/
-#define GR_TEXTURECOMBINE_TRILINEAR_EVEN 0x9 /*trilinear--even levels tthis*/
-#define GR_TEXTURECOMBINE_ONE           0xa /* texout = 0xFFFFFFFF */
-
 #define GR_TEXTUREFILTER_POINT_SAMPLED  0x0
 #define GR_TEXTUREFILTER_3POINT_LINEAR  0x1
 #define GR_TEXTUREFILTER_BILINEAR       0x2
@@ -353,8 +337,6 @@ typedef struct {
 #define GR_TRIANGLE_STRIP                GL_TRIANGLE_STRIP
 #define GR_TRIANGLE_FAN                  GL_TRIANGLE_FAN
 #define GR_TRIANGLES                     GL_TRIANGLES
-#define GR_TRIANGLE_STRIP_CONTINUE       7
-#define GR_TRIANGLE_FAN_CONTINUE         8
 
 /* 
 ** grGet/grReset types
@@ -428,8 +410,6 @@ typedef struct {
     void              *data;
 } GrTexInfo;
 
-#define GR_QUERY_ANY  ((uint32_t)(~0))
-
 #define GR_LFB_SRC_FMT_565          0x00
 #define GR_LFB_SRC_FMT_555          0x01
 #define GR_LFB_SRC_FMT_1555         0x02
@@ -441,18 +421,12 @@ typedef struct {
 #define GR_LFB_SRC_FMT_ZA16         0x0f
 #define GR_LFB_SRC_FMT_RLE16        0x80
 
-#ifdef H3D
-#define GR_HINT_H3DENABLE               4
-#undef  GR_HINTTYPE_MAX
-#define GR_HINTTYPE_MAX 4
-#endif
-
 /*
 ** -----------------------------------------------------------------------
 ** FUNCTION PROTOTYPES
 ** -----------------------------------------------------------------------
 */
-#ifndef FX_GLIDE_NO_FUNC_PROTO
+
 /*
 ** rendering functions
 */
@@ -631,8 +605,6 @@ grLfbReadRegion( int32_t src_buffer,
    fogStart = (nearZ) / 255.0f; \
    fogEnd = (farZ) / 255.0f; \
 }
-
-#endif /* FX_GLIDE_NO_FUNC_PROTO */
 
 #ifdef __cplusplus
 }

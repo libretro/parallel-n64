@@ -418,33 +418,21 @@ grtexsource:
 }
 
 
-void 
-grTexDetailControl(
+void grTexDetailControl(
       int32_t tmu,
       int lod_bias,
       uint8_t detail_scale,
       float detail_max
       )
 {
-#if 0
-   LOG("grTexDetailControl(%d,%d,%d,%d)\r\n", tmu, lod_bias, detail_scale, detail_max);
-#endif
    if (lod_bias != 31 && detail_scale != 7)
    {
       if (!lod_bias && !detail_scale && !detail_max)
          return;
-#if 0
-      else
-         DISPLAY_WARNING("grTexDetailControl : %d, %d, %f", lod_bias, detail_scale, detail_max);
-#endif
    }
    lambda = detail_max;
    if(lambda > 1.0f)
       lambda = 1.0f - (255.0f - lambda);
-#if 0
-   if(lambda > 1.0f)
-      DISPLAY_WARNING("lambda:%f", lambda);
-#endif
 
    set_lambda();
 }
