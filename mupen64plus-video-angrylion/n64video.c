@@ -1017,13 +1017,13 @@ static STRICTINLINE void tclod_4x17_to_15(int32_t scurr, int32_t snext,
       *lod |= 0x4000;
 }
 
-static STRICTINLINE void lodfrac_lodtile_signals(int lodclamp,
+static STRICTINLINE void lodfrac_lodtile_signals(unsigned int lodclamp,
       int32_t lod, uint32_t* l_tile, uint32_t* magnify, uint32_t* distant)
 {
    uint32_t ltil, dis, mag;
    int32_t lf;
 
-   if ((lod & 0x4000) || lodclamp)
+   if (!!(lod & 0x4000) | lodclamp)
       lod = 0x7fff;
    else if (lod < g_gdp.primitive_lod_min)
       lod = g_gdp.primitive_lod_min;
@@ -1069,10 +1069,10 @@ static void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int3
       int32_t scanline, int32_t prim_tile, int32_t* t1, SPANSIGS* sigs)
 {
    int fars, fart, farsw;
-   int lodclamp = 0;
    int32_t lod = 0;
    uint32_t l_tile = 0, magnify = 0, distant = 0;
    int nextscan = scanline + 1;
+   unsigned int lodclamp;
 
    tclod_tcclamp(sss, sst);
    if (!g_gdp.other_modes.f.dolod)
@@ -1111,7 +1111,9 @@ static void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int3
 
    tcdiv_ptr(fars, fart, farsw, &fars, &fart);
 
-   lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
+   lodclamp  = (fart | nextt | fars | nexts) >> 17;
+   lodclamp |= (unsigned)lodclamp >> 1;
+   lodclamp &= 1;
 
    tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
 
@@ -1125,10 +1127,10 @@ static void tclod_1cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, i
       int32_t scanline, int32_t prim_tile, int32_t* t1, SPANSIGS* sigs)
 {
    int fars, fart, farsw, nexts, nextt, nextsw;
-   int lodclamp = 0;
    int32_t lod = 0;
    uint32_t l_tile = 0, magnify = 0, distant = 0;
    int nextscan = scanline + 1;
+   unsigned int lodclamp;
 
    tclod_tcclamp(sss, sst);
    if (!g_gdp.other_modes.f.dolod)
@@ -1178,7 +1180,9 @@ static void tclod_1cycle_current_simple(int32_t* sss, int32_t* sst, int32_t s, i
    tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
    tcdiv_ptr(fars, fart, farsw, &fars, &fart);
 
-   lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
+   lodclamp  = (fart | nextt | fars | nexts) >> 17;
+   lodclamp |= (unsigned)lodclamp >> 1;
+   lodclamp &= 1;
 
    tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
 
@@ -1192,10 +1196,10 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
       int32_t prim_tile, int32_t* t1, SPANSIGS* sigs, int32_t* prelodfrac)
 {
    int nexts, nextt, nextsw, fars, fart, farsw;
-   int lodclamp = 0;
    int32_t lod = 0;
    uint32_t l_tile = 0, magnify = 0, distant = 0;
    int nextscan = scanline + 1;
+   unsigned int lodclamp;
 
    tclod_tcclamp(sss, sst);
    if (!g_gdp.other_modes.f.dolod)
@@ -1275,11 +1279,13 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
    tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
    tcdiv_ptr(fars, fart, farsw, &fars, &fart);
 
-   lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
+   lodclamp  = (fart | nextt | fars | nexts) >> 17;
+   lodclamp |= (unsigned)lodclamp >> 1;
+   lodclamp &= 1;
 
    tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
 
-   if ((lod & 0x4000) || lodclamp)
+   if (!!(lod & 0x4000) | lodclamp)
       lod = 0x7fff;
    else if (lod < g_gdp.primitive_lod_min)
       lod = g_gdp.primitive_lod_min;
@@ -4128,7 +4134,6 @@ static void tclod_2cycle_current(int32_t* sss, int32_t* sst,
 
    if (g_gdp.other_modes.f.dolod)
    {
-      int lodclamp = 0;
       int32_t lod = 0;
       uint32_t l_tile;
       uint32_t magnify = 0;
@@ -4136,11 +4141,13 @@ static void tclod_2cycle_current(int32_t* sss, int32_t* sst,
       int nextys = (s + spans_d_stwz_dy[0]) >> 16;
       int nextyt = (t + spans_d_stwz_dy[1]) >> 16;
       int nextysw = (w + spans_d_stwz_dy[2]) >> 16;
+      unsigned int lodclamp;
 
       tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
-      lodclamp = (initt & 0x60000) || (nextt & 0x60000) || 
-         (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
+      lodclamp  = (initt | nextt | inits | nexts | nextys | nextyt) >> 17;
+      lodclamp |= (unsigned)lodclamp >> 1;
+      lodclamp &= 1;
 
       tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
       tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
@@ -4190,19 +4197,20 @@ static void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst,
       uint32_t l_tile;
       uint32_t magnify = 0;
       uint32_t distant = 0;
-      int lodclamp = 0;
       int nextsw = (w + dwinc) >> 16;
       int nexts = (s + dsinc) >> 16;
       int nextt = (t + dtinc) >> 16;
       int nextys = (s + spans_d_stwz_dy[0]) >> 16;
       int nextyt = (t + spans_d_stwz_dy[1]) >> 16;
       int nextysw = (w + spans_d_stwz_dy[2]) >> 16;
+      unsigned int lodclamp;
 
       tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
       tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
-      lodclamp = (initt & 0x60000) || (nextt & 0x60000) || 
-         (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
+      lodclamp  = (initt | nextt | inits | nexts | nextys | nextyt) >> 17;
+      lodclamp |= (unsigned)lodclamp >> 1;
+      lodclamp &= 1;
 
       tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
       tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
@@ -4252,19 +4260,20 @@ static void tclod_2cycle_current_notexel1(int32_t* sss, int32_t* sst,
       int32_t lod = 0;
       uint32_t magnify = 0;
       uint32_t distant = 0;
-      int lodclamp = 0;
       int nextsw = (w + dwinc) >> 16;
       int nexts = (s + dsinc) >> 16;
       int nextt = (t + dtinc) >> 16;
       int nextys = (s + spans_d_stwz_dy[0]) >> 16;
       int nextyt = (t + spans_d_stwz_dy[1]) >> 16;
       int nextysw = (w + spans_d_stwz_dy[2]) >> 16;
+      unsigned int lodclamp;
 
       tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
       tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
-      lodclamp = (initt & 0x60000) || (nextt & 0x60000) || 
-         (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
+      lodclamp  = (initt | nextt | inits | nexts | nextys | nextyt) >> 17;
+      lodclamp |= (unsigned)lodclamp >> 1;
+      lodclamp &= 1;
 
       tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
       tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
@@ -4289,25 +4298,25 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst,
       uint32_t magnify = 0;
       uint32_t distant = 0;
       int32_t lod = 0;
-      int lodclamp = 0;
       int nextsw = (w + dwinc) >> 16;
       int nexts = (s + dsinc) >> 16;
       int nextt = (t + dtinc) >> 16;
       int nextys = (s + spans_d_stwz_dy[0]) >> 16;
       int nextyt = (t + spans_d_stwz_dy[1]) >> 16;
       int nextysw = (w + spans_d_stwz_dy[2]) >> 16;
+      unsigned int lodclamp;
 
       tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
       tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
-      lodclamp = (initt & 0x60000) || (nextt & 0x60000) || 
-         (inits & 0x60000) || (nexts & 0x60000) || (nextys & 0x60000) || (nextyt & 0x60000);
+      lodclamp  = (initt | nextt | inits | nexts | nextys | nextyt) >> 17;
+      lodclamp |= (unsigned)lodclamp >> 1;
+      lodclamp &= 1;
 
       tclod_4x17_to_15(inits, nexts, initt, nextt, 0, &lod);
       tclod_4x17_to_15(inits, nextys, initt, nextyt, lod, &lod);
 
-
-      if ((lod & 0x4000) || lodclamp)
+      if (!!(lod & 0x4000) | lodclamp)
          lod = 0x7fff;
       else if (lod < g_gdp.primitive_lod_min)
          lod = g_gdp.primitive_lod_min;
@@ -6180,22 +6189,24 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
    {
       int32_t lod     = 0;
       uint32_t l_tile = 0, magnify = 0, distant = 0;
-      int lodclamp  = 0;
       int nextsw    = (w + dwinc) >> 16;
       int nexts     = (s + dsinc) >> 16;
       int nextt     = (t + dtinc) >> 16;
       int farsw     = (w + (dwinc << 1)) >> 16;
       int fars      = (s + (dsinc << 1)) >> 16;
       int fart      = (t + (dtinc << 1)) >> 16;
+      unsigned int lodclamp;
 
       tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
       tcdiv_ptr(fars, fart, farsw, &fars, &fart);
 
-      lodclamp = (fart & 0x60000) || (nextt & 0x60000) || (fars & 0x60000) || (nexts & 0x60000);
+      lodclamp  = (fart | nextt | fars | nexts) >> 17;
+      lodclamp |= (unsigned)lodclamp >> 1;
+      lodclamp &= 1;
 
       tclod_4x17_to_15(nexts, fars, nextt, fart, 0, &lod);
 
-      if ((lod & 0x4000) || lodclamp)
+      if (!!(lod & 0x4000) | lodclamp)
          lod = 0x7fff;
       else if (lod < g_gdp.primitive_lod_min)
          lod = g_gdp.primitive_lod_min;
