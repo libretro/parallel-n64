@@ -317,6 +317,7 @@ static void DrawPartFrameBufferToScreen(void)
   ((uint32_t)(((color & 0x07C0) >> 6)) << 16) | \
   ((uint32_t)(((color & 0x003E) >> 1)) << 8)
 
+/* defined in glitchmain.c */
 extern uint16_t *frameBuffer;
 
 static void CopyFrameBuffer(int32_t buffer)
@@ -1232,7 +1233,7 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst,
          while ( v15 );
          v18 = *v17;
          v13 = v17 + 1;
-         *v7 = bswap32(v18);
+         *v7 = m64p_swap32(v18);
          ++v7;
          --v8;
          if ( v8 )
@@ -1240,8 +1241,8 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst,
 LABEL_20:
             do
             {
-               *v7 = bswap32(*v13);
-               v7[1] = bswap32(v13[1]);
+               *v7 = m64p_swap32(*v13);
+               v7[1] = m64p_swap32(v13[1]);
                v13 += 2;
                v7 += 2;
                --v8;
@@ -2428,6 +2429,7 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
 
    nbVtxs = 0;
    vtx = (VERTEX*)&vtxbuf[nbVtxs++];
+   memset(vtxbuf, 0, sizeof(vtxbuf));
 
    xleft      = xm;
    xright     = xh;

@@ -70,7 +70,7 @@ static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
     do
     {
       v11 = v10;
-      v12 = bswap32(*(uint32_t *)v7);
+      v12 = m64p_swap32(*(uint32_t *)v7);
       v13 = (uint32_t *)(v7 + 4);
       ALOWORD(v10) = __ROR16(*(uint16_t *)((char *)pal + ((v12 >> 15) & 0x1FE)), 1, NBITS_8B);
       v14 = v10 << 16;
@@ -82,7 +82,7 @@ static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
       ALOWORD(v14) = __ROR16(*(uint16_t *)((char *)pal + ((v12 >> 7) & 0x1FE)), 1, NBITS_8B);
       *v15 = v14;
       ++v15;
-      v16 = bswap32(*v13);
+      v16 = m64p_swap32(*v13);
       v7 = (uint8_t *)(v13 + 1);
       ALOWORD(v14) = __ROR16(*(uint16_t *)((char *)pal + ((v16 >> 15) & 0x1FE)), 1, NBITS_8B);
       v14 <<= 16;
@@ -106,7 +106,7 @@ static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
     do
     {
       v20 = v19;
-      v21 = bswap32(v17[1]);
+      v21 = m64p_swap32(v17[1]);
       ALOWORD(v19) = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 15) & 0x1FE)), 1, NBITS_8B);
       v22 = v19 << 16;
       ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 23) & 0x1FE)), 1, NBITS_8B);
@@ -117,7 +117,7 @@ static INLINE void load8bCI(uint8_t *src, uint8_t *dst, int wid_64, int height, 
       ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 7) & 0x1FE)), 1, NBITS_8B);
       *v23 = v22;
       ++v23;
-      v24 = bswap32(*v17);
+      v24 = m64p_swap32(*v17);
       v17 = (uint32_t *)&src[((uintptr_t)v17 + 8 - (uintptr_t)src) & 0x7FF];
       ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v24 >> 15) & 0x1FE)), 1, NBITS_8B);
       v22 <<= 16;
@@ -169,7 +169,7 @@ static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
     do
     {
       v11 = v10;
-      v12 = bswap32(*v7);
+      v12 = m64p_swap32(*v7);
       v13 = v7 + 1;
       ALOWORD(v10) = __ROR16(*(uint16_t *)((char *)pal + ((v12 >> 15) & 0x1FE)), 8, NBITS_8B);
       v14 = v10 << 16;
@@ -181,7 +181,7 @@ static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
       ALOWORD(v14) = __ROR16(*(uint16_t *)((char *)pal + ((v12 >> 7) & 0x1FE)), 8, NBITS_8B);
       *v15 = v14;
       ++v15;
-      v16 = bswap32(*v13);
+      v16 = m64p_swap32(*v13);
       v7 = v13 + 1;
       ALOWORD(v14) = __ROR16(*(uint16_t *)((char *)pal + ((v16 >> 15) & 0x1FE)), 8, NBITS_8B);
       v14 <<= 16;
@@ -205,7 +205,7 @@ static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
     do
     {
       v20 = v19;
-      v21 = bswap32(v17[1]);
+      v21 = m64p_swap32(v17[1]);
       ALOWORD(v19) = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 15) & 0x1FE)), 8, NBITS_8B);
       v22 = v19 << 16;
       ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 23) & 0x1FE)), 8, NBITS_8B);
@@ -216,7 +216,7 @@ static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
       ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v21 >> 7) & 0x1FE)), 8, NBITS_8B);
       *v23 = v22;
       ++v23;
-      v24 = bswap32(*v17);
+      v24 = m64p_swap32(*v17);
       v17 += 2;
       ALOWORD(v22) = __ROR16(*(uint16_t *)((char *)pal + ((v24 >> 15) & 0x1FE)), 8, NBITS_8B);
       v22 <<= 16;
