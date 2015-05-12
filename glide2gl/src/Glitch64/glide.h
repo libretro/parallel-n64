@@ -395,7 +395,7 @@ void  grChromakeyMode( int32_t mode );
 
 void grChromakeyValue( uint32_t value );
 
-#define grClipWindow(minx, miny, maxx, maxy) glScissor(minx, height - maxy, maxx - minx, maxy - miny); glEnable(GL_SCISSOR_TEST)
+void grClipWindow(uint32_t minx, uint32_t miny, uint32_t maxx, uint32_t maxy);
 
 void grColorCombine(
                int32_t function, int32_t factor,

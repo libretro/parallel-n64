@@ -332,6 +332,12 @@ void grBufferSwap(uint32_t swap_interval)
    retro_return(true);
 }
 
+void grClipWindow(uint32_t minx, uint32_t miny, uint32_t maxx, uint32_t maxy)
+{
+   glScissor(minx, height - maxy, maxx - minx, maxy - miny);
+   glEnable(GL_SCISSOR_TEST);
+}
+
 void grBufferClear(uint32_t color, uint32_t alpha, uint32_t depth)
 {
    glClearColor(((color >> 24) & 0xFF) / 255.0f,
