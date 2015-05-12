@@ -1058,10 +1058,8 @@ static void tclod_lod(uint32_t l_tile, int32_t prim_tile, uint32_t magnify,
    if (distant)
       l_tile = max_level;
 
-   if (!g_gdp.other_modes.detail_tex_en || magnify)
-      *t1 = (prim_tile + l_tile) & 7;
-   else
-      *t1 = (prim_tile + l_tile + 1) & 7;
+   magnify = ~magnify & g_gdp.other_modes.detail_tex_en;
+   *t1 = (prim_tile + l_tile + magnify) & 7;
 }
 
 static void tclod_1cycle_current(int32_t* sss, int32_t* sst, int32_t nexts, int32_t nextt,
@@ -6194,12 +6192,9 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
       if (distant)
          l_tile = max_level;
 
-      if (!g_gdp.other_modes.detail_tex_en || magnify)
-         *t1 = (prim_tile + l_tile) & 7;
-      else
-         *t1 = (prim_tile + l_tile + 1) & 7;
+      magnify = ~magnify & g_gdp.other_modes.detail_tex_en;
+      *t1 = (prim_tile + l_tile + magnify) & 7;
    }
-
 }
 
 NOINLINE void render_spans_copy(int start, int end, int tilenum, int flip)
