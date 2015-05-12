@@ -1,7 +1,6 @@
 #ifndef __GLIDE_H__
 #define __GLIDE_H__
 
-#include <3dfx.h>
 #define GL_GLEXT_PROTOTYPES
 #include <SDL_opengles2.h>
 #include "boolean.h"
@@ -15,6 +14,18 @@ extern "C" {
 ** TYPE DEFINITIONS
 ** -----------------------------------------------------------------------
 */
+
+/*
+** fundamental types
+*/
+#define FXTRUE    1
+#define FXFALSE   0
+
+/*
+** helper macros
+*/
+#define FXBIT( i )    ( 1L << (i) )
+
 typedef int (*GrProc)();
 
 /*
@@ -274,58 +285,12 @@ typedef struct {
 #define GR_TEXFMT_RSVD2                 0xf
 #define GR_TEXFMT_RSVD4                 GR_TEXFMT_RSVD2
 
-#define GR_TEXTABLE_NCC0                 0x0
-#define GR_TEXTABLE_NCC1                 0x1
-#define GR_TEXTABLE_PALETTE              0x2
-#define GR_TEXTABLE_PALETTE_6666_EXT     0x3
-
-#define GR_NCCTABLE_NCC0    0x0
-#define GR_NCCTABLE_NCC1    0x1
-
-#define GR_TEXBASE_256      0x3
-#define GR_TEXBASE_128      0x2
-#define GR_TEXBASE_64       0x1
-#define GR_TEXBASE_32_TO_1  0x0
-
 #define GR_MODE_DISABLE     0x0
 #define GR_MODE_ENABLE      0x1
-
-#define GR_AA_ORDERED            0x01
-#define GR_ALLOW_MIPMAP_DITHER   0x02
-#define GR_PASSTHRU              0x03
-#define GR_SHAMELESS_PLUG        0x04
-#define GR_VIDEO_SMOOTHING       0x05
-
-#define GR_WINDOW_COORDS    0x00
-#define GR_CLIP_COORDS      0x01
 
 /* Types of data in strips */
 #define GR_FLOAT        0
 #define GR_U8           1
-
-/* Parameters for strips */
-#define GR_PARAM_XY       0x01
-#define GR_PARAM_Z        0x02
-#define GR_PARAM_W        0x03
-#define GR_PARAM_Q        0x04
-#define GR_PARAM_FOG_EXT  0x05
-
-#define GR_PARAM_A        0x10
-
-#define GR_PARAM_RGB      0x20
-
-#define GR_PARAM_PARGB    0x30
-
-#define GR_PARAM_ST0      0x40
-#define GR_PARAM_ST1      GR_PARAM_ST0+1
-#define GR_PARAM_ST2      GR_PARAM_ST0+2
-
-#define GR_PARAM_Q0       0x50
-#define GR_PARAM_Q1       GR_PARAM_Q0+1
-#define GR_PARAM_Q2       GR_PARAM_Q0+2
-
-#define GR_PARAM_DISABLE  0x00
-#define GR_PARAM_ENABLE   0x01
 
 /*
 ** grDrawVertexArray/grDrawVertexArrayContiguous primitive type
@@ -337,53 +302,6 @@ typedef struct {
 #define GR_TRIANGLE_STRIP                GL_TRIANGLE_STRIP
 #define GR_TRIANGLE_FAN                  GL_TRIANGLE_FAN
 #define GR_TRIANGLES                     GL_TRIANGLES
-
-/* 
-** grGet/grReset types
-*/
-#define GR_BITS_DEPTH                   0x01
-#define GR_BITS_RGBA                    0x02
-#define GR_FIFO_FULLNESS                0x03
-#define GR_FOG_TABLE_ENTRIES            0x04
-#define GR_GAMMA_TABLE_ENTRIES          0x05
-#define GR_GLIDE_STATE_SIZE             0x06
-#define GR_GLIDE_VERTEXLAYOUT_SIZE      0x07
-#define GR_IS_BUSY                      0x08
-#define GR_LFB_PIXEL_PIPE               0x09
-#define GR_MAX_TEXTURE_SIZE             0x0a
-#define GR_MAX_TEXTURE_ASPECT_RATIO     0x0b
-#define GR_MEMORY_FB                    0x0c
-#define GR_MEMORY_TMU                   0x0d
-#define GR_MEMORY_UMA                   0x0e
-#define GR_NUM_BOARDS                   0x0f
-#define GR_NON_POWER_OF_TWO_TEXTURES    0x10
-#define GR_NUM_FB                       0x11
-#define GR_NUM_SWAP_HISTORY_BUFFER      0x12
-#define GR_NUM_TMU                      0x13
-#define GR_PENDING_BUFFERSWAPS          0x14
-#define GR_REVISION_FB                  0x15
-#define GR_REVISION_TMU                 0x16
-#define GR_STATS_LINES                  0x17  /* grGet/grReset */
-#define GR_STATS_PIXELS_AFUNC_FAIL      0x18
-#define GR_STATS_PIXELS_CHROMA_FAIL     0x19
-#define GR_STATS_PIXELS_DEPTHFUNC_FAIL  0x1a
-#define GR_STATS_PIXELS_IN              0x1b
-#define GR_STATS_PIXELS_OUT             0x1c
-#define GR_STATS_PIXELS                 0x1d  /* grReset */
-#define GR_STATS_POINTS                 0x1e  /* grGet/grReset */
-#define GR_STATS_TRIANGLES_IN           0x1f
-#define GR_STATS_TRIANGLES_OUT          0x20
-#define GR_STATS_TRIANGLES              0x21  /* grReset */
-#define GR_SWAP_HISTORY                 0x22
-#define GR_SUPPORTS_PASSTHRU            0x23
-#define GR_TEXTURE_ALIGN                0x24
-#define GR_VIDEO_POSITION               0x25
-#define GR_VIEWPORT                     0x26
-#define GR_WDEPTH_MIN_MAX               0x27
-#define GR_ZDEPTH_MIN_MAX               0x28
-#define GR_VERTEX_PARAMETER             0x29
-#define GR_BITS_GAMMA                   0x2a
-#define GR_GET_RESERVED_1               0x1000
 
 /*
 ** grGetString types
