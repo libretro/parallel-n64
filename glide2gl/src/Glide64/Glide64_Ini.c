@@ -1713,6 +1713,10 @@ void ReadSpecialSettings (const char * name)
       settings.filtering = 1;
       settings.fog = 0;
    }
+   else if (strstr(name, (const char *)"STARFOX64"))
+   {
+      settings.swapmode_retro = true;
+   }
    else
    {
       if (strstr(name, (const char*)"Mini Racers") ||
