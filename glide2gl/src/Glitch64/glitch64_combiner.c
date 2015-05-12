@@ -34,6 +34,8 @@ float glide64_pow(float a, float b);
 
 typedef struct _shader_program_key
 {
+   int index;
+
    int color_combiner;
    int alpha_combiner;
    int texture0_combiner;
@@ -56,6 +58,11 @@ typedef struct _shader_program_key
    int fogColor_location;
    int alphaRef_location;
    int chroma_color_location;
+   int lambda_location;
+
+   int constant_color_location;
+   int ccolor0_location;
+   int ccolor1_location;
 } shader_program_key;
 
 static int fct[4], source0[4], operand0[4], source1[4], operand1[4], source2[4], operand2[4];
@@ -63,7 +70,9 @@ static int fcta[4],sourcea0[4],operanda0[4],sourcea1[4],operanda1[4],sourcea2[4]
 static int alpha_ref, alpha_func;
 bool alpha_test = 0;
 
-static shader_program_key* shader_programs;
+static shader_program_key *shader_programs;
+static shader_program_key *current_shader;
+
 static int number_of_programs = 0;
 static int color_combiner_key;
 static int alpha_combiner_key;
@@ -90,13 +99,8 @@ float lambda_color[2][4];
 int need_to_compile;
 
 static char *fragment_shader;
-static GLuint fragment_shader_object;
 static GLuint vertex_shader_object;
 GLuint program_object_default;
-static GLuint program_object;
-static int constant_color_location;
-static int ccolor0_location;
-static int ccolor1_location;
 static int first_color = 1;
 static int first_alpha = 1;
 static int first_texture0 = 1;
@@ -281,49 +285,108 @@ void check_link(GLuint program)
    }
 }
 
+static void append_shader_program(shader_program_key *shader)
+{
+   int index = number_of_programs;
+   shader->index = index;
+
+   if (shader_programs == NULL)
+      shader_programs = (shader_program_key*)malloc(sizeof(shader_program_key));
+   else
+      shader_programs = (shader_program_key*)realloc(shader_programs, (index + 1) * sizeof(shader_program_key));
+
+   shader_programs[index] = *shader;
+   ++number_of_programs;
+}
+
+static void shader_bind_attributes(shader_program_key *shader)
+{
+   GLuint prog = shader->program_object;
+
+   glBindAttribLocation(prog, POSITION_ATTR,   "aPosition");
+   glBindAttribLocation(prog, COLOUR_ATTR,     "aColor");
+   glBindAttribLocation(prog, TEXCOORD_0_ATTR, "aMultiTexCoord0");
+   glBindAttribLocation(prog, TEXCOORD_1_ATTR, "aMultiTexCoord1");
+   glBindAttribLocation(prog, FOG_ATTR,        "aFog");
+}
+
+static void use_shader_program(shader_program_key *shader)
+{
+   current_shader = &shader_programs[shader->index];
+   glUseProgram(shader->program_object);
+}
+
+static void shader_find_uniforms(shader_program_key *shader)
+{
+   GLuint prog = shader->program_object;
+
+   /* vertex shader uniforms */
+   shader->vertexOffset_location    = glGetUniformLocation(prog, "vertexOffset");
+   shader->textureSizes_location    = glGetUniformLocation(prog, "textureSizes");
+   shader->fogModeEndScale_location = glGetUniformLocation(prog, "fogModeEndScale");
+
+   /* fragment shader uniforms */
+   shader->texture0_location       = glGetUniformLocation(prog, "texture0");
+   shader->texture1_location       = glGetUniformLocation(prog, "texture1");
+   shader->exactSizes_location     = glGetUniformLocation(prog, "exactSizes");
+   shader->constant_color_location = glGetUniformLocation(prog, "constant_color");
+   shader->ccolor0_location        = glGetUniformLocation(prog, "ccolor0");
+   shader->ccolor1_location        = glGetUniformLocation(prog, "ccolor1");
+   shader->chroma_color_location   = glGetUniformLocation(prog, "chroma_color");
+   shader->lambda_location         = glGetUniformLocation(prog, "lambda");
+   shader->fogColor_location       = glGetUniformLocation(prog, "fogColor");
+   shader->alphaRef_location       = glGetUniformLocation(prog, "alphaRef");
+}
+
+static void finish_shader_program(shader_program_key *shader)
+{
+   shader->fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
+   glShaderSource(shader->fragment_shader_object, 1, (const GLchar**)&fragment_shader, NULL);
+   glCompileShader(shader->fragment_shader_object);
+   check_compile(shader->fragment_shader_object);
+
+   shader->program_object = glCreateProgram();
+   glAttachShader(shader->program_object, vertex_shader_object);
+   glAttachShader(shader->program_object, shader->fragment_shader_object);
+
+   shader_bind_attributes(shader);
+
+   glLinkProgram(shader->program_object);
+   check_link(shader->program_object);
+   glUseProgram(shader->program_object);
+
+   shader_find_uniforms(shader);
+   append_shader_program(shader);
+}
+
 void init_combiner(void)
 {
-   int texture0_location, texture1_location, log_length;
-   char s[128];
+   shader_program_key shader;
 
-   shader_programs = (shader_program_key*)malloc(sizeof(shader_program_key));
-   fragment_shader = (char*)malloc(4096*2);
+   number_of_programs = 0;
+   shader_programs    = NULL;
+   current_shader     = NULL;
+   fragment_shader    = (char*)malloc(4096*2);
 
-   // default shader
-   fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
+   /* default shader */
+   memset(&shader, 0, sizeof(shader));
 
    strcpy(fragment_shader, fragment_shader_header);
    strcat(fragment_shader, fragment_shader_default);
    strcat(fragment_shader, fragment_shader_end);
-   glShaderSource(fragment_shader_object, 1, (const GLchar**)&fragment_shader, NULL);
-
-   glCompileShader(fragment_shader_object);
-   check_compile(fragment_shader_object);
 
    vertex_shader_object = glCreateShader(GL_VERTEX_SHADER);
    glShaderSource(vertex_shader_object, 1, (const GLchar**)&vertex_shader, NULL);
    glCompileShader(vertex_shader_object);
    check_compile(vertex_shader_object);
 
-   program_object = glCreateProgram();
-   glAttachShader(program_object, vertex_shader_object);
-   glAttachShader(program_object, fragment_shader_object);
-   program_object_default = program_object;
+   finish_shader_program(&shader);
+   program_object_default = shader.program_object;
 
-   glBindAttribLocation(program_object,POSITION_ATTR,"aPosition");
-   glBindAttribLocation(program_object,COLOUR_ATTR,"aColor");
-   glBindAttribLocation(program_object,TEXCOORD_0_ATTR,"aMultiTexCoord0");
-   glBindAttribLocation(program_object,TEXCOORD_1_ATTR,"aMultiTexCoord1");
-   glBindAttribLocation(program_object,FOG_ATTR,"aFog");
+   use_shader_program(&shader);
 
-   glLinkProgram(program_object);
-   check_link(program_object);
-   glUseProgram(program_object);
-
-   texture0_location = glGetUniformLocation(program_object, "texture0");
-   texture1_location = glGetUniformLocation(program_object, "texture1");
-   glUniform1i(texture0_location, 0);
-   glUniform1i(texture1_location, 1);
+   glUniform1i(shader.texture0_location, 0);
+   glUniform1i(shader.texture1_location, 1);
 
    strcpy(fragment_shader_color_combiner, "");
    strcpy(fragment_shader_alpha_combiner, "");
@@ -340,7 +403,7 @@ void init_combiner(void)
    dither_enabled = 0;
 }
 
-void compile_chroma_shader(void)
+static void compile_chroma_shader(void)
 {
    strcpy(fragment_shader_chroma, "\nvoid test_chroma(vec4 ctexture1)\n{\n");
 
@@ -375,9 +438,9 @@ void compile_chroma_shader(void)
 }
 
 
-void update_uniforms(shader_program_key prog)
+static void update_uniforms(shader_program_key prog)
 {
-   GLfloat v0, v1, v2;
+   GLfloat v0, v2;
    glUniform1i(prog.texture0_location, 0);
    glUniform1i(prog.texture1_location, 1);
 
@@ -412,15 +475,12 @@ void update_uniforms(shader_program_key prog)
 
    glUniform1f(prog.alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f);
 
-   constant_color_location = glGetUniformLocation(program_object, "constant_color");
-   glUniform4f(constant_color_location, texture_env_color[0], texture_env_color[1],
+   glUniform4f(prog.constant_color_location, texture_env_color[0], texture_env_color[1],
          texture_env_color[2], texture_env_color[3]);
 
-   ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
-   glUniform4f(ccolor0_location, ccolor[0][0], ccolor[0][1], ccolor[0][2], ccolor[0][3]);
+   glUniform4f(prog.ccolor0_location, ccolor[0][0], ccolor[0][1], ccolor[0][2], ccolor[0][3]);
 
-   ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
-   glUniform4f(ccolor1_location, ccolor[1][0], ccolor[1][1], ccolor[1][2], ccolor[1][3]);
+   glUniform4f(prog.ccolor1_location, ccolor[1][0], ccolor[1][1], ccolor[1][2], ccolor[1][3]);
 
    glUniform4f(prog.chroma_color_location, chroma_color[0], chroma_color[1],
          chroma_color[2], chroma_color[3]);
@@ -430,101 +490,73 @@ void update_uniforms(shader_program_key prog)
 
 void compile_shader(void)
 {
-   int vertexOffset_location, textureSizes_location, texture0_location, texture1_location;
-   int i, chroma_color_location, log_length;
+   shader_program_key shader;
+   int i;
 
    need_to_compile = 0;
 
    for( i = 0; i < number_of_programs; i++)
    {
-      shader_program_key prog = shader_programs[i];
-      if(prog.color_combiner == color_combiner_key &&
-            prog.alpha_combiner == alpha_combiner_key &&
-            prog.texture0_combiner == texture0_combiner_key &&
-            prog.texture1_combiner == texture1_combiner_key &&
-            prog.texture0_combinera == texture0_combinera_key &&
-            prog.texture1_combinera == texture1_combinera_key &&
-            prog.fog_enabled == fog_enabled &&
-            prog.chroma_enabled == chroma_enabled &&
-            prog.dither_enabled == dither_enabled &&
-			prog.three_point_filter0 == three_point_filter[0] &&
-			prog.three_point_filter1 == three_point_filter[1])
+      shader_program_key *program = &shader_programs[i];
+      if(program->color_combiner == color_combiner_key &&
+            program->alpha_combiner == alpha_combiner_key &&
+            program->texture0_combiner == texture0_combiner_key &&
+            program->texture1_combiner == texture1_combiner_key &&
+            program->texture0_combinera == texture0_combinera_key &&
+            program->texture1_combinera == texture1_combinera_key &&
+            program->fog_enabled == fog_enabled &&
+            program->chroma_enabled == chroma_enabled &&
+            program->dither_enabled == dither_enabled &&
+            program->three_point_filter0 == three_point_filter[0] &&
+            program->three_point_filter1 == three_point_filter[1])
       {
-         program_object = shader_programs[i].program_object;
-         glUseProgram(program_object);
-         update_uniforms(prog);
+         use_shader_program(program);
+         update_uniforms(*program);
          return;
       }
    }
 
-   shader_programs = (shader_program_key*)realloc(shader_programs, (number_of_programs+1)*sizeof(shader_program_key));
+   memset(&shader, 0, sizeof(shader));
 
-   shader_programs[number_of_programs].color_combiner = color_combiner_key;
-   shader_programs[number_of_programs].alpha_combiner = alpha_combiner_key;
-   shader_programs[number_of_programs].texture0_combiner = texture0_combiner_key;
-   shader_programs[number_of_programs].texture1_combiner = texture1_combiner_key;
-   shader_programs[number_of_programs].texture0_combinera = texture0_combinera_key;
-   shader_programs[number_of_programs].texture1_combinera = texture1_combinera_key;
-   shader_programs[number_of_programs].fog_enabled = fog_enabled;
-   shader_programs[number_of_programs].chroma_enabled = chroma_enabled;
-   shader_programs[number_of_programs].dither_enabled = dither_enabled;
-   shader_programs[number_of_programs].three_point_filter0 = three_point_filter[0];
-   shader_programs[number_of_programs].three_point_filter1 = three_point_filter[1];
-
+   shader.color_combiner = color_combiner_key;
+   shader.alpha_combiner = alpha_combiner_key;
+   shader.texture0_combiner = texture0_combiner_key;
+   shader.texture1_combiner = texture1_combiner_key;
+   shader.texture0_combinera = texture0_combinera_key;
+   shader.texture1_combinera = texture1_combinera_key;
+   shader.fog_enabled    = fog_enabled;
+   shader.chroma_enabled = chroma_enabled;
+   shader.dither_enabled = dither_enabled;
+   shader.three_point_filter0 = three_point_filter[0];
+   shader.three_point_filter1 = three_point_filter[1];
 
    strcpy(fragment_shader, fragment_shader_header);
-   if(dither_enabled) strcat(fragment_shader, fragment_shader_dither);
-   strcat(fragment_shader, three_point_filter[0] ? fragment_shader_readtex0color_3point:fragment_shader_readtex0color);
-   strcat(fragment_shader,  three_point_filter[1] ? fragment_shader_readtex1color_3point:fragment_shader_readtex1color);
+
+   if (dither_enabled)
+      strcat(fragment_shader, fragment_shader_dither);
+
+   strcat(fragment_shader, three_point_filter[0] ? fragment_shader_readtex0color_3point : fragment_shader_readtex0color);
+   strcat(fragment_shader, three_point_filter[1] ? fragment_shader_readtex1color_3point : fragment_shader_readtex1color);
    strcat(fragment_shader, fragment_shader_texture0);
    strcat(fragment_shader, fragment_shader_texture1);
    strcat(fragment_shader, fragment_shader_color_combiner);
    strcat(fragment_shader, fragment_shader_alpha_combiner);
-   if(fog_enabled) strcat(fragment_shader, fragment_shader_fog);
-   if(chroma_enabled)
+
+   if (fog_enabled)
+      strcat(fragment_shader, fragment_shader_fog);
+
+   if (chroma_enabled)
    {
       strcat(fragment_shader, fragment_shader_chroma);
       strcat(fragment_shader_texture1, "test_chroma(ctexture1); \n");
       compile_chroma_shader();
    }
+
    strcat(fragment_shader, fragment_shader_end);
 
-   shader_programs[number_of_programs].fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
-   glShaderSource(shader_programs[number_of_programs].fragment_shader_object, 1, (const GLchar**)&fragment_shader, NULL);
+   finish_shader_program(&shader);
 
-   glCompileShader(shader_programs[number_of_programs].fragment_shader_object);
-   check_compile(shader_programs[number_of_programs].fragment_shader_object);
-
-   program_object = glCreateProgram();
-   shader_programs[number_of_programs].program_object = program_object;
-
-   glAttachShader(program_object, shader_programs[number_of_programs].fragment_shader_object);
-   glAttachShader(program_object, vertex_shader_object);
-
-   glBindAttribLocation(program_object,POSITION_ATTR,"aPosition");
-   glBindAttribLocation(program_object,COLOUR_ATTR,"aColor");
-   glBindAttribLocation(program_object,TEXCOORD_0_ATTR,"aMultiTexCoord0");
-   glBindAttribLocation(program_object,TEXCOORD_1_ATTR,"aMultiTexCoord1");
-   glBindAttribLocation(program_object,FOG_ATTR,"aFog");
-
-   glLinkProgram(program_object);
-   check_link(program_object);
-   glUseProgram(program_object);
-
-
-   shader_programs[number_of_programs].texture0_location = glGetUniformLocation(program_object, "texture0");
-   shader_programs[number_of_programs].texture1_location = glGetUniformLocation(program_object, "texture1");
-   shader_programs[number_of_programs].vertexOffset_location = glGetUniformLocation(program_object, "vertexOffset");
-   shader_programs[number_of_programs].textureSizes_location = glGetUniformLocation(program_object, "textureSizes");
-   shader_programs[number_of_programs].exactSizes_location = glGetUniformLocation(program_object, "exactSizes");
-   shader_programs[number_of_programs].fogModeEndScale_location = glGetUniformLocation(program_object, "fogModeEndScale");
-   shader_programs[number_of_programs].fogColor_location = glGetUniformLocation(program_object, "fogColor");
-   shader_programs[number_of_programs].alphaRef_location = glGetUniformLocation(program_object, "alphaRef");
-   shader_programs[number_of_programs].chroma_color_location = glGetUniformLocation(program_object, "chroma_color");
-
-   update_uniforms(shader_programs[number_of_programs]);
-
-   number_of_programs++;
+   update_uniforms(shader);
 }
 
 void free_combiners(void)
@@ -557,8 +589,7 @@ void set_depth_shader(void)
 
 void set_lambda(void)
 {
-   int lambda_location = glGetUniformLocation(program_object, "lambda");
-   glUniform1f(lambda_location, lambda);
+   glUniform1f(current_shader->lambda_location, lambda);
 }
 
 void grConstantColorValue( uint32_t value )
@@ -568,12 +599,11 @@ void grConstantColorValue( uint32_t value )
    texture_env_color[2] = ((value >>  8) & 0xFF) / 255.0f;
    texture_env_color[3] = (value & 0xFF) / 255.0f;
 
-   constant_color_location = glGetUniformLocation(program_object, "constant_color");
-   glUniform4f(constant_color_location, texture_env_color[0], texture_env_color[1], 
+   glUniform4f(current_shader->constant_color_location, texture_env_color[0], texture_env_color[1],
          texture_env_color[2], texture_env_color[3]);
 }
 
-void writeGLSLColorOther(int other)
+static void writeGLSLColorOther(int other)
 {
    switch(other)
    {
@@ -589,7 +619,7 @@ void writeGLSLColorOther(int other)
    }
 }
 
-void writeGLSLColorLocal(int local)
+static void writeGLSLColorLocal(int local)
 {
    switch(local)
    {
@@ -602,7 +632,7 @@ void writeGLSLColorLocal(int local)
    }
 }
 
-void writeGLSLColorFactor(int factor, int local, int need_local, int other, int need_other)
+static void writeGLSLColorFactor(int factor, int local, int need_local, int other, int need_other)
 {
    switch(factor)
    {
@@ -738,7 +768,7 @@ void grColorCombine(
    need_to_compile = 1;
 }
 
-void writeGLSLAlphaOther(int other)
+static void writeGLSLAlphaOther(int other)
 {
    switch(other)
    {
@@ -754,7 +784,7 @@ void writeGLSLAlphaOther(int other)
    }
 }
 
-void writeGLSLAlphaLocal(int local)
+static void writeGLSLAlphaLocal(int local)
 {
    switch(local)
    {
@@ -767,7 +797,7 @@ void writeGLSLAlphaLocal(int local)
    }
 }
 
-void writeGLSLAlphaFactor(int factor, int local, int need_local, int other, int need_other)
+static void writeGLSLAlphaFactor(int factor, int local, int need_local, int other, int need_other)
 {
    switch(factor)
    {
@@ -1190,8 +1220,7 @@ grTexCombine(
       if (alpha_invert)
          strcat(fragment_shader_texture0, "ctexture0.a = 1.0 - ctexture0.a; \n");
 
-      ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
-      glUniform4f(ccolor0_location, 0, 0, 0, 0);
+      glUniform4f(current_shader->ccolor0_location, 0, 0, 0, 0);
    }
    else
    {
@@ -1319,8 +1348,7 @@ grTexCombine(
       if (alpha_invert)
          strcat(fragment_shader_texture1, "ctexture1.a = 1.0 - ctexture1.a; \n");
 
-      ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
-      glUniform4f(ccolor1_location, 0, 0, 0, 0);
+      glUniform4f(current_shader->ccolor1_location, 0, 0, 0, 0);
    }
 
    need_to_compile = 1;
@@ -1363,14 +1391,12 @@ void grChromakeyMode( int32_t mode )
 
 void grChromakeyValue( uint32_t value )
 {
-   int chroma_color_location = glGetUniformLocation(program_object, "chroma_color");
-
    chroma_color[0] = ((value >> 24) & 0xFF) / 255.0f;
    chroma_color[1] = ((value >> 16) & 0xFF) / 255.0f;
    chroma_color[2] = ((value >>  8) & 0xFF) / 255.0f;
    chroma_color[3] = 1.0;//(value & 0xFF) / 255.0f;
 
-   glUniform4f(chroma_color_location, chroma_color[0], chroma_color[1],
+   glUniform4f(current_shader->chroma_color_location, chroma_color[0], chroma_color[1],
          chroma_color[2], chroma_color[3]);
 }
 
@@ -2228,8 +2254,7 @@ grTexAlphaCombineExt(int32_t       tmu,
 
       strcat(fragment_shader_texture0, "ctexture0.a = (ctex0_a.a + ctex0_b.a) * ctex0_c.a + ctex0_d.a; \n");
 
-      ccolor0_location = glGetUniformLocation(program_object, "ccolor0");
-      glUniform4f(ccolor0_location, ccolor[0][0], ccolor[0][1], ccolor[0][2], ccolor[0][3]);
+      glUniform4f(current_shader->ccolor0_location, ccolor[0][0], ccolor[0][1], ccolor[0][2], ccolor[0][3]);
    }
    else
    {
@@ -2366,8 +2391,7 @@ grTexAlphaCombineExt(int32_t       tmu,
 
       strcat(fragment_shader_texture1, "ctexture1.a = (ctex1_a.a + ctex1_b.a) * ctex1_c.a + ctex1_d.a; \n");
 
-      ccolor1_location = glGetUniformLocation(program_object, "ccolor1");
-      glUniform4f(ccolor1_location, ccolor[1][0], ccolor[1][1], ccolor[1][2], ccolor[1][3]);
+      glUniform4f(current_shader->ccolor1_location, ccolor[1][0], ccolor[1][1], ccolor[1][2], ccolor[1][3]);
    }
 
    need_to_compile = 1;
