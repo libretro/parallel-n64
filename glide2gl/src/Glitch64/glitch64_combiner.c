@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #endif // _WIN32
 #include <math.h>
-#include "inc/glide.h"
+#include "glide.h"
 #include "glitchmain.h"
 #include "../../libretro/SDL.h"
 

@@ -1,7 +1,7 @@
 #ifndef _GLIDE_FUNCS_H
 #define _GLIDE_FUNCS_H
 
-#include "glide.h"
+#include "Glitch64/glide.h"
 
 #ifdef __cplusplus
 extern "C" {

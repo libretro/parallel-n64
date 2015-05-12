@@ -76,7 +76,6 @@ the plugin
 #include <stddef.h>
 #include <string.h>
 #include <stdarg.h>
-#include <glide.h>
 #include "../glide_funcs.h"
 #include "GlideExtensions.h"
 #include "rdp.h"

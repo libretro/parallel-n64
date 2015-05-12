@@ -1,7 +1,6 @@
 #ifndef __GLIDE_H__
 #define __GLIDE_H__
 
-#include <3dfx.h>
 #define GL_GLEXT_PROTOTYPES
 #include <SDL_opengles2.h>
 #include "boolean.h"
@@ -15,6 +14,18 @@ extern "C" {
 ** TYPE DEFINITIONS
 ** -----------------------------------------------------------------------
 */
+
+/*
+** fundamental types
+*/
+#define FXTRUE    1
+#define FXFALSE   0
+
+/*
+** helper macros
+*/
+#define FXBIT( i )    ( 1L << (i) )
+
 typedef int (*GrProc)();
 
 /*
