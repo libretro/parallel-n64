@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+extern unsigned int BUFFERSWAP;
+
 #define NUM_TMU 2
 
 // Vertex structure

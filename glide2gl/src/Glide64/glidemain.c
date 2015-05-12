@@ -732,7 +732,7 @@ EXPORT void CALL UpdateScreen (void)
    if (settings.swapmode == 0 || forced_update)
       newSwapBuffers ();
 
-   if (settings.swapmode_retro)
+   if (settings.swapmode_retro && BUFFERSWAP)
       retro_return(true);
 }
 

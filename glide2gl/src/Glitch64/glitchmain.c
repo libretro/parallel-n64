@@ -329,7 +329,8 @@ grLfbWriteRegion( int32_t dst_buffer,
 
 void grBufferSwap(uint32_t swap_interval)
 {
-   if (!settings.swapmode_retro)
+   bool swapmode = settings.swapmode_retro && BUFFERSWAP;
+   if (!swapmode)
       retro_return(true);
 }
 

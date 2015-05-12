@@ -69,6 +69,7 @@ uint32_t screen_aspectmodehint;
 static bool first_context_reset;
 
 extern unsigned int VI_REFRESH;
+unsigned int BUFFERSWAP;
 
 // after the controller's CONTROL* member has been assigned we can update
 // them straight from here...
@@ -234,6 +235,8 @@ static void setup_variables(void)
       },
       { "mupen64-virefresh",
          "VI Refresh (Overclock); 1500|2200" },
+      { "mupen64-bufferswap",
+         "Buffer Swap; on|off" },
       { "mupen64-framerate",
          "Framerate (restart); original|fullspeed" },
       { NULL, NULL },
@@ -641,6 +644,17 @@ void update_variables(bool startup)
          VI_REFRESH = 1500;
       else if (!strcmp(var.value, "2200"))
          VI_REFRESH = 2200;
+   }
+
+   var.key = "mupen64-bufferswap";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "on"))
+         BUFFERSWAP = true;
+      else if (!strcmp(var.value, "off"))
+         BUFFERSWAP = false;
    }
 
    var.key = "mupen64-framerate";
