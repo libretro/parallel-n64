@@ -37,7 +37,6 @@ void ReadSettings(void)
    settings.res_x = 320;
    settings.res_y = 240;
 
-
    settings.vsync = 1;
 
    settings.autodetect_ucode = true;
@@ -84,6 +83,7 @@ void ReadSpecialSettings (const char * name)
       settings.filtering = 0;
       settings.buff_clear = 1;
       settings.swapmode = 1;
+      settings.swapmode_retro = false;
       settings.lodmode = 0;
 
       /* frame buffer */
@@ -1643,6 +1643,7 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"SUPER MARIO 64")
          || strstr(name, (const char *)"SUPERMARIO64"))
    {
+      settings.swapmode_retro = true;
       settings.depth_bias = 64;
       settings.lodmode = 1;
       settings.filtering = 1;

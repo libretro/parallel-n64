@@ -329,7 +329,8 @@ grLfbWriteRegion( int32_t dst_buffer,
 
 void grBufferSwap(uint32_t swap_interval)
 {
-   retro_return(true);
+   if (!settings.swapmode_retro)
+      retro_return(true);
 }
 
 void grClipWindow(uint32_t minx, uint32_t miny, uint32_t maxx, uint32_t maxy)
