@@ -1210,6 +1210,10 @@ void ReadSpecialSettings (const char * name)
       //fillcolor_fix = 1
       //depthmode = 0
    }
+   else if (strstr(name, (const char*)"SMASH BROTHERS"))
+   {
+      settings.swapmode_retro = true;
+   }
 #if 0
    else if (strstr(name, (const char*)"POLARISSNOCROSS"))
    {
