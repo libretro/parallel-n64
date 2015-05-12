@@ -50,7 +50,7 @@
 static void glide64_draw_fb(float ul_x, float ul_y, float lr_x,
       float lr_y, float lr_u, float lr_v, float zero)
 {
-   VERTEX v[4], vout[4], vout2[4];
+   VERTEX v[4], vout[6];
    /* Make the vertices */
 
    v[0].x  = ul_x;
@@ -109,12 +109,11 @@ static void glide64_draw_fb(float ul_x, float ul_y, float lr_x,
    vout[1] = v[2];
    vout[2] = v[1];
 
-   vout2[0] = v[2];
-   vout2[1] = v[3];
-   vout2[2] = v[1];
+   vout[3] = v[2];
+   vout[4] = v[3];
+   vout[5] = v[1];
 
-   grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout[0]);
-   grDrawVertexArrayContiguous(GR_TRIANGLES, 3, &vout2[0]);
+   grDrawVertexArrayContiguous(GR_TRIANGLES, 6, &vout[0]);
 }
 
 static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)

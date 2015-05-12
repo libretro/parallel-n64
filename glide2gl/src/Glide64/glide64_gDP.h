@@ -49,15 +49,15 @@ static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt
       {
          *v5++ = __ROL__(v10, 8, nbits);
       }while (--v9);
-      *v5++ = bswap32(*v7++);
+      *v5++ = m64p_swap32(*v7++);
       v6 = cnt - 1;
       if ( cnt != 1 )
       {
 LABEL_23:
          do
          {
-            *v5++ = bswap32(*v7++);
-            *v5++ = bswap32(*v7++);
+            *v5++ = m64p_swap32(*v7++);
+            *v5++ = m64p_swap32(*v7++);
          }while (--v6 );
       }
       v13 = off & 3;

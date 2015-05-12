@@ -317,6 +317,7 @@ static void DrawPartFrameBufferToScreen(void)
   ((uint32_t)(((color & 0x07C0) >> 6)) << 16) | \
   ((uint32_t)(((color & 0x003E) >> 1)) << 8)
 
+/* defined in glitchmain.c */
 extern uint16_t *frameBuffer;
 
 static void CopyFrameBuffer(int32_t buffer)
@@ -1232,7 +1233,7 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst,
          while ( v15 );
          v18 = *v17;
          v13 = v17 + 1;
-         *v7 = bswap32(v18);
+         *v7 = m64p_swap32(v18);
          ++v7;
          --v8;
          if ( v8 )
@@ -1240,8 +1241,8 @@ static INLINE void loadTile(uint32_t *src, uint32_t *dst,
 LABEL_20:
             do
             {
-               *v7 = bswap32(*v13);
-               v7[1] = bswap32(v13[1]);
+               *v7 = m64p_swap32(*v13);
+               v7[1] = m64p_swap32(v13[1]);
                v13 += 2;
                v7 += 2;
                --v8;
@@ -1498,7 +1499,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    FRDP (" - %d, %d, %d, %d\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 
    {
-      VERTEX v[4], vout[4], vout2[4];
+      VERTEX v[4], vout[6];
       float Z;
 
       grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
@@ -1593,12 +1594,11 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       vout[0]  = v[0];
       vout[1]  = v[2];
       vout[2]  = v[1];
-      vout2[0] = v[2];
-      vout2[1] = v[3];
-      vout2[2] = v[1];
+      vout[3]  = v[2];
+      vout[4]  = v[3];
+      vout[5]  = v[1];
 
-      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout[0]);
-      grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 3, &vout2[0]);
+      grDrawVertexArrayContiguous (GR_TRIANGLES, 6, &vout[0]);
    }
 }
 
@@ -2428,6 +2428,7 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
 
    nbVtxs = 0;
    vtx = (VERTEX*)&vtxbuf[nbVtxs++];
+   memset(vtxbuf, 0, sizeof(vtxbuf));
 
    xleft      = xm;
    xright     = xh;
