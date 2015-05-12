@@ -1303,6 +1303,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"F-Zero X") || strstr(name, (const char *)"F-ZERO X"))
    {
+      settings.swapmode_retro = true;
       //depthmode = 1
    }
    else if (strstr(name, (const char *)"DERBYSTALLION64"))
