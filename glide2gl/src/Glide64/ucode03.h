@@ -60,10 +60,6 @@ static void uc3_vertex(uint32_t w0, uint32_t w1)
          );
 }
 
-//
-// tri1 - renders a triangle
-//
-
 static void uc3_tri1(uint32_t w0, uint32_t w1)
 {
    VERTEX *v[3];
