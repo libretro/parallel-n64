@@ -563,7 +563,6 @@ void set_lambda(void)
 
 void grConstantColorValue( uint32_t value )
 {
-   LOG("grConstantColorValue(%d)\r\n", value);
    texture_env_color[0] = ((value >> 24) & 0xFF) / 255.0f;
    texture_env_color[1] = ((value >> 16) & 0xFF) / 255.0f;
    texture_env_color[2] = ((value >>  8) & 0xFF) / 255.0f;
@@ -658,7 +657,6 @@ void grColorCombine(
    static int last_factor = 0;
    static int last_local = 0;
    static int last_other = 0;
-   LOG("grColorCombine(%d,%d,%d,%d,%d)\r\n", function, factor, local, other, invert);
 
    if(last_function == function && last_factor == factor &&
          last_local == local && last_other == other && first_color == 0 && !c_combiner_ext)
@@ -822,7 +820,6 @@ void grAlphaCombine(
    static int last_factor = 0;
    static int last_local = 0;
    static int last_other = 0;
-   LOG("grAlphaCombine(%d,%d,%d,%d,%d)\r\n", function, factor, local, other, invert);
 
    if(last_function == function && last_factor == factor &&
          last_local == local && last_other == other && first_alpha == 0 && !a_combiner_ext) return;
@@ -1352,7 +1349,6 @@ void grFogMode( int32_t mode, uint32_t fogcolor)
 
 void grChromakeyMode( int32_t mode )
 {
-   LOG("grChromakeyMode(%d)\r\n", mode);
    switch(mode)
    {
       case GR_CHROMAKEY_DISABLE:
@@ -1384,7 +1380,6 @@ void grStipplePattern(uint32_t stipple)
 
 void grStippleMode( int32_t mode )
 {
-   LOG("grStippleMode(%d)\r\n", mode);
    switch(mode)
    {
       case GR_STIPPLE_DISABLE:

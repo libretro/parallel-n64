@@ -126,7 +126,6 @@ void FindBestDepthBias(void)
 
 void grDepthBiasLevel( int32_t level )
 {
-   LOG("grDepthBiasLevel(%d)\r\n", level);
    if (level)
    {
       glPolygonOffset(polygonOffsetFactor, (float)level * settings.depth_bias * 0.01f);
