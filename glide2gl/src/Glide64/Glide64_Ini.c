@@ -203,6 +203,7 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char *)"BANJO TOOIE")
          )
    {
+      settings.swapmode_retro = true;
       settings.filtering = 1;
       //depthmode = 1
       smart_read = 1;
@@ -399,6 +400,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"TSUMI TO BATSU"))
    {
+      settings.swapmode_retro = true;
       settings.filtering = 1;
       //depthmode = 1
       smart_read = 1;
