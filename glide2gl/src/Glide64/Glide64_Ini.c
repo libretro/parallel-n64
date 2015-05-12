@@ -1707,6 +1707,7 @@ void ReadSpecialSettings (const char * name)
    }
    else if (strstr(name, (const char *)"YOSHI STORY"))
    {
+      settings.swapmode_retro = true;
       //fix_tex_coord = 32
       //depthmode = 1
       settings.filtering = 1;
