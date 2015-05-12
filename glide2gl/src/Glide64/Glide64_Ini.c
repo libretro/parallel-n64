@@ -117,6 +117,7 @@ void ReadSpecialSettings (const char * name)
    // Glide64 mk2 INI config
    if (strstr(name, (const char *)"1080 SNOWBOARDING"))
    {
+      settings.swapmode_retro = true;
       //settings.alt_tex_size = 1;
       //depthmode = 0
       settings.swapmode = 2;
@@ -190,6 +191,7 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"BAKUBOMB2")
          || strstr(name, (const char *)"BOMBERMAN64U2"))
    {
+      settings.swapmode_retro = true;
       settings.filtering = 1;
       //depthmode = 0
    }
@@ -295,6 +297,7 @@ void ReadSpecialSettings (const char * name)
          || strstr(name, (const char *)"MICKEY USA PAL")
          )
    {
+      settings.swapmode_retro = true;
       settings.alt_tex_size = 1;
       //depthmode = 1
       smart_read = 1;
@@ -306,6 +309,7 @@ void ReadSpecialSettings (const char * name)
    else if (strstr(name, (const char *)"MISCHIEF MAKERS")
          || strstr(name, (const char *)"TROUBLE MAKERS"))
    {
+      settings.swapmode_retro = true;
       //mischief_tex_hack = 0
       //tex_wrap_hack = 0
       //depthmode = 1
@@ -1652,6 +1656,10 @@ void ReadSpecialSettings (const char * name)
       settings.swapmode_retro = true;
       settings.depth_bias = 1;
       settings.lodmode = 1;
+   }
+   else if (strstr(name, (const char *)"Turok 2"))
+   {
+      settings.swapmode_retro = true;
    }
    else if (strstr(name, (const char *)"SUPER MARIO 64")
          || strstr(name, (const char *)"SUPERMARIO64"))
