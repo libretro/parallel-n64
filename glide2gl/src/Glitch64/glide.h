@@ -356,14 +356,9 @@ void grVertexLayout(uint32_t param, int32_t offset, uint32_t mode);
 
 void grDrawVertexArrayContiguous(uint32_t mode, uint32_t Count, void *pointers);
 
-#define grBufferClear(color, alpha, depth) \
-{ \
-   glClearColor(0, 0, 0, 0); \
-   glClearDepth(depth / 65535.0f); \
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); \
-}
+void grBufferClear(uint32_t color, uint32_t alpha, uint32_t depth);
 
-#define grBufferSwap(interval) retro_return(true)
+void grBufferSwap(uint32_t swap_interval);
 
 /*
 ** error management

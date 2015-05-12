@@ -326,3 +326,18 @@ grLfbWriteRegion( int32_t dst_buffer,
    }
    return FXTRUE;
 }
+
+void grBufferSwap(uint32_t swap_interval)
+{
+   retro_return(true);
+}
+
+void grBufferClear(uint32_t color, uint32_t alpha, uint32_t depth)
+{
+   glClearColor(((color >> 24) & 0xFF) / 255.0f,
+         ((color >> 16) & 0xFF) / 255.0f,
+         (color         & 0xFF) / 255.0f,
+         alpha / 255.0f);
+   glClearDepth(depth / 65535.0f);
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
