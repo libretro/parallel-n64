@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <math.h>
 #include "glide.h"
-#include "g3ext.h"
 #include "glitchmain.h"
 #include "../../libretro/SDL.h"
 
