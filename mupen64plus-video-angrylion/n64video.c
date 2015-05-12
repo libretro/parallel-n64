@@ -1295,10 +1295,8 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
    *prelodfrac = (lod << 3) >> l_tile;
    if (!g_gdp.other_modes.sharpen_tex_en && !g_gdp.other_modes.detail_tex_en)
    {
-      if (distant)
-         *prelodfrac = 0xff;
-      else if (magnify)
-         *prelodfrac = 0;
+      *prelodfrac &= ~magnify;
+      *prelodfrac |=  distant;
    }
    *prelodfrac &= 0xFF;
    *prelodfrac |= (g_gdp.other_modes.sharpen_tex_en & magnify) << 8;
@@ -4299,17 +4297,15 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst,
       else if (lod < g_gdp.primitive_lod_min)
          lod = g_gdp.primitive_lod_min;
 
-      magnify = (lod < 32) ? 1: 0;
+      magnify = (lod < 32) ? ~0 : 0;
       l_tile =  log2table[(lod >> 5) & 0xff];
-      distant = ((lod & 0x6000) || (l_tile >= max_level)) ? 1 : 0;
+      distant = ((lod & 0x6000) || (l_tile >= max_level)) ? ~0 : 0;
 
       *prelodfrac = (lod << 3) >> l_tile;
       if (!g_gdp.other_modes.sharpen_tex_en && !g_gdp.other_modes.detail_tex_en)
       {
-         if (distant)
-            *prelodfrac = 0xff;
-         else if (magnify)
-            *prelodfrac = 0;
+         *prelodfrac &= ~magnify;
+         *prelodfrac |=  distant;
       }
       *prelodfrac &= 0xFF;
       *prelodfrac |= (g_gdp.other_modes.sharpen_tex_en & magnify) << 8;
