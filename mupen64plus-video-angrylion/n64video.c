@@ -1028,26 +1028,25 @@ static STRICTINLINE void lodfrac_lodtile_signals(int lodclamp,
    else if (lod < g_gdp.primitive_lod_min)
       lod = g_gdp.primitive_lod_min;
 
-   mag = (lod < 32) ? 1: 0;
+   mag = (lod < 32) ? ~0 : 0;
    ltil=  log2table[(lod >> 5) & 0xff];
-   dis = ((lod & 0x6000) || (ltil >= max_level)) ? 1 : 0;
+   dis = ((lod & 0x6000) || (ltil >= max_level)) ? ~0 : 0;
 
-   lf = ((lod << 3) >> ltil) & 0xff;
-
-   if(!g_gdp.other_modes.sharpen_tex_en && !g_gdp.other_modes.detail_tex_en)
+   lf = (lod << 3) >> ltil;
+   if (g_gdp.other_modes.sharpen_tex_en | g_gdp.other_modes.detail_tex_en)
+      { /* branch */ }
+   else
    {
-      if (dis)
-         lf = 0xff;
-      else if (mag)
-         lf = 0;
+      lf &= ~mag;
+      lf |=  dis;
    }
 
-   if(g_gdp.other_modes.sharpen_tex_en && mag)
-      lf |= 0x100;
+   lf &= 0xFF;
+   lf |= (g_gdp.other_modes.sharpen_tex_en & mag) << 8;
 
-   *distant = dis;
+   *distant = dis & 1;
    *l_tile = ltil;
-   *magnify = mag;
+   *magnify = mag & 1;
    lod_frac = lf;
 }
 
