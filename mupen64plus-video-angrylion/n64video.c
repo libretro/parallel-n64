@@ -1292,18 +1292,16 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
    l_tile =  log2table[(lod >> 5) & 0xff];
    distant = ((lod & 0x6000) || (l_tile >= max_level)) ? 1 : 0;
 
-   *prelodfrac = ((lod << 3) >> l_tile) & 0xff;
-
-   if(!g_gdp.other_modes.sharpen_tex_en && !g_gdp.other_modes.detail_tex_en)
+   *prelodfrac = (lod << 3) >> l_tile;
+   if (!g_gdp.other_modes.sharpen_tex_en && !g_gdp.other_modes.detail_tex_en)
    {
       if (distant)
          *prelodfrac = 0xff;
       else if (magnify)
          *prelodfrac = 0;
    }
-
-   if(g_gdp.other_modes.sharpen_tex_en && magnify)
-      *prelodfrac |= 0x100;
+   *prelodfrac &= 0xFF;
+   *prelodfrac |= (g_gdp.other_modes.sharpen_tex_en & magnify) << 8;
 
    tclod_lod(l_tile, prim_tile, magnify, distant, t1);
 }
@@ -4307,19 +4305,16 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst,
       l_tile =  log2table[(lod >> 5) & 0xff];
       distant = ((lod & 0x6000) || (l_tile >= max_level)) ? 1 : 0;
 
-      *prelodfrac = ((lod << 3) >> l_tile) & 0xff;
-
-
-      if(!g_gdp.other_modes.sharpen_tex_en && !g_gdp.other_modes.detail_tex_en)
+      *prelodfrac = (lod << 3) >> l_tile;
+      if (!g_gdp.other_modes.sharpen_tex_en && !g_gdp.other_modes.detail_tex_en)
       {
          if (distant)
             *prelodfrac = 0xff;
          else if (magnify)
             *prelodfrac = 0;
       }
-
-      if(g_gdp.other_modes.sharpen_tex_en && magnify)
-         *prelodfrac |= 0x100;
+      *prelodfrac &= 0xFF;
+      *prelodfrac |= (g_gdp.other_modes.sharpen_tex_en & magnify) << 8;
 
       if (g_gdp.other_modes.tex_lod_en)
       {
