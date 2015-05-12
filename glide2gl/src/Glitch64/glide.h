@@ -378,7 +378,8 @@ grSstWinClose( uint32_t context );
 /*
 ** Glide configuration and special effect maintenance functions
 */
-#define grAlphaBlendFunction(rgb_sf, rgb_df, alpha_sf, alpha_df) glEnable(GL_BLEND); glBlendFuncSeparate(rgb_sf, rgb_df, alpha_sf, alpha_df)
+
+void grAlphaBlendFunction(GLenum rgb_sf, GLenum rgb_df, GLenum alpha_sf, GLenum alpha_df);
 
 void grAlphaCombine(
                int32_t function, int32_t factor,
@@ -401,7 +402,7 @@ void grColorCombine(
                int32_t local, int32_t other,
                int32_t invert );
 
-#define grColorMask(rgb, a) glColorMask(rgb, rgb, rgb, a)
+void grColorMask(bool rgb, bool a);
 
 void grCullMode( int32_t mode );
 
@@ -409,7 +410,7 @@ void grConstantColorValue( uint32_t value );
 
 void grDepthBiasLevel( int32_t level );
 
-#define grDepthBufferFunction(function) glDepthFunc(function)
+void grDepthBufferFunction(GLenum func);
 
 #define grDepthBufferMode(mode) \
 { \
@@ -419,7 +420,7 @@ void grDepthBiasLevel( int32_t level );
       glEnable(GL_DEPTH_TEST); \
 }
 
-#define grDepthMask(mask) glDepthMask(mask)
+void grDepthMask(bool mask);
 
 void grFogMode( int32_t mode, uint32_t fogcolor );
 

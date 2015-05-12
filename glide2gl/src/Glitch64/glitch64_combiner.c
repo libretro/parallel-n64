@@ -2396,3 +2396,9 @@ grTexAlphaCombineExt(int32_t       tmu,
 
    need_to_compile = 1;
 }
+
+void grAlphaBlendFunction(GLenum rgb_sf, GLenum rgb_df, GLenum alpha_sf, GLenum alpha_df)
+{
+   glEnable(GL_BLEND);
+   glBlendFuncSeparate(rgb_sf, rgb_df, alpha_sf, alpha_df);
+}

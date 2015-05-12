@@ -341,3 +341,8 @@ void grBufferClear(uint32_t color, uint32_t alpha, uint32_t depth)
    glClearDepth(depth / 65535.0f);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
+
+void grColorMask(bool rgb, bool a)
+{
+   glColorMask(rgb, rgb, rgb, a);
+}

@@ -66,6 +66,16 @@ void grCullMode( int32_t mode )
 
 // Depth buffer
 
+void grDepthBufferFunction(GLenum func)
+{
+   glDepthFunc(func);
+}
+
+void grDepthMask(bool mask)
+{
+   glDepthMask(mask);
+}
+
 bool biasFound = false;
 extern float polygonOffsetFactor;
 extern float polygonOffsetUnits;
