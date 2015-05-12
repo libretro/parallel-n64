@@ -283,8 +283,7 @@ void check_link(GLuint program)
 
 void init_combiner(void)
 {
-   int texture0_location, texture1_location, log_length;
-   char s[128];
+   int texture0_location, texture1_location;
 
    shader_programs = (shader_program_key*)malloc(sizeof(shader_program_key));
    fragment_shader = (char*)malloc(4096*2);
