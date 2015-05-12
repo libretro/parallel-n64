@@ -430,8 +430,7 @@ void update_uniforms(shader_program_key prog)
 
 void compile_shader(void)
 {
-   int vertexOffset_location, textureSizes_location, texture0_location, texture1_location;
-   int i, chroma_color_location, log_length;
+   int i;
 
    need_to_compile = 0;
 
@@ -447,8 +446,8 @@ void compile_shader(void)
             prog.fog_enabled == fog_enabled &&
             prog.chroma_enabled == chroma_enabled &&
             prog.dither_enabled == dither_enabled &&
-			prog.three_point_filter0 == three_point_filter[0] &&
-			prog.three_point_filter1 == three_point_filter[1])
+            prog.three_point_filter0 == three_point_filter[0] &&
+            prog.three_point_filter1 == three_point_filter[1])
       {
          program_object = shader_programs[i].program_object;
          glUseProgram(program_object);
@@ -510,7 +509,6 @@ void compile_shader(void)
    glLinkProgram(program_object);
    check_link(program_object);
    glUseProgram(program_object);
-
 
    shader_programs[number_of_programs].texture0_location = glGetUniformLocation(program_object, "texture0");
    shader_programs[number_of_programs].texture1_location = glGetUniformLocation(program_object, "texture1");
