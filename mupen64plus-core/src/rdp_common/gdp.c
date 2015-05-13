@@ -101,15 +101,15 @@ void gdp_set_convert(uint32_t w0, uint32_t w1)
    /* KO term of YUV-RGB conversion matrix. */
    g_gdp.k0 = (fifo_word >> 45) & 0x1FF;
    /* K1 term of YUV-RGB conversion matrix. */
-   g_gdp.k1 = (fifo_word >> 36) & 0x1FF
+   g_gdp.k1 = (fifo_word >> 36) & 0x1FF;
    /* K2 term of YUV-RGB conversion matrix. */
-   g_gdp.k2 = (fifo_word >> 27) & 0x1FF
+   g_gdp.k2 = (fifo_word >> 27) & 0x1FF;
    /* K3 term of YUV-RGB conversion matrix. */
-   g_gdp.k3 = (fifo_word >> 18) & 0x1FF
+   g_gdp.k3 = (fifo_word >> 18) & 0x1FF;
    /* K4 term of YUV-RGB conversion matrix. */
-   g_gdp.k4 = (fifo_word >>  9) & 0x1FF
+   g_gdp.k4 = (fifo_word >>  9) & 0x1FF;
    /* K5 term of YUV-RGB conversion matrix. */
-   g_gdp.k5 = (fifo_word >>  0) & 0x1FF
+   g_gdp.k5 = (fifo_word >>  0) & 0x1FF;
 }
 
 void gdp_set_key_gb(uint32_t w0, uint32_t w1)
