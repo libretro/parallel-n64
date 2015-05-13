@@ -985,6 +985,10 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
          rdp.vtxbuf[i].z = g_gdp.prim_color.z;
 
       // Don't remove clipping, or it will freeze
+      if (rdp.vtxbuf[i].x > rdp.clip_max_x) rdp.clip |= CLIP_XMAX;
+      if (rdp.vtxbuf[i].x < rdp.clip_min_x) rdp.clip |= CLIP_XMIN;
+      if (rdp.vtxbuf[i].y > rdp.clip_max_y) rdp.clip |= CLIP_YMAX;
+      if (rdp.vtxbuf[i].y < rdp.clip_min_y) rdp.clip |= CLIP_YMIN;
       if (rdp.vtxbuf[i].z > maxZ)           rdp.clip |= CLIP_ZMAX;
       if (rdp.vtxbuf[i].z < 0.0f)           rdp.clip |= CLIP_ZMIN;
       no_clip &= rdp.vtxbuf[i].screen_translated;
