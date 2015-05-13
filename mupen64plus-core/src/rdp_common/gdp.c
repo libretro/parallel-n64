@@ -106,17 +106,6 @@ void gdp_set_convert(uint32_t w0, uint32_t w1)
    g_gdp.k4 = (fifo_word >>  9) & 0x1FF;
    /* K5 term of YUV-RGB conversion matrix. */
    g_gdp.k5 = (fifo_word >>  0) & 0x1FF;
-
-/*
- * All the graphics plugins emulating the RDP need to process k0, k1, k2, k3
- * as 9-bit sign-extended integers.  Especially with angrylion's plugin, we
- * can save on constantly sign-extending k0-k3 at the ninth bit by doing it
- * right now, as only in this function do those values ever get updated.
- */
-   g_gdp.k0 = SIGN(g_gdp.k0, 9);
-   g_gdp.k1 = SIGN(g_gdp.k1, 9);
-   g_gdp.k2 = SIGN(g_gdp.k2, 9);
-   g_gdp.k3 = SIGN(g_gdp.k3, 9);
 }
 
 void gdp_set_key_gb(uint32_t w0, uint32_t w1)
