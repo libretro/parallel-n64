@@ -80,6 +80,14 @@ void vbo_draw()
 
    if (vbuf_vbo)
    {
+      static bool drawing = false;
+
+      /* avoid infinite loop in sgl*BindBuffer */
+      if (drawing)
+         return;
+
+      drawing = true;
+
       glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
 
       if (vbuf_length >= vbuf_lastlen)
@@ -91,6 +99,8 @@ void vbo_draw()
 
       glDrawArrays(vbuf_primitive, 0, vbuf_length);
       glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+      drawing = false;
    }
    else
       glDrawArrays(vbuf_primitive, 0, vbuf_length);
@@ -171,7 +181,7 @@ void vbo_enable()
 void vbo_disable()
 {
    vbo_draw();
-   vbuf_enabled = true;
+   vbuf_enabled = false;
 }
 
 void grCullMode( int32_t mode )
