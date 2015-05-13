@@ -628,6 +628,7 @@ static void clip_tri(int interpolate_colors)
       // Check the vertices for clipping
       for (i=0; i<n; i++)
       {
+         bool save_inpoint = false;
          VERTEX *first, *second, *current = NULL, *current2 = NULL;
          j = i+1;
          if (j == n)
@@ -654,8 +655,10 @@ static void clip_tri(int interpolate_colors)
             if (second->z < maxZ)
             {
                /* First is out, second is in, save intersection & in point */
-               current  = second;
-               current2 = first;
+               current      = second;
+               current2     = first;
+
+               save_inpoint = true;
             }
          }
 
@@ -670,7 +673,7 @@ static void clip_tri(int interpolate_colors)
             clip_tri_interp_colors(current, current2, index, percent, 0, interpolate_colors);
 
             /* Save the in point */
-            if (second->z < maxZ)
+            if ((second->z < maxZ) && save_inpoint)
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
          }
       }
