@@ -338,7 +338,7 @@ static void shader_find_uniforms(shader_program_key *shader)
    shader->alphaRef_location       = glGetUniformLocation(prog, "alphaRef");
 }
 
-static void finish_shader_program(shader_program_key *shader)
+static void finish_shader_program_setup(shader_program_key *shader)
 {
    shader->fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
    glShaderSource(shader->fragment_shader_object, 1, (const GLchar**)&fragment_shader, NULL);
@@ -380,7 +380,7 @@ void init_combiner(void)
    glCompileShader(vertex_shader_object);
    check_compile(vertex_shader_object);
 
-   finish_shader_program(&shader);
+   finish_shader_program_setup(&shader);
    program_object_default = shader.program_object;
 
    use_shader_program(&shader);
@@ -438,28 +438,28 @@ static void compile_chroma_shader(void)
 }
 
 
-static void update_uniforms(shader_program_key prog)
+static void update_uniforms(const shader_program_key *prog)
 {
    GLfloat v0, v2;
-   glUniform1i(prog.texture0_location, 0);
-   glUniform1i(prog.texture1_location, 1);
+   glUniform1i(prog->texture0_location, 0);
+   glUniform1i(prog->texture1_location, 1);
 
    v2 = 1.0f;
    glUniform3f(
-      prog.vertexOffset_location,
+      prog->vertexOffset_location,
       (GLfloat)width / 2.f,
       (GLfloat)height / 2.f,
       v2
    );
    glUniform4f(
-      prog.textureSizes_location,
+      prog->textureSizes_location,
       (float)tex_width[0],
       (float)tex_height[0],
       (float)tex_width[1],
       (float)tex_height[1]
    );
    glUniform4f(
-      prog.exactSizes_location,
+      prog->exactSizes_location,
       (float)tex_exactWidth[0],
       (float)tex_exactHeight[0],
       (float)tex_exactWidth[1],
@@ -468,21 +468,21 @@ static void update_uniforms(shader_program_key prog)
 
    v0 = fog_enabled != 2 ? 0.0f : 1.0f;
    v2 /= (fogEnd - fogStart);
-   glUniform3f(prog.fogModeEndScale_location, v0, fogEnd,  v2);
+   glUniform3f(prog->fogModeEndScale_location, v0, fogEnd,  v2);
 
-   if(prog.fogColor_location != -1)
-      glUniform3f(prog.fogColor_location, g_gdp.fog_color.r / 255.0f, g_gdp.fog_color.g / 255.0f, g_gdp.fog_color.b / 255.0f);
+   if(prog->fogColor_location != -1)
+      glUniform3f(prog->fogColor_location, g_gdp.fog_color.r / 255.0f, g_gdp.fog_color.g / 255.0f, g_gdp.fog_color.b / 255.0f);
 
-   glUniform1f(prog.alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f);
+   glUniform1f(prog->alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f);
 
-   glUniform4f(prog.constant_color_location, texture_env_color[0], texture_env_color[1],
+   glUniform4f(prog->constant_color_location, texture_env_color[0], texture_env_color[1],
          texture_env_color[2], texture_env_color[3]);
 
-   glUniform4f(prog.ccolor0_location, ccolor[0][0], ccolor[0][1], ccolor[0][2], ccolor[0][3]);
+   glUniform4f(prog->ccolor0_location, ccolor[0][0], ccolor[0][1], ccolor[0][2], ccolor[0][3]);
 
-   glUniform4f(prog.ccolor1_location, ccolor[1][0], ccolor[1][1], ccolor[1][2], ccolor[1][3]);
+   glUniform4f(prog->ccolor1_location, ccolor[1][0], ccolor[1][1], ccolor[1][2], ccolor[1][3]);
 
-   glUniform4f(prog.chroma_color_location, chroma_color[0], chroma_color[1],
+   glUniform4f(prog->chroma_color_location, chroma_color[0], chroma_color[1],
          chroma_color[2], chroma_color[3]);
 
    set_lambda();
@@ -511,7 +511,7 @@ void compile_shader(void)
             program->three_point_filter1 == three_point_filter[1])
       {
          use_shader_program(program);
-         update_uniforms(*program);
+         update_uniforms(program);
          return;
       }
    }
@@ -554,9 +554,9 @@ void compile_shader(void)
 
    strcat(fragment_shader, fragment_shader_end);
 
-   finish_shader_program(&shader);
+   finish_shader_program_setup(&shader);
 
-   update_uniforms(shader);
+   update_uniforms(&shader);
 }
 
 void free_combiners(void)
