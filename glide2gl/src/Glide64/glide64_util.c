@@ -485,7 +485,7 @@ static void clip_tri(int interpolate_colors)
          }
          else
          {
-            if (rdp.vtxbuf2[j].x >= rdp.clip_min_x) // First is out, second is in, save intersection & in point
+            if (second->x >= rdp.clip_min_x) // First is out, second is in, save intersection & in point
             {
 
                current  = second;
