@@ -942,10 +942,6 @@ void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 #endif
 }
 
-/* angrylion's macro */
-#define SRA(exp, sa)    ((signed)(exp) >> (sa))
-#define SIGN(i, b)      SRA((i) << (32 - (b)), (32 - (b)))
-
 void gDPSetConvert( s32 k0, s32 k1, s32 k2, s32 k3, s32 k4, s32 k5 )
 {
 	gDP.convert.k0 = SIGN(k0, 9);
