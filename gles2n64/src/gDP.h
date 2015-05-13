@@ -27,10 +27,6 @@ extern "C" {
 #define LOADTYPE_BLOCK          0
 #define LOADTYPE_TILE           1
 
-/* angrylion's macro */
-#define SRA(exp, sa)    ((signed)(exp) >> (sa))
-#define SIGN(i, b)      SRA((i) << (32 - (b)), (32 - (b)))
-
 typedef struct
 {
     union

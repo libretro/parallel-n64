@@ -20,6 +20,8 @@
 #include "VI.h"
 #include "Config.h"
 
+#include "../../mupen64plus-core/src/rdp_common/gdp.h"
+
 gDPInfo gDP;
 
 void gDPSetOtherMode( u32 mode0, u32 mode1 )

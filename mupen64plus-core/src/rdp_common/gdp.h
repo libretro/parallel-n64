@@ -17,6 +17,14 @@
 #define _SHIFTR( v, s, w )  (((uint32_t)v >> s) & ((0x01 << w) - 1))
 #endif
 
+#ifndef SRA
+#define SRA(exp, sa)    ((signed)(exp) >> (sa))
+#endif
+
+#ifndef SIGN
+#define SIGN(i, b)      SRA((i) << (32 - (b)), (32 - (b)))
+#endif
+
 /* Update flags */
 #define UPDATE_ZBUF_ENABLED   0x00000001
 #define UPDATE_TEXTURE        0x00000002  /* Same thing */
