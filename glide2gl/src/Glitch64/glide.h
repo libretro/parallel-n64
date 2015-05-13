@@ -362,6 +362,11 @@ void grBufferClear(uint32_t color, uint32_t alpha, uint32_t depth);
 
 void grBufferSwap(uint32_t swap_interval);
 
+void tribuf_draw(void);
+void tribuf_free(void);
+void tribuf_init(void);
+void tribuf_append(GLenum mode, GLsizei count, void *pointers);
+
 /*
 ** error management
 */

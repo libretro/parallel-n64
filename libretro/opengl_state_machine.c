@@ -66,8 +66,10 @@ static GLuint BindTexture_ids[MAX_TEXTURE];
 #endif
 
 #ifndef GLIDE64_MK2
-static void gl_vbo_draw(void) {}
-void vbo_draw(void) {}
+static void gl_vbo_draw(void)
+{
+   vbo_draw();
+}
 #else
 static void gl_vbo_draw(void)
 {

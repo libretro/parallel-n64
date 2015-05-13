@@ -372,6 +372,9 @@ void init_combiner(void)
 {
    shader_program_key shader;
 
+   if (shader_programs)
+      free(shader_programs);
+
    number_of_programs = 0;
    shader_programs    = NULL;
    current_shader     = NULL;

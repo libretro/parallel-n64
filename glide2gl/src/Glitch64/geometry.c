@@ -25,6 +25,21 @@
 #include "glitchmain.h"
 #include "../Glide64/rdp.h"
 
+/* TODO: get rid of glitch_vbo */
+/* TODO: try glDrawElements */
+/* TODO: #ifdefs for EMSCRIPTEN (ToadKing?) */
+/* TODO: check which GR_TRIANGLE_STRIP calls can be turned into GR_TRIANGLE */
+#define VERTEX_OFF(x) offsetof(VERTEX, x)
+#define VERTEX_SIZE sizeof(VERTEX)
+#define VERTEX_BUFFER_SIZE (1500)
+static VERTEX   vbuf_data[VERTEX_BUFFER_SIZE];
+static GLenum   vbuf_primitive = GL_TRIANGLES;
+static unsigned vbuf_length    = 0;
+static unsigned vbuf_lastlen   = 0;
+static bool     vbuf_use_vbo   = false;
+static bool     vbuf_enabled   = false;
+static GLuint   vbuf_vbo       = 0;
+
 #ifdef EMSCRIPTEN
 struct draw_buffer {
   float x, y, z, q;
@@ -42,6 +57,122 @@ struct draw_buffer {
 static struct draw_buffer *gli_vbo;
 static unsigned gli_vbo_size;
 #endif
+
+void vbo_init()
+{
+   /* TODO: query frontend for use_vbo */
+   vbuf_length = 0;
+}
+
+void vbo_free()
+{
+   if (vbuf_vbo)
+      glDeleteBuffers(1, &vbuf_vbo);
+
+   vbuf_vbo    = 0;
+   vbuf_length = 0;
+}
+
+void vbo_draw()
+{
+   if (!vbuf_length)
+      return;
+
+   if (vbuf_vbo)
+   {
+      glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
+
+      if (vbuf_length >= vbuf_lastlen)
+         glBufferData(GL_ARRAY_BUFFER, VERTEX_SIZE * vbuf_length, vbuf_data, GL_DYNAMIC_DRAW);
+      else
+         glBufferSubData(GL_ARRAY_BUFFER, 0, VERTEX_SIZE * vbuf_length, vbuf_data);
+
+      vbuf_lastlen = vbuf_length;
+
+      glDrawArrays(vbuf_primitive, 0, vbuf_length);
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+   }
+   else
+      glDrawArrays(vbuf_primitive, 0, vbuf_length);
+
+   vbuf_length = 0;
+}
+
+static void vbo_append(GLenum mode, GLsizei count, void *pointers)
+{
+   if ((count != 3 && mode != GL_TRIANGLES) || vbuf_length + count > VERTEX_BUFFER_SIZE)
+     vbo_draw();
+
+   memcpy(&vbuf_data[vbuf_length], pointers, count * VERTEX_SIZE);
+   vbuf_length += count;
+
+   if (count == 3 || mode == GL_TRIANGLES)
+     vbuf_primitive = GL_TRIANGLES;
+   else
+   {
+     vbuf_primitive = mode;
+     vbo_draw();
+   }
+}
+
+void vbo_enable()
+{
+   if (vbuf_enabled)
+      return;
+
+   if (vbuf_use_vbo && !vbuf_vbo)
+   {
+      if (!vbuf_vbo)
+         glGenBuffers(1, &vbuf_vbo);
+
+      if (!vbuf_vbo)
+      {
+         log_cb(RETRO_LOG_ERROR, "Failed to create the VBO.");
+         vbuf_use_vbo = false;
+      }
+   }
+
+   if (vbuf_vbo)
+   {
+      glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
+
+      glEnableVertexAttribArray(POSITION_ATTR);
+      glEnableVertexAttribArray(COLOUR_ATTR);
+      glEnableVertexAttribArray(TEXCOORD_0_ATTR);
+      glEnableVertexAttribArray(TEXCOORD_1_ATTR);
+      glEnableVertexAttribArray(FOG_ATTR);
+
+      glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, (void*)VERTEX_OFF(x));
+      glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, (void*)VERTEX_OFF(b));
+      glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, (void*)VERTEX_OFF(coord[2]));
+      glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, (void*)VERTEX_OFF(coord[0]));
+      glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, (void*)VERTEX_OFF(f));
+
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+   }
+   else
+   {
+      glEnableVertexAttribArray(POSITION_ATTR);
+      glEnableVertexAttribArray(COLOUR_ATTR);
+      glEnableVertexAttribArray(TEXCOORD_0_ATTR);
+      glEnableVertexAttribArray(TEXCOORD_1_ATTR);
+      glEnableVertexAttribArray(FOG_ATTR);
+
+      glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, &vbuf_data->x);
+      glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, &vbuf_data->b);
+      glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &vbuf_data->coord[2]);
+      glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &vbuf_data->coord[0]);
+      glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, &vbuf_data->f);
+   }
+
+   vbuf_enabled = true;
+}
+
+void vbo_disable()
+{
+   vbo_draw();
+   vbuf_enabled = true;
+}
 
 void grCullMode( int32_t mode )
 {
@@ -155,6 +286,13 @@ void grDepthBiasLevel( int32_t level )
 
 void grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointers)
 {
+   if(need_to_compile)
+      compile_shader();
+
+   vbo_enable();
+   vbo_append(mode, count, pointers);
+
+   /*
 #ifdef EMSCRIPTEN
    unsigned i;
 #endif
@@ -198,4 +336,15 @@ void grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointers)
 #ifdef EMSCRIPTEN
    glBindBuffer(GL_ARRAY_BUFFER, 0);
 #endif
+*/
+}
+
+void init_geometry()
+{
+   vbo_init();
+}
+
+void free_geometry()
+{
+   vbo_free();
 }
