@@ -744,19 +744,18 @@ static void clip_tri(int interpolate_colors)
 
 static void render_tri (uint16_t linew, int old_interpolate)
 {
-   int i, j, n;
+   int i, n;
    float fog;
-
-   (void)j;
 
    if (rdp.clip)
       clip_tri(old_interpolate);
+
    n = rdp.n_global;
 
    if ((rdp.clip & CLIP_ZMIN) && (rdp.othermode_l & G_OBJLT_TLUT))
    {
-
       int to_render = false;
+
       for (i = 0; i < n; i++)
       {
          if (rdp.vtxbuf[i].z >= 0.0f)
@@ -765,6 +764,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
             break;
          }
       }
+
       if (!to_render) //all z < 0
       {
          FRDP (" * render_tri: all z < 0\n");
@@ -778,6 +778,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
       {
          float percent = 101.0f;
          VERTEX * v1 = 0,  * v2 = 0;
+
          switch (rdp.vtxbuf[i].number&7)
          {
             case 1:
@@ -802,6 +803,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
                continue;
                break;
          }
+
          switch (rdp.vtxbuf[i].number&24)
          {
             case 8:
@@ -819,6 +821,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
                      percent = (rdp.vtxbuf[i].y-v1->sy)/(v2->sy-v1->sy);
                }
          }
+
          InterpolateColors2(v1, v2, &rdp.vtxbuf[i], percent);
       }
    }
@@ -853,16 +856,20 @@ static void render_tri (uint16_t linew, int old_interpolate)
       VERTEX *V0, *V1, v[4];
       float width;
 
-      V0 = (VERTEX*)&rdp.vtxbuf[0];
-      V1 = (VERTEX*)&rdp.vtxbuf[1];
+      V0 = &rdp.vtxbuf[0];
+      V1 = &rdp.vtxbuf[1];
+
       if (fabs(V0->x - V1->x) < 0.01 && fabs(V0->y - V1->y) < 0.01)
          V1 = &rdp.vtxbuf[2];
+
       V0->z = ScaleZ(V0->z);
       V1->z = ScaleZ(V1->z);
+
       v[0] = *V0;
       v[1] = *V0;
       v[2] = *V1;
       v[3] = *V1;
+
       width = linew * 0.25f;
 
       if (fabs(V0->y - V1->y) < 0.0001)
@@ -904,13 +911,13 @@ static void render_tri (uint16_t linew, int old_interpolate)
    }
    else
    {
-      void *pointers, **pointers2;
       DepthBuffer(rdp.vtxbuf, n);
+
       if ((rdp.rm & 0xC10) == 0xC10)
-         grDepthBiasLevel (-deltaZ);
-      pointers = rdp.vtx_buffer? (void*)&rdp.vtx2 : (void*)&rdp.vtx1;
-      pointers2 = (void**)pointers;
-      grDrawVertexArrayContiguous(GR_TRIANGLE_FAN, n, pointers2[0]);
+         grDepthBiasLevel(-deltaZ);
+
+      grDrawVertexArrayContiguous(GR_TRIANGLE_FAN, n,
+            rdp.vtx_buffer ? rdp.vtx2 : rdp.vtx1);
    }
 }
 
