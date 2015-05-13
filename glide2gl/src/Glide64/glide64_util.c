@@ -446,6 +446,7 @@ static void clip_tri(int interpolate_colors)
 
    if (rdp.clip & CLIP_XMIN) // left of the screen
    {
+      bool save_inpoint = false;
       // Swap vertex buffers
       VERTEX *tmp = rdp.vtxbuf2;
       rdp.vtxbuf2 = rdp.vtxbuf;
@@ -456,7 +457,7 @@ static void clip_tri(int interpolate_colors)
       // Check the vertices for clipping
       for (i=0; i<n; i++)
       {
-         VERTEX *first, *second;
+         VERTEX *first, *second, *current = NULL, *current2 = NULL;
          j = i+1;
          if (j == n)
             j = 0;
@@ -471,27 +472,34 @@ static void clip_tri(int interpolate_colors)
             }
             else      // First is in, second is out, save intersection
             {
-               percent = (rdp.clip_min_x - first->x) / (second->x - first->x);
-               rdp.vtxbuf[index].x = rdp.clip_min_x;
-               rdp.vtxbuf[index].y = first->y + (second->y - first->y) * percent;
-               rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
-               rdp.vtxbuf[index].q = first->q + (second->q - first->q) * percent;
-               clip_tri_uv(first, second, index, percent);
-               clip_tri_interp_colors(first, second, index, percent, 8, interpolate_colors);
+               current  = first;
+               current2 = second;
             }
          }
          else
          {
             if (rdp.vtxbuf2[j].x >= rdp.clip_min_x) // First is out, second is in, save intersection & in point
             {
-               percent = (rdp.clip_min_x - second->x) / (first->x - second->x);
-               rdp.vtxbuf[index].x = rdp.clip_min_x;
-               rdp.vtxbuf[index].y = second->y + (first->y - second->y) * percent;
-               rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
-               rdp.vtxbuf[index].q = second->q + (first->q - second->q) * percent;
-               clip_tri_uv(second, first, index, percent);
-               clip_tri_interp_colors(second, first, index, percent, 8, interpolate_colors);
 
+               current  = second;
+               current2 = first;
+
+               save_inpoint = true;
+            }
+         }
+
+         if (current && current2)
+         {
+            percent = (rdp.clip_min_x - current->x) / (current2->x - current->x);
+            rdp.vtxbuf[index].x = rdp.clip_min_x;
+            rdp.vtxbuf[index].y = current->y + (current2->y - current->y) * percent;
+            rdp.vtxbuf[index].z = current->z + (current2->z - current->z) * percent;
+            rdp.vtxbuf[index].q = current->q + (current2->q - current->q) * percent;
+            clip_tri_uv(current, current2, index, percent);
+            clip_tri_interp_colors(current, current2, index, percent, 8, interpolate_colors);
+
+            if (save_inpoint)
+            {
                // Save the in point
                rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
             }
