@@ -412,7 +412,7 @@ static void clip_tri(int interpolate_colors)
          {
             if (second->x <= rdp.clip_max_x)   // Both are in, save the last one
             {
-               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
+               save_inpoint = true;
             }
             else      // First is in, second is out, save intersection
             {
@@ -441,11 +441,12 @@ static void clip_tri(int interpolate_colors)
             clip_tri_uv(current, current2, index, percent);
             clip_tri_interp_colors(current, current2, index, percent, 8, interpolate_colors);
 
-            if (save_inpoint)
-            {
-               // Save the in point
-               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
-            }
+         }
+
+         if (save_inpoint)
+         {
+            // Save the in point
+            rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
          }
       }
       n = index;
@@ -475,7 +476,7 @@ static void clip_tri(int interpolate_colors)
          {
             if (second->x >= rdp.clip_min_x)   // Both are in, save the last one
             {
-               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
+               save_inpoint = true;
             }
             else      // First is in, second is out, save intersection
             {
@@ -504,12 +505,12 @@ static void clip_tri(int interpolate_colors)
             rdp.vtxbuf[index].q = current->q + (current2->q - current->q) * percent;
             clip_tri_uv(current, current2, index, percent);
             clip_tri_interp_colors(current, current2, index, percent, 8, interpolate_colors);
+         }
 
-            if (save_inpoint)
-            {
-               // Save the in point
-               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
-            }
+         if (save_inpoint)
+         {
+            // Save the in point
+            rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
          }
       }
       n = index;
@@ -539,7 +540,7 @@ static void clip_tri(int interpolate_colors)
          {
             if (second->y <= rdp.clip_max_y)   // Both are in, save the last one
             {
-               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
+               save_inpoint = true;
             }
             else      // First is in, second is out, save intersection
             {
@@ -567,12 +568,12 @@ static void clip_tri(int interpolate_colors)
             rdp.vtxbuf[index].q = current->q + (current2->q - current->q) * percent;
             clip_tri_uv(current, current2, index, percent);
             clip_tri_interp_colors(current, current2, index, percent, 16, interpolate_colors);
+         }
 
-            if (save_inpoint)
-            {
-               // Save the in point
-               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
-            }
+         if (save_inpoint)
+         {
+            // Save the in point
+            rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
          }
       }
       n = index;
@@ -602,7 +603,7 @@ static void clip_tri(int interpolate_colors)
          {
             if (second->y >= rdp.clip_min_y)   // Both are in, save the last one
             {
-               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
+               save_inpoint = true;
             }
             else      // First is in, second is out, save intersection
             {
@@ -629,12 +630,12 @@ static void clip_tri(int interpolate_colors)
             rdp.vtxbuf[index].q = current->q + (current2->q - current->q) * percent;
             clip_tri_uv(current, current2, index, percent);
             clip_tri_interp_colors(current, current2, index, percent, 16, interpolate_colors);
+         }
 
-            if (save_inpoint)
-            {
-               // Save the in point
-               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
-            }
+         if (save_inpoint)
+         {
+            // Save the in point
+            rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
          }
       }
       n = index;
@@ -669,7 +670,7 @@ static void clip_tri(int interpolate_colors)
             if (second->z < maxZ)
             {
                /* Both are in, save the last one */
-               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
+               save_inpoint = true;
             }
             else
             {
@@ -686,7 +687,8 @@ static void clip_tri(int interpolate_colors)
                current      = second;
                current2     = first;
 
-               save_inpoint = true;
+               if (second->z < maxZ)
+                  save_inpoint = true;
             }
          }
 
@@ -699,11 +701,11 @@ static void clip_tri(int interpolate_colors)
             rdp.vtxbuf[index].q = current->q + (current2->q - current->q) * percent;
             clip_tri_uv(current, current2, index, percent);
             clip_tri_interp_colors(current, current2, index, percent, 0, interpolate_colors);
-
-            /* Save the in point */
-            if ((second->z < maxZ) && save_inpoint)
-               rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
          }
+
+         /* Save the in point */
+         if (save_inpoint)
+            rdp.vtxbuf[index++] = rdp.vtxbuf2[j];
       }
       n = index;
    }
