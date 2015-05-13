@@ -67,7 +67,6 @@ void set_depth_shader(void);
 #include <stdio.h>
 #define GL_GLEXT_PROTOTYPES
 #include <SDL_opengles2.h>
-#include "../glide_funcs.h"
 
 void init_textures(void);
 void free_textures(void);
