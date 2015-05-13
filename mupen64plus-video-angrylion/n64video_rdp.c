@@ -231,21 +231,6 @@ STRICTINLINE static u16 normalize_dzpix(u16 sum)
    return 0;
 }
 
-static void al_set_convert(uint32_t w0, uint32_t w1)
-{
-   gdp_set_convert(w0, w1);
-/*
- * All the graphics plugins emulating the RDP need to process k0, k1, k2, k3
- * as 9-bit sign-extended integers.  Especially with angrylion's plugin, we
- * can save on constantly sign-extending k0-k3 at the ninth bit by doing it
- * right now, as only in this function do those values ever get updated.
- */
-   g_gdp.k0 = SIGN(g_gdp.k0, 9);
-   g_gdp.k1 = SIGN(g_gdp.k1, 9);
-   g_gdp.k2 = SIGN(g_gdp.k2, 9);
-   g_gdp.k3 = SIGN(g_gdp.k3, 9);
-}
-
 static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer)
 {
    int base;
@@ -2113,7 +2098,7 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
    gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
    tex_rect          ,tex_rect_flip     ,gdp_load_sync         ,gdp_pipe_sync         ,
    gdp_tile_sync         ,gdp_full_sync         ,gdp_set_key_gb        ,gdp_set_key_r         ,
-   al_set_convert     ,set_scissor       ,set_prim_depth    ,set_other_modes   ,
+   gdp_set_convert       ,set_scissor       ,set_prim_depth    ,set_other_modes   ,
 
    load_tlut         ,gdp_invalid           ,set_tile_size     ,load_block        ,
    load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
