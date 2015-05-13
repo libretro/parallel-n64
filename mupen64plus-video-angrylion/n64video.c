@@ -3138,13 +3138,13 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t
       }
       else
       {
-         newk0 = SIGN(g_gdp.k0, 9);
-         newk1 = SIGN(g_gdp.k1, 9);
-         newk2 = SIGN(g_gdp.k2, 9);
-         newk3 = SIGN(g_gdp.k3, 9);
-         invk0 = ~newk0; 
-         invk1 = ~newk1; 
-         invk2 = ~newk2; 
+         newk0 = g_gdp.k0;
+         newk1 = g_gdp.k1;
+         newk2 = g_gdp.k2;
+         newk3 = g_gdp.k3;
+         invk0 = ~newk0;
+         invk1 = ~newk1;
+         invk2 = ~newk2;
          invk3 = ~newk3;
          if (!g_gdp.other_modes.en_tlut)
             fetch_texel(&t0, sss1, sst1, tilenum);
@@ -3189,10 +3189,10 @@ static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t
       }
       else
       {
-         newk0 = SIGN(g_gdp.k0, 9); 
-         newk1 = SIGN(g_gdp.k1, 9); 
-         newk2 = SIGN(g_gdp.k2, 9); 
-         newk3 = SIGN(g_gdp.k3, 9);
+         newk0 = g_gdp.k0;
+         newk1 = g_gdp.k1;
+         newk2 = g_gdp.k2;
+         newk3 = g_gdp.k3;
          invk0 = ~newk0; 
          invk1 = ~newk1; 
          invk2 = ~newk2; 
