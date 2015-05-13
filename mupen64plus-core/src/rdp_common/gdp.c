@@ -92,9 +92,9 @@ void gdp_set_fill_color(uint32_t w0, uint32_t w1)
 
 void gdp_set_convert(uint32_t w0, uint32_t w1)
 {
-   uint64_t fifo_word = ((uint64_t)w0 << 32) | ((uint64_t)w1 <<  0);
+   const uint64_t fifo_word = ((uint64_t)w0 << 32) | ((uint64_t)w1 <<  0);
 
-   /* KO term of YUV-RGB conversion matrix. */
+   /* K0 term of YUV-RGB conversion matrix. */
    g_gdp.k0 = (fifo_word >> 45) & 0x1FF;
    /* K1 term of YUV-RGB conversion matrix. */
    g_gdp.k1 = (fifo_word >> 36) & 0x1FF;
