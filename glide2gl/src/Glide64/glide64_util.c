@@ -1,3 +1,4 @@
+
 /*
 * Glide64 - Glide video plugin for Nintendo 64 emulators.
 * Copyright (c) 2002  Dave2001
@@ -900,15 +901,13 @@ static void render_tri (uint16_t linew, int old_interpolate)
       }
 
       {
-         VERTEX vout[6];
+         VERTEX vout[4];
          vout[0] = v[0];
          vout[1] = v[1];
          vout[2] = v[2];
-         vout[3] = v[1];
-         vout[4] = v[2];
-         vout[5] = v[3];
+         vout[3] = v[3];
 
-         grDrawVertexArrayContiguous(GR_TRIANGLES, 6, &vout[0]);
+         grDrawVertexArrayContiguous(GR_TRIANGLE_STRIP, 4, &vout[0]);
       }
    }
    else
