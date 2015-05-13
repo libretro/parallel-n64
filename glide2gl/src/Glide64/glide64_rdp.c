@@ -1499,7 +1499,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    FRDP (" - %d, %d, %d, %d\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 
    {
-      VERTEX v[4], vout[6];
+      VERTEX v[4], vout[4];
       float Z;
 
       grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
@@ -1591,14 +1591,12 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
          }
       }
 
-      vout[0]  = v[0];
-      vout[1]  = v[2];
-      vout[2]  = v[1];
-      vout[3]  = v[2];
-      vout[4]  = v[3];
-      vout[5]  = v[1];
+      vout[0] = v[0];
+      vout[1] = v[2];
+      vout[2] = v[1];
+      vout[3] = v[3];
 
-      grDrawVertexArrayContiguous (GR_TRIANGLES, 6, &vout[0]);
+      grDrawVertexArrayContiguous(GR_TRIANGLE_STRIP, 4, &vout[0]);
    }
 }
 
