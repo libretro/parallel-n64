@@ -60,7 +60,7 @@ static struct draw_buffer *gli_vbo;
 static unsigned gli_vbo_size;
 #endif
 
-void vbo_init()
+void vbo_init(void)
 {
    struct retro_variable var = { "mupen64-vcache-vbo", 0 };
    vbuf_use_vbo = false;
@@ -79,7 +79,7 @@ void vbo_init()
    }
 }
 
-void vbo_free()
+void vbo_free(void)
 {
    if (vbuf_vbo)
       glDeleteBuffers(1, &vbuf_vbo);
@@ -90,7 +90,7 @@ void vbo_free()
    vbuf_drawing = false;
 }
 
-void vbo_draw()
+void vbo_draw(void)
 {
    if (!vbuf_length)
       return;
@@ -137,7 +137,7 @@ static void vbo_append(GLenum mode, GLsizei count, void *pointers)
       vbo_draw();
 }
 
-void vbo_enable()
+void vbo_enable(void)
 {
    if (vbuf_enabled)
       return;
