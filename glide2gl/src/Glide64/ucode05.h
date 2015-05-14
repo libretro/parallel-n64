@@ -143,7 +143,6 @@ static void uc5_vertex(uint32_t w0, uint32_t w1)
       v->y_w = v->y * v->oow;
       v->z_w = v->z * v->oow;
 
-      v->uv_calculated = 0xFFFFFFFF;
       v->screen_translated = 0;
       v->shade_mod = 0;
 
@@ -226,10 +225,6 @@ static void uc5_tridma(uint32_t w0, uint32_t w1)
       v[1]->ov = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 2] / 32.0f;
       v[2]->ou = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 1] / 32.0f;
       v[2]->ov = (float)((int16_t*)gfx_info.RDRAM)[((addr+start) >> 1) + 0] / 32.0f;
-
-      v[0]->uv_calculated = 0xFFFFFFFF;
-      v[1]->uv_calculated = 0xFFFFFFFF;
-      v[2]->uv_calculated = 0xFFFFFFFF;
 
       cull_trianglefaces(v, 1, true, true, 0);
    }

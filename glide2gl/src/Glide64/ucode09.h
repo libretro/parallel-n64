@@ -150,7 +150,6 @@ static void uc9_draw_object (uint8_t * addr, uint32_t type)
       v->a = addr[7^3];
       v->flags = 0;
       v->uv_scaled = 0;
-      v->uv_calculated = 0xFFFFFFFF;
       v->shade_mod = 0;
       v->scr_off = 0;
       v->screen_translated = 2;

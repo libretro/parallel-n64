@@ -80,7 +80,6 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
       vert->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
       vert->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
 
-      vert->uv_calculated = 0xFFFFFFFF;
       vert->screen_translated = 0;
       vert->shade_mod = 0;
 
