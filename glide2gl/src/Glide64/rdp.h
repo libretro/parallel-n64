@@ -246,21 +246,6 @@ typedef struct
 // This structure is a tile descriptor (as used by rdp:settile and rdp:settilesize)
 typedef struct
 {
-   // rdp:settile
-   uint8_t format;      // format: ARGB, IA, ...
-   uint8_t size;        // size: 4,8,16, or 32 bit
-   uint16_t line;       // size of one row (x axis) in 64 bit words
-   uint16_t t_mem;      // location in texture memory (in 64 bit words, max 512 (4MB))
-   uint8_t palette;     // palette # to use
-   uint8_t clamp_t;     // clamp or wrap (y axis)?
-   uint8_t mirror_t;    // mirroring on (y axis)?
-   uint8_t mask_t;      // mask to wrap around (ex: 5 would wrap around 32) (y axis)
-   uint8_t shift_t;     // ??? (scaling)
-   uint8_t clamp_s;     // clamp or wrap (x axis)?
-   uint8_t mirror_s;    // mirroring on (x axis)?
-   uint8_t mask_s;      // mask to wrap around (x axis)
-   uint8_t shift_s;     // ??? (scaling)
-
    // rdp:settilesize
    // TODO - eventually remove these
    float f_ul_s;

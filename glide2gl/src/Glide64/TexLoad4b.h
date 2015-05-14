@@ -603,7 +603,7 @@ uint32_t Load4bCI (uintptr_t dst, uintptr_t src, int wid_64, int height, int lin
       return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;
    }
 
-   pal = (uintptr_t)(rdp.pal_8 + (rdp.tiles[tile].palette << 4));
+   pal = (uintptr_t)(rdp.pal_8 + (g_gdp.tile[tile].palette << 4));
    if (rdp.tlut_mode == 2)
    {
       ext <<= 1;

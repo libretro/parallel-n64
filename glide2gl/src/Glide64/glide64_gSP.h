@@ -224,7 +224,7 @@ static void draw_tri_depth(VERTEX **vtx)
 
 static INLINE void draw_tri_uv_calculation_update_shift(unsigned cur_tile, unsigned index, VERTEX *v)
 {
-   int32_t shifter = rdp.tiles[cur_tile].shift_s;
+   int32_t shifter = g_gdp.tile[cur_tile].shift_s;
 
    if (shifter)
    {
@@ -234,7 +234,7 @@ static INLINE void draw_tri_uv_calculation_update_shift(unsigned cur_tile, unsig
          v->u[index] /= (float)(1 << shifter);
    }
 
-   shifter = rdp.tiles[cur_tile].shift_t;
+   shifter = g_gdp.tile[cur_tile].shift_t;
 
    if (shifter)
    {

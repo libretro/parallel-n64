@@ -615,8 +615,8 @@ static void ys_memrect(uint32_t w0, uint32_t w1)
   off_y = (rdp.cmd2 & 0x0000FFFF) >> 5;
 
   width     = lr_x - ul_x;
-  tex_width = rdp.tiles[tile].line << 3;
-  texaddr   = (uint8_t*)(gfx_info.RDRAM + rdp.addr[rdp.tiles[tile].t_mem] + tex_width*off_y + off_x);
+  tex_width = g_gdp.tile[tile].line << 3;
+  texaddr   = (uint8_t*)(gfx_info.RDRAM + rdp.addr[g_gdp.tile[tile].tmem] + tex_width*off_y + off_x);
   fbaddr    = (uint8_t*)(gfx_info.RDRAM + rdp.cimg + ul_x);
 
   for (y = ul_y; y < lr_y; y++)
@@ -895,42 +895,41 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       if (rdp.cur_cache[i] && (rdp.tex & (i+1)))
       {
          int x_i, y_i;
-         TILE *tile;
          float sx, sy;
+         unsigned tilenum = rdp.cur_tile + i;
 
          sx = 1;
          sy = 1;
          x_i = off_x_i;
          y_i = off_y_i;
-         tile = (TILE*)&rdp.tiles[rdp.cur_tile + i];
 
          //shifting
-         if (tile->shift_s)
+         if (g_gdp.tile[tilenum].shift_s)
          {
-            if (tile->shift_s > 10)
+            if (g_gdp.tile[tilenum].shift_s > 10)
             {
-               uint8_t iShift = (16 - tile->shift_s);
+               uint8_t iShift = (16 - g_gdp.tile[tilenum].shift_s);
                x_i <<= iShift;
                sx = (float)(1 << iShift);
             }
             else
             {
-               uint8_t iShift = tile->shift_s;
+               uint8_t iShift = g_gdp.tile[tilenum].shift_s;
                x_i >>= iShift;
                sx = 1.0f/(float)(1 << iShift);
             }
          }
-         if (tile->shift_t)
+         if (g_gdp.tile[tilenum].shift_t)
          {
-            if (tile->shift_t > 10)
+            if (g_gdp.tile[tilenum].shift_t > 10)
             {
-               uint8_t iShift = (16 - tile->shift_t);
+               uint8_t iShift = (16 - g_gdp.tile[tilenum].shift_t);
                y_i <<= iShift;
                sy = (float)(1 << iShift);
             }
             else
             {
-               uint8_t iShift = tile->shift_t;
+               uint8_t iShift = g_gdp.tile[tilenum].shift_t;
                y_i >>= iShift;
                sy = 1.0f/(float)(1 << iShift);
             }
@@ -941,8 +940,8 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
             texUV[i].ul_u = SIGN16(x_i) / 32.0f;
             texUV[i].ul_v = SIGN16(y_i) / 32.0f;
 
-            texUV[i].ul_u -= tile->f_ul_s;
-            texUV[i].ul_v -= tile->f_ul_t;
+            texUV[i].ul_u -= rdp.tiles[tilenum].f_ul_s;
+            texUV[i].ul_v -= rdp.tiles[tilenum].f_ul_t;
 
             texUV[i].lr_u = texUV[i].ul_u + off_size_x * sx;
             texUV[i].lr_v = texUV[i].ul_v + off_size_y * sy;
@@ -1143,7 +1142,7 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 {
    int32_t i, j;
    uint32_t tile  =  (w1 >> 24) & 0x07;
-   uint16_t start = rdp.tiles[tile].t_mem - 256; // starting location in the palettes
+   uint16_t start = g_gdp.tile[tile].tmem - 256; // starting location in the palettes
    uint16_t count = ((uint16_t)(w1 >> 14) & 0x3FF) + 1;    // number to copy
 
    if (rdp.timg.addr + (count<<1) > BMASK)
@@ -1155,8 +1154,6 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
    load_palette (rdp.timg.addr, start, count);
 
    rdp.timg.addr += count << 1;
-
-   //FRDP("loadtlut: tile: %d, start: %d, count: %d, from: %08lx\n", tile, start, count, rdp.timg.addr);
 }
 
 static void rdp_settilesize(uint32_t w0, uint32_t w1)
@@ -1324,7 +1321,7 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
 
    tile = (uint32_t)((w1 >> 24) & 0x07);
 
-   rdp.addr[rdp.tiles[tile].t_mem] = rdp.timg.addr;
+   rdp.addr[g_gdp.tile[tile].tmem] = rdp.timg.addr;
 
    ul_s = (uint16_t)((w0 >> 14) & 0x03FF);
    ul_t = (uint16_t)((w0 >> 2 ) & 0x03FF);
@@ -1347,11 +1344,11 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
    width = lr_s - ul_s + 1;
 
 #ifdef TEXTURE_FILTER
-   LOAD_TILE_INFO &info = rdp.load_info[rdp.tiles[tile].t_mem];
+   LOAD_TILE_INFO &info = rdp.load_info[g_gdp.tile[tile].tmem];
    info.tile_ul_s = ul_s;
    info.tile_ul_t = ul_t;
-   info.tile_width = (rdp.tiles[tile].mask_s ? min((uint16_t)width, 1<<rdp.tiles[tile].mask_s) : (uint16_t)width);
-   info.tile_height = (rdp.tiles[tile].mask_t ? min((uint16_t)height, 1<<rdp.tiles[tile].mask_t) : (uint16_t)height);
+   info.tile_width = (g_gdp.tile[tile].ms ? min((uint16_t)width,   1 << g_gdp.tile[tile].ms) : (uint16_t)width);
+   info.tile_height = (g_gdp.tile[tile].mt ? min((uint16_t)height, 1 << g_gdp.tile[tile].mt) : (uint16_t)height);
    if (settings.hacks&hack_MK64) {
       if (info.tile_width%2)
          info.tile_width--;
@@ -1363,9 +1360,9 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
 #endif
 
 
-   line_n = rdp.timg.width << rdp.tiles[tile].size >> 1;
+   line_n = rdp.timg.width << g_gdp.tile[tile].size >> 1;
    offs = ul_t * line_n;
-   offs += ul_s << rdp.tiles[tile].size >> 1;
+   offs += ul_s << g_gdp.tile[tile].size >> 1;
    offs += rdp.timg.addr;
    if (offs >= BMASK)
       return;
@@ -1385,8 +1382,8 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
       if (height == 0)
          return;
 
-      wid_64 = rdp.tiles[tile].line;
-      dst = ((uint8_t*)g_gdp.tmem) + (rdp.tiles[tile].t_mem<<3);
+      wid_64 = g_gdp.tile[tile].line;
+      dst = ((uint8_t*)g_gdp.tmem) + (g_gdp.tile[tile].tmem << 3);
       end = ((uint8_t*)g_gdp.tmem) + 4096 - (wid_64<<3);
       loadTile((uint32_t *)gfx_info.RDRAM, (uint32_t *)dst, wid_64, height, line_n, offs, (uint32_t *)end);
    }
@@ -1396,24 +1393,7 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
 
 static void rdp_settile(uint32_t w0, uint32_t w1)
 {
-   int32_t tilenum = gdp_set_tile(w0, w1);
-   TILE *tile = (TILE*)&rdp.tiles[tilenum];
-
-   rdp.last_tile = tilenum;
-
-   tile->format    = g_gdp.tile[tilenum].format;
-   tile->size      = g_gdp.tile[tilenum].size;
-   tile->line      = g_gdp.tile[tilenum].line;
-   tile->t_mem     = g_gdp.tile[tilenum].tmem;
-   tile->palette   = g_gdp.tile[tilenum].palette;
-   tile->clamp_t   = g_gdp.tile[tilenum].ct;
-   tile->mirror_t  = g_gdp.tile[tilenum].mt;
-   tile->mask_t    = g_gdp.tile[tilenum].mask_t;
-   tile->shift_t   = g_gdp.tile[tilenum].shift_t;
-   tile->clamp_s   = g_gdp.tile[tilenum].cs;
-   tile->mirror_s  = g_gdp.tile[tilenum].ms;
-   tile->mask_s    = g_gdp.tile[tilenum].mask_s;
-   tile->shift_s   = g_gdp.tile[tilenum].shift_s;
+   rdp.last_tile = gdp_set_tile(w0, w1);
 }
 
 static void rdp_fillrect(uint32_t w0, uint32_t w1)
@@ -2624,19 +2604,19 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
          v->v[1] = v->v[0] = v->ov;
          if (rdp.tex >= 1 && rdp.cur_cache[0])
          {
-            if (rdp.tiles[rdp.cur_tile].shift_s)
+            if (g_gdp.tile[rdp.cur_tile].shift_s)
             {
-               if (rdp.tiles[rdp.cur_tile].shift_s > 10)
-                  v->u[0] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_s));
+               if (g_gdp.tile[rdp.cur_tile].shift_s > 10)
+                  v->u[0] *= (float)(1 << (16 - g_gdp.tile[rdp.cur_tile].shift_s));
                else
-                  v->u[0] /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_s);
+                  v->u[0] /= (float)(1 << g_gdp.tile[rdp.cur_tile].shift_s);
             }
-            if (rdp.tiles[rdp.cur_tile].shift_t)
+            if (g_gdp.tile[rdp.cur_tile].shift_t)
             {
-               if (rdp.tiles[rdp.cur_tile].shift_t > 10)
-                  v->v[0] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_t));
+               if (g_gdp.tile[rdp.cur_tile].shift_t > 10)
+                  v->v[0] *= (float)(1 << (16 - g_gdp.tile[rdp.cur_tile].shift_t));
                else
-                  v->v[0] /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
+                  v->v[0] /= (float)(1 << g_gdp.tile[rdp.cur_tile].shift_t);
             }
 
             v->u[0] -= rdp.tiles[rdp.cur_tile].f_ul_s;
@@ -2649,19 +2629,19 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
 
          if (rdp.tex >= 2 && rdp.cur_cache[1])
          {
-            if (rdp.tiles[rdp.cur_tile+1].shift_s)
+            if (g_gdp.tile[rdp.cur_tile+1].shift_s)
             {
-               if (rdp.tiles[rdp.cur_tile+1].shift_s > 10)
-                  v->u[1] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_s));
+               if (g_gdp.tile[rdp.cur_tile+1].shift_s > 10)
+                  v->u[1] *= (float)(1 << (16 - g_gdp.tile[rdp.cur_tile+1].shift_s));
                else
-                  v->u[1] /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_s);
+                  v->u[1] /= (float)(1 << g_gdp.tile[rdp.cur_tile+1].shift_s);
             }
-            if (rdp.tiles[rdp.cur_tile+1].shift_t)
+            if (g_gdp.tile[rdp.cur_tile+1].shift_t)
             {
-               if (rdp.tiles[rdp.cur_tile+1].shift_t > 10)
-                  v->v[1] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_t));
+               if (g_gdp.tile[rdp.cur_tile+1].shift_t > 10)
+                  v->v[1] *= (float)(1 << (16 - g_gdp.tile[rdp.cur_tile+1].shift_t));
                else
-                  v->v[1] /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
+                  v->v[1] /= (float)(1 << g_gdp.tile[rdp.cur_tile+1].shift_t);
             }
 
             v->u[1] -= rdp.tiles[rdp.cur_tile+1].f_ul_s;

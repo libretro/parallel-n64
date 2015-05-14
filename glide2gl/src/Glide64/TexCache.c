@@ -178,8 +178,8 @@ static void GetTexInfo (int id, int tile)
    tile_width  = g_gdp.tile[tile].sl - g_gdp.tile[tile].sh + 1;
    tile_height = g_gdp.tile[tile].tl - g_gdp.tile[tile].th + 1;
 
-   mask_width = (rdp.tiles[tile].mask_s==0)?(tile_width):(1 << rdp.tiles[tile].mask_s);
-   mask_height = (rdp.tiles[tile].mask_t==0)?(tile_height):(1 << rdp.tiles[tile].mask_t);
+   mask_width = (g_gdp.tile[tile].mask_s==0)?(tile_width):(1 << g_gdp.tile[tile].mask_s);
+   mask_height = (g_gdp.tile[tile].mask_t==0)?(tile_height):(1 << g_gdp.tile[tile].mask_t);
 
    if (settings.alt_tex_size)
    {
@@ -191,8 +191,8 @@ static void GetTexInfo (int id, int tile)
       width = min(mask_width, tile_width);	// changed from mask_width only
       rdp.tiles[tile].width = width;
 
-      // Get the width/height to load
-      if ((rdp.tiles[tile].clamp_s && tile_width <= 256) || (mask_width > 256))
+      // Get the width/height to load 
+      if ((g_gdp.tile[tile].cs && tile_width <= 256) || (mask_width > 256))
       {
          // actual width
          rdp.tiles[tile].width = tile_width;
@@ -201,7 +201,7 @@ static void GetTexInfo (int id, int tile)
       height = min(mask_height, tile_height);
       rdp.tiles[tile].height = height;
 
-      if ((rdp.tiles[tile].clamp_t && tile_height <= 256) || (mask_height > 256))
+      if ((g_gdp.tile[tile].ct && tile_height <= 256) || (mask_height > 256))
       {
          // actual height
          rdp.tiles[tile].height = tile_height;
@@ -222,7 +222,7 @@ static void GetTexInfo (int id, int tile)
       width = mask_width;
       rdp.tiles[tile].width = mask_width;
       // Get the width/height to load
-      if ((rdp.tiles[tile].clamp_s && tile_width <= 256) )//|| (mask_width > 256))
+      if ((g_gdp.tile[tile].cs && tile_width <= 256) )//|| (mask_width > 256))
       {
          // loading width
          width = min(mask_width, tile_width);
@@ -233,7 +233,7 @@ static void GetTexInfo (int id, int tile)
       height = mask_height;
       rdp.tiles[tile].height = mask_height;
 
-      if ((rdp.tiles[tile].clamp_t && tile_height <= 256) || (mask_height > 256))
+      if ((g_gdp.tile[tile].ct && tile_height <= 256) || (mask_height > 256))
       {
          // loading height
          height = min(mask_height, tile_height);
@@ -249,24 +249,24 @@ static void GetTexInfo (int id, int tile)
    if (rdp.timg.set_by == 1)
       crc_height = tile_height;
 
-   bpl = width << rdp.tiles[tile].size >> 1;
+   bpl = width << g_gdp.tile[tile].size >> 1;
 
 #ifndef NDEBUG
    LRDP(" | | |-+ Texture approved:\n");
-   FRDP (" | | | |- tmem: %08lx\n", rdp.tiles[tile].t_mem);
+   FRDP (" | | | |- tmem: %08lx\n", g_gdp.tile[tile].tmem);
    FRDP (" | | | |- load width: %d\n", width);
    FRDP (" | | | |- load height: %d\n", height);
    FRDP (" | | | |- actual width: %d\n", rdp.tiles[tile].width);
    FRDP (" | | | |- actual height: %d\n", rdp.tiles[tile].height);
-   FRDP (" | | | |- size: %d\n", rdp.tiles[tile].size);
-   FRDP (" | | | +- format: %d\n", rdp.tiles[tile].format);
+   FRDP (" | | | |- size: %d\n", g_gdp.tile[tile].size);
+   FRDP (" | | | +- format: %d\n", g_gdp.tile[tile].format);
    LRDP(" | | |- Calculating CRC... ");
 #endif
 
    // ** CRC CHECK
 
-   wid_64 = width << (rdp.tiles[tile].size) >> 1;
-   if (rdp.tiles[tile].size == G_IM_SIZ_32b)
+   wid_64 = width << (g_gdp.tile[tile].size) >> 1;
+   if (g_gdp.tile[tile].size == G_IM_SIZ_32b)
    {
       if (wid_64 & 15) wid_64 += 16;
       wid_64 &= 0xFFFFFFF0;
@@ -278,20 +278,20 @@ static void GetTexInfo (int id, int tile)
    wid_64 = wid_64>>3;
 
    // Texture too big for tmem & needs to wrap? (trees in mm)
-   if (rdp.tiles[tile].t_mem + min(height, tile_height) * (rdp.tiles[tile].line<<3) > 4096)
+   if (g_gdp.tile[tile].tmem + min(height, tile_height) * (g_gdp.tile[tile].line << 3) > 4096)
    {
       int y, shift;
       LRDP("TEXTURE WRAPS TMEM!!! ");
 
       // calculate the y value that intersects at 4096 bytes
-      y = (4096 - rdp.tiles[tile].t_mem) / (rdp.tiles[tile].line<<3);
+      y = (4096 - g_gdp.tile[tile].tmem) / (g_gdp.tile[tile].line<<3);
 
-      rdp.tiles[tile].clamp_t = 0;
+      g_gdp.tile[tile].ct = 0;
       g_gdp.tile[tile].tl = g_gdp.tile[tile].th + y - 1;
 
       // calc mask
       for (shift=0; (1<<shift)<y; shift++);
-      rdp.tiles[tile].mask_t = shift;
+      g_gdp.tile[tile].mask_t = shift;
 
       // restart the function
       LRDP("restarting...\n");
@@ -299,8 +299,8 @@ static void GetTexInfo (int id, int tile)
       return;
    }
 
-   line = rdp.tiles[tile].line;
-   if (rdp.tiles[tile].size == G_IM_SIZ_32b)
+   line = g_gdp.tile[tile].line;
+   if (g_gdp.tile[tile].size == G_IM_SIZ_32b)
       line <<= 1;
    crc = 0;
    {
@@ -308,10 +308,10 @@ static void GetTexInfo (int id, int tile)
       line = (line - wid_64) << 3;
       if (wid_64 < 1)
          wid_64 = 1;
-      addr = (uint8_t*)((((uint8_t*)g_gdp.tmem) + (rdp.tiles[tile].t_mem<<3)));
+      addr = (uint8_t*)((((uint8_t*)g_gdp.tmem) + (g_gdp.tile[tile].tmem << 3)));
       if (crc_height > 0) // Check the CRC
       {
-         if (rdp.tiles[tile].size < 3)
+         if (g_gdp.tile[tile].size < 3)
             crc = textureCRC(addr, wid_64, crc_height, line);
          else //32b texture
          {
@@ -323,19 +323,19 @@ static void GetTexInfo (int id, int tile)
          }
       }
    }
-   if ((rdp.tiles[tile].size < 2) && (rdp.tlut_mode || rdp.tiles[tile].format == G_IM_FMT_CI))
+   if ((g_gdp.tile[tile].size < 2) && (rdp.tlut_mode || g_gdp.tile[tile].format == G_IM_FMT_CI))
    {
-      if (rdp.tiles[tile].size == G_IM_SIZ_4b)
-         crc += rdp.pal_8_crc[rdp.tiles[tile].palette];
+      if (g_gdp.tile[tile].size == G_IM_SIZ_4b)
+         crc += rdp.pal_8_crc[g_gdp.tile[tile].palette];
       else
          crc += rdp.pal_256_crc;
    }
 
    FRDP ("Done.  CRC is: %08lx.\n", crc);
 
-   flags = (rdp.tiles[tile].clamp_s << 23) | (rdp.tiles[tile].mirror_s << 22) |
-      (rdp.tiles[tile].mask_s << 18) | (rdp.tiles[tile].clamp_t << 17) |
-      (rdp.tiles[tile].mirror_t << 16) | (rdp.tiles[tile].mask_t << 12);
+   flags = (g_gdp.tile[tile].cs << 23) | (g_gdp.tile[tile].ms << 22) |
+      (g_gdp.tile[tile].mask_s << 18) | (g_gdp.tile[tile].ct << 17) |
+      (g_gdp.tile[tile].mt << 16) | (g_gdp.tile[tile].mask_t << 12);
 
    info->real_image_width = real_image_width;
    info->real_image_height = real_image_height;
@@ -374,16 +374,16 @@ static void GetTexInfo (int id, int tile)
    }
 
    node = (NODE*)cachelut[crc>>16];
-   mod_mask = (rdp.tiles[tile].format == G_IM_FMT_CI) ? 0xFFFFFFFF : 0xF0F0F0F0;
+   mod_mask = (g_gdp.tile[tile].format == G_IM_FMT_CI) ? 0xFFFFFFFF : 0xF0F0F0F0;
    while (node)
    {
       if (node->crc == crc)
       {
          cache = (CACHE_LUT*)node->data;
          if (/*tex_found[id][node->tmu] == -1 &&
-               rdp.tiles[tile].palette == cache->palette &&
-               rdp.tiles[tile].format == cache->format &&
-               rdp.tiles[tile].size == cache->size &&*/
+               g_gdp.tile[tile].palette == cache->palette &&
+               g_gdp.tile[tile].format == cache->format &&
+               g_gdp.tile[tile].size == cache->size &&*/
                rdp.tiles[tile].width == cache->width &&
                rdp.tiles[tile].height == cache->height &&
                flags == cache->flags)
@@ -706,31 +706,31 @@ void TexCache(void)
          if (rdp.cur_cache[i])
          {
             uint32_t mode_s, mode_t;
-            int clamp_s, clamp_t;
+            int cs, ct;
             if (rdp.force_wrap && !rdp.texrecting)
             {
-               clamp_s = rdp.tiles[tile].clamp_s && g_gdp.tile[tile].sl - g_gdp.tile[tile].sh < 256;
-               clamp_t = rdp.tiles[tile].clamp_t && g_gdp.tile[tile].tl - g_gdp.tile[tile].th < 256;
+               cs = g_gdp.tile[tile].cs && g_gdp.tile[tile].sl - g_gdp.tile[tile].sh < 256;
+               ct = g_gdp.tile[tile].ct && g_gdp.tile[tile].tl - g_gdp.tile[tile].th < 256;
             }
             else
             {
-               clamp_s = (rdp.tiles[tile].clamp_s || rdp.tiles[tile].mask_s == 0) &&
+               cs = (g_gdp.tile[tile].cs || g_gdp.tile[tile].mask_s == 0) &&
                   g_gdp.tile[tile].sl - g_gdp.tile[tile].sh < 256;
-               clamp_t = (rdp.tiles[tile].clamp_t || rdp.tiles[tile].mask_t == 0) &&
+               ct = (g_gdp.tile[tile].ct || g_gdp.tile[tile].mask_t == 0) &&
                   g_gdp.tile[tile].tl - g_gdp.tile[tile].th < 256;
             }
 
             mode_s = GR_TEXTURECLAMP_WRAP;
             mode_t = GR_TEXTURECLAMP_WRAP;
 
-            if (clamp_s)
+            if (cs)
                mode_s = GR_TEXTURECLAMP_CLAMP;
-            else if (rdp.tiles[tile].mirror_s)
+            else if (g_gdp.tile[tile].ms)
                mode_s = GR_TEXTURECLAMP_MIRROR_EXT;
 
-            if (clamp_t)
+            if (ct)
                mode_t = GR_TEXTURECLAMP_CLAMP;
-            else if (rdp.tiles[tile].mirror_t)
+            else if (g_gdp.tile[tile].mt)
                mode_t = GR_TEXTURECLAMP_MIRROR_EXT;
 
             if (settings.filtering == 0)
@@ -774,21 +774,21 @@ static void LoadTex(int id, int tmu)
 
    //!Hackalert
    //GoldenEye water texture. It has CI format in fact, but the game set it to RGBA
-   if ((settings.hacks&hack_GoldenEye) && rdp.tiles[td].format == G_IM_FMT_RGBA && rdp.tlut_mode == 2 && rdp.tiles[td].size == G_IM_SIZ_16b)
+   if ((settings.hacks&hack_GoldenEye) && g_gdp.tile[td].format == G_IM_FMT_RGBA && rdp.tlut_mode == 2 && g_gdp.tile[td].size == G_IM_SIZ_16b)
    {
-      rdp.tiles[td].format = G_IM_FMT_CI;
-      rdp.tiles[td].size = G_IM_SIZ_8b;
+      g_gdp.tile[td].format = G_IM_FMT_CI;
+      g_gdp.tile[td].size = G_IM_SIZ_8b;
    }
 
    // Set the data
-   cache->line = rdp.tiles[td].line;
-   cache->addr = rdp.addr[rdp.tiles[td].t_mem];
+   cache->line = g_gdp.tile[td].line;
+   cache->addr = rdp.addr[g_gdp.tile[td].tmem];
    cache->crc = texinfo[id].crc;
-   cache->palette = rdp.tiles[td].palette;
+   cache->palette = g_gdp.tile[td].palette;
    cache->width = rdp.tiles[td].width;
    cache->height = rdp.tiles[td].height;
-   cache->format = rdp.tiles[td].format;
-   cache->size = rdp.tiles[td].size;
+   cache->format = g_gdp.tile[td].format;
+   cache->size = g_gdp.tile[td].size;
    cache->tmem_addr = voodoo.tmem_ptr[tmu];
    cache->set_by = rdp.timg.set_by;
    cache->texrecting = rdp.texrecting;
@@ -1196,18 +1196,18 @@ static void LoadTex(int id, int tmu)
       uint32_t size;
 	  int min_x, min_y;
 
-      result = load_table[rdp.tiles[td].size][rdp.tiles[td].format]
-         ((uintptr_t)(texture), (uintptr_t)(g_gdp.tmem)+(rdp.tiles[td].t_mem<<3),
+      result = load_table[g_gdp.tile[td].size][g_gdp.tile[td].format]
+         ((uintptr_t)(texture), (uintptr_t)(g_gdp.tmem)+(g_gdp.tile[td].tmem<<3),
           texinfo[id].wid_64, texinfo[id].height, texinfo[id].line, real_x, td);
 
       size = HIWORD(result);
 
-      if (rdp.tiles[td].mask_s != 0)
-         min_x = min((int)real_x, 1<<rdp.tiles[td].mask_s);
+      if (g_gdp.tile[td].mask_s != 0)
+         min_x = min((int)real_x, 1 << g_gdp.tile[td].mask_s);
       else
          min_x = real_x;
-      if (rdp.tiles[td].mask_t != 0)
-         min_y  = min((int)real_y, 1<<rdp.tiles[td].mask_t);
+      if (g_gdp.tile[td].mask_t != 0)
+         min_y  = min((int)real_y, 1 << g_gdp.tile[td].mask_t);
       else
          min_y = real_y;
 
@@ -1224,19 +1224,19 @@ static void LoadTex(int id, int tmu)
 
       if (texinfo[id].width < (int)real_x)
       {
-         bool cond_true = rdp.tiles[td].mask_s != 0
-               && (real_x > (1U << rdp.tiles[td].mask_s));
+         bool cond_true = g_gdp.tile[td].mask_s != 0
+               && (real_x > (1U << g_gdp.tile[td].mask_s));
 
-         if (rdp.tiles[td].mirror_s && cond_true)
+         if (g_gdp.tile[td].ms && cond_true)
          {
             if (size == 1)
-               Mirror16bS ((texture), rdp.tiles[td].mask_s,
+               Mirror16bS ((texture), g_gdp.tile[td].mask_s,
                      real_x, real_x, texinfo[id].height);
             else if (size == 2)
-               Mirror32bS ((texture), rdp.tiles[td].mask_s,
+               Mirror32bS ((texture), g_gdp.tile[td].mask_s,
                      real_x, real_x, texinfo[id].height);
             else
-               Mirror8bS ((texture), rdp.tiles[td].mask_s,
+               Mirror8bS ((texture), g_gdp.tile[td].mask_s,
                      real_x, real_x, texinfo[id].height);
          }
          else if (cond_true)
@@ -1245,7 +1245,7 @@ static void LoadTex(int id, int tmu)
             uint8_t *tex        = (uint8_t*)texture;
             uint32_t max_height = texinfo[id].height;
             uint8_t shift_a     = (size == 0) ? 2 : (size == 1) ? 1 : 0;
-            uint32_t mask_width = (1 << rdp.tiles[td].mask_s);
+            uint32_t mask_width = (1 << g_gdp.tile[td].mask_s);
             uint32_t mask_mask  = (mask_width-1) >> shift_a;
             int32_t count       = (real_x - mask_width) >> shift_a;
             int32_t line_full   = real_x << size;
@@ -1283,12 +1283,12 @@ static void LoadTex(int id, int tmu)
 
       if (texinfo[id].height < (int)real_y)
       {
-         if (rdp.tiles[td].mirror_t)
+         if (g_gdp.tile[td].mt)
          {
             // Vertical Mirror
-            if (rdp.tiles[td].mask_t != 0 && (real_y > (1U << rdp.tiles[td].mask_t)))
+            if (g_gdp.tile[td].mask_t != 0 && (real_y > (1U << g_gdp.tile[td].mask_t)))
             {
-               uint32_t mask_height = (1 << rdp.tiles[td].mask_t);
+               uint32_t mask_height = (1 << g_gdp.tile[td].mask_t);
                uint32_t mask_mask   = mask_height-1;
                int32_t line_full    = real_x << size;
                uint8_t *dst         = (uint8_t*)(texture + mask_height * line_full);
@@ -1305,11 +1305,11 @@ static void LoadTex(int id, int tmu)
                }
             }
          }
-         else if (rdp.tiles[td].mask_t != 0 && real_y > (1U << rdp.tiles[td].mask_t))
+         else if (g_gdp.tile[td].mask_t != 0 && real_y > (1U << g_gdp.tile[td].mask_t))
          {
             // Vertical Wrap
             uint32_t wrap_size   = size;
-            uint32_t mask_height = (1 << rdp.tiles[td].mask_t);
+            uint32_t mask_height = (1 << g_gdp.tile[td].mask_t);
             uint32_t y           = mask_height;
             uint32_t mask_mask   = mask_height-1;
             int32_t line_full    = real_x << wrap_size;

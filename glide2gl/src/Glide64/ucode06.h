@@ -301,20 +301,19 @@ static void DrawImage (DRAWIMAGE *d)
    rdp.timg.set_by = 0;
 
    // SetTile ()
-   tile = (TILE*)&rdp.tiles[0];
-   tile->format = d->imageFmt; // RGBA
-   tile->size = d->imageSiz; // 16-bit
-   tile->line = line;
-   tile->t_mem = 0;
-   tile->palette = (uint8_t)d->imagePal;
-   tile->clamp_t = 1;
-   tile->mirror_t = 0;
-   tile->mask_t = 0;
-   tile->shift_t = 0;
-   tile->clamp_s = 1;
-   tile->mirror_s = 0;
-   tile->mask_s = 0;
-   tile->shift_s = 0;
+   g_gdp.tile[0].format   = d->imageFmt; // RGBA
+   g_gdp.tile[0].size     = d->imageSiz; // 16-bit
+   g_gdp.tile[0].line     = line;
+   g_gdp.tile[0].tmem     = 0;
+   g_gdp.tile[0].palette  = (uint8_t)d->imagePal;
+   g_gdp.tile[0].ct       = 1;
+   g_gdp.tile[0].mt       = 0;
+   g_gdp.tile[0].mask_t   = 0;
+   g_gdp.tile[0].shift_t  = 0;
+   g_gdp.tile[0].cs       = 1;
+   g_gdp.tile[0].ms       = 0;
+   g_gdp.tile[0].mask_s   = 0;
+   g_gdp.tile[0].shift_s  = 0;
 
    g_gdp.tile[0].sh = 0;
    g_gdp.tile[0].th = 0;
@@ -780,21 +779,19 @@ static void uc6_read_object_data (DRAWOBJECT *d)
 static void uc6_init_tile(const DRAWOBJECT *d)
 {
    // SetTile ()
-   TILE *tile = (TILE*)&rdp.tiles[0];
-
-   tile->format = d->imageFmt; // RGBA
-   tile->size = d->imageSiz; // 16-bit
-   tile->line = d->imageStride;
-   tile->t_mem = d->imageAdrs;
-   tile->palette = d->imagePal;
-   tile->clamp_t = 1;
-   tile->mirror_t = 0;
-   tile->mask_t = 0;
-   tile->shift_t = 0;
-   tile->clamp_s = 1;
-   tile->mirror_s = 0;
-   tile->mask_s = 0;
-   tile->shift_s = 0;
+   g_gdp.tile[0].format   = d->imageFmt; // RGBA
+   g_gdp.tile[0].size     = d->imageSiz; // 16-bit
+   g_gdp.tile[0].line     = d->imageStride;
+   g_gdp.tile[0].tmem     = d->imageAdrs;
+   g_gdp.tile[0].palette  = d->imagePal;
+   g_gdp.tile[0].ct       = 1;
+   g_gdp.tile[0].mt       = 0;
+   g_gdp.tile[0].mask_t   = 0;
+   g_gdp.tile[0].shift_t  = 0;
+   g_gdp.tile[0].cs       = 1;
+   g_gdp.tile[0].ms       = 0;
+   g_gdp.tile[0].mask_s   = 0;
+   g_gdp.tile[0].shift_s  = 0;
 
    // SetTileSize ()
    g_gdp.tile[0].sh = 0;
@@ -1194,8 +1191,8 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
       rdp.timg.width = 1;
       rdp.timg.size = G_IM_SIZ_8b;
 
-      rdp.tiles[7].t_mem = tmem;
-      rdp.tiles[7].size = 1;
+      g_gdp.tile[7].tmem = tmem;
+      g_gdp.tile[7].size = 1;
       rdp.cmd0 = 0;
       rdp.cmd1 = 0x07000000 | (tsize << 14) | tline;
       rdp_loadblock(rdp.cmd0, rdp.cmd1);
@@ -1217,9 +1214,9 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
       rdp.timg.width = line << 3;
       rdp.timg.size = G_IM_SIZ_8b;
 
-      rdp.tiles[7].t_mem = tmem;
-      rdp.tiles[7].line = line;
-      rdp.tiles[7].size = 1;
+      g_gdp.tile[7].tmem = tmem;
+      g_gdp.tile[7].line = line;
+      g_gdp.tile[7].size = 1;
 
       rdp.cmd0 = 0;
       rdp.cmd1 = 0x07000000 | (twidth << 14) | (theight << 2);
@@ -1396,28 +1393,27 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
 
          rdp.timg.addr = d.imagePtr;
          rdp.timg.width = stride;
-         rdp.tiles[7].t_mem = 0;
-         rdp.tiles[7].line = line;//(d.imageW>>3);
-         rdp.tiles[7].size = d.imageSiz;
+         g_gdp.tile[7].tmem = 0;
+         g_gdp.tile[7].line = line;//(d.imageW>>3);
+         g_gdp.tile[7].size = d.imageSiz;
          rdp.cmd0 = (d.imageX << 14) | (d.imageY << 2);
          rdp.cmd1 = 0x07000000 | ((d.imageX+d.imageW-1) << 14) | ((d.imageY+d.imageH-1) << 2);
          rdp_loadtile(rdp.cmd0, rdp.cmd1);
 
          // SetTile ()
-         tile = (TILE*)&rdp.tiles[0];
-         tile->format = d.imageFmt;
-         tile->size = d.imageSiz;
-         tile->line = line;//(d.imageW>>3);
-         tile->t_mem = 0;
-         tile->palette = 0;
-         tile->clamp_t = 1;
-         tile->mirror_t = 0;
-         tile->mask_t = 0;
-         tile->shift_t = 0;
-         tile->clamp_s = 1;
-         tile->mirror_s = 0;
-         tile->mask_s = 0;
-         tile->shift_s = 0;
+         g_gdp.tile[0].format   = d.imageFmt;
+         g_gdp.tile[0].size     = d.imageSiz;
+         g_gdp.tile[0].line     = line;//(d.imageW>>3);
+         g_gdp.tile[0].tmem     = 0;
+         g_gdp.tile[0].palette  = 0;
+         g_gdp.tile[0].ct       = 1;
+         g_gdp.tile[0].mt       = 0;
+         g_gdp.tile[0].mask_t   = 0;
+         g_gdp.tile[0].shift_t  = 0;
+         g_gdp.tile[0].cs       = 1;
+         g_gdp.tile[0].ms       = 0;
+         g_gdp.tile[0].mask_s   = 0;
+         g_gdp.tile[0].shift_s  = 0;
 
          // SetTileSize ()
          g_gdp.tile[0].sh = d.imageX;

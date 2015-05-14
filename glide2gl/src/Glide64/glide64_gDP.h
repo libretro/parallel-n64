@@ -144,7 +144,7 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
          ucode5_texshiftcount++;
    }
 
-   rdp.addr[rdp.tiles[tile].t_mem] = rdp.timg.addr;
+   rdp.addr[g_gdp.tile[tile].tmem] = rdp.timg.addr;
 
    // ** DXT is used for swapping every other line
    /* double fdxt = (double)0x8000000F/(double)((uint32_t)(2047/(dxt-1))); // F for error
@@ -174,10 +174,10 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
 
    //angrylion's advice to use ul_s in texture image offset and cnt calculations.
    //Helps to fix Vigilante 8 jpeg backgrounds and logos
-   off = rdp.timg.addr + (ul_s << rdp.tiles[tile].size >> 1);
-   dst = ((uint8_t*)g_gdp.tmem) + (rdp.tiles[tile].t_mem<<3);
+   off = rdp.timg.addr + (ul_s << g_gdp.tile[tile].size >> 1);
+   dst = ((uint8_t*)g_gdp.tmem) + (g_gdp.tile[tile].tmem<<3);
    cnt = lr_s-ul_s+1;
-   if (rdp.tiles[tile].size == 3)
+   if (g_gdp.tile[tile].size == 3)
       cnt <<= 1;
 
    if (rdp.timg.size == G_IM_SIZ_32b)
