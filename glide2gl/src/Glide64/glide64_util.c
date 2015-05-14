@@ -449,7 +449,6 @@ static void clip_tri(int interpolate_colors)
 
    if (rdp.clip & CLIP_XMIN) // left of the screen
    {
-      bool save_inpoint = false;
       // Swap vertex buffers
       VERTEX *tmp = rdp.vtxbuf2;
       rdp.vtxbuf2 = rdp.vtxbuf;
@@ -460,6 +459,7 @@ static void clip_tri(int interpolate_colors)
       // Check the vertices for clipping
       for (i=0; i<n; i++)
       {
+         bool save_inpoint = false;
          VERTEX *first, *second, *current = NULL, *current2 = NULL;
          j = i+1;
          if (j == n)
