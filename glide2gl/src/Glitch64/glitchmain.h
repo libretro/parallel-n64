@@ -71,6 +71,9 @@ void set_depth_shader(void);
 void init_textures(void);
 void free_textures(void);
 
+void init_geometry(void);
+void free_geometry(void);
+
 void set_lambda(void);
 
 void init_combiner(void);

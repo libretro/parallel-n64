@@ -138,8 +138,9 @@ uint32_t grSstWinOpen(void)
 
    FindBestDepthBias();
 
-   init_textures();
+   init_geometry();
    init_combiner();
+   init_textures();
 
    return 1;
 }
@@ -160,6 +161,7 @@ int32_t grSstWinClose(uint32_t context)
    frameBuffer = NULL;
    buf         = NULL;
 
+   free_geometry();
    free_combiners();
    free_textures();
 

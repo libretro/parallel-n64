@@ -25,6 +25,23 @@
 #include "glitchmain.h"
 #include "../Glide64/rdp.h"
 
+/* TODO: get rid of glitch_vbo */
+/* TODO: try glDrawElements */
+/* TODO: #ifdefs for EMSCRIPTEN (ToadKing?) */
+/* TODO: investigate triangle degeneration to allow caching GL_TRIANGLE_STRIP */
+#define VERTEX_OFF(x) (vbuf_vbo ? (void*)offsetof(VERTEX, x) : (void*)&vbuf_data->x)
+#define VERTEX_SIZE sizeof(VERTEX)
+#define VERTEX_BUFFER_SIZE (1500)
+static VERTEX   vbuf_data[VERTEX_BUFFER_SIZE];
+static GLenum   vbuf_primitive = GL_TRIANGLES;
+static unsigned vbuf_length    = 0;
+static bool     vbuf_use_vbo   = false;
+static bool     vbuf_enabled   = false;
+static GLuint   vbuf_vbo       = 0;
+static bool     vbuf_drawing   = false;
+
+extern retro_environment_t environ_cb;
+
 #ifdef EMSCRIPTEN
 struct draw_buffer {
   float x, y, z, q;
@@ -42,6 +59,130 @@ struct draw_buffer {
 static struct draw_buffer *gli_vbo;
 static unsigned gli_vbo_size;
 #endif
+
+void vbo_init()
+{
+   struct retro_variable var = { "mupen64-vcache-vbo", 0 };
+   vbuf_use_vbo = false;
+   vbuf_length = 0;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "on"))
+      {
+          vbuf_use_vbo = true;
+
+          log_cb(RETRO_LOG_INFO, "Vertex cache VBO enabled.\n");
+      }
+      else
+         vbuf_use_vbo = false;
+   }
+}
+
+void vbo_free()
+{
+   if (vbuf_vbo)
+      glDeleteBuffers(1, &vbuf_vbo);
+
+   vbuf_vbo     = 0;
+   vbuf_length  = 0;
+   vbuf_enabled = false;
+   vbuf_drawing = false;
+}
+
+void vbo_draw()
+{
+   if (!vbuf_length)
+      return;
+
+   if (vbuf_vbo)
+   {
+      /* avoid infinite loop in sgl*BindBuffer */
+      if (vbuf_drawing)
+         return;
+
+      vbuf_drawing = true;
+
+      glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
+
+      glBufferSubData(GL_ARRAY_BUFFER, 0, VERTEX_SIZE * vbuf_length, vbuf_data);
+
+      glDrawArrays(vbuf_primitive, 0, vbuf_length);
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+      vbuf_drawing = false;
+   }
+   else
+      glDrawArrays(vbuf_primitive, 0, vbuf_length);
+
+   vbuf_length = 0;
+}
+
+static void vbo_append(GLenum mode, GLsizei count, void *pointers)
+{
+   if (vbuf_length + count > VERTEX_BUFFER_SIZE)
+     vbo_draw();
+
+   memcpy(&vbuf_data[vbuf_length], pointers, count * VERTEX_SIZE);
+   vbuf_length += count;
+
+   /* keep caching triangles as much as possible. */
+   if (count == 3 && vbuf_primitive == GL_TRIANGLES)
+      mode = GL_TRIANGLES;
+
+   vbuf_primitive = mode;
+
+   /* we can't handle anything but triangles so flush it */
+   if (mode != GL_TRIANGLES)
+      vbo_draw();
+}
+
+void vbo_enable()
+{
+   if (vbuf_enabled)
+      return;
+
+   if (vbuf_use_vbo && !vbuf_vbo)
+   {
+      if (!vbuf_vbo)
+         glGenBuffers(1, &vbuf_vbo);
+
+      if (!vbuf_vbo)
+      {
+         log_cb(RETRO_LOG_ERROR, "Failed to create the VBO.");
+         vbuf_use_vbo = false;
+      }
+   }
+
+   if (vbuf_vbo)
+   {
+      glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
+      glBufferData(GL_ARRAY_BUFFER, VERTEX_BUFFER_SIZE, 0, GL_DYNAMIC_DRAW);
+   }
+
+   glEnableVertexAttribArray(POSITION_ATTR);
+   glEnableVertexAttribArray(COLOUR_ATTR);
+   glEnableVertexAttribArray(TEXCOORD_0_ATTR);
+   glEnableVertexAttribArray(TEXCOORD_1_ATTR);
+   glEnableVertexAttribArray(FOG_ATTR);
+
+   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, VERTEX_OFF(x));
+   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, VERTEX_OFF(b));
+   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, VERTEX_OFF(coord[2]));
+   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, VERTEX_OFF(coord[0]));
+   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, VERTEX_OFF(f));
+
+   if (vbuf_vbo)
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+   vbuf_enabled = true;
+}
+
+void vbo_disable()
+{
+   vbo_draw();
+   vbuf_enabled = false;
+}
 
 void grCullMode( int32_t mode )
 {
@@ -155,6 +296,13 @@ void grDepthBiasLevel( int32_t level )
 
 void grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointers)
 {
+   if(need_to_compile)
+      compile_shader();
+
+   vbo_enable();
+   vbo_append(mode, count, pointers);
+
+   /*
 #ifdef EMSCRIPTEN
    unsigned i;
 #endif
@@ -198,4 +346,15 @@ void grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointers)
 #ifdef EMSCRIPTEN
    glBindBuffer(GL_ARRAY_BUFFER, 0);
 #endif
+*/
+}
+
+void init_geometry()
+{
+   vbo_init();
+}
+
+void free_geometry()
+{
+   vbo_free();
 }
