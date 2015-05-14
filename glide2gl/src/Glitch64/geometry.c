@@ -77,7 +77,6 @@ void vbo_init()
       else
          vbuf_use_vbo = false;
    }
-
 }
 
 void vbo_free()
@@ -85,8 +84,9 @@ void vbo_free()
    if (vbuf_vbo)
       glDeleteBuffers(1, &vbuf_vbo);
 
-   vbuf_vbo    = 0;
-   vbuf_length = 0;
+   vbuf_vbo     = 0;
+   vbuf_length  = 0;
+   vbuf_enabled = false;
 }
 
 void vbo_draw()
