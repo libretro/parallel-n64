@@ -222,7 +222,7 @@ static void draw_tri_depth(VERTEX **vtx)
    }
 }
 
-static INLINE void draw_tri_update_shift(unsigned cur_tile, unsigned index, VERTEX *v)
+static INLINE void draw_tri_uv_calculation_update_shift(unsigned cur_tile, unsigned index, VERTEX *v)
 {
    if (rdp.tiles[cur_tile].shift_s)
    {
@@ -285,7 +285,7 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
    {
       unsigned index = i+1;
       if (rdp.tex >= index && rdp.cur_cache[i])
-         draw_tri_update_shift(rdp.cur_tile+i, i, v);
+         draw_tri_uv_calculation_update_shift(rdp.cur_tile+i, i, v);
    }
 
    v->uv_calculated = rdp.tex_ctr;
