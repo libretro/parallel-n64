@@ -1161,25 +1161,30 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
 
 static void rdp_settilesize(uint32_t w0, uint32_t w1)
 {
-   int tilenum = (w1 >> 24) & 0x07;
+   int tilenum = gdp_set_tile_size(w0, w1);
+
+   /* TODO - Glide64 sets these variables wrongly - unify this
+    * later so that it uses the same values as Angrylion */
+   tilenum = (w1 >> 24) & 0x07;
 
    rdp.last_tile_size = tilenum;
 
-   rdp.tiles[tilenum].f_ul_s = (float)((w0 >> 12) & 0xFFF) / 4.0f;
-   rdp.tiles[tilenum].f_ul_t = (float)(w0 & 0xFFF) / 4.0f;
+   /* TODO - should get rid of this eventually */
+   rdp.tiles[tilenum].f_ul_s = (float)g_gdp.tile[tilenum].sl / 4.0f;
+   rdp.tiles[tilenum].f_ul_t = (float)g_gdp.tile[tilenum].tl / 4.0f;
 
+   /* TODO - Wrong values being used by Glide64  - unify this
+    * later so that it uses the same values as Angrylion */
    rdp.tiles[tilenum].ul_s   = (((uint16_t)(w0 >> 14)) & 0x03ff);
    rdp.tiles[tilenum].ul_t   = (((uint16_t)(w0 >> 2 )) & 0x03ff);
    rdp.tiles[tilenum].lr_s   = (((uint16_t)(w1 >> 14)) & 0x03ff);
    rdp.tiles[tilenum].lr_t   = (((uint16_t)(w1 >> 2 )) & 0x03ff);
 
-   // handle wrapping
+   /* handle wrapping */
    if (rdp.tiles[tilenum].lr_s < rdp.tiles[tilenum].ul_s)
       rdp.tiles[tilenum].lr_s += 0x400;
    if (rdp.tiles[tilenum].lr_t < rdp.tiles[tilenum].ul_t)
       rdp.tiles[tilenum].lr_t += 0x400;
-
-   g_gdp.flags |= UPDATE_TEXTURE;
 }
 
 
