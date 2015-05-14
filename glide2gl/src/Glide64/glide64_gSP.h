@@ -222,6 +222,33 @@ static void draw_tri_depth(VERTEX **vtx)
    }
 }
 
+static void draw_tri_update_shift(unsigned cur_tile, unsigned index, VERTEX *v)
+{
+   if (rdp.tiles[cur_tile].shift_s)
+   {
+      if (rdp.tiles[cur_tile].shift_s > 10)
+         v->u[index] *= (float)(1 << (16 - rdp.tiles[cur_tile].shift_s));
+      else
+         v->u[index] /= (float)(1 << rdp.tiles[cur_tile].shift_s);
+   }
+   if (rdp.tiles[cur_tile].shift_t)
+   {
+      if (rdp.tiles[cur_tile].shift_t > 10)
+         v->v[index] *= (float)(1 << (16 - rdp.tiles[cur_tile].shift_t));
+      else
+         v->v[index] /= (float)(1 << rdp.tiles[cur_tile].shift_t);
+   }
+
+   {
+      v->u[index] -= rdp.tiles[cur_tile].f_ul_s;
+      v->v[index] -= rdp.tiles[cur_tile].f_ul_t;
+      v->u[index] = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_x * v->u[index];
+      v->v[index] = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_y * v->v[index];
+   }
+   v->u_w[index] = v->u[index] / v->w;
+   v->v_w[index] = v->v[index] / v->w;
+}
+
 static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
 {
    //FRDP(" * CALCULATING VERTEX U/V: %d\n", v->number);
@@ -254,59 +281,10 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
    v->v[1] = v->v[0] = v->ov;
 
    if (rdp.tex >= 1 && rdp.cur_cache[0])
-   {
-      if (rdp.tiles[rdp.cur_tile].shift_s)
-      {
-         if (rdp.tiles[rdp.cur_tile].shift_s > 10)
-            v->u[0] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_s));
-         else
-            v->u[0] /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_s);
-      }
-      if (rdp.tiles[rdp.cur_tile].shift_t)
-      {
-         if (rdp.tiles[rdp.cur_tile].shift_t > 10)
-            v->v[0] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_t));
-         else
-            v->v[0] /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
-      }
-
-      {
-         v->u[0] -= rdp.tiles[rdp.cur_tile].f_ul_s;
-         v->v[0] -= rdp.tiles[rdp.cur_tile].f_ul_t;
-         v->u[0] = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_x * v->u[0];
-         v->v[0] = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_y * v->v[0];
-      }
-      v->u_w[0] = v->u[0] / v->w;
-      v->v_w[0] = v->v[0] / v->w;
-   }
+      draw_tri_update_shift(rdp.cur_tile, 0, v);
 
    if (rdp.tex >= 2 && rdp.cur_cache[1])
-   {
-      if (rdp.tiles[rdp.cur_tile+1].shift_s)
-      {
-         if (rdp.tiles[rdp.cur_tile+1].shift_s > 10)
-            v->u[1] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_s));
-         else
-            v->u[1] /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_s);
-      }
-      if (rdp.tiles[rdp.cur_tile+1].shift_t)
-      {
-         if (rdp.tiles[rdp.cur_tile+1].shift_t > 10)
-            v->v[1] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_t));
-         else
-            v->v[1] /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
-      }
-
-      {
-         v->u[1] -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
-         v->v[1] -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
-         v->u[1] = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_x * v->u[1];
-         v->v[1] = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_y * v->v[1];
-      }
-
-      v->u_w[1] = v->u[1] / v->w;
-      v->v_w[1] = v->v[1] / v->w;
-   }
+      draw_tri_update_shift(rdp.cur_tile+1, 1, v);
 
    v->uv_calculated = rdp.tex_ctr;
 }
