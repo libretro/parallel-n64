@@ -181,6 +181,8 @@ int32_t gdp_set_tile(uint32_t w0, uint32_t w1)
    /* Level of Detail shift for S addresses. */
    g_gdp.tile[tilenum].shift_s = (w1 & 0x0000000F) >> ( 0 -  0);
 
+   g_gdp.flags |= UPDATE_TEXTURE;
+
    return tilenum;
 }
 

@@ -1396,26 +1396,24 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
 
 static void rdp_settile(uint32_t w0, uint32_t w1)
 {
-   TILE *tile;
+   int32_t tilenum = gdp_set_tile(w0, w1);
+   TILE *tile = (TILE*)&rdp.tiles[tilenum];
 
-   rdp.last_tile = (uint32_t)((w1 >> 24) & 0x07);
-   tile = (TILE*)&rdp.tiles[rdp.last_tile];
+   rdp.last_tile = tilenum;
 
-   tile->format    = (uint8_t)((w0 >> 21) & 0x07);
-   tile->size      = (uint8_t)((w0 >> 19) & 0x03);
-   tile->line      = (uint16_t)((w0 >> 9) & 0x01FF);
-   tile->t_mem     = (uint16_t)(w0 & 0x1FF);
-   tile->palette   = (uint8_t)((w1 >> 20) & 0x0F);
-   tile->clamp_t   = (uint8_t)((w1 >> 19) & 0x01);
-   tile->mirror_t  = (uint8_t)((w1 >> 18) & 0x01);
-   tile->mask_t    = (uint8_t)((w1 >> 14) & 0x0F);
-   tile->shift_t   = (uint8_t)((w1 >> 10) & 0x0F);
-   tile->clamp_s   = (uint8_t)((w1 >> 9) & 0x01);
-   tile->mirror_s  = (uint8_t)((w1 >> 8) & 0x01);
-   tile->mask_s    = (uint8_t)((w1 >> 4) & 0x0F);
-   tile->shift_s   = (uint8_t)(w1 & 0x0F);
-
-   g_gdp.flags |= UPDATE_TEXTURE;
+   tile->format    = g_gdp.tile[tilenum].format;
+   tile->size      = g_gdp.tile[tilenum].size;
+   tile->line      = g_gdp.tile[tilenum].line;
+   tile->t_mem     = g_gdp.tile[tilenum].tmem;
+   tile->palette   = g_gdp.tile[tilenum].palette;
+   tile->clamp_t   = g_gdp.tile[tilenum].ct;
+   tile->mirror_t  = g_gdp.tile[tilenum].mt;
+   tile->mask_t    = g_gdp.tile[tilenum].mask_t;
+   tile->shift_t   = g_gdp.tile[tilenum].shift_t;
+   tile->clamp_s   = g_gdp.tile[tilenum].cs;
+   tile->mirror_s  = g_gdp.tile[tilenum].ms;
+   tile->mask_s    = g_gdp.tile[tilenum].mask_s;
+   tile->shift_s   = g_gdp.tile[tilenum].shift_s;
 }
 
 static void rdp_fillrect(uint32_t w0, uint32_t w1)
