@@ -216,11 +216,10 @@ static void draw_tri_depth(VERTEX **vtx)
          // Calculate deltaZ per polygon for Decal z-mode
          float fdzdy = (float)((diffz_02*diffx_12 - diffz_12*diffx_02) / denom);
          float fdz = (float)(fabs(fdzdx) + fabs(fdzdy));
-         if ((settings.hacks & hack_Zelda) && (rdp.rm & 0x800))
-            fdz *= 4.0;  // Decal mode in Zelda sometimes needs mutiplied deltaZ to work correct, e.g. roads
          deltaZ = max(8, (int)fdz);
       }
-      dzdx = (int)(fdzdx * 65536.0); }
+      dzdx = (int)(fdzdx * 65536.0);
+   }
 }
 
 static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
