@@ -239,6 +239,8 @@ static void setup_variables(void)
          "Buffer Swap; on|off" },
       { "mupen64-framerate",
          "Framerate (restart); original|fullspeed" },
+      { "mupen64-vcache-vbo",
+         "(Glide64) Vertex cache VBO (restart); off|on" },
       { NULL, NULL },
    };
 

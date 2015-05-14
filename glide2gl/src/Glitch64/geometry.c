@@ -40,6 +40,8 @@ static bool     vbuf_use_vbo   = false;
 static bool     vbuf_enabled   = false;
 static GLuint   vbuf_vbo       = 0;
 
+extern retro_environment_t environ_cb;
+
 #ifdef EMSCRIPTEN
 struct draw_buffer {
   float x, y, z, q;
@@ -60,8 +62,22 @@ static unsigned gli_vbo_size;
 
 void vbo_init()
 {
-   /* TODO: query frontend for use_vbo */
+   struct retro_variable var = { "mupen64-vcache-vbo", 0 };
+   vbuf_use_vbo = false;
    vbuf_length = 0;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "on"))
+      {
+          vbuf_use_vbo = true;
+
+          log_cb(RETRO_LOG_INFO, "Vertex cache VBO enabled.\n");
+      }
+      else
+         vbuf_use_vbo = false;
+   }
+
 }
 
 void vbo_free()
