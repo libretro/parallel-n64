@@ -47,7 +47,6 @@ typedef struct _shader_program_key
    int dither_enabled;
    int three_point_filter0;
    int three_point_filter1;
-   GLuint fragment_shader_object;
    GLuint program_object;
    int texture0_location;
    int texture1_location;
@@ -70,8 +69,8 @@ static int fcta[4],sourcea0[4],operanda0[4],sourcea1[4],operanda1[4],sourcea2[4]
 static int alpha_ref, alpha_func;
 bool alpha_test = 0;
 
-static shader_program_key *shader_programs;
-static shader_program_key *current_shader;
+static shader_program_key *shader_programs = NULL;
+static shader_program_key *current_shader  = NULL;
 
 static int number_of_programs = 0;
 static int color_combiner_key;
@@ -287,7 +286,12 @@ void check_link(GLuint program)
 
 static void append_shader_program(shader_program_key *shader)
 {
+   int curr_index;
    int index = number_of_programs;
+
+   if (current_shader)
+      curr_index = current_shader->index;
+
    shader->index = index;
 
    if (shader_programs == NULL)
@@ -295,7 +299,11 @@ static void append_shader_program(shader_program_key *shader)
    else
       shader_programs = (shader_program_key*)realloc(shader_programs, (index + 1) * sizeof(shader_program_key));
 
+   if (current_shader)
+      current_shader = &shader_programs[curr_index];
+
    shader_programs[index] = *shader;
+
    ++number_of_programs;
 }
 
@@ -340,14 +348,15 @@ static void shader_find_uniforms(shader_program_key *shader)
 
 static void finish_shader_program_setup(shader_program_key *shader)
 {
-   shader->fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
-   glShaderSource(shader->fragment_shader_object, 1, (const GLchar**)&fragment_shader, NULL);
-   glCompileShader(shader->fragment_shader_object);
-   check_compile(shader->fragment_shader_object);
+   GLuint fragshader = glCreateShader(GL_FRAGMENT_SHADER);
+
+   glShaderSource(fragshader, 1, (const GLchar**)&fragment_shader, NULL);
+   glCompileShader(fragshader);
+   check_compile(fragshader);
 
    shader->program_object = glCreateProgram();
    glAttachShader(shader->program_object, vertex_shader_object);
-   glAttachShader(shader->program_object, shader->fragment_shader_object);
+   glAttachShader(shader->program_object, fragshader);
 
    shader_bind_attributes(shader);
 
@@ -367,6 +376,7 @@ void init_combiner(void)
    shader_programs    = NULL;
    current_shader     = NULL;
    fragment_shader    = (char*)malloc(4096*2);
+   need_to_compile    = true;
 
    /* default shader */
    memset(&shader, 0, sizeof(shader));
@@ -562,10 +572,22 @@ void compile_shader(void)
 void free_combiners(void)
 {
    if (shader_programs)
+   {
+      shader_program_key *s = shader_programs;
+
+      while (number_of_programs--)
+         glDeleteProgram(s->program_object);
+
       free(shader_programs);
+   }
+
    if (fragment_shader)
       free(fragment_shader);
+
    shader_programs = NULL;
+   current_shader  = NULL;
+   fragment_shader = NULL;
+
    number_of_programs = 0;
 }
 

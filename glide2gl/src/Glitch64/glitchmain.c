@@ -61,6 +61,9 @@ uint32_t grSstWinOpen(void)
    bool ret;
    struct retro_variable var = { "mupen64-screensize", 0 };
 
+   if (frameBuffer)
+      grSstWinClose(0);
+
    ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
    if (ret && var.value)
@@ -141,18 +144,21 @@ uint32_t grSstWinOpen(void)
    return 1;
 }
 
-int32_t grSstWinClose( uint32_t context )
+int32_t grSstWinClose(uint32_t context)
 {
    if (frameBuffer)
       free(frameBuffer);
+
    if (buf)
       free(buf);
+
    glDeleteTextures(1, &default_texture);
 #ifdef EMSCRIPTEN
    glDeleteBuffers(1, &glitch_vbo);
 #endif
+
    frameBuffer = NULL;
-   buf = NULL;
+   buf         = NULL;
 
    free_combiners();
    free_textures();
