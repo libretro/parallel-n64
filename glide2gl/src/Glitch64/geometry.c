@@ -35,10 +35,10 @@
 static VERTEX   vbuf_data[VERTEX_BUFFER_SIZE];
 static GLenum   vbuf_primitive = GL_TRIANGLES;
 static unsigned vbuf_length    = 0;
-static unsigned vbuf_lastlen   = 0;
 static bool     vbuf_use_vbo   = false;
 static bool     vbuf_enabled   = false;
 static GLuint   vbuf_vbo       = 0;
+static bool     vbuf_drawing   = false;
 
 extern retro_environment_t environ_cb;
 
@@ -87,6 +87,7 @@ void vbo_free()
    vbuf_vbo     = 0;
    vbuf_length  = 0;
    vbuf_enabled = false;
+   vbuf_drawing = false;
 }
 
 void vbo_draw()
@@ -96,27 +97,20 @@ void vbo_draw()
 
    if (vbuf_vbo)
    {
-      static bool drawing = false;
-
       /* avoid infinite loop in sgl*BindBuffer */
-      if (drawing)
+      if (vbuf_drawing)
          return;
 
-      drawing = true;
+      vbuf_drawing = true;
 
       glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
 
-      if (vbuf_length >= vbuf_lastlen)
-         glBufferData(GL_ARRAY_BUFFER, VERTEX_SIZE * vbuf_length, vbuf_data, GL_DYNAMIC_DRAW);
-      else
-         glBufferSubData(GL_ARRAY_BUFFER, 0, VERTEX_SIZE * vbuf_length, vbuf_data);
-
-      vbuf_lastlen = vbuf_length;
+      glBufferSubData(GL_ARRAY_BUFFER, 0, VERTEX_SIZE * vbuf_length, vbuf_data);
 
       glDrawArrays(vbuf_primitive, 0, vbuf_length);
       glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-      drawing = false;
+      vbuf_drawing = false;
    }
    else
       glDrawArrays(vbuf_primitive, 0, vbuf_length);
@@ -161,7 +155,10 @@ void vbo_enable()
    }
 
    if (vbuf_vbo)
+   {
       glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
+      glBufferData(GL_ARRAY_BUFFER, VERTEX_BUFFER_SIZE, 0, GL_DYNAMIC_DRAW);
+   }
 
    glEnableVertexAttribArray(POSITION_ATTR);
    glEnableVertexAttribArray(COLOUR_ATTR);
