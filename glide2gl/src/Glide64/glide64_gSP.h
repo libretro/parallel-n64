@@ -222,7 +222,7 @@ static void draw_tri_depth(VERTEX **vtx)
    }
 }
 
-static void draw_tri_update_shift(unsigned cur_tile, unsigned index, VERTEX *v)
+static INLINE void draw_tri_update_shift(unsigned cur_tile, unsigned index, VERTEX *v)
 {
    if (rdp.tiles[cur_tile].shift_s)
    {
@@ -251,6 +251,7 @@ static void draw_tri_update_shift(unsigned cur_tile, unsigned index, VERTEX *v)
 
 static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
 {
+   unsigned i;
    //FRDP(" * CALCULATING VERTEX U/V: %d\n", v->number);
 
    if (!(rdp.geom_mode & G_LIGHTING))
@@ -280,11 +281,12 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
    v->u[1] = v->u[0] = v->ou;
    v->v[1] = v->v[0] = v->ov;
 
-   if (rdp.tex >= 1 && rdp.cur_cache[0])
-      draw_tri_update_shift(rdp.cur_tile, 0, v);
-
-   if (rdp.tex >= 2 && rdp.cur_cache[1])
-      draw_tri_update_shift(rdp.cur_tile+1, 1, v);
+   for (i = 0; i < 2; i++)
+   {
+      unsigned index = i+1;
+      if (rdp.tex >= index && rdp.cur_cache[i])
+         draw_tri_update_shift(rdp.cur_tile+i, i, v);
+   }
 
    v->uv_calculated = rdp.tex_ctr;
 }
