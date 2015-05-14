@@ -23,19 +23,6 @@ struct MAT2D {
 } mat_2d = {1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
 
 // positional and texel coordinate clipping
-#define CCLIP(ux,lx,ut,lt,uc,lc) \
-		if (ux > lx || lx < uc || ux > lc) return; \
-		if (ux < uc) { \
-			float p = (uc-ux)/(lx-ux); \
-			ut = p*(lt-ut)+ut; \
-			ux = uc; \
-		} \
-		if (lx > lc) { \
-			float p = (lc-ux)/(lx-ux); \
-			lt = p*(lt-ut)+ut; \
-			lx = lc; \
-		}
-
 #define CCLIP2(ux,lx,ut,lt,un,ln,uc,lc) \
 		if (ux > lx || lx < uc || ux > lc) return; \
 		if (ux < uc) { \
