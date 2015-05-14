@@ -149,7 +149,8 @@ static void clip_w (void)
    // Check the vertices for clipping
    for (i=0; i < n; i++)
    {
-      VERTEX *first, *second;
+      bool save_inpoint = false;
+      VERTEX *first, *second, *current = NULL, *current2 = NULL;
       j = i+1;
       if (j == 3)
          j = 0;
@@ -160,44 +161,45 @@ static void clip_w (void)
       {
          if (second->w >= 0.01f)    // Both are in, save the last one
          {
-            rdp.vtxbuf[index] = rdp.vtxbuf2[j];
-            rdp.vtxbuf[index++].not_zclipped = 1;
+            save_inpoint = true;
          }
          else      // First is in, second is out, save intersection
          {
-            percent = (-first->w) / (second->w - first->w);
-            rdp.vtxbuf[index].not_zclipped = 0;
-            rdp.vtxbuf[index].x = first->x + (second->x - first->x) * percent;
-            rdp.vtxbuf[index].y = first->y + (second->y - first->y) * percent;
-            rdp.vtxbuf[index].z = first->z + (second->z - first->z) * percent;
-            rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
-            rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent;
-            rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent;
-            rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent;
-            rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent;
-            rdp.vtxbuf[index++].number = first->number | second->number;
+            current  = first;
+            current2 = second;
          }
       }
       else
       {
          if (second->w >= 0.01f)  // First is out, second is in, save intersection & in point
          {
-            percent = (-second->w) / (first->w - second->w);
-            rdp.vtxbuf[index].not_zclipped = 0;
-            rdp.vtxbuf[index].x = second->x + (first->x - second->x) * percent;
-            rdp.vtxbuf[index].y = second->y + (first->y - second->y) * percent;
-            rdp.vtxbuf[index].z = second->z + (first->z - second->z) * percent;
-            rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
-            rdp.vtxbuf[index].u0 = second->u0 + (first->u0 - second->u0) * percent;
-            rdp.vtxbuf[index].v0 = second->v0 + (first->v0 - second->v0) * percent;
-            rdp.vtxbuf[index].u1 = second->u1 + (first->u1 - second->u1) * percent;
-            rdp.vtxbuf[index].v1 = second->v1 + (first->v1 - second->v1) * percent;
-            rdp.vtxbuf[index++].number = first->number | second->number;
+            current  = second;
+            current2 = first;
 
-            // Save the in point
-            rdp.vtxbuf[index] = rdp.vtxbuf2[j];
-            rdp.vtxbuf[index++].not_zclipped = 1;
+            save_inpoint = true;
          }
+      }
+
+      if (current && current2)
+      {
+         percent = (-current->w) / (current2->w - current->w);
+         rdp.vtxbuf[index].not_zclipped = 0;
+         rdp.vtxbuf[index].x = current->x + (current2->x - current->x) * percent;
+         rdp.vtxbuf[index].y = current->y + (current2->y - current->y) * percent;
+         rdp.vtxbuf[index].z = current->z + (current2->z - current->z) * percent;
+         rdp.vtxbuf[index].u0 = current->u0 + (current2->u0 - current->u0) * percent;
+         rdp.vtxbuf[index].v0 = current->v0 + (current2->v0 - current->v0) * percent;
+         rdp.vtxbuf[index].u1 = current->u1 + (current2->u1 - current->u1) * percent;
+         rdp.vtxbuf[index].v1 = current->v1 + (current2->v1 - current->v1) * percent;
+         rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
+         rdp.vtxbuf[index++].number = first->number | second->number;
+      }
+
+      if (save_inpoint)
+      {
+         // Save the in point
+         rdp.vtxbuf[index] = rdp.vtxbuf2[j];
+         rdp.vtxbuf[index++].not_zclipped = 1;
       }
    }
    rdp.n_global = index;
