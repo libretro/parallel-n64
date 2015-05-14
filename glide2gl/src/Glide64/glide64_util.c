@@ -995,10 +995,10 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
       else
       {
          //FRDP (" * ZCLIPPED: %d\n", rdp.vtxbuf[i].number);
-         rdp.vtxbuf[i].q = 1.0f / rdp.vtxbuf[i].w;
          rdp.vtxbuf[i].x = rdp.view_trans[0] + rdp.vtxbuf[i].x * rdp.vtxbuf[i].q * rdp.view_scale[0] + rdp.offset_x;
          rdp.vtxbuf[i].y = rdp.view_trans[1] + rdp.vtxbuf[i].y * rdp.vtxbuf[i].q * rdp.view_scale[1] + rdp.offset_y;
          rdp.vtxbuf[i].z = rdp.view_trans[2] + rdp.vtxbuf[i].z * rdp.vtxbuf[i].q * rdp.view_scale[2];
+         rdp.vtxbuf[i].q = 1.0f / rdp.vtxbuf[i].w;
          if (rdp.tex >= 1)
          {
             rdp.vtxbuf[i].u0 *= rdp.vtxbuf[i].q;
