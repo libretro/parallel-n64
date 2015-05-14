@@ -240,8 +240,8 @@ static void draw_tri_update_shift(unsigned cur_tile, unsigned index, VERTEX *v)
    }
 
    {
-      v->u[index] -= rdp.tiles[cur_tile].f_ul_s;
-      v->v[index] -= rdp.tiles[cur_tile].f_ul_t;
+      v->u[index] -= rdp.tiles[cur_tile + index].f_ul_s;
+      v->v[index] -= rdp.tiles[cur_tile + index].f_ul_t;
       v->u[index] = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_x * v->u[index];
       v->v[index] = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_y * v->v[index];
    }
