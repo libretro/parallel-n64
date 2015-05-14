@@ -29,7 +29,7 @@
 /* TODO: try glDrawElements */
 /* TODO: #ifdefs for EMSCRIPTEN (ToadKing?) */
 /* TODO: investigate triangle degeneration to allow caching GL_TRIANGLE_STRIP */
-#define VERTEX_OFF(x) offsetof(VERTEX, x)
+#define VERTEX_OFF(x) (vbuf_vbo ? (void*)offsetof(VERTEX, x) : (void*)&vbuf_data->x)
 #define VERTEX_SIZE sizeof(VERTEX)
 #define VERTEX_BUFFER_SIZE (1500)
 static VERTEX   vbuf_data[VERTEX_BUFFER_SIZE];
@@ -161,37 +161,22 @@ void vbo_enable()
    }
 
    if (vbuf_vbo)
-   {
       glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
 
-      glEnableVertexAttribArray(POSITION_ATTR);
-      glEnableVertexAttribArray(COLOUR_ATTR);
-      glEnableVertexAttribArray(TEXCOORD_0_ATTR);
-      glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-      glEnableVertexAttribArray(FOG_ATTR);
+   glEnableVertexAttribArray(POSITION_ATTR);
+   glEnableVertexAttribArray(COLOUR_ATTR);
+   glEnableVertexAttribArray(TEXCOORD_0_ATTR);
+   glEnableVertexAttribArray(TEXCOORD_1_ATTR);
+   glEnableVertexAttribArray(FOG_ATTR);
 
-      glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, (void*)VERTEX_OFF(x));
-      glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, (void*)VERTEX_OFF(b));
-      glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, (void*)VERTEX_OFF(coord[2]));
-      glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, (void*)VERTEX_OFF(coord[0]));
-      glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, (void*)VERTEX_OFF(f));
+   glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, VERTEX_OFF(x));
+   glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, VERTEX_OFF(b));
+   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, VERTEX_OFF(coord[2]));
+   glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, VERTEX_OFF(coord[0]));
+   glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, VERTEX_OFF(f));
 
+   if (vbuf_vbo)
       glBindBuffer(GL_ARRAY_BUFFER, 0);
-   }
-   else
-   {
-      glEnableVertexAttribArray(POSITION_ATTR);
-      glEnableVertexAttribArray(COLOUR_ATTR);
-      glEnableVertexAttribArray(TEXCOORD_0_ATTR);
-      glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-      glEnableVertexAttribArray(FOG_ATTR);
-
-      glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, VERTEX_SIZE, &vbuf_data->x);
-      glVertexAttribPointer(COLOUR_ATTR, 4, GL_UNSIGNED_BYTE, true, VERTEX_SIZE, &vbuf_data->b);
-      glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &vbuf_data->coord[2]);
-      glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT, false, VERTEX_SIZE, &vbuf_data->coord[0]);
-      glVertexAttribPointer(FOG_ATTR, 1, GL_FLOAT, false, VERTEX_SIZE, &vbuf_data->f);
-   }
 
    vbuf_enabled = true;
 }
