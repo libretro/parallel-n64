@@ -28,7 +28,7 @@
 /* TODO: get rid of glitch_vbo */
 /* TODO: try glDrawElements */
 /* TODO: #ifdefs for EMSCRIPTEN (ToadKing?) */
-/* TODO: check which GR_TRIANGLE_STRIP calls can be turned into GR_TRIANGLE */
+/* TODO: investigate triangle degeneration to allow caching GL_TRIANGLE_STRIP */
 #define VERTEX_OFF(x) offsetof(VERTEX, x)
 #define VERTEX_SIZE sizeof(VERTEX)
 #define VERTEX_BUFFER_SIZE (1500)
@@ -110,19 +110,21 @@ void vbo_draw()
 
 static void vbo_append(GLenum mode, GLsizei count, void *pointers)
 {
-   if ((count != 3 && mode != GL_TRIANGLES) || vbuf_length + count > VERTEX_BUFFER_SIZE)
+   if (vbuf_length + count > VERTEX_BUFFER_SIZE)
      vbo_draw();
 
    memcpy(&vbuf_data[vbuf_length], pointers, count * VERTEX_SIZE);
    vbuf_length += count;
 
-   if (count == 3 || mode == GL_TRIANGLES)
-     vbuf_primitive = GL_TRIANGLES;
-   else
-   {
-     vbuf_primitive = mode;
-     vbo_draw();
-   }
+   /* keep caching triangles as much as possible. */
+   if (count == 3 && vbuf_primitive == GL_TRIANGLES)
+      mode = GL_TRIANGLES;
+
+   vbuf_primitive = mode;
+
+   /* we can't handle anything but triangles so flush it */
+   if (mode != GL_TRIANGLES)
+      vbo_draw();
 }
 
 void vbo_enable()
