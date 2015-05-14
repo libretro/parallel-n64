@@ -1175,16 +1175,16 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
 
    /* TODO - Wrong values being used by Glide64  - unify this
     * later so that it uses the same values as Angrylion */
-   rdp.tiles[tilenum].ul_s   = (((uint16_t)(w0 >> 14)) & 0x03ff);
-   rdp.tiles[tilenum].ul_t   = (((uint16_t)(w0 >> 2 )) & 0x03ff);
-   rdp.tiles[tilenum].lr_s   = (((uint16_t)(w1 >> 14)) & 0x03ff);
-   rdp.tiles[tilenum].lr_t   = (((uint16_t)(w1 >> 2 )) & 0x03ff);
+   g_gdp.tile[tilenum].sh   = (((uint16_t)(w0 >> 14)) & 0x03ff);
+   g_gdp.tile[tilenum].th   = (((uint16_t)(w0 >> 2 )) & 0x03ff);
+   g_gdp.tile[tilenum].sl   = (((uint16_t)(w1 >> 14)) & 0x03ff);
+   g_gdp.tile[tilenum].tl   = (((uint16_t)(w1 >> 2 )) & 0x03ff);
 
    /* handle wrapping */
-   if (rdp.tiles[tilenum].lr_s < rdp.tiles[tilenum].ul_s)
-      rdp.tiles[tilenum].lr_s += 0x400;
-   if (rdp.tiles[tilenum].lr_t < rdp.tiles[tilenum].ul_t)
-      rdp.tiles[tilenum].lr_t += 0x400;
+   if (g_gdp.tile[tilenum].sl < g_gdp.tile[tilenum].sh)
+      g_gdp.tile[tilenum].sl += 0x400;
+   if (g_gdp.tile[tilenum].tl < g_gdp.tile[tilenum].th)
+      g_gdp.tile[tilenum].tl += 0x400;
 }
 
 
@@ -1337,10 +1337,10 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
 
    if ((settings.hacks&hack_Tonic) && tile == 7)
    {
-      rdp.tiles[0].ul_s = ul_s;
-      rdp.tiles[0].ul_t = ul_t;
-      rdp.tiles[0].lr_s = lr_s;
-      rdp.tiles[0].lr_t = lr_t;
+      g_gdp.tile[0].sh = ul_s;
+      g_gdp.tile[0].th = ul_t;
+      g_gdp.tile[0].sl = lr_s;
+      g_gdp.tile[0].tl = lr_t;
    }
 
    height = lr_t - ul_t + 1; // get height

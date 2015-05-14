@@ -154,9 +154,9 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
    _dxt = dxt << 20;
    addr = RSP_SegmentToPhysical(rdp.timg.addr);
 
-   rdp.tiles[tile].ul_s = ul_s;
-   rdp.tiles[tile].ul_t = ul_t;
-   rdp.tiles[tile].lr_s = lr_s;
+   g_gdp.tile[tile].sh = ul_s;
+   g_gdp.tile[tile].th = ul_t;
+   g_gdp.tile[tile].sl = lr_s;
 
    rdp.timg.set_by = 0; // load block
 
@@ -186,7 +186,7 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
       loadBlock((uint32_t *)gfx_info.RDRAM, (uint32_t *)dst, off, _dxt, cnt);
 
    rdp.timg.addr += cnt << 3;
-   rdp.tiles[tile].lr_t = ul_t + ((dxt*cnt)>>11);
+   g_gdp.tile[tile].tl = ul_t + ((dxt*cnt)>>11);
 
    g_gdp.flags |= UPDATE_TEXTURE;
 

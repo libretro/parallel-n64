@@ -304,8 +304,8 @@ void calc_sphere (VERTEX *v)
 
    if (settings.hacks&hack_Chopper)
    {
-      s_scale = min(rdp.tiles[rdp.cur_tile].org_s_scale >> 6, rdp.tiles[rdp.cur_tile].lr_s);
-      t_scale = min(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, rdp.tiles[rdp.cur_tile].lr_t);
+      s_scale = min(rdp.tiles[rdp.cur_tile].org_s_scale >> 6, g_gdp.tile[rdp.cur_tile].sl);
+      t_scale = min(rdp.tiles[rdp.cur_tile].org_t_scale >> 6, g_gdp.tile[rdp.cur_tile].tl);
    }
 
    TransformVector (v->vec, vec, rdp.model);

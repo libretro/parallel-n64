@@ -175,8 +175,8 @@ static void GetTexInfo (int id, int tile)
    info = (TEXINFO*)&texinfo[id];
 
    // Get width and height
-   tile_width = rdp.tiles[tile].lr_s - rdp.tiles[tile].ul_s + 1;
-   tile_height = rdp.tiles[tile].lr_t - rdp.tiles[tile].ul_t + 1;
+   tile_width  = g_gdp.tile[tile].sl - g_gdp.tile[tile].sh + 1;
+   tile_height = g_gdp.tile[tile].tl - g_gdp.tile[tile].th + 1;
 
    mask_width = (rdp.tiles[tile].mask_s==0)?(tile_width):(1 << rdp.tiles[tile].mask_s);
    mask_height = (rdp.tiles[tile].mask_t==0)?(tile_height):(1 << rdp.tiles[tile].mask_t);
@@ -287,7 +287,7 @@ static void GetTexInfo (int id, int tile)
       y = (4096 - rdp.tiles[tile].t_mem) / (rdp.tiles[tile].line<<3);
 
       rdp.tiles[tile].clamp_t = 0;
-      rdp.tiles[tile].lr_t = rdp.tiles[tile].ul_t + y - 1;
+      g_gdp.tile[tile].tl = g_gdp.tile[tile].th + y - 1;
 
       // calc mask
       for (shift=0; (1<<shift)<y; shift++);
@@ -709,15 +709,15 @@ void TexCache(void)
             int clamp_s, clamp_t;
             if (rdp.force_wrap && !rdp.texrecting)
             {
-               clamp_s = rdp.tiles[tile].clamp_s && rdp.tiles[tile].lr_s-rdp.tiles[tile].ul_s < 256;
-               clamp_t = rdp.tiles[tile].clamp_t && rdp.tiles[tile].lr_t-rdp.tiles[tile].ul_t < 256;
+               clamp_s = rdp.tiles[tile].clamp_s && g_gdp.tile[tile].sl - g_gdp.tile[tile].sh < 256;
+               clamp_t = rdp.tiles[tile].clamp_t && g_gdp.tile[tile].tl - g_gdp.tile[tile].th < 256;
             }
             else
             {
                clamp_s = (rdp.tiles[tile].clamp_s || rdp.tiles[tile].mask_s == 0) &&
-                  rdp.tiles[tile].lr_s-rdp.tiles[tile].ul_s < 256;
+                  g_gdp.tile[tile].sl - g_gdp.tile[tile].sh < 256;
                clamp_t = (rdp.tiles[tile].clamp_t || rdp.tiles[tile].mask_t == 0) &&
-                  rdp.tiles[tile].lr_t-rdp.tiles[tile].ul_t < 256;
+                  g_gdp.tile[tile].tl - g_gdp.tile[tile].th < 256;
             }
 
             mode_s = GR_TEXTURECLAMP_WRAP;

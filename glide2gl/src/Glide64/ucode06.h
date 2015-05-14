@@ -316,10 +316,10 @@ static void DrawImage (DRAWIMAGE *d)
    tile->mask_s = 0;
    tile->shift_s = 0;
 
-   rdp.tiles[0].ul_s = 0;
-   rdp.tiles[0].ul_t = 0;
-   rdp.tiles[0].lr_s = x_size-1;
-   rdp.tiles[0].lr_t = y_size-1;
+   g_gdp.tile[0].sh = 0;
+   g_gdp.tile[0].th = 0;
+   g_gdp.tile[0].sl = x_size-1;
+   g_gdp.tile[0].tl = y_size-1;
 
    Z = set_sprite_combine_mode ();
    if (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 2)
@@ -398,14 +398,14 @@ static void DrawImage (DRAWIMAGE *d)
 
          // ** Load the texture, constant portions have been set above
          // SetTileSize ()
-         rdp.tiles[0].ul_s = tb_u;
-         rdp.tiles[0].ul_t = tb_v;
-         rdp.tiles[0].lr_s = tb_u+x_size-1;
-         rdp.tiles[0].lr_t = tb_v+y_size-1;
+         g_gdp.tile[0].sh = tb_u;
+         g_gdp.tile[0].th = tb_v;
+         g_gdp.tile[0].sl = tb_u+x_size-1;
+         g_gdp.tile[0].tl = tb_v+y_size-1;
 
          // LoadTile ()
-         rdp.cmd0 = ((int)rdp.tiles[0].ul_s << 14) | ((int)rdp.tiles[0].ul_t << 2);
-         rdp.cmd1 = ((int)rdp.tiles[0].lr_s << 14) | ((int)rdp.tiles[0].lr_t << 2);
+         rdp.cmd0 = ((int)g_gdp.tile[0].sh << 14) | ((int)g_gdp.tile[0].th << 2);
+         rdp.cmd1 = ((int)g_gdp.tile[0].sl << 14) | ((int)g_gdp.tile[0].tl << 2);
          rdp_loadtile(rdp.cmd0, rdp.cmd1);
 
          TexCache ();
@@ -797,10 +797,10 @@ static void uc6_init_tile(const DRAWOBJECT *d)
    tile->shift_s = 0;
 
    // SetTileSize ()
-   rdp.tiles[0].ul_s = 0;
-   rdp.tiles[0].ul_t = 0;
-   rdp.tiles[0].lr_s = (d->imageW>0)?d->imageW-1:0;
-   rdp.tiles[0].lr_t = (d->imageH>0)?d->imageH-1:0;
+   g_gdp.tile[0].sh = 0;
+   g_gdp.tile[0].th = 0;
+   g_gdp.tile[0].sl = (d->imageW>0)?d->imageW-1:0;
+   g_gdp.tile[0].tl = (d->imageH>0)?d->imageH-1:0;
 }
 
 static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
@@ -1420,10 +1420,10 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          tile->shift_s = 0;
 
          // SetTileSize ()
-         rdp.tiles[0].ul_s = d.imageX;
-         rdp.tiles[0].ul_t = d.imageY;
-         rdp.tiles[0].lr_s = d.imageX+d.imageW-1;
-         rdp.tiles[0].lr_t = d.imageY+d.imageH-1;
+         g_gdp.tile[0].sh = d.imageX;
+         g_gdp.tile[0].th = d.imageY;
+         g_gdp.tile[0].sl = d.imageX+d.imageW-1;
+         g_gdp.tile[0].tl = d.imageY+d.imageH-1;
 
          Z = set_sprite_combine_mode ();
 

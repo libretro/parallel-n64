@@ -262,11 +262,7 @@ typedef struct
    uint8_t shift_s;     // ??? (scaling)
 
    // rdp:settilesize
-   uint16_t ul_s;       // upper left s coordinate
-   uint16_t ul_t;       // upper left t coordinate
-   uint16_t lr_s;       // lower right s coordinate
-   uint16_t lr_t;       // lower right t coordinate
-
+   // TODO - eventually remove these
    float f_ul_s;
    float f_ul_t;
 
