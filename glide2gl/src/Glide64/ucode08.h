@@ -48,10 +48,6 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
 {
    uint32_t i;
    float x, y, z;
-#ifdef __ARM_NEON__
-   float32x4_t comb0, comb1, comb2, comb3;
-   float32x4_t v_xyzw;
-#endif
    uint32_t addr = RSP_SegmentToPhysical(w1);
    int32_t n = (w0 >> 12) & 0xFF;
    int32_t v0 = ((w0 >> 1) & 0x7F) - n;
@@ -62,13 +58,6 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
       return;
 
    pre_update();
-
-#ifdef __ARM_NEON__
-   comb0 = vld1q_f32(rdp.combined[0]);
-   comb1 = vld1q_f32(rdp.combined[1]);
-   comb2 = vld1q_f32(rdp.combined[2]);
-   comb3 = vld1q_f32(rdp.combined[3]);
-#endif
 
    for (i=0; i < (n * iter); i+= iter)
    {
@@ -86,18 +75,10 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
       vert->uv_scaled   = 0;
       vert->a           = color[0];
 
-#ifdef __ARM_NEON__
-      v_xyzw  = vmulq_n_f32(comb0,x)+vmulq_n_f32(comb1,y)+vmulq_n_f32(comb2,z)+comb3;
-      vert->x = vgetq_lane_f32(v_xyzw,0);
-      vert->y = vgetq_lane_f32(v_xyzw,1);
-      vert->z = vgetq_lane_f32(v_xyzw,2);
-      vert->w = vgetq_lane_f32(v_xyzw,3);
-#else
       vert->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
       vert->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
       vert->z = x*rdp.combined[0][2] + y*rdp.combined[1][2] + z*rdp.combined[2][2] + rdp.combined[3][2];
       vert->w = x*rdp.combined[0][3] + y*rdp.combined[1][3] + z*rdp.combined[2][3] + rdp.combined[3][3];
-#endif
 
       vert->uv_calculated = 0xFFFFFFFF;
       vert->screen_translated = 0;
@@ -106,16 +87,9 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
       if (fabs(vert->w) < 0.001)
          vert->w = 0.001f;
       vert->oow = 1.0f / vert->w;
-#ifdef __ARM_NEON__
-      v_xyzw = vmulq_n_f32(v_xyzw,vert->oow);
-      vert->x_w=vgetq_lane_f32(v_xyzw,0);
-      vert->y_w=vgetq_lane_f32(v_xyzw,1);
-      vert->z_w=vgetq_lane_f32(v_xyzw,2);
-#else
       vert->x_w = vert->x * vert->oow;
       vert->y_w = vert->y * vert->oow;
       vert->z_w = vert->z * vert->oow;
-#endif
 
       vert->scr_off = 0;
       if (vert->x < -vert->w)

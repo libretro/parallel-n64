@@ -408,10 +408,6 @@ static void pre_update(void)
    }
 }
 
-#ifdef __ARM_NEON__
-#include <arm_neon.h>
-#endif
-
 static void gSPClipVertex_G64(uint32_t v)
 {
    VERTEX *vtx = (VERTEX*)&rdp.vtx[v];
