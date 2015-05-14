@@ -1061,50 +1061,46 @@ void update_scissor(bool set_scissor)
    g_gdp.flags ^= UPDATE_SCISSOR;
 }
 
-void glide64_z_compare(void)
+static void glide64_z_compare(void)
 {
-   // Z buffer
-   if (g_gdp.flags & UPDATE_ZBUF_ENABLED)
+   int depthbias_level = 0;
+   int depthbuf_func = GR_CMP_ALWAYS;
+   int depthmask_val = FXFALSE;
+   g_gdp.flags ^= UPDATE_ZBUF_ENABLED;
+
+   if (((rdp.flags & ZBUF_ENABLED) || ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
    {
-      int depthbias_level = 0;
-      int depthbuf_func = GR_CMP_ALWAYS;
-      int depthmask_val = FXFALSE;
-      g_gdp.flags ^= UPDATE_ZBUF_ENABLED;
-
-      if (((rdp.flags & ZBUF_ENABLED) || ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
+      if (rdp.flags & ZBUF_COMPARE)
       {
-         if (rdp.flags & ZBUF_COMPARE)
+         switch (g_gdp.other_modes.z_mode)
          {
-            switch (g_gdp.other_modes.z_mode)
-            {
-               case ZMODE_OPA:
-                  depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
-                  break;
-               case ZMODE_INTER:
+            case ZMODE_OPA:
+               depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
+               break;
+            case ZMODE_INTER:
+               depthbias_level = -4;
+               depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
+               break;
+            case ZMODE_XLU:
+               if (settings.ucode == 7)
                   depthbias_level = -4;
-                  depthbuf_func = settings.zmode_compare_less ? GR_CMP_LESS : GR_CMP_LEQUAL;
-                  break;
-               case ZMODE_XLU:
-                  if (settings.ucode == 7)
-                     depthbias_level = -4;
-                  depthbuf_func = GR_CMP_LESS;
-                  break;
-               case ZMODE_DEC:
-                  // will be set dynamically per polygon
-                  //grDepthBiasLevel(-deltaZ);
-                  depthbuf_func = GR_CMP_LEQUAL;
-                  break;
-            }
+               depthbuf_func = GR_CMP_LESS;
+               break;
+            case ZMODE_DEC:
+               // will be set dynamically per polygon
+               //grDepthBiasLevel(-deltaZ);
+               depthbuf_func = GR_CMP_LEQUAL;
+               break;
          }
-
-         if (rdp.flags & ZBUF_UPDATE)
-            depthmask_val = FXTRUE;
       }
 
-      grDepthBiasLevel(depthbias_level);
-      grDepthBufferFunction (depthbuf_func);
-      grDepthMask(depthmask_val);
+      if (rdp.flags & ZBUF_UPDATE)
+         depthmask_val = FXTRUE;
    }
+
+   grDepthBiasLevel(depthbias_level);
+   grDepthBufferFunction (depthbuf_func);
+   grDepthMask(depthmask_val);
 }
 
 //
@@ -1199,7 +1195,8 @@ void update(void)
          g_gdp.flags ^= UPDATE_TEXTURE;
    }
 
-   glide64_z_compare();
+   if (g_gdp.flags & UPDATE_ZBUF_ENABLED)
+      glide64_z_compare();
 
    // Alpha compare
    if (g_gdp.flags & UPDATE_ALPHA_COMPARE)
