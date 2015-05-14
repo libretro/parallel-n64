@@ -224,29 +224,32 @@ static void draw_tri_depth(VERTEX **vtx)
 
 static INLINE void draw_tri_uv_calculation_update_shift(unsigned cur_tile, unsigned index, VERTEX *v)
 {
-   if (rdp.tiles[cur_tile].shift_s)
+   int32_t shifter = rdp.tiles[cur_tile].shift_s;
+
+   if (shifter)
    {
-      if (rdp.tiles[cur_tile].shift_s > 10)
-         v->u[index] *= (float)(1 << (16 - rdp.tiles[cur_tile].shift_s));
+      if (shifter > 10)
+         v->u[index] *= (float)(1 << (16 - shifter));
       else
-         v->u[index] /= (float)(1 << rdp.tiles[cur_tile].shift_s);
-   }
-   if (rdp.tiles[cur_tile].shift_t)
-   {
-      if (rdp.tiles[cur_tile].shift_t > 10)
-         v->v[index] *= (float)(1 << (16 - rdp.tiles[cur_tile].shift_t));
-      else
-         v->v[index] /= (float)(1 << rdp.tiles[cur_tile].shift_t);
+         v->u[index] /= (float)(1 << shifter);
    }
 
+   shifter = rdp.tiles[cur_tile].shift_t;
+
+   if (shifter)
    {
-      v->u[index] -= rdp.tiles[cur_tile + index].f_ul_s;
-      v->v[index] -= rdp.tiles[cur_tile + index].f_ul_t;
-      v->u[index] = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_x * v->u[index];
-      v->v[index] = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_y * v->v[index];
+      if (shifter > 10)
+         v->v[index] *= (float)(1 << (16 - shifter));
+      else
+         v->v[index] /= (float)(1 << shifter);
    }
-   v->u_w[index] = v->u[index] / v->w;
-   v->v_w[index] = v->v[index] / v->w;
+
+   v->u[index]   -= rdp.tiles[cur_tile + index].f_ul_s;
+   v->v[index]   -= rdp.tiles[cur_tile + index].f_ul_t;
+   v->u[index]    = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_x * v->u[index];
+   v->v[index]    = rdp.cur_cache[index]->c_off + rdp.cur_cache[index]->c_scl_y * v->v[index];
+   v->u_w[index]  = v->u[index] / v->w;
+   v->v_w[index]  = v->v[index] / v->w;
 }
 
 static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
