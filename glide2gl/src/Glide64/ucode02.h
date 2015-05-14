@@ -99,24 +99,7 @@ static void uc2_vertex(uint32_t w0, uint32_t w1)
       return;
    }
 
-   // This is special, not handled in update(), but here
-   // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
-   if (g_gdp.flags & UPDATE_MULT_MAT)
-   {
-      g_gdp.flags ^= UPDATE_MULT_MAT;
-      MulMatrices(rdp.model, rdp.proj, rdp.combined);
-   }
-   if (g_gdp.flags & UPDATE_LIGHTS)
-   {
-      g_gdp.flags ^= UPDATE_LIGHTS;
-
-      // Calculate light vectors
-      for (l = 0; l < rdp.num_lights; l++)
-      {
-         InverseTransformVector(&rdp.light[l].dir[0], rdp.light_vector[l], rdp.model);
-         NormalizeVector (rdp.light_vector[l]);
-      }
-   }
+   pre_update();
 
    addr = RSP_SegmentToPhysical(w1);
    n    = (w0 >> 12) & 0xFF;

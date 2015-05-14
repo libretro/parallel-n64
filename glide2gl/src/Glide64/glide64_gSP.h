@@ -360,7 +360,6 @@ static void pre_update(void)
    if (g_gdp.flags & UPDATE_MULT_MAT)
       gSPCombineMatrices();
 
-   // This is special, not handled in update()
    if (g_gdp.flags & UPDATE_LIGHTS)
    {
       uint32_t l;

@@ -43,27 +43,7 @@ static void rsp_vertex(int v0, int n)
    unsigned int i;
    uint32_t addr = RSP_SegmentToPhysical(rdp.cmd1);
 
-   // This is special, not handled in update(), but here
-   // * Matrix Pre-multiplication idea by Gonetz (Gonetz@ngs.ru)
-   if (g_gdp.flags & UPDATE_MULT_MAT)
-   {
-      g_gdp.flags ^= UPDATE_MULT_MAT;
-      MulMatrices(rdp.model, rdp.proj, rdp.combined);
-   }
-
-   // This is special, not handled in update()
-   if (g_gdp.flags & UPDATE_LIGHTS)
-   {
-      g_gdp.flags ^= UPDATE_LIGHTS;
-
-      // Calculate light vectors
-      for (i = 0; i < rdp.num_lights; i++)
-      {
-         InverseTransformVector(&rdp.light[i].dir[0], rdp.light_vector[i], rdp.model);
-         NormalizeVector (rdp.light_vector[i]);
-      }
-   }
-
+   pre_update();
    gSPVertex_G64(addr, n, v0);
 }
 
