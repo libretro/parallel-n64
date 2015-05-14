@@ -174,10 +174,10 @@ static void clip_w (void)
          rdp.vtxbuf[index].x = current->x + (current2->x - current->x) * percent;
          rdp.vtxbuf[index].y = current->y + (current2->y - current->y) * percent;
          rdp.vtxbuf[index].z = current->z + (current2->z - current->z) * percent;
-         rdp.vtxbuf[index].u0 = current->u0 + (current2->u0 - current->u0) * percent;
-         rdp.vtxbuf[index].v0 = current->v0 + (current2->v0 - current->v0) * percent;
-         rdp.vtxbuf[index].u1 = current->u1 + (current2->u1 - current->u1) * percent;
-         rdp.vtxbuf[index].v1 = current->v1 + (current2->v1 - current->v1) * percent;
+         rdp.vtxbuf[index].u[0] = current->u[0] + (current2->u[0] - current->u[0]) * percent;
+         rdp.vtxbuf[index].v[0] = current->v[0] + (current2->v[0] - current->v[0]) * percent;
+         rdp.vtxbuf[index].u[1] = current->u[1] + (current2->u[1] - current->u[1]) * percent;
+         rdp.vtxbuf[index].v[1] = current->v[1] + (current2->v[1] - current->v[1]) * percent;
          rdp.vtxbuf[index].w = settings.depth_bias * 0.01f;
          rdp.vtxbuf[index++].number = first->number | second->number;
       }
@@ -250,35 +250,34 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
          v->ov *= 0.5f;
       }
    }
-   v->u1 = v->u0 = v->ou;
-   v->v1 = v->v0 = v->ov;
+   v->u[1] = v->u[0] = v->ou;
+   v->v[1] = v->v[0] = v->ov;
 
    if (rdp.tex >= 1 && rdp.cur_cache[0])
    {
-
       if (rdp.tiles[rdp.cur_tile].shift_s)
       {
          if (rdp.tiles[rdp.cur_tile].shift_s > 10)
-            v->u0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_s));
+            v->u[0] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_s));
          else
-            v->u0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_s);
+            v->u[0] /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_s);
       }
       if (rdp.tiles[rdp.cur_tile].shift_t)
       {
          if (rdp.tiles[rdp.cur_tile].shift_t > 10)
-            v->v0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_t));
+            v->v[0] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_t));
          else
-            v->v0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
+            v->v[0] /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
       }
 
       {
-         v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
-         v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t;
-         v->u0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_x * v->u0;
-         v->v0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_y * v->v0;
+         v->u[0] -= rdp.tiles[rdp.cur_tile].f_ul_s;
+         v->v[0] -= rdp.tiles[rdp.cur_tile].f_ul_t;
+         v->u[0] = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_x * v->u[0];
+         v->v[0] = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_y * v->v[0];
       }
-      v->u0_w = v->u0 / v->w;
-      v->v0_w = v->v0 / v->w;
+      v->u_w[0] = v->u[0] / v->w;
+      v->v_w[0] = v->v[0] / v->w;
    }
 
    if (rdp.tex >= 2 && rdp.cur_cache[1])
@@ -286,29 +285,29 @@ static void draw_tri_uv_calculation(VERTEX **vtx, VERTEX *v)
       if (rdp.tiles[rdp.cur_tile+1].shift_s)
       {
          if (rdp.tiles[rdp.cur_tile+1].shift_s > 10)
-            v->u1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_s));
+            v->u[1] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_s));
          else
-            v->u1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_s);
+            v->u[1] /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_s);
       }
       if (rdp.tiles[rdp.cur_tile+1].shift_t)
       {
          if (rdp.tiles[rdp.cur_tile+1].shift_t > 10)
-            v->v1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_t));
+            v->v[1] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_t));
          else
-            v->v1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
+            v->v[1] /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
       }
 
       {
-         v->u1 -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
-         v->v1 -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
-         v->u1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_x * v->u1;
-         v->v1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_y * v->v1;
+         v->u[1] -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
+         v->v[1] -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
+         v->u[1] = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_x * v->u[1];
+         v->v[1] = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_y * v->v[1];
       }
 
-      v->u1_w = v->u1 / v->w;
-      v->v1_w = v->v1 / v->w;
+      v->u_w[1] = v->u[1] / v->w;
+      v->v_w[1] = v->v[1] / v->w;
    }
-   //      FRDP(" * CALCULATING VERTEX U/V: %d  u0: %f, v0: %f, u1: %f, v1: %f\n", v->number, v->u0, v->v0, v->u1, v->v1);
+
    v->uv_calculated = rdp.tex_ctr;
 }
 

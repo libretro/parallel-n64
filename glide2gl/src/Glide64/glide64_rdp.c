@@ -975,10 +975,10 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[0].y = s_ul_y;
    vstd[0].z = Z;
    vstd[0].q = 1.0f;
-   vstd[0].u0 = texUV[0].ul_u;
-   vstd[0].v0 = texUV[0].ul_v;
-   vstd[0].u1 = texUV[1].ul_u;
-   vstd[0].v1 = texUV[1].ul_v;
+   vstd[0].u[0] = texUV[0].ul_u;
+   vstd[0].v[0] = texUV[0].ul_v;
+   vstd[0].u[1] = texUV[1].ul_u;
+   vstd[0].v[1] = texUV[1].ul_v;
    vstd[0].coord[0] = 0;
    vstd[0].coord[1] = 0;
    vstd[0].coord[2] = 0;
@@ -989,10 +989,10 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[1].y = s_ul_y;
    vstd[1].z = Z;
    vstd[1].q = 1.0f;
-   vstd[1].u0 = texUV[0].lr_u;
-   vstd[1].v0 = texUV[0].ul_v;
-   vstd[1].u1 = texUV[1].lr_u;
-   vstd[1].v1 = texUV[1].ul_v;
+   vstd[1].u[0] = texUV[0].lr_u;
+   vstd[1].v[0] = texUV[0].ul_v;
+   vstd[1].u[1] = texUV[1].lr_u;
+   vstd[1].v[1] = texUV[1].ul_v;
    vstd[1].coord[0] = 0;
    vstd[1].coord[1] = 0;
    vstd[1].coord[2] = 0;
@@ -1003,10 +1003,10 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[2].y = s_lr_y;
    vstd[2].z = Z;
    vstd[2].q = 1.0f;
-   vstd[2].u0 = texUV[0].ul_u;
-   vstd[2].v0 = texUV[0].lr_v;
-   vstd[2].u1 = texUV[1].ul_u;
-   vstd[2].v1 = texUV[1].lr_v;
+   vstd[2].u[0] = texUV[0].ul_u;
+   vstd[2].v[0] = texUV[0].lr_v;
+   vstd[2].u[1] = texUV[1].ul_u;
+   vstd[2].v[1] = texUV[1].lr_v;
    vstd[2].coord[0] = 0;
    vstd[2].coord[1] = 0;
    vstd[2].coord[2] = 0;
@@ -1017,10 +1017,10 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[3].y = s_lr_y;
    vstd[3].z = Z;
    vstd[3].q = 1.0f;
-   vstd[3].u0 = texUV[0].lr_u;
-   vstd[3].v0 = texUV[0].lr_v;
-   vstd[3].u1 = texUV[1].lr_u;
-   vstd[3].v1 = texUV[1].lr_v;
+   vstd[3].u[0] = texUV[0].lr_u;
+   vstd[3].v[0] = texUV[0].lr_v;
+   vstd[3].u[1] = texUV[1].lr_u;
+   vstd[3].v[1] = texUV[1].lr_v;
    vstd[3].coord[0] = 0;
    vstd[3].coord[1] = 0;
    vstd[3].coord[2] = 0;
@@ -1029,15 +1029,15 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    if ( ((rdp.cmd0>>24)&0xFF) == G_TEXRECTFLIP )
    {
-      vstd[1].u0 = texUV[0].ul_u;
-      vstd[1].v0 = texUV[0].lr_v;
-      vstd[1].u1 = texUV[1].ul_u;
-      vstd[1].v1 = texUV[1].lr_v;
+      vstd[1].u[0] = texUV[0].ul_u;
+      vstd[1].v[0] = texUV[0].lr_v;
+      vstd[1].u[1] = texUV[1].ul_u;
+      vstd[1].v[1] = texUV[1].lr_v;
 
-      vstd[2].u0 = texUV[0].lr_u;
-      vstd[2].v0 = texUV[0].ul_v;
-      vstd[2].u1 = texUV[1].lr_u;
-      vstd[2].v1 = texUV[1].ul_v;
+      vstd[2].u[0] = texUV[0].lr_u;
+      vstd[2].v[0] = texUV[0].ul_v;
+      vstd[2].u[1] = texUV[1].lr_u;
+      vstd[2].v[1] = texUV[1].ul_v;
    }
 
 
@@ -2617,31 +2617,31 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
          v->y = v->y * rdp.scale_y + rdp.offset_y;
          // v->z = 1.0f;///v->w;
          v->q = 1.0f/v->w;
-         v->u1 = v->u0 = v->ou;
-         v->v1 = v->v0 = v->ov;
+         v->u[1] = v->u[0] = v->ou;
+         v->v[1] = v->v[0] = v->ov;
          if (rdp.tex >= 1 && rdp.cur_cache[0])
          {
             if (rdp.tiles[rdp.cur_tile].shift_s)
             {
                if (rdp.tiles[rdp.cur_tile].shift_s > 10)
-                  v->u0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_s));
+                  v->u[0] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_s));
                else
-                  v->u0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_s);
+                  v->u[0] /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_s);
             }
             if (rdp.tiles[rdp.cur_tile].shift_t)
             {
                if (rdp.tiles[rdp.cur_tile].shift_t > 10)
-                  v->v0 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_t));
+                  v->v[0] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile].shift_t));
                else
-                  v->v0 /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
+                  v->v[0] /= (float)(1 << rdp.tiles[rdp.cur_tile].shift_t);
             }
 
-            v->u0 -= rdp.tiles[rdp.cur_tile].f_ul_s;
-            v->v0 -= rdp.tiles[rdp.cur_tile].f_ul_t;
-            v->u0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_x * v->u0;
-            v->v0 = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_y * v->v0;
-            v->u0 /= v->w;
-            v->v0 /= v->w;
+            v->u[0] -= rdp.tiles[rdp.cur_tile].f_ul_s;
+            v->v[0] -= rdp.tiles[rdp.cur_tile].f_ul_t;
+            v->u[0] = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_x * v->u[0];
+            v->v[0] = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_y * v->v[0];
+            v->u[0] /= v->w;
+            v->v[0] /= v->w;
          }
 
          if (rdp.tex >= 2 && rdp.cur_cache[1])
@@ -2649,24 +2649,24 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
             if (rdp.tiles[rdp.cur_tile+1].shift_s)
             {
                if (rdp.tiles[rdp.cur_tile+1].shift_s > 10)
-                  v->u1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_s));
+                  v->u[1] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_s));
                else
-                  v->u1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_s);
+                  v->u[1] /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_s);
             }
             if (rdp.tiles[rdp.cur_tile+1].shift_t)
             {
                if (rdp.tiles[rdp.cur_tile+1].shift_t > 10)
-                  v->v1 *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_t));
+                  v->v[1] *= (float)(1 << (16 - rdp.tiles[rdp.cur_tile+1].shift_t));
                else
-                  v->v1 /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
+                  v->v[1] /= (float)(1 << rdp.tiles[rdp.cur_tile+1].shift_t);
             }
 
-            v->u1 -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
-            v->v1 -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
-            v->u1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_x * v->u1;
-            v->v1 = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_y * v->v1;
-            v->u1 /= v->w;
-            v->v1 /= v->w;
+            v->u[1] -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
+            v->v[1] -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
+            v->u[1] = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_x * v->u[1];
+            v->v[1] = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_y * v->v[1];
+            v->u[1] /= v->w;
+            v->v[1] /= v->w;
          }
          apply_shade_mods (v);
       }

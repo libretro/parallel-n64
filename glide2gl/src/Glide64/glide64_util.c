@@ -266,8 +266,8 @@ static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percen
 static INLINE void CalculateLODValues(VERTEX *v, int32_t i, int32_t j, float *lodFactor, float s_scale, float t_scale)
 {
    float deltaS, deltaT, deltaTexels, deltaPixels, deltaX, deltaY;
-   deltaS = (v[j].u0/v[j].q - v[i].u0/v[i].q) * s_scale;
-   deltaT = (v[j].v0/v[j].q - v[i].v0/v[i].q) * t_scale;
+   deltaS = (v[j].u[0]/v[j].q - v[i].u[0]/v[i].q) * s_scale;
+   deltaT = (v[j].v[0]/v[j].q - v[i].v[0]/v[i].q) * t_scale;
    deltaTexels = sqrtf( deltaS * deltaS + deltaT * deltaT );
 
    deltaX = (v[j].x - v[i].x)/rdp.scale_x;
@@ -366,10 +366,10 @@ static void DepthBuffer(VERTEX * vtx, int n)
 }
 
 #define clip_tri_uv(first, second, index, percent) \
-   rdp.vtxbuf[index].u0 = first->u0 + (second->u0 - first->u0) * percent; \
-   rdp.vtxbuf[index].v0 = first->v0 + (second->v0 - first->v0) * percent; \
-   rdp.vtxbuf[index].u1 = first->u1 + (second->u1 - first->u1) * percent; \
-   rdp.vtxbuf[index].v1 = first->v1 + (second->v1 - first->v1) * percent
+   rdp.vtxbuf[index].u[0] = first->u[0] + (second->u[0] - first->u[0]) * percent; \
+   rdp.vtxbuf[index].v[0] = first->v[0] + (second->v[0] - first->v[0]) * percent; \
+   rdp.vtxbuf[index].u[1] = first->u[1] + (second->u[1] - first->u[1]) * percent; \
+   rdp.vtxbuf[index].v[1] = first->v[1] + (second->v[1] - first->v[1]) * percent
 
 #define clip_tri_interp_colors(first, second, index, percent, val, interpolate_colors) \
    if (interpolate_colors) \
@@ -734,10 +734,10 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].y = rdp.vtxbuf2[i].y + (rdp.vtxbuf2[j].y - rdp.vtxbuf2[i].y) * percent;
                rdp.vtxbuf[index].z = 0.0f;
                rdp.vtxbuf[index].q = rdp.vtxbuf2[i].q + (rdp.vtxbuf2[j].q - rdp.vtxbuf2[i].q) * percent;
-               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[i].u0 + (rdp.vtxbuf2[j].u0 - rdp.vtxbuf2[i].u0) * percent;
-               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[i].v0 + (rdp.vtxbuf2[j].v0 - rdp.vtxbuf2[i].v0) * percent;
-               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[i].u1 + (rdp.vtxbuf2[j].u1 - rdp.vtxbuf2[i].u1) * percent;
-               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[i].v1 + (rdp.vtxbuf2[j].v1 - rdp.vtxbuf2[i].v1) * percent;
+               rdp.vtxbuf[index].u[0] = rdp.vtxbuf2[i].u[0] + (rdp.vtxbuf2[j].u[0] - rdp.vtxbuf2[i].u[0]) * percent;
+               rdp.vtxbuf[index].v[0] = rdp.vtxbuf2[i].v[0] + (rdp.vtxbuf2[j].v[0] - rdp.vtxbuf2[i].v[0]) * percent;
+               rdp.vtxbuf[index].u[1] = rdp.vtxbuf2[i].u[1] + (rdp.vtxbuf2[j].u[1] - rdp.vtxbuf2[i].u[1]) * percent;
+               rdp.vtxbuf[index].v[1] = rdp.vtxbuf2[i].v[1] + (rdp.vtxbuf2[j].v[1] - rdp.vtxbuf2[i].v[1]) * percent;
                if (interpolate_colors)
                   InterpolateColors(&rdp.vtxbuf[index++], percent, &rdp.vtxbuf2[i], &rdp.vtxbuf2[j]);
                else
@@ -754,10 +754,10 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].y = rdp.vtxbuf2[j].y + (rdp.vtxbuf2[i].y - rdp.vtxbuf2[j].y) * percent;
                rdp.vtxbuf[index].z = 0.0f;;
                rdp.vtxbuf[index].q = rdp.vtxbuf2[j].q + (rdp.vtxbuf2[i].q - rdp.vtxbuf2[j].q) * percent;
-               rdp.vtxbuf[index].u0 = rdp.vtxbuf2[j].u0 + (rdp.vtxbuf2[i].u0 - rdp.vtxbuf2[j].u0) * percent;
-               rdp.vtxbuf[index].v0 = rdp.vtxbuf2[j].v0 + (rdp.vtxbuf2[i].v0 - rdp.vtxbuf2[j].v0) * percent;
-               rdp.vtxbuf[index].u1 = rdp.vtxbuf2[j].u1 + (rdp.vtxbuf2[i].u1 - rdp.vtxbuf2[j].u1) * percent;
-               rdp.vtxbuf[index].v1 = rdp.vtxbuf2[j].v1 + (rdp.vtxbuf2[i].v1 - rdp.vtxbuf2[j].v1) * percent;
+               rdp.vtxbuf[index].u[0] = rdp.vtxbuf2[j].u[0] + (rdp.vtxbuf2[i].u[0] - rdp.vtxbuf2[j].u[0]) * percent;
+               rdp.vtxbuf[index].v[0] = rdp.vtxbuf2[j].v[0] + (rdp.vtxbuf2[i].v[0] - rdp.vtxbuf2[j].v[0]) * percent;
+               rdp.vtxbuf[index].u[1] = rdp.vtxbuf2[j].u[1] + (rdp.vtxbuf2[i].u[1] - rdp.vtxbuf2[j].u[1]) * percent;
+               rdp.vtxbuf[index].v[1] = rdp.vtxbuf2[j].v[1] + (rdp.vtxbuf2[i].v[1] - rdp.vtxbuf2[j].v[1]) * percent;
                if (interpolate_colors)
                   InterpolateColors(&rdp.vtxbuf[index++], percent, &rdp.vtxbuf2[j], &rdp.vtxbuf2[i]);
                else
@@ -987,10 +987,10 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
          rdp.vtxbuf[i].y = rdp.vtxbuf[i].sy;
          rdp.vtxbuf[i].z = rdp.vtxbuf[i].sz;
          rdp.vtxbuf[i].q = rdp.vtxbuf[i].oow;
-         rdp.vtxbuf[i].u0 = rdp.vtxbuf[i].u0_w;
-         rdp.vtxbuf[i].v0 = rdp.vtxbuf[i].v0_w;
-         rdp.vtxbuf[i].u1 = rdp.vtxbuf[i].u1_w;
-         rdp.vtxbuf[i].v1 = rdp.vtxbuf[i].v1_w;
+         rdp.vtxbuf[i].u[0] = rdp.vtxbuf[i].u_w[0];
+         rdp.vtxbuf[i].v[0] = rdp.vtxbuf[i].v_w[0];
+         rdp.vtxbuf[i].u[1] = rdp.vtxbuf[i].u_w[1];
+         rdp.vtxbuf[i].v[1] = rdp.vtxbuf[i].v_w[1];
       }
       else
       {
@@ -1001,13 +1001,13 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
          rdp.vtxbuf[i].z = rdp.view_trans[2] + rdp.vtxbuf[i].z * rdp.vtxbuf[i].q * rdp.view_scale[2];
          if (rdp.tex >= 1)
          {
-            rdp.vtxbuf[i].u0 *= rdp.vtxbuf[i].q;
-            rdp.vtxbuf[i].v0 *= rdp.vtxbuf[i].q;
+            rdp.vtxbuf[i].u[0] *= rdp.vtxbuf[i].q;
+            rdp.vtxbuf[i].v[0] *= rdp.vtxbuf[i].q;
          }
          if (rdp.tex >= 2)
          {
-            rdp.vtxbuf[i].u1 *= rdp.vtxbuf[i].q;
-            rdp.vtxbuf[i].v1 *= rdp.vtxbuf[i].q;
+            rdp.vtxbuf[i].u[1] *= rdp.vtxbuf[i].q;
+            rdp.vtxbuf[i].v[1] *= rdp.vtxbuf[i].q;
          }
       }
 

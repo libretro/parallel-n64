@@ -540,14 +540,17 @@ typedef struct
 
   float f; //fog
 
-  float u0, v0, u1, v1;
+  float u[2];
+  float v[2];
   float w;
   uint16_t  flags;
 
   float vec[3]; // normal vector
 
   float sx, sy, sz;
-  float x_w, y_w, z_w, u0_w, v0_w, u1_w, v1_w, oow;
+  float x_w, y_w, z_w, oow;
+  float u_w[2];
+  float v_w[2];
   uint8_t  not_zclipped;
   uint8_t  screen_translated;
   uint8_t  uv_scaled;

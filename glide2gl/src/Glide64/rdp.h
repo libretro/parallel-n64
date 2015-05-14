@@ -643,10 +643,10 @@ static INLINE void ConvertCoordsKeep (VERTEX *v, int n)
    int i;
    for (i = 0; i < n; i++)
    {
-      v[i].coord[0] = v[i].u0;
-      v[i].coord[1] = v[i].v0;
-      v[i].coord[2] = v[i].u1;
-      v[i].coord[3] = v[i].v1;
+      v[i].coord[0] = v[i].u[0];
+      v[i].coord[1] = v[i].v[0];
+      v[i].coord[2] = v[i].u[1];
+      v[i].coord[3] = v[i].v[1];
    }
 }
 
@@ -656,10 +656,10 @@ static INLINE void ConvertCoordsConvert (VERTEX *v, int n)
    int i;
    for (i = 0; i < n; i++)
    {
-      v[i].coord[(rdp.t0 << 1)  ] = v[i].u0;
-      v[i].coord[(rdp.t0 << 1)+1] = v[i].v0;
-      v[i].coord[(rdp.t1 << 1)  ] = v[i].u1;
-      v[i].coord[(rdp.t1 << 1)+1] = v[i].v1;
+      v[i].coord[(rdp.t0 << 1)  ] = v[i].u[0];
+      v[i].coord[(rdp.t0 << 1)+1] = v[i].v[0];
+      v[i].coord[(rdp.t1 << 1)  ] = v[i].u[1];
+      v[i].coord[(rdp.t1 << 1)+1] = v[i].v[1];
    }
 }
 

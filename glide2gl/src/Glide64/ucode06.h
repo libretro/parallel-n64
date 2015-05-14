@@ -436,29 +436,29 @@ static void DrawImage (DRAWIMAGE *d)
             v[0].y = ful_y;
             v[0].z = Z;
             v[0].q = 1.0f;
-            v[0].u0 = ful_u;
-            v[0].v0 = ful_v;
+            v[0].u[0] = ful_u;
+            v[0].v[0] = ful_v;
 
             v[1].x = flr_x;
             v[1].y = ful_y;
             v[1].z = Z;
             v[1].q = 1.0f;
-            v[1].u0 = flr_u;
-            v[1].v0 = ful_v;
+            v[1].u[0] = flr_u;
+            v[1].v[0] = ful_v;
 
             v[2].x = ful_x;
             v[2].y = flr_y;
             v[2].z = Z;
             v[2].q = 1.0f;
-            v[2].u0 = ful_u;
-            v[2].v0 = flr_v;
+            v[2].u[0] = ful_u;
+            v[2].v[0] = flr_v;
 
             v[3].x = flr_x;
             v[3].y = flr_y;
             v[3].z = Z;
             v[3].q = 1.0f;
-            v[3].u0 = flr_u;
-            v[3].v0 = flr_v;
+            v[3].u[0] = flr_u;
+            v[3].v[0] = flr_v;
 
             apply_shading(v);
             ConvertCoordsConvert (v, 4);
@@ -583,11 +583,11 @@ static void draw_split_triangle(VERTEX **vtx)
 
   vtx[0]->not_zclipped = vtx[1]->not_zclipped = vtx[2]->not_zclipped = 1;
 
-  min_256 = min((int)vtx[0]->u0,(int)vtx[1]->u0); // bah, don't put two mins on one line
-  min_256 = min(min_256,(int)vtx[2]->u0) >> 8;  // or it will be calculated twice
+  min_256 = min((int)vtx[0]->u[0],(int)vtx[1]->u[0]); // bah, don't put two mins on one line
+  min_256 = min(min_256,(int)vtx[2]->u[0]) >> 8;  // or it will be calculated twice
 
-  max_256 = max((int)vtx[0]->u0,(int)vtx[1]->u0); // not like it makes much difference
-  max_256 = max(max_256,(int)vtx[2]->u0) >> 8;  // anyway :P
+  max_256 = max((int)vtx[0]->u[0],(int)vtx[1]->u[0]); // not like it makes much difference
+  max_256 = max(max_256,(int)vtx[2]->u[0]) >> 8;  // anyway :P
 
   for (cur_256=min_256; cur_256<=max_256; cur_256++)
   {
@@ -613,23 +613,23 @@ static void draw_split_triangle(VERTEX **vtx)
 
        v2 = (VERTEX*)vtx[j];
 
-       if (v1->u0 >= left_256)
+       if (v1->u[0] >= left_256)
        {
-          if (v2->u0 >= left_256)   // Both are in, save the last one
+          if (v2->u[0] >= left_256)   // Both are in, save the last one
           {
              rdp.vtxbuf[index] = *v2;
-             rdp.vtxbuf[index].u0 -= left_256;
-             rdp.vtxbuf[index++].v0 += rdp.cur_cache[0]->c_scl_y * (cur_256 * rdp.cur_cache[0]->splitheight);
+             rdp.vtxbuf[index].u[0] -= left_256;
+             rdp.vtxbuf[index++].v[0] += rdp.cur_cache[0]->c_scl_y * (cur_256 * rdp.cur_cache[0]->splitheight);
           }
           else      // First is in, second is out, save intersection
           {
-             percent = (left_256 - v1->u0) / (v2->u0 - v1->u0);
+             percent = (left_256 - v1->u[0]) / (v2->u[0] - v1->u[0]);
              rdp.vtxbuf[index].x = v1->x + (v2->x - v1->x) * percent;
              rdp.vtxbuf[index].y = v1->y + (v2->y - v1->y) * percent;
              rdp.vtxbuf[index].z = 1;
              rdp.vtxbuf[index].q = 1;
-             rdp.vtxbuf[index].u0 = 0.5f;
-             rdp.vtxbuf[index].v0 = v1->v0 + (v2->v0 - v1->v0) * percent +
+             rdp.vtxbuf[index].u[0] = 0.5f;
+             rdp.vtxbuf[index].v[0] = v1->v[0] + (v2->v[0] - v1->v[0]) * percent +
                 rdp.cur_cache[0]->c_scl_y * cur_256 * rdp.cur_cache[0]->splitheight;
              rdp.vtxbuf[index].b = (uint8_t)(v1->b + (v2->b - v1->b) * percent);
              rdp.vtxbuf[index].g = (uint8_t)(v1->g + (v2->g - v1->g) * percent);
@@ -639,15 +639,15 @@ static void draw_split_triangle(VERTEX **vtx)
        }
        else
        {
-          if (v2->u0 >= left_256) // First is out, second is in, save intersection & in point
+          if (v2->u[0] >= left_256) // First is out, second is in, save intersection & in point
           {
-             percent = (left_256 - v2->u0) / (v1->u0 - v2->u0);
+             percent = (left_256 - v2->u[0]) / (v1->u[0] - v2->u[0]);
              rdp.vtxbuf[index].x = v2->x + (v1->x - v2->x) * percent;
              rdp.vtxbuf[index].y = v2->y + (v1->y - v2->y) * percent;
              rdp.vtxbuf[index].z = 1;
              rdp.vtxbuf[index].q = 1;
-             rdp.vtxbuf[index].u0 = 0.5f;
-             rdp.vtxbuf[index].v0 = v2->v0 + (v1->v0 - v2->v0) * percent +
+             rdp.vtxbuf[index].u[0] = 0.5f;
+             rdp.vtxbuf[index].v[0] = v2->v[0] + (v1->v[0] - v2->v[0]) * percent +
                 rdp.cur_cache[0]->c_scl_y * cur_256 * rdp.cur_cache[0]->splitheight;
              rdp.vtxbuf[index].b = (uint8_t)(v2->b + (v1->b - v2->b) * percent);
              rdp.vtxbuf[index].g = (uint8_t)(v2->g + (v1->g - v2->g) * percent);
@@ -656,8 +656,8 @@ static void draw_split_triangle(VERTEX **vtx)
 
              // Save the in point
              rdp.vtxbuf[index] = *v2;
-             rdp.vtxbuf[index].u0 -= left_256;
-             rdp.vtxbuf[index++].v0 += rdp.cur_cache[0]->c_scl_y * (cur_256 * rdp.cur_cache[0]->splitheight);
+             rdp.vtxbuf[index].u[0] -= left_256;
+             rdp.vtxbuf[index++].v[0] += rdp.cur_cache[0]->c_scl_y * (cur_256 * rdp.cur_cache[0]->splitheight);
           }
        }
     }
@@ -680,21 +680,21 @@ static void draw_split_triangle(VERTEX **vtx)
        v2 = (VERTEX*)&rdp.vtxbuf2[j];
 
        // ** Right plane **
-       if (v1->u0 <= 256.0f)
+       if (v1->u[0] <= 256.0f)
        {
-          if (v2->u0 <= 256.0f)   // Both are in, save the last one
+          if (v2->u[0] <= 256.0f)   // Both are in, save the last one
           {
              rdp.vtxbuf[index++] = *v2;
           }
           else      // First is in, second is out, save intersection
           {
-             percent = (right_256 - v1->u0) / (v2->u0 - v1->u0);
+             percent = (right_256 - v1->u[0]) / (v2->u[0] - v1->u[0]);
              rdp.vtxbuf[index].x = v1->x + (v2->x - v1->x) * percent;
              rdp.vtxbuf[index].y = v1->y + (v2->y - v1->y) * percent;
              rdp.vtxbuf[index].z = 1;
              rdp.vtxbuf[index].q = 1;
-             rdp.vtxbuf[index].u0 = 255.5f;
-             rdp.vtxbuf[index].v0 = v1->v0 + (v2->v0 - v1->v0) * percent;
+             rdp.vtxbuf[index].u[0] = 255.5f;
+             rdp.vtxbuf[index].v[0] = v1->v[0] + (v2->v[0] - v1->v[0]) * percent;
              rdp.vtxbuf[index].b = (uint8_t)(v1->b + (v2->b - v1->b) * percent);
              rdp.vtxbuf[index].g = (uint8_t)(v1->g + (v2->g - v1->g) * percent);
              rdp.vtxbuf[index].r = (uint8_t)(v1->r + (v2->r - v1->r) * percent);
@@ -703,15 +703,15 @@ static void draw_split_triangle(VERTEX **vtx)
        }
        else
        {
-          if (v2->u0 <= 256.0f) // First is out, second is in, save intersection & in point
+          if (v2->u[0] <= 256.0f) // First is out, second is in, save intersection & in point
           {
-             percent = (right_256 - v2->u0) / (v1->u0 - v2->u0);
+             percent = (right_256 - v2->u[0]) / (v1->u[0] - v2->u[0]);
              rdp.vtxbuf[index].x = v2->x + (v1->x - v2->x) * percent;
              rdp.vtxbuf[index].y = v2->y + (v1->y - v2->y) * percent;
              rdp.vtxbuf[index].z = 1;
              rdp.vtxbuf[index].q = 1;
-             rdp.vtxbuf[index].u0 = 255.5f;
-             rdp.vtxbuf[index].v0 = v2->v0 + (v1->v0 - v2->v0) * percent;
+             rdp.vtxbuf[index].u[0] = 255.5f;
+             rdp.vtxbuf[index].v[0] = v2->v[0] + (v1->v[0] - v2->v[0]) * percent;
              rdp.vtxbuf[index].b = (uint8_t)(v2->b + (v1->b - v2->b) * percent);
              rdp.vtxbuf[index].g = (uint8_t)(v2->g + (v1->g - v2->g) * percent);
              rdp.vtxbuf[index].r = (uint8_t)(v2->r + (v1->r - v2->r) * percent);
@@ -854,29 +854,29 @@ static void uc6_obj_rectangle(uint32_t w0, uint32_t w1)
    v[0].y = ul_y;
    v[0].z = Z;
    v[0].q = 1.0f;
-   v[0].u0 = ul_u;
-   v[0].v0 = ul_v;
+   v[0].u[0] = ul_u;
+   v[0].v[0] = ul_v;
 
    v[1].x = lr_x;
    v[1].y = ul_y;
    v[1].z = Z;
    v[1].q = 1.0f;
-   v[1].u0 = lr_u;
-   v[1].v0 = ul_v;
+   v[1].u[0] = lr_u;
+   v[1].v[0] = ul_v;
 
    v[2].x = ul_x;
    v[2].y = lr_y;
    v[2].z = Z;
    v[2].q = 1.0f;
-   v[2].u0 = ul_u;
-   v[2].v0 = lr_v;
+   v[2].u[0] = ul_u;
+   v[2].v[0] = lr_v;
 
    v[3].x = lr_x;
    v[3].y = lr_y;
    v[3].z = Z;
    v[3].q = 1.0f;
-   v[3].u0 = lr_u;
-   v[3].v0 = lr_v;
+   v[3].u[0] = lr_u;
+   v[3].v[0] = lr_v;
 
    for (i = 0; i < 4; i++)
    {
@@ -939,29 +939,29 @@ static void uc6_obj_sprite(uint32_t w0, uint32_t w1)
    v[0].y = ul_y;
    v[0].z = Z;
    v[0].q = 1.0f;
-   v[0].u0 = ul_u;
-   v[0].v0 = ul_v;
+   v[0].u[0] = ul_u;
+   v[0].v[0] = ul_v;
 
    v[1].x = lr_x;
    v[1].y = ul_y;
    v[1].z = Z;
    v[1].q = 1.0f;
-   v[1].u0 = lr_u;
-   v[1].v0 = ul_v;
+   v[1].u[0] = lr_u;
+   v[1].v[0] = ul_v;
 
    v[2].x = ul_x;
    v[2].y = lr_y;
    v[2].z = Z;
    v[2].q = 1.0f;
-   v[2].u0 = ul_u;
-   v[2].v0 = lr_v;
+   v[2].u[0] = ul_u;
+   v[2].v[0] = lr_v;
 
    v[3].x = lr_x;
    v[3].y = lr_y;
    v[3].z = Z;
    v[3].q = 1.0f;
-   v[3].u0 = lr_u;
-   v[3].v0 = lr_v;
+   v[3].u[0] = lr_u;
+   v[3].v[0] = lr_v;
   
    for (i = 0; i < 4; i++)
    {
@@ -1130,29 +1130,29 @@ static void uc6_obj_rectangle_r(uint32_t w0, uint32_t w1)
    v[0].y = ul_y;
    v[0].z = Z;
    v[0].q = 1.0f;
-   v[0].u0 = ul_u;
-   v[0].v0 = ul_v;
+   v[0].u[0] = ul_u;
+   v[0].v[0] = ul_v;
 
    v[1].x = lr_x;
    v[1].y = ul_y;
    v[1].z = Z;
    v[1].q = 1.0f;
-   v[1].u0 = lr_u;
-   v[1].v0 = ul_v;
+   v[1].u[0] = lr_u;
+   v[1].v[0] = ul_v;
 
    v[2].x = ul_x;
    v[2].y = lr_y;
    v[2].z = Z;
    v[2].q = 1.0f;
-   v[2].u0 = ul_u;
-   v[2].v0 = lr_v;
+   v[2].u[0] = ul_u;
+   v[2].v[0] = lr_v;
 
    v[3].x = lr_x;
    v[3].y = lr_y;
    v[3].z = Z;
    v[3].q = 1.0f;
-   v[3].u0 = lr_u;
-   v[3].v0 = lr_v;
+   v[3].u[0] = lr_u;
+   v[3].v[0] = lr_v;
 
    for (i = 0; i < 4; i++)
    {
@@ -1467,29 +1467,29 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          v[0].y = ul_y;
          v[0].z = Z;
          v[0].q = 1.0f;
-         v[0].u0 = 0.5f;
-         v[0].v0 = 0.5f;
+         v[0].u[0] = 0.5f;
+         v[0].v[0] = 0.5f;
 
          v[1].x = lr_x;
          v[1].y = ul_y;
          v[1].z = Z;
          v[1].q = 1.0f;
-         v[1].u0 = lr_u;
-         v[1].v0 = 0.5f;
+         v[1].u[0] = lr_u;
+         v[1].v[0] = 0.5f;
 
          v[2].x = ul_x;
          v[2].y = lr_y;
          v[2].z = Z;
          v[2].q = 1.0f;
-         v[2].u0 = 0.5f;
-         v[2].v0 = lr_v;
+         v[2].u[0] = 0.5f;
+         v[2].v[0] = lr_v;
 
          v[3].x = lr_x;
          v[3].y = lr_y;
          v[3].z = Z;
          v[3].q = 1.0f;
-         v[3].u0 = lr_u;
-         v[3].v0 = lr_v;
+         v[3].u[0] = lr_u;
+         v[3].v[0] = lr_v;
 
          for (i=0; i<4; i++)
          {
