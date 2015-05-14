@@ -799,10 +799,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
       }
 
       if (!to_render) //all z < 0
-      {
-         FRDP (" * render_tri: all z < 0\n");
          return;
-      }
    }
 
    if (rdp.clip && !old_interpolate)
