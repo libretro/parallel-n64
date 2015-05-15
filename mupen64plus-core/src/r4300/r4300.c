@@ -47,6 +47,7 @@
 #include "recomph.h"
 #include "tlb.h"
 #include "new_dynarec/new_dynarec.h"
+#include "rsp/rsp_core.h"
 
 
 #ifdef DBG
@@ -301,36 +302,56 @@ void r4300_deinit(void)
     }
 }
 
-void r4300_execute(void)
-{
-    if (r4300emu == CORE_PURE_INTERPRETER)
-    {
-       while (!stop)
-          pure_interpreter();
-    }
-    else if (r4300emu == CORE_INTERPRETER)
-    {
-        while (!stop)
-        {
-#ifdef COMPARE_CORE
-            if (PC->ops == cached_interpreter_table.FIN_BLOCK && (PC->addr < 0x80000000 || PC->addr >= 0xc0000000))
-                virtual_to_physical_address(PC->addr, 2);
-            CoreCompareCallback();
-#endif
-#ifdef DBG
-            if (g_DebuggerActive) update_debugger(PC->addr);
-#endif
-            PC->ops();
-        }
-    }
+static void (*r4300_step)(void);
+
 #if defined(DYNAREC)
-    else if (r4300emu >= 2)
-    {
+static void dyna_start_wrapper()
+{
 #ifdef NEW_DYNAREC
        new_dyna_start();
 #else
        dyna_start(dyna_jump);
 #endif
-    }
+}
 #endif
+
+static void pc_ops_wrapper()
+{
+#ifdef COMPARE_CORE
+           if (PC->ops == cached_interpreter_table.FIN_BLOCK && (PC->addr < 0x80000000 || PC->addr >= 0xc0000000))
+               virtual_to_physical_address(PC->addr, 2);
+           CoreCompareCallback();
+#endif
+#ifdef DBG
+           if (g_DebuggerActive) update_debugger(PC->addr);
+#endif
+           PC->ops();
+}
+
+void r4300_execute(void)
+{
+   if (r4300emu == CORE_PURE_INTERPRETER)
+      r4300_step = pure_interpreter;
+   else if (r4300emu == CORE_INTERPRETER)
+      r4300_step = pc_ops_wrapper;
+#if defined(DYNAREC)
+   else if (r4300emu >= 2)
+      r4300_step = dyna_start_wrapper;
+#endif
+
+   while (!stop)
+   {
+      r4300_step();
+
+      if (g_rsp_timer_enabled)
+      {
+         g_rsp_timer -= ((PC->addr - last_addr) >> 2) * count_per_op;
+
+         if (g_rsp_timer <= 0)
+         {
+            g_rsp_timer_enabled = 0;
+            rsp_interrupt_event(&g_sp);
+         }
+      }
+   }
 }
