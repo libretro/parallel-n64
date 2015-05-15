@@ -321,12 +321,15 @@ void do_SP_Task(struct rsp_core* sp)
 
     if ((sp->regs[SP_STATUS_REG] & 0x00000001) == 0x00000000)
     { /* needed for games like "Stunt Racer 64" with CPU-RSP timer sync fails */
-        printf(
+        /* printf(
             "To do:  early RSP exit and task resume (SP_STATUS_REG = %08X)\n",
             sp->regs[SP_STATUS_REG]
-        );
+        ); */
         if (sp->regs[SP_STATUS_REG] & 0x00000002)
             fputs("(...Why is SP_STATUS_BROKE set?)\n", stderr);
+
+        g_rsp_timer         = 0x200;
+        g_rsp_timer_enabled = 1;
     }
     sp->regs[SP_STATUS_REG] &= ~0x00000003; /* Clear BROKE and HALT. */
 }
