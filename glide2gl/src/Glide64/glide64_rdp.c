@@ -896,42 +896,43 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
       if (rdp.cur_cache[i] && (rdp.tex & (i+1)))
       {
-         int x_i, y_i;
-         float maxs, maxt;
          unsigned tilenum = rdp.cur_tile + i;
-
-         maxs = 1;
-         maxt = 1;
-         x_i = off_x_i;
-         y_i = off_y_i;
+         float maxs = 1;
+         float maxt = 1;
+         int x_i    = off_x_i;
+         int y_i    = off_y_i;
+         int32_t shifter = g_gdp.tile[tilenum].shift_s;
 
          //shifting
-         if (g_gdp.tile[tilenum].shift_s)
+         if (shifter)
          {
-            if (g_gdp.tile[tilenum].shift_s > 10)
+            if (shifter > 10)
             {
-               uint8_t iShift = (16 - g_gdp.tile[tilenum].shift_s);
+               uint8_t iShift = (16 - shifter);
                x_i <<= iShift;
                maxs = (float)(1 << iShift);
             }
             else
             {
-               uint8_t iShift = g_gdp.tile[tilenum].shift_s;
+               uint8_t iShift = shifter;
                x_i >>= iShift;
                maxs = 1.0f/(float)(1 << iShift);
             }
          }
-         if (g_gdp.tile[tilenum].shift_t)
+
+         shifter = g_gdp.tile[tilenum].shift_t;
+
+         if (shifter)
          {
             if (g_gdp.tile[tilenum].shift_t > 10)
             {
-               uint8_t iShift = (16 - g_gdp.tile[tilenum].shift_t);
+               uint8_t iShift = (16 - shifter);
                y_i <<= iShift;
                maxt = (float)(1 << iShift);
             }
             else
             {
-               uint8_t iShift = g_gdp.tile[tilenum].shift_t;
+               uint8_t iShift = shifter;
                y_i >>= iShift;
                maxt = 1.0f/(float)(1 << iShift);
             }
