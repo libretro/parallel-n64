@@ -2591,8 +2591,6 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
 
       for (k = 0; k < nbVtxs-1; k++)
       {
-         unsigned l;
-         unsigned num_tex = 0;
          VERTEX * v = (VERTEX*)&vtxbuf[k];
          v->x = v->x * rdp.scale_x + rdp.offset_x;
          v->y = v->y * rdp.scale_y + rdp.offset_y;
@@ -2601,16 +2599,19 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
          v->u[1] = v->u[0] = v->ou;
          v->v[1] = v->v[0] = v->ov;
 
-         num_tex += rdp.tex >= 1 ? rdp.cur_cache[0] : 0;
-         num_tex += rdp.tex >= 2 ? rdp.cur_cache[1] : 0;
-
-         for (l = 0; l < num_tex; l++)
+         if (rdp.tex >= 1 && rdp.cur_cache[0])
          {
-            draw_tri_uv_calculation_update_shift(rdp.cur_tile, l, v);
-            v->u[l] /= v->w;
-            v->v[l] /= v->w;
+            draw_tri_uv_calculation_update_shift(rdp.cur_tile, 0, v);
+            v->u[0] /= v->w;
+            v->v[0] /= v->w;
          }
 
+         if (rdp.tex >= 2 && rdp.cur_cache[1])
+         {
+            draw_tri_uv_calculation_update_shift(rdp.cur_tile, 1, v);
+            v->u[1] /= v->w;
+            v->v[1] /= v->w;
+         }
          apply_shade_mods (v);
       }
       grCullMode(GR_CULL_DISABLE);
