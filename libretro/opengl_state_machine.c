@@ -710,7 +710,7 @@ void emu_step_render();
 
 int retro_return(int just_flipping)
 {
-   gl_vbo_draw();
+   vbo_disable();
 
    flip_only = just_flipping;
 
@@ -736,7 +736,7 @@ int retro_return(int just_flipping)
    if (stop)
       return 0;
 
-   gl_vbo_draw();
+   vbo_disable();
 
    flip_only = just_flipping;
 
