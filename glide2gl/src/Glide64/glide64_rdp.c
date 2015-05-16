@@ -2602,52 +2602,17 @@ static void lle_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int z
          v->q = 1.0f/v->w;
          v->u[1] = v->u[0] = v->ou;
          v->v[1] = v->v[0] = v->ov;
+
          if (rdp.tex >= 1 && rdp.cur_cache[0])
          {
-            if (g_gdp.tile[rdp.cur_tile].shift_s)
-            {
-               if (g_gdp.tile[rdp.cur_tile].shift_s > 10)
-                  v->u[0] *= (float)(1 << (16 - g_gdp.tile[rdp.cur_tile].shift_s));
-               else
-                  v->u[0] /= (float)(1 << g_gdp.tile[rdp.cur_tile].shift_s);
-            }
-            if (g_gdp.tile[rdp.cur_tile].shift_t)
-            {
-               if (g_gdp.tile[rdp.cur_tile].shift_t > 10)
-                  v->v[0] *= (float)(1 << (16 - g_gdp.tile[rdp.cur_tile].shift_t));
-               else
-                  v->v[0] /= (float)(1 << g_gdp.tile[rdp.cur_tile].shift_t);
-            }
-
-            v->u[0] -= rdp.tiles[rdp.cur_tile].f_ul_s;
-            v->v[0] -= rdp.tiles[rdp.cur_tile].f_ul_t;
-            v->u[0] = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_x * v->u[0];
-            v->v[0] = rdp.cur_cache[0]->c_off + rdp.cur_cache[0]->c_scl_y * v->v[0];
+            draw_tri_uv_calculation_update_shift(rdp.cur_tile, 0, v);
             v->u[0] /= v->w;
             v->v[0] /= v->w;
          }
 
          if (rdp.tex >= 2 && rdp.cur_cache[1])
          {
-            if (g_gdp.tile[rdp.cur_tile+1].shift_s)
-            {
-               if (g_gdp.tile[rdp.cur_tile+1].shift_s > 10)
-                  v->u[1] *= (float)(1 << (16 - g_gdp.tile[rdp.cur_tile+1].shift_s));
-               else
-                  v->u[1] /= (float)(1 << g_gdp.tile[rdp.cur_tile+1].shift_s);
-            }
-            if (g_gdp.tile[rdp.cur_tile+1].shift_t)
-            {
-               if (g_gdp.tile[rdp.cur_tile+1].shift_t > 10)
-                  v->v[1] *= (float)(1 << (16 - g_gdp.tile[rdp.cur_tile+1].shift_t));
-               else
-                  v->v[1] /= (float)(1 << g_gdp.tile[rdp.cur_tile+1].shift_t);
-            }
-
-            v->u[1] -= rdp.tiles[rdp.cur_tile+1].f_ul_s;
-            v->v[1] -= rdp.tiles[rdp.cur_tile+1].f_ul_t;
-            v->u[1] = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_x * v->u[1];
-            v->v[1] = rdp.cur_cache[1]->c_off + rdp.cur_cache[1]->c_scl_y * v->v[1];
+            draw_tri_uv_calculation_update_shift(rdp.cur_tile, 1, v);
             v->u[1] /= v->w;
             v->v[1] /= v->w;
          }
