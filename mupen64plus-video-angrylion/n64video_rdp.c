@@ -897,11 +897,6 @@ static void tri_texshade_z(uint32_t w0, uint32_t w1)
 
 static void tex_rect(uint32_t w0, uint32_t w1)
 {
-   int tilenum;
-   int xl, yl, xh, yh;
-   int s, t, dsdx, dtdy;
-   int xlint, xhint;
-
    int ycur, ylfar;
    int yllimit, yhlimit;
    int invaly;
@@ -919,24 +914,24 @@ static void tex_rect(uint32_t w0, uint32_t w1)
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
 
-   xl      = (w0 & 0x00FFF000) >> 12;
-   yl      = (w0 & 0x00000FFF) >>  0;
-   tilenum = (w1 & 0x07000000) >> 24;
-   xh      = (w1 & 0x00FFF000) >> 12;
-   yh      = (w1 & 0x00000FFF) >>  0;
+   int xl      = (w0 & 0x00FFF000) >> 12;
+   int yl      = (w0 & 0x00000FFF) >>  0;
+   int tilenum = (w1 & 0x07000000) >> 24;
+   int xh      = (w1 & 0x00FFF000) >> 12;
+   int yh      = (w1 & 0x00000FFF) >>  0;
+
+   int s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
+   int t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
+   int dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
+   int dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
+
+   int xlint = (unsigned)(xl) >> 2;
+   int xhint = (unsigned)(xh) >> 2;
 
    yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
-   s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
-   t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
-   dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
-   dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
-
    dsdx = SIGN16(dsdx);
    dtdy = SIGN16(dtdy);
-
-   xlint = (unsigned)(xl) >> 2;
-   xhint = (unsigned)(xh) >> 2;
 
    /* edgewalker for primitives */
    max_level = 0;
@@ -1007,81 +1002,78 @@ static void tex_rect(uint32_t w0, uint32_t w1)
       const int spix = k & 3;
 
       if (k < yhclose)
-      { /* branch */ }
-      else
+         continue;
+
+      invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
+      j = k >> 2;
+      if (spix == 0)
       {
-         invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
-         j = k >> 2;
-         if (spix == 0)
-         {
-            maxxmx = 0x000;
-            minxhx = 0xFFF;
-            allover = allunder = 1;
-            allinval = 1;
-         }
+         maxxmx = 0x000;
+         minxhx = 0xFFF;
+         allover = allunder = 1;
+         allinval = 1;
+      }
 
-         stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-         xrsc = (xright >> 13)&0x1FFE | stickybit;
-         curunder = !!(xright & 0x08000000);
-         curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
-         xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
-         curover  = !!(xrsc & 0x00002000);
-         xrsc = xrsc & 0x1FFF;
-         curover |= (u32)~(xrsc - clipxlshift) >> 31;
-         xrsc = curover ? clipxlshift : xrsc;
-         span[j].majorx[spix] = xrsc & 0x1FFF;
-         allover &= curover;
-         allunder &= curunder;
+      stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
+      stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+      xrsc = (xright >> 13)&0x1FFE | stickybit;
+      curunder = !!(xright & 0x08000000);
+      curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
+      xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
+      curover  = !!(xrsc & 0x00002000);
+      xrsc = xrsc & 0x1FFF;
+      curover |= (u32)~(xrsc - clipxlshift) >> 31;
+      xrsc = curover ? clipxlshift : xrsc;
+      span[j].majorx[spix] = xrsc & 0x1FFF;
+      allover &= curover;
+      allunder &= curunder;
 
-         stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-         xlsc = (xleft >> 13)&0x1FFE | stickybit;
-         curunder = !!(xleft & 0x08000000);
-         curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
-         xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
-         curover  = !!(xlsc & 0x00002000);
-         xlsc &= 0x1FFF;
-         curover |= (u32)~(xlsc - clipxlshift) >> 31;
-         xlsc = curover ? clipxlshift : xlsc;
-         span[j].minorx[spix] = xlsc & 0x1FFF;
-         allover &= curover;
-         allunder &= curunder;
+      stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+      stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+      xlsc = (xleft >> 13)&0x1FFE | stickybit;
+      curunder = !!(xleft & 0x08000000);
+      curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
+      xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
+      curover  = !!(xlsc & 0x00002000);
+      xlsc &= 0x1FFF;
+      curover |= (u32)~(xlsc - clipxlshift) >> 31;
+      xlsc = curover ? clipxlshift : xlsc;
+      span[j].minorx[spix] = xlsc & 0x1FFF;
+      allover &= curover;
+      allunder &= curunder;
 
-         curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
-               < (xright&0x0FFFC000 ^ 0x08000000));
-         invaly |= curcross;
-         span[j].invalyscan[spix] = invaly;
-         allinval &= invaly;
-         if (invaly != 0)
-         { /* branch */ }
-         else
-         {
-            xlsc = (xlsc >> 3) & 0xFFF;
-            xrsc = (xrsc >> 3) & 0xFFF;
-            maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
-            minxhx = (xrsc < minxhx) ? xrsc : minxhx;
-         }
+      curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
+            < (xright&0x0FFFC000 ^ 0x08000000));
+      invaly |= curcross;
+      span[j].invalyscan[spix] = invaly;
+      allinval &= invaly;
 
-         if (spix == 0)
-         {
-            span[j].unscrx = xright >> 16;
-            setzero_si128(span[j].rgba);
-            span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
-            span[j].stwz[1] = stwz[1];
-            span[j].stwz[2] = 0x00000000;
-            span[j].stwz[3] = 0x00000000;
-         }
-         else if (spix == 3)
-         {
-            const int invalidline = (sckeepodd ^ j) & scfield
-               | (allinval | allover | allunder);
-            span[j].lx = maxxmx;
-            span[j].rx = minxhx;
-            span[j].validline = invalidline ^ 1;
-            /* stwz[0] = (stwz[0] + 0x00000000) & ~0x000001FF; */
-            stwz[1] = (stwz[1] + d_stwz_de[1]) & ~0x000003FF;
-         }
+      if (invaly == 0)
+      {
+         xlsc = (xlsc >> 3) & 0xFFF;
+         xrsc = (xrsc >> 3) & 0xFFF;
+         maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
+         minxhx = (xrsc < minxhx) ? xrsc : minxhx;
+      }
+
+      if (spix == 0)
+      {
+         span[j].unscrx = xright >> 16;
+         setzero_si128(span[j].rgba);
+         span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
+         span[j].stwz[1] = stwz[1];
+         span[j].stwz[2] = 0x00000000;
+         span[j].stwz[3] = 0x00000000;
+      }
+      else if (spix == 3)
+      {
+         const int invalidline = (sckeepodd ^ j) & scfield
+            | (allinval | allover | allunder);
+         span[j].lx = maxxmx;
+         span[j].rx = minxhx;
+         span[j].validline = invalidline ^ 1;
+         /* stwz[0] = (stwz[0] + 0x00000000) & ~0x000001FF; */
+         stwz[1] = (stwz[1] + d_stwz_de[1]) & ~0x000003FF;
       }
    }
    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
@@ -1089,12 +1081,7 @@ static void tex_rect(uint32_t w0, uint32_t w1)
 
 static void tex_rect_flip(uint32_t w0, uint32_t w1)
 {
-   int tilenum;
-   int xl, yl, xh, yh;
-   int s, t, dsdx, dtdy;
    int dd_swap;
-   int xlint, xhint;
-
    int ycur, ylfar;
    int yllimit, yhlimit;
    int invaly;
@@ -1112,21 +1099,24 @@ static void tex_rect_flip(uint32_t w0, uint32_t w1)
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
 
-   xl      = (w0 & 0x00FFF000) >> 12;
-   yl      = (w0 & 0x00000FFF) >>  0;
-   tilenum = (w1 & 0x07000000) >> 24;
-   xh      = (w1 & 0x00FFF000) >> 12;
-   yh      = (w1 & 0x00000FFF) >>  0;
+   int xl      = (w0 & 0x00FFF000) >> 12;
+   int yl      = (w0 & 0x00000FFF) >>  0;
+   int tilenum = (w1 & 0x07000000) >> 24;
+   int xh      = (w1 & 0x00FFF000) >> 12;
+   int yh      = (w1 & 0x00000FFF) >>  0;
 
-   yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
+   int s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
+   int t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
+   int dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
+   int dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
 
-   s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
-   t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
-   dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
-   dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
+   int xlint = (unsigned)(xl) >> 2;
+   int xhint = (unsigned)(xh) >> 2;
 
    dsdx = SIGN16(dsdx);
    dtdy = SIGN16(dtdy);
+
+   yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
 
    /*
     * unique work to tex_rect_flip
@@ -1135,8 +1125,6 @@ static void tex_rect_flip(uint32_t w0, uint32_t w1)
    dsdx = dtdy;
    dtdy = dd_swap;
 
-   xlint = (unsigned)(xl) >> 2;
-   xhint = (unsigned)(xh) >> 2;
 
    /* edgewalker for primitives */
    max_level = 0;
@@ -1207,81 +1195,77 @@ static void tex_rect_flip(uint32_t w0, uint32_t w1)
       const int spix = k & 3;
 
       if (k < yhclose)
-      { /* branch */ }
-      else
+         continue;
+
+      invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
+      j = k >> 2;
+      if (spix == 0)
       {
-         invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
-         j = k >> 2;
-         if (spix == 0)
-         {
-            maxxmx = 0x000;
-            minxhx = 0xFFF;
-            allover = allunder = 1;
-            allinval = 1;
-         }
+         maxxmx = 0x000;
+         minxhx = 0xFFF;
+         allover = allunder = 1;
+         allinval = 1;
+      }
 
-         stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-         xrsc = (xright >> 13)&0x1FFE | stickybit;
-         curunder = !!(xright & 0x08000000);
-         curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
-         xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
-         curover  = !!(xrsc & 0x00002000);
-         xrsc = xrsc & 0x1FFF;
-         curover |= (u32)~(xrsc - clipxlshift) >> 31;
-         xrsc = curover ? clipxlshift : xrsc;
-         span[j].majorx[spix] = xrsc & 0x1FFF;
-         allover &= curover;
-         allunder &= curunder;
+      stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
+      stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+      xrsc = (xright >> 13)&0x1FFE | stickybit;
+      curunder = !!(xright & 0x08000000);
+      curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
+      xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
+      curover  = !!(xrsc & 0x00002000);
+      xrsc = xrsc & 0x1FFF;
+      curover |= (u32)~(xrsc - clipxlshift) >> 31;
+      xrsc = curover ? clipxlshift : xrsc;
+      span[j].majorx[spix] = xrsc & 0x1FFF;
+      allover &= curover;
+      allunder &= curunder;
 
-         stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-         xlsc = (xleft >> 13)&0x1FFE | stickybit;
-         curunder = !!(xleft & 0x08000000);
-         curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
-         xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
-         curover  = !!(xlsc & 0x00002000);
-         xlsc &= 0x1FFF;
-         curover |= (u32)~(xlsc - clipxlshift) >> 31;
-         xlsc = curover ? clipxlshift : xlsc;
-         span[j].minorx[spix] = xlsc & 0x1FFF;
-         allover &= curover;
-         allunder &= curunder;
+      stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+      stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+      xlsc = (xleft >> 13)&0x1FFE | stickybit;
+      curunder = !!(xleft & 0x08000000);
+      curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
+      xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
+      curover  = !!(xlsc & 0x00002000);
+      xlsc &= 0x1FFF;
+      curover |= (u32)~(xlsc - clipxlshift) >> 31;
+      xlsc = curover ? clipxlshift : xlsc;
+      span[j].minorx[spix] = xlsc & 0x1FFF;
+      allover &= curover;
+      allunder &= curunder;
 
-         curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
-               < (xright&0x0FFFC000 ^ 0x08000000));
-         invaly |= curcross;
-         span[j].invalyscan[spix] = invaly;
-         allinval &= invaly;
-         if (invaly != 0)
-         { /* branch */ }
-         else
-         {
-            xlsc = (xlsc >> 3) & 0xFFF;
-            xrsc = (xrsc >> 3) & 0xFFF;
-            maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
-            minxhx = (xrsc < minxhx) ? xrsc : minxhx;
-         }
+      curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
+            < (xright&0x0FFFC000 ^ 0x08000000));
+      invaly |= curcross;
+      span[j].invalyscan[spix] = invaly;
+      allinval &= invaly;
+      if (invaly == 0)
+      {
+         xlsc = (xlsc >> 3) & 0xFFF;
+         xrsc = (xrsc >> 3) & 0xFFF;
+         maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
+         minxhx = (xrsc < minxhx) ? xrsc : minxhx;
+      }
 
-         if (spix == 0)
-         {
-            span[j].unscrx = xright >> 16;
-            setzero_si128(span[j].rgba);
-            span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
-            span[j].stwz[1] = stwz[1];
-            span[j].stwz[2] = 0x00000000;
-            span[j].stwz[3] = 0x00000000;
-         }
-         else if (spix == 3)
-         {
-            const int invalidline = (sckeepodd ^ j) & scfield
-               | (allinval | allover | allunder);
-            span[j].lx = maxxmx;
-            span[j].rx = minxhx;
-            span[j].validline = invalidline ^ 1;
-            /* stwz[0] = (stwz[0] + 0x00000000) & ~0x000001FF; */
-            stwz[1] = (stwz[1] + d_stwz_de[1]) & ~0x000003FF;
-         }
+      if (spix == 0)
+      {
+         span[j].unscrx = xright >> 16;
+         setzero_si128(span[j].rgba);
+         span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
+         span[j].stwz[1] = stwz[1];
+         span[j].stwz[2] = 0x00000000;
+         span[j].stwz[3] = 0x00000000;
+      }
+      else if (spix == 3)
+      {
+         const int invalidline = (sckeepodd ^ j) & scfield
+            | (allinval | allover | allunder);
+         span[j].lx = maxxmx;
+         span[j].rx = minxhx;
+         span[j].validline = invalidline ^ 1;
+         /* stwz[0] = (stwz[0] + 0x00000000) & ~0x000001FF; */
+         stwz[1] = (stwz[1] + d_stwz_de[1]) & ~0x000003FF;
       }
    }
    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
