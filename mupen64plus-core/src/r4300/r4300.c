@@ -340,18 +340,5 @@ void r4300_execute(void)
 #endif
 
    while (!stop)
-   {
       r4300_step();
-
-      if (g_rsp_timer_enabled)
-      {
-         g_rsp_timer -= ((PC->addr - last_addr) >> 2) * count_per_op;
-
-         if (g_rsp_timer <= 0)
-         {
-            g_rsp_timer_enabled = 0;
-            rsp_interrupt_event(&g_sp);
-         }
-      }
-   }
 }

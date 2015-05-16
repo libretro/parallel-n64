@@ -102,9 +102,6 @@ int g_delay_si = 0;
 
 int g_gs_vi_counter = 0;
 
-int g_rsp_timer = 0;
-int g_rsp_timer_enabled = 0;
-
 /** static (local) variables **/
 static int   l_CurrentFrame = 0;         // frame counter
 
