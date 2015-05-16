@@ -68,11 +68,7 @@ static GLuint BindTexture_ids[MAX_TEXTURE];
 #ifndef GLIDE64_MK2
 static void gl_vbo_draw(void)
 {
-#ifdef HAVE_OPENGLES2
-   vbo_disable();
-#else
    vbo_draw();
-#endif
 }
 #else
 static void gl_vbo_draw(void)
@@ -714,7 +710,7 @@ void emu_step_render();
 
 int retro_return(int just_flipping)
 {
-   gl_vbo_draw();
+   vbo_disable();
 
    flip_only = just_flipping;
 
@@ -740,7 +736,7 @@ int retro_return(int just_flipping)
    if (stop)
       return 0;
 
-   gl_vbo_draw();
+   vbo_disable();
 
    flip_only = just_flipping;
 
