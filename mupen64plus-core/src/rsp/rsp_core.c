@@ -328,8 +328,7 @@ void do_SP_Task(struct rsp_core* sp)
         if (sp->regs[SP_STATUS_REG] & 0x00000002)
             fputs("(...Why is SP_STATUS_BROKE set?)\n", stderr);
 
-        g_rsp_timer         = 0x200;
-        g_rsp_timer_enabled = 1;
+        add_interupt_event(SP_INT, 512);
     }
     sp->regs[SP_STATUS_REG] &= ~0x00000003; /* Clear BROKE and HALT. */
 }

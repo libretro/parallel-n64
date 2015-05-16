@@ -83,8 +83,5 @@ m64p_error main_read_screen(void *pixels, int bFront);
 
 m64p_error main_reset(int do_hard_reset);
 
-extern int g_rsp_timer;
-extern int g_rsp_timer_enabled;
-
 #endif /* __MAIN_H__ */
 
