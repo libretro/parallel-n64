@@ -239,6 +239,22 @@ typedef struct edgewalker_info
    i32 clipxhshift;
 } edgewalker_info_t;
 
+static void draw_triangle_edge_common(edgewalker_info_t *e, int32_t input, unsigned l)
+{
+   e->stickybit = (input & 0x00003FFF) - 1;
+   e->stickybit = (u32)~(e->stickybit) >> 31; /* (stickybit >= 0) */
+   e->xlrsc[l] = (input >> 13)&0x1FFE | e->stickybit;
+   e->curunder = !!(input & 0x08000000);
+   e->curunder |= (u32)(e->xlrsc[l] - e->clipxhshift)>>31;
+   e->xlrsc[l] = e->curunder ? e->clipxhshift : (input >> 13) & 0x3FFE | e->stickybit;
+   e->curover  = !!(e->xlrsc[l] & 0x00002000);
+   e->xlrsc[l] = e->xlrsc[l] & 0x1FFF;
+   e->curover |= (u32)~(e->xlrsc[l] - e->clipxlshift) >> 31;
+   e->xlrsc[l] = e->curover ? e->clipxlshift : e->xlrsc[l];
+   e->allover  &= e->curover;
+   e->allunder &= e->curunder;
+}
+
 static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer)
 {
    int base;
@@ -707,33 +723,11 @@ no_read_zbuffer_coefficients:
             edges.allinval = 1;
          }
 
-         edges.stickybit = (xlr[1] & 0x00003FFF) - 1;
-         edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
-         edges.xlrsc[1] = (xlr[1] >> 13)&0x1FFE | edges.stickybit;
-         edges.curunder = !!(xlr[1] & 0x08000000);
-         edges.curunder |= (u32)(edges.xlrsc[1] - edges.clipxhshift)>>31;
-         edges.xlrsc[1] = edges.curunder ? edges.clipxhshift : (xlr[1]>>13)&0x3FFE | edges.stickybit;
-         edges.curover  = !!(edges.xlrsc[1] & 0x00002000);
-         edges.xlrsc[1] = edges.xlrsc[1] & 0x1FFF;
-         edges.curover |= (u32)~(edges.xlrsc[1] - edges.clipxlshift) >> 31;
-         edges.xlrsc[1] = edges.curover ? edges.clipxlshift : edges.xlrsc[1];
+         draw_triangle_edge_common(&edges, xlr[1], 1);
          span[j].majorx[edges.spix] = edges.xlrsc[1] & 0x1FFF;
-         edges.allover  &= edges.curover;
-         edges.allunder &= edges.curunder;
 
-         edges.stickybit = (xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-         edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
-         edges.xlrsc[0] = (xlr[0] >> 13)&0x1FFE | edges.stickybit;
-         edges.curunder = !!(xlr[0] & 0x08000000);
-         edges.curunder |= (u32)(edges.xlrsc[0] - edges.clipxhshift)>>31;
-         edges.xlrsc[0] = edges.curunder ? edges.clipxhshift : (xlr[0]>>13)&0x3FFE | edges.stickybit;
-         edges.curover  = !!(edges.xlrsc[0] & 0x00002000);
-         edges.xlrsc[0] &= 0x1FFF;
-         edges.curover |= (u32)~(edges.xlrsc[0] - edges.clipxlshift) >> 31;
-         edges.xlrsc[0] = edges.curover ? edges.clipxlshift : edges.xlrsc[0];
+         draw_triangle_edge_common(&edges, xlr[0], 0);
          span[j].minorx[edges.spix] = edges.xlrsc[0] & 0x1FFF;
-         edges.allover  &= edges.curover;
-         edges.allunder &= edges.curunder;
 
          curcross = ((xlr[1 - flip]&0x0FFFC000 ^ 0x08000000)
                <  (xlr[0 + flip]&0x0FFFC000 ^ 0x08000000));
