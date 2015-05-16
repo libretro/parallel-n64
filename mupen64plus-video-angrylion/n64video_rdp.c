@@ -7,7 +7,6 @@
 static int cmd_cur;
 static int cmd_ptr; /* for 64-bit elements, always <= +0x7FFF */
 
-/* static DP_FIFO cmd_fifo; */
 static DP_FIFO cmd_data[0x0003FFFF/sizeof(i64) + 1];
 
 #ifdef TRACE_DP_COMMANDS
@@ -271,7 +270,7 @@ static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int text
    i32 d_rgba_dxh[4];
    i32 d_stwz_dxh[4];
    i32 d_rgba_diff[4], d_stwz_diff[4];
-   i32 xlr[2], xlr_inc[2];
+   i32 xleft[2], xlr_inc[2];
    u8 xfrac;
 #ifdef USE_SSE_SUPPORT
    __m128i xmm_d_rgba_de, xmm_d_stwz_de;
@@ -663,9 +662,9 @@ no_read_zbuffer_coefficients:
 
    xlr_inc[0] = (DxMDy >> 2) & ~0x00000001;
    xlr_inc[1] = (DxHDy >> 2) & ~0x00000001;
-   xlr[0] = xm & ~0x00000001;
-   xlr[1] = xh & ~0x00000001;
-   xfrac = (xlr[1] >> 8) & 0xFF;
+   xleft[0] = xm & ~0x00000001;
+   xleft[1] = xh & ~0x00000001;
+   xfrac = (xleft[1] >> 8) & 0xFF;
 
    allover = 1;
    allunder = 1;
@@ -683,7 +682,7 @@ no_read_zbuffer_coefficients:
 
       if (k == ym)
       {
-         xlr[0] = xl & ~0x00000001;
+         xleft[0] = xl & ~0x00000001;
          xlr_inc[0] = (DxLDy >> 2) & ~0x00000001;
       }
 
@@ -699,12 +698,12 @@ no_read_zbuffer_coefficients:
             allinval = 1;
          }
 
-         stickybit = (xlr[1] & 0x00003FFF) - 1;
+         stickybit = (xleft[1] & 0x00003FFF) - 1;
          stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-         xlrsc[1] = (xlr[1] >> 13)&0x1FFE | stickybit;
-         curunder = !!(xlr[1] & 0x08000000);
+         xlrsc[1] = (xleft[1] >> 13)&0x1FFE | stickybit;
+         curunder = !!(xleft[1] & 0x08000000);
          curunder = curunder | (u32)(xlrsc[1] - clipxhshift)>>31;
-         xlrsc[1] = curunder ? clipxhshift : (xlr[1]>>13)&0x3FFE | stickybit;
+         xlrsc[1] = curunder ? clipxhshift : (xleft[1]>>13)&0x3FFE | stickybit;
          curover  = !!(xlrsc[1] & 0x00002000);
          xlrsc[1] = xlrsc[1] & 0x1FFF;
          curover |= (u32)~(xlrsc[1] - clipxlshift) >> 31;
@@ -713,12 +712,12 @@ no_read_zbuffer_coefficients:
          allover &= curover;
          allunder &= curunder;
 
-         stickybit = (xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+         stickybit = (xleft[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
          stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-         xlrsc[0] = (xlr[0] >> 13)&0x1FFE | stickybit;
-         curunder = !!(xlr[0] & 0x08000000);
+         xlrsc[0] = (xleft[0] >> 13)&0x1FFE | stickybit;
+         curunder = !!(xleft[0] & 0x08000000);
          curunder = curunder | (u32)(xlrsc[0] - clipxhshift)>>31;
-         xlrsc[0] = curunder ? clipxhshift : (xlr[0]>>13)&0x3FFE | stickybit;
+         xlrsc[0] = curunder ? clipxhshift : (xleft[0]>>13)&0x3FFE | stickybit;
          curover  = !!(xlrsc[0] & 0x00002000);
          xlrsc[0] &= 0x1FFF;
          curover |= (u32)~(xlrsc[0] - clipxlshift) >> 31;
@@ -727,8 +726,8 @@ no_read_zbuffer_coefficients:
          allover &= curover;
          allunder &= curunder;
 
-         curcross = ((xlr[1 - flip]&0x0FFFC000 ^ 0x08000000)
-               <  (xlr[0 + flip]&0x0FFFC000 ^ 0x08000000));
+         curcross = ((xleft[1 - flip]&0x0FFFC000 ^ 0x08000000)
+               <  (xleft[0 + flip]&0x0FFFC000 ^ 0x08000000));
          invaly |= curcross;
          span[j].invalyscan[spix] = invaly;
          allinval &= invaly;
@@ -750,8 +749,8 @@ no_read_zbuffer_coefficients:
             __m128i prod_hi, prod_lo;
             __m128i result;
 
-            span[j].unscrx = xlr[1] >> 16;
-            xfrac = (xlr[1] >> 8) & 0xFF;
+            span[j].unscrx = xleft[1] >> 16;
+            xfrac = (xleft[1] >> 8) & 0xFF;
             xmm_frac = _mm_set1_epi32(xfrac);
 
             delta_x_high = _mm_load_si128((__m128i *)d_rgba_dxh);
@@ -792,8 +791,8 @@ no_read_zbuffer_coefficients:
          }
 #else
          {
-            span[j].unscrx = xlr[1] >> 16;
-            xfrac = (xlr[1] >> 8) & 0xFF;
+            span[j].unscrx = xleft[1] >> 16;
+            xfrac = (xleft[1] >> 8) & 0xFF;
             span[j].rgba[0]
             = ((rgba[0] & ~0x1FF) + d_rgba_diff[0] - xfrac*d_rgba_dxh[0])
             & ~0x000003FF;
@@ -841,8 +840,8 @@ no_read_zbuffer_coefficients:
          stwz[2] += d_stwz_de[2];
          stwz[3] += d_stwz_de[3];
       }
-      xlr[0] += xlr_inc[0];
-      xlr[1] += xlr_inc[1];
+      xleft[0] += xlr_inc[0];
+      xleft[1] += xlr_inc[1];
    }
    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, flip);
 #ifdef USE_MMX_DECODES
