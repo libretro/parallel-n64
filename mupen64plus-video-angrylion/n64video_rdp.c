@@ -239,18 +239,18 @@ typedef struct edgewalker_info
    i32 clipxhshift;
 } edgewalker_info_t;
 
-static void draw_triangle_edge_common(edgewalker_info_t *e, int32_t input, unsigned l)
+static void draw_triangle_edge_common(edgewalker_info_t *e, int32_t input, int32_t *output, unsigned l)
 {
    e->stickybit = (input & 0x00003FFF) - 1;
    e->stickybit = (u32)~(e->stickybit) >> 31; /* (stickybit >= 0) */
-   e->xlrsc[l] = (input >> 13)&0x1FFE | e->stickybit;
+   *output = (input >> 13)&0x1FFE | e->stickybit;
    e->curunder = !!(input & 0x08000000);
-   e->curunder |= (u32)(e->xlrsc[l] - e->clipxhshift)>>31;
-   e->xlrsc[l] = e->curunder ? e->clipxhshift : (input >> 13) & 0x3FFE | e->stickybit;
-   e->curover  = !!(e->xlrsc[l] & 0x00002000);
-   e->xlrsc[l] = e->xlrsc[l] & 0x1FFF;
-   e->curover |= (u32)~(e->xlrsc[l] - e->clipxlshift) >> 31;
-   e->xlrsc[l] = e->curover ? e->clipxlshift : e->xlrsc[l];
+   e->curunder |= (u32)(*output - e->clipxhshift)>>31;
+   *output = e->curunder ? e->clipxhshift : (input >> 13) & 0x3FFE | e->stickybit;
+   e->curover  = !!(*output & 0x00002000);
+   *output &= 0x1FFF;
+   e->curover |= (u32)~(*output - e->clipxlshift) >> 31;
+   *output = e->curover ? e->clipxlshift : *output;
    e->allover  &= e->curover;
    e->allunder &= e->curunder;
 }
@@ -723,10 +723,10 @@ no_read_zbuffer_coefficients:
             edges.allinval = 1;
          }
 
-         draw_triangle_edge_common(&edges, xlr[1], 1);
+         draw_triangle_edge_common(&edges, xlr[1], &edges.xlrsc[1], 1);
          span[j].majorx[edges.spix] = edges.xlrsc[1] & 0x1FFF;
 
-         draw_triangle_edge_common(&edges, xlr[0], 0);
+         draw_triangle_edge_common(&edges, xlr[0], &edges.xlrsc[0], 0);
          span[j].minorx[edges.spix] = edges.xlrsc[0] & 0x1FFF;
 
          curcross = ((xlr[1 - flip]&0x0FFFC000 ^ 0x08000000)
