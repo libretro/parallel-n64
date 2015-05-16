@@ -270,7 +270,7 @@ static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int text
    i32 d_rgba_dxh[4];
    i32 d_stwz_dxh[4];
    i32 d_rgba_diff[4], d_stwz_diff[4];
-   i32 xleft[2], xlr_inc[2];
+   i32 xlr[2], xlr_inc[2];
    u8 xfrac;
 #ifdef USE_SSE_SUPPORT
    __m128i xmm_d_rgba_de, xmm_d_stwz_de;
@@ -662,9 +662,9 @@ no_read_zbuffer_coefficients:
 
    xlr_inc[0] = (DxMDy >> 2) & ~0x00000001;
    xlr_inc[1] = (DxHDy >> 2) & ~0x00000001;
-   xleft[0] = xm & ~0x00000001;
-   xleft[1] = xh & ~0x00000001;
-   xfrac = (xleft[1] >> 8) & 0xFF;
+   xlr[0] = xm & ~0x00000001;
+   xlr[1] = xh & ~0x00000001;
+   xfrac = (xlr[1] >> 8) & 0xFF;
 
    allover = 1;
    allunder = 1;
@@ -682,7 +682,7 @@ no_read_zbuffer_coefficients:
 
       if (k == ym)
       {
-         xleft[0] = xl & ~0x00000001;
+         xlr[0] = xl & ~0x00000001;
          xlr_inc[0] = (DxLDy >> 2) & ~0x00000001;
       }
 
@@ -698,12 +698,12 @@ no_read_zbuffer_coefficients:
             allinval = 1;
          }
 
-         stickybit = (xleft[1] & 0x00003FFF) - 1;
+         stickybit = (xlr[1] & 0x00003FFF) - 1;
          stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-         xlrsc[1] = (xleft[1] >> 13)&0x1FFE | stickybit;
-         curunder = !!(xleft[1] & 0x08000000);
+         xlrsc[1] = (xlr[1] >> 13)&0x1FFE | stickybit;
+         curunder = !!(xlr[1] & 0x08000000);
          curunder = curunder | (u32)(xlrsc[1] - clipxhshift)>>31;
-         xlrsc[1] = curunder ? clipxhshift : (xleft[1]>>13)&0x3FFE | stickybit;
+         xlrsc[1] = curunder ? clipxhshift : (xlr[1]>>13)&0x3FFE | stickybit;
          curover  = !!(xlrsc[1] & 0x00002000);
          xlrsc[1] = xlrsc[1] & 0x1FFF;
          curover |= (u32)~(xlrsc[1] - clipxlshift) >> 31;
@@ -712,12 +712,12 @@ no_read_zbuffer_coefficients:
          allover &= curover;
          allunder &= curunder;
 
-         stickybit = (xleft[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+         stickybit = (xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
          stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-         xlrsc[0] = (xleft[0] >> 13)&0x1FFE | stickybit;
-         curunder = !!(xleft[0] & 0x08000000);
+         xlrsc[0] = (xlr[0] >> 13)&0x1FFE | stickybit;
+         curunder = !!(xlr[0] & 0x08000000);
          curunder = curunder | (u32)(xlrsc[0] - clipxhshift)>>31;
-         xlrsc[0] = curunder ? clipxhshift : (xleft[0]>>13)&0x3FFE | stickybit;
+         xlrsc[0] = curunder ? clipxhshift : (xlr[0]>>13)&0x3FFE | stickybit;
          curover  = !!(xlrsc[0] & 0x00002000);
          xlrsc[0] &= 0x1FFF;
          curover |= (u32)~(xlrsc[0] - clipxlshift) >> 31;
@@ -726,8 +726,8 @@ no_read_zbuffer_coefficients:
          allover &= curover;
          allunder &= curunder;
 
-         curcross = ((xleft[1 - flip]&0x0FFFC000 ^ 0x08000000)
-               <  (xleft[0 + flip]&0x0FFFC000 ^ 0x08000000));
+         curcross = ((xlr[1 - flip]&0x0FFFC000 ^ 0x08000000)
+               <  (xlr[0 + flip]&0x0FFFC000 ^ 0x08000000));
          invaly |= curcross;
          span[j].invalyscan[spix] = invaly;
          allinval &= invaly;
@@ -749,8 +749,8 @@ no_read_zbuffer_coefficients:
             __m128i prod_hi, prod_lo;
             __m128i result;
 
-            span[j].unscrx = xleft[1] >> 16;
-            xfrac = (xleft[1] >> 8) & 0xFF;
+            span[j].unscrx = xlr[1] >> 16;
+            xfrac = (xlr[1] >> 8) & 0xFF;
             xmm_frac = _mm_set1_epi32(xfrac);
 
             delta_x_high = _mm_load_si128((__m128i *)d_rgba_dxh);
@@ -791,8 +791,8 @@ no_read_zbuffer_coefficients:
          }
 #else
          {
-            span[j].unscrx = xleft[1] >> 16;
-            xfrac = (xleft[1] >> 8) & 0xFF;
+            span[j].unscrx = xlr[1] >> 16;
+            xfrac = (xlr[1] >> 8) & 0xFF;
             span[j].rgba[0]
             = ((rgba[0] & ~0x1FF) + d_rgba_diff[0] - xfrac*d_rgba_dxh[0])
             & ~0x000003FF;
@@ -840,8 +840,8 @@ no_read_zbuffer_coefficients:
          stwz[2] += d_stwz_de[2];
          stwz[3] += d_stwz_de[3];
       }
-      xleft[0] += xlr_inc[0];
-      xleft[1] += xlr_inc[1];
+      xlr[0] += xlr_inc[0];
+      xlr[1] += xlr_inc[1];
    }
    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, flip);
 #ifdef USE_MMX_DECODES
@@ -893,7 +893,7 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
       int s, int t, int dsdx, int dtdy)
 {
    u8 xfrac;
-   i32 xleft, xright;
+   i32 xlr[2];
    i32 stwz[4];
    i32 d_stwz_dx[4];
    i32 d_stwz_de[4];
@@ -963,9 +963,9 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
 
    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
 
-   xleft = xl & ~0x00000001;
-   xright = xh & ~0x00000001;
-   xfrac = (xright >> 8) & 0xFF;
+   xlr[0] = xl & ~0x00000001;
+   xlr[1] = xh & ~0x00000001;
+   xfrac = (xlr[1] >> 8) & 0xFF;
 
    stwz[0] &= ~0x000001FF;
    stwz[1] &= ~0x000001FF;
@@ -987,6 +987,7 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
 
       invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
       j = k >> 2;
+
       if (spix == 0)
       {
          maxxmx = 0x000;
@@ -995,12 +996,12 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
          allinval = 1;
       }
 
-      stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
+      stickybit = (xlr[1] & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
       stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-      xrsc = (xright >> 13)&0x1FFE | stickybit;
-      curunder = !!(xright & 0x08000000);
+      xrsc = (xlr[1] >> 13)&0x1FFE | stickybit;
+      curunder = !!(xlr[1] & 0x08000000);
       curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
-      xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
+      xrsc = curunder ? clipxhshift : (xlr[1] >> 13)&0x3FFE | stickybit;
       curover  = !!(xrsc & 0x00002000);
       xrsc = xrsc & 0x1FFF;
       curover |= (u32)~(xrsc - clipxlshift) >> 31;
@@ -1009,12 +1010,12 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
       allover &= curover;
       allunder &= curunder;
 
-      stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+      stickybit = (xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
       stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-      xlsc = (xleft >> 13)&0x1FFE | stickybit;
-      curunder = !!(xleft & 0x08000000);
+      xlsc = (xlr[0] >> 13)&0x1FFE | stickybit;
+      curunder = !!(xlr[0] & 0x08000000);
       curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
-      xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
+      xlsc = curunder ? clipxhshift : (xlr[0] >> 13)&0x3FFE | stickybit;
       curover  = !!(xlsc & 0x00002000);
       xlsc &= 0x1FFF;
       curover |= (u32)~(xlsc - clipxlshift) >> 31;
@@ -1023,8 +1024,8 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
       allover &= curover;
       allunder &= curunder;
 
-      curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
-            < (xright&0x0FFFC000 ^ 0x08000000));
+      curcross = ((xlr[0] & 0x0FFFC000 ^ 0x08000000)
+            < (xlr[1] & 0x0FFFC000 ^ 0x08000000));
       invaly |= curcross;
       span[j].invalyscan[spix] = invaly;
       allinval &= invaly;
@@ -1039,7 +1040,7 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
 
       if (spix == 0)
       {
-         span[j].unscrx = xright >> 16;
+         span[j].unscrx = xlr[1] >> 16;
          setzero_si128(span[j].rgba);
          span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
          span[j].stwz[1] = stwz[1];
@@ -1159,6 +1160,7 @@ static void set_tile_size(uint32_t w0, uint32_t w1)
 
 static void edgewalker_for_loads(int32_t* lewdata)
 {
+   int xlr[2];
    int j = 0;
    int xstart = 0, xend = 0;
 
@@ -1209,8 +1211,8 @@ static void edgewalker_for_loads(int32_t* lewdata)
    int dsdy = 0;
    int dtdy = (lewdata[8] & 0xffff) << 16;
 
-   int xright = xh & ~0x1;
-   int xleft  = xm & ~0x1;
+   xlr[0]  = xm & ~0x1;
+   xlr[1]  = xh & ~0x1;
 
    max_level = 0;
 
@@ -1225,12 +1227,12 @@ static void edgewalker_for_loads(int32_t* lewdata)
    yhlimit = yh;
 
    xfrac = 0;
-   xend = xright >> 16;
+   xend = xlr[1] >> 16;
 
    for (k = ycur; k <= ylfar; k++)
    {
       if (k == ym)
-         xleft = xl & ~1;
+         xlr[0] = xl & ~1;
       spix = k & 3;
       if (!(k & ~0xfff))
       {
@@ -1243,9 +1245,8 @@ static void edgewalker_for_loads(int32_t* lewdata)
             minxhx = 0xfff;
          }
 
-         xrsc = (xright >> 13) & 0x7ffe;
-
-         xlsc = (xleft >> 13) & 0x7ffe;
+         xrsc = (xlr[1] >> 13) & 0x7ffe;
+         xlsc = (xlr[0] >> 13) & 0x7ffe;
 
          if (valid_y)
          {
@@ -1405,11 +1406,13 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    allinval = 1;
    for (k = ycur; k <= ylfar; k++)
    {
+      i32 xlr[2];
       static int maxxmx, minxhx;
       int xrsc, xlsc, stickybit;
-      const i32 xleft = xl & ~0x00000001, xright = xh & ~0x00000001;
       const int yhclose = yhlimit & ~3;
       const int spix = k & 3;
+      xlr[0] = xl & ~0x00000001;
+      xlr[1] = xh & ~0x00000001;
 
       if (k < yhclose)
          continue;
@@ -1425,12 +1428,12 @@ static void fill_rect(uint32_t w0, uint32_t w1)
          allinval = 1;
       }
 
-      stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
+      stickybit = (xlr[1] & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
       stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-      xrsc = (xright >> 13)&0x1FFE | stickybit;
-      curunder = !!(xright & 0x08000000);
+      xrsc = (xlr[1] >> 13)&0x1FFE | stickybit;
+      curunder = !!(xlr[1] & 0x08000000);
       curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
-      xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
+      xrsc = curunder ? clipxhshift : (xlr[1] >> 13)&0x3FFE | stickybit;
       curover  = !!(xrsc & 0x00002000);
       xrsc = xrsc & 0x1FFF;
       curover |= (u32)~(xrsc - clipxlshift) >> 31;
@@ -1439,12 +1442,12 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       allover &= curover;
       allunder &= curunder;
 
-      stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+      stickybit = (xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
       stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-      xlsc = (xleft >> 13)&0x1FFE | stickybit;
-      curunder = !!(xleft & 0x08000000);
+      xlsc = (xlr[0] >> 13)&0x1FFE | stickybit;
+      curunder = !!(xlr[0] & 0x08000000);
       curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
-      xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
+      xlsc = curunder ? clipxhshift : (xlr[0] >> 13)&0x3FFE | stickybit;
       curover  = !!(xlsc & 0x00002000);
       xlsc &= 0x1FFF;
       curover |= (u32)~(xlsc - clipxlshift) >> 31;
@@ -1453,8 +1456,8 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       allover &= curover;
       allunder &= curunder;
 
-      curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
-            < (xright&0x0FFFC000 ^ 0x08000000));
+      curcross = ((xlr[0] & 0x0FFFC000 ^ 0x08000000)
+            < (xlr[1] & 0x0FFFC000 ^ 0x08000000));
       invaly |= curcross;
       span[j].invalyscan[spix] = invaly;
       allinval &= invaly;
@@ -1469,7 +1472,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
 
       if (spix == 0)
       {
-         span[j].unscrx = xright >> 16;
+         span[j].unscrx = xlr[1] >> 16;
          setzero_si128(span[j].rgba);
          setzero_si128(span[j].stwz);
       }
