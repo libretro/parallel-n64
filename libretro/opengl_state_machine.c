@@ -706,20 +706,21 @@ extern bool frame_dupe;
 extern retro_video_refresh_t video_cb;
 extern uint32_t screen_width;
 extern uint32_t screen_height;
+void emu_step_render();
 
 int retro_return(int just_flipping)
 {
    gl_vbo_draw();
 
-   flip_only = false;
+   flip_only = just_flipping;
+
    if (just_flipping)
    {
 #ifndef HAVE_SHARED_CONTEXT
       sglExit();
 #endif
 
-      flip_only = true;
-      video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+      emu_step_render();
 
 #ifndef HAVE_SHARED_CONTEXT
       sglEnter();
