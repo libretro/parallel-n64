@@ -129,30 +129,26 @@ void vbo_buffer_data(void *data, size_t size)
 
 void vbo_draw(void)
 {
-   if (!vbuf_length)
+   if (!vbuf_length || vbuf_drawing)
       return;
+
+   /* avoid infinite loop in sgl*BindBuffer */
+   vbuf_drawing = true;
 
    if (vbuf_vbo)
    {
-      /* avoid infinite loop in sgl*BindBuffer */
-      if (vbuf_drawing)
-         return;
-
-      vbuf_drawing = true;
-
       glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
 
       glBufferSubData(GL_ARRAY_BUFFER, 0, VERTEX_SIZE * vbuf_length, vbuf_data);
 
       glDrawArrays(vbuf_primitive, 0, vbuf_length);
       glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-      vbuf_drawing = false;
    }
    else
       glDrawArrays(vbuf_primitive, 0, vbuf_length);
 
    vbuf_length = 0;
+   vbuf_drawing = false;
 }
 
 static void vbo_append(GLenum mode, GLsizei count, void *pointers)
@@ -176,13 +172,18 @@ static void vbo_append(GLenum mode, GLsizei count, void *pointers)
 
 void vbo_enable(void)
 {
+   bool was_drawing = vbuf_drawing;
+
    if (vbuf_enabled)
       return;
+
+   vbuf_drawing = true;
 
    if (vbuf_vbo)
    {
       glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
-      vbo_buffer_data(NULL, VERTEX_BUFFER_SIZE);
+      if (vbuf_vbo_size < VERTEX_BUFFER_SIZE)
+         vbo_buffer_data(NULL, VERTEX_BUFFER_SIZE);
    }
 
    glEnableVertexAttribArray(POSITION_ATTR);
@@ -201,6 +202,8 @@ void vbo_enable(void)
       glBindBuffer(GL_ARRAY_BUFFER, 0);
 
    vbuf_enabled = true;
+
+   vbuf_drawing = was_drawing;
 }
 
 void vbo_disable()
