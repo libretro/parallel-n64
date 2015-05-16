@@ -362,6 +362,18 @@ void grBufferClear(uint32_t color, uint32_t alpha, uint32_t depth);
 
 void grBufferSwap(uint32_t swap_interval);
 
+
+/*
+ * Vertex Cache functions
+ *
+ * these are public just to allow reuse of the vertex cache vbo in some
+ * specific places. you probably do not want to use them. */
+void vbo_enable();
+void vbo_disable();
+void vbo_bind();
+void vbo_unbind();
+void vbo_buffer_data(void *data, size_t size);
+
 /*
 ** error management
 */

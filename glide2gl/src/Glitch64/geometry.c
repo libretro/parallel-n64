@@ -38,6 +38,7 @@ static unsigned vbuf_length    = 0;
 static bool     vbuf_use_vbo   = false;
 static bool     vbuf_enabled   = false;
 static GLuint   vbuf_vbo       = 0;
+static size_t   vbuf_vbo_size  = 0;
 static bool     vbuf_drawing   = false;
 
 extern retro_environment_t environ_cb;
@@ -88,10 +89,42 @@ void vbo_free(void)
    if (vbuf_vbo)
       glDeleteBuffers(1, &vbuf_vbo);
 
-   vbuf_vbo     = 0;
+   vbuf_vbo      = 0;
+   vbuf_vbo_size = 0;
+
    vbuf_length  = 0;
    vbuf_enabled = false;
    vbuf_drawing = false;
+}
+
+void vbo_bind()
+{
+   if (vbuf_vbo)
+      glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
+}
+
+void vbo_unbind()
+{
+   if (vbuf_vbo)
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void vbo_buffer_data(void *data, size_t size)
+{
+   if (vbuf_vbo)
+   {
+      if (size > vbuf_vbo_size)
+      {
+         glBufferData(GL_ARRAY_BUFFER, size, data, GL_DYNAMIC_DRAW);
+
+         if (size > VERTEX_BUFFER_SIZE)
+            log_cb(RETRO_LOG_INFO, "Extending vertex cache VBO.\n");
+
+         vbuf_vbo_size = size;
+      }
+      else
+         glBufferSubData(GL_ARRAY_BUFFER, 0, size, data);
+   }
 }
 
 void vbo_draw(void)
@@ -149,7 +182,7 @@ void vbo_enable(void)
    if (vbuf_vbo)
    {
       glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
-      glBufferData(GL_ARRAY_BUFFER, VERTEX_BUFFER_SIZE, 0, GL_DYNAMIC_DRAW);
+      vbo_buffer_data(NULL, VERTEX_BUFFER_SIZE);
    }
 
    glEnableVertexAttribArray(POSITION_ATTR);
