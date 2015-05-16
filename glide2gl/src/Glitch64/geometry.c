@@ -67,15 +67,19 @@ void vbo_init(void)
    vbuf_length = 0;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-   {
-      if (!strcmp(var.value, "on"))
-      {
-          vbuf_use_vbo = true;
+      vbuf_use_vbo = (strcmp(var.value, "on") == 0);
 
-          log_cb(RETRO_LOG_INFO, "Vertex cache VBO enabled.\n");
+   if (vbuf_use_vbo)
+   {
+      glGenBuffers(1, &vbuf_vbo);
+
+      if (!vbuf_vbo)
+      {
+         log_cb(RETRO_LOG_ERROR, "Failed to create the VBO.");
+         vbuf_use_vbo = false;
       }
       else
-         vbuf_use_vbo = false;
+         log_cb(RETRO_LOG_INFO, "Vertex cache VBO enabled.\n");
    }
 }
 
@@ -141,18 +145,6 @@ void vbo_enable(void)
 {
    if (vbuf_enabled)
       return;
-
-   if (vbuf_use_vbo && !vbuf_vbo)
-   {
-      if (!vbuf_vbo)
-         glGenBuffers(1, &vbuf_vbo);
-
-      if (!vbuf_vbo)
-      {
-         log_cb(RETRO_LOG_ERROR, "Failed to create the VBO.");
-         vbuf_use_vbo = false;
-      }
-   }
 
    if (vbuf_vbo)
    {
