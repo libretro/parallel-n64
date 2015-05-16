@@ -68,7 +68,11 @@ static GLuint BindTexture_ids[MAX_TEXTURE];
 #ifndef GLIDE64_MK2
 static void gl_vbo_draw(void)
 {
+#ifdef HAVE_OPENGLES2
+   vbo_disable();
+#else
    vbo_draw();
+#endif
 }
 #else
 static void gl_vbo_draw(void)
