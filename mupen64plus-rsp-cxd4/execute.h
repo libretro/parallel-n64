@@ -464,7 +464,7 @@ BRANCH:
     else if (*RSP.MI_INTR_REG & 0x00000001) /* interrupt set by MTC0 to break */
         RSP.CheckInterrupts();
     else if (stale_signals != 0) /* too many iterations of MFC0:  timed out */
-        MF_SP_STATUS_TIMEOUT = 16;
+        MF_SP_STATUS_TIMEOUT = 16384; /* This is slow:  Make 16 if it works. */
     else if (*RSP.SP_SEMAPHORE_REG != 0x00000000) /* semaphore lock fixes */
         {}
     else /* ??? unknown, possibly external intervention from CPU memory map */
