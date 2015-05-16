@@ -233,7 +233,6 @@ typedef struct edgewalker_info
    int allover, allunder, curover, curunder;
    int allinval;
    int spix;
-   int xlrsc[2];
    int stickybit;
    i32 clipxlshift;
    i32 clipxhshift;
@@ -701,6 +700,7 @@ no_read_zbuffer_coefficients:
    for (k = ycur; k <= ylfar; k++)
    {
       static int minmax[2];
+      int xrsc, xlsc;
       const int yhclose = yhlimit & ~3;
 
       edges.spix = k & 3;
@@ -715,6 +715,7 @@ no_read_zbuffer_coefficients:
       {
          invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
          j = k >> 2;
+
          if (edges.spix == 0)
          {
             minmax[1] = 0x000;
@@ -723,25 +724,27 @@ no_read_zbuffer_coefficients:
             edges.allinval = 1;
          }
 
-         draw_triangle_edge_common(&edges, xlr[1], &edges.xlrsc[1], 1);
-         span[j].majorx[edges.spix] = edges.xlrsc[1] & 0x1FFF;
+         draw_triangle_edge_common(&edges, xlr[1], &xrsc, 1);
+         span[j].majorx[edges.spix] = xrsc & 0x1FFF;
 
-         draw_triangle_edge_common(&edges, xlr[0], &edges.xlrsc[0], 0);
-         span[j].minorx[edges.spix] = edges.xlrsc[0] & 0x1FFF;
+         draw_triangle_edge_common(&edges, xlr[0], &xlsc, 0);
+         span[j].minorx[edges.spix] = xlsc & 0x1FFF;
 
-         curcross = ((xlr[1 - flip]&0x0FFFC000 ^ 0x08000000)
-               <  (xlr[0 + flip]&0x0FFFC000 ^ 0x08000000));
+         curcross = ((xlr[1 - flip] & 0x0FFFC000 ^ 0x08000000)
+               <  (xlr[0 + flip] & 0x0FFFC000 ^ 0x08000000));
          invaly |= curcross;
          span[j].invalyscan[edges.spix] = invaly;
          edges.allinval &= invaly;
+
          if (invaly == 0)
          {
-            edges.xlrsc[0] = (edges.xlrsc[0] >> 3) & 0xFFF;
-            edges.xlrsc[1] = (edges.xlrsc[1] >> 3) & 0xFFF;
+            int xlrsc[2];
+            xlrsc[0] = (xlsc >> 3) & 0xFFF;
+            xlrsc[1] = (xrsc >> 3) & 0xFFF;
             minmax[0]
-            = (edges.xlrsc[flip - 0] < minmax[0]) ? edges.xlrsc[flip - 0] : minmax[0];
+            = (xlrsc[flip - 0] < minmax[0]) ? xlrsc[flip - 0] : minmax[0];
             minmax[1]
-            = (edges.xlrsc[1 - flip] > minmax[1]) ? edges.xlrsc[1 - flip] : minmax[1];
+            = (xlrsc[1 - flip] > minmax[1]) ? xlrsc[1 - flip] : minmax[1];
          }
 
          if (edges.spix == ldflag)
@@ -901,6 +904,7 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
    i32 d_stwz_de[4];
    i32 d_stwz_dy[4];
    i32 d_stwz_dxh[4];
+   i32 xlr[2];
    int j, k;
    int curcross;
    int invaly;
@@ -965,9 +969,9 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
 
    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
 
-   edges.xlrsc[0] = xl & ~0x00000001;
-   edges.xlrsc[1] = xh & ~0x00000001;
-   xfrac = (edges.xlrsc[1] >> 8) & 0xFF;
+   xlr[0] = xl & ~0x00000001;
+   xlr[1] = xh & ~0x00000001;
+   xfrac = (xlr[1] >> 8) & 0xFF;
 
    stwz[0] &= ~0x000001FF;
    stwz[1] &= ~0x000001FF;
@@ -998,14 +1002,14 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
          edges.allinval = 1;
       }
 
-      draw_triangle_edge_common(&edges, edges.xlrsc[1], &xrsc, 1);
+      draw_triangle_edge_common(&edges, xlr[1], &xrsc, 1);
       span[j].majorx[edges.spix] = xrsc & 0x1FFF;
 
-      draw_triangle_edge_common(&edges, edges.xlrsc[0], &xlsc, 0);
+      draw_triangle_edge_common(&edges, xlr[0], &xlsc, 0);
       span[j].minorx[edges.spix] = xlsc & 0x1FFF;
 
-      curcross = ((edges.xlrsc[0] & 0x0FFFC000 ^ 0x08000000)
-            < (edges.xlrsc[1] & 0x0FFFC000 ^ 0x08000000));
+      curcross = ((xlr[0] & 0x0FFFC000 ^ 0x08000000)
+            < (xlr[1] & 0x0FFFC000 ^ 0x08000000));
       invaly |= curcross;
       span[j].invalyscan[edges.spix] = invaly;
       edges.allinval &= invaly;
@@ -1020,7 +1024,7 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
 
       if (edges.spix == 0)
       {
-         span[j].unscrx = edges.xlrsc[1] >> 16;
+         span[j].unscrx = xlr[1] >> 16;
          setzero_si128(span[j].rgba);
          span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
          span[j].stwz[1] = stwz[1];
@@ -1146,6 +1150,7 @@ static void edgewalker_for_loads(int32_t* lewdata)
    int ycur;
    int ylfar;
 
+   int32_t xlr[2];
    int32_t maxxmx, minxhx;
 
    int commandcode = (lewdata[0] >> 24) & 0x3f;
@@ -1191,8 +1196,8 @@ static void edgewalker_for_loads(int32_t* lewdata)
    int dsdy = 0;
    int dtdy = (lewdata[8] & 0xffff) << 16;
 
-   edges.xlrsc[0]  = xm & ~0x1;
-   edges.xlrsc[1]  = xh & ~0x1;
+   xlr[0]  = xm & ~0x1;
+   xlr[1]  = xh & ~0x1;
 
    max_level = 0;
 
@@ -1207,12 +1212,12 @@ static void edgewalker_for_loads(int32_t* lewdata)
    yhlimit = yh;
 
    xfrac = 0;
-   xend = edges.xlrsc[1] >> 16;
+   xend = xlr[1] >> 16;
 
    for (k = ycur; k <= ylfar; k++)
    {
       if (k == ym)
-         edges.xlrsc[0] = xl & ~1;
+         xlr[0] = xl & ~1;
       edges.spix = k & 3;
       if (!(k & ~0xfff))
       {
@@ -1225,8 +1230,8 @@ static void edgewalker_for_loads(int32_t* lewdata)
             minxhx = 0xfff;
          }
 
-         xrsc = (edges.xlrsc[1] >> 13) & 0x7ffe;
-         xlsc = (edges.xlrsc[0] >> 13) & 0x7ffe;
+         xrsc = (xlr[1] >> 13) & 0x7ffe;
+         xlsc = (xlr[0] >> 13) & 0x7ffe;
 
          if (valid_y)
          {
@@ -1337,6 +1342,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    int invaly;
    int curcross;
    int j, k;
+   i32 xlr[2];
    edgewalker_info_t edges = {0};
    int xl = (w0 & 0x00FFF000) >> (44 - 32);  /* X coordinate of bottom right corner of rectangle. */
    int yl = (w0 & 0x00000FFF) >> (32 - 32);  /* Y coordinate of bottom right corner of rectangle. */
@@ -1391,8 +1397,8 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       int xrsc, xlsc;
       const int yhclose = yhlimit & ~3;
       edges.spix = k & 3;
-      edges.xlrsc[0] = xl & ~0x00000001;
-      edges.xlrsc[1] = xh & ~0x00000001;
+      xlr[0] = xl & ~0x00000001;
+      xlr[1] = xh & ~0x00000001;
 
       if (k < yhclose)
          continue;
@@ -1408,14 +1414,14 @@ static void fill_rect(uint32_t w0, uint32_t w1)
          edges.allinval = 1;
       }
 
-      draw_triangle_edge_common(&edges, edges.xlrsc[1], &xrsc, 1);
+      draw_triangle_edge_common(&edges, xlr[1], &xrsc, 1);
       span[j].majorx[edges.spix] = xrsc & 0x1FFF;
 
-      draw_triangle_edge_common(&edges, edges.xlrsc[0], &xlsc, 0);
+      draw_triangle_edge_common(&edges, xlr[0], &xlsc, 0);
       span[j].minorx[edges.spix] = xlsc & 0x1FFF;
 
-      curcross = ((edges.xlrsc[0] & 0x0FFFC000 ^ 0x08000000)
-            < (edges.xlrsc[1] & 0x0FFFC000 ^ 0x08000000));
+      curcross = ((xlr[0] & 0x0FFFC000 ^ 0x08000000)
+            < (xlr[1] & 0x0FFFC000 ^ 0x08000000));
       invaly |= curcross;
       span[j].invalyscan[edges.spix] = invaly;
       edges.allinval &= invaly;
@@ -1430,7 +1436,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
 
       if (edges.spix == 0)
       {
-         span[j].unscrx = edges.xlrsc[1] >> 16;
+         span[j].unscrx = xlr[1] >> 16;
          setzero_si128(span[j].rgba);
          setzero_si128(span[j].stwz);
       }
