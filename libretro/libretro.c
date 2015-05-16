@@ -19,7 +19,6 @@
 /* Cxd4 RSP */
 #include "../mupen64plus-rsp-cxd4/config.h"
 
-static void EmuThreadFunction(void);
 int glide64InitGfx(void);
 void gles2n64_reset(void);
 
@@ -37,10 +36,7 @@ struct retro_rumble_interface rumble;
 
 save_memory_data saved_memory;
 
-#ifdef SINGLE_THREAD
-void dyna_start(void *code);
-void dyna_jump(void);
-#else
+#ifndef SINGLE_THREAD
 cothread_t main_thread;
 static cothread_t cpu_thread;
 #endif
@@ -51,10 +47,18 @@ float polygonOffsetUnits;
 int astick_deadzone;
 bool flip_only;
 
-static uint8_t* game_data;
-static uint32_t game_size;
+static uint8_t* game_data = NULL;
+static uint32_t game_size = 0;
 
-static bool reinit_screen;
+static bool     emu_initialized = false;
+static unsigned initial_boot    = true;
+
+static unsigned retro_filtering     = 0;
+static bool     reinit_screen       = false;
+static bool     first_context_reset = false;
+static bool     pushed_frame        = false;
+
+unsigned frame_dupe = false;
 
 extern uint32_t *blitter_buf;
 
@@ -66,10 +70,9 @@ uint32_t screen_height;
 uint32_t screen_pitch;
 uint32_t screen_aspectmodehint;
 
-static bool first_context_reset;
-
 extern unsigned int VI_REFRESH;
 unsigned int BUFFERSWAP;
+unsigned int FAKE_SDL_TICKS;
 
 // after the controller's CONTROL* member has been assigned we can update
 // them straight from here...
@@ -247,13 +250,87 @@ static void setup_variables(void)
    environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
 }
 
+
+static bool emu_step_load_data()
+{
+   if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0) && log_cb)
+       log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to initialize core\n");
+
+   log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
+
+   if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load ROM\n");
+       goto load_fail;
+   }
+
+   free(game_data);
+   game_data = NULL;
+
+   log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
+
+   if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "mupen64plus; Failed to query ROM header information\n");
+      goto load_fail;
+   }
+
+   return true;
+
+load_fail:
+   free(game_data);
+   game_data = NULL;
+   stop = 1;
+
+   return false;
+}
+
+bool emu_step_render()
+{
+   if (flip_only)
+   {
+      if (gfx_plugin == GFX_ANGRYLION)
+         video_cb((screen_pitch == 0) ? NULL : blitter_buf, screen_width, screen_height, screen_pitch);
+      else
+         video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
+
+      pushed_frame = true;
+      return true;
+   }
+
+   if (!pushed_frame && frame_dupe) // Dupe. Not duping violates libretro API, consider it a speedhack.
+      video_cb(NULL, screen_width, screen_height, screen_pitch);
+
+   return false;
+}
+
+static void emu_step_initialize()
+{
+   if (emu_initialized)
+      return;
+
+   emu_initialized = true;
+
+   core_settings_set_defaults();
+   core_settings_autoselect_gfx_plugin();
+   core_settings_autoselect_rsp_plugin();
+
+   plugin_connect_all(gfx_plugin, rsp_plugin);
+
+   log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE. \n");
+
+   CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
+}
+
 void reinit_gfx_plugin(void)
 {
     if(first_context_reset)
     {
-        first_context_reset=false;
+        first_context_reset = false;
 #ifdef SINGLE_THREAD
-        EmuThreadFunction();
+        emu_step_initialize();
 #else
         co_switch(cpu_thread);
 #endif
@@ -265,68 +342,27 @@ void reinit_gfx_plugin(void)
       gles2n64_reset();
 }
 
+#ifndef SINGLE_THREAD
 static void EmuThreadFunction(void)
 {
-    if(CoreStartup(FRONTEND_API_VERSION, ".", ".", "Core", n64DebugCallback, 0, 0) && log_cb)
-        log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to initialize core\n");
-
-    log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_OPEN\n");
-
-    if(CoreDoCommand(M64CMD_ROM_OPEN, game_size, (void*)game_data))
-    {
-       if (log_cb)
-          log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load ROM\n");
-        goto load_fail;
-    }
-
-    free(game_data);
-    game_data = NULL;
-
-    log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_ROM_GET_HEADER\n");
-
-    if(CoreDoCommand(M64CMD_ROM_GET_HEADER, sizeof(ROM_HEADER), &ROM_HEADER))
-    {
-       if (log_cb)
-          log_cb(RETRO_LOG_ERROR, "mupen64plus; Failed to query ROM header information\n");
+    if (!emu_step_load_data())
        goto load_fail;
-    }
 
-#ifndef SINGLE_THREAD
     //ROM is loaded, switch back to main thread so retro_load_game can return (returning failure if needed).
     //We'll continue here once the context is reset.
     co_switch(main_thread);
-#endif
 
-    core_settings_set_defaults();
-    core_settings_autoselect_gfx_plugin();
-    core_settings_autoselect_rsp_plugin();
+    emu_step_initialize();
 
-    plugin_connect_all(gfx_plugin, rsp_plugin);
-
-    log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE. \n");
-
-    CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
-
-#ifndef SINGLE_THREAD
     //Context is reset too, everything is safe to use. Now back to main thread so we don't start pushing frames outside retro_run.
     co_switch(main_thread);
-#endif
 
-#ifdef SINGLE_THREAD
-    return;
-#else
     main_run();
     log_cb(RETRO_LOG_INFO, "EmuThread: co_switch main_thread. \n");
 
     co_switch(main_thread);
-#endif
 
 load_fail:
-    free(game_data);
-    game_data = NULL;
-    stop = 1;
-
-#ifndef SINGLE_THREAD
     //NEVER RETURN! That's how libco rolls
     while(1)
     {
@@ -334,10 +370,8 @@ load_fail:
           log_cb(RETRO_LOG_ERROR, "Running Dead N64 Emulator");
        co_switch(main_thread);
     }
-#endif
 }
-
-//
+#endif
 
 const char* retro_get_system_directory(void)
 {
@@ -463,10 +497,6 @@ void retro_deinit(void)
    if (perf_cb.perf_log)
       perf_cb.perf_log();
 }
-
-unsigned int retro_filtering = 0;
-unsigned int frame_dupe = false;
-unsigned int initial_boot = true;
 
 #include "../mupen64plus-video-angrylion/vi.h"
 
@@ -781,7 +811,10 @@ bool retro_load_game(const struct retro_game_info *game)
    memcpy(game_data, game->data, game->size);
    game_size = game->size;
 
-#ifndef SINGLE_THREAD
+#ifdef SINGLE_THREAD
+   if (!emu_step_load_data())
+      return false;
+#else
    stop = false;
    //Finish ROM load before doing anything funny, so we can return failure if needed.
    co_switch(cpu_thread);
@@ -802,16 +835,20 @@ void retro_unload_game(void)
 #endif
 
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
+    emu_initialized = false;
 }
 
-unsigned int FAKE_SDL_TICKS;
-static bool pushed_frame;
 void retro_run (void)
 {
    static bool updated = false;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       update_variables(false);
+
+#ifdef SINGLE_THREAD
+   if (gfx_plugin == GFX_ANGRYLION && !emu_initialized)
+      emu_step_initialize();
+#endif
 
    FAKE_SDL_TICKS += 16;
    pushed_frame = false;
@@ -834,39 +871,23 @@ void retro_run (void)
       reinit_screen = false;
    }
 
-run_again:
-
+   do {
 #ifndef HAVE_SHARED_CONTEXT
-   sglEnter();
+      sglEnter();
 #endif
 
 #ifdef SINGLE_THREAD
-   stop = 0;
-   main_run();
-   stop = 0;
+      stop = 0;
+      main_run();
+      stop = 0;
 #else
-   co_switch(cpu_thread);
+      co_switch(cpu_thread);
 #endif
-
 
 #ifndef HAVE_SHARED_CONTEXT
-   sglExit();
+      sglExit();
 #endif
-
-   if (flip_only)
-   {
-      if (gfx_plugin == GFX_ANGRYLION)
-         video_cb((screen_pitch == 0) ? NULL : blitter_buf, screen_width, screen_height, screen_pitch); 
-#ifndef SINGLE_THREAD
-      else
-         video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
-#endif
-      pushed_frame = true;
-      goto run_again;
-   }
-
-   if (!pushed_frame && frame_dupe) // Dupe. Not duping violates libretro API, consider it a speedhack.
-      video_cb(NULL, screen_width, screen_height, screen_pitch);
+   } while (emu_step_render());
 }
 
 void retro_reset (void)
