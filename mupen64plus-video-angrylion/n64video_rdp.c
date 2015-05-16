@@ -1411,13 +1411,12 @@ static void fill_rect(uint32_t w0, uint32_t w1)
 
    for (k = ycur; k <= ylfar; k++)
    {
-      i32 xlr[2];
       static int maxxmx, minxhx;
       int xrsc, xlsc;
       const int yhclose = yhlimit & ~3;
       edges.spix = k & 3;
-      xlr[0] = xl & ~0x00000001;
-      xlr[1] = xh & ~0x00000001;
+      edges.xlrsc[0] = xl & ~0x00000001;
+      edges.xlrsc[1] = xh & ~0x00000001;
 
       if (k < yhclose)
          continue;
@@ -1433,12 +1432,12 @@ static void fill_rect(uint32_t w0, uint32_t w1)
          edges.allinval = 1;
       }
 
-      edges.stickybit = (xlr[1] & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
+      edges.stickybit = (edges.xlrsc[1] & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
       edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
-      xrsc = (xlr[1] >> 13)&0x1FFE | edges.stickybit;
-      edges.curunder = !!(xlr[1] & 0x08000000);
+      xrsc = (edges.xlrsc[1] >> 13)&0x1FFE | edges.stickybit;
+      edges.curunder = !!(edges.xlrsc[1] & 0x08000000);
       edges.curunder |= (u32)(xrsc - clipxhshift)>>31;
-      xrsc = edges.curunder ? clipxhshift : (xlr[1] >> 13)&0x3FFE | edges.stickybit;
+      xrsc = edges.curunder ? clipxhshift : (edges.xlrsc[1] >> 13)&0x3FFE | edges.stickybit;
       edges.curover  = !!(xrsc & 0x00002000);
       xrsc = xrsc & 0x1FFF;
       edges.curover |= (u32)~(xrsc - clipxlshift) >> 31;
@@ -1447,12 +1446,12 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       edges.allover  &= edges.curover;
       edges.allunder &= edges.curunder;
 
-      edges.stickybit = (xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+      edges.stickybit = (edges.xlrsc[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
       edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
-      xlsc = (xlr[0] >> 13)&0x1FFE | edges.stickybit;
-      edges.curunder = !!(xlr[0] & 0x08000000);
+      xlsc = (edges.xlrsc[0] >> 13)&0x1FFE | edges.stickybit;
+      edges.curunder = !!(edges.xlrsc[0] & 0x08000000);
       edges.curunder |= (u32)(xlsc - clipxhshift)>>31;
-      xlsc = edges.curunder ? clipxhshift : (xlr[0] >> 13)&0x3FFE | edges.stickybit;
+      xlsc = edges.curunder ? clipxhshift : (edges.xlrsc[0] >> 13)&0x3FFE | edges.stickybit;
       edges.curover  = !!(xlsc & 0x00002000);
       xlsc &= 0x1FFF;
       edges.curover |= (u32)~(xlsc - clipxlshift) >> 31;
@@ -1461,8 +1460,8 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       edges.allover &= edges.curover;
       edges.allunder &= edges.curunder;
 
-      curcross = ((xlr[0] & 0x0FFFC000 ^ 0x08000000)
-            < (xlr[1] & 0x0FFFC000 ^ 0x08000000));
+      curcross = ((edges.xlrsc[0] & 0x0FFFC000 ^ 0x08000000)
+            < (edges.xlrsc[1] & 0x0FFFC000 ^ 0x08000000));
       invaly |= curcross;
       span[j].invalyscan[edges.spix] = invaly;
       edges.allinval &= invaly;
@@ -1477,7 +1476,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
 
       if (edges.spix == 0)
       {
-         span[j].unscrx = xlr[1] >> 16;
+         span[j].unscrx = edges.xlrsc[1] >> 16;
          setzero_si128(span[j].rgba);
          setzero_si128(span[j].stwz);
       }
