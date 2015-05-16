@@ -900,7 +900,6 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
       int s, int t, int dsdx, int dtdy)
 {
    u8 xfrac;
-   i32 xlr[2];
    i32 stwz[4];
    i32 d_stwz_dx[4];
    i32 d_stwz_de[4];
@@ -969,9 +968,9 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
 
    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
 
-   xlr[0] = xl & ~0x00000001;
-   xlr[1] = xh & ~0x00000001;
-   xfrac = (xlr[1] >> 8) & 0xFF;
+   edges.xlrsc[0] = xl & ~0x00000001;
+   edges.xlrsc[1] = xh & ~0x00000001;
+   xfrac = (edges.xlrsc[1] >> 8) & 0xFF;
 
    stwz[0] &= ~0x000001FF;
    stwz[1] &= ~0x000001FF;
@@ -1002,12 +1001,12 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
          edges.allinval = 1;
       }
 
-      edges.stickybit = (xlr[1] & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
+      edges.stickybit = (edges.xlrsc[1] & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
       edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
-      xrsc = (xlr[1] >> 13)&0x1FFE | edges.stickybit;
-      edges.curunder = !!(xlr[1] & 0x08000000);
+      xrsc = (edges.xlrsc[1] >> 13)&0x1FFE | edges.stickybit;
+      edges.curunder = !!(edges.xlrsc[1] & 0x08000000);
       edges.curunder |= (u32)(xrsc - clipxhshift)>>31;
-      xrsc = edges.curunder ? clipxhshift : (xlr[1] >> 13)&0x3FFE | edges.stickybit;
+      xrsc = edges.curunder ? clipxhshift : (edges.xlrsc[1] >> 13)&0x3FFE | edges.stickybit;
       edges.curover  = !!(xrsc & 0x00002000);
       xrsc = xrsc & 0x1FFF;
       edges.curover |= (u32)~(xrsc - clipxlshift) >> 31;
@@ -1016,12 +1015,12 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
       edges.allover  &= edges.curover;
       edges.allunder &= edges.curunder;
 
-      edges.stickybit = (xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+      edges.stickybit = (edges.xlrsc[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
       edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
-      xlsc = (xlr[0] >> 13)&0x1FFE | edges.stickybit;
-      edges.curunder = !!(xlr[0] & 0x08000000);
+      xlsc = (edges.xlrsc[0] >> 13)&0x1FFE | edges.stickybit;
+      edges.curunder = !!(edges.xlrsc[0] & 0x08000000);
       edges.curunder |= (u32)(xlsc - clipxhshift)>>31;
-      xlsc = edges.curunder ? clipxhshift : (xlr[0] >> 13)&0x3FFE | edges.stickybit;
+      xlsc = edges.curunder ? clipxhshift : (edges.xlrsc[0] >> 13)&0x3FFE | edges.stickybit;
       edges.curover  = !!(xlsc & 0x00002000);
       xlsc &= 0x1FFF;
       edges.curover |= (u32)~(xlsc - clipxlshift) >> 31;
@@ -1030,8 +1029,8 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
       edges.allover  &= edges.curover;
       edges.allunder &= edges.curunder;
 
-      curcross = ((xlr[0] & 0x0FFFC000 ^ 0x08000000)
-            < (xlr[1] & 0x0FFFC000 ^ 0x08000000));
+      curcross = ((edges.xlrsc[0] & 0x0FFFC000 ^ 0x08000000)
+            < (edges.xlrsc[1] & 0x0FFFC000 ^ 0x08000000));
       invaly |= curcross;
       span[j].invalyscan[edges.spix] = invaly;
       edges.allinval &= invaly;
@@ -1046,7 +1045,7 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
 
       if (edges.spix == 0)
       {
-         span[j].unscrx = xlr[1] >> 16;
+         span[j].unscrx = edges.xlrsc[1] >> 16;
          setzero_si128(span[j].rgba);
          span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
          span[j].stwz[1] = stwz[1];
@@ -1166,7 +1165,6 @@ static void set_tile_size(uint32_t w0, uint32_t w1)
 
 static void edgewalker_for_loads(int32_t* lewdata)
 {
-   int xlr[2];
    int j = 0;
    int xstart = 0, xend = 0;
 
@@ -1218,8 +1216,8 @@ static void edgewalker_for_loads(int32_t* lewdata)
    int dsdy = 0;
    int dtdy = (lewdata[8] & 0xffff) << 16;
 
-   xlr[0]  = xm & ~0x1;
-   xlr[1]  = xh & ~0x1;
+   edges.xlrsc[0]  = xm & ~0x1;
+   edges.xlrsc[1]  = xh & ~0x1;
 
    max_level = 0;
 
@@ -1234,12 +1232,12 @@ static void edgewalker_for_loads(int32_t* lewdata)
    yhlimit = yh;
 
    xfrac = 0;
-   xend = xlr[1] >> 16;
+   xend = edges.xlrsc[1] >> 16;
 
    for (k = ycur; k <= ylfar; k++)
    {
       if (k == ym)
-         xlr[0] = xl & ~1;
+         edges.xlrsc[0] = xl & ~1;
       edges.spix = k & 3;
       if (!(k & ~0xfff))
       {
@@ -1252,8 +1250,8 @@ static void edgewalker_for_loads(int32_t* lewdata)
             minxhx = 0xfff;
          }
 
-         xrsc = (xlr[1] >> 13) & 0x7ffe;
-         xlsc = (xlr[0] >> 13) & 0x7ffe;
+         xrsc = (edges.xlrsc[1] >> 13) & 0x7ffe;
+         xlsc = (edges.xlrsc[0] >> 13) & 0x7ffe;
 
          if (valid_y)
          {
