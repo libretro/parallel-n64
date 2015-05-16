@@ -188,9 +188,7 @@ NOINLINE static void render_spans(
 {
    const unsigned int cycle_type = g_gdp.other_modes.cycle_type & 03;
 
-   if (g_gdp.other_modes.f.stalederivs == 0)
-   { /* branch */ }
-   else
+   if (g_gdp.other_modes.f.stalederivs != 0)
    {
       deduce_derivatives();
       g_gdp.other_modes.f.stalederivs = 0;
@@ -689,9 +687,7 @@ no_read_zbuffer_coefficients:
          xlr_inc[0] = (DxLDy >> 2) & ~0x00000001;
       }
 
-      if (k < yhclose)
-      { /* branch */ }
-      else
+      if (k >= yhclose)
       {
          invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
          j = k >> 2;
@@ -736,9 +732,7 @@ no_read_zbuffer_coefficients:
          invaly |= curcross;
          span[j].invalyscan[spix] = invaly;
          allinval &= invaly;
-         if (invaly != 0)
-         { /* branch */ }
-         else
+         if (invaly == 0)
          {
             xlrsc[0] = (xlrsc[0] >> 3) & 0xFFF;
             xlrsc[1] = (xlrsc[1] >> 3) & 0xFFF;
@@ -835,6 +829,7 @@ no_read_zbuffer_coefficients:
             span[j].validline = invalidline ^ 1;
          }
       }
+
       if (spix == 3)
       {
          rgba[0] += d_rgba_de[0];
@@ -1419,8 +1414,10 @@ static void fill_rect(uint32_t w0, uint32_t w1)
 
       if (k < yhclose)
          continue;
+
       invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
       j = k >> 2;
+
       if (spix == 0)
       {
          maxxmx = 0x000;
@@ -1462,9 +1459,8 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       invaly |= curcross;
       span[j].invalyscan[spix] = invaly;
       allinval &= invaly;
-      if (invaly != 0)
-      { /* branch */ }
-      else
+
+      if (invaly == 0)
       {
          xlsc = (xlsc >> 3) & 0xFFF;
          xrsc = (xrsc >> 3) & 0xFFF;
