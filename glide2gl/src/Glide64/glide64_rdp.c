@@ -906,17 +906,17 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          //shifting
          if (shifter)
          {
-            if (shifter > 10)
+            if (shifter < 11)
             {
-               uint8_t iShift = (16 - shifter);
-               x_i <<= iShift;
-               maxs = (float)(1 << iShift);
+               x_i   = SIGN16(x_i);
+               x_i >>= shifter;
+               maxs = 1.0f/(float)(1 << shifter);
             }
             else
             {
-               uint8_t iShift = shifter;
-               x_i >>= iShift;
-               maxs = 1.0f/(float)(1 << iShift);
+               uint8_t iShift = (16 - shifter);
+               x_i <<= SIGN16(iShift);
+               maxs = (float)(1 << iShift);
             }
          }
 
@@ -924,36 +924,33 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
          if (shifter)
          {
-            if (g_gdp.tile[tilenum].shift_t > 10)
+            if (shifter < 11)
             {
-               uint8_t iShift = (16 - shifter);
-               y_i <<= iShift;
-               maxt = (float)(1 << iShift);
+               y_i   = SIGN16(y_i);
+               y_i >>= shifter;
+               maxt = 1.0f/(float)(1 << shifter);
             }
             else
             {
-               uint8_t iShift = shifter;
-               y_i >>= iShift;
-               maxt = 1.0f/(float)(1 << iShift);
+               uint8_t iShift = (16 - shifter);
+               y_i <<= SIGN16(iShift);
+               maxt = (float)(1 << iShift);
             }
          }
 
-         {
-            //kill 10.5 format overflow by SIGN16 macro
-            texUV[i].ul_u = SIGN16(x_i) / 32.0f;
-            texUV[i].ul_v = SIGN16(y_i) / 32.0f;
+         texUV[i].ul_u = x_i / 32.0f;
+         texUV[i].ul_v = y_i / 32.0f;
 
-            texUV[i].ul_u -= rdp.tiles[tilenum].f_ul_s;
-            texUV[i].ul_v -= rdp.tiles[tilenum].f_ul_t;
+         texUV[i].ul_u -= rdp.tiles[tilenum].f_ul_s;
+         texUV[i].ul_v -= rdp.tiles[tilenum].f_ul_t;
 
-            texUV[i].lr_u = texUV[i].ul_u + off_size_x * maxs;
-            texUV[i].lr_v = texUV[i].ul_v + off_size_y * maxt;
+         texUV[i].lr_u = texUV[i].ul_u + off_size_x * maxs;
+         texUV[i].lr_v = texUV[i].ul_v + off_size_y * maxt;
 
-            texUV[i].ul_u = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_x * texUV[i].ul_u;
-            texUV[i].lr_u = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_x * texUV[i].lr_u;
-            texUV[i].ul_v = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_y * texUV[i].ul_v;
-            texUV[i].lr_v = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_y * texUV[i].lr_v;
-         }
+         texUV[i].ul_u = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_x * texUV[i].ul_u;
+         texUV[i].lr_u = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_x * texUV[i].lr_u;
+         texUV[i].ul_v = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_y * texUV[i].ul_v;
+         texUV[i].lr_v = rdp.cur_cache[i]->c_off + rdp.cur_cache[i]->c_scl_y * texUV[i].lr_v;
       }
    }
    rdp.cur_tile = prev_tile;
