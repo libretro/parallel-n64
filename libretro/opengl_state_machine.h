@@ -107,6 +107,7 @@ void sglFramebufferTexture2D(GLenum target, GLenum attachment, GLenum textarget,
 void sglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers);
 
 void sglBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage);
+void sglBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, const GLvoid *data);
 
 void sglGenBuffers(GLsizei n, GLuint * buffers);
 
@@ -183,6 +184,7 @@ void sglTexCoord2f(float S, float t);
 #define glTexCoord2f sglTexCoord2f
 #define glDrawArrays sglDrawArrays
 #define glBufferData sglBufferData
+#define glBufferSubData sglBufferSubData
 #define glGenBuffers sglGenBuffers
 #define glDeleteBuffers sglDeleteBuffers
 #endif

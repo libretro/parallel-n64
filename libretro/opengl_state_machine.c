@@ -511,6 +511,11 @@ void sglBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum us
    glBufferData(target, size, data, usage);
 }
 
+void sglBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, const GLvoid *data)
+{
+   glBufferSubData(target, offset, size, data);
+}
+
 void sglGenBuffers(GLsizei n, GLuint *buffers)
 {
    glGenBuffers(n, buffers);
