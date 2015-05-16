@@ -294,10 +294,10 @@ static void DrawImage (DRAWIMAGE *d)
 
 
    // SetTextureImage ()
-   rdp.timg.format = d->imageFmt; // RGBA
-   rdp.timg.size = d->imageSiz; // 16-bit
-   rdp.timg.addr = d->imagePtr;
-   rdp.timg.width = (d->imageW%2)?d->imageW-1:d->imageW;
+   g_gdp.ti_format = d->imageFmt; // RGBA
+   g_gdp.ti_size = d->imageSiz; // 16-bit
+   g_gdp.ti_address = d->imagePtr;
+   g_gdp.ti_width = (d->imageW%2)?d->imageW-1:d->imageW;
    rdp.timg.set_by = 0;
 
    // SetTile ()
@@ -1052,7 +1052,7 @@ static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t
    if (lr_y > ci_height)
       height = ci_height - ul_y;
 
-   mb = (uint32_t*)(gfx_info.RDRAM+rdp.timg.addr); //pointer to the first macro block
+   mb = (uint32_t*)(gfx_info.RDRAM+g_gdp.ti_address); //pointer to the first macro block
    dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
    dst += ul_x + ul_y * ci_width;
    //yuv macro block contains 16x16 texture. we need to put it in the proper place inside cimg
@@ -1187,9 +1187,9 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
       tline = ((uint16_t *)gfx_info.RDRAM)[(addr + 6) ^ 1]; // 6
 
       //FRDP ("addr: %08lx, tmem: %08lx, size: %d\n", image, tmem, tsize);
-      rdp.timg.addr = image;
-      rdp.timg.width = 1;
-      rdp.timg.size = G_IM_SIZ_8b;
+      g_gdp.ti_address = image;
+      g_gdp.ti_width = 1;
+      g_gdp.ti_size = G_IM_SIZ_8b;
 
       g_gdp.tile[7].tmem = tmem;
       g_gdp.tile[7].size = 1;
@@ -1210,9 +1210,9 @@ static void uc6_obj_loadtxtr(uint32_t w0, uint32_t w1)
 #endif
       line = (twidth + 1) >> 2;
 
-      rdp.timg.addr = image;
-      rdp.timg.width = line << 3;
-      rdp.timg.size = G_IM_SIZ_8b;
+      g_gdp.ti_address = image;
+      g_gdp.ti_width = line << 3;
+      g_gdp.ti_size = G_IM_SIZ_8b;
 
       g_gdp.tile[7].tmem = tmem;
       g_gdp.tile[7].line = line;
@@ -1391,8 +1391,8 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          if (line == 0)
             line = 1;
 
-         rdp.timg.addr = d.imagePtr;
-         rdp.timg.width = stride;
+         g_gdp.ti_address = d.imagePtr;
+         g_gdp.ti_width = stride;
          g_gdp.tile[7].tmem = 0;
          g_gdp.tile[7].line = line;//(d.imageW>>3);
          g_gdp.tile[7].size = d.imageSiz;

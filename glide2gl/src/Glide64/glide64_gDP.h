@@ -135,7 +135,7 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
    {
       if (ucode5_texshift % ((lr_s+1)<<3))
       {
-         rdp.timg.addr -= ucode5_texshift;
+         g_gdp.ti_address -= ucode5_texshift;
          ucode5_texshiftaddr = 0;
          ucode5_texshift = 0;
          ucode5_texshiftcount = 0;
@@ -144,7 +144,7 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
          ucode5_texshiftcount++;
    }
 
-   rdp.addr[g_gdp.tile[tile].tmem] = rdp.timg.addr;
+   rdp.addr[g_gdp.tile[tile].tmem] = g_gdp.ti_address;
 
    // ** DXT is used for swapping every other line
    /* double fdxt = (double)0x8000000F/(double)((uint32_t)(2047/(dxt-1))); // F for error
@@ -152,7 +152,7 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
 
    // 0x00000800 -> 0x80000000 (so we can check the sign bit instead of the 11th bit)
    _dxt = dxt << 20;
-   addr = RSP_SegmentToPhysical(rdp.timg.addr);
+   addr = RSP_SegmentToPhysical(g_gdp.ti_address);
 
    g_gdp.tile[tile].sh = ul_s;
    g_gdp.tile[tile].th = ul_t;
@@ -174,18 +174,18 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
 
    //angrylion's advice to use ul_s in texture image offset and cnt calculations.
    //Helps to fix Vigilante 8 jpeg backgrounds and logos
-   off = rdp.timg.addr + (ul_s << g_gdp.tile[tile].size >> 1);
+   off = g_gdp.ti_address + (ul_s << g_gdp.tile[tile].size >> 1);
    dst = ((uint8_t*)g_gdp.tmem) + (g_gdp.tile[tile].tmem<<3);
    cnt = lr_s-ul_s+1;
    if (g_gdp.tile[tile].size == 3)
       cnt <<= 1;
 
-   if (rdp.timg.size == G_IM_SIZ_32b)
+   if (g_gdp.ti_size == G_IM_SIZ_32b)
       LoadBlock32b(tile, ul_s, ul_t, lr_s, dxt);
    else
       loadBlock((uint32_t *)gfx_info.RDRAM, (uint32_t *)dst, off, _dxt, cnt);
 
-   rdp.timg.addr += cnt << 3;
+   g_gdp.ti_address += cnt << 3;
    g_gdp.tile[tile].tl = ul_t + ((dxt*cnt)>>11);
 
    g_gdp.flags |= UPDATE_TEXTURE;

@@ -816,7 +816,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    /*Gonetz*/
    //hack for Zelda MM. it removes black texrects which cover all geometry in "Link meets Zelda" cut scene
-   if ((settings.hacks&hack_Zelda) && rdp.timg.addr >= rdp.cimg && rdp.timg.addr < rdp.ci_end)
+   if ((settings.hacks&hack_Zelda) && g_gdp.ti_address >= rdp.cimg && g_gdp.ti_address < rdp.ci_end)
    {
       FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.cur_cache[0]->addr, rdp.cimg, rdp.cimg+rdp.ci_width*rdp.ci_height*2);
       return;
@@ -826,14 +826,14 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    if (
          (    settings.ucode == ucode_PerfectDark)
          && (rdp.maincimg[1].addr != rdp.maincimg[0].addr)
-         && (rdp.timg.addr >= rdp.maincimg[1].addr)
-         && (rdp.timg.addr < (rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size))
+         && (g_gdp.ti_address >= rdp.maincimg[1].addr)
+         && (g_gdp.ti_address < (rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size))
       )
    {
       if (fb_emulation_enabled)
       {
          /* FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n",
-          * rdp.timg.addr, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width*rdp.ci_height*rdp.ci_size); */
+          * g_gdp.ti_address, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width*rdp.ci_height*rdp.ci_size); */
          if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF)
             return;
       }
@@ -1145,15 +1145,15 @@ static void rdp_loadtlut(uint32_t w0, uint32_t w1)
    uint16_t start = g_gdp.tile[tile].tmem - 256; // starting location in the palettes
    uint16_t count = ((uint16_t)(w1 >> 14) & 0x3FF) + 1;    // number to copy
 
-   if (rdp.timg.addr + (count<<1) > BMASK)
-      count = (uint16_t)((BMASK - rdp.timg.addr) >> 1);
+   if (g_gdp.ti_address + (count<<1) > BMASK)
+      count = (uint16_t)((BMASK - g_gdp.ti_address) >> 1);
 
    if (start+count > 256)
       count = 256-start;
 
-   load_palette (rdp.timg.addr, start, count);
+   load_palette (g_gdp.ti_address, start, count);
 
-   rdp.timg.addr += count << 1;
+   g_gdp.ti_address += count << 1;
 }
 
 static void rdp_settilesize(uint32_t w0, uint32_t w1)
@@ -1321,7 +1321,7 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
 
    tile = (uint32_t)((w1 >> 24) & 0x07);
 
-   rdp.addr[g_gdp.tile[tile].tmem] = rdp.timg.addr;
+   rdp.addr[g_gdp.tile[tile].tmem] = g_gdp.ti_address;
 
    ul_s = (uint16_t)((w0 >> 14) & 0x03FF);
    ul_t = (uint16_t)((w0 >> 2 ) & 0x03FF);
@@ -1355,19 +1355,19 @@ static void rdp_loadtile(uint32_t w0, uint32_t w1)
       if (info.tile_height%2)
          info.tile_height--;
    }
-   info.tex_width = rdp.timg.width;
-   info.tex_size = rdp.timg.size;
+   info.tex_width = g_gdp.ti_width;
+   info.tex_size  = g_gdp.ti_size;
 #endif
 
 
-   line_n = rdp.timg.width << g_gdp.tile[tile].size >> 1;
-   offs = ul_t * line_n;
-   offs += ul_s << g_gdp.tile[tile].size >> 1;
-   offs += rdp.timg.addr;
+   line_n = g_gdp.ti_width << g_gdp.tile[tile].size >> 1;
+   offs   = ul_t * line_n;
+   offs  += ul_s << g_gdp.tile[tile].size >> 1;
+   offs  += g_gdp.ti_address;
    if (offs >= BMASK)
       return;
 
-   if (rdp.timg.size == G_IM_SIZ_32b)
+   if (g_gdp.ti_size == G_IM_SIZ_32b)
    {
       LoadTile32b(tile, ul_s, ul_t, width, height);
    }
@@ -1602,18 +1602,18 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 {
    gdp_set_texture_image(w0, w1);
 
-   rdp.timg.format = (uint8_t)((w0 >> 21) & 0x07);
-   rdp.timg.size   = (uint8_t)((w0 >> 19) & 0x03);
-   rdp.timg.width  = (uint16_t)(1 + (w0 & 0x00000FFF));
-   rdp.timg.addr   = RSP_SegmentToPhysical(w1);
+   /* TODO/FIXME - all different values from the ones Angrylion sets. */
+   g_gdp.ti_format    = (uint8_t)((w0 >> 21) & 0x07);
+   g_gdp.ti_width     = (uint16_t)(1 + (w0 & 0x00000FFF));
+   g_gdp.ti_address   = RSP_SegmentToPhysical(w1);
 
    if (ucode5_texshiftaddr)
    {
-      if (rdp.timg.format == G_IM_FMT_RGBA)
+      if (g_gdp.ti_format == G_IM_FMT_RGBA)
       {
          uint16_t * t = (uint16_t*)(gfx_info.RDRAM+ucode5_texshiftaddr);
          ucode5_texshift = t[ucode5_texshiftcount^1];
-         rdp.timg.addr += ucode5_texshift;
+         g_gdp.ti_address += ucode5_texshift;
       }
       else
       {
@@ -1625,7 +1625,7 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 
    rdp.s2dex_tex_loaded = true;
 
-   if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF && (rdp.timg.addr >= rdp.cimg) && (rdp.timg.addr < rdp.ci_end))
+   if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF && (g_gdp.ti_address >= rdp.cimg) && (g_gdp.ti_address < rdp.ci_end))
    {
       if (!rdp.fb_drawn)
       {

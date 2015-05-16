@@ -236,10 +236,6 @@ typedef struct
 // This structure is what is passed in by rdp:settextureimage
 typedef struct
 {
-   uint8_t format;      // format: ARGB, IA, ...
-   uint8_t size;        // size: 4,8,16, or 32 bit
-   uint16_t width;      // used in settextureimage
-   uint32_t addr;       // address in RDRAM to load the texture from
    int set_by;          // 0-loadblock 1-loadtile
 } TEXTURE_IMAGE;
 
