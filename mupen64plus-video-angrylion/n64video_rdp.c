@@ -998,33 +998,11 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
          edges.allinval = 1;
       }
 
-      edges.stickybit = (edges.xlrsc[1] & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-      edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
-      xrsc = (edges.xlrsc[1] >> 13)&0x1FFE | edges.stickybit;
-      edges.curunder = !!(edges.xlrsc[1] & 0x08000000);
-      edges.curunder |= (u32)(xrsc - edges.clipxhshift)>>31;
-      xrsc = edges.curunder ? edges.clipxhshift : (edges.xlrsc[1] >> 13)&0x3FFE | edges.stickybit;
-      edges.curover  = !!(xrsc & 0x00002000);
-      xrsc = xrsc & 0x1FFF;
-      edges.curover |= (u32)~(xrsc - edges.clipxlshift) >> 31;
-      xrsc = edges.curover ? edges.clipxlshift : xrsc;
+      draw_triangle_edge_common(&edges, edges.xlrsc[1], &xrsc, 1);
       span[j].majorx[edges.spix] = xrsc & 0x1FFF;
-      edges.allover  &= edges.curover;
-      edges.allunder &= edges.curunder;
 
-      edges.stickybit = (edges.xlrsc[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-      edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
-      xlsc = (edges.xlrsc[0] >> 13)&0x1FFE | edges.stickybit;
-      edges.curunder = !!(edges.xlrsc[0] & 0x08000000);
-      edges.curunder |= (u32)(xlsc - edges.clipxhshift)>>31;
-      xlsc = edges.curunder ? edges.clipxhshift : (edges.xlrsc[0] >> 13)&0x3FFE | edges.stickybit;
-      edges.curover  = !!(xlsc & 0x00002000);
-      xlsc &= 0x1FFF;
-      edges.curover |= (u32)~(xlsc - edges.clipxlshift) >> 31;
-      xlsc = edges.curover ? edges.clipxlshift : xlsc;
+      draw_triangle_edge_common(&edges, edges.xlrsc[0], &xlsc, 0);
       span[j].minorx[edges.spix] = xlsc & 0x1FFF;
-      edges.allover  &= edges.curover;
-      edges.allunder &= edges.curunder;
 
       curcross = ((edges.xlrsc[0] & 0x0FFFC000 ^ 0x08000000)
             < (edges.xlrsc[1] & 0x0FFFC000 ^ 0x08000000));
