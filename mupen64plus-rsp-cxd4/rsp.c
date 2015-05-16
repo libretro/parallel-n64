@@ -242,6 +242,7 @@ strcpy(
 
 RCPREG* CR[16];
 int MF_SP_STATUS_TIMEOUT;
+int stale_signals;
 EXPORT void CALL cxd4InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
 {
     if (CycleCount != NULL) /* cycle-accuracy not doable with today's hosts */
@@ -271,6 +272,7 @@ EXPORT void CALL cxd4InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount)
     CR[0xE] = RSP.DPC_PIPEBUSY_REG;
     CR[0xF] = RSP.DPC_TMEM_REG;
     MF_SP_STATUS_TIMEOUT = 16384;
+    stale_signals = 0;
     return;
 }
 EXPORT void CALL cxd4RomClosed(void)

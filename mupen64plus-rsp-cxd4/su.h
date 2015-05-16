@@ -99,6 +99,7 @@ extern void USW(int rs, uint32_t addr);
 
 /*** Scalar, Coprocessor Operations (system control) ***/
 extern RCPREG* CR[16];
+extern int stale_signals;
 extern void SP_DMA_READ(void);
 extern void SP_DMA_WRITE(void);
 
@@ -122,7 +123,10 @@ static void MFC0(int rt, int rd)
 #endif
         ++MFC0_count[rt];
         if (MFC0_count[rt] >= MF_SP_STATUS_TIMEOUT)
+        {
             *RSP.SP_STATUS_REG |= 0x00000001; /* Let OS restart the task. */
+            stale_signals = 1;
+        }
     }
     return;
 }

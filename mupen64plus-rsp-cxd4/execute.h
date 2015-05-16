@@ -27,6 +27,7 @@ NOINLINE void run_task(void)
 
     for (i = 0; i < 32; i++)
         MFC0_count[i] = 0;
+    stale_signals = 0;
 
     PC = FIT_IMEM(*RSP.SP_PC_REG);
     while ((*RSP.SP_STATUS_REG & 0x00000001) == 0x00000000)
@@ -462,16 +463,14 @@ BRANCH:
         return;
     else if (*RSP.MI_INTR_REG & 0x00000001) /* interrupt set by MTC0 to break */
         RSP.CheckInterrupts();
-    else if (CFG_WAIT_FOR_CPU_HOST != 0) /* plugin system hack to re-sync */
-        {}
+    else if (stale_signals != 0) /* too many iterations of MFC0:  timed out */
+        MF_SP_STATUS_TIMEOUT = 16;
     else if (*RSP.SP_SEMAPHORE_REG != 0x00000000) /* semaphore lock fixes */
         {}
     else /* ??? unknown, possibly external intervention from CPU memory map */
     {
         message("SP_SET_HALT", 3);
-#ifdef M64P_RSP_THREAD_RETASK_NOT_YET_IMPLEMENTED
         return;
-#endif
     }
     *RSP.SP_STATUS_REG &= ~0x00000001; /* CPU restarts with the correct SIGs. */
     return;
