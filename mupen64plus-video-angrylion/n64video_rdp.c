@@ -1340,22 +1340,13 @@ static void set_tile_size(uint32_t w0, uint32_t w1)
 static void edgewalker_for_loads(int32_t* lewdata)
 {
    int j = 0;
-   int xleft = 0, xright = 0;
    int xstart = 0, xend = 0;
-   int s = 0, t = 0, w = 0;
-   int dsdx = 0, dtdx = 0;
-   int dsdy = 0, dtdy = 0;
-   int dsde = 0, dtde = 0;
-   int tilenum = 0, flip = 0;
 
    int spix;
    int ycur;
    int ylfar;
 
    int32_t maxxmx, minxhx;
-   int32_t yl = 0, ym = 0, yh = 0;
-   int32_t xl = 0, xm = 0, xh = 0;
-   int32_t dxldy = 0, dxhdy = 0, dxmdy = 0;
 
    int commandcode = (lewdata[0] >> 24) & 0x3f;
    int ltlut = (commandcode == 0x30);
@@ -1372,41 +1363,40 @@ static void edgewalker_for_loads(int32_t* lewdata)
    int32_t yllimit;
    int32_t yhlimit;
 
-   flip = 1;
+   int flip = 1;
+   int tilenum = (lewdata[0] >> 16) & 7;
+
+   int32_t yl = SIGN(lewdata[0], 14); 
+   int32_t ym = SIGN((lewdata[1] >> 16), 14);
+   int32_t yh = SIGN(lewdata[1], 14); 
+
+   int32_t xl = SIGN(lewdata[2], 30);
+   int32_t xh = SIGN(lewdata[3], 30);
+   int32_t xm = SIGN(lewdata[4], 30);
+
+   int32_t dxldy = 0;
+   int32_t dxhdy = 0;
+   int32_t dxmdy = 0;
+
+
+   int s    = (lewdata[5] & 0xffff0000);
+   int t    = (lewdata[5] & 0xffff) << 16;
+   int w    = 0;
+   int dsdx = (lewdata[7] & 0xffff0000) | ((lewdata[6] >> 16) & 0xffff);
+   int dtdx = ((lewdata[7] << 16) & 0xffff0000)    | (lewdata[6] & 0xffff);
+   int dsde = 0;
+   int dtde = (lewdata[9] & 0xffff) << 16;
+   int dsdy = 0;
+   int dtdy = (lewdata[8] & 0xffff) << 16;
+
+   int xright = xh & ~0x1;
+   int xleft  = xm & ~0x1;
+
    max_level = 0;
-   tilenum = (lewdata[0] >> 16) & 7;
-
-
-   yl = SIGN(lewdata[0], 14); 
-   ym = lewdata[1] >> 16;
-   ym = SIGN(ym, 14);
-   yh = SIGN(lewdata[1], 14); 
-
-   xl = SIGN(lewdata[2], 30);
-   xh = SIGN(lewdata[3], 30);
-   xm = SIGN(lewdata[4], 30);
-
-   dxldy = 0;
-   dxhdy = 0;
-   dxmdy = 0;
-
-   s    = lewdata[5] & 0xffff0000;
-   t    = (lewdata[5] & 0xffff) << 16;
-   w    = 0;
-   dsdx = (lewdata[7] & 0xffff0000) | ((lewdata[6] >> 16) & 0xffff);
-   dtdx = ((lewdata[7] << 16) & 0xffff0000)    | (lewdata[6] & 0xffff);
-   dsde = 0;
-   dtde = (lewdata[9] & 0xffff) << 16;
-   dsdy = 0;
-   dtdy = (lewdata[8] & 0xffff) << 16;
 
    spans_d_stwz[0] = dsdx & ~0x1f;
    spans_d_stwz[1] = dtdx & ~0x1f;
    spans_d_stwz[2] = 0;
-
-   xright = xh & ~0x1;
-   xleft = xm & ~0x1;
-
 
    spix = 0;
    ycur = yh & ~3;
