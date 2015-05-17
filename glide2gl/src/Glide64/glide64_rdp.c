@@ -1588,7 +1588,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 {
    gdp_set_prim_color(w0, w1);
-   rdp.prim_lodmin = (w0 >> 8) & 0xFF;
+   g_gdp.primitive_lod_min = (w0 >> 8) & 0xFF;
 }
 
 static void rdp_setcombine(uint32_t w0, uint32_t w1)

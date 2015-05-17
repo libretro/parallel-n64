@@ -307,7 +307,7 @@ static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
    detailmax = 1.0f - lod_fraction;
 
    if (lod_tile < rdp.cur_tile + rdp.mipmap_level)
-      lod_fraction = max((float)modff(lodFactor / pow(2.,lod_tile),&intptr), rdp.prim_lodmin / 255.0f);
+      lod_fraction = max((float)modff(lodFactor / pow(2.,lod_tile),&intptr), g_gdp.primitive_lod_min / 255.0f);
 
    if (cmb.dc0_detailmax < 0.5f)
       detailmax = lod_fraction;

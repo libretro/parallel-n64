@@ -443,7 +443,6 @@ struct RDP
    int scissor_set;
 
    // Colors
-   uint32_t prim_lodmin;
    unsigned noise;
 
    float col[4];   // color multiplier
