@@ -720,7 +720,10 @@ static bool gSPCullVertices_G64( uint32_t v0, uint32_t vn )
       vn = v;
    }
 
-   for (i = v0; i <= vn; i++)
+   if (vn > MAX_VTX)
+      log_cb(RETRO_LOG_WARN, "vn > MAX_VTX");
+
+   for (i = v0; i < vn; i++)
    {
       VERTEX *v = (VERTEX*)&rdp.vtx[i];
       // Check if completely off the screen (quick frustrum clipping for 90 FOV)

@@ -257,13 +257,19 @@ void rdp_free(void)
    for (i = 0; i < MAX_TMU; i++)
    {
       if (rdp.cache[i])
+      {
          free(rdp.cache[i]);
+         rdp.cache[i] = NULL;
+      }
    }
 
    if (rdp.vtx)
       free(rdp.vtx);
    if (rdp.frame_buffers)
       free(rdp.frame_buffers);
+
+   rdp.vtx = rdp.vtx1 = rdp.vtx2 = NULL;
+   rdp.frame_buffers = NULL;
 }
 
 void rdp_reset(void)
