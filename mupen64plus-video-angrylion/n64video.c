@@ -3411,6 +3411,13 @@ static STRICTINLINE uint32_t dz_decompress(uint32_t dz_compressed)
 static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc,
       uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg)
 {
+   uint32_t dznew;
+   uint32_t dznotshift;
+   uint32_t dzmemmodifier;
+   uint32_t farther;
+   int overflow;
+   int precision_factor;
+
    int32_t diff;
    uint32_t nearer, max, infront;
    uint32_t oz, dzmem, zval, hval;
@@ -3421,99 +3428,10 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
    int force_coplanar = 0;
 
    sz &= 0x3ffff;
-   if (g_gdp.other_modes.z_compare_en)
+
+   if (!g_gdp.other_modes.z_compare_en)
    {
-      uint32_t dznew;
-      uint32_t dznotshift;
-      uint32_t dzmemmodifier;
-      uint32_t farther;
-      int overflow;
-      int precision_factor;
-
-      PAIRREAD16(zval, hval, zcurpixel);
-      oz = z_decompress(zval);
-      rawdzmem = ((zval & 3) << 2) | hval;
-      dzmem = dz_decompress(rawdzmem);
-
-      blshifta = CLIP(dzpixenc - rawdzmem, 0, 4);
-      blshiftb = CLIP(rawdzmem - dzpixenc, 0, 4);
-
-      precision_factor = (zval >> 13) & 0xf;
-
-      if (precision_factor < 3)
-      {
-         if (dzmem != 0x8000)
-         {
-            dzmemmodifier = 16 >> precision_factor;
-            dzmem <<= 1;
-            if (dzmem <= dzmemmodifier)
-               dzmem = dzmemmodifier;
-         }
-         else
-         {
-            force_coplanar = 1;
-            dzmem <<= 1;
-         }
-
-      }
-      if (dzmem > 0x8000)
-         dzmem = 0xffff;
-
-      dznew = (dzmem > dzpix) ? dzmem : (uint32_t)dzpix;
-      dznotshift = dznew;
-      dznew <<= 3;
-
-
-      farther = force_coplanar || ((sz + dznew) >= oz);
-
       overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
-      *blend_en = g_gdp.other_modes.force_blend || (!overflow && g_gdp.other_modes.antialias_en && farther);
-
-      *prewrap = overflow;
-
-      switch(g_gdp.other_modes.z_mode)
-      {
-         case ZMODE_OPAQUE: 
-            infront = sz < oz;
-            diff = (int32_t)sz - (int32_t)dznew;
-            nearer = force_coplanar || (diff <= (int32_t)oz);
-            max = (oz == 0x3ffff);
-            return (max || (overflow ? infront : nearer));
-            break;
-         case ZMODE_INTERPENETRATING: 
-            infront = sz < oz;
-            if (!infront || !farther || !overflow)
-            {
-               diff = (int32_t)sz - (int32_t)dznew;
-               nearer = force_coplanar || (diff <= (int32_t)oz);
-               max = (oz == 0x3ffff);
-               return (max || (overflow ? infront : nearer)); 
-            }
-            else
-            {
-               dzenc = dz_compress(dznotshift & 0xffff);
-               cvgcoeff = ((oz >> dzenc) - (sz >> dzenc)) & 0xf;
-               *curpixel_cvg = ((cvgcoeff * (*curpixel_cvg)) >> 3) & 0xf;
-               return 1;
-            }
-            break;
-         case ZMODE_TRANSPARENT: 
-            infront = sz < oz;
-            max = (oz == 0x3ffff);
-            return (infront || max); 
-            break;
-         case ZMODE_DECAL: 
-            diff = (int32_t)sz - (int32_t)dznew;
-            nearer = force_coplanar || (diff <= (int32_t)oz);
-            max = (oz == 0x3ffff);
-            return (farther && nearer && !max); 
-            break;
-      }
-      return 0;
-   }
-   else
-   {
-      int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
 
       blshifta = CLIP(dzpixenc - 0xf, 0, 4);
       blshiftb = CLIP(0xf - dzpixenc, 0, 4);
@@ -3523,6 +3441,87 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
 
       return 1;
    }
+
+
+   PAIRREAD16(zval, hval, zcurpixel);
+   oz = z_decompress(zval);
+   rawdzmem = ((zval & 3) << 2) | hval;
+   dzmem = dz_decompress(rawdzmem);
+
+   blshifta = CLIP(dzpixenc - rawdzmem, 0, 4);
+   blshiftb = CLIP(rawdzmem - dzpixenc, 0, 4);
+
+   precision_factor = (zval >> 13) & 0xf;
+
+   if (precision_factor < 3)
+   {
+      if (dzmem != 0x8000)
+      {
+         dzmemmodifier = 16 >> precision_factor;
+         dzmem <<= 1;
+         if (dzmem <= dzmemmodifier)
+            dzmem = dzmemmodifier;
+      }
+      else
+      {
+         force_coplanar = 1;
+         dzmem <<= 1;
+      }
+
+   }
+   if (dzmem > 0x8000)
+      dzmem = 0xffff;
+
+   dznew = (dzmem > dzpix) ? dzmem : (uint32_t)dzpix;
+   dznotshift = dznew;
+   dznew <<= 3;
+
+   farther = force_coplanar || ((sz + dznew) >= oz);
+
+   overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
+   *blend_en = g_gdp.other_modes.force_blend || (!overflow && g_gdp.other_modes.antialias_en && farther);
+
+   *prewrap = overflow;
+
+   switch(g_gdp.other_modes.z_mode)
+   {
+      case ZMODE_OPAQUE: 
+         infront = sz < oz;
+         diff = (int32_t)sz - (int32_t)dznew;
+         nearer = force_coplanar || (diff <= (int32_t)oz);
+         max = (oz == 0x3ffff);
+         return (max || (overflow ? infront : nearer));
+         break;
+      case ZMODE_INTERPENETRATING: 
+         infront = sz < oz;
+         if (!infront || !farther || !overflow)
+         {
+            diff = (int32_t)sz - (int32_t)dznew;
+            nearer = force_coplanar || (diff <= (int32_t)oz);
+            max = (oz == 0x3ffff);
+            return (max || (overflow ? infront : nearer)); 
+         }
+         else
+         {
+            dzenc = dz_compress(dznotshift & 0xffff);
+            cvgcoeff = ((oz >> dzenc) - (sz >> dzenc)) & 0xf;
+            *curpixel_cvg = ((cvgcoeff * (*curpixel_cvg)) >> 3) & 0xf;
+            return 1;
+         }
+         break;
+      case ZMODE_TRANSPARENT: 
+         infront = sz < oz;
+         max = (oz == 0x3ffff);
+         return (infront || max); 
+         break;
+      case ZMODE_DECAL: 
+         diff = (int32_t)sz - (int32_t)dznew;
+         nearer = force_coplanar || (diff <= (int32_t)oz);
+         max = (oz == 0x3ffff);
+         return (farther && nearer && !max); 
+         break;
+   }
+   return 0;
 }
 
 static STRICTINLINE int alpha_compare(int32_t comb_alpha)
@@ -3531,15 +3530,13 @@ static STRICTINLINE int alpha_compare(int32_t comb_alpha)
 
    if (!g_gdp.other_modes.alpha_compare_en)
       return 1;
+
+   if (!g_gdp.other_modes.dither_alpha_en)
+      threshold = g_gdp.blend_color.a;
    else
-   {
-      if (!g_gdp.other_modes.dither_alpha_en)
-         threshold = g_gdp.blend_color.a;
-      else
-         threshold = irand() & 0xff;
-      if (comb_alpha >= threshold)
-         return 1;
-   }
+      threshold = irand() & 0xff;
+   if (comb_alpha >= threshold)
+      return 1;
 
    return 0;
 }
@@ -3589,38 +3586,38 @@ static int blender_1cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, ui
 {
     int r, g, b, dontblend;
     
-    if (alpha_compare(pixel_color.a))
+    if (alpha_compare(pixel_color.a) == 0)
+       return 0;
+
+    if (g_gdp.other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
     {
-       if (g_gdp.other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
+       if (!g_gdp.other_modes.color_on_cvg || prewrap)
        {
-          if (!g_gdp.other_modes.color_on_cvg || prewrap)
+          dontblend = (g_gdp.other_modes.f.partialreject_1cycle && pixel_color.a >= 0xff);
+          if (!blend_en || dontblend)
           {
-             dontblend = (g_gdp.other_modes.f.partialreject_1cycle && pixel_color.a >= 0xff);
-             if (!blend_en || dontblend)
-             {
-                r = *blender1a_r[0];
-                g = *blender1a_g[0];
-                b = *blender1a_b[0];
-             }
-             else
-             {
-                inv_pixel_color.a =  (~(*blender1b_a[0])) & 0xff;
-                blender_equation_cycle0(&r, &g, &b);
-             }
+             r = *blender1a_r[0];
+             g = *blender1a_g[0];
+             b = *blender1a_b[0];
           }
           else
           {
-             r = *blender2a_r[0];
-             g = *blender2a_g[0];
-             b = *blender2a_b[0];
+             inv_pixel_color.a =  (~(*blender1b_a[0])) & 0xff;
+             blender_equation_cycle0(&r, &g, &b);
           }
-
-          rgb_dither_ptr(&r, &g, &b, dith);
-          *fr = r;
-          *fg = g;
-          *fb = b;
-          return 1;
        }
+       else
+       {
+          r = *blender2a_r[0];
+          g = *blender2a_g[0];
+          b = *blender2a_b[0];
+       }
+
+       rgb_dither_ptr(&r, &g, &b, dith);
+       *fr = r;
+       *fg = g;
+       *fb = b;
+       return 1;
     }
 
     return 0;
@@ -4443,50 +4440,50 @@ static int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb,
 {
    int r, g, b, dontblend;
 
-   if (alpha_compare(pixel_color.a))
+   if (alpha_compare(pixel_color.a) == 0)
+      return 0;
+
+   if (g_gdp.other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
    {
-      if (g_gdp.other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
+      inv_pixel_color.a =  (~(*blender1b_a[0])) & 0xff;
+
+      blender_equation_cycle0_2(&r, &g, &b);
+
+      memory_color = pre_memory_color;
+
+      blended_pixel_color.r = r;
+      blended_pixel_color.g = g;
+      blended_pixel_color.b = b;
+      blended_pixel_color.a = pixel_color.a;
+
+      if (!g_gdp.other_modes.color_on_cvg || prewrap)
       {
-         inv_pixel_color.a =  (~(*blender1b_a[0])) & 0xff;
-
-         blender_equation_cycle0_2(&r, &g, &b);
-
-         memory_color = pre_memory_color;
-
-         blended_pixel_color.r = r;
-         blended_pixel_color.g = g;
-         blended_pixel_color.b = b;
-         blended_pixel_color.a = pixel_color.a;
-
-         if (!g_gdp.other_modes.color_on_cvg || prewrap)
+         dontblend = (g_gdp.other_modes.f.partialreject_2cycle && pixel_color.a >= 0xff);
+         if (!blend_en || dontblend)
          {
-            dontblend = (g_gdp.other_modes.f.partialreject_2cycle && pixel_color.a >= 0xff);
-            if (!blend_en || dontblend)
-            {
-               r = *blender1a_r[1];
-               g = *blender1a_g[1];
-               b = *blender1a_b[1];
-            }
-            else
-            {
-               inv_pixel_color.a =  (~(*blender1b_a[1])) & 0xff;
-               blender_equation_cycle1(&r, &g, &b);
-            }
+            r = *blender1a_r[1];
+            g = *blender1a_g[1];
+            b = *blender1a_b[1];
          }
          else
          {
-            r = *blender2a_r[1];
-            g = *blender2a_g[1];
-            b = *blender2a_b[1];
+            inv_pixel_color.a =  (~(*blender1b_a[1])) & 0xff;
+            blender_equation_cycle1(&r, &g, &b);
          }
-
-
-         rgb_dither_ptr(&r, &g, &b, dith);
-         *fr = r;
-         *fg = g;
-         *fb = b;
-         return 1;
       }
+      else
+      {
+         r = *blender2a_r[1];
+         g = *blender2a_g[1];
+         b = *blender2a_b[1];
+      }
+
+
+      rgb_dither_ptr(&r, &g, &b, dith);
+      *fr = r;
+      *fg = g;
+      *fb = b;
+      return 1;
    }
 
    return 0;
