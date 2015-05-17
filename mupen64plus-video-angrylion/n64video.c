@@ -491,17 +491,13 @@ void (*fbfill_func[4])(uint32_t) = {
 
 static INLINE uint32_t rightcvghex(uint32_t x, uint32_t fmask)
 {
-   uint32_t covered = ((x & 7) + 1) >> 1;
-
-   covered = 0xf0 >> covered;
+   uint32_t covered = 0xf0 >> (((x & 7) + 1) >> 1);
    return (covered & fmask);
 }
 
 static INLINE uint32_t leftcvghex(uint32_t x, uint32_t fmask) 
 {
-   uint32_t covered = ((x & 7) + 1) >> 1;
-
-   covered = 0xf >> covered;
+   uint32_t covered = 0xf >> (((x & 7) + 1) >> 1);
    return (covered & fmask);
 }
 
