@@ -507,87 +507,90 @@ static INLINE uint32_t leftcvghex(uint32_t x, uint32_t fmask)
 
 static void compute_cvg_flip(int32_t scanline)
 {
-   int i, fmask, maskshift, fmaskshifted;
-   int32_t fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
-
+   unsigned i;
    int32_t purgestart = span[scanline].rx;
-   int32_t purgeend = span[scanline].lx;
-   int length = purgeend - purgestart;
+   int32_t purgeend   = span[scanline].lx;
+   int        length  = purgeend - purgestart;
 
-   if (length >= 0)
+   if (length < 0)
+      return;
+
+   memset(&cvgbuf[purgestart], 0, (length + 1) << 2);
+
+   for(i = 0; i < 4; i++)
    {
-      memset(&cvgbuf[purgestart], 0, (length + 1) << 2);
-      for(i = 0; i < 4; i++)
+      int32_t fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
+      int fmask, maskshift, fmaskshifted;
+
+      if (span[scanline].invalyscan[i])
+         continue;
+
+      minorcur     = span[scanline].minorx[i];
+      majorcur     = span[scanline].majorx[i];
+      minorcurint  = minorcur >> 3;
+      majorcurint  = majorcur >> 3;
+      fmask        = 0xa >> (i & 1);
+      maskshift    = (i - 2) & 4;
+
+      fmaskshifted = fmask << maskshift;
+      fleft        = majorcurint + 1;
+
+      if (minorcurint != majorcurint)
       {
-         if (!span[scanline].invalyscan[i])
-         {
-            minorcur = span[scanline].minorx[i];
-            majorcur = span[scanline].majorx[i];
-            minorcurint = minorcur >> 3;
-            majorcurint = majorcur >> 3;
-            fmask = 0xa >> (i & 1);
-            maskshift = (i - 2) & 4;
-
-            fmaskshifted = fmask << maskshift;
-            fleft = majorcurint + 1;
-
-            if (minorcurint != majorcurint)
-            {
-               cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
-               cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
-            }
-            else
-            {
-               samecvg = rightcvghex(minorcur, fmask) & leftcvghex(majorcur, fmask);
-               cvgbuf[majorcurint] |= (samecvg << maskshift);
-            }
-            for (; fleft < minorcurint; fleft++)
-               cvgbuf[fleft] |= fmaskshifted;
-         }
+         cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
+         cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
       }
+      else
+      {
+         samecvg = rightcvghex(minorcur, fmask) & leftcvghex(majorcur, fmask);
+         cvgbuf[majorcurint] |= (samecvg << maskshift);
+      }
+      for (; fleft < minorcurint; fleft++)
+         cvgbuf[fleft] |= fmaskshifted;
    }
 }
 
 static void compute_cvg_noflip(int32_t scanline)
 {
-   int i, fmask, maskshift, fmaskshifted;
-   int32_t fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
+   unsigned i;
    int32_t purgestart = span[scanline].lx;
    int32_t purgeend = span[scanline].rx;
    int length = purgeend - purgestart;
 
-   if (length >= 0)
+   if (length < 0)
+      return;
+
+   memset(&cvgbuf[purgestart], 0, (length + 1) << 2);
+
+   for(i = 0; i < 4; i++)
    {
-      memset(&cvgbuf[purgestart], 0, (length + 1) << 2);
+      int32_t fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
+      int fmask, maskshift, fmaskshifted;
+      if (span[scanline].invalyscan[i])
+         continue;
 
-      for(i = 0; i < 4; i++)
+      minorcur     = span[scanline].minorx[i];
+      majorcur     = span[scanline].majorx[i];
+      minorcurint  = minorcur >> 3;
+      majorcurint  = majorcur >> 3;
+      fmask        = 0xa >> (i & 1);
+      maskshift    = (i - 2) & 4;
+
+      fmaskshifted = fmask << maskshift;
+      fleft        = minorcurint + 1;
+
+      if (minorcurint != majorcurint)
       {
-         if (!span[scanline].invalyscan[i])
-         {
-            minorcur = span[scanline].minorx[i];
-            majorcur = span[scanline].majorx[i];
-            minorcurint = minorcur >> 3;
-            majorcurint = majorcur >> 3;
-            fmask = 0xa >> (i & 1);
-            maskshift = (i - 2) & 4;
-
-            fmaskshifted = fmask << maskshift;
-            fleft = minorcurint + 1;
-
-            if (minorcurint != majorcurint)
-            {
-               cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
-               cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
-            }
-            else
-            {
-               samecvg = leftcvghex(minorcur, fmask) & rightcvghex(majorcur, fmask);
-               cvgbuf[majorcurint] |= (samecvg << maskshift);
-            }
-            for (; fleft < majorcurint; fleft++)
-               cvgbuf[fleft] |= fmaskshifted;
-         }
+         cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
+         cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
       }
+      else
+      {
+         samecvg = leftcvghex(minorcur, fmask) & rightcvghex(majorcur, fmask);
+         cvgbuf[majorcurint] |= (samecvg << maskshift);
+      }
+      for (; fleft < majorcurint; fleft++)
+         cvgbuf[fleft] |= fmaskshifted;
    }
 }
 
