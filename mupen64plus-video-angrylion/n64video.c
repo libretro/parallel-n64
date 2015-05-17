@@ -4122,7 +4122,9 @@ static void tclod_2cycle_current(int32_t* sss, int32_t* sst,
 
    tclod_tcclamp(sss, sst);
 
-   if (g_gdp.other_modes.f.dolod)
+   if (!g_gdp.other_modes.f.dolod)
+      return;
+
    {
       int32_t lod = 0;
       uint32_t l_tile;
@@ -4172,7 +4174,9 @@ static void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst,
 
    tclod_tcclamp(sss, sst);
 
-   if (g_gdp.other_modes.f.dolod)
+   if (!g_gdp.other_modes.f.dolod)
+      return;
+
    {
       int32_t lod = 0;
       uint32_t l_tile;
@@ -4226,7 +4230,9 @@ static void tclod_2cycle_current_notexel1(int32_t* sss, int32_t* sst,
 
    tclod_tcclamp(sss, sst);
 
-   if (g_gdp.other_modes.f.dolod)
+   if (!g_gdp.other_modes.f.dolod)
+      return;
+
    {
       uint32_t l_tile;
       int32_t lod = 0;
@@ -4264,7 +4270,9 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst,
 
    tclod_tcclamp(sss, sst);
 
-   if (g_gdp.other_modes.f.dolod)
+   if (!g_gdp.other_modes.f.dolod)
+      return;
+
    {
       uint32_t l_tile;
       uint32_t magnify = 0;
