@@ -25,6 +25,18 @@
 #define SIGN(i, b)      SRA((i) << (32 - (b)), (32 - (b)))
 #endif
 
+#ifndef GET_LOW
+#define GET_LOW(x)      (((x) & 0x003E) << 2)
+#endif
+
+#ifndef GET_MED
+#define GET_MED(x)      (((x) & 0x07C0) >> 3)
+#endif
+
+#ifndef GET_HI
+#define GET_HI(x)       (((x) >> 8) & 0x00F8)
+#endif
+
 /* Update flags */
 #define UPDATE_ZBUF_ENABLED   0x00000001
 #define UPDATE_TEXTURE        0x00000002  /* Same thing */

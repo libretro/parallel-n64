@@ -1,7 +1,9 @@
+#include <string.h>
+
 #include "z64.h"
 #include "vi.h"
 #include "api/libretro.h"
-#include <string.h>
+#include "../mupen64plus-core/src/rdp_common/gdp.h"
 
 extern retro_log_printf_t log_cb;
 

@@ -111,10 +111,6 @@
 #define dp_current (*(uint32_t*)gfx_info.DPC_CURRENT_REG)
 #define dp_status (*(uint32_t*)gfx_info.DPC_STATUS_REG)
 
-#define GET_LOW(x)      (((x) & 0x003E) << 2)
-#define GET_MED(x)      (((x) & 0x07C0) >> 3)
-#define GET_HI(x)       (((x) >> 8) & 0x00F8)
-
 #define RREADADDR8(in) \
     (((in) <= plim) ? (rdram8[(in) ^ BYTE_ADDR_XOR]) : 0)
 #define RREADIDX16(in) \
