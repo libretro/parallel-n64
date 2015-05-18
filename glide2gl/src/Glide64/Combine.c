@@ -45,10 +45,10 @@
 #define HAVE_ASSUME_COMBINE_EXT
 
 float percent_org, percent, r, g, b;
-uint32_t lod_frac;
+static uint32_t lod_frac;
 
-uint32_t cc_lookup[257];
-uint32_t ac_lookup[257];
+static uint32_t cc_lookup[257];
+static uint32_t ac_lookup[257];
 COMBINE cmb;
 
 //****************************************************************

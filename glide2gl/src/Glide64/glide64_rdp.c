@@ -257,13 +257,19 @@ void rdp_free(void)
    for (i = 0; i < MAX_TMU; i++)
    {
       if (rdp.cache[i])
+      {
          free(rdp.cache[i]);
+         rdp.cache[i] = NULL;
+      }
    }
 
    if (rdp.vtx)
       free(rdp.vtx);
    if (rdp.frame_buffers)
       free(rdp.frame_buffers);
+
+   rdp.vtx = rdp.vtx1 = rdp.vtx2 = NULL;
+   rdp.frame_buffers = NULL;
 }
 
 void rdp_reset(void)
@@ -1582,7 +1588,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 {
    gdp_set_prim_color(w0, w1);
-   rdp.prim_lodmin = (w0 >> 8) & 0xFF;
+   g_gdp.primitive_lod_min = (w0 >> 8) & 0xFF;
 }
 
 static void rdp_setcombine(uint32_t w0, uint32_t w1)
