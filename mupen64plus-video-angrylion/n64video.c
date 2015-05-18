@@ -155,7 +155,6 @@ typedef struct{
 
 int IsBadPtrW32(void *ptr, uint32_t bytes);
 
-int32_t lod_frac = 0;
 uint32_t DebugMode = 0, DebugMode2 = 0;
 int debugcolor = 0;
 struct {uint32_t shift; uint32_t add;} z_dec_table[8] = {
@@ -1044,7 +1043,7 @@ static STRICTINLINE void lodfrac_lodtile_signals(unsigned int lodclamp,
    *distant = dis & 1;
    *l_tile = ltil;
    *magnify = mag & 1;
-   lod_frac = lf;
+   g_gdp.lod_frac = lf;
 }
 
 static void tclod_lod(uint32_t l_tile, int32_t prim_tile, uint32_t magnify,
@@ -3756,7 +3755,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
          if (!sigs.startspan)
          {
             g_gdp.texel0_color = g_gdp.texel1_color;
-            lod_frac = prelodfrac;
+            g_gdp.lod_frac = prelodfrac;
          }
          else
          {
@@ -4629,7 +4628,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
          get_nexttexel0_2cycle(&news, &newt, s, t, w, dsinc, dtinc, dwinc);
          if (!sigs.startspan)
          {
-            lod_frac = prelodfrac;
+            g_gdp.lod_frac = prelodfrac;
             g_gdp.texel0_color = nexttexel_color;
             g_gdp.texel1_color = nexttexel1_color;
          }

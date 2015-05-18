@@ -124,9 +124,9 @@ static void deduce_derivatives(void)
 
    tcdiv_ptr = tcdiv_func[g_gdp.other_modes.persp_tex_en];
 
-   if ((combiner_rgbmul_r[1] == &lod_frac) || (combiner_alphamul[1] == &lod_frac))
+   if ((combiner_rgbmul_r[1] == &g_gdp.lod_frac) || (combiner_alphamul[1] == &g_gdp.lod_frac))
       lod_frac_used_in_cc1 = 1;
-   if ((combiner_rgbmul_r[0] == &lod_frac) || (combiner_alphamul[0] == &lod_frac))
+   if ((combiner_rgbmul_r[0] == &g_gdp.lod_frac) || (combiner_alphamul[0] == &g_gdp.lod_frac))
       lod_frac_used_in_cc0 = 1;
 
    if (combiner_rgbmul_r[1] == &g_gdp.texel1_color.r || combiner_rgbsub_a_r[1] == &g_gdp.texel1_color.r || combiner_rgbsub_b_r[1] == &g_gdp.texel1_color.r || combiner_rgbadd_r[1] == &g_gdp.texel1_color.r || \
@@ -1646,9 +1646,9 @@ INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **in
          *input_b = &g_gdp.env_color.a;
          break;
       case 13:
-         *input_r = &lod_frac;
-         *input_g = &lod_frac;
-         *input_b = &lod_frac;
+         *input_r = &g_gdp.lod_frac;
+         *input_g = &g_gdp.lod_frac;
+         *input_b = &g_gdp.lod_frac;
          break;
       case 14:
          *input_r = &g_gdp.primitive_lod_frac;
@@ -1766,7 +1766,7 @@ INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
    switch (code & 0x7)
    {
       case 0:
-         *input = &lod_frac;
+         *input = &g_gdp.lod_frac;
          break;
       case 1:
          *input = &g_gdp.texel0_color.a;

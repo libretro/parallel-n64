@@ -254,6 +254,7 @@ struct gdp_global
 
    int32_t primitive_lod_min;
    int32_t primitive_lod_frac;
+   int32_t lod_frac;
    gdp_color texel0_color;
    gdp_color texel1_color;
    gdp_color combined_color;

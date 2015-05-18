@@ -351,7 +351,6 @@ extern gdp_color shade_color;
 extern int32_t noise;
 extern int32_t one_color;
 extern int32_t zero_color;
-extern int32_t lod_frac;
 
 extern int rdp_pipeline_crashed;
 
