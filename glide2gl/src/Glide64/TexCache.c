@@ -1343,11 +1343,11 @@ static void LoadTex(int id, int tmu)
          
          size >>= 1;
 
-         do
+         while (size--)
          {
             uint32_t col = *src++;
             *dst++ = ((col & 0x1E001E) >> 1) | ((col & 0x3C003C0) >> 2) | ((col & 0x78007800) >> 3) | ((col & 0x80008000) >> 3) | ((col & 0x80008000) >> 2) | ((col & 0x80008000) >> 1) | (col & 0x80008000);
-         }while(--size);
+         }
 
          texture = tex2;
       }
@@ -1358,11 +1358,11 @@ static void LoadTex(int id, int tmu)
          
          size >>= 1;
         
-         do
+         while (size--)
          {
             uint32_t col = *src++;
             *dst++ = (16 * (col & 0xF000F0) >> 8) | (col & 0xF000F0) | (16 * (col & 0xF000F0)) | (col & 0xF000F000);
-         }while (--size);
+         }
          texture = tex2;
       }
       else if (LOWORD(result) == GR_TEXFMT_ALPHA_INTENSITY_44)
@@ -1372,12 +1372,12 @@ static void LoadTex(int id, int tmu)
          
          size >>= 2;
 
-         do
+         while (size--)
          {
             uint32_t col = *src++;
             *dst++ = ((((uint16_t)col << 8) & 0xFF00 & 0xF00u) >> 8) | ((((uint16_t)col << 8) & 0xFF00 & 0xF00u) >> 4) | (uint16_t)(((uint16_t)col << 8) & 0xFF00) | (((col << 16) & 0xF000000) >> 8) | (((col << 16) & 0xF000000) >> 4) | ((col << 16) & 0xFF000000);
             *dst++ = (((col >> 8) & 0xF00) >> 8) | (((col >> 8) & 0xF00) >> 4) | ((col >> 8) & 0xFF00) | ((col & 0xF000000) >> 8) | ((col & 0xF000000) >> 4) | (col & 0xFF000000);
-         }while (--size);
+         }
 
          texture = tex2;
       }
@@ -1388,12 +1388,12 @@ static void LoadTex(int id, int tmu)
          
          size >>= 2;
 
-         do
+         while (size--)
          {
             uint32_t col = *src++;
             *dst++ = ((col & 0xF0) << 8 >> 12) | (uint8_t)(col & 0xF0) | (16 * (uint8_t)(col & 0xF0) & 0xFFFFFFF) | ((uint8_t)(col & 0xF0) << 8) | (16 * (uint16_t)(col & 0xF000) & 0xFFFFF) | (((uint16_t)(col & 0xF000) << 8) & 0xFFFFFF) | (((uint16_t)(col & 0xF000) << 12) & 0xFFFFFFF) | ((uint16_t)(col & 0xF000) << 16);
             *dst++ = ((col & 0xF00000) >> 20) | ((col & 0xF00000) >> 16) | ((col & 0xF00000) >> 12) | ((col & 0xF00000) >> 8) | ((col & 0xF0000000) >> 12) | ((col & 0xF0000000) >> 8) | ((col & 0xF0000000) >> 4) | (col & 0xF0000000);
-         }while (--size);
+         }
 
          texture = tex2;
       }
