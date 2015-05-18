@@ -1588,6 +1588,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
 static void rdp_setprimcolor(uint32_t w0, uint32_t w1)
 {
    gdp_set_prim_color(w0, w1);
+   /* TODO/FIXME - different value from the one Angrylion sets. */
    g_gdp.primitive_lod_min = (w0 >> 8) & 0xFF;
 }
 
