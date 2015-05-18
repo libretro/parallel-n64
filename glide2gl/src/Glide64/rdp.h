@@ -48,7 +48,7 @@ extern uint32_t gfx_plugin_accuracy;
 
 #define MAX_CACHE   1024*4
 #define MAX_TRI_CACHE 768 // this is actually # of vertices, not triangles
-#define MAX_VTX     512
+#define MAX_VTX     256
 
 #define MAX_TMU     2
 
