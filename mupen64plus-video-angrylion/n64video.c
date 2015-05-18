@@ -6151,7 +6151,9 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
 {
    tclod_tcclamp(sss, sst);
 
-   if (g_gdp.other_modes.tex_lod_en)
+   if (!g_gdp.other_modes.tex_lod_en)
+      return;
+
    {
       int32_t lod     = 0;
       uint32_t l_tile = 0, magnify = 0, distant = 0;
