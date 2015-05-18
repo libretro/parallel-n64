@@ -158,10 +158,6 @@ typedef union {
 } DP_FIFO;
 
 typedef struct {
-    int32_t r, g, b, a;
-} COLOR;
-
-typedef struct {
     int lx, rx;
     int unscrx;
     int validline;
@@ -347,13 +343,11 @@ extern int32_t *blender2b_a[2];
 
 extern gdp_rectangle __clip;
 
-extern COLOR texel0_color;
-extern COLOR texel1_color;
-extern COLOR nexttexel_color;
-extern COLOR pixel_color;
-extern COLOR inv_pixel_color;
-extern COLOR memory_color;
-extern COLOR shade_color;
+extern gdp_color nexttexel_color;
+extern gdp_color pixel_color;
+extern gdp_color inv_pixel_color;
+extern gdp_color memory_color;
+extern gdp_color shade_color;
 extern int32_t noise;
 extern int32_t one_color;
 extern int32_t zero_color;

@@ -122,10 +122,8 @@ typedef struct
 #define TRELATIVE(x, y)     ((x) - ((y) << 3));
 #define UPPER ((sfrac + tfrac) & 0x20)
 
-COLOR texel0_color;
-COLOR texel1_color;
-COLOR nexttexel_color;
-COLOR shade_color;
+gdp_color nexttexel_color;
+gdp_color shade_color;
 int32_t noise = 0;
 int32_t one_color = 0x100;
 int32_t zero_color = 0x00;
@@ -134,11 +132,11 @@ int32_t keyalpha;
 
 static int32_t blenderone    = 0xff;
 
-COLOR pixel_color;
-COLOR inv_pixel_color;
-COLOR blended_pixel_color;
-COLOR memory_color;
-COLOR pre_memory_color;
+gdp_color pixel_color;
+gdp_color inv_pixel_color;
+gdp_color blended_pixel_color;
+gdp_color memory_color;
+gdp_color pre_memory_color;
 
 int oldscyl = 0;
 
@@ -1570,7 +1568,7 @@ STRICTINLINE void tcmask_copy(int32_t* S, int32_t* S1, int32_t* S2, int32_t* S3,
     }
 }
 
-static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
+static void fetch_texel(gdp_color *color, int s, int t, uint32_t tilenum)
 {
    uint32_t tbase   = g_gdp.tile[tilenum].line * t + g_gdp.tile[tilenum].tmem;
    uint32_t tpal    = g_gdp.tile[tilenum].palette;
@@ -1857,7 +1855,7 @@ static void fetch_texel(COLOR *color, int s, int t, uint32_t tilenum)
    }
 }
 
-static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
+static void fetch_texel_entlut(gdp_color *color, int s, int t, uint32_t tilenum)
 {
    uint32_t c;
    uint32_t tbase = g_gdp.tile[tilenum].line * t + g_gdp.tile[tilenum].tmem;
@@ -1951,8 +1949,8 @@ static void fetch_texel_entlut(COLOR *color, int s, int t, uint32_t tilenum)
    }
 }
 
-static void fetch_texel_quadro(COLOR *color0, COLOR *color1,
-      COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum)
+static void fetch_texel_quadro(gdp_color *color0, gdp_color *color1,
+      gdp_color *color2, gdp_color *color3, int s0, int s1, int t0, int t1, uint32_t tilenum)
 {
    uint32_t tbase0    = g_gdp.tile[tilenum].line * t0 + g_gdp.tile[tilenum].tmem;
    uint32_t tbase2    = g_gdp.tile[tilenum].line * t1 + g_gdp.tile[tilenum].tmem;
@@ -2799,8 +2797,8 @@ static void fetch_texel_quadro(COLOR *color0, COLOR *color1,
    }
 }
 
-static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1,
-      COLOR *color2, COLOR *color3, int s0, int s1, int t0, int t1, uint32_t tilenum)
+static void fetch_texel_entlut_quadro(gdp_color *color0, gdp_color *color1,
+      gdp_color *color2, gdp_color *color3, int s0, int s1, int t0, int t1, uint32_t tilenum)
 {
    uint16_t c0, c1, c2, c3;
    uint32_t tbase0 = g_gdp.tile[tilenum].line * t0 + g_gdp.tile[tilenum].tmem;
@@ -3031,11 +3029,11 @@ static void fetch_texel_entlut_quadro(COLOR *color0, COLOR *color1,
    }
 }
 
-static void texture_pipeline_cycle(COLOR* TEX, COLOR* prev, int32_t SSS, int32_t SST, uint32_t tilenum, uint32_t cycle)                                            
+static void texture_pipeline_cycle(gdp_color *TEX, gdp_color *prev, int32_t SSS, int32_t SST, uint32_t tilenum, uint32_t cycle)                                            
 {
    int32_t maxs, maxt, invt0r, invt0g, invt0b, invt0a;
    int32_t sfrac, tfrac, invsf, invtf;
-   COLOR t0, t1, t2, t3;
+   gdp_color t0, t1, t2, t3;
    int32_t newk0, newk1, newk2, newk3, invk0, invk1, invk2, invk3;
    int sss2, sst2;
    int upper   = 0;
@@ -3757,7 +3755,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
          if (!sigs.startspan)
          {
-            texel0_color = texel1_color;
+            g_gdp.texel0_color = g_gdp.texel1_color;
             lod_frac = prelodfrac;
          }
          else
@@ -3765,7 +3763,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
             tcdiv_ptr(ss, st, sw, &sss, &sst);
 
             tclod_1cycle_current(&sss, &sst, news, newt, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
-            texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
+            texture_pipeline_cycle(&g_gdp.texel0_color, &g_gdp.texel0_color, sss, sst, tile1, 0);
 
             sigs.startspan = 0;
          }
@@ -3777,7 +3775,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
          t += dtinc;
          w += dwinc;
          tclod_1cycle_next(&news, &newt, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &newtile, &sigs, &prelodfrac);
-         texture_pipeline_cycle(&texel1_color, &texel1_color, news, newt, newtile, 0);
+         texture_pipeline_cycle(&g_gdp.texel1_color, &g_gdp.texel1_color, news, newt, newtile, 0);
 
          rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
          get_dither_noise_ptr(x, i, &cdith, &adith);
@@ -3938,7 +3936,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
          tcdiv_ptr(ss, st, sw, &sss, &sst);
 
          tclod_1cycle_current_simple(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, i, prim_tile, &tile1, &sigs);
-         texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
+         texture_pipeline_cycle(&g_gdp.texel0_color, &g_gdp.texel0_color, sss, sst, tile1, 0);
 
          rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
          get_dither_noise_ptr(x, i, &cdith, &adith);
@@ -4348,8 +4346,8 @@ static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg)
     g_gdp.combined_color.b >>= 8;
 
     
-    texel0_color = texel1_color;
-    texel1_color = nexttexel_color;
+    g_gdp.texel0_color = g_gdp.texel1_color;
+    g_gdp.texel1_color = nexttexel_color;
 
     g_gdp.combined_color.r = color_combiner_equation(*combiner_rgbsub_a_r[1],*combiner_rgbsub_b_r[1],*combiner_rgbmul_r[1],*combiner_rgbadd_r[1]);
     g_gdp.combined_color.g = color_combiner_equation(*combiner_rgbsub_a_g[1],*combiner_rgbsub_b_g[1],*combiner_rgbmul_g[1],*combiner_rgbadd_g[1]);
@@ -4502,7 +4500,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
    uint8_t offx, offy;
    SPANSIGS sigs;
    int32_t prelodfrac;
-   COLOR nexttexel1_color;
+   gdp_color nexttexel1_color;
    uint32_t blend_en;
    uint32_t prewrap;
    uint32_t curpixel_cvg, curpixel_cvbit, curpixel_memcvg;
@@ -4632,8 +4630,8 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
          if (!sigs.startspan)
          {
             lod_frac = prelodfrac;
-            texel0_color = nexttexel_color;
-            texel1_color = nexttexel1_color;
+            g_gdp.texel0_color = nexttexel_color;
+            g_gdp.texel1_color = nexttexel1_color;
          }
          else
          {
@@ -4641,8 +4639,8 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 
             tclod_2cycle_current(&sss, &sst, news, newt, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2);
 
-            texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
-            texture_pipeline_cycle(&texel1_color, &texel0_color, sss, sst, tile2, 1);
+            texture_pipeline_cycle(&g_gdp.texel0_color, &g_gdp.texel0_color, sss, sst, tile1, 0);
+            texture_pipeline_cycle(&g_gdp.texel1_color, &g_gdp.texel0_color, sss, sst, tile2, 1);
 
             sigs.startspan = 0;
          }
@@ -4816,8 +4814,8 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
          tclod_2cycle_current_simple(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1, &tile2);
 
-         texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
-         texture_pipeline_cycle(&texel1_color, &texel0_color, sss, sst, tile2, 1);
+         texture_pipeline_cycle(&g_gdp.texel0_color, &g_gdp.texel0_color, sss, sst, tile1, 0);
+         texture_pipeline_cycle(&g_gdp.texel1_color, &g_gdp.texel0_color, sss, sst, tile2, 1);
 
          rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
          get_dither_noise_ptr(x, i, &cdith, &adith);
@@ -4980,7 +4978,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
          tclod_2cycle_current_notexel1(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
 
-         texture_pipeline_cycle(&texel0_color, &texel0_color, sss, sst, tile1, 0);
+         texture_pipeline_cycle(&g_gdp.texel0_color, &g_gdp.texel0_color, sss, sst, tile1, 0);
 
          rgbaz_correct_clip(offx, offy, sr, sg, sb, sa, &sz, curpixel_cvg);
          get_dither_noise_ptr(x, i, &cdith, &adith);
@@ -5642,11 +5640,11 @@ void rdp_init(void)
         calculate_clamp_diffs(i);
     }
 
-    memset(&g_gdp.combined_color, 0, sizeof(COLOR));
+    memset(&g_gdp.combined_color, 0, sizeof(gdp_color));
     memset(&g_gdp.prim_color, 0, sizeof(gdp_color));
-    memset(&g_gdp.env_color, 0, sizeof(COLOR));
-    memset(&g_gdp.key_scale, 0, sizeof(COLOR));
-    memset(&g_gdp.key_center, 0, sizeof(COLOR));
+    memset(&g_gdp.env_color, 0, sizeof(gdp_color));
+    memset(&g_gdp.key_scale, 0, sizeof(gdp_color));
+    memset(&g_gdp.key_center, 0, sizeof(gdp_color));
 
     rdp_pipeline_crashed = 0;
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));

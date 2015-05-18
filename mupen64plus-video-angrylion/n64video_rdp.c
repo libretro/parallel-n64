@@ -129,21 +129,21 @@ static void deduce_derivatives(void)
    if ((combiner_rgbmul_r[0] == &lod_frac) || (combiner_alphamul[0] == &lod_frac))
       lod_frac_used_in_cc0 = 1;
 
-   if (combiner_rgbmul_r[1] == &texel1_color.r || combiner_rgbsub_a_r[1] == &texel1_color.r || combiner_rgbsub_b_r[1] == &texel1_color.r || combiner_rgbadd_r[1] == &texel1_color.r || \
-         combiner_alphamul[1] == &texel1_color.a || combiner_alphasub_a[1] == &texel1_color.a || combiner_alphasub_b[1] == &texel1_color.a || combiner_alphaadd[1] == &texel1_color.a || \
-         combiner_rgbmul_r[1] == &texel1_color.a)
+   if (combiner_rgbmul_r[1] == &g_gdp.texel1_color.r || combiner_rgbsub_a_r[1] == &g_gdp.texel1_color.r || combiner_rgbsub_b_r[1] == &g_gdp.texel1_color.r || combiner_rgbadd_r[1] == &g_gdp.texel1_color.r || \
+         combiner_alphamul[1] == &g_gdp.texel1_color.a || combiner_alphasub_a[1] == &g_gdp.texel1_color.a || combiner_alphasub_b[1] == &g_gdp.texel1_color.a || combiner_alphaadd[1] == &g_gdp.texel1_color.a || \
+         combiner_rgbmul_r[1] == &g_gdp.texel1_color.a)
       texel1_used_in_cc1 = 1;
-   if (combiner_rgbmul_r[1] == &texel0_color.r || combiner_rgbsub_a_r[1] == &texel0_color.r || combiner_rgbsub_b_r[1] == &texel0_color.r || combiner_rgbadd_r[1] == &texel0_color.r || \
-         combiner_alphamul[1] == &texel0_color.a || combiner_alphasub_a[1] == &texel0_color.a || combiner_alphasub_b[1] == &texel0_color.a || combiner_alphaadd[1] == &texel0_color.a || \
-         combiner_rgbmul_r[1] == &texel0_color.a)
+   if (combiner_rgbmul_r[1] == &g_gdp.texel0_color.r || combiner_rgbsub_a_r[1] == &g_gdp.texel0_color.r || combiner_rgbsub_b_r[1] == &g_gdp.texel0_color.r || combiner_rgbadd_r[1] == &g_gdp.texel0_color.r || \
+         combiner_alphamul[1] == &g_gdp.texel0_color.a || combiner_alphasub_a[1] == &g_gdp.texel0_color.a || combiner_alphasub_b[1] == &g_gdp.texel0_color.a || combiner_alphaadd[1] == &g_gdp.texel0_color.a || \
+         combiner_rgbmul_r[1] == &g_gdp.texel0_color.a)
       texel0_used_in_cc1 = 1;
-   if (combiner_rgbmul_r[0] == &texel1_color.r || combiner_rgbsub_a_r[0] == &texel1_color.r || combiner_rgbsub_b_r[0] == &texel1_color.r || combiner_rgbadd_r[0] == &texel1_color.r || \
-         combiner_alphamul[0] == &texel1_color.a || combiner_alphasub_a[0] == &texel1_color.a || combiner_alphasub_b[0] == &texel1_color.a || combiner_alphaadd[0] == &texel1_color.a || \
-         combiner_rgbmul_r[0] == &texel1_color.a)
+   if (combiner_rgbmul_r[0] == &g_gdp.texel1_color.r || combiner_rgbsub_a_r[0] == &g_gdp.texel1_color.r || combiner_rgbsub_b_r[0] == &g_gdp.texel1_color.r || combiner_rgbadd_r[0] == &g_gdp.texel1_color.r || \
+         combiner_alphamul[0] == &g_gdp.texel1_color.a || combiner_alphasub_a[0] == &g_gdp.texel1_color.a || combiner_alphasub_b[0] == &g_gdp.texel1_color.a || combiner_alphaadd[0] == &g_gdp.texel1_color.a || \
+         combiner_rgbmul_r[0] == &g_gdp.texel1_color.a)
       texel1_used_in_cc0 = 1;
-   if (combiner_rgbmul_r[0] == &texel0_color.r || combiner_rgbsub_a_r[0] == &texel0_color.r || combiner_rgbsub_b_r[0] == &texel0_color.r || combiner_rgbadd_r[0] == &texel0_color.r || \
-         combiner_alphamul[0] == &texel0_color.a || combiner_alphasub_a[0] == &texel0_color.a || combiner_alphasub_b[0] == &texel0_color.a || combiner_alphaadd[0] == &texel0_color.a || \
-         combiner_rgbmul_r[0] == &texel0_color.a)
+   if (combiner_rgbmul_r[0] == &g_gdp.texel0_color.r || combiner_rgbsub_a_r[0] == &g_gdp.texel0_color.r || combiner_rgbsub_b_r[0] == &g_gdp.texel0_color.r || combiner_rgbadd_r[0] == &g_gdp.texel0_color.r || \
+         combiner_alphamul[0] == &g_gdp.texel0_color.a || combiner_alphasub_a[0] == &g_gdp.texel0_color.a || combiner_alphasub_b[0] == &g_gdp.texel0_color.a || combiner_alphaadd[0] == &g_gdp.texel0_color.a || \
+         combiner_rgbmul_r[0] == &g_gdp.texel0_color.a)
       texel0_used_in_cc0 = 1;
    texels_in_cc0 = texel0_used_in_cc0 || texel1_used_in_cc0;
    texels_in_cc1 = texel0_used_in_cc1 || texel1_used_in_cc1;    
@@ -1468,14 +1468,14 @@ INLINE void SET_SUBA_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **i
          *input_b = &g_gdp.combined_color.b;
          break;
       case 1:
-         *input_r = &texel0_color.r;
-         *input_g = &texel0_color.g;
-         *input_b = &texel0_color.b;
+         *input_r = &g_gdp.texel0_color.r;
+         *input_g = &g_gdp.texel0_color.g;
+         *input_b = &g_gdp.texel0_color.b;
          break;
       case 2:
-         *input_r = &texel1_color.r;
-         *input_g = &texel1_color.g;
-         *input_b = &texel1_color.b;
+         *input_r = &g_gdp.texel1_color.r;
+         *input_g = &g_gdp.texel1_color.g;
+         *input_b = &g_gdp.texel1_color.b;
          break;
       case 3:
          *input_r = &g_gdp.prim_color.r;
@@ -1527,14 +1527,14 @@ INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **i
          *input_b = &g_gdp.combined_color.b;
          break;
       case 1:
-         *input_r = &texel0_color.r;
-         *input_g = &texel0_color.g;
-         *input_b = &texel0_color.b;
+         *input_r = &g_gdp.texel0_color.r;
+         *input_g = &g_gdp.texel0_color.g;
+         *input_b = &g_gdp.texel0_color.b;
          break;
       case 2:
-         *input_r = &texel1_color.r;
-         *input_g = &texel1_color.g;
-         *input_b = &texel1_color.b;
+         *input_r = &g_gdp.texel1_color.r;
+         *input_g = &g_gdp.texel1_color.g;
+         *input_b = &g_gdp.texel1_color.b;
          break;
       case 3:
          *input_r = &g_gdp.prim_color.r;
@@ -1586,14 +1586,14 @@ INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **in
          *input_b = &g_gdp.combined_color.b;
          break;
       case 1:
-         *input_r = &texel0_color.r;
-         *input_g = &texel0_color.g;
-         *input_b = &texel0_color.b;
+         *input_r = &g_gdp.texel0_color.r;
+         *input_g = &g_gdp.texel0_color.g;
+         *input_b = &g_gdp.texel0_color.b;
          break;
       case 2:
-         *input_r = &texel1_color.r;
-         *input_g = &texel1_color.g;
-         *input_b = &texel1_color.b;
+         *input_r = &g_gdp.texel1_color.r;
+         *input_g = &g_gdp.texel1_color.g;
+         *input_b = &g_gdp.texel1_color.b;
          break;
       case 3:
          *input_r = &g_gdp.prim_color.r;
@@ -1621,14 +1621,14 @@ INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **in
          *input_b = &g_gdp.combined_color.a;
          break;
       case 8:
-         *input_r = &texel0_color.a;
-         *input_g = &texel0_color.a;
-         *input_b = &texel0_color.a;
+         *input_r = &g_gdp.texel0_color.a;
+         *input_g = &g_gdp.texel0_color.a;
+         *input_b = &g_gdp.texel0_color.a;
          break;
       case 9:
-         *input_r = &texel1_color.a;
-         *input_g = &texel1_color.a;
-         *input_b = &texel1_color.a;
+         *input_r = &g_gdp.texel1_color.a;
+         *input_g = &g_gdp.texel1_color.a;
+         *input_b = &g_gdp.texel1_color.a;
          break;
       case 10:
          *input_r = &g_gdp.prim_color.a;
@@ -1693,14 +1693,14 @@ INLINE void SET_ADD_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **in
          *input_b = &g_gdp.combined_color.b;
          break;
       case 1:
-         *input_r = &texel0_color.r;
-         *input_g = &texel0_color.g;
-         *input_b = &texel0_color.b;
+         *input_r = &g_gdp.texel0_color.r;
+         *input_g = &g_gdp.texel0_color.g;
+         *input_b = &g_gdp.texel0_color.b;
          break;
       case 2:
-         *input_r = &texel1_color.r;
-         *input_g = &texel1_color.g;
-         *input_b = &texel1_color.b;
+         *input_r = &g_gdp.texel1_color.r;
+         *input_g = &g_gdp.texel1_color.g;
+         *input_b = &g_gdp.texel1_color.b;
          break;
       case 3:
          *input_r = &g_gdp.prim_color.r;
@@ -1738,10 +1738,10 @@ INLINE void SET_SUB_ALPHA_INPUT(int32_t **input, int code)
          *input = &g_gdp.combined_color.a;
          break;
       case 1:
-         *input = &texel0_color.a;
+         *input = &g_gdp.texel0_color.a;
          break;
       case 2:
-         *input = &texel1_color.a;
+         *input = &g_gdp.texel1_color.a;
          break;
       case 3:
          *input = &g_gdp.prim_color.a;
@@ -1769,10 +1769,10 @@ INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
          *input = &lod_frac;
          break;
       case 1:
-         *input = &texel0_color.a;
+         *input = &g_gdp.texel0_color.a;
          break;
       case 2:
-         *input = &texel1_color.a;
+         *input = &g_gdp.texel1_color.a;
          break;
       case 3:
          *input = &g_gdp.prim_color.a;
