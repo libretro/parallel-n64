@@ -1427,7 +1427,7 @@ static void LoadTex(int id, int tmu)
                {
                   float percent = modfactor / 255.0f;
 
-                  do
+                  while (size--)
                   {
                      uint8_t r = (uint8_t)
                         ((1 - percent) * (((*dst) >> 8) & 0xF) + percent * cr0);
@@ -1437,7 +1437,7 @@ static void LoadTex(int id, int tmu)
                         ((1 - percent) * ((*dst) & 0xF) + percent * cb0);
                      *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                      dst++;
-                  }while(--size);
+                  }
                }
                break;
             case TMOD_TEX_INTER_COL_USING_COL1:
@@ -1446,7 +1446,7 @@ static void LoadTex(int id, int tmu)
                   float percent_g = cg1 / 15.0f;
                   float percent_b = cb1 / 15.0f;
 
-                  do
+                  while (size--)
                   {
                      uint8_t r = (uint8_t)
                         ((1 - percent_r) * (((*dst) >> 8) & 0xF) + percent_r * cr0);
@@ -1456,12 +1456,12 @@ static void LoadTex(int id, int tmu)
                         ((1 - percent_b) * ((*dst) & 0xF) + percent_b * cb0);
                      *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                      dst++;
-                  }while(--size);
+                  }
                }
                break;
             case TMOD_FULL_COLOR_SUB_TEX:
                {
-                  do
+                  while (size--)
                   {
                      uint8_t a = ((modcolor & 0xF) - (((*dst) >> 12) & 0xF));
                      uint8_t r = (cr0 - (((*dst) >> 8) & 0xF));
@@ -1469,11 +1469,11 @@ static void LoadTex(int id, int tmu)
                      uint8_t b = (cb0 - (*dst & 0xF));
                      *dst = (a << 12) | (r << 8) | (g << 4) | b;
                      dst++;
-                  }while(--size);
+                  }
                }
                break;
             case TMOD_COL_INTER_COL1_USING_TEX:
-               do
+               while (size--)
                {
                   float percent_r = (((*dst) >> 8) & 0xF) / 15.0f;
                   float percent_g = (((*dst) >> 4) & 0xF) / 15.0f;
@@ -1483,7 +1483,7 @@ static void LoadTex(int id, int tmu)
                   uint8_t b = (uint8_t)((1.0f-percent_b) * cb0 + percent_b * cb1 + 0.0001f);
                   *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                   dst++;
-               }while(--size);
+               }
                break;
             case TMOD_COL_INTER_COL1_USING_TEXA:
             case TMOD_COL_INTER_COL1_USING_TEXA__MUL_TEX:
@@ -1491,7 +1491,7 @@ static void LoadTex(int id, int tmu)
 
                   if (mod == TMOD_COL_INTER_COL1_USING_TEXA__MUL_TEX)
                   {
-                     do
+                     while (size--)
                      {
                         float percent = ((*dst & 0xF000) >> 12) / 15.0f;
                         uint8_t r = (uint8_t)
@@ -1502,11 +1502,11 @@ static void LoadTex(int id, int tmu)
                            ((((1 - percent) * cb0 + percent * cb1) / 15.0f) * (((*dst) & 0x000F) / 15.0f) * 15.0f);
                         *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                         dst++;
-                     }while(--size);
+                     }
                   }
                   else
                   {
-                     do
+                     while (size--)
                      {
                         float percent = ((*dst & 0xF000) >> 12) / 15.0f;
                         uint8_t r = (uint8_t)((1 - percent)*cr0 + percent*cr1);
@@ -1514,7 +1514,7 @@ static void LoadTex(int id, int tmu)
                         uint8_t b = (uint8_t)((1 - percent)*cb0 + percent*cb1);
                         *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                         dst++;
-                     }while(--size);
+                     }
                   }
                }
                break;
@@ -1523,7 +1523,7 @@ static void LoadTex(int id, int tmu)
                {
                   if (mod == TMOD_COL_INTER_TEX_USING_TEX)
                   {
-                     do
+                     while (size--)
                      {
                         float percent_r = (((*dst) >> 8) & 0xF) / 15.0f;
                         float percent_g = (((*dst) >> 4) & 0xF) / 15.0f;
@@ -1536,11 +1536,11 @@ static void LoadTex(int id, int tmu)
                            ((1.0f-percent_b) * cb0 + percent_b * ((*dst) & 0x000F));
                         *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                         dst++;
-                     }while(--size);
+                     }
                   }
                   else
                   {
-                     do
+                     while (size--)
                      {
                         float percent = ((*dst & 0xF000) >> 12) / 15.0f;
                         uint8_t r = (uint8_t)
@@ -1551,13 +1551,13 @@ static void LoadTex(int id, int tmu)
                            ((1 - percent)*cb0 + percent*(*dst & 0x000F));
                         *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                         dst++;
-                     }while(--size);
+                     }
                   }
                }
                break;
             case TMOD_COL2_INTER__COL_INTER_COL1_USING_TEX__USING_TEXA:
                {
-                  do
+                  while (size--)
                   {
                      float percent_a = ((*dst & 0xF000) >> 12) / 15.0f;
                      float percent_r = (((*dst) >> 8) & 0xF) / 15.0f;
@@ -1571,24 +1571,25 @@ static void LoadTex(int id, int tmu)
                         (((1.0f-percent_b)*cb0 + percent_b*cb1)*percent_a + cb2*(1.0f-percent_a));
                      *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                      dst++;
-                  }while(--size);
+                  }
                }
                break;
             case TMOD_TEX_SCALE_FAC_ADD_FAC:
                {
                   float base_a_plus_percent = ((1.0f - (modfactor / 255.0f)) * 15.0f) + (modfactor / 255.0f);
 
-                  do {
+                  while (size--)
+                  {
                      *dst = ((uint16_t)(base_a_plus_percent * ((*dst) >> 12)) << 12) | ((*dst) & 0x0FFF);
                       dst++;
-                  }while(--size);
+                  }
                }
                break;
             case TMOD_TEX_SUB_COL_MUL_FAC_ADD_TEX:
                {
                   float percent = modfactor / 255.0f;
 
-                  do
+                  while (size--)
                   {
                      float r, g, b;
                      r = (float)(((*dst) >> 8) & 0xF);
@@ -1606,11 +1607,11 @@ static void LoadTex(int id, int tmu)
 
                      *dst = (*dst & 0xF000) | ((uint16_t)r << 8) | ((uint16_t)g << 4) | (uint16_t)b;
                      dst++;
-                  }while(--size);
+                  }
                }
                break;
             case TMOD_TEX_SCALE_COL_ADD_COL:
-               do
+               while (size--)
                {
                   float percent_r = (((*dst) >> 8) & 0xF) / 15.0f;
                   float percent_g = (((*dst) >> 4) & 0xF) / 15.0f;
@@ -1620,35 +1621,35 @@ static void LoadTex(int id, int tmu)
                   uint8_t b = (uint8_t)(percent_b * cb0 + cb1 + 0.0001f);
                   *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                   dst++;
-               }while(--size);
+               }
                break;
             case TMOD_TEX_ADD_COL:
-               do
+               while (size--)
                {
                   uint8_t r = (uint8_t)(cr0 + (((*dst) >> 8) & 0xF))&0xF;
                   uint8_t g = (uint8_t)(cg0 + (((*dst) >> 4) & 0xF))&0xF;
                   uint8_t b = (uint8_t)(cb0 + ((*dst) & 0xF))&0xF;
                   *dst = ((((*dst) >> 12) & 0xF) << 12) | (r << 8) | (g << 4) | b;
                   dst++;
-               }while(--size);
+               }
                break;
             case TMOD_TEX_SUB_COL:
                {
-                  do
+                  while (size--)
                   {
                      uint8_t r = (((*dst) >> 8) & 0xF) - cr0;
                      uint8_t g = (((*dst) >> 4) & 0xF) - cg0;
                      uint8_t b = (((*dst) & 0xF) - cb0) - cb0;
                      *dst = (((*dst) & 0xF000) << 12) | (r << 8) | (g << 4) | b;
                      dst++;
-                  }while(--size);
+                  }
                }
                break;
             case TMOD_TEX_SUB_COL_MUL_FAC:
                {
                   float percent = modfactor / 255.0f;
 
-                  do
+                  while (size--)
                   {
                      float r = ((float)(((*dst) >> 8) & 0xF) - cr0) * percent;
                      float g = ((float)(((*dst) >> 4) & 0xF) - cg0) * percent;
@@ -1668,7 +1669,7 @@ static void LoadTex(int id, int tmu)
 
                      *dst = ((((*dst) >> 12) & 0xF) << 12) | ((uint16_t)r << 8) | ((uint16_t)g << 4) | (uint16_t)b;
                      dst++;
-                  }while(--size);
+                  }
                }
                break;
             case TMOD_COL_INTER_TEX_USING_COL1:
@@ -1677,7 +1678,7 @@ static void LoadTex(int id, int tmu)
                   float percent_g = cg1 / 15.0f;
                   float percent_b = cb1 / 15.0f;
 
-                  do
+                  while (size--)
                   {
                      uint8_t r = (uint8_t)
                         (percent_r * (((*dst) >> 8) & 0xF) + (1 - percent_r) * cr0);
@@ -1687,11 +1688,11 @@ static void LoadTex(int id, int tmu)
                         (percent_b * ((*dst) & 0xF) + (1 - percent_b) * cb0);
                      *dst = ((((*dst) >> 12) & 0xF) << 12) | (r << 8) | (g << 4) | b;
                      dst++;
-                  }while(--size);
+                  }
                }
                break;
             case TMOD_COL_MUL_TEXA_ADD_TEX:
-               do
+               while (size--)
                {
                   float factor = ((*dst & 0xF000) >> 12) / 15.0f;
                   uint8_t r = (uint8_t)(cr0 * factor + (((*dst) >> 8) & 0xF))&0xF;
@@ -1699,7 +1700,7 @@ static void LoadTex(int id, int tmu)
                   uint8_t b = (uint8_t)(cb0 * factor + ((*dst) & 0xF))&0xF;
                   *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                   dst++;
-               }while(--size);
+               }
                break;
             case TMOD_TEX_INTER_NOISE_USING_COL:
                {
@@ -1707,7 +1708,7 @@ static void LoadTex(int id, int tmu)
                   float percent_g = cg0 / 15.0f;
                   float percent_b = cb0 / 15.0f;
 
-                  do
+                  while (size--)
                   {
                      uint8_t noise = rand()%16;
                      uint8_t r = (uint8_t)
@@ -1718,11 +1719,11 @@ static void LoadTex(int id, int tmu)
                         ((1 - percent_b)*(*dst & 0xF) + percent_b*noise);
                      *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                      dst++;
-                  }while(--size);
+                  }
                }
                break;
             case TMOD_TEX_INTER_COL_USING_TEXA:
-               do
+               while (size--)
                {
                   float percent = ((*dst & 0xF000) >> 12) / 15.0f;
                   uint8_t r = (uint8_t)
@@ -1733,30 +1734,30 @@ static void LoadTex(int id, int tmu)
                      (percent*cb0 + (1 - percent)*(*dst & 0x000F));
                   *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                   dst++;
-               }while(--size);
+               }
                break;
             case TMOD_TEX_MUL_COL:
-               do
+               while (size--)
                {
                   uint8_t r = (cr0 * ((*dst & 0x0F00) >> 8));
                   uint8_t g = (cg0 * ((*dst & 0x00F0) >> 4));
                   uint8_t b = (cb0 * (*dst & 0x000F));
                   *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                   dst++;
-               }while(--size);
+               }
                break;
             case TMOD_TEX_SCALE_FAC_ADD_COL:
                {
                   float percent = modfactor / 255.0f;
 
-                  do
+                  while (size--)
                   {
                      uint8_t r = (uint8_t)(cr0 + percent*(((*dst) >> 8) & 0xF));
                      uint8_t g = (uint8_t)(cg0 + percent*(((*dst) >> 4) & 0xF));
                      uint8_t b = (uint8_t)(cb0 + percent*(((*dst) >> 0) & 0xF));
                      *dst = (*dst & 0xF000) | (r << 8) | (g << 4) | b;
                      dst++;
-                  }while(--size);
+                  }
                }
                break;
          }
