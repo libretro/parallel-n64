@@ -1578,7 +1578,7 @@ static void LoadTex(int id, int tmu)
                {
                   float base_a_plus_percent = ((1.0f - (modfactor / 255.0f)) * 15.0f) + (modfactor / 255.0f);
 
-                  {
+                  do {
                      *dst = ((uint16_t)(base_a_plus_percent * ((*dst) >> 12)) << 12) | ((*dst) & 0x0FFF);
                       dst++;
                   }while(--size);
