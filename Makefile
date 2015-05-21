@@ -332,6 +332,13 @@ else
 	CPUOPTS += -O2 -DNDEBUG
 endif
 
+ifeq ($(platform), qnx)
+   CFLAGS += -Wp,-MMD
+else
+   CFLAGS += -MMD
+endif
+
+
 ### Finalize ###
 OBJECTS		+= $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_ASM:.S=.o)
 CXXFLAGS	   += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
@@ -358,17 +365,18 @@ $(TARGET): $(OBJECTS)
 	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) $(GL_LIB)
 
 %.o: %.S
-	$(CC_AS) $(CFLAGS) -c $^ -o $@
+	$(CC_AS) $(CFLAGS) -c $< -o $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $^ -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $^ -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
 .PHONY: clean
+-include $(OBJECTS:.o=.d)
 endif
