@@ -247,12 +247,6 @@ typedef struct
    float f_ul_s;
    float f_ul_t;
 
-   // these are set by loadtile
-   uint16_t t_ul_s;     // upper left s coordinate
-   uint16_t t_ul_t;     // upper left t coordinate
-   uint16_t t_lr_s;     // lower right s coordinate
-   uint16_t t_lr_t;     // lower right t coordinate
-
    uint32_t width;
    uint32_t height;
 
