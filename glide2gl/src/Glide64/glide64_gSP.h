@@ -121,24 +121,22 @@ static void gSPCombineMatrices(void)
 /* clip_w - clips aint the z-axis */
 static void clip_w (void)
 {
-   int i, j, index, n;
-   float percent;
-   VERTEX *tmp;
-   
-   n = rdp.n_global;
-   // Swap vertex buffers
-   tmp = (VERTEX*)rdp.vtxbuf2;
+   int i;
+   int index = 0;
+   int n = rdp.n_global;
+   VERTEX *tmp = (VERTEX*)rdp.vtxbuf2;
+
+   /* Swap vertex buffers */
    rdp.vtxbuf2 = rdp.vtxbuf;
    rdp.vtxbuf = tmp;
    rdp.vtx_buffer ^= 1;
-   index = 0;
 
    // Check the vertices for clipping
    for (i=0; i < n; i++)
    {
       bool save_inpoint = false;
       VERTEX *first, *second, *current = NULL, *current2 = NULL;
-      j = i+1;
+      int j = i+1;
       if (j == 3)
          j = 0;
       first = (VERTEX*)&rdp.vtxbuf2[i];
@@ -169,7 +167,7 @@ static void clip_w (void)
 
       if (current && current2)
       {
-         percent = (-current->w) / (current2->w - current->w);
+         float percent = (-current->w) / (current2->w - current->w);
          rdp.vtxbuf[index].not_zclipped = 0;
          rdp.vtxbuf[index].x = current->x + (current2->x - current->x) * percent;
          rdp.vtxbuf[index].y = current->y + (current2->y - current->y) * percent;
@@ -204,13 +202,14 @@ static void draw_tri_depth(VERTEX **vtx)
    float diffy_12 = Y1 - Y2;
    float diffx_02 = X0 - X2;
    float diffx_12 = X1 - X2;
-
    float denom = (diffx_02 * diffy_12 - diffx_12 * diffy_02);
-   if(denom*denom > 0.0)
+
+   if(denom * denom > 0.0)
    {
       float diffz_02 = vtx[0]->sz - vtx[2]->sz;
       float diffz_12 = vtx[1]->sz - vtx[2]->sz;
       float fdzdx = (diffz_02 * diffy_12 - diffz_12 * diffy_02) / denom;
+
       if ((rdp.rm & ZMODE_DECAL) == ZMODE_DECAL)
       {
          // Calculate deltaZ per polygon for Decal z-mode
@@ -480,9 +479,6 @@ static void gSPLookAt_G64(uint32_t l, uint32_t n)
    rdp.lookat[n][1] = (float)(dir_y) / 127.0f;
    rdp.lookat[n][2] = (float)(dir_z) / 127.0f;
    rdp.use_lookat = (n == 0) || (n == 1 && (dir_x || dir_y));
-#ifdef EXTREME_LOGGING
-   //FRDP("lookat_x (%f, %f, %f)\n", rdp.lookat[1][0], rdp.lookat[1][1], rdp.lookat[1][2]);
-#endif
 }
 
 static void gSPLight_G64(uint32_t l, int32_t n)
@@ -559,7 +555,6 @@ static void gSPNumLights_G64(int32_t n)
 
    rdp.num_lights = n;
    g_gdp.flags |= UPDATE_LIGHTS;
-   //FRDP ("numlights: %d\n", rdp.num_lights);
 }
 
 static void gSPForceMatrix_G64( uint32_t mptr )
@@ -629,7 +624,6 @@ static void gSPDlistCount_G64(uint32_t count, uint32_t v)
    rdp.pc_i ++;  // go to the next PC in the stack
    rdp.pc[rdp.pc_i] = address;  // jump to the address
    rdp.dl_count = count + 1;
-   //FRDP ("dl_count - address: %08lx, count: %d\n", address, count);
 }
 
 static void gSPModifyVertex_G64( uint32_t vtx, uint32_t where, uint32_t val )
@@ -657,10 +651,6 @@ static void gSPModifyVertex_G64( uint32_t vtx, uint32_t where, uint32_t val )
             v->ov = (float)((int16_t)(val&0xFFFF)) * scale;
             v->uv_scaled = 1;
          }
-#if 0
-         FRDP ("u/v: (%04lx, %04lx), (%f, %f)\n", (short)(val>>16), (short)(val&0xFFFF),
-               v->ou, v->ov);
-#endif
          break;
 
       case G_MWO_POINT_XYSCREEN:
@@ -691,7 +681,6 @@ static void gSPModifyVertex_G64( uint32_t vtx, uint32_t where, uint32_t val )
             float scr_z = _FIXED2FLOAT((int16_t)_SHIFTR(val, 16, 16), 15);
             v->z_w = (scr_z - rdp.view_trans[2]) / rdp.view_scale[2];
             v->z = v->z_w * v->w;
-            //FRDP ("z: %f\n", scr_z);
          }
          break;
    }
