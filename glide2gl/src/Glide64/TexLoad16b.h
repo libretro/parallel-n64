@@ -37,29 +37,6 @@
 //
 //****************************************************************
 
-#define NBITS32_16B (sizeof(uint32_t) * 8)
-#define NBITS16_16B (sizeof(uint16_t) * 8)
-
-static INLINE uint32_t rol32(uint32_t value, uint32_t amount)
-{
-    return (value << amount) | (value >> (-(int32_t)amount & 31));
-}
-
-static INLINE uint32_t ror32(uint32_t value, uint32_t amount)
-{
-    return (value << (-(int32_t)amount & 31)) | (value >> amount);
-}
-
-static INLINE uint16_t rol16(uint16_t value, uint16_t amount)
-{
-    return (value << amount) | (value >> (-(int16_t)amount & 15));
-}
-
-static INLINE uint16_t ror16(uint16_t value, uint16_t amount)
-{
-    return (value << (-(int16_t)amount & 15)) | (value >> amount);
-}
-
 static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
   uint32_t *src32 = (uint32_t*)src;
