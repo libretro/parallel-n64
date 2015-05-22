@@ -977,48 +977,50 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
 
    for (i=0; i< rdp.n_global; i++)
    {
-      if (rdp.vtxbuf[i].not_zclipped)
+      VERTEX *vtx = (VERTEX*)&rdp.vtxbuf[i];
+
+      if (vtx->not_zclipped)
       {
-         //FRDP (" * NOT ZCLIPPPED: %d\n", rdp.vtxbuf[i].number);
-         rdp.vtxbuf[i].x = rdp.vtxbuf[i].sx;
-         rdp.vtxbuf[i].y = rdp.vtxbuf[i].sy;
-         rdp.vtxbuf[i].z = rdp.vtxbuf[i].sz;
-         rdp.vtxbuf[i].q = rdp.vtxbuf[i].oow;
-         rdp.vtxbuf[i].u[0] = rdp.vtxbuf[i].u_w[0];
-         rdp.vtxbuf[i].v[0] = rdp.vtxbuf[i].v_w[0];
-         rdp.vtxbuf[i].u[1] = rdp.vtxbuf[i].u_w[1];
-         rdp.vtxbuf[i].v[1] = rdp.vtxbuf[i].v_w[1];
+         //FRDP (" * NOT ZCLIPPPED: %d\n", vtx->number);
+         vtx->x = vtx->sx;
+         vtx->y = vtx->sy;
+         vtx->z = vtx->sz;
+         vtx->q = vtx->oow;
+         vtx->u[0] = vtx->u_w[0];
+         vtx->v[0] = vtx->v_w[0];
+         vtx->u[1] = vtx->u_w[1];
+         vtx->v[1] = vtx->v_w[1];
       }
       else
       {
-         //FRDP (" * ZCLIPPED: %d\n", rdp.vtxbuf[i].number);
-         rdp.vtxbuf[i].q = 1.0f / rdp.vtxbuf[i].w;
-         rdp.vtxbuf[i].x = rdp.view_trans[0] + rdp.vtxbuf[i].x * rdp.vtxbuf[i].q * rdp.view_scale[0] + rdp.offset_x;
-         rdp.vtxbuf[i].y = rdp.view_trans[1] + rdp.vtxbuf[i].y * rdp.vtxbuf[i].q * rdp.view_scale[1] + rdp.offset_y;
-         rdp.vtxbuf[i].z = rdp.view_trans[2] + rdp.vtxbuf[i].z * rdp.vtxbuf[i].q * rdp.view_scale[2];
+         //FRDP (" * ZCLIPPED: %d\n", vtx->number);
+         vtx->q = 1.0f / vtx->w;
+         vtx->x = rdp.view_trans[0] + vtx->x * vtx->q * rdp.view_scale[0] + rdp.offset_x;
+         vtx->y = rdp.view_trans[1] + vtx->y * vtx->q * rdp.view_scale[1] + rdp.offset_y;
+         vtx->z = rdp.view_trans[2] + vtx->z * vtx->q * rdp.view_scale[2];
          if (rdp.tex >= 1)
          {
-            rdp.vtxbuf[i].u[0] *= rdp.vtxbuf[i].q;
-            rdp.vtxbuf[i].v[0] *= rdp.vtxbuf[i].q;
+            vtx->u[0] *= vtx->q;
+            vtx->v[0] *= vtx->q;
          }
          if (rdp.tex >= 2)
          {
-            rdp.vtxbuf[i].u[1] *= rdp.vtxbuf[i].q;
-            rdp.vtxbuf[i].v[1] *= rdp.vtxbuf[i].q;
+            vtx->u[1] *= vtx->q;
+            vtx->v[1] *= vtx->q;
          }
       }
 
       if (g_gdp.other_modes.z_source_sel == 1)
-         rdp.vtxbuf[i].z = g_gdp.prim_color.z;
+         vtx->z = g_gdp.prim_color.z;
 
       // Don't remove clipping, or it will freeze
-      if (rdp.vtxbuf[i].x > rdp.clip_max_x) rdp.clip |= CLIP_XMAX;
-      if (rdp.vtxbuf[i].x < rdp.clip_min_x) rdp.clip |= CLIP_XMIN;
-      if (rdp.vtxbuf[i].y > rdp.clip_max_y) rdp.clip |= CLIP_YMAX;
-      if (rdp.vtxbuf[i].y < rdp.clip_min_y) rdp.clip |= CLIP_YMIN;
-      if (rdp.vtxbuf[i].z > maxZ)           rdp.clip |= CLIP_ZMAX;
-      if (rdp.vtxbuf[i].z < 0.0f)           rdp.clip |= CLIP_ZMIN;
-      no_clip &= rdp.vtxbuf[i].screen_translated;
+      if (vtx->x > rdp.clip_max_x) rdp.clip |= CLIP_XMAX;
+      if (vtx->x < rdp.clip_min_x) rdp.clip |= CLIP_XMIN;
+      if (vtx->y > rdp.clip_max_y) rdp.clip |= CLIP_YMAX;
+      if (vtx->y < rdp.clip_min_y) rdp.clip |= CLIP_YMIN;
+      if (vtx->z > maxZ)           rdp.clip |= CLIP_ZMAX;
+      if (vtx->z < 0.0f)           rdp.clip |= CLIP_ZMIN;
+      no_clip &= vtx->screen_translated;
    }
    if (!no_clip)
    {
