@@ -1065,7 +1065,10 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
 static void rdp_setscissor(uint32_t w0, uint32_t w1)
 {
-   // clipper resolution is 320x240, scale based on computer resolution
+   gdp_set_scissor(w0, w1);
+
+   /* clipper resolution is 320x240, scale based on computer resolution */
+   /* TODO/FIXME - all these values are different from Angrylion's */
    rdp.scissor_o.ul_x = (uint32_t)(((w0 & 0x00FFF000) >> 14));
    rdp.scissor_o.ul_y = (uint32_t)(((w0 & 0x00000FFF) >> 2));
    rdp.scissor_o.lr_x = (uint32_t)(((w1 & 0x00FFF000) >> 14));
@@ -1074,8 +1077,6 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
    rdp.ci_upper_bound = rdp.scissor_o.ul_y;
    rdp.ci_lower_bound = rdp.scissor_o.lr_y;
    rdp.scissor_set = true;
-
-   g_gdp.flags |= UPDATE_SCISSOR;
 
    if (rdp.view_scale[0] == 0) //viewport is not set?
    {

@@ -367,6 +367,18 @@ void gdp_set_other_modes(uint32_t w0, uint32_t w1)
    g_gdp.other_modes.alpha_compare_en = !!(w1 & 0x00000001); /*  0 */
 }
 
+void gdp_set_scissor(uint32_t w0, uint32_t w1)
+{
+   g_gdp.__clip.xh   = (w0 & 0x00FFF000) >> (44 - 32);
+   g_gdp.__clip.yh   = (w0 & 0x00000FFF) >> (32 - 32);
+   g_gdp.scfield     = (w1 & 0x02000000) >> (25 -  0);
+   g_gdp.sckeepodd   = (w1 & 0x01000000) >> (24 -  0);
+   g_gdp.__clip.xl   = (w1 & 0x00FFF000) >> (12 -  0);
+   g_gdp.__clip.yl   = (w1 & 0x00000FFF) >> ( 0 -  0);
+
+   g_gdp.flags |= UPDATE_SCISSOR;
+}
+
 /* This command stalls the RDP until the last DRAM buffer is read
  * or written from any preceding primitive. It is typically only needed
  * if the memory data is to be reused, like switching display buffers,

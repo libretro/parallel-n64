@@ -322,6 +322,8 @@ void gdp_set_combine(uint32_t w0, uint32_t w1);
 
 void gdp_set_texture_image(uint32_t w0, uint32_t w1);
 
+void gdp_set_scissor(uint32_t w0, uint32_t w1);
+
 void gdp_set_other_modes(uint32_t w0, uint32_t w1);
 
 void gdp_full_sync(uint32_t w0, uint32_t w1);
