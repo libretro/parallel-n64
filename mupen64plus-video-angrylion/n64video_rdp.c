@@ -1135,11 +1135,6 @@ static void set_other_modes(uint32_t w0, uint32_t w1)
    g_gdp.other_modes.f.stalederivs = 1;
 }
 
-static void set_tile_size(uint32_t w0, uint32_t w1)
-{
-   int32_t tilenum = gdp_set_tile_size(w0, w1);
-}
-
 #define ADJUST_ATTR_LOAD() {           \
    span[j].stwz[0] = s & ~0x000003FF; \
    span[j].stwz[1] = t & ~0x000003FF; \
@@ -1882,7 +1877,7 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
    gdp_tile_sync         ,gdp_full_sync         ,gdp_set_key_gb        ,gdp_set_key_r         ,
    gdp_set_convert       ,set_scissor       ,set_prim_depth    ,set_other_modes   ,
 
-   load_tlut         ,gdp_invalid           ,set_tile_size     ,load_block        ,
+   load_tlut         ,gdp_invalid           ,gdp_set_tile_size     ,load_block        ,
    load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
    gdp_set_fog_color     ,gdp_set_blend_color   ,gdp_set_prim_color    ,gdp_set_env_color     ,
    set_combine       ,gdp_set_texture_image ,set_mask_image    ,set_color_image   ,
