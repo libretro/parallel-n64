@@ -11,9 +11,6 @@
 #undef  LOG_RDP_EXECUTION
 #define DETAILED_LOGGING 0
 
-int scfield;
-int sckeepodd;
-
 int fb_format;
 int fb_size;
 int fb_width;
@@ -50,10 +47,6 @@ int32_t *blender2a_b[2];
 int32_t *blender2b_a[2];
 
 int rdp_pipeline_crashed;
-
-gdp_rectangle __clip = {
-    0, 0, 0x2000, 0x2000
-};
 
 uint16_t z_com_table[0x40000];
 uint32_t z_complete_dec_table[0x4000];
@@ -5547,6 +5540,10 @@ void rdp_init(void)
 #ifdef LOG_RDP_EXECUTION
         rdp_exec = fopen("rdp_execute.txt", "wt");
 #endif
+    g_gdp.__clip.xl = 0;
+    g_gdp.__clip.yl = 0;
+    g_gdp.__clip.xh = 0x2000;
+    g_gdp.__clip.yh = 0x2000;
 
     fbread1_ptr = fbread_func[0];
     fbread2_ptr = fbread2_func[0];

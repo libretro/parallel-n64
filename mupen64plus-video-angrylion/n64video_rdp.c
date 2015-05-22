@@ -309,8 +309,8 @@ static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int text
    int curcross;
    int j, k;
    edgewalker_info_t edges = {0};
-   edges.clipxlshift = __clip.xl << 1;
-   edges.clipxhshift = __clip.xh << 1;
+   edges.clipxlshift = g_gdp.__clip.xl << 1;
+   edges.clipxhshift = g_gdp.__clip.xh << 1;
 
    base = cmd_cur + 0;
    setzero_si64(rgba_int);
@@ -674,7 +674,7 @@ no_read_zbuffer_coefficients:
 
    ldflag = (sign_dxhdy ^ flip) ? 0 : 3;
    invaly = 1;
-   yllimit = (yl - __clip.yl < 0) ? yl : __clip.yl; /* clip.yl always &= 0xFFF */
+   yllimit = (yl - g_gdp.__clip.yl < 0) ? yl : g_gdp.__clip.yl; /* clip.yl always &= 0xFFF */
 
    ycur = yh & ~3;
    ylfar = yllimit | 3;
@@ -683,7 +683,7 @@ no_read_zbuffer_coefficients:
    else if (yllimit >> 2 >= 0 && yllimit >> 2 < 1023)
       span[(yllimit >> 2) + 1].validline = 0;
 
-   yhlimit = (yh - __clip.yh >= 0) ? yh : __clip.yh; /* clip.yh always &= 0xFFF */
+   yhlimit = (yh - g_gdp.__clip.yh >= 0) ? yh : g_gdp.__clip.yh; /* clip.yh always &= 0xFFF */
 
    xlr_inc[0] = (DxMDy >> 2) & ~0x00000001;
    xlr_inc[1] = (DxHDy >> 2) & ~0x00000001;
@@ -827,7 +827,7 @@ no_read_zbuffer_coefficients:
 #endif
          if (edges.spix == 3)
          {
-            const int invalidline = (sckeepodd ^ j) & scfield
+            const int invalidline = (g_gdp.sckeepodd ^ j) & g_gdp.scfield
                | (edges.allinval | edges.allover | edges.allunder);
             span[j].lx = minmax[flip - 0];
             span[j].rx = minmax[1 - flip];
@@ -917,8 +917,8 @@ static NOINLINE void draw_texture_rectangle(
    int invaly;
    register int j, k;
    edgewalker_info_t edges = {0};
-   edges.clipxlshift = __clip.xl << 1;
-   edges.clipxhshift = __clip.xh << 1;
+   edges.clipxlshift = g_gdp.__clip.xl << 1;
+   edges.clipxhshift = g_gdp.__clip.xh << 1;
 
    max_level = 0;
    maxxmx = 0;
@@ -970,8 +970,8 @@ static NOINLINE void draw_texture_rectangle(
    }
 
    invaly = 1;
-   yllimit = (yl <  __clip.yl) ? yl : __clip.yl;
-   yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
+   yllimit = (yl <  g_gdp.__clip.yl) ? yl : g_gdp.__clip.yl;
+   yhlimit = (yh >= g_gdp.__clip.yh) ? yh : g_gdp.__clip.yh;
 
    ycur = yh & ~3;
    ylfar = yllimit | 3;
@@ -1040,7 +1040,7 @@ static NOINLINE void draw_texture_rectangle(
          }
          if (edges.spix == 3)
          {
-            const int invalidline = (sckeepodd ^ j) & scfield
+            const int invalidline = (g_gdp.sckeepodd ^ j) & g_gdp.scfield
                                   | (edges.allinval | edges.allover | edges.allunder);
             span[j].lx = maxxmx;
             span[j].rx = minxhx;
@@ -1120,12 +1120,12 @@ static void tex_rect_flip(uint32_t w0, uint32_t w1)
 
 static void set_scissor(uint32_t w0, uint32_t w1)
 {
-   __clip.xh   = (w0 & 0x00FFF000) >> (44 - 32);
-   __clip.yh   = (w0 & 0x00000FFF) >> (32 - 32);
-   scfield     = (w1 & 0x02000000) >> (25 -  0);
-   sckeepodd   = (w1 & 0x01000000) >> (24 -  0);
-   __clip.xl   = (w1 & 0x00FFF000) >> (12 -  0);
-   __clip.yl   = (w1 & 0x00000FFF) >> ( 0 -  0);
+   g_gdp.__clip.xh   = (w0 & 0x00FFF000) >> (44 - 32);
+   g_gdp.__clip.yh   = (w0 & 0x00000FFF) >> (32 - 32);
+   g_gdp.scfield     = (w1 & 0x02000000) >> (25 -  0);
+   g_gdp.sckeepodd   = (w1 & 0x01000000) >> (24 -  0);
+   g_gdp.__clip.xl   = (w1 & 0x00FFF000) >> (12 -  0);
+   g_gdp.__clip.yl   = (w1 & 0x00000FFF) >> ( 0 -  0);
 }
 
 static void set_prim_depth(uint32_t w0, uint32_t w1)
@@ -1368,8 +1368,8 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    int xh = (w1 & 0x00FFF000) >> (12 -  0);  /* X coordinate of top left corner of rectangle. */
    int yh = (w1 & 0x00000FFF) >> ( 0 -  0);  /* Y coordinate of top left corner of rectangle. */
 
-   edges.clipxlshift = __clip.xl << 1;
-   edges.clipxhshift = __clip.xh << 1;
+   edges.clipxlshift = g_gdp.__clip.xl << 1;
+   edges.clipxhshift = g_gdp.__clip.xh << 1;
 
    yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
 
@@ -1394,7 +1394,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    spans_dzpix = normalize_dzpix(0);
 
    invaly = 1;
-   yllimit = (yl < __clip.yl) ? yl : __clip.yl;
+   yllimit = (yl < g_gdp.__clip.yl) ? yl : g_gdp.__clip.yl;
 
    ycur = yh & ~3;
    ylfar = yllimit | 3;
@@ -1402,7 +1402,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       ylfar += 4;
    else if (yllimit >> 2 >= 0 && yllimit>>2 < 1023)
       span[(yllimit >> 2) + 1].validline = 0;
-   yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
+   yhlimit = (yh >= g_gdp.__clip.yh) ? yh : g_gdp.__clip.yh;
 
    edges.allover = 1;
    edges.allunder = 1;
@@ -1461,7 +1461,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       }
       else if (edges.spix == 3)
       {
-         const int invalidline = (sckeepodd ^ j) & scfield
+         const int invalidline = (g_gdp.sckeepodd ^ j) & g_gdp.scfield
             | (edges.allinval | edges.allover | edges.allunder);
          span[j].lx = maxxmx;
          span[j].rx = minxhx;

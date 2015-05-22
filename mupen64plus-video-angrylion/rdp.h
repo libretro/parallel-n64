@@ -301,9 +301,6 @@ extern int spans_cdz;
 
 extern i32 spans_d_stwz_dy[4];
 
-extern int scfield;
-extern int sckeepodd;
-
 extern int fb_format;
 extern int fb_size;
 extern int fb_width;
@@ -338,8 +335,6 @@ extern int32_t *blender2a_r[2];
 extern int32_t *blender2a_g[2];
 extern int32_t *blender2a_b[2];
 extern int32_t *blender2b_a[2];
-
-extern gdp_rectangle __clip;
 
 extern gdp_color nexttexel_color;
 extern gdp_color pixel_color;
