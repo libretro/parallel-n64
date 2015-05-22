@@ -197,17 +197,14 @@ static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
 
 static void DrawRE2Video(FB_TO_SCREEN_INFO *fb_info, float scale)
 {
-   int i;
-   float scale_y, height, ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
-
-   scale_y = (float)fb_info->width / rdp.vi_height;
-   height = settings.scr_res_x / scale_y;
-   ul_x = 0.5f;
-   ul_y = (settings.scr_res_y - height) / 2.0f;
-   lr_y = settings.scr_res_y - ul_y - 1.0f;
-   lr_x = settings.scr_res_x - 1.0f;
-   lr_u = (fb_info->width - 1) * scale;
-   lr_v = (fb_info->height - 1) * scale;
+   float scale_y = (float)fb_info->width / rdp.vi_height;
+   float height = settings.scr_res_x / scale_y;
+   float ul_x = 0.5f;
+   float ul_y = (settings.scr_res_y - height) / 2.0f;
+   float lr_y = settings.scr_res_y - ul_y - 1.0f;
+   float lr_x = settings.scr_res_x - 1.0f;
+   float lr_u = (fb_info->width - 1) * scale;
+   float lr_v = (fb_info->height - 1) * scale;
 
    glide64_draw_fb(ul_x, ul_y, lr_x,
          lr_y, lr_u, lr_v, 0.5f);
@@ -215,26 +212,25 @@ static void DrawRE2Video(FB_TO_SCREEN_INFO *fb_info, float scale)
 
 static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
 {
-   uint32_t h, w, *src, col;
-   uint16_t *tex, *dst;
-   uint8_t r, g, b;
+   uint32_t h, w;
    int tmu;
    GrTexInfo t_info;
+   uint32_t *src = (uint32_t*)(gfx_info.RDRAM + fb_info->addr);
+   uint16_t *tex = (uint16_t*)texture_buffer;
+   uint16_t *dst = (uint16_t*)tex;
 
-   src = (uint32_t*)(gfx_info.RDRAM + fb_info->addr);
    t_info.smallLodLog2 = GR_LOD_LOG2_256;
    t_info.largeLodLog2 = GR_LOD_LOG2_256;
    t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
 
-   tex = (uint16_t*)texture_buffer;
-   dst = (uint16_t*)tex;
-
    fb_info->height = min(256, fb_info->height);
+
    for (h = 0; h < fb_info->height; h++)
    {
       for (w = 0; w < 256; w++)
       {
-         col = *(src++);
+         uint8_t r, g, b;
+         uint32_t col = *(src++);
          r = (uint8_t)((col >> 24)&0xFF);
          r = (uint8_t)((float)r / 255.0f * 31.0f);
          g = (uint8_t)((col >> 16)&0xFF);
@@ -259,7 +255,7 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
 static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
 {
   uint32_t w, h, x, y, width, height, width256, height256, tex_size, *src32;
-  uint32_t cur_width, cur_height, cur_tail, tex_adr, w_tail, h_tail, bound, c32, idx;
+  uint32_t tex_adr, w_tail, h_tail, bound, c32, idx;
   uint8_t r, g, b, a, *image;
   uint16_t *tex, *src, c;
   float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
@@ -272,7 +268,6 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
      return;
   }
 
-  FRDP("DrawFrameBufferToScreen256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
   width = fb_info->lr_x - fb_info->ul_x + 1;
   height = fb_info->lr_y - fb_info->ul_y + 1;
   image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
@@ -298,12 +293,10 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
   {
     for (w = 0; w < width256; w++)
     {
-      uint16_t *dst;
-
-      cur_width = (256 *  (w + 1) < width) ? 256 : w_tail;
-      cur_height = (256 * (h + 1) < height) ? 256 : h_tail;
-      cur_tail = 256 - cur_width;
-      dst = (uint16_t*)tex;
+      uint32_t cur_width = (256 *  (w + 1) < width) ? 256 : w_tail;
+      uint32_t cur_height = (256 * (h + 1) < height) ? 256 : h_tail;
+      uint32_t cur_tail = 256 - cur_width;
+      uint16_t *dst = (uint16_t*)tex;
 
       if (fb_info->size == 2)
       {
@@ -378,13 +371,13 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       DrawFrameBufferToScreen256(fb_info);
       return true;
    }
-   FRDP("DrawFrameBufferToScreen. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
 
    image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
 
-   texwidth = 512;
-   scale = 0.5f;
-   t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_512;
+   texwidth               = 512;
+   scale                  = 0.5f;
+   t_info.smallLodLog2    = GR_LOD_LOG2_512;
+   t_info.largeLodLog2    = GR_LOD_LOG2_512;
    t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
 
    if (width <= 256)
@@ -399,16 +392,16 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 
    if (fb_info->size == 2)
    {
-      uint16_t *tex, *dst, *src, c;
-      uint32_t idx, bound;
-      bool empty;
+      uint16_t c;
+      uint32_t idx;
 
-      tex = (uint16_t*)texture_buffer;
-      dst = (uint16_t*)tex;
-      src = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
+      uint16_t *tex = (uint16_t*)texture_buffer;
+      uint16_t *dst = (uint16_t*)tex;
+      uint16_t *src = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
 
-      bound = (BMASK+1 - fb_info->addr) >> 1;
-      empty = true;
+      uint32_t bound = (BMASK+1 - fb_info->addr) >> 1;
+      bool empty = true;
+
       for (y = 0; y < height; y++)
       {
          for (x = 0; x < width; x++)
@@ -429,12 +422,12 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    }
    else
    {
-      uint32_t *tex, *dst, *src, col, idx, bound;
+      uint32_t col, idx;
 
-      tex = (uint32_t*)texture_buffer;
-      dst = (uint32_t*)tex;
-      src = (uint32_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
-      bound = (BMASK + 1 - fb_info->addr) >> 2;
+      uint32_t *tex = (uint32_t*)texture_buffer;
+      uint32_t *dst = (uint32_t*)tex;
+      uint32_t *src = (uint32_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
+      uint32_t bound = (BMASK + 1 - fb_info->addr) >> 2;
 
       for (y = 0; y < height; y++)
       {
@@ -449,7 +442,7 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
          dst += texwidth-width;
       }
       t_info.format = GR_TEXFMT_ARGB_8888;
-      t_info.data = tex;
+      t_info.data   = tex;
    }
 
    tmu = SetupFBtoScreenCombiner(grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
@@ -462,14 +455,12 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       DrawRE2Video(fb_info, scale);
    else
    {
-      float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
-
-      ul_x = fb_info->ul_x * rdp.scale_x + rdp.offset_x;
-      ul_y = fb_info->ul_y * rdp.scale_y + rdp.offset_y;
-      lr_x = fb_info->lr_x * rdp.scale_x + rdp.offset_x;
-      lr_y = fb_info->lr_y * rdp.scale_y + rdp.offset_y;
-      lr_u = (width  - 1) * scale;
-      lr_v = (height - 1) * scale;
+      float ul_x = fb_info->ul_x * rdp.scale_x + rdp.offset_x;
+      float ul_y = fb_info->ul_y * rdp.scale_y + rdp.offset_y;
+      float lr_x = fb_info->lr_x * rdp.scale_x + rdp.offset_x;
+      float lr_y = fb_info->lr_y * rdp.scale_y + rdp.offset_y;
+      float lr_u = (width  - 1) * scale;
+      float lr_v = (height - 1) * scale;
 
       glide64_draw_fb(ul_x, ul_y, lr_x,
             lr_y, lr_u, lr_v, 0.5f);
@@ -479,24 +470,23 @@ bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 
 static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
 {
-   uint32_t h, w, x, y, width, height, width256, height256, tex_size;
-   uint32_t cur_width, cur_height, cur_tail, w_tail, h_tail, tex_adr;
-   uint16_t *tex, *src;
-   uint8_t *image;
+   uint32_t h, w, x, y, tex_size;
+   uint32_t w_tail, h_tail, tex_adr;
    int tmu;
    GrTexInfo t_info;
+   uint32_t width = fb_info->lr_x - fb_info->ul_x + 1;
+   uint32_t height = fb_info->lr_y - fb_info->ul_y + 1;
+   uint8_t *image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
+   uint32_t width256 = ((width-1) >> 8) + 1;
+   uint32_t height256 = ((height-1) >> 8) + 1;
+   uint16_t *tex = (uint16_t*)texture_buffer;
+   uint16_t *src = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
 
-   FRDP("DrawDepthBufferToScreen256. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
-   width = fb_info->lr_x - fb_info->ul_x + 1;
-   height = fb_info->lr_y - fb_info->ul_y + 1;
-   image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
-   width256 = ((width-1) >> 8) + 1;
-   height256 = ((height-1) >> 8) + 1;
    t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
    t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
    t_info.format = GR_TEXFMT_ALPHA_INTENSITY_88;
-   tex = (uint16_t*)texture_buffer;
    t_info.data = tex;
+
    tex_size = grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format);
    tmu = SetupFBtoScreenCombiner(tex_size*width256*height256, fb_info->opaque);
    grConstantColorValue (g_gdp.fog_color.total);
@@ -505,22 +495,20 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
          GR_COMBINE_LOCAL_NONE,
          GR_COMBINE_OTHER_CONSTANT,
          FXFALSE);
-   src = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
-   w_tail = width % 256;
-   h_tail = height % 256;
+   w_tail  = width % 256;
+   h_tail  = height % 256;
    tex_adr = voodoo.tmem_ptr[tmu];
 
    for (h = 0; h < height256; h++)
    {
       for (w = 0; w < width256; w++)
       {
-         uint16_t *dst;
          float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
 
-         cur_width = (256 * (w + 1) < width) ? 256 : w_tail;
-         cur_height = (256 * (h + 1) < height) ? 256 : h_tail;
-         cur_tail = 256 - cur_width;
-         dst = (uint16_t*)tex;
+         uint32_t cur_width = (256 * (w + 1) < width) ? 256 : w_tail;
+         uint32_t cur_height = (256 * (h + 1) < height) ? 256 : h_tail;
+         uint32_t cur_tail = 256 - cur_width;
+         uint16_t *dst = tex;
 
          for (y=0; y < cur_height; y++)
          {
@@ -547,25 +535,25 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
 
 void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 {
-   uint32_t width, height, texwidth, x, y;
-   uint8_t *image;
+   uint32_t x, y;
    int tmu;
-   uint16_t *tex, *dst, *src;
-   float scale, ul_x, ul_y, lr_x, lr_y, lr_u, lr_v, zero;
+   float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v, zero;
    GrTexInfo t_info;
+   uint32_t width  = fb_info->lr_x - fb_info->ul_x + 1;
+   uint32_t height = fb_info->lr_y - fb_info->ul_y + 1;
+   uint8_t *image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
+   uint32_t texwidth = 512;
+   float scale = 0.5f;
+   uint16_t *tex = (uint16_t*)texture_buffer;
+   uint16_t *dst = (uint16_t*)tex;
+   uint16_t *src = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
 
-   width  = fb_info->lr_x - fb_info->ul_x + 1;
-   height = fb_info->lr_y - fb_info->ul_y + 1;
    if (width > 512)
    {
       DrawDepthBufferToScreen256(fb_info);
       return;
    }
-   FRDP("DrawDepthBufferToScreen. ul_x=%d, ul_y=%d, lr_x=%d, lr_y=%d, size=%d, addr=%08lx\n", fb_info->ul_x, fb_info->ul_y, fb_info->lr_x, fb_info->lr_y, fb_info->size, fb_info->addr);
 
-   image = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
-   texwidth = 512;
-   scale = 0.5f;
    t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_512;
    t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
 
@@ -579,9 +567,6 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    if (height <= (texwidth>>1))
       t_info.aspectRatioLog2 = GR_ASPECT_LOG2_2x1;
 
-   tex = (uint16_t*)texture_buffer;
-   dst = (uint16_t*)tex;
-   src = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
 
    for (y=0; y < height; y++)
    {
@@ -607,8 +592,8 @@ void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    ul_y = fb_info->ul_y * rdp.scale_y + rdp.offset_y;
    lr_x = fb_info->lr_x * rdp.scale_x + rdp.offset_x;
    lr_y = fb_info->lr_y * rdp.scale_y + rdp.offset_y;
-   lr_u = (width - 1) * scale;
-   lr_v = (height - 1) * scale;
+   lr_u = (width  - 1)  * scale;
+   lr_v = (height - 1)  * scale;
    zero = scale * 0.5f;
 
    glide64_draw_fb(ul_x, ul_y, lr_x,

@@ -27,16 +27,18 @@ static void gDPSetScissor_G64( uint32_t mode, float ulx, float uly, float lrx, f
 
 static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
 {
-   uint32_t *v5, *v7, v8, v10, v13, v14, nbits;
-   int32_t v6, v9, v16, v18;
+   uint32_t v13, v14;
+   int32_t v16, v18;
+   uint32_t nbits = sizeof(uint32_t) * 8;
+   uint32_t *v5   = dst;
+   int32_t v6     = cnt;
 
-   nbits = sizeof(uint32_t) * 8;
-   v5 = dst;
-   v6 = cnt;
    if ( cnt )
    {
-      v7 = (uint32_t *)((int8_t*)src + (off & 0xFFFFFFFC));
-      v8 = off & 3;
+      int32_t v9;
+      uint32_t v10;
+      uint32_t *v7 = (uint32_t *)((int8_t*)src + (off & 0xFFFFFFFC));
+      uint32_t v8 = off & 3;
       if ( !(off & 3) )
          goto LABEL_23;
       v9 = 4 - v8;
@@ -194,5 +196,4 @@ static void gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t 
    if (fb_hwfbe_enabled)
       setTBufTex(rdp.tiles[tile].t_mem, cnt);
 #endif
-   //FRDP ("loadblock: tile: %d, ul_s: %d, ul_t: %d, lr_s: %d, dxt: %08lx -> %08lx\n", tile, ul_s, ul_t, lr_s, dxt, _dxt);
 }
