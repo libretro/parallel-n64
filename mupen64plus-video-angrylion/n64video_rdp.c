@@ -895,70 +895,84 @@ static void tri_texshade_z(uint32_t w0, uint32_t w1)
    draw_triangle(w0, w1, SHADE_YES, TEXTURE_YES, ZBUFFER_YES);
 }
 
-static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
-      int s, int t, int dsdx, int dtdy)
+static NOINLINE void draw_texture_rectangle(
+   const int rect_flip, int tilenum,
+   s32 xl, s32 yl, s32 xh, s32 yh,
+   i32 s, i32 t, s16 dsdx, s16 dtdy
+)
 {
-   u8 xfrac;
+   s32 xm, ym;
+   s32 yllimit, yhlimit;
+
    i32 stwz[4];
-   i32 d_stwz_dx[4];
-   i32 d_stwz_de[4];
-   i32 d_stwz_dy[4];
+   i32 d_stwz_dx[2], d_stwz_dy[2];
+
    i32 d_stwz_dxh[4];
-   i32 xlr[2];
-   int j, k;
+   i32 xleft, xright;
+   u8 xfrac;
+
+   int maxxmx, minxhx;
    int curcross;
-   int invaly;
+   int allover, allunder, curover, curunder;
+   int allinval;
    int ycur, ylfar;
-   int yllimit, yhlimit;
-   edgewalker_info_t edges = {0};
-   int xlint = (unsigned)(xl) >> 2;
-   int xhint = (unsigned)(xh) >> 2;
+   int invaly;
+   register int j, k;
+   const i32 clipxlshift = __clip.xl << 1;
+   const i32 clipxhshift = __clip.xh << 1;
 
-   edges.clipxlshift = __clip.xl << 1;
-   edges.clipxhshift = __clip.xh << 1;
-
-   yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL OR COPY */
-
-   /* edgewalker for primitives */
    max_level = 0;
-   xl = (xlint << 16) | (xl & 3)<<14;
-   xl = SIGN(xl, 30);
-   xh = (xhint << 16) | (xh & 3)<<14;
-   xh = SIGN(xh, 30);
+   maxxmx = 0;
+   minxhx = 0;
 
-   stwz[0] = s << 16;
-   stwz[1] = t << 16;
-   d_stwz_dx[0] = dsdx << 11;
-   d_stwz_dx[1] = 0x00000000;
-   d_stwz_de[0] = 0x00000000;
-   d_stwz_de[1] = dtdy << 11;
-   d_stwz_dy[0] = 0x00000000;
-   d_stwz_dy[1] = dtdy << 11;
+   xl = xl << 14;
+   xh = xh << 14;
+   xm = xl;
+   ym = yl;
+
+/*
+ * texture coefficients
+ */
+   stwz[0] = (s << 16) | 0;
+   stwz[1] = (t << 16) | 0;
+
+   setzero_si64(d_stwz_dx);
+   setzero_si64(d_stwz_dy);
+   if (rect_flip != TEXTURE_FLIP_NO)
+   {
+      d_stwz_dx[1] = (i32)dtdy << 11;
+      d_stwz_dy[0] = (i32)dsdx << 11;
+   }
+   else
+   {
+      d_stwz_dx[0] = (i32)dsdx << 11;
+      d_stwz_dy[1] = (i32)dtdy << 11;
+   }
 
    setzero_si128(spans_d_rgba);
+   setzero_si128(spans_d_stwz);
    spans_d_stwz[0] = d_stwz_dx[0] & ~0x0000001F;
    spans_d_stwz[1] = d_stwz_dx[1] & ~0x0000001F;
-   spans_d_stwz[2] = 0x00000000;
-   spans_d_stwz[3] = 0x00000000;
 
    setzero_si128(spans_d_rgba_dy);
+   setzero_si128(spans_cd_rgba);
+   spans_cdz = 0;
+
+   setzero_si128(spans_d_stwz_dy);
    spans_d_stwz_dy[0] = d_stwz_dy[0] & ~0x00007FFF;
    spans_d_stwz_dy[1] = d_stwz_dy[1] & ~0x00007FFF;
-   spans_d_stwz_dy[2] = 0x00000000;
-   spans_d_stwz_dy[3] = 0x00000000;
-
-   setzero_si128(spans_cd_rgba);
-   spans_cdz = 0x00000000;
    spans_dzpix = normalize_dzpix(0);
 
-   d_stwz_dxh[1] = 0x00000000;
-   if (g_gdp.other_modes.cycle_type == CYCLE_TYPE_COPY)
-      d_stwz_dxh[0] = 0x00000000;
-   else
+   setzero_si128(d_stwz_dxh);
+   if (g_gdp.other_modes.cycle_type != CYCLE_TYPE_COPY)
+   {
       d_stwz_dxh[0] = (d_stwz_dx[0] >> 8) & ~0x00000001;
+      d_stwz_dxh[1] = (d_stwz_dx[1] >> 8) & ~0x00000001;
+   }
 
    invaly = 1;
-   yllimit = (yl < __clip.yl) ? yl : __clip.yl;
+   yllimit = (yl <  __clip.yl) ? yl : __clip.yl;
+   yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
 
    ycur = yh & ~3;
    ylfar = yllimit | 3;
@@ -967,82 +981,109 @@ static void rdp_texrect_common(int xl, int yl, int tilenum, int xh, int yh,
    else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
       span[(yllimit >> 2) + 1].validline = 0;
 
-   yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
+   xleft = xm/* & ~0x00000001 // never needed because xm <<= 14 */;
+   xright = xh/* & ~0x00000001 // never needed because xh <<= 14 */;
+   xfrac = (xright >> 8) & 0xFF;
 
-   xlr[0] = xl & ~0x00000001;
-   xlr[1] = xh & ~0x00000001;
-   xfrac = (xlr[1] >> 8) & 0xFF;
-
-   stwz[0] &= ~0x000001FF;
-   stwz[1] &= ~0x000001FF;
-   edges.allover  = 1;
-   edges.allunder = 1;
-   edges.curover  = 0;
-   edges.curunder = 0;
-   edges.allinval = 1;
-
+   allover = 1;
+   allunder = 1;
+   curover = 0;
+   curunder = 0;
+   allinval = 1;
    for (k = ycur; k <= ylfar; k++)
    {
-      static int maxxmx, minxhx;
-      int xrsc, xlsc;
+      int xrsc, xlsc, stickybit;
+      const int spix = k & 3;
       const int yhclose = yhlimit & ~3;
-      edges.spix = k & 3;
 
       if (k < yhclose)
-         continue;
-
-      invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
-      j = k >> 2;
-
-      if (edges.spix == 0)
+         { /* branch */ }
+      else
       {
-         maxxmx = 0x000;
-         minxhx = 0xFFF;
-         edges.allover = edges.allunder = 1;
-         edges.allinval = 1;
+         invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
+         j = k >> 2;
+         if (spix == 0)
+         {
+            maxxmx = 0x000;
+            minxhx = 0xFFF;
+            allover = allunder = 1;
+            allinval = 1;
+         }
+
+         stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
+         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+         xrsc = (xright >> 13)&0x1FFE | stickybit;
+         curunder = !!(xright & 0x08000000);
+         curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
+         xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
+         curover  = !!(xrsc & 0x00002000);
+         xrsc = xrsc & 0x1FFF;
+         curover |= (u32)~(xrsc - clipxlshift) >> 31;
+         xrsc = curover ? clipxlshift : xrsc;
+         span[j].majorx[spix] = xrsc & 0x1FFF;
+         allover &= curover;
+         allunder &= curunder;
+
+         stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+         xlsc = (xleft >> 13)&0x1FFE | stickybit;
+         curunder = !!(xleft & 0x08000000);
+         curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
+         xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
+         curover  = !!(xlsc & 0x00002000);
+         xlsc &= 0x1FFF;
+         curover |= (u32)~(xlsc - clipxlshift) >> 31;
+         xlsc = curover ? clipxlshift : xlsc;
+         span[j].minorx[spix] = xlsc & 0x1FFF;
+         allover &= curover;
+         allunder &= curunder;
+
+         curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
+                  < (xright&0x0FFFC000 ^ 0x08000000));
+         invaly |= curcross;
+         span[j].invalyscan[spix] = invaly;
+         allinval &= invaly;
+         if (invaly != 0)
+            { /* branch */ }
+         else
+         {
+            xlsc = (xlsc >> 3) & 0xFFF;
+            xrsc = (xrsc >> 3) & 0xFFF;
+            maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
+            minxhx = (xrsc < minxhx) ? xrsc : minxhx;
+         }
+
+         if (spix == 0)
+         {
+            span[j].unscrx = xright >> 16;
+         /* xfrac = (xright >> 8) & 0xFF; // xfrac never changes. */
+            setzero_si128(span[j].rgba);
+            span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
+            span[j].stwz[1] = (stwz[1] - xfrac*d_stwz_dxh[1]) & ~0x000003FF;
+            span[j].stwz[2] = 0 & ~0x000003FF;
+            span[j].stwz[3] = 0 & ~0x000003FF;
+         }
+         if (spix == 3)
+         {
+            const int invalidline = (sckeepodd ^ j) & scfield
+                                  | (allinval | allover | allunder);
+            span[j].lx = maxxmx;
+            span[j].rx = minxhx;
+            span[j].validline = invalidline ^ 1;
+         }
       }
-
-      draw_triangle_edge_common(&edges, xlr[1], &xrsc, 1);
-      span[j].majorx[edges.spix] = xrsc & 0x1FFF;
-
-      draw_triangle_edge_common(&edges, xlr[0], &xlsc, 0);
-      span[j].minorx[edges.spix] = xlsc & 0x1FFF;
-
-      curcross = ((xlr[0] & 0x0FFFC000 ^ 0x08000000)
-            < (xlr[1] & 0x0FFFC000 ^ 0x08000000));
-      invaly |= curcross;
-      span[j].invalyscan[edges.spix] = invaly;
-      edges.allinval &= invaly;
-
-      if (invaly == 0)
+      if (spix == 3)
       {
-         xlsc = (xlsc >> 3) & 0xFFF;
-         xrsc = (xrsc >> 3) & 0xFFF;
-         maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
-         minxhx = (xrsc < minxhx) ? xrsc : minxhx;
-      }
-
-      if (edges.spix == 0)
-      {
-         span[j].unscrx = xlr[1] >> 16;
-         setzero_si128(span[j].rgba);
-         span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
-         span[j].stwz[1] = stwz[1];
-         span[j].stwz[2] = 0x00000000;
-         span[j].stwz[3] = 0x00000000;
-      }
-      else if (edges.spix == 3)
-      {
-         const int invalidline = (sckeepodd ^ j) & scfield
-            | (edges.allinval | edges.allover | edges.allunder);
-         span[j].lx = maxxmx;
-         span[j].rx = minxhx;
-         span[j].validline = invalidline ^ 1;
-         /* stwz[0] = (stwz[0] + 0x00000000) & ~0x000001FF; */
-         stwz[1] = (stwz[1] + d_stwz_de[1]) & ~0x000003FF;
+         stwz[0] = (stwz[0] + d_stwz_dy[0]) & ~0x000001FF;
+         stwz[1] = (stwz[1] + d_stwz_dy[1]) & ~0x000001FF;
       }
    }
 
+   if (g_gdp.other_modes.f.stalederivs)
+   {
+      deduce_derivatives();
+      g_gdp.other_modes.f.stalederivs = 0;
+   }
    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
 }
 
@@ -1065,7 +1106,12 @@ static void tex_rect(uint32_t w0, uint32_t w1)
    dsdx = SIGN16(dsdx);
    dtdy = SIGN16(dtdy);
 
-   rdp_texrect_common(xl, yl, tilenum, xh, yh, s, t, dsdx, dtdy);
+   draw_texture_rectangle(
+      TEXTURE_FLIP_NO, tilenum,
+      xl, yl, xh, yh,
+      s, t,
+      dsdx, dtdy
+   );
 }
 
 static void tex_rect_flip(uint32_t w0, uint32_t w1)
@@ -1088,14 +1134,12 @@ static void tex_rect_flip(uint32_t w0, uint32_t w1)
    dsdx = SIGN16(dsdx);
    dtdy = SIGN16(dtdy);
 
-   /*
-    * unique work to tex_rect_flip
-    */
-   dd_swap = dsdx;
-   dsdx = dtdy;
-   dtdy = dd_swap;
-
-   rdp_texrect_common(xl, yl, tilenum, xh, yh, s, t, dsdx, dtdy);
+   draw_texture_rectangle(
+      TEXTURE_FLIP_YES, tilenum,
+      xl, yl, xh, yh,
+      s, t,
+      dsdx, dtdy
+   );
 }
 
 static void set_scissor(uint32_t w0, uint32_t w1)

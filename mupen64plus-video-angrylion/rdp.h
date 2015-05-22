@@ -229,6 +229,10 @@ enum {
     ZBUFFER_NO,
     ZBUFFER_YES = YES
 };
+enum {
+    TEXTURE_FLIP_NO,
+    TEXTURE_FLIP_YES = YES
+};
 
 extern void process_RDP_list(void);
 #ifdef TRACE_DP_COMMANDS
