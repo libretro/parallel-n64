@@ -57,10 +57,6 @@ float ScaleZ(float z);
 
 #define ALOWORD(x)   (*((uint16_t*)&x))   // low word
 
-#define __ROR32(value, count, nbits) ((value >> (count % (nbits))) | (value << ((nbits) - (count % (nbits)))))
-
-#define __ROR16(value, count, nbits) (((value >> (count % nbits)) | (value << (nbits - (count % nbits)))))
-
 // rotate left
 #define __ROL__(value, count, nbits) ((value << (count % (nbits))) | (value >> ((nbits) - (count % (nbits)))))
 
