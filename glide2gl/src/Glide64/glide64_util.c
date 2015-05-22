@@ -70,7 +70,6 @@ typedef struct
    unsigned int	c1_m1a:2;
 } rdp_blender_setting;
 
-#define interp3p(a, b, c, r1, r2) ((a)+(((b)+((c)-(b))*(r2))-(a))*(r1))
 #define EvaLine(li, x, y) ((li->x) * (x) + (li->y) * (y) + (li->d))
 
 
@@ -191,19 +190,19 @@ static void Create1LineEquation(LineEquationType *l, VERTEX *v1, VERTEX *v2, VER
    }
 }
 
-static INLINE void InterpolateColors(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
+static INLINE void glide64_interpolate_colors(VERTEX *va, VERTEX *vb, VERTEX *res, float percent,
+      float va_oow, float vb_oow, float w)
 {
-   float w = 1.0f;
-   float ba = va->b;
-   float bb = vb->b;
-   float ga = va->g;
-   float gb = vb->g;
-   float ra = va->r;
-   float rb = vb->r;
-   float aa = va->a;
-   float ab = vb->a;
-   float fa = va->f;
-   float fb = vb->f;
+   float ba = va->b * va_oow;
+   float bb = vb->b * vb_oow;
+   float ga = va->g * va_oow;
+   float gb = vb->g * vb_oow;
+   float ra = va->r * va_oow;
+   float rb = vb->r * vb_oow;
+   float aa = va->a * va_oow;
+   float ab = vb->a * vb_oow;
+   float fa = va->f * va_oow;
+   float fb = vb->f * vb_oow;
 
    res->r = (uint8_t)((ra + (rb - ra) * percent) * w);
    res->g = (uint8_t)((ga + (gb - ga) * percent) * w);
@@ -212,26 +211,7 @@ static INLINE void InterpolateColors(VERTEX *va, VERTEX *vb, VERTEX *res, float 
    res->f = (fa + (fb - fa) * percent) * w;
 }
 
-static INLINE void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
-{
-   float w = 1.0f / (va->oow + (vb->oow-va->oow) * percent);
-   float ba = va->b * va->oow;
-   float bb = vb->b * vb->oow;
-   float ga = va->g * va->oow;
-   float gb = vb->g * vb->oow;
-   float ra = va->r * va->oow;
-   float rb = vb->r * vb->oow;
-   float aa = va->a * va->oow;
-   float ab = vb->a * vb->oow;
-   float fa = va->f * va->oow;
-   float fb = vb->f * vb->oow;
-
-   res->r = (uint8_t)((ra + (rb - ra) * percent) * w);
-   res->g = (uint8_t)((ga + (gb - ga) * percent) * w);
-   res->b = (uint8_t)((ba + (bb - ba) * percent) * w);
-   res->a = (uint8_t)((aa + (ab - aa) * percent) * w);
-   res->f = (fa + (fb - fa) * percent) * w;
-}
+#define interp3p(a, b, c, r1, r2) ((a)+(((b)+((c)-(b))*(r2))-(a))*(r1))
 
 static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
 {
@@ -382,7 +362,7 @@ static void DepthBuffer(VERTEX * vtx, int n)
 
 #define clip_tri_interp_colors(first, second, index, percent, val, interpolate_colors) \
    if (interpolate_colors) \
-      InterpolateColors(first, second, &rdp.vtxbuf[index++], percent); \
+      glide64_interpolate_colors(first, second, &rdp.vtxbuf[index++], percent, 1.0f, 1.0f, 1.0f); \
    else \
       rdp.vtxbuf[index++].number = first->number | second->number | val
 
@@ -748,7 +728,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u[1] = rdp.vtxbuf2[i].u[1] + (rdp.vtxbuf2[j].u[1] - rdp.vtxbuf2[i].u[1]) * percent;
                rdp.vtxbuf[index].v[1] = rdp.vtxbuf2[i].v[1] + (rdp.vtxbuf2[j].v[1] - rdp.vtxbuf2[i].v[1]) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf2[i], &rdp.vtxbuf2[j], &rdp.vtxbuf[index++], percent);
+                  glide64_interpolate_colors(&rdp.vtxbuf2[i], &rdp.vtxbuf2[j], &rdp.vtxbuf[index++], percent, 1.0f, 1.0f, 1.0f);
                else
                   rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number;
             }
@@ -768,7 +748,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u[1] = rdp.vtxbuf2[j].u[1] + (rdp.vtxbuf2[i].u[1] - rdp.vtxbuf2[j].u[1]) * percent;
                rdp.vtxbuf[index].v[1] = rdp.vtxbuf2[j].v[1] + (rdp.vtxbuf2[i].v[1] - rdp.vtxbuf2[j].v[1]) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf2[j], &rdp.vtxbuf2[i], &rdp.vtxbuf[index++], percent);
+                  glide64_interpolate_colors(&rdp.vtxbuf2[j], &rdp.vtxbuf2[i], &rdp.vtxbuf[index++], percent, 1.0f, 1.0f, 1.0f);
                else
                   rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number;
 
@@ -861,7 +841,10 @@ static void render_tri (uint16_t linew, int old_interpolate)
                }
          }
 
-         InterpolateColors2(v1, v2, &rdp.vtxbuf[i], percent);
+         {
+            float w = 1.0f / (v1->oow + (v2->oow - v1->oow) * percent);
+            glide64_interpolate_colors(v1, v2, &rdp.vtxbuf[i], percent, v1->oow, v2->oow, w);
+         }
       }
    }
 
