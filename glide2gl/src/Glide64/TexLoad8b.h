@@ -93,6 +93,7 @@ static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
    while (height--)
    {
       int width = wid_64;
+
       while (width--)
       {
          uint32_t abcd = m64p_swap32(src32[odd]);
@@ -122,73 +123,37 @@ static INLINE void load8bIA8(uint8_t *src, uint8_t *dst, int wid_64, int height,
          src32 += 2;
       }
 
-      src32 = (uint32_t *)((char *)src32 + line);
-      dst32 = (uint32_t *)((char *)dst32 + ext);
+      src32 = (uint32_t *)((uint8_t*)src32 + line);
+      dst32 = (uint32_t *)((uint8_t*)dst32 + ext);
       odd ^= 1;
    }
 }
 
 static INLINE void load8bIA4(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-  int v9;
-  uint32_t v10;
-  uint32_t v11;
-  uint32_t *v12;
-  uint32_t *v13;
-  uint32_t v14;
-  uint32_t v15;
-  uint32_t *v16;
-  uint32_t *v17;
-  int v18;
-  uint32_t *v19;
-  uint32_t v20;
-  int v21;
-  int v22;
-  uint32_t *v6 = (uint32_t *)src;
-  uint32_t *v7 = (uint32_t *)dst;
-  int v8 = height;
+   uint32_t *src32 = (uint32_t *)src;
+   uint32_t *dst32 = (uint32_t *)dst;
+   unsigned odd = 0;
 
-  do
-  {
-    v21 = v8;
-    v9 = wid_64;
-    do
-    {
-      v10 = *v6;
-      v11 = (*v6 >> 4) & 0xF0F0F0F;
-      v12 = v6 + 1;
-      *v7 = (16 * v10 & 0xF0F0F0F0) | v11;
-      v13 = v7 + 1;
-      v14 = (*v12 >> 4) & 0xF0F0F0F;
-      v15 = 16 * *v12 & 0xF0F0F0F0;
-      v6 = v12 + 1;
-      *v13 = v15 | v14;
-      v7 = v13 + 1;
-      --v9;
-    }
-    while ( v9 );
-    if ( v21 == 1 )
-      break;
-    v22 = v21 - 1;
-    v16 = (uint32_t *)((char *)v6 + line);
-    v17 = (uint32_t *)((char *)v7 + ext);
-    v18 = wid_64;
-    do
-    {
-      *v17 = (16 * v16[1] & 0xF0F0F0F0) | ((v16[1] >> 4) & 0xF0F0F0F);
-      v19 = v17 + 1;
-      v20 = *v16;
-      v16 += 2;
-      *v19 = (16 * v20 & 0xF0F0F0F0) | ((v20 >> 4) & 0xF0F0F0F);
-      v17 = v19 + 1;
-      --v18;
-    }
-    while ( v18 );
-    v6 = (uint32_t *)((char *)v16 + line);
-    v7 = (uint32_t *)((char *)v17 + ext);
-    v8 = v22 - 1;
-  }
-  while ( v22 != 1 );
+   while (height--)
+   {
+      int width = wid_64;
+
+      while(width--)
+      {
+         uint32_t ab = src32[odd];
+         uint32_t cd = src32[!odd];
+
+         *dst32++ = (16 * ab & 0xF0F0F0F0) | ((ab >> 4) & 0xF0F0F0F);
+         *dst32++ = (16 * cd & 0xF0F0F0F0) | ((cd >> 4) & 0xF0F0F0F);
+
+         src32 += 2;
+      }
+
+      src32 = (uint32_t *)((uint8_t*)src32 + line);
+      dst32 = (uint32_t *)((uint8_t*)dst32 + ext);
+      odd ^= 1;
+   }
 }
 
 static INLINE void load8bI(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
