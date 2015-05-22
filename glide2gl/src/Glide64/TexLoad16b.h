@@ -40,71 +40,59 @@
 #define NBITS32_16B (sizeof(uint32_t) * 8)
 #define NBITS16_16B (sizeof(uint16_t) * 8)
 
+static INLINE uint32_t rol32(uint32_t value, uint32_t amount)
+{
+    return (value << amount) | (value >> (-(int32_t)amount & 31));
+}
+
+static INLINE uint32_t ror32(uint32_t value, uint32_t amount)
+{
+    return (value << (-(int32_t)amount & 31)) | (value >> amount);
+}
+
+static INLINE uint16_t rol16(uint16_t value, uint16_t amount)
+{
+    return (value << amount) | (value >> (-(int16_t)amount & 15));
+}
+
+static INLINE uint16_t ror16(uint16_t value, uint16_t amount)
+{
+    return (value << (-(int16_t)amount & 15)) | (value >> amount);
+}
+
 static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-  int v9;
-  uint32_t v10;
-  uint32_t v11;
-  uint32_t *v12;
-  uint32_t *v13;
-  int v14;
-  uint32_t v15;
-  uint32_t v16;
-  int v17;
-  int v18;
-  uint32_t *v6 = (uint32_t *)src;
-  uint32_t *v7 = (uint32_t *)dst;
-  int v8 = height;
+  uint32_t *src32 = (uint32_t*)src;
+  uint32_t *dst32 = (uint32_t*)dst;
+  unsigned odd = 0;
 
-  do
+  while (height--)
   {
-    v17 = v8;
-    v9 = wid_64;
-    do
-    {
-      v10 = m64p_swap32(*v6);
-      v11 = m64p_swap32(v6[1]);
-      ALOWORD(v10) = __ROR16((uint16_t)v10, 1, NBITS16_16B);
-      ALOWORD(v11) = __ROR16((uint16_t)v11, 1, NBITS16_16B);
-      v10 = __ROR32(v10, 16, NBITS32_16B);
-      v11 = __ROR32(v11, 16, NBITS32_16B);
-      ALOWORD(v10) = __ROR16((uint16_t)v10, 1, NBITS16_16B);
-      ALOWORD(v11) = __ROR16((uint16_t)v11, 1, NBITS16_16B);
-      *v7 = v10;
-      v7[1] = v11;
-      v6 += 2;
-      v7 += 2;
-      --v9;
-    }
-    while ( v9 );
-    if ( v17 == 1 )
-      break;
-    v18 = v17 - 1;
-    v12 = (uint32_t *)&src[(line + (uintptr_t)v6 - (uintptr_t)src) & 0xFFF];
-    v13 = (uint32_t *)((char *)v7 + ext);
-    v14 = wid_64;
-    do
-    {
-      v15 = m64p_swap32(v12[1]);
-      v16 = m64p_swap32(*v12);
-      ALOWORD(v15) = __ROR16((uint16_t)v15, 1, NBITS16_16B);
-      ALOWORD(v16) = __ROR16((uint16_t)v16, 1, NBITS16_16B);
-      v15 = __ROR32(v15, 16, NBITS32_16B);
-      v16 = __ROR32(v16, 16, NBITS32_16B);
-      ALOWORD(v15) = __ROR16((uint16_t)v15, 1, NBITS16_16B);
-      ALOWORD(v16) = __ROR16((uint16_t)v16, 1, NBITS16_16B);
-      *v13 = v15;
-      v13[1] = v16;
-      v12 += 2;
-      v13 += 2;
-      --v14;
-    }
-    while ( v14 );
-    v6 = (uint32_t *)&src[(line + (uintptr_t)v12 - (uintptr_t)src) & 0xFFF];
-    v7 = (uint32_t *)((char *)v13 + ext);
-    v8 = v18 - 1;
+     int width = wid_64;
+
+     while (width--)
+     {
+        uint32_t ab = m64p_swap32(src32[odd]);
+        uint32_t cd = m64p_swap32(src32[!odd]);
+
+        ALOWORD(ab) = ror16((uint16_t)ab, 1);
+        ALOWORD(cd) = ror16((uint16_t)cd, 1);
+        ab = ror32(ab, 16);
+        cd = ror32(cd, 16);
+        ALOWORD(ab) = ror16((uint16_t)ab, 1);
+        ALOWORD(cd) = ror16((uint16_t)cd, 1);
+
+        *dst32++ = ab;
+        *dst32++ = cd;
+
+        src32 += 2;
+     }
+
+     src32 = (uint32_t*)&src[(line + (uintptr_t)src32 - (uintptr_t)src) & 0xFFF];
+     dst32 = (uint32_t*)((uint8_t*)dst32 + ext);
+
+     odd ^= 1;
   }
-  while ( v18 != 1 );
 }
 
 static INLINE void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
