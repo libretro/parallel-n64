@@ -5642,15 +5642,12 @@ static void get_tmem_idx(int s, int t, uint32_t tilenum,
       uint32_t* idx0, uint32_t* idx1, uint32_t* idx2, uint32_t* idx3,
       uint32_t* bit3flipped, uint32_t* hibit)
 {
-   uint32_t tsize;
-   uint32_t tformat;
-   uint32_t sshorts;
    int tidx_a, tidx_b, tidx_c, tidx_d;
-   uint32_t tbase    = (g_gdp.tile[tilenum].line * t) & 0x000001FF;
-   tbase   += g_gdp.tile[tilenum].tmem;
-   tsize    = g_gdp.tile[tilenum].size;
-   tformat  = g_gdp.tile[tilenum].format;
-   sshorts  = 0;
+   uint32_t tbase     = ((g_gdp.tile[tilenum].line * t) & 0x000001FF) + 
+      g_gdp.tile[tilenum].tmem;
+   uint32_t tsize     = g_gdp.tile[tilenum].size;
+   uint32_t tformat   = g_gdp.tile[tilenum].format;
+   uint32_t sshorts  = 0;
 
    if (tsize == PIXEL_SIZE_8BIT || tformat == FORMAT_YUV)
       sshorts = s >> 1;
@@ -5675,7 +5672,6 @@ static void get_tmem_idx(int s, int t, uint32_t tilenum,
       tidx_c ^= 2;
       tidx_d ^= 2;
    }
-
 
    sort_tmem_idx(idx0, tidx_a, tidx_b, tidx_c, tidx_d, 0);
    sort_tmem_idx(idx1, tidx_a, tidx_b, tidx_c, tidx_d, 1);
@@ -5724,17 +5720,15 @@ static void read_tmem_copy(int s, int s1, int s2, int s3,
       int t, uint32_t tilenum, uint32_t* sortshort, int* hibits, int* lowbits)
 {
    uint32_t sortidx[8];
-   uint32_t tsize;
-   uint32_t tformat;
    uint32_t shbytes, shbytes1, shbytes2, shbytes3;
    uint16_t* tmem16;
    uint32_t short0, short1, short2, short3;
    int tidx_a, tidx_blow, tidx_bhi, tidx_c, tidx_dlow, tidx_dhi;
-   int32_t delta = 0;
-   uint32_t tbase  = (g_gdp.tile[tilenum].line * t) & 0x000001FF;
-   tbase += g_gdp.tile[tilenum].tmem;
-   tsize = g_gdp.tile[tilenum].size;
-   tformat = g_gdp.tile[tilenum].format;
+   int32_t delta    = 0;
+   uint32_t tbase   = ((g_gdp.tile[tilenum].line * t) & 0x000001FF) 
+      + g_gdp.tile[tilenum].tmem;
+   uint32_t tsize   = g_gdp.tile[tilenum].size;
+   uint32_t tformat = g_gdp.tile[tilenum].format;
 
    if (tsize == PIXEL_SIZE_8BIT || tformat == FORMAT_YUV)
    {
@@ -5791,12 +5785,12 @@ static void read_tmem_copy(int s, int s1, int s2, int s3,
       tidx_dhi ^= 8;
    }
 
-   hibits[0] = (tidx_a & 0x1000) ? 1 : 0;
-   hibits[1] = (tidx_blow & 0x1000) ? 1 : 0; 
-   hibits[2] =    (tidx_bhi & 0x1000) ? 1 : 0;
-   hibits[3] =    (tidx_c & 0x1000) ? 1 : 0;
-   hibits[4] =    (tidx_dlow & 0x1000) ? 1 : 0;
-   hibits[5] = (tidx_dhi & 0x1000) ? 1 : 0;
+   hibits[0]  = (tidx_a & 0x1000) ? 1 : 0;
+   hibits[1]  = (tidx_blow & 0x1000) ? 1 : 0; 
+   hibits[2]  =    (tidx_bhi & 0x1000) ? 1 : 0;
+   hibits[3]  =    (tidx_c & 0x1000) ? 1 : 0;
+   hibits[4]  =    (tidx_dlow & 0x1000) ? 1 : 0;
+   hibits[5]  = (tidx_dhi & 0x1000) ? 1 : 0;
    lowbits[0] = tidx_a & 0xf;
    lowbits[1] = tidx_blow & 0xf;
    lowbits[2] = tidx_bhi & 0xf;
@@ -5812,7 +5806,6 @@ static void read_tmem_copy(int s, int s1, int s2, int s3,
    tidx_c >>= 2;
    tidx_dlow >>= 2;
    tidx_dhi >>= 2;
-
 
    sort_tmem_idx(&sortidx[0], tidx_a, tidx_blow, tidx_c, tidx_dlow, 0);
    sort_tmem_idx(&sortidx[1], tidx_a, tidx_blow, tidx_c, tidx_dlow, 1);
@@ -5874,7 +5867,8 @@ static void read_tmem_copy(int s, int s1, int s2, int s3,
 }
 
 static void replicate_for_copy(uint32_t* outbyte,
-      uint32_t inshort, uint32_t nybbleoffset, uint32_t tilenum, uint32_t tformat, uint32_t tsize)
+      uint32_t inshort, uint32_t nybbleoffset,
+      uint32_t tilenum, uint32_t tformat, uint32_t tsize)
 {
    uint32_t lownib, hinib;
 
@@ -5915,7 +5909,8 @@ static void replicate_for_copy(uint32_t* outbyte,
    }
 }
 
-static void tc_pipeline_copy(int32_t* sss0, int32_t* sss1, int32_t* sss2, int32_t* sss3, int32_t* sst, int tilenum)                                            
+static void tc_pipeline_copy(int32_t* sss0, int32_t* sss1,
+      int32_t* sss2, int32_t* sss3, int32_t* sst, int tilenum)                                            
 {
    int ss0 = *sss0, ss1 = 0, ss2 = 0, ss3 = 0, st = *sst;
 
@@ -5938,8 +5933,10 @@ static void tc_pipeline_copy(int32_t* sss0, int32_t* sss1, int32_t* sss2, int32_
    *sst  = st;
 }
 
-static void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss, int32_t ssst, uint32_t tilenum)
+static void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword,
+      int32_t ssss, int32_t ssst, uint32_t tilenum)
 {
+   uint32_t tformat, tsize;
    uint32_t shorta, shortb, shortc, shortd;
    uint32_t sortshort[8];
    int hibits[6];
@@ -5947,7 +5944,6 @@ static void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss
    int32_t sss = ssss, sst = ssst, sss1 = 0, sss2 = 0, sss3 = 0;
    int largetex = 0;
 
-   uint32_t tformat, tsize;
    if (g_gdp.other_modes.en_tlut)
    {
       tsize = PIXEL_SIZE_16BIT;
@@ -5961,7 +5957,8 @@ static void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss
 
    tc_pipeline_copy(&sss, &sss1, &sss2, &sss3, &sst, tilenum);
    read_tmem_copy(sss, sss1, sss2, sss3, sst, tilenum, sortshort, hibits, lowbits);
-   largetex = (tformat == FORMAT_YUV || (tformat == FORMAT_RGBA && tsize == PIXEL_SIZE_32BIT));
+   largetex = (tformat == FORMAT_YUV || 
+         (tformat == FORMAT_RGBA && tsize == PIXEL_SIZE_32BIT));
 
 
    if (g_gdp.other_modes.en_tlut)
@@ -6002,9 +5999,8 @@ static void fetch_qword_copy(uint32_t* hidword, uint32_t* lowdword, int32_t ssss
 
 static STRICTINLINE void tc_pipeline_load(int32_t* sss, int32_t* sst, int tilenum, int coord_quad)
 {
-   int sss1 = *sss, sst1 = *sst;
-   sss1 = SIGN16(sss1);
-   sst1 = SIGN16(sst1);
+   int sss1 = SIGN16(*sss);
+   int sst1 = SIGN16(*sst);
    sss1 = TRELATIVE(sss1, g_gdp.tile[tilenum].sl);
    sst1 = TRELATIVE(sst1, g_gdp.tile[tilenum].tl);
 
@@ -6110,6 +6106,7 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
       return;
 
    {
+      unsigned int lodclamp;
       int32_t lod     = 0;
       uint32_t l_tile = 0, magnify = 0, distant = 0;
       int nextsw    = (w + dwinc) >> 16;
@@ -6118,7 +6115,6 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
       int farsw     = (w + (dwinc << 1)) >> 16;
       int fars      = (s + (dsinc << 1)) >> 16;
       int fart      = (t + (dtinc << 1)) >> 16;
-      unsigned int lodclamp;
 
       tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
       tcdiv_ptr(fars, fart, farsw, &fars, &fart);
@@ -6373,8 +6369,8 @@ NOINLINE void loading_pipeline(
 
       for (j = 0; j < length; j+= spanadvance)
       {
-         ss = s >> 16;
-         st = t >> 16;
+         ss  = s >> 16;
+         st  = t >> 16;
 
          sss = ss & 0xffff;
          sst = st & 0xffff;

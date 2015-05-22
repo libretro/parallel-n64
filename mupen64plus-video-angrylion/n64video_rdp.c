@@ -1144,14 +1144,16 @@ static void set_other_modes(uint32_t w0, uint32_t w1)
 
 static void edgewalker_for_loads(int32_t* lewdata)
 {
-   int j = 0;
-   int xstart = 0, xend = 0;
-
+   int32_t yllimit;
+   int32_t yhlimit;
    int ycur;
    int ylfar;
 
    int32_t xlr[2];
    int32_t maxxmx, minxhx;
+
+   int j = 0;
+   int xstart = 0, xend = 0;
 
    int commandcode = (lewdata[0] >> 24) & 0x3f;
    int ltlut = (commandcode == 0x30);
@@ -1165,8 +1167,6 @@ static void edgewalker_for_loads(int32_t* lewdata)
    int valid_y = 1;
    int length = 0;
    int32_t xrsc = 0, xlsc = 0;
-   int32_t yllimit;
-   int32_t yhlimit;
 
    edgewalker_info_t edges = {0};
 
@@ -1293,8 +1293,8 @@ static void load_block(uint32_t w0, uint32_t w1)
 static void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2)
 {
    int32_t lewdata[10];
-   int tilenum = (w2 >> 24) & 0x7;
    int sl, tl, sh, th;
+   int tilenum = (w2 >> 24) & 0x7;
 
    g_gdp.tile[tilenum].sl = sl = ((w1 >> 12) & 0xfff);
    g_gdp.tile[tilenum].tl = tl = ((w1 >>  0) & 0xfff);
