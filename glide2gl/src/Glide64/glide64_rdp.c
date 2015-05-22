@@ -656,7 +656,6 @@ static void pm_palette_mod(void)
 static void pd_zcopy(uint32_t w0, uint32_t w1)
 {
    int x;
-   uint16_t c;
    uint16_t      ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
    uint16_t      lr_x = (uint16_t)((w0 & 0x00FFF000) >> 14) + 1;
    uint16_t      ul_u = (uint16_t)((rdp.cmd2 & 0xFFFF0000) >> 21) + 1;
@@ -666,8 +665,8 @@ static void pd_zcopy(uint32_t w0, uint32_t w1)
 
    for (x = 0; x < width; x++)
    {
-      c = ptr_src[x];
-      c = ((c<<8)&0xFF00) | (c >> 8);
+      uint16_t c = ptr_src[x];
+      c = ((c << 8) & 0xFF00) | (c >> 8);
       ptr_dst[(ul_x+x)^1] = c;
    }
 }
@@ -781,17 +780,17 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    if (g_gdp.other_modes.cycle_type == 2)
    {
-      ul_x = (short)((w1 & 0x00FFF000) >> 14);
-      ul_y = (short)((w1 & 0x00000FFF) >> 2);
-      lr_x = (short)((w0 & 0x00FFF000) >> 14);
-      lr_y = (short)((w0 & 0x00000FFF) >> 2);
+      ul_x = (int16_t)((w1 & 0x00FFF000) >> 14);
+      ul_y = (int16_t)((w1 & 0x00000FFF) >> 2);
+      lr_x = (int16_t)((w0 & 0x00FFF000) >> 14);
+      lr_y = (int16_t)((w0 & 0x00000FFF) >> 2);
    }
    else
    {
-      ul_x = ((short)((w1 & 0x00FFF000) >> 12)) / 4.0f;
-      ul_y = ((short)(w1 & 0x00000FFF)) / 4.0f;
-      lr_x = ((short)((w0 & 0x00FFF000) >> 12)) / 4.0f;
-      lr_y = ((short)(w0 & 0x00000FFF)) / 4.0f;
+      ul_x = ((int16_t)((w1 & 0x00FFF000) >> 12)) / 4.0f;
+      ul_y = ((int16_t)(w1 & 0x00000FFF)) / 4.0f;
+      lr_x = ((int16_t)((w0 & 0x00FFF000) >> 12)) / 4.0f;
+      lr_y = ((int16_t)(w0 & 0x00000FFF)) / 4.0f;
    }
 
    if (ul_x >= lr_x)
@@ -967,8 +966,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    CCLIP2 (s_ul_x, s_lr_x, texUV[0].ul_u, texUV[0].lr_u, texUV[1].ul_u, texUV[1].lr_u, (float)rdp.scissor.ul_x, (float)rdp.scissor.lr_x);
    CCLIP2 (s_ul_y, s_lr_y, texUV[0].ul_v, texUV[0].lr_v, texUV[1].ul_v, texUV[1].lr_v, (float)rdp.scissor.ul_y, (float)rdp.scissor.lr_y);
-
-   FRDP (" draw at: (%f, %f) -> (%f, %f)\n", s_ul_x, s_ul_y, s_lr_x, s_lr_y);
 
    memset(vstd, 0, sizeof(VERTEX) * 4);
 
@@ -1553,9 +1550,8 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       }
       else
       {
-         uint32_t cmb_mode_c, cmb_mode_a;
-         cmb_mode_c = (rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF);
-         cmb_mode_a = (rdp.cycle1 & 0x0FFF0000) | ((rdp.cycle2 >> 16) & 0x00000FFF);
+         uint32_t cmb_mode_c = (rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF);
+         uint32_t cmb_mode_a = (rdp.cycle1 & 0x0FFF0000) | ((rdp.cycle2 >> 16) & 0x00000FFF);
 
          if (cmb_mode_c == 0x9fff9fff || cmb_mode_a == 0x09ff09ff) //shade
             apply_shading(v);
@@ -1644,14 +1640,14 @@ int SwapOK = true;
 
 void RestoreScale(void)
 {
-  FRDP("Return to original scale: x = %f, y = %f\n", rdp.scale_x_bak, rdp.scale_y_bak);
-  rdp.scale_x = rdp.scale_x_bak;
-  rdp.scale_y = rdp.scale_y_bak;
-  rdp.view_scale[0] *= rdp.scale_x;
-  rdp.view_scale[1] *= rdp.scale_y;
-  rdp.view_trans[0] *= rdp.scale_x;
-  rdp.view_trans[1] *= rdp.scale_y;
-  g_gdp.flags |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
+   rdp.scale_x = rdp.scale_x_bak;
+   rdp.scale_y = rdp.scale_y_bak;
+   rdp.view_scale[0] *= rdp.scale_x;
+   rdp.view_scale[1] *= rdp.scale_y;
+   rdp.view_trans[0] *= rdp.scale_x;
+   rdp.view_trans[1] *= rdp.scale_y;
+
+   g_gdp.flags |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
 }
 
 
