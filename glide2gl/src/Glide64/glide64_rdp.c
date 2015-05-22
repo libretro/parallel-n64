@@ -281,10 +281,10 @@ void rdp_reset(void)
    for (i = 0; i < MAX_VTX; i++)
       rdp.vtx[i].number = i;
 
-   rdp.scissor_o.ul_x   = 0;
-   rdp.scissor_o.ul_y   = 0;
-   rdp.scissor_o.lr_x   = 320;
-   rdp.scissor_o.lr_y   = 240;
+   g_gdp.__clip.xh   = 0;
+   g_gdp.__clip.yh   = 0;
+   g_gdp.__clip.xl   = 320;
+   g_gdp.__clip.yl   = 240;
 
    rdp.vi_org_reg       = *gfx_info.VI_ORIGIN_REG;
    rdp.view_scale[2]    = 32.0f * 511.0f;
@@ -614,8 +614,8 @@ static void ys_memrect(uint32_t w0, uint32_t w1)
   uint32_t ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
   uint32_t ul_y = (uint16_t)((w1 & 0x00000FFF) >> 2);
 
-  if (lr_y > rdp.scissor_o.lr_y)
-    lr_y = rdp.scissor_o.lr_y;
+  if (lr_y > g_gdp.__clip.yl)
+    lr_y = g_gdp.__clip.yl;
 
   off_x = ((rdp.cmd2 & 0xFFFF0000) >> 16) >> 5;
   off_y = (rdp.cmd2 & 0x0000FFFF) >> 5;
@@ -681,10 +681,10 @@ static void DrawDepthBufferFog(void)
   fb_info.size   = 2;
   fb_info.width  = rdp.zi_width;
   fb_info.height = rdp.ci_height;
-  fb_info.ul_x   = rdp.scissor_o.ul_x;
-  fb_info.lr_x   = rdp.scissor_o.lr_x;
-  fb_info.ul_y   = rdp.scissor_o.ul_y;
-  fb_info.lr_y   = rdp.scissor_o.lr_y;
+  fb_info.ul_x   = g_gdp.__clip.xh;
+  fb_info.lr_x   = g_gdp.__clip.xl;
+  fb_info.ul_y   = g_gdp.__clip.yh;
+  fb_info.lr_y   = g_gdp.__clip.yl;
   fb_info.opaque = 0;
 
   DrawDepthBufferToScreen(&fb_info);
@@ -1069,19 +1069,19 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
 
    /* clipper resolution is 320x240, scale based on computer resolution */
    /* TODO/FIXME - all these values are different from Angrylion's */
-   rdp.scissor_o.ul_x = (uint32_t)(((w0 & 0x00FFF000) >> 14));
-   rdp.scissor_o.ul_y = (uint32_t)(((w0 & 0x00000FFF) >> 2));
-   rdp.scissor_o.lr_x = (uint32_t)(((w1 & 0x00FFF000) >> 14));
-   rdp.scissor_o.lr_y = (uint32_t)(((w1 & 0x00000FFF) >> 2));
+   g_gdp.__clip.xh = (uint32_t)(((w0 & 0x00FFF000) >> 14));
+   g_gdp.__clip.yh = (uint32_t)(((w0 & 0x00000FFF) >> 2));
+   g_gdp.__clip.xl = (uint32_t)(((w1 & 0x00FFF000) >> 14));
+   g_gdp.__clip.yl = (uint32_t)(((w1 & 0x00000FFF) >> 2));
 
-   rdp.ci_upper_bound = rdp.scissor_o.ul_y;
-   rdp.ci_lower_bound = rdp.scissor_o.lr_y;
+   rdp.ci_upper_bound = g_gdp.__clip.yh;
+   rdp.ci_lower_bound = g_gdp.__clip.yl;
    rdp.scissor_set = true;
 
    if (rdp.view_scale[0] == 0) //viewport is not set?
    {
-      rdp.view_scale[0] = (rdp.scissor_o.lr_x>>1) * rdp.scale_x;
-      rdp.view_scale[1] = (rdp.scissor_o.lr_y>>1) * -rdp.scale_y;
+      rdp.view_scale[0] = (g_gdp.__clip.xl >> 1) * rdp.scale_x;
+      rdp.view_scale[1] = (g_gdp.__clip.yl >> 1) * -rdp.scale_y;
       rdp.view_trans[0] = rdp.view_scale[0];
       rdp.view_trans[1] = -rdp.view_scale[1];
       g_gdp.flags |= UPDATE_VIEWPORT;
@@ -1426,10 +1426,10 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
          //if (settings.frame_buffer&fb_depth_clear)
          {
             uint32_t zi_width_in_dwords, *dst, x, y;
-            ul_x = min(max(ul_x, rdp.scissor_o.ul_x), rdp.scissor_o.lr_x);
-            lr_x = min(max(lr_x, rdp.scissor_o.ul_x), rdp.scissor_o.lr_x);
-            ul_y = min(max(ul_y, rdp.scissor_o.ul_y), rdp.scissor_o.lr_y);
-            lr_y = min(max(lr_y, rdp.scissor_o.ul_y), rdp.scissor_o.lr_y);
+            ul_x = min(max(ul_x, g_gdp.__clip.xh),  g_gdp.__clip.xl);
+            lr_x = min(max(lr_x, g_gdp.__clip.xh),  g_gdp.__clip.xl);
+            ul_y = min(max(ul_y, g_gdp.__clip.yh),  g_gdp.__clip.yl);
+            lr_y = min(max(lr_y, g_gdp.__clip.yh),  g_gdp.__clip.yl);
             zi_width_in_dwords = rdp.ci_width >> 1;
             ul_x >>= 1;
             lr_x >>= 1;
@@ -1831,7 +1831,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
    else if (rdp.ci_width == 32)
       rdp.ci_height = 32;
    else
-      rdp.ci_height = rdp.scissor_o.lr_y;
+      rdp.ci_height = g_gdp.__clip.yl;
    if (rdp.zimg == rdp.cimg)
    {
       rdp.zi_width = rdp.ci_width;

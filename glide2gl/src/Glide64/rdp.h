@@ -432,7 +432,6 @@ struct RDP
    uint32_t cmd3;
 
    // Clipping
-   SCISSOR scissor_o;
    SCISSOR scissor;
    int scissor_set;
 

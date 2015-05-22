@@ -771,9 +771,9 @@ static void uc6_read_object_data (DRAWOBJECT *d)
    d->imageFlags  = ((uint8_t *)gfx_info.RDRAM)[(((addr+10)<<1)+3)^3]; // |
 
    if (d->imageW < 0)
-      d->imageW = (int16_t)rdp.scissor_o.lr_x - (int16_t)d->objX - d->imageW;
+      d->imageW = (int16_t)g_gdp.__clip.xl - (int16_t)d->objX - d->imageW;
    if (d->imageH < 0)
-      d->imageH = (int16_t)rdp.scissor_o.lr_y - (int16_t)d->objY - d->imageH;
+      d->imageH = (int16_t)g_gdp.__clip.yl - (int16_t)d->objY - d->imageH;
 }
 
 static void uc6_init_tile(const DRAWOBJECT *d)

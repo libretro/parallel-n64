@@ -175,10 +175,10 @@ void _ChangeSize(void)
    if (((uint32_t)rdp.vi_width <= (*gfx_info.VI_WIDTH_REG)/2) && (rdp.vi_width > rdp.vi_height))
       rdp.scale_y *= 0.5f;
 
-   rdp.scissor_o.ul_x = 0;
-   rdp.scissor_o.ul_y = 0;
-   rdp.scissor_o.lr_x = (uint32_t)rdp.vi_width;
-   rdp.scissor_o.lr_y = (uint32_t)rdp.vi_height;
+   g_gdp.__clip.xh = 0;
+   g_gdp.__clip.yh = 0;
+   g_gdp.__clip.xl = (uint32_t)rdp.vi_width;
+   g_gdp.__clip.yl = (uint32_t)rdp.vi_height;
 
    g_gdp.flags |= UPDATE_VIEWPORT | UPDATE_SCISSOR;
 }

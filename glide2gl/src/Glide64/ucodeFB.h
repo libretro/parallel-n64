@@ -130,7 +130,7 @@ static void fb_uc2_movemem(uint32_t w0, uint32_t w1)
          int16_t scale_y = ((int16_t*)gfx_info.RDRAM)[(a+1)^1] >> 2;
          int16_t trans_y = ((int16_t*)gfx_info.RDRAM)[(a+5)^1] >> 2;
          uint32_t height = scale_y + trans_y;
-         if (height < rdp.scissor_o.lr_y)
+         if (height < g_gdp.__clip.yl)
             cur_fb->height = height;
       }
    }
@@ -147,7 +147,7 @@ static void fb_rect(uint32_t w0, uint32_t w1)
    diff = abs((int)rdp.frame_buffers[rdp.ci_count-1].width - width);
    if (diff < 4)
    {
-      uint32_t lr_y = min(rdp.scissor_o.lr_y, (w0 & 0xFFF) >> 2);
+      uint32_t lr_y = min(g_gdp.__clip.yl, (w0 & 0xFFF) >> 2);
       if (rdp.frame_buffers[rdp.ci_count-1].height < lr_y)
       {
          FRDP("fb_rect. ul_x: %d, lr_x: %d, fb_height: %d -> %d\n", ul_x, lr_x, rdp.frame_buffers[rdp.ci_count-1].height, lr_y);
@@ -181,7 +181,7 @@ static void fb_settextureimage(uint32_t w0, uint32_t w1)
             rdp.main_ci_last_tex_addr = addr;
             if (cur_fb->height == 0)
             {
-               cur_fb->height = rdp.scissor_o.lr_y;
+               cur_fb->height = g_gdp.__clip.yl;
                rdp.main_ci_end = cur_fb->addr + ((cur_fb->width * cur_fb->height) << cur_fb->size >> 1);
             }
          }
@@ -339,7 +339,7 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
    else if (cur_fb->width == 16 )
       cur_fb->height = 16;
    else if (rdp.ci_count > 0)
-      cur_fb->height = rdp.scissor_o.lr_y;
+      cur_fb->height = g_gdp.__clip.yl;
    else
       cur_fb->height = 0;
    cur_fb->format = (w0 >> 21) & 0x7;
@@ -349,13 +349,13 @@ static void fb_setcolorimage(uint32_t w0, uint32_t w1)
    /*
       if (rdp.ci_count > 0)
       if (rdp.frame_buffers[0].addr == rdp.cimg)
-      rdp.frame_buffers[0].height = rdp.scissor_o.lr_y;
+      rdp.frame_buffers[0].height = g_gdp.__clip.yl;
       */
    //FRDP ("fb_setcolorimage. width: %d,  height: %d,  fmt: %d, size: %d, addr %08lx\n", cur_fb->width, cur_fb->height, cur_fb->format, cur_fb->size, cur_fb->addr);
    if (rdp.cimg == rdp.zimg)
    {
       cur_fb->status = CI_ZIMG;
-      rdp.zimg_end = rdp.zimg + cur_fb->width*rdp.scissor_o.lr_y*2;
+      rdp.zimg_end = rdp.zimg + cur_fb->width * g_gdp.__clip.yl * 2;
       //FRDP("rdp.frame_buffers[%d].status = CI_ZIMG\n", rdp.ci_count);
    }
    else if (rdp.cimg == rdp.tmpzimg)

@@ -1041,10 +1041,10 @@ void update_scissor(bool set_scissor)
    }
    else
    {
-      rdp.scissor.ul_x = (uint32_t)(rdp.scissor_o.ul_x * rdp.scale_x + rdp.offset_x);
-      rdp.scissor.lr_x = (uint32_t)(rdp.scissor_o.lr_x * rdp.scale_x + rdp.offset_x);
-      rdp.scissor.ul_y = (uint32_t)(rdp.scissor_o.ul_y * rdp.scale_y + rdp.offset_y);
-      rdp.scissor.lr_y = (uint32_t)(rdp.scissor_o.lr_y * rdp.scale_y + rdp.offset_y);
+      rdp.scissor.ul_x = (uint32_t)(g_gdp.__clip.xh * rdp.scale_x + rdp.offset_x);
+      rdp.scissor.lr_x = (uint32_t)(g_gdp.__clip.xl * rdp.scale_x + rdp.offset_x);
+      rdp.scissor.ul_y = (uint32_t)(g_gdp.__clip.yh * rdp.scale_y + rdp.offset_y);
+      rdp.scissor.lr_y = (uint32_t)(g_gdp.__clip.yl * rdp.scale_y + rdp.offset_y);
    }
 
    grClipWindow (rdp.scissor.ul_x, rdp.scissor.ul_y, rdp.scissor.lr_x, rdp.scissor.lr_y);

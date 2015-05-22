@@ -677,11 +677,11 @@ static void uc9_setscissor(uint32_t w0, uint32_t w1)
 {
    rdp_setscissor(w0, w1);
 
-   if ((rdp.scissor_o.lr_x - rdp.scissor_o.ul_x) > (zSortRdp.view_scale[0] - zSortRdp.view_trans[0]))
+   if ((g_gdp.__clip.xl - g_gdp.__clip.xh) > (zSortRdp.view_scale[0] - zSortRdp.view_trans[0]))
    {
       TILE *tmp_tile;
-      float w = (rdp.scissor_o.lr_x - rdp.scissor_o.ul_x) / 2.0f;
-      float h = (rdp.scissor_o.lr_y - rdp.scissor_o.ul_y) / 2.0f;
+      float w = (g_gdp.__clip.xl - g_gdp.__clip.xh) / 2.0f;
+      float h = (g_gdp.__clip.yl - g_gdp.__clip.yh) / 2.0f;
       rdp.view_scale[0] = w * rdp.scale_x;
       rdp.view_scale[1] = h * rdp.scale_y;
       rdp.view_trans[0] = w * rdp.scale_x;

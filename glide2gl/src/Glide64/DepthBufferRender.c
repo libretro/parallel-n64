@@ -274,19 +274,20 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
 
    destptr = (uint16_t*)(gfx_info.RDRAM+rdp.zimg);
    y1 = iceil(min_y);
-   if (y1 >= (int)rdp.scissor_o.lr_y) return;
+   if (y1 >= g_gdp.__clip.yl)
+      return;
 
    for(;;)
    {
       int x1, width;
       x1 = iceil(left_x);
-      if (x1 < (int)rdp.scissor_o.ul_x)
-         x1 = rdp.scissor_o.ul_x;
+      if (x1 < g_gdp.__clip.xh)
+         x1 = g_gdp.__clip.xh;
       width = iceil(right_x) - x1;
-      if (x1+width >= (int)rdp.scissor_o.lr_x)
-         width = rdp.scissor_o.lr_x - x1 - 1;
+      if (x1+width >= g_gdp.__clip.xl)
+         width = g_gdp.__clip.xl - x1 - 1;
 
-      if(width > 0 && y1 >= (int)rdp.scissor_o.ul_y)
+      if(width > 0 && y1 >= g_gdp.__clip.yh)
       {
          int x, prestep, z, trueZ, idx;
          uint16_t encodedZ;
@@ -313,7 +314,7 @@ void Rasterize(struct vertexi * vtx, int vertices, int dzdx)
 
       //destptr += rdp.zi_width;
       y1++;
-      if (y1 >= (int)rdp.scissor_o.lr_y)
+      if (y1 >= g_gdp.__clip.yl)
          return;
 
       // Scan the right side
