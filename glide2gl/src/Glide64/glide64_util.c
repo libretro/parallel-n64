@@ -70,18 +70,9 @@ typedef struct
    unsigned int	c1_m1a:2;
 } rdp_blender_setting;
 
-#define interp2p(a, b, r)  (a + (b - a) * r)
 #define interp3p(a, b, c, r1, r2) ((a)+(((b)+((c)-(b))*(r2))-(a))*(r1))
 #define EvaLine(li, x, y) ((li->x) * (x) + (li->y) * (y) + (li->d))
 
-static INLINE void InterpolateColors(VERTEX *dest, float percent, VERTEX *first, VERTEX *second)
-{
-   dest->r = (uint8_t)(first->r + percent*(second->r - first->r));
-   dest->g = (uint8_t)(first->g + percent*(second->g - first->g));
-   dest->b = (uint8_t)(first->b + percent*(second->b - first->b));
-   dest->a = (uint8_t)(first->a + percent*(second->a - first->a));
-   dest->f = ( float )(first->f + percent*(second->f - first->f));
-}
 
 void apply_shade_mods (VERTEX *v)
 {
@@ -182,7 +173,6 @@ void apply_shade_mods (VERTEX *v)
    }
 }
 
-
 static void Create1LineEquation(LineEquationType *l, VERTEX *v1, VERTEX *v2, VERTEX *v3)
 {
    float x = v3->sx;
@@ -199,6 +189,36 @@ static void Create1LineEquation(LineEquationType *l, VERTEX *v1, VERTEX *v2, VER
       l->y = -l->y;
       l->d = -l->d;
    }
+}
+
+static INLINE void InterpolateColors(VERTEX *res, float percent, VERTEX *first, VERTEX *second)
+{
+   res->r = (uint8_t)(first->r + percent * (second->r - first->r));
+   res->g = (uint8_t)(first->g + percent * (second->g - first->g));
+   res->b = (uint8_t)(first->b + percent * (second->b - first->b));
+   res->a = (uint8_t)(first->a + percent * (second->a - first->a));
+   res->f = ( float )(first->f + percent * (second->f - first->f));
+}
+
+static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
+{
+   float w = 1.0f/(va->oow + (vb->oow-va->oow) * percent);
+   float ba = va->b * va->oow;
+   float bb = vb->b * vb->oow;
+   float ga = va->g * va->oow;
+   float gb = vb->g * vb->oow;
+   float ra = va->r * va->oow;
+   float rb = vb->r * vb->oow;
+   float aa = va->a * va->oow;
+   float ab = vb->a * vb->oow;
+   float fa = va->f * va->oow;
+   float fb = vb->f * vb->oow;
+
+   res->r = (uint8_t)((ra + (rb - ra) * percent) * w);
+   res->g = (uint8_t)((ga + (gb - ga) * percent) * w);
+   res->b = (uint8_t)((ba + (bb - ba) * percent) * w);
+   res->a = (uint8_t)((aa + (ab - aa) * percent) * w);
+   res->f = (fa + (fb - fa) * percent) * w;
 }
 
 static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
@@ -240,50 +260,27 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
    out->f = interp3p(v1->f*v1->oow,v2->f*v2->oow,v3->f*v3->oow,s1,s2) * w;
 }
 
-static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
-{
-   float w, ba, bb, ga, gb, ra, rb, aa, ab, fa, fb;
-   w = 1.0f/(va->oow + (vb->oow-va->oow) * percent);
-   //   res->oow = va->oow + (vb->oow-va->oow) * percent;
-   //   res->q = res->oow;
-   ba = va->b * va->oow;
-   bb = vb->b * vb->oow;
-   res->b = (uint8_t)(interp2p(ba, bb, percent) * w);
-   ga = va->g * va->oow;
-   gb = vb->g * vb->oow;
-   res->g = (uint8_t)(interp2p(ga, gb, percent) * w);
-   ra = va->r * va->oow;
-   rb = vb->r * vb->oow;
-   res->r = (uint8_t)(interp2p(ra, rb, percent) * w);
-   aa = va->a * va->oow;
-   ab = vb->a * vb->oow;
-   res->a = (uint8_t)(interp2p(aa, ab, percent) * w);
-   fa = va->f * va->oow;
-   fb = vb->f * vb->oow;
-   res->f = interp2p(fa, fb, percent) * w;
-}
 
 static INLINE void CalculateLODValues(VERTEX *v, int32_t i, int32_t j, float *lodFactor, float s_scale, float t_scale)
 {
-   float deltaS, deltaT, deltaTexels, deltaPixels, deltaX, deltaY;
-   deltaS = (v[j].u[0]/v[j].q - v[i].u[0]/v[i].q) * s_scale;
-   deltaT = (v[j].v[0]/v[j].q - v[i].v[0]/v[i].q) * t_scale;
-   deltaTexels = sqrtf( deltaS * deltaS + deltaT * deltaT );
+   float deltaS = (v[j].u[0]/v[j].q - v[i].u[0]/v[i].q) * s_scale;
+   float deltaT = (v[j].v[0]/v[j].q - v[i].v[0]/v[i].q) * t_scale;
+   float deltaTexels = sqrtf( deltaS * deltaS + deltaT * deltaT );
 
-   deltaX = (v[j].x - v[i].x)/rdp.scale_x;
-   deltaY = (v[j].y - v[i].y)/rdp.scale_y;
-   deltaPixels = sqrtf( deltaX * deltaX + deltaY * deltaY );
+   float deltaX = (v[j].x - v[i].x)/rdp.scale_x;
+   float deltaY = (v[j].y - v[i].y)/rdp.scale_y;
+   float deltaPixels = sqrtf( deltaX * deltaX + deltaY * deltaY );
 
    *lodFactor += deltaTexels / deltaPixels;
 }
 
 static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
 {
-   float lodFactor, intptr, s_scale, t_scale, lod_fraction, detailmax;
+   float intptr, lod_fraction, detailmax;
    int i, j, ilod, lod_tile;
-   s_scale = rdp.tiles[rdp.cur_tile].width / 255.0f;
-   t_scale = rdp.tiles[rdp.cur_tile].height / 255.0f;
-   lodFactor = 0;
+   float s_scale = rdp.tiles[rdp.cur_tile].width / 255.0f;
+   float t_scale = rdp.tiles[rdp.cur_tile].height / 255.0f;
+   float lodFactor = 0;
 
    if (lodmode == G_TL_LOD)
    {
@@ -883,11 +880,11 @@ static void render_tri (uint16_t linew, int old_interpolate)
 
    if (linew > 0)
    {
-      VERTEX *V0, *V1, v[4];
+      VERTEX v[4];
       float width;
 
-      V0 = &rdp.vtxbuf[0];
-      V1 = &rdp.vtxbuf[1];
+      VERTEX *V0 = &rdp.vtxbuf[0];
+      VERTEX *V1 = &rdp.vtxbuf[1];
 
       if (fabs(V0->x - V1->x) < 0.01 && fabs(V0->y - V1->y) < 0.01)
          V1 = &rdp.vtxbuf[2];
@@ -978,7 +975,7 @@ void do_triangle_stuff (uint16_t linew, int old_interpolate) // what else?? do t
    float maxZ = (g_gdp.other_modes.z_source_sel != 1) ? rdp.view_trans[2] + rdp.view_scale[2] : g_gdp.prim_color.z;
    uint8_t no_clip = 2;
 
-   for (i=0; i<rdp.n_global; i++)
+   for (i=0; i< rdp.n_global; i++)
    {
       if (rdp.vtxbuf[i].not_zclipped)
       {
@@ -1061,8 +1058,8 @@ void update_scissor(bool set_scissor)
 static void glide64_z_compare(void)
 {
    int depthbias_level = 0;
-   int depthbuf_func = GR_CMP_ALWAYS;
-   int depthmask_val = FXFALSE;
+   int depthbuf_func   = GR_CMP_ALWAYS;
+   int depthmask_val   = FXFALSE;
    g_gdp.flags ^= UPDATE_ZBUF_ENABLED;
 
    if (((rdp.flags & ZBUF_ENABLED) || ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
