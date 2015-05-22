@@ -76,7 +76,6 @@ static INLINE void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height,
 {
    uint32_t *src32 = (uint32_t *)src;
    uint32_t *dst32 = (uint32_t *)dst;
-
    unsigned odd = 0;
 
    while (height--)
