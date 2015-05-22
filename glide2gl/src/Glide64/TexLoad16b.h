@@ -74,39 +74,28 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
 
 static INLINE void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
-   uint32_t *v11, *v12, v14;
-   int32_t v9, v15, v16;
+   uint32_t *src32 = (uint32_t *)src;
+   uint32_t *dst32 = (uint32_t *)dst;
 
-   uint32_t *v6 = (uint32_t *)src;
-   uint32_t *v7 = (uint32_t *)dst;
-   int32_t   v8 = height;
+   unsigned odd = 0;
 
-   do
+   while (height--)
    {
-      v15 = v8;
-      v9 = wid_64;
-      do
+      int width = wid_64;
+
+      while (width--)
       {
-         *v7++ = *v6++;
-         *v7++ = *v6++;
-      }while (--v9 );
-      if ( v15 == 1 )
-         break;
-      v16 = v15 - 1;
-      v11 = (uint32_t *)((int8_t *)v6 + line);
-      v12 = (uint32_t *)((int8_t *)v7 + ext);
-      v9 = wid_64;
-      do
-      {
-         v14 = *v11;
-         *v12++ = v11[1];
-         *v12++ = v14;
-         v11 += 2;
-      }while (--v9 );
-      v6 = (uint32_t *)((int8_t *)v11 + line);
-      v7 = (uint32_t *)((int8_t *)v12 + ext);
-      v8 = v16 - 1;
-   }while ( v16 != 1 );
+         *dst32++ = src32[odd];
+         *dst32++ = src32[!odd];
+
+         src32 += 2;
+      }
+
+      src32 = (uint32_t*)((uint8_t*)src32 + line);
+      dst32 = (uint32_t*)((uint8_t*)dst32 + ext);
+
+      odd ^= 1;
+   }
 }
 
 //****************************************************************
