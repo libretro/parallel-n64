@@ -168,13 +168,13 @@ struct {uint32_t shift; uint32_t add;} z_dec_table[8] = {
      0, 0x3f800,
 };
 
-static unsigned char bayer_matrix[16] = {
+static uint8_t bayer_matrix[16] = {
     00, 04, 01, 05,
     04, 00, 05, 01,
     03, 07, 02, 06,
     07, 03, 06, 02
 };
-static unsigned char magic_matrix[16] = {
+static uint8_t magic_matrix[16] = {
     00, 06, 01, 07,
     04, 02, 05, 03,
     03, 05, 02, 04,
@@ -202,11 +202,8 @@ static void fbread_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   u8 color;
-   uint32_t addr  = fb_address + 1*curpixel;
-
-   addr &= 0x00FFFFFF;
-   color = RREADADDR8(addr);
+   uint32_t addr  = (fb_address + 1 * curpixel) & 0x00FFFFFF;
+   u8 color       = RREADADDR8(addr);
 
    memory_color.r = color;
    memory_color.g = color;
@@ -219,10 +216,7 @@ static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
    u8 hidden;
    u16 color;
-   uint32_t addr  = fb_address + 2*curpixel;
-
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 1;
+   uint32_t addr  = ((fb_address + 2 * curpixel) & 0x00FFFFFF) >> 1;
    PAIRREAD16(color, hidden, addr);
 
    if (fb_format != FORMAT_RGBA)
@@ -241,17 +235,13 @@ static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
    }
    memory_color.a |= ~(-g_gdp.other_modes.image_read_en);
    memory_color.a &= 0xE0;
-   *curpixel_memcvg = (unsigned char)(memory_color.a) >> 5;
+   *curpixel_memcvg = (uint8_t)(memory_color.a) >> 5;
 }
 
 static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   u32 color;
-   uint32_t addr  = fb_address + 4*curpixel;
-
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 2;
-   color = RREADIDX32(addr);
+   uint32_t addr  = ((fb_address + 4 * curpixel) & 0x00FFFFFF) >> 2;
+   uint32_t color = RREADIDX32(addr);
 
    memory_color.r = (color >> 24) & 0xFF;
    memory_color.g = (color >> 16) & 0xFF;
@@ -261,7 +251,7 @@ static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
    memory_color.a |= ~(-g_gdp.other_modes.image_read_en);
    memory_color.a &= 0xE0;
 
-   *curpixel_memcvg = (unsigned char)(memory_color.a) >> 5;
+   *curpixel_memcvg = (uint8_t)(memory_color.a) >> 5;
 }
 
 void (*fbread_func[4])(uint32_t, uint32_t*) = {
@@ -277,11 +267,8 @@ static void fbread2_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   u8 color;
-   uint32_t addr  = fb_address + 1*curpixel;
-
-   addr &= 0x00FFFFFF;
-   color = RREADADDR8(addr);
+   uint32_t addr  = (fb_address + 1 * curpixel) & 0x00FFFFFF;
+   u8 color = RREADADDR8(addr);
 
    pre_memory_color.r = color;
    pre_memory_color.g = color;
@@ -294,10 +281,7 @@ static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
    u8 hidden;
    u16 color;
-   uint32_t addr  = fb_address + 2*curpixel;
-
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 1;
+   uint32_t addr  = ((fb_address + 2*curpixel) & 0x00FFFFFF) >> 1;
    PAIRREAD16(color, hidden, addr);
 
    if (fb_format != FORMAT_RGBA)
@@ -316,17 +300,13 @@ static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
    }
    pre_memory_color.a |= ~(-g_gdp.other_modes.image_read_en);
    pre_memory_color.a &= 0xE0;
-   *curpixel_memcvg = (unsigned char)(pre_memory_color.a) >> 5;
+   *curpixel_memcvg = (uint8_t)(pre_memory_color.a) >> 5;
 }
 
 static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   u32 color;
-   uint32_t addr  = fb_address + 4*curpixel;
-
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 2;
-   color = RREADIDX32(addr);
+   uint32_t addr  = ((fb_address + 4 * curpixel) & 0x00FFFFFF) >> 2;
+   uint32_t color = RREADIDX32(addr);
 
    pre_memory_color.r = (color >> 24) & 0xFF;
    pre_memory_color.g = (color >> 16) & 0xFF;
@@ -336,7 +316,7 @@ static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
    pre_memory_color.a |= ~(-g_gdp.other_modes.image_read_en);
    pre_memory_color.a &= 0xE0;
 
-   *curpixel_memcvg = (unsigned char)(pre_memory_color.a) >> 5;
+   *curpixel_memcvg = (uint8_t)(pre_memory_color.a) >> 5;
 }
 
 void (*fbread2_func[4])(uint32_t, uint32_t*) = {
@@ -347,9 +327,7 @@ static void fbwrite_4(
       uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
       uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-   uint32_t addr  = fb_address + curpixel*1;
-
-   addr &= 0x00FFFFFF;
+   uint32_t addr  = ((fb_address + curpixel * 1) & 0x00FFFFFF);
 
    RWRITEADDR8(addr, 0x00);
 }
@@ -375,9 +353,7 @@ static void fbwrite_8(
       uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
       uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-   uint32_t addr  = fb_address + 1*curpixel;
-
-   addr &= 0x00FFFFFF;
+   uint32_t addr  = (fb_address + 1 * curpixel) & 0x00FFFFFF;
    PAIRWRITE8(addr, r, (r & 1) ? 3 : 0);
 }
 
@@ -386,10 +362,9 @@ static void fbwrite_16(
       uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
    u16 color;
-   int coverage;
    uint32_t addr;
+   int coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
 
-   coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
 #undef CVG_DRAW
 #ifdef CVG_DRAW
    const int covdraw = (curpixel_cvg - 1) << 5;
@@ -421,16 +396,9 @@ static void fbwrite_32(
       uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
       uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-   u32 color;
-   int coverage;
-   uint32_t addr  = fb_address + 4*curpixel;
-
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 2;
-
-   coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
-   color  = (r << 24) | (g << 16) | (b <<  8);
-   color |= (coverage << 5);
+   uint32_t addr  = ((fb_address + 4 * curpixel) & 0x00FFFFFF) >> 2;
+   int coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
+   uint32_t color  = ((r << 24) | (g << 16) | (b <<  8)) | (coverage << 5);
 
    g = -(signed)(g & 1) & 3;
    PAIRWRITE32(addr, color, g, 0);
@@ -448,35 +416,25 @@ static void fbfill_4(uint32_t curpixel)
 
 static void fbfill_8(uint32_t curpixel)
 {
-   unsigned char source;
-   uint32_t addr  = fb_address + 1*curpixel;
+   uint32_t addr  = (fb_address + 1 * curpixel) & 0x00FFFFFF;
+   uint8_t source = (g_gdp.fill_color.total >> 8*(~addr & 3)) & 0xFF;
 
-   addr &= 0x00FFFFFF;
-
-   source = (g_gdp.fill_color.total >> 8*(~addr & 3)) & 0xFF;
    PAIRWRITE8(addr, source, -(source & 1) & 3);
 }
 
 static void fbfill_16(uint32_t curpixel)
 {
-   unsigned short source;
-   uint32_t addr  = fb_address + 2*curpixel;
+   uint32_t addr  = ((fb_address + 2*curpixel) & 0x00FFFFFF) >> 1;
+   uint16_t source = g_gdp.fill_color.total >> 16 * (~addr & 1) & 0xFFFF;
 
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 1;
-
-   source = g_gdp.fill_color.total >> 16 * (~addr & 1) & 0xFFFF;
    PAIRWRITE16(addr, source, -(source & 1) & 3);
 }
 
 static void fbfill_32(uint32_t curpixel)
 {
-   const unsigned short fill_color_hi = (g_gdp.fill_color.total >> 16) & 0xFFFF;
-   const unsigned short fill_color_lo = (g_gdp.fill_color.total >>  0) & 0xFFFF;
-   uint32_t addr  = fb_address + 4*curpixel;
-
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 2;
+   const uint16_t fill_color_hi = (g_gdp.fill_color.total >> 16) & 0xFFFF;
+   const uint16_t fill_color_lo = (g_gdp.fill_color.total >>  0) & 0xFFFF;
+   uint32_t addr  = ((fb_address + 4*curpixel) & 0x00FFFFFF) >> 2;
    PAIRWRITE32(addr, g_gdp.fill_color.total,
          -(fill_color_hi & 0x0001) & 3, -(fill_color_lo & 0x0001) & 3);
 }
