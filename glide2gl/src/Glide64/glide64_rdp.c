@@ -1162,10 +1162,6 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
 {
    int tilenum = gdp_set_tile_size_wrap(w0, w1);
 
-   /* TODO - Glide64 sets these variables wrongly - unify this
-    * later so that it uses the same values as Angrylion */
-   tilenum = (w1 >> 24) & 0x07;
-
    rdp.last_tile_size = tilenum;
 
    /* TODO - should get rid of this eventually */
