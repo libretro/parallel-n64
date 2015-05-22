@@ -981,24 +981,23 @@ static NOINLINE void draw_texture_rectangle(
    else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
       span[(yllimit >> 2) + 1].validline = 0;
 
-   xleft = xm/* & ~0x00000001 // never needed because xm <<= 14 */;
-   xright = xh/* & ~0x00000001 // never needed because xh <<= 14 */;
-   xfrac = (xright >> 8) & 0xFF;
+   xleft    = xm/* & ~0x00000001 // never needed because xm <<= 14 */;
+   xright   = xh/* & ~0x00000001 // never needed because xh <<= 14 */;
+   xfrac    = (xright >> 8) & 0xFF;
 
-   allover = 1;
+   allover  = 1;
    allunder = 1;
-   curover = 0;
+   curover  = 0;
    curunder = 0;
    allinval = 1;
+
    for (k = ycur; k <= ylfar; k++)
    {
       int xrsc, xlsc, stickybit;
       const int spix = k & 3;
       const int yhclose = yhlimit & ~3;
 
-      if (k < yhclose)
-         { /* branch */ }
-      else
+      if (k >= yhclose)
       {
          invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
          j = k >> 2;
@@ -1043,9 +1042,8 @@ static NOINLINE void draw_texture_rectangle(
          invaly |= curcross;
          span[j].invalyscan[spix] = invaly;
          allinval &= invaly;
-         if (invaly != 0)
-            { /* branch */ }
-         else
+
+         if (invaly == 0)
          {
             xlsc = (xlsc >> 3) & 0xFFF;
             xrsc = (xrsc >> 3) & 0xFFF;
@@ -1072,6 +1070,7 @@ static NOINLINE void draw_texture_rectangle(
             span[j].validline = invalidline ^ 1;
          }
       }
+
       if (spix == 3)
       {
          stwz[0] = (stwz[0] + d_stwz_dy[0]) & ~0x000001FF;
