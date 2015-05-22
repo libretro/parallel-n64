@@ -47,7 +47,6 @@ float uc8_coord_mod[16];
 static void uc8_vertex(uint32_t w0, uint32_t w1)
 {
    uint32_t i;
-   float x, y, z;
    uint32_t addr = RSP_SegmentToPhysical(w1);
    int32_t n = (w0 >> 12) & 0xFF;
    int32_t v0 = ((w0 >> 1) & 0x7F) - n;
@@ -63,13 +62,14 @@ static void uc8_vertex(uint32_t w0, uint32_t w1)
    {
       VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i / iter)];
       int16_t *rdram    = (int16_t*)membase_ptr;
-      int8_t  *rdram_s8 = (int8_t* )membase_ptr;
       uint8_t *rdram_u8 = (uint8_t*)membase_ptr;
       uint8_t *color = (uint8_t*)(rdram_u8 + 12);
-      y                 = (float)rdram[0];
-      x                 = (float)rdram[1];
+
+      float x                 = (float)rdram[1];
+      float y                 = (float)rdram[0];
+      float z                 = (float)rdram[3];
+
       vert->flags       = (uint16_t)rdram[2];
-      z                 = (float)rdram[3];
       vert->ov          = (float)rdram[4];
       vert->ou          = (float)rdram[5];
       vert->uv_scaled   = 0;
@@ -198,8 +198,6 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
    uint8_t index = (uint8_t)((w0 >> 16) & 0xFF);
    uint16_t offset = (uint16_t)(w0 & 0xFFFF);
 
-   FRDP ("uc8:moveword ");
-
    switch (index)
    {
       // NOTE: right now it's assuming that it sets the integer part first.  This could
@@ -256,13 +254,6 @@ static void uc8_moveword(uint32_t w0, uint32_t w1)
             {
                uc8_coord_mod[8+idx] = (int16_t)(w1 >> 16);
                uc8_coord_mod[9+idx] = (int16_t)(w1 & 0xffff);
-#ifdef EXTREME_LOGGING
-               if (idx)
-               {
-                  for (k = 8; k < 16; k++)
-                     FRDP("coord_mod[%d]=%f\n", k, uc8_coord_mod[k]);
-               }
-#endif
             }
 
          }
@@ -315,37 +306,12 @@ static void uc8_movemem(uint32_t w0, uint32_t w1)
                rdp.light[n].nonzero = gfx_info.RDRAM[(addr+12)^3];
                rdp.light[n].ca = (float)rdp.light[n].nonzero / 16.0f;
                //rdp.light[n].la = rdp.light[n].ca * 1.0f;
-#ifdef EXTREME_LOGGING
-               FRDP ("light: n: %d, pos: x: %f, y: %f, z: %f, w: %f, ca: %f\n",
-                     n, rdp.light[n].x, rdp.light[n].y, rdp.light[n].z, rdp.light[n].w, rdp.light[n].ca);
-               FRDP ("light: n: %d, r: %f, g: %f, b: %f. dir: x: %.3f, y: %.3f, z: %.3f\n",
-                     n, rdp.light[n].r, rdp.light[n].g, rdp.light[n].b,
-                     rdp.light[n].dir_x, rdp.light[n].dir_y, rdp.light[n].dir_z);
-               for (t = 0; t < 24; t++)
-                  FRDP ("light[%d] = 0x%04lx \n", t, ((uint16_t*)gfx_info.RDRAM)[(a+t)^1]);
-#endif
             }
          }
          break;
 
       case F3DCBFD_MV_NORMAL: //Normals
-         {
-            uc8_normale_addr = RSP_SegmentToPhysical(w1);
-            FRDP ("Normals - addr: %08lx\n", uc8_normale_addr);
-#ifdef EXTREME_LOGGING
-            for (i = 0; i < 32; i++)
-            {
-               int8_t x = ((int8_t*)gfx_info.RDRAM)[uc8_normale_addr + ((i<<1) + 0)^3];
-               int8_t y = ((int8_t*)gfx_info.RDRAM)[uc8_normale_addr + ((i<<1) + 1)^3];
-               FRDP("#%d x = %d, y = %d\n", i, x, y);
-            }
-            uint32_t a = uc8_normale_addr >> 1;
-            for (i = 0; i < 32; i++)
-            {
-               FRDP ("n[%d] = 0x%04lx \n", i, ((uint16_t*)gfx_info.RDRAM)[(a+i)^1]);
-            }
-#endif
-         }
+         uc8_normale_addr = RSP_SegmentToPhysical(w1);
          break;
    }
 }

@@ -65,32 +65,27 @@ typedef struct
 static void uc7_vertex(uint32_t w0, uint32_t w1)
 {
    unsigned int i;
-   float x, y, z;
    uint32_t v0 = (w0 & 0x0F0000) >> 16;
    uint32_t n = ((w0 & 0xF00000) >> 20) + 1;
    uint32_t addr = RSP_SegmentToPhysical(w1);
    vtx_uc7 *vertex = (vtx_uc7*)&gfx_info.RDRAM[addr];
-   void   *membase_ptr  = (void*)(gfx_info.RDRAM + addr);
    uint32_t iter = 1;
 
    pre_update();
 
    for (i = 0; i < (n * iter); i += iter)
    {
-      VERTEX *vert = (VERTEX*)&rdp.vtx[v0 + (i / iter)];
-      int16_t *rdram    = (int16_t*)membase_ptr;
-      int8_t  *rdram_s8 = (int8_t* )membase_ptr;
-      uint8_t *rdram_u8 = (uint8_t*)membase_ptr;
-      uint8_t *color = (uint8_t*)&gfx_info.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
+      VERTEX *vert    = (VERTEX*)&rdp.vtx[v0 + (i / iter)];
+      uint8_t *color  = (uint8_t*)&gfx_info.RDRAM[pd_col_addr + (vertex->idx & 0xff)];
+      float x         = (float)vertex->x;
+      float y         = (float)vertex->y;
+      float z         = (float)vertex->z;
 
-      x   = (float)vertex->x;
-      y   = (float)vertex->y;
-      z   = (float)vertex->z;
-      vert->flags  = 0;
-      vert->ou   = (float)vertex->s;
-      vert->ov   = (float)vertex->t;
+      vert->flags     = 0;
+      vert->ou        = (float)vertex->s;
+      vert->ov        = (float)vertex->t;
       vert->uv_scaled = 0;
-      vert->a = color[0];
+      vert->a         = color[0];
 
       vert->x = x*rdp.combined[0][0] + y*rdp.combined[1][0] + z*rdp.combined[2][0] + rdp.combined[3][0];
       vert->y = x*rdp.combined[0][1] + y*rdp.combined[1][1] + z*rdp.combined[2][1] + rdp.combined[3][1];
@@ -145,6 +140,5 @@ static void uc7_vertex(uint32_t w0, uint32_t w1)
          vert->b = color[1];
       }
       vertex++;
-      membase_ptr = (char*)membase_ptr + iter;
    }
 }

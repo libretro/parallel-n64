@@ -433,8 +433,6 @@ static void uc2_moveword(uint32_t w0, uint32_t w1)
 
 static void uc2_movemem(uint32_t w0, uint32_t w1)
 {
-   int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
-
    switch (_SHIFTR(w0, 0, 8))
    {
       case 0:

@@ -169,9 +169,6 @@ static void uc0_matrix(uint32_t w0, uint32_t w1)
 static void uc0_movemem(uint32_t w0, uint32_t w1)
 {
    uint32_t index     = (w0 >> 16) & 0xFF;
-   int16_t *rdram     = (int16_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
-   int8_t  *rdram_s8  = (int8_t*) (gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
-   uint8_t *rdram_u8  = (uint8_t*)(gfx_info.RDRAM  + RSP_SegmentToPhysical(w1));
 
    // Check the command
    switch (_SHIFTR( w0, 16, 8))
@@ -373,6 +370,7 @@ static void uc0_moveword(uint32_t w0, uint32_t w1)
 static void uc0_texture(uint32_t w0, uint32_t w1)
 {
    int tile = (w0 >> 8) & 0x07;
+
    if (tile == 7 && (settings.hacks&hack_Supercross))
       tile = 0; //fix for supercross 2000
    rdp.mipmap_level = (w0 >> 11) & 0x07;
