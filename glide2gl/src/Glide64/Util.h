@@ -55,8 +55,6 @@ void update_scissor(bool set_scissor);
 
 float ScaleZ(float z);
 
-#define ALOWORD(x)   (*((uint16_t*)&x))   // low word
-
 // rotate left
 #define __ROL__(value, count, nbits) ((value << (count % (nbits))) | (value >> ((nbits) - (count % (nbits)))))
 

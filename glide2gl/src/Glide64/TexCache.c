@@ -39,6 +39,7 @@
 
 #include "Gfx_1.3.h"
 #include "TexCache.h"
+#include "TexLoad.h"
 #include "Combine.h"
 #include "Util.h"
 #include "GBI.h"
@@ -53,7 +54,6 @@ uint8_t tex2[2048*2048*4];
 uint8_t *texture;
 uint8_t *texture_buffer = tex1;
 
-#include "TexLoad.h"	// texture loading functions, ONLY INCLUDE IN THIS FILE!!!
 #include "MiClWr32b.h"
 #include "MiClWr16b.h"	// Mirror/Clamp/Wrap functions, ONLY INCLUDE IN THIS FILE!!!
 #include "MiClWr8b.h"	// Mirror/Clamp/Wrap functions, ONLY INCLUDE IN THIS FILE!!!

@@ -294,7 +294,8 @@ SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_rdp.c \
             $(VIDEODIR_GLIDE)/Glide64/Combine.c \
             $(VIDEODIR_GLIDE)/Glide64/DepthBufferRender.c \
-            $(VIDEODIR_GLIDE)/Glide64/TexCache.c
+            $(VIDEODIR_GLIDE)/Glide64/TexCache.c \
+            $(VIDEODIR_GLIDE)/Glide64/TexLoad.c
 
 # Glitch64
 SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \
