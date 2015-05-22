@@ -191,18 +191,30 @@ static void Create1LineEquation(LineEquationType *l, VERTEX *v1, VERTEX *v2, VER
    }
 }
 
-static INLINE void InterpolateColors(VERTEX *res, float percent, VERTEX *first, VERTEX *second)
+static INLINE void InterpolateColors(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
 {
-   res->r = (uint8_t)(first->r + percent * (second->r - first->r));
-   res->g = (uint8_t)(first->g + percent * (second->g - first->g));
-   res->b = (uint8_t)(first->b + percent * (second->b - first->b));
-   res->a = (uint8_t)(first->a + percent * (second->a - first->a));
-   res->f = ( float )(first->f + percent * (second->f - first->f));
+   float w = 1.0f;
+   float ba = va->b;
+   float bb = vb->b;
+   float ga = va->g;
+   float gb = vb->g;
+   float ra = va->r;
+   float rb = vb->r;
+   float aa = va->a;
+   float ab = vb->a;
+   float fa = va->f;
+   float fb = vb->f;
+
+   res->r = (uint8_t)((ra + (rb - ra) * percent) * w);
+   res->g = (uint8_t)((ga + (gb - ga) * percent) * w);
+   res->b = (uint8_t)((ba + (bb - ba) * percent) * w);
+   res->a = (uint8_t)((aa + (ab - aa) * percent) * w);
+   res->f = (fa + (fb - fa) * percent) * w;
 }
 
-static void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
+static INLINE void InterpolateColors2(VERTEX *va, VERTEX *vb, VERTEX *res, float percent)
 {
-   float w = 1.0f/(va->oow + (vb->oow-va->oow) * percent);
+   float w = 1.0f / (va->oow + (vb->oow-va->oow) * percent);
    float ba = va->b * va->oow;
    float bb = vb->b * vb->oow;
    float ga = va->g * va->oow;
@@ -370,7 +382,7 @@ static void DepthBuffer(VERTEX * vtx, int n)
 
 #define clip_tri_interp_colors(first, second, index, percent, val, interpolate_colors) \
    if (interpolate_colors) \
-      InterpolateColors(&rdp.vtxbuf[index++], percent, first, second); \
+      InterpolateColors(first, second, &rdp.vtxbuf[index++], percent); \
    else \
       rdp.vtxbuf[index++].number = first->number | second->number | val
 
@@ -736,7 +748,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u[1] = rdp.vtxbuf2[i].u[1] + (rdp.vtxbuf2[j].u[1] - rdp.vtxbuf2[i].u[1]) * percent;
                rdp.vtxbuf[index].v[1] = rdp.vtxbuf2[i].v[1] + (rdp.vtxbuf2[j].v[1] - rdp.vtxbuf2[i].v[1]) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf[index++], percent, &rdp.vtxbuf2[i], &rdp.vtxbuf2[j]);
+                  InterpolateColors(&rdp.vtxbuf2[i], &rdp.vtxbuf2[j], &rdp.vtxbuf[index++], percent);
                else
                   rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number;
             }
@@ -756,7 +768,7 @@ static void clip_tri(int interpolate_colors)
                rdp.vtxbuf[index].u[1] = rdp.vtxbuf2[j].u[1] + (rdp.vtxbuf2[i].u[1] - rdp.vtxbuf2[j].u[1]) * percent;
                rdp.vtxbuf[index].v[1] = rdp.vtxbuf2[j].v[1] + (rdp.vtxbuf2[i].v[1] - rdp.vtxbuf2[j].v[1]) * percent;
                if (interpolate_colors)
-                  InterpolateColors(&rdp.vtxbuf[index++], percent, &rdp.vtxbuf2[j], &rdp.vtxbuf2[i]);
+                  InterpolateColors(&rdp.vtxbuf2[j], &rdp.vtxbuf2[i], &rdp.vtxbuf[index++], percent);
                else
                   rdp.vtxbuf[index++].number = rdp.vtxbuf2[i].number | rdp.vtxbuf2[j].number;
 
