@@ -1138,7 +1138,6 @@ static void set_other_modes(uint32_t w0, uint32_t w1)
 static void set_tile_size(uint32_t w0, uint32_t w1)
 {
    int32_t tilenum = gdp_set_tile_size(w0, w1);
-   calculate_clamp_diffs(tilenum);
 }
 
 #define ADJUST_ATTR_LOAD() {           \
@@ -1277,7 +1276,6 @@ static void load_block(uint32_t w0, uint32_t w1)
    const int dxt     = (w1 & 0x00000FFF) >> ( 0- 0);
    const int tlclamped = tl & 0x3FF;
    int32_t tilenum     = gdp_set_tile_size(w0, w1);
-   calculate_clamp_diffs(tilenum);
 
    lewdata[0] =
       (command << 24)
@@ -1308,7 +1306,7 @@ static void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2)
    g_gdp.tile[tilenum].sh = sh = ((w2 >> 12) & 0xfff);
    g_gdp.tile[tilenum].th = th = ((w2 >>  0) & 0xfff);
 
-   calculate_clamp_diffs(tilenum);
+   calculate_clamp_diffs(&g_gdp, tilenum);
 
    lewdata[0] = (w1 & 0xff000000) | (0x10 << 19) | (tilenum << 16) | (th | 3);
    lewdata[1] = ((th | 3) << 16) | (tl);

@@ -285,6 +285,11 @@ struct gdp_global
    uint8_t tmem[0x1000];
 };
 
+static INLINE void calculate_clamp_diffs(struct gdp_global *g_gdp, uint32_t i)
+{
+   g_gdp->tile[i].f.clampdiffs = ((g_gdp->tile[i].sh >> 2) - (g_gdp->tile[i].sl >> 2)) & 0x3ff;
+   g_gdp->tile[i].f.clampdifft = ((g_gdp->tile[i].th >> 2) - (g_gdp->tile[i].tl >> 2)) & 0x3ff;
+}
 
 void gdp_set_prim_color(uint32_t w0, uint32_t w1);
 

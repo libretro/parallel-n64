@@ -5594,7 +5594,7 @@ void rdp_init(void)
     for (i = 0; i < 8; i++)
     {
         calculate_tile_derivs(i);
-        calculate_clamp_diffs(i);
+        calculate_clamp_diffs(&g_gdp, i);
     }
 
     memset(&g_gdp.combined_color, 0, sizeof(gdp_color));

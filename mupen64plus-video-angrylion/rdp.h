@@ -257,12 +257,6 @@ extern void (*render_spans_1cycle_func[3])(int, int, int, int);
 extern void (*render_spans_2cycle_func[4])(int, int, int, int);
 extern void (*get_dither_noise_func[3])(int, int, int*, int*);
 
-static INLINE void calculate_clamp_diffs(uint32_t i)
-{
-   g_gdp.tile[i].f.clampdiffs = ((g_gdp.tile[i].sh >> 2) - (g_gdp.tile[i].sl >> 2)) & 0x3ff;
-   g_gdp.tile[i].f.clampdifft = ((g_gdp.tile[i].th >> 2) - (g_gdp.tile[i].tl >> 2)) & 0x3ff;
-}
-
 static INLINE void calculate_tile_derivs(uint32_t i)
 {
    g_gdp.tile[i].f.clampens     = g_gdp.tile[i].cs || !g_gdp.tile[i].mask_s;
