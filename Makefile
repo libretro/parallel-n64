@@ -333,9 +333,11 @@ else
 endif
 
 ifeq ($(platform), qnx)
-   CFLAGS += -Wp,-MMD
+   CFLAGS   += -Wp,-MMD
+   CXXFLAGS += -Wp,-MMD
 else
-   CFLAGS += -MMD
+   CFLAGS   += -MMD
+   CXXFLAGS += -MMD
 endif
 
 
@@ -375,7 +377,7 @@ $(TARGET): $(OBJECTS)
 
 
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d)
 
 .PHONY: clean
 -include $(OBJECTS:.o=.d)

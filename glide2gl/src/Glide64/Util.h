@@ -55,13 +55,28 @@ void update_scissor(bool set_scissor);
 
 float ScaleZ(float z);
 
-#define ALOWORD(x)   (*((uint16_t*)&x))   // low word
-
-#define __ROR32(value, count, nbits) ((value >> (count % (nbits))) | (value << ((nbits) - (count % (nbits)))))
-
-#define __ROR16(value, count, nbits) (((value >> (count % nbits)) | (value << (nbits - (count % nbits)))))
-
 // rotate left
 #define __ROL__(value, count, nbits) ((value << (count % (nbits))) | (value >> ((nbits) - (count % (nbits)))))
+
+
+static INLINE uint32_t rol32(uint32_t value, uint32_t amount)
+{
+    return (value << amount) | (value >> (-(int32_t)amount & 31));
+}
+
+static INLINE uint32_t ror32(uint32_t value, uint32_t amount)
+{
+    return (value << (-(int32_t)amount & 31)) | (value >> amount);
+}
+
+static INLINE uint16_t rol16(uint16_t value, uint16_t amount)
+{
+    return (value << amount) | (value >> (-(int16_t)amount & 15));
+}
+
+static INLINE uint16_t ror16(uint16_t value, uint16_t amount)
+{
+    return (value << (-(int16_t)amount & 15)) | (value >> amount);
+}
 
 #endif  // ifndef Util_H
