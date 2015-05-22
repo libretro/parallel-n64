@@ -1270,7 +1270,7 @@ static void load_block(uint32_t w0, uint32_t w1)
    const int sh      = (w1 & 0x00FFF000) >> (12- 0);
    const int dxt     = (w1 & 0x00000FFF) >> ( 0- 0);
    const int tlclamped = tl & 0x3FF;
-   int32_t tilenum     = gdp_set_tile_size(w0, w1);
+   int32_t tilenum     = gdp_set_tile_size_wrap(w0, w1);
 
    lewdata[0] =
       (command << 24)

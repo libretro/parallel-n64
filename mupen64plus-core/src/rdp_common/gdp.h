@@ -311,7 +311,9 @@ void gdp_set_key_gb(uint32_t w0, uint32_t w1);
 
 int32_t gdp_set_tile(uint32_t w0, uint32_t w1);
 
-int32_t gdp_set_tile_size(uint32_t w0, uint32_t w1);
+int32_t gdp_set_tile_size_wrap(uint32_t w0, uint32_t w1);
+
+void gdp_set_tile_size(uint32_t w0, uint32_t w1);
 
 void gdp_set_combine(uint32_t w0, uint32_t w1);
 

@@ -186,7 +186,7 @@ int32_t gdp_set_tile(uint32_t w0, uint32_t w1)
    return tilenum;
 }
 
-int32_t gdp_set_tile_size(uint32_t w0, uint32_t w1)
+int32_t gdp_set_tile_size_wrap(uint32_t w0, uint32_t w1)
 {
    int32_t tilenum = (w1 & 0x07000000) >> (24 -  0);
 
@@ -204,6 +204,11 @@ int32_t gdp_set_tile_size(uint32_t w0, uint32_t w1)
    g_gdp.flags |= UPDATE_TEXTURE;
 
    return tilenum;
+}
+
+void gdp_set_tile_size(uint32_t w0, uint32_t w1)
+{
+   gdp_set_tile_size_wrap(w0, w1);
 }
 
 /* The Color Combiner implements the 
