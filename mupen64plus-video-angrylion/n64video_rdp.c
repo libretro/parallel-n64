@@ -691,9 +691,9 @@ no_read_zbuffer_coefficients:
    xlr[1] = xh & ~0x00000001;
    xfrac = (xlr[1] >> 8) & 0xFF;
 
-   edges.allover = 1;
+   edges.allover  = 1;
    edges.allunder = 1;
-   edges.curover = 0;
+   edges.curover  = 0;
    edges.curunder = 0;
    edges.allinval = 1;
 
@@ -913,13 +913,12 @@ static NOINLINE void draw_texture_rectangle(
 
    int maxxmx, minxhx;
    int curcross;
-   int allover, allunder, curover, curunder;
-   int allinval;
    int ycur, ylfar;
    int invaly;
    register int j, k;
-   const i32 clipxlshift = __clip.xl << 1;
-   const i32 clipxhshift = __clip.xh << 1;
+   edgewalker_info_t edges = {0};
+   edges.clipxlshift = __clip.xl << 1;
+   edges.clipxhshift = __clip.xh << 1;
 
    max_level = 0;
    maxxmx = 0;
@@ -985,63 +984,63 @@ static NOINLINE void draw_texture_rectangle(
    xright   = xh/* & ~0x00000001 // never needed because xh <<= 14 */;
    xfrac    = (xright >> 8) & 0xFF;
 
-   allover  = 1;
-   allunder = 1;
-   curover  = 0;
-   curunder = 0;
-   allinval = 1;
+   edges.allover  = 1;
+   edges.allunder = 1;
+   edges.curover  = 0;
+   edges.curunder = 0;
+   edges.allinval = 1;
 
    for (k = ycur; k <= ylfar; k++)
    {
-      int xrsc, xlsc, stickybit;
-      const int spix = k & 3;
+      int xrsc, xlsc;
+      edges.spix = k & 3;
       const int yhclose = yhlimit & ~3;
 
       if (k >= yhclose)
       {
          invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
          j = k >> 2;
-         if (spix == 0)
+         if (edges.spix == 0)
          {
             maxxmx = 0x000;
             minxhx = 0xFFF;
-            allover = allunder = 1;
-            allinval = 1;
+            edges.allover = edges.allunder = 1;
+            edges.allinval = 1;
          }
 
-         stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-         xrsc = (xright >> 13)&0x1FFE | stickybit;
-         curunder = !!(xright & 0x08000000);
-         curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
-         xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
-         curover  = !!(xrsc & 0x00002000);
+         edges.stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
+         edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (edges.stickybit >= 0) */
+         xrsc = (xright >> 13)&0x1FFE | edges.stickybit;
+         edges.curunder = !!(xright & 0x08000000);
+         edges.curunder = edges.curunder | (u32)(xrsc - edges.clipxhshift)>>31;
+         xrsc = edges.curunder ? edges.clipxhshift : (xright>>13)&0x3FFE | edges.stickybit;
+         edges.curover  = !!(xrsc & 0x00002000);
          xrsc = xrsc & 0x1FFF;
-         curover |= (u32)~(xrsc - clipxlshift) >> 31;
-         xrsc = curover ? clipxlshift : xrsc;
-         span[j].majorx[spix] = xrsc & 0x1FFF;
-         allover &= curover;
-         allunder &= curunder;
+         edges.curover |= (u32)~(xrsc - edges.clipxlshift) >> 31;
+         xrsc = edges.curover ? edges.clipxlshift : xrsc;
+         span[j].majorx[edges.spix] = xrsc & 0x1FFF;
+         edges.allover &= edges.curover;
+         edges.allunder &= edges.curunder;
 
-         stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
-         xlsc = (xleft >> 13)&0x1FFE | stickybit;
-         curunder = !!(xleft & 0x08000000);
-         curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
-         xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
-         curover  = !!(xlsc & 0x00002000);
+         edges.stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+         edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (edges.stickybit >= 0) */
+         xlsc = (xleft >> 13)&0x1FFE | edges.stickybit;
+         edges.curunder = !!(xleft & 0x08000000);
+         edges.curunder = edges.curunder | (u32)(xlsc - edges.clipxhshift)>>31;
+         xlsc = edges.curunder ? edges.clipxhshift : (xleft>>13)&0x3FFE | edges.stickybit;
+         edges.curover  = !!(xlsc & 0x00002000);
          xlsc &= 0x1FFF;
-         curover |= (u32)~(xlsc - clipxlshift) >> 31;
-         xlsc = curover ? clipxlshift : xlsc;
-         span[j].minorx[spix] = xlsc & 0x1FFF;
-         allover &= curover;
-         allunder &= curunder;
+         edges.curover |= (u32)~(xlsc - edges.clipxlshift) >> 31;
+         xlsc = edges.curover ? edges.clipxlshift : xlsc;
+         span[j].minorx[edges.spix] = xlsc & 0x1FFF;
+         edges.allover &= edges.curover;
+         edges.allunder &= edges.curunder;
 
          curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
                   < (xright&0x0FFFC000 ^ 0x08000000));
          invaly |= curcross;
-         span[j].invalyscan[spix] = invaly;
-         allinval &= invaly;
+         span[j].invalyscan[edges.spix] = invaly;
+         edges.allinval &= invaly;
 
          if (invaly == 0)
          {
@@ -1051,7 +1050,7 @@ static NOINLINE void draw_texture_rectangle(
             minxhx = (xrsc < minxhx) ? xrsc : minxhx;
          }
 
-         if (spix == 0)
+         if (edges.spix == 0)
          {
             span[j].unscrx = xright >> 16;
          /* xfrac = (xright >> 8) & 0xFF; // xfrac never changes. */
@@ -1061,17 +1060,17 @@ static NOINLINE void draw_texture_rectangle(
             span[j].stwz[2] = 0 & ~0x000003FF;
             span[j].stwz[3] = 0 & ~0x000003FF;
          }
-         if (spix == 3)
+         if (edges.spix == 3)
          {
             const int invalidline = (sckeepodd ^ j) & scfield
-                                  | (allinval | allover | allunder);
+                                  | (edges.allinval | edges.allover | edges.allunder);
             span[j].lx = maxxmx;
             span[j].rx = minxhx;
             span[j].validline = invalidline ^ 1;
          }
       }
 
-      if (spix == 3)
+      if (edges.spix == 3)
       {
          stwz[0] = (stwz[0] + d_stwz_dy[0]) & ~0x000001FF;
          stwz[1] = (stwz[1] + d_stwz_dy[1]) & ~0x000001FF;
