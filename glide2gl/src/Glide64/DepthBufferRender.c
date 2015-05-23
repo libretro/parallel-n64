@@ -100,28 +100,24 @@ static int left_z, left_dzdy;
 
 static INLINE int idiv16(int x, int y)
 {
-   int64_t result;
    const int64_t m = (int64_t)(x);
    const int64_t n = (int64_t)(y);
+   int64_t result = (m << 16) / n;
 
-   result = (m << 16) / n;
    return (int)(result);
 }
 
 static INLINE int iceil(int x)
 {
-   x += 0xffff;
-   return (x >> 16);
+   return ((x + 0xffff)  >> 16);
 }
 
 static void RightSection(void)
 {
    int prestep;
    // Walk backwards trough the vertex array
-   struct vertexi *v2, *v1;
-
-   v1 = (struct vertexi*)right_vtx;
-   v2 = end_vtx;         // Wrap to end of array
+   struct vertexi *v1 = (struct vertexi*)right_vtx;
+   struct vertexi *v2 = end_vtx;         // Wrap to end of array
 
    if(right_vtx > start_vtx)
       v2 = right_vtx-1;     
@@ -167,10 +163,8 @@ static void LeftSection(void)
 {
    int prestep;
    // Walk forward through the vertex array
-   struct vertexi *v2, *v1;
-
-   v1 = (struct vertexi*)left_vtx;
-   v2 = start_vtx;      // Wrap to start of array
+   struct vertexi *v1 = (struct vertexi*)left_vtx;
+   struct vertexi *v2 = start_vtx;      // Wrap to start of array
 
    if(left_vtx < end_vtx)
       v2 = left_vtx+1;
