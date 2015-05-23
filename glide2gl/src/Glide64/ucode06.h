@@ -234,7 +234,7 @@ static void DrawImage (DRAWIMAGE *d)
       uint16_t width = (uint16_t)(*gfx_info.VI_WIDTH_REG & 0xFFF);
       d->frameH = d->imageH = (d->frameW * d->frameH)/width;
       d->frameW = d->imageW = width;
-      if (g_gdp.zb_address == rdp.cimg)
+      if (g_gdp.zb_address == g_gdp.fb_address)
       {
          DrawDepthImage(d);
          g_gdp.flags |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE |
@@ -552,7 +552,7 @@ static void uc6_bg (bool bg_1cyc)
 
    if (settings.ucode == ucode_F3DEX2/* || (settings.hacks&hack_PPL)*/)
    {
-      if ( (d.imagePtr != rdp.cimg) && (d.imagePtr != rdp.ocimg) && d.imagePtr) //can't draw from framebuffer
+      if ( (d.imagePtr != g_gdp.fb_address) && (d.imagePtr != rdp.ocimg) && d.imagePtr) //can't draw from framebuffer
          DrawImage(&d);
 #if 0
       else
@@ -1052,8 +1052,8 @@ static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t
    if (lr_y > ci_height)
       height = ci_height - ul_y;
 
-   mb = (uint32_t*)(gfx_info.RDRAM+g_gdp.ti_address); //pointer to the first macro block
-   dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
+   mb = (uint32_t*)(gfx_info.RDRAM  + g_gdp.ti_address); //pointer to the first macro block
+   dst = (uint16_t*)(gfx_info.RDRAM + g_gdp.fb_address);
    dst += ul_x + ul_y * ci_width;
    //yuv macro block contains 16x16 texture. we need to put it in the proper place inside cimg
    for (h = 0; h < 16; h++)

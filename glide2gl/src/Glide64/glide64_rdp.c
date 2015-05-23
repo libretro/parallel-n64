@@ -303,7 +303,7 @@ static uint32_t d_ul_x, d_ul_y, d_lr_x, d_lr_y;
 static void DrawPartFrameBufferToScreen(void)
 {
    FB_TO_SCREEN_INFO fb_info;
-   fb_info.addr   = rdp.cimg;
+   fb_info.addr   = g_gdp.fb_address;
    fb_info.size   = g_gdp.fb_size;
    fb_info.width  = g_gdp.fb_width;
    fb_info.height = rdp.ci_height;
@@ -314,7 +314,7 @@ static void DrawPartFrameBufferToScreen(void)
    fb_info.opaque = 0;
 
    DrawFrameBufferToScreen(&fb_info);
-   memset(gfx_info.RDRAM+rdp.cimg, 0, (g_gdp.fb_width * rdp.ci_height) << g_gdp.fb_size >> 1);
+   memset(gfx_info.RDRAM + g_gdp.fb_address, 0, (g_gdp.fb_width * rdp.ci_height) << g_gdp.fb_size >> 1);
 }
 
 #define RGBA16TO32(color) \
@@ -353,8 +353,8 @@ static void CopyFrameBuffer(int32_t buffer)
       {
          uint16_t c;
          uint32_t y, x;
-         uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
-         uint32_t *ptr_dst32 = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
+         uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM   + g_gdp.fb_address);
+         uint32_t *ptr_dst32 = (uint32_t*)(gfx_info.RDRAM + g_gdp.fb_address);
 
          for (y = 0; y < height; y++)
          {
@@ -391,8 +391,8 @@ static void CopyFrameBuffer(int32_t buffer)
          int y, x, x_start, y_start, x_end, y_end, read_alpha;
          uint16_t c;
          uint16_t *ptr_src = (uint16_t*)info.lfbPtr;
-         uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
-         uint32_t *ptr_dst32 = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
+         uint16_t *ptr_dst = (uint16_t*)(gfx_info.RDRAM   + g_gdp.fb_address);
+         uint32_t *ptr_dst32 = (uint32_t*)(gfx_info.RDRAM + g_gdp.fb_address);
          uint32_t stride = info.strideInBytes>>1;
 
          read_alpha = settings.frame_buffer & fb_read_alpha;
@@ -623,7 +623,7 @@ static void ys_memrect(uint32_t w0, uint32_t w1)
   width     = lr_x - ul_x;
   tex_width = g_gdp.tile[tile].line << 3;
   texaddr   = (uint8_t*)(gfx_info.RDRAM + rdp.addr[g_gdp.tile[tile].tmem] + tex_width*off_y + off_x);
-  fbaddr    = (uint8_t*)(gfx_info.RDRAM + rdp.cimg + ul_x);
+  fbaddr    = (uint8_t*)(gfx_info.RDRAM + g_gdp.fb_address + ul_x);
 
   for (y = ul_y; y < lr_y; y++)
   {
@@ -645,7 +645,7 @@ static void pm_palette_mod(void)
    uint16_t prmg = (uint8_t)(g_gdp.prim_color.g * 0.0039215689f * 31.0f);
    uint16_t prmb = (uint8_t)(g_gdp.prim_color.b * 0.0039215689f * 31.0f);
    uint16_t prim16 = (uint16_t)((prmr << 11)|(prmg << 6)|(prmb << 1)|1);
-   uint16_t *dst = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
+   uint16_t *dst = (uint16_t*)(gfx_info.RDRAM + g_gdp.fb_address);
 
    for (i = 0; i < 16; i++)
       dst[i^1] = (rdp.pal_8[i]&1) ? prim16 : env16;
@@ -659,7 +659,7 @@ static void pd_zcopy(uint32_t w0, uint32_t w1)
    uint16_t      ul_x = (uint16_t)((w1 & 0x00FFF000) >> 14);
    uint16_t      lr_x = (uint16_t)((w0 & 0x00FFF000) >> 14) + 1;
    uint16_t      ul_u = (uint16_t)((rdp.cmd2 & 0xFFFF0000) >> 21) + 1;
-   uint16_t *ptr_dst  = (uint16_t*)(gfx_info.RDRAM+rdp.cimg);
+   uint16_t *ptr_dst  = (uint16_t*)(gfx_info.RDRAM + g_gdp.fb_address);
    uint16_t     width = lr_x - ul_x;
    uint16_t * ptr_src = ((uint16_t*)g_gdp.tmem)+ul_u;
 
@@ -749,7 +749,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   if (rdp.skip_drawing || (!fb_emulation_enabled && (rdp.cimg == g_gdp.zb_address)))
+   if (rdp.skip_drawing || (!fb_emulation_enabled && (g_gdp.fb_address == g_gdp.zb_address)))
    {
       if ((settings.hacks&hack_PMario) && rdp.ci_status == CI_USELESS)
          pm_palette_mod ();
@@ -821,9 +821,9 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    /*Gonetz*/
    //hack for Zelda MM. it removes black texrects which cover all geometry in "Link meets Zelda" cut scene
-   if ((settings.hacks&hack_Zelda) && g_gdp.ti_address >= rdp.cimg && g_gdp.ti_address < rdp.ci_end)
+   if ((settings.hacks&hack_Zelda) && g_gdp.ti_address >= g_gdp.fb_address && g_gdp.ti_address < rdp.ci_end)
    {
-      FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.cur_cache[0]->addr, rdp.cimg, rdp.cimg + g_gdp.fb_width * rdp.ci_height*2);
+      FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.cur_cache[0]->addr, g_gdp.fb_address, g_gdp.fb_address + g_gdp.fb_width * rdp.ci_height*2);
       return;
    }
 
@@ -1409,7 +1409,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    }
 
    pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3) && (g_gdp.fill_color.total == 0xFFFCFFFC);
-   if ((rdp.cimg == g_gdp.zb_address) || (fb_emulation_enabled && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) || pd_multiplayer)
+   if ((g_gdp.fb_address == g_gdp.zb_address) || (fb_emulation_enabled && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) || pd_multiplayer)
    {
       //LRDP("Fillrect - cleared the depth buffer\n");
       //if (fullscreen)
@@ -1433,7 +1433,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
             zi_width_in_dwords = g_gdp.fb_width >> 1;
             ul_x >>= 1;
             lr_x >>= 1;
-            dst = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
+            dst = (uint32_t*)(gfx_info.RDRAM + g_gdp.fb_address);
             dst += ul_y * zi_width_in_dwords;
             for (y = ul_y; y < lr_y; y++)
             {
@@ -1621,7 +1621,7 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 
    rdp.s2dex_tex_loaded = true;
 
-   if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF && (g_gdp.ti_address >= rdp.cimg) && (g_gdp.ti_address < rdp.ci_end))
+   if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF && (g_gdp.ti_address >= g_gdp.fb_address) && (g_gdp.ti_address < rdp.ci_end))
    {
       if (!rdp.fb_drawn)
       {
@@ -1708,7 +1708,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
                         CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
                         rdp.fb_drawn = true;
                      }
-                     memcpy(gfx_info.RDRAM+cur_fb->addr,gfx_info.RDRAM+rdp.cimg, (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
+                     memcpy(gfx_info.RDRAM+cur_fb->addr,gfx_info.RDRAM + g_gdp.fb_address, (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
                   }
                }
             }
@@ -1827,8 +1827,8 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
       rdp.ci_count++;
    }
 
-   rdp.ocimg    = rdp.cimg;
-   rdp.cimg     = RSP_SegmentToPhysical(w1);
+   rdp.ocimg    = g_gdp.fb_address;
+
 
    if (fb_emulation_enabled && rdp.ci_count > 0)
       rdp.ci_height = rdp.frame_buffers[rdp.ci_count-1].height;
@@ -1836,13 +1836,13 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
       rdp.ci_height = 32;
    else
       rdp.ci_height = g_gdp.__clip.yl;
-   if (g_gdp.zb_address == rdp.cimg)
+   if (g_gdp.zb_address == g_gdp.fb_address)
    {
       rdp.zi_width = g_gdp.fb_width;
       // int zi_height = min((int)rdp.zi_width*3/4, (int)rdp.vi_height);
       // rdp.zi_words = rdp.zi_width * zi_height;
    }
-   rdp.ci_end = rdp.cimg + ((g_gdp.fb_width * rdp.ci_height) << (g_gdp.fb_size-1));
+   rdp.ci_end = g_gdp.fb_address + ((g_gdp.fb_width * rdp.ci_height) << (g_gdp.fb_size-1));
 
    if (g_gdp.fb_format != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
    {
@@ -1862,19 +1862,19 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
    {
       int viSwapOK;
 
-      if (g_gdp.zb_address == rdp.cimg)
+      if (g_gdp.zb_address == g_gdp.fb_address)
          rdp.updatescreen = 1;
 
       viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *gfx_info.VI_ORIGIN_REG)) ? false : true;
-      if ((g_gdp.zb_address != rdp.cimg) && (rdp.ocimg != rdp.cimg) && SwapOK && viSwapOK
+      if ((g_gdp.zb_address != g_gdp.fb_address) && (rdp.ocimg != g_gdp.fb_address) && SwapOK && viSwapOK
             )
       {
          if (fb_emulation_enabled)
             rdp.maincimg[0] = rdp.frame_buffers[rdp.main_ci_index];
          else
-            rdp.maincimg[0].addr = rdp.cimg;
+            rdp.maincimg[0].addr = g_gdp.fb_address;
          rdp.last_drawn_ci_addr = (settings.swapmode == 2) ? swapped_addr : rdp.maincimg[0].addr;
-         swapped_addr = rdp.cimg;
+         swapped_addr = g_gdp.fb_address;
          newSwapBuffers();
          rdp.vi_org_reg = *gfx_info.VI_ORIGIN_REG;
          SwapOK = false;
@@ -1934,7 +1934,7 @@ EXPORT void CALL FBRead(uint32_t addr)
   cpu_fb_read_called = true;
   a = RSP_SegmentToPhysical(addr);
 
-  if (!rdp.fb_drawn && (a >= rdp.cimg) && (a < rdp.ci_end))
+  if (!rdp.fb_drawn && (a >= g_gdp.fb_address) && (a < rdp.ci_end))
   {
     fbreads_back++;
     //if (fbreads_back > 2) //&& (g_gdp.fb_width <= 320))
@@ -1948,8 +1948,8 @@ EXPORT void CALL FBRead(uint32_t addr)
     fbreads_front++;
     //if (fbreads_front > 2)//&& (g_gdp.fb_width <= 320))
     {
-      uint32_t cimg = rdp.cimg;
-      rdp.cimg = rdp.maincimg[1].addr;
+      uint32_t cimg = g_gdp.fb_address;
+      g_gdp.fb_address = rdp.maincimg[1].addr;
       if (fb_emulation_enabled)
       {
         uint32_t h;
@@ -1964,7 +1964,7 @@ EXPORT void CALL FBRead(uint32_t addr)
       {
         CopyFrameBuffer(GR_BUFFER_FRONTBUFFER);
       }
-      rdp.cimg = cimg;
+      g_gdp.fb_address = cimg;
       rdp.fb_drawn_front = true;
     }
   }
@@ -1997,11 +1997,11 @@ EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
   cpu_fb_write_called = true;
   a                   = RSP_SegmentToPhysical(addr);
 
-  if (a < rdp.cimg || a > rdp.ci_end)
+  if (a < g_gdp.fb_address || a > rdp.ci_end)
     return;
 
   cpu_fb_write = true;
-  shift_l      = (a-rdp.cimg) >> 1;
+  shift_l      = (a - g_gdp.fb_address) >> 1;
   shift_r      = shift_l+2;
 
   d_ul_x       = min(d_ul_x, shift_l % g_gdp.fb_width);
@@ -2095,7 +2095,7 @@ void DetectFrameBufferUsage(void)
    if (dlist_start == 0)
       return;
 
-   ci = rdp.cimg;
+   ci = g_gdp.fb_address;
    zi = g_gdp.zb_address;
    ci_height = rdp.frame_buffers[(rdp.ci_count > 0)?rdp.ci_count-1:0].height;
    rdp.main_ci_last_tex_addr = 0;
@@ -2159,7 +2159,7 @@ void DetectFrameBufferUsage(void)
 
    if (rdp.ci_count > NUMTEXBUF) //overflow
    {
-      rdp.cimg = ci;
+      g_gdp.fb_address = ci;
       g_gdp.zb_address = zi;
       rdp.num_of_ci = rdp.ci_count;
       rdp.scale_x = rdp.scale_x_bak;
@@ -2216,7 +2216,7 @@ void DetectFrameBufferUsage(void)
    }
 #endif
 
-   rdp.cimg      = ci;
+   g_gdp.fb_address      = ci;
    g_gdp.zb_address      = zi;
    rdp.num_of_ci = rdp.ci_count;
 
@@ -2241,14 +2241,14 @@ void DetectFrameBufferUsage(void)
             if (settings.frame_buffer&fb_motionblur)
                CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
             else
-               memset(gfx_info.RDRAM+rdp.cimg, 0, g_gdp.fb_width * rdp.ci_height * g_gdp.fb_size);
+               memset(gfx_info.RDRAM + g_gdp.fb_address, 0, g_gdp.fb_width * rdp.ci_height * g_gdp.fb_size);
          }
          else //if (g_gdp.fb_width == rdp.frame_buffers[rdp.main_ci_index].width)
          {
             if (rdp.maincimg[0].height > 65) //for 1080
             {
                uint32_t h;
-               rdp.cimg = rdp.maincimg[0].addr;
+               g_gdp.fb_address = rdp.maincimg[0].addr;
                g_gdp.fb_width = rdp.maincimg[0].width;
                rdp.ci_count = 0;
                h = rdp.frame_buffers[0].height;
