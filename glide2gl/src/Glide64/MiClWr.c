@@ -199,17 +199,13 @@ void MirrorTex (uint8_t *tex, uint32_t mask, uint32_t max_width,
 static void Clamp32bS (uint8_t *tex, uint32_t width, uint32_t clamp_to,
       uint32_t real_width, uint32_t real_height)
 {
-   uint8_t *dest, *constant;
-   int32_t count, line_full, line;
-	if (real_width <= width)
-      return;
-
-	dest = (uint8_t*)(tex + (width << 2));
-	constant = (uint8_t*)(dest-4);
-	count = clamp_to - width;
-	line_full = real_width << 2;
-	line = width << 2;
-	clamp32bS (dest, constant, real_height, line, line_full, count);
+	uint8_t *dest = (uint8_t*)(tex + (width << 2));
+	uint8_t *constant = (uint8_t*)(dest-4);
+	int32_t count = clamp_to - width;
+	int32_t line_full = real_width << 2;
+	int32_t line = width << 2;
+	if (real_width > width)
+      clamp32bS (dest, constant, real_height, line, line_full, count);
 }
 
 void ClampTex(uint8_t *tex, uint32_t width,
