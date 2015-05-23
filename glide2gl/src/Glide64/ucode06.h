@@ -234,7 +234,7 @@ static void DrawImage (DRAWIMAGE *d)
       uint16_t width = (uint16_t)(*gfx_info.VI_WIDTH_REG & 0xFFF);
       d->frameH = d->imageH = (d->frameW * d->frameH)/width;
       d->frameW = d->imageW = width;
-      if (rdp.zimg == rdp.cimg)
+      if (g_gdp.zb_address == rdp.cimg)
       {
          DrawDepthImage(d);
          g_gdp.flags |= UPDATE_ZBUF_ENABLED | UPDATE_COMBINE |

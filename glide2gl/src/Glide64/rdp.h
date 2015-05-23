@@ -514,7 +514,7 @@ struct RDP
    uint8_t texrecting;
 
    //frame buffer related slots. Added by Gonetz
-   uint32_t cimg, ocimg, zimg, tmpzimg, vi_org_reg;
+   uint32_t cimg, ocimg, tmpzimg, vi_org_reg;
    COLOR_IMAGE maincimg[2];
    uint32_t last_drawn_ci_addr;
    uint32_t main_ci, main_ci_end, main_ci_bg, main_ci_last_tex_addr, zimg_end, last_bg;

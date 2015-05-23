@@ -677,7 +677,7 @@ static void DrawDepthBufferFog(void)
   if (rdp.zi_width < 200)
     return;
 
-  fb_info.addr   = rdp.zimg;
+  fb_info.addr   = g_gdp.zb_address;
   fb_info.size   = 2;
   fb_info.width  = rdp.zi_width;
   fb_info.height = rdp.ci_height;
@@ -749,7 +749,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       return;
    }
 
-   if (rdp.skip_drawing || (!fb_emulation_enabled && (rdp.cimg == rdp.zimg)))
+   if (rdp.skip_drawing || (!fb_emulation_enabled && (rdp.cimg == g_gdp.zb_address)))
    {
       if ((settings.hacks&hack_PMario) && rdp.ci_status == CI_USELESS)
          pm_palette_mod ();
@@ -1409,7 +1409,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    }
 
    pd_multiplayer = (settings.ucode == ucode_PerfectDark) && (((rdp.othermode_h & RDP_CYCLE_TYPE) >> 20) == 3) && (g_gdp.fill_color.total == 0xFFFCFFFC);
-   if ((rdp.cimg == rdp.zimg) || (fb_emulation_enabled && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) || pd_multiplayer)
+   if ((rdp.cimg == g_gdp.zb_address) || (fb_emulation_enabled && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_ZIMG) || pd_multiplayer)
    {
       //LRDP("Fillrect - cleared the depth buffer\n");
       //if (fullscreen)
@@ -1634,7 +1634,10 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 static void rdp_setdepthimage(uint32_t w0, uint32_t w1)
 {
    gdp_set_mask_image(w0, w1);
-   rdp.zimg = RSP_SegmentToPhysical(w1);
+
+   /* TODO/FIXME - different from Angrylion's value */
+   g_gdp.zb_address = RSP_SegmentToPhysical(w1);
+
    rdp.zi_width = rdp.ci_width;
 }
 
@@ -1833,7 +1836,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
       rdp.ci_height = 32;
    else
       rdp.ci_height = g_gdp.__clip.yl;
-   if (rdp.zimg == rdp.cimg)
+   if (g_gdp.zb_address == rdp.cimg)
    {
       rdp.zi_width = rdp.ci_width;
       // int zi_height = min((int)rdp.zi_width*3/4, (int)rdp.vi_height);
@@ -1863,11 +1866,11 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
    {
       int viSwapOK;
 
-      if (rdp.zimg == rdp.cimg)
+      if (g_gdp.zb_address == rdp.cimg)
          rdp.updatescreen = 1;
 
       viSwapOK = ((settings.swapmode == 2) && (rdp.vi_org_reg == *gfx_info.VI_ORIGIN_REG)) ? false : true;
-      if ((rdp.zimg != rdp.cimg) && (rdp.ocimg != rdp.cimg) && SwapOK && viSwapOK
+      if ((g_gdp.zb_address != rdp.cimg) && (rdp.ocimg != rdp.cimg) && SwapOK && viSwapOK
             )
       {
          if (fb_emulation_enabled)
@@ -2097,7 +2100,7 @@ void DetectFrameBufferUsage(void)
       return;
 
    ci = rdp.cimg;
-   zi = rdp.zimg;
+   zi = g_gdp.zb_address;
    ci_height = rdp.frame_buffers[(rdp.ci_count > 0)?rdp.ci_count-1:0].height;
    rdp.main_ci_last_tex_addr = 0;
    rdp.main_ci          = 0;
@@ -2161,7 +2164,7 @@ void DetectFrameBufferUsage(void)
    if (rdp.ci_count > NUMTEXBUF) //overflow
    {
       rdp.cimg = ci;
-      rdp.zimg = zi;
+      g_gdp.zb_address = zi;
       rdp.num_of_ci = rdp.ci_count;
       rdp.scale_x = rdp.scale_x_bak;
       rdp.scale_y = rdp.scale_y_bak;
@@ -2218,7 +2221,7 @@ void DetectFrameBufferUsage(void)
 #endif
 
    rdp.cimg      = ci;
-   rdp.zimg      = zi;
+   g_gdp.zb_address      = zi;
    rdp.num_of_ci = rdp.ci_count;
 
    if (rdp.read_previous_ci && previous_ci_was_read)
