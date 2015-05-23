@@ -45,6 +45,8 @@
 #include "GBI.h"
 #include "libretro.h"
 
+#include "MiClWr.h"
+
 extern retro_log_printf_t log_cb;
 
 static void LoadTex (int id, int tmu);
@@ -54,9 +56,6 @@ uint8_t tex2[2048*2048*4];
 uint8_t *texture;
 uint8_t *texture_buffer = tex1;
 
-#include "MiClWr32b.h"
-#include "MiClWr16b.h"	// Mirror/Clamp/Wrap functions, ONLY INCLUDE IN THIS FILE!!!
-#include "MiClWr8b.h"	// Mirror/Clamp/Wrap functions, ONLY INCLUDE IN THIS FILE!!!
 #include "CRC.h"
 
 typedef struct TEXINFO_t
@@ -1213,14 +1212,7 @@ static void LoadTex(int id, int tmu)
 
       // Load using mirroring/clamping
       if (min_x > texinfo[id].width && (signed)real_x > texinfo[id].width) /* real_x unsigned just for right shift */
-      {
-         if (size == 1)
-            Clamp16bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
-         else if (size == 2)
-            Clamp32bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
-         else
-            Clamp8bS ((texture), texinfo[id].width, min_x, real_x, texinfo[id].height);
-      }
+         ClampTex(texture, texinfo[id].width, min_x, real_x, texinfo[id].height, size);
 
       if (texinfo[id].width < (int)real_x)
       {
@@ -1229,15 +1221,8 @@ static void LoadTex(int id, int tmu)
 
          if (g_gdp.tile[td].ms && cond_true)
          {
-            if (size == 1)
-               Mirror16bS ((texture), g_gdp.tile[td].mask_s,
-                     real_x, real_x, texinfo[id].height);
-            else if (size == 2)
-               Mirror32bS ((texture), g_gdp.tile[td].mask_s,
-                     real_x, real_x, texinfo[id].height);
-            else
-               Mirror8bS ((texture), g_gdp.tile[td].mask_s,
-                     real_x, real_x, texinfo[id].height);
+            MirrorTex((texture), g_gdp.tile[td].mask_s,
+                  real_x, real_x, texinfo[id].height, size);
          }
          else if (cond_true)
          {
