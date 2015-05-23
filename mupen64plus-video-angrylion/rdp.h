@@ -25,8 +25,6 @@ _mm_unpacklo_epi64(_mm_unpacklo_epi32(m, n), _mm_unpackhi_epi32(m, n))
 #endif
 #endif
 
-INLINE extern __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src);
-
 #else
 #define setzero_si128(buf) \
     { ((i64 *)buf)[0] = ((i64 *)buf)[1] = 0x0000000000000000; }

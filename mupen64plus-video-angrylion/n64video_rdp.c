@@ -1461,7 +1461,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    render_spans(yhlimit >> 2, yllimit >> 2, 0, 1);
 }
 
-INLINE void SET_SUBA_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
+static INLINE void SET_SUBA_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
    switch (code & 0xf)
    {
@@ -1520,7 +1520,7 @@ INLINE void SET_SUBA_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **i
    }
 }
 
-INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
+static INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
    switch (code & 0xf)
    {
@@ -1579,7 +1579,7 @@ INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **i
    }
 }
 
-INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
+static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
    switch (code & 0x1f)
    {
@@ -1686,7 +1686,7 @@ INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **in
    }
 }
 
-INLINE void SET_ADD_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
+static INLINE void SET_ADD_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
 {
    switch (code & 0x7)
    {
@@ -1733,7 +1733,7 @@ INLINE void SET_ADD_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **in
    }
 }
 
-INLINE void SET_SUB_ALPHA_INPUT(int32_t **input, int code)
+static INLINE void SET_SUB_ALPHA_INPUT(int32_t **input, int code)
 {
    switch (code & 0x7)
    {
@@ -1764,7 +1764,7 @@ INLINE void SET_SUB_ALPHA_INPUT(int32_t **input, int code)
    }
 }
 
-INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
+static INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
 {
    switch (code & 0x7)
    {
@@ -1853,7 +1853,7 @@ static void set_color_image(uint32_t w0, uint32_t w1)
 }
 
 #ifdef USE_SSE_SUPPORT
-INLINE __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src)
+static INLINE __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src)
 { /* source scalar element, shift half:  src[0] == src[1] && src[2] == src[3] */
    __m128i prod_m, prod_n;
    /* "SEH" also means "Half of the source elements are equal to each other." */
