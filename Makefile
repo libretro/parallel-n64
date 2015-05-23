@@ -336,10 +336,9 @@ ifeq ($(platform), qnx)
    CFLAGS   += -Wp,-MMD
    CXXFLAGS += -Wp,-MMD
 else
-   CFLAGS   += -MMD
-   CXXFLAGS += -MMD
+   CFLAGS   += -std=gnu89 -MMD
+   CXXFLAGS += -std=gnu++98 -MMD
 endif
-
 
 ### Finalize ###
 OBJECTS		+= $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_ASM:.S=.o)
