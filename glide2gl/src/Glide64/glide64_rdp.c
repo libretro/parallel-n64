@@ -1633,6 +1633,7 @@ static void rdp_settextureimage(uint32_t w0, uint32_t w1)
 
 static void rdp_setdepthimage(uint32_t w0, uint32_t w1)
 {
+   gdp_set_mask_image(w0, w1);
    rdp.zimg = RSP_SegmentToPhysical(w1);
    rdp.zi_width = rdp.ci_width;
 }

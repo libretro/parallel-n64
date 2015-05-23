@@ -15,7 +15,6 @@ int fb_format;
 int fb_size;
 int fb_width;
 uint32_t fb_address;
-uint32_t zb_address;
 
 uint32_t max_level;
 
@@ -3653,7 +3652,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
 
       x = xendsc;
       curpixel = fb_width * i + x;
-      zbcur  = zb_address + 2*curpixel;
+      zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
 
@@ -3835,7 +3834,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
 
       x = xendsc;
       curpixel = fb_width * i + x;
-      zbcur  = zb_address + 2*curpixel;
+      zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
 
@@ -3984,7 +3983,7 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
 
       x = xendsc;
       curpixel = fb_width * i + x;
-      zbcur  = zb_address + 2*curpixel;
+      zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
 
@@ -4533,7 +4532,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
 
       x = xendsc;
       curpixel = fb_width * i + x;
-      zbcur  = zb_address + 2*curpixel;
+      zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
 
@@ -4718,7 +4717,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
 
       x = xendsc;
       curpixel = fb_width * i + x;
-      zbcur  = zb_address + 2*curpixel;
+      zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
 
@@ -4882,7 +4881,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
 
       x = xendsc;
       curpixel = fb_width * i + x;
-      zbcur  = zb_address + 2*curpixel;
+      zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
 
@@ -5031,7 +5030,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
 
       x = xendsc;
       curpixel = fb_width * i + x;
-      zbcur  = zb_address + 2*curpixel;
+      zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
 

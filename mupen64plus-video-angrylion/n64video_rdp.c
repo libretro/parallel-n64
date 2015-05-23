@@ -1836,12 +1836,6 @@ static void set_combine(uint32_t w0, uint32_t w1)
    g_gdp.other_modes.f.stalederivs = 1;
 }
 
-static void set_mask_image(uint32_t w0, uint32_t w1)
-{
-   zb_address = w1 & 0x03FFFFFF;
-   /* zb_address &= 0x00FFFFFF; */
-}
-
 static void set_color_image(uint32_t w0, uint32_t w1)
 {
    fb_format  = (w0 & 0x00E00000) >> (53 - 32);
@@ -1890,7 +1884,7 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
    load_tlut         ,gdp_invalid           ,gdp_set_tile_size     ,load_block        ,
    load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
    gdp_set_fog_color     ,gdp_set_blend_color   ,gdp_set_prim_color    ,gdp_set_env_color     ,
-   set_combine       ,gdp_set_texture_image ,set_mask_image    ,set_color_image   ,
+   set_combine       ,gdp_set_texture_image ,gdp_set_mask_image    ,set_color_image   ,
 };
 
 static const int DP_CMD_LEN_W[64] = { /* command length, in DP FIFO words */

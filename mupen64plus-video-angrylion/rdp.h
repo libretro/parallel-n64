@@ -303,7 +303,6 @@ extern int fb_format;
 extern int fb_size;
 extern int fb_width;
 extern uint32_t fb_address;
-extern uint32_t zb_address;
 
 extern uint32_t max_level;
 

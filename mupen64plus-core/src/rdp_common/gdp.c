@@ -406,6 +406,12 @@ void gdp_no_op(uint32_t w0, uint32_t w1)
 {
 }
 
+void gdp_set_mask_image(uint32_t w0, uint32_t w1)
+{
+   g_gdp.zb_address = w1 & 0x03FFFFFF;
+   /* g_gdp.zb_address &= 0x00FFFFFF; */
+}
+
 static char invalid_command[] = "00\nDP reserved command.";
 
 void gdp_invalid(uint32_t w0, uint32_t w1)
