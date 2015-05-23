@@ -1658,8 +1658,6 @@ void RestoreScale(void)
 
 static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 {
-   uint32_t format;
-
    gdp_set_color_image(w0, w1);
 
    if (fb_emulation_enabled && (rdp.num_of_ci < NUMTEXBUF))
@@ -1844,12 +1842,11 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
       // int zi_height = min((int)rdp.zi_width*3/4, (int)rdp.vi_height);
       // rdp.zi_words = rdp.zi_width * zi_height;
    }
-   format = (w0 >> 21) & 0x7;
    rdp.ci_end = rdp.cimg + ((rdp.ci_width*rdp.ci_height) << (g_gdp.fb_size-1));
 
-   if (format != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
+   if (g_gdp.fb_format != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
    {
-      if (format > 2)
+      if (g_gdp.fb_format > 2)
          rdp.skip_drawing = true;
       return;
    }
