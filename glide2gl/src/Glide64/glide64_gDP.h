@@ -76,7 +76,7 @@ static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt
 
    length = cnt;
 
-   while (length--)
+   while (length-- > 0)
    {
       int32_t v18 = 0;
 
