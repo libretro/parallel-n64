@@ -1180,85 +1180,6 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
       g_gdp.tile[tilenum].tl += 0x400;
 }
 
-
-static INLINE void loadTile(uint32_t *src, uint32_t *dst,
-      int width, int height, int line, int off, uint32_t *end)
-{
-   uint32_t *v31;
-   uint32_t *dst32 = dst;
-   uint8_t *src8 = (uint8_t*)src;
-   unsigned odd = 0;
-
-   while (height-- && end >= dst32)
-   {
-//      v31 = dst32;
-
-      if (width)
-      {
-         int32_t length = width;
-         uint32_t *src32 = (uint32_t*)(src8 + (off & 0xFFFFFFFC));
-         uint32_t *dst32 = dst;
-
-         if (off & 3)
-         {
-            uint32_t numrot = off & 3;
-            uint32_t nwords = 4 - numrot;
-            uint32_t word   = *src32++;
-
-            while (numrot--)
-               word = rol32(word, 8);
-
-            while (nwords--)
-            {
-               word = rol32(word, 8);
-               *dst32++ = word;
-            }
-
-            *dst32++ = m64p_swap32(*src32++);
-
-            --length;
-         }
-
-         while (length--)
-         {
-            *dst32++ = m64p_swap32(*src32++);
-            *dst32++ = m64p_swap32(*src32++);
-         }
-
-         if (off & 3)
-         {
-            uint32_t nwords = off & 3;
-            uint32_t word   = *(uint32_t *)(src8 + ((8 * width + off) & 0xFFFFFFFC));
-
-            while (nwords--)
-            {
-               word = rol32(word, 8);
-               *dst32++ = word;
-            }
-         }
-      }
-
-      if (odd)
-      {
-         int i;
-         uint32_t *dst32 = dst;
-
-         for (i = width; i; --i)
-         {
-            dst32[0] ^= dst32[1];
-            dst32[1] ^= dst32[0];
-            dst32[0] ^= dst32[1];
-            dst32 += 2;
-         }
-      }
-
-
-      dst  += width * 2;
-      src8 += line;
-      odd  ^= 1;
-   }
-}
-
 static void rdp_loadblock(uint32_t w0, uint32_t w1)
 {
    // lr_s specifies number of 64-bit words to copy
@@ -1271,8 +1192,6 @@ static void rdp_loadblock(uint32_t w0, uint32_t w1)
          (w1 & 0x0FFF) /* dxt */
          );
 }
-
-void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
 
 static void rdp_loadtile(uint32_t w0, uint32_t w1)
 {

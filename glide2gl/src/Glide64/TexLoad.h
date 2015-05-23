@@ -47,5 +47,6 @@ extern texfunc load_table[4][5];
 
 void LoadBlock32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt);
 void LoadTile32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
+void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt);
 
 #endif

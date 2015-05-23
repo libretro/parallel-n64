@@ -857,3 +857,113 @@ texfunc load_table[4][5] = { // [size][format]
                              { Load16bRGBA,  Load16bYUV, Load16bRGBA, Load16bIA, LoadNone },
                              { Load32bRGBA,  LoadNone,   LoadNone,    LoadNone,  LoadNone }
                            };
+
+
+static INLINE void load_block_line(uint32_t *src, uint32_t *dst,
+      unsigned offset, unsigned width)
+{
+   unsigned length = width;
+   uint32_t *src32 = (uint32_t*)((uint8_t*)src + (offset & 0xFFFFFFFC));
+   uint32_t *dst32 = dst;
+
+   if (!length)
+      return;
+
+   if (offset & 3)
+   {
+      uint32_t numrot = offset & 3;
+      uint32_t nwords = 4 - numrot;
+      uint32_t word   = *src32++;
+
+      while (numrot--)
+         word = rol32(word, 8);
+
+      while (nwords--)
+      {
+         word = rol32(word, 8);
+         *dst32++ = word;
+      }
+
+      *dst32++ = m64p_swap32(*src32++);
+
+      --length;
+   }
+
+   while (length--)
+   {
+      *dst32++ = m64p_swap32(*src32++);
+      *dst32++ = m64p_swap32(*src32++);
+   }
+
+   if (offset & 3)
+   {
+      uint32_t nwords = offset & 3;
+      uint32_t word   = *(uint32_t*)((uint8_t*)src + ((8 * width + offset) & 0xFFFFFFFC));
+
+      while (nwords--)
+      {
+         word = rol32(word, 8);
+         *dst32++ = word;
+      }
+   }
+}
+
+
+void loadTile(uint32_t *src, uint32_t *dst,
+      int width, int height, int line, int off, uint32_t *end)
+{
+   unsigned odd = 0;
+
+   while (height-- && end >= dst)
+   {
+      load_block_line(src, dst, off, width);
+
+      if (odd)
+      {
+         int i;
+         uint32_t *dst32 = dst;
+
+         for (i = width; i; --i)
+         {
+            dst32[0] ^= dst32[1];
+            dst32[1] ^= dst32[0];
+            dst32[0] ^= dst32[1];
+            dst32 += 2;
+         }
+      }
+
+      dst += width * 2;
+      src += line >> 2;
+      odd ^= 1;
+   }
+}
+
+void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
+{
+   int32_t v16 = 0;
+   int32_t length = cnt;
+
+   load_block_line(src, dst, off, cnt);
+
+   while (length-- > 0)
+   {
+      int32_t v18 = 0;
+
+      dst += 2;
+      v16 += dxt;
+
+      while (v16 < 0 && length--)
+      {
+         ++v18;
+         v16 += dxt;
+      }
+
+      while (v18--)
+      {
+         dst[0] ^= dst[1];
+         dst[1] ^= dst[0];
+         dst[0] ^= dst[1];
+         dst += 2;
+      }
+   }
+}
