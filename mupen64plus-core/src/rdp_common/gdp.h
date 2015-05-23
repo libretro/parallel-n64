@@ -287,6 +287,10 @@ struct gdp_global
    int sckeepodd;
    uint8_t tmem[0x1000];
    uint32_t zb_address;
+   int32_t fb_format;
+   int32_t fb_size;
+   int32_t fb_width;
+   uint32_t fb_address;
 };
 
 static INLINE void calculate_clamp_diffs(struct gdp_global *g_gdp, uint32_t i)
@@ -340,6 +344,8 @@ void gdp_no_op(uint32_t w0, uint32_t w1);
 void gdp_invalid(uint32_t w0, uint32_t w1);
 
 void gdp_set_mask_image(uint32_t w0, uint32_t w1);
+
+void gdp_set_color_image(uint32_t w0, uint32_t w1);
 
 extern struct gdp_global g_gdp;
 

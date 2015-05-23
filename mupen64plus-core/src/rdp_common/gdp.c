@@ -423,3 +423,13 @@ void gdp_invalid(uint32_t w0, uint32_t w1)
 
    //DisplayError(invalid_command);
 }
+
+void gdp_set_color_image(uint32_t w0, uint32_t w1)
+{
+   g_gdp.fb_format  = (w0 & 0x00E00000) >> (53 - 32);
+   g_gdp.fb_size    = (w0 & 0x00180000) >> (51 - 32);
+   g_gdp.fb_width   = (w0 & 0x000003FF) >> (32 - 32);
+   g_gdp.fb_address = (w1 & 0x03FFFFFF) >> ( 0 -  0);
+   ++g_gdp.fb_width;
+   /* g_gdp.fb_address &= 0x00FFFFFF; */
+}

@@ -11,11 +11,6 @@
 #undef  LOG_RDP_EXECUTION
 #define DETAILED_LOGGING 0
 
-int fb_format;
-int fb_size;
-int fb_width;
-uint32_t fb_address;
-
 uint32_t max_level;
 
 int32_t *combiner_rgbsub_a_r[2];
@@ -194,7 +189,7 @@ static void fbread_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   uint32_t addr  = (fb_address + 1 * curpixel) & 0x00FFFFFF;
+   uint32_t addr  = (g_gdp.fb_address + 1 * curpixel) & 0x00FFFFFF;
    u8 color       = RREADADDR8(addr);
 
    memory_color.r = color;
@@ -208,10 +203,10 @@ static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
    u8 hidden;
    u16 color;
-   uint32_t addr  = ((fb_address + 2 * curpixel) & 0x00FFFFFF) >> 1;
+   uint32_t addr  = ((g_gdp.fb_address + 2 * curpixel) & 0x00FFFFFF) >> 1;
    PAIRREAD16(color, hidden, addr);
 
-   if (fb_format != FORMAT_RGBA)
+   if (g_gdp.fb_format != FORMAT_RGBA)
    {
       memory_color.r = color >> 8;
       memory_color.g = color >> 8;
@@ -232,7 +227,7 @@ static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   uint32_t addr  = ((fb_address + 4 * curpixel) & 0x00FFFFFF) >> 2;
+   uint32_t addr  = ((g_gdp.fb_address + 4 * curpixel) & 0x00FFFFFF) >> 2;
    uint32_t color = RREADIDX32(addr);
 
    memory_color.r = (color >> 24) & 0xFF;
@@ -259,7 +254,7 @@ static void fbread2_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   uint32_t addr  = (fb_address + 1 * curpixel) & 0x00FFFFFF;
+   uint32_t addr  = (g_gdp.fb_address + 1 * curpixel) & 0x00FFFFFF;
    u8 color = RREADADDR8(addr);
 
    pre_memory_color.r = color;
@@ -273,10 +268,10 @@ static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
    u8 hidden;
    u16 color;
-   uint32_t addr  = ((fb_address + 2*curpixel) & 0x00FFFFFF) >> 1;
+   uint32_t addr  = ((g_gdp.fb_address + 2*curpixel) & 0x00FFFFFF) >> 1;
    PAIRREAD16(color, hidden, addr);
 
-   if (fb_format != FORMAT_RGBA)
+   if (g_gdp.fb_format != FORMAT_RGBA)
    {
       pre_memory_color.r = color >> 8;
       pre_memory_color.g = color >> 8;
@@ -297,7 +292,7 @@ static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
 
 static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
-   uint32_t addr  = ((fb_address + 4 * curpixel) & 0x00FFFFFF) >> 2;
+   uint32_t addr  = ((g_gdp.fb_address + 4 * curpixel) & 0x00FFFFFF) >> 2;
    uint32_t color = RREADIDX32(addr);
 
    pre_memory_color.r = (color >> 24) & 0xFF;
@@ -319,7 +314,7 @@ static void fbwrite_4(
       uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
       uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-   uint32_t addr  = ((fb_address + curpixel * 1) & 0x00FFFFFF);
+   uint32_t addr  = ((g_gdp.fb_address + curpixel * 1) & 0x00FFFFFF);
 
    RWRITEADDR8(addr, 0x00);
 }
@@ -345,7 +340,7 @@ static void fbwrite_8(
       uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
       uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-   uint32_t addr  = (fb_address + 1 * curpixel) & 0x00FFFFFF;
+   uint32_t addr  = (g_gdp.fb_address + 1 * curpixel) & 0x00FFFFFF;
    PAIRWRITE8(addr, r, (r & 1) ? 3 : 0);
 }
 
@@ -365,7 +360,7 @@ static void fbwrite_16(
    g = covdraw;
    b = covdraw;
 #endif
-   if (fb_format != FORMAT_RGBA)
+   if (g_gdp.fb_format != FORMAT_RGBA)
    {
       color = (r << 8) | (coverage << 5);
       coverage = 0x00;
@@ -378,7 +373,7 @@ static void fbwrite_16(
       color = (r << 8) | (g << 3) | (b >> 2) | (coverage >> 2);
    }
 
-   addr  = fb_address + 2*curpixel;
+   addr  = g_gdp.fb_address + 2*curpixel;
    addr &= 0x00FFFFFF;
    addr  = addr >> 1;
    PAIRWRITE16(addr, color, coverage & 3);
@@ -388,7 +383,7 @@ static void fbwrite_32(
       uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
       uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
 {
-   uint32_t addr  = ((fb_address + 4 * curpixel) & 0x00FFFFFF) >> 2;
+   uint32_t addr  = ((g_gdp.fb_address + 4 * curpixel) & 0x00FFFFFF) >> 2;
    int coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
    uint32_t color  = ((r << 24) | (g << 16) | (b <<  8)) | (coverage << 5);
 
@@ -408,7 +403,7 @@ static void fbfill_4(uint32_t curpixel)
 
 static void fbfill_8(uint32_t curpixel)
 {
-   uint32_t addr  = (fb_address + 1 * curpixel) & 0x00FFFFFF;
+   uint32_t addr  = (g_gdp.fb_address + 1 * curpixel) & 0x00FFFFFF;
    uint8_t source = (g_gdp.fill_color.total >> 8*(~addr & 3)) & 0xFF;
 
    PAIRWRITE8(addr, source, -(source & 1) & 3);
@@ -416,7 +411,7 @@ static void fbfill_8(uint32_t curpixel)
 
 static void fbfill_16(uint32_t curpixel)
 {
-   uint32_t addr  = ((fb_address + 2*curpixel) & 0x00FFFFFF) >> 1;
+   uint32_t addr  = ((g_gdp.fb_address + 2*curpixel) & 0x00FFFFFF) >> 1;
    uint16_t source = g_gdp.fill_color.total >> 16 * (~addr & 1) & 0xFFFF;
 
    PAIRWRITE16(addr, source, -(source & 1) & 3);
@@ -426,7 +421,7 @@ static void fbfill_32(uint32_t curpixel)
 {
    const uint16_t fill_color_hi = (g_gdp.fill_color.total >> 16) & 0xFFFF;
    const uint16_t fill_color_lo = (g_gdp.fill_color.total >>  0) & 0xFFFF;
-   uint32_t addr  = ((fb_address + 4*curpixel) & 0x00FFFFFF) >> 2;
+   uint32_t addr  = ((g_gdp.fb_address + 4*curpixel) & 0x00FFFFFF) >> 2;
    PAIRWRITE32(addr, g_gdp.fill_color.total,
          -(fill_color_hi & 0x0001) & 3, -(fill_color_lo & 0x0001) & 3);
 }
@@ -3651,7 +3646,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
       z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
 
       x = xendsc;
-      curpixel = fb_width * i + x;
+      curpixel = g_gdp.fb_width * i + x;
       zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
@@ -3833,7 +3828,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
       z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
 
       x = xendsc;
-      curpixel = fb_width * i + x;
+      curpixel = g_gdp.fb_width * i + x;
       zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
@@ -3982,7 +3977,7 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
       z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
 
       x = xendsc;
-      curpixel = fb_width * i + x;
+      curpixel = g_gdp.fb_width * i + x;
       zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
@@ -4531,7 +4526,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
       z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
 
       x = xendsc;
-      curpixel = fb_width * i + x;
+      curpixel = g_gdp.fb_width * i + x;
       zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
@@ -4716,7 +4711,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
       z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
 
       x = xendsc;
-      curpixel = fb_width * i + x;
+      curpixel = g_gdp.fb_width * i + x;
       zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
@@ -4880,7 +4875,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
       z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
 
       x = xendsc;
-      curpixel = fb_width * i + x;
+      curpixel = g_gdp.fb_width * i + x;
       zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
@@ -5029,7 +5024,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
       z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
 
       x = xendsc;
-      curpixel = fb_width * i + x;
+      curpixel = g_gdp.fb_width * i + x;
       zbcur  = g_gdp.zb_address + 2*curpixel;
       zbcur &= 0x00FFFFFF;
       zbcur  = zbcur >> 1;
@@ -6027,8 +6022,8 @@ NOINLINE void render_spans_fill(int start, int end, int flip)
    int curpixel = 0;
 
    flip = -(flip & 1);
-   fbfill_ptr = fbfill_func[fb_size];
-   if (fb_size == PIXEL_SIZE_4BIT)
+   fbfill_ptr = fbfill_func[g_gdp.fb_size];
+   if (g_gdp.fb_size == PIXEL_SIZE_4BIT)
    {
       rdp_pipeline_crashed = 1;
       return;
@@ -6064,7 +6059,7 @@ NOINLINE void render_spans_fill(int start, int end, int flip)
 
          if (span[i].validline == 0)
             continue;
-         curpixel = fb_width*i + xendsc;
+         curpixel = g_gdp.fb_width * i + xendsc;
          length = +(xendsc - xstart);
          for (j = 0; j <= length; j++)
          {
@@ -6082,7 +6077,7 @@ NOINLINE void render_spans_fill(int start, int end, int flip)
 
          if (span[i].validline == 0)
             continue;
-         curpixel = fb_width*i + xendsc;
+         curpixel = g_gdp.fb_width * i + xendsc;
          length = -(xendsc - xstart);
          for (j = 0; j <= length; j++)
          {
@@ -6156,16 +6151,16 @@ NOINLINE void render_spans_copy(int start, int end, int tilenum, int flip)
 
    uint32_t hidword = 0, lowdword = 0;
    uint32_t hidword1 = 0, lowdword1 = 0;
-   int fbadvance = (fb_size == PIXEL_SIZE_4BIT) ? 8 : 16 >> fb_size;
+   int fbadvance = (g_gdp.fb_size == PIXEL_SIZE_4BIT) ? 8 : 16 >> g_gdp.fb_size;
    uint32_t fbptr = 0;
    int fbptr_advance = flip ? 8 : -8;
    uint64_t copyqword = 0;
    uint32_t tempdword = 0, tempbyte = 0;
    int copywmask = 0, alphamask = 0;
-   int bytesperpixel = (fb_size == PIXEL_SIZE_4BIT) ? 1 : (1 << (fb_size - 1));
+   int bytesperpixel = (g_gdp.fb_size == PIXEL_SIZE_4BIT) ? 1 : (1 << (g_gdp.fb_size - 1));
    uint32_t fbendptr = 0;
 
-   if (fb_size == PIXEL_SIZE_32BIT)
+   if (g_gdp.fb_size == PIXEL_SIZE_32BIT)
    {
       rdp_pipeline_crashed = 1;
       return;
@@ -6199,9 +6194,9 @@ NOINLINE void render_spans_copy(int start, int end, int tilenum, int flip)
       xstart = span[i].lx;
       xendsc = span[i].rx;
 
-      fb_index = fb_width * i + xendsc;
-      fbptr = fb_address + PIXELS_TO_BYTES_SPECIAL4(fb_index, fb_size);
-      fbendptr = fb_address + PIXELS_TO_BYTES_SPECIAL4((fb_width * i + xstart), fb_size);
+      fb_index = g_gdp.fb_width * i + xendsc;
+      fbptr = g_gdp.fb_address + PIXELS_TO_BYTES_SPECIAL4(fb_index, g_gdp.fb_size);
+      fbendptr = g_gdp.fb_address + PIXELS_TO_BYTES_SPECIAL4((g_gdp.fb_width * i + xstart), g_gdp.fb_size);
       fbptr &= 0x00FFFFFF;
       fbendptr &= 0x00FFFFFF;
       length = flip ? (xstart - xendsc) : (xendsc - xstart);
@@ -6216,13 +6211,13 @@ NOINLINE void render_spans_copy(int start, int end, int tilenum, int flip)
          tclod_copy(&sss, &sst, s, t, w, dsinc, dtinc, dwinc, prim_tile, &tile1);
          fetch_qword_copy(&hidword, &lowdword, sss, sst, tile1);
 
-         if (fb_size == PIXEL_SIZE_16BIT || fb_size == PIXEL_SIZE_8BIT)
+         if (g_gdp.fb_size == PIXEL_SIZE_16BIT || g_gdp.fb_size == PIXEL_SIZE_8BIT)
             copyqword = ((uint64_t)hidword << 32) | ((uint64_t)lowdword);
          else
             copyqword = 0;
          if (!g_gdp.other_modes.alpha_compare_en)
             alphamask = 0xff;
-         else if (fb_size == PIXEL_SIZE_16BIT)
+         else if (g_gdp.fb_size == PIXEL_SIZE_16BIT)
          {
             alphamask = 0;
             alphamask |= (((copyqword >> 48) & 1) ? 0xC0 : 0);
@@ -6230,7 +6225,7 @@ NOINLINE void render_spans_copy(int start, int end, int tilenum, int flip)
             alphamask |= (((copyqword >> 16) & 1) ? 0xC : 0);
             alphamask |= ((copyqword & 1) ? 0x3 : 0);
          }
-         else if (fb_size == PIXEL_SIZE_8BIT)
+         else if (g_gdp.fb_size == PIXEL_SIZE_8BIT)
          {
             alphamask = 0;
             threshold = (g_gdp.other_modes.dither_alpha_en) ? (irand() & 0xff) : g_gdp.blend_color.a;

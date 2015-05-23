@@ -299,11 +299,6 @@ extern int spans_cdz;
 
 extern i32 spans_d_stwz_dy[4];
 
-extern int fb_format;
-extern int fb_size;
-extern int fb_width;
-extern uint32_t fb_address;
-
 extern uint32_t max_level;
 
 extern int32_t *combiner_rgbsub_a_r[2];

@@ -192,9 +192,9 @@ NOINLINE static void render_spans(
       deduce_derivatives();
       g_gdp.other_modes.f.stalederivs = 0;
    }
-   fbread1_ptr = fbread_func[fb_size];
-   fbread2_ptr = fbread2_func[fb_size];
-   fbwrite_ptr = fbwrite_func[fb_size];
+   fbread1_ptr = fbread_func[g_gdp.fb_size];
+   fbread2_ptr = fbread2_func[g_gdp.fb_size];
+   fbwrite_ptr = fbwrite_func[g_gdp.fb_size];
 
 #ifdef _DEBUG
    ++render_cycle_mode_counts[cycle_type];
@@ -1836,16 +1836,6 @@ static void set_combine(uint32_t w0, uint32_t w1)
    g_gdp.other_modes.f.stalederivs = 1;
 }
 
-static void set_color_image(uint32_t w0, uint32_t w1)
-{
-   fb_format  = (w0 & 0x00E00000) >> (53 - 32);
-   fb_size    = (w0 & 0x00180000) >> (51 - 32);
-   fb_width   = (w0 & 0x000003FF) >> (32 - 32);
-   fb_address = (w1 & 0x03FFFFFF) >> ( 0 -  0);
-   ++fb_width;
-   /* fb_address &= 0x00FFFFFF; */
-}
-
 #ifdef USE_SSE_SUPPORT
 static INLINE __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src)
 { /* source scalar element, shift half:  src[0] == src[1] && src[2] == src[3] */
@@ -1884,7 +1874,7 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
    load_tlut         ,gdp_invalid           ,gdp_set_tile_size     ,load_block        ,
    load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
    gdp_set_fog_color     ,gdp_set_blend_color   ,gdp_set_prim_color    ,gdp_set_env_color     ,
-   set_combine       ,gdp_set_texture_image ,gdp_set_mask_image    ,set_color_image   ,
+   set_combine       ,gdp_set_texture_image ,gdp_set_mask_image    ,gdp_set_color_image   ,
 };
 
 static const int DP_CMD_LEN_W[64] = { /* command length, in DP FIFO words */
