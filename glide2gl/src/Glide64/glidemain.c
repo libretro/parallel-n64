@@ -750,7 +750,7 @@ static void DrawWholeFrameBufferToScreen(void)
   toScreenCI = rdp.cimg;
 
   fb_info.addr   = rdp.cimg;
-  fb_info.size   = rdp.ci_size;
+  fb_info.size   = g_gdp.fb_size;
   fb_info.width  = rdp.ci_width;
   fb_info.height = rdp.ci_height;
   fb_info.ul_x = 0;
@@ -763,7 +763,7 @@ static void DrawWholeFrameBufferToScreen(void)
 
   if (!(settings.frame_buffer & fb_ref))
     memset(gfx_info.RDRAM+rdp.cimg, 0,
-          (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
+          (rdp.ci_width*rdp.ci_height) << g_gdp.fb_size >> 1);
 }
 
 uint32_t curframe = 0;

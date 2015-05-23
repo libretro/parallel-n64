@@ -304,7 +304,7 @@ static void DrawPartFrameBufferToScreen(void)
 {
    FB_TO_SCREEN_INFO fb_info;
    fb_info.addr   = rdp.cimg;
-   fb_info.size   = rdp.ci_size;
+   fb_info.size   = g_gdp.fb_size;
    fb_info.width  = rdp.ci_width;
    fb_info.height = rdp.ci_height;
    fb_info.ul_x   = d_ul_x;
@@ -314,7 +314,7 @@ static void DrawPartFrameBufferToScreen(void)
    fb_info.opaque = 0;
 
    DrawFrameBufferToScreen(&fb_info);
-   memset(gfx_info.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height)<<rdp.ci_size>>1);
+   memset(gfx_info.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height) << g_gdp.fb_size >> 1);
 }
 
 #define RGBA16TO32(color) \
@@ -364,7 +364,7 @@ static void CopyFrameBuffer(int32_t buffer)
                if ((settings.frame_buffer & fb_read_alpha) && c <= 0) {}
                else
                   c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-               if (rdp.ci_size == 2)
+               if (g_gdp.fb_size == 2)
                   ptr_dst[(x + y * width)^1] = c;
                else
                   ptr_dst32[x + y * width] = RGBA16TO32(c);
@@ -414,7 +414,7 @@ static void CopyFrameBuffer(int32_t buffer)
                c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
                if (read_alpha && c == 1)
                   c = 0;
-               if (rdp.ci_size <= 2)
+               if (g_gdp.fb_size <= 2)
                   ptr_dst[(x + y * width)^1] = c;
                else
                   ptr_dst32[x + y * width] = RGBA16TO32(c);
@@ -832,13 +832,13 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          (    settings.ucode == ucode_PerfectDark)
          && (rdp.maincimg[1].addr != rdp.maincimg[0].addr)
          && (g_gdp.ti_address >= rdp.maincimg[1].addr)
-         && (g_gdp.ti_address < (rdp.maincimg[1].addr+rdp.ci_width*rdp.ci_height*rdp.ci_size))
+         && (g_gdp.ti_address < (rdp.maincimg[1].addr+rdp.ci_width * rdp.ci_height* g_gdp.fb_size))
       )
    {
       if (fb_emulation_enabled)
       {
          /* FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n",
-          * g_gdp.ti_address, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width*rdp.ci_height*rdp.ci_size); */
+          * g_gdp.ti_address, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width * rdp.ci_height * g_gdp.fb_size); */
          if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF)
             return;
       }
@@ -1515,7 +1515,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
             //make it black, set 0 alpha to plack pixels on frame buffer read
             color = 0;
          }
-         else if (rdp.ci_size < 3)
+         else if (g_gdp.fb_size < 3)
          {
             color = ((color&1)?0xFF:0) |
                ((uint32_t)((float)((color&0xF800) >> 11) / 31.0f * 255.0f) << 24) |
@@ -1660,6 +1660,8 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 {
    uint32_t format;
 
+   gdp_set_color_image(w0, w1);
+
    if (fb_emulation_enabled && (rdp.num_of_ci < NUMTEXBUF))
    {
       COLOR_IMAGE *cur_fb  = (COLOR_IMAGE*)&rdp.frame_buffers[rdp.ci_count];
@@ -1713,7 +1715,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
                }
             }
             else
-               memset(gfx_info.RDRAM+cur_fb->addr, 0, cur_fb->width*cur_fb->height*rdp.ci_size);
+               memset(gfx_info.RDRAM+cur_fb->addr, 0, cur_fb->width * cur_fb->height * g_gdp.fb_size);
             rdp.skip_drawing = true;
             break;
          case CI_AUX_COPY:
@@ -1734,7 +1736,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
                //rdp.skip_drawing = true;
             }
             else
-               memset(gfx_info.RDRAM+cur_fb->addr, 0, (cur_fb->width*cur_fb->height)<<rdp.ci_size>>1);
+               memset(gfx_info.RDRAM+cur_fb->addr, 0, (cur_fb->width*cur_fb->height) << g_gdp.fb_size >> 1);
             break;
             /*
                else if (rdp.frame_buffers[rdp.ci_count].status == ci_main_i)
@@ -1843,10 +1845,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
       // rdp.zi_words = rdp.zi_width * zi_height;
    }
    format = (w0 >> 21) & 0x7;
-   rdp.ci_size = (w0 >> 19) & 0x3;
-   rdp.ci_end = rdp.cimg + ((rdp.ci_width*rdp.ci_height)<<(rdp.ci_size-1));
-   //FRDP("setcolorimage - %08lx, width: %d, height: %d, format: %d, size: %d\n", w1, rdp.ci_width, rdp.ci_height, format, rdp.ci_size);
-   //FRDP("cimg: %08lx, ocimg: %08lx, SwapOK: %d\n", rdp.cimg, rdp.ocimg, SwapOK);
+   rdp.ci_end = rdp.cimg + ((rdp.ci_width*rdp.ci_height) << (g_gdp.fb_size-1));
 
    if (format != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
    {
@@ -2077,11 +2076,11 @@ EXPORT void CALL FBGetFrameBufferInfo(void *p)
    else
    {
       pinfo[0].addr   = rdp.maincimg[0].addr;
-      pinfo[0].size   = rdp.ci_size;
+      pinfo[0].size   = g_gdp.fb_size;
       pinfo[0].width  = rdp.ci_width;
       pinfo[0].height = rdp.ci_width*3/4;
       pinfo[1].addr   = rdp.maincimg[1].addr;
-      pinfo[1].size   = rdp.ci_size;
+      pinfo[1].size   = g_gdp.fb_size;
       pinfo[1].width  = rdp.ci_width;
       pinfo[1].height = rdp.ci_width*3/4;
    }
@@ -2245,7 +2244,7 @@ void DetectFrameBufferUsage(void)
             if (settings.frame_buffer&fb_motionblur)
                CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
             else
-               memset(gfx_info.RDRAM+rdp.cimg, 0, rdp.ci_width*rdp.ci_height*rdp.ci_size);
+               memset(gfx_info.RDRAM+rdp.cimg, 0, rdp.ci_width * rdp.ci_height * g_gdp.fb_size);
          }
          else //if (ci_width == rdp.frame_buffers[rdp.main_ci_index].width)
          {
