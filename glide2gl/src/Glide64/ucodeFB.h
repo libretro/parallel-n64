@@ -288,7 +288,7 @@ static void fb_setdepthimage(uint32_t w0, uint32_t w1)
 {
    int i;
    g_gdp.zb_address = RSP_SegmentToPhysical(w1);
-   rdp.zimg_end = g_gdp.zb_address + rdp.ci_width*rdp.ci_height*2;
+   rdp.zimg_end = g_gdp.zb_address + g_gdp.fb_width * rdp.ci_height * 2;
 
    if (g_gdp.zb_address == rdp.main_ci)  //strange, but can happen
    {
