@@ -1,3 +1,6 @@
+#include "Util.h"
+#include <stdint.h>
+
 //forward decls
 extern void LoadBlock32b(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t lr_s, uint32_t dxt);
 extern void RestoreScale(void);
@@ -27,91 +30,72 @@ static void gDPSetScissor_G64( uint32_t mode, float ulx, float uly, float lrx, f
 
 static INLINE void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
 {
-   uint32_t v13, v14;
-   int32_t v16, v18;
-   uint32_t nbits = sizeof(uint32_t) * 8;
-   uint32_t *v5   = dst;
-   int32_t v6     = cnt;
+   int32_t v16 = 0;
+   int32_t length = cnt;
 
-   if ( cnt )
+   if (cnt)
    {
-      int32_t v9;
-      uint32_t v10;
-      uint32_t *v7 = (uint32_t *)((int8_t*)src + (off & 0xFFFFFFFC));
-      uint32_t v8 = off & 3;
-      if ( !(off & 3) )
-         goto LABEL_23;
-      v9 = 4 - v8;
-      v10 = *v7++;
-      do
+      uint32_t *src32 = (uint32_t*)((uint8_t*)src + (off & 0xFFFFFFFC));
+      uint32_t *dst32 = dst;
+
+      if (off & 3)
       {
-         v10 = __ROL__(v10, 8, nbits);
-      }while (--v8);
-      do
-      {
-         *v5++ = __ROL__(v10, 8, nbits);
-      }while (--v9);
-      *v5++ = m64p_swap32(*v7++);
-      v6 = cnt - 1;
-      if ( cnt != 1 )
-      {
-LABEL_23:
-         do
-         {
-            *v5++ = m64p_swap32(*v7++);
-            *v5++ = m64p_swap32(*v7++);
-         }while (--v6 );
+         uint32_t numrot = off & 3;
+         int32_t  nwords = 4 - numrot;
+         uint32_t word   = *src32++;
+
+         while (numrot--)
+            word = rol32(word, 8);
+
+         word = rol32(word, 8);
+
+         while (nwords--)
+            *dst32++ = word;
+
+         *dst32++ = m64p_swap32(*src32++);
+
+         length = cnt - 1;
       }
-      v13 = off & 3;
-      if ( off & 3 )
+
+      while (length--)
       {
-         v14 = *(uint32_t *)((int8_t*)src + ((8 * cnt + off) & 0xFFFFFFFC));
-         do
-         {
-            *v5++ = __ROL__(v14, 8, nbits);
-         }while (--v13);
+         *dst32++ = m64p_swap32(*src32++);
+         *dst32++ = m64p_swap32(*src32++);
+      }
+
+      if (off & 3)
+      {
+         uint32_t nwords = off & 3;
+         uint32_t word   = *(uint32_t *)((int8_t*)src + ((8 * cnt + off) & 0xFFFFFFFC));
+         word = rol32(word, 8);
+
+         while (nwords--)
+            *dst32++ = word;
       }
    }
-   v6 = cnt;
-   v16 = 0;
-   v18 = 0;
-dxt_test:
-   do
+
+   length = cnt;
+
+   while (length--)
    {
+      int32_t v18 = 0;
+
       dst += 2;
-      if ( !--v6 )
-         break;
       v16 += dxt;
-      if ( v16 < 0 )
+
+      while (v16 < 0 && length--)
       {
-         do
-         {
-            ++v18;
-            if ( !--v6 )
-               goto end_dxt_test;
-            v16 += dxt;
-            if ( v16 >= 0 )
-            {
-               do
-               {
-                  *dst ^= dst[1];
-                  dst[1] ^= *dst;
-                  *dst ^= dst[1];
-                  dst += 2;
-               }while(--v18);
-               goto dxt_test;
-            }
-         }while(1);
+         ++v18;
+         v16 += dxt;
       }
-   }while(1);
-end_dxt_test:
-   while ( v18 )
-   {
-      *dst ^= dst[1];
-      dst[1] ^= *dst;
-      *dst ^= dst[1];
-      dst += 2;
-      --v18;
+
+      while (v18--)
+      {
+         dst[0] ^= dst[1];
+         dst[1] ^= dst[0];
+         dst[0] ^= dst[1];
+         dst += 2;
+      }
    }
 }
 
