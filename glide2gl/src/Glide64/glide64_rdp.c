@@ -1180,115 +1180,6 @@ static void rdp_settilesize(uint32_t w0, uint32_t w1)
       g_gdp.tile[tilenum].tl += 0x400;
 }
 
-
-static INLINE void loadTile(uint32_t *src, uint32_t *dst,
-      int width, int height, int line, int off, uint32_t *end)
-{
-   uint32_t *v13, v16, *v17, v18, v20, v22, *v24, *v27, *v31;
-   int       v14, v15, v19, v21, v23, v25, v26, v28, v29, v30;
-   uint32_t nbits = sizeof(uint32_t) * 8;
-   uint32_t *v7 = dst;
-   int32_t   v8 = width;
-   uint32_t *v9 = src;
-   int32_t v10  = off;
-   int32_t v11  = 0;
-   int32_t v12  = height;
-   do
-   {
-      if ( end < v7 )
-         break;
-      v31 = v7;
-      v30 = v8;
-      v29 = v12;
-      v28 = v11;
-      v27 = v9;
-      v26 = v10;
-      if ( v8 )
-      {
-         v25 = v8;
-         v24 = v9;
-         v23 = v10;
-         v13 = (uint32_t *)((char *)v9 + (v10 & 0xFFFFFFFC));
-         v14 = v10 & 3;
-         if ( !(v10 & 3) )
-            goto LABEL_20;
-         v15 = 4 - v14;
-         v16 = *v13;
-         v17 = v13 + 1;
-         do
-         {
-            v16 = __ROL__(v16, 8, nbits);
-            --v14;
-         }
-         while ( v14 );
-         do
-         {
-            v16 = __ROL__(v16, 8, nbits);
-            *(uint8_t *)v7 = v16;
-            v7 = (uint32_t *)((char *)v7 + 1);
-            --v15;
-         }
-         while ( v15 );
-         v18 = *v17;
-         v13 = v17 + 1;
-         *v7 = m64p_swap32(v18);
-         ++v7;
-         --v8;
-         if ( v8 )
-         {
-LABEL_20:
-            do
-            {
-               *v7 = m64p_swap32(*v13);
-               v7[1] = m64p_swap32(v13[1]);
-               v13 += 2;
-               v7 += 2;
-               --v8;
-            }
-            while ( v8 );
-         }
-         v19 = v23 & 3;
-         if ( v23 & 3 )
-         {
-            v20 = *(uint32_t *)((char *)v24 + ((8 * v25 + v23) & 0xFFFFFFFC));
-            do
-            {
-               v20 = __ROL__(v20, 8, nbits);
-               *(uint8_t *)v7 = v20;
-               v7 = (uint32_t *)((char *)v7 + 1);
-               --v19;
-            }
-            while ( v19 );
-         }
-      }
-      v9 = v27;
-      v21 = v29;
-      v8 = v30;
-      v11 = v28 ^ 1;
-      if ( v28 == 1 )
-      {
-         v7 = v31;
-         if ( v30 )
-         {
-            do
-            {
-               v22 = *v7;
-               *v7 = v7[1];
-               v7[1] = v22;
-               v7 += 2;
-               --v8;
-            }
-            while ( v8 );
-         }
-         v21 = v29;
-         v8 = v30;
-      }
-      v10 = line + v26;
-      v12 = v21 - 1;
-   }
-   while ( v12 );
-}
-
 static void rdp_loadblock(uint32_t w0, uint32_t w1)
 {
    // lr_s specifies number of 64-bit words to copy
@@ -1301,8 +1192,6 @@ static void rdp_loadblock(uint32_t w0, uint32_t w1)
          (w1 & 0x0FFF) /* dxt */
          );
 }
-
-void LoadTile32b (uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height);
 
 static void rdp_loadtile(uint32_t w0, uint32_t w1)
 {
