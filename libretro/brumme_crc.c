@@ -89,7 +89,7 @@ static INLINE uint32_t swap(uint32_t x)
 }
 
 /* TODO: use the fastest for each platform, autodetect it or put an core option */
-#define crc32_implementation crc32_16bytes
+#define crc32_implementation crc32_4bytes
 static uint32_t crc32_4bytes(const void* data, size_t length, uint32_t previousCrc32);
 static uint32_t crc32_8bytes(const void* data, size_t length, uint32_t previousCrc32);
 static uint32_t crc32_16bytes(const void* data, size_t length, uint32_t previousCrc32);
@@ -122,12 +122,13 @@ unsigned int CRC32(unsigned int crc, void *buffer, unsigned int count)
 
 uint32_t CRC_Calculate(void *buffer, uint32_t count)
 {
-   return crc32_implementation(buffer, count, 0xffffffff);
+   return CRC32(0xffffffff, buffer, count);
 }
 
 uint32_t adler32(uint32_t adler, void *buf, int len)
 {
-   return CRC32(adler, buf, len);
+   /* seems to work well for r4300 core uses */
+   return crc32_16bytes(buf, len, adler);
 }
 
 
