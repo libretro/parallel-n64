@@ -29,34 +29,38 @@
 /* TODO: try glDrawElements */
 /* TODO: #ifdefs for EMSCRIPTEN (ToadKing?) */
 /* TODO: investigate triangle degeneration to allow caching GL_TRIANGLE_STRIP */
-#define VERTEX_OFF(x) (vbuf_vbo ? (void*)offsetof(VERTEX, x) : (void*)&vbuf_data->x)
-#define VERTEX_SIZE sizeof(VERTEX)
-#define VERTEX_BUFFER_SIZE (1500)
-static VERTEX   vbuf_data[VERTEX_BUFFER_SIZE];
-static GLenum   vbuf_primitive = GL_TRIANGLES;
-static unsigned vbuf_length    = 0;
-static bool     vbuf_use_vbo   = false;
-static bool     vbuf_enabled   = false;
-static GLuint   vbuf_vbo       = 0;
-static size_t   vbuf_vbo_size  = 0;
-static bool     vbuf_drawing   = false;
 
-extern retro_environment_t environ_cb;
-
-#ifdef EMSCRIPTEN
-struct draw_buffer {
+/* This structure is a truncated version of VERTEX, we use it to lower memory
+ * usage and speed up the caching process. */
+typedef struct
+{
   float x, y, z, q;
 
-  uint8_t  b;  // These values are arranged like this so that *(uint32_t*)(VERTEX+?) is
-  uint8_t  g;  // ARGB format that glide can use.
+  uint8_t  b;
+  uint8_t  g;
   uint8_t  r;
   uint8_t  a;
 
   float coord[4];
 
   float f; //fog
-};
+} VBufVertex;
 
+#define VERTEX_OFF(x) (vbuf_vbo ? (void*)offsetof(VBufVertex, x) : (void*)&vbuf_data->x)
+#define VERTEX_SIZE sizeof(VBufVertex)
+#define VERTEX_BUFFER_SIZE (1500)
+static VBufVertex vbuf_data[VERTEX_BUFFER_SIZE];
+static GLenum     vbuf_primitive = GL_TRIANGLES;
+static unsigned   vbuf_length    = 0;
+static bool       vbuf_use_vbo   = false;
+static bool       vbuf_enabled   = false;
+static GLuint     vbuf_vbo       = 0;
+static size_t     vbuf_vbo_size  = 0;
+static bool       vbuf_drawing   = false;
+
+extern retro_environment_t environ_cb;
+
+#ifdef EMSCRIPTEN
 static struct draw_buffer *gli_vbo;
 static unsigned gli_vbo_size;
 #endif
@@ -156,12 +160,15 @@ static void vbo_append(GLenum mode, GLsizei count, void *pointers)
    if (vbuf_length + count > VERTEX_BUFFER_SIZE)
      vbo_draw();
 
-   memcpy(&vbuf_data[vbuf_length], pointers, count * VERTEX_SIZE);
-   vbuf_length += count;
-
    /* keep caching triangles as much as possible. */
    if (count == 3 && vbuf_primitive == GL_TRIANGLES)
       mode = GL_TRIANGLES;
+
+   while (count--)
+   {
+      memcpy(&vbuf_data[vbuf_length++], pointers, VERTEX_SIZE);
+      pointers = (char*)pointers + sizeof(VERTEX);
+   }
 
    vbuf_primitive = mode;
 
