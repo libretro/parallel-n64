@@ -957,7 +957,7 @@ void loadTile(uint32_t *src, uint32_t *dst,
       }
 
       dst += width * 2;
-      src += line >> 2;
+      off += line;
       odd ^= 1;
    }
 }
