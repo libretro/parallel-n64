@@ -196,10 +196,12 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 					 $(AUDIO_LIBRETRO_DIR)/drivers_resampler/cc_resampler.c \
 					 $(AUDIO_LIBRETRO_DIR)/audio_utils.c
 
-ifeq ($(HAVE_CUSTOMCRC), 1)
-SOURCES_C += $(LIBRETRO_DIR)/glide64_crc.c
+ifeq ($(WITH_CRC),brumme)
+   SOURCES_C += $(LIBRETRO_DIR)/brumme_crc.c
+else ifeq ($(WITH_CRC),libretro)
+   SOURCES_C += $(LIBRETRO_DIR)/libretro_crc.c
 else
-SOURCES_C += $(LIBRETRO_DIR)/libretro_crc.c
+   SOURCES_C += $(LIBRETRO_DIR)/glide64_crc.c
 endif
 
 SOURCES_GLN64VIDEO := $(VIDEODIR_GLN64)/3DMath.c \
