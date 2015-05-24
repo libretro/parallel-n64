@@ -55,13 +55,8 @@
 typedef unsigned __int8  uint8_t;
 typedef unsigned __int32 uint32_t;
 typedef   signed __int32 int32_t;
-
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN    4321
-#define __BYTE_ORDER    __LITTLE_ENDIAN
 #else
 #include <stdint.h>
-#include <endian.h>
 #endif
 
 /// zlib's CRC32 polynomial
@@ -89,7 +84,7 @@ static INLINE uint32_t swap(uint32_t x)
 }
 
 /* TODO: use the fastest for each platform, autodetect it or put an core option */
-#define crc32_implementation crc32_16bytes
+#define crc32_implementation crc32_4bytes
 static uint32_t crc32_4bytes(const void* data, size_t length, uint32_t previousCrc32);
 static uint32_t crc32_8bytes(const void* data, size_t length, uint32_t previousCrc32);
 static uint32_t crc32_16bytes(const void* data, size_t length, uint32_t previousCrc32);
@@ -122,8 +117,15 @@ unsigned int CRC32(unsigned int crc, void *buffer, unsigned int count)
 
 uint32_t CRC_Calculate(void *buffer, uint32_t count)
 {
-   return crc32_implementation(buffer, count, 0xffffffff);
+   return CRC32(0xffffffff, buffer, count);
 }
+
+uint32_t adler32(uint32_t adler, void *buf, int len)
+{
+   /* seems to work well for r4300 core uses */
+   return crc32_16bytes(buf, len, adler);
+}
+
 
 /// compute CRC32 (Slicing-by-4 algorithm)
 static uint32_t crc32_4bytes(const void* data, size_t length, uint32_t previousCrc32)
@@ -134,7 +136,7 @@ static uint32_t crc32_4bytes(const void* data, size_t length, uint32_t previousC
    // process four bytes at once (Slicing-by-4)
    while (length >= 4)
    {
-#if __BYTE_ORDER == __BIG_ENDIAN
+#ifdef MSB_FIRST
       uint32_t one = *current++ ^ swap(crc);
       crc = Crc32Lookup[0][ one      & 0xFF] ^
             Crc32Lookup[1][(one>> 8) & 0xFF] ^
@@ -168,7 +170,7 @@ static uint32_t crc32_8bytes(const void* data, size_t length, uint32_t previousC
    // process eight bytes at once (Slicing-by-8)
    while (length >= 8)
    {
-#if __BYTE_ORDER == __BIG_ENDIAN
+#ifdef MSB_FIRST
       uint32_t one = *current++ ^ swap(crc);
       uint32_t two = *current++;
       crc = Crc32Lookup[0][ two      & 0xFF] ^
@@ -218,7 +220,7 @@ static uint32_t crc32_16bytes(const void* data, size_t length, uint32_t previous
       size_t unrolling;
       for (unrolling = 0; unrolling < Unroll; unrolling++)
       {
-#if __BYTE_ORDER == __BIG_ENDIAN
+#ifdef MSB_FIRST
          uint32_t one   = *current++ ^ swap(crc);
          uint32_t two   = *current++;
          uint32_t three = *current++;
