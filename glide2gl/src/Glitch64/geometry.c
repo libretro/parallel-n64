@@ -189,8 +189,8 @@ void vbo_enable(void)
    if (vbuf_vbo)
    {
       glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
-      if (vbuf_vbo_size < VERTEX_BUFFER_SIZE)
-         vbo_buffer_data(NULL, VERTEX_BUFFER_SIZE);
+      if (vbuf_vbo_size < VERTEX_BUFFER_SIZE * sizeof(VBufVertex))
+         vbo_buffer_data(NULL, VERTEX_BUFFER_SIZE * sizeof(VBufVertex));
    }
 
    glEnableVertexAttribArray(POSITION_ATTR);
