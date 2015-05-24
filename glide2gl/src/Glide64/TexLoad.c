@@ -860,7 +860,7 @@ texfunc load_table[4][5] = { // [size][format]
 
 
 static INLINE void load_block_line(uint32_t *src, uint32_t *dst,
-      unsigned offset, unsigned width)
+      unsigned offset, unsigned width, bool is_load_block)
 {
    unsigned length = width;
    uint32_t *src32 = (uint32_t*)((uint8_t*)src + (offset & 0xFFFFFFFC));
@@ -878,10 +878,22 @@ static INLINE void load_block_line(uint32_t *src, uint32_t *dst,
       while (numrot--)
          word = rol32(word, 8);
 
-      while (nwords--)
+      if (is_load_block)
       {
-         word = rol32(word, 8);
-         *dst32++ = word;
+         while (nwords--)
+         {
+            word = rol32(word, 8);
+            *dst32++ = word;
+         }
+      }
+      else
+      {
+         while (nwords--)
+         {
+            word = rol32(word, 8);
+            *(uint8_t*)dst32 = word;
+            dst32 = (uint32_t*)((uint8_t*)dst32 + 1);
+         }
       }
 
       *dst32++ = m64p_swap32(*src32++);
@@ -900,10 +912,22 @@ static INLINE void load_block_line(uint32_t *src, uint32_t *dst,
       uint32_t nwords = offset & 3;
       uint32_t word   = *(uint32_t*)((uint8_t*)src + ((8 * width + offset) & 0xFFFFFFFC));
 
-      while (nwords--)
+      if (is_load_block)
       {
-         word = rol32(word, 8);
-         *dst32++ = word;
+         while (nwords--)
+         {
+            word = rol32(word, 8);
+            *dst32++ = word;
+         }
+      }
+      else
+      {
+         while (nwords--)
+         {
+            word = rol32(word, 8);
+            *(uint8_t*)dst32 = word;
+            dst32 = (uint32_t*)((uint8_t*)dst32 + 1);
+         }
       }
    }
 }
@@ -916,7 +940,7 @@ void loadTile(uint32_t *src, uint32_t *dst,
 
    while (height-- && end >= dst)
    {
-      load_block_line(src, dst, off, width);
+      load_block_line(src, dst, off, width, false);
 
       if (odd)
       {
@@ -943,7 +967,7 @@ void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
    int32_t v16 = 0;
    int32_t length = cnt;
 
-   load_block_line(src, dst, off, cnt);
+   load_block_line(src, dst, off, cnt, true);
 
    while (length-- > 0)
    {
