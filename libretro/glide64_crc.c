@@ -413,6 +413,11 @@ uint32_t CRC32(uint32_t seed, const void*buffer, int count)
     else
         return XXH32_endian_align(buffer, count, seed, XXH_bigEndian, XXH_unaligned);
 }
+
+uint32_t adler32(uint32_t adler, void *buf, int len)
+{
+   return CRC32(adler, buf, len);
+}
 #endif
 
 #if 0

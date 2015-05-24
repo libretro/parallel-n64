@@ -51,3 +51,9 @@ uint32_t CRC_Calculate(void *buffer, uint32_t count)
       crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *p++];
    return ~crc;
 }
+
+uint32_t adler32(uint32_t adler, void *buf, int len)
+{
+   return CRC32(adler, buf, len);
+}
+

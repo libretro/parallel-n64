@@ -125,6 +125,12 @@ uint32_t CRC_Calculate(void *buffer, uint32_t count)
    return crc32_implementation(buffer, count, 0xffffffff);
 }
 
+uint32_t adler32(uint32_t adler, void *buf, int len)
+{
+   return CRC32(adler, buf, len);
+}
+
+
 /// compute CRC32 (Slicing-by-4 algorithm)
 static uint32_t crc32_4bytes(const void* data, size_t length, uint32_t previousCrc32)
 {
