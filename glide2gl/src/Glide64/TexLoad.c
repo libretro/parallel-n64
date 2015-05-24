@@ -932,6 +932,16 @@ static INLINE void load_block_line(uint32_t *src, uint32_t *dst,
    }
 }
 
+static INLINE void dxt_swap(uint32_t *line, int width)
+{
+   while (width--)
+   {
+      line[0] ^= line[1];
+      line[1] ^= line[0];
+      line[0] ^= line[1];
+      line += 2;
+   }
+}
 
 void loadTile(uint32_t *src, uint32_t *dst,
       int width, int height, int line, int off, uint32_t *end)
@@ -943,18 +953,7 @@ void loadTile(uint32_t *src, uint32_t *dst,
       load_block_line(src, dst, off, width, false);
 
       if (odd)
-      {
-         int i;
-         uint32_t *dst32 = dst;
-
-         for (i = width; i; --i)
-         {
-            dst32[0] ^= dst32[1];
-            dst32[1] ^= dst32[0];
-            dst32[0] ^= dst32[1];
-            dst32 += 2;
-         }
-      }
+         dxt_swap(dst, width);
 
       dst += width * 2;
       off += line;
@@ -982,12 +981,7 @@ void loadBlock(uint32_t *src, uint32_t *dst, uint32_t off, int dxt, int cnt)
          v16 += dxt;
       }
 
-      while (v18--)
-      {
-         dst[0] ^= dst[1];
-         dst[1] ^= dst[0];
-         dst[0] ^= dst[1];
-         dst += 2;
-      }
+      dxt_swap(dst, v18);
+      dst += v18 * 2;
    }
 }
