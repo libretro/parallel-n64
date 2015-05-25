@@ -83,8 +83,7 @@ static INLINE uint32_t swap(uint32_t x)
 #endif
 }
 
-/* TODO: use the fastest for each platform, autodetect it or put an core option */
-#define crc32_implementation crc32_4bytes
+static uint32_t crc32_1byte(const void* data, size_t length, uint32_t previousCrc32);
 static uint32_t crc32_4bytes(const void* data, size_t length, uint32_t previousCrc32);
 static uint32_t crc32_8bytes(const void* data, size_t length, uint32_t previousCrc32);
 static uint32_t crc32_16bytes(const void* data, size_t length, uint32_t previousCrc32);
@@ -112,7 +111,7 @@ void CRC_BuildTable(void)
 
 unsigned int CRC32(unsigned int crc, void *buffer, unsigned int count)
 {
-   return crc32_implementation(buffer, count, crc);
+   return crc32_1byte(buffer, count, crc);
 }
 
 uint32_t CRC_Calculate(void *buffer, uint32_t count)
@@ -122,10 +121,21 @@ uint32_t CRC_Calculate(void *buffer, uint32_t count)
 
 uint32_t adler32(uint32_t adler, void *buf, int len)
 {
-   /* seems to work well for r4300 core uses */
+   /* seems to work well for r4300 core uses, speeds up CBFD too */
    return crc32_16bytes(buf, len, adler);
 }
 
+/// compute CRC32 (standard algorithm)
+static uint32_t crc32_1byte(const void* data, size_t length, uint32_t previousCrc32)
+{
+   uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
+   const uint8_t* current = (const uint8_t*) data;
+
+   while (length-- > 0)
+      crc = (crc >> 8) ^ Crc32Lookup[0][(crc & 0xFF) ^ *current++];
+
+   return ~crc; // same as crc ^ 0xFFFFFFFF
+}
 
 /// compute CRC32 (Slicing-by-4 algorithm)
 static uint32_t crc32_4bytes(const void* data, size_t length, uint32_t previousCrc32)
