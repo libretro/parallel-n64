@@ -37,7 +37,7 @@ extern "C" {
 #include <stdlib.h>
 #endif
 
-#if defined(__llvm__) || (defined(__GNUC__) && (__GNUC__ * 100 + __GNUC_MINOR__) >= 403)
+#if defined(__llvm__) || (defined(__GNUC__) && (__GNUC__ * 100 + __GNUC_MINOR__) >= 408)
 #define BUILTIN_BSWAP16 __builtin_bswap16
 #define BUILTIN_BSWAP32 __builtin_bswap32
 #define BUILTIN_BSWAP64 __builtin_bswap64
