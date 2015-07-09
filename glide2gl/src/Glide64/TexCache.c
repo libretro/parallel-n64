@@ -134,17 +134,15 @@ void ClearCache(void)
 //****************************************************************
 static uint32_t textureCRC(uint8_t *addr, int width, int height, int line)
 {
-   uint32_t crc = 0;
-   uint32_t *pixelpos;
    unsigned int i;
-   uint64_t twopixel_crc;
+   uint32_t *pixelpos = (uint32_t*)addr;
+   uint32_t crc       = 0;
 
-   pixelpos = (uint32_t*)addr;
    for (; height; height--)
    {
       for (i = width; i; --i)
       {
-         twopixel_crc = i * (uint64_t)(pixelpos[1] + pixelpos[0] + crc);
+         uint64_t twopixel_crc = i * (uint64_t)(pixelpos[1] + pixelpos[0] + crc);
          crc = (uint32_t)(twopixel_crc >> 32) + (uint32_t)twopixel_crc;
          pixelpos += 2;
       }
