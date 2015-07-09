@@ -1483,6 +1483,8 @@ void ReadSpecialSettings (const char * name)
       hires = 1;
 #endif
       //fb_clear = 1
+      //
+      settings.hacks |= hack_OOT;
    }
    else if (strstr(name, (const char*)"Re-Volt"))
    {

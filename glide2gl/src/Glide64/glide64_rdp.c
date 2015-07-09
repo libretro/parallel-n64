@@ -432,6 +432,29 @@ static void CopyFrameBuffer(int32_t buffer)
    }
 }
 
+static void copyWhiteToRDRAM(void)
+{
+   uint16_t *ptr_dst;
+   uint32_t *ptr_dst32;
+   uint32_t y, x;
+   if(g_gdp.fb_width == 0)
+      return;
+
+   ptr_dst   = (uint16_t*)(gfx_info.RDRAM + rdp.cimg);
+   ptr_dst32 = (uint32_t*)(gfx_info.RDRAM + rdp.cimg);
+
+   for(y = 0; y < rdp.ci_height; y++)
+   {
+      for(x = 0; x < g_gdp.fb_width; x++)
+      {
+         if(g_gdp.fb_size == 2)
+            ptr_dst[(x + y * g_gdp.fb_width) ^ 1] = 0xFFFF;
+         else
+            ptr_dst32[x + y * g_gdp.fb_width] = 0xFFFFFFFF;
+      }
+   }
+}
+
 /******************************************************************
 Function: ProcessDList
 Purpose:  This function is called when there is a Dlist to be
@@ -452,6 +475,8 @@ uint32_t ucode5_texshiftaddr = 0;
 uint32_t ucode5_texshiftcount = 0;
 uint16_t ucode5_texshift = 0;
 int depth_buffer_fog;
+
+extern bool frame_dupe;
 
 EXPORT void CALL ProcessDList(void)
 {
@@ -593,7 +618,9 @@ EXPORT void CALL ProcessDList(void)
     rdp.scale_x = rdp.scale_x_bak;
     rdp.scale_y = rdp.scale_y_bak;
   }
-  if (settings.frame_buffer & fb_ref)
+  if(settings.hacks & hack_OOT && !frame_dupe)
+    copyWhiteToRDRAM(); /* Subscreen delay fix */
+  else if (settings.frame_buffer & fb_ref)
     CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
 
   if ((settings.hacks&hack_TGR2) && rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG && CI_SET)
