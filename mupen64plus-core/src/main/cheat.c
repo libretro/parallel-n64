@@ -215,38 +215,6 @@ void cheat_apply_cheats(int entry)
    }
 #endif
 
-   if (!frame_dupe)
-   {
-      // If game is Zelda OOT, apply subscreen delay fix
-      if (strncmp((char *)ROM_HEADER.Name, "THE LEGEND OF ZELDA", 19) == 0 && entry == ENTRY_VI) {
-         if (sl(ROM_HEADER.CRC1) == 0xEC7011B7 && sl(ROM_HEADER.CRC2) == 0x7616D72B) {
-            // Legend of Zelda, The - Ocarina of Time (U) + (J) (V1.0)
-            execute_cheat(0x801DA5CB, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0xD43DA81F && sl(ROM_HEADER.CRC2) == 0x021E1E19) {
-            // Legend of Zelda, The - Ocarina of Time (U) + (J) (V1.1)
-            execute_cheat(0x801DA78B, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0x693BA2AE && sl(ROM_HEADER.CRC2) == 0xB7F14E9F) {
-            // Legend of Zelda, The - Ocarina of Time (U) + (J) (V1.2)
-            execute_cheat(0x801DAE8B, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0xB044B569 && sl(ROM_HEADER.CRC2) == 0x373C1985) {
-            // Legend of Zelda, The - Ocarina of Time (E) (V1.0)
-            execute_cheat(0x801D860B, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0xB2055FBD && sl(ROM_HEADER.CRC2) == 0x0BAB4E0C) {
-            // Legend of Zelda, The - Ocarina of Time (E) (V1.1)
-            execute_cheat(0x801D864B, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0xF034001A && sl(ROM_HEADER.CRC2) == 0xAE47ED06) {
-            // Legend of Zelda, The - Ocarina of Time - Master Quest (U) (GC)
-            execute_cheat(0x801DB74B, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0x1D4136F3 && sl(ROM_HEADER.CRC2) == 0xAF63EEA9) {
-            // Legend of Zelda, The - Ocarina of Time - Master Quest (E) (GC)
-            execute_cheat(0x801D8F4B, 0x0002, NULL);
-         } else if (sl(ROM_HEADER.CRC1) == 0x917D18F6 && sl(ROM_HEADER.CRC2) == 0x69BC5453) {
-            // Legend of Zelda, The - Ocarina of Time - Master Quest (U) (Debug Version)
-            execute_cheat(0x8022414B, 0x0002, NULL);
-         }
-      }
-   }
-
     // If game is Pokemon Snap, apply controller fix
     if (strncmp((char *)ROM_HEADER.Name, "POKEMON SNAP", 12) == 0 && entry == ENTRY_VI) {
        if (sl(ROM_HEADER.CRC1) == 0xCA12B547 && sl(ROM_HEADER.CRC2) == 0x71FA4EE4) {
