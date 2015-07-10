@@ -31,6 +31,7 @@
 
 #include <string.h>
 
+/* Copies data from the PI into RDRAM */
 static void dma_pi_read(struct pi_controller *pi)
 {
    if (pi->regs[PI_CART_ADDR_REG] >= 0x08000000
@@ -56,6 +57,7 @@ static void dma_pi_read(struct pi_controller *pi)
    add_interupt_event(PI_INT, 0x1000/* pi->regs[PI_RD_LEN_REG] */);
 }
 
+/* Copies data from the PI into RDRAM. */
 static void dma_pi_write(struct pi_controller *pi)
 {
    uint32_t length, i;
@@ -183,6 +185,7 @@ void connect_pi(struct pi_controller* pi,
    pi->ri    = ri;
 }
 
+/* Initializes the PI. */
 void init_pi(struct pi_controller* pi)
 {
     memset(pi->regs, 0, PI_REGS_COUNT*sizeof(uint32_t));
@@ -192,7 +195,7 @@ void init_pi(struct pi_controller* pi)
     pi->use_flashram = 0;
 }
 
-
+/* Reads a word from the PI MMIO register space. */
 int read_pi_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct pi_controller* pi = (struct pi_controller*)opaque;
@@ -203,6 +206,7 @@ int read_pi_regs(void* opaque, uint32_t address, uint32_t* value)
     return 0;
 }
 
+/* writes a word to the PI MMIO register space. */
 int write_pi_regs(void* opaque, uint32_t address,
       uint32_t value, uint32_t mask)
 {

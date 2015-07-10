@@ -35,6 +35,7 @@ void connect_vi(struct vi_controller* vi,
     vi->r4300 = r4300;
 }
 
+/* Initializes the VI. */
 void init_vi(struct vi_controller* vi)
 {
     memset(vi->regs, 0, VI_REGS_COUNT*sizeof(uint32_t));
@@ -43,8 +44,8 @@ void init_vi(struct vi_controller* vi)
     vi->delay = vi->next_vi = 5000;
 }
 
-
-int read_vi_regs(void* opaque, uint32_t address, uint32_t* value)
+/* Reads a word from the VI MMIO register space. */
+int read_vi_regs(void* opaque, uint32_t address, uint32_t *word)
 {
     struct vi_controller* vi = (struct vi_controller*)opaque;
     uint32_t reg = vi_reg(address);
@@ -57,12 +58,14 @@ int read_vi_regs(void* opaque, uint32_t address, uint32_t* value)
         vi->regs[VI_CURRENT_REG] = (vi->regs[VI_CURRENT_REG] & (~1)) | vi->field;
     }
 
-    *value = vi->regs[reg];
+    *word = vi->regs[reg];
 
     return 0;
 }
 
-int write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+/* Writes a word to the VI MMIO register space. */
+int write_vi_regs(void* opaque, uint32_t address,
+      uint32_t word, uint32_t mask)
 {
     struct vi_controller* vi = (struct vi_controller*)opaque;
     uint32_t reg             = vi_reg(address);
@@ -70,17 +73,17 @@ int write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
     switch(reg)
     {
        case VI_STATUS_REG:
-          if ((vi->regs[VI_STATUS_REG] & mask) != (value & mask))
+          if ((vi->regs[VI_STATUS_REG] & mask) != (word & mask))
           {
-             masked_write(&vi->regs[VI_STATUS_REG], value, mask);
+             masked_write(&vi->regs[VI_STATUS_REG], word, mask);
              gfx.viStatusChanged();
           }
           return 0;
 
        case VI_WIDTH_REG:
-          if ((vi->regs[VI_WIDTH_REG] & mask) != (value & mask))
+          if ((vi->regs[VI_WIDTH_REG] & mask) != (word & mask))
           {
-             masked_write(&vi->regs[VI_WIDTH_REG], value, mask);
+             masked_write(&vi->regs[VI_WIDTH_REG], word, mask);
              gfx.viWidthChanged();
           }
           return 0;
@@ -90,7 +93,7 @@ int write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
           return 0;
     }
 
-    masked_write(&vi->regs[reg], value, mask);
+    masked_write(&vi->regs[reg], word, mask);
 
     return 0;
 }
