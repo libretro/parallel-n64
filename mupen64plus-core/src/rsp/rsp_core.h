@@ -24,6 +24,18 @@
 
 #include <stdint.h>
 
+#ifndef RSP_MEM_ADDR
+#define RSP_MEM_ADDR(a) ((a & 0x1fff) >> 2)
+#endif
+
+#ifndef RSP_REG
+#define RSP_REG(a)      ((a & 0xffff) >> 2)
+#endif
+
+#ifndef RSP_REG2
+#define RSP_REG2(a)     ((a & 0xffff) >> 2)
+#endif
+
 struct r4300_core;
 struct rdp_core;
 struct ri_controller;
@@ -50,7 +62,6 @@ enum sp_registers2
     SP_REGS2_COUNT
 };
 
-
 struct rsp_core
 {
     uint32_t mem[SP_MEM_SIZE/4];
@@ -61,21 +72,6 @@ struct rsp_core
     struct rdp_core* dp;
     struct ri_controller* ri;
 };
-
-static INLINE uint32_t rsp_mem_address(uint32_t address)
-{
-    return (address & 0x1fff) >> 2;
-}
-
-static INLINE uint32_t rsp_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
-
-static INLINE uint32_t rsp_reg2(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
 
 void connect_rsp(struct rsp_core* sp,
                  struct r4300_core* r4300,

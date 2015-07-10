@@ -199,7 +199,7 @@ void init_pi(struct pi_controller* pi)
 int read_pi_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct pi_controller* pi = (struct pi_controller*)opaque;
-    uint32_t reg             = pi_reg(address);
+    uint32_t reg             = PI_REG(address);
 
     *value                   = pi->regs[reg];
 
@@ -211,7 +211,7 @@ int write_pi_regs(void* opaque, uint32_t address,
       uint32_t value, uint32_t mask)
 {
    struct pi_controller* pi = (struct pi_controller*)opaque;
-   uint32_t reg             = pi_reg(address);
+   uint32_t reg             = PI_REG(address);
 
    switch (reg)
    {

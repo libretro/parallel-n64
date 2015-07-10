@@ -26,6 +26,14 @@
 
 #include "fb.h"
 
+#ifndef DPC_REG
+#define DPC_REG(a)   ((a & 0xffff) >> 2)
+#endif
+
+#ifndef DPS_REG
+#define DPS_REG(a)   ((a & 0xffff) >> 2)
+#endif
+
 struct r4300_core;
 struct rsp_core;
 struct ri_controller;
@@ -64,16 +72,6 @@ struct rdp_core
     struct rsp_core* sp;
     struct ri_controller* ri;
 };
-
-static INLINE uint32_t dpc_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
-
-static INLINE uint32_t dps_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
 
 void connect_rdp(struct rdp_core* dp,
                  struct r4300_core* r4300,

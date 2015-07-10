@@ -74,7 +74,7 @@ void init_mi(struct mi_controller* mi)
 int read_mi_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct r4300_core* r4300 = (struct r4300_core*)opaque;
-    uint32_t reg = mi_reg(address);
+    uint32_t             reg = MI_REG(address);
 
     *value = r4300->mi.regs[reg];
 
@@ -84,7 +84,7 @@ int read_mi_regs(void* opaque, uint32_t address, uint32_t* value)
 int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct r4300_core* r4300 = (struct r4300_core*)opaque;
-    uint32_t reg = mi_reg(address);
+    uint32_t             reg = MI_REG(address);
     const uint32_t *cp0_regs = r4300_cp0_regs();
 
     switch(reg)

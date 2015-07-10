@@ -176,7 +176,7 @@ void init_rsp(struct rsp_core* sp)
 int read_rsp_mem(void* opaque, uint32_t address, uint32_t* value)
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t addr       = rsp_mem_address(address);
+    uint32_t addr       = RSP_MEM_ADDR(address);
 
     *value = sp->mem[addr];
 
@@ -186,7 +186,7 @@ int read_rsp_mem(void* opaque, uint32_t address, uint32_t* value)
 int write_rsp_mem(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t addr       = rsp_mem_address(address);
+    uint32_t addr       = RSP_MEM_ADDR(address);
 
     masked_write(&sp->mem[addr], value, mask);
 
@@ -197,7 +197,7 @@ int write_rsp_mem(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 int read_rsp_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t reg        = rsp_reg(address);
+    uint32_t reg        = RSP_REG(address);
 
     *value = sp->regs[reg];
 
@@ -210,7 +210,7 @@ int read_rsp_regs(void* opaque, uint32_t address, uint32_t* value)
 int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t reg        = rsp_reg(address);
+    uint32_t reg        = RSP_REG(address);
 
     switch(reg)
     {
@@ -243,7 +243,7 @@ int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
 int read_rsp_regs2(void* opaque, uint32_t address, uint32_t* value)
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t reg        = rsp_reg2(address);
+    uint32_t reg        = RSP_REG2(address);
 
     *value = sp->regs2[reg];
 
@@ -253,7 +253,7 @@ int read_rsp_regs2(void* opaque, uint32_t address, uint32_t* value)
 int write_rsp_regs2(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t reg        = rsp_reg2(address);
+    uint32_t reg        = RSP_REG2(address);
 
     masked_write(&sp->regs2[reg], value, mask);
 

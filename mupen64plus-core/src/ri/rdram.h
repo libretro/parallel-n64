@@ -25,6 +25,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef RDRAM_REG
+#define RDRAM_REG(a)    ((a & 0x3ff) >> 2)
+#endif
+
+#ifndef RDRAM_DRAM_ADDR
+#define RDRAM_DRAM_ADDR(a) ((address & 0xffffff) >> 2)
+#endif
+
 enum rdram_registers
 {
     RDRAM_CONFIG_REG,
@@ -47,15 +55,6 @@ struct rdram
     size_t dram_size;
 };
 
-static INLINE uint32_t rdram_reg(uint32_t address)
-{
-    return (address & 0x3ff) >> 2;
-}
-
-static INLINE uint32_t rdram_dram_address(uint32_t address)
-{
-    return (address & 0xffffff) >> 2;
-}
 
 void connect_rdram(struct rdram* rdram,
                    uint32_t* dram,

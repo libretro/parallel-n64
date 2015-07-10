@@ -24,6 +24,10 @@
 
 #include <stdint.h>
 
+#ifndef MI_REG
+#define MI_REG(a) ((a & 0xffff) >> 2)
+#endif
+
 struct r4300_core;
 
 enum mi_registers
@@ -49,11 +53,6 @@ struct mi_controller
 {
     uint32_t regs[MI_REGS_COUNT];
 };
-
-static INLINE uint32_t mi_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
 
 void init_mi(struct mi_controller* mi);
 

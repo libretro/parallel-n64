@@ -50,7 +50,7 @@ void init_ri(struct ri_controller* ri)
 int read_ri_regs(void* opaque, uint32_t address, uint32_t *word)
 {
     struct ri_controller* ri = (struct ri_controller*)opaque;
-    uint32_t reg             = ri_reg(address);
+    uint32_t reg             = RI_REG(address);
 
     *word                   = ri->regs[reg];
 
@@ -61,7 +61,7 @@ int read_ri_regs(void* opaque, uint32_t address, uint32_t *word)
 int write_ri_regs(void* opaque, uint32_t address, uint32_t word, uint32_t mask)
 {
     struct ri_controller* ri = (struct ri_controller*)opaque;
-    uint32_t reg             = ri_reg(address);
+    uint32_t reg             = RI_REG(address);
 
     masked_write(&ri->regs[reg], word, mask);
 

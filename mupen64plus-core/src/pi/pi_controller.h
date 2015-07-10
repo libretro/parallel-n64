@@ -30,6 +30,10 @@
 #include "sram.h"
 #include "../dd/dd_rom.h"
 
+#ifndef PI_REG
+#define PI_REG(a) ((a & 0xffff) >> 2)
+#endif
+
 struct r4300_core;
 struct ri_controller;
 
@@ -65,12 +69,6 @@ struct pi_controller
     struct r4300_core* r4300;
     struct ri_controller *ri;
 };
-
-static INLINE uint32_t pi_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
-
 
 void connect_pi(struct pi_controller* pi,
                 struct r4300_core* r4300,

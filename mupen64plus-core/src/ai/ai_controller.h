@@ -27,6 +27,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef AI_REG
+#define AI_REG(a) ((a & 0xFFFF) >> 2)
+#endif
+
 struct r4300_core;
 struct ri_controller;
 struct vi_controller;
@@ -62,10 +66,6 @@ struct ai_controller
    struct vi_controller* vi;
 };
 
-static INLINE uint32_t ai_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
 
 void connect_ai(struct ai_controller* ai,
                 struct r4300_core* r4300,

@@ -26,6 +26,10 @@
 
 #include "pif.h"
 
+#ifndef SI_REG
+#define SI_REG(a) ((a & 0xffff) >> 2)
+#endif
+
 struct r4300_core;
 struct ri_controller;
 
@@ -51,10 +55,6 @@ struct si_controller
     struct ri_controller *ri;
 };
 
-static INLINE uint32_t si_reg(uint32_t address)
-{
-    return (address & 0xffff) >> 2;
-}
 
 
 void connect_si(struct si_controller* si,
