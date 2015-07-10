@@ -106,7 +106,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
    if (pi->regs[PI_CART_ADDR_REG] >= 0x06000000 && pi->regs[PI_CART_ADDR_REG] < 0x08000000)
    {
-      //64DD IPL
+      /* 64DD IPL */
       longueur = (pi->regs[PI_WR_LEN_REG] & 0xFFFFFF) + 1;
       i = (pi->regs[PI_CART_ADDR_REG] - 0x06000000) & 0x1FFFFFF;
       longueur = (i + longueur) > pi->dd_rom.rom_size ?
@@ -130,7 +130,7 @@ static void dma_pi_write(struct pi_controller *pi)
    }
    else
    {
-      //CART ROM
+      /* CART ROM */
       longueur = (pi->regs[PI_WR_LEN_REG] & 0xFFFFFF) + 1;
       i = (pi->regs[PI_CART_ADDR_REG] - 0x10000000) & 0x3FFFFFF;
       longueur = (i + longueur) > pi->cart_rom.rom_size ?
