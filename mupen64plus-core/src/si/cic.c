@@ -28,11 +28,10 @@
 #include <stdint.h>
 #include <string.h>
 
-
 void init_cic_using_ipl3(struct cic* cic, const void* ipl3)
 {
     size_t i;
-    unsigned long long crc = 0;
+    uint64_t crc = 0;
 
     static const struct cic cics[] =
     {
@@ -49,15 +48,28 @@ void init_cic_using_ipl3(struct cic* cic, const void* ipl3)
 
     switch(crc)
     {
-        default:
-            DebugMessage(M64MSG_WARNING, "Unknown CIC type (%08x)! using CIC 6102.", crc);
-        case 0x000000D057C85244LL: i = 1; break; /* CIC_X102 */
-        case 0x000000D0027FDF31LL:               /* CIC_X101 */
-        case 0x000000CFFB631223LL: i = 0; break; /* CIC_X101 */
-        case 0x000000D6497E414BLL: i = 2; break; /* CIC_X103 */
-        case 0x0000011A49F60E96LL: i = 3; break; /* CIC_X105 */
-        case 0x000000D6D5BE5580LL: i = 4; break; /* CIC_X106 */
-        case UINT64_C(0x000001053BC19870): i = 5; break; /* CIC_5167 */
+       default:
+          DebugMessage(M64MSG_WARNING,
+                "Unknown CIC type (%08x)! using CIC 6102.", crc);
+       case 0x000000D057C85244LL: /* CIC_X102 */
+          i = 1;
+          break;
+       case 0x000000D0027FDF31LL: /* CIC_X101 */
+       case 0x000000CFFB631223LL: /* CIC_X101 */
+          i = 0;
+          break;
+       case 0x000000D6497E414BLL: /* CIC_X103 */
+          i = 2;
+          break;
+       case 0x0000011A49F60E96LL: /* CIC_X105 */
+          i = 3;
+          break;
+       case 0x000000D6D5BE5580LL: /* CIC_X106 */
+          i = 4;
+          break;
+       case UINT64_C(0x000001053BC19870): /* CIC_5167 */
+          i = 5;
+          break;
     }
 
     memcpy(cic, &cics[i], sizeof(*cic));
