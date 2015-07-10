@@ -66,7 +66,7 @@ void init_pif(struct pif* pif)
 int read_pif_ram(void* opaque, uint32_t address, uint32_t* value)
 {
    struct si_controller* si = (struct si_controller*)opaque;
-   uint32_t addr            = pif_ram_address(address);
+   uint32_t addr            = PIF_RAM_ADDR(address);
 
    if (addr >= PIF_RAM_SIZE)
    {
@@ -83,7 +83,7 @@ int read_pif_ram(void* opaque, uint32_t address, uint32_t* value)
 int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
    struct si_controller* si = (struct si_controller*)opaque;
-   uint32_t addr            = pif_ram_address(address);
+   uint32_t addr            = PIF_RAM_ADDR(address);
 
    if (addr >= PIF_RAM_SIZE)
    {
