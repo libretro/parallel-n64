@@ -180,9 +180,9 @@ static void forward_gfx_task(struct hle_t* hle)
 
 static bool try_fast_audio_dispatching(struct hle_t* hle)
 {
+    uint32_t v;
     /* identify audio ucode by using the content of ucode_data */
     uint32_t ucode_data = *dmem_u32(hle, TASK_UCODE_DATA);
-    uint32_t v;
 
     if (*dram_u32(hle, ucode_data) == 0x00000001)
     {
@@ -324,7 +324,8 @@ static void normal_task_dispatching(struct hle_t* hle)
 {
    const unsigned int sum =
       sum_bytes((void*)dram_u32(hle,
-               *dmem_u32(hle, TASK_UCODE)), min(*dmem_u32(hle, TASK_UCODE_SIZE), 0xf80) >> 1);
+               *dmem_u32(hle, TASK_UCODE)),
+            min(*dmem_u32(hle, TASK_UCODE_SIZE), 0xf80) >> 1);
 
    switch (sum)
    {
@@ -387,9 +388,9 @@ static void non_task_dispatching(struct hle_t* hle)
 static void dump_unknown_task(struct hle_t* hle, unsigned int sum)
 {
    char filename[256];
-   uint32_t ucode = *dmem_u32(hle, TASK_UCODE);
+   uint32_t ucode      = *dmem_u32(hle, TASK_UCODE);
    uint32_t ucode_data = *dmem_u32(hle, TASK_UCODE_DATA);
-   uint32_t data_ptr = *dmem_u32(hle, TASK_DATA_PTR);
+   uint32_t data_ptr   = *dmem_u32(hle, TASK_DATA_PTR);
 
    sprintf(&filename[0], "task_%x.log", sum);
    dump_task(hle, filename);
