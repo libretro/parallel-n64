@@ -741,7 +741,7 @@ static void DrawWholeFrameBufferToScreen(void)
   FB_TO_SCREEN_INFO fb_info;
   static uint32_t toScreenCI = 0;
 
-  if (g_gdp.fb_width < 200)
+  if (rdp.ci_width < 200)
     return;
   if (rdp.cimg == toScreenCI)
     return;
@@ -751,10 +751,10 @@ static void DrawWholeFrameBufferToScreen(void)
 
   fb_info.addr   = rdp.cimg;
   fb_info.size   = g_gdp.fb_size;
-  fb_info.width  = g_gdp.fb_width;
+  fb_info.width  = rdp.ci_width;
   fb_info.height = rdp.ci_height;
   fb_info.ul_x = 0;
-  fb_info.lr_x = g_gdp.fb_width - 1;
+  fb_info.lr_x = rdp.ci_width-1;
   fb_info.ul_y = 0;
   fb_info.lr_y = rdp.ci_height-1;
   fb_info.opaque = 0;
@@ -763,7 +763,7 @@ static void DrawWholeFrameBufferToScreen(void)
 
   if (!(settings.frame_buffer & fb_ref))
     memset(gfx_info.RDRAM+rdp.cimg, 0,
-          (g_gdp.fb_width * rdp.ci_height) << g_gdp.fb_size >> 1);
+          (rdp.ci_width*rdp.ci_height) << g_gdp.fb_size >> 1);
 }
 
 uint32_t curframe = 0;

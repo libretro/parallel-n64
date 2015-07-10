@@ -229,7 +229,7 @@ static void DrawImage (DRAWIMAGE *d)
          return;
    }
 
-   if (g_gdp.fb_width == 512 && !no_dlist) //RE2
+   if (rdp.ci_width == 512 && !no_dlist) //RE2
    {
       uint16_t width = (uint16_t)(*gfx_info.VI_WIDTH_REG & 0xFFF);
       d->frameH = d->imageH = (d->frameW * d->frameH)/width;
@@ -258,7 +258,7 @@ static void DrawImage (DRAWIMAGE *d)
    }
    else
    {
-      if ( (d->frameX > 0) && (d->frameW == g_gdp.fb_width) )
+      if ( (d->frameX > 0) && (d->frameW == rdp.ci_width) )
          d->frameW -= (uint16_t)(2.0f*d->frameX);
       if ( (d->frameY > 0) && (d->frameH == rdp.ci_height) )
          d->frameH -= (uint16_t)(2.0f*d->frameY);
@@ -328,7 +328,7 @@ static void DrawImage (DRAWIMAGE *d)
       uint32_t minx = 0;
       uint32_t miny = 0;
       uint32_t maxx, maxy;
-      if (g_gdp.fb_width == 512 && !no_dlist)
+      if (rdp.ci_width == 512 && !no_dlist)
       {
          maxx = settings.scr_res_x;
          maxy = settings.scr_res_y;
@@ -1035,7 +1035,7 @@ static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t
    uint16_t h, w, *dst;
    uint32_t ci_width, ci_height, width, height, *mb;
 
-   ci_width = g_gdp.fb_width;
+   ci_width = rdp.ci_width;
    ci_height = rdp.ci_lower_bound;
 
    FRDP ("uc6:DrawYUVImageToFrameBuffer ul_x%d, ul_y%d, lr_x%d, lr_y%d\n", ul_x, ul_y, lr_x, lr_y);
@@ -1072,7 +1072,7 @@ static void uc6_DrawYUVImageToFrameBuffer(uint16_t ul_x, uint16_t ul_y, uint16_t
             *(dst++) = uc6_yuv_to_rgba(y1, u, v);
          }
       }
-      dst += g_gdp.fb_width - 16;
+      dst += rdp.ci_width - 16;
    }
 }
 

@@ -305,7 +305,7 @@ static void DrawPartFrameBufferToScreen(void)
    FB_TO_SCREEN_INFO fb_info;
    fb_info.addr   = rdp.cimg;
    fb_info.size   = g_gdp.fb_size;
-   fb_info.width  = g_gdp.fb_width;
+   fb_info.width  = rdp.ci_width;
    fb_info.height = rdp.ci_height;
    fb_info.ul_x   = d_ul_x;
    fb_info.lr_x   = d_lr_x;
@@ -314,7 +314,7 @@ static void DrawPartFrameBufferToScreen(void)
    fb_info.opaque = 0;
 
    DrawFrameBufferToScreen(&fb_info);
-   memset(gfx_info.RDRAM+rdp.cimg, 0, (g_gdp.fb_width * rdp.ci_height) << g_gdp.fb_size >> 1);
+   memset(gfx_info.RDRAM+rdp.cimg, 0, (rdp.ci_width*rdp.ci_height) << g_gdp.fb_size >> 1);
 }
 
 #define RGBA16TO32(color) \
@@ -332,7 +332,7 @@ static void CopyFrameBuffer(int32_t buffer)
    //   not the copy.
 
    uint32_t height = rdp.ci_lower_bound;
-   uint32_t width  = g_gdp.fb_width; //*gfx_info.VI_WIDTH_REG;
+   uint32_t width  = rdp.ci_width;//*gfx_info.VI_WIDTH_REG;
 
    if (fb_emulation_enabled)
    {
@@ -378,7 +378,7 @@ static void CopyFrameBuffer(int32_t buffer)
       float scale_x = (settings.scr_res_x - rdp.offset_x*2.0f)  / max(width, rdp.vi_width);
       float scale_y = (settings.scr_res_y - rdp.offset_y*2.0f) / max(height, rdp.vi_height);
 
-      FRDP("width: %d, height: %d, ul_y: %d, lr_y: %d, scale_x: %f, scale_y: %f, ci_width: %d, ci_height: %d\n",width, height, rdp.ci_upper_bound, rdp.ci_lower_bound, scale_x, scale_y, g_gdp.fb_width, rdp.ci_height);
+      FRDP("width: %d, height: %d, ul_y: %d, lr_y: %d, scale_x: %f, scale_y: %f, ci_width: %d, ci_height: %d\n",width, height, rdp.ci_upper_bound, rdp.ci_lower_bound, scale_x, scale_y, rdp.ci_width, rdp.ci_height);
       info.size = sizeof(GrLfbInfo_t);
 
       if (grLfbLock (GR_LFB_READ_ONLY,
@@ -655,7 +655,7 @@ static void ys_memrect(uint32_t w0, uint32_t w1)
   for (y = ul_y; y < lr_y; y++)
   {
     uint8_t *src = (uint8_t*)(texaddr + (y - ul_y) * tex_width);
-    uint8_t *dst = (uint8_t*)(fbaddr + y * g_gdp.fb_width);
+    uint8_t *dst = (uint8_t*)(fbaddr + y * rdp.ci_width);
     memcpy (dst, src, width);
   }
 }
@@ -850,7 +850,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    //hack for Zelda MM. it removes black texrects which cover all geometry in "Link meets Zelda" cut scene
    if ((settings.hacks&hack_Zelda) && g_gdp.ti_address >= rdp.cimg && g_gdp.ti_address < rdp.ci_end)
    {
-      FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.cur_cache[0]->addr, rdp.cimg, rdp.cimg + g_gdp.fb_width * rdp.ci_height*2);
+      FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n", rdp.cur_cache[0]->addr, rdp.cimg, rdp.cimg+rdp.ci_width*rdp.ci_height*2);
       return;
    }
 
@@ -863,13 +863,13 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
          (    settings.ucode == ucode_PerfectDark)
          && (rdp.maincimg[1].addr != rdp.maincimg[0].addr)
          && (g_gdp.ti_address >= rdp.maincimg[1].addr)
-         && (g_gdp.ti_address < (rdp.maincimg[1].addr + g_gdp.fb_width * rdp.ci_height* g_gdp.fb_size))
+         && (g_gdp.ti_address < (rdp.maincimg[1].addr+rdp.ci_width * rdp.ci_height* g_gdp.fb_size))
       )
    {
       if (fb_emulation_enabled)
       {
          /* FRDP("Wrong Texrect. texaddr: %08lx, cimg: %08lx, cimg_end: %08lx\n",
-          * g_gdp.ti_address, rdp.maincimg[1], rdp.maincimg[1] + g_gdp.fb_width * rdp.ci_height * g_gdp.fb_size); */
+          * g_gdp.ti_address, rdp.maincimg[1], rdp.maincimg[1]+rdp.ci_width * rdp.ci_height * g_gdp.fb_size); */
          if (rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status == CI_COPY_SELF)
             return;
       }
@@ -1334,7 +1334,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
       //LRDP("Fillrect - cleared the depth buffer\n");
       //if (fullscreen)
       {
-         if (!(settings.hacks&hack_Hyperbike) || g_gdp.fb_width > 64) //do not clear main depth buffer for aux depth buffers
+         if (!(settings.hacks&hack_Hyperbike) || rdp.ci_width > 64) //do not clear main depth buffer for aux depth buffers
          {
             update_scissor(false);
             grDepthMask (FXTRUE);
@@ -1350,7 +1350,7 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
             lr_x = min(max(lr_x, g_gdp.__clip.xh),  g_gdp.__clip.xl);
             ul_y = min(max(ul_y, g_gdp.__clip.yh),  g_gdp.__clip.yl);
             lr_y = min(max(lr_y, g_gdp.__clip.yh),  g_gdp.__clip.yl);
-            zi_width_in_dwords = g_gdp.fb_width >> 1;
+            zi_width_in_dwords = rdp.ci_width >> 1;
             ul_x >>= 1;
             lr_x >>= 1;
             dst = (uint32_t*)(gfx_info.RDRAM+rdp.cimg);
@@ -1558,7 +1558,7 @@ static void rdp_setdepthimage(uint32_t w0, uint32_t w1)
    /* TODO/FIXME - different from Angrylion's value */
    g_gdp.zb_address = RSP_SegmentToPhysical(w1);
 
-   rdp.zi_width = g_gdp.fb_width;
+   rdp.zi_width = rdp.ci_width;
 }
 
 int SwapOK = true;
@@ -1620,7 +1620,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
          case CI_COPY:
             if (!rdp.motionblur || (settings.frame_buffer&fb_motionblur))
             {
-               if (cur_fb->width == g_gdp.fb_width)
+               if (cur_fb->width == rdp.ci_width)
                {
                   {
                      if (!rdp.fb_drawn || prev_fb->status == CI_COPY_SELF)
@@ -1647,7 +1647,7 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
          case CI_OLD_COPY:
             if (!rdp.motionblur || (settings.frame_buffer&fb_motionblur))
             {
-               if (cur_fb->width == g_gdp.fb_width)
+               if (cur_fb->width == rdp.ci_width)
                   memcpy(gfx_info.RDRAM+cur_fb->addr,
                         gfx_info.RDRAM+rdp.maincimg[1].addr,
                         (cur_fb->width*cur_fb->height)<<cur_fb->size>>1);
@@ -1749,20 +1749,20 @@ static void rdp_setcolorimage(uint32_t w0, uint32_t w1)
 
    rdp.ocimg    = rdp.cimg;
    rdp.cimg     = RSP_SegmentToPhysical(w1);
-
+   rdp.ci_width = (w0 & 0xFFF) + 1;
    if (fb_emulation_enabled && rdp.ci_count > 0)
       rdp.ci_height = rdp.frame_buffers[rdp.ci_count-1].height;
-   else if (g_gdp.fb_width == 32)
+   else if (rdp.ci_width == 32)
       rdp.ci_height = 32;
    else
       rdp.ci_height = g_gdp.__clip.yl;
    if (g_gdp.zb_address == rdp.cimg)
    {
-      rdp.zi_width = g_gdp.fb_width;
+      rdp.zi_width = rdp.ci_width;
       // int zi_height = min((int)rdp.zi_width*3/4, (int)rdp.vi_height);
       // rdp.zi_words = rdp.zi_width * zi_height;
    }
-   rdp.ci_end = rdp.cimg + ((g_gdp.fb_width * rdp.ci_height) << (g_gdp.fb_size-1));
+   rdp.ci_end = rdp.cimg + ((rdp.ci_width*rdp.ci_height) << (g_gdp.fb_size-1));
 
    if (g_gdp.fb_format != G_IM_FMT_RGBA) //can't draw into non RGBA buffer
    {
@@ -1857,23 +1857,23 @@ EXPORT void CALL FBRead(uint32_t addr)
   if (!rdp.fb_drawn && (a >= rdp.cimg) && (a < rdp.ci_end))
   {
     fbreads_back++;
-    //if (fbreads_back > 2) //&& (g_gdp.fb_width <= 320))
+    //if (fbreads_back > 2) //&& (rdp.ci_width <= 320))
     {
        CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
       rdp.fb_drawn = true;
     }
   }
-  if (!rdp.fb_drawn_front && (a >= rdp.maincimg[1].addr) && (a < rdp.maincimg[1].addr + g_gdp.fb_width * rdp.ci_height*2))
+  if (!rdp.fb_drawn_front && (a >= rdp.maincimg[1].addr) && (a < rdp.maincimg[1].addr + rdp.ci_width*rdp.ci_height*2))
   {
     fbreads_front++;
-    //if (fbreads_front > 2)//&& (g_gdp.fb_width <= 320))
+    //if (fbreads_front > 2)//&& (rdp.ci_width <= 320))
     {
       uint32_t cimg = rdp.cimg;
       rdp.cimg = rdp.maincimg[1].addr;
       if (fb_emulation_enabled)
       {
         uint32_t h;
-        g_gdp.fb_width = rdp.maincimg[1].width;
+        rdp.ci_width = rdp.maincimg[1].width;
         rdp.ci_count = 0;
         h = rdp.frame_buffers[0].height;
         rdp.frame_buffers[0].height = rdp.maincimg[1].height;
@@ -1924,10 +1924,10 @@ EXPORT void CALL FBWrite(uint32_t addr, uint32_t size)
   shift_l      = (a-rdp.cimg) >> 1;
   shift_r      = shift_l+2;
 
-  d_ul_x       = min(d_ul_x, shift_l % g_gdp.fb_width);
-  d_ul_y       = min(d_ul_y, shift_l / g_gdp.fb_width);
-  d_lr_x       = max(d_lr_x, shift_r % g_gdp.fb_width);
-  d_lr_y       = max(d_lr_y, shift_r / g_gdp.fb_width);
+  d_ul_x       = min(d_ul_x, shift_l%rdp.ci_width);
+  d_ul_y       = min(d_ul_y, shift_l/rdp.ci_width);
+  d_lr_x       = max(d_lr_x, shift_r%rdp.ci_width);
+  d_lr_y       = max(d_lr_y, shift_r/rdp.ci_width);
 }
 
 
@@ -1994,12 +1994,12 @@ EXPORT void CALL FBGetFrameBufferInfo(void *p)
    {
       pinfo[0].addr   = rdp.maincimg[0].addr;
       pinfo[0].size   = g_gdp.fb_size;
-      pinfo[0].width  = g_gdp.fb_width;
-      pinfo[0].height = g_gdp.fb_width * 3 / 4;
+      pinfo[0].width  = rdp.ci_width;
+      pinfo[0].height = rdp.ci_width*3/4;
       pinfo[1].addr   = rdp.maincimg[1].addr;
       pinfo[1].size   = g_gdp.fb_size;
-      pinfo[1].width  = g_gdp.fb_width;
-      pinfo[1].height = g_gdp.fb_width * 3 / 4;
+      pinfo[1].width  = rdp.ci_width;
+      pinfo[1].height = rdp.ci_width*3/4;
    }
 }
 
@@ -2161,15 +2161,15 @@ void DetectFrameBufferUsage(void)
             if (settings.frame_buffer&fb_motionblur)
                CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
             else
-               memset(gfx_info.RDRAM+rdp.cimg, 0, g_gdp.fb_width * rdp.ci_height * g_gdp.fb_size);
+               memset(gfx_info.RDRAM+rdp.cimg, 0, rdp.ci_width * rdp.ci_height * g_gdp.fb_size);
          }
-         else //if (g_gdp.fb_width == rdp.frame_buffers[rdp.main_ci_index].width)
+         else //if (ci_width == rdp.frame_buffers[rdp.main_ci_index].width)
          {
             if (rdp.maincimg[0].height > 65) //for 1080
             {
                uint32_t h;
                rdp.cimg = rdp.maincimg[0].addr;
-               g_gdp.fb_width = rdp.maincimg[0].width;
+               rdp.ci_width = rdp.maincimg[0].width;
                rdp.ci_count = 0;
                h = rdp.frame_buffers[0].height;
                rdp.frame_buffers[0].height = rdp.maincimg[0].height;
