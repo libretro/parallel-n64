@@ -86,21 +86,19 @@ uint32_t VI_REFRESH = 1500;
 typedef int (*readfn)(void*,uint32_t,uint32_t*);
 typedef int (*writefn)(void*,uint32_t,uint32_t,uint32_t);
 
-static INLINE unsigned int bshift(uint32_t address)
-{
-   return ((address & 3) ^ 3) << 3;
-}
+#ifndef BSHIFT
+#define BSHIFT(a) (((a & 3) ^ 3) << 3)
+#endif
 
-static INLINE unsigned int hshift(uint32_t address)
-{
-   return ((address & 2) ^ 2) << 3;
-}
+#ifndef HSHIFT
+#define HSHIFT(a) (((a & 2) ^ 2) << 3)
+#endif
 
 static int readb(readfn read_word, void* opaque, uint32_t address, uint64_t* value)
 {
    uint32_t w;
-   unsigned shift = bshift(address);
-   int result = read_word(opaque, address, &w);
+   unsigned shift = BSHIFT(address);
+   int     result = read_word(opaque, address, &w);
    *value = (w >> shift) & 0xff;
    return result;
 }
@@ -108,8 +106,8 @@ static int readb(readfn read_word, void* opaque, uint32_t address, uint64_t* val
 static int readh(readfn read_word, void* opaque, uint32_t address, uint64_t* value)
 {
    uint32_t w;
-   unsigned shift = hshift(address);
-   int result = read_word(opaque, address, &w);
+   unsigned shift = HSHIFT(address);
+   int result     = read_word(opaque, address, &w);
    *value = (w >> shift) & 0xffff;
    return result;
 }
@@ -134,7 +132,7 @@ static int readd(readfn read_word, void* opaque, uint32_t address, uint64_t* val
 
 static int writeb(writefn write_word, void *opaque, uint32_t address, uint8_t value)
 {
-   unsigned int shift = bshift(address);
+   unsigned int shift = BSHIFT(address);
    uint32_t w         = (uint32_t)value << shift;
    uint32_t mask      = (uint32_t)0xff << shift;
    return write_word(opaque, address, w, mask);
@@ -142,7 +140,7 @@ static int writeb(writefn write_word, void *opaque, uint32_t address, uint8_t va
 
 static int writeh(writefn write_word, void *opaque, uint32_t address, uint16_t value)
 {
-   unsigned int shift = hshift(address);
+   unsigned int shift = HSHIFT(address);
    uint32_t w         = (uint32_t)value << shift;
    uint32_t mask      = (uint32_t)0xffff << shift;
    return write_word(opaque, address, w, mask);

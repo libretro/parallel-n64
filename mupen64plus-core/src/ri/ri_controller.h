@@ -26,7 +26,7 @@
 
 #include "rdram.h"
 
-#ifndef RI_REG(a)
+#ifndef RI_REG
 #define RI_REG(a) ((a & 0xffff) >> 2)
 #endif
 
