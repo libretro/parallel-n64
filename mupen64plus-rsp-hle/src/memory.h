@@ -59,26 +59,13 @@ enum {
 
 static INLINE unsigned int align(unsigned int x, unsigned amount)
 {
-    --amount;
-    return (x + amount) & ~amount;
+   --amount;
+   return (x + amount) & ~amount;
 }
 
-static INLINE uint8_t* u8(const unsigned char* buffer, unsigned address)
-{
-    return (uint8_t*)(buffer + (address ^ S8));
-}
-
-static INLINE uint16_t* u16(const unsigned char* buffer, unsigned address)
-{
-    assert((address & 1) == 0);
-    return (uint16_t*)(buffer + (address ^ S16));
-}
-
-static INLINE uint32_t* u32(const unsigned char* buffer, unsigned address)
-{
-    assert((address & 3) == 0);
-    return (uint32_t*)(buffer + address);
-}
+#define u8(buffer, address)   ((uint8_t*)((buffer) + ((address) ^ S8)))
+#define u16(buffer, address)  ((uint16_t*)((buffer) + ((address) ^ S16)))
+#define u32(buffer, address)  ((uint32_t*)((buffer) + (address)))
 
 void load_u8 (uint8_t*  dst, const unsigned char* buffer, unsigned address, size_t count);
 void load_u16(uint16_t* dst, const unsigned char* buffer, unsigned address, size_t count);
@@ -89,20 +76,9 @@ void store_u32(unsigned char* buffer, unsigned address, const uint32_t* src, siz
 
 
 /* convenient functions for DMEM access */
-static INLINE uint8_t* dmem_u8(struct hle_t* hle, uint16_t address)
-{
-    return u8(hle->dmem, address & 0xfff);
-}
-
-static INLINE uint16_t* dmem_u16(struct hle_t* hle, uint16_t address)
-{
-    return u16(hle->dmem, address & 0xfff);
-}
-
-static INLINE uint32_t* dmem_u32(struct hle_t* hle, uint16_t address)
-{
-    return u32(hle->dmem, address & 0xfff);
-}
+#define dmem_u8(hle, address)    (u8((hle)->dmem,  (address) & 0xFFF)
+#define dmem_u16(hle, address)   (u16((hle)->dmem, (address) & 0xfff);
+#define dmem_u32(hle, address)   (u32((hle)->dmem, (address) & 0xfff))
 
 static INLINE void dmem_load_u8(struct hle_t* hle, uint8_t* dst, uint16_t address, size_t count)
 {
@@ -135,20 +111,9 @@ static INLINE void dmem_store_u32(struct hle_t* hle, const uint32_t* src, uint16
 }
 
 /* convenient functions DRAM access */
-static INLINE uint8_t* dram_u8(struct hle_t* hle, uint32_t address)
-{
-    return u8(hle->dram, address & 0xffffff);
-}
-
-static INLINE uint16_t* dram_u16(struct hle_t* hle, uint32_t address)
-{
-    return u16(hle->dram, address & 0xffffff);
-}
-
-static INLINE uint32_t* dram_u32(struct hle_t* hle, uint32_t address)
-{
-    return u32(hle->dram, address & 0xffffff);
-}
+#define dram_u8(hle, address)    (u8((hle)->dram, (address) & 0xffffff))
+#define dram_u16(hle, address)   (u16((hle)->dram, (address) & 0xffffff))
+#define dram_u32(hle, address)   (u32((hle)->dram, (address) & 0xffffff))
 
 static INLINE void dram_load_u8(struct hle_t* hle, uint8_t* dst, uint32_t address, size_t count)
 {

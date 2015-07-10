@@ -81,23 +81,24 @@ static int16_t ramp_step(struct ramp_t* ramp)
 /* global functions */
 void alist_process(struct hle_t* hle, const acmd_callback_t abi[], unsigned int abi_size)
 {
-    uint32_t w1, w2;
-    unsigned int acmd;
+   uint32_t w1, w2;
+   unsigned int acmd;
+   uint32_t addr                    = *dmem_u32(hle, TASK_DATA_PTR);
+   const uint32_t *alist            = dram_u32(hle, addr);
+   const uint32_t *const alist_end = alist + (*dmem_u32(hle, TASK_DATA_SIZE) >> 2);
 
-    const uint32_t *alist = dram_u32(hle, *dmem_u32(hle, TASK_DATA_PTR));
-    const uint32_t *const alist_end = alist + (*dmem_u32(hle, TASK_DATA_SIZE) >> 2);
+   while (alist != alist_end)
+   {
+      w1 = *(alist++);
+      w2 = *(alist++);
 
-    while (alist != alist_end) {
-        w1 = *(alist++);
-        w2 = *(alist++);
+      acmd = (w1 >> 24) & 0x7f;
 
-        acmd = (w1 >> 24) & 0x7f;
-
-        if (acmd < abi_size)
-            (*abi[acmd])(hle, w1, w2);
-        else
-            HleWarnMessage(hle->user_defined, "Invalid ABI command %u", acmd);
-    }
+      if (acmd < abi_size)
+         (*abi[acmd])(hle, w1, w2);
+      else
+         HleWarnMessage(hle->user_defined, "Invalid ABI command %u", acmd);
+   }
 }
 
 uint32_t alist_get_address(struct hle_t* hle, uint32_t so, const uint32_t *segments, size_t n)
@@ -690,11 +691,12 @@ static unsigned int adpcm_predict_frame_4bits(struct hle_t* hle,
     unsigned int i;
     unsigned int rshift = (scale < 12) ? 12 - scale : 0;
 
-    for(i = 0; i < 8; ++i) {
-        uint8_t byte = *alist_u8(hle, dmemi++);
+    for(i = 0; i < 8; ++i)
+    {
+       uint8_t byte = *alist_u8(hle, dmemi++);
 
-        *(dst++) = adpcm_predict_sample(byte, 0xf0,  8, rshift);
-        *(dst++) = adpcm_predict_sample(byte, 0x0f, 12, rshift);
+       *(dst++) = adpcm_predict_sample(byte, 0xf0,  8, rshift);
+       *(dst++) = adpcm_predict_sample(byte, 0x0f, 12, rshift);
     }
 
     return 8;
@@ -706,13 +708,14 @@ static unsigned int adpcm_predict_frame_2bits(struct hle_t* hle,
     unsigned int i;
     unsigned int rshift = (scale < 14) ? 14 - scale : 0;
 
-    for(i = 0; i < 4; ++i) {
-        uint8_t byte = *alist_u8(hle, dmemi++);
+    for(i = 0; i < 4; ++i)
+    {
+       uint8_t byte = *alist_u8(hle, dmemi++);
 
-        *(dst++) = adpcm_predict_sample(byte, 0xc0,  8, rshift);
-        *(dst++) = adpcm_predict_sample(byte, 0x30, 10, rshift);
-        *(dst++) = adpcm_predict_sample(byte, 0x0c, 12, rshift);
-        *(dst++) = adpcm_predict_sample(byte, 0x03, 14, rshift);
+       *(dst++) = adpcm_predict_sample(byte, 0xc0,  8, rshift);
+       *(dst++) = adpcm_predict_sample(byte, 0x30, 10, rshift);
+       *(dst++) = adpcm_predict_sample(byte, 0x0c, 12, rshift);
+       *(dst++) = adpcm_predict_sample(byte, 0x03, 14, rshift);
     }
 
     return 4;
@@ -786,97 +789,99 @@ void alist_filter(
     int16_t* in2 = (int16_t*)(hle->alist_buffer + dmem);
 
 
-    for (x = 0; x < 8; ++x) {
-        int32_t v = (lutt5[x] + lutt6[x]) >> 1;
-        lutt5[x] = lutt6[x] = v;
+    for (x = 0; x < 8; ++x)
+    {
+       int32_t v = (lutt5[x] + lutt6[x]) >> 1;
+       lutt5[x] = lutt6[x] = v;
     }
 
-    for (x = 0; x < count; x += 16) {
-        int32_t v[8];
+    for (x = 0; x < count; x += 16)
+    {
+       int32_t v[8];
 
-        v[1] =  in1[0] * lutt6[6];
-        v[1] += in1[3] * lutt6[7];
-        v[1] += in1[2] * lutt6[4];
-        v[1] += in1[5] * lutt6[5];
-        v[1] += in1[4] * lutt6[2];
-        v[1] += in1[7] * lutt6[3];
-        v[1] += in1[6] * lutt6[0];
-        v[1] += in2[1] * lutt6[1]; /* 1 */
+       v[1] =  in1[0] * lutt6[6];
+       v[1] += in1[3] * lutt6[7];
+       v[1] += in1[2] * lutt6[4];
+       v[1] += in1[5] * lutt6[5];
+       v[1] += in1[4] * lutt6[2];
+       v[1] += in1[7] * lutt6[3];
+       v[1] += in1[6] * lutt6[0];
+       v[1] += in2[1] * lutt6[1]; /* 1 */
 
-        v[0] =  in1[3] * lutt6[6];
-        v[0] += in1[2] * lutt6[7];
-        v[0] += in1[5] * lutt6[4];
-        v[0] += in1[4] * lutt6[5];
-        v[0] += in1[7] * lutt6[2];
-        v[0] += in1[6] * lutt6[3];
-        v[0] += in2[1] * lutt6[0];
-        v[0] += in2[0] * lutt6[1];
+       v[0] =  in1[3] * lutt6[6];
+       v[0] += in1[2] * lutt6[7];
+       v[0] += in1[5] * lutt6[4];
+       v[0] += in1[4] * lutt6[5];
+       v[0] += in1[7] * lutt6[2];
+       v[0] += in1[6] * lutt6[3];
+       v[0] += in2[1] * lutt6[0];
+       v[0] += in2[0] * lutt6[1];
 
-        v[3] =  in1[2] * lutt6[6];
-        v[3] += in1[5] * lutt6[7];
-        v[3] += in1[4] * lutt6[4];
-        v[3] += in1[7] * lutt6[5];
-        v[3] += in1[6] * lutt6[2];
-        v[3] += in2[1] * lutt6[3];
-        v[3] += in2[0] * lutt6[0];
-        v[3] += in2[3] * lutt6[1];
+       v[3] =  in1[2] * lutt6[6];
+       v[3] += in1[5] * lutt6[7];
+       v[3] += in1[4] * lutt6[4];
+       v[3] += in1[7] * lutt6[5];
+       v[3] += in1[6] * lutt6[2];
+       v[3] += in2[1] * lutt6[3];
+       v[3] += in2[0] * lutt6[0];
+       v[3] += in2[3] * lutt6[1];
 
-        v[2] =  in1[5] * lutt6[6];
-        v[2] += in1[4] * lutt6[7];
-        v[2] += in1[7] * lutt6[4];
-        v[2] += in1[6] * lutt6[5];
-        v[2] += in2[1] * lutt6[2];
-        v[2] += in2[0] * lutt6[3];
-        v[2] += in2[3] * lutt6[0];
-        v[2] += in2[2] * lutt6[1];
+       v[2] =  in1[5] * lutt6[6];
+       v[2] += in1[4] * lutt6[7];
+       v[2] += in1[7] * lutt6[4];
+       v[2] += in1[6] * lutt6[5];
+       v[2] += in2[1] * lutt6[2];
+       v[2] += in2[0] * lutt6[3];
+       v[2] += in2[3] * lutt6[0];
+       v[2] += in2[2] * lutt6[1];
 
-        v[5] =  in1[4] * lutt6[6];
-        v[5] += in1[7] * lutt6[7];
-        v[5] += in1[6] * lutt6[4];
-        v[5] += in2[1] * lutt6[5];
-        v[5] += in2[0] * lutt6[2];
-        v[5] += in2[3] * lutt6[3];
-        v[5] += in2[2] * lutt6[0];
-        v[5] += in2[5] * lutt6[1];
+       v[5] =  in1[4] * lutt6[6];
+       v[5] += in1[7] * lutt6[7];
+       v[5] += in1[6] * lutt6[4];
+       v[5] += in2[1] * lutt6[5];
+       v[5] += in2[0] * lutt6[2];
+       v[5] += in2[3] * lutt6[3];
+       v[5] += in2[2] * lutt6[0];
+       v[5] += in2[5] * lutt6[1];
 
-        v[4] =  in1[7] * lutt6[6];
-        v[4] += in1[6] * lutt6[7];
-        v[4] += in2[1] * lutt6[4];
-        v[4] += in2[0] * lutt6[5];
-        v[4] += in2[3] * lutt6[2];
-        v[4] += in2[2] * lutt6[3];
-        v[4] += in2[5] * lutt6[0];
-        v[4] += in2[4] * lutt6[1];
+       v[4] =  in1[7] * lutt6[6];
+       v[4] += in1[6] * lutt6[7];
+       v[4] += in2[1] * lutt6[4];
+       v[4] += in2[0] * lutt6[5];
+       v[4] += in2[3] * lutt6[2];
+       v[4] += in2[2] * lutt6[3];
+       v[4] += in2[5] * lutt6[0];
+       v[4] += in2[4] * lutt6[1];
 
-        v[7] =  in1[6] * lutt6[6];
-        v[7] += in2[1] * lutt6[7];
-        v[7] += in2[0] * lutt6[4];
-        v[7] += in2[3] * lutt6[5];
-        v[7] += in2[2] * lutt6[2];
-        v[7] += in2[5] * lutt6[3];
-        v[7] += in2[4] * lutt6[0];
-        v[7] += in2[7] * lutt6[1];
+       v[7] =  in1[6] * lutt6[6];
+       v[7] += in2[1] * lutt6[7];
+       v[7] += in2[0] * lutt6[4];
+       v[7] += in2[3] * lutt6[5];
+       v[7] += in2[2] * lutt6[2];
+       v[7] += in2[5] * lutt6[3];
+       v[7] += in2[4] * lutt6[0];
+       v[7] += in2[7] * lutt6[1];
 
-        v[6] =  in2[1] * lutt6[6];
-        v[6] += in2[0] * lutt6[7];
-        v[6] += in2[3] * lutt6[4];
-        v[6] += in2[2] * lutt6[5];
-        v[6] += in2[5] * lutt6[2];
-        v[6] += in2[4] * lutt6[3];
-        v[6] += in2[7] * lutt6[0];
-        v[6] += in2[6] * lutt6[1];
+       v[6] =  in2[1] * lutt6[6];
+       v[6] += in2[0] * lutt6[7];
+       v[6] += in2[3] * lutt6[4];
+       v[6] += in2[2] * lutt6[5];
+       v[6] += in2[5] * lutt6[2];
+       v[6] += in2[4] * lutt6[3];
+       v[6] += in2[7] * lutt6[0];
+       v[6] += in2[6] * lutt6[1];
 
-        outp[1] = ((v[1] + 0x4000) >> 15);
-        outp[0] = ((v[0] + 0x4000) >> 15);
-        outp[3] = ((v[3] + 0x4000) >> 15);
-        outp[2] = ((v[2] + 0x4000) >> 15);
-        outp[5] = ((v[5] + 0x4000) >> 15);
-        outp[4] = ((v[4] + 0x4000) >> 15);
-        outp[7] = ((v[7] + 0x4000) >> 15);
-        outp[6] = ((v[6] + 0x4000) >> 15);
-        in1 = in2;
-        in2 += 8;
-        outp += 8;
+       outp[1] = ((v[1] + 0x4000) >> 15);
+       outp[0] = ((v[0] + 0x4000) >> 15);
+       outp[3] = ((v[3] + 0x4000) >> 15);
+       outp[2] = ((v[2] + 0x4000) >> 15);
+       outp[5] = ((v[5] + 0x4000) >> 15);
+       outp[4] = ((v[4] + 0x4000) >> 15);
+       outp[7] = ((v[7] + 0x4000) >> 15);
+       outp[6] = ((v[6] + 0x4000) >> 15);
+       in1 = in2;
+       in2 += 8;
+       outp += 8;
     }
 
     memcpy(hle->dram + address, in2 - 8, 16);
