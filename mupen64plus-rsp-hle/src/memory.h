@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "hle_internal.h"
 
@@ -69,10 +70,14 @@ static INLINE unsigned int align(unsigned int x, unsigned amount)
 
 void load_u8 (uint8_t*  dst, const unsigned char* buffer, unsigned address, size_t count);
 void load_u16(uint16_t* dst, const unsigned char* buffer, unsigned address, size_t count);
-void load_u32(uint32_t* dst, const unsigned char* buffer, unsigned address, size_t count);
+
+#define load_u32(dst, buffer, address, count)   memcpy((dst), u32((buffer), (address)), (count) * sizeof(uint32_t))
+
 void store_u8 (unsigned char* buffer, unsigned address, const uint8_t*  src, size_t count);
 void store_u16(unsigned char* buffer, unsigned address, const uint16_t* src, size_t count);
 void store_u32(unsigned char* buffer, unsigned address, const uint32_t* src, size_t count);
+
+#define store_u32(buffer, address, src, count)  memcpy(u32((buffer), (address)), (src), (count) * sizeof(uint32_t))
 
 /* convenient functions for DMEM access */
 #define dmem_u8(hle, address)    (u8((hle)->dmem,  (address) & 0xFFF)

@@ -112,8 +112,6 @@ void adpcm_compute_residuals(int16_t* dst, const int16_t* src,
    const int16_t l1           = last_samples[0];
    const int16_t l2           = last_samples[1];
 
-   assert(count <= 8);
-
    for(i = 0; i < count; ++i)
    {
       int32_t accu  = (int32_t)src[i] << 11;
