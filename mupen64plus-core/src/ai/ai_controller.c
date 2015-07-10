@@ -106,6 +106,7 @@ static void do_dma(struct ai_controller* ai, const struct ai_dma* dma)
    add_interupt_event(AI_INT, dma->duration);
 }
 
+/* Fill the next FIFO entry in the DMA engine. */
 static void fifo_push(struct ai_controller* ai)
 {
    unsigned int duration = get_dma_duration(ai);
@@ -119,6 +120,7 @@ static void fifo_push(struct ai_controller* ai)
    }
    else
    {
+      /* If we're not DMA-ing already, start DMA engine. */
       ai->fifo[0].address = ai->regs[AI_DRAM_ADDR_REG];
       ai->fifo[0].length = ai->regs[AI_LEN_REG];
       ai->fifo[0].duration = duration;
@@ -146,6 +148,7 @@ static void fifo_pop(struct ai_controller* ai)
    }
 }
 
+/* Initializes the AI. */
 void init_ai(struct ai_controller* ai)
 {
     memset(ai->regs, 0, AI_REGS_COUNT*sizeof(uint32_t));
@@ -153,7 +156,7 @@ void init_ai(struct ai_controller* ai)
     ai->samples_format_changed = 0;
 }
 
-
+/* Reads a word from the AI MMIO register space. */
 int read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct ai_controller* ai = (struct ai_controller*)opaque;
@@ -167,11 +170,12 @@ int read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
     return 0;
 }
 
-int write_ai_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+/* Writes a word to the AI MMIO register space. */
+int write_ai_regs(void* opaque, uint32_t address,
+      uint32_t value, uint32_t mask)
 {
    struct ai_controller* ai = (struct ai_controller*)opaque;
    uint32_t reg = ai_reg(address);
-   unsigned int delay;
 
    switch (reg)
    {
