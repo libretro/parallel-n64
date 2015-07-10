@@ -58,7 +58,7 @@ static void dma_pi_read(struct pi_controller *pi)
 
 static void dma_pi_write(struct pi_controller *pi)
 {
-   uint32_t longueur, i;
+   uint32_t length, i;
    uint32_t dram_address;
    uint32_t rom_address;
    uint8_t* dram;
@@ -107,18 +107,18 @@ static void dma_pi_write(struct pi_controller *pi)
    if (pi->regs[PI_CART_ADDR_REG] >= 0x06000000 && pi->regs[PI_CART_ADDR_REG] < 0x08000000)
    {
       /* 64DD IPL */
-      longueur = (pi->regs[PI_WR_LEN_REG] & 0xFFFFFF) + 1;
+      length = (pi->regs[PI_WR_LEN_REG] & 0xFFFFFF) + 1;
       i = (pi->regs[PI_CART_ADDR_REG] - 0x06000000) & 0x1FFFFFF;
-      longueur = (i + longueur) > pi->dd_rom.rom_size ?
-         (pi->dd_rom.rom_size - i) : longueur;
-      longueur = (pi->regs[PI_DRAM_ADDR_REG] + longueur) > 0x7FFFFF ?
-         (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : longueur;
+      length = (i + length) > pi->dd_rom.rom_size ?
+         (pi->dd_rom.rom_size - i) : length;
+      length = (pi->regs[PI_DRAM_ADDR_REG] + length) > 0x7FFFFF ?
+         (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : length;
 
       if (i > pi->dd_rom.rom_size || pi->regs[PI_DRAM_ADDR_REG] > 0x7FFFFF)
       {
          pi->regs[PI_STATUS_REG] |= 3;
          update_count();
-         add_interupt_event(PI_INT, longueur / 8);
+         add_interupt_event(PI_INT, length / 8);
 
          return;
       }
@@ -131,18 +131,18 @@ static void dma_pi_write(struct pi_controller *pi)
    else
    {
       /* CART ROM */
-      longueur = (pi->regs[PI_WR_LEN_REG] & 0xFFFFFF) + 1;
+      length = (pi->regs[PI_WR_LEN_REG] & 0xFFFFFF) + 1;
       i = (pi->regs[PI_CART_ADDR_REG] - 0x10000000) & 0x3FFFFFF;
-      longueur = (i + longueur) > pi->cart_rom.rom_size ?
-         (pi->cart_rom.rom_size - i) : longueur;
-      longueur = (pi->regs[PI_DRAM_ADDR_REG] + longueur) > 0x7FFFFF ?
-         (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : longueur;
+      length = (i + length) > pi->cart_rom.rom_size ?
+         (pi->cart_rom.rom_size - i) : length;
+      length = (pi->regs[PI_DRAM_ADDR_REG] + length) > 0x7FFFFF ?
+         (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : length;
 
       if (i > pi->cart_rom.rom_size || pi->regs[PI_DRAM_ADDR_REG] > 0x7FFFFF)
       {
          pi->regs[PI_STATUS_REG] |= 3;
          update_count();
-         add_interupt_event(PI_INT, longueur / 8);
+         add_interupt_event(PI_INT, length / 8);
 
          return;
       }
@@ -153,13 +153,11 @@ static void dma_pi_write(struct pi_controller *pi)
       rom = pi->cart_rom.rom;
    }
 
-   for (i = 0; i < longueur; ++i)
-   {
+   for (i = 0; i < length; ++i)
       dram[(dram_address + i) ^ S8] = rom[(rom_address + i) ^ S8];
-   }
 
-   invalidate_r4300_cached_code(0x80000000 + dram_address, longueur);
-   invalidate_r4300_cached_code(0xa0000000 + dram_address, longueur);
+   invalidate_r4300_cached_code(0x80000000 + dram_address, length);
+   invalidate_r4300_cached_code(0xa0000000 + dram_address, length);
 
    /* HACK: monitor PI DMA to trigger RDRAM size detection
     * hack just before initial cart ROM loading. */
@@ -169,7 +167,7 @@ static void dma_pi_write(struct pi_controller *pi)
    }
    pi->regs[PI_STATUS_REG] |= 3;
    update_count();
-   add_interupt_event(PI_INT, longueur/8);
+   add_interupt_event(PI_INT, length / 8);
 }
 
 void connect_pi(struct pi_controller* pi,
