@@ -89,15 +89,12 @@ static void ADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
          address);
 }
 
-static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
+static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t count)
 {
    uint16_t dmem  = w1;
-   uint16_t count = w2;
 
-   if (count == 0)
-      return;
-
-   alist_clear(hle, dmem, count);
+   if (count != 0)
+      alist_clear(hle, dmem, count);
 }
 
 static void LOADBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -160,16 +157,13 @@ static void RESAMPLE_ZOH(struct hle_t* hle, uint32_t w1, uint32_t w2)
          pitch_accu);
 }
 
-static void DMEMMOVE(struct hle_t* hle, uint32_t w1, uint32_t w2)
+static void DMEMMOVE(struct hle_t* hle, uint32_t w1, uint32_t count)
 {
    uint16_t dmemi = w1;
-   uint16_t dmemo = (w2 >> 16);
-   uint16_t count = w2;
+   uint16_t dmemo = (count >> 16);
 
-   if (count == 0)
-      return;
-
-   alist_move(hle, dmemo, dmemi, (count + 3) & ~3);
+   if (count != 0)
+      alist_move(hle, dmemo, dmemi, (count + 3) & ~3);
 }
 
 static void ENVSETUP1_MK(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -272,10 +266,8 @@ static void INTERLEAVE_MK(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
    uint16_t left  = (w2 >> 16);
    uint16_t right = w2;
 
-   if (hle->alist_nead.count == 0)
-      return;
-
-   alist_interleave(hle, hle->alist_nead.out, left, right, hle->alist_nead.count);
+   if (hle->alist_nead.count != 0)
+      alist_interleave(hle, hle->alist_nead.out, left, right, hle->alist_nead.count);
 }
 
 static void INTERLEAVE(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -345,18 +337,16 @@ static void POLEF(struct hle_t* hle, uint32_t w1, uint32_t w2)
    uint16_t gain    = w1;
    uint32_t address = (w2 & 0xffffff);
 
-   if (hle->alist_nead.count == 0)
-      return;
-
-   alist_polef(
-         hle,
-         flags & A_INIT,
-         hle->alist_nead.out,
-         hle->alist_nead.in,
-         hle->alist_nead.count,
-         gain,
-         hle->alist_nead.table,
-         address);
+   if (hle->alist_nead.count != 0)
+      alist_polef(
+            hle,
+            flags & A_INIT,
+            hle->alist_nead.out,
+            hle->alist_nead.in,
+            hle->alist_nead.count,
+            gain,
+            hle->alist_nead.table,
+            address);
 }
 
 

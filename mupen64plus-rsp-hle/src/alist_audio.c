@@ -31,7 +31,10 @@
 #include "hle_internal.h"
 #include "memory.h"
 
-enum { DMEM_BASE = 0x5c0 };
+enum
+{
+   DMEM_BASE = 0x5c0 
+};
 
 /* helper functions */
 #define get_address(hle, so)  (alist_get_address((hle), (so), (hle)->alist_audio.segments, N_SEGMENTS))
@@ -43,15 +46,12 @@ static void SPNOOP(struct hle_t* UNUSED(hle), uint32_t UNUSED(w1), uint32_t UNUS
 {
 }
 
-static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
+static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t count)
 {
    uint16_t dmem  = w1 + DMEM_BASE;
-   uint16_t count = w2;
 
-   if (count == 0)
-      return;
-
-   alist_clear(hle, dmem, align(count, 16));
+   if (count != 0)
+      alist_clear(hle, dmem, align(count, 16));
 }
 
 static void ENVMIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -124,7 +124,7 @@ static void SETVOL(struct hle_t* hle, uint32_t w1, uint32_t w2)
    lr = (flags & A_LEFT) ? 0 : 1;
 
    if (flags & A_VOL)
-      hle->alist_audio.vol[lr] = w1;
+      hle->alist_audio.vol[lr]    = w1;
    else
    {
       hle->alist_audio.target[lr] = w1;
@@ -159,20 +159,16 @@ static void LOADBUFF(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
 {
    uint32_t address = get_address(hle, w2);
 
-   if (hle->alist_audio.count == 0)
-      return;
-
-   alist_load(hle, hle->alist_audio.in, address, hle->alist_audio.count);
+   if (hle->alist_audio.count != 0)
+      alist_load(hle, hle->alist_audio.in, address, hle->alist_audio.count);
 }
 
 static void SAVEBUFF(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
 {
    uint32_t address = get_address(hle, w2);
 
-   if (hle->alist_audio.count == 0)
-      return;
-
-   alist_save(hle, hle->alist_audio.out, address, hle->alist_audio.count);
+   if (hle->alist_audio.count != 0)
+      alist_save(hle, hle->alist_audio.out, address, hle->alist_audio.count);
 }
 
 static void SETBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -193,16 +189,13 @@ static void SETBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
     }
 }
 
-static void DMEMMOVE(struct hle_t* hle, uint32_t w1, uint32_t w2)
+static void DMEMMOVE(struct hle_t* hle, uint32_t w1, uint32_t count)
 {
    uint16_t dmemi = w1 + DMEM_BASE;
-   uint16_t dmemo = (w2 >> 16) + DMEM_BASE;
-   uint16_t count = w2;
+   uint16_t dmemo = (count >> 16) + DMEM_BASE;
 
-   if (count == 0)
-      return;
-
-   alist_move(hle, dmemo, dmemi, align(count, 16));
+   if (count != 0)
+      alist_move(hle, dmemo, dmemi, align(count, 16));
 }
 
 static void LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -218,11 +211,9 @@ static void INTERLEAVE(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
    uint16_t left  = (w2 >> 16) + DMEM_BASE;
    uint16_t right = w2 + DMEM_BASE;
 
-   if (hle->alist_audio.count == 0)
-      return;
-
-   alist_interleave(hle, hle->alist_audio.out,
-         left, right, align(hle->alist_audio.count, 16));
+   if (hle->alist_audio.count != 0)
+      alist_interleave(hle, hle->alist_audio.out,
+            left, right, align(hle->alist_audio.count, 16));
 }
 
 static void MIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -231,10 +222,8 @@ static void MIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
    uint16_t dmemi = (w2 >> 16) + DMEM_BASE;
    uint16_t dmemo = w2 + DMEM_BASE;
 
-   if (hle->alist_audio.count == 0)
-      return;
-
-   alist_mix(hle, dmemo, dmemi, align(hle->alist_audio.count, 32), gain);
+   if (hle->alist_audio.count != 0)
+      alist_mix(hle, dmemo, dmemi, align(hle->alist_audio.count, 32), gain);
 }
 
 static void SEGMENT(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
@@ -248,18 +237,16 @@ static void POLEF(struct hle_t* hle, uint32_t w1, uint32_t w2)
    uint16_t gain    = w1;
    uint32_t address = get_address(hle, w2);
 
-   if (hle->alist_audio.count == 0)
-      return;
-
-   alist_polef(
-         hle,
-         flags & A_INIT,
-         hle->alist_audio.out,
-         hle->alist_audio.in,
-         align(hle->alist_audio.count, 16),
-         gain,
-         hle->alist_audio.table,
-         address);
+   if (hle->alist_audio.count != 0)
+      alist_polef(
+            hle,
+            flags & A_INIT,
+            hle->alist_audio.out,
+            hle->alist_audio.in,
+            align(hle->alist_audio.count, 16),
+            gain,
+            hle->alist_audio.table,
+            address);
 }
 
 /* global functions */
