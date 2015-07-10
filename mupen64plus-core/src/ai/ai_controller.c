@@ -180,7 +180,7 @@ int write_ai_regs(void* opaque, uint32_t address,
    switch (reg)
    {
       case AI_LEN_REG:
-         masked_write(&ai->regs[AI_LEN_REG], value, mask);
+         ai->regs[AI_LEN_REG] = MASKED_WRITE(&ai->regs[AI_LEN_REG], value, mask);
          fifo_push(ai);
          return 0;
 
@@ -193,11 +193,11 @@ int write_ai_regs(void* opaque, uint32_t address,
          if ((ai->regs[reg]) != (value & mask))
             ai->samples_format_changed = 1;
 
-         masked_write(&ai->regs[reg], value, mask);
+         ai->regs[reg] = MASKED_WRITE(&ai->regs[reg], value, mask);
          return 0;
    }
 
-   masked_write(&ai->regs[reg], value, mask);
+   ai->regs[reg] = MASKED_WRITE(&ai->regs[reg], value, mask);
 
    return 0;
 }

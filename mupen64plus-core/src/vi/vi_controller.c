@@ -75,7 +75,7 @@ int write_vi_regs(void* opaque, uint32_t address,
        case VI_STATUS_REG:
           if ((vi->regs[VI_STATUS_REG] & mask) != (word & mask))
           {
-             masked_write(&vi->regs[VI_STATUS_REG], word, mask);
+             vi->regs[VI_STATUS_REG] = MASKED_WRITE(&vi->regs[VI_STATUS_REG], word, mask);
              gfx.viStatusChanged();
           }
           return 0;
@@ -83,7 +83,7 @@ int write_vi_regs(void* opaque, uint32_t address,
        case VI_WIDTH_REG:
           if ((vi->regs[VI_WIDTH_REG] & mask) != (word & mask))
           {
-             masked_write(&vi->regs[VI_WIDTH_REG], word, mask);
+             vi->regs[VI_WIDTH_REG] = MASKED_WRITE(&vi->regs[VI_WIDTH_REG], word, mask);
              gfx.viWidthChanged();
           }
           return 0;
@@ -93,7 +93,7 @@ int write_vi_regs(void* opaque, uint32_t address,
           return 0;
     }
 
-    masked_write(&vi->regs[reg], word, mask);
+    vi->regs[reg] = MASKED_WRITE(&vi->regs[reg], word, mask);
 
     return 0;
 }

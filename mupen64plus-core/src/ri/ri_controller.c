@@ -63,7 +63,7 @@ int write_ri_regs(void* opaque, uint32_t address, uint32_t word, uint32_t mask)
     struct ri_controller* ri = (struct ri_controller*)opaque;
     uint32_t reg             = RI_REG(address);
 
-    masked_write(&ri->regs[reg], word, mask);
+    ri->regs[reg] = MASKED_WRITE(&ri->regs[reg], word, mask);
 
     return 0;
 }

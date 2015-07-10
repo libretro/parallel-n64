@@ -108,7 +108,7 @@ int write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
          return 0;
    }
 
-   masked_write(&dp->dpc_regs[reg], value, mask);
+   dp->dpc_regs[reg] = MASKED_WRITE(&dp->dpc_regs[reg], value, mask);
 
    switch(reg)
    {
@@ -140,7 +140,7 @@ int write_dps_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
     struct rdp_core* dp = (struct rdp_core*)opaque;
     uint32_t reg        = DPS_REG(address);
 
-    masked_write(&dp->dps_regs[reg], value, mask);
+    dp->dps_regs[reg] = MASKED_WRITE(&dp->dps_regs[reg], value, mask);
 
     return 0;
 }

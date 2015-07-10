@@ -24,6 +24,10 @@
 
 #include <stdint.h>
 
+#ifndef MASKED_WRITE
+#define MASKED_WRITE(dst, value, mask) ((*(dst) & ~(mask)) | ((value) & (mask)))
+#endif
+
 #ifdef __LIBRETRO__
 #include "../../libretro/libretro_memory.h"
 #endif
@@ -75,10 +79,6 @@ extern void (*writememd[0x10000])(void);
 #define Sh16 1
 #endif
 
-static INLINE void masked_write(uint32_t* dst, uint32_t value, uint32_t mask)
-{
- *dst = (*dst & ~mask) | (value & mask);
-}
 
 int init_memory(void);
 

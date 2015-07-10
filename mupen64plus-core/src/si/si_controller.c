@@ -114,16 +114,16 @@ int write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
     switch (reg)
     {
        case SI_DRAM_ADDR_REG:
-          masked_write(&si->regs[SI_DRAM_ADDR_REG], value, mask);
+          si->regs[SI_DRAM_ADDR_REG] = MASKED_WRITE(&si->regs[SI_DRAM_ADDR_REG], value, mask);
           break;
 
        case SI_PIF_ADDR_RD64B_REG:
-          masked_write(&si->regs[SI_PIF_ADDR_RD64B_REG], value, mask);
+          si->regs[SI_PIF_ADDR_RD64B_REG] = MASKED_WRITE(&si->regs[SI_PIF_ADDR_RD64B_REG], value, mask);
           dma_si_read(si);
           break;
 
        case SI_PIF_ADDR_WR64B_REG:
-          masked_write(&si->regs[SI_PIF_ADDR_WR64B_REG], value, mask);
+          si->regs[SI_PIF_ADDR_WR64B_REG] = MASKED_WRITE(&si->regs[SI_PIF_ADDR_WR64B_REG], value, mask);
           dma_si_write(si);
           break;
 

@@ -91,7 +91,7 @@ int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
       return -1;
    }
 
-   masked_write((uint32_t*)(&si->pif.ram[addr]), sl(value), sl(mask));
+   si->pif.ram[addr] = MASKED_WRITE((uint32_t*)(&si->pif.ram[addr]), sl(value), sl(mask));
 
    if ((addr == 0x3c) && (mask & 0xff))
    {

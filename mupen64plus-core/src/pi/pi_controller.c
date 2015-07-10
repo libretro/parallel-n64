@@ -216,12 +216,12 @@ int write_pi_regs(void* opaque, uint32_t address,
    switch (reg)
    {
       case PI_RD_LEN_REG:
-         masked_write(&pi->regs[PI_RD_LEN_REG], value, mask);
+         pi->regs[PI_RD_LEN_REG] = MASKED_WRITE(&pi->regs[PI_RD_LEN_REG], value, mask);
          dma_pi_read(pi);
          return 0;
 
       case PI_WR_LEN_REG:
-         masked_write(&pi->regs[PI_WR_LEN_REG], value, mask);
+         pi->regs[PI_WR_LEN_REG] = MASKED_WRITE(&pi->regs[PI_WR_LEN_REG], value, mask);
          dma_pi_write(pi);
          return 0;
 
@@ -238,11 +238,11 @@ int write_pi_regs(void* opaque, uint32_t address,
       case PI_BSD_DOM2_PWD_REG:
       case PI_BSD_DOM2_PGS_REG:
       case PI_BSD_DOM2_RLS_REG:
-         masked_write(&pi->regs[reg], value & 0xff, mask);
+         pi->regs[reg] = MASKED_WRITE(&pi->regs[reg], value & 0xff, mask);
          return 0;
    }
 
-   masked_write(&pi->regs[reg], value, mask);
+   pi->regs[reg] = MASKED_WRITE(&pi->regs[reg], value, mask);
 
    return 0;
 }
