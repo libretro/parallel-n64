@@ -28,6 +28,7 @@
 #include "cart_rom.h"
 #include "flashram.h"
 #include "sram.h"
+#include "../dd/dd_rom.h"
 
 struct r4300_core;
 struct ri_controller;
@@ -57,6 +58,7 @@ struct pi_controller
     struct cart_rom cart_rom;
     struct flashram flashram;
     struct sram sram;
+    struct dd_rom dd_rom;
 
     int use_flashram;
 
@@ -73,7 +75,8 @@ static INLINE uint32_t pi_reg(uint32_t address)
 void connect_pi(struct pi_controller* pi,
                 struct r4300_core* r4300,
                 struct ri_controller *ri,
-                uint8_t *rom, size_t rom_size);
+                uint8_t* rom, size_t rom_size,
+                uint8_t* ddrom, size_t ddrom_size);
 
 void init_pi(struct pi_controller* pi);
 

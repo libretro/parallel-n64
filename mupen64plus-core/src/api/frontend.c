@@ -46,8 +46,9 @@
 #include "plugin/audio_backend_compat.h"
 
 /* some local state variables */
-static int l_CoreInit = 0;
-static int l_ROMOpen = 0;
+static int l_CoreInit  = 0;
+static int l_ROMOpen   = 0;
+static int l_DDROMOpen = 0;
 
 /* functions exported outside of libmupen64plus to front-end application */
 EXPORT m64p_error CALL CoreStartup(int APIVersion, const char *ConfigPath, const char *DataPath, void *Context,
@@ -201,6 +202,17 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             if (ParamInt < 0 || ParamInt > 1)
                 return M64ERR_INPUT_INVALID;
             return main_reset(ParamInt);
+        case M64CMD_DDROM_OPEN:
+            if (g_EmulatorRunning || l_DDROMOpen)
+               return M64ERR_INVALID_STATE;
+            if (ParamPtr == NULL || ParamInt < 4096)
+               return M64ERR_INPUT_ASSERT;
+            rval = open_ddrom((const unsigned char *)ParamPtr, ParamInt);
+            if (rval == M64ERR_SUCCESS)
+               l_DDROMOpen = 1;
+            return rval;
+        case M64CMD_DISK_OPEN:
+        case M64CMD_DISK_CLOSE:
         default:
             return M64ERR_INPUT_INVALID;
     }

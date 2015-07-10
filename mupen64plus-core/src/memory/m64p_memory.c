@@ -38,6 +38,7 @@
 #include "../ri/ri_controller.h"
 #include "../si/si_controller.h"
 #include "../vi/vi_controller.h"
+#include "../dd/dd_controller.h"
 
 #ifdef DBG
 #include "../debugger/dbg_types.h"
@@ -942,61 +943,69 @@ static void write_pifd(void)
     writed(write_pif_ram, &g_si, address, dword);
 }
 
-/* HACK: just to get F-Zero to boot
- * TODO: implement a real DD module
- */
-static int read_dd_regs(void* opaque, uint32_t address, uint32_t* value)
-{
-    *value = (address == 0xa5000508)
-           ? 0xffffffff
-           : 0x00000000;
-
-    return 0;
-}
-
-static int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
-{
-    return 0;
-}
-
 static void read_dd(void)
 {
-    readw(read_dd_regs, NULL, address, rdword);
+    readw(read_dd_regs, &g_dd, address, rdword);
 }
 
 static void read_ddb(void)
 {
-    readb(read_dd_regs, NULL, address, rdword);
+    readb(read_dd_regs, &g_dd, address, rdword);
 }
 
 static void read_ddh(void)
 {
-    readh(read_dd_regs, NULL, address, rdword);
+    readh(read_dd_regs, &g_dd, address, rdword);
 }
 
 static void read_ddd(void)
 {
-    readd(read_dd_regs, NULL, address, rdword);
+    readd(read_dd_regs, &g_dd, address, rdword);
 }
 
 static void write_dd(void)
 {
-    writew(write_dd_regs, NULL, address, word);
+    writew(write_dd_regs, &g_dd, address, word);
 }
 
 static void write_ddb(void)
 {
-    writeb(write_dd_regs, NULL, address, cpu_byte);
+    writeb(write_dd_regs, &g_dd, address, cpu_byte);
 }
 
 static void write_ddh(void)
 {
-    writeh(write_dd_regs, NULL, address, hword);
+    writeh(write_dd_regs, &g_dd, address, hword);
 }
 
 static void write_ddd(void)
 {
-    writed(write_dd_regs, NULL, address, dword);
+    writed(write_dd_regs, &g_dd, address, dword);
+}
+
+static void read_ddipl(void)
+{
+   readw(read_dd_ipl, &g_pi, address, rdword);
+}
+
+static void read_ddiplb(void)
+{
+   readb(read_dd_ipl, &g_pi, address, rdword);
+}
+
+static void read_ddiplh(void)
+{
+   readh(read_dd_ipl, &g_pi, address, rdword);
+}
+
+static void read_ddipld(void)
+{
+   readd(read_dd_ipl, &g_pi, address, rdword);
+}
+
+static void write_ddipl(void)
+{
+   writew(write_dd_ipl, &g_pi, address, word);
 }
 
 #ifdef DBG
@@ -1292,12 +1301,24 @@ int init_memory(void)
    }
 
    /* map DD registers */
-   map_region(0x8500, M64P_MEM_NOTHING, RW(dd));
-   map_region(0xa500, M64P_MEM_NOTHING, RW(dd));
-   for(i = 0x501; i < 0x800; ++i)
+   map_region(0x8500, M64P_MEM_DD, RW(dd));
+   map_region(0xa500, M64P_MEM_DD, RW(dd));
+   for(i = 0x501; i < 0x600; ++i)
    {
       map_region(0x8000+i, M64P_MEM_NOTHING, RW(nothing));
       map_region(0xa000+i, M64P_MEM_NOTHING, RW(nothing));
+   }
+
+   /* map DD IPL ROM */
+   for (i = 0x600; i < 0x640; ++i)
+   {
+      map_region(0x8000 + i, M64P_MEM_DD, R(ddipl), W(nothing));
+      map_region(0xa000 + i, M64P_MEM_DD, R(ddipl), W(nothing));
+   }
+   for (i = 0x640; i < 0x800; ++i)
+   {
+      map_region(0x8000 + i, M64P_MEM_NOTHING, RW(nothing));
+      map_region(0xa000 + i, M64P_MEM_NOTHING, RW(nothing));
    }
 
    /* map flashram/sram */
@@ -1346,6 +1367,7 @@ int init_memory(void)
    init_ri(&g_ri);
    init_si(&g_si);
    init_vi(&g_vi);
+   init_dd(&g_dd);
 
    DebugMessage(M64MSG_VERBOSE, "Memory initialized");
    return 0;

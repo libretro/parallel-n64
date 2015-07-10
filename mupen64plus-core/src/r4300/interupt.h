@@ -56,5 +56,6 @@ void load_eventqueue_infos(char *buf);
 #define DP_INT      0x100
 #define HW2_INT     0x200
 #define NMI_INT     0x400
+#define CART_INT    0x800
 
 #endif /* M64P_R4300_INTERRUPT_H */

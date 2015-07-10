@@ -63,19 +63,19 @@ static m64p_system_type rom_country_code_to_system_type(char country_code);
 static int rom_system_type_to_ai_dac_rate(m64p_system_type system_type);
 static int rom_system_type_to_vi_limit(m64p_system_type system_type);
 
+static const uint8_t Z64_SIGNATURE[4] = { 0x80, 0x37, 0x12, 0x40 };
+static const uint8_t V64_SIGNATURE[4] = { 0x37, 0x80, 0x40, 0x12 };
+static const uint8_t N64_SIGNATURE[4] = { 0x40, 0x12, 0x37, 0x80 };
+
 /* Tests if a file is a valid N64 rom by checking the first 4 bytes. */
 static int is_valid_rom(const unsigned char *buffer)
 {
-   /* Test if rom is a native .z64 image with header 0x80371240. [ABCD] */
-   if((buffer[0]==0x80)&&(buffer[1]==0x37)&&(buffer[2]==0x12)&&(buffer[3]==0x40))
+   if (memcmp(buffer, Z64_SIGNATURE, sizeof(Z64_SIGNATURE)) == 0
+         || memcmp(buffer, V64_SIGNATURE, sizeof(V64_SIGNATURE)) == 0
+         || memcmp(buffer, N64_SIGNATURE, sizeof(N64_SIGNATURE)) == 0)
       return 1;
-   /* Test if rom is a byteswapped .v64 image with header 0x37804012. [BADC] */
-   else if((buffer[0]==0x37)&&(buffer[1]==0x80)&&(buffer[2]==0x40)&&(buffer[3]==0x12))
-      return 1;
-   /* Test if rom is a wordswapped .n64 image with header  0x40123780. [DCBA] */
-   else if((buffer[0]==0x40)&&(buffer[1]==0x12)&&(buffer[2]==0x37)&&(buffer[3]==0x80))
-      return 1;
-   return 0;
+   else
+      return 0;
 }
 
 /* If rom is a .v64 or .n64 image, byteswap or wordswap loadlength amount of
