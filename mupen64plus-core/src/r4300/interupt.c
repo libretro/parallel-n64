@@ -557,8 +557,8 @@ void gen_interupt(void)
          nmi_int_handler();
          break;
       case CART_INT:
-         g_cp0_regs[CP0_CAUSE_REG] |= 0x00000800;
-         g_cp0_regs[CP0_CAUSE_REG] &= 0xFFFFFF83;
+         g_cp0_regs[CP0_CAUSE_REG] |= 0x00000800; /* set IP3 */
+         g_cp0_regs[CP0_CAUSE_REG] &= 0xFFFFFF83; /* mask out old exception code */
 
          if (dd_end_of_dma_event(&g_dd) == 1)
          {
