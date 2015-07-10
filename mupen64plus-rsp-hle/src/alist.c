@@ -47,33 +47,17 @@ static void swap(int16_t **a, int16_t **b)
     *a = tmp;
 }
 
-static int16_t* sample(struct hle_t* hle, unsigned pos)
-{
-    return (int16_t*)hle->alist_buffer + (pos ^ S);
-}
-
-static uint8_t* alist_u8(struct hle_t* hle, uint16_t dmem)
-{
-    return u8(hle->alist_buffer, dmem);
-}
-
-static int16_t* alist_s16(struct hle_t* hle, uint16_t dmem)
-{
-    return (int16_t*)u16(hle->alist_buffer, dmem);
-}
-
-
-static void sample_mix(int16_t* dst, int16_t src, int16_t gain)
-{
-    *dst = clamp_s16(*dst + ((src * gain) >> 15));
-}
+#define sample(hle, pos)      ((int16_t*)(hle)->alist_buffer + ((pos) ^ S))
+#define alist_u8(hle, dmem)   (u8((hle)->alist_buffer, (dmem)))
+#define alist_s16(hle, dmem)  ((int16_t*)u16((hle)->alist_buffer, (dmem)))
+#define sample_mix(dst, src, gain)  (clamp_s16(*(dst) + (((src) * (gain)) >> 15)))
 
 static void alist_envmix_mix(size_t n, int16_t** dst, const int16_t* gains, int16_t src)
 {
     size_t i;
 
     for(i = 0; i < n; ++i)
-        sample_mix(dst[i], src, gains[i]);
+        *dst[i] = sample_mix(dst[i], src, gains[i]);
 }
 
 static int16_t ramp_step(struct ramp_t* ramp)
@@ -559,12 +543,13 @@ void alist_mix(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count
 
     count >>= 1;
 
-    while(count != 0) {
-        sample_mix(dst, *src, gain);
+    while(count != 0)
+    {
+       *dst = sample_mix(dst, *src, gain);
 
-        ++dst;
-        ++src;
-        --count;
+       ++dst;
+       ++src;
+       --count;
     }
 }
 
@@ -574,11 +559,12 @@ void alist_multQ44(struct hle_t* hle, uint16_t dmem, uint16_t count, int8_t gain
 
     count >>= 1;
 
-    while(count != 0) {
-        *dst = clamp_s16(*dst * gain >> 4);
+    while(count != 0)
+    {
+       *dst = clamp_s16(*dst * gain >> 4);
 
-        ++dst;
-        --count;
+       ++dst;
+       --count;
     }
 }
 
@@ -589,7 +575,8 @@ void alist_add(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count
 
     count >>= 1;
 
-    while(count != 0) {
+    while(count != 0)
+    {
         *dst = clamp_s16(*dst + *src);
 
         ++dst;
