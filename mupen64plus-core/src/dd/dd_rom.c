@@ -120,12 +120,12 @@ m64p_error open_ddrom(const unsigned char* romimage, unsigned int size)
 	/* check input requirements */
 	if (g_ddrom != NULL)
 	{
-		DebugMessage(M64MSG_ERROR, "open_rom(): previous ROM image was not freed");
+		DebugMessage(M64MSG_ERROR, "open_ddrom(): previous ROM image was not freed");
 		return M64ERR_INTERNAL;
 	}
 	if (romimage == NULL || !is_valid_rom(romimage))
 	{
-		DebugMessage(M64MSG_ERROR, "open_rom(): not a valid ROM image");
+		DebugMessage(M64MSG_ERROR, "open_ddrom(): not a valid ROM image");
 		return M64ERR_INPUT_INVALID;
 	}
 
