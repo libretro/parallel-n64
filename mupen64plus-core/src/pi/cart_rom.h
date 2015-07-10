@@ -25,18 +25,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef ROM_ADDR
+#define ROM_ADDR(a)  ((a & 0x03fffffc))
+#endif
+
 struct cart_rom
 {
-    uint8_t* rom;
-    size_t rom_size;
+   uint8_t* rom;
+   size_t rom_size;
 
-    uint32_t last_write;
+   uint32_t last_write;
 };
-
-static INLINE uint32_t rom_address(uint32_t address)
-{
-    return (address & 0x03fffffc);
-}
 
 void connect_cart_rom(struct cart_rom* cart_rom,
                       uint8_t* rom, size_t rom_size);
