@@ -210,14 +210,10 @@ void rdp_new(void)
 {
    unsigned i, cpu;
    cpu = 0;
-   rdp.vtx1 = (VERTEX*)malloc(256 * sizeof(VERTEX));
-   rdp.vtx2 = (VERTEX*)malloc(256 * sizeof(VERTEX));
-   rdp.vtx  = (VERTEX*)malloc(MAX_VTX * sizeof(VERTEX));
-   rdp.frame_buffers = (COLOR_IMAGE*)malloc((NUMTEXBUF+2) * sizeof(COLOR_IMAGE));
-
-   memset(rdp.vtx1, 0, 256 * sizeof(VERTEX));
-   memset(rdp.vtx2, 0, 256 * sizeof(VERTEX));
-   memset(rdp.vtx,  0, MAX_VTX * sizeof(VERTEX));
+   rdp.vtx1 = (VERTEX*)calloc(256, sizeof(VERTEX));
+   rdp.vtx2 = (VERTEX*)calloc(256, sizeof(VERTEX));
+   rdp.vtx  = (VERTEX*)calloc(MAX_VTX, sizeof(VERTEX));
+   rdp.frame_buffers = (COLOR_IMAGE*)calloc(NUMTEXBUF+2, sizeof(COLOR_IMAGE));
 
    rdp.vtxbuf = 0;
    rdp.vtxbuf2 = 0;
@@ -226,7 +222,7 @@ void rdp_new(void)
 
    for (i = 0; i < MAX_TMU; i++)
    {
-      rdp.cache[i] = (CACHE_LUT*)malloc(MAX_CACHE * sizeof(CACHE_LUT));
+      rdp.cache[i] = (CACHE_LUT*)calloc(MAX_CACHE, sizeof(CACHE_LUT));
       rdp.cur_cache[i]   = 0;
    }
 
