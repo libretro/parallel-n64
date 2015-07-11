@@ -106,7 +106,8 @@ void CRC_BuildTable(void)
    }
 
    for (slice = 1; slice < MaxSlice; slice++)
-     Crc32Lookup[slice][i] = (Crc32Lookup[slice - 1][i] >> 8) ^ Crc32Lookup[0][Crc32Lookup[slice - 1][i] & 0xFF];
+      for (i = 0; i <= 0xFF; i++)
+         Crc32Lookup[slice][i] = (Crc32Lookup[slice - 1][i] >> 8) ^ Crc32Lookup[0][Crc32Lookup[slice - 1][i] & 0xFF];
 }
 
 unsigned int CRC32(unsigned int crc, void *buffer, unsigned int count)

@@ -1925,4 +1925,8 @@ void ReadSpecialSettings (const char * name)
 	  else if (strcmp(var.value, "bilinear") == 0)
 		 glide_set_filtering(3);
    }
+
+   /* this has to be done here. */
+   if (strstr(name, "POKEMON STADIUM 2"))
+      settings.frame_buffer &= ~fb_emulation;
 }
