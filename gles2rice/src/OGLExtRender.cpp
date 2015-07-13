@@ -204,8 +204,8 @@ void COGLExtRender::EnableTexUnit(int unitno, bool flag)
 
 void COGLExtRender::ApplyTextureFilter()
 {
-    static uint32_t minflag[8], magflag[8];
-    static uint32_t mtex[8];
+    static uint32_t minflag[32], magflag[32];
+    static uint32_t mtex[32];
 
     int iMinFilter, iMagFilter;
 

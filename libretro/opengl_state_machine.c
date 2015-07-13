@@ -35,7 +35,7 @@ static const int CapTranslate[SGL_CAP_MAX] =
 
 #ifndef HAVE_SHARED_CONTEXT
 #define MAX_ATTRIB 8
-#define MAX_TEXTURE 4
+#define MAX_TEXTURE 32
 #define ATTRIB_INITER(X) { X, X, X, X, X, X, X, X }
 
 static GLint VertexAttribPointer_enabled[MAX_ATTRIB] = ATTRIB_INITER(0);
