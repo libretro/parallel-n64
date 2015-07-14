@@ -132,22 +132,14 @@ void ClearCache(void)
 }
 
 //****************************************************************
-static uint32_t textureCRC(uint8_t *addr, int width, int height, int line)
+static uint32_t textureCRC(uint32_t crc, uint8_t *addr, int width, int height, int line)
 {
-   unsigned int i;
-   uint32_t *pixelpos = (uint32_t*)addr;
-   uint32_t crc       = 0;
+   const size_t len = sizeof(uint32_t) * 2 * width;
 
-   for (; height; height--)
+   while (height--)
    {
-      for (i = width; i; --i)
-      {
-         uint64_t twopixel_crc = i * (uint64_t)(pixelpos[1] + pixelpos[0] + crc);
-         crc = (uint32_t)(twopixel_crc >> 32) + (uint32_t)twopixel_crc;
-         pixelpos += 2;
-      }
-      crc = ((unsigned int)height * (uint64_t)crc >> 32) + height * crc;
-      pixelpos = (uint32_t *)((char *)pixelpos + line);
+      crc = CRC32(crc, addr, len);
+      addr += len + line;
    }
 
    return crc;
@@ -299,7 +291,17 @@ static void GetTexInfo (int id, int tile)
    line = g_gdp.tile[tile].line;
    if (g_gdp.tile[tile].size == G_IM_SIZ_32b)
       line <<= 1;
+
    crc = 0;
+
+   if ((g_gdp.tile[tile].size < 2) && (rdp.tlut_mode || g_gdp.tile[tile].format == G_IM_FMT_CI))
+   {
+      if (g_gdp.tile[tile].size == G_IM_SIZ_4b)
+         crc = rdp.pal_8_crc[g_gdp.tile[tile].palette];
+      else
+         crc = rdp.pal_256_crc;
+   }
+
    {
       uint8_t *addr;
       line = (line - wid_64) << 3;
@@ -309,24 +311,18 @@ static void GetTexInfo (int id, int tile)
       if (crc_height > 0) // Check the CRC
       {
          if (g_gdp.tile[tile].size < 3)
-            crc = textureCRC(addr, wid_64, crc_height, line);
+            crc = textureCRC(crc, addr, wid_64, crc_height, line);
          else //32b texture
          {
             int line_2, wid_64_2;
             line_2 = line >> 1;
             wid_64_2 = max(1, wid_64 >> 1);
-            crc = textureCRC(addr, wid_64_2, crc_height, line_2);
-            crc += textureCRC(addr+0x800, wid_64_2, crc_height, line_2);
+            crc = textureCRC(crc, addr, wid_64_2, crc_height, line_2);
+            crc = textureCRC(crc, addr+0x800, wid_64_2, crc_height, line_2);
          }
       }
    }
-   if ((g_gdp.tile[tile].size < 2) && (rdp.tlut_mode || g_gdp.tile[tile].format == G_IM_FMT_CI))
-   {
-      if (g_gdp.tile[tile].size == G_IM_SIZ_4b)
-         crc += rdp.pal_8_crc[g_gdp.tile[tile].palette];
-      else
-         crc += rdp.pal_256_crc;
-   }
+
 
    FRDP ("Done.  CRC is: %08lx.\n", crc);
 

@@ -112,7 +112,7 @@ void CRC_BuildTable(void)
 
 unsigned int CRC32(unsigned int crc, void *buffer, unsigned int count)
 {
-   return crc32_1byte(buffer, count, crc);
+   return crc32_8bytes(buffer, count, crc);
 }
 
 uint32_t CRC_Calculate(void *buffer, uint32_t count)
@@ -122,8 +122,7 @@ uint32_t CRC_Calculate(void *buffer, uint32_t count)
 
 uint32_t adler32(uint32_t adler, void *buf, int len)
 {
-   /* seems to work well for r4300 core uses, speeds up CBFD too */
-   return crc32_16bytes(buf, len, adler);
+   return CRC32(adler, buf, len);
 }
 
 /// compute CRC32 (standard algorithm)
