@@ -37,16 +37,10 @@ extern "C" {
 #include <stdlib.h>
 #endif
 
-#if defined(__llvm__) || (defined(__GNUC__) && (__GNUC__ * 100 + __GNUC_MINOR__) >= 408)
-#define BUILTIN_BSWAP16 __builtin_bswap16
-#define BUILTIN_BSWAP32 __builtin_bswap32
-#define BUILTIN_BSWAP64 __builtin_bswap64
-#else
 #if defined(_MSC_VER)
 #define BUILTIN_BSWAP16 _byteswap_ushort
 #define BUILTIN_BSWAP32 _byteswap_ulong
 #define BUILTIN_BSWAP64 _byteswap_uint64
-#endif
 #endif
 
 static osal_inline unsigned short m64p_swap16(unsigned short x)
