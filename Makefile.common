@@ -107,7 +107,6 @@ SOURCES_C += \
 
 ### DYNAREC ###
 ifdef WITH_DYNAREC
-	DYNAFLAGS += -DDYNAREC
 
 	ifeq ($(WITH_DYNAREC), arm)
 		DYNAFLAGS += -DNEW_DYNAREC=3
@@ -150,6 +149,8 @@ ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686 x86_64 x64))
 endif
 ifeq ($(DYNAREC_USED), 0)
 	SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
+else
+	DYNAFLAGS += -DDYNAREC
 endif
 endif
 
