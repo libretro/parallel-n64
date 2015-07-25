@@ -29,7 +29,7 @@
 #endif
 
 #ifdef __LIBRETRO__
-#include "../../libretro/libretro_memory.h"
+#include "libretro_memory.h"
 #endif
 
 #define AI_STATUS_FIFO_FULL	0x80000000		/* Bit 31: full */

@@ -19,6 +19,7 @@
 #include "DepthBuffer.h"
 #include "VI.h"
 #include "Config.h"
+#include "ShaderCombiner.h"
 
 #include "../../mupen64plus-core/src/rdp_common/gdp.h"
 

@@ -67,7 +67,11 @@ static unsigned gli_vbo_size;
 
 void vbo_init(void)
 {
+#ifdef EMSCRIPTEN
+   struct retro_variable var = { "mupen64-vcache-vbo", "on" };
+#else
    struct retro_variable var = { "mupen64-vcache-vbo", 0 };
+#endif
    vbuf_use_vbo = false;
    vbuf_length = 0;
 

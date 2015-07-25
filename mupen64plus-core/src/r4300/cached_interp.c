@@ -19,6 +19,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #include <stdint.h>
+#include <stdlib.h>
 #define __STDC_FORMAT_MACROS
 #include <string.h>
 

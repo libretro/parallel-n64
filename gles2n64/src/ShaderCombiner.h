@@ -234,6 +234,7 @@ void ShaderCombiner_UpdateFogColor(void);
 void ShaderCombiner_UpdatePrimColor(void);
 void ShaderCombiner_UpdateKeyColor(void);
 void ShaderCombiner_UpdateLightParameters(void);
+void ShaderCombiner_UpdateConvertColor(void);
 
 #ifdef __cplusplus
 }

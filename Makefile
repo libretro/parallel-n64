@@ -30,6 +30,21 @@ ifeq ($(platform),)
 	endif
 endif
 
+# system platform
+system_platform = unix
+ifeq ($(shell uname -a),)
+EXE_EXT = .exe
+   system_platform = win
+else ifneq ($(findstring Darwin,$(shell uname -a)),)
+   system_platform = osx
+	arch = intel
+ifeq ($(shell uname -p),powerpc)
+	arch = ppc
+endif
+else ifneq ($(findstring MINGW,$(shell uname -a)),)
+   system_platform = win
+endif
+
 # Cross compile ?
 
 ifeq (,$(ARCH))
@@ -59,6 +74,13 @@ ifneq (,$(findstring unix,$(platform)))
 	else
 		GL_LIB := -lGL
 	endif
+
+# Target Dynarec
+WITH_DYNAREC = $(ARCH)
+
+ifeq ($(ARCH), $(filter $(ARCH), i386 i686))
+	WITH_DYNAREC = x86
+endif
 
 	PLATFORM_EXT := unix
 
@@ -142,6 +164,16 @@ else ifneq (,$(findstring osx,$(platform)))
 	PLATCFLAGS += -D__MACOSX__ -DOSX
 	GL_LIB := -framework OpenGL
 	PLATFORM_EXT := unix
+
+# Target Dynarec
+WITH_DYNAREC = $(ARCH)
+
+ifeq ($(ARCH), $(filter $(ARCH), i386 i686))
+	WITH_DYNAREC = x86
+endif
+ifeq ($(ARCH), $(filter $(ARCH), ppc))
+	WITH_DYNAREC =
+endif
 
 # Theos iOS
 else ifneq (,$(findstring theos_ios,$(platform)))
@@ -278,14 +310,25 @@ else ifneq (,$(findstring armv,$(platform)))
 else ifeq ($(platform), emscripten)
 	TARGET := $(TARGET_NAME)_libretro_emscripten.bc
 	GLES := 1
-	CPUFLAGS += -DNO_ASM -DNOSSE
+	GLIDE2GL=1
+	CPUFLAGS += -Dasm=asmerror -D__asm__=asmerror -DNO_ASM -DNOSSE
 	SINGLE_THREAD := 1
-	PLATCFLAGS += -DCC_resampler=mupen_CC_resampler -Dsinc_resampler=mupen_sinc_resampler \
-					-Drglgen_symbol_map=mupen_rglgen_symbol_map -Dmain_exit=mupen_main_exit \
-					-Dadler32=mupen_adler32 -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \
-					-Daudio_convert_s16_to_float_C=mupen_audio_convert_s16_to_float_C -Daudio_convert_float_to_s16_C=mupen_audio_convert_float_to_s16_C \
-					-Daudio_convert_init_simd=mupen_audio_convert_init_simd -Drglgen_resolve_symbols_custom=mupen_rglgen_resolve_symbols_custom \
-					-Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols -Dnearest_resampler=mupen_nearest_resampler
+	PLATCFLAGS += -Drglgen_symbol_map=mupen_rglgen_symbol_map \
+					  -Dmain_exit=mupen_main_exit \
+					  -Dadler32=mupen_adler32 \
+					  -Drglgen_resolve_symbols_custom=mupen_rglgen_resolve_symbols_custom \
+					  -Drglgen_resolve_symbols=mupen_rglgen_resolve_symbols \
+					  -Dsinc_resampler=mupen_sinc_resampler \
+					  -Dnearest_resampler=mupen_nearest_resampler \
+					  -DCC_resampler=mupen_CC_resampler \
+					  -Daudio_resampler_driver_find_handle=mupen_audio_resampler_driver_find_handle \
+					  -Daudio_resampler_driver_find_ident=mupen_audio_resampler_driver_find_ident \
+					  -Drarch_resampler_realloc=mupen_rarch_resampler_realloc \
+					  -Daudio_convert_s16_to_float_C=mupen_audio_convert_s16_to_float_C \
+					  -Daudio_convert_float_to_s16_C=mupen_audio_convert_float_to_s16_C \
+					  -Daudio_convert_init_simd=mupen_audio_convert_init_simd
+
+   HAVE_NEON = 0
 	PLATFORM_EXT := unix
 	#HAVE_SHARED_CONTEXT := 1
 
@@ -297,6 +340,13 @@ else ifneq (,$(findstring win,$(platform)))
 	PLATFORM_EXT := win32
 	CC = gcc
 	CXX = g++
+
+# Target Dynarec
+WITH_DYNAREC = $(ARCH)
+
+ifeq ($(ARCH), $(filter $(ARCH), i386 i686))
+	WITH_DYNAREC = x86
+endif
 	
 endif
 

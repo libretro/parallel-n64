@@ -451,6 +451,7 @@ static void genbgtz_test(void)
 #endif
 }
 
+#ifdef __x86_64__
 static void ld_register_alloc(int *pGpr1, int *pGpr2, int *pBase1, int *pBase2)
 {
    int gpr1, gpr2, base1, base2 = 0;
@@ -491,6 +492,7 @@ static void ld_register_alloc(int *pGpr1, int *pGpr2, int *pBase1, int *pBase2)
    *pBase1 = base1;
    *pBase2 = base2;
 }
+#endif
 
 
 /* global functions */
@@ -581,7 +583,11 @@ void gendebug(void)
 }
 #endif
 
-void gencallinterp(native_type addr, int jump)
+#if defined(__i386__)
+void gencallinterp(uint32_t addr, int jump)
+#else
+void gencallinterp(uint64_t addr, int jump)
+#endif
 {
 #ifdef __x86_64__
    free_registers_move_start();

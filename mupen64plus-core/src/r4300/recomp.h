@@ -100,7 +100,9 @@ extern precomp_instr *dst; /* precomp_instr structure for instruction being reco
 
 extern int no_compiled_jump;
 
+#ifdef DYNAREC
 #include "hacktarux_dynarec/assemble.h"
+#endif
 #include "hacktarux_dynarec/regcache.h"
 
 #endif /* M64P_R4300_RECOMP_H */

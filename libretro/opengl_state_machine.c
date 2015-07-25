@@ -65,6 +65,9 @@ static GLenum ActiveTexture_texture = 0;
 static GLuint BindTexture_ids[MAX_TEXTURE];
 #endif
 
+extern void vbo_draw(void);
+extern void vbo_disable();
+
 #ifndef GLIDE64_MK2
 static void gl_vbo_draw(void)
 {
@@ -706,7 +709,7 @@ extern bool frame_dupe;
 extern retro_video_refresh_t video_cb;
 extern uint32_t screen_width;
 extern uint32_t screen_height;
-void emu_step_render();
+bool emu_step_render(void);
 
 int retro_return(int just_flipping)
 {

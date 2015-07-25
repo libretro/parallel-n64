@@ -1,6 +1,7 @@
 #include <stdio.h>
-#include <SDL_opengles2.h>
+#include <stdlib.h>
 #include <string.h>
+#include <SDL_opengles2.h>
 
 #include "api/libretro.h"
 #ifndef SINGLE_THREAD
@@ -15,9 +16,13 @@
 #include "main/main.h"
 #include "main/version.h"
 #include "main/savestates.h"
+#include "pi/pi_controller.h"
+#include "si/pif.h"
+#include "libretro_memory.h"
 
 /* Cxd4 RSP */
 #include "../mupen64plus-rsp-cxd4/config.h"
+#include "plugin/audio_libretro/audio_plugin.h"
 
 int glide64InitGfx(void);
 void gles2n64_reset(void);

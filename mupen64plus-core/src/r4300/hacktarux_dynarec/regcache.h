@@ -26,8 +26,8 @@
 #include "r4300/recomp.h"
 
 void free_register(int reg);
-#if defined(__x86_64__)
 void init_cache(precomp_instr* start);
+#if defined(__x86_64__)
 void free_registers_move_start(void);
 int allocate_register_32(unsigned int *addr);
 int allocate_register_64(unsigned long long *addr);
@@ -36,8 +36,8 @@ int allocate_register_64_w(unsigned long long *addr);
 void allocate_register_32_manually(int reg, unsigned int *addr);
 void allocate_register_32_manually_w(int reg, unsigned int *addr);
 
-int lru_register_exc1(int exc1);
 #else
+int lru_register_exc1(int exc1);
 int allocate_register(unsigned int *addr);
 int allocate_64_register1(unsigned int *addr);
 int allocate_64_register2(unsigned int *addr);
