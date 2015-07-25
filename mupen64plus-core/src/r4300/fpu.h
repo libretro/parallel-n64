@@ -26,6 +26,7 @@
 #include <math.h>
 
 #include "r4300.h"
+#include "cp1_private.h"
 
 #ifdef _MSC_VER
   #define M64P_FPU_INLINE static __inline
@@ -52,19 +53,20 @@
 
 M64P_FPU_INLINE void set_rounding(void)
 {
-  switch(rounding_mode) {
-  case 0x33F:
-    fesetround(FE_TONEAREST);
-    break;
-  case 0xF3F:
-    fesetround(FE_TOWARDZERO);
-    break;
-  case 0xB3F:
-    fesetround(FE_UPWARD);
-    break;
-  case 0x73F:
-    fesetround(FE_DOWNWARD);
-    break;
+  switch(FCR31 & 3)
+  {
+     case 0x33F:
+        fesetround(FE_TONEAREST);
+        break;
+     case 0xF3F:
+        fesetround(FE_TOWARDZERO);
+        break;
+     case 0xB3F:
+        fesetround(FE_UPWARD);
+        break;
+     case 0x73F:
+        fesetround(FE_DOWNWARD);
+        break;
   }
 }
 
