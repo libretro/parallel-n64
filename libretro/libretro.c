@@ -249,6 +249,8 @@ static void setup_variables(void)
          "Framerate (restart); original|fullspeed" },
       { "mupen64-vcache-vbo",
          "(Glide64) Vertex cache VBO (restart); off|on" },
+      { "mupen64-boot-device",
+         "Boot Device; Default|64DD IPL" },
       { NULL, NULL },
    };
 
@@ -311,7 +313,7 @@ bool emu_step_render()
    return false;
 }
 
-static void emu_step_initialize()
+static void emu_step_initialize(void)
 {
    if (emu_initialized)
       return;

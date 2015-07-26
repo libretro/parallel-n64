@@ -1306,6 +1306,13 @@ EXPORT int CALL ConfigGetParamInt(m64p_handle ConfigSectionHandle, const char *P
                                                           { 1, "disabled" },
                                                        }
         },
+        {
+          "BootDevice", "mupen64-boot-device",
+          {
+             { 0, "Default" },
+             { 1, "64DD IPL" },
+          }
+        }, 
         { 0, 0, { {0, 0} } }
     };
 
