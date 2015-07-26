@@ -47,6 +47,7 @@ static const uint64_t lut_ee16k[] = {
    0x2337D8E86B8E7CECULL  /* Yoshi's Story (U) (M2) [!] */
 };
 
+
 /* Games that use 4Kbit EEPROM */
 static const uint64_t lut_ee4k[] = {
    0xB98BA4565B2B76AFULL, /* 64 de Hakken!! Tamagotchi Minna de Tamagotchi World (J) [!] */
@@ -333,6 +334,7 @@ static const uint64_t lut_cpop[][2] = {
    { 0xDC36626A3F3770CBULL, 1 }, /* Duke Nukem - ZER0 H0UR (E) [!] */
    { 0x32CA974BB2C29C50ULL, 1 }, /* Duke Nukem - ZER0 H0UR (F) [!] */
    { 0x04DAF07F0D18E688ULL, 1 }, /* Duke Nukem - ZER0 H0UR (U) [!] */
+   { 0x6D9D1FE484D10BEAULL, 1 }, /* Eleven Beat - World Tournament (J) [ALECK64] */
    { 0x202A8EE483F88B89ULL, 1 }, /* Excitebike 64 (E) [!] */
    { 0x07861842A12EBC9FULL, 1 }, /* Excitebike 64 (U) [!] */
    { 0x66CF0FFEAD697F9CULL, 1 }, /* Fighting Force 64 (E) [!] */
