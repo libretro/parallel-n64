@@ -98,6 +98,7 @@ static const uint64_t lut_ee4k[] = {
    0xE402430DD2FCFC9DULL, /* Diddy Kong Racing (U) (M2) (V1.1) [!] */
    0xC16C421BA21580F7ULL, /* Disney's Donald Duck - Goin' Quackers (U) [!] */
    0x3DF17480193DED5AULL, /* Donald Duck - Quack Attack (E) (M5) [!] */
+   0xD52FE29D8EA6A759ULL, /* Donchan Puzzle Hanabi de Doon! (J) [ALECK64] */
    0x492B9DE8C6CCC81CULL, /* Earthworm Jim 3D (E) (M6) [!] */
    0xDF5741919EB5123DULL, /* Earthworm Jim 3D (U) [!] */
    0x6D9D1FE484D10BEAULL, /* Eleven Beat - World Tournament (J) [ALECK64] */
@@ -114,6 +115,7 @@ static const uint64_t lut_ee4k[] = {
    0x8E6E01FFCCB4F948ULL, /* Glover (U) [!] */
    0x0414CA612E57B8AAULL, /* GoldenEye 007 (E) [!] */
    0xA24F4CF1A82327BAULL, /* GoldenEye 007 (J) [!] */
+   0xB57D4EB4345E09E5ULL, /* Guru - Kuru Kuru Fever (J) [ALECK64] */
    0xEE4A0E338FD588C9ULL, /* GT 64 - Championship Edition (E) (M3) [!] */
    0xC49ADCA2F1501B62ULL, /* GT 64 - Championship Edition (U) [!] */
    0xD3F10E5D052EA579ULL, /* Hey You, Pikachu! (U) [!] */
@@ -136,6 +138,7 @@ static const uint64_t lut_ee4k[] = {
    0x255018DF57D6AE3AULL, /* Lode Runner 3-D (U) [!] */
    0x2483F22B136E025EULL, /* Lylat Wars (A) (M3) [!] */
    0xF4CBE92CB392ED12ULL, /* Lylat Wars (E) (M3) [!] */
+   0xD5356BAC97AE69D2ULL, /* Magical Tetris Challenge Featuring Mickey (J) [ALECK64] */
    0xC3B6DE9D65D2DE76ULL, /* Mario Kart 64 (E) (V1.0) [!] */
    0x2577C7D4D18FAAAEULL, /* Mario Kart 64 (E) (V1.1) [!] */
    0x6BFF4758E5FF5D5EULL, /* Mario Kart 64 (J) (V1.0) [!] */
@@ -181,6 +184,7 @@ static const uint64_t lut_ee4k[] = {
    0xA7D015F82289AA43ULL, /* Star Fox 64 (U) (V1.0) [!] */
    0xBA780BA00F21DB34ULL, /* Star Fox 64 (U) (V1.1) [!] */
    0xB703EB2328AAE53AULL, /* Star Soldier - Vanishing Earth (J) [!] */
+   0x315C74663A453265ULL, /* Star Soldier - Vanishing Earth (J) [!] [ALECK64] */
    0xDDD93C85DAE381E8ULL, /* Star Soldier - Vanishing Earth (U) [!] */
    0x7EE0E8BB49E411AAULL, /* Star Wars - Rogue Squadron (E) (M3) (V1.0) [!] */
    0x219191C133183C61ULL, /* Star Wars - Rogue Squadron (E) (M3) (V1.1) [!] */
@@ -205,9 +209,11 @@ static const uint64_t lut_ee4k[] = {
    0xD09BA5381C1A5489ULL, /* Top Gear Overdrive (E) [!] */
    0x0578F24F9175BF17ULL, /* Top Gear Overdrive (J) [!] */
    0xD741CD80ACA9B912ULL, /* Top Gear Overdrive (U) [!] */
+   0x90AF8D2CE1AC1B37ULL, /* Tower & Shaft (J) [ALECK64] */
    0x636E6B19E57DDC5FULL, /* V-Rally Edition 99 (E) (M3) [!] */
    0x4D0224A51BEB5794ULL, /* V-Rally Edition 99 (J) [!] */
    0x3C059038C8BF2182ULL, /* V-Rally Edition 99 (U) [!] */
+   0x2F57C9F7F1E29CA6ULL, /* Vivid Dolls (J) [ALECK64] */
    0x93053075261E0F43ULL, /* Waialae Country Club - True Golf Classics (E) (M4) (V1.0) [!] */
    0x0C5057AD046E126EULL, /* Waialae Country Club - True Golf Classics (E) (M4) (V1.1) [!] */
    0x8066D58AC3DECAC1ULL, /* Waialae Country Club - True Golf Classics (U) (V1.0) [!] */
@@ -326,6 +332,7 @@ static const uint64_t lut_cpop[][2] = {
    { 0x4C2613234F295E1AULL, 1 }, /* Disney's Tarzan (G) [!] */
    { 0xCBFE69C7F2C0AB2AULL, 1 }, /* Disney's Tarzan (U) [!] */
    { 0x3DF17480193DED5AULL, 3 }, /* Donald Duck - Quack Attack (E) (M5) [!] */
+   { 0xD52FE29D8EA6A759ULL, 1 }, /* Donchan Puzzle Hanabi de Doon! (J) [ALECK64] */
    { 0x11936D8C6F2C4B43ULL, 1 }, /* Donkey Kong 64 (E) [!] */
    { 0x053C89A7A5064302ULL, 1 }, /* Donkey Kong 64 (J) [!] */
    { 0x0DD4ABABB5A2A91EULL, 1 }, /* Donkey Kong 64 (U) (Kiosk Demo) [!] */
@@ -344,6 +351,7 @@ static const uint64_t lut_cpop[][2] = {
    { 0xF774EAEEF0D8B13EULL, 1 }, /* Fushigi no Dungeon - Fuurai no Shiren 2 - Oni Shuurai! Shiren Jou! (J) [!] */
    { 0xEE4A0E338FD588C9ULL, 1 }, /* GT 64 - Championship Edition (E) (M3) [!] */
    { 0xC49ADCA2F1501B62ULL, 1 }, /* GT 64 - Championship Edition (U) [!] */
+   { 0xB57D4EB4345E09E5ULL, 1 }, /* Guru - Kuru Kuru Fever (J) [ALECK64] */
    { 0x95A80114E0B72A7FULL, 1 }, /* Hamster Monogatari 64 (J) [!] */
    { 0x775AFA9C0EB52EF6ULL, 1 }, /* Hard Coded Demo by Silo and Fractal (PD) [a1] */
    { 0x98DF9DFC6606C189ULL, 1 }, /* Harvest Moon 64 (U) [!] */
@@ -384,6 +392,7 @@ static const uint64_t lut_cpop[][2] = {
    { 0xD7134F8DC11A00B5ULL, 1 }, /* Madden NFL 2002 (U) [!] */
    { 0x3925D6258C83C75EULL, 1 }, /* Madden NFL 99 (E) [!] */
    { 0xDEB78BBA52F6BD9DULL, 1 }, /* Madden NFL 99 (U) [!] */
+   { 0xD5356BAC97AE69D2ULL, 1 }, /* Magical Tetris Challenge Featuring Mickey (J) [ALECK64] */
    { 0x9C66306980F24A80ULL, 1 }, /* Mario Party (E) (M3) [!] */
    { 0xADA815BE6028622FULL, 1 }, /* Mario Party (J) [!] */
    { 0x2829657EA0621877ULL, 1 }, /* Mario Party (U) [!] */
@@ -426,6 +435,7 @@ static const uint64_t lut_cpop[][2] = {
    { 0xEDD6E03168136013ULL, 1 }, /* Rush 2 - Extreme Racing USA (U) [!] */
    { 0x51D29418D5B46AE3ULL, 1 }, /* San Francisco Rush 2049 (E) (M6) [!] */
    { 0xB9A9ECA217AAE48EULL, 1 }, /* San Francisco Rush 2049 (U) [!] */
+   { 0x315C74663A453265ULL, 1 }, /* Star Soldier - Vanishing Earth (J) [!] [ALECK64] */
    { 0x60C437E5A2251EE3ULL, 1 }, /* Shadow Man (E) (M3) [!] */
    { 0xEA06F8C307C2DEEDULL, 1 }, /* Shadow Man (F) [!] */
    { 0x84D5FD75BBFD3CDFULL, 1 }, /* Shadow Man (G) [!] */
@@ -434,6 +444,7 @@ static const uint64_t lut_cpop[][2] = {
    { 0xA3A044B56DB1BF5EULL, 1 }, /* Spacer by Memir (POM '99) (PD) */
    { 0xE0C4F72F769E1506ULL, 1 }, /* Tigger's Honey Hunt (E) (M7) [!] */
    { 0x4EBFDD33664C9D84ULL, 1 }, /* Tigger's Honey Hunt (U) [!] */
+   { 0x90AF8D2CE1AC1B37ULL, 1 }, /* Tower & Shaft (J) [ALECK64] */
    { 0xCCEB385826952D97ULL, 1 }, /* Toy Story 2 (E) [!] */
    { 0xCB93DB977F5C63D5ULL, 1 }, /* Toy Story 2 (F) [!] */
    { 0x782A9075E552631DULL, 1 }, /* Toy Story 2 (G) [!] */
@@ -448,6 +459,7 @@ static const uint64_t lut_cpop[][2] = {
    { 0xF5C5866D052713D9ULL, 1 }, /* Vigilante 8 - 2nd Offense (U) [!] */
    { 0x98F9F2D003D9F09CULL, 1 }, /* Virtual Pool 64 (E) [!] */
    { 0x4E4A7643A37439D7ULL, 1 }, /* Virtual Pool 64 (U) [!] */
+   { 0x2F57C9F7F1E29CA6ULL, 1 }, /* Vivid Dolls (J) [ALECK64] */
    { 0xD715CC70271CF5D6ULL, 1 }, /* War Gods (E) [!] */
    { 0xF7FE28F6C3F2ACC3ULL, 1 }, /* War Gods (U) [!] */
    { 0x535DF3E2609789F1ULL, 3 }, /* Wave Race 64 - Shindou Edition (J) (V1.2) [!] */
