@@ -68,6 +68,7 @@
 #include "../vi/vi_controller.h"
 #include "../dd/dd_controller.h"
 #include "../dd/dd_rom.h"
+#include "../dd/dd_disk.h"
 
 #ifdef DBG
 #include "../debugger/dbg_types.h"
@@ -314,7 +315,10 @@ static void connect_all(
       uint8_t *rom,
       size_t rom_size,
       uint8_t *ddrom,
-      size_t ddrom_size)
+      size_t ddrom_size,
+      uint8_t *dd_disk,
+      size_t dd_disk_size
+      )
 {
    connect_rdp(dp, r4300, sp, ri);
    connect_rsp(sp, r4300, dp, ri);
@@ -323,7 +327,7 @@ static void connect_all(
    connect_ri(ri, dram, dram_size);
    connect_si(si, r4300, ri);
    connect_vi(vi, r4300);
-   connect_dd(dd, r4300);
+   connect_dd(dd, r4300, dd_disk, dd_disk_size);
 }
 
 static void dummy_save(void *user_data)
@@ -367,7 +371,7 @@ m64p_error main_init(void)
    connect_all(&g_r4300, &g_dp, &g_sp,
          &g_ai, &g_pi, &g_ri, &g_si, &g_vi, &g_dd,
          g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
-         g_rom, g_rom_size, g_ddrom, g_ddrom_size);
+         g_rom, g_rom_size, g_ddrom, g_ddrom_size, g_dd_disk, g_dd_disk_size);
 
    init_memory();
 

@@ -81,6 +81,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/r4300/reset.c \
 	$(CORE_DIR)/src/dd/dd_controller.c \
 	$(CORE_DIR)/src/dd/dd_rom.c \
+	$(CORE_DIR)/src/dd/dd_disk.c \
 	$(CORE_DIR)/src/ri/ri_controller.c \
 	$(CORE_DIR)/src/ri/rdram.c \
 	$(CORE_DIR)/src/ri/rdram_detection_hack.c \

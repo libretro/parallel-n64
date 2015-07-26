@@ -42,13 +42,16 @@
 #include "main/rom.h"
 #include "main/version.h"
 #include "main/util.h"
+#include "dd/dd_rom.h"
+#include "dd/dd_disk.h"
 #include "plugin/plugin.h"
 #include "plugin/audio_backend_compat.h"
 
 /* some local state variables */
-static int l_CoreInit  = 0;
-static int l_ROMOpen   = 0;
-static int l_DDROMOpen = 0;
+static int l_CoreInit   = 0;
+static int l_ROMOpen    = 0;
+static int l_DDROMOpen  = 0;
+static int l_DDDiskOpen = 0;
 
 /* functions exported outside of libmupen64plus to front-end application */
 EXPORT m64p_error CALL CoreStartup(int APIVersion, const char *ConfigPath, const char *DataPath, void *Context,
@@ -212,7 +215,19 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
                l_DDROMOpen = 1;
             return rval;
         case M64CMD_DISK_OPEN:
+            if (g_EmulatorRunning || l_DDDiskOpen)
+               return M64ERR_INVALID_STATE;
+            if (ParamPtr == NULL || ParamInt < 4096)
+               return M64ERR_INPUT_ASSERT;
+            rval = open_dd_disk((const unsigned char *)ParamPtr, ParamInt);
+            if (rval == M64ERR_SUCCESS)
+               l_DDDiskOpen = 1;
+            return rval;
         case M64CMD_DISK_CLOSE:
+            if (g_EmulatorRunning || !l_DDDiskOpen)
+               return M64ERR_INVALID_STATE;
+            l_DDDiskOpen = 0;
+            return close_dd_disk();
         default:
             return M64ERR_INPUT_INVALID;
     }

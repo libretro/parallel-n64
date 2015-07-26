@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-*   Mupen64plus - dd_controller.h                                         *
+*   Mupen64plus - dd_disk.h                                               *
 *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
 *   Copyright (C) 2015 LuigiBlood                                         *
 *                                                                         *
@@ -19,69 +19,42 @@
 *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef DD_CONTROLLER_H
-#define DD_CONTROLLER_H
-
-struct r4300_core;
+#ifndef __DDDISK_H__
+#define __DDDISK_H__
 
 #include <stdint.h>
 
-#include "dd_disk.h"
+#include "api/m64p_types.h"
 
-enum dd_registers
+#define SECTORS_PER_BLOCK     85
+#define BLOCKS_PER_TRACK      2
+
+extern int dd_bm_mode_read;	//BM MODE 0 = WRITE, MODE 1 = READ
+extern int CUR_BLOCK;			//Current Block
+extern int dd_sector55;
+
+struct dd_disk
 {
-    ASIC_DATA,
-    ASIC_MISC_REG,
-    ASIC_CMD_STATUS,
-    ASIC_CUR_TK,
-    ASIC_BM_STATUS_CTL,
-    ASIC_ERR_SECTOR,
-    ASIC_SEQ_STATUS_CTL,
-    ASIC_CUR_SECTOR,
-    ASIC_HARD_RESET,
-    ASIC_C1_S0,
-    ASIC_HOST_SECBYTE,
-    ASIC_C1_S2,
-    ASIC_SEC_BYTE,
-    ASIC_C1_S4,
-    ASIC_C1_S6,
-    ASIC_CUR_ADDR,
-    ASIC_ID_REG,
-    ASIC_TEST_REG,
-    ASIC_TEST_PIN_SEL,
-    ASIC_REGS_COUNT
+	uint8_t* disk;
+	size_t disk_size;
 };
 
-struct dd_controller
-{
-    uint32_t regs[ASIC_REGS_COUNT];
-    uint32_t c2_buf[0x400/4];
-    uint32_t sec_buf[0x100/4];
-    uint32_t mseq_buf[0x40/4];
+void connect_dd_disk(struct dd_disk* dd_disk,
+                     uint8_t* disk, size_t disk_size);
 
-	struct r4300_core* r4300;
-   struct dd_disk disk;
-};
+/* Disk Loading and Saving functions */
 
-static uint32_t dd_reg(uint32_t address)
-{
-    uint32_t temp = address & 0xffff;
-    if (temp >= 0x0500 && temp < 0x054c)
-        temp -= 0x0500;
+m64p_error open_dd_disk(const unsigned char* diskimage, unsigned int size);
+m64p_error close_dd_disk(void);
 
-    return temp >> 2;
-}
+extern unsigned char* g_dd_disk;
+extern int g_dd_disk_size;
 
-void connect_dd(struct dd_controller* dd,
-                struct r4300_core* r4300,
-                uint8_t *dd_disk,
-                size_t dd_disk_size);
+/* Disk Read / Write functions */
 
-void init_dd(struct dd_controller* dd);
-
-int read_dd_regs(void* opaque, uint32_t address, uint32_t* value);
-int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
-
-int dd_end_of_dma_event(struct dd_controller* dd);
+void dd_set_zone_and_track_offset(void *data);
+void dd_update_bm(void *data);
+void dd_write_sector(void *data);
+void dd_read_sector(void *data);
 
 #endif
