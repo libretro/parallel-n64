@@ -71,6 +71,16 @@ the plugin
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif 
 
+#ifdef MSB_FIRST
+    #define BYTE_ADDR_XOR        0
+    #define WORD_ADDR_XOR        0
+    #define BYTE4_XOR_BE(a)     (a)
+#else
+    #define BYTE_ADDR_XOR        3
+    #define WORD_ADDR_XOR        1
+    #define BYTE4_XOR_BE(a)     ((a) ^ 3)                
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>

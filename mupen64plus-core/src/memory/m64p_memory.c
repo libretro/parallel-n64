@@ -86,8 +86,16 @@ uint32_t VI_REFRESH = 1500;
 typedef int (*readfn)(void*,uint32_t,uint32_t*);
 typedef int (*writefn)(void*,uint32_t,uint32_t,uint32_t);
 
+#ifndef BYTE4_XOR_BE
+#ifdef MSB_FIRST
+#define BYTE4_XOR_BE(a) (a)
+#else
+#define BYTE4_XOR_BE(a) ((a) ^ 3)
+#endif
+#endif
+
 #ifndef BSHIFT
-#define BSHIFT(a) (((a & 3) ^ 3) << 3)
+#define BSHIFT(a) (BYTE4_XOR_BE((a & 3)) << 3)
 #endif
 
 #ifndef HSHIFT

@@ -567,7 +567,7 @@ EXPORT int CALL RomOpen (void)
 
    /* cxd4 -- Glide64 tries to predict PAL scaling based on the ROM header. */
    region = OS_TV_TYPE_NTSC; /* Invalid region codes are probably NTSC betas. */
-   switch (gfx_info.HEADER[0x3E ^ 3])
+   switch (gfx_info.HEADER[BYTE4_XOR_BE(0x3E)])
    {
    case 'A': /* generic NTSC, not documented, used by 1080 Snowboarding */
       region = OS_TV_TYPE_NTSC; break;

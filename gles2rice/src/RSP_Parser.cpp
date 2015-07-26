@@ -697,14 +697,14 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
        int8_t *rdram_s8 = (int8_t*)gfx_info.RDRAM;
         for ( uint32_t i = 0; i < 0x1000; i++ )
         {
-            if ( rdram_s8[ base + ((i+0) ^ 3) ] == 'R' &&
-                 rdram_s8[ base + ((i+1) ^ 3) ] == 'S' &&
-                 rdram_s8[ base + ((i+2) ^ 3) ] == 'P' )
+            if ( rdram_s8[ base + BYTE4_XOR_BE(i+0) ] == 'R' &&
+                 rdram_s8[ base + BYTE4_XOR_BE(i+1) ] == 'S' &&
+                 rdram_s8[ base + BYTE4_XOR_BE(i+2) ] == 'P' )
             {
                 unsigned char * p = str;
-                while ( rdram_s8[ base + (i ^ 3) ] >= ' ')
+                while ( rdram_s8[ base + BYTE4_XOR_BE(i) ] >= ' ')
                 {
-                    *p++ = rdram_s8[ base + (i ^ 3) ];
+                    *p++ = rdram_s8[ base + BYTE4_XOR_BE(i) ];
                     i++;
                 }
                 *p++ = 0;

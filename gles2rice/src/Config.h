@@ -25,6 +25,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "typedefs.h"
 
+#ifdef MSB_FIRST
+    #define BYTE_ADDR_XOR        0
+    #define WORD_ADDR_XOR        0
+    #define BYTE4_XOR_BE(a)     (a)
+#else
+    #define BYTE_ADDR_XOR        3
+    #define WORD_ADDR_XOR        1
+    #define BYTE4_XOR_BE(a)     ((a) ^ 3)                
+#endif
+
 typedef enum
 {
     OGL_DEVICE,

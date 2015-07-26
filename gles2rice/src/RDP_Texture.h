@@ -120,7 +120,11 @@ static inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
          leadingBytes = numBytes;
       numBytes -= leadingBytes;
 
+#ifdef MSB_FIRST
+      src = (void *)((long)src);
+#else
       src = (void *)((long)src ^ 3);
+#endif
       for (int i = 0; i < leadingBytes; i++)
       {
          *(uint8_t *)(dest) = *(uint8_t *)(src);
@@ -145,7 +149,11 @@ static inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
    int trailingBytes = numBytes & 3;
    if (trailingBytes)
    {
+#ifdef MSB_FIRST
+      src = (void *)((long)src);
+#else
       src = (void *)((long)src ^ 3);
+#endif
       for (int i = 0; i < trailingBytes; i++)
       {
          *(uint8_t *)(dest) = *(uint8_t *)(src);
