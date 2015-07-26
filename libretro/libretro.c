@@ -251,6 +251,8 @@ static void setup_variables(void)
          "(Glide64) Vertex cache VBO (restart); off|on" },
       { "mupen64-boot-device",
          "Boot Device; Default|64DD IPL" },
+      { "mupen64-64dd-hardware",
+         "64DD Hardware; disabled|enabled" },
       { NULL, NULL },
    };
 
