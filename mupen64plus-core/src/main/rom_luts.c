@@ -99,6 +99,7 @@ static const uint64_t lut_ee4k[] = {
    0x3DF17480193DED5AULL, /* Donald Duck - Quack Attack (E) (M5) [!] */
    0x492B9DE8C6CCC81CULL, /* Earthworm Jim 3D (E) (M6) [!] */
    0xDF5741919EB5123DULL, /* Earthworm Jim 3D (U) [!] */
+   0x6D9D1FE484D10BEAULL, /* Eleven Beat - World Tournament (J) [ALECK64] */
    0xCC3CC8B30EC405A4ULL, /* F-1 World Grand Prix (E) [!] */
    0xB70BAEE53A5005A8ULL, /* F-1 World Grand Prix (F) [!] */
    0x3844263466B3F060ULL, /* F-1 World Grand Prix (G) [!] */
