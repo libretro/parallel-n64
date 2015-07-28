@@ -102,6 +102,20 @@ inline uint32_t ReverseDXT(uint32_t val, uint32_t lrs, uint32_t width, uint32_t 
     return  (low+high)/2;   //dxt = 2047 / (dxt-1);
 }
 
+#if defined(_WIN32) || defined(_WIN64)
+/*
+ * 2015.07.27 cxd4
+ * Windows uses Microsoft's own "LLP64" ABI, so `long` is not a 64-bit type.
+ */
+#include <stddef.h>
+typedef size_t                  ptr_as_int;
+#elif defined(UINTPTR_MAX)
+/* Use <stdint.h> extension or core C99 support to define it. */
+typedef uintptr_t               ptr_as_int;
+#else
+typedef unsigned long           ptr_as_int;
+#endif
+
 #ifdef _WIN64
 #define NO_ASM
 #endif
@@ -112,7 +126,7 @@ inline uint32_t ReverseDXT(uint32_t val, uint32_t lrs, uint32_t width, uint32_t 
 static inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
 {
    // copy leading bytes
-   int leadingBytes = ((long)src) & 3;
+   int leadingBytes = ((ptr_as_int)src) & 3;
    if (leadingBytes != 0)
    {
       leadingBytes = 4-leadingBytes;
@@ -121,17 +135,17 @@ static inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
       numBytes -= leadingBytes;
 
 #ifdef MSB_FIRST
-      src = (void *)((long)src);
+      src = (void *)((ptr_as_int)src);
 #else
-      src = (void *)((long)src ^ 3);
+      src = (void *)((ptr_as_int)src ^ 3);
 #endif
       for (int i = 0; i < leadingBytes; i++)
       {
          *(uint8_t *)(dest) = *(uint8_t *)(src);
-         dest = (void *)((long)dest+1);
-         src  = (void *)((long)src -1);
+         dest = (void *)((ptr_as_int)dest+1);
+         src  = (void *)((ptr_as_int)src -1);
       }
-      src = (void *)((long)src+5);
+      src = (void *)((ptr_as_int)src+5);
    }
 
    // copy dwords
@@ -141,8 +155,8 @@ static inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
       uint32_t dword = *(uint32_t *)src;
       dword = ((dword<<24)|((dword<<8)&0x00FF0000)|((dword>>8)&0x0000FF00)|(dword>>24));
       *(uint32_t *)dest = dword;
-      dest = (void *)((long)dest+4);
-      src  = (void *)((long)src +4);
+      dest = (void *)((ptr_as_int)dest+4);
+      src  = (void *)((ptr_as_int)src +4);
    }
 
    // copy trailing bytes
@@ -150,15 +164,15 @@ static inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
    if (trailingBytes)
    {
 #ifdef MSB_FIRST
-      src = (void *)((long)src);
+      src = (void *)((ptr_as_int)src);
 #else
-      src = (void *)((long)src ^ 3);
+      src = (void *)((ptr_as_int)src ^ 3);
 #endif
       for (int i = 0; i < trailingBytes; i++)
       {
          *(uint8_t *)(dest) = *(uint8_t *)(src);
-         dest = (void *)((long)dest+1);
-         src  = (void *)((long)src -1);
+         dest = (void *)((ptr_as_int)dest+1);
+         src  = (void *)((ptr_as_int)src -1);
       }
    }
 }
@@ -168,10 +182,10 @@ static inline void DWordInterleave( void *mem, uint32_t numDWords )
     int tmp;
     while( numDWords-- )
     {
-        tmp = *(int *)((long)mem + 0);
-        *(int *)((long)mem + 0) = *(int *)((long)mem + 4);
-        *(int *)((long)mem + 4) = tmp;
-        mem = (void *)((long)mem + 8);
+        tmp = *(int *)((ptr_as_int)mem + 0);
+        *(int *)((ptr_as_int)mem + 0) = *(int *)((ptr_as_int)mem + 4);
+        *(int *)((ptr_as_int)mem + 4) = tmp;
+        mem = (void *)((ptr_as_int)mem + 8);
     }
 }
 
@@ -181,13 +195,13 @@ static inline void QWordInterleave( void *mem, uint32_t numDWords )
    while( numDWords-- )
    {
       int tmp0, tmp1;
-      tmp0 = *(int *)((long)mem + 0);
-      tmp1 = *(int *)((long)mem + 4);
-      *(int *)((long)mem + 0) = *(int *)((long)mem + 8);
-      *(int *)((long)mem + 8) = tmp0;
-      *(int *)((long)mem + 4) = *(int *)((long)mem + 12);
-      *(int *)((long)mem + 12) = tmp1;
-      mem = (void *)((long)mem + 16);
+      tmp0 = *(int *)((ptr_as_int)mem + 0);
+      tmp1 = *(int *)((ptr_as_int)mem + 4);
+      *(int *)((ptr_as_int)mem + 0) = *(int *)((ptr_as_int)mem + 8);
+      *(int *)((ptr_as_int)mem + 8) = tmp0;
+      *(int *)((ptr_as_int)mem + 4) = *(int *)((ptr_as_int)mem + 12);
+      *(int *)((ptr_as_int)mem + 12) = tmp1;
+      mem = (void *)((ptr_as_int)mem + 16);
    }
 }
 
