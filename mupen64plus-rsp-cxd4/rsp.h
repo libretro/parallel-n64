@@ -25,6 +25,10 @@ RSP_INFO RSP;
 #define ALIGNED     __attribute__((aligned(16)))
 #endif
 
+#ifdef USE_SSE_SUPPORT
+#define ARCH_MIN_SSE2
+#endif
+
 /*
  * Streaming SIMD Extensions version import management
  */
