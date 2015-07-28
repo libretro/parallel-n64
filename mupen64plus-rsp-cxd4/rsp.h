@@ -50,6 +50,16 @@ NOINLINE void message(const char* body, int priority)
     printf("%s\n", body);
 }
 
+/*
+ * This allows us to update the program counter register in the RSP
+ * interpreter in a much faster way overall to the running CPU loop.
+ *
+ * Branch delay slots and such with the MIPS architecture make the
+ * PC register emulation complicate the interpreter switches when
+ * emulated normally.
+ */
+#define EMULATE_STATIC_PC
+
 #ifndef EMULATE_STATIC_PC
 static int stage;
 #endif
