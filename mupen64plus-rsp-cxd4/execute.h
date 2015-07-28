@@ -33,7 +33,7 @@ NOINLINE void run_task(void)
     while ((*RSP.SP_STATUS_REG & 0x00000001) == 0x00000000)
     {
         register uint32_t inst;
-        register int rd, rs/*, rt*/;
+        register int rd, rs, rt;
         register int base;
 
         inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
@@ -57,7 +57,6 @@ EX:
         else
         {
             const int op = inst >> 26;
-            const int rt = (inst >> 16) & 31;
             const int element = (inst & 0x000007FF) >> 7;
 
 #if (0)
@@ -76,6 +75,7 @@ EX:
                 rd = (inst >> 11) % 32;
              /* rs = (inst >> 21) % 32; */
 #endif
+                rt = (inst >> 16) % (1 << 5);
                 switch (inst % 64)
                 {
                 case 000: /* SLL */
@@ -165,6 +165,7 @@ EX:
                 CONTINUE
             case 001: /* REGIMM */
                 rs = (inst >> 21) & 31;
+                rt = (inst >> 16) & 31;
                 switch (rt)
                 {
                 case 020: /* BLTZAL */
@@ -193,12 +194,14 @@ EX:
                 JUMP
             case 004: /* BEQ */
                 rs = (inst >> 21) & 31;
+                rt = (inst >> 16) & 31;
                 if (!(SR[rs] == SR[rt]))
                     CONTINUE
                 set_PC(PC + 4*inst + SLOT_OFF);
                 JUMP
             case 005: /* BNE */
                 rs = (inst >> 21) & 31;
+                rt = (inst >> 16) & 31;
                 if (!(SR[rs] != SR[rt]))
                     CONTINUE
                 set_PC(PC + 4*inst + SLOT_OFF);
@@ -216,41 +219,48 @@ EX:
             case 010: /* ADDI */
             case 011: /* ADDIU */
                 rs = (inst >> 21) & 31;
+                rt = (inst >> 16) & 31;
                 SR[rt] = SR[rs] + (signed short)(inst);
                 SR[0] = 0x00000000;
                 CONTINUE
             case 012: /* SLTI */
                 rs = (inst >> 21) & 31;
+                rt = (inst >> 16) & 31;
                 SR[rt] = ((signed)(SR[rs]) < (signed short)(inst));
                 SR[0] = 0x00000000;
                 CONTINUE
             case 013: /* SLTIU */
                 rs = (inst >> 21) & 31;
+                rt = (inst >> 16) & 31;
                 SR[rt] = ((unsigned)(SR[rs]) < (unsigned short)(inst));
                 SR[0] = 0x00000000;
                 CONTINUE
             case 014: /* ANDI */
                 rs = (inst >> 21) & 31;
+                rt = (inst >> 16) & 31;
                 SR[rt] = SR[rs] & (unsigned short)(inst);
                 SR[0] = 0x00000000;
                 CONTINUE
             case 015: /* ORI */
                 rs = (inst >> 21) & 31;
+                rt = (inst >> 16) & 31;
                 SR[rt] = SR[rs] | (unsigned short)(inst);
                 SR[0] = 0x00000000;
                 CONTINUE
             case 016: /* XORI */
                 rs = (inst >> 21) & 31;
+                rt = (inst >> 16) & 31;
                 SR[rt] = SR[rs] ^ (unsigned short)(inst);
                 SR[0] = 0x00000000;
                 CONTINUE
             case 017: /* LUI */
-                SR[rt] = inst << 16;
+                SR[rt = (inst >> 16) & 31] = inst << 16;
                 SR[0] = 0x00000000;
                 CONTINUE
             case 020: /* COP0 */
                 rd = (inst & 0x0000F800u) >> 11;
                 rs = (inst >> 21) & 31;
+                rt = (inst >> 16) & 31;
                 switch (rs)
                 {
                 case 000: /* MFC0 */
@@ -267,6 +277,7 @@ EX:
             case 022: /* COP2 */
                 rd = (inst & 0x0000F800u) >> 11;
                 rs = (inst >> 21) & 31;
+                rt = (inst >> 16) & 31;
                 switch (rs)
                 {
                 case 000: /* MFC2 */
@@ -287,6 +298,7 @@ EX:
                 }
                 CONTINUE
             case 040: /* LB */
+                rt = (inst >> 16) % (1 << 5);
                 offset = (signed short)(inst);
                 addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
                 SR[rt] = RSP.DMEM[BES(addr)];
@@ -294,6 +306,7 @@ EX:
                 SR[0] = 0x00000000;
                 CONTINUE
             case 041: /* LH */
+                rt = (inst >> 16) % (1 << 5);
                 offset = (signed short)(inst);
                 addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
                 if (addr%0x004 == 0x003)
@@ -311,6 +324,7 @@ EX:
                 SR[0] = 0x00000000;
                 CONTINUE
             case 043: /* LW */
+                rt = (inst >> 16) % (1 << 5);
                 offset = (signed short)(inst);
                 addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
                 if (addr%0x004 != 0x000)
@@ -320,6 +334,7 @@ EX:
                 SR[0] = 0x00000000;
                 CONTINUE
             case 044: /* LBU */
+                rt = (inst >> 16) % (1 << 5);
                 offset = (signed short)(inst);
                 addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
                 SR[rt] = RSP.DMEM[BES(addr)];
@@ -327,6 +342,7 @@ EX:
                 SR[0] = 0x00000000;
                 CONTINUE
             case 045: /* LHU */
+                rt = (inst >> 16) % (1 << 5);
                 offset = (signed short)(inst);
                 addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
                 if (addr%0x004 == 0x003)
@@ -344,11 +360,13 @@ EX:
                 SR[0] = 0x00000000;
                 CONTINUE
             case 050: /* SB */
+                rt = (inst >> 16) % (1 << 5);
                 offset = (signed short)(inst);
                 addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
                 RSP.DMEM[BES(addr)] = (unsigned char)(SR[rt]);
                 CONTINUE
             case 051: /* SH */
+                rt = (inst >> 16) % (1 << 5);
                 offset = (signed short)(inst);
                 addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
                 if (addr%0x004 == 0x003)
@@ -362,6 +380,7 @@ EX:
                 *(short *)(RSP.DMEM + addr) = (short)(SR[rt]);
                 CONTINUE
             case 053: /* SW */
+                rt = (inst >> 16) % (1 << 5);
                 offset = (signed short)(inst);
                 addr = (SR[base = (inst >> 21) & 31] + offset) & 0x00000FFF;
                 if (addr%0x004 != 0x000)
@@ -370,6 +389,7 @@ EX:
                     *(int32_t *)(RSP.DMEM + addr) = SR[rt];
                 CONTINUE
             case 062: /* LWC2 */
+                rt = (inst >> 16) % (1 << 5);
                 offset = (signed short)(inst & 0x0000FFFFu);
 #if defined(ARCH_MIN_SSE2)
                 offset <<= 5 + 4; /* safe on x86, skips 5-bit rd, 4-bit element */
@@ -381,6 +401,7 @@ EX:
                 LWC2_op[rd = (inst & 0xF800u) >> 11](rt, element, offset, base);
                 CONTINUE
             case 072: /* SWC2 */
+                rt = (inst >> 16) % (1 << 5);
                 offset = (signed short)(inst & 0x0000FFFFu);
 #if defined(ARCH_MIN_SSE2)
                 offset <<= 5 + 4; /* safe on x86, skips 5-bit rd, 4-bit element */
