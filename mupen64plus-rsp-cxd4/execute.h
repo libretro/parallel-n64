@@ -33,6 +33,7 @@ NOINLINE void run_task(void)
     while ((*RSP.SP_STATUS_REG & 0x00000001) == 0x00000000)
     {
         register uint32_t inst;
+        register int rd/*, rs, rt*/;
 
         inst = *(uint32_t *)(RSP.IMEM + FIT_IMEM(PC));
 #ifdef EMULATE_STATIC_PC
@@ -57,7 +58,6 @@ EX:
             const int op = inst >> 26;
             const int rs = inst >> 21; /* &= 31 */
             const int rt = (inst >> 16) & 31;
-            const int rd = (unsigned short)(inst) >> 11;
             const int element = (inst & 0x000007FF) >> 7;
             const int base = (inst >> 21) & 31;
 
@@ -70,6 +70,11 @@ EX:
             register uint32_t addr;
 
             case 000: /* SPECIAL */
+#if (1u >> 1 == 0)
+                rd = (inst & 0x0000FFFFu) >> 11;
+#else
+                rd = (inst >> 11) % 32;
+#endif
                 switch (inst % 64)
                 {
                 case 000: /* SLL */
@@ -226,6 +231,7 @@ EX:
                 SR[0] = 0x00000000;
                 CONTINUE
             case 020: /* COP0 */
+                rd = (inst & 0x0000F800u) >> 11;
                 switch (base)
                 {
                 case 000: /* MFC0 */
@@ -240,6 +246,7 @@ EX:
                 }
                 CONTINUE
             case 022: /* COP2 */
+                rd = (inst & 0x0000F800u) >> 11;
                 switch (base)
                 {
                 case 000: /* MFC2 */
@@ -350,7 +357,7 @@ EX:
 #else
                 offset = SE(offset, 6);
 #endif
-                LWC2_op[rd](rt, element, offset, base);
+                LWC2_op[rd = (inst & 0xF800u) >> 11](rt, element, offset, base);
                 CONTINUE
             case 072: /* SWC2 */
                 offset = (signed short)(inst & 0x0000FFFFu);
@@ -360,7 +367,7 @@ EX:
 #else
                 offset = SE(offset, 6);
 #endif
-                SWC2_op[rd](rt, element, offset, base);
+                SWC2_op[rd = (inst & 0xF800u) >> 11](rt, element, offset, base);
                 CONTINUE
             default:
                 res_S();
