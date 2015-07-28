@@ -350,45 +350,7 @@ EX:
 #else
                 offset = SE(offset, 6);
 #endif
-                switch (rd)
-                {
-                case 000: /* LBV */
-                    LBV(rt, element, offset, base);
-                    CONTINUE
-                case 001: /* LSV */
-                    LSV(rt, element, offset, base);
-                    CONTINUE
-                case 002: /* LLV */
-                    LLV(rt, element, offset, base);
-                    CONTINUE
-                case 003: /* LDV */
-                    LDV(rt, element, offset, base);
-                    CONTINUE
-                case 004: /* LQV */
-                    LQV(rt, element, offset, base);
-                    CONTINUE
-                case 005: /* LRV */
-                    LRV(rt, element, offset, base);
-                    CONTINUE
-                case 006: /* LPV */
-                    LPV(rt, element, offset, base);
-                    CONTINUE
-                case 007: /* LUV */
-                    LUV(rt, element, offset, base);
-                    CONTINUE
-                case 010: /* LHV */
-                    LHV(rt, element, offset, base);
-                    CONTINUE
-                case 011: /* LFV */
-                    LFV(rt, element, offset, base);
-                    CONTINUE
-                case 013: /* LTV */
-                    LTV(rt, element, offset, base);
-                    CONTINUE
-                default:
-                    res_S();
-                    CONTINUE
-                }
+                LWC2_op[rd](rt, element, offset, base);
                 CONTINUE
             case 072: /* SWC2 */
                 offset = (signed)inst;
@@ -398,48 +360,7 @@ EX:
 #else
                 offset = SE(offset, 6);
 #endif
-                switch (rd)
-                {
-                case 000: /* SBV */
-                    SBV(rt, element, offset, base);
-                    CONTINUE
-                case 001: /* SSV */
-                    SSV(rt, element, offset, base);
-                    CONTINUE
-                case 002: /* SLV */
-                    SLV(rt, element, offset, base);
-                    CONTINUE
-                case 003: /* SDV */
-                    SDV(rt, element, offset, base);
-                    CONTINUE
-                case 004: /* SQV */
-                    SQV(rt, element, offset, base);
-                    CONTINUE
-                case 005: /* SRV */
-                    SRV(rt, element, offset, base);
-                    CONTINUE
-                case 006: /* SPV */
-                    SPV(rt, element, offset, base);
-                    CONTINUE
-                case 007: /* SUV */
-                    SUV(rt, element, offset, base);
-                    CONTINUE
-                case 010: /* SHV */
-                    SHV(rt, element, offset, base);
-                    CONTINUE
-                case 011: /* SFV */
-                    SFV(rt, element, offset, base);
-                    CONTINUE
-                case 012: /* SWV */
-                    SWV(rt, element, offset, base);
-                    CONTINUE
-                case 013: /* STV */
-                    STV(rt, element, offset, base);
-                    CONTINUE
-                default:
-                    res_S();
-                    CONTINUE
-                }
+                SWC2_op[rd](rt, element, offset, base);
                 CONTINUE
             default:
                 res_S();

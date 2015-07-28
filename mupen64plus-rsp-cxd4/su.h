@@ -417,7 +417,7 @@ static void CTC2(int rt, int rd)
 }
 
 /*** Scalar, Coprocessor Operations (vector unit, scalar cache transfers) ***/
-INLINE static void LBV(int vt, int element, int offset, int base)
+static void LBV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
     const int e = element;
@@ -426,7 +426,7 @@ INLINE static void LBV(int vt, int element, int offset, int base)
     VR_B(vt, e) = RSP.DMEM[BES(addr)];
     return;
 }
-INLINE static void LSV(int vt, int element, int offset, int base)
+static void LSV(int vt, int element, int offset, int base)
 {
     int correction;
     register uint32_t addr;
@@ -447,7 +447,7 @@ INLINE static void LSV(int vt, int element, int offset, int base)
     VR_S(vt, e) = *(short *)(RSP.DMEM + addr - HES(0x000)*(correction - 1));
     return;
 }
-INLINE static void LLV(int vt, int element, int offset, int base)
+static void LLV(int vt, int element, int offset, int base)
 {
     int correction;
     register uint32_t addr;
@@ -470,7 +470,7 @@ INLINE static void LLV(int vt, int element, int offset, int base)
     VR_S(vt, e+0x2) = *(short *)(RSP.DMEM + addr + correction);
     return;
 }
-INLINE static void LDV(int vt, int element, int offset, int base)
+static void LDV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
     const int e = element;
@@ -555,7 +555,7 @@ INLINE static void LDV(int vt, int element, int offset, int base)
             return;
     }
 }
-INLINE static void SBV(int vt, int element, int offset, int base)
+static void SBV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
     const int e = element;
@@ -564,7 +564,7 @@ INLINE static void SBV(int vt, int element, int offset, int base)
     RSP.DMEM[BES(addr)] = VR_B(vt, e);
     return;
 }
-INLINE static void SSV(int vt, int element, int offset, int base)
+static void SSV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
     const int e = element;
@@ -575,7 +575,7 @@ INLINE static void SSV(int vt, int element, int offset, int base)
     RSP.DMEM[BES(addr)] = VR_B(vt, (e + 0x1) & 0xF);
     return;
 }
-INLINE static void SLV(int vt, int element, int offset, int base)
+static void SLV(int vt, int element, int offset, int base)
 {
     int correction;
     register uint32_t addr;
@@ -598,7 +598,7 @@ INLINE static void SLV(int vt, int element, int offset, int base)
     *(short *)(RSP.DMEM + addr + correction) = VR_S(vt, e+0x2);
     return;
 }
-INLINE static void SDV(int vt, int element, int offset, int base)
+static void SDV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
     const int e = element;
@@ -687,7 +687,7 @@ INLINE static void SDV(int vt, int element, int offset, int base)
  * Group II vector loads and stores:
  * PV and UV (As of RCP implementation, XV and ZV are reserved opcodes.)
  */
-INLINE static void LPV(int vt, int element, int offset, int base)
+static void LPV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
     register int b;
@@ -799,7 +799,7 @@ INLINE static void LPV(int vt, int element, int offset, int base)
             return;
     }
 }
-INLINE static void LUV(int vt, int element, int offset, int base)
+static void LUV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
     register int b;
@@ -918,7 +918,7 @@ INLINE static void LUV(int vt, int element, int offset, int base)
             return;
     }
 }
-INLINE static void SPV(int vt, int element, int offset, int base)
+static void SPV(int vt, int element, int offset, int base)
 {
     register int b;
     register uint32_t addr;
@@ -1030,7 +1030,7 @@ INLINE static void SPV(int vt, int element, int offset, int base)
             return;
     }
 }
-INLINE static void SUV(int vt, int element, int offset, int base)
+static void SUV(int vt, int element, int offset, int base)
 {
     register int b;
     register uint32_t addr;
@@ -1105,15 +1105,6 @@ static void LHV(int vt, int element, int offset, int base)
     VR[vt][00] = RSP.DMEM[addr + HES(0x000)] << 7;
     return;
 }
-NOINLINE static void LFV(int vt, int element, int offset, int base)
-{ /* Dummy implementation only:  Do any games execute this? */
-    char debugger[32];
-
-    sprintf(debugger, "%s     $v%i[0x%X], 0x%03X($%i)", "LFV",
-        vt, element, offset & 0xFFF, base);
-    message(debugger, 3);
-    return;
-}
 static void SHV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
@@ -1173,7 +1164,7 @@ static void SFV(int vt, int element, int offset, int base)
  * Group IV vector loads and stores:
  * QV and RV
  */
-INLINE static void LQV(int vt, int element, int offset, int base)
+static void LQV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
     register int b;
@@ -1315,7 +1306,7 @@ static void LRV(int vt, int element, int offset, int base)
             return;
     }
 }
-INLINE static void SQV(int vt, int element, int offset, int base)
+static void SQV(int vt, int element, int offset, int base)
 {
     register uint32_t addr;
     register int b;
@@ -1445,7 +1436,7 @@ static void SRV(int vt, int element, int offset, int base)
  * Group V vector loads and stores
  * TV and SWV (As of RCP implementation, LTWV opcode was undesired.)
  */
-INLINE static void LTV(int vt, int element, int offset, int base)
+static void LTV(int vt, int element, int offset, int base)
 {
     register int i;
     register uint32_t addr;
@@ -1471,16 +1462,7 @@ INLINE static void LTV(int vt, int element, int offset, int base)
         VR[vt+i][(-e/2 + i) & 07] = *(short *)(RSP.DMEM + addr + HES(2*i));
     return;
 }
-NOINLINE static void SWV(int vt, int element, int offset, int base)
-{ /* Dummy implementation only:  Do any games execute this? */
-    char debugger[32];
-
-    sprintf(debugger, "%s     $v%i[0x%X], 0x%03X($%i)", "SWV",
-        vt, element, offset & 0xFFF, base);
-    message(debugger, 3);
-    return;
-}
-INLINE static void STV(int vt, int element, int offset, int base)
+static void STV(int vt, int element, int offset, int base)
 {
     register int i;
     register uint32_t addr;
@@ -1506,6 +1488,72 @@ INLINE static void STV(int vt, int element, int offset, int base)
         *(short *)(RSP.DMEM + addr + HES(2*i)) = VR[vt + (e/2 + i)%8][i];
     return;
 }
+
+/*
+ * unused SGI opcodes for LWC2 on the RCP:
+ * LAV, LXV, LZV, LTWV
+ */
+NOINLINE static void lwc_res(int vt, int element, signed offset, int base)
+{
+    static char disasm[32];
+
+    sprintf(
+        disasm,
+        "%cWC2    $v%d[0x%X], %i($%d)",
+
+        'L',
+        vt,
+        element &= 0xF,
+        offset,
+        base
+    );
+    message(disasm, 3);
+    return;
+}
+
+/*
+ * unused SGI opcodes for SWC2 on the RCP:
+ * SAV, SXV, SZV
+ */
+NOINLINE static void swc_res(int vt, int element, signed offset, int base)
+{
+    static char disasm[32];
+
+    sprintf(
+        disasm,
+        "%cWC2    $v%d[0x%X], %i($%d)",
+
+        'S',
+        vt,
+        element &= 0xF,
+        offset,
+        base
+    );
+    return;
+}
+static void LFV(int vt, int element, int offset, int base)
+{ /* Dummy implementation only:  Do any games execute this? */
+    lwc_res(vt, element, offset, base);
+    return;
+}
+static void SWV(int vt, int element, int offset, int base)
+{ /* Dummy implementation only:  Do any games execute this? */
+    swc_res(vt, element, offset, base);
+    return;
+}
+
+static void (*LWC2_op[1 << 5])(int, int, signed, int) = {
+    LBV    ,LSV    ,LLV    ,LDV    ,LQV    ,LRV    ,LPV    ,LUV    ,
+    LHV    ,LFV    ,lwc_res,LTV    ,lwc_res,lwc_res,lwc_res,lwc_res,
+    lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,
+    lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,lwc_res,
+}; /* 000  |  001  |  010  |  011  |  100  |  101  |  110  |  111 */
+static void (*SWC2_op[1 << 5])(int, int, signed, int) = {
+    SBV    ,SSV    ,SLV    ,SDV    ,SQV    ,SRV    ,SPV    ,SUV    ,
+    SHV    ,SFV    ,SWV    ,STV    ,swc_res,swc_res,swc_res,swc_res,
+    swc_res,swc_res,swc_res,swc_res,swc_res,swc_res,swc_res,swc_res,
+    swc_res,swc_res,swc_res,swc_res,swc_res,swc_res,swc_res,swc_res,
+}; /* 000  |  001  |  010  |  011  |  100  |  101  |  110  |  111 */
 
 /*** Modern pseudo-operations (not real instructions, but nice shortcuts) ***/
 void ULW(int rd, uint32_t addr)
