@@ -344,7 +344,12 @@ EX:
                     CONTINUE
                 case 062: /* LWC2 */
                     offset = (signed)inst;
+#if defined(ARCH_MIN_SSE2)
+                    offset <<= 5 + 4; /* safe on x86, skips 5-bit rd, 4-bit element */
+                    offset >>= 5 + 4;
+#else
                     offset = SE(offset, 6);
+#endif
                     switch (rd)
                     {
                         case 000: /* LBV */
@@ -387,7 +392,12 @@ EX:
                     CONTINUE
                 case 072: /* SWC2 */
                     offset = (signed)inst;
+#if defined(ARCH_MIN_SSE2)
+                    offset <<= 5 + 4; /* safe on x86, skips 5-bit rd, 4-bit element */
+                    offset >>= 5 + 4;
+#else
                     offset = SE(offset, 6);
+#endif
                     switch (rd)
                     {
                         case 000: /* SBV */
