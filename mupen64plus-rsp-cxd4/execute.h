@@ -66,7 +66,7 @@ EX:
 #endif
             switch (op)
             {
-            signed int offset;
+            int16_t offset;
             register uint32_t addr;
 
             case 000: /* SPECIAL */
@@ -343,7 +343,7 @@ EX:
                     *(int32_t *)(RSP.DMEM + addr) = SR[rt];
                 CONTINUE
             case 062: /* LWC2 */
-                offset = (signed)inst;
+                offset = (signed short)(inst & 0x0000FFFFu);
 #if defined(ARCH_MIN_SSE2)
                 offset <<= 5 + 4; /* safe on x86, skips 5-bit rd, 4-bit element */
                 offset >>= 5 + 4;
@@ -353,7 +353,7 @@ EX:
                 LWC2_op[rd](rt, element, offset, base);
                 CONTINUE
             case 072: /* SWC2 */
-                offset = (signed)inst;
+                offset = (signed short)(inst & 0x0000FFFFu);
 #if defined(ARCH_MIN_SSE2)
                 offset <<= 5 + 4; /* safe on x86, skips 5-bit rd, 4-bit element */
                 offset >>= 5 + 4;
