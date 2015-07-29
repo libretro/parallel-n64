@@ -130,7 +130,7 @@ ifeq ($(WITH_DYNAREC), arm)
 		SOURCES_ASM += \
 			$(CORE_DIR)/src/r4300/new_dynarec/linkage_$(WITH_DYNAREC).S
 endif
-ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686 x86_64 x64))
+ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86 x86_64))
 		DYNAREC_USED = 1
 		CPUFLAGS += -msse -msse2 -DUSE_MMX_DECODES -DUSE_SSE_SUPPORT
 		SOURCES_C += $(CORE_DIR)/src/r4300/hacktarux_dynarec/assemble.c \

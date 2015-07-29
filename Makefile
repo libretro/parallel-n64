@@ -33,16 +33,16 @@ endif
 # system platform
 system_platform = unix
 ifeq ($(shell uname -a),)
-EXE_EXT = .exe
-   system_platform = win
+	EXE_EXT = .exe
+	system_platform = win
 else ifneq ($(findstring Darwin,$(shell uname -a)),)
-   system_platform = osx
+	system_platform = osx
 	arch = intel
 ifeq ($(shell uname -p),powerpc)
 	arch = ppc
 endif
 else ifneq ($(findstring MINGW,$(shell uname -a)),)
-   system_platform = win
+	system_platform = win
 endif
 
 # Cross compile ?
@@ -74,13 +74,6 @@ ifneq (,$(findstring unix,$(platform)))
 	else
 		GL_LIB := -lGL
 	endif
-
-# Target Dynarec
-WITH_DYNAREC = $(ARCH)
-
-ifeq ($(ARCH), $(filter $(ARCH), i386 i686))
-	WITH_DYNAREC = x86
-endif
 
 	PLATFORM_EXT := unix
 
@@ -165,15 +158,10 @@ else ifneq (,$(findstring osx,$(platform)))
 	GL_LIB := -framework OpenGL
 	PLATFORM_EXT := unix
 
-# Target Dynarec
-WITH_DYNAREC = $(ARCH)
-
-ifeq ($(ARCH), $(filter $(ARCH), i386 i686))
-	WITH_DYNAREC = x86
-endif
-ifeq ($(ARCH), $(filter $(ARCH), ppc))
-	WITH_DYNAREC =
-endif
+	# Target Dynarec
+	ifeq ($(ARCH), $(filter $(ARCH), ppc))
+		WITH_DYNAREC =
+	endif
 
 # Theos iOS
 else ifneq (,$(findstring theos_ios,$(platform)))
@@ -328,7 +316,7 @@ else ifeq ($(platform), emscripten)
 					  -Daudio_convert_float_to_s16_C=mupen_audio_convert_float_to_s16_C \
 					  -Daudio_convert_init_simd=mupen_audio_convert_init_simd
 
-   HAVE_NEON = 0
+	HAVE_NEON = 0
 	PLATFORM_EXT := unix
 	#HAVE_SHARED_CONTEXT := 1
 
@@ -340,13 +328,6 @@ else ifneq (,$(findstring win,$(platform)))
 	PLATFORM_EXT := win32
 	CC = gcc
 	CXX = g++
-
-# Target Dynarec
-WITH_DYNAREC = $(ARCH)
-
-ifeq ($(ARCH), $(filter $(ARCH), i386 i686))
-	WITH_DYNAREC = x86
-endif
 	
 endif
 
@@ -383,16 +364,16 @@ else
 endif
 
 ifeq ($(platform), qnx)
-   CFLAGS   += -Wp,-MMD
-   CXXFLAGS += -Wp,-MMD
+	CFLAGS   += -Wp,-MMD
+	CXXFLAGS += -Wp,-MMD
 else
-   CFLAGS   += -std=gnu89 -MMD
-   CXXFLAGS += -std=gnu++98 -MMD
+	CFLAGS   += -std=gnu89 -MMD
+	CXXFLAGS += -std=gnu++98 -MMD
 endif
 
 ### Finalize ###
 OBJECTS		+= $(SOURCES_CXX:.cpp=.o) $(SOURCES_C:.c=.o) $(SOURCES_ASM:.S=.o)
-CXXFLAGS	   += $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
+CXXFLAGS	+= $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 CFLAGS		+= $(CPUOPTS) $(COREFLAGS) $(INCFLAGS) $(PLATCFLAGS) $(fpic) $(PLATCFLAGS) $(CPUFLAGS) $(GLFLAGS) $(DYNAFLAGS)
 
 ifeq ($(findstring Haiku,$(UNAME)),)
