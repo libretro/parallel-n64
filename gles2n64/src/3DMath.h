@@ -14,7 +14,7 @@ extern "C" {
 extern void (*MultMatrix)(float m0[4][4], float m1[4][4], float dest[4][4]);
 extern void (*TransformVectorNormalize)(float vec[3], float mtx[4][4]);
 extern void (*Normalize)(float v[3]);
-extern float (*DotProduct)(float v0[3], float v1[3]);
+extern float (*DotProduct)(const float v0[3], const float v1[3]);
 
 static INLINE void CopyMatrix( float m0[4][4], float m1[4][4] )
 {

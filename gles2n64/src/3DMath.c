@@ -59,7 +59,7 @@ static void TransformVectorNormalize_default(float vec[3], float mtx[4][4])
    Normalize_default(vec);
 }
 
-static float DotProduct_default( float v0[3], float v1[3] )
+static float DotProduct_default(const float v0[3], const float v1[3])
 {
    return v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2];
 }
@@ -70,6 +70,6 @@ void (*MultMatrix)(float m0[4][4], float m1[4][4], float dest[4][4]) =
 void (*TransformVectorNormalize)(float vec[3], float mtx[4][4]) =
         TransformVectorNormalize_default;
 void (*Normalize)(float v[3]) = Normalize_default;
-float (*DotProduct)(float v0[3], float v1[3]) = DotProduct_default;
+float (*DotProduct)(const float v0[3], const float v1[3]) = DotProduct_default;
 
 
