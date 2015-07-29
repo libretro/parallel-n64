@@ -106,144 +106,101 @@ INLINE static void SHUFFLE_VECTOR(short* VD, short* VT, const int e)
 }
 #else
 #define B(x)    ((x) & 3)
+/*
+ * Here, the SSE2 implementation is mostly written to be readable, not fast.
+ *
+ * Probably it would be fastest yet to not use SSE instructions to shuffle
+ * at this point, but currently I think the algorithm is a bigger concern.
+ */
 #define SHUFFLE(a,b,c,d)    ((B(d)<<6) | (B(c)<<4) | (B(b)<<2) | (B(a)<<0))
 
-static const int simm[16] = {
-    SHUFFLE(00, 01, 02, 03), /* vector operands */
-    SHUFFLE(00, 01, 02, 03),
-    SHUFFLE(00, 00, 02, 02), /* scalar quarters */
-    SHUFFLE(01, 01, 03, 03),
-    SHUFFLE(00, 00, 00, 00), /* scalar halves */
-    SHUFFLE(01, 01, 01, 01),
-    SHUFFLE(02, 02, 02, 02),
-    SHUFFLE(03, 03, 03, 03),
-    SHUFFLE(00, 00, 00, 00), /* scalar wholes */
-    SHUFFLE(01, 01, 01, 01),
-    SHUFFLE(02, 02, 02, 02),
-    SHUFFLE(03, 03, 03, 03),
-    SHUFFLE(04, 04, 04, 04),
-    SHUFFLE(05, 05, 05, 05),
-    SHUFFLE(06, 06, 06, 06),
-    SHUFFLE(07, 07, 07, 07)
-};
-
 static __m128i shuffle_none(__m128i xmm)
-{/*
-    const int order = simm[0x0];
-
-    xmm = _mm_shufflehi_epi16(xmm, order);
-    xmm = _mm_shufflelo_epi16(xmm, order);*/
+{
+ /* xmm = _mm_shufflehi_epi16(xmm, SHUFFLE(0, 1, 2, 3));
+    xmm = _mm_shufflelo_epi16(xmm, SHUFFLE(4, 5, 6, 7)); */
     return (xmm);
 }
 static __m128i shuffle_0q(__m128i xmm)
 {
-    const int order = simm[0x2];
-
-    xmm = _mm_shufflehi_epi16(xmm, order);
-    xmm = _mm_shufflelo_epi16(xmm, order);
+    xmm = _mm_shufflehi_epi16(xmm, SHUFFLE(0, 0, 2, 2));
+    xmm = _mm_shufflelo_epi16(xmm, SHUFFLE(4, 4, 6, 6));
     return (xmm);
 }
 static __m128i shuffle_1q(__m128i xmm)
 {
-    const int order = simm[0x3];
-
-    xmm = _mm_shufflehi_epi16(xmm, order);
-    xmm = _mm_shufflelo_epi16(xmm, order);
+    xmm = _mm_shufflehi_epi16(xmm, SHUFFLE(1, 1, 3, 3));
+    xmm = _mm_shufflelo_epi16(xmm, SHUFFLE(5, 5, 7, 7));
     return (xmm);
 }
 static __m128i shuffle_0h(__m128i xmm)
 {
-    const int order = simm[0x4];
-
-    xmm = _mm_shufflehi_epi16(xmm, order);
-    xmm = _mm_shufflelo_epi16(xmm, order);
+    xmm = _mm_shufflehi_epi16(xmm, SHUFFLE(0, 0, 0, 0));
+    xmm = _mm_shufflelo_epi16(xmm, SHUFFLE(4, 4, 4, 4));
     return (xmm);
 }
 static __m128i shuffle_1h(__m128i xmm)
 {
-    const int order = simm[0x5];
-
-    xmm = _mm_shufflehi_epi16(xmm, order);
-    xmm = _mm_shufflelo_epi16(xmm, order);
+    xmm = _mm_shufflehi_epi16(xmm, SHUFFLE(1, 1, 1, 1));
+    xmm = _mm_shufflelo_epi16(xmm, SHUFFLE(5, 5, 5, 5));
     return (xmm);
 }
 static __m128i shuffle_2h(__m128i xmm)
 {
-    const int order = simm[0x6];
-
-    xmm = _mm_shufflehi_epi16(xmm, order);
-    xmm = _mm_shufflelo_epi16(xmm, order);
+    xmm = _mm_shufflehi_epi16(xmm, SHUFFLE(2, 2, 2, 2));
+    xmm = _mm_shufflelo_epi16(xmm, SHUFFLE(6, 6, 6, 6));
     return (xmm);
 }
 static __m128i shuffle_3h(__m128i xmm)
 {
-    const int order = simm[0x7];
-
-    xmm = _mm_shufflehi_epi16(xmm, order);
-    xmm = _mm_shufflelo_epi16(xmm, order);
+    xmm = _mm_shufflehi_epi16(xmm, SHUFFLE(3, 3, 3, 3));
+    xmm = _mm_shufflelo_epi16(xmm, SHUFFLE(7, 7, 7, 7));
     return (xmm);
 }
 static __m128i shuffle_0w(__m128i xmm)
 {
-    const int order = simm[0x8];
-
-    xmm = _mm_shufflelo_epi16(xmm, order);
+    xmm = _mm_shufflelo_epi16(xmm, SHUFFLE(0, 0, 0, 0));
     xmm = _mm_unpacklo_epi16(xmm, xmm);
     return (xmm);
 }
 static __m128i shuffle_1w(__m128i xmm)
 {
-    const int order = simm[0x9];
-
-    xmm = _mm_shufflelo_epi16(xmm, order);
+    xmm = _mm_shufflelo_epi16(xmm, SHUFFLE(1, 1, 1, 1));
     xmm = _mm_unpacklo_epi16(xmm, xmm);
     return (xmm);
 }
 static __m128i shuffle_2w(__m128i xmm)
 {
-    const int order = simm[0xA];
-
-    xmm = _mm_shufflelo_epi16(xmm, order);
+    xmm = _mm_shufflelo_epi16(xmm, SHUFFLE(2, 2, 2, 2));
     xmm = _mm_unpacklo_epi16(xmm, xmm);
     return (xmm);
 }
 static __m128i shuffle_3w(__m128i xmm)
 {
-    const int order = simm[0xB];
-
-    xmm = _mm_shufflelo_epi16(xmm, order);
+    xmm = _mm_shufflelo_epi16(xmm, SHUFFLE(3, 3, 3, 3));
     xmm = _mm_unpacklo_epi16(xmm, xmm);
     return (xmm);
 }
 static __m128i shuffle_4w(__m128i xmm)
 {
-    const int order = simm[0xC];
-
-    xmm = _mm_shufflehi_epi16(xmm, order);
+    xmm = _mm_shufflehi_epi16(xmm, SHUFFLE(4, 4, 4, 4));
     xmm = _mm_unpackhi_epi16(xmm, xmm);
     return (xmm);
 }
 static __m128i shuffle_5w(__m128i xmm)
 {
-    const int order = simm[0xD];
-
-    xmm = _mm_shufflehi_epi16(xmm, order);
+    xmm = _mm_shufflehi_epi16(xmm, SHUFFLE(5, 5, 5, 5));
     xmm = _mm_unpackhi_epi16(xmm, xmm);
     return (xmm);
 }
 static __m128i shuffle_6w(__m128i xmm)
 {
-    const int order = simm[0xE];
-
-    xmm = _mm_shufflehi_epi16(xmm, order);
+    xmm = _mm_shufflehi_epi16(xmm, SHUFFLE(6, 6, 6, 6));
     xmm = _mm_unpackhi_epi16(xmm, xmm);
     return (xmm);
 }
 static __m128i shuffle_7w(__m128i xmm)
 {
-    const int order = simm[0xF];
-
-    xmm = _mm_shufflehi_epi16(xmm, order);
+    xmm = _mm_shufflehi_epi16(xmm, SHUFFLE(7, 7, 7, 7));
     xmm = _mm_unpackhi_epi16(xmm, xmm);
     return (xmm);
 }
