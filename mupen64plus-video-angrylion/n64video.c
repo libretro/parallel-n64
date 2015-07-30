@@ -58,6 +58,7 @@ COLOR key_width;
 COLOR key_scale;
 COLOR key_center;
 
+COLOR env_color;
 COLOR fog_color;
 
 int rdp_pipeline_crashed;
@@ -5650,7 +5651,7 @@ void rdp_init(void)
 
     memset(&g_gdp.combined_color, 0, sizeof(gdp_color));
     memset(&prim_color, 0, sizeof(gdp_color));
-    memset(&g_gdp.env_color, 0, sizeof(gdp_color));
+    memset(&env_color, 0, sizeof(gdp_color));
     memset(&key_scale, 0, sizeof(gdp_color));
     memset(&key_center, 0, sizeof(gdp_color));
 

@@ -1363,6 +1363,15 @@ static void load_tile(uint32_t w0, uint32_t w1)
    tile_tlut_common_cs_decoder(w0, w1);
 }
 
+static void al_set_env_color(uint32_t w0, uint32_t w1)
+{
+   env_color.r = (w1 & 0xFF000000) >> 24;
+   env_color.g = (w1 & 0x00FF0000) >> 16;
+   env_color.b = (w1 & 0x0000FF00) >>  8;
+   env_color.a = (w1 & 0x000000FF) >>  0;
+   return;
+}
+
 static void al_set_blend_color(uint32_t w0, uint32_t w1)
 {
    blend_color.r = (w1 & 0xFF000000) >> 24;
@@ -1597,9 +1606,9 @@ static INLINE void SET_SUBA_RGB_INPUT(int32_t **input_r, int32_t **input_g, int3
          *input_b = &shade_color.b;
          break;
       case 5:
-         *input_r = &g_gdp.env_color.r;
-         *input_g = &g_gdp.env_color.g;
-         *input_b = &g_gdp.env_color.b;
+         *input_r = &env_color.r;
+         *input_g = &env_color.g;
+         *input_b = &env_color.b;
          break;
       case 6:
          *input_r = &one_color;
@@ -1656,9 +1665,9 @@ static INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int3
          *input_b = &shade_color.b;
          break;
       case 5:
-         *input_r = &g_gdp.env_color.r;
-         *input_g = &g_gdp.env_color.g;
-         *input_b = &g_gdp.env_color.b;
+         *input_r = &env_color.r;
+         *input_g = &env_color.g;
+         *input_b = &env_color.b;
          break;
       case 6:
          *input_r = &key_center.r;
@@ -1715,9 +1724,9 @@ static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
          *input_b = &shade_color.b;
          break;
       case 5:
-         *input_r = &g_gdp.env_color.r;
-         *input_g = &g_gdp.env_color.g;
-         *input_b = &g_gdp.env_color.b;
+         *input_r = &env_color.r;
+         *input_g = &env_color.g;
+         *input_b = &env_color.b;
          break;
       case 6:
          *input_r = &key_scale.r;
@@ -1750,9 +1759,9 @@ static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
          *input_b = &shade_color.a;
          break;
       case 12:
-         *input_r = &g_gdp.env_color.a;
-         *input_g = &g_gdp.env_color.a;
-         *input_b = &g_gdp.env_color.a;
+         *input_r = &env_color.a;
+         *input_g = &env_color.a;
+         *input_b = &env_color.a;
          break;
       case 13:
          *input_r = &g_gdp.lod_frac;
@@ -1822,9 +1831,9 @@ static INLINE void SET_ADD_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
          *input_b = &shade_color.b;
          break;
       case 5:
-         *input_r = &g_gdp.env_color.r;
-         *input_g = &g_gdp.env_color.g;
-         *input_b = &g_gdp.env_color.b;
+         *input_r = &env_color.r;
+         *input_g = &env_color.g;
+         *input_b = &env_color.b;
          break;
       case 6:
          *input_r = &one_color;
@@ -1859,7 +1868,7 @@ static INLINE void SET_SUB_ALPHA_INPUT(int32_t **input, int code)
          *input = &shade_color.a;
          break;
       case 5:
-         *input = &g_gdp.env_color.a;
+         *input = &env_color.a;
          break;
       case 6:
          *input = &one_color;
@@ -1890,7 +1899,7 @@ static INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
          *input = &shade_color.a;
          break;
       case 5:
-         *input = &g_gdp.env_color.a;
+         *input = &env_color.a;
          break;
       case 6:
          *input = &primitive_lod_frac;
@@ -1979,7 +1988,7 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
 
    load_tlut         ,gdp_invalid           ,gdp_set_tile_size     ,load_block        ,
    load_tile         ,set_tile          ,fill_rect         , al_set_fill_color    ,
-   al_set_fog_color     ,al_set_blend_color   , al_set_prim_color    ,gdp_set_env_color     ,
+   al_set_fog_color     ,al_set_blend_color   , al_set_prim_color    ,al_set_env_color     ,
    set_combine       ,gdp_set_texture_image ,gdp_set_mask_image    ,gdp_set_color_image   ,
 };
 
