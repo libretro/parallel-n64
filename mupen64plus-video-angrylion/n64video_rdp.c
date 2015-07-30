@@ -235,8 +235,6 @@ typedef struct edgewalker_info
    int spix;
    int xlrsc[2];
    int stickybit;
-   i32 clipxlshift;
-   i32 clipxhshift;
 } edgewalker_info_t;
 
 static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer)
@@ -294,8 +292,8 @@ static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int text
    int curcross;
    int j, k;
    edgewalker_info_t edges = {0};
-   edges.clipxlshift = g_gdp.__clip.xl << 1;
-   edges.clipxhshift = g_gdp.__clip.xh << 1;
+   const i32 clipxlshift = g_gdp.__clip.xl << 1;
+   const i32 clipxhshift = g_gdp.__clip.xh << 1;
 
    base = cmd_cur + 0;
    setzero_si64(rgba_int);
@@ -711,12 +709,12 @@ no_read_zbuffer_coefficients:
          edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
          edges.xlrsc[1] = (xlr[1] >> 13)&0x1FFE | edges.stickybit;
          edges.curunder = !!(xlr[1] & 0x08000000);
-         edges.curunder |= (u32)(edges.xlrsc[1] - edges.clipxhshift)>>31;
-         edges.xlrsc[1] = edges.curunder ? edges.clipxhshift : (xlr[1]>>13)&0x3FFE | edges.stickybit;
+         edges.curunder |= (u32)(edges.xlrsc[1] - clipxhshift)>>31;
+         edges.xlrsc[1] = edges.curunder ? clipxhshift : (xlr[1]>>13)&0x3FFE | edges.stickybit;
          edges.curover  = !!(edges.xlrsc[1] & 0x00002000);
          edges.xlrsc[1] = edges.xlrsc[1] & 0x1FFF;
-         edges.curover |= (u32)~(edges.xlrsc[1] - edges.clipxlshift) >> 31;
-         edges.xlrsc[1] = edges.curover ? edges.clipxlshift : edges.xlrsc[1];
+         edges.curover |= (u32)~(edges.xlrsc[1] - clipxlshift) >> 31;
+         edges.xlrsc[1] = edges.curover ? clipxlshift : edges.xlrsc[1];
          span[j].majorx[edges.spix] = edges.xlrsc[1] & 0x1FFF;
          edges.allover  &= edges.curover;
          edges.allunder &= edges.curunder;
@@ -725,12 +723,12 @@ no_read_zbuffer_coefficients:
          edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
          edges.xlrsc[0] = (xlr[0] >> 13)&0x1FFE | edges.stickybit;
          edges.curunder = !!(xlr[0] & 0x08000000);
-         edges.curunder |= (u32)(edges.xlrsc[0] - edges.clipxhshift)>>31;
-         edges.xlrsc[0] = edges.curunder ? edges.clipxhshift : (xlr[0]>>13)&0x3FFE | edges.stickybit;
+         edges.curunder |= (u32)(edges.xlrsc[0] - clipxhshift)>>31;
+         edges.xlrsc[0] = edges.curunder ? clipxhshift : (xlr[0]>>13)&0x3FFE | edges.stickybit;
          edges.curover  = !!(edges.xlrsc[0] & 0x00002000);
          edges.xlrsc[0] &= 0x1FFF;
-         edges.curover |= (u32)~(edges.xlrsc[0] - edges.clipxlshift) >> 31;
-         edges.xlrsc[0] = edges.curover ? edges.clipxlshift : edges.xlrsc[0];
+         edges.curover |= (u32)~(edges.xlrsc[0] - clipxlshift) >> 31;
+         edges.xlrsc[0] = edges.curover ? clipxlshift : edges.xlrsc[0];
          span[j].minorx[edges.spix] = edges.xlrsc[0] & 0x1FFF;
          edges.allover  &= edges.curover;
          edges.allunder &= edges.curunder;
@@ -1380,13 +1378,13 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    int curcross;
    int j, k;
    edgewalker_info_t edges = {0};
+   const i32 clipxlshift = g_gdp.__clip.xl << 1;
+   const i32 clipxhshift = g_gdp.__clip.xh << 1;
    int xl = (w0 & 0x00FFF000) >> (44 - 32);  /* X coordinate of bottom right corner of rectangle. */
    int yl = (w0 & 0x00000FFF) >> (32 - 32);  /* Y coordinate of bottom right corner of rectangle. */
    int xh = (w1 & 0x00FFF000) >> (12 -  0);  /* X coordinate of top left corner of rectangle. */
    int yh = (w1 & 0x00000FFF) >> ( 0 -  0);  /* Y coordinate of top left corner of rectangle. */
 
-   edges.clipxlshift = g_gdp.__clip.xl << 1;
-   edges.clipxhshift = g_gdp.__clip.xh << 1;
 
    yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
 
@@ -1454,12 +1452,12 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
       xrsc = (edges.xlrsc[1] >> 13)&0x1FFE | edges.stickybit;
       edges.curunder = !!(edges.xlrsc[1] & 0x08000000);
-      edges.curunder |= (u32)(xrsc - edges.clipxhshift)>>31;
-      xrsc = edges.curunder ? edges.clipxhshift : (edges.xlrsc[1] >> 13)&0x3FFE | edges.stickybit;
+      edges.curunder |= (u32)(xrsc - clipxhshift)>>31;
+      xrsc = edges.curunder ? clipxhshift : (edges.xlrsc[1] >> 13)&0x3FFE | edges.stickybit;
       edges.curover  = !!(xrsc & 0x00002000);
       xrsc = xrsc & 0x1FFF;
-      edges.curover |= (u32)~(xrsc - edges.clipxlshift) >> 31;
-      xrsc = edges.curover ? edges.clipxlshift : xrsc;
+      edges.curover |= (u32)~(xrsc - clipxlshift) >> 31;
+      xrsc = edges.curover ? clipxlshift : xrsc;
       span[j].majorx[edges.spix] = xrsc & 0x1FFF;
       edges.allover  &= edges.curover;
       edges.allunder &= edges.curunder;
@@ -1468,12 +1466,12 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
       xlsc = (edges.xlrsc[0] >> 13)&0x1FFE | edges.stickybit;
       edges.curunder = !!(edges.xlrsc[0] & 0x08000000);
-      edges.curunder |= (u32)(xlsc - edges.clipxhshift)>>31;
-      xlsc = edges.curunder ? edges.clipxhshift : (edges.xlrsc[0] >> 13)&0x3FFE | edges.stickybit;
+      edges.curunder |= (u32)(xlsc - clipxhshift)>>31;
+      xlsc = edges.curunder ? clipxhshift : (edges.xlrsc[0] >> 13)&0x3FFE | edges.stickybit;
       edges.curover  = !!(xlsc & 0x00002000);
       xlsc &= 0x1FFF;
-      edges.curover |= (u32)~(xlsc - edges.clipxlshift) >> 31;
-      xlsc = edges.curover ? edges.clipxlshift : xlsc;
+      edges.curover |= (u32)~(xlsc - clipxlshift) >> 31;
+      xlsc = edges.curover ? clipxlshift : xlsc;
       span[j].minorx[edges.spix] = xlsc & 0x1FFF;
       edges.allover &= edges.curover;
       edges.allunder &= edges.curunder;
