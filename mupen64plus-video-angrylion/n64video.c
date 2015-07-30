@@ -50,6 +50,10 @@ int32_t k0, k1, k2, k3, k4, k5;
 
 COLOR prim_color;
 
+COLOR key_width;
+COLOR key_scale;
+COLOR key_center;
+
 COLOR fog_color;
 
 int rdp_pipeline_crashed;
@@ -3357,19 +3361,19 @@ static void combiner_1cycle(int adseed, uint32_t* curpixel_cvg)
     {
         redkey = g_gdp.combined_color.r;
         if (redkey >= 0)
-            redkey = (g_gdp.key_width.r << 4) - redkey;
+            redkey = (key_width.r << 4) - redkey;
         else
-            redkey = (g_gdp.key_width.r << 4) + redkey;
+            redkey = (key_width.r << 4) + redkey;
         greenkey = g_gdp.combined_color.g;
         if (greenkey >= 0)
-            greenkey = (g_gdp.key_width.g << 4) - greenkey;
+            greenkey = (key_width.g << 4) - greenkey;
         else
-            greenkey = (g_gdp.key_width.g << 4) + greenkey;
+            greenkey = (key_width.g << 4) + greenkey;
         bluekey = g_gdp.combined_color.b;
         if (bluekey >= 0)
-            bluekey = (g_gdp.key_width.b << 4) - bluekey;
+            bluekey = (key_width.b << 4) - bluekey;
         else
-            bluekey = (g_gdp.key_width.b << 4) + bluekey;
+            bluekey = (key_width.b << 4) + bluekey;
         keyalpha = (redkey < greenkey) ? redkey : greenkey;
         keyalpha = (bluekey < keyalpha) ? bluekey : keyalpha;
         keyalpha = CLIP(keyalpha, 0, 0xff);
@@ -4364,19 +4368,19 @@ static void combiner_2cycle(int adseed, uint32_t* curpixel_cvg)
     {
         redkey = g_gdp.combined_color.r;
         if (redkey >= 0)
-            redkey = (g_gdp.key_width.r << 4) - redkey;
+            redkey = (key_width.r << 4) - redkey;
         else
-            redkey = (g_gdp.key_width.r << 4) + redkey;
+            redkey = (key_width.r << 4) + redkey;
         greenkey = g_gdp.combined_color.g;
         if (greenkey >= 0)
-            greenkey = (g_gdp.key_width.g << 4) - greenkey;
+            greenkey = (key_width.g << 4) - greenkey;
         else
-            greenkey = (g_gdp.key_width.g << 4) + greenkey;
+            greenkey = (key_width.g << 4) + greenkey;
         bluekey = g_gdp.combined_color.b;
         if (bluekey >= 0)
-            bluekey = (g_gdp.key_width.b << 4) - bluekey;
+            bluekey = (key_width.b << 4) - bluekey;
         else
-            bluekey = (g_gdp.key_width.b << 4) + bluekey;
+            bluekey = (key_width.b << 4) + bluekey;
         keyalpha = (redkey < greenkey) ? redkey : greenkey;
         keyalpha = (bluekey < keyalpha) ? bluekey : keyalpha;
         keyalpha = CLIP(keyalpha, 0, 0xff);
@@ -5643,8 +5647,8 @@ void rdp_init(void)
     memset(&g_gdp.combined_color, 0, sizeof(gdp_color));
     memset(&prim_color, 0, sizeof(gdp_color));
     memset(&g_gdp.env_color, 0, sizeof(gdp_color));
-    memset(&g_gdp.key_scale, 0, sizeof(gdp_color));
-    memset(&g_gdp.key_center, 0, sizeof(gdp_color));
+    memset(&key_scale, 0, sizeof(gdp_color));
+    memset(&key_center, 0, sizeof(gdp_color));
 
     rdp_pipeline_crashed = 0;
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));

@@ -1363,6 +1363,23 @@ static void load_tile(uint32_t w0, uint32_t w1)
    tile_tlut_common_cs_decoder(w0, w1);
 }
 
+static void al_set_key_gb(uint32_t w0, uint32_t w1)
+{
+   key_width.g  = (w0 & 0x00FFF000) >> 12;
+   key_width.b  = (w0 & 0x00000FFF) >>  0;
+   key_center.g = (w1 & 0xFF000000) >> 24;
+   key_scale.g  = (w1 & 0x00FF0000) >> 16;
+   key_center.b = (w1 & 0x0000FF00) >>  8;
+   key_scale.b  = (w1 & 0x000000FF) >>  0;
+}
+ 
+static void al_set_key_r(uint32_t w0, uint32_t w1)
+{
+   key_width.r  = (w1 & 0x0FFF0000) >> 16;
+   key_center.r = (w1 & 0x0000FF00) >>  8;
+   key_scale.r  = (w1 & 0x000000FF) >>  0;
+}
+
 static void al_set_convert(uint32_t w0, uint32_t w1)
 {
    k0  = (w0 & 0x003FE000) >> (45 - 32);
@@ -1631,9 +1648,9 @@ static INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int3
          *input_b = &g_gdp.env_color.b;
          break;
       case 6:
-         *input_r = &g_gdp.key_center.r;
-         *input_g = &g_gdp.key_center.g;
-         *input_b = &g_gdp.key_center.b;
+         *input_r = &key_center.r;
+         *input_g = &key_center.g;
+         *input_b = &key_center.b;
          break;
       case 7:
          *input_r = &k4;
@@ -1690,9 +1707,9 @@ static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
          *input_b = &g_gdp.env_color.b;
          break;
       case 6:
-         *input_r = &g_gdp.key_scale.r;
-         *input_g = &g_gdp.key_scale.g;
-         *input_b = &g_gdp.key_scale.b;
+         *input_r = &key_scale.r;
+         *input_g = &key_scale.g;
+         *input_b = &key_scale.b;
          break;
       case 7:
          *input_r = &g_gdp.combined_color.a;
@@ -1944,7 +1961,7 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
 
    gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
    tex_rect          ,tex_rect_flip     ,gdp_load_sync         ,gdp_pipe_sync         ,
-   gdp_tile_sync         ,gdp_full_sync         ,gdp_set_key_gb        ,gdp_set_key_r         ,
+   gdp_tile_sync         ,gdp_full_sync         ,al_set_key_gb        ,al_set_key_r         ,
    al_set_convert       ,gdp_set_scissor       ,set_prim_depth    ,set_other_modes   ,
 
    load_tlut         ,gdp_invalid           ,gdp_set_tile_size     ,load_block        ,
