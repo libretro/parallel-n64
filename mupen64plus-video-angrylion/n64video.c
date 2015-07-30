@@ -477,102 +477,103 @@ void (*fbfill_func[4])(uint32_t) = {
 
 static INLINE uint32_t rightcvghex(uint32_t x, uint32_t fmask)
 {
-   uint32_t covered = 0xf0 >> (((x & 7) + 1) >> 1);
+   uint32_t covered = ((x & 7) + 1) >> 1;
+
+   covered = 0xf0 >> covered;
    return (covered & fmask);
 }
 
 static INLINE uint32_t leftcvghex(uint32_t x, uint32_t fmask) 
 {
-   uint32_t covered = 0xf >> (((x & 7) + 1) >> 1);
+   uint32_t covered = ((x & 7) + 1) >> 1;
+
+   covered = 0xf >> covered;
    return (covered & fmask);
 }
 
 static void compute_cvg_flip(int32_t scanline)
 {
-   unsigned i;
+   int i, fmask, maskshift, fmaskshifted;
+   int32_t fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
+
    int32_t purgestart = span[scanline].rx;
-   int32_t purgeend   = span[scanline].lx;
-   int        length  = purgeend - purgestart;
+   int32_t purgeend = span[scanline].lx;
+   int length = purgeend - purgestart;
 
-   if (length < 0)
-      return;
-
-   memset(&cvgbuf[purgestart], 0, (length + 1) << 2);
-
-   for(i = 0; i < 4; i++)
+   if (length >= 0)
    {
-      int32_t fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
-      int fmask, maskshift, fmaskshifted;
-
-      if (span[scanline].invalyscan[i])
-         continue;
-
-      minorcur     = span[scanline].minorx[i];
-      majorcur     = span[scanline].majorx[i];
-      minorcurint  = minorcur >> 3;
-      majorcurint  = majorcur >> 3;
-      fmask        = 0xa >> (i & 1);
-      maskshift    = (i - 2) & 4;
-
-      fmaskshifted = fmask << maskshift;
-      fleft        = majorcurint + 1;
-
-      if (minorcurint != majorcurint)
+      memset(&cvgbuf[purgestart], 0, (length + 1) << 2);
+      for(i = 0; i < 4; i++)
       {
-         cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
-         cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
+         if (!span[scanline].invalyscan[i])
+         {
+            minorcur = span[scanline].minorx[i];
+            majorcur = span[scanline].majorx[i];
+            minorcurint = minorcur >> 3;
+            majorcurint = majorcur >> 3;
+            fmask = 0xa >> (i & 1);
+            maskshift = (i - 2) & 4;
+
+            fmaskshifted = fmask << maskshift;
+            fleft = majorcurint + 1;
+
+            if (minorcurint != majorcurint)
+            {
+               cvgbuf[minorcurint] |= (rightcvghex(minorcur, fmask) << maskshift);
+               cvgbuf[majorcurint] |= (leftcvghex(majorcur, fmask) << maskshift);
+            }
+            else
+            {
+               samecvg = rightcvghex(minorcur, fmask) & leftcvghex(majorcur, fmask);
+               cvgbuf[majorcurint] |= (samecvg << maskshift);
+            }
+            for (; fleft < minorcurint; fleft++)
+               cvgbuf[fleft] |= fmaskshifted;
+         }
       }
-      else
-      {
-         samecvg = rightcvghex(minorcur, fmask) & leftcvghex(majorcur, fmask);
-         cvgbuf[majorcurint] |= (samecvg << maskshift);
-      }
-      for (; fleft < minorcurint; fleft++)
-         cvgbuf[fleft] |= fmaskshifted;
    }
 }
 
 static void compute_cvg_noflip(int32_t scanline)
 {
-   unsigned i;
+   int i, fmask, maskshift, fmaskshifted;
+   int32_t fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
    int32_t purgestart = span[scanline].lx;
    int32_t purgeend = span[scanline].rx;
    int length = purgeend - purgestart;
 
-   if (length < 0)
-      return;
-
-   memset(&cvgbuf[purgestart], 0, (length + 1) << 2);
-
-   for(i = 0; i < 4; i++)
+   if (length >= 0)
    {
-      int32_t fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
-      int fmask, maskshift, fmaskshifted;
-      if (span[scanline].invalyscan[i])
-         continue;
+      memset(&cvgbuf[purgestart], 0, (length + 1) << 2);
 
-      minorcur     = span[scanline].minorx[i];
-      majorcur     = span[scanline].majorx[i];
-      minorcurint  = minorcur >> 3;
-      majorcurint  = majorcur >> 3;
-      fmask        = 0xa >> (i & 1);
-      maskshift    = (i - 2) & 4;
-
-      fmaskshifted = fmask << maskshift;
-      fleft        = minorcurint + 1;
-
-      if (minorcurint != majorcurint)
+      for(i = 0; i < 4; i++)
       {
-         cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
-         cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
+         if (!span[scanline].invalyscan[i])
+         {
+            minorcur = span[scanline].minorx[i];
+            majorcur = span[scanline].majorx[i];
+            minorcurint = minorcur >> 3;
+            majorcurint = majorcur >> 3;
+            fmask = 0xa >> (i & 1);
+            maskshift = (i - 2) & 4;
+
+            fmaskshifted = fmask << maskshift;
+            fleft = minorcurint + 1;
+
+            if (minorcurint != majorcurint)
+            {
+               cvgbuf[minorcurint] |= (leftcvghex(minorcur, fmask) << maskshift);
+               cvgbuf[majorcurint] |= (rightcvghex(majorcur, fmask) << maskshift);
+            }
+            else
+            {
+               samecvg = leftcvghex(minorcur, fmask) & rightcvghex(majorcur, fmask);
+               cvgbuf[majorcurint] |= (samecvg << maskshift);
+            }
+            for (; fleft < majorcurint; fleft++)
+               cvgbuf[fleft] |= fmaskshifted;
+         }
       }
-      else
-      {
-         samecvg = leftcvghex(minorcur, fmask) & rightcvghex(majorcur, fmask);
-         cvgbuf[majorcurint] |= (samecvg << maskshift);
-      }
-      for (; fleft < majorcurint; fleft++)
-         cvgbuf[fleft] |= fmaskshifted;
    }
 }
 
@@ -3396,13 +3397,6 @@ static STRICTINLINE uint32_t dz_decompress(uint32_t dz_compressed)
 static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int dzpixenc,
       uint32_t* blend_en, uint32_t* prewrap, uint32_t* curpixel_cvg, uint32_t curpixel_memcvg)
 {
-   uint32_t dznew;
-   uint32_t dznotshift;
-   uint32_t dzmemmodifier;
-   uint32_t farther;
-   int overflow;
-   int precision_factor;
-
    int32_t diff;
    uint32_t nearer, max, infront;
    uint32_t oz, dzmem, zval, hval;
@@ -3413,10 +3407,99 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
    int force_coplanar = 0;
 
    sz &= 0x3ffff;
-
-   if (!g_gdp.other_modes.z_compare_en)
+   if (g_gdp.other_modes.z_compare_en)
    {
+      uint32_t dznew;
+      uint32_t dznotshift;
+      uint32_t dzmemmodifier;
+      uint32_t farther;
+      int overflow;
+      int precision_factor;
+
+      PAIRREAD16(zval, hval, zcurpixel);
+      oz = z_decompress(zval);
+      rawdzmem = ((zval & 3) << 2) | hval;
+      dzmem = dz_decompress(rawdzmem);
+
+      blshifta = CLIP(dzpixenc - rawdzmem, 0, 4);
+      blshiftb = CLIP(rawdzmem - dzpixenc, 0, 4);
+
+      precision_factor = (zval >> 13) & 0xf;
+
+      if (precision_factor < 3)
+      {
+         if (dzmem != 0x8000)
+         {
+            dzmemmodifier = 16 >> precision_factor;
+            dzmem <<= 1;
+            if (dzmem <= dzmemmodifier)
+               dzmem = dzmemmodifier;
+         }
+         else
+         {
+            force_coplanar = 1;
+            dzmem <<= 1;
+         }
+
+      }
+      if (dzmem > 0x8000)
+         dzmem = 0xffff;
+
+      dznew = (dzmem > dzpix) ? dzmem : (uint32_t)dzpix;
+      dznotshift = dznew;
+      dznew <<= 3;
+
+
+      farther = force_coplanar || ((sz + dznew) >= oz);
+
       overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
+      *blend_en = g_gdp.other_modes.force_blend || (!overflow && g_gdp.other_modes.antialias_en && farther);
+
+      *prewrap = overflow;
+
+      switch(g_gdp.other_modes.z_mode)
+      {
+         case ZMODE_OPAQUE: 
+            infront = sz < oz;
+            diff = (int32_t)sz - (int32_t)dznew;
+            nearer = force_coplanar || (diff <= (int32_t)oz);
+            max = (oz == 0x3ffff);
+            return (max || (overflow ? infront : nearer));
+            break;
+         case ZMODE_INTERPENETRATING: 
+            infront = sz < oz;
+            if (!infront || !farther || !overflow)
+            {
+               diff = (int32_t)sz - (int32_t)dznew;
+               nearer = force_coplanar || (diff <= (int32_t)oz);
+               max = (oz == 0x3ffff);
+               return (max || (overflow ? infront : nearer)); 
+            }
+            else
+            {
+               dzenc = dz_compress(dznotshift & 0xffff);
+               cvgcoeff = ((oz >> dzenc) - (sz >> dzenc)) & 0xf;
+               *curpixel_cvg = ((cvgcoeff * (*curpixel_cvg)) >> 3) & 0xf;
+               return 1;
+            }
+            break;
+         case ZMODE_TRANSPARENT: 
+            infront = sz < oz;
+            max = (oz == 0x3ffff);
+            return (infront || max); 
+            break;
+         case ZMODE_DECAL: 
+            diff = (int32_t)sz - (int32_t)dznew;
+            nearer = force_coplanar || (diff <= (int32_t)oz);
+            max = (oz == 0x3ffff);
+            return (farther && nearer && !max); 
+            break;
+      }
+      return 0;
+   }
+   else
+   {
+      int overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
 
       blshifta = CLIP(dzpixenc - 0xf, 0, 4);
       blshiftb = CLIP(0xf - dzpixenc, 0, 4);
@@ -3426,87 +3509,6 @@ static uint32_t z_compare(uint32_t zcurpixel, uint32_t sz, uint16_t dzpix, int d
 
       return 1;
    }
-
-
-   PAIRREAD16(zval, hval, zcurpixel);
-   oz = z_decompress(zval);
-   rawdzmem = ((zval & 3) << 2) | hval;
-   dzmem = dz_decompress(rawdzmem);
-
-   blshifta = CLIP(dzpixenc - rawdzmem, 0, 4);
-   blshiftb = CLIP(rawdzmem - dzpixenc, 0, 4);
-
-   precision_factor = (zval >> 13) & 0xf;
-
-   if (precision_factor < 3)
-   {
-      if (dzmem != 0x8000)
-      {
-         dzmemmodifier = 16 >> precision_factor;
-         dzmem <<= 1;
-         if (dzmem <= dzmemmodifier)
-            dzmem = dzmemmodifier;
-      }
-      else
-      {
-         force_coplanar = 1;
-         dzmem <<= 1;
-      }
-
-   }
-   if (dzmem > 0x8000)
-      dzmem = 0xffff;
-
-   dznew = (dzmem > dzpix) ? dzmem : (uint32_t)dzpix;
-   dznotshift = dznew;
-   dznew <<= 3;
-
-   farther = force_coplanar || ((sz + dznew) >= oz);
-
-   overflow = (curpixel_memcvg + *curpixel_cvg) & 8;
-   *blend_en = g_gdp.other_modes.force_blend || (!overflow && g_gdp.other_modes.antialias_en && farther);
-
-   *prewrap = overflow;
-
-   switch(g_gdp.other_modes.z_mode)
-   {
-      case ZMODE_OPAQUE: 
-         infront = sz < oz;
-         diff = (int32_t)sz - (int32_t)dznew;
-         nearer = force_coplanar || (diff <= (int32_t)oz);
-         max = (oz == 0x3ffff);
-         return (max || (overflow ? infront : nearer));
-         break;
-      case ZMODE_INTERPENETRATING: 
-         infront = sz < oz;
-         if (!infront || !farther || !overflow)
-         {
-            diff = (int32_t)sz - (int32_t)dznew;
-            nearer = force_coplanar || (diff <= (int32_t)oz);
-            max = (oz == 0x3ffff);
-            return (max || (overflow ? infront : nearer)); 
-         }
-         else
-         {
-            dzenc = dz_compress(dznotshift & 0xffff);
-            cvgcoeff = ((oz >> dzenc) - (sz >> dzenc)) & 0xf;
-            *curpixel_cvg = ((cvgcoeff * (*curpixel_cvg)) >> 3) & 0xf;
-            return 1;
-         }
-         break;
-      case ZMODE_TRANSPARENT: 
-         infront = sz < oz;
-         max = (oz == 0x3ffff);
-         return (infront || max); 
-         break;
-      case ZMODE_DECAL: 
-         diff = (int32_t)sz - (int32_t)dznew;
-         nearer = force_coplanar || (diff <= (int32_t)oz);
-         max = (oz == 0x3ffff);
-         return (farther && nearer && !max); 
-         break;
-   }
-   return 0;
 }
 
 static STRICTINLINE int alpha_compare(int32_t comb_alpha)
@@ -3515,13 +3517,15 @@ static STRICTINLINE int alpha_compare(int32_t comb_alpha)
 
    if (!g_gdp.other_modes.alpha_compare_en)
       return 1;
-
-   if (!g_gdp.other_modes.dither_alpha_en)
-      threshold = g_gdp.blend_color.a;
    else
-      threshold = irand() & 0xff;
-   if (comb_alpha >= threshold)
-      return 1;
+   {
+      if (!g_gdp.other_modes.dither_alpha_en)
+         threshold = g_gdp.blend_color.a;
+      else
+         threshold = irand() & 0xff;
+      if (comb_alpha >= threshold)
+         return 1;
+   }
 
    return 0;
 }
@@ -3571,38 +3575,38 @@ static int blender_1cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb, int dith, ui
 {
     int r, g, b, dontblend;
     
-    if (alpha_compare(pixel_color.a) == 0)
-       return 0;
-
-    if (g_gdp.other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
+    if (alpha_compare(pixel_color.a))
     {
-       if (!g_gdp.other_modes.color_on_cvg || prewrap)
+       if (g_gdp.other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
        {
-          dontblend = (g_gdp.other_modes.f.partialreject_1cycle && pixel_color.a >= 0xff);
-          if (!blend_en || dontblend)
+          if (!g_gdp.other_modes.color_on_cvg || prewrap)
           {
-             r = *blender1a_r[0];
-             g = *blender1a_g[0];
-             b = *blender1a_b[0];
+             dontblend = (g_gdp.other_modes.f.partialreject_1cycle && pixel_color.a >= 0xff);
+             if (!blend_en || dontblend)
+             {
+                r = *blender1a_r[0];
+                g = *blender1a_g[0];
+                b = *blender1a_b[0];
+             }
+             else
+             {
+                inv_pixel_color.a =  (~(*blender1b_a[0])) & 0xff;
+                blender_equation_cycle0(&r, &g, &b);
+             }
           }
           else
           {
-             inv_pixel_color.a =  (~(*blender1b_a[0])) & 0xff;
-             blender_equation_cycle0(&r, &g, &b);
+             r = *blender2a_r[0];
+             g = *blender2a_g[0];
+             b = *blender2a_b[0];
           }
-       }
-       else
-       {
-          r = *blender2a_r[0];
-          g = *blender2a_g[0];
-          b = *blender2a_b[0];
-       }
 
-       rgb_dither_ptr(&r, &g, &b, dith);
-       *fr = r;
-       *fg = g;
-       *fb = b;
-       return 1;
+          rgb_dither_ptr(&r, &g, &b, dith);
+          *fr = r;
+          *fg = g;
+          *fb = b;
+          return 1;
+       }
     }
 
     return 0;
@@ -4108,9 +4112,7 @@ static void tclod_2cycle_current(int32_t* sss, int32_t* sst,
 
    tclod_tcclamp(sss, sst);
 
-   if (!g_gdp.other_modes.f.dolod)
-      return;
-
+   if (g_gdp.other_modes.f.dolod)
    {
       int32_t lod = 0;
       uint32_t l_tile;
@@ -4160,9 +4162,7 @@ static void tclod_2cycle_current_simple(int32_t* sss, int32_t* sst,
 
    tclod_tcclamp(sss, sst);
 
-   if (!g_gdp.other_modes.f.dolod)
-      return;
-
+   if (g_gdp.other_modes.f.dolod)
    {
       int32_t lod = 0;
       uint32_t l_tile;
@@ -4216,9 +4216,7 @@ static void tclod_2cycle_current_notexel1(int32_t* sss, int32_t* sst,
 
    tclod_tcclamp(sss, sst);
 
-   if (!g_gdp.other_modes.f.dolod)
-      return;
-
+   if (g_gdp.other_modes.f.dolod)
    {
       uint32_t l_tile;
       int32_t lod = 0;
@@ -4256,9 +4254,7 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst,
 
    tclod_tcclamp(sss, sst);
 
-   if (!g_gdp.other_modes.f.dolod)
-      return;
-
+   if (g_gdp.other_modes.f.dolod)
    {
       uint32_t l_tile;
       uint32_t magnify = 0;
@@ -4433,50 +4429,50 @@ static int blender_2cycle(uint32_t* fr, uint32_t* fg, uint32_t* fb,
 {
    int r, g, b, dontblend;
 
-   if (alpha_compare(pixel_color.a) == 0)
-      return 0;
-
-   if (g_gdp.other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
+   if (alpha_compare(pixel_color.a))
    {
-      inv_pixel_color.a =  (~(*blender1b_a[0])) & 0xff;
-
-      blender_equation_cycle0_2(&r, &g, &b);
-
-      memory_color = pre_memory_color;
-
-      blended_pixel_color.r = r;
-      blended_pixel_color.g = g;
-      blended_pixel_color.b = b;
-      blended_pixel_color.a = pixel_color.a;
-
-      if (!g_gdp.other_modes.color_on_cvg || prewrap)
+      if (g_gdp.other_modes.antialias_en ? (curpixel_cvg) : (curpixel_cvbit))
       {
-         dontblend = (g_gdp.other_modes.f.partialreject_2cycle && pixel_color.a >= 0xff);
-         if (!blend_en || dontblend)
+         inv_pixel_color.a =  (~(*blender1b_a[0])) & 0xff;
+
+         blender_equation_cycle0_2(&r, &g, &b);
+
+         memory_color = pre_memory_color;
+
+         blended_pixel_color.r = r;
+         blended_pixel_color.g = g;
+         blended_pixel_color.b = b;
+         blended_pixel_color.a = pixel_color.a;
+
+         if (!g_gdp.other_modes.color_on_cvg || prewrap)
          {
-            r = *blender1a_r[1];
-            g = *blender1a_g[1];
-            b = *blender1a_b[1];
+            dontblend = (g_gdp.other_modes.f.partialreject_2cycle && pixel_color.a >= 0xff);
+            if (!blend_en || dontblend)
+            {
+               r = *blender1a_r[1];
+               g = *blender1a_g[1];
+               b = *blender1a_b[1];
+            }
+            else
+            {
+               inv_pixel_color.a =  (~(*blender1b_a[1])) & 0xff;
+               blender_equation_cycle1(&r, &g, &b);
+            }
          }
          else
          {
-            inv_pixel_color.a =  (~(*blender1b_a[1])) & 0xff;
-            blender_equation_cycle1(&r, &g, &b);
+            r = *blender2a_r[1];
+            g = *blender2a_g[1];
+            b = *blender2a_b[1];
          }
-      }
-      else
-      {
-         r = *blender2a_r[1];
-         g = *blender2a_g[1];
-         b = *blender2a_b[1];
-      }
 
 
-      rgb_dither_ptr(&r, &g, &b, dith);
-      *fr = r;
-      *fg = g;
-      *fb = b;
-      return 1;
+         rgb_dither_ptr(&r, &g, &b, dith);
+         *fr = r;
+         *fg = g;
+         *fb = b;
+         return 1;
+      }
    }
 
    return 0;
@@ -6137,9 +6133,7 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
 {
    tclod_tcclamp(sss, sst);
 
-   if (!g_gdp.other_modes.tex_lod_en)
-      return;
-
+   if (g_gdp.other_modes.tex_lod_en)
    {
       unsigned int lodclamp;
       int32_t lod     = 0;
