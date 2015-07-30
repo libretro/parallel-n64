@@ -357,6 +357,7 @@ extern COLOR key_width;
 extern COLOR key_scale;
 extern COLOR key_center;
 
+extern COLOR blend_color;
 extern COLOR fog_color;
 
 extern int rdp_pipeline_crashed;

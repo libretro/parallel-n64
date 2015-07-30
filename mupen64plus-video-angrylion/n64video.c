@@ -52,6 +52,8 @@ int32_t k0, k1, k2, k3, k4, k5;
 
 COLOR prim_color;
 
+COLOR blend_color;
+
 COLOR key_width;
 COLOR key_scale;
 COLOR key_center;
@@ -3538,7 +3540,7 @@ static STRICTINLINE int alpha_compare(int32_t comb_alpha)
    else
    {
       if (!g_gdp.other_modes.dither_alpha_en)
-         threshold = g_gdp.blend_color.a;
+         threshold = blend_color.a;
       else
          threshold = irand() & 0xff;
       if (comb_alpha >= threshold)
@@ -5536,9 +5538,9 @@ void SET_BLENDER_INPUT(
          *input_b = &memory_color.b;
          break;
       case 2:
-         *input_r = &g_gdp.blend_color.r;
-         *input_g = &g_gdp.blend_color.g;
-         *input_b = &g_gdp.blend_color.b;
+         *input_r = &blend_color.r;
+         *input_g = &blend_color.g;
+         *input_b = &blend_color.b;
          break;
       case 3:
          *input_r = &fog_color.r;
@@ -6284,7 +6286,7 @@ NOINLINE void render_spans_copy(int start, int end, int tilenum, int flip)
          else if (g_gdp.fb_size == PIXEL_SIZE_8BIT)
          {
             alphamask = 0;
-            threshold = (g_gdp.other_modes.dither_alpha_en) ? (irand() & 0xff) : g_gdp.blend_color.a;
+            threshold = (g_gdp.other_modes.dither_alpha_en) ? (irand() & 0xff) : blend_color.a;
             if (g_gdp.other_modes.dither_alpha_en)
             {
                currthreshold = threshold;
