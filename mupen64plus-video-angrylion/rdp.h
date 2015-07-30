@@ -156,6 +156,10 @@ typedef union {
 } DP_FIFO;
 
 typedef struct {
+    int32_t r, g, b, a;
+} COLOR;
+
+typedef struct {
     int lx, rx;
     int unscrx;
     int validline;
@@ -300,6 +304,11 @@ extern int spans_cdz;
 extern i32 spans_d_stwz_dy[4];
 
 extern uint32_t max_level;
+extern int32_t  min_level;
+extern int32_t primitive_lod_frac;
+
+extern uint32_t primitive_z;
+extern uint16_t primitive_delta_z;
 
 extern int32_t *combiner_rgbsub_a_r[2];
 extern int32_t *combiner_rgbsub_a_g[2];
@@ -336,6 +345,8 @@ extern gdp_color shade_color;
 extern int32_t noise;
 extern int32_t one_color;
 extern int32_t zero_color;
+
+extern COLOR prim_color;
 
 extern int rdp_pipeline_crashed;
 

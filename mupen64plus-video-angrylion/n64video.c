@@ -12,6 +12,12 @@
 #define DETAILED_LOGGING 0
 
 uint32_t max_level;
+int32_t  min_level;
+int32_t  primitive_lod_frac;
+
+
+uint32_t primitive_z;
+uint16_t primitive_delta_z;
 
 int32_t *combiner_rgbsub_a_r[2];
 int32_t *combiner_rgbsub_a_g[2];
@@ -39,6 +45,8 @@ int32_t *blender2a_r[2];
 int32_t *blender2a_g[2];
 int32_t *blender2a_b[2];
 int32_t *blender2b_a[2];
+
+COLOR prim_color;
 
 int rdp_pipeline_crashed;
 
@@ -1011,8 +1019,8 @@ static STRICTINLINE void lodfrac_lodtile_signals(unsigned int lodclamp,
 
    if (!!(lod & 0x4000) | lodclamp)
       lod = 0x7fff;
-   else if (lod < g_gdp.primitive_lod_min)
-      lod = g_gdp.primitive_lod_min;
+   else if (lod < min_level)
+      lod = min_level;
 
    mag = FULL_MSB(lod - 32);
    ltil=  log2table[(lod >> 5) & 0xff];
@@ -1271,8 +1279,8 @@ static void tclod_1cycle_next(int32_t* sss, int32_t* sst, int32_t s, int32_t t, 
 
    if (!!(lod & 0x4000) | lodclamp)
       lod = 0x7fff;
-   else if (lod < g_gdp.primitive_lod_min)
-      lod = g_gdp.primitive_lod_min;
+   else if (lod < min_level)
+      lod = min_level;
 
    magnify = FULL_MSB(lod - 32);
    l_tile =  log2table[(lod >> 5) & 0xff];
@@ -3672,7 +3680,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
       dzpix = spans_dzpix;
    else
    {
-      dzpix = g_gdp.prim_color.dz;
+      dzpix = primitive_delta_z;
       dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
    }
    dzpixenc = dz_compress(dzpix);
@@ -3691,7 +3699,7 @@ static void render_spans_1cycle_complete(int start, int end, int tilenum, int fl
       s = span[i].stwz[0];
       t = span[i].stwz[1];
       w = span[i].stwz[2];
-      z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
+      z = g_gdp.other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
 
       x = xendsc;
       curpixel = g_gdp.fb_width * i + x;
@@ -3854,7 +3862,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
       dzpix = spans_dzpix;
    else
    {
-      dzpix = g_gdp.prim_color.dz;
+      dzpix = primitive_delta_z;
       dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
    }
    dzpixenc = dz_compress(dzpix);
@@ -3873,7 +3881,7 @@ static void render_spans_1cycle_notexel1(int start, int end, int tilenum, int fl
       s = span[i].stwz[0];
       t = span[i].stwz[1];
       w = span[i].stwz[2];
-      z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
+      z = g_gdp.other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
 
       x = xendsc;
       curpixel = g_gdp.fb_width * i + x;
@@ -4006,7 +4014,7 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
       dzpix = spans_dzpix;
    else
    {
-      dzpix = g_gdp.prim_color.dz;
+      dzpix = primitive_delta_z;
       dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
    }
    dzpixenc = dz_compress(dzpix);
@@ -4022,7 +4030,7 @@ static void render_spans_1cycle_notex(int start, int end, int tilenum, int flip)
       g = span[i].rgba[1];
       b = span[i].rgba[2];
       a = span[i].rgba[3];
-      z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
+      z = g_gdp.other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
 
       x = xendsc;
       curpixel = g_gdp.fb_width * i + x;
@@ -4280,8 +4288,8 @@ static void tclod_2cycle_next(int32_t* sss, int32_t* sst,
 
       if (!!(lod & 0x4000) | lodclamp)
          lod = 0x7fff;
-      else if (lod < g_gdp.primitive_lod_min)
-         lod = g_gdp.primitive_lod_min;
+      else if (lod < min_level)
+         lod = min_level;
 
       magnify = FULL_MSB(lod - 32);
       l_tile =  log2table[(lod >> 5) & 0xff];
@@ -4544,7 +4552,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
       dzpix = spans_dzpix;
    else
    {
-      dzpix = g_gdp.prim_color.dz;
+      dzpix = primitive_delta_z;
       dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
    }
    dzpixenc = dz_compress(dzpix);
@@ -4563,7 +4571,7 @@ static void render_spans_2cycle_complete(int start, int end, int tilenum, int fl
       s = span[i].stwz[0];
       t = span[i].stwz[1];
       w = span[i].stwz[2];
-      z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
+      z = g_gdp.other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
 
       x = xendsc;
       curpixel = g_gdp.fb_width * i + x;
@@ -4729,7 +4737,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
       dzpix = spans_dzpix;
    else
    {
-      dzpix = g_gdp.prim_color.dz;
+      dzpix = primitive_delta_z;
       dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
    }
    dzpixenc = dz_compress(dzpix);
@@ -4748,7 +4756,7 @@ static void render_spans_2cycle_notexelnext(int start, int end, int tilenum, int
       s = span[i].stwz[0];
       t = span[i].stwz[1];
       w = span[i].stwz[2];
-      z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
+      z = g_gdp.other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
 
       x = xendsc;
       curpixel = g_gdp.fb_width * i + x;
@@ -4893,7 +4901,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
       dzpix = spans_dzpix;
    else
    {
-      dzpix = g_gdp.prim_color.dz;
+      dzpix = primitive_delta_z;
       dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
    }
    dzpixenc = dz_compress(dzpix);
@@ -4912,7 +4920,7 @@ static void render_spans_2cycle_notexel1(int start, int end, int tilenum, int fl
       s = span[i].stwz[0];
       t = span[i].stwz[1];
       w = span[i].stwz[2];
-      z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
+      z = g_gdp.other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
 
       x = xendsc;
       curpixel = g_gdp.fb_width * i + x;
@@ -5045,7 +5053,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
       dzpix = spans_dzpix;
    else
    {
-      dzpix = g_gdp.prim_color.dz;
+      dzpix = primitive_delta_z;
       dzinc = spans_cdz = spans_d_stwz_dy[3] = 0;
    }
    dzpixenc = dz_compress(dzpix);
@@ -5061,7 +5069,7 @@ static void render_spans_2cycle_notex(int start, int end, int tilenum, int flip)
       g = span[i].rgba[1];
       b = span[i].rgba[2];
       a = span[i].rgba[3];
-      z = g_gdp.other_modes.z_source_sel ? g_gdp.prim_color.z : span[i].stwz[3];
+      z = g_gdp.other_modes.z_source_sel ? primitive_z : span[i].stwz[3];
 
       x = xendsc;
       curpixel = g_gdp.fb_width * i + x;
@@ -5629,7 +5637,7 @@ void rdp_init(void)
     }
 
     memset(&g_gdp.combined_color, 0, sizeof(gdp_color));
-    memset(&g_gdp.prim_color, 0, sizeof(gdp_color));
+    memset(&prim_color, 0, sizeof(gdp_color));
     memset(&g_gdp.env_color, 0, sizeof(gdp_color));
     memset(&g_gdp.key_scale, 0, sizeof(gdp_color));
     memset(&g_gdp.key_center, 0, sizeof(gdp_color));
@@ -6156,8 +6164,8 @@ static void tclod_copy(int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t
 
       if (!!(lod & 0x4000) | lodclamp)
          lod = 0x7fff;
-      else if (lod < g_gdp.primitive_lod_min)
-         lod = g_gdp.primitive_lod_min;
+      else if (lod < min_level)
+         lod = min_level;
 
       magnify = ZERO_MSB(lod - 32);
       l_tile =  log2table[(lod >> 5) & 0xff];

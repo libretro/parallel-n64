@@ -1146,9 +1146,9 @@ static void tex_rect_flip(uint32_t w0, uint32_t w1)
 
 static void set_prim_depth(uint32_t w0, uint32_t w1)
 {
-   gdp_set_prim_depth(w0, w1);
-
-   g_gdp.prim_color.z = (g_gdp.prim_color.z & 0x7FFF) << 16; /* angrylion does this why? */
+   primitive_z        = (w1 & 0xFFFF0000) >> 16;
+   primitive_delta_z  = (w1 & 0x0000FFFF) >> 0;
+   primitive_z = (primitive_z & 0x7FFF) << 16; /* angrylion does this why? */
 }
 
 static void set_other_modes(uint32_t w0, uint32_t w1)
@@ -1363,6 +1363,16 @@ static void load_tile(uint32_t w0, uint32_t w1)
    tile_tlut_common_cs_decoder(w0, w1);
 }
 
+static void al_set_prim_color(uint32_t w0, uint32_t w1)
+{
+    min_level          = (w0 & 0x00001F00) >>(40-32);
+    primitive_lod_frac = (w0 & 0x000000FF) >>(32-32);
+    prim_color.r       = (w1 & 0xFF000000) >> 24;
+    prim_color.g       = (w1 & 0x00FF0000) >> 16;
+    prim_color.b       = (w1 & 0x0000FF00) >>  8;
+    prim_color.a       = (w1 & 0x000000FF) >>  0;
+}
+
 static void set_tile(uint32_t w0, uint32_t w1)
 {
    int32_t tilenum = gdp_set_tile(w0, w1);
@@ -1528,9 +1538,9 @@ static INLINE void SET_SUBA_RGB_INPUT(int32_t **input_r, int32_t **input_g, int3
          *input_b = &g_gdp.texel1_color.b;
          break;
       case 3:
-         *input_r = &g_gdp.prim_color.r;
-         *input_g = &g_gdp.prim_color.g;
-         *input_b = &g_gdp.prim_color.b;
+         *input_r = &prim_color.r;
+         *input_g = &prim_color.g;
+         *input_b = &prim_color.b;
          break;
       case 4:
          *input_r = &shade_color.r;
@@ -1587,9 +1597,9 @@ static INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int3
          *input_b = &g_gdp.texel1_color.b;
          break;
       case 3:
-         *input_r = &g_gdp.prim_color.r;
-         *input_g = &g_gdp.prim_color.g;
-         *input_b = &g_gdp.prim_color.b;
+         *input_r = &prim_color.r;
+         *input_g = &prim_color.g;
+         *input_b = &prim_color.b;
          break;
       case 4:
          *input_r = &shade_color.r;
@@ -1646,9 +1656,9 @@ static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
          *input_b = &g_gdp.texel1_color.b;
          break;
       case 3:
-         *input_r = &g_gdp.prim_color.r;
-         *input_g = &g_gdp.prim_color.g;
-         *input_b = &g_gdp.prim_color.b;
+         *input_r = &prim_color.r;
+         *input_g = &prim_color.g;
+         *input_b = &prim_color.b;
          break;
       case 4:
          *input_r = &shade_color.r;
@@ -1681,9 +1691,9 @@ static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
          *input_b = &g_gdp.texel1_color.a;
          break;
       case 10:
-         *input_r = &g_gdp.prim_color.a;
-         *input_g = &g_gdp.prim_color.a;
-         *input_b = &g_gdp.prim_color.a;
+         *input_r = &prim_color.a;
+         *input_g = &prim_color.a;
+         *input_b = &prim_color.a;
          break;
       case 11:
          *input_r = &shade_color.a;
@@ -1701,9 +1711,9 @@ static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
          *input_b = &g_gdp.lod_frac;
          break;
       case 14:
-         *input_r = &g_gdp.primitive_lod_frac;
-         *input_g = &g_gdp.primitive_lod_frac;
-         *input_b = &g_gdp.primitive_lod_frac;
+         *input_r = &primitive_lod_frac;
+         *input_g = &primitive_lod_frac;
+         *input_b = &primitive_lod_frac;
          break;
       case 15:
          *input_r = &g_gdp.k5;
@@ -1753,9 +1763,9 @@ static INLINE void SET_ADD_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
          *input_b = &g_gdp.texel1_color.b;
          break;
       case 3:
-         *input_r = &g_gdp.prim_color.r;
-         *input_g = &g_gdp.prim_color.g;
-         *input_b = &g_gdp.prim_color.b;
+         *input_r = &prim_color.r;
+         *input_g = &prim_color.g;
+         *input_b = &prim_color.b;
          break;
       case 4:
          *input_r = &shade_color.r;
@@ -1794,7 +1804,7 @@ static INLINE void SET_SUB_ALPHA_INPUT(int32_t **input, int code)
          *input = &g_gdp.texel1_color.a;
          break;
       case 3:
-         *input = &g_gdp.prim_color.a;
+         *input = &prim_color.a;
          break;
       case 4:
          *input = &shade_color.a;
@@ -1825,7 +1835,7 @@ static INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
          *input = &g_gdp.texel1_color.a;
          break;
       case 3:
-         *input = &g_gdp.prim_color.a;
+         *input = &prim_color.a;
          break;
       case 4:
          *input = &shade_color.a;
@@ -1834,7 +1844,7 @@ static INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
          *input = &g_gdp.env_color.a;
          break;
       case 6:
-         *input = &g_gdp.primitive_lod_frac;
+         *input = &primitive_lod_frac;
          break;
       case 7:
          *input = &zero_color;
@@ -1920,7 +1930,7 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
 
    load_tlut         ,gdp_invalid           ,gdp_set_tile_size     ,load_block        ,
    load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
-   gdp_set_fog_color     ,gdp_set_blend_color   ,gdp_set_prim_color    ,gdp_set_env_color     ,
+   gdp_set_fog_color     ,gdp_set_blend_color   , al_set_prim_color    ,gdp_set_env_color     ,
    set_combine       ,gdp_set_texture_image ,gdp_set_mask_image    ,gdp_set_color_image   ,
 };
 
