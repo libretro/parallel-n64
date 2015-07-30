@@ -1363,6 +1363,14 @@ static void load_tile(uint32_t w0, uint32_t w1)
    tile_tlut_common_cs_decoder(w0, w1);
 }
 
+static void al_set_fog_color(uint32_t w0, uint32_t w1)
+{
+   fog_color.r = (w1 & 0xFF000000) >> 24;
+   fog_color.g = (w1 & 0x00FF0000) >> 16;
+   fog_color.b = (w1 & 0x0000FF00) >>  8;
+   fog_color.a = (w1 & 0x000000FF) >>  0;
+}
+
 static void al_set_prim_color(uint32_t w0, uint32_t w1)
 {
     min_level          = (w0 & 0x00001F00) >>(40-32);
@@ -1930,7 +1938,7 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
 
    load_tlut         ,gdp_invalid           ,gdp_set_tile_size     ,load_block        ,
    load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
-   gdp_set_fog_color     ,gdp_set_blend_color   , al_set_prim_color    ,gdp_set_env_color     ,
+   al_set_fog_color     ,gdp_set_blend_color   , al_set_prim_color    ,gdp_set_env_color     ,
    set_combine       ,gdp_set_texture_image ,gdp_set_mask_image    ,gdp_set_color_image   ,
 };
 

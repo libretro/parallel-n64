@@ -348,6 +348,8 @@ extern int32_t zero_color;
 
 extern COLOR prim_color;
 
+extern COLOR fog_color;
+
 extern int rdp_pipeline_crashed;
 
 #endif

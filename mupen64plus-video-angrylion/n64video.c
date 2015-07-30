@@ -48,6 +48,8 @@ int32_t *blender2b_a[2];
 
 COLOR prim_color;
 
+COLOR fog_color;
+
 int rdp_pipeline_crashed;
 
 uint16_t z_com_table[0x40000];
@@ -5531,9 +5533,9 @@ void SET_BLENDER_INPUT(
          *input_b = &g_gdp.blend_color.b;
          break;
       case 3:
-         *input_r = &g_gdp.fog_color.r;
-         *input_g = &g_gdp.fog_color.g;
-         *input_b = &g_gdp.fog_color.b;
+         *input_r = &fog_color.r;
+         *input_g = &fog_color.g;
+         *input_b = &fog_color.b;
          break;
    }
 
@@ -5545,7 +5547,7 @@ void SET_BLENDER_INPUT(
             *input_a = &pixel_color.a;
             break;
          case 1:
-            *input_a = &g_gdp.fog_color.a;
+            *input_a = &fog_color.a;
             break;
          case 2:
             *input_a = &shade_color.a;
