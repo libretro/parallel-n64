@@ -1363,6 +1363,11 @@ static void load_tile(uint32_t w0, uint32_t w1)
    tile_tlut_common_cs_decoder(w0, w1);
 }
 
+static void al_set_fill_color(uint32_t w0, uint32_t w1)
+{
+   fill_color = w1;
+}
+
 static void al_set_key_gb(uint32_t w0, uint32_t w1)
 {
    key_width.g  = (w0 & 0x00FFF000) >> 12;
@@ -1965,7 +1970,7 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
    al_set_convert       ,gdp_set_scissor       ,set_prim_depth    ,set_other_modes   ,
 
    load_tlut         ,gdp_invalid           ,gdp_set_tile_size     ,load_block        ,
-   load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
+   load_tile         ,set_tile          ,fill_rect         , al_set_fill_color    ,
    al_set_fog_color     ,gdp_set_blend_color   , al_set_prim_color    ,gdp_set_env_color     ,
    set_combine       ,gdp_set_texture_image ,gdp_set_mask_image    ,gdp_set_color_image   ,
 };

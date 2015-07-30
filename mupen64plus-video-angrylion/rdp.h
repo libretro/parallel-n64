@@ -304,6 +304,9 @@ extern int spans_cdz;
 extern i32 spans_d_stwz_dy[4];
 
 extern uint32_t max_level;
+
+extern uint32_t fill_color;
+
 extern int32_t  min_level;
 extern int32_t primitive_lod_frac;
 
