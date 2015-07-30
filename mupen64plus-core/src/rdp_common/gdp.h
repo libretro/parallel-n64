@@ -145,7 +145,7 @@ typedef struct
     int special_bsel0; 
     int special_bsel1;
     int rgb_alpha_dither;
-} MODEDERIVS;
+} GDP_MODEDERIVS;
 
 typedef struct
 {
@@ -252,7 +252,7 @@ typedef struct
                                     1 - Blend alpha
                                  */
    int alpha_compare_en;         /* Enable conditional color write based on alpha compare. */
-   MODEDERIVS f;
+   GDP_MODEDERIVS f;
 } gdp_other_modes;
 
 struct gdp_global
