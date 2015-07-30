@@ -199,7 +199,7 @@ int32_t gdp_set_tile_size_wrap(uint32_t w0, uint32_t w1)
    /* High T coordinate of tile in image. */
    g_gdp.tile[tilenum].th      = (w1 & 0x00000FFF) >> ( 0 -  0);
 
-   calculate_clamp_diffs(&g_gdp, tilenum);
+   gdp_calculate_clamp_diffs(&g_gdp, tilenum);
 
    g_gdp.flags |= UPDATE_TEXTURE;
 

@@ -109,41 +109,41 @@ static void deduce_derivatives(void)
    int lod_frac_used_in_cc1 = 0, lod_frac_used_in_cc0 = 0;
    int lodfracused = 0;
 
-   g_gdp.other_modes.f.partialreject_1cycle = (blender2b_a[0] == &inv_pixel_color.a && blender1b_a[0] == &pixel_color.a);
-   g_gdp.other_modes.f.partialreject_2cycle = (blender2b_a[1] == &inv_pixel_color.a && blender1b_a[1] == &pixel_color.a);
+   other_modes.f.partialreject_1cycle = (blender2b_a[0] == &inv_pixel_color.a && blender1b_a[0] == &pixel_color.a);
+   other_modes.f.partialreject_2cycle = (blender2b_a[1] == &inv_pixel_color.a && blender1b_a[1] == &pixel_color.a);
 
-   g_gdp.other_modes.f.special_bsel0 = (blender2b_a[0] == &memory_color.a);
-   g_gdp.other_modes.f.special_bsel1 = (blender2b_a[1] == &memory_color.a);
+   other_modes.f.special_bsel0 = (blender2b_a[0] == &memory_color.a);
+   other_modes.f.special_bsel1 = (blender2b_a[1] == &memory_color.a);
 
-   g_gdp.other_modes.f.rgb_alpha_dither = (g_gdp.other_modes.rgb_dither_sel << 2) | g_gdp.other_modes.alpha_dither_sel;
+   other_modes.f.rgb_alpha_dither = (other_modes.rgb_dither_sel << 2) | other_modes.alpha_dither_sel;
 
-   if (g_gdp.other_modes.rgb_dither_sel == 3)
+   if (other_modes.rgb_dither_sel == 3)
       rgb_dither_ptr = rgb_dither_func[1];
    else
       rgb_dither_ptr = rgb_dither_func[0];
 
-   tcdiv_ptr = tcdiv_func[g_gdp.other_modes.persp_tex_en];
+   tcdiv_ptr = tcdiv_func[other_modes.persp_tex_en];
 
-   if ((combiner_rgbmul_r[1] == &g_gdp.lod_frac) || (combiner_alphamul[1] == &g_gdp.lod_frac))
+   if ((combiner_rgbmul_r[1] == &lod_frac) || (combiner_alphamul[1] == &lod_frac))
       lod_frac_used_in_cc1 = 1;
-   if ((combiner_rgbmul_r[0] == &g_gdp.lod_frac) || (combiner_alphamul[0] == &g_gdp.lod_frac))
+   if ((combiner_rgbmul_r[0] == &lod_frac) || (combiner_alphamul[0] == &lod_frac))
       lod_frac_used_in_cc0 = 1;
 
-   if (combiner_rgbmul_r[1] == &g_gdp.texel1_color.r || combiner_rgbsub_a_r[1] == &g_gdp.texel1_color.r || combiner_rgbsub_b_r[1] == &g_gdp.texel1_color.r || combiner_rgbadd_r[1] == &g_gdp.texel1_color.r || \
-         combiner_alphamul[1] == &g_gdp.texel1_color.a || combiner_alphasub_a[1] == &g_gdp.texel1_color.a || combiner_alphasub_b[1] == &g_gdp.texel1_color.a || combiner_alphaadd[1] == &g_gdp.texel1_color.a || \
-         combiner_rgbmul_r[1] == &g_gdp.texel1_color.a)
+   if (combiner_rgbmul_r[1] == &texel1_color.r || combiner_rgbsub_a_r[1] == &texel1_color.r || combiner_rgbsub_b_r[1] == &texel1_color.r || combiner_rgbadd_r[1] == &texel1_color.r || \
+         combiner_alphamul[1] == &texel1_color.a || combiner_alphasub_a[1] == &texel1_color.a || combiner_alphasub_b[1] == &texel1_color.a || combiner_alphaadd[1] == &texel1_color.a || \
+         combiner_rgbmul_r[1] == &texel1_color.a)
       texel1_used_in_cc1 = 1;
-   if (combiner_rgbmul_r[1] == &g_gdp.texel0_color.r || combiner_rgbsub_a_r[1] == &g_gdp.texel0_color.r || combiner_rgbsub_b_r[1] == &g_gdp.texel0_color.r || combiner_rgbadd_r[1] == &g_gdp.texel0_color.r || \
-         combiner_alphamul[1] == &g_gdp.texel0_color.a || combiner_alphasub_a[1] == &g_gdp.texel0_color.a || combiner_alphasub_b[1] == &g_gdp.texel0_color.a || combiner_alphaadd[1] == &g_gdp.texel0_color.a || \
-         combiner_rgbmul_r[1] == &g_gdp.texel0_color.a)
+   if (combiner_rgbmul_r[1] == &texel0_color.r || combiner_rgbsub_a_r[1] == &texel0_color.r || combiner_rgbsub_b_r[1] == &texel0_color.r || combiner_rgbadd_r[1] == &texel0_color.r || \
+         combiner_alphamul[1] == &texel0_color.a || combiner_alphasub_a[1] == &texel0_color.a || combiner_alphasub_b[1] == &texel0_color.a || combiner_alphaadd[1] == &texel0_color.a || \
+         combiner_rgbmul_r[1] == &texel0_color.a)
       texel0_used_in_cc1 = 1;
-   if (combiner_rgbmul_r[0] == &g_gdp.texel1_color.r || combiner_rgbsub_a_r[0] == &g_gdp.texel1_color.r || combiner_rgbsub_b_r[0] == &g_gdp.texel1_color.r || combiner_rgbadd_r[0] == &g_gdp.texel1_color.r || \
-         combiner_alphamul[0] == &g_gdp.texel1_color.a || combiner_alphasub_a[0] == &g_gdp.texel1_color.a || combiner_alphasub_b[0] == &g_gdp.texel1_color.a || combiner_alphaadd[0] == &g_gdp.texel1_color.a || \
-         combiner_rgbmul_r[0] == &g_gdp.texel1_color.a)
+   if (combiner_rgbmul_r[0] == &texel1_color.r || combiner_rgbsub_a_r[0] == &texel1_color.r || combiner_rgbsub_b_r[0] == &texel1_color.r || combiner_rgbadd_r[0] == &texel1_color.r || \
+         combiner_alphamul[0] == &texel1_color.a || combiner_alphasub_a[0] == &texel1_color.a || combiner_alphasub_b[0] == &texel1_color.a || combiner_alphaadd[0] == &texel1_color.a || \
+         combiner_rgbmul_r[0] == &texel1_color.a)
       texel1_used_in_cc0 = 1;
-   if (combiner_rgbmul_r[0] == &g_gdp.texel0_color.r || combiner_rgbsub_a_r[0] == &g_gdp.texel0_color.r || combiner_rgbsub_b_r[0] == &g_gdp.texel0_color.r || combiner_rgbadd_r[0] == &g_gdp.texel0_color.r || \
-         combiner_alphamul[0] == &g_gdp.texel0_color.a || combiner_alphasub_a[0] == &g_gdp.texel0_color.a || combiner_alphasub_b[0] == &g_gdp.texel0_color.a || combiner_alphaadd[0] == &g_gdp.texel0_color.a || \
-         combiner_rgbmul_r[0] == &g_gdp.texel0_color.a)
+   if (combiner_rgbmul_r[0] == &texel0_color.r || combiner_rgbsub_a_r[0] == &texel0_color.r || combiner_rgbsub_b_r[0] == &texel0_color.r || combiner_rgbadd_r[0] == &texel0_color.r || \
+         combiner_alphamul[0] == &texel0_color.a || combiner_alphasub_a[0] == &texel0_color.a || combiner_alphasub_b[0] == &texel0_color.a || combiner_alphaadd[0] == &texel0_color.a || \
+         combiner_rgbmul_r[0] == &texel0_color.a)
       texel0_used_in_cc0 = 1;
    texels_in_cc0 = texel0_used_in_cc0 || texel1_used_in_cc0;
    texels_in_cc1 = texel0_used_in_cc1 || texel1_used_in_cc1;    
@@ -165,36 +165,36 @@ static void deduce_derivatives(void)
    else
       render_spans_2cycle_ptr = render_spans_2cycle_func[0];
 
-   if ((g_gdp.other_modes.cycle_type == CYCLE_TYPE_2 && (lod_frac_used_in_cc0 || lod_frac_used_in_cc1)) || \
-         (g_gdp.other_modes.cycle_type == CYCLE_TYPE_1 && lod_frac_used_in_cc1))
+   if ((other_modes.cycle_type == CYCLE_TYPE_2 && (lod_frac_used_in_cc0 || lod_frac_used_in_cc1)) || \
+         (other_modes.cycle_type == CYCLE_TYPE_1 && lod_frac_used_in_cc1))
       lodfracused = 1;
 
-   if ((g_gdp.other_modes.cycle_type == CYCLE_TYPE_1 && combiner_rgbsub_a_r[1] == &noise) || \
-         (g_gdp.other_modes.cycle_type == CYCLE_TYPE_2 && 
+   if ((other_modes.cycle_type == CYCLE_TYPE_1 && combiner_rgbsub_a_r[1] == &noise) || \
+         (other_modes.cycle_type == CYCLE_TYPE_2 && 
           (combiner_rgbsub_a_r[0] == &noise || combiner_rgbsub_a_r[1] == &noise)) || \
-         g_gdp.other_modes.alpha_dither_sel == 2)
+         other_modes.alpha_dither_sel == 2)
       get_dither_noise_ptr = get_dither_noise_func[0];
-   else if (g_gdp.other_modes.f.rgb_alpha_dither != 0xf)
+   else if (other_modes.f.rgb_alpha_dither != 0xf)
       get_dither_noise_ptr = get_dither_noise_func[1];
    else
       get_dither_noise_ptr = get_dither_noise_func[2];
 
-   g_gdp.other_modes.f.dolod = g_gdp.other_modes.tex_lod_en || lodfracused;
+   other_modes.f.dolod = other_modes.tex_lod_en || lodfracused;
 }
 
 NOINLINE static void render_spans(
       int yhlimit, int yllimit, int tilenum, int flip)
 {
-   const unsigned int cycle_type = g_gdp.other_modes.cycle_type & 03;
+   const unsigned int cycle_type = other_modes.cycle_type & 03;
 
-   if (g_gdp.other_modes.f.stalederivs != 0)
+   if (other_modes.f.stalederivs != 0)
    {
       deduce_derivatives();
-      g_gdp.other_modes.f.stalederivs = 0;
+      other_modes.f.stalederivs = 0;
    }
-   fbread1_ptr = fbread_func[g_gdp.fb_size];
-   fbread2_ptr = fbread2_func[g_gdp.fb_size];
-   fbwrite_ptr = fbwrite_func[g_gdp.fb_size];
+   fbread1_ptr = fbread_func[fb_size];
+   fbread2_ptr = fbread2_func[fb_size];
+   fbwrite_ptr = fbwrite_func[fb_size];
 
 #ifdef _DEBUG
    ++render_cycle_mode_counts[cycle_type];
@@ -236,6 +236,7 @@ typedef struct edgewalker_info
    int xlrsc[2];
    int stickybit;
 } edgewalker_info_t;
+
 
 static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer)
 {
@@ -292,8 +293,8 @@ static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int text
    int curcross;
    int j, k;
    edgewalker_info_t edges = {0};
-   const i32 clipxlshift = g_gdp.__clip.xl << 1;
-   const i32 clipxhshift = g_gdp.__clip.xh << 1;
+   const i32 clipxlshift = __clip.xl << 1;
+   const i32 clipxhshift = __clip.xh << 1;
 
    base = cmd_cur + 0;
    setzero_si64(rgba_int);
@@ -638,7 +639,7 @@ no_read_zbuffer_coefficients:
       d_stwz_diff[3] -= (d_stwz_diff[3] >> 2);
    }
 
-   if (g_gdp.other_modes.cycle_type == CYCLE_TYPE_COPY)
+   if (other_modes.cycle_type == CYCLE_TYPE_COPY)
    {
       setzero_si128(d_rgba_dxh);
       setzero_si128(d_stwz_dxh);
@@ -657,7 +658,7 @@ no_read_zbuffer_coefficients:
 
    ldflag = (sign_dxhdy ^ flip) ? 0 : 3;
    invaly = 1;
-   yllimit = (yl - g_gdp.__clip.yl < 0) ? yl : g_gdp.__clip.yl; /* clip.yl always &= 0xFFF */
+   yllimit = (yl - __clip.yl < 0) ? yl : __clip.yl; /* clip.yl always &= 0xFFF */
 
    ycur = yh & ~3;
    ylfar = yllimit | 3;
@@ -666,7 +667,7 @@ no_read_zbuffer_coefficients:
    else if (yllimit >> 2 >= 0 && yllimit >> 2 < 1023)
       span[(yllimit >> 2) + 1].validline = 0;
 
-   yhlimit = (yh - g_gdp.__clip.yh >= 0) ? yh : g_gdp.__clip.yh; /* clip.yh always &= 0xFFF */
+   yhlimit = (yh - __clip.yh >= 0) ? yh : __clip.yh; /* clip.yh always &= 0xFFF */
 
    xlr_inc[0] = (DxMDy >> 2) & ~0x00000001;
    xlr_inc[1] = (DxHDy >> 2) & ~0x00000001;
@@ -828,7 +829,7 @@ no_read_zbuffer_coefficients:
 #endif
          if (edges.spix == 3)
          {
-            const int invalidline = (g_gdp.sckeepodd ^ j) & g_gdp.scfield
+            const int invalidline = (sckeepodd ^ j) & scfield
                | (edges.allinval | edges.allover | edges.allunder);
             span[j].lx = minmax[flip - 0];
             span[j].rx = minmax[1 - flip];
@@ -856,42 +857,68 @@ no_read_zbuffer_coefficients:
 #endif
 }
 
-static void tri_noshade(uint32_t w0, uint32_t w1)
+static void al_noop(uint32_t w0, uint32_t w1)
+{
+}
+
+static void al_invalid(uint32_t w0, uint32_t w1)
+{
+}
+
+static void al_sync_pipe(uint32_t w0, uint32_t w1)
+{
+}
+
+static void al_sync_load(uint32_t w0, uint32_t w1)
+{
+}
+
+static void al_sync_tile(uint32_t w0, uint32_t w1)
+{
+}
+
+static void al_sync_full(uint32_t w0, uint32_t w1)
+{
+   *gfx_info.MI_INTR_REG |= DP_INTERRUPT;
+    gfx_info.CheckInterrupts();
+}
+
+static void al_tri_noshade(uint32_t w0, uint32_t w1)
 {
    draw_triangle(w0, w1, SHADE_NO, TEXTURE_NO, ZBUFFER_NO);
 }
 
-static void tri_noshade_z(uint32_t w0, uint32_t w1)
+static void al_tri_noshade_z(uint32_t w0, uint32_t w1)
 {
    draw_triangle(w0, w1, SHADE_NO, TEXTURE_NO, ZBUFFER_YES);
 }
 
-static void tri_tex(uint32_t w0, uint32_t w1)
+static void al_tri_tex(uint32_t w0, uint32_t w1)
 {
    draw_triangle(w0, w1, SHADE_NO, TEXTURE_YES, ZBUFFER_NO);
 }
 
-static void tri_tex_z(uint32_t w0, uint32_t w1)
+static void al_tri_tex_z(uint32_t w0, uint32_t w1)
 {
    draw_triangle(w0, w1, SHADE_NO, TEXTURE_YES, ZBUFFER_YES);
 }
 
-static void tri_shade(uint32_t w0, uint32_t w1)
+static void al_tri_shade(uint32_t w0, uint32_t w1)
 {
    draw_triangle(w0, w1, SHADE_YES, TEXTURE_NO, ZBUFFER_NO);
 }
 
-static void tri_shade_z(uint32_t w0, uint32_t w1)
+static void al_tri_shade_z(uint32_t w0, uint32_t w1)
 {
    draw_triangle(w0, w1, SHADE_YES, TEXTURE_NO, ZBUFFER_YES);
 }
 
-static void tri_texshade(uint32_t w0, uint32_t w1)
+static void al_tri_texshade(uint32_t w0, uint32_t w1)
 {
    draw_triangle(w0, w1, SHADE_YES, TEXTURE_YES, ZBUFFER_NO);
 }
 
-static void tri_texshade_z(uint32_t w0, uint32_t w1)
+static void al_tri_texshade_z(uint32_t w0, uint32_t w1)
 {
    draw_triangle(w0, w1, SHADE_YES, TEXTURE_YES, ZBUFFER_YES);
 }
@@ -919,8 +946,8 @@ static NOINLINE void draw_texture_rectangle(
    int ycur, ylfar;
    int invaly;
    register int j, k;
-   const i32 clipxlshift = g_gdp.__clip.xl << 1;
-   const i32 clipxhshift = g_gdp.__clip.xh << 1;
+   const i32 clipxlshift = __clip.xl << 1;
+   const i32 clipxhshift = __clip.xh << 1;
 
    max_level = 0;
    maxxmx = 0;
@@ -965,15 +992,15 @@ static NOINLINE void draw_texture_rectangle(
    spans_dzpix = normalize_dzpix(0);
 
    setzero_si128(d_stwz_dxh);
-   if (g_gdp.other_modes.cycle_type != CYCLE_TYPE_COPY)
+   if (other_modes.cycle_type != CYCLE_TYPE_COPY)
    {
       d_stwz_dxh[0] = (d_stwz_dx[0] >> 8) & ~0x00000001;
       d_stwz_dxh[1] = (d_stwz_dx[1] >> 8) & ~0x00000001;
    }
 
    invaly = 1;
-   yllimit = (yl <  g_gdp.__clip.yl) ? yl : g_gdp.__clip.yl;
-   yhlimit = (yh >= g_gdp.__clip.yh) ? yh : g_gdp.__clip.yh;
+   yllimit = (yl <  __clip.yl) ? yl : __clip.yl;
+   yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
 
    ycur = yh & ~3;
    ylfar = yllimit | 3;
@@ -1066,7 +1093,7 @@ static NOINLINE void draw_texture_rectangle(
          }
          if (spix == 3)
          {
-            const int invalidline = (g_gdp.sckeepodd ^ j) & g_gdp.scfield
+            const int invalidline = (sckeepodd ^ j) & scfield
                                   | (allinval | allover | allunder);
             span[j].lx = maxxmx;
             span[j].rx = minxhx;
@@ -1080,15 +1107,15 @@ static NOINLINE void draw_texture_rectangle(
       }
    }
 
-   if (g_gdp.other_modes.f.stalederivs)
+   if (other_modes.f.stalederivs)
    {
       deduce_derivatives();
-      g_gdp.other_modes.f.stalederivs = 0;
+      other_modes.f.stalederivs = 0;
    }
    render_spans(yhlimit >> 2, yllimit >> 2, tilenum, 1);
 }
 
-static void tex_rect(uint32_t w0, uint32_t w1)
+static void al_tex_rect(uint32_t w0, uint32_t w1)
 {
    int xl      = (w0 & 0x00FFF000) >> 12;
    int yl      = (w0 & 0x00000FFF) >>  0;
@@ -1112,7 +1139,7 @@ static void tex_rect(uint32_t w0, uint32_t w1)
          );
 }
 
-static void tex_rect_flip(uint32_t w0, uint32_t w1)
+static void al_tex_rect_flip(uint32_t w0, uint32_t w1)
 {
    int dd_swap;
    int xl      = (w0 & 0x00FFF000) >> 12;
@@ -1144,31 +1171,66 @@ static void tex_rect_flip(uint32_t w0, uint32_t w1)
          );
 }
 
-static void set_prim_depth(uint32_t w0, uint32_t w1)
+static void al_set_prim_depth(uint32_t w0, uint32_t w1)
 {
    primitive_z        = (w1 & 0xFFFF0000) >> 16;
    primitive_delta_z  = (w1 & 0x0000FFFF) >> 0;
    primitive_z = (primitive_z & 0x7FFF) << 16; /* angrylion does this why? */
 }
 
-static void set_other_modes(uint32_t w0, uint32_t w1)
+static void al_set_other_modes(uint32_t w0, uint32_t w1)
 {
-   gdp_set_other_modes(w0, w1);
+   other_modes.cycle_type       = (w0 & 0x00300000) >> (52 - 32);
+   other_modes.persp_tex_en     = !!(w0 & 0x00080000); /* 51 */
+   other_modes.detail_tex_en    = !!(w0 & 0x00040000); /* 50 */
+   other_modes.sharpen_tex_en   = !!(w0 & 0x00020000); /* 49 */
+   other_modes.tex_lod_en       = !!(w0 & 0x00010000); /* 48 */
+   other_modes.en_tlut          = !!(w0 & 0x00008000); /* 47 */
+   other_modes.tlut_type        = !!(w0 & 0x00004000); /* 46 */
+   other_modes.sample_type      = !!(w0 & 0x00002000); /* 45 */
+   other_modes.mid_texel        = !!(w0 & 0x00001000); /* 44 */
+   other_modes.bi_lerp0         = !!(w0 & 0x00000800); /* 43 */
+   other_modes.bi_lerp1         = !!(w0 & 0x00000400); /* 42 */
+   other_modes.convert_one      = !!(w0 & 0x00000200); /* 41 */
+   other_modes.key_en           = !!(w0 & 0x00000100); /* 40 */
+   other_modes.rgb_dither_sel   = (w0 & 0x000000C0) >> (38 - 32);
+   other_modes.alpha_dither_sel = (w0 & 0x00000030) >> (36 - 32);
+   other_modes.blend_m1a_0      = (w1 & 0xC0000000) >> (30 -  0);
+   other_modes.blend_m1a_1      = (w1 & 0x30000000) >> (28 -  0);
+   other_modes.blend_m1b_0      = (w1 & 0x0C000000) >> (26 -  0);
+   other_modes.blend_m1b_1      = (w1 & 0x03000000) >> (24 -  0);
+   other_modes.blend_m2a_0      = (w1 & 0x00C00000) >> (22 -  0);
+   other_modes.blend_m2a_1      = (w1 & 0x00300000) >> (20 -  0);
+   other_modes.blend_m2b_0      = (w1 & 0x000C0000) >> (18 -  0);
+   other_modes.blend_m2b_1      = (w1 & 0x00030000) >> (16 -  0);
+   other_modes.force_blend      = !!(w1 & 0x00004000); /* 14 */
+   other_modes.alpha_cvg_select = !!(w1 & 0x00002000); /* 13 */
+   other_modes.cvg_times_alpha  = !!(w1 & 0x00001000); /* 12 */
+   other_modes.z_mode           = (w1 & 0x00000C00) >> (10 -  0);
+   other_modes.cvg_dest         = (w1 & 0x00000300) >> ( 8 -  0);
+   other_modes.color_on_cvg     = !!(w1 & 0x00000080); /*  7 */
+   other_modes.image_read_en    = !!(w1 & 0x00000040); /*  6 */
+   other_modes.z_update_en      = !!(w1 & 0x00000020); /*  5 */
+   other_modes.z_compare_en     = !!(w1 & 0x00000010); /*  4 */
+   other_modes.antialias_en     = !!(w1 & 0x00000008); /*  3 */
+   other_modes.z_source_sel     = !!(w1 & 0x00000004); /*  2 */
+   other_modes.dither_alpha_en  = !!(w1 & 0x00000002); /*  1 */
+   other_modes.alpha_compare_en = !!(w1 & 0x00000001); /*  0 */
 
    SET_BLENDER_INPUT(
          0, 0, &blender1a_r[0], &blender1a_g[0], &blender1a_b[0],
-         &blender1b_a[0], g_gdp.other_modes.blend_m1a_0, g_gdp.other_modes.blend_m1b_0);
+         &blender1b_a[0], other_modes.blend_m1a_0, other_modes.blend_m1b_0);
    SET_BLENDER_INPUT(
          0, 1, &blender2a_r[0], &blender2a_g[0], &blender2a_b[0],
-         &blender2b_a[0], g_gdp.other_modes.blend_m2a_0, g_gdp.other_modes.blend_m2b_0);
+         &blender2b_a[0], other_modes.blend_m2a_0, other_modes.blend_m2b_0);
    SET_BLENDER_INPUT(
          1, 0, &blender1a_r[1], &blender1a_g[1], &blender1a_b[1],
-         &blender1b_a[1], g_gdp.other_modes.blend_m1a_1, g_gdp.other_modes.blend_m1b_1);
+         &blender1b_a[1], other_modes.blend_m1a_1, other_modes.blend_m1b_1);
    SET_BLENDER_INPUT(
          1, 1, &blender2a_r[1], &blender2a_g[1], &blender2a_b[1],
-         &blender2b_a[1], g_gdp.other_modes.blend_m2a_1, g_gdp.other_modes.blend_m2b_1);
+         &blender2b_a[1], other_modes.blend_m2a_1, other_modes.blend_m2b_1);
 
-   g_gdp.other_modes.f.stalederivs = 1;
+   other_modes.f.stalederivs = 1;
 }
 
 #define ADJUST_ATTR_LOAD() {           \
@@ -1297,47 +1359,69 @@ static void edgewalker_for_loads(int32_t* lewdata)
    loading_pipeline(yhlimit >> 2, yllimit >> 2, tilenum, coord_quad, ltlut);
 }
 
-static void load_block(uint32_t w0, uint32_t w1)
+static void al_set_tile_size(uint32_t w0, uint32_t w1)
 {
-   int32_t lewdata[10];
-   const int command = (w0 & 0xFF000000) >> (56-32);
-   const int sl      = (w0 & 0x00FFF000) >> (44-32);
-   const int tl      = (w0 & 0x00000FFF) >> (32-32);
-   const int sh      = (w1 & 0x00FFF000) >> (12- 0);
-   const int dxt     = (w1 & 0x00000FFF) >> ( 0- 0);
-   const int tlclamped = tl & 0x3FF;
-   int32_t tilenum     = gdp_set_tile_size_wrap(w0, w1);
+   int sl      = (w0 & 0x00FFF000) >> (44 - 32);
+   int tl      = (w0 & 0x00000FFF) >> (32 - 32);
+   int tilenum = (w1 & 0x07000000) >> (24 -  0);
+   int sh      = (w1 & 0x00FFF000) >> (12 -  0);
+   int th      = (w1 & 0x00000FFF) >> ( 0 -  0);
 
-   lewdata[0] =
-      (command << 24)
+   tile[tilenum].sl = sl;
+   tile[tilenum].tl = tl;
+   tile[tilenum].sh = sh;
+   tile[tilenum].th = th;
+   calculate_clamp_diffs(tilenum);
+}
+
+static void al_load_block(uint32_t w0, uint32_t w1)
+{
+    INT32 lewdata[10];
+    const int command = (w0 & 0xFF000000) >> (56-32);
+    const int sl      = (w0 & 0x00FFF000) >> (44-32);
+    const int tl      = (w0 & 0x00000FFF) >> (32-32);
+    const int tilenum = (w1 & 0x07000000) >> (24- 0);
+    const int sh      = (w1 & 0x00FFF000) >> (12- 0);
+    const int dxt     = (w1 & 0x00000FFF) >> ( 0- 0);
+    const int tlclamped = tl & 0x3FF;
+
+    tile[tilenum].sl = sl;
+    tile[tilenum].tl = tl;
+    tile[tilenum].sh = sh;
+    tile[tilenum].th = dxt;
+
+    calculate_clamp_diffs(tilenum);
+
+    lewdata[0] =
+        (command << 24)
       | (0x10 << 19)
       | (tilenum << 16)
       | ((tlclamped << 2) | 3);
-   lewdata[1] = (((tlclamped << 2) | 3) << 16) | (tlclamped << 2);
-   lewdata[2] = sh << 16;
-   lewdata[3] = sl << 16;
-   lewdata[4] = sh << 16;
-   lewdata[5] = ((sl << 3) << 16) | (tl << 3);
-   lewdata[6] = (dxt & 0xff) << 8;
-   lewdata[7] = ((0x80 >> g_gdp.ti_size) << 16) | (dxt >> 8);
-   lewdata[8] = 0x20;
-   lewdata[9] = 0x20;
+    lewdata[1] = (((tlclamped << 2) | 3) << 16) | (tlclamped << 2);
+    lewdata[2] = sh << 16;
+    lewdata[3] = sl << 16;
+    lewdata[4] = sh << 16;
+    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
+    lewdata[6] = (dxt & 0xff) << 8;
+    lewdata[7] = ((0x80 >> ti_size) << 16) | (dxt >> 8);
+    lewdata[8] = 0x20;
+    lewdata[9] = 0x20;
 
-   edgewalker_for_loads(lewdata);
+    edgewalker_for_loads(lewdata);
 }
 
-static void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2)
+static void tile_tlut_common_cs_decoder(UINT32 w1, UINT32 w2)
 {
-   int32_t lewdata[10];
-   int sl, tl, sh, th;
+   INT32 lewdata[10];
    int tilenum = (w2 >> 24) & 0x7;
+   int sl, tl, sh, th;
 
-   g_gdp.tile[tilenum].sl = sl = ((w1 >> 12) & 0xfff);
-   g_gdp.tile[tilenum].tl = tl = ((w1 >>  0) & 0xfff);
-   g_gdp.tile[tilenum].sh = sh = ((w2 >> 12) & 0xfff);
-   g_gdp.tile[tilenum].th = th = ((w2 >>  0) & 0xfff);
+   tile[tilenum].sl = sl = ((w1 >> 12) & 0xfff);
+   tile[tilenum].tl = tl = ((w1 >>  0) & 0xfff);
+   tile[tilenum].sh = sh = ((w2 >> 12) & 0xfff);
+   tile[tilenum].th = th = ((w2 >>  0) & 0xfff);
 
-   calculate_clamp_diffs(&g_gdp, tilenum);
+   calculate_clamp_diffs(tilenum);
 
    lewdata[0] = (w1 & 0xff000000) | (0x10 << 19) | (tilenum << 16) | (th | 3);
    lewdata[1] = ((th | 3) << 16) | (tl);
@@ -1346,21 +1430,48 @@ static void tile_tlut_common_cs_decoder(uint32_t w1, uint32_t w2)
    lewdata[4] = ((sh >> 2) << 16) | ((sh & 3) << 14);
    lewdata[5] = ((sl << 3) << 16) | (tl << 3);
    lewdata[6] = 0;
-   lewdata[7] = (0x200 >> g_gdp.ti_size) << 16;
+   lewdata[7] = (0x200 >> ti_size) << 16;
    lewdata[8] = 0x20;
    lewdata[9] = 0x20;
 
    edgewalker_for_loads(lewdata);
 }
 
-static void load_tlut(uint32_t w0, uint32_t w1)
+static void al_load_tlut(uint32_t w0, uint32_t w1)
 {
    tile_tlut_common_cs_decoder(w0, w1);
 }
 
-static void load_tile(uint32_t w0, uint32_t w1)
+static void al_load_tile(uint32_t w0, uint32_t w1)
 {
    tile_tlut_common_cs_decoder(w0, w1);
+}
+
+static void al_set_texture_image(uint32_t w0, uint32_t w1)
+{
+   ti_format  = (w0 & 0x00E00000) >> (53 - 32);
+   ti_size    = (w0 & 0x00180000) >> (51 - 32);
+   ti_width   = (w0 & 0x000003FF) >> (32 - 32);
+   ti_address = (w1 & 0x03FFFFFF) >> ( 0 -  0);
+   /* ti_address &= 0x00FFFFFF; // physical memory limit, enforced later */
+   ++ti_width;
+}
+
+static void al_set_mask_image(uint32_t w0, uint32_t w1)
+{
+   zb_address = w1 & 0x03FFFFFF;
+   /* zb_address &= 0x00FFFFFF; */
+}
+
+static void al_set_color_image(uint32_t w0, uint32_t w1)
+{
+   fb_format  = (w0 & 0x00E00000) >> (53 - 32);
+   fb_size    = (w0 & 0x00180000) >> (51 - 32);
+   fb_width   = (w0 & 0x000003FF) >> (32 - 32);
+   fb_address = (w1 & 0x03FFFFFF) >> ( 0 -  0);
+   ++fb_width;
+   /* fb_address &= 0x00FFFFFF; */
+   return;
 }
 
 static void al_set_env_color(uint32_t w0, uint32_t w1)
@@ -1413,6 +1524,16 @@ static void al_set_convert(uint32_t w0, uint32_t w1)
    k5  = (w1 & 0x000001FF) >>  0;
 }
 
+static void al_set_scissor(uint32_t w0, uint32_t w1)
+{
+   __clip.xh   = (w0 & 0x00FFF000) >> (44 - 32);
+   __clip.yh   = (w0 & 0x00000FFF) >> (32 - 32);
+   scfield     = (w1 & 0x02000000) >> (25 -  0);
+   sckeepodd   = (w1 & 0x01000000) >> (24 -  0);
+   __clip.xl   = (w1 & 0x00FFF000) >> (12 -  0);
+   __clip.yl   = (w1 & 0x00000FFF) >> ( 0 -  0);
+}
+
 static void al_set_fog_color(uint32_t w0, uint32_t w1)
 {
    fog_color.r = (w1 & 0xFF000000) >> 24;
@@ -1431,13 +1552,29 @@ static void al_set_prim_color(uint32_t w0, uint32_t w1)
     prim_color.a       = (w1 & 0x000000FF) >>  0;
 }
 
-static void set_tile(uint32_t w0, uint32_t w1)
+static void al_set_tile(uint32_t w0, uint32_t w1)
 {
-   int32_t tilenum = gdp_set_tile(w0, w1);
+   const int tilenum     = (w1 & 0x07000000) >> 24;
+
+   tile[tilenum].format  = (w0 & 0x00E00000) >> (53 - 32);
+   tile[tilenum].size    = (w0 & 0x00180000) >> (51 - 32);
+   tile[tilenum].line    = (w0 & 0x0003FE00) >> (41 - 32);
+   tile[tilenum].tmem    = (w0 & 0x000001FF) >> (32 - 32);
+   /* tilenum               = (cmd_fifo.UW & 0x0000000007000000) >> 24; */
+   tile[tilenum].palette = (w1 & 0x00F00000) >> (20 -  0);
+   tile[tilenum].ct      = (w1 & 0x00080000) >> (19 -  0);
+   tile[tilenum].mt      = (w1 & 0x00040000) >> (18 -  0);
+   tile[tilenum].mask_t  = (w1 & 0x0003C000) >> (14 -  0);
+   tile[tilenum].shift_t = (w1 & 0x00003C00) >> (10 -  0);
+   tile[tilenum].cs      = (w1 & 0x00000200) >> ( 9 -  0);
+   tile[tilenum].ms      = (w1 & 0x00000100) >> ( 8 -  0);
+   tile[tilenum].mask_s  = (w1 & 0x000000F0) >> ( 4 -  0);
+   tile[tilenum].shift_s = (w1 & 0x0000000F) >> ( 0 -  0);
+
    calculate_tile_derivs(tilenum);
 }
 
-static void fill_rect(uint32_t w0, uint32_t w1)
+static void al_fill_rect(uint32_t w0, uint32_t w1)
 {
    int xlint, xhint;
    int ycur, ylfar;
@@ -1446,15 +1583,15 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    int curcross;
    int j, k;
    edgewalker_info_t edges = {0};
-   const i32 clipxlshift = g_gdp.__clip.xl << 1;
-   const i32 clipxhshift = g_gdp.__clip.xh << 1;
+   const i32 clipxlshift = __clip.xl << 1;
+   const i32 clipxhshift = __clip.xh << 1;
    int xl = (w0 & 0x00FFF000) >> (44 - 32);  /* X coordinate of bottom right corner of rectangle. */
    int yl = (w0 & 0x00000FFF) >> (32 - 32);  /* Y coordinate of bottom right corner of rectangle. */
    int xh = (w1 & 0x00FFF000) >> (12 -  0);  /* X coordinate of top left corner of rectangle. */
    int yh = (w1 & 0x00000FFF) >> ( 0 -  0);  /* Y coordinate of top left corner of rectangle. */
 
 
-   yl |= (g_gdp.other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
+   yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
 
    xlint = (unsigned)(xl) >> 2;
    xhint = (unsigned)(xh) >> 2;
@@ -1477,7 +1614,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
    spans_dzpix = normalize_dzpix(0);
 
    invaly = 1;
-   yllimit = (yl < g_gdp.__clip.yl) ? yl : g_gdp.__clip.yl;
+   yllimit = (yl < __clip.yl) ? yl : __clip.yl;
 
    ycur = yh & ~3;
    ylfar = yllimit | 3;
@@ -1485,7 +1622,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       ylfar += 4;
    else if (yllimit >> 2 >= 0 && yllimit>>2 < 1023)
       span[(yllimit >> 2) + 1].validline = 0;
-   yhlimit = (yh >= g_gdp.__clip.yh) ? yh : g_gdp.__clip.yh;
+   yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
 
    edges.allover = 1;
    edges.allunder = 1;
@@ -1566,7 +1703,7 @@ static void fill_rect(uint32_t w0, uint32_t w1)
       }
       else if (edges.spix == 3)
       {
-         const int invalidline = (g_gdp.sckeepodd ^ j) & g_gdp.scfield
+         const int invalidline = (sckeepodd ^ j) & scfield
             | (edges.allinval | edges.allover | edges.allunder);
          span[j].lx = maxxmx;
          span[j].rx = minxhx;
@@ -1581,19 +1718,19 @@ static INLINE void SET_SUBA_RGB_INPUT(int32_t **input_r, int32_t **input_g, int3
    switch (code & 0xf)
    {
       case 0:
-         *input_r = &g_gdp.combined_color.r;
-         *input_g = &g_gdp.combined_color.g;
-         *input_b = &g_gdp.combined_color.b;
+         *input_r = &combined_color.r;
+         *input_g = &combined_color.g;
+         *input_b = &combined_color.b;
          break;
       case 1:
-         *input_r = &g_gdp.texel0_color.r;
-         *input_g = &g_gdp.texel0_color.g;
-         *input_b = &g_gdp.texel0_color.b;
+         *input_r = &texel0_color.r;
+         *input_g = &texel0_color.g;
+         *input_b = &texel0_color.b;
          break;
       case 2:
-         *input_r = &g_gdp.texel1_color.r;
-         *input_g = &g_gdp.texel1_color.g;
-         *input_b = &g_gdp.texel1_color.b;
+         *input_r = &texel1_color.r;
+         *input_g = &texel1_color.g;
+         *input_b = &texel1_color.b;
          break;
       case 3:
          *input_r = &prim_color.r;
@@ -1640,19 +1777,19 @@ static INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int3
    switch (code & 0xf)
    {
       case 0:
-         *input_r = &g_gdp.combined_color.r;
-         *input_g = &g_gdp.combined_color.g;
-         *input_b = &g_gdp.combined_color.b;
+         *input_r = &combined_color.r;
+         *input_g = &combined_color.g;
+         *input_b = &combined_color.b;
          break;
       case 1:
-         *input_r = &g_gdp.texel0_color.r;
-         *input_g = &g_gdp.texel0_color.g;
-         *input_b = &g_gdp.texel0_color.b;
+         *input_r = &texel0_color.r;
+         *input_g = &texel0_color.g;
+         *input_b = &texel0_color.b;
          break;
       case 2:
-         *input_r = &g_gdp.texel1_color.r;
-         *input_g = &g_gdp.texel1_color.g;
-         *input_b = &g_gdp.texel1_color.b;
+         *input_r = &texel1_color.r;
+         *input_g = &texel1_color.g;
+         *input_b = &texel1_color.b;
          break;
       case 3:
          *input_r = &prim_color.r;
@@ -1699,19 +1836,19 @@ static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
    switch (code & 0x1f)
    {
       case 0:
-         *input_r = &g_gdp.combined_color.r;
-         *input_g = &g_gdp.combined_color.g;
-         *input_b = &g_gdp.combined_color.b;
+         *input_r = &combined_color.r;
+         *input_g = &combined_color.g;
+         *input_b = &combined_color.b;
          break;
       case 1:
-         *input_r = &g_gdp.texel0_color.r;
-         *input_g = &g_gdp.texel0_color.g;
-         *input_b = &g_gdp.texel0_color.b;
+         *input_r = &texel0_color.r;
+         *input_g = &texel0_color.g;
+         *input_b = &texel0_color.b;
          break;
       case 2:
-         *input_r = &g_gdp.texel1_color.r;
-         *input_g = &g_gdp.texel1_color.g;
-         *input_b = &g_gdp.texel1_color.b;
+         *input_r = &texel1_color.r;
+         *input_g = &texel1_color.g;
+         *input_b = &texel1_color.b;
          break;
       case 3:
          *input_r = &prim_color.r;
@@ -1734,19 +1871,19 @@ static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
          *input_b = &key_scale.b;
          break;
       case 7:
-         *input_r = &g_gdp.combined_color.a;
-         *input_g = &g_gdp.combined_color.a;
-         *input_b = &g_gdp.combined_color.a;
+         *input_r = &combined_color.a;
+         *input_g = &combined_color.a;
+         *input_b = &combined_color.a;
          break;
       case 8:
-         *input_r = &g_gdp.texel0_color.a;
-         *input_g = &g_gdp.texel0_color.a;
-         *input_b = &g_gdp.texel0_color.a;
+         *input_r = &texel0_color.a;
+         *input_g = &texel0_color.a;
+         *input_b = &texel0_color.a;
          break;
       case 9:
-         *input_r = &g_gdp.texel1_color.a;
-         *input_g = &g_gdp.texel1_color.a;
-         *input_b = &g_gdp.texel1_color.a;
+         *input_r = &texel1_color.a;
+         *input_g = &texel1_color.a;
+         *input_b = &texel1_color.a;
          break;
       case 10:
          *input_r = &prim_color.a;
@@ -1764,9 +1901,9 @@ static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
          *input_b = &env_color.a;
          break;
       case 13:
-         *input_r = &g_gdp.lod_frac;
-         *input_g = &g_gdp.lod_frac;
-         *input_b = &g_gdp.lod_frac;
+         *input_r = &lod_frac;
+         *input_g = &lod_frac;
+         *input_b = &lod_frac;
          break;
       case 14:
          *input_r = &primitive_lod_frac;
@@ -1806,19 +1943,19 @@ static INLINE void SET_ADD_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
    switch (code & 0x7)
    {
       case 0:
-         *input_r = &g_gdp.combined_color.r;
-         *input_g = &g_gdp.combined_color.g;
-         *input_b = &g_gdp.combined_color.b;
+         *input_r = &combined_color.r;
+         *input_g = &combined_color.g;
+         *input_b = &combined_color.b;
          break;
       case 1:
-         *input_r = &g_gdp.texel0_color.r;
-         *input_g = &g_gdp.texel0_color.g;
-         *input_b = &g_gdp.texel0_color.b;
+         *input_r = &texel0_color.r;
+         *input_g = &texel0_color.g;
+         *input_b = &texel0_color.b;
          break;
       case 2:
-         *input_r = &g_gdp.texel1_color.r;
-         *input_g = &g_gdp.texel1_color.g;
-         *input_b = &g_gdp.texel1_color.b;
+         *input_r = &texel1_color.r;
+         *input_g = &texel1_color.g;
+         *input_b = &texel1_color.b;
          break;
       case 3:
          *input_r = &prim_color.r;
@@ -1853,13 +1990,13 @@ static INLINE void SET_SUB_ALPHA_INPUT(int32_t **input, int code)
    switch (code & 0x7)
    {
       case 0:
-         *input = &g_gdp.combined_color.a;
+         *input = &combined_color.a;
          break;
       case 1:
-         *input = &g_gdp.texel0_color.a;
+         *input = &texel0_color.a;
          break;
       case 2:
-         *input = &g_gdp.texel1_color.a;
+         *input = &texel1_color.a;
          break;
       case 3:
          *input = &prim_color.a;
@@ -1884,13 +2021,13 @@ static INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
    switch (code & 0x7)
    {
       case 0:
-         *input = &g_gdp.lod_frac;
+         *input = &lod_frac;
          break;
       case 1:
-         *input = &g_gdp.texel0_color.a;
+         *input = &texel0_color.a;
          break;
       case 2:
-         *input = &g_gdp.texel1_color.a;
+         *input = &texel1_color.a;
          break;
       case 3:
          *input = &prim_color.a;
@@ -1910,45 +2047,60 @@ static INLINE void SET_MUL_ALPHA_INPUT(int32_t **input, int code)
    }
 }
 
-static void set_combine(uint32_t w0, uint32_t w1)
+static void al_set_combine(uint32_t w0, uint32_t w1)
 {
-   gdp_set_combine(w0, w1);
+   combine.sub_a_rgb0 = (w0 & 0x00F00000) >>(52-32);
+   combine.mul_rgb0   = (w0 & 0x000F8000) >>(47-32);
+   combine.sub_a_a0   = (w0 & 0x00007000) >>(44-32);
+   combine.mul_a0     = (w0 & 0x00000E00) >>(41-32);
+   combine.sub_a_rgb1 = (w0 & 0x000001E0) >>(37-32);
+   combine.mul_rgb1   = (w0 & 0x0000001F) >>(32-32);
+   combine.sub_b_rgb0 = (w1 & 0xF0000000) >> 28;
+   combine.sub_b_rgb1 = (w1 & 0x0F000000) >> 24;
+   combine.sub_a_a1   = (w1 & 0x00E00000) >> 21;
+   combine.mul_a1     = (w1 & 0x001C0000) >> 18;
+   combine.add_rgb0   = (w1 & 0x00038000) >> 15;
+   combine.sub_b_a0   = (w1 & 0x00007000) >> 12;
+   combine.add_a0     = (w1 & 0x00000E00) >>  9;
+   combine.add_rgb1   = (w1 & 0x000001C0) >>  6;
+   combine.sub_b_a1   = (w1 & 0x00000038) >>  3;
+   combine.add_a1     = (w1 & 0x00000007) >>  0;
 
    SET_SUBA_RGB_INPUT(
          &combiner_rgbsub_a_r[0], &combiner_rgbsub_a_g[0],
-         &combiner_rgbsub_a_b[0], g_gdp.combine.sub_a_rgb0);
+         &combiner_rgbsub_a_b[0], combine.sub_a_rgb0);
    SET_SUBB_RGB_INPUT(
          &combiner_rgbsub_b_r[0], &combiner_rgbsub_b_g[0],
-         &combiner_rgbsub_b_b[0], g_gdp.combine.sub_b_rgb0);
+         &combiner_rgbsub_b_b[0], combine.sub_b_rgb0);
    SET_MUL_RGB_INPUT(
          &combiner_rgbmul_r[0], &combiner_rgbmul_g[0], &combiner_rgbmul_b[0],
-         g_gdp.combine.mul_rgb0);
+         combine.mul_rgb0);
    SET_ADD_RGB_INPUT(
          &combiner_rgbadd_r[0], &combiner_rgbadd_g[0], &combiner_rgbadd_b[0],
-         g_gdp.combine.add_rgb0);
-   SET_SUB_ALPHA_INPUT(&combiner_alphasub_a[0], g_gdp.combine.sub_a_a0);
-   SET_SUB_ALPHA_INPUT(&combiner_alphasub_b[0], g_gdp.combine.sub_b_a0);
-   SET_MUL_ALPHA_INPUT(&combiner_alphamul[0], g_gdp.combine.mul_a0);
-   SET_SUB_ALPHA_INPUT(&combiner_alphaadd[0], g_gdp.combine.add_a0);
+         combine.add_rgb0);
+   SET_SUB_ALPHA_INPUT(&combiner_alphasub_a[0], combine.sub_a_a0);
+   SET_SUB_ALPHA_INPUT(&combiner_alphasub_b[0], combine.sub_b_a0);
+   SET_MUL_ALPHA_INPUT(&combiner_alphamul[0], combine.mul_a0);
+   SET_SUB_ALPHA_INPUT(&combiner_alphaadd[0], combine.add_a0);
 
    SET_SUBA_RGB_INPUT(
          &combiner_rgbsub_a_r[1], &combiner_rgbsub_a_g[1],
-         &combiner_rgbsub_a_b[1], g_gdp.combine.sub_a_rgb1);
+         &combiner_rgbsub_a_b[1], combine.sub_a_rgb1);
    SET_SUBB_RGB_INPUT(
          &combiner_rgbsub_b_r[1], &combiner_rgbsub_b_g[1],
-         &combiner_rgbsub_b_b[1], g_gdp.combine.sub_b_rgb1);
+         &combiner_rgbsub_b_b[1], combine.sub_b_rgb1);
    SET_MUL_RGB_INPUT(
          &combiner_rgbmul_r[1], &combiner_rgbmul_g[1], &combiner_rgbmul_b[1],
-         g_gdp.combine.mul_rgb1);
+         combine.mul_rgb1);
    SET_ADD_RGB_INPUT(
          &combiner_rgbadd_r[1], &combiner_rgbadd_g[1], &combiner_rgbadd_b[1],
-         g_gdp.combine.add_rgb1);
-   SET_SUB_ALPHA_INPUT(&combiner_alphasub_a[1], g_gdp.combine.sub_a_a1);
-   SET_SUB_ALPHA_INPUT(&combiner_alphasub_b[1], g_gdp.combine.sub_b_a1);
-   SET_MUL_ALPHA_INPUT(&combiner_alphamul[1], g_gdp.combine.mul_a1);
-   SET_SUB_ALPHA_INPUT(&combiner_alphaadd[1], g_gdp.combine.add_a1);
+         combine.add_rgb1);
+   SET_SUB_ALPHA_INPUT(&combiner_alphasub_a[1], combine.sub_a_a1);
+   SET_SUB_ALPHA_INPUT(&combiner_alphasub_b[1], combine.sub_b_a1);
+   SET_MUL_ALPHA_INPUT(&combiner_alphamul[1], combine.mul_a1);
+   SET_SUB_ALPHA_INPUT(&combiner_alphaadd[1], combine.add_a1);
 
-   g_gdp.other_modes.f.stalederivs = 1;
+   other_modes.f.stalederivs = 1;
 }
 
 #ifdef USE_SSE_SUPPORT
@@ -1971,25 +2123,70 @@ static INLINE __m128i mm_mullo_epi32_seh(__m128i dest, __m128i src)
 #endif
 
 static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
-   gdp_no_op              ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-   tri_noshade       ,tri_noshade_z     ,tri_tex           ,tri_tex_z         ,
-   tri_shade         ,tri_shade_z       ,tri_texshade      ,tri_texshade_z    ,
-
-   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-
-   gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
-   tex_rect          ,tex_rect_flip     ,gdp_load_sync         ,gdp_pipe_sync         ,
-   gdp_tile_sync         ,gdp_full_sync         ,al_set_key_gb        ,al_set_key_r         ,
-   al_set_convert       ,gdp_set_scissor       ,set_prim_depth    ,set_other_modes   ,
-
-   load_tlut         ,gdp_invalid           ,gdp_set_tile_size     ,load_block        ,
-   load_tile         ,set_tile          ,fill_rect         , al_set_fill_color    ,
-   al_set_fog_color     ,al_set_blend_color   , al_set_prim_color    ,al_set_env_color     ,
-   set_combine       ,gdp_set_texture_image ,gdp_set_mask_image    ,gdp_set_color_image   ,
+   al_noop,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_tri_noshade,
+   al_tri_noshade_z,
+   al_tri_tex,
+   al_tri_tex_z,
+   al_tri_shade,
+   al_tri_shade_z,
+   al_tri_texshade,
+   al_tri_texshade_z,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_invalid,
+   al_tex_rect,
+   al_tex_rect_flip,
+   al_sync_load,
+   al_sync_pipe,
+   al_sync_tile,
+   al_sync_full,
+   al_set_key_gb,
+   al_set_key_r,
+   al_set_convert,
+   al_set_scissor,
+   al_set_prim_depth,
+   al_set_other_modes,
+   al_load_tlut,
+   al_invalid,
+   al_set_tile_size,
+   al_load_block,
+   al_load_tile,
+   al_set_tile,
+   al_fill_rect,
+   al_set_fill_color,
+   al_set_fog_color,
+   al_set_blend_color,
+   al_set_prim_color,
+   al_set_env_color,
+   al_set_combine,
+   al_set_texture_image,
+   al_set_mask_image,
+   al_set_color_image,
 };
 
 static const int DP_CMD_LEN_W[64] = { /* command length, in DP FIFO words */

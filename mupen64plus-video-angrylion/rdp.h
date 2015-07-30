@@ -2,7 +2,6 @@
 #define _RDP_H_
 
 #include "z64.h"
-#include "../mupen64plus-core/src/rdp_common/gdp.h"
 
 #ifdef USE_SSE_SUPPORT
 #include <emmintrin.h>
@@ -60,6 +59,18 @@ _mm_unpacklo_epi64(_mm_unpacklo_epi32(m, n), _mm_unpackhi_epi32(m, n))
 }
 #endif
 
+#ifndef GET_LOW
+#define GET_LOW(x)      (((x) & 0x003E) << 2)
+#endif
+
+#ifndef GET_MED
+#define GET_MED(x)      (((x) & 0x07C0) >> 3)
+#endif
+
+#ifndef GET_HI
+#define GET_HI(x)       (((x) >> 8) & 0x00F8)
+#endif
+
 #ifdef _MSC_VER
 typedef __int8              i8;
 typedef __int16             i16;
@@ -87,6 +98,13 @@ typedef unsigned short          u16;
 typedef unsigned int            u32;
 typedef unsigned long long      u64;
 #endif
+
+typedef int8_t INT8;
+typedef uint8_t UINT8;
+typedef int16_t INT16;
+typedef uint16_t UINT16;
+typedef int32_t  INT32;
+typedef uint32_t UINT32;
 
 #ifdef USE_SSE_SUPPORT
 typedef __m128i     v8;
@@ -173,6 +191,34 @@ typedef struct {
 typedef struct {
     int32_t xl, yl, xh, yh;
 } RECTANGLE;
+
+typedef struct {
+    int clampdiffs, clampdifft;
+    int clampens, clampent;
+    int masksclamped, masktclamped;
+    int notlutswitch, tlutswitch;
+} FAKETILE;
+
+typedef struct {
+    int format;            /* format: ARGB, IA, ... */
+    int size;              /* size: 4, 8, 16, or 32-bit */
+    int line;              /* size of one row (x axis) in 64 bit words */
+    int tmem;              /* location in texture memory (in 64 bit words, max 512 (4MB)) */
+    int palette;           /* palette # to use */
+    int ct;                /* clamp_t */
+    int mt;                /* mirror_t */
+    int cs;                /* clamp_s */
+    int ms;                /* mirror_s */
+    int mask_t;            /* mask to wrap around (y axis) */
+    int shift_t;           /* ??? (scaling) */
+    int mask_s;            /* mask to wrap around (x axis) */
+    int shift_s;           /* ??? (scaling) */
+    INT32 sl;              /* lr_s - lower right s coordinate */
+    INT32 tl;              /* lr_t - lower right t coordinate */
+    INT32 sh;              /* ul_s - upper left  s coordinate */
+    INT32 th;              /* ul_t - upper left  t coordinate */
+    FAKETILE f;
+} TILE;
 
 typedef struct {
     int stalederivs;
@@ -337,15 +383,6 @@ extern void (*render_spans_1cycle_func[3])(int, int, int, int);
 extern void (*render_spans_2cycle_func[4])(int, int, int, int);
 extern void (*get_dither_noise_func[3])(int, int, int*, int*);
 
-static INLINE void calculate_tile_derivs(uint32_t i)
-{
-   g_gdp.tile[i].f.clampens     = g_gdp.tile[i].cs || !g_gdp.tile[i].mask_s;
-   g_gdp.tile[i].f.clampent     = g_gdp.tile[i].ct || !g_gdp.tile[i].mask_t;
-   g_gdp.tile[i].f.masksclamped = g_gdp.tile[i].mask_s <= 10 ? g_gdp.tile[i].mask_s : 10;
-   g_gdp.tile[i].f.masktclamped = g_gdp.tile[i].mask_t <= 10 ? g_gdp.tile[i].mask_t : 10;
-   g_gdp.tile[i].f.notlutswitch = (g_gdp.tile[i].format << 2) | g_gdp.tile[i].size;
-   g_gdp.tile[i].f.tlutswitch    = (g_gdp.tile[i].size << 2) | ((g_gdp.tile[i].format + 2) & 3);
-}
 
 extern NOINLINE void render_spans_copy(
     int start, int end, int tilenum, int flip);
@@ -376,6 +413,21 @@ extern i32 spans_cd_rgba[4];
 extern int spans_cdz;
 
 extern i32 spans_d_stwz_dy[4];
+
+extern int scfield;
+extern int sckeepodd;
+
+/* texture image */
+extern int ti_format;         /* format: ARGB, IA, ... */
+extern int ti_size;           /* size: 4, 8, 16, or 32-bit */
+extern int ti_width;          /* used in rdp_settextureimage */
+extern UINT32 ti_address;     /* address in RDRAM to load the texture from */
+
+extern int fb_format;
+extern int fb_size;
+extern int fb_width;
+extern UINT32 fb_address;
+extern UINT32 zb_address;
 
 extern uint32_t max_level;
 
@@ -414,13 +466,19 @@ extern int32_t *blender2a_g[2];
 extern int32_t *blender2a_b[2];
 extern int32_t *blender2b_a[2];
 
+extern RECTANGLE __clip;
+extern TILE tile[8];
+
 extern int32_t k0, k1, k2, k3, k4, k5;
 
-extern gdp_color nexttexel_color;
-extern gdp_color pixel_color;
-extern gdp_color inv_pixel_color;
-extern gdp_color memory_color;
-extern gdp_color shade_color;
+extern COLOR texel0_color;
+extern COLOR texel1_color;
+extern COLOR combined_color;
+extern COLOR nexttexel_color;
+extern COLOR pixel_color;
+extern COLOR inv_pixel_color;
+extern COLOR memory_color;
+extern COLOR shade_color;
 extern int32_t noise;
 extern int32_t one_color;
 extern int32_t zero_color;
@@ -436,6 +494,27 @@ extern COLOR fog_color;
 
 extern COLOR env_color;
 
+extern OTHER_MODES other_modes;
+extern COMBINE_MODES combine;
+
 extern int rdp_pipeline_crashed;
+
+extern INT32 lod_frac;
+
+static INLINE void calculate_clamp_diffs(UINT32 i)
+{
+   tile[i].f.clampdiffs = ((tile[i].sh >> 2) - (tile[i].sl >> 2)) & 0x3ff;
+   tile[i].f.clampdifft = ((tile[i].th >> 2) - (tile[i].tl >> 2)) & 0x3ff;
+}
+
+static INLINE void calculate_tile_derivs(UINT32 i)
+{
+    tile[i].f.clampens = tile[i].cs || !tile[i].mask_s;
+    tile[i].f.clampent = tile[i].ct || !tile[i].mask_t;
+    tile[i].f.masksclamped = tile[i].mask_s <= 10 ? tile[i].mask_s : 10;
+    tile[i].f.masktclamped = tile[i].mask_t <= 10 ? tile[i].mask_t : 10;
+    tile[i].f.notlutswitch = (tile[i].format << 2) | tile[i].size;
+    tile[i].f.tlutswitch = (tile[i].size << 2) | ((tile[i].format + 2) & 3);
+}
 
 #endif
