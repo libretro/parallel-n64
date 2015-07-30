@@ -337,6 +337,8 @@ extern int32_t *blender2a_g[2];
 extern int32_t *blender2a_b[2];
 extern int32_t *blender2b_a[2];
 
+extern int32_t k0, k1, k2, k3, k4, k5;
+
 extern gdp_color nexttexel_color;
 extern gdp_color pixel_color;
 extern gdp_color inv_pixel_color;

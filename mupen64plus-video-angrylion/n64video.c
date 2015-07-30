@@ -46,6 +46,8 @@ int32_t *blender2a_g[2];
 int32_t *blender2a_b[2];
 int32_t *blender2b_a[2];
 
+int32_t k0, k1, k2, k3, k4, k5;
+
 COLOR prim_color;
 
 COLOR fog_color;
@@ -3134,10 +3136,10 @@ static void texture_pipeline_cycle(gdp_color *TEX, gdp_color *prev, int32_t SSS,
       }
       else
       {
-         newk0 = g_gdp.k0;
-         newk1 = g_gdp.k1;
-         newk2 = g_gdp.k2;
-         newk3 = g_gdp.k3;
+         newk0 = k0;
+         newk1 = k1;
+         newk2 = k2;
+         newk3 = k3;
          invk0 = ~newk0;
          invk1 = ~newk1;
          invk2 = ~newk2;
@@ -3185,10 +3187,10 @@ static void texture_pipeline_cycle(gdp_color *TEX, gdp_color *prev, int32_t SSS,
       }
       else
       {
-         newk0 = g_gdp.k0;
-         newk1 = g_gdp.k1;
-         newk2 = g_gdp.k2;
-         newk3 = g_gdp.k3;
+         newk0 = k0;
+         newk1 = k1;
+         newk2 = k2;
+         newk3 = k3;
          invk0 = ~newk0; 
          invk1 = ~newk1; 
          invk2 = ~newk2; 

@@ -1363,6 +1363,17 @@ static void load_tile(uint32_t w0, uint32_t w1)
    tile_tlut_common_cs_decoder(w0, w1);
 }
 
+static void al_set_convert(uint32_t w0, uint32_t w1)
+{
+   k0  = (w0 & 0x003FE000) >> (45 - 32);
+   k1  = (w0 & 0x00001FF0) >> (36 - 32);
+   k2  = (w0 & 0x0000000F) << 5;
+   k2 |= (w1 & 0xF8000000) >> (27 - 0);
+   k3  = (w1 & 0x07FC0000) >> 18;
+   k4  = (w1 & 0x0003FE00) >>  9;
+   k5  = (w1 & 0x000001FF) >>  0;
+}
+
 static void al_set_fog_color(uint32_t w0, uint32_t w1)
 {
    fog_color.r = (w1 & 0xFF000000) >> 24;
@@ -1625,9 +1636,9 @@ static INLINE void SET_SUBB_RGB_INPUT(int32_t **input_r, int32_t **input_g, int3
          *input_b = &g_gdp.key_center.b;
          break;
       case 7:
-         *input_r = &g_gdp.k4;
-         *input_g = &g_gdp.k4;
-         *input_b = &g_gdp.k4;
+         *input_r = &k4;
+         *input_g = &k4;
+         *input_b = &k4;
          break;
       case 8:
       case 9:
@@ -1724,9 +1735,9 @@ static INLINE void SET_MUL_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32
          *input_b = &primitive_lod_frac;
          break;
       case 15:
-         *input_r = &g_gdp.k5;
-         *input_g = &g_gdp.k5;
-         *input_b = &g_gdp.k5;
+         *input_r = &k5;
+         *input_g = &k5;
+         *input_b = &k5;
          break;
       case 16:
       case 17:
@@ -1934,7 +1945,7 @@ static void (*const rdp_command_table[64])(uint32_t, uint32_t) = {
    gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,gdp_invalid           ,
    tex_rect          ,tex_rect_flip     ,gdp_load_sync         ,gdp_pipe_sync         ,
    gdp_tile_sync         ,gdp_full_sync         ,gdp_set_key_gb        ,gdp_set_key_r         ,
-   gdp_set_convert       ,gdp_set_scissor       ,set_prim_depth    ,set_other_modes   ,
+   al_set_convert       ,gdp_set_scissor       ,set_prim_depth    ,set_other_modes   ,
 
    load_tlut         ,gdp_invalid           ,gdp_set_tile_size     ,load_block        ,
    load_tile         ,set_tile          ,fill_rect         ,gdp_set_fill_color    ,
