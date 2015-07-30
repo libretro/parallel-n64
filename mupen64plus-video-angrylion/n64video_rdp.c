@@ -908,17 +908,18 @@ static NOINLINE void draw_texture_rectangle(
    i32 d_stwz_dx[2], d_stwz_dy[2];
 
    i32 d_stwz_dxh[4];
-   i32 xlr[2];
+   i32 xleft, xright;
    u8 xfrac;
 
    int maxxmx, minxhx;
    int curcross;
+   int allover, allunder, curover, curunder;
+   int allinval;
    int ycur, ylfar;
    int invaly;
    register int j, k;
-   edgewalker_info_t edges = {0};
-   edges.clipxlshift = g_gdp.__clip.xl << 1;
-   edges.clipxhshift = g_gdp.__clip.xh << 1;
+   const i32 clipxlshift = g_gdp.__clip.xl << 1;
+   const i32 clipxhshift = g_gdp.__clip.xh << 1;
 
    max_level = 0;
    maxxmx = 0;
@@ -980,76 +981,98 @@ static NOINLINE void draw_texture_rectangle(
    else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
       span[(yllimit >> 2) + 1].validline = 0;
 
-   xlr[0]    = xm/* & ~0x00000001 // never needed because xm <<= 14 */;
-   xlr[1]    = xh/* & ~0x00000001 // never needed because xh <<= 14 */;
-   xfrac     = (xlr[1] >> 8) & 0xFF;
+   xleft = xm/* & ~0x00000001 // never needed because xm <<= 14 */;
+   xright = xh/* & ~0x00000001 // never needed because xh <<= 14 */;
+   xfrac = (xright >> 8) & 0xFF;
 
-   edges.allover  = 1;
-   edges.allunder = 1;
-   edges.curover  = 0;
-   edges.curunder = 0;
-   edges.allinval = 1;
-
+   allover = 1;
+   allunder = 1;
+   curover = 0;
+   curunder = 0;
+   allinval = 1;
    for (k = ycur; k <= ylfar; k++)
    {
-      int xrsc, xlsc;
+      int xrsc, xlsc, stickybit;
+      const int spix = k & 3;
       const int yhclose = yhlimit & ~3;
-      edges.spix = k & 3;
 
       if (k < yhclose)
-         continue;
-
-      invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
-      j = k >> 2;
-
-      if (edges.spix == 0)
+         { /* branch */ }
+      else
       {
-         maxxmx = 0x000;
-         minxhx = 0xFFF;
-         edges.allover = edges.allunder = 1;
-         edges.allinval = 1;
+         invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
+         j = k >> 2;
+         if (spix == 0)
+         {
+            maxxmx = 0x000;
+            minxhx = 0xFFF;
+            allover = allunder = 1;
+            allinval = 1;
+         }
+
+         stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
+         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+         xrsc = (xright >> 13)&0x1FFE | stickybit;
+         curunder = !!(xright & 0x08000000);
+         curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
+         xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
+         curover  = !!(xrsc & 0x00002000);
+         xrsc = xrsc & 0x1FFF;
+         curover |= (u32)~(xrsc - clipxlshift) >> 31;
+         xrsc = curover ? clipxlshift : xrsc;
+         span[j].majorx[spix] = xrsc & 0x1FFF;
+         allover &= curover;
+         allunder &= curunder;
+
+         stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+         xlsc = (xleft >> 13)&0x1FFE | stickybit;
+         curunder = !!(xleft & 0x08000000);
+         curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
+         xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
+         curover  = !!(xlsc & 0x00002000);
+         xlsc &= 0x1FFF;
+         curover |= (u32)~(xlsc - clipxlshift) >> 31;
+         xlsc = curover ? clipxlshift : xlsc;
+         span[j].minorx[spix] = xlsc & 0x1FFF;
+         allover &= curover;
+         allunder &= curunder;
+
+         curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
+                  < (xright&0x0FFFC000 ^ 0x08000000));
+         invaly |= curcross;
+         span[j].invalyscan[spix] = invaly;
+         allinval &= invaly;
+         if (invaly != 0)
+            { /* branch */ }
+         else
+         {
+            xlsc = (xlsc >> 3) & 0xFFF;
+            xrsc = (xrsc >> 3) & 0xFFF;
+            maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
+            minxhx = (xrsc < minxhx) ? xrsc : minxhx;
+         }
+
+         if (spix == 0)
+         {
+            span[j].unscrx = xright >> 16;
+         /* xfrac = (xright >> 8) & 0xFF; // xfrac never changes. */
+            setzero_si128(span[j].rgba);
+            span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
+            span[j].stwz[1] = (stwz[1] - xfrac*d_stwz_dxh[1]) & ~0x000003FF;
+            span[j].stwz[2] = 0 & ~0x000003FF;
+            span[j].stwz[3] = 0 & ~0x000003FF;
+         }
+         if (spix == 3)
+         {
+            const int invalidline = (g_gdp.sckeepodd ^ j) & g_gdp.scfield
+                                  | (allinval | allover | allunder);
+            span[j].lx = maxxmx;
+            span[j].rx = minxhx;
+            span[j].validline = invalidline ^ 1;
+         }
       }
-
-      draw_triangle_edge_common(&edges, xlr[1], &xrsc, 1);
-      span[j].majorx[edges.spix] = xrsc & 0x1FFF;
-
-      draw_triangle_edge_common(&edges, xlr[0], &xlsc, 0);
-      span[j].minorx[edges.spix] = xlsc & 0x1FFF;
-
-      curcross = ((xlr[0] & 0x0FFFC000 ^ 0x08000000)
-            < (xlr[1] & 0x0FFFC000 ^ 0x08000000));
-      invaly |= curcross;
-      span[j].invalyscan[edges.spix] = invaly;
-      edges.allinval &= invaly;
-
-      if (invaly == 0)
-      {
-         xlsc = (xlsc >> 3) & 0xFFF;
-         xrsc = (xrsc >> 3) & 0xFFF;
-         maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
-         minxhx = (xrsc < minxhx) ? xrsc : minxhx;
-      }
-
-      if (edges.spix == 0)
-      {
-         span[j].unscrx = xlr[1] >> 16;
-         /* xfrac = (xlr[1] >> 8) & 0xFF; // xfrac never changes. */
-         setzero_si128(span[j].rgba);
-         span[j].stwz[0] = (stwz[0] - xfrac*d_stwz_dxh[0]) & ~0x000003FF;
-         span[j].stwz[1] = (stwz[1] - xfrac*d_stwz_dxh[1]) & ~0x000003FF;
-         span[j].stwz[2] = 0 & ~0x000003FF;
-         span[j].stwz[3] = 0 & ~0x000003FF;
-      }
-      if (edges.spix == 3)
-      {
-         const int invalidline = (g_gdp.sckeepodd ^ j) & g_gdp.scfield
-            | (edges.allinval | edges.allover | edges.allunder);
-         span[j].lx = maxxmx;
-         span[j].rx = minxhx;
-         span[j].validline = invalidline ^ 1;
-      }
-
-      if (edges.spix == 3)
+      if (spix == 3)
       {
          stwz[0] = (stwz[0] + d_stwz_dy[0]) & ~0x000001FF;
          stwz[1] = (stwz[1] + d_stwz_dy[1]) & ~0x000001FF;
