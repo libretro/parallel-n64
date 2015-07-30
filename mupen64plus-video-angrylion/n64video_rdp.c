@@ -228,45 +228,23 @@ STRICTINLINE static u16 normalize_dzpix(u16 sum)
    return 0;
 }
 
-typedef struct edgewalker_info
-{
-   int allover, allunder, curover, curunder;
-   int allinval;
-   int spix;
-   int xlrsc[2];
-   int stickybit;
-} edgewalker_info_t;
-
-
 static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int texture, int zbuffer)
 {
-   int base;
-   int lft;             /* Left major flag, 0 = left major, 1 = right major */
-   int level;           /* Number of mip-maps minus one. */
-   int tile;            /* Tile descriptor index. Used to reference texture for this primitive */
-   s32 yl;              /* Y coordinate of low minor edge. */
-   s32 ym;              /* Y coordinate of mid minor edge. */
-   s32 yh;              /* Y coordinate of major edge. */
-   s32 xl;              /* X coordinate of low edge, integer. */
-   s32 xh;              /* X coordinate of major edge. */
-   s32 xm;              /* triangle edge x-coordinates */
-   s32 DxLDy;           /* Inverse slope of low edge, integer. */
-   s32 DxHDy;           /* Inverse slope of major edge, integer. */
-   s32 DxMDy;           /* INverse slope of middle edge, integer. */
+   register int base;
+   int lft, level, tile;
+   s32 yl, ym, yh; /* triangle edge y-coordinates */
+   s32 xl, xh, xm; /* triangle edge x-coordinates */
+   s32 DxLDy, DxHDy, DxMDy; /* triangle edge inverse-slopes */
    int tilenum, flip;
 
-   i32 rgba[4];         /* RGBA color components */
-   i32 d_rgba_dx[4];    /* RGBA delda per x-coordinate delta */
-   i32 d_rgba_de[4];    /* RGBA delta along the edge */
-   i32 d_rgba_dy[4];    /* RGBA delta per y-coordinate delta */
-   i16 rgba_int[4];
-   i16 rgba_frac[4];
-   i16 d_rgba_dx_int[4];
-   i16 d_rgba_dx_frac[4];
-   i16 d_rgba_de_int[4];
-   i16 d_rgba_de_frac[4];
-   i16 d_rgba_dy_int[4];
-   i16 d_rgba_dy_frac[4];
+   i32 rgba[4]; /* RGBA color components */
+   i32 d_rgba_dx[4]; /* RGBA delda per x-coordinate delta */
+   i32 d_rgba_de[4]; /* RGBA delta along the edge */
+   i32 d_rgba_dy[4]; /* RGBA delta per y-coordinate delta */
+   i16 rgba_int[4], rgba_frac[4];
+   i16 d_rgba_dx_int[4], d_rgba_dx_frac[4];
+   i16 d_rgba_de_int[4], d_rgba_de_frac[4];
+   i16 d_rgba_dy_int[4], d_rgba_dy_frac[4];
 
    i32 stwz[4];
    i32 d_stwz_dx[4];
@@ -291,8 +269,9 @@ static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int text
    int ldflag;
    int invaly;
    int curcross;
-   int j, k;
-   edgewalker_info_t edges = {0};
+   int allover, allunder, curover, curunder;
+   int allinval;
+   register int j, k;
    const i32 clipxlshift = __clip.xl << 1;
    const i32 clipxhshift = __clip.xh << 1;
 
@@ -314,7 +293,9 @@ static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int text
    setzero_si64(d_stwz_dy_int);
    setzero_si64(d_stwz_dy_frac);
 
-   /* Edge Coefficients */
+   /*
+    * Edge Coefficients
+    */
    lft   = (cmd_data[base + 0].UW32[0] & 0x00800000) >> (55 - 32);
    /* unused  (cmd_data[base + 0].UW32[0] & 0x00400000) >> (54 - 32) */
    level = (cmd_data[base + 0].UW32[0] & 0x00380000) >> (51 - 32);
@@ -323,11 +304,11 @@ static NOINLINE void draw_triangle(uint32_t w0, uint32_t w1, int shade, int text
    max_level = level;
    tilenum = tile;
 
-   yl = (w0 & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
+   yl = (cmd_data[base + 0].UW32[0] & 0x0000FFFF) >> (32 - 32); /* & 0x3FFF */
    yl = SIGN(yl, 14);
-   ym = (w1 & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
+   ym = (cmd_data[base + 0].UW32[1] & 0xFFFF0000) >> (16 -  0); /* & 0x3FFF */
    ym = SIGN(ym, 14);
-   yh = (w1 & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
+   yh = (cmd_data[base + 0].UW32[1] & 0x0000FFFF) >> ( 0 -  0); /* & 0x3FFF */
    yh = SIGN(yh, 14);
 
    xl = cmd_data[base + 1].UW32[0];
@@ -675,18 +656,19 @@ no_read_zbuffer_coefficients:
    xlr[1] = xh & ~0x00000001;
    xfrac = (xlr[1] >> 8) & 0xFF;
 
-   edges.allover = 1;
-   edges.allunder = 1;
-   edges.curover = 0;
-   edges.curunder = 0;
-   edges.allinval = 1;
+   allover = 1;
+   allunder = 1;
+   curover = 0;
+   curunder = 0;
+   allinval = 1;
 
    for (k = ycur; k <= ylfar; k++)
    {
       static int minmax[2];
+      int stickybit;
+      int xlrsc[2];
+      const int spix = k & 3;
       const int yhclose = yhlimit & ~3;
-
-      edges.spix = k & 3;
 
       if (k == ym)
       {
@@ -694,62 +676,66 @@ no_read_zbuffer_coefficients:
          xlr_inc[0] = (DxLDy >> 2) & ~0x00000001;
       }
 
-      if (k >= yhclose)
+      if (k < yhclose)
+      { /* branch */ }
+      else
       {
          invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
          j = k >> 2;
-         if (edges.spix == 0)
+         if (spix == 0)
          {
             minmax[1] = 0x000;
             minmax[0] = 0xFFF;
-            edges.allover = edges.allunder = 1;
-            edges.allinval = 1;
+            allover = allunder = 1;
+            allinval = 1;
          }
 
-         edges.stickybit = (xlr[1] & 0x00003FFF) - 1;
-         edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
-         edges.xlrsc[1] = (xlr[1] >> 13)&0x1FFE | edges.stickybit;
-         edges.curunder = !!(xlr[1] & 0x08000000);
-         edges.curunder |= (u32)(edges.xlrsc[1] - clipxhshift)>>31;
-         edges.xlrsc[1] = edges.curunder ? clipxhshift : (xlr[1]>>13)&0x3FFE | edges.stickybit;
-         edges.curover  = !!(edges.xlrsc[1] & 0x00002000);
-         edges.xlrsc[1] = edges.xlrsc[1] & 0x1FFF;
-         edges.curover |= (u32)~(edges.xlrsc[1] - clipxlshift) >> 31;
-         edges.xlrsc[1] = edges.curover ? clipxlshift : edges.xlrsc[1];
-         span[j].majorx[edges.spix] = edges.xlrsc[1] & 0x1FFF;
-         edges.allover  &= edges.curover;
-         edges.allunder &= edges.curunder;
+         stickybit = (xlr[1] & 0x00003FFF) - 1;
+         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+         xlrsc[1] = (xlr[1] >> 13)&0x1FFE | stickybit;
+         curunder = !!(xlr[1] & 0x08000000);
+         curunder = curunder | (u32)(xlrsc[1] - clipxhshift)>>31;
+         xlrsc[1] = curunder ? clipxhshift : (xlr[1]>>13)&0x3FFE | stickybit;
+         curover  = !!(xlrsc[1] & 0x00002000);
+         xlrsc[1] = xlrsc[1] & 0x1FFF;
+         curover |= (u32)~(xlrsc[1] - clipxlshift) >> 31;
+         xlrsc[1] = curover ? clipxlshift : xlrsc[1];
+         span[j].majorx[spix] = xlrsc[1] & 0x1FFF;
+         allover &= curover;
+         allunder &= curunder;
 
-         edges.stickybit = (xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-         edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
-         edges.xlrsc[0] = (xlr[0] >> 13)&0x1FFE | edges.stickybit;
-         edges.curunder = !!(xlr[0] & 0x08000000);
-         edges.curunder |= (u32)(edges.xlrsc[0] - clipxhshift)>>31;
-         edges.xlrsc[0] = edges.curunder ? clipxhshift : (xlr[0]>>13)&0x3FFE | edges.stickybit;
-         edges.curover  = !!(edges.xlrsc[0] & 0x00002000);
-         edges.xlrsc[0] &= 0x1FFF;
-         edges.curover |= (u32)~(edges.xlrsc[0] - clipxlshift) >> 31;
-         edges.xlrsc[0] = edges.curover ? clipxlshift : edges.xlrsc[0];
-         span[j].minorx[edges.spix] = edges.xlrsc[0] & 0x1FFF;
-         edges.allover  &= edges.curover;
-         edges.allunder &= edges.curunder;
+         stickybit = (xlr[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+         stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+         xlrsc[0] = (xlr[0] >> 13)&0x1FFE | stickybit;
+         curunder = !!(xlr[0] & 0x08000000);
+         curunder = curunder | (u32)(xlrsc[0] - clipxhshift)>>31;
+         xlrsc[0] = curunder ? clipxhshift : (xlr[0]>>13)&0x3FFE | stickybit;
+         curover  = !!(xlrsc[0] & 0x00002000);
+         xlrsc[0] &= 0x1FFF;
+         curover |= (u32)~(xlrsc[0] - clipxlshift) >> 31;
+         xlrsc[0] = curover ? clipxlshift : xlrsc[0];
+         span[j].minorx[spix] = xlrsc[0] & 0x1FFF;
+         allover &= curover;
+         allunder &= curunder;
 
          curcross = ((xlr[1 - flip]&0x0FFFC000 ^ 0x08000000)
                <  (xlr[0 + flip]&0x0FFFC000 ^ 0x08000000));
          invaly |= curcross;
-         span[j].invalyscan[edges.spix] = invaly;
-         edges.allinval &= invaly;
-         if (invaly == 0)
+         span[j].invalyscan[spix] = invaly;
+         allinval &= invaly;
+         if (invaly != 0)
+         { /* branch */ }
+         else
          {
-            edges.xlrsc[0] = (edges.xlrsc[0] >> 3) & 0xFFF;
-            edges.xlrsc[1] = (edges.xlrsc[1] >> 3) & 0xFFF;
+            xlrsc[0] = (xlrsc[0] >> 3) & 0xFFF;
+            xlrsc[1] = (xlrsc[1] >> 3) & 0xFFF;
             minmax[0]
-            = (edges.xlrsc[flip - 0] < minmax[0]) ? edges.xlrsc[flip - 0] : minmax[0];
+            = (xlrsc[flip - 0] < minmax[0]) ? xlrsc[flip - 0] : minmax[0];
             minmax[1]
-            = (edges.xlrsc[1 - flip] > minmax[1]) ? edges.xlrsc[1 - flip] : minmax[1];
+            = (xlrsc[1 - flip] > minmax[1]) ? xlrsc[1 - flip] : minmax[1];
          }
 
-         if (edges.spix == ldflag)
+         if (spix == ldflag)
 #ifdef USE_SSE_SUPPORT
          {
             __m128i xmm_frac;
@@ -827,17 +813,16 @@ no_read_zbuffer_coefficients:
             & ~0x000003FF;
          }
 #endif
-         if (edges.spix == 3)
+         if (spix == 3)
          {
             const int invalidline = (sckeepodd ^ j) & scfield
-               | (edges.allinval | edges.allover | edges.allunder);
+               | (allinval | allover | allunder);
             span[j].lx = minmax[flip - 0];
             span[j].rx = minmax[1 - flip];
             span[j].validline = invalidline ^ 1;
          }
       }
-
-      if (edges.spix == 3)
+      if (spix == 3)
       {
          rgba[0] += d_rgba_de[0];
          rgba[1] += d_rgba_de[1];
@@ -855,6 +840,7 @@ no_read_zbuffer_coefficients:
 #ifdef USE_MMX_DECODES
    _mm_empty();
 #endif
+   return;
 }
 
 static void al_noop(uint32_t w0, uint32_t w1)
@@ -1240,123 +1226,141 @@ static void al_set_other_modes(uint32_t w0, uint32_t w1)
 
 #define ADDVALUES_LOAD() { t += dtde; }
 
-static void edgewalker_for_loads(int32_t* lewdata)
+static void edgewalker_for_loads(INT32* lewdata)
 {
-   int32_t yllimit;
-   int32_t yhlimit;
-   int ycur;
-   int ylfar;
+    int j = 0;
+    int xleft = 0, xright = 0;
+    int xstart = 0, xend = 0;
+    int s = 0, t = 0, w = 0;
+    int dsdx = 0, dtdx = 0;
+    int dsdy = 0, dtdy = 0;
+    int dsde = 0, dtde = 0;
+    int tilenum = 0, flip = 0;
 
-   int32_t xlr[2];
-   int32_t maxxmx, minxhx;
+    int spix;
+    int ycur;
+    int ylfar;
 
-   int j = 0;
-   int xstart = 0, xend = 0;
+    INT32 maxxmx, minxhx;
+    INT32 yl = 0, ym = 0, yh = 0;
+    INT32 xl = 0, xm = 0, xh = 0;
+    INT32 dxldy = 0, dxhdy = 0, dxmdy = 0;
 
-   int commandcode = (lewdata[0] >> 24) & 0x3f;
-   int ltlut = (commandcode == 0x30);
-   int coord_quad = ltlut || (commandcode == 0x33);
+    int commandcode = (lewdata[0] >> 24) & 0x3f;
+    int ltlut = (commandcode == 0x30);
+    int coord_quad = ltlut || (commandcode == 0x33);
+        
+    int k = 0;
+    int sign_dxhdy = 0;
+    int do_offset = 0;
+    int xfrac = 0;
 
-   int k = 0;
-   int sign_dxhdy = 0;
-   int do_offset = 0;
-   int xfrac = 0;
+    int valid_y = 1;
+    int length = 0;
+    INT32 xrsc = 0, xlsc = 0, stickybit = 0;
+    INT32 yllimit;
+    INT32 yhlimit;
 
-   int valid_y = 1;
-   int length = 0;
-   int32_t xrsc = 0, xlsc = 0;
+    flip = 1;
+    max_level = 0;
+    tilenum = (lewdata[0] >> 16) & 7;
 
-   edgewalker_info_t edges = {0};
+    
+    yl = SIGN(lewdata[0], 14); 
+    ym = lewdata[1] >> 16;
+    ym = SIGN(ym, 14);
+    yh = SIGN(lewdata[1], 14); 
+    
+    xl = SIGN(lewdata[2], 30);
+    xh = SIGN(lewdata[3], 30);
+    xm = SIGN(lewdata[4], 30);
+    
+    dxldy = 0;
+    dxhdy = 0;
+    dxmdy = 0;
 
-   int flip = 1;
-   int tilenum = (lewdata[0] >> 16) & 7;
+    s    = lewdata[5] & 0xffff0000;
+    t    = (lewdata[5] & 0xffff) << 16;
+    w    = 0;
+    dsdx = (lewdata[7] & 0xffff0000) | ((lewdata[6] >> 16) & 0xffff);
+    dtdx = ((lewdata[7] << 16) & 0xffff0000)    | (lewdata[6] & 0xffff);
+    dsde = 0;
+    dtde = (lewdata[9] & 0xffff) << 16;
+    dsdy = 0;
+    dtdy = (lewdata[8] & 0xffff) << 16;
 
-   int32_t yl = SIGN(lewdata[0], 14); 
-   int32_t ym = SIGN((lewdata[1] >> 16), 14);
-   int32_t yh = SIGN(lewdata[1], 14); 
+    spans_d_stwz[0] = dsdx & ~0x1f;
+    spans_d_stwz[1] = dtdx & ~0x1f;
+    spans_d_stwz[2] = 0;
 
-   int32_t xl = SIGN(lewdata[2], 30);
-   int32_t xh = SIGN(lewdata[3], 30);
-   int32_t xm = SIGN(lewdata[4], 30);
+    xright = xh & ~0x1;
+    xleft = xm & ~0x1;
 
-   int32_t dxldy = 0;
-   int32_t dxhdy = 0;
-   int32_t dxmdy = 0;
+#define ADJUST_ATTR_LOAD() {           \
+    span[j].stwz[0] = s & ~0x000003FF; \
+    span[j].stwz[1] = t & ~0x000003FF; \
+}
 
+#define ADDVALUES_LOAD() { \
+    t += dtde; \
+}
 
-   int s    = (lewdata[5] & 0xffff0000);
-   int t    = (lewdata[5] & 0xffff) << 16;
-   int w    = 0;
-   int dsdx = (lewdata[7] & 0xffff0000) | ((lewdata[6] >> 16) & 0xffff);
-   int dtdx = ((lewdata[7] << 16) & 0xffff0000)    | (lewdata[6] & 0xffff);
-   int dsde = 0;
-   int dtde = (lewdata[9] & 0xffff) << 16;
-   int dsdy = 0;
-   int dtdy = (lewdata[8] & 0xffff) << 16;
+    spix = 0;
+    ycur = yh & ~3;
+    ylfar = yl | 3;
+    yllimit = yl;
+    yhlimit = yh;
 
-   xlr[0]  = xm & ~0x1;
-   xlr[1]  = xh & ~0x1;
+    xfrac = 0;
+    xend = xright >> 16;
 
-   max_level = 0;
+    for (k = ycur; k <= ylfar; k++)
+    {
+        if (k == ym)
+            xleft = xl & ~1;
+        spix = k & 3;
+        if (!(k & ~0xfff))
+        {
+            j = k >> 2;
+            valid_y = !(k < yhlimit || k >= yllimit);
 
-   spans_d_stwz[0] = dsdx & ~0x1f;
-   spans_d_stwz[1] = dtdx & ~0x1f;
-   spans_d_stwz[2] = 0;
+            if (spix == 0)
+            {
+                maxxmx = 0;
+                minxhx = 0xfff;
+            }
 
-   edges.spix = 0;
-   ycur = yh & ~3;
-   ylfar = yl | 3;
-   yllimit = yl;
-   yhlimit = yh;
+            xrsc = (xright >> 13) & 0x7ffe;
 
-   xfrac = 0;
-   xend = xlr[1] >> 16;
+            xlsc = (xleft >> 13) & 0x7ffe;
 
-   for (k = ycur; k <= ylfar; k++)
-   {
-      if (k == ym)
-         xlr[0] = xl & ~1;
-      edges.spix = k & 3;
-      if (!(k & ~0xfff))
-      {
-         j = k >> 2;
-         valid_y = !(k < yhlimit || k >= yllimit);
+            if (valid_y)
+            {
+                maxxmx = (((xlsc >> 3) & 0xfff) > maxxmx) ? (xlsc >> 3) & 0xfff : maxxmx;
+                minxhx = (((xrsc >> 3) & 0xfff) < minxhx) ? (xrsc >> 3) & 0xfff : minxhx;
+            }
 
-         if (edges.spix == 0)
-         {
-            maxxmx = 0;
-            minxhx = 0xfff;
-         }
+            if (spix == 0)
+            {
+                span[j].unscrx = xend;
+                ADJUST_ATTR_LOAD();
+            }
 
-         xrsc = (xlr[1] >> 13) & 0x7ffe;
-         xlsc = (xlr[0] >> 13) & 0x7ffe;
+            if (spix == 3)
+            {
+                span[j].lx = maxxmx;
+                span[j].rx = minxhx;
+            }
+        }
 
-         if (valid_y)
-         {
-            maxxmx = (((xlsc >> 3) & 0xfff) > maxxmx) ? (xlsc >> 3) & 0xfff : maxxmx;
-            minxhx = (((xrsc >> 3) & 0xfff) < minxhx) ? (xrsc >> 3) & 0xfff : minxhx;
-         }
+        if (spix == 3)
+        {
+            ADDVALUES_LOAD();
+        }
+    }
 
-         if (edges.spix == 0)
-         {
-            span[j].unscrx = xend;
-            ADJUST_ATTR_LOAD();
-         }
-
-         if (edges.spix == 3)
-         {
-            span[j].lx = maxxmx;
-            span[j].rx = minxhx;
-         }
-      }
-
-      if (edges.spix == 3)
-      {
-         ADDVALUES_LOAD();
-      }
-   }
-
-   loading_pipeline(yhlimit >> 2, yllimit >> 2, tilenum, coord_quad, ltlut);
+    loading_pipeline(yhlimit >> 2, yllimit >> 2, tilenum, coord_quad, ltlut);
+    return;
 }
 
 static void al_set_tile_size(uint32_t w0, uint32_t w1)
@@ -1576,141 +1580,142 @@ static void al_set_tile(uint32_t w0, uint32_t w1)
 
 static void al_fill_rect(uint32_t w0, uint32_t w1)
 {
-   int xlint, xhint;
-   int ycur, ylfar;
-   int yllimit, yhlimit;
-   int invaly;
-   int curcross;
-   int j, k;
-   edgewalker_info_t edges = {0};
-   const i32 clipxlshift = __clip.xl << 1;
-   const i32 clipxhshift = __clip.xh << 1;
-   int xl = (w0 & 0x00FFF000) >> (44 - 32);  /* X coordinate of bottom right corner of rectangle. */
-   int yl = (w0 & 0x00000FFF) >> (32 - 32);  /* Y coordinate of bottom right corner of rectangle. */
-   int xh = (w1 & 0x00FFF000) >> (12 -  0);  /* X coordinate of top left corner of rectangle. */
-   int yh = (w1 & 0x00000FFF) >> ( 0 -  0);  /* Y coordinate of top left corner of rectangle. */
+    int xl, yl, xh, yh;
+    int xlint, xhint;
 
+    int ycur, ylfar;
+    int yllimit, yhlimit;
+    int invaly;
+    int curcross;
+    int allover, allunder, curover, curunder;
+    int allinval;
+    register int j, k;
+    const i32 clipxlshift = __clip.xl << 1;
+    const i32 clipxhshift = __clip.xh << 1;
 
-   yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
+    xl = (cmd_data[cmd_cur + 0].UW32[0] & 0x00FFF000) >> (44 - 32);
+    yl = (cmd_data[cmd_cur + 0].UW32[0] & 0x00000FFF) >> (32 - 32);
+    xh = (cmd_data[cmd_cur + 0].UW32[1] & 0x00FFF000) >> (12 -  0);
+    yh = (cmd_data[cmd_cur + 0].UW32[1] & 0x00000FFF) >> ( 0 -  0);
 
-   xlint = (unsigned)(xl) >> 2;
-   xhint = (unsigned)(xh) >> 2;
+    yl |= (other_modes.cycle_type & 2) ? 3 : 0; /* FILL or COPY */
 
-   max_level = 0;
-   xl = (xlint << 16) | (xl & 3)<<14;
-   xl = SIGN(xl, 30);
-   xh = (xhint << 16) | (xh & 3)<<14;
-   xh = SIGN(xh, 30);
+    xlint = (unsigned)(xl) >> 2;
+    xhint = (unsigned)(xh) >> 2;
 
-   setzero_si128(spans_d_rgba);
-   setzero_si128(spans_d_stwz);
+    max_level = 0;
+    xl = (xlint << 16) | (xl & 3)<<14;
+    xl = SIGN(xl, 30);
+    xh = (xhint << 16) | (xh & 3)<<14;
+    xh = SIGN(xh, 30);
 
-   setzero_si128(spans_d_rgba_dy);
-   setzero_si128(spans_d_stwz_dy);
+    setzero_si128(spans_d_rgba);
+    setzero_si128(spans_d_stwz);
 
-   setzero_si128(spans_cd_rgba);
-   spans_cdz = 0;
+    setzero_si128(spans_d_rgba_dy);
+    setzero_si128(spans_d_stwz_dy);
 
-   spans_dzpix = normalize_dzpix(0);
+    setzero_si128(spans_cd_rgba);
+    spans_cdz = 0;
 
-   invaly = 1;
-   yllimit = (yl < __clip.yl) ? yl : __clip.yl;
+    spans_dzpix = normalize_dzpix(0);
 
-   ycur = yh & ~3;
-   ylfar = yllimit | 3;
-   if (yl >> 2 > ylfar >> 2)
-      ylfar += 4;
-   else if (yllimit >> 2 >= 0 && yllimit>>2 < 1023)
-      span[(yllimit >> 2) + 1].validline = 0;
-   yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
+    invaly = 1;
+    yllimit = (yl < __clip.yl) ? yl : __clip.yl;
 
-   edges.allover = 1;
-   edges.allunder = 1;
-   edges.curover = 0;
-   edges.curunder = 0;
-   edges.allinval = 1;
+    ycur = yh & ~3;
+    ylfar = yllimit | 3;
+    if (yl >> 2 > ylfar >> 2)
+        ylfar += 4;
+    else if (yllimit >> 2 >= 0 && yllimit>>2 < 1023)
+        span[(yllimit >> 2) + 1].validline = 0;
+    yhlimit = (yh >= __clip.yh) ? yh : __clip.yh;
 
-   for (k = ycur; k <= ylfar; k++)
-   {
-      static int maxxmx, minxhx;
-      int xrsc, xlsc;
-      const int yhclose = yhlimit & ~3;
-      edges.spix = k & 3;
-      edges.xlrsc[0] = xl & ~0x00000001;
-      edges.xlrsc[1] = xh & ~0x00000001;
+    allover = 1;
+    allunder = 1;
+    curover = 0;
+    curunder = 0;
+    allinval = 1;
+    for (k = ycur; k <= ylfar; k++)
+    {
+        static int maxxmx, minxhx;
+        int xrsc, xlsc, stickybit;
+        const i32 xleft = xl & ~0x00000001, xright = xh & ~0x00000001;
+        const int yhclose = yhlimit & ~3;
+        const int spix = k & 3;
 
-      if (k < yhclose)
-         continue;
+        if (k < yhclose)
+            continue;
+        invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
+        j = k >> 2;
+        if (spix == 0)
+        {
+            maxxmx = 0x000;
+            minxhx = 0xFFF;
+            allover = allunder = 1;
+            allinval = 1;
+        }
 
-      invaly = (u32)(k - yhlimit)>>31 | (u32)~(k - yllimit)>>31;
-      j = k >> 2;
+        stickybit = (xright & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
+        stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+        xrsc = (xright >> 13)&0x1FFE | stickybit;
+        curunder = !!(xright & 0x08000000);
+        curunder = curunder | (u32)(xrsc - clipxhshift)>>31;
+        xrsc = curunder ? clipxhshift : (xright>>13)&0x3FFE | stickybit;
+        curover  = !!(xrsc & 0x00002000);
+        xrsc = xrsc & 0x1FFF;
+        curover |= (u32)~(xrsc - clipxlshift) >> 31;
+        xrsc = curover ? clipxlshift : xrsc;
+        span[j].majorx[spix] = xrsc & 0x1FFF;
+        allover &= curover;
+        allunder &= curunder;
 
-      if (edges.spix == 0)
-      {
-         maxxmx = 0x000;
-         minxhx = 0xFFF;
-         edges.allover = edges.allunder = 1;
-         edges.allinval = 1;
-      }
+        stickybit = (xleft & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
+        stickybit = (u32)~(stickybit) >> 31; /* (stickybit >= 0) */
+        xlsc = (xleft >> 13)&0x1FFE | stickybit;
+        curunder = !!(xleft & 0x08000000);
+        curunder = curunder | (u32)(xlsc - clipxhshift)>>31;
+        xlsc = curunder ? clipxhshift : (xleft>>13)&0x3FFE | stickybit;
+        curover  = !!(xlsc & 0x00002000);
+        xlsc &= 0x1FFF;
+        curover |= (u32)~(xlsc - clipxlshift) >> 31;
+        xlsc = curover ? clipxlshift : xlsc;
+        span[j].minorx[spix] = xlsc & 0x1FFF;
+        allover &= curover;
+        allunder &= curunder;
 
-      edges.stickybit = (edges.xlrsc[1] & 0x00003FFF) - 1; /* xright/2 & 0x1FFF */
-      edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
-      xrsc = (edges.xlrsc[1] >> 13)&0x1FFE | edges.stickybit;
-      edges.curunder = !!(edges.xlrsc[1] & 0x08000000);
-      edges.curunder |= (u32)(xrsc - clipxhshift)>>31;
-      xrsc = edges.curunder ? clipxhshift : (edges.xlrsc[1] >> 13)&0x3FFE | edges.stickybit;
-      edges.curover  = !!(xrsc & 0x00002000);
-      xrsc = xrsc & 0x1FFF;
-      edges.curover |= (u32)~(xrsc - clipxlshift) >> 31;
-      xrsc = edges.curover ? clipxlshift : xrsc;
-      span[j].majorx[edges.spix] = xrsc & 0x1FFF;
-      edges.allover  &= edges.curover;
-      edges.allunder &= edges.curunder;
+        curcross = ((xleft&0x0FFFC000 ^ 0x08000000)
+                 < (xright&0x0FFFC000 ^ 0x08000000));
+        invaly |= curcross;
+        span[j].invalyscan[spix] = invaly;
+        allinval &= invaly;
+        if (invaly != 0)
+            { /* branch */ }
+        else
+        {
+            xlsc = (xlsc >> 3) & 0xFFF;
+            xrsc = (xrsc >> 3) & 0xFFF;
+            maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
+            minxhx = (xrsc < minxhx) ? xrsc : minxhx;
+        }
 
-      edges.stickybit = (edges.xlrsc[0] & 0x00003FFF) - 1; /* xleft/2 & 0x1FFF */
-      edges.stickybit = (u32)~(edges.stickybit) >> 31; /* (stickybit >= 0) */
-      xlsc = (edges.xlrsc[0] >> 13)&0x1FFE | edges.stickybit;
-      edges.curunder = !!(edges.xlrsc[0] & 0x08000000);
-      edges.curunder |= (u32)(xlsc - clipxhshift)>>31;
-      xlsc = edges.curunder ? clipxhshift : (edges.xlrsc[0] >> 13)&0x3FFE | edges.stickybit;
-      edges.curover  = !!(xlsc & 0x00002000);
-      xlsc &= 0x1FFF;
-      edges.curover |= (u32)~(xlsc - clipxlshift) >> 31;
-      xlsc = edges.curover ? clipxlshift : xlsc;
-      span[j].minorx[edges.spix] = xlsc & 0x1FFF;
-      edges.allover &= edges.curover;
-      edges.allunder &= edges.curunder;
-
-      curcross = ((edges.xlrsc[0] & 0x0FFFC000 ^ 0x08000000)
-            < (edges.xlrsc[1] & 0x0FFFC000 ^ 0x08000000));
-      invaly |= curcross;
-      span[j].invalyscan[edges.spix] = invaly;
-      edges.allinval &= invaly;
-
-      if (invaly == 0)
-      {
-         xlsc = (xlsc >> 3) & 0xFFF;
-         xrsc = (xrsc >> 3) & 0xFFF;
-         maxxmx = (xlsc > maxxmx) ? xlsc : maxxmx;
-         minxhx = (xrsc < minxhx) ? xrsc : minxhx;
-      }
-
-      if (edges.spix == 0)
-      {
-         span[j].unscrx = edges.xlrsc[1] >> 16;
-         setzero_si128(span[j].rgba);
-         setzero_si128(span[j].stwz);
-      }
-      else if (edges.spix == 3)
-      {
-         const int invalidline = (sckeepodd ^ j) & scfield
-            | (edges.allinval | edges.allover | edges.allunder);
-         span[j].lx = maxxmx;
-         span[j].rx = minxhx;
-         span[j].validline = invalidline ^ 1;
-      }
-   }
-   render_spans(yhlimit >> 2, yllimit >> 2, 0, 1);
+        if (spix == 0)
+        {
+            span[j].unscrx = xright >> 16;
+            setzero_si128(span[j].rgba);
+            setzero_si128(span[j].stwz);
+        }
+        else if (spix == 3)
+        {
+            const int invalidline = (sckeepodd ^ j) & scfield
+                                  | (allinval | allover | allunder);
+            span[j].lx = maxxmx;
+            span[j].rx = minxhx;
+            span[j].validline = invalidline ^ 1;
+        }
+    }
+    render_spans(yhlimit >> 2, yllimit >> 2, 0, 1);
+    return;
 }
 
 static INLINE void SET_SUBA_RGB_INPUT(int32_t **input_r, int32_t **input_g, int32_t **input_b, int code)
