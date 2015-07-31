@@ -129,19 +129,13 @@ typedef int8_t INT8;
 #define dp_current (*(uint32_t*)gfx_info.DPC_CURRENT_REG)
 #define dp_status (*(uint32_t*)gfx_info.DPC_STATUS_REG)
 
-#define RREADADDR8(in) \
-    (((in) <= plim) ? (rdram8[(in) ^ BYTE_ADDR_XOR]) : 0)
-#define RREADIDX16(in) \
-    (((in) <= idxlim16) ? (rdram_16[(in) ^ WORD_ADDR_XOR]) : 0)
-#define RREADIDX32(in) \
-    (((in) <= idxlim32) ? (rdram[(in)]) : 0)
+#define RREADADDR8(in) (((in) <= plim) ? (rdram8[(in) ^ BYTE_ADDR_XOR]) : 0)
+#define RREADIDX16(in) (((in) <= idxlim16) ? (rdram_16[(in) ^ WORD_ADDR_XOR]) : 0)
+#define RREADIDX32(in) (((in) <= idxlim32) ? (rdram[(in)]) : 0)
 
-#define RWRITEADDR8(in, val) { \
-    if ((in) <= plim) rdram8[(in) ^ BYTE_ADDR_XOR] = (val);}
-#define RWRITEIDX16(in, val) { \
-    if ((in) <= idxlim16) rdram_16[(in) ^ WORD_ADDR_XOR] = (val);}
-#define RWRITEIDX32(in, val) { \
-    if ((in) <= idxlim32) rdram[(in)] = (val);}
+#define RWRITEADDR8(in, val) { if ((in) <= plim) rdram8[(in) ^ BYTE_ADDR_XOR] = (val);}
+#define RWRITEIDX16(in, val) { if ((in) <= idxlim16) rdram_16[(in) ^ WORD_ADDR_XOR] = (val);}
+#define RWRITEIDX32(in, val) { if ((in) <= idxlim32) rdram[(in)] = (val);}
 
 #define PAIRREAD16(rdst, hdst, in) {             \
     if ((in) <= idxlim16) {                      \
