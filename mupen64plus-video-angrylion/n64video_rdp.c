@@ -1109,10 +1109,13 @@ static void al_tex_rect(uint32_t w0, uint32_t w1)
    int xh      = (w1 & 0x00FFF000) >> 12;
    int yh      = (w1 & 0x00000FFF) >>  0;
 
-   int s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
-   int t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
-   int dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
-   int dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
+   uint32_t w2 = cmd_data[cmd_cur + 1].UW32[0];
+   uint32_t w3 = cmd_data[cmd_cur + 1].UW32[1];
+
+   int s    = (w2 & 0xFFFF0000) >> 16;
+   int t    = (w2 & 0x0000FFFF) >>  0;
+   int dsdx = (w3 & 0xFFFF0000) >> 16;
+   int dtdy = (w3 & 0x0000FFFF) >>  0;
 
    dsdx = SIGN16(dsdx);
    dtdy = SIGN16(dtdy);
@@ -1127,27 +1130,22 @@ static void al_tex_rect(uint32_t w0, uint32_t w1)
 
 static void al_tex_rect_flip(uint32_t w0, uint32_t w1)
 {
-   int dd_swap;
    int xl      = (w0 & 0x00FFF000) >> 12;
    int yl      = (w0 & 0x00000FFF) >>  0;
    int tilenum = (w1 & 0x07000000) >> 24;
    int xh      = (w1 & 0x00FFF000) >> 12;
    int yh      = (w1 & 0x00000FFF) >>  0;
 
-   int s    = (cmd_data[cmd_cur + 1].UW32[0] & 0xFFFF0000) >> 16;
-   int t    = (cmd_data[cmd_cur + 1].UW32[0] & 0x0000FFFF) >>  0;
-   int dsdx = (cmd_data[cmd_cur + 1].UW32[1] & 0xFFFF0000) >> 16;
-   int dtdy = (cmd_data[cmd_cur + 1].UW32[1] & 0x0000FFFF) >>  0;
+   uint32_t w2 = cmd_data[cmd_cur + 1].UW32[0];
+   uint32_t w3 = cmd_data[cmd_cur + 1].UW32[1];
+
+   int s    = (w2 & 0xFFFF0000) >> 16;
+   int t    = (w2 & 0x0000FFFF) >>  0;
+   int dsdx = (w3 & 0xFFFF0000) >> 16;
+   int dtdy = (w3 & 0x0000FFFF) >>  0;
 
    dsdx = SIGN16(dsdx);
    dtdy = SIGN16(dtdy);
-
-   /*
-    * unique work to tex_rect_flip
-    */
-   dd_swap = dsdx;
-   dsdx = dtdy;
-   dtdy = dd_swap;
 
    draw_texture_rectangle(
          TEXTURE_FLIP_YES, tilenum,
