@@ -264,7 +264,7 @@ else ifneq (,$(findstring armv,$(platform)))
 	TARGET := $(TARGET_NAME)_libretro.so
 	LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined
 	fpic := -fPIC
-	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
+	CPUFLAGS += -DNO_ASM -DARM -D__arm__ -DARM_ASM -DNOSSE
 	WITH_DYNAREC=arm
 	PLATCFLAGS += -DARM
 	ifneq (,$(findstring gles,$(platform)))
@@ -285,7 +285,7 @@ else ifneq (,$(findstring armv,$(platform)))
 		CPUFLAGS += -marm
 	endif
 	ifneq (,$(findstring neon,$(platform)))
-		CPUFLAGS += -mfpu=neon
+		CPUFLAGS += -D__NEON_OPT -mfpu=neon
 		HAVE_NEON = 1
 	endif
 	ifneq (,$(findstring softfloat,$(platform)))
