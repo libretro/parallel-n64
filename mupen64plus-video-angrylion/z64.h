@@ -2,7 +2,25 @@
 #define __Z64_H__
 
 #include <stdio.h>
+#include <string.h>
+
+#if defined (_MSC_VER) && (_MSC_VER < 1300)
+typedef unsigned char UINT8;
+typedef signed short INT16;
+typedef unsigned short UINT16;
+#endif
+
+#if !defined (_MSC_VER) || (_MSC_VER >= 1600)
 #include <stdint.h>
+typedef uint64_t UINT64;
+typedef int64_t INT64;
+typedef uint32_t UINT32;
+typedef int32_t INT32;
+typedef uint16_t UINT16;
+typedef int16_t INT16;
+typedef uint8_t UINT8;
+typedef int8_t INT8;
+#endif
 
 #define SP_INTERRUPT    0x1
 #define SI_INTERRUPT    0x2

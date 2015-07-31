@@ -224,170 +224,178 @@ void (*tcdiv_ptr)(int32_t, int32_t, int32_t, int32_t*, int32_t*);
 void (*render_spans_1cycle_ptr)(int, int, int, int);
 void (*render_spans_2cycle_ptr)(int, int, int, int);
 
-void (*fbread1_ptr)(uint32_t, uint32_t*);
-void (*fbread2_ptr)(uint32_t, uint32_t*);
-void (*fbwrite_ptr)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-void (*fbfill_ptr)(uint32_t);
+void (*fbread1_ptr)(UINT32, UINT32*);
+void (*fbread2_ptr)(UINT32, UINT32*);
+void (*fbwrite_ptr)(UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32);
+void (*fbfill_ptr)(UINT32);
 
-static void fbread_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
+static void fbread_4(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
-   memory_color.r = memory_color.g = memory_color.b = 0x00;
-   memory_color.a = 0xE0;
-   *curpixel_memcvg = 7;
+    memory_color.r = memory_color.g = memory_color.b = 0x00;
+    memory_color.a = 0xE0;
+    *curpixel_memcvg = 7;
 }
 
-static void fbread_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
+static void fbread_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
-   u8 color;
-   uint32_t addr  = fb_address + 1*curpixel;
+    u8 color;
+    register unsigned long addr;
 
-   addr &= 0x00FFFFFF;
-   color = RREADADDR8(addr);
+    addr  = fb_address + 1*curpixel;
+    addr &= 0x00FFFFFF;
+    color = RREADADDR8(addr);
 
-   memory_color.r = color;
-   memory_color.g = color;
-   memory_color.b = color;
-   memory_color.a = 0xE0;
-   *curpixel_memcvg = 7;
+    memory_color.r = color;
+    memory_color.g = color;
+    memory_color.b = color;
+    memory_color.a = 0xE0;
+    *curpixel_memcvg = 7;
 }
 
-static void fbread_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
+static void fbread_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
-   u8 hidden;
-   u16 color;
-   uint32_t addr  = fb_address + 2*curpixel;
+    u8 hidden;
+    u16 color;
+    register unsigned long addr;
 
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 1;
-   PAIRREAD16(color, hidden, addr);
+    addr  = fb_address + 2*curpixel;
+    addr &= 0x00FFFFFF;
+    addr  = addr >> 1;
+    PAIRREAD16(color, hidden, addr);
 
-   if (fb_format != FORMAT_RGBA)
-   {
-      memory_color.r = color >> 8;
-      memory_color.g = color >> 8;
-      memory_color.b = color >> 8;
-      memory_color.a = color; /* & 0xE0 */
-   }
-   else
-   {
-      memory_color.r = GET_HI(color);
-      memory_color.g = GET_MED(color);
-      memory_color.b = GET_LOW(color);
-      memory_color.a = (4*color + hidden) << 5;
-   }
-   memory_color.a |= ~(-other_modes.image_read_en);
-   memory_color.a &= 0xE0;
-   *curpixel_memcvg = (uint8_t)(memory_color.a) >> 5;
+    if (fb_format != FORMAT_RGBA)
+    {
+        memory_color.r = color >> 8;
+        memory_color.g = color >> 8;
+        memory_color.b = color >> 8;
+        memory_color.a = color; /* & 0xE0 */
+    }
+    else
+    {
+        memory_color.r = GET_HI(color);
+        memory_color.g = GET_MED(color);
+        memory_color.b = GET_LOW(color);
+        memory_color.a = (4*color + hidden) << 5;
+    }
+    memory_color.a |= ~(-other_modes.image_read_en);
+    memory_color.a &= 0xE0;
+    *curpixel_memcvg = (unsigned char)(memory_color.a) >> 5;
 }
 
-static void fbread_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
+static void fbread_32(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
-   u32 color;
-   uint32_t addr  = fb_address + 4*curpixel;
+    u32 color;
+    register unsigned long addr;
 
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 2;
-   color = RREADIDX32(addr);
+    addr  = fb_address + 4*curpixel;
+    addr &= 0x00FFFFFF;
+    addr  = addr >> 2;
+    color = RREADIDX32(addr);
 
-   memory_color.r = (color >> 24) & 0xFF;
-   memory_color.g = (color >> 16) & 0xFF;
-   memory_color.b = (color >>  8) & 0xFF;
+    memory_color.r = (color >> 24) & 0xFF;
+    memory_color.g = (color >> 16) & 0xFF;
+    memory_color.b = (color >>  8) & 0xFF;
 
-   memory_color.a  = (color >>  0) & 0xFF;
-   memory_color.a |= ~(-other_modes.image_read_en);
-   memory_color.a &= 0xE0;
+    memory_color.a  = (color >>  0) & 0xFF;
+    memory_color.a |= ~(-other_modes.image_read_en);
+    memory_color.a &= 0xE0;
 
-   *curpixel_memcvg = (uint8_t)(memory_color.a) >> 5;
+    *curpixel_memcvg = (unsigned char)(memory_color.a) >> 5;
 }
 
 void (*fbread_func[4])(uint32_t, uint32_t*) = {
     fbread_4, fbread_8, fbread_16, fbread_32
 };
 
-static void fbread2_4(uint32_t curpixel, uint32_t* curpixel_memcvg)
+static void fbread2_4(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
-   pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = 0x00;
-   pre_memory_color.a = 0xE0;
-   *curpixel_memcvg = 7;
+    pre_memory_color.r = pre_memory_color.g = pre_memory_color.b = 0x00;
+    pre_memory_color.a = 0xE0;
+    *curpixel_memcvg = 7;
 }
 
-static void fbread2_8(uint32_t curpixel, uint32_t* curpixel_memcvg)
+static void fbread2_8(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
-     u8 color;
-     uint32_t addr  = fb_address + 1*curpixel;
+    u8 color;
+    register unsigned long addr;
 
-     addr &= 0x00FFFFFF;
-     color = RREADADDR8(addr);
+    addr  = fb_address + 1*curpixel;
+    addr &= 0x00FFFFFF;
+    color = RREADADDR8(addr);
 
-   pre_memory_color.r = color;
-   pre_memory_color.g = color;
-   pre_memory_color.b = color;
-   pre_memory_color.a = 0xE0;
-   *curpixel_memcvg = 7;
+    pre_memory_color.r = color;
+    pre_memory_color.g = color;
+    pre_memory_color.b = color;
+    pre_memory_color.a = 0xE0;
+    *curpixel_memcvg = 7;
 }
 
-static void fbread2_16(uint32_t curpixel, uint32_t* curpixel_memcvg)
+static void fbread2_16(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
-   u8 hidden;
-   u16 color;
-   uint32_t addr  = fb_address + 2*curpixel;
+    u8 hidden;
+    u16 color;
+    register unsigned long addr;
 
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 1;
-   PAIRREAD16(color, hidden, addr);
+    addr  = fb_address + 2*curpixel;
+    addr &= 0x00FFFFFF;
+    addr  = addr >> 1;
+    PAIRREAD16(color, hidden, addr);
 
-   if (fb_format != FORMAT_RGBA)
-   {
-      pre_memory_color.r = color >> 8;
-      pre_memory_color.g = color >> 8;
-      pre_memory_color.b = color >> 8;
-      pre_memory_color.a = color; /* & 0xE0 */
-   }
-   else
-   {
-      pre_memory_color.r = GET_HI(color);
-      pre_memory_color.g = GET_MED(color);
-      pre_memory_color.b = GET_LOW(color);
-      pre_memory_color.a = (4*color + hidden) << 5;
-   }
-   pre_memory_color.a |= ~(-other_modes.image_read_en);
-   pre_memory_color.a &= 0xE0;
-   *curpixel_memcvg = (uint8_t)(pre_memory_color.a) >> 5;
+    if (fb_format != FORMAT_RGBA)
+    {
+        pre_memory_color.r = color >> 8;
+        pre_memory_color.g = color >> 8;
+        pre_memory_color.b = color >> 8;
+        pre_memory_color.a = color; /* & 0xE0 */
+    }
+    else
+    {
+        pre_memory_color.r = GET_HI(color);
+        pre_memory_color.g = GET_MED(color);
+        pre_memory_color.b = GET_LOW(color);
+        pre_memory_color.a = (4*color + hidden) << 5;
+    }
+    pre_memory_color.a |= ~(-other_modes.image_read_en);
+    pre_memory_color.a &= 0xE0;
+    *curpixel_memcvg = (unsigned char)(pre_memory_color.a) >> 5;
+    return;
 }
 
-static void fbread2_32(uint32_t curpixel, uint32_t* curpixel_memcvg)
+static void fbread2_32(UINT32 curpixel, UINT32* curpixel_memcvg)
 {
-   u32 color;
-   uint32_t addr  = fb_address + 4*curpixel;
+    u32 color;
+    register unsigned long addr;
 
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 2;
-   color = RREADIDX32(addr);
+    addr  = fb_address + 4*curpixel;
+    addr &= 0x00FFFFFF;
+    addr  = addr >> 2;
+    color = RREADIDX32(addr);
 
-   pre_memory_color.r = (color >> 24) & 0xFF;
-   pre_memory_color.g = (color >> 16) & 0xFF;
-   pre_memory_color.b = (color >>  8) & 0xFF;
+    pre_memory_color.r = (color >> 24) & 0xFF;
+    pre_memory_color.g = (color >> 16) & 0xFF;
+    pre_memory_color.b = (color >>  8) & 0xFF;
 
-   pre_memory_color.a  = (color >>  0) & 0xFF;
-   pre_memory_color.a |= ~(-other_modes.image_read_en);
-   pre_memory_color.a &= 0xE0;
+    pre_memory_color.a  = (color >>  0) & 0xFF;
+    pre_memory_color.a |= ~(-other_modes.image_read_en);
+    pre_memory_color.a &= 0xE0;
 
-   *curpixel_memcvg = (uint8_t)(pre_memory_color.a) >> 5;
+    *curpixel_memcvg = (unsigned char)(pre_memory_color.a) >> 5;
 }
 
 void (*fbread2_func[4])(uint32_t, uint32_t*) = {
     fbread2_4, fbread2_8, fbread2_16, fbread2_32
 };
 
-static void fbwrite_4(
-      uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
-      uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
+void fbwrite_4(
+    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
+    UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
-   uint32_t addr  = fb_address + curpixel*1;
+    register unsigned long addr;
 
-   addr &= 0x00FFFFFF;
+    addr  = fb_address + curpixel*1;
+    addr &= 0x00FFFFFF;
 
-   RWRITEADDR8(addr, 0x00);
+    RWRITEADDR8(addr, 0x00);
 }
 
 static STRICTINLINE int finalize_spanalpha(
@@ -408,67 +416,72 @@ static STRICTINLINE int finalize_spanalpha(
 }
 
 static void fbwrite_8(
-      uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
-      uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
+    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
+    UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
-   uint32_t addr  = fb_address + 1*curpixel;
+    register unsigned long addr;
 
-   addr &= 0x00FFFFFF;
-   PAIRWRITE8(addr, r, (r & 1) ? 3 : 0);
+    addr  = fb_address + 1*curpixel;
+    addr &= 0x00FFFFFF;
+    PAIRWRITE8(addr, r, (r & 1) ? 3 : 0);
 }
 
 static void fbwrite_16(
-      uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
-      uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
+    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
+    UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
-   u16 color;
-   uint32_t addr;
-   int coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
+    u16 color;
+    int coverage;
+    register unsigned long addr;
 
+    coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
 #undef CVG_DRAW
 #ifdef CVG_DRAW
-   const int covdraw = (curpixel_cvg - 1) << 5;
+    const int covdraw = (curpixel_cvg - 1) << 5;
 
-   r = covdraw;
-   g = covdraw;
-   b = covdraw;
+    r = covdraw;
+    g = covdraw;
+    b = covdraw;
 #endif
-   if (fb_format != FORMAT_RGBA)
-   {
-      color = (r << 8) | (coverage << 5);
-      coverage = 0x00;
-   }
-   else
-   {
-      r &= 0xFF & ~7;
-      g &= 0xFF & ~7;
-      b &= 0xFF & ~7;
-      color = (r << 8) | (g << 3) | (b >> 2) | (coverage >> 2);
-   }
+    if (fb_format != FORMAT_RGBA)
+    {
+        color = (r << 8) | (coverage << 5);
+        coverage = 0x00;
+    }
+    else
+    {
+        r &= 0xFF & ~7;
+        g &= 0xFF & ~7;
+        b &= 0xFF & ~7;
+        color = (r << 8) | (g << 3) | (b >> 2) | (coverage >> 2);
+    }
 
-   addr  = fb_address + 2*curpixel;
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 1;
-   PAIRWRITE16(addr, color, coverage & 3);
+    addr  = fb_address + 2*curpixel;
+    addr &= 0x00FFFFFF;
+    addr  = addr >> 1;
+    PAIRWRITE16(addr, color, coverage & 3);
+    return;
 }
 
 static void fbwrite_32(
-      uint32_t curpixel, uint32_t r, uint32_t g, uint32_t b, uint32_t blend_en,
-      uint32_t curpixel_cvg, uint32_t curpixel_memcvg)
+    UINT32 curpixel, UINT32 r, UINT32 g, UINT32 b, UINT32 blend_en,
+    UINT32 curpixel_cvg, UINT32 curpixel_memcvg)
 {
-   u32 color;
-   int coverage;
-   uint32_t addr  = fb_address + 4*curpixel;
+    u32 color;
+    int coverage;
+    register unsigned long addr;
 
-   addr &= 0x00FFFFFF;
-   addr  = addr >> 2;
+    addr  = fb_address + 4*curpixel;
+    addr &= 0x00FFFFFF;
+    addr  = addr >> 2;
 
-   coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
-   color  = (r << 24) | (g << 16) | (b <<  8);
-   color |= (coverage << 5);
+    coverage = finalize_spanalpha(blend_en, curpixel_cvg, curpixel_memcvg);
+    color  = (r << 24) | (g << 16) | (b <<  8);
+    color |= (coverage << 5);
 
-   g = -(signed)(g & 1) & 3;
-   PAIRWRITE32(addr, color, g, 0);
+    g = -(signed)(g & 1) & 3;
+    PAIRWRITE32(addr, color, g, 0);
+    return;
 }
 
 void (*fbwrite_func[4])(
@@ -476,45 +489,45 @@ void (*fbwrite_func[4])(
     fbwrite_4, fbwrite_8, fbwrite_16, fbwrite_32
 };
 
-static void fbfill_4(uint32_t curpixel)
+static void fbfill_4(UINT32 curpixel)
 {
    rdp_pipeline_crashed = 1;
 }
 
-static void fbfill_8(uint32_t curpixel)
+static void fbfill_8(UINT32 curpixel)
 {
    unsigned char source;
-   uint32_t addr  = fb_address + 1*curpixel;
+   register unsigned long addr;
 
-    addr &= 0x00FFFFFF;
+   addr  = fb_address + 1*curpixel;
+   addr &= 0x00FFFFFF;
 
-    source = (fill_color >> 8*(~addr & 3)) & 0xFF;
-
+   source = (fill_color >> 8*(~addr & 3)) & 0xFF;
    PAIRWRITE8(addr, source, -(source & 1) & 3);
 }
 
-static void fbfill_16(uint32_t curpixel)
+static void fbfill_16(UINT32 curpixel)
 {
-   unsigned short source;
-   uint32_t addr  = fb_address + 2*curpixel;
+   register unsigned long addr;
+   register unsigned short source;
 
+   addr  = fb_address + 2*curpixel;
    addr &= 0x00FFFFFF;
    addr  = addr >> 1;
 
-   source = fill_color >> 16 * (~addr & 1) & 0xFFFF;
-
+   source = fill_color>>16*(~addr & 1) & 0xFFFF;
    PAIRWRITE16(addr, source, -(source & 1) & 3);
 }
 
-static void fbfill_32(uint32_t curpixel)
+static void fbfill_32(UINT32 curpixel)
 {
+   register unsigned long addr;
    const unsigned short fill_color_hi = (fill_color >> 16) & 0xFFFF;
    const unsigned short fill_color_lo = (fill_color >>  0) & 0xFFFF;
-   uint32_t addr  = fb_address + 4*curpixel;
 
+   addr  = fb_address + 4*curpixel;
    addr &= 0x00FFFFFF;
    addr  = addr >> 2;
-
    PAIRWRITE32(addr, fill_color,
          -(fill_color_hi & 0x0001) & 3, -(fill_color_lo & 0x0001) & 3);
 }
@@ -523,32 +536,31 @@ void (*fbfill_func[4])(uint32_t) = {
     fbfill_4, fbfill_8, fbfill_16, fbfill_32
 };
 
-
-static INLINE uint32_t rightcvghex(uint32_t x, uint32_t fmask)
+static STRICTINLINE UINT32 rightcvghex(UINT32 x, UINT32 fmask)
 {
-   uint32_t covered = ((x & 7) + 1) >> 1;
+    UINT32 covered = ((x & 7) + 1) >> 1;
 
-   covered = 0xf0 >> covered;
-   return (covered & fmask);
+    covered = 0xf0 >> covered;
+    return (covered & fmask);
 }
 
-static INLINE uint32_t leftcvghex(uint32_t x, uint32_t fmask) 
+static STRICTINLINE UINT32 leftcvghex(UINT32 x, UINT32 fmask) 
 {
-   uint32_t covered = ((x & 7) + 1) >> 1;
+    UINT32 covered = ((x & 7) + 1) >> 1;
 
-   covered = 0xf >> covered;
-   return (covered & fmask);
+    covered = 0xf >> covered;
+    return (covered & fmask);
 }
 
-static void compute_cvg_flip(int32_t scanline)
+static void compute_cvg_flip(INT32 scanline)
 {
-   int i, fmask, maskshift, fmaskshifted;
-   int32_t fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
+   INT32 purgestart, purgeend;
+   int i, length, fmask, maskshift, fmaskshifted;
+   INT32 fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
 
-   int32_t purgestart = span[scanline].rx;
-   int32_t purgeend = span[scanline].lx;
-   int length = purgeend - purgestart;
-
+   purgestart = span[scanline].rx;
+   purgeend = span[scanline].lx;
+   length = purgeend - purgestart;
    if (length >= 0)
    {
       memset(&cvgbuf[purgestart], 0, (length + 1) << 2);
@@ -561,6 +573,10 @@ static void compute_cvg_flip(int32_t scanline)
             minorcurint = minorcur >> 3;
             majorcurint = majorcur >> 3;
             fmask = 0xa >> (i & 1);
+
+
+
+
             maskshift = (i - 2) & 4;
 
             fmaskshifted = fmask << maskshift;
@@ -583,13 +599,15 @@ static void compute_cvg_flip(int32_t scanline)
    }
 }
 
-static void compute_cvg_noflip(int32_t scanline)
+static void compute_cvg_noflip(INT32 scanline)
 {
-   int i, fmask, maskshift, fmaskshifted;
-   int32_t fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
-   int32_t purgestart = span[scanline].lx;
-   int32_t purgeend = span[scanline].rx;
-   int length = purgeend - purgestart;
+   INT32 purgestart, purgeend;
+   int i, length, fmask, maskshift, fmaskshifted;
+   INT32 fleft, minorcur, majorcur, minorcurint, majorcurint, samecvg;
+
+   purgestart = span[scanline].lx;
+   purgeend = span[scanline].rx;
+   length = purgeend - purgestart;
 
    if (length >= 0)
    {
@@ -605,7 +623,6 @@ static void compute_cvg_noflip(int32_t scanline)
             majorcurint = majorcur >> 3;
             fmask = 0xa >> (i & 1);
             maskshift = (i - 2) & 4;
-
             fmaskshifted = fmask << maskshift;
             fleft = minorcurint + 1;
 

@@ -99,13 +99,6 @@ typedef unsigned int            u32;
 typedef unsigned long long      u64;
 #endif
 
-typedef int8_t INT8;
-typedef uint8_t UINT8;
-typedef int16_t INT16;
-typedef uint16_t UINT16;
-typedef int32_t  INT32;
-typedef uint32_t UINT32;
-
 #ifdef USE_SSE_SUPPORT
 typedef __m128i     v8;
 typedef __m128i     v16;
