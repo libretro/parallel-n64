@@ -1024,7 +1024,7 @@ void rdp_update(void)
 #undef ZBUFF_AS_16B_IATEXTURE
 
 #ifdef MONITOR_Z
-   frame_buffer = g_gdp.zb_address;
+   frame_buffer = zb_address;
 #endif
 
    prevwasblank = 0;
