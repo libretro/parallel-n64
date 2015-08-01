@@ -1661,13 +1661,16 @@ static void al_set_key_r(uint32_t w0, uint32_t w1)
    key_scale.r  = (w1 & 0x000000FF) >>  0;
 }
 
-static void al_set_convert(uint32_t w0, uint32_t w1)
+static void al_set_convert(uint32_t w1, uint32_t w2)
 {
-   k0  = (w0 & 0x003FE000) >> (45 - 32);
-   k1  = (w0 & 0x00001FF0) >> (36 - 32);
-   k2  = (w0 & 0x0000000F) << 5;
-   k2 |= (w1 & 0xF8000000) >> (27 - 0);
-   k3  = (w1 & 0x07FC0000) >> 18;
+   INT32 k0 = (w1 >> 13) & 0x1ff;
+   INT32 k1 = (w1 >> 4) & 0x1ff;
+   INT32 k2 = ((w1 & 0xf) << 5) | ((w2 >> 27) & 0x1f);
+   INT32 k3 = (w2 >> 18) & 0x1ff;
+   k0_tf = (SIGN(k0, 9) << 1) + 1;
+   k1_tf = (SIGN(k1, 9) << 1) + 1;
+   k2_tf = (SIGN(k2, 9) << 1) + 1;
+   k3_tf = (SIGN(k3, 9) << 1) + 1;
    k4  = (w1 & 0x0003FE00) >>  9;
    k5  = (w1 & 0x000001FF) >>  0;
 }

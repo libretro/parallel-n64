@@ -462,7 +462,8 @@ extern int32_t *blender2b_a[2];
 extern RECTANGLE __clip;
 extern TILE tile[8];
 
-extern int32_t k0, k1, k2, k3, k4, k5;
+extern INT32 k0_tf, k1_tf, k2_tf, k3_tf;
+extern INT32 k4, k5;
 
 extern COLOR texel0_color;
 extern COLOR texel1_color;
