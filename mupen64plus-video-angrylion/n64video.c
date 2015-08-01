@@ -95,14 +95,6 @@ int32_t clamp_t_diff[8];
 int32_t clamp_s_diff[8];
 CVtcmaskDERIVATIVE cvarray[0x100];
 
-#define RREADADDR8(in) (((in) <= plim) ? (rdram8[(in) ^ BYTE_ADDR_XOR]) : 0)
-#define RREADIDX16(in) (((in) <= idxlim16) ? (rdram_16[(in) ^ WORD_ADDR_XOR]) : 0)
-#define RREADIDX32(in) (((in) <= idxlim32) ? (rdram[(in)]) : 0)
-
-#define RWRITEADDR8(in, val) { if ((in) <= plim) rdram8[(in) ^ BYTE_ADDR_XOR] = (val);}
-#define RWRITEIDX16(in, val) { if ((in) <= idxlim16) rdram_16[(in) ^ WORD_ADDR_XOR] = (val);}
-#define RWRITEIDX32(in, val) { if ((in) <= idxlim32) rdram[(in)] = (val);}
-
 uint32_t command_counter = 0;
 int SaveLoaded = 0;
 
