@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
 	FILE *fp, *fp2;
 
 	if (argc < 2) {
-		printf("usage: %s <file1.srm> [file2.srm] ... [file.srm]");
+		printf("usage: %s <file1.srm> [file2.srm] ... [file.srm]", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
 		snprintf(backup_path, sizeof(backup_path), "%s.bak", argv[i]);
 		printf("Processing '%s'...\n", argv[i]);
 		if (access(argv[i], R_OK|W_OK) != 0) {
-			fprintf(stderr, "Unable to read or write '%s': %s\n", strerror(errno));
+			fprintf(stderr, "Unable to read or write '%s': %s\n", argv[i], strerror(errno));
 			continue;
 		}
 
