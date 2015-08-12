@@ -266,6 +266,7 @@ void do_SP_Task(struct rsp_core* sp)
 
     if (sp->mem[0xfc0/4] == 1)
     {
+       /* Display list */
         if (sp->dp->dpc_regs[DPC_STATUS_REG] & 0x2) // DP frozen (DK64, BC)
         {
             // don't do the task now
@@ -294,6 +295,7 @@ void do_SP_Task(struct rsp_core* sp)
     }
     else if (sp->mem[0xfc0/4] == 2)
     {
+       /* Audio List */
         sp->regs2[SP_PC_REG] &= 0xfff;
         timed_section_start(TIMED_SECTION_AUDIO);
         rsp.doRspCycles(0xffffffff);
@@ -308,6 +310,7 @@ void do_SP_Task(struct rsp_core* sp)
     }
     else
     {
+       /* Unknown list */
         sp->regs2[SP_PC_REG] &= 0xfff;
         rsp.doRspCycles(0xffffffff);
         sp->regs2[SP_PC_REG] |= save_pc;
@@ -328,7 +331,7 @@ void do_SP_Task(struct rsp_core* sp)
         if (sp->regs[SP_STATUS_REG] & 0x00000002)
             fputs("(...Why is SP_STATUS_BROKE set?)\n", stderr);
 
-        add_interupt_event(SP_INT, 512);
+        add_interupt_event(SP_INT, 0x200);
     }
     sp->regs[SP_STATUS_REG] &= ~0x00000003; /* Clear BROKE and HALT. */
 }
