@@ -107,9 +107,10 @@ void vi_vertical_interrupt_event(struct vi_controller* vi)
    vi->field ^= (vi->regs[VI_STATUS_REG] >> 6) & 0x1;
 
    /* schedule next vertical interrupt */
-   vi->delay = (vi->regs[VI_V_SYNC_REG] == 0)
-      ? 500000
-      : (vi->regs[VI_V_SYNC_REG] + 1) * VI_REFRESH;
+   if (vi->regs[VI_V_SYNC_REG] == 0)
+      vi->delay = 500000;
+   else
+      vi->delay = (vi->regs[VI_V_SYNC_REG] + 1) * VI_REFRESH;
 
    vi->next_vi += vi->delay;
 
