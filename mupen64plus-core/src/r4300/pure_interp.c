@@ -173,7 +173,7 @@ uint32_t adler32(uint32_t adler, void *buf, int len);
   static void JALR_IDLE(uint32_t) __attribute__((used));
 #endif
 
-#include "interpreter.def"
+#include "interpreter.c"
 
 void InterpretOpcode()
 {
