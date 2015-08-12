@@ -65,8 +65,8 @@ void connect_vi(struct vi_controller* vi,
 
 void init_vi(struct vi_controller* vi);
 
-int read_vi_regs(void* opaque, uint32_t address, uint32_t* value);
-int write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+int read_vi_regs(struct vi_controller *vi, uint32_t address, uint32_t* value);
+int write_vi_regs(struct vi_controller *vi, uint32_t address, uint32_t value, uint32_t mask);
 
 void vi_vertical_interrupt_event(struct vi_controller* vi);
 

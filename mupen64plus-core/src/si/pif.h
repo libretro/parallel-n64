@@ -72,8 +72,8 @@ struct pif
 
 void init_pif(struct pif* pif);
 
-int read_pif_ram(void* opaque, uint32_t address, uint32_t* value);
-int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+int read_pif_ram(struct si_controller *si, uint32_t address, uint32_t* value);
+int write_pif_ram(struct si_controller *si, uint32_t address, uint32_t value, uint32_t mask);
 
 void update_pif_write(struct si_controller* si);
 void update_pif_read(struct si_controller* si);

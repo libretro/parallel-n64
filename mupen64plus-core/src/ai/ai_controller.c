@@ -157,9 +157,8 @@ void init_ai(struct ai_controller* ai)
 }
 
 /* Reads a word from the AI MMIO register space. */
-int read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
+int read_ai_regs(struct ai_controller *ai, uint32_t address, uint32_t* value)
 {
-    struct ai_controller* ai = (struct ai_controller*)opaque;
     uint32_t reg = AI_REG(address);
 
     if (reg == AI_LEN_REG)
@@ -171,10 +170,9 @@ int read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
 }
 
 /* Writes a word to the AI MMIO register space. */
-int write_ai_regs(void* opaque, uint32_t address,
+int write_ai_regs(struct ai_controller *ai, uint32_t address,
       uint32_t value, uint32_t mask)
 {
-   struct ai_controller* ai = (struct ai_controller*)opaque;
    uint32_t reg = AI_REG(address);
 
    switch (reg)

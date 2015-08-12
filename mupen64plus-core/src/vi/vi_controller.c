@@ -45,9 +45,8 @@ void init_vi(struct vi_controller* vi)
 }
 
 /* Reads a word from the VI MMIO register space. */
-int read_vi_regs(void* opaque, uint32_t address, uint32_t *word)
+int read_vi_regs(struct vi_controller *vi, uint32_t address, uint32_t *word)
 {
-    struct vi_controller* vi = (struct vi_controller*)opaque;
     uint32_t             reg = VI_REG(address);
     const uint32_t* cp0_regs = r4300_cp0_regs();
 
@@ -64,10 +63,9 @@ int read_vi_regs(void* opaque, uint32_t address, uint32_t *word)
 }
 
 /* Writes a word to the VI MMIO register space. */
-int write_vi_regs(void* opaque, uint32_t address,
+int write_vi_regs(struct vi_controller *vi, uint32_t address,
       uint32_t word, uint32_t mask)
 {
-    struct vi_controller* vi = (struct vi_controller*)opaque;
     uint32_t reg             = VI_REG(address);
 
     switch (reg)
