@@ -173,19 +173,15 @@ void init_rsp(struct rsp_core* sp)
 }
 
 
-int read_rsp_mem(void* opaque, uint32_t address, uint32_t* value)
+int read_rsp_mem(struct rsp_core *sp, uint32_t address, uint32_t* value)
 {
-    struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t addr       = RSP_MEM_ADDR(address);
-
-    *value = sp->mem[addr];
+    *value = sp->mem[RSP_MEM_ADDR(address)];
 
     return 0;
 }
 
-int write_rsp_mem(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+int write_rsp_mem(struct rsp_core *sp, uint32_t address, uint32_t value, uint32_t mask)
 {
-    struct rsp_core* sp = (struct rsp_core*)opaque;
     uint32_t addr       = RSP_MEM_ADDR(address);
 
     sp->mem[addr] = MASKED_WRITE(&sp->mem[addr], value, mask);
@@ -194,9 +190,8 @@ int write_rsp_mem(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 }
 
 
-int read_rsp_regs(void* opaque, uint32_t address, uint32_t* value)
+int read_rsp_regs(struct rsp_core *sp, uint32_t address, uint32_t* value)
 {
-    struct rsp_core* sp = (struct rsp_core*)opaque;
     uint32_t reg        = RSP_REG(address);
 
     *value = sp->regs[reg];
@@ -207,9 +202,8 @@ int read_rsp_regs(void* opaque, uint32_t address, uint32_t* value)
     return 0;
 }
 
-int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+int write_rsp_regs(struct rsp_core *sp, uint32_t address, uint32_t value, uint32_t mask)
 {
-    struct rsp_core* sp = (struct rsp_core*)opaque;
     uint32_t reg        = RSP_REG(address);
 
     switch(reg)
@@ -240,19 +234,15 @@ int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
 }
 
 
-int read_rsp_regs2(void* opaque, uint32_t address, uint32_t* value)
+int read_rsp_regs2(struct rsp_core *sp, uint32_t address, uint32_t* value)
 {
-    struct rsp_core* sp = (struct rsp_core*)opaque;
-    uint32_t reg        = RSP_REG2(address);
-
-    *value = sp->regs2[reg];
+    *value = sp->regs2[RSP_REG2(address)];
 
     return 0;
 }
 
-int write_rsp_regs2(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+int write_rsp_regs2(struct rsp_core *sp, uint32_t address, uint32_t value, uint32_t mask)
 {
-    struct rsp_core* sp = (struct rsp_core*)opaque;
     uint32_t reg        = RSP_REG2(address);
 
     sp->regs2[reg] = MASKED_WRITE(&sp->regs2[reg], value, mask);
