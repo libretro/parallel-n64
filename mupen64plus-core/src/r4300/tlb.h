@@ -49,6 +49,10 @@ typedef struct _tlb
    uint32_t phys_odd;
 } tlb;
 
+#define TLB_READ        0
+#define TLB_WRITE       1
+#define TLB_FAST_READ   2
+
 extern tlb tlb_e[32];
 extern uint32_t tlb_LUT_r[0x100000];
 extern uint32_t tlb_LUT_w[0x100000];
