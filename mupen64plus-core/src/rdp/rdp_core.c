@@ -34,28 +34,28 @@ static int update_dpc_status(struct rdp_core* dp, uint32_t w)
    int do_sp_task_on_unfreeze = 0;
 
    /* clear / set xbus_dmem_dma */
-   if (w & MI_INTR_SP)
-      dp->dpc_regs[DPC_STATUS_REG] &= ~MI_INTR_SP;
-   if (w & MI_INTR_SI)
-      dp->dpc_regs[DPC_STATUS_REG] |= MI_INTR_SP;
+   if (w & 0x1)
+      dp->dpc_regs[DPC_STATUS_REG] &= ~0x1;
+   if (w & 0x2)
+      dp->dpc_regs[DPC_STATUS_REG] |= 0x1;
 
    /* clear / set freeze */
-   if (w & MI_INTR_AI)
+   if (w & 0x4)
    {
-      dp->dpc_regs[DPC_STATUS_REG] &= ~MI_INTR_SI;
+      dp->dpc_regs[DPC_STATUS_REG] &= ~0x2;
 
       if (!(dp->sp->regs[SP_STATUS_REG] & 0x3)) // !halt && !broke
          do_sp_task_on_unfreeze = 1;
    }
 
-   if (w & MI_INTR_VI)
-      dp->dpc_regs[DPC_STATUS_REG] |= MI_INTR_SI;
+   if (w & 0x8)
+      dp->dpc_regs[DPC_STATUS_REG] |= 0x2;
 
    /* clear / set flush */
-   if (w & MI_INTR_PI)
-      dp->dpc_regs[DPC_STATUS_REG] &= ~MI_INTR_AI;
-   if (w & MI_INTR_DP)
-      dp->dpc_regs[DPC_STATUS_REG] |= MI_INTR_AI;
+   if (w & 0x10)
+      dp->dpc_regs[DPC_STATUS_REG] &= ~0x4;
+   if (w & 0x20)
+      dp->dpc_regs[DPC_STATUS_REG] |= 0x4;
 
    return do_sp_task_on_unfreeze;
 }
