@@ -58,12 +58,13 @@ static void exception_common(void)
    }
 }
 
-void TLB_refill_exception(uint32_t address, int w)
+void TLB_refill_exception(uint32_t address, int mode)
 {
    int usual_handler = 0, i;
 
-   if (r4300emu != CORE_DYNAREC && w != 2) update_count();
-   if (w == 1)
+   if (r4300emu != CORE_DYNAREC && mode != TLB_FAST_READ)
+      update_count();
+   if (mode == TLB_WRITE)
       g_cp0_regs[CP0_CAUSE_REG] = (UINT32_C(3) << 2);
    else
       g_cp0_regs[CP0_CAUSE_REG] = (UINT32_C(2) << 2);
@@ -80,7 +81,7 @@ void TLB_refill_exception(uint32_t address, int w)
    {
       if (r4300emu != CORE_PURE_INTERPRETER) 
       {
-         if (w!=2)
+         if (mode != TLB_FAST_READ)
             g_cp0_regs[CP0_EPC_REG] = PC->addr;
          else
             g_cp0_regs[CP0_EPC_REG] = address;
@@ -110,7 +111,7 @@ void TLB_refill_exception(uint32_t address, int w)
          generic_jump_to(UINT32_C(0x80000000));
       }
    }
-   if(w != 2) g_cp0_regs[CP0_EPC_REG] -= 4;
+   if(mode != TLB_FAST_READ) g_cp0_regs[CP0_EPC_REG] -= 4;
 
    exception_common();
 }
