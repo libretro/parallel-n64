@@ -521,7 +521,7 @@ static unsigned int update_invalid_addr(unsigned int addr)
    }
    else
    {
-      unsigned int paddr = virtual_to_physical_address(addr, 2);
+      unsigned int paddr = virtual_to_physical_address(addr, TLB_FAST_READ);
       if (paddr)
       {
          unsigned int beg_paddr = paddr - (addr - (addr&~0xFFF));

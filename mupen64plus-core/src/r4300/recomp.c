@@ -2286,7 +2286,7 @@ void init_block(precomp_block *block)
   invalid_code[block->start>>12] = 0;
   if (block->end < UINT32_C(0x80000000) || block->start >= UINT32_C(0xc0000000))
   { 
-    uint32_t paddr  = virtual_to_physical_address(block->start, 2);
+    uint32_t paddr  = virtual_to_physical_address(block->start, TLB_FAST_READ);
     invalid_code[paddr>>12] = 0;
     if (!blocks[paddr>>12])
     {
@@ -2383,7 +2383,7 @@ void recompile_block(const uint32_t *source, precomp_block *block, unsigned int 
     if(block->start < UINT32_C(0x80000000) || block->start >= UINT32_C(0xc0000000))
       {
          uint32_t address2 =
-           virtual_to_physical_address(block->start + i*4, 0);
+           virtual_to_physical_address(block->start + i*4, TLB_READ);
          if(blocks[address2>>12]->block[(address2 & UINT32_C(0xFFF))/4].ops == current_instruction_table.NOTCOMPILED)
            blocks[address2>>12]->block[(address2 & UINT32_C(0xFFF))/4].ops = current_instruction_table.NOTCOMPILED2;
       }

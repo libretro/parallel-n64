@@ -339,7 +339,7 @@ static void pc_ops_wrapper()
 {
 #ifdef COMPARE_CORE
            if (PC->ops == cached_interpreter_table.FIN_BLOCK && (PC->addr < 0x80000000 || PC->addr >= 0xc0000000))
-               virtual_to_physical_address(PC->addr, 2);
+               virtual_to_physical_address(PC->addr, TLB_FAST_READ);
            CoreCompareCallback();
 #endif
 #ifdef DBG
