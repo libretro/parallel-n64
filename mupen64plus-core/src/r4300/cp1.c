@@ -71,12 +71,6 @@ uint32_t *r4300_cp1_fcr31(void)
 */
 void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus)
 {
-#ifdef MSB_FIRST
-   const int isBigEndian = 1;
-#else
-   const int isBigEndian = 0;
-#endif
-
    if ((newStatus & UINT32_C(0x04000000)) != (oldStatus & UINT32_C(0x04000000)))
    {
       int i;
@@ -87,13 +81,22 @@ void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus)
       {   // switching into 64-bit mode
          // retrieve 32 FPR values from packed 32-bit FGR registers
          for (i = 0; i < 32; i++)
-            temp_fgr_32[i] = *((int32_t*) &reg_cop1_fgr_64[i>>1] + ((i & 1) ^ isBigEndian));
+#ifdef MSB_FIRST
+            temp_fgr_32[i] = *((int32_t*) &reg_cop1_fgr_64[i>>1] + ((i & 1) ^ 1));
+#else
+            temp_fgr_32[i] = *((int32_t*) &reg_cop1_fgr_64[i>>1] + ((i & 1)));
+#endif
          // unpack them into 32 64-bit registers, taking the high 32-bits from their temporary place in the upper 16 FGRs
          for (i = 0; i < 32; i++)
          {
             int32_t high32 = *((int32_t*) &reg_cop1_fgr_64[(i>>1)+16] + (i & 1));
-            *((int32_t*) &reg_cop1_fgr_64[i] + isBigEndian)     = temp_fgr_32[i];
-            *((int32_t*) &reg_cop1_fgr_64[i] + (isBigEndian^1)) = high32;
+#ifdef MSB_FIRST
+            *((int32_t*) &reg_cop1_fgr_64[i] + 1)     = temp_fgr_32[i];
+            *((int32_t*) &reg_cop1_fgr_64[i] + (1^1)) = high32;
+#else
+            *((int32_t*) &reg_cop1_fgr_64[i])         = temp_fgr_32[i];
+            *((int32_t*) &reg_cop1_fgr_64[i] + 1   )  = high32;
+#endif
          }
       }
       else
@@ -101,13 +104,22 @@ void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus)
          // retrieve the high 32 bits from each 64-bit FGR register and store in temp array
          for (i = 0; i < 32; i++)
          {
-            temp_fgr_32[i] = *((int32_t*) &reg_cop1_fgr_64[i] + (isBigEndian^1));
+#ifdef MSB_FIRST
+            temp_fgr_32[i] = *((int32_t*) &reg_cop1_fgr_64[i]);
+#else
+            temp_fgr_32[i] = *((int32_t*) &reg_cop1_fgr_64[i] + 1);
+#endif
          }
          // take the low 32 bits from each register and pack them together into 64-bit pairs
          for (i = 0; i < 16; i++)
          {
-            uint32_t least32 = *((uint32_t*) &reg_cop1_fgr_64[i*2] + isBigEndian);
-            uint32_t most32 = *((uint32_t*) &reg_cop1_fgr_64[i*2+1] + isBigEndian);
+#ifdef MSB_FIRST
+            uint32_t least32 = *((uint32_t*) &reg_cop1_fgr_64[i*2] + 1);
+            uint32_t most32 = *((uint32_t*) &reg_cop1_fgr_64[i*2+1] + 1);
+#else
+            uint32_t least32 = *((uint32_t*) &reg_cop1_fgr_64[i*2]);
+            uint32_t most32 = *((uint32_t*) &reg_cop1_fgr_64[i*2+1]);
+#endif
             reg_cop1_fgr_64[i] = ((uint64_t) most32 << 32) | (uint64_t) least32;
          }
          // store the high bits in the upper 16 FGRs, which wont be accessible in 32-bit mode
@@ -122,11 +134,6 @@ void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus)
 void set_fpr_pointers(uint32_t newStatus)
 {
    int i;
-#ifdef MSB_FIRST
-   const int isBigEndian = 1;
-#else
-   const int isBigEndian = 0;
-#endif
 
    // update the FPR register pointers
    if (newStatus & UINT32_C(0x04000000))
@@ -134,7 +141,11 @@ void set_fpr_pointers(uint32_t newStatus)
       for (i = 0; i < 32; i++)
       {
          reg_cop1_double[i] = (double*) &reg_cop1_fgr_64[i];
-         reg_cop1_simple[i] = ((float*) &reg_cop1_fgr_64[i]) + isBigEndian;
+#ifdef MSB_FIRST
+         reg_cop1_simple[i] = ((float*) &reg_cop1_fgr_64[i]) + 1;
+#else
+         reg_cop1_simple[i] = ((float*) &reg_cop1_fgr_64[i]);
+#endif
       }
    }
    else
@@ -142,7 +153,11 @@ void set_fpr_pointers(uint32_t newStatus)
       for (i = 0; i < 32; i++)
       {
          reg_cop1_double[i] = (double*) &reg_cop1_fgr_64[i>>1];
-         reg_cop1_simple[i] = ((float*) &reg_cop1_fgr_64[i>>1]) + ((i & 1) ^ isBigEndian);
+#ifdef MSB_FIRST
+         reg_cop1_simple[i] = ((float*) &reg_cop1_fgr_64[i>>1]) + ((i & 1) ^ 1);
+#else
+         reg_cop1_simple[i] = ((float*) &reg_cop1_fgr_64[i>>1]) + ((i & 1));
+#endif
       }
    }
 }
