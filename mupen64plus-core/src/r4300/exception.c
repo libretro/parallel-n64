@@ -63,7 +63,7 @@ void TLB_refill_exception(uint32_t address, int mode)
    int usual_handler = 0, i;
 
    if (r4300emu != CORE_DYNAREC && mode != TLB_FAST_READ)
-      update_count();
+      cp0_update_count();
    if (mode == TLB_WRITE)
       g_cp0_regs[CP0_CAUSE_REG] = (UINT32_C(3) << 2);
    else
@@ -118,7 +118,7 @@ void TLB_refill_exception(uint32_t address, int mode)
 
 void exception_general(void)
 {
-   update_count();
+   cp0_update_count();
    g_cp0_regs[CP0_STATUS_REG] |= 2;
 
    g_cp0_regs[CP0_EPC_REG] = PC->addr;

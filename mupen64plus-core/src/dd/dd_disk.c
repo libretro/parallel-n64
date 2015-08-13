@@ -246,7 +246,7 @@ void dd_update_bm(void *opaque)
 		if ((dd->regs[ASIC_CMD_STATUS] & 0x04000000) == 0)
 		{
 			dd->regs[ASIC_CMD_STATUS] |= 0x04000000;
-			update_count();
+			cp0_update_count();
 			add_interupt_event(CART_INT, 1000);
 		}
 	}

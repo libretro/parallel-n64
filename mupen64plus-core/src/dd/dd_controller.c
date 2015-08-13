@@ -243,7 +243,7 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
             }
 
             dd->regs[ASIC_CMD_STATUS] |= 0x02000000;
-            update_count();
+            cp0_update_count();
             add_interupt_event(CART_INT, 100);
             break;
 

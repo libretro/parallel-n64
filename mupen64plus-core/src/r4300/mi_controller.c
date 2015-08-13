@@ -93,7 +93,7 @@ int write_mi_regs(struct r4300_core *r4300, uint32_t address, uint32_t value, ui
         update_mi_intr_mask(&r4300->mi.regs[MI_INTR_MASK_REG], value & mask);
 
         check_interupt();
-        update_count();
+        cp0_update_count();
         if (next_interupt <= cp0_regs[CP0_COUNT_REG]) gen_interupt();
         break;
     }

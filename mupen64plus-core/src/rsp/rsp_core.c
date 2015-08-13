@@ -273,7 +273,7 @@ void do_SP_Task(struct rsp_core* sp)
         sp->regs2[SP_PC_REG] |= save_pc;
         new_frame();
 
-        update_count();
+        cp0_update_count();
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
             add_interupt_event(SP_INT, 1000);
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_DP)
@@ -292,7 +292,7 @@ void do_SP_Task(struct rsp_core* sp)
         timed_section_end(TIMED_SECTION_AUDIO);
         sp->regs2[SP_PC_REG] |= save_pc;
 
-        update_count();
+        cp0_update_count();
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
             add_interupt_event(SP_INT, 4000/*500*/);
         sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_SP;
@@ -305,7 +305,7 @@ void do_SP_Task(struct rsp_core* sp)
         rsp.doRspCycles(0xffffffff);
         sp->regs2[SP_PC_REG] |= save_pc;
 
-        update_count();
+        cp0_update_count();
         if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_SP)
             add_interupt_event(SP_INT, 0/*100*/);
         sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_SP;

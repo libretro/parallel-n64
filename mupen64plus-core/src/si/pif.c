@@ -96,7 +96,7 @@ int write_pif_ram(struct si_controller *si, uint32_t address, uint32_t value, ui
       if (si->pif.ram[0x3f] == 0x08)
       {
          si->pif.ram[0x3f] = 0;
-         update_count();
+         cp0_update_count();
          add_interupt_event(SI_INT, /*0x100*/0x900);
       }
       else

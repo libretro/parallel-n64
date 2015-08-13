@@ -850,7 +850,7 @@ DECLARE_INSTRUCTION(MFC0)
          DebugMessage(M64MSG_ERROR, "MFC0 instruction reading un-implemented Random register");
          stop=1;
       case CP0_COUNT_REG:
-         update_count();
+         cp0_update_count();
       default:
          rrt = SE32(g_cp0_regs[rfs]);
    }
@@ -891,7 +891,7 @@ DECLARE_INSTRUCTION(MTC0)
       case CP0_BADVADDR_REG:
          break;
       case CP0_COUNT_REG:
-         update_count();
+         cp0_update_count();
          interupt_unsafe_state = 1;
          if (next_interupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interupt();
          interupt_unsafe_state = 0;
@@ -902,7 +902,7 @@ DECLARE_INSTRUCTION(MTC0)
          g_cp0_regs[CP0_ENTRYHI_REG] = rrt32 & UINT32_C(0xFFFFE0FF);
          break;
       case CP0_COMPARE_REG:
-         update_count();
+         cp0_update_count();
          remove_event(COMPARE_INT);
          add_interupt_event_count(COMPARE_INT, rrt32);
          g_cp0_regs[CP0_COMPARE_REG] = rrt32;
@@ -915,7 +915,7 @@ DECLARE_INSTRUCTION(MTC0)
             set_fpr_pointers(rrt32);
          }
          g_cp0_regs[CP0_STATUS_REG] = rrt32;
-         update_count();
+         cp0_update_count();
          ADD_TO_PC(1);
          check_interupt();
          interupt_unsafe_state = 1;
@@ -2136,7 +2136,7 @@ DECLARE_INSTRUCTION(TLBWI)
 
 DECLARE_INSTRUCTION(TLBWR)
 {
-   update_count();
+   cp0_update_count();
    g_cp0_regs[CP0_RANDOM_REG] = (g_cp0_regs[CP0_COUNT_REG] /2 % (32 - g_cp0_regs[CP0_WIRED_REG])) + g_cp0_regs[CP0_WIRED_REG];
    TLBWrite(g_cp0_regs[CP0_RANDOM_REG]);
    ADD_TO_PC(1);
@@ -2162,7 +2162,7 @@ DECLARE_INSTRUCTION(TLBP)
 
 DECLARE_INSTRUCTION(ERET)
 {
-   update_count();
+   cp0_update_count();
    if (g_cp0_regs[CP0_STATUS_REG] & UINT32_C(0x4))
    {
      DebugMessage(M64MSG_ERROR, "error in ERET");
