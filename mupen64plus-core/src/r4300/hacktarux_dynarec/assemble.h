@@ -131,212 +131,102 @@ static INLINE int rel_r15_offset(void *dest, const char *op_name)
    return (int) rel_offset;
 }
 
-#ifndef __x86_64__
-static INLINE void mov_m8_reg8(unsigned char *m8, int reg8)
-{
-   put8(0x88);
-   put8((reg8 << 3) | 5);
-   put32((unsigned int)(m8));
-}
-
-static INLINE void mov_reg16_m16(int reg16, unsigned short *m16)
-{
-   put8(0x66);
-   put8(0x8B);
-   put8((reg16 << 3) | 5);
-   put32((unsigned int)(m16));
-}
-
-static INLINE void mov_m16_reg16(unsigned short *m16, int reg16)
-{
-   put8(0x66);
-   put8(0x89);
-   put8((reg16 << 3) | 5);
-   put32((unsigned int)(m16));
-}
-
-static INLINE void cmp_reg32_m32(int reg32, unsigned int *m32)
-{
-   put8(0x3B);
-   put8((reg32 << 3) | 5);
-   put32((unsigned int)(m32));
-}
-#endif
-
-static INLINE void mov_memoffs32_eax(unsigned int *memoffs32)
-{
-   put8(0xA3);
 #ifdef __x86_64__
-   put64((unsigned long long) memoffs32);
-#else
-   put32((unsigned int)(memoffs32));
-#endif
-}
-
-#ifdef __x86_64__
-static INLINE void mov_rax_memoffs64(unsigned long long *memoffs64)
+static INLINE void fld_preg64_dword(int reg64)
 {
-   put8(0x48);
-   put8(0xA1);
-   put64((unsigned long long) memoffs64);
+   put8(0xD9);
+   put8(reg64);
 }
 
-static INLINE void mov_memoffs64_rax(unsigned long long *memoffs64)
+static INLINE void fdiv_preg64_dword(int reg64)
 {
-   put8(0x48);
-   put8(0xA3);
-   put64((unsigned long long) memoffs64);
+   put8(0xD8);
+   put8(0x30 + reg64);
 }
 
-static INLINE void mov_m8rel_xreg8(unsigned char *m8, int xreg8)
+static INLINE void fstp_preg64_dword(int reg64)
 {
-   int offset = rel_r15_offset(m8, "mov_m8rel_xreg8");
-
-   put8(0x41 | ((xreg8 & 8) >> 1));
-   put8(0x88);
-   put8(0x87 | ((xreg8 & 7) << 3));
-   put32(offset);
+   put8(0xD9);
+   put8(0x18 + reg64);
 }
 
-static INLINE void mov_xreg16_m16rel(int xreg16, unsigned short *m16)
+static INLINE void fstp_preg64_qword(int reg64)
 {
-   int offset = rel_r15_offset(m16, "mov_xreg16_m16rel");
-
-   put8(0x66);
-   put8(0x41 | ((xreg16 & 8) >> 1));
-   put8(0x8B);
-   put8(0x87 | ((xreg16 & 7) << 3));
-   put32(offset);
+   put8(0xDD);
+   put8(0x18 + reg64);
 }
 
-static INLINE void mov_m16rel_xreg16(unsigned short *m16, int xreg16)
+static INLINE void fadd_preg64_dword(int reg64)
 {
-   int offset = rel_r15_offset(m16, "mov_m16rel_xreg16");
-
-   put8(0x66);
-   put8(0x41 | ((xreg16 & 8) >> 1));
-   put8(0x89);
-   put8(0x87 | ((xreg16 & 7) << 3));
-   put32(offset);
+   put8(0xD8);
+   put8(reg64);
 }
 
-static INLINE void cmp_xreg32_m32rel(int xreg32, unsigned int *m32)
+static INLINE void fsub_preg64_dword(int reg64)
 {
-   int offset = rel_r15_offset(m32, "cmp_xreg32_m32rel");
-
-   put8(0x41 | ((xreg32 & 8) >> 1));
-   put8(0x3B);
-   put8(0x87 | ((xreg32 & 7) << 3));
-   put32(offset);
+   put8(0xD8);
+   put8(0x20 + reg64);
 }
 
-static INLINE void cmp_xreg64_m64rel(int xreg64, unsigned long long *m64)
+static INLINE void fmul_preg64_dword(int reg64)
 {
-   int offset = rel_r15_offset(m64, "cmp_xreg64_m64rel");
-
-   put8(0x49 | ((xreg64 & 8) >> 1));
-   put8(0x3B);
-   put8(0x87 | ((xreg64 & 7) << 3));
-   put32(offset);
+   put8(0xD8);
+   put8(0x08 + reg64);
 }
-#endif
 
-static INLINE void cmp_reg32_reg32(int reg1, int reg2)
+static INLINE void fistp_preg64_dword(int reg64)
 {
-   put8(0x39);
-   put8((reg2 << 3) | reg1 | 0xC0);
+   put8(0xDB);
+   put8(0x18 + reg64);
 }
 
-#ifdef __x86_64__
-static INLINE void cmp_reg64_reg64(int reg1, int reg2)
+static INLINE void fistp_preg64_qword(int reg64)
 {
-   put8(0x48);
-   put8(0x39);
-   put8((reg2 << 3) | reg1 | 0xC0);
-}
-#endif
-
-static INLINE void cmp_reg32_imm8(int reg32, unsigned char imm8)
-{
-   put8(0x83);
-   put8(0xF8 + reg32);
-   put8(imm8);
+   put8(0xDF);
+   put8(0x38 + reg64);
 }
 
-#ifdef __x86_64__
-static INLINE void cmp_reg64_imm8(int reg64, unsigned char imm8)
+static INLINE void fld_preg64_qword(int reg64)
 {
-   put8(0x48);
-   put8(0x83);
-   put8(0xF8 + reg64);
-   put8(imm8);
-}
-#else
-static INLINE void add_m32_reg32(unsigned int *m32, int reg32)
-{
-   put8(0x01);
-   put8((reg32 << 3) | 5);
-   put32((unsigned int)(m32));
+   put8(0xDD);
+   put8(reg64);
 }
 
-static INLINE void sub_reg32_m32(int reg32, unsigned int *m32)
+static INLINE void fild_preg64_qword(int reg64)
 {
-   put8(0x2B);
-   put8((reg32 << 3) | 5);
-   put32((unsigned int)(m32));
+   put8(0xDF);
+   put8(0x28+reg64);
 }
 
-static INLINE void mov_eax_memoffs32(unsigned int *memoffs32)
+static INLINE void fild_preg64_dword(int reg64)
 {
-   put8(0xA1);
-   put32((unsigned int)(memoffs32));
+   put8(0xDB);
+   put8(reg64);
 }
 
-static INLINE void cmp_preg32pimm32_imm8(int reg32, unsigned int imm32, unsigned char imm8)
+static INLINE void fadd_preg64_qword(int reg64)
 {
-   put8(0x80);
-   put8(0xB8 + reg32);
-   put32(imm32);
-   put8(imm8);
+   put8(0xDC);
+   put8(reg64);
 }
 
-static INLINE void test_reg32_imm32(int reg32, unsigned int imm32)
+static INLINE void fdiv_preg64_qword(int reg64)
 {
-   put8(0xF7);
-   put8(0xC0 + reg32);
-   put32(imm32);
+   put8(0xDC);
+   put8(0x30 + reg64);
 }
 
-static INLINE void test_m32_imm32(unsigned int *m32, unsigned int imm32)
+static INLINE void fsub_preg64_qword(int reg64)
 {
-   put8(0xF7);
-   put8(0x05);
-   put32((unsigned int)m32);
-   put32(imm32);
+   put8(0xDC);
+   put8(0x20 + reg64);
 }
 
-static INLINE void sbb_reg32_reg32(int reg1, int reg2)
+static INLINE void fmul_preg64_qword(int reg64)
 {
-   put8(0x19);
-   put8((reg2 << 3) | reg1 | 0xC0);
+   put8(0xDC);
+   put8(0x08 + reg64);
 }
-
-static INLINE void sub_reg32_imm32(int reg32, unsigned int imm32)
-{
-   put8(0x81);
-   put8(0xE8 + reg32);
-   put32(imm32);
-}
-#endif
-
-static INLINE void cmp_reg32_imm32(int reg32, unsigned int imm32)
-{
-   put8(0x81);
-   put8(0xF8 + reg32);
-   put32(imm32);
-}
-
-#ifdef __x86_64__
 static INLINE void cmp_reg64_imm32(int reg64, unsigned int imm32)
 {
    put8(0x48);
@@ -407,7 +297,409 @@ static INLINE void setg_m8rel(unsigned char *m8)
    put8(0x87);
    put32(offset);
 }
+
+static INLINE void cmp_reg64_reg64(int reg1, int reg2)
+{
+   put8(0x48);
+   put8(0x39);
+   put8((reg2 << 3) | reg1 | 0xC0);
+}
+
+static INLINE void cmp_reg64_imm8(int reg64, unsigned char imm8)
+{
+   put8(0x48);
+   put8(0x83);
+   put8(0xF8 + reg64);
+   put8(imm8);
+}
+
+static INLINE void mov_rax_memoffs64(unsigned long long *memoffs64)
+{
+   put8(0x48);
+   put8(0xA1);
+   put64((unsigned long long) memoffs64);
+}
+
+static INLINE void mov_memoffs64_rax(unsigned long long *memoffs64)
+{
+   put8(0x48);
+   put8(0xA3);
+   put64((unsigned long long) memoffs64);
+}
+
+static INLINE void mov_m8rel_xreg8(unsigned char *m8, int xreg8)
+{
+   int offset = rel_r15_offset(m8, "mov_m8rel_xreg8");
+
+   put8(0x41 | ((xreg8 & 8) >> 1));
+   put8(0x88);
+   put8(0x87 | ((xreg8 & 7) << 3));
+   put32(offset);
+}
+
+static INLINE void mov_xreg16_m16rel(int xreg16, unsigned short *m16)
+{
+   int offset = rel_r15_offset(m16, "mov_xreg16_m16rel");
+
+   put8(0x66);
+   put8(0x41 | ((xreg16 & 8) >> 1));
+   put8(0x8B);
+   put8(0x87 | ((xreg16 & 7) << 3));
+   put32(offset);
+}
+
+static INLINE void mov_m16rel_xreg16(unsigned short *m16, int xreg16)
+{
+   int offset = rel_r15_offset(m16, "mov_m16rel_xreg16");
+
+   put8(0x66);
+   put8(0x41 | ((xreg16 & 8) >> 1));
+   put8(0x89);
+   put8(0x87 | ((xreg16 & 7) << 3));
+   put32(offset);
+}
+
+static INLINE void cmp_xreg32_m32rel(int xreg32, unsigned int *m32)
+{
+   int offset = rel_r15_offset(m32, "cmp_xreg32_m32rel");
+
+   put8(0x41 | ((xreg32 & 8) >> 1));
+   put8(0x3B);
+   put8(0x87 | ((xreg32 & 7) << 3));
+   put32(offset);
+}
+
+static INLINE void cmp_xreg64_m64rel(int xreg64, unsigned long long *m64)
+{
+   int offset = rel_r15_offset(m64, "cmp_xreg64_m64rel");
+
+   put8(0x49 | ((xreg64 & 8) >> 1));
+   put8(0x3B);
+   put8(0x87 | ((xreg64 & 7) << 3));
+   put32(offset);
+}
+#else
+static INLINE void or_reg32_reg32(unsigned int reg1, unsigned int reg2)
+{
+   put8(0x09);
+   put8(0xC0 | (reg2 << 3) | reg1);
+}
+
+static INLINE void fldcw_m16(unsigned short *m16)
+{
+   put8(0xD9);
+   put8(0x2D);
+   put32((unsigned int)(m16));
+}
+
+static INLINE void mov_reg8_m8(int reg8, unsigned char *m8)
+{
+   put8(0x8A);
+   put8((reg8 << 3) | 5);
+   put32((unsigned int)(m8));
+}
+
+static INLINE void mov_reg32_m32(unsigned int reg32, unsigned int* m32)
+{
+   put8(0x8B);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m32));
+}
+
+static INLINE void add_reg32_m32(unsigned int reg32, unsigned int *m32)
+{
+   put8(0x03);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m32));
+}
+
+static INLINE void movsx_reg32_m16(int reg32, unsigned short *m16)
+{
+   put8(0x0F);
+   put8(0xBF);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m16));
+}
+
+static INLINE void movsx_reg32_m8(int reg32, unsigned char *m8)
+{
+   put8(0x0F);
+   put8(0xBE);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m8));
+}
+
+static INLINE void mul_m32(unsigned int *m32)
+{
+   put8(0xF7);
+   put8(0x25);
+   put32((unsigned int)(m32));
+}
+
+static INLINE void mov_m32_imm32(unsigned int *m32, unsigned int imm32)
+{
+   put8(0xC7);
+   put8(0x05);
+   put32((unsigned int)(m32));
+   put32(imm32);
+}
+
+static INLINE void cmp_m32_imm32(unsigned int *m32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0x3D);
+   put32((unsigned int)(m32));
+   put32(imm32);
+}
+
+static INLINE void inc_m32(unsigned int *m32)
+{
+   put8(0xFF);
+   put8(0x05);
+   put32((unsigned int)(m32));
+}
+
+static INLINE void and_m32_imm32(unsigned int *m32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0x25);
+   put32((unsigned int)(m32));
+   put32(imm32);
+}
+
+static INLINE void sub_m32_imm32(unsigned int *m32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0x2D);
+   put32((unsigned int)(m32));
+   put32(imm32);
+}
+
+static INLINE void or_m32_imm32(unsigned int *m32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0x0D);
+   put32((unsigned int)(m32));
+   put32(imm32);
+}
+
+static INLINE void mov_m8_reg8(unsigned char *m8, int reg8)
+{
+   put8(0x88);
+   put8((reg8 << 3) | 5);
+   put32((unsigned int)(m8));
+}
+
+static INLINE void mov_reg16_m16(int reg16, unsigned short *m16)
+{
+   put8(0x66);
+   put8(0x8B);
+   put8((reg16 << 3) | 5);
+   put32((unsigned int)(m16));
+}
+
+static INLINE void mov_m16_reg16(unsigned short *m16, int reg16)
+{
+   put8(0x66);
+   put8(0x89);
+   put8((reg16 << 3) | 5);
+   put32((unsigned int)(m16));
+}
+
+static INLINE void cmp_reg32_m32(int reg32, unsigned int *m32)
+{
+   put8(0x3B);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m32));
+}
+
+static INLINE void add_m32_reg32(unsigned int *m32, int reg32)
+{
+   put8(0x01);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m32));
+}
+
+static INLINE void sub_reg32_m32(int reg32, unsigned int *m32)
+{
+   put8(0x2B);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m32));
+}
+
+static INLINE void mov_eax_memoffs32(unsigned int *memoffs32)
+{
+   put8(0xA1);
+   put32((unsigned int)(memoffs32));
+}
+
+static INLINE void cmp_preg32pimm32_imm8(int reg32, unsigned int imm32, unsigned char imm8)
+{
+   put8(0x80);
+   put8(0xB8 + reg32);
+   put32(imm32);
+   put8(imm8);
+}
+
+static INLINE void test_reg32_imm32(int reg32, unsigned int imm32)
+{
+   put8(0xF7);
+   put8(0xC0 + reg32);
+   put32(imm32);
+}
+
+static INLINE void test_m32_imm32(unsigned int *m32, unsigned int imm32)
+{
+   put8(0xF7);
+   put8(0x05);
+   put32((unsigned int)m32);
+   put32(imm32);
+}
+
+static INLINE void sbb_reg32_reg32(int reg1, int reg2)
+{
+   put8(0x19);
+   put8((reg2 << 3) | reg1 | 0xC0);
+}
+
+static INLINE void sub_reg32_imm32(int reg32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0xE8 + reg32);
+   put32(imm32);
+}
+
+static INLINE void mov_m32_reg32(unsigned int *m32, unsigned int reg32)
+{
+   put8(0x89);
+   put8((reg32 << 3) | 5);
+   put32((unsigned int)(m32));
+}
+
+static INLINE void fdiv_preg32_dword(int reg32)
+{
+   put8(0xD8);
+   put8(0x30 + reg32);
+}
+
+static INLINE void fstp_preg32_dword(int reg32)
+{
+   put8(0xD9);
+   put8(0x18 + reg32);
+}
+
+static INLINE void fstp_preg32_qword(int reg32)
+{
+   put8(0xDD);
+   put8(0x18 + reg32);
+}
+
+static INLINE void fadd_preg32_dword(int reg32)
+{
+   put8(0xD8);
+   put8(reg32);
+}
+
+static INLINE void fsub_preg32_dword(int reg32)
+{
+   put8(0xD8);
+   put8(0x20 + reg32);
+}
+
+static INLINE void fmul_preg32_dword(int reg32)
+{
+   put8(0xD8);
+   put8(0x08 + reg32);
+}
+
+static INLINE void fistp_preg32_dword(int reg32)
+{
+   put8(0xDB);
+   put8(0x18 + reg32);
+}
+
+static INLINE void fistp_preg32_qword(int reg32)
+{
+   put8(0xDF);
+   put8(0x38 + reg32);
+}
+
+static INLINE void fld_preg32_qword(int reg32)
+{
+   put8(0xDD);
+   put8(reg32);
+}
+
+static INLINE void fild_preg32_qword(int reg32)
+{
+   put8(0xDF);
+   put8(0x28+reg32);
+}
+
+static INLINE void fild_preg32_dword(int reg32)
+{
+   put8(0xDB);
+   put8(reg32);
+}
+
+static INLINE void fadd_preg32_qword(int reg32)
+{
+   put8(0xDC);
+   put8(reg32);
+}
+
+static INLINE void fdiv_preg32_qword(int reg32)
+{
+   put8(0xDC);
+   put8(0x30 + reg32);
+}
+
+static INLINE void fsub_preg32_qword(int reg32)
+{
+   put8(0xDC);
+   put8(0x20 + reg32);
+}
+
+static INLINE void fmul_preg32_qword(int reg32)
+{
+   put8(0xDC);
+   put8(0x08 + reg32);
+}
 #endif
+
+
+static INLINE void mov_memoffs32_eax(unsigned int *memoffs32)
+{
+   put8(0xA3);
+#ifdef __x86_64__
+   put64((unsigned long long) memoffs32);
+#else
+   put32((unsigned int)(memoffs32));
+#endif
+}
+
+
+static INLINE void cmp_reg32_reg32(int reg1, int reg2)
+{
+   put8(0x39);
+   put8((reg2 << 3) | reg1 | 0xC0);
+}
+
+static INLINE void cmp_reg32_imm8(int reg32, unsigned char imm8)
+{
+   put8(0x83);
+   put8(0xF8 + reg32);
+   put8(imm8);
+}
+
+
+static INLINE void cmp_reg32_imm32(int reg32, unsigned int imm32)
+{
+   put8(0x81);
+   put8(0xF8 + reg32);
+   put32(imm32);
+}
+
 
 static INLINE void setge_m8rel(unsigned char *m8)
 {
@@ -562,15 +854,6 @@ static INLINE void jmp_imm_short(char saut)
    put8(saut);
 }
 
-#ifndef __x86_64__
-static INLINE void or_m32_imm32(unsigned int *m32, unsigned int imm32)
-{
-   put8(0x81);
-   put8(0x0D);
-   put32((unsigned int)(m32));
-   put32(imm32);
-}
-#endif
 
 static INLINE void or_m32rel_imm32(unsigned int *m32, unsigned int imm32)
 {
@@ -614,23 +897,6 @@ static INLINE void xor_reg32_reg32(unsigned int reg1, unsigned int reg2)
    put8(0xC0 | (reg2 << 3) | reg1);
 }
 
-#ifndef __x86_64__
-static INLINE void and_m32_imm32(unsigned int *m32, unsigned int imm32)
-{
-   put8(0x81);
-   put8(0x25);
-   put32((unsigned int)(m32));
-   put32(imm32);
-}
-
-static INLINE void sub_m32_imm32(unsigned int *m32, unsigned int imm32)
-{
-   put8(0x81);
-   put8(0x2D);
-   put32((unsigned int)(m32));
-   put32(imm32);
-}
-#endif
 
 static INLINE void and_reg32_reg32(unsigned int reg1, unsigned int reg2)
 {
@@ -660,22 +926,6 @@ static INLINE void add_reg32_imm32(unsigned int reg32, unsigned int imm32)
    put32(imm32);
 }
 
-#ifndef __x86_64__
-static INLINE void cmp_m32_imm32(unsigned int *m32, unsigned int imm32)
-{
-   put8(0x81);
-   put8(0x3D);
-   put32((unsigned int)(m32));
-   put32(imm32);
-}
-
-static INLINE void inc_m32(unsigned int *m32)
-{
-   put8(0xFF);
-   put8(0x05);
-   put32((unsigned int)(m32));
-}
-#endif
 
 static INLINE void inc_m32rel(unsigned int *m32)
 {
@@ -698,15 +948,6 @@ static INLINE void cmp_m32rel_imm32(unsigned int *m32, unsigned int imm32)
    put32(imm32);
 }
 
-#ifndef __x86_64__
-static INLINE void mov_m32_imm32(unsigned int *m32, unsigned int imm32)
-{
-   put8(0xC7);
-   put8(0x05);
-   put32((unsigned int)(m32));
-   put32(imm32);
-}
-#endif
 
 static INLINE void cmp_eax_imm32(unsigned int imm32)
 {
@@ -849,14 +1090,6 @@ static INLINE void sar_reg64_imm8(unsigned int reg64, unsigned char imm8)
    put8(imm8);
 }
 
-#ifndef __x86_64__
-static INLINE void mul_m32(unsigned int *m32)
-{
-   put8(0xF7);
-   put8(0x25);
-   put32((unsigned int)(m32));
-}
-#endif
 
 static INLINE void mul_m32rel(unsigned int *m32)
 {
@@ -1145,15 +1378,6 @@ static INLINE void shl_reg64_imm8(unsigned int reg64, unsigned char imm8)
    put8(imm8);
 }
 
-#ifndef __x86_64__
-static INLINE void movsx_reg32_m8(int reg32, unsigned char *m8)
-{
-   put8(0x0F);
-   put8(0xBE);
-   put8((reg32 << 3) | 5);
-   put32((unsigned int)(m8));
-}
-#endif
 
 static INLINE void movsx_reg32_8preg32pimm32(int reg1, int reg2, unsigned int imm32)
 {
@@ -1171,15 +1395,6 @@ static INLINE void movsx_reg32_16preg32pimm32(int reg1, int reg2, unsigned int i
    put32(imm32);
 }
 
-#ifndef __x86_64__
-static INLINE void movsx_reg32_m16(int reg32, unsigned short *m16)
-{
-   put8(0x0F);
-   put8(0xBF);
-   put8((reg32 << 3) | 5);
-   put32((unsigned int)(m16));
-}
-#endif
 
 static INLINE void not_reg32(unsigned int reg32)
 {
@@ -1252,14 +1467,6 @@ static INLINE void mov_xreg8_m8rel(int xreg8, unsigned char *m8)
    put32(offset);
 }
 
-#ifndef __x86_64__
-static INLINE void mov_reg32_m32(unsigned int reg32, unsigned int* m32)
-{
-   put8(0x8B);
-   put8((reg32 << 3) | 5);
-   put32((unsigned int)(m32));
-}
-#endif
 
 static INLINE void adc_reg32_reg32(unsigned int reg1, unsigned int reg2)
 {
@@ -1274,14 +1481,6 @@ static INLINE void adc_reg32_imm32(unsigned int reg32, unsigned int imm32)
    put32(imm32);
 }
 
-#ifndef __x86_64__
-static INLINE void add_reg32_m32(unsigned int reg32, unsigned int *m32)
-{
-   put8(0x03);
-   put8((reg32 << 3) | 5);
-   put32((unsigned int)(m32));
-}
-#endif
 
 static INLINE void and_eax_imm32(unsigned int imm32)
 {
@@ -1297,14 +1496,6 @@ static INLINE void or_reg64_imm32(int reg64, unsigned int imm32)
    put32(imm32);
 }
 
-#ifndef __x86_64__
-static INLINE void mov_reg8_m8(int reg8, unsigned char *m8)
-{
-   put8(0x8A);
-   put8((reg8 << 3) | 5);
-   put32((unsigned int)(m8));
-}
-#endif
 
 static INLINE void and_reg32_imm32(int reg32, unsigned int imm32)
 {
@@ -1426,14 +1617,6 @@ static INLINE void movsxd_reg64_reg32(int reg64, int reg32)
    put8((reg64 << 3) | reg32 | 0xC0);
 }
 
-#ifndef __x86_64__
-static INLINE void fldcw_m16(unsigned short *m16)
-{
-   put8(0xD9);
-   put8(0x2D);
-   put32((unsigned int)(m16));
-}
-#endif
 
 static INLINE void fldcw_m16rel(unsigned short *m16)
 {
@@ -1445,25 +1628,6 @@ static INLINE void fldcw_m16rel(unsigned short *m16)
    put32(offset);
 }
 
-#ifdef __x86_64__
-static INLINE void fld_preg64_dword(int reg64)
-{
-   put8(0xD9);
-   put8(reg64);
-}
-
-static INLINE void fdiv_preg64_dword(int reg64)
-{
-   put8(0xD8);
-   put8(0x30 + reg64);
-}
-
-static INLINE void fstp_preg64_dword(int reg64)
-{
-   put8(0xD9);
-   put8(0x18 + reg64);
-}
-#endif
 
 static INLINE void fchs(void)
 {
@@ -1471,184 +1635,6 @@ static INLINE void fchs(void)
    put8(0xE0);
 }
 
-#ifdef __x86_64__
-static INLINE void fstp_preg64_qword(int reg64)
-{
-   put8(0xDD);
-   put8(0x18 + reg64);
-}
-
-static INLINE void fadd_preg64_dword(int reg64)
-{
-   put8(0xD8);
-   put8(reg64);
-}
-
-static INLINE void fsub_preg64_dword(int reg64)
-{
-   put8(0xD8);
-   put8(0x20 + reg64);
-}
-
-static INLINE void fmul_preg64_dword(int reg64)
-{
-   put8(0xD8);
-   put8(0x08 + reg64);
-}
-
-static INLINE void fistp_preg64_dword(int reg64)
-{
-   put8(0xDB);
-   put8(0x18 + reg64);
-}
-
-static INLINE void fistp_preg64_qword(int reg64)
-{
-   put8(0xDF);
-   put8(0x38 + reg64);
-}
-
-static INLINE void fld_preg64_qword(int reg64)
-{
-   put8(0xDD);
-   put8(reg64);
-}
-
-static INLINE void fild_preg64_qword(int reg64)
-{
-   put8(0xDF);
-   put8(0x28+reg64);
-}
-
-static INLINE void fild_preg64_dword(int reg64)
-{
-   put8(0xDB);
-   put8(reg64);
-}
-
-static INLINE void fadd_preg64_qword(int reg64)
-{
-   put8(0xDC);
-   put8(reg64);
-}
-
-static INLINE void fdiv_preg64_qword(int reg64)
-{
-   put8(0xDC);
-   put8(0x30 + reg64);
-}
-
-static INLINE void fsub_preg64_qword(int reg64)
-{
-   put8(0xDC);
-   put8(0x20 + reg64);
-}
-
-static INLINE void fmul_preg64_qword(int reg64)
-{
-   put8(0xDC);
-   put8(0x08 + reg64);
-}
-
-#else
-
-static INLINE void mov_m32_reg32(unsigned int *m32, unsigned int reg32)
-{
-   put8(0x89);
-   put8((reg32 << 3) | 5);
-   put32((unsigned int)(m32));
-}
-
-static INLINE void fdiv_preg32_dword(int reg32)
-{
-   put8(0xD8);
-   put8(0x30 + reg32);
-}
-
-static INLINE void fstp_preg32_dword(int reg32)
-{
-   put8(0xD9);
-   put8(0x18 + reg32);
-}
-
-static INLINE void fstp_preg32_qword(int reg32)
-{
-   put8(0xDD);
-   put8(0x18 + reg32);
-}
-
-static INLINE void fadd_preg32_dword(int reg32)
-{
-   put8(0xD8);
-   put8(reg32);
-}
-
-static INLINE void fsub_preg32_dword(int reg32)
-{
-   put8(0xD8);
-   put8(0x20 + reg32);
-}
-
-static INLINE void fmul_preg32_dword(int reg32)
-{
-   put8(0xD8);
-   put8(0x08 + reg32);
-}
-
-static INLINE void fistp_preg32_dword(int reg32)
-{
-   put8(0xDB);
-   put8(0x18 + reg32);
-}
-
-static INLINE void fistp_preg32_qword(int reg32)
-{
-   put8(0xDF);
-   put8(0x38 + reg32);
-}
-
-static INLINE void fld_preg32_qword(int reg32)
-{
-   put8(0xDD);
-   put8(reg32);
-}
-
-static INLINE void fild_preg32_qword(int reg32)
-{
-   put8(0xDF);
-   put8(0x28+reg32);
-}
-
-static INLINE void fild_preg32_dword(int reg32)
-{
-   put8(0xDB);
-   put8(reg32);
-}
-
-static INLINE void fadd_preg32_qword(int reg32)
-{
-   put8(0xDC);
-   put8(reg32);
-}
-
-static INLINE void fdiv_preg32_qword(int reg32)
-{
-   put8(0xDC);
-   put8(0x30 + reg32);
-}
-
-static INLINE void fsub_preg32_qword(int reg32)
-{
-   put8(0xDC);
-   put8(0x20 + reg32);
-}
-
-static INLINE void fmul_preg32_qword(int reg32)
-{
-   put8(0xDC);
-   put8(0x08 + reg32);
-}
-#endif
 
 static INLINE void fsqrt(void)
 {
@@ -1717,13 +1703,6 @@ static INLINE void shrd_reg32_reg32_cl(unsigned int reg1, unsigned int reg2)
    put8(0xC0 | (reg2 << 3) | reg1);
 }
 
-#ifndef __x86_64__
-static INLINE void or_reg32_reg32(unsigned int reg1, unsigned int reg2)
-{
-   put8(0x09);
-   put8(0xC0 | (reg2 << 3) | reg1);
-}
-#endif
 
 #endif /* __ASSEMBLE_H__ */
 
