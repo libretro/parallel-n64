@@ -26,10 +26,11 @@
 
 #include <string.h>
 
-static int update_mi_init_mode(uint32_t* mi_init_mode, uint32_t w)
-{
-    int clear_dp = 0;
+#define MI_RDRAM_REG_MODE 0x0200
 
+static void update_mi_init_mode(struct r4300_core* r4300, 
+      uint32_t* mi_init_mode, uint32_t w)
+{
     /* set init_length */
     *mi_init_mode &= ~0x7f;
     *mi_init_mode |= w & 0x7f;
@@ -40,28 +41,31 @@ static int update_mi_init_mode(uint32_t* mi_init_mode, uint32_t w)
     if (w & 0x200) *mi_init_mode &= ~0x100;
     if (w & 0x400) *mi_init_mode |= 0x100;
     /* clear DP interrupt */
-    if (w & 0x800) clear_dp = 1;
+    if (w & 0x800)
+    {
+       clear_rcp_interrupt(r4300, MI_INTR_DP);
+    }
     /* clear / set RDRAM reg_mode */
-    if (w & 0x1000) *mi_init_mode &= ~0x200;
-    if (w & 0x2000) *mi_init_mode |= 0x200;
-
-    return clear_dp;
+    if (w & 0x1000)
+       *mi_init_mode &= ~MI_RDRAM_REG_MODE;
+    if (w & 0x2000)
+       *mi_init_mode |= MI_RDRAM_REG_MODE;
 }
 
 static void update_mi_intr_mask(uint32_t* mi_intr_mask, uint32_t w)
 {
-    if (w & 0x1)   *mi_intr_mask &= ~0x1; // clear SP mask
-    if (w & 0x2)   *mi_intr_mask |= 0x1; // set SP mask
-    if (w & 0x4)   *mi_intr_mask &= ~0x2; // clear SI mask
-    if (w & 0x8)   *mi_intr_mask |= 0x2; // set SI mask
-    if (w & 0x10)  *mi_intr_mask &= ~0x4; // clear AI mask
-    if (w & 0x20)  *mi_intr_mask |= 0x4; // set AI mask
-    if (w & 0x40)  *mi_intr_mask &= ~0x8; // clear VI mask
-    if (w & 0x80)  *mi_intr_mask |= 0x8; // set VI mask
-    if (w & 0x100) *mi_intr_mask &= ~0x10; // clear PI mask
-    if (w & 0x200) *mi_intr_mask |= 0x10; // set PI mask
-    if (w & 0x400) *mi_intr_mask &= ~0x20; // clear DP mask
-    if (w & 0x800) *mi_intr_mask |= 0x20; // set DP mask
+    if (w & 0x1)   *mi_intr_mask &= ~MI_INTR_SP; // clear SP mask
+    if (w & 0x2)   *mi_intr_mask |= MI_INTR_SP; // set SP mask
+    if (w & 0x4)   *mi_intr_mask &= ~MI_INTR_SI; // clear SI mask
+    if (w & 0x8)   *mi_intr_mask |= MI_INTR_SI; // set SI mask
+    if (w & 0x10)  *mi_intr_mask &= ~MI_INTR_AI; // clear AI mask
+    if (w & 0x20)  *mi_intr_mask |= MI_INTR_AI; // set AI mask
+    if (w & 0x40)  *mi_intr_mask &= ~MI_INTR_VI; // clear VI mask
+    if (w & 0x80)  *mi_intr_mask |= MI_INTR_VI; // set VI mask
+    if (w & 0x100) *mi_intr_mask &= ~MI_INTR_PI; // clear PI mask
+    if (w & 0x200) *mi_intr_mask |= MI_INTR_PI; // set PI mask
+    if (w & 0x400) *mi_intr_mask &= ~MI_INTR_DP; // clear DP mask
+    if (w & 0x800) *mi_intr_mask |= MI_INTR_DP; // set DP mask
 }
 
 void init_mi(struct mi_controller* mi)
@@ -89,17 +93,16 @@ int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
     switch(reg)
     {
-    case MI_INIT_MODE_REG:
-        if (update_mi_init_mode(&r4300->mi.regs[MI_INIT_MODE_REG], value & mask) != 0)
-           clear_rcp_interrupt(r4300, MI_INTR_DP);
-        break;
-    case MI_INTR_MASK_REG:
-        update_mi_intr_mask(&r4300->mi.regs[MI_INTR_MASK_REG], value & mask);
+       case MI_INIT_MODE_REG:
+          update_mi_init_mode(r4300, &r4300->mi.regs[MI_INIT_MODE_REG], value & mask);
+          break;
+       case MI_INTR_MASK_REG:
+          update_mi_intr_mask(&r4300->mi.regs[MI_INTR_MASK_REG], value & mask);
 
-        check_interupt();
-        cp0_update_count();
-        if (next_interupt <= cp0_regs[CP0_COUNT_REG]) gen_interupt();
-        break;
+          check_interupt();
+          cp0_update_count();
+          if (next_interupt <= cp0_regs[CP0_COUNT_REG]) gen_interupt();
+          break;
     }
 
     return 0;
