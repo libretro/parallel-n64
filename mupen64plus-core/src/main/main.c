@@ -75,10 +75,9 @@
 #include "../debugger/debugger.h"
 #endif
 
-#ifdef __LIBRETRO__
 #include "api/libretro.h"
+
 extern retro_input_poll_t poll_cb;
-#endif
 
 /* version number for Core config section */
 #define CONFIG_PARAM_VERSION 1.01
@@ -221,8 +220,10 @@ m64p_error main_core_state_set(m64p_core_param param, int val)
          event_set_gameshark(val);
          return M64ERR_SUCCESS;
       default:
-         return M64ERR_INPUT_INVALID;
+         break;
    }
+
+   return M64ERR_INPUT_INVALID;
 }
 
 m64p_error main_read_screen(void *pixels, int bFront)
