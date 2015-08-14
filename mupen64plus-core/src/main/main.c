@@ -487,7 +487,5 @@ void main_stop(void)
 
 void main_check_inputs(void)
 {
-#ifdef __LIBRETRO__
    poll_cb();
-#endif
 }
