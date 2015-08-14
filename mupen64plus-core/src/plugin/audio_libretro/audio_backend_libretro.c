@@ -29,6 +29,7 @@
 #include "plugin/plugin.h"
 #include "ri/ri_controller.h"
 
+#include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -44,8 +45,13 @@ extern retro_audio_sample_batch_t audio_batch_cb;
 #define MAX_AUDIO_FRAMES 2048
 #endif
 
+#define VI_INTR_TIME 500000
+
 /* Read header for type definition */
 static int GameFreq = 33600;
+static unsigned CountsPerSecond;
+static unsigned BytesPerSecond;
+static unsigned CountsPerByte;
 
 bool no_audio;
 
@@ -95,7 +101,14 @@ static void set_audio_format_via_libretro(void* user_data,
    /* notify plugin of the new frequency (can't do the same for bits) */
    g_ai.regs[AI_DACRATE_REG] = (ROM_PARAMS.aidacrate / frequency) - 1;
 
-   GameFreq = frequency;
+   GameFreq        = frequency;
+   BytesPerSecond  = frequency * 4;
+   CountsPerSecond = VI_INTR_TIME * 60 /* TODO/FIXME - dehardcode */;
+   CountsPerByte   = CountsPerSecond / BytesPerSecond;
+
+#if 1
+   printf("CountsPerByte: %d, GameFreq: %d\n", CountsPerByte, GameFreq);
+#endif
 
    /* restore original registers values */
    g_ai.regs[AI_DACRATE_REG] = saved_ai_dacrate;
