@@ -80,14 +80,19 @@ void init_rdp(struct rdp_core* dp)
 }
 
 
-int read_dpc_regs(struct rdp_core *dp, uint32_t address, uint32_t* value)
+int read_dpc_regs(void* opaque, uint32_t address, uint32_t* value)
 {
-    *value              = dp->dpc_regs[DPC_REG(address)];
+    struct rdp_core* dp = (struct rdp_core*)opaque;
+    uint32_t reg        = DPC_REG(address);
+
+    *value              = dp->dpc_regs[reg];
+
     return 0;
 }
 
-int write_dpc_regs(struct rdp_core *dp, uint32_t address, uint32_t value, uint32_t mask)
+int write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
+   struct rdp_core* dp = (struct rdp_core*)opaque;
    uint32_t reg        = DPC_REG(address);
 
    switch(reg)
@@ -119,15 +124,20 @@ int write_dpc_regs(struct rdp_core *dp, uint32_t address, uint32_t value, uint32
    return 0;
 }
 
-int read_dps_regs(struct rdp_core *dp, uint32_t address, uint32_t* value)
+
+int read_dps_regs(void* opaque, uint32_t address, uint32_t* value)
 {
-    *value = dp->dps_regs[DPS_REG(address)];
+    struct rdp_core* dp = (struct rdp_core*)opaque;
+    uint32_t reg        = DPS_REG(address);
+
+    *value = dp->dps_regs[reg];
 
     return 0;
 }
 
-int write_dps_regs(struct rdp_core *dp, uint32_t address, uint32_t value, uint32_t mask)
+int write_dps_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
+    struct rdp_core* dp = (struct rdp_core*)opaque;
     uint32_t reg        = DPS_REG(address);
 
     dp->dps_regs[reg] = MASKED_WRITE(&dp->dps_regs[reg], value, mask);
