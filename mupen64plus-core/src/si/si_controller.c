@@ -96,15 +96,19 @@ void init_si(struct si_controller* si)
 }
 
 
-int read_si_regs(struct si_controller *si, uint32_t address, uint32_t* value)
+int read_si_regs(void* opaque, uint32_t address, uint32_t* value)
 {
-    *value                   = si->regs[SI_REG(address)];
+    struct si_controller* si = (struct si_controller*)opaque;
+    uint32_t reg             = SI_REG(address);
+
+    *value                   = si->regs[reg];
 
     return 0;
 }
 
-int write_si_regs(struct si_controller *si, uint32_t address, uint32_t value, uint32_t mask)
+int write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
+    struct si_controller* si = (struct si_controller*)opaque;
     uint32_t reg             = SI_REG(address);
 
     switch (reg)

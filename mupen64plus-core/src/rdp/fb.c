@@ -79,14 +79,16 @@ static void pre_framebuffer_write(struct fb* fb, uint32_t address)
     }
 }
 
-int read_rdram_fb(struct rdp_core *dp, uint32_t address, uint32_t* value)
+int read_rdram_fb(void* opaque, uint32_t address, uint32_t* value)
 {
+    struct rdp_core* dp = (struct rdp_core*)opaque;
     pre_framebuffer_read(&dp->fb, address);
     return read_rdram_dram(dp->ri, address, value);
 }
 
-int write_rdram_fb(struct rdp_core *dp, uint32_t address, uint32_t value, uint32_t mask)
+int write_rdram_fb(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
+    struct rdp_core* dp = (struct rdp_core*)opaque;
     pre_framebuffer_write(&dp->fb, address);
     return write_rdram_dram(dp->ri, address, value, mask);
 }
