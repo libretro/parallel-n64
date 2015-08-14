@@ -106,7 +106,7 @@ static void set_audio_format_via_libretro(void* user_data,
    CountsPerSecond = VI_INTR_TIME * 60 /* TODO/FIXME - dehardcode */;
    CountsPerByte   = CountsPerSecond / BytesPerSecond;
 
-#if 1
+#if 0
    printf("CountsPerByte: %d, GameFreq: %d\n", CountsPerByte, GameFreq);
 #endif
 
