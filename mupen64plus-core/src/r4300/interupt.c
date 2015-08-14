@@ -174,12 +174,6 @@ void add_interupt_event_count(int type, unsigned count)
    if(g_cp0_regs[CP0_COUNT_REG] > UINT32_C(0x80000000))
       SPECIAL_done = 0;
 
-   if (get_event(type))
-   {
-      //DebugMessage(M64MSG_WARNING, "two events of type 0x%x in interrupt queue", type);
-      return;
-   }
-
    event = alloc_node(&q.pool);
    if (event == NULL)
    {
